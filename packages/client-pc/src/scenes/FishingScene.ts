@@ -131,6 +131,7 @@ export class FishingScene extends Phaser.Scene {
   }
 
   create(): void {
+    this.cameras.main.fadeIn(250, 0, 10, 20);
     const { width, height } = this.scale;
 
     // 배경 물결 그리기
@@ -356,7 +357,18 @@ export class FishingScene extends Phaser.Scene {
     const env = EnvironmentStore.environment || {
       spotId: 'geoje_gujora_breakwater',
       locationName: '거제 구조라 방파제',
-      tide: { tidePhase: 7, tidePhaseLabel: '7물', currentStrength: 0.8, highTideTimes: [], lowTideTimes: [], currentWaterLevelCm: 150, minutesToNextTide: 60, nextTideType: 'high' },
+      tide: {
+        tidePhase: 7,
+        tidePhaseLabel: '7물',
+        currentStrength: 0.8,
+        highTideTimes: [],
+        lowTideTimes: [],
+        currentWaterLevelCm: 150,
+        highTideHeightCm: 300,
+        lowTideHeightCm: 30,
+        minutesToNextTide: 60,
+        nextTideType: 'high',
+      },
       weather: { temperatureC: 22, seaSurfaceTempC: 21, windSpeedMs: 4, windDirectionDeg: 180, windDirectionLabel: '남풍', waveHeightM: 0.4, visibilityKm: 15, isPrecipitating: false, precipitationMmPerHour: 0, weatherCondition: 'clear', measuredAt: new Date(), sunriseAt: new Date(), sunsetAt: new Date() },
       currentTime: new Date(),
       isNighttime: false,
@@ -551,7 +563,8 @@ export class FishingScene extends Phaser.Scene {
       this.input.keyboard?.once('keydown', () => {
         this.cameras.main.fadeOut(300, 0, 10, 20);
         this.cameras.main.once('camerafadeoutcomplete', () => {
-          this.scene.start('FieldScene');
+          this.scene.stop();
+          this.scene.resume('FieldScene');
         });
       });
     });

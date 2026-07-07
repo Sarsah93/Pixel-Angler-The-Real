@@ -16,6 +16,11 @@ import { FishingScene } from './scenes/FishingScene.js';
 import { TackleRoomScene } from './scenes/TackleRoomScene.js';
 import { TideChartScene } from './scenes/TideChartScene.js';
 import { AnglerLogScene } from './scenes/AnglerLogScene.js';
+import { NightHuntingScene } from './scenes/NightHuntingScene.js';
+import { TrapScene } from './scenes/TrapScene.js';
+import { RestaurantScene } from './scenes/RestaurantScene.js';
+import { CondoScene } from './scenes/CondoScene.js';
+import { CookScene } from './scenes/CookScene.js';
 import { GameState } from './store/GameState.js';
 
 // 전역 게임 상태 초기화
@@ -33,6 +38,11 @@ const config: Phaser.Types.Core.GameConfig = {
     TackleRoomScene,
     TideChartScene,
     AnglerLogScene,
+    NightHuntingScene,
+    TrapScene,
+    RestaurantScene,
+    CondoScene,
+    CookScene,
   ],
 };
 

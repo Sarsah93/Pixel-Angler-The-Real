@@ -23,6 +23,10 @@ export interface TideInfo {
   lowTideTimes: Date[];
   /** 현재 조위 (cm) */
   currentWaterLevelCm: number;
+  /** 만조 조위 높이 (cm, 최댓값 기준) */
+  highTideHeightCm: number;
+  /** 간조 조위 높이 (cm, 최솟값 기준) */
+  lowTideHeightCm: number;
   /** 다음 만조/간조까지 남은 시간 (분) */
   minutesToNextTide: number;
   /** 다음 조류 변화가 만조인지 간조인지 */
@@ -127,7 +131,8 @@ export type SpotType =
   | 'boat_fishing'      // 선상 낚시
   | 'overnight_boat'    // 오버나잇 선상콘도
   | 'pier'              // 선착장/부두
-  | 'beach';            // 모래사장 (원투 낚시)
+  | 'beach'             // 모래사장 (원투 낚시)
+  | 'tidal_flat';       // 갯벌 (해루질)
 
 export type SpotFacility =
   | 'parking'

@@ -7,6 +7,7 @@
  * - 방파제 테트라포드에 앉아 있는 플레이어 캐릭터 뒷모습
  * - ASMR 스타일 파도/갈매기 소리
  * - 픽셀 폰트 메뉴 UI
+ * - 가이드 & 스토리라인 오버레이 추가
  */
 
 import Phaser from 'phaser';
@@ -20,6 +21,7 @@ const MENU_ITEMS = [
   { key: 'tackle', label: '🎣 장비실', scene: 'TackleRoomScene' },
   { key: 'tide', label: '🌊 물때 & 기상', scene: 'TideChartScene' },
   { key: 'log', label: '📖 조과첩', scene: 'AnglerLogScene' },
+  { key: 'guide', label: '📖 가이드 & 스토리', scene: null },
   { key: 'settings', label: '⚙ 설정', scene: null },
 ] as const;
 
@@ -30,6 +32,7 @@ export class MainMenuScene extends Phaser.Scene {
   private environmentText?: Phaser.GameObjects.Text;
   private timeText?: Phaser.GameObjects.Text;
   private animationObjects: Phaser.GameObjects.GameObject[] = [];
+  private guideOverlay: Phaser.GameObjects.Container | null = null;
 
   constructor() {
     super({ key: 'MainMenuScene' });
@@ -153,9 +156,6 @@ export class MainMenuScene extends Phaser.Scene {
     const cx = GAME_WIDTH * 0.45;
     const cy = GAME_HEIGHT * 0.69;
 
-    // 테트라포드에 걸터앉은 모습 (극도로 단순한 도트 시작)
-    // 추후 실제 스프라이트로 교체
-
     // 낚싯대
     g.lineStyle(2, 0xc8a060);
     g.beginPath();
@@ -225,27 +225,35 @@ export class MainMenuScene extends Phaser.Scene {
   // ─────────────────────────────────────────────
   private createMenuUI(): void {
     const panelX = GAME_WIDTH * 0.68;
-    const panelY = GAME_HEIGHT * 0.25;
+    const panelY = GAME_HEIGHT * 0.22;
 
     // 패널 배경 (반투명 글래스모피즘)
     const panel = this.add.graphics();
     panel.fillStyle(0x0a1628, 0.85);
-    panel.fillRoundedRect(panelX - 10, panelY - 20, 280, 220, 4);
-    panel.lineStyle(1, 0x2a5a8a, 0.8);
-    panel.strokeRoundedRect(panelX - 10, panelY - 20, 280, 220, 4);
+    panel.fillRoundedRect(panelX - 10, panelY - 20, 280, 260, 4);
+    panel.lineStyle(1.5, 0x2a5a8a, 0.8);
+    panel.strokeRoundedRect(panelX - 10, panelY - 20, 280, 260, 4);
 
-    // 타이틀
-    this.add.text(panelX + 130, panelY - 8, 'THE REAL ANGLER', {
+    // 타이틀 로고 (픽셀아트 느낌)
+    this.add.text(panelX + 130, panelY - 4, 'THE REAL ANGLER', {
       fontFamily: '"Press Start 2P", monospace',
-      fontSize: '10px',
+      fontSize: '12px',
       color: '#4af2a1',
+      shadow: { offsetX: 1.5, offsetY: 1.5, color: '#002200', blur: 0, fill: true }
+    }).setOrigin(0.5, 0.5);
+
+    this.add.text(panelX + 130, panelY + 14, '더 리얼 앵글러', {
+      fontFamily: '"Noto Sans KR", sans-serif',
+      fontSize: '11px',
+      color: '#88aacc',
     }).setOrigin(0.5, 0.5);
 
     // 메뉴 항목
+    this.menuTexts = [];
     MENU_ITEMS.forEach((item, i) => {
-      const text = this.add.text(panelX + 20, panelY + 20 + i * 36, item.label, {
+      const text = this.add.text(panelX + 20, panelY + 42 + i * 32, item.label, {
         fontFamily: '"Noto Sans KR", monospace',
-        fontSize: '16px',
+        fontSize: '15px',
         color: '#c8dde8',
       });
       this.menuTexts.push(text);
@@ -330,32 +338,131 @@ export class MainMenuScene extends Phaser.Scene {
   // ─────────────────────────────────────────────
   private setupKeyboardInput(): void {
     this.input.keyboard?.on('keydown-UP', () => {
+      if (this.guideOverlay) return;
       this.selectedIndex = (this.selectedIndex - 1 + MENU_ITEMS.length) % MENU_ITEMS.length;
       this.updateMenuSelection();
     });
 
     this.input.keyboard?.on('keydown-DOWN', () => {
+      if (this.guideOverlay) return;
       this.selectedIndex = (this.selectedIndex + 1) % MENU_ITEMS.length;
       this.updateMenuSelection();
     });
 
     this.input.keyboard?.on('keydown-ENTER', () => {
+      if (this.guideOverlay) return;
       this.selectMenuItem();
     });
 
     this.input.keyboard?.on('keydown-SPACE', () => {
+      if (this.guideOverlay) return;
       this.selectMenuItem();
     });
   }
 
   private selectMenuItem(): void {
     const item = MENU_ITEMS[this.selectedIndex];
-    if (item.scene) {
+    if (item.key === 'guide') {
+      this.showGuideOverlay();
+    } else if (item.scene) {
       this.cameras.main.fadeOut(300, 0, 10, 20);
       this.cameras.main.once('camerafadeoutcomplete', () => {
         this.scene.start(item.scene);
       });
     }
+  }
+
+  // ─────────────────────────────────────────────
+  // 가이드 & 스토리 오버레이 구현
+  // ─────────────────────────────────────────────
+  private showGuideOverlay(): void {
+    if (this.guideOverlay) return;
+
+    const { width, height } = this.scale;
+    const overlay = this.add.container(width * 0.5, height * 0.5).setDepth(100);
+    this.guideOverlay = overlay;
+
+    // 어두운 배경 반투명 사각형
+    const bg = this.add.rectangle(0, 0, 700, 500, 0x050f1e, 0.96);
+    bg.setStrokeStyle(2, 0x4af2a1);
+
+    const title = this.add.text(0, -210, '📖 The Real Angler 가이드 & 스토리', {
+      fontFamily: '"Noto Sans KR", sans-serif',
+      fontSize: '20px',
+      color: '#4af2a1',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+
+    const storyTitle = this.add.text(-320, -160, '🌊 스토리라인', {
+      fontFamily: '"Noto Sans KR", sans-serif',
+      fontSize: '14px',
+      color: '#ffeeaa',
+      fontStyle: 'bold',
+    }).setOrigin(0, 0.5);
+
+    const storyText = this.add.text(-320, -140, 
+      "거친 파도와 고독을 사랑하는 프로 낚시꾼, 남해의 푸른 바다를 찾아 거제 구조라 방파제로 떠나다.\n" +
+      "그곳에서 단순한 레저 낚시를 넘어 야간 해루질, 통발 설치, 그리고 낚아 올린 물고기로 직접 요리하여\n" +
+      "가게를 운영하는 남해의 진정한 삶을 내 손으로 직접 써내려갑니다.", {
+      fontFamily: '"Noto Sans KR", sans-serif',
+      fontSize: '12px',
+      color: '#ccddee',
+      lineSpacing: 6,
+    }).setOrigin(0, 0);
+
+    const controlTitle = this.add.text(-320, -40, '⌨ 조작 가이드', {
+      fontFamily: '"Noto Sans KR", sans-serif',
+      fontSize: '14px',
+      color: '#ffeeaa',
+      fontStyle: 'bold',
+    }).setOrigin(0, 0.5);
+
+    const controlLines = [
+      "• [방향키 / WASD] : 필드 상하좌우 4방향 이동 및 메뉴 탐색",
+      "• [SPACE / ENTER] : 메뉴 선택 및 물가에서 캐스팅 시작",
+      "• [E] : 상점 / 건물 근처에서 대화 및 내부 진입 (식당, 낚시점, 숙소 등)",
+      "• [H] : 야간 갯벌 해루질 씬 즉시 이동 (해루질 면허 보유 필수)",
+      "• [T] : 통발 구역 통발 배치/수거 씬 즉시 이동 (통발 면허 보유 필수)",
+      "• [C] : 주방 캐치앤쿡 요리 및 메뉴 등록 씬 즉시 이동",
+      "• [L] : 라이선스 발급 및 코인 교환 패널 열기",
+      "• [ESC] : 현재 오버레이 닫기 / 이전 맵(월드맵)으로 복귀",
+    ];
+
+    const controlText = this.add.text(-320, -20, controlLines.join('\n'), {
+      fontFamily: '"Noto Sans KR", sans-serif',
+      fontSize: '11px',
+      color: '#a0b8c8',
+      lineSpacing: 8,
+    }).setOrigin(0, 0);
+
+    const closePrompt = this.add.text(0, 210, '[ESC] 또는 아무 곳이나 클릭하여 메인으로 돌아가기', {
+      fontFamily: '"Noto Sans KR", sans-serif',
+      fontSize: '12px',
+      color: '#4af2a1',
+    }).setOrigin(0.5);
+
+    overlay.add([bg, title, storyTitle, storyText, controlTitle, controlText, closePrompt]);
+
+    // 클릭해서 닫기
+    const dummyHit = this.add.rectangle(0, 0, width, height, 0x000000, 0)
+      .setOrigin(0.5)
+      .setInteractive();
+    overlay.addAt(dummyHit, 0);
+    
+    const closeAction = () => {
+      overlay.destroy();
+      this.guideOverlay = null;
+    };
+    
+    dummyHit.on('pointerdown', closeAction);
+
+    // ESC로 닫기 리스너 일시 교체
+    const escKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
+    const escListener = () => {
+      closeAction();
+      escKey?.removeListener('down', escListener);
+    };
+    escKey?.on('down', escListener);
   }
 
   // ─────────────────────────────────────────────
@@ -368,8 +475,6 @@ export class MainMenuScene extends Phaser.Scene {
       delay: 80,
       callback: () => {
         waveOffset += 0.1;
-        // 파도 라인 재그리기는 성능상 매 프레임 그리지 않고
-        // Tween 기반 Y 오프셋으로 처리
       },
       loop: true,
     });

@@ -256,7 +256,7 @@ export class WorldMapScene extends Phaser.Scene {
       
       this.cameras.main.fadeOut(300, 0, 10, 20);
       this.cameras.main.once('camerafadeoutcomplete', () => {
-        this.scene.start('FieldScene');
+        this.scene.start('FieldScene', { spotId: selectedSpot.id });
       });
     };
 

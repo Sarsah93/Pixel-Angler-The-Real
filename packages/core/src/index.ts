@@ -10,6 +10,48 @@ export type { PlayerState, PlayerStatus, FacingDirection, CaughtFishRecord, Inve
 export type { TackleSetup, RodSpec, ReelSpec, LineSpec, FloatSpec, HookSpec, BaitItem, RigType, RodType, ReelType, BaitCategory } from './types/Gear.js';
 export type { TideInfo, WeatherData, FishingEnvironment, FishingSpotInfo, SpotType, WeatherCondition } from './types/Environment.js';
 export type { FishingPhase, BitePattern, SetHookResult, FightingState, FishingSessionResult, CastingResult, FishingPoint } from './types/Fishing.js';
+export type {
+  ShoreCreatureCategory,
+  ShoreHuntingGear,
+  ShoreHuntingPhase,
+  ShoreHarvestItem,
+  ShoreHuntingResult,
+  TrapType,
+  TrapSpec,
+  DeployedTrap,
+  TrapCatchItem,
+  TrapHarvestResult,
+  CoolerSpec,
+  CoolerInventory,
+  CoolerSlotItem,
+  FishProcessingStep,
+  ProcessingLocation,
+  CookingRecipe,
+  RecipeIngredient,
+  CookingPhase,
+  RestaurantTier,
+  RestaurantState,
+  DiningCustomer,
+  FloatingCondoState,
+  CondoReservation,
+  CondoAmenity
+} from './types/Activities.js';
+export type {
+  LicenseType,
+  LicenseDef,
+  UnlockRequirement,
+  UnlockableFeature,
+  PlayerLicenses,
+  HeldLicense
+} from './types/License.js';
+export type {
+  QuestObjectiveType,
+  QuestObjective,
+  QuestReward,
+  QuestCategory,
+  Quest,
+  PlayerQuestProgress
+} from './types/Quest.js';
 
 // DB Schema
 export { FISH_DATABASE, getFishById, getFishBySpotType, getFishByMonth } from './db-schema/FishDatabase.js';
@@ -17,6 +59,14 @@ export type { FishSpecies, FishRarity } from './db-schema/FishDatabase.js';
 export { ROD_DATABASE, REEL_DATABASE, LINE_DATABASE, FLOAT_DATABASE, HOOK_DATABASE, getRodById, getReelById, getLineById, getFloatById } from './db-schema/GearSpecs.js';
 export { SPOT_DATABASE, getSpotById, getSpotsByRegion, getSpotsByType } from './db-schema/SpotDatabase.js';
 export { BAIT_DATABASE, getBaitById, getForagableBaits } from './db-schema/BaitDatabase.js';
+export { SHORE_CREATURE_DATABASE, getCreatureById, getCreaturesByCategory, getCreaturesBySpotType, getActiveCreaturesByMonth } from './db-schema/ShoreCreatureDatabase.js';
+export type { ShoreCreature } from './db-schema/ShoreCreatureDatabase.js';
+export { TRAP_DATABASE, getTrapById, getTrapsByType } from './db-schema/TrapDatabase.js';
+export { RECIPE_DATABASE, getRecipeById, getRecipesByLocation, getRecipesByIngredient } from './db-schema/RecipeDatabase.js';
+export { ANGLER_APP_REGIONS, TIDAL_CHARACTERISTICS, getRegionByCode, getRegionsByProvince, getRegionsByTidalCharacteristic, getAnglerAppRegions } from './db-schema/AnglerAppSpots.js';
+export type { AnglerAppRegion } from './db-schema/AnglerAppSpots.js';
+export { LICENSE_DATABASE, getLicenseByType, checkUnlockRequirements } from './types/License.js'; // Note: Defined directly inside types/License.ts
+export { QUEST_DATABASE, getQuestById, getQuestsByCategory, getAvailableQuests } from './db-schema/QuestDatabase.js';
 
 // Simulation
 export { calculateTideInfo, evaluateFishingTide } from './simulation/TideCalculator.js';
@@ -27,6 +77,10 @@ export type { LineState } from './simulation/LinePhysics.js';
 export { calculateCast } from './simulation/CastingModel.js';
 export type { CastInput, CastResult } from './simulation/CastingModel.js';
 export { evaluateFishingSafety, isGoldenHour, isNighttime, buildFishingEnvironment, getWindDirectionLabel } from './simulation/WeatherModel.js';
+export { canPerformNightHunting, getHuntableCreatures, attemptHunt, simulateNightHuntingSession } from './simulation/NightHuntingEngine.js';
+export type { NightHuntingContext } from './simulation/NightHuntingEngine.js';
+export { harvestTrap, calculateTrapLossRisk, validateTrapDeployment, getNextOptimalHarvestTime } from './simulation/TrapSystem.js';
+export type { TrapDeploymentContext } from './simulation/TrapSystem.js';
 
 // API Clients
 export { PublicDataClient } from './api-client/PublicDataClient.js';
@@ -36,3 +90,4 @@ export { OceanApiClient, TIDE_STATION_CODES } from './api-client/OceanApiClient.
 // Utils
 export { getApproxLunarDay, getLunarDayDisplay } from './utils/LunarCalendar.js';
 export { getDistanceBetweenCoordinates } from './utils/GeoUtils.js';
+

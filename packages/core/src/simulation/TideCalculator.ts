@@ -140,6 +140,8 @@ export function calculateTideInfo(date: Date = new Date()): TideInfo {
     highTideTimes: highTides,
     lowTideTimes: lowTides,
     currentWaterLevelCm,
+    highTideHeightCm: Math.round(150 + 100 * currentStrength),
+    lowTideHeightCm: Math.round(150 - 100 * currentStrength),
     minutesToNextTide: minutesToNext,
     nextTideType: nextTide.type,
   };
