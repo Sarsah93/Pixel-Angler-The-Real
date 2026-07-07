@@ -1,0 +1,16 @@
+{
+  "name": "@tra/tauri-wrapper",
+  "version": "0.1.0",
+  "description": "Tauri wrapper for steam packaging client-pc",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.0.0"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0"
+  }
+}

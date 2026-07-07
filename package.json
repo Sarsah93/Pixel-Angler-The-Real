@@ -1,0 +1,28 @@
+{
+  "name": "the-real-angler",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Hyper-realistic 2D pixel art sea fishing simulator",
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "clean": "turbo run clean && rimraf node_modules",
+    "dev:client": "pnpm --filter @tra/client-pc dev",
+    "dev:server": "pnpm --filter @tra/server dev",
+    "build:client": "pnpm --filter @tra/client-pc build",
+    "build:server": "pnpm --filter @tra/server build"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.4",
+    "typescript": "^5.8.3",
+    "rimraf": "^6.0.1"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.15.0"
+}
