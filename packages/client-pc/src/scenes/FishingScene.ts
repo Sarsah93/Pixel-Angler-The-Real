@@ -534,6 +534,17 @@ export class FishingScene extends Phaser.Scene {
     if (outcome === 'success') {
       titleText = '히트 완료!';
       subtitleText = `획득: ${this.fishBeingFought?.nameKo}\n크기: ${this.fishLength}cm / ${(this.fishWeight/1000).toFixed(2)}kg`;
+      
+      // GameState에 조과 정보 저장
+      if (this.fishBeingFought) {
+        GameState.addCaughtFish(
+          this.fishBeingFought.id,
+          this.fishBeingFought.nameKo,
+          this.fishLength,
+          this.fishWeight
+        );
+        GameState.save();
+      }
     } else if (outcome === 'line_break') {
       titleText = '채비 손실';
       subtitleText = '장력이 과도하여 원줄이 터졌습니다!';

@@ -26,8 +26,9 @@ import type {
   FloatingCondoState,
   ShoreHarvestItem,
   TrapCatchItem,
+  CaughtFishRecord,
 } from '@tra/core';
-import { getLicenseByType } from '@tra/core';
+import { getLicenseByType, getCurrentGameMinute, calculateTideInfo } from '@tra/core';
 import { EnvironmentStore } from './EnvironmentStore.js';
 
 // ─────────────────────────────────────────────
@@ -58,8 +59,28 @@ function createDefaultPlayer(): PlayerState {
       rodIds: ['rod_daiwaSS1500_1p5'],
       reelIds: ['reel_daiwa3000'],
       consumables: [
-        { itemId: 'bait_sandworm_fresh', name: '청갯지렁이', quantity: 30, category: 'bait' },
-        { itemId: 'bait_earthworm', name: '지렁이', quantity: 20, category: 'bait' },
+        {
+          instanceId: 'default_krill_instance',
+          itemId: 'tackle_krill_frozen',
+          quantity: 30,
+          conditionState: 'frozen',
+          usePurpose: 'fishing_gear_only',
+          sourceVendor: 'tackle_shop',
+          acquiredAtGameMinute: 0,
+          coolerStoredAtGameMinute: null,
+          convertedToBaitAtGameMinute: null,
+        },
+        {
+          instanceId: 'default_squid_instance',
+          itemId: 'tackle_squid_chilled',
+          quantity: 20,
+          conditionState: 'fresh',
+          usePurpose: 'fishing_gear_only',
+          sourceVendor: 'tackle_shop',
+          acquiredAtGameMinute: 0,
+          coolerStoredAtGameMinute: null,
+          convertedToBaitAtGameMinute: null,
+        },
       ],
       livewell: [],
       coins: 50000,
@@ -207,6 +228,47 @@ export class GameStateManager {
     return true;
   }
 
+  /** 물고기 포획 성공 시 살림망에 추가 및 개인 최고기록 갱신 */
+  addCaughtFish(speciesId: string, _nameKo: string, lengthCm: number, weightGram: number): void {
+    if (!this._player) return;
+    const spotId = this._currentSpotId || 'geoje_gujora_breakwater';
+    const tide = calculateTideInfo();
+    const env = EnvironmentStore.environment;
+    const waterTempC = env ? env.weather.seaSurfaceTempC : 20.0;
+    
+    // 현재 장착된 채비 스냅샷 (없으면 더미 생성)
+    const tackleSnapshot = this.player.currentTackle || {
+      rod: { id: 'rod_daiwaSS1500_1p5', name: '다이와 SS 1.5호 대', type: 'iso', lengthM: 5.3, maxLineWeightLbs: 12, maxLureWeightG: 20 },
+      reel: { id: 'reel_daiwa3000', name: '다이와 3000번 스피닝릴', type: 'spinning', gearRatio: 5.3, maxDragKg: 6, lineCapacityM: 150 },
+      mainLine: { id: 'line_nylon_2', name: '나일론 원줄 2호', material: 'nylon', diameterMm: 0.235, testLbs: 8, lengthM: 150 },
+      rigType: 'iso_semi_float',
+      hook: { id: 'hook_chinu_3', name: '감성돔 바늘 3호', size: 3, targetFishWeightMaxG: 5000 },
+      bait: { id: 'bait_sandworm_fresh', name: '청갯지렁이', category: 'sandworm', baseEffectiveness: 1.0, isConsumable: true, canBeForaged: true },
+    };
+
+    const isBest = !this.player.personalRecords[speciesId] || lengthCm > this.player.personalRecords[speciesId];
+    if (isBest) {
+      this.player.personalRecords[speciesId] = lengthCm;
+    }
+
+    const record: CaughtFishRecord = {
+      id: crypto.randomUUID(),
+      fishSpeciesId: speciesId,
+      lengthCm,
+      weightGram,
+      caughtAt: new Date(),
+      locationId: spotId,
+      tackleUsed: JSON.parse(JSON.stringify(tackleSnapshot)) as TackleSetup,
+      tidePhase: tide.tidePhase,
+      waterTempC,
+      isBestRecord: isBest,
+      baitUsed: tackleSnapshot.bait.name,
+    };
+
+    this.player.inventory.livewell.push(record);
+    this.player.caughtFishHistory.push(record);
+  }
+
   // ─── 통발 조작 ─────────────────────────────
 
   /** 통발 설치 */
@@ -240,14 +302,15 @@ export class GameStateManager {
   addHarvestToCooler(harvestItems: ShoreHarvestItem[]): void {
     for (const h of harvestItems) {
       this.addToCooler({
+        instanceId: `harvest_${Date.now()}_${Math.random().toString(36).slice(2)}`,
         type: h.category === 'crustacean' ? 'crustacean'
               : h.category === 'shellfish' || h.category === 'bivalve' || h.category === 'gastropod' ? 'shellfish'
               : 'shellfish',
         speciesId: h.creatureId,
         nameKo: h.nameKo,
         weightGrams: h.countOrWeightG,
-        condition: 'fresh',
-        storedAt: new Date(),
+        condition: 'live',
+        storedAtGameMinute: getCurrentGameMinute(),
       });
     }
   }
@@ -256,12 +319,13 @@ export class GameStateManager {
   addTrapCatchToCooler(catchItems: TrapCatchItem[]): void {
     for (const c of catchItems) {
       this.addToCooler({
+        instanceId: `trap_${Date.now()}_${Math.random().toString(36).slice(2)}`,
         type: 'crustacean',
         speciesId: c.creatureId,
         nameKo: c.nameKo,
         weightGrams: c.countOrWeightG,
-        condition: 'fresh',
-        storedAt: new Date(),
+        condition: 'live',
+        storedAtGameMinute: getCurrentGameMinute(),
       });
     }
   }
@@ -381,11 +445,7 @@ export class GameStateManager {
           }
         }
       }
-      if (parsed.coolerInventory?.items) {
-        for (const item of parsed.coolerInventory.items) {
-          item.storedAt = new Date(item.storedAt);
-        }
-      }
+      // storedAtGameMinute는 숫자이므로 별도 역직렬화 불필요
       if (parsed.licenses) {
         for (const lic of parsed.licenses) {
           lic.acquiredAt = new Date(lic.acquiredAt);

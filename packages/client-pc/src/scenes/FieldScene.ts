@@ -16,7 +16,7 @@
 
 import Phaser from 'phaser';
 import { GameState } from '../store/GameState.js';
-import { getSpotById, SPOT_DATABASE, LicenseType, evaluateFishSellPrice } from '@tra/core';
+import { getSpotById, SPOT_DATABASE, LicenseType, evaluateFishSellPrice, getUniversalItemById } from '@tra/core';
 import { generateSpotFieldLayout, Zone, Building } from '../data/SpotFieldLayouts.js';
 import { HUD } from '../ui/HUD.js';
 import { MiniMap } from '../ui/MiniMap.js';
@@ -748,7 +748,11 @@ export class FieldScene extends Phaser.Scene {
       ` Reels: ${inv.reelIds.map(id => id.replace('reel_', '')).join(', ') || '없음'}`,
       ``,
       `🎒 소모품 목록:`,
-      ...inv.consumables.map(c => `• ${c.name} (${c.quantity}개)`),
+      ...inv.consumables.map(c => {
+        const itemDef = getUniversalItemById(c.itemId);
+        const nameKo = itemDef ? itemDef.nameKo : c.itemId;
+        return `• ${nameKo} (${c.quantity}개) [상태: ${c.conditionState}]`;
+      }),
       ``,
       `🐟 살림망 보관 물고기: ${inv.livewell.length}마리`
     ];

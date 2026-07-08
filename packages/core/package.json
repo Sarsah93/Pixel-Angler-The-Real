@@ -1,7 +1,7 @@
 {
   "name": "@tra/core",
   "version": "0.1.0",
-  "description": "The Real Angler — Pure TypeScript game engine (no rendering code)",
+  "description": "Pixel Angler The Real — Pure TypeScript game engine (no rendering code)",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

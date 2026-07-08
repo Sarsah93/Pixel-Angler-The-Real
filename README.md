@@ -1,4 +1,4 @@
-# 🎣 The Real Angler — Pixel-Perfect Korean Sea Fishing Simulator
+# 🎣 Pixel Angler The Real — Pixel-Perfect Korean Sea Fishing Simulator
 
 > **2D 픽셀 퍼펙트 해양 낚시 시뮬레이터 + 생활 경영 RPG**
 > PC (Tauri v2 기반 데스크톱 앱) · 추후 Steam 출시 목표

@@ -53,5 +53,5 @@ io.on('connection', (socket) => {
 
 const PORT = process.env.SERVER_PORT || 4000;
 httpServer.listen(PORT, () => {
-  console.log(`[Server] The Real Angler Backend is running on port ${PORT}`);
+  console.log(`[Server] Pixel Angler The Real Backend is running on port ${PORT}`);
 });

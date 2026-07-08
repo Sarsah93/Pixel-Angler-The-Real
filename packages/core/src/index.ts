@@ -74,7 +74,7 @@ export type {
   UniversalItem,
   InventoryItemInstance,
 } from './types/Item.js';
-export { evaluateItemCondition } from './types/Item.js';
+export { evaluateItemCondition, getCurrentGameMinute } from './types/Item.js';
 
 // DB Schema
 export { FISH_DATABASE, getFishById, getFishBySpotType, getFishByMonth } from './db-schema/FishDatabase.js';

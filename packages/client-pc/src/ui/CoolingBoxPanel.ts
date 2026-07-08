@@ -22,36 +22,40 @@ export class CoolingBoxPanel extends Phaser.GameObjects.Container {
     // 임시로 더미 아이템 4개 로드 (실제는 GameState에서 관리)
     this.itemsList = [
       {
+        instanceId: 'demo_cooler_1',
         type: 'fish',
         speciesId: 'black_seabream',
         nameKo: '감성돔',
         weightGrams: 1200,
-        condition: 'fresh',
-        storedAt: new Date(),
+        condition: 'chilled',
+        storedAtGameMinute: 0,
       },
       {
+        instanceId: 'demo_cooler_2',
         type: 'fish',
         speciesId: 'black_rockfish',
         nameKo: '볼락',
         weightGrams: 300,
         condition: 'fresh',
-        storedAt: new Date(),
+        storedAtGameMinute: 0,
       },
       {
+        instanceId: 'demo_cooler_3',
         type: 'crustacean',
         speciesId: 'portunus_trituberculatus',
         nameKo: '꽃게',
         weightGrams: 500,
-        condition: 'good',
-        storedAt: new Date(),
+        condition: 'live',
+        storedAtGameMinute: 0,
       },
       {
+        instanceId: 'demo_cooler_4',
         type: 'shellfish',
         speciesId: 'haliotis_discus',
         nameKo: '전복',
         weightGrams: 150,
-        condition: 'fresh',
-        storedAt: new Date(),
+        condition: 'live',
+        storedAtGameMinute: 0,
       },
     ];
   }
@@ -180,9 +184,16 @@ export class CoolingBoxPanel extends Phaser.GameObjects.Container {
   }
 
   private getConditionLabel(cond: string): string {
-    if (cond === 'fresh') return '🟢 극상';
-    if (cond === 'good') return '🟡 신선';
-    if (cond === 'degrading') return '🟠 보통';
-    return '🔴 상함';
+    switch (cond) {
+      case 'live':       return '🟣 활어';
+      case 'fresh':      return '🟢 극상';
+      case 'chilled':    return '🔵 냉장';
+      case 'frozen':     return '⚪ 냉동';
+      case 'dried':      return '🟡 건조';
+      case 'salted':     return '🟠 염장';
+      case 'processed':  return '🟤 가공';
+      case 'spoiled':    return '🔴 상함';
+      default:           return '❓ 알수없음';
+    }
   }
 }

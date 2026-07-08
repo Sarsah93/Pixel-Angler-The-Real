@@ -163,9 +163,9 @@ export class CookScene extends Phaser.Scene {
       const y = -60 + row * 60;
 
       const itemBg = this.add.rectangle(x, y, 180, 50,
-        item.condition === 'fresh' ? 0x003322 : 0x332200, 0.9
+        item.condition !== 'spoiled' ? 0x003322 : 0x330000, 0.9
       ).setInteractive();
-      itemBg.setStrokeStyle(1, 0x558866);
+      itemBg.setStrokeStyle(1, item.condition !== 'spoiled' ? 0x05ff55 : 0xff0505, 0.5);
 
       const nameText = this.add.text(x, y - 10, this.getItemEmoji(item) + ' ' + item.nameKo, {
         fontFamily: '"Noto Sans KR", sans-serif',
@@ -434,9 +434,13 @@ export class CookScene extends Phaser.Scene {
 
   private getConditionLabel(condition: string): string {
     const labels: Record<string, string> = {
-      fresh: '🟢 신선',
-      good: '🟡 양호',
-      degrading: '🟠 보통',
+      live: '🟣 활어',
+      fresh: '🟢 극상',
+      chilled: '🔵 냉장',
+      frozen: '⚪ 냉동',
+      dried: '🟡 건조',
+      salted: '🟠 염장',
+      processed: '🟤 가공',
       spoiled: '🔴 상함',
     };
     return labels[condition] ?? condition;

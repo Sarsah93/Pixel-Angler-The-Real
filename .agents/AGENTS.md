@@ -1,4 +1,4 @@
-# The Real Angler — 에이전트 작업 지침서
+# Pixel Angler The Real — 에이전트 작업 지침서
 
 > **이 파일은 반드시 모든 AI 에이전트가 작업 시작 전 읽어야 합니다.**
 > 이 프로젝트는 복잡한 피처 구현을 포함하므로, 하나의 LLM 세션이 끊겼다가 다른 LLM이 이어받는 경우에도 **아키텍처와 코딩 규칙이 절대 변경되어서는 안 됩니다.**
@@ -7,7 +7,7 @@
 
 ## 1. 프로젝트 개요
 
-**The Real Angler** — 2D 픽셀 퍼펙트 해양 낚시 시뮬레이터
+**Pixel Angler The Real** — 2D 픽셀 퍼펙트 해양 낚시 시뮬레이터
 
 - **장르**: 리얼리즘 낚시 시뮬레이터 + 생활 경영 RPG
 - **플랫폼**: PC (Tauri v2 기반 데스크톱 앱), 추후 Steam 출시 목표
@@ -145,6 +145,7 @@ this.events.on('resume', () => {
 | UI: MiniMap (3단계 크기 토글) | `client-pc/src/ui/MiniMap.ts` |
 | UI: InfoOverlayPanel (인벤토리/퀘스트) | `client-pc/src/ui/InfoOverlayPanel.ts` |
 | 퀘스트 DB | `core/src/db-schema/QuestDatabase.ts` |
+| 경매 엔진 (AuctionEngine) | `core/src/simulation/AuctionEngine.ts` |
 | 수산물 경락 시세 타입 + 어종 매핑 | `core/src/types/Economy.ts` |
 | 어판장 수매가 산정 엔진 (농정원 API 연동) | `core/src/simulation/MarketPriceEvaluator.ts` |
 | 통합 아이템 레이어 타입 (신선도/부패/변환 규칙) | `core/src/types/Item.ts` |
@@ -236,6 +237,12 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 ```
 
 **최근 주요 변경**:
+- 프로젝트명 전면 수정: "The Real Angler" → **"Pixel Angler The Real"** (index.html, MainMenuScene, server 로그 반영)
+- `Inventory.consumables` 타입을 `ConsumableItem[]` → **`InventoryItemInstance[]`** 로 통합 (신선도/부패 연동)
+- `CoolerSlotItem.condition` 타입을 `'fresh'|'good'|...` → **`ItemConditionState`** 로 통일
+- `CoolerSlotItem.storedAt: Date` → **`storedAtGameMinute: number`** 로 교체 (게임 분 기반 부패 계산)
+- `FishBiteEngine`: 미끼 신선도(spoiled=85%감점, frozen=50%감점, live=25%가산) 보정 로직 추가
+- CoolingBoxPanel: 모든 `ItemConditionState` 레이블 지원 (🟣활어/🟢극상/🔵냉장/⚪냉동/🔴상함 등)
 - WASD 이동 분리 (방향키 전용 이동, WASD 향후 단축키 예약)
 - U 키 → 제작대(CraftScene) 단축키 등록
 - HUD/MiniMap/InfoOverlayPanel 신규 UI 완성

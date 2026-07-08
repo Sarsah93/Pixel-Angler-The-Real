@@ -1,7 +1,7 @@
 {
   "name": "@tra/client-pc",
   "version": "0.1.0",
-  "description": "The Real Angler — PC/Steam Client (Phaser 3 + Vite)",
+  "description": "Pixel Angler The Real — PC/Steam Client (Phaser 3 + Vite)",
   "type": "module",
   "scripts": {
     "dev": "vite",

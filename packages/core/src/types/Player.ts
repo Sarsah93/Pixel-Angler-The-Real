@@ -7,6 +7,7 @@
  */
 
 import type { TackleSetup } from './Gear.js';
+import type { InventoryItemInstance } from './Item.js';
 
 // ─────────────────────────────────────────────
 // 플레이어 행동 상태
@@ -58,19 +59,12 @@ export interface Inventory {
   rodIds: string[];
   /** 릴 보유 목록 */
   reelIds: string[];
-  /** 소모품 미끼/채비 재료 */
-  consumables: ConsumableItem[];
+  /** 소모품 미끼/채비 재료 (신선도 및 사용목적 관리형 인스턴스) */
+  consumables: InventoryItemInstance[];
   /** 현재 보관 중인 물고기 (회 못 뜬 것들) */
   livewell: CaughtFishRecord[];
   /** 인게임 재화 (앵글러 코인) */
   coins: number;
-}
-
-export interface ConsumableItem {
-  itemId: string;
-  name: string;
-  quantity: number;
-  category: 'bait' | 'tackle' | 'food' | 'ingredient';
 }
 
 // ─────────────────────────────────────────────

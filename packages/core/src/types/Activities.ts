@@ -6,6 +6,8 @@
  * 핵심 타입을 정의합니다.
  */
 
+import type { ItemConditionState } from './Item.js';
+
 // ─────────────────────────────────────────────
 // 해루질 (Night Shore Hunting)
 // ─────────────────────────────────────────────
@@ -161,12 +163,16 @@ export interface CoolerInventory {
 }
 
 export interface CoolerSlotItem {
+  /** 쿨러 슬롯 고유 인스턴스 ID (인벤토리 이동/판매 연동용) */
+  instanceId: string;
   type: 'fish' | 'shellfish' | 'crustacean' | 'ingredient';
   speciesId: string;
   nameKo: string;
   weightGrams: number;
-  condition: 'fresh' | 'good' | 'degrading' | 'spoiled';
-  storedAt: Date;
+  /** 신선도 상태 — Item.ts의 ItemConditionState와 동일 타입으로 통일 */
+  condition: ItemConditionState;
+  /** 쿨러에 보관한 게임 내 시점 (분 단위, evaluateItemCondition 연동) */
+  storedAtGameMinute: number;
 }
 
 // ─────────────────────────────────────────────

@@ -156,7 +156,17 @@ export function calculateBiteChance(
   const fishCandidates = possibleSpecies.map((species) => {
     const tempScore = getTempScore(species, weather.seaSurfaceTempC);
     const timeScore = Math.min(1.0, getTimeScore(species, currentTime, isNighttime));
-    const baitScore = getBaitAffinity(species.id, tackle.bait.category);
+    
+    // 미끼 친화도 및 신선도 상태 보정
+    const baitScoreRaw = getBaitAffinity(species.id, tackle.bait.category);
+    let baitScore = baitScoreRaw;
+    if (tackle.bait.conditionState === 'spoiled') {
+      baitScore = baitScoreRaw * 0.15; // 부패한 미끼는 85% 감점
+    } else if (tackle.bait.conditionState === 'frozen') {
+      baitScore = baitScoreRaw * 0.5;  // 얼어있는 냉동 미끼는 집어 향 부족으로 50% 감점
+    } else if (tackle.bait.conditionState === 'live') {
+      baitScore = baitScoreRaw * 1.25; // 활어/살아있는 생미끼는 25% 가산
+    }
 
     // 물때 어종별 보정
     let tideBonus = 1.0;
@@ -199,8 +209,14 @@ export function calculateBiteChance(
 
   const avgBaitScore =
     possibleSpecies.length > 0
-      ? possibleSpecies.reduce((s, sp) => s + getBaitAffinity(sp.id, tackle.bait.category), 0) /
-        possibleSpecies.length
+      ? possibleSpecies.reduce((s, sp) => {
+          const rawAffinity = getBaitAffinity(sp.id, tackle.bait.category);
+          let adjusted = rawAffinity;
+          if (tackle.bait.conditionState === 'spoiled') adjusted = rawAffinity * 0.15;
+          else if (tackle.bait.conditionState === 'frozen') adjusted = rawAffinity * 0.5;
+          else if (tackle.bait.conditionState === 'live') adjusted = rawAffinity * 1.25;
+          return s + adjusted;
+        }, 0) / possibleSpecies.length
       : 0;
 
   const avgTimeScore =

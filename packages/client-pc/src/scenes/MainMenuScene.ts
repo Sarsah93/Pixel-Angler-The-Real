@@ -229,16 +229,16 @@ export class MainMenuScene extends Phaser.Scene {
     const titleY = GAME_HEIGHT * 0.22;
 
     // 타이틀 백보드 (검은색 섀도우)
-    this.add.text(titleX + 3, titleY + 3, 'THE REAL ANGLER', {
+    this.add.text(titleX + 3, titleY + 3, 'PIXEL ANGLER THE REAL', {
       fontFamily: '"Press Start 2P", monospace',
-      fontSize: '32px',
+      fontSize: '28px', // 원래 32px이었으나 글자수가 늘어남에 따라 28px로 보정
       color: '#010c1e',
     }).setOrigin(0.5);
 
     // 실제 메인 로고 텍스트
-    const mainTitle = this.add.text(titleX, titleY, 'THE REAL ANGLER', {
+    const mainTitle = this.add.text(titleX, titleY, 'PIXEL ANGLER THE REAL', {
       fontFamily: '"Press Start 2P", monospace',
-      fontSize: '32px',
+      fontSize: '28px', // 동일하게 28px로 보정
       color: '#4af2a1',
     }).setOrigin(0.5);
 
@@ -424,7 +424,7 @@ export class MainMenuScene extends Phaser.Scene {
     const bg = this.add.rectangle(0, 0, 700, 500, 0x050f1e, 0.96);
     bg.setStrokeStyle(2, 0x4af2a1);
 
-    const title = this.add.text(0, -210, '📖 The Real Angler 가이드 & 스토리', {
+    const title = this.add.text(0, -210, '📖 Pixel Angler The Real 가이드 & 스토리', {
       fontFamily: '"Noto Sans KR", sans-serif',
       fontSize: '20px',
       color: '#4af2a1',

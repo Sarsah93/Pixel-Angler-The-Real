@@ -261,3 +261,11 @@ function _evaluateFreshDecay(
     return 'fresh';
   }
 }
+
+/**
+ * 현실의 epoch 시간(밀리초)을 게임 내 누적 분 단위로 환산합니다.
+ * 실시간 환경 연동 시뮬레이터이므로 현실의 1분이 게임의 1분과 매칭됩니다.
+ */
+export function getCurrentGameMinute(): number {
+  return Math.floor(Date.now() / 60000);
+}

@@ -86,13 +86,17 @@ Phase 9: Tauri v2 통합 & Steam 패키징     ⬜ 대기
 
 ## 🚧 Phase 6: 게임플레이 심화 & 실데이터 연동
 
-### 6-0. 실데이터 기반 기반 구조 (✅ 완료)
+### 6-0. 실데이터 기반 기반 구조 및 시장 경제 (✅ 완료)
 
 | 항목 | 결과 |
 |---|---|
 | `FishingSpotInfo` 타입에 `dotMapX/Y`, `tideStationCode`, `kmaGridX/Y`, `seasonalSpecies` 확장 | ✅ |
 | `CoordinateUtils.ts`: 위경도 ↔ 도트맵/기상청 격자 변환 유틸 | ✅ |
-| `FishBehaviorDatabase.ts`: 10종 고증 입질 프로파일 (계절/물때 타이밍/수온 커브/채비 보너스/금어기) | ✅ |
+| `FishBehaviorDatabase.ts`: 10종 고증 입질 프로파일 | ✅ |
+| `Economy.ts` & `MarketPriceEvaluator.ts` : 수산물 경락 시세 및 kg단가/중량/등급 기반 가변 수매가 책정 | ✅ |
+| `Item.ts` & `UniversalItemDatabase.ts` : 신선도/부패(live~fresh~spoiled) 및 쿨러 보관(chilled) 통합 아이템 시스템 | ✅ |
+| `AuctionEngine.ts` : 선어(01~03시) 및 활어(03~07시) 시간대별 경매 개폐장, NPC 카운터 경쟁 입찰 | ✅ |
+| `FieldScene.ts` : 기존 고정 수식 어판장 수매 로직을 고증 경락가 산정 엔진(`evaluateFishSellPrice`)으로 마이그레이션 | ✅ |
 | `index.ts` export 추가 | ✅ |
 
 ### 6-1. FishBiteEngine V2 — 고증 알고리즘 강화
@@ -107,16 +111,24 @@ Phase 9: Tauri v2 통합 & Steam 패키징     ⬜ 대기
 - `getHabitatScore()`: 스팟 타입 vs `preferredHabitat` 매칭
 - `isClosedSeason()` 체크: 금어기 자동 경고
 
-### 6-2. AnglerLogScene 실데이터 연동
+### 6-2. DB 스키마 일관성 보완 및 리팩토링 (차기 예정)
+
+현시점 골격화(Skeletalization) 평가 결과 도출된 데이터 모델 불일치를 해소하기 위한 단계:
+- **인벤토리 모델 일원화**: `PlayerState` 내의 `ConsumableItem[]`과 `CoolerSlotItem[]` 구조를 `InventoryItemInstance[]` 형태로 완전 대체.
+- **조과기록 메타데이터 통합**: `livewell`에 보관된 `CaughtFishRecord` 정보를 `InventoryItemInstance` 내의 가변 메타데이터(`lengthCm`, `weightGram` 등)로 탑재하여 아이템 인스턴스로 일원화.
+- **채비(TackleSetup) 미끼 인스턴스 연동**: `BaitItem` 대신 인벤토리의 특정 `baitInstanceId`를 참조하게 하여 남은 수량 및 부패 상태(spoiled 미끼 사용 시 입질 패널티)가 실제 물리 엔진과 유기적으로 연동되도록 개선.
+- **현실 오프라인 시간 보정 유틸**: 게임 세이브/로드 시 `lastSavedAt` 차이를 구하여 오프라인 경과 시간만큼 게임 내 분으로 환산 후 쿨러 외부 생선의 부패 상태를 로드 즉시 벌크 업데이트.
+
+### 6-3. AnglerLogScene 실데이터 연동
 **파일**: `packages/client-pc/src/scenes/AnglerLogScene.ts`
 - `GameState.player.caughtFishHistory` 실데이터 표시
 - 어종별 최대어 기록, 날짜/스팟별 필터 UI
 
-### 6-3. 퀘스트 시스템 완성
+### 6-4. 퀘스트 시스템 완성
 - `QuestDatabase` 연동 → 활성 퀘스트 조건 체크 (어종 포획, 라이선스 취득 등)
 - 퀘스트 달성 시 알림 팝업 + `GameState` 업데이트
 
-### 6-4. WorldMapScene → 도트 월드맵 렌더링 전환
+### 6-5. WorldMapScene → 도트 월드맵 렌더링 전환
 **파일**: `packages/client-pc/src/scenes/WorldMapScene.ts`
 
 > **설계 문서**: `realdata_architecture.md` 참고
@@ -127,13 +139,13 @@ Phase 9: Tauri v2 통합 & Steam 패키징     ⬜ 대기
 - 마우스 오버: 현재 물때·날씨·추천 어종 미리보기 카드
 - 라이선스 없는 스팟: 잠금 표시 + 면허사무소 안내
 
-### 6-5. WeatherEventEmitter — 돌발 기상 이벤트
+### 6-6. WeatherEventEmitter — 돌발 기상 이벤트
 **신규 파일**: `packages/core/src/services/WeatherEventEmitter.ts`
 - `sudden_wind`, `passing_rain`, `tide_reversal`, `baitfish_school` 등 이벤트 타입
 - 출조 중 시간 경과에 따라 확률적 발동
 - 기상 예보와 실제 출조 간 '리얼한 변수' 제공
 
-### 6-6. 환경 데이터 실연동 (API 키 확보 후)
+### 6-7. 환경 데이터 실연동 (API 키 확보 후)
 **파일**: `packages/core/src/api-client/`
 
 **진행 순서**:
