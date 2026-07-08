@@ -128,6 +128,11 @@ export {
 } from './simulation/AuctionEngine.js';
 export type { LotGenerationParams } from './simulation/AuctionEngine.js';
 
+// HydroDynamics & TacklePhysics
+export type { WaterType, TileWaterState, HydroGrid, FightIncident } from './types/Hydrodynamics.js';
+export { generateHydroGrid, getWaterStateAt } from './simulation/HydroDynamicsEngine.js';
+export { calculateSinkingDepth, updateBaitDrift, getBaitDepthAffinity, evaluateFightIncidents } from './simulation/TacklePhysicsEngine.js';
+
 // API Clients
 export { PublicDataClient } from './api-client/PublicDataClient.js';
 export { WeatherApiClient } from './api-client/WeatherApiClient.js';

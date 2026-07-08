@@ -99,6 +99,23 @@ Phase 9: Tauri v2 통합 & Steam 패키징     ⬜ 대기
 | `FieldScene.ts` : 기존 고정 수식 어판장 수매 로직을 고증 경락가 산정 엔진(`evaluateFishSellPrice`)으로 마이그레이션 | ✅ |
 | `index.ts` export 추가 | ✅ |
 
+### 6-0b. 포항 영일만 맵 & 조류 시각화 시스템 (✅ 완료, 2026-07-08)
+
+| 항목 | 결과 |
+|---|---|
+| `YoilBayFieldMap.ts`: 실제 영일만 지형을 2048×1536 픽셀 격자로 추상화 | ✅ |
+| 낚시 포인트 7곳 (북방파제 끝단/중단, 홈통, 남방파제 끝단/내항, 내만, 갯벌 통발) | ✅ |
+| 지형 구역(Zone) 9개: 외해/북방파제/홈통/남방파제/내만/조간대/마을 | ✅ |
+| 건물 7개 (민박, 낚시점, 면허사무소, 하나로마트, 횟집, 어판장, 화장실) | ✅ |
+| 조류 타입별 포인트 속성 (MAIN/COUNTER/EDDY/CONVERGENCE/NONE) | ✅ |
+| 수심 및 바닥 지형(reef/gravel/sand/mud) 속성 | ✅ |
+| `HydroCurrentRenderer.ts`: Phaser Graphics 기반 조류/수심 픽셀 렌더러 | ✅ |
+| 조류 화살표 (방향+길이로 속도 표현, 색상 코딩) | ✅ |
+| 수심 색조 배경 레이어 (얕음→깊음 청색 그라데이션) | ✅ |
+| 낚시 포인트 마커 (원형 + 이름 + 수심 텍스트) | ✅ |
+| 조경지대(CONVERGENCE) 황금색 테두리 강조 | ✅ |
+| `FieldScene.ts`: 조류 렌더러 통합 (V 키 토글, 30초 물때 연동 자동 갱신) | ✅ |
+
 ### 6-1. FishBiteEngine V2 — 고증 알고리즘 강화
 
 **파일**: `packages/core/src/simulation/FishBiteEngine.ts`
@@ -283,6 +300,25 @@ FieldScene  ← 탑다운 월드 허브 (pause 상태 유지)
 pnpm run build                                  → ✅ 3/3 패키지 성공
 pnpm --filter @tra/client-pc run typecheck      → ✅ 0 오류
 ```
+
+### FieldScene 단축키 목록 (업데이트)
+
+| 키 | 기능 |
+|---|---|
+| `방향키` | 캐릭터 이동 (전용) |
+| `SPACE` / `ENTER` | 낚시 포인트 진입 |
+| `E` | 건물/NPC 근접 상호작용 |
+| `H` | 해루질 (NightHuntingScene) |
+| `T` | 통발 관리 (TrapScene) |
+| `C` | 요리 (CookScene) |
+| `U` | 제작대 (CraftScene 예정) |
+| `L` | 면허 패널 토글 |
+| `I` | 인벤토리 패널 토글 |
+| `Q` | 퀘스트 저널 패널 토글 |
+| `M` | 미니맵 크기 순환 |
+| **`V`** | **조류/수심 오버레이 토글 (신규)** |
+| `1`~`8` | 퀵슬롯 선택 |
+| `ESC` | 열린 팝업 LIFO 닫기 → 월드맵 복귀 |
 
 ---
 

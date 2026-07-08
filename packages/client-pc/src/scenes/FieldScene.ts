@@ -22,6 +22,7 @@ import { HUD } from '../ui/HUD.js';
 import { MiniMap } from '../ui/MiniMap.js';
 import { LicensePanel } from '../ui/LicensePanel.js';
 import { InfoOverlayPanel } from '../ui/InfoOverlayPanel.js';
+import { HydroCurrentRenderer } from '../ui/HydroCurrentRenderer.js';
 
 // 월드 크기 (중형 — 방파제+마을+갯벌 포함)
 const TILE = 16; // 픽셀 타일 크기
@@ -74,6 +75,12 @@ export class FieldScene extends Phaser.Scene {
 
   // 낚시 포인트 오버랩 감지
   private fishingZoneActive = false;
+
+  // 조류/수심 시각화 렌더러
+  private hydroRenderer?: HydroCurrentRenderer;
+  // 조류 격자 갱신 타이머 (ms)
+  private _hydroRefreshTimer = 0;
+  private readonly _HYDRO_REFRESH_INTERVAL = 30000; // 30초마다 갱신
 
   constructor() {
     super({ key: 'FieldScene' });
@@ -187,6 +194,22 @@ export class FieldScene extends Phaser.Scene {
     // ─── 상호작용 힌트 UI (화면 하단 고정) ───
     this.createInteractHint();
 
+    // ─── 조류/수심 시각화 렌더러 초기화 ───
+    this.hydroRenderer = new HydroCurrentRenderer(this);
+    // 영일만 스팟의 경우 초기 조류 격자 렌더링 (물때 7, 세기 0.5 기본값)
+    this.hydroRenderer.refreshGrid(this.spotInfo.id, 7, 0.5);
+    // 낚시 포인트 마커는 항상 표시, 조류 오버레이는 V 키로 토글
+    this.hydroRenderer.setPointMarkersVisible(true);
+
+    // V 키: 조류/수심 오버레이 토글
+    this.input.keyboard!.on('keydown-V', () => {
+      if (this.hydroRenderer) {
+        const next = !this.hydroRenderer.isVisible();
+        this.hydroRenderer.setVisible(next);
+        this.showPlayerFloatingHint(next ? '🌊 조류 오버레이 ON' : '🌊 조류 오버레이 OFF');
+      }
+    });
+
     // ─── 하위 씬 복귀 이벤트 ───
     this.events.on('resume', () => {
       this.cameras.main.fadeIn(300, 0, 10, 20);
@@ -270,6 +293,17 @@ export class FieldScene extends Phaser.Scene {
     // 미니맵 동기화
     if (this.miniMap) {
       this.miniMap.updatePlayerMarker(this.playerBody.x, this.playerBody.y);
+    }
+
+    // 조류 격자 주기적 갱신 (30초마다)
+    if (this.hydroRenderer) {
+      this._hydroRefreshTimer += this.game.loop.delta;
+      if (this._hydroRefreshTimer >= this._HYDRO_REFRESH_INTERVAL) {
+        this._hydroRefreshTimer = 0;
+        // EnvironmentStore에서 현재 물때 단계를 가져와 격자 갱신
+        const tidePhase = GameState.environment.environment?.tide?.tidePhase ?? 7;
+        this.hydroRenderer.refreshGrid(this.spotInfo.id, tidePhase, 0.5);
+      }
     }
 
     // 구역/건물 근접 감지
