@@ -52,6 +52,29 @@ export type {
   Quest,
   PlayerQuestProgress
 } from './types/Quest.js';
+export type {
+  WholesalePriceInfo,
+  AuctionMappingDef,
+  MartRetailMappingDef,
+  AuctionCategory,
+  AuctionTimeWindow,
+  AuctionScheduleRule,
+  AuctionLotStatus,
+  AuctionLot,
+  AuctionSession,
+  AuctionBidResult,
+} from './types/Economy.js';
+export { SEAFOOD_AUCTION_MAPPING, MART_RETAIL_DATABASE, DEFAULT_AUCTION_SCHEDULE } from './types/Economy.js';
+export type {
+  ItemConditionState,
+  ItemUsePurpose,
+  ItemSourceVendor,
+  ItemConversionRule,
+  ConditionDecayRule,
+  UniversalItem,
+  InventoryItemInstance,
+} from './types/Item.js';
+export { evaluateItemCondition } from './types/Item.js';
 
 // DB Schema
 export { FISH_DATABASE, getFishById, getFishBySpotType, getFishByMonth } from './db-schema/FishDatabase.js';
@@ -67,6 +90,15 @@ export { ANGLER_APP_REGIONS, TIDAL_CHARACTERISTICS, getRegionByCode, getRegionsB
 export type { AnglerAppRegion } from './db-schema/AnglerAppSpots.js';
 export { LICENSE_DATABASE, getLicenseByType, checkUnlockRequirements } from './types/License.js'; // Note: Defined directly inside types/License.ts
 export { QUEST_DATABASE, getQuestById, getQuestsByCategory, getAvailableQuests } from './db-schema/QuestDatabase.js';
+export { FISH_BEHAVIOR_DB, getBehaviorProfile, interpolateTempActivity, isClosedSeason } from './db-schema/FishBehaviorDatabase.js';
+export type { FishBehaviorProfile, TempActivityPoint } from './db-schema/FishBehaviorDatabase.js';
+export {
+  UNIVERSAL_ITEM_DATABASE,
+  getUniversalItemById,
+  getItemsByVendor,
+  getBaitableItems,
+  getCookingItems,
+} from './db-schema/UniversalItemDatabase.js';
 
 // Simulation
 export { calculateTideInfo, evaluateFishingTide } from './simulation/TideCalculator.js';
@@ -81,6 +113,20 @@ export { canPerformNightHunting, getHuntableCreatures, attemptHunt, simulateNigh
 export type { NightHuntingContext } from './simulation/NightHuntingEngine.js';
 export { harvestTrap, calculateTrapLossRisk, validateTrapDeployment, getNextOptimalHarvestTime } from './simulation/TrapSystem.js';
 export type { TrapDeploymentContext } from './simulation/TrapSystem.js';
+export { evaluateFishSellPrice } from './simulation/MarketPriceEvaluator.js';
+export type { PriceEvaluationResult } from './simulation/MarketPriceEvaluator.js';
+export {
+  getActiveAuctionCategories,
+  isAuctionOpen,
+  minutesUntilNextAuction,
+  createAuctionLot,
+  createAuctionSession,
+  placeBid,
+  simulateNpcCounterBid,
+  advanceAuctionSession,
+  calcPlayerAuctionTotal,
+} from './simulation/AuctionEngine.js';
+export type { LotGenerationParams } from './simulation/AuctionEngine.js';
 
 // API Clients
 export { PublicDataClient } from './api-client/PublicDataClient.js';
@@ -90,4 +136,5 @@ export { OceanApiClient, TIDE_STATION_CODES } from './api-client/OceanApiClient.
 // Utils
 export { getApproxLunarDay, getLunarDayDisplay } from './utils/LunarCalendar.js';
 export { getDistanceBetweenCoordinates } from './utils/GeoUtils.js';
+export { latLonToDotMapXY, dotMapXYToWorld, latLonToKmaGrid, haversineDistanceKm, enrichSpotCoordinates } from './utils/CoordinateUtils.js';
 

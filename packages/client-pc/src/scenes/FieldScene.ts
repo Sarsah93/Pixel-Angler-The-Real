@@ -16,92 +16,29 @@
 
 import Phaser from 'phaser';
 import { GameState } from '../store/GameState.js';
-import { getSpotById, SPOT_DATABASE, LicenseType } from '@tra/core';
+import { getSpotById, SPOT_DATABASE, LicenseType, evaluateFishSellPrice } from '@tra/core';
+import { generateSpotFieldLayout, Zone, Building } from '../data/SpotFieldLayouts.js';
 import { HUD } from '../ui/HUD.js';
 import { MiniMap } from '../ui/MiniMap.js';
 import { LicensePanel } from '../ui/LicensePanel.js';
 import { InfoOverlayPanel } from '../ui/InfoOverlayPanel.js';
 
 // 월드 크기 (중형 — 방파제+마을+갯벌 포함)
-const WORLD_W = 2048;
-const WORLD_H = 1536;
 const TILE = 16; // 픽셀 타일 크기
-
-// 구역 정의
-interface Zone {
-  id: string;
-  label: string;
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  color: number;
-  alpha: number;
-  action?: string;  // 씬 키 or 'fishing'
-  hint?: string;
-  licenseKey?: string;
-  licenseName?: string;
-}
-
-const ZONES: Zone[] = [
-  // 깊은 바다 (상단)
-  { id: 'deep_sea', label: '심해', x: 0, y: 0, w: WORLD_W, h: 300, color: 0x0a1e3d, alpha: 1, hint: '' },
-  // 외항 낚시 구역
-  { id: 'fishing_outer', label: '외항 수중여', x: 100, y: 270, w: 300, h: 60,
-    color: 0x0e3a6e, alpha: 0.9, action: 'fishing', hint: '[SPACE] 캐스팅 시작' },
-  { id: 'fishing_mid',   label: '조류 회전구간', x: 480, y: 270, w: 280, h: 60,
-    color: 0x0e3a6e, alpha: 0.9, action: 'fishing', hint: '[SPACE] 캐스팅 시작' },
-  { id: 'fishing_inner', label: '내항 끝자리', x: 850, y: 270, w: 280, h: 60,
-    color: 0x0e3a6e, alpha: 0.9, action: 'fishing', hint: '[SPACE] 캐스팅 시작' },
-  // 통발 수역 (외항 왼쪽)
-  { id: 'trap_zone', label: '통발 수역', x: 1200, y: 200, w: 350, h: 130,
-    color: 0x0d2940, alpha: 0.9, action: 'TrapScene', hint: '[T] 통발 관리',
-    licenseKey: 'trap_basic', licenseName: '통발 조업 기본 면허' },
-  // 방파제 (수평 띠)
-  { id: 'breakwater', label: '방파제', x: 0, y: 330, w: WORLD_W, h: 80, color: 0x2c3a4a, alpha: 1 },
-  // 마을 구역 (방파제 아래)
-  { id: 'town', label: '마을', x: 0, y: 410, w: WORLD_W, h: 800, color: 0x1a2a1a, alpha: 1 },
-  // 갯벌 구역 (마을 오른쪽 하단)
-  { id: 'tidal_flat', label: '갯벌', x: 1400, y: 700, w: 600, h: 500,
-    color: 0x2a3a1e, alpha: 1, action: 'NightHuntingScene', hint: '[H] 해루질 시작',
-    licenseKey: 'shore_hunting_basic', licenseName: '해루질 입문 허가' },
-];
-
-// 건물 정의
-interface Building {
-  id: string;
-  label: string;
-  sublabel?: string;
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  color: number;
-  doorColor: number;
-  action?: string;  // 씬 키
-  hint?: string;
-}
-
-const BUILDINGS: Building[] = [
-  { id: 'tackle_shop', label: '대박낚시점', sublabel: '장비/미끼', x: 200, y: 450,  w: 120, h: 90,
-    color: 0x1a4a20, doorColor: 0x4a8a50, action: 'TackleRoomScene', hint: '[E] 장비/미끼 구매' },
-  { id: 'convenience', label: 'GS25 마트', sublabel: '소모품 판매', x: 400, y: 450, w: 110, h: 90,
-    color: 0x8a3010, doorColor: 0xcc5522, hint: '[E] 소모품 구매' },
-  { id: 'restaurant',  label: '내 식당',   sublabel: '캐치앤쿡', x: 650, y: 460,   w: 130, h: 90,
-    color: 0x1a3a5a, doorColor: 0x3a6a9a, action: 'CookScene', hint: '[E] 요리/메뉴 등록' },
-  { id: 'license_office', label: '낚시면허 사무소', sublabel: '면허 발급', x: 900, y: 450, w: 150, h: 90,
-    color: 0x3a2a0a, doorColor: 0x8a6a1a, hint: '[E] 면허 발급' },
-  { id: 'condo',       label: '민박집',   sublabel: '쉬기 / 저장', x: 1100, y: 455, w: 120, h: 85,
-    color: 0x4a2a2a, doorColor: 0x8a4a4a, action: 'CondoScene', hint: '[E] 숙박 / 세이브' },
-  { id: 'fish_market', label: '어판장',   sublabel: '즉시 판매', x: 1300, y: 450, w: 120, h: 90,
-    color: 0x0a3a3a, doorColor: 0x1a7a7a, hint: '[E] 어획물 판매' },
-];
 
 export class FieldScene extends Phaser.Scene {
   // 플레이어
   private player!: Phaser.GameObjects.Graphics;
   private playerBody!: Phaser.Types.Physics.Arcade.ImageWithDynamicBody;
   private playerFacing: 'up' | 'down' | 'left' | 'right' = 'down';
+
+  // 동적 월드 크기 및 레이아웃
+  private worldW = 2048;
+  private worldH = 1536;
+  private zones: Zone[] = [];
+  private buildings: Building[] = [];
+  private playerSpawnX = 1024;
+  private playerSpawnY = 530;
 
   // 입력
   // ※ cursors (방향키) → 이동 전용
@@ -148,19 +85,28 @@ export class FieldScene extends Phaser.Scene {
     if (spot) {
       this.spotInfo = spot;
       GameState.setCurrentSpot(spotId);
+
+      // 동적 랜드필드 레이아웃 생성 및 로드
+      const layout = generateSpotFieldLayout(spot);
+      this.worldW = layout.worldWidth;
+      this.worldH = layout.worldHeight;
+      this.zones = layout.zones;
+      this.buildings = layout.buildings;
+      this.playerSpawnX = layout.playerSpawnX;
+      this.playerSpawnY = layout.playerSpawnY;
     }
   }
 
   create(): void {
     // 월드 바운드 설정
-    this.physics.world.setBounds(0, 0, WORLD_W, WORLD_H);
+    this.physics.world.setBounds(0, 0, this.worldW, this.worldH);
 
     // ─── 배경 월드 그리기 ───
     this.drawWorld();
 
     // ─── 물리 바디용 보이지 않는 이미지 (카메라 타겟) ───
     this.playerBody = this.physics.add.image(
-      WORLD_W / 2, 400, '__DEFAULT'
+      this.playerSpawnX, this.playerSpawnY, '__DEFAULT'
     ) as Phaser.Types.Physics.Arcade.ImageWithDynamicBody;
     this.playerBody.setVisible(false);
     this.playerBody.setCollideWorldBounds(true);
@@ -172,7 +118,7 @@ export class FieldScene extends Phaser.Scene {
     this.drawPlayerSprite('down');
 
     // ─── 카메라: 플레이어 팔로우 ───
-    this.cameras.main.setBounds(0, 0, WORLD_W, WORLD_H);
+    this.cameras.main.setBounds(0, 0, this.worldW, this.worldH);
     this.cameras.main.startFollow(this.playerBody, true, 0.12, 0.12);
 
     // ─── 입력 키 등록 ───
@@ -335,7 +281,7 @@ export class FieldScene extends Phaser.Scene {
   // ─────────────────────────────────────────────────────────
   private drawWorld(): void {
     // 각 구역 배경
-    ZONES.forEach((zone) => {
+    this.zones.forEach((zone) => {
       const g = this.add.graphics().setDepth(0);
       g.fillStyle(zone.color, zone.alpha);
       g.fillRect(zone.x, zone.y, zone.w, zone.h);
@@ -353,26 +299,29 @@ export class FieldScene extends Phaser.Scene {
     // 픽셀 격자 (타일 경계선 — 16px 간격)
     const grid = this.add.graphics().setDepth(0);
     grid.lineStyle(1, 0xffffff, 0.03);
-    for (let x = 0; x <= WORLD_W; x += TILE) {
-      grid.moveTo(x, 0).lineTo(x, WORLD_H);
+    for (let x = 0; x <= this.worldW; x += TILE) {
+      grid.moveTo(x, 0).lineTo(x, this.worldH);
     }
-    for (let y = 0; y <= WORLD_H; y += TILE) {
-      grid.moveTo(0, y).lineTo(WORLD_W, y);
+    for (let y = 0; y <= this.worldH; y += TILE) {
+      grid.moveTo(0, y).lineTo(this.worldW, y);
     }
     grid.strokePath();
 
-    // 방파제 테트라포드 (방파제 상단 경계)
-    const tetra = this.add.graphics().setDepth(2);
-    tetra.fillStyle(0x1a2530, 1);
-    for (let i = 0; i < Math.floor(WORLD_W / 40); i++) {
-      const tx = i * 40 + 4;
-      const ty = 330;
-      tetra.fillTriangle(tx, ty + 18, tx + 14, ty - 4, tx + 28, ty + 18);
+    // 방파제 테트라포드 (방파제 상단 경계가 있는 맵에서만 생성)
+    const hasBreakwater = this.zones.some(z => z.id === 'breakwater');
+    if (hasBreakwater) {
+      const tetra = this.add.graphics().setDepth(2);
+      tetra.fillStyle(0x1a2530, 1);
+      for (let i = 0; i < Math.floor(this.worldW / 40); i++) {
+        const tx = i * 40 + 4;
+        const ty = 330;
+        tetra.fillTriangle(tx, ty + 18, tx + 14, ty - 4, tx + 28, ty + 18);
+      }
     }
 
     // 낚시 포인트 표시 (글로우 원)
     const fishG = this.add.graphics().setDepth(3);
-    ZONES.filter((z) => z.action === 'fishing').forEach((zone) => {
+    this.zones.filter((z) => z.action === 'fishing').forEach((zone) => {
       const cx = zone.x + zone.w / 2;
       const cy = zone.y + zone.h / 2;
       fishG.fillStyle(0xffff44, 0.25);
@@ -385,7 +334,7 @@ export class FieldScene extends Phaser.Scene {
     });
 
     // 통발 구역 표시
-    const trapZone = ZONES.find((z) => z.id === 'trap_zone');
+    const trapZone = this.zones.find((z) => z.id === 'trap_zone');
     if (trapZone) {
       const tg = this.add.graphics().setDepth(3);
       tg.lineStyle(2, 0x4488ff, 0.6);
@@ -400,7 +349,7 @@ export class FieldScene extends Phaser.Scene {
     }
 
     // 갯벌 텍스처 (도트 패턴)
-    const flatZone = ZONES.find((z) => z.id === 'tidal_flat');
+    const flatZone = this.zones.find((z) => z.id === 'tidal_flat');
     if (flatZone) {
       const fg = this.add.graphics().setDepth(1);
       fg.fillStyle(0x3a4a2a, 0.7);
@@ -409,18 +358,18 @@ export class FieldScene extends Phaser.Scene {
           if ((xi + yi) % 24 === 0) fg.fillRect(xi, yi, 4, 4);
         }
       }
-      this.add.text(flatZone.x + 20, flatZone.y + 10, '갯벌 구역', {
+      this.add.text(flatZone.x + 20, flatZone.y + 10, flatZone.label, {
         fontFamily: 'monospace', fontSize: '13px', color: '#88cc88',
       }).setDepth(3);
     }
 
     // 건물 그리기
-    BUILDINGS.forEach((b) => {
+    this.buildings.forEach((b) => {
       const bg = this.add.graphics().setDepth(5);
       // 건물 본체
       bg.fillStyle(b.color, 1);
       bg.fillRect(b.x, b.y, b.w, b.h);
-      // 지붕 (상단 20%)
+      // 지붕 (상단 22%)
       bg.fillStyle(Phaser.Display.Color.ValueToColor(b.color).darken(20).color, 1);
       bg.fillRect(b.x, b.y, b.w, Math.floor(b.h * 0.22));
       // 문
@@ -450,7 +399,7 @@ export class FieldScene extends Phaser.Scene {
     // 세계 경계 표시
     const border = this.add.graphics().setDepth(10);
     border.lineStyle(3, 0x224466, 1);
-    border.strokeRect(0, 0, WORLD_W, WORLD_H);
+    border.strokeRect(0, 0, this.worldW, this.worldH);
 
     // 스팟 이름 (상단 좌측)
     this.add.text(20, 10, `📍 ${this.spotInfo.name}`, {
@@ -568,7 +517,7 @@ export class FieldScene extends Phaser.Scene {
 
     // 건물 근접 감지
     let nearB: Building | null = null;
-    for (const b of BUILDINGS) {
+    for (const b of this.buildings) {
       const cx = b.x + b.w / 2;
       const cy = b.y + b.h / 2;
       const dist = Phaser.Math.Distance.Between(px, py, cx, cy);
@@ -579,9 +528,8 @@ export class FieldScene extends Phaser.Scene {
     }
 
     // 구역(활동) 근접 감지 (낚시 포인트 등)
-    // 설계 방향: 구글 대한민국 지도 연동 베이스 하에, 아래와 같은 특정 랜드타일 내에서만 해당 액티비티들이 수행될 수 있도록 제안됩니다.
     let nearZ: Zone | null = null;
-    for (const z of ZONES) {
+    for (const z of this.zones) {
       if (!z.action || z.action === 'fishing') {
         // 낚시 구역은 직접 겹침 체크
         if (z.action === 'fishing') {
@@ -630,10 +578,57 @@ export class FieldScene extends Phaser.Scene {
       return;
     }
     if (this.nearBuilding) {
+      const action = this.nearBuilding.action;
       if (this.nearBuilding.id === 'license_office') {
         this.toggleLicensePanel();
-      } else if (this.nearBuilding.action) {
-        this.launchSubscene(this.nearBuilding.action);
+      } else if (action === 'toilet') {
+        // 화장실 상호작용: 피로도 감소 및 체력 회복
+        const fatigue = GameState.player.fatigue;
+        const stamina = GameState.player.stamina;
+        const newFatigue = Math.max(0, fatigue - 20);
+        const newStamina = Math.min(100, stamina + 15);
+        GameState.updatePlayer({ fatigue: newFatigue, stamina: newStamina });
+        if (this.hud) {
+          this.hud.updateHUD();
+        }
+        this.showPlayerFloatingHint('🚻 화장실에서 세면을 마쳐 피로가 풀렸습니다!');
+      } else if (action === 'hanaro_mart') {
+        // 하나로마트 상호작용
+        this.showPlayerFloatingHint('🛒 하나로마트에서 미끼와 식음료를 가득 구매했습니다!');
+      } else if (action === 'convenience') {
+        // 편의점 상호작용
+        this.showPlayerFloatingHint('🏪 GS25 마트에서 따뜻한 조지아 캔커피를 마셨습니다.');
+      } else if (action === 'fish_market') {
+        // 어판장 상호작용: 살림망의 모든 물고기 수매
+        const livewell = GameState.player.inventory.livewell;
+        if (livewell.length > 0) {
+          let totalPayout = 0;
+          livewell.forEach((fish) => {
+            // 고증 경락 단가 계산 엔진 연동
+            const evalResult = evaluateFishSellPrice(
+              fish.fishSpeciesId,
+              fish.lengthCm,
+              fish.weightGram
+            );
+            totalPayout += evalResult.finalPrice;
+          });
+          
+          const newCoins = GameState.player.inventory.coins + totalPayout;
+          const newInventory = {
+            ...GameState.player.inventory,
+            coins: newCoins,
+            livewell: [], // 살림망 비우기
+          };
+          GameState.updatePlayer({ inventory: newInventory });
+          if (this.hud) {
+            this.hud.updateHUD();
+          }
+          this.showPlayerFloatingHint(`💰 생선 ${livewell.length}마리 경매 낙찰: +${totalPayout.toLocaleString()}원 획득!`);
+        } else {
+          this.showPlayerFloatingHint('🐟 어판장에 팔 물고기가 살림망에 없습니다.');
+        }
+      } else if (action) {
+        this.launchSubscene(action);
       }
     }
   }

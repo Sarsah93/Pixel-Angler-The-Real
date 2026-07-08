@@ -123,6 +123,32 @@ export interface FishingSpotInfo {
   /** 근처 편의점/마트 여부 */
   hasNearbyConvenienceStore: boolean;
   description: string;
+
+  // ─── 실데이터 연동 확장 필드 (공공데이터 수집 후 채워짐) ───
+  /** 가장 가까운 KHOA 조위 관측소 코드 (예: '1030' = 거제 장승포) */
+  tideStationCode?: string;
+  /** 기상청 격자 좌표 — 위경도 → Lambert 격자 사전 변환 캐싱 */
+  kmaGridX?: number;
+  kmaGridY?: number;
+  /**
+   * 도트 월드맵 정규화 X 좌표 (0.0~1.0)
+   * 한국 바운딩박스(lon 124.5~131.0) 기준 정규화 값.
+   * CoordinateUtils.latLonToDotMapXY() 로 계산.
+   */
+  dotMapX?: number;
+  /**
+   * 도트 월드맵 정규화 Y 좌표 (0.0~1.0)
+   * 한국 바운딩박스(lat 33.0~38.7) 기준 정규화 값.
+   * 위도가 높을수록 화면 상단 → 1.0 - norm 으로 반전.
+   */
+  dotMapY?: number;
+  /** 계절별 추천 어종 ID 목록 (국립수산과학원 데이터 기반) */
+  seasonalSpecies?: {
+    spring: string[];   // 3~5월
+    summer: string[];   // 6~8월
+    autumn: string[];   // 9~11월
+    winter: string[];   // 12~2월
+  };
 }
 
 export type SpotType =
@@ -140,4 +166,6 @@ export type SpotFacility =
   | 'convenience_store'
   | 'bait_shop'
   | 'restaurant'
-  | 'sashimi_restaurant';  // 횟집
+  | 'sashimi_restaurant'
+  | 'toilet'             // 신규: 개별 화장실
+  | 'hanaro_mart';       // 신규: 지역 하나로마트

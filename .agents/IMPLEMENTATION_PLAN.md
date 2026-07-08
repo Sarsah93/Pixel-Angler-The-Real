@@ -84,35 +84,64 @@ Phase 9: Tauri v2 통합 & Steam 패키징     ⬜ 대기
 
 ---
 
-## 🚧 Phase 6: 게임플레이 심화
+## 🚧 Phase 6: 게임플레이 심화 & 실데이터 연동
 
-### 6-1. AnglerLogScene 실데이터 연동
+### 6-0. 실데이터 기반 기반 구조 (✅ 완료)
+
+| 항목 | 결과 |
+|---|---|
+| `FishingSpotInfo` 타입에 `dotMapX/Y`, `tideStationCode`, `kmaGridX/Y`, `seasonalSpecies` 확장 | ✅ |
+| `CoordinateUtils.ts`: 위경도 ↔ 도트맵/기상청 격자 변환 유틸 | ✅ |
+| `FishBehaviorDatabase.ts`: 10종 고증 입질 프로파일 (계절/물때 타이밍/수온 커브/채비 보너스/금어기) | ✅ |
+| `index.ts` export 추가 | ✅ |
+
+### 6-1. FishBiteEngine V2 — 고증 알고리즘 강화
+
+**파일**: `packages/core/src/simulation/FishBiteEngine.ts`
+
+현재 단순 가중합산 구조를 아래 단계로 고도화:
+- `getSeasonScore()`: 현재 월 기반 `seasonActivity` + 영등철/회유 시즌 보정
+- `getTideTimingScore()`: 만조/간조 시각과 현재 시각 차이로 `highTideWindow` 내 여부 판단 (단순 tideStrength 배수 대비 훨씬 현실적)
+- `getTempScoreV2()`: `tempActivityCurve` + `interpolateTempActivity()` 선형 보간
+- `getRigBonus()`: 전유동/반유동/루어/바닥 채비별 어종 보너스
+- `getHabitatScore()`: 스팟 타입 vs `preferredHabitat` 매칭
+- `isClosedSeason()` 체크: 금어기 자동 경고
+
+### 6-2. AnglerLogScene 실데이터 연동
 **파일**: `packages/client-pc/src/scenes/AnglerLogScene.ts`
 - `GameState.player.caughtFishHistory` 실데이터 표시
 - 어종별 최대어 기록, 날짜/스팟별 필터 UI
 
-### 6-2. 퀘스트 시스템 완성
-**파일**: `packages/core/src/types/Quest.ts`, `packages/client-pc/src/scenes/FieldScene.ts`
-- QuestDatabase 연동하여 활성 퀘스트 조건 체크 (어종 포획, 라이선스 취득 등)
-- 퀘스트 달성 시 알림 팝업 + GameState 업데이트
-- InfoOverlayPanel 퀘스트 탭에 진행 상황 실시간 반영
+### 6-3. 퀘스트 시스템 완성
+- `QuestDatabase` 연동 → 활성 퀘스트 조건 체크 (어종 포획, 라이선스 취득 등)
+- 퀘스트 달성 시 알림 팝업 + `GameState` 업데이트
 
-### 6-3. FishingScene 심화
-**파일**: `packages/client-pc/src/scenes/FishingScene.ts`
-- 조류/물때 보정값 시각 표시 (예: 만조 -10분 전 → 입질 확률 +20%)
-- 어종 특화 파이팅 패턴 구현 (대물 = 긴 드랙 저항, 소형 = 짧은 저항)
-- 캐스팅 UI: 파워 게이지 + 방향 표시기
-
-### 6-4. WorldMapScene 스팟 정보 강화
+### 6-4. WorldMapScene → 도트 월드맵 렌더링 전환
 **파일**: `packages/client-pc/src/scenes/WorldMapScene.ts`
-- 스팟 선택 시 현재 물때/날씨/추천 어종 미리보기 카드 표시
-- 라이선스 없는 스팟 접근 시 경고 및 면허사무소 안내
 
-### 6-5. 환경 데이터 실연동 (API → Mock 전환)
+> **설계 문서**: `realdata_architecture.md` 참고
+
+- 픽셀 스타일 한국 해안선 배경 그리기
+- `SPOT_DATABASE` 순회 → `dotMapX/Y` 기반 노드 배치
+- 스팟 타입별 색상 구분 (방파제=하늘색, 갯바위=산호색, 선상=금색 등)
+- 마우스 오버: 현재 물때·날씨·추천 어종 미리보기 카드
+- 라이선스 없는 스팟: 잠금 표시 + 면허사무소 안내
+
+### 6-5. WeatherEventEmitter — 돌발 기상 이벤트
+**신규 파일**: `packages/core/src/services/WeatherEventEmitter.ts`
+- `sudden_wind`, `passing_rain`, `tide_reversal`, `baitfish_school` 등 이벤트 타입
+- 출조 중 시간 경과에 따라 확률적 발동
+- 기상 예보와 실제 출조 간 '리얼한 변수' 제공
+
+### 6-6. 환경 데이터 실연동 (API 키 확보 후)
 **파일**: `packages/core/src/api-client/`
-- 기상청(KMA) API: 현재 날씨 → WeatherModel 입력
-- KHOA API: 실제 조위 데이터 → TideCalculator 입력
-- Mock 데이터 → 실데이터 전환 테스트 및 에러 핸들링
+
+**진행 순서**:
+1. 공공데이터포털 `PUBLIC_DATA_API_KEY` 발급 → `PublicDataClient.parseSpotApiResponse()` 구현
+2. KHOA `KHOA_API_KEY` 발급 → `OceanApiClient.parseTideResponse()` 구현
+3. KMA `KMA_API_KEY` 발급 → `WeatherApiClient.parseWeatherResponse()` 구현
+4. 수집 스크립트 작성: `packages/core/src/scripts/crawl-fishing-spots.ts`
+5. 스크립트 실행 → `SpotDatabase.ts` 자동 확장 (실제 낚시터 수백 곳 좌표 추가)
 
 ---
 

@@ -228,7 +228,7 @@ export class HUD extends Phaser.GameObjects.Container {
     });
   }
 
-  private updateHUD(): void {
+  public updateHUD(): void {
     const tide = calculateTideInfo();
     this.tideText.setText(
       `🌊 ${tide.tidePhaseLabel} | 조위 ${tide.currentWaterLevelCm}cm | 다음 조류변화: ${tide.nextTideType === 'high' ? '만조' : '간조'} (${tide.minutesToNextTide}분 전)`,

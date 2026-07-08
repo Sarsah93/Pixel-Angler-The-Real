@@ -172,18 +172,36 @@ export interface BaitItem {
   /** 야외 채집 가능 여부 */
   canBeForaged: boolean;
   foragingSpotType?: 'rocky_shore' | 'breakwater' | 'sandy_beach';
+  /**
+   * 아이템 현재 신선도 상태 (UniversalItem 연동 시 설정)
+   * undefined이면 상태 변화 없는 가공/인조 미끼
+   */
+  conditionState?: import('./Item.js').ItemConditionState;
+  /**
+   * 아이템 현재 사용 목적 (구매처/변환 이력에 따라 결정)
+   * undefined이면 기본 fishing_gear_only 처리
+   */
+  usePurpose?: import('./Item.js').ItemUsePurpose;
 }
 
 export type BaitCategory =
-  | 'earthworm'          // 지렁이
-  | 'sandworm'           // 갯지렁이 (청갯지렁이, 참갯지렁이)
-  | 'squid'              // 오징어
-  | 'mussel'             // 홍합
-  | 'barnacle'           // 거북손
-  | 'crab'               // 돌게/게류
-  | 'prawn'              // 새우
-  | 'fish_strip'         // 생선 살점
-  | 'artificial_lure'    // 루어 (스푼, 지그 등)
-  | 'artificial_worm'    // 인조 웜
-  | 'ground_bait'        // 집어제
-  | 'bread';             // 빵 (잡어용)
+  | 'earthworm'                    // 지렁이
+  | 'sandworm'                     // 갯지렁이 (청갯지렁이, 참갯지렁이)
+  | 'squid'                        // 오징어 (낚시점 조각)
+  | 'mussel'                       // 홍합
+  | 'barnacle'                     // 거북손
+  | 'crab'                         // 돌게/게류
+  | 'prawn'                        // 새우
+  | 'fish_strip'                   // 생선 살점
+  | 'artificial_lure'              // 루어 (스푼, 지그 등)
+  | 'artificial_worm'              // 인조 웜
+  | 'ground_bait'                  // 집어제 (기존 통합)
+  | 'dry_ground_bait'              // 건식 집어제 (빵가루형)
+  | 'wet_ground_bait'              // 습식 집어제
+  | 'krill_frozen'                 // 냉동 크릴 (각크릴)
+  | 'boiled_barley'                // 보리 압맥
+  | 'corn'                         // 옥수수 (통조림 포함)
+  | 'live_fish'                    // 활어 생미끼 (직판장 구매)
+  | 'chilled_fish_strip'           // 선어 조각 미끼
+  | 'organic_liquid_attractant'    // 생물 내장 액기스
+  | 'bread';                       // 빵 (잡어용, 마트 빵가루 대체)

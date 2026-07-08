@@ -145,6 +145,11 @@ this.events.on('resume', () => {
 | UI: MiniMap (3단계 크기 토글) | `client-pc/src/ui/MiniMap.ts` |
 | UI: InfoOverlayPanel (인벤토리/퀘스트) | `client-pc/src/ui/InfoOverlayPanel.ts` |
 | 퀘스트 DB | `core/src/db-schema/QuestDatabase.ts` |
+| 수산물 경락 시세 타입 + 어종 매핑 | `core/src/types/Economy.ts` |
+| 어판장 수매가 산정 엔진 (농정원 API 연동) | `core/src/simulation/MarketPriceEvaluator.ts` |
+| 통합 아이템 레이어 타입 (신선도/부패/변환 규칙) | `core/src/types/Item.ts` |
+| 통합 아이템 DB (낚시점/마트/직판장/통조림) | `core/src/db-schema/UniversalItemDatabase.ts` |
+| 영역기반 라이브 필드 레이아웃 엔진 | `client-pc/src/data/SpotFieldLayouts.ts` |
 
 ### 🚧 구현 진행 중 / 미완료
 상세 내용은 `IMPLEMENTATION_PLAN.md` 참고
