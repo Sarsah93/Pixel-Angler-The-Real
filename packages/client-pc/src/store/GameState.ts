@@ -28,7 +28,7 @@ import type {
   TrapCatchItem,
   CaughtFishRecord,
 } from '@tra/core';
-import { getLicenseByType, getCurrentGameMinute, calculateTideInfo } from '@tra/core';
+import { getLicenseByType, getCurrentGameMinute, calculateTideInfo, getFishById } from '@tra/core';
 import { EnvironmentStore } from './EnvironmentStore.js';
 
 // ─────────────────────────────────────────────
@@ -94,6 +94,8 @@ function createDefaultPlayer(): PlayerState {
     stamina: 100,
     fatigue: 0,
     activeQuickslotIndex: 0,
+    level: 1,
+    experience: 0,
   };
 }
 
@@ -267,6 +269,35 @@ export class GameStateManager {
 
     this.player.inventory.livewell.push(record);
     this.player.caughtFishHistory.push(record);
+
+    // 경험치 획득 연산 (희귀도 점수 + 크기 점수)
+    const fish = getFishById(speciesId);
+    const rarity = fish ? fish.rarity : 'common';
+    const expMap: Record<string, number> = {
+      common: 10,
+      uncommon: 25,
+      rare: 60,
+      epic: 150,
+      legendary: 400,
+    };
+    const baseExp = expMap[rarity] ?? 10;
+    const sizeExp = Math.floor(lengthCm * 0.5);
+    const totalGained = baseExp + sizeExp;
+
+    this._player.experience = (this._player.experience ?? 0) + totalGained;
+    let nextLevelThreshold = (this._player.level ?? 1) * 100;
+    let levelUpCount = 0;
+
+    while (this._player.experience >= nextLevelThreshold) {
+      this._player.experience -= nextLevelThreshold;
+      this._player.level = (this._player.level ?? 1) + 1;
+      nextLevelThreshold = this._player.level * 100;
+      levelUpCount++;
+    }
+
+    if (levelUpCount > 0) {
+      console.log(`[GameState] Level Up! Lv.${this._player.level - levelUpCount} -> Lv.${this._player.level}`);
+    }
   }
 
   // ─── 통발 조작 ─────────────────────────────
@@ -435,6 +466,8 @@ export class GameStateManager {
         if (parsed.player.stamina === undefined) parsed.player.stamina = 100;
         if (parsed.player.fatigue === undefined) parsed.player.fatigue = 0;
         if (parsed.player.activeQuickslotIndex === undefined) parsed.player.activeQuickslotIndex = 0;
+        if (parsed.player.level === undefined) parsed.player.level = 1;
+        if (parsed.player.experience === undefined) parsed.player.experience = 0;
       }
       if (parsed.deployedTraps) {
         for (const trap of parsed.deployedTraps) {

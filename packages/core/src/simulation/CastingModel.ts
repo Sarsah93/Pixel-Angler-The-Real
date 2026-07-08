@@ -17,6 +17,8 @@ export interface CastInput {
   /** 각도 (도, 0=수평, 45=최적) */
   angleDeg: number;
   weather: WeatherData;
+  /** 플레이어 숙련도 레벨 */
+  playerLevel?: number;
 }
 
 export interface CastResult {
@@ -40,7 +42,10 @@ function getIdealDistance(input: CastInput): number {
   // 봉돌 무게 보정 — 가벼울수록 짧게 날아감
   const weightFactor = Math.min(1.0, input.sinkerG / 30);
 
-  return rawDistance * weightFactor;
+  // 플레이어 숙련도 비거리 보정 (레벨당 1%씩 증가, 최대 20% 증가)
+  const levelBonus = 1.0 + Math.min(0.2, (input.playerLevel ?? 1) * 0.01);
+
+  return rawDistance * weightFactor * levelBonus;
 }
 
 /** 바람의 영향으로 인한 오차 계산 */
@@ -59,9 +64,12 @@ export function calculateCast(input: CastInput): CastResult {
   const lineResistance = input.mainLine.material === 'pe_braid' ? 0.9 : 0.7;
   const distanceM = idealDistance * lineResistance;
 
+  // 플레이어 레벨에 따른 정확도 보정 (레벨당 오차 및 바람 영향 1.5%씩 감소, 최대 50%까지 감소)
+  const accuracyLevelBonus = Math.max(0.5, 1.0 - (input.playerLevel ?? 1) * 0.015);
+
   // 정확도 오차 (파워가 낮을수록, 바람이 강할수록 오차 증가)
-  const baseError = (1.0 - input.power) * 3;
-  const windDriftM = getWindDrift(input.weather, distanceM);
+  const baseError = (1.0 - input.power) * 3 * accuracyLevelBonus;
+  const windDriftM = getWindDrift(input.weather, distanceM) * accuracyLevelBonus;
   const accuracyErrorM = baseError + Math.abs(windDriftM) * 0.3;
 
   return {

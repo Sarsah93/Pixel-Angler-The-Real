@@ -16,7 +16,7 @@
 
 import Phaser from 'phaser';
 import { GameState } from '../store/GameState.js';
-import { getSpotById, SPOT_DATABASE, LicenseType, evaluateFishSellPrice, getUniversalItemById } from '@tra/core';
+import { getSpotById, SPOT_DATABASE, LicenseType, evaluateFishSellPrice, getUniversalItemById, WeatherEvents, getCurrentGameMinute, EdgeTileType, getAvailableGatherItems, checkSlipHazard, attemptGather, GatherableItem } from '@tra/core';
 import { generateSpotFieldLayout, Zone, Building } from '../data/SpotFieldLayouts.js';
 import { HUD } from '../ui/HUD.js';
 import { MiniMap } from '../ui/MiniMap.js';
@@ -81,6 +81,17 @@ export class FieldScene extends Phaser.Scene {
   // 조류 격자 갱신 타이머 (ms)
   private _hydroRefreshTimer = 0;
   private readonly _HYDRO_REFRESH_INTERVAL = 30000; // 30초마다 갱신
+
+  // ─── 채집/위험 칸 시스템 ──────────────────────────────────
+  /** 위험 칸 경고 팝업 (활성 중이면 non-null) */
+  private slipWarningModal: Phaser.GameObjects.Container | null = null;
+  /** 채집 패널 (활성 중이면 non-null) */
+  private gatherPanel: Phaser.GameObjects.Container | null = null;
+  /** 마지막 안전 좌표 (미끄러짐 시 복귀 위치) */
+  private lastSafeX = 0;
+  private lastSafeY = 0;
+  /** 플레이어가 위험 칸에 있는지 여부 */
+  private isOnDangerTile = false;
 
   constructor() {
     super({ key: 'FieldScene' });
@@ -159,6 +170,27 @@ export class FieldScene extends Phaser.Scene {
     });
     this.input.keyboard!.on('keydown-I',     () => this.toggleInventoryPanel());
     this.input.keyboard!.on('keydown-Q',     () => this.toggleQuestPanel());
+    this.input.keyboard!.on('keydown-S',     () => this.toggleStatPanel());
+
+    // ─── 돌발 기상 이벤트 리스너 연동 ───
+    WeatherEvents.addListener((event) => {
+      if (event) {
+        this.showPlayerFloatingHint(`[⚠️ 돌발 기상: ${event.name}]`);
+        const { width } = this.scale;
+        const alertText = this.add.text(width / 2, 80, `⚠️ 돌발 경보: ${event.name}! (${event.description})`, {
+          fontFamily: '"Noto Sans KR", sans-serif',
+          fontSize: '14px',
+          color: '#ff3333',
+          fontStyle: 'bold',
+          backgroundColor: '#050f1ecc',
+          padding: { x: 10, y: 5 },
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(200);
+
+        this.time.delayedCall(5000, () => {
+          alertText.destroy();
+        });
+      }
+    });
 
     // 퀵슬롯 단축키 1 ~ 8 등록
     for (let i = 0; i < 8; i++) {
@@ -294,6 +326,9 @@ export class FieldScene extends Phaser.Scene {
     if (this.miniMap) {
       this.miniMap.updatePlayerMarker(this.playerBody.x, this.playerBody.y);
     }
+
+    // 돌발 기상 틱 갱신
+    WeatherEvents.tick(getCurrentGameMinute());
 
     // 조류 격자 주기적 갱신 (30초마다)
     if (this.hydroRenderer) {
@@ -588,6 +623,307 @@ export class FieldScene extends Phaser.Scene {
       this.hideHint();
       this.fishingZoneActive = false;
     }
+
+    // ── 위험 엣지 타일 감지 ──────────────────────────────────
+    this.checkEdgeTile(px, py);
+  }
+
+  /**
+   * 위험 엣지 타일 감지
+   * - 방파제(BREAKWATER_EDGE) / 갯바위(ROCKY_EDGE) / 갯벌(TIDAL_FLAT_EDGE)
+   * - 경고 구간(2타일): 슬립 경고 팝업
+   * - 위험 칸(1타일): 채집 패널 열기
+   */
+  private checkEdgeTile(px: number, py: number): void {
+    const spotType = this.spotInfo.spotType;
+    let dangerEdgeY: number | null = null;
+    let edgeType: EdgeTileType = 'NONE';
+
+    if (spotType === 'breakwater') {
+      const bwZone = this.zones.find(
+        (z) => z.id === 'breakwater' || z.id === 'north_breakwater' || z.id === 'south_breakwater',
+      );
+      if (bwZone) {
+        dangerEdgeY = bwZone.y - 16;
+        edgeType = 'BREAKWATER_EDGE';
+      }
+    } else if (spotType === 'rocky_shore') {
+      const shallowZone = this.zones.find(
+        (z) => z.id === 'shallow' || z.id === 'outer_south' || z.id === 'outer_north',
+      );
+      if (shallowZone) {
+        dangerEdgeY = shallowZone.y + shallowZone.h - 16;
+        edgeType = 'ROCKY_EDGE';
+      }
+    } else if (spotType === 'tidal_flat') {
+      const flatZone = this.zones.find((z) => z.id === 'tidal_flat');
+      if (flatZone) {
+        dangerEdgeY = flatZone.y;
+        edgeType = 'TIDAL_FLAT_EDGE';
+      }
+    }
+
+    if (dangerEdgeY === null) {
+      this.closeSlipWarning();
+      this.closeGatherPanel();
+      this.isOnDangerTile = false;
+      return;
+    }
+
+    const WARNING_RANGE = 32;
+    const DANGER_RANGE = 16;
+    const distToEdge = Math.abs(py - dangerEdgeY);
+
+    if (distToEdge <= DANGER_RANGE) {
+      if (!this.isOnDangerTile) {
+        this.isOnDangerTile = true;
+        this.closeSlipWarning();
+        this.openGatherPanel(edgeType);
+      }
+    } else if (distToEdge <= WARNING_RANGE) {
+      this.isOnDangerTile = false;
+      this.closeGatherPanel();
+      if (!this.slipWarningModal) {
+        this.showSlipWarning(edgeType);
+      }
+    } else {
+      if (!this.isOnDangerTile) {
+        this.lastSafeX = px;
+        this.lastSafeY = py;
+      }
+      this.isOnDangerTile = false;
+      this.closeSlipWarning();
+      this.closeGatherPanel();
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // 미끄러짐 경고 팝업
+  // ─────────────────────────────────────────────────────────
+  private showSlipWarning(edgeType: EdgeTileType): void {
+    if (this.slipWarningModal) return;
+    this.playerBody.setVelocity(0, 0);
+
+    const { width, height } = this.scale;
+    const modalW = 460;
+    const modalH = 190;
+    const mx = (width - modalW) / 2;
+    const my = (height - modalH) / 2;
+
+    const modal = this.add.container(0, 0).setDepth(400).setScrollFactor(0);
+    this.slipWarningModal = modal;
+
+    const dimBg = this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.55).setScrollFactor(0);
+    modal.add(dimBg);
+
+    const bg = this.add.graphics();
+    bg.fillStyle(0x1a0a0a, 0.96);
+    bg.fillRoundedRect(mx, my, modalW, modalH, 6);
+    bg.lineStyle(2, 0xff4444, 0.9);
+    bg.strokeRoundedRect(mx, my, modalW, modalH, 6);
+    modal.add(bg);
+
+    const edgeLabel =
+      edgeType === 'BREAKWATER_EDGE' ? '방파제 직벽 수면 경계' :
+      edgeType === 'ROCKY_EDGE' ? '갯바위 수면 경계' : '갯벌 수면 경계';
+
+    const titleTxt = this.add.text(width / 2, my + 24, `⚠️ 위험 구역: ${edgeLabel}`, {
+      fontFamily: '"Noto Sans KR", sans-serif',
+      fontSize: '15px', color: '#ff6666', fontStyle: 'bold',
+    }).setOrigin(0.5, 0).setScrollFactor(0);
+    modal.add(titleTxt);
+
+    const descTxt = this.add.text(width / 2, my + 56, '수면 경계로 이동하면 미끄러질 수 있습니다! (30% 확률)\n미끄러지면 바다에 빠져 체력/피로도를 절반 잃습니다.', {
+      fontFamily: '"Noto Sans KR", sans-serif',
+      fontSize: '12px', color: '#ffcccc', align: 'center', lineSpacing: 4,
+    }).setOrigin(0.5, 0).setScrollFactor(0);
+    modal.add(descTxt);
+
+    // [계속해서 이동하기]
+    const contBtn = this.add.container(width / 2 - 100, my + modalH - 28).setScrollFactor(0);
+    const contBg = this.add.graphics();
+    contBg.fillStyle(0x4a1010, 0.95);
+    contBg.fillRoundedRect(-82, -15, 164, 30, 4);
+    contBg.lineStyle(1.5, 0xff4444, 0.9);
+    contBg.strokeRoundedRect(-82, -15, 164, 30, 4);
+    const contTxt = this.add.text(0, 0, '⚠ 계속해서 이동하기', {
+      fontFamily: '"Noto Sans KR", sans-serif',
+      fontSize: '11px', color: '#ff8888', fontStyle: 'bold',
+    }).setOrigin(0.5);
+    contBtn.add([contBg, contTxt]);
+    contBtn.setInteractive(new Phaser.Geom.Rectangle(-82, -15, 164, 30), Phaser.Geom.Rectangle.Contains);
+    contBtn.on('pointerdown', () => this.attemptDangerMove(edgeType));
+    contBtn.on('pointerover', () => contBg.setAlpha(1.4));
+    contBtn.on('pointerout', () => contBg.setAlpha(1));
+    modal.add(contBtn);
+
+    // [뒤로 가기]
+    const cancelBtn = this.add.container(width / 2 + 100, my + modalH - 28).setScrollFactor(0);
+    const canBg = this.add.graphics();
+    canBg.fillStyle(0x0e1c2d, 0.9);
+    canBg.fillRoundedRect(-68, -15, 136, 30, 4);
+    canBg.lineStyle(1.5, 0x2a5a8a, 0.8);
+    canBg.strokeRoundedRect(-68, -15, 136, 30, 4);
+    const canTxt = this.add.text(0, 0, '← 뒤로 가기', {
+      fontFamily: '"Noto Sans KR", sans-serif',
+      fontSize: '11px', color: '#8faabf', fontStyle: 'bold',
+    }).setOrigin(0.5);
+    cancelBtn.add([canBg, canTxt]);
+    cancelBtn.setInteractive(new Phaser.Geom.Rectangle(-68, -15, 136, 30), Phaser.Geom.Rectangle.Contains);
+    cancelBtn.on('pointerdown', () => this.closeSlipWarning());
+    cancelBtn.on('pointerover', () => canBg.setAlpha(1.5));
+    cancelBtn.on('pointerout', () => canBg.setAlpha(1));
+    modal.add(cancelBtn);
+  }
+
+  private closeSlipWarning(): void {
+    if (this.slipWarningModal) {
+      this.slipWarningModal.destroy();
+      this.slipWarningModal = null;
+    }
+  }
+
+  private attemptDangerMove(edgeType: EdgeTileType): void {
+    this.closeSlipWarning();
+    const slip = checkSlipHazard(0.3, GameState.player.stamina, GameState.player.fatigue);
+
+    if (slip.slipped) {
+      const newStamina = Math.max(0, GameState.player.stamina - slip.staminaLost);
+      const newFatigue = Math.min(100, GameState.player.fatigue + slip.fatigueLost);
+      GameState.updatePlayer({ stamina: newStamina, fatigue: newFatigue });
+      if (this.hud) this.hud.updateHUD();
+      this.playerBody.setPosition(this.lastSafeX, this.lastSafeY);
+      this.cameras.main.flash(300, 0, 80, 200);
+      this.showPlayerFloatingHint(
+        `💦 미끄러져 바다에 빠졌습니다! 체력 -${slip.staminaLost}, 피로도 +${slip.fatigueLost}`,
+      );
+    } else {
+      this.isOnDangerTile = true;
+      this.openGatherPanel(edgeType);
+      this.showPlayerFloatingHint('✅ 이동 성공! [채집하기]로 채집하세요.');
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // 채집 패널
+  // ─────────────────────────────────────────────────────────
+  private openGatherPanel(edgeType: EdgeTileType): void {
+    if (this.gatherPanel) return;
+
+    const tidePhase = GameState.environment.environment?.tide?.tidePhase ?? 7;
+    const isHighTide = tidePhase >= 8 && tidePhase <= 13;
+    const hour = new Date().getHours();
+    const isNight = hour >= 20 || hour < 5;
+
+    const items = getAvailableGatherItems(edgeType, isHighTide, isNight);
+
+    const { width, height } = this.scale;
+    const panelW = 340;
+    const panelH = 60 + Math.max(items.length, 1) * 62 + 30;
+    const panelX = width - panelW - 16;
+    const panelY = height / 2 - panelH / 2;
+
+    const panel = this.add.container(0, 0).setDepth(350).setScrollFactor(0);
+    this.gatherPanel = panel;
+
+    const bg = this.add.graphics();
+    bg.fillStyle(0x061222, 0.96);
+    bg.fillRoundedRect(panelX, panelY, panelW, panelH, 6);
+    bg.lineStyle(2, 0x78e08f, 0.9);
+    bg.strokeRoundedRect(panelX, panelY, panelW, panelH, 6);
+    panel.add(bg);
+
+    const titleTxt = this.add.text(panelX + panelW / 2, panelY + 14, '🌿 채집하기', {
+      fontFamily: '"Noto Sans KR", sans-serif',
+      fontSize: '15px', color: '#78e08f', fontStyle: 'bold',
+    }).setOrigin(0.5, 0).setScrollFactor(0);
+    panel.add(titleTxt);
+
+    if (items.length === 0) {
+      const noTxt = this.add.text(panelX + panelW / 2, panelY + 44, '현재 채집 가능한 생물이 없습니다.\n(만조 또는 야간 시 추가 채집 가능)', {
+        fontFamily: '"Noto Sans KR", sans-serif',
+        fontSize: '11px', color: '#607b8e', align: 'center', lineSpacing: 4,
+      }).setOrigin(0.5, 0).setScrollFactor(0);
+      panel.add(noTxt);
+    }
+
+    items.forEach((item, i) => {
+      const iy = panelY + 44 + i * 62;
+      const rowBg = this.add.graphics();
+      rowBg.fillStyle(0x0e1c2d, 0.8);
+      rowBg.fillRoundedRect(panelX + 10, iy, panelW - 20, 54, 4);
+      panel.add(rowBg);
+
+      const iconTxt = this.add.text(panelX + 24, iy + 10, item.icon, { fontSize: '22px' }).setScrollFactor(0);
+      panel.add(iconTxt);
+
+      const nameTxt = this.add.text(panelX + 54, iy + 8, item.nameKo, {
+        fontFamily: '"Noto Sans KR", sans-serif',
+        fontSize: '13px', color: '#e8f4fd', fontStyle: 'bold',
+      }).setScrollFactor(0);
+      panel.add(nameTxt);
+
+      const toolTxt = this.add.text(panelX + 54, iy + 28, `🔧 ${item.toolNameKo}  ·  성공률 ${Math.round(item.baseSuccessRate * 100)}%`, {
+        fontFamily: '"Noto Sans KR", sans-serif',
+        fontSize: '10px', color: '#8faabf',
+      }).setScrollFactor(0);
+      panel.add(toolTxt);
+
+      const gatherBtn = this.add.container(panelX + panelW - 56, iy + 26).setScrollFactor(0);
+      const gbBg = this.add.graphics();
+      gbBg.fillStyle(0x0d3d20, 0.9);
+      gbBg.fillRoundedRect(-30, -14, 60, 28, 4);
+      gbBg.lineStyle(1.5, 0x78e08f, 0.9);
+      gbBg.strokeRoundedRect(-30, -14, 60, 28, 4);
+      const gbTxt = this.add.text(0, 0, '채집', {
+        fontFamily: '"Noto Sans KR", sans-serif',
+        fontSize: '12px', color: '#78e08f', fontStyle: 'bold',
+      }).setOrigin(0.5);
+      gatherBtn.add([gbBg, gbTxt]);
+      gatherBtn.setInteractive(new Phaser.Geom.Rectangle(-30, -14, 60, 28), Phaser.Geom.Rectangle.Contains);
+      gatherBtn.on('pointerdown', () => this.executeGather(item));
+      gatherBtn.on('pointerover', () => { gbBg.setAlpha(1.4); gbTxt.setColor('#aaffcc'); });
+      gatherBtn.on('pointerout', () => { gbBg.setAlpha(1); gbTxt.setColor('#78e08f'); });
+      panel.add(gatherBtn);
+    });
+
+    // 닫기 버튼
+    const closeBtn = this.add.container(panelX + panelW - 16, panelY + 16).setScrollFactor(0);
+    const closeBg = this.add.graphics();
+    closeBg.lineStyle(1.5, 0x607b8e, 0.8);
+    closeBg.strokeCircle(0, 0, 10);
+    const closeTxt = this.add.text(0, 0, '✕', { fontFamily: 'monospace', fontSize: '12px', color: '#8faabf' }).setOrigin(0.5);
+    closeBtn.add([closeBg, closeTxt]);
+    closeBtn.setInteractive(new Phaser.Geom.Circle(0, 0, 12), Phaser.Geom.Circle.Contains);
+    closeBtn.on('pointerdown', () => this.closeGatherPanel());
+    panel.add(closeBtn);
+  }
+
+  private closeGatherPanel(): void {
+    if (this.gatherPanel) {
+      this.gatherPanel.destroy();
+      this.gatherPanel = null;
+    }
+  }
+
+  private executeGather(item: GatherableItem): void {
+    const hasTool = this.checkPlayerHasTool(item.requiredTool);
+    const result = attemptGather(item, hasTool);
+    if (result.success) {
+      const newCoins = GameState.player.inventory.coins + result.totalValueWon;
+      GameState.updatePlayer({ inventory: { ...GameState.player.inventory, coins: newCoins } });
+      if (this.hud) this.hud.updateHUD();
+      this.cameras.main.flash(200, 0, 120, 50);
+    }
+    this.showPlayerFloatingHint(result.message);
+  }
+
+  private checkPlayerHasTool(toolType: string): boolean {
+    if (toolType === 'hand') return true;
+    const inv = GameState.player.inventory;
+    if (toolType === 'net') return inv.consumables.some((c) => c.itemId.includes('net') || c.itemId.includes('dip'));
+    if (toolType === 'knife') return inv.consumables.some((c) => c.itemId.includes('knife') || c.itemId.includes('blade'));
+    return true; // 데모: 미구현 도구는 보유로 처리
   }
 
   // ─────────────────────────────────────────────────────────
@@ -596,7 +932,6 @@ export class FieldScene extends Phaser.Scene {
   private handleFishingEntry(): void {
     if (this.activeLicensePanel) return;
     if (!this.fishingZoneActive) {
-      // 낚시 포인트 근처 아니어도 임시 허용 (데모용)
       this.showHint('⚠️ 낚시 포인트(노란 원) 근처로 이동하세요!');
       return;
     }
@@ -852,6 +1187,63 @@ export class FieldScene extends Phaser.Scene {
       }
     );
     panel.name = 'quest';
+    panel.setScrollFactor(0);
+    this.add.existing(panel);
+    panel.setDepth(110);
+    this.openedPanels.push(panel);
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // 스탯 패널 토글 (S 키)
+  // ─────────────────────────────────────────────────────────
+  private toggleStatPanel(): void {
+    const idx = this.openedPanels.findIndex(p => p instanceof InfoOverlayPanel && p.name === 'stat');
+    if (idx !== -1) {
+      const panel = this.openedPanels.splice(idx, 1)[0];
+      if (panel instanceof InfoOverlayPanel) {
+        panel.close();
+      }
+      return;
+    }
+
+    const player = GameState.player;
+    const level = player.level ?? 1;
+    const exp = player.experience ?? 0;
+    const nextExp = level * 100;
+    const expRatio = ((exp / nextExp) * 100).toFixed(1);
+
+    const lines = [
+      `닉네임: ${player.nickname}`,
+      `레벨 (Level): Lv. ${level}`,
+      `경험치 (Exp): ${exp} / ${nextExp} (${expRatio}%)`,
+      `────────────────────────────────`,
+      `[기본 스탯]`,
+      ` • 체력 (Stamina): ${player.stamina} / 100`,
+      ` • 피로도 (Fatigue): ${player.fatigue} / 100`,
+      ` • 보유 자금: ${player.inventory.coins.toLocaleString()} G`,
+      `────────────────────────────────`,
+      `[기술 및 숙련도]`,
+      ` • 캐스팅 최대 비거리 보너스: +${level}%`,
+      ` • 캐스팅 정확도 보정: +${(level * 1.5).toFixed(1)}%`,
+      ` • 누적 조과 기록: ${player.caughtFishHistory.length} 마리`,
+      ` • 보유 면허: ${GameState.licenses.filter(l => !l.isExpired).length} 개`
+    ];
+
+    const camX = this.cameras.main.scrollX;
+    const camY = this.cameras.main.scrollY;
+    const panel = new InfoOverlayPanel(
+      this,
+      camX + this.scale.width / 2,
+      camY + this.scale.height / 2,
+      '📊 꾼의 능력치 및 기술 (Angler Stats)',
+      'stat',
+      lines,
+      () => {
+        const i = this.openedPanels.indexOf(panel);
+        if (i !== -1) this.openedPanels.splice(i, 1);
+      }
+    );
+    panel.name = 'stat';
     panel.setScrollFactor(0);
     this.add.existing(panel);
     panel.setDepth(110);

@@ -106,6 +106,10 @@ export interface PlayerState {
   fatigue: number;
   /** 활성화된 퀵슬롯 인덱스 (0 ~ 7) */
   activeQuickslotIndex: number;
+  /** 플레이어 숙련도 레벨 (Lv. 1 ~ ) */
+  level: number;
+  /** 플레이어 누적 경험치 */
+  experience: number;
 }
 
 // ─────────────────────────────────────────────

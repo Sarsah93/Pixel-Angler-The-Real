@@ -21,6 +21,7 @@ import { TrapScene } from './scenes/TrapScene.js';
 import { RestaurantScene } from './scenes/RestaurantScene.js';
 import { CondoScene } from './scenes/CondoScene.js';
 import { CookScene } from './scenes/CookScene.js';
+import { SettingsScene } from './scenes/SettingsScene.js';
 import { GameState } from './store/GameState.js';
 
 // 전역 게임 상태 초기화
@@ -43,6 +44,7 @@ const config: Phaser.Types.Core.GameConfig = {
     RestaurantScene,
     CondoScene,
     CookScene,
+    SettingsScene,
   ],
 };
 

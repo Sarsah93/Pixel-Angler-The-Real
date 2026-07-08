@@ -143,3 +143,14 @@ export { getApproxLunarDay, getLunarDayDisplay } from './utils/LunarCalendar.js'
 export { getDistanceBetweenCoordinates } from './utils/GeoUtils.js';
 export { latLonToDotMapXY, dotMapXYToWorld, latLonToKmaGrid, haversineDistanceKm, enrichSpotCoordinates } from './utils/CoordinateUtils.js';
 
+// Services
+export { WeatherEvents } from './services/WeatherEventEmitter.js';
+export type { WeatherEventType, WeatherEvent, WeatherEventEffect } from './services/WeatherEventEmitter.js';
+
+// Region Database
+export type { RegionDef } from './db-schema/RegionDatabase.js';
+export { REGION_DATABASE, getRegionById, getRegionBySpotId, getFishingRegionByCode } from './db-schema/RegionDatabase.js';
+
+// Tile Gather Engine
+export type { EdgeTileType, GatherToolType, GatherableItem, GatherAttemptResult, SlipCheckResult } from './simulation/TileGatherEngine.js';
+export { GATHER_ITEM_DATABASE, checkSlipHazard, getAvailableGatherItems, attemptGather } from './simulation/TileGatherEngine.js';

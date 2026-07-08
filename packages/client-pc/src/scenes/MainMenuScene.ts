@@ -22,7 +22,7 @@ const MENU_ITEMS = [
   { key: 'tide', label: '🌊 물때 & 기상', scene: 'TideChartScene' },
   { key: 'log', label: '📖 조과첩', scene: 'AnglerLogScene' },
   { key: 'guide', label: '📖 가이드 & 스토리', scene: null },
-  { key: 'settings', label: '⚙ 설정', scene: null },
+  { key: 'settings', label: '⚙ 설정', scene: 'SettingsScene' },
 ] as const;
 
 export class MainMenuScene extends Phaser.Scene {
@@ -402,6 +402,17 @@ export class MainMenuScene extends Phaser.Scene {
     const item = MENU_ITEMS[this.selectedIndex];
     if (item.key === 'guide') {
       this.showGuideOverlay();
+    } else if (item.key === 'settings') {
+      // 설정씩은 pause/launch 방식으로 기존 싼 상태를 유지
+      this.cameras.main.fadeOut(200, 0, 10, 20);
+      this.cameras.main.once('camerafadeoutcomplete', () => {
+        this.scene.pause('MainMenuScene');
+        this.scene.launch('SettingsScene');
+      });
+      // SettingsScene이 닫휘 때 페이드인
+      this.events.once('resume', () => {
+        this.cameras.main.fadeIn(200, 0, 10, 20);
+      });
     } else if (item.scene) {
       this.cameras.main.fadeOut(300, 0, 10, 20);
       this.cameras.main.once('camerafadeoutcomplete', () => {

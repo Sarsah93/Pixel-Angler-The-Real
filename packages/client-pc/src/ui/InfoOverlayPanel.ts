@@ -14,7 +14,7 @@ export class InfoOverlayPanel extends Phaser.GameObjects.Container {
     x: number,
     y: number,
     title: string,
-    type: 'inventory' | 'quest',
+    type: 'inventory' | 'quest' | 'stat',
     contentLines: string[],
     onClose?: () => void
   ) {
@@ -24,7 +24,7 @@ export class InfoOverlayPanel extends Phaser.GameObjects.Container {
     this.createPanel(title, type, contentLines);
   }
 
-  private createPanel(title: string, type: 'inventory' | 'quest', contentLines: string[]): void {
+  private createPanel(title: string, type: 'inventory' | 'quest' | 'stat', contentLines: string[]): void {
     const width = 500;
     const height = 360;
 
@@ -33,8 +33,8 @@ export class InfoOverlayPanel extends Phaser.GameObjects.Container {
     this.bg.fillStyle(0x050f1e, 0.95);
     this.bg.fillRoundedRect(-width / 2, -height / 2, width, height, 4);
 
-    // 픽셀 스타일 테두리 (네온 그린 / 청록)
-    const borderColor = type === 'inventory' ? 0x4af2a1 : 0xffdd44;
+    // 픽셀 스타일 테두리 (네온 그린 / 청록 / 보라)
+    const borderColor = type === 'inventory' ? 0x4af2a1 : type === 'quest' ? 0xffdd44 : 0x9955ff;
     this.bg.lineStyle(2, borderColor, 0.9);
     this.bg.strokeRoundedRect(-width / 2, -height / 2, width, height, 4);
     this.add(this.bg);
@@ -43,7 +43,7 @@ export class InfoOverlayPanel extends Phaser.GameObjects.Container {
     const titleText = this.scene.add.text(0, -height / 2 + 25, title, {
       fontFamily: '"Noto Sans KR", sans-serif',
       fontSize: '16px',
-      color: type === 'inventory' ? '#4af2a1' : '#ffeeaa',
+      color: type === 'inventory' ? '#4af2a1' : type === 'quest' ? '#ffeeaa' : '#b388ff',
       fontStyle: 'bold',
     }).setOrigin(0.5);
     this.add(titleText);
