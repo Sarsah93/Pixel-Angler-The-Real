@@ -104,6 +104,14 @@ export interface PlayerState {
   createdAt: Date;
   /** 마지막 저장 날짜 */
   lastSavedAt: Date;
+
+  // ─── STATUS 관련 지표 ───
+  /** 체력 (Stamina: 0 ~ 100) */
+  stamina: number;
+  /** 피로도 (Fatigue: 0 ~ 100) */
+  fatigue: number;
+  /** 활성화된 퀵슬롯 인덱스 (0 ~ 7) */
+  activeQuickslotIndex: number;
 }
 
 // ─────────────────────────────────────────────

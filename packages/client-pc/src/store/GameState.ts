@@ -70,6 +70,9 @@ function createDefaultPlayer(): PlayerState {
     totalPlayMinutes: 0,
     createdAt: new Date(),
     lastSavedAt: new Date(),
+    stamina: 100,
+    fatigue: 0,
+    activeQuickslotIndex: 0,
   };
 }
 
@@ -365,6 +368,9 @@ export class GameStateManager {
       if (parsed.player) {
         parsed.player.createdAt = new Date(parsed.player.createdAt);
         parsed.player.lastSavedAt = new Date(parsed.player.lastSavedAt);
+        if (parsed.player.stamina === undefined) parsed.player.stamina = 100;
+        if (parsed.player.fatigue === undefined) parsed.player.fatigue = 0;
+        if (parsed.player.activeQuickslotIndex === undefined) parsed.player.activeQuickslotIndex = 0;
       }
       if (parsed.deployedTraps) {
         for (const trap of parsed.deployedTraps) {

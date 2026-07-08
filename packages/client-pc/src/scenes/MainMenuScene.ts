@@ -42,6 +42,7 @@ export class MainMenuScene extends Phaser.Scene {
     this.drawBackground();
     this.drawCharacter();
     this.createStars();
+    this.createTitleLogo();
     this.createMenuUI();
     this.createBottomBar();
     this.setupKeyboardInput();
@@ -223,6 +224,57 @@ export class MainMenuScene extends Phaser.Scene {
   // ─────────────────────────────────────────────
   // 메뉴 UI
   // ─────────────────────────────────────────────
+  private createTitleLogo(): void {
+    const titleX = GAME_WIDTH * 0.32;
+    const titleY = GAME_HEIGHT * 0.22;
+
+    // 타이틀 백보드 (검은색 섀도우)
+    this.add.text(titleX + 3, titleY + 3, 'THE REAL ANGLER', {
+      fontFamily: '"Press Start 2P", monospace',
+      fontSize: '32px',
+      color: '#010c1e',
+    }).setOrigin(0.5);
+
+    // 실제 메인 로고 텍스트
+    const mainTitle = this.add.text(titleX, titleY, 'THE REAL ANGLER', {
+      fontFamily: '"Press Start 2P", monospace',
+      fontSize: '32px',
+      color: '#4af2a1',
+    }).setOrigin(0.5);
+
+    // 서브 한글 타이틀
+    this.add.text(titleX, titleY + 38, '남해의 푸른 바다, 꾼의 삶', {
+      fontFamily: '"Noto Sans KR", sans-serif',
+      fontSize: '13px',
+      color: '#88aacc',
+      fontStyle: 'bold'
+    }).setOrigin(0.5);
+
+    // 빛나는 연출 (하이라이트 애니메이션)
+    this.tweens.add({
+      targets: mainTitle,
+      scaleX: 1.05,
+      scaleY: 1.05,
+      alpha: 0.9,
+      duration: 1500,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
+
+    // 색상 변환 트윈 (청록색과 청색 계열 보간하여 빛나는 물결 느낌 연출)
+    let isNeon = false;
+    this.time.addEvent({
+      delay: 1000,
+      loop: true,
+      callback: () => {
+        isNeon = !isNeon;
+        mainTitle.setColor(isNeon ? '#00ffff' : '#4af2a1');
+        mainTitle.setShadow(0, 0, isNeon ? '#00ffffcc' : '#4af2a1cc', isNeon ? 6 : 2, true, true);
+      }
+    });
+  }
+
   private createMenuUI(): void {
     const panelX = GAME_WIDTH * 0.68;
     const panelY = GAME_HEIGHT * 0.22;
@@ -234,24 +286,10 @@ export class MainMenuScene extends Phaser.Scene {
     panel.lineStyle(1.5, 0x2a5a8a, 0.8);
     panel.strokeRoundedRect(panelX - 10, panelY - 20, 280, 260, 4);
 
-    // 타이틀 로고 (픽셀아트 느낌)
-    this.add.text(panelX + 130, panelY - 4, 'THE REAL ANGLER', {
-      fontFamily: '"Press Start 2P", monospace',
-      fontSize: '12px',
-      color: '#4af2a1',
-      shadow: { offsetX: 1.5, offsetY: 1.5, color: '#002200', blur: 0, fill: true }
-    }).setOrigin(0.5, 0.5);
-
-    this.add.text(panelX + 130, panelY + 14, '더 리얼 앵글러', {
-      fontFamily: '"Noto Sans KR", sans-serif',
-      fontSize: '11px',
-      color: '#88aacc',
-    }).setOrigin(0.5, 0.5);
-
     // 메뉴 항목
     this.menuTexts = [];
     MENU_ITEMS.forEach((item, i) => {
-      const text = this.add.text(panelX + 20, panelY + 42 + i * 32, item.label, {
+      const text = this.add.text(panelX + 20, panelY + 12 + i * 32, item.label, {
         fontFamily: '"Noto Sans KR", monospace',
         fontSize: '15px',
         color: '#c8dde8',

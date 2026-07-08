@@ -16,10 +16,11 @@
 
 import Phaser from 'phaser';
 import { GameState } from '../store/GameState.js';
-import { getSpotById, SPOT_DATABASE } from '@tra/core';
+import { getSpotById, SPOT_DATABASE, LicenseType } from '@tra/core';
 import { HUD } from '../ui/HUD.js';
 import { MiniMap } from '../ui/MiniMap.js';
 import { LicensePanel } from '../ui/LicensePanel.js';
+import { InfoOverlayPanel } from '../ui/InfoOverlayPanel.js';
 
 // 월드 크기 (중형 — 방파제+마을+갯벌 포함)
 const WORLD_W = 2048;
@@ -103,16 +104,12 @@ export class FieldScene extends Phaser.Scene {
   private playerFacing: 'up' | 'down' | 'left' | 'right' = 'down';
 
   // 입력
+  // ※ cursors (방향키) → 이동 전용
+  // ※ keyW/A/S/D → 향후 별도 단축키 할당용으로 예약. 이동에는 사용하지 않음
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
-  private keyW!: Phaser.Input.Keyboard.Key;
-  private keyA!: Phaser.Input.Keyboard.Key;
-  private keyS!: Phaser.Input.Keyboard.Key;
-  private keyD!: Phaser.Input.Keyboard.Key;
-  private keyE!: Phaser.Input.Keyboard.Key;
-  private keyH!: Phaser.Input.Keyboard.Key;
-  private keyT!: Phaser.Input.Keyboard.Key;
-  private keyC!: Phaser.Input.Keyboard.Key;
-  private keyL!: Phaser.Input.Keyboard.Key;
+  // WASD 키는 이동에서 분리됨. 향후 단축키 할당 시는
+  // this.input.keyboard!.on('keydown-W', ...) 이벤트 리스너 방식으로 추가
+  // (예: W = 회전/조준, A/D = 카메라 회전, S = 특수 행동 등)
 
   // 스팟 정보
   private spotInfo = SPOT_DATABASE[0];
@@ -122,11 +119,21 @@ export class FieldScene extends Phaser.Scene {
   private miniMap?: MiniMap;
   private activeLicensePanel: LicensePanel | null = null;
 
+  // 팝업 LIFO 스택
+  private openedPanels: (LicensePanel | InfoOverlayPanel)[] = [];
+
+  // 마우스 이동 대상 좌표
+  private targetX: number | null = null;
+  private targetY: number | null = null;
+  private isMovingToTarget = false;
+
+  // 플레이어 머리 위 활성화 말풍선
+  private speechBubble?: Phaser.GameObjects.Container;
+
   // 상호작용 힌트
   private interactHint!: Phaser.GameObjects.Container;
   private interactHintText!: Phaser.GameObjects.Text;
   private nearBuilding: Building | null = null;
-  private nearZoneAction: Zone | null = null;
 
   // 낚시 포인트 오버랩 감지
   private fishingZoneActive = false;
@@ -135,10 +142,13 @@ export class FieldScene extends Phaser.Scene {
     super({ key: 'FieldScene' });
   }
 
-  init(): void {
-    const spotId = GameState.currentSpotId || 'geoje_gujora_breakwater';
+  init(data?: { spotId?: string }): void {
+    const spotId = data?.spotId || GameState.currentSpotId || 'geoje_gujora_breakwater';
     const spot = getSpotById(spotId);
-    if (spot) this.spotInfo = spot;
+    if (spot) {
+      this.spotInfo = spot;
+      GameState.setCurrentSpot(spotId);
+    }
   }
 
   create(): void {
@@ -167,15 +177,12 @@ export class FieldScene extends Phaser.Scene {
 
     // ─── 입력 키 등록 ───
     this.cursors = this.input.keyboard!.createCursorKeys();
-    this.keyW = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.W);
-    this.keyA = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.A);
-    this.keyS = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.S);
-    this.keyD = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.D);
-    this.keyE = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.E);
-    this.keyH = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.H);
-    this.keyT = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.T);
-    this.keyC = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.C);
-    this.keyL = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.L);
+    // WASD 키를 Phaser 렬더러에 등록 (prevent default)
+    // 이동에는 사용되지 않으며, 향후 on('keydown-W') 등으로 확장
+    this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.W);
+    this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.A);
+    this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.S);
+    this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.D);
 
     // ─── 액션 키 이벤트 ───
     this.input.keyboard!.on('keydown-SPACE', () => this.handleFishingEntry());
@@ -184,15 +191,51 @@ export class FieldScene extends Phaser.Scene {
     this.input.keyboard!.on('keydown-H',     () => this.startActivity('NightHuntingScene'));
     this.input.keyboard!.on('keydown-T',     () => this.startActivity('TrapScene'));
     this.input.keyboard!.on('keydown-C',     () => this.startActivity('CookScene'));
+    // U: 제작대 (도마/조리대 · 낚시 채비 조합 등)
+    // ─ [UX 기조] 그린헬(Green Hell) 스타일 제작 시스템을 목표로 함:
+    //   · 인벤토리에서 재료를 제작대 슬롯 위로 드래그 앤 드롭하거나,
+    //     재료를 클릭(선택)하면 제작대 위로 올라가는 방식으로 구현 예정
+    //   · 올라간 재료 조합이 레시피와 매칭되면 제작 버튼 활성화 → 결과물 획득
+    //   · 도마(음식 가공), 낚시 채비 조합대(채비/루어 제작) 등 제작대 종류별 분기 예정
+    // TODO: 전용 CraftScene 구현 후 'CookScene' → 'CraftScene' 으로 교체
+    this.input.keyboard!.on('keydown-U',     () => this.startActivity('CookScene'));
     this.input.keyboard!.on('keydown-L',     () => this.toggleLicensePanel());
     this.input.keyboard!.on('keydown-ESC',   () => this.handleEsc());
+    this.input.keyboard!.on('keydown-M',     () => {
+      if (this.miniMap) this.miniMap.toggleSizeMode();
+    });
+    this.input.keyboard!.on('keydown-I',     () => this.toggleInventoryPanel());
+    this.input.keyboard!.on('keydown-Q',     () => this.toggleQuestPanel());
+
+    // 퀵슬롯 단축키 1 ~ 8 등록
+    for (let i = 0; i < 8; i++) {
+      this.input.keyboard!.on(`keydown-${i + 1}`, () => this.handleQuickslotChange(i));
+    }
+
+    // 마우스 클릭 이동 등록
+    this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      if (this.openedPanels.length > 0) return;
+      // HUD 및 퀵바 영역(하단 80px 내)은 클릭 이동에서 제외
+      if (pointer.y > this.scale.height - 80 || (pointer.x < 240 && pointer.y < 120)) {
+        return;
+      }
+      const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+      this.targetX = worldPoint.x;
+      this.targetY = worldPoint.y;
+      this.isMovingToTarget = true;
+    });
 
     // ─── HUD (카메라 fixed) ───
     this.hud = new HUD(this);
     this.add.existing(this.hud);
 
-    // ─── 미니맵 ───
-    this.miniMap = new MiniMap(this, this.scale.width - 180, 70, 150, 150);
+    // 퀵슬롯 클릭 이벤트 핸들러 수신 연동
+    this.events.on('quickslot-changed', (index: number) => {
+      this.handleQuickslotChange(index, false);
+    });
+
+    // ─── 미니맵 ─── (직사각형 미니맵을 우측 상단 모서리에 가깝게 배치)
+    this.miniMap = new MiniMap(this, this.scale.width - 166, 16, 150, 150);
     this.add.existing(this.miniMap);
 
     // ─── 상호작용 힌트 UI (화면 하단 고정) ───
@@ -213,16 +256,44 @@ export class FieldScene extends Phaser.Scene {
     let vx = 0;
     let vy = 0;
 
-    // 이동 입력 (방향키 + WASD 지원)
-    const left  = this.cursors.left.isDown  || this.keyA.isDown;
-    const right = this.cursors.right.isDown || this.keyD.isDown;
-    const up    = this.cursors.up.isDown    || this.keyW.isDown;
-    const down  = this.cursors.down.isDown  || this.keyS.isDown;
+    // 이동 입력 — 방향키 전용
+    // ※ WASD는 이동과 분리되어 있음. 향후 별도 단축키(예: 메뉴, 회전 등)로 바인딩 예정
+    const left  = this.cursors.left.isDown;
+    const right = this.cursors.right.isDown;
+    const up    = this.cursors.up.isDown;
+    const down  = this.cursors.down.isDown;
 
-    if (left)  { vx = -speed; this.playerFacing = 'left'; }
-    if (right) { vx =  speed; this.playerFacing = 'right'; }
-    if (up)    { vy = -speed; this.playerFacing = 'up'; }
-    if (down)  { vy =  speed; this.playerFacing = 'down'; }
+    const keyboardActive = left || right || up || down;
+
+    if (keyboardActive) {
+      // 키보드 조작 시 마우스 이동 목표 취소
+      this.isMovingToTarget = false;
+      this.targetX = null;
+      this.targetY = null;
+
+      if (left)  { vx = -speed; this.playerFacing = 'left'; }
+      if (right) { vx =  speed; this.playerFacing = 'right'; }
+      if (up)    { vy = -speed; this.playerFacing = 'up'; }
+      if (down)  { vy =  speed; this.playerFacing = 'down'; }
+    } else if (this.isMovingToTarget && this.targetX !== null && this.targetY !== null) {
+      // 마우스 클릭 자동 이동 처리
+      const dist = Phaser.Math.Distance.Between(this.playerBody.x, this.playerBody.y, this.targetX, this.targetY);
+      if (dist > 10) {
+        const angle = Phaser.Math.Angle.Between(this.playerBody.x, this.playerBody.y, this.targetX, this.targetY);
+        vx = Math.cos(angle) * speed;
+        vy = Math.sin(angle) * speed;
+
+        const deg = Phaser.Math.RadToDeg(angle);
+        if (deg >= -45 && deg < 45) this.playerFacing = 'right';
+        else if (deg >= 45 && deg < 135) this.playerFacing = 'down';
+        else if (deg >= 135 || deg < -135) this.playerFacing = 'left';
+        else this.playerFacing = 'up';
+      } else {
+        this.isMovingToTarget = false;
+        this.targetX = null;
+        this.targetY = null;
+      }
+    }
 
     // 대각선 정규화
     if (vx !== 0 && vy !== 0) {
@@ -241,6 +312,14 @@ export class FieldScene extends Phaser.Scene {
     // 플레이어 그래픽 동기화
     this.player.setPosition(this.playerBody.x, this.playerBody.y);
     this.drawPlayerSprite(this.playerFacing);
+
+    // 머리 위 말풍선 동기화
+    if (this.speechBubble && this.speechBubble.active) {
+      this.speechBubble.setPosition(
+        this.playerBody.x, 
+        this.playerBody.y - 45 - (1.0 - this.speechBubble.alpha) * 10
+      );
+    }
 
     // 미니맵 동기화
     if (this.miniMap) {
@@ -500,6 +579,7 @@ export class FieldScene extends Phaser.Scene {
     }
 
     // 구역(활동) 근접 감지 (낚시 포인트 등)
+    // 설계 방향: 구글 대한민국 지도 연동 베이스 하에, 아래와 같은 특정 랜드타일 내에서만 해당 액티비티들이 수행될 수 있도록 제안됩니다.
     let nearZ: Zone | null = null;
     for (const z of ZONES) {
       if (!z.action || z.action === 'fishing') {
@@ -515,7 +595,6 @@ export class FieldScene extends Phaser.Scene {
 
     // 힌트 표시
     this.nearBuilding = nearB;
-    this.nearZoneAction = nearZ;
 
     if (nearB?.hint) {
       this.showHint(nearB.hint);
@@ -563,9 +642,9 @@ export class FieldScene extends Phaser.Scene {
   // 액티비티 씬 진입 (라이선스 체크 포함)
   // ─────────────────────────────────────────────────────────
   private startActivity(sceneKey: string): void {
-    if (this.activeLicensePanel) return;
+    if (this.openedPanels.length > 0) return;
 
-    let licenseKey = '';
+    let licenseKey: LicenseType | null = null;
     let licenseName = '';
 
     if (sceneKey === 'NightHuntingScene') {
@@ -607,13 +686,23 @@ export class FieldScene extends Phaser.Scene {
   }
 
   // ─────────────────────────────────────────────────────────
-  // ESC — 라이선스 패널 닫기 or 월드맵 복귀
+  // ESC — LIFO 팝업 패널 닫기 or 월드맵 복귀
   // ─────────────────────────────────────────────────────────
   private handleEsc(): void {
-    if (this.activeLicensePanel) {
-      this.toggleLicensePanel();
+    if (this.openedPanels.length > 0) {
+      const lastPanel = this.openedPanels.pop();
+      if (lastPanel) {
+        if (lastPanel instanceof LicensePanel) {
+          this.activeLicensePanel = null;
+          lastPanel.destroy();
+        } else if (lastPanel instanceof InfoOverlayPanel) {
+          lastPanel.close();
+        }
+      }
       return;
     }
+    
+    // 열린 팝업창이 모두 없을 때 월드맵 복귀
     this.cameras.main.fadeOut(300, 0, 10, 20);
     this.cameras.main.once('camerafadeoutcomplete', () => {
       this.scene.start('WorldMapScene');
@@ -625,6 +714,8 @@ export class FieldScene extends Phaser.Scene {
   // ─────────────────────────────────────────────────────────
   private toggleLicensePanel(): void {
     if (this.activeLicensePanel) {
+      const idx = this.openedPanels.indexOf(this.activeLicensePanel);
+      if (idx !== -1) this.openedPanels.splice(idx, 1);
       this.activeLicensePanel.destroy();
       this.activeLicensePanel = null;
     } else {
@@ -635,8 +726,157 @@ export class FieldScene extends Phaser.Scene {
         camX + this.scale.width / 2,
         camY + this.scale.height / 2
       );
+      this.activeLicensePanel.setScrollFactor(0);
       this.add.existing(this.activeLicensePanel);
       this.activeLicensePanel.setDepth(100);
+      this.openedPanels.push(this.activeLicensePanel);
     }
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // 인벤토리 패널 토글 (I 키)
+  // ─────────────────────────────────────────────────────────
+  private toggleInventoryPanel(): void {
+    const idx = this.openedPanels.findIndex(p => p instanceof InfoOverlayPanel && p.name === 'inventory');
+    if (idx !== -1) {
+      const panel = this.openedPanels.splice(idx, 1)[0];
+      if (panel instanceof InfoOverlayPanel) {
+        panel.close();
+      }
+      return;
+    }
+
+    const inv = GameState.player.inventory;
+    const lines = [
+      `💰 보유 코인: ${inv.coins.toLocaleString()} KRW`,
+      `🎣 낚싯대: ${inv.rodIds.map(id => id.replace('rod_', '')).join(', ') || '없음'}`,
+      ` Reels: ${inv.reelIds.map(id => id.replace('reel_', '')).join(', ') || '없음'}`,
+      ``,
+      `🎒 소모품 목록:`,
+      ...inv.consumables.map(c => `• ${c.name} (${c.quantity}개)`),
+      ``,
+      `🐟 살림망 보관 물고기: ${inv.livewell.length}마리`
+    ];
+
+    const camX = this.cameras.main.scrollX;
+    const camY = this.cameras.main.scrollY;
+    const panel = new InfoOverlayPanel(
+      this,
+      camX + this.scale.width / 2,
+      camY + this.scale.height / 2,
+      '🎒 인벤토리 (Inventory)',
+      'inventory',
+      lines,
+      () => {
+        const i = this.openedPanels.indexOf(panel);
+        if (i !== -1) this.openedPanels.splice(i, 1);
+      }
+    );
+    panel.name = 'inventory';
+    panel.setScrollFactor(0);
+    this.add.existing(panel);
+    panel.setDepth(110);
+    this.openedPanels.push(panel);
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // 퀘스트 패널 토글 (Q 키)
+  // ─────────────────────────────────────────────────────────
+  private toggleQuestPanel(): void {
+    const idx = this.openedPanels.findIndex(p => p instanceof InfoOverlayPanel && p.name === 'quest');
+    if (idx !== -1) {
+      const panel = this.openedPanels.splice(idx, 1)[0];
+      if (panel instanceof InfoOverlayPanel) {
+        panel.close();
+      }
+      return;
+    }
+
+    const completed = Array.from(GameState.completedQuestIds);
+    const lines = [
+      `🏆 메인 퀘스트:`,
+      `• [완료] 첫 캐스팅 연습 (1단계 완료) ${completed.includes('tutorial_cast') ? '✅' : '⬜'}`,
+      `• [완료] 첫 캐치앤쿡 요리하기 ${completed.includes('quest_first_catch_and_cook') ? '✅' : '⬜'}`,
+      `• [완료] 기본 낚시 라이선스 취득 ${completed.includes('quest_license_angling') ? '✅' : '⬜'}`,
+      ``,
+      `🌟 서브 퀘스트:`,
+      `• 방파제 아래 통발 설치하기 ${completed.includes('sub_trap_place') ? '✅' : '⬜'}`,
+      `• 야간 개펄의 전설 (낙지 1마리 획득) ${completed.includes('sub_night_octopus') ? '✅' : '⬜'}`,
+    ];
+
+    const camX = this.cameras.main.scrollX;
+    const camY = this.cameras.main.scrollY;
+    const panel = new InfoOverlayPanel(
+      this,
+      camX + this.scale.width / 2,
+      camY + this.scale.height / 2,
+      '🏆 퀘스트 저널 (Quests)',
+      'quest',
+      lines,
+      () => {
+        const i = this.openedPanels.indexOf(panel);
+        if (i !== -1) this.openedPanels.splice(i, 1);
+      }
+    );
+    panel.name = 'quest';
+    panel.setScrollFactor(0);
+    this.add.existing(panel);
+    panel.setDepth(110);
+    this.openedPanels.push(panel);
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // 퀵슬롯 변경 처리
+  // ─────────────────────────────────────────────────────────
+  private handleQuickslotChange(index: number, updateState = true): void {
+    if (updateState) {
+      GameState.updatePlayer({ activeQuickslotIndex: index });
+      if (this.hud) this.hud.updateQuickslotsVisual();
+    }
+
+    const item = [
+      { name: '낚싯대', icon: '🎣' },
+      { name: '통발', icon: '🕸️' },
+      { name: '미끼', icon: '🐛' },
+      { name: '빈손', icon: '✋' },
+      { name: '아이템 5', icon: '📦' },
+      { name: '아이템 6', icon: '📦' },
+      { name: '아이템 7', icon: '📦' },
+      { name: '아이템 8', icon: '📦' },
+    ][index];
+
+    this.showPlayerFloatingHint(`[${item.icon} ${item.name} 장착]`);
+  }
+
+  // 플레이어 머리 위 부드러운 텍스트 플로팅 힌트
+  private showPlayerFloatingHint(text: string): void {
+    if (this.speechBubble) this.speechBubble.destroy();
+
+    const bubble = this.add.container(this.playerBody.x, this.playerBody.y - 45);
+    const bg = this.add.graphics();
+    bg.fillStyle(0x0a1628, 0.9);
+    bg.fillRoundedRect(-60, -12, 120, 24, 3);
+    bg.lineStyle(1, 0x4af2a1, 0.8);
+    bg.strokeRoundedRect(-60, -12, 120, 24, 3);
+
+    const txt = this.add.text(0, 0, text, {
+      fontFamily: '"Noto Sans KR", sans-serif',
+      fontSize: '9px',
+      color: '#4af2a1',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+
+    bubble.add([bg, txt]);
+    bubble.setDepth(25);
+
+    this.speechBubble = bubble;
+
+    this.tweens.add({
+      targets: bubble,
+      y: this.playerBody.y - 55,
+      alpha: 0,
+      duration: 1500,
+      onComplete: () => bubble.destroy()
+    });
   }
 }
