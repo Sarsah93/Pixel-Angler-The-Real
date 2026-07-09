@@ -51,6 +51,10 @@ const BAIT_SPECIES_AFFINITY: Record<string, BaitCategory[]> = {
   hairtail: ['sandworm', 'squid', 'fish_strip', 'artificial_lure'],
   yellowtail: ['artificial_lure', 'squid', 'fish_strip'],
   japanese_amberjack: ['artificial_lure', 'fish_strip'],
+  korean_rockfish: ['sandworm', 'prawn', 'fish_strip', 'artificial_worm'],
+  yellow_rockfish: ['sandworm', 'prawn', 'artificial_worm'],
+  red_snapper_rockfish: ['fish_strip', 'sandworm', 'squid'],
+  night_seabream: ['sandworm', 'prawn', 'crab', 'mussel'],
 };
 
 /** 미끼-어종 친화도 계산 (0.0~1.0) */
@@ -75,8 +79,13 @@ function getSeasonScore(profile: FishBehaviorProfile, currentTime: Date): number
 
   // 영등철 저수온 극복 보정 (2~3월)
   if (month === 2 || month === 3) {
-    if (profile.speciesId === 'black_rockfish') {
-      score = Math.min(1.0, score * 1.15); // 볼락은 영등철에 강세
+    if (
+      profile.speciesId === 'black_rockfish' ||
+      profile.speciesId === 'korean_rockfish' ||
+      profile.speciesId === 'yellow_rockfish' ||
+      profile.speciesId === 'red_snapper_rockfish'
+    ) {
+      score = Math.min(1.0, score * 1.15); // 볼락류는 영등철에 강세
     } else if (profile.speciesId === 'largescale_blackfish') {
       score = score * 0.4;  // 벵에돔은 저수온 패널티가 매우 큼
     } else if (profile.speciesId === 'black_seabream') {

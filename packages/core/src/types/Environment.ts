@@ -36,11 +36,28 @@ export interface TideInfo {
 // ─────────────────────────────────────────────
 // 날씨 데이터
 // ─────────────────────────────────────────────
+export interface WaterTemperatureData {
+  /** 표층(상층) 수온 (°C) */
+  surfaceTempC: number;
+  /** 중층 수온 (°C) */
+  midTempC: number;
+  /** 바닥(하층) 수온 (°C) */
+  bottomTempC: number;
+  /** 수온 변동 추세 */
+  trend: 'stable' | 'rising' | 'falling';
+  /** 최근 1시간 동안의 수온 변화량 (°C) */
+  delta1hC: number;
+  /** 급격한 냉수대 등 수온 충격 지수 (0.0 = 정상, 1.0 = 심각한 입질 저하) */
+  coldWaterShockIndex: number;
+}
+
 export interface WeatherData {
   /** 기온 (°C) */
   temperatureC: number;
-  /** 수온 (°C) */
+  /** 수온 (°C) - 표층 수온 호환용 */
   seaSurfaceTempC: number;
+  /** 고도화된 수온 정보 */
+  waterTemp?: WaterTemperatureData;
   /** 풍속 (m/s) */
   windSpeedMs: number;
   /** 풍향 (도, 0~360) */

@@ -15,7 +15,7 @@ export const ROD_DATABASE: RodSpec[] = [
   // 찌낚시 대
   {
     id: 'rod_daiwaSS1500_1p5',
-    brand: '다이와(DAIWA)',
+    brand: '다이오(DAIO)',
     modelName: 'SS 1500 1.5호',
     lengthM: 5.3,
     lineWeightGrade: '1.5호',
@@ -25,11 +25,11 @@ export const ROD_DATABASE: RodSpec[] = [
     weightG: 185,
     priceKRW: 180000,
     rodType: 'float_fishing',
-    description: '벵에돔, 감성돔 전유동 및 반유동에 최적화된 다이와 입문-중급 찌낚시 대표 모델',
+    description: '벵에돔, 감성돔 전유동 및 반유동에 최적화된 다이오 입문-중급 찌낚시 대표 모델',
   },
   {
     id: 'rod_shimanoISO_2',
-    brand: '시마노(SHIMANO)',
+    brand: '소마노(SOMANO)',
     modelName: 'AERNOS ISO 2호',
     lengthM: 5.3,
     lineWeightGrade: '2호',
@@ -44,7 +44,7 @@ export const ROD_DATABASE: RodSpec[] = [
   // 원투 대
   {
     id: 'rod_surfcasting_4go',
-    brand: '다이와(DAIWA)',
+    brand: '다이오(DAIO)',
     modelName: 'Crosscast 4호',
     lengthM: 4.05,
     lineWeightGrade: '4호',
@@ -59,7 +59,7 @@ export const ROD_DATABASE: RodSpec[] = [
   // 지깅 대
   {
     id: 'rod_jigging_major',
-    brand: '메이저크래프트(Major Craft)',
+    brand: '마이너크래프트(Minor Craft)',
     modelName: 'Crossstage CRJ-S60MH',
     lengthM: 1.83,
     lineWeightGrade: '미표기(루어 대)',
@@ -80,7 +80,7 @@ export const ROD_DATABASE: RodSpec[] = [
 export const REEL_DATABASE: ReelSpec[] = [
   {
     id: 'reel_shimano2500',
-    brand: '시마노(SHIMANO)',
+    brand: '소마노(SOMANO)',
     modelName: 'STRADIC C2500S',
     reelSize: 2500,
     gearRatio: '6.0:1',
@@ -94,7 +94,7 @@ export const REEL_DATABASE: ReelSpec[] = [
   },
   {
     id: 'reel_daiwa3000',
-    brand: '다이와(DAIWA)',
+    brand: '다이오(DAIO)',
     modelName: 'FREAMS LT 3000-C',
     reelSize: 3000,
     gearRatio: '5.2:1',
@@ -108,7 +108,7 @@ export const REEL_DATABASE: ReelSpec[] = [
   },
   {
     id: 'reel_shimano4000',
-    brand: '시마노(SHIMANO)',
+    brand: '소마노(SOMANO)',
     modelName: 'TWIN POWER 4000XG',
     reelSize: 4000,
     gearRatio: '6.2:1',
@@ -128,7 +128,7 @@ export const REEL_DATABASE: ReelSpec[] = [
 export const LINE_DATABASE: LineSpec[] = [
   {
     id: 'line_sunline_1p5no',
-    brand: '선라인(SUNLINE)',
+    brand: '솔라인(SOLLINE)',
     modelName: 'SUPER FC Sniper 1.5호',
     lineNo: 1.5,
     strengthLb: 6,
@@ -150,7 +150,7 @@ export const LINE_DATABASE: LineSpec[] = [
   },
   {
     id: 'line_pe_1no',
-    brand: '요즈리(YO-ZURI)',
+    brand: '요즈미(YO-ZUMI)',
     modelName: 'Super Braid PE 1.0호',
     lineNo: 1.0,
     strengthLb: 18,
@@ -167,7 +167,7 @@ export const LINE_DATABASE: LineSpec[] = [
 export const FLOAT_DATABASE: FloatSpec[] = [
   {
     id: 'float_tube_B',
-    brand: '나이키(NAIKI)',
+    brand: '쯔리센(TSURISEN)',
     modelName: 'M-1 구멍찌 B',
     buoyancyGrade: 'B',
     buoyancyG: 0.45,

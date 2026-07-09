@@ -19,11 +19,13 @@ import {
   pickFishByWeight,
   generateFishSize,
   calculateCast,
-  updateLineTension,
-  getLineTensionRatio,
+  getEffectiveDragKg,
+  adjustDrag,
+  simulateFightTick,
+  canReel,
   FISH_DATABASE,
 } from '@tra/core';
-import type { FishingPhase, TackleSetup, FishSpecies, LineState } from '@tra/core';
+import type { FishingPhase, TackleSetup, FishSpecies, LineState, FishingPoint } from '@tra/core';
 import { FishingFocusWindow } from '../ui/FishingFocusWindow.js';
 import { BiteIndicator } from '../ui/BiteIndicator.js';
 
@@ -57,16 +59,24 @@ export class FishingScene extends Phaser.Scene {
   // 비동기 타이머
   private biteCheckTimer?: Phaser.Time.TimerEvent;
 
-  constructor() {
-    super({ key: 'FishingScene' });
-  }
+  private currentPoint!: FishingPoint;
 
-  init(): void {
+  init(data?: { point?: FishingPoint }): void {
+    this.currentPoint = data?.point || {
+      id: 'point_default',
+      tileX: 10,
+      tileY: 10,
+      label: '방파제 수중여',
+      depthM: 8,
+      possibleSpeciesIds: ['black_seabream', 'largescale_blackfish', 'black_rockfish'],
+      biteBonusMultiplier: 1.2,
+    };
+
     // 플레이어 채비 강제 셋팅 (없으면 기본값)
     this.tackle = GameState.player.currentTackle || {
       rod: {
         id: 'rod_daiwaSS1500_1p5',
-        brand: '다이와',
+        brand: '다이오',
         modelName: 'SS 1500 1.5호',
         lengthM: 5.3,
         lineWeightGrade: '1.5호',
@@ -80,7 +90,7 @@ export class FishingScene extends Phaser.Scene {
       },
       reel: {
         id: 'reel_daiwa3000',
-        brand: '다이와',
+        brand: '다이오',
         modelName: 'FREAMS LT 3000-C',
         reelSize: 3000,
         gearRatio: '5.2:1',
@@ -173,6 +183,10 @@ export class FishingScene extends Phaser.Scene {
     } else if (this.phase === 'fighting') {
       this.updateFightingLoop(delta);
     }
+
+    if (this.phase === 'in_water' || this.phase === 'bite_detected' || this.phase === 'setting_hook') {
+      this.focusWindow?.updateShadows(delta);
+    }
   }
 
   private transitionTo(newPhase: FishingPhase): void {
@@ -231,17 +245,20 @@ export class FishingScene extends Phaser.Scene {
         });
         break;
 
-      case 'in_water':
-        this.focusWindow?.setBobberState('floating');
+      case 'in_water': {
+        const speciesList = this.getCurrentPointSpecies();
+        this.focusWindow?.setBobberState('floating', speciesList);
         this.statusText?.setText('찌 흘리는 중... 어신 반응 대기 중');
         this.startBiteChecker();
         break;
+      }
 
-      case 'bite_detected':
+      case 'bite_detected': {
+        const speciesList = this.getCurrentPointSpecies();
         this.statusText?.setText('찌 흔들림 감지! 찌가 빨려 들어갈 때 [스페이스]로 챔질!');
         // 찌 움직임 연출 시작
         this.biteIndicator?.triggerBiteEffect('bobber_shake');
-        this.focusWindow?.setBobberState('shaking');
+        this.focusWindow?.setBobberState('shaking', speciesList);
 
         // 조금 뒤 깊은 챔질 타이밍으로 전이
         this.time.delayedCall(2000, () => {
@@ -250,11 +267,13 @@ export class FishingScene extends Phaser.Scene {
           }
         });
         break;
+      }
 
-      case 'setting_hook':
+      case 'setting_hook': {
+        const speciesList = this.getCurrentPointSpecies();
         this.statusText?.setText('★★ 지금 챔질!! [스페이스]를 누르세요! ★★');
         this.biteIndicator?.triggerBiteEffect('bobber_pull');
-        this.focusWindow?.setBobberState('sinking');
+        this.focusWindow?.setBobberState('sinking', speciesList);
         
         // 1초 내에 챔질 안 하면 놓침
         this.time.delayedCall(1000, () => {
@@ -263,6 +282,7 @@ export class FishingScene extends Phaser.Scene {
           }
         });
         break;
+      }
 
       case 'fighting':
         this.statusText?.setText('히트! 파이팅 중! [방향키 위/아래]: 드랙 조절, [스페이스] 누르고 있기: 감기');
@@ -414,63 +434,72 @@ export class FishingScene extends Phaser.Scene {
   private updateFightingLoop(delta: number): void {
     if (!this.fishBeingFought) return;
 
+    // 장력이 너무 임계점에 달하면 릴링 락업(잠김) 연출 적용
+    const ableToReel = canReel(this.lineState, this.tackle.mainLine);
+
     // 감아들이기(Space) 상태 체크
     const spaceKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
-    const isReeling = spaceKey?.isDown || false;
+    const isReeling = ableToReel && (spaceKey?.isDown || false);
 
-    // 물고기의 반발력 연산
-    const basePull = this.fishBeingFought.difficulty * 2.5; // 어종 난이도 비례 힘
-    const fishRage = 1 + Math.sin(Date.now() / 400) * 0.5; // 날뛰는 성향
+    if (spaceKey?.isDown && !ableToReel) {
+      this.statusText?.setText('⚠️ 장력 임계 초과! 릴이 잠겼습니다! 드랙을 푸세요 [G] 또는 [방향키 아래]');
+    } else {
+      this.statusText?.setText('히트! 파이팅 중! [F/G] 또는 [방향키 위/아래]: 드랙 조절, [스페이스]: 감기');
+    }
+
+    // 물고기의 반발력 연산 (어종 난이도와 체력에 비례)
+    const basePull = this.fishBeingFought.difficulty * 2.2;
+    // 물고기가 요동치는 주기성 dash
+    const fishRage = 1.0 + Math.sin(Date.now() / 350) * 0.45 + (Math.random() < 0.08 ? 0.8 : 0.0);
     const fishPullKg = basePull * fishRage * this.fishStamina;
 
-    // 플레이어 리릴링 힘
-    const playerPullKg = isReeling ? 6.0 : 0.0;
-
-    // 종합 장력
-    const totalForce = fishPullKg + playerPullKg;
-
-    // 라인 물리 갱신
-    this.lineState = updateLineTension(
+    // 코어 물리 틱 시뮬레이션
+    const tickResult = simulateFightTick(
       this.lineState,
-      totalForce,
+      fishPullKg,
+      isReeling,
       this.tackle.reel,
-      this.tackle.mainLine
+      this.tackle.mainLine,
+      delta
     );
 
+    this.lineState = tickResult.newState;
+
     // 텐션 UI 렌더링
-    const tensionRatio = getLineTensionRatio(this.lineState, this.tackle.mainLine);
+    const tensionRatio = tickResult.tensionRatio;
     if (this.tensionBar) {
       this.tensionBar.width = 400 * tensionRatio;
       
-      // 위험 수준에 따라 게이지 색상 변경
-      if (tensionRatio > 0.8) {
+      // 위험 수준에 따라 게이지 색상 변경 및 진동/경고음
+      if (tickResult.dangerLevel === 'broken') {
+        this.tensionBar.setFillStyle(0xff0000);
+      } else if (tickResult.dangerLevel === 'critical') {
         this.tensionBar.setFillStyle(0xff3333);
-      } else if (tensionRatio > 0.5) {
+        if (Math.random() < 0.25) this.cameras.main.shake(100, 0.003);
+      } else if (tickResult.dangerLevel === 'warning') {
         this.tensionBar.setFillStyle(0xffaa33);
       } else {
         this.tensionBar.setFillStyle(0x33ff33);
       }
     }
 
-    // 드랙음 재생 시뮬레이션
-    if (fishPullKg > this.lineState.dragRatio * this.tackle.reel.maxDragKg) {
-      // 드랙 낚여나감
-      this.lineState.lineLengthOutM += 0.1 * (delta / 16);
-      if (Math.random() < 0.2) {
-        this.sound.play('reel_click', { volume: 0.1 });
+    // 드랙 감도 표시 업데이트
+    const effectiveDrag = getEffectiveDragKg(this.tackle.reel, this.lineState.dragRatio);
+    this.dragText?.setText(`드랙 감도: ${(this.lineState.dragRatio * 100).toFixed(0)}% (${effectiveDrag.toFixed(1)}kg)`);
+
+    // 드랙 풀리는 시각/청각 피드백
+    if (tickResult.lineOutDelta > 0) {
+      this.statusText?.setText(` 지잉! 줄 풀려나가는 중: ${this.lineState.lineLengthOutM.toFixed(1)}m`);
+      if (Math.random() < 0.3) {
+        this.sound.play('reel_click', { volume: 0.15 });
       }
     }
 
-    // 감아들일 때 줄 감기
-    if (isReeling && fishPullKg < this.lineState.dragRatio * this.tackle.reel.maxDragKg) {
-      this.lineState.lineLengthOutM -= 0.1 * (delta / 16);
-    }
+    // 물고기 스태미나 감소
+    this.fishStamina = Math.max(0, this.fishStamina - tickResult.fishFatigueDelta * 0.75);
 
-    // 물고기 체력 감소
-    this.fishStamina -= 0.001 * (delta / 16);
-
-    // 승리 조건: 물고기를 5m 이내로 감아들이거나 체력이 다 빠짐
-    if (this.lineState.lineLengthOutM <= 4 || this.fishStamina <= 0.05) {
+    // 승리 조건: 물고기를 4m 이내로 감아들이거나 체력이 다 빠짐
+    if (this.lineState.lineLengthOutM <= 4.0 || this.fishStamina <= 0.02) {
       this.transitionTo('caught');
     }
 
@@ -486,10 +515,8 @@ export class FishingScene extends Phaser.Scene {
       if (this.phase === 'idle') {
         this.transitionTo('aiming');
       } else if (this.phase === 'bite_detected') {
-        // 너무 일찍 챔질
         this.transitionTo('missed');
       } else if (this.phase === 'setting_hook') {
-        // 히트 성공! 파이팅 전이
         this.transitionTo('fighting');
       }
     });
@@ -500,20 +527,32 @@ export class FishingScene extends Phaser.Scene {
       }
     });
 
-    // 드랙 조절 (위/아래 방향키)
-    this.input.keyboard?.on('keydown-UP', () => {
-      if (this.phase === 'fighting') {
-        this.lineState.dragRatio = Math.min(1.0, this.lineState.dragRatio + 0.05);
-        this.dragText?.setText(`드랙 감도: ${(this.lineState.dragRatio * 100).toFixed(0)}%`);
-      }
-    });
+    const reel = this.tackle.reel;
 
-    this.input.keyboard?.on('keydown-DOWN', () => {
+    // 드랙 조절 (F / 위방향키: 조임)
+    const onTighten = () => {
       if (this.phase === 'fighting') {
-        this.lineState.dragRatio = Math.max(0.0, this.lineState.dragRatio - 0.05);
-        this.dragText?.setText(`드랙 감도: ${(this.lineState.dragRatio * 100).toFixed(0)}%`);
+        const result = adjustDrag(this.lineState.dragRatio, 'tighten', reel);
+        this.lineState.dragRatio = result.newDragRatio;
+        this.dragText?.setText(`드랙 감도: ${(this.lineState.dragRatio * 100).toFixed(0)}% (${result.displayDragKg.toFixed(1)}kg)`);
+        this.showDragFeedback(result.message);
       }
-    });
+    };
+
+    // 드랙 조절 (G / 아래방향키: 풂)
+    const onLoosen = () => {
+      if (this.phase === 'fighting') {
+        const result = adjustDrag(this.lineState.dragRatio, 'loosen', reel);
+        this.lineState.dragRatio = result.newDragRatio;
+        this.dragText?.setText(`드랙 감도: ${(this.lineState.dragRatio * 100).toFixed(0)}% (${result.displayDragKg.toFixed(1)}kg)`);
+        this.showDragFeedback(result.message);
+      }
+    };
+
+    this.input.keyboard?.on('keydown-UP', onTighten);
+    this.input.keyboard?.on('keydown-F', onTighten);
+    this.input.keyboard?.on('keydown-DOWN', onLoosen);
+    this.input.keyboard?.on('keydown-G', onLoosen);
   }
 
   private showOutcomePopup(outcome: 'success' | 'line_break' | 'missed'): void {
@@ -579,5 +618,25 @@ export class FishingScene extends Phaser.Scene {
         });
       });
     });
+  }
+
+  private getCurrentPointSpecies(): FishSpecies[] {
+    const pointIds = this.currentPoint?.possibleSpeciesIds || ['black_seabream', 'largescale_blackfish', 'black_rockfish'];
+    return pointIds
+      .map((id) => FISH_DATABASE.find((f) => f.id === id))
+      .filter((f): f is FishSpecies => !!f);
+  }
+
+  private showDragFeedback(msg: string): void {
+    const { width } = this.scale;
+    const feedback = this.add.text(width / 2, this.scale.height - 80, msg, {
+      fontFamily: '"Noto Sans KR", sans-serif',
+      fontSize: '12px',
+      color: '#ffff88',
+      backgroundColor: '#000000dd',
+      padding: { x: 8, y: 4 },
+    }).setOrigin(0.5);
+
+    this.time.delayedCall(1200, () => feedback.destroy());
   }
 }

@@ -116,7 +116,7 @@ Phase 9: Tauri v2 통합 & Steam 패키징     ⬜ 대기
 | 조경지대(CONVERGENCE) 황금색 테두리 강조 | ✅ |
 | `FieldScene.ts`: 조류 렌더러 통합 (V 키 토글, 30초 물때 연동 자동 갱신) | ✅ |
 
-### 6-1. FishBiteEngine V2 — 고증 알고리즘 강화
+### 6-1. FishBiteEngine V2 — 고증 알고리즘 강화 (✅ 완료)
 
 **파일**: `packages/core/src/simulation/FishBiteEngine.ts`
 
@@ -127,6 +127,44 @@ Phase 9: Tauri v2 통합 & Steam 패키징     ⬜ 대기
 - `getRigBonus()`: 전유동/반유동/루어/바닥 채비별 어종 보너스
 - `getHabitatScore()`: 스팟 타입 vs `preferredHabitat` 매칭
 - `isClosedSeason()` 체크: 금어기 자동 경고
+
+### 6-1b. 채집 시스템, 야간 볼락류 DB 확장, 드랙 파이팅 & 상층/보일링 그림자 연출 (✅ 완료)
+
+| 항목 | 결과 |
+|---|---|
+| 위험/엣지 타일 감지 및 30% 슬립 판정 (`checkSlipHazard`) | ✅ |
+| 낙수 패널티 처리 (체력 50% 차감, 피로도 50% 가산, 이전 안전 타일 강제 후퇴) | ✅ |
+| 우측 채집 선택지 UI & 도구별 채집 연동 (`attemptGather` / 성게·뜰채, 거북손·칼, 갯강구·맨손) | ✅ |
+| 볼락류 야간 어종 4종 추가 (`korean_rockfish` 우럭, `yellow_rockfish` 황볼락, `red_snapper_rockfish` 열기, `night_seabream` 야간참돔) | ✅ |
+| 어종별 swimmingLayer('surface'/'mid'/'bottom') 및 isBoilingSpecies 필드 정의 및 특정화 | ✅ |
+| 찌 흘림/어신 대기 상태 시 상층/보일링 타겟 어종 존재 시 동적 그림자(Shadows) 표현 | ✅ |
+| 보일링 어종 존재 시 여러 마리의 군집 그림자가 빠르게 요동치며 지나가는 시각 연출 | ✅ |
+| 실시간 드랙 조절 (`adjustDrag` / F/G 단축키 및 방향키 위아래 연동) 및 kg단위 변환 피드백 | ✅ |
+| 파이팅 틱 시뮬레이션 (`simulateFightTick` / 릴링 시 장력 가산 및 드랙 속도 줄풀림/줄감기 물리 반영) | ✅ |
+| 장력 90% 임계점 초과 시 릴링 락업(잠김) 처리 및 경고 피드백 | ✅ |
+
+### 6-1c. GIS 맵 빌더 패키지 및 파이프라인 자동화 (✅ 완료)
+
+| 항목 | 결과 |
+|---|---|
+| `packages/map-builder` 신규 패키지 및 tsconfig/package.json 모노레포 연동 | ✅ |
+| `MapRegistry.ts`: 대한민국(512), 포항(1024), 임곡항(2048), 방파제(4096) 맵 계층 및 해상도 명세 정의 | ✅ |
+| `TileExporter.ts`: 16px 정밀 타일 지형 분류(land, water, breakwater_edge, safe_zone 등) 및 콜리전 매핑 익스포터 구축 | ✅ |
+| `download_tiles.py`: Bounding Box 및 Zoom 레벨별 VWorld/KHOA 타일 지도 이미지 다운로드 스크립트 | ✅ |
+| `merge_tiles.py`: 조각 세그먼트 타일들을 단일 대형 위성지도로 자동 합성 및 결합 | ✅ |
+| `preprocess.py`: 자질구레한 노이즈 억제를 위한 미디언 필터 및 16색 제한 대표색 전처리 단순화 필터 | ✅ |
+| `pixelize.py`: PyTorch PixelOE 모델 및 PIL Nearest Neighbor 도트화 대체 Fallback | ✅ |
+| `export.py`: 완성된 도트 맵 복사 및 색상 기반 자동 타일링과 충돌 격자 JSON 내보내기 | ✅ |
+| `pipeline.py` & `tools/build_map.py`: 루트 및 빌더 내에서 GIS 픽셀화 맵 배포 통합 기동 래퍼 스크립트 | ✅ |
+
+### 6-1d. 수온 고증 구조화 및 브랜드명 우회 (✅ 완료)
+
+| 항목 | 결과 |
+|---|---|
+| `WaterTemperatureData` 인터페이스 구조화 (surface, mid, bottom 수층별 수온 및 coldWaterShockIndex, trend 정의) | ✅ |
+| `WeatherData` 타입에 고도화된 수온 정보 연동 | ✅ |
+| `GearSpecs.ts` 저작권 우회 브랜드명 개편 (다이와->다이오, 시마노->소마노, 선라인->솔라인, 요즈리->요즈미, 나이키->쯔리센, 메이저크래프트->마이너크래프트) | ✅ |
+| `FishingScene.ts` 하드코딩 기본 채비 브랜드명 우회 변경 | ✅ |
 
 ### 6-2. DB 스키마 일관성 보완 및 리팩토링 (차기 예정)
 

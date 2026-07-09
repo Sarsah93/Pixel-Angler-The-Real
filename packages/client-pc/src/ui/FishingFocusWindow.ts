@@ -4,12 +4,28 @@
  */
 
 import Phaser from 'phaser';
+import type { FishSpecies } from '@tra/core';
+
+interface FishShadowData {
+  orbitRadius: number;  // 회전 반경
+  orbitAngle: number;   // 찌 중심 기준 궤도 각도
+  orbitSpeed: number;   // 궤도 공전 속도
+  size: number;         // 그림자 크기
+  wiggle: number;       // 꼬리 흔들림 주기
+  x: number;
+  y: number;
+}
 
 export class FishingFocusWindow extends Phaser.GameObjects.Container {
   private bg?: Phaser.GameObjects.Graphics;
   private bobber?: Phaser.GameObjects.Graphics;
   private waterWaves?: Phaser.GameObjects.Graphics;
   private size: number;
+
+  // 동적 그림자 객체 관리
+  private shadowObjects: { graphics: Phaser.GameObjects.Graphics; data: FishShadowData }[] = [];
+  private hasSurfaceFish = false;
+  private hasBoilingFish = false;
 
   constructor(scene: Phaser.Scene, x: number, y: number, size: number) {
     super(scene, x, y);
@@ -80,12 +96,22 @@ export class FishingFocusWindow extends Phaser.GameObjects.Container {
   /**
    * 찌의 상태 애니메이션 업데이트
    */
-  setBobberState(state: 'hidden' | 'floating' | 'shaking' | 'sinking' | 'fighting'): void {
+  setBobberState(
+    state: 'hidden' | 'floating' | 'shaking' | 'sinking' | 'fighting',
+    possibleSpecies: FishSpecies[] = [],
+  ): void {
     if (!this.bobber) return;
 
     // 기존 애니메이션 트윈 정리
     this.scene.tweens.killTweensOf(this.bobber);
     this.bobber.setPosition(0, 0);
+
+    // 어종 특징 파악 (상층 및 보일링)
+    this.hasSurfaceFish = possibleSpecies.some(f => f.swimmingLayer === 'surface');
+    this.hasBoilingFish = possibleSpecies.some(f => f.isBoilingSpecies);
+
+    // 그림자 인스턴스 셋업
+    this.setupShadows(state);
 
     if (state === 'hidden') {
       this.bobber.setVisible(false);
@@ -133,5 +159,125 @@ export class FishingFocusWindow extends Phaser.GameObjects.Container {
         repeat: -1,
       });
     }
+  }
+
+  /**
+   * 상태에 따른 물고기 그림자 초기 생성
+   */
+  private setupShadows(state: string): void {
+    // 기존 그림자 그래픽 오브젝트 해제
+    this.shadowObjects.forEach((obj) => obj.graphics.destroy());
+    this.shadowObjects = [];
+
+    if (state !== 'floating' && state !== 'shaking') {
+      return; // 찌 흘리는 대기 상태가 아닐 땐 그림자를 보이지 않음
+    }
+
+    if (!this.hasSurfaceFish) {
+      return; // 상층/보일링 서식 어종이 없는 경우 그림자 생성을 건너뜀 (중하층 어종은 비시각화)
+    }
+
+    // 그림자 개수 결정: 보일링이면 5~8마리 떼, 일반 상층 어종이면 1~2마리
+    const shadowCount = this.hasBoilingFish
+      ? Phaser.Math.Between(5, 8)
+      : Phaser.Math.Between(1, 2);
+
+    for (let i = 0; i < shadowCount; i++) {
+      const orbitRadius = this.hasBoilingFish
+        ? Phaser.Math.Between(25, 75)
+        : Phaser.Math.Between(40, 85);
+
+      const orbitAngle = Phaser.Math.FloatBetween(0, Math.PI * 2);
+      // 보일링 어종이면 매우 빠름, 일반 상층 어종이면 여유롭게 헤엄침
+      const orbitSpeed = this.hasBoilingFish
+        ? Phaser.Math.FloatBetween(0.015, 0.03) * (Math.random() < 0.5 ? 1 : -1)
+        : Phaser.Math.FloatBetween(0.004, 0.008) * (Math.random() < 0.5 ? 1 : -1);
+
+      const size = this.hasBoilingFish ? Phaser.Math.Between(6, 12) : Phaser.Math.Between(14, 22);
+
+      // 개별 물고기 그림자 그래픽 생성
+      const g = this.scene.add.graphics();
+      
+      // 어두운 투명 남색 실루엣 그리기
+      g.fillStyle(0x041829, 0.35);
+      // 몸통 타원
+      g.fillEllipse(0, 0, size, size * 0.45);
+      // 꼬리 삼각형
+      g.beginPath();
+      g.moveTo(-size / 2, 0);
+      g.lineTo(-size * 1.1, -size * 0.25);
+      g.lineTo(-size * 1.1, size * 0.25);
+      g.closePath();
+      g.fillPath();
+
+      // 컨테이너 내 찌(bobber) 레이어 아래에 추가
+      // 인덱스: bg(0), waterWaves(1) 그 다음으로 2번에 추가
+      this.addAt(g, 2);
+
+      this.shadowObjects.push({
+        graphics: g,
+        data: {
+          orbitRadius,
+          orbitAngle,
+          orbitSpeed,
+          size,
+          wiggle: Phaser.Math.FloatBetween(0, Math.PI * 2),
+          x: 0,
+          y: 0,
+        },
+      });
+    }
+  }
+
+  /**
+   * 매 프레임 그림자 좌표 업데이트
+   */
+  updateShadows(delta: number): void {
+    if (this.shadowObjects.length === 0) return;
+
+    const radiusLimit = this.size / 2 - 6;
+
+    this.shadowObjects.forEach((obj) => {
+      const s = obj.data;
+      const g = obj.graphics;
+
+      // 궤도 계산으로 각도 업데이트
+      s.orbitAngle += s.orbitSpeed * (delta / 16.666);
+      s.wiggle += 0.35 * (delta / 16.666);
+
+      // 중심 찌 기준으로 목표 위치 계산
+      const targetX = Math.cos(s.orbitAngle) * s.orbitRadius;
+      const targetY = Math.sin(s.orbitAngle) * s.orbitRadius;
+
+      // 헤엄 방향 각도
+      const dx = targetX - s.x;
+      const dy = targetY - s.y;
+      let angle = g.rotation;
+      if (dx !== 0 || dy !== 0) {
+        angle = Math.atan2(dy, dx);
+      }
+
+      s.x = targetX;
+      s.y = targetY;
+
+      const distFromCenter = Math.sqrt(s.x * s.x + s.y * s.y);
+      if (distFromCenter > radiusLimit) {
+        g.setVisible(false);
+      } else {
+        g.setVisible(true);
+        g.setPosition(s.x, s.y);
+        // 물고기 헤엄 방향 회전값 + 미세 꼬리 흔들림 주기 적용
+        g.setRotation(angle + Math.sin(s.wiggle) * 0.12);
+      }
+    });
+  }
+
+  /**
+   * 씬 소멸 시 동적 그래픽 파괴
+   */
+  destroy(fromScene?: boolean): void {
+    this.shadowObjects.forEach((obj) => obj.graphics.destroy());
+    this.shadowObjects = [];
+    super.destroy(fromScene);
   }
 }

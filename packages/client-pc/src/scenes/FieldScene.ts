@@ -16,7 +16,7 @@
 
 import Phaser from 'phaser';
 import { GameState } from '../store/GameState.js';
-import { getSpotById, SPOT_DATABASE, LicenseType, evaluateFishSellPrice, getUniversalItemById, WeatherEvents, getCurrentGameMinute, EdgeTileType, getAvailableGatherItems, checkSlipHazard, attemptGather, GatherableItem } from '@tra/core';
+import { getSpotById, SPOT_DATABASE, LicenseType, evaluateFishSellPrice, getUniversalItemById, WeatherEvents, getCurrentGameMinute, EdgeTileType, getAvailableGatherItems, checkSlipHazard, attemptGather, GatherableItem, FishingPoint } from '@tra/core';
 import { generateSpotFieldLayout, Zone, Building } from '../data/SpotFieldLayouts.js';
 import { HUD } from '../ui/HUD.js';
 import { MiniMap } from '../ui/MiniMap.js';
@@ -75,6 +75,7 @@ export class FieldScene extends Phaser.Scene {
 
   // 낚시 포인트 오버랩 감지
   private fishingZoneActive = false;
+  private activeFishingZone: Zone | null = null;
 
   // 조류/수심 시각화 렌더러
   private hydroRenderer?: HydroCurrentRenderer;
@@ -612,10 +613,12 @@ export class FieldScene extends Phaser.Scene {
 
     // 힌트 표시
     this.nearBuilding = nearB;
+    this.activeFishingZone = nearZ;
 
     if (nearB?.hint) {
       this.showHint(nearB.hint);
       this.fishingZoneActive = false;
+      this.activeFishingZone = null;
     } else if (nearZ) {
       this.showHint(nearZ.hint ?? '');
       this.fishingZoneActive = true;
@@ -931,11 +934,26 @@ export class FieldScene extends Phaser.Scene {
   // ─────────────────────────────────────────────────────────
   private handleFishingEntry(): void {
     if (this.activeLicensePanel) return;
-    if (!this.fishingZoneActive) {
+    if (!this.fishingZoneActive || !this.activeFishingZone) {
       this.showHint('⚠️ 낚시 포인트(노란 원) 근처로 이동하세요!');
       return;
     }
-    this.launchSubscene('FishingScene');
+
+    const point: FishingPoint = {
+      id: this.activeFishingZone.id,
+      tileX: Math.floor(this.activeFishingZone.x / TILE),
+      tileY: Math.floor(this.activeFishingZone.y / TILE),
+      label: this.activeFishingZone.label || '낚시 포인트',
+      depthM: 8.0,
+      possibleSpeciesIds: this.spotInfo.mainSpeciesIds,
+      biteBonusMultiplier: 1.2,
+    };
+
+    this.cameras.main.fadeOut(250, 0, 10, 20);
+    this.cameras.main.once('camerafadeoutcomplete', () => {
+      this.scene.pause('FieldScene');
+      this.scene.launch('FishingScene', { point });
+    });
   }
 
   // ─────────────────────────────────────────────────────────

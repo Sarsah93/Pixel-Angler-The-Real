@@ -8,7 +8,7 @@
 // Types
 export type { PlayerState, PlayerStatus, FacingDirection, CaughtFishRecord, Inventory, RemotePlayerSnapshot } from './types/Player.js';
 export type { TackleSetup, RodSpec, ReelSpec, LineSpec, FloatSpec, HookSpec, BaitItem, RigType, RodType, ReelType, BaitCategory } from './types/Gear.js';
-export type { TideInfo, WeatherData, FishingEnvironment, FishingSpotInfo, SpotType, WeatherCondition } from './types/Environment.js';
+export type { TideInfo, WeatherData, WaterTemperatureData, FishingEnvironment, FishingSpotInfo, SpotType, WeatherCondition } from './types/Environment.js';
 export type { FishingPhase, BitePattern, SetHookResult, FightingState, FishingSessionResult, CastingResult, FishingPoint } from './types/Fishing.js';
 export type {
   ShoreCreatureCategory,
@@ -104,7 +104,7 @@ export {
 export { calculateTideInfo, evaluateFishingTide } from './simulation/TideCalculator.js';
 export { calculateBiteChance, pickFishByWeight, generateFishSize } from './simulation/FishBiteEngine.js';
 export type { BiteCalculationResult, BiteFactors } from './simulation/FishBiteEngine.js';
-export { updateLineTension, getLineTensionRatio, getEffectiveDragKg, getTensionDangerLevel, getRetrieveSpeedMps } from './simulation/LinePhysics.js';
+export { getLineTensionRatio, getEffectiveDragKg, getTensionDangerLevel, getRetrieveSpeedMps, adjustDrag, simulateFightTick, canReel, getRecommendedDragKg, castLineOut } from './simulation/LinePhysics.js';
 export type { LineState } from './simulation/LinePhysics.js';
 export { calculateCast } from './simulation/CastingModel.js';
 export type { CastInput, CastResult } from './simulation/CastingModel.js';
