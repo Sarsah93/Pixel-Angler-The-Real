@@ -33,7 +33,7 @@ export const PHASER_CONFIG: Phaser.Types.Core.GameConfig = {
     default: 'arcade',
     arcade: {
       gravity: { x: 0, y: 0 },
-      debug: import.meta.env.DEV,
+      debug: false,
     },
   },
   // 씬 목록은 main.ts에서 주입

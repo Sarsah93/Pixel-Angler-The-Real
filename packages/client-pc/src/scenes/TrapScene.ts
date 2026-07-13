@@ -92,6 +92,17 @@ export class TrapScene extends Phaser.Scene {
         }
       }
     });
+
+    // ─── ESC 키 나가기 ───
+    this.input.keyboard!.on('keydown-ESC', () => this.exitScene());
+  }
+
+  private exitScene(): void {
+    this.cameras.main.fadeOut(220, 0, 10, 20);
+    this.cameras.main.once('camerafadeoutcomplete', () => {
+      this.scene.stop();
+      this.scene.resume('FieldScene');
+    });
   }
 
   private createMapBackground(): void {
@@ -466,11 +477,7 @@ export class TrapScene extends Phaser.Scene {
     }).setOrigin(0.5, 0.5);
     btn.add([bg, text]);
     btn.on('pointerdown', () => {
-      this.cameras.main.fadeOut(220, 0, 10, 20);
-      this.cameras.main.once('camerafadeoutcomplete', () => {
-        this.scene.stop();
-        this.scene.resume('FieldScene');
-      });
+      this.exitScene();
     });
     btn.on('pointerover', () => bg.setAlpha(1.0));
     btn.on('pointerout', () => bg.setAlpha(0.9));

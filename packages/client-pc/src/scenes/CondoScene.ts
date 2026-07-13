@@ -48,6 +48,17 @@ export class CondoScene extends Phaser.Scene {
 
     // ─── 나가기 버튼 ───
     this.createBackButton();
+
+    // ─── ESC 키 나가기 ───
+    this.input.keyboard!.on('keydown-ESC', () => this.exitScene());
+  }
+
+  private exitScene(): void {
+    this.cameras.main.fadeOut(220, 0, 10, 20);
+    this.cameras.main.once('camerafadeoutcomplete', () => {
+      this.scene.stop();
+      this.scene.resume('FieldScene');
+    });
   }
 
   private initDummyCondo(): FloatingCondoState {
@@ -340,8 +351,7 @@ export class CondoScene extends Phaser.Scene {
     const text = this.add.text(0, 0, '← 나가기', { fontSize: '13px', color: '#ffffff' }).setOrigin(0.5, 0.5);
     btn.add([bg, text]);
     btn.on('pointerdown', () => {
-      this.scene.stop('CondoScene');
-      this.scene.resume('FieldScene');
+      this.exitScene();
     });
   }
 }

@@ -12,9 +12,11 @@ export class LicensePanel extends Phaser.GameObjects.Container {
   private bg?: Phaser.GameObjects.Graphics;
   private listContainer?: Phaser.GameObjects.Container;
   private detailContainer?: Phaser.GameObjects.Container;
+  private onCloseCallback?: () => void;
 
-  constructor(scene: Phaser.Scene, x: number, y: number) {
+  constructor(scene: Phaser.Scene, x: number, y: number, onClose?: () => void) {
     super(scene, x, y);
+    this.onCloseCallback = onClose;
     this.createUI();
   }
 
@@ -47,12 +49,51 @@ export class LicensePanel extends Phaser.GameObjects.Container {
     this.renderLicenseList();
 
     // 닫기 힌트
-    const closeHint = this.scene.add.text(0, 205, '화면 아무 곳이나 클릭하거나 패널을 닫으려면 ESC를 누르세요.', {
+    const closeHint = this.scene.add.text(0, 205, '패널을 닫으려면 ESC 또는 우측 상단 ✕ 버튼을 누르세요.', {
       fontFamily: '"Noto Sans KR", sans-serif',
       fontSize: '11px',
       color: '#6688aa',
     }).setOrigin(0.5);
     this.add(closeHint);
+
+    // 우측 상단 X 닫기 버튼 추가
+    const xBtn = this.scene.add.container(320 - 22, -220 + 22).setInteractive(
+      new Phaser.Geom.Rectangle(-10, -10, 20, 20),
+      Phaser.Geom.Rectangle.Contains
+    );
+    const xBg = this.scene.add.rectangle(0, 0, 20, 20, 0x1f3d5a, 0.9);
+    xBg.setStrokeStyle(1, 0xff4444, 0.8);
+    const xText = this.scene.add.text(0, 0, '✕', {
+      fontFamily: 'monospace',
+      fontSize: '12px',
+      color: '#ff6666',
+      fontStyle: 'bold'
+    }).setOrigin(0.5);
+    xBtn.add([xBg, xText]);
+    this.add(xBtn);
+
+    xBtn.on('pointerdown', (_pointer: Phaser.Input.Pointer, _localX: number, _localY: number, event: Phaser.Types.Input.EventData) => {
+      event.stopPropagation();
+      this.close();
+    });
+    xBtn.on('pointerover', () => {
+      xBg.setFillStyle(0xff4444);
+      xText.setColor('#ffffff');
+    });
+    xBtn.on('pointerout', () => {
+      xBg.setFillStyle(0x1f3d5a);
+      xText.setColor('#ff6666');
+    });
+
+    // 드래그앤드롭 기능 추가
+    this.setInteractive(
+      new Phaser.Geom.Rectangle(-320, -220, 640, 440),
+      Phaser.Geom.Rectangle.Contains
+    );
+    this.scene.input.setDraggable(this);
+    this.on('drag', (_pointer: Phaser.Input.Pointer, dragX: number, dragY: number) => {
+      this.setPosition(dragX, dragY);
+    });
   }
 
   private renderLicenseList(): void {
@@ -239,5 +280,12 @@ export class LicensePanel extends Phaser.GameObjects.Container {
       });
       this.detailContainer?.add(heldMsg);
     }
+  }
+
+  public close(): void {
+    if (this.onCloseCallback) {
+      this.onCloseCallback();
+    }
+    this.destroy();
   }
 }

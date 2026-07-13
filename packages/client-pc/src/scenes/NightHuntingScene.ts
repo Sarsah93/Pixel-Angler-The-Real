@@ -172,6 +172,17 @@ export class NightHuntingScene extends Phaser.Scene {
 
     // 해루질 시작
     this.startHunting();
+
+    // ─── ESC 키 나가기 ───
+    this.input.keyboard!.on('keydown-ESC', () => this.exitScene());
+  }
+
+  private exitScene(): void {
+    this.cameras.main.fadeOut(220, 0, 10, 20);
+    this.cameras.main.once('camerafadeoutcomplete', () => {
+      this.scene.stop();
+      this.scene.resume('FieldScene');
+    });
   }
 
   private drawRockyShore(): void {
@@ -399,11 +410,7 @@ export class NightHuntingScene extends Phaser.Scene {
       width * 0.5 + 70, height - 50, '← 돌아가기', '#444444'
     );
     this.exitButton.on('pointerdown', () => {
-      this.cameras.main.fadeOut(220, 0, 10, 20);
-      this.cameras.main.once('camerafadeoutcomplete', () => {
-        this.scene.stop();
-        this.scene.resume('FieldScene');
-      });
+      this.exitScene();
     });
   }
 

@@ -154,3 +154,7 @@ export { REGION_DATABASE, getRegionById, getRegionBySpotId, getFishingRegionByCo
 // Tile Gather Engine
 export type { EdgeTileType, GatherToolType, GatherableItem, GatherAttemptResult, SlipCheckResult } from './simulation/TileGatherEngine.js';
 export { GATHER_ITEM_DATABASE, checkSlipHazard, getAvailableGatherItems, attemptGather } from './simulation/TileGatherEngine.js';
+
+// World Map
+export type { FishingSpotNode, WorldMapSpotType } from './types/WorldMap.js';
+export { WORLD_NODE_DATABASE } from './types/WorldMap.js';

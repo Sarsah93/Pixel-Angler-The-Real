@@ -77,25 +77,47 @@ export class BootScene extends Phaser.Scene {
 
   private loadAssets(): void {
     // ─── 폰트 로드 (Google Fonts — 온라인 환경)
-    // 픽셀 폰트는 추후 실제 에셋으로 대체
     const fontLink = document.createElement('link');
     fontLink.rel = 'stylesheet';
     fontLink.href = 'https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Noto+Sans+KR:wght@400;700&display=swap';
     document.head.appendChild(fontLink);
 
-    // ─── 스프라이트 시트 (placeholder — 추후 실제 도트 에셋으로 교체)
-    // 임시 컬러 팔레트 텍스처 생성 (에셋 없이 동작하도록)
-    // 실제 도트 에셋 준비 후 아래 주석 해제
+    // ─── 월드맵 픽셀 배경 이미지 ───
+    // webglmap_pixel.png: VWorld 위성 이미지를 픽셀화 처리한 대한민국 지도
+    this.load.image('korea_pixel_map', '/webglmap_pixel.png');
 
-    // this.load.spritesheet('player', '/assets/sprites/player.png', { frameWidth: 16, frameHeight: 24 });
-    // this.load.image('breakwater_tileset', '/assets/sprites/breakwater_tileset.png');
-    // this.load.audio('waves', '/assets/audio/waves.ogg');
-    // this.load.audio('reel_click', '/assets/audio/reel_click.ogg');
-    // this.load.audio('fish_splash', '/assets/audio/fish_splash.ogg');
+    // ─── 남자 캐릭터 스프라이트 (12장) ───
+    // 정지 4방향
+    this.load.image('man-idle-front', '/characters/man/man-idle-front.png');
+    this.load.image('man-idle-back',  '/characters/man/man-idle-back.png');
+    this.load.image('man-idle-left',  '/characters/man/man-idle-left.png');
+    this.load.image('man-idle-right', '/characters/man/man-idle-right.png');
+    // 이동 4방향 × 2프레임
+    this.load.image('man-move-front-1', '/characters/man/man-move-front-1.png');
+    this.load.image('man-move-front-2', '/characters/man/man-move-front-2.png');
+    this.load.image('man-move-back-1',  '/characters/man/man-move-back-1.png');
+    this.load.image('man-move-back-2',  '/characters/man/man-move-back-2.png');
+    this.load.image('man-move-left-1',  '/characters/man/man-move-left-1.png');
+    this.load.image('man-move-left-2',  '/characters/man/man-move-left-2.png');
+    this.load.image('man-move-right-1', '/characters/man/man-move-right-1.png');
+    this.load.image('man-move-right-2', '/characters/man/man-move-right-2.png');
 
-    // 임시 더미 로딩 (에셋 없이 개발 시작)
+    // ─── 여자 캐릭터 스프라이트 (12장, 향후 캐릭터 선택 시 사용) ───
+    this.load.image('girl-idle-front', '/characters/girl/girl-idle-front.png');
+    this.load.image('girl-idle-back',  '/characters/girl/girl-idle-back.png');
+    this.load.image('girl-idle-left',  '/characters/girl/girl-idle-left.png');
+    this.load.image('girl-idle-right', '/characters/girl/girl-idle-right.png');
+    this.load.image('girl-move-front-1', '/characters/girl/girl-move-front-1.png');
+    this.load.image('girl-move-front-2', '/characters/girl/girl-move-front-2.png');
+    this.load.image('girl-move-back-1',  '/characters/girl/girl-move-back-1.png');
+    this.load.image('girl-move-back-2',  '/characters/girl/girl-move-back-2.png');
+    this.load.image('girl-move-left-1',  '/characters/girl/girl-move-left-1.png');
+    this.load.image('girl-move-left-2',  '/characters/girl/girl-move-left-2.png');
+    this.load.image('girl-move-right-1', '/characters/girl/girl-move-right-1.png');
+    this.load.image('girl-move-right-2', '/characters/girl/girl-move-right-2.png');
+
     this.load.on('complete', () => {
-      console.log('[BootScene] Assets loaded (placeholder mode)');
+      console.log('[BootScene] 에셋 로드 완료 — 픽셀 지도 + 캐릭터 스프라이트');
     });
   }
 }

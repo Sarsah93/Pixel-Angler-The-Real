@@ -16,7 +16,7 @@
 
 import Phaser from 'phaser';
 import { GameState } from '../store/GameState.js';
-import { getSpotById, SPOT_DATABASE, LicenseType, evaluateFishSellPrice, getUniversalItemById, WeatherEvents, getCurrentGameMinute, EdgeTileType, getAvailableGatherItems, checkSlipHazard, attemptGather, GatherableItem, FishingPoint } from '@tra/core';
+import { getSpotById, SPOT_DATABASE, LicenseType, evaluateFishSellPrice, WeatherEvents, getCurrentGameMinute, EdgeTileType, getAvailableGatherItems, checkSlipHazard, attemptGather, GatherableItem, FishingPoint } from '@tra/core';
 import { generateSpotFieldLayout, Zone, Building } from '../data/SpotFieldLayouts.js';
 import { HUD } from '../ui/HUD.js';
 import { MiniMap } from '../ui/MiniMap.js';
@@ -29,9 +29,14 @@ const TILE = 16; // 픽셀 타일 크기
 
 export class FieldScene extends Phaser.Scene {
   // 플레이어
-  private player!: Phaser.GameObjects.Graphics;
+  /** 실제 스프라이트 이미지 (man-idle/move 계열 텍스처 교체 방식) */
+  private playerSprite!: Phaser.GameObjects.Image;
   private playerBody!: Phaser.Types.Physics.Arcade.ImageWithDynamicBody;
   private playerFacing: 'up' | 'down' | 'left' | 'right' = 'down';
+  /** 애니메이션 프레임 토글 타이머 (ms 누적) */
+  private _walkFrameTimer = 0;
+  /** 현재 표시 중인 이동 프레임 (1 or 2) */
+  private _walkFrame: 1 | 2 = 1;
 
   // 동적 월드 크기 및 레이아웃
   private worldW = 2048;
@@ -60,10 +65,9 @@ export class FieldScene extends Phaser.Scene {
   // 팝업 LIFO 스택
   private openedPanels: (LicensePanel | InfoOverlayPanel)[] = [];
 
-  // 마우스 이동 대상 좌표
-  private targetX: number | null = null;
-  private targetY: number | null = null;
-  private isMovingToTarget = false;
+  // 캐릭터 스프라이트 고정 표시 크기 (idle 텍스처 기준 0.14배, 최초 create()에서 계산)
+  private playerSpriteTargetW = 0;
+  private playerSpriteTargetH = 0;
 
   // 플레이어 머리 위 활성화 말풍선
   private speechBubble?: Phaser.GameObjects.Container;
@@ -93,6 +97,19 @@ export class FieldScene extends Phaser.Scene {
   private lastSafeY = 0;
   /** 플레이어가 위험 칸에 있는지 여부 */
   private isOnDangerTile = false;
+
+  // ─── 차지 게이지 (캐스팅 시스템) ─────────────────────────
+  /** 마우스 꾹 누르기 중 여부 */
+  private _isCharging = false;
+  /** 게이지 값 0.0 ~ 1.0 */
+  private _chargeValue = 0;
+  /** 게이지 오르내리기 누적 타이머 (ms) */
+  private _chargeTimer = 0;
+  /** 차지 게이지 UI 컨테이너 */
+  private _chargeGaugeContainer: Phaser.GameObjects.Container | null = null;
+  /** 마우스 꾹 눌렀을 때의 world 좌표 (방향 판별) */
+  private _chargeTargetX = 0;
+  private _chargeTargetY = 0;
 
   constructor() {
     super({ key: 'FieldScene' });
@@ -131,10 +148,27 @@ export class FieldScene extends Phaser.Scene {
     this.playerBody.setCollideWorldBounds(true);
     this.playerBody.setSize(20, 20);
 
-    // ─── 플레이어 픽셀 그래픽 (Graphics로 직접 그림) ───
-    this.player = this.add.graphics();
-    this.player.setDepth(20);
-    this.drawPlayerSprite('down');
+    // ─── 플레이어 스프라이트 (man 캐릭터 이미지 에셋) ───
+    // BootScene에서 'man-idle-front' 등 12개 텍스처가 로드된 상태
+    this.playerSprite = this.add.image(
+      this.playerSpawnX, this.playerSpawnY, 'man-idle-front'
+    );
+    // move 텍스처 원본 해상도를 기준으로 표시 크기를 0.14배로 고정
+    // idle PNG가 move도다 훨씬 크며 같은 캐릭터를 표현하므로,
+    // move 기준으로 모든 폴림의 크기를 열어준다 (idle도 move 크기로 억제)
+    {
+      const src = this.textures.get('man-move-front-1').getSourceImage() as HTMLImageElement;
+      this.playerSpriteTargetW = src.width * 0.14;
+      this.playerSpriteTargetH = src.height * 0.14;
+    }
+    this.playerSprite.setDisplaySize(this.playerSpriteTargetW, this.playerSpriteTargetH);
+    this.playerSprite.setDepth(20);
+    // 그림자 (플레이어 다리 주변)
+    const shadow = this.add.ellipse(
+      this.playerSpawnX, this.playerSpawnY + 24, 20, 6, 0x000000, 0.28
+    ).setDepth(19);
+    // shadow는 update()에서 playerBody 위치에 동기화
+    this.registry.set('_playerShadow', shadow);
 
     // ─── 카메라: 플레이어 팔로우 ───
     this.cameras.main.setBounds(0, 0, this.worldW, this.worldH);
@@ -195,20 +229,38 @@ export class FieldScene extends Phaser.Scene {
 
     // 퀵슬롯 단축키 1 ~ 8 등록
     for (let i = 0; i < 8; i++) {
-      this.input.keyboard!.on(`keydown-${i + 1}`, () => this.handleQuickslotChange(i));
+      this.input.keyboard!.on(`keydown-${i + 1}`, () => {
+        GameState.updatePlayer({ activeQuickslotIndex: i });
+        if (this.hud) this.hud.updateQuickslotsVisual();
+        this.events.emit('quickslot-changed', i);
+      });
     }
 
-    // 마우스 클릭 이동 등록
+
+    // 낚싯대 장착 시 마우스 꾹 → 차지게이지
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-      if (this.openedPanels.length > 0) return;
-      // HUD 및 퀵바 영역(하단 80px 내)은 클릭 이동에서 제외
-      if (pointer.y > this.scale.height - 80 || (pointer.x < 240 && pointer.y < 120)) {
-        return;
-      }
-      const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
-      this.targetX = worldPoint.x;
-      this.targetY = worldPoint.y;
-      this.isMovingToTarget = true;
+      if (pointer.button !== 0) return; // 좌클릭만
+      if (this.openedPanels.length > 0 || this.slipWarningModal || this.gatherPanel) return;
+      if (pointer.y > this.scale.height - 80) return;
+      const activeSlot = GameState.player.activeQuickslotIndex;
+      if (activeSlot !== 0) return; // 슬롯 0 = 낚싯대
+      // 차지 시작
+      this._isCharging = true;
+      this._chargeValue = 0;
+      this._chargeTimer = 0;
+      const wp = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+      this._chargeTargetX = wp.x;
+      this._chargeTargetY = wp.y;
+      this.showChargeGauge();
+    });
+
+    this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
+      if (pointer.button !== 0) return;
+      if (!this._isCharging) return;
+      this._isCharging = false;
+      const power = this._chargeValue; // 0.0 ~ 1.0
+      this.hideChargeGauge();
+      this.handleCast(power, this._chargeTargetX, this._chargeTargetY);
     });
 
     // ─── HUD (카메라 fixed) ───
@@ -268,33 +320,10 @@ export class FieldScene extends Phaser.Scene {
     const keyboardActive = left || right || up || down;
 
     if (keyboardActive) {
-      // 키보드 조작 시 마우스 이동 목표 취소
-      this.isMovingToTarget = false;
-      this.targetX = null;
-      this.targetY = null;
-
       if (left)  { vx = -speed; this.playerFacing = 'left'; }
       if (right) { vx =  speed; this.playerFacing = 'right'; }
       if (up)    { vy = -speed; this.playerFacing = 'up'; }
       if (down)  { vy =  speed; this.playerFacing = 'down'; }
-    } else if (this.isMovingToTarget && this.targetX !== null && this.targetY !== null) {
-      // 마우스 클릭 자동 이동 처리
-      const dist = Phaser.Math.Distance.Between(this.playerBody.x, this.playerBody.y, this.targetX, this.targetY);
-      if (dist > 10) {
-        const angle = Phaser.Math.Angle.Between(this.playerBody.x, this.playerBody.y, this.targetX, this.targetY);
-        vx = Math.cos(angle) * speed;
-        vy = Math.sin(angle) * speed;
-
-        const deg = Phaser.Math.RadToDeg(angle);
-        if (deg >= -45 && deg < 45) this.playerFacing = 'right';
-        else if (deg >= 45 && deg < 135) this.playerFacing = 'down';
-        else if (deg >= 135 || deg < -135) this.playerFacing = 'left';
-        else this.playerFacing = 'up';
-      } else {
-        this.isMovingToTarget = false;
-        this.targetX = null;
-        this.targetY = null;
-      }
     }
 
     // 대각선 정규화
@@ -311,9 +340,12 @@ export class FieldScene extends Phaser.Scene {
       status: moving ? 'walking' : 'idle',
     });
 
-    // 플레이어 그래픽 동기화
-    this.player.setPosition(this.playerBody.x, this.playerBody.y);
-    this.drawPlayerSprite(this.playerFacing);
+    // ─── 플레이어 스프라이트 동기화 ───
+    this.playerSprite.setPosition(this.playerBody.x, this.playerBody.y);
+    // 그림자 동기화
+    const shadow = this.registry.get('_playerShadow') as Phaser.GameObjects.Ellipse | undefined;
+    if (shadow) shadow.setPosition(this.playerBody.x, this.playerBody.y + 24);
+    this.updatePlayerSprite(this.playerFacing, moving);
 
     // 머리 위 말풍선 동기화
     if (this.speechBubble && this.speechBubble.active) {
@@ -344,6 +376,9 @@ export class FieldScene extends Phaser.Scene {
 
     // 구역/건물 근접 감지
     this.checkProximity();
+
+    // 캐스팅 차지 게이지 갱신
+    this.updateChargeGauge(this.game.loop.delta);
   }
 
   // ─────────────────────────────────────────────────────────
@@ -480,67 +515,41 @@ export class FieldScene extends Phaser.Scene {
   }
 
   // ─────────────────────────────────────────────────────────
-  // 플레이어 픽셀 스프라이트 (Graphics로 직접 그림)
+  // 플레이어 스프라이트 텍스처 교체 (man 에셋 기반)
   // ─────────────────────────────────────────────────────────
-  private drawPlayerSprite(facing: 'up' | 'down' | 'left' | 'right'): void {
-    this.player.clear();
+  /**
+   * 이동 방향과 움직임 상태에 따라 playerSprite 텍스처 키를 교체.
+   * - idle: 'man-idle-{front|back|left|right}'
+   * - move: 'man-move-{front|back|left|right}-{1|2}' (200ms 교체 주기)
+   */
+  private updatePlayerSprite(facing: 'up' | 'down' | 'left' | 'right', isMoving: boolean): void {
+    // 방향 키 변환
+    const dirKey = facing === 'up' ? 'back' : facing === 'down' ? 'front' : facing;
 
-    const px = 0;
-    const py = -16; // 발 기준 중심
-
-    // 그림자
-    this.player.fillStyle(0x000000, 0.3);
-    this.player.fillEllipse(px, py + 26, 20, 8);
-
-    // 신발
-    this.player.fillStyle(0x222222, 1);
-    if (facing === 'down' || facing === 'up') {
-      this.player.fillRect(px - 6, py + 20, 5, 6);
-      this.player.fillRect(px + 2, py + 20, 5, 6);
+    let textureKey: string;
+    if (!isMoving) {
+      // 정지 상태
+      textureKey = `man-idle-${dirKey}`;
+      this._walkFrameTimer = 0;
+      this._walkFrame = 1;
     } else {
-      this.player.fillRect(px - 4, py + 20, 9, 6);
+      // 이동 상태 — 200ms 주기로 1 ↔ 2 프레임 교체
+      this._walkFrameTimer += this.game.loop.delta;
+      if (this._walkFrameTimer >= 200) {
+        this._walkFrameTimer = 0;
+        this._walkFrame = this._walkFrame === 1 ? 2 : 1;
+      }
+      textureKey = `man-move-${dirKey}-${this._walkFrame}`;
     }
 
-    // 하의 (바지)
-    this.player.fillStyle(0x1a3a6a, 1);
-    this.player.fillRect(px - 5, py + 12, 10, 10);
-
-    // 상의 (조끼/점퍼)
-    const bodyColor = facing === 'up' ? 0x2a5a3a : 0x2d5a8e;
-    this.player.fillStyle(bodyColor, 1);
-    this.player.fillRect(px - 6, py + 2, 12, 12);
-
-    // 팔
-    this.player.fillStyle(0x2a4a6a, 1);
-    if (facing !== 'left')  this.player.fillRect(px - 9, py + 3, 4, 8);
-    if (facing !== 'right') this.player.fillRect(px + 5, py + 3, 4, 8);
-
-    // 목
-    this.player.fillStyle(0xd4906a, 1);
-    this.player.fillRect(px - 2, py - 1, 4, 4);
-
-    // 머리 (얼굴)
-    this.player.fillStyle(0xd4906a, 1);
-    this.player.fillRect(px - 5, py - 10, 10, 10);
-    if (facing === 'down') {
-      // 눈
-      this.player.fillStyle(0x111111, 1);
-      this.player.fillRect(px - 3, py - 6, 2, 2);
-      this.player.fillRect(px + 1, py - 6, 2, 2);
+    // 텍스처가 이미 같으면 스킵 (성능 최적화)
+    if (this.playerSprite.texture.key !== textureKey) {
+      this.playerSprite.setTexture(textureKey);
     }
-
-    // 모자 (낚시용 버킷햇)
-    this.player.fillStyle(0x3a5a3a, 1);
-    this.player.fillRect(px - 7, py - 12, 14, 3);
-    this.player.fillRect(px - 4, py - 18, 8, 7);
-
-    // 낚싯대 (오른쪽에 지참)
-    if (facing !== 'left') {
-      this.player.lineStyle(2, 0xc8a060, 1);
-      this.player.beginPath();
-      this.player.moveTo(px + 6, py + 2);
-      this.player.lineTo(px + 22, py - 20);
-      this.player.strokePath();
+    // 텍스처 교체 여부에 관계없이 표시 크기를 idle 기준으로 강제 고정
+    // (move PNG 원본 해상도가 달라도 화면 크기가 항상 동일하게 유지됨)
+    if (this.playerSpriteTargetW > 0) {
+      this.playerSprite.setDisplaySize(this.playerSpriteTargetW, this.playerSpriteTargetH);
     }
   }
 
@@ -1096,17 +1105,19 @@ export class FieldScene extends Phaser.Scene {
   // ─────────────────────────────────────────────────────────
   private toggleLicensePanel(): void {
     if (this.activeLicensePanel) {
-      const idx = this.openedPanels.indexOf(this.activeLicensePanel);
-      if (idx !== -1) this.openedPanels.splice(idx, 1);
-      this.activeLicensePanel.destroy();
-      this.activeLicensePanel = null;
+      this.activeLicensePanel.close();
     } else {
-      const camX = this.cameras.main.scrollX;
-      const camY = this.cameras.main.scrollY;
       this.activeLicensePanel = new LicensePanel(
         this,
-        camX + this.scale.width / 2,
-        camY + this.scale.height / 2
+        this.scale.width / 2,
+        this.scale.height / 2,
+        () => {
+          if (this.activeLicensePanel) {
+            const idx = this.openedPanels.indexOf(this.activeLicensePanel);
+            if (idx !== -1) this.openedPanels.splice(idx, 1);
+            this.activeLicensePanel = null;
+          }
+        }
       );
       this.activeLicensePanel.setScrollFactor(0);
       this.add.existing(this.activeLicensePanel);
@@ -1136,20 +1147,16 @@ export class FieldScene extends Phaser.Scene {
       ``,
       `🎒 소모품 목록:`,
       ...inv.consumables.map(c => {
-        const itemDef = getUniversalItemById(c.itemId);
-        const nameKo = itemDef ? itemDef.nameKo : c.itemId;
-        return `• ${nameKo} (${c.quantity}개) [상태: ${c.conditionState}]`;
+        return `• ${c.itemId} (${c.quantity}개) [상태: ${c.conditionState}]`;
       }),
       ``,
       `🐟 살림망 보관 물고기: ${inv.livewell.length}마리`
     ];
 
-    const camX = this.cameras.main.scrollX;
-    const camY = this.cameras.main.scrollY;
     const panel = new InfoOverlayPanel(
       this,
-      camX + this.scale.width / 2,
-      camY + this.scale.height / 2,
+      this.scale.width / 2 + 130, // 화면 가운데에서 오른쪽 부근
+      this.scale.height / 2,
       '🎒 인벤토리 (Inventory)',
       'inventory',
       lines,
@@ -1190,12 +1197,10 @@ export class FieldScene extends Phaser.Scene {
       `• 야간 개펄의 전설 (낙지 1마리 획득) ${completed.includes('sub_night_octopus') ? '✅' : '⬜'}`,
     ];
 
-    const camX = this.cameras.main.scrollX;
-    const camY = this.cameras.main.scrollY;
     const panel = new InfoOverlayPanel(
       this,
-      camX + this.scale.width / 2,
-      camY + this.scale.height / 2,
+      this.scale.width / 2, // 화면 중앙 부근
+      this.scale.height / 2,
       '🏆 퀘스트 저널 (Quests)',
       'quest',
       lines,
@@ -1247,12 +1252,10 @@ export class FieldScene extends Phaser.Scene {
       ` • 보유 면허: ${GameState.licenses.filter(l => !l.isExpired).length} 개`
     ];
 
-    const camX = this.cameras.main.scrollX;
-    const camY = this.cameras.main.scrollY;
     const panel = new InfoOverlayPanel(
       this,
-      camX + this.scale.width / 2,
-      camY + this.scale.height / 2,
+      this.scale.width / 2 - 130, // 화면 가운데에서 왼쪽 부근
+      this.scale.height / 2,
       '📊 꾼의 능력치 및 기술 (Angler Stats)',
       'stat',
       lines,
@@ -1320,6 +1323,105 @@ export class FieldScene extends Phaser.Scene {
       alpha: 0,
       duration: 1500,
       onComplete: () => bubble.destroy()
+    });
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // 차지 게이지 UI (낚싯대 장착 슬롯 0 전용)
+  // ─────────────────────────────────────────────────────────
+
+  /** 차지 게이지 팝업 생성 (플레이어 위) */
+  private showChargeGauge(): void {
+    this.hideChargeGauge(); // 기존 게이지 제거
+
+    const { x, y } = this.playerBody;
+    const gaugeCont = this.add.container(x, y - 60).setDepth(200);
+
+    // 배경 바
+    const bgBar = this.add.graphics();
+    bgBar.fillStyle(0x0a1628, 0.85);
+    bgBar.fillRoundedRect(-41, -8, 82, 16, 3);
+    bgBar.lineStyle(1, 0x4af2a1, 0.6);
+    bgBar.strokeRoundedRect(-41, -8, 82, 16, 3);
+
+    // 채워지는 바
+    const fillBar = this.add.graphics();
+    fillBar.name = 'fillBar';
+    fillBar.fillStyle(0x4af2a1, 1);
+    fillBar.fillRect(-40, -7, 0, 14); // 초기값 0폭
+
+    // 힘 텍스트
+    const powerTxt = this.add.text(0, -20, '캐스팅 준비 중...', {
+      fontFamily: 'monospace',
+      fontSize: '9px',
+      color: '#4af2a1',
+    }).setOrigin(0.5);
+
+    gaugeCont.add([bgBar, fillBar, powerTxt]);
+    this._chargeGaugeContainer = gaugeCont;
+  }
+
+  /** 차지 게이지 제거 */
+  private hideChargeGauge(): void {
+    if (this._chargeGaugeContainer) {
+      this._chargeGaugeContainer.destroy();
+      this._chargeGaugeContainer = null;
+    }
+  }
+
+  /**
+   * update() 내부에서 호출 — 차지 게이지 값 갱신 및 UI 동기화
+   * 게이지는 1초 주기로 0→1→0 왕복하며 정점 타이밍 맞추기 스킬샷
+   */
+  private updateChargeGauge(delta: number): void {
+    if (!this._isCharging) return;
+
+    // 1000ms 왕복
+    this._chargeTimer += delta;
+    const period = 1000; // ms
+    const t = (this._chargeTimer % period) / period; // 0~1
+    this._chargeValue = Math.sin(t * Math.PI); // 0→1→0
+
+    if (this._chargeGaugeContainer) {
+      // 게이지를 항상 플레이어 위에 따라다님
+      this._chargeGaugeContainer.setPosition(this.playerBody.x, this.playerBody.y - 60);
+
+      const fillBar = this._chargeGaugeContainer.getByName('fillBar') as Phaser.GameObjects.Graphics | null;
+      if (fillBar) {
+        const ratio = this._chargeValue; // 0~1
+        const maxW = 80;
+        const filledW = ratio * maxW;
+        // 색상 변화: 낮으면 녹색 → 높으면 황금
+        const r = Math.floor(74 + (255 - 74) * ratio);
+        const g = Math.floor(242 - (242 - 180) * ratio);
+        const b = Math.floor(161 * (1 - ratio));
+        const col = (r << 16) | (g << 8) | b;
+        fillBar.clear();
+        fillBar.fillStyle(col, 1);
+        fillBar.fillRect(-40, -7, filledW, 14);
+      }
+    }
+  }
+
+  /**
+   * 캐스팅 실행 (power: 0~1)
+   * 낚시 포인트에 있다면 FishingScene 진입 (차지 파워 전달)
+   */
+  private handleCast(power: number, _targetX: number, _targetY: number): void {
+    if (!this.fishingZoneActive) {
+      this.showPlayerFloatingHint(`🎣 낚시 포인트로 이동 후 캐스팅하세요!`);
+      return;
+    }
+    const pct = Math.round(power * 100);
+    this.showPlayerFloatingHint(`🎣 캐스팅! 파워 ${pct}%`);
+    // 낚시 씬 진입 — 파워 데이터 전달 (FishingScene에서 activeFishingZone 기반)
+    this.time.delayedCall(300, () => {
+      const point = (this.activeFishingZone as Zone & { action?: string }) as { id?: string };
+      this.cameras.main.fadeOut(250, 0, 10, 20);
+      this.cameras.main.once('camerafadeoutcomplete', () => {
+        this.scene.pause('FieldScene');
+        this.scene.launch('FishingScene', { point, castPower: power });
+      });
     });
   }
 }

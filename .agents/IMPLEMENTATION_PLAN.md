@@ -81,6 +81,13 @@ Phase 9: Tauri v2 통합 & Steam 패키징     ⬜ 대기
 | WASD ↔ 방향키 완전 분리 (이동은 방향키 전용) | ✅ |
 | U 키: 제작대(CraftScene) 단축키 등록 | ✅ |
 | noUnusedLocals 전면 준수 (미사용 변수 정리) | ✅ |
+| 단축키 팝업 창 (Inventory, Quest, Status, License) 드래그앤드롭 및 토글 해제 | ✅ |
+| 팝업 창 우측 상단 ✕ 네모 닫기 단추 구현 및 화면비 절대좌표 뷰포트 배치 | ✅ |
+| 팝업 본문 텍스트 GeometryMask 기반 마우스 휠 스크롤 지원 | ✅ |
+| 낚싯대 캐스팅 시 파워 차지 게이지(스킬샷) 인터랙션 추가 및 낚시 씬 연동 | ✅ |
+| 팝업·미니맵·HUD 활성화 시 클릭이동 차단 및 퀵슬롯 단축키(1~8) HUD 즉시 갱신 | ✅ |
+| 울릉도 핀포인트 좌표 최적화 및 독도 노드(지도 동단 노란 체크위치) 신규 추가 | ✅ |
+| 모든 서브 씬(Cook, Condo, Restaurant, NightHunting, Trap) ESC 단축키 & fadeOut 복귀 일관성 적용 | ✅ |
 
 ---
 
@@ -183,16 +190,30 @@ Phase 9: Tauri v2 통합 & Steam 패키징     ⬜ 대기
 - `QuestDatabase` 연동 → 활성 퀘스트 조건 체크 (어종 포획, 라이선스 취득 등)
 - 퀘스트 달성 시 알림 팝업 + `GameState` 업데이트
 
-### 6-5. WorldMapScene → 도트 월드맵 렌더링 전환
+### 6-5. WorldMapScene → 도트 월드맵 렌더링 전환 (✅ 완료, 2026-07-13)
 **파일**: `packages/client-pc/src/scenes/WorldMapScene.ts`
 
-> **설계 문서**: `realdata_architecture.md` 참고
+| 항목 | 결과 |
+|---|---|
+| `FishingSpotNode` 인터페이스 및 `WORLD_NODE_DATABASE` (10개 사이트) | ✅ |
+| `webglmap_pixel.png` 배경 이미지 배치 (수동 폴리곤 윤곽선 제거) | ✅ |
+| `WORLD_NODE_DATABASE` 기반 동적 핀포인트 마커 렌더링 | ✅ |
+| 리스트 hover ↔ 지도 마커 양방향 하이라이트 동기화 | ✅ |
+| 클릭 시 카메라 줌인 애니메이션 (1.5x) 후 스팟 뷰 전환 | ✅ |
+| 스팟 툴팁 (물때/수온/어종, 지역 노드 툴팁) | ✅ |
+| 범례 (방파제/갯바위/선상/갯벌/해수욕장) | ✅ |
+| 에셋 public 배포 (`client-pc/public/webglmap_pixel.png`) | ✅ |
 
-- 픽셀 스타일 한국 해안선 배경 그리기
-- `SPOT_DATABASE` 순회 → `dotMapX/Y` 기반 노드 배치
-- 스팟 타입별 색상 구분 (방파제=하늘색, 갯바위=산호색, 선상=금색 등)
-- 마우스 오버: 현재 물때·날씨·추천 어종 미리보기 카드
-- 라이선스 없는 스팟: 잠금 표시 + 면허사무소 안내
+### 6-1e. 캐릭터 스프라이트 교체 (✅ 완료, 2026-07-13)
+
+| 항목 | 결과 |
+|---|---|
+| `packages/man/` 12개 PNG → `client-pc/public/characters/man/` 복사 | ✅ |
+| `packages/girl/` 12개 PNG → `client-pc/public/characters/girl/` 복사 | ✅ |
+| `BootScene.ts` preload()에 25개 이미지 로드 (남자 12 + 여자 12 + 지도 1) | ✅ |
+| `FieldScene.ts`: `player: Graphics` → `playerSprite: Image` 교체 | ✅ |
+| 4방향(front/back/left/right) × idle/move × 2프레임 걷기 애니메이션 (200ms 주기) | ✅ |
+| 발 아래 반투명 그림자 타원 (`registry '_playerShadow'` 동기화) | ✅ |
 
 ### 6-6. WeatherEventEmitter — 돌발 기상 이벤트
 **신규 파일**: `packages/core/src/services/WeatherEventEmitter.ts`
@@ -332,10 +353,10 @@ FieldScene  ← 탑다운 월드 허브 (pause 상태 유지)
 
 ---
 
-## 현재 빌드 상태 (2026-07-08)
+## 현재 빌드 상태 (2026-07-13)
 
 ```bash
-pnpm run build                                  → ✅ 3/3 패키지 성공
+pnpm run build                                  → ✅ 4/4 패키지 성공
 pnpm --filter @tra/client-pc run typecheck      → ✅ 0 오류
 ```
 

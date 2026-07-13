@@ -90,9 +90,10 @@ the-real-angler/
 - 타입: `PlayerState`, `InventoryState`, `Activities`, `License` 등
 
 **`@tra/client-pc`** — Phaser 씬 및 UI
-- 씬: Boot → MainMenu → WorldMap → Field → (Fishing / NightHunting / Trap / Cook / TackleRoom / AnglerLog / Restaurant / Condo / TideChart)
+- 씬: Boot → MainMenu → WorldMap(픽셀 지도+동적 핀포인트) → Field → (Fishing / NightHunting / Trap / Cook / TackleRoom / AnglerLog / Restaurant / Condo / TideChart)
 - UI 컴포넌트: `HUD`, `MiniMap`, `LicensePanel`, `InfoOverlayPanel`, `CoolingBoxPanel`, `EnvironmentHUD`, `BiteIndicator` 등
-- 전역 상태: `GameState` (싱글톤)
+- 전역 상태: `GameState` (싱글턴)
+- 에셋: `public/webglmap_pixel.png`, `public/characters/man/` (12장), `public/characters/girl/` (12장)
 
 **`@tra/server`** — 멀티플레이 백엔드
 - Express REST + Socket.IO WebSocket
@@ -160,10 +161,10 @@ pnpm --filter @tra/client-pc run typecheck
 pnpm typecheck
 ```
 
-### 현재 빌드 상태 (2026-07-08 기준)
+### 현재 빌드 상태 (2026-07-13 기준)
 
 ```
-pnpm run build                                   → ✅ 3/3 패키지 성공
+pnpm run build                                   → ✅ 4/4 패키지 성공
 pnpm --filter @tra/client-pc run typecheck       → ✅ 0 오류
 ```
 

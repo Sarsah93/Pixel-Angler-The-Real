@@ -57,6 +57,9 @@ export class RestaurantScene extends Phaser.Scene {
     // ─── 나가기 버튼 ───
     this.createBackButton();
 
+    // ─── ESC 키 나가기 ───
+    this.input.keyboard!.on('keydown-ESC', () => this.exitScene());
+
     // ─── 손님 자동 생성 (영업 중일 때) ───
     this.time.addEvent({
       delay: 8000,
@@ -66,6 +69,14 @@ export class RestaurantScene extends Phaser.Scene {
           this.spawnCustomer();
         }
       },
+    });
+  }
+
+  private exitScene(): void {
+    this.cameras.main.fadeOut(220, 0, 10, 20);
+    this.cameras.main.once('camerafadeoutcomplete', () => {
+      this.scene.stop();
+      this.scene.resume('FieldScene');
     });
   }
 
@@ -259,8 +270,7 @@ export class RestaurantScene extends Phaser.Scene {
     const text = this.add.text(0, 0, '← 나가기', { fontSize: '14px', color: '#ffffff' }).setOrigin(0.5, 0.5);
     btn.add([bg, text]);
     btn.on('pointerdown', () => {
-      this.scene.stop('RestaurantScene');
-      this.scene.resume('FieldScene');
+      this.exitScene();
     });
     btn.on('pointerover', () => bg.setAlpha(1.0));
     btn.on('pointerout', () => bg.setAlpha(0.9));
