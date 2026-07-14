@@ -315,6 +315,7 @@ export const SPOT_DATABASE: FishingSpotInfo[] = [
     hasRentalService: false,
     hasNearbyTackleShop: false,
     hasNearbyConvenienceStore: false,
+    description: '대한민국 동단 독도 동도 선착장. 거센 조류와 청정 수역이 만나 우럭·참돔·부시리 대물이 붙는 화산섬 갯바위 포인트.',
   },
 ];
 

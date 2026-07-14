@@ -68,6 +68,19 @@ export const REGION_DATABASE: RegionDef[] = [
     ],
     representativeSpeciesIds: ['largescale_blackfish', 'black_seabream'],
   },
+  // ── 전남 여수 ──────────────────────────────
+  {
+    id: 'jeonnam_yeosu',
+    nameKo: '전남 여수',
+    shortNameKo: '여수',
+    description: '한려수도의 관문 여수. 오동도 앞바다 선상에서 갈치·부시리·감성돔이 쏟아지는 남해 낚시의 메카.',
+    latitude: 34.7395,
+    longitude: 127.7561,
+    subSpotIds: [
+      'yeosu_odongdo_boat',
+    ],
+    representativeSpeciesIds: ['hairtail', 'yellowtail', 'black_seabream'],
+  },
   // ── 강원 속초 ──────────────────────────────
   {
     id: 'gangwon_sokcho',

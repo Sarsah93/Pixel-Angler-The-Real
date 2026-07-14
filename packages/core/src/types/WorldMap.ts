@@ -40,6 +40,12 @@ export interface FishingSpotNode {
   availableTypes: WorldMapSpotType[];
   /** RegionDatabase와 연결된 ID (클릭 시 드릴다운) */
   regionDatabaseId: string;
+  /**
+   * 지역 상세 픽셀 지도 에셋 슬러그.
+   * pixelazed 폴더의 `{mapSlug}_2_pixelazed.png` 파일명 규칙과 매핑되며,
+   * 클릭 시 해당 지도로 줌인 진입할 때 텍스처 키(`zoom_{mapSlug}`)로 사용됩니다.
+   */
+  mapSlug: string;
 }
 
 /**
@@ -61,6 +67,7 @@ export const WORLD_NODE_DATABASE: FishingSpotNode[] = [
     spotsCount: 2,
     availableTypes: ['BREAKWATER', 'BEACH'],
     regionDatabaseId: 'gangwon_sokcho',
+    mapSlug: 'sokcho',
   },
   // ── 인천 ──
   {
@@ -73,6 +80,7 @@ export const WORLD_NODE_DATABASE: FishingSpotNode[] = [
     spotsCount: 1,
     availableTypes: ['BREAKWATER', 'MUD'],
     regionDatabaseId: 'incheon',
+    mapSlug: 'incheon',
   },
   // ── 충남 태안 ──
   {
@@ -85,6 +93,7 @@ export const WORLD_NODE_DATABASE: FishingSpotNode[] = [
     spotsCount: 1,
     availableTypes: ['MUD', 'BEACH'],
     regionDatabaseId: 'chungnam_taean',
+    mapSlug: 'taean',
   },
   // ── 경북 포항 ──
   {
@@ -97,6 +106,7 @@ export const WORLD_NODE_DATABASE: FishingSpotNode[] = [
     spotsCount: 6,
     availableTypes: ['BREAKWATER', 'MUD', 'BOAT'],
     regionDatabaseId: 'gyeongbuk_pohang',
+    mapSlug: 'pohang',
   },
   // ── 울산 ──
   {
@@ -109,6 +119,7 @@ export const WORLD_NODE_DATABASE: FishingSpotNode[] = [
     spotsCount: 1,
     availableTypes: ['BREAKWATER', 'REEF'],
     regionDatabaseId: 'ulsan',
+    mapSlug: 'ulsan',
   },
   // ── 부산 ──
   {
@@ -121,6 +132,7 @@ export const WORLD_NODE_DATABASE: FishingSpotNode[] = [
     spotsCount: 1,
     availableTypes: ['BREAKWATER', 'REEF', 'BOAT'],
     regionDatabaseId: 'busan',
+    mapSlug: 'busan',
   },
   // ── 경남 거제 ──
   {
@@ -133,6 +145,20 @@ export const WORLD_NODE_DATABASE: FishingSpotNode[] = [
     spotsCount: 2,
     availableTypes: ['BREAKWATER', 'REEF'],
     regionDatabaseId: 'gyeongnam_geoje',
+    mapSlug: 'geoje',
+  },
+  // ── 전남 여수 ──
+  {
+    id: 'jeonnam_yeosu',
+    name: '전남 여수',
+    shortName: '여수',
+    region: '전라남도',
+    pixelX: 124,
+    pixelY: 183,
+    spotsCount: 1,
+    availableTypes: ['BOAT', 'BREAKWATER'],
+    regionDatabaseId: 'jeonnam_yeosu',
+    mapSlug: 'yeosu',
   },
   // ── 제주 ──
   {
@@ -145,6 +171,7 @@ export const WORLD_NODE_DATABASE: FishingSpotNode[] = [
     spotsCount: 1,
     availableTypes: ['BREAKWATER', 'REEF', 'BOAT'],
     regionDatabaseId: 'jeju',
+    mapSlug: 'jeju',
   },
   // ── 울릉도 ──
   {
@@ -157,6 +184,7 @@ export const WORLD_NODE_DATABASE: FishingSpotNode[] = [
     spotsCount: 1,
     availableTypes: ['REEF', 'BOAT'],
     regionDatabaseId: 'ulleungdo',
+    mapSlug: 'ulleung',
   },
   // ── 독도 ──
   {
@@ -169,5 +197,6 @@ export const WORLD_NODE_DATABASE: FishingSpotNode[] = [
     spotsCount: 1,
     availableTypes: ['REEF', 'BOAT'],
     regionDatabaseId: 'dokdo',
+    mapSlug: 'dokdo',
   },
 ];

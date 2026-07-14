@@ -31,6 +31,13 @@
 - 건물 6종: 낚시점 / 마트 / 식당 / 면허사무소 / 민박(세이브) / 어판장
 - `[E]` 키 근접 상호작용 + 건물별 씬 전환
 
+### 실지형 기반 지역 타일맵 (신규, 속초)
+- 실제 지형 지도(카카오/네이버 스타일)를 색상 분류하여 **2D 픽셀 탑다운 타일맵**으로 변환
+- `tools/build_region_maps.py` → `public/data/<region>/*.json` → `RegionFieldScene` 렌더
+- 바다(이동 불가)·육지·건물(충돌)·잔디 타일 자동 분류, 실제 지리 반영
+- 인접 맵 간 엣지 전환 (속초: 속초항 3맵 ↔ 연결로 ↔ 동명항 3맵)
+- 바다 인접 시 낚싯대 좌클릭 차지 → 캐스팅 연출
+
 ### 단축키 (FieldScene 기준)
 | 키 | 기능 |
 |---|---|
@@ -90,10 +97,11 @@ the-real-angler/
 - 타입: `PlayerState`, `InventoryState`, `Activities`, `License` 등
 
 **`@tra/client-pc`** — Phaser 씬 및 UI
-- 씬: Boot → MainMenu → WorldMap(픽셀 지도+동적 핀포인트) → Field → (Fishing / NightHunting / Trap / Cook / TackleRoom / AnglerLog / Restaurant / Condo / TideChart)
+- 씬: Boot → MainMenu → WorldMap(픽셀 지도+동적 핀포인트) → RegionField(실지형 타일맵) / Field → (Fishing / NightHunting / Trap / Cook / TackleRoom / AnglerLog / Restaurant / Condo / TideChart)
 - UI 컴포넌트: `HUD`, `MiniMap`, `LicensePanel`, `InfoOverlayPanel`, `CoolingBoxPanel`, `EnvironmentHUD`, `BiteIndicator` 등
 - 전역 상태: `GameState` (싱글턴)
-- 에셋: `public/webglmap_pixel.png`, `public/characters/man/` (12장), `public/characters/girl/` (12장)
+- 에셋: `public/webglmap_pixelazed.png`, `public/pixelazed/*_2_pixelazed.png`(지역 상세 지도), `public/data/<region>/*.json`(타일맵 데이터), `public/characters/man/`·`girl/` (각 12장)
+- 지도 변환 도구: `tools/build_region_maps.py` (실지형 PNG → 타일/콜리전 JSON)
 
 **`@tra/server`** — 멀티플레이 백엔드
 - Express REST + Socket.IO WebSocket
@@ -161,19 +169,22 @@ pnpm --filter @tra/client-pc run typecheck
 pnpm typecheck
 ```
 
-### 현재 빌드 상태 (2026-07-13 기준)
+### 현재 빌드 상태 (2026-07-14 기준)
 
 ```
-pnpm run build                                   → ✅ 4/4 패키지 성공
+pnpm --filter @tra/core build                    → ✅ 성공
 pnpm --filter @tra/client-pc run typecheck       → ✅ 0 오류
+pnpm --filter @tra/client-pc build               → ✅ 성공
 ```
+
+> 지형 지도(`pixelazed/<region>/`)를 수정하면 `py tools/build_region_maps.py <region>` 로 타일 데이터 재생성.
 
 ---
 
 ## 씬 전환 아키텍처
 
 ```
-Boot → MainMenu → WorldMap
+Boot → MainMenu → WorldMap ──→ RegionFieldScene (실지형 타일맵, ESC로 복귀)
                      ↓ scene.start (페이드)
                   FieldScene  ← 탑다운 허브 (pause 유지)
                      ↓ pause + launch (페이드)

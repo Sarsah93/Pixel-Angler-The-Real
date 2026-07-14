@@ -25,12 +25,17 @@ import {
   LicenseType,
   WORLD_NODE_DATABASE,
   FishingSpotNode,
+  REGION_MAP_GRAPHS,
 } from '@tra/core';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { ConfirmTripModal } from '../ui/ConfirmTripModal.js';
 
 // ── 뷰 상태 머신 ────────────────────────────────────────
-type ViewState = 'region' | 'spot' | 'confirm';
+// region    : 전국 지도 + 지역 핀/리스트 선택
+// regionmap : 지역 클릭 후 해당 지역 픽셀 지도로 줌인 진입 (포인트는 추후 구현)
+// spot      : (임시) 위경도 기반 낚시터 리스트 — regionmap에서 임시 진입
+// confirm   : 출조 확인 모달
+type ViewState = 'region' | 'regionmap' | 'spot' | 'confirm';
 
 // ── 범례 설정 ────────────────────────────────────────────
 const LEGEND_ITEMS: { type: string; color: number; label: string }[] = [
@@ -76,6 +81,9 @@ export class WorldMapScene extends Phaser.Scene {
 
   // ── 줌인 상태 ─────────────────────────────────────────
   private isZooming = false;
+
+  // ── 현재 진입한 지역 (regionmap/spot 뷰 컨텍스트) ────────
+  private _currentRegion?: RegionDef;
 
   // ── 핀 편집 모드 (개발자 도구: P 키 토글) ────────────
   private _pinEditMode = false;
@@ -442,7 +450,17 @@ export class WorldMapScene extends Phaser.Scene {
       case 'confirm':
         this.closeConfirmModal();
         break;
-      case 'spot':
+      case 'spot': {
+        // 임시 낚시터 리스트 → 지역 지도로 복귀
+        const region = this._currentRegion;
+        const node = region
+          ? WORLD_NODE_DATABASE.find((n: FishingSpotNode) => n.regionDatabaseId === region.id)
+          : undefined;
+        if (region) this.renderRegionMapView(region, node);
+        else this.switchToRegionView();
+        break;
+      }
+      case 'regionmap':
         this.switchToRegionView();
         break;
       case 'region':
@@ -626,24 +644,175 @@ export class WorldMapScene extends Phaser.Scene {
     if (this.isZooming) return;
 
     if (node) {
-      // 클릭된 핀 위치로 카메라 줌인
+      // 클릭된 핀 위치로 카메라 줌인 (리드인 연출) → 지역 상세 지도 진입
       const { x, y } = this.nodeToPinXY(node);
       this.isZooming = true;
       this.cameras.main.pan(x, y, 400, 'Cubic.easeInOut');
       this.cameras.main.zoomTo(1.5, 400, 'Cubic.easeInOut', false, (_cam: Phaser.Cameras.Scene2D.Camera, progress: number) => {
         if (progress === 1) {
           this.isZooming = false;
-          // 짧은 딜레이 후 스팟 뷰로 전환
-          this.time.delayedCall(160, () => {
+          // 짧은 딜레이 후 지역 지도 뷰로 전환
+          this.time.delayedCall(120, () => {
             this.cameras.main.setZoom(1);
             this.cameras.main.centerOn(GAME_WIDTH / 2, GAME_HEIGHT / 2);
-            this.renderSpotView(region);
+            this.renderRegionMapView(region, node);
           });
         }
       });
     } else {
-      this.renderSpotView(region);
+      this.renderRegionMapView(region, undefined);
     }
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // 지역 상세 지도 뷰 (REGION_MAP) — pixelazed 지도로 줌인 진입
+  // 지도 내 세부 포인트 지정은 추후 구현 (타일맵 에셋 준비 후)
+  // ═══════════════════════════════════════════════════════
+  private renderRegionMapView(region: RegionDef, node: FishingSpotNode | undefined): void {
+    this.viewState = 'regionmap';
+    this._currentRegion = region;
+    this.regionContainer.removeAll(true);
+    this.spotContainer.removeAll(true);
+    this.pinContainer.removeAll(true);
+    this.pinMarkerMap.clear();
+    this.hideTooltip();
+
+    // ── 지도 배치 영역 (우측에 크게) ─────────────────────
+    const mapSize = 560;
+    const cx = 720;                 // 지도 중심 X
+    const cy = GAME_HEIGHT / 2;     // 지도 중심 Y
+    const fullScale = mapSize / MAP_NATIVE_W;
+    const texKey = node ? `zoom_${node.mapSlug}` : '';
+    const hasMap = texKey !== '' && this.textures.exists(texKey);
+
+    // ── 지도 프레임 (테두리) ─────────────────────────────
+    const frame = this.add.graphics();
+    frame.lineStyle(2, 0x1f3d5a, 0.9);
+    frame.strokeRect(cx - mapSize / 2 - 2, cy - mapSize / 2 - 2, mapSize + 4, mapSize + 4);
+    this.spotContainer.add(frame);
+
+    if (hasMap) {
+      // 픽셀 지도 이미지 — 핀 위치에서 작게 시작해 중앙으로 확대(줌인 연출)
+      const start = node ? this.nodeToPinXY(node) : { x: cx, y: cy };
+      const mapImg = this.add.image(start.x, start.y, texKey).setOrigin(0.5);
+      mapImg.setScale(fullScale * 0.14);
+      this.spotContainer.add(mapImg);
+
+      this.tweens.add({
+        targets: mapImg,
+        x: cx, y: cy,
+        scaleX: fullScale, scaleY: fullScale,
+        duration: 460,
+        ease: 'Cubic.easeOut',
+      });
+    } else {
+      // 지도 미준비 지역 (예: 태안) — 플레이스홀더
+      const ph = this.add.graphics();
+      ph.fillStyle(0x0a1826, 0.95);
+      ph.fillRect(cx - mapSize / 2, cy - mapSize / 2, mapSize, mapSize);
+      ph.lineStyle(1, 0x24435f, 0.8);
+      for (let gx = -mapSize / 2; gx <= mapSize / 2; gx += 40) {
+        ph.lineBetween(cx + gx, cy - mapSize / 2, cx + gx, cy + mapSize / 2);
+        ph.lineBetween(cx - mapSize / 2, cy + gx, cx + mapSize / 2, cy + gx);
+      }
+      const phText = this.add.text(cx, cy, `🗺️  ${region.nameKo}\n지도 준비중`, {
+        fontFamily: '"Noto Sans KR", sans-serif',
+        fontSize: '16px', color: '#5f7d92', align: 'center', lineSpacing: 8,
+      }).setOrigin(0.5);
+      this.spotContainer.add([ph, phText]);
+    }
+
+    // ── 좌측 정보 패널 ───────────────────────────────────
+    // 뒤로가기 버튼
+    const backBtn = this.add.container(0, 0);
+    const backBg = this.add.graphics();
+    backBg.fillStyle(0x1f3045, 0.9);
+    backBg.fillRoundedRect(16, 14, 130, 30, 4);
+    backBg.lineStyle(1, 0x2a5a8a, 0.8);
+    backBg.strokeRoundedRect(16, 14, 130, 30, 4);
+    const backText = this.add.text(81, 29, '← 전국 지도', {
+      fontFamily: '"Noto Sans KR", sans-serif',
+      fontSize: '11px', color: '#8faabf', fontStyle: 'bold',
+    }).setOrigin(0.5);
+    backBtn.add([backBg, backText]);
+    const backHit = this.add.rectangle(81, 29, 130, 30, 0xffffff, 0).setInteractive({ useHandCursor: true });
+    backHit.on('pointerdown', () => this.switchToRegionView());
+    backHit.on('pointerover', () => backText.setColor('#4af2a1'));
+    backHit.on('pointerout', () => backText.setColor('#8faabf'));
+    backBtn.add(backHit);
+    this.spotContainer.add(backBtn);
+
+    // 지역 타이틀
+    const title = this.add.text(20, 62, `📍 ${region.nameKo}`, {
+      fontFamily: '"Noto Sans KR", sans-serif',
+      fontSize: '22px', color: '#4af2a1', fontStyle: 'bold',
+    });
+    const desc = this.add.text(20, 96, region.description, {
+      fontFamily: '"Noto Sans KR", sans-serif',
+      fontSize: '11px', color: '#8faabf', lineSpacing: 5,
+      wordWrap: { width: 320 },
+    });
+    this.spotContainer.add([title, desc]);
+
+    // 안내 문구 (포인트 준비중)
+    // 이 지역에 타일맵 필드(RegionFieldScene)가 준비되어 있는지
+    const hasFieldMap = !!REGION_MAP_GRAPHS[region.id];
+
+    const note = this.add.text(20, GAME_HEIGHT - 200,
+      hasFieldMap
+        ? '✅ 이 지역은 실제 지형 기반 타일맵\n   필드가 준비되어 있습니다.\n   아래 버튼으로 입장하세요.\n\n   [ESC] 전국 지도로 돌아가기'
+        : '🚧 이 지역의 세부 낚시 포인트는\n   준비중입니다 (타일맵 에셋 제작 예정).\n\n   [ESC] 전국 지도로 돌아가기', {
+        fontFamily: '"Noto Sans KR", sans-serif',
+        fontSize: '11px', color: hasFieldMap ? '#7fe6b0' : '#607b8e', lineSpacing: 5,
+      });
+    this.spotContainer.add(note);
+
+    // 타일맵 필드 입장 버튼 (준비된 지역만)
+    if (hasFieldMap) {
+      const fbY = GAME_HEIGHT - 112;
+      const fieldBtn = this.add.container(0, 0);
+      const fieldBg = this.add.graphics();
+      fieldBg.fillStyle(0x0e3a52, 0.95);
+      fieldBg.fillRoundedRect(16, fbY, 320, 42, 5);
+      fieldBg.lineStyle(2, 0x33b0e0, 1);
+      fieldBg.strokeRoundedRect(16, fbY, 320, 42, 5);
+      const fieldText = this.add.text(176, fbY + 21, `🗺️ ${region.shortNameKo} 필드 입장`, {
+        fontFamily: '"Noto Sans KR", sans-serif',
+        fontSize: '14px', color: '#9fe4ff', fontStyle: 'bold',
+      }).setOrigin(0.5);
+      fieldBtn.add([fieldBg, fieldText]);
+      const fieldHit = this.add.rectangle(176, fbY + 21, 320, 42, 0xffffff, 0).setInteractive({ useHandCursor: true });
+      fieldHit.on('pointerover', () => fieldText.setColor('#d6f4ff'));
+      fieldHit.on('pointerout', () => fieldText.setColor('#9fe4ff'));
+      fieldHit.on('pointerdown', () => {
+        this.cameras.main.fadeOut(280, 0, 10, 20);
+        this.cameras.main.once('camerafadeoutcomplete', () => {
+          this.scene.start('RegionFieldScene', { region: region.id });
+        });
+      });
+      fieldBtn.add(fieldHit);
+      this.spotContainer.add(fieldBtn);
+    }
+
+    // (임시) 낚시터 목록 진입 버튼 — 세부 포인트 구현 전까지 출조 유지
+    const tempBtn = this.add.container(0, 0);
+    const tbY = GAME_HEIGHT - 64;
+    const tempBg = this.add.graphics();
+    tempBg.fillStyle(0x123a2c, 0.9);
+    tempBg.fillRoundedRect(16, tbY, 320, 40, 5);
+    tempBg.lineStyle(1.5, 0x2f7d5a, 0.9);
+    tempBg.strokeRoundedRect(16, tbY, 320, 40, 5);
+    const tempText = this.add.text(176, tbY + 20, '🎣 낚시터 선택 (임시)', {
+      fontFamily: '"Noto Sans KR", sans-serif',
+      fontSize: '13px', color: '#7fe6b0', fontStyle: 'bold',
+    }).setOrigin(0.5);
+    tempBtn.add([tempBg, tempText]);
+    const tempHit = this.add.rectangle(176, tbY + 20, 320, 40, 0xffffff, 0).setInteractive({ useHandCursor: true });
+    tempHit.on('pointerover', () => { tempText.setColor('#b6ffd8'); });
+    tempHit.on('pointerout', () => { tempText.setColor('#7fe6b0'); });
+    tempHit.on('pointerdown', () => this.renderSpotView(region));
+    tempBtn.add(tempHit);
+    this.spotContainer.add(tempBtn);
   }
 
   // ═══════════════════════════════════════════════════════
@@ -664,14 +833,15 @@ export class WorldMapScene extends Phaser.Scene {
     backBg.fillRoundedRect(16, 14, 120, 30, 4);
     backBg.lineStyle(1, 0x2a5a8a, 0.8);
     backBg.strokeRoundedRect(16, 14, 120, 30, 4);
-    const backText = this.add.text(76, 29, '← 지역 목록', {
+    const backText = this.add.text(76, 29, '← 지역 지도', {
       fontFamily: '"Noto Sans KR", sans-serif',
       fontSize: '11px', color: '#8faabf', fontStyle: 'bold',
     }).setOrigin(0.5);
     backBtn.add([backBg, backText]);
 
+    const backNode = WORLD_NODE_DATABASE.find((n: FishingSpotNode) => n.regionDatabaseId === region.id);
     const backHit = this.add.rectangle(76, 29, 120, 30, 0xffffff, 0).setInteractive({ useHandCursor: true });
-    backHit.on('pointerdown', () => this.switchToRegionView());
+    backHit.on('pointerdown', () => this.renderRegionMapView(region, backNode));
     backHit.on('pointerover', () => backText.setColor('#4af2a1'));
     backHit.on('pointerout', () => backText.setColor('#8faabf'));
     backBtn.add(backHit);
@@ -681,7 +851,7 @@ export class WorldMapScene extends Phaser.Scene {
       fontFamily: '"Noto Sans KR", sans-serif',
       fontSize: '18px', color: '#4af2a1', fontStyle: 'bold',
     });
-    const hintText = this.add.text(152, 44, '포인트 클릭 → 이동 확인  [ESC] 지역 목록으로', {
+    const hintText = this.add.text(152, 44, '포인트 클릭 → 이동 확인  [ESC] 지역 지도로', {
       fontFamily: '"Noto Sans KR", sans-serif',
       fontSize: '10px', color: '#607b8e',
     });

@@ -11,6 +11,7 @@ import { PHASER_CONFIG } from './PhaserConfig.js';
 import { BootScene } from './scenes/BootScene.js';
 import { MainMenuScene } from './scenes/MainMenuScene.js';
 import { WorldMapScene } from './scenes/WorldMapScene.js';
+import { RegionFieldScene } from './scenes/RegionFieldScene.js';
 import { FieldScene } from './scenes/FieldScene.js';
 import { FishingScene } from './scenes/FishingScene.js';
 import { TackleRoomScene } from './scenes/TackleRoomScene.js';
@@ -34,6 +35,7 @@ const config: Phaser.Types.Core.GameConfig = {
     BootScene,
     MainMenuScene,
     WorldMapScene,
+    RegionFieldScene,
     FieldScene,
     FishingScene,
     TackleRoomScene,

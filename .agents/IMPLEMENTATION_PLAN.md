@@ -1,6 +1,6 @@
 # The Real Angler — 구현 계획서 (IMPLEMENTATION_PLAN)
 
-> **최종 업데이트**: 2026-07-08
+> **최종 업데이트**: 2026-07-14
 > **작업 기준**: 이 계획서가 모든 구현의 기준입니다. 작업 완료 시 반드시 업데이트하세요.
 
 ---
@@ -230,6 +230,49 @@ Phase 9: Tauri v2 통합 & Steam 패키징     ⬜ 대기
 | 4방향(front/back/left/right) × idle/move × 2프레임 걷기 애니메이션 (200ms 주기) | ✅ |
 | 발 아래 반투명 그림자 타원 (`registry '_playerShadow'` 동기화) | ✅ |
 
+### 6-5c. WorldMap 핀 재배치·여수 추가·지역 줌인 진입 (✅ 완료, 2026-07-14)
+**파일**: `core/src/types/WorldMap.ts`, `core/src/db-schema/RegionDatabase.ts`, `client-pc/src/scenes/WorldMapScene.ts`, `client-pc/src/scenes/BootScene.ts`
+
+| 항목 | 결과 |
+|---|---|
+| 11개 핀포인트 좌표 재배치 (사용자 지정 좌표) | ✅ |
+| `FishingSpotNode.mapSlug` 필드 추가 (지역 상세 지도 파일 매핑) | ✅ |
+| 전남 여수(`jeonnam_yeosu`) 노드 + 지역 DB 추가 | ✅ |
+| 지역 클릭 → `zoom_{slug}` 텍스처로 확대 줌인 진입 (`renderRegionMapView`, `regionmap` 뷰) | ✅ |
+| 지도 미준비 지역 '준비중' 플레이스홀더 | ✅ |
+| 11개 지역 상세 지도(`pixelazed/*_2_pixelazed.png`) BootScene 로드 + loaderror 안전처리 | ✅ |
+
+### 6-5d. 캐릭터 렌더링 수정 (✅ 완료, 2026-07-14)
+**파일**: `client-pc/src/scenes/FieldScene.ts`
+
+| 항목 | 결과 |
+|---|---|
+| 스프라이트 원점 발밑(0.5,1) + 그림자 발밑 정렬 (공중 뜸 해소) | ✅ |
+| 표시 높이 `PLAYER_DISPLAY_H=60`px 정규화 (크기 확대) | ✅ |
+| idle/move 종횡비 유지하며 크기 통일 (`applyPlayerSpriteSize`) | ✅ |
+
+### 6-5e. 실지형 기반 지역 타일맵 시스템 — 속초 (✅ 완료 v1, 2026-07-14)
+**파일**: `tools/build_region_maps.py`, `core/src/types/RegionMap.ts`, `client-pc/src/scenes/RegionFieldScene.ts`, `client-pc/public/data/sokcho/*.json`
+
+| 항목 | 결과 |
+|---|---|
+| PNG 지형 지도 → 색상 분류(바다/육지/건물/잔디) 타일 그리드 변환 도구 (표준 라이브러리만) | ✅ |
+| 작은 물 얼룩 제거 + 대각 연결성 보정(`bridge_diagonals`) 후처리 | ✅ |
+| POI(식당 아이콘) 자동 추출 | ✅ |
+| `RegionMapData`/`RegionMapGraph` 타입 + 속초 7개 맵 연결 그래프 | ✅ |
+| 타일 RenderTexture 베이킹 렌더링 + 모래톱/모래사장/건물 외곽선 디테일 | ✅ |
+| 바다·건물 병합 정적 바디 충돌 (이동 불가) | ✅ |
+| 방향키 이동 + 카메라 팔로우 + 캐릭터 스프라이트(발밑/크기 통일) | ✅ |
+| 맵 간 엣지 전환 (속초항3↔2↔1↔연결로↔동명항1↔2↔3) | ✅ |
+| 바다 인접 시 좌클릭 차지 캐스팅 연출 (찌 투척·파문·회수) | ✅ |
+| WorldMap 속초 뷰 '필드 입장' 버튼 → RegionFieldScene | ✅ |
+
+**차기 (RegionField 고도화)**:
+- 세부 낚시 포인트 지정 + 캐스팅 → FishingScene 정식 연동
+- POI 종류 세분화(카페/마트/식당) + 건물별 상호작용 씬 연결
+- 나머지 지역(여수 등) 타일 데이터 생성 및 그래프 확장
+- 방파제 좁은 통로 통행성 세밀 튜닝, 물결 애니메이션
+
 ### 6-6. WeatherEventEmitter — 돌발 기상 이벤트
 **신규 파일**: `packages/core/src/services/WeatherEventEmitter.ts`
 - `sudden_wind`, `passing_rain`, `tide_reversal`, `baitfish_school` 등 이벤트 타입
@@ -348,6 +391,9 @@ Phase 9: Tauri v2 통합 & Steam 패키징     ⬜ 대기
 MainMenuScene
     ↓ scene.start (페이드)
 WorldMapScene
+    ├─ scene.start → RegionFieldScene  (실지형 타일맵, top-level)
+    │      ↕ scene.restart (맵 간 엣지 전환)
+    │      ↑ ESC → scene.start('WorldMapScene')
     ↓ scene.start (페이드)
 FieldScene  ← 탑다운 월드 허브 (pause 상태 유지)
     ↓ scene.pause + scene.launch (페이드)
@@ -368,12 +414,16 @@ FieldScene  ← 탑다운 월드 허브 (pause 상태 유지)
 
 ---
 
-## 현재 빌드 상태 (2026-07-13)
+## 현재 빌드 상태 (2026-07-14)
 
 ```bash
-pnpm run build                                  → ✅ 4/4 패키지 성공
+pnpm --filter @tra/core build                   → ✅ 성공
 pnpm --filter @tra/client-pc run typecheck      → ✅ 0 오류
+pnpm --filter @tra/client-pc build              → ✅ 성공 (vite 빌드)
 ```
+
+> ⚠️ **지도 데이터 재생성**: `pixelazed/<region>/` 지형 지도를 수정/추가하면
+> `py tools/build_region_maps.py <region>` 로 `public/data/<region>/*.json` 을 다시 생성해야 함.
 
 ### FieldScene 단축키 목록 (업데이트)
 

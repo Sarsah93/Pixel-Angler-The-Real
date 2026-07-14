@@ -86,6 +86,25 @@ export class BootScene extends Phaser.Scene {
     // webglmap_pixelazed.png: VWorld 위성 이미지를 픽셀화 처리한 대한민국 지도
     this.load.image('korea_pixel_map', 'webglmap_pixelazed.png');
 
+    // ─── 지역 상세 픽셀 지도 (줌인 진입용) ───
+    // pixelazed/{slug}_2_pixelazed.png → 텍스처 키 zoom_{slug}
+    // WORLD_NODE_DATABASE.mapSlug 와 매핑됨. 아직 준비되지 않은 지역(예: taean)은
+    // 파일이 없어 loaderror가 발생하지만, WorldMapScene에서 존재 여부를 확인해 안전 처리.
+    const REGION_MAP_SLUGS = [
+      'sokcho', 'incheon', 'taean', 'pohang', 'ulsan',
+      'busan', 'geoje', 'yeosu', 'jeju', 'ulleung', 'dokdo',
+    ];
+    REGION_MAP_SLUGS.forEach((slug) => {
+      this.load.image(`zoom_${slug}`, `/pixelazed/${slug}_2_pixelazed.png`);
+    });
+
+    // 준비되지 않은 지역 지도(404) 로드 실패는 치명적이지 않으므로 조용히 로그만 남김
+    this.load.on('loaderror', (file: { key: string }) => {
+      if (file.key.startsWith('zoom_')) {
+        console.warn(`[BootScene] 지역 지도 미준비: ${file.key} (해당 지역은 '준비중'으로 표시됨)`);
+      }
+    });
+
     // ─── 남자 캐릭터 스프라이트 (12장) ───
     // 정지 4방향
     this.load.image('man-idle-front', '/characters/man/man-idle-front.png');

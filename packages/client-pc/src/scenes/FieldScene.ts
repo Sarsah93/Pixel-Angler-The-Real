@@ -65,9 +65,11 @@ export class FieldScene extends Phaser.Scene {
   // 팝업 LIFO 스택
   private openedPanels: (LicensePanel | InfoOverlayPanel)[] = [];
 
-  // 캐릭터 스프라이트 고정 표시 크기 (idle 텍스처 기준 0.14배, 최초 create()에서 계산)
-  private playerSpriteTargetW = 0;
-  private playerSpriteTargetH = 0;
+  // 캐릭터 스프라이트 표시 높이(px). idle/move 모든 텍스처를 이 높이로 정규화하여
+  // 항상 같은 크기로 출력하고, 너비는 각 텍스처의 원본 종횡비를 유지해 왜곡을 방지한다.
+  private readonly PLAYER_DISPLAY_H = 60;
+  /** 발밑 기준점(playerBody 중심)에서 그림자/발까지의 오프셋(px) */
+  private readonly PLAYER_FOOT_OFFSET = 12;
 
   // 플레이어 머리 위 활성화 말풍선
   private speechBubble?: Phaser.GameObjects.Container;
@@ -149,23 +151,18 @@ export class FieldScene extends Phaser.Scene {
     this.playerBody.setSize(20, 20);
 
     // ─── 플레이어 스프라이트 (man 캐릭터 이미지 에셋) ───
-    // BootScene에서 'man-idle-front' 등 12개 텍스처가 로드된 상태
-    this.playerSprite = this.add.image(
-      this.playerSpawnX, this.playerSpawnY, 'man-idle-front'
-    );
-    // move 텍스처 원본 해상도를 기준으로 표시 크기를 0.14배로 고정
-    // idle PNG가 move도다 훨씬 크며 같은 캐릭터를 표현하므로,
-    // move 기준으로 모든 폴림의 크기를 열어준다 (idle도 move 크기로 억제)
-    {
-      const src = this.textures.get('man-move-front-1').getSourceImage() as HTMLImageElement;
-      this.playerSpriteTargetW = src.width * 0.14;
-      this.playerSpriteTargetH = src.height * 0.14;
-    }
-    this.playerSprite.setDisplaySize(this.playerSpriteTargetW, this.playerSpriteTargetH);
+    // BootScene에서 'man-idle-front' 등 12개 텍스처가 로드된 상태.
+    // 원점을 발밑(0.5, 1)으로 두어 발이 지면 기준점에 닿게 하고,
+    // 표시 높이를 PLAYER_DISPLAY_H로 정규화해 idle/move 크기를 항상 동일하게 유지한다.
+    const feetY = this.playerSpawnY + this.PLAYER_FOOT_OFFSET;
+    this.playerSprite = this.add.image(this.playerSpawnX, feetY, 'man-idle-front');
+    this.playerSprite.setOrigin(0.5, 1);
+    this.applyPlayerSpriteSize();
     this.playerSprite.setDepth(20);
-    // 그림자 (플레이어 다리 주변)
+    // 그림자 (발밑) — 발이 닿는 지점에 배치
     const shadow = this.add.ellipse(
-      this.playerSpawnX, this.playerSpawnY + 24, 20, 6, 0x000000, 0.28
+      this.playerSpawnX, feetY, this.PLAYER_DISPLAY_H * 0.42, this.PLAYER_DISPLAY_H * 0.12,
+      0x000000, 0.3
     ).setDepth(19);
     // shadow는 update()에서 playerBody 위치에 동기화
     this.registry.set('_playerShadow', shadow);
@@ -340,11 +337,12 @@ export class FieldScene extends Phaser.Scene {
       status: moving ? 'walking' : 'idle',
     });
 
-    // ─── 플레이어 스프라이트 동기화 ───
-    this.playerSprite.setPosition(this.playerBody.x, this.playerBody.y);
-    // 그림자 동기화
+    // ─── 플레이어 스프라이트 동기화 (발밑 기준) ───
+    const feetY = this.playerBody.y + this.PLAYER_FOOT_OFFSET;
+    this.playerSprite.setPosition(this.playerBody.x, feetY);
+    // 그림자 동기화 (발밑에 붙임)
     const shadow = this.registry.get('_playerShadow') as Phaser.GameObjects.Ellipse | undefined;
-    if (shadow) shadow.setPosition(this.playerBody.x, this.playerBody.y + 24);
+    if (shadow) shadow.setPosition(this.playerBody.x, feetY);
     this.updatePlayerSprite(this.playerFacing, moving);
 
     // 머리 위 말풍선 동기화
@@ -545,12 +543,22 @@ export class FieldScene extends Phaser.Scene {
     // 텍스처가 이미 같으면 스킵 (성능 최적화)
     if (this.playerSprite.texture.key !== textureKey) {
       this.playerSprite.setTexture(textureKey);
+      // 텍스처마다 원본 해상도가 다르므로, 교체 시 표시 크기를 재정규화하여
+      // idle ↔ move 전환 시에도 캐릭터가 항상 같은 크기로 보이게 한다.
+      this.applyPlayerSpriteSize();
     }
-    // 텍스처 교체 여부에 관계없이 표시 크기를 idle 기준으로 강제 고정
-    // (move PNG 원본 해상도가 달라도 화면 크기가 항상 동일하게 유지됨)
-    if (this.playerSpriteTargetW > 0) {
-      this.playerSprite.setDisplaySize(this.playerSpriteTargetW, this.playerSpriteTargetH);
-    }
+  }
+
+  /**
+   * 현재 플레이어 스프라이트를 PLAYER_DISPLAY_H(고정 높이)로 정규화한다.
+   * 너비는 현재 텍스처의 원본 종횡비를 유지해 왜곡 없이 idle/move 크기를 통일한다.
+   */
+  private applyPlayerSpriteSize(): void {
+    const src = this.playerSprite.texture.getSourceImage() as HTMLImageElement;
+    if (!src || !src.height) return;
+    const h = this.PLAYER_DISPLAY_H;
+    const w = h * (src.width / src.height);
+    this.playerSprite.setDisplaySize(w, h);
   }
 
   // ─────────────────────────────────────────────────────────

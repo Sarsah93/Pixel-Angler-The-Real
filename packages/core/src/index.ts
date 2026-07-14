@@ -158,3 +158,13 @@ export { GATHER_ITEM_DATABASE, checkSlipHazard, getAvailableGatherItems, attempt
 // World Map
 export type { FishingSpotNode, WorldMapSpotType } from './types/WorldMap.js';
 export { WORLD_NODE_DATABASE } from './types/WorldMap.js';
+
+// Region Map (지역 상세 타일맵)
+export type {
+  RegionTerrain, RegionMapPoi, RegionMapData, EdgeDir,
+  RegionMapLinks, RegionMapNode, RegionMapGraph,
+} from './types/RegionMap.js';
+export {
+  TERRAIN_BY_CHAR, OPPOSITE_EDGE, SOKCHO_MAP_GRAPH,
+  REGION_MAP_GRAPHS, getRegionMapNode,
+} from './types/RegionMap.js';
