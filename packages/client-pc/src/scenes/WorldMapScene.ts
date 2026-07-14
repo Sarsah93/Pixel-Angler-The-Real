@@ -44,9 +44,9 @@ const LEGEND_ITEMS: { type: string; color: number; label: string }[] = [
 // ── 지도 영역 설정 (화면 내 지도 배치 좌표) ──────────────
 // webglmap_pixel.png 이미지를 화면 오른쪽 절반에 배치
 const MAP_IMAGE_KEY = 'korea_pixel_map';
-// 지도 이미지 크기 기준 (실제 webglmap_pixel.png 원본 해상도)
-const MAP_NATIVE_W = 512;
-const MAP_NATIVE_H = 400;
+// 지도 이미지 크기 기준 (실제 webglmap_pixelazed.png 원본 해상도)
+const MAP_NATIVE_W = 256;
+const MAP_NATIVE_H = 256;
 // 게임 화면 내 지도 배치 영역 (우측 영역)
 const MAP_DISPLAY_X = 380;   // 지도 좌상단 X
 const MAP_DISPLAY_Y = 60;    // 지도 좌상단 Y
@@ -83,8 +83,19 @@ export class WorldMapScene extends Phaser.Scene {
   private _editOverlay?: Phaser.GameObjects.Container;
   /** 편집 모드 중 마우스 좌표 표시 텍스트 */
   private _editCoordText?: Phaser.GameObjects.Text;
-  /** 마지막으로 선택된 핀의 nodeId */
+  /** 배너에 선택된 핀 ID 표시 텍스트 */
+  private _editBannerSelText?: Phaser.GameObjects.Text;
+  /** 클릭으로 캡처된 새 핀 좌표 표시 텍스트 */
+  private _editClickCaptureText?: Phaser.GameObjects.Text;
+  /** 마지막으로 드래그/선택된 핀의 nodeId (배너 강조용) */
   private _editSelectedId?: string;
+
+  /** 개발자 도구 진입 버튼 배경 */
+  private _devToolBtnBg?: Phaser.GameObjects.Graphics;
+  /** 개발자 도구 진입 버튼 텍스트 */
+  private _devToolBtnText?: Phaser.GameObjects.Text;
+  /** 개발자 도구 진입 버튼 인터랙션 영역 */
+  private _devToolBtnHit?: Phaser.GameObjects.Rectangle;
 
   constructor() {
     super({ key: 'WorldMapScene' });
@@ -126,6 +137,9 @@ export class WorldMapScene extends Phaser.Scene {
     // ── 초기 상태: 지역 뷰 ──────────────────────────────
     this.renderRegionView();
 
+    // ── 개발자 도구 토글 버튼 생성 ────────────────────────
+    this.createDevToolToggleButton();
+
     this.cameras.main.fadeIn(300, 0, 10, 20);
   }
 
@@ -140,6 +154,8 @@ export class WorldMapScene extends Phaser.Scene {
     } else {
       this.exitPinEditMode();
     }
+
+    this.drawDevToolButtonState(false);
   }
 
   private enterPinEditMode(): void {
@@ -149,18 +165,46 @@ export class WorldMapScene extends Phaser.Scene {
     // 상단 배너
     const bannerBg = this.add.graphics();
     bannerBg.fillStyle(0xff6b00, 0.92);
-    bannerBg.fillRect(0, 0, GAME_WIDTH, 36);
-    const bannerText = this.add.text(GAME_WIDTH / 2, 18,
-      '📍 핀 편집 모드 (P키 종료) — 핀을 드래그하여 위치 조정 | 아래에 콘솔에 새 좌표 출력',
+    bannerBg.fillRect(0, 0, GAME_WIDTH, 42);
+
+    // 배너 좌측: 안내 텍스트
+    const bannerText = this.add.text(16, 21,
+      '📍 핀 편집 모드 [P] 종료  |  핀 드래그: 위치 조정  |  지도 클릭: 새 좌표 캡처',
       {
         fontFamily: 'monospace',
-        fontSize: '12px',
+        fontSize: '11px',
         color: '#fff',
         fontStyle: 'bold',
-      }).setOrigin(0.5);
+      }).setOrigin(0, 0.5);
 
-    // 좌표 표시
-    this._editCoordText = this.add.text(MAP_DISPLAY_X, MAP_DISPLAY_Y + MAP_DISPLAY_H + 8,
+    // 배너 우측: 선택된 핀 표시
+    this._editBannerSelText = this.add.text(GAME_WIDTH - 16, 21,
+      '선택: —',
+      {
+        fontFamily: 'monospace',
+        fontSize: '11px',
+        color: '#ffee44',
+        fontStyle: 'bold',
+      }).setOrigin(1, 0.5);
+
+    // 배너 우측: 전체 덤프 버튼
+    const dumpBtnBg = this.add.graphics();
+    dumpBtnBg.fillStyle(0xffffff, 0.18);
+    dumpBtnBg.fillRoundedRect(GAME_WIDTH - 200, 6, 110, 28, 4);
+    const dumpBtnText = this.add.text(GAME_WIDTH - 145, 20, '📋 전체 덤프', {
+      fontFamily: 'monospace', fontSize: '11px', color: '#fff', fontStyle: 'bold',
+    }).setOrigin(0.5);
+    const dumpHit = this.add.rectangle(GAME_WIDTH - 145, 20, 110, 28, 0xffffff, 0)
+      .setInteractive({ useHandCursor: true });
+    dumpHit.on('pointerdown', () => this.dumpAllPinCoords());
+    dumpHit.on('pointerover', () => { dumpBtnBg.clear(); dumpBtnBg.fillStyle(0xffffff, 0.32); dumpBtnBg.fillRoundedRect(GAME_WIDTH - 200, 6, 110, 28, 4); });
+    dumpHit.on('pointerout',  () => { dumpBtnBg.clear(); dumpBtnBg.fillStyle(0xffffff, 0.18); dumpBtnBg.fillRoundedRect(GAME_WIDTH - 200, 6, 110, 28, 4); });
+
+    // 하단 패널 (마우스 좌표 + 클릭 캡처)
+    const panelY = MAP_DISPLAY_Y + MAP_DISPLAY_H + 8;
+
+    // 마우스 좌표 텍스트
+    this._editCoordText = this.add.text(MAP_DISPLAY_X, panelY,
       '마우스를 지도 위로 이동하세요',
       {
         fontFamily: 'monospace',
@@ -170,7 +214,62 @@ export class WorldMapScene extends Phaser.Scene {
         padding: { x: 6, y: 3 },
       });
 
-    this._editOverlay.add([bannerBg, bannerText, this._editCoordText]);
+    // 클릭 캡처 텍스트 (지도 빈 공간 클릭 시 업데이트)
+    this._editClickCaptureText = this.add.text(MAP_DISPLAY_X, panelY + 26,
+      '지도 빈 공간을 클릭하면 새 핀 좌표가 캡처됩니다',
+      {
+        fontFamily: 'monospace',
+        fontSize: '11px',
+        color: '#88ddff',
+        backgroundColor: '#060f1eee',
+        padding: { x: 6, y: 3 },
+      });
+
+    this._editOverlay.add([
+      bannerBg, bannerText,
+      this._editBannerSelText,
+      dumpBtnBg, dumpBtnText, dumpHit,
+      this._editCoordText,
+      this._editClickCaptureText,
+    ]);
+
+    // ── 지도 빈 공간 클릭 → 새 핀 좌표 캡처 ──────────────
+    this.input.on('pointerdown-edit', (pointer: Phaser.Input.Pointer) => {
+      // 핀 드래그 중에는 무시 (Phaser가 drag 이벤트로 먼저 소비)
+      if (!this._pinEditMode || !this._editClickCaptureText) return;
+      const px = Math.round(((pointer.x - MAP_DISPLAY_X) / MAP_DISPLAY_W) * MAP_NATIVE_W);
+      const py = Math.round(((pointer.y - MAP_DISPLAY_Y) / MAP_DISPLAY_H) * MAP_NATIVE_H);
+      if (px >= 0 && px <= MAP_NATIVE_W && py >= 0 && py <= MAP_NATIVE_H) {
+        const tsCode = `  { id: 'NEW_NODE', name: '새 지점', shortName: '새 지점', region: '지역명',\n    regionDatabaseId: 'region_id', pixelX: ${px}, pixelY: ${py},\n    spotsCount: 1, availableTypes: ['BREAKWATER'] },`;
+        console.log('[WorldMap 클릭 캡처]', tsCode);
+        this._editClickCaptureText.setText(`클릭 캡처: pixelX=${px}, pixelY=${py}  (콘솔에 TS 코드 출력됨)`);
+        // 클립보드 복사 시도
+        void navigator.clipboard.writeText(tsCode).then(() => {
+          if (this._editClickCaptureText) {
+            this._editClickCaptureText.setText(`✅ 클립보드 복사 완료: pixelX=${px}, pixelY=${py}`);
+          }
+        }).catch(() => {
+          // 클립보드 API 없을 시 무시 (콘솔에는 출력됨)
+        });
+      }
+    });
+
+    // pointerdown 리스너 (핀 위가 아닌 지도 영역 클릭 감지)
+    this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      if (!this._pinEditMode || !this._editClickCaptureText) return;
+      const px = Math.round(((pointer.x - MAP_DISPLAY_X) / MAP_DISPLAY_W) * MAP_NATIVE_W);
+      const py = Math.round(((pointer.y - MAP_DISPLAY_Y) / MAP_DISPLAY_H) * MAP_NATIVE_H);
+      if (px >= 0 && px <= MAP_NATIVE_W && py >= 0 && py <= MAP_NATIVE_H) {
+        const tsCode = `  { id: 'NEW_NODE', name: '새 지점', shortName: '새 지점', region: '지역명', regionDatabaseId: 'region_id', pixelX: ${px}, pixelY: ${py}, spotsCount: 1, availableTypes: ['BREAKWATER'] },`;
+        console.log('[WorldMap 클릭 캡처]', `pixelX: ${px}, pixelY: ${py}`);
+        this._editClickCaptureText.setText(`클릭 → pixelX=${px}, pixelY=${py}  (콘솔 출력 완료)`);
+        void navigator.clipboard.writeText(tsCode).then(() => {
+          if (this._editClickCaptureText) {
+            this._editClickCaptureText.setText(`✅ 클립보드 복사: pixelX=${px}, pixelY=${py}`);
+          }
+        }).catch(() => {});
+      }
+    });
 
     // 편집 모드에서 핀 드래그 활성화
     this.pinMarkerMap.forEach(({ dot, ring, label }, nodeId) => {
@@ -179,6 +278,10 @@ export class WorldMapScene extends Phaser.Scene {
 
       dot.on('dragstart', () => {
         this._editSelectedId = nodeId;
+        // 배너에 선택된 핀 ID 표시
+        if (this._editBannerSelText) {
+          this._editBannerSelText.setText(`선택: ${nodeId}`);
+        }
         dot.setFillStyle(0xffffff);
         ring.setAlpha(0);
       });
@@ -200,13 +303,28 @@ export class WorldMapScene extends Phaser.Scene {
         const px = Math.round(((dragX - MAP_DISPLAY_X) / MAP_DISPLAY_W) * MAP_NATIVE_W);
         const py = Math.round(((dragY - MAP_DISPLAY_Y) / MAP_DISPLAY_H) * MAP_NATIVE_H);
 
-        const output = `[WorldMap 편집] ${nodeId}  →  pixelX: ${px}, pixelY: ${py}`;
-        console.log(output);
+        // _editSelectedId 활용: 배너에 확정 좌표 표시
+        const selId = this._editSelectedId ?? nodeId;
+        const output = `[${selId}] pixelX: ${px}, pixelY: ${py}`;
+        console.log('[WorldMap 편집]', output);
 
-        // 화면에 콘텍스트에 표시
+        // 하단 마우스 좌표 텍스트에 결과 표시
         if (this._editCoordText) {
-          this._editCoordText.setText(output);
+          this._editCoordText.setText(`✅ 드래그 확정: ${output}`);
         }
+        // 배너에도 업데이트
+        if (this._editBannerSelText) {
+          this._editBannerSelText.setText(`확정: ${output}`);
+        }
+
+        // 클립보드 복사 시도
+        const tsLine = `  pixelX: ${px}, pixelY: ${py},  // ${selId}`;
+        void navigator.clipboard.writeText(tsLine).then(() => {
+          if (this._editCoordText) {
+            this._editCoordText.setText(`✅ 클립보드 복사: ${output}`);
+          }
+        }).catch(() => {});
+
         // 원래 노드 색으로 복원
         const node = WORLD_NODE_DATABASE.find((n: FishingSpotNode) => n.id === nodeId);
         const primaryType = node?.availableTypes[0];
@@ -217,11 +335,34 @@ export class WorldMapScene extends Phaser.Scene {
     });
   }
 
+  /** 편집 모드: 현재 모든 핀의 pixelX/Y 좌표를 콘솔에 덤프 */
+  private dumpAllPinCoords(): void {
+    const lines: string[] = ['// WORLD_NODE_DATABASE 현재 좌표 덤프 (드래그 반영 전 원본)'];
+    WORLD_NODE_DATABASE.forEach((node: FishingSpotNode) => {
+      lines.push(`  // ${node.name}  pixelX: ${node.pixelX}, pixelY: ${node.pixelY}`);
+    });
+    const dump = lines.join('\n');
+    console.log(dump);
+    if (this._editCoordText) {
+      this._editCoordText.setText('📋 전체 핀 좌표 콘솔에 출력 완료 (개발자 도구 열어 확인)');
+    }
+    void navigator.clipboard.writeText(dump).then(() => {
+      if (this._editCoordText) {
+        this._editCoordText.setText('📋 전체 핀 좌표 클립보드 복사 완료');
+      }
+    }).catch(() => {});
+  }
+
   private exitPinEditMode(): void {
     this._editOverlay?.destroy();
     this._editOverlay = undefined;
     this._editCoordText = undefined;
+    this._editBannerSelText = undefined;
+    this._editClickCaptureText = undefined;
     this._editSelectedId = undefined;
+
+    // pointerdown 리스너 정리
+    this.input.off('pointerdown');
 
     // 드래그 비활성화 및 원래 위치/색상 복원
     this.pinMarkerMap.forEach(({ dot, ring, label }, nodeId) => {
@@ -837,5 +978,74 @@ export class WorldMapScene extends Phaser.Scene {
     if (spotType === 'boat_fishing' || spotType === 'overnight_boat') return 'boat_angling';
     if (spotType === 'tidal_flat') return 'shore_hunting_basic';
     return 'basic_angling';
+  }
+
+  // ── 개발자 도구 진입 버튼 관련 ────────────────────────
+  private createDevToolToggleButton(): void {
+    const bx = GAME_WIDTH - 150;
+    const bw = 132;
+    const by = GAME_HEIGHT - 170;
+    const bh = 32;
+
+    this._devToolBtnBg = this.add.graphics().setDepth(250);
+    this._devToolBtnText = this.add.text(bx + bw / 2, by + bh / 2, '🛠️ Dev Tool (P)', {
+      fontFamily: '"Noto Sans KR", sans-serif',
+      fontSize: '11px',
+      color: '#a0b8c8',
+      fontStyle: 'bold'
+    }).setOrigin(0.5).setDepth(251);
+
+    this._devToolBtnHit = this.add.rectangle(bx + bw / 2, by + bh / 2, bw, bh, 0xffffff, 0)
+      .setOrigin(0.5)
+      .setDepth(252)
+      .setInteractive({ useHandCursor: true });
+
+    this._devToolBtnHit.on('pointerdown', () => {
+      this.togglePinEditMode();
+    });
+
+    this._devToolBtnHit.on('pointerover', () => {
+      if (this._pinEditMode) return;
+      this.drawDevToolButtonState(true);
+    });
+
+    this._devToolBtnHit.on('pointerout', () => {
+      if (this._pinEditMode) return;
+      this.drawDevToolButtonState(false);
+    });
+
+    this.drawDevToolButtonState(false);
+  }
+
+  private drawDevToolButtonState(hover: boolean): void {
+    if (!this._devToolBtnBg || !this._devToolBtnText) return;
+    this._devToolBtnBg.clear();
+
+    const bx = GAME_WIDTH - 150;
+    const bw = 132;
+    const by = GAME_HEIGHT - 170;
+    const bh = 32;
+
+    if (this._pinEditMode) {
+      // 활성화 상태 (오렌지 배너 테마색)
+      this._devToolBtnBg.fillStyle(0xff6b00, 0.95);
+      this._devToolBtnBg.fillRoundedRect(bx, by, bw, bh, 4);
+      this._devToolBtnBg.lineStyle(1.5, 0xffcc44, 1);
+      this._devToolBtnBg.strokeRoundedRect(bx, by, bw, bh, 4);
+      this._devToolBtnText.setColor('#ffffff');
+      this._devToolBtnText.setText('🛠️ Dev Tool ON');
+    } else {
+      // 비활성화 상태 (일반 버튼)
+      const bgColor = hover ? 0x162a40 : 0x0f253d;
+      const strokeColor = hover ? 0x4af2a1 : 0x2a5a8a;
+      const textColor = hover ? '#4af2a1' : '#a0b8c8';
+
+      this._devToolBtnBg.fillStyle(bgColor, 0.9);
+      this._devToolBtnBg.fillRoundedRect(bx, by, bw, bh, 4);
+      this._devToolBtnBg.lineStyle(1.5, strokeColor, 0.8);
+      this._devToolBtnBg.strokeRoundedRect(bx, by, bw, bh, 4);
+      this._devToolBtnText.setColor(textColor);
+      this._devToolBtnText.setText('🛠️ Dev Tool (P)');
+    }
   }
 }

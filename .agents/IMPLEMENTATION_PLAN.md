@@ -202,7 +202,22 @@ Phase 9: Tauri v2 통합 & Steam 패키징     ⬜ 대기
 | 클릭 시 카메라 줌인 애니메이션 (1.5x) 후 스팟 뷰 전환 | ✅ |
 | 스팟 툴팁 (물때/수온/어종, 지역 노드 툴팁) | ✅ |
 | 범례 (방파제/갯바위/선상/갯벌/해수욕장) | ✅ |
-| 에셋 public 배포 (`client-pc/public/webglmap_pixel.png`) | ✅ |
+| 에셋 public 배포 (`client-pc/public/webglmap_pixelazed.png`) | ✅ |
+
+### 6-5b. WorldMapScene 핀 편집 Dev Tool (✅ 완료, 2026-07-14)
+**파일**: `packages/client-pc/src/scenes/WorldMapScene.ts`
+
+| 항목 | 결과 |
+|---|---|
+| P 키 토글 핀 편집 모드 진입/종료 | ✅ |
+| **개발자 도구 진입용 UI 버튼 추가** (`🛠️ Dev Tool (P)` 버튼 구현 및 상태 실시간 갱신) | ✅ |
+| 핀 드래그 → 지도 pixelX/Y 좌표 실시간 표시 (라벨 + 하단 패널) | ✅ |
+| dragend 시 클립보드 자동 복사 (`pixelX: N, pixelY: N, // nodeId`) | ✅ |
+| 배너 우측: 선택 핀 ID 강조 표시 + 드래그 확정 좌표 업데이트 | ✅ |
+| 지도 빈 공간 클릭 → 새 핀 좌표 캡처 + 클립보드 복사 (TS 코드 형태) | ✅ |
+| 마우스 이동 시 현재 지도 픽셀 좌표 실시간 표시 | ✅ |
+| 전체 덤프 버튼: `WORLD_NODE_DATABASE` 전체 좌표 콘솔/클립보드 출력 | ✅ |
+| `_editSelectedId` TS6133 빌드 오류 수정 | ✅ |
 
 ### 6-1e. 캐릭터 스프라이트 교체 (✅ 완료, 2026-07-13)
 

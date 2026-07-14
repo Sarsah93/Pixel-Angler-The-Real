@@ -41,9 +41,7 @@ export const REGION_DATABASE: RegionDef[] = [
     id: 'gyeongbuk_pohang',
     nameKo: '경북 포항',
     shortNameKo: '포항',
-    description:
-      '동해 최대 항구도시 포항. 영일만을 중심으로 북방파제·남방파제·홈통 등 다양한 포인트가 밀집해 있으며, ' +
-      '갈치·감성돔·농어의 성지로 알려져 있다.',
+    description: '동해 최대 항구도시 포항. 영일만을 중심으로 감성돔·농어·갈치 명소가 발달해 있다.',
     latitude: 36.019,
     longitude: 129.343,
     subSpotIds: [
@@ -54,50 +52,41 @@ export const REGION_DATABASE: RegionDef[] = [
       'pohang_yeongil_boat',
       'pohang_yeongil_tidal_flat',
     ],
-    representativeSpeciesIds: ['black_seabream', 'sea_bass', 'hairtail', 'red_seabream'],
+    representativeSpeciesIds: ['black_seabream', 'sea_bass', 'hairtail'],
   },
-
   // ── 경남 거제 ──────────────────────────────
   {
     id: 'gyeongnam_geoje',
     nameKo: '경남 거제',
     shortNameKo: '거제',
-    description:
-      '남해 최대의 섬 거제. 맑은 수질과 다채로운 조류로 벵에돔·감성돔이 사시사철 낚이는 명소. ' +
-      '구조라 방파제부터 외도 갯바위까지 다양한 포인트를 보유.',
+    description: '맑은 수질과 다채로운 갯바위 포인트를 자랑하는 벵에돔·감성돔 낚시 천국 거제.',
     latitude: 34.788,
     longitude: 128.621,
     subSpotIds: [
       'geoje_gujora_breakwater',
       'geoje_mangchi_rocky',
     ],
-    representativeSpeciesIds: ['largescale_blackfish', 'black_seabream', 'black_rockfish'],
+    representativeSpeciesIds: ['largescale_blackfish', 'black_seabream'],
   },
-
-  // ── 강원 양양 ──────────────────────────────
+  // ── 강원 속초 ──────────────────────────────
   {
-    id: 'gangwon_yangyang',
-    nameKo: '강원 양양',
-    shortNameKo: '양양',
-    description:
-      '동해안 대표 관광 낚시터. 낙산 방파제는 야간 갈치 낚시의 성지이며, ' +
-      '여름 피크 시즌에는 전국에서 꾼들이 모여든다.',
-    latitude: 38.083,
-    longitude: 128.630,
+    id: 'gangwon_sokcho',
+    nameKo: '강원 속초',
+    shortNameKo: '속초',
+    description: '동해안 북단 대표 낚시터. 속초항 및 낙산 인근 방파제 갈치 낚시 명소.',
+    latitude: 38.207,
+    longitude: 128.591,
     subSpotIds: [
       'yangyang_naksansa_breakwater',
     ],
     representativeSpeciesIds: ['hairtail', 'black_seabream'],
   },
-
   // ── 제주 ───────────────────────────────────
   {
     id: 'jeju',
     nameKo: '제주',
     shortNameKo: '제주',
-    description:
-      '한국 최남단 제주도. 아열대 어종이 풍부하며 부시리·참돔·벵에돔의 보고. ' +
-      '성산일출봉 근처 방파제는 조황이 특히 뛰어나다.',
+    description: '참돔, 벵에돔, 부시리가 쏟아지는 한국 최남단 낚시 성지 제주도.',
     latitude: 33.455,
     longitude: 126.935,
     subSpotIds: [
@@ -105,22 +94,83 @@ export const REGION_DATABASE: RegionDef[] = [
     ],
     representativeSpeciesIds: ['largescale_blackfish', 'japanese_amberjack', 'red_seabream'],
   },
-
-  // ── 전남 여수 ──────────────────────────────
+  // ── 인천 ───────────────────────────────────
   {
-    id: 'jeonnam_yeosu',
-    nameKo: '전남 여수',
-    shortNameKo: '여수',
-    description:
-      '다도해 품은 여수. 선상 낚시와 갈치 포획의 전국 1번지. ' +
-      '오동도 앞 선상 포인트는 계절에 관계없이 갈치와 감성돔이 잘 낚인다.',
-    latitude: 34.740,
-    longitude: 127.756,
+    id: 'incheon',
+    nameKo: '인천',
+    shortNameKo: '인천',
+    description: '서해안의 거대 조간대를 품은 인천. 광활한 갯벌과 해루질, 망둥어 낚시의 성지.',
+    latitude: 37.456,
+    longitude: 126.705,
     subSpotIds: [
-      'yeosu_odongdo_boat',
+      'incheon_mud_flat',
     ],
-    representativeSpeciesIds: ['hairtail', 'yellowtail', 'black_seabream'],
-    minLicenseRequired: 'boat_angling',
+    representativeSpeciesIds: ['blue_crab', 'flounder'],
+  },
+  // ── 충남 태안 ──────────────────────────────
+  {
+    id: 'chungnam_taean',
+    nameKo: '충남 태안',
+    shortNameKo: '태안',
+    description: '리아스식 해안과 다양한 갯벌, 해수욕장을 품은 서해 원투 낚시의 요람.',
+    latitude: 36.745,
+    longitude: 126.297,
+    subSpotIds: [
+      'taean_beach',
+    ],
+    representativeSpeciesIds: ['flounder', 'goby'],
+  },
+  // ── 울산 ───────────────────────────────────
+  {
+    id: 'ulsan',
+    nameKo: '울산',
+    shortNameKo: '울산',
+    description: '슬도와 이덕 등 동해 남부의 명방파제와 갯바위 우럭 낚시 요충지.',
+    latitude: 35.538,
+    longitude: 129.311,
+    subSpotIds: [
+      'ulsan_seuldo',
+    ],
+    representativeSpeciesIds: ['black_rockfish', 'black_seabream'],
+  },
+  // ── 부산 ───────────────────────────────────
+  {
+    id: 'busan',
+    nameKo: '부산',
+    shortNameKo: '부산',
+    description: '태종대, 오륙도 등 강한 조류가 흐르는 대물 벵에돔·참돔 선상 갯바위 낚시터.',
+    latitude: 35.179,
+    longitude: 129.075,
+    subSpotIds: [
+      'busan_oryukdo',
+    ],
+    representativeSpeciesIds: ['red_seabream', 'largescale_blackfish'],
+  },
+  // ── 울릉도 ─────────────────────────────────
+  {
+    id: 'ulleungdo',
+    nameKo: '울릉도',
+    shortNameKo: '울릉도',
+    description: '동해의 깊은 수심과 천혜의 절경 속에서 참돔과 우럭 손맛을 보는 섬.',
+    latitude: 37.484,
+    longitude: 130.898,
+    subSpotIds: [
+      'ulleungdo_jeodong',
+    ],
+    representativeSpeciesIds: ['black_rockfish', 'red_seabream'],
+  },
+  // ── 독도 ───────────────────────────────────
+  {
+    id: 'dokdo',
+    nameKo: '독도',
+    shortNameKo: '독도',
+    description: '대한민국 동단 끝자락. 거센 파도와 함께 활어들의 황금 어장을 형성하는 화산섬.',
+    latitude: 37.242,
+    longitude: 131.868,
+    subSpotIds: [
+      'dokdo_coast',
+    ],
+    representativeSpeciesIds: ['black_rockfish', 'japanese_amberjack'],
   },
 ];
 

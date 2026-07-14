@@ -56,11 +56,11 @@ export const WORLD_NODE_DATABASE: FishingSpotNode[] = [
     name: '강원 속초',
     shortName: '속초',
     region: '강원도',
-    pixelX: 405,
-    pixelY: 58,
+    pixelX: 152,
+    pixelY: 30,
     spotsCount: 2,
     availableTypes: ['BREAKWATER', 'BEACH'],
-    regionDatabaseId: 'gangwon_yangyang',
+    regionDatabaseId: 'gangwon_sokcho',
   },
   // ── 인천 ──
   {
@@ -68,11 +68,11 @@ export const WORLD_NODE_DATABASE: FishingSpotNode[] = [
     name: '인천',
     shortName: '인천',
     region: '인천광역시',
-    pixelX: 318,
-    pixelY: 108,
-    spotsCount: 3,
+    pixelX: 86,
+    pixelY: 64,
+    spotsCount: 1,
     availableTypes: ['BREAKWATER', 'MUD'],
-    regionDatabaseId: 'gangwon_yangyang', // 임시 — 인천 지역 DB 추가 시 교체
+    regionDatabaseId: 'incheon',
   },
   // ── 충남 태안 ──
   {
@@ -80,11 +80,11 @@ export const WORLD_NODE_DATABASE: FishingSpotNode[] = [
     name: '충남 태안',
     shortName: '태안',
     region: '충청남도',
-    pixelX: 302,
-    pixelY: 158,
-    spotsCount: 2,
+    pixelX: 72,
+    pixelY: 91,
+    spotsCount: 1,
     availableTypes: ['MUD', 'BEACH'],
-    regionDatabaseId: 'gangwon_yangyang', // 임시
+    regionDatabaseId: 'chungnam_taean',
   },
   // ── 경북 포항 ──
   {
@@ -92,8 +92,8 @@ export const WORLD_NODE_DATABASE: FishingSpotNode[] = [
     name: '경북 포항',
     shortName: '포항',
     region: '경상북도',
-    pixelX: 442,
-    pixelY: 218,
+    pixelX: 183,
+    pixelY: 123,
     spotsCount: 6,
     availableTypes: ['BREAKWATER', 'MUD', 'BOAT'],
     regionDatabaseId: 'gyeongbuk_pohang',
@@ -104,11 +104,11 @@ export const WORLD_NODE_DATABASE: FishingSpotNode[] = [
     name: '울산',
     shortName: '울산',
     region: '울산광역시',
-    pixelX: 446,
-    pixelY: 258,
-    spotsCount: 3,
+    pixelX: 185,
+    pixelY: 147,
+    spotsCount: 1,
     availableTypes: ['BREAKWATER', 'REEF'],
-    regionDatabaseId: 'gyeongbuk_pohang', // 임시
+    regionDatabaseId: 'ulsan',
   },
   // ── 부산 ──
   {
@@ -116,11 +116,11 @@ export const WORLD_NODE_DATABASE: FishingSpotNode[] = [
     name: '부산',
     shortName: '부산',
     region: '부산광역시',
-    pixelX: 440,
-    pixelY: 285,
-    spotsCount: 5,
+    pixelX: 173,
+    pixelY: 163,
+    spotsCount: 1,
     availableTypes: ['BREAKWATER', 'REEF', 'BOAT'],
-    regionDatabaseId: 'gyeongbuk_pohang', // 임시
+    regionDatabaseId: 'busan',
   },
   // ── 경남 거제 ──
   {
@@ -128,23 +128,11 @@ export const WORLD_NODE_DATABASE: FishingSpotNode[] = [
     name: '경남 거제',
     shortName: '거제',
     region: '경상남도',
-    pixelX: 422,
-    pixelY: 312,
+    pixelX: 160,
+    pixelY: 174,
     spotsCount: 2,
     availableTypes: ['BREAKWATER', 'REEF'],
     regionDatabaseId: 'gyeongnam_geoje',
-  },
-  // ── 전남 여수 ──
-  {
-    id: 'jeonnam_yeosu',
-    name: '전남 여수',
-    shortName: '여수',
-    region: '전라남도',
-    pixelX: 380,
-    pixelY: 318,
-    spotsCount: 2,
-    availableTypes: ['BOAT', 'REEF'],
-    regionDatabaseId: 'jeonnam_yeosu',
   },
   // ── 제주 ──
   {
@@ -152,34 +140,34 @@ export const WORLD_NODE_DATABASE: FishingSpotNode[] = [
     name: '제주',
     shortName: '제주',
     region: '제주특별자치도',
-    pixelX: 336,
-    pixelY: 410,
-    spotsCount: 2,
+    pixelX: 84,
+    pixelY: 236,
+    spotsCount: 1,
     availableTypes: ['BREAKWATER', 'REEF', 'BOAT'],
     regionDatabaseId: 'jeju',
   },
-  // ── 울릉도 (도서 지역) ──
+  // ── 울릉도 ──
   {
     id: 'ulleungdo',
     name: '울릉도',
     shortName: '울릉도',
     region: '경상북도',
-    pixelX: 476,
-    pixelY: 115,
+    pixelX: 228,
+    pixelY: 61,
     spotsCount: 1,
     availableTypes: ['REEF', 'BOAT'],
-    regionDatabaseId: 'gyeongbuk_pohang', // 임시
+    regionDatabaseId: 'ulleungdo',
   },
-  // ── 독도 (최동단 도서) ──
+  // ── 독도 ──
   {
     id: 'dokdo',
     name: '독도',
     shortName: '독도',
     region: '경상북도',
-    pixelX: 507,
-    pixelY: 132,
+    pixelX: 252,
+    pixelY: 72,
     spotsCount: 1,
     availableTypes: ['REEF', 'BOAT'],
-    regionDatabaseId: 'gyeongbuk_pohang', // 임시
+    regionDatabaseId: 'dokdo',
   },
 ];

@@ -83,8 +83,8 @@ export class BootScene extends Phaser.Scene {
     document.head.appendChild(fontLink);
 
     // ─── 월드맵 픽셀 배경 이미지 ───
-    // webglmap_pixel.png: VWorld 위성 이미지를 픽셀화 처리한 대한민국 지도
-    this.load.image('korea_pixel_map', '/webglmap_pixel.png');
+    // webglmap_pixelazed.png: VWorld 위성 이미지를 픽셀화 처리한 대한민국 지도
+    this.load.image('korea_pixel_map', 'webglmap_pixelazed.png');
 
     // ─── 남자 캐릭터 스프라이트 (12장) ───
     // 정지 4방향
