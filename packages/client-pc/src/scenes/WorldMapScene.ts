@@ -25,7 +25,9 @@ import {
   LicenseType,
   WORLD_NODE_DATABASE,
   FishingSpotNode,
-  REGION_MAP_GRAPHS,
+  RegionAreaNode,
+  isRegionUnlocked,
+  getRegionAreaNodes,
 } from '@tra/core';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { ConfirmTripModal } from '../ui/ConfirmTripModal.js';
@@ -35,7 +37,8 @@ import { ConfirmTripModal } from '../ui/ConfirmTripModal.js';
 // regionmap : 지역 클릭 후 해당 지역 픽셀 지도로 줌인 진입 (포인트는 추후 구현)
 // spot      : (임시) 위경도 기반 낚시터 리스트 — regionmap에서 임시 진입
 // confirm   : 출조 확인 모달
-type ViewState = 'region' | 'regionmap' | 'spot' | 'confirm';
+// areaconfirm: 지역 구역 출조 확인 팝업 (예/아니오)
+type ViewState = 'region' | 'regionmap' | 'spot' | 'confirm' | 'areaconfirm';
 
 // ── 범례 설정 ────────────────────────────────────────────
 const LEGEND_ITEMS: { type: string; color: number; label: string }[] = [
@@ -81,6 +84,13 @@ export class WorldMapScene extends Phaser.Scene {
 
   // ── 줌인 상태 ─────────────────────────────────────────
   private isZooming = false;
+
+  // ── 전국 지도 배경 이미지 (줌 전환 시 페이드용) ────────
+  private nationalMapImg?: Phaser.GameObjects.Image;
+  private nationalMapLabel?: Phaser.GameObjects.Text;
+
+  // ── 지역 구역 출조 확인 팝업 ──────────────────────────
+  private areaConfirmContainer?: Phaser.GameObjects.Container;
 
   // ── 현재 진입한 지역 (regionmap/spot 뷰 컨텍스트) ────────
   private _currentRegion?: RegionDef;
@@ -412,20 +422,18 @@ export class WorldMapScene extends Phaser.Scene {
     const scaleX = MAP_DISPLAY_W / MAP_NATIVE_W;
     const scaleY = MAP_DISPLAY_H / MAP_NATIVE_H;
 
-    const mapImg = this.add.image(MAP_DISPLAY_X, MAP_DISPLAY_Y, MAP_IMAGE_KEY)
+    this.nationalMapImg = this.add.image(MAP_DISPLAY_X, MAP_DISPLAY_Y, MAP_IMAGE_KEY)
       .setOrigin(0, 0)
       .setScale(scaleX, scaleY)
       .setDepth(1);
 
     // 지도 라벨 (우하단 — 매우 작고 반투명하게)
-    this.add.text(MAP_DISPLAY_X + MAP_DISPLAY_W - 10, MAP_DISPLAY_Y + MAP_DISPLAY_H + 2,
+    this.nationalMapLabel = this.add.text(MAP_DISPLAY_X + MAP_DISPLAY_W - 10, MAP_DISPLAY_Y + MAP_DISPLAY_H + 2,
       'VWorld 기반 픽셀 지도', {
         fontFamily: 'monospace',
         fontSize: '8px',
         color: '#1a2d40',
       }).setOrigin(1, 0).setDepth(3).setAlpha(0.4);
-
-    void mapImg;
   }
 
   // ═══════════════════════════════════════════════════════
@@ -447,6 +455,9 @@ export class WorldMapScene extends Phaser.Scene {
   private handleEsc(): void {
     if (this.isZooming) return;
     switch (this.viewState) {
+      case 'areaconfirm':
+        this.closeAreaConfirm();
+        break;
       case 'confirm':
         this.closeConfirmModal();
         break;
@@ -482,13 +493,19 @@ export class WorldMapScene extends Phaser.Scene {
     this.spotContainer.removeAll(true);
     this.pinContainer.removeAll(true);
     this.pinMarkerMap.clear();
+    this.areaPinMap.clear();
+    this.closeAreaConfirm();
 
     // 카메라 줌 초기화
     this.cameras.main.setZoom(1);
     this.cameras.main.centerOn(GAME_WIDTH / 2, GAME_HEIGHT / 2);
 
+    // 전국 지도 배경 복원 (지역 뷰에서 페이드아웃했던 것 되돌림)
+    this.nationalMapImg?.setVisible(true).setAlpha(1);
+    this.nationalMapLabel?.setVisible(true).setAlpha(0.4);
+
     // ── 타이틀 영역 ─────────────────────────────────────
-    const title = this.add.text(20, 22, '🗺  출조지 선택', {
+    const title = this.add.text(20, 22, '출조지 선택', {
       fontFamily: '"Noto Sans KR", sans-serif',
       fontSize: '20px',
       color: '#4af2a1',
@@ -519,53 +536,68 @@ export class WorldMapScene extends Phaser.Scene {
 
   // ── 지역 리스트 아이템 ───────────────────────────────
   private addRegionListItem(region: RegionDef, node: FishingSpotNode | undefined, itemY: number): void {
+    const unlocked = isRegionUnlocked(region.id);
     const btn = this.add.container(0, 0);
 
+    const baseFill = unlocked ? 0x0e1c2d : 0x0c0f14;
+    const baseStroke = unlocked ? 0x1f3d5a : 0x2a2f38;
+
     const bg = this.add.graphics();
-    bg.fillStyle(0x0e1c2d, 0.9);
+    bg.fillStyle(baseFill, 0.9);
     bg.fillRoundedRect(16, itemY, 340, 44, 4);
-    bg.lineStyle(1.5, 0x1f3d5a, 0.8);
+    bg.lineStyle(1.5, baseStroke, 0.8);
     bg.strokeRoundedRect(16, itemY, 340, 44, 4);
 
     const nameText = this.add.text(40, itemY + 8, region.nameKo, {
       fontFamily: '"Noto Sans KR", sans-serif',
       fontSize: '15px',
-      color: '#d0e8f5',
+      color: unlocked ? '#d0e8f5' : '#5a6472',
       fontStyle: 'bold',
     });
-    const subText = this.add.text(40, itemY + 26, `포인트 ${region.subSpotIds.length}개${node ? '  ·  ' + node.availableTypes.map((t: string) => LEGEND_ITEMS.find((l) => l.type === t)?.label ?? t).join(' / ') : ''}`, {
-      fontFamily: '"Noto Sans KR", sans-serif',
-      fontSize: '9px',
-      color: '#607b8e',
-    });
+    const subText = this.add.text(40, itemY + 26,
+      unlocked
+        ? `포인트 ${region.subSpotIds.length}개${node ? '  ·  ' + node.availableTypes.map((t: string) => LEGEND_ITEMS.find((l) => l.type === t)?.label ?? t).join(' / ') : ''}`
+        : '준비중 — 현재 잠금',
+      {
+        fontFamily: '"Noto Sans KR", sans-serif',
+        fontSize: '9px',
+        color: unlocked ? '#607b8e' : '#4a525e',
+      });
 
     btn.add([bg, nameText, subText]);
+
+    // 잠금 지역: 우측 자물쇠 아이콘
+    if (!unlocked) {
+      const lock = this.add.text(342, itemY + 14, '🔒', { fontSize: '15px' }).setAlpha(0.75);
+      btn.add(lock);
+    }
 
     const hit = this.add.rectangle(186, itemY + 22, 340, 44, 0xffffff, 0)
       .setInteractive({ useHandCursor: true });
 
     hit.on('pointerover', () => {
       bg.clear();
-      bg.fillStyle(0x162a40, 0.95);
+      bg.fillStyle(unlocked ? 0x162a40 : 0x14181f, 0.95);
       bg.fillRoundedRect(16, itemY, 340, 44, 4);
-      bg.lineStyle(1.5, 0x2a5a8a, 1);
+      bg.lineStyle(1.5, unlocked ? 0x2a5a8a : 0x3a414c, 1);
       bg.strokeRoundedRect(16, itemY, 340, 44, 4);
-      nameText.setColor('#4af2a1');
+      nameText.setColor(unlocked ? '#4af2a1' : '#7a8494');
       // 지도 마커 하이라이트
-      if (node) this.highlightPin(node.id, true);
+      if (unlocked && node) this.highlightPin(node.id, true);
     });
     hit.on('pointerout', () => {
       bg.clear();
-      bg.fillStyle(0x0e1c2d, 0.9);
+      bg.fillStyle(baseFill, 0.9);
       bg.fillRoundedRect(16, itemY, 340, 44, 4);
-      bg.lineStyle(1.5, 0x1f3d5a, 0.8);
+      bg.lineStyle(1.5, baseStroke, 0.8);
       bg.strokeRoundedRect(16, itemY, 340, 44, 4);
-      nameText.setColor('#d0e8f5');
+      nameText.setColor(unlocked ? '#d0e8f5' : '#5a6472');
       // 하이라이트 해제
-      if (node) this.highlightPin(node.id, false);
+      if (unlocked && node) this.highlightPin(node.id, false);
       this.hideTooltip();
     });
     hit.on('pointerdown', () => {
+      if (!unlocked) { this.showLockedRegionAlert(region.nameKo); return; }
       this.navigateToRegion(region, node);
     });
     btn.add(hit);
@@ -576,26 +608,33 @@ export class WorldMapScene extends Phaser.Scene {
   // ── 지도 위 핀포인트 마커 그리기 ────────────────────
   private drawWorldNodePin(node: FishingSpotNode): void {
     const { x, y } = this.nodeToPinXY(node);
+    const unlocked = isRegionUnlocked(node.regionDatabaseId);
 
-    // 주 타입 색상
+    // 주 타입 색상 (잠금 지역은 회색)
     const primaryType = node.availableTypes[0];
-    const color = LEGEND_ITEMS.find((l) => l.type === primaryType)?.color ?? 0x4af2a1;
+    const color = unlocked
+      ? (LEGEND_ITEMS.find((l) => l.type === primaryType)?.color ?? 0x4af2a1)
+      : 0x556070;
 
-    const dot = this.add.circle(x, y, 6, color);
+    const dot = this.add.circle(x, y, unlocked ? 6 : 5, color).setAlpha(unlocked ? 1 : 0.7);
     const ring = this.add.circle(x, y, 12, color, 0);
     ring.setStrokeStyle(1.5, color);
 
-    // 펄스 애니메이션
-    this.tweens.add({
-      targets: ring,
-      scaleX: 2.2, scaleY: 2.2, alpha: 0,
-      duration: 1600, repeat: -1, ease: 'Sine.easeOut',
-    });
+    // 펄스 애니메이션 (준비된 지역만 — 잠금 지역은 정적)
+    if (unlocked) {
+      this.tweens.add({
+        targets: ring,
+        scaleX: 2.2, scaleY: 2.2, alpha: 0,
+        duration: 1600, repeat: -1, ease: 'Sine.easeOut',
+      });
+    } else {
+      ring.setAlpha(0);
+    }
 
-    const label = this.add.text(x, y + 14, node.shortName, {
+    const label = this.add.text(x, y + 14, unlocked ? node.shortName : `${node.shortName} (잠금)`, {
       fontFamily: '"Noto Sans KR", sans-serif',
       fontSize: '9px',
-      color: '#c8e8ff',
+      color: unlocked ? '#c8e8ff' : '#7a8494',
       backgroundColor: '#060f1ecc',
       padding: { x: 3, y: 1 },
     }).setOrigin(0.5, 0);
@@ -603,21 +642,32 @@ export class WorldMapScene extends Phaser.Scene {
     // 핀 인터랙션
     dot.setInteractive(new Phaser.Geom.Circle(0, 0, 14), Phaser.Geom.Circle.Contains);
     dot.on('pointerover', () => {
-      dot.setFillStyle(0xffffff);
-      this.showNodeTooltip(node, x, y);
-      // 리스트 하이라이트 불가 (리스트 참조 없음 — 핀→리스트 방향은 반응색으로 처리)
+      dot.setFillStyle(unlocked ? 0xffffff : 0x8a95a5);
+      if (unlocked) this.showNodeTooltip(node, x, y);
     });
     dot.on('pointerout', () => {
       dot.setFillStyle(color);
       this.hideTooltip();
     });
     dot.on('pointerdown', () => {
+      if (!unlocked) { this.showLockedRegionAlert(node.name); return; }
       const region = REGION_DATABASE.find((r) => r.id === node.regionDatabaseId);
       if (region) this.navigateToRegion(region, node);
     });
 
     this.pinContainer.add([dot, ring, label]);
     this.pinMarkerMap.set(node.id, { dot, ring, label });
+  }
+
+  /** 잠금 지역 클릭 시 안내 */
+  private showLockedRegionAlert(regionName: string): void {
+    const alertTxt = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 56,
+      `${regionName} 은(는) 아직 준비중입니다. 현재는 '강원 속초'만 입장할 수 있습니다.`, {
+        fontFamily: '"Noto Sans KR", sans-serif',
+        fontSize: '12px', color: '#ffce54',
+        backgroundColor: '#050f1ecc', padding: { x: 12, y: 6 }, fontStyle: 'bold',
+      }).setOrigin(0.5).setDepth(400);
+    this.time.delayedCall(2600, () => alertTxt.destroy());
   }
 
   // ── 핀 하이라이트 (리스트 hover → 지도 마커) ────────
@@ -639,29 +689,38 @@ export class WorldMapScene extends Phaser.Scene {
     }
   }
 
-  // ── 지역 클릭 → 줌인 애니메이션 → 스팟 뷰 ─────────
+  // ── 지역 클릭 → "한 지도가 확대되는" 이음새 없는 줌인 → 지역 지도 뷰 ─────
   private navigateToRegion(region: RegionDef, node: FishingSpotNode | undefined): void {
     if (this.isZooming) return;
 
-    if (node) {
-      // 클릭된 핀 위치로 카메라 줌인 (리드인 연출) → 지역 상세 지도 진입
-      const { x, y } = this.nodeToPinXY(node);
-      this.isZooming = true;
-      this.cameras.main.pan(x, y, 400, 'Cubic.easeInOut');
-      this.cameras.main.zoomTo(1.5, 400, 'Cubic.easeInOut', false, (_cam: Phaser.Cameras.Scene2D.Camera, progress: number) => {
-        if (progress === 1) {
-          this.isZooming = false;
-          // 짧은 딜레이 후 지역 지도 뷰로 전환
-          this.time.delayedCall(120, () => {
-            this.cameras.main.setZoom(1);
-            this.cameras.main.centerOn(GAME_WIDTH / 2, GAME_HEIGHT / 2);
-            this.renderRegionMapView(region, node);
-          });
-        }
-      });
-    } else {
-      this.renderRegionMapView(region, undefined);
-    }
+    if (!node) { this.renderRegionMapView(region, undefined); return; }
+
+    // 클릭된 핀 위치 = 확대의 중심점 (전국 지도 → 지역 지도로 이어지는 앵커)
+    const { x, y } = this.nodeToPinXY(node);
+    this.isZooming = true;
+
+    // 리스트/범례/툴팁은 즉시 사라지게 (지도 확대에 집중)
+    this.hideTooltip();
+    this.tweens.add({ targets: this.regionContainer, alpha: 0, duration: 220 });
+
+    // 전국 지도 배경 + 핀을 핀 지점 기준으로 확대하며 페이드아웃
+    // → 뒤이어 등장하는 지역 지도가 "같은 지도를 더 확대한 것"처럼 보이게 함
+    this.cameras.main.pan(x, y, 520, 'Cubic.easeInOut');
+    this.cameras.main.zoomTo(2.4, 520, 'Cubic.easeInOut');
+    this.tweens.add({ targets: [this.nationalMapImg, this.nationalMapLabel], alpha: 0, duration: 480 });
+    this.tweens.add({ targets: this.pinContainer, alpha: 0, duration: 340 });
+
+    this.time.delayedCall(540, () => {
+      // 카메라/레이어 원복 (지역 지도는 자체 좌표계로 그려짐)
+      this.cameras.main.setZoom(1);
+      this.cameras.main.centerOn(GAME_WIDTH / 2, GAME_HEIGHT / 2);
+      this.regionContainer.setAlpha(1);
+      this.pinContainer.setAlpha(1);
+      this.nationalMapImg?.setVisible(false);
+      this.nationalMapLabel?.setVisible(false);
+      this.isZooming = false;
+      this.renderRegionMapView(region, node);
+    });
   }
 
   // ═══════════════════════════════════════════════════════
@@ -677,9 +736,13 @@ export class WorldMapScene extends Phaser.Scene {
     this.pinMarkerMap.clear();
     this.hideTooltip();
 
-    // ── 지도 배치 영역 (우측에 크게) ─────────────────────
-    const mapSize = 560;
-    const cx = 720;                 // 지도 중심 X
+    // 전국 지도 배경은 숨김 상태 유지 (지역 지도가 화면을 차지)
+    this.nationalMapImg?.setVisible(false);
+    this.nationalMapLabel?.setVisible(false);
+
+    // ── 지도 배치 영역 (좌측 정보 패널 오른쪽을 크게 차지) ─────
+    const mapSize = 600;
+    const cx = 812;                 // 지도 중심 X (정보 패널 360px 우측 여백 중앙)
     const cy = GAME_HEIGHT / 2;     // 지도 중심 Y
     const fullScale = mapSize / MAP_NATIVE_W;
     const texKey = node ? `zoom_${node.mapSlug}` : '';
@@ -692,18 +755,21 @@ export class WorldMapScene extends Phaser.Scene {
     this.spotContainer.add(frame);
 
     if (hasMap) {
-      // 픽셀 지도 이미지 — 핀 위치에서 작게 시작해 중앙으로 확대(줌인 연출)
-      const start = node ? this.nodeToPinXY(node) : { x: cx, y: cy };
-      const mapImg = this.add.image(start.x, start.y, texKey).setOrigin(0.5);
-      mapImg.setScale(fullScale * 0.14);
+      // 픽셀 지도 이미지 — 중앙에서 확대(전국 지도 줌인의 연속) 후 구역 핀 등장
+      const mapImg = this.add.image(cx, cy, texKey).setOrigin(0.5);
+      mapImg.setScale(fullScale * 0.62);
+      mapImg.setAlpha(0.2);
       this.spotContainer.add(mapImg);
 
       this.tweens.add({
         targets: mapImg,
-        x: cx, y: cy,
-        scaleX: fullScale, scaleY: fullScale,
-        duration: 460,
+        scaleX: fullScale, scaleY: fullScale, alpha: 1,
+        duration: 420,
         ease: 'Cubic.easeOut',
+        onComplete: () => {
+          // 지도 확대가 끝난 뒤 출조 구역 핀 표시 (준비된 지역만)
+          this.drawRegionAreaPins(region, texKey, cx, cy, fullScale);
+        },
       });
     } else {
       // 지도 미준비 지역 (예: 태안) — 플레이스홀더
@@ -715,7 +781,7 @@ export class WorldMapScene extends Phaser.Scene {
         ph.lineBetween(cx + gx, cy - mapSize / 2, cx + gx, cy + mapSize / 2);
         ph.lineBetween(cx - mapSize / 2, cy + gx, cx + mapSize / 2, cy + gx);
       }
-      const phText = this.add.text(cx, cy, `🗺️  ${region.nameKo}\n지도 준비중`, {
+      const phText = this.add.text(cx, cy, `${region.nameKo}\n지도 준비중`, {
         fontFamily: '"Noto Sans KR", sans-serif',
         fontSize: '16px', color: '#5f7d92', align: 'center', lineSpacing: 8,
       }).setOrigin(0.5);
@@ -743,7 +809,7 @@ export class WorldMapScene extends Phaser.Scene {
     this.spotContainer.add(backBtn);
 
     // 지역 타이틀
-    const title = this.add.text(20, 62, `📍 ${region.nameKo}`, {
+    const title = this.add.text(20, 62, region.nameKo, {
       fontFamily: '"Noto Sans KR", sans-serif',
       fontSize: '22px', color: '#4af2a1', fontStyle: 'bold',
     });
@@ -754,65 +820,243 @@ export class WorldMapScene extends Phaser.Scene {
     });
     this.spotContainer.add([title, desc]);
 
-    // 안내 문구 (포인트 준비중)
-    // 이 지역에 타일맵 필드(RegionFieldScene)가 준비되어 있는지
-    const hasFieldMap = !!REGION_MAP_GRAPHS[region.id];
+    // 출조 구역 목록 (지도 위 핀과 동일 — 좌측 리스트로도 선택 가능)
+    const areas = getRegionAreaNodes(region.id);
+    const hasFieldMap = areas.length > 0;
 
-    const note = this.add.text(20, GAME_HEIGHT - 200,
+    const note = this.add.text(20, 150,
       hasFieldMap
-        ? '✅ 이 지역은 실제 지형 기반 타일맵\n   필드가 준비되어 있습니다.\n   아래 버튼으로 입장하세요.\n\n   [ESC] 전국 지도로 돌아가기'
-        : '🚧 이 지역의 세부 낚시 포인트는\n   준비중입니다 (타일맵 에셋 제작 예정).\n\n   [ESC] 전국 지도로 돌아가기', {
+        ? '지도의 핀 또는 아래 목록에서\n활동할 구역을 선택하세요.\n\n[ESC] 전국 지도로 돌아가기'
+        : '이 지역의 세부 낚시 포인트는\n준비중입니다 (타일맵 에셋 제작 예정).\n\n[ESC] 전국 지도로 돌아가기', {
         fontFamily: '"Noto Sans KR", sans-serif',
-        fontSize: '11px', color: hasFieldMap ? '#7fe6b0' : '#607b8e', lineSpacing: 5,
+        fontSize: '11px', color: hasFieldMap ? '#7fe6b0' : '#607b8e', lineSpacing: 6,
       });
     this.spotContainer.add(note);
 
-    // 타일맵 필드 입장 버튼 (준비된 지역만)
-    if (hasFieldMap) {
-      const fbY = GAME_HEIGHT - 112;
-      const fieldBtn = this.add.container(0, 0);
-      const fieldBg = this.add.graphics();
-      fieldBg.fillStyle(0x0e3a52, 0.95);
-      fieldBg.fillRoundedRect(16, fbY, 320, 42, 5);
-      fieldBg.lineStyle(2, 0x33b0e0, 1);
-      fieldBg.strokeRoundedRect(16, fbY, 320, 42, 5);
-      const fieldText = this.add.text(176, fbY + 21, `🗺️ ${region.shortNameKo} 필드 입장`, {
+    // 좌측 구역 선택 리스트 (핀과 연동)
+    areas.forEach((area: RegionAreaNode, idx: number) => {
+      const ay = 236 + idx * 60;
+      const aBtn = this.add.container(0, 0);
+      const aBg = this.add.graphics();
+      aBg.fillStyle(0x0e3a52, 0.92);
+      aBg.fillRoundedRect(16, ay, 330, 50, 5);
+      aBg.lineStyle(1.5, 0x33b0e0, 0.9);
+      aBg.strokeRoundedRect(16, ay, 330, 50, 5);
+      const aName = this.add.text(30, ay + 8, area.name, {
         fontFamily: '"Noto Sans KR", sans-serif',
-        fontSize: '14px', color: '#9fe4ff', fontStyle: 'bold',
-      }).setOrigin(0.5);
-      fieldBtn.add([fieldBg, fieldText]);
-      const fieldHit = this.add.rectangle(176, fbY + 21, 320, 42, 0xffffff, 0).setInteractive({ useHandCursor: true });
-      fieldHit.on('pointerover', () => fieldText.setColor('#d6f4ff'));
-      fieldHit.on('pointerout', () => fieldText.setColor('#9fe4ff'));
-      fieldHit.on('pointerdown', () => {
-        this.cameras.main.fadeOut(280, 0, 10, 20);
-        this.cameras.main.once('camerafadeoutcomplete', () => {
-          this.scene.start('RegionFieldScene', { region: region.id });
-        });
+        fontSize: '15px', color: '#9fe4ff', fontStyle: 'bold',
       });
-      fieldBtn.add(fieldHit);
-      this.spotContainer.add(fieldBtn);
-    }
+      const aDesc = this.add.text(30, ay + 30, area.desc, {
+        fontFamily: '"Noto Sans KR", sans-serif',
+        fontSize: '9px', color: '#7fb8d4',
+      });
+      aBtn.add([aBg, aName, aDesc]);
+      const aHit = this.add.rectangle(181, ay + 25, 330, 50, 0xffffff, 0).setInteractive({ useHandCursor: true });
+      aHit.on('pointerover', () => {
+        aBg.clear();
+        aBg.fillStyle(0x155a7c, 0.95);
+        aBg.fillRoundedRect(16, ay, 330, 50, 5);
+        aBg.lineStyle(2, 0x5cd0ff, 1);
+        aBg.strokeRoundedRect(16, ay, 330, 50, 5);
+        this.highlightAreaPin(area.id, true);
+      });
+      aHit.on('pointerout', () => {
+        aBg.clear();
+        aBg.fillStyle(0x0e3a52, 0.92);
+        aBg.fillRoundedRect(16, ay, 330, 50, 5);
+        aBg.lineStyle(1.5, 0x33b0e0, 0.9);
+        aBg.strokeRoundedRect(16, ay, 330, 50, 5);
+        this.highlightAreaPin(area.id, false);
+      });
+      aHit.on('pointerdown', () => this.showAreaConfirm(region, area));
+      aBtn.add(aHit);
+      this.spotContainer.add(aBtn);
+    });
 
-    // (임시) 낚시터 목록 진입 버튼 — 세부 포인트 구현 전까지 출조 유지
-    const tempBtn = this.add.container(0, 0);
-    const tbY = GAME_HEIGHT - 64;
+    // (임시) 위경도 기반 낚시터 목록 진입 — 세부 스팟/조과 테스트용 보조 경로
+    const tbY = GAME_HEIGHT - 52;
     const tempBg = this.add.graphics();
-    tempBg.fillStyle(0x123a2c, 0.9);
-    tempBg.fillRoundedRect(16, tbY, 320, 40, 5);
-    tempBg.lineStyle(1.5, 0x2f7d5a, 0.9);
-    tempBg.strokeRoundedRect(16, tbY, 320, 40, 5);
-    const tempText = this.add.text(176, tbY + 20, '🎣 낚시터 선택 (임시)', {
+    tempBg.fillStyle(0x11202c, 0.9);
+    tempBg.fillRoundedRect(16, tbY, 330, 36, 5);
+    tempBg.lineStyle(1, 0x2f5a6d, 0.8);
+    tempBg.strokeRoundedRect(16, tbY, 330, 36, 5);
+    const tempText = this.add.text(181, tbY + 18, '낚시터 목록 (임시)', {
       fontFamily: '"Noto Sans KR", sans-serif',
-      fontSize: '13px', color: '#7fe6b0', fontStyle: 'bold',
+      fontSize: '12px', color: '#6fa2b8',
     }).setOrigin(0.5);
-    tempBtn.add([tempBg, tempText]);
-    const tempHit = this.add.rectangle(176, tbY + 20, 320, 40, 0xffffff, 0).setInteractive({ useHandCursor: true });
-    tempHit.on('pointerover', () => { tempText.setColor('#b6ffd8'); });
-    tempHit.on('pointerout', () => { tempText.setColor('#7fe6b0'); });
+    const tempHit = this.add.rectangle(181, tbY + 18, 330, 36, 0xffffff, 0).setInteractive({ useHandCursor: true });
+    tempHit.on('pointerover', () => tempText.setColor('#9fd0e4'));
+    tempHit.on('pointerout', () => tempText.setColor('#6fa2b8'));
     tempHit.on('pointerdown', () => this.renderSpotView(region));
-    tempBtn.add(tempHit);
-    this.spotContainer.add(tempBtn);
+    this.spotContainer.add([tempBg, tempText, tempHit]);
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // 지역 지도 위 출조 구역 핀 (속초항/동명항 등)
+  // ═══════════════════════════════════════════════════════
+  /** 구역 id → 지도 위 핀 마커 참조 (리스트 hover 연동용) */
+  private areaPinMap = new Map<string, {
+    dot: Phaser.GameObjects.Arc; ring: Phaser.GameObjects.Arc; label: Phaser.GameObjects.Container;
+  }>();
+
+  private drawRegionAreaPins(
+    region: RegionDef, texKey: string, cx: number, cy: number, fullScale: number,
+  ): void {
+    this.areaPinMap.clear();
+    const areas = getRegionAreaNodes(region.id);
+    if (areas.length === 0) return;
+
+    // 지역 지도 원본 해상도 (핀 픽셀 좌표 기준)
+    const src = this.textures.get(texKey).getSourceImage() as HTMLImageElement;
+    const nativeW = src?.width || MAP_NATIVE_W;
+    const nativeH = src?.height || MAP_NATIVE_H;
+
+    for (const area of areas) {
+      // 원본 픽셀 → 화면 좌표 (지도 중심 기준)
+      const x = cx + (area.pixelX - nativeW / 2) * fullScale;
+      const y = cy + (area.pixelY - nativeH / 2) * fullScale;
+
+      const color = 0x00d2ff;
+      const ring = this.add.circle(x, y, 13, color, 0).setStrokeStyle(2, color, 0.9);
+      const dot = this.add.circle(x, y, 7, color).setStrokeStyle(2, 0xffffff, 0.95);
+      this.tweens.add({ targets: ring, scale: 2.0, alpha: 0, duration: 1500, repeat: -1, ease: 'Sine.easeOut' });
+
+      // 라벨 (이름표)
+      const labelBox = this.add.container(x, y - 26);
+      const lblBg = this.add.graphics();
+      const lblText = this.add.text(0, 0, area.name, {
+        fontFamily: '"Noto Sans KR", sans-serif',
+        fontSize: '13px', color: '#ffffff', fontStyle: 'bold',
+      }).setOrigin(0.5);
+      const w = lblText.width + 16;
+      lblBg.fillStyle(0x0a1628, 0.92);
+      lblBg.fillRoundedRect(-w / 2, -12, w, 24, 4);
+      lblBg.lineStyle(1.5, color, 0.9);
+      lblBg.strokeRoundedRect(-w / 2, -12, w, 24, 4);
+      labelBox.add([lblBg, lblText]);
+
+      // 등장 연출 (fade + pop)
+      [dot, ring, labelBox].forEach((o) => o.setAlpha(0));
+      dot.setScale(0.4);
+      this.tweens.add({ targets: dot, alpha: 1, scale: 1, duration: 260, ease: 'Back.easeOut' });
+      this.tweens.add({ targets: [ring, labelBox], alpha: 1, duration: 320 });
+
+      dot.setInteractive(new Phaser.Geom.Circle(0, 0, 15), Phaser.Geom.Circle.Contains);
+      dot.on('pointerover', () => { dot.setFillStyle(0xffffff); this.highlightAreaPin(area.id, true); });
+      dot.on('pointerout', () => { dot.setFillStyle(color); this.highlightAreaPin(area.id, false); });
+      dot.on('pointerdown', () => this.showAreaConfirm(region, area));
+
+      this.spotContainer.add([ring, dot, labelBox]);
+      this.areaPinMap.set(area.id, { dot, ring, label: labelBox });
+    }
+  }
+
+  private highlightAreaPin(areaId: string, on: boolean): void {
+    const m = this.areaPinMap.get(areaId);
+    if (!m) return;
+    m.dot.setFillStyle(on ? 0xffffff : 0x00d2ff);
+    m.dot.setScale(on ? 1.35 : 1);
+    m.label.setScale(on ? 1.1 : 1);
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // 출조 구역 확인 팝업 (예 / 아니오)
+  // ═══════════════════════════════════════════════════════
+  private showAreaConfirm(region: RegionDef, area: RegionAreaNode): void {
+    if (this.areaConfirmContainer) return;
+    this.viewState = 'areaconfirm';
+    this.hideTooltip();
+
+    const W = GAME_WIDTH, H = GAME_HEIGHT;
+    const c = this.add.container(0, 0).setDepth(500);
+
+    // 딤 배경
+    const dim = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.62)
+      .setInteractive();  // 뒤 클릭 차단
+    c.add(dim);
+
+    // 카드
+    const cardW = 440, cardH = 220;
+    const cardX = W / 2 - cardW / 2, cardY = H / 2 - cardH / 2;
+    const card = this.add.graphics();
+    card.fillStyle(0x081422, 0.98);
+    card.fillRoundedRect(cardX, cardY, cardW, cardH, 8);
+    card.lineStyle(2, 0x33b0e0, 1);
+    card.strokeRoundedRect(cardX, cardY, cardW, cardH, 8);
+    c.add(card);
+
+    const q1 = this.add.text(W / 2, cardY + 62, area.name, {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '24px', color: '#4af2a1', fontStyle: 'bold',
+    }).setOrigin(0.5);
+    const q2 = this.add.text(W / 2, cardY + 102, '해당 구역으로 출조하시겠습니까?', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '14px', color: '#d0e8f5',
+    }).setOrigin(0.5);
+    c.add([q1, q2]);
+
+    // [아니오] 버튼
+    const noBtn = this.add.container(W / 2 - 90, cardY + cardH - 40);
+    const noBg = this.add.graphics();
+    noBg.fillStyle(0x1f3045, 0.95); noBg.fillRoundedRect(-72, -20, 144, 40, 5);
+    noBg.lineStyle(1.5, 0x4a6a8a, 0.9); noBg.strokeRoundedRect(-72, -20, 144, 40, 5);
+    const noText = this.add.text(0, 0, '아니오', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '15px', color: '#8faabf', fontStyle: 'bold',
+    }).setOrigin(0.5);
+    noBtn.add([noBg, noText]);
+    noBtn.setInteractive(new Phaser.Geom.Rectangle(-72, -20, 144, 40), Phaser.Geom.Rectangle.Contains);
+    noBtn.on('pointerover', () => noText.setColor('#d0e8f5'));
+    noBtn.on('pointerout', () => noText.setColor('#8faabf'));
+    noBtn.on('pointerdown', () => this.closeAreaConfirm());
+    c.add(noBtn);
+
+    // [예] 버튼
+    const yesBtn = this.add.container(W / 2 + 90, cardY + cardH - 40);
+    const yesBg = this.add.graphics();
+    yesBg.fillStyle(0x0d4a2e, 0.97); yesBg.fillRoundedRect(-72, -20, 144, 40, 5);
+    yesBg.lineStyle(2, 0x4af2a1, 1); yesBg.strokeRoundedRect(-72, -20, 144, 40, 5);
+    const yesText = this.add.text(0, 0, '예, 출조하기 ▶', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '15px', color: '#4af2a1', fontStyle: 'bold',
+    }).setOrigin(0.5);
+    yesBtn.add([yesBg, yesText]);
+    yesBtn.setInteractive(new Phaser.Geom.Rectangle(-72, -20, 144, 40), Phaser.Geom.Rectangle.Contains);
+    yesBtn.on('pointerover', () => {
+      yesBg.clear(); yesBg.fillStyle(0x1a6a3e, 0.97); yesBg.fillRoundedRect(-72, -20, 144, 40, 5);
+      yesBg.lineStyle(2, 0x4af2a1, 1); yesBg.strokeRoundedRect(-72, -20, 144, 40, 5);
+    });
+    yesBtn.on('pointerout', () => {
+      yesBg.clear(); yesBg.fillStyle(0x0d4a2e, 0.97); yesBg.fillRoundedRect(-72, -20, 144, 40, 5);
+      yesBg.lineStyle(2, 0x4af2a1, 1); yesBg.strokeRoundedRect(-72, -20, 144, 40, 5);
+    });
+    yesBtn.on('pointerdown', () => this.enterFieldArea(region, area));
+    c.add(yesBtn);
+
+    // ESC 힌트
+    const escHint = this.add.text(W / 2, cardY + cardH + 12, '[ESC] 취소', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#4a6a8a',
+    }).setOrigin(0.5, 0);
+    c.add(escHint);
+
+    // 등장 연출
+    c.setScale(0.9); c.setAlpha(0);
+    this.tweens.add({ targets: c, scale: 1, alpha: 1, duration: 180, ease: 'Back.easeOut' });
+
+    this.areaConfirmContainer = c;
+  }
+
+  private closeAreaConfirm(): void {
+    if (this.areaConfirmContainer) {
+      this.areaConfirmContainer.destroy();
+      this.areaConfirmContainer = undefined;
+    }
+    if (this.viewState === 'areaconfirm') this.viewState = 'regionmap';
+  }
+
+  /** '예' 확정 → RegionFieldScene(해당 구역 맵)로 입장 */
+  private enterFieldArea(region: RegionDef, area: RegionAreaNode): void {
+    GameState.setCurrentSpot(area.id);
+    this.cameras.main.fadeOut(300, 0, 10, 20);
+    this.cameras.main.once('camerafadeoutcomplete', () => {
+      this.scene.start('RegionFieldScene', { region: region.id, mapId: area.fieldMapId });
+    });
   }
 
   // ═══════════════════════════════════════════════════════
@@ -847,7 +1091,7 @@ export class WorldMapScene extends Phaser.Scene {
     backBtn.add(backHit);
     this.spotContainer.add(backBtn);
 
-    const title = this.add.text(152, 20, `📍 ${region.nameKo}`, {
+    const title = this.add.text(152, 20, region.nameKo, {
       fontFamily: '"Noto Sans KR", sans-serif',
       fontSize: '18px', color: '#4af2a1', fontStyle: 'bold',
     });
@@ -1114,7 +1358,7 @@ export class WorldMapScene extends Phaser.Scene {
 
   private showLicenseBlockAlert(): void {
     const alertTxt = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 56,
-      '🔒 면허가 없어 이동할 수 없습니다. 필드에서 면허사무소를 이용해 주세요.', {
+      '면허가 없어 이동할 수 없습니다. 필드에서 면허사무소를 이용해 주세요.', {
         fontFamily: '"Noto Sans KR", sans-serif',
         fontSize: '12px', color: '#ff4444',
         backgroundColor: '#050f1ecc', padding: { x: 12, y: 6 }, fontStyle: 'bold',

@@ -116,6 +116,18 @@ interface SaveData {
 
 const SAVE_VERSION = 1;
 const SAVE_KEY = 'tra_save_v1';
+/** 슬롯 저장 키 (1~3) */
+const SLOT_KEY = (slot: number): string => `tra_save_slot_${slot}`;
+export const SAVE_SLOT_COUNT = 3;
+
+/** 저장 슬롯 메타 정보 (메인 메뉴 슬롯 UI 표시용) */
+export interface SaveSlotMeta {
+  exists: boolean;
+  nickname?: string;
+  level?: number;
+  coins?: number;
+  savedAt?: Date;
+}
 
 // ─────────────────────────────────────────────
 // GameState 싱글톤 매니저
@@ -131,6 +143,8 @@ export class GameStateManager {
   private _completedQuestIds: Set<string> = new Set();
   private _currentSpotId: string | null = null;
   private _isInitialized = false;
+  /** 현재 진행 중인 저장 슬롯 (1~3, 미지정 시 null) */
+  private _activeSlot: number | null = null;
 
   readonly environment = EnvironmentStore;
 
@@ -141,14 +155,7 @@ export class GameStateManager {
 
     const saved = this.load();
     if (saved) {
-      this._player = saved.player;
-      this._deployedTraps = saved.deployedTraps ?? [];
-      this._coolerInventory = saved.coolerInventory ?? createDefaultCoolerInventory();
-      this._licenses = saved.licenses ?? [];
-      this._restaurant = saved.restaurant ?? null;
-      this._condo = saved.condo ?? null;
-      this._visitedSpotIds = new Set(saved.visitedSpotIds ?? []);
-      this._completedQuestIds = new Set(saved.completedQuestIds ?? []);
+      this.applySaveData(saved);
     } else {
       this._player = createDefaultPlayer();
       // 기본 면허 부여 (기본 낚시 면허)
@@ -161,6 +168,18 @@ export class GameStateManager {
 
     this._isInitialized = true;
     console.log('[GameState] Initialized. Player:', this._player?.nickname);
+  }
+
+  /** 파싱된 세이브 데이터를 현재 상태에 적용 */
+  private applySaveData(saved: SaveData): void {
+    this._player = saved.player;
+    this._deployedTraps = saved.deployedTraps ?? [];
+    this._coolerInventory = saved.coolerInventory ?? createDefaultCoolerInventory();
+    this._licenses = saved.licenses ?? [];
+    this._restaurant = saved.restaurant ?? null;
+    this._condo = saved.condo ?? null;
+    this._visitedSpotIds = new Set(saved.visitedSpotIds ?? []);
+    this._completedQuestIds = new Set(saved.completedQuestIds ?? []);
   }
 
   // ─── Getter ───────────────────────────────
@@ -429,34 +448,95 @@ export class GameStateManager {
 
   // ─── 세이브/로드 ───────────────────────────
 
-  /** 세이브 */
+  get activeSlot(): number | null {
+    return this._activeSlot;
+  }
+
+  /** 현재 상태를 SaveData로 직렬화 */
+  private buildSaveData(): SaveData | null {
+    if (!this._player) return null;
+    this._player.lastSavedAt = new Date();
+    return {
+      player: this._player,
+      deployedTraps: this._deployedTraps,
+      coolerInventory: this._coolerInventory,
+      licenses: this._licenses,
+      restaurant: this._restaurant,
+      condo: this._condo,
+      visitedSpotIds: Array.from(this._visitedSpotIds),
+      completedQuestIds: Array.from(this._completedQuestIds),
+      version: SAVE_VERSION,
+    };
+  }
+
+  /** 세이브 — 활성 슬롯이 있으면 슬롯에, 없으면 슬롯 1에 저장 */
   save(): void {
-    if (!this._player) return;
+    this.saveToSlot(this._activeSlot ?? 1);
+  }
+
+  /** 지정 슬롯(1~3)에 저장. 성공 여부 반환 */
+  saveToSlot(slot: number): boolean {
+    const data = this.buildSaveData();
+    if (!data) return false;
     try {
-      this._player.lastSavedAt = new Date();
-      const saveData: SaveData = {
-        player: this._player,
-        deployedTraps: this._deployedTraps,
-        coolerInventory: this._coolerInventory,
-        licenses: this._licenses,
-        restaurant: this._restaurant,
-        condo: this._condo,
-        visitedSpotIds: Array.from(this._visitedSpotIds),
-        completedQuestIds: Array.from(this._completedQuestIds),
-        version: SAVE_VERSION,
-      };
-      localStorage.setItem(SAVE_KEY, JSON.stringify(saveData));
-      console.log('[GameState] Saved.');
+      localStorage.setItem(SLOT_KEY(slot), JSON.stringify(data));
+      this._activeSlot = slot;
+      console.log(`[GameState] Saved to slot ${slot}.`);
+      return true;
     } catch (e) {
       console.error('[GameState] Save failed:', e);
+      return false;
     }
   }
 
-  /** 로드 */
-  private load(): SaveData | null {
+  /** 지정 슬롯(1~3)에서 불러오기. 성공 여부 반환 */
+  loadFromSlot(slot: number): boolean {
+    const raw = localStorage.getItem(SLOT_KEY(slot));
+    if (!raw) return false;
+    const parsed = this.parseSaveData(raw);
+    if (!parsed) return false;
+    this.applySaveData(parsed);
+    this._activeSlot = slot;
+    this._isInitialized = true;
+    console.log(`[GameState] Loaded from slot ${slot}.`);
+    return true;
+  }
+
+  /** 슬롯 메타 정보 조회 (메인 메뉴 표시용 — 상태 변경 없음) */
+  getSlotMeta(slot: number): SaveSlotMeta {
     try {
-      const raw = localStorage.getItem(SAVE_KEY);
-      if (!raw) return null;
+      const raw = localStorage.getItem(SLOT_KEY(slot));
+      if (!raw) return { exists: false };
+      const parsed = JSON.parse(raw) as SaveData;
+      return {
+        exists: true,
+        nickname: parsed.player?.nickname ?? '이름없는꾼',
+        level: parsed.player?.level ?? 1,
+        coins: parsed.player?.inventory?.coins ?? 0,
+        savedAt: parsed.player?.lastSavedAt ? new Date(parsed.player.lastSavedAt) : undefined,
+      };
+    } catch {
+      return { exists: false };
+    }
+  }
+
+  /** 지정 슬롯에서 새 게임 시작 (기존 데이터 덮어씀) */
+  startNewGameInSlot(slot: number): void {
+    this.newGame();
+    this._activeSlot = slot;
+    this.saveToSlot(slot);
+  }
+
+  /** 저장 슬롯 삭제. 진행 중이던 슬롯이면 활성 슬롯 해제 */
+  deleteSlot(slot: number): void {
+    localStorage.removeItem(SLOT_KEY(slot));
+    if (this._activeSlot === slot) this._activeSlot = null;
+    console.log(`[GameState] Slot ${slot} deleted.`);
+  }
+
+  /** 세이브 원본 파싱 + Date 복원 */
+  private parseSaveData(raw: string): SaveData | null {
+    try {
       const parsed = JSON.parse(raw) as SaveData;
 
       // Date 복원
@@ -492,9 +572,15 @@ export class GameStateManager {
     }
   }
 
-  /** 새 게임 시작 (세이브 초기화) */
+  /** 부팅 로드 — 레거시 단일 키(SAVE_KEY) 호환 */
+  private load(): SaveData | null {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return null;
+    return this.parseSaveData(raw);
+  }
+
+  /** 새 게임 시작 (상태 초기화 — 슬롯 파일은 건드리지 않음) */
   newGame(): void {
-    localStorage.removeItem(SAVE_KEY);
     this._player = createDefaultPlayer();
     this._deployedTraps = [];
     this._coolerInventory = createDefaultCoolerInventory();
@@ -503,6 +589,8 @@ export class GameStateManager {
     this._condo = null;
     this._visitedSpotIds = new Set();
     this._completedQuestIds = new Set();
+    this._currentSpotId = null;
+    this._isInitialized = true;
   }
 }
 

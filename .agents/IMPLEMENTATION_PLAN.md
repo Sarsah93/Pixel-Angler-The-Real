@@ -267,10 +267,116 @@ Phase 9: Tauri v2 통합 & Steam 패키징     ⬜ 대기
 | 바다 인접 시 좌클릭 차지 캐스팅 연출 (찌 투척·파문·회수) | ✅ |
 | WorldMap 속초 뷰 '필드 입장' 버튼 → RegionFieldScene | ✅ |
 
+### 6-5f. WorldMap 구역 선택 + RegionField HUD/인벤토리 (✅ 완료 v1, 2026-07-15)
+**파일**: `core/src/types/WorldMap.ts`, `client-pc/src/scenes/WorldMapScene.ts`, `client-pc/src/scenes/RegionFieldScene.ts`, `client-pc/src/ui/RegionHud.ts`, `client-pc/src/ui/InventoryPanel.ts`, `client-pc/src/store/InventoryStore.ts`
+
+| 항목 | 결과 |
+|---|---|
+| 전국→지역 이음새 없는 줌인 (전국 지도 페이드아웃 → 지역 지도 확대 연속 연출) | ✅ |
+| 지역 확대 지도 출조 구역 핀 (속초항 258,60 / 동명항 221,49) + 좌측 리스트 hover 연동 | ✅ |
+| 출조 확인 팝업 (예/아니오) → RegionFieldScene 해당 구역 맵 입장 | ✅ |
+| 속초 외 전 지역 잠금 (`isRegionUnlocked` — REGION_AREA_NODES 데이터 존재 여부) | ✅ |
+| 맵 간 이동 스폰: 진입 엣지 밴드 한정 + 엣지 통로 연결 검증(`edgeSpawnTile`) | ✅ |
+| ESC 일시정지 메뉴 (계속하기/전국 지도/타이틀, 목재 도트 패널) | ✅ |
+| HUD: HP/피로도 바 + 시계 + 날씨 (좌상단) | ✅ |
+| HUD: 미니맵 — 지형 그리드 축소 렌더, M 키 3단계 크기 | ✅ |
+| HUD: 퀵슬롯 8칸 (1~8 키/클릭, InventoryStore 배정 연동) | ✅ |
+| HUD: 이벤트 로그 + 커뮤니티 채팅 목업 (좌하단, 멀티플레이 대비) | ✅ |
+| 인벤토리(I): 카테고리 탭 5종 × 5x5 소켓, 신선도 배지, 착용 표시 | ✅ |
+| 인벤토리 우클릭 액션 (착용/해제, 퀵슬롯 등록, 전환(준비중), 버리기, 완전제거) | ✅ |
+| 인벤토리 하단 보유 재화(원) 표시 | ✅ |
+
+### 6-5g. 팝업 UI 체계 + 상점/건물 시스템 (✅ 완료 v1, 2026-07-15 2차)
+**파일**: `ui/DraggablePanel.ts`, `ui/ItemDetailPanel.ts`, `ui/StatusPanel.ts`, `ui/EquipmentPanel.ts`, `ui/UtilizationPanel.ts`, `ui/ShopPanel.ts`, `ui/Dialogs.ts`, `data/ShopCatalog.ts`, `core/src/types/AnglerStats.ts`
+
+| 항목 | 결과 |
+|---|---|
+| 클릭 판정 어긋남 수정 (컨테이너 자식 scrollFactor 재귀 적용 `applyScreenFixed`) | ✅ |
+| 팝업 공통 베이스: 드래그 이동 / X 닫기 / ESC 최상단 LIFO | ✅ |
+| 아이템 우클릭 상세보기 (종류별 추론 물리 스펙 목업) | ✅ |
+| 인벤토리 탭별 독립 5x5 소켓 + 드래그 앤 드랍 이동/교환 | ✅ |
+| 낚싯대 우클릭 채비하기 → U 창 채비 탭 전환 | ✅ |
+| Status(S) — 물리 스탯 4종 + 기여 설명 | ✅ |
+| Equipment(E) — 부위별 착용/해제 + 물리 파라미터 요약 | ✅ |
+| Utilization(U) — 요리하기/채비하기 탭, 채비 소켓 조립 + Z_limit 조절 + 스펙 합산 | ✅ |
+| 건물 도트 텍스처 6종 (편의점/마트/직판장/식당/카페/주점) + POI 배치 | ✅ |
+| 거래 확인 팝업 → 상점(좌) + 인벤토리(우) 동시 오픈 | ✅ |
+| 상점 구매/판매 탭 + 수량 팝업(-/+/직접입력) + 확인 메시지 + 재화 정산 | ✅ |
+| core AnglerStats/Zone 수심 프로필(Z_max) 기초 타입 | ✅ |
+
+### 6-5h. 1인칭 낚시 물리 파이프라인 (✅ 완료 v1, 2026-07-15 3차)
+**파일**: `core/src/simulation/CastingPhysicsEngine.ts`, `UnderwaterSinkPhysics.ts`, `LineTensionPhysics.ts`, `ChumPhysics.ts`, `BiteProbabilityEngine.ts`, `FishSpawningOracle.ts`, `FightingPhase.ts`, `client-pc/src/scenes/FirstPersonFishingScene.ts`
+
+| 항목 | 결과 |
+|---|---|
+| 1단계: 3D 탄도 캐스팅 (조준각·완력·바람, 그림자/찌 이원화, z≤0 착수) | ✅ |
+| 캐스팅 조준 UI (조준선 + 실시간 탄도 점선 + 착수 예상 마커) | ✅ |
+| 2단계: 1인칭 씬 전환 + 의사 3D 레이어 (하늘/파도/수중/해저/실루엣/로드 뷰) | ✅ |
+| 3단계: 침강 V_sink + 조류 드리프트 + H 뒷줄견제(제동/양력/정렬도 A) | ✅ |
+| 입질 커널: P_base×M_terrain(여밭 Hold 2.5)×(1+k·A)×M_action×M_chum + 밑걸림 | ✅ |
+| Phase 1: 밑밥 투척/확산/3차원 동조율 `getChumSyncRate` + 게이지 UI | ✅ |
+| Phase 3: 어종 오라클 (물때 1~15 활성도·수심층·규제, 가우시안 개체 생성) | ✅ |
+| Phase 4: 파이팅 텐션 상태 머신 (바늘털이/여박기 패턴, P_escape 공식) | ✅ |
+| 1인칭 UI: 2분할 쿨러(어획/밑밥), 그만하기 버튼, 퀵슬롯 미표시→복귀 복원 | ✅ |
+| 손 좌/우 착용 시스템 + 캐스팅 장비 게이팅 (퀵슬롯+착용 이중 조건) | ✅ |
+
+### 6-5i. 메인 메뉴 개편 + 저장 슬롯 시스템 (✅ 완료 v1, 2026-07-15 4차)
+**파일**: `client-pc/src/scenes/MainMenuScene.ts`, `client-pc/src/store/GameState.ts`, `client-pc/src/scenes/AnglerLogScene.ts`
+
+| 항목 | 결과 |
+|---|---|
+| 로고 잘림/이중 겹침 수정 + 태그라인·구 도트 배경 제거 | ✅ |
+| 시간대 연동 배경 (하늘·바다 그라데이션/별/반사광/등대/배/찌) | ✅ |
+| 메뉴 뷰 스택: 게임 시작 → NEW/LOAD → 슬롯 3개 선택 | ✅ |
+| 저장 슬롯 3개 (메타 표시·덮어쓰기 확인·레거시 호환) | ✅ |
+| 인게임 일시정지 메뉴 '저장하기' | ✅ |
+| 도감 복귀 씬 파라미터화 (메인 메뉴 흑백 화면 버그 수정) | ✅ |
+| 키보드 내비 폰트 흔들림 수정 (선택 = 색+바만 변경) | ✅ |
+
+**차기 (메인 메뉴 고도화)**:
+- 슬롯 삭제 버튼, 슬롯별 스크린샷 썸네일
+- 설정에 해상도/키 리맵, 언어 영문 번역 실적용
+- Tauri 종료 API 연동 (`window.close()` → appWindow.close())
+- BGM/파도 앰비언트 사운드 도입 (설정 볼륨 연동)
+
+### 6-5j. 어종 마스터 21종 + 채비 손실 루프 + FP 뷰 개선 (✅ 완료 v1, 2026-07-15 5차)
+**파일**: `core/simulation/FishSpawningOracle.ts`, `core/simulation/FightingPhase.ts`, `client-pc/src/store/InventoryStore.ts`, `client-pc/src/scenes/FirstPersonFishingScene.ts`, `RegionFieldScene.ts`
+
+| 항목 | 결과 |
+|---|---|
+| 어종 마스터 DB 21종 (서식지/수심/미끼 선호도/성전환/규제/물때/야간) | ✅ |
+| 미끼 친화도 `getBaitAffinity` → 입질 확률 연동 | ✅ |
+| 파이팅 패턴 3종 (바늘털이/여박기/횡이동) 어종별 가중치 | ✅ |
+| 난이도 완화 (패턴 빈도↓, 릴링 진행 1.2배) + 입 연약도/목줄 절단 | ✅ |
+| 실패 유형별 채비 손실 → 즉시 1인칭 해제 → 재장착 후 캐스팅 | ✅ |
+| 캐스팅 필수 채비 게이트 (원줄/찌/목줄/바늘·미끼) | ✅ |
+| FP 뷰: 해저 렌더 제거 + 육지 전경(shoreKind) + 우측 상단 수심 패널 | ✅ |
+| dev 기본 장비 (용상 파조기/다이오 2500L/반유동 프리셋) | ✅ |
+| 팝업 클릭 관통 → 캐스팅 힌트 버그 수정 | ✅ |
+
+**추가 (2026-07-15 6차)**: 맵 전환 인식 최외곽 1타일로 축소 + 건물 근접 시 전환 억제 / 아이템 이미지 아이콘 시스템(`ItemIcon.ts`) / 음식·생선 에셋 배치(`public/food/`, `public/fish/`) / 감성돔·광어 어획 팝업·상세 실사 이미지 / 회(사시미) 네이밍 규칙 및 식당 품목 추가.
+
+**차기 (1인칭 낚시 고도화)**:
+- 어종별 실사 픽셀 이미지 확충 (현재 감성돔/광어 2종 → 21종)
+- 어종별 단일 회 아이콘 분리 (현재 모듬회 이미지로 통일)
+- 어종 DB API 연동 매칭 (현재 core 하드코딩 21종)
+- 기상 API 실연동 (바람/파고/조류 벡터를 목업 → 실데이터로)
+- 여 밭 배치를 해시 시드 → 실제 해저 지형 데이터 기반으로
+- 채비 부품별 무게/부력 DB 정식 연동 (현재 이름 기반 목업 수치)
+- 어종 오라클 ↔ FISH_DATABASE/조과첩 도감 통합 (성전환 생태 노트 표시)
+- 붕장어 줄꼬임/복어 와이어 바늘 대응 등 특수 채비 카운터
+- 파이팅 릴링 사운드/로드 진동 연출, 뜰채(왼손) 랜딩 미니게임
+- 물고기 실루엣 원근 접근 연출 고도화 (스케일/알파 + 수평선 스폰)
+
 **차기 (RegionField 고도화)**:
-- 세부 낚시 포인트 지정 + 캐스팅 → FishingScene 정식 연동
-- POI 종류 세분화(카페/마트/식당) + 건물별 상호작용 씬 연결
-- 나머지 지역(여수 등) 타일 데이터 생성 및 그래프 확장
+- 세부 낚시 포인트 지정 + 캐스팅 → FishingScene 정식 연동 (다차원 캐스팅 물리: 스탯/기상 벡터/Z_max 그라디언트 적용)
+- 요리하기 탭 정식 구현 (도마 + 삼면뜨기 손질, 회칼 장비 필요, 생선 이미지 에셋 업로드 후)
+- 채비 모딩 고도화 (부품별 무게/부력 DB 연동, 채비 세트 저장)
+- 인벤토리/상점 ↔ @tra/core UniversalItemDatabase 정식 연동 (현재 클라이언트 목업 시드)
+- 상점 재고/시세 API 연동 (농정원 경락 시세 등 — API 키 확보 후)
+- 해류/수심 정보 표시 (API 연동 기반, 바다 타일에서만 — 단축키 토글 아님)
+- 건물 위치를 지도 데이터 기반으로 정밀 배치 (현재 POI 순환 배정)
+- 나머지 지역(여수 등) 타일 데이터 생성 및 그래프 확장 + 잠금 해제
 - 방파제 좁은 통로 통행성 세밀 튜닝, 물결 애니메이션
 
 ### 6-6. WeatherEventEmitter — 돌발 기상 이벤트
@@ -278,6 +384,32 @@ Phase 9: Tauri v2 통합 & Steam 패키징     ⬜ 대기
 - `sudden_wind`, `passing_rain`, `tide_reversal`, `baitfish_school` 등 이벤트 타입
 - 출조 중 시간 경과에 따라 확률적 발동
 - 기상 예보와 실제 출조 간 '리얼한 변수' 제공
+
+### 6-6b. 공공 OpenAPI 통합 수집 + 엔진 연동 (✅ 완료 v1, 2026-07-15 7차)
+**파일**: `core/src/api-client/{ExternalApiService,FishingIndexApiClient,AuctionPriceApiClient,KosisCatchApiClient}.ts`, `client-pc/src/store/ExternalDataStore.ts`
+
+| 항목 | 결과 |
+|---|---|
+| 바다낚시지수 API (fcstFishingv2) — 실 응답 검증 및 파서 확정 | ✅ |
+| 경락가격 클라이언트 (품목 코드 CSV 매핑, End Point 주입형) | ✅ (엔드포인트 확정 대기) |
+| KOSIS 어획량 클라이언트 (시도×어종, 월간) | ✅ (KOSIS 전용 키 필요 — Mock 폴백 중) |
+| 스타트업 1회 수집 → 캐시 싱글톤 → 엔진은 캐시만 참조 | ✅ |
+| 낚시지수 → 입질 P_base 0.7~1.4배 / 경락가 → 직판장 매입가 0.5~2.0배 / 어획량 → 스폰 가중 0.7~1.8배 | ✅ |
+| 전 API Mock 폴백 (오프라인/트래픽 초과 안정성) | ✅ |
+
+**차기**: KOSIS 전용 인증키 발급 및 `VITE_KOSIS_API_KEY` 설정 / 경락가 정식 End Point 반영 / dev 키 .env 이전 / 낚시지수 placeName↔게임 지역 매핑 정밀화(속초·동명항 인근 포인트 지정) / 수집 주기(일 1회 갱신) 스케줄링.
+
+### 6-6c. 실측 연안 수심 프로필 연동 (✅ 완료 v1, 2026-07-15 8차)
+**파일**: `tools/build_depth_profiles.py`, `core/src/types/DepthProfile.ts`, `client-pc/public/data/depth/gangwon_sokcho.json`, `RegionFieldScene.resolveCastDepth`
+
+| 항목 | 결과 |
+|---|---|
+| 연안정보도 수심 SHP 파싱 (표준 라이브러리 — SHP/DBF + UTM-K 역변환) | ✅ (전국 46,270 포인트) |
+| 속초항/동명항 앵커 100m 구간 수심 프로필 (0~2.5km) | ✅ |
+| 캐스팅 거리 → 실측 수심 보간 + 범위 초과 거리 비례 외삽 | ✅ |
+| 프로필 미존재 지역 그라디언트 폴백 | ✅ |
+
+**차기**: 지역 확장 시 `REGIONS`에 앵커 추가 후 재실행 / 방향별(방위각) 프로필 분리(현재 반경 평균) / 여 밭 배치를 수심 급변 구간과 연계.
 
 ### 6-7. 환경 데이터 실연동 (API 키 확보 후)
 **파일**: `packages/core/src/api-client/`

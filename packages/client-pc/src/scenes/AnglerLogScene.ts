@@ -21,8 +21,15 @@ export class AnglerLogScene extends Phaser.Scene {
   private tabBtnEncyBg?: Phaser.GameObjects.Rectangle;
   private tabBtnHistBg?: Phaser.GameObjects.Rectangle;
 
+  /** 나가기 시 resume할 씬 (메인 메뉴/필드 어디서든 진입 가능) */
+  private returnScene = 'FieldScene';
+
   constructor() {
     super({ key: 'AnglerLogScene' });
+  }
+
+  init(data?: { returnScene?: string }): void {
+    this.returnScene = data?.returnScene ?? 'FieldScene';
   }
 
   create(): void {
@@ -115,7 +122,7 @@ export class AnglerLogScene extends Phaser.Scene {
     this.cameras.main.fadeOut(220, 0, 10, 20);
     this.cameras.main.once('camerafadeoutcomplete', () => {
       this.scene.stop();
-      this.scene.resume('FieldScene');
+      this.scene.resume(this.returnScene);
     });
   }
 

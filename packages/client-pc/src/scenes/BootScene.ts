@@ -105,6 +105,13 @@ export class BootScene extends Phaser.Scene {
       }
     });
 
+    // ─── 음식/생선 아이템 이미지 에셋 ───
+    // food/: 아이템 아이콘 (인벤토리/상점 소켓용, 64x64 도트)
+    // fish/: 어획 연출용 실사 픽셀화 생선 이미지 (낚시 성공 팝업/상세보기)
+    this.load.image('food_assorted_sashimi', '/food/assorted_sashimi.png');
+    this.load.image('fish_black_sea_bream', '/fish/black_sea_bream.png');
+    this.load.image('fish_halibut', '/fish/halibut.png');
+
     // ─── 남자 캐릭터 스프라이트 (12장) ───
     // 정지 4방향
     this.load.image('man-idle-front', '/characters/man/man-idle-front.png');

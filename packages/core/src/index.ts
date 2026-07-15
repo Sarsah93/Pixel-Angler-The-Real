@@ -138,6 +138,15 @@ export { PublicDataClient } from './api-client/PublicDataClient.js';
 export { WeatherApiClient } from './api-client/WeatherApiClient.js';
 export { OceanApiClient, TIDE_STATION_CODES } from './api-client/OceanApiClient.js';
 
+// 정부/공공기관 OpenAPI 통합 수집 (바다낚시지수/경락가/어획량)
+export type { SeaFishingIndexInfo, FishingIndexGubun } from './api-client/FishingIndexApiClient.js';
+export { FishingIndexApiClient, getMockFishingIndex, formatYmd } from './api-client/FishingIndexApiClient.js';
+export { AuctionPriceApiClient, getMockWholesalePrices } from './api-client/AuctionPriceApiClient.js';
+export type { RegionalCatchStat } from './api-client/KosisCatchApiClient.js';
+export { KosisCatchApiClient, getMockRegionalCatch } from './api-client/KosisCatchApiClient.js';
+export type { ExternalApiKeys, ExternalDataSnapshot } from './api-client/ExternalApiService.js';
+export { ExternalApiService } from './api-client/ExternalApiService.js';
+
 // Utils
 export { getApproxLunarDay, getLunarDayDisplay } from './utils/LunarCalendar.js';
 export { getDistanceBetweenCoordinates } from './utils/GeoUtils.js';
@@ -156,8 +165,41 @@ export type { EdgeTileType, GatherToolType, GatherableItem, GatherAttemptResult,
 export { GATHER_ITEM_DATABASE, checkSlipHazard, getAvailableGatherItems, attemptGather } from './simulation/TileGatherEngine.js';
 
 // World Map
-export type { FishingSpotNode, WorldMapSpotType } from './types/WorldMap.js';
-export { WORLD_NODE_DATABASE } from './types/WorldMap.js';
+// 1인칭 낚시 물리 파이프라인 (캐스팅 → 수중 침강/흘림 → 입질 → 파이팅)
+export type { WindVector, CastLaunchParams, CastProjectile } from './simulation/CastingPhysicsEngine.js';
+export { launchCast, stepCast, simulateCastTrajectory } from './simulation/CastingPhysicsEngine.js';
+export type { TideVector, RigPhysicsParams, UnderwaterRigState, UnderwaterStepInput } from './simulation/UnderwaterSinkPhysics.js';
+export { createUnderwaterRig, computeSinkSpeed, stepUnderwater, isHoldState } from './simulation/UnderwaterSinkPhysics.js';
+export type { LineTensionInput, LineTensionOutput } from './simulation/LineTensionPhysics.js';
+export { LineTensionPhysics } from './simulation/LineTensionPhysics.js';
+export type { ChumBall, ChumProbePos } from './simulation/ChumPhysics.js';
+export { ChumPhysics } from './simulation/ChumPhysics.js';
+export type { BiteContext, BiteTickResult } from './simulation/BiteProbabilityEngine.js';
+export { BiteProbabilityEngine } from './simulation/BiteProbabilityEngine.js';
+export type {
+  SwimLayer, BaitKey, HabitatTerrain, FightProfile,
+  FishMasterSpec, SpawnContext, SpawnedFish,
+} from './simulation/FishSpawningOracle.js';
+export { ORACLE_FISH_DB, spawnFish, classifyLayer, getBaitAffinity } from './simulation/FishSpawningOracle.js';
+export type { FightPattern, FightInput, FightEvent, FightStatus, FightingFishSpec } from './simulation/FightingPhase.js';
+export { FightingPhase } from './simulation/FightingPhase.js';
+
+// 실측 연안 수심 프로필 (연안정보도 SHP → 거리별 수심)
+export type { DepthAnchorProfile, RegionDepthProfile } from './types/DepthProfile.js';
+export { depthAtDistance, findDepthAnchor } from './types/DepthProfile.js';
+
+// Angler 물리 스탯 + 다차원 캐스팅 공간 (Zone/수심)
+export type { AnglerStats, SeaZone, ZoneDepthProfile } from './types/AnglerStats.js';
+export {
+  DEFAULT_ANGLER_STATS, ANGLER_STAT_INFO,
+  DEFAULT_ZONE_DEPTH_PROFILES, computeZoneMaxDepth,
+} from './types/AnglerStats.js';
+
+export type { FishingSpotNode, WorldMapSpotType, RegionAreaNode } from './types/WorldMap.js';
+export {
+  WORLD_NODE_DATABASE, REGION_AREA_NODES,
+  isRegionUnlocked, getRegionAreaNodes,
+} from './types/WorldMap.js';
 
 // Region Map (지역 상세 타일맵)
 export type {

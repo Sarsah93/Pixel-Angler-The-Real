@@ -200,3 +200,65 @@ export const WORLD_NODE_DATABASE: FishingSpotNode[] = [
     mapSlug: 'dokdo',
   },
 ];
+
+/**
+ * 지역 상세 지도(zoom_{slug}) 위에 배치되는 "출조 구역" 핀포인트.
+ *
+ * 지역 확대 지도(예: sokcho_2_pixelazed.png, 256×256)에서 플레이어가
+ * 실제로 활동할 세부 구역(속초항/동명항 등)을 선택하는 마커.
+ * 클릭 시 출조 확인 팝업 → RegionFieldScene(`fieldMapId` 맵)로 진입한다.
+ */
+export interface RegionAreaNode {
+  /** 구역 고유 ID */
+  id: string;
+  /** 표시 이름 (예: "속초항") */
+  name: string;
+  /** 짧은 설명 (팝업/라벨용) */
+  desc: string;
+  /**
+   * 지역 확대 지도(zoom_{slug}) 원본 이미지 기준 X 픽셀 좌표.
+   * (WorldMapScene 핀 편집 Dev Tool로 캡처한 값)
+   */
+  pixelX: number;
+  /** 지역 확대 지도 원본 이미지 기준 Y 픽셀 좌표 */
+  pixelY: number;
+  /** 진입할 RegionFieldScene 맵 ID (RegionMapGraph의 노드 id) */
+  fieldMapId: string;
+}
+
+/**
+ * 지역 ID(regionDatabaseId) → 해당 지역 확대 지도의 출조 구역 목록.
+ *
+ * 이 맵에 항목이 존재하는 지역만 "준비 완료(입장 가능)" 로 간주된다.
+ * 현재는 속초만 준비됨 — 나머지 지역은 잠금 처리.
+ */
+export const REGION_AREA_NODES: Record<string, RegionAreaNode[]> = {
+  gangwon_sokcho: [
+    {
+      id: 'sokcho_area_sokchohang',
+      name: '속초항',
+      desc: '속초 대표 항구 · 방파제/갯바위 낚시',
+      pixelX: 184,
+      pixelY: 60,
+      fieldMapId: 'sokcho_sokchohang_1',
+    },
+    {
+      id: 'sokcho_area_dongmyeonghang',
+      name: '동명항',
+      desc: '낙산 인근 방파제 · 갈치/볼락 명소',
+      pixelX: 221,
+      pixelY: 49,
+      fieldMapId: 'sokcho_dongmyeonghang_1',
+    },
+  ],
+};
+
+/** 해당 지역이 준비되어(입장 가능) 있는지 여부 */
+export function isRegionUnlocked(regionId: string): boolean {
+  return (REGION_AREA_NODES[regionId]?.length ?? 0) > 0;
+}
+
+/** 특정 지역의 출조 구역 목록 조회 */
+export function getRegionAreaNodes(regionId: string): RegionAreaNode[] {
+  return REGION_AREA_NODES[regionId] ?? [];
+}

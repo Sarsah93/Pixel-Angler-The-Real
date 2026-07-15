@@ -281,11 +281,81 @@ npx pnpm --filter @tra/client-pc run dev
 ## 9. 현재 빌드 상태 (2026-07-14 기준)
 
 ```
-npx pnpm run build → ✅ 4/4 패키지 성공 (2026-07-14)
-npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류 (2026-07-14)
+npx pnpm run build → ✅ 4/4 패키지 성공 (2026-07-15)
+npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류 (2026-07-15)
 ```
 
-**최근 주요 변경 (2026-07-14, 최신)**:
+**최근 주요 변경 (2026-07-15 8차, 최신)**:
+- **[신규] 실측 연안 수심 연동**: 루트 `09.수심.zip`(국립해양조사원 1/25,000 연안정보도, WGIS_DEPTHWATER 포인트 46,270개, UTM-K/WGS84) → `tools/build_depth_profiles.py`(표준 라이브러리만: SHP/DBF 파싱 + TM 역변환 + 하버사인 거리 비닝) → `public/data/depth/gangwon_sokcho.json` (속초항/동명항 앵커별 100m 구간 평균 수심, 0~2.5km). `core/types/DepthProfile.ts`의 `depthAtDistance`가 캐스팅 거리→수심 선형 보간, **범위 초과 시 마지막 기울기로 거리 비례 외삽**(상한 60m). RegionFieldScene이 프로필 로드 후 `resolveCastDepth`로 1인칭 Z_max에 반영 (프로필 없으면 기존 그라디언트 폴백). 실측: 속초항 내항 1.5m → 원거리 11m / 동명항 방파제 앞 급심 12~20m.
+- **[갱신] README.md 전면 재작성** (GitHub용): 구현 현황 표, 낚시 파이프라인 다이어그램, 실데이터 연동 표, 조작법, 파이프라인 명령어, 씬 아키텍처, 로드맵.
+
+**이전 변경 (2026-07-15 7차)**:
+- **[신규] 공공 OpenAPI 통합 수집 파이프라인** (`core/src/api-client/ExternalApiService.ts` + 클라이언트 3종):
+  - `FishingIndexApiClient`: 국립해양조사원 바다낚시지수 (`apis.data.go.kr/1192136/fcstFishingv2/GetFcstFishingApiServicev2`). **실 API 응답 검증 완료(2026-07-15)** — 필드: seafsPstnNm/predcYmd/seafsTgfshNm/tdlvHrCn/minWtem·maxWtem/minWvhgt·maxWvhgt/totalIndex. 지수 라벨→5단계 레벨 정규화(`SeaFishingIndexInfo`).
+  - `AuctionPriceApiClient`: 농정원 경락가격 (수산물만) → `WholesalePriceInfo` 정규화. 루트 CSV(`농림수산식품교육문화정보원_경락가격...csv`)는 **품목 코드 매핑 테이블**(수산부류 66/71/77/81). End Point는 승인 문서 확정 시 생성자 주입으로 교체. Mock은 일자 시드 기반 결정적 시세(하루 고정, ±25%).
+  - `KosisCatchApiClient`: KOSIS 시도별 어종별 어획량 (orgId=146, tblId=DT_MLTM_5003049, 월간 3기). **주의: KOSIS는 별도 인증키 필요** — data.go.kr 키로는 err 11. `VITE_KOSIS_API_KEY` 설정 전까지 Mock 폴백.
+  - 모든 클라이언트는 실패/키 미설정 시 Mock 폴백 → 오프라인에서도 정상 구동.
+- **[신규] ExternalDataStore** (`client-pc/src/store/`): 스타트업(메인 메뉴) 1회 `fetchAll()` 캐시 싱글톤 — 인게임 루프는 네트워크 호출 없이 캐시만 참조. 키: `VITE_DATA_GO_KR_API_KEY`/`VITE_KOSIS_API_KEY` (미설정 시 dev 승인 키 폴백 — 배포 전 .env 이전).
+- **[연동] 엔진 상호작용**: ① 낚시지수(1~5) → 1인칭 입질 P_base 배율 0.7~1.4 ② 경락가 → 직판장 어획물 매입가 배율 0.5~2.0 (`InventoryStore.getSellPrice`) ③ KOSIS 어획량 → 시도 매핑(`REGION_TO_SIDO`) + 어종명 매칭으로 `SpawnContext.catchWeightBySpecies` 스폰 가중(0.7~1.8) ④ 메인 메뉴 하단 바에 낚시지수 표기.
+
+**이전 변경 (2026-07-15 6차)**:
+- **[신규] 저장 슬롯 삭제**: `GameState.deleteSlot(slot)` (진행 중 슬롯이면 활성 해제) + 메인 메뉴 슬롯 화면에서 데이터 있는 슬롯 우측 삭제 버튼 — 1차 클릭 '확인' 전환(행에 경고 표시), 2차 클릭 삭제 후 목록 갱신. 키보드 이동 시 확인 상태 초기화.
+- **[수정] 맵 전환 인식 범위**: `EDGE_MARGIN` 2 → 0 (최외곽 타일에 닿아야 전환 — 과거 2타일 깊이는 너무 넓었음) + **건물 근접(nearBuilding) 중에는 엣지 전환 억제** — 엣지 부근 건물의 [E] 상호작용이 우선.
+- **[신규] 아이템 이미지 아이콘 시스템** (`ui/ItemIcon.ts`의 `createItemIcon`): `InvItem.iconTexture` 지정 시 이모지 대신 픽셀 이미지 렌더 — 인벤토리 소켓/상점 셀/퀵슬롯/상세보기 공용. 퀵슬롯 아이콘은 refresh 시 동적 재생성 방식으로 변경.
+- **[신규] 음식/생선 에셋 배치**: `food assets/` 원본 → `client-pc/public/food/assorted_sashimi.png`(64², 회 아이콘), `public/fish/black_sea_bream.png`·`halibut.png`(1536×1024, 실사 픽셀 생선). BootScene 텍스처 키: `food_assorted_sashimi`, `fish_black_sea_bream`, `fish_halibut`.
+- **[신규] 어획 연출/상세 이미지 연동**: 감성돔(black_seabream)·광어(flatfish)를 낚으면 결과 팝업에 실사 픽셀 생선 이미지 표시(`FISH_TEXTURE` 매핑), 획득 아이템 아이콘도 해당 이미지 사용, 아이템 상세보기(어획물)에 대형 이미지 표시.
+- **[신규] 회(사시미) 아이템 규칙**: 식당 판매 품목 `shop_assorted_sashimi_small`(모듬회 (소)) + `shop_black_sea_bream_sashimi_small`(감성돔 회 (소)). 네이밍 규칙: `{어종}_sashimi_{중량}` / 한글 `{어종} 회 ({소/중/대})` / 영문 `{species} sashimi ({size})`. 아이콘은 당분간 모듬회 이미지로 통일.
+
+**이전 변경 (2026-07-15 5차)**:
+- **[신규] 어종 마스터 DB 21종** (`core/simulation/FishSpawningOracle.ts` 재작성): 사용자 제공 실측 데이터 — 돌돔/강담돔/부시리/참돔/고등어/전갱이/용치놀래기/졸복어/참복어/붕장어/문절망둑/망상어/쏨뱅이/쥐노래미/노래미/황볼락/청볼락/조피볼락/광어/도다리/감성돔. 스키마: 서식 지형(`HabitatTerrain`)/수심 범위/수심층/미끼 선호도(`BaitKey` 10종, 0~100)/크기·무게 분포/성전환 규칙(`sexRule` — 감성돔·참돔·용치놀래기·붕장어·광어)/금지체장·금어기/물때 활성도/야간 보정/파이팅 프로필. 스폰·입질 가중: 지형×수심층×수심범위×미끼×물때×주야간. `getBaitAffinity()`로 미끼 친화도(0.25~1.6)를 입질 기본 확률에 곱함. 추후 API 연동 매칭 예정.
+- **[변경] FightingPhase 어종 패턴 + 난이도**: 패턴 3종 — jump(바늘털이: H·릴링 중지, 부시리·고등어 위주), dive(여박기: H 유지, 감성돔·우럭·쏨뱅이), **lateral(횡이동 쓸림: H를 떼고 드랙 버티기, 부시리·회유어)**. 패턴 빈도 전체 완화(3.6~8.2초×어종 배율), 릴링 진행 1.2배 완화. 입 연약도(전갱이 과텐션 바늘 빠짐), 복어류 목줄 절단(`lineCutter`).
+- **[신규] 낚시 실패 = 채비 손실 + 즉시 필드 복귀**: 미끼 털림(hook_off/escaped)→바늘·미끼 소켓 손실 / 줄터짐→목줄·봉돌·미끼 손실(30% 찌까지) / 복어→목줄째 절단 / 밑걸림→찌 아래 전체 손실. 손실 부품은 인벤토리 수량 1 소모+소켓 비움(`InventoryStore.loseRigParts`), 입질 순간 미끼 1개 자동 소모(`consumeRigItem` — 수량 남으면 자동 재장착). 실패 시 2초 안내 후 1인칭 자동 해제, 복귀 사유는 `registry('fp_exit_msg')`로 필드 HUD에 표시. **캐스팅 게이트**: 필수 소켓(원줄/찌/목줄/바늘·미끼) 미장착 시 캐스팅 불가(`getMissingRigParts`).
+- **[변경] 1인칭 뷰**: 해저 바닥/여밭 바위 렌더 제거 → 화면 하단은 **캐릭터가 서 있는 육지 전경**(지도 지형 기반: 잔디/모래/자갈 — `shoreKind` 브릿징). 수심 시각화는 **우측 상단 수심 정보 패널**로 이동(찌 0m/면사매듭/미끼 마커/바닥 Z_max/여밭 여부 + 실시간 수치).
+- **[신규] dev 기본 장비**: 로드 '용상 파조기 1.5호 5.3m' + '다이오 2500L 스피닝릴'(장비 릴 슬롯 추가), 채비 기본 프리셋 = 감성돔 반유동(PE 원줄+구멍찌+도래+카본 목줄+좁쌀봉돌+크릴).
+- **[수정] 팝업 클릭 관통**: 다이얼로그 버튼(예/아니오 등) 클릭이 같은 프레임 씬 pointerdown으로 흘러 "물가에서 던지세요" 캐스팅 힌트가 뜨던 버그 — 팝업 닫힘 후 250ms(1인칭 복귀 후 400ms) 클릭 유예(`suppressClickUntil`).
+
+**이전 변경 (2026-07-15 4차)**:
+- **[개편] MainMenuScene 전면 재작성**: 로고 잘림 수정(스케일 펄스 제거, "PIXEL ANGLER"/"THE REAL" 2단 중앙 정렬 + 그림자 정합), 한글 태그라인·구 도트 캐릭터/방파제/바닥 제거. 배경은 시간대 연동 그라데이션 하늘/바다 + 별/달빛(해빛) 수면 반사 + 등대(점멸 등불)/배/떠 있는 찌 파문/갈매기로 재구성. 메뉴는 뷰 스택 구조 — `main(게임 시작/도감/설정/게임 종료) → start(NEW GAME/LOAD GAME) → slots(슬롯 3개)`. 선택 표시는 색+좌측 바만 변경(폰트 교체로 인한 레이아웃 흔들림 버그 해결). ↑↓/Enter/ESC(뒤로) + 마우스 hover 동기화, disabled 항목 스킵.
+- **[신규] 저장 슬롯 3개 시스템** (`GameState`): `SAVE_SLOT_COUNT=3`, `saveToSlot/loadFromSlot/getSlotMeta/startNewGameInSlot/activeSlot`. 슬롯 키 `tra_save_slot_{n}`, 레거시 단일 키(`tra_save_v1`)는 부팅 로드 호환 유지. NEW GAME에서 점유 슬롯 선택 시 2단계 덮어쓰기 확인. LOAD GAME은 존재 슬롯만 활성화(메타: 닉네임/Lv/재화/저장 시각 표시). `save()`는 활성 슬롯(기본 1)에 저장.
+- **[신규] 인게임 저장**: RegionFieldScene ESC 일시정지 메뉴에 '저장하기' 추가 (활성 슬롯에 저장 + 로그).
+- **[수정] 도감(AnglerLogScene) 흑백 화면 버그**: `onBack()`이 무조건 `FieldScene`을 resume해 메인 메뉴 진입 시 멈추던 문제 — `init({ returnScene })` 파라미터화(기본 'FieldScene'). 메인 메뉴 '도감'은 pause+launch로 진입하고 `returnScene: 'MainMenuScene'` 전달.
+- 메인 메뉴에서 장비실/물때&기상 항목 제거 (인게임에서 접근) — 종료는 저장 후 `window.close()` 시도(브라우저 미지원 시 안내 문구).
+
+**이전 변경 (2026-07-15 3차)**:
+- **[신규] 1인칭 낚시 물리 파이프라인 (core 순수 TS 모듈 7종)**:
+  - `CastingPhysicsEngine.ts`: 3D 탄도 캐스팅 — 완력×파워×조준 방향 초기 벡터, 바람/공기저항 수평 편향, 중력 수직 하강, z≤0 착수 판정, 궤적 미리보기(`simulateCastTrajectory`).
+  - `UnderwaterSinkPhysics.ts`: 침강 V_sink=(W−B)/(C×(1+k·‖V_tide‖)), 조류 드리프트, 면사매듭(Z_limit)/바닥(Z_max) 안착, Hold 판정.
+  - `LineTensionPhysics.ts`: H 뒷줄견제(드리프트 70% 제동+미끼 양력), 정렬도 A(0~1), 리액션 리프트 트리거.
+  - `ChumPhysics.ts`: 밑밥 투척/조류 드리프트/Z 침강(깊을수록 확산 반경 확대), `getChumSyncRate()` 3차원 동조율.
+  - `BiteProbabilityEngine.ts`: P_bite = P_base × M_terrain(여밭 Hold 2.5) × (1+k·A) × M_action(리액션 1.5초 2.0) × M_chum(최대 4.0). 밑걸림 타이머(여밭 Hold 5초+견제 없음 → Snagged).
+  - `FishSpawningOracle.ts`: 어종 마스터 스키마(크기/암수/금지체장/금어기/수심층/1~15물때 활성도) + 가우시안 개체 생성 팩토리.
+  - `FightingPhase.ts`: 텐션 0~100(0=바늘빠짐/100=줄터짐), 바늘털이(jump: H·릴링 중지)/여박기(dive: H 유지) 패턴, P_escape=base×M_tension×M_pattern×(1−A_tackle).
+- **[신규] FirstPersonFishingScene** (`client-pc/src/scenes/`): 착수 시 RegionFieldScene pause+launch로 진입하는 1인칭 낚시 뷰. 의사 3D 레이어(하늘/수평선→파도 수면→수중 그라데이션·기포→해저 모래/여밭→찌·라인·미끼→물고기 실루엣→낚싯대 뷰). 우측 낚싯대 뷰(텐션 휨+수면 거리 표시), 좌측 게이지(정렬도 A/밑밥 동조/입질 확률/밑걸림 경고), 우측 수심 게이지(미끼 위치·매듭·바닥). 하단 중앙 2분할 쿨러(어획 보관/밑밥 — 퀵슬롯은 필드 씬에 있으므로 1인칭에서 미표시, 복귀 시 자동 복원), 우하단 그만하기 버튼(ESC 동일) → stop+resume 복귀(낚시 시점 위치 보존). 조작: H 뒷줄견제 · C/밑밥칸 밑밥 투척(집어제 소모) · 좌클릭 릴링 · SPACE 재캐스팅.
+- **[변경] RegionFieldScene 캐스팅 전면 재구현**: 우하단 고정 → **마우스 조준 방향** 기반. 차지 중 조준선+실시간 탄도 점선 미리보기+착수 예상 마커(바다=초록/육지=빨강). 발사 시 그림자(XY 평면)와 찌(y−z 포물선) 이원화 비행, 바람 편향. 착수 지점이 바다면 파문→1인칭 씬 진입(거리→Z_max 그라디언트, 착수 타일 해시 여밭 시드), 육지면 회수.
+- **[변경] 손 착용 시스템 + 캐스팅 게이팅**: 낚싯대/뜰채는 `tool` 손도구로 분류 — 인벤토리 우클릭 → **오른손 착용/왼손 착용** 선택(해당 손 기존 장비 자동 교체, `InventoryStore.equipHand`). 캐스팅은 "낚싯대 퀵슬롯 선택 + 해당 낚싯대 실제 손 착용" 둘 다 필요 (퀵슬롯만 등록된 미착용 낚싯대로는 불가). EquipmentPanel 손(우)/손(좌) 슬롯은 `getHandEquipped` 기반.
+
+**이전 변경 (2026-07-15 2차)**:
+- **[수정] UI 클릭 판정 어긋남 근본 해결** (`ui/DraggablePanel.ts`의 `applyScreenFixed`): Phaser는 컨테이너 자식의 입력 판정에 자식 자신의 scrollFactor(기본 1)를 사용하므로, 카메라가 스크롤되는 씬(RegionFieldScene)의 화면 고정 UI는 히트 영역이 카메라 이동량만큼 어긋났음. 모든 화면 고정 컨테이너 트리에 scrollFactor 0을 재귀 적용해 해결. **새 화면 고정 UI를 만들면 반드시 `applyScreenFixed()` 호출할 것.**
+- **[신규] DraggablePanel 공통 베이스** (`ui/DraggablePanel.ts`): 모든 팝업의 헤더 드래그 이동 / 우상단 X 닫기 / 클릭 시 최상단 / 모달 딤 지원. RegionFieldScene은 `popupStack`으로 팝업을 관리하며 **ESC는 최상단 팝업부터 LIFO로 닫고, 팝업이 없을 때만 일시정지 메뉴**.
+- **[신규] 단축키 팝업**: S = 스테이터스(`StatusPanel` — 근력/민첩/평형감각/조석해석력 + 물리 기여 설명), E = 장비(`EquipmentPanel` — 부위별 착용/해제 + 물리 파라미터 요약; 건물 근접 시에는 거래 상호작용 우선), U = 활용(`UtilizationPanel` — 전체 화면, 상단 탭 요리하기/채비하기. 채비 탭: 원줄→면사매듭→구멍찌/수중찌→도래→목줄→봉돌→바늘&미끼 소켓 조립 + 면사매듭 수심 한계(Z_limit) -/+ 조절 + 총무게/침강속도 실시간 합산. 요리 탭: 도마/삼면뜨기 손질 자리 — 추후 구현).
+- **[신규] 인벤토리 v2** (`InventoryPanel` 재작성): 탭별 독립 5x5 소켓(아이템이 `slot` 좌표 보유), 아이템 드래그 앤 드랍 위치 이동/교환, 우클릭 메뉴에 **상세보기**(`ItemDetailPanel` — 종류별 추론 물리 스펙 목업) 및 낚싯대 한정 **채비하기**(→ U 창 채비 탭) 추가.
+- **[신규] 건물 + 상점 시스템**: POI 위치에 종류별 픽셀 도트 건물 텍스처 자동 베이킹(편의점/식자재마트/직판장/음식점/카페/주점 — `data/ShopCatalog.ts`의 `BUILDING_KIND_CYCLE` 순환 배치). 입구 근접 + E → "상품을 거래하시겠습니까?" 확인 → 좌측 상점(`ShopPanel` 구매하기/판매하기 탭, 호버 툴팁, 우클릭 상세보기, 하단 구매/판매 버튼) + 우측 인벤토리 동시 오픈. 구매/판매는 수량 팝업(`QuantityDialog` — 1개 프리셋, -/+, 숫자 직접 입력) → 확인 메시지(`ConfirmDialog`) → 재화 정산. **상점 아이템은 재화 결제 없이 인벤토리로 이동 불가.**
+- **[신규] core 물리 기초 타입** (`core/src/types/AnglerStats.ts`): `AnglerStats`(strength/dexterity/equilibrium/tideReading) + `ZoneDepthProfile`(Zone 0~3 한계 수심 Z_max) + `computeZoneMaxDepth` — 탑다운 다차원 캐스팅 공간(XY↔XZ/YZ) 설계의 공통 선언. 지역 추가 시 수심 프로필만 전달하면 연동되는 구조의 기초.
+- **[수정] 속초항 구역 핀 좌표**: (184, 60) — 동명항(221, 49) 기준 좌측(반대쪽)으로 정정.
+
+**이전 변경 (2026-07-15 1차)**:
+- **[규칙] UI 텍스트 이모지 접두사 금지 (사용자 지시)**: 제목/부제목/버튼 라벨 앞에 이모지·아이콘을 습관적으로 붙이지 말 것. 아이콘이 필요하면 사용자가 별도 요청. (인벤토리 아이템 아이콘처럼 아이콘 자체가 콘텐츠인 경우는 예외.) WorldMapScene/RegionFieldScene 라벨에서 기존 이모지 접두사 일괄 제거함.
+- **[신규] RegionFieldScene HUD** (`ui/RegionHud.ts`): 좌상단 HP/피로도 바 + 시계 + 날씨(EnvironmentStore 연동, 미연동 시 목업), 우상단 미니맵(실지형 타일 그리드 1px 베이킹, M 키 150→250→350 크기 순환), 중앙 하단 퀵슬롯 8칸(InventoryStore 배정 연동, 1~8 키/클릭), 좌하단 이벤트 로그+커뮤니티 채팅 목업(`pushLog`).
+- **[신규] 인벤토리 시스템** (`store/InventoryStore.ts` + `ui/InventoryPanel.ts`): I 키 토글. 상단 카테고리 탭(장비/소모품/음식/낚시용품/기타) × 5x5 소켓 그리드. 아이템 아이콘은 종류별 통일(임시). 신선도 배지(활어/신선/냉장/냉동/상함), 착용 표시, 수량 표시. 우클릭 컨텍스트 메뉴: 착용/해제, 퀵슬롯 등록(1~8 키로 슬롯 지정), 전환하기(준비중), 버리기, 완전제거. 최하단 보유 재화(원) 표시. 추후 낚싯대 채비 모딩(소켓별 부품 선택) 뷰 연동 예정.
+- **[수정] 맵 간 이동 스폰 위치** (`RegionFieldScene.edgeSpawnTile`): 기존 2D 나선 탐색 → 진입 엣지 밴드 한정 탐색으로 교체. entryT(이전 맵 이탈 지점의 상대 위치)를 유지한 채 엣지를 따라 좌우로 벌려가며 걷기 가능 + 엣지까지 통로 연결(`walkableTowardEdge`)된 타일에 스폰. 상단 가운데로 나가면 다음 맵 하단 가운데에서 등장.
+- **[수정] 속초 구역 핀 좌표**: 속초항 (258,60), 동명항 (221,49) — zoom_sokcho(256²) 기준.
+- **[변경] RegionFieldScene 조작**: ESC = 인벤토리 닫기 → 일시정지 메뉴 순. M = 미니맵 크기, I = 인벤토리, 1~8 = 퀵슬롯. UI 열림 중 이동/캐스팅 차단(`uiBlocked`). 조류/수심 오버레이(V 토글)는 추후 API 연동 기반으로 바다에서만 제공 예정(현재 미구현).
+- **[신규] 전국→지역 이음새 없는 줌인 진입** (`WorldMapScene.ts`): 지역 클릭 시 전국 지도 배경(`nationalMapImg`)을 핀 지점 기준으로 카메라 줌인+페이드아웃한 뒤, 지역 확대 지도(`zoom_{slug}`)를 중앙에서 이어서 확대. "지도 2개가 동시에 뜨는" 느낌 제거(전국 지도 hide 처리). `renderRegionView` 복귀 시 배경 복원.
+- **[신규] 지역 지도 출조 구역 핀 + 확인 팝업**: `core/types/WorldMap.ts`에 `RegionAreaNode`/`REGION_AREA_NODES`/`isRegionUnlocked`/`getRegionAreaNodes` 추가. 속초 확대 지도(256²)에 속초항(215,71)·동명항(244,56) 핀 배치, 좌측 구역 리스트와 hover 연동. 핀/리스트 클릭 → "○○로 출조하시겠습니까? 예/아니오" 팝업(`showAreaConfirm`, `areaconfirm` 뷰 상태) → '예' 시 `RegionFieldScene`(`mapId=fieldMapId`) 입장.
+- **[신규] 지역 잠금**: `isRegionUnlocked`(= 구역 데이터 존재)로 속초 외 전 지역을 잠금 표시(회색 핀·🔒 라벨·정적, 클릭 시 안내). 준비되면 `REGION_AREA_NODES`에 항목 추가로 자동 해제.
+- **[신규] RegionFieldScene ESC 일시정지 메뉴**: ESC → 목재/양피지 톤 도트 메뉴(계속하기/전국 지도/타이틀 화면), ↑↓/Enter/마우스 선택. 메뉴 열림 중 이동·캐스팅 차단(`isPaused`). 기존 ESC 즉시 전국 지도 복귀 동작을 메뉴로 대체.
+
+**이전 주요 변경 (2026-07-14)**:
 - **[신규] WorldMap 핀포인트 재배치 + 여수 추가 (11개)** (`core/src/types/WorldMap.ts`): 사용자 좌표로 11개 노드 재배치, `mapSlug` 필드 추가(지역 상세 지도 파일명 매핑), `jeonnam_yeosu` 노드/지역 신규 추가.
 - **[신규] WorldMap 지역 줌인 진입 뷰** (`WorldMapScene.ts`): 지역 클릭 시 `pixelazed/{slug}_2_pixelazed.png`(텍스처 `zoom_{slug}`)로 확대 줌인하는 `renderRegionMapView` 추가. 지도 미준비 지역은 '준비중' 플레이스홀더. `regionmap` 뷰 상태 추가.
 - **[신규] 캐릭터 렌더링 수정** (`FieldScene.ts`): 스프라이트 원점을 발밑(0.5,1)으로, 표시 높이 `PLAYER_DISPLAY_H=60`px 정규화(idle/move 종횡비 유지·크기 통일), 그림자를 발밑에 정렬. `applyPlayerSpriteSize()` 도입.

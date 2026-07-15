@@ -28,9 +28,30 @@ import {
   RegionMapNode,
   RegionTerrain,
   EdgeDir,
+  launchCast,
+  stepCast,
+  simulateCastTrajectory,
+  CastProjectile,
+  WindVector,
+  DEFAULT_ANGLER_STATS,
+  computeZoneMaxDepth,
+  RegionDepthProfile,
+  depthAtDistance,
+  findDepthAnchor,
 } from '@tra/core';
 import { GameState } from '../store/GameState.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
+import { RegionHud } from '../ui/RegionHud.js';
+import { InventoryPanel } from '../ui/InventoryPanel.js';
+import { ItemDetailPanel } from '../ui/ItemDetailPanel.js';
+import { StatusPanel } from '../ui/StatusPanel.js';
+import { EquipmentPanel } from '../ui/EquipmentPanel.js';
+import { UtilizationPanel, UtilizationTab } from '../ui/UtilizationPanel.js';
+import { ShopPanel } from '../ui/ShopPanel.js';
+import { ConfirmDialog, QuantityDialog } from '../ui/Dialogs.js';
+import { applyScreenFixed } from '../ui/DraggablePanel.js';
+import { InventoryStore, InvItem } from '../store/InventoryStore.js';
+import { BuildingKind, BUILDING_LABEL, BUILDING_KIND_CYCLE, SHOP_CATALOG, ShopEntry } from '../data/ShopCatalog.js';
 
 interface RegionFieldInit {
   region: string;
@@ -43,7 +64,7 @@ interface RegionFieldInit {
 
 // ── 렌더/전환 상수 ──────────────────────────────────
 const TR = 20;              // 타일 렌더 크기(px)
-const EDGE_MARGIN = 2;      // 이 타일 수 이내로 링크 엣지에 접근하면 전환
+const EDGE_MARGIN = 0;      // 최외곽 타일에 닿아야 전환 (과거 2 → 인식 범위가 너무 넓었음)
 const SPAWN_INSET = 4;      // 전환 후 스폰 시 엣지에서 안쪽으로 들여쓸 타일 수
 
 // ── 지형 색상 팔레트 (Traveler's Rest 톤) ──────────────
@@ -83,13 +104,54 @@ export class RegionFieldScene extends Phaser.Scene {
 
   private isTransitioning = false;
 
+  // ESC 일시정지 메뉴
+  private isPaused = false;
+  private pauseMenu?: Phaser.GameObjects.Container;
+  private pauseSelIndex = 0;
+  private pauseItems: { label: string; action: () => void }[] = [];
+  private pauseRowBgs: Phaser.GameObjects.Graphics[] = [];
+
+  // HUD
+  private hud?: RegionHud;
+
+  // ── 팝업 스택 (ESC는 최상단부터 닫음) ──
+  private popupStack: { panel: Phaser.GameObjects.Container; close: () => void }[] = [];
+  // 단축키 토글용 패널 참조
+  private invPanel: InventoryPanel | null = null;
+  private statusPanel: StatusPanel | null = null;
+  private equipPanel: EquipmentPanel | null = null;
+  private utilPanel: UtilizationPanel | null = null;
+  private shopPanel: ShopPanel | null = null;
+
+  // ── 건물(상점) ──
+  private buildings: { x: number; y: number; kind: BuildingKind }[] = [];
+  private nearBuilding: { x: number; y: number; kind: BuildingKind } | null = null;
+
+  /** 이동/캐스팅을 차단해야 하는 UI 상태 (일시정지 or 팝업 열림) */
+  private get uiBlocked(): boolean {
+    return this.isPaused || this.popupStack.length > 0;
+  }
+
+  /**
+   * 팝업 버튼 클릭이 같은 프레임에 씬 pointerdown으로 흘러
+   * 캐스팅 시도("물가에서 던지세요" 힌트)로 새는 것을 방지하는 유예 시각.
+   */
+  private suppressClickUntil = 0;
+
   // 낚시 캐스팅
   private nearWater = false;
-  private nearWaterTarget?: { x: number; y: number };
   private charging = false;
   private chargePower = 0;
   private chargeBar?: Phaser.GameObjects.Graphics;
   private castBusy = false;
+
+  // 3D 탄도 캐스팅 비행 상태 (CastingPhysicsEngine)
+  private castProj: CastProjectile | null = null;
+  private castShadow?: Phaser.GameObjects.Ellipse;
+  private castBobber?: Phaser.GameObjects.Arc;
+  private castLineG?: Phaser.GameObjects.Graphics;
+  private aimG?: Phaser.GameObjects.Graphics;
+  private lastAimDir: { x: number; y: number } = { x: 1, y: 0 };
 
   // UI
   private promptText!: Phaser.GameObjects.Text;
@@ -109,12 +171,36 @@ export class RegionFieldScene extends Phaser.Scene {
     this.charging = false;
     this.chargePower = 0;
     this.castBusy = false;
+    this.isPaused = false;
+    this.pauseMenu = undefined;
+    this.pauseSelIndex = 0;
+    this.pauseItems = [];
+    this.pauseRowBgs = [];
+    this.hud = undefined;
+    this.popupStack = [];
+    this.invPanel = null;
+    this.statusPanel = null;
+    this.equipPanel = null;
+    this.utilPanel = null;
+    this.shopPanel = null;
+    this.buildings = [];
+    this.nearBuilding = null;
+    this.castProj = null;
+    this.castShadow = undefined;
+    this.castBobber = undefined;
+    this.castLineG = undefined;
+    this.aimG = undefined;
   }
 
   preload(): void {
     const key = `rmap_${this.mapId}`;
     if (!this.cache.json.has(key)) {
       this.load.json(key, `/${this.graph.dataDir}/${this.mapId}.json`);
+    }
+    // 실측 연안 수심 프로필 (연안정보도 SHP → JSON, 없으면 404 무시 후 그라디언트 폴백)
+    const depthKey = `depth_${this.region}`;
+    if (!this.cache.json.has(depthKey)) {
+      this.load.json(depthKey, `/data/depth/${this.region}.json`);
     }
   }
 
@@ -133,6 +219,44 @@ export class RegionFieldScene extends Phaser.Scene {
     this.drawPois();
     this.setupInput();
     this.createHud();
+
+    // ── HUD 오버레이 (상태 바 / 미니맵 / 퀵슬롯 / 로그·채팅) ──
+    this.hud = new RegionHud(this, {
+      mapId: this.mapId,
+      terrain: this.terrain,
+      cols: this.cols,
+      rows: this.rows,
+      worldW: this.worldW,
+      worldH: this.worldH,
+    });
+    this.add.existing(this.hud);
+    this.hud.pushLog(`[이동] ${this.node.name}에 도착했습니다.`);
+
+    // 인벤토리 조작으로 퀵슬롯이 바뀌면 HUD 갱신 (restart 중복 등록 방지)
+    this.events.off('inventory-changed');
+    this.events.on('inventory-changed', () => this.hud?.refreshQuickslots());
+
+    // 1인칭 낚시 뷰(pause+launch)에서 복귀 시: 페이드인 + 캐스팅 상태 정리
+    this.events.off('resume');
+    this.events.on('resume', () => {
+      this.cameras.main.fadeIn(300, 0, 10, 20);
+      this.clearCastFlight();
+      this.hud?.refreshQuickslots();
+      // 1인칭 씬이 남긴 종료 사유(채비 손실 등) 표시
+      const exitMsg = this.registry.get('fp_exit_msg') as string | undefined;
+      if (exitMsg) {
+        this.registry.remove('fp_exit_msg');
+        this.hud?.pushLog(`[낚시] ${exitMsg}`);
+        this.floatingHint(exitMsg);
+      } else {
+        this.hud?.pushLog('[낚시] 필드로 복귀했습니다.');
+      }
+      // 복귀 직후 클릭이 캐스팅으로 새지 않도록 유예
+      this.suppressClickUntil = this.time.now + 400;
+    });
+
+    // 우클릭 컨텍스트 메뉴(브라우저 기본) 차단 — 인벤토리 우클릭 액션용
+    this.input.mouse?.disableContextMenu();
 
     this.physics.world.setBounds(0, 0, this.worldW, this.worldH);
     this.cameras.main.setBounds(0, 0, this.worldW, this.worldH);
@@ -287,14 +411,60 @@ export class RegionFieldScene extends Phaser.Scene {
 
   /** 진입 엣지/기본 진입에 따라 스폰 타일 계산 (걷기 가능 타일 보장) */
   private computeSpawnTile(): { col: number; row: number } {
-    let targetC: number;
-    let targetR: number;
-    if (this.entryEdge === 'W') { targetC = SPAWN_INSET; targetR = Math.round(this.entryT * this.rows); }
-    else if (this.entryEdge === 'E') { targetC = this.cols - 1 - SPAWN_INSET; targetR = Math.round(this.entryT * this.rows); }
-    else if (this.entryEdge === 'N') { targetR = SPAWN_INSET; targetC = Math.round(this.entryT * this.cols); }
-    else if (this.entryEdge === 'S') { targetR = this.rows - 1 - SPAWN_INSET; targetC = Math.round(this.entryT * this.cols); }
-    else { targetC = Math.floor(this.cols / 2); targetR = Math.floor(this.rows / 2); }
-    return this.nearestWalkable(targetC, targetR);
+    if (!this.entryEdge) {
+      return this.nearestWalkable(Math.floor(this.cols / 2), Math.floor(this.rows / 2));
+    }
+    // 엣지 진입: 이전 맵에서 나온 상대 위치(entryT)를 유지한 채,
+    // 반드시 진입 엣지 근처 밴드 안에서 스폰 (길 이어짐 보장)
+    return this.edgeSpawnTile(this.entryEdge, this.entryT);
+  }
+
+  /**
+   * 진입 엣지 밴드(엣지에서 SPAWN_INSET 타일 이내)에 한정해 스폰 타일을 찾는다.
+   * entryT 지점에서 엣지를 따라 좌우(또는 상하)로 벌려가며 탐색하므로,
+   * 이전 맵에서 나온 지점과 이어지는 길목 위에 스폰된다.
+   */
+  private edgeSpawnTile(edge: EdgeDir, t: number): { col: number; row: number } {
+    const horizontal = edge === 'N' || edge === 'S';   // 엣지를 따라 col을 움직임
+    const alongMax = horizontal ? this.cols : this.rows;
+    const center = Math.round(t * alongMax);
+
+    // 엣지에서 안쪽으로 depth칸, entryT에서 along 방향으로 offset칸 순으로 탐색
+    for (let offset = 0; offset < alongMax; offset++) {
+      for (const sign of offset === 0 ? [1] : [1, -1]) {
+        const along = center + sign * offset;
+        if (along < 1 || along > alongMax - 2) continue;
+        for (let depth = SPAWN_INSET; depth <= SPAWN_INSET + 6; depth++) {
+          let c: number, r: number;
+          if (edge === 'N') { c = along; r = depth; }
+          else if (edge === 'S') { c = along; r = this.rows - 1 - depth; }
+          else if (edge === 'W') { c = depth; r = along; }
+          else { c = this.cols - 1 - depth; r = along; }
+          if (!this.isWalkable(c, r)) continue;
+          // 엣지 방향으로 통로가 이어져 있는지 확인 (엣지까지 걷기 가능해야
+          // "길 끝에서 이어 들어온" 스폰이 됨). 막혀 있으면 다음 후보로.
+          if (this.walkableTowardEdge(c, r, edge, depth)) return { col: c, row: r };
+        }
+      }
+    }
+    // 엣지 밴드에서 못 찾으면 기존 나선 탐색 폴백
+    const fallbackC = horizontal ? center : (edge === 'W' ? SPAWN_INSET : this.cols - 1 - SPAWN_INSET);
+    const fallbackR = horizontal ? (edge === 'N' ? SPAWN_INSET : this.rows - 1 - SPAWN_INSET) : center;
+    return this.nearestWalkable(fallbackC, fallbackR);
+  }
+
+  /** (c,r)에서 엣지 방향으로 depth칸이 모두 걷기 가능한지 (경계 1칸 직전까지) */
+  private walkableTowardEdge(c: number, r: number, edge: EdgeDir, depth: number): boolean {
+    for (let d = 1; d <= depth - 1; d++) {
+      let cc = c, rr = r;
+      if (edge === 'N') rr = r - d;
+      else if (edge === 'S') rr = r + d;
+      else if (edge === 'W') cc = c - d;
+      else cc = c + d;
+      if (cc < 0 || cc >= this.cols || rr < 0 || rr >= this.rows) break;
+      if (!this.isWalkable(cc, rr)) return false;
+    }
+    return true;
   }
 
   /** (c,r)에서 가장 가까운 걷기 가능 타일을 나선형 탐색 (테두리 제외) */
@@ -318,17 +488,88 @@ export class RegionFieldScene extends Phaser.Scene {
   }
 
   // ═══════════════════════════════════════════════════
-  // POI 마커
+  // 건물 (POI 위치에 종류별 픽셀 도트 건물 배치)
   // ═══════════════════════════════════════════════════
   private drawPois(): void {
-    for (const poi of this.mapData.pois) {
+    this.buildings = [];
+    this.mapData.pois.forEach((poi, i) => {
       const x = poi.col * TR + TR / 2;
       const y = poi.row * TR + TR / 2;
-      const icon = this.add.text(x, y, '🍴', { fontSize: '15px' }).setOrigin(0.5).setDepth(15);
-      const ring = this.add.circle(x, y, 11, 0xffcf6b, 0).setStrokeStyle(2, 0xffcf6b, 0.9).setDepth(14);
-      this.tweens.add({ targets: ring, scale: 1.5, alpha: 0, duration: 1400, repeat: -1 });
-      void icon;
+      const kind = BUILDING_KIND_CYCLE[i % BUILDING_KIND_CYCLE.length];
+
+      this.ensureBuildingTexture(kind);
+      // 발밑 기준 배치 (건물 하단 = 타일 중앙)
+      this.add.image(x, y + 10, `bld_${kind}`).setOrigin(0.5, 1).setDepth(14 + y * 0.001);
+
+      const label = this.add.text(x, y + 14, BUILDING_LABEL[kind], {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#ffe9b0', fontStyle: 'bold',
+        backgroundColor: '#0a1628cc', padding: { x: 4, y: 1 },
+      }).setOrigin(0.5, 0).setDepth(15);
+      void label;
+
+      this.buildings.push({ x, y, kind });
+    });
+  }
+
+  /** 건물 종류별 픽셀 도트 텍스처 생성 (1회 베이킹, 모든 맵 공용) */
+  private ensureBuildingTexture(kind: BuildingKind): void {
+    const key = `bld_${kind}`;
+    if (this.textures.exists(key)) return;
+
+    // 종류별 배색: [벽, 지붕, 간판, 포인트]
+    const palette: Record<BuildingKind, [number, number, number, number]> = {
+      convenience: [0xe8e4da, 0x3f9e63, 0x2fa84f, 0xffffff],  // 초록 간판 편의점
+      mart:        [0xd9d2c2, 0xc25b28, 0xff8a3d, 0xffe066],  // 주황 간판 마트
+      market:      [0xcfc4ae, 0xa8433b, 0xd9534f, 0x74add0],  // 붉은 차양 직판장
+      restaurant:  [0xc9a877, 0x7d4f2c, 0xb06a3b, 0xffcf6b],  // 목조 식당
+      cafe:        [0xe3d5bd, 0x8a6a44, 0xc8a060, 0x6f523a],  // 베이지 카페
+      pub:         [0x5c4a6e, 0x33263f, 0x7b5cd6, 0xffd24a],  // 어두운 주점 + 등불
+    };
+    const [wall, roof, sign, accent] = palette[kind];
+    const W = 44, H = 42;
+
+    const g = this.add.graphics();
+    // 벽체
+    g.fillStyle(wall, 1);
+    g.fillRect(4, 14, W - 8, H - 14);
+    // 지붕 (계단식 도트)
+    g.fillStyle(roof, 1);
+    g.fillRect(2, 8, W - 4, 8);
+    g.fillRect(6, 4, W - 12, 4);
+    // 간판 밴드
+    g.fillStyle(sign, 1);
+    g.fillRect(4, 16, W - 8, 7);
+    // 간판 글자 도트 (추상)
+    g.fillStyle(0xffffff, 0.9);
+    g.fillRect(8, 18, 6, 3);
+    g.fillRect(17, 18, 6, 3);
+    g.fillRect(26, 18, 6, 3);
+    // 문
+    g.fillStyle(0x3d2f22, 1);
+    g.fillRect(W / 2 - 5, H - 14, 10, 14);
+    g.fillStyle(accent, 1);
+    g.fillRect(W / 2 + 1, H - 9, 2, 2);   // 손잡이
+    // 창문
+    g.fillStyle(0x9fd0e4, 0.95);
+    g.fillRect(8, 27, 8, 7);
+    g.fillRect(W - 16, 27, 8, 7);
+    g.lineStyle(1, 0x4a3a2a, 0.8);
+    g.strokeRect(8, 27, 8, 7);
+    g.strokeRect(W - 16, 27, 8, 7);
+    // 주점 등불 / 카페 컵 등 종류 포인트
+    if (kind === 'pub') {
+      g.fillStyle(accent, 1);
+      g.fillCircle(6, 20, 3);
+    } else if (kind === 'cafe') {
+      g.fillStyle(0xffffff, 1);
+      g.fillRect(W - 10, 10, 5, 4);
     }
+    // 외곽선
+    g.lineStyle(2, 0x2a1c12, 1);
+    g.strokeRect(2, 8, W - 4, H - 8);
+
+    g.generateTexture(key, W, H);
+    g.destroy();
   }
 
   // ═══════════════════════════════════════════════════
@@ -336,28 +577,291 @@ export class RegionFieldScene extends Phaser.Scene {
   // ═══════════════════════════════════════════════════
   private setupInput(): void {
     this.cursors = this.input.keyboard!.createCursorKeys();
-    this.input.keyboard!.on('keydown-ESC', () => this.exitToWorldMap());
+
+    // ESC: 최상단 팝업부터 닫기 → 팝업 없으면 일시정지 메뉴 토글
+    this.input.keyboard!.on('keydown-ESC', () => {
+      if (this.closeTopPopup()) return;
+      this.togglePauseMenu();
+    });
+
+    // 일시정지 메뉴 네비게이션 (열려 있을 때만 처리)
+    this.input.keyboard!.on('keydown-UP', () => { if (this.isPaused) this.movePauseSel(-1); });
+    this.input.keyboard!.on('keydown-DOWN', () => { if (this.isPaused) this.movePauseSel(1); });
+    this.input.keyboard!.on('keydown-ENTER', () => { if (this.isPaused) this.activatePauseSel(); });
+
+    // M: 미니맵 / I: 인벤토리 / S: 스테이터스 / U: 활용 / E: 상호작용·장비
+    this.input.keyboard!.on('keydown-M', () => { if (!this.uiBlocked) this.hud?.toggleMiniMapSize(); });
+    this.input.keyboard!.on('keydown-I', () => { if (!this.isPaused) this.toggleInventory(); });
+    this.input.keyboard!.on('keydown-S', () => { if (!this.isPaused) this.toggleStatus(); });
+    this.input.keyboard!.on('keydown-U', () => { if (!this.isPaused) this.toggleUtilization('tackles'); });
+    this.input.keyboard!.on('keydown-E', () => {
+      if (this.isPaused) return;
+      // 건물 근접 시 = 거래 상호작용, 아니면 장비 창 토글
+      if (this.nearBuilding && !this.uiBlocked) this.promptTrade(this.nearBuilding.kind);
+      else this.toggleEquipment();
+    });
+
+    // 1~8: 퀵슬롯 선택 (팝업 열림 중엔 각 패널의 키 처리가 우선)
+    const digitKeys = ['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT'];
+    digitKeys.forEach((key, i) => {
+      this.input.keyboard!.on(`keydown-${key}`, () => {
+        if (this.uiBlocked) return;
+        GameState.updatePlayer({ activeQuickslotIndex: i });
+        this.hud?.refreshQuickslots();
+      });
+    });
 
     // 좌클릭 차지 캐스팅 (바다 인접 + 낚싯대 슬롯)
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
+      if (this.uiBlocked || this.time.now < this.suppressClickUntil) return;
       if (p.leftButtonDown()) this.tryStartCharge();
     });
     this.input.on('pointerup', () => this.releaseCast());
   }
 
-  private tryStartCharge(): void {
-    if (this.castBusy || this.isTransitioning) return;
-    if (!this.nearWater) {
-      this.floatingHint('🎣 바다 가까이에서 캐스팅하세요');
+  // ═══════════════════════════════════════════════════
+  // 팝업 스택 관리 (ESC 최상단 우선 닫기)
+  // ═══════════════════════════════════════════════════
+  /** 패널을 만들어 씬/스택에 등록. factory는 close 콜백을 받아 패널을 생성 */
+  private openPopup<T extends Phaser.GameObjects.Container>(
+    factory: (close: () => void) => T,
+    onClosed?: () => void,
+  ): T {
+    this.charging = false;
+    this.chargeBar?.clear();
+
+    let panel!: T;
+    const close = (): void => {
+      this.popupStack = this.popupStack.filter((e) => e.panel !== panel);
+      panel.destroy();
+      onClosed?.();
+      this.hud?.refreshQuickslots();
+      // 닫기 클릭이 씬 pointerdown으로 이어져 캐스팅을 시도하지 않도록 유예
+      this.suppressClickUntil = this.time.now + 250;
+    };
+    panel = factory(close);
+    this.add.existing(panel);
+    this.popupStack.push({ panel, close });
+    return panel;
+  }
+
+  /** 최상단(가장 나중에 열린) 팝업 닫기. 닫은 게 있으면 true */
+  private closeTopPopup(): boolean {
+    const top = this.popupStack[this.popupStack.length - 1];
+    if (!top) return false;
+    top.close();
+    return true;
+  }
+
+  // ── 인벤토리 (I) ──
+  private toggleInventory(atX?: number): void {
+    if (this.invPanel) {
+      const entry = this.popupStack.find((e) => e.panel === this.invPanel);
+      entry?.close();
       return;
     }
-    if (GameState.player.activeQuickslotIndex !== 0) {
-      this.floatingHint('🎣 낚싯대(1번 슬롯)를 먼저 선택하세요');
+    const x = atX ?? (GAME_WIDTH - 440) / 2;
+    this.invPanel = this.openPopup(
+      (close) => new InventoryPanel(this, x, 60, {
+        onClose: close,
+        onOpenDetail: (item) => this.openItemDetail(item),
+        onOpenTackle: () => this.toggleUtilization('tackles', true),
+      }),
+      () => { this.invPanel = null; },
+    );
+  }
+
+  // ── 스테이터스 (S) ──
+  private toggleStatus(): void {
+    if (this.statusPanel) {
+      this.popupStack.find((e) => e.panel === this.statusPanel)?.close();
+      return;
+    }
+    this.statusPanel = this.openPopup(
+      (close) => new StatusPanel(this, 80, 80, close),
+      () => { this.statusPanel = null; },
+    );
+  }
+
+  // ── 장비 (E) ──
+  private toggleEquipment(): void {
+    if (this.equipPanel) {
+      this.popupStack.find((e) => e.panel === this.equipPanel)?.close();
+      return;
+    }
+    this.equipPanel = this.openPopup(
+      (close) => new EquipmentPanel(this, GAME_WIDTH - 500, 70, close, () => this.hud?.refreshQuickslots()),
+      () => { this.equipPanel = null; },
+    );
+  }
+
+  // ── 활용 (U) — 요리하기/채비하기 탭 ──
+  private toggleUtilization(tab: UtilizationTab, forceOpen = false): void {
+    if (this.utilPanel) {
+      if (!forceOpen) {
+        this.popupStack.find((e) => e.panel === this.utilPanel)?.close();
+        return;
+      }
+      this.popupStack.find((e) => e.panel === this.utilPanel)?.close();
+    }
+    this.utilPanel = this.openPopup(
+      (close) => new UtilizationPanel(this, close, tab),
+      () => { this.utilPanel = null; },
+    );
+  }
+
+  // ── 아이템 상세보기 ──
+  private openItemDetail(item: InvItem): void {
+    this.openPopup((close) => new ItemDetailPanel(this, item, 180 + this.popupStack.length * 24, 100 + this.popupStack.length * 24, close));
+  }
+
+  // ═══════════════════════════════════════════════════
+  // 상점 (건물 근접 E → 거래 확인 → 상점+인벤토리 나란히)
+  // ═══════════════════════════════════════════════════
+  private promptTrade(kind: BuildingKind): void {
+    this.openPopup((close) => new ConfirmDialog(
+      this,
+      `${BUILDING_LABEL[kind]}에 들어갑니다.\n상품을 거래하시겠습니까?`,
+      () => { close(); this.openShop(kind); },
+      close,
+    ));
+  }
+
+  private openShop(kind: BuildingKind): void {
+    if (this.shopPanel) return;
+    const shop = SHOP_CATALOG[kind];
+
+    // 좌측: 상점 / 우측: 인벤토리
+    this.shopPanel = this.openPopup(
+      (close) => new ShopPanel(this, 40, 60, shop, {
+        onClose: close,
+        onBuy: (entry) => this.handleBuy(entry),
+        onSell: (item) => this.handleSell(item),
+        onOpenDetail: (itemLike) => this.openItemDetail({ slot: 0, qty: 1, ...itemLike } as InvItem),
+      }),
+      () => { this.shopPanel = null; },
+    );
+    if (!this.invPanel) this.toggleInventory(GAME_WIDTH - 470);
+    this.hud?.pushLog(`[상점] ${shop.name} 이용 시작`);
+  }
+
+  /** 구매 플로우: (수량 지정) → 확인 → 재화 차감 + 인벤토리 추가 */
+  private handleBuy(entry: ShopEntry): void {
+    const confirmBuy = (qty: number): void => {
+      const total = entry.price * qty;
+      this.openPopup((close) => new ConfirmDialog(
+        this,
+        `${entry.name} ${qty}개를 구매하시겠습니까?\n소요 재화: ${total.toLocaleString()} 원`,
+        () => {
+          close();
+          if (GameState.player.inventory.coins < total) {
+            this.shopPanel?.setStatus('재화가 부족합니다.');
+            return;
+          }
+          if (!InventoryStore.addItem(entry, qty)) {
+            this.shopPanel?.setStatus('인벤토리 소켓이 가득 찼습니다.');
+            return;
+          }
+          GameState.addCoins(-total);
+          this.events.emit('inventory-changed');
+          this.shopPanel?.refresh();
+          this.shopPanel?.setStatus(`${entry.name} x${qty} 구매 완료 (-${total.toLocaleString()}원)`);
+          this.hud?.pushLog(`[구매] ${entry.name} x${qty} (-${total.toLocaleString()}원)`);
+        },
+        close,
+      ));
+    };
+
+    if (entry.maxPerPurchase > 1) {
+      this.openPopup((close) => new QuantityDialog(this, {
+        itemName: entry.name,
+        unitPrice: entry.price,
+        maxQty: entry.maxPerPurchase,
+        actionLabel: '구매',
+        onConfirm: (qty) => { close(); confirmBuy(qty); },
+        onCancel: close,
+      }));
+    } else {
+      confirmBuy(1);
+    }
+  }
+
+  /** 판매 플로우: (수량 지정) → 확인 → 아이템 차감 + 재화 지급 */
+  private handleSell(item: InvItem): void {
+    const unit = InventoryStore.getSellPrice(item);
+    const confirmSell = (qty: number): void => {
+      const total = unit * qty;
+      this.openPopup((close) => new ConfirmDialog(
+        this,
+        `${item.name} ${qty}개를 판매하시겠습니까?\n획득 재화: ${total.toLocaleString()} 원`,
+        () => {
+          close();
+          if (!InventoryStore.removeQty(item.id, qty)) {
+            this.shopPanel?.setStatus('판매 수량이 부족합니다.');
+            return;
+          }
+          GameState.addCoins(total);
+          this.events.emit('inventory-changed');
+          this.shopPanel?.refresh();
+          this.shopPanel?.setStatus(`${item.name} x${qty} 판매 완료 (+${total.toLocaleString()}원)`);
+          this.hud?.pushLog(`[판매] ${item.name} x${qty} (+${total.toLocaleString()}원)`);
+        },
+        close,
+      ));
+    };
+
+    if (item.qty > 1) {
+      this.openPopup((close) => new QuantityDialog(this, {
+        itemName: item.name,
+        unitPrice: unit,
+        maxQty: item.qty,
+        actionLabel: '판매',
+        onConfirm: (qty) => { close(); confirmSell(qty); },
+        onCancel: close,
+      }));
+    } else {
+      confirmSell(1);
+    }
+  }
+
+  private tryStartCharge(): void {
+    if (this.castBusy || this.isTransitioning || this.uiBlocked) return;
+    if (!this.nearWater) {
+      this.floatingHint('바다 가까이에서 캐스팅하세요');
+      return;
+    }
+    // ── 장비 게이팅: 퀵슬롯 선택 + 실제 손 착용 상태 모두 필요 ──
+    const activeId = InventoryStore.quickslots[GameState.player.activeQuickslotIndex];
+    const activeItem = activeId ? InventoryStore.find(activeId) : undefined;
+    if (!activeItem || activeItem.tool !== 'rod') {
+      this.floatingHint('낚싯대가 등록된 퀵슬롯을 선택하세요');
+      return;
+    }
+    if (!activeItem.equipped) {
+      this.floatingHint('낚싯대를 손에 착용하세요 (인벤토리 우클릭 → 왼손/오른손 착용)');
+      return;
+    }
+    // 채비 완성도 게이트: 필수 부품(원줄/찌/목줄/바늘·미끼)이 모두 장착되어야 캐스팅 가능
+    const missing = InventoryStore.getMissingRigParts();
+    if (missing.length > 0) {
+      this.floatingHint(`채비가 불완전합니다 — ${missing.join(', ')} 장착 필요 (U 채비하기)`);
       return;
     }
     this.charging = true;
     this.chargePower = 0;
     if (!this.chargeBar) this.chargeBar = this.add.graphics().setDepth(30);
+    if (!this.aimG) this.aimG = this.add.graphics().setDepth(29);
+  }
+
+  /** 현재 바람 벡터 (환경 데이터 없으면 목업) */
+  private getWindVector(): WindVector {
+    const env = GameState.environment.environment;
+    if (env) {
+      const rad = (env.weather.windDirectionDeg ?? 0) * Math.PI / 180;
+      const s = env.weather.windSpeedMs * 6;
+      return { x: Math.sin(rad) * s, y: -Math.cos(rad) * s };
+    }
+    return { x: 22, y: -9 };
   }
 
   private releaseCast(): void {
@@ -365,74 +869,155 @@ export class RegionFieldScene extends Phaser.Scene {
     this.charging = false;
     const power = this.chargePower;
     this.chargeBar?.clear();
-    if (this.nearWater && this.nearWaterTarget) {
-      this.doCast(power, this.nearWaterTarget);
+    this.aimG?.clear();
+    this.startCastFlight(this.lastAimDir, power);
+  }
+
+  /**
+   * 3D 탄도 캐스팅 발사 — 조준 방향(마우스) × 파워 × 완력 + 바람/공기저항.
+   * 그림자는 (x, y) 평면을 미끄러지고, 찌는 y - z 보정으로 포물선 비행.
+   */
+  private startCastFlight(dir: { x: number; y: number }, power: number): void {
+    this.castBusy = true;
+    const originX = this.playerBody.x;
+    const originY = this.playerBody.y;
+
+    this.castProj = launchCast({
+      originX, originY,
+      dirX: dir.x, dirY: dir.y,
+      power,
+      strength: DEFAULT_ANGLER_STATS.strength,
+      wind: this.getWindVector(),
+    });
+
+    // 그림자 / 찌 이원화
+    this.castShadow = this.add.ellipse(originX, originY, 10, 5, 0x000000, 0.3).setDepth(21);
+    this.castBobber = this.add.circle(originX, originY - 6, 4, 0xff5252).setStrokeStyle(1, 0xffffff).setDepth(23);
+    if (!this.castLineG) this.castLineG = this.add.graphics().setDepth(22);
+
+    this.floatingHint(`캐스팅! 파워 ${Math.round(power * 100)}%`);
+    this.hud?.pushLog(`[낚시] 캐스팅 — 파워 ${Math.round(power * 100)}%`);
+  }
+
+  /** 캐스팅 비행 1프레임 진행 (update 루프에서 호출) */
+  private stepCastFlight(deltaMs: number): void {
+    const proj = this.castProj;
+    if (!proj || !this.castShadow || !this.castBobber) return;
+
+    stepCast(proj, Math.min(0.05, deltaMs / 1000));
+
+    // 그림자: 순수 XY / 찌: y - z 보정 (포물선)
+    this.castShadow.setPosition(proj.x, proj.y);
+    const shadowScale = Math.max(0.4, 1 - proj.z / 260);
+    this.castShadow.setScale(shadowScale);
+    this.castBobber.setPosition(proj.x, proj.y - proj.z);
+
+    // 원줄
+    this.castLineG?.clear();
+    this.castLineG?.lineStyle(1.2, 0xf0f0f0, 0.85);
+    this.castLineG?.lineBetween(
+      this.playerBody.x, this.playerBody.y + this.PLAYER_FOOT_OFFSET - 22,
+      this.castBobber.x, this.castBobber.y,
+    );
+
+    if (!proj.landed) return;
+
+    // ── 착수 판정 (z <= 0) ──
+    this.castProj = null;
+    const col = Math.floor(proj.x / TR);
+    const row = Math.floor(proj.y / TR);
+
+    if (this.terrainAt(col, row) === 'water') {
+      // 착수 파문 → 1인칭 낚시 뷰 진입
+      const ripple = this.add.circle(proj.x, proj.y, 3, 0x000000, 0).setStrokeStyle(2, 0xdff0ff, 0.9).setDepth(21);
+      this.tweens.add({ targets: ripple, scale: 4, alpha: 0, duration: 700, onComplete: () => ripple.destroy() });
+      this.hud?.pushLog('[낚시] 착수! 1인칭 낚시 모드 진입');
+      this.time.delayedCall(420, () => this.enterFirstPersonFishing(proj.x, proj.y, col, row));
+    } else {
+      // 육지 착지 — 회수
+      this.floatingHint('육지에 떨어졌습니다 — 바다를 조준하세요');
+      this.tweens.add({
+        targets: [this.castBobber, this.castShadow],
+        x: this.playerBody.x, y: this.playerBody.y, alpha: 0, duration: 300,
+        onComplete: () => this.clearCastFlight(),
+      });
     }
   }
 
-  /** 캐스팅 연출: 찌가 바다로 날아가 떨어지고 파문 → 잠시 후 회수 */
-  private doCast(power: number, target: { x: number; y: number }): void {
-    this.castBusy = true;
-    const startX = this.playerBody.x;
-    const startY = this.playerBody.y + this.PLAYER_FOOT_OFFSET - 20;
-    // 파워에 따라 목표를 바다 쪽으로 더 멀리
-    const dx = target.x - startX, dy = target.y - startY;
-    const len = Math.hypot(dx, dy) || 1;
-    const reach = 40 + power * 120;
-    const tx = startX + (dx / len) * reach;
-    const ty = startY + (dy / len) * reach;
+  /** 캐스팅 비행 오브젝트 정리 */
+  private clearCastFlight(): void {
+    this.castProj = null;
+    this.castShadow?.destroy(); this.castShadow = undefined;
+    this.castBobber?.destroy(); this.castBobber = undefined;
+    this.castLineG?.clear();
+    this.aimG?.clear();
+    this.castBusy = false;
+  }
 
-    const line = this.add.graphics().setDepth(21);
-    const bobber = this.add.circle(startX, startY, 4, 0xff5252).setStrokeStyle(1, 0xffffff).setDepth(22);
+  /** 착수 → 1인칭 낚시 씬 진입 (pause + launch — 복귀 시 위치 보존) */
+  private enterFirstPersonFishing(landX: number, landY: number, col: number, row: number): void {
+    const distPx = Math.hypot(landX - this.playerBody.x, landY - this.playerBody.y);
+    const castDistanceM = (distPx / TR) * 2;   // 타일 = 2m 스케일
+    const zMaxM = this.resolveCastDepth(castDistanceM);
+    const reefSeed = ((col * 73856093) ^ (row * 19349663)) >>> 0;
 
-    this.floatingHint(`🎣 캐스팅! 파워 ${Math.round(power * 100)}%`);
+    // 캐릭터가 서 있는 지형 → 1인칭 전경 지면 종류 (지도 기반)
+    const pc = Math.floor(this.playerBody.x / TR);
+    const pr = Math.floor(this.playerBody.y / TR);
+    const standing = this.terrainAt(pc, pr) ?? 'land';
+    const nearSea =
+      this.terrainAt(pc + 1, pr) === 'water' || this.terrainAt(pc - 1, pr) === 'water' ||
+      this.terrainAt(pc, pr + 1) === 'water' || this.terrainAt(pc, pr - 1) === 'water';
+    const shoreKind: 'sand' | 'grass' | 'gravel' =
+      standing === 'grass' ? 'grass' : nearSea ? 'sand' : 'gravel';
 
-    this.tweens.add({
-      targets: bobber,
-      x: tx, y: ty,
-      duration: 420,
-      ease: 'Quad.easeOut',
-      onUpdate: () => {
-        line.clear();
-        line.lineStyle(1.5, 0xf0f0f0, 0.9);
-        line.lineBetween(this.playerBody.x, this.playerBody.y + this.PLAYER_FOOT_OFFSET - 22, bobber.x, bobber.y);
-      },
-      onComplete: () => {
-        // 착수 파문
-        const ripple = this.add.circle(tx, ty, 3, 0x000000, 0).setStrokeStyle(2, 0xdff0ff, 0.9).setDepth(21);
-        this.tweens.add({ targets: ripple, scale: 4, alpha: 0, duration: 900, onComplete: () => ripple.destroy() });
-        // 잠시 후 회수
-        this.time.delayedCall(1400, () => {
-          this.tweens.add({
-            targets: bobber, x: this.playerBody.x, y: this.playerBody.y, alpha: 0, duration: 260,
-            onUpdate: () => {
-              line.clear();
-              line.lineStyle(1.5, 0xf0f0f0, 0.6);
-              line.lineBetween(this.playerBody.x, this.playerBody.y + this.PLAYER_FOOT_OFFSET - 22, bobber.x, bobber.y);
-            },
-            onComplete: () => { line.destroy(); bobber.destroy(); this.castBusy = false; },
-          });
-        });
-      },
+    this.cameras.main.fadeOut(260, 2, 12, 24);
+    this.cameras.main.once('camerafadeoutcomplete', () => {
+      this.scene.pause();
+      this.scene.launch('FirstPersonFishingScene', {
+        zMaxM, castDistanceM, reefSeed, region: this.region, shoreKind,
+      });
     });
+  }
+
+  /**
+   * 캐스팅 거리 → 착수 지점 수심 (m).
+   * 실측 연안정보도 수심 프로필(현재 맵의 항구 앵커 기준)을 우선 사용하고,
+   * 프로필이 없으면 기존 Land-to-Sea 그라디언트(computeZoneMaxDepth)로 폴백.
+   * 프로필 범위를 넘는 거리는 depthAtDistance가 거리 비례로 외삽한다.
+   */
+  private resolveCastDepth(castDistanceM: number): number {
+    const profile = this.cache.json.get(`depth_${this.region}`) as RegionDepthProfile | undefined;
+    if (profile && Array.isArray(profile.anchors) && profile.anchors.length > 0) {
+      // 현재 맵 ID(sokcho_dongmyeonghang_1 등)로 앵커 매칭
+      const anchor = findDepthAnchor(profile, this.mapId);
+      if (anchor) {
+        const depth = depthAtDistance(anchor, castDistanceM);
+        this.hud?.pushLog(`[수심] ${anchor.name} 기준 실측 ${depth.toFixed(1)}m (거리 ${castDistanceM.toFixed(0)}m)`);
+        return Math.max(2, Math.round(depth * 10) / 10);
+      }
+    }
+    const distRatio = Phaser.Math.Clamp(castDistanceM / 70, 0, 1);
+    return computeZoneMaxDepth(distRatio);
   }
 
   // ═══════════════════════════════════════════════════
   // HUD
   // ═══════════════════════════════════════════════════
   private createHud(): void {
-    this.add.text(GAME_WIDTH / 2, 16, `📍 ${this.node.name}`, {
+    this.add.text(GAME_WIDTH / 2, 16, this.node.name, {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '16px', color: '#e8f4fd', fontStyle: 'bold',
       backgroundColor: '#0a1628cc', padding: { x: 12, y: 5 },
     }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(100);
 
-    this.add.text(16, 16,
-      '방향키 이동  ·  지도 경계로 이동하면 인접 지역으로 전환  ·  [ESC] 전국 지도', {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#9fc0d4',
-        backgroundColor: '#0a1628aa', padding: { x: 8, y: 4 },
-      }).setScrollFactor(0).setDepth(100);
+    // 조작 힌트 (우하단)
+    this.add.text(GAME_WIDTH - 16, GAME_HEIGHT - 14,
+      '방향키 이동 · M 지도 · I 인벤토리 · S 스탯 · E 장비/상호작용 · U 활용 · ESC 메뉴', {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#7a98ac',
+        backgroundColor: '#0a1628aa', padding: { x: 6, y: 3 },
+      }).setOrigin(1, 1).setScrollFactor(0).setDepth(100);
 
-    this.promptText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 40, '', {
+    this.promptText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 96, '', {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px', color: '#ffe28a', fontStyle: 'bold',
       backgroundColor: '#0a1628cc', padding: { x: 10, y: 5 },
     }).setOrigin(0.5).setScrollFactor(0).setDepth(100).setVisible(false);
@@ -449,13 +1034,29 @@ export class RegionFieldScene extends Phaser.Scene {
   // ═══════════════════════════════════════════════════
   // 업데이트 루프
   // ═══════════════════════════════════════════════════
-  update(): void {
-    if (this.isTransitioning) { this.playerBody.setVelocity(0, 0); return; }
+  update(_time: number, delta: number): void {
+    this.hud?.updatePlayerMarker(this.playerBody.x, this.playerBody.y);
+    // 캐스팅 비행은 UI 상태와 무관하게 진행 (착수까지 물리 유지)
+    if (this.castProj) this.stepCastFlight(delta);
+    if (this.isTransitioning || this.uiBlocked) { this.playerBody.setVelocity(0, 0); return; }
     this.handleMovement();
     this.updateSpriteAndShadow();
+    this.updateBuildingProximity();
     this.updateWaterProximity();
     this.updateCharge();
     this.checkEdgeTransition();
+  }
+
+  /** 건물 입구 근접 감지 → [E] 거래 힌트 */
+  private updateBuildingProximity(): void {
+    const px = this.playerBody.x, py = this.playerBody.y;
+    let nearest: { x: number; y: number; kind: BuildingKind } | null = null;
+    let bestDist = 52;
+    for (const b of this.buildings) {
+      const d = Math.hypot(b.x - px, b.y - py);
+      if (d < bestDist) { bestDist = d; nearest = b; }
+    }
+    this.nearBuilding = nearest;
   }
 
   private handleMovement(): void {
@@ -510,11 +1111,21 @@ export class RegionFieldScene extends Phaser.Scene {
       }
     }
     this.nearWater = !!found;
-    this.nearWaterTarget = found;
     if (this.castBusy) { this.promptText.setVisible(false); return; }
-    if (this.nearWater) {
-      const hasRod = GameState.player.activeQuickslotIndex === 0;
-      this.promptText.setText(hasRod ? '🎣 좌클릭 유지 → 캐스팅 차지' : '🎣 낚싯대(1번 슬롯) 선택 후 캐스팅');
+    // 건물 근접 힌트가 캐스팅 힌트보다 우선
+    if (this.nearBuilding) {
+      this.promptText.setText(`[E] ${BUILDING_LABEL[this.nearBuilding.kind]} — 거래하기`);
+      this.promptText.setVisible(true);
+    } else if (this.nearWater) {
+      const activeId = InventoryStore.quickslots[GameState.player.activeQuickslotIndex];
+      const activeItem = activeId ? InventoryStore.find(activeId) : undefined;
+      const rodSelected = activeItem?.tool === 'rod';
+      const rodEquipped = rodSelected && !!activeItem?.equipped;
+      this.promptText.setText(
+        rodEquipped ? '좌클릭 유지 = 조준·차지 → 놓으면 캐스팅 (마우스로 각도 조절)'
+        : rodSelected ? '낚싯대를 손에 착용하세요 (인벤토리 우클릭 → 착용)'
+        : '낚싯대 퀵슬롯을 선택하세요',
+      );
       this.promptText.setVisible(true);
     } else {
       this.promptText.setVisible(false);
@@ -536,6 +1147,43 @@ export class RegionFieldScene extends Phaser.Scene {
     const bb = Math.floor(161 * (1 - ratio));
     this.chargeBar.fillStyle((rr << 16) | (gg << 8) | bb, 1);
     this.chargeBar.fillRect(bx, by, 80 * ratio, 8);
+
+    // ── 조준: 마우스 방향 = 발사 각도, 궤적 미리보기 (탄도 시뮬레이션) ──
+    const pointer = this.input.activePointer;
+    const dx = pointer.worldX - this.playerBody.x;
+    const dy = pointer.worldY - this.playerBody.y;
+    const len = Math.hypot(dx, dy);
+    if (len > 8) {
+      this.lastAimDir = { x: dx / len, y: dy / len };
+    }
+
+    if (!this.aimG) return;
+    this.aimG.clear();
+
+    // 조준선 (캐릭터 → 마우스 방향)
+    const px = this.playerBody.x, py = this.playerBody.y;
+    this.aimG.lineStyle(1, 0xffffff, 0.35);
+    this.aimG.lineBetween(px, py, px + this.lastAimDir.x * 90, py + this.lastAimDir.y * 90);
+
+    // 예상 탄도 점선 (현재 파워 기준 — 그림자 경로 + 착수 지점)
+    const traj = simulateCastTrajectory({
+      originX: px, originY: py,
+      dirX: this.lastAimDir.x, dirY: this.lastAimDir.y,
+      power: this.chargePower,
+      strength: DEFAULT_ANGLER_STATS.strength,
+      wind: this.getWindVector(),
+    });
+    for (let i = 4; i < traj.length; i += 6) {
+      const pt = traj[i];
+      this.aimG.fillStyle(0xffffff, 0.5);
+      this.aimG.fillCircle(pt.x, pt.y - pt.z, 1.6);
+    }
+    const last = traj[traj.length - 1];
+    if (last) {
+      const landsWater = this.terrainAt(Math.floor(last.x / TR), Math.floor(last.y / TR)) === 'water';
+      this.aimG.lineStyle(1.5, landsWater ? 0x4af2a1 : 0xff6a5a, 0.9);
+      this.aimG.strokeCircle(last.x, last.y, 8);
+    }
   }
 
   // ═══════════════════════════════════════════════════
@@ -543,6 +1191,8 @@ export class RegionFieldScene extends Phaser.Scene {
   // ═══════════════════════════════════════════════════
   private checkEdgeTransition(): void {
     if (this.isTransitioning || this.castBusy) return;
+    // 건물 근접 중에는 전환 억제 — 엣지 부근 건물과의 상호작용([E])이 우선
+    if (this.nearBuilding) return;
     const c = Math.floor(this.playerBody.x / TR);
     const r = Math.floor(this.playerBody.y / TR);
     const links = this.node.links;
@@ -579,6 +1229,167 @@ export class RegionFieldScene extends Phaser.Scene {
     this.cameras.main.fadeOut(280, 0, 10, 20);
     this.cameras.main.once('camerafadeoutcomplete', () => {
       this.scene.start('WorldMapScene');
+    });
+  }
+
+  // ═══════════════════════════════════════════════════
+  // ESC 일시정지 메뉴 (Traveler's Rest 풍 도트 메뉴)
+  // ═══════════════════════════════════════════════════
+  private togglePauseMenu(): void {
+    if (this.isTransitioning) return;
+    if (this.isPaused) this.closePauseMenu();
+    else this.openPauseMenu();
+  }
+
+  private openPauseMenu(): void {
+    if (this.isPaused) return;
+    this.isPaused = true;
+    this.charging = false;
+    this.chargeBar?.clear();
+    this.playerBody.setVelocity(0, 0);
+
+    this.pauseItems = [
+      { label: '계속하기', action: () => this.closePauseMenu() },
+      {
+        label: '저장하기',
+        action: () => {
+          GameState.save();
+          this.hud?.pushLog(`[시스템] 슬롯 ${GameState.activeSlot ?? 1}에 저장했습니다.`);
+          this.closePauseMenu();
+          this.floatingHint('저장 완료');
+        },
+      },
+      { label: '전국 지도', action: () => this.exitToWorldMap() },
+      { label: '타이틀 화면', action: () => this.gotoTitle() },
+    ];
+    this.pauseSelIndex = 0;
+    this.pauseRowBgs = [];
+
+    const cx = GAME_WIDTH / 2;
+    const cy = GAME_HEIGHT / 2;
+    const menu = this.add.container(0, 0).setScrollFactor(0).setDepth(1000);
+
+    // 반투명 딤 배경
+    const dim = this.add.rectangle(cx, cy, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.55)
+      .setInteractive();  // 뒤 클릭 차단
+    menu.add(dim);
+
+    // ── 목재/양피지 톤 패널 (도트 스타일 이중 테두리) ──
+    const panelW = 300;
+    const rowH = 52;
+    const headH = 58;
+    const panelH = headH + this.pauseItems.length * (rowH + 10) + 22;
+    const px = cx - panelW / 2;
+    const py = cy - panelH / 2;
+
+    const panel = this.add.graphics();
+    // 바깥 어두운 목재 테두리
+    panel.fillStyle(0x2a1c12, 1);
+    panel.fillRoundedRect(px - 6, py - 6, panelW + 12, panelH + 12, 10);
+    // 밝은 목재 프레임
+    panel.fillStyle(0x6b4a2e, 1);
+    panel.fillRoundedRect(px, py, panelW, panelH, 8);
+    // 안쪽 패널 면
+    panel.fillStyle(0x8a6a44, 1);
+    panel.fillRoundedRect(px + 6, py + 6, panelW - 12, panelH - 12, 6);
+    panel.lineStyle(2, 0x3d2817, 1);
+    panel.strokeRoundedRect(px + 6, py + 6, panelW - 12, panelH - 12, 6);
+    menu.add(panel);
+
+    // 헤더
+    const header = this.add.text(cx, py + 26, '일시정지', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '18px', color: '#3d2817', fontStyle: 'bold',
+    }).setOrigin(0.5);
+    menu.add(header);
+
+    // 메뉴 항목 버튼
+    this.pauseItems.forEach((item, i) => {
+      const ry = py + headH + i * (rowH + 10);
+      const rowBg = this.add.graphics();
+      this.pauseRowBgs.push(rowBg);
+      this.paintPauseRow(rowBg, px + 22, ry, panelW - 44, rowH, i === this.pauseSelIndex);
+      const label = this.add.text(cx, ry + rowH / 2, item.label, {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '16px', color: '#33220f', fontStyle: 'bold',
+      }).setOrigin(0.5);
+      const hit = this.add.rectangle(cx, ry + rowH / 2, panelW - 44, rowH, 0xffffff, 0)
+        .setInteractive({ useHandCursor: true });
+      hit.on('pointerover', () => { this.pauseSelIndex = i; this.refreshPauseRows(); });
+      hit.on('pointerdown', () => { this.pauseSelIndex = i; item.action(); });
+      menu.add([rowBg, label, hit]);
+    });
+
+    // 힌트
+    const hint = this.add.text(cx, py + panelH - 4, '↑↓ 이동 · Enter 선택 · ESC 닫기', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#4a3322',
+    }).setOrigin(0.5, 1);
+    menu.add(hint);
+
+    // 화면 고정 히트 영역 보정 (카메라 스크롤 시 클릭 어긋남 방지)
+    applyScreenFixed(menu);
+
+    // 등장 연출
+    menu.setScale(0.92);
+    this.tweens.add({ targets: menu, scale: 1, duration: 150, ease: 'Back.easeOut' });
+
+    this.pauseMenu = menu;
+  }
+
+  /** 메뉴 행 배경 그리기 (선택 강조) */
+  private paintPauseRow(g: Phaser.GameObjects.Graphics, x: number, y: number, w: number, h: number, selected: boolean): void {
+    g.clear();
+    if (selected) {
+      g.fillStyle(0xd9b779, 1);
+      g.fillRoundedRect(x, y, w, h, 5);
+      g.lineStyle(2, 0xffe9b0, 1);
+      g.strokeRoundedRect(x, y, w, h, 5);
+    } else {
+      g.fillStyle(0xb8945f, 1);
+      g.fillRoundedRect(x, y, w, h, 5);
+      g.lineStyle(2, 0x6b4a2e, 1);
+      g.strokeRoundedRect(x, y, w, h, 5);
+    }
+  }
+
+  private refreshPauseRows(): void {
+    const cx = GAME_WIDTH / 2;
+    const cy = GAME_HEIGHT / 2;
+    const panelW = 300, rowH = 52, headH = 58;
+    const panelH = headH + this.pauseItems.length * (rowH + 10) + 22;
+    const px = cx - panelW / 2;
+    const py = cy - panelH / 2;
+    this.pauseRowBgs.forEach((g, i) => {
+      const ry = py + headH + i * (rowH + 10);
+      this.paintPauseRow(g, px + 22, ry, panelW - 44, rowH, i === this.pauseSelIndex);
+    });
+  }
+
+  private movePauseSel(dir: number): void {
+    const n = this.pauseItems.length;
+    this.pauseSelIndex = (this.pauseSelIndex + dir + n) % n;
+    this.refreshPauseRows();
+  }
+
+  private activatePauseSel(): void {
+    this.pauseItems[this.pauseSelIndex]?.action();
+  }
+
+  private closePauseMenu(): void {
+    if (!this.pauseMenu) { this.isPaused = false; return; }
+    const menu = this.pauseMenu;
+    this.pauseMenu = undefined;
+    this.tweens.add({
+      targets: menu, scale: 0.92, alpha: 0, duration: 120,
+      onComplete: () => menu.destroy(),
+    });
+    this.isPaused = false;
+  }
+
+  private gotoTitle(): void {
+    if (this.isTransitioning) return;
+    this.isTransitioning = true;
+    this.cameras.main.fadeOut(280, 0, 10, 20);
+    this.cameras.main.once('camerafadeoutcomplete', () => {
+      this.scene.start('MainMenuScene');
     });
   }
 }
