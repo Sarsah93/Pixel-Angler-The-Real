@@ -62,6 +62,9 @@ export class KosisCatchApiClient {
     }
 
     try {
+      // 실호출 검증(2026-07-16): outputFields를 지정하면 C1_NM/C2_NM(시도/어종명)이
+      // 누락되므로 지정하지 않는다. 응답 필드: C1_NM(시도), C2_NM(어종), ITM_NM(총마릿수/총중량),
+      // DT(값), UNIT_NM, PRD_DE(YYYYMM)
       const url = new URL(this.baseUrl);
       url.searchParams.set('method', 'getList');
       url.searchParams.set('apiKey', this.apiKey);
@@ -73,7 +76,6 @@ export class KosisCatchApiClient {
       url.searchParams.set('prdSe', 'M');
       url.searchParams.set('newEstPrdCnt', '3');
       url.searchParams.set('prdInterval', '1');
-      url.searchParams.set('outputFields', 'OBJ_NM ITM_NM ITM_NM_ENG UNIT_NM UNIT_NM_ENG ');
       url.searchParams.set('orgId', '146');
       url.searchParams.set('tblId', 'DT_MLTM_5003049');
 
@@ -89,10 +91,16 @@ export class KosisCatchApiClient {
       for (const row of data) {
         const value = Number(row?.DT);
         if (!Number.isFinite(value)) continue;
+        const regionName = String(row?.C1_NM ?? '');
+        const speciesName = String(row?.C2_NM ?? '');
+        const itemName = String(row?.ITM_NM ?? '');
+        // 합계 행 제외 + 총중량(kg) 항목만 사용 (마릿수는 어종 간 비교 왜곡)
+        if (regionName === '합계' || speciesName === '합계') continue;
+        if (itemName && !itemName.includes('중량')) continue;
         items.push({
-          regionName: String(row?.C1_NM ?? row?.C1_OBJ_NM ?? ''),
-          speciesName: String(row?.C2_NM ?? row?.C2_OBJ_NM ?? ''),
-          itemName: String(row?.ITM_NM ?? ''),
+          regionName,
+          speciesName,
+          itemName,
           value,
           unit: String(row?.UNIT_NM ?? ''),
           period: String(row?.PRD_DE ?? ''),

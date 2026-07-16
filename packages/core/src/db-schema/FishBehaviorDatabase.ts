@@ -187,7 +187,7 @@ export const FISH_BEHAVIOR_DB: FishBehaviorProfile[] = [
   // 전국 방파제 야간 가족 낚시 대표 어종
   // ─────────────────────────────────
   {
-    speciesId: 'black_rockfish',
+    speciesId: 'dark_banded_rockfish',
     seasonActivity: {
       spring: 0.80,  // 3~5월 산란기 입질 활발
       summer: 0.60,
@@ -283,7 +283,7 @@ export const FISH_BEHAVIOR_DB: FishBehaviorProfile[] = [
   // 여름 야간 루어낚시 인기 어종
   // ─────────────────────────────────
   {
-    speciesId: 'japanese_seabass',
+    speciesId: 'sea_bass',
     seasonActivity: {
       spring: 0.65,
       summer: 1.00,  // 7~8월 여름 야간 루어낚시 최성기
@@ -347,7 +347,7 @@ export const FISH_BEHAVIOR_DB: FishBehaviorProfile[] = [
   // 바닥 채비 및 지깅 대표 백조어
   // ─────────────────────────────────
   {
-    speciesId: 'olive_flounder',
+    speciesId: 'flatfish',
     seasonActivity: {
       spring: 1.00,  // 3~5월 산란기 연안 이동, 포획량 최대
       summer: 0.55,
@@ -405,7 +405,7 @@ export const FISH_BEHAVIOR_DB: FishBehaviorProfile[] = [
     legalMinSizeCm: undefined,
   },
   {
-    speciesId: 'korean_rockfish',
+    speciesId: 'black_rockfish',
     seasonActivity: {
       spring: 0.70,
       summer: 0.40,
@@ -432,7 +432,7 @@ export const FISH_BEHAVIOR_DB: FishBehaviorProfile[] = [
     legalMinSizeCm: 23,
   },
   {
-    speciesId: 'yellow_rockfish',
+    speciesId: 'golden_rockfish',
     seasonActivity: {
       spring: 0.60,
       summer: 0.30,

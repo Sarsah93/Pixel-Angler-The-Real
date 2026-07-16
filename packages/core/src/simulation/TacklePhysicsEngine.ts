@@ -93,7 +93,7 @@ export function getBaitDepthAffinity(
   let preferredMin = 0;
   let preferredMax = 0;
 
-  if (speciesId === 'yellowtail' || speciesId === 'japanese_amberjack') {
+  if (speciesId === 'yellowtail' || speciesId === 'amberjack') {
     // 부시리/방어류: 상층 유영 (0m ~ 4m)
     preferredMin = 0;
     preferredMax = 4.0;
@@ -153,7 +153,7 @@ export function evaluateFightIncidents(
 
   // 2. 바늘털이 연산 (대상어가 농어/부시리일 때 텐션을 너무 늦추면 털고 탈출)
   let hookShakeChance = 0;
-  const isShakingSpecies = ['yellowtail', 'japanese_amberjack', 'seabass'].includes(fishSpeciesId);
+  const isShakingSpecies = ['yellowtail', 'amberjack', 'seabass'].includes(fishSpeciesId);
   if (isShakingSpecies && lineTensionRatio < 0.15 && fishStamina > 0.2) {
     // 텐션이 15% 이하로 낮아져 느슨하면 매 초당 15% 바늘털이 확률 발생
     hookShakeChance = 0.15;

@@ -61,7 +61,7 @@ export const SEAFOOD_AUCTION_MAPPING: Record<string, AuctionMappingDef> = {
     defaultPricePerKg: 15000,
     sizeFactorMultiplier: 1.0,
   },
-  black_rockfish: {
+  dark_banded_rockfish: {
     itemCode: '100502', // 볼락
     defaultPricePerKg: 12000,
     sizeFactorMultiplier: 1.1,
@@ -76,7 +76,7 @@ export const SEAFOOD_AUCTION_MAPPING: Record<string, AuctionMappingDef> = {
     defaultPricePerKg: 22000,
     sizeFactorMultiplier: 1.25,
   },
-  japanese_seabass: {
+  sea_bass: {
     itemCode: '100501', // 농어
     defaultPricePerKg: 20000,
     sizeFactorMultiplier: 1.15,
@@ -86,7 +86,7 @@ export const SEAFOOD_AUCTION_MAPPING: Record<string, AuctionMappingDef> = {
     defaultPricePerKg: 8000,
     sizeFactorMultiplier: 0.9,
   },
-  olive_flounder: {
+  flatfish: {
     itemCode: '100101', // 광어/넙치
     defaultPricePerKg: 28000,
     sizeFactorMultiplier: 1.1,
@@ -95,6 +95,77 @@ export const SEAFOOD_AUCTION_MAPPING: Record<string, AuctionMappingDef> = {
     itemCode: '100601', // 쥐치
     defaultPricePerKg: 14000,
     sizeFactorMultiplier: 1.0,
+  },
+  // ── 어종 마스터 통합 추가분 (2026-07-16) — MAFRA 경락가 매칭 대상 ──
+  amberjack: {
+    itemCode: '100302', // 부시리
+    defaultPricePerKg: 17000,
+    sizeFactorMultiplier: 1.05,
+  },
+  chub_mackerel: {
+    itemCode: '100202', // 고등어
+    defaultPricePerKg: 8000,
+    sizeFactorMultiplier: 0.9,
+  },
+  horse_mackerel: {
+    itemCode: '100203', // 전갱이
+    defaultPricePerKg: 9000,
+    sizeFactorMultiplier: 0.9,
+  },
+  stone_beakperch: {
+    itemCode: '100404', // 돌돔
+    defaultPricePerKg: 60000,
+    sizeFactorMultiplier: 1.4,
+  },
+  spotted_knifejaw: {
+    itemCode: '100405', // 강담돔
+    defaultPricePerKg: 65000,
+    sizeFactorMultiplier: 1.4,
+  },
+  conger_eel: {
+    itemCode: '100701', // 붕장어
+    defaultPricePerKg: 18000,
+    sizeFactorMultiplier: 1.0,
+  },
+  fat_greenling: {
+    itemCode: '100801', // 쥐노래미
+    defaultPricePerKg: 20000,
+    sizeFactorMultiplier: 1.05,
+  },
+  greenling: {
+    itemCode: '100802', // 노래미
+    defaultPricePerKg: 14000,
+    sizeFactorMultiplier: 1.0,
+  },
+  flounder: {
+    itemCode: '100102', // 도다리(문치가자미)
+    defaultPricePerKg: 22000,
+    sizeFactorMultiplier: 1.05,
+  },
+  tiger_puffer: {
+    itemCode: '100901', // 참복(자주복)
+    defaultPricePerKg: 55000,
+    sizeFactorMultiplier: 1.2,
+  },
+  black_rockfish: {
+    itemCode: '100503', // 조피볼락(우럭)
+    defaultPricePerKg: 16000,
+    sizeFactorMultiplier: 1.05,
+  },
+  scorpionfish: {
+    itemCode: '100505', // 쏨뱅이
+    defaultPricePerKg: 25000,
+    sizeFactorMultiplier: 1.1,
+  },
+  longtail_blackfish: {
+    itemCode: '100406', // 긴꼬리벵에돔
+    defaultPricePerKg: 50000,
+    sizeFactorMultiplier: 1.3,
+  },
+  redlip_mullet: {
+    itemCode: '100506', // 가숭어(밀치)
+    defaultPricePerKg: 10000,
+    sizeFactorMultiplier: 0.95,
   },
 };
 

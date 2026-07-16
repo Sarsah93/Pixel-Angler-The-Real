@@ -17,18 +17,18 @@
  */
 
 import { FishingIndexApiClient, SeaFishingIndexInfo, FishingIndexGubun, formatYmd } from './FishingIndexApiClient.js';
-import { AuctionPriceApiClient } from './AuctionPriceApiClient.js';
+import { MafraAuctionApiClient } from './MafraAuctionApiClient.js';
 import { KosisCatchApiClient, RegionalCatchStat } from './KosisCatchApiClient.js';
 import type { WholesalePriceInfo } from '../types/Economy.js';
 
 /** API 인증키 묶음 */
 export interface ExternalApiKeys {
-  /** 공공데이터포털 (data.go.kr) 일반 인증키 — 낚시지수/경락가 공용 */
+  /** 공공데이터포털 (data.go.kr) 일반 인증키 — 바다낚시지수 */
   dataGoKrKey?: string;
+  /** 농식품 공공데이터 포털 (data.mafra.go.kr) 인증키 — 수산물 경락가격 */
+  mafraKey?: string;
   /** KOSIS 국가통계포털 인증키 */
   kosisKey?: string;
-  /** 경락가 End Point 재정의 (활용신청 승인 문서 기준) */
-  auctionBaseUrl?: string;
 }
 
 /** 통합 수집 스냅샷 — 클라이언트 캐시(ExternalDataStore)에 보관 */
@@ -45,12 +45,12 @@ export interface ExternalDataSnapshot {
 
 export class ExternalApiService {
   private readonly fishingIndexClient: FishingIndexApiClient;
-  private readonly auctionClient: AuctionPriceApiClient;
+  private readonly auctionClient: MafraAuctionApiClient;
   private readonly kosisClient: KosisCatchApiClient;
 
   constructor(keys: ExternalApiKeys = {}) {
     this.fishingIndexClient = new FishingIndexApiClient(keys.dataGoKrKey);
-    this.auctionClient = new AuctionPriceApiClient(keys.dataGoKrKey, keys.auctionBaseUrl);
+    this.auctionClient = new MafraAuctionApiClient(keys.mafraKey);
     this.kosisClient = new KosisCatchApiClient(keys.kosisKey);
   }
 
@@ -60,9 +60,9 @@ export class ExternalApiService {
     return items;
   }
 
-  /** 수산물 경락 시세 단건 조회 */
+  /** 수산물 경락 시세 단건 조회 (MAFRA 경락가격 — 2023년 동월동일 계절 시세) */
   async getFishWholesalePrices(): Promise<WholesalePriceInfo[]> {
-    const { items } = await this.auctionClient.fetchSeafoodPrices(formatYmd(new Date()));
+    const { items } = await this.auctionClient.fetchSeafoodPrices(new Date());
     return items;
   }
 
@@ -77,10 +77,10 @@ export class ExternalApiService {
    * 개별 실패는 각 클라이언트의 Mock 폴백으로 처리되어 항상 스냅샷을 반환한다.
    */
   async fetchAll(): Promise<ExternalDataSnapshot> {
-    const today = formatYmd(new Date());
+    const now = new Date();
     const [idx, prices, kosis] = await Promise.all([
-      this.fishingIndexClient.fetchFishingIndex('갯바위', today),
-      this.auctionClient.fetchSeafoodPrices(today),
+      this.fishingIndexClient.fetchFishingIndex('갯바위', formatYmd(now)),
+      this.auctionClient.fetchSeafoodPrices(now),
       this.kosisClient.fetchRegionalCatch(),
     ]);
 

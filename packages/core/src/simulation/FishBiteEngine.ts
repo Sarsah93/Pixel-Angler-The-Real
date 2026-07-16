@@ -47,12 +47,12 @@ export interface BiteFactors {
 const BAIT_SPECIES_AFFINITY: Record<string, BaitCategory[]> = {
   black_seabream: ['crab', 'mussel', 'barnacle', 'sandworm', 'earthworm'],
   largescale_blackfish: ['bread', 'sandworm', 'mussel', 'barnacle'],
-  black_rockfish: ['sandworm', 'prawn', 'artificial_worm'],
+  dark_banded_rockfish: ['sandworm', 'prawn', 'artificial_worm'],
   hairtail: ['sandworm', 'squid', 'fish_strip', 'artificial_lure'],
   yellowtail: ['artificial_lure', 'squid', 'fish_strip'],
-  japanese_amberjack: ['artificial_lure', 'fish_strip'],
-  korean_rockfish: ['sandworm', 'prawn', 'fish_strip', 'artificial_worm'],
-  yellow_rockfish: ['sandworm', 'prawn', 'artificial_worm'],
+  amberjack: ['artificial_lure', 'fish_strip'],
+  black_rockfish: ['sandworm', 'prawn', 'fish_strip', 'artificial_worm'],
+  golden_rockfish: ['sandworm', 'prawn', 'artificial_worm'],
   red_snapper_rockfish: ['fish_strip', 'sandworm', 'squid'],
   night_seabream: ['sandworm', 'prawn', 'crab', 'mussel'],
 };
@@ -80,9 +80,9 @@ function getSeasonScore(profile: FishBehaviorProfile, currentTime: Date): number
   // 영등철 저수온 극복 보정 (2~3월)
   if (month === 2 || month === 3) {
     if (
+      profile.speciesId === 'dark_banded_rockfish' ||
       profile.speciesId === 'black_rockfish' ||
-      profile.speciesId === 'korean_rockfish' ||
-      profile.speciesId === 'yellow_rockfish' ||
+      profile.speciesId === 'golden_rockfish' ||
       profile.speciesId === 'red_snapper_rockfish'
     ) {
       score = Math.min(1.0, score * 1.15); // 볼락류는 영등철에 강세

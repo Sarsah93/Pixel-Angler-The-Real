@@ -285,7 +285,17 @@ npx pnpm run build → ✅ 4/4 패키지 성공 (2026-07-15)
 npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류 (2026-07-15)
 ```
 
-**최근 주요 변경 (2026-07-15 8차, 최신)**:
+**최근 주요 변경 (2026-07-16 2차, 최신)**:
+- **[갱신] 벵에돔 실측 보정 + 어종 2종 신규 (사용자 제공 데이터, 총 31종)**: ① 벵에돔 — 내만성 3~15m, 빵가루(50)/크릴(30)/갯지렁이(20), 최대 55cm 3.5kg, **금지체장 없음**(20~23cm 자율 방생), 약은 입질(mouthFragility 0.3) ② **긴꼬리벵에돔(longtail_blackfish)** — 외양성 암초 10~30m(밑밥 시 표층 부상 — mid+surface), 크릴 70 압도적, 이빨로 목줄 절단(`lineCutter`), 난류/제주·남해 ③ **가숭어(redlip_mullet, 밀치)** — 기수역 진흙/모래 1~15m, 숭어류 최대(100cm 8kg), 겨울(11~2월) 제철 ④ 참숭어(striped_mullet) — 표층 회유, 청갯지렁이 55, 3~5월 보리숭어로 보정. FishDatabase/오라클/MAFRA 매칭(가숭어·밀치 품종 분기)/KOSIS 숭어류 다중 매핑/Economy 기본 단가 모두 반영.
+- **[신규] `bread` 미끼 분류**: BaitKey에 빵가루 경단·떡밥 추가 (기존 TODO 해소 — 숭어 corn 대체 제거). 인벤토리/식자재마트에 '빵가루 경단' 아이템(반죽미끼) 추가, 1인칭 미끼 매핑('빵'/'떡밥'→bread) 연동.
+
+**이전 변경 (2026-07-16 1차)**:
+- **[신규] MAFRA 수산물 경락가격 정식 연동** (`core/api-client/MafraAuctionApiClient.ts`, **실호출 검증 완료**): 농식품 공공데이터 포털 승인 API 2종 — ① 수산물도매시장별(`Grid_20220822000000000623_1`, UNITNAME 포함) ② 수산물품목별(`Grid_20220818000000000621_1`). 호출 형식 `http://211.237.50.150:7080/openapi/{KEY}/json/{GRID}/{START}/{END}?DATES=YYYYMMDD`(+MCLASSNAME/SCLASSNAME/MARKETNAME/CONAME 필터). 데이터 수록 2000~2023 → **현재 날짜를 2023년 동월동일로 매핑해 계절 시세 재현**, 휴장 시 최대 7일 역방향 누적(어종 8종 이상 조기 종료), 거래량 가중 평균으로 `WholesalePriceInfo` 정규화. `MAFRA_ITEM_TO_SPECIES`로 품목/품종명→어종 ID 매칭('돔'은 품종으로 세분화). ExternalApiService의 경락가 소스를 MAFRA로 교체. **주의: HTTP 엔드포인트 — HTTPS 배포 시 프록시 필요.**
+- **[검증] KOSIS 새 인증키 정상**: `NjVmYzFhOTFiNmNkZTA2YjNkMTZlODhmZmJiYjU2NGE=` — 시도 11개 × 어종 56분류 × 3개월 1,140행 확인. `outputFields` 지정 시 C1_NM/C2_NM 누락되는 문제 확인 → 미지정으로 수정, 합계 행 제외 + 총중량(T002)만 사용.
+- **[통합] 어종 DB 단일화 (FISH_DATABASE ↔ 오라클, ID 표준 = 오라클)**: 레거시 ID 일괄 개명 — `japanese_amberjack`→`amberjack`, `rockfish_yongchi`→`rainbow_wrasse`, `black_rockfish`(볼락)→`dark_banded_rockfish`, `korean_rockfish`(우럭)→`black_rockfish`, `yellow_rockfish`→`golden_rockfish`, `olive_flounder`→`flatfish`, `japanese_seabass`→`sea_bass` (FishDatabase/FishBehaviorDatabase/FishBiteEngine/SpotDatabase/RegionDatabase/RecipeDatabase/Economy/TacklePhysicsEngine/클라이언트 일괄). FISH_DATABASE에 **17종 신규 추가**(돌돔/강담돔/참돔(주간)/고등어/졸복어/참복어/붕장어/문절망둑/망상어/쏨뱅이/쥐노래미/노래미/청볼락/광어/도다리/농어/숭어), 오라클에 **8종 역편입**(벵에돔/갈치/방어/볼락/열기/농어/숭어/쥐치 — 총 29종). `SEAFOOD_AUCTION_MAPPING`에 신규 어종 기본 단가 추가. TODO(사용자 확인): 벵에돔 금지체장, 숭어 빵 미끼 분류.
+- **[갱신] ExternalDataStore**: MAFRA/KOSIS dev 키 반영(`VITE_MAFRA_API_KEY`/`VITE_KOSIS_API_KEY` 우선), KOSIS 어종 매칭을 실측 분류명 기반 **다중 어종 매핑**으로 교체(볼락→4종, 방어→방어·부시리, 노래미→노래미·쥐노래미 등).
+
+**이전 변경 (2026-07-15 8차)**:
 - **[신규] 실측 연안 수심 연동**: 루트 `09.수심.zip`(국립해양조사원 1/25,000 연안정보도, WGIS_DEPTHWATER 포인트 46,270개, UTM-K/WGS84) → `tools/build_depth_profiles.py`(표준 라이브러리만: SHP/DBF 파싱 + TM 역변환 + 하버사인 거리 비닝) → `public/data/depth/gangwon_sokcho.json` (속초항/동명항 앵커별 100m 구간 평균 수심, 0~2.5km). `core/types/DepthProfile.ts`의 `depthAtDistance`가 캐스팅 거리→수심 선형 보간, **범위 초과 시 마지막 기울기로 거리 비례 외삽**(상한 60m). RegionFieldScene이 프로필 로드 후 `resolveCastDepth`로 1인칭 Z_max에 반영 (프로필 없으면 기존 그라디언트 폴백). 실측: 속초항 내항 1.5m → 원거리 11m / 동명항 방파제 앞 급심 12~20m.
 - **[갱신] README.md 전면 재작성** (GitHub용): 구현 현황 표, 낚시 파이프라인 다이어그램, 실데이터 연동 표, 조작법, 파이프라인 명령어, 씬 아키텍처, 로드맵.
 

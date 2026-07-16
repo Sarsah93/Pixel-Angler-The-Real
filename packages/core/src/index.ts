@@ -142,6 +142,8 @@ export { OceanApiClient, TIDE_STATION_CODES } from './api-client/OceanApiClient.
 export type { SeaFishingIndexInfo, FishingIndexGubun } from './api-client/FishingIndexApiClient.js';
 export { FishingIndexApiClient, getMockFishingIndex, formatYmd } from './api-client/FishingIndexApiClient.js';
 export { AuctionPriceApiClient, getMockWholesalePrices } from './api-client/AuctionPriceApiClient.js';
+export type { MafraFishPriceRow, MafraGridResponse, MafraQueryOptions } from './api-client/MafraAuctionApiClient.js';
+export { MafraAuctionApiClient, MAFRA_ITEM_TO_SPECIES, matchMafraSpecies, mapToDatasetDate } from './api-client/MafraAuctionApiClient.js';
 export type { RegionalCatchStat } from './api-client/KosisCatchApiClient.js';
 export { KosisCatchApiClient, getMockRegionalCatch } from './api-client/KosisCatchApiClient.js';
 export type { ExternalApiKeys, ExternalDataSnapshot } from './api-client/ExternalApiService.js';

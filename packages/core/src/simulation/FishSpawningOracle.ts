@@ -25,6 +25,7 @@ export type BaitKey =
   | 'shellfish'   // 조개살·개불
   | 'urchin'      // 성게
   | 'corn'        // 옥수수
+  | 'bread'       // 빵가루 경단·떡밥 (벵에돔/숭어류)
   | 'fishcut'     // 생선·오징어 살
   | 'livefish'    // 살아있는 생미끼 (전갱이/미꾸라지 등)
   | 'lure';       // 루어류
@@ -287,6 +288,100 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     sexNote: '두 눈이 오른쪽 — 입이 작고 예민해 소형 바늘에 잘 잡힘',
     legalMinCm: 20, closedMonths: [12, 1], tideActivity: flatTide(0.6),
     fight: { basePower: 0.3, patternWeights: { jump: 0.1, dive: 0.5, lateral: 0.4 }, intervalMult: 1.2, mouthFragility: 0.2 },
+  },
+  // ── FISH_DATABASE 통합 추가분 (2026-07-16 — 기존 DB 어종을 오라클에 편입) ──
+  {
+    speciesId: 'largescale_blackfish', nameKo: '벵에돔', nameEn: 'Largescale Blackfish',
+    // 조류 완만한 내만성 갯바위/암초/테트라포드, 해조류 무성한 곳 (실측 데이터 2026-07-16)
+    habitat: ['reef', 'structure'], minDepthM: 3, maxDepthM: 15, preferredLayers: ['mid'],
+    baitPreference: { bread: 50, krill: 30, worm_blue: 20 },
+    minCm: 15, maxCm: 55, meanCm: 30, sdCm: 5, weightFactor: 0.033, maleRatio: 0.5,
+    sexNote: '수온·소음에 극도로 예민 — 이물감이 느껴지면 바로 뱉는 약은 입질. 금지체장 없음(20~23cm 미만 자율 방생 권장)',
+    tideActivity: sariPeak(0.4, 0.85),
+    fight: { basePower: 0.7, patternWeights: { jump: 0.1, dive: 0.6, lateral: 0.3 }, intervalMult: 0.9, mouthFragility: 0.3 },
+  },
+  {
+    speciesId: 'longtail_blackfish', nameKo: '긴꼬리벵에돔', nameEn: 'Japanese Largescale Blackfish',
+    // 조류 소통 원활한 외양성 암초 — 10~30m에 머물다 밑밥 반응 시 표층 1~5m까지 부상
+    habitat: ['reef', 'open'], minDepthM: 10, maxDepthM: 30, preferredLayers: ['mid', 'surface'],
+    baitPreference: { krill: 70, bread: 15, worm_blue: 15 },
+    minCm: 20, maxCm: 60, meanCm: 38, sdCm: 7, weightFactor: 0.025, maleRatio: 0.5,
+    sexNote: '아가미 테두리 검은 띠 + 제비꼬리. 난류 선호(제주/남해 먼바다). 이빨이 날카로워 목줄을 잘 끊음. 22~25cm 미만 자율 방생',
+    tideActivity: sariPeak(0.35, 0.95),
+    fight: { basePower: 0.75, patternWeights: { jump: 0.1, dive: 0.5, lateral: 0.4 }, intervalMult: 0.85, mouthFragility: 0.2, lineCutter: true },
+  },
+  {
+    speciesId: 'hairtail', nameKo: '갈치', nameEn: 'Hairtail',
+    habitat: ['open'], minDepthM: 10, maxDepthM: 80, preferredLayers: ['mid', 'surface'],
+    baitPreference: { fishcut: 60, krill: 20, lure: 20 },
+    minCm: 40, maxCm: 120, meanCm: 70, sdCm: 15, weightFactor: 0.002, maleRatio: 0.5,
+    sexNote: '야간 집어등에 유집되는 은빛 회유어 — 이빨이 날카로워 목줄 주의',
+    nightBonus: 2.5, tideActivity: flatTide(0.6),
+    fight: { basePower: 0.45, patternWeights: { jump: 0.1, dive: 0.4, lateral: 0.5 }, intervalMult: 1.0, mouthFragility: 0.25, lineCutter: true },
+  },
+  {
+    speciesId: 'yellowtail', nameKo: '방어', nameEn: 'Japanese Amberjack',
+    habitat: ['open'], minDepthM: 5, maxDepthM: 40, preferredLayers: ['mid', 'surface'],
+    baitPreference: { livefish: 50, lure: 35, krill: 15 },
+    minCm: 50, maxCm: 150, meanCm: 90, sdCm: 18, weightFactor: 0.012, maleRatio: 0.5,
+    sexNote: '겨울 대방어 — 부시리와 함께 드랙을 치고 나가는 대형 회유어',
+    tideActivity: sariPeak(0.3, 0.85),
+    fight: { basePower: 0.95, patternWeights: { jump: 0.2, dive: 0.25, lateral: 0.55 }, intervalMult: 0.75, mouthFragility: 0.05 },
+  },
+  {
+    speciesId: 'dark_banded_rockfish', nameKo: '볼락', nameEn: 'Dark-banded Rockfish',
+    habitat: ['reef', 'structure'], minDepthM: 3, maxDepthM: 30, preferredLayers: ['surface', 'mid'],
+    baitPreference: { krill: 60, worm_blue: 25, lure: 15 },
+    minCm: 12, maxCm: 42, meanCm: 22, sdCm: 4, weightFactor: 0.018, maleRatio: 0.5,
+    sexNote: '야간 상층 피딩 보일링을 형성하는 대표 야행성 어종',
+    legalMinCm: 15, nightBonus: 2.0, tideActivity: flatTide(0.7),
+    fight: { basePower: 0.25, patternWeights: { jump: 0.2, dive: 0.4, lateral: 0.4 }, intervalMult: 1.1, mouthFragility: 0.3 },
+  },
+  {
+    speciesId: 'red_snapper_rockfish', nameKo: '열기(불볼락)', nameEn: 'Goldeye Rockfish',
+    habitat: ['reef'], minDepthM: 20, maxDepthM: 80, preferredLayers: ['bottom', 'mid'],
+    baitPreference: { krill: 55, fishcut: 25, worm_king: 20 },
+    minCm: 14, maxCm: 35, meanCm: 22, sdCm: 4, weightFactor: 0.025, maleRatio: 0.5,
+    nightBonus: 1.6, tideActivity: flatTide(0.6),
+    fight: { basePower: 0.3, patternWeights: { jump: 0.1, dive: 0.6, lateral: 0.3 }, intervalMult: 1.1, mouthFragility: 0.2 },
+  },
+  {
+    speciesId: 'sea_bass', nameKo: '농어', nameEn: 'Japanese Seabass',
+    habitat: ['open', 'structure'], minDepthM: 1, maxDepthM: 30, preferredLayers: ['mid', 'surface'],
+    baitPreference: { lure: 45, livefish: 35, krill: 10, worm_blue: 10 },
+    minCm: 30, maxCm: 110, meanCm: 60, sdCm: 14, weightFactor: 0.01, maleRatio: 0.5,
+    sexNote: '점프하며 아가미를 터는 에라 세척(바늘털이)의 대명사',
+    legalMinCm: 30, nightBonus: 1.6, tideActivity: sariPeak(0.35, 0.9),
+    fight: { basePower: 0.8, patternWeights: { jump: 0.45, dive: 0.2, lateral: 0.35 }, intervalMult: 0.85, mouthFragility: 0.25 },
+  },
+  {
+    speciesId: 'striped_mullet', nameKo: '참숭어(숭어)', nameEn: 'Flathead Grey Mullet',
+    // 물 흐름 있는 연안 암초/내만, 표층 회유성 (실측 데이터 2026-07-16 — 방언: 개숭어/보리숭어)
+    habitat: ['structure', 'open', 'mud'], minDepthM: 0.5, maxDepthM: 10, preferredLayers: ['surface', 'mid'],
+    baitPreference: { worm_blue: 55, krill: 25, worm_king: 10, bread: 10 },
+    minCm: 25, maxCm: 80, meanCm: 50, sdCm: 9, weightFactor: 0.016, maleRatio: 0.5,
+    sexNote: '꼬리가 V자로 깊게 갈라짐. 겨울엔 눈에 기름눈꺼풀(백태). 보리 익을 무렵(3~5월)이 제철 보리숭어',
+    tideActivity: flatTide(0.7),
+    fight: { basePower: 0.5, patternWeights: { jump: 0.5, dive: 0.1, lateral: 0.4 }, intervalMult: 0.9, mouthFragility: 0.3 },
+  },
+  {
+    speciesId: 'redlip_mullet', nameKo: '가숭어(밀치)', nameEn: 'Redlip Mullet',
+    // 진흙/모래 연안·강 하구(기수역), 숭어류 중 가장 크게 성장 (실측 데이터 2026-07-16)
+    habitat: ['mud', 'sand'], minDepthM: 1, maxDepthM: 15, preferredLayers: ['surface', 'mid'],
+    baitPreference: { worm_blue: 50, krill: 30, bread: 20 },
+    minCm: 35, maxCm: 100, meanCm: 65, sdCm: 12, weightFactor: 0.013, maleRatio: 0.5,
+    sexNote: '눈 테두리가 선명한 노란색, 꼬리 끝이 일직선. 산란기 5~6월, 겨울(11~2월) 밀치회가 별미',
+    tideActivity: flatTide(0.65),
+    fight: { basePower: 0.65, patternWeights: { jump: 0.4, dive: 0.2, lateral: 0.4 }, intervalMult: 0.85, mouthFragility: 0.25 },
+  },
+  {
+    speciesId: 'filefish', nameKo: '쥐치', nameEn: 'Filefish',
+    habitat: ['reef', 'structure'], minDepthM: 2, maxDepthM: 20, preferredLayers: ['mid'],
+    baitPreference: { shellfish: 40, krill: 40, worm_blue: 20 },
+    minCm: 12, maxCm: 35, meanCm: 20, sdCm: 4, weightFactor: 0.03, maleRatio: 0.5,
+    sexNote: '작은 입으로 미끼를 갉아먹는 미끼 도둑 — 쥐포의 원료',
+    tideActivity: flatTide(0.7),
+    fight: { basePower: 0.2, patternWeights: { jump: 0.2, dive: 0.4, lateral: 0.4 }, intervalMult: 1.3, mouthFragility: 0.2 },
   },
   {
     speciesId: 'black_seabream', nameKo: '감성돔', nameEn: 'Black Seabream',

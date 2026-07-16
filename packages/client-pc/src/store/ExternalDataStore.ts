@@ -22,10 +22,14 @@ import {
 } from '@tra/core';
 
 /**
- * 공공데이터포털/KOSIS 개발계정 일반 인증키 (dev 승인 키 — 활용신청 승인분).
- * 배포 시 .env(VITE_DATA_GO_KR_API_KEY / VITE_KOSIS_API_KEY)로 이전할 것.
+ * dev 승인 인증키 (활용신청 승인분).
+ * 배포 시 .env(VITE_DATA_GO_KR_API_KEY / VITE_MAFRA_API_KEY / VITE_KOSIS_API_KEY)로 이전할 것.
  */
-const DEV_SERVICE_KEY = '4b172502e73121ca52a5a6ec4d6496c99ce94a250ddb738a555d6909f35b13e7';
+const DEV_DATA_GO_KR_KEY = '4b172502e73121ca52a5a6ec4d6496c99ce94a250ddb738a555d6909f35b13e7';
+/** 농식품 공공데이터 포털 (data.mafra.go.kr) — 수산물 경락가격 2종 승인 키 */
+const DEV_MAFRA_KEY = 'f0b32db77604e2f537cfbcca61428aa124ba9dbfb285021c9aa0171a32cec7ac';
+/** KOSIS 국가통계포털 — 실호출 검증 완료 (2026-07-16) */
+const DEV_KOSIS_KEY = 'NjVmYzFhOTFiNmNkZTA2YjNkMTZlODhmZmJiYjU2NGE=';
 
 /** 지역 ID → KOSIS 시도명 접두 매핑 */
 const REGION_TO_SIDO: Record<string, string> = {
@@ -42,25 +46,38 @@ const REGION_TO_SIDO: Record<string, string> = {
   dokdo: '경북',
 };
 
-/** KOSIS 어종 분류명 → 게임 어종 ID 매칭 (부분 문자열 기준) */
-const KOSIS_SPECIES_MATCH: { keywords: string[]; speciesId: string }[] = [
-  { keywords: ['감성돔'], speciesId: 'black_seabream' },
-  { keywords: ['참돔', '돔류'], speciesId: 'red_seabream' },
-  { keywords: ['넙치', '광어'], speciesId: 'flatfish' },
-  { keywords: ['가자미'], speciesId: 'flounder' },
-  { keywords: ['고등어'], speciesId: 'chub_mackerel' },
-  { keywords: ['전갱이'], speciesId: 'horse_mackerel' },
-  { keywords: ['볼락', '조피볼락', '우럭'], speciesId: 'black_rockfish' },
-  { keywords: ['방어', '부시리'], speciesId: 'amberjack' },
-  { keywords: ['붕장어', '장어'], speciesId: 'conger_eel' },
-  { keywords: ['쥐노래미', '노래미'], speciesId: 'fat_greenling' },
-  { keywords: ['복어'], speciesId: 'tiger_puffer' },
+/**
+ * KOSIS 어종 분류명(C2_NM) → 게임 어종 ID 매칭.
+ * 실측 분류명 기준 (2026-07-16 검증 — 가자미류/고등어/넙치류(광어)/농어류/감성돔/
+ * 자리돔/참돔/돌돔(줄돔)/방어류/조피볼락(우럭)/기타볼락류/노래미류/숭어류/붕장어/
+ * 전갱이류/쥐치류 등 56분류). 한 분류가 여러 게임 어종에 해당하면 모두 가중.
+ */
+const KOSIS_SPECIES_MATCH: { keywords: string[]; speciesIds: string[] }[] = [
+  { keywords: ['감성돔'], speciesIds: ['black_seabream'] },
+  { keywords: ['참돔'], speciesIds: ['red_seabream'] },
+  { keywords: ['돌돔', '줄돔'], speciesIds: ['stone_beakperch', 'spotted_knifejaw'] },
+  { keywords: ['넙치', '광어'], speciesIds: ['flatfish'] },
+  { keywords: ['가자미'], speciesIds: ['flounder'] },
+  { keywords: ['고등어'], speciesIds: ['chub_mackerel'] },
+  { keywords: ['전갱이'], speciesIds: ['horse_mackerel'] },
+  { keywords: ['조피볼락', '우럭'], speciesIds: ['black_rockfish'] },
+  { keywords: ['볼락'], speciesIds: ['dark_banded_rockfish', 'golden_rockfish', 'blue_rockfish', 'red_snapper_rockfish'] },
+  { keywords: ['방어'], speciesIds: ['yellowtail', 'amberjack'] },
+  { keywords: ['농어'], speciesIds: ['sea_bass'] },
+  { keywords: ['숭어'], speciesIds: ['striped_mullet', 'redlip_mullet'] },
+  { keywords: ['붕장어'], speciesIds: ['conger_eel'] },
+  { keywords: ['노래미'], speciesIds: ['fat_greenling', 'greenling'] },
+  { keywords: ['쥐치'], speciesIds: ['filefish'] },
+  { keywords: ['갈치'], speciesIds: ['hairtail'] },
+  { keywords: ['복'], speciesIds: ['tiger_puffer', 'fine_puffer'] },
+  { keywords: ['망둥어', '망둑'], speciesIds: ['yellowfin_goby'] },
 ];
 
 class ExternalDataStoreManager {
   private service = new ExternalApiService({
-    dataGoKrKey: (import.meta.env.VITE_DATA_GO_KR_API_KEY as string | undefined) ?? DEV_SERVICE_KEY,
-    kosisKey: (import.meta.env.VITE_KOSIS_API_KEY as string | undefined) ?? DEV_SERVICE_KEY,
+    dataGoKrKey: (import.meta.env.VITE_DATA_GO_KR_API_KEY as string | undefined) ?? DEV_DATA_GO_KR_KEY,
+    mafraKey: (import.meta.env.VITE_MAFRA_API_KEY as string | undefined) ?? DEV_MAFRA_KEY,
+    kosisKey: (import.meta.env.VITE_KOSIS_API_KEY as string | undefined) ?? DEV_KOSIS_KEY,
   });
 
   private _snapshot: ExternalDataSnapshot | null = null;
@@ -133,17 +150,15 @@ class ExternalDataStoreManager {
     const sido = REGION_TO_SIDO[regionId];
     if (!stats || !sido) return {};
 
-    // 시도 매칭 행만 집계 (어획량 항목 우선)
+    // 시도 매칭 행만 집계 (총중량 기준 — KosisCatchApiClient에서 사전 필터됨)
     const bySpecies = new Map<string, number>();
     for (const row of stats) {
       if (!row.regionName.startsWith(sido)) continue;
-      if (row.itemName && !row.itemName.includes('어획량') && row.itemName !== '') {
-        // 어획금액 등 다른 항목은 제외 (항목명이 비어 있으면 포함)
-        if (!row.itemName.includes('생산량')) continue;
-      }
       const match = KOSIS_SPECIES_MATCH.find((m) => m.keywords.some((k) => row.speciesName.includes(k)));
       if (!match) continue;
-      bySpecies.set(match.speciesId, (bySpecies.get(match.speciesId) ?? 0) + row.value);
+      for (const id of match.speciesIds) {
+        bySpecies.set(id, (bySpecies.get(id) ?? 0) + row.value);
+      }
     }
     if (bySpecies.size === 0) return {};
 

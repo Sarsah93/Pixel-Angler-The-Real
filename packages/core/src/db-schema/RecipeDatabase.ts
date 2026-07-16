@@ -85,11 +85,11 @@ export const RECIPE_DATABASE: CookingRecipe[] = [
     },
   },
   {
-    id: 'grilled_black_rockfish',
+    id: 'grilled_dark_banded_rockfish',
     nameKo: '볼락 구이',
     description: '껍질째 노릇노릇 구운 볼락. 방파제 야간 낚시의 즐거운 마무리.',
     requiredIngredients: [
-      { itemId: 'black_rockfish', nameKo: '볼락', requiredAmountG: 200, isFishSpecies: true },
+      { itemId: 'dark_banded_rockfish', nameKo: '볼락', requiredAmountG: 200, isFishSpecies: true },
       { itemId: 'cooking_oil', nameKo: '식용유', requiredAmountG: 20, isFishSpecies: false },
     ],
     processingSteps: ['descaling', 'gutting'],

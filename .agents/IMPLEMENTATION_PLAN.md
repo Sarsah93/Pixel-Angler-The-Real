@@ -397,7 +397,11 @@ Phase 9: Tauri v2 통합 & Steam 패키징     ⬜ 대기
 | 낚시지수 → 입질 P_base 0.7~1.4배 / 경락가 → 직판장 매입가 0.5~2.0배 / 어획량 → 스폰 가중 0.7~1.8배 | ✅ |
 | 전 API Mock 폴백 (오프라인/트래픽 초과 안정성) | ✅ |
 
-**차기**: KOSIS 전용 인증키 발급 및 `VITE_KOSIS_API_KEY` 설정 / 경락가 정식 End Point 반영 / dev 키 .env 이전 / 낚시지수 placeName↔게임 지역 매핑 정밀화(속초·동명항 인근 포인트 지정) / 수집 주기(일 1회 갱신) 스케줄링.
+**추가 (2026-07-16 1차)**: ✅ MAFRA 수산물 경락가격 2종 정식 연동(Grid 621/623, 실호출 검증, 2023 동월동일 계절 시세 + 7일 누적) / ✅ KOSIS 새 인증키 검증(1,140행, 총중량 필터) / ✅ 어종 DB 단일화(레거시 ID 개명 + FISH_DATABASE 17종 추가 + 오라클 8종 역편입 = 29종) / ✅ MAFRA 품목명·KOSIS 분류명 → 어종 ID 매칭 테이블.
+
+**추가 (2026-07-16 2차)**: ✅ 벵에돔 실측 보정(금지체장 없음 확정) / ✅ 긴꼬리벵에돔·가숭어 신규 (총 31종) / ✅ `bread` 미끼 분류 + 빵가루 경단 아이템 — 기존 TODO 2건 해소.
+
+**차기**: dev 키 .env 이전 / 낚시지수 placeName↔게임 지역 매핑 정밀화(속초·동명항 인근 포인트 지정) / 수집 주기(일 1회 갱신) 스케줄링 / MAFRA HTTP 엔드포인트 → HTTPS 배포 시 프록시.
 
 ### 6-6c. 실측 연안 수심 프로필 연동 (✅ 완료 v1, 2026-07-15 8차)
 **파일**: `tools/build_depth_profiles.py`, `core/src/types/DepthProfile.ts`, `client-pc/public/data/depth/gangwon_sokcho.json`, `RegionFieldScene.resolveCastDepth`

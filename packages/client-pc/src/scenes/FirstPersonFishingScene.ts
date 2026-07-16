@@ -518,6 +518,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     if (n.includes('혼무시')) return 'worm_king';
     if (n.includes('지렁이')) return 'worm_blue';
     if (n.includes('크릴')) return 'krill';
+    if (n.includes('빵') || n.includes('떡밥')) return 'bread';
     if (n.includes('생선') || n.includes('오징어')) return 'fishcut';
     if (n.includes('옥수수')) return 'corn';
     if (n.includes('게') || n.includes('소라')) return 'crab';
