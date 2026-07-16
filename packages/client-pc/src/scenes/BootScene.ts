@@ -95,7 +95,7 @@ export class BootScene extends Phaser.Scene {
       'busan', 'geoje', 'yeosu', 'jeju', 'ulleung', 'dokdo',
     ];
     REGION_MAP_SLUGS.forEach((slug) => {
-      this.load.image(`zoom_${slug}`, `/pixelazed/${slug}_2_pixelazed.png`);
+      this.load.image(`zoom_${slug}`, `pixelazed/${slug}_2_pixelazed.png`);
     });
 
     // 준비되지 않은 지역 지도(404) 로드 실패는 치명적이지 않으므로 조용히 로그만 남김
@@ -108,39 +108,39 @@ export class BootScene extends Phaser.Scene {
     // ─── 음식/생선 아이템 이미지 에셋 ───
     // food/: 아이템 아이콘 (인벤토리/상점 소켓용, 64x64 도트)
     // fish/: 어획 연출용 실사 픽셀화 생선 이미지 (낚시 성공 팝업/상세보기)
-    this.load.image('food_assorted_sashimi', '/food/assorted_sashimi.png');
-    this.load.image('fish_black_sea_bream', '/fish/black_sea_bream.png');
-    this.load.image('fish_halibut', '/fish/halibut.png');
+    this.load.image('food_assorted_sashimi', 'food/assorted_sashimi.png');
+    this.load.image('fish_black_sea_bream', 'fish/black_sea_bream.png');
+    this.load.image('fish_halibut', 'fish/halibut.png');
 
     // ─── 남자 캐릭터 스프라이트 (12장) ───
     // 정지 4방향
-    this.load.image('man-idle-front', '/characters/man/man-idle-front.png');
-    this.load.image('man-idle-back',  '/characters/man/man-idle-back.png');
-    this.load.image('man-idle-left',  '/characters/man/man-idle-left.png');
-    this.load.image('man-idle-right', '/characters/man/man-idle-right.png');
+    this.load.image('man-idle-front', 'characters/man/man-idle-front.png');
+    this.load.image('man-idle-back',  'characters/man/man-idle-back.png');
+    this.load.image('man-idle-left',  'characters/man/man-idle-left.png');
+    this.load.image('man-idle-right', 'characters/man/man-idle-right.png');
     // 이동 4방향 × 2프레임
-    this.load.image('man-move-front-1', '/characters/man/man-move-front-1.png');
-    this.load.image('man-move-front-2', '/characters/man/man-move-front-2.png');
-    this.load.image('man-move-back-1',  '/characters/man/man-move-back-1.png');
-    this.load.image('man-move-back-2',  '/characters/man/man-move-back-2.png');
-    this.load.image('man-move-left-1',  '/characters/man/man-move-left-1.png');
-    this.load.image('man-move-left-2',  '/characters/man/man-move-left-2.png');
-    this.load.image('man-move-right-1', '/characters/man/man-move-right-1.png');
-    this.load.image('man-move-right-2', '/characters/man/man-move-right-2.png');
+    this.load.image('man-move-front-1', 'characters/man/man-move-front-1.png');
+    this.load.image('man-move-front-2', 'characters/man/man-move-front-2.png');
+    this.load.image('man-move-back-1',  'characters/man/man-move-back-1.png');
+    this.load.image('man-move-back-2',  'characters/man/man-move-back-2.png');
+    this.load.image('man-move-left-1',  'characters/man/man-move-left-1.png');
+    this.load.image('man-move-left-2',  'characters/man/man-move-left-2.png');
+    this.load.image('man-move-right-1', 'characters/man/man-move-right-1.png');
+    this.load.image('man-move-right-2', 'characters/man/man-move-right-2.png');
 
     // ─── 여자 캐릭터 스프라이트 (12장, 향후 캐릭터 선택 시 사용) ───
-    this.load.image('girl-idle-front', '/characters/girl/girl-idle-front.png');
-    this.load.image('girl-idle-back',  '/characters/girl/girl-idle-back.png');
-    this.load.image('girl-idle-left',  '/characters/girl/girl-idle-left.png');
-    this.load.image('girl-idle-right', '/characters/girl/girl-idle-right.png');
-    this.load.image('girl-move-front-1', '/characters/girl/girl-move-front-1.png');
-    this.load.image('girl-move-front-2', '/characters/girl/girl-move-front-2.png');
-    this.load.image('girl-move-back-1',  '/characters/girl/girl-move-back-1.png');
-    this.load.image('girl-move-back-2',  '/characters/girl/girl-move-back-2.png');
-    this.load.image('girl-move-left-1',  '/characters/girl/girl-move-left-1.png');
-    this.load.image('girl-move-left-2',  '/characters/girl/girl-move-left-2.png');
-    this.load.image('girl-move-right-1', '/characters/girl/girl-move-right-1.png');
-    this.load.image('girl-move-right-2', '/characters/girl/girl-move-right-2.png');
+    this.load.image('girl-idle-front', 'characters/girl/girl-idle-front.png');
+    this.load.image('girl-idle-back',  'characters/girl/girl-idle-back.png');
+    this.load.image('girl-idle-left',  'characters/girl/girl-idle-left.png');
+    this.load.image('girl-idle-right', 'characters/girl/girl-idle-right.png');
+    this.load.image('girl-move-front-1', 'characters/girl/girl-move-front-1.png');
+    this.load.image('girl-move-front-2', 'characters/girl/girl-move-front-2.png');
+    this.load.image('girl-move-back-1',  'characters/girl/girl-move-back-1.png');
+    this.load.image('girl-move-back-2',  'characters/girl/girl-move-back-2.png');
+    this.load.image('girl-move-left-1',  'characters/girl/girl-move-left-1.png');
+    this.load.image('girl-move-left-2',  'characters/girl/girl-move-left-2.png');
+    this.load.image('girl-move-right-1', 'characters/girl/girl-move-right-1.png');
+    this.load.image('girl-move-right-2', 'characters/girl/girl-move-right-2.png');
 
     this.load.on('complete', () => {
       console.log('[BootScene] 에셋 로드 완료 — 픽셀 지도 + 캐릭터 스프라이트');

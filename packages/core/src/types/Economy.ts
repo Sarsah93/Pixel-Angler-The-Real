@@ -167,6 +167,67 @@ export const SEAFOOD_AUCTION_MAPPING: Record<string, AuctionMappingDef> = {
     defaultPricePerKg: 10000,
     sizeFactorMultiplier: 0.95,
   },
+  // ── 신규 어종 12종 추가분 (2026-07-16) ──
+  frog_flounder: {
+    itemCode: '100103', // 도다리
+    defaultPricePerKg: 22000,
+    sizeFactorMultiplier: 1.05,
+  },
+  starry_flounder: {
+    itemCode: '100104', // 강도다리
+    defaultPricePerKg: 16000,
+    sizeFactorMultiplier: 1.0,
+  },
+  tonguefish: {
+    itemCode: '100105', // 개서대
+    defaultPricePerKg: 15000,
+    sizeFactorMultiplier: 1.0,
+  },
+  pike_conger: {
+    itemCode: '100702', // 갯장어(하모)
+    defaultPricePerKg: 45000,
+    sizeFactorMultiplier: 1.3,
+  },
+  pacific_saury: {
+    itemCode: '100204', // 꽁치
+    defaultPricePerKg: 5000,
+    sizeFactorMultiplier: 0.85,
+  },
+  round_herring: {
+    itemCode: '100205', // 눈퉁멸
+    defaultPricePerKg: 3000,
+    sizeFactorMultiplier: 0.8,
+  },
+  blackthroat_seaperch: {
+    itemCode: '101101', // 눈볼대(금태)
+    defaultPricePerKg: 50000,
+    sizeFactorMultiplier: 1.35,
+  },
+  pacific_cod: {
+    itemCode: '101001', // 대구
+    defaultPricePerKg: 12000,
+    sizeFactorMultiplier: 1.15,
+  },
+  korean_pomfret: {
+    itemCode: '101201', // 덕대
+    defaultPricePerKg: 20000,
+    sizeFactorMultiplier: 1.05,
+  },
+  silver_pomfret: {
+    itemCode: '101202', // 병어
+    defaultPricePerKg: 24000,
+    sizeFactorMultiplier: 1.15,
+  },
+  sandfish: {
+    itemCode: '101301', // 도루묵
+    defaultPricePerKg: 6000,
+    sizeFactorMultiplier: 0.85,
+  },
+  black_scraper: {
+    itemCode: '100602', // 말쥐치
+    defaultPricePerKg: 11000,
+    sizeFactorMultiplier: 1.0,
+  },
 };
 
 /**

@@ -1,59 +1,16 @@
 /**
  * @file main.ts
- * @description Phaser 3 게임 진입점
+ * @description Phaser 3 게임 진입점 — 게임 생성은 여기서만 호출
  *
- * 모든 씬을 등록하고 게임을 시작합니다.
- * 전역 GameState 초기화도 여기서 수행합니다.
+ * 생성 로직 전체는 game.ts(부작용 없는 팩토리)에 있다.
+ * createGame()은 globalThis 싱글턴 가드로 이중 생성을 차단하므로,
+ * 검증 하네스가 이 모듈을 다시 import해도 기존 인스턴스를 돌려받는다.
  */
 
-import Phaser from 'phaser';
-import { PHASER_CONFIG } from './PhaserConfig.js';
-import { BootScene } from './scenes/BootScene.js';
-import { MainMenuScene } from './scenes/MainMenuScene.js';
-import { WorldMapScene } from './scenes/WorldMapScene.js';
-import { RegionFieldScene } from './scenes/RegionFieldScene.js';
-import { FirstPersonFishingScene } from './scenes/FirstPersonFishingScene.js';
-import { FieldScene } from './scenes/FieldScene.js';
-import { FishingScene } from './scenes/FishingScene.js';
-import { TackleRoomScene } from './scenes/TackleRoomScene.js';
-import { TideChartScene } from './scenes/TideChartScene.js';
-import { AnglerLogScene } from './scenes/AnglerLogScene.js';
-import { NightHuntingScene } from './scenes/NightHuntingScene.js';
-import { TrapScene } from './scenes/TrapScene.js';
-import { RestaurantScene } from './scenes/RestaurantScene.js';
-import { CondoScene } from './scenes/CondoScene.js';
-import { CookScene } from './scenes/CookScene.js';
-import { SettingsScene } from './scenes/SettingsScene.js';
+import { createGame } from './game.js';
 import { GameState } from './store/GameState.js';
 
-// 전역 게임 상태 초기화
-GameState.initialize();
-
-// 씬 등록 순서가 곧 씬 키 우선순위
-const config: Phaser.Types.Core.GameConfig = {
-  ...PHASER_CONFIG,
-  scene: [
-    BootScene,
-    MainMenuScene,
-    WorldMapScene,
-    RegionFieldScene,
-    FirstPersonFishingScene,
-    FieldScene,
-    FishingScene,
-    TackleRoomScene,
-    TideChartScene,
-    AnglerLogScene,
-    NightHuntingScene,
-    TrapScene,
-    RestaurantScene,
-    CondoScene,
-    CookScene,
-    SettingsScene,
-  ],
-};
-
-// 게임 인스턴스 생성
-const game = new Phaser.Game(config);
+const game = createGame();
 
 // Tauri 환경에서 윈도우 닫기 이벤트 처리
 if ('__TAURI__' in window) {

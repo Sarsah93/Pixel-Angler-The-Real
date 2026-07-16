@@ -1,6 +1,6 @@
 /**
  * @file FishSpawningOracle.ts
- * @description 다차원 어종 마스터 + 물때/미끼/지형 연동 오라클 (Phase 3, 21종 확장)
+ * @description 다차원 어종 마스터 + 물때/미끼/지형 연동 오라클 (Phase 3, 43종)
  *
  * 입질이 성공했을 때 어떤 물고기가 낚일지 결정한다.
  *  - 마스터 스키마: 서식 지형/수심 범위/수심층/미끼 선호도(0~100)/크기·무게 분포/
@@ -9,7 +9,7 @@
  *  - 필터·가중: 현재 미끼 수심층 + 지형(여밭/모래) + 미끼 종류 + 물때 + 주야간
  *  - 정규 분포(Box-Muller)로 최종 크기(cm)/무게(g)/성별 결정
  *
- * 실측 기반 데이터 (2026-07-15 사용자 제공 21종) — 추후 API 연동으로 교체 예정.
+ * 실측 기반 데이터 (2026-07-15~16 사용자 제공 43종) — 추후 API 연동으로 교체 예정.
  * 순수 TS — 렌더링/브라우저 API 없음.
  */
 
@@ -98,7 +98,7 @@ function sariPeak(base: number, peak: number): number[] {
 }
 
 /**
- * 어종 마스터 DB (21종 — 사용자 제공 실측 데이터 기반)
+ * 어종 마스터 DB (43종 — 사용자 제공 실측 데이터 기반)
  * 추후 API 연동 매칭 예정.
  */
 export const ORACLE_FISH_DB: FishMasterSpec[] = [
@@ -142,20 +142,22 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
   },
   {
     speciesId: 'chub_mackerel', nameKo: '고등어', nameEn: 'Chub Mackerel',
-    habitat: ['open', 'structure'], minDepthM: 0, maxDepthM: 20, preferredLayers: ['surface', 'mid'],
+    // 표층~중층 회유 — 서식 수심대 자체는 0~300m로 넓음 (실측 데이터 2026-07-16)
+    habitat: ['open', 'structure'], minDepthM: 0, maxDepthM: 300, preferredLayers: ['surface', 'mid'],
     baitPreference: { krill: 60, worm_blue: 30, lure: 10 },
-    minCm: 15, maxCm: 50, meanCm: 30, sdCm: 5, weightFactor: 0.0185, maleRatio: 0.5,
+    minCm: 15, maxCm: 60, meanCm: 32, sdCm: 5, weightFactor: 0.0185, maleRatio: 0.5,
     sexNote: '무리 지어 회유 — 찌를 사방으로 빠르게 끌고 다님',
-    legalMinCm: 21, closedMonths: [5], tideActivity: flatTide(0.75),
+    legalMinCm: 21, closedMonths: [4, 5, 6], tideActivity: flatTide(0.75),
     fight: { basePower: 0.35, patternWeights: { jump: 0.25, dive: 0.05, lateral: 0.7 }, intervalMult: 0.8, mouthFragility: 0.3 },
   },
   {
-    speciesId: 'horse_mackerel', nameKo: '전갱이', nameEn: 'Horse Mackerel',
-    habitat: ['structure', 'reef'], minDepthM: 5, maxDepthM: 30, preferredLayers: ['mid', 'bottom'],
+    speciesId: 'horse_mackerel', nameKo: '전갱이', nameEn: 'Japanese Horse Mackerel',
+    // 연안 회유 5~50m, 야간 집어등에 강하게 반응 (실측 데이터 2026-07-16)
+    habitat: ['structure', 'reef'], minDepthM: 5, maxDepthM: 50, preferredLayers: ['mid', 'bottom'],
     baitPreference: { krill: 60, worm_blue: 30, lure: 10 },
-    minCm: 12, maxCm: 45, meanCm: 25, sdCm: 5, weightFactor: 0.016, maleRatio: 0.5,
-    sexNote: '입가가 약해 과텐션 시 입술이 찢어져 바늘이 빠지기 쉬움',
-    tideActivity: flatTide(0.75),
+    minCm: 12, maxCm: 50, meanCm: 25, sdCm: 5, weightFactor: 0.016, maleRatio: 0.5,
+    sexNote: '입가가 약해 과텐션 시 입술이 찢어져 바늘이 빠지기 쉬움. 야간 집어등 불빛에 강하게 반응',
+    nightBonus: 1.4, tideActivity: flatTide(0.75),
     fight: { basePower: 0.3, patternWeights: { jump: 0.3, dive: 0.1, lateral: 0.6 }, intervalMult: 1.0, mouthFragility: 0.8 },
   },
   {
@@ -271,23 +273,146 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
   },
   {
     speciesId: 'flatfish', nameKo: '광어(넙치)', nameEn: 'Olive Flounder',
-    habitat: ['sand'], minDepthM: 5, maxDepthM: 100, preferredLayers: ['bottom'],
+    // 모래 바닥 10~200m (실측 데이터 2026-07-16)
+    habitat: ['sand'], minDepthM: 10, maxDepthM: 200, preferredLayers: ['bottom'],
     baitPreference: { livefish: 50, lure: 40, worm_king: 10 },
-    minCm: 20, maxCm: 100, meanCm: 60, sdCm: 13, weightFactor: 0.013,
+    minCm: 20, maxCm: 120, meanCm: 50, sdCm: 13, weightFactor: 0.013,
     maleRatio: 0.5,
     sexRule: (len) => (len > 70 ? 0.2 : 0.5),
     sexNote: '두 눈이 왼쪽 — 암컷이 압도적으로 크게 자람',
-    legalMinCm: 21, tideActivity: sariPeak(0.4, 0.75),
+    legalMinCm: 35, tideActivity: sariPeak(0.4, 0.75),
     fight: { basePower: 0.7, patternWeights: { jump: 0.1, dive: 0.5, lateral: 0.4 }, intervalMult: 1.0, mouthFragility: 0.1 },
   },
   {
-    speciesId: 'flounder', nameKo: '도다리(문치가자미)', nameEn: 'Starry Flounder',
-    habitat: ['sand', 'mud'], minDepthM: 10, maxDepthM: 150, preferredLayers: ['bottom'],
+    speciesId: 'flounder', nameKo: '참도다리(문치가자미)', nameEn: 'Marbled Flounder',
+    // 모래·뻘 10~100m, 대한민국 전 해역 (실측 데이터 2026-07-16)
+    habitat: ['sand', 'mud'], minDepthM: 10, maxDepthM: 100, preferredLayers: ['bottom'],
     baitPreference: { worm_blue: 70, worm_king: 20, krill: 10 },
-    minCm: 12, maxCm: 50, meanCm: 28, sdCm: 6, weightFactor: 0.018, maleRatio: 0.5,
-    sexNote: '두 눈이 오른쪽 — 입이 작고 예민해 소형 바늘에 잘 잡힘',
+    minCm: 15, maxCm: 50, meanCm: 30, sdCm: 6, weightFactor: 0.015, maleRatio: 0.5,
+    sexNote: '두 눈이 오른쪽 — 입이 작고 예민해 소형 바늘에 잘 잡힘. 시장에서 흔히 도다리로 유통',
     legalMinCm: 20, closedMonths: [12, 1], tideActivity: flatTide(0.6),
     fight: { basePower: 0.3, patternWeights: { jump: 0.1, dive: 0.5, lateral: 0.4 }, intervalMult: 1.2, mouthFragility: 0.2 },
+  },
+  // ── 신규 어종 12종 (2026-07-16 사용자 제공 실측 데이터) ──
+  {
+    speciesId: 'frog_flounder', nameKo: '도다리', nameEn: 'Frog Flounder',
+    // 표준명 도다리 — 모래·뻘 50~100m, 군산/목포/여수/마산/진해/부산 분포
+    habitat: ['sand', 'mud'], minDepthM: 50, maxDepthM: 100, preferredLayers: ['bottom'],
+    baitPreference: { worm_blue: 70, worm_king: 20, krill: 10 },
+    minCm: 15, maxCm: 40, meanCm: 27, sdCm: 5, weightFactor: 0.015, maleRatio: 0.5,
+    sexNote: '눈 사이에 가시가 솟은 표준명 도다리 — 문치가자미와 달리 남해 서부에 국지 분포',
+    legalMinCm: 20, tideActivity: flatTide(0.6),
+    fight: { basePower: 0.3, patternWeights: { jump: 0.1, dive: 0.5, lateral: 0.4 }, intervalMult: 1.2, mouthFragility: 0.2 },
+  },
+  {
+    speciesId: 'starry_flounder', nameKo: '강도다리', nameEn: 'Starry Flounder',
+    // 모래·뻘 20~250m — 20~40cm급은 전 해역 기수역(주로 울산 강 하구)
+    habitat: ['sand', 'mud'], minDepthM: 20, maxDepthM: 250, preferredLayers: ['bottom'],
+    baitPreference: { worm_blue: 65, worm_king: 20, krill: 15 },
+    minCm: 18, maxCm: 70, meanCm: 30, sdCm: 7, weightFactor: 0.011, maleRatio: 0.5,
+    sexNote: '지느러미의 검은 줄무늬가 선명한 냉수성 가자미 — 금지체장 없음(14cm 미만 자율 방생 권장)',
+    tideActivity: flatTide(0.6),
+    fight: { basePower: 0.35, patternWeights: { jump: 0.1, dive: 0.5, lateral: 0.4 }, intervalMult: 1.2, mouthFragility: 0.2 },
+  },
+  {
+    speciesId: 'tonguefish', nameKo: '개서대', nameEn: 'Robust Tonguefish',
+    // 진흙·갯벌·모래 20~100m, 회유 4~6월 제주/서해 → 7~10월 서해/남해
+    habitat: ['mud', 'sand'], minDepthM: 20, maxDepthM: 100, preferredLayers: ['bottom'],
+    baitPreference: { worm_blue: 70, shellfish: 20, krill: 10 },
+    minCm: 18, maxCm: 60, meanCm: 32, sdCm: 6, weightFactor: 0.008, maleRatio: 0.5,
+    sexNote: '혓바닥처럼 길쭉한 서대류 — 입이 작아 미끼를 빨아들이듯 삼킨다',
+    nightBonus: 1.8, tideActivity: flatTide(0.6),
+    fight: { basePower: 0.25, patternWeights: { jump: 0.05, dive: 0.5, lateral: 0.45 }, intervalMult: 1.25, mouthFragility: 0.25 },
+  },
+  {
+    speciesId: 'pike_conger', nameKo: '갯장어', nameEn: 'Daggertooth Pike Conger',
+    // 모래·암초 20~50m, 회유 4~7월 제주>서해 / 10~12월 서해>제주. 남해·동해 소규모 분포
+    habitat: ['sand', 'reef'], minDepthM: 20, maxDepthM: 50, preferredLayers: ['bottom'],
+    baitPreference: { fishcut: 60, livefish: 30, worm_blue: 10 },
+    minCm: 40, maxCm: 200, meanCm: 70, sdCm: 18, weightFactor: 0.0005, maleRatio: 0.5,
+    sexNote: '하모 — 단검 같은 이빨로 목줄을 단숨에 끊고 손까지 물어뜯는 난폭한 장어',
+    legalMinCm: 40, nightBonus: 1.6, tideActivity: flatTide(0.6),
+    fight: { basePower: 0.7, patternWeights: { jump: 0.1, dive: 0.55, lateral: 0.35 }, intervalMult: 0.95, mouthFragility: 0.1, lineCutter: true },
+  },
+  {
+    speciesId: 'pacific_saury', nameKo: '꽁치', nameEn: 'Pacific Saury',
+    // 표층·중층 0~50m, 회유 4~7월 제주>남해>동해>북한 / 9~12월 동해>남해>제주>일본
+    habitat: ['open'], minDepthM: 0, maxDepthM: 50, preferredLayers: ['surface', 'mid'],
+    baitPreference: { krill: 60, lure: 25, worm_blue: 15 },
+    minCm: 20, maxCm: 45, meanCm: 35, sdCm: 4, weightFactor: 0.0025, maleRatio: 0.5,
+    sexNote: '표층을 빠르게 스치는 가늘고 긴 등푸른 회유어 — 집어등 불빛에 몰린다',
+    nightBonus: 1.9, tideActivity: flatTide(0.65),
+    fight: { basePower: 0.2, patternWeights: { jump: 0.35, dive: 0.05, lateral: 0.6 }, intervalMult: 1.0, mouthFragility: 0.5 },
+  },
+  {
+    speciesId: 'blackthroat_seaperch', nameKo: '눈볼대(금태)', nameEn: 'Blackthroat Seaperch',
+    // 모래·진흙 저층 100~400m(수온 10~20°C) — 회유 7~8월 제주, 8~6월 제주>남해>일본
+    habitat: ['sand', 'mud'], minDepthM: 100, maxDepthM: 400, preferredLayers: ['bottom'],
+    baitPreference: { fishcut: 50, livefish: 30, lure: 20 },
+    minCm: 15, maxCm: 50, meanCm: 30, sdCm: 6, weightFactor: 0.011, maleRatio: 0.5,
+    sexNote: '아카무츠 — 목구멍이 검고 눈이 큰 심해 고급어. 기름기가 풍부해 최고급 횟감',
+    nightBonus: 1.7, tideActivity: flatTide(0.55),
+    fight: { basePower: 0.45, patternWeights: { jump: 0.05, dive: 0.7, lateral: 0.25 }, intervalMult: 1.05, mouthFragility: 0.3 },
+  },
+  {
+    speciesId: 'round_herring', nameKo: '눈퉁멸', nameEn: 'Round Herring',
+    // 표층·중층 50~150m, 회유 12월 제주/남해 → 1~8월 일본>남해>제주
+    habitat: ['open'], minDepthM: 50, maxDepthM: 150, preferredLayers: ['surface', 'mid'],
+    baitPreference: { krill: 70, lure: 20, worm_blue: 10 },
+    minCm: 10, maxCm: 26, meanCm: 18, sdCm: 3, weightFactor: 0.009, maleRatio: 0.5,
+    sexNote: '눈이 유난히 큰 소형 청어류 — 대형어의 주 먹이(베이트피시)라 생미끼로도 쓰인다',
+    nightBonus: 1.8, tideActivity: flatTide(0.65),
+    fight: { basePower: 0.12, patternWeights: { jump: 0.25, dive: 0.1, lateral: 0.65 }, intervalMult: 1.3, mouthFragility: 0.55 },
+  },
+  {
+    speciesId: 'pacific_cod', nameKo: '대구', nameEn: 'Pacific Cod',
+    // 45~450m, 주로 남해 분포 — 회유 12월 제주/남해 → 1~8월 일본>남해>제주
+    habitat: ['sand', 'mud', 'open'], minDepthM: 45, maxDepthM: 450, preferredLayers: ['bottom'],
+    baitPreference: { livefish: 40, fishcut: 30, lure: 30 },
+    minCm: 30, maxCm: 120, meanCm: 55, sdCm: 12, weightFactor: 0.014, maleRatio: 0.5,
+    sexNote: '입이 머리만큼 큰 한류성 대형 저서어 — 겨울 거제·진해 대구탕의 주인공',
+    legalMinCm: 35, closedMonths: [1, 2], tideActivity: flatTide(0.6),
+    fight: { basePower: 0.75, patternWeights: { jump: 0.05, dive: 0.7, lateral: 0.25 }, intervalMult: 1.0, mouthFragility: 0.2 },
+  },
+  {
+    speciesId: 'korean_pomfret', nameKo: '덕대', nameEn: 'Korean Pomfret',
+    // 모래·뻘 0~100m, 남해/서해 분포 (6~9월)
+    habitat: ['sand', 'mud'], minDepthM: 0, maxDepthM: 100, preferredLayers: ['mid', 'bottom'],
+    baitPreference: { krill: 50, worm_blue: 30, shellfish: 20 },
+    minCm: 12, maxCm: 28, meanCm: 17, sdCm: 3, weightFactor: 0.05, maleRatio: 0.5,
+    sexNote: '병어와 쏙 닮은 소형종 — 입이 아주 작아 큰 바늘에는 걸리지 않는다. 14cm 미만 자율 방생 권장',
+    tideActivity: flatTide(0.6),
+    fight: { basePower: 0.25, patternWeights: { jump: 0.1, dive: 0.35, lateral: 0.55 }, intervalMult: 1.2, mouthFragility: 0.4 },
+  },
+  {
+    speciesId: 'silver_pomfret', nameKo: '병어', nameEn: 'Silver Pomfret',
+    // 모래·뻘 0~100m, 남해/서해 분포 및 회유 (6~9월)
+    habitat: ['sand', 'mud'], minDepthM: 0, maxDepthM: 100, preferredLayers: ['mid', 'bottom'],
+    baitPreference: { krill: 50, worm_blue: 30, shellfish: 20 },
+    minCm: 14, maxCm: 40, meanCm: 25, sdCm: 5, weightFactor: 0.026, maleRatio: 0.5,
+    sexNote: '납작한 마름모꼴 은빛 몸통 — 뼈가 연해 통째로 썰어 먹는 여름 별미. 14.6cm 미만 자율 방생 권장',
+    tideActivity: flatTide(0.6),
+    fight: { basePower: 0.35, patternWeights: { jump: 0.1, dive: 0.35, lateral: 0.55 }, intervalMult: 1.15, mouthFragility: 0.4 },
+  },
+  {
+    speciesId: 'sandfish', nameKo: '도루묵', nameEn: 'Japanese Sandfish',
+    // 모래·진흙 140~150m — 동해. 10~12월 산란을 위해 2~10m 연안으로 몰려든다
+    habitat: ['sand', 'mud'], minDepthM: 2, maxDepthM: 150, preferredLayers: ['bottom'],
+    baitPreference: { krill: 40, worm_blue: 35, lure: 25 },
+    minCm: 10, maxCm: 30, meanCm: 18, sdCm: 3, weightFactor: 0.013, maleRatio: 0.5,
+    sexNote: '늦가을 산란기에만 연안 해조류로 붙는 동해 어종 — 알이 가득 찬 암컷이 별미',
+    legalMinCm: 11, nightBonus: 1.5, tideActivity: flatTide(0.6),
+    fight: { basePower: 0.2, patternWeights: { jump: 0.15, dive: 0.4, lateral: 0.45 }, intervalMult: 1.25, mouthFragility: 0.35 },
+  },
+  {
+    speciesId: 'black_scraper', nameKo: '말쥐치', nameEn: 'Black Scraper',
+    // 내만·암초·해조류 70~100m — 회유 1~3월 제주, 4~11월 남해>동해, 6~10월 제주>서해
+    habitat: ['reef', 'structure'], minDepthM: 20, maxDepthM: 100, preferredLayers: ['mid', 'bottom'],
+    baitPreference: { shellfish: 45, krill: 35, worm_blue: 20 },
+    minCm: 12, maxCm: 36, meanCm: 22, sdCm: 4, weightFactor: 0.017, maleRatio: 0.5,
+    sexNote: '쥐치보다 크고 길쭉한 쥐포의 주 원료 — 작은 입으로 미끼만 갉아먹는 악명 높은 미끼 도둑',
+    legalMinCm: 18, closedMonths: [5, 6, 7], tideActivity: flatTide(0.65),
+    fight: { basePower: 0.3, patternWeights: { jump: 0.15, dive: 0.4, lateral: 0.45 }, intervalMult: 1.25, mouthFragility: 0.25 },
   },
   // ── FISH_DATABASE 통합 추가분 (2026-07-16 — 기존 DB 어종을 오라클에 편입) ──
   {
@@ -312,10 +437,13 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
   },
   {
     speciesId: 'hairtail', nameKo: '갈치', nameEn: 'Hairtail',
-    habitat: ['open'], minDepthM: 10, maxDepthM: 80, preferredLayers: ['mid', 'surface'],
+    // 진흙·모래 바닥 위를 회유 — 여름 50~100m, 겨울 70~120m (실측 데이터 2026-07-16)
+    habitat: ['mud', 'sand', 'open'], minDepthM: 20, maxDepthM: 150, preferredLayers: ['mid', 'surface'],
     baitPreference: { fishcut: 60, krill: 20, lure: 20 },
-    minCm: 40, maxCm: 120, meanCm: 70, sdCm: 15, weightFactor: 0.002, maleRatio: 0.5,
-    sexNote: '야간 집어등에 유집되는 은빛 회유어 — 이빨이 날카로워 목줄 주의',
+    minCm: 40, maxCm: 130, meanCm: 70, sdCm: 15, weightFactor: 0.002, maleRatio: 0.5,
+    sexNote: '야간 집어등에 유집되는 은빛 회유어 — 이빨이 날카로워 목줄 주의. 법정 금지체장은 항문장 18cm(≈ 전장 47cm)',
+    // 법정 기준은 항문장 18cm이나 게임은 전장(lengthCm)으로 판정 — 전장 환산값 47cm 사용
+    legalMinCm: 47, closedMonths: [7],
     nightBonus: 2.5, tideActivity: flatTide(0.6),
     fight: { basePower: 0.45, patternWeights: { jump: 0.1, dive: 0.4, lateral: 0.5 }, intervalMult: 1.0, mouthFragility: 0.25, lineCutter: true },
   },
@@ -375,10 +503,11 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     fight: { basePower: 0.65, patternWeights: { jump: 0.4, dive: 0.2, lateral: 0.4 }, intervalMult: 0.85, mouthFragility: 0.25 },
   },
   {
-    speciesId: 'filefish', nameKo: '쥐치', nameEn: 'Filefish',
-    habitat: ['reef', 'structure'], minDepthM: 2, maxDepthM: 20, preferredLayers: ['mid'],
+    speciesId: 'filefish', nameKo: '쥐치', nameEn: 'Thread-sail Filefish',
+    // 갯바위·방파제 수중여 주변 5~30m (실측 데이터 2026-07-16)
+    habitat: ['reef', 'structure'], minDepthM: 5, maxDepthM: 30, preferredLayers: ['mid'],
     baitPreference: { shellfish: 40, krill: 40, worm_blue: 20 },
-    minCm: 12, maxCm: 35, meanCm: 20, sdCm: 4, weightFactor: 0.03, maleRatio: 0.5,
+    minCm: 10, maxCm: 30, meanCm: 18, sdCm: 4, weightFactor: 0.03, maleRatio: 0.5,
     sexNote: '작은 입으로 미끼를 갉아먹는 미끼 도둑 — 쥐포의 원료',
     tideActivity: flatTide(0.7),
     fight: { basePower: 0.2, patternWeights: { jump: 0.2, dive: 0.4, lateral: 0.4 }, intervalMult: 1.3, mouthFragility: 0.2 },

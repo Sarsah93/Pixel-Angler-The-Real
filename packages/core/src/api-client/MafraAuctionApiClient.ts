@@ -110,7 +110,31 @@ export const MAFRA_ITEM_TO_SPECIES: { item: string; variety?: string; speciesId:
   { item: '붕장어', speciesId: 'conger_eel' },
   { item: '장어', variety: '붕장어', speciesId: 'conger_eel' },
   { item: '복어', speciesId: 'tiger_puffer' },
+
+  // ── 신규 어종 12종 (2026-07-16) ──
+  // 주의: 매칭은 부분 일치(includes)이므로 품목명이 포함 관계면 '더 긴 쪽'을 먼저 둘 것.
+  //       ('말쥐치'⊃'쥐치', '강도다리'⊃'도다리') 순서가 뒤바뀌면 오매칭된다.
+  { item: '가자미', variety: '강도다리', speciesId: 'starry_flounder' },
+  { item: '가자미', variety: '문치', speciesId: 'flounder' },
+  { item: '가자미', variety: '도다리', speciesId: 'flounder' },
+  { item: '장어', variety: '갯장어', speciesId: 'pike_conger' },
+  { item: '말쥐치', speciesId: 'black_scraper' },
   { item: '쥐치', speciesId: 'filefish' },
+  { item: '강도다리', speciesId: 'starry_flounder' },
+  { item: '도다리', speciesId: 'flounder' },      // 시장 유통 '도다리'는 통상 문치가자미
+  { item: '문치가자미', speciesId: 'flounder' },
+  { item: '개서대', speciesId: 'tonguefish' },
+  { item: '서대', speciesId: 'tonguefish' },
+  { item: '갯장어', speciesId: 'pike_conger' },
+  { item: '하모', speciesId: 'pike_conger' },
+  { item: '꽁치', speciesId: 'pacific_saury' },
+  { item: '눈볼대', speciesId: 'blackthroat_seaperch' },
+  { item: '금태', speciesId: 'blackthroat_seaperch' },
+  { item: '눈퉁멸', speciesId: 'round_herring' },
+  { item: '대구', speciesId: 'pacific_cod' },
+  { item: '덕대', speciesId: 'korean_pomfret' },
+  { item: '병어', speciesId: 'silver_pomfret' },
+  { item: '도루묵', speciesId: 'sandfish' },
 ];
 
 /** MAFRA 행 → 게임 어종 ID (매칭 실패 시 undefined) */

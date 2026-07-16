@@ -195,12 +195,16 @@ export class RegionFieldScene extends Phaser.Scene {
   preload(): void {
     const key = `rmap_${this.mapId}`;
     if (!this.cache.json.has(key)) {
-      this.load.json(key, `/${this.graph.dataDir}/${this.mapId}.json`);
+      this.load.json(key, `${this.graph.dataDir}/${this.mapId}.json`);
     }
-    // 실측 연안 수심 프로필 (연안정보도 SHP → JSON, 없으면 404 무시 후 그라디언트 폴백)
-    const depthKey = `depth_${this.region}`;
-    if (!this.cache.json.has(depthKey)) {
-      this.load.json(depthKey, `/data/depth/${this.region}.json`);
+    // 실측 연안 수심 프로필 — 그래프에 경로가 등록된 지역만 로드
+    // (미등록 지역을 무조건 로드하면 Vite dev SPA 폴백이 index.html을 돌려줘
+    //  JSON 파싱 pageerror가 발생한다. 프로필 없으면 그라디언트 폴백.)
+    if (this.graph.depthProfileUrl) {
+      const depthKey = `depth_${this.region}`;
+      if (!this.cache.json.has(depthKey)) {
+        this.load.json(depthKey, `${this.graph.depthProfileUrl}`);
+      }
     }
   }
 
@@ -222,6 +226,7 @@ export class RegionFieldScene extends Phaser.Scene {
 
     // ── HUD 오버레이 (상태 바 / 미니맵 / 퀵슬롯 / 로그·채팅) ──
     this.hud = new RegionHud(this, {
+      regionId: this.region,
       mapId: this.mapId,
       terrain: this.terrain,
       cols: this.cols,
@@ -1374,6 +1379,10 @@ export class RegionFieldScene extends Phaser.Scene {
   }
 
   private closePauseMenu(): void {
+    // 메뉴 항목 클릭이 같은 프레임 씬 pointerdown으로 흘러 캐스팅 시도
+    // ("채비가 불완전합니다 (U 채비하기)" 힌트)로 새지 않도록 유예를 준다
+    // — 팝업 스택 close()와 동일한 관통 방지 패턴.
+    this.suppressClickUntil = this.time.now + 250;
     if (!this.pauseMenu) { this.isPaused = false; return; }
     const menu = this.pauseMenu;
     this.pauseMenu = undefined;

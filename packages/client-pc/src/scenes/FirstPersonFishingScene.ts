@@ -25,6 +25,7 @@ import {
   LineTensionPhysics, ChumPhysics, BiteProbabilityEngine,
   spawnFish, SpawnedFish, FightingPhase, FightStatus,
   calculateTideInfo, getBaitAffinity, BaitKey, SpawnContext,
+  getAreaSnagRiskMult,
 } from '@tra/core';
 import { GameState } from '../store/GameState.js';
 import { InventoryStore, RigStepKey } from '../store/InventoryStore.js';
@@ -497,6 +498,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       alignmentIndex: this.lineTension.alignmentIndex,
       isHoldingLine: holding,
       chumSyncRate: sync,
+      // 낚시터 특성(RegionAreaNode.snagRisk) — high 구역은 밑걸림이 빠르고 잦다
+      snagRiskMult: getAreaSnagRiskMult(GameState.currentSpotId),
     });
 
     // ── UI 게이지 갱신 ──
@@ -509,9 +512,11 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     }
   }
 
-  /** 현재 채비 미끼 → BaitKey 매핑 */
+  /** 현재 채비 미끼 → BaitKey 매핑 (루어 장착 시 'lure') */
   private currentBaitKey(): BaitKey {
-    const id = InventoryStore.rig.hookBait;
+    // 바늘 소켓의 루어(가짜미끼)가 미끼보다 우선 — 루어 채비는 미끼 소켓이 비어 있다
+    if (!InventoryStore.hookNeedsBait()) return 'lure';
+    const id = InventoryStore.rig.bait;
     const item = id ? InventoryStore.find(id) : undefined;
     if (!item) return 'krill';
     const n = item.name;
@@ -547,7 +552,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
 
   /** 밑걸림 발생 — 찌 아래 채비 전체 손실 + 즉시 필드 복귀 */
   private onSnagged(): void {
-    const lost = InventoryStore.loseRigParts(['float', 'swivel', 'leader', 'sinker', 'hookBait'] as RigStepKey[]);
+    const lost = InventoryStore.loseRigParts(['float', 'swivel', 'leader', 'sinker', 'hook', 'bait'] as RigStepKey[]);
     this.failAndExit('밑걸림! 채비를 통째로 잃었습니다',
       `여 밭에 채비가 파묻혀 원줄을 끊었습니다.\n손실: ${lost.length > 0 ? lost.join(', ') : '없음'}\n\n뒷줄견제(H)로 미끼를 띄우면 밑걸림을 예방할 수 있습니다.`);
   }
@@ -562,7 +567,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.hookedFish = spawnFish(this.buildSpawnCtx(nearBottom && this.isReefAt(this.rig.baitX)));
 
     // 입질 순간 미끼 1개 소모 (수량이 남으면 자동 재장착, 소진 시 소켓 비움)
-    InventoryStore.consumeRigItem('hookBait');
+    // 루어 채비는 소모 없음 — 가짜미끼는 입질에 닳지 않는다
+    if (InventoryStore.hookNeedsBait()) InventoryStore.consumeRigItem('bait');
     this.refreshCoolerUi();
 
     // 어종별 파이팅 프로필 적용 (여박기/횡이동/바늘털이 가중치, 입 강도)
@@ -624,8 +630,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
           // 목줄 터짐 — 30% 확률로 찌까지 함께 손실
           const floatToo = Math.random() < 0.3;
           const parts: RigStepKey[] = floatToo
-            ? ['float', 'swivel', 'leader', 'sinker', 'hookBait']
-            : ['leader', 'sinker', 'hookBait'];
+            ? ['float', 'swivel', 'leader', 'sinker', 'hook', 'bait']
+            : ['leader', 'sinker', 'hook', 'bait'];
           const lost = InventoryStore.loseRigParts(parts);
           this.failAndExit(floatToo ? '줄터짐! 찌까지 터졌습니다' : '줄터짐! 목줄이 터졌습니다',
             `텐션이 한계를 넘어 ${floatToo ? '찌 위에서' : '목줄이'} 터졌습니다.\n손실: ${lost.join(', ')}\n\nU 채비하기에서 재장착 후 다시 캐스팅하세요.`);
@@ -634,20 +640,23 @@ export class FirstPersonFishingScene extends Phaser.Scene {
         case 'hook_off': {
           // 미끼 털림 / 복어류는 목줄째 절단
           if (this.hookedFish?.lineCutter) {
-            const lost = InventoryStore.loseRigParts(['leader', 'sinker', 'hookBait'] as RigStepKey[]);
+            const lost = InventoryStore.loseRigParts(['leader', 'sinker', 'hook', 'bait'] as RigStepKey[]);
             this.failAndExit('복어가 목줄을 끊었습니다!',
               `날카로운 이빨에 목줄째 잘려나갔습니다.\n손실: ${lost.join(', ')}`);
           } else {
-            const lost = InventoryStore.loseRigParts(['hookBait'] as RigStepKey[]);
+            // 바늘 빠짐 — 바늘은 원줄에 남고 미끼만 털린다 (루어 채비는 손실 없음)
+            const lost = InventoryStore.loseRigParts(['bait'] as RigStepKey[]);
             this.failAndExit('미끼가 털렸습니다',
-              `바늘이 빠지며 미끼를 잃었습니다.${lost.length ? `\n손실: ${lost.join(', ')}` : ''}\n\n미끼를 다시 달고 캐스팅하세요.`);
+              lost.length
+                ? `바늘이 빠지며 미끼를 잃었습니다.\n손실: ${lost.join(', ')}\n\n미끼를 다시 달고 캐스팅하세요.`
+                : '바늘이 빠졌습니다. 루어는 무사히 회수했습니다.\n\n다시 캐스팅하세요.');
           }
           break;
         }
         case 'escaped': {
-          const lost = InventoryStore.loseRigParts(['hookBait'] as RigStepKey[]);
-          this.failAndExit('놓쳤다! 미끼가 털렸습니다',
-            `물고기가 탈출하며 미끼를 채갔습니다.${lost.length ? `\n손실: ${lost.join(', ')}` : ''}\n패턴(바늘털이/여 박기/횡이동)에 맞게 대응하세요.`);
+          const lost = InventoryStore.loseRigParts(['bait'] as RigStepKey[]);
+          this.failAndExit('놓쳤다! 물고기가 탈출했습니다',
+            `${lost.length ? `물고기가 탈출하며 미끼를 채갔습니다.\n손실: ${lost.join(', ')}` : '물고기가 탈출했습니다. 루어는 무사히 회수했습니다.'}\n패턴(바늘털이/여 박기/횡이동)에 맞게 대응하세요.`);
           break;
         }
       }
@@ -692,13 +701,17 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     } else {
       // 쿨러(어획 보관함) + 인벤토리(음식 탭) 반영 — 어종 이미지가 있으면 아이콘으로 사용
       this.sessionCatch.push(`${f.nameKo} ${f.lengthCm}cm (${sexLabel})`);
+      // 개체마다 크기/무게가 다르므로 고유 id 부여 — 같은 어종이라도 병합되면
+      // 뒤에 낚인 개체의 실측치가 사라져 수매가가 첫 개체 기준으로 굳어버린다.
       InventoryStore.addItem({
-        id: `inv_catch_${f.speciesId}`,
+        id: `inv_catch_${f.speciesId}_${InventoryStore.nextCatchSeq()}`,
         name: `${f.nameKo} (${f.lengthCm}cm)`,
         icon: '🐟', iconTexture: fishTexture,
         category: 'food', subCategory: '어획물',
+        // 표시/폴백용 기준가 — 실제 수매가는 speciesId·lengthCm·weightG로 산정된다
         basePrice: Math.max(2000, Math.round(f.weightG * 12)),
         condition: 'live', equippable: false,
+        speciesId: f.speciesId, lengthCm: f.lengthCm, weightG: f.weightG,
       }, 1);
       GameState.addCaughtFish(f.speciesId, f.nameKo, f.lengthCm, f.weightG);
       this.refreshCoolerUi();

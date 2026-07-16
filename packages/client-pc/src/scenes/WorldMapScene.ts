@@ -26,6 +26,7 @@ import {
   WORLD_NODE_DATABASE,
   FishingSpotNode,
   RegionAreaNode,
+  SNAG_RISK_LABEL,
   isRegionUnlocked,
   getRegionAreaNodes,
 } from '@tra/core';
@@ -138,7 +139,10 @@ export class WorldMapScene extends Phaser.Scene {
     this.input.keyboard?.on('keydown-ESC', () => this.handleEsc());
 
     // ── P 키: 핀 위치 편집 모드 토글 (개발자 도구) ──────────
-    this.input.keyboard?.on('keydown-P', () => this.togglePinEditMode());
+    // 핀 편집 Dev Tool은 dev 빌드 전용 — 프로덕션에서는 키 바인딩 자체를 만들지 않는다
+    if (import.meta.env.DEV) {
+      this.input.keyboard?.on('keydown-P', () => this.togglePinEditMode());
+    }
 
     // ── 지도 위 마우스 이동 시 편집 모드에서 좌표 실시간 표시
     this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
@@ -155,8 +159,10 @@ export class WorldMapScene extends Phaser.Scene {
     // ── 초기 상태: 지역 뷰 ──────────────────────────────
     this.renderRegionView();
 
-    // ── 개발자 도구 토글 버튼 생성 ────────────────────────
-    this.createDevToolToggleButton();
+    // ── 개발자 도구 토글 버튼 (dev 빌드 전용 — 프로덕션에는 렌더되지 않음) ──
+    if (import.meta.env.DEV) {
+      this.createDevToolToggleButton();
+    }
 
     this.cameras.main.fadeIn(300, 0, 10, 20);
   }
@@ -659,10 +665,13 @@ export class WorldMapScene extends Phaser.Scene {
     this.pinMarkerMap.set(node.id, { dot, ring, label });
   }
 
-  /** 잠금 지역 클릭 시 안내 */
+  /** 잠금 지역 클릭 시 안내 — 입장 가능 지역을 하드코딩하지 않고 동적으로 나열 */
   private showLockedRegionAlert(regionName: string): void {
+    const unlocked = WORLD_NODE_DATABASE
+      .filter((n: FishingSpotNode) => isRegionUnlocked(n.regionDatabaseId))
+      .map((n: FishingSpotNode) => n.name);
     const alertTxt = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 56,
-      `${regionName} 은(는) 아직 준비중입니다. 현재는 '강원 속초'만 입장할 수 있습니다.`, {
+      `${regionName} 은(는) 아직 준비중입니다. 입장 가능: ${unlocked.join(' · ')}`, {
         fontFamily: '"Noto Sans KR", sans-serif',
         fontSize: '12px', color: '#ffce54',
         backgroundColor: '#050f1ecc', padding: { x: 12, y: 6 }, fontStyle: 'bold',
@@ -975,23 +984,67 @@ export class WorldMapScene extends Phaser.Scene {
       .setInteractive();  // 뒤 클릭 차단
     c.add(dim);
 
-    // 카드
-    const cardW = 440, cardH = 220;
+    // 진입 가능 여부 (필드 타일맵 미제작 지역은 설명만 제공하고 출조 차단)
+    const canEnter = area.enterable !== false;
+
+    // ── 카드 (특성 상세 줄 수에 맞춰 높이 가변) ──
+    const detailLines = area.details ?? [];
+    const cardW = 560;
+    const headerH = 96;                       // 이름 + 요약(수심/밑걸림)
+    const detailH = detailLines.length > 0 ? detailLines.length * 21 + 16 : 0;
+    const footerH = 96;                       // 질문 + 버튼
+    const cardH = headerH + detailH + footerH;
     const cardX = W / 2 - cardW / 2, cardY = H / 2 - cardH / 2;
     const card = this.add.graphics();
     card.fillStyle(0x081422, 0.98);
     card.fillRoundedRect(cardX, cardY, cardW, cardH, 8);
-    card.lineStyle(2, 0x33b0e0, 1);
+    card.lineStyle(2, canEnter ? 0x33b0e0 : 0x8a6a2a, 1);
     card.strokeRoundedRect(cardX, cardY, cardW, cardH, 8);
     c.add(card);
 
-    const q1 = this.add.text(W / 2, cardY + 62, area.name, {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '24px', color: '#4af2a1', fontStyle: 'bold',
+    // 이름 + 한 줄 설명
+    const q1 = this.add.text(W / 2, cardY + 30, area.name, {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '22px',
+      color: canEnter ? '#4af2a1' : '#ffcc44', fontStyle: 'bold',
     }).setOrigin(0.5);
-    const q2 = this.add.text(W / 2, cardY + 102, '해당 구역으로 출조하시겠습니까?', {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '14px', color: '#d0e8f5',
+    const q1b = this.add.text(W / 2, cardY + 56, area.desc, {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#9fd0e4',
     }).setOrigin(0.5);
-    c.add([q1, q2]);
+    c.add([q1, q1b]);
+
+    // 요약 배지 라인 — 수심/밑걸림
+    const summaryBits: string[] = [];
+    if (area.depthRangeM) summaryBits.push(`수심 ${area.depthRangeM[0]}~${area.depthRangeM[1]}m`);
+    if (area.snagRisk) summaryBits.push(SNAG_RISK_LABEL[area.snagRisk]);
+    if (summaryBits.length > 0) {
+      const sum = this.add.text(W / 2, cardY + 78, summaryBits.join('   ·   '), {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px',
+        color: area.snagRisk === 'high' ? '#ff9a6b' : '#7fe6b0',
+      }).setOrigin(0.5);
+      c.add(sum);
+    }
+
+    // 특성 상세 (리서치 기반 낚시터 설명)
+    if (detailLines.length > 0) {
+      const sep = this.add.graphics();
+      sep.lineStyle(1, 0x2a5a8a, 0.6);
+      sep.lineBetween(cardX + 24, cardY + headerH - 2, cardX + cardW - 24, cardY + headerH - 2);
+      c.add(sep);
+      detailLines.forEach((line, i) => {
+        const t = this.add.text(cardX + 28, cardY + headerH + 10 + i * 21, `· ${line}`, {
+          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#c4dcea',
+          wordWrap: { width: cardW - 56 },
+        });
+        c.add(t);
+      });
+    }
+
+    const q2 = this.add.text(W / 2, cardY + headerH + detailH + 14,
+      canEnter ? '해당 구역으로 출조하시겠습니까?' : '필드 지도 준비중 — 타일맵 제작 후 출조할 수 있습니다.', {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px',
+        color: canEnter ? '#d0e8f5' : '#c8a060',
+      }).setOrigin(0.5);
+    c.add(q2);
 
     // [아니오] 버튼
     const noBtn = this.add.container(W / 2 - 90, cardY + cardH - 40);
@@ -1008,25 +1061,33 @@ export class WorldMapScene extends Phaser.Scene {
     noBtn.on('pointerdown', () => this.closeAreaConfirm());
     c.add(noBtn);
 
-    // [예] 버튼
+    // [예] 버튼 — 필드 미준비(enterable === false) 구역은 비활성 표시로 진입 차단
     const yesBtn = this.add.container(W / 2 + 90, cardY + cardH - 40);
     const yesBg = this.add.graphics();
-    yesBg.fillStyle(0x0d4a2e, 0.97); yesBg.fillRoundedRect(-72, -20, 144, 40, 5);
-    yesBg.lineStyle(2, 0x4af2a1, 1); yesBg.strokeRoundedRect(-72, -20, 144, 40, 5);
-    const yesText = this.add.text(0, 0, '예, 출조하기 ▶', {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '15px', color: '#4af2a1', fontStyle: 'bold',
+    if (canEnter) {
+      yesBg.fillStyle(0x0d4a2e, 0.97); yesBg.fillRoundedRect(-72, -20, 144, 40, 5);
+      yesBg.lineStyle(2, 0x4af2a1, 1); yesBg.strokeRoundedRect(-72, -20, 144, 40, 5);
+    } else {
+      yesBg.fillStyle(0x1c2836, 0.95); yesBg.fillRoundedRect(-72, -20, 144, 40, 5);
+      yesBg.lineStyle(1.5, 0x3a4a58, 0.9); yesBg.strokeRoundedRect(-72, -20, 144, 40, 5);
+    }
+    const yesText = this.add.text(0, 0, canEnter ? '예, 출조하기 ▶' : '준비중', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '15px',
+      color: canEnter ? '#4af2a1' : '#5d6f7e', fontStyle: 'bold',
     }).setOrigin(0.5);
     yesBtn.add([yesBg, yesText]);
-    yesBtn.setInteractive(new Phaser.Geom.Rectangle(-72, -20, 144, 40), Phaser.Geom.Rectangle.Contains);
-    yesBtn.on('pointerover', () => {
-      yesBg.clear(); yesBg.fillStyle(0x1a6a3e, 0.97); yesBg.fillRoundedRect(-72, -20, 144, 40, 5);
-      yesBg.lineStyle(2, 0x4af2a1, 1); yesBg.strokeRoundedRect(-72, -20, 144, 40, 5);
-    });
-    yesBtn.on('pointerout', () => {
-      yesBg.clear(); yesBg.fillStyle(0x0d4a2e, 0.97); yesBg.fillRoundedRect(-72, -20, 144, 40, 5);
-      yesBg.lineStyle(2, 0x4af2a1, 1); yesBg.strokeRoundedRect(-72, -20, 144, 40, 5);
-    });
-    yesBtn.on('pointerdown', () => this.enterFieldArea(region, area));
+    if (canEnter) {
+      yesBtn.setInteractive(new Phaser.Geom.Rectangle(-72, -20, 144, 40), Phaser.Geom.Rectangle.Contains);
+      yesBtn.on('pointerover', () => {
+        yesBg.clear(); yesBg.fillStyle(0x1a6a3e, 0.97); yesBg.fillRoundedRect(-72, -20, 144, 40, 5);
+        yesBg.lineStyle(2, 0x4af2a1, 1); yesBg.strokeRoundedRect(-72, -20, 144, 40, 5);
+      });
+      yesBtn.on('pointerout', () => {
+        yesBg.clear(); yesBg.fillStyle(0x0d4a2e, 0.97); yesBg.fillRoundedRect(-72, -20, 144, 40, 5);
+        yesBg.lineStyle(2, 0x4af2a1, 1); yesBg.strokeRoundedRect(-72, -20, 144, 40, 5);
+      });
+      yesBtn.on('pointerdown', () => this.enterFieldArea(region, area));
+    }
     c.add(yesBtn);
 
     // ESC 힌트

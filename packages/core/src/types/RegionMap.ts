@@ -88,6 +88,13 @@ export interface RegionMapGraph {
   entryMapId: string;
   /** 정적 파일 경로 접두 (`public/` 기준) */
   dataDir: string;
+  /**
+   * 실측 연안 수심 프로필 JSON 경로 (`public/` 기준).
+   * 미지정 지역은 로드 시도 자체를 하지 않는다 — Vite dev의 SPA 폴백이
+   * 404 대신 index.html을 돌려줘 JSON 파싱 에러가 나기 때문.
+   * (`tools/build_depth_profiles.py`로 생성 후 여기에 경로 등록)
+   */
+  depthProfileUrl?: string;
   /** 맵 노드 목록 */
   nodes: RegionMapNode[];
 }
@@ -108,6 +115,7 @@ export const SOKCHO_MAP_GRAPH: RegionMapGraph = {
   region: 'gangwon_sokcho',
   entryMapId: 'sokcho_sokchohang_1',
   dataDir: 'data/sokcho',
+  depthProfileUrl: 'data/depth/gangwon_sokcho.json',
   nodes: [
     { id: 'sokcho_sokchohang_3', name: '속초항 (남측)',
       links: { N: 'sokcho_sokchohang_2' } },
@@ -126,9 +134,56 @@ export const SOKCHO_MAP_GRAPH: RegionMapGraph = {
   ],
 };
 
+/**
+ * 부산 지역 맵 연결 그래프 (2026-07-17, 사용자 명세)
+ *
+ * 4개 출조 구역 — 그래프는 3개의 분리된 컴포넌트로 구성된다
+ * (서방파제 / 동방파제+암남 / 백운포. 구역 간 직접 연결은 동방파제↔암남뿐):
+ *
+ *  감천항 서방파제 : 감천동(1) ↕ 방파제(2)                  — 1이 스폰 맵
+ *  감천항 동방파제 : 제3부두(1) ↕ 수산시장(2) ↕ 동방파제(3)  — 1이 스폰 맵
+ *                    제3부두(1) ↔E↔ 암남공원 주차장(1)
+ *  암남공원 주차장 : 단일 맵 — 동방파제 1번과 W 연결          — 스폰 맵
+ *  백운포 체육공원 : 공원(1) ↕ 방파제(2, 바다쪽 브릿지 아래)   — 1이 스폰 맵
+ *
+ * 각 구역의 스폰 맵은 WorldMap의 RegionAreaNode.fieldMapId로 지정된다.
+ * entryMapId는 구역 미지정 진입 시의 폴백일 뿐이다.
+ */
+export const BUSAN_MAP_GRAPH: RegionMapGraph = {
+  region: 'busan',
+  entryMapId: 'busan_gamcheon_west_1',
+  dataDir: 'data/busan',
+  nodes: [
+    // ── 감천항 서방파제 (마을 위 ↕ 방파제 아래) ──
+    { id: 'busan_gamcheon_west_1', name: '감천항 서방파제 (감천동)',
+      links: { S: 'busan_gamcheon_west_2' } },
+    { id: 'busan_gamcheon_west_2', name: '감천항 서방파제',
+      links: { N: 'busan_gamcheon_west_1' } },
+
+    // ── 감천항 동방파제 (부두 위 ↕ 수산시장 ↕ 방파제 아래, 부두 동쪽 ↔ 암남) ──
+    { id: 'busan_gamcheon_east_1', name: '감천항 제3부두·모지포',
+      links: { S: 'busan_gamcheon_east_2', E: 'busan_amnam_1' } },
+    { id: 'busan_gamcheon_east_2', name: '감천항 제4부두·수산시장',
+      links: { N: 'busan_gamcheon_east_1', S: 'busan_gamcheon_east_3' } },
+    { id: 'busan_gamcheon_east_3', name: '감천항 동방파제',
+      links: { N: 'busan_gamcheon_east_2' } },
+
+    // ── 암남공원 주차장 (서쪽으로 동방파제 부두와 연결) ──
+    { id: 'busan_amnam_1', name: '암남공원 주차장',
+      links: { W: 'busan_gamcheon_east_1' } },
+
+    // ── 백운포 체육공원 (공원 위 ↕ 방파제 아래) ──
+    { id: 'busan_baegunpo_1', name: '백운포 체육공원',
+      links: { S: 'busan_baegunpo_2' } },
+    { id: 'busan_baegunpo_2', name: '백운포 방파제',
+      links: { N: 'busan_baegunpo_1' } },
+  ],
+};
+
 /** 지역 ID → 맵 그래프 조회 */
 export const REGION_MAP_GRAPHS: Record<string, RegionMapGraph> = {
   gangwon_sokcho: SOKCHO_MAP_GRAPH,
+  busan: BUSAN_MAP_GRAPH,
 };
 
 /** 특정 맵 ID가 속한 그래프 노드 조회 */

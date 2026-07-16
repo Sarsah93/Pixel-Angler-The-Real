@@ -19,17 +19,21 @@ import {
   ExternalApiService, ExternalDataSnapshot,
   WholesalePriceInfo, SEAFOOD_AUCTION_MAPPING,
   SeaFishingIndexInfo,
+  MarineWeatherApiClient, MarineWeatherInfo, MMAF_OFFICES,
+  KmaVilageFcstApiClient, KmaWeatherInfo, KMA_GRID_BY_REGION, WeatherKind,
 } from '@tra/core';
 
 /**
- * dev 승인 인증키 (활용신청 승인분).
- * 배포 시 .env(VITE_DATA_GO_KR_API_KEY / VITE_MAFRA_API_KEY / VITE_KOSIS_API_KEY)로 이전할 것.
+ * 인증키는 전부 `.env`에서만 읽는다 (2026-07-16 하드코딩 제거).
+ *
+ * ⚠️ **소스에 키를 하드코딩하지 말 것.** 키가 없으면 각 클라이언트가 Mock으로
+ * 폴백하므로 오프라인/키 없는 환경에서도 게임은 정상 구동된다.
+ * 필요한 키는 `.env.example` 참고 → `packages/client-pc/.env` 생성.
  */
-const DEV_DATA_GO_KR_KEY = '4b172502e73121ca52a5a6ec4d6496c99ce94a250ddb738a555d6909f35b13e7';
-/** 농식품 공공데이터 포털 (data.mafra.go.kr) — 수산물 경락가격 2종 승인 키 */
-const DEV_MAFRA_KEY = 'f0b32db77604e2f537cfbcca61428aa124ba9dbfb285021c9aa0171a32cec7ac';
-/** KOSIS 국가통계포털 — 실호출 검증 완료 (2026-07-16) */
-const DEV_KOSIS_KEY = 'NjVmYzFhOTFiNmNkZTA2YjNkMTZlODhmZmJiYjU2NGE=';
+function envKey(name: string): string | undefined {
+  const v = (import.meta.env as Record<string, unknown>)[name];
+  return typeof v === 'string' && v.length > 0 ? v : undefined;
+}
 
 /** 지역 ID → KOSIS 시도명 접두 매핑 */
 const REGION_TO_SIDO: Record<string, string> = {
@@ -57,7 +61,12 @@ const KOSIS_SPECIES_MATCH: { keywords: string[]; speciesIds: string[] }[] = [
   { keywords: ['참돔'], speciesIds: ['red_seabream'] },
   { keywords: ['돌돔', '줄돔'], speciesIds: ['stone_beakperch', 'spotted_knifejaw'] },
   { keywords: ['넙치', '광어'], speciesIds: ['flatfish'] },
-  { keywords: ['가자미'], speciesIds: ['flounder'] },
+  // 가자미/도다리류 — 세부 분류를 포괄 분류('가자미')보다 먼저 둘 것 ('강도다리'⊃'도다리')
+  { keywords: ['문치가자미'], speciesIds: ['flounder'] },
+  { keywords: ['강도다리'], speciesIds: ['starry_flounder'] },
+  { keywords: ['도다리'], speciesIds: ['frog_flounder', 'flounder'] },
+  { keywords: ['가자미'], speciesIds: ['flounder', 'frog_flounder', 'starry_flounder'] },
+  { keywords: ['개서대', '서대'], speciesIds: ['tonguefish'] },
   { keywords: ['고등어'], speciesIds: ['chub_mackerel'] },
   { keywords: ['전갱이'], speciesIds: ['horse_mackerel'] },
   { keywords: ['조피볼락', '우럭'], speciesIds: ['black_rockfish'] },
@@ -66,22 +75,66 @@ const KOSIS_SPECIES_MATCH: { keywords: string[]; speciesIds: string[] }[] = [
   { keywords: ['농어'], speciesIds: ['sea_bass'] },
   { keywords: ['숭어'], speciesIds: ['striped_mullet', 'redlip_mullet'] },
   { keywords: ['붕장어'], speciesIds: ['conger_eel'] },
+  { keywords: ['갯장어', '하모'], speciesIds: ['pike_conger'] },
   { keywords: ['노래미'], speciesIds: ['fat_greenling', 'greenling'] },
+  // '말쥐치'⊃'쥐치' — 반드시 말쥐치를 먼저 둘 것
+  { keywords: ['말쥐치'], speciesIds: ['black_scraper'] },
   { keywords: ['쥐치'], speciesIds: ['filefish'] },
   { keywords: ['갈치'], speciesIds: ['hairtail'] },
   { keywords: ['복'], speciesIds: ['tiger_puffer', 'fine_puffer'] },
   { keywords: ['망둥어', '망둑'], speciesIds: ['yellowfin_goby'] },
+  // ── 신규 어종 (2026-07-16) ──
+  { keywords: ['꽁치'], speciesIds: ['pacific_saury'] },
+  { keywords: ['눈볼대', '금태'], speciesIds: ['blackthroat_seaperch'] },
+  { keywords: ['눈퉁멸'], speciesIds: ['round_herring'] },
+  { keywords: ['대구'], speciesIds: ['pacific_cod'] },
+  { keywords: ['덕대'], speciesIds: ['korean_pomfret'] },
+  { keywords: ['병어'], speciesIds: ['silver_pomfret', 'korean_pomfret'] },
+  { keywords: ['도루묵'], speciesIds: ['sandfish'] },
 ];
+
+/**
+ * 지역 ID → 해양기상 관측소 지점코드(mmsi).
+ * 현재는 속초(주문진항동방파제등대)만 확정 — 맵 개발 진행에 따라 확장.
+ * ※ 동해청 관측소는 수온 센서가 없다(전국 11개소만 수온 관측).
+ */
+const REGION_TO_MMSI: Record<string, string> = {
+  gangwon_sokcho: '994403810', // 주문진항동방파제등대 (풍향·풍속·기온·습도·기압·시정 — 수온 없음)
+  busan: '994401579',          // 감천항유도등부표(랜비) — **실측 수온 보유** (감천항 필드와 최적 매칭)
+};
+
+/**
+ * CORS 우회 프록시 오리진 (dev 전용).
+ * NMPNT/MAFRA/KOSIS는 CORS 헤더가 없어 브라우저 직접 호출이 차단된다 —
+ * dev에서는 vite 프록시(vite.config.ts server.proxy)를 경유해 실데이터를 받는다.
+ * 프로덕션 빌드에는 프록시가 없으므로 원 주소 직행 → 차단 시 Mock 폴백 (배포 시 서버 프록시 필요).
+ */
+const PROXY_ORIGIN = import.meta.env.DEV ? window.location.origin : undefined;
 
 class ExternalDataStoreManager {
   private service = new ExternalApiService({
-    dataGoKrKey: (import.meta.env.VITE_DATA_GO_KR_API_KEY as string | undefined) ?? DEV_DATA_GO_KR_KEY,
-    mafraKey: (import.meta.env.VITE_MAFRA_API_KEY as string | undefined) ?? DEV_MAFRA_KEY,
-    kosisKey: (import.meta.env.VITE_KOSIS_API_KEY as string | undefined) ?? DEV_KOSIS_KEY,
+    dataGoKrKey: envKey('VITE_DATA_GO_KR_API_KEY'),
+    mafraKey: envKey('VITE_MAFRA_API_KEY'),
+    kosisKey: envKey('VITE_KOSIS_API_KEY'),
+    mafraBaseUrl: PROXY_ORIGIN ? `${PROXY_ORIGIN}/api/mafra/openapi` : undefined,
+    kosisBaseUrl: PROXY_ORIGIN ? `${PROXY_ORIGIN}/api/kosis/openapi/Param/statisticsParameterData.do` : undefined,
   });
+
+  /** 해양기상 (국립해양측위정보원) — 실측 수온·시정·염분·유향유속 */
+  private marineClient = new MarineWeatherApiClient(
+    envKey('VITE_NMPNT_API_KEY'),
+    PROXY_ORIGIN ? `${PROXY_ORIGIN}/api/nmpnt` : undefined,
+  );
+
+  /** 기상청 단기예보 — 하늘상태·강수·파고 (해양기상 API에 없는 항목) */
+  private kmaClient = new KmaVilageFcstApiClient(envKey('VITE_DATA_GO_KR_API_KEY'));
 
   private _snapshot: ExternalDataSnapshot | null = null;
   private _promise: Promise<void> | null = null;
+  /** 전국 관측소 최신 해양기상 (지점코드 → 관측값) */
+  private _marine = new Map<string, MarineWeatherInfo>();
+  /** 지역별 기상청 현재 기상 (지역 ID → 기상) */
+  private _kma = new Map<string, KmaWeatherInfo>();
 
   get snapshot(): ExternalDataSnapshot | null {
     return this._snapshot;
@@ -94,14 +147,106 @@ class ExternalDataStoreManager {
   fetchAll(): Promise<void> {
     if (this._snapshot) return Promise.resolve();
     if (this._promise) return this._promise;
-    this._promise = this.service.fetchAll()
-      .then((snap) => {
+    // 해양기상은 독립 API — 실패해도 나머지 수집을 막지 않도록 분리해서 병행
+    this._promise = Promise.all([
+      this.service.fetchAll().then((snap) => {
         this._snapshot = snap;
         const r = snap.realData;
         console.log(`[ExternalDataStore] 수집 완료 — 낚시지수:${r.fishingIndex ? '실데이터' : 'Mock'}, 경락가:${r.marketPrices ? '실데이터' : 'Mock'}, 어획량:${r.regionalCatch ? '실데이터' : 'Mock'}`);
-      })
+      }),
+      this.marineClient.fetchAllStations()
+        .then((list) => {
+          this._marine = new Map(list.map((m) => [m.mmsi, m]));
+          const wt = list.filter((m) => m.waterTempC !== undefined).length;
+          console.log(`[ExternalDataStore] 해양기상 ${list.length}개 관측소 수집 (수온 보유 ${wt}개소)`);
+        })
+        .catch((e) => { console.warn('[ExternalDataStore] 해양기상 수집 실패 — 건너뜀', e); }),
+      this.fetchKmaAll()
+        .catch((e) => { console.warn('[ExternalDataStore] 기상청 수집 실패 — 건너뜀', e); }),
+    ]).then(() => undefined)
       .finally(() => { this._promise = null; });
     return this._promise;
+  }
+
+  /** 전 지역 기상청 현재 기상 수집 — 지역별 실패는 무시하고 나머지를 살린다 */
+  private async fetchKmaAll(): Promise<void> {
+    const ids = Object.keys(KMA_GRID_BY_REGION);
+    const settled = await Promise.allSettled(ids.map(async (id) => {
+      const g = KMA_GRID_BY_REGION[id];
+      return [id, await this.kmaClient.fetchCurrent({ nx: g.nx, ny: g.ny })] as const;
+    }));
+    for (const r of settled) if (r.status === 'fulfilled') this._kma.set(r.value[0], r.value[1]);
+    console.log(`[ExternalDataStore] 기상청 ${this._kma.size}/${ids.length}개 지역 수집`);
+  }
+
+  // ── 4) 해양기상 (국립해양측위정보원 76개 관측소) ────────
+  /** 전국 관측소 최신 관측값 전체 */
+  getAllMarineWeather(): MarineWeatherInfo[] {
+    return [...this._marine.values()];
+  }
+
+  /** 지점코드로 관측값 조회 */
+  getMarineWeather(mmsi: string): MarineWeatherInfo | undefined {
+    return this._marine.get(mmsi);
+  }
+
+  /**
+   * 지역 ID의 해양기상 (REGION_TO_MMSI 매핑 기준).
+   * 매핑이 없는 지역은 undefined — 맵 개발 진행에 따라 매핑을 확장할 것.
+   */
+  getRegionMarineWeather(regionId: string): MarineWeatherInfo | undefined {
+    const mmsi = REGION_TO_MMSI[regionId];
+    return mmsi ? this._marine.get(mmsi) : undefined;
+  }
+
+  /** 기관(청)별 관측값 — 예: '101' 부산청 */
+  getMarineWeatherByOffice(mmaf: string): MarineWeatherInfo[] {
+    return this.getAllMarineWeather().filter((m) => m.mmaf === mmaf);
+  }
+
+  /** 기관코드 → 기관명 */
+  getOfficeName(mmaf: string): string {
+    return MMAF_OFFICES[mmaf] ?? '';
+  }
+
+  // ── 5) 기상청 단기예보 (하늘상태·강수·파고) ────────────
+  /** 지역 ID의 기상청 현재 기상 */
+  getKmaWeather(regionId: string): KmaWeatherInfo | undefined {
+    return this._kma.get(regionId);
+  }
+
+  /**
+   * HUD 표시용 날씨 종류.
+   *
+   * 기상청 SKY/PTY로 맑음·흐림·비·눈을 판정하되,
+   * **안개는 기상청 코드에 없으므로** 해양기상 관측소의 시정(HORIZON_VISIBL)으로 보강한다.
+   * 강수 중이 아니고 시정 1km 미만이면 안개로 본다.
+   */
+  getWeatherKind(regionId: string): WeatherKind {
+    const kma = this._kma.get(regionId);
+    const kind = kma?.kind ?? 'clear';
+    // 비/눈이 오는 중이면 안개보다 강수 표시가 우선
+    if (kind !== 'clear' && kind !== 'partly' && kind !== 'cloudy') return kind;
+    const marine = this.getRegionMarineWeather(regionId);
+    if (marine?.visibilityM !== undefined && marine.visibilityM < 1000) return 'fog';
+    return kind;
+  }
+
+  /**
+   * 지역 파고 (m).
+   * 해양기상 API는 파고를 **전 관측소 미관측(0/76)** 이므로 기상청 단기예보(WAV)만이 소스다.
+   */
+  getWaveHeightM(regionId: string): number | undefined {
+    return this._kma.get(regionId)?.waveHeightM;
+  }
+
+  /**
+   * 지역 수온 (°C).
+   * 해양기상 실측 수온을 우선하되, 해당 권역에 수온 관측소가 없으면 undefined
+   * (수온 관측은 전국 11/76개소뿐 — 동해청(속초)은 전무).
+   */
+  getWaterTempC(regionId: string): number | undefined {
+    return this.getRegionMarineWeather(regionId)?.waterTempC;
   }
 
   // ── 1) 바다낚시지수 → 입질 확률 보정 ─────────────────

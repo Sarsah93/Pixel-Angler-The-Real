@@ -281,11 +281,78 @@ npx pnpm --filter @tra/client-pc run dev
 ## 9. 현재 빌드 상태 (2026-07-14 기준)
 
 ```
-npx pnpm run build → ✅ 4/4 패키지 성공 (2026-07-15)
-npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류 (2026-07-15)
+npx pnpm run build → ✅ 4/4 패키지 성공 (2026-07-16)
+npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류 (2026-07-16)
 ```
 
-**최근 주요 변경 (2026-07-16 2차, 최신)**:
+**최근 주요 변경 (2026-07-17 4차, 최신)**:
+- **[배포] 1차 테스트 빌드 GitHub Pages 공개** — **https://sarsah93.github.io/Pixel-Angler-The-Real/** (라이브 검증 완료: 리소스 404 0건, 메인 메뉴~부산 필드 기동, 기상청 실데이터 수신):
+  - 배포 절차: `npx pnpm run build` → `../pixel-angler-gh-pages` git worktree(orphan `gh-pages` 브랜치)에 dist 복사(**소스맵 `*.map` 제외**) → commit/push. Pages 소스는 gh-pages 브랜치 루트(.nojekyll 포함). **재배포 시 같은 worktree에서 dist 덮어쓰고 push만 하면 됨.**
+  - **⚠️ 에셋 경로 규칙 (중요)**: `vite base: './'` + 게임 내 모든 에셋 로드가 **상대 경로**로 전환됨(BootScene 28건, RegionFieldScene 2건). 서브패스 호스팅(github.io/레포명/) 때문 — **새 에셋 로드에 선행 `/`를 쓰면 배포에서 404**.
+  - ⚠️ 번들에 공공 API 키 3종 인라인 공개됨(사용자 승인). 정적 호스팅이라 NMPNT/MAFRA/KOSIS는 Mock 폴백, **기상청은 라이브에서도 실데이터**(apis.data.go.kr CORS 허용).
+- **[개편] 요리 탭 레이아웃**: 도마를 좌측으로 이동, 우측에 **임베드 인벤토리**(요리 창에 종속 — 별도 드래그 창 아님) — 카테고리 탭(음식 기본)/5×5 소켓/아이콘·수량·신선도 점/아이템 선택. 손질 시스템 구현 시 선택 아이템을 도마에 올리는 연동 예정.
+- **[수정] ESC 일시정지 메뉴 클릭 관통**: 메뉴 항목 클릭이 같은 프레임 씬 pointerdown으로 흘러 물가 근처에서 "채비가 불완전합니다 (U 채비하기)" 캐스팅 힌트가 뜨던 버그 — `closePauseMenu()`에 `suppressClickUntil` 250ms 유예 추가(팝업 스택 close()와 동일 패턴).
+
+**이전 변경 (2026-07-17 3차)**:
+- **[수정] 잠금 지역 안내 문구 동적화** (`WorldMapScene.showLockedRegionAlert`): "현재는 '강원 속초'만 입장할 수 있습니다" 하드코딩 제거 → `isRegionUnlocked` 기준으로 입장 가능 지역을 동적 나열 ("입장 가능: 강원 속초 · 부산"). 지역이 추가 개방되면 자동 반영.
+- **[수정] 핀 편집 Dev Tool을 dev 빌드 전용으로 게이팅**: `import.meta.env.DEV`로 버튼 생성·P키 바인딩 모두 차단 — **프로덕션 빌드에는 버튼이 렌더되지 않고 P키도 무반응** (vite preview로 dist 실검증 완료. vite가 프로덕션에서 `import.meta.env.DEV`를 false 상수로 치환해 데드코드 제거).
+
+**이전 변경 (2026-07-17 2차)**:
+- **[신규] 부산 필드 타일맵 8종 + 출조 개방** (`pixelazed/busan/` → `py tools/build_region_maps.py busan` → `public/data/busan/`, 브라우저 실렌더 검증 완료):
+  - 원본 지도 캡처 8장을 파이프라인 규칙(`{mapId}.png`)으로 개명 후 생성 — 감천서 2·감천동 3·암남 1·백운포 2 (93×54 타일, 방파제 맵은 바다 78~82%).
+  - **`BUSAN_MAP_GRAPH`** (core/RegionMap.ts) — 3개 분리 컴포넌트: 서방파제(감천동1↕방파제2) / 동방파제(제3부두1↕수산시장2↕방파제3, **부두1↔E↔암남1**) / 백운포(공원1↕방파제2). 구역별 스폰 맵은 RegionAreaNode.fieldMapId. `enterable: false` 전부 해제 — 부산 출조 개방. 백운포 로마자 `baekunpo`→`baegunpo` 정정.
+  - **중앙 스폰 확인**: 출조 진입(entryEdge 없음)은 기존 `computeSpawnTile`이 이미 맵 중앙 `nearestWalkable` — 4구역 실측 편차 1~3타일. 맵 간 이동은 엣지 스폰 유지(실측 col=5). **신규 코드 불필요 — 기존 동작이 명세와 일치.**
+  - `RegionMapGraph.depthProfileUrl` 신설 — 수심 프로필은 등록된 지역만 로드. (미등록 지역을 무조건 로드하면 Vite dev SPA 폴백이 index.html을 돌려줘 JSON 파싱 pageerror 발생 — 부산 검증에서 발견·수정. 속초만 등록됨.)
+- **[신규] snagRisk → 1인칭 밑걸림 실연동**: `BiteContext.snagRiskMult`(타이머 누적 속도 × 발동 확률 모두 배율) + `SNAG_RISK_MULT`(low 0.6/mid 1.0/high 1.6) + `getAreaSnagRiskMult(GameState.currentSpotId)`. **1000회 시뮬레이션: 여밭 방치 시 평균 밑걸림 low 14.9초 / mid 8.9초 / high 5.8초** — 감천항·암남(high)에서는 뒷줄견제(H)가 필수. H 리셋 회귀 확인.
+- **[신규] CORS 프록시 — NMPNT/MAFRA/KOSIS 실데이터화** (dev): `vite.config.ts server.proxy`에 `/api/nmpnt`·`/api/mafra`·`/api/kosis` → 원 서버 프록시. `ExternalApiKeys`에 `mafraBaseUrl`/`kosisBaseUrl` 신설, KOSIS 클라이언트 baseUrl 주입 가능화. ExternalDataStore가 `import.meta.env.DEV`일 때만 프록시 오리진 경유. **검증: CORS 차단 0건, 낚시지수·경락가·어획량·해양기상 76개소·기상청 11지역 전부 실데이터.** ⚠️ 프로덕션 빌드에는 vite 프록시가 없다 — 배포 시 서버 프록시 필수(HTTP 전용 MAFRA/NMPNT 포함).
+  - `REGION_TO_MMSI`에 부산 추가: `994401579` 감천항유도등부표 — **실측 수온 보유**(전국 11개소 중 하나, 감천항 필드와 최적 매칭).
+
+**이전 변경 (2026-07-17 1차)**:
+- **[변경] 채비 바늘/미끼 소켓 분리** (`InventoryStore` + `UtilizationPanel` + `FirstPersonFishingScene`, 브라우저 실렌더 검증 완료):
+  - `RigStepKey`의 `hookBait` 통합 소켓 → **`hook`(바늘/루어) / `bait`(미끼) 2소켓** (총 8소켓 체인, 소켓 폭 122→110px 축소로 패널 내 수용).
+  - **루어(가짜미끼) 분류 신설**: `subCategory: '루어'` = 바늘 일체형(미노우 등). 판별 헬퍼 `isHookItem`/`isBaitItem`/`isLureItem` export. 시드에 미노우 90F·메탈지그 20g 추가.
+  - **루어 장착 시 미끼 소켓 비활성**: `setRigPart('hook', 루어)` → 미끼 소켓 자동 비움(유령 미끼 방지), U창에서 회색 '루어 장착 중 — 미끼 불필요' 표시 + 클릭 불가. `hookNeedsBait()`로 판별.
+  - **캐스팅 게이트 조건부**: `getMissingRigParts()`에서 미끼는 일반 바늘일 때만 필수 — 루어 채비는 미끼 없이 캐스팅 가능.
+  - **소모/손실 규칙 변경**: 입질 시 미끼 소모는 일반 바늘만(루어는 닳지 않음). `hook_off`/`escaped`는 **미끼만 손실**(바늘은 원줄에 남음 — 기존엔 바늘째 잃었음), 루어 채비는 손실 없음("루어는 무사히 회수"). 줄터짐/복어/밑걸림은 hook+bait 모두 손실. `currentBaitKey()`는 루어 장착 시 `'lure'` 반환(오라클 미끼 가중 연동).
+- **[신규] 부산 지역 출조 구역 4곳 + 낚시터 특성 카드** (실지 리서치 2026-07-16 기반):
+  - `RegionAreaNode` 확장: `details`(특성 상세 줄)/`depthRangeM`/`snagRisk`(low·mid·high + `SNAG_RISK_LABEL`)/**`enterable`(false면 핀·설명은 표시하되 출조 차단 — '필드 준비중')**.
+  - 부산 4구역: 감천항 서방파제(21,232)·동방파제(32,227)·암남공원/송도(52,208)·백운포 체육공원(176,137) — **전부 `enterable: false`** (타일맵 미제작. `busan_gamcheon_west_1` 등 fieldMapId는 예약). 핀 좌표는 `pixelazed/busan_2_pixelazed -pin.png`의 노란 점 4개를 픽셀 diff+클러스터링으로 추출.
+  - 속초 2구역에 `details` 보강(속초항 5줄/동명항 4줄). `showAreaConfirm` 카드가 상세·수심·밑걸림을 표시하고, `enterable:false`면 '예' 버튼이 비활성 '준비중'으로 바뀜(핸들러 미등록 — 실클릭 검증 완료).
+  - ⚠️ **부산은 이제 `isRegionUnlocked` 잠금 해제 상태** (REGION_AREA_NODES 존재 = 해제). 지역 줌인·핀 선택 가능, 인게임 진입만 차단. 타일맵 제작 후 `enterable: false` 제거하면 출조 개방.
+- **[리팩토링] main.ts → game.ts 팩토리 분리**: import 부작용(즉시 `new Phaser.Game`) 제거 — `createGame()` + `globalThis.__PIXEL_ANGLER_GAME` 싱글턴 가드. 하네스/HMR이 main.ts를 재평가해도 이중 생성 불가(검증: import×2+createGame×2 후 canvas 1개). 씬 등록 목록은 game.ts로 이동 — **새 씬 추가 시 game.ts를 수정할 것**.
+- **⚠️ 검증 하네스 함정 (Vite dev)**: `import('/src/store/InventoryStore.js')`와 `.ts`는 **별개 모듈 인스턴스**다(게임은 Vite가 리라이트한 `.ts` URL 사용). 하네스에서 게임 상태를 조작하려면 반드시 `.ts` URL로 import할 것. HMR 후에는 `?t=` 버전 분화도 생기므로 서버 재시작 후 검증 권장.
+
+**이전 변경 (2026-07-16 5차)**:
+- **[신규] 해양수산부 국립해양측위정보원 해양기상 API 연동** (`core/api-client/MarineWeatherApiClient.ts` + `core/db-schema/MarineStations.ts`, **실호출 검증 완료 — 전국 76개 관측소 76/76 수집**):
+  - 엔드포인트 `http://marineweather.nmpnt.go.kr:8001/openWeatherNow.do`(최신) / `openWeatherDate.do`(날짜별, 10분 간격 ~143건/일). 인증 파라미터는 `serviceKey`(**UUID 형식** — 공공데이터포털 15033708은 LINK 유형이라 `marineweather.nmpnt.go.kr`에서 별도 발급).
+  - **키는 `.env`(`VITE_NMPNT_API_KEY`)에서만 로드 — 하드코딩 금지.** `packages/client-pc/.env`에 저장(gitignore 확인됨). 기존 dev 키들(data.go.kr/MAFRA/KOSIS)은 여전히 소스 하드코딩 상태 — **배포 전 .env 이전 필요**.
+  - `MARINE_STATIONS` 레지스트리 76개소/13개 기관(101 부산청 ~ 113 진도소) — 지점코드·기관코드·센서 보유 플래그. 미문서 엔드포인트 `POST /serviceReq/getStationInfo.json`에서 추출.
+  - `ExternalDataStore`에 통합 — `getAllMarineWeather()`/`getMarineWeather(mmsi)`/`getRegionMarineWeather(regionId)`/`getMarineWeatherByOffice(mmaf)`. 해양기상은 독립 API라 실패해도 기존 수집을 막지 않도록 병행 실행. `REGION_TO_MMSI`는 현재 속초만 매핑(맵 개발 진행에 따라 확장).
+  - **⚠️ `mmaf`(기관코드)와 `mmsi`(지점코드) 둘 다 필수** — 하나라도 빠지면 HTTP 400 `"mmaf가 없습니다."`. 한 요청의 mmsi는 **모두 같은 mmaf 소속**이어야 하므로 전국 수집은 **기관 단위 13회 호출**로 분할한다. (초기 구현이 mmaf를 누락해 전량 Mock 폴백되던 것을 실호출 검증으로 발견·수정.)
+  - **⚠️ 데이터 한계 (중요 — 설계 시 반드시 고려)**:
+    - **파고/파향: 0/76 관측소 — 어디서도 관측하지 않음**(`WAVE_HEIGTH`는 항상 '미제공'). 파고는 KHOA 또는 기존 바다낚시지수 API를 쓸 것.
+    - **수온: 11/76 관측소만**. **동해청(속초 권역)은 수온 관측소가 전무** — 가장 가까운 수온 관측소는 포항(`1103579`).
+    - **강수·운량 필드 자체가 없음 → 비/맑음/흐림 판정 불가.** 이 API는 해양 센서(풍향·풍속·기온·습도·기압·시정·수온·염분·유향유속) 전용. HUD 날씨 아이콘의 비/맑음/흐림에는 **기상청 단기예보 API가 별도로 필요**(안개는 시정 22/76으로 추정 가능, 바람은 풍속으로 가능).
+    - **HTTP 전용(포트 8001)** — HTTPS 배포 시 프록시 필요(MAFRA와 동일 제약).
+    - 응답 필드명 `WAVE_HEIGTH`는 **원본 API의 오탈자**(HEIGHT 아님). `dataType=2`는 결측을 '미제공'/'데이터없음'/'-' 센티널로 표기 → normalize에서 `undefined`로 제거. 에러도 HTTP 400 + `result.status='ERROR'`로 오므로 **HTTP 상태만 보지 말 것**.
+
+**이전 변경 (2026-07-16 4차)**:
+- **[수정] 어획물 판매가에 어종·길이가 전혀 반영되지 않던 문제** (`InventoryStore.getSellPrice`): 정식 엔진 `evaluateFishSellPrice`(core)가 **구현되어 있으나 어디서도 호출되지 않는 사문(dead code)** 상태였고, 실제 판매 경로는 `basePrice(= 무게 × 12원) × 0.6`이라 **어종·길이가 완전히 무시**되었음(1kg 돌돔과 1kg 눈퉁멸이 동일가). 판매 경로를 엔진에 연결 — 어종별 kg 단가 × 중량 × 등급 배율 × 길이 배율. 검증: 1kg 기준 돌돔 100,320원 ↔ 눈퉁멸 3,432원으로 분화, 감성돔 1kg의 25cm↔50cm 차 7,500원.
+  - **[수정] 크기가 다른 같은 어종이 병합되며 실측치가 유실되던 버그**: `addItem`은 동일 id를 수량 병합하는데 어획물 id가 `inv_catch_{어종}`이라 30cm·50cm 감성돔이 한 스택으로 합쳐져 **뒤 개체의 크기/가격이 첫 개체 기준으로 굳었음**. `InventoryStore.nextCatchSeq()`로 개체마다 고유 id(`inv_catch_{어종}_{seq}`) 부여.
+  - **[신규] `InvItem`에 어획물 실측치 필드**: `speciesId`/`lengthCm`/`weightG`. 어획물 판매가는 이 값으로 산정하며, 없으면 레거시 `basePrice` 폴백.
+  - **⚠️ 시세 배율 이중 적용 주의**: `evaluateFishSellPrice`에 경락가 캐시(`getWholesaleCache`)를 넘기면 kg 단가가 당일 시세로 **대체**된다. 여기에 `getMarketPriceFactor`를 또 곱하면 이중 적용 — 곱하지 말 것.
+
+**이전 변경 (2026-07-16 3차)**:
+- **[갱신] 어종 15종 실측 데이터 반영 — 신규 12종 + 기존 4종 보정 (총 오라클 43종 / FISH_DATABASE 42종)**:
+  - **신규 12종**: 개서대(`tonguefish`)·갯장어(`pike_conger`, 하모)·꽁치(`pacific_saury`)·눈볼대/금태(`blackthroat_seaperch`)·눈퉁멸(`round_herring`)·대구(`pacific_cod`)·덕대(`korean_pomfret`)·병어(`silver_pomfret`)·도다리(`frog_flounder`)·강도다리(`starry_flounder`)·도루묵(`sandfish`)·말쥐치(`black_scraper`). 4계층(오라클/FISH_DATABASE/`SEAFOOD_AUCTION_MAPPING`/MAFRA·KOSIS 매칭) 전부 등록.
+  - **기존 4종 실측 보정**: ① 갈치 — 학명 `T. lepturus`→`T. japonicus`, 진흙·모래 20~150m, **금지체장·금어기 7월 신규 반영. 법정 기준은 항문장 18cm이나 게임은 전장(`lengthCm`)으로 판정하므로 전장 환산값 47cm를 사용**(검증: 야간 심해 스폰 갈치의 6.4%가 미달 판정 — 18cm 그대로였다면 최소 스폰 40cm에 막혀 규칙이 무력했음) ② 고등어 — **금어기 [5]→[4,5,6] 정정**, 수심 0~300m, 최대 60cm ③ 광어 — **금지체장 21cm→35cm 정정(기존 값 오류)**, 10~200m, 평균 40~60cm ④ 문치가자미 — 도다리/강도다리와 어종 분리에 따라 `flounder`를 '참도다리(문치가자미)'로 개명(nameEn `Starry Flounder`→`Marbled Flounder`, 강도다리에 양보).
+  - **[수정] 기존 DB 드리프트 4건**: 오라클↔FISH_DATABASE 불일치 — 볼락/황볼락 금지체장(오라클 15 vs DB 0), 조피볼락·열기 이름 표기. "ID·값 표준 = 오라클" 원칙에 따라 FISH_DATABASE를 오라클로 정렬.
+  - **⚠️ 매칭 테이블 순서 규칙 (신규)**: `MAFRA_ITEM_TO_SPECIES`와 `KOSIS_SPECIES_MATCH`는 **부분 일치(`includes`) + 선착순(`find`)** 이므로, 품목명이 포함 관계면 **더 긴 쪽을 반드시 먼저** 둘 것. 현재 함정: `'말쥐치'⊃'쥐치'`, `'강도다리'⊃'도다리'`, `'개서대'⊃'서대'`. 순서가 뒤바뀌면 조용히 오매칭된다.
+  - **[확정] 학명 4건 (사용자 확인 완료)**: 참도다리 `Pseudopleuronectes yokohamae` / 강도다리 `Platichthys stellatus` / 덕대 `Pampus echinogaster` / 병어 `Pampus argenteus`. 덕대·병어 학명 분리 완료. (참돔 `red_seabream`↔참돔 야간 `night_seabream`의 `Pagrus major` 중복은 같은 생물종의 주/야간 엔트리 분리로 **의도된 설계** — 학명 중복 검사 시 예외.)
+  - **[해소] 전갱이·쥐치 FISH_DATABASE 등록** (사용자 데이터 제공): 오라클에만 있어 도감 조회가 불가하던 2종 추가 → **오라클 43종 전부 FISH_DATABASE 등록 완료** (FISH_DATABASE 44종 = 43 + 참돔 야간 `night_seabream`. 야간 참돔은 오라클 미등록이 의도된 설계). 전갱이는 실측 반영해 오라클에 `nightBonus: 1.4` 신규 부여(기존엔 야간 보정 없었음), 쥐치는 수심 5~30m로 정정.
+    - 제공 데이터의 타입 오류 2건 교정: `'boat'`→`'boat_fishing'`(SpotType에 `boat` 없음), `'krill'`→`'krill_frozen'`(BaitCategory에 `krill` 없음 — `BaitKey`의 `krill`과 혼동 주의. **두 타입은 별개 체계**).
+
+**이전 변경 (2026-07-16 2차)**:
 - **[갱신] 벵에돔 실측 보정 + 어종 2종 신규 (사용자 제공 데이터, 총 31종)**: ① 벵에돔 — 내만성 3~15m, 빵가루(50)/크릴(30)/갯지렁이(20), 최대 55cm 3.5kg, **금지체장 없음**(20~23cm 자율 방생), 약은 입질(mouthFragility 0.3) ② **긴꼬리벵에돔(longtail_blackfish)** — 외양성 암초 10~30m(밑밥 시 표층 부상 — mid+surface), 크릴 70 압도적, 이빨로 목줄 절단(`lineCutter`), 난류/제주·남해 ③ **가숭어(redlip_mullet, 밀치)** — 기수역 진흙/모래 1~15m, 숭어류 최대(100cm 8kg), 겨울(11~2월) 제철 ④ 참숭어(striped_mullet) — 표층 회유, 청갯지렁이 55, 3~5월 보리숭어로 보정. FishDatabase/오라클/MAFRA 매칭(가숭어·밀치 품종 분기)/KOSIS 숭어류 다중 매핑/Economy 기본 단가 모두 반영.
 - **[신규] `bread` 미끼 분류**: BaitKey에 빵가루 경단·떡밥 추가 (기존 TODO 해소 — 숭어 corn 대체 제거). 인벤토리/식자재마트에 '빵가루 경단' 아이템(반죽미끼) 추가, 1인칭 미끼 매핑('빵'/'떡밥'→bread) 연동.
 

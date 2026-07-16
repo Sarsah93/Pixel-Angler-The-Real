@@ -418,6 +418,8 @@ export class MainMenuScene extends Phaser.Scene {
       { label: '게임 시작', action: () => { this.view = 'start'; this.buildView(); } },
       { label: '도감', action: () => this.openAnglerLog() },
       { label: '설정', action: () => this.openSettings() },
+      // 공공데이터 이용약관의 출처 표시 의무 이행 화면
+      { label: '데이터 출처', action: () => this.openCredits() },
       { label: '게임 종료', action: () => this.quitGame() },
     ];
   }
@@ -501,6 +503,16 @@ export class MainMenuScene extends Phaser.Scene {
     this.cameras.main.once('camerafadeoutcomplete', () => {
       this.scene.pause('MainMenuScene');
       this.scene.launch('AnglerLogScene', { returnScene: 'MainMenuScene' });
+    });
+    this.events.once('resume', () => this.cameras.main.fadeIn(220, 1, 8, 18));
+  }
+
+  /** 데이터 출처·저작권 고지 (공공데이터 이용약관 출처 표시 의무) */
+  private openCredits(): void {
+    this.cameras.main.fadeOut(200, 1, 8, 18);
+    this.cameras.main.once('camerafadeoutcomplete', () => {
+      this.scene.pause('MainMenuScene');
+      this.scene.launch('CreditsScene', { returnScene: 'MainMenuScene' });
     });
     this.events.once('resume', () => this.cameras.main.fadeIn(220, 1, 8, 18));
   }

@@ -149,8 +149,37 @@ export { KosisCatchApiClient, getMockRegionalCatch } from './api-client/KosisCat
 export type { ExternalApiKeys, ExternalDataSnapshot } from './api-client/ExternalApiService.js';
 export { ExternalApiService } from './api-client/ExternalApiService.js';
 
+// 해양수산부 국립해양측위정보원 해양기상 (전국 76개 관측소)
+export type { NmpntWeatherRow, MarineWeatherInfo } from './api-client/MarineWeatherApiClient.js';
+export { MarineWeatherApiClient, parseNmpntDateTime } from './api-client/MarineWeatherApiClient.js';
+export type { MarineStation, StationSensors } from './db-schema/MarineStations.js';
+export {
+  MARINE_STATIONS, MMAF_OFFICES, getStation, getStationsByOffice, getStationsWithSensor,
+} from './db-schema/MarineStations.js';
+
+// 기상청 단기예보 (하늘상태·강수·파고 — 해양기상 API에 없는 항목)
+export type {
+  SkyCode, PtyCode, WeatherKind, KmaFcstItem, KmaGrid, KmaWeatherInfo,
+} from './api-client/KmaVilageFcstApiClient.js';
+export {
+  KmaVilageFcstApiClient, WEATHER_LABEL, resolveWeatherKind, parsePrecipitation,
+  ultraSrtNcstBase, vilageFcstBase,
+} from './api-client/KmaVilageFcstApiClient.js';
+export type { KmaGridPoint } from './db-schema/KmaGridPoints.js';
+export { KMA_GRID_BY_REGION, getKmaGrid } from './db-schema/KmaGridPoints.js';
+
+// 공공데이터 출처 표기 (이용약관상 출처 표시 의무)
+export type { DataAttribution, DataLicense } from './db-schema/DataAttributions.js';
+export {
+  DATA_ATTRIBUTIONS, LICENSE_LABEL, groupAttributionsByProvider,
+} from './db-schema/DataAttributions.js';
+
 // Utils
 export { getApproxLunarDay, getLunarDayDisplay } from './utils/LunarCalendar.js';
+export type { KstParts } from './utils/KstTime.js';
+export {
+  toKstDate, kstParts, kstHour, kstYmd, isNightHour, isNightNow,
+} from './utils/KstTime.js';
 export { getDistanceBetweenCoordinates } from './utils/GeoUtils.js';
 export { latLonToDotMapXY, dotMapXYToWorld, latLonToKmaGrid, haversineDistanceKm, enrichSpotCoordinates } from './utils/CoordinateUtils.js';
 
@@ -199,8 +228,8 @@ export {
 
 export type { FishingSpotNode, WorldMapSpotType, RegionAreaNode } from './types/WorldMap.js';
 export {
-  WORLD_NODE_DATABASE, REGION_AREA_NODES,
-  isRegionUnlocked, getRegionAreaNodes,
+  WORLD_NODE_DATABASE, REGION_AREA_NODES, SNAG_RISK_LABEL, SNAG_RISK_MULT,
+  isRegionUnlocked, getRegionAreaNodes, getAreaNodeById, getAreaSnagRiskMult,
 } from './types/WorldMap.js';
 
 // Region Map (지역 상세 타일맵)
@@ -209,6 +238,6 @@ export type {
   RegionMapLinks, RegionMapNode, RegionMapGraph,
 } from './types/RegionMap.js';
 export {
-  TERRAIN_BY_CHAR, OPPOSITE_EDGE, SOKCHO_MAP_GRAPH,
+  TERRAIN_BY_CHAR, OPPOSITE_EDGE, SOKCHO_MAP_GRAPH, BUSAN_MAP_GRAPH,
   REGION_MAP_GRAPHS, getRegionMapNode,
 } from './types/RegionMap.js';

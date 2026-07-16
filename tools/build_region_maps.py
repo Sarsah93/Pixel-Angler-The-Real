@@ -169,6 +169,17 @@ REGIONS = {
         ('sokcho_dongmyeonghang_2',          '동명항 (중앙)'),
         ('sokcho_dongmyeonghang_3',          '동명항 (남측)'),
     ],
+    # 부산 4구역 8맵 (2026-07-17) — 구역 간 연결은 core/RegionMap.ts BUSAN_MAP_GRAPH 참고
+    'busan': [
+        ('busan_gamcheon_west_1',  '감천항 서방파제 (감천동)'),
+        ('busan_gamcheon_west_2',  '감천항 서방파제'),
+        ('busan_gamcheon_east_1',  '감천항 제3부두·모지포'),
+        ('busan_gamcheon_east_2',  '감천항 제4부두·수산시장'),
+        ('busan_gamcheon_east_3',  '감천항 동방파제'),
+        ('busan_amnam_1',          '암남공원 주차장'),
+        ('busan_baegunpo_1',       '백운포 체육공원'),
+        ('busan_baegunpo_2',       '백운포 방파제'),
+    ],
 }
 
 def main():

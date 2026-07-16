@@ -22,6 +22,13 @@ export interface BiteContext {
   baseProbPerSec: number;
   /** 미끼가 여 밭(Reef Zone) 내부인지 */
   inReefZone: boolean;
+  /**
+   * 낚시터 밑걸림 위험 배율 (기본 1.0).
+   * RegionAreaNode.snagRisk에서 온다 — low 0.6 / mid 1.0 / high 1.6.
+   * 밑걸림 타이머 누적 속도와 발동 확률에 모두 곱해지므로,
+   * high 지역(여밭·암반)은 경고가 빨리 차고 더 자주 터진다.
+   */
+  snagRiskMult?: number;
   /** 채비 안착(Hold — 이동 속도 0 수렴) 상태인지 */
   isHold: boolean;
   /** 목줄 정렬도 A (0.0 ~ 1.0) */
@@ -111,11 +118,13 @@ export class BiteProbabilityEngine {
       * multipliers.action * multipliers.chum;
 
     // ── 밑걸림 타이머: 여 밭 Hold + 뒷줄견제 없음 ──
+    // 낚시터 위험 배율(snagRiskMult)이 타이머 누적과 발동 확률에 모두 적용된다.
+    const risk = ctx.snagRiskMult ?? 1.0;
     let event: BiteTickResult['event'] = 'none';
     if (ctx.inReefZone && ctx.isHold && !ctx.isHoldingLine) {
-      this.snagTimer += ctx.dtSec;
+      this.snagTimer += ctx.dtSec * risk;
       if (this.snagTimer >= SNAG_GRACE_SEC) {
-        if (Math.random() < SNAG_PROB_PER_SEC * ctx.dtSec) {
+        if (Math.random() < SNAG_PROB_PER_SEC * risk * ctx.dtSec) {
           event = 'snagged';
         }
       }

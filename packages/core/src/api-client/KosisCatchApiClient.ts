@@ -48,11 +48,17 @@ export function getMockRegionalCatch(): RegionalCatchStat[] {
 export class KosisCatchApiClient {
   private readonly apiKey: string;
   private readonly useMock: boolean;
-  private readonly baseUrl = 'https://kosis.kr/openapi/Param/statisticsParameterData.do';
+  private readonly baseUrl: string;
 
-  constructor(apiKey?: string) {
+  /**
+   * @param baseUrl 브라우저 CORS 우회용 프록시 주소로 교체 가능
+   *   (kosis.kr은 CORS 헤더가 없어 브라우저 직접 호출이 차단된다 —
+   *    dev는 vite 프록시 `/api/kosis/...`, 배포는 서버 프록시 필요)
+   */
+  constructor(apiKey?: string, baseUrl = 'https://kosis.kr/openapi/Param/statisticsParameterData.do') {
     this.apiKey = apiKey ?? '';
     this.useMock = !apiKey;
+    this.baseUrl = baseUrl;
   }
 
   /** 시도별 어종별 어획량 조회 (최근 3개월). 실패 시 Mock 폴백 */

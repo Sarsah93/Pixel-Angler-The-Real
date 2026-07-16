@@ -357,9 +357,9 @@ Phase 9: Tauri v2 통합 & Steam 패키징     ⬜ 대기
 **추가 (2026-07-15 6차)**: 맵 전환 인식 최외곽 1타일로 축소 + 건물 근접 시 전환 억제 / 아이템 이미지 아이콘 시스템(`ItemIcon.ts`) / 음식·생선 에셋 배치(`public/food/`, `public/fish/`) / 감성돔·광어 어획 팝업·상세 실사 이미지 / 회(사시미) 네이밍 규칙 및 식당 품목 추가.
 
 **차기 (1인칭 낚시 고도화)**:
-- 어종별 실사 픽셀 이미지 확충 (현재 감성돔/광어 2종 → 21종)
+- 어종별 실사 픽셀 이미지 확충 (현재 감성돔/광어 2종 → 43종. 사용자가 차근차근 추가 예정 — 신규 12종 `spriteKey`는 `fish_{id}` 규칙으로 이미 예약됨)
 - 어종별 단일 회 아이콘 분리 (현재 모듬회 이미지로 통일)
-- 어종 DB API 연동 매칭 (현재 core 하드코딩 21종)
+- 어종 DB API 연동 매칭 (현재 core 하드코딩 43종)
 - 기상 API 실연동 (바람/파고/조류 벡터를 목업 → 실데이터로)
 - 여 밭 배치를 해시 시드 → 실제 해저 지형 데이터 기반으로
 - 채비 부품별 무게/부력 DB 정식 연동 (현재 이름 기반 목업 수치)
@@ -401,7 +401,53 @@ Phase 9: Tauri v2 통합 & Steam 패키징     ⬜ 대기
 
 **추가 (2026-07-16 2차)**: ✅ 벵에돔 실측 보정(금지체장 없음 확정) / ✅ 긴꼬리벵에돔·가숭어 신규 (총 31종) / ✅ `bread` 미끼 분류 + 빵가루 경단 아이템 — 기존 TODO 2건 해소.
 
-**차기**: dev 키 .env 이전 / 낚시지수 placeName↔게임 지역 매핑 정밀화(속초·동명항 인근 포인트 지정) / 수집 주기(일 1회 갱신) 스케줄링 / MAFRA HTTP 엔드포인트 → HTTPS 배포 시 프록시.
+**추가 (2026-07-16 3차)**: ✅ 신규 12종 — 개서대/갯장어/꽁치/눈볼대(금태)/눈퉁멸/대구/덕대/병어/도다리/강도다리/도루묵/말쥐치 (**오라클 43종 / FISH_DATABASE 42종**) / ✅ 기존 4종 실측 보정 — 갈치(학명·금어기 7월·**금지체장 항문장 18cm → 전장 환산 47cm**), 고등어(금어기 [5]→[4,5,6]), **광어(금지체장 21→35cm 오류 정정)**, 문치가자미→'참도다리'로 개명(도다리·강도다리 분리) / ✅ 오라클↔FISH_DATABASE 드리프트 4건 정렬(볼락·황볼락 금지체장, 조피볼락·열기 표기) / ✅ MAFRA·KOSIS 매칭 확장(21건 매칭 검증 통과) / ✅ 학명 4건 확정(참도다리 `Pseudopleuronectes`, 강도다리 `Platichthys`, 덕대 `P. echinogaster`, 병어 `P. argenteus`).
+
+> **금지체장 단위 규칙**: 게임의 금지체장 판정은 **전장(`SpawnedFish.lengthCm`)** 기준. 법정 기준이 항문장·체장 등 다른 단위인 어종은 **반드시 전장으로 환산해서** 입력할 것 (갈치: 항문장 18cm → 전장 47cm). 환산 없이 넣으면 스폰 최소 크기에 막혀 규칙이 조용히 무력해진다.
+
+> ⚠️ **매칭 테이블 순서 규칙**: `MAFRA_ITEM_TO_SPECIES`/`KOSIS_SPECIES_MATCH`는 부분 일치(`includes`)+선착순(`find`) 구조 — 품목명이 포함 관계면 **더 긴 쪽을 먼저** 둘 것 (`'말쥐치'⊃'쥐치'`, `'강도다리'⊃'도다리'`, `'개서대'⊃'서대'`). 어종 추가 시 반드시 확인.
+>
+> **사용자 확인 대기**: 학명 4건(참도다리·강도다리 속명, 덕대·병어가 동일 학명 `Pampus argenteus`) — 제공 데이터 그대로 입력함. 전갱이·쥐치는 오라클에만 존재(FISH_DATABASE 미등록 → 도감 조회 불가, 기존 이슈).
+
+**차기**: 낚시지수 placeName↔게임 지역 매핑 정밀화(속초·동명항 인근 포인트 지정) / 수집 주기(일 1회 갱신) 스케줄링 / MAFRA·NMPNT HTTP 엔드포인트 → HTTPS 배포 시 프록시 + **브라우저 CORS 프록시**(NMPNT/MAFRA/KOSIS는 브라우저에서 CORS 차단 → 현재 Mock 폴백. 기상청 apis.data.go.kr만 CORS 통과).
+
+### 6-6e. 채비 분리 + 부산 구역 + 팩토리 (✅ 완료, 2026-07-17 1차)
+**파일**: `client-pc/src/store/InventoryStore.ts`, `ui/UtilizationPanel.ts`, `scenes/FirstPersonFishingScene.ts`, `core/types/WorldMap.ts`, `scenes/WorldMapScene.ts`, `src/game.ts`(신규), `src/main.ts`
+
+| 항목 | 결과 |
+|---|---|
+| 채비 `hookBait` → `hook`/`bait` 소켓 분리 (8소켓 체인) | ✅ |
+| 루어(바늘 일체형) 분류 + 장착 시 미끼 소켓 비활성 + 미끼 없이 캐스팅 | ✅ |
+| 입질 소모/실패 손실 규칙 세분화 (루어 무손실, 바늘빠짐은 미끼만) | ✅ |
+| `RegionAreaNode` 특성 확장 (details/depthRangeM/snagRisk/enterable) | ✅ |
+| 부산 4구역 핀 (좌표는 핀 이미지 픽셀 추출) + 특성 카드 + 출조 차단 | ✅ |
+| 속초 2구역 특성 상세 보강 | ✅ |
+| main.ts → game.ts 팩토리 (싱글턴 가드 — 하네스 이중 생성 해소) | ✅ |
+
+**차기**: ~~부산 4구역 타일맵 제작 후 enterable 해제~~ ✅ / ~~snagRisk 1인칭 실연동~~ ✅ (6-6f) / `depthRangeM`을 RegionFieldScene 수심 프로필 폴백에 연동(잔여).
+
+### 6-6f. 부산 필드 + snagRisk 연동 + CORS 프록시 (✅ 완료, 2026-07-17 2차)
+**파일**: `tools/build_region_maps.py`, `core/types/RegionMap.ts`(BUSAN_MAP_GRAPH·depthProfileUrl), `core/types/WorldMap.ts`, `core/simulation/BiteProbabilityEngine.ts`, `client-pc/vite.config.ts`, `store/ExternalDataStore.ts`, `public/data/busan/`(8종)
+
+| 항목 | 결과 |
+|---|---|
+| 부산 타일맵 8종 생성 (감천서2/감천동3/암남1/백운포2) | ✅ |
+| BUSAN_MAP_GRAPH — 명세 링크 6건 (동방파제1↔E↔암남 포함) | ✅ 브라우저 검증 |
+| 출조 진입 중앙 스폰 (편차 1~3타일) / 맵 전환 엣지 스폰 유지 | ✅ 기존 로직이 명세 충족 |
+| 부산 4구역 출조 개방 (enterable 해제) | ✅ |
+| snagRisk→밑걸림 배율 (low 14.9s/mid 8.9s/high 5.8s, 1000회 시뮬) | ✅ |
+| CORS 프록시 — NMPNT/MAFRA/KOSIS dev 실데이터화 (차단 0건) | ✅ |
+| 부산 실측 수온 매핑 (감천항유도등부표 994401579) | ✅ |
+
+**부산 맵 체인**:
+```
+[감천항 서방파제]  감천동(west_1) ↕ 방파제(west_2)
+[감천항 동방파제]  제3부두(east_1) ↕ 수산시장(east_2) ↕ 방파제(east_3)
+                   제3부두(east_1) ↔E↔ 암남공원 주차장(amnam_1)
+[백운포]           체육공원(baegunpo_1) ↕ 방파제(baegunpo_2)
+```
+
+**차기**: 프로덕션 서버 프록시(배포 시 필수 — vite 프록시는 dev 전용) / 부산 수심 프로필(`build_depth_profiles.py` 부산 앵커) / depthRangeM 폴백 연동.
 
 ### 6-6c. 실측 연안 수심 프로필 연동 (✅ 완료 v1, 2026-07-15 8차)
 **파일**: `tools/build_depth_profiles.py`, `core/src/types/DepthProfile.ts`, `client-pc/public/data/depth/gangwon_sokcho.json`, `RegionFieldScene.resolveCastDepth`

@@ -12,6 +12,7 @@
  * 데이터 원본(@tra/core UniversalItemDatabase)과의 정식 연동은 추후 작업.
  */
 
+import { evaluateFishSellPrice } from '@tra/core';
 import { ExternalDataStore } from './ExternalDataStore.js';
 
 /** 인벤토리 카테고리 탭 */
@@ -78,14 +79,43 @@ export interface InvItem {
   tool?: HandTool;
   /** 착용 중인 손 (손 도구만) */
   equippedHand?: EquipHand;
+
+  // ── 어획물 전용 (subCategory === '어획물') ──
+  // 개체별 실측치를 보존해야 어판장 수매가(evaluateFishSellPrice)를 산정할 수 있다.
+  // 이 값이 없으면 basePrice 폴백으로 계산된다.
+  /** 어종 ID (오라클/FISH_DATABASE 표준 ID) */
+  speciesId?: string;
+  /** 개체 몸길이 (cm) */
+  lengthCm?: number;
+  /** 개체 무게 (g) */
+  weightG?: number;
 }
 
 /** 상점 카탈로그/구매용 아이템 템플릿 (slot/qty 없이 정의) */
 export type InvItemTemplate = Omit<InvItem, 'slot' | 'qty'>;
 
-/** 채비(리그) 조립 단계 키 */
+/**
+ * 채비(리그) 조립 단계 키.
+ * 2026-07-16: `hookBait` 통합 소켓을 `hook`(바늘) / `bait`(미끼)로 분리.
+ * 바늘 소켓에 루어(가짜미끼 — 미노우 등, 바늘 일체형)를 달면 미끼 소켓은 비활성화된다.
+ */
 export type RigStepKey =
-  | 'mainLine' | 'floatStop' | 'float' | 'swivel' | 'leader' | 'sinker' | 'hookBait';
+  | 'mainLine' | 'floatStop' | 'float' | 'swivel' | 'leader' | 'sinker' | 'hook' | 'bait';
+
+/** 미끼로 취급하는 소분류 (생미끼/냉동미끼/반죽미끼/선어미끼 등 '미끼' 포함 전부) */
+export function isBaitItem(i: InvItem): boolean {
+  return i.subCategory.includes('미끼') || i.subCategory === '생미끼';
+}
+
+/** 바늘 소켓에 들어가는 아이템 — 단품 바늘 또는 루어(바늘 일체형) */
+export function isHookItem(i: InvItem): boolean {
+  return i.subCategory === '바늘/훅' || i.subCategory === '루어';
+}
+
+/** 루어(가짜미끼) 여부 — 바늘 일체형이라 미끼가 필요 없다 */
+export function isLureItem(i: InvItem): boolean {
+  return i.subCategory === '루어';
+}
 
 /** 시작 시 지급되는 목업 아이템 세트 (slot은 카테고리별 순차 배정) */
 function createSeedItems(): InvItem[] {
@@ -130,6 +160,9 @@ function createSeedItems(): InvItem[] {
     { id: 'inv_chinu3',   name: '감성돔 바늘 3호',          icon: '🪝', category: 'tackle', subCategory: '바늘/훅',   qty: 12, basePrice: 3000,  equippable: false },
     { id: 'inv_treble',   name: '루어용 트레블 훅',         icon: '🪝', category: 'tackle', subCategory: '바늘/훅',   qty: 6,  basePrice: 4000,  equippable: false },
     { id: 'inv_jighead',  name: '지그헤드 3g',              icon: '🪝', category: 'tackle', subCategory: '바늘/훅',   qty: 8,  basePrice: 3500,  equippable: false },
+    // 루어 — 바늘 일체형 가짜미끼. 바늘 소켓에 장착하며 미끼 소켓이 비활성화된다.
+    { id: 'inv_minnow',   name: '미노우 90F (플로팅)',      icon: '🐟', category: 'tackle', subCategory: '루어',      qty: 2,  basePrice: 14000, equippable: false },
+    { id: 'inv_metaljig', name: '메탈지그 20g',             icon: '🐟', category: 'tackle', subCategory: '루어',      qty: 3,  basePrice: 8000,  equippable: false },
     { id: 'inv_float08',  name: '구멍찌 0.8호',             icon: '🟠', category: 'tackle', subCategory: '채비 부속', qty: 3,  basePrice: 8000,  equippable: false },
     { id: 'inv_subfloat', name: '수중찌 -0.8호',            icon: '🟠', category: 'tackle', subCategory: '채비 부속', qty: 3,  basePrice: 8000,  equippable: false },
     { id: 'inv_sinkerG2', name: '좁쌀봉돌 G2',              icon: '⚙️', category: 'tackle', subCategory: '채비 부속', qty: 20, basePrice: 2000,  equippable: false },
@@ -148,6 +181,9 @@ function createSeedItems(): InvItem[] {
 class InventoryStoreManager {
   private _items: InvItem[] = createSeedItems();
 
+  /** 어획물 인스턴스 고유 번호 시퀀스 (nextCatchSeq) */
+  private _catchSeq = 0;
+
   /** 퀵슬롯 8칸 — 아이템 id 또는 null */
   private _quickslots: (string | null)[] = [
     'inv_rod', 'inv_krill', 'inv_chum', null, null, null, null, null,
@@ -164,7 +200,8 @@ class InventoryStoreManager {
     swivel: 'inv_swivel',
     leader: 'inv_carbon15',
     sinker: 'inv_sinkerG2',
-    hookBait: 'inv_krill',
+    hook: 'inv_chinu3',
+    bait: 'inv_krill',
   };
 
   /** 면사매듭 수심 한계 Z_limit (m) — 채비가 도달할 최대 수심 */
@@ -195,19 +232,36 @@ class InventoryStoreManager {
   }
 
   /**
-   * 상점 매입가 (기준가의 60%).
-   * 어획물은 경락가 API 캐시(ExternalDataStore)의 당일 시세 배율(0.5~2.0)을 반영해
-   * 직판장 매입가가 실시간 시세를 따라 움직인다.
+   * 상점 매입가 (일반 품목은 기준가의 60%).
+   *
+   * 어획물은 `evaluateFishSellPrice`(core) 정식 엔진으로 산정한다:
+   *   가격 = kg당 단가(어종별) × 중량 × 등급 배율 × 크기(길이) 배율
+   * 실시간 경락가 캐시가 있으면 kg당 단가가 당일 시세로 대체되므로,
+   * 여기서 별도의 시세 배율을 다시 곱하면 이중 적용이 된다 — 곱하지 말 것.
+   *
+   * 개체 실측치(speciesId/weightG)가 없는 레거시 어획물은 basePrice 폴백.
    */
   getSellPrice(item: InvItem): number {
-    let marketFactor = 1;
     if (item.subCategory === '어획물') {
-      const speciesId = item.id.startsWith('inv_catch_')
-        ? item.id.slice('inv_catch_'.length)
-        : item.id === 'inv_fish_1' ? 'black_seabream' : undefined;
-      if (speciesId) marketFactor = ExternalDataStore.getMarketPriceFactor(speciesId);
+      const speciesId = item.speciesId ?? (item.id === 'inv_fish_1' ? 'black_seabream' : undefined);
+      if (speciesId && item.weightG) {
+        const cache = ExternalDataStore.getWholesaleCache(speciesId);
+        return evaluateFishSellPrice(speciesId, item.lengthCm ?? 0, item.weightG, cache).finalPrice;
+      }
+      // 레거시 폴백 — 실측치가 없으면 기존 방식(기준가 × 시세 배율)
+      const factor = speciesId ? ExternalDataStore.getMarketPriceFactor(speciesId) : 1;
+      return Math.max(100, Math.floor(item.basePrice * 0.6 * factor));
     }
-    return Math.max(100, Math.floor(item.basePrice * 0.6 * marketFactor));
+    return Math.max(100, Math.floor(item.basePrice * 0.6));
+  }
+
+  /**
+   * 어획물 인스턴스 고유 번호 발급.
+   * 같은 어종이라도 개체별 크기/무게가 다르므로 id를 분리해야 한다
+   * (addItem은 동일 id를 수량 병합하며, 병합되면 실측치가 유실된다).
+   */
+  nextCatchSeq(): number {
+    return ++this._catchSeq;
   }
 
   // ── 소켓 이동 (드래그 앤 드랍) ───────────────────────
@@ -361,21 +415,41 @@ class InventoryStoreManager {
   // ── 채비(리그) ──────────────────────────────────────
   setRigPart(step: RigStepKey, itemId: string | null): void {
     this._rig[step] = itemId;
+    // 바늘 소켓에 루어(바늘 일체형)를 달면 미끼 소켓은 의미가 없으므로 비운다
+    // — 남겨두면 소모/손실 계산에 유령 미끼가 끼어든다.
+    if (step === 'hook' && itemId && !this.hookNeedsBait()) {
+      this._rig.bait = null;
+    }
   }
 
-  /** 캐스팅에 필수인 채비 소켓 (감성돔 반유동 기준) */
+  /** 캐스팅에 필수인 채비 소켓 (감성돔 반유동 기준) — 미끼는 조건부라 별도 처리 */
   private static readonly REQUIRED_RIG: { key: RigStepKey; label: string }[] = [
     { key: 'mainLine', label: '원줄' },
     { key: 'float', label: '찌' },
     { key: 'leader', label: '목줄' },
-    { key: 'hookBait', label: '바늘/미끼' },
+    { key: 'hook', label: '바늘' },
   ];
+
+  /**
+   * 현재 바늘 소켓 기준으로 미끼가 필요한지.
+   * 루어(바늘 일체형 가짜미끼) 장착 시 false — 미끼 소켓 자체가 비활성화된다.
+   * 바늘이 비어 있으면 true(일반 바늘 전제).
+   */
+  hookNeedsBait(): boolean {
+    const id = this._rig.hook;
+    if (!id) return true;
+    const item = this.find(id);
+    return !item || !isLureItem(item);
+  }
 
   /** 비어 있는 필수 채비 부품 라벨 목록 (비어 있으면 캐스팅 불가) */
   getMissingRigParts(): string[] {
-    return InventoryStoreManager.REQUIRED_RIG
+    const missing = InventoryStoreManager.REQUIRED_RIG
       .filter((r) => !this._rig[r.key])
       .map((r) => r.label);
+    // 미끼는 일반 바늘일 때만 필수 — 루어 장착 시 검사에서 제외
+    if (this.hookNeedsBait() && !this._rig.bait) missing.push('미끼');
+    return missing;
   }
 
   /**

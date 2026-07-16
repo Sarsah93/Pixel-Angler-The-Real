@@ -21,7 +21,7 @@ import { MafraAuctionApiClient } from './MafraAuctionApiClient.js';
 import { KosisCatchApiClient, RegionalCatchStat } from './KosisCatchApiClient.js';
 import type { WholesalePriceInfo } from '../types/Economy.js';
 
-/** API 인증키 묶음 */
+/** API 인증키 묶음 (+ 브라우저 CORS 우회 프록시 baseUrl) */
 export interface ExternalApiKeys {
   /** 공공데이터포털 (data.go.kr) 일반 인증키 — 바다낚시지수 */
   dataGoKrKey?: string;
@@ -29,6 +29,16 @@ export interface ExternalApiKeys {
   mafraKey?: string;
   /** KOSIS 국가통계포털 인증키 */
   kosisKey?: string;
+  /**
+   * MAFRA 경락가 API baseUrl 교체 (기본: http://211.237.50.150:7080/openapi).
+   * MAFRA는 HTTP 전용 + CORS 헤더 없음 → 브라우저에서는 프록시 필수.
+   */
+  mafraBaseUrl?: string;
+  /**
+   * KOSIS API baseUrl 교체 (기본: https://kosis.kr/openapi/...).
+   * kosis.kr은 CORS 헤더가 없어 브라우저 직접 호출이 차단된다.
+   */
+  kosisBaseUrl?: string;
 }
 
 /** 통합 수집 스냅샷 — 클라이언트 캐시(ExternalDataStore)에 보관 */
@@ -49,9 +59,14 @@ export class ExternalApiService {
   private readonly kosisClient: KosisCatchApiClient;
 
   constructor(keys: ExternalApiKeys = {}) {
+    // 바다낚시지수(apis.data.go.kr)는 CORS 허용이라 프록시 불필요
     this.fishingIndexClient = new FishingIndexApiClient(keys.dataGoKrKey);
-    this.auctionClient = new MafraAuctionApiClient(keys.mafraKey);
-    this.kosisClient = new KosisCatchApiClient(keys.kosisKey);
+    this.auctionClient = keys.mafraBaseUrl
+      ? new MafraAuctionApiClient(keys.mafraKey, keys.mafraBaseUrl)
+      : new MafraAuctionApiClient(keys.mafraKey);
+    this.kosisClient = keys.kosisBaseUrl
+      ? new KosisCatchApiClient(keys.kosisKey, keys.kosisBaseUrl)
+      : new KosisCatchApiClient(keys.kosisKey);
   }
 
   /** 바다낚시지수 단건 조회 (수동 갱신용) */
