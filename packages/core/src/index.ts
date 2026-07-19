@@ -174,6 +174,16 @@ export {
   DATA_ATTRIBUTIONS, LICENSE_LABEL, groupAttributionsByProvider,
 } from './db-schema/DataAttributions.js';
 
+// 입질 시퀀스 (초릿대 구부러짐 3단계 + 챔질 판정)
+export type { BendStage, HooksetResult, BiteSequenceTick, BiteSequenceOptions } from './simulation/BiteSequenceEngine.js';
+export {
+  BiteSequenceEngine, FLOAT_SINK_BY_STAGE, HOOKSET_SUCCESS,
+} from './simulation/BiteSequenceEngine.js';
+
+// 조류 물리 (조수/본대조류/횡조류/반탄류/조경지대)
+export type { TidalVector3, TidalZone, TidalInfluence, TidalEngineOptions } from './simulation/TidalCurrentEngine.js';
+export { TidalCurrentEngine, TIDAL_ZONE_LABEL } from './simulation/TidalCurrentEngine.js';
+
 // Utils
 export { getApproxLunarDay, getLunarDayDisplay } from './utils/LunarCalendar.js';
 export type { KstParts } from './utils/KstTime.js';

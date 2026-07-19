@@ -18,6 +18,7 @@ import {
   InventoryStore, InvItem, InvCategory, RigStepKey,
   CATEGORY_LABEL, CONDITION_LABEL, CONDITION_COLOR,
   isHookItem, isBaitItem, isLureItem,
+  SpreaderKind, CardRigType, SPREADER_LABEL, CARD_RIG_INFO, ROD_CAPACITY_G,
 } from '../store/InventoryStore.js';
 import { DraggablePanel } from './DraggablePanel.js';
 import { createItemIcon } from './ItemIcon.js';
@@ -186,32 +187,50 @@ export class UtilizationPanel extends DraggablePanel {
       }
 
       if (isKnot) {
-        // 면사매듭: 수심 한계 조절 (-/+)
-        const depthTxt = this.scene.add.text(bx + boxW / 2, chainY + 58, `${InventoryStore.rigDepthLimitM} m`, {
-          fontFamily: 'monospace', fontSize: '20px', color: '#4af2a1', fontStyle: 'bold',
+        const hasKnot = InventoryStore.hasFloatStop;
+        // 면사매듭: 수심 한계 조절 (-/+) — 제거하면 전유동 (무한 침강)
+        const depthTxt = this.scene.add.text(bx + boxW / 2, chainY + 52, hasKnot ? `${InventoryStore.rigDepthLimitM} m` : '∞', {
+          fontFamily: 'monospace', fontSize: '20px', color: hasKnot ? '#4af2a1' : '#66b8ff', fontStyle: 'bold',
         }).setOrigin(0.5);
-        const sub = this.scene.add.text(bx + boxW / 2, chainY + 82, '최대 공략 수심', {
-          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#7a98ac',
+        const sub = this.scene.add.text(bx + boxW / 2, chainY + 74, hasKnot ? '최대 공략 수심' : '전유동 (무한 침강)', {
+          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: hasKnot ? '#7a98ac' : '#66b8ff',
         }).setOrigin(0.5);
         this.bodyContainer.add([depthTxt, sub]);
 
-        const mkBtn = (bxx: number, label: string, delta: number): void => {
-          const btnBg = this.scene.add.graphics();
-          btnBg.fillStyle(0x155a7c, 0.95);
-          btnBg.fillRoundedRect(bxx, chainY + 96, 40, 24, 4);
-          const btnTxt = this.scene.add.text(bxx + 20, chainY + 108, label, {
-            fontFamily: 'monospace', fontSize: '14px', color: '#aee8ff', fontStyle: 'bold',
-          }).setOrigin(0.5);
-          const btnHit = this.scene.add.rectangle(bxx + 20, chainY + 108, 40, 24, 0xffffff, 0.001)
-            .setInteractive({ useHandCursor: true });
-          btnHit.on('pointerdown', () => {
-            InventoryStore.rigDepthLimitM = Phaser.Math.Clamp(InventoryStore.rigDepthLimitM + delta, 1, 30);
-            this.renderBody();
-          });
-          this.bodyContainer.add([btnBg, btnTxt, btnHit]);
-        };
-        mkBtn(bx + 14, '-', -1);
-        mkBtn(bx + boxW - 54, '+', 1);
+        if (hasKnot) {
+          const mkBtn = (bxx: number, label: string, delta: number): void => {
+            const btnBg = this.scene.add.graphics();
+            btnBg.fillStyle(0x155a7c, 0.95);
+            btnBg.fillRoundedRect(bxx, chainY + 84, 34, 20, 4);
+            const btnTxt = this.scene.add.text(bxx + 17, chainY + 94, label, {
+              fontFamily: 'monospace', fontSize: '13px', color: '#aee8ff', fontStyle: 'bold',
+            }).setOrigin(0.5);
+            const btnHit = this.scene.add.rectangle(bxx + 17, chainY + 94, 34, 20, 0xffffff, 0.001)
+              .setInteractive({ useHandCursor: true });
+            btnHit.on('pointerdown', () => {
+              InventoryStore.rigDepthLimitM = Phaser.Math.Clamp(InventoryStore.rigDepthLimitM + delta, 1, 30);
+              this.renderBody();
+            });
+            this.bodyContainer.add([btnBg, btnTxt, btnHit]);
+          };
+          mkBtn(bx + 12, '-', -1);
+          mkBtn(bx + boxW - 46, '+', 1);
+        }
+
+        // 면사 제거/부착 토글 — 제거 시 전유동 조법
+        const tg = this.scene.add.graphics();
+        tg.fillStyle(hasKnot ? 0x3a2a20 : 0x155a7c, 0.95);
+        tg.fillRoundedRect(bx + 12, chainY + boxH - 24, boxW - 24, 18, 3);
+        const tt = this.scene.add.text(bx + boxW / 2, chainY + boxH - 15, hasKnot ? '면사 제거 (전유동)' : '면사 부착', {
+          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: hasKnot ? '#ffce9a' : '#aee8ff',
+        }).setOrigin(0.5);
+        const th = this.scene.add.rectangle(bx + boxW / 2, chainY + boxH - 15, boxW - 24, 18, 0xffffff, 0.001)
+          .setInteractive({ useHandCursor: true });
+        th.on('pointerdown', () => {
+          InventoryStore.hasFloatStop = !InventoryStore.hasFloatStop;
+          this.renderBody();
+        });
+        this.bodyContainer.add([tg, tt, th]);
         return;
       }
 
@@ -238,8 +257,13 @@ export class UtilizationPanel extends DraggablePanel {
       this.bodyContainer.add(hit);
     });
 
+    // ── 원투 편대/서브 채비 (찌 비움 + 도래 장착 시 병렬 활성) ──
+    let sumY = chainY + boxH + 12;
+    if (InventoryStore.isSurfRigReady()) {
+      sumY += this.renderSpreaderRow(24, sumY) + 10;
+    }
+
     // ── 조립 스펙 요약 ──
-    const sumY = chainY + boxH + 40;
     const sumBg = this.scene.add.graphics();
     sumBg.fillStyle(0x060d1a, 0.95);
     sumBg.fillRoundedRect(24, sumY, PANEL_W - 48, 150, 5);
@@ -273,6 +297,156 @@ export class UtilizationPanel extends DraggablePanel {
     this.bodyContainer.add(advice);
   }
 
+  /**
+   * 원투 편대/서브 채비 선택 행 — 찌 소켓을 비우고 도래를 장착하면 병렬 활성.
+   * NONE/T자 천평/카드(열기7·고등어5·전갱이3 서브 토글)/학꽁치/갈치.
+   * 카드 채비는 단수만큼 미끼 멀티 슬롯(MultiHookContainer)이 확장된다.
+   * @returns 렌더한 블록 높이 (px)
+   */
+  private renderSpreaderRow(x: number, y: number): number {
+    const sp = InventoryStore.spreader;
+    const w = PANEL_W - 48;
+    const hasCard = sp.kind === 'CARD_RIG' && !!sp.cardType;
+    const h = hasCard ? 120 : 74;
+
+    const bg = this.scene.add.graphics();
+    bg.fillStyle(0x0c1a10, 0.95);
+    bg.fillRoundedRect(x, y, w, h, 5);
+    bg.lineStyle(1.5, 0x2f7d5a, 0.9);
+    bg.strokeRoundedRect(x, y, w, h, 5);
+    this.bodyContainer.add(bg);
+
+    const title = this.scene.add.text(x + 12, y + 8, '편대/서브 채비 (원투 — 찌 없이 도래 직결)', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#7fe6b0', fontStyle: 'bold',
+    });
+    this.bodyContainer.add(title);
+
+    // 종류 선택 버튼 5개
+    const kinds: SpreaderKind[] = ['NONE', 'T_BAR', 'CARD_RIG', 'HAKGONGCHI', 'GALCHI'];
+    let bx = x + 12;
+    kinds.forEach((kind) => {
+      const label = SPREADER_LABEL[kind];
+      const bw = label.length * 11 + 22;
+      const sel = sp.kind === kind;
+      const g = this.scene.add.graphics();
+      g.fillStyle(sel ? 0x1a6a3e : 0x0e1c2d, 0.95);
+      g.fillRoundedRect(bx, y + 28, bw, 24, 4);
+      g.lineStyle(1, sel ? 0x4af2a1 : 0x2a5a8a, 0.9);
+      g.strokeRoundedRect(bx, y + 28, bw, 24, 4);
+      const t = this.scene.add.text(bx + bw / 2, y + 40, label, {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: sel ? '#d6ffe8' : '#8faabf',
+      }).setOrigin(0.5);
+      const hit = this.scene.add.rectangle(bx + bw / 2, y + 40, bw, 24, 0xffffff, 0.001)
+        .setInteractive({ useHandCursor: true });
+      hit.on('pointerdown', () => { InventoryStore.setSpreader(kind, sp.cardType); this.renderBody(); });
+      this.bodyContainer.add([g, t, hit]);
+      bx += bw + 8;
+    });
+
+    // 카드 채비 서브 토글 (열기 7단 / 고등어 5단 / 전갱이 3단)
+    if (sp.kind === 'CARD_RIG') {
+      let cx = x + 12;
+      (Object.keys(CARD_RIG_INFO) as CardRigType[]).forEach((ct) => {
+        const info = CARD_RIG_INFO[ct];
+        const bw = info.label.length * 11 + 18;
+        const sel = sp.cardType === ct;
+        const g = this.scene.add.graphics();
+        g.fillStyle(sel ? 0x155a7c : 0x0e1c2d, 0.95);
+        g.fillRoundedRect(cx, y + 56, bw, 20, 3);
+        g.lineStyle(1, sel ? 0x5cd0ff : 0x2a5a8a, 0.9);
+        g.strokeRoundedRect(cx, y + 56, bw, 20, 3);
+        const t = this.scene.add.text(cx + bw / 2, y + 66, info.label, {
+          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: sel ? '#aee8ff' : '#8faabf',
+        }).setOrigin(0.5);
+        const hit = this.scene.add.rectangle(cx + bw / 2, y + 66, bw, 20, 0xffffff, 0.001)
+          .setInteractive({ useHandCursor: true });
+        hit.on('pointerdown', () => { InventoryStore.setSpreader('CARD_RIG', ct); this.renderBody(); });
+        this.bodyContainer.add([g, t, hit]);
+        cx += bw + 6;
+      });
+      const gapNote = this.scene.add.text(cx + 8, y + 66, sp.cardType ? `바늘 간격 ${CARD_RIG_INFO[sp.cardType].gapM}m` : '', {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#7a98ac',
+      }).setOrigin(0, 0.5);
+      this.bodyContainer.add(gapNote);
+    }
+
+    // MultiHookContainer — 카드 단수만큼 미끼 개별 장착 슬롯
+    if (hasCard && sp.cardType) {
+      const info = CARD_RIG_INFO[sp.cardType];
+      const cell = 34;
+      let hx = x + 12;
+      const hy = y + 82;
+      for (let i = 0; i < info.hooks; i++) {
+        const baitId = sp.hookBaits[i];
+        const bait = baitId ? InventoryStore.find(baitId) : undefined;
+        const g = this.scene.add.graphics();
+        g.fillStyle(bait ? 0x0e2a1e : 0x0e1c2d, 0.95);
+        g.fillRoundedRect(hx, hy, cell, cell, 3);
+        g.lineStyle(1, bait ? 0x4af2a1 : 0x2a5a8a, 0.9);
+        g.strokeRoundedRect(hx, hy, cell, cell, 3);
+        const icon = this.scene.add.text(hx + cell / 2, hy + cell / 2, bait ? bait.icon : '🪝', {
+          fontSize: '14px',
+        }).setOrigin(0.5).setAlpha(bait ? 1 : 0.4);
+        const num = this.scene.add.text(hx + 3, hy + 1, `${i + 1}`, {
+          fontFamily: 'monospace', fontSize: '8px', color: '#7a98ac',
+        });
+        const hookIdx = i;
+        const hit = this.scene.add.rectangle(hx + cell / 2, hy + cell / 2, cell, cell, 0xffffff, 0.001)
+          .setInteractive({ useHandCursor: true });
+        hit.on('pointerdown', () => this.openSpreaderBaitChooser(hookIdx, hx, hy + cell + 4));
+        this.bodyContainer.add([g, icon, num, hit]);
+        hx += cell + 6;
+      }
+      const fillAll = this.scene.add.text(hx + 8, hy + 17, '[전체 크릴 장착]', {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#ffce54',
+      }).setOrigin(0, 0.5).setInteractive({ useHandCursor: true });
+      fillAll.on('pointerdown', () => {
+        for (let i = 0; i < info.hooks; i++) {
+          if (InventoryStore.find('inv_krill')) InventoryStore.setSpreaderBait(i, 'inv_krill');
+        }
+        this.renderBody();
+      });
+      this.bodyContainer.add(fillAll);
+    }
+
+    return h;
+  }
+
+  /** 카드 채비 단수별 미끼 선택 팝업 */
+  private openSpreaderBaitChooser(hookIdx: number, x: number, y: number): void {
+    this.closeChooser();
+    const candidates = InventoryStore.items.filter(isBaitItem);
+    const rowH = 26;
+    const listW = 200;
+    const listH = (candidates.length + 1) * rowH + 12;
+    const c = this.scene.add.container(0, 0).setDepth(60);
+    const g = this.scene.add.graphics();
+    g.fillStyle(0x0a1628, 0.98);
+    g.fillRoundedRect(x, y, listW, listH, 5);
+    g.lineStyle(1.5, 0x33b0e0, 1);
+    g.strokeRoundedRect(x, y, listW, listH, 5);
+    c.add(g);
+    const addRow = (idx: number, label: string, onPick: () => void): void => {
+      const ry = y + 6 + idx * rowH;
+      const t = this.scene.add.text(x + 12, ry + rowH / 2, label, {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#d0e8f5',
+      }).setOrigin(0, 0.5);
+      const hit = this.scene.add.rectangle(x + listW / 2, ry + rowH / 2, listW - 8, rowH, 0xffffff, 0.001)
+        .setInteractive({ useHandCursor: true });
+      hit.on('pointerover', () => t.setColor('#aee8ff'));
+      hit.on('pointerout', () => t.setColor('#d0e8f5'));
+      hit.on('pointerdown', () => { onPick(); this.closeChooser(); this.renderBody(); });
+      c.add([t, hit]);
+    };
+    addRow(0, '(비우기)', () => InventoryStore.setSpreaderBait(hookIdx, null));
+    candidates.forEach((item, i) => {
+      addRow(i + 1, `${item.icon} ${item.name} x${item.qty}`, () => InventoryStore.setSpreaderBait(hookIdx, item.id));
+    });
+    this.bodyContainer.add(c);
+    this.chooser = c;
+    this.applyFix();
+  }
+
   /** 조립 부품 기반 물리 스펙 계산 (목업 수치) */
   private computeRigSpec(): { weightG: number; buoyG: number; sinkMps: number; dragCd: number; advice: string } {
     let weightG = 0;
@@ -303,7 +477,14 @@ export class UtilizationPanel extends DraggablePanel {
 
     let advice: string;
     const missing = InventoryStore.getMissingRigParts();
-    if (missing.length > 0) advice = `필수 소켓이 비었습니다: ${missing.join(', ')} — 채워야 캐스팅할 수 있습니다.`;
+    const floatItem = rig.float ? InventoryStore.find(rig.float) : undefined;
+    // 잠길찌: '잠길찌' 타입 찌 장착 또는 잔존 부력(부력-침강무게)이 0 미만
+    const isSinkingFloat = !!floatItem && (floatItem.name.includes('잠길찌') || (buoyG > 0 && net > 0));
+    const overload = InventoryStore.getRigTotalWeightG() > ROD_CAPACITY_G;
+    if (overload) advice = '채비 과부하! 봉돌 호수를 낮추거나 경량 채비를 선택하세요.';
+    else if (missing.length > 0) advice = `필수 소켓이 비었습니다: ${missing.join(', ')} — 채워야 캐스팅할 수 있습니다.`;
+    else if (!InventoryStore.hasFloatStop) advice = '전유동 채비입니다. 면사매듭을 제거하면 채비가 무한 침강합니다 — 뒷줄견제(H)로 수심을 세워 흘리세요.';
+    else if (isSinkingFloat) advice = '잠길찌 채비 상태입니다. 캐스팅 후 찌가 수중으로 하강합니다.';
     else if (!InventoryStore.hookNeedsBait()) advice = '루어 채비입니다 — 미끼 없이 캐스팅 가능하며, 입질 시 미끼가 소모되지 않습니다.';
     else if (net < 0) advice = '부력이 무게보다 큽니다 — 채비가 상층에 뜹니다 (상층 어종 공략).';
     else if (sinkMps < 0.1) advice = '침강이 느립니다. 깊은 수심 공략 시 봉돌을 추가하세요. (강풍 시 무거운 봉돌 추천)';

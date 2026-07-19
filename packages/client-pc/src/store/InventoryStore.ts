@@ -117,6 +117,38 @@ export function isLureItem(i: InvItem): boolean {
   return i.subCategory === '루어';
 }
 
+// ── 원투 편대/서브 채비 (2026-07-17) ──────────────────
+/** 편대 채비 종류 */
+export type SpreaderKind = 'NONE' | 'T_BAR' | 'CARD_RIG' | 'HAKGONGCHI' | 'GALCHI';
+
+/** 카드 채비 하위 타입 (단수/바늘 간격) */
+export type CardRigType = 'yeolgi' | 'godeungeo' | 'jeongaengi';
+
+export const SPREADER_LABEL: Record<SpreaderKind, string> = {
+  NONE: '단일 봉돌+바늘',
+  T_BAR: 'T자 천평 편대',
+  CARD_RIG: '카드 채비',
+  HAKGONGCHI: '학꽁치 던질찌',
+  GALCHI: '갈치 와이어',
+};
+
+export const CARD_RIG_INFO: Record<CardRigType, { label: string; hooks: number; gapM: number }> = {
+  yeolgi:     { label: '열기 (7단)',   hooks: 7, gapM: 0.3 },
+  godeungeo:  { label: '고등어 (5단)', hooks: 5, gapM: 0.5 },
+  jeongaengi: { label: '전갱이 (3단)', hooks: 3, gapM: 0.5 },
+};
+
+/** 편대/서브 채비 상태 — 카드 채비는 단수별 미끼를 개별 장착 */
+export interface SpreaderState {
+  kind: SpreaderKind;
+  cardType?: CardRigType;
+  /** 카드 채비 단수별 미끼 아이템 id (MultiHookContainer) */
+  hookBaits: (string | null)[];
+}
+
+/** 낚싯대 허용 채비 중량 (g) — 초과 시 과부하 가이드 (목업 수치) */
+export const ROD_CAPACITY_G = 28;
+
 /** 시작 시 지급되는 목업 아이템 세트 (slot은 카테고리별 순차 배정) */
 function createSeedItems(): InvItem[] {
   const defs: Omit<InvItem, 'slot'>[] = [
@@ -206,6 +238,18 @@ class InventoryStoreManager {
 
   /** 면사매듭 수심 한계 Z_limit (m) — 채비가 도달할 최대 수심 */
   rigDepthLimitM = 5;
+
+  /**
+   * 면사매듭 존재 여부 — 제거하면 전유동 채비 (Z_limit 무한, 무한 침강).
+   * U 채비하기의 면사매듭 소켓에서 토글한다.
+   */
+  hasFloatStop = true;
+
+  /**
+   * 원투 편대/서브 채비 (찌 소켓 비움 + 도래 장착 시 활성).
+   * 기존 rig 모델과 병렬 — 역호환을 위해 rig 소켓 구조는 건드리지 않는다.
+   */
+  spreader: SpreaderState = { kind: 'NONE', hookBaits: [] };
 
   get items(): InvItem[] {
     return this._items;
@@ -444,12 +488,71 @@ class InventoryStoreManager {
 
   /** 비어 있는 필수 채비 부품 라벨 목록 (비어 있으면 캐스팅 불가) */
   getMissingRigParts(): string[] {
+    // 원투(편대) 채비: 찌 없이 도래 직결이 정상 구성 — 찌를 필수에서 제외
+    const surfRig = this.isSurfRigReady() && this.spreader.kind !== 'NONE';
     const missing = InventoryStoreManager.REQUIRED_RIG
+      .filter((r) => !(surfRig && r.key === 'float'))
       .filter((r) => !this._rig[r.key])
       .map((r) => r.label);
-    // 미끼는 일반 바늘일 때만 필수 — 루어 장착 시 검사에서 제외
-    if (this.hookNeedsBait() && !this._rig.bait) missing.push('미끼');
+    // 미끼는 일반 바늘일 때만 필수 — 루어 장착 시 제외.
+    // 카드 채비는 다단 미끼(hookBaits)가 1개 이상이면 통과.
+    const cardBaited = this.spreader.kind === 'CARD_RIG' && this.spreader.hookBaits.some(Boolean);
+    if (this.hookNeedsBait() && !this._rig.bait && !cardBaited) missing.push('미끼');
     return missing;
+  }
+
+  // ── 원투 편대/서브 채비 ───────────────────────────────
+  /**
+   * 원투(편대) 채비 조건 — 찌 소켓 비움 + 도래 장착.
+   * 이때 U창에 편대 선택 슬롯이 병렬로 활성화된다.
+   */
+  isSurfRigReady(): boolean {
+    return !this._rig.float && !!this._rig.swivel;
+  }
+
+  /** 편대 종류 설정 — 카드 채비면 단수만큼 미끼 슬롯 초기화 */
+  setSpreader(kind: SpreaderKind, cardType?: CardRigType): void {
+    if (kind === 'CARD_RIG') {
+      const ct = cardType ?? 'jeongaengi';
+      const prev = this.spreader.cardType === ct ? this.spreader.hookBaits : [];
+      const n = CARD_RIG_INFO[ct].hooks;
+      this.spreader = {
+        kind, cardType: ct,
+        hookBaits: Array.from({ length: n }, (_, i) => prev[i] ?? null),
+      };
+    } else {
+      this.spreader = { kind, hookBaits: [] };
+    }
+  }
+
+  /** 카드 채비 단수별 미끼 장착 */
+  setSpreaderBait(hookIdx: number, itemId: string | null): void {
+    if (hookIdx >= 0 && hookIdx < this.spreader.hookBaits.length) {
+      this.spreader.hookBaits[hookIdx] = itemId;
+    }
+  }
+
+  /**
+   * 채비 총중량 (g) — 편대 자체 + 봉돌 + 다단 바늘/미끼 합산.
+   * ROD_CAPACITY_G 초과 시 과부하 (U창 가이드 표시용).
+   */
+  getRigTotalWeightG(): number {
+    let w = 0;
+    (Object.keys(this._rig) as RigStepKey[]).forEach((k) => {
+      const item = this._rig[k] ? this.find(this._rig[k]!) : undefined;
+      if (!item) return;
+      if (item.name.includes('봉돌')) w += 3.2;
+      else if (item.name.includes('수중찌')) w += 8;
+      else if (isLureItem(item)) { const m = item.name.match(/(\d+)\s*g/); w += m ? Number(m[1]) : 9; }
+      else if (item.subCategory === '바늘/훅') w += 0.5;
+      else if (isBaitItem(item)) w += 1.2;
+    });
+    const sp = this.spreader;
+    if (sp.kind !== 'NONE') {
+      w += sp.kind === 'T_BAR' ? 5 : sp.kind === 'CARD_RIG' ? 4 + sp.hookBaits.length * 0.5 : 6;
+      w += sp.hookBaits.filter(Boolean).length * 1.2;
+    }
+    return w;
   }
 
   /**
