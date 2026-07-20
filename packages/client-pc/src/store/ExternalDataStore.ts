@@ -21,6 +21,8 @@ import {
   SeaFishingIndexInfo,
   MarineWeatherApiClient, MarineWeatherInfo, MMAF_OFFICES,
   KmaVilageFcstApiClient, KmaWeatherInfo, KMA_GRID_BY_REGION, WeatherKind,
+  ORACLE_FISH_DB, calculateTideInfo,
+  WORLD_NODE_DATABASE, REGION_AREA_NODES,
 } from '@tra/core';
 
 /**
@@ -34,6 +36,22 @@ function envKey(name: string): string | undefined {
   const v = (import.meta.env as Record<string, unknown>)[name];
   return typeof v === 'string' && v.length > 0 ? v : undefined;
 }
+
+/** 지역 ID → 바다낚시지수 지명 매칭 키워드 (앞선 키워드 우선) */
+const REGION_TO_INDEX_KEYWORDS: Record<string, string[]> = {
+  gangwon_sokcho: ['속초', '고성', '양양', '강릉'],
+  busan: ['감천', '부산', '태종대', '영도', '송도', '다대포', '기장'],
+};
+
+/** 오라클 서식 지형 → 표시 라벨 */
+const HABITAT_LABEL: Record<string, string> = {
+  reef: '여밭·암초', sand: '모래', mud: '진흙', mixed: '혼합 지형', open: '외양 회유', structure: '구조물',
+};
+
+/** 오라클 수심층 → 표시 라벨 */
+const LAYER_LABEL: Record<string, string> = {
+  surface: '상층', mid: '중층', bottom: '저층',
+};
 
 /** 지역 ID → KOSIS 시도명 접두 매핑 */
 const REGION_TO_SIDO: Record<string, string> = {
@@ -313,6 +331,187 @@ class ExternalDataStoreManager {
       weights[id] = 0.7 + (v / max) * 1.1;   // 0.7 ~ 1.8
     });
     return weights;
+  }
+
+  // ── 6) 메인 메뉴 하단 정보 티커용 데이터 ──────────────
+
+  /** 서비스 중(출조 구역 보유) 지역 ID 목록 */
+  getServicedRegionIds(): string[] {
+    return Object.keys(REGION_AREA_NODES);
+  }
+
+  /** 지역 표시 이름 (전국 지도 노드 기준 — 예: '강원 속초') */
+  getRegionName(regionId: string): string {
+    return WORLD_NODE_DATABASE.find((n) => n.id === regionId || n.regionDatabaseId === regionId)?.name
+      ?? regionId;
+  }
+
+  /** 지역의 바다낚시지수 (지명 키워드 매칭 — 없으면 첫 항목 폴백) */
+  getRegionFishingIndex(regionId: string): SeaFishingIndexInfo | undefined {
+    const list = this._snapshot?.fishingIndex;
+    if (!list || list.length === 0) return undefined;
+    for (const k of REGION_TO_INDEX_KEYWORDS[regionId] ?? []) {
+      const hit = list.find((i) => i.placeName.includes(k));
+      if (hit) return hit;
+    }
+    return list[0];
+  }
+
+  /**
+   * 실데이터 합성 7단계 낚시 등급.
+   *
+   * 바다낚시지수(5단계) 원점수에 실황 기상(파고/풍속/강수·안개)을 가감해
+   * 최적/좋음/양호/보통/나쁨/매우나쁨/최악 7단계로 세분화한다.
+   * 지수·기상 전부 실데이터 기반 (수집 실패 시 Mock 폴백값으로 동일 산식).
+   */
+  getFishingGrade(regionId: string): { label: string; score: number; placeName?: string } {
+    const idx = this.getRegionFishingIndex(regionId);
+    // 지수 1~5 → 15/32.5/50/67.5/85 기저 점수
+    let score = idx ? 15 + (idx.indexLevel - 1) * 17.5 : 50;
+
+    const kma = this._kma.get(regionId);
+    const wave = kma?.waveHeightM ?? idx?.waveHeightM;
+    if (wave !== undefined) {
+      if (wave >= 2.5) score -= 20;
+      else if (wave >= 1.5) score -= 12;
+      else if (wave >= 1.0) score -= 5;
+      else score += 4;
+    }
+    const wind = kma?.windSpeedMs ?? this.getRegionMarineWeather(regionId)?.windSpeedMs;
+    if (wind !== undefined) {
+      if (wind >= 12) score -= 16;
+      else if (wind >= 8) score -= 8;
+      else if (wind <= 4) score += 3;
+    }
+    const kind = this.getWeatherKind(regionId);
+    if (kind === 'rain' || kind === 'shower' || kind === 'sleet') score -= 12;
+    else if (kind === 'snow') score -= 8;
+    else if (kind === 'fog') score -= 6;
+    else if (kind === 'cloudy') score -= 2;
+
+    score = Math.max(0, Math.min(100, score));
+    const label = score >= 85 ? '최적'
+      : score >= 70 ? '좋음'
+      : score >= 55 ? '양호'
+      : score >= 40 ? '보통'
+      : score >= 25 ? '나쁨'
+      : score >= 12 ? '매우나쁨'
+      : '최악';
+    return { label, score: Math.round(score), placeName: idx?.placeName };
+  }
+
+  /**
+   * 지역 선호(거래량) 상위 경락 시세 — 전국 거래량 × 지역 어획 가중으로 랭킹.
+   * changePct = 당일 경락가의 기본 단가 대비 변동률 (%).
+   */
+  getTopMarketMovers(regionId: string, n = 5): {
+    name: string; pricePerKg: number; changePct: number; volumeKg: number;
+  }[] {
+    const prices = this._snapshot?.marketPrices ?? [];
+    const weights = this.getCatchWeights(regionId);
+    return prices
+      .map((p) => {
+        const def = SEAFOOD_AUCTION_MAPPING[p.speciesId];
+        const changePct = def && def.defaultPricePerKg > 0
+          ? Math.round((p.avgPricePerKg / def.defaultPricePerKg - 1) * 100)
+          : 0;
+        return { p, changePct, score: p.totalVolumeKg * (weights[p.speciesId] ?? 1.0) };
+      })
+      .sort((a, b) => b.score - a.score)
+      .slice(0, n)
+      .map((x) => ({
+        name: x.p.itemName, pricePerKg: Math.round(x.p.avgPricePerKg),
+        changePct: x.changePct, volumeKg: Math.round(x.p.totalVolumeKg),
+      }));
+  }
+
+  /** 지역(시도) 어획량 상위 어종 — KOSIS 최신 수록 시점 기준 */
+  getRegionTopCatch(regionId: string, n = 5): {
+    speciesName: string; value: number; unit: string; period: string;
+  }[] {
+    const stats = this._snapshot?.regionalCatch;
+    const sido = REGION_TO_SIDO[regionId];
+    if (!stats || !sido) return [];
+    const rows = stats.filter((r) => r.regionName.startsWith(sido));
+    if (rows.length === 0) return [];
+    const latest = rows.reduce((m, r) => (r.period > m ? r.period : m), rows[0].period);
+    return rows
+      .filter((r) => r.period === latest && r.value > 0)
+      .sort((a, b) => b.value - a.value)
+      .slice(0, n)
+      .map((r) => ({ speciesName: r.speciesName, value: Math.round(r.value), unit: r.unit || '톤', period: latest }));
+  }
+
+  /**
+   * 지역 선호 어종 입질 전망 (서식 환경별).
+   *
+   * 실데이터 조합: 바다낚시지수 배율(0.7~1.4) × KOSIS 어획 가중(0.7~1.8)
+   * × 물때 활성도(오라클 1~15물) × 야간 보정(현재 시각) → 퍼센트 클램프.
+   */
+  getRegionBiteOutlook(regionId: string, n = 4): {
+    name: string; habitatLabel: string; layerLabel: string; pct: number;
+  }[] {
+    const weights = this.getCatchWeights(regionId);
+    const idx = this.getRegionFishingIndex(regionId);
+    const idxMod = idx ? [0, 0.7, 0.85, 1.0, 1.2, 1.4][idx.indexLevel] ?? 1.0 : 1.0;
+    const tide = calculateTideInfo(new Date());
+    const hour = new Date().getHours();
+    const night = hour >= 20 || hour < 5;
+
+    const ranked = Object.entries(weights)
+      .sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0))
+      .map(([id, w]) => ({ spec: ORACLE_FISH_DB.find((s) => s.speciesId === id), w: w ?? 1 }))
+      .filter((x): x is { spec: (typeof ORACLE_FISH_DB)[number]; w: number } => !!x.spec);
+
+    const tideIdx = Math.max(0, Math.min(14, Math.round(tide.tidePhase) - 1));
+    return ranked.slice(0, n).map(({ spec, w }) => {
+      const act = spec.tideActivity[tideIdx] ?? 0.5;
+      const nb = night ? Math.min(spec.nightBonus ?? 1.0, 1.6) : 1.0;
+      const pct = Math.max(3, Math.min(92, Math.round(34 * idxMod * w * (0.45 + act) * nb)));
+      return {
+        name: spec.nameKo,
+        habitatLabel: HABITAT_LABEL[spec.habitat[0]] ?? spec.habitat[0],
+        layerLabel: LAYER_LABEL[spec.preferredLayers[0]] ?? spec.preferredLayers[0],
+        pct,
+      };
+    });
+  }
+
+  // ── 7) API 연동 상태 요약 (메인 메뉴 표시용) ──────────
+  /**
+   * 소스별 실데이터/Mock 상태 목록.
+   * 스냅샷이 아직 없으면(수집 전) live=false + '수집 중' 상세로 표기된다.
+   */
+  getApiStatusList(): { name: string; live: boolean; detail: string }[] {
+    const r = this._snapshot?.realData;
+    const kmaTotal = Object.keys(KMA_GRID_BY_REGION).length;
+    return [
+      {
+        name: '바다낚시지수 (해양조사원)',
+        live: r?.fishingIndex ?? false,
+        detail: r ? (r.fishingIndex ? `${this._snapshot?.fishingIndex.length ?? 0}건` : 'Mock') : '수집 중',
+      },
+      {
+        name: '수산물 경락가 (MAFRA)',
+        live: r?.marketPrices ?? false,
+        detail: r ? (r.marketPrices ? `${this._snapshot?.marketPrices.length ?? 0}어종` : 'Mock') : '수집 중',
+      },
+      {
+        name: '어획량 통계 (KOSIS)',
+        live: r?.regionalCatch ?? false,
+        detail: r ? (r.regionalCatch ? `${this._snapshot?.regionalCatch.length ?? 0}행` : 'Mock') : '수집 중',
+      },
+      {
+        name: '해양기상 (해양측위정보원)',
+        live: this._marine.size > 0,
+        detail: this._marine.size > 0 ? `${this._marine.size}개 관측소` : (r ? 'Mock' : '수집 중'),
+      },
+      {
+        name: '기상청 단기예보',
+        live: this._kma.size > 0,
+        detail: this._kma.size > 0 ? `${this._kma.size}/${kmaTotal}개 지역` : (r ? 'Mock' : '수집 중'),
+      },
+    ];
   }
 }
 

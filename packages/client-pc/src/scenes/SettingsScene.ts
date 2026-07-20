@@ -21,16 +21,26 @@ export interface GameSettings {
   sfxVolume: number;    // 0.0 ~ 1.0
   bgmVolume: number;    // 0.0 ~ 1.0
   language: 'ko' | 'en';
+  /** 1인칭 낚시 뷰 낚싯대(로드) 화면 위치 — 화면 중앙 기준 좌/우 */
+  rodSide: 'left' | 'right';
+  /** 릴 핸들(감는 손잡이) 위치 — 화면이 아닌 **로드 기준** 좌/우 */
+  reelHandle: 'left' | 'right';
 }
 
 const SETTINGS_STORAGE_KEY = 'pixelAngler_settings';
 
+const DEFAULT_SETTINGS: GameSettings = {
+  sfxVolume: 0.7, bgmVolume: 0.5, language: 'ko',
+  rodSide: 'right', reelHandle: 'left',
+};
+
 export function loadSettings(): GameSettings {
   try {
     const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
-    if (raw) return JSON.parse(raw) as GameSettings;
+    // 기존 저장본에 신규 필드가 없을 수 있으므로 기본값과 병합
+    if (raw) return { ...DEFAULT_SETTINGS, ...(JSON.parse(raw) as Partial<GameSettings>) };
   } catch (_e) {/* ignore */}
-  return { sfxVolume: 0.7, bgmVolume: 0.5, language: 'ko' };
+  return { ...DEFAULT_SETTINGS };
 }
 
 export function saveSettings(settings: GameSettings): void {
@@ -61,7 +71,7 @@ const HOTKEY_LIST = [
 // ─────────────────────────────────────────────
 // 씬 클래스
 // ─────────────────────────────────────────────
-type SettingsTab = 'hotkey' | 'audio' | 'language';
+type SettingsTab = 'hotkey' | 'fishing' | 'audio' | 'language';
 
 export class SettingsScene extends Phaser.Scene {
   private currentTab: SettingsTab = 'hotkey';
@@ -120,6 +130,7 @@ export class SettingsScene extends Phaser.Scene {
     // ── 탭 버튼 ────────────────────────────────────────
     const tabs: { id: SettingsTab; label: string }[] = [
       { id: 'hotkey', label: '⌨ 단축키' },
+      { id: 'fishing', label: '낚시' },
       { id: 'audio', label: '🔊 음향' },
       { id: 'language', label: '🌐 언어' },
     ];
@@ -180,7 +191,7 @@ export class SettingsScene extends Phaser.Scene {
     const panelX = (GAME_WIDTH - 800) / 2;
     const tabStartX = panelX + 20;
     const tabY = (GAME_HEIGHT - 560) / 2 + 56;
-    const tabs: SettingsTab[] = ['hotkey', 'audio', 'language'];
+    const tabs: SettingsTab[] = ['hotkey', 'fishing', 'audio', 'language'];
 
     tabs.forEach((id, i) => {
       const bg = this.tabBgs[id];
@@ -196,9 +207,81 @@ export class SettingsScene extends Phaser.Scene {
   private renderTab(): void {
     switch (this.currentTab) {
       case 'hotkey':   this.renderHotkeyTab(); break;
+      case 'fishing':  this.renderFishingTab(); break;
       case 'audio':    this.renderAudioTab(); break;
       case 'language': this.renderLanguageTab(); break;
     }
+  }
+
+  // ── 낚시 탭 (1인칭 로드/릴 위치) ──────────────────────
+  private renderFishingTab(): void {
+    const panelX = (GAME_WIDTH - 800) / 2;
+    const panelY = (GAME_HEIGHT - 560) / 2;
+    const startX = panelX + 60;
+    const startY = panelY + 130;
+
+    const items: {
+      key: 'rodSide' | 'reelHandle'; label: string; desc: string;
+      options: { value: 'left' | 'right'; label: string }[];
+    }[] = [
+      {
+        key: 'rodSide', label: '낚싯대(로드) 위치',
+        desc: '1인칭 낚시 뷰에서 낚싯대가 놓일 화면 방향 — 화면 중앙 기준 좌/우 반대편에 그려집니다.',
+        options: [{ value: 'left', label: '좌 (좌수)' }, { value: 'right', label: '우 (우수)' }],
+      },
+      {
+        key: 'reelHandle', label: '릴 핸들 위치',
+        desc: '로드에 장착된 스피닝릴의 핸들(감는 손잡이) 방향 — 화면이 아닌 로드 기준 좌/우입니다.',
+        options: [{ value: 'left', label: '좌' }, { value: 'right', label: '우' }],
+      },
+    ];
+
+    items.forEach((item, i) => {
+      const iy = startY + i * 130;
+
+      const label = this.add.text(startX, iy, item.label, {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '15px', color: '#d0e8f5', fontStyle: 'bold',
+      });
+      const desc = this.add.text(startX, iy + 22, item.desc, {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#607b8e',
+        wordWrap: { width: 640 },
+      });
+      this.contentContainer.add([label, desc]);
+
+      item.options.forEach((opt, j) => {
+        const bx = startX + j * 180;
+        const by = iy + 52;
+        const selected = this.settings[item.key] === opt.value;
+
+        const bg = this.add.graphics();
+        bg.fillStyle(selected ? 0x162a40 : 0x0e1c2d, 0.9);
+        bg.fillRoundedRect(bx, by, 164, 40, 5);
+        bg.lineStyle(2, selected ? 0x4af2a1 : 0x2a5a8a, selected ? 1 : 0.5);
+        bg.strokeRoundedRect(bx, by, 164, 40, 5);
+
+        const txt = this.add.text(bx + 82, by + 20, opt.label, {
+          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '14px',
+          color: selected ? '#4af2a1' : '#a0b8c8', fontStyle: 'bold',
+        }).setOrigin(0.5);
+
+        const hit = this.add.rectangle(bx + 82, by + 20, 164, 40, 0xffffff, 0)
+          .setInteractive({ useHandCursor: true });
+        hit.on('pointerdown', () => {
+          this.settings[item.key] = opt.value;
+          saveSettings(this.settings);
+          this.contentContainer.removeAll(true);
+          this.renderTab();
+        });
+
+        this.contentContainer.add([bg, txt, hit]);
+      });
+    });
+
+    const note = this.add.text(startX, startY + 280,
+      '※ 변경 즉시 저장되며, 다음 1인칭 낚시 진입부터 반영됩니다.', {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#4af2a1', fontStyle: 'italic',
+      });
+    this.contentContainer.add(note);
   }
 
   // ── 단축키 탭 ─────────────────────────────────────────

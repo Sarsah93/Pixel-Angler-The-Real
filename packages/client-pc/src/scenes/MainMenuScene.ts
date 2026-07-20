@@ -16,7 +16,6 @@
 
 import Phaser from 'phaser';
 import { GameState, SAVE_SLOT_COUNT } from '../store/GameState.js';
-import { EnvironmentStore } from '../store/EnvironmentStore.js';
 import { ExternalDataStore } from '../store/ExternalDataStore.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 
@@ -46,6 +45,12 @@ export class MainMenuScene extends Phaser.Scene {
   private panelContainer!: Phaser.GameObjects.Container;
   private rowObjs: { bg: Phaser.GameObjects.Graphics; label: Phaser.GameObjects.Text; sub?: Phaser.GameObjects.Text; y: number; h: number }[] = [];
   private environmentText?: Phaser.GameObjects.Text;
+  /** API 연동 상태 패널 행 (점 + 텍스트) */
+  private apiStatusRows: { dot: Phaser.GameObjects.Arc; text: Phaser.GameObjects.Text }[] = [];
+  /** 하단 정보 티커 메시지 목록 (지역별 환경/시세/어획량/입질 전망 순환) */
+  private tickerMsgs: string[] = [];
+  private tickerIdx = 0;
+  private tickerEvent?: Phaser.Time.TimerEvent;
   /** 덮어쓰기 확인 대기 중인 슬롯 (new 모드 2단계 클릭) */
   private confirmSlot: number | null = null;
   /** 삭제 확인 대기 중인 슬롯 (2단계 클릭) */
@@ -67,6 +72,7 @@ export class MainMenuScene extends Phaser.Scene {
     this.buildView();
 
     this.drawBottomBar();
+    this.drawApiStatusPanel();
     this.setupKeyboard();
     void this.loadEnvironmentData();
     // 공공 OpenAPI 일괄 수집 (스타트업 1회 — 낚시지수/경락가/어획량 캐시)
@@ -568,24 +574,159 @@ export class MainMenuScene extends Phaser.Scene {
     }).setOrigin(1, 0).setDepth(41);
   }
 
+  // ═══════════════════════════════════════════════════
+  // API 연동 상태 패널 (좌하단 — 소스별 실데이터/Mock)
+  // ═══════════════════════════════════════════════════
+  private drawApiStatusPanel(): void {
+    this.apiStatusRows = [];
+    const list = ExternalDataStore.getApiStatusList();
+    const rowH = 15;
+    const panelW = 252;
+    const panelH = 24 + list.length * rowH + 8;
+    const x = 12;
+    const y = GAME_HEIGHT - 26 - 12 - panelH;
+
+    const bg = this.add.graphics().setDepth(40);
+    bg.fillStyle(0x04101e, 0.72);
+    bg.fillRoundedRect(x, y, panelW, panelH, 4);
+    bg.lineStyle(1, 0x1e3a54, 0.9);
+    bg.strokeRoundedRect(x, y, panelW, panelH, 4);
+
+    this.add.text(x + 10, y + 7, '실시간 데이터 연동', {
+      fontFamily: 'monospace', fontSize: '10px', color: '#7fb8d8',
+    }).setDepth(41);
+
+    for (let i = 0; i < list.length; i++) {
+      const ry = y + 24 + i * rowH + 5;
+      const dot = this.add.circle(x + 14, ry, 3, 0x5a6a78, 1).setDepth(41);
+      const text = this.add.text(x + 24, ry - 5, '', {
+        fontFamily: 'monospace', fontSize: '10px', color: '#5a7a94',
+      }).setDepth(41);
+      this.apiStatusRows.push({ dot, text });
+    }
+    this.refreshApiStatus();
+  }
+
+  /** 상태 갱신 — 수집 전/후 공용 (실데이터 초록 / Mock 주황 / 수집 중 회색) */
+  private refreshApiStatus(): void {
+    const list = ExternalDataStore.getApiStatusList();
+    for (let i = 0; i < this.apiStatusRows.length && i < list.length; i++) {
+      const row = this.apiStatusRows[i];
+      const s = list[i];
+      if (!row.text.active) continue;
+      const pending = s.detail === '수집 중';
+      row.dot.setFillStyle(pending ? 0x5a6a78 : s.live ? 0x3ade7e : 0xe8963a, 1);
+      row.text.setText(`${s.name}  ${s.detail}`);
+      row.text.setColor(pending ? '#5a7a94' : s.live ? '#8fd8ae' : '#d8a878');
+    }
+  }
+
   private async loadEnvironmentData(): Promise<void> {
-    const env = await EnvironmentStore.fetchEnvironment('geoje_gujora_breakwater');
-    if (env && this.environmentText) {
-      const { tide, weather } = env;
-      this.environmentText.setText(
-        `거제 구조라 | ${tide.tidePhaseLabel} | 수온 ${weather.seaSurfaceTempC}°C | 풍속 ${weather.windSpeedMs}m/s ${weather.windDirectionLabel}`,
-      );
-      this.environmentText.setColor('#7fb8d8');
+    // 공공 API 수집 완료 후 연동 상태 패널 갱신 + 하단 정보 티커 가동
+    await ExternalDataStore.fetchAll();
+    if (!this.scene.isActive()) return;
+    this.refreshApiStatus();
+    this.buildTickerMessages();
+    this.startTicker();
+  }
+
+  // ═══════════════════════════════════════════════════
+  // 하단 정보 티커 — 서비스 지역별 환경/시세/어획량/입질 전망 순환
+  // ═══════════════════════════════════════════════════
+  /**
+   * 지역별 4종 메시지 생성:
+   * ① 실황 환경 + 7단계 낚시 등급 ② 경락 시세 변동 TOP5(거래량×지역 선호)
+   * ③ 어획량 상위 어종 ④ 선호 어종 입질 확률(서식 환경별)
+   */
+  private buildTickerMessages(): void {
+    const kindLabel: Record<string, string> = {
+      clear: '맑음', partly: '구름많음', cloudy: '흐림', rain: '비',
+      sleet: '진눈깨비', snow: '눈', shower: '소나기', fog: '안개',
+    };
+    const msgs: string[] = [];
+
+    for (const regionId of ExternalDataStore.getServicedRegionIds()) {
+      const name = ExternalDataStore.getRegionName(regionId);
+
+      // ① 실황 환경 + 낚시 등급 (7단계)
+      const kma = ExternalDataStore.getKmaWeather(regionId);
+      const marine = ExternalDataStore.getRegionMarineWeather(regionId);
+      const grade = ExternalDataStore.getFishingGrade(regionId);
+      const envParts: string[] = [kindLabel[ExternalDataStore.getWeatherKind(regionId)] ?? ''];
+      if (kma?.tempC !== undefined) envParts.push(`기온 ${kma.tempC}°C`);
+      const waterTemp = ExternalDataStore.getWaterTempC(regionId);
+      if (waterTemp !== undefined) envParts.push(`수온 ${waterTemp.toFixed(1)}°C`);
+      const wind = kma?.windSpeedMs ?? marine?.windSpeedMs;
+      if (wind !== undefined) envParts.push(`풍속 ${wind}m/s`);
+      const wave = ExternalDataStore.getWaveHeightM(regionId);
+      if (wave !== undefined) envParts.push(`파고 ${wave}m`);
+      msgs.push(`[${name}] ${envParts.filter(Boolean).join(' · ')} | 낚시하기 ${grade.label}`);
+
+      // ② 경락 시세 변동 TOP5
+      const movers = ExternalDataStore.getTopMarketMovers(regionId, 5);
+      if (movers.length > 0) {
+        const line = movers.map((m, i) => {
+          const arrow = m.changePct > 0 ? `▲${m.changePct}%` : m.changePct < 0 ? `▼${Math.abs(m.changePct)}%` : '보합';
+          return `${i + 1}위 ${m.name} ${m.pricePerKg.toLocaleString()}원/kg ${arrow}`;
+        }).join(' · ');
+        msgs.push(`[${name} 경락 시세] ${line}`);
+      }
+
+      // ③ 어획량 상위 어종
+      const catches = ExternalDataStore.getRegionTopCatch(regionId, 5);
+      if (catches.length > 0) {
+        const period = catches[0].period;
+        const periodLabel = period.length === 6 ? `${period.slice(0, 4)}.${period.slice(4)}` : period;
+        const line = catches.map((c) => `${c.speciesName} ${c.value.toLocaleString()}${c.unit}`).join(' · ');
+        msgs.push(`[${name} 어획량 ${periodLabel}] ${line}`);
+      }
+
+      // ④ 선호 어종 입질 확률 (서식 환경별)
+      const outlook = ExternalDataStore.getRegionBiteOutlook(regionId, 4);
+      if (outlook.length > 0) {
+        const line = outlook.map((o) => `${o.name}(${o.habitatLabel}·${o.layerLabel}) ${o.pct}%`).join(' · ');
+        msgs.push(`[${name} 입질 전망] ${line}`);
+      }
     }
 
-    // 공공 API 수집 완료 후 바다낚시지수 표기 추가
-    await ExternalDataStore.fetchAll();
-    const idx = ExternalDataStore.getFishingIndexInfo();
-    if (idx && this.environmentText && this.environmentText.active) {
-      this.environmentText.setText(
-        `${this.environmentText.text} | 낚시지수(${idx.placeName}) ${idx.indexLabel}`,
-      );
-    }
+    this.tickerMsgs = msgs;
+    this.tickerIdx = 0;
+  }
+
+  /** 8초 간격 페이드 순환 표시 */
+  private startTicker(): void {
+    const text = this.environmentText;
+    if (!text || !text.active || this.tickerMsgs.length === 0) return;
+
+    const apply = (msg: string): void => {
+      if (!text.active) return;
+      text.setText(msg);
+      text.setColor('#7fb8d8');
+      // 긴 메시지(시세 TOP5 등)가 좌측 시계/우측 버전 표기와 겹치지 않도록 축소
+      text.setScale(1);
+      if (text.width > 1060) text.setScale(1060 / text.width);
+    };
+    const fadeTo = (msg: string): void => {
+      if (!text.active) return;
+      this.tweens.add({
+        targets: text, alpha: 0, duration: 220,
+        onComplete: () => {
+          apply(msg);
+          if (text.active) this.tweens.add({ targets: text, alpha: 1, duration: 220 });
+        },
+      });
+    };
+
+    // 첫 메시지는 즉시 표시 ("로드 중" 공백 제거), 이후 순환은 페이드 전환
+    apply(this.tickerMsgs[0]);
+    this.tickerEvent?.remove();
+    this.tickerEvent = this.time.addEvent({
+      delay: 8000, loop: true,
+      callback: () => {
+        this.tickerIdx = (this.tickerIdx + 1) % this.tickerMsgs.length;
+        fadeTo(this.tickerMsgs[this.tickerIdx]);
+      },
+    });
   }
 
   // ═══════════════════════════════════════════════════

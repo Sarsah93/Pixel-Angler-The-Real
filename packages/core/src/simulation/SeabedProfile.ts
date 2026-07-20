@@ -50,16 +50,23 @@ export class SeabedProfile {
   private readonly seed: number;
   readonly maxDepthM: number;
   readonly maxDistM: number;
+  /** 암초 판정 노이즈 임계 (rockRatio가 높을수록 낮아져 암초 지대가 넓어짐) */
+  private readonly rockThreshold: number;
 
   /**
    * @param seed 캐스팅 착수 시드 (reefSeed)
    * @param maxDepthM 최대 수심 (지역 Z_max)
    * @param maxDistM 프로필 범위 (캐스팅 최대 거리 + 여유)
+   * @param rockRatio 암초 비율 0~1 (낚시터 snagRisk 연동 — low≈0.2 / mid≈0.35 / high≈0.55)
    */
-  constructor(seed: number, maxDepthM: number, maxDistM: number) {
+  constructor(seed: number, maxDepthM: number, maxDistM: number, rockRatio = 0.35) {
     this.seed = seed >>> 0;
     this.maxDepthM = Math.max(2, maxDepthM);
     this.maxDistM = Math.max(8, maxDistM);
+    const r = Math.max(0, Math.min(1, rockRatio));
+    // r=0.2 → 0.74, r=0.35 → 0.66, r=0.55 → 0.55 (노이즈 초과분이 암초)
+    // 코사인 보간 노이즈는 중앙 몰림 분포라 임계 매핑을 강하게 잡는다
+    this.rockThreshold = Math.max(0.5, Math.min(0.8, 0.85 - r * 0.55));
   }
 
   /** 기반 수심 — 발앞 얕고 멀수록 깊다 (암초 융기 미반영) */
@@ -75,12 +82,13 @@ export class SeabedProfile {
 
   /** 암초 지대 여부 (여밭 — 밑걸림/입질 지형 판정) */
   isRockAt(d: number): boolean {
-    return this.rockiness(Math.max(0, d)) > 0.55;
+    return this.rockiness(Math.max(0, d)) > this.rockThreshold;
   }
 
   /** 해조류(켈프) 여부 — 짙은 암초 지대에만 */
   hasKelpAt(d: number): boolean {
-    return this.rockiness(Math.max(0, d)) > 0.72 && valueNoise(this.seed ^ 0x5f3759df, d / 3) > 0.5;
+    return this.rockiness(Math.max(0, d)) > this.rockThreshold + 0.15
+      && valueNoise(this.seed ^ 0x5f3759df, d / 3) > 0.5;
   }
 
   /**
@@ -92,9 +100,10 @@ export class SeabedProfile {
     const dd = Math.max(0, d);
     const base = this.baseDepth(dd);
     const r = this.rockiness(dd);
-    // 0.55 초과분에 비례한 융기 + 세부 요철(1.7m 셀 노이즈)
-    const rise = r > 0.55
-      ? base * (0.45 * ((r - 0.55) / 0.45)) * (0.55 + 0.45 * valueNoise(this.seed ^ 0x1234abcd, dd / 1.7))
+    const th = this.rockThreshold;
+    // 임계 초과분에 비례한 융기 + 세부 요철(1.7m 셀 노이즈)
+    const rise = r > th
+      ? base * (0.45 * ((r - th) / (1 - th))) * (0.55 + 0.45 * valueNoise(this.seed ^ 0x1234abcd, dd / 1.7))
       : 0;
     return Math.min(this.maxDepthM, Math.max(0.8, base - rise));
   }

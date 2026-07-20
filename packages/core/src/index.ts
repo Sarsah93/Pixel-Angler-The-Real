@@ -184,6 +184,10 @@ export {
 export type { TidalVector3, TidalZone, TidalInfluence, TidalEngineOptions } from './simulation/TidalCurrentEngine.js';
 export { TidalCurrentEngine, TIDAL_ZONE_LABEL } from './simulation/TidalCurrentEngine.js';
 
+// 해저 지형 프로필 (거리 기반 연속 지형 — 수심 모식도 바닥/여밭 판정/어탐 기반)
+export type { SeabedSample } from './simulation/SeabedProfile.js';
+export { SeabedProfile } from './simulation/SeabedProfile.js';
+
 // Utils
 export { getApproxLunarDay, getLunarDayDisplay } from './utils/LunarCalendar.js';
 export type { KstParts } from './utils/KstTime.js';
@@ -212,7 +216,7 @@ export { launchCast, stepCast, simulateCastTrajectory } from './simulation/Casti
 export type { TideVector, RigPhysicsParams, UnderwaterRigState, UnderwaterStepInput } from './simulation/UnderwaterSinkPhysics.js';
 export { createUnderwaterRig, computeSinkSpeed, stepUnderwater, isHoldState } from './simulation/UnderwaterSinkPhysics.js';
 export type { LineTensionInput, LineTensionOutput } from './simulation/LineTensionPhysics.js';
-export { LineTensionPhysics } from './simulation/LineTensionPhysics.js';
+export { LineTensionPhysics, HOLD_LIFT_M } from './simulation/LineTensionPhysics.js';
 export type { ChumBall, ChumProbePos } from './simulation/ChumPhysics.js';
 export { ChumPhysics } from './simulation/ChumPhysics.js';
 export type { BiteContext, BiteTickResult } from './simulation/BiteProbabilityEngine.js';

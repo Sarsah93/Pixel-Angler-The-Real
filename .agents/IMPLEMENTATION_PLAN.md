@@ -1,7 +1,81 @@
 # The Real Angler — 구현 계획서 (IMPLEMENTATION_PLAN)
 
-> **최종 업데이트**: 2026-07-14
+> **최종 업데이트**: 2026-07-20 (6차 — 1인칭 낚싯대 5절 재설계 + 설정 로드/릴 위치 좌우 + 입질 연출 +0.5초 + UI 가시성)
 > **작업 기준**: 이 계획서가 모든 구현의 기준입니다. 작업 완료 시 반드시 업데이트하세요.
+
+---
+
+## ▶ 다음 작업 큐 (2026-07-20 등록 — 여기서부터 이어서 작업할 것)
+
+> 진행 현황: **Q3 ✅ 완료** (해저 지형 프로필 연동 + 뒷줄견제 홀드 재정의 + 가이드 UX — 2차).
+> 3차: 탑다운 수심 타일 + 낮/밤 조명 + 날씨. 4차: **1인칭 하늘/수중 실시간 반영(시간대×날씨 매트릭스 + 비/눈/안개 파티클) + 메인 메뉴 좌하단 API 연동 상태 패널**(`ExternalDataStore.getApiStatusList` — 실데이터/Mock/수집 중 점 표시).
+> 남은 항목: **Q1**(입질 유도 메커니즘) → **Q2**(가이드 예시 이미지 고도화) → **Q5**(신규 API 5종). Q4는 Q3 프로필 구조로 대비 완료.
+
+### Q1. 입질 1·2단계 유도 메커니즘 (약은 입질 → 본입질 유도)
+- 입질 시퀀스 1단계 또는 2단계 진행 중에 **1초간 릴링을 유지하거나 H(뒷줄견제)를 누르고 있으면
+  3단계로 진행할 확률 +70%** (배율 1.7). 실제 낚시 고증: 약은 입질 중 가볍게 감거나 견제하면
+  미끼를 놓치기 싫은 물고기가 한 번에 삼키는 경우가 대부분.
+- 구현 위치: `core/simulation/BiteSequenceEngine.ts` — 단계 진행 판정에 유도 입력(견제/릴링 1초 유지) 보너스 반영.
+  1인칭 씬에서 유도 중임을 알리는 미세 피드백(초릿대 떨림 등) 고려.
+
+### Q2. 인게임 낚시 가이드 고도화 (요소 간 상관관계 설명)
+- 물리 수치 나열이 아니라 **"어떤 상황에서 어떻게 되는지"** 요소 간 상관 중심 설명.
+  예: "던지는 위치마다 조류가 다르게 흐르며, 조류에 따라 찌·루어·미끼의 침강 속도와 채비 정렬 속도가 달라집니다."
+- 예시 이미지(가능하면 짧은 애니메이션/동영상 프레임) 포함 — 기존 F1 가이드 4페이지를 확장.
+- 후보 주제: 조류 존(조경지대/반탄류/본류) 유불리 · 침강과 면사매듭 · 정렬도와 입질 · 뒷줄견제 효과 ·
+  물때와 활성도 · 지형(여밭/모래)과 밑걸림 · 채비 무게와 원투.
+
+### ~~Q3~~. 우측 수심 모식도 — 동적 바닥 지형 (✅ 완료 2026-07-20 2차 — 아래 설계대로 구현)
+- 착수 지점~유저 사이의 **거리별 바닥 지형이 연속적으로**(끊김 없이) 구성되어 릴링으로 채비가
+  이동하면 모식도의 지형이 함께 흘러가야 함 (채비 위치 중심 거리 창 스크롤).
+- 지형 요소: 암초 높낮이(단차 있는 암초 지대), 암초가 끝나며 모래 바닥이 시작되는 경계, 수초 군락,
+  높낮이 있는 모래 바닥 (참고 스케치: 상층/중층/바닥층 구분 + 수초 낀 암초 실루엣).
+- **지형 지도 연동 소스** (씬이 이미 보유한 지도 기반 데이터를 프로필 생성에 주입):
+  ① 착수 타일 해시 시드(`reefSeed`) — 같은 포인트는 항상 같은 바닥 ② 실측 수심(`zMaxM`,
+  연안정보도) — 프로필 원거리 기준 수심 ③ 발밑 지형(`shoreKind` — 모래/잔디/자갈) — 근거리
+  기준 수심 ④ 낚시터 특성(`RegionAreaNode.snagRisk`) — 암초 비율(high 감천항 ≈ 암초 50%+,
+  low 모래 위주).
+- 구현: `core/simulation/SeabedProfile.ts` — 결정적 PRNG + 값 노이즈 기반 1D 프로필
+  `generateSeabedProfile(seed, lengthM, shoreDepthM, landingDepthM, rockRatio)` →
+  `{distM, bedDepthM, kind('rock'|'sand'), weed}` 샘플 배열 + `bedDepthAt`/`bedKindAt` 보간.
+  암초/모래는 **연속 구간**(세그먼트)으로 전환되고 경계에서 바닥 높이는 이어진다.
+- 게임 연동: 침강 바닥 한계 = `min(Z_limit, bedDepthAt(distM))` (릴링 중 채비가 암초 단차를
+  타고 오름) / 여밭 판정 `isReefAt`(측면 X 해시) → **거리 기반 `bedKindAt`으로 대체** /
+  수심 모식도 게이지 박스에 거리 창(±12m) 단면 실루엣 + 수초 렌더.
+- Q4의 어탐 레이더(추후)가 같은 프로필을 조회하는 구조.
+
+### Q4. 유저-투척 지점 주변 지형 기반 구조 (어탐 레이더 대비)
+- **어탐 레이더 기능 자체는 지금 구현하지 않음** — 다만 "내가 선 지형에서 일정 거리 이상은 특정
+  지형/수심"을 조회할 수 있는 데이터 구조(Q3의 지형 프로필 + 아래 API)를 지금부터 고려해 설계.
+
+### Q5. 신규 해양 API 연동 (승인 완료 — 키는 data.go.kr 공용키 사용)
+공용 인증키: `VITE_DATA_GO_KR_API_KEY` (4b17...13e7 — .env)
+
+1) **해양수산부_어초정보** (인공어초 위치 — 여밭/구조물 포인트 소스)
+   - Base: `https://api.odcloud.kr/api` / GET `/15127275/v1/uddi:0be633ef-11f9-434d-a93f-fe557d9081d5`
+   - JSON+XML, odcloud 표준(serviceKey, page, perPage)
+2) **해양수산부_해수유동 3분 서비스** (격자별 유향·유속 — TidalCurrentEngine 실데이터화)
+   - End Point: `https://apis.data.go.kr/1192000/apVhdService_ContOc3` / `getOpnContOc3`
+   - 파라미터: serviceKey, numOfRows, pageNo, analsYmd(분석일자), gridCd(격자번호 예: GR3_G1E23_P), analsHhs(분석시간), type
+   - 참고문서: 루트 `격자3단계_격자번호.xlsx` (격자번호 매핑)
+3) **KHOA 수치조류도 예측 유향·유속** (영역 검색 — 간격 자동조절 1~10km)
+   - URL: `https://khoa.go.kr/oceandata/api/tidalCurrentArea/search.do`
+   - 파라미터: ServiceKey, Date(YYYYMMDD), Hour(00~23), Minute(00~59), MaxX/MinX/MaxY/MinY(경위도 영역), ResultType(json/xml)
+   - 응답: result.data[] = { pre_lon, pre_lat, current_speed(cm/s), current_dir(deg) }, result.meta.obs_last_req_cnt(잔여 요청수)
+   - ⚠️ KHOA 자체 키 필요 여부 확인 (샘플 키 형식이 data.go.kr과 다름)
+4) **국립해양조사원_자연과학용 수심정보** (해양수치모델 수심 — 광역 수심 그리드)
+   - End Point: `https://apis.data.go.kr/1192136/waterDepth` / `GetWaterDepthApiService`
+   - 파라미터: serviceKey, type(json/xml), ymin/ymax/xmin/xmax(위경도 박스), pageNo, numOfRows(최대 300), include/exclude
+   - 참고문서: 루트 `오픈API 활용가이드_자연과학용 수심정보.hwp`
+5) **국립해양조사원_조석예보(고·저조)** (일별 만조/간조 조위·시각 — TideCalculator 실데이터 보정)
+   - End Point: `https://apis.data.go.kr/1192136/tideFcstHghLw` / `GetTideFcstHghLwApiService`
+   - 파라미터: serviceKey, pageNo, numOfRows(최대 300), type, obsCode(예보지점 코드 예: DT_0018), reqDate(yyyyMMdd), include/exclude
+   - 참고문서: 루트 `오픈API 활용가이드_조석예보(고, 저조).hwp`
+
+연동 방침: 기존 `ExternalApiService` 패턴(클라이언트 클래스 + Mock 폴백 + 스타트업 캐시) 준수.
+활용 매핑 — 어초정보→여밭/구조물 스폰 포인트(Q3 프로필 시드), 해수유동/수치조류도→`TidalCurrentEngine`
+V_tide 실데이터, 자연과학용 수심→`resolveCastDepth` 광역 폴백(연안정보도 프로필 없는 지역),
+조석예보→`TideCalculator` 고·저조 시각 보정.
 
 ---
 

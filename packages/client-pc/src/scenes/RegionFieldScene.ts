@@ -38,8 +38,10 @@ import {
   RegionDepthProfile,
   depthAtDistance,
   findDepthAnchor,
+  kstHour,
 } from '@tra/core';
 import { GameState } from '../store/GameState.js';
+import { ExternalDataStore } from '../store/ExternalDataStore.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { RegionHud } from '../ui/RegionHud.js';
 import { InventoryPanel } from '../ui/InventoryPanel.js';
@@ -127,6 +129,14 @@ export class RegionFieldScene extends Phaser.Scene {
   private buildings: { x: number; y: number; kind: BuildingKind }[] = [];
   private nearBuilding: { x: number; y: number; kind: BuildingKind } | null = null;
 
+  // ── 대기/조명/날씨 (2026-07-20) ──
+  /** 화면 고정 빗줄기 풀 */
+  private rainDrops: { obj: Phaser.GameObjects.Rectangle; speed: number }[] = [];
+  /** 화면 고정 안개 블롭 (수평 드리프트) */
+  private fogBlobs: { obj: Phaser.GameObjects.Ellipse; speed: number }[] = [];
+  /** 화면 고정 눈송이 풀 */
+  private snowFlakes: { obj: Phaser.GameObjects.Arc; speed: number; sway: number }[] = [];
+
   /** 이동/캐스팅을 차단해야 하는 UI 상태 (일시정지 or 팝업 열림) */
   private get uiBlocked(): boolean {
     return this.isPaused || this.popupStack.length > 0;
@@ -190,6 +200,9 @@ export class RegionFieldScene extends Phaser.Scene {
     this.castBobber = undefined;
     this.castLineG = undefined;
     this.aimG = undefined;
+    this.rainDrops = [];
+    this.fogBlobs = [];
+    this.snowFlakes = [];
   }
 
   preload(): void {
@@ -223,6 +236,8 @@ export class RegionFieldScene extends Phaser.Scene {
     this.drawPois();
     this.setupInput();
     this.createHud();
+    // 낮/밤 명암 + 건물 조명·네온·가로등 + 날씨(비/안개) 효과
+    this.setupAtmosphere();
 
     // ── HUD 오버레이 (상태 바 / 미니맵 / 퀵슬롯 / 로그·채팅) ──
     this.hud = new RegionHud(this, {
@@ -303,9 +318,70 @@ export class RegionFieldScene extends Phaser.Scene {
   // ═══════════════════════════════════════════════════
   // 지형 렌더링 (RenderTexture 베이킹)
   // ═══════════════════════════════════════════════════
+  /**
+   * 바다 타일의 "육지로부터의 거리"(타일 단위) 계산 — 멀티소스 BFS.
+   * 수심 그라데이션 렌더의 기준 (거리 멀수록 깊은 색).
+   */
+  private computeWaterDistance(): number[][] {
+    const dist: number[][] = Array.from({ length: this.rows }, () => new Array(this.cols).fill(-1));
+    const queue: [number, number][] = [];
+    for (let r = 0; r < this.rows; r++) {
+      for (let c = 0; c < this.cols; c++) {
+        if (this.terrain[r][c] !== 'water') { dist[r][c] = 0; queue.push([c, r]); }
+      }
+    }
+    let head = 0;
+    while (head < queue.length) {
+      const [c, r] = queue[head++];
+      for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+        const nc = c + dc, nr = r + dr;
+        if (nc < 0 || nc >= this.cols || nr < 0 || nr >= this.rows) continue;
+        if (dist[nr][nc] !== -1) continue;
+        dist[nr][nc] = dist[r][c] + 1;
+        queue.push([nc, nr]);
+      }
+    }
+    return dist;
+  }
+
+  /** 결정적 2D 값 노이즈 (암초 지대 배치용 — mapId 시드) */
+  private static noise2(seed: number, x: number, y: number): number {
+    const h = (ix: number, iy: number): number => {
+      let n = (seed ^ Math.imul(ix, 374761393) ^ Math.imul(iy, 668265263)) >>> 0;
+      n = Math.imul(n ^ (n >>> 13), 1274126177) >>> 0;
+      return ((n ^ (n >>> 16)) >>> 0) / 4294967296;
+    };
+    const ix = Math.floor(x), iy = Math.floor(y);
+    const fx = x - ix, fy = y - iy;
+    const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
+    const a = h(ix, iy) * (1 - sx) + h(ix + 1, iy) * sx;
+    const b = h(ix, iy + 1) * (1 - sx) + h(ix + 1, iy + 1) * sx;
+    return a * (1 - sy) + b * sy;
+  }
+
   private renderTerrain(): void {
     const texKey = `rmaptex_${this.mapId}`;
     if (!this.textures.exists(texKey)) {
+      // 수심 그라데이션(거리 램프): 얕음 → 깊음 [기본색, 체커 보조색]
+      const DEPTH_RAMP: [number, number][] = [
+        [0x74add0, 0x6da6c9],   // 0: 물가 모래톱
+        [0x5e9cc4, 0x5794bd],   // 1: 얕은 연안
+        [0x4a86b0, 0x437ea8],   // 2: 중간
+        [0x3a6f99, 0x356890],   // 3: 깊음
+        [0x2c5a82, 0x275378],   // 4: 더 깊음
+        [0x224a6e, 0x1e4366],   // 5: 심해
+      ];
+      const bucketOf = (d: number): number =>
+        d <= 1 ? 0 : d <= 3 ? 1 : d <= 6 ? 2 : d <= 10 ? 3 : d <= 15 ? 4 : 5;
+
+      // mapId 문자열 해시 → 암초 노이즈 시드 (맵마다 다른 암초 배치, 결정적)
+      let mapSeed = 2166136261;
+      for (let i = 0; i < this.mapId.length; i++) {
+        mapSeed = Math.imul(mapSeed ^ this.mapId.charCodeAt(i), 16777619);
+      }
+      mapSeed = mapSeed >>> 0;
+
+      const waterDist = this.computeWaterDistance();
       const g = this.add.graphics();
       for (let r = 0; r < this.rows; r++) {
         for (let c = 0; c < this.cols; c++) {
@@ -313,11 +389,31 @@ export class RegionFieldScene extends Phaser.Scene {
           const checker = (c + r) % 2 === 0;
           let color: number;
           if (t === 'water') {
-            // 육지에 인접한 바다는 얕은 색(모래톱)으로
-            const shallow =
-              this.terrainAt(c + 1, r) !== 'water' || this.terrainAt(c - 1, r) !== 'water' ||
-              this.terrainAt(c, r + 1) !== 'water' || this.terrainAt(c, r - 1) !== 'water';
-            color = shallow ? COL.shore : (checker ? COL.water : COL.waterAlt);
+            const d = waterDist[r][c];
+            let bucket = bucketOf(d);
+            // 암초/여 지대: 노이즈 융기 — 주변보다 얕은 색(단차)으로 도드라짐
+            const reefNoise = RegionFieldScene.noise2(mapSeed, c / 3.2, r / 3.2);
+            const isReef = d >= 2 && d <= 14 && reefNoise > 0.72;
+            if (isReef) bucket = Math.max(0, bucket - 2);
+            const ramp = DEPTH_RAMP[bucket];
+            color = checker ? ramp[0] : ramp[1];
+            g.fillStyle(color, 1);
+            g.fillRect(c * TR, r * TR, TR, TR);
+            if (isReef) {
+              // 수중 바위 점묘 (탑다운에서 비쳐 보이는 여)
+              g.fillStyle(0x3d5a52, 0.55);
+              g.fillRect(c * TR + 3, r * TR + 5, 6, 4);
+              g.fillRect(c * TR + 11, r * TR + 12, 5, 4);
+              if (reefNoise > 0.78) {
+                g.fillStyle(0x2f4a44, 0.5);
+                g.fillRect(c * TR + 7, r * TR + 9, 7, 5);
+              }
+            } else if (bucket >= 4 && RegionFieldScene.noise2(mapSeed ^ 0x9e37, c / 5, r / 5) > 0.8) {
+              // 깊은 곳의 더 어두운 해구 얼룩 (수심 단차 느낌)
+              g.fillStyle(0x18344f, 0.4);
+              g.fillRect(c * TR + 2, r * TR + 2, TR - 4, TR - 4);
+            }
+            continue;
           } else if (t === 'grass') {
             color = checker ? COL.grass : COL.grassAlt;
           } else if (t === 'building') {
@@ -1039,8 +1135,184 @@ export class RegionFieldScene extends Phaser.Scene {
   // ═══════════════════════════════════════════════════
   // 업데이트 루프
   // ═══════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════
+  // 대기·조명·날씨 — 낮/밤 명암 + 건물 조명/네온 + 방파제 가로등 + 비/안개/눈
+  // ═══════════════════════════════════════════════════
+  private setupAtmosphere(): void {
+    const hour = kstHour();
+    const isNight = hour >= 20 || hour < 5;
+    const isDusk = (hour >= 17 && hour < 20) || (hour >= 5 && hour < 7);
+    const weather = ExternalDataStore.getWeatherKind(this.region);
+
+    // 방파제 가로등 — 낮에도 기둥은 보이고, 밤에만 점등
+    this.placeStreetlamps(isNight);
+
+    // 시간대 명암 오버레이 (화면 고정 — HUD(depth 100+) 아래, 조명 글로우(42)보다 아래)
+    if (isNight) {
+      this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x061024, 0.45)
+        .setScrollFactor(0).setDepth(40);
+    } else if (isDusk) {
+      this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x2a1630, 0.24)
+        .setScrollFactor(0).setDepth(40);
+    }
+
+    // 날씨 추가 명암 (흐림/강수 시 전체 톤 다운)
+    const weatherDim: Partial<Record<string, [number, number]>> = {
+      cloudy: [0x66788a, 0.12],
+      rain: [0x0a1420, 0.20],
+      shower: [0x0a1420, 0.25],
+      sleet: [0x0a1420, 0.20],
+      snow: [0x8a96a8, 0.10],
+    };
+    const dim = weatherDim[weather];
+    if (dim) {
+      this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, dim[0], dim[1])
+        .setScrollFactor(0).setDepth(40);
+    }
+
+    // 건물 조명 + 네온사인 (밤 점등, 황혼은 약하게)
+    if (isNight || isDusk) this.lightBuildings(isNight);
+
+    // 날씨 파티클
+    if (weather === 'rain' || weather === 'sleet') this.spawnRain(80);
+    else if (weather === 'shower') this.spawnRain(120);
+    else if (weather === 'snow') this.spawnSnow(60);
+    else if (weather === 'fog') this.spawnFog();
+  }
+
+  /** 방파제 길(양쪽이 바다인 통로)을 따라 가로등 배치 */
+  private placeStreetlamps(lit: boolean): void {
+    this.ensureLampTexture();
+    for (let r = 1; r < this.rows - 1; r++) {
+      for (let c = 1; c < this.cols - 1; c++) {
+        if (this.blocked[r][c] || this.terrain[r][c] === 'water') continue;
+        const wN = this.terrainAt(c, r - 1) === 'water', wS = this.terrainAt(c, r + 1) === 'water';
+        const wE = this.terrainAt(c + 1, r) === 'water', wW = this.terrainAt(c - 1, r) === 'water';
+        // 방파제 길: 진행 방향 양옆이 바다
+        if (!((wN && wS) || (wE && wW))) continue;
+        if ((c + r) % 6 !== 0) continue;   // 6타일 간격
+        const x = c * TR + TR / 2, y = r * TR + TR / 2;
+        this.add.image(x, y + 6, 'lamp_post').setOrigin(0.5, 1).setDepth(14 + y * 0.001);
+        if (lit) {
+          const bulb = this.add.circle(x, y - 15, 4.5, 0xfff2b0, 0.9)
+            .setDepth(42).setBlendMode(Phaser.BlendModes.ADD);
+          this.add.ellipse(x, y + 4, 54, 26, 0xffd980, 0.13)
+            .setDepth(42).setBlendMode(Phaser.BlendModes.ADD);
+          // 은은한 명멸
+          this.tweens.add({
+            targets: bulb, alpha: 0.55,
+            duration: 1500 + ((c * 31 + r * 17) % 800), yoyo: true, repeat: -1,
+          });
+        }
+      }
+    }
+  }
+
+  /** 가로등 기둥 텍스처 (1회 베이킹) */
+  private ensureLampTexture(): void {
+    if (this.textures.exists('lamp_post')) return;
+    const g = this.add.graphics();
+    g.fillStyle(0x2a3138, 1);
+    g.fillRect(4, 24, 8, 2);      // 받침
+    g.fillRect(7, 6, 2, 18);      // 기둥
+    g.fillRect(3, 3, 10, 3);      // 램프 헤드
+    g.fillStyle(0xfff2b0, 1);
+    g.fillRect(6, 6, 4, 2);       // 전구
+    g.generateTexture('lamp_post', 16, 26);
+    g.destroy();
+  }
+
+  /** 밤 건물 조명 — 창문 불빛 + 주변광 + 종류별 네온사인 (명멸) */
+  private lightBuildings(strong: boolean): void {
+    const NEON: Record<BuildingKind, number> = {
+      convenience: 0x35ff7a, mart: 0xffa040, market: 0xff5555,
+      restaurant: 0xffcf6b, cafe: 0xffe2a8, pub: 0xc27cff,
+    };
+    for (const b of this.buildings) {
+      // 창문 불빛 (건물 텍스처의 창 위치와 정합)
+      const winAlpha = strong ? 0.7 : 0.35;
+      this.add.rectangle(b.x - 10, b.y - 1, 8, 7, 0xffd980, winAlpha)
+        .setDepth(42).setBlendMode(Phaser.BlendModes.ADD);
+      this.add.rectangle(b.x + 10, b.y - 1, 8, 7, 0xffd980, winAlpha)
+        .setDepth(42).setBlendMode(Phaser.BlendModes.ADD);
+      // 주변광 글로우
+      this.add.circle(b.x, b.y - 6, 42, 0xffc873, strong ? 0.11 : 0.05)
+        .setDepth(42).setBlendMode(Phaser.BlendModes.ADD);
+      // 네온사인 (간판 밴드 위) — 종류별 색 + 불규칙 명멸
+      const neon = this.add.rectangle(b.x, b.y - 12, 34, 6, NEON[b.kind], strong ? 0.5 : 0.28)
+        .setDepth(42).setBlendMode(Phaser.BlendModes.ADD);
+      this.tweens.add({
+        targets: neon, alpha: strong ? 0.2 : 0.1,
+        duration: 800 + (Math.abs(b.x * 7 + b.y * 3) % 700), yoyo: true, repeat: -1,
+        delay: Math.abs(b.y) % 400,
+      });
+    }
+  }
+
+  /** 빗줄기 파티클 풀 (화면 고정 — 바람 사선) */
+  private spawnRain(count: number): void {
+    for (let i = 0; i < count; i++) {
+      const obj = this.add.rectangle(
+        Math.random() * GAME_WIDTH, Math.random() * GAME_HEIGHT, 1.5, 11, 0xbfd8ee, 0.5,
+      ).setScrollFactor(0).setDepth(46).setAngle(8);
+      this.rainDrops.push({ obj, speed: 520 + Math.random() * 260 });
+    }
+  }
+
+  /** 눈송이 파티클 풀 */
+  private spawnSnow(count: number): void {
+    for (let i = 0; i < count; i++) {
+      const obj = this.add.circle(
+        Math.random() * GAME_WIDTH, Math.random() * GAME_HEIGHT,
+        1.5 + Math.random() * 1.2, 0xf0f6fc, 0.85,
+      ).setScrollFactor(0).setDepth(46);
+      this.snowFlakes.push({ obj, speed: 55 + Math.random() * 50, sway: Math.random() * Math.PI * 2 });
+    }
+  }
+
+  /** 안개 — 전체 헤이즈 + 드리프트하는 블롭 */
+  private spawnFog(): void {
+    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0xc8d4dc, 0.12)
+      .setScrollFactor(0).setDepth(45);
+    for (let i = 0; i < 6; i++) {
+      const obj = this.add.ellipse(
+        Math.random() * GAME_WIDTH, Math.random() * GAME_HEIGHT,
+        340 + Math.random() * 180, 130 + Math.random() * 70,
+        0xcdd8e0, 0.09 + Math.random() * 0.07,
+      ).setScrollFactor(0).setDepth(45);
+      this.fogBlobs.push({ obj, speed: 6 + Math.random() * 11 });
+    }
+  }
+
+  /** 날씨 파티클 이동 (매 프레임 — 일시정지와 무관하게 대기는 흐른다) */
+  private updateWeatherFx(deltaMs: number): void {
+    const dt = deltaMs / 1000;
+    for (const d of this.rainDrops) {
+      d.obj.y += d.speed * dt;
+      d.obj.x += 62 * dt;
+      if (d.obj.y > GAME_HEIGHT + 12) {
+        d.obj.y = -12;
+        d.obj.x = Math.random() * GAME_WIDTH;
+      }
+      if (d.obj.x > GAME_WIDTH + 8) d.obj.x = -8;
+    }
+    for (const s of this.snowFlakes) {
+      s.obj.y += s.speed * dt;
+      s.obj.x += Math.sin(this.time.now / 700 + s.sway) * 20 * dt;
+      if (s.obj.y > GAME_HEIGHT + 6) {
+        s.obj.y = -6;
+        s.obj.x = Math.random() * GAME_WIDTH;
+      }
+    }
+    for (const f of this.fogBlobs) {
+      f.obj.x += f.speed * dt;
+      if (f.obj.x - f.obj.width / 2 > GAME_WIDTH) f.obj.x = -f.obj.width / 2;
+    }
+  }
+
   update(_time: number, delta: number): void {
     this.hud?.updatePlayerMarker(this.playerBody.x, this.playerBody.y);
+    this.updateWeatherFx(delta);
     // 캐스팅 비행은 UI 상태와 무관하게 진행 (착수까지 물리 유지)
     if (this.castProj) this.stepCastFlight(delta);
     if (this.isTransitioning || this.uiBlocked) { this.playerBody.setVelocity(0, 0); return; }
