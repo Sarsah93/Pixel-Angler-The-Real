@@ -31,7 +31,7 @@ npx pnpm --filter @tra/client-pc run dev             # 개발 서버 → http://
 py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재생성 (예: sokcho)
 ```
 
-- 검증 루틴: 작업 후 `npx pnpm run build` + `npx pnpm --filter @tra/client-pc run typecheck` 통과 필수 (기준: 2026-07-14 전체 성공, 0 오류).
+- 검증 루틴: 작업 후 `npx pnpm run build` + `npx pnpm --filter @tra/client-pc run typecheck` 통과 필수 (기준: 2026-07-20 4/4 성공, 0 오류).
 - `noUnusedLocals`/`noUnusedParameters` 활성화 — 미사용 심볼은 제거하거나 `_` 접두사.
 
 ## 절대 규칙 요약 (상세는 AGENTS.md §8)
@@ -54,7 +54,8 @@ pixelazed/<region>/*.png  →  py tools/build_region_maps.py <region>
 - 타일 문자: `.`=육지/도로 `~`=바다(이동불가·낚시) `#`=건물(충돌) `,`=잔디
 - 지형 분류 색 팔레트 변경 → `tools/build_region_maps.py`의 `classify()` 수정 후 재생성.
 - 맵 연결 그래프: `core/src/types/RegionMap.ts` (`SOKCHO_MAP_GRAPH` — 속초 7맵 체인).
-- 차기 과제: 캐스팅→FishingScene 정식 연동, POI 세분화, 타 지역(여수 등) 확장, 방파제 통로 튜닝 (IMPLEMENTATION_PLAN §6-5e 참고).
+- 차기 과제: 낚시점 전용 상점(루어 판매), 어탐 레이더(SeabedProfile 조회), 타 지역(여수 등) 확장, POI 세분화, 사운드 이펙트 (IMPLEMENTATION_PLAN §6-5l 차기 참고).
+- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages — 최근 2차 배포 2026-07-21. 재배포 절차는 AGENTS.md 참고).
 
 ## 작업 이어받기 절차
 

@@ -32,9 +32,11 @@ import {
 } from '@tra/core';
 import { GameState } from '../store/GameState.js';
 import { InventoryStore, RigStepKey, CARD_RIG_INFO } from '../store/InventoryStore.js';
+import { CoolerStore, COOLER_CAPACITY } from '../store/CoolerStore.js';
 import { ExternalDataStore } from '../store/ExternalDataStore.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { applyScreenFixed } from '../ui/DraggablePanel.js';
+import { CoolerPanel } from '../ui/CoolerPanel.js';
 import { loadSettings } from './SettingsScene.js';
 
 export interface FirstPersonFishingInit {
@@ -51,6 +53,15 @@ export interface FirstPersonFishingInit {
 }
 
 type FpState = 'drift' | 'fighting' | 'result';
+
+/** 어획 결정/안내 패널 버튼 정의 */
+interface DecisionButton {
+  label: string;
+  fill: number;
+  stroke: number;
+  color: string;
+  onClick: () => void;
+}
 
 // ── 화면 상수 ──────────────────────────────────────
 const WATERLINE = 268;
@@ -102,6 +113,10 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   private lureSpec?: LureSpec;
   /** 루어 침강 프로파일 (sinkType/sinkRate/dive) */
   private lureSink?: LureSinkProfile;
+  /** 루어 액션 반응형 입질 배율 (방치 0.15 ~ 트위칭 3.0, 지깅 보정) — 게이지 표기용 */
+  private lureActionMult = 1;
+  /** 입질 유도용 연속 릴링 시간 (초) — 1~2단계 중 1초 릴링 시 provoke */
+  private provokeReelT = 0;
 
   // ── 조류 (TidalCurrentEngine) ──
   private tidal!: TidalCurrentEngine;
@@ -166,6 +181,10 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   private depthValsText!: Phaser.GameObjects.Text;
   private coolerCatchText!: Phaser.GameObjects.Text;
   private coolerChumText!: Phaser.GameObjects.Text;
+  /** 어창(쿨러) 3x3 팝업 — 열림 중 낚시 입력 차단 */
+  private coolerPanel?: CoolerPanel;
+  /** 열려 있는 쿨러 팝업이 강제 방생 모드인가 (닫힘 후 종료 재시도) */
+  private coolerPanelForce = false;
   private resultContainer?: Phaser.GameObjects.Container;
 
   /** 이번 세션 어획 목록 */
@@ -274,12 +293,22 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.hKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.H);
     this.upKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.UP);
     this.input.keyboard!.on('keydown-C', () => this.tossChum());
-    this.input.keyboard!.on('keydown-ESC', () => this.exitToField());
-    this.input.keyboard!.on('keydown-SPACE', () => { if (this.fpState === 'result') this.recast(); });
+    this.input.keyboard!.on('keydown-ESC', () => {
+      if (this.coolerPanel) {
+        // 강제 방생 모드는 ESC로 닫을 수 없다 — 방생을 끝내야 진행
+        if (!this.coolerPanel.lockedOpen) this.closeCoolerPanel();
+        return;
+      }
+      this.exitToField();
+    });
+    this.input.keyboard!.on('keydown-SPACE', () => {
+      if (this.coolerPanel) return;
+      if (this.fpState === 'result') this.recast();
+    });
     // 우클릭 = 챔질 (입질 시퀀스 판정) / 좌클릭 = 릴링(홀드)·루어 액션(탭/더블탭)
     this.input.mouse?.disableContextMenu();
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
-      if (this.guideContainer) return;   // 도움말 열림 중엔 낚시 입력 차단
+      if (this.guideContainer || this.coolerPanel) return;   // 도움말/어창 열림 중엔 낚시 입력 차단
       if (p.rightButtonDown()) { this.attemptHookset(); return; }
       if (p.leftButtonDown()) {
         this.pointerDownAt = this.time.now;
@@ -1150,22 +1179,22 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     applyScreenFixed(exitBtn);
   }
 
-  /** 낚시용 쿨러 — 좌: 어획 보관 / 우: 밑밥 운용 */
+  /** 낚시용 쿨러 — 좌: 어창(클릭 시 3x3 팝업) / 우: 밑밥 게이지 (2026-07-20 확장) */
   private buildCooler(): void {
     const cx = GAME_WIDTH / 2;
     const cy = GAME_HEIGHT - 58;
     const cooler = this.add.container(cx, cy).setDepth(92);
 
     const g = this.add.graphics();
-    // 몸통
+    // 몸통 (좌우 340px — 어창/밑밥 2분할)
     g.fillStyle(0x2664a0, 1);
-    g.fillRoundedRect(-110, -34, 220, 62, 8);
+    g.fillRoundedRect(-170, -34, 340, 62, 8);
     // 뚜껑
     g.fillStyle(0x3a7cc0, 1);
-    g.fillRoundedRect(-114, -44, 228, 18, 6);
+    g.fillRoundedRect(-174, -44, 348, 18, 6);
     g.lineStyle(2, 0x143a5e, 1);
-    g.strokeRoundedRect(-110, -34, 220, 62, 8);
-    g.strokeRoundedRect(-114, -44, 228, 18, 6);
+    g.strokeRoundedRect(-170, -34, 340, 62, 8);
+    g.strokeRoundedRect(-174, -44, 348, 18, 6);
     // 중앙 분리선 (2분할)
     g.lineStyle(2, 0x143a5e, 0.9);
     g.lineBetween(0, -26, 0, 24);
@@ -1174,25 +1203,25 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     g.strokeRoundedRect(-24, -52, 48, 10, 4);
     cooler.add(g);
 
-    const catchLbl = this.add.text(-55, -22, '어획 보관', {
+    const catchLbl = this.add.text(-85, -22, '어창 (클릭해서 열기)', {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#cfe8ff', fontStyle: 'bold',
     }).setOrigin(0.5);
-    this.coolerCatchText = this.add.text(-55, 2, '0마리', {
+    this.coolerCatchText = this.add.text(-85, 2, '0마리', {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px', color: '#ffe28a', fontStyle: 'bold',
     }).setOrigin(0.5);
 
-    const chumLbl = this.add.text(55, -22, '밑밥 (C)', {
+    const chumLbl = this.add.text(85, -22, '밑밥 (C)', {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#cfe8ff', fontStyle: 'bold',
     }).setOrigin(0.5);
-    this.coolerChumText = this.add.text(55, 2, '', {
+    this.coolerChumText = this.add.text(85, 2, '', {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px', color: '#ffe28a', fontStyle: 'bold',
     }).setOrigin(0.5);
     cooler.add([catchLbl, this.coolerCatchText, chumLbl, this.coolerChumText]);
 
-    // 상호작용: 좌측 = 어획 목록 / 우측 = 밑밥 투척
-    const catchHit = this.add.rectangle(-55, -6, 106, 54, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
-    catchHit.on('pointerdown', () => this.showCatchList());
-    const chumHit = this.add.rectangle(55, -6, 106, 54, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
+    // 상호작용: 좌측 = 어창 3x3 팝업 / 우측 = 밑밥 투척
+    const catchHit = this.add.rectangle(-85, -6, 166, 54, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
+    catchHit.on('pointerdown', () => this.openCoolerPanel(false));
+    const chumHit = this.add.rectangle(85, -6, 166, 54, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
     chumHit.on('pointerdown', () => this.tossChum());
     cooler.add([catchHit, chumHit]);
 
@@ -1201,29 +1230,45 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   }
 
   private refreshCoolerUi(): void {
-    this.coolerCatchText?.setText(`${this.sessionCatch.length}마리`);
-    const chumItem = InventoryStore.find('inv_chum');
-    this.coolerChumText?.setText(chumItem ? `x${chumItem.qty}` : '없음');
+    this.coolerCatchText?.setText(`${CoolerStore.count()} / ${COOLER_CAPACITY}마리`);
+    this.coolerChumText?.setText(CoolerStore.chumRemaining > 0 ? `${CoolerStore.chumRemaining} / 100` : '비어있음');
   }
 
-  private showCatchList(): void {
-    const msg = this.sessionCatch.length > 0
-      ? `이번 출조 어획:\n${this.sessionCatch.join('\n')}`
-      : '아직 잡은 물고기가 없습니다.';
-    const t = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 60, msg, {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#e8f4fd', align: 'center', lineSpacing: 5,
-      backgroundColor: '#0a1628ee', padding: { x: 16, y: 10 },
-    }).setOrigin(0.5).setDepth(120);
-    this.time.delayedCall(2600, () => t.destroy());
+  // ── 어창(쿨러) 3x3 팝업 ─────────────────────────────
+  private openCoolerPanel(force: boolean): void {
+    if (this.coolerPanel) return;
+    this.coolerPanelForce = force;
+    const panel = new CoolerPanel(this, {
+      force,
+      requiredReleases: () => this.coolerOverflow(),
+      onChanged: () => this.refreshCoolerUi(),
+      onClose: () => this.closeCoolerPanel(),
+    });
+    this.add.existing(panel);
+    this.coolerPanel = panel;
+  }
+
+  private closeCoolerPanel(): void {
+    const p = this.coolerPanel;
+    if (!p) return;
+    const wasForce = this.coolerPanelForce;
+    this.coolerPanel = undefined;
+    this.coolerPanelForce = false;
+    p.destroy();
+    this.refreshCoolerUi();
+    // 강제 방생 모드였다면 (방생이 끝났으므로) 이송/종료를 재시도
+    if (wasForce) this.exitToField();
   }
 
   // ═══════════════════════════════════════════════════
   // 밑밥 투척 (Phase 1)
   // ═══════════════════════════════════════════════════
   private tossChum(): void {
-    if (this.fpState === 'fighting') return;
-    if (!InventoryStore.removeQty('inv_chum', 1)) {
-      this.flashState('집어제가 없습니다 — 마트/편의점에서 구매하세요');
+    if (this.fpState === 'fighting' || this.coolerPanel) return;
+    // 배합 밑밥 1회 25 소모 (U 밑밥 품질 탭에서 배합 — 추후 능력치로 소모량 감소 예정)
+    if (!CoolerStore.consumeChumThrow()) {
+      this.flashState('밑밥이 비어 있습니다 — 탑다운 U 밑밥 품질에서 배합하세요');
+      this.refreshCoolerUi();
       return;
     }
     // 찌 부근 수면에 착수 (±1.2m 랜덤)
@@ -1280,7 +1325,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       this.prevZone = influence.zone;
     }
     // 반탄류(+Y)/횡류·본류(-Y)로 수면 거리가 변한다
-    this.distM = Math.max(1, this.distM + influence.force.y * dt);
+    // 하한 0.3m — 1m로 막으면 릴링이 발앞(0.5m) 회수 지점에 도달할 수 없다
+    this.distM = Math.max(0.3, this.distM + influence.force.y * dt);
 
     // 조류 벡터 (존별 X 유속 + 완만한 요동)
     const tide: TideVector = {
@@ -1330,6 +1376,32 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     g.fillRect(0, GAME_HEIGHT - t, GAME_WIDTH, t);
     g.fillRect(0, t, t, GAME_HEIGHT - t * 2);
     g.fillRect(GAME_WIDTH - t, t, t, GAME_HEIGHT - t * 2);
+  }
+
+  /**
+   * 채비 회수 — 릴링으로 플레이어 발앞(0.5m)까지 다 감았을 때 (모든 조법 공통).
+   * 손실 없이 채비를 걷어 올리고 안내와 함께 탑다운 필드로 복귀한다.
+   */
+  private retrieveRig(): void {
+    if (this.fpState !== 'drift') return;
+    this.fpState = 'result';   // 회수 중 입질/입력 차단
+    this.biteSeq.reset();
+    this.pendingFish = null;
+    this.rodBendDeg = 0;
+    this.floatSinkM = 0;
+    this.reeling = false;
+
+    const msg = this.lureMode ? '루어를 회수했습니다' : '채비를 회수했습니다';
+    this.stateText.setText(msg);
+    const banner = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 60, `${msg}\n\n탑다운 뷰로 돌아갑니다 — 다시 조준해 캐스팅하세요.`, {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '14px', color: '#aee8ff', fontStyle: 'bold',
+      align: 'center', lineSpacing: 6,
+      backgroundColor: '#0a1628ee', padding: { x: 20, y: 14 },
+    }).setOrigin(0.5).setDepth(120);
+    this.tweens.add({ targets: banner, alpha: 0.9, duration: 150 });
+
+    this.registry.set('fp_exit_msg', msg);
+    this.time.delayedCall(900, () => this.exitToField());
   }
 
   /** 조경지대 포말 이펙트 — Hit Zone에 있을 때 찌 주변 수면에 거품 띠 */
@@ -1432,13 +1504,19 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       // 조류 순방향 릴링은 빠르고, 역방향은 저항으로 느리다 (대신 입질 유도 리액션)
       const withCurrent = Math.sign(cross) === side;
       const reelMps = 1.7 * (withCurrent ? 1.4 : 0.65);
-      this.distM = Math.max(1, this.distM - reelMps * dt);
+      this.distM = Math.max(0, this.distM - reelMps * dt);
       this.rig.floatX += side * (withCurrent ? 0.9 : 0.45) * dt;
       this.rig.baitX += side * (withCurrent ? 0.9 : 0.45) * dt;
       // 릴링하면 채비가 조금씩 상층으로 떠오른다 (루어 리트리브)
       this.rig.baitZ = Math.max(0.3, this.rig.baitZ - 0.28 * dt);
       if (this.rigPose !== 'twitch' && this.rigPose !== 'lift') this.rigPose = 'retrieve';
       if (!withCurrent && Math.random() < dt * 0.5) this.biteEngine.triggerReactionLift();
+
+      // ── 채비 회수: 플레이어 발앞(0.5m)까지 다 감으면 회수 → 탑다운 복귀 (모든 조법 공통) ──
+      if (this.distM <= 0.5) {
+        this.retrieveRig();
+        return;
+      }
     } else if (this.rigPose === 'retrieve') {
       this.rigPose = 'idle';
     }
@@ -1453,10 +1531,26 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     // 바다낚시지수 API 캐시 → P_base 보정 (지수 1~5 → 0.7~1.4배)
     const indexModifier = ExternalDataStore.getFishingIndexModifier();
 
+    // ── 루어/지깅 액션 반응형 입질 (찌낚시=기다림 ↔ 루어=액션이 입질을 만든다) ──
+    // 방치된 루어는 거의 물지 않고(0.15배), 리트리브/폴/트위칭 등 살아있는 움직임에
+    // 반응한다. 폴링(떨어질 때)이 실제로 가장 잘 무는 순간. 메탈지그는 리프트앤폴
+    // 지깅에 추가 보정 — 중대형 회유어 타겟은 루어 speciesWeightBias가 담당.
+    this.lureActionMult = 1;
+    if (this.lureMode) {
+      const poseMult: Record<typeof this.rigPose, number> = {
+        idle: 0.15, retrieve: 2.2, lift: 1.8, fall: 2.6, twitch: 3.0, hop: 2.0,
+      };
+      this.lureActionMult = poseMult[this.rigPose];
+      // 패스트싱킹(메탈지그 등) 리프트앤폴 = 지깅 — 추가 보정
+      if (this.lureSink?.sinkType === 'fast_sinking' && (this.rigPose === 'lift' || this.rigPose === 'fall')) {
+        this.lureActionMult *= 1.3;
+      }
+    }
+
     const tick = this.biteEngine.update({
       dtSec: dt,
       // 조경지대(Hit Zone) 1.6배 / 본대조류 0.35배 — 조류 존 입질 배율
-      baseProbPerSec: 0.035 * baitAffinity * indexModifier * influence.biteMult,
+      baseProbPerSec: 0.035 * baitAffinity * indexModifier * influence.biteMult * this.lureActionMult,
       inReefZone: inReef,
       isHold: hold,
       alignmentIndex: this.lineTension.alignmentIndex,
@@ -1481,6 +1575,18 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       if (InventoryStore.hookNeedsBait()) InventoryStore.consumeRigItem('bait');
       this.refreshCoolerUi();
       this.flashState('입질이 끊겼습니다 — 미끼를 따먹혔을 수 있습니다.');
+    }
+
+    // ── 입질 유도 — 1~2단계 중 릴링 1초 유지 or 뒷줄견제(H) → 70% 3단계 승격 ──
+    if (this.biteSeq.active) {
+      this.provokeReelT = this.reeling ? this.provokeReelT + dt : 0;
+      if (hold || this.provokeReelT >= 1) {
+        if (this.biteSeq.provoke() === 'escalated') {
+          this.flashState('입질 유도 성공 — 미끼가 움직이자 반응이 커집니다!');
+        }
+      }
+    } else {
+      this.provokeReelT = 0;
     }
 
     // ── UI 게이지 갱신 ──
@@ -1701,31 +1807,137 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       this.finishFight(`${f.nameKo} ${f.lengthCm}cm — 방생`,
         `${f.nameKo} ${f.lengthCm}cm / ${(f.weightG / 1000).toFixed(2)}kg / ${sexLabel}\n\n${reason} 개체입니다. 규정에 따라 방생합니다.`, '#9fd0e4', fishTexture);
     } else {
-      // 쿨러(어획 보관함) + 인벤토리(음식 탭) 반영 — 어종 이미지가 있으면 아이콘으로 사용
+      // 도감/기록 등록은 어획 시점 (쿨러 보관/방생 선택과 무관)
       this.sessionCatch.push(`${f.nameKo} ${f.lengthCm}cm (${sexLabel})`);
-      // 개체마다 크기/무게가 다르므로 고유 id 부여 — 같은 어종이라도 병합되면
-      // 뒤에 낚인 개체의 실측치가 사라져 수매가가 첫 개체 기준으로 굳어버린다.
-      InventoryStore.addItem({
-        id: `inv_catch_${f.speciesId}_${InventoryStore.nextCatchSeq()}`,
-        name: `${f.nameKo} (${f.lengthCm}cm)`,
-        icon: '🐟', iconTexture: fishTexture,
-        category: 'food', subCategory: '어획물',
-        // 표시/폴백용 기준가 — 실제 수매가는 speciesId·lengthCm·weightG로 산정된다
-        basePrice: Math.max(2000, Math.round(f.weightG * 12)),
-        condition: 'live', equippable: false,
-        speciesId: f.speciesId, lengthCm: f.lengthCm, weightG: f.weightG,
-      }, 1);
       GameState.addCaughtFish(f.speciesId, f.nameKo, f.lengthCm, f.weightG);
 
       // ── 다관점 히트 (Multi-Hit): 카드 채비의 다른 바늘에도 개별 입질 판정 ──
       const extra = this.rollMultiHit();
       this.refreshCoolerUi();
-      const extraLine = extra.length > 0
-        ? `\n\n다관점 히트! 카드 채비에 ${extra.length}마리 추가:\n${extra.join(', ')}`
-        : '';
-      this.finishFight(`${f.nameKo} ${f.lengthCm}cm 낚음!${extra.length > 0 ? ` (+${extra.length})` : ''}`,
-        `${f.nameKo} ${f.lengthCm}cm / ${(f.weightG / 1000).toFixed(2)}kg / ${sexLabel}${extraLine}\n\n쿨러 어획 보관함에 넣었습니다.`, '#4af2a1', fishTexture);
+
+      // 보관/방생 선택은 유저 몫 — 결정 패널 표시
+      this.fpState = 'result';
+      this.fight = null;
+      this.fishShadow?.destroy();
+      this.fishShadow = undefined;
+      this.floatObj.setY(WATERLINE);
+      this.showCatchDecisionPanel(f, extra, fishTexture);
     }
+  }
+
+  /**
+   * 어획 결정 패널 — [쿨러에 넣기] / [방생하기] 선택.
+   * 선택 후 안내 메시지와 함께 [계속하기] / [그만하기]로 이어진다.
+   */
+  private showCatchDecisionPanel(f: SpawnedFish, extra: string[], fishTexture?: string): void {
+    const sexLabel = f.sex === 'M' ? '수컷' : '암컷';
+    const extraLine = extra.length > 0
+      ? `\n\n다관점 히트! 카드 채비 추가 ${extra.length}마리는 어창에 넣었습니다:\n${extra.join(', ')}`
+      : '';
+    const body = `${f.nameKo} ${f.lengthCm}cm / ${(f.weightG / 1000).toFixed(2)}kg / ${sexLabel}${extraLine}`;
+    this.buildDecisionPanel(
+      `${f.nameKo} ${f.lengthCm}cm 낚음!${extra.length > 0 ? ` (+${extra.length})` : ''}`,
+      body, '#4af2a1', fishTexture,
+      [
+        {
+          label: '쿨러에 넣기', fill: 0x0d4a2e, stroke: 0x4af2a1, color: '#4af2a1',
+          onClick: () => {
+            if (CoolerStore.isFull()) {
+              this.flashState(`쿨러가 가득 찼습니다 (${COOLER_CAPACITY}마리) — 방생을 선택하세요`);
+              return;
+            }
+            CoolerStore.add({
+              speciesId: f.speciesId, nameKo: f.nameKo, lengthCm: f.lengthCm,
+              weightG: f.weightG, sex: f.sex, iconTexture: fishTexture,
+            });
+            this.refreshCoolerUi();
+            this.showPostDecisionPanel('쿨러에 보관하였습니다.', '#4af2a1', fishTexture);
+          },
+        },
+        {
+          label: '방생하기', fill: 0x123a52, stroke: 0x5cd0ff, color: '#9fd0e4',
+          onClick: () => this.showPostDecisionPanel('해당 어종을 방생하였습니다.', '#9fd0e4', fishTexture),
+        },
+      ],
+    );
+  }
+
+  /** 보관/방생 후 안내 — [계속하기] / [그만하기] */
+  private showPostDecisionPanel(message: string, color: string, fishTexture?: string): void {
+    const missing = InventoryStore.getMissingRigParts();
+    const buttons: DecisionButton[] = [];
+    if (missing.length === 0) {
+      buttons.push({
+        label: '계속하기 (SPACE)', fill: 0x0d4a2e, stroke: 0x4af2a1, color: '#4af2a1',
+        onClick: () => this.recast(),
+      });
+    }
+    buttons.push({
+      label: '그만하기 (ESC)', fill: 0x3a2020, stroke: 0x8a4a4a, color: '#ffb0a0',
+      onClick: () => this.exitToField(),
+    });
+    this.buildDecisionPanel(
+      message,
+      missing.length > 0 ? `채비 보충 필요: ${missing.join(', ')}\n(U 채비하기에서 재장착 후 다시 캐스팅)` : '계속 낚시하거나 필드로 복귀하세요.',
+      color, fishTexture, buttons,
+    );
+  }
+
+  /** 결정 패널 공통 렌더 — 제목/본문/어종 이미지 + 버튼 목록 */
+  private buildDecisionPanel(
+    title: string, body: string, color: string, fishTexture: string | undefined,
+    buttons: DecisionButton[],
+  ): void {
+    this.resultContainer?.destroy();
+    const hasImage = !!fishTexture && this.textures.exists(fishTexture);
+    const ph = hasImage ? 380 : 250;
+    const half = ph / 2;
+    const c = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 24).setDepth(110);
+
+    const bg = this.add.graphics();
+    bg.fillStyle(0x0a1628, 0.97);
+    bg.fillRoundedRect(-230, -half, 460, ph, 8);
+    bg.lineStyle(2, 0x2a5a8a, 1);
+    bg.strokeRoundedRect(-230, -half, 460, ph, 8);
+    c.add(bg);
+
+    const t1 = this.add.text(0, -half + 30, title, {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '19px', color, fontStyle: 'bold',
+    }).setOrigin(0.5);
+    c.add(t1);
+
+    if (hasImage && fishTexture) {
+      const src = this.textures.get(fishTexture).getSourceImage() as HTMLImageElement;
+      const scale = Math.min(320 / src.width, 130 / src.height);
+      const img = this.add.image(0, -half + 122, fishTexture)
+        .setDisplaySize(src.width * scale, src.height * scale);
+      c.add(img);
+    }
+
+    const t2 = this.add.text(0, hasImage ? half - 130 : -10, body, {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#d0e8f5', align: 'center', lineSpacing: 6,
+    }).setOrigin(0.5);
+    c.add(t2);
+
+    const btnY = half - 48;
+    const bw = buttons.length > 1 ? 180 : 200;
+    buttons.forEach((btn, i) => {
+      const bx = buttons.length > 1 ? (i === 0 ? -100 : 100) : 0;
+      const g = this.add.graphics();
+      g.fillStyle(btn.fill, 0.95); g.fillRoundedRect(bx - bw / 2, btnY - 19, bw, 38, 5);
+      g.lineStyle(2, btn.stroke, 1); g.strokeRoundedRect(bx - bw / 2, btnY - 19, bw, 38, 5);
+      const txt = this.add.text(bx, btnY, btn.label, {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px', color: btn.color, fontStyle: 'bold',
+      }).setOrigin(0.5);
+      const hit = this.add.rectangle(bx, btnY, bw, 38, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
+      hit.on('pointerover', () => txt.setColor('#ffffff'));
+      hit.on('pointerout', () => txt.setColor(btn.color));
+      hit.on('pointerdown', btn.onClick);
+      c.add([g, txt, hit]);
+    });
+
+    applyScreenFixed(c);
+    this.resultContainer = c;
   }
 
   /**
@@ -1747,19 +1959,15 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       if (Math.random() < p) {
         const ef = spawnFish(ctx);
         if (ef.isUndersized || ef.isClosedSeason) continue;
+        // 추가 어획은 어창(쿨러)에 즉시 보관 — 가득 차면 방생 처리
+        const slot = CoolerStore.add({
+          speciesId: ef.speciesId, nameKo: ef.nameKo, lengthCm: ef.lengthCm,
+          weightG: ef.weightG, sex: ef.sex, iconTexture: FISH_TEXTURE[ef.speciesId],
+        });
         this.sessionCatch.push(`${ef.nameKo} ${ef.lengthCm}cm`);
-        InventoryStore.addItem({
-          id: `inv_catch_${ef.speciesId}_${InventoryStore.nextCatchSeq()}`,
-          name: `${ef.nameKo} (${ef.lengthCm}cm)`,
-          icon: '🐟', iconTexture: FISH_TEXTURE[ef.speciesId],
-          category: 'food', subCategory: '어획물',
-          basePrice: Math.max(2000, Math.round(ef.weightG * 12)),
-          condition: 'live', equippable: false,
-          speciesId: ef.speciesId, lengthCm: ef.lengthCm, weightG: ef.weightG,
-        }, 1);
         GameState.addCaughtFish(ef.speciesId, ef.nameKo, ef.lengthCm, ef.weightG);
         InventoryStore.setSpreaderBait(i, null);   // 해당 단 미끼 소모
-        extra.push(`${ef.nameKo} ${ef.lengthCm}cm`);
+        extra.push(`${ef.nameKo} ${ef.lengthCm}cm${slot < 0 ? ' (쿨러 가득 — 방생)' : ''}`);
       }
     }
     return extra;
@@ -2178,7 +2386,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     const lines = [
       `정렬도 A ${(this.lineTension.alignmentIndex * 100).toFixed(0)}%`,
       `밑밥 동조 ${(chumSync * 100).toFixed(0)}%`,
-      `입질 확률 ${(probPerSec * 100).toFixed(1)}%/s${actionLeft > 0 ? '  [리액션 x2.0]' : ''}`,
+      `입질 확률 ${(probPerSec * 100).toFixed(1)}%/s${actionLeft > 0 ? '  [리액션 x2.0]' : ''}${this.lureMode ? (this.lureActionMult < 1 ? '  [루어 방치 x0.15 — 액션 필요!]' : `  [액션 x${this.lureActionMult.toFixed(1)}]`) : ''}`,
       `지형: ${inReef ? (hold ? '여 밭 안착 (x2.5)' : '여 밭') : '모래/갯벌'}${snagProgress > 0.3 ? '  ⚠ 밑걸림 주의' : ''}`,
       `미끼 수심 ${this.rig.baitZ.toFixed(1)}m / 매듭 ${this.zLimitM}m / 바닥 ${this.cfg.zMaxM.toFixed(0)}m`,
     ];
@@ -2358,11 +2566,76 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   // ═══════════════════════════════════════════════════
   // 필드 복귀 (그만하기 / ESC) — stop + resume (낚시 시점 위치 보존)
   // ═══════════════════════════════════════════════════
+  /**
+   * 1인칭 종료 — 어창(쿨러)의 어획을 인벤토리(음식 탭)로 이송한 뒤 탑다운 복귀.
+   * 인벤토리 빈 소켓이 모자라면 강제 방생 흐름(ESC 차단)으로 전환된다.
+   */
   private exitToField(): void {
+    const overflow = this.coolerOverflow();
+    if (overflow > 0) {
+      this.showCoolerOverflowNotice(overflow);
+      return;
+    }
+    this.transferCoolerToInventory();
     this.cameras.main.fadeOut(240, 2, 12, 24);
     this.cameras.main.once('camerafadeoutcomplete', () => {
       this.scene.stop();
       this.scene.resume('RegionFieldScene');
     });
+  }
+
+  /** 쿨러 어획을 인벤토리로 옮길 때 모자라는 칸 수 (0 = 전부 이송 가능) */
+  private coolerOverflow(): number {
+    return Math.max(0, CoolerStore.count() - InventoryStore.freeSlotCount('food'));
+  }
+
+  /** 어창 → 인벤토리 이송 — 쿨러 안은 활어 유지, 이송 시점부터 'live'로 신선도 진행 */
+  private transferCoolerToInventory(): void {
+    for (let i = 0; i < COOLER_CAPACITY; i++) {
+      const f = CoolerStore.get(i);
+      if (!f) continue;
+      const ok = InventoryStore.addItem({
+        id: `inv_catch_${f.speciesId}_${InventoryStore.nextCatchSeq()}`,
+        name: `${f.nameKo} (${f.lengthCm}cm)`,
+        icon: '🐟', iconTexture: f.iconTexture,
+        category: 'food', subCategory: '어획물',
+        basePrice: Math.max(2000, Math.round(f.weightG * 12)),
+        condition: 'live', equippable: false,
+        speciesId: f.speciesId, lengthCm: f.lengthCm, weightG: f.weightG,
+      }, 1);
+      if (ok) CoolerStore.removeAt(i);
+    }
+    this.refreshCoolerUi();
+  }
+
+  /** 인벤토리 공간 부족 안내 → [다음] → 강제 방생 쿨러 팝업 (ESC로 닫을 수 없음) */
+  private showCoolerOverflowNotice(overflow: number): void {
+    if (this.coolerPanel) return;   // 이미 방생 진행 중
+    const c = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 40).setDepth(130);
+    const bg = this.add.graphics();
+    bg.fillStyle(0x2a1410, 0.97);
+    bg.fillRoundedRect(-240, -78, 480, 156, 8);
+    bg.lineStyle(2, 0xaa5a3a, 1);
+    bg.strokeRoundedRect(-240, -78, 480, 156, 8);
+    const txt = this.add.text(0, -28,
+      `인벤토리 공간이 모자라, 방생을 진행해야 합니다!\n\n어창 ${CoolerStore.count()}마리 / 인벤토리 여유 ${InventoryStore.freeSlotCount('food')}칸 — 최소 ${overflow}마리 방생 필요`, {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px', color: '#ffce9a', fontStyle: 'bold',
+        align: 'center', lineSpacing: 6,
+      }).setOrigin(0.5);
+    const btnBg = this.add.graphics();
+    btnBg.fillStyle(0x155a7c, 0.95);
+    btnBg.fillRoundedRect(-80, 26, 160, 36, 5);
+    btnBg.lineStyle(1.5, 0x5cd0ff, 0.95);
+    btnBg.strokeRoundedRect(-80, 26, 160, 36, 5);
+    const btnTxt = this.add.text(0, 44, '다음', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '14px', color: '#aee8ff', fontStyle: 'bold',
+    }).setOrigin(0.5);
+    const hit = this.add.rectangle(0, 44, 160, 36, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
+    hit.on('pointerdown', () => {
+      c.destroy();
+      this.openCoolerPanel(true);
+    });
+    c.add([bg, txt, btnBg, btnTxt, hit]);
+    applyScreenFixed(c);
   }
 }

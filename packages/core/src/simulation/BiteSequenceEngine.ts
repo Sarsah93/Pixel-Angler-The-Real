@@ -137,6 +137,8 @@ export class BiteSequenceEngine {
   private intensity = 0;
   /** 단계 지속시간 배율 (구멍 봉돌 버프 등) */
   private timeScale = 1;
+  /** 입질 유도(provoke) 사용 여부 — 시퀀스당 1회만 판정 */
+  private provoked = false;
 
   /** 시퀀스 활성 여부 */
   get active(): boolean { return this._active; }
@@ -185,6 +187,7 @@ export class BiteSequenceEngine {
     this.inGap = true;
     this._active = true;
     this._ended = false;
+    this.provoked = false;
   }
 
   /** 시퀀스 강제 종료 (챔질 성공/재캐스팅 등) */
@@ -193,6 +196,33 @@ export class BiteSequenceEngine {
     this._ended = false;
     this.idx = -1;
     this.queue = [];
+    this.provoked = false;
+  }
+
+  /**
+   * 입질 유도 — 1~2단계(또는 그 직후 공백) 중 릴링을 1초 유지하거나 뒷줄견제(H)로
+   * 미끼를 살짝 움직이면 **70% 확률로 다음 단계가 3단계(완전 흡입)로 승격**된다
+   * (짧은 공백 0.6~1.6초 후 이어짐). 시퀀스당 1회만 판정 — 실패(30%)해도
+   * 페널티는 없고 원래 패턴이 그대로 이어진다.
+   */
+  provoke(): 'escalated' | 'failed' | 'unavailable' {
+    if (!this._active || this.provoked) return 'unavailable';
+    // 기준 단계: 진행 중이면 현재 단계, 공백이면 직전 단계 (아직 첫 어신 전이면 불가)
+    const refStage = this.idx >= 0 && this.idx < this.queue.length ? this.queue[this.idx] : null;
+    if (refStage === null || refStage === 3) return 'unavailable';
+    this.provoked = true;
+    if (this.rng() >= 0.7) return 'failed';
+
+    // 다음 단계를 3단계로 강제 + 짧은 공백으로 이어붙임
+    if (this.idx + 1 < this.queue.length) {
+      this.queue[this.idx + 1] = 3;
+    } else {
+      this.queue.push(3);
+      this.gaps.push(0);
+    }
+    this.gaps[this.idx + 1] = 0.6 + this.rng();
+    if (this.inGap) this.gapT = 0;
+    return 'escalated';
   }
 
   /** 현재 활성 단계 (구부러짐 진행 중일 때만) */

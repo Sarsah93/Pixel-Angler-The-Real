@@ -86,6 +86,13 @@ export interface InvItem {
   /** 착용 중인 손 (손 도구만) */
   equippedHand?: EquipHand;
 
+  /**
+   * 밑밥 재료 종류 (U 밑밥 품질 탭 드래그 앤 드랍 대상) —
+   * powder = 빵가루/집어 파우더(들이붓기 연출) / krill = 냉동 크릴 블록(쪼개짐 연출) /
+   * grain = 압맥/옥수수(낱알 낙하 연출)
+   */
+  chumKind?: 'powder' | 'krill' | 'grain';
+
   // ── 어획물 전용 (subCategory === '어획물') ──
   // 개체별 실측치를 보존해야 어판장 수매가(evaluateFishSellPrice)를 산정할 수 있다.
   // 이 값이 없으면 basePrice 폴백으로 계산된다.
@@ -201,7 +208,14 @@ function createSeedItems(): InvItem[] {
     { id: 'inv_shoes',    name: '갯바위 단화',              icon: '👟', category: 'gear', subCategory: '신발',   qty: 1, basePrice: 30000, equippable: true },
 
     // ── 소모품 ──
-    { id: 'inv_chum',     name: '집어제 (크릴 배합)',       icon: '🧂', category: 'consumable', subCategory: '집어제/밑밥',   qty: 5, basePrice: 6000,  equippable: false },
+    { id: 'inv_chum',     name: '집어제 (크릴 배합)',       icon: '🧂', category: 'consumable', subCategory: '집어제/밑밥',   qty: 5, basePrice: 6000,  equippable: false, chumKind: 'powder' },
+    // 밑밥 배합 재료 (U 밑밥 품질 탭 — 드래그 앤 드랍 투입)
+    { id: 'inv_chum_powder',       name: '감성돔 집어 파우더',   icon: '🧂', category: 'consumable', subCategory: '집어제/밑밥', qty: 3, basePrice: 8000,  equippable: false, chumKind: 'powder' },
+    { id: 'inv_chum_powder_heavy', name: '고비중 파우더',        icon: '🧂', category: 'consumable', subCategory: '집어제/밑밥', qty: 2, basePrice: 11000, equippable: false, chumKind: 'powder' },
+    { id: 'inv_chum_bread',        name: '빵가루 (밑밥용)',      icon: '🍞', category: 'consumable', subCategory: '집어제/밑밥', qty: 3, basePrice: 4000,  equippable: false, chumKind: 'powder' },
+    { id: 'inv_chum_krill_block',  name: '냉동 크릴 (밑밥 블록)', icon: '🦐', category: 'consumable', subCategory: '집어제/밑밥', qty: 4, basePrice: 7000,  equippable: false, condition: 'frozen', chumKind: 'krill' },
+    { id: 'inv_chum_apmac',        name: '압맥 (눌린 보리)',     icon: '🌾', category: 'consumable', subCategory: '집어제/밑밥', qty: 3, basePrice: 5000,  equippable: false, chumKind: 'grain' },
+    { id: 'inv_chum_corn',         name: '옥수수 캔 (밑밥용)',   icon: '🌽', category: 'consumable', subCategory: '집어제/밑밥', qty: 2, basePrice: 4500,  equippable: false, chumKind: 'grain' },
     { id: 'inv_spray',    name: '기능성 스프레이',          icon: '🧴', category: 'consumable', subCategory: '스프레이/오일', qty: 2, basePrice: 9000,  equippable: false },
     { id: 'inv_oil',      name: '릴 오일',                  icon: '🧴', category: 'consumable', subCategory: '스프레이/오일', qty: 1, basePrice: 7000,  equippable: false },
     { id: 'inv_carekit',  name: '도구 케어 세트',           icon: '🧰', category: 'consumable', subCategory: '장비 수리',     qty: 1, basePrice: 15000, equippable: false },
@@ -406,6 +420,11 @@ class InventoryStoreManager {
       if (!this.itemAtSlot(cat, s)) return s;
     }
     return -1;
+  }
+
+  /** 카테고리 그리드의 빈 소켓 수 — 쿨러 어획 이송 가능량 판정용 */
+  freeSlotCount(cat: InvCategory): number {
+    return GRID_CAPACITY - this.getByCategory(cat).length;
   }
 
   // ── 획득/구매 ───────────────────────────────────────

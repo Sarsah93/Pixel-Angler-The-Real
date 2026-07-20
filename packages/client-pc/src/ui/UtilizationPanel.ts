@@ -1,6 +1,6 @@
 /**
  * @file UtilizationPanel.ts
- * @description 활용 창 (U 키 — 전체 화면 전환 상태, 상단 탭: 요리하기 / 채비하기)
+ * @description 활용 창 (U 키 — 전체 화면 전환 상태, 상단 탭: 요리하기 / 채비하기 / 밑밥 품질)
  *
  * 채비하기(Tackles):
  *  실제 바다낚시 채비 순서 [원줄 → 면사매듭 → 구멍찌/수중찌 → 도래 → 목줄 → 봉돌 → 바늘&미끼]
@@ -10,6 +10,11 @@
  *
  * 요리하기(Cooking):
  *  도마 위 생선 손질(삼면뜨기) 시스템 자리 — 회칼(장비) 필요. 추후 정식 구현 예정.
+ *
+ * 밑밥 품질(Chum):
+ *  좌측 밑밥 통(탑뷰)에 우측 인벤토리의 재료(파우더/냉동 크릴/압맥·옥수수)를
+ *  드래그 앤 드랍으로 투입(종류별 붓기 연출) → 물 넣기(1회) → 섞기(1회) →
+ *  배합 완료 시 밑밥 100 충전 (1인칭 C 투척 1회당 25 소모). 하단에 추천 배합 코멘트.
  */
 
 import Phaser from 'phaser';
@@ -21,6 +26,7 @@ import {
   SpreaderKind, CardRigType, SPREADER_LABEL, CARD_RIG_INFO,
 } from '../store/InventoryStore.js';
 import { RecommendationStore } from '../store/RecommendationStore.js';
+import { CoolerStore, ChumIngredientKind, CHUM_THROW_COST } from '../store/CoolerStore.js';
 import { LureFamily, LureKind, getLureSpec, getLureSinkProfile, jigHeadWeightById } from '@tra/core';
 import { DraggablePanel } from './DraggablePanel.js';
 import { createItemIcon } from './ItemIcon.js';
@@ -43,7 +49,7 @@ const SINK_LABEL: Record<string, string> = {
   fast_sinking: '초고속 싱킹 (빠른 하강)',
 };
 
-export type UtilizationTab = 'cooking' | 'tackles';
+export type UtilizationTab = 'cooking' | 'tackles' | 'chum';
 
 const PANEL_W = 1080;
 const PANEL_H = 620;
@@ -82,6 +88,16 @@ export class UtilizationPanel extends DraggablePanel {
   private lureFamily: LureFamily = 'soft';
   private lureKindSel: LureKind = 'worm_grub';
 
+  // ── 밑밥 품질 탭 드래그 상태 ──
+  private chumDragItem: InvItem | null = null;
+  private chumGhost?: Phaser.GameObjects.Container;
+  private chumMoveHandler = (p: Phaser.Input.Pointer): void => {
+    this.chumGhost?.setPosition(p.x, p.y);
+  };
+  private chumUpHandler = (p: Phaser.Input.Pointer): void => {
+    this.finishChumDrag(p);
+  };
+
   constructor(scene: Phaser.Scene, onClose: () => void, initialTab: UtilizationTab = 'tackles') {
     super(scene, {
       x: (GAME_WIDTH - PANEL_W) / 2,
@@ -96,6 +112,10 @@ export class UtilizationPanel extends DraggablePanel {
     this.bodyContainer = scene.add.container(0, 0);
     this.add(this.bodyContainer);
     this.renderBody();
+
+    // 밑밥 재료 드래그 앤 드랍 (씬 레벨 포인터 추적)
+    scene.input.on('pointermove', this.chumMoveHandler);
+    scene.input.on('pointerup', this.chumUpHandler);
   }
 
   // ── 상단 탭 (요리하기 / 채비하기) ─────────────────────
@@ -103,6 +123,7 @@ export class UtilizationPanel extends DraggablePanel {
     const defs: { id: UtilizationTab; label: string }[] = [
       { id: 'cooking', label: '요리하기 (Cooking)' },
       { id: 'tackles', label: '채비하기 (Tackles)' },
+      { id: 'chum',    label: '밑밥 품질 (Chum)' },
     ];
     const tabW = 180, tabH = 34;
     const ty = this.contentTop + 4;
@@ -131,7 +152,7 @@ export class UtilizationPanel extends DraggablePanel {
   private paintTabs(): void {
     const tabW = 180, tabH = 34;
     const ty = this.contentTop + 4;
-    (['cooking', 'tackles'] as UtilizationTab[]).forEach((id, i) => {
+    (['cooking', 'tackles', 'chum'] as UtilizationTab[]).forEach((id, i) => {
       const tx = 20 + i * (tabW + 8);
       const g = this.tabBgs.get(id)!;
       const selected = id === this.currentTab;
@@ -147,6 +168,7 @@ export class UtilizationPanel extends DraggablePanel {
   private renderBody(): void {
     this.bodyContainer.removeAll(true);
     if (this.currentTab === 'tackles') this.renderTackles();
+    else if (this.currentTab === 'chum') this.renderChumMixing();
     else this.renderCooking();
     this.applyFix();
   }
@@ -982,8 +1004,371 @@ export class UtilizationPanel extends DraggablePanel {
     this.bodyContainer.add(foot);
   }
 
+  // ═══════════════════════════════════════════════════
+  // 밑밥 품질 (Chum) — 재료 드래그 앤 드랍 배합 + 물 넣기/섞기
+  // ═══════════════════════════════════════════════════
+  /** 밑밥 통 히트 영역 (패널 로컬 좌표) */
+  private static readonly CHUM_BOX = { x: 40, y: 120, w: 460, h: 240 };
+
+  private renderChumMixing(): void {
+    const { x: boxX, y: boxY, w: boxW, h: boxH } = UtilizationPanel.CHUM_BOX;
+    const mixed = CoolerStore.chumMixed || CoolerStore.chumRemaining > 0;
+
+    // 상태 헤더
+    const header = this.scene.add.text(boxX, this.contentTop + 56,
+      mixed
+        ? `배합 완료 — 남은 밑밥 ${CoolerStore.chumRemaining} / 100 (1인칭 C 투척 1회당 ${CHUM_THROW_COST} 소모)`
+        : `밑밥 통 (탑뷰) — 우측 인벤토리의 재료를 통 안으로 드래그하세요`, {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', fontStyle: 'bold',
+        color: mixed ? '#4af2a1' : '#ffe28a',
+      });
+    this.bodyContainer.add(header);
+
+    // ── 밑밥 통 (흰 직사각 쿨러 통 — 탑뷰) ──
+    const g = this.scene.add.graphics();
+    g.fillStyle(0xe8e8e4, 1);
+    g.fillRoundedRect(boxX, boxY, boxW, boxH, 14);
+    g.fillStyle(0xf6f6f2, 1);
+    g.fillRoundedRect(boxX + 10, boxY + 10, boxW - 20, boxH - 20, 10);
+    g.fillStyle(0xdcdcd4, 1);
+    g.fillRoundedRect(boxX + 18, boxY + 18, boxW - 36, boxH - 36, 8);
+    g.lineStyle(2, 0xb8b8b0, 1);
+    g.strokeRoundedRect(boxX, boxY, boxW, boxH, 14);
+    this.bodyContainer.add(g);
+
+    if (mixed) {
+      // 완성 혼합물 — 붉은 갈색 반죽 + 질감 점
+      const m = this.scene.add.graphics();
+      m.fillStyle(0x8a5a3c, 1);
+      m.fillRoundedRect(boxX + 22, boxY + 22, boxW - 44, boxH - 44, 8);
+      for (let i = 0; i < 46; i++) {
+        const r1 = this.chumRand(i, 1), r2 = this.chumRand(i, 2), r3 = this.chumRand(i, 3);
+        m.fillStyle(r3 < 0.4 ? 0x6a4028 : r3 < 0.75 ? 0xc09a6a : 0xe0d0b0, 0.85);
+        m.fillEllipse(boxX + 34 + r1 * (boxW - 70), boxY + 34 + r2 * (boxH - 70), 6 + r3 * 6, 4 + r3 * 4);
+      }
+      this.bodyContainer.add(m);
+      const remain = this.scene.add.text(boxX + boxW / 2, boxY + boxH / 2, `${CoolerStore.chumRemaining} / 100`, {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '26px', color: '#fff2dc', fontStyle: 'bold',
+      }).setOrigin(0.5).setAlpha(0.92);
+      this.bodyContainer.add(remain);
+    } else {
+      // 투입 순서대로 재료 쌓임
+      CoolerStore.chumIngredients.forEach((ing, i) => this.drawIngredientPile(ing.kind, i));
+      if (CoolerStore.chumWaterAdded) {
+        const w = this.scene.add.graphics();
+        w.fillStyle(0x9ac8e0, 0.30);
+        w.fillRoundedRect(boxX + 20, boxY + 20, boxW - 40, boxH - 40, 8);
+        this.bodyContainer.add(w);
+      }
+      if (CoolerStore.chumIngredients.length === 0) {
+        const hint = this.scene.add.text(boxX + boxW / 2, boxY + boxH / 2, '비어있음\n재료를 여기로 드래그 앤 드랍', {
+          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px', color: '#9a9a92', align: 'center', lineSpacing: 6,
+        }).setOrigin(0.5);
+        this.bodyContainer.add(hint);
+      }
+    }
+
+    // ── 물 넣기 / 섞기 버튼 (각 1회) ──
+    const canWater = !mixed && !CoolerStore.chumWaterAdded && CoolerStore.chumIngredients.length > 0;
+    const canMix = !mixed && CoolerStore.chumWaterAdded && !CoolerStore.chumMixed;
+    const btnY = boxY + boxH + 32;
+    this.addChumButton(boxX + boxW / 2 - 120, btnY,
+      CoolerStore.chumWaterAdded || mixed ? '물 넣기 (완료)' : '물 넣기', canWater, () => this.doChumWater());
+    this.addChumButton(boxX + boxW / 2 + 120, btnY,
+      mixed ? '섞기 (완료)' : '섞기', canMix, () => this.doChumMix());
+
+    // ── 추천 배합 코멘트 (가장 많이 쓰는 현장 배합) ──
+    const recipes = [
+      '추천 배합 — 주걱으로 펐을 때 찰지게 뭉쳐지면 정상 비중',
+      '① 국민 표준 (방파제·갯바위 5~10m): 크릴 3장 + 전용 파우더 1봉 + 압맥 1~2봉 — 집어력·탁도·침강 균형',
+      '② 고수심·빠른 조류 (본류대·직벽 10m+): 크릴 3장 + 고비중 파우더 2봉 + 압맥 2~3봉 (+옥수수 1캔) — 단단히 뭉쳐 바닥까지',
+      '③ 잡어 퇴치 (여름~가을): 잘게 부순 크릴 2장 + 파우더 2봉 + 압맥 3봉 + 옥수수 2캔 — 곡물 위주, 바늘엔 옥수수/깐새우/경단',
+      '요령: 크릴은 반만 으깨기 · 바닷물을 조금씩 넣어 점도 조절 · 조류 상류에 품질해야 밑밥이 찌 지점 바닥에 동조',
+    ];
+    const rec = this.scene.add.text(boxX, btnY + 34, recipes.join('\n'), {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#9fc0d4',
+      lineSpacing: 6, wordWrap: { width: boxW + 30 },
+    });
+    this.bodyContainer.add(rec);
+
+    // ── 우측: 밑밥 재료 인벤토리 (드래그 앤 드랍 소스) ──
+    this.renderChumInventory(560, this.contentTop + 56, PANEL_W - 560 - 24);
+  }
+
+  /** 결정적 의사 난수 (재료 인덱스 시드 — 재렌더에도 같은 자리) */
+  private chumRand(idx: number, n: number): number {
+    const s = Math.sin(idx * 127.1 + n * 311.7) * 43758.5453;
+    return s - Math.floor(s);
+  }
+
+  /** 통 안 재료 쌓임 렌더 — 투입 순서(idx)대로 겹쳐 쌓인다 */
+  private drawIngredientPile(kind: ChumIngredientKind, idx: number): void {
+    const { x: boxX, y: boxY, w: boxW, h: boxH } = UtilizationPanel.CHUM_BOX;
+    const px = boxX + 60 + this.chumRand(idx, 1) * (boxW - 140);
+    const py = boxY + 56 + this.chumRand(idx, 2) * (boxH - 110);
+    const g = this.scene.add.graphics();
+    if (kind === 'powder') {
+      // 파우더/빵가루 — 부드러운 가루 더미 (짝수 tan / 홀수 적갈)
+      const col = idx % 2 === 0 ? 0xd8c09a : 0xb0623e;
+      g.fillStyle(col, 0.95);
+      g.fillEllipse(px, py, 96, 54);
+      g.fillEllipse(px - 22, py + 10, 60, 34);
+      g.fillStyle(col === 0xd8c09a ? 0xe8d8b8 : 0xc47a52, 0.9);
+      g.fillEllipse(px + 12, py - 8, 52, 28);
+    } else if (kind === 'krill') {
+      // 냉동 크릴 — 분홍 블록 두 덩어리
+      g.fillStyle(0xe89aa8, 1);
+      g.fillRoundedRect(px - 34, py - 16, 40, 30, 6);
+      g.fillRoundedRect(px + 6, py - 4, 34, 26, 6);
+      g.lineStyle(1.5, 0xc87a8a, 0.9);
+      g.strokeRoundedRect(px - 34, py - 16, 40, 30, 6);
+      g.strokeRoundedRect(px + 6, py - 4, 34, 26, 6);
+      // 성에 하이라이트
+      g.fillStyle(0xf8d8e0, 0.8);
+      g.fillRect(px - 28, py - 12, 12, 4);
+    } else {
+      // 압맥/옥수수 — 낱알 흩뿌림
+      for (let i = 0; i < 16; i++) {
+        const r1 = this.chumRand(idx * 31 + i, 4), r2 = this.chumRand(idx * 31 + i, 5);
+        g.fillStyle(i % 5 === 0 ? 0xe0c060 : 0xc8a878, 0.95);
+        g.fillEllipse(px - 46 + r1 * 92, py - 26 + r2 * 52, 7, 5);
+      }
+    }
+    this.bodyContainer.add(g);
+  }
+
+  private addChumButton(cx: number, cy: number, label: string, enabled: boolean, onClick: () => void): void {
+    const g = this.scene.add.graphics();
+    g.fillStyle(enabled ? 0x155a7c : 0x11202f, 0.95);
+    g.fillRoundedRect(cx - 80, cy - 18, 160, 36, 5);
+    g.lineStyle(1.5, enabled ? 0x5cd0ff : 0x22384e, 0.95);
+    g.strokeRoundedRect(cx - 80, cy - 18, 160, 36, 5);
+    const txt = this.scene.add.text(cx, cy, label, {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px', fontStyle: 'bold',
+      color: enabled ? '#aee8ff' : '#546a7c',
+    }).setOrigin(0.5);
+    this.bodyContainer.add([g, txt]);
+    if (!enabled) return;
+    const hit = this.scene.add.rectangle(cx, cy, 160, 36, 0xffffff, 0.001)
+      .setInteractive({ useHandCursor: true });
+    hit.on('pointerdown', onClick);
+    this.bodyContainer.add(hit);
+  }
+
+  /** 물 넣기 — 1회. 푸른 물줄기 연출 후 상태 갱신 */
+  private doChumWater(): void {
+    const { x: boxX, y: boxY, w: boxW, h: boxH } = UtilizationPanel.CHUM_BOX;
+    const fx = this.scene.add.container(0, 0);
+    this.add(fx);
+    for (let i = 0; i < 14; i++) {
+      const drop = this.scene.add.ellipse(
+        boxX + boxW / 2 - 40 + this.chumRand(i, 6) * 80, boxY - 34,
+        6, 10, 0x66b8e8, 0.9);
+      fx.add(drop);
+      this.scene.tweens.add({
+        targets: drop, y: boxY + 40 + this.chumRand(i, 7) * (boxH - 90),
+        alpha: 0.2, delay: i * 45, duration: 420, ease: 'Quad.In',
+      });
+    }
+    this.applyFix();
+    this.scene.time.delayedCall(1000, () => {
+      fx.destroy();
+      CoolerStore.chumWaterAdded = true;
+      this.renderBody();
+    });
+  }
+
+  /** 섞기 — 1회. 혼합 연출 후 배합 완료 (밑밥 100 충전) */
+  private doChumMix(): void {
+    const { x: boxX, y: boxY, w: boxW, h: boxH } = UtilizationPanel.CHUM_BOX;
+    const overlay = this.scene.add.graphics();
+    overlay.fillStyle(0x8a5a3c, 1);
+    overlay.fillRoundedRect(boxX + 22, boxY + 22, boxW - 44, boxH - 44, 8);
+    overlay.setAlpha(0);
+    this.add(overlay);
+    this.applyFix();
+    this.scene.tweens.add({
+      targets: overlay, alpha: 1, duration: 700, ease: 'Sine.InOut',
+      onComplete: () => {
+        overlay.destroy();
+        CoolerStore.completeChumMix();
+        this.renderBody();
+      },
+    });
+  }
+
+  /** 우측 밑밥 재료 인벤토리 — 드래그 소스 (소모품 중 chumKind 보유 아이템) */
+  private renderChumInventory(x: number, y: number, w: number): void {
+    const h = 470;
+    const bg = this.scene.add.graphics();
+    bg.fillStyle(0x060d1a, 0.95);
+    bg.fillRoundedRect(x, y, w, h, 6);
+    bg.lineStyle(1.5, 0x2a5a8a, 0.9);
+    bg.strokeRoundedRect(x, y, w, h, 6);
+    this.bodyContainer.add(bg);
+
+    const locked = CoolerStore.chumMixed || CoolerStore.chumRemaining > 0;
+    const title = this.scene.add.text(x + 14, y + 10,
+      locked ? '밑밥 재료 — 남은 밑밥을 다 쓰면 새로 배합할 수 있습니다' : '밑밥 재료 (통으로 드래그해서 투입)', {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', fontStyle: 'bold',
+        color: locked ? '#8faabf' : '#ffe28a',
+      });
+    this.bodyContainer.add(title);
+
+    const items = InventoryStore.getByCategory('consumable').filter((i) => i.chumKind && i.qty > 0);
+    const cell = 88, gap = 8;
+    const kindLabel: Record<ChumIngredientKind, string> = { powder: '파우더', krill: '냉동 크릴', grain: '곡물' };
+    items.forEach((item, idx) => {
+      const cx = x + 14 + (idx % 5) * (cell + gap);
+      const cy = y + 40 + Math.floor(idx / 5) * (cell + gap + 4);
+      const sg = this.scene.add.graphics();
+      sg.fillStyle(0x0e2a1e, 0.95);
+      sg.fillRoundedRect(cx, cy, cell, cell, 5);
+      sg.lineStyle(1, 0x2f7d5a, 0.9);
+      sg.strokeRoundedRect(cx, cy, cell, cell, 5);
+      this.bodyContainer.add(sg);
+      this.bodyContainer.add(createItemIcon(this.scene, cx + cell / 2, cy + cell / 2 - 14, item, 36));
+      const nm = this.scene.add.text(cx + cell / 2, cy + cell - 24, item.name, {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '8px', color: '#cfe3f2',
+        wordWrap: { width: cell - 8 }, maxLines: 1,
+      }).setOrigin(0.5);
+      const kd = this.scene.add.text(cx + cell / 2, cy + cell - 12, kindLabel[item.chumKind!], {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '8px', color: '#8fb8d0',
+      }).setOrigin(0.5);
+      const q = this.scene.add.text(cx + cell - 6, cy + 4, `x${item.qty}`, {
+        fontFamily: 'monospace', fontSize: '10px', color: '#ffe28a', fontStyle: 'bold',
+      }).setOrigin(1, 0);
+      this.bodyContainer.add([nm, kd, q]);
+
+      if (locked) return;
+      const hit = this.scene.add.rectangle(cx + cell / 2, cy + cell / 2, cell, cell, 0xffffff, 0.001)
+        .setInteractive({ useHandCursor: true });
+      hit.on('pointerdown', (p: Phaser.Input.Pointer) => this.startChumDrag(item, p));
+      this.bodyContainer.add(hit);
+    });
+
+    if (items.length === 0) {
+      const empty = this.scene.add.text(x + w / 2, y + h / 2, '밑밥 재료가 없습니다\n마트/편의점에서 파우더·냉동 크릴·압맥을 구매하세요', {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#7a98ac', align: 'center', lineSpacing: 6,
+      }).setOrigin(0.5);
+      this.bodyContainer.add(empty);
+    }
+  }
+
+  private startChumDrag(item: InvItem, p: Phaser.Input.Pointer): void {
+    if (CoolerStore.chumMixed || CoolerStore.chumRemaining > 0) return;
+    this.chumDragItem = item;
+    const ghost = this.scene.add.container(p.x, p.y).setDepth(this.depth + 20).setScrollFactor(0);
+    ghost.add(createItemIcon(this.scene, 0, 0, item, 44));
+    const lbl = this.scene.add.text(0, 32, item.name, {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#ffe28a', fontStyle: 'bold',
+      backgroundColor: '#0a1628dd', padding: { x: 6, y: 2 },
+    }).setOrigin(0.5);
+    ghost.add(lbl);
+    ghost.iterate((c: Phaser.GameObjects.GameObject) => {
+      (c as unknown as { setScrollFactor?: (v: number) => void }).setScrollFactor?.(0);
+    });
+    this.chumGhost = ghost;
+  }
+
+  /** 드랍 판정 — 통 안이면 재료 1개 소모 + 투입 연출 */
+  private finishChumDrag(p: Phaser.Input.Pointer): void {
+    const item = this.chumDragItem;
+    if (!item) return;
+    this.chumDragItem = null;
+    this.chumGhost?.destroy();
+    this.chumGhost = undefined;
+    if (this.currentTab !== 'chum') return;
+
+    const { x: bx, y: by, w: bw, h: bh } = UtilizationPanel.CHUM_BOX;
+    const lx = p.x - this.x, ly = p.y - this.y;
+    if (lx < bx || lx > bx + bw || ly < by || ly > by + bh) return;
+    if (CoolerStore.chumMixed || CoolerStore.chumRemaining > 0 || !item.chumKind) return;
+    if (!InventoryStore.removeQty(item.id, 1)) return;
+
+    CoolerStore.addChumIngredient(item.chumKind, item.name);
+    this.playChumPourAnim(item.chumKind, () => this.renderBody());
+  }
+
+  /**
+   * 재료 투입 연출 — 종류별:
+   *  powder: 봉투를 찢으며 우측 대각선에서 가루가 통 안으로 쏟아짐
+   *  krill: 봉투에서 각설탕 모양 분홍 블록이 두 덩어리로 쪼개져 떨어짐
+   *  grain: 봉투에서 연갈색 낱알들이 우수수 떨어짐
+   */
+  private playChumPourAnim(kind: ChumIngredientKind, done: () => void): void {
+    const { x: boxX, y: boxY, w: boxW, h: boxH } = UtilizationPanel.CHUM_BOX;
+    const fx = this.scene.add.container(0, 0);
+    this.add(fx);
+
+    // 봉투 (우상단 대각 — 기울여 붓는 자세)
+    const bagX = boxX + boxW - 36, bagY = boxY - 34;
+    const bag = this.scene.add.container(bagX, bagY).setRotation(-0.62);
+    const bagG = this.scene.add.graphics();
+    bagG.fillStyle(0xcfd6dc, 1);
+    bagG.fillRoundedRect(-16, -30, 32, 56, 5);
+    bagG.lineStyle(1.5, 0x8a98a4, 1);
+    bagG.strokeRoundedRect(-16, -30, 32, 56, 5);
+    // 찢어진 입구
+    bagG.fillStyle(0x6a7884, 1);
+    bagG.fillTriangle(-16, 26, -4, 20, -12, 32);
+    bag.add(bagG);
+    fx.add(bag);
+    // 봉투 기울이는 흔들림
+    this.scene.tweens.add({ targets: bag, rotation: -0.78, duration: 260, yoyo: true, repeat: 1 });
+
+    const mouthX = bagX - 20, mouthY = bagY + 26;
+
+    if (kind === 'powder') {
+      for (let i = 0; i < 26; i++) {
+        const grain = this.scene.add.rectangle(mouthX, mouthY, 5, 5,
+          i % 3 === 0 ? 0xe8d8b8 : 0xb0623e, 0.95);
+        fx.add(grain);
+        this.scene.tweens.add({
+          targets: grain,
+          x: boxX + 70 + this.chumRand(i, 8) * (boxW - 160),
+          y: boxY + 50 + this.chumRand(i, 9) * (boxH - 100),
+          alpha: 0.75, delay: i * 26, duration: 430, ease: 'Quad.In',
+        });
+      }
+    } else if (kind === 'krill') {
+      // 분홍 블록 하나가 둘로 쪼개지며 낙하
+      [-1, 1].forEach((side, i) => {
+        const block = this.scene.add.rectangle(mouthX, mouthY, 34, 26, 0xe89aa8, 1)
+          .setStrokeStyle(1.5, 0xc87a8a);
+        fx.add(block);
+        this.scene.tweens.add({
+          targets: block,
+          x: boxX + boxW / 2 + side * (40 + this.chumRand(i, 10) * 50),
+          y: boxY + boxH / 2 + this.chumRand(i, 11) * 50,
+          rotation: side * 0.7, delay: 120 + i * 90, duration: 520, ease: 'Bounce.Out',
+        });
+      });
+    } else {
+      for (let i = 0; i < 22; i++) {
+        const grain = this.scene.add.ellipse(mouthX, mouthY, 7, 5, i % 5 === 0 ? 0xe0c060 : 0xc8a878, 0.95);
+        fx.add(grain);
+        this.scene.tweens.add({
+          targets: grain,
+          x: boxX + 60 + this.chumRand(i, 12) * (boxW - 140),
+          y: boxY + 46 + this.chumRand(i, 13) * (boxH - 92),
+          delay: i * 22, duration: 470, ease: 'Quad.In',
+        });
+      }
+    }
+
+    this.applyFix();
+    this.scene.time.delayedCall(1050, () => {
+      fx.destroy();
+      done();
+    });
+  }
+
   override destroy(fromScene?: boolean): void {
     this.closeChooser();
+    this.scene?.input?.off('pointermove', this.chumMoveHandler);
+    this.scene?.input?.off('pointerup', this.chumUpHandler);
+    this.chumGhost?.destroy();
     super.destroy(fromScene);
   }
 }

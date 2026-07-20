@@ -49,6 +49,7 @@ import { ItemDetailPanel } from '../ui/ItemDetailPanel.js';
 import { StatusPanel } from '../ui/StatusPanel.js';
 import { EquipmentPanel } from '../ui/EquipmentPanel.js';
 import { UtilizationPanel, UtilizationTab } from '../ui/UtilizationPanel.js';
+import { CoolerPanel } from '../ui/CoolerPanel.js';
 import { ShopPanel } from '../ui/ShopPanel.js';
 import { ConfirmDialog, QuantityDialog } from '../ui/Dialogs.js';
 import { applyScreenFixed } from '../ui/DraggablePanel.js';
@@ -123,6 +124,7 @@ export class RegionFieldScene extends Phaser.Scene {
   private statusPanel: StatusPanel | null = null;
   private equipPanel: EquipmentPanel | null = null;
   private utilPanel: UtilizationPanel | null = null;
+  private coolerPanel: CoolerPanel | null = null;
   private shopPanel: ShopPanel | null = null;
 
   // ── 건물(상점) ──
@@ -695,6 +697,7 @@ export class RegionFieldScene extends Phaser.Scene {
     this.input.keyboard!.on('keydown-I', () => { if (!this.isPaused) this.toggleInventory(); });
     this.input.keyboard!.on('keydown-S', () => { if (!this.isPaused) this.toggleStatus(); });
     this.input.keyboard!.on('keydown-U', () => { if (!this.isPaused) this.toggleUtilization('tackles'); });
+    this.input.keyboard!.on('keydown-B', () => { if (!this.isPaused) this.toggleCooler(); });
     this.input.keyboard!.on('keydown-E', () => {
       if (this.isPaused) return;
       // 건물 근접 시 = 거래 상호작용, 아니면 장비 창 토글
@@ -793,6 +796,18 @@ export class RegionFieldScene extends Phaser.Scene {
     this.equipPanel = this.openPopup(
       (close) => new EquipmentPanel(this, GAME_WIDTH - 500, 70, close, () => this.hud?.refreshQuickslots()),
       () => { this.equipPanel = null; },
+    );
+  }
+
+  // ── 어창/쿨러 (B) — 보관 어획 확인·방생 ──
+  private toggleCooler(): void {
+    if (this.coolerPanel) {
+      this.popupStack.find((e) => e.panel === this.coolerPanel)?.close();
+      return;
+    }
+    this.coolerPanel = this.openPopup(
+      (close) => new CoolerPanel(this, { onClose: close }),
+      () => { this.coolerPanel = null; },
     );
   }
 

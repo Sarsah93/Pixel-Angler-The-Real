@@ -164,8 +164,32 @@ this.events.on('resume', () => {
 | 에셋 이미지 공개 디렉토리 구성 | `client-pc/public/` |
 | 지역 상세 타일맵 타입 + 맵 그래프 | `core/src/types/RegionMap.ts` |
 | 실지형 지도 → 타일/콜리전 변환 도구 | `tools/build_region_maps.py` |
-| RegionFieldScene (속초 7개 맵 타일 렌더+충돌+전환+캐스팅) | `client-pc/src/scenes/RegionFieldScene.ts` |
+| RegionFieldScene (속초 7개 맵 타일 렌더+충돌+전환+캐스팅+수심 타일+조명·날씨) | `client-pc/src/scenes/RegionFieldScene.ts` |
 | 속초 지역 타일 데이터 (7개 맵 JSON) | `client-pc/public/data/sokcho/` |
+| 부산 지역 타일 데이터 (8개 맵 JSON — 감천 서·동/암남/백운포) | `client-pc/public/data/busan/` |
+| 입질 시퀀스 엔진 (구부러짐 3단계·패턴 7종·챔질 판정·어종 mock) | `core/src/simulation/BiteSequenceEngine.ts` |
+| 조류 물리 엔진 (조수/반탄/조경 Hit Zone/횡/본류 5존) | `core/src/simulation/TidalCurrentEngine.ts` |
+| 해저 지형 프로필 (거리 기반 연속 지형 — 암초·수초·수심, 어탐 전제) | `core/src/simulation/SeabedProfile.ts` |
+| 뒷줄견제 홀드 물리 (H = 그 지점 홀드 + 정렬도 진행) | `core/src/simulation/LineTensionPhysics.ts` |
+| 해양기상 API (NMPNT — 전국 76개 관측소 실측 수온·시정) | `core/src/api-client/MarineWeatherApiClient.ts` + `db-schema/MarineStations.ts` |
+| 기상청 단기예보 API (SKY·PTY·파고 + 지역 격자 11곳) | `core/src/api-client/KmaVilageFcstApiClient.ts` + `db-schema/KmaGridPoints.ts` |
+| MAFRA 수산물 경락가 API (2023 계절 시세 재현) | `core/src/api-client/MafraAuctionApiClient.ts` |
+| KOSIS 시도별 어획량 API | `core/src/api-client/KosisCatchApiClient.ts` |
+| 공공 API 통합 수집 서비스 (Mock 폴백) | `core/src/api-client/ExternalApiService.ts` |
+| 어판장 수매가 산정 엔진 (어종·길이·등급 반영) | `core/src/simulation/MarketPriceEvaluator.ts` |
+| KST 시간 유틸 (타임존 무관 한국시간·주야간 판정) | `core/src/utils/KstTime.ts` |
+| 공공데이터 출처 표기 DB (저작권 고지) | `core/src/db-schema/DataAttributions.ts` |
+| Phaser 씬: FirstPersonFishing (1인칭 — 챔질/조류/조법/원투/루어/가이드) | `client-pc/src/scenes/FirstPersonFishingScene.ts` |
+| Phaser 씬: Credits (데이터 출처·저작권 화면) | `client-pc/src/scenes/CreditsScene.ts` |
+| Phaser 씬: Settings (조작·낚시 탭 — 로드 위치/릴 핸들) | `client-pc/src/scenes/SettingsScene.ts` |
+| 게임 팩토리 (createGame + 싱글턴 가드 — 이중 생성 차단) | `client-pc/src/game.ts` |
+| 외부 데이터 캐시 스토어 (API 스냅샷 + 티커/날씨/시세 접근자) | `client-pc/src/store/ExternalDataStore.ts` |
+| 인벤토리/채비 스토어 (8소켓 + 루어/원투/편대 병렬 모드) | `client-pc/src/store/InventoryStore.ts` |
+| 채비 추천 스토어 (지역·물때·어종 → 채비 추천 캐시) | `client-pc/src/store/RecommendationStore.ts` |
+| UI: RegionHud (KST 시계·날씨 배지 2×2·미니맵·퀵슬롯·로그) | `client-pc/src/ui/RegionHud.ts` |
+| UI: DraggablePanel 공통 베이스 (+화면 고정 히트 보정) | `client-pc/src/ui/DraggablePanel.ts` |
+| UI: UtilizationPanel (채비 조립·루어 모드·편대·추천 배너 + 요리 탭) | `client-pc/src/ui/UtilizationPanel.ts` |
+| UI: 상점/인벤토리/수량/확인 팝업 | `client-pc/src/ui/ShopPanel.ts` 외 |
 
 ### 🚧 구현 진행 중 / 미완료
 상세 내용은 `IMPLEMENTATION_PLAN.md` 참고
@@ -250,6 +274,28 @@ packages/client-pc/public/data/<region>/<mapId>.json
 - 동명항 남측/중앙은 대부분 바다(방파제 낚시 맵) — 좁은 대각 통로는 `bridge_diagonals` 후처리로 통행성 확보했으나, 세밀 튜닝 여지 있음.
 - POI는 현재 식당 아이콘 색만 자동 추출(제네릭 마커). 카페/마트 구분 및 건물별 상호작용(진입 씬 연결)은 추후.
 
+## 6c. FirstPersonFishingScene — 1인칭 낚시 조작 (2026-07-20 기준)
+
+캐스팅 착수 시 RegionFieldScene `pause + launch`로 진입. 종료는 `stop + resume`.
+
+| 입력 | 기능 |
+|---|---|
+| `우클릭` | **챔질** — 초릿대 구부러짐 단계별 성공률 (1단계 5% / 2단계 20% / 3단계 100%, 릴리즈 구간은 실패) |
+| `좌클릭 홀드` | 릴링 — 거리 좁힘. **화면 좌/우측 클릭 방향으로 채비 당김** (조류 순방향 1.4배 / 역방향 0.65배+리액션). **발앞 0.5m까지 다 감으면 채비 회수 → 탑다운 복귀**. 입질 1~2단계 중 1초 유지 시 입질 유도(70% 3단계 승격) |
+| `좌클릭 탭` | 호핑 (루어 머리 들기) |
+| `좌클릭 더블탭` | 트위칭/저킹 — 0.8s 쿨다운, 1m 상승 후 0.6m 하강 |
+| `↑ 홀드` | 리프트 — 채비/루어 수심 상승, 떼면 재침강 (리프트앤폴) |
+| `H` | 뒷줄견제 — **그 지점 홀드**(0.2m 원샷 상승 후 정지, 침강·드리프트 정지, 정렬도만 진행) + 리액션 트리거 |
+| `C` / 밑밥칸 클릭 | 밑밥 투척 (동조율) — **배합 밑밥 1회 25 소모** (U 밑밥 품질 탭에서 배합, 비어있으면 불가) |
+| 쿨러 좌측(어창) 클릭 | **어창 3x3 팝업** — 셀 우클릭: 상세보기/방생하기(확인창)/손질하기(준비중). 탑다운은 `B` 키 |
+| `SPACE` | 다시 캐스팅 (결과 화면에서) |
+| `F1` / 우하단 `?` | 온보딩 가이드 4페이지 재열람 |
+| `ESC` / 그만하기 | 필드 복귀 |
+
+- 상태별 하단 조작 바가 drift/입질/파이팅에 맞춰 자동 전환.
+- 파이팅: 텐션 30~80 유지, 70+에서 릴링 미끄러짐(저항), 88+ 릴링 강행 0.55s → 과부하 줄터짐.
+- 설정(낚시 탭): 로드 위치 좌/우, 릴 핸들 좌/우 (로드 기준).
+
 ---
 
 ## 7. 빌드 명령어
@@ -282,14 +328,37 @@ npx pnpm --filter @tra/client-pc run dev
 
 ---
 
-## 9. 현재 빌드 상태 (2026-07-20 기준)
+## 9. 현재 빌드 상태 (2026-07-21 기준)
 
 ```
-npx pnpm run build → ✅ 4/4 패키지 성공 (2026-07-20)
-npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류 (2026-07-20)
+npx pnpm run build → ✅ 4/4 패키지 성공 (2026-07-21)
+npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류 (2026-07-21)
 ```
 
-**최근 주요 변경 (2026-07-20 8차) — 루어(가짜 미끼) 채비 시스템 신설** (헤드리스 브라우저 렌더 검증):
+**최근 주요 변경 (2026-07-21 10차) — 쿨러(어창) 시스템 전면 개편 + 밑밥 배합(품질) 시스템** (헤드리스 브라우저 6항목 전체 통과):
+- **[신규] CoolerStore** (`client-pc/store/CoolerStore.ts`): 어창 3x3(9칸) 세션 스토어 — 낚은 개체를 **활어 상태로 보관 (쿨러 안에서는 신선도 시계 정지 → 일반 인벤토리 보관보다 오래 유지)**, 인벤 이송 시점부터 'live'로 신선도 진행. + 밑밥 배합 상태(`chumIngredients`/`chumWaterAdded`/`chumMixed`/`chumRemaining` 0~100, `CHUM_THROW_COST` 25).
+- **[개편] 어획 결과 흐름** (`FirstPersonFishingScene`): 자동 인벤토리 지급 제거 → **[쿨러에 넣기] / [방생하기] 선택** → "쿨러에 보관하였습니다." / "해당 어종을 방생하였습니다." → **[계속하기] / [그만하기]**. 도감 등록은 어획 시점 유지. 다관점 히트 추가 어획은 어창으로 직행(가득 시 '방생' 표기). 쿨러 가득(9마리) 시 넣기 차단 안내.
+- **[신규] CoolerPanel 3x3 팝업** (`ui/CoolerPanel.ts`): 1인칭 쿨러 좌측(어창) 클릭 / **탑다운 B 키**로 공용 열람. 셀 우클릭(좌클릭 겸용) 컨텍스트 메뉴 — **상세보기**(ItemDetailPanel 재사용) / **방생하기**("정말 방생하시겠습니까? 예/아니오" 확인창) / **손질하기(준비중 — 비활성)**.
+- **[신규] 종료 시 어창→인벤 이송 + 강제 방생 흐름**: 1인칭 종료(그만하기/ESC/실패/채비 회수) 시 어창 어획을 인벤토리(음식 탭)로 이송. **빈 소켓 부족 시 "인벤토리 공간이 모자라, 방생을 진행해야 합니다!" → [다음] → 강제 방생 모드 어창 팝업(ESC/X 닫기 차단, `lockedOpen`)** — 부족분만큼 방생해야 [계속하기]로 이송·종료가 진행된다.
+- **[개편] 밑밥 체계**: 기존 '집어제 아이템 수량 연동' 제거 → **배합 밑밥 게이지**. 1인칭 쿨러 우측 '밑밥 (C)' — 미배합 시 **'비어있음'**, 배합 후 **'N / 100'**, C 투척 1회당 **25 소모**(0 도달 시 통 리셋. 추후 능력치/고급 제품으로 소모량 감소 예정). 쿨러 UI 좌우 340px 확장(어창/밑밥 2분할 + 좌측 클릭 = 어창 팝업).
+- **[신규] U 밑밥 품질 탭** (`UtilizationPanel` 3번째 탭): 좌측 밑밥 통(탑뷰 흰 통) + 우측 밑밥 재료 임베드 인벤토리(`chumKind` 보유 소모품). **드래그 앤 드랍 투입 연출** — ① 파우더/빵가루: 봉투를 찢고 우측 대각선에서 가루 들이붓기 ② 냉동 크릴: 분홍 블록이 두 덩어리로 쪼개지며 낙하(Bounce) ③ 압맥/옥수수: 낱알 우수수 낙하. 재료는 투입 순서대로 통 안에 쌓여 렌더. **[물 넣기](1회, 재료 1개 이상) → [섞기](1회) → 배합 완료 100 충전**. 하단 추천 배합 코멘트(① 국민 표준 ② 고수심·빠른 조류 ③ 잡어 퇴치 + 현장 요령). 남은 밑밥이 있으면 새 배합 불가(재료 잠금).
+- **[신규] 밑밥 재료 아이템 6종 시드** (`InvItem.chumKind`: powder/krill/grain): 감성돔 집어 파우더 · 고비중 파우더 · 빵가루 · 냉동 크릴 블록 · 압맥 · 옥수수 캔 (+기존 집어제도 powder 편입).
+- 검증(브라우저 6항목 PASS): 결정 흐름(넣기→보관 메시지→계속/그만) / 방생 메시지 / 3x3 팝업·컨텍스트 메뉴·방생 확인창 / **강제 방생 ESC 차단→방생→복귀** / 밑밥 비어있음→C 차단→배합 100→투척 후 75/100 / 탑다운 B 어창·밑밥 탭 드래그 투입(수량 차감)·물·섞기 100/100.
+- ⚠️ **검증 하네스 함정 (신규)**: 새 브라우저 프로필은 1인칭 첫 진입 가이드가 자동 표시돼 클릭을 가로챈다 — Playwright 검증 시 `localStorage 'tra_fp_guide_seen'` 프리시드 필수. `page.goto`는 외부 API 폴링 때문에 `networkidle` 대신 `domcontentloaded` + 씬 활성 `waitForFunction` 사용.
+- **[배포] 2차 테스트 빌드 gh-pages 재배포 (2026-07-21, 커밋 871dc8d)** — https://sarsah93.github.io/Pixel-Angler-The-Real/ 라이브 검증 완료(404 0건, pageerror 0건, 메인 메뉴 기동). 7~10차 변경 전체 포함.
+
+**이전 변경 (2026-07-20 9차) — 채비 회수 + 액션 반응형 지깅 + 입질 유도 + 어종 주야간/수심층 전수 검토** (핵심 시뮬레이션 + 헤드리스 브라우저 검증 완료):
+- **[신규] 채비 회수 → 탑다운 복귀 (모든 조법 공통)** (`FirstPersonFishingScene.retrieveRig`): 릴링으로 수면 거리 `distM ≤ 0.5m`(발앞) 도달 시 "채비를/루어를 회수했습니다" 배너 + `fp_exit_msg` 안내와 함께 1인칭 종료 → stop/resume으로 탑다운 필드 복귀 (손실 없음, 회수 중 입질/입력 차단).
+  - **[수정] 조류 드리프트 거리 하한 1m → 0.3m**: 기존 `Math.max(1, …)` 하한이 매 프레임 릴링 감소를 1m로 되돌려 **회수 지점(0.5m)에 절대 도달할 수 없던 실버그** — 브라우저 검증에서 발견·수정. 회수는 의도적 릴링으로만 발생(조류만으로는 0.3m 하한에 머묾).
+- **[신규] 루어/지깅 액션 반응형 입질** (`lureActionMult`): 루어 모드는 찌낚시(기다림)와 달리 **액션이 입질을 만든다** — 방치 idle **0.15배**(루어는 움직이지 않으면 물지 않음) / 리트리브 2.2 / 리프트 1.8 / **폴 2.6**(폴링이 실제로 가장 잘 무는 순간) / 트위칭 3.0 / 호핑 2.0. 메탈지그(fast_sinking) 리프트앤폴 지깅은 추가 ×1.3. 게이지에 `[액션 x2.2]` / `[루어 방치 x0.15 — 액션 필요!]` 실시간 표기. 중대형 회유어 타겟팅은 기존 LureSpec `speciesWeightBias`가 담당(액션 배율과 곱 연동).
+- **[신규] 입질 유도** (`BiteSequenceEngine.provoke`): 입질 1~2단계(또는 직후 공백) 중 **릴링 1초 유지 or 뒷줄견제(H)** → **70% 확률로 다음 단계가 3단계(완전 흡입)로 승격**(짧은 공백 0.6~1.6초 후). 시퀀스당 1회만 판정, 실패(30%) 시 페널티 없이 원 패턴 지속. 성공 시 "입질 유도 성공" 안내. (2000회 시뮬레이션: 승격 70.0%, 재호출 차단 100%, 승격 후 3단계 강제·공백 ≤1.7s 100% / 브라우저: 릴링 1s → provoke 호출 → 51° 3단계 굽힘 실관측)
+- **[갱신] 오라클 주야간/수심층 전수 검토** (`FishSpawningOracle`, 실제 생태 기반 — 43종 전수):
+  - **주행성 어종 야간 억제 신규**: 용치놀래기 0.1(밤에 모래에 파묻혀 잠)·쥐치 0.25·말쥐치 0.3·돌돔/강담돔 0.35(낮 시력 사냥꾼)·복어류 0.4·망상어 0.4·벵에돔 0.5·부시리/방어 0.5(여명/황혼 피딩)·문절망둑/쥐노래미/노래미 0.6·숭어류 0.6·광어 0.7·가자미류/덕대/병어 0.7.
+  - **야행성 보너스 추가**: 청볼락 1.8(볼락류 정렬)·무늬오징어 1.6(야간 에깅)·감성돔 1.5(밤 대물)·문어 1.5·참돔 1.3·긴꼬리벵에돔 1.3·고등어 1.2(집어등).
+  - **수심층 2단계 분리**: 층 불일치 페널티 단일 0.15 → **인접층 0.15 / 두 층 어긋남 0.03**(저서 어종이 표층에 뜨는 일 차단).
+  - 검증(5000회 스폰 분포): 용치놀래기 주간 14.0% → **야간 1.7%**, 광어 표층 출현 1.0%(생미끼 추격 마진), 야간 표층은 꽁치/갈치/볼락 우세·부시리/방어 급감, 야간 바닥 여밭은 열기/황볼락/감성돔 급증 — 실제 밤낚시 조과 구성과 일치.
+
+**이전 변경 (2026-07-20 8차) — 루어(가짜 미끼) 채비 시스템 신설** (헤드리스 브라우저 렌더 검증):
 - **[신규 데이터] 루어 카탈로그** (`core/types/Lure.ts` + `core/db-schema/LuresCatalogDB.ts`): 7종 15변종 제원(원안 유지) — 웜/그럽(Nature Tail 2.5/4g)·소프트 저크베이트(Fluid 7/11.5g)·미노우(Prism Aqua 플로팅12/싱킹15.5g)·스푼(Blade Studio 14/21g)·스피너(Blade Studio 5.5/8g)·에기(Kraken 2.5호10.5/3.5호20g)·메탈지그(Iron Forge 28/40g). 물리·타겟은 전부 LureSpec **데이터로만** 표현(하드코딩 버프 금지): `dragCoefficient`(메탈지그 base×0.65=−35% 초장타)·`sinkType`/`sinkRateMps`/`diveDepthPerRetrieve`·`speciesWeightBias`·`spawnBinding`·`targetHabitatBias`·`fallLureWeight`·`actionFlags`·`snagRiskMult`(에기 0.7).
 - **[신규 연산] `core/simulation/LureRig.ts`**: `computeLureRigWeight`(소프트=웜+지그헤드, 하드=자중)·`getLureCastCd`·`getLureSinkProfile`(지그헤드 무게로 침강 가속)·`JIGHEAD_WEIGHTS_G`. UI는 표시만, 계산은 core.
 - **[신규] 두족류 어종 + 스폰 바인딩** (`FishSpawningOracle`): squid/octopus(egiOnly) 추가 + `SpawnContext`에 `speciesFilter`(에기 spawnBinding)·`speciesWeightBias`·`habitatBias` 신설, `weightedCandidates`가 소비(egiOnly는 필터에 있을 때만 등장).
