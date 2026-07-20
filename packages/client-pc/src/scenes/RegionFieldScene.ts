@@ -989,6 +989,8 @@ export class RegionFieldScene extends Phaser.Scene {
       power,
       strength: DEFAULT_ANGLER_STATS.strength,
       wind: this.getWindVector(),
+      // 채비 공기저항(루어 dragCoefficient/봉돌 종류) → 비거리 (메탈지그 초장타)
+      airDragCd: InventoryStore.getRigDragCd(),
     });
 
     // 그림자 / 찌 이원화

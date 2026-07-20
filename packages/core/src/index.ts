@@ -82,6 +82,12 @@ export type { FishSpecies, FishRarity } from './db-schema/FishDatabase.js';
 export { ROD_DATABASE, REEL_DATABASE, LINE_DATABASE, FLOAT_DATABASE, HOOK_DATABASE, getRodById, getReelById, getLineById, getFloatById } from './db-schema/GearSpecs.js';
 export { SPOT_DATABASE, getSpotById, getSpotsByRegion, getSpotsByType } from './db-schema/SpotDatabase.js';
 export { BAIT_DATABASE, getBaitById, getForagableBaits } from './db-schema/BaitDatabase.js';
+export type { WeightSinkerKind, WeightSinkerSpec } from './db-schema/SinkerDatabase.js';
+export {
+  WEIGHT_SINKER_DB, SINKER_KIND_LABEL, SINKER_KIND_BRAND,
+  SINKER_BASE_DRAG_CD, SINKER_BUNDLE_DRAG_CD, SINKER_HOLE_FEEDBACK_MULT,
+  sinkerWeightByHo, getWeightSinkerSpec,
+} from './db-schema/SinkerDatabase.js';
 export { SHORE_CREATURE_DATABASE, getCreatureById, getCreaturesByCategory, getCreaturesBySpotType, getActiveCreaturesByMonth } from './db-schema/ShoreCreatureDatabase.js';
 export type { ShoreCreature } from './db-schema/ShoreCreatureDatabase.js';
 export { TRAP_DATABASE, getTrapById, getTrapsByType } from './db-schema/TrapDatabase.js';
@@ -226,6 +232,19 @@ export type {
   FishMasterSpec, SpawnContext, SpawnedFish,
 } from './simulation/FishSpawningOracle.js';
 export { ORACLE_FISH_DB, spawnFish, classifyLayer, getBaitAffinity } from './simulation/FishSpawningOracle.js';
+
+// 채비 추천 알고리즘 (지역/지형/물때/대상어종 → 조법·찌·봉돌·미끼)
+export type { FishingTechnique, SnagRisk, RigRecoContext, RigRecommendation } from './simulation/RigRecommender.js';
+export { getRigRecommendation, TECHNIQUE_LABEL } from './simulation/RigRecommender.js';
+
+// 루어(가짜 미끼) 채비 — 카탈로그 + 연산
+export type { LureFamily, LureKind, SinkType, LureActionFlag, LureSpec } from './types/Lure.js';
+export { LURES_CATALOG_DB, getLureSpec, getLuresByKind } from './db-schema/LuresCatalogDB.js';
+export type { LureSinkProfile } from './simulation/LureRig.js';
+export {
+  JIGHEAD_WEIGHTS_G, jigHeadWeightById,
+  computeLureRigWeight, getLureCastCd, getLureSinkProfile,
+} from './simulation/LureRig.js';
 export type { FightPattern, FightInput, FightEvent, FightStatus, FightingFishSpec } from './simulation/FightingPhase.js';
 export { FightingPhase } from './simulation/FightingPhase.js';
 

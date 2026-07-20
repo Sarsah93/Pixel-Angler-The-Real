@@ -9,6 +9,7 @@
  */
 
 import type { InvCategory, InvItemTemplate } from '../store/InventoryStore.js';
+import { WEIGHT_SINKER_DB } from '@tra/core';
 
 /** 건물(상점) 종류 */
 export type BuildingKind = 'convenience' | 'mart' | 'market' | 'restaurant' | 'cafe' | 'pub';
@@ -38,6 +39,28 @@ export interface ShopDef {
   /** 매입 대상 카테고리 (비어 있으면 매입 안 함) */
   buysCategories: InvCategory[];
 }
+
+/** 무게추 봉돌 id → 상점 판매 항목 (채비 코너) */
+function sinkerShopEntry(id: string): ShopEntry {
+  const s = WEIGHT_SINKER_DB.find((x) => x.id === id)!;
+  return {
+    id: s.id, name: `${s.nameKo} (${s.weightG}g)`, icon: '🔩',
+    category: 'tackle', subCategory: '채비 부속', basePrice: s.price,
+    price: Math.round(s.price * 1.2), maxPerPurchase: 10, equippable: false,
+    desc: `${s.brand} ${s.ho}호 원투 메인 싱커.${s.kind === 'hole' ? ' 이물감↓(예신 피드백 +15%).' : s.kind === 'bundle' ? ' 비거리 페널티(C_d 0.58).' : ''}`,
+    sinkerKind: s.kind, sinkerWeightG: s.weightG, sinkerHo: s.ho,
+  };
+}
+
+/** 직판장 채비 코너 — 무게추 봉돌(대표 호수) + 찌 + 좁쌀봉돌 */
+const TACKLE_CORNER: ShopEntry[] = [
+  ...['inv_sinker_ring_20', 'inv_sinker_ring_25', 'inv_sinker_hole_15', 'inv_sinker_hole_20',
+    'inv_sinker_hole_25', 'inv_sinker_bundle_25'].map(sinkerShopEntry),
+  { id: 'inv_float08', name: '구멍찌 0.8호', icon: '🟠', category: 'tackle', subCategory: '채비 부속', basePrice: 8000, price: 9000, maxPerPurchase: 10, equippable: false, desc: '얕은 수심·약한 조류용 저부력 구멍찌.' },
+  { id: 'shop_float10', name: '구멍찌 1.0호', icon: '🟠', category: 'tackle', subCategory: '채비 부속', basePrice: 8500, price: 9500, maxPerPurchase: 10, equippable: false, desc: '중간 수심·조류용 구멍찌.' },
+  { id: 'shop_float15', name: '구멍찌 1.5호', icon: '🟠', category: 'tackle', subCategory: '채비 부속', basePrice: 9000, price: 10000, maxPerPurchase: 10, equippable: false, desc: '깊은 수심·센 조류용 고부력 구멍찌.' },
+  { id: 'inv_sinkerG2', name: '좁쌀봉돌 G2', icon: '⚙️', category: 'tackle', subCategory: '채비 부속', basePrice: 2000, price: 2500, maxPerPurchase: 20, equippable: false, desc: '찌낚시 목줄 미세 조정용 좁쌀 봉돌.' },
+];
 
 export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
   convenience: {
@@ -77,6 +100,9 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
       { id: 'shop_squid',    name: '오징어 (선어)', icon: '🐟', category: 'food',   subCategory: '어획물',   basePrice: 8000,  price: 10000, maxPerPurchase: 5,  condition: 'chilled', equippable: false, desc: '당일 조업 선어.' },
       { id: 'inv_krill',     name: '크릴 (냉동)',   icon: '🦐', category: 'tackle', subCategory: '냉동미끼', basePrice: 4000,  price: 4500,  maxPerPurchase: 10, condition: 'frozen', equippable: false, desc: '범용 냉동 미끼.' },
       { id: 'inv_fishcut',   name: '생선 조각 미끼', icon: '🦐', category: 'tackle', subCategory: '선어미끼', basePrice: 3000,  price: 3500,  maxPerPurchase: 10, condition: 'chilled', equippable: false, desc: '갈치/우럭용 절단 미끼.' },
+      { id: 'inv_ragworm',   name: '갯지렁이',      icon: '🪱', category: 'tackle', subCategory: '생미끼',   basePrice: 6000,  price: 7000,  maxPerPurchase: 10, condition: 'live', equippable: false, desc: '원투·도다리용 생미끼.' },
+      // 채비 코너 — 무게추 봉돌(원투)/찌/좁쌀봉돌 (추천 마크 연동)
+      ...TACKLE_CORNER,
     ],
   },
   restaurant: {

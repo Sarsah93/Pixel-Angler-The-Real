@@ -82,6 +82,8 @@ export interface FishMasterSpec {
   tideActivity: number[];
   /** 야간 활성 배율 (기본 1.0, 2.0 = 야간 어종) */
   nightBonus?: number;
+  /** 에기 전용 두족류 — 스폰 필터(speciesFilter)에 포함될 때만 후보에 오른다 */
+  egiOnly?: boolean;
   fight: FightProfile;
 }
 
@@ -523,6 +525,25 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     legalMinCm: 25, closedMonths: [5], tideActivity: sariPeak(0.4, 1.0),
     fight: { basePower: 0.75, patternWeights: { jump: 0.05, dive: 0.75, lateral: 0.2 }, intervalMult: 0.95, mouthFragility: 0.1 },
   },
+  // ── 두족류 (에기 전용 — egiOnly) ─────────────────────
+  {
+    speciesId: 'squid', nameKo: '무늬오징어', nameEn: 'Bigfin Reef Squid',
+    habitat: ['reef', 'structure', 'open'], minDepthM: 3, maxDepthM: 30, preferredLayers: ['mid', 'bottom'],
+    baitPreference: { lure: 90 }, egiOnly: true,
+    minCm: 15, maxCm: 45, meanCm: 26, sdCm: 6, weightFactor: 0.02, maleRatio: 0.5,
+    sexNote: '가을 무늬오징어 시즌이 에깅 최성기 — 먹물 주의',
+    tideActivity: sariPeak(0.4, 0.9),
+    fight: { basePower: 0.4, patternWeights: { jump: 0.1, dive: 0.3, lateral: 0.6 }, intervalMult: 1.1, mouthFragility: 0.4 },
+  },
+  {
+    speciesId: 'octopus', nameKo: '문어', nameEn: 'Common Octopus',
+    habitat: ['reef', 'structure'], minDepthM: 2, maxDepthM: 25, preferredLayers: ['bottom'],
+    baitPreference: { lure: 80, crab: 30 }, egiOnly: true,
+    minCm: 20, maxCm: 70, meanCm: 38, sdCm: 10, weightFactor: 0.05, maleRatio: 0.5,
+    sexNote: '바닥에 붙는 힘이 강해 초반에 띄우는 것이 관건',
+    tideActivity: flatTide(0.6),
+    fight: { basePower: 0.55, patternWeights: { jump: 0.0, dive: 0.8, lateral: 0.2 }, intervalMult: 1.0, mouthFragility: 0.2 },
+  },
 ];
 
 /** 스폰/입질 컨텍스트 */
@@ -548,6 +569,17 @@ export interface SpawnContext {
    * KOSIS 시도별 어종별 어획량 API를 캐시한 값 — 미지정 어종은 1.0.
    */
   catchWeightBySpecies?: Partial<Record<string, number>>;
+
+  // ── 루어 채비 연동 (LureSpec 데이터 소비) ──────────────
+  /**
+   * 스폰 후보 제한 (에기 spawnBinding 등). 지정 시 이 speciesId만 후보에 남는다.
+   * egiOnly 두족류는 이 필터에 포함될 때만 등장한다.
+   */
+  speciesFilter?: string[];
+  /** 어종별 타겟 가중치 (LureSpec.speciesWeightBias) — weight ×(1+bias) */
+  speciesWeightBias?: Partial<Record<string, number>>;
+  /** 서식 성향 가중 (LureSpec.targetHabitatBias) — 서식 지형 교집합이면 가중 */
+  habitatBias?: string[];
 }
 
 /** 당첨 물고기 결과 */
@@ -598,7 +630,14 @@ function weightedCandidates(ctx: SpawnContext): { spec: FishMasterSpec; weight: 
   const layer = classifyLayer(ctx.depthZ, ctx.zMax);
   const tideIdx = Math.min(14, Math.max(0, Math.round(ctx.tidePhase) - 1));
 
+  const filterSet = ctx.speciesFilter && ctx.speciesFilter.length > 0 ? new Set(ctx.speciesFilter) : null;
+
   return ORACLE_FISH_DB.map((spec) => {
+    // 에기 전용 두족류는 스폰 필터에 포함될 때만 후보에 오른다
+    if (spec.egiOnly && !(filterSet && filterSet.has(spec.speciesId))) return { spec, weight: 0 };
+    // 스폰 필터가 있으면 그 어종만 남긴다 (에기 spawnBinding)
+    if (filterSet && !filterSet.has(spec.speciesId)) return { spec, weight: 0 };
+
     // 수심층 적합
     const layerW = spec.preferredLayers.includes(layer) ? 1 : 0.15;
     // 서식 수심 범위 적합 (바닥 수심 기준 느슨하게)
@@ -614,8 +653,11 @@ function weightedCandidates(ctx: SpawnContext): { spec: FishMasterSpec; weight: 
     const dayNightW = ctx.isNight ? nb : nb > 1.5 ? 0.55 : 1;
     // 지역 어획량 통계 가중 (KOSIS 캐시 — 없으면 1.0)
     const catchW = ctx.catchWeightBySpecies?.[spec.speciesId] ?? 1;
+    // 루어 타겟 가중 (speciesWeightBias) + 서식 성향 가중 (habitatBias)
+    const lureBias = 1 + (ctx.speciesWeightBias?.[spec.speciesId] ?? 0);
+    const habW = ctx.habitatBias && ctx.habitatBias.some((h) => spec.habitat.includes(h as HabitatTerrain)) ? 1.3 : 1;
 
-    return { spec, weight: layerW * depthW * terrW * baitW * tideW * dayNightW * catchW };
+    return { spec, weight: layerW * depthW * terrW * baitW * tideW * dayNightW * catchW * lureBias * habW };
   }).filter((c) => c.weight > 0.001);
 }
 

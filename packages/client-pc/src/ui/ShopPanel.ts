@@ -13,6 +13,7 @@
 import Phaser from 'phaser';
 import { GameState } from '../store/GameState.js';
 import { InventoryStore, InvItem, CONDITION_LABEL } from '../store/InventoryStore.js';
+import { RecommendationStore } from '../store/RecommendationStore.js';
 import { ShopDef, ShopEntry } from '../data/ShopCatalog.js';
 import { DraggablePanel } from './DraggablePanel.js';
 import { createItemIcon } from './ItemIcon.js';
@@ -149,14 +150,17 @@ export class ShopPanel extends DraggablePanel {
     const gy0 = this.contentTop + 60;
 
     if (this.currentTab === 'buy') {
+      const reco = RecommendationStore.get();
       this.shop.sells.forEach((entry, idx) => {
+        const recommended = RecommendationStore.isItemRecommended(entry as unknown as InvItem, reco);
         this.renderCell(gx0, gy0, idx, {
           icon: entry.icon, iconTexture: entry.iconTexture, name: entry.name,
           priceLabel: `${entry.price.toLocaleString()}원`,
           qtyLabel: '',
           condition: entry.condition,
+          recommended,
           selected: this.selectedBuy?.id === entry.id && this.selectedBuy?.name === entry.name,
-          tooltip: `${entry.name}\n${entry.price.toLocaleString()}원 · ${entry.desc}`,
+          tooltip: `${recommended ? '[추천] ' : ''}${entry.name}\n${entry.price.toLocaleString()}원 · ${entry.desc}`,
           onSelect: () => { this.selectedBuy = entry; this.renderGrid(); },
           onDetail: () => this.cbs.onOpenDetail(entry),
         });
@@ -195,7 +199,7 @@ export class ShopPanel extends DraggablePanel {
 
   private renderCell(gx0: number, gy0: number, idx: number, cell: {
     icon: string; iconTexture?: string; name: string; priceLabel: string; qtyLabel: string;
-    condition?: InvItem['condition'];
+    condition?: InvItem['condition']; recommended?: boolean;
     selected: boolean; tooltip: string;
     onSelect: () => void; onDetail: () => void;
   }): void {
@@ -209,11 +213,21 @@ export class ShopPanel extends DraggablePanel {
       box.clear();
       box.fillStyle(cell.selected ? 0x155a3c : (hover ? 0x162a40 : 0x0e1c2d), 0.95);
       box.fillRoundedRect(sx, sy, SLOT, SLOT, 4);
-      box.lineStyle(cell.selected ? 2 : 1.2, cell.selected ? 0x4af2a1 : (hover ? 0x5cd0ff : 0x1f3d5a), 0.95);
+      // 추천 아이템은 금색 테두리로 강조
+      const stroke = cell.selected ? 0x4af2a1 : cell.recommended ? 0xffd257 : (hover ? 0x5cd0ff : 0x1f3d5a);
+      box.lineStyle(cell.selected || cell.recommended ? 2 : 1.2, stroke, 0.95);
       box.strokeRoundedRect(sx, sy, SLOT, SLOT, 4);
     };
     paint(false);
     this.gridContainer.add(box);
+
+    if (cell.recommended) {
+      const rb = this.scene.add.text(sx + SLOT / 2, sy - 2, '추천', {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '8px', color: '#0b1f14',
+        backgroundColor: '#ffd257', padding: { x: 3, y: 1 }, fontStyle: 'bold',
+      }).setOrigin(0.5, 0);
+      this.gridContainer.add(rb);
+    }
 
     const icon = createItemIcon(this.scene, sx + SLOT / 2, sy + SLOT / 2 - 10, cell, 28);
     this.gridContainer.add(icon);

@@ -111,6 +111,8 @@ export class BootScene extends Phaser.Scene {
     this.load.image('food_assorted_sashimi', 'food/assorted_sashimi.png');
     this.load.image('fish_black_sea_bream', 'fish/black_sea_bream.png');
     this.load.image('fish_halibut', 'fish/halibut.png');
+    this.load.image('fish_largescale_blackfish', 'fish/large_scale_blackfish.png');   // 벵에돔
+    this.load.image('fish_longtail_blackfish', 'fish/small_scale_blackfish.png');     // 긴꼬리벵에돔
 
     // ─── 남자 캐릭터 스프라이트 (12장) ───
     // 정지 4방향

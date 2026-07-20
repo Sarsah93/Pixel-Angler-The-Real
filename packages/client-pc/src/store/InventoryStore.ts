@@ -12,11 +12,16 @@
  * 데이터 원본(@tra/core UniversalItemDatabase)과의 정식 연동은 추후 작업.
  */
 
-import { evaluateFishSellPrice } from '@tra/core';
+import {
+  evaluateFishSellPrice, WEIGHT_SINKER_DB, WeightSinkerKind,
+  SINKER_BASE_DRAG_CD, SINKER_BUNDLE_DRAG_CD, SINKER_HOLE_FEEDBACK_MULT,
+  LURES_CATALOG_DB, JIGHEAD_WEIGHTS_G, getLureSpec, jigHeadWeightById,
+  computeLureRigWeight, getLureCastCd,
+} from '@tra/core';
 import { ExternalDataStore } from './ExternalDataStore.js';
 
 /** 인벤토리 카테고리 탭 */
-export type InvCategory = 'gear' | 'consumable' | 'food' | 'tackle' | 'etc';
+export type InvCategory = 'gear' | 'consumable' | 'food' | 'tackle' | 'lure' | 'etc';
 
 /** 신선도 상태 (표시용) */
 export type InvCondition = 'live' | 'fresh' | 'chilled' | 'frozen' | 'spoiled';
@@ -29,6 +34,7 @@ export const CATEGORY_LABEL: Record<InvCategory, string> = {
   consumable: '소모품',
   food: '음식',
   tackle: '낚시용품',
+  lure: '루어',
   etc: '기타',
 };
 
@@ -89,6 +95,14 @@ export interface InvItem {
   lengthCm?: number;
   /** 개체 무게 (g) */
   weightG?: number;
+
+  // ── 원투 메인 싱커(무게추 봉돌) 전용 ──
+  /** 봉돌 종류 (고리/구멍/묶음추) — 존재하면 무게추 봉돌 */
+  sinkerKind?: WeightSinkerKind;
+  /** 봉돌 자중 (g) — 총 무게/침강 속도 산정 */
+  sinkerWeightG?: number;
+  /** 봉돌 호수 */
+  sinkerHo?: number;
 }
 
 /** 상점 카탈로그/구매용 아이템 템플릿 (slot/qty 없이 정의) */
@@ -115,6 +129,26 @@ export function isHookItem(i: InvItem): boolean {
 /** 루어(가짜미끼) 여부 — 바늘 일체형이라 미끼가 필요 없다 */
 export function isLureItem(i: InvItem): boolean {
   return i.subCategory === '루어';
+}
+
+/** 원투 메인 싱커(무게추 봉돌) 여부 — sinkerKind 보유 */
+export function isWeightSinker(i: InvItem): boolean {
+  return i.sinkerKind !== undefined;
+}
+
+/** 좁쌀 봉돌(찌 채비 목줄용) 여부 */
+export function isSplitShot(i: InvItem): boolean {
+  return i.name.includes('좁쌀') && i.name.includes('봉돌');
+}
+
+/** 루어 카탈로그 아이템 여부 (LureSpec 보유) */
+export function isLureCatalogItem(i: InvItem): boolean {
+  return getLureSpec(i.id) !== undefined;
+}
+
+/** 지그헤드 아이템 여부 */
+export function isJigHeadItem(i: InvItem): boolean {
+  return i.subCategory === '지그헤드';
 }
 
 // ── 원투 편대/서브 채비 (2026-07-17) ──────────────────
@@ -146,8 +180,10 @@ export interface SpreaderState {
   hookBaits: (string | null)[];
 }
 
-/** 낚싯대 허용 채비 중량 (g) — 초과 시 과부하 가이드 (목업 수치) */
+/** 낚싯대 허용 채비 중량 (g) — 찌낚시 경량 채비 기준. 초과 시 과부하 가이드 */
 export const ROD_CAPACITY_G = 28;
+/** 원투(던질대) 허용 채비 중량 (g) — 무게추 봉돌(60~113g)을 감당 */
+export const SURF_ROD_CAPACITY_G = 150;
 
 /** 시작 시 지급되는 목업 아이템 세트 (slot은 카테고리별 순차 배정) */
 function createSeedItems(): InvItem[] {
@@ -205,8 +241,40 @@ function createSeedItems(): InvItem[] {
     { id: 'inv_junk',     name: '낡은 릴 부품',             icon: '📦', category: 'etc', subCategory: '잡동사니', qty: 1, basePrice: 500, equippable: false },
   ];
 
+  // ── 원투 메인 싱커(무게추 봉돌) — SinkerDatabase(core)에서 생성 ──
+  // 대표 호수 3종만 초기 지급 (나머지는 낚시점 구매). 종류별 물리 특성은 sinkerKind로 분기.
+  const seedSinkerIds = new Set(['inv_sinker_ring_20', 'inv_sinker_hole_20', 'inv_sinker_bundle_25']);
+  for (const s of WEIGHT_SINKER_DB) {
+    if (!seedSinkerIds.has(s.id)) continue;
+    defs.push({
+      id: s.id, name: `${s.nameKo} (${s.weightG}g)`, icon: '🔩',
+      category: 'tackle', subCategory: '채비 부속', qty: 3, basePrice: s.price, equippable: false,
+      sinkerKind: s.kind, sinkerWeightG: s.weightG, sinkerHo: s.ho,
+    });
+  }
+
+  // ── 루어 카탈로그 전종 + 지그헤드 (루어 카테고리 — 종류별 제원 수동 검증용) ──
+  const lureIcon: Record<string, string> = {
+    worm_grub: '🪱', soft_jerkbait: '🐟', plug_minnow: '🐟',
+    spoon: '🥄', spinner: '🌀', egi: '🦑', metal_jig: '🔩',
+  };
+  for (const lure of LURES_CATALOG_DB) {
+    defs.push({
+      id: lure.id, name: `${lure.nameKo} (${lure.weightG}g)`, icon: lureIcon[lure.kind] ?? '🎣',
+      category: 'lure', subCategory: '루어', qty: lure.family === 'soft' ? 8 : 3,
+      basePrice: Math.round(400 + lure.weightG * 220), equippable: false,
+    });
+  }
+  for (const w of JIGHEAD_WEIGHTS_G) {
+    defs.push({
+      id: `lure_jighead_${w}`, name: `지그헤드 ${w}g`, icon: '🪝',
+      category: 'lure', subCategory: '지그헤드', qty: 10,
+      basePrice: 1500 + w * 200, equippable: false,
+    });
+  }
+
   // 카테고리별 소켓 순차 배정
-  const counters: Record<InvCategory, number> = { gear: 0, consumable: 0, food: 0, tackle: 0, etc: 0 };
+  const counters: Record<InvCategory, number> = { gear: 0, consumable: 0, food: 0, tackle: 0, lure: 0, etc: 0 };
   return defs.map((d) => ({ ...d, slot: counters[d.category]++ }));
 }
 
@@ -250,6 +318,20 @@ class InventoryStoreManager {
    * 기존 rig 모델과 병렬 — 역호환을 위해 rig 소켓 구조는 건드리지 않는다.
    */
   spreader: SpreaderState = { kind: 'NONE', hookBaits: [] };
+
+  /**
+   * 채비 모드 — 'bait'(미끼/원투 등) / 'lure'(루어 낚시).
+   * lure 모드에서는 찌·면사매듭·수중찌·봉돌 검증을 건너뛰고 루어 소켓만 필수 검사.
+   * "소켓 해제"가 아니라 모드 분기로 검증 규칙 자체를 전환한다(상태 오염 방지).
+   */
+  rigMode: 'bait' | 'lure' = 'bait';
+  /** 루어 소켓 (메인 1개) — lure 모드 전용 */
+  private _lure: string | null = null;
+  /** 지그헤드 소켓 — 소프트 베이트(requiresJigHead) 전용 */
+  private _jigHead: string | null = null;
+
+  get lureId(): string | null { return this._lure; }
+  get jigHeadId(): string | null { return this._jigHead; }
 
   get items(): InvItem[] {
     return this._items;
@@ -439,6 +521,8 @@ class InventoryStoreManager {
     (Object.keys(this._rig) as RigStepKey[]).forEach((k) => {
       if (this._rig[k] === itemId) this._rig[k] = null;
     });
+    if (this._lure === itemId) this._lure = null;
+    if (this._jigHead === itemId) this._jigHead = null;
   }
 
   // ── 퀵슬롯 ──────────────────────────────────────────
@@ -476,24 +560,70 @@ class InventoryStoreManager {
 
   /**
    * 현재 바늘 소켓 기준으로 미끼가 필요한지.
-   * 루어(바늘 일체형 가짜미끼) 장착 시 false — 미끼 소켓 자체가 비활성화된다.
+   * 루어 모드이거나 바늘 소켓에 루어(바늘 일체형 가짜미끼) 장착 시 false —
+   * 소모성 미끼가 없으므로 입질/실패 시 미끼 소모·손실 로직이 건너뛰어진다.
    * 바늘이 비어 있으면 true(일반 바늘 전제).
    */
   hookNeedsBait(): boolean {
+    if (this.rigMode === 'lure') return false;
     const id = this._rig.hook;
     if (!id) return true;
     const item = this.find(id);
     return !item || !isLureItem(item);
   }
 
+  // ── 루어 채비 (rigMode === 'lure') ───────────────────
+  setRigMode(mode: 'bait' | 'lure'): void {
+    this.rigMode = mode;
+  }
+
+  /** 루어 소켓 설정 — 하드 베이트 장착 시 지그헤드 소켓은 자동 비움 */
+  setLure(lureId: string | null): void {
+    this._lure = lureId;
+    const spec = lureId ? getLureSpec(lureId) : undefined;
+    if (!spec?.requiresJigHead) this._jigHead = null;
+  }
+
+  setJigHead(id: string | null): void {
+    this._jigHead = id;
+  }
+
+  /** 현재 장착 루어의 카탈로그 스펙 (없으면 undefined) */
+  getEquippedLureSpec() {
+    return this._lure ? getLureSpec(this._lure) : undefined;
+  }
+
+  /** 루어 채비 총중량 (g) — 소프트는 웜+지그헤드, 하드는 자중 (core 연산) */
+  getLureRigWeightG(): number {
+    const spec = this.getEquippedLureSpec();
+    if (!spec) return 0;
+    return computeLureRigWeight(spec, jigHeadWeightById(this._jigHead));
+  }
+
   /** 비어 있는 필수 채비 부품 라벨 목록 (비어 있으면 캐스팅 불가) */
   getMissingRigParts(): string[] {
-    // 원투(편대) 채비: 찌 없이 도래 직결이 정상 구성 — 찌를 필수에서 제외
-    const surfRig = this.isSurfRigReady() && this.spreader.kind !== 'NONE';
+    // ── 루어 모드: 원줄+목줄+루어(+소프트면 지그헤드)만 필수 ──
+    if (this.rigMode === 'lure') {
+      const missing: string[] = [];
+      if (!this._rig.mainLine) missing.push('원줄');
+      if (!this._rig.leader) missing.push('목줄');
+      const spec = this.getEquippedLureSpec();
+      if (!spec) missing.push('루어');
+      else if (spec.requiresJigHead && !this._jigHead) missing.push('지그헤드');
+      return missing;
+    }
+    // 원투 낚시(찌 없이 도래 직결) 모드 — 단일 봉돌·편대 모두 포함.
+    // 이 모드에서는 '찌'가 필수가 아니며, 대신 메인 싱커(무게추 봉돌)가 필수다.
+    const surfRig = this.isSurfRigReady();
     const missing = InventoryStoreManager.REQUIRED_RIG
       .filter((r) => !(surfRig && r.key === 'float'))
       .filter((r) => !this._rig[r.key])
       .map((r) => r.label);
+    // 원투 모드: 메인 싱커(무게추 봉돌)를 반드시 달아야 캐스팅 가능
+    if (surfRig) {
+      const sinker = this._rig.sinker ? this.find(this._rig.sinker) : undefined;
+      if (!sinker || !isWeightSinker(sinker)) missing.push('무게추 봉돌');
+    }
     // 미끼는 일반 바늘일 때만 필수 — 루어 장착 시 제외.
     // 카드 채비는 다단 미끼(hookBaits)가 1개 이상이면 통과.
     const cardBaited = this.spreader.kind === 'CARD_RIG' && this.spreader.hookBaits.some(Boolean);
@@ -508,6 +638,38 @@ class InventoryStoreManager {
    */
   isSurfRigReady(): boolean {
     return !this._rig.float && !!this._rig.swivel;
+  }
+
+  /** 현재 모드의 낚싯대 허용 채비 중량 (g) — 원투는 무거운 싱커 감당 */
+  getRodCapacityG(): number {
+    return this.isSurfRigReady() ? SURF_ROD_CAPACITY_G : ROD_CAPACITY_G;
+  }
+
+  /** 현재 봉돌 소켓의 무게추 봉돌 (없으면 undefined) */
+  getEquippedWeightSinker(): InvItem | undefined {
+    const id = this._rig.sinker;
+    const item = id ? this.find(id) : undefined;
+    return item && isWeightSinker(item) ? item : undefined;
+  }
+
+  /**
+   * 채비 공기 저항 계수 C_d — 캐스팅 비거리 입력(airDragCd).
+   * 루어 모드는 장착 루어의 dragCoefficient(메탈지그는 낮아 초장타),
+   * 아니면 묶음추 봉돌 0.58 / 그 외 0.42.
+   */
+  getRigDragCd(): number {
+    if (this.rigMode === 'lure') {
+      const spec = this.getEquippedLureSpec();
+      if (spec) return getLureCastCd(spec);
+    }
+    return this.getEquippedWeightSinker()?.sinkerKind === 'bundle'
+      ? SINKER_BUNDLE_DRAG_CD : SINKER_BASE_DRAG_CD;
+  }
+
+  /** 예신 타이밍 피드백 배율 — 구멍 봉돌 장착 시 1.15 (이물감 감소 버프) */
+  getBiteFeedbackMult(): number {
+    return this.getEquippedWeightSinker()?.sinkerKind === 'hole'
+      ? SINKER_HOLE_FEEDBACK_MULT : 1;
   }
 
   /** 편대 종류 설정 — 카드 채비면 단수만큼 미끼 슬롯 초기화 */
@@ -541,7 +703,8 @@ class InventoryStoreManager {
     (Object.keys(this._rig) as RigStepKey[]).forEach((k) => {
       const item = this._rig[k] ? this.find(this._rig[k]!) : undefined;
       if (!item) return;
-      if (item.name.includes('봉돌')) w += 3.2;
+      if (isWeightSinker(item)) w += item.sinkerWeightG ?? 0;
+      else if (item.name.includes('봉돌')) w += 3.2;
       else if (item.name.includes('수중찌')) w += 8;
       else if (isLureItem(item)) { const m = item.name.match(/(\d+)\s*g/); w += m ? Number(m[1]) : 9; }
       else if (item.subCategory === '바늘/훅') w += 0.5;
@@ -583,6 +746,23 @@ class InventoryStoreManager {
       }
       this._rig[step] = null;
     }
+    return lost;
+  }
+
+  /**
+   * 루어 채비 손실 — 목줄째 터지는(줄터짐/복어 절단) 경우에만 호출.
+   * 루어(+소프트면 지그헤드) 1개씩 소모 + 소켓 비움. 잃은 이름 반환.
+   * (입질 실패/챔질 실패/미끼 털림 등에는 호출하지 않는다 — 루어는 회수된다.)
+   */
+  loseLureRig(): string[] {
+    const lost: string[] = [];
+    for (const id of [this._lure, this._jigHead]) {
+      if (!id) continue;
+      const item = this.find(id);
+      if (item) { lost.push(item.name); this.removeQty(id, 1); }
+    }
+    if (this._lure && !this.find(this._lure)) this._lure = null;
+    if (this._jigHead && !this.find(this._jigHead)) this._jigHead = null;
     return lost;
   }
 }

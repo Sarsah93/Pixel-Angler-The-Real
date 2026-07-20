@@ -28,6 +28,7 @@ import {
   getAreaSnagRiskMult,
   BiteSequenceEngine, TidalCurrentEngine, TidalInfluence,
   SeabedProfile, HOLD_LIFT_M, kstHour,
+  LureSpec, LureSinkProfile, getLureSinkProfile, jigHeadWeightById,
 } from '@tra/core';
 import { GameState } from '../store/GameState.js';
 import { InventoryStore, RigStepKey, CARD_RIG_INFO } from '../store/InventoryStore.js';
@@ -59,6 +60,8 @@ const PX_PER_M_X = 24;
 const FISH_TEXTURE: Record<string, string> = {
   black_seabream: 'fish_black_sea_bream',
   flatfish: 'fish_halibut',
+  largescale_blackfish: 'fish_largescale_blackfish',   // 벵에돔
+  longtail_blackfish: 'fish_longtail_blackfish',       // 긴꼬리벵에돔
 };
 
 export class FirstPersonFishingScene extends Phaser.Scene {
@@ -91,6 +94,14 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   private reelHandleSide: 'left' | 'right' = 'left';
   /** 찌 잠김 깊이 (m) — 입질 단계별 0.05/0.10/0.25 */
   private floatSinkM = 0;
+  /** 원투(찌 없이 도래 직결) 모드 — 찌 없이 초릿대 끝으로 입질 판단 */
+  private surfMode = false;
+  /** 루어 모드 (rigMode === 'lure') — 찌 없이 루어 자체 침강/리트리브 */
+  private lureMode = false;
+  /** 장착 루어 스펙 (루어 모드일 때) */
+  private lureSpec?: LureSpec;
+  /** 루어 침강 프로파일 (sinkType/sinkRate/dive) */
+  private lureSink?: LureSinkProfile;
 
   // ── 조류 (TidalCurrentEngine) ──
   private tidal!: TidalCurrentEngine;
@@ -239,8 +250,21 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.rodSide = settings.rodSide;
     this.reelHandleSide = settings.reelHandle;
 
+    // 채비 모드 판별 — 루어 모드 우선, 아니면 원투(찌 없이 도래 직결) 여부
+    this.lureMode = InventoryStore.rigMode === 'lure';
+    if (this.lureMode) {
+      this.lureSpec = InventoryStore.getEquippedLureSpec();
+      if (this.lureSpec) {
+        this.lureSink = getLureSinkProfile(this.lureSpec, jigHeadWeightById(InventoryStore.jigHeadId));
+      }
+    }
+    // 루어/원투 모두 찌 없이 초릿대 끝으로 입질 판단 (수면 찌 미표시)
+    this.surfMode = this.lureMode || InventoryStore.isSurfRigReady();
+
     this.buildBackdrop();
     this.buildFloat();
+    // 원투/루어 모드에서는 찌를 표시하지 않는다
+    this.floatObj.setVisible(!this.surfMode);
     this.dynamicG = this.add.graphics().setDepth(30);
     this.rodG = this.add.graphics().setDepth(60);
     this.panelG = this.add.graphics().setDepth(85);   // 수심 모식도 — 낚싯대 위
@@ -657,14 +681,24 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     if (r.success && this.pendingFish) {
       this.enterFight();
     } else {
-      // 챔질 실패 — 물고기는 떠나고 미끼를 잃는다. 다시 던지기 가이드.
+      // 챔질 실패 — 물고기는 떠난다. 루어는 소모되지 않고, 실미끼만 소모성.
+      // 1단계(약은 입질) 실패는 60% 확률로 미끼가 살아남는다(가볍게 건드린 정도).
       this.pendingFish = null;
       this.rodBendDeg = 0;
       this.floatSinkM = 0;
-      if (InventoryStore.hookNeedsBait()) InventoryStore.consumeRigItem('bait');
+      let baitKept = false;
+      if (InventoryStore.hookNeedsBait()) {
+        if (r.stage === 1 && Math.random() < 0.6) baitKept = true;
+        else InventoryStore.consumeRigItem('bait');
+      }
       this.refreshCoolerUi();
       this.fpState = 'result';
-      this.showResultPanel('챔질 실패', `${r.message}\n\n물고기가 미끼를 뱉고 달아났습니다.\n초릿대가 크게 휘는 3단계 입질에 챔질하세요.`, '#ff9a6a');
+      const tail = this.lureMode
+        ? '\n\n루어는 그대로 회수했습니다. 3단계 입질에 챔질하세요.'
+        : baitKept
+          ? '\n\n미끼는 살아남았습니다. 3단계 입질에 챔질하세요.'
+          : '\n\n물고기가 미끼를 뱉고 달아났습니다.\n초릿대가 크게 휘는 3단계 입질에 챔질하세요.';
+      this.showResultPanel('챔질 실패', `${r.message}${tail}`, '#ff9a6a');
     }
   }
 
@@ -817,7 +851,9 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       if (!id) return;
       const item = InventoryStore.find(id);
       if (!item) return;
-      if (item.name.includes('봉돌')) weightG += 3.2;
+      // 원투 무게추 봉돌은 자중이 크다(60~113g) — 무게 비례로 빠르게 침강
+      if (item.sinkerWeightG !== undefined) weightG += item.sinkerWeightG;
+      else if (item.name.includes('봉돌')) weightG += 3.2;
       else if (item.name.includes('수중찌')) weightG += 8;
       else if (item.name.includes('구멍찌')) buoyG += 8;
     });
@@ -1342,6 +1378,28 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       driftBrake: lt.driftBrake, baitLiftMps: lt.baitLiftMps,
     });
 
+    // ── 루어 침강 오버라이드 (sinkType 데이터 소비 — 하드코딩 버프 금지) ──
+    // floating: 리트리브로 파고들고, 멈추면 부상 / sinking·fast_sinking: 자체 속도로 하강.
+    // 하강 하한 = 투척 지점 국소 수심(getBottomDepthAt — 추후 지형/어탐으로 교체 가능).
+    if (this.lureMode && this.lureSink && !holding && !this.upKey.isDown) {
+      const bottom = this.getBottomDepthAt();
+      const retrieving0 = this.reeling && this.time.now - this.pointerDownAt > 220;
+      if (this.lureSink.sinkType === 'floating') {
+        if (retrieving0) {
+          // 리트리브 중 파고듦 (diveDepthPerRetrieve 계수 × 속도)
+          this.rig.baitZ = Math.min(bottom, this.rig.baitZ + this.lureSink.diveDepthPerRetrieve * 1.1 * dt);
+        } else {
+          // 멈추면 부력으로 서서히 수면 복귀
+          this.rig.baitZ = Math.max(0.15, this.rig.baitZ - 0.9 * dt);
+        }
+        this.rig.settled = false;
+      } else {
+        // 싱킹 계열 — 고유 속도로 바닥까지 하강
+        this.rig.baitZ = Math.min(bottom, this.rig.baitZ + this.lureSink.sinkRateMps * dt);
+        this.rig.settled = this.rig.baitZ >= bottom - 0.05;
+      }
+    }
+
     // ── 뒷줄견제(H) = 줄을 손으로 잡아 그 지점에 홀드 ──
     // 누른 순간 0.2m만 살짝 떠오른 뒤 정지. 침강/드리프트 없음(driftBrake 0),
     // 속조류에 의한 목줄 정렬(A)만 진행된다. (전유동 침강 정지도 이 로직이 포괄)
@@ -1404,8 +1462,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       alignmentIndex: this.lineTension.alignmentIndex,
       isHoldingLine: holding,
       chumSyncRate: sync,
-      // 낚시터 특성(RegionAreaNode.snagRisk) — high 구역은 밑걸림이 빠르고 잦다
-      snagRiskMult: getAreaSnagRiskMult(GameState.currentSpotId),
+      // 낚시터 특성(RegionAreaNode.snagRisk) × 루어 밑걸림 배율(에기 바닥 드래깅 -30%)
+      snagRiskMult: getAreaSnagRiskMult(GameState.currentSpotId) * (this.lureSpec?.snagRiskMult ?? 1),
     });
 
     // ── 입질 시퀀스 진행 (초릿대 굽힘/찌 잠김 구동) ──
@@ -1436,8 +1494,12 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       this.biteSeq.start({
         speciesId: this.pendingFish.speciesId,
         biteProbPerSec: tick.probPerSec,
+        // 구멍 봉돌 장착 시 예신 단계가 길어져 챔질 피드백이 완만 (+15%)
+        stageTimeScale: InventoryStore.getBiteFeedbackMult(),
       });
-      this.stateText.setText('입질 감지! 초릿대를 보고 우클릭으로 챔질하세요');
+      this.stateText.setText(this.surfMode
+        ? '입질 감지! 초릿대 끝을 보고 우클릭으로 챔질하세요'
+        : '입질 감지! 초릿대를 보고 우클릭으로 챔질하세요');
     }
   }
 
@@ -1462,10 +1524,18 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     return 'krill';
   }
 
-  /** 오라클 스폰/친화도 컨텍스트 구성 */
+  /**
+   * 투척 지점 국소 수심 (m) — 침강 하한.
+   * 현재는 해저 지형 프로필 기반. 추후 실지형/어탐 기능이 이 함수를 교체한다.
+   */
+  private getBottomDepthAt(): number {
+    return this.seabed.depthAt(this.distM);
+  }
+
+  /** 오라클 스폰/친화도 컨텍스트 구성 (루어 스펙 데이터 소비) */
   private buildSpawnCtx(inReef: boolean): SpawnContext {
     const hour = new Date().getHours();
-    return {
+    const ctx: SpawnContext = {
       depthZ: this.rig.baitZ,
       zMax: this.cfg.zMaxM,
       region: this.cfg.region,
@@ -1477,11 +1547,20 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       // KOSIS 시도별 어획량 캐시 → 지역 어종 스폰 가중치
       catchWeightBySpecies: ExternalDataStore.getCatchWeights(this.cfg.region),
     };
+    // 루어 스펙 → 타겟 가중/스폰 바인딩/서식 성향 (하드코딩 금지, 데이터 소비)
+    const lure = this.lureSpec;
+    if (lure) {
+      if (lure.spawnBinding?.length) ctx.speciesFilter = lure.spawnBinding;
+      if (lure.speciesWeightBias) ctx.speciesWeightBias = lure.speciesWeightBias;
+      if (lure.targetHabitatBias?.length) ctx.habitatBias = lure.targetHabitatBias;
+    }
+    return ctx;
   }
 
-  /** 밑걸림 발생 — 찌 아래 채비 전체 손실 + 즉시 필드 복귀 */
+  /** 밑걸림 발생 — 찌 아래 채비 전체 손실(루어 포함) + 즉시 필드 복귀 */
   private onSnagged(): void {
-    const lost = InventoryStore.loseRigParts(['float', 'swivel', 'leader', 'sinker', 'hook', 'bait'] as RigStepKey[]);
+    const lost = [...InventoryStore.loseRigParts(['float', 'swivel', 'leader', 'sinker', 'hook', 'bait'] as RigStepKey[]),
+      ...(this.lureMode ? InventoryStore.loseLureRig() : [])];
     this.failAndExit('밑걸림! 채비를 통째로 잃었습니다',
       `여 밭에 채비가 파묻혀 원줄을 끊었습니다.\n손실: ${lost.length > 0 ? lost.join(', ') : '없음'}\n\n뒷줄견제(H)로 미끼를 띄우면 밑걸림을 예방할 수 있습니다.`);
   }
@@ -1535,12 +1614,12 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       switch (st.event) {
         case 'landed': this.onLanded(); break;
         case 'line_break': {
-          // 목줄 터짐 — 30% 확률로 찌까지 함께 손실
+          // 목줄 터짐 — 30% 확률로 찌까지 함께 손실. 루어 모드는 루어도 목줄째 손실.
           const floatToo = Math.random() < 0.3;
           const parts: RigStepKey[] = floatToo
             ? ['float', 'swivel', 'leader', 'sinker', 'hook', 'bait']
             : ['leader', 'sinker', 'hook', 'bait'];
-          const lost = InventoryStore.loseRigParts(parts);
+          const lost = [...InventoryStore.loseRigParts(parts), ...(this.lureMode ? InventoryStore.loseLureRig() : [])];
           this.failAndExit(floatToo ? '줄터짐! 찌까지 터졌습니다' : '줄터짐! 목줄이 터졌습니다',
             `텐션이 한계를 넘어 ${floatToo ? '찌 위에서' : '목줄이'} 터졌습니다.\n손실: ${lost.join(', ')}\n\nU 채비하기에서 재장착 후 다시 캐스팅하세요.`);
           break;
@@ -1548,7 +1627,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
         case 'hook_off': {
           // 미끼 털림 / 복어류는 목줄째 절단
           if (this.hookedFish?.lineCutter) {
-            const lost = InventoryStore.loseRigParts(['leader', 'sinker', 'hook', 'bait'] as RigStepKey[]);
+            const lost = [...InventoryStore.loseRigParts(['leader', 'sinker', 'hook', 'bait'] as RigStepKey[]),
+              ...(this.lureMode ? InventoryStore.loseLureRig() : [])];
             this.failAndExit('복어가 목줄을 끊었습니다!',
               `날카로운 이빨에 목줄째 잘려나갔습니다.\n손실: ${lost.join(', ')}`);
           } else {
@@ -1580,7 +1660,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     const parts: RigStepKey[] = floatToo
       ? ['float', 'swivel', 'leader', 'sinker', 'hook', 'bait']
       : ['leader', 'sinker', 'hook', 'bait'];
-    const lost = InventoryStore.loseRigParts(parts);
+    const lost = [...InventoryStore.loseRigParts(parts), ...(this.lureMode ? InventoryStore.loseLureRig() : [])];
     this.failAndExit('무리한 릴링! 줄이 터졌습니다',
       `한계 텐션에서 릴링을 강행해 라인이 파단됐습니다.\n손실: ${lost.join(', ')}\n\n텐션이 높을 때는 릴링을 멈추고 드랙으로 버티세요.`);
   }
@@ -1821,20 +1901,42 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     const wave = Math.sin(this.time.now / 500) * 2.2;
     // 입질 단계별 찌 잠김 (1단계 0.05m / 2단계 0.10m / 3단계 0.25m) — 시각 배율 x3
     const sinkPx = this.floatSinkM * this.pxPerMZ * 3;
-    if (this.fpState !== 'fighting') this.floatObj.setPosition(fx, WATERLINE + wave + sinkPx);
-    else this.floatObj.setX(fx);
+    // ── 입질/챔질 시 채비 전체가 물속으로 당겨지는 연출 (초릿대 굽힘 비례) ──
+    // 물고기가 미끼를 물고 끌면 찌·목줄·미끼가 함께 아래로 딸려간다.
+    const bitePull = this.fpState !== 'fighting'
+      ? Phaser.Math.Clamp(this.rodBendDeg / 50, 0, 1.1) * 44
+      : 0;
+
+    if (this.fpState !== 'fighting') {
+      // 원투 모드는 찌가 없으므로 위치만 갱신(비표시). 찌낚시는 잠김+당김 반영.
+      this.floatObj.setPosition(fx, WATERLINE + wave + sinkPx + bitePull);
+    } else {
+      this.floatObj.setX(fx);
+    }
 
     const bx = this.screenX(this.rig.baitX);
-    const by = this.depthY(this.rig.baitZ);
+    const by = this.depthY(this.rig.baitZ) + bitePull;
 
-    // 수중 라인 (찌 → 미끼, 사선 정렬 시 곧게) — 수면 아래 채비라 반투명 처리
+    // 라인 수면 진입점 — 찌낚시는 찌 아래, 원투는 수면에서 곧장 입수
+    const lineTopY = this.surfMode ? WATERLINE + 4 + bitePull * 0.5 : WATERLINE + 8 + sinkPx + bitePull;
+
+    // 수중 라인 (수면 진입 → 미끼, 사선 정렬 시 곧게) — 수면 아래라 반투명
     g.lineStyle(1.2, 0xd8ecf8, 0.38);
     const midX = (fx + bx) / 2 + (1 - this.lineTension.alignmentIndex) * 14;
     g.beginPath();
-    g.moveTo(fx, WATERLINE + 8);
-    g.lineTo(midX, (WATERLINE + by) / 2);
+    g.moveTo(fx, lineTopY);
+    g.lineTo(midX, (lineTopY + by) / 2);
     g.lineTo(bx, by);
     g.strokePath();
+
+    // 원투 메인 싱커(무게추 봉돌) — 미끼 바로 위에 회색 추 (바닥 공략 표현)
+    if (this.surfMode) {
+      const syk = by - 12;
+      g.fillStyle(0x6a6f78, 0.75);
+      g.fillEllipse(bx, syk, 7, 11);
+      g.lineStyle(1, 0x2a2e34, 0.6);
+      g.strokeEllipse(bx, syk, 7, 11);
+    }
 
     // 미끼 (바늘+미끼) — 수중이므로 살짝 비쳐 보이게
     g.fillStyle(0xffb46a, 0.55);
@@ -1913,15 +2015,24 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     const latPx = Phaser.Math.Clamp((this.rig.baitX - this.rig.floatX) * 10, -(boxW / 2 - 24), boxW / 2 - 24);
     const rigX = centerX + latPx;
 
-    // 침강 라인 (찌 → 채비, 좌우 편차 반영 사선)
+    // 침강 라인 (수면 진입 → 채비, 좌우 편차 반영 사선)
     g.lineStyle(1.4, 0x9fd0e4, 0.8);
-    g.lineBetween(centerX, yOf(this.floatSinkM), rigX, yOf(this.rig.baitZ));
+    g.lineBetween(centerX, yOf(this.surfMode ? 0 : this.floatSinkM), rigX, yOf(this.rig.baitZ));
 
-    // 찌 — 수면(0m) 상단 경계에 걸침 + 입질 잠김 반영
-    g.fillStyle(0xff6a2a, 1);
-    g.fillEllipse(centerX, yOf(this.floatSinkM) - 2, 11, 9);
-    g.fillStyle(0xfff4e0, 1);
-    g.fillEllipse(centerX, yOf(this.floatSinkM) + 4, 8, 7);
+    if (this.surfMode) {
+      // 원투 모드: 찌 대신 수면 진입점만 표시하고, 채비 위에 무게추 봉돌을 그린다
+      g.fillStyle(0x9fd0e4, 0.9);
+      g.fillTriangle(centerX - 4, gaugeTop, centerX + 4, gaugeTop, centerX, gaugeTop + 6);
+      const sinkerY = yOf(this.rig.baitZ) - 9;
+      g.fillStyle(0x6a6f78, 1);
+      g.fillEllipse(rigX, sinkerY, 6, 10);
+    } else {
+      // 찌 — 수면(0m) 상단 경계에 걸침 + 입질 잠김 반영
+      g.fillStyle(0xff6a2a, 1);
+      g.fillEllipse(centerX, yOf(this.floatSinkM) - 2, 11, 9);
+      g.fillStyle(0xfff4e0, 1);
+      g.fillEllipse(centerX, yOf(this.floatSinkM) + 4, 8, 7);
+    }
 
     // 면사매듭 한계선 (박스 전체 폭 — 전유동이면 표시하지 않음)
     if (Number.isFinite(this.zLimitM)) {
@@ -1957,7 +2068,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
 
     // ── 원투 카드 채비: 다단 훅 도트 (봉돌 위로 간격 배열) ──
     const sp = InventoryStore.spreader;
-    const surfMode = InventoryStore.isSurfRigReady() && sp.kind !== 'NONE';
+    const surfMode = this.surfMode;
     if (surfMode && sp.kind === 'CARD_RIG' && sp.cardType) {
       const info = CARD_RIG_INFO[sp.cardType];
       for (let i = 0; i < info.hooks; i++) {
@@ -1984,9 +2095,15 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     const bedHere = this.seabed.depthAt(this.distM);
     const zoneLabel = this.lastTidal ? this.lastTidal.label.replace(' (Hit Zone)', '') : '';
     const hitZone = this.lastTidal?.zone === 'rip';
+    // 원투 모드: 찌/매듭 대신 조법·초릿대 상태를 표기
+    const topRows = this.surfMode
+      ? ['원투 (찌 없음)', '입질은 초릿대 끝']
+      : [
+          `찌  ${this.floatSinkM > 0 ? `-${this.floatSinkM.toFixed(2)}m` : '0m'}`,
+          Number.isFinite(this.zLimitM) ? `매듭  ${this.zLimitM}m` : '매듭 없음 (전유동)',
+        ];
     this.depthValsText?.setText([
-      `찌  ${this.floatSinkM > 0 ? `-${this.floatSinkM.toFixed(2)}m` : '0m'}`,
-      Number.isFinite(this.zLimitM) ? `매듭  ${this.zLimitM}m` : '매듭 없음 (전유동)',
+      ...topRows,
       `채비  ${this.rig.baitZ.toFixed(1)}m`,
       `바닥  ${bedHere.toFixed(1)}m`,
       inReefHere ? (kelpHere ? '여 밭 + 수초' : '여 밭 (암초)') : '모래/갯벌',

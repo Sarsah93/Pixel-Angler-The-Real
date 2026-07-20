@@ -17,11 +17,31 @@ import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import {
   InventoryStore, InvItem, InvCategory, RigStepKey,
   CATEGORY_LABEL, CONDITION_LABEL, CONDITION_COLOR,
-  isHookItem, isBaitItem, isLureItem,
-  SpreaderKind, CardRigType, SPREADER_LABEL, CARD_RIG_INFO, ROD_CAPACITY_G,
+  isHookItem, isBaitItem, isLureItem, isWeightSinker, isSplitShot, isJigHeadItem,
+  SpreaderKind, CardRigType, SPREADER_LABEL, CARD_RIG_INFO,
 } from '../store/InventoryStore.js';
+import { RecommendationStore } from '../store/RecommendationStore.js';
+import { LureFamily, LureKind, getLureSpec, getLureSinkProfile, jigHeadWeightById } from '@tra/core';
 import { DraggablePanel } from './DraggablePanel.js';
 import { createItemIcon } from './ItemIcon.js';
+
+/** 루어 세부 종류 → 라벨 (2단계 트리) */
+const SOFT_KINDS: { k: LureKind; label: string }[] = [
+  { k: 'worm_grub', label: '웜/그럽' },
+  { k: 'soft_jerkbait', label: '소프트 저크베이트' },
+];
+const HARD_KINDS: { k: LureKind; label: string }[] = [
+  { k: 'plug_minnow', label: '미노우' },
+  { k: 'spoon', label: '스푼' },
+  { k: 'spinner', label: '스피너' },
+  { k: 'egi', label: '에기' },
+  { k: 'metal_jig', label: '메탈지그' },
+];
+const SINK_LABEL: Record<string, string> = {
+  floating: '플로팅 (수면 유지·리트리브로 파고듦)',
+  sinking: '싱킹 (착수 후 하강)',
+  fast_sinking: '초고속 싱킹 (빠른 하강)',
+};
 
 export type UtilizationTab = 'cooking' | 'tackles';
 
@@ -58,6 +78,9 @@ export class UtilizationPanel extends DraggablePanel {
   /** 요리 탭 임베드 인벤토리 — 현재 카테고리/선택 아이템 */
   private cookInvCat: InvCategory = 'food';
   private cookSelectedId: string | null = null;
+  /** 루어 채비 트리 네비게이션 상태 */
+  private lureFamily: LureFamily = 'soft';
+  private lureKindSel: LureKind = 'worm_grub';
 
   constructor(scene: Phaser.Scene, onClose: () => void, initialTab: UtilizationTab = 'tackles') {
     super(scene, {
@@ -132,22 +155,58 @@ export class UtilizationPanel extends DraggablePanel {
   // 채비하기 (Tackles)
   // ═══════════════════════════════════════════════════
   private renderTackles(): void {
-    const top = this.contentTop + 56;
+    // ── 채비 모드 토글 (미끼 채비 / 루어 채비) ──
+    this.renderRigModeToggle(this.contentTop + 44);
+    if (InventoryStore.rigMode === 'lure') { this.renderLureRig(); return; }
+
+    const top = this.contentTop + 80;
+    const surf = InventoryStore.isSurfRigReady();
+    const reco = RecommendationStore.get();
 
     const guide = this.scene.add.text(24, top,
-      '조립 순서대로 소켓을 클릭해 부품을 선택하세요. 면사매듭 위치는 채비가 도달할 최대 수심(Z_limit)을 결정합니다.', {
+      surf
+        ? '원투(찌 없이 도래 직결) 모드 — 초릿대 끝으로 입질을 봅니다. 봉돌 소켓에 무게추 봉돌을 다세요.'
+        : '조립 순서대로 소켓을 클릭해 부품을 선택하세요. 면사매듭 위치는 채비가 도달할 최대 수심(Z_limit)을 결정합니다.', {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#9fc0d4',
       });
     this.bodyContainer.add(guide);
 
+    // ── 추천 배너 (지역/지형/물때/대상어종 반영) ──
+    const recoParts: string[] = [`조법 ${reco.techniqueLabel}`];
+    if (reco.floatHo !== undefined) recoParts.push(`찌 ${reco.floatHo}호`);
+    if (reco.sinkerKind && reco.sinkerHoRange) {
+      const kindKo = reco.sinkerKind === 'hole' ? '구멍' : reco.sinkerKind === 'bundle' ? '묶음추' : '고리';
+      recoParts.push(`봉돌 ${kindKo} ${reco.sinkerHoRange[0]}~${reco.sinkerHoRange[1]}호`);
+    }
+    if (reco.baitKeys.length) recoParts.push(`미끼 ${reco.baitKeys.slice(0, 2).join('·')}`);
+    const recoText = this.scene.add.text(24, top + 18,
+      `추천 (${reco.targetNames.join('·') || '지역 대상어'}): ${recoParts.join(' · ')}`, {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#ffd257', fontStyle: 'bold',
+      });
+    this.bodyContainer.add(recoText);
+
     // ── 조립 체인 소켓 ──
     const boxW = SOCKET_W, boxH = SOCKET_H, gap = SOCKET_GAP;
-    const chainY = top + 46;
+    const chainY = top + 62;
     // 루어 장착 시 미끼 소켓 비활성 (바늘 일체형 가짜미끼 — 미끼 불필요)
     const baitDisabled = !InventoryStore.hookNeedsBait();
     RIG_STEPS.forEach((step, i) => {
       const bx = 24 + i * (boxW + gap);
       const disabled = step.key === 'bait' && baitDisabled;
+
+      // 봉돌 소켓은 모드에 따라: 원투 → 무게추 봉돌 / 찌낚시 → 좁쌀 봉돌
+      let matcher = step.matcher;
+      let label = step.label;
+      if (step.key === 'sinker') {
+        matcher = surf ? isWeightSinker : isSplitShot;
+        label = surf ? '무게추 봉돌' : '봉돌 (좁쌀)';
+      }
+      // 추천 부합 아이템 판정기 (소켓별)
+      const recoPredicate: ((it: InvItem) => boolean) | null =
+        step.key === 'sinker' && surf ? (it) => RecommendationStore.isSinkerRecommended(it, reco)
+        : step.key === 'float' ? (it) => RecommendationStore.isFloatRecommended(it, reco)
+        : step.key === 'bait' ? (it) => RecommendationStore.isBaitRecommended(it, reco)
+        : null;
 
       const box = this.scene.add.graphics();
       const assignedId = InventoryStore.rig[step.key];
@@ -160,7 +219,18 @@ export class UtilizationPanel extends DraggablePanel {
       box.strokeRoundedRect(bx, chainY, boxW, boxH, 5);
       this.bodyContainer.add(box);
 
-      const stepLbl = this.scene.add.text(bx + boxW / 2, chainY + 14, step.label, {
+      // 소켓 추천 배지 — 유효 부품 미장착 + 추천 후보가 인벤토리에 있으면 우상단 '추천' 표시
+      // (원투 전환 후 봉돌 소켓에 좁쌀이 남아 있는 경우처럼 '잘못된 장착'도 미장착으로 취급)
+      const validAssigned = assigned && matcher && matcher(assigned);
+      if (!disabled && !validAssigned && recoPredicate && InventoryStore.items.some(recoPredicate)) {
+        const rb = this.scene.add.text(bx + boxW - 6, chainY + 4, '추천', {
+          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#0b1f14',
+          backgroundColor: '#ffd257', padding: { x: 3, y: 1 }, fontStyle: 'bold',
+        }).setOrigin(1, 0);
+        this.bodyContainer.add(rb);
+      }
+
+      const stepLbl = this.scene.add.text(bx + boxW / 2, chainY + 14, label, {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px',
         color: disabled ? '#556570' : '#c8a060', fontStyle: 'bold',
       }).setOrigin(0.5);
@@ -253,7 +323,7 @@ export class UtilizationPanel extends DraggablePanel {
 
       const hit = this.scene.add.rectangle(bx + boxW / 2, chainY + boxH / 2, boxW, boxH, 0xffffff, 0.001)
         .setInteractive({ useHandCursor: true });
-      hit.on('pointerdown', () => this.openChooser(step.key, step.label, step.matcher!, bx, chainY + boxH + 8));
+      hit.on('pointerdown', () => this.openChooser(step.key, label, matcher!, bx, chainY + boxH + 8, recoPredicate));
       this.bodyContainer.add(hit);
     });
 
@@ -295,6 +365,197 @@ export class UtilizationPanel extends DraggablePanel {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#7fe6b0',
     });
     this.bodyContainer.add(advice);
+  }
+
+  // ── 채비 모드 토글 (미끼 채비 / 루어 채비) ─────────────
+  private renderRigModeToggle(y: number): void {
+    const modes: { id: 'bait' | 'lure'; label: string }[] = [
+      { id: 'bait', label: '미끼 채비' },
+      { id: 'lure', label: '루어 채비' },
+    ];
+    let x = 24;
+    modes.forEach((m) => {
+      const sel = InventoryStore.rigMode === m.id;
+      const w = 110;
+      const g = this.scene.add.graphics();
+      g.fillStyle(sel ? 0x155a7c : 0x0e1c2d, 0.95);
+      g.fillRoundedRect(x, y, w, 26, 4);
+      g.lineStyle(1.5, sel ? 0x5cd0ff : 0x2a5a8a, 0.95);
+      g.strokeRoundedRect(x, y, w, 26, 4);
+      const t = this.scene.add.text(x + w / 2, y + 13, m.label, {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', fontStyle: 'bold',
+        color: sel ? '#aee8ff' : '#8faabf',
+      }).setOrigin(0.5);
+      const hit = this.scene.add.rectangle(x + w / 2, y + 13, w, 26, 0xffffff, 0.001)
+        .setInteractive({ useHandCursor: true });
+      hit.on('pointerdown', () => {
+        InventoryStore.setRigMode(m.id);
+        this.closeChooser();
+        this.renderBody();
+      });
+      this.bodyContainer.add([g, t, hit]);
+      x += w + 8;
+    });
+  }
+
+  // ═══════════════════════════════════════════════════
+  // 루어 채비 (rigMode === 'lure') — 2단계 종류 트리 + 지그헤드 + 제원
+  // ═══════════════════════════════════════════════════
+  private renderLureRig(): void {
+    const top = this.contentTop + 80;
+    const guide = this.scene.add.text(24, top,
+      '소프트/하드 → 종류 → 라인업을 선택하세요. 소프트 베이트는 지그헤드를 결합해야 캐스팅됩니다.', {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#9fc0d4',
+      });
+    this.bodyContainer.add(guide);
+
+    // 1단계: 소프트 / 하드
+    const fam: { f: LureFamily; label: string }[] = [
+      { f: 'soft', label: '소프트 베이트' }, { f: 'hard', label: '하드 베이트' },
+    ];
+    let fx = 24;
+    const famY = top + 22;
+    fam.forEach(({ f, label }) => {
+      const sel = this.lureFamily === f;
+      const w = 130;
+      this.mkPill(fx, famY, w, 26, label, sel, () => {
+        this.lureFamily = f;
+        this.lureKindSel = (f === 'soft' ? SOFT_KINDS : HARD_KINDS)[0].k;
+        this.renderBody();
+      });
+      fx += w + 8;
+    });
+
+    // 2단계: 종류 (선택 family에 따라)
+    const kinds = this.lureFamily === 'soft' ? SOFT_KINDS : HARD_KINDS;
+    let kx = 24;
+    const kindY = famY + 34;
+    kinds.forEach(({ k, label }) => {
+      const sel = this.lureKindSel === k;
+      const w = label.length * 12 + 24;
+      this.mkPill(kx, kindY, w, 24, label, sel, () => { this.lureKindSel = k; this.renderBody(); });
+      kx += w + 8;
+    });
+
+    // 3단계: 라인업 (인벤토리 루어 중 선택 종류)
+    const lures = InventoryStore.getByCategory('lure')
+      .filter((i) => getLureSpec(i.id)?.kind === this.lureKindSel);
+    const lineY = kindY + 36;
+    this.bodyContainer.add(this.scene.add.text(24, lineY, '라인업', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#c8a060', fontStyle: 'bold',
+    }));
+    let lx = 24;
+    const cardY = lineY + 20;
+    lures.forEach((item) => {
+      const spec = getLureSpec(item.id)!;
+      const sel = InventoryStore.lureId === item.id;
+      const w = 150, h = 56;
+      const g = this.scene.add.graphics();
+      g.fillStyle(sel ? 0x0e2a1e : 0x0e1c2d, 0.95);
+      g.fillRoundedRect(lx, cardY, w, h, 5);
+      g.lineStyle(1.5, sel ? 0x4af2a1 : 0x2a5a8a, 0.95);
+      g.strokeRoundedRect(lx, cardY, w, h, 5);
+      const nm = this.scene.add.text(lx + 8, cardY + 8, `${spec.sizeLabel} · ${spec.brand}`, {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#e8f4fd', fontStyle: 'bold',
+      });
+      const sub = this.scene.add.text(lx + 8, cardY + 26, `${spec.weightG}g · ${SINK_LABEL[spec.sinkType].split(' ')[0]}`, {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#9fc0d4',
+      });
+      const qty = this.scene.add.text(lx + w - 8, cardY + 8, `x${item.qty}`, {
+        fontFamily: 'monospace', fontSize: '10px', color: '#ffe28a',
+      }).setOrigin(1, 0);
+      const hit = this.scene.add.rectangle(lx + w / 2, cardY + h / 2, w, h, 0xffffff, 0.001)
+        .setInteractive({ useHandCursor: true });
+      hit.on('pointerdown', () => { InventoryStore.setLure(item.id); this.renderBody(); });
+      this.bodyContainer.add([g, nm, sub, qty, hit]);
+      lx += w + 8;
+    });
+    if (lures.length === 0) {
+      this.bodyContainer.add(this.scene.add.text(24, cardY + 14, '보유한 루어가 없습니다 (낚시점에서 구매).', {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#607b8e',
+      }));
+    }
+
+    // 지그헤드 소켓 (소프트 베이트만)
+    let specY = cardY + 70;
+    const eqSpec = InventoryStore.getEquippedLureSpec();
+    if (eqSpec?.requiresJigHead) {
+      this.bodyContainer.add(this.scene.add.text(24, specY, '지그헤드 (소프트 베이트 필수 — 무게가 침강 속도를 결정)', {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#c8a060', fontStyle: 'bold',
+      }));
+      let jx = 24;
+      const jy = specY + 20;
+      InventoryStore.getByCategory('lure').filter(isJigHeadItem).forEach((jh) => {
+        const sel = InventoryStore.jigHeadId === jh.id;
+        const w = 84;
+        this.mkPill(jx, jy, w, 24, `${jigHeadWeightById(jh.id)}g (x${jh.qty})`, sel, () => {
+          InventoryStore.setJigHead(jh.id); this.renderBody();
+        });
+        jx += w + 8;
+      });
+      specY = jy + 36;
+    }
+
+    // ── 제원 스펙 컨테이너 (실시간 — 계산은 core, UI는 표시만) ──
+    const sbW = PANEL_W - 48, sbH = 150;
+    const sbg = this.scene.add.graphics();
+    sbg.fillStyle(0x060d1a, 0.95);
+    sbg.fillRoundedRect(24, specY, sbW, sbH, 5);
+    sbg.lineStyle(1.5, 0xc8a060, 0.9);
+    sbg.strokeRoundedRect(24, specY, sbW, sbH, 5);
+    this.bodyContainer.add(sbg);
+    this.bodyContainer.add(this.scene.add.text(40, specY + 12, '루어 제원 (실시간)', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#ffe28a', fontStyle: 'bold',
+    }));
+
+    if (eqSpec) {
+      const jhW = jigHeadWeightById(InventoryStore.jigHeadId);
+      const sink = getLureSinkProfile(eqSpec, jhW);
+      const missing = InventoryStore.getMissingRigParts();
+      const bias = eqSpec.speciesWeightBias
+        ? Object.entries(eqSpec.speciesWeightBias).map(([s, v]) => `${s} +${Math.round(v * 100)}%`).join(', ')
+        : eqSpec.spawnBinding ? `두족류 전용 (${eqSpec.spawnBinding.join('/')})`
+        : eqSpec.targetHabitatBias ? `서식 성향 가중 (${eqSpec.targetHabitatBias.join('/')})` : '-';
+      const lines = [
+        `루어: ${eqSpec.nameKo} (${eqSpec.brand})`,
+        `총 무게: ${InventoryStore.getLureRigWeightG().toFixed(1)} g${eqSpec.requiresJigHead ? ` (웜 ${eqSpec.weightG} + 지그헤드 ${jhW})` : ''}`,
+        `침강: ${SINK_LABEL[sink.sinkType]}${sink.sinkRateMps > 0 ? ` ${sink.sinkRateMps.toFixed(2)} m/s` : ''}`,
+        `공기저항 C_d: ${eqSpec.dragCoefficient.toFixed(2)}${eqSpec.kind === 'metal_jig' ? ' (초장타)' : ''}`,
+        `타겟 가중: ${bias}`,
+        `액션: ${eqSpec.actionFlags?.join(', ') ?? '-'}${eqSpec.snagRiskMult ? ` · 밑걸림 ×${eqSpec.snagRiskMult}` : ''}`,
+      ];
+      lines.forEach((line, i) => {
+        this.bodyContainer.add(this.scene.add.text(40 + Math.floor(i / 3) * 360, specY + 38 + (i % 3) * 22, line, {
+          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#d0e8f5',
+        }));
+      });
+      const advice = missing.length
+        ? `필수 소켓이 비었습니다: ${missing.join(', ')} — 채워야 캐스팅할 수 있습니다.`
+        : '루어 채비 완성 — 입질/챔질 실패로는 루어를 잃지 않습니다(목줄째 터질 때만 손실).';
+      this.bodyContainer.add(this.scene.add.text(40, specY + sbH - 24, advice, {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: missing.length ? '#ff9a6a' : '#7fe6b0',
+      }));
+    } else {
+      this.bodyContainer.add(this.scene.add.text(40, specY + 60, '루어를 선택하세요.', {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#7a98ac',
+      }));
+    }
+  }
+
+  /** 작은 선택 pill 버튼 유틸 */
+  private mkPill(x: number, y: number, w: number, h: number, label: string, sel: boolean, onClick: () => void): void {
+    const g = this.scene.add.graphics();
+    g.fillStyle(sel ? 0x1a6a3e : 0x0e1c2d, 0.95);
+    g.fillRoundedRect(x, y, w, h, 4);
+    g.lineStyle(1, sel ? 0x4af2a1 : 0x2a5a8a, 0.9);
+    g.strokeRoundedRect(x, y, w, h, 4);
+    const t = this.scene.add.text(x + w / 2, y + h / 2, label, {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: sel ? '#d6ffe8' : '#8faabf',
+    }).setOrigin(0.5);
+    const hit = this.scene.add.rectangle(x + w / 2, y + h / 2, w, h, 0xffffff, 0.001)
+      .setInteractive({ useHandCursor: true });
+    hit.on('pointerdown', onClick);
+    this.bodyContainer.add([g, t, hit]);
   }
 
   /**
@@ -457,7 +718,8 @@ export class UtilizationPanel extends DraggablePanel {
       if (!id) return;
       const item = InventoryStore.find(id);
       if (!item) return;
-      if (item.name.includes('봉돌')) weightG += 0.31;          // G2
+      if (isWeightSinker(item)) weightG += item.sinkerWeightG ?? 0;   // 원투 무게추 봉돌 (60~113g)
+      else if (item.name.includes('봉돌')) weightG += 0.31;          // 좁쌀 G2
       else if (item.name.includes('수중찌')) weightG += 8;       // -0.8호 침력
       else if (item.name.includes('구멍찌')) buoyG += 8;         // 0.8호 부력
       else if (isLureItem(item)) {
@@ -472,17 +734,29 @@ export class UtilizationPanel extends DraggablePanel {
     (Object.keys(rig) as RigStepKey[]).forEach((k) => partWeight(rig[k]));
 
     const net = weightG - buoyG;
+    // 침강 속도 — 무게(net)에 비례 가속 (무거운 원투 싱커는 바닥까지 빠르게 낙하)
     const sinkMps = Math.max(0, net * 0.03);
-    const dragCd = 0.4 + weightG * 0.01;
+    // 공기 저항 계수 — 묶음추 봉돌 0.58 / 그 외 0.42 (봉돌 종류가 결정)
+    const dragCd = InventoryStore.getRigDragCd();
 
     let advice: string;
     const missing = InventoryStore.getMissingRigParts();
     const floatItem = rig.float ? InventoryStore.find(rig.float) : undefined;
     // 잠길찌: '잠길찌' 타입 찌 장착 또는 잔존 부력(부력-침강무게)이 0 미만
     const isSinkingFloat = !!floatItem && (floatItem.name.includes('잠길찌') || (buoyG > 0 && net > 0));
-    const overload = InventoryStore.getRigTotalWeightG() > ROD_CAPACITY_G;
+    const surf = InventoryStore.isSurfRigReady();
+    const overload = InventoryStore.getRigTotalWeightG() > InventoryStore.getRodCapacityG();
+    const holeSinker = InventoryStore.getEquippedWeightSinker()?.sinkerKind === 'hole';
+    const bundleSinker = InventoryStore.getEquippedWeightSinker()?.sinkerKind === 'bundle';
     if (overload) advice = '채비 과부하! 봉돌 호수를 낮추거나 경량 채비를 선택하세요.';
     else if (missing.length > 0) advice = `필수 소켓이 비었습니다: ${missing.join(', ')} — 채워야 캐스팅할 수 있습니다.`;
+    else if (surf) {
+      advice = holeSinker
+        ? '원투 채비 (구멍 봉돌) — 이물감이 적어 예신 타이밍 피드백 +15%. 초릿대 끝으로 입질을 보세요.'
+        : bundleSinker
+          ? '원투 채비 (묶음추 봉돌) — 공기 저항이 커 비거리 페널티. 초릿대 끝으로 입질을 보세요.'
+          : '원투 채비 — 찌 없이 초릿대 끝으로 입질을 봅니다. 무게추 봉돌로 바닥을 공략하세요.';
+    }
     else if (!InventoryStore.hasFloatStop) advice = '전유동 채비입니다. 면사매듭을 제거하면 채비가 무한 침강합니다 — 뒷줄견제(H)로 수심을 세워 흘리세요.';
     else if (isSinkingFloat) advice = '잠길찌 채비 상태입니다. 캐스팅 후 찌가 수중으로 하강합니다.';
     else if (!InventoryStore.hookNeedsBait()) advice = '루어 채비입니다 — 미끼 없이 캐스팅 가능하며, 입질 시 미끼가 소모되지 않습니다.';
@@ -494,10 +768,15 @@ export class UtilizationPanel extends DraggablePanel {
   }
 
   /** 부품 선택 리스트 팝업 */
-  private openChooser(step: RigStepKey, label: string, matcher: (i: InvItem) => boolean, x: number, y: number): void {
+  private openChooser(
+    step: RigStepKey, label: string, matcher: (i: InvItem) => boolean,
+    x: number, y: number, isReco?: ((i: InvItem) => boolean) | null,
+  ): void {
     this.closeChooser();
 
-    const candidates = InventoryStore.items.filter(matcher);
+    // 추천 후보를 상단으로 정렬
+    const candidates = InventoryStore.items.filter(matcher)
+      .sort((a, b) => (isReco ? (Number(isReco(b)) - Number(isReco(a))) : 0));
     const rowH = 30;
     const listW = 240;
     const listH = Math.max(1, candidates.length + 1) * rowH + 34;
@@ -517,17 +796,25 @@ export class UtilizationPanel extends DraggablePanel {
     });
     c.add(title);
 
-    const addRow = (i: number, text: string, onPick: () => void): void => {
+    const addRow = (i: number, text: string, onPick: () => void, recommended = false): void => {
       const ry = ly + 28 + i * rowH;
       const rowTxt = this.scene.add.text(lx + 14, ry + rowH / 2, text, {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#d0e8f5',
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: recommended ? '#ffe28a' : '#d0e8f5',
       }).setOrigin(0, 0.5);
+      c.add(rowTxt);
+      if (recommended) {
+        const badge = this.scene.add.text(lx + listW - 12, ry + rowH / 2, '추천', {
+          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#0b1f14',
+          backgroundColor: '#ffd257', padding: { x: 3, y: 1 }, fontStyle: 'bold',
+        }).setOrigin(1, 0.5);
+        c.add(badge);
+      }
       const rowHit = this.scene.add.rectangle(lx + listW / 2, ry + rowH / 2, listW - 8, rowH - 2, 0xffffff, 0.001)
         .setInteractive({ useHandCursor: true });
-      rowHit.on('pointerover', () => rowTxt.setColor('#ffe28a'));
-      rowHit.on('pointerout', () => rowTxt.setColor('#d0e8f5'));
+      rowHit.on('pointerover', () => rowTxt.setColor('#ffffff'));
+      rowHit.on('pointerout', () => rowTxt.setColor(recommended ? '#ffe28a' : '#d0e8f5'));
       rowHit.on('pointerdown', () => { onPick(); this.closeChooser(); this.renderBody(); });
-      c.add([rowTxt, rowHit]);
+      c.add(rowHit);
     };
 
     if (candidates.length === 0) {
@@ -538,7 +825,8 @@ export class UtilizationPanel extends DraggablePanel {
       addRow(1, '닫기', () => { /* 선택 없음 */ });
     } else {
       candidates.forEach((item, i) => {
-        addRow(i, `${item.icon} ${item.name} (x${item.qty})`, () => InventoryStore.setRigPart(step, item.id));
+        addRow(i, `${item.icon} ${item.name} (x${item.qty})`,
+          () => InventoryStore.setRigPart(step, item.id), !!isReco && isReco(item));
       });
       addRow(candidates.length, '비우기', () => InventoryStore.setRigPart(step, null));
     }

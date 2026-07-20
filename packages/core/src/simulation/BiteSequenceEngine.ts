@@ -6,11 +6,12 @@
  * 시작한다. 유저는 초릿대 구부러짐을 보고 우클릭 챔질로 파이팅에 진입한다
  * (기존 자동 파이팅 진입을 대체).
  *
- * 구부러짐 단계 (1회 애니메이션 프로파일 — 2026-07-20 각 단계 +0.5초 완화):
- *  1단계: 미끼 건드림 — 1.0초 안에 30°까지 굽었다 펴짐.        챔질 성공률 5%
- *  2단계: 부분 섭취   — 0.7초에 45° → 30° 유지 → 1.45초 펴짐.  챔질 성공률 20%
- *  3단계: 완전 흡입   — 0.35초에 60° → 1.5초까지 50° 유지 →    챔질 성공률 100%
+ * 구부러짐 단계 (1회 애니메이션 프로파일 — 각 단계 시각적으로 구분되는 형태):
+ *  1단계: 미끼 건드림 — 톡 한 번 (0.4초 20°까지 짧게 굽었다 펴짐).    챔질 성공률 5%
+ *  2단계: 부분 섭취   — 두 번 끄덕 (35°→18°→32°→펴짐, 1.45초).       챔질 성공률 20%
+ *  3단계: 완전 흡입   — 크게 실려 유지 (0.35초 50° → 1.5초까지 42°) → 챔질 성공률 100%
  *          0.25초 펴짐(이 릴리즈 구간에 챔질하면 100% 실패 "너무 늦게").
+ *  (2026-07-20: 각 단계 피크 각도 -10° 완화 + 단계별 형태 차별화)
  *
  * 입질 패턴 (트리거 시 확률 추첨):
  *  1) 1→2→3 (30%)  2) 1→3 (10%)  3) 1→(장기 공백)→1 (20%)
@@ -65,9 +66,12 @@ const SPECIES_PATTERN: Record<string, BendStage[]> = {
 
 /** 단계 애니메이션 키프레임: [시각(초), 각도(도)] 목록 (선형 보간) */
 const STAGE_PROFILE: Record<BendStage, [number, number][]> = {
-  1: [[0, 0], [0.45, 30], [1.0, 0]],
-  2: [[0, 0], [0.7, 45], [1.1, 30], [1.45, 0]],
-  3: [[0, 0], [0.35, 60], [1.5, 50], [1.75, 0]],
+  // 1단계: 짧은 단발 '톡' — 작게 한 번 굽었다 빠르게 펴짐
+  1: [[0, 0], [0.4, 20], [0.62, 8], [1.0, 0]],
+  // 2단계: 두 번 끄덕 '톡-톡' — 중간 굽힘 후 살짝 풀렸다 다시 굽고 펴짐
+  2: [[0, 0], [0.4, 35], [0.72, 18], [1.05, 32], [1.45, 0]],
+  // 3단계: 크게 실려 오래 유지 — 깊게 굽어 버티다 마지막에 펴짐
+  3: [[0, 0], [0.35, 50], [0.85, 44], [1.5, 42], [1.75, 0]],
 };
 
 /** 단계 총 길이 (초) — 챔질 여유를 위해 각 단계 +0.5초 (2026-07-20) */
@@ -109,6 +113,11 @@ export interface BiteSequenceOptions {
    * 높을수록 단계 간 간격이 짧아지고, 반복 횟수(최대 5)와 굽힘 강도가 커진다.
    */
   biteProbPerSec: number;
+  /**
+   * 단계 지속시간 배율 (기본 1.0). 구멍 봉돌 등 이물감 감소 채비는 1.15로
+   * 예신 단계가 길어져 챔질 타이밍 피드백이 완만해진다(+15% 버프).
+   */
+  stageTimeScale?: number;
   /** RNG 주입 (기본 Math.random) */
   rng?: () => number;
 }
@@ -126,6 +135,8 @@ export class BiteSequenceEngine {
   private _ended = false;
   /** 입질 확률 기반 강도 보정 (0~1) — 굽힘 각도 +최대 8도 */
   private intensity = 0;
+  /** 단계 지속시간 배율 (구멍 봉돌 버프 등) */
+  private timeScale = 1;
 
   /** 시퀀스 활성 여부 */
   get active(): boolean { return this._active; }
@@ -133,6 +144,7 @@ export class BiteSequenceEngine {
   /** 입질 트리거 — 패턴 추첨 + 간격/반복 산출 */
   start(opts: BiteSequenceOptions): void {
     this.rng = opts.rng ?? Math.random;
+    this.timeScale = Math.max(0.5, Math.min(2, opts.stageTimeScale ?? 1));
 
     // 강도: probPerSec 0.02(낮음) ~ 0.25(높음) → 0~1
     this.intensity = Math.min(1, Math.max(0, (opts.biteProbPerSec - 0.02) / 0.23));
@@ -225,7 +237,7 @@ export class BiteSequenceEngine {
     } else {
       const stage = this.queue[this.idx];
       this.stageT += dtSec;
-      if (this.stageT >= STAGE_DURATION[stage] + (stage === 2 ? 0 : 0)) {
+      if (this.stageT >= STAGE_DURATION[stage] * this.timeScale) {
         // 단계 종료 → 다음 공백 (마지막 단계였다면 종료)
         if (this.idx >= this.queue.length - 1) {
           this._active = false;
@@ -238,10 +250,11 @@ export class BiteSequenceEngine {
     }
 
     const stage = this.currentStage();
-    // 강도 보정: 최대 +8도
-    const boost = 1 + this.intensity * (8 / 60);
-    const angle = stage ? this.angleAt(stage, this.stageT) * boost : 0;
-    const sink = stage ? FLOAT_SINK_BY_STAGE[stage] * Math.min(1, angle / (30 * boost)) : 0;
+    // 강도 보정: 최대 +4도 (단계 간 각도 차이가 흐려지지 않도록 완만하게)
+    const boost = 1 + this.intensity * (4 / 50);
+    // 프로파일은 원본 시간축 기준 — timeScale 만큼 늘어난 실경과를 되돌려 보간
+    const angle = stage ? this.angleAt(stage, this.stageT / this.timeScale) * boost : 0;
+    const sink = stage ? FLOAT_SINK_BY_STAGE[stage] * Math.min(1, angle / (20 * boost)) : 0;
 
     return {
       bendAngleDeg: angle,
@@ -267,7 +280,7 @@ export class BiteSequenceEngine {
     }
 
     if (stage === 3) {
-      if (this.stageT >= STAGE3_RELEASE_START) {
+      if (this.stageT >= STAGE3_RELEASE_START * this.timeScale) {
         this.reset();
         return { success: false, reason: 'too_late', stage, message: '너무 늦게 챔질하였습니다.' };
       }

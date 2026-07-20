@@ -151,6 +151,10 @@ this.events.on('resume', () => {
 | 어판장 수매가 산정 엔진 (농정원 API 연동) | `core/src/simulation/MarketPriceEvaluator.ts` |
 | 통합 아이템 레이어 타입 (신선도/부패/변환 규칙) | `core/src/types/Item.ts` |
 | 통합 아이템 DB (낚시점/마트/직판장/통조림) | `core/src/db-schema/UniversalItemDatabase.ts` |
+| 무게추 봉돌 DB (고리/구멍/묶음추) | `core/src/db-schema/SinkerDatabase.ts` |
+| 채비 추천 알고리즘 (지역/지형/물때/어종) | `core/src/simulation/RigRecommender.ts` |
+| 루어 타입 + 카탈로그 (7종 15변종) | `core/src/types/Lure.ts` · `core/src/db-schema/LuresCatalogDB.ts` |
+| 루어 채비 연산 (총중량/Cd/침강 프로파일) | `core/src/simulation/LureRig.ts` |
 | 영역기반 라이브 필드 레이아웃 엔진 | `client-pc/src/data/SpotFieldLayouts.ts` |
 | 포항 영일만 픽셀 지형 맵 데이터 | `client-pc/src/data/YoilBayFieldMap.ts` |
 | 조류/수심 픽셀 시각화 렌더러 | `client-pc/src/ui/HydroCurrentRenderer.ts` |
@@ -285,7 +289,29 @@ npx pnpm run build → ✅ 4/4 패키지 성공 (2026-07-20)
 npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류 (2026-07-20)
 ```
 
-**최근 주요 변경 (2026-07-20 6차) — 1인칭 낚싯대 재설계(좌/우 로드·릴) + 입질 연출 완화 + UI 가시성** (헤드리스 브라우저 렌더 검증):
+**최근 주요 변경 (2026-07-20 8차) — 루어(가짜 미끼) 채비 시스템 신설** (헤드리스 브라우저 렌더 검증):
+- **[신규 데이터] 루어 카탈로그** (`core/types/Lure.ts` + `core/db-schema/LuresCatalogDB.ts`): 7종 15변종 제원(원안 유지) — 웜/그럽(Nature Tail 2.5/4g)·소프트 저크베이트(Fluid 7/11.5g)·미노우(Prism Aqua 플로팅12/싱킹15.5g)·스푼(Blade Studio 14/21g)·스피너(Blade Studio 5.5/8g)·에기(Kraken 2.5호10.5/3.5호20g)·메탈지그(Iron Forge 28/40g). 물리·타겟은 전부 LureSpec **데이터로만** 표현(하드코딩 버프 금지): `dragCoefficient`(메탈지그 base×0.65=−35% 초장타)·`sinkType`/`sinkRateMps`/`diveDepthPerRetrieve`·`speciesWeightBias`·`spawnBinding`·`targetHabitatBias`·`fallLureWeight`·`actionFlags`·`snagRiskMult`(에기 0.7).
+- **[신규 연산] `core/simulation/LureRig.ts`**: `computeLureRigWeight`(소프트=웜+지그헤드, 하드=자중)·`getLureCastCd`·`getLureSinkProfile`(지그헤드 무게로 침강 가속)·`JIGHEAD_WEIGHTS_G`. UI는 표시만, 계산은 core.
+- **[신규] 두족류 어종 + 스폰 바인딩** (`FishSpawningOracle`): squid/octopus(egiOnly) 추가 + `SpawnContext`에 `speciesFilter`(에기 spawnBinding)·`speciesWeightBias`·`habitatBias` 신설, `weightedCandidates`가 소비(egiOnly는 필터에 있을 때만 등장).
+- **[신규] 채비 모드 판별 유니온** (`InventoryStore.rigMode: 'bait'|'lure'`): 'lure'면 찌·면사매듭·수중찌·봉돌 검증을 **모드 분기로 건너뛰고**(소켓 해제 아님) 원줄+목줄+루어(+소프트면 지그헤드)만 필수. `_lure`/`_jigHead` 병렬 소켓. 'lure' 카테고리 신설 + 루어 15종·지그헤드 5종 시드(수동 검증용). `getRigDragCd`가 루어 모드에서 루어 Cd 반환.
+- **[연동] 물리/엔진** (하드코딩 없이 데이터 소비): ① 비거리 — `RegionFieldScene.launchCast(airDragCd: getRigDragCd())` → 메탈지그 초장타 ② 침강 — `FirstPersonFishingScene`가 `getLureSinkProfile` 소비: floating은 리트리브로 파고들고 멈추면 부상 / sinking·fast_sinking은 고유 속도로 **투척지점 국소수심(`getBottomDepthAt` 전방호환 훅)**까지 하강 ③ 타겟 — 스폰 컨텍스트에 루어 `speciesWeightBias`/`spawnBinding`/`targetHabitatBias` 주입, 에기 `snagRiskMult`로 밑걸림 감소.
+- **[신규] 손실 규칙** (사용자 지정): **루어는 입질/챔질 실패로 잃지 않는다**(`_lure` 소켓은 `loseRigParts`가 건드리지 않음) — 목줄째 터지는 경우(줄터짐/과부하/복어 절단/밑걸림)에만 `loseLureRig()`로 손실. **실미끼는 1단계 챔질 실패 시 60% 잔존**(40% 소모), 물고기가 따먹으면 교체. `hookNeedsBait()`가 루어 모드에서 false.
+- **[신규 UI] 루어 채비 UI** (`UtilizationPanel`): 채비 탭 상단 **[미끼 채비]/[루어 채비] 모드 토글** + 2단계 종류 트리(소프트/하드 → 종류) + 라인업 카드 + **지그헤드 소켓**(소프트 전용) + **루어 제원 실시간 표시**(총무게 웜+지그헤드 합산·침강·C_d·타겟 가중·액션·손실규칙 안내). 계산은 core 호출, UI는 표시만.
+- ⚠️ 상점 판매 등록은 그리드 오버플로 회피 위해 보류(전종 인벤토리 시드로 검증 가능) — 추후 낚시점 전용 상점 신설 시 등록.
+
+**이전 변경 (2026-07-20 7차) — 입질 단계 차별화 + 채비 당겨짐 연출 + 원투 채비 체계 + 채비 추천 알고리즘** (헤드리스 브라우저 렌더 검증):
+- **[수정] 입질 구부러짐 단계 차별화** (`core/BiteSequenceEngine` STAGE_PROFILE): 1/2/3단계 피크 각도 -10° (30→20 / 45→35 / 60→50) + **단계별 형태 명확히 분리** — 1단계 짧은 단발 톡(0.4초), 2단계 두 번 끄덕(35→18→32), 3단계 크게 실려 오래 유지(50→42 hold). 강도 보정 +8°→+4°로 낮춰 단계 간 각도차 유지. (검증: 피크 20/35/49, 형태 상이)
+- **[신규] 입질/챔질 시 채비 전체 당겨짐** (`FirstPersonFishingScene.renderRigVisuals`): 초릿대 굽힘(rodBendDeg) 비례 `bitePull`(최대 44px)을 **찌·수중 라인·목줄·미끼 전체 Y에 적용** — 물고기가 미끼를 물고 끌면 채비가 함께 바다 속으로 딸려간다. 찌낚시는 찌가 수면 아래로 잠기고, 원투는 라인 진입점부터 딸려간다.
+- **[신규] 원투(찌 없이 도래 직결) 채비 체계 정립**:
+  - **찌 필수 조건 해제** (`InventoryStore.getMissingRigParts`): `isSurfRigReady()`(찌 비움+도래)면 **단일 봉돌 채비 포함** 찌를 필수에서 제외. "찌를 채워야 캐스팅" 경고는 찌낚시 모드에서만. 대신 원투는 **무게추 봉돌**이 필수.
+  - **1인칭 원투 모드** (`surfMode`): 찌 미표시(`floatObj.setVisible(false)`), 입질은 **초릿대 끝**으로 판단, 수심 패널에 '원투 (찌 없음)/입질은 초릿대 끝' + 채비 위 무게추 봉돌 렌더.
+  - **봉돌 소켓 모드 분기** (`UtilizationPanel`): 원투 → '무게추 봉돌'(좁쌀 비활성), 찌낚시 → '봉돌(좁쌀)'.
+  - **[신규 DB] 무게추 봉돌** (`core/db-schema/SinkerDatabase.ts`): 무게(g)=호수×3.75. ① 고리봉돌(HaeDong 16~30호) ② 구멍봉돌(BaekKyung 10~30호 — **예신 피드백 +15%** `SINKER_HOLE_FEEDBACK_MULT`, BiteSequenceEngine `stageTimeScale`로 단계 지속 1.15배) ③ 묶음추봉돌(Sapa 16~30호 — **C_d 0.42→0.58** 비거리 페널티). 총 13종.
+  - **총무게/V_z 실시간 반영**: `computeRigSpec`가 `sinkerWeightG` 합산 → 침강 속도 무게 비례 가속(75g → V_z 2.31m/s 실측), C_d는 봉돌 종류가 결정. 원투 낚싯대 허용 중량 `SURF_ROD_CAPACITY_G` 150g.
+- **[신규] 채비 추천 알고리즘** (`core/simulation/RigRecommender.ts` + `client/store/RecommendationStore.ts`): 지역/지형(밑걸림 위험)/물때(조류)/대상어종(오라클 서식지·미끼 선호) → **조법·찌 호수·무게추 봉돌 종류·호수·미끼** 추천. U 채비창 상단 추천 배너 + 빈 추천 소켓 '추천' 배지 + 부품 선택 리스트 상단 정렬/배지, **낚시용품 상점(직판장 채비 코너)** 그리드 금색 '추천' 배지. (검증: 속초항=원투/구멍봉돌 20~25호 → 상점 구멍봉돌 20·25호와 크릴·갯지렁이에 배지)
+- ⚠️ **헤드리스 검증**: DraggablePanel은 `scene.add.existing(panel)` 필요(Container 자동 등록 안 됨). Vite dev 재시작 후 하네스 `.ts` 임포트가 게임 인스턴스와 일치(HMR `?t=` 분화 회피).
+
+**이전 변경 (2026-07-20 6차) — 1인칭 낚싯대 재설계(좌/우 로드·릴) + 입질 연출 완화 + UI 가시성** (헤드리스 브라우저 렌더 검증):
 - **[재작성] 낚싯대 렌더** (`FirstPersonFishingScene.renderRod`): 단순 2절 베지어 → **5절 로드**(버트 그립→블랭크 3절→초릿대, 절 경계마다 가이드 링, 버트 7px→초릿대 1.5px 테이퍼). 하단 모서리에서 **스피닝릴**(스템+기어박스+스풀+베일암+핸들) 렌더.
   - **[버그 수정] 구부러짐 방향**: 초릿대가 하늘(우상단)로 휘던 문제 → **항상 물(찌·수면) 쪽으로 벤딩**. 우측 로드는 로드 직선 기준 좌하단, 좌측 로드는 우하단. 끝 3개 절만 굽힘 분담(`BEND_SHARE` 0/0/0.22/0.33/0.45).
 - **[신규] 설정 '낚시' 탭** (`SettingsScene.renderFishingTab` + `GameSettings.rodSide`/`reelHandle`): ① **낚싯대 위치 좌/우** — 화면 중앙 기준 반대편에 로드 배치 ② **릴 핸들 좌/우** — 화면이 아닌 **로드(버트→팁) 기준** 좌/우로 핸들 렌더 방향 결정. `loadSettings()`가 기존 저장본에 신규 필드를 기본값 병합(`rodSide:'right'`/`reelHandle:'left'`). FP 씬 `create()`에서 로드해 반영.
