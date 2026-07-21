@@ -78,6 +78,8 @@ export interface InvItem {
   basePrice: number;
   /** 신선도 (음식/미끼류만) */
   condition?: InvCondition;
+  /** 현재 신선도 단계가 시작된 시각 (ms) — 변질 카운트다운 기준. 어창(쿨러) 안은 정지 */
+  conditionSinceMs?: number;
   /** 착용 가능 여부 (장비류) */
   equippable: boolean;
   equipped?: boolean;
@@ -226,7 +228,7 @@ function createSeedItems(): InvItem[] {
 
     // ── 음식 ──
     { id: 'inv_can',      name: '참치 통조림',              icon: '🥫', category: 'food', subCategory: '가공품', qty: 3, basePrice: 2000,  equippable: false },
-    { id: 'inv_fish_1',   name: '감성돔 (38cm)',            icon: '🐟', iconTexture: 'fish_black_sea_bream', category: 'food', subCategory: '어획물', qty: 1, basePrice: 15000, condition: 'fresh', equippable: false },
+    { id: 'inv_fish_1',   name: '감성돔 (38cm)',            icon: '🐟', iconTexture: 'fish_black_sea_bream', category: 'food', subCategory: '어획물', qty: 1, basePrice: 15000, condition: 'fresh', equippable: false, speciesId: 'black_seabream', lengthCm: 38, weightG: 900 },
     { id: 'inv_veges',    name: '식자재 묶음 (대파/양파)',  icon: '🥬', category: 'food', subCategory: '식자재', qty: 2, basePrice: 5000,  condition: 'fresh', equippable: false },
 
     // ── 낚시용품 ──
@@ -253,6 +255,8 @@ function createSeedItems(): InvItem[] {
 
     // ── 기타 ──
     { id: 'inv_junk',     name: '낡은 릴 부품',             icon: '📦', category: 'etc', subCategory: '잡동사니', qty: 1, basePrice: 500, equippable: false },
+    // 자전거 — 보유 시 필드에서 R 키로 승·하차 (이동 속도 2배)
+    { id: 'inv_bike',     name: '자전거',                   icon: '🚲', category: 'etc', subCategory: '탈것', qty: 1, basePrice: 120000, equippable: false },
   ];
 
   // ── 원투 메인 싱커(무게추 봉돌) — SinkerDatabase(core)에서 생성 ──
@@ -287,9 +291,67 @@ function createSeedItems(): InvItem[] {
     });
   }
 
-  // 카테고리별 소켓 순차 배정
+  // 카테고리별 소켓 순차 배정 + 신선도 시계 시작 (조건 보유 아이템)
   const counters: Record<InvCategory, number> = { gear: 0, consumable: 0, food: 0, tackle: 0, lure: 0, etc: 0 };
-  return defs.map((d) => ({ ...d, slot: counters[d.category]++ }));
+  return defs.map((d) => ({
+    ...d,
+    slot: counters[d.category]++,
+    conditionSinceMs: d.condition ? Date.now() : undefined,
+  }));
+}
+
+// ═══════════════════════════════════════════════════
+// 신선도 감쇄 모델 (클라 v1 — 정식 부패 모델(core types/Item.ts) 연동은 추후)
+//  단계 체인을 순차 진행: 활어 → 신선 → 냉장 → 냉동 → 상함.
+//  경과 시간은 상온(인벤토리) 기준이며, 어창(쿨러) 안의 활어는 시계가 정지한다.
+// ═══════════════════════════════════════════════════
+/** 신선도 단계 체인 (진행 방향) */
+export const CONDITION_CHAIN: InvCondition[] = ['live', 'fresh', 'chilled', 'frozen', 'spoiled'];
+
+/** 단계별 상온 유지 시간 (분) — spoiled는 종착 상태 */
+export const CONDITION_DURATION_MIN: Record<InvCondition, number> = {
+  live: 15, fresh: 30, chilled: 45, frozen: 90, spoiled: Number.POSITIVE_INFINITY,
+};
+
+/**
+ * 신선도 지연 갱신 — 마지막 단계 시작 시각(conditionSinceMs)부터의 경과로
+ * 체인을 진행시킨다 (상세보기/인벤 열람 시 호출되는 lazy 방식).
+ */
+export function refreshCondition(item: Pick<InvItem, 'condition' | 'conditionSinceMs'>): void {
+  if (!item.condition || item.conditionSinceMs === undefined) return;
+  let idx = CONDITION_CHAIN.indexOf(item.condition);
+  if (idx < 0) return;
+  let since = item.conditionSinceMs;
+  while (idx < CONDITION_CHAIN.length - 1) {
+    const durMs = CONDITION_DURATION_MIN[CONDITION_CHAIN[idx]] * 60_000;
+    if (Date.now() - since < durMs) break;
+    since += durMs;
+    idx += 1;
+  }
+  item.condition = CONDITION_CHAIN[idx];
+  item.conditionSinceMs = since;
+}
+
+/** 다음 단계로 변질까지 남은 시간 (ms) — 종착(상함)이면 Infinity */
+export function conditionRemainMs(item: Pick<InvItem, 'condition' | 'conditionSinceMs'>): number {
+  if (!item.condition || item.conditionSinceMs === undefined) return Number.POSITIVE_INFINITY;
+  const durMin = CONDITION_DURATION_MIN[item.condition];
+  if (!Number.isFinite(durMin)) return Number.POSITIVE_INFINITY;
+  return Math.max(0, durMin * 60_000 - (Date.now() - item.conditionSinceMs));
+}
+
+/** 남은 시간 표기 — 일/시간/분/초 */
+export function formatRemain(ms: number): string {
+  if (!Number.isFinite(ms)) return '—';
+  const s = Math.floor(ms / 1000);
+  const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600);
+  const m = Math.floor((s % 3600) / 60), sec = s % 60;
+  const parts: string[] = [];
+  if (d > 0) parts.push(`${d}일`);
+  if (h > 0) parts.push(`${h}시간`);
+  if (m > 0) parts.push(`${m}분`);
+  parts.push(`${sec}초`);
+  return parts.join(' ');
 }
 
 class InventoryStoreManager {
@@ -437,7 +499,11 @@ class InventoryStoreManager {
     }
     const slot = this.findFreeSlot(template.category);
     if (slot < 0) return false;
-    this._items.push({ ...template, slot, qty });
+    this._items.push({
+      ...template, slot, qty,
+      // 신선도 시계 시작 — 획득(어창 이송 포함) 시점부터 상온 감쇄
+      conditionSinceMs: template.condition ? template.conditionSinceMs ?? Date.now() : undefined,
+    });
     return true;
   }
 

@@ -23,6 +23,8 @@ import { MiniMap } from '../ui/MiniMap.js';
 import { LicensePanel } from '../ui/LicensePanel.js';
 import { InfoOverlayPanel } from '../ui/InfoOverlayPanel.js';
 import { HydroCurrentRenderer } from '../ui/HydroCurrentRenderer.js';
+import { BikeComposite, RiderDir } from '../ui/BikeComposite.js';
+import { InventoryStore } from '../store/InventoryStore.js';
 
 // 월드 크기 (중형 — 방파제+마을+갯벌 포함)
 const TILE = 16; // 픽셀 타일 크기
@@ -33,6 +35,8 @@ export class FieldScene extends Phaser.Scene {
   private playerSprite!: Phaser.GameObjects.Image;
   private playerBody!: Phaser.Types.Physics.Arcade.ImageWithDynamicBody;
   private playerFacing: 'up' | 'down' | 'left' | 'right' = 'down';
+  /** 자전거 합성 레이어 (R 승·하차 — 탑승 시 이동 속도 2배) */
+  private bike?: BikeComposite;
   /** 애니메이션 프레임 토글 타이머 (ms 누적) */
   private _walkFrameTimer = 0;
   /** 현재 표시 중인 이동 프레임 (1 or 2) */
@@ -167,6 +171,10 @@ export class FieldScene extends Phaser.Scene {
     // shadow는 update()에서 playerBody 위치에 동기화
     this.registry.set('_playerShadow', shadow);
 
+    // 자전거 합성 레이어 (씬 간 GameState.isMounted 유지)
+    this.bike = new BikeComposite(this);
+    this.bike.setVisible(GameState.isMounted);
+
     // ─── 카메라: 플레이어 팔로우 ───
     this.cameras.main.setBounds(0, 0, this.worldW, this.worldH);
     this.cameras.main.startFollow(this.playerBody, true, 0.12, 0.12);
@@ -184,6 +192,7 @@ export class FieldScene extends Phaser.Scene {
     this.input.keyboard!.on('keydown-SPACE', () => this.handleFishingEntry());
     this.input.keyboard!.on('keydown-ENTER', () => this.handleFishingEntry());
     this.input.keyboard!.on('keydown-E',     () => this.handleInteract());
+    this.input.keyboard!.on('keydown-R',     () => this.toggleBike());
     this.input.keyboard!.on('keydown-H',     () => this.startActivity('NightHuntingScene'));
     this.input.keyboard!.on('keydown-T',     () => this.startActivity('TrapScene'));
     this.input.keyboard!.on('keydown-C',     () => this.startActivity('CookScene'));
@@ -303,7 +312,8 @@ export class FieldScene extends Phaser.Scene {
   update(): void {
     if (!this.playerBody) return;
 
-    const speed = 200;
+    // 자전거 탑승 시 이동 속도 2배
+    const speed = 200 * (GameState.isMounted ? 2 : 1);
     let vx = 0;
     let vy = 0;
 
@@ -337,12 +347,24 @@ export class FieldScene extends Phaser.Scene {
       status: moving ? 'walking' : 'idle',
     });
 
-    // ─── 플레이어 스프라이트 동기화 (발밑 기준) ───
+    // ─── 플레이어 스프라이트 동기화 (발밑 기준 + 자전거 합성) ───
     const feetY = this.playerBody.y + this.PLAYER_FOOT_OFFSET;
-    this.playerSprite.setPosition(this.playerBody.x, feetY);
-    // 그림자 동기화 (발밑에 붙임)
+    let riderOffset = 0;
+    if (this.bike && GameState.isMounted) {
+      const dirKey: RiderDir = this.playerFacing === 'up' ? 'back' : this.playerFacing === 'down' ? 'front' : this.playerFacing;
+      // 측면 = 캐릭터 뒤 / 정면·후면 = 캐릭터 앞 (핸들바·바퀴가 카메라 쪽)
+      const bikeDepth = dirKey === 'left' || dirKey === 'right'
+        ? this.playerSprite.depth - 0.5 : this.playerSprite.depth + 0.5;
+      riderOffset = this.bike.update(
+        this.playerBody.x, feetY, dirKey, moving, this.time.now, bikeDepth);
+    }
+    this.playerSprite.setPosition(this.playerBody.x, feetY + riderOffset);
+    // 그림자 동기화 (발밑에 붙임 — 탑승 시 자전거 풋프린트만큼 확장)
     const shadow = this.registry.get('_playerShadow') as Phaser.GameObjects.Ellipse | undefined;
-    if (shadow) shadow.setPosition(this.playerBody.x, feetY);
+    if (shadow) {
+      shadow.setPosition(this.playerBody.x, feetY);
+      shadow.setScale(GameState.isMounted ? 1.6 : 1, 1);
+    }
     this.updatePlayerSprite(this.playerFacing, moving);
 
     // 머리 위 말풍선 동기화
@@ -512,6 +534,20 @@ export class FieldScene extends Phaser.Scene {
     }).setDepth(5);
   }
 
+  // ── 자전거 (R) — 승·하차 토글 (기타 인벤토리에 자전거 보유 필요) ──
+  private toggleBike(): void {
+    if (!GameState.isMounted && !InventoryStore.find('inv_bike')) return;
+    GameState.isMounted = !GameState.isMounted;
+    this.bike?.setVisible(GameState.isMounted);
+  }
+
+  /** 하위 씬 진입 시 자동 하차 (실내/낚시 중 자전거 금지) */
+  private dismountBike(): void {
+    if (!GameState.isMounted) return;
+    GameState.isMounted = false;
+    this.bike?.setVisible(false);
+  }
+
   // ─────────────────────────────────────────────────────────
   // 플레이어 스프라이트 텍스처 교체 (man 에셋 기반)
   // ─────────────────────────────────────────────────────────
@@ -525,8 +561,8 @@ export class FieldScene extends Phaser.Scene {
     const dirKey = facing === 'up' ? 'back' : facing === 'down' ? 'front' : facing;
 
     let textureKey: string;
-    if (!isMoving) {
-      // 정지 상태
+    // 탑승 중엔 걷기 프레임 대신 idle 고정 (다리는 페달링으로 자전거에 가림)
+    if (!isMoving || GameState.isMounted) {
       textureKey = `man-idle-${dirKey}`;
       this._walkFrameTimer = 0;
       this._walkFrame = 1;
@@ -966,6 +1002,7 @@ export class FieldScene extends Phaser.Scene {
       biteBonusMultiplier: 1.2,
     };
 
+    this.dismountBike();   // 낚시 진입 시 자동 하차
     this.cameras.main.fadeOut(250, 0, 10, 20);
     this.cameras.main.once('camerafadeoutcomplete', () => {
       this.scene.pause('FieldScene');
@@ -1077,6 +1114,7 @@ export class FieldScene extends Phaser.Scene {
   // 씬 전환 — pause + launch (하위 씬에서 복귀 시 상태 유지)
   // ─────────────────────────────────────────────────────────
   private launchSubscene(sceneKey: string): void {
+    this.dismountBike();   // 하위 씬(활동) 진입 시 자동 하차
     this.cameras.main.fadeOut(250, 0, 10, 20);
     this.cameras.main.once('camerafadeoutcomplete', () => {
       this.scene.pause('FieldScene');

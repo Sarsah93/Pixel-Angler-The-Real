@@ -108,16 +108,19 @@ export class FishFatigueModel {
     const { dtSec, reeling, holding, tensionRatio } = input;
     const rng = input.randomUnit;
 
-    // ── 피로 누적: 장력이 높을수록 + 릴링/견제 저항일수록 빠르게 지침 ──
-    const drainFrac =
-      0.008
-      + Math.max(0, tensionRatio) * 0.05
-      + (reeling ? 0.014 : 0)
-      + (holding ? 0.008 : 0);
-
     // ── 회복: 슬랙(무입력 + 낮은 장력)이면 소폭 회복 — 쉬게 두면 다시 뛴다 ──
     const recovering = !reeling && !holding && tensionRatio < 0.25 && this.ratio < 0.98;
     const recoverFrac = recovering ? 0.025 : 0;
+
+    // ── 피로 누적: 장력이 높을수록 + 릴링/견제 저항일수록 빠르게 지침 ──
+    // 휴식(슬랙) 중엔 누적 없음 — 작은 풀에서 회복(∝풀)과 드레인(∝√풀)이 상쇄되어
+    // 회복이 무력해지는 것을 방지 (슬랙 = 순회복이어야 "긴장 유지"가 스킬이 된다)
+    const drainFrac = recovering
+      ? 0
+      : 0.008
+      + Math.max(0, tensionRatio) * 0.05
+      + (reeling ? 0.014 : 0)
+      + (holding ? 0.008 : 0);
 
     // 드레인은 절대량(√풀 스케일) — 풀이 큰 대물일수록 잔여 "비율"이 천천히 감소해
     // 오래 버티고, 소형은 금방 지친다 (비율 드레인이면 사이즈 풀이 무의미해짐)

@@ -137,6 +137,99 @@ def bridge_diagonals(gw, gh, grid):
             elif walk(x+1, y) and walk(x, y+1) and not walk(x, y) and not walk(x+1, y+1):
                 grid[y][x] = '.'     # ↙ 대각 연결
 
+def _line(x1, y1, x2, y2):
+    """4-연결 직선 타일 목록 — 스텝당 한 축만 이동 (대각 스텝 금지).
+    (대각 스텝을 허용하면 카브된 통로가 4-연결 걷기 판정에서 끊긴다)"""
+    pts = []
+    dx, dy = abs(x2 - x1), abs(y2 - y1)
+    sx, sy = (1 if x2 > x1 else -1), (1 if y2 > y1 else -1)
+    err = dx - dy
+    x, y = x1, y1
+    while True:
+        pts.append((x, y))
+        if x == x2 and y == y2:
+            break
+        e2 = 2 * err
+        if e2 > -dy and x != x2:
+            err -= dy; x += sx
+        elif e2 < dx and y != y2:
+            err += dx; y += sy
+        else:
+            # 한 축이 이미 도달 — 남은 축으로만 진행
+            if x != x2:
+                x += sx
+            else:
+                y += sy
+    return pts
+
+
+def connect_components(gw, gh, grid, max_pass=16):
+    """서로 끊긴 걷기 가능 컴포넌트를 자동 연결 (2026-07-21).
+
+    실제로는 이어져 있는 방파제 끝단/해안 도보 루트가 픽셀 분류에서 물로 끊기는
+    문제(예: 백운포 방파제) 보정 — 컴포넌트 쌍의 최근접 타일 사이 물(~) 타일을
+    직선으로 걷기 타일로 바꿔 좁은 통로를 만든다.
+
+    간격 티어: 대형(30타일+) 컴포넌트는 14타일, 소형은 8타일까지 연결.
+    (만 한가운데 고립 바위처럼 멀리 떨어진 지형은 그대로 둔다. 건물(#) 관통 금지.)
+    """
+    walk = lambda ch: ch in ('.', ',')
+    for _ in range(max_pass):
+        comp = [[-1] * gw for _ in range(gh)]
+        comps = []
+        for sy in range(gh):
+            for sx in range(gw):
+                if not walk(grid[sy][sx]) or comp[sy][sx] != -1:
+                    continue
+                cid = len(comps); cells = []
+                dq = deque([(sx, sy)]); comp[sy][sx] = cid
+                while dq:
+                    x, y = dq.popleft(); cells.append((x, y))
+                    for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                        nx, ny = x + dx, y + dy
+                        if 0 <= nx < gw and 0 <= ny < gh and comp[ny][nx] == -1 and walk(grid[ny][nx]):
+                            comp[ny][nx] = cid; dq.append((nx, ny))
+                comps.append(cells)
+        if len(comps) <= 1:
+            return
+        merged = False
+        # 작은 컴포넌트부터 최근접 타컴포넌트로 연결 시도
+        for ci in sorted(range(len(comps)), key=lambda i: len(comps[i]))[:-1]:
+            # 대형 육지(300타일+)는 연결을 시도하지 않는다 — 큰 땅덩이가 만
+            # 한가운데 바위로 임의 다리를 놓는 것을 방지 (소형 파편만 편입)
+            if len(comps[ci]) >= 300:
+                continue
+            gap = 14 if len(comps[ci]) >= 30 else 8
+            best = None
+            for (x1, y1) in comps[ci]:
+                for dy in range(-gap, gap + 1):
+                    for dx in range(-gap, gap + 1):
+                        d = abs(dx) + abs(dy)
+                        if d == 0 or d > gap:
+                            continue
+                        nx, ny = x1 + dx, y1 + dy
+                        if not (0 <= nx < gw and 0 <= ny < gh):
+                            continue
+                        cj = comp[ny][nx]
+                        if cj == -1 or cj == ci:
+                            continue
+                        if best is None or d < best[0]:
+                            best = (d, x1, y1, nx, ny)
+            if best is None:
+                continue
+            _, x1, y1, x2, y2 = best
+            path = _line(x1, y1, x2, y2)
+            if any(grid[y][x] == '#' for x, y in path):
+                continue
+            for x, y in path:
+                if grid[y][x] == '~':
+                    grid[y][x] = '.'
+            merged = True
+            break   # 라벨 무효화 — 재라벨링 후 다음 패스
+        if not merged:
+            return
+
+
 def extract_pois(gw, gh, grid, poi_hits, min_hits=4):
     """POI 아이콘 히트를 군집화하여 대표 좌표 목록 생성."""
     seen = [[False]*gw for _ in range(gh)]
@@ -195,6 +288,8 @@ def main():
             gw, gh, grid, poi_hits = build_grid(src)
             clean_water(gw, gh, grid)
             bridge_diagonals(gw, gh, grid)
+            connect_components(gw, gh, grid)
+            bridge_diagonals(gw, gh, grid)   # 연결 통로의 대각 코너도 4-연결 보정
             pois = extract_pois(gw, gh, grid, poi_hits)
             terrain = [''.join(row) for row in grid]
             counts = {}

@@ -55,7 +55,7 @@ pixelazed/<region>/*.png  →  py tools/build_region_maps.py <region>
 - 지형 분류 색 팔레트 변경 → `tools/build_region_maps.py`의 `classify()` 수정 후 재생성.
 - 맵 연결 그래프: `core/src/types/RegionMap.ts` (`SOKCHO_MAP_GRAPH` — 속초 7맵 체인).
 - 차기 과제: 낚시점 전용 상점(루어 판매), 어탐 레이더(SeabedProfile 조회), 타 지역(여수 등) 확장, POI 세분화, 사운드 이펙트 (IMPLEMENTATION_PLAN §6-5l 차기 참고).
-- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages — 최근 2차 배포 2026-07-21. 재배포 절차는 AGENTS.md 참고).
+- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages — 최근 3차 배포 2026-07-21. 재배포 절차는 AGENTS.md 참고).
 
 ## 작업 이어받기 절차
 

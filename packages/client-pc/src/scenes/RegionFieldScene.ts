@@ -54,6 +54,7 @@ import { StatusPanel } from '../ui/StatusPanel.js';
 import { EquipmentPanel } from '../ui/EquipmentPanel.js';
 import { UtilizationPanel, UtilizationTab } from '../ui/UtilizationPanel.js';
 import { CoolerPanel } from '../ui/CoolerPanel.js';
+import { BikeComposite, RiderDir } from '../ui/BikeComposite.js';
 import { ShopPanel } from '../ui/ShopPanel.js';
 import { ConfirmDialog, QuantityDialog } from '../ui/Dialogs.js';
 import { applyScreenFixed } from '../ui/DraggablePanel.js';
@@ -104,8 +105,13 @@ export class RegionFieldScene extends Phaser.Scene {
   private playerSprite!: Phaser.GameObjects.Image;
   private playerFacing: 'up' | 'down' | 'left' | 'right' = 'down';
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
-  private readonly PLAYER_DISPLAY_H = 42;
+  private readonly PLAYER_DISPLAY_H = 52;
   private readonly PLAYER_FOOT_OFFSET = 9;
+  /**
+   * 접지 보정 — man 스프라이트 하단의 투명 여백 때문에 발이 그림자보다 위에 떠
+   * 보이던 문제를 스프라이트만 아래로 내려 보정한다 (그림자/충돌 바디는 불변).
+   */
+  private readonly PLAYER_FOOT_SINK = 4;
   private _walkFrameTimer = 0;
   private _walkFrame: 1 | 2 = 1;
 
@@ -139,6 +145,9 @@ export class RegionFieldScene extends Phaser.Scene {
   private buildings: { x: number; y: number; kind: BuildingKind }[] = [];
   private nearBuilding: { x: number; y: number; kind: BuildingKind } | null = null;
 
+  // ── 자전거 (R 승·하차 — 이동 속도 2배, GameState.isMounted로 씬 간 유지) ──
+  private bike?: BikeComposite;
+
   // ── 대기/조명/날씨 (2026-07-20) ──
   /** 화면 고정 빗줄기 풀 */
   private rainDrops: { obj: Phaser.GameObjects.Rectangle; speed: number }[] = [];
@@ -146,6 +155,12 @@ export class RegionFieldScene extends Phaser.Scene {
   private fogBlobs: { obj: Phaser.GameObjects.Ellipse; speed: number }[] = [];
   /** 화면 고정 눈송이 풀 */
   private snowFlakes: { obj: Phaser.GameObjects.Arc; speed: number; sway: number }[] = [];
+  /** 우박 파티클 풀 (진눈깨비에 혼재 — 빠른 낙하 + 지면 튐) */
+  private hailStones: { obj: Phaser.GameObjects.Arc; speed: number; drift: number }[] = [];
+  /** 지면 물파문 스폰 누적 타이머 (ms) */
+  private rainSplashAcc = 0;
+  /** 현재 강수 종류 — 물파문/연출 게이트 */
+  private precipKind: 'none' | 'rain' | 'shower' | 'sleet' = 'none';
 
   /** 이동/캐스팅을 차단해야 하는 UI 상태 (일시정지 or 팝업 열림) */
   private get uiBlocked(): boolean {
@@ -213,6 +228,9 @@ export class RegionFieldScene extends Phaser.Scene {
     this.rainDrops = [];
     this.fogBlobs = [];
     this.snowFlakes = [];
+    this.hailStones = [];
+    this.rainSplashAcc = 0;
+    this.precipKind = 'none';
   }
 
   preload(): void {
@@ -514,7 +532,7 @@ export class RegionFieldScene extends Phaser.Scene {
     this.playerBody.setSize(14, 14);
 
     const feetY = py + this.PLAYER_FOOT_OFFSET;
-    this.playerSprite = this.add.image(px, feetY, 'man-idle-front').setOrigin(0.5, 1).setDepth(20);
+    this.playerSprite = this.add.image(px, feetY + this.PLAYER_FOOT_SINK, 'man-idle-front').setOrigin(0.5, 1).setDepth(20);
     this.applyPlayerSpriteSize();
 
     const shadow = this.add.ellipse(px, feetY, this.PLAYER_DISPLAY_H * 0.42, this.PLAYER_DISPLAY_H * 0.12, 0x000000, 0.28)
@@ -522,6 +540,10 @@ export class RegionFieldScene extends Phaser.Scene {
     this.registry.set('_rfShadow', shadow);
 
     this.physics.add.collider(this.playerBody, this._walls);
+
+    // 자전거 합성 레이어 (씬 재시작에도 GameState.isMounted 유지)
+    this.bike = new BikeComposite(this);
+    this.bike.setVisible(GameState.isMounted);
   }
 
   private applyPlayerSpriteSize(): void {
@@ -717,6 +739,7 @@ export class RegionFieldScene extends Phaser.Scene {
     this.input.keyboard!.on('keydown-S', () => { if (!this.isPaused) this.toggleStatus(); });
     this.input.keyboard!.on('keydown-U', () => { if (!this.isPaused) this.toggleUtilization('tackles'); });
     this.input.keyboard!.on('keydown-B', () => { if (!this.isPaused) this.toggleCooler(); });
+    this.input.keyboard!.on('keydown-R', () => { if (!this.isPaused && !this.uiBlocked) this.toggleBike(); });
     this.input.keyboard!.on('keydown-E', () => {
       if (this.isPaused) return;
       // 건물 근접 시 = 거래 상호작용, 아니면 장비 창 토글
@@ -818,6 +841,42 @@ export class RegionFieldScene extends Phaser.Scene {
     );
   }
 
+  /**
+   * 배타적 플레이어 액션 잠금 — 진행 중엔 이동/자전거 승·하차/다른 액션 시작이 막힌다.
+   * 현재는 낚시 캐스팅(차지~탄도 비행~1인칭 진입 전)만 해당.
+   * ⚠️ 추후 해루질/채집 등 새 액션을 추가할 때는 액션별 진행 상태를 이 getter에
+   * OR로 편입시켜 액션 간 독립성(동시 진행 금지)을 유지할 것 — 상태 플래그를
+   * 별도로 두지 말고 각 액션의 원 상태(charging/castProj 등)에서 파생시킨다.
+   */
+  private get playerActionLocked(): boolean {
+    return this.charging || this.castProj !== null;
+  }
+
+  // ── 자전거 (R) — 승·하차 토글, 탑승 중 이동 속도 2배 ──
+  private toggleBike(): void {
+    if (this.playerActionLocked) {
+      this.floatingHint('낚시 중에는 자전거를 탈 수 없습니다');
+      return;
+    }
+    // 자전거는 인벤토리(기타)에 보유해야 탈 수 있다
+    if (!GameState.isMounted && !InventoryStore.find('inv_bike')) {
+      this.floatingHint('자전거가 없습니다 — 자전거(기타 인벤토리)를 보유해야 탈 수 있습니다');
+      return;
+    }
+    GameState.isMounted = !GameState.isMounted;
+    this.bike?.setVisible(GameState.isMounted);
+    this.hud?.pushLog(GameState.isMounted
+      ? '[이동] 자전거에 탔습니다 — 이동 속도 2배 (R: 내리기)'
+      : '[이동] 자전거에서 내렸습니다.');
+  }
+
+  /** 하위 씬(낚시/상점 등) 진입 시 자동 하차 — 실내/낚시 중 자전거 금지 */
+  private dismountBike(): void {
+    if (!GameState.isMounted) return;
+    GameState.isMounted = false;
+    this.bike?.setVisible(false);
+  }
+
   // ── 어창/쿨러 (B) — 보관 어획 확인·방생 ──
   private toggleCooler(): void {
     if (this.coolerPanel) {
@@ -864,6 +923,7 @@ export class RegionFieldScene extends Phaser.Scene {
 
   private openShop(kind: BuildingKind): void {
     if (this.shopPanel) return;
+    this.dismountBike();   // 실내(상점)에선 자전거에서 내린다
     const shop = SHOP_CATALOG[kind];
 
     // 좌측: 상점 / 우측: 인벤토리
@@ -961,6 +1021,8 @@ export class RegionFieldScene extends Phaser.Scene {
 
   private tryStartCharge(): void {
     if (this.castBusy || this.isTransitioning || this.uiBlocked) return;
+    // 자전거 탑승 중엔 낚시 액션 자체가 발동하지 않는다 (안내 없이 무시 — 내려야 가능)
+    if (GameState.isMounted) return;
     if (!this.nearWater) {
       this.floatingHint('바다 가까이에서 캐스팅하세요');
       return;
@@ -1177,6 +1239,7 @@ export class RegionFieldScene extends Phaser.Scene {
       if (fieldEvent) {
         this.hud?.pushLog(`[이벤트] ${fieldEvent.label} — 입질 x${fieldEvent.biteMult.toFixed(1)}`);
       }
+      this.dismountBike();   // 낚시 진입 시 자동 하차
       this.scene.pause();
       this.scene.launch('FirstPersonFishingScene', {
         zMaxM, castDistanceM, reefSeed, region: this.region, shoreKind, fieldEvent,
@@ -1276,10 +1339,13 @@ export class RegionFieldScene extends Phaser.Scene {
     // 건물 조명 + 네온사인 (밤 점등, 황혼은 약하게)
     if (isNight || isDusk) this.lightBuildings(isNight);
 
-    // 날씨 파티클
-    if (weather === 'rain' || weather === 'sleet') this.spawnRain(80);
-    else if (weather === 'shower') this.spawnRain(120);
-    else if (weather === 'snow') this.spawnSnow(60);
+    // 날씨 파티클 — 종류·강도별 (비 2레이어+물파문 / 소나기 강우 / 진눈깨비 = 비+눈+우박 / 눈)
+    if (weather === 'rain') { this.spawnRain(70); this.precipKind = 'rain'; }
+    else if (weather === 'shower') { this.spawnRain(150); this.precipKind = 'shower'; }
+    else if (weather === 'sleet') {
+      this.spawnRain(55); this.spawnSnow(40); this.spawnHail(14);
+      this.precipKind = 'sleet';
+    } else if (weather === 'snow') this.spawnSnow(70);
     else if (weather === 'fog') this.spawnFog();
   }
 
@@ -1297,8 +1363,9 @@ export class RegionFieldScene extends Phaser.Scene {
         const x = c * TR + TR / 2, y = r * TR + TR / 2;
         this.add.image(x, y + 6, 'lamp_post').setOrigin(0.5, 1).setDepth(14 + y * 0.001);
         if (lit) {
+          // 전구는 가로등 기둥(14+y·0.001)에 붙는 요소 — 플레이어 아래 (가림 방지)
           const bulb = this.add.circle(x, y - 15, 4.5, 0xfff2b0, 0.9)
-            .setDepth(42).setBlendMode(Phaser.BlendModes.ADD);
+            .setDepth(16 + y * 0.001).setBlendMode(Phaser.BlendModes.ADD);
           this.add.ellipse(x, y + 4, 54, 26, 0xffd980, 0.13)
             .setDepth(42).setBlendMode(Phaser.BlendModes.ADD);
           // 은은한 명멸
@@ -1325,27 +1392,34 @@ export class RegionFieldScene extends Phaser.Scene {
     g.destroy();
   }
 
-  /** 밤 건물 조명 — 창문 불빛 + 주변광 + 종류별 네온사인 (명멸) */
+  /**
+   * 밤 건물 조명 — 창문 불빛 + 주변광 + 종류별 네온사인 (명멸).
+   * 파사드 부착 요소(창문/네온)는 건물 표면의 일부이므로 **플레이어(20+y·0.001)보다
+   * 아래**(16+y·0.001)에 그린다 — 캐릭터가 건물 앞에 서면 캐릭터가 불빛을 가린다.
+   * (기존 depth 42는 ADD 광이 캐릭터 위로 씻겨 "건물 뒤에 있는 것처럼" 보이던 원인.)
+   * 부드러운 주변광 글로우만 명암 오버레이(40) 위(42)에 남겨 어둠을 뚫는 연출 유지.
+   */
   private lightBuildings(strong: boolean): void {
     const NEON: Record<BuildingKind, number> = {
       convenience: 0x35ff7a, mart: 0xffa040, market: 0xff5555,
       restaurant: 0xffcf6b, cafe: 0xffe2a8, pub: 0xc27cff,
     };
     for (const b of this.buildings) {
-      // 창문 불빛 (건물 텍스처의 창 위치와 정합)
-      const winAlpha = strong ? 0.7 : 0.35;
+      const facadeDepth = 16 + b.y * 0.001;
+      // 창문 불빛 (건물 텍스처의 창 위치와 정합) — 명암 오버레이 아래라 알파 보상
+      const winAlpha = strong ? 0.95 : 0.5;
       this.add.rectangle(b.x - 10, b.y - 1, 8, 7, 0xffd980, winAlpha)
-        .setDepth(42).setBlendMode(Phaser.BlendModes.ADD);
+        .setDepth(facadeDepth).setBlendMode(Phaser.BlendModes.ADD);
       this.add.rectangle(b.x + 10, b.y - 1, 8, 7, 0xffd980, winAlpha)
-        .setDepth(42).setBlendMode(Phaser.BlendModes.ADD);
-      // 주변광 글로우
+        .setDepth(facadeDepth).setBlendMode(Phaser.BlendModes.ADD);
+      // 주변광 글로우 (부드러운 광원 — 캐릭터 위로 번져도 자연스러움)
       this.add.circle(b.x, b.y - 6, 42, 0xffc873, strong ? 0.11 : 0.05)
         .setDepth(42).setBlendMode(Phaser.BlendModes.ADD);
       // 네온사인 (간판 밴드 위) — 종류별 색 + 불규칙 명멸
-      const neon = this.add.rectangle(b.x, b.y - 12, 34, 6, NEON[b.kind], strong ? 0.5 : 0.28)
-        .setDepth(42).setBlendMode(Phaser.BlendModes.ADD);
+      const neon = this.add.rectangle(b.x, b.y - 12, 34, 6, NEON[b.kind], strong ? 0.7 : 0.4)
+        .setDepth(facadeDepth).setBlendMode(Phaser.BlendModes.ADD);
       this.tweens.add({
-        targets: neon, alpha: strong ? 0.2 : 0.1,
+        targets: neon, alpha: strong ? 0.3 : 0.15,
         duration: 800 + (Math.abs(b.x * 7 + b.y * 3) % 700), yoyo: true, repeat: -1,
         delay: Math.abs(b.y) % 400,
       });
@@ -1353,12 +1427,26 @@ export class RegionFieldScene extends Phaser.Scene {
   }
 
   /** 빗줄기 파티클 풀 (화면 고정 — 바람 사선) */
+  /** 빗줄기 파티클 풀 — 근경(굵고 빠름)/원경(가늘고 느림) 2레이어, 강도 = count */
   private spawnRain(count: number): void {
     for (let i = 0; i < count; i++) {
+      const near = i % 3 !== 0;   // 2/3 근경 + 1/3 원경 (깊이감)
       const obj = this.add.rectangle(
-        Math.random() * GAME_WIDTH, Math.random() * GAME_HEIGHT, 1.5, 11, 0xbfd8ee, 0.5,
-      ).setScrollFactor(0).setDepth(46).setAngle(8);
-      this.rainDrops.push({ obj, speed: 520 + Math.random() * 260 });
+        Math.random() * GAME_WIDTH, Math.random() * GAME_HEIGHT,
+        near ? 2 : 1.1, near ? 13 : 8, 0xbfd8ee, near ? 0.6 : 0.32,
+      ).setScrollFactor(0).setDepth(near ? 46 : 45).setAngle(8);
+      this.rainDrops.push({ obj, speed: near ? 640 + Math.random() * 240 : 380 + Math.random() * 140 });
+    }
+  }
+
+  /** 우박 파티클 풀 — 빠른 낙하 + 지면 튐 스파크 (진눈깨비에 혼재) */
+  private spawnHail(count: number): void {
+    for (let i = 0; i < count; i++) {
+      const obj = this.add.circle(
+        Math.random() * GAME_WIDTH, Math.random() * GAME_HEIGHT,
+        2.2 + Math.random() * 1.2, 0xe8f2fa, 0.95,
+      ).setScrollFactor(0).setDepth(46);
+      this.hailStones.push({ obj, speed: 760 + Math.random() * 220, drift: 30 + Math.random() * 40 });
     }
   }
 
@@ -1411,6 +1499,36 @@ export class RegionFieldScene extends Phaser.Scene {
       f.obj.x += f.speed * dt;
       if (f.obj.x - f.obj.width / 2 > GAME_WIDTH) f.obj.x = -f.obj.width / 2;
     }
+    // 우박 — 빠른 낙하, 지면 부근에서 튐 스파크 후 상단 재투입
+    for (const hs of this.hailStones) {
+      hs.obj.y += hs.speed * dt;
+      hs.obj.x += hs.drift * dt;
+      if (hs.obj.y > GAME_HEIGHT - 10) {
+        const spark = this.add.circle(hs.obj.x, hs.obj.y, 2, 0xffffff, 0.9)
+          .setScrollFactor(0).setDepth(46);
+        this.tweens.add({
+          targets: spark, y: hs.obj.y - 9, alpha: 0, scale: 0.4, duration: 240,
+          onComplete: () => spark.destroy(),
+        });
+        hs.obj.y = -8;
+        hs.obj.x = Math.random() * GAME_WIDTH;
+      }
+      if (hs.obj.x > GAME_WIDTH + 8) hs.obj.x = -8;
+    }
+    // 지면 물파문 — 비 오는 동안 화면 곳곳에 확산 링 (소나기일수록 잦음)
+    if (this.precipKind !== 'none') {
+      this.rainSplashAcc += deltaMs;
+      const interval = this.precipKind === 'shower' ? 70 : 150;
+      while (this.rainSplashAcc >= interval) {
+        this.rainSplashAcc -= interval;
+        const ripple = this.add.circle(Math.random() * GAME_WIDTH, Math.random() * GAME_HEIGHT, 2, 0x000000, 0)
+          .setStrokeStyle(1.2, 0xd8ecf8, 0.55).setScrollFactor(0).setDepth(45);
+        this.tweens.add({
+          targets: ripple, scale: 3.2, alpha: 0, duration: 460,
+          onComplete: () => ripple.destroy(),
+        });
+      }
+    }
   }
 
   update(_time: number, delta: number): void {
@@ -1442,11 +1560,13 @@ export class RegionFieldScene extends Phaser.Scene {
   }
 
   private handleMovement(): void {
-    const speed = 150;
+    // 자전거 탑승 시 이동 속도 2배 (충돌/카메라 팔로우는 불변)
+    const speed = 150 * (GameState.isMounted ? 2 : 1);
     let vx = 0, vy = 0;
-    if (this.charging) {
-      // 차지 중에는 이동 정지 (조준 유지)
+    if (this.playerActionLocked) {
+      // 배타 액션(캐스팅 차지·비행) 중에는 이동 정지 — 조준/자세 유지
       this.playerBody.setVelocity(0, 0);
+      this.updateWalkTexture(false);
       return;
     }
     if (this.cursors.left.isDown) { vx = -speed; this.playerFacing = 'left'; }
@@ -1461,7 +1581,8 @@ export class RegionFieldScene extends Phaser.Scene {
   private updateWalkTexture(moving: boolean): void {
     const dir = this.playerFacing === 'up' ? 'back' : this.playerFacing === 'down' ? 'front' : this.playerFacing;
     let key: string;
-    if (!moving) { key = `man-idle-${dir}`; this._walkFrameTimer = 0; this._walkFrame = 1; }
+    // 탑승 중엔 걷기 프레임 대신 idle 고정 (다리는 페달링으로 자전거에 가림)
+    if (!moving || GameState.isMounted) { key = `man-idle-${dir}`; this._walkFrameTimer = 0; this._walkFrame = 1; }
     else {
       this._walkFrameTimer += this.game.loop.delta;
       if (this._walkFrameTimer >= 200) { this._walkFrameTimer = 0; this._walkFrame = this._walkFrame === 1 ? 2 : 1; }
@@ -1475,10 +1596,27 @@ export class RegionFieldScene extends Phaser.Scene {
 
   private updateSpriteAndShadow(): void {
     const feetY = this.playerBody.y + this.PLAYER_FOOT_OFFSET;
-    this.playerSprite.setPosition(this.playerBody.x, feetY);
-    this.playerSprite.setDepth(20 + this.playerBody.y * 0.001);
+    const depth = 20 + this.playerBody.y * 0.001;
+
+    // 자전거 합성 — 측면은 캐릭터 뒤(프레임이 다리에 가림), 정면/후면은 캐릭터 앞
+    // (물리적으로 정면 핸들바·바퀴/후면 뒷바퀴는 카메라 기준 캐릭터보다 앞에 있다)
+    let riderOffset = 0;
+    if (this.bike && GameState.isMounted) {
+      const dir: RiderDir = this.playerFacing === 'up' ? 'back' : this.playerFacing === 'down' ? 'front' : this.playerFacing;
+      const v = this.playerBody.body.velocity;
+      const bikeDepth = dir === 'left' || dir === 'right' ? depth - 0.0005 : depth + 0.0005;
+      riderOffset = this.bike.update(
+        this.playerBody.x, feetY, dir, v.x !== 0 || v.y !== 0, this.time.now, bikeDepth);
+    }
+
+    this.playerSprite.setPosition(this.playerBody.x, feetY + this.PLAYER_FOOT_SINK + riderOffset);
+    this.playerSprite.setDepth(depth);
     const shadow = this.registry.get('_rfShadow') as Phaser.GameObjects.Ellipse | undefined;
-    if (shadow) shadow.setPosition(this.playerBody.x, feetY);
+    if (shadow) {
+      shadow.setPosition(this.playerBody.x, feetY);
+      // 자전거 풋프린트에 맞춰 그림자 확장
+      shadow.setScale(GameState.isMounted ? 1.6 : 1, 1);
+    }
   }
 
   private updateWaterProximity(): void {

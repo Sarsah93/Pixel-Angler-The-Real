@@ -145,6 +145,8 @@ export class GameStateManager {
   private _isInitialized = false;
   /** 현재 진행 중인 저장 슬롯 (1~3, 미지정 시 null) */
   private _activeSlot: number | null = null;
+  /** 자전거 탑승 여부 — 필드 씬(Field/RegionField) 간 유지되는 세션 상태 (저장 비대상) */
+  isMounted = false;
 
   readonly environment = EnvironmentStore;
 

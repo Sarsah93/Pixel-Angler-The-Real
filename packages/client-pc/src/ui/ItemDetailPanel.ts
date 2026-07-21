@@ -7,9 +7,18 @@
  */
 
 import Phaser from 'phaser';
+import { FISH_DATABASE } from '@tra/core';
 import { DraggablePanel } from './DraggablePanel.js';
 import { createItemIcon } from './ItemIcon.js';
-import { InvItem, InventoryStore, CONDITION_LABEL, CONDITION_COLOR } from '../store/InventoryStore.js';
+import {
+  InvItem, InventoryStore, CONDITION_LABEL, CONDITION_COLOR,
+  CONDITION_CHAIN, refreshCondition, conditionRemainMs, formatRemain,
+} from '../store/InventoryStore.js';
+
+/** 서식 수층 표기 */
+const LAYER_LABEL: Record<'surface' | 'mid' | 'bottom', string> = {
+  surface: '상층', mid: '중층', bottom: '바닥층',
+};
 
 export interface ItemDetailRow {
   label: string;
@@ -23,8 +32,8 @@ export interface ItemDetailData {
   desc: string;
 }
 
-/** 아이템 종류별 상세 스펙 추론 생성 (목업) */
-export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory' | 'category' | 'qty' | 'basePrice' | 'condition'>): ItemDetailData {
+/** 아이템 종류별 상세 스펙 추론 생성 (목업) — 어획물은 개체 실측치·어종 정보(FISH_DATABASE) 표시 */
+export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory' | 'category' | 'qty' | 'basePrice' | 'condition' | 'conditionSinceMs' | 'speciesId' | 'lengthCm' | 'weightG'>): ItemDetailData {
   const rows: ItemDetailRow[] = [];
   let desc = '';
 
@@ -115,13 +124,36 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
       rows.push({ label: '섭취 효과', value: 'HP +10' }, { label: '보존성', value: '부패 없음' });
       desc = '오래 보관할 수 있는 비상 식량입니다.';
       break;
-    case '어획물':
+    case '어획물': {
+      // ── 개체 실측치 — 무게 미저장 시 길이-체중식 W ≈ a·L³ 근사 (범용 계수) ──
+      const lengthCm = item.lengthCm;
+      const weightG = item.weightG ?? (lengthCm ? Math.round(0.015 * Math.pow(lengthCm, 3)) : undefined);
+      if (lengthCm) rows.push({ label: '길이', value: `${lengthCm} cm` });
+      if (weightG) {
+        rows.push({ label: '무게', value: weightG >= 1000 ? `${(weightG / 1000).toFixed(2)} kg` : `${weightG} g` });
+      }
+      // ── 어종 정보 (FISH_DATABASE 조회 — 학명/영문명/제철/서식) ──
+      const sp = item.speciesId ? FISH_DATABASE.find((f) => f.id === item.speciesId) : undefined;
+      if (sp) {
+        if (lengthCm && sp.maxRecordCm > 0) {
+          rows.push({ label: '최대어 대비', value: `${Math.min(100, Math.round((lengthCm / sp.maxRecordCm) * 100))}%` });
+        }
+        rows.push({ label: '학명', value: sp.scientificName });
+        rows.push({ label: '영문명', value: sp.nameEn });
+        if (sp.peakSeasonMonths.length > 0) {
+          rows.push({ label: '제철', value: `${sp.peakSeasonMonths.join('·')}월` });
+        }
+        rows.push({ label: '서식', value: `${sp.preferredDepthM[0]}~${sp.preferredDepthM[1]}m · ${LAYER_LABEL[sp.swimmingLayer]}` });
+      }
       rows.push(
         { label: '신선도 감쇄', value: '시간당 -4 (상온 기준)' },
         { label: '요리 버프', value: '고신선도 요리 시 근력 1.5배 (10분)' },
       );
-      desc = '보관 환경(쿨러/기온)에 따라 신선도가 실시간으로 깎입니다. 직판장에 판매하거나 요리에 사용하세요.';
+      // 어종 습성 설명이 있으면 그것을 우선 표시
+      desc = sp?.description
+        ?? '보관 환경(쿨러/기온)에 따라 신선도가 실시간으로 깎입니다. 직판장에 판매하거나 요리에 사용하세요.';
       break;
+    }
     case '식자재':
       rows.push({ label: '용도', value: '요리 재료' });
       desc = '요리하기(U)에서 어획물과 조합해 사용합니다.';
@@ -191,8 +223,25 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
       break;
   }
 
+  // ── 신선도 상세 (조건 보유 아이템 공통 — 단계 체인/남은 시간/환경 계수/활용 보정) ──
   if (item.condition) {
     rows.push({ label: '신선도 상태', value: CONDITION_LABEL[item.condition] });
+    rows.push({
+      label: '신선도 단계',
+      value: CONDITION_CHAIN
+        .map((c) => (c === item.condition ? `[${CONDITION_LABEL[c]}]` : CONDITION_LABEL[c]))
+        .join('→'),
+    });
+    const remain = conditionRemainMs(item);
+    if (Number.isFinite(remain)) {
+      rows.push({ label: '변질까지 남은 시간', value: formatRemain(remain) });
+    }
+    rows.push({ label: '보관 환경 계수', value: '상온 x1.0 · 어창(쿨러) 활어 = 정지' });
+    if (item.subCategory.includes('미끼') || item.subCategory === '생미끼') {
+      rows.push({ label: '입질 보정', value: '활어 +25% · 냉동 -50% · 상함 -85%' });
+    } else if (item.subCategory === '어획물') {
+      rows.push({ label: '활용 보정', value: '경락 등급·요리 품질에 반영 (활어>신선>냉장>냉동)' });
+    }
   }
   rows.push({ label: '보유 수량', value: `${item.qty}개` });
   rows.push({ label: '기준가', value: `${item.basePrice.toLocaleString()} 원` });
@@ -203,12 +252,16 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
 /** 아이템 상세 정보 팝업 */
 export class ItemDetailPanel extends DraggablePanel {
   constructor(scene: Phaser.Scene, item: InvItem, x: number, y: number, onClose: () => void) {
+    // 열람 시점에 신선도 체인을 지연 갱신 (경과 시간만큼 단계 진행)
+    refreshCondition(item);
     const detail = buildItemDetail(item);
     // 어획물은 실사 픽셀 생선 이미지를 크게 표시
     const hasFishImage = item.subCategory === '어획물'
       && !!item.iconTexture && scene.textures.exists(item.iconTexture);
     const imgH = hasFishImage ? 126 : 0;
-    const h = 176 + detail.rows.length * 24 + imgH;
+    // 긴 어종 설명(습성)은 줄바꿈 줄 수만큼 패널을 늘린다 (판매가 표기와 겹침 방지)
+    const descExtra = detail.desc.length > 60 ? Math.ceil((detail.desc.length - 60) / 28) * 14 : 0;
+    const h = 176 + detail.rows.length * 24 + imgH + descExtra;
     super(scene, { x, y, width: 320, height: h, title: '아이템 정보', onClose, depth: 880 });
 
     // 아이콘 + 이름 + 소분류
