@@ -125,6 +125,12 @@ export {
   ButcheryProcess, evaluateCut, computeSashimiGrade, buildButcheryStages,
 } from './simulation/ButcheryProcess.js';
 
+// 파이트 피로 4페이즈 (어종·사이즈별 스태미나 풀 + 회복/서지 — thrust 게이팅)
+export type { FatiguePhase, FatigueInput, FatigueTick } from './simulation/FishFatigueModel.js';
+export {
+  FishFatigueModel, staminaMaxFor, STAMINA_BASE, DEFAULT_STAMINA_BASE, FATIGUE_PHASE_LABEL,
+} from './simulation/FishFatigueModel.js';
+
 // 파이트 모드 2D 횡 러닝 (측면하중 + heading/displacement — LinePhysics 1D 재사용 확장)
 export type { Vec2, MovementProfile, FightState2D, FightInput2D, FightTick2DResult } from './simulation/FightPhysics2D.js';
 export {

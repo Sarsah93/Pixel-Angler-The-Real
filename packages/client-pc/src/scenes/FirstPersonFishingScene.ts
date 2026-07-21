@@ -31,7 +31,9 @@ import {
   LureSpec, LureSinkProfile, getLureSinkProfile, jigHeadWeightById,
   computeFeedingActivity, feedingRegionProfileOf, FeedingActivityResult,
   getMovementProfile, pickRunHeading,
+  FishFatigueModel, FatigueTick, FATIGUE_PHASE_LABEL,
 } from '@tra/core';
+import { drawRigIcon, fishHeadPoint, RigIconKind } from '../ui/RigIconRenderer.js';
 import { GameState } from '../store/GameState.js';
 import { InventoryStore, RigStepKey, CARD_RIG_INFO } from '../store/InventoryStore.js';
 import { CoolerStore, COOLER_CAPACITY } from '../store/CoolerStore.js';
@@ -83,6 +85,11 @@ interface DecisionButton {
 // ── 화면 상수 ──────────────────────────────────────
 const WATERLINE = 268;
 const PX_PER_M_X = 24;
+/**
+ * 발앞(전경) 수면 Y — 정면 뷰 v2 원근: 채비는 착수 직후 수평선(WATERLINE) 부근에
+ * 작게 보이고, 릴링으로 distM이 줄수록 이 Y까지 내려오며 플레이어 쪽으로 딸려온다.
+ */
+const FOREGROUND_Y = GAME_HEIGHT - 200;
 
 /** 어종 → 실사 픽셀 생선 이미지 텍스처 (어획 팝업/아이템 상세 표시용) */
 const FISH_TEXTURE: Record<string, string> = {
@@ -141,6 +148,16 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   /** ←/→ 로드 스티어 키 */
   private steerLeftKey?: Phaser.Input.Keyboard.Key;
   private steerRightKey?: Phaser.Input.Keyboard.Key;
+  /** 파이트 물고기 깊이 정규화(0=수면~1=깊음) — 찌 투명도/실루엣 알파 연동 */
+  private fightDepthNorm = 0;
+  /** 파이트 피로 모델 (RUN/LULL/SURGE/SPENT — thrust 게이트) */
+  private fatigue: FishFatigueModel | null = null;
+  private lastFatigue: FatigueTick | null = null;
+  /** 정면 뷰 채비/물고기 표시 heading — 머리가 먼저 돌고 몸이 따라오는 선행 lerp */
+  private visHeading = 0;
+  /** 수평뷰(plan) 이동 방향 추적용 이전 프레임 (baitX, distM) */
+  private planPrev = { x: 0, d: 0 };
+  private planHeading = -Math.PI / 2;
   /** 루어 모드 (rigMode === 'lure') — 찌 없이 루어 자체 침강/리트리브 */
   private lureMode = false;
   /** 장착 루어 스펙 (루어 모드일 때) */
@@ -1496,8 +1513,20 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     return GAME_WIDTH / 2 + (worldX - this.viewCenterX) * PX_PER_M_X;
   }
 
-  private depthY(z: number): number {
-    return WATERLINE + z * this.pxPerMZ;
+  /**
+   * 수면 거리 → 수면 스크린 Y (정면 뷰 v2 원근).
+   * 착수(원거리) = 수평선 부근 / 릴링으로 distM이 줄수록 발앞(FOREGROUND_Y)으로 딸려온다.
+   */
+  private surfaceYAt(distM: number): number {
+    const t = Phaser.Math.Clamp(distM / Math.max(1, this.cfg.castDistanceM), 0, 1);
+    return Phaser.Math.Linear(FOREGROUND_Y, WATERLINE + 4, t);
+  }
+
+  /** 수심 z → 스크린 Y — 기준 수면(surfY) 아래. 멀수록 수심 표현을 압축(원근). */
+  private depthY(z: number, surfY = this.surfaceYAt(this.distM)): number {
+    const near = Phaser.Math.Clamp(
+      (surfY - (WATERLINE + 4)) / Math.max(1, FOREGROUND_Y - WATERLINE - 4), 0, 1);
+    return surfY + z * this.pxPerMZ * (0.5 + 0.5 * near);
   }
 
   // 여 밭 판정은 해저 지형 프로필(this.seabed.isRockAt(distM))로 일원화 —
@@ -2342,56 +2371,117 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     const g = this.dynamicG;
     g.clear();
 
+    // ── 정면 뷰 v2 원근: 수면 앵커 Y = surfaceYAt(distM) — 릴링하면 발앞으로 딸려온다 ──
+    const surfY = this.surfaceYAt(this.distM);
     const fx = this.screenX(this.rig.floatX);
     const wave = Math.sin(this.time.now / 500) * 2.2;
     // 입질 단계별 찌 잠김 (1단계 0.05m / 2단계 0.10m / 3단계 0.25m) — 시각 배율 x3
     const sinkPx = this.floatSinkM * this.pxPerMZ * 3;
     // ── 입질/챔질 시 채비 전체가 물속으로 당겨지는 연출 (초릿대 굽힘 비례) ──
-    // 물고기가 미끼를 물고 끌면 찌·목줄·미끼가 함께 아래로 딸려간다.
     const bitePull = this.fpState !== 'fighting'
       ? Phaser.Math.Clamp(this.rodBendDeg / 50, 0, 1.1) * 44
       : 0;
 
+    // ── 찌 위치 + 깊이 투명도 (잠길수록 투명 — 하드 다이브 시 완전 소멸) ──
     if (this.fpState !== 'fighting') {
-      // 원투 모드는 찌가 없으므로 위치만 갱신(비표시). 찌낚시는 잠김+당김 반영.
-      this.floatObj.setPosition(fx, WATERLINE + wave + sinkPx + bitePull);
+      const biteAlpha = Phaser.Math.Clamp(1 - (this.floatSinkM / 0.25) * 0.55, 0.45, 1);
+      this.floatObj.setPosition(fx, surfY + wave + sinkPx + bitePull);
+      if (!this.surfMode) this.floatObj.setAlpha(biteAlpha);
     } else {
-      this.floatObj.setX(fx);
+      const dn = this.fightDepthNorm;
+      this.floatObj.setPosition(fx, surfY + wave + dn * 30);
+      if (!this.surfMode) this.floatObj.setAlpha(Phaser.Math.Clamp(1 - dn * 1.15, 0, 1));
     }
 
-    const bx = this.screenX(this.rig.baitX);
-    const by = this.depthY(this.rig.baitZ) + bitePull;
+    // 원근 스케일 — 수평선 부근 0.72배 → 발앞 1.27배
+    const perspT = Phaser.Math.Clamp((surfY - WATERLINE) / (FOREGROUND_Y - WATERLINE), 0, 1);
+    const iconScale = 0.72 + 0.55 * perspT;
 
-    // 라인 수면 진입점 — 찌낚시는 찌 아래, 원투는 수면에서 곧장 입수
-    const lineTopY = this.surfMode ? WATERLINE + 4 + bitePull * 0.5 : WATERLINE + 8 + sinkPx + bitePull;
+    // ── 표시 heading — 목표각으로 머리가 먼저 돌고(빠른 lerp) 몸이 따라온다 ──
+    this.visHeading = this.lerpHeading(this.visHeading, this.rigHeadingTarget(), 0.16);
 
-    // 수중 라인 (수면 진입 → 미끼, 사선 정렬 시 곧게) — 수면 아래라 반투명
-    g.lineStyle(1.2, 0xd8ecf8, 0.38);
-    const midX = (fx + bx) / 2 + (1 - this.lineTension.alignmentIndex) * 14;
-    g.beginPath();
-    g.moveTo(fx, lineTopY);
-    g.lineTo(midX, (lineTopY + by) / 2);
-    g.lineTo(bx, by);
-    g.strokePath();
+    if (this.fpState === 'fighting' && this.hookedFish) {
+      // ── 파이트 물고기 (정면 뷰) — 무대 좌표를 정면에 투영: 횡 러닝 좌우 + 깊이 침강 ──
+      const dn = this.fightDepthNorm;
+      const bxF = Phaser.Math.Clamp(fx + this.f2dPos.x * 0.55, 30, GAME_WIDTH - 30);
+      const byF = surfY + 12 + dn * Math.max(40, Math.min(170, GAME_HEIGHT - 70 - surfY));
+      const fAlpha = Phaser.Math.Clamp(1 - dn, 0.15, 0.9);
+      const fScale = iconScale * Phaser.Math.Clamp(0.9 + this.hookedFish.powerFactor * 0.7, 0.9, 1.7);
+      // 목줄은 물고기 "머리 꼭짓점"에 연결 (몸통 중앙 금지)
+      const head = fishHeadPoint(bxF, byF, this.visHeading, fScale);
+      g.lineStyle(1.4, 0xd8ecf8, 0.5);
+      g.beginPath();
+      g.moveTo(fx, surfY + 6);
+      g.lineTo((fx + head.x) / 2, (surfY + 6 + head.y) / 2);
+      g.lineTo(head.x, head.y);
+      g.strokePath();
+      drawRigIcon(g, bxF, byF, { t: 'fish', speciesId: this.hookedFish.speciesId }, this.visHeading, fScale, fAlpha);
+    } else {
+      const bx = this.screenX(this.rig.baitX);
+      const by = Math.min(GAME_HEIGHT - 46, this.depthY(this.rig.baitZ, surfY) + bitePull);
 
-    // 원투 메인 싱커(무게추 봉돌) — 미끼 바로 위에 회색 추 (바닥 공략 표현)
-    if (this.surfMode) {
-      const syk = by - 12;
-      g.fillStyle(0x6a6f78, 0.75);
-      g.fillEllipse(bx, syk, 7, 11);
-      g.lineStyle(1, 0x2a2e34, 0.6);
-      g.strokeEllipse(bx, syk, 7, 11);
+      // 라인 수면 진입점 — 찌낚시는 찌 아래, 원투는 수면에서 곧장 입수
+      const lineTopY = this.surfMode ? surfY + 4 + bitePull * 0.5 : surfY + 8 + sinkPx + bitePull;
+
+      // 수중 라인 (수면 진입 → 터미널, 사선 정렬 시 곧게) — 수면 아래라 반투명
+      g.lineStyle(1.2, 0xd8ecf8, 0.38);
+      const midX = (fx + bx) / 2 + (1 - this.lineTension.alignmentIndex) * 14;
+      g.beginPath();
+      g.moveTo(fx, lineTopY);
+      g.lineTo(midX, (lineTopY + by) / 2);
+      g.lineTo(bx, by - 4);
+      g.strokePath();
+
+      // 원투 메인 싱커(무게추 봉돌) — 터미널 바로 위 회색 추 (바닥 공략 표현)
+      if (this.surfMode) {
+        const syk = by - 13;
+        g.fillStyle(0x6a6f78, 0.75);
+        g.fillEllipse(bx, syk, 5 + 2.5 * iconScale, 8 + 4 * iconScale);
+        g.lineStyle(1, 0x2a2e34, 0.6);
+        g.strokeEllipse(bx, syk, 5 + 2.5 * iconScale, 8 + 4 * iconScale);
+      }
+
+      // ── 터미널(미끼/루어) — 종류별 벡터 아이콘 (황색 원 대체, 수중 반투명 + 원근) ──
+      // 릴링(내 쪽 접근)은 진행축 foreshorten으로 다가옴을 표현
+      const foreshorten = this.rigPose === 'retrieve' ? 0.55 : 1;
+      drawRigIcon(g, bx, by, this.currentIconKind(), this.visHeading, iconScale, 0.62, foreshorten);
     }
-
-    // 미끼 (바늘+미끼) — 수중이므로 살짝 비쳐 보이게
-    g.fillStyle(0xffb46a, 0.55);
-    g.fillCircle(bx, by, 4);
-    g.lineStyle(1, 0x333333, 0.5);
-    g.strokeCircle(bx, by, 4);
 
     // ── 우측 상단 수심 정보 패널 (전용 레이어 — 낚싯대와 겹치지 않음) ──
     this.panelG.clear();
     this.renderDepthPanel(this.panelG);
+  }
+
+  /** 현재 채비 터미널 아이콘 종류 — 루어 kind / 미끼(웜·새우·살점) / 떡밥 */
+  private currentIconKind(): RigIconKind {
+    if (this.lureMode && this.lureSpec) return { t: 'lure', kind: this.lureSpec.kind };
+    const key = this.currentBaitKey();
+    if (key === 'worm_king' || key === 'worm_blue') return { t: 'bait', kind: 'worm' };
+    if (key === 'bread' || key === 'corn') return { t: 'chum' };
+    if (key === 'fishcut') return { t: 'bait', kind: 'strip' };
+    return { t: 'bait', kind: 'shrimp' };
+  }
+
+  /** 최단각 보간 — heading 선행 lerp의 공통 유틸 */
+  private lerpHeading(current: number, target: number, k: number): number {
+    let d = target - current;
+    while (d > Math.PI) d -= Math.PI * 2;
+    while (d < -Math.PI) d += Math.PI * 2;
+    return current + d * k;
+  }
+
+  /** 채비/물고기 정면 뷰 목표 heading — 파이트는 무대 heading, 드리프트는 자세 기반 */
+  private rigHeadingTarget(): number {
+    if (this.fpState === 'fighting') return this.f2dHeading;
+    const drift = (this.lastTidal?.force.x ?? 0) >= 0 ? 1 : -1;
+    switch (this.rigPose) {
+      case 'lift': return -Math.PI / 2 + drift * 0.35;    // 상승
+      case 'fall': return Math.PI / 2 - drift * 0.3;      // 폴 (하강)
+      case 'retrieve': return drift > 0 ? Math.PI - 0.35 : 0.35;   // 내 쪽으로 끌려옴 (역방향)
+      case 'twitch': return drift * -0.5;                 // 측면 다트
+      case 'hop': return -Math.PI / 3;
+      default: return drift > 0 ? 0.22 : Math.PI - 0.22;  // 조류 방향으로 흘러감
+    }
   }
 
   /**
