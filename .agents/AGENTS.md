@@ -153,7 +153,13 @@ this.events.on('resume', () => {
 | 통합 아이템 DB (낚시점/마트/직판장/통조림) | `core/src/db-schema/UniversalItemDatabase.ts` |
 | 무게추 봉돌 DB (고리/구멍/묶음추) | `core/src/db-schema/SinkerDatabase.ts` |
 | 채비 추천 알고리즘 (지역/지형/물때/어종) | `core/src/simulation/RigRecommender.ts` |
-| 루어 타입 + 카탈로그 (7종 15변종) | `core/src/types/Lure.ts` · `core/src/db-schema/LuresCatalogDB.ts` |
+| 루어 타입 + 카탈로그 (8종 17변종 — 타이라바 포함) | `core/src/types/Lure.ts` · `core/src/db-schema/LuresCatalogDB.ts` |
+| 크기 등급(소/중/대) + 청물 주간·급심 게이트 | `core/src/simulation/SizeTierRules.ts` |
+| 파이트 2D 물리 (측면하중·heading/displacement·movementProfile) | `core/src/simulation/FightPhysics2D.ts` |
+| 회 뜨기 손질 FSM + 컷 판정 + 등급 | `core/src/simulation/ButcheryProcess.ts` · `core/src/db-schema/ButcheryProfiles.ts` · `core/src/types/Butchery.ts` |
+| UI: 회 뜨기 미니게임 패널 (방향 상태 렌더·가이드 트레이스) | `client-pc/src/ui/ButcheryPanel.ts` |
+| 피딩타임 계산기 (계절 시간창×조류×날씨) | `core/src/simulation/FeedingTimeCalculator.ts` |
+| 보일링/스쿨링 필드 이벤트 (발생 롤·연출·착수 판정) | `client-pc/src/ui/FieldEventManager.ts` |
 | 루어 채비 연산 (총중량/Cd/침강 프로파일) | `core/src/simulation/LureRig.ts` |
 | 영역기반 라이브 필드 레이아웃 엔진 | `client-pc/src/data/SpotFieldLayouts.ts` |
 | 포항 영일만 픽셀 지형 맵 데이터 | `client-pc/src/data/YoilBayFieldMap.ts` |
@@ -335,7 +341,52 @@ npx pnpm run build → ✅ 4/4 패키지 성공 (2026-07-21)
 npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류 (2026-07-21)
 ```
 
-**최근 주요 변경 (2026-07-21 10차) — 쿨러(어창) 시스템 전면 개편 + 밑밥 배합(품질) 시스템** (헤드리스 브라우저 6항목 전체 통과):
+**최근 주요 변경 (2026-07-21 15차) — 파이트 2D 무대 1인칭 통합 + 로드 스티어 밀당** (사용자 피드백 "파이팅 때 가시적으로 확인 안 됨" — 12차 파이트 2D는 레거시 FishingScene에만 있었음. 목업 "1인칭+파이트" 명세대로 활성 경로에 통합):
+- **[신규] 1인칭 파이팅 2D 무대** (`FirstPersonFishingScene.updateFight2DStage` — depth 87 원형 뷰 R132, 텐션바 아래 중앙): **상단 앵커 수중 단면뷰** — 로드 팁(스티어로 기울어짐) → 물고기까지 **텐션 그라데이션 줄**(미색→노랑→빨강, ≥0.85 펄스·굵기↑·지터 — 텐션바 임계 동기화). 물고기 실루엣 = heading 방향 다각형+밝은 윤곽선, **깊이→투명도(최소 0.25)·축소**, 진행 82+ = **제압 근접**(머리가 앵커로 돌고 은빛 롤 + "수면 부상 — 곧 캐치!"). 모션 = FightingPhase 패턴 구동(jump=상방/dive=하방/lateral=lateralDir 좌우) + none 구간은 `MOVEMENT_PROFILES`(pickRunHeading — FightPhysics2D core 재사용) 러닝. 무대 하단 상태 라벨(횡 러닝 방향·대응 힌트). ⚠️ 클램프 순서: **수면(y) 클램프 → 반경 클램프** (역순이면 물고기가 원 밖으로 밀림 — 실버그 수정).
+- **[신규 core] FightingPhase 로드 스티어 밀당**: `FightInput.steerDir(-1/0/+1)` + `lateralDir`(횡 러닝 좌/우 — FightStatus 노출). lateral 패턴 중 **같은쪽 스티어 = 텐션 -15/s + 진행 +4/s(버티기)** / **반대쪽 = 텐션 +19/s + 진행 +7/s(제압 — 위험 감수)**. 검증(60fps·릴링<텐션70 습관 시뮬): 랜딩 시간 **무스티어 45.7초 → 같은쪽 18.4초 / 반대쪽 23.9초** — 스티어가 확실한 이득, 같은쪽=안전 최속.
+- **[신규] 1인칭 ←/→ 입력 이원화**: 파이팅 = 로드 스티어(폴링) / 드리프트+루어 모드 = **다트**(`doDart` — 횡 임펄스 0.7m + 0.25m 상승, 쿨다운 0.35s, "좌×3 우×3" 지그재그 — 트위칭 포즈로 lureActionMult 연동). 조작 안내(스테이트 바·컨트롤 바) 갱신.
+- 정리 훅: finishFight/failAndExit/recast에서 `clearFight2DStage()` — 무대·라벨 잔상 방지.
+- 참고: 12차 파이트 2D(FightPhysics2D 전체 물리·FishingFocusWindow 무대)는 레거시 FishingScene 경로에 유지 — 1인칭은 기존 FightingPhase 판정을 유지한 채 무대·스티어만 통합(중복 물리 금지 원칙).
+
+**이전 변경 (2026-07-21 14차) — 회 뜨기(활어 손질~삼면뜨기~박피) 미니게임** (SASHIMI_BUTCHERY_SPEC 반영 — FSM 수치 시뮬 + 헤드리스 브라우저 4단계 렌더 검증):
+- **핵심 아키텍처 (스펙 결정 준수)**: ① 자유 3D 회전 금지 → **방향 상태 머신** 5종(BASE/FLIP/BELLY_UP/BACK_DOWN/FLESH_UP) + orientation 게이트(불일치 시 칼질 비활성·힌트) ② 어종×방향×단계 스프라이트 폭발 방지 → **파라메트릭 생선 템플릿**(Graphics)에 ButcheryProfile(체형·색·비늘·anusRatio)만 주입.
+- **[신규 core]** `types/Butchery.ts`(OrientationState/CutSpec/ButcheryStage/프리미티브 6종) + `db-schema/ButcheryProfiles.ts`(감성돔/벵에돔/긴꼬리/광어(flat·4필렛)/농어/방어 + 폴백 — anusRatio·scaleToughness·skinToughness) + `simulation/ButcheryProcess.ts`:
+  - **CutValidator** `evaluateCut`: 가이드 폴리라인 32샘플 커버율 + 평균 이탈(tolerance 배수) → 품질/통과. (검증: 정확=1.0 / 흔들림=감점 / 빗나감=실패)
+  - **ButcheryProcess FSM**: 프로필 → 스테이지 자동 생성 — 시메(뇌 탭)→방혈(아가미 컷+얼음물)→비늘 양면+세척→머리따기 사선 양면→개복(anusRatio→머리)→내장 긁기→세척→꼬리 손잡이→장 뜨기(등 칼집 ×3→강한 썰기, **필렛 수만큼 반복** — round 17스테이지/광어 5장뜨기 21스테이지)→박피(당김 ×필렛수). submitTap/Cut/Fill/Wash/PeelPull API — 판정 전부 core.
+  - **등급**: 품질 = 시메×방혈×컷정확도평균×신선도(Item 레이어 재사용 — live 1.0~spoiled 0.25) → 특(≥0.9 ×1.5)/상(×1.25)/중/하. 채움류(비늘·내장)는 이진 완료로 평균에서 제외(희석 방지). 검증: 정밀=특 / 대충(지터)=상 20/20 / 시메·방혈 생략=중 / 신선도0.5=하. **활어가 아니면(fresh 0.9) 컷 만점에도 특 불가** — 활어회 고증.
+- **[신규 client]** `ui/ButcheryPanel.ts` — UtilizationPanel 요리 탭 도마 **[손질 시작]** 버튼으로 진입(스펙 허용 ButcheryPanel 방식): 도마 배경+파라메트릭 생선(방향별 미러/배·등 밴드/비늘 반점/머리 분리 단면/내장 오버레이/필렛 슬랩+껍질층), 노란 점선 칼 가이드+시작점, **GuidedCut 트레이스**(씬 레벨 포인터 — 은색 칼선 실시간 렌더), DragScale/Scoop(문지르기 진행 바), 시메 탭 목표 링, Peel(꼬리 손잡이 존→좌로 당김, 각도·거리 품질), 세척/얼음물 버튼, Orient 버튼 5개(필요 방향 금테 강조), 결과 오버레이(등급/필렛/정확도).
+- **[산출]** `{어종} 필렛 (등급)` ×filletCount (가격 = sashimiValuePerKg×중량×등급배율/필렛수, 음식 탭 '손질 필렛') + `중골·머리 (육수용)` 부산물 + **원본 생선 1마리 소모**. speciesId/lengthCm 보존 — RecipeDatabase 사시미 입력용.
+- 잔여(차기): 회 썰기(두께·각도) 인터랙션, 두족류·장어 별도 손질 트리, anusRatio 어종별 재확인, 컷 tolerance 플레이 튜닝, ESC LIFO와 자식 팝업 순서(현재 ButcheryPanel은 X 버튼으로 닫기).
+
+**이전 변경 (2026-07-21 13차) — 팝업 바깥 클릭 닫기 + 요리 도마 드래그 앤 드랍 + 필드 이벤트 육지 거리 현실화** (헤드리스 브라우저 렌더 검증):
+- **[UX] 선택 팝업 바깥 클릭 자동 닫기**: `UtilizationPanel.addChooserBackdrop` — 채비 부품 선택/편대 미끼 선택 리스트 뒤에 전체 화면 투명 백드롭(topOnly로 행 클릭은 유지, 바깥 클릭은 chooser만 닫음 + 하위 UI 오클릭 방지 겸용). `CoolerPanel` 컨텍스트 메뉴에도 동일 적용. InventoryPanel은 기존 outsideCatcher 패턴 보유(동일 구조). **상세보기(ItemDetailPanel)는 직접 닫기 유지**(의도), 수량/확인 다이얼로그는 모달 결정이라 제외.
+- **[신규] 요리 탭 도마 드래그 앤 드랍** (`UtilizationPanel.renderCooking`/`renderEmbeddedInventory`): **풀렌더 이미지 보유 어획물**(감성돔/광어/벵에돔/긴꼬리벵에돔 — `iconTexture` + textures.exists 판정)만 임베드 인벤토리 셀에서 드래그 가능. 드래그 중 고스트 이미지 표시 → 도마 영역(`cookBoardRect`) 드랍 시 `cookBoardFishId` 설정 → **도마에 실사 생선 대형 렌더** + 이름 라벨 + [내리기] 버튼. 아이템 소멸/텍스처 없음 시 도마 자동 비움. 손질(삼면뜨기)은 준비중 표기 유지.
+- **[수정] 보일링/스쿨링 육지 최소 거리 (현실화)**: `FieldEventManager.landDistTiles`(체비쇼프 링 탐색) — **스쿨링 ≥ 10m(5타일), 보일링 ≥ 20m(10타일 — 청물은 먼 해양)**. 조건 만족 수역이 없는 얕은 내항은 발생하지 않음(의도). **거리대별 어종 구성**: 연안 스쿨링(10~20m) = 숭어 떼(striped/redlip_mullet)·연안 소형 무리 / 외양 스쿨링(20m+) = 회유 무리(고등어·전갱이·삼치·꽁치) / 보일링 = 청물(방어·부시리·잿방어·삼치). 어종 가중은 **패치별 저장**(`patch.speciesBias`)되어 착수 보너스에 그대로 전달, HUD 로그도 연안/외양 구분 안내.
+
+**이전 변경 (2026-07-21 12차) — 파이트 2D 횡 러닝 + 루어 액션 그래머 + 파이트 UI 개편** (FIGHT_MODE_2D_SPEC.md 반영 후 삭제 — core 수치 시뮬레이션 검증):
+- **대상**: 레거시 낚시 루프(`FishingScene` + `FishingFocusWindow` — FieldScene 계열). 기존 시스템(SizeTierRules/FeedingTimeCalculator/LuresCatalogDB/LinePhysics)은 **소비만** — 재구현·중복 확률식 없음.
+- **[신규] `core/simulation/FightPhysics2D.ts`** — 측면하중 2D 파이트 물리:
+  - `simulateFightTick2D`: LinePhysics 1D 수식(드랙 슬립/릴링/락업 0.90/파손 125%) **재사용** 위에 ① 스티어(←/→) `rodLeanAngle` 누적(무입력 시 자연 복원) ② 유효 라인각 `lineAngle − rodLean`과 heading의 차(`angleErr`)로 추진력을 **축(장력)+측면(하중)** 분해 ③ 결합 장력 = 축+측면 → 기존 위험도 임계(0.6/0.85)와 파손에 그대로 반영 ④ 측면압으로 물고기 머리를 라인 쪽으로 돌리기(제압, `turnResist` 감쇠) ⑤ `fishStamina ≤ 0.15` → 강제 회전+**옆으로 눕는 롤**(`isRolling`) ⑥ displacement = heading 추진 − 줄이 끄는 힘(뷰 스케일 주입).
+  - `computeFishThrustKg`: 기존 fishRage(주기 sin+버스트) 유지하되 **버스트 dt 정규화**(`1−exp(−rate·dt)`) — 프레임레이트 의존 제거.
+  - `pickRunHeading`: lateral/dive/jump/jet 성향 **가중 추첨**(모드 선택+스프레드 — 가중 "합산"은 대각선으로 뭉개져 금지) — 방향 하드코딩 없음.
+  - `MOVEMENT_PROFILES` (표준 실코드 id): 청물(yellowtail/amberjack/greater_amberjack) 횡 러닝·고파워 / 참돔·광어·대구 수직박기 / 농어 상방 점프(포말) / squid·cuttlefish 뒤로 제트 / 볼락 하방. `TIER_POWER_MUL`/`TIER_STAMINA_MUL`(소0.8/중1.0/대1.3 — SizeTierRules 연동).
+  - 검증(90틱 시뮬): 우측 러닝 시 **같은쪽 스티어 측면하중 0.73(버티기) ↔ 역스티어 1.78 + heading 0°→90°(제압)** / 저스태미나 2초 후 rolling + 라인각 정렬 0.09rad / 분포: 방어 횡68%·대구 하방81%.
+- **[개편] `FishingFocusWindow` — 상단 앵커 2D 수중 단면 무대**: 파이팅 상태에서 찌 대신 걸린 물고기 1마리를 물리 구동 렌더(`updateFight2D`). 로드 팁 앵커 = 뷰 상단 중앙(스티어로 기울어짐) / **줄 색 = 텐션 연속 그라데이션**(미색→노랑→빨강, ≥0.85 깜빡임·굵기↑·미세 진동 — 텐션바 임계와 동일 값) / **깊이 → 투명도**(최소 알파 0.25)+축소 / 저스태미나 롤 = 납작+은빛 배. 뷰 반경 클램프는 뷰 책임(클램프 결과를 상태에 역반영해 물리 라인각 일치). + `nudgeBobber`(다트/저킹 임펄스)·`pulseShadowAttraction`(유인 반응).
+- **[재배선] `FishingScene` 파이트 조작 — 십자 패드**: **←/→ = 로드 스티어**(폴링) · **↑/↓ = 드랙**(F/G 보조 유지) · **좌클릭 유지 = 릴링**(감기 전용 — 방향성 제거). 크기/tier를 **훅셋 시점에 확정**(`generateFishSize`+`classifySizeTier`) → 파이트 강도·스태미나 스케일. 러닝 heading은 `runDurationSec`마다 프로필 추첨.
+- **[신규] 루어 액션 그래머 (in_water 페이즈 — 같은 키, 페이즈로 의미 분리)**: ←/→ 탭 = **다트** · ↑ = **저킹** · ↓ = **폴링 스테이** · 좌클릭 유지 = **리트리브**(600ms 주기 판정). `LureSpec.actionFlags/kind` 소비 — 다트(dart 플래그) 1.7 / 메탈지그 저킹 1.75 / 스푼·스피너·타이라바 등속 리트리브 1.55(과한 다트는 0.8 역효과) / 웜+지그헤드 **호핑 콤보**(↓→↑ 700ms 내) 1.8 / 폴링(fallLureWeight) 1.6. **리듬 보상**: 250ms 미만 과속 연타 ×0.6. **피딩타임 페이오프**: 기존 `computeFeedingActivity` 값 재사용(0.6~1.3 클램프 계수 — 새 확률식 금지). 결과 `lureActionMult`는 입질 롤에 곱하고 1.5초 유인 윈도우로 감쇠. 시각: 찌 임펄스 + 매칭 성공 시 그림자 유인.
+- **통합 조작 체계**: 좌클릭 유지 = 차지/리트리브/릴링, ←→ = 다트/스티어, ↑↓ = 저킹·폴링/드랙 — 페이즈 배타로 키 충돌 없음.
+- 잔여(차기): 스티어 어시스트 토글·A/D 대체 바인딩(접근성), dev 실관찰(줄색·롤·러닝 연출), 측면하중 계수/다트 리듬 간격 플레이 튜닝.
+
+**이전 변경 (2026-07-21 11차) — 캐스팅 육지 차단 + 지깅 중대형 어종/크기 등급 + 피딩타임 + 보일링·스쿨링** (core 수치 시뮬레이션 검증):
+- **[신규] 캐스팅 라인 경로 육지 차단** (`RegionFieldScene.castPathCrossesLand`): 착수점이 바다여도 **플레이어→착수점 직선(릴링 경로)이 중간에 육지(곶/방파제)를 가로지르면 강제 회수** — Bresenham 타일 레이캐스트, 발밑 선행 육지 구간은 허용하고 "물 진입 후 재육지"만 차단. 안내: "잘못된 캐스팅입니다 — 릴링 경로가 육지에 걸립니다" + HUD 로그 "캐스팅 과정에서 땅에 쓸리게 되므로 회수합니다."
+- **[신규] 지깅/루어 중대형 어종 3종 + 4계층 등록** (2026-07 리서치 — 오라클 id 표준): **잿방어(greater_amberjack)·삼치(spanish_mackerel, 5월 금어기)·갑오징어(cuttlefish, egiOnly)** 를 오라클+FISH_DATABASE+SEAFOOD_AUCTION_MAPPING+MAFRA/KOSIS 매칭 전부 등록. FISH_DATABASE에 도감 미등록이던 **무늬오징어(squid)/문어(octopus)** 도 추가(총 49종). 방어 금지체장 30cm 반영(오라클+DB). ⚠️ 매칭 순서: **'잿방어'⊃'방어'라 MAFRA 테이블에서 '방어'보다 앞에 배치** / KOSIS '갑오징어'를 '오징어'보다 먼저. (기획 문서의 yellowtail_amberjack→기존 amberjack, olive_flounder→flatfish, bigfin_squid→squid로 실코드 id에 정합)
+- **[갱신] 루어↔어종 매핑 (PART C 실데이터)**: 메탈지그 = 삼치/농어/대구/방어/부시리/잿방어(지깅 핵심) · 스푼/미노우 = 삼치+농어 · 소프트저크 = 농어+광어 · 웜+지그헤드 = 광어 다운샷+락피시 · 에기 spawnBinding에 cuttlefish 추가(+fallLureWeight 0.2 폴링 유인). **타이라바 신규 종류**(`LureKind 'tairaba'`, Deep Ruby 라운드 헤드 러버 45/60g — red_seabream +0.30, U창 하드 트리 등록). 참돔 baitPreference에 lure 25 추가(타이라바 반응 고증 — 검증: 타이라바 참돔 4.9%→17.7%).
+- **[신규] 크기 등급(sizeTier) 시스템** (`core/simulation/SizeTierRules.ts`): 방어 출세어 기준 어종별 소/중/대 경계(`SIZE_TIER_BOUNDS` 7종) + **루어 무게↑ → 대물 tier 가중**(소형 하한은 항상 열림 — 소형 밴드는 오라클 minCm 아래 유어 구간 포함) + **청물(방어·부시리·잿방어·삼치) 야간 = 소형만**(주간 전용) + **급심 게이트**(zMax/50 비례 — 얕은 방파제 대형 저확률) + **농어 예외**(게이트 미적용 + `SpawnContext.inWashZone`(발앞 반탄류 존=포말대) × 야간 = 스폰 2.2배). `spawnFish`가 tier 등재 어종의 길이를 tier 규칙으로 roll. 검증(6천회): 방어 주간·급심·지그40g 소30/중40/대30 ↔ 야간 소형 98% ↔ 방파제12m 대형 4.4% / 농어 포말·야간 27.8%→45.3%.
+- **[신규] 피딩타임 시스템** (`core/simulation/FeedingTimeCalculator.ts`): `computeFeedingActivity` = 계절 시간창(봄 07~10/15~18 · 여름 새벽/해질녘, 한낮 0.35 최저 · 가을 종일 활성 · 겨울 한낮 역전 집중) × 조류(만조 90분 전 최고/정조 급감/사리·조금) × 날씨(저기압 하강 보너스·비직전 급강하 1.3·흐린날 한낮 완화·냉수대 급감) → 0.2~1.5 배율 + 라벨(골든타임/활성/보통/저조). **동해 지역계수**(`feedingRegionProfileOf` — 조류 비중 0.45승, 시간창 1.15승). FP 입질 `baseProbPerSec`에 곱 + 좌측 게이지 "피딩 골든타임 x1.32" 표기(60초 주기 갱신). 검증: 여름 19시 조금+정조 0.70 ↔ 사리+만조전 1.50 / 동해 같은 정조 0.94.
+- **[신규] 보일링/스쿨링 필드 이벤트** (`client/ui/FieldEventManager.ts`): 발생 롤 = rate × max(0, 피딩활성-0.5) (저조 시간대 미발생), 종류별 1개 상한 + 소멸 후 20~40초 쿨다운. ① **보일링**(표층·열린 수역) — 끓는 파문 3겹 링+포말+튀는 베이트+**갈매기 3마리 선회**(원거리 식별), 8~20초 회유 드리프트 후 소멸 ② **스쿨링**(구조물=육지 인접 수역) — 그림자 어영 8마리 군집 요동, 30~75초 고정. **착수점 판정**(`getLandingBonus`): 보일링 중심(<0.5R) 직격 = ×0.5 페널티(어군 흩어짐) / 가장자리 링(~1.6R) = ×1.8 + 청물 가중 + **tier 상향**(`eventTierBoost` — 소형 확률 40%를 중·대형으로 이전) / 스쿨 정확 스팟 = ×1.6 + 군집 어종 가중. `FirstPersonFishingInit.fieldEvent`로 1인칭에 전달 — 입질 배율+스폰 가중 병합+게이지 라벨 표시.
+- 잔여(차기): 보일링/스쿨링 인게임 실발생 육안 확인(발생이 확률·피딩 연동이라 dev 장시간 관찰 필요), 스쿨 남획 상한(마릿수 소진 시 이동), FeedingActivity HUD 아이콘 노출, 기압 추세 실데이터(해양기상 기압 시계열) 연동.
+
+**이전 변경 (2026-07-21 10차) — 쿨러(어창) 시스템 전면 개편 + 밑밥 배합(품질) 시스템** (헤드리스 브라우저 6항목 전체 통과):
 - **[신규] CoolerStore** (`client-pc/store/CoolerStore.ts`): 어창 3x3(9칸) 세션 스토어 — 낚은 개체를 **활어 상태로 보관 (쿨러 안에서는 신선도 시계 정지 → 일반 인벤토리 보관보다 오래 유지)**, 인벤 이송 시점부터 'live'로 신선도 진행. + 밑밥 배합 상태(`chumIngredients`/`chumWaterAdded`/`chumMixed`/`chumRemaining` 0~100, `CHUM_THROW_COST` 25).
 - **[개편] 어획 결과 흐름** (`FirstPersonFishingScene`): 자동 인벤토리 지급 제거 → **[쿨러에 넣기] / [방생하기] 선택** → "쿨러에 보관하였습니다." / "해당 어종을 방생하였습니다." → **[계속하기] / [그만하기]**. 도감 등록은 어획 시점 유지. 다관점 히트 추가 어획은 어창으로 직행(가득 시 '방생' 표기). 쿨러 가득(9마리) 시 넣기 차단 안내.
 - **[신규] CoolerPanel 3x3 팝업** (`ui/CoolerPanel.ts`): 1인칭 쿨러 좌측(어창) 클릭 / **탑다운 B 키**로 공용 열람. 셀 우클릭(좌클릭 겸용) 컨텍스트 메뉴 — **상세보기**(ItemDetailPanel 재사용) / **방생하기**("정말 방생하시겠습니까? 예/아니오" 확인창) / **손질하기(준비중 — 비활성)**.

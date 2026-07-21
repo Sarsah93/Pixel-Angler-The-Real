@@ -89,7 +89,7 @@ const KOSIS_SPECIES_MATCH: { keywords: string[]; speciesIds: string[] }[] = [
   { keywords: ['전갱이'], speciesIds: ['horse_mackerel'] },
   { keywords: ['조피볼락', '우럭'], speciesIds: ['black_rockfish'] },
   { keywords: ['볼락'], speciesIds: ['dark_banded_rockfish', 'golden_rockfish', 'blue_rockfish', 'red_snapper_rockfish'] },
-  { keywords: ['방어'], speciesIds: ['yellowtail', 'amberjack'] },
+  { keywords: ['방어'], speciesIds: ['yellowtail', 'amberjack', 'greater_amberjack'] },
   { keywords: ['농어'], speciesIds: ['sea_bass'] },
   { keywords: ['숭어'], speciesIds: ['striped_mullet', 'redlip_mullet'] },
   { keywords: ['붕장어'], speciesIds: ['conger_eel'] },
@@ -109,6 +109,11 @@ const KOSIS_SPECIES_MATCH: { keywords: string[]; speciesIds: string[] }[] = [
   { keywords: ['덕대'], speciesIds: ['korean_pomfret'] },
   { keywords: ['병어'], speciesIds: ['silver_pomfret', 'korean_pomfret'] },
   { keywords: ['도루묵'], speciesIds: ['sandfish'] },
+  // ── 루어/지깅 중대형 + 두족류 (2026-07-20) — '갑오징어'⊃'오징어' 순서 준수
+  { keywords: ['삼치'], speciesIds: ['spanish_mackerel'] },
+  { keywords: ['갑오징어'], speciesIds: ['cuttlefish'] },
+  { keywords: ['오징어', '한치'], speciesIds: ['squid', 'cuttlefish'] },
+  { keywords: ['문어'], speciesIds: ['octopus'] },
 ];
 
 /**

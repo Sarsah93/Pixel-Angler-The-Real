@@ -29,6 +29,8 @@ import {
   BiteSequenceEngine, TidalCurrentEngine, TidalInfluence,
   SeabedProfile, HOLD_LIFT_M, kstHour,
   LureSpec, LureSinkProfile, getLureSinkProfile, jigHeadWeightById,
+  computeFeedingActivity, feedingRegionProfileOf, FeedingActivityResult,
+  getMovementProfile, pickRunHeading,
 } from '@tra/core';
 import { GameState } from '../store/GameState.js';
 import { InventoryStore, RigStepKey, CARD_RIG_INFO } from '../store/InventoryStore.js';
@@ -50,6 +52,21 @@ export interface FirstPersonFishingInit {
   region: string;
   /** 캐릭터가 서 있는 지면 종류 (지도 지형 기반 전경) */
   shoreKind?: 'sand' | 'grass' | 'gravel';
+  /**
+   * 탑다운 필드 이벤트(보일링/스쿨링) 착수 보너스 —
+   * 착수점이 이벤트 패치와 겹칠 때 RegionFieldScene이 산출해 전달.
+   */
+  fieldEvent?: {
+    kind: 'boiling' | 'schooling';
+    /** 입질 확률 배율 (보일링 중심 직격은 1 미만 페널티) */
+    biteMult: number;
+    /** 이벤트 어종 가중 (스폰 오라클 speciesWeightBias에 병합) */
+    speciesBias?: Record<string, number>;
+    /** 보일링 히트 — 회유어 크기 tier 상향 */
+    tierBoost?: boolean;
+    /** HUD 안내 라벨 */
+    label: string;
+  };
 }
 
 type FpState = 'drift' | 'fighting' | 'result';
@@ -95,6 +112,11 @@ export class FirstPersonFishingScene extends Phaser.Scene {
 
   // ── 입질 시퀀스 / 챔질 (2026-07-17 — 자동 파이팅 진입 대체) ──
   private biteSeq = new BiteSequenceEngine();
+
+  /** 피딩타임 활성도 (계절 시간창×조류×날씨 — 60초 주기 갱신, 입질 확률 공통 배율) */
+  private feeding: FeedingActivityResult = {
+    activity: 1, seasonWindow: 1, tideFactor: 1, weatherFactor: 1, label: '보통',
+  };
   /** 입질 시퀀스 대상 물고기 (챔질 성공 시 hookedFish로 승격) */
   private pendingFish: SpawnedFish | null = null;
   /** 현재 초릿대 굽힘 각도 (도) — 입질/파이팅 렌더 공용 */
@@ -107,6 +129,18 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   private floatSinkM = 0;
   /** 원투(찌 없이 도래 직결) 모드 — 찌 없이 초릿대 끝으로 입질 판단 */
   private surfMode = false;
+
+  // ── 파이트 2D 무대 (상단 앵커 수중 단면뷰 — FIGHT_MODE_2D_SPEC 1인칭 통합) ──
+  private fight2DG?: Phaser.GameObjects.Graphics;
+  /** 무대 로컬 좌표 (원 중심 원점, +y 아래=수심) */
+  private f2dPos = { x: 0, y: 90 };
+  private f2dHeading = Math.PI / 2;
+  private f2dRunTimer = 0;
+  private f2dPrevPattern: string = 'none';
+  private f2dProfile = getMovementProfile('default');
+  /** ←/→ 로드 스티어 키 */
+  private steerLeftKey?: Phaser.Input.Keyboard.Key;
+  private steerRightKey?: Phaser.Input.Keyboard.Key;
   /** 루어 모드 (rigMode === 'lure') — 찌 없이 루어 자체 침강/리트리브 */
   private lureMode = false;
   /** 장착 루어 스펙 (루어 모드일 때) */
@@ -264,6 +298,10 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.chum = new ChumPhysics();
     this.biteEngine = new BiteProbabilityEngine();
 
+    // 피딩타임 활성도 — 60초 주기 갱신 (시간창/조류/날씨가 느리게 변하므로 충분)
+    this.refreshFeedingActivity();
+    this.time.addEvent({ delay: 60_000, loop: true, callback: () => this.refreshFeedingActivity() });
+
     // 설정 연동: 로드 화면 위치(좌/우) + 릴 핸들 위치(로드 기준 좌/우)
     const settings = loadSettings();
     this.rodSide = settings.rodSide;
@@ -292,6 +330,11 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     // 입력
     this.hKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.H);
     this.upKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.UP);
+    // ←/→ — 파이팅: 로드 스티어 (폴링) / 드리프트(루어): 다트 횡 트위칭 (keydown)
+    this.steerLeftKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.LEFT);
+    this.steerRightKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.RIGHT);
+    this.input.keyboard!.on('keydown-LEFT', () => this.doDart(-1));
+    this.input.keyboard!.on('keydown-RIGHT', () => this.doDart(1));
     this.input.keyboard!.on('keydown-C', () => this.tossChum());
     this.input.keyboard!.on('keydown-ESC', () => {
       if (this.coolerPanel) {
@@ -366,7 +409,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     if (!this.controlBarText) return;
     let text: string;
     if (this.fpState === 'fighting') {
-      text = '좌클릭 홀드 릴링 · H 버티기 — 텐션 30~80 유지 · 패턴 경고에 맞게 대응 (한계 텐션 릴링 강행 = 줄터짐)';
+      text = '좌클릭 릴링 · ←/→ 로드 스티어(횡 러닝: 같은쪽=버티기·반대쪽=제압) · H 버티기 — 텐션 30~80';
     } else if (this.biteSeq.active || this.pendingFish) {
       text = '입질 중! 초릿대가 크게 휘는 3단계에 우클릭 챔질 (1단계 5% · 2단계 20% · 3단계 100%)';
     } else {
@@ -824,6 +867,16 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       mouthFragility: f.fight.mouthFragility,
     });
 
+    // ── 파이트 2D 무대 초기화 (상단 앵커 수중 단면뷰) ──
+    this.f2dProfile = getMovementProfile(f.speciesId);
+    this.f2dPos = { x: (Math.random() - 0.5) * 70, y: 95 + Math.random() * 25 };
+    this.f2dHeading = pickRunHeading(
+      this.f2dProfile, Math.atan2(this.f2dPos.y, this.f2dPos.x), Math.random(), Math.random(),
+    );
+    this.f2dRunTimer = 0;
+    this.f2dPrevPattern = 'none';
+    if (!this.fight2DG) this.fight2DG = this.add.graphics().setDepth(87);
+
     // 물고기 실루엣 접근 연출
     const bx = this.screenX(this.rig.baitX);
     const by = this.depthY(this.rig.baitZ);
@@ -836,7 +889,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.cameras.main.shake(180, 0.004);
     this.playHookUpEffect();
     this.prevStage = null;
-    this.stateText.setText('챔질 성공! 좌클릭 유지 = 릴링 · H = 버티기 — 텐션 30~80 유지!');
+    this.stateText.setText('챔질 성공! 좌클릭 릴링 · ←/→ 로드 스티어 · H 버티기 — 텐션 30~80!');
   }
 
   // ── 루어 액션 (호핑 / 트위칭·저킹) ──────────────────
@@ -868,6 +921,155 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       },
     });
     this.flashState('트위칭! 루어가 튀어오릅니다');
+  }
+
+  /**
+   * 다트 (←/→ 탭) — 횡 트위칭 1스트로크: 루어가 해당 방향으로 횡 임펄스 + 짧은 유인 정지.
+   * "좌×3 우×3" 연타로 지그재그 액션. 드리프트 + 루어 모드에서만.
+   */
+  private doDart(dir: -1 | 1): void {
+    if (this.fpState !== 'drift' || !this.lureMode || this.guideContainer) return;
+    if (this.twitchCooldown > 0) return;
+    this.twitchCooldown = 0.35;
+    this.rigPose = 'twitch';
+    this.poseTimer = 0.45;
+    this.rig.baitX += dir * 0.7;   // 횡 임펄스 (m)
+    this.rig.baitZ = Math.max(0.3, this.rig.baitZ - 0.25);
+    this.flashState(dir < 0 ? '다트! (좌)' : '다트! (우)');
+  }
+
+  // ═══════════════════════════════════════════════════
+  // 파이트 2D 무대 — 상단 앵커 수중 단면뷰 (FIGHT_MODE_2D_SPEC 1인칭 통합)
+  //  가로 = 좌우 횡 러닝 / 세로 = 수심(위=수면·플레이어쪽) / 줄색 = 텐션 그라데이션
+  // ═══════════════════════════════════════════════════
+  private updateFight2DStage(dt: number, st: FightStatus, steerDir: -1 | 0 | 1, reeling: boolean): void {
+    if (!this.fight2DG || !this.hookedFish) return;
+    const R = 132;                                  // 무대 반경
+    const cx = GAME_WIDTH / 2, cy = 408;            // 무대 중심 (텐션바 아래·쿨러 위)
+    const anchorX = 0, anchorY = -R + 14;           // 로드 팁 앵커 (로컬)
+
+    // ── 모션: 패턴 → heading (jump=상방 / dive=하방 / lateral=좌우 / none=프로필 러닝) ──
+    if (st.pattern !== this.f2dPrevPattern) {
+      this.f2dPrevPattern = st.pattern;
+      const spread = (Math.random() - 0.5) * 0.5;
+      if (st.pattern === 'jump') this.f2dHeading = -Math.PI / 2 + spread;
+      else if (st.pattern === 'dive') this.f2dHeading = Math.PI / 2 + spread;
+      else if (st.pattern === 'lateral') this.f2dHeading = (st.lateralDir < 0 ? Math.PI : 0) + spread * 0.5;
+      else this.f2dHeading = pickRunHeading(this.f2dProfile, Math.atan2(this.f2dPos.y - anchorY, this.f2dPos.x), Math.random(), Math.random());
+    }
+    this.f2dRunTimer += dt;
+    if (st.pattern === 'none' && this.f2dRunTimer >= this.f2dProfile.runDurationSec) {
+      this.f2dRunTimer = 0;
+      this.f2dHeading = pickRunHeading(this.f2dProfile, Math.atan2(this.f2dPos.y - anchorY, this.f2dPos.x), Math.random(), Math.random());
+    }
+
+    // 제압 근접(진행 82+) — 머리를 앵커 쪽으로 돌리고 수면 부상
+    const subdued = st.progress >= 82;
+    if (subdued) {
+      const toAnchor = Math.atan2(anchorY - this.f2dPos.y, anchorX - this.f2dPos.x);
+      let d = toAnchor - this.f2dHeading;
+      while (d > Math.PI) d -= Math.PI * 2;
+      while (d < -Math.PI) d += Math.PI * 2;
+      this.f2dHeading += d * 1.6 * dt;
+    }
+
+    // 추진(패턴·파워·피로) − 줄이 앵커쪽으로 끄는 힘(릴링)
+    const patternMult = st.pattern === 'dive' ? 1.6 : st.pattern === 'lateral' ? 1.5 : st.pattern === 'jump' ? 1.2 : 0.75;
+    const fatigue = Math.max(0.25, 1 - st.progress / 130);
+    const thrust = (26 + this.hookedFish.powerFactor * 85) * patternMult * fatigue * this.f2dProfile.runPower;
+    const pull = (reeling ? 62 : 14) + (subdued ? 40 : 0);
+    const len = Math.hypot(this.f2dPos.x - anchorX, this.f2dPos.y - anchorY) || 1;
+    this.f2dPos.x += (Math.cos(this.f2dHeading) * thrust - ((this.f2dPos.x - anchorX) / len) * pull) * dt;
+    this.f2dPos.y += (Math.sin(this.f2dHeading) * thrust - ((this.f2dPos.y - anchorY) / len) * pull) * dt;
+    // 수면(앵커) 아래 → 무대 원 내부 순서로 클램프 (역순이면 y 보정이 원 밖으로 밀어냄)
+    if (this.f2dPos.y < anchorY + 26) this.f2dPos.y = anchorY + 26;
+    const dC = Math.hypot(this.f2dPos.x, this.f2dPos.y);
+    const maxR = R - 18;
+    if (dC > maxR) { this.f2dPos.x *= maxR / dC; this.f2dPos.y *= maxR / dC; }
+
+    // ── 렌더 ──
+    const g = this.fight2DG;
+    g.clear();
+    // 무대 원 (수중 단면)
+    g.fillStyle(0x0a2f4c, 0.78);
+    g.fillCircle(cx, cy, R);
+    g.lineStyle(2.5, 0x2a5a8a, 0.9);
+    g.strokeCircle(cx, cy, R);
+    // 수심 눈금 물결
+    g.lineStyle(1, 0x134870, 0.5);
+    for (let i = -2; i <= 2; i++) g.lineBetween(cx - R * 0.72, cy + i * 34, cx + R * 0.72, cy + i * 34 + 3);
+
+    // 로드 팁 앵커 (스티어 기울임)
+    const tipX = cx + anchorX + steerDir * 14;
+    const tipY = cy + anchorY;
+    g.fillStyle(0xd8d4c8, 1);
+    g.fillTriangle(tipX - 6, tipY - 8, tipX + 6, tipY - 8, tipX, tipY + 4);
+    g.fillStyle(0xff8a3d, 1);
+    g.fillCircle(tipX, tipY + 4, 2.6);
+
+    // 낚싯줄 — 텐션 연속 그라데이션 (미색→노랑→빨강) + 임계 펄스
+    const t = st.tension / 100;
+    const col = t < 0.6
+      ? Phaser.Display.Color.Interpolate.ColorWithColor(
+        Phaser.Display.Color.ValueToColor(0xdff2ff), Phaser.Display.Color.ValueToColor(0xffe066), 60, Math.round(t * 100))
+      : Phaser.Display.Color.Interpolate.ColorWithColor(
+        Phaser.Display.Color.ValueToColor(0xffe066), Phaser.Display.Color.ValueToColor(0xff3333), 40, Math.round((t - 0.6) * 100));
+    const lineColor = Phaser.Display.Color.GetColor(col.r, col.g, col.b);
+    const critical = t >= 0.85;
+    const pulse = critical ? 0.55 + 0.45 * Math.abs(Math.sin(this.time.now / 90)) : 1;
+    const jx = critical ? (Math.random() - 0.5) * 2.4 : 0;
+    const fx2 = cx + this.f2dPos.x, fy2 = cy + this.f2dPos.y;
+    g.lineStyle(1.4 + t * 1.8 + (critical ? 0.8 : 0), lineColor, pulse);
+    g.lineBetween(tipX, tipY + 4, fx2 + jx, fy2 + jx);
+
+    // 물고기 — 회전 = heading / 깊이 → 투명도(최소 0.25)·축소 / 제압 근접 = 옆으로 롤(은빛)
+    const depthT = Phaser.Math.Clamp((this.f2dPos.y - anchorY) / (R * 1.5), 0, 1);
+    const alpha = Phaser.Math.Clamp(1 - depthT * 0.85, 0.25, 1);
+    const scale = (1 - depthT * 0.25) * Phaser.Math.Clamp(0.8 + this.hookedFish.powerFactor * 0.55, 0.8, 1.4);
+    const s = 34 * scale;
+    const hx = Math.cos(this.f2dHeading), hy = Math.sin(this.f2dHeading);
+    g.fillStyle(subdued ? 0xb8ccd8 : 0x14344e, subdued ? 0.92 : Math.max(0.4, alpha));
+    // 몸통(heading 방향 타원 근사 — 머리/꼬리 정점으로 다각형)
+    const px = -hy, py = hx;   // 수직 벡터
+    const bodyW = subdued ? s * 0.24 : s * 0.4;
+    g.beginPath();
+    g.moveTo(fx2 + hx * s * 0.6, fy2 + hy * s * 0.6);                       // 머리
+    g.lineTo(fx2 + px * bodyW * 0.5, fy2 + py * bodyW * 0.5);
+    g.lineTo(fx2 - hx * s * 0.55 + px * bodyW * 0.3, fy2 - hy * s * 0.55 + py * bodyW * 0.3);
+    g.lineTo(fx2 - hx * s * 0.9, fy2 - hy * s * 0.9);                       // 꼬리 끝
+    g.lineTo(fx2 - hx * s * 0.55 - px * bodyW * 0.3, fy2 - hy * s * 0.55 - py * bodyW * 0.3);
+    g.lineTo(fx2 - px * bodyW * 0.5, fy2 - py * bodyW * 0.5);
+    g.closePath();
+    g.fillPath();
+    // 밝은 윤곽선 — 어두운 무대 배경에서 실루엣 가시성 확보 (깊이 알파 연동)
+    g.lineStyle(1.6, subdued ? 0xffffff : 0x9fd0e4, Math.max(0.35, alpha * 0.95));
+    g.strokePath();
+    // 머리 점
+    g.fillStyle(0xeaf6ff, Math.max(0.5, alpha));
+    g.fillCircle(fx2 + hx * s * 0.45, fy2 + hy * s * 0.45, 2.6);
+
+    // 상태 라벨 (무대 하단 안쪽)
+    const label = subdued ? '수면 부상 — 곧 캐치!' :
+      st.pattern === 'lateral' ? `${st.lateralDir < 0 ? '←' : '→'} 횡 러닝 — 같은쪽 스티어로 버티기` :
+      st.pattern === 'dive' ? '깊이 박기 — H 버티기' :
+      st.pattern === 'jump' ? '바늘털이 — 릴링 멈춤!' : '';
+    this.fight2DLabel(label, cx, cy + R - 24, subdued ? '#7fe6b0' : critical ? '#ff9a6a' : '#9fd0e4');
+  }
+
+  private f2dLabelText?: Phaser.GameObjects.Text;
+  private fight2DLabel(msg: string, x: number, y: number, color: string): void {
+    if (!this.f2dLabelText || !this.f2dLabelText.active) {
+      this.f2dLabelText = this.add.text(x, y, '', {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', fontStyle: 'bold',
+      }).setOrigin(0.5).setDepth(88);
+    }
+    this.f2dLabelText.setText(msg).setColor(color).setPosition(x, y).setVisible(msg.length > 0);
+  }
+
+  /** 파이트 2D 무대 정리 (랜딩/실패/재캐스팅) */
+  private clearFight2DStage(): void {
+    this.fight2DG?.clear();
+    this.f2dLabelText?.setVisible(false);
   }
 
   /** 채비 조립(UtilizationPanel과 동일 기준)으로 침강 파라미터 산출 */
@@ -1550,7 +1752,9 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     const tick = this.biteEngine.update({
       dtSec: dt,
       // 조경지대(Hit Zone) 1.6배 / 본대조류 0.35배 — 조류 존 입질 배율
-      baseProbPerSec: 0.035 * baitAffinity * indexModifier * influence.biteMult * this.lureActionMult,
+      // × 피딩타임 활성도(계절/조류/날씨) × 필드 이벤트(보일링 링/스쿨 히트) 보너스
+      baseProbPerSec: 0.035 * baitAffinity * indexModifier * influence.biteMult * this.lureActionMult
+        * this.feeding.activity * (this.cfg.fieldEvent?.biteMult ?? 1),
       inReefZone: inReef,
       isHold: hold,
       alignmentIndex: this.lineTension.alignmentIndex,
@@ -1609,6 +1813,20 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     }
   }
 
+  /** 피딩타임 활성도 갱신 — 계절 시간창 × 물때/조류 × 날씨 (실데이터 캐시) */
+  private refreshFeedingActivity(): void {
+    const tide = calculateTideInfo();
+    this.feeding = computeFeedingActivity({
+      hour: kstHour() + new Date().getMinutes() / 60,
+      month: new Date().getMonth() + 1,
+      tidePhase: tide.tidePhase,
+      minutesToNextTide: tide.minutesToNextTide,
+      nextTideType: tide.nextTideType,
+      weatherKind: ExternalDataStore.getWeatherKind(this.cfg.region),
+      regionProfile: feedingRegionProfileOf(this.cfg.region),
+    });
+  }
+
   /** 현재 채비 미끼 → BaitKey 매핑 (루어 장착 시 'lure') */
   private currentBaitKey(): BaitKey {
     // 바늘 소켓의 루어(가짜미끼)가 미끼보다 우선 — 루어 채비는 미끼 소켓이 비어 있다
@@ -1659,6 +1877,16 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       if (lure.spawnBinding?.length) ctx.speciesFilter = lure.spawnBinding;
       if (lure.speciesWeightBias) ctx.speciesWeightBias = lure.speciesWeightBias;
       if (lure.targetHabitatBias?.length) ctx.habitatBias = lure.targetHabitatBias;
+      // 루어 총중량 → 크기 등급(tier) 가중 (큰 지그일수록 대물, 소형은 항상 가능)
+      ctx.lureWeightG = InventoryStore.getLureRigWeightG();
+    }
+    // 포말지대(농어 야간 예외) — 발앞 반탄류(counter) 존이 백파·포말대에 해당
+    ctx.inWashZone = this.lastTidal?.zone === 'counter';
+    // 필드 이벤트(보일링/스쿨링) 착수 보너스 — 어종 가중 병합 + tier 상향
+    const ev = this.cfg.fieldEvent;
+    if (ev) {
+      if (ev.speciesBias) ctx.speciesWeightBias = { ...ev.speciesBias, ...ctx.speciesWeightBias };
+      if (ev.tierBoost) ctx.eventTierBoost = true;
     }
     return ctx;
   }
@@ -1691,7 +1919,12 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       this.overstrain = Math.max(0, this.overstrain - dt * 1.5);
     }
 
-    const st = this.fight.update({ dtSec: dt, holding: this.hKey.isDown, reeling: effectiveReeling });
+    // 로드 스티어 (←/→) — 횡이동 러닝과 같은쪽 = 버티기 / 반대쪽 = 제압 (core 밀당)
+    const steerDir: -1 | 0 | 1 = this.steerLeftKey?.isDown ? -1 : this.steerRightKey?.isDown ? 1 : 0;
+    const st = this.fight.update({ dtSec: dt, holding: this.hKey.isDown, reeling: effectiveReeling, steerDir });
+
+    // 파이트 2D 무대 (상단 앵커 수중 단면뷰) 갱신
+    this.updateFight2DStage(dt, st, steerDir, effectiveReeling);
     this.rodBendDeg = 20 + (st.tension / 100) * 45;   // 파이팅 중 초릿대는 텐션 비례로 휨
 
     this.renderFightUi(st);
@@ -1778,6 +2011,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   private failAndExit(title: string, body: string): void {
     this.fpState = 'result';
     this.fight = null;
+    this.clearFight2DStage();
     this.fishShadow?.destroy();
     this.fishShadow = undefined;
     this.floatObj.setY(WATERLINE);
@@ -1818,6 +2052,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       // 보관/방생 선택은 유저 몫 — 결정 패널 표시
       this.fpState = 'result';
       this.fight = null;
+      this.clearFight2DStage();
       this.fishShadow?.destroy();
       this.fishShadow = undefined;
       this.floatObj.setY(WATERLINE);
@@ -1976,6 +2211,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   private finishFight(title: string, body: string, color: string, fishTexture?: string): void {
     this.fpState = 'result';
     this.fight = null;
+    this.clearFight2DStage();
     this.fishShadow?.destroy();
     this.fishShadow = undefined;
     this.floatObj.setY(WATERLINE);
@@ -2057,6 +2293,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.resultContainer?.destroy();
     this.resultContainer = undefined;
     this.fpState = 'drift';
+    this.clearFight2DStage();
     this.rig = createUnderwaterRig(0);
     this.viewCenterX = 0;
     this.lineTension.resetAlignment();
@@ -2387,6 +2624,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       `정렬도 A ${(this.lineTension.alignmentIndex * 100).toFixed(0)}%`,
       `밑밥 동조 ${(chumSync * 100).toFixed(0)}%`,
       `입질 확률 ${(probPerSec * 100).toFixed(1)}%/s${actionLeft > 0 ? '  [리액션 x2.0]' : ''}${this.lureMode ? (this.lureActionMult < 1 ? '  [루어 방치 x0.15 — 액션 필요!]' : `  [액션 x${this.lureActionMult.toFixed(1)}]`) : ''}`,
+      `피딩 ${this.feeding.label} x${this.feeding.activity.toFixed(2)}${this.cfg.fieldEvent ? `  [${this.cfg.fieldEvent.label} x${this.cfg.fieldEvent.biteMult.toFixed(1)}]` : ''}`,
       `지형: ${inReef ? (hold ? '여 밭 안착 (x2.5)' : '여 밭') : '모래/갯벌'}${snagProgress > 0.3 ? '  ⚠ 밑걸림 주의' : ''}`,
       `미끼 수심 ${this.rig.baitZ.toFixed(1)}m / 매듭 ${this.zLimitM}m / 바닥 ${this.cfg.zMaxM.toFixed(0)}m`,
     ];

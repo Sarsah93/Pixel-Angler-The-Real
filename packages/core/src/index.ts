@@ -112,6 +112,26 @@ export { calculateBiteChance, pickFishByWeight, generateFishSize } from './simul
 export type { BiteCalculationResult, BiteFactors } from './simulation/FishBiteEngine.js';
 export { getLineTensionRatio, getEffectiveDragKg, getTensionDangerLevel, getRetrieveSpeedMps, adjustDrag, simulateFightTick, canReel, getRecommendedDragKg, castLineOut } from './simulation/LinePhysics.js';
 export type { LineState } from './simulation/LinePhysics.js';
+
+// 회 뜨기(활어 손질~삼면뜨기~박피) 미니게임 — 방향 상태 머신 + 컷 판정
+export type {
+  OrientationState, ButcheryTool, CutPoint, CutSpec, ButcheryProfile,
+  ButcheryPrimitive, ButcheryStage, CutEvalResult, SashimiGrade, ButcheryResult,
+} from './types/Butchery.js';
+export { ORIENTATION_LABEL } from './types/Butchery.js';
+export { BUTCHERY_PROFILES, DEFAULT_BUTCHERY_PROFILE, getButcheryProfile } from './db-schema/ButcheryProfiles.js';
+export type { SashimiGradeInput } from './simulation/ButcheryProcess.js';
+export {
+  ButcheryProcess, evaluateCut, computeSashimiGrade, buildButcheryStages,
+} from './simulation/ButcheryProcess.js';
+
+// 파이트 모드 2D 횡 러닝 (측면하중 + heading/displacement — LinePhysics 1D 재사용 확장)
+export type { Vec2, MovementProfile, FightState2D, FightInput2D, FightTick2DResult } from './simulation/FightPhysics2D.js';
+export {
+  simulateFightTick2D, computeFishThrustKg, pickRunHeading,
+  MOVEMENT_PROFILES, DEFAULT_MOVEMENT_PROFILE, getMovementProfile,
+  TIER_POWER_MUL, TIER_STAMINA_MUL, LOW_STAMINA_ROLL,
+} from './simulation/FightPhysics2D.js';
 export { calculateCast } from './simulation/CastingModel.js';
 export type { CastInput, CastResult } from './simulation/CastingModel.js';
 export { evaluateFishingSafety, isGoldenHour, isNighttime, buildFishingEnvironment, getWindDirectionLabel } from './simulation/WeatherModel.js';
@@ -232,6 +252,20 @@ export type {
   FishMasterSpec, SpawnContext, SpawnedFish,
 } from './simulation/FishSpawningOracle.js';
 export { ORACLE_FISH_DB, spawnFish, classifyLayer, getBaitAffinity } from './simulation/FishSpawningOracle.js';
+
+// 크기 등급(소/중/대) + 루어 무게·주간·급심 게이트 (중대형 회유어)
+export type { SizeTier, TierRollContext } from './simulation/SizeTierRules.js';
+export {
+  SIZE_TIER_BOUNDS, SIZE_TIER_LABEL, PELAGIC_DAYTIME_SPECIES,
+  classifySizeTier, rollTierWeights, rollTieredLength,
+} from './simulation/SizeTierRules.js';
+
+// 피딩타임 (계절 시간창 × 조류 × 날씨 → 활성도 배율 — 입질/보일링/스쿨링 공통 입력)
+export type { FeedingRegionProfile, FeedingTimeInput, FeedingActivityResult } from './simulation/FeedingTimeCalculator.js';
+export {
+  computeFeedingActivity, seasonTimeWindow, tideActivityFactor,
+  weatherActivityFactor, feedingRegionProfileOf,
+} from './simulation/FeedingTimeCalculator.js';
 
 // 채비 추천 알고리즘 (지역/지형/물때/대상어종 → 조법·찌·봉돌·미끼)
 export type { FishingTechnique, SnagRisk, RigRecoContext, RigRecommendation } from './simulation/RigRecommender.js';

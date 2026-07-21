@@ -270,7 +270,7 @@ function createSeedItems(): InvItem[] {
   // ── 루어 카탈로그 전종 + 지그헤드 (루어 카테고리 — 종류별 제원 수동 검증용) ──
   const lureIcon: Record<string, string> = {
     worm_grub: '🪱', soft_jerkbait: '🐟', plug_minnow: '🐟',
-    spoon: '🥄', spinner: '🌀', egi: '🦑', metal_jig: '🔩',
+    spoon: '🥄', spinner: '🌀', egi: '🦑', metal_jig: '🔩', tairaba: '🔴',
   };
   for (const lure of LURES_CATALOG_DB) {
     defs.push({

@@ -172,6 +172,12 @@ export class CoolerPanel extends DraggablePanel {
     const my = Math.min(localY, PANEL_H - mh - 6);
 
     const menu = this.scene.add.container(mx, my);
+    // 바깥 클릭 시 메뉴 자동 닫힘 — 전체 화면 투명 백드롭 (메뉴 행이 위라 행 클릭은 유지)
+    const backdrop = this.scene.add.rectangle(-(this.x + mx), -(this.y + my), GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.001)
+      .setOrigin(0, 0)
+      .setInteractive();
+    backdrop.on('pointerdown', () => this.closeCtxMenu());
+    menu.add(backdrop);
     const bg = this.scene.add.graphics();
     bg.fillStyle(0x0d2236, 0.98);
     bg.fillRoundedRect(0, 0, mw, mh, 5);

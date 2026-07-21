@@ -9,9 +9,12 @@
  *  - 필터·가중: 현재 미끼 수심층 + 지형(여밭/모래) + 미끼 종류 + 물때 + 주야간
  *  - 정규 분포(Box-Muller)로 최종 크기(cm)/무게(g)/성별 결정
  *
- * 실측 기반 데이터 (2026-07-15~16 사용자 제공 43종) — 추후 API 연동으로 교체 예정.
+ * 실측 기반 데이터 (2026-07-15~16 사용자 제공 43종 + 2026-07-20 지깅 중대형 확장) —
+ * 추후 API 연동으로 교체 예정. 중대형 회유어는 SizeTierRules(크기 등급/주간·급심 게이트)와 연동.
  * 순수 TS — 렌더링/브라우저 API 없음.
  */
+
+import { rollTieredLength } from './SizeTierRules.js';
 
 /** 수심층 분류 */
 export type SwimLayer = 'surface' | 'mid' | 'bottom';
@@ -137,7 +140,8 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
   {
     speciesId: 'red_seabream', nameKo: '참돔', nameEn: 'Red Seabream',
     habitat: ['mixed'], minDepthM: 20, maxDepthM: 100, preferredLayers: ['mid', 'bottom'],
-    baitPreference: { worm_king: 40, krill: 30, shellfish: 20, corn: 10 },
+    // 타이라바(러버지그) 폴링·등속 릴링에 잘 반응 — lure 선호 반영 (2026-07 리서치)
+    baitPreference: { worm_king: 40, krill: 30, shellfish: 20, lure: 25, corn: 10 },
     minCm: 22, maxCm: 100, meanCm: 52, sdCm: 13, weightFactor: 0.019,
     maleRatio: 0.5,
     sexRule: (len) => (len < 30 ? 0.5 : 0.55),
@@ -477,8 +481,8 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     baitPreference: { livefish: 50, lure: 35, krill: 15 },
     minCm: 50, maxCm: 150, meanCm: 90, sdCm: 18, weightFactor: 0.012, maleRatio: 0.5,
     sexNote: '겨울 대방어 — 부시리와 함께 드랙을 치고 나가는 대형 회유어',
-    // 여명/황혼 피딩 회유어 — 한밤엔 활성 급감
-    nightBonus: 0.5, tideActivity: sariPeak(0.3, 0.85),
+    // 여명/황혼 피딩 회유어 — 한밤엔 활성 급감. 금지체장 30cm (2026-07 리서치)
+    legalMinCm: 30, nightBonus: 0.5, tideActivity: sariPeak(0.3, 0.85),
     fight: { basePower: 0.95, patternWeights: { jump: 0.2, dive: 0.25, lateral: 0.55 }, intervalMult: 0.75, mouthFragility: 0.05 },
   },
   {
@@ -573,6 +577,39 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     nightBonus: 1.5, tideActivity: flatTide(0.6),
     fight: { basePower: 0.55, patternWeights: { jump: 0.0, dive: 0.8, lateral: 0.2 }, intervalMult: 1.0, mouthFragility: 0.2 },
   },
+  {
+    speciesId: 'cuttlefish', nameKo: '갑오징어', nameEn: 'Cuttlefish',
+    // 연안 방파제·모래 바닥에서 20~50cm 단차로 붙는 에깅 대상 (2026-07 리서치)
+    habitat: ['structure', 'sand'], minDepthM: 5, maxDepthM: 50, preferredLayers: ['bottom'],
+    baitPreference: { lure: 85 }, egiOnly: true,
+    minCm: 10, maxCm: 30, meanCm: 17, sdCm: 4, weightFactor: 0.12, maleRatio: 0.5,
+    sexNote: '주야 무관하게 먹는 연안 에깅 입문 대상 — 바닥 단차에 에기를 붙여 노린다',
+    nightBonus: 1.2, tideActivity: flatTide(0.65),
+    fight: { basePower: 0.3, patternWeights: { jump: 0.0, dive: 0.6, lateral: 0.4 }, intervalMult: 1.2, mouthFragility: 0.3 },
+  },
+  // ── 루어/지깅 중대형 (2026-07 리서치 — 잿방어/삼치 신규) ──
+  {
+    speciesId: 'greater_amberjack', nameKo: '잿방어', nameEn: 'Greater Amberjack',
+    // '바다의 폭군' — 남해·제주 급심 심해 지깅 대물 (최대 2m/40kg)
+    habitat: ['open'], minDepthM: 30, maxDepthM: 150, preferredLayers: ['mid'],
+    baitPreference: { lure: 55, livefish: 45 },
+    minCm: 50, maxCm: 200, meanCm: 95, sdCm: 25, weightFactor: 0.013, maleRatio: 0.5,
+    sexNote: '이마가 각지고 눈을 가로지르는 사선 줄무늬로 방어와 구분 — 방어·부시리보다 힘이 강함',
+    // 여명/황혼 피딩 회유어 — 한밤엔 활성 급감 (청물 주간 규칙)
+    nightBonus: 0.45, tideActivity: sariPeak(0.3, 0.85),
+    fight: { basePower: 1.0, patternWeights: { jump: 0.1, dive: 0.35, lateral: 0.55 }, intervalMult: 0.65, mouthFragility: 0.05 },
+  },
+  {
+    speciesId: 'spanish_mackerel', nameKo: '삼치', nameEn: 'Japanese Spanish Mackerel',
+    // 표층 고속 회유 이빨 포식자 — 메탈지그·스푼 고속 릴링, 해뜰녘·해질녘 집중
+    habitat: ['open'], minDepthM: 0, maxDepthM: 50, preferredLayers: ['surface'],
+    baitPreference: { lure: 70, livefish: 30, fishcut: 20 },
+    minCm: 40, maxCm: 100, meanCm: 62, sdCm: 10, weightFactor: 0.008, maleRatio: 0.5,
+    sexNote: '날카로운 이빨 — 목줄이 쓸리기 쉬워 굵은 쇼크리더가 유리. 가을(9~11월)이 시즌',
+    // 주행성 — 여명/황혼 피딩, 한밤 억제. 5월 금어기
+    closedMonths: [5], nightBonus: 0.4, tideActivity: flatTide(0.7),
+    fight: { basePower: 0.6, patternWeights: { jump: 0.2, dive: 0.1, lateral: 0.7 }, intervalMult: 0.75, mouthFragility: 0.35 },
+  },
 ];
 
 /** 스폰/입질 컨텍스트 */
@@ -609,6 +646,17 @@ export interface SpawnContext {
   speciesWeightBias?: Partial<Record<string, number>>;
   /** 서식 성향 가중 (LureSpec.targetHabitatBias) — 서식 지형 교집합이면 가중 */
   habitatBias?: string[];
+
+  // ── 크기 등급/행동 규칙 연동 (SizeTierRules — 2026-07) ──
+  /** 루어 채비 총중량 (g) — 클수록 대물 tier 가중. 미끼 채비면 미지정 */
+  lureWeightG?: number;
+  /**
+   * 포말지대(백파·파도치는 여/직벽 앞) 여부 — 농어 야간 예외 룰.
+   * 야간 + 포말이면 농어 스폰·입질이 대폭 강세(surfNightBonus).
+   */
+  inWashZone?: boolean;
+  /** 보일링 히트 등 필드 이벤트 tier 상향 가중 */
+  eventTierBoost?: boolean;
 }
 
 /** 당첨 물고기 결과 */
@@ -691,8 +739,10 @@ function weightedCandidates(ctx: SpawnContext): { spec: FishMasterSpec; weight: 
     // 루어 타겟 가중 (speciesWeightBias) + 서식 성향 가중 (habitatBias)
     const lureBias = 1 + (ctx.speciesWeightBias?.[spec.speciesId] ?? 0);
     const habW = ctx.habitatBias && ctx.habitatBias.some((h) => spec.habitat.includes(h as HabitatTerrain)) ? 1.3 : 1;
+    // 농어 포말/야간 예외 (surfNightBonus) — 포말지대 + 야간이면 대폭 강세
+    const washW = spec.speciesId === 'sea_bass' && ctx.inWashZone && ctx.isNight ? 2.2 : 1;
 
-    return { spec, weight: layerW * depthW * terrW * baitW * tideW * dayNightW * catchW * lureBias * habW };
+    return { spec, weight: layerW * depthW * terrW * baitW * tideW * dayNightW * catchW * lureBias * habW * washW };
   }).filter((c) => c.weight > 0.001);
 }
 
@@ -729,9 +779,19 @@ export function spawnFish(ctx: SpawnContext): SpawnedFish {
     if (roll <= 0) { picked = c.spec; break; }
   }
 
-  // 개체 생성
+  // 개체 생성 — tier 등재 어종(중대형 회유어)은 크기 등급 규칙으로 길이 결정:
+  // 루어 무게↑ → 대물 가중 / 청물 야간 = 소형만 / 얕은 수심 = 중·대형 저확률.
+  // 미등재 어종은 기존 가우시안 분포 그대로.
+  const tiered = rollTieredLength(picked.speciesId, picked.minCm, picked.maxCm, {
+    lureWeightG: ctx.lureWeightG,
+    zMax: ctx.zMax,
+    isNight: ctx.isNight,
+    eventTierBoost: ctx.eventTierBoost,
+  });
   const lengthCm = Math.round(
-    Math.min(picked.maxCm, Math.max(picked.minCm, gaussian(picked.meanCm, picked.sdCm))) * 10,
+    (tiered >= 0
+      ? tiered
+      : Math.min(picked.maxCm, Math.max(picked.minCm, gaussian(picked.meanCm, picked.sdCm)))) * 10,
   ) / 10;
   const weightG = Math.round(picked.weightFactor * Math.pow(lengthCm, 3));
   const maleRatio = picked.sexRule ? picked.sexRule(lengthCm) : picked.maleRatio;

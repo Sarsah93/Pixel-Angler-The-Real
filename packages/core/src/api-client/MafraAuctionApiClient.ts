@@ -100,6 +100,7 @@ export const MAFRA_ITEM_TO_SPECIES: { item: string; variety?: string; speciesId:
   { item: '벵에돔', speciesId: 'largescale_blackfish' },
   { item: '벵어돔', speciesId: 'largescale_blackfish' },
   { item: '돔', variety: '긴꼬리', speciesId: 'longtail_blackfish' },
+  { item: '잿방어', speciesId: 'greater_amberjack' },   // '잿방어'⊃'방어' — 반드시 '방어'보다 먼저
   { item: '방어', speciesId: 'yellowtail' },
   { item: '부시리', speciesId: 'amberjack' },
   { item: '노래미', speciesId: 'greenling' },
@@ -135,6 +136,15 @@ export const MAFRA_ITEM_TO_SPECIES: { item: string; variety?: string; speciesId:
   { item: '덕대', speciesId: 'korean_pomfret' },
   { item: '병어', speciesId: 'silver_pomfret' },
   { item: '도루묵', speciesId: 'sandfish' },
+
+  // ── 루어/지깅 중대형 + 두족류 (2026-07-20) ──
+  // 부분 일치 순서 규칙: '갑오징어'·'무늬오징어'⊃'오징어' — 긴 쪽 먼저.
+  // ('잿방어'⊃'방어'는 위쪽 '방어' 항목 바로 앞에 배치함)
+  { item: '삼치', speciesId: 'spanish_mackerel' },
+  { item: '갑오징어', speciesId: 'cuttlefish' },
+  { item: '무늬오징어', speciesId: 'squid' },
+  { item: '한치', speciesId: 'squid' },
+  { item: '문어', speciesId: 'octopus' },
 ];
 
 /** MAFRA 행 → 게임 어종 ID (매칭 실패 시 undefined) */

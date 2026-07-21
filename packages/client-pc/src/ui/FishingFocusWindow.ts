@@ -1,10 +1,19 @@
 /**
  * @file FishingFocusWindow.ts
- * @description 낚시 진행 시 수면과 찌를 집중 확대해서 보여주는 원형/사각형 뷰포트
+ * @description 낚시 진행 시 수면과 찌를 집중 확대해서 보여주는 원형 뷰포트
+ *
+ * 파이팅 상태에서는 **2D 수중 단면 무대**로 승격된다 (2026-07 파이트 2D 개편):
+ *  - 좌표: 가로 X = 좌우 횡 러닝 / 세로 Y = 수심(위=수면·플레이어쪽, 아래=깊이 박기)
+ *  - 로드 팁 앵커 = 뷰 상단 중앙 — 스티어(←/→)에 따라 살짝 기울어짐
+ *  - 낚싯줄 = 앵커→물고기 라인. **줄 색 = 텐션 연속 그라데이션**
+ *    (미색→노랑→빨강, 임계 0.85+ 깜빡임·굵기↑ — 텐션바 임계와 동일 값 동기화)
+ *  - 걸린 물고기 1마리를 물리(FightPhysics2D) 구동으로 렌더:
+ *    회전 = heading(도주 방향), 위치 = displacement,
+ *    **깊이 → 투명도**(깊을수록 흐림, 최소 알파 0.25), 저스태미나 = 옆으로 눕는 롤
  */
 
 import Phaser from 'phaser';
-import type { FishSpecies } from '@tra/core';
+import type { FishSpecies, FightState2D, FightTick2DResult } from '@tra/core';
 
 interface FishShadowData {
   orbitRadius: number;  // 회전 반경
@@ -26,6 +35,13 @@ export class FishingFocusWindow extends Phaser.GameObjects.Container {
   private shadowObjects: { graphics: Phaser.GameObjects.Graphics; data: FishShadowData }[] = [];
   private hasSurfaceFish = false;
   private hasBoilingFish = false;
+
+  // ── 파이트 2D 무대 (fighting 상태 전용) ──
+  private fightFishG?: Phaser.GameObjects.Graphics;
+  private fightLineG?: Phaser.GameObjects.Graphics;
+  private rodTipG?: Phaser.GameObjects.Graphics;
+  /** 임계 깜빡임 누적 시계 */
+  private pulseClock = 0;
 
   constructor(scene: Phaser.Scene, x: number, y: number, size: number) {
     super(scene, x, y);
@@ -148,16 +164,144 @@ export class FishingFocusWindow extends Phaser.GameObjects.Container {
         ease: 'Quad.easeIn',
       });
     } else if (state === 'fighting') {
-      this.bobber.setVisible(true);
-      // 격렬한 밀당 좌우 흔들림
-      this.scene.tweens.add({
-        targets: this.bobber,
-        x: { from: -15, to: 15 },
-        y: { from: -5, to: 8 },
-        duration: 150,
-        yoyo: true,
-        repeat: -1,
-      });
+      // 파이트 2D 무대 — 찌 대신 걸린 물고기 1마리를 물리 구동으로 렌더
+      this.bobber.setVisible(false);
+      this.enterFightStage();
+    }
+
+    if (state !== 'fighting') this.exitFightStage();
+  }
+
+  // ═══════════════════════════════════════════════════
+  // 파이트 2D 무대 (상단 앵커 수중 단면뷰)
+  // ═══════════════════════════════════════════════════
+  /** 앵커(로드 팁) 로컬 좌표 — 뷰 상단 중앙 */
+  private get anchorY(): number {
+    return -this.size / 2 + 10;
+  }
+
+  private enterFightStage(): void {
+    this.exitFightStage();
+    this.fightLineG = this.scene.add.graphics();
+    this.fightFishG = this.scene.add.graphics();
+    this.rodTipG = this.scene.add.graphics();
+    this.add([this.fightLineG, this.fightFishG, this.rodTipG]);
+    this.pulseClock = 0;
+  }
+
+  private exitFightStage(): void {
+    this.fightLineG?.destroy(); this.fightLineG = undefined;
+    this.fightFishG?.destroy(); this.fightFishG = undefined;
+    this.rodTipG?.destroy(); this.rodTipG = undefined;
+  }
+
+  /**
+   * 파이트 2D 프레임 렌더 — 물리 결과를 시각으로 변환.
+   * state.fishPos는 뷰 반경을 벗어나지 않도록 **여기서 클램프**한다
+   * (물리(core)는 클램프하지 않음 — 뷰 책임).
+   */
+  updateFight2D(state: FightState2D, res: FightTick2DResult, deltaMs: number, fishSizePx = 26): void {
+    if (!this.fightFishG || !this.fightLineG || !this.rodTipG) return;
+    this.pulseClock += deltaMs;
+
+    // ── 위치 클램프 (뷰 원 내부 + 수면 아래) — 앵커 기준 로컬 좌표를 뷰 중심 좌표로 변환 ──
+    const R = this.size / 2 - 14;
+    // fishPos는 앵커(상단 중앙) 원점 — 뷰 중심 기준으로 옮긴다
+    let vx = state.fishPos.x;
+    let vy = this.anchorY + state.fishPos.y;
+    const d = Math.hypot(vx, vy);
+    if (d > R) { vx = (vx / d) * R; vy = (vy / d) * R; }
+    if (vy < this.anchorY + 14) vy = this.anchorY + 14;   // 수면(앵커) 위로는 못 올라감
+    // 클램프 결과를 물리 상태에 반영 (다음 틱 라인각이 화면과 일치하도록)
+    state.fishPos.x = vx;
+    state.fishPos.y = vy - this.anchorY;
+
+    // ── 깊이 → 투명도/크기 (이중 단서, 최소 알파 0.25) ──
+    const depthT = Phaser.Math.Clamp((vy - this.anchorY) / (R * 1.6), 0, 1);
+    const alpha = Phaser.Math.Clamp(1 - depthT * 0.9, 0.25, 1);
+    const scale = 1 - depthT * 0.3;
+
+    // ── 로드 팁 (스티어 기울임 반영) ──
+    const tipX = Math.sin(state.rodLeanAngle) * 16;
+    const tipY = this.anchorY;
+    this.rodTipG.clear();
+    this.rodTipG.fillStyle(0xd8d4c8, 1);
+    this.rodTipG.fillTriangle(tipX - 5, tipY - 6, tipX + 5, tipY - 6, tipX, tipY + 4);
+    this.rodTipG.fillStyle(0xff8a3d, 1);
+    this.rodTipG.fillCircle(tipX, tipY + 4, 2.4);
+
+    // ── 낚싯줄 — 텐션 연속 그라데이션 (미색→노랑→빨강) + 임계 펄스 ──
+    const t = res.combinedTensionRatio;
+    const color = t < 0.6
+      ? Phaser.Display.Color.Interpolate.ColorWithColor(
+        Phaser.Display.Color.ValueToColor(0xdff2ff),
+        Phaser.Display.Color.ValueToColor(0xffe066), 60, Math.round(t * 100))
+      : Phaser.Display.Color.Interpolate.ColorWithColor(
+        Phaser.Display.Color.ValueToColor(0xffe066),
+        Phaser.Display.Color.ValueToColor(0xff3333), 40, Math.round((t - 0.6) * 100));
+    const lineColor = Phaser.Display.Color.GetColor(color.r, color.g, color.b);
+    const critical = t >= 0.85;   // 텐션바 critical 임계와 동일 값
+    const pulse = critical ? 0.55 + 0.45 * Math.abs(Math.sin(this.pulseClock / 90)) : 1;
+    const lineWidth = 1.2 + t * 1.6 + (critical ? 0.8 : 0);
+    // 임계 시 미세 진동
+    const jx = critical ? (Math.random() - 0.5) * 2.2 : 0;
+    const jy = critical ? (Math.random() - 0.5) * 2.2 : 0;
+
+    this.fightLineG.clear();
+    this.fightLineG.lineStyle(lineWidth, lineColor, pulse);
+    this.fightLineG.beginPath();
+    this.fightLineG.moveTo(tipX, tipY + 4);
+    this.fightLineG.lineTo(vx + jx, vy + jy);
+    this.fightLineG.strokePath();
+
+    // ── 물고기 — 회전 = heading(도주 방향), 저스태미나 = 옆으로 눕는 롤 ──
+    const g = this.fightFishG;
+    g.clear();
+    g.setPosition(vx, vy);
+    g.setRotation(state.fishHeading);
+    g.setAlpha(alpha);
+    if (res.isRolling) {
+      // 옆으로 눕기: 납작해지며 은빛 배 노출 (떠오른 물고기 신호)
+      g.setScale(scale, scale * 0.55);
+      g.fillStyle(0xb8ccd8, 0.9);
+    } else {
+      g.setScale(scale, scale);
+      g.fillStyle(0x0a2438, 0.9);
+    }
+    const s = fishSizePx;
+    g.fillEllipse(0, 0, s, s * 0.42);
+    g.beginPath();
+    g.moveTo(-s / 2, 0);
+    g.lineTo(-s * 1.05, -s * 0.24);
+    g.lineTo(-s * 1.05, s * 0.24);
+    g.closePath();
+    g.fillPath();
+    // 머리 점 (도주 방향 확인용)
+    g.fillStyle(0xeaf6ff, res.isRolling ? 0.9 : 0.5);
+    g.fillCircle(s * 0.36, 0, 2.2);
+  }
+
+  // ═══════════════════════════════════════════════════
+  // 루어 액션 연출 (액션 페이즈 — 다트/저킹 시 찌·그림자 반응)
+  // ═══════════════════════════════════════════════════
+  /** 다트/저킹 임펄스 — 찌(루어)가 해당 방향으로 튕겼다 복귀 */
+  nudgeBobber(dx: number, dy: number): void {
+    if (!this.bobber || !this.bobber.visible) return;
+    this.scene.tweens.add({
+      targets: this.bobber,
+      x: this.bobber.x + dx,
+      y: this.bobber.y + dy,
+      duration: 110,
+      yoyo: true,
+      ease: 'Quad.easeOut',
+    });
+  }
+
+  /** 액션 매칭 성공 순간 — 주변 그림자가 찌 쪽으로 따라붙는 유인 반응 */
+  pulseShadowAttraction(): void {
+    for (const obj of this.shadowObjects) {
+      obj.data.orbitRadius = Math.max(16, obj.data.orbitRadius * 0.82);
+      obj.data.orbitSpeed *= 1.35;
     }
   }
 

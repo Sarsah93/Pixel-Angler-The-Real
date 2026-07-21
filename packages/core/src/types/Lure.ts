@@ -24,7 +24,8 @@ export type LureKind =
   | 'spoon'          // 스푼
   | 'spinner'        // 스피너
   | 'egi'            // 에기
-  | 'metal_jig';     // 메탈지그
+  | 'metal_jig'      // 메탈지그
+  | 'tairaba';       // 타이라바 (참돔 러버지그 — 바닥 찍고 등속 릴링)
 
 /** 침강 타입 — 수직뷰 Z 제어. floating은 리트리브로 파고들고 멈추면 부상 */
 export type SinkType = 'floating' | 'sinking' | 'fast_sinking';

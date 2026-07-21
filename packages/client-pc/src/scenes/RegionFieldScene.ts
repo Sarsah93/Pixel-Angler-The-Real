@@ -39,11 +39,15 @@ import {
   depthAtDistance,
   findDepthAnchor,
   kstHour,
+  calculateTideInfo,
+  computeFeedingActivity,
+  feedingRegionProfileOf,
 } from '@tra/core';
 import { GameState } from '../store/GameState.js';
 import { ExternalDataStore } from '../store/ExternalDataStore.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { RegionHud } from '../ui/RegionHud.js';
+import { FieldEventManager } from '../ui/FieldEventManager.js';
 import { InventoryPanel } from '../ui/InventoryPanel.js';
 import { ItemDetailPanel } from '../ui/ItemDetailPanel.js';
 import { StatusPanel } from '../ui/StatusPanel.js';
@@ -116,6 +120,10 @@ export class RegionFieldScene extends Phaser.Scene {
 
   // HUD
   private hud?: RegionHud;
+  /** 보일링/스쿨링 필드 이벤트 매니저 */
+  private fieldEvents?: FieldEventManager;
+  /** 피딩타임 활성도 (이벤트 발생 확률 입력 — 60초 주기 갱신) */
+  private fieldFeeding = 1;
 
   // ── 팝업 스택 (ESC는 최상단부터 닫음) ──
   private popupStack: { panel: Phaser.GameObjects.Container; close: () => void }[] = [];
@@ -253,6 +261,17 @@ export class RegionFieldScene extends Phaser.Scene {
     });
     this.add.existing(this.hud);
     this.hud.pushLog(`[이동] ${this.node.name}에 도착했습니다.`);
+
+    // ── 보일링/스쿨링 필드 이벤트 (피딩타임 활성도 기반 발생 롤) ──
+    this.refreshFieldFeeding();
+    this.time.addEvent({ delay: 60_000, loop: true, callback: () => this.refreshFieldFeeding() });
+    this.fieldEvents = new FieldEventManager(this, {
+      isWaterAt: (c, r) => this.terrainAt(c, r) === 'water',
+      tileSize: TR,
+      playerPos: () => ({ x: this.playerBody.x, y: this.playerBody.y }),
+      pushLog: (msg) => this.hud?.pushLog(msg),
+    });
+    this.events.once('shutdown', () => { this.fieldEvents?.destroy(); this.fieldEvents = undefined; });
 
     // 인벤토리 조작으로 퀵슬롯이 바뀌면 HUD 갱신 (restart 중복 등록 방지)
     this.events.off('inventory-changed');
@@ -1045,21 +1064,83 @@ export class RegionFieldScene extends Phaser.Scene {
     const col = Math.floor(proj.x / TR);
     const row = Math.floor(proj.y / TR);
 
-    if (this.terrainAt(col, row) === 'water') {
-      // 착수 파문 → 1인칭 낚시 뷰 진입
-      const ripple = this.add.circle(proj.x, proj.y, 3, 0x000000, 0).setStrokeStyle(2, 0xdff0ff, 0.9).setDepth(21);
-      this.tweens.add({ targets: ripple, scale: 4, alpha: 0, duration: 700, onComplete: () => ripple.destroy() });
-      this.hud?.pushLog('[낚시] 착수! 1인칭 낚시 모드 진입');
-      this.time.delayedCall(420, () => this.enterFirstPersonFishing(proj.x, proj.y, col, row));
-    } else {
+    if (this.terrainAt(col, row) !== 'water') {
       // 육지 착지 — 회수
       this.floatingHint('육지에 떨어졌습니다 — 바다를 조준하세요');
-      this.tweens.add({
-        targets: [this.castBobber, this.castShadow],
-        x: this.playerBody.x, y: this.playerBody.y, alpha: 0, duration: 300,
-        onComplete: () => this.clearCastFlight(),
-      });
+      this.retrieveCastToPlayer();
+      return;
     }
+
+    // ── 라인 경로 육지 통과 검사 — 릴링 시 줄이 땅에 쓸리는 캐스팅 차단 ──
+    // (예: 우측 바다 경계에서 반대편 바다로 곶/방파제를 가로질러 던진 경우)
+    if (this.castPathCrossesLand(col, row)) {
+      this.floatingHint('잘못된 캐스팅입니다 — 릴링 경로가 육지에 걸립니다');
+      this.hud?.pushLog('[낚시] 잘못된 캐스팅 — 캐스팅 과정에서 땅에 쓸리게 되므로 회수합니다.');
+      this.retrieveCastToPlayer();
+      return;
+    }
+
+    // 착수 파문 → 1인칭 낚시 뷰 진입
+    const ripple = this.add.circle(proj.x, proj.y, 3, 0x000000, 0).setStrokeStyle(2, 0xdff0ff, 0.9).setDepth(21);
+    this.tweens.add({ targets: ripple, scale: 4, alpha: 0, duration: 700, onComplete: () => ripple.destroy() });
+    this.hud?.pushLog('[낚시] 착수! 1인칭 낚시 모드 진입');
+    this.time.delayedCall(420, () => this.enterFirstPersonFishing(proj.x, proj.y, col, row));
+  }
+
+  /**
+   * 플레이어→착수점 라인이 중간에 육지를 가로지르는지 검사 (타일 격자 레이캐스트).
+   *
+   * 낚싯줄은 릴링 중 플레이어와 채비를 잇는 직선을 따라 끌려오므로,
+   * 경로 중간에 육지(곶/방파제 등)가 끼면 줄이 땅에 쓸린다 — 이런 캐스팅은 무효.
+   * 캐스터는 육지에 서 있으므로 **발밑 쪽 선행 육지 구간은 허용**하고,
+   * 한 번 물에 진입한 뒤 다시 육지가 나오면 차단으로 판정한다.
+   */
+  private castPathCrossesLand(landCol: number, landRow: number): boolean {
+    const pc = Math.floor(this.playerBody.x / TR);
+    const pr = Math.floor((this.playerBody.y + this.PLAYER_FOOT_OFFSET) / TR);
+
+    // Bresenham — 플레이어 타일 → 착수 타일
+    let x = pc, y = pr;
+    const dx = Math.abs(landCol - pc), dy = Math.abs(landRow - pr);
+    const sx = pc < landCol ? 1 : -1, sy = pr < landRow ? 1 : -1;
+    let err = dx - dy;
+
+    let enteredWater = false;
+    for (let guard = 0; guard < 4096; guard++) {
+      if (x === landCol && y === landRow) break;
+      const e2 = err * 2;
+      if (e2 > -dy) { err -= dy; x += sx; }
+      if (e2 < dx) { err += dx; y += sy; }
+
+      const isWater = this.terrainAt(x, y) === 'water';
+      if (isWater) enteredWater = true;
+      // 물에 진입한 이후 다시 육지를 만나면 — 릴링 경로가 땅에 걸리는 구조
+      else if (enteredWater && !(x === landCol && y === landRow)) return true;
+    }
+    return false;
+  }
+
+  /** 피딩타임 활성도 갱신 (계절 시간창 × 물때 × 날씨 — 필드 이벤트 발생 확률 입력) */
+  private refreshFieldFeeding(): void {
+    const tide = calculateTideInfo();
+    this.fieldFeeding = computeFeedingActivity({
+      hour: kstHour() + new Date().getMinutes() / 60,
+      month: new Date().getMonth() + 1,
+      tidePhase: tide.tidePhase,
+      minutesToNextTide: tide.minutesToNextTide,
+      nextTideType: tide.nextTideType,
+      weatherKind: ExternalDataStore.getWeatherKind(this.region),
+      regionProfile: feedingRegionProfileOf(this.region),
+    }).activity;
+  }
+
+  /** 캐스팅 강제 회수 — 찌/그림자를 플레이어 쪽으로 되감고 비행 상태 정리 */
+  private retrieveCastToPlayer(): void {
+    this.tweens.add({
+      targets: [this.castBobber, this.castShadow],
+      x: this.playerBody.x, y: this.playerBody.y, alpha: 0, duration: 300,
+      onComplete: () => this.clearCastFlight(),
+    });
   }
 
   /** 캐스팅 비행 오브젝트 정리 */
@@ -1091,9 +1172,14 @@ export class RegionFieldScene extends Phaser.Scene {
 
     this.cameras.main.fadeOut(260, 2, 12, 24);
     this.cameras.main.once('camerafadeoutcomplete', () => {
+      // 착수점이 보일링/스쿨링 패치와 겹치면 입질 보너스/페널티를 1인칭에 전달
+      const fieldEvent = this.fieldEvents?.getLandingBonus(landX, landY);
+      if (fieldEvent) {
+        this.hud?.pushLog(`[이벤트] ${fieldEvent.label} — 입질 x${fieldEvent.biteMult.toFixed(1)}`);
+      }
       this.scene.pause();
       this.scene.launch('FirstPersonFishingScene', {
-        zMaxM, castDistanceM, reefSeed, region: this.region, shoreKind,
+        zMaxM, castDistanceM, reefSeed, region: this.region, shoreKind, fieldEvent,
       });
     });
   }
@@ -1330,6 +1416,8 @@ export class RegionFieldScene extends Phaser.Scene {
   update(_time: number, delta: number): void {
     this.hud?.updatePlayerMarker(this.playerBody.x, this.playerBody.y);
     this.updateWeatherFx(delta);
+    // 보일링/스쿨링 필드 이벤트 (피딩 활성도 기반 발생/이동/소멸)
+    this.fieldEvents?.update(delta, this.fieldFeeding);
     // 캐스팅 비행은 UI 상태와 무관하게 진행 (착수까지 물리 유지)
     if (this.castProj) this.stepCastFlight(delta);
     if (this.isTransitioning || this.uiBlocked) { this.playerBody.setVelocity(0, 0); return; }

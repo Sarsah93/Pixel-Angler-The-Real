@@ -22,6 +22,12 @@ export interface FightInput {
   holding: boolean;
   /** 릴링 중 (마우스 좌클릭 유지) */
   reeling: boolean;
+  /**
+   * 로드 스티어 (←=-1 / 없음=0 / →=+1) — 파이트 2D 밀당 (2026-07).
+   * 횡이동(lateral) 러닝 방향과 **같은 쪽으로 눕히면** 측면하중이 줄어 텐션 완화(버티기),
+   * **반대쪽(카운터 스티어)** 은 텐션이 치솟는 대신 물고기 머리를 돌려 제압(진행 보너스).
+   */
+  steerDir?: -1 | 0 | 1;
 }
 
 export type FightEvent = 'none' | 'landed' | 'escaped' | 'line_break' | 'hook_off';
@@ -33,6 +39,8 @@ export interface FightStatus {
   patternTimeLeft: number;
   event: FightEvent;
   escapeProbPerSec: number;
+  /** 횡이동(lateral) 러닝 방향 (-1=좌 / +1=우) — 스티어 정렬 판정·2D 무대 렌더용 */
+  lateralDir: -1 | 1;
 }
 
 export interface FightingFishSpec {
@@ -61,6 +69,8 @@ export class FightingPhase {
   tension = 50;
   progress = 0;
   pattern: FightPattern = 'none';
+  /** 횡이동 러닝 방향 — lateral 패턴 추첨 시 좌/우 결정 */
+  private lateralDir: -1 | 1 = 1;
   private patternTimer = 0;
   private nextPatternIn: number;
   private done = false;
@@ -97,6 +107,7 @@ export class FightingPhase {
   update(input: FightInput): FightStatus {
     if (this.done) return this.status('none', 0);
     const { dtSec, holding, reeling } = input;
+    const steer = input.steerDir ?? 0;
 
     // ── 패턴 스케줄링 ──
     if (this.pattern === 'none') {
@@ -104,6 +115,7 @@ export class FightingPhase {
       if (this.nextPatternIn <= 0) {
         this.pattern = this.pickPattern();
         this.patternTimer = 1.6 + Math.random() * 1.4;
+        if (this.pattern === 'lateral') this.lateralDir = Math.random() < 0.5 ? -1 : 1;
       }
     } else {
       this.patternTimer -= dtSec;
@@ -131,6 +143,19 @@ export class FightingPhase {
     if (this.pattern === 'dive' && !holding) this.progress = Math.max(0, this.progress - 10 * dtSec);
     // 횡이동 중 놓아주면 진행도만 소폭 하락 (드랙으로 버티는 구간)
     if (this.pattern === 'lateral' && !holding) this.progress = Math.max(0, this.progress - 4 * dtSec);
+
+    // ── 로드 스티어 밀당 (횡이동 러닝 중) ──
+    //  같은쪽 눕히기 = 라인 각도차↓ → 측면하중 감소(텐션 완화 + 진행 하락 상쇄)
+    //  카운터 스티어 = 각도차↑ → 텐션 스파이크, 대신 머리를 돌려 제압(진행 보너스)
+    if (this.pattern === 'lateral' && steer !== 0) {
+      if (steer === this.lateralDir) {
+        this.tension -= 15 * dtSec;
+        this.progress += 4 * dtSec;   // 버티기 성공 — 하락분 상쇄
+      } else {
+        this.tension += 19 * dtSec;
+        this.progress += 7 * dtSec;   // 제압 — 위험을 감수한 전진
+      }
+    }
 
     this.tension = Math.max(0, Math.min(100, this.tension));
 
@@ -183,6 +208,7 @@ export class FightingPhase {
       patternTimeLeft: Math.max(0, this.patternTimer),
       event,
       escapeProbPerSec,
+      lateralDir: this.lateralDir,
     };
   }
 }

@@ -29,6 +29,7 @@ import { RecommendationStore } from '../store/RecommendationStore.js';
 import { CoolerStore, ChumIngredientKind, CHUM_THROW_COST } from '../store/CoolerStore.js';
 import { LureFamily, LureKind, getLureSpec, getLureSinkProfile, jigHeadWeightById } from '@tra/core';
 import { DraggablePanel } from './DraggablePanel.js';
+import { ButcheryPanel } from './ButcheryPanel.js';
 import { createItemIcon } from './ItemIcon.js';
 
 /** 루어 세부 종류 → 라벨 (2단계 트리) */
@@ -42,6 +43,7 @@ const HARD_KINDS: { k: LureKind; label: string }[] = [
   { k: 'spinner', label: '스피너' },
   { k: 'egi', label: '에기' },
   { k: 'metal_jig', label: '메탈지그' },
+  { k: 'tairaba', label: '타이라바' },
 ];
 const SINK_LABEL: Record<string, string> = {
   floating: '플로팅 (수면 유지·리트리브로 파고듦)',
@@ -84,6 +86,14 @@ export class UtilizationPanel extends DraggablePanel {
   /** 요리 탭 임베드 인벤토리 — 현재 카테고리/선택 아이템 */
   private cookInvCat: InvCategory = 'food';
   private cookSelectedId: string | null = null;
+  /** 도마에 올린 생선 아이템 id (풀렌더 이미지 보유 어획물만) */
+  private cookBoardFishId: string | null = null;
+  /** 도마 영역 (패널 로컬 좌표 — 드랍 판정용) */
+  private cookBoardRect = { x: 0, y: 0, w: 0, h: 0 };
+  /** 드래그 중 생선 고스트 이미지 */
+  private dragGhost?: Phaser.GameObjects.Image;
+  /** 회 뜨기 손질 자식 팝업 */
+  private butcheryPanel?: ButcheryPanel;
   /** 루어 채비 트리 네비게이션 상태 */
   private lureFamily: LureFamily = 'soft';
   private lureKindSel: LureKind = 'worm_grub';
@@ -703,6 +713,7 @@ export class UtilizationPanel extends DraggablePanel {
     const listW = 200;
     const listH = (candidates.length + 1) * rowH + 12;
     const c = this.scene.add.container(0, 0).setDepth(60);
+    this.addChooserBackdrop(c);   // 바깥 클릭 시 자동 닫힘
     const g = this.scene.add.graphics();
     g.fillStyle(0x0a1628, 0.98);
     g.fillRoundedRect(x, y, listW, listH, 5);
@@ -806,6 +817,7 @@ export class UtilizationPanel extends DraggablePanel {
     const ly = Math.min(y, PANEL_H - listH - 10);
 
     const c = this.scene.add.container(0, 0);
+    this.addChooserBackdrop(c);   // 바깥 클릭 시 선택창 자동 닫힘
     const bg = this.scene.add.graphics();
     bg.fillStyle(0x081422, 0.98);
     bg.fillRoundedRect(lx, ly, listW, listH, 5);
@@ -863,6 +875,19 @@ export class UtilizationPanel extends DraggablePanel {
     this.chooser = undefined;
   }
 
+  /**
+   * 선택 리스트 뒤 전체 화면 투명 백드롭 — **바깥 클릭 시 선택창 자동 닫힘**.
+   * 리스트 행이 백드롭 위에 있으므로(topOnly) 행 클릭은 그대로 동작하고,
+   * 리스트 밖 클릭은 백드롭이 받아 chooser만 닫는다 (하위 UI 오클릭 방지 겸용).
+   */
+  private addChooserBackdrop(c: Phaser.GameObjects.Container): void {
+    const bd = this.scene.add.rectangle(-this.x, -this.y, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.001)
+      .setOrigin(0, 0)
+      .setInteractive();
+    bd.on('pointerdown', () => this.closeChooser());
+    c.addAt(bd, 0);
+  }
+
   // ═══════════════════════════════════════════════════
   // 요리하기 (Cooking) — 손질 시스템 자리 (추후 정식 구현)
   // ═══════════════════════════════════════════════════
@@ -871,6 +896,7 @@ export class UtilizationPanel extends DraggablePanel {
 
     // ── 좌측: 도마 (손질 작업대) ──────────────────────────
     const boardX = 40, boardY = top + 44, boardW = 480, boardH = 240;
+    this.cookBoardRect = { x: boardX, y: boardY, w: boardW, h: boardH };
     const board = this.scene.add.graphics();
     board.fillStyle(0x8a6a44, 1);
     board.fillRoundedRect(boardX, boardY, boardW, boardH, 12);
@@ -880,17 +906,65 @@ export class UtilizationPanel extends DraggablePanel {
     board.strokeRoundedRect(boardX, boardY, boardW, boardH, 12);
     this.bodyContainer.add(board);
 
-    const boardLbl = this.scene.add.text(boardX + boardW / 2, boardY + boardH / 2, '도마 (생선을 올려 손질)', {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px', color: '#5a4028', fontStyle: 'bold',
-    }).setOrigin(0.5);
-    this.bodyContainer.add(boardLbl);
+    // ── 도마 위 생선 (드래그 앤 드랍으로 올림 — 풀렌더 이미지 어획물만) ──
+    const boardFish = this.cookBoardFishId ? InventoryStore.find(this.cookBoardFishId) : undefined;
+    const boardTex = boardFish?.iconTexture;
+    if (this.cookBoardFishId && (!boardFish || !boardTex || !this.scene.textures.exists(boardTex))) {
+      this.cookBoardFishId = null;   // 아이템 소멸/텍스처 없음 — 도마 비움
+    }
+
+    if (boardFish && boardTex && this.scene.textures.exists(boardTex)) {
+      const src = this.scene.textures.get(boardTex).getSourceImage() as HTMLImageElement;
+      const sc = Math.min((boardW - 70) / src.width, (boardH - 64) / src.height);
+      const fishImg = this.scene.add.image(boardX + boardW / 2, boardY + boardH / 2, boardTex)
+        .setDisplaySize(src.width * sc, src.height * sc);
+      this.bodyContainer.add(fishImg);
+
+      const nameLbl = this.scene.add.text(boardX + boardW / 2, boardY + boardH - 18,
+        boardFish.name, {
+          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#3a2c1a', fontStyle: 'bold',
+        }).setOrigin(0.5);
+      this.bodyContainer.add(nameLbl);
+
+      // [손질 시작] — 회 뜨기 미니게임 (시메→방혈→비늘→머리→내장→삼면뜨기→박피)
+      const cutBg = this.scene.add.graphics();
+      cutBg.fillStyle(0x0d4a2e, 0.96);
+      cutBg.fillRoundedRect(boardX + 8, boardY + 8, 92, 24, 4);
+      cutBg.lineStyle(1.5, 0x4af2a1, 0.95);
+      cutBg.strokeRoundedRect(boardX + 8, boardY + 8, 92, 24, 4);
+      const cutTxt = this.scene.add.text(boardX + 54, boardY + 20, '손질 시작', {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#4af2a1', fontStyle: 'bold',
+      }).setOrigin(0.5);
+      const cutHit = this.scene.add.rectangle(boardX + 54, boardY + 20, 92, 24, 0xffffff, 0.001)
+        .setInteractive({ useHandCursor: true });
+      cutHit.on('pointerdown', () => this.openButchery(boardFish));
+      this.bodyContainer.add([cutBg, cutTxt, cutHit]);
+
+      // [내리기] — 도마 비우기
+      const offBg = this.scene.add.graphics();
+      offBg.fillStyle(0x3a2a20, 0.95);
+      offBg.fillRoundedRect(boardX + boardW - 74, boardY + 8, 66, 22, 4);
+      const offTxt = this.scene.add.text(boardX + boardW - 41, boardY + 19, '내리기', {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#ffce9a',
+      }).setOrigin(0.5);
+      const offHit = this.scene.add.rectangle(boardX + boardW - 41, boardY + 19, 66, 22, 0xffffff, 0.001)
+        .setInteractive({ useHandCursor: true });
+      offHit.on('pointerdown', () => { this.cookBoardFishId = null; this.renderBody(); });
+      this.bodyContainer.add([offBg, offTxt, offHit]);
+    } else {
+      const boardLbl = this.scene.add.text(boardX + boardW / 2, boardY + boardH / 2,
+        '도마 — 우측 인벤토리의 생선을 드래그해서 올리세요', {
+          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px', color: '#5a4028', fontStyle: 'bold',
+        }).setOrigin(0.5);
+      this.bodyContainer.add(boardLbl);
+    }
 
     const hasKnife = false; // 회칼 장비 아이템 추가 예정
     const lines = [
       '생선 손질(삼면뜨기) 시스템은 추후 정식 구현 예정입니다.',
       '',
       `회칼 장비 상태: ${hasKnife ? '장비됨' : '미보유 — 회칼(장비)을 착용해야 손질할 수 있습니다'}`,
-      '· 우측 인벤토리의 생선을 도마에 올리는 상호작용 예정',
+      '· 실사 이미지가 있는 어획물(감성돔/광어/벵에돔/긴꼬리벵에돔)만 도마에 올릴 수 있습니다',
       '· 신선도에 따라 요리 결과/버프(근력 1.5배 등)가 달라집니다',
     ];
     const info = this.scene.add.text(boardX, boardY + boardH + 26, lines.join('\n'), {
@@ -979,9 +1053,41 @@ export class UtilizationPanel extends DraggablePanel {
         this.bodyContainer.add(dot);
       }
 
+      // 풀렌더 이미지가 있는 어획물은 도마로 드래그 앤 드랍 가능
+      const draggableFish = item.subCategory === '어획물'
+        && !!item.iconTexture && this.scene.textures.exists(item.iconTexture);
       const hit = this.scene.add.rectangle(cx + cell / 2, cy + cell / 2, cell, cell, 0xffffff, 0.001)
-        .setInteractive({ useHandCursor: true });
+        .setInteractive({ useHandCursor: true, draggable: draggableFish });
       hit.on('pointerdown', () => { this.cookSelectedId = item.id; this.renderBody(); });
+      if (draggableFish && item.iconTexture) {
+        const tex = item.iconTexture;
+        hit.on('dragstart', () => {
+          this.dragGhost?.destroy();
+          const src = this.scene.textures.get(tex).getSourceImage() as HTMLImageElement;
+          const sc = Math.min(110 / src.width, 60 / src.height);
+          this.dragGhost = this.scene.add.image(cx + cell / 2, cy + cell / 2, tex)
+            .setDisplaySize(src.width * sc, src.height * sc)
+            .setAlpha(0.85)
+            .setScrollFactor(0);
+          this.bodyContainer.add(this.dragGhost);
+        });
+        hit.on('drag', (p: Phaser.Input.Pointer) => {
+          // 패널은 화면 고정(scrollFactor 0) — 스크린 좌표 → 패널 로컬 변환
+          this.dragGhost?.setPosition(p.x - this.x, p.y - this.y);
+        });
+        hit.on('dragend', (p: Phaser.Input.Pointer) => {
+          this.dragGhost?.destroy();
+          this.dragGhost = undefined;
+          const lx = p.x - this.x;
+          const ly = p.y - this.y;
+          const b = this.cookBoardRect;
+          if (lx >= b.x && lx <= b.x + b.w && ly >= b.y && ly <= b.y + b.h) {
+            this.cookBoardFishId = item.id;
+            this.cookSelectedId = item.id;
+            this.renderBody();
+          }
+        });
+      }
       this.bodyContainer.add(hit);
       if (this.cookSelectedId === item.id) {
         const sel = this.scene.add.graphics();
@@ -1364,8 +1470,30 @@ export class UtilizationPanel extends DraggablePanel {
     });
   }
 
+  /** 회 뜨기 미니게임 열기 (도마 위 생선 대상) */
+  private openButchery(fish: InvItem): void {
+    if (this.butcheryPanel) return;
+    this.butcheryPanel = new ButcheryPanel(this.scene, fish, {
+      onClose: () => {
+        this.butcheryPanel?.destroy();
+        this.butcheryPanel = undefined;
+      },
+      onComplete: () => {
+        // 필렛 지급/원본 소모는 ButcheryPanel이 처리 — 도마 비우고 갱신
+        this.butcheryPanel?.destroy();
+        this.butcheryPanel = undefined;
+        this.cookBoardFishId = null;
+        this.renderBody();
+        this.scene.events.emit('inventory-changed');
+      },
+    });
+    this.scene.add.existing(this.butcheryPanel);
+  }
+
   override destroy(fromScene?: boolean): void {
     this.closeChooser();
+    this.butcheryPanel?.destroy();
+    this.butcheryPanel = undefined;
     this.scene?.input?.off('pointermove', this.chumMoveHandler);
     this.scene?.input?.off('pointerup', this.chumUpHandler);
     this.chumGhost?.destroy();

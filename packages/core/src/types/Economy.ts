@@ -228,6 +228,32 @@ export const SEAFOOD_AUCTION_MAPPING: Record<string, AuctionMappingDef> = {
     defaultPricePerKg: 11000,
     sizeFactorMultiplier: 1.0,
   },
+  // ── 루어/지깅 중대형 + 두족류 (2026-07-20) ──
+  greater_amberjack: {
+    itemCode: '100303', // 잿방어
+    defaultPricePerKg: 22000,
+    sizeFactorMultiplier: 1.2,
+  },
+  spanish_mackerel: {
+    itemCode: '100204', // 삼치
+    defaultPricePerKg: 12000,
+    sizeFactorMultiplier: 1.05,
+  },
+  squid: {
+    itemCode: '101401', // 무늬오징어(한치류)
+    defaultPricePerKg: 25000,
+    sizeFactorMultiplier: 1.1,
+  },
+  cuttlefish: {
+    itemCode: '101402', // 갑오징어
+    defaultPricePerKg: 22000,
+    sizeFactorMultiplier: 1.0,
+  },
+  octopus: {
+    itemCode: '101403', // 문어
+    defaultPricePerKg: 28000,
+    sizeFactorMultiplier: 1.1,
+  },
 };
 
 /**
