@@ -11,8 +11,8 @@ import { FISH_DATABASE } from '@tra/core';
 import { DraggablePanel } from './DraggablePanel.js';
 import { createItemIcon } from './ItemIcon.js';
 import {
-  InvItem, InventoryStore, CONDITION_LABEL, CONDITION_COLOR,
-  CONDITION_CHAIN, refreshCondition, conditionRemainMs, formatRemain,
+  InvItem, InventoryStore, CONDITION_LABEL, CONDITION_COLOR, CONDITION_DESC,
+  CONDITION_NEXT, refreshCondition, conditionRemainMs, formatDhms,
 } from '../store/InventoryStore.js';
 
 /** 서식 수층 표기 */
@@ -223,37 +223,42 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
       break;
   }
 
-  // ── 신선도 상세 (조건 보유 아이템 공통 — 단계 체인/남은 시간/환경 계수/활용 보정) ──
+  // ── 신선도 부가 정보 (상태/남은 시간은 실시간 갱신 블록에서 별도 렌더 — 단일 상태 표기) ──
   if (item.condition) {
-    rows.push({ label: '신선도 상태', value: CONDITION_LABEL[item.condition] });
-    rows.push({
-      label: '신선도 단계',
-      value: CONDITION_CHAIN
-        .map((c) => (c === item.condition ? `[${CONDITION_LABEL[c]}]` : CONDITION_LABEL[c]))
-        .join('→'),
-    });
-    const remain = conditionRemainMs(item);
-    if (Number.isFinite(remain)) {
-      rows.push({ label: '변질까지 남은 시간', value: formatRemain(remain) });
-    }
-    rows.push({ label: '보관 환경 계수', value: '상온 x1.0 · 어창(쿨러) 활어 = 정지' });
+    rows.push({ label: '보관 환경', value: '상온 · 쿨러(해수/얼음)는 규칙별 정지' });
     if (item.subCategory.includes('미끼') || item.subCategory === '생미끼') {
-      rows.push({ label: '입질 보정', value: '활어 +25% · 냉동 -50% · 상함 -85%' });
+      rows.push({ label: '입질 보정', value: '활어 +25% · 냉동 -50% · 부패 -85%' });
     } else if (item.subCategory === '어획물') {
-      rows.push({ label: '활용 보정', value: '경락 등급·요리 품질에 반영 (활어>신선>냉장>냉동)' });
+      rows.push({ label: '활용 보정', value: '경락 등급·요리 품질에 반영 (활어>신선>냉장>보통)' });
     }
   }
   rows.push({ label: '보유 수량', value: `${item.qty}개` });
   rows.push({ label: '기준가', value: `${item.basePrice.toLocaleString()} 원` });
 
+  // 신선도 상태 설명은 줄바꿈되는 본문(desc)에 덧붙인다 (행 값은 한 줄 고정이라 넘침)
+  if (item.condition) {
+    desc = `${desc}\n[${CONDITION_LABEL[item.condition]}] ${CONDITION_DESC[item.condition]}`;
+  }
+
   return { title: item.name, subtitle: item.subCategory, rows, desc };
 }
 
-/** 아이템 상세 정보 팝업 */
+/** 아이템 상세 정보 팝업 — 신선도 상태/남은 시간은 1초 주기 실시간 갱신 */
 export class ItemDetailPanel extends DraggablePanel {
-  constructor(scene: Phaser.Scene, item: InvItem, x: number, y: number, onClose: () => void) {
-    // 열람 시점에 신선도 체인을 지연 갱신 (경과 시간만큼 단계 진행)
-    refreshCondition(item);
+  private itemRef: InvItem;
+  /** 쿨러 개체 등 외부 규칙의 남은 시간 공급자 (null = '무제한' 표기) */
+  private remainProvider?: () => number | null;
+  private badgeText?: Phaser.GameObjects.Text;
+  private condValueText?: Phaser.GameObjects.Text;
+  private remainValueText?: Phaser.GameObjects.Text;
+  private freshTimer?: Phaser.Time.TimerEvent;
+
+  constructor(
+    scene: Phaser.Scene, item: InvItem, x: number, y: number, onClose: () => void,
+    remainProvider?: () => number | null,
+  ) {
+    // 열람 시점에 신선도를 지연 갱신 (경과 시간만큼 단계 진행 — 외부 공급자 있으면 외부 규칙 우선)
+    if (!remainProvider) refreshCondition(item);
     const detail = buildItemDetail(item);
     // 어획물은 실사 픽셀 생선 이미지를 크게 표시
     const hasFishImage = item.subCategory === '어획물'
@@ -261,8 +266,12 @@ export class ItemDetailPanel extends DraggablePanel {
     const imgH = hasFishImage ? 126 : 0;
     // 긴 어종 설명(습성)은 줄바꿈 줄 수만큼 패널을 늘린다 (판매가 표기와 겹침 방지)
     const descExtra = detail.desc.length > 60 ? Math.ceil((detail.desc.length - 60) / 28) * 14 : 0;
-    const h = 176 + detail.rows.length * 24 + imgH + descExtra;
+    // 신선도 실시간 블록 (상태 1행 + 남은 시간 라벨/값 2행)
+    const condExtra = item.condition ? 66 : 0;
+    const h = 176 + detail.rows.length * 24 + imgH + descExtra + condExtra;
     super(scene, { x, y, width: 320, height: h, title: '아이템 정보', onClose, depth: 880 });
+    this.itemRef = item;
+    this.remainProvider = remainProvider;
 
     // 아이콘 + 이름 + 소분류
     const icon = createItemIcon(scene, 42, this.contentTop + 22, item, 36);
@@ -275,14 +284,14 @@ export class ItemDetailPanel extends DraggablePanel {
     });
     this.add([icon, name, sub]);
 
-    // 신선도 배지
+    // 신선도 배지 (실시간 갱신 대상)
     if (item.condition) {
-      const badge = scene.add.text(this.panelW - 20, this.contentTop + 12, CONDITION_LABEL[item.condition], {
+      this.badgeText = scene.add.text(this.panelW - 20, this.contentTop + 12, CONDITION_LABEL[item.condition], {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', fontStyle: 'bold',
         color: CONDITION_COLOR[item.condition],
         backgroundColor: '#050f1e', padding: { x: 5, y: 2 },
       }).setOrigin(1, 0);
-      this.add(badge);
+      this.add(this.badgeText);
     }
 
     // 구분선
@@ -312,8 +321,31 @@ export class ItemDetailPanel extends DraggablePanel {
       this.add([lbl, val]);
     });
 
+    // ── 신선도 실시간 블록 — 단일 상태 표기 + 초단위 카운트다운 ──
+    if (item.condition) {
+      const fy = this.contentTop + 64 + imgH + detail.rows.length * 24;
+      const condLbl = scene.add.text(22, fy, '신선도 상태', {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#c8a060', fontStyle: 'bold',
+      });
+      this.condValueText = scene.add.text(this.panelW - 22, fy, CONDITION_LABEL[item.condition], {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', fontStyle: 'bold',
+        color: CONDITION_COLOR[item.condition],
+      }).setOrigin(1, 0);
+      const remainLbl = scene.add.text(22, fy + 24, '다음 상태로 변경되기까지 남은 시간', {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#c8a060', fontStyle: 'bold',
+      });
+      this.remainValueText = scene.add.text(this.panelW - 22, fy + 40, '', {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#e8f4fd', fontStyle: 'bold',
+      }).setOrigin(1, 0);
+      this.add([condLbl, this.condValueText, remainLbl, this.remainValueText]);
+
+      // 1초 주기 실시간 갱신 (호버/열람 중 숫자가 초단위로 줄어드는 것이 보인다)
+      this.updateFreshness();
+      this.freshTimer = scene.time.addEvent({ delay: 1000, loop: true, callback: () => this.updateFreshness() });
+    }
+
     // 설명
-    const descY = this.contentTop + 68 + imgH + detail.rows.length * 24;
+    const descY = this.contentTop + 68 + imgH + detail.rows.length * 24 + condExtra;
     const descText = scene.add.text(22, descY, detail.desc, {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#9fc0d4',
       wordWrap: { width: this.panelW - 44 }, lineSpacing: 4,
@@ -327,5 +359,28 @@ export class ItemDetailPanel extends DraggablePanel {
     this.add(sellText);
 
     this.applyFix();
+  }
+
+  /** 신선도 상태/남은 시간 실시간 갱신 — 상태 전이 시 라벨·색·배지 동기화 */
+  private updateFreshness(): void {
+    const item = this.itemRef;
+    if (!item.condition || !this.condValueText || !this.remainValueText) return;
+    // 인벤토리 아이템은 지연 갱신으로 상태 전이 반영 — 쿨러 개체는 외부 규칙(제공자)이 관리
+    if (!this.remainProvider) refreshCondition(item);
+    const cond = item.condition;
+    this.condValueText.setText(CONDITION_LABEL[cond]).setColor(CONDITION_COLOR[cond]);
+    this.badgeText?.setText(CONDITION_LABEL[cond]).setColor(CONDITION_COLOR[cond]);
+
+    const remain = this.remainProvider ? this.remainProvider() : conditionRemainMs(item);
+    let txt: string;
+    if (remain === null) txt = '무제한';
+    else if (!Number.isFinite(remain)) txt = CONDITION_NEXT[cond] ? '—' : '종착 상태 (변화 없음)';
+    else txt = formatDhms(remain);
+    this.remainValueText.setText(txt);
+  }
+
+  override destroy(fromScene?: boolean): void {
+    this.freshTimer?.remove();
+    super.destroy(fromScene);
   }
 }

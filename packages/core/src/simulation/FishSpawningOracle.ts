@@ -512,7 +512,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     fight: { basePower: 0.8, patternWeights: { jump: 0.45, dive: 0.2, lateral: 0.35 }, intervalMult: 0.85, mouthFragility: 0.25 },
   },
   {
-    speciesId: 'striped_mullet', nameKo: '참숭어(숭어)', nameEn: 'Flathead Grey Mullet',
+    speciesId: 'striped_mullet', nameKo: '숭어(보리숭어)', nameEn: 'Flathead Grey Mullet',
     // 물 흐름 있는 연안 암초/내만, 표층 회유성 (실측 데이터 2026-07-16 — 방언: 개숭어/보리숭어)
     habitat: ['structure', 'open', 'mud'], minDepthM: 0.5, maxDepthM: 10, preferredLayers: ['surface', 'mid'],
     baitPreference: { worm_blue: 55, krill: 25, worm_king: 10, bread: 10 },
@@ -523,7 +523,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     fight: { basePower: 0.5, patternWeights: { jump: 0.5, dive: 0.1, lateral: 0.4 }, intervalMult: 0.9, mouthFragility: 0.3 },
   },
   {
-    speciesId: 'redlip_mullet', nameKo: '가숭어(밀치)', nameEn: 'Redlip Mullet',
+    speciesId: 'redlip_mullet', nameKo: '가숭어(참숭어)', nameEn: 'So-iuy Mullet',
     // 진흙/모래 연안·강 하구(기수역), 숭어류 중 가장 크게 성장 (실측 데이터 2026-07-16)
     habitat: ['mud', 'sand'], minDepthM: 1, maxDepthM: 15, preferredLayers: ['surface', 'mid'],
     baitPreference: { worm_blue: 50, krill: 30, bread: 20 },

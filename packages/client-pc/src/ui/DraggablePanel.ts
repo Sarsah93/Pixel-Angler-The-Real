@@ -51,6 +51,8 @@ export class DraggablePanel extends Phaser.GameObjects.Container {
   protected panelW: number;
   protected panelH: number;
   protected requestClose: () => void;
+  /** 헤더 타이틀 텍스트 — setTitle()로 동적 갱신 가능 */
+  protected titleText!: Phaser.GameObjects.Text;
 
   private dimRect?: Phaser.GameObjects.Rectangle;
   private dragActive = false;
@@ -96,10 +98,10 @@ export class DraggablePanel extends Phaser.GameObjects.Container {
     headerBg.fillRect(0, HEADER_H - 8, this.panelW, 8);
     this.add(headerBg);
 
-    const titleText = scene.add.text(14, HEADER_H / 2, cfg.title, {
+    this.titleText = scene.add.text(14, HEADER_H / 2, cfg.title, {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '14px', color: '#4af2a1', fontStyle: 'bold',
     }).setOrigin(0, 0.5);
-    this.add(titleText);
+    this.add(this.titleText);
 
     const dragZone = scene.add.rectangle((this.panelW - 44) / 2, HEADER_H / 2, this.panelW - 44, HEADER_H, 0xffffff, 0.001)
       .setInteractive({ useHandCursor: true });
@@ -137,6 +139,11 @@ export class DraggablePanel extends Phaser.GameObjects.Container {
   /** 콘텐츠 시작 Y (헤더 아래) */
   protected get contentTop(): number {
     return HEADER_H + 8;
+  }
+
+  /** 헤더 타이틀 갱신 (쿨러 매질 상태 등 동적 표기용) */
+  protected setTitle(title: string): void {
+    this.titleText.setText(title);
   }
 
   protected bringSelfToTop(): void {

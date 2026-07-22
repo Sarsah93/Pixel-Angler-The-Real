@@ -113,16 +113,18 @@ export type { BiteCalculationResult, BiteFactors } from './simulation/FishBiteEn
 export { getLineTensionRatio, getEffectiveDragKg, getTensionDangerLevel, getRetrieveSpeedMps, adjustDrag, simulateFightTick, canReel, getRecommendedDragKg, castLineOut } from './simulation/LinePhysics.js';
 export type { LineState } from './simulation/LinePhysics.js';
 
-// 회 뜨기(활어 손질~삼면뜨기~박피) 미니게임 — 방향 상태 머신 + 컷 판정
+// 회 뜨기(활어 손질~삼면뜨기~박피) 미니게임 — 방향 상태 머신 + 컷 판정 + 수율 산출
 export type {
   OrientationState, ButcheryTool, CutPoint, CutSpec, ButcheryProfile,
   ButcheryPrimitive, ButcheryStage, CutEvalResult, SashimiGrade, ButcheryResult,
+  FilletShape, KnifeSpec, FilletYieldInput, FilletYieldResult,
 } from './types/Butchery.js';
 export { ORIENTATION_LABEL } from './types/Butchery.js';
 export { BUTCHERY_PROFILES, DEFAULT_BUTCHERY_PROFILE, getButcheryProfile } from './db-schema/ButcheryProfiles.js';
+export { KNIFE_SPECS, getBestKnife, isKnifeItem } from './db-schema/KnifeDatabase.js';
 export type { SashimiGradeInput } from './simulation/ButcheryProcess.js';
 export {
-  ButcheryProcess, evaluateCut, computeSashimiGrade, buildButcheryStages,
+  ButcheryProcess, evaluateCut, computeSashimiGrade, buildButcheryStages, computeFilletYield,
 } from './simulation/ButcheryProcess.js';
 
 // 파이트 피로 4페이즈 (어종·사이즈별 스태미나 풀 + 회복/서지 — thrust 게이팅)

@@ -19,9 +19,11 @@ import Phaser from 'phaser';
 import {
   ButcheryProcess, getButcheryProfile, CutPoint, OrientationState,
   ORIENTATION_LABEL, FISH_DATABASE,
+  computeFilletYield, getBestKnife, KnifeSpec,
 } from '@tra/core';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { InventoryStore, InvItem } from '../store/InventoryStore.js';
+import { GameState } from '../store/GameState.js';
 import { DraggablePanel } from './DraggablePanel.js';
 
 const PANEL_W = 1080;
@@ -33,8 +35,26 @@ const FISH_COLORS: Record<string, { body: number; belly: number; fin: number }> 
   largescale_blackfish: { body: 0x2e3a46, belly: 0x9aa6b0, fin: 0x1e2830 },
   longtail_blackfish: { body: 0x35506a, belly: 0xa8c0d4, fin: 0x24384e },
   flatfish: { body: 0x6a5a3e, belly: 0xd8cdb4, fin: 0x4a3f2c },
+  flounder: { body: 0x6a5a3e, belly: 0xd8cdb4, fin: 0x4a3f2c },
   sea_bass: { body: 0x5a6a74, belly: 0xc6d0d6, fin: 0x3e4c56 },
   yellowtail: { body: 0x3e5a74, belly: 0xc0ccd4, fin: 0x2c4256 },
+  amberjack: { body: 0x466a80, belly: 0xc8d2d8, fin: 0x2c4a5e },
+  greater_amberjack: { body: 0x5a6a5a, belly: 0xd0d4c4, fin: 0x3e4a3a },
+  red_seabream: { body: 0xb85a54, belly: 0xecc4bc, fin: 0x8a3a38 },
+  spanish_mackerel: { body: 0x4a6470, belly: 0xc4d0d6, fin: 0x30464e },
+  chub_mackerel: { body: 0x33505e, belly: 0xc0ccd0, fin: 0x203640 },
+  horse_mackerel: { body: 0x6a7c82, belly: 0xd2dade, fin: 0x4a5c62 },
+  stone_beakperch: { body: 0x8a8a7a, belly: 0xd8d6c4, fin: 0x3a3a30 },
+  spotted_knifejaw: { body: 0x6a6a60, belly: 0xcaccbe, fin: 0x2e2e28 },
+  dark_banded_rockfish: { body: 0x6a4a4a, belly: 0xc8b4ac, fin: 0x442e2e },
+  blue_rockfish: { body: 0x3a4a68, belly: 0xb4c0d0, fin: 0x263048 },
+  golden_rockfish: { body: 0x8a6a3a, belly: 0xd8c49a, fin: 0x5e4622 },
+  black_rockfish: { body: 0x40484e, belly: 0xb8c0c4, fin: 0x282e32 },
+  filefish: { body: 0x7a7050, belly: 0xcac2a0, fin: 0x4e4632 },
+  pacific_cod: { body: 0x8a8474, belly: 0xd6d2c0, fin: 0x5a564a },
+  hairtail: { body: 0xb8bcc4, belly: 0xe8ecf2, fin: 0x8a8e96 },
+  striped_mullet: { body: 0x5e6a6e, belly: 0xccd2d4, fin: 0x40484c },
+  redlip_mullet: { body: 0x64706a, belly: 0xcfd6cc, fin: 0x444c46 },
 };
 const DEFAULT_COLORS = { body: 0x50606c, belly: 0xbcc6cc, fin: 0x38444e };
 
@@ -48,6 +68,10 @@ export class ButcheryPanel extends DraggablePanel {
   private source: InvItem;
   private process: ButcheryProcess;
   private cbs: ButcheryCallbacks;
+  /** 보유 최고 회칼 (null이면 회뜨기 단계 잠금) */
+  private knife: KnifeSpec | null;
+  /** 결과 처리 완료 후 추가 입력 차단 */
+  private done = false;
 
   // 생선 렌더 영역 (패널 로컬)
   private readonly fishX = 56;
@@ -88,6 +112,8 @@ export class ButcheryPanel extends DraggablePanel {
 
     const speciesId = source.speciesId ?? this.guessSpecies(source);
     this.process = new ButcheryProcess(getButcheryProfile(speciesId), this.freshnessFactor(source));
+    // 회칼 게이팅 — 인벤토리 '기타' 아이템에 회칼이 있어야 회뜨기(장 뜨기/박피)가 열린다
+    this.knife = getBestKnife(InventoryStore.items.map((i) => i.id));
 
     this.fishG = scene.add.graphics();
     this.guideG = scene.add.graphics();
@@ -132,8 +158,11 @@ export class ButcheryPanel extends DraggablePanel {
     switch (item.condition) {
       case 'live': return 1.0;
       case 'fresh': return 0.9;
-      case 'chilled': return 0.75;
-      case 'frozen': return 0.6;
+      case 'chilled': return 0.85;   // 냉장은 사시미 취급 가능
+      case 'normal': return 0.6;     // 보통 — 사시미 부적합 (등급 하락)
+      case 'frozen': return 0.55;
+      case 'thawed': return 0.5;
+      case 'bad': return 0.35;
       case 'spoiled': return 0.25;
       default: return 0.85;
     }
@@ -148,14 +177,31 @@ export class ButcheryPanel extends DraggablePanel {
     if (n.includes('광어') || n.includes('넙치')) return 'flatfish';
     if (n.includes('농어')) return 'sea_bass';
     if (n.includes('방어')) return 'yellowtail';
+    if (n.includes('부시리')) return 'amberjack';
+    if (n.includes('참돔')) return 'red_seabream';
+    if (n.includes('돌돔')) return 'stone_beakperch';
+    if (n.includes('강담돔')) return 'spotted_knifejaw';
+    if (n.includes('고등어')) return 'chub_mackerel';
+    if (n.includes('전갱이')) return 'horse_mackerel';
     return 'black_seabream';
+  }
+
+  /** 현재 스테이지가 회칼이 필요한 회뜨기(장 뜨기/박피) 단계인지 */
+  private isFilletingStage(): boolean {
+    const id = this.process.stage?.id ?? '';
+    return id === 'tail_grip' || id.startsWith('fillet_') || id === 'peel';
+  }
+
+  /** 회칼 미보유 + 회뜨기 단계 도달 → 잠금 (입력 차단 + 안내) */
+  private knifeLocked(): boolean {
+    return !this.knife && !this.process.finished && !this.done && this.isFilletingStage();
   }
 
   // ═══════════════════════════════════════════════════
   // 입력 (프리미티브별)
   // ═══════════════════════════════════════════════════
   private onPointerDown(p: Phaser.Input.Pointer): void {
-    if (this.process.finished) return;
+    if (this.process.finished || this.done || this.knifeLocked()) return;
     const stage = this.process.stage;
     if (!stage || !this.process.canAct()) return;
     const n = this.toNorm(p);
@@ -182,6 +228,7 @@ export class ButcheryPanel extends DraggablePanel {
   }
 
   private onPointerMove(p: Phaser.Input.Pointer): void {
+    if (this.done || this.knifeLocked()) return;
     if (!this.tracing && !this.peelStart) return;
     const stage = this.process.stage;
     if (!stage) return;
@@ -218,6 +265,7 @@ export class ButcheryPanel extends DraggablePanel {
   }
 
   private onPointerUp(p: Phaser.Input.Pointer): void {
+    if (this.done || this.knifeLocked()) { this.tracing = false; this.peelStart = null; return; }
     const stage = this.process.stage;
 
     // 박피 당김 판정
@@ -266,8 +314,97 @@ export class ButcheryPanel extends DraggablePanel {
   private refresh(): void {
     this.uiC.removeAll(true);
     this.drawFish();
-    this.drawGuide();
+    if (!this.knifeLocked()) this.drawGuide();
     this.drawSidebar();
+    if (this.knifeLocked()) this.drawKnifeLock();
+    this.applyFix();
+  }
+
+  /** 회칼 미보유 잠금 오버레이 — 회뜨기 단계 진입 시 안내 + [통마리로 마무리] */
+  private drawKnifeLock(): void {
+    const X = this.fishX, Y = this.fishY, W = this.fishW, H = this.fishH;
+    const g = this.scene.add.graphics();
+    g.fillStyle(0x081422, 0.9);
+    g.fillRoundedRect(X + 20, Y - 6, W - 40, H + 12, 8);
+    g.lineStyle(2, 0xffb454, 0.95);
+    g.strokeRoundedRect(X + 20, Y - 6, W - 40, H + 12, 8);
+    this.uiC.add(g);
+
+    const title = this.scene.add.text(X + W / 2, Y + 44, '회칼이 필요합니다', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '20px', color: '#ffb454', fontStyle: 'bold',
+    }).setOrigin(0.5);
+    const desc = this.scene.add.text(X + W / 2, Y + 96, [
+      '시메·방혈·손질(비늘/머리/내장)까지 마쳤습니다.',
+      '회뜨기(장 뜨기·박피)는 인벤토리 기타 아이템에 회칼이 있어야 합니다.',
+      '(식자재마트에서 막칼/회칼/야나기바 구매)',
+    ].join('\n'), {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px', color: '#e0d0b8', align: 'center', lineSpacing: 8,
+    }).setOrigin(0.5, 0);
+    this.uiC.add([title, desc]);
+
+    const bw = 220, bx = X + W / 2, by = Y + H - 34;
+    const bg = this.scene.add.graphics();
+    bg.fillStyle(0x3a2e14, 0.98); bg.fillRoundedRect(bx - bw / 2, by - 18, bw, 36, 6);
+    bg.lineStyle(2, 0xffb454, 1); bg.strokeRoundedRect(bx - bw / 2, by - 18, bw, 36, 6);
+    const t = this.scene.add.text(bx, by, '통마리로 마무리 (손질까지)', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px', color: '#ffd9a0', fontStyle: 'bold',
+    }).setOrigin(0.5);
+    const hit = this.scene.add.rectangle(bx, by, bw, 36, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
+    hit.on('pointerdown', () => this.finishWhole());
+    this.uiC.add([bg, t, hit]);
+  }
+
+  /** 회칼 미보유 종료 — 통마리(손질 완료 생선)로 지급 + 소량 XP */
+  private finishWhole(): void {
+    if (this.done) return;
+    this.done = true;
+    const speciesId = this.process.profile.speciesId;
+    const fishDef = FISH_DATABASE.find((f) => f.id === speciesId);
+    const nameKo = fishDef?.nameKo ?? this.source.name;
+    const weightKg = (this.source.weightG
+      ?? (fishDef ? (fishDef.avgWeightRangeG[0] + fishDef.avgWeightRangeG[1]) / 2 : 800)) / 1000;
+    const price = Math.max(1200, Math.round((fishDef?.sashimiValuePerKg ?? 15000) * weightKg * 0.4));
+
+    const seq = InventoryStore.nextCatchSeq();
+    InventoryStore.addItem({
+      id: `inv_dressed_${speciesId}_${seq}`,
+      name: `${nameKo} 손질 (통마리)`,
+      icon: '🐟', iconTexture: this.source.iconTexture,
+      category: 'food', subCategory: '손질 통마리',
+      basePrice: price, condition: this.source.condition ?? 'fresh',
+      equippable: false, speciesId, lengthCm: this.source.lengthCm, weightG: this.source.weightG,
+    }, 1);
+    InventoryStore.removeItem(this.source.id, false);
+    GameState.addFilletingXp(8);
+
+    // 완료 오버레이
+    this.uiC.removeAll(true);
+    const c = this.scene.add.container(0, 0);
+    const bg = this.scene.add.graphics();
+    bg.fillStyle(0x081422, 0.96);
+    bg.fillRoundedRect(this.fishX + 40, this.fishY - 10, this.fishW - 80, this.fishH + 20, 8);
+    bg.lineStyle(2, 0xffb454, 0.95);
+    bg.strokeRoundedRect(this.fishX + 40, this.fishY - 10, this.fishW - 80, this.fishH + 20, 8);
+    const title = this.scene.add.text(this.fishX + this.fishW / 2, this.fishY + 50, '손질 완료 (통마리)', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '20px', color: '#ffd9a0', fontStyle: 'bold',
+    }).setOrigin(0.5);
+    const desc = this.scene.add.text(this.fishX + this.fishW / 2, this.fishY + 100,
+      `${nameKo} 손질 (통마리) — ${price.toLocaleString()}원\n회칼이 없어 회뜨기는 하지 못했습니다. 통마리 판매/조림용으로 인벤토리에 지급되었습니다.`, {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px', color: '#e0d0b8', align: 'center', lineSpacing: 8,
+      }).setOrigin(0.5, 0);
+    const btnBg = this.scene.add.graphics();
+    btnBg.fillStyle(0x3a2e14, 0.95);
+    btnBg.fillRoundedRect(this.fishX + this.fishW / 2 - 80, this.fishY + this.fishH - 44, 160, 38, 6);
+    btnBg.lineStyle(2, 0xffb454, 0.95);
+    btnBg.strokeRoundedRect(this.fishX + this.fishW / 2 - 80, this.fishY + this.fishH - 44, 160, 38, 6);
+    const btnTxt = this.scene.add.text(this.fishX + this.fishW / 2, this.fishY + this.fishH - 25, '확인', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '14px', color: '#ffd9a0', fontStyle: 'bold',
+    }).setOrigin(0.5);
+    const btnHit = this.scene.add.rectangle(this.fishX + this.fishW / 2, this.fishY + this.fishH - 25, 160, 38, 0xffffff, 0.001)
+      .setInteractive({ useHandCursor: true });
+    btnHit.on('pointerdown', () => this.cbs.onComplete());
+    c.add([bg, title, desc, btnBg, btnTxt, btnHit]);
+    this.add(c);
     this.applyFix();
   }
 
@@ -280,7 +417,8 @@ export class ButcheryPanel extends DraggablePanel {
     const flat = this.process.profile.bodyShape === 'flat';
     const X = this.fishX, Y = this.fishY, W = this.fishW, H = this.fishH;
     const cx = X + W / 2, cy = Y + H / 2;
-    const bodyH = H * (flat ? 0.72 : 0.56);
+    // 체고/체장 비(bodyRatio)로 몸통 높이 변형 — 방어는 길쭉·낮게, 쥐치는 통통·높게
+    const bodyH = H * (flat ? 0.72 : Math.max(0.35, Math.min(0.72, 0.34 + this.process.profile.bodyRatio * 0.55)));
 
     // 작업대 (도마 배경)
     g.fillStyle(0x8a6a44, 1);
@@ -538,29 +676,50 @@ export class ButcheryPanel extends DraggablePanel {
   // 완료 — 필렛 지급 + 원본 소모
   // ═══════════════════════════════════════════════════
   private showResult(): void {
+    if (this.done) return;
+    this.done = true;
     const r = this.process.result();
     const speciesId = this.process.profile.speciesId;
     const fishDef = FISH_DATABASE.find((f) => f.id === speciesId);
     const nameKo = fishDef?.nameKo ?? this.source.name;
 
-    // 필렛 가격 — 어종 kg당 횟값 × 추정 중량 × 등급 배율 / 필렛 수
-    const weightKg = (this.source.weightG
-      ?? (fishDef ? (fishDef.avgWeightRangeG[0] + fishDef.avgWeightRangeG[1]) / 2 : 800)) / 1000;
-    const perFillet = Math.max(1500, Math.round(
-      (fishDef?.sashimiValuePerKg ?? 20000) * weightKg * r.gradeMult * 0.55 / r.filletCount,
-    ));
+    // ── 수율/등급 산출 (core computeFilletYield) — 양(수율)과 질(등급) 분리 ──
+    const weightGram = this.source.weightG
+      ?? (fishDef ? (fishDef.avgWeightRangeG[0] + fishDef.avgWeightRangeG[1]) / 2 : 800);
+    const lengthCm = this.source.lengthCm
+      ?? (fishDef ? (fishDef.avgSizeRangeCm[0] + fishDef.avgSizeRangeCm[1]) / 2 : 30);
+    const yieldRes = computeFilletYield({
+      profile: this.process.profile,
+      weightGram, lengthCm,
+      knife: this.knife,
+      skillLevel: GameState.skills.filleting.level,
+      cutAccuracyAvg: r.avgCutQuality,
+      freshnessFactor: this.freshnessFactor(this.source),
+      ikejimeDone: r.ikejimeDone, bledDone: r.bledDone,
+    });
+
+    // 필렛 가격 — 어종 kg당 횟값 × 실제 수율(kg) × 등급 배율 / 필렛 수
+    const totalValue = Math.round(
+      (fishDef?.sashimiValuePerKg ?? 20000) * (yieldRes.yieldMassG / 1000) * yieldRes.gradeMult,
+    );
+    const perFillet = Math.max(1500, Math.round(totalValue / yieldRes.filletCount));
+
+    // 손질 스킬 XP 지급 (정확도·등급 비례)
+    const gradeXp = yieldRes.grade === '특' ? 40 : yieldRes.grade === '상' ? 25 : yieldRes.grade === '중' ? 12 : 5;
+    const xpGain = Math.round(20 + r.avgCutQuality * 40 + gradeXp);
+    const lv = GameState.addFilletingXp(xpGain);
 
     const seq = InventoryStore.nextCatchSeq();
     InventoryStore.addItem({
       id: `inv_fillet_${speciesId}_${seq}`,
-      name: `${nameKo} 필렛 (${r.grade})`,
+      name: `${nameKo} 필렛 (${yieldRes.grade})`,
       icon: '🍣', iconTexture: 'food_assorted_sashimi',
       category: 'food', subCategory: '손질 필렛',
       basePrice: perFillet,
       condition: this.source.condition ?? 'fresh',
       equippable: false,
       speciesId, lengthCm: this.source.lengthCm,
-    }, r.filletCount);
+    }, yieldRes.filletCount);
     InventoryStore.addItem({
       id: `inv_bone_${speciesId}_${seq}`,
       name: `${nameKo} 중골·머리 (육수용)`,
@@ -578,15 +737,18 @@ export class ButcheryPanel extends DraggablePanel {
     bg.lineStyle(2, 0x4af2a1, 0.95);
     bg.strokeRoundedRect(this.fishX + 40, this.fishY - 10, this.fishW - 80, this.fishH + 20, 8);
     c.add(bg);
-    const title = this.scene.add.text(this.fishX + this.fishW / 2, this.fishY + 40, `손질 완료 — ${r.grade}등급`, {
+    const title = this.scene.add.text(this.fishX + this.fishW / 2, this.fishY + 30, `손질 완료 — ${yieldRes.grade}등급`, {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '22px', color: '#4af2a1', fontStyle: 'bold',
     }).setOrigin(0.5);
-    const desc = this.scene.add.text(this.fishX + this.fishW / 2, this.fishY + 96, [
-      `${nameKo} 필렛 x${r.filletCount} (장당 ${perFillet.toLocaleString()}원) + 중골·머리`,
-      `컷 정확도 평균 ${(r.avgCutQuality * 100).toFixed(0)}% · 시메 ${r.ikejimeDone ? 'O' : 'X'} · 방혈 ${r.bledDone ? 'O' : 'X'}`,
-      '인벤토리(음식 탭)에 지급되었습니다.',
+    const knifeName = this.knife ? this.knife.nameKo : '막칼(폴백)';
+    const desc = this.scene.add.text(this.fishX + this.fishW / 2, this.fishY + 74, [
+      `${nameKo} 필렛 x${yieldRes.filletCount} (장당 ${perFillet.toLocaleString()}원) + 중골·머리`,
+      `수율 ${yieldRes.yieldMassG}g · 슬라이스 ${yieldRes.sliceCount}점 · 컷 정확도 ${(r.avgCutQuality * 100).toFixed(0)}%`,
+      `칼: ${knifeName} · 시메 ${r.ikejimeDone ? 'O' : 'X'} · 방혈 ${r.bledDone ? 'O' : 'X'} · 손질 스킬 Lv.${lv.level}${lv.leveledUp ? ' (레벨업!)' : ` (+${xpGain} XP)`}`,
+      yieldRes.undersizedForFillet ? '체장이 작아 회뜨기 비효율 — 통마리 판매/조림 권장' : '인벤토리(음식 탭)에 지급되었습니다.',
     ].join('\n'), {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px', color: '#d0e8f5', align: 'center', lineSpacing: 8,
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px',
+      color: yieldRes.undersizedForFillet ? '#ffce9a' : '#d0e8f5', align: 'center', lineSpacing: 7,
     }).setOrigin(0.5, 0);
     const btnBg = this.scene.add.graphics();
     btnBg.fillStyle(0x0d4a2e, 0.95);

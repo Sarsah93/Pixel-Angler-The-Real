@@ -114,6 +114,38 @@ export class BootScene extends Phaser.Scene {
     this.load.image('fish_largescale_blackfish', 'fish/large_scale_blackfish.png');   // 벵에돔
     this.load.image('fish_longtail_blackfish', 'fish/small_scale_blackfish.png');     // 긴꼬리벵에돔
 
+    // 어종별 실사 픽셀 생선 이미지 (2026-07-22 추가 — food assets/).
+    // 텍스처 키는 어종 ID(오라클/FISH_DATABASE 표준) 기준 — 파일명(영문 통칭)과 분리해
+    // 매핑은 FISH_TEXTURE(FirstPersonFishingScene)에서 일원화한다.
+    this.load.image('fish_squid', 'fish/bigfin_reef_squid.png');            // 무늬오징어
+    this.load.image('fish_hairtail', 'fish/Cutlassfish.png');               // 갈치 (파일명 대문자 C — gh-pages 대소문자 구분)
+    this.load.image('fish_cuttlefish', 'fish/cuttlefish.png');              // 갑오징어
+    this.load.image('fish_blue_rockfish', 'fish/dark-banded_rockfish.png'); // 청볼락 (파일명은 dark-banded지만 사용자 지정 어종은 청볼락)
+    this.load.image('fish_filefish', 'fish/filefish.png');                  // 쥐치
+    this.load.image('fish_golden_rockfish', 'fish/owstons_rockfish.png');   // 황볼락
+    this.load.image('fish_sea_bass', 'fish/sea_bass.png');                  // 농어
+    this.load.image('fish_amberjack', 'fish/yellowtail_amberjack.png');     // 부시리
+    this.load.image('fish_yellowtail', 'fish/yellowtail_fish.png');         // 방어
+    this.load.image('fish_striped_mullet', 'fish/flathead_grey_mullet.png');// 숭어
+    this.load.image('fish_redlip_mullet', 'fish/So-iuy_mullet.png');        // 가숭어
+    this.load.image('fish_spotted_knifejaw', 'fish/spotted_knifejaw.png');  // 강담돔
+    this.load.image('fish_red_seabream', 'fish/red_sea_bream.png');         // 참돔 (야간 참돔 night_seabream 공용)
+    this.load.image('fish_horse_mackerel', 'fish/jack_mackerel.png');       // 전갱이
+    this.load.image('fish_chub_mackerel', 'fish/mackerel.png');             // 고등어
+    // 돌돔 — 40cm↑ 수컷은 무늬 소실(수컷 이미지), 그 외(40cm↓ 전부 + 40cm↑ 암컷)는 무늬 유지(암컷 이미지)
+    this.load.image('fish_stone_beakperch_female', 'fish/barred_knifejaw_female.png');
+    this.load.image('fish_stone_beakperch_male', 'fish/barred_knifejaw_male.png');
+    // DB 미등록 어종 — 어종 추가 시 FISH_TEXTURE에 매핑만 연결하면 됨 (에셋은 선(先)로드)
+    this.load.image('fish_spotbelly_rockfish', 'fish/spotbelly_rockfish.png'); // 개볼락 (FISH_DATABASE 미등록)
+    this.load.image('fish_swordtip_squid', 'fish/swordtip_squid.png');         // 창꼴뚜기(한치) (FISH_DATABASE 미등록)
+    // 2026-07-22 2차 추가 (놀래미/쥐노래미/망상어 + 용치놀래기 암/수)
+    this.load.image('fish_greenling', 'fish/spotbelly_greenling.png');         // 놀래미
+    this.load.image('fish_fat_greenling', 'fish/fat_greenling.png');           // 쥐노래미
+    this.load.image('fish_surfperch', 'fish/surf_perch.png');                  // 망상어
+    // 용치놀래기 — 암컷→수컷 성전환 어종 (수컷 = 화려한 녹색 혼인색) — 성별별 이미지 분기
+    this.load.image('fish_rainbow_wrasse_female', 'fish/multicolorfin_rainbowfish_female.png');
+    this.load.image('fish_rainbow_wrasse_male', 'fish/multicolorfin_rainbowfish_male.png');
+
     // ─── 남자 캐릭터 스프라이트 (12장) ───
     // 정지 4방향
     this.load.image('man-idle-front', 'characters/man/man-idle-front.png');

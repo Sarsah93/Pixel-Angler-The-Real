@@ -736,7 +736,8 @@ export const FISH_DATABASE: FishSpecies[] = [
   },
   {
     id: 'striped_mullet',
-    nameKo: '참숭어(숭어)',
+    // 표준명 정정 (2026-07-22): 국명 표준은 '숭어'(별칭 보리숭어) — Mugil cephalus
+    nameKo: '숭어(보리숭어)',
     nameEn: 'Flathead Grey Mullet',
     scientificName: 'Mugil cephalus',
     spriteKey: 'fish_striped_mullet',
@@ -760,8 +761,9 @@ export const FISH_DATABASE: FishSpecies[] = [
   },
   {
     id: 'redlip_mullet',
-    nameKo: '가숭어(밀치)',
-    nameEn: 'Redlip Mullet',
+    // 표준명 정정 (2026-07-22): 국명 표준은 '가숭어'(별칭 참숭어·밀치) — So-iuy mullet
+    nameKo: '가숭어(참숭어)',
+    nameEn: 'So-iuy Mullet',
     scientificName: 'Chelon haematocheilus',
     spriteKey: 'fish_redlip_mullet',
     minLegalSizeCm: 0,

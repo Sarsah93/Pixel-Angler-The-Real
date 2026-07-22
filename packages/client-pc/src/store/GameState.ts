@@ -30,6 +30,8 @@ import type {
 } from '@tra/core';
 import { getLicenseByType, getCurrentGameMinute, calculateTideInfo, getFishById } from '@tra/core';
 import { EnvironmentStore } from './EnvironmentStore.js';
+import { CoolerStore, CoolerSaveState } from './CoolerStore.js';
+import { InventoryStore, InventorySaveState } from './InventoryStore.js';
 
 // ─────────────────────────────────────────────
 // 기본 쿨러 상태
@@ -100,6 +102,19 @@ function createDefaultPlayer(): PlayerState {
 }
 
 // ─────────────────────────────────────────────
+// 생활 스킬 (손질 등 — 성공 시 XP 누적 → 레벨업)
+// ─────────────────────────────────────────────
+/** 생활 스킬 상태 */
+export interface SkillState {
+  /** 회 손질(삼면뜨기/박피) — 레벨↑ 시 수율·슬라이스·등급 상향 */
+  filleting: { level: number; xp: number };
+}
+
+function createDefaultSkills(): SkillState {
+  return { filleting: { level: 0, xp: 0 } };
+}
+
+// ─────────────────────────────────────────────
 // 저장 가능한 전체 게임 데이터 구조
 // ─────────────────────────────────────────────
 interface SaveData {
@@ -111,6 +126,11 @@ interface SaveData {
   condo: FloatingCondoState | null;
   visitedSpotIds: string[];
   completedQuestIds: string[];
+  skills?: SkillState;
+  /** 휴대 쿨러 상태 (어획/매질/밑밥) — 로드 시 실경과 시간만큼 신선도/매질 진행 */
+  coolerBox?: CoolerSaveState;
+  /** 인벤토리 상태 (아이템/퀵슬롯/채비/편대/루어 모드) — 신선도는 lazy refresh로 실경과 반영 */
+  inventoryStore?: InventorySaveState;
   version: number;
 }
 
@@ -141,6 +161,7 @@ export class GameStateManager {
   private _condo: FloatingCondoState | null = null;
   private _visitedSpotIds: Set<string> = new Set();
   private _completedQuestIds: Set<string> = new Set();
+  private _skills: SkillState = createDefaultSkills();
   private _currentSpotId: string | null = null;
   private _isInitialized = false;
   /** 현재 진행 중인 저장 슬롯 (1~3, 미지정 시 null) */
@@ -182,6 +203,11 @@ export class GameStateManager {
     this._condo = saved.condo ?? null;
     this._visitedSpotIds = new Set(saved.visitedSpotIds ?? []);
     this._completedQuestIds = new Set(saved.completedQuestIds ?? []);
+    this._skills = saved.skills ?? createDefaultSkills();
+    // 쿨러 복원 — 저장~로드 사이 실경과 시간을 sync로 반영 (어획 신선도/매질 만료, 밑밥은 그대로)
+    CoolerStore.deserialize(saved.coolerBox);
+    // 인벤토리 복원 — 구버전 세이브(필드 없음)는 시드로 리셋
+    InventoryStore.deserialize(saved.inventoryStore);
   }
 
   // ─── Getter ───────────────────────────────
@@ -221,6 +247,31 @@ export class GameStateManager {
 
   get completedQuestIds(): string[] {
     return Array.from(this._completedQuestIds);
+  }
+
+  /** 생활 스킬 상태 */
+  get skills(): SkillState {
+    return this._skills;
+  }
+
+  /**
+   * 손질 스킬 XP 지급 → 레벨업 판정.
+   * 레벨업 임계 = (level + 1) × 100 XP. 레벨 상한 20.
+   */
+  addFilletingXp(xp: number): { leveledUp: boolean; level: number } {
+    const s = this._skills.filleting;
+    if (s.level >= 20) return { leveledUp: false, level: s.level };
+    s.xp += Math.max(0, Math.round(xp));
+    let leveledUp = false;
+    let threshold = (s.level + 1) * 100;
+    while (s.level < 20 && s.xp >= threshold) {
+      s.xp -= threshold;
+      s.level += 1;
+      leveledUp = true;
+      threshold = (s.level + 1) * 100;
+    }
+    if (s.level >= 20) s.xp = 0;
+    return { leveledUp, level: s.level };
   }
 
   // ─── 플레이어 조작 ─────────────────────────
@@ -467,6 +518,9 @@ export class GameStateManager {
       condo: this._condo,
       visitedSpotIds: Array.from(this._visitedSpotIds),
       completedQuestIds: Array.from(this._completedQuestIds),
+      skills: this._skills,
+      coolerBox: CoolerStore.serialize(),
+      inventoryStore: InventoryStore.serialize(),
       version: SAVE_VERSION,
     };
   }
@@ -591,6 +645,9 @@ export class GameStateManager {
     this._condo = null;
     this._visitedSpotIds = new Set();
     this._completedQuestIds = new Set();
+    this._skills = createDefaultSkills();
+    CoolerStore.resetAll();
+    InventoryStore.resetAll();
     this._currentSpotId = null;
     this._isInitialized = true;
   }

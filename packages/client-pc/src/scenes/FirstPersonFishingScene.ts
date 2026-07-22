@@ -41,6 +41,8 @@ import { ExternalDataStore } from '../store/ExternalDataStore.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { applyScreenFixed } from '../ui/DraggablePanel.js';
 import { CoolerPanel } from '../ui/CoolerPanel.js';
+import { InventoryPanel } from '../ui/InventoryPanel.js';
+import { ItemDetailPanel } from '../ui/ItemDetailPanel.js';
 import { loadSettings } from './SettingsScene.js';
 
 export interface FirstPersonFishingInit {
@@ -80,6 +82,9 @@ interface DecisionButton {
   stroke: number;
   color: string;
   onClick: () => void;
+  /** 비활성 (회색 렌더 + 클릭 시 disabledHint 안내) */
+  disabled?: boolean;
+  disabledHint?: string;
 }
 
 // ── 화면 상수 ──────────────────────────────────────
@@ -97,7 +102,45 @@ const FISH_TEXTURE: Record<string, string> = {
   flatfish: 'fish_halibut',
   largescale_blackfish: 'fish_largescale_blackfish',   // 벵에돔
   longtail_blackfish: 'fish_longtail_blackfish',       // 긴꼬리벵에돔
+  // 2026-07-22 추가 (food assets/)
+  squid: 'fish_squid',                     // 무늬오징어
+  hairtail: 'fish_hairtail',               // 갈치
+  cuttlefish: 'fish_cuttlefish',           // 갑오징어
+  blue_rockfish: 'fish_blue_rockfish',     // 청볼락
+  filefish: 'fish_filefish',               // 쥐치
+  golden_rockfish: 'fish_golden_rockfish', // 황볼락
+  sea_bass: 'fish_sea_bass',               // 농어
+  amberjack: 'fish_amberjack',             // 부시리
+  yellowtail: 'fish_yellowtail',           // 방어
+  striped_mullet: 'fish_striped_mullet',   // 숭어
+  redlip_mullet: 'fish_redlip_mullet',     // 가숭어
+  spotted_knifejaw: 'fish_spotted_knifejaw', // 강담돔
+  red_seabream: 'fish_red_seabream',       // 참돔
+  night_seabream: 'fish_red_seabream',     // 참돔(야간) — 같은 생물종이라 이미지 공용
+  horse_mackerel: 'fish_horse_mackerel',   // 전갱이
+  chub_mackerel: 'fish_chub_mackerel',     // 고등어
+  // 2026-07-22 2차 추가
+  greenling: 'fish_greenling',             // 놀래미
+  fat_greenling: 'fish_fat_greenling',     // 쥐노래미
+  surfperch: 'fish_surfperch',             // 망상어
 };
+
+/**
+ * 어획 개체 → 텍스처 해소.
+ *  - 돌돔(stone_beakperch): 40cm를 넘어야 암수 구별 — 수컷만 줄무늬 소실.
+ *    40cm 미만은 개체 성별과 무관하게 암컷(무늬 유지) 이미지를 쓴다.
+ *  - 용치놀래기(rainbow_wrasse): 암컷→수컷 성전환 — 성별에 따라 체색이 완전히 달라
+ *    암/수 이미지를 분기한다 (수컷 = 화려한 녹색 혼인색).
+ */
+function resolveFishTexture(speciesId: string, lengthCm: number, sex: 'M' | 'F'): string | undefined {
+  if (speciesId === 'stone_beakperch') {
+    return (lengthCm >= 40 && sex === 'M') ? 'fish_stone_beakperch_male' : 'fish_stone_beakperch_female';
+  }
+  if (speciesId === 'rainbow_wrasse') {
+    return sex === 'M' ? 'fish_rainbow_wrasse_male' : 'fish_rainbow_wrasse_female';
+  }
+  return FISH_TEXTURE[speciesId];
+}
 
 export class FirstPersonFishingScene extends Phaser.Scene {
   private cfg!: FirstPersonFishingInit;
@@ -240,8 +283,10 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   private coolerChumText!: Phaser.GameObjects.Text;
   /** 어창(쿨러) 3x3 팝업 — 열림 중 낚시 입력 차단 */
   private coolerPanel?: CoolerPanel;
-  /** 열려 있는 쿨러 팝업이 강제 방생 모드인가 (닫힘 후 종료 재시도) */
-  private coolerPanelForce = false;
+  /** 인벤토리 팝업 (I 토글) — 쿨러 드래그 이송의 대상. 열림 중 낚시 입력 차단 */
+  private invPanel?: InventoryPanel;
+  /** 인벤토리에서 연 아이템 상세 팝업 */
+  private fpDetailPanel?: ItemDetailPanel;
   private resultContainer?: Phaser.GameObjects.Container;
 
   /** 이번 세션 어획 목록 */
@@ -359,7 +404,9 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.input.keyboard!.on('keydown-LEFT', () => this.doDart(-1));
     this.input.keyboard!.on('keydown-RIGHT', () => this.doDart(1));
     this.input.keyboard!.on('keydown-C', () => this.tossChum());
+    this.input.keyboard!.on('keydown-I', () => this.toggleFpInventory());
     this.input.keyboard!.on('keydown-ESC', () => {
+      if (this.invPanel) { this.closeFpInventory(); return; }
       if (this.coolerPanel) {
         // 강제 방생 모드는 ESC로 닫을 수 없다 — 방생을 끝내야 진행
         if (!this.coolerPanel.lockedOpen) this.closeCoolerPanel();
@@ -368,13 +415,13 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       this.exitToField();
     });
     this.input.keyboard!.on('keydown-SPACE', () => {
-      if (this.coolerPanel) return;
+      if (this.coolerPanel || this.invPanel) return;
       if (this.fpState === 'result') this.recast();
     });
     // 우클릭 = 챔질 (입질 시퀀스 판정) / 좌클릭 = 릴링(홀드)·루어 액션(탭/더블탭)
     this.input.mouse?.disableContextMenu();
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
-      if (this.guideContainer || this.coolerPanel) return;   // 도움말/어창 열림 중엔 낚시 입력 차단
+      if (this.guideContainer || this.coolerPanel || this.invPanel) return;   // 도움말/어창/인벤 열림 중엔 낚시 입력 차단
       if (p.rightButtonDown()) { this.attemptHookset(); return; }
       if (p.leftButtonDown()) {
         this.pointerDownAt = this.time.now;
@@ -401,6 +448,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.vignetteG = this.add.graphics().setDepth(99);
     this.buildControlBar();
     this.buildHelpButton();
+    this.buildGuideBookButton();
     // F1 또는 / (물음표) 키 = 도움말 토글
     this.input.keyboard!.on('keydown-F1', () => this.toggleGuide());
     this.input.keyboard!.on('keydown-FORWARD_SLASH', () => this.toggleGuide());
@@ -436,7 +484,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     } else if (this.biteSeq.active || this.pendingFish) {
       text = '입질 중! 초릿대가 크게 휘는 3단계에 우클릭 챔질 (1단계 5% · 2단계 20% · 3단계 100%)';
     } else {
-      text = '우클릭 챔질 · 좌클릭 홀드 릴링 · 탭 호핑 · 더블탭 트위칭 · ↑ 리프트 · H 뒷줄견제 · C 밑밥 · F1 도움말';
+      text = '우클릭 챔질 · 좌클릭 홀드 릴링 · 탭 호핑 · 더블탭 트위칭 · ↑ 리프트 · H 뒷줄견제 · C 밑밥 · I 인벤 · F1 도움말';
     }
     if (this.controlBarText.text !== text) this.controlBarText.setText(text);
   }
@@ -458,6 +506,41 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     hit.on('pointerout', () => q.setColor('#aee8ff'));
     hit.on('pointerdown', () => this.toggleGuide());
     btn.add([g, q, hit]);
+    applyScreenFixed(btn);
+  }
+
+  /**
+   * 가이드북(?) 아이콘 — 우측 상단 수심 정보 패널 우측 아래 공간.
+   * 클릭 시 도우미 가이드 재열람 (F1/우하단 ? 버튼과 동일 동작).
+   */
+  private buildGuideBookButton(): void {
+    // 수심 패널: px = GAME_WIDTH-352, py = 44, 288 높이 → 바로 아래 우측 정렬
+    const bx = GAME_WIDTH - 42;
+    const by = 44 + 288 + 26;
+    const btn = this.add.container(bx, by).setDepth(95);
+    const g = this.add.graphics();
+    // 책 몸통 (펼침 방향 표지) + 책등
+    g.fillStyle(0x1c4a6a, 0.97);
+    g.fillRoundedRect(-17, -21, 34, 42, 5);
+    g.fillStyle(0x33b0e0, 1);
+    g.fillRoundedRect(-17, -21, 7, 42, { tl: 5, bl: 5, tr: 0, br: 0 });
+    g.lineStyle(1.5, 0x5cd0ff, 0.95);
+    g.strokeRoundedRect(-17, -21, 34, 42, 5);
+    // 페이지 줄 무늬
+    g.lineStyle(1, 0x8fd4f0, 0.4);
+    g.lineBetween(-6, -12, 12, -12);
+    g.lineBetween(-6, 12, 12, 12);
+    const q = this.add.text(3, 0, '?', {
+      fontFamily: 'monospace', fontSize: '19px', color: '#aee8ff', fontStyle: 'bold',
+    }).setOrigin(0.5);
+    const lbl = this.add.text(0, 32, '가이드', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#7fb8d8',
+    }).setOrigin(0.5);
+    const hit = this.add.rectangle(0, 0, 40, 48, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
+    hit.on('pointerover', () => { q.setColor('#ffffff'); lbl.setColor('#aee8ff'); });
+    hit.on('pointerout', () => { q.setColor('#aee8ff'); lbl.setColor('#7fb8d8'); });
+    hit.on('pointerdown', () => this.toggleGuide());
+    btn.add([g, q, lbl, hit]);
     applyScreenFixed(btn);
   }
 
@@ -486,6 +569,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     title: string; color: string;
     stages?: { deg: number; color: number; head: string; body: string; hit: string }[];
     items?: { badge: string; text: string; note?: string; warn?: string }[];
+    /** 하단 시각 도해 — timing(입질 타임라인·챔질 골든존) / tension(텐션 게이지 구간) */
+    diagram?: 'timing' | 'tension';
     footer?: string;
   }[] = [
     {
@@ -511,6 +596,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     },
     {
       title: '2단계 — 챔질 타이밍 (우클릭)', color: '#ff6a5a',
+      diagram: 'timing',
       items: [
         {
           badge: '우클릭 = 챔질',
@@ -528,8 +614,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
         },
         {
           badge: '어종별 입질 패턴',
-          text: '광어는 예비 동작 없이 곧바로 3단계로 박고, 감성돔은 1단계 간보기 후 3단계로 흡입합니다.',
-          note: '패턴을 기억하면 다음 입질을 예측할 수 있습니다. 챔질 없이 어신이 끝나면 미끼만 따먹힙니다.',
+          text: '광어는 곧바로 3단계로 박고, 감성돔은 1단계 간보기 후 3단계로 흡입합니다. (챔질 없이 끝나면 미끼만 따먹힙니다)',
         },
       ],
     },
@@ -566,6 +651,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     },
     {
       title: '4단계 — 파이팅 (챔질 성공 후)', color: '#4af2a1',
+      diagram: 'tension',
       items: [
         {
           badge: '조작',
@@ -717,6 +803,11 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       }
     }
 
+    // 하단 시각 도해 — 낚싯대 휨새 도해처럼 한눈에 읽히는 그림 가이드
+    if (page.diagram) {
+      this.drawGuideDiagram(c, page.diagram, px + 40, py + phh - 158, pw - 80, 100);
+    }
+
     // 네비게이션: [이전] [n/N] [다음 or 낚시 시작] — 패널 안쪽 24px 마진 유지 (잘림 방지)
     const navY = py + phh - 38;
     const mkNav = (nx: number, label: string, primary: boolean, onClick: () => void): void => {
@@ -761,6 +852,105 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.tweens.add({ targets: c, alpha: 1, duration: 160 });
     applyScreenFixed(c);
     this.guideContainer = c;
+  }
+
+  /**
+   * 가이드 시각 도해 렌더 — "낚싯대 휨새 도해가 가장 이해하기 쉽다"는 피드백을 반영해
+   * 챔질 타이밍/텐션 관리도 같은 방식의 그림으로 표현한다.
+   *  - timing: 입질 타임라인 (1→2→3단계 융기 + 3단계 골든존 '지금 챔질!' + 펴짐=실패 구간)
+   *  - tension: 텐션 게이지 구간 (느슨/안전/위험/줄터짐 색 구간 + 유지 바늘)
+   */
+  private drawGuideDiagram(
+    c: Phaser.GameObjects.Container, kind: 'timing' | 'tension',
+    x: number, y: number, w: number, h: number,
+  ): void {
+    const g = this.add.graphics();
+    // 도해 배경 카드
+    g.fillStyle(0x0e1c2d, 0.95);
+    g.fillRoundedRect(x, y, w, h, 6);
+    g.lineStyle(1.2, 0x2a5a8a, 0.9);
+    g.strokeRoundedRect(x, y, w, h, 6);
+    c.add(g);
+
+    const label = (lx: number, ly: number, text: string, color: string, size = 10, bold = true, origin = 0.5): void => {
+      const t = this.add.text(lx, ly, text, {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: `${size}px`, color, fontStyle: bold ? 'bold' : 'normal',
+      }).setOrigin(origin, 0.5);
+      c.add(t);
+    };
+
+    if (kind === 'timing') {
+      // 시간축
+      const baseY = y + h - 24;
+      g.lineStyle(2, 0x2a5a8a, 1);
+      g.lineBetween(x + 16, baseY, x + w - 16, baseY);
+      label(x + w - 14, baseY + 10, '시간 →', '#7a97ab', 9, false, 1);
+
+      // 융기(입질) 3개 — 높이 = 구부러짐 각도 비례
+      const humps: { cx: number; hw: number; peak: number; color: number; head: string; sub: string }[] = [
+        { cx: x + w * 0.16, hw: w * 0.055, peak: h * 0.30, color: 0x9fd0e4, head: '1단계', sub: '5%' },
+        { cx: x + w * 0.38, hw: w * 0.07, peak: h * 0.46, color: 0xffce54, head: '2단계', sub: '20%' },
+        { cx: x + w * 0.67, hw: w * 0.115, peak: h * 0.66, color: 0xff6a5a, head: '3단계', sub: '100%' },
+      ];
+      for (const hm of humps) {
+        g.lineStyle(3, hm.color, 1);
+        g.beginPath();
+        g.moveTo(hm.cx - hm.hw, baseY);
+        // 부드러운 융기 곡선 (사인 반파)
+        for (let s = 0; s <= 16; s++) {
+          const t = s / 16;
+          g.lineTo(hm.cx - hm.hw + t * hm.hw * 2, baseY - Math.sin(t * Math.PI) * hm.peak);
+        }
+        g.strokePath();
+        const colorHex = `#${hm.color.toString(16).padStart(6, '0')}`;
+        label(hm.cx, baseY - hm.peak - 12, `${hm.head} (${hm.sub})`, colorHex, 10);
+      }
+
+      // 3단계 골든존 — 초록 하이라이트 + '지금 챔질!' 화살표
+      const gz = humps[2];
+      g.fillStyle(0x4af2a1, 0.16);
+      g.fillRect(gz.cx - gz.hw * 0.55, y + 12, gz.hw * 1.1, baseY - y - 12);
+      g.lineStyle(1.5, 0x4af2a1, 0.9);
+      g.strokeRect(gz.cx - gz.hw * 0.55, y + 12, gz.hw * 1.1, baseY - y - 12);
+      label(gz.cx, y + 20, '지금 챔질! (우클릭)', '#4af2a1', 11);
+
+      // 펴짐 = 실패 구간 (골든존 직후)
+      const failX = gz.cx + gz.hw * 0.62;
+      g.fillStyle(0x8a2a2a, 0.30);
+      g.fillRect(failX, y + 12, w * 0.115, baseY - y - 12);
+      label(failX + w * 0.058, y + 20, '펴짐 = 실패', '#ff9a6a', 10);
+    } else {
+      // 텐션 게이지 — 0~100 구간 색 바
+      const barY = y + h / 2 - 9;
+      const barX = x + 30, barW = w - 60, barH = 20;
+      const zone = (from: number, to: number, color: number, alpha = 0.95): void => {
+        g.fillStyle(color, alpha);
+        g.fillRect(barX + barW * (from / 100), barY, barW * ((to - from) / 100), barH);
+      };
+      zone(0, 30, 0x4a6a8a);      // 느슨 — 바늘 빠짐
+      zone(30, 80, 0x1d7a4a);     // 안전
+      zone(80, 88, 0xb07a2a);     // 위험
+      zone(88, 100, 0xa03030);    // 줄터짐
+      g.lineStyle(1.5, 0x8faabf, 0.9);
+      g.strokeRect(barX, barY, barW, barH);
+
+      // 구간 눈금 + 수치
+      for (const tick of [0, 30, 80, 88, 100]) {
+        const tx = barX + barW * (tick / 100);
+        g.lineStyle(1.5, 0xd0e8f5, 0.8);
+        g.lineBetween(tx, barY + barH, tx, barY + barH + 5);
+        label(tx, barY + barH + 14, `${tick}`, '#9fd0e4', 9, false);
+      }
+      // 구간 라벨 (바 위)
+      label(barX + barW * 0.15, barY - 13, '느슨 — 바늘 빠짐', '#8fb8d0', 10);
+      label(barX + barW * 0.55, barY - 13, '안전 유지 구간 (릴링 OK)', '#4af2a1', 11);
+      label(barX + barW * 0.94, barY - 13, '줄터짐!', '#ff6a5a', 11);
+      // 유지 바늘 (55 지점)
+      const nx = barX + barW * 0.55;
+      g.fillStyle(0xffffff, 1);
+      g.fillTriangle(nx - 5, barY + barH + 7, nx + 5, barY + barH + 7, nx, barY + barH + 1);
+      label(barX + barW * 0.75, barY + barH + 14, '88+ 릴링 강행 = 줄터짐', '#ff9a6a', 9);
+    }
   }
 
   // ═══════════════════════════════════════════════════
@@ -1418,7 +1608,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
 
     // 상호작용: 좌측 = 어창 3x3 팝업 / 우측 = 밑밥 투척
     const catchHit = this.add.rectangle(-85, -6, 166, 54, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
-    catchHit.on('pointerdown', () => this.openCoolerPanel(false));
+    catchHit.on('pointerdown', () => this.openCoolerPanel());
     const chumHit = this.add.rectangle(85, -6, 166, 54, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
     chumHit.on('pointerdown', () => this.tossChum());
     cooler.add([catchHit, chumHit]);
@@ -1428,17 +1618,26 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   }
 
   private refreshCoolerUi(): void {
+    // 쿨러(기타 아이템) 미보유 시 어창/밑밥 기능 비활성 표기
+    if (!InventoryStore.hasCooler()) {
+      this.coolerCatchText?.setText('쿨러 없음');
+      this.coolerChumText?.setText('사용 불가');
+      return;
+    }
     this.coolerCatchText?.setText(`${CoolerStore.count()} / ${COOLER_CAPACITY}마리`);
     this.coolerChumText?.setText(CoolerStore.chumRemaining > 0 ? `${CoolerStore.chumRemaining} / 100` : '비어있음');
   }
 
   // ── 어창(쿨러) 3x3 팝업 ─────────────────────────────
-  private openCoolerPanel(force: boolean): void {
+  private openCoolerPanel(): void {
     if (this.coolerPanel) return;
-    this.coolerPanelForce = force;
+    if (!InventoryStore.hasCooler()) {
+      this.flashState('쿨러가 없습니다 — 기타 아이템에 쿨러(아이스박스)가 필요합니다');
+      return;
+    }
     const panel = new CoolerPanel(this, {
-      force,
-      requiredReleases: () => this.coolerOverflow(),
+      // 1인칭 낚시는 항상 물가 — 해수 넣기 상시 가능
+      isNearSea: () => true,
       onChanged: () => this.refreshCoolerUi(),
       onClose: () => this.closeCoolerPanel(),
     });
@@ -1449,13 +1648,40 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   private closeCoolerPanel(): void {
     const p = this.coolerPanel;
     if (!p) return;
-    const wasForce = this.coolerPanelForce;
     this.coolerPanel = undefined;
-    this.coolerPanelForce = false;
     p.destroy();
     this.refreshCoolerUi();
-    // 강제 방생 모드였다면 (방생이 끝났으므로) 이송/종료를 재시도
-    if (wasForce) this.exitToField();
+  }
+
+  // ── 인벤토리 (I) — 쿨러 어획 드래그 이송·슬롯 정리용 ────
+  private toggleFpInventory(): void {
+    if (this.invPanel) { this.closeFpInventory(); return; }
+    if (this.fpState === 'fighting' || this.guideContainer) return;   // 파이팅/가이드 중엔 열지 않음
+    const panel = new InventoryPanel(this, GAME_WIDTH - 470, 60, {
+      onClose: () => this.closeFpInventory(),
+      onOpenDetail: (item) => {
+        this.fpDetailPanel?.destroy();
+        const d = new ItemDetailPanel(this, item, 180, 90, () => {
+          d.destroy();
+          this.fpDetailPanel = undefined;
+        });
+        this.add.existing(d);
+        this.fpDetailPanel = d;
+      },
+      onOpenTackle: () => this.flashState('채비 조립은 탑다운 U 활용 창에서 가능합니다'),
+    });
+    this.add.existing(panel);
+    this.invPanel = panel;
+  }
+
+  private closeFpInventory(): void {
+    const p = this.invPanel;
+    if (!p) return;
+    this.invPanel = undefined;
+    this.fpDetailPanel?.destroy();
+    this.fpDetailPanel = undefined;
+    p.destroy();
+    this.refreshCoolerUi();
   }
 
   // ═══════════════════════════════════════════════════
@@ -1463,6 +1689,11 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   // ═══════════════════════════════════════════════════
   private tossChum(): void {
     if (this.fpState === 'fighting' || this.coolerPanel) return;
+    // 밑밥 통은 쿨러(기타 아이템)에 딸린 기능 — 쿨러가 없으면 사용 불가
+    if (!InventoryStore.hasCooler()) {
+      this.flashState('쿨러가 없어 밑밥을 쓸 수 없습니다 — 기타 아이템에 쿨러가 필요합니다');
+      return;
+    }
     // 배합 밑밥 1회 25 소모 (U 밑밥 품질 탭에서 배합 — 추후 능력치로 소모량 감소 예정)
     if (!CoolerStore.consumeChumThrow()) {
       this.flashState('밑밥이 비어 있습니다 — 탑다운 U 밑밥 품질에서 배합하세요');
@@ -1519,6 +1750,10 @@ export class FirstPersonFishingScene extends Phaser.Scene {
 
     // 실시간 날씨 파티클 (비/눈/안개)
     this.updateFpWeather(dt);
+
+    // 도우미 가이드 열람 중 — 낚시 진행(조류/침강/입질/파이팅)만 일시정지.
+    // 실시간 시계·날씨 연출은 계속되고, 가이드를 닫는 순간부터 액션이 재개된다.
+    if (this.guideContainer) return;
 
     // ── 조류 엔진 — 수면 거리(distM) 기반 존 판정 + 힘 벡터 ──
     const hoursNow = new Date().getHours() + new Date().getMinutes() / 60;
@@ -2071,7 +2306,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     const f = this.hookedFish!;
     const protectedFish = f.isUndersized || f.isClosedSeason;
     const sexLabel = f.sex === 'M' ? '수컷' : '암컷';
-    const fishTexture = FISH_TEXTURE[f.speciesId];
+    const fishTexture = resolveFishTexture(f.speciesId, f.lengthCm, f.sex);
 
     if (protectedFish) {
       const reason = f.isClosedSeason ? '금어기' : `금지체장 미만`;
@@ -2098,24 +2333,28 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   }
 
   /**
-   * 어획 결정 패널 — [쿨러에 넣기] / [방생하기] 선택.
+   * 어획 결정 패널 — [쿨러에 보관하기] / [인벤토리에 보관하기] / [방생하기] 선택.
+   * 쿨러(기타 아이템) 미보유 시 '쿨러에 보관하기'는 비활성 — 인벤토리/방생만 가능.
    * 선택 후 안내 메시지와 함께 [계속하기] / [그만하기]로 이어진다.
    */
   private showCatchDecisionPanel(f: SpawnedFish, extra: string[], fishTexture?: string): void {
     const sexLabel = f.sex === 'M' ? '수컷' : '암컷';
     const extraLine = extra.length > 0
-      ? `\n\n다관점 히트! 카드 채비 추가 ${extra.length}마리는 어창에 넣었습니다:\n${extra.join(', ')}`
+      ? `\n\n다관점 히트! 카드 채비 추가 어획 ${extra.length}마리:\n${extra.join(', ')}`
       : '';
     const body = `${f.nameKo} ${f.lengthCm}cm / ${(f.weightG / 1000).toFixed(2)}kg / ${sexLabel}${extraLine}`;
+    const hasCooler = InventoryStore.hasCooler();
     this.buildDecisionPanel(
       `${f.nameKo} ${f.lengthCm}cm 낚음!${extra.length > 0 ? ` (+${extra.length})` : ''}`,
       body, '#4af2a1', fishTexture,
       [
         {
-          label: '쿨러에 넣기', fill: 0x0d4a2e, stroke: 0x4af2a1, color: '#4af2a1',
+          label: '쿨러에 보관하기', fill: 0x0d4a2e, stroke: 0x4af2a1, color: '#4af2a1',
+          disabled: !hasCooler,
+          disabledHint: '쿨러가 없습니다 — 기타 아이템에 쿨러(아이스박스)가 필요합니다',
           onClick: () => {
             if (CoolerStore.isFull()) {
-              this.flashState(`쿨러가 가득 찼습니다 (${COOLER_CAPACITY}마리) — 방생을 선택하세요`);
+              this.flashState(`쿨러가 가득 찼습니다 (${COOLER_CAPACITY}마리) — 방생하거나 쿨러를 비우세요`);
               return;
             }
             CoolerStore.add({
@@ -2124,6 +2363,25 @@ export class FirstPersonFishingScene extends Phaser.Scene {
             });
             this.refreshCoolerUi();
             this.showPostDecisionPanel('쿨러에 보관하였습니다.', '#4af2a1', fishTexture);
+          },
+        },
+        {
+          label: '인벤토리에 보관하기', fill: 0x14425e, stroke: 0x33b0e0, color: '#aee8ff',
+          onClick: () => {
+            const ok = InventoryStore.addItem({
+              id: `inv_catch_${f.speciesId}_${InventoryStore.nextCatchSeq()}`,
+              name: `${f.nameKo} (${f.lengthCm}cm)`,
+              icon: '🐟', iconTexture: fishTexture,
+              category: 'food', subCategory: '어획물',
+              basePrice: Math.max(2000, Math.round(f.weightG * 12)),
+              condition: 'live', equippable: false,
+              speciesId: f.speciesId, lengthCm: f.lengthCm, weightG: f.weightG,
+            }, 1);
+            if (!ok) {
+              this.flashState('인벤토리(음식) 공간이 없습니다 — 방생하거나 자리를 비우세요');
+              return;
+            }
+            this.showPostDecisionPanel('인벤토리에 보관하였습니다. (활어 10분부터 신선도 진행)', '#aee8ff', fishTexture);
           },
         },
         {
@@ -2192,19 +2450,33 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     c.add(t2);
 
     const btnY = half - 48;
-    const bw = buttons.length > 1 ? 180 : 200;
+    // 버튼 폭/간격 — 개수에 따라 자동 배치 (3개 = 어획 결정 쿨러/인벤/방생)
+    const bw = buttons.length >= 3 ? 142 : buttons.length === 2 ? 180 : 200;
+    const spacing = bw + 10;
     buttons.forEach((btn, i) => {
-      const bx = buttons.length > 1 ? (i === 0 ? -100 : 100) : 0;
+      const bx = (i - (buttons.length - 1) / 2) * spacing;
       const g = this.add.graphics();
-      g.fillStyle(btn.fill, 0.95); g.fillRoundedRect(bx - bw / 2, btnY - 19, bw, 38, 5);
-      g.lineStyle(2, btn.stroke, 1); g.strokeRoundedRect(bx - bw / 2, btnY - 19, bw, 38, 5);
+      if (btn.disabled) {
+        g.fillStyle(0x18222e, 0.95); g.fillRoundedRect(bx - bw / 2, btnY - 19, bw, 38, 5);
+        g.lineStyle(2, 0x2a3846, 1); g.strokeRoundedRect(bx - bw / 2, btnY - 19, bw, 38, 5);
+      } else {
+        g.fillStyle(btn.fill, 0.95); g.fillRoundedRect(bx - bw / 2, btnY - 19, bw, 38, 5);
+        g.lineStyle(2, btn.stroke, 1); g.strokeRoundedRect(bx - bw / 2, btnY - 19, bw, 38, 5);
+      }
       const txt = this.add.text(bx, btnY, btn.label, {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px', color: btn.color, fontStyle: 'bold',
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: buttons.length >= 3 ? '12px' : '13px',
+        color: btn.disabled ? '#546a7c' : btn.color, fontStyle: 'bold',
       }).setOrigin(0.5);
-      const hit = this.add.rectangle(bx, btnY, bw, 38, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
-      hit.on('pointerover', () => txt.setColor('#ffffff'));
-      hit.on('pointerout', () => txt.setColor(btn.color));
-      hit.on('pointerdown', btn.onClick);
+      const hit = this.add.rectangle(bx, btnY, bw, 38, 0xffffff, 0.001)
+        .setInteractive({ useHandCursor: !btn.disabled });
+      if (btn.disabled) {
+        // 비활성 — 클릭 시 사유 안내만
+        hit.on('pointerdown', () => { if (btn.disabledHint) this.flashState(btn.disabledHint); });
+      } else {
+        hit.on('pointerover', () => txt.setColor('#ffffff'));
+        hit.on('pointerout', () => txt.setColor(btn.color));
+        hit.on('pointerdown', btn.onClick);
+      }
       c.add([g, txt, hit]);
     });
 
@@ -2231,15 +2503,32 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       if (Math.random() < p) {
         const ef = spawnFish(ctx);
         if (ef.isUndersized || ef.isClosedSeason) continue;
-        // 추가 어획은 어창(쿨러)에 즉시 보관 — 가득 차면 방생 처리
-        const slot = CoolerStore.add({
-          speciesId: ef.speciesId, nameKo: ef.nameKo, lengthCm: ef.lengthCm,
-          weightG: ef.weightG, sex: ef.sex, iconTexture: FISH_TEXTURE[ef.speciesId],
-        });
+        // 추가 어획은 어창(쿨러)에 즉시 보관 — 쿨러 미보유 시 인벤토리 직행,
+        // 둘 다 공간 없으면 방생 처리
+        const efTexture = resolveFishTexture(ef.speciesId, ef.lengthCm, ef.sex);
+        let tag = '';
+        if (InventoryStore.hasCooler()) {
+          const slot = CoolerStore.add({
+            speciesId: ef.speciesId, nameKo: ef.nameKo, lengthCm: ef.lengthCm,
+            weightG: ef.weightG, sex: ef.sex, iconTexture: efTexture,
+          });
+          tag = slot < 0 ? ' (쿨러 가득 — 방생)' : ' (어창)';
+        } else {
+          const ok = InventoryStore.addItem({
+            id: `inv_catch_${ef.speciesId}_${InventoryStore.nextCatchSeq()}`,
+            name: `${ef.nameKo} (${ef.lengthCm}cm)`,
+            icon: '🐟', iconTexture: efTexture,
+            category: 'food', subCategory: '어획물',
+            basePrice: Math.max(2000, Math.round(ef.weightG * 12)),
+            condition: 'live', equippable: false,
+            speciesId: ef.speciesId, lengthCm: ef.lengthCm, weightG: ef.weightG,
+          }, 1);
+          tag = ok ? ' (인벤토리)' : ' (인벤 가득 — 방생)';
+        }
         this.sessionCatch.push(`${ef.nameKo} ${ef.lengthCm}cm`);
         GameState.addCaughtFish(ef.speciesId, ef.nameKo, ef.lengthCm, ef.weightG);
         InventoryStore.setSpreaderBait(i, null);   // 해당 단 미끼 소모
-        extra.push(`${ef.nameKo} ${ef.lengthCm}cm${slot < 0 ? ' (쿨러 가득 — 방생)' : ''}`);
+        extra.push(`${ef.nameKo} ${ef.lengthCm}cm${tag}`);
       }
     }
     return extra;
@@ -2979,75 +3268,15 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   // 필드 복귀 (그만하기 / ESC) — stop + resume (낚시 시점 위치 보존)
   // ═══════════════════════════════════════════════════
   /**
-   * 1인칭 종료 — 어창(쿨러)의 어획을 인벤토리(음식 탭)로 이송한 뒤 탑다운 복귀.
-   * 인벤토리 빈 소켓이 모자라면 강제 방생 흐름(ESC 차단)으로 전환된다.
+   * 1인칭 종료 — 쿨러 어획은 **자동으로 인벤토리로 이송하지 않는다**.
+   * 쿨러 팝업(B/보관함 클릭) 우클릭 '인벤토리로 넣기'로 직접 옮겨야 하며,
+   * 쿨러의 매질(해수/얼음) 규칙에 따라 신선도가 진행된다.
    */
   private exitToField(): void {
-    const overflow = this.coolerOverflow();
-    if (overflow > 0) {
-      this.showCoolerOverflowNotice(overflow);
-      return;
-    }
-    this.transferCoolerToInventory();
     this.cameras.main.fadeOut(240, 2, 12, 24);
     this.cameras.main.once('camerafadeoutcomplete', () => {
       this.scene.stop();
       this.scene.resume('RegionFieldScene');
     });
-  }
-
-  /** 쿨러 어획을 인벤토리로 옮길 때 모자라는 칸 수 (0 = 전부 이송 가능) */
-  private coolerOverflow(): number {
-    return Math.max(0, CoolerStore.count() - InventoryStore.freeSlotCount('food'));
-  }
-
-  /** 어창 → 인벤토리 이송 — 쿨러 안은 활어 유지, 이송 시점부터 'live'로 신선도 진행 */
-  private transferCoolerToInventory(): void {
-    for (let i = 0; i < COOLER_CAPACITY; i++) {
-      const f = CoolerStore.get(i);
-      if (!f) continue;
-      const ok = InventoryStore.addItem({
-        id: `inv_catch_${f.speciesId}_${InventoryStore.nextCatchSeq()}`,
-        name: `${f.nameKo} (${f.lengthCm}cm)`,
-        icon: '🐟', iconTexture: f.iconTexture,
-        category: 'food', subCategory: '어획물',
-        basePrice: Math.max(2000, Math.round(f.weightG * 12)),
-        condition: 'live', equippable: false,
-        speciesId: f.speciesId, lengthCm: f.lengthCm, weightG: f.weightG,
-      }, 1);
-      if (ok) CoolerStore.removeAt(i);
-    }
-    this.refreshCoolerUi();
-  }
-
-  /** 인벤토리 공간 부족 안내 → [다음] → 강제 방생 쿨러 팝업 (ESC로 닫을 수 없음) */
-  private showCoolerOverflowNotice(overflow: number): void {
-    if (this.coolerPanel) return;   // 이미 방생 진행 중
-    const c = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 40).setDepth(130);
-    const bg = this.add.graphics();
-    bg.fillStyle(0x2a1410, 0.97);
-    bg.fillRoundedRect(-240, -78, 480, 156, 8);
-    bg.lineStyle(2, 0xaa5a3a, 1);
-    bg.strokeRoundedRect(-240, -78, 480, 156, 8);
-    const txt = this.add.text(0, -28,
-      `인벤토리 공간이 모자라, 방생을 진행해야 합니다!\n\n어창 ${CoolerStore.count()}마리 / 인벤토리 여유 ${InventoryStore.freeSlotCount('food')}칸 — 최소 ${overflow}마리 방생 필요`, {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px', color: '#ffce9a', fontStyle: 'bold',
-        align: 'center', lineSpacing: 6,
-      }).setOrigin(0.5);
-    const btnBg = this.add.graphics();
-    btnBg.fillStyle(0x155a7c, 0.95);
-    btnBg.fillRoundedRect(-80, 26, 160, 36, 5);
-    btnBg.lineStyle(1.5, 0x5cd0ff, 0.95);
-    btnBg.strokeRoundedRect(-80, 26, 160, 36, 5);
-    const btnTxt = this.add.text(0, 44, '다음', {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '14px', color: '#aee8ff', fontStyle: 'bold',
-    }).setOrigin(0.5);
-    const hit = this.add.rectangle(0, 44, 160, 36, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
-    hit.on('pointerdown', () => {
-      c.destroy();
-      this.openCoolerPanel(true);
-    });
-    c.add([bg, txt, btnBg, btnTxt, hit]);
-    applyScreenFixed(c);
   }
 }

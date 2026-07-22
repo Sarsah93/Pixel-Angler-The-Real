@@ -17,7 +17,13 @@
 import type {
   ButcheryProfile, ButcheryStage, CutSpec, CutPoint, CutEvalResult,
   OrientationState, ButcheryResult, SashimiGrade,
+  FilletYieldInput, FilletYieldResult,
 } from '../types/Butchery.js';
+
+/** 0~1 등 범위 클램프 */
+function clamp(v: number, lo: number, hi: number): number {
+  return Math.max(lo, Math.min(hi, v));
+}
 
 // ────────────────────────────────────────────────────────────
 // CutValidator — 가이드 경로 트레이스 판정
@@ -113,6 +119,57 @@ export function computeSashimiGrade(input: SashimiGradeInput): { grade: SashimiG
   const grade: SashimiGrade = score >= 0.9 ? '특' : score >= 0.68 ? '상' : score >= 0.5 ? '중' : '하';
   const gradeMult = grade === '특' ? 1.5 : grade === '상' ? 1.25 : grade === '중' ? 1.0 : 0.7;
   return { grade, gradeMult, score };
+}
+
+// ────────────────────────────────────────────────────────────
+// 회뜨기 수율 산출 (양) + 등급(질) — SASHIMI_YIELD_SPEC 2026-07
+//   수율(양)과 등급(질)을 분리한다: "많이 뜨기 vs 곱게 뜨기" 트레이드오프.
+// ────────────────────────────────────────────────────────────
+
+/**
+ * 체장·무게·도구·스킬·신선도로 회 살 질량 / 필렛 장수 / 슬라이스 수 / 등급을 산출한다.
+ *
+ *  yieldMass = weightGram × baseYieldRate × toolYield × skillYield × freshness
+ *  sliceCount = floor( yieldMass / (sliceGramBase / (toolThin × skillThin)) )
+ *    → 큰 물고기·좋은 칼·높은 스킬일수록 얇게 많이.
+ *  등급 = (방혈×시메×컷정확도×신선도) × (칼×스킬 보정) → 특/상/중/하.
+ *
+ * knife가 null이면 회뜨기 불가 상태이므로 상위 레이어(ButcheryPanel)가 게이트해야 한다.
+ * (여기서는 안전 폴백으로 막칼(0.85) 수율을 가정해 계산만 수행한다.)
+ */
+export function computeFilletYield(input: FilletYieldInput): FilletYieldResult {
+  const { profile, weightGram, lengthCm, knife, skillLevel, cutAccuracyAvg, freshnessFactor } = input;
+
+  const toolYield = knife ? Math.min(1.15, knife.toolYieldFactor) : 0.85;
+  const toolThin = knife ? knife.toolThinness : 0.8;
+  const skillYield = clamp(0.8 + skillLevel * 0.03 + cutAccuracyAvg * 0.15, 0.8, 1.2);
+  const skillThin = clamp(0.85 + skillLevel * 0.02 + cutAccuracyAvg * 0.2, 0.85, 1.3);
+  const freshness = clamp(freshnessFactor, 0.2, 1.05);
+
+  const yieldMassG = Math.max(0, Math.round(
+    weightGram * profile.baseYieldRate * toolYield * skillYield * freshness,
+  ));
+
+  // 필렛 장수 — 대형 광어는 5장뜨기 분기
+  let filletCount: number = profile.filletCount;
+  if (profile.bodyShape === 'flat' && lengthCm >= 45) filletCount = 5;
+
+  const sliceGramEff = profile.sliceGramBase / (toolThin * skillThin);
+  const sliceCount = Math.max(1, Math.floor(yieldMassG / Math.max(1, sliceGramEff)));
+
+  const undersizedForFillet = lengthCm < profile.minFilletLengthCm;
+
+  // 등급 — 방혈·시메·컷정확도·신선도 기반 점수에 칼·스킬 보정을 곱한다.
+  const base = computeSashimiGrade({
+    ikejimeDone: input.ikejimeDone, bledDone: input.bledDone,
+    avgCutQuality: cutAccuracyAvg, freshnessFactor: freshness,
+  });
+  const qualBoost = clamp(toolYield * (skillYield / 1.0), 0.75, 1.18);
+  const score = clamp(base.score * qualBoost, 0, 1);
+  const grade: SashimiGrade = score >= 0.9 ? '특' : score >= 0.68 ? '상' : score >= 0.5 ? '중' : '하';
+  const gradeMult = grade === '특' ? 1.5 : grade === '상' ? 1.25 : grade === '중' ? 1.0 : 0.7;
+
+  return { yieldMassG, filletCount, sliceCount, grade, gradeMult, undersizedForFillet };
 }
 
 // ────────────────────────────────────────────────────────────

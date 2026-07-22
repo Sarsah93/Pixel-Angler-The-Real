@@ -59,6 +59,7 @@ import { ShopPanel } from '../ui/ShopPanel.js';
 import { ConfirmDialog, QuantityDialog } from '../ui/Dialogs.js';
 import { applyScreenFixed } from '../ui/DraggablePanel.js';
 import { InventoryStore, InvItem } from '../store/InventoryStore.js';
+import { CoolerStore } from '../store/CoolerStore.js';
 import { BuildingKind, BUILDING_LABEL, BUILDING_KIND_CYCLE, SHOP_CATALOG, ShopEntry } from '../data/ShopCatalog.js';
 
 interface RegionFieldInit {
@@ -877,14 +878,19 @@ export class RegionFieldScene extends Phaser.Scene {
     this.bike?.setVisible(false);
   }
 
-  // ── 어창/쿨러 (B) — 보관 어획 확인·방생 ──
+  // ── 어창/쿨러 (B) — 보관 어획 확인·이송·방생 (낚시 종료 후에도 상시 사용) ──
   private toggleCooler(): void {
     if (this.coolerPanel) {
       this.popupStack.find((e) => e.panel === this.coolerPanel)?.close();
       return;
     }
+    if (!InventoryStore.hasCooler()) {
+      this.floatingHint('쿨러가 없습니다 — 기타 아이템에 쿨러(아이스박스)가 필요합니다');
+      return;
+    }
     this.coolerPanel = this.openPopup(
-      (close) => new CoolerPanel(this, { onClose: close }),
+      // 해수 넣기는 물가(캐스팅 가능 근접 판정과 동일) 에서만 가능
+      (close) => new CoolerPanel(this, { onClose: close, isNearSea: () => this.nearWater }),
       () => { this.coolerPanel = null; },
     );
   }
@@ -983,6 +989,12 @@ export class RegionFieldScene extends Phaser.Scene {
 
   /** 판매 플로우: (수량 지정) → 확인 → 아이템 차감 + 재화 지급 */
   private handleSell(item: InvItem): void {
+    // 쿨러는 내용물(어획/해수·얼음/밑밥)이 남아 있으면 판매 불가 (유실 방지)
+    if (item.id === 'inv_cooler'
+      && (CoolerStore.count() > 0 || CoolerStore.medium !== 'none' || CoolerStore.chumRemaining > 0)) {
+      this.shopPanel?.setStatus('쿨러 안에 내용물(어획/해수·얼음/밑밥)이 있어 판매할 수 없습니다 — 먼저 비우세요');
+      return;
+    }
     const unit = InventoryStore.getSellPrice(item);
     const confirmSell = (qty: number): void => {
       const total = unit * qty;

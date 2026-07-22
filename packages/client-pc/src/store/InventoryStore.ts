@@ -23,8 +23,23 @@ import { ExternalDataStore } from './ExternalDataStore.js';
 /** 인벤토리 카테고리 탭 */
 export type InvCategory = 'gear' | 'consumable' | 'food' | 'tackle' | 'lure' | 'etc';
 
-/** 신선도 상태 (표시용) */
-export type InvCondition = 'live' | 'fresh' | 'chilled' | 'frozen' | 'spoiled';
+/**
+ * 신선도 상태.
+ * 시간 경과 전이는 선형 체인이 아니라 **상태 그래프**(CONDITION_NEXT)를 따른다:
+ *   ① 활어 → 신선 → 보통 → 나쁨 → 부패
+ *   ② 냉동 → 해동 → 나쁨 → 부패
+ *   ③ 냉장 → 보통 → 나쁨 → 부패
+ * (냉장/냉동은 보관 방식 라벨 — 시간이 지난다고 신선→냉장, 냉장→냉동이 되지 않는다)
+ */
+export type InvCondition =
+  | 'live'      // 활어 — 갓 잡힘/출하 직후 (10분)
+  | 'fresh'     // 신선 — 조리 시 좋은 결과 (3시간)
+  | 'normal'    // 보통 — 조리는 가능하나 사시미 불가 (5시간)
+  | 'chilled'   // 냉장 — 1~5도 보관, 사시미 가능 (상온 1시간 → 보통)
+  | 'frozen'    // 냉동 — 조리 불가 상태 (상온 3시간 → 해동)
+  | 'thawed'    // 해동 — 습기를 머금음 (1.5시간 → 나쁨)
+  | 'bad'       // 나쁨 — 회/직접 섭취 불가 (2시간 → 부패)
+  | 'spoiled';  // 부패 — 사용 금지, 종착 상태
 
 /** 카테고리별 소켓 수 (5x5) */
 export const GRID_CAPACITY = 25;
@@ -41,17 +56,35 @@ export const CATEGORY_LABEL: Record<InvCategory, string> = {
 export const CONDITION_LABEL: Record<InvCondition, string> = {
   live: '활어',
   fresh: '신선',
+  normal: '보통',
   chilled: '냉장',
   frozen: '냉동',
-  spoiled: '상함',
+  thawed: '해동',
+  bad: '나쁨',
+  spoiled: '부패',
 };
 
 export const CONDITION_COLOR: Record<InvCondition, string> = {
   live: '#c07cff',
   fresh: '#4af2a1',
+  normal: '#cfd06a',
   chilled: '#66b8ff',
   frozen: '#dfe9ff',
+  thawed: '#9ab8d8',
+  bad: '#ff9a5a',
   spoiled: '#ff6b6b',
+};
+
+/** 신선도 상태 설명 (상세보기 표시용) */
+export const CONDITION_DESC: Record<InvCondition, string> = {
+  live: '낚시 혹은 출하된 지 얼마 지나지 않은 살아있는 상태.',
+  fresh: '신선한 재료의 상태. 조리(요리) 시 좋은 결과를 얻을 수 있음.',
+  normal: '상온에서 시간이 지난 상태. 조리는 문제 없으나 사시미(회)로 취급할 수 없음.',
+  chilled: '1~5도 냉장 보관 상태. 사시미(회)로 취급해도 큰 문제가 없음.',
+  frozen: '영하에서 동결된 상태. 일부 재료(얼음 등) 외에는 냉동 그대로 조리 불가.',
+  thawed: '냉동 재료가 상온에서 습기를 머금으며 해동된 상태.',
+  bad: '상온에 오래 방치된 상태. 회/직접 섭취 불가, 조리에 사용해도 문제가 생길 수 있음.',
+  spoiled: '조리/요리에 사용하면 안 되며 질병이 발생할 수 있는 상태. 빨리 처분 권장.',
 };
 
 /** 손 도구 종류 (좌/우 손 착용 대상) */
@@ -194,6 +227,20 @@ export const ROD_CAPACITY_G = 28;
 /** 원투(던질대) 허용 채비 중량 (g) — 무게추 봉돌(60~113g)을 감당 */
 export const SURF_ROD_CAPACITY_G = 150;
 
+/** 인벤토리 세이브 스냅샷 (GameState SaveData 포함 — 전부 JSON 안전 타입) */
+export interface InventorySaveState {
+  items: InvItem[];
+  catchSeq: number;
+  quickslots: (string | null)[];
+  rig: Record<RigStepKey, string | null>;
+  rigDepthLimitM: number;
+  hasFloatStop: boolean;
+  spreader: SpreaderState;
+  rigMode: 'bait' | 'lure';
+  lure: string | null;
+  jigHead: string | null;
+}
+
 /** 시작 시 지급되는 목업 아이템 세트 (slot은 카테고리별 순차 배정) */
 function createSeedItems(): InvItem[] {
   const defs: Omit<InvItem, 'slot'>[] = [
@@ -218,6 +265,8 @@ function createSeedItems(): InvItem[] {
     { id: 'inv_chum_krill_block',  name: '냉동 크릴 (밑밥 블록)', icon: '🦐', category: 'consumable', subCategory: '집어제/밑밥', qty: 4, basePrice: 7000,  equippable: false, condition: 'frozen', chumKind: 'krill' },
     { id: 'inv_chum_apmac',        name: '압맥 (눌린 보리)',     icon: '🌾', category: 'consumable', subCategory: '집어제/밑밥', qty: 3, basePrice: 5000,  equippable: false, chumKind: 'grain' },
     { id: 'inv_chum_corn',         name: '옥수수 캔 (밑밥용)',   icon: '🌽', category: 'consumable', subCategory: '집어제/밑밥', qty: 2, basePrice: 4500,  equippable: false, chumKind: 'grain' },
+    // 대용량 각얼음 — 쿨러 '얼음 넣기' 재료 (1회 1개 소모, 2시간 유지)
+    { id: 'inv_ice_bulk', name: '대용량 각얼음',            icon: '🧊', category: 'consumable', subCategory: '보냉',          qty: 2, basePrice: 4000,  equippable: false },
     { id: 'inv_spray',    name: '기능성 스프레이',          icon: '🧴', category: 'consumable', subCategory: '스프레이/오일', qty: 2, basePrice: 9000,  equippable: false },
     { id: 'inv_oil',      name: '릴 오일',                  icon: '🧴', category: 'consumable', subCategory: '스프레이/오일', qty: 1, basePrice: 7000,  equippable: false },
     { id: 'inv_carekit',  name: '도구 케어 세트',           icon: '🧰', category: 'consumable', subCategory: '장비 수리',     qty: 1, basePrice: 15000, equippable: false },
@@ -257,6 +306,12 @@ function createSeedItems(): InvItem[] {
     { id: 'inv_junk',     name: '낡은 릴 부품',             icon: '📦', category: 'etc', subCategory: '잡동사니', qty: 1, basePrice: 500, equippable: false },
     // 자전거 — 보유 시 필드에서 R 키로 승·하차 (이동 속도 2배)
     { id: 'inv_bike',     name: '자전거',                   icon: '🚲', category: 'etc', subCategory: '탈것', qty: 1, basePrice: 120000, equippable: false },
+    // 회칼 (조리도구) — 보유 시 회뜨기(장 뜨기/박피) 활성. 미보유 시 손질까지만 (마트에서 등급 구매).
+    { id: 'knife_sashimi', name: '회칼 (사시미)',           icon: '🔪', category: 'etc', subCategory: '조리도구', qty: 1, basePrice: 38000, equippable: false },
+    // 낚시용 두레박 — 보유 + 바다 근처일 때 쿨러 '해수 넣기' 가능 (소모되지 않는 도구)
+    { id: 'inv_bucket',    name: '낚시용 두레박',           icon: '🪣', category: 'etc', subCategory: '낚시도구', qty: 1, basePrice: 9000, equippable: false },
+    // 쿨러 (아이스박스) — 보유해야 어창 보관/밑밥 배합 기능 사용 가능 (들고 다니는 개념)
+    { id: 'inv_cooler',    name: '쿨러 (아이스박스)',        icon: '🛅', category: 'etc', subCategory: '낚시도구', qty: 1, basePrice: 45000, equippable: false },
   ];
 
   // ── 원투 메인 싱커(무게추 봉돌) — SinkerDatabase(core)에서 생성 ──
@@ -301,34 +356,67 @@ function createSeedItems(): InvItem[] {
 }
 
 // ═══════════════════════════════════════════════════
-// 신선도 감쇄 모델 (클라 v1 — 정식 부패 모델(core types/Item.ts) 연동은 추후)
-//  단계 체인을 순차 진행: 활어 → 신선 → 냉장 → 냉동 → 상함.
-//  경과 시간은 상온(인벤토리) 기준이며, 어창(쿨러) 안의 활어는 시계가 정지한다.
+// 신선도 감쇄 모델 (클라 v2 — 상태 그래프)
+//  ① 활어(10분) → 신선(3h) → 보통(5h) → 나쁨(2h) → 부패
+//  ② 냉동(상온 3h) → 해동(1.5h) → 나쁨(2h) → 부패
+//  ③ 냉장(상온 1h) → 보통(5h) → 나쁨(2h) → 부패
+//  경과 시간은 상온(인벤토리) 기준. 쿨러(어창)는 CoolerStore가 매질(해수/얼음)에
+//  따라 별도 규칙(일시정지/특수 지속시간)으로 진행시킨다.
 // ═══════════════════════════════════════════════════
-/** 신선도 단계 체인 (진행 방향) */
-export const CONDITION_CHAIN: InvCondition[] = ['live', 'fresh', 'chilled', 'frozen', 'spoiled'];
+/** 상태별 다음 전이 상태 (null = 종착) */
+export const CONDITION_NEXT: Record<InvCondition, InvCondition | null> = {
+  live: 'fresh',
+  fresh: 'normal',
+  normal: 'bad',
+  chilled: 'normal',
+  frozen: 'thawed',
+  thawed: 'bad',
+  bad: 'spoiled',
+  spoiled: null,
+};
 
 /** 단계별 상온 유지 시간 (분) — spoiled는 종착 상태 */
 export const CONDITION_DURATION_MIN: Record<InvCondition, number> = {
-  live: 15, fresh: 30, chilled: 45, frozen: 90, spoiled: Number.POSITIVE_INFINITY,
+  live: 10,
+  fresh: 180,
+  normal: 300,
+  chilled: 60,
+  frozen: 180,
+  thawed: 90,
+  bad: 120,
+  spoiled: Number.POSITIVE_INFINITY,
 };
+
+/** 현재 상태부터 종착까지의 전이 경로 (상세보기 '신선도 단계' 표기용) */
+export function conditionPath(cond: InvCondition): InvCondition[] {
+  const path: InvCondition[] = [cond];
+  let cur: InvCondition | null = CONDITION_NEXT[cond];
+  while (cur) {
+    path.push(cur);
+    cur = CONDITION_NEXT[cur];
+  }
+  return path;
+}
 
 /**
  * 신선도 지연 갱신 — 마지막 단계 시작 시각(conditionSinceMs)부터의 경과로
- * 체인을 진행시킨다 (상세보기/인벤 열람 시 호출되는 lazy 방식).
+ * 상태 그래프를 진행시킨다 (상세보기/인벤 열람 시 호출되는 lazy 방식).
  */
 export function refreshCondition(item: Pick<InvItem, 'condition' | 'conditionSinceMs'>): void {
   if (!item.condition || item.conditionSinceMs === undefined) return;
-  let idx = CONDITION_CHAIN.indexOf(item.condition);
-  if (idx < 0) return;
+  let cond = item.condition;
   let since = item.conditionSinceMs;
-  while (idx < CONDITION_CHAIN.length - 1) {
-    const durMs = CONDITION_DURATION_MIN[CONDITION_CHAIN[idx]] * 60_000;
+  for (;;) {
+    const durMin = CONDITION_DURATION_MIN[cond];
+    if (!Number.isFinite(durMin)) break;
+    const durMs = durMin * 60_000;
     if (Date.now() - since < durMs) break;
+    const next = CONDITION_NEXT[cond];
+    if (!next) break;
     since += durMs;
-    idx += 1;
+    cond = next;
   }
-  item.condition = CONDITION_CHAIN[idx];
+  item.condition = cond;
   item.conditionSinceMs = since;
 }
 
@@ -338,6 +426,16 @@ export function conditionRemainMs(item: Pick<InvItem, 'condition' | 'conditionSi
   const durMin = CONDITION_DURATION_MIN[item.condition];
   if (!Number.isFinite(durMin)) return Number.POSITIVE_INFINITY;
   return Math.max(0, durMin * 60_000 - (Date.now() - item.conditionSinceMs));
+}
+
+/** 카운트다운 표기 — 00일 00시 00분 00초 (제로 패딩 고정 폭) */
+export function formatDhms(ms: number): string {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const p = (n: number): string => (n < 10 ? `0${n}` : `${n}`);
+  const d = Math.floor(s / 86400);
+  const h = Math.floor((s % 86400) / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  return `${p(d)}일 ${p(h)}시 ${p(m)}분 ${p(s % 60)}초`;
 }
 
 /** 남은 시간 표기 — 일/시간/분/초 */
@@ -354,22 +452,17 @@ export function formatRemain(ms: number): string {
   return parts.join(' ');
 }
 
-class InventoryStoreManager {
-  private _items: InvItem[] = createSeedItems();
+/** 기본 퀵슬롯 배정 (시드/새 게임) */
+function defaultQuickslots(): (string | null)[] {
+  return ['inv_rod', 'inv_krill', 'inv_chum', null, null, null, null, null];
+}
 
-  /** 어획물 인스턴스 고유 번호 시퀀스 (nextCatchSeq) */
-  private _catchSeq = 0;
-
-  /** 퀵슬롯 8칸 — 아이템 id 또는 null */
-  private _quickslots: (string | null)[] = [
-    'inv_rod', 'inv_krill', 'inv_chum', null, null, null, null, null,
-  ];
-
-  /**
-   * 채비(리그) 조립 상태 — 단계 키 → 아이템 id.
-   * dev 기본: 감성돔 반유동 채비 프리셋 (원줄 PE + 구멍찌 + 도래 + 카본 목줄 + 좁쌀봉돌 + 크릴)
-   */
-  private _rig: Record<RigStepKey, string | null> = {
+/**
+ * dev 기본 채비 프리셋 — 감성돔 반유동
+ * (원줄 PE + 구멍찌 + 도래 + 카본 목줄 + 좁쌀봉돌 + 크릴)
+ */
+function defaultRig(): Record<RigStepKey, string | null> {
+  return {
     mainLine: 'inv_pe1',
     floatStop: null,
     float: 'inv_float08',
@@ -379,6 +472,19 @@ class InventoryStoreManager {
     hook: 'inv_chinu3',
     bait: 'inv_krill',
   };
+}
+
+class InventoryStoreManager {
+  private _items: InvItem[] = createSeedItems();
+
+  /** 어획물 인스턴스 고유 번호 시퀀스 (nextCatchSeq) */
+  private _catchSeq = 0;
+
+  /** 퀵슬롯 8칸 — 아이템 id 또는 null */
+  private _quickslots: (string | null)[] = defaultQuickslots();
+
+  /** 채비(리그) 조립 상태 — 단계 키 → 아이템 id */
+  private _rig: Record<RigStepKey, string | null> = defaultRig();
 
   /** 면사매듭 수심 한계 Z_limit (m) — 채비가 도달할 최대 수심 */
   rigDepthLimitM = 5;
@@ -431,6 +537,68 @@ class InventoryStoreManager {
 
   itemAtSlot(cat: InvCategory, slot: number): InvItem | undefined {
     return this._items.find((i) => i.category === cat && i.slot === slot);
+  }
+
+  /** 쿨러(아이스박스) 보유 여부 — 어창 보관/밑밥 배합 기능 게이트 */
+  hasCooler(): boolean {
+    return !!this.find('inv_cooler');
+  }
+
+  // ── 세이브/로드 (GameState SaveData에 포함) ──────────
+  /** 현재 상태 스냅샷 — 아이템/퀵슬롯/채비/편대/루어 모드 전부 */
+  serialize(): InventorySaveState {
+    return {
+      items: this._items.map((i) => ({ ...i })),
+      catchSeq: this._catchSeq,
+      quickslots: [...this._quickslots],
+      rig: { ...this._rig },
+      rigDepthLimitM: this.rigDepthLimitM,
+      hasFloatStop: this.hasFloatStop,
+      spreader: { ...this.spreader, hookBaits: [...this.spreader.hookBaits] },
+      rigMode: this.rigMode,
+      lure: this._lure,
+      jigHead: this._jigHead,
+    };
+  }
+
+  /**
+   * 세이브 복원 — 세이브가 없으면(구버전 포함) 시드로 리셋.
+   * 신선도는 conditionSinceMs(절대 시각) 기반 lazy refresh라
+   * 저장~로드 사이 실경과 시간이 열람 시점에 자동 반영된다.
+   * 존재하지 않는 아이템을 가리키는 퀵슬롯/채비 참조는 정리(null)한다.
+   */
+  deserialize(s: InventorySaveState | undefined | null): void {
+    if (!s || !Array.isArray(s.items)) { this.resetAll(); return; }
+    this._items = s.items.map((i) => ({ ...i }));
+    this._catchSeq = s.catchSeq ?? 0;
+    const valid = new Set(this._items.map((i) => i.id));
+    const ref = (id: string | null | undefined): string | null => (id && valid.has(id) ? id : null);
+    this._quickslots = Array.from({ length: 8 }, (_, k) => ref(s.quickslots?.[k]));
+    const base = defaultRig();
+    (Object.keys(base) as RigStepKey[]).forEach((k) => { base[k] = ref(s.rig?.[k]); });
+    this._rig = base;
+    this.rigDepthLimitM = s.rigDepthLimitM ?? 5;
+    this.hasFloatStop = s.hasFloatStop ?? true;
+    this.spreader = s.spreader
+      ? { kind: s.spreader.kind ?? 'NONE', cardType: s.spreader.cardType, hookBaits: (s.spreader.hookBaits ?? []).map(ref) }
+      : { kind: 'NONE', hookBaits: [] };
+    this.rigMode = s.rigMode ?? 'bait';
+    this._lure = ref(s.lure);
+    this._jigHead = ref(s.jigHead);
+  }
+
+  /** 전체 초기화 (새 게임/세이브 없음 — 시드 아이템·기본 채비 재지급) */
+  resetAll(): void {
+    this._items = createSeedItems();
+    this._catchSeq = 0;
+    this._quickslots = defaultQuickslots();
+    this._rig = defaultRig();
+    this.rigDepthLimitM = 5;
+    this.hasFloatStop = true;
+    this.spreader = { kind: 'NONE', hookBaits: [] };
+    this.rigMode = 'bait';
+    this._lure = null;
+    this._jigHead = null;
   }
 
   /**

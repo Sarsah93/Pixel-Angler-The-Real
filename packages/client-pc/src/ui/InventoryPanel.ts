@@ -5,11 +5,12 @@
  * 구성:
  *  - 상단 카테고리 탭: 장비 / 소모품 / 음식 / 낚시용품 / 기타 (탭별 독립 5x5 소켓 공간)
  *  - 아이템 드래그 앤 드랍으로 소켓 간 위치 이동 (대상 소켓 점유 시 교환)
- *  - 아이템 우클릭 → 액션 메뉴 (상세보기 / 착용·해제 / 채비하기(낚싯대) /
- *    퀵슬롯 등록(1~8 키 지정) / 전환하기 / 버리기 / 완전제거)
+ *  - 아이템 우클릭 → 액션 메뉴 (상세보기 / 사용하기(음식·소모품, 녹색) /
+ *    착용·해제 / 채비하기(낚싯대) / 퀵슬롯 등록(1~8 키 지정) / 전환하기 /
+ *    버리기·완전제거(빨간색 + "정말 버리시겠습니까?" 확인창))
  *  - 최하단: 보유 재화(원화) 표시
  *
- * 추후 계획: 낚싯대 채비 모딩(소켓별 부품 선택) 뷰 정식 연동.
+ * 추후 계획: 낚싯대 채비 모딩(소켓별 부품 선택) 뷰 정식 연동, 음식 효과 적용.
  */
 
 import Phaser from 'phaser';
@@ -18,8 +19,11 @@ import {
   InventoryStore, InvCategory, InvItem, GRID_CAPACITY,
   CATEGORY_LABEL, CONDITION_LABEL, CONDITION_COLOR,
 } from '../store/InventoryStore.js';
+import { CoolerStore } from '../store/CoolerStore.js';
 import { DraggablePanel } from './DraggablePanel.js';
+import { ConfirmDialog } from './Dialogs.js';
 import { createItemIcon } from './ItemIcon.js';
+import { playEatSfx } from '../audio/Sfx.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 
 const TABS: InvCategory[] = ['gear', 'consumable', 'food', 'tackle', 'etc'];
@@ -302,12 +306,40 @@ export class InventoryPanel extends DraggablePanel {
   private openContextMenu(item: InvItem, screenX: number, screenY: number): void {
     this.closeContextMenu();
 
-    const actions: { label: string; run: () => void }[] = [];
+    const actions: { label: string; run: () => void; color?: string; hoverColor?: string }[] = [];
 
     actions.push({
       label: '상세보기',
       run: () => this.cbs.onOpenDetail(item),
     });
+    // 음식/소모품 — 사용하기 (녹색). 음식은 섭취 SFX와 함께 소모, 소모품은 소모만.
+    // 손질되지 않은 활어(어획물)·손질 필렛·통마리·부산물은 날것이라 섭취 불가 —
+    // 조리(요리) 후에만 먹을 수 있으므로 사용하기 자체를 제공하지 않는다.
+    const rawFishSubCats = ['어획물', '손질 필렛', '손질 통마리', '부산물'];
+    const usable = item.category === 'consumable'
+      || (item.category === 'food' && !rawFishSubCats.includes(item.subCategory));
+    if (usable) {
+      actions.push({
+        label: '사용하기',
+        color: '#4af2a1', hoverColor: '#8dffce',
+        run: () => {
+          if (item.category === 'food') {
+            if (item.condition === 'bad' || item.condition === 'spoiled') {
+              this.setStatus(`${item.name} — 상태가 나빠 먹을 수 없습니다 (${CONDITION_LABEL[item.condition]})`);
+              return;
+            }
+            playEatSfx();
+            InventoryStore.removeItem(item.id, false);
+            this.setStatus(`${item.name}을(를) 맛있게 먹었습니다. (효과 적용은 추후 구현)`);
+          } else {
+            InventoryStore.removeItem(item.id, false);
+            this.setStatus(`${item.name}을(를) 사용했습니다. (효과 적용은 추후 구현)`);
+          }
+          this.renderGrid();
+          this.scene.events.emit('inventory-changed');
+        },
+      });
+    }
     if (item.equippable && item.tool) {
       // 손 도구(낚싯대/뜰채): 왼손/오른손 선택 착용 — 기존 장비는 교체
       if (item.equipped) {
@@ -365,23 +397,16 @@ export class InventoryPanel extends DraggablePanel {
       label: '전환하기',
       run: () => this.setStatus('전환 기능은 준비중입니다 (예: 어획물 → 미끼 전환).'),
     });
+    // 버리기/완전제거 — 빨간색 + "정말 버리시겠습니까?" 확인창
     actions.push({
       label: '버리기',
-      run: () => {
-        InventoryStore.removeItem(item.id, false);
-        this.setStatus(`${item.name} 1개를 버렸습니다.`);
-        this.renderGrid();
-        this.scene.events.emit('inventory-changed');
-      },
+      color: '#ff6b6b', hoverColor: '#ff9a9a',
+      run: () => this.confirmDiscard(item, false),
     });
     actions.push({
       label: '완전제거',
-      run: () => {
-        InventoryStore.removeItem(item.id, true);
-        this.setStatus(`${item.name}을(를) 완전히 제거했습니다.`);
-        this.renderGrid();
-        this.scene.events.emit('inventory-changed');
-      },
+      color: '#ff6b6b', hoverColor: '#ff9a9a',
+      run: () => this.confirmDiscard(item, true),
     });
     actions.push({ label: '취소', run: () => { /* 메뉴만 닫음 */ } });
 
@@ -413,9 +438,12 @@ export class InventoryPanel extends DraggablePanel {
 
     actions.forEach((action, i) => {
       const ry = my + 5 + i * rowH;
+      const baseColor = action.color ?? '#d0e8f5';
+      const hoverColor = action.hoverColor ?? '#ffe28a';
       const rowBg = this.scene.add.graphics();
       const label = this.scene.add.text(mx + menuW / 2, ry + rowH / 2, action.label, {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#d0e8f5',
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: baseColor,
+        fontStyle: action.color ? 'bold' : 'normal',
       }).setOrigin(0.5);
       const hit = this.scene.add.rectangle(mx + menuW / 2, ry + rowH / 2, menuW - 10, rowH - 2, 0xffffff, 0.001)
         .setInteractive({ useHandCursor: true });
@@ -423,11 +451,11 @@ export class InventoryPanel extends DraggablePanel {
         rowBg.clear();
         rowBg.fillStyle(0xc8a060, 0.25);
         rowBg.fillRoundedRect(mx + 5, ry, menuW - 10, rowH - 2, 3);
-        label.setColor('#ffe28a');
+        label.setColor(hoverColor);
       });
       hit.on('pointerout', () => {
         rowBg.clear();
-        label.setColor('#d0e8f5');
+        label.setColor(baseColor);
       });
       hit.on('pointerdown', () => {
         this.closeContextMenu();
@@ -444,6 +472,32 @@ export class InventoryPanel extends DraggablePanel {
   private closeContextMenu(): void {
     this.contextMenu?.destroy();
     this.contextMenu = undefined;
+  }
+
+  /** 버리기/완전제거 확인창 — "정말 버리시겠습니까?" 예/아니오 */
+  private confirmDiscard(item: InvItem, all: boolean): void {
+    // 쿨러는 내용물(어획/해수·얼음/밑밥)이 있으면 버릴 수 없다 (유실 방지)
+    if (item.id === 'inv_cooler'
+      && (CoolerStore.count() > 0 || CoolerStore.medium !== 'none' || CoolerStore.chumRemaining > 0)) {
+      this.setStatus('쿨러 안에 내용물(어획/해수·얼음/밑밥)이 있어 버릴 수 없습니다 — 먼저 비우세요');
+      return;
+    }
+    const detail = all && item.qty > 1 ? ` (전체 ${item.qty}개)` : all ? '' : ' 1개';
+    const dlg = new ConfirmDialog(
+      this.scene,
+      `정말 버리시겠습니까?\n${item.name}${detail}`,
+      () => {
+        InventoryStore.removeItem(item.id, all);
+        this.setStatus(all
+          ? `${item.name}을(를) 완전히 제거했습니다.`
+          : `${item.name} 1개를 버렸습니다.`);
+        dlg.destroy();
+        this.renderGrid();
+        this.scene.events.emit('inventory-changed');
+      },
+      () => dlg.destroy(),
+    );
+    this.scene.add.existing(dlg);
   }
 
   // ═══════════════════════════════════════════════════

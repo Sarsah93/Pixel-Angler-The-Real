@@ -1117,6 +1117,16 @@ export class UtilizationPanel extends DraggablePanel {
   private static readonly CHUM_BOX = { x: 40, y: 120, w: 460, h: 240 };
 
   private renderChumMixing(): void {
+    // 밑밥 통은 쿨러(기타 아이템)에 딸린 기능 — 쿨러 미보유 시 배합 비활성
+    if (!InventoryStore.hasCooler()) {
+      const notice = this.scene.add.text(GAME_WIDTH / 2, this.contentTop + 180,
+        '쿨러가 없습니다.\n\n밑밥 배합은 쿨러(아이스박스)가 있어야 사용할 수 있습니다.\n식자재마트에서 쿨러를 구할 수 있습니다.', {
+          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '14px', color: '#ff9a6a', fontStyle: 'bold',
+          align: 'center', lineSpacing: 8,
+        }).setOrigin(0.5, 0);
+      this.bodyContainer.add(notice);
+      return;
+    }
     const { x: boxX, y: boxY, w: boxW, h: boxH } = UtilizationPanel.CHUM_BOX;
     const mixed = CoolerStore.chumMixed || CoolerStore.chumRemaining > 0;
 
@@ -1174,14 +1184,20 @@ export class UtilizationPanel extends DraggablePanel {
       }
     }
 
-    // ── 물 넣기 / 섞기 버튼 (각 1회) ──
+    // ── 물 넣기 / 섞기 / 밑밥 비우기 버튼 ──
     const canWater = !mixed && !CoolerStore.chumWaterAdded && CoolerStore.chumIngredients.length > 0;
     const canMix = !mixed && CoolerStore.chumWaterAdded && !CoolerStore.chumMixed;
+    // 비우기 — 재료/물/배합 밑밥이 뭐라도 있으면 가능 (통 리셋 후 새 배합 시작)
+    const canEmpty = CoolerStore.chumIngredients.length > 0 || CoolerStore.chumWaterAdded || CoolerStore.chumRemaining > 0;
     const btnY = boxY + boxH + 32;
-    this.addChumButton(boxX + boxW / 2 - 120, btnY,
+    this.addChumButton(boxX + boxW / 2 - 160, btnY,
       CoolerStore.chumWaterAdded || mixed ? '물 넣기 (완료)' : '물 넣기', canWater, () => this.doChumWater());
-    this.addChumButton(boxX + boxW / 2 + 120, btnY,
+    this.addChumButton(boxX + boxW / 2, btnY,
       mixed ? '섞기 (완료)' : '섞기', canMix, () => this.doChumMix());
+    this.addChumButton(boxX + boxW / 2 + 160, btnY, '밑밥 비우기', canEmpty, () => {
+      CoolerStore.resetChumBox();
+      this.renderBody();
+    });
 
     // ── 추천 배합 코멘트 (가장 많이 쓰는 현장 배합) ──
     const recipes = [

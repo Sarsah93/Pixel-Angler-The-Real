@@ -157,7 +157,9 @@ this.events.on('resume', () => {
 | 크기 등급(소/중/대) + 청물 주간·급심 게이트 | `core/src/simulation/SizeTierRules.ts` |
 | 파이트 2D 물리 (측면하중·heading/displacement·movementProfile) | `core/src/simulation/FightPhysics2D.ts` |
 | 회 뜨기 손질 FSM + 컷 판정 + 등급 | `core/src/simulation/ButcheryProcess.ts` · `core/src/db-schema/ButcheryProfiles.ts` · `core/src/types/Butchery.ts` |
-| UI: 회 뜨기 미니게임 패널 (방향 상태 렌더·가이드 트레이스) | `client-pc/src/ui/ButcheryPanel.ts` |
+| 회뜨기 수율 산출 (computeFilletYield — 양) + 회칼 3등급 DB | `core/src/simulation/ButcheryProcess.ts` · `core/src/db-schema/KnifeDatabase.ts` |
+| UI: 회 뜨기 미니게임 패널 (방향 렌더·가이드 트레이스·회칼 게이팅·수율 결과) | `client-pc/src/ui/ButcheryPanel.ts` |
+| 어종 실사 픽셀 이미지 에셋 (돌돔 암/수 포함 19종) | `client-pc/public/fish/` · BootScene 텍스처 등록 |
 | 피딩타임 계산기 (계절 시간창×조류×날씨) | `core/src/simulation/FeedingTimeCalculator.ts` |
 | 보일링/스쿨링 필드 이벤트 (발생 롤·연출·착수 판정) | `client-pc/src/ui/FieldEventManager.ts` |
 | 루어 채비 연산 (총중량/Cd/침강 프로파일) | `core/src/simulation/LureRig.ts` |
@@ -335,14 +337,59 @@ npx pnpm --filter @tra/client-pc run dev
 
 ---
 
-## 9. 현재 빌드 상태 (2026-07-21 기준)
+## 9. 현재 빌드 상태 (2026-07-22 기준)
 
 ```
-npx pnpm run build → ✅ 4/4 패키지 성공 (2026-07-21)
-npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류 (2026-07-21)
+npx pnpm run build → ✅ 4/4 패키지 성공 (2026-07-22)
+npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류 (2026-07-22)
 ```
 
-**최근 주요 변경 (2026-07-21 19차) — 자전거 정합 + 파이트 드래그인 + 신선도 상세 + 백운포 연결 + 날씨 강화** (브라우저 6항목 PASS):
+**최근 주요 변경 (2026-07-22 23차) — 어종 이미지 5종 + 쿨러·인벤토리 세이브 연동 + FP 인벤토리(I) + 가이드 일시정지·시각 도해** (빌드/타입체크 통과 + 세이브 경과처리 시뮬 PASS):
+- **[신규] 인벤토리 세이브 연동** (`InventoryStore.serialize/deserialize/resetAll` + GameState SaveData `inventoryStore`): 아이템 전체(신선도 시각 포함)/퀵슬롯/채비 소켓/면사매듭(Z_limit·hasFloatStop)/편대(spreader)/루어 모드(_lure·_jigHead)/어획 시퀀스 저장. **신선도는 conditionSinceMs(절대 시각) lazy refresh라 저장~로드 사이 실경과가 자동 반영**. 로드 시 존재하지 않는 아이템을 가리키는 퀵슬롯/채비/편대 참조는 정리(null). 구버전 세이브(필드 없음)는 시드 리셋. newGame 시 `resetAll()`.
+- **[신규 에셋] 어종 실사 이미지 5종** (`public/fish/` + BootScene + FISH_TEXTURE): 놀래미(greenling=spotbelly_greenling)/쥐노래미(fat_greenling)/망상어(surfperch=surf_perch) + **용치놀래기 암/수 2종**(multicolorfin_rainbowfish_*) — 성전환 어종이라 `resolveFishTexture`가 성별로 분기(수컷=녹색 혼인색).
+- **[정정] 숭어류 표준명** (FISH_DATABASE + 오라클): striped_mullet '참숭어(숭어)'→**'숭어(보리숭어)'** / redlip_mullet '가숭어(밀치)'→**'가숭어(참숭어)'**(nameEn 'So-iuy Mullet'). MAFRA 품목 매칭 테이블은 시장 품목명 기준이라 불변.
+- **[신규] 쿨러 세이브 연동** (`CoolerStore.serialize/deserialize/resetAll` + GameState SaveData `coolerBox`): 어획(개체별 신선도·경과)/매질(해수·얼음 투입 시각·만료 여부)/밑밥 상태 저장. **로드 시 저장~로드 사이 실경과 시간을 `sync()`가 그대로 반영** — 신선도 진행 + 매질 만료 강제 전이(해수→보통/얼음→해동) 처리, **밑밥은 시간 규칙 없이 그대로 사용**. newGame 시 `resetAll()`. (시뮬: 해수+활어 30분 저장→120분 로드 = 보통·경과 60분 / 얼음 5시간 방치 = 나쁨 / 밑밥 70 보존 — PASS)
+- **[신규] 쿨러 판매 가드**: `RegionFieldScene.handleSell` — 내용물(어획/해수·얼음/밑밥) 있으면 판매 차단 '먼저 비우세요'. 버리기 가드도 **매질 포함**으로 보강. **[신규] 밑밥 비우기 버튼** (U 밑밥 품질 탭 — 물 넣기/섞기 옆): 재료·물·배합 밑밥이 있으면 통 리셋.
+- **[신규] 1인칭 인벤토리 (I 토글)**: FP에서 `InventoryPanel` 오픈(우측) — 쿨러 어획 **드래그 이송 대상** + 슬롯 정리(사용/버리기) 가능. 열림 중 낚시 입력 차단, ESC는 인벤→쿨러→종료 순 LIFO, 파이팅/가이드 중엔 열지 않음. 상세보기는 FP 자체 ItemDetailPanel로 연결.
+- **[개편] 도우미 가이드**: ① **열람 중 낚시 진행 일시정지** — update()에서 조류/침강/입질/파이팅 틱 정지(시계·날씨 연출은 계속), 닫는 순간 재개 ② **가이드북(?) 아이콘** — 우측 수심 정보 패널 바로 아래(책 모양+물음표+'가이드' 라벨), 클릭 = 가이드 재열람 (F1/우하단 ? 유지) ③ **시각 도해 2종 추가**("낚싯대 휨새 도해가 가장 이해된다" 피드백 반영 — `drawGuideDiagram`): 2페이지 **입질 타임라인**(1→2→3단계 융기 곡선 + 3단계 초록 골든존 '지금 챔질!' + 직후 '펴짐=실패' 빨간 구간) / 4페이지 **텐션 게이지 구간도**(0-30 느슨/30-80 안전/80-88 위험/88+ 줄터짐 색 바 + 유지 바늘 + 눈금).
+
+**이전 변경 (2026-07-22 22차) — 쿨러 휴대 아이템화(기능 게이트) + 어획 3선택지 + 쿨러 드래그 이송 + 상세보기 실시간 신선도** (빌드/타입체크 통과):
+- **[신규] 쿨러 = 휴대 아이템** (`inv_cooler` 쿨러(아이스박스), 기타 시드 1 + 마트 판매 55,000원. `InventoryStore.hasCooler()` 게이트):
+  - 쿨러 미보유 시: 어창 열기(1인칭 보관함/탑다운 B) 차단 안내 · **밑밥 기능 전체 비활성**(U 밑밥 품질 탭 잠금 안내 + 1인칭 C 투척 차단 + 쿨러 HUD '쿨러 없음/사용 불가' 표기) · 어획 시 인벤토리 직행 유도.
+  - **버리기 가드**: 쿨러 안에 어획/밑밥이 남아 있으면 쿨러 아이템 버리기 차단 (내용물 유실 방지).
+- **[개편] 어획 결정 팝업 3선택지** (`showCatchDecisionPanel`): **[쿨러에 보관하기] / [인벤토리에 보관하기] / [방생하기]** — 쿨러 미보유 시 '쿨러에 보관하기' **비활성**(회색, 클릭 시 사유 안내). 인벤토리 보관은 활어 상태로 즉시 신선도 진행(10분). 쿨러 가득 시 "방생하거나 쿨러를 비우세요" 안내. `DecisionButton.disabled/disabledHint` + 3버튼 자동 배치 지원. **다관점 히트**도 쿨러 미보유 시 인벤 직행(가득 시 방생) — 태그 (어창)/(인벤토리)/(방생) 표기.
+- **[신규] 쿨러 어획 드래그 앤 드랍 이송** (`CoolerPanel`): 셀을 잡아 **패널 밖으로 드래그하면 인벤토리 이송**(고스트 아이콘 표시, 패널 안 드랍 = 취소). 우클릭 = 컨텍스트 메뉴 / 좌클릭(드래그 없이) = 메뉴 (접근성 유지). **비모달화**(dim 제거 + depth 800 = InventoryPanel과 동일) — 탑다운에서 **쿨러(B)+인벤토리(I) 동시 오픈** 가능: 인벤 가득이면 그 자리에서 사용/버리기로 슬롯을 비우고 재이송. RegionFieldScene은 uiBlocked(popupStack)로 이동/캐스팅 차단 유지, 1인칭은 어창 열림 중 낚시 입력 차단 유지.
+- **[개편] 상세보기 신선도 실시간화** (`ItemDetailPanel`): 전이 경로 나열 제거 → **단일 상태 표기** `신선도 상태: 활어`(상태 색상) + `다음 상태로 변경되기까지 남은 시간: 00일 00시 00분 00초`(`formatDhms`) — **1초 주기 실시간 카운트다운**(열람 중 상태 전이 시 라벨/색/배지 동기화). 쿨러 개체 상세는 `remainProvider`로 매질 규칙 남은 시간 표시(정지 = '무제한', 부패 = '종착 상태'). 생성자 6번째 인자 `remainProvider?: () => number | null`.
+- **[변경] 섭취 제한**: 손질되지 않은 활어(어획물)·손질 필렛·손질 통마리·부산물은 날것이라 **'사용하기' 미제공** — 조리(요리) 후에만 섭취 가능 (요리 시스템 연동 예정).
+
+**이전 변경 (2026-07-22 21차) — 쿨러 매질(해수/얼음) 시스템 + 신선도 상태 그래프 재설계 + 인벤토리 사용/버리기 UX** (빌드/타입체크 통과 + 매질 엔진 28항목 수치 시뮬 PASS):
+- **[재설계] 신선도 상태 그래프** (`InventoryStore` — 구 5단계 선형 체인 `활어→신선→냉장→냉동→상함` 폐기. 시간이 지나면 냉장→냉동이 되던 비현실 로직 수정):
+  - **8단계 상태**: 활어/신선/**보통**/냉장/냉동/**해동**/**나쁨**/부패(구 '상함' 개명). 전이는 `CONDITION_NEXT` **그래프**: ① 활어(10분)→신선(3h)→보통(5h)→나쁨(2h)→부패 ② 냉동(상온 3h)→해동(1.5h)→나쁨 ③ 냉장(상온 1h)→보통. `conditionPath()`가 현 상태부터 종착까지 실제 경로 반환(상세보기 표기). `CONDITION_DESC` 상태 설명 신설(상세보기 본문에 표시). `refreshCondition`은 그래프 워크로 재작성 (lazy 방식 유지).
+  - 보통 = 조리 가능·사시미 불가 / 냉장 = 사시미 가능 — `ButcheryPanel.freshnessFactor` 재조정(냉장 0.85 > 보통 0.6 > 냉동 0.55 > 해동 0.5 > 나쁨 0.35).
+- **[변경] 쿨러 자동 이송 폐지**: 1인칭 종료 시 어창→인벤 자동 이송 + 강제 방생 흐름 **제거** — 쿨러 어획은 팝업 우클릭 **'인벤토리로 넣기'**로 직접 옮겨야 한다. 이송 시 현재 신선도 상태 그대로 + **시계는 이송 시점부터 재시작**(해수 활어 → 인벤에서 10분 카운트). 인벤 공간 없으면 이송 실패 안내만.
+- **[신규] 쿨러 매질 시스템** (`CoolerStore` 재작성 — 개체별 `condition`+`stateElapsedMs`(정지 구간 미누적) + lazy `sync()` 구간 분할 엔진):
+  - **매질 3종**: 없음(상온과 동일 진행 — 활어 10분) / **해수**(1시간 — 활어 시계 정지=무제한, 만료 시 남은 개체 **강제 '보통'**) / **얼음**(2시간 — 활어 1시간 유지 후 신선, 신선 이하 전 상태 정지, 만료 시 **강제 '해동'**). 만료된 매질은 '비우기' 후에만 재투입 가능.
+  - `sync()`는 [이전, 만료) 활성 구간 → 만료 이벤트(1회) → [만료, 현재) 비활성 구간으로 분할 적용 — 장시간 점프에도 정확(10시간 점프 시뮬 검증). `fishRemainMs` null = '무제한' 표기.
+- **[개편] CoolerPanel**: ① 타이틀 **쿨러 (매질, 00시 00분 00초)** 1초 갱신 + 해수 잔여 ≤10분 시 빨간 **'! 해수 교체 필요'** ② 하단 3버튼 — **해수 넣기**('낚시용 두레박'(기타) 보유 + **바다 근처**(`isNearSea` 콜백: 1인칭=항상, 탑다운=`nearWater`) 필요. 비활성 호버 시 '바다 근처에서만 가능합니다' 등 사유 툴팁) / **얼음 넣기**('대용량 각얼음'(소모품) 클릭 즉시 1개 소모) / **비우기**(매질 있을 때만) ③ 셀 신선도 배지(색 점+라벨) + 컨텍스트 메뉴 헤더에 `상태 → 다음 단계까지 남은 시간/무제한` 표시 ④ 메뉴에 '인벤토리로 넣기' 추가. `DraggablePanel`에 `titleText`/`setTitle()` 신설.
+- **[신규] 인벤토리 우클릭 UX**: ① **사용하기**(음식·소모품, 녹색) — 음식은 **섭취 SFX**(신규 `audio/Sfx.ts` WebAudio 합성 — 오디오 에셋 전 플레이스홀더)와 함께 소모(나쁨/부패는 섭취 차단), 소모품은 소모만. 효과 적용은 추후 ② **버리기/완전제거 빨간색** + **"정말 버리시겠습니까?" 예/아니오 확인창**(ConfirmDialog).
+- **[신규 아이템]**: 낚시용 두레박(기타, 시드 1 + 직판장 판매 — 소모 안 됨) / 대용량 각얼음(소모품, 시드 2 + 편의점·마트 판매).
+- ⚠️ 사용하기 아이템 효과(HP/버프), 쿨러 어획 '손질하기' 연결은 추후.
+
+**이전 변경 (2026-07-22 20차) — 어종 실사 이미지 에셋 19종 + 회뜨기 수율(회칼·어종모양·체장무게·도구스킬) 시스템** (빌드/타입체크 통과):
+- **[신규 에셋] 어종 실사 픽셀 이미지 19종** (`food assets/` → `packages/client-pc/public/fish/`, BootScene 텍스처 등록): 무늬오징어(squid)/갈치(hairtail)/갑오징어(cuttlefish)/청볼락(blue_rockfish)/쥐치(filefish)/황볼락(golden_rockfish)/농어(sea_bass)/부시리(amberjack)/방어(yellowtail)/숭어(striped_mullet)/가숭어(redlip_mullet)/강담돔(spotted_knifejaw)/참돔(red_seabream, 야간 night_seabream 공용)/전갱이(horse_mackerel)/고등어(chub_mackerel) + **돌돔 암/수 2종**. 텍스처 키는 **어종 ID 기준**(파일명 영문 통칭과 분리 — 매핑은 `FirstPersonFishingScene.FISH_TEXTURE` 일원화).
+  - **[신규] 돌돔 성별/체장 텍스처 해소** (`resolveFishTexture`): 돌돔은 40cm를 넘어야 암수 구별(수컷만 줄무늬 소실). **40cm 미만은 성별 무관 암컷 이미지(무늬 유지)**, 40cm↑ 수컷만 수컷 이미지. onLanded/다관점 히트 모두 반영.
+  - ⚠️ **DB 미등록 어종 2종**(에셋만 선로드, FISH_TEXTURE 미연결): **개볼락**(spotbelly_rockfish.png), **창꼴뚜기/한치**(swordtip_squid.png) — FISH_DATABASE/오라클 추가 후 매핑 연결 필요.
+  - ⚠️ **파일명↔어종 불일치 1건**: `dark-banded_rockfish.png`(영문 통칭=볼락 dark_banded_rockfish)를 사용자 지정 **청볼락**(blue_rockfish)에 매핑함. 볼락(dark_banded_rockfish)은 이미지 없음 상태 — 이미지 실제 어종 재확인 대상.
+- **[신규 core] 회뜨기 수율 시스템** (SASHIMI_YIELD_SPEC 반영 — 수율(양)과 등급(질) 분리):
+  - `types/Butchery.ts`: `ButcheryProfile`에 **baseYieldRate·sliceGramBase·minFilletLengthCm·bodyRatio·filletShape** 추가, `filletCount` 2|4→**2|4|5**(대형 광어). `KnifeSpec`/`FilletYieldInput`/`FilletYieldResult`/`FilletShape` 신설.
+  - `db-schema/KnifeDatabase.ts`: **회칼 3등급**(막칼 toolYield 0.85 / 회칼 1.0 / 야나기바 1.10) + `getBestKnife(ids)`(없으면 null=게이트)·`isKnifeItem`.
+  - `simulation/ButcheryProcess.ts` `computeFilletYield()`: **yieldMass = 무게×baseYieldRate×칼×스킬×신선도**, sliceCount = yieldMass/(sliceGramBase/(칼얇기×스킬얇기)), 대형 광어(≥45cm) 5장 분기, 등급 = (방혈×시메×컷정확도×신선도)×칼·스킬 보정 → 특/상/중/하.
+  - `db-schema/ButcheryProfiles.ts`: 어종 전수 프로필에 수율/형상 필드 채움(광어 0.48·방어/부시리 0.52·잿방어 0.53·참돔 0.42·농어 0.45·삼치 0.50·볼락류 0.38·대구 0.32·감성돔/벵에돔 0.40 등 — 통념 튜닝값 ★★).
+- **[신규 client] 회칼 게이팅 + 수율 결과** (`ui/ButcheryPanel.ts`): 인벤토리 '기타'에 회칼 있어야 **회뜨기(꼬리손잡이/장뜨기/박피) 활성** — 미보유 시 손질(시메·방혈·비늘·머리·내장)까지만 하고 **잠금 오버레이 + [통마리로 마무리]**(통마리 아이템 지급). 결과 오버레이가 **수율 g·필렛 장수·슬라이스 수·등급·사용 칼·손질 스킬 Lv/XP** 표시, `computeFilletYield` 기반 가격·필렛 수 지급. `bodyRatio`로 파라메트릭 생선 체고 변형, 어종별 팔레트 확장.
+- **[신규] `GameState.skills.filleting`**(level/xp, 세이브 영속) + `addFilletingXp`(성공 손질마다 XP↑, 상한 Lv.20). 회칼 3종 식자재마트 판매 등록 + 회칼(사시미) 1개 기본 지급.
+- 잔여(차기 — 사용자 확인 후): 개볼락/한치 DB 추가, 청볼락 이미지 어종 재확인, 필렛 형상별 아이콘, 두족류 전용 손질 트리, 회썰기(두께/각도) 인터랙션, baseYieldRate 플레이 튜닝.
+
+**이전 변경 (2026-07-21 19차) — 자전거 정합 + 파이트 드래그인 + 신선도 상세 + 백운포 연결 + 날씨 강화** (브라우저 6항목 PASS):
 - **[수정] 자전거 정·후면 z순서**: 정면/후면일 때 자전거(핸들바·에지온 바퀴/안장·뒷바퀴)가 **캐릭터보다 앞(depth+)**, 측면은 뒤(프레임이 다리에 가림) — 물리 정합. Field/RegionField 공통.
 - **[신규] 자전거 아이템 연동**: 기타 인벤토리에 `inv_bike`('자전거', 탈것) 시드 — **보유해야 R 승차 가능**(미보유 시 힌트/거부). **탑승 중 캐스팅은 완전 무반응**(어떤 안내 문구도 없이 무시 — tryStartCharge 최상단 게이트).
 - **[신규] 파이트 드래그인 (거리 정합)**: 랜딩 판정(progress 100)이 나도 **수면 거리 > 3m면 즉시 랜딩하지 않는다** — `dragInMode`: 도주 시뮬 정지, 지친 고기가 수면에 떠서(fightDepthNorm→0.06) **릴링 2.4m/s로 질질 끌려오고**(방치 시 -0.15m/s 되풀림) 발앞 3m 도달 시 정식 랜딩. "제압 완료! 릴링으로 끌어오세요 — 남은 Xm" 안내. (검증: 22m 제압 → 3.0m 랜딩)
