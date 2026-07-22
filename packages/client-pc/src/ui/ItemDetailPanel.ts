@@ -33,7 +33,7 @@ export interface ItemDetailData {
 }
 
 /** 아이템 종류별 상세 스펙 추론 생성 (목업) — 어획물은 개체 실측치·어종 정보(FISH_DATABASE) 표시 */
-export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory' | 'category' | 'qty' | 'basePrice' | 'condition' | 'conditionSinceMs' | 'speciesId' | 'lengthCm' | 'weightG'>): ItemDetailData {
+export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory' | 'category' | 'qty' | 'basePrice' | 'condition' | 'conditionSinceMs' | 'speciesId' | 'lengthCm' | 'weightG' | 'floatBuoyG'>): ItemDetailData {
   const rows: ItemDetailRow[] = [];
   let desc = '';
 
@@ -200,12 +200,22 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
       desc = '대상 어종과 미끼 크기에 맞는 바늘을 선택하세요.';
       break;
     case '채비 부속':
-      if (item.name.includes('구멍찌')) {
-        rows.push({ label: '부력 (b)', value: '+0.8호' }, { label: '역할', value: '어신 감지 / 채비 수심 유지' });
-        desc = '면사매듭 위치까지 채비를 지탱하는 부력체입니다.';
-      } else if (item.name.includes('수중찌')) {
-        rows.push({ label: '침력', value: '-0.8호' }, { label: '역할', value: '조류 태우기 / 채비 안정' });
-        desc = '수중에서 조류를 타고 채비를 자연스럽게 흘립니다.';
+      if (item.name.includes('수중찌')) {
+        rows.push(
+          { label: '침력', value: item.floatBuoyG !== undefined ? `${item.floatBuoyG} g 상당` : '-0.8호' },
+          { label: '역할', value: '조류 태우기 / 채비 하강 유도 (선택 부품)' },
+        );
+        desc = '부력찌의 부력에 마이너스로 작용해 찌는 수면에 세우고 채비만 내립니다.';
+      } else if (item.name.includes('찌')) {
+        rows.push(
+          { label: '부력 (b)', value: item.floatBuoyG !== undefined ? `${item.floatBuoyG >= 0 ? '+' : ''}${item.floatBuoyG} g 상당` : '+0.8호' },
+          { label: '역할', value: '어신 감지 / 채비 수심 유지' },
+        );
+        desc = item.name.includes('잠길찌')
+          ? '잔존 부력이 마이너스인 찌 — 캐스팅 후 천천히 잠기며 흘립니다.'
+          : item.name.includes('제로찌')
+            ? '잔존 부력 0 — 수중찌 없이 상층을 천천히 공략하는 찌입니다.'
+            : '면사매듭 위치까지 채비를 지탱하는 부력체입니다.';
       } else if (item.name.includes('봉돌')) {
         rows.push({ label: '무게 (g)', value: 'G2 (약 0.31 g)' }, { label: '침강 기여', value: '하강 벡터 V_z 증가' });
         desc = '채비의 침강 속도와 목줄 정렬을 조정합니다.';

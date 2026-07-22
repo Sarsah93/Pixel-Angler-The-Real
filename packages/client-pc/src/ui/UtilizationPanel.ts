@@ -3,10 +3,12 @@
  * @description 활용 창 (U 키 — 전체 화면 전환 상태, 상단 탭: 요리하기 / 채비하기 / 밑밥 품질)
  *
  * 채비하기(Tackles):
- *  실제 바다낚시 채비 순서 [원줄 → 면사매듭 → 구멍찌/수중찌 → 도래 → 목줄 → 봉돌 → 바늘&미끼]
- *  대로 소켓을 클릭해 인벤토리의 부품을 조립한다. 면사매듭은 수심 한계(Z_limit)를
- *  -/+ 로 조절하며, 조립 스펙(총 무게/침강 속도/최대 공략 수심)이 실시간 합산된다.
- *  (낚싯대 우클릭 → '채비하기' 로도 진입)
+ *  실제 바다낚시 채비 순서 [원줄 → 면사매듭 → 부력찌 → 수중찌 → 도래 → 목줄 → 봉돌 → 바늘&미끼]
+ *  대로 소켓을 클릭해 인벤토리의 부품을 조립한다. 부력찌(구멍찌/기울찌/잠길찌/제로찌)와
+ *  수중찌는 **별도 소켓** — 수중찌는 부력에 대한 마이너스 침력으로 채비 하강을 유도하는
+ *  선택 부품이다 (제로찌 상층 공략 시 수중찌 없이 좁쌀+바늘 무게만으로 운용 가능).
+ *  면사매듭은 수심 한계(Z_limit)를 -/+ 로 조절하며, 조립 스펙(총 무게/침강 속도/
+ *  최대 공략 수심)이 실시간 합산된다. (낚싯대 우클릭 → '채비하기' 로도 진입)
  *
  * 요리하기(Cooking):
  *  도마 위 생선 손질(삼면뜨기) 시스템 자리 — 회칼(장비) 필요. 추후 정식 구현 예정.
@@ -23,6 +25,7 @@ import {
   InventoryStore, InvItem, InvCategory, RigStepKey,
   CATEGORY_LABEL, CONDITION_LABEL, CONDITION_COLOR,
   isHookItem, isBaitItem, isLureItem, isWeightSinker, isSplitShot, isJigHeadItem,
+  isBuoyFloatItem, isSubFloatItem,
   SpreaderKind, CardRigType, SPREADER_LABEL, CARD_RIG_INFO,
 } from '../store/InventoryStore.js';
 import { RecommendationStore } from '../store/RecommendationStore.js';
@@ -30,7 +33,9 @@ import { CoolerStore, ChumIngredientKind, CHUM_THROW_COST } from '../store/Coole
 import { LureFamily, LureKind, getLureSpec, getLureSinkProfile, jigHeadWeightById } from '@tra/core';
 import { DraggablePanel } from './DraggablePanel.js';
 import { ButcheryPanel } from './ButcheryPanel.js';
+import { GuidePanel } from './GuidePanel.js';
 import { createItemIcon } from './ItemIcon.js';
+import { GameState } from '../store/GameState.js';
 
 /** 루어 세부 종류 → 라벨 (2단계 트리) */
 const SOFT_KINDS: { k: LureKind; label: string }[] = [
@@ -60,11 +65,14 @@ const PANEL_H = 620;
  * 채비 단계 정의 — matcher로 인벤토리 부품 필터.
  * 2026-07-16: 바늘 & 미끼 통합 소켓을 [바늘/루어] → [미끼] 2소켓으로 분리.
  * 바늘 소켓에 루어(미노우 등 바늘 일체형 가짜미끼)를 달면 미끼 소켓은 비활성화.
+ * 2026-07-22: 구멍찌/수중찌 통합 소켓을 [부력찌] → [수중찌] 2소켓으로 분리 —
+ * 부력찌는 필수, 수중찌는 침력 유도용 선택 부품 (좁쌀봉돌과 동급의 운용 선택지).
  */
 const RIG_STEPS: { key: RigStepKey; label: string; matcher: ((i: InvItem) => boolean) | null }[] = [
   { key: 'mainLine',  label: '원줄',        matcher: (i) => i.subCategory === '원줄 스풀' },
   { key: 'floatStop', label: '면사매듭',    matcher: null },   // 수심 한계 조절 전용
-  { key: 'float',     label: '구멍찌/수중찌', matcher: (i) => i.subCategory === '채비 부속' && i.name.includes('찌') },
+  { key: 'float',     label: '부력찌',      matcher: isBuoyFloatItem },
+  { key: 'subFloat',  label: '수중찌 (선택)', matcher: isSubFloatItem },
   { key: 'swivel',    label: '도래',        matcher: (i) => i.subCategory === '채비 부속' && i.name.includes('도래') },
   { key: 'leader',    label: '목줄',        matcher: (i) => i.subCategory === '목줄 스풀' },
   { key: 'sinker',    label: '봉돌',        matcher: (i) => i.subCategory === '채비 부속' && i.name.includes('봉돌') },
@@ -72,8 +80,8 @@ const RIG_STEPS: { key: RigStepKey; label: string; matcher: ((i: InvItem) => boo
   { key: 'bait',      label: '미끼',        matcher: isBaitItem },
 ];
 
-/** 소켓 8개가 PANEL_W(1080) 안에 들어가도록 축소 배치 */
-const SOCKET_W = 110;
+/** 소켓 9개가 PANEL_W(1080) 안에 들어가도록 축소 배치 (부력찌/수중찌 분리로 8→9) */
+const SOCKET_W = 104;
 const SOCKET_H = 132;
 const SOCKET_GAP = 12;
 
@@ -94,6 +102,8 @@ export class UtilizationPanel extends DraggablePanel {
   private dragGhost?: Phaser.GameObjects.Image;
   /** 회 뜨기 손질 자식 팝업 */
   private butcheryPanel?: ButcheryPanel;
+  /** 통합 가이드 팝업 (최초 회뜨기 — '회뜨기' 탭 1회 자동 표시) */
+  private guideHubPanel?: GuidePanel;
   /** 루어 채비 트리 네비게이션 상태 */
   private lureFamily: LureFamily = 'soft';
   private lureKindSel: LureKind = 'worm_grub';
@@ -198,7 +208,7 @@ export class UtilizationPanel extends DraggablePanel {
     const guide = this.scene.add.text(24, top,
       surf
         ? '원투(찌 없이 도래 직결) 모드 — 초릿대 끝으로 입질을 봅니다. 봉돌 소켓에 무게추 봉돌을 다세요.'
-        : '조립 순서대로 소켓을 클릭해 부품을 선택하세요. 면사매듭 위치는 채비가 도달할 최대 수심(Z_limit)을 결정합니다.', {
+        : '조립 순서대로 소켓을 클릭해 부품을 선택하세요. 수중찌·좁쌀봉돌은 선택 부품(운용법)이며, 면사매듭 위치는 최대 공략 수심(Z_limit)을 결정합니다.', {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#9fc0d4',
       });
     this.bodyContainer.add(guide);
@@ -752,9 +762,14 @@ export class UtilizationPanel extends DraggablePanel {
       const item = InventoryStore.find(id);
       if (!item) return;
       if (isWeightSinker(item)) weightG += item.sinkerWeightG ?? 0;   // 원투 무게추 봉돌 (60~113g)
+      // 찌 제원 (floatBuoyG): 양수 = 부력(부력찌) / 음수 = 침력(수중찌·잠길찌 마이너스 잔존부력)
+      else if (item.floatBuoyG !== undefined) {
+        if (item.floatBuoyG >= 0) buoyG += item.floatBuoyG;
+        else weightG += -item.floatBuoyG;
+      }
       else if (item.name.includes('봉돌')) weightG += 0.31;          // 좁쌀 G2
-      else if (item.name.includes('수중찌')) weightG += 8;       // -0.8호 침력
-      else if (item.name.includes('구멍찌')) buoyG += 8;         // 0.8호 부력
+      else if (item.name.includes('수중찌')) weightG += 8;       // -0.8호 침력 (제원 미보유 폴백)
+      else if (item.name.includes('구멍찌')) buoyG += 8;         // 0.8호 부력 (제원 미보유 폴백)
       else if (isLureItem(item)) {
         // 루어 자중 (이름 기반 목업 — 메탈지그는 g 표기, 미노우는 9g 상당)
         const m = item.name.match(/(\d+)\s*g/);
@@ -775,8 +790,12 @@ export class UtilizationPanel extends DraggablePanel {
     let advice: string;
     const missing = InventoryStore.getMissingRigParts();
     const floatItem = rig.float ? InventoryStore.find(rig.float) : undefined;
-    // 잠길찌: '잠길찌' 타입 찌 장착 또는 잔존 부력(부력-침강무게)이 0 미만
-    const isSinkingFloat = !!floatItem && (floatItem.name.includes('잠길찌') || (buoyG > 0 && net > 0));
+    // 잠길찌: '잠길찌' 타입 찌 장착 또는 잔존 부력 소진.
+    // 부력찌 정격 부력은 매칭 수중찌·좁쌀·바늘·미끼를 지탱하는 값 — 잔존부력 마진
+    // (부력의 35%, 최소 2.5g = 좁쌀+바늘+미끼 소품 무게)을 넘는 과침력일 때만 잠김
+    // 판정한다 (호수 매칭 표준 조합(0.5호+-0.5호 등)은 항상 뜬다).
+    const isSinkingFloat = !!floatItem
+      && (floatItem.name.includes('잠길찌') || (buoyG > 0 && net > Math.max(buoyG * 0.35, 2.5)));
     const surf = InventoryStore.isSurfRigReady();
     const overload = InventoryStore.getRigTotalWeightG() > InventoryStore.getRodCapacityG();
     const holeSinker = InventoryStore.getEquippedWeightSinker()?.sinkerKind === 'hole';
@@ -791,7 +810,13 @@ export class UtilizationPanel extends DraggablePanel {
           : '원투 채비 — 찌 없이 초릿대 끝으로 입질을 봅니다. 무게추 봉돌로 바닥을 공략하세요.';
     }
     else if (!InventoryStore.hasFloatStop) advice = '전유동 채비입니다. 면사매듭을 제거하면 채비가 무한 침강합니다 — 뒷줄견제(H)로 수심을 세워 흘리세요.';
+    else if (floatItem?.name.includes('제로찌')) {
+      advice = rig.subFloat
+        ? '제로찌 + 수중찌 조합입니다 — 상층 공략이 목적이면 수중찌를 빼는 운용도 있습니다.'
+        : '제로찌 상층 공략 채비 — 수중찌 없이 좁쌀봉돌·바늘(미끼) 무게만으로 천천히 내립니다.';
+    }
     else if (isSinkingFloat) advice = '잠길찌 채비 상태입니다. 캐스팅 후 찌가 수중으로 하강합니다.';
+    else if (rig.subFloat) advice = '수중찌 채비 — 부력찌는 수면에 세우고, 수중찌 침력이 채비를 조류에 태워 내립니다.';
     else if (!InventoryStore.hookNeedsBait()) advice = '루어 채비입니다 — 미끼 없이 캐스팅 가능하며, 입질 시 미끼가 소모되지 않습니다.';
     else if (net < 0) advice = '부력이 무게보다 큽니다 — 채비가 상층에 뜹니다 (상층 어종 공략).';
     else if (sinkMps < 0.1) advice = '침강이 느립니다. 깊은 수심 공략 시 봉돌을 추가하세요. (강풍 시 무거운 봉돌 추천)';
@@ -1489,6 +1514,23 @@ export class UtilizationPanel extends DraggablePanel {
   /** 회 뜨기 미니게임 열기 (도마 위 생선 대상) */
   private openButchery(fish: InvItem): void {
     if (this.butcheryPanel) return;
+    // 최초 회뜨기 — 통합 가이드 '회뜨기' 탭 1회 자동 표시, 닫으면 손질로 진행
+    if (!GameState.getFlag('guideSeen.butchery')) {
+      GameState.setFlag('guideSeen.butchery');
+      if (!this.guideHubPanel) {
+        const gp = new GuidePanel(this.scene, {
+          initialCat: 'butchery',
+          onClose: () => {
+            this.guideHubPanel?.destroy();
+            this.guideHubPanel = undefined;
+            this.openButchery(fish);
+          },
+        });
+        this.scene.add.existing(gp);
+        this.guideHubPanel = gp;
+      }
+      return;
+    }
     this.butcheryPanel = new ButcheryPanel(this.scene, fish, {
       onClose: () => {
         this.butcheryPanel?.destroy();

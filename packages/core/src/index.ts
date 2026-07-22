@@ -251,8 +251,15 @@ export type { TideVector, RigPhysicsParams, UnderwaterRigState, UnderwaterStepIn
 export { createUnderwaterRig, computeSinkSpeed, stepUnderwater, isHoldState } from './simulation/UnderwaterSinkPhysics.js';
 export type { LineTensionInput, LineTensionOutput } from './simulation/LineTensionPhysics.js';
 export { LineTensionPhysics, HOLD_LIFT_M } from './simulation/LineTensionPhysics.js';
-export type { ChumBall, ChumProbePos } from './simulation/ChumPhysics.js';
-export { ChumPhysics } from './simulation/ChumPhysics.js';
+export type { ChumBall, ChumProbePos, ChumParcel, ChumDrift, ChumSyncTarget, ChumPathPrediction } from './simulation/ChumPhysics.js';
+export {
+  ChumPhysics, CHUM_PARCEL_TTL_SEC,
+  createChumParcel, stepChum, computeChumSync, maxChumSync, predictChumPath, optimalThrowX,
+} from './simulation/ChumPhysics.js';
+
+// 튜닝값 단일 소스 (feel=dev 패널 / balance=시뮬) — 매직넘버 중앙화
+export type { TuningConfig, TuningParamMeta, ChumTypeSpec, ChumTypeKey } from './config/tuning.js';
+export { TUNING, TUNING_META, getTuning, setTuning } from './config/tuning.js';
 export type { BiteContext, BiteTickResult } from './simulation/BiteProbabilityEngine.js';
 export { BiteProbabilityEngine } from './simulation/BiteProbabilityEngine.js';
 export type {

@@ -32,6 +32,7 @@ import { CookScene } from './scenes/CookScene.js';
 import { SettingsScene } from './scenes/SettingsScene.js';
 import { CreditsScene } from './scenes/CreditsScene.js';
 import { GameState } from './store/GameState.js';
+import { initDevTuningPanel } from './dev/DevTuningPanel.js';
 
 /** 싱글턴 보관 키 — HMR/재평가를 넘어 유지된다 */
 const GAME_KEY = '__PIXEL_ANGLER_GAME';
@@ -50,6 +51,8 @@ export function createGame(): Phaser.Game {
   if (existing) return existing;
 
   GameState.initialize();
+  // dev 전용 튜닝 슬라이더 오버레이 (F8) — 프로덕션에서는 즉시 반환/데드코드 제거
+  initDevTuningPanel();
 
   // 씬 등록 순서가 곧 씬 키 우선순위
   const config: Phaser.Types.Core.GameConfig = {

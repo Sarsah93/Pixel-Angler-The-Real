@@ -56,9 +56,10 @@ function sinkerShopEntry(id: string): ShopEntry {
 const TACKLE_CORNER: ShopEntry[] = [
   ...['inv_sinker_ring_20', 'inv_sinker_ring_25', 'inv_sinker_hole_15', 'inv_sinker_hole_20',
     'inv_sinker_hole_25', 'inv_sinker_bundle_25'].map(sinkerShopEntry),
-  { id: 'inv_float08', name: '구멍찌 0.8호', icon: '🟠', category: 'tackle', subCategory: '채비 부속', basePrice: 8000, price: 9000, maxPerPurchase: 10, equippable: false, desc: '얕은 수심·약한 조류용 저부력 구멍찌.' },
-  { id: 'shop_float10', name: '구멍찌 1.0호', icon: '🟠', category: 'tackle', subCategory: '채비 부속', basePrice: 8500, price: 9500, maxPerPurchase: 10, equippable: false, desc: '중간 수심·조류용 구멍찌.' },
-  { id: 'shop_float15', name: '구멍찌 1.5호', icon: '🟠', category: 'tackle', subCategory: '채비 부속', basePrice: 9000, price: 10000, maxPerPurchase: 10, equippable: false, desc: '깊은 수심·센 조류용 고부력 구멍찌.' },
+  { id: 'inv_float08', name: '구멍찌 0.8호', icon: '🟠', category: 'tackle', subCategory: '채비 부속', basePrice: 8000, price: 9000, maxPerPurchase: 10, equippable: false, desc: '얕은 수심·약한 조류용 저부력 구멍찌.', floatBuoyG: 8 },
+  { id: 'shop_float10', name: '구멍찌 1.0호', icon: '🟠', category: 'tackle', subCategory: '채비 부속', basePrice: 8500, price: 9500, maxPerPurchase: 10, equippable: false, desc: '중간 수심·조류용 구멍찌.', floatBuoyG: 10 },
+  { id: 'shop_float15', name: '구멍찌 1.5호', icon: '🟠', category: 'tackle', subCategory: '채비 부속', basePrice: 9000, price: 10000, maxPerPurchase: 10, equippable: false, desc: '깊은 수심·센 조류용 고부력 구멍찌.', floatBuoyG: 15 },
+  { id: 'inv_subfloat', name: '수중찌 -0.8호', icon: '🟤', category: 'tackle', subCategory: '채비 부속', basePrice: 6000, price: 7000, maxPerPurchase: 10, equippable: false, desc: '부력찌 아래에 다는 침력체 — 찌는 수면에 세우고 채비만 조류에 태워 내린다 (선택 부품).', floatBuoyG: -8 },
   { id: 'inv_sinkerG2', name: '좁쌀봉돌 G2', icon: '⚙️', category: 'tackle', subCategory: '채비 부속', basePrice: 2000, price: 2500, maxPerPurchase: 20, equippable: false, desc: '찌낚시 목줄 미세 조정용 좁쌀 봉돌.' },
 ];
 

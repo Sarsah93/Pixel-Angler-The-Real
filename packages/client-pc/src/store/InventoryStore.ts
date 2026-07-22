@@ -145,6 +145,14 @@ export interface InvItem {
   sinkerWeightG?: number;
   /** 봉돌 호수 */
   sinkerHo?: number;
+
+  // ── 찌(부력찌/수중찌) 전용 ──
+  /**
+   * 부력 상당 (g) — **양수 = 부력**(구멍찌/기울찌/제로찌 등 부력찌),
+   * **음수 = 침력**(수중찌, 잠길찌의 마이너스 잔존부력).
+   * 없으면 이름 기반 폴백(구멍찌 +8 / 수중찌 −8)으로 계산된다.
+   */
+  floatBuoyG?: number;
 }
 
 /** 상점 카탈로그/구매용 아이템 템플릿 (slot/qty 없이 정의) */
@@ -154,9 +162,13 @@ export type InvItemTemplate = Omit<InvItem, 'slot' | 'qty'>;
  * 채비(리그) 조립 단계 키.
  * 2026-07-16: `hookBait` 통합 소켓을 `hook`(바늘) / `bait`(미끼)로 분리.
  * 바늘 소켓에 루어(가짜미끼 — 미노우 등, 바늘 일체형)를 달면 미끼 소켓은 비활성화된다.
+ * 2026-07-22: `float` 통합 소켓을 **`float`(부력찌) / `subFloat`(수중찌)**로 분리 —
+ * 부력찌(구멍찌 호수별/기울찌/잠길찌/제로찌)는 필수, 수중찌는 부력에 대한 마이너스
+ * 침력으로 채비 하강을 유도하는 **선택 부품**(제로찌 상층 공략 등 미장착 운용 가능).
+ * 좁쌀봉돌도 선택 — 목줄 정렬/하강 유도 등 운용법에 따라 다는 부품.
  */
 export type RigStepKey =
-  | 'mainLine' | 'floatStop' | 'float' | 'swivel' | 'leader' | 'sinker' | 'hook' | 'bait';
+  | 'mainLine' | 'floatStop' | 'float' | 'subFloat' | 'swivel' | 'leader' | 'sinker' | 'hook' | 'bait';
 
 /** 미끼로 취급하는 소분류 (생미끼/냉동미끼/반죽미끼/선어미끼 등 '미끼' 포함 전부) */
 export function isBaitItem(i: InvItem): boolean {
@@ -181,6 +193,16 @@ export function isWeightSinker(i: InvItem): boolean {
 /** 좁쌀 봉돌(찌 채비 목줄용) 여부 */
 export function isSplitShot(i: InvItem): boolean {
   return i.name.includes('좁쌀') && i.name.includes('봉돌');
+}
+
+/** 수중찌 여부 — 마이너스 부력(침력)으로 채비 하강을 유도하는 별도 소켓 부품 */
+export function isSubFloatItem(i: InvItem): boolean {
+  return i.subCategory === '채비 부속' && i.name.includes('수중찌');
+}
+
+/** 부력찌(구멍찌/기울찌/잠길찌/제로찌 등) 여부 — 수중찌는 별도 소켓(subFloat) */
+export function isBuoyFloatItem(i: InvItem): boolean {
+  return i.subCategory === '채비 부속' && i.name.includes('찌') && !isSubFloatItem(i);
 }
 
 /** 루어 카탈로그 아이템 여부 (LureSpec 보유) */
@@ -296,8 +318,17 @@ function createSeedItems(): InvItem[] {
     // 루어 — 바늘 일체형 가짜미끼. 바늘 소켓에 장착하며 미끼 소켓이 비활성화된다.
     { id: 'inv_minnow',   name: '미노우 90F (플로팅)',      icon: '🐟', category: 'tackle', subCategory: '루어',      qty: 2,  basePrice: 14000, equippable: false },
     { id: 'inv_metaljig', name: '메탈지그 20g',             icon: '🐟', category: 'tackle', subCategory: '루어',      qty: 3,  basePrice: 8000,  equippable: false },
-    { id: 'inv_float08',  name: '구멍찌 0.8호',             icon: '🟠', category: 'tackle', subCategory: '채비 부속', qty: 3,  basePrice: 8000,  equippable: false },
-    { id: 'inv_subfloat', name: '수중찌 -0.8호',            icon: '🟠', category: 'tackle', subCategory: '채비 부속', qty: 3,  basePrice: 8000,  equippable: false },
+    // 부력찌 (float 소켓 — 필수) : floatBuoyG 양수 = 부력. 호수·형태별 운용이 다르다.
+    { id: 'inv_float_zero', name: '제로찌 (0호)',           icon: '⚪', category: 'tackle', subCategory: '채비 부속', qty: 2,  basePrice: 9000,  equippable: false, floatBuoyG: 0.4 },
+    { id: 'inv_float05',  name: '구멍찌 0.5호',             icon: '🟠', category: 'tackle', subCategory: '채비 부속', qty: 2,  basePrice: 7500,  equippable: false, floatBuoyG: 5 },
+    { id: 'inv_float08',  name: '구멍찌 0.8호',             icon: '🟠', category: 'tackle', subCategory: '채비 부속', qty: 3,  basePrice: 8000,  equippable: false, floatBuoyG: 8 },
+    { id: 'inv_float10',  name: '구멍찌 1.0호',             icon: '🟠', category: 'tackle', subCategory: '채비 부속', qty: 2,  basePrice: 8500,  equippable: false, floatBuoyG: 10 },
+    { id: 'inv_float_tilt', name: '기울찌 0.5호',           icon: '🟡', category: 'tackle', subCategory: '채비 부속', qty: 2,  basePrice: 9500,  equippable: false, floatBuoyG: 5 },
+    { id: 'inv_float_sink', name: '잠길찌 (-0.5호)',        icon: '🔵', category: 'tackle', subCategory: '채비 부속', qty: 2,  basePrice: 9000,  equippable: false, floatBuoyG: -1.5 },
+    // 수중찌 (subFloat 소켓 — 선택) : floatBuoyG 음수 = 침력. 찌는 수면에 세우고 채비만 내린다.
+    { id: 'inv_subfloat05', name: '수중찌 -0.5호',          icon: '🟤', category: 'tackle', subCategory: '채비 부속', qty: 2,  basePrice: 5500,  equippable: false, floatBuoyG: -5 },
+    { id: 'inv_subfloat', name: '수중찌 -0.8호',            icon: '🟤', category: 'tackle', subCategory: '채비 부속', qty: 3,  basePrice: 6000,  equippable: false, floatBuoyG: -8 },
+    { id: 'inv_subfloat10', name: '수중찌 -1.0호',          icon: '🟤', category: 'tackle', subCategory: '채비 부속', qty: 2,  basePrice: 6500,  equippable: false, floatBuoyG: -10 },
     { id: 'inv_sinkerG2', name: '좁쌀봉돌 G2',              icon: '⚙️', category: 'tackle', subCategory: '채비 부속', qty: 20, basePrice: 2000,  equippable: false },
     { id: 'inv_swivel',   name: '맨도래',                   icon: '⚙️', category: 'tackle', subCategory: '채비 부속', qty: 10, basePrice: 2500,  equippable: false },
     { id: 'inv_cushion',  name: '쿠션고무 / 반달구슬',      icon: '⚙️', category: 'tackle', subCategory: '채비 부속', qty: 12, basePrice: 2000,  equippable: false },
@@ -459,13 +490,14 @@ function defaultQuickslots(): (string | null)[] {
 
 /**
  * dev 기본 채비 프리셋 — 감성돔 반유동
- * (원줄 PE + 구멍찌 + 도래 + 카본 목줄 + 좁쌀봉돌 + 크릴)
+ * (원줄 PE + 구멍찌 + 도래 + 카본 목줄 + 좁쌀봉돌 + 크릴 — 수중찌는 선택이라 미장착)
  */
 function defaultRig(): Record<RigStepKey, string | null> {
   return {
     mainLine: 'inv_pe1',
     floatStop: null,
     float: 'inv_float08',
+    subFloat: null,
     swivel: 'inv_swivel',
     leader: 'inv_carbon15',
     sinker: 'inv_sinkerG2',
@@ -576,6 +608,15 @@ class InventoryStoreManager {
     this._quickslots = Array.from({ length: 8 }, (_, k) => ref(s.quickslots?.[k]));
     const base = defaultRig();
     (Object.keys(base) as RigStepKey[]).forEach((k) => { base[k] = ref(s.rig?.[k]); });
+    // 구세이브 마이그레이션 (2026-07-22) — 부력찌/수중찌 통합 소켓 시절
+    // float 소켓에 수중찌가 장착돼 있던 데이터는 subFloat 소켓으로 이동한다.
+    if (base.float) {
+      const fl = this._items.find((i) => i.id === base.float);
+      if (fl && isSubFloatItem(fl)) {
+        if (!base.subFloat) base.subFloat = base.float;
+        base.float = null;
+      }
+    }
     this._rig = base;
     this.rigDepthLimitM = s.rigDepthLimitM ?? 5;
     this.hasFloatStop = s.hasFloatStop ?? true;
@@ -795,6 +836,12 @@ class InventoryStoreManager {
 
   // ── 채비(리그) ──────────────────────────────────────
   setRigPart(step: RigStepKey, itemId: string | null): void {
+    // 부력찌/수중찌 소켓 교차 장착 방지 (선택 리스트가 걸러주지만 방어적으로)
+    if (itemId) {
+      const it = this.find(itemId);
+      if (it && step === 'float' && isSubFloatItem(it)) return;
+      if (it && step === 'subFloat' && !isSubFloatItem(it)) return;
+    }
     this._rig[step] = itemId;
     // 바늘 소켓에 루어(바늘 일체형)를 달면 미끼 소켓은 의미가 없으므로 비운다
     // — 남겨두면 소모/손실 계산에 유령 미끼가 끼어든다.
@@ -803,10 +850,14 @@ class InventoryStoreManager {
     }
   }
 
-  /** 캐스팅에 필수인 채비 소켓 (감성돔 반유동 기준) — 미끼는 조건부라 별도 처리 */
+  /**
+   * 캐스팅에 필수인 채비 소켓 (감성돔 반유동 기준) — 미끼는 조건부라 별도 처리.
+   * 수중찌(subFloat)·좁쌀봉돌(sinker)은 **운용 선택 부품**이라 필수가 아니다
+   * (제로찌 상층 공략 = 수중찌 없이 좁쌀+바늘 무게만으로 운용하는 경우 등).
+   */
   private static readonly REQUIRED_RIG: { key: RigStepKey; label: string }[] = [
     { key: 'mainLine', label: '원줄' },
-    { key: 'float', label: '찌' },
+    { key: 'float', label: '부력찌' },
     { key: 'leader', label: '목줄' },
     { key: 'hook', label: '바늘' },
   ];
@@ -886,11 +937,12 @@ class InventoryStoreManager {
 
   // ── 원투 편대/서브 채비 ───────────────────────────────
   /**
-   * 원투(편대) 채비 조건 — 찌 소켓 비움 + 도래 장착.
+   * 원투(편대) 채비 조건 — 찌 소켓(부력찌·수중찌 모두) 비움 + 도래 장착.
+   * 수중찌는 찌낚시 계열 부품이므로 달려 있으면 원투로 취급하지 않는다.
    * 이때 U창에 편대 선택 슬롯이 병렬로 활성화된다.
    */
   isSurfRigReady(): boolean {
-    return !this._rig.float && !!this._rig.swivel;
+    return !this._rig.float && !this._rig.subFloat && !!this._rig.swivel;
   }
 
   /** 현재 모드의 낚싯대 허용 채비 중량 (g) — 원투는 무거운 싱커 감당 */
@@ -957,6 +1009,8 @@ class InventoryStoreManager {
       const item = this._rig[k] ? this.find(this._rig[k]!) : undefined;
       if (!item) return;
       if (isWeightSinker(item)) w += item.sinkerWeightG ?? 0;
+      // 찌 제원: 침력(음수 floatBuoyG)만 무게로 합산 — 부력찌는 물에 뜨므로 하중 제외
+      else if (item.floatBuoyG !== undefined) { if (item.floatBuoyG < 0) w += -item.floatBuoyG; }
       else if (item.name.includes('봉돌')) w += 3.2;
       else if (item.name.includes('수중찌')) w += 8;
       else if (isLureItem(item)) { const m = item.name.match(/(\d+)\s*g/); w += m ? Number(m[1]) : 9; }

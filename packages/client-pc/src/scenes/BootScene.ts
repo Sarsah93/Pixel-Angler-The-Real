@@ -7,6 +7,7 @@
  */
 
 import Phaser from 'phaser';
+import { GUIDES } from '../data/GuideContent.js';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -104,6 +105,14 @@ export class BootScene extends Phaser.Scene {
         console.warn(`[BootScene] 지역 지도 미준비: ${file.key} (해당 지역은 '준비중'으로 표시됨)`);
       }
     });
+
+    // ─── 통합 가이드 허브 삽화 19장 (game_guide_hub.html SVG → PNG 640×300) ───
+    // 파이트 5 · 회수 4 · 밑밥 5 · 회뜨기 5 — 텍스처 키/문구는 data/GuideContent.ts
+    for (const cat of GUIDES) {
+      for (const pg of cat.pages) {
+        this.load.image(pg.textureKey, `guide/${pg.textureKey}.png`);
+      }
+    }
 
     // ─── 음식/생선 아이템 이미지 에셋 ───
     // food/: 아이템 아이콘 (인벤토리/상점 소켓용, 64x64 도트)

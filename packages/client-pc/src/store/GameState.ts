@@ -131,6 +131,8 @@ interface SaveData {
   coolerBox?: CoolerSaveState;
   /** 인벤토리 상태 (아이템/퀵슬롯/채비/편대/루어 모드) — 신선도는 lazy refresh로 실경과 반영 */
   inventoryStore?: InventorySaveState;
+  /** 1회성 안내 플래그 (chumGuideSeen 등 — 최초 표시 여부) */
+  flags?: Record<string, boolean>;
   version: number;
 }
 
@@ -162,6 +164,8 @@ export class GameStateManager {
   private _visitedSpotIds: Set<string> = new Set();
   private _completedQuestIds: Set<string> = new Set();
   private _skills: SkillState = createDefaultSkills();
+  /** 1회성 안내 플래그 (세이브 대상) — 예: chumGuideSeen */
+  private _flags: Record<string, boolean> = {};
   private _currentSpotId: string | null = null;
   private _isInitialized = false;
   /** 현재 진행 중인 저장 슬롯 (1~3, 미지정 시 null) */
@@ -204,6 +208,7 @@ export class GameStateManager {
     this._visitedSpotIds = new Set(saved.visitedSpotIds ?? []);
     this._completedQuestIds = new Set(saved.completedQuestIds ?? []);
     this._skills = saved.skills ?? createDefaultSkills();
+    this._flags = saved.flags ?? {};
     // 쿨러 복원 — 저장~로드 사이 실경과 시간을 sync로 반영 (어획 신선도/매질 만료, 밑밥은 그대로)
     CoolerStore.deserialize(saved.coolerBox);
     // 인벤토리 복원 — 구버전 세이브(필드 없음)는 시드로 리셋
@@ -521,8 +526,18 @@ export class GameStateManager {
       skills: this._skills,
       coolerBox: CoolerStore.serialize(),
       inventoryStore: InventoryStore.serialize(),
+      flags: this._flags,
       version: SAVE_VERSION,
     };
+  }
+
+  /** 1회성 안내 플래그 조회/설정 (예: 'chumGuideSeen' — 밑밥 가이드 최초 자동표시) */
+  getFlag(key: string): boolean {
+    return !!this._flags[key];
+  }
+
+  setFlag(key: string, value = true): void {
+    this._flags[key] = value;
   }
 
   /** 세이브 — 활성 슬롯이 있으면 슬롯에, 없으면 슬롯 1에 저장 */
@@ -646,6 +661,7 @@ export class GameStateManager {
     this._visitedSpotIds = new Set();
     this._completedQuestIds = new Set();
     this._skills = createDefaultSkills();
+    this._flags = {};
     CoolerStore.resetAll();
     InventoryStore.resetAll();
     this._currentSpotId = null;

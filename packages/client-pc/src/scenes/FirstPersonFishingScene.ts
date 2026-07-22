@@ -11,18 +11,26 @@
  *
  * 물리 파이프라인 (@tra/core):
  *  UnderwaterSinkPhysics(침강·드리프트) + LineTensionPhysics(H 뒷줄견제·정렬도 A)
- *  + ChumPhysics(밑밥 동조) + BiteProbabilityEngine(입질/밑걸림)
+ *  + 밑밥 3D 파슬(stepChum — 좌우 X·원근거리 D·수심 Z 통합 드리프트/동조)
+ *  + BiteProbabilityEngine(입질/밑걸림)
  *  → bite → FishSpawningOracle(어종 결정) → FightingPhase(텐션 파이팅)
  *
- * 조작: H = 뒷줄견제 · C/밑밥칸 클릭 = 밑밥 투척 · 좌클릭 유지 = (파이팅) 릴링
- *        SPACE = 다시 캐스팅(결과 후) · ESC/그만하기 = 필드 복귀 (stop + resume)
+ * 회수 세트 (2026-07-22): 릴링으로 distM이 줄수록 채비 세트(retrieveGroup —
+ *  찌 채비 = 찌+목줄+봉돌+미끼 / 루어 = 루어 단독)가 easeOutCubic으로 화면
+ *  중앙~하단 중간 앵커까지 커지며(최대 ×2) 다가온다. 원줄(초릿대→세트 top)은
+ *  컨테이너 밖에서 매 프레임 재드로우. 파이트 제압(dragIn) 물고기는 세트에 편입.
+ *
+ * 조작: H = 뒷줄견제 · C/밑밥칸 클릭 = 밑밥 투척(투척점 커서 스냅) ·
+ *        좌클릭 유지 = (파이팅) 릴링 · SPACE = 다시 캐스팅(결과 후) ·
+ *        ESC/그만하기 = 필드 복귀 (stop + resume)
  */
 
 import Phaser from 'phaser';
 import {
   createUnderwaterRig, stepUnderwater, isHoldState,
   UnderwaterRigState, RigPhysicsParams, TideVector,
-  LineTensionPhysics, ChumPhysics, BiteProbabilityEngine,
+  LineTensionPhysics, BiteProbabilityEngine,
+  ChumParcel, createChumParcel, stepChum, maxChumSync, predictChumPath,
   spawnFish, SpawnedFish, FightingPhase, FightStatus,
   calculateTideInfo, getBaitAffinity, BaitKey, SpawnContext,
   getAreaSnagRiskMult,
@@ -32,6 +40,7 @@ import {
   computeFeedingActivity, feedingRegionProfileOf, FeedingActivityResult,
   getMovementProfile, pickRunHeading,
   FishFatigueModel, FatigueTick, FATIGUE_PHASE_LABEL,
+  TUNING,
 } from '@tra/core';
 import { drawRigIcon, fishHeadPoint, RigIconKind } from '../ui/RigIconRenderer.js';
 import { GameState } from '../store/GameState.js';
@@ -43,6 +52,8 @@ import { applyScreenFixed } from '../ui/DraggablePanel.js';
 import { CoolerPanel } from '../ui/CoolerPanel.js';
 import { InventoryPanel } from '../ui/InventoryPanel.js';
 import { ItemDetailPanel } from '../ui/ItemDetailPanel.js';
+import { GuidePanel } from '../ui/GuidePanel.js';
+import { GuideCatKey } from '../data/GuideContent.js';
 import { loadSettings } from './SettingsScene.js';
 
 export interface FirstPersonFishingInit {
@@ -91,10 +102,15 @@ interface DecisionButton {
 const WATERLINE = 268;
 const PX_PER_M_X = 24;
 /**
- * 발앞(전경) 수면 Y — 정면 뷰 v2 원근: 채비는 착수 직후 수평선(WATERLINE) 부근에
- * 작게 보이고, 릴링으로 distM이 줄수록 이 Y까지 내려오며 플레이어 쪽으로 딸려온다.
+ * 회수 수렴 앵커/최대 배율/투척점 수 등 튜닝 스칼라는 TUNING(core 단일 소스)에서
+ * 매 프레임 읽는다 — dev 튜닝 패널(F8)의 슬라이더 변경이 리빌드 없이 반영된다.
+ *  anchorY = GAME_HEIGHT × TUNING.retrieve.anchorYRatio (기본 0.75 = 중앙~하단 중간)
+ *  scale   = BASE_RIG_SCALE × (1 + p·(scaleMax − 1))     (기본 최대 ×2)
  */
-const FOREGROUND_Y = GAME_HEIGHT - 200;
+/** 채비 세트 기본 스케일 (원거리) */
+const BASE_RIG_SCALE = 0.72;
+/** 밑밥 투척점 간격 (m) — 개수는 TUNING.chumThrow.pointCount */
+const CHUM_THROW_SPACING_M = 1.5;
 
 /** 어종 → 실사 픽셀 생선 이미지 텍스처 (어획 팝업/아이템 상세 표시용) */
 const FISH_TEXTURE: Record<string, string> = {
@@ -150,8 +166,16 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   private rig!: UnderwaterRigState;
   private rigParams!: RigPhysicsParams;
   private lineTension!: LineTensionPhysics;
-  private chum!: ChumPhysics;
   private biteEngine!: BiteProbabilityEngine;
+
+  // ── 밑밥 3D 파슬 (좌우 X · 원근거리 D · 수심 Z — core stepChum 구동) ──
+  private chumParcels: ChumParcel[] = [];
+  /** 현재 선택된 투척점 인덱스 (커서 X 최근접 스냅) */
+  private chumThrowIdx = Math.floor(TUNING.chumThrow.pointCount / 2);
+  /** 선택 투척점의 궤적 최대 동조율 예측 (미표시 시 -1) */
+  private chumPredPeak = -1;
+  /** 투척점 행/예측 고스트/파슬 구름 전용 레이어 */
+  private chumG!: Phaser.GameObjects.Graphics;
   private fight: FightingPhase | null = null;
   private hookedFish: SpawnedFish | null = null;
 
@@ -246,9 +270,9 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   /** 파이팅 과부하 릴링 (텐션 한계에서 무리한 입력) 누적 */
   private overstrain = 0;
 
-  // ── 가이드/이펙트 (2026-07-19 — 온보딩·시각 피드백) ──
-  /** 튜토리얼/도움말 오버레이 */
-  private guideContainer?: Phaser.GameObjects.Container;
+  // ── 가이드/이펙트 (2026-07-23 — 통합 가이드 허브로 일원화) ──
+  /** 통합 가이드 허브 (파이트·회수·밑밥·회뜨기 — GuidePanel, 구 텍스트 가이드 대체) */
+  private guideHub?: GuidePanel;
   /** 하단 상태별 조작 가이드 바 */
   private controlBarText!: Phaser.GameObjects.Text;
   /** 입질 단계 전환 감지용 (이펙트 1회 발동) */
@@ -269,9 +293,18 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   private rodG!: Phaser.GameObjects.Graphics;
   /** 우측 수심 모식도 전용 레이어 — 낚싯대(depth 60)보다 위에 그려 겹침 방지 */
   private panelG!: Phaser.GameObjects.Graphics;
-  private floatObj!: Phaser.GameObjects.Container;
+  /**
+   * 회수 세트 컨테이너 — 로드팁 아래 물리 채비를 한 덩어리로 (모드별 구성):
+   *  찌 채비 = 찌+목줄+봉돌+미끼(+제압 물고기) / 루어 = 루어(+물고기, 찌 없음).
+   * scale/pos/alpha는 이 컨테이너에만 적용 — 원줄(초릿대→세트 top)은 컨테이너
+   * 밖(renderRod)에서 매 프레임 재드로우 (scale로 굵기·길이가 왜곡되지 않게 분리).
+   */
+  private retrieveGroup!: Phaser.GameObjects.Container;
+  /** 세트 내용 드로잉 (로컬 좌표 — (0,0) = 세트 top 앵커) */
+  private setG!: Phaser.GameObjects.Graphics;
+  /** 세트 top 앵커 월드 좌표 — 원줄(초릿대→세트) 연결점 */
+  private groupTopWorld = { x: GAME_WIDTH / 2, y: WATERLINE };
   private fishShadow?: Phaser.GameObjects.Ellipse;
-  private chumSprites: { obj: Phaser.GameObjects.Arc; born: number }[] = [];
 
   // UI
   private uiG!: Phaser.GameObjects.Graphics;
@@ -305,7 +338,10 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.reeling = false;
     this.viewCenterX = 0;
     this.sessionCatch = [];
-    this.chumSprites = [];
+    this.chumParcels = [];
+    this.chumThrowIdx = Math.floor(TUNING.chumThrow.pointCount / 2);
+    this.chumPredPeak = -1;
+    this.groupTopWorld = { x: GAME_WIDTH / 2, y: WATERLINE };
     this.resultContainer = undefined;
     this.fishShadow = undefined;
     this.biteSeq = new BiteSequenceEngine();
@@ -320,7 +356,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.lastTapAt = 0;
     this.pointerDownAt = 0;
     this.overstrain = 0;
-    this.guideContainer = undefined;
+    this.guideHub = undefined;
     this.prevStage = null;
     this.prevZone = null;
     this.holdAnchorZ = null;
@@ -359,11 +395,10 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       rockRatio,
     );
 
-    // 물리 초기화
+    // 물리 초기화 (밑밥은 3D 파슬 배열 — init에서 리셋됨)
     this.rig = createUnderwaterRig(0);
     this.rigParams = this.computeRigParams();
     this.lineTension = new LineTensionPhysics();
-    this.chum = new ChumPhysics();
     this.biteEngine = new BiteProbabilityEngine();
 
     // 피딩타임 활성도 — 60초 주기 갱신 (시간창/조류/날씨가 느리게 변하므로 충분)
@@ -387,10 +422,9 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.surfMode = this.lureMode || InventoryStore.isSurfRigReady();
 
     this.buildBackdrop();
-    this.buildFloat();
-    // 원투/루어 모드에서는 찌를 표시하지 않는다
-    this.floatObj.setVisible(!this.surfMode);
     this.dynamicG = this.add.graphics().setDepth(30);
+    this.chumG = this.add.graphics().setDepth(33);    // 밑밥 투척점/고스트/파슬 구름
+    this.buildRetrieveGroup();                        // 회수 세트 컨테이너 (depth 35)
     this.rodG = this.add.graphics().setDepth(60);
     this.panelG = this.add.graphics().setDepth(85);   // 수심 모식도 — 낚싯대 위
     this.buildUi();
@@ -406,6 +440,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.input.keyboard!.on('keydown-C', () => this.tossChum());
     this.input.keyboard!.on('keydown-I', () => this.toggleFpInventory());
     this.input.keyboard!.on('keydown-ESC', () => {
+      if (this.guideHub) { this.closeGuideHub(); return; }
       if (this.invPanel) { this.closeFpInventory(); return; }
       if (this.coolerPanel) {
         // 강제 방생 모드는 ESC로 닫을 수 없다 — 방생을 끝내야 진행
@@ -415,13 +450,13 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       this.exitToField();
     });
     this.input.keyboard!.on('keydown-SPACE', () => {
-      if (this.coolerPanel || this.invPanel) return;
+      if (this.coolerPanel || this.invPanel || this.guideHub) return;
       if (this.fpState === 'result') this.recast();
     });
     // 우클릭 = 챔질 (입질 시퀀스 판정) / 좌클릭 = 릴링(홀드)·루어 액션(탭/더블탭)
     this.input.mouse?.disableContextMenu();
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
-      if (this.guideContainer || this.coolerPanel || this.invPanel) return;   // 도움말/어창/인벤 열림 중엔 낚시 입력 차단
+      if (this.guideHub || this.coolerPanel || this.invPanel) return;   // 가이드/어창/인벤 열림 중엔 낚시 입력 차단
       if (p.rightButtonDown()) { this.attemptHookset(); return; }
       if (p.leftButtonDown()) {
         this.pointerDownAt = this.time.now;
@@ -449,12 +484,15 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.buildControlBar();
     this.buildHelpButton();
     this.buildGuideBookButton();
-    // F1 또는 / (물음표) 키 = 도움말 토글
-    this.input.keyboard!.on('keydown-F1', () => this.toggleGuide());
-    this.input.keyboard!.on('keydown-FORWARD_SLASH', () => this.toggleGuide());
-    // 첫 진입 시 튜토리얼 자동 표시 (이후엔 도움말 버튼/F1로 재열람)
-    if (!localStorage.getItem('tra_fp_guide_seen')) {
-      this.time.delayedCall(400, () => this.toggleGuide(true));
+    this.buildChumGuideButton();
+    // F1 또는 / (물음표) 키 = 가이드 허브 토글
+    this.input.keyboard!.on('keydown-F1', () => this.toggleGuideHub());
+    this.input.keyboard!.on('keydown-FORWARD_SLASH', () => this.toggleGuideHub());
+    // 첫 진입 시 회수/조작 가이드 1회 자동 표시 (세이브 플래그 —
+    // 구 텍스트 가이드를 본 레거시 유저(localStorage)는 건너뛴다)
+    if (!GameState.getFlag('guideSeen.retrieve') && !localStorage.getItem('tra_fp_guide_seen')) {
+      GameState.setFlag('guideSeen.retrieve');
+      this.time.delayedCall(400, () => this.openGuideHub('retrieve'));
     }
 
     this.cameras.main.fadeIn(320, 2, 12, 24);
@@ -504,7 +542,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     const hit = this.add.circle(0, 0, 17, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
     hit.on('pointerover', () => q.setColor('#ffffff'));
     hit.on('pointerout', () => q.setColor('#aee8ff'));
-    hit.on('pointerdown', () => this.toggleGuide());
+    hit.on('pointerdown', () => this.toggleGuideHub());
     btn.add([g, q, hit]);
     applyScreenFixed(btn);
   }
@@ -539,418 +577,68 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     const hit = this.add.rectangle(0, 0, 40, 48, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
     hit.on('pointerover', () => { q.setColor('#ffffff'); lbl.setColor('#aee8ff'); });
     hit.on('pointerout', () => { q.setColor('#aee8ff'); lbl.setColor('#7fb8d8'); });
-    hit.on('pointerdown', () => this.toggleGuide());
+    hit.on('pointerdown', () => this.toggleGuideHub());
     btn.add([g, q, lbl, hit]);
     applyScreenFixed(btn);
   }
 
-  /** 튜토리얼/도움말 토글 — 우선순위별 단계 페이지 (1 입질 읽기 → 2 챔질 → 3 채비 → 4 파이팅) */
-  private toggleGuide(firstTime = false): void {
-    if (this.guideContainer) {
-      this.guideContainer.destroy();
-      this.guideContainer = undefined;
+  // ── 통합 가이드 허브 (파이트·회수·밑밥·회뜨기 — 데이터 구동 GuidePanel) ──
+  /** 허브 토글 (F1 / ? / 가이드북 버튼) — 열림 중 낚시 진행 일시정지 */
+  private toggleGuideHub(): void {
+    if (this.guideHub) { this.closeGuideHub(); return; }
+    this.openGuideHub();
+  }
+
+  /** 허브 열기 — cat 지정 시 해당 탭으로 (열려 있으면 탭만 전환) */
+  private openGuideHub(cat?: GuideCatKey): void {
+    if (this.guideHub) {
+      if (cat) this.guideHub.showCategory(cat);
       return;
     }
-    if (this.fpState === 'fighting') return;   // 파이팅 중엔 열지 않음
-    this.guideFirstTime = firstTime;
-    this.guidePage = 0;
-    this.renderGuidePage();
-  }
-
-  private guidePage = 0;
-  private guideFirstTime = false;
-
-  /**
-   * 가이드 페이지 정의 — 상관성(구부러짐↔챔질 성공)을 단계별로 설명.
-   * items: 좌측 키 배지(강조) + 우측 설명 + note(부연)/warn(경고) 구조 —
-   * 같은 크기·색 텍스트 나열을 피해 가독성을 높인다 (UX 개선 2026-07-20).
-   */
-  private static readonly GUIDE_PAGES: {
-    title: string; color: string;
-    stages?: { deg: number; color: number; head: string; body: string; hit: string }[];
-    items?: { badge: string; text: string; note?: string; warn?: string }[];
-    /** 하단 시각 도해 — timing(입질 타임라인·챔질 골든존) / tension(텐션 게이지 구간) */
-    diagram?: 'timing' | 'tension';
-    footer?: string;
-  }[] = [
-    {
-      title: '1단계 — 입질 읽기: 초릿대 구부러짐 3단계', color: '#ffce54',
-      stages: [
-        {
-          deg: 30, color: 0x9fd0e4, head: '1단계 · 살짝 (30°)',
-          body: '간보기 — 물고기가 미끼를 툭툭 건드리는 준비 동작입니다. 0.5초 만에 굽었다 펴집니다. 찌가 -0.05m 살짝 잠깁니다.',
-          hit: '챔질 성공 가능성: 거의 드뭅니다 (5%)',
-        },
-        {
-          deg: 45, color: 0xffce54, head: '2단계 · 제법 (45°)',
-          body: '부분 섭취 — 미끼를 입에 넣기 시작합니다. 45°까지 굽은 뒤 30° 부근에서 잠시 버팁니다. 찌가 -0.10m 잠깁니다.',
-          hit: '챔질 성공 가능성: 성공할 수 있으나 힘듭니다 (20%)',
-        },
-        {
-          deg: 60, color: 0xff6a5a, head: '3단계 · 크게 (60°)',
-          body: '완전 흡입! — 미끼를 문 채 이동합니다. 순식간에 60°까지 박히고 50°로 1초 가까이 유지됩니다. 찌가 -0.25m 깊이 잠깁니다.',
-          hit: '성공 확률이 가장 높습니다 (100%) — 단, 초릿대가 다시 펴지는 마지막 순간은 "너무 늦은 챔질"로 무조건 실패!',
-        },
-      ],
-      footer: '초릿대와 찌 잠김을 함께 보면 단계를 확실히 구분할 수 있습니다. 단계 사이 간격은 몇 초~몇 분까지 어종/활성도에 따라 다릅니다.',
-    },
-    {
-      title: '2단계 — 챔질 타이밍 (우클릭)', color: '#ff6a5a',
-      diagram: 'timing',
-      items: [
-        {
-          badge: '우클릭 = 챔질',
-          text: '성공해야만 파이팅이 시작됩니다. 실패하면 미끼를 잃고 다시 던져야 합니다.',
-        },
-        {
-          badge: '1~2단계는 기다리기',
-          text: '성급한 챔질은 물고기를 쫓아냅니다 — 기다리는 것이 정석입니다.',
-          note: '1단계 성공 5% · 2단계 성공 20%',
-        },
-        {
-          badge: '3단계 = 골든 타임',
-          text: '진입 순간 화면에 "지금 챔질!"이 뜹니다 — 이때 챔질하면 100% 성공.',
-          warn: '초릿대가 다시 펴지기 시작하면 이미 늦은 것 — 무조건 실패!',
-        },
-        {
-          badge: '어종별 입질 패턴',
-          text: '광어는 곧바로 3단계로 박고, 감성돔은 1단계 간보기 후 3단계로 흡입합니다. (챔질 없이 끝나면 미끼만 따먹힙니다)',
-        },
-      ],
-    },
-    {
-      title: '3단계 — 채비 다루기 (흘림 중 액션)', color: '#7fb8d8',
-      items: [
-        {
-          badge: '[H] 뒷줄견제',
-          text: '릴에서 나오는 줄을 손으로 잡아 채비를 그 지점에 홀드합니다. 누르는 순간 0.2m만 살짝 떠오른 뒤 멈추고, 조류가 목줄을 펴 주며 정렬도만 올라갑니다.',
-          warn: '여 밭(암초)에서 방치하면 밑걸림으로 채비를 통째로 잃습니다 — 견제로 예방!',
-        },
-        {
-          badge: '[C] 밑밥 투척',
-          text: '밑밥과 미끼의 동조율이 높을수록 입질이 크게 늘어납니다.',
-        },
-        {
-          badge: '[↑] 리프트',
-          text: '낚싯대를 들어 채비를 위 수심층으로 올립니다. 떼면 다시 가라앉습니다.',
-        },
-        {
-          badge: '좌클릭 홀드 = 릴링',
-          text: '화면 왼쪽을 누르면 왼쪽으로, 오른쪽을 누르면 오른쪽으로 당깁니다.',
-          note: '조류와 같은 쪽은 빠르게 · 반대쪽은 느리지만 입질을 유도합니다.',
-        },
-        {
-          badge: '탭 = 호핑 · 더블탭 = 트위칭',
-          text: '루어 액션 (0.8초 간격) — 채비를 튀기거나 저킹해 리액션을 노립니다.',
-        },
-        {
-          badge: '흰 포말 = 조경지대',
-          text: '조류가 만나 멈추는 곳 — 입질 확률이 급증하는 Hit Zone입니다!',
-        },
-      ],
-    },
-    {
-      title: '4단계 — 파이팅 (챔질 성공 후)', color: '#4af2a1',
-      diagram: 'tension',
-      items: [
-        {
-          badge: '조작',
-          text: '좌클릭 홀드 = 릴링(감기) · [H] = 버티기.',
-        },
-        {
-          badge: '텐션 30~80 유지',
-          text: '30 미만이면 줄이 느슨해져 바늘이 빠지고, 80 초과는 위험 구간입니다 (화면 테두리 붉은 경고).',
-        },
-        {
-          badge: '릴링 저항',
-          text: '텐션이 높을수록 릴링이 무겁게 미끄러집니다.',
-          warn: '한계 텐션(88+)에서 릴링 강행 = 줄터짐! 릴링을 멈추고 드랙으로 버틴 뒤 다시 감으세요.',
-        },
-        {
-          badge: '저항 패턴 대응',
-          text: '바늘털이(점프) — 릴링 멈추고 H 떼기 · 여 박기(하강) — H 꾹 버티기 · 횡이동(쓸림) — H 떼고 드랙으로 버티기.',
-        },
-      ],
-    },
-  ];
-
-  /** 현재 guidePage 렌더 (이전/다음 네비게이션) */
-  private renderGuidePage(): void {
-    this.guideContainer?.destroy();
-    const W = GAME_WIDTH, H = GAME_HEIGHT;
-    const pages = FirstPersonFishingScene.GUIDE_PAGES;
-    const page = pages[this.guidePage];
-    const isLast = this.guidePage === pages.length - 1;
-
-    const c = this.add.container(0, 0).setDepth(150);
-    const dim = this.add.rectangle(W / 2, H / 2, W, H, 0x02060c, 0.72).setInteractive();
-    c.add(dim);
-
-    const pw = 880, phh = 520;
-    const px = W / 2 - pw / 2, py = H / 2 - phh / 2 - 8;
-    const bg = this.add.graphics();
-    bg.fillStyle(0x0a1628, 0.98);
-    bg.fillRoundedRect(px, py, pw, phh, 8);
-    bg.lineStyle(2, 0x33b0e0, 1);
-    bg.strokeRoundedRect(px, py, pw, phh, 8);
-    c.add(bg);
-
-    // 헤더: 제목 + 페이지 진행 점
-    const title = this.add.text(W / 2, py + 28, page.title, {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '18px', color: page.color, fontStyle: 'bold',
-    }).setOrigin(0.5);
-    c.add(title);
-    const dots = this.add.graphics();
-    pages.forEach((_, i) => {
-      dots.fillStyle(i === this.guidePage ? 0x4af2a1 : 0x2a5a8a, 1);
-      dots.fillCircle(W / 2 - (pages.length - 1) * 10 + i * 20, py + 52, i === this.guidePage ? 4.5 : 3);
+    const panel = new GuidePanel(this, {
+      initialCat: cat,
+      onClose: () => this.closeGuideHub(),
     });
-    c.add(dots);
-
-    if (page.stages) {
-      // 1페이지: 3단계 카드 (도해 + 설명 + 히트 가능성)
-      page.stages.forEach((st, i) => {
-        const cy = py + 66 + i * 116;
-        const cg = this.add.graphics();
-        cg.fillStyle(0x0e1c2d, 0.95);
-        cg.fillRoundedRect(px + 18, cy, pw - 36, 106, 6);
-        cg.lineStyle(1.4, st.color, 0.85);
-        cg.strokeRoundedRect(px + 18, cy, pw - 36, 106, 6);
-        // 좌측 도해: 낚싯대 굽힘 곡선 — 실게임과 같은 방향(초릿대 끝이 왼쪽으로 휨)
-        let dx = px + 92, dy = cy + 92;
-        let a = -Math.PI / 2;
-        const per = (st.deg * Math.PI / 180) / 7;
-        cg.lineStyle(4, st.color, 1);
-        for (let s = 0; s < 7; s++) {
-          a += per;
-          const nx = dx - Math.cos(a + Math.PI / 2) * 11;   // x 반전 — 팁이 좌측으로
-          const ny = dy + Math.sin(a + Math.PI / 2) * 11 - 11;
-          cg.lineBetween(dx, dy, nx, ny);
-          dx = nx; dy = ny;
-        }
-        cg.fillStyle(st.color, 1);
-        cg.fillCircle(dx, dy, 3.5);
-        c.add(cg);
-        const stColorHex = `#${st.color.toString(16).padStart(6, '0')}`;
-        const head = this.add.text(px + 132, cy + 10, st.head, {
-          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '14px', color: stColorHex, fontStyle: 'bold',
-        });
-        const body = this.add.text(px + 132, cy + 34, st.body, {
-          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11.5px', color: '#d0e8f5',
-          wordWrap: { width: pw - 176 }, lineSpacing: 4,
-        });
-        const hit = this.add.text(px + 132, cy + 78, `→ ${st.hit}`, {
-          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11.5px', color: stColorHex, fontStyle: 'bold',
-          wordWrap: { width: pw - 176 },
-        });
-        c.add([head, body, hit]);
-      });
-      if (page.footer) {
-        const foot = this.add.text(W / 2, py + phh - 90, page.footer, {
-          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#9fd0e4',
-          wordWrap: { width: pw - 60 }, align: 'center',
-        }).setOrigin(0.5, 0);
-        c.add(foot);
-      }
-    } else if (page.items) {
-      // 2~4페이지: 키 배지(강조) + 설명 + 부연/경고 행 구조
-      const badgeColX = px + 40;
-      const badgeColW = 196;
-      const descX = badgeColX + badgeColW + 22;
-      const descW = pw - (descX - px) - 44;
-      const pillG = this.add.graphics();
-      c.add(pillG);
-
-      let rowY = py + 70;
-      for (const item of page.items) {
-        // 키 배지 — 페이지 색으로 강조 (크고 굵게)
-        const badgeText = this.add.text(badgeColX + 12, rowY + 8, item.badge, {
-          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px', color: page.color, fontStyle: 'bold',
-          wordWrap: { width: badgeColW - 24 },
-        });
-        const pillH = badgeText.height + 14;
-        pillG.fillStyle(0x11263a, 0.95);
-        pillG.fillRoundedRect(badgeColX, rowY + 1, badgeColW, pillH, 6);
-        pillG.lineStyle(1.2, Phaser.Display.Color.HexStringToColor(page.color).color, 0.55);
-        pillG.strokeRoundedRect(badgeColX, rowY + 1, badgeColW, pillH, 6);
-
-        // 설명 본문
-        const desc = this.add.text(descX, rowY + 6, item.text, {
-          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12.5px', color: '#e8f4fd',
-          wordWrap: { width: descW }, lineSpacing: 4,
-        });
-        c.add([badgeText, desc]);
-
-        let extraY = rowY + 6 + desc.height;
-        if (item.note) {
-          const note = this.add.text(descX, extraY + 4, item.note, {
-            fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#8fa8bc',
-            wordWrap: { width: descW }, lineSpacing: 3,
-          });
-          c.add(note);
-          extraY += 4 + note.height;
-        }
-        if (item.warn) {
-          const warn = this.add.text(descX, extraY + 4, item.warn, {
-            fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#ff9a6a', fontStyle: 'bold',
-            wordWrap: { width: descW }, lineSpacing: 3,
-          });
-          c.add(warn);
-          extraY += 4 + warn.height;
-        }
-
-        rowY += Math.max(pillH + 2, extraY - rowY) + 14;
-      }
-    }
-
-    // 하단 시각 도해 — 낚싯대 휨새 도해처럼 한눈에 읽히는 그림 가이드
-    if (page.diagram) {
-      this.drawGuideDiagram(c, page.diagram, px + 40, py + phh - 158, pw - 80, 100);
-    }
-
-    // 네비게이션: [이전] [n/N] [다음 or 낚시 시작] — 패널 안쪽 24px 마진 유지 (잘림 방지)
-    const navY = py + phh - 38;
-    const mkNav = (nx: number, label: string, primary: boolean, onClick: () => void): void => {
-      const bw2 = primary ? 200 : 120;
-      const g2 = this.add.graphics();
-      g2.fillStyle(primary ? 0x0d4a2e : 0x1f3045, 0.97);
-      g2.fillRoundedRect(nx - bw2 / 2, navY - 18, bw2, 36, 5);
-      g2.lineStyle(1.5, primary ? 0x4af2a1 : 0x4a6a8a, 1);
-      g2.strokeRoundedRect(nx - bw2 / 2, navY - 18, bw2, 36, 5);
-      const t = this.add.text(nx, navY, label, {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px',
-        color: primary ? '#4af2a1' : '#9fc0d4', fontStyle: 'bold',
-      }).setOrigin(0.5);
-      const h = this.add.rectangle(nx, navY, bw2, 36, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
-      h.on('pointerover', () => t.setColor('#ffffff'));
-      h.on('pointerout', () => t.setColor(primary ? '#4af2a1' : '#9fc0d4'));
-      h.on('pointerdown', onClick);
-      c.add([g2, t, h]);
-    };
-    if (this.guidePage > 0) {
-      mkNav(px + 24 + 60, '← 이전', false, () => { this.guidePage -= 1; this.renderGuidePage(); });
-    }
-    const pageLabel = this.add.text(W / 2, navY, `${this.guidePage + 1} / ${pages.length}`, {
-      fontFamily: 'monospace', fontSize: '12px', color: '#7a97ab',
-    }).setOrigin(0.5);
-    c.add(pageLabel);
-    if (!isLast) {
-      mkNav(px + pw - 24 - 100, '다음 →', true, () => { this.guidePage += 1; this.renderGuidePage(); });
-    } else {
-      mkNav(px + pw - 24 - 100, this.guideFirstTime ? '낚시 시작하기!' : '닫기 (F1)', true, () => {
-        localStorage.setItem('tra_fp_guide_seen', '1');
-        this.toggleGuide();
-      });
-    }
-
-    const hint = this.add.text(W / 2, py + phh + 12, '언제든 [F1] 또는 우하단 ? 버튼으로 다시 볼 수 있습니다', {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#7a97ab',
-    }).setOrigin(0.5, 0);
-    c.add(hint);
-
-    c.setAlpha(0);
-    this.tweens.add({ targets: c, alpha: 1, duration: 160 });
-    applyScreenFixed(c);
-    this.guideContainer = c;
+    this.add.existing(panel);
+    this.guideHub = panel;
   }
 
-  /**
-   * 가이드 시각 도해 렌더 — "낚싯대 휨새 도해가 가장 이해하기 쉽다"는 피드백을 반영해
-   * 챔질 타이밍/텐션 관리도 같은 방식의 그림으로 표현한다.
-   *  - timing: 입질 타임라인 (1→2→3단계 융기 + 3단계 골든존 '지금 챔질!' + 펴짐=실패 구간)
-   *  - tension: 텐션 게이지 구간 (느슨/안전/위험/줄터짐 색 구간 + 유지 바늘)
-   */
-  private drawGuideDiagram(
-    c: Phaser.GameObjects.Container, kind: 'timing' | 'tension',
-    x: number, y: number, w: number, h: number,
-  ): void {
+  private closeGuideHub(): void {
+    const p = this.guideHub;
+    if (!p) return;
+    this.guideHub = undefined;
+    p.destroy();
+  }
+
+  /** 밑밥 가이드 재열람 버튼 — 가이드북(?) 아이콘 바로 아래 (양동이 아이콘) */
+  private buildChumGuideButton(): void {
+    const bx = GAME_WIDTH - 42;
+    const by = 44 + 288 + 26 + 78;
+    const btn = this.add.container(bx, by).setDepth(95);
     const g = this.add.graphics();
-    // 도해 배경 카드
-    g.fillStyle(0x0e1c2d, 0.95);
-    g.fillRoundedRect(x, y, w, h, 6);
-    g.lineStyle(1.2, 0x2a5a8a, 0.9);
-    g.strokeRoundedRect(x, y, w, h, 6);
-    c.add(g);
-
-    const label = (lx: number, ly: number, text: string, color: string, size = 10, bold = true, origin = 0.5): void => {
-      const t = this.add.text(lx, ly, text, {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: `${size}px`, color, fontStyle: bold ? 'bold' : 'normal',
-      }).setOrigin(origin, 0.5);
-      c.add(t);
-    };
-
-    if (kind === 'timing') {
-      // 시간축
-      const baseY = y + h - 24;
-      g.lineStyle(2, 0x2a5a8a, 1);
-      g.lineBetween(x + 16, baseY, x + w - 16, baseY);
-      label(x + w - 14, baseY + 10, '시간 →', '#7a97ab', 9, false, 1);
-
-      // 융기(입질) 3개 — 높이 = 구부러짐 각도 비례
-      const humps: { cx: number; hw: number; peak: number; color: number; head: string; sub: string }[] = [
-        { cx: x + w * 0.16, hw: w * 0.055, peak: h * 0.30, color: 0x9fd0e4, head: '1단계', sub: '5%' },
-        { cx: x + w * 0.38, hw: w * 0.07, peak: h * 0.46, color: 0xffce54, head: '2단계', sub: '20%' },
-        { cx: x + w * 0.67, hw: w * 0.115, peak: h * 0.66, color: 0xff6a5a, head: '3단계', sub: '100%' },
-      ];
-      for (const hm of humps) {
-        g.lineStyle(3, hm.color, 1);
-        g.beginPath();
-        g.moveTo(hm.cx - hm.hw, baseY);
-        // 부드러운 융기 곡선 (사인 반파)
-        for (let s = 0; s <= 16; s++) {
-          const t = s / 16;
-          g.lineTo(hm.cx - hm.hw + t * hm.hw * 2, baseY - Math.sin(t * Math.PI) * hm.peak);
-        }
-        g.strokePath();
-        const colorHex = `#${hm.color.toString(16).padStart(6, '0')}`;
-        label(hm.cx, baseY - hm.peak - 12, `${hm.head} (${hm.sub})`, colorHex, 10);
-      }
-
-      // 3단계 골든존 — 초록 하이라이트 + '지금 챔질!' 화살표
-      const gz = humps[2];
-      g.fillStyle(0x4af2a1, 0.16);
-      g.fillRect(gz.cx - gz.hw * 0.55, y + 12, gz.hw * 1.1, baseY - y - 12);
-      g.lineStyle(1.5, 0x4af2a1, 0.9);
-      g.strokeRect(gz.cx - gz.hw * 0.55, y + 12, gz.hw * 1.1, baseY - y - 12);
-      label(gz.cx, y + 20, '지금 챔질! (우클릭)', '#4af2a1', 11);
-
-      // 펴짐 = 실패 구간 (골든존 직후)
-      const failX = gz.cx + gz.hw * 0.62;
-      g.fillStyle(0x8a2a2a, 0.30);
-      g.fillRect(failX, y + 12, w * 0.115, baseY - y - 12);
-      label(failX + w * 0.058, y + 20, '펴짐 = 실패', '#ff9a6a', 10);
-    } else {
-      // 텐션 게이지 — 0~100 구간 색 바
-      const barY = y + h / 2 - 9;
-      const barX = x + 30, barW = w - 60, barH = 20;
-      const zone = (from: number, to: number, color: number, alpha = 0.95): void => {
-        g.fillStyle(color, alpha);
-        g.fillRect(barX + barW * (from / 100), barY, barW * ((to - from) / 100), barH);
-      };
-      zone(0, 30, 0x4a6a8a);      // 느슨 — 바늘 빠짐
-      zone(30, 80, 0x1d7a4a);     // 안전
-      zone(80, 88, 0xb07a2a);     // 위험
-      zone(88, 100, 0xa03030);    // 줄터짐
-      g.lineStyle(1.5, 0x8faabf, 0.9);
-      g.strokeRect(barX, barY, barW, barH);
-
-      // 구간 눈금 + 수치
-      for (const tick of [0, 30, 80, 88, 100]) {
-        const tx = barX + barW * (tick / 100);
-        g.lineStyle(1.5, 0xd0e8f5, 0.8);
-        g.lineBetween(tx, barY + barH, tx, barY + barH + 5);
-        label(tx, barY + barH + 14, `${tick}`, '#9fd0e4', 9, false);
-      }
-      // 구간 라벨 (바 위)
-      label(barX + barW * 0.15, barY - 13, '느슨 — 바늘 빠짐', '#8fb8d0', 10);
-      label(barX + barW * 0.55, barY - 13, '안전 유지 구간 (릴링 OK)', '#4af2a1', 11);
-      label(barX + barW * 0.94, barY - 13, '줄터짐!', '#ff6a5a', 11);
-      // 유지 바늘 (55 지점)
-      const nx = barX + barW * 0.55;
-      g.fillStyle(0xffffff, 1);
-      g.fillTriangle(nx - 5, barY + barH + 7, nx + 5, barY + barH + 7, nx, barY + barH + 1);
-      label(barX + barW * 0.75, barY + barH + 14, '88+ 릴링 강행 = 줄터짐', '#ff9a6a', 9);
-    }
+    // 밑밥 양동이 (탑뷰 통 + 손잡이)
+    g.fillStyle(0x1c4a6a, 0.97);
+    g.fillRoundedRect(-15, -12, 30, 30, 5);
+    g.lineStyle(1.5, 0x5cd0ff, 0.95);
+    g.strokeRoundedRect(-15, -12, 30, 30, 5);
+    g.lineStyle(2, 0x8fd4f0, 0.9);
+    g.beginPath();
+    g.arc(0, -12, 11, Math.PI, 0);
+    g.strokePath();
+    // 통 안 밑밥 알갱이
+    g.fillStyle(0xc9a86a, 0.95);
+    g.fillCircle(-5, 0, 2.4);
+    g.fillCircle(4, 4, 2.1);
+    g.fillCircle(1, 9, 1.9);
+    const lbl = this.add.text(0, 32, '밑밥', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#7fb8d8',
+    }).setOrigin(0.5);
+    const hit = this.add.rectangle(0, 2, 40, 52, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
+    hit.on('pointerover', () => lbl.setColor('#aee8ff'));
+    hit.on('pointerout', () => lbl.setColor('#7fb8d8'));
+    hit.on('pointerdown', () => this.openGuideHub('chum'));
+    btn.add([g, lbl, hit]);
+    applyScreenFixed(btn);
   }
 
   // ═══════════════════════════════════════════════════
@@ -1102,11 +790,16 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.tweens.add({
       targets: this.fishShadow, x: bx, y: by, scale: 1, alpha: 0.75, duration: 620, ease: 'Quad.easeIn',
     });
-    this.tweens.add({ targets: this.floatObj, y: WATERLINE + 30, duration: 300, ease: 'Quad.easeIn', yoyo: true, repeat: 2 });
     this.cameras.main.shake(180, 0.004);
     this.playHookUpEffect();
     this.prevStage = null;
     this.stateText.setText('챔질 성공! 좌클릭 릴링 · ←/→ 로드 스티어 · H 버티기 — 텐션 30~80!');
+
+    // 최초 파이팅 — 파이트 가이드 1회 자동 표시 (열림 중엔 파이팅 진행 일시정지)
+    if (!GameState.getFlag('guideSeen.fight')) {
+      GameState.setFlag('guideSeen.fight');
+      this.time.delayedCall(700, () => this.openGuideHub('fight'));
+    }
   }
 
   // ── 루어 액션 (호핑 / 트위칭·저킹) ──────────────────
@@ -1145,7 +838,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
    * "좌×3 우×3" 연타로 지그재그 액션. 드리프트 + 루어 모드에서만.
    */
   private doDart(dir: -1 | 1): void {
-    if (this.fpState !== 'drift' || !this.lureMode || this.guideContainer) return;
+    if (this.fpState !== 'drift' || !this.lureMode || this.guideHub) return;
     if (this.twitchCooldown > 0) return;
     this.twitchCooldown = 0.35;
     this.rigPose = 'twitch';
@@ -1215,9 +908,11 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.dragInMode = false;
   }
 
-  /** 제압 성공 → 끌어오기 시작 — 지친 고기가 수면에 떠서 질질 끌려온다 */
+  /** 제압 성공 → 끌어오기 시작 — 지친 고기가 세트에 편입되어 수면에 떠서 끌려온다 */
   private beginDragIn(): void {
     this.dragInMode = true;
+    // 물고기는 이제 회수 세트(retrieveGroup) 안에 렌더 — 그림자 실루엣은 숨김
+    this.fishShadow?.setVisible(false);
     this.flashState('제압 성공! 지친 고기를 릴링으로 발앞까지 끌어오세요');
   }
 
@@ -1265,6 +960,11 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       if (!item) return;
       // 원투 무게추 봉돌은 자중이 크다(60~113g) — 무게 비례로 빠르게 침강
       if (item.sinkerWeightG !== undefined) weightG += item.sinkerWeightG;
+      // 찌 제원 (floatBuoyG): 양수 = 부력찌 부력 / 음수 = 수중찌·잠길찌 침력
+      else if (item.floatBuoyG !== undefined) {
+        if (item.floatBuoyG >= 0) buoyG += item.floatBuoyG;
+        else weightG += -item.floatBuoyG;
+      }
       else if (item.name.includes('봉돌')) weightG += 3.2;
       else if (item.name.includes('수중찌')) weightG += 8;
       else if (item.name.includes('구멍찌')) buoyG += 8;
@@ -1494,13 +1194,23 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     }
   }
 
-  private buildFloat(): void {
-    // 찌 (구멍찌 스타일 — 주황 상단 + 흰 몸통)
-    this.floatObj = this.add.container(GAME_WIDTH / 2, WATERLINE).setDepth(35);
-    const top = this.add.ellipse(0, -7, 10, 12, 0xff6a2a);
-    const body = this.add.ellipse(0, 2, 8, 10, 0xfff4e0);
-    const stem = this.add.rectangle(0, -14, 2, 8, 0x222222);
-    this.floatObj.add([stem, top, body]);
+  /**
+   * 회수 세트 컨테이너 생성 — 세트 내용은 setG(로컬 좌표)에 매 프레임 재드로우하고,
+   * 컨테이너의 pos/scale/alpha만 retrieveT 매핑으로 구동한다 (A-2).
+   */
+  private buildRetrieveGroup(): void {
+    this.setG = this.add.graphics();
+    this.retrieveGroup = this.add.container(GAME_WIDTH / 2, WATERLINE, [this.setG]).setDepth(35);
+  }
+
+  /** 찌 드로잉 (구멍찌 스타일 — 주황 상단 + 흰 몸통) — 세트 로컬/파이트 절대 좌표 공용 */
+  private drawFloatShape(g: Phaser.GameObjects.Graphics, x: number, y: number, scale: number, alpha: number): void {
+    g.fillStyle(0x222222, alpha);
+    g.fillRect(x - 1 * scale, y - 18 * scale, 2 * scale, 8 * scale);
+    g.fillStyle(0xff6a2a, alpha);
+    g.fillEllipse(x, y - 7 * scale, 10 * scale, 12 * scale);
+    g.fillStyle(0xfff4e0, alpha);
+    g.fillEllipse(x, y + 2 * scale, 8 * scale, 10 * scale);
   }
 
   // ═══════════════════════════════════════════════════
@@ -1656,7 +1366,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   // ── 인벤토리 (I) — 쿨러 어획 드래그 이송·슬롯 정리용 ────
   private toggleFpInventory(): void {
     if (this.invPanel) { this.closeFpInventory(); return; }
-    if (this.fpState === 'fighting' || this.guideContainer) return;   // 파이팅/가이드 중엔 열지 않음
+    if (this.fpState === 'fighting' || this.guideHub) return;   // 파이팅/가이드 중엔 열지 않음
     const panel = new InventoryPanel(this, GAME_WIDTH - 470, 60, {
       onClose: () => this.closeFpInventory(),
       onOpenDetail: (item) => {
@@ -1694,26 +1404,43 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       this.flashState('쿨러가 없어 밑밥을 쓸 수 없습니다 — 기타 아이템에 쿨러가 필요합니다');
       return;
     }
+    // 최초 사용 시 밑밥 가이드 1회 자동 표시 (세이브 플래그 — 구 chumGuideSeen 호환)
+    if (!GameState.getFlag('guideSeen.chum') && !GameState.getFlag('chumGuideSeen')) {
+      GameState.setFlag('guideSeen.chum');
+      this.openGuideHub('chum');
+      return;
+    }
     // 배합 밑밥 1회 25 소모 (U 밑밥 품질 탭에서 배합 — 추후 능력치로 소모량 감소 예정)
     if (!CoolerStore.consumeChumThrow()) {
       this.flashState('밑밥이 비어 있습니다 — 탑다운 U 밑밥 품질에서 배합하세요');
       this.refreshCoolerUi();
       return;
     }
-    // 찌 부근 수면에 착수 (±1.2m 랜덤)
-    const x = this.rig.floatX + (Math.random() - 0.5) * 2.4;
-    this.chum.toss(x, 0);
+    // 선택 투척점(커서 X 최근접 스냅)에 착수 — 착수 D = 현재 미끼 거리(distM).
+    // 이후 stepChum이 침강 + 조류 (x, d) 드리프트를 한 시뮬로 구동한다 (B-2).
+    const xs = this.chumSnapXs();
+    const x = xs[this.chumThrowIdx] ?? this.rig.floatX;
+    // 배합 재료 → 밑밥 종류 (파우더=느림·넓음·조류↑ / 압맥=범용 / 경단=빠름·정밀)
+    this.chumParcels.push(createChumParcel(x, this.distM, CoolerStore.chumTypeKey()));
     this.refreshCoolerUi();
 
-    // 정면 뷰 모션: 수면 착수 스프라이트 → 조류 방향으로 흘러가며 페이드아웃
+    // 착수 파문 (정면 뷰 — 투척점 거리의 수면 원근 Y)
     const sx = this.screenX(x);
-    const chumObj = this.add.circle(sx, WATERLINE + 3, 5, 0x9a7b4f, 0.95).setDepth(34);
-    this.chumSprites.push({ obj: chumObj, born: this.time.now });
-    // 착수 파문
-    const rip = this.add.circle(sx, WATERLINE + 2, 4, 0x000000, 0).setStrokeStyle(1.5, 0xeaf6ff, 0.8).setDepth(34);
+    const sy = this.surfaceYAt(this.distM);
+    const rip = this.add.circle(sx, sy + 2, 4, 0x000000, 0).setStrokeStyle(1.5, 0xeaf6ff, 0.8).setDepth(34);
     this.tweens.add({ targets: rip, scale: 3, alpha: 0, duration: 700, onComplete: () => rip.destroy() });
 
-    this.flashState('밑밥 투척! 동조율을 확인하세요');
+    this.flashState('밑밥 투척! 예측 궤적과 동조율을 확인하세요');
+  }
+
+  /** 밑밥 투척점 스냅 X 좌표 (world m) — 화면 중앙 기준 좌우 등간격 행 */
+  private chumSnapXs(): number[] {
+    const n = Math.max(3, Math.round(TUNING.chumThrow.pointCount));
+    const xs: number[] = [];
+    for (let i = 0; i < n; i++) {
+      xs.push(this.viewCenterX + (i - (n - 1) / 2) * CHUM_THROW_SPACING_M);
+    }
+    return xs;
   }
 
   // ═══════════════════════════════════════════════════
@@ -1723,19 +1450,30 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     return GAME_WIDTH / 2 + (worldX - this.viewCenterX) * PX_PER_M_X;
   }
 
+  /** 회수 진행도 — retrieveT = 1 − clamp(distM / castDist) */
+  private retrieveT(distM = this.distM): number {
+    return 1 - Phaser.Math.Clamp(distM / Math.max(1, this.cfg.castDistanceM), 0, 1);
+  }
+
+  /** 회수 수렴 앵커 Y — TUNING.retrieve.anchorYRatio (dev 패널 라이브 튜닝) */
+  private retrieveAnchorY(): number {
+    return GAME_HEIGHT * TUNING.retrieve.anchorYRatio;
+  }
+
   /**
-   * 수면 거리 → 수면 스크린 Y (정면 뷰 v2 원근).
-   * 착수(원거리) = 수평선 부근 / 릴링으로 distM이 줄수록 발앞(FOREGROUND_Y)으로 딸려온다.
+   * 수면 거리 → 수면 스크린 Y (회수 매핑 A-1).
+   * 착수(원거리) = 수평선 부근 / 릴링으로 distM이 줄수록 easeOutCubic으로
+   * 중앙~하단 중간 앵커(retrieveAnchorY)까지 내려온다.
    */
   private surfaceYAt(distM: number): number {
-    const t = Phaser.Math.Clamp(distM / Math.max(1, this.cfg.castDistanceM), 0, 1);
-    return Phaser.Math.Linear(FOREGROUND_Y, WATERLINE + 4, t);
+    const p = Phaser.Math.Easing.Cubic.Out(this.retrieveT(distM));
+    return Phaser.Math.Linear(WATERLINE + 4, this.retrieveAnchorY(), p);
   }
 
   /** 수심 z → 스크린 Y — 기준 수면(surfY) 아래. 멀수록 수심 표현을 압축(원근). */
   private depthY(z: number, surfY = this.surfaceYAt(this.distM)): number {
     const near = Phaser.Math.Clamp(
-      (surfY - (WATERLINE + 4)) / Math.max(1, FOREGROUND_Y - WATERLINE - 4), 0, 1);
+      (surfY - (WATERLINE + 4)) / Math.max(1, this.retrieveAnchorY() - WATERLINE - 4), 0, 1);
     return surfY + z * this.pxPerMZ * (0.5 + 0.5 * near);
   }
 
@@ -1751,9 +1489,9 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     // 실시간 날씨 파티클 (비/눈/안개)
     this.updateFpWeather(dt);
 
-    // 도우미 가이드 열람 중 — 낚시 진행(조류/침강/입질/파이팅)만 일시정지.
+    // 도우미/밑밥 가이드 열람 중 — 낚시 진행(조류/침강/입질/파이팅)만 일시정지.
     // 실시간 시계·날씨 연출은 계속되고, 가이드를 닫는 순간부터 액션이 재개된다.
-    if (this.guideContainer) return;
+    if (this.guideHub) return;
 
     // ── 조류 엔진 — 수면 거리(distM) 기반 존 판정 + 힘 벡터 ──
     const hoursNow = new Date().getHours() + new Date().getMinutes() / 60;
@@ -1794,8 +1532,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     // 뷰 중심을 찌 쪽으로 서서히 추적
     this.viewCenterX += (this.rig.floatX - this.viewCenterX) * Math.min(1, dt * 1.2);
 
-    this.chum.update(dt, tide, this.cfg.zMaxM);
-    this.updateChumSprites(tide);
+    this.updateChumParcels(dt, hoursNow);
+    this.renderChumLayer();
     this.renderWater(dt);
     this.renderFoam(influence);
     this.renderRigVisuals();
@@ -1970,7 +1708,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     const hold = isHoldState(this.rig);
     const nearBottom = this.rig.baitZ >= Math.min(this.zLimitM, bedHereM) - 1.2;
     const inReef = nearBottom && this.seabed.isRockAt(this.distM);
-    const sync = this.chum.getChumSyncRate({ x: this.rig.baitX, y: 0, z: this.rig.baitZ });
+    // 밑밥 동조율 — 3D 파슬 (x 좌우 · d 원근거리 · z 수심) 최대 동조 (B-3)
+    const sync = maxChumSync(this.chumParcels, { x: this.rig.baitX, d: this.distM, z: this.rig.baitZ });
 
     // 미끼 종류 × 어종 선호도 친화도 (오라클 연동)
     const baitAffinity = getBaitAffinity(this.buildSpawnCtx(inReef));
@@ -2003,7 +1742,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       isHold: hold,
       alignmentIndex: this.lineTension.alignmentIndex,
       isHoldingLine: holding,
-      chumSyncRate: sync,
+      // 동조→입질 배율 스케일 (TUNING.chumSync.syncToBiteMul — balance 튜닝)
+      chumSyncRate: Math.min(1, sync * TUNING.chumSync.syncToBiteMul),
       // 낚시터 특성(RegionAreaNode.snagRisk) × 루어 밑걸림 배율(에기 바닥 드래깅 -30%)
       snagRiskMult: getAreaSnagRiskMult(GameState.currentSpotId) * (this.lureSpec?.snagRiskMult ?? 1),
     });
@@ -2135,9 +1875,9 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     return ctx;
   }
 
-  /** 밑걸림 발생 — 찌 아래 채비 전체 손실(루어 포함) + 즉시 필드 복귀 */
+  /** 밑걸림 발생 — 찌 아래 채비 전체 손실(수중찌·루어 포함) + 즉시 필드 복귀 */
   private onSnagged(): void {
-    const lost = [...InventoryStore.loseRigParts(['float', 'swivel', 'leader', 'sinker', 'hook', 'bait'] as RigStepKey[]),
+    const lost = [...InventoryStore.loseRigParts(['float', 'subFloat', 'swivel', 'leader', 'sinker', 'hook', 'bait'] as RigStepKey[]),
       ...(this.lureMode ? InventoryStore.loseLureRig() : [])];
     this.failAndExit('밑걸림! 채비를 통째로 잃었습니다',
       `여 밭에 채비가 파묻혀 원줄을 끊었습니다.\n손실: ${lost.length > 0 ? lost.join(', ') : '없음'}\n\n뒷줄견제(H)로 미끼를 띄우면 밑걸림을 예방할 수 있습니다.`);
@@ -2225,10 +1965,11 @@ export class FirstPersonFishingScene extends Phaser.Scene {
           break;
         }
         case 'line_break': {
-          // 목줄 터짐 — 30% 확률로 찌까지 함께 손실. 루어 모드는 루어도 목줄째 손실.
+          // 목줄 터짐 — 30% 확률로 찌(원줄 파단 — 수중찌 포함)까지 함께 손실.
+          // 루어 모드는 루어도 목줄째 손실.
           const floatToo = Math.random() < 0.3;
           const parts: RigStepKey[] = floatToo
-            ? ['float', 'swivel', 'leader', 'sinker', 'hook', 'bait']
+            ? ['float', 'subFloat', 'swivel', 'leader', 'sinker', 'hook', 'bait']
             : ['leader', 'sinker', 'hook', 'bait'];
           const lost = [...InventoryStore.loseRigParts(parts), ...(this.lureMode ? InventoryStore.loseLureRig() : [])];
           this.failAndExit(floatToo ? '줄터짐! 찌까지 터졌습니다' : '줄터짐! 목줄이 터졌습니다',
@@ -2269,7 +2010,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   private forceLineBreak(): void {
     const floatToo = Math.random() < 0.3;
     const parts: RigStepKey[] = floatToo
-      ? ['float', 'swivel', 'leader', 'sinker', 'hook', 'bait']
+      ? ['float', 'subFloat', 'swivel', 'leader', 'sinker', 'hook', 'bait']
       : ['leader', 'sinker', 'hook', 'bait'];
     const lost = [...InventoryStore.loseRigParts(parts), ...(this.lureMode ? InventoryStore.loseLureRig() : [])];
     this.failAndExit('무리한 릴링! 줄이 터졌습니다',
@@ -2286,7 +2027,6 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.clearFight2DStage();
     this.fishShadow?.destroy();
     this.fishShadow = undefined;
-    this.floatObj.setY(WATERLINE);
     this.patternText.setVisible(false);
     this.uiG.clear();
 
@@ -2327,8 +2067,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       this.clearFight2DStage();
       this.fishShadow?.destroy();
       this.fishShadow = undefined;
-      this.floatObj.setY(WATERLINE);
-      this.showCatchDecisionPanel(f, extra, fishTexture);
+        this.showCatchDecisionPanel(f, extra, fishTexture);
     }
   }
 
@@ -2540,7 +2279,6 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.clearFight2DStage();
     this.fishShadow?.destroy();
     this.fishShadow = undefined;
-    this.floatObj.setY(WATERLINE);
     this.showResultPanel(title, body, color, fishTexture);
   }
 
@@ -2633,7 +2371,6 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.distM = this.cfg.castDistanceM;
     this.overstrain = 0;
     this.rigPose = 'idle';
-    this.floatObj.setY(WATERLINE);
     this.refreshCoolerUi();
     this.stateText.setText('채비 흘리는 중 — 우클릭 챔질 · H 뒷줄견제 · C 밑밥 · ↑ 리프트');
   }
@@ -2668,42 +2405,36 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     const g = this.dynamicG;
     g.clear();
 
-    // ── 정면 뷰 v2 원근: 수면 앵커 Y = surfaceYAt(distM) — 릴링하면 발앞으로 딸려온다 ──
+    // ── 회수 매핑 (A-1): retrieveT = 1 − distM/castDist → easeOutCubic ──
+    const p = Phaser.Math.Easing.Cubic.Out(this.retrieveT());
     const surfY = this.surfaceYAt(this.distM);
     const fx = this.screenX(this.rig.floatX);
     const wave = Math.sin(this.time.now / 500) * 2.2;
     // 입질 단계별 찌 잠김 (1단계 0.05m / 2단계 0.10m / 3단계 0.25m) — 시각 배율 x3
     const sinkPx = this.floatSinkM * this.pxPerMZ * 3;
-    // ── 입질/챔질 시 채비 전체가 물속으로 당겨지는 연출 (초릿대 굽힘 비례) ──
+    // ── 입질/챔질 시 채비 세트 전체가 물속으로 당겨지는 연출 (초릿대 굽힘 비례) ──
     const bitePull = this.fpState !== 'fighting'
       ? Phaser.Math.Clamp(this.rodBendDeg / 50, 0, 1.1) * 44
       : 0;
 
-    // ── 찌 위치 + 깊이 투명도 (잠길수록 투명 — 하드 다이브 시 완전 소멸) ──
-    if (this.fpState !== 'fighting') {
-      const biteAlpha = Phaser.Math.Clamp(1 - (this.floatSinkM / 0.25) * 0.55, 0.45, 1);
-      this.floatObj.setPosition(fx, surfY + wave + sinkPx + bitePull);
-      if (!this.surfMode) this.floatObj.setAlpha(biteAlpha);
-    } else {
-      const dn = this.fightDepthNorm;
-      this.floatObj.setPosition(fx, surfY + wave + dn * 30);
-      if (!this.surfMode) this.floatObj.setAlpha(Phaser.Math.Clamp(1 - dn * 1.15, 0, 1));
-    }
-
-    // 원근 스케일 — 수평선 부근 0.72배 → 발앞 1.27배
-    const perspT = Phaser.Math.Clamp((surfY - WATERLINE) / (FOREGROUND_Y - WATERLINE), 0, 1);
-    const iconScale = 0.72 + 0.55 * perspT;
+    // 세트 스케일 — 수평선 부근 0.72배 → 회수 완료 시 ×scaleMax (기본 2, 과대 확대 금지)
+    const setScale = BASE_RIG_SCALE * (1 + p * (TUNING.retrieve.scaleMax - 1));
 
     // ── 표시 heading — 목표각으로 머리가 먼저 돌고(빠른 lerp) 몸이 따라온다 ──
     this.visHeading = this.lerpHeading(this.visHeading, this.rigHeadingTarget(), 0.16);
 
-    if (this.fpState === 'fighting' && this.hookedFish) {
-      // ── 파이트 물고기 (정면 뷰) — 무대 좌표를 정면에 투영: 횡 러닝 좌우 + 깊이 침강 ──
+    if (this.fpState === 'fighting' && !this.dragInMode && this.hookedFish) {
+      // ── 활성 파이트 — 세트 그룹 숨김: 찌 + 정면 물고기 투영 (v2 연출 유지) ──
+      this.retrieveGroup.setVisible(false);
       const dn = this.fightDepthNorm;
+      const floatY = surfY + wave + dn * 30;
+      if (!this.surfMode) {
+        this.drawFloatShape(g, fx, floatY, setScale, Phaser.Math.Clamp(1 - dn * 1.15, 0, 1));
+      }
       const bxF = Phaser.Math.Clamp(fx + this.f2dPos.x * 0.55, 30, GAME_WIDTH - 30);
       const byF = surfY + 12 + dn * Math.max(40, Math.min(170, GAME_HEIGHT - 70 - surfY));
       const fAlpha = Phaser.Math.Clamp(1 - dn, 0.15, 0.9);
-      const fScale = iconScale * Phaser.Math.Clamp(0.9 + this.hookedFish.powerFactor * 0.7, 0.9, 1.7);
+      const fScale = setScale * Phaser.Math.Clamp(0.9 + this.hookedFish.powerFactor * 0.7, 0.9, 1.7);
       // 목줄은 물고기 "머리 꼭짓점"에 연결 (몸통 중앙 금지)
       const head = fishHeadPoint(bxF, byF, this.visHeading, fScale);
       g.lineStyle(1.4, 0xd8ecf8, 0.5);
@@ -2713,40 +2444,107 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       g.lineTo(head.x, head.y);
       g.strokePath();
       drawRigIcon(g, bxF, byF, { t: 'fish', speciesId: this.hookedFish.speciesId }, this.visHeading, fScale, fAlpha);
+      // 원줄 연결점 — 찌낚시는 찌 상단, 원투/루어는 물고기 머리
+      this.groupTopWorld = this.surfMode
+        ? { x: head.x, y: head.y }
+        : { x: fx, y: floatY - 16 * setScale };
     } else {
-      const bx = this.screenX(this.rig.baitX);
-      const by = Math.min(GAME_HEIGHT - 46, this.depthY(this.rig.baitZ, surfY) + bitePull);
-
-      // 라인 수면 진입점 — 찌낚시는 찌 아래, 원투는 수면에서 곧장 입수
-      const lineTopY = this.surfMode ? surfY + 4 + bitePull * 0.5 : surfY + 8 + sinkPx + bitePull;
-
-      // 수중 라인 (수면 진입 → 터미널, 사선 정렬 시 곧게) — 수면 아래라 반투명
-      g.lineStyle(1.2, 0xd8ecf8, 0.38);
-      const midX = (fx + bx) / 2 + (1 - this.lineTension.alignmentIndex) * 14;
-      g.beginPath();
-      g.moveTo(fx, lineTopY);
-      g.lineTo(midX, (lineTopY + by) / 2);
-      g.lineTo(bx, by - 4);
-      g.strokePath();
-
-      // 원투 메인 싱커(무게추 봉돌) — 터미널 바로 위 회색 추 (바닥 공략 표현)
-      if (this.surfMode) {
-        const syk = by - 13;
-        g.fillStyle(0x6a6f78, 0.75);
-        g.fillEllipse(bx, syk, 5 + 2.5 * iconScale, 8 + 4 * iconScale);
-        g.lineStyle(1, 0x2a2e34, 0.6);
-        g.strokeEllipse(bx, syk, 5 + 2.5 * iconScale, 8 + 4 * iconScale);
-      }
-
-      // ── 터미널(미끼/루어) — 종류별 벡터 아이콘 (황색 원 대체, 수중 반투명 + 원근) ──
-      // 릴링(내 쪽 접근)은 진행축 foreshorten으로 다가옴을 표현
-      const foreshorten = this.rigPose === 'retrieve' ? 0.55 : 1;
-      drawRigIcon(g, bx, by, this.currentIconKind(), this.visHeading, iconScale, 0.62, foreshorten);
+      // ── 채비 세트 (retrieveGroup) — 드리프트/결과/제압 끌어오기(dragIn) 공통 ──
+      this.retrieveGroup.setVisible(true);
+      this.updateRetrieveGroup(p, fx, surfY + wave + bitePull, setScale, sinkPx);
     }
 
     // ── 우측 상단 수심 정보 패널 (전용 레이어 — 낚싯대와 겹치지 않음) ──
     this.panelG.clear();
     this.renderDepthPanel(this.panelG);
+  }
+
+  /**
+   * 회수 세트 갱신 (A-2) — 모드별 구성:
+   *  찌 채비 = 찌 + 목줄 + 좁쌀봉돌 + 미끼 (+dragIn 물고기), top 앵커 = 찌 상단
+   *  원투     = 수면 진입점 + 무게추 봉돌 + 미끼,             top 앵커 = 수면 진입점
+   *  루어     = 루어 (+물고기, 찌 없음),                      원줄 연결점 = 루어 라인타이
+   * scale/pos/alpha는 컨테이너에만 적용 → 세트 전체가 함께 딸려온다. 원줄은
+   * renderRod가 rodTip→groupTopWorld로 매 프레임 재드로우 (컨테이너에 넣으면
+   * scale로 굵기·길이가 왜곡되므로 분리 — 굵기 고정, 좌표만 갱신).
+   */
+  private updateRetrieveGroup(p: number, fx: number, gy: number, scale: number, sinkPx: number): void {
+    const sg = this.setG;
+    sg.clear();
+
+    // 컨테이너 변환 — x는 회수될수록 화면 중앙으로 수렴 (A-1)
+    const gx = Phaser.Math.Linear(fx, GAME_WIDTH / 2, p);
+    const alpha = Phaser.Math.Linear(0.8, 1, p);
+    this.retrieveGroup.setPosition(gx, gy).setScale(scale).setAlpha(alpha);
+
+    // 로컬 좌표계 — (0,0) = 세트 top 앵커. 수심은 로컬 px 압축 (원근은 컨테이너 scale)
+    const dl = this.pxPerMZ * 0.55;
+    const latLocal = Phaser.Math.Clamp((this.rig.baitX - this.rig.floatX) * PX_PER_M_X * 0.6, -140, 140);
+    const maxLocal = Math.max(20, (GAME_HEIGHT - 46 - gy) / scale);
+    const depthLocal = Math.min(maxLocal, this.rig.baitZ * dl);
+    const la = Phaser.Math.Linear(0.62, 0.95, p);   // 수중 요소 알파 — 회수될수록 선명
+    const dragFish = this.dragInMode && !!this.hookedFish;
+    const foreshorten = this.rigPose === 'retrieve' ? 0.55 : 1;
+
+    if (this.lureMode) {
+      // ── B 모드: 루어 단독 (찌 없음) — 원줄은 루어 라인타이로 직결 ──
+      if (dragFish) this.drawSetFish(sg, latLocal, depthLocal);
+      else drawRigIcon(sg, latLocal, depthLocal, this.currentIconKind(), this.visHeading, 1, la, foreshorten);
+      this.groupTopWorld = { x: gx + latLocal * scale, y: gy + (depthLocal - 12) * scale };
+      return;
+    }
+
+    // ── 찌/원투 공통: 수중 목줄 (top → 터미널, 정렬도 사선 — 세트 내부라 함께 scale) ──
+    const sinkLocal = this.surfMode ? 0 : sinkPx * 0.8;   // 찌 잠김 (로컬)
+    const lineTop = this.surfMode ? 2 : sinkLocal + 8;
+    const midX = latLocal / 2 + (1 - this.lineTension.alignmentIndex) * 14;
+    sg.lineStyle(1.2, 0xd8ecf8, la * 0.62);
+    sg.beginPath();
+    sg.moveTo(0, lineTop);
+    sg.lineTo(midX, (lineTop + depthLocal) / 2);
+    sg.lineTo(latLocal, depthLocal - 4);
+    sg.strokePath();
+
+    if (this.surfMode) {
+      // 수면 진입점 마커 (원투 — 찌 없음)
+      sg.fillStyle(0x9fd0e4, 0.9);
+      sg.fillTriangle(-4, -2, 4, -2, 0, 5);
+      // 무게추 봉돌 — 터미널 바로 위 (바닥 공략 표현)
+      sg.fillStyle(0x6a6f78, la);
+      sg.fillEllipse(latLocal, depthLocal - 13, 7, 12);
+      sg.lineStyle(1, 0x2a2e34, la * 0.8);
+      sg.strokeEllipse(latLocal, depthLocal - 13, 7, 12);
+    } else {
+      // 찌 (세트 top — 잠김 반영) + 좁쌀봉돌 (목줄 70% 지점)
+      const biteAlpha = Phaser.Math.Clamp(1 - (this.floatSinkM / 0.25) * 0.55, 0.45, 1);
+      this.drawFloatShape(sg, 0, sinkLocal, 1, biteAlpha);
+      sg.fillStyle(0x3a3f48, la);
+      sg.fillCircle(Phaser.Math.Linear(0, latLocal, 0.7), Phaser.Math.Linear(lineTop, depthLocal, 0.7), 2.2);
+    }
+
+    // 터미널 — dragIn 제압 물고기 편입 or 미끼 아이콘
+    if (dragFish) this.drawSetFish(sg, latLocal, depthLocal);
+    else drawRigIcon(sg, latLocal, depthLocal, this.currentIconKind(), this.visHeading, 1, la, foreshorten);
+
+    // 원줄 연결점 (월드) — 찌 상단 / 원투 수면 진입점
+    this.groupTopWorld = {
+      x: gx,
+      y: this.surfMode ? gy : gy + (sinkLocal - 16) * scale,
+    };
+  }
+
+  /**
+   * 세트 편입 물고기 (dragIn — A-3): 머리 카메라쪽(정면 foreshorten 0.5) + 지친 롤
+   * (은빛 배 셰이드 + 좌우 요동). 수면 부상은 updateDragIn의 fightDepthNorm이 구동.
+   */
+  private drawSetFish(sg: Phaser.GameObjects.Graphics, x: number, y: number): void {
+    const f = this.hookedFish!;
+    const roll = Math.sin(this.time.now / 240) * 0.18;
+    const fScale = Phaser.Math.Clamp(0.9 + f.powerFactor * 0.7, 0.9, 1.7);
+    // 은빛 롤 셰이드 (지쳐 옆으로 누운 배)
+    sg.fillStyle(0xe8f0f4, 0.28);
+    sg.fillEllipse(x, y + 2, 30 * fScale, 10 * fScale);
+    drawRigIcon(sg, x, y, { t: 'fish', speciesId: f.speciesId }, this.visHeading + roll, fScale, 0.95, 0.5);
   }
 
   /**
@@ -2799,6 +2597,15 @@ export class FirstPersonFishingScene extends Phaser.Scene {
         ax + hxA * 4 - hyA * 3.4, ay + hyA * 4 + hxA * 3.4,
         ax + hxA * 4 + hyA * 3.4, ay + hyA * 4 - hxA * 3.4,
       );
+    }
+
+    // ── 밑밥 파슬 (수평뷰 투영 — 정면/수직뷰와 같은 parcel 시뮬) ──
+    for (const pc of this.chumParcels) {
+      const fresh = 1 - Math.min(1, pc.ageSec / pc.ttlSec);
+      const cxp = Phaser.Math.Clamp(mx + pc.x * s * 1.6, PX + 10, PX + PW - 10);
+      const cyp = Phaser.Math.Clamp(my - pc.d * s, PY + 12, my - 2);
+      g.fillStyle(0xc9a86a, 0.18 + fresh * 0.32);
+      g.fillCircle(cxp, cyp, 2 + pc.spreadM * 0.8);
     }
 
     // ── 채비/물고기 마커 (파이트 중엔 횡 러닝을 f2d 무대에서 투영) ──
@@ -2924,6 +2731,17 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     // ── 해저 지형 단면 (거리 연속 — 채비 위치 중심 ±12m 창, 릴링 시 함께 흐름) ──
     // 박스 좌측 = 채비 너머(멀리) / 우측 = 나(유저) 쪽 — 상단 거리축과 같은 방향감
     this.renderSeabedSection(g, boxX, boxW, gaugeTop, gaugeH, yOf);
+
+    // ── 밑밥 파슬 (수직뷰 — 거리 근접분만, 침강 구름) ──
+    for (const pc of this.chumParcels) {
+      const dNear = Math.abs(pc.d - this.distM);
+      if (dNear > 14) continue;
+      const fresh = 1 - Math.min(1, pc.ageSec / pc.ttlSec);
+      const a = (0.12 + fresh * 0.3) * (1 - dNear / 14);
+      const cxp = Phaser.Math.Clamp(centerX + (pc.x - this.rig.floatX) * 10, boxX + 8, boxX + boxW - 8);
+      g.fillStyle(0xc9a86a, a);
+      g.fillCircle(cxp, yOf(pc.z), 3 + pc.spreadM * 1.6);
+    }
 
     // 채비 좌우 편차 (조류/릴링에 따른 X 이동 — 찌 기준)
     const latPx = Phaser.Math.Clamp((this.rig.baitX - this.rig.floatX) * 10, -(boxW / 2 - 24), boxW / 2 - 24);
@@ -3080,7 +2898,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
 
     const lines = [
       `정렬도 A ${(this.lineTension.alignmentIndex * 100).toFixed(0)}%`,
-      `밑밥 동조 ${(chumSync * 100).toFixed(0)}%`,
+      `밑밥 동조 ${(chumSync * 100).toFixed(0)}%${this.chumPredPeak >= 0 ? ` (투척 예측 ${(this.chumPredPeak * 100).toFixed(0)}%)` : ''}`,
       `입질 확률 ${(probPerSec * 100).toFixed(1)}%/s${actionLeft > 0 ? '  [리액션 x2.0]' : ''}${this.lureMode ? (this.lureActionMult < 1 ? '  [루어 방치 x0.15 — 액션 필요!]' : `  [액션 x${this.lureActionMult.toFixed(1)}]`) : ''}`,
       `피딩 ${this.feeding.label} x${this.feeding.activity.toFixed(2)}${this.cfg.fieldEvent ? `  [${this.cfg.fieldEvent.label} x${this.cfg.fieldEvent.biteMult.toFixed(1)}]` : ''}`,
       `지형: ${inReef ? (hold ? '여 밭 안착 (x2.5)' : '여 밭') : '모래/갯벌'}${snagProgress > 0.3 ? '  ⚠ 밑걸림 주의' : ''}`,
@@ -3142,8 +2960,6 @@ export class FirstPersonFishingScene extends Phaser.Scene {
 
     const right = this.rodSide === 'right';
     const s = right ? 1 : -1;
-    const fx = this.screenX(this.rig.floatX);
-    const fy = WATERLINE;
 
     // 기저 휨: H 견제/파이팅 기본 자세 — 입질(rodBendDeg)이 여기에 더해진다
     const baseTension = this.fight ? 0.12 : (this.hKey?.isDown ? 0.18 : 0.06);
@@ -3240,21 +3056,111 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     g.fillStyle(0x8a8a96, 1);
     g.fillCircle(hx, hy, 3.8);
 
-    // 원줄: 초릿대 끝 → 찌
-    g.lineStyle(1, 0xf2f8ff, 0.65);
-    g.lineBetween(px, py, fx, fy - 8);
+    // ── 원줄: 초릿대 끝 → 세트 top 앵커 (A-2 — 컨테이너 밖 동적 연결) ──
+    // 세트가 딸려오면 원줄이 자연히 따라오고 길이·각도가 축소된다.
+    // 굵기는 고정(scale 왜곡 없음 — TUNING.retrieve.mainLineWidth), 좌표만 매 프레임 갱신.
+    g.lineStyle(TUNING.retrieve.mainLineWidth, 0xf2f8ff, 0.65);
+    g.lineBetween(px, py, this.groupTopWorld.x, this.groupTopWorld.y);
   }
 
-  private updateChumSprites(tide: TideVector): void {
-    // 정면 뷰 밑밥 모션: 조류 방향 수평 이동 + 페이드아웃
-    const now = this.time.now;
-    this.chumSprites = this.chumSprites.filter(({ obj, born }) => {
-      const age = (now - born) / 1000;
-      if (age > 7 || !obj.active) { obj.destroy(); return false; }
-      obj.x += tide.x * PX_PER_M_X * 0.016;
-      obj.setAlpha(Math.max(0, 0.95 * (1 - age / 7)));
-      return true;
+  /**
+   * 밑밥 파슬 시뮬 (B-2) — 각 파슬 위치의 조류(TidalCurrentEngine)로 (x, d) 드리프트
+   * + z 침강 + 확산. 같은 parcel 데이터를 정면/수평/수직 세 뷰가 동시에 소비한다.
+   */
+  private updateChumParcels(dt: number, hoursNow: number): void {
+    if (this.chumParcels.length > 0) {
+      for (const pc of this.chumParcels) {
+        const inf = this.tidal.calc({ x: pc.x, y: pc.d, z: pc.z }, 0, hoursNow);
+        stepChum(pc, dt, { x: inf.force.x, d: inf.force.y }, this.cfg.zMaxM);
+      }
+      this.chumParcels = this.chumParcels.filter((pc) => pc.ageSec < pc.ttlSec);
+    }
+  }
+
+  /**
+   * 밑밥 레이어 렌더 (B-1·B-4) — ① 파슬 구름 (정면 뷰: 침강+드리프트+확산)
+   * ② 투척점 스냅 행 (중앙 1 + 좌우 6 — 커서 X 최근접 강조)
+   * ③ 선택 투척점의 예측 드리프트 고스트 + 동조 피크 마커.
+   */
+  private renderChumLayer(): void {
+    const g = this.chumG;
+    g.clear();
+
+    // ── 파슬 구름 (정면 뷰) ──
+    this.chumParcels.forEach((pc, i) => {
+      const sx = this.screenX(pc.x);
+      if (sx < -60 || sx > GAME_WIDTH + 60) return;
+      const sy = this.depthY(pc.z, this.surfaceYAt(pc.d));
+      const fresh = 1 - Math.min(1, pc.ageSec / pc.ttlSec);
+      const r = TUNING.chumThrow.cloudBaseR * 0.5 + pc.spreadM * 2.2;
+      g.fillStyle(0x9a7b4f, 0.14 + fresh * 0.22);
+      g.fillCircle(sx, sy, r);
+      // 알갱이 점묘 (파슬 인덱스 시드 — 결정적 배치)
+      g.fillStyle(0xc9a86a, 0.22 + fresh * 0.3);
+      for (let k = 0; k < 6; k++) {
+        const a = i * 2.4 + k * 1.05;
+        g.fillCircle(sx + Math.cos(a) * r * 0.55, sy + Math.sin(a * 1.3) * r * 0.5, 1.4);
+      }
     });
+
+    // ── 투척점 행 + 예측 고스트 — 드리프트 상태 + 배합 밑밥 보유 시에만 ──
+    this.chumPredPeak = -1;
+    if (this.fpState !== 'drift' || this.guideHub) return;
+    if (!InventoryStore.hasCooler() || CoolerStore.chumRemaining <= 0) return;
+
+    const xs = this.chumSnapXs();
+    const rowY = this.surfaceYAt(this.distM);
+    // 커서 X 최근접 스냅 (높낮이 무시)
+    const px = this.input.activePointer.x;
+    let bi = this.chumThrowIdx;
+    let bd = Number.POSITIVE_INFINITY;
+    xs.forEach((x, i) => {
+      const d = Math.abs(this.screenX(x) - px);
+      if (d < bd) { bd = d; bi = i; }
+    });
+    this.chumThrowIdx = bi;
+
+    xs.forEach((x, i) => {
+      const sx = this.screenX(x);
+      if (i === bi) {
+        g.lineStyle(1.6, 0xffe28a, 0.95);
+        g.strokeCircle(sx, rowY, 7);
+        g.fillStyle(0xff5a3c, 1);
+        g.fillCircle(sx, rowY, 3.4);
+      } else {
+        g.fillStyle(0xff5a3c, 0.7);
+        g.fillCircle(sx, rowY, 2.6);
+      }
+    });
+
+    // ── 예측 드리프트 고스트 (조준) — 침강+조류 궤적 점선 + 동조 피크 마커 ──
+    if (!TUNING.chumThrow.predictGhost) { this.chumPredPeak = -1; return; }
+    const hoursNow = new Date().getHours() + new Date().getMinutes() / 60;
+    const inf = this.tidal.calc({ x: xs[bi], y: this.distM, z: Math.min(2, this.rig.baitZ) }, 0, hoursNow);
+    const pred = predictChumPath(
+      xs[bi], this.distM, { x: inf.force.x, d: inf.force.y },
+      { x: this.rig.baitX, d: this.distM, z: this.rig.baitZ },
+      this.cfg.zMaxM,
+      CoolerStore.chumTypeKey(),   // 현재 배합의 밑밥 종류 (침강/확산/조류 친화)
+    );
+    this.chumPredPeak = pred.peakSync;
+    g.lineStyle(1, 0xffe28a, 0.5);
+    for (let k = 0; k + 1 < pred.path.length; k += 2) {   // 2스텝 중 1 = 점선
+      const a = pred.path[k], b = pred.path[k + 1];
+      g.lineBetween(
+        this.screenX(a.x), this.depthY(a.z, this.surfaceYAt(a.d)),
+        this.screenX(b.x), this.depthY(b.z, this.surfaceYAt(b.d)),
+      );
+    }
+    // 동조 피크 별 마커 (밑밥=미끼 교차 지점)
+    const pk = pred.path[pred.peakIndex];
+    const pkx = this.screenX(pk.x);
+    const pky = this.depthY(pk.z, this.surfaceYAt(pk.d));
+    g.lineStyle(1.6, 0x7fe6b0, 0.95);
+    g.lineBetween(pkx - 6, pky, pkx + 6, pky);
+    g.lineBetween(pkx, pky - 6, pkx, pky + 6);
+    g.lineBetween(pkx - 4, pky - 4, pkx + 4, pky + 4);
+    g.lineBetween(pkx - 4, pky + 4, pkx + 4, pky - 4);
   }
 
   private flashState(msg: string): void {

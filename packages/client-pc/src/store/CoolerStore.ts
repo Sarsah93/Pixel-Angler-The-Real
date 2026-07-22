@@ -22,6 +22,7 @@
 import {
   InvCondition, CONDITION_NEXT, CONDITION_DURATION_MIN,
 } from './InventoryStore.js';
+import type { ChumTypeKey } from '@tra/core';
 
 /** 쿨러에 보관되는 어획 개체 (실측치 보존 — 인벤토리 이송 시 그대로 전달) */
 export interface CoolerFish {
@@ -370,6 +371,19 @@ class CoolerStoreImpl {
   completeChumMix(): void {
     this.chumMixed = true;
     this.chumRemaining = 100;
+  }
+
+  /**
+   * 현재 배합의 밑밥 종류 (TUNING.chumTypes 키) — 침강/확산/조류 친화 물리 분기.
+   *  고비중 파우더 포함 = ball(무거운 경단 성격 — 빠른 침강·정밀)
+   *  압맥/보리(grain)가 다수 = grain(범용)
+   *  그 외(집어 파우더/빵가루/크릴) = powder(느림·넓음·조류 잘 탐)
+   */
+  chumTypeKey(): ChumTypeKey {
+    if (this.chumIngredients.some((i) => i.name.includes('고비중'))) return 'ball';
+    const grain = this.chumIngredients.filter((i) => i.kind === 'grain').length;
+    const light = this.chumIngredients.length - grain;
+    return grain > light ? 'grain' : 'powder';
   }
 
   /** 밑밥 1회 투척 소모 — 부족하면 false. 0 도달 시 통 상태 리셋(비어있음) */
