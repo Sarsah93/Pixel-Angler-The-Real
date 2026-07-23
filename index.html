@@ -22,11 +22,19 @@
       }
       canvas {
         display: block;
-        image-rendering: pixelated;
-        image-rendering: crisp-edges;
+        /*
+         * 최종 프레임버퍼(1280×720) → 창 확대 단계만 부드럽게(bilinear) 처리해
+         * 비정수 FIT 배율(예: 1.5배)에서 작은 글자가 계단식으로 뭉개지던 문제를 제거한다.
+         * 내부 렌더는 PhaserConfig의 pixelArt:true(NEAREST) 그대로 유지되므로
+         * 타일 베이킹·도트 에셋의 내부 선명도에는 영향이 없다(마지막 present만 스무딩).
+         * Phaser는 antialias:false일 때 캔버스에 inline으로 image-rendering:pixelated를
+         * 걸어두는데(CreateRenderer setCrisp), author 스타일시트의 !important 선언이
+         * normal inline 선언을 이기므로 이 한 줄로 both(스타일시트+Phaser inline)를 덮어쓴다.
+         */
+        image-rendering: auto !important;
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-CTuPDrvZ.js"></script>
+    <script type="module" crossorigin src="./assets/index-BHJ87ph8.js"></script>
   </head>
   <body>
   </body>
