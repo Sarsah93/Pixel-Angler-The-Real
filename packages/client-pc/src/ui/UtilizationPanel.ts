@@ -61,6 +61,9 @@ export type UtilizationTab = 'cooking' | 'tackles' | 'chum';
 const PANEL_W = 1080;
 const PANEL_H = 620;
 
+/** 선택 리스트 행 서술자 (부품/미끼 선택 공용) */
+type ChooserRow = { text: string; onPick: () => void; recommended?: boolean; muted?: boolean };
+
 /**
  * 채비 단계 정의 — matcher로 인벤토리 부품 필터.
  * 2026-07-16: 바늘 & 미끼 통합 소켓을 [바늘/루어] → [미끼] 2소켓으로 분리.
@@ -91,6 +94,8 @@ export class UtilizationPanel extends DraggablePanel {
   private tabTexts = new Map<UtilizationTab, Phaser.GameObjects.Text>();
   private bodyContainer!: Phaser.GameObjects.Container;
   private chooser?: Phaser.GameObjects.Container;
+  /** 열린 선택 리스트의 휠 스크롤 핸들러 (닫을 때 해제) */
+  private chooserWheel?: (p: Phaser.Input.Pointer, go: unknown, dx: number, dy: number) => void;
   /** 요리 탭 임베드 인벤토리 — 현재 카테고리/선택 아이템 */
   private cookInvCat: InvCategory = 'food';
   private cookSelectedId: string | null = null;
@@ -719,36 +724,14 @@ export class UtilizationPanel extends DraggablePanel {
   private openSpreaderBaitChooser(hookIdx: number, x: number, y: number): void {
     this.closeChooser();
     const candidates = InventoryStore.items.filter(isBaitItem);
-    const rowH = 26;
-    const listW = 200;
-    const listH = (candidates.length + 1) * rowH + 12;
-    const c = this.scene.add.container(0, 0).setDepth(60);
-    this.addChooserBackdrop(c);   // 바깥 클릭 시 자동 닫힘
-    const g = this.scene.add.graphics();
-    g.fillStyle(0x0a1628, 0.98);
-    g.fillRoundedRect(x, y, listW, listH, 5);
-    g.lineStyle(1.5, 0x33b0e0, 1);
-    g.strokeRoundedRect(x, y, listW, listH, 5);
-    c.add(g);
-    const addRow = (idx: number, label: string, onPick: () => void): void => {
-      const ry = y + 6 + idx * rowH;
-      const t = this.scene.add.text(x + 12, ry + rowH / 2, label, {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#d0e8f5',
-      }).setOrigin(0, 0.5);
-      const hit = this.scene.add.rectangle(x + listW / 2, ry + rowH / 2, listW - 8, rowH, 0xffffff, 0.001)
-        .setInteractive({ useHandCursor: true });
-      hit.on('pointerover', () => t.setColor('#aee8ff'));
-      hit.on('pointerout', () => t.setColor('#d0e8f5'));
-      hit.on('pointerdown', () => { onPick(); this.closeChooser(); this.renderBody(); });
-      c.add([t, hit]);
-    };
-    addRow(0, '(비우기)', () => InventoryStore.setSpreaderBait(hookIdx, null));
-    candidates.forEach((item, i) => {
-      addRow(i + 1, `${item.icon} ${item.name} x${item.qty}`, () => InventoryStore.setSpreaderBait(hookIdx, item.id));
-    });
-    this.bodyContainer.add(c);
-    this.chooser = c;
-    this.applyFix();
+    const rows: ChooserRow[] = [
+      { text: '(비우기)', onPick: () => InventoryStore.setSpreaderBait(hookIdx, null) },
+      ...candidates.map((item): ChooserRow => ({
+        text: `${item.icon} ${item.name} x${item.qty}`,
+        onPick: () => InventoryStore.setSpreaderBait(hookIdx, item.id),
+      })),
+    ];
+    this.mountChooserList(this.bodyContainer, rows, x, y, { listW: 200, title: '편대 미끼 선택' });
   }
 
   /** 조립 부품 기반 물리 스펙 계산 (목업 수치) */
@@ -835,67 +818,132 @@ export class UtilizationPanel extends DraggablePanel {
     // 추천 후보를 상단으로 정렬
     const candidates = InventoryStore.items.filter(matcher)
       .sort((a, b) => (isReco ? (Number(isReco(b)) - Number(isReco(a))) : 0));
-    const rowH = 30;
-    const listW = 240;
-    const listH = Math.max(1, candidates.length + 1) * rowH + 34;
-    const lx = Math.min(x, PANEL_W - listW - 16);
-    const ly = Math.min(y, PANEL_H - listH - 10);
+
+    // 행 서술자 — 후보 목록 + (비우기 / 후보 없을 때 안내·닫기)
+    const rows: ChooserRow[] = candidates.length === 0
+      ? [
+        { text: '사용 가능한 부품이 없습니다', onPick: () => { /* 안내행 */ }, muted: true },
+        { text: '닫기', onPick: () => { /* 선택 없음 */ } },
+      ]
+      : [
+        ...candidates.map((item): ChooserRow => ({
+          text: `${item.icon} ${item.name} (x${item.qty})`,
+          onPick: () => InventoryStore.setRigPart(step, item.id),
+          recommended: !!isReco && isReco(item),
+        })),
+        { text: '비우기', onPick: () => InventoryStore.setRigPart(step, null) },
+      ];
+
+    this.mountChooserList(this, rows, x, y, { listW: 240, title: `${label} 선택` });
+  }
+
+  /**
+   * 스크롤 가능한 선택 리스트를 마운트 (부품/미끼 선택 공용).
+   * 창이 화면 밖으로 길어지지 않도록 최대 표시 행을 제한하고, 초과분은 **우측 스크롤바 + 휠**로
+   * 처리한다. 마스크 대신 **보이는 행만 생성**(윈도우드 렌더)해 스크롤아웃된 행의 팬텀 히트를 방지.
+   */
+  private mountChooserList(
+    parent: Phaser.GameObjects.Container,
+    rows: ChooserRow[],
+    x: number, y: number,
+    opts: { listW: number; title?: string },
+  ): void {
+    const rowH = 28, listW = opts.listW, padB = 8;
+    const headerH = opts.title ? 26 : 6;
+    const MAX_VIS_ROWS = 11;
+    const visRows = Math.min(rows.length, MAX_VIS_ROWS);
+    const scrollable = rows.length > visRows;
+    const boxW = listW + (scrollable ? 10 : 0);
+    const listH = headerH + visRows * rowH + padB;
+    const lx = Phaser.Math.Clamp(x, 8, PANEL_W - boxW - 8);
+    const ly = Phaser.Math.Clamp(Math.min(y, PANEL_H - listH - 8), this.contentTop + 4, PANEL_H - listH - 8);
+    const maxScroll = rows.length - visRows;
+    let scroll = 0;
 
     const c = this.scene.add.container(0, 0);
     this.addChooserBackdrop(c);   // 바깥 클릭 시 선택창 자동 닫힘
+
     const bg = this.scene.add.graphics();
     bg.fillStyle(0x081422, 0.98);
-    bg.fillRoundedRect(lx, ly, listW, listH, 5);
+    bg.fillRoundedRect(lx, ly, boxW, listH, 5);
     bg.lineStyle(1.5, 0x5cd0ff, 0.95);
-    bg.strokeRoundedRect(lx, ly, listW, listH, 5);
+    bg.strokeRoundedRect(lx, ly, boxW, listH, 5);
     c.add(bg);
 
-    const title = this.scene.add.text(lx + 12, ly + 8, `${label} 선택`, {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#aee8ff', fontStyle: 'bold',
-    });
-    c.add(title);
-
-    const addRow = (i: number, text: string, onPick: () => void, recommended = false): void => {
-      const ry = ly + 28 + i * rowH;
-      const rowTxt = this.scene.add.text(lx + 14, ry + rowH / 2, text, {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: recommended ? '#ffe28a' : '#d0e8f5',
-      }).setOrigin(0, 0.5);
-      c.add(rowTxt);
-      if (recommended) {
-        const badge = this.scene.add.text(lx + listW - 12, ry + rowH / 2, '추천', {
-          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#0b1f14',
-          backgroundColor: '#ffd257', padding: { x: 3, y: 1 }, fontStyle: 'bold',
-        }).setOrigin(1, 0.5);
-        c.add(badge);
-      }
-      const rowHit = this.scene.add.rectangle(lx + listW / 2, ry + rowH / 2, listW - 8, rowH - 2, 0xffffff, 0.001)
-        .setInteractive({ useHandCursor: true });
-      rowHit.on('pointerover', () => rowTxt.setColor('#ffffff'));
-      rowHit.on('pointerout', () => rowTxt.setColor(recommended ? '#ffe28a' : '#d0e8f5'));
-      rowHit.on('pointerdown', () => { onPick(); this.closeChooser(); this.renderBody(); });
-      c.add(rowHit);
-    };
-
-    if (candidates.length === 0) {
-      const none = this.scene.add.text(lx + 14, ly + 40, '사용 가능한 부품이 없습니다', {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#607b8e',
+    if (opts.title) {
+      const title = this.scene.add.text(lx + 12, ly + 7, `${opts.title}${scrollable ? `  (${rows.length}개 · 휠 스크롤)` : ''}`, {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#aee8ff', fontStyle: 'bold',
       });
-      c.add(none);
-      addRow(1, '닫기', () => { /* 선택 없음 */ });
-    } else {
-      candidates.forEach((item, i) => {
-        addRow(i, `${item.icon} ${item.name} (x${item.qty})`,
-          () => InventoryStore.setRigPart(step, item.id), !!isReco && isReco(item));
-      });
-      addRow(candidates.length, '비우기', () => InventoryStore.setRigPart(step, null));
+      c.add(title);
     }
 
-    this.add(c);
+    // 행 레이어(스크롤마다 재렌더 — 보이는 행만 생성해 마스크·팬텀히트 없이 스크롤) + 스크롤바
+    const rowsLayer = this.scene.add.container(0, 0);
+    c.add(rowsLayer);
+    const barG = this.scene.add.graphics();
+    c.add(barG);
+
+    const renderRows = (): void => {
+      rowsLayer.removeAll(true);
+      for (let r = 0; r < visRows; r++) {
+        const row = rows[scroll + r];
+        if (!row) continue;
+        const ry = ly + headerH + r * rowH;
+        const color = row.muted ? '#607b8e' : row.recommended ? '#ffe28a' : '#d0e8f5';
+        const rowTxt = this.scene.add.text(lx + 12, ry + rowH / 2, row.text, {
+          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color,
+        }).setOrigin(0, 0.5);
+        rowsLayer.add(rowTxt);
+        if (row.recommended) {
+          const badge = this.scene.add.text(lx + listW - 10, ry + rowH / 2, '추천', {
+            fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#0b1f14',
+            backgroundColor: '#ffd257', padding: { x: 3, y: 1 }, fontStyle: 'bold',
+          }).setOrigin(1, 0.5);
+          rowsLayer.add(badge);
+        }
+        if (!row.muted) {
+          const rowHit = this.scene.add.rectangle(lx + listW / 2, ry + rowH / 2, listW - 8, rowH - 2, 0xffffff, 0.001)
+            .setInteractive({ useHandCursor: true });
+          rowHit.on('pointerover', () => rowTxt.setColor('#ffffff'));
+          rowHit.on('pointerout', () => rowTxt.setColor(color));
+          rowHit.on('pointerdown', () => { row.onPick(); this.closeChooser(); this.renderBody(); });
+          rowsLayer.add(rowHit);
+        }
+      }
+      // 우측 스크롤바 (트랙 + 위치 비례 썸)
+      barG.clear();
+      if (scrollable) {
+        const trackX = lx + listW + 3, trackY = ly + headerH, trackH = visRows * rowH;
+        barG.fillStyle(0x14324a, 0.9);
+        barG.fillRoundedRect(trackX, trackY, 4, trackH, 2);
+        const thumbH = Math.max(20, (trackH * visRows) / rows.length);
+        const thumbY = trackY + (trackH - thumbH) * (maxScroll === 0 ? 0 : scroll / maxScroll);
+        barG.fillStyle(0x5cd0ff, 0.95);
+        barG.fillRoundedRect(trackX, thumbY, 4, thumbH, 2);
+      }
+      this.applyFix();   // 재렌더된 행의 화면 고정 히트 보정
+    };
+    renderRows();
+
+    if (scrollable) {
+      this.chooserWheel = (_p, _go, _dx, dy) => {
+        if (!this.chooser) return;
+        scroll = Phaser.Math.Clamp(scroll + (dy > 0 ? 1 : -1), 0, maxScroll);
+        renderRows();
+      };
+      this.scene.input.on('wheel', this.chooserWheel);
+    }
+
+    parent.add(c);
     this.chooser = c;
     this.applyFix();
   }
 
   private closeChooser(): void {
+    if (this.chooserWheel) {
+      this.scene.input.off('wheel', this.chooserWheel);
+      this.chooserWheel = undefined;
+    }
     this.chooser?.destroy();
     this.chooser = undefined;
   }

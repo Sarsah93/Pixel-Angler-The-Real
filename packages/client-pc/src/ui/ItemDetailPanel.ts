@@ -8,6 +8,7 @@
 
 import Phaser from 'phaser';
 import { FISH_DATABASE } from '@tra/core';
+import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { DraggablePanel } from './DraggablePanel.js';
 import { createItemIcon } from './ItemIcon.js';
 import {
@@ -262,6 +263,10 @@ export class ItemDetailPanel extends DraggablePanel {
   private condValueText?: Phaser.GameObjects.Text;
   private remainValueText?: Phaser.GameObjects.Text;
   private freshTimer?: Phaser.Time.TimerEvent;
+  // ── 본문 스크롤 (내용이 화면보다 길 때) ──
+  private maskShape?: Phaser.GameObjects.Graphics;
+  private maskSync?: () => void;
+  private wheelHandler?: (p: Phaser.Input.Pointer, go: unknown, dx: number, dy: number) => void;
 
   constructor(
     scene: Phaser.Scene, item: InvItem, x: number, y: number, onClose: () => void,
@@ -278,10 +283,19 @@ export class ItemDetailPanel extends DraggablePanel {
     const descExtra = detail.desc.length > 60 ? Math.ceil((detail.desc.length - 60) / 28) * 14 : 0;
     // 신선도 실시간 블록 (상태 1행 + 남은 시간 라벨/값 2행)
     const condExtra = item.condition ? 66 : 0;
-    const h = 176 + detail.rows.length * 24 + imgH + descExtra + condExtra;
-    super(scene, { x, y, width: 320, height: h, title: '아이템 정보', onClose, depth: 880 });
+    const W = 320;
+    // 내용 전체 높이 추정 → 화면을 넘기지 않게 캡(초과분은 본문 스크롤), 위치도 화면 안으로 클램프
+    const fullH = 176 + detail.rows.length * 24 + imgH + descExtra + condExtra;
+    const maxH = Math.min(fullH, GAME_HEIGHT - 20);
+    const px = Phaser.Math.Clamp(x, 8, GAME_WIDTH - W - 8);
+    const py = Phaser.Math.Clamp(y, 8, GAME_HEIGHT - maxH - 8);
+    super(scene, { x: px, y: py, width: W, height: maxH, title: '아이템 정보', onClose, depth: 880 });
     this.itemRef = item;
     this.remainProvider = remainProvider;
+
+    // 헤더 아래 본문은 스크롤 컨테이너에 담는다 (내용이 화면보다 길면 휠/스크롤바로 이동)
+    const body = scene.add.container(0, 0);
+    this.add(body);
 
     // 아이콘 + 이름 + 소분류
     const icon = createItemIcon(scene, 42, this.contentTop + 22, item, 36);
@@ -292,31 +306,31 @@ export class ItemDetailPanel extends DraggablePanel {
     const sub = scene.add.text(70, this.contentTop + 32, detail.subtitle, {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#8faabf',
     });
-    this.add([icon, name, sub]);
+    body.add([icon, name, sub]);
 
     // 신선도 배지 (실시간 갱신 대상)
     if (item.condition) {
-      this.badgeText = scene.add.text(this.panelW - 20, this.contentTop + 12, CONDITION_LABEL[item.condition], {
+      this.badgeText = scene.add.text(W - 20, this.contentTop + 12, CONDITION_LABEL[item.condition], {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', fontStyle: 'bold',
         color: CONDITION_COLOR[item.condition],
         backgroundColor: '#050f1e', padding: { x: 5, y: 2 },
       }).setOrigin(1, 0);
-      this.add(this.badgeText);
+      body.add(this.badgeText);
     }
 
     // 구분선
     const div = scene.add.graphics();
     div.lineStyle(1, 0x1f3d5a, 0.8);
-    div.lineBetween(16, this.contentTop + 52, this.panelW - 16, this.contentTop + 52);
-    this.add(div);
+    div.lineBetween(16, this.contentTop + 52, W - 16, this.contentTop + 52);
+    body.add(div);
 
     // 실사 픽셀 생선 이미지 (어획물)
     if (hasFishImage && item.iconTexture) {
       const src = scene.textures.get(item.iconTexture).getSourceImage() as HTMLImageElement;
       const scale = Math.min(280 / src.width, 110 / src.height);
-      const fishImg = scene.add.image(this.panelW / 2, this.contentTop + 58 + imgH / 2 - 6, item.iconTexture)
+      const fishImg = scene.add.image(W / 2, this.contentTop + 58 + imgH / 2 - 6, item.iconTexture)
         .setDisplaySize(src.width * scale, src.height * scale);
-      this.add(fishImg);
+      body.add(fishImg);
     }
 
     // 스펙 행
@@ -325,10 +339,10 @@ export class ItemDetailPanel extends DraggablePanel {
       const lbl = scene.add.text(22, ry, row.label, {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#c8a060', fontStyle: 'bold',
       });
-      const val = scene.add.text(this.panelW - 22, ry, row.value, {
+      const val = scene.add.text(W - 22, ry, row.value, {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#e8f4fd',
       }).setOrigin(1, 0);
-      this.add([lbl, val]);
+      body.add([lbl, val]);
     });
 
     // ── 신선도 실시간 블록 — 단일 상태 표기 + 초단위 카운트다운 ──
@@ -337,17 +351,17 @@ export class ItemDetailPanel extends DraggablePanel {
       const condLbl = scene.add.text(22, fy, '신선도 상태', {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#c8a060', fontStyle: 'bold',
       });
-      this.condValueText = scene.add.text(this.panelW - 22, fy, CONDITION_LABEL[item.condition], {
+      this.condValueText = scene.add.text(W - 22, fy, CONDITION_LABEL[item.condition], {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', fontStyle: 'bold',
         color: CONDITION_COLOR[item.condition],
       }).setOrigin(1, 0);
       const remainLbl = scene.add.text(22, fy + 24, '다음 상태로 변경되기까지 남은 시간', {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#c8a060', fontStyle: 'bold',
       });
-      this.remainValueText = scene.add.text(this.panelW - 22, fy + 40, '', {
+      this.remainValueText = scene.add.text(W - 22, fy + 40, '', {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#e8f4fd', fontStyle: 'bold',
       }).setOrigin(1, 0);
-      this.add([condLbl, this.condValueText, remainLbl, this.remainValueText]);
+      body.add([condLbl, this.condValueText, remainLbl, this.remainValueText]);
 
       // 1초 주기 실시간 갱신 (호버/열람 중 숫자가 초단위로 줄어드는 것이 보인다)
       this.updateFreshness();
@@ -358,15 +372,58 @@ export class ItemDetailPanel extends DraggablePanel {
     const descY = this.contentTop + 68 + imgH + detail.rows.length * 24 + condExtra;
     const descText = scene.add.text(22, descY, detail.desc, {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#9fc0d4',
-      wordWrap: { width: this.panelW - 44 }, lineSpacing: 4,
+      wordWrap: { width: W - 44 }, lineSpacing: 4,
     });
-    this.add(descText);
+    body.add(descText);
 
-    // 판매가 참고
-    const sellText = scene.add.text(22, this.panelH - 24, `상점 매입가: ${InventoryStore.getSellPrice(item as InvItem).toLocaleString()} 원`, {
+    // 판매가 참고 — 설명 아래로 흘려 배치(스크롤 시 함께 이동)
+    const sellY = descY + descText.height + 10;
+    const sellText = scene.add.text(22, sellY, `상점 매입가: ${InventoryStore.getSellPrice(item as InvItem).toLocaleString()} 원`, {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#ffe28a',
     });
-    this.add(sellText);
+    body.add(sellText);
+
+    // ── 본문이 패널 높이를 넘기면 마스크 + 휠 스크롤 + 우측 스크롤바 ──
+    const vpTop = this.contentTop - 4;
+    const vpBottom = maxH - 6;
+    const vpH = vpBottom - vpTop;
+    const contentBottom = sellY + 16;
+    const scrollRange = Math.max(0, contentBottom - vpBottom);
+    if (scrollRange > 0) {
+      const maskShape = scene.make.graphics({ x: this.x, y: this.y }, false);
+      // 패널은 screen-fixed(scrollFactor 0)인데 마스크가 기본값(1)이면 카메라가 스크롤된
+      // 씬(RegionFieldScene 상점 등)에서 마스크 지오메트리가 스크롤량만큼 어긋나
+      // 콘텐츠가 엉뚱한 위치에서 잘린다 — 마스크도 반드시 화면 고정.
+      maskShape.setScrollFactor(0);
+      maskShape.fillStyle(0xffffff, 1);
+      maskShape.fillRect(4, vpTop, W - 8, vpH);
+      body.setMask(new Phaser.Display.Masks.GeometryMask(scene, maskShape));
+      this.maskShape = maskShape;
+      // 마스크가 패널 드래그 이동을 따라오도록 매 프레임 동기화 (UI 열림 중 카메라는 정지 상태)
+      this.maskSync = (): void => { maskShape.setPosition(this.x, this.y); };
+      scene.events.on('update', this.maskSync);
+
+      // 우측 스크롤바 (트랙 + 위치 비례 썸) — 마스크 밖(this)에 두어 스크롤/클립되지 않게
+      const barX = W - 7;
+      const bar = scene.add.graphics();
+      this.add(bar);
+      const drawBar = (): void => {
+        bar.clear();
+        bar.fillStyle(0x14324a, 0.9);
+        bar.fillRoundedRect(barX, vpTop, 4, vpH, 2);
+        const thumbH = Math.max(24, (vpH * vpH) / (contentBottom - vpTop));
+        const prog = scrollRange === 0 ? 0 : -body.y / scrollRange;
+        bar.fillStyle(0x5cd0ff, 0.95);
+        bar.fillRoundedRect(barX, vpTop + (vpH - thumbH) * prog, 4, thumbH, 2);
+      };
+      drawBar();
+
+      this.wheelHandler = (_p, _go, _dx, dy): void => {
+        body.y = Phaser.Math.Clamp(body.y - Math.sign(dy) * 42, -scrollRange, 0);
+        drawBar();
+      };
+      scene.input.on('wheel', this.wheelHandler);
+    }
 
     this.applyFix();
   }
@@ -391,6 +448,9 @@ export class ItemDetailPanel extends DraggablePanel {
 
   override destroy(fromScene?: boolean): void {
     this.freshTimer?.remove();
+    if (this.wheelHandler) this.scene?.input?.off('wheel', this.wheelHandler);
+    if (this.maskSync) this.scene?.events?.off('update', this.maskSync);
+    this.maskShape?.destroy();
     super.destroy(fromScene);
   }
 }

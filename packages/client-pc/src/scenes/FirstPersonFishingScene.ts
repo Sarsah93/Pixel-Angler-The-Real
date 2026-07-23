@@ -31,6 +31,7 @@ import {
   UnderwaterRigState, RigPhysicsParams, TideVector,
   LineTensionPhysics, BiteProbabilityEngine,
   ChumParcel, createChumParcel, stepChum, maxChumSync, predictChumPath,
+  isChumExpired, chumAlpha01, chumEllipseRadii,
   spawnFish, SpawnedFish, FightingPhase, FightStatus,
   calculateTideInfo, getBaitAffinity, BaitKey, SpawnContext,
   getAreaSnagRiskMult,
@@ -101,6 +102,17 @@ interface DecisionButton {
 // ── 화면 상수 ──────────────────────────────────────
 const WATERLINE = 268;
 const PX_PER_M_X = 24;
+/** 뒷줄견제(H) 시 속채비(목줄·미끼)가 조류 방향(하류)으로 펴지는 최대 거리 계수 (m per m/s, 정렬도 가중) */
+const SUBRIG_EXTEND_K = 7;
+/** 정면뷰 뷰 중심이 찌를 따라가지 않고 캐스터를 기준으로 유지할 화면 여백(px) — 이보다 밖으로 나가면 그만큼만 팬 */
+const VIEW_EDGE_MARGIN = 220;
+
+// ── 수평뷰(plan)/수심 패널 지오메트리 — 렌더와 밑밥 마스크(rev2)가 공유하는 단일 소스 ──
+const PLAN_X = 16, PLAN_Y = 408, PLAN_W = 232, PLAN_H = 212;
+const DP_W = 338, DP_H = 288;
+const DP_X = GAME_WIDTH - DP_W - 14, DP_Y = 44;
+const DP_BOX_X = DP_X + 14, DP_BOX_W = 196;
+const DP_GAUGE_TOP = DP_Y + 66, DP_GAUGE_H = DP_H - 92;
 /**
  * 회수 수렴 앵커/최대 배율/투척점 수 등 튜닝 스칼라는 TUNING(core 단일 소스)에서
  * 매 프레임 읽는다 — dev 튜닝 패널(F8)의 슬라이더 변경이 리빌드 없이 반영된다.
@@ -196,6 +208,13 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   private chumPredPeak = -1;
   /** 투척점 행/예측 고스트/파슬 구름 전용 레이어 */
   private chumG!: Phaser.GameObjects.Graphics;
+  // ── 밑밥 rev2 3뷰 레이어 (각 창 사각형 지오메트리 마스크로 클립 — 창 밖 오버플로 금지) ──
+  /** 정면뷰 표면 확산(스며듦) 레이어 — 수면 밴드 마스크 */
+  private chumFrontG!: Phaser.GameObjects.Graphics;
+  /** 수평뷰 파슬 레이어 — plan 박스 마스크 */
+  private chumPlanG!: Phaser.GameObjects.Graphics;
+  /** 수직뷰 파슬+지형 코팅 레이어 — 수심 게이지 박스 마스크 */
+  private chumDepthG!: Phaser.GameObjects.Graphics;
   private fight: FightingPhase | null = null;
   private hookedFish: SpawnedFish | null = null;
 
@@ -215,12 +234,20 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   private pendingFish: SpawnedFish | null = null;
   /** 현재 초릿대 굽힘 각도 (도) — 입질/파이팅 렌더 공용 */
   private rodBendDeg = 0;
+  /** 부호 포함 벤딩 각(도, 스무딩) — 부호 = 하중 side (renderRod rev2, 전환 시 0 경유) */
+  private rodBendSmDeg = 0;
+  /** 전방 말림 0~1 (스무딩) — 축 정렬+손잡이쪽 축하중 시 초릿대 z 말림(투영 축소) */
+  private rodFoldSm = 0;
+  /** 파이트 중 물고기 스크린 좌표 (renderRigVisuals가 기록 — 로드 벤딩 하중 앵커) */
+  private fightFishScreen: { x: number; y: number } | null = null;
   /** 낚싯대 화면 위치 (설정 연동 — 화면 중앙 기준 좌/우) */
   private rodSide: 'left' | 'right' = 'right';
   /** 릴 핸들 위치 (설정 연동 — 로드 기준 좌/우) */
   private reelHandleSide: 'left' | 'right' = 'left';
   /** 찌 잠김 깊이 (m) — 입질 단계별 0.05/0.10/0.25 */
   private floatSinkM = 0;
+  /** 렌더용 찌 잠김(부드러운 보간) — 입질 dip/복귀를 급전환 없이 표현 (챔질 놓침 후 원래대로 떠오름) */
+  private floatSinkVisM = 0;
   /** 원투(찌 없이 도래 직결) 모드 — 찌 없이 초릿대 끝으로 입질 판단 */
   private surfMode = false;
 
@@ -373,7 +400,11 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.resultContainer = undefined;
     this.biteSeq = new BiteSequenceEngine();
     this.rodBendDeg = 0;
+    this.rodBendSmDeg = 0;
+    this.rodFoldSm = 0;
+    this.fightFishScreen = null;
     this.floatSinkM = 0;
+    this.floatSinkVisM = 0;
     this.distM = data.castDistanceM;
     this.lastTidal = null;
     this.foamParticles = [];
@@ -450,7 +481,25 @@ export class FirstPersonFishingScene extends Phaser.Scene {
 
     this.buildBackdrop();
     this.dynamicG = this.add.graphics().setDepth(30);
-    this.chumG = this.add.graphics().setDepth(33);    // 밑밥 투척점/고스트/파슬 구름
+    this.chumG = this.add.graphics().setDepth(33);    // 밑밥 투척점 행/예측 고스트 (마스크 없음)
+    // ── 밑밥 rev2 3뷰 레이어 + 지오메트리 마스크 (창 밖 오버플로 클립 — 스펙 §3) ──
+    // 마스크 Graphics는 디스플레이 리스트 밖 — scrollFactor 0 필수 (33차 교훈. FP 카메라는
+    // 정지 상태지만 방어적으로 고정), 씬 shutdown 시 명시 파괴 (stop/start 반복 누수 방지).
+    this.chumFrontG = this.add.graphics().setDepth(32);
+    const chumFrontMask = this.make.graphics({}, false).setScrollFactor(0);
+    chumFrontMask.fillRect(0, WATERLINE - 16, GAME_WIDTH, 560 - WATERLINE);
+    this.chumFrontG.setMask(chumFrontMask.createGeometryMask());
+    this.chumPlanG = this.add.graphics().setDepth(81);
+    const chumPlanMask = this.make.graphics({}, false).setScrollFactor(0);
+    chumPlanMask.fillRect(PLAN_X + 2, PLAN_Y + 2, PLAN_W - 4, PLAN_H - 4);
+    this.chumPlanG.setMask(chumPlanMask.createGeometryMask());
+    this.chumDepthG = this.add.graphics().setDepth(86);
+    const chumDepthMask = this.make.graphics({}, false).setScrollFactor(0);
+    chumDepthMask.fillRect(DP_BOX_X + 1, DP_GAUGE_TOP + 1, DP_BOX_W - 2, DP_GAUGE_H - 2);
+    this.chumDepthG.setMask(chumDepthMask.createGeometryMask());
+    this.events.once('shutdown', () => {
+      chumFrontMask.destroy(); chumPlanMask.destroy(); chumDepthMask.destroy();
+    });
     this.buildRetrieveGroup();                        // 회수 세트 컨테이너 (depth 35)
     this.rodG = this.add.graphics().setDepth(60);
     this.panelG = this.add.graphics().setDepth(85);   // 수심 모식도 — 낚싯대 위
@@ -686,6 +735,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       this.pendingFish = null;
       this.rodBendDeg = 0;
       this.floatSinkM = 0;
+      // 챔질 실패 시에도 잠김 래치 해제 → 찌가 원래대로 다시 떠오른다 (floatSinkVisM 보간)
+      this.floatSubmerged = false;
       let baitKept = false;
       if (InventoryStore.hookNeedsBait()) {
         if (r.stage === 1 && Math.random() < 0.6) baitKept = true;
@@ -1565,11 +1616,18 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       }
     }
 
-    // 뷰 중심을 찌 쪽으로 서서히 추적
-    this.viewCenterX += (this.rig.floatX - this.viewCenterX) * Math.min(1, dt * 1.2);
+    // ── 뷰 중심 = 캐스터(원점) 고정 → 조류에 찌·원줄이 흘러가는 것이 정면뷰에 보인다 ──
+    // (구: viewCenterX가 찌를 추종해 찌가 항상 화면 중앙에 고정 → 드리프트가 상쇄돼 안 보였다.
+    //  수평뷰는 고정 중심 기준이라 드리프트가 보이던 것과 정합을 맞춘다.)
+    // 단, 찌가 화면 밖으로 나가려 하면 그만큼만 팬해 가장자리에 붙여 시야를 유지한다.
+    const maxOffM = (GAME_WIDTH / 2 - VIEW_EDGE_MARGIN) / PX_PER_M_X;
+    this.viewCenterX = Phaser.Math.Clamp(
+      this.viewCenterX, this.rig.floatX - maxOffM, this.rig.floatX + maxOffM,
+    );
 
     this.updateChumParcels(dt, hoursNow);
     this.renderChumLayer();
+    this.renderChumSideViews();
     this.renderWater(dt);
     this.renderFoam(influence);
     this.renderRigVisuals();
@@ -1703,6 +1761,14 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       // 앵커까지 빠르게 떠오른 뒤 고정 (stepUnderwater의 침강 결과는 무시)
       this.rig.baitZ = Math.max(this.holdAnchorZ, prevZ - 2.2 * dt);
       this.rig.settled = false;
+      // ── 찌는 그 자리에 멈추지만(driftBrake 0) 속조류가 목줄·미끼를 하류로 밀어
+      //    downstream으로 펴진다 — 정렬도(A)가 오를수록·조류 셀수록 더 벌어져 "펴지는" 느낌.
+      //    stepUnderwater가 baitX를 (멈춘)찌로 수렴시켜 수직으로 모으는 것을 여기서 덮어써,
+      //    찌 하류로 목표 오프셋만큼 벌어지게 한다.
+      const align = this.lineTension.alignmentIndex;
+      const extendM = Phaser.Math.Clamp(tide.x * SUBRIG_EXTEND_K * (0.35 + 0.65 * align), -5, 5);
+      const targetBaitX = this.rig.floatX + extendM;
+      this.rig.baitX += (targetBaitX - this.rig.baitX) * Math.min(1, dt * 1.6);
     } else {
       this.holdAnchorZ = null;
     }
@@ -1758,7 +1824,12 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     const nearBottom = this.rig.baitZ >= Math.min(this.zLimitM, bedHereM) - 1.2;
     const inReef = nearBottom && this.seabed.isRockAt(this.distM);
     // 밑밥 동조율 — 3D 파슬 (x 좌우 · d 원근거리 · z 수심) 최대 동조 (B-3)
-    const sync = maxChumSync(this.chumParcels, { x: this.rig.baitX, d: this.distM, z: this.rig.baitZ });
+    // rev2: 바닥층 미끼(국소 바닥 근처)는 코팅 파슬의 bottomSyncBonus 가산 대상 (§2-5)
+    const sync = maxChumSync(
+      this.chumParcels,
+      { x: this.rig.baitX, d: this.distM, z: this.rig.baitZ },
+      { baitNearBottom: this.rig.baitZ >= bedHereM - 1.2 },
+    );
 
     // 미끼 종류 × 어종 선호도 친화도 (오라클 연동)
     const baitAffinity = getBaitAffinity(this.buildSpawnCtx(inReef));
@@ -1806,6 +1877,9 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       : seq.activeStage === 2 ? TUNING.float.biteDipS2M / 0.10
         : seq.activeStage === 3 ? TUNING.float.biteDipS3M / 0.25 : 1;
     this.floatSinkM = seq.floatSinkM * dipScale;
+    // 렌더용 잠김은 부드럽게 보간 — 입질 dip은 빠르게 내려가고, 어신이 끝나면(floatSinkM→0)
+    // 급전환 없이 원래 수면 높이로 스르르 떠오른다 ("분기점 즉시전환 금지" 원칙)
+    this.floatSinkVisM += (this.floatSinkM - this.floatSinkVisM) * Math.min(1, dt * 8);
     // 3단계(완전 흡입) 진입 = 구멍찌 완전 잠김 래치 (파이트 진입 시에도 래치 — attemptHookset)
     if (seq.activeStage === 3) this.floatSubmerged = true;
     // 단계 진입 순간 1회 이펙트 (파문/느낌표/쉐이크 — 강도별)
@@ -1814,7 +1888,10 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       this.prevStage = seq.activeStage;
     }
     if (seq.ended) {
-      // 챔질 없이 어신 종료 — 물고기가 미끼를 따먹고 떠남
+      // 챔질 없이 어신 종료 — 물고기가 미끼를 따먹고 떠남.
+      // 강한 입질(3단계)로 찌가 완전 잠겼던 래치를 여기서 해제해, 챔질 타이밍을 놓쳐도
+      // 찌가 원래대로 다시 떠오르게 한다 (floatSinkVisM 보간으로 부드럽게 상승·재등장).
+      this.floatSubmerged = false;
       this.pendingFish = null;
       if (InventoryStore.hookNeedsBait()) InventoryStore.consumeRigItem('bait');
       this.refreshCoolerUi();
@@ -2413,6 +2490,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.pendingFish = null;
     this.rodBendDeg = 0;
     this.floatSinkM = 0;
+    this.floatSinkVisM = 0;
     this.distM = this.cfg.castDistanceM;
     this.overstrain = 0;
     this.rigPose = 'idle';
@@ -2457,11 +2535,14 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     const surfY = this.surfaceYAt(this.distM);
     const fx = this.screenX(this.rig.floatX);
     const wave = Math.sin(this.time.now / 500) * 2.2;
-    // 입질 단계별 찌 잠김 (1단계 0.05m / 2단계 0.10m / 3단계 0.25m) — 시각 배율 x3
-    const sinkPx = this.floatSinkM * this.pxPerMZ * 3;
-    // ── 입질/챔질 시 채비 세트 전체가 물속으로 당겨지는 연출 (초릿대 굽힘 비례) ──
+    // 입질 단계별 찌 잠김 (1단계 0.05m / 2단계 0.10m / 3단계 0.25m) — 시각 배율 x3.
+    // 보간된 floatSinkVisM을 써서 어신 종료 후 찌가 부드럽게 원래대로 떠오르게 한다.
+    const sinkPx = this.floatSinkVisM * this.pxPerMZ * 3;
+    // ── 입질/챔질 시 채비 세트 전체가 물속으로 당겨지는 연출 ──
+    // 보간된 찌 잠김(floatSinkVisM)에 비례 — rodBendDeg는 어신 종료 시 즉시 0으로 스냅되지만
+    // 이 값은 부드럽게 복귀하므로, 챔질을 놓쳐도 세트가 튀지 않고 원래대로 스르르 떠오른다.
     const bitePull = this.fpState !== 'fighting'
-      ? Phaser.Math.Clamp(this.rodBendDeg / 50, 0, 1.1) * 44
+      ? Phaser.Math.Clamp(this.floatSinkVisM / Math.max(0.01, TUNING.float.biteDipS3M), 0, 1.1) * 44
       : 0;
 
     // 세트 스케일 — 착수 최소(castScaleMin) → 70% 도달 시 ×growFactor (기본 2배).
@@ -2490,6 +2571,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       }
       const bxF = Phaser.Math.Clamp(fxF + this.f2dPos.x * 0.55, 30, GAME_WIDTH - 30);
       const byF = surfY + 12 + dn * Math.max(40, Math.min(170, GAME_HEIGHT - 70 - surfY));
+      // 로드 벤딩 rev2 하중 앵커 — 파이트 중엔 물고기 스크린 좌표 (renderRod가 소비)
+      this.fightFishScreen = { x: bxF, y: byF };
 
       const shadowA = this.shadowApproachAlpha(a) * Phaser.Math.Clamp(1 - dn * 0.5, 0.5, 1);
       if (shadowA > 0.005) {
@@ -2514,6 +2597,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
         : { x: fxF, y: floatY - 16 * setScale };
     } else {
       // ── 채비 세트 (retrieveGroup) — 드리프트/결과/제압 끌어오기(dragIn) 공통 ──
+      this.fightFishScreen = null;   // 비활성 파이트 — 로드 하중 앵커는 groupTopWorld
       this.retrieveGroup.setVisible(true);
       this.updateRetrieveGroup(p, fx, surfY + wave + bitePull, setScale, sinkPx);
     }
@@ -2716,17 +2800,15 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     g.clear();
     // result(결과/결정 패널) 상태에서도 마지막 채비 위치를 계속 표시 (갑자기 사라지지 않게)
 
-    const PX = 16, PY = 408, PW = 232, PH = 212;
+    const PX = PLAN_X, PY = PLAN_Y, PW = PLAN_W, PH = PLAN_H;
     g.fillStyle(0x08131f, 0.82);
     g.fillRoundedRect(PX, PY, PW, PH, 8);
     g.lineStyle(1.5, 0x2a5a8a, 0.9);
     g.strokeRoundedRect(PX, PY, PW, PH, 8);
 
-    const mx = PX + PW / 2;
-    const my = PY + PH - 18;
+    // 좌표 매핑 — planMapping()과 단일 소스 (밑밥 rev2 수평뷰가 같은 매핑 사용)
+    const { mx, my, s } = this.planMapping();
     const maxD = Math.max(this.cfg.castDistanceM, this.distM, 12) * 1.15;
-    // 링이 사각 창 밖으로 나가지 않도록 세로·가로 중 좁은 쪽 기준으로 스케일
-    const s = Math.min((PH - 46) / maxD, (PW / 2 - 16) / maxD);
 
     // 거리 링 (10m 간격 반원) + 캐스팅 방향 축선
     g.lineStyle(1, 0x1c3c58, 0.85);
@@ -2759,14 +2841,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       }
     }
 
-    // ── 밑밥 파슬 (수평뷰 투영 — 정면/수직뷰와 같은 parcel 시뮬) ──
-    for (const pc of this.chumParcels) {
-      const fresh = 1 - Math.min(1, pc.ageSec / pc.ttlSec);
-      const cxp = Phaser.Math.Clamp(mx + pc.x * s * 1.6, PX + 10, PX + PW - 10);
-      const cyp = Phaser.Math.Clamp(my - pc.d * s, PY + 12, my - 2);
-      g.fillStyle(0xc9a86a, 0.18 + fresh * 0.32);
-      g.fillCircle(cxp, cyp, 2 + pc.spreadM * 0.8);
-    }
+    // (밑밥 파슬은 rev2부터 전용 마스크 레이어 chumPlanG — renderChumSideViews가 회전 타원으로 렌더)
 
     // ── 채비/물고기 마커 (파이트 중엔 횡 러닝을 f2d 무대에서 투영) ──
     const fight = this.fpState === 'fighting' && !!this.hookedFish;
@@ -2837,14 +2912,15 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   private renderDepthPanel(g: Phaser.GameObjects.Graphics): void {
     // 확장 레이아웃 — 좌측 넓은 게이지 박스(채비 좌우 이동까지 표현) + 우측 텍스트 열
     // (2026-07-20: 낚싯대 개편에 맞춰 소폭 축소 354×302 → 338×288)
-    const pw = 338;
-    const ph = 288;
-    const px = GAME_WIDTH - pw - 14;
-    const py = 44;
-    const boxX = px + 14;                 // 게이지 박스 좌측
-    const boxW = 196;                     // 게이지 박스 폭 (넓게)
-    const gaugeTop = py + 66;
-    const gaugeH = ph - 92;
+    // 지오메트리 = 모듈 상수 단일 소스 (밑밥 rev2 마스크/코팅과 공유)
+    const pw = DP_W;
+    const ph = DP_H;
+    const px = DP_X;
+    const py = DP_Y;
+    const boxX = DP_BOX_X;                // 게이지 박스 좌측
+    const boxW = DP_BOX_W;                // 게이지 박스 폭 (넓게)
+    const gaugeTop = DP_GAUGE_TOP;
+    const gaugeH = DP_GAUGE_H;
     const centerX = boxX + boxW / 2;      // 찌 기준 수직선
 
     // 패널 배경
@@ -2892,16 +2968,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     // 박스 좌측 = 채비 너머(멀리) / 우측 = 나(유저) 쪽 — 상단 거리축과 같은 방향감
     this.renderSeabedSection(g, boxX, boxW, gaugeTop, gaugeH, yOf);
 
-    // ── 밑밥 파슬 (수직뷰 — 거리 근접분만, 침강 구름) ──
-    for (const pc of this.chumParcels) {
-      const dNear = Math.abs(pc.d - this.distM);
-      if (dNear > 14) continue;
-      const fresh = 1 - Math.min(1, pc.ageSec / pc.ttlSec);
-      const a = (0.12 + fresh * 0.3) * (1 - dNear / 14);
-      const cxp = Phaser.Math.Clamp(centerX + (pc.x - this.rig.floatX) * 10, boxX + 8, boxX + boxW - 8);
-      g.fillStyle(0xc9a86a, a);
-      g.fillCircle(cxp, yOf(pc.z), 3 + pc.spreadM * 1.6);
-    }
+    // (밑밥 파슬은 rev2부터 전용 마스크 레이어 chumDepthG — renderChumSideViews가
+    //  틸트 타원 + 지형 코팅으로 렌더. 관통 금지는 core stepChum 클램프가 보장)
 
     // 채비 좌우 편차 (조류/릴링에 따른 X 이동 — 찌 기준)
     const latPx = Phaser.Math.Clamp((this.rig.baitX - this.rig.floatX) * 10, -(boxW / 2 - 24), boxW / 2 - 24);
@@ -3137,41 +3205,100 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     const ang0 = Math.atan2(tipTargetY - baseY, tipTargetX - baseX);
     const totalLen = Math.hypot(tipTargetX - baseX, tipTargetY - baseY);
 
-    // 5절 구성 — 버트 쪽이 길고 초릿대 쪽이 짧다. 끝 3개 절이 벤딩 구간.
-    const SECTIONS = [0.26, 0.22, 0.19, 0.17, 0.16];
-    const BEND_SHARE = [0, 0, 0.22, 0.33, 0.45];
-    // 벤딩 방향 = 물 쪽: 우측 로드(위-좌 진행)는 각도 감소(좌하단),
-    // 좌측 로드(위-우 진행)는 각도 증가(우하단)
-    const bendSign = right ? -1 : 1;
-    const totalBendRad = ((bendDeg + baseTension * 22) * Math.PI) / 180;
+    // ═══ 로드 벤딩 rev2 — 하중 side 5분절 점증 각도 · 일자 축 재교차 금지 ═══
+    // (구 OUT_AMP 비대칭 증폭 폐기 — 누적 ~190°가 일자 축을 뒤로 재교차해 "초릿대가
+    //  늘어난 것처럼" 되말리던 문제. 이제 상한 90°로 축을 넘지 않는 최대 굴곡까지만.)
+    // 가이드 링·릴 장착면 — 로드에 물리적으로 고정된 면 (힘 방향으로 뒤집히지 않음)
+    const mountSign = right ? -1 : 1;
+    const R = TUNING.rod;
 
-    const SUB = 4;
+    // ── §3-1 하중 side + 정렬도 (cross = sin(축→하중 각)) — 좌/우 프리셋 자동 미러 ──
+    // 하중 앵커: 드리프트 = 찌/수면 진입점(groupTopWorld), 파이트 = 물고기 스크린 좌표.
+    // 하중이 로드 **일자 궤도 위**(정렬)면 측면 모멘트가 없다 — sin으로 부호(side)와
+    // 크기(축 이탈 정도)를 함께 얻어 정렬 시 벤딩이 0으로 연속 수렴(초릿대 펴짐)하고,
+    // alignRefDeg 이상 벗어나면 풀 벤딩. (구 sign×풀벤딩의 축 근처 임의 풀꺾임/스윕 제거)
+    const A = this.fpState === 'fighting' && this.fightFishScreen
+      ? this.fightFishScreen : this.groupTopWorld;
+    const ux = Math.cos(ang0), uy = Math.sin(ang0);
+    const tlx = A.x - tipTargetX, tly = A.y - tipTargetY;
+    const tlLen = Math.hypot(tlx, tly) || 1;
+    // 축→하중 각의 sin(측면 성분)·cos(축 성분) — 하나의 방향으로 두 효과를 연속 분배
+    const sinTheta = (ux * tly - uy * tlx) / tlLen;   // 부호 = 좌/우 side
+    const cosTheta = (ux * tlx + uy * tly) / tlLen;   // + = 팁 너머(순수 인장) / − = 손잡이쪽(축 역하중)
+    // 측면 램프 파워 커브 — 축 근처 소이탈(±5°)은 거의 티 안 나게 억제(§ latRampPow),
+    // alignRefDeg에서 풀 벤딩. |latSigned| = 측면 굴곡 비율, 나머지(1−|lat|) = 축 정렬분.
+    const sinRef = Math.max(1e-4, Math.sin(Phaser.Math.DegToRad(R.alignRefDeg)));
+    const latMag = Math.pow(Phaser.Math.Clamp(Math.abs(sinTheta) / sinRef, 0, 1), R.latRampPow);
+    const latSigned = (sinTheta >= 0 ? 1 : -1) * latMag;
+
+    // ── §3-4 벤딩 강도 — 입질/텐션 + 근접·화면밖 가산 (상한이 우선) ──
+    let rawBendDeg = bendDeg + baseTension * 22;
+    const near = 1 - Phaser.Math.Clamp(this.distM / Math.max(1, this.cfg.castDistanceM), 0, 1);
+    const off = Phaser.Math.Clamp(
+      (Math.abs(A.x - GAME_WIDTH / 2) - GAME_WIDTH * 0.42) / (GAME_WIDTH * 0.1), 0, 1);
+    rawBendDeg *= 1 + R.nearGain * near + R.offscreenGain * off;
+    // §3-3 축 재교차 금지: 누적이 일자 축 대비 90°(maxTipBendDeg)를 넘으면 팁이 축을
+    // 되넘어(되말림) 초릿대가 늘어난 것처럼 보인다 — 축을 넘지 않는 최대 굴곡까지만.
+    const totalBendDeg = Phaser.Math.Clamp(rawBendDeg, 0, R.maxTipBendDeg);
+    const forceFrac = totalBendDeg / Math.max(1, R.maxTipBendDeg);
+    // §3-5 측면 굴곡(화면 평면) — 부호 포함 스무딩. 축 근처에서 연속 0 수렴이라 전환 조용.
+    this.rodBendSmDeg = Phaser.Math.Linear(this.rodBendSmDeg, totalBendDeg * latSigned, R.smoothLerp);
+    const bendRad = (Math.abs(this.rodBendSmDeg) * Math.PI) / 180;
+    const bendSide = Math.sign(this.rodBendSmDeg) || 1;
+
+    // ── 전방 말림(포어쇼트닝) — 하중이 축 정렬 + 손잡이(릴) 쪽(cosθ<0)일수록 로드가
+    //  z(깊이)로 말려 투영상 초릿대가 짧아진다. 축 너머(cosθ>0, 순수 인장)면 길이 유지.
+    //  측면 굴곡분(1−|lat|)만큼만(정렬분에 비례) 적용 — 측면으로 꺾이면 말림은 양보한다.
+    const handleSide01 = Phaser.Math.Clamp(-cosTheta, 0, 1);       // 손잡이 쪽 정도
+    const alignFrac = 1 - Math.abs(latSigned);                     // 축 정렬분 (측면이면 0)
+    const foldTarget = R.foldMax * handleSide01 * alignFrac * forceFrac;
+    this.rodFoldSm = Phaser.Math.Linear(this.rodFoldSm, foldTarget, R.smoothLerp);
+
+    // ── 버트~초릿대 시작 = 직선 (두께·색 그라데이션 유지 — 벤딩은 초릿대에 집중) ──
+    const tipLen = totalLen * R.tipLenRatio;
     let px = baseX, py = baseY;
-    let ang = ang0;
     const joints: { x: number; y: number; ang: number }[] = [];
-
-    for (let sec = 0; sec < 5; sec++) {
-      const secLen = totalLen * SECTIONS[sec];
-      const secBend = totalBendRad * BEND_SHARE[sec] * bendSign;
-      for (let k = 0; k < SUB; k++) {
-        ang += secBend / SUB;
-        const nx = px + Math.cos(ang) * (secLen / SUB);
-        const ny = py + Math.sin(ang) * (secLen / SUB);
-        const t = sec + k / SUB;                    // 0~5 진행도
-        const width = Math.max(1.4, 7 - t * 1.1);   // 버트 7px → 초릿대 1.5px
-        // 색: 1절 전반 = 그립(진갈색) → 블랭크(짙은 검정) → 5절 = 밝은 초릿대
-        const color = sec === 0 && k < 2 ? 0x27170d : sec < 4 ? 0x16161a : 0xd8d4c8;
-        g.lineStyle(width, color, 1);
-        g.lineBetween(px, py, nx, ny);
-        px = nx; py = ny;
-      }
-      joints.push({ x: px, y: py, ang });
+    const widthAt = (u: number): number => Math.max(1.4, 7 - u * 5.6);   // u: 0(버트)~1(팁)
+    const BUTT_CHUNKS = 4;
+    for (let i = 0; i < BUTT_CHUNKS; i++) {
+      const u0 = (i / BUTT_CHUNKS) * (1 - R.tipLenRatio);
+      const u1 = ((i + 1) / BUTT_CHUNKS) * (1 - R.tipLenRatio);
+      const nx = baseX + Math.cos(ang0) * totalLen * u1;
+      const ny = baseY + Math.sin(ang0) * totalLen * u1;
+      g.lineStyle(widthAt(u0), u0 < 0.1 ? 0x27170d : 0x16161a, 1);   // 그립 → 블랭크
+      g.lineBetween(px, py, nx, ny);
+      px = nx; py = ny;
+      joints.push({ x: px, y: py, ang: ang0 });
     }
 
-    // ── 가이드 링 (절 경계 4곳 — 물 쪽 법선 방향으로 발+링) ──
+    // ── §3-2 초릿대 5분절 점증 각도 — 끝으로 갈수록 큰 몫으로 하중 쪽 회전 ──
+    // + 전방 말림(rodFoldSm): 분절 투영 길이를 팁쪽일수록 더 축소 = "짧아 보임".
+    //   분절 가중 i/(n−1) → 총 축소분 = fold×0.5 (foldMax 0.8 → 최대 2/5 = 5단 중 2단).
+    const shares = R.tipShare;
+    const segLen = tipLen / Math.max(1, shares.length);
+    const denom = Math.max(1, shares.length - 1);
+    let ang = ang0;
+    for (let i = 0; i < shares.length; i++) {
+      ang += bendRad * shares[i] * bendSide;
+      const foldW = i / denom;                             // 0(초릿대 시작)~1(팁 최말단)
+      const fLen = segLen * (1 - this.rodFoldSm * foldW);
+      const nx = px + Math.cos(ang) * fLen;
+      const ny = py + Math.sin(ang) * fLen;
+      const u = (1 - R.tipLenRatio) + ((i + 1) / shares.length) * R.tipLenRatio;
+      g.lineStyle(widthAt(u), 0xd8d4c8, 1);   // 밝은 초릿대
+      g.lineBetween(px, py, nx, ny);
+      px = nx; py = ny;
+      if (i === 0) joints.push({ x: px, y: py, ang });
+    }
+    // §3-3 안전장치 — 팁 끝이 일자 축을 재교차하면(상한 ≤110°에선 이론상 불가하지만 방어)
+    // 다음 프레임 벤딩을 줄여 원천 차단.
+    const endSide = Math.sign(ux * (py - baseY) - uy * (px - baseX)) || bendSide;
+    if (endSide !== bendSide) this.rodBendSmDeg *= 0.7;
+
+    // ── 가이드 링 (절 경계 4곳 — 장착면 정적 mountSign 법선으로 발+링) ──
     for (let i = 0; i < joints.length - 1; i++) {
       const j = joints[i];
-      const n = j.ang + bendSign * (Math.PI / 2);
+      const n = j.ang + mountSign * (Math.PI / 2);
       const footLen = 6 - i;
       const gx = j.x + Math.cos(n) * footLen;
       const gy = j.y + Math.sin(n) * footLen;
@@ -3189,7 +3316,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     const reelDist = totalLen * 0.13;
     const rx = baseX + Math.cos(ang0) * reelDist;
     const ry = baseY + Math.sin(ang0) * reelDist;
-    const n0 = ang0 + bendSign * (Math.PI / 2);
+    const n0 = ang0 + mountSign * (Math.PI / 2);
     const rcx = rx + Math.cos(n0) * 14;
     const rcy = ry + Math.sin(n0) * 14;
     // 스템 + 바디(기어박스)
@@ -3245,9 +3372,111 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     if (this.chumParcels.length > 0) {
       for (const pc of this.chumParcels) {
         const inf = this.tidal.calc({ x: pc.x, y: pc.d, z: pc.z }, 0, hoursNow);
-        stepChum(pc, dt, { x: inf.force.x, d: inf.force.y }, this.cfg.zMaxM);
+        // rev2: 국소 지형(seabed.depthAt) 주입 — 관통 금지 + 접촉 시 코팅 시작 (§2-4)
+        stepChum(pc, dt, { x: inf.force.x, d: inf.force.y }, this.cfg.zMaxM,
+          (d) => this.seabed.depthAt(d));
       }
-      this.chumParcels = this.chumParcels.filter((pc) => pc.ageSec < pc.ttlSec);
+      // rev2: 수명(8s) 초과 or 코팅 페이드 종료 = 완전 제거
+      this.chumParcels = this.chumParcels.filter((pc) => !isChumExpired(pc));
+    }
+  }
+
+  /** 회전 타원 — 밑밥 rev2 3뷰 공용 (캔버스 변환으로 tilt 각도 회전 렌더, 스펙 §2-3) */
+  private drawTiltedEllipse(
+    g: Phaser.GameObjects.Graphics,
+    cx: number, cy: number, rMajPx: number, rMinPx: number,
+    tiltRad: number, color: number, alpha: number,
+  ): void {
+    g.save();
+    g.translateCanvas(cx, cy);
+    g.rotateCanvas(tiltRad);
+    g.fillStyle(color, alpha);
+    g.fillEllipse(0, 0, rMajPx * 2, rMinPx * 2);
+    g.restore();
+  }
+
+  /** 수평뷰 좌표 매핑 (renderPlanView와 밑밥 수평뷰 렌더가 공유 — 단일 소스) */
+  private planMapping(): { mx: number; my: number; s: number } {
+    const maxD = Math.max(this.cfg.castDistanceM, this.distM, 12) * 1.15;
+    const s = Math.min((PLAN_H - 46) / maxD, (PLAN_W / 2 - 16) / maxD);
+    return { mx: PLAN_X + PLAN_W / 2, my: PLAN_Y + PLAN_H - 18, s };
+  }
+
+  /** 수심 게이지 z → 화면 y (renderDepthPanel과 밑밥 수직뷰가 공유) */
+  private depthGaugeYOf(z: number): number {
+    const bottomM = Math.max(0.5, this.cfg.zMaxM);
+    return DP_GAUGE_TOP + (Phaser.Math.Clamp(z, 0, bottomM) / bottomM) * DP_GAUGE_H;
+  }
+
+  /**
+   * 밑밥 rev2 — 수평뷰(top-down) + 수직뷰(수심 게이지) 파슬 렌더.
+   * 원(circle)이 아니라 **속도벡터 방향으로 신장·회전한 타원** (§2-3) — 조류 따라
+   * 비스듬히 흘러내리는 인상. 각 레이어는 창 사각형 마스크로 클립되어 밖으로 안 넘친다.
+   */
+  private renderChumSideViews(): void {
+    const pg = this.chumPlanG;
+    const dg = this.chumDepthG;
+    pg.clear();
+    dg.clear();
+    if (this.chumParcels.length === 0) return;
+
+    // ── 수평뷰 — 평면 (조류좌우 vx, 조류원근 vd) 방향 타원 ──
+    const { mx, my, s } = this.planMapping();
+    for (const pc of this.chumParcels) {
+      const a = chumAlpha01(pc) * 0.55;
+      if (a <= 0.012) continue;
+      const cxp = mx + pc.x * s * 1.6;
+      const cyp = my - pc.d * s;
+      const vpx = pc.vx * 1.6, vpy = -pc.vd;
+      const tilt = Math.abs(vpx) + Math.abs(vpy) > 0.0005 ? Math.atan2(vpy, vpx) : 0;
+      const { rMajorM, rMinorM } = chumEllipseRadii(pc, Math.hypot(pc.vx, pc.vd));
+      const sPx = s * 1.3;   // m → px (x 1.6s / d 1.0s 평균)
+      this.drawTiltedEllipse(pg, cxp, cyp,
+        Math.max(2.2, rMajorM * sPx), Math.max(1.6, rMinorM * sPx), tilt, 0xc9a86a, a);
+    }
+
+    // ── 수직뷰 — (조류좌우 vx, 침강 vz) 방향 틸트 타원 + 지형 코팅 (§3-B) ──
+    const centerX = DP_BOX_X + DP_BOX_W / 2;
+    const bottomM = Math.max(0.5, this.cfg.zMaxM);
+    const pxPerMLat = 10;
+    const pxPerMZ = DP_GAUGE_H / bottomM;
+    const halfWinM = 12;
+    const C = TUNING.chum;
+    const maxTiltDev = Phaser.Math.DegToRad(C.tiltMaxDeg);
+    for (const pc of this.chumParcels) {
+      const dNear = Math.abs(pc.d - this.distM);
+      if (dNear > 14) continue;
+      const prox = 1 - dNear / 14;
+
+      if (pc.contacted) {
+        // 지형 코팅 — 접촉 d 주변 바닥 윤곽을 따라 얇은 갈색 밴드 (슬로프 따라 번짐, 2s 페이드)
+        const coatT = Phaser.Math.Clamp((pc.ageSec - pc.contactAgeSec) / Math.max(0.001, C.coatMs / 1000), 0, 1);
+        const coatA = 0.55 * (1 - coatT) * prox;
+        if (coatA <= 0.015) continue;
+        const winM = 1.5 + coatT * 2.5;
+        dg.fillStyle(0xc9a56e, coatA);
+        const step = 4;
+        // 박스 x ↔ 거리 매핑 (renderSeabedSection과 동일: 좌측 = 멀리)
+        const xAtDist = (d: number): number => centerX - ((d - this.distM) / halfWinM) * (DP_BOX_W / 2);
+        const x0 = xAtDist(pc.d + winM), x1 = xAtDist(pc.d - winM);
+        for (let x = Math.min(x0, x1); x <= Math.max(x0, x1); x += step) {
+          const d2 = Math.max(0, this.distM + ((centerX - x) / (DP_BOX_W / 2)) * halfWinM);
+          const bedY = this.depthGaugeYOf(this.seabed.depthAt(d2));
+          dg.fillRect(x, bedY - 3, step, 3.5);
+        }
+        continue;
+      }
+
+      const a = chumAlpha01(pc) * 0.5 * prox;
+      if (a <= 0.012) continue;
+      const cxp = centerX + (pc.x - this.rig.floatX) * pxPerMLat;
+      const vpx = pc.vx * pxPerMLat, vpy = pc.vz * pxPerMZ;
+      // 틸트 = 속도 방향 — 수직(90°)에서 tiltMaxDeg 이내로만 눕힘 (완전 수평 과회전 방지)
+      let tilt = Math.abs(vpx) + Math.abs(vpy) > 0.0005 ? Math.atan2(vpy, vpx) : Math.PI / 2;
+      tilt = Math.PI / 2 + Phaser.Math.Clamp(tilt - Math.PI / 2, -maxTiltDev, maxTiltDev);
+      const { rMajorM, rMinorM } = chumEllipseRadii(pc, Math.hypot(pc.vx, pc.vz));
+      this.drawTiltedEllipse(dg, cxp, this.depthGaugeYOf(pc.z),
+        Math.max(2.6, rMajorM * pxPerMZ), Math.max(2, rMinorM * pxPerMZ), tilt, 0xc9a86a, a);
     }
   }
 
@@ -3260,20 +3489,33 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     const g = this.chumG;
     g.clear();
 
-    // ── 파슬 구름 (정면 뷰) ──
+    // ── 정면뷰 = 표면 착수 확산(스며듦)만 (rev2 §3-C — 구 침강 구름 원 제거) ──
+    // 착수점 수면에서 타원이 가로로 번지며 seepFadeMs 동안 스며들 듯 소멸.
+    // 깊은 침강 표시는 수직뷰(수심 게이지)가 전담 — 정면에 큰 원이 떠다니지 않는다.
+    const fg = this.chumFrontG;
+    fg.clear();
+    const FS = TUNING.frontSplash;
     this.chumParcels.forEach((pc, i) => {
+      const tMs = pc.ageSec * 1000;
+      if (tMs >= FS.seepFadeMs) return;
+      const t = tMs / FS.seepFadeMs;
       const sx = this.screenX(pc.x);
       if (sx < -60 || sx > GAME_WIDTH + 60) return;
-      const sy = this.depthY(pc.z, this.surfaceYAt(pc.d));
-      const fresh = 1 - Math.min(1, pc.ageSec / pc.ttlSec);
-      const r = TUNING.chumThrow.cloudBaseR * 0.5 + pc.spreadM * 2.2;
-      g.fillStyle(0x9a7b4f, 0.14 + fresh * 0.22);
-      g.fillCircle(sx, sy, r);
-      // 알갱이 점묘 (파슬 인덱스 시드 — 결정적 배치)
-      g.fillStyle(0xc9a86a, 0.22 + fresh * 0.3);
-      for (let k = 0; k < 6; k++) {
-        const a = i * 2.4 + k * 1.05;
-        g.fillCircle(sx + Math.cos(a) * r * 0.55, sy + Math.sin(a * 1.3) * r * 0.5, 1.4);
+      const sy = this.surfaceYAt(pc.d) + 3;   // 표면 유지 — 아래로 내려가지 않음
+      const lean = (this.lastTidal?.force.x ?? 0) * FS.leanK;
+      // 갈색 확산 타원 2~3겹 — 조류 쪽으로 살짝 기울고(leanK) 흘러가며 페이드
+      for (let k = 0; k < 3; k++) {
+        const rx = 7 + k * 6 + t * 34;
+        const ry = Math.max(1.2, 3 + k * 1.2 - t * 1.5);
+        const a = TUNING.chum.alphaStart * (1 - t) * (0.30 - k * 0.08);
+        if (a <= 0.012) continue;
+        this.drawTiltedEllipse(fg, sx + lean * (8 + k * 6) * t, sy + k * 1.5, rx, ry, lean * 0.25, 0x9a7b4f, a);
+      }
+      // 알갱이 점묘 (스며듦 동안만 — 결정적 배치)
+      fg.fillStyle(0xc9a86a, 0.4 * (1 - t));
+      for (let k = 0; k < 5; k++) {
+        const aa = i * 2.4 + k * 1.26;
+        fg.fillCircle(sx + Math.cos(aa) * (6 + t * 22), sy + Math.sin(aa) * 2.2, 1.3);
       }
     });
 
@@ -3316,6 +3558,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       { x: this.rig.baitX, d: this.distM, z: this.rig.baitZ },
       this.cfg.zMaxM,
       CoolerStore.chumTypeKey(),   // 현재 배합의 밑밥 종류 (침강/확산/조류 친화)
+      40, 0.5,
+      (d) => this.seabed.depthAt(d),   // rev2: 예측도 지형 접촉(코팅 정지) 반영
     );
     this.chumPredPeak = pred.peakSync;
     g.lineStyle(1, 0xffe28a, 0.5);

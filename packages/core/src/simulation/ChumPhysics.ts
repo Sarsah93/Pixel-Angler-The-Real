@@ -137,6 +137,15 @@ export interface ChumParcel {
   spreadGrowPerSec: number;
   /** 확산 반경 (m) — 0.3 + spreadGrow·age */
   spreadM: number;
+  // ── rev2 (CHUM_DIFFUSION_SPEC) — 속도벡터 정렬 타원·지형 코팅 ──
+  /** 마지막 스텝 속도 (m/s) — 타원 장축 신장·틸트(회전) 정렬용 */
+  vx: number;
+  vd: number;
+  vz: number;
+  /** 지형(바닥) 접촉 여부 — 접촉 후 코팅(coatMs) 동안 바닥에 깔림 */
+  contacted: boolean;
+  /** 접촉 시점 ageSec */
+  contactAgeSec: number;
 }
 
 /** 파슬 드리프트 조류 (m/s) — x: 좌우 / d: 원근거리 성분 */
@@ -152,7 +161,7 @@ export interface ChumSyncTarget {
   z: number;
 }
 
-/** 파슬 기본 수명 (초) */
+/** 파슬 기본 수명 (초) — 레거시 상수. rev2부터 기본값은 TUNING.chum.lifetimeMs */
 export const CHUM_PARCEL_TTL_SEC = 55;
 /** 초기 확산 반경 (m) */
 const PARCEL_BASE_SPREAD_M = 0.3;
@@ -161,7 +170,7 @@ const PARCEL_BASE_SPREAD_M = 0.3;
 export function createChumParcel(
   x: number, d: number,
   type: ChumTypeKey = 'grain',
-  ttlSec = CHUM_PARCEL_TTL_SEC,
+  ttlSec = TUNING.chum.lifetimeMs / 1000,
 ): ChumParcel {
   const spec = TUNING.chumTypes[type];
   return {
@@ -170,20 +179,87 @@ export function createChumParcel(
     driftAffinity: spec.driftAffinity,
     spreadGrowPerSec: spec.spreadGrow,
     spreadM: PARCEL_BASE_SPREAD_M,
+    vx: 0, vd: 0, vz: spec.sinkRate,
+    contacted: false, contactAgeSec: 0,
   };
 }
 
+/** 파슬 소멸 판정 — 수명 초과 or 지형 코팅 페이드 종료 (rev2) */
+export function isChumExpired(p: ChumParcel): boolean {
+  if (p.ageSec >= p.ttlSec) return true;
+  if (p.contacted && (p.ageSec - p.contactAgeSec) >= TUNING.chum.coatMs / 1000) return true;
+  return false;
+}
+
 /**
- * 파슬 1스텝 — z 침강 + 조류 (x, d) 드리프트 + 확산.
- * 조류는 종류별 driftAffinity로, 원근(D) 성분은 추가로 currentDWeight로 감쇠.
+ * 파슬 타원 반경 (m) — rev2 §2-3: 장축 = 시간·속도 신장 / 단축 = 상한 캡 (무한 원 금지).
+ * planeSpeedMps: 렌더 뷰 평면의 속도 크기 (수평뷰 = |vx,vd| / 수직뷰 = |vx,vz|).
+ */
+export function chumEllipseRadii(p: ChumParcel, planeSpeedMps: number): { rMajorM: number; rMinorM: number } {
+  const C = TUNING.chum;
+  const rMajorM = C.rMajor0 + C.spreadMajorMps * p.ageSec + C.elongK * planeSpeedMps * p.ageSec;
+  const rMinorM = Math.min(C.rMinorMaxM, C.rMinor0 + C.spreadMinorMps * p.ageSec);
+  return { rMajorM, rMinorM };
+}
+
+/**
+ * 파슬 농도 α (0~1) — rev2 §2-1: alphaStart·(1−t01^pow) 연속 곡선 (분기점 급전환 금지).
+ * 지형 코팅 중에는 코팅 페이드(coatMs 선형)와의 최소값.
+ */
+export function chumAlpha01(p: ChumParcel): number {
+  const C = TUNING.chum;
+  const t01 = Math.min(1, p.ageSec / Math.max(0.001, p.ttlSec));
+  let a = C.alphaStart * (1 - Math.pow(t01, C.alphaCurvePow));
+  if (p.contacted) {
+    const coatT = (p.ageSec - p.contactAgeSec) / Math.max(0.001, C.coatMs / 1000);
+    a = Math.min(a, C.alphaStart * Math.max(0, 1 - coatT));
+  }
+  return Math.max(0, a);
+}
+
+/**
+ * 파슬 1스텝 — z 침강(조류 감쇠) + 조류 (x, d) 드리프트 + 확산 + 지형 접촉/코팅 (rev2).
+ *  - 침강: sink = max(minSink, typeSink·(1−damp·cur01)) — 조류 셀수록 느리게 (§2-2)
+ *  - 속도벡터(vx/vd/vz) 기록 — 렌더가 타원 장축·틸트(회전)를 이 방향으로 정렬 (§2-3)
+ *  - 지형 관통 금지: 타원 수직 반경까지 고려해 바닥 위 클램프, 접촉 시 코팅 시작 (§2-4)
+ * bedDepthAt: 파슬 거리 d의 국소 바닥 수심 (SeabedProfile.depthAt — 없으면 zMaxM 평면)
  * (시뮬 하네스 chumSyncSim과 동일 수식 — 게임↔시뮬 지표 정합)
  */
-export function stepChum(p: ChumParcel, dtSec: number, drift: ChumDrift, zMaxM: number): void {
+export function stepChum(
+  p: ChumParcel, dtSec: number, drift: ChumDrift, zMaxM: number,
+  bedDepthAt?: (d: number) => number,
+): void {
+  const C = TUNING.chum;
   p.ageSec += dtSec;
-  p.z = Math.min(zMaxM, p.z + p.sinkRateMps * dtSec);
-  p.x += drift.x * p.driftAffinity * dtSec;
-  p.d += drift.d * p.driftAffinity * TUNING.chumSync.currentDWeight * dtSec;
+
+  if (p.contacted) {
+    // 코팅 중 — 바닥에 붙어 정지 (침강·드리프트 없음), 페이드는 chumAlpha01이 담당
+    p.vx = 0; p.vd = 0; p.vz = 0;
+    return;
+  }
+
+  // 침강 — 조류가 셀수록 느려짐 (§2-2)
+  const cur01 = Math.min(1, Math.hypot(drift.x, drift.d) / Math.max(0.01, C.currentRefMps));
+  const sink = Math.max(C.minSinkMps, p.sinkRateMps * (1 - C.currentSinkDamp * cur01));
+  p.vz = sink;
+  p.vx = drift.x * p.driftAffinity;
+  p.vd = drift.d * p.driftAffinity * TUNING.chumSync.currentDWeight;
+  p.z += sink * dtSec;
+  p.x += p.vx * dtSec;
+  p.d += p.vd * dtSec;
   p.spreadM = PARCEL_BASE_SPREAD_M + p.spreadGrowPerSec * p.ageSec;
+
+  // 지형 접촉 (§2-4) — 회전 타원의 수직 반경(zHalf)까지 고려해 관통 금지
+  const bedZ = Math.min(zMaxM, bedDepthAt ? bedDepthAt(p.d) : zMaxM);
+  const { rMajorM, rMinorM } = chumEllipseRadii(p, Math.hypot(p.vx, p.vz));
+  const tilt = Math.atan2(p.vz, Math.abs(p.vx) > 0.001 ? p.vx : 0.001);
+  const zHalf = Math.abs(rMajorM * Math.sin(tilt)) + Math.abs(rMinorM * Math.cos(tilt));
+  if (p.z + zHalf * 0.4 >= bedZ - C.coatClearanceM) {
+    p.contacted = true;
+    p.contactAgeSec = p.ageSec;
+    p.z = Math.max(0.1, bedZ - C.coatClearanceM - zHalf * 0.4);
+    p.vx = 0; p.vd = 0; p.vz = 0;
+  }
 }
 
 /**
@@ -192,22 +268,33 @@ export function stepChum(p: ChumParcel, dtSec: number, drift: ChumDrift, zMaxM: 
  *  horizNear: (x, d) 수평 근접 gauss(dh, horizSigmaM + spread·0.3)
  *  (gauss(v, σ) = exp(−(v/σ)²) — 시뮬 하네스와 동일 형태)
  */
-export function computeChumSync(p: ChumParcel, bait: ChumSyncTarget): number {
-  if (p.ageSec >= p.ttlSec) return 0;
+/** 동조 판정 부가 컨텍스트 (rev2 — 바닥 코팅 보너스) */
+export interface ChumSyncOpts {
+  /** 미끼가 바닥층(국소 바닥 근처)에 있는지 — 코팅 파슬 보너스 대상 */
+  baitNearBottom?: boolean;
+}
+
+export function computeChumSync(p: ChumParcel, bait: ChumSyncTarget, opts?: ChumSyncOpts): number {
+  if (isChumExpired(p)) return 0;
   const dz = (p.z - bait.z) / TUNING.chumSync.depthSigmaM;
   const depthGate = Math.exp(-(dz * dz));
   const sigmaH = TUNING.chumSync.horizSigmaM + p.spreadM * 0.3;
   const dh = Math.hypot(p.x - bait.x, p.d - bait.d) / sigmaH;
   const horizNear = Math.exp(-(dh * dh));
   const freshness = 1 - Math.min(1, p.ageSec / p.ttlSec) * 0.4;
-  return Math.min(1, depthGate * horizNear * freshness);
+  let sync = depthGate * horizNear * freshness;
+  // rev2 §2-5 — 바닥 코팅 중 파슬은 바닥층 미끼(볼락·감성돔 등) 동조 가산 (수평 근접 가중)
+  if (opts?.baitNearBottom && p.contacted) {
+    sync += TUNING.chum.bottomSyncBonus * horizNear;
+  }
+  return Math.min(1, sync);
 }
 
 /** 파슬 집합의 현재 최대 동조율 — HUD "밑밥 동조 %"·입질 확률에 곱 */
-export function maxChumSync(parcels: readonly ChumParcel[], bait: ChumSyncTarget): number {
+export function maxChumSync(parcels: readonly ChumParcel[], bait: ChumSyncTarget, opts?: ChumSyncOpts): number {
   let best = 0;
   for (const p of parcels) {
-    const s = computeChumSync(p, bait);
+    const s = computeChumSync(p, bait, opts);
     if (s > best) best = s;
   }
   return best;
@@ -233,17 +320,20 @@ export function predictChumPath(
   zMaxM: number,
   type: ChumTypeKey = 'grain',
   durationSec = 40, stepSec = 0.5,
+  bedDepthAt?: (d: number) => number,
 ): ChumPathPrediction {
   const p = createChumParcel(throwX, throwD, type);
   const path: ChumPathPrediction['path'] = [];
   let peakSync = 0;
   let peakIndex = 0;
-  const steps = Math.max(1, Math.round(durationSec / stepSec));
+  // rev2: 예측도 실제 수명(ttl)까지만 — 8초 수명 밖 경로는 존재하지 않는다
+  const steps = Math.max(1, Math.round(Math.min(durationSec, p.ttlSec) / stepSec));
   for (let i = 0; i <= steps; i++) {
     path.push({ x: p.x, d: p.d, z: p.z, spreadM: p.spreadM });
     const s = computeChumSync(p, bait);
     if (s > peakSync) { peakSync = s; peakIndex = i; }
-    stepChum(p, stepSec, drift, zMaxM);
+    stepChum(p, stepSec, drift, zMaxM, bedDepthAt);
+    if (isChumExpired(p)) break;
   }
   return { path, peakSync, peakIndex };
 }
@@ -251,9 +341,10 @@ export function predictChumPath(
 /**
  * 최적 투척 리드 — throwX* = baitX − currentX·driftAffinity·tSink.
  * 좌측 강조류면 미끼보다 우측에 던져 좌하단 대각 드리프트로 미끼에서 피크.
+ * rev2: tSink는 파슬 수명(lifetimeMs) 이내로 캡 — 수명 밖 심도는 도달 불가.
  */
 export function optimalThrowX(baitX: number, baitZ: number, driftX: number, type: ChumTypeKey = 'grain'): number {
   const spec = TUNING.chumTypes[type];
-  const tSink = baitZ / Math.max(0.01, spec.sinkRate);
+  const tSink = Math.min(baitZ / Math.max(0.01, spec.sinkRate), TUNING.chum.lifetimeMs / 1000);
   return baitX - driftX * spec.driftAffinity * tSink;
 }

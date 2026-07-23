@@ -251,10 +251,11 @@ export type { TideVector, RigPhysicsParams, UnderwaterRigState, UnderwaterStepIn
 export { createUnderwaterRig, computeSinkSpeed, stepUnderwater, isHoldState } from './simulation/UnderwaterSinkPhysics.js';
 export type { LineTensionInput, LineTensionOutput } from './simulation/LineTensionPhysics.js';
 export { LineTensionPhysics, HOLD_LIFT_M } from './simulation/LineTensionPhysics.js';
-export type { ChumBall, ChumProbePos, ChumParcel, ChumDrift, ChumSyncTarget, ChumPathPrediction } from './simulation/ChumPhysics.js';
+export type { ChumBall, ChumProbePos, ChumParcel, ChumDrift, ChumSyncTarget, ChumPathPrediction, ChumSyncOpts } from './simulation/ChumPhysics.js';
 export {
   ChumPhysics, CHUM_PARCEL_TTL_SEC,
   createChumParcel, stepChum, computeChumSync, maxChumSync, predictChumPath, optimalThrowX,
+  isChumExpired, chumAlpha01, chumEllipseRadii,
 } from './simulation/ChumPhysics.js';
 
 // 튜닝값 단일 소스 (feel=dev 패널 / balance=시뮬) — 매직넘버 중앙화

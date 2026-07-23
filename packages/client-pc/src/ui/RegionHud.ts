@@ -115,9 +115,21 @@ export class RegionHud extends Phaser.GameObjects.Container {
   /** 슬롯별 아이콘 오브젝트 (이미지/이모지 동적 교체) */
   private slotIcons: (Phaser.GameObjects.GameObject | null)[] = [];
 
-  // 로그/채팅
+  // 로그/채팅 (지역 채널 — 마스크 클립 + 스크롤백)
   private logLines: string[] = [];
   private logText!: Phaser.GameObjects.Text;
+  /** 로그 뷰포트 (헤더 아래 ~ 입력란 위 — 마스크/스크롤 대상) */
+  private logRect = { x: 0, y: 0, w: 0, h: 0 };
+  /** 패널 전체 (휠 스크롤 호버 판정) */
+  private logAreaRect = { x: 0, y: 0, w: 0, h: 0 };
+  /** 스크롤 오프셋 — 0 = 맨 위 … maxScroll = 맨 아래(최신) */
+  private logScrollY = 0;
+  private logBarG?: Phaser.GameObjects.Graphics;
+  private logMaskShape?: Phaser.GameObjects.Graphics;
+  private logDragging = false;
+  private logWheelHandler?: (p: Phaser.Input.Pointer, go: unknown, dx: number, dy: number) => void;
+  private logMoveHandler?: (p: Phaser.Input.Pointer) => void;
+  private logUpHandler?: () => void;
 
   constructor(scene: Phaser.Scene, cfg: RegionHudConfig) {
     super(scene);
@@ -439,6 +451,11 @@ export class RegionHud extends Phaser.GameObjects.Container {
   private createLogPanel(): void {
     const w = 300, h = 148;
     const px = 16, py = GAME_HEIGHT - h - 20;
+    // 고정 3영역 — [헤더][로그 뷰포트(마스크/스크롤)][입력란(하단 고정)]. 로그는 뷰포트
+    // 밖(입력란 아래/창 밖)으로 절대 못 나간다 (지오메트리 마스크로 강제).
+    const headerH = 24, inputH = 30;
+    this.logRect = { x: px + 10, y: py + headerH, w: w - 20, h: h - headerH - inputH };
+    this.logAreaRect = { x: px, y: py, w, h };
 
     const bg = this.scene.add.graphics();
     bg.fillStyle(0x0a1628, 0.8);
@@ -452,13 +469,48 @@ export class RegionHud extends Phaser.GameObjects.Container {
     });
     this.add(title);
 
-    this.logText = this.scene.add.text(px + 10, py + 26, '', {
+    // ── 로그 텍스트 — 마스크된 컨테이너 안에서 y = −scrollY로 이동 (워드랩 = 가로 삐짐 방지) ──
+    const logContainer = this.scene.add.container(this.logRect.x, this.logRect.y);
+    this.add(logContainer);
+    this.logText = this.scene.add.text(0, 0, '', {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#ccddee', lineSpacing: 4,
-      wordWrap: { width: w - 20 },
+      wordWrap: { width: this.logRect.w - 12 },   // 우측 스크롤바 폭 제외
     });
-    this.add(this.logText);
+    logContainer.add(this.logText);
+    // 뷰포트 마스크 — HUD는 화면 고정(scrollFactor 0)인데 마스크가 기본값(1)이면
+    // 카메라 스크롤 씬에서 클립 영역이 어긋난다 (33차 교훈) — 마스크도 화면 고정.
+    const maskG = this.scene.make.graphics({}, false).setScrollFactor(0);
+    maskG.fillStyle(0xffffff, 1);
+    maskG.fillRect(this.logRect.x, this.logRect.y, this.logRect.w, this.logRect.h);
+    logContainer.setMask(maskG.createGeometryMask());
+    this.logMaskShape = maskG;
 
-    // 채팅 입력 목업 (멀티플레이 대비)
+    // ── 스크롤바 (넘칠 때만 표시) + 썸 드래그/트랙 점프 ──
+    this.logBarG = this.scene.add.graphics();
+    this.add(this.logBarG);
+    const trackX = this.logRect.x + this.logRect.w - 5;
+    const barHit = this.scene.add.rectangle(
+      trackX + 2.5, this.logRect.y + this.logRect.h / 2, 14, this.logRect.h, 0xffffff, 0.001,
+    ).setInteractive({ useHandCursor: true });
+    this.add(barHit);
+    barHit.on('pointerdown', (p: Phaser.Input.Pointer) => {
+      if (this.logMaxScroll() <= 0) return;
+      this.logDragging = true;
+      this.logScrollFromPointer(p.y);
+    });
+    this.logMoveHandler = (p) => { if (this.logDragging) this.logScrollFromPointer(p.y); };
+    this.logUpHandler = () => { this.logDragging = false; };
+    this.scene.input.on('pointermove', this.logMoveHandler);
+    this.scene.input.on('pointerup', this.logUpHandler);
+    // 휠 스크롤 — 패널 호버 중에만 (다른 UI 휠과 충돌 방지)
+    this.logWheelHandler = (p, _go, _dx, dy) => {
+      const r = this.logAreaRect;
+      if (p.x < r.x || p.x > r.x + r.w || p.y < r.y || p.y > r.y + r.h) return;
+      this.setLogScroll(this.logScrollY + Math.sign(dy) * 22);
+    };
+    this.scene.input.on('wheel', this.logWheelHandler);
+
+    // ── 채팅 입력 목업 (하단 고정 — 로그 마스크 밖 + 나중에 add = 로그 위 레이어) ──
     const inputBg = this.scene.add.rectangle(px + 10, py + h - 24, w - 20, 17, 0x050f1e)
       .setOrigin(0, 0).setStrokeStyle(1, 0x1f3d5a);
     const inputText = this.scene.add.text(px + 14, py + h - 21, '[ENTER] 대화 입력 (멀티플레이 준비중)', {
@@ -472,13 +524,69 @@ export class RegionHud extends Phaser.GameObjects.Container {
     this.pushLog('강릉조사: 오늘 파도가 좀 있는 편입니다');
   }
 
-  /** 이벤트/채팅 메시지 추가 (최근 7줄 유지) */
+  /** 로그 최대 스크롤 (0 = 넘치지 않음) */
+  private logMaxScroll(): number {
+    return Math.max(0, (this.logText?.height ?? 0) - this.logRect.h);
+  }
+
+  /** 스크롤 적용 — 텍스트 이동 + 스크롤바 갱신 */
+  private setLogScroll(v: number): void {
+    this.logScrollY = Phaser.Math.Clamp(v, 0, this.logMaxScroll());
+    this.logText?.setY(-this.logScrollY);
+    this.drawLogBar();
+  }
+
+  /** 썸 드래그/트랙 클릭 → scrollY 매핑 */
+  private logScrollFromPointer(pointerY: number): void {
+    const max = this.logMaxScroll();
+    if (max <= 0) return;
+    const thumbH = this.logThumbH();
+    const ratio = Phaser.Math.Clamp(
+      (pointerY - this.logRect.y - thumbH / 2) / Math.max(1, this.logRect.h - thumbH), 0, 1);
+    this.setLogScroll(ratio * max);
+  }
+
+  private logThumbH(): number {
+    const contentH = Math.max(1, this.logText?.height ?? 1);
+    return Math.max(22, this.logRect.h * Math.min(1, this.logRect.h / contentH));
+  }
+
+  /** 스크롤바 렌더 — 콘텐츠 대비 비율 썸, 넘치지 않으면 숨김 */
+  private drawLogBar(): void {
+    const g = this.logBarG;
+    if (!g) return;
+    g.clear();
+    const max = this.logMaxScroll();
+    if (max <= 0) return;
+    const trackX = this.logRect.x + this.logRect.w - 5;
+    g.fillStyle(0x000000, 0.28);
+    g.fillRoundedRect(trackX, this.logRect.y, 5, this.logRect.h, 2);
+    const thumbH = this.logThumbH();
+    const thumbY = this.logRect.y + (this.logRect.h - thumbH) * (this.logScrollY / max);
+    g.fillStyle(0x7fb8d8, 0.6);
+    g.fillRoundedRect(trackX, thumbY, 5, thumbH, 2);
+  }
+
+  /** 이벤트/채팅 메시지 추가 (최근 200줄 보존 — 과거는 스크롤백으로 열람) */
   pushLog(message: string): void {
     const now = new Date();
     const hh = String(now.getHours()).padStart(2, '0');
     const mm = String(now.getMinutes()).padStart(2, '0');
     this.logLines.push(`[${hh}:${mm}] ${message}`);
-    if (this.logLines.length > 7) this.logLines.shift();
-    this.logText?.setText(this.logLines.join('\n'));
+    if (this.logLines.length > 200) this.logLines.shift();
+    if (!this.logText) return;
+    // auto-stick: 하단(최신)에 있었으면 새 메시지로 자동 스크롤, 과거 열람 중이면 위치 유지
+    const atBottom = this.logScrollY >= this.logMaxScroll() - 2;
+    this.logText.setText(this.logLines.join('\n'));
+    if (atBottom) this.setLogScroll(Number.MAX_SAFE_INTEGER);
+    else this.drawLogBar();
+  }
+
+  override destroy(fromScene?: boolean): void {
+    if (this.logWheelHandler) this.scene?.input?.off('wheel', this.logWheelHandler);
+    if (this.logMoveHandler) this.scene?.input?.off('pointermove', this.logMoveHandler);
+    if (this.logUpHandler) this.scene?.input?.off('pointerup', this.logUpHandler);
+    this.logMaskShape?.destroy();
+    super.destroy(fromScene);
   }
 }

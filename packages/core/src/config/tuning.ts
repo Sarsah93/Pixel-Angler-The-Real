@@ -79,6 +79,43 @@ export interface TuningConfig {
     /** 수중찌/구멍찌 재등장 시작 approach (등장 앵커 [appearFrom→0, 0.95→0.10, 1→1]) */
     appearFrom: number;
   };
+  // ── 밑밥 확산 rev2 (feel + balance — CHUM_DIFFUSION_SPEC) ──
+  chum: {
+    /** parcel 총 수명 (ms) — 초과 시 완전 제거 */
+    lifetimeMs: number;
+    /** 농도 페이드 시작 α + 곡률 (α = alphaStart·(1−t01^pow) — 연속) */
+    alphaStart: number;
+    alphaCurvePow: number;
+    /** 침강 하한 (m/s) — 조류 감쇠 후에도 이 밑으로는 안 느려짐 */
+    minSinkMps: number;
+    /** 조류 침강 감쇠 계수 — sink = typeSink·(1−damp·cur01) */
+    currentSinkDamp: number;
+    /** 조류 세기 정규화 기준 (m/s → cur01 = speed/ref 클램프) */
+    currentRefMps: number;
+    /** 타원 초기 반경/확산 속도 (m) — 장축(속도방향)/단축(수직) */
+    rMajor0: number;
+    rMinor0: number;
+    spreadMajorMps: number;
+    spreadMinorMps: number;
+    /** 단축 상한 (m) — 무한 원 방지 */
+    rMinorMaxM: number;
+    /** 속도 기반 장축 신장 계수 */
+    elongK: number;
+    /** 수직에서 최대 눕힘 각 (도) — 완전 수평 과회전 방지 */
+    tiltMaxDeg: number;
+    /** 지형 접촉 코팅 지속 (ms) + 바닥 여유 (m) */
+    coatMs: number;
+    coatClearanceM: number;
+    /** 바닥 코팅 중 바닥층 미끼 동조 가산 */
+    bottomSyncBonus: number;
+  };
+  /** 정면뷰 표면 착수 확산 (침강 구름 대신 스며듦) */
+  frontSplash: {
+    /** 표면 확산 페이드 (ms) */
+    seepFadeMs: number;
+    /** 조류 쪽으로 기우는 정도 */
+    leanK: number;
+  };
   // ── 밑밥 투척 (feel + balance) ──
   chumThrow: {
     /** 투척점 수(중앙1+좌우) — 홀수 권장 */
@@ -114,6 +151,37 @@ export interface TuningConfig {
   // ── 로드 벤딩 (feel/balance) ──
   rod: {
     maxBendRad: number; sub: number;
+    // rev2 — 초릿대 5분절 점증 벤딩 (하중 side · 일자 축 재교차 금지)
+    /** 초릿대 분절 수 (tipShare 길이와 일치) */
+    tipSegments: number;
+    /** 분절별 점증 각도 몫 (합 1.0 — 팁쪽일수록 크게) */
+    tipShare: number[];
+    /** 누적 벤딩 상한 (도) — 일자 축 대비 90° 초과 = 축 되넘음(초릿대 늘어남) 금지 */
+    maxTipBendDeg: number;
+    /** 근접(릴링 진행) 시 각도 가산 계수 */
+    nearGain: number;
+    /** 하중 앵커 화면밖 접근 시 각도 가산 계수 (드라마틱 — 상한 내에서) */
+    offscreenGain: number;
+    /** 전체 로드 중 초릿대(벤딩 구간) 길이 비율 */
+    tipLenRatio: number;
+    /** 부호·각도 스무딩 lerp (side 전환 시 0을 지나며 완화) */
+    smoothLerp: number;
+    /**
+     * 풀 벤딩 기준 축 이탈각 (도) — 하중이 로드 일자 궤도 위(정렬 = 측면 모멘트 없음)면
+     * 벤딩 0으로 연속 수렴, 이 각도 이상 벗어나면 풀 벤딩 (sin 비율 램프)
+     */
+    alignRefDeg: number;
+    /**
+     * 측면 램프 파워 커브 — 축 근처 소이탈(±5°)의 측면 굴곡을 "거의 티 안 나게" 억제
+     * (lat = (|sinθ|/sinRef)^pow — 1 = 선형, 클수록 축 근처 완만)
+     */
+    latRampPow: number;
+    /**
+     * 전방 말림(포어쇼트닝) 팁 최말단 축소율 — 하중이 축 정렬 + 손잡이(릴) 쪽일수록
+     * 초릿대가 z(깊이) 방향으로 말려 투영상 짧아진다. 분절별 선형 가중(팁쪽 최대)이라
+     * 초릿대 전체 축소 ≈ 이 값의 절반 (0.8 → 총 2/5 = "5단 중 2단")
+     */
+    foldMax: number;
     powerCapacityKg: Record<'UL' | 'L' | 'ML' | 'M' | 'MH' | 'H' | 'XH', number>;
     actionTipBias: Record<'slow' | 'moderato' | 'regular' | 'moderatoFast' | 'fast' | 'extraFast', number>;
   };
@@ -151,6 +219,16 @@ export const TUNING: TuningConfig = {
   zone: { sinkMultCap: 1.6 },
   float: { biteDipS1M: 0.06, biteDipS2M: 0.14, biteDipS3M: 0.40, biteFadeSpanPx: 26 },
   subfloat: { buoyancyDepthM: 0.8, appearFrom: 0.90 },
+  // 밑밥 확산 rev2 — 8초 수명·조류 감쇠 침강·속도벡터 정렬 타원·지형 코팅.
+  // 종류별 기본 침강(baseSink 역할)은 chumTypes.sinkRate가 담당 (강조류=경단 전략 유지).
+  chum: {
+    lifetimeMs: 8000, alphaStart: 0.9, alphaCurvePow: 1.4,
+    minSinkMps: 0.12, currentSinkDamp: 0.6, currentRefMps: 0.5,
+    rMajor0: 0.3, rMinor0: 0.3, spreadMajorMps: 0.7, spreadMinorMps: 0.30,
+    rMinorMaxM: 1.2, elongK: 1.5, tiltMaxDeg: 72,
+    coatMs: 2000, coatClearanceM: 0.10, bottomSyncBonus: 0.20,
+  },
+  frontSplash: { seepFadeMs: 1800, leanK: 0.4 },
   // predictGhost 기본 off — 드리프트 경로 예측선은 표시하지 않고, 수평뷰 조류 방향을
   // 보고 감으로 리드를 잡는 플레이를 유도한다 (피드백 ④. dev 튜닝 패널에서 재활성 가능)
   chumThrow: { pointCount: 13, predictGhost: false, cloudBaseR: 6 },
@@ -170,6 +248,11 @@ export const TUNING: TuningConfig = {
   },
   rod: {
     maxBendRad: 1.15, sub: 6,
+    tipSegments: 5,
+    tipShare: [0.08, 0.14, 0.20, 0.26, 0.32],
+    maxTipBendDeg: 90, nearGain: 0.8, offscreenGain: 1.6,
+    tipLenRatio: 0.42, smoothLerp: 0.25, alignRefDeg: 20,
+    latRampPow: 1.6, foldMax: 0.8,
     powerCapacityKg: { UL: 1.5, L: 2.5, ML: 4.0, M: 6.0, MH: 9.0, H: 13.0, XH: 20.0 },
     actionTipBias: { slow: 0.40, moderato: 0.50, regular: 0.60, moderatoFast: 0.70, fast: 0.80, extraFast: 0.90 },
   },
@@ -218,7 +301,21 @@ export const TUNING_META: TuningParamMeta[] = [
   { path: 'subfloat.appearFrom', min: 0.85, max: 0.95, step: 0.01, category: 'feel', label: '수중찌 등장 시점' },
   { path: 'chumThrow.pointCount', min: 9, max: 17, step: 2, category: 'feel', label: '투척점 수' },
   { path: 'chumThrow.cloudBaseR', min: 3, max: 14, step: 1, category: 'feel', label: '밑밥 구름 반경' },
+  { path: 'chum.lifetimeMs', min: 5000, max: 10000, step: 500, category: 'feel', label: '밑밥 수명(ms)' },
+  { path: 'chum.currentSinkDamp', min: 0.3, max: 0.85, step: 0.05, category: 'balance', label: '조류 침강 감쇠' },
+  { path: 'chum.elongK', min: 0.5, max: 3.0, step: 0.1, category: 'feel', label: '타원 신장 계수' },
+  { path: 'chum.tiltMaxDeg', min: 55, max: 80, step: 1, category: 'feel', label: '틸트 최대각' },
+  { path: 'chum.rMinorMaxM', min: 0.6, max: 2.0, step: 0.1, category: 'feel', label: '타원 단축 상한' },
+  { path: 'chum.coatMs', min: 1000, max: 4000, step: 100, category: 'feel', label: '지형 코팅(ms)' },
+  { path: 'chum.bottomSyncBonus', min: 0, max: 0.5, step: 0.02, category: 'balance', label: '바닥 동조 보너스' },
   { path: 'rod.maxBendRad', min: 0.6, max: 1.6, step: 0.05, category: 'feel', label: '로드 최대 휨' },
+  { path: 'rod.maxTipBendDeg', min: 70, max: 110, step: 1, category: 'feel', label: '초릿대 상한각' },
+  { path: 'rod.nearGain', min: 0, max: 2, step: 0.05, category: 'feel', label: '근접 벤딩 가산' },
+  { path: 'rod.offscreenGain', min: 0, max: 3, step: 0.1, category: 'feel', label: '화면밖 벤딩 가산' },
+  { path: 'rod.tipLenRatio', min: 0.3, max: 0.55, step: 0.01, category: 'feel', label: '초릿대 길이비' },
+  { path: 'rod.alignRefDeg', min: 10, max: 45, step: 1, category: 'feel', label: '풀벤딩 이탈각' },
+  { path: 'rod.latRampPow', min: 1.0, max: 2.5, step: 0.1, category: 'feel', label: '측면 램프 커브' },
+  { path: 'rod.foldMax', min: 0.4, max: 1.0, step: 0.05, category: 'feel', label: '전방 말림 축소율' },
   { path: 'chumSync.depthSigmaM', min: 0.3, max: 2.0, step: 0.1, category: 'balance', label: '동조 수심σ(m)' },
   { path: 'chumSync.horizSigmaM', min: 0.5, max: 3.0, step: 0.1, category: 'balance', label: '동조 수평σ(m)' },
   { path: 'chumSync.currentDWeight', min: 0.0, max: 1.0, step: 0.05, category: 'balance', label: '조류 D비중' },
