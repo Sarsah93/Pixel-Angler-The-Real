@@ -42,7 +42,7 @@ import {
   FishFatigueModel, FatigueTick, FATIGUE_PHASE_LABEL,
   TUNING,
 } from '@tra/core';
-import { drawRigIcon, fishHeadPoint, RigIconKind } from '../ui/RigIconRenderer.js';
+import { drawRigIcon, RigIconKind } from '../ui/RigIconRenderer.js';
 import { GameState } from '../store/GameState.js';
 import { InventoryStore, RigStepKey, CARD_RIG_INFO } from '../store/InventoryStore.js';
 import { CoolerStore, COOLER_CAPACITY } from '../store/CoolerStore.js';
@@ -104,13 +104,33 @@ const PX_PER_M_X = 24;
 /**
  * 회수 수렴 앵커/최대 배율/투척점 수 등 튜닝 스칼라는 TUNING(core 단일 소스)에서
  * 매 프레임 읽는다 — dev 튜닝 패널(F8)의 슬라이더 변경이 리빌드 없이 반영된다.
- *  anchorY = GAME_HEIGHT × TUNING.retrieve.anchorYRatio (기본 0.75 = 중앙~하단 중간)
- *  scale   = BASE_RIG_SCALE × (1 + p·(scaleMax − 1))     (기본 최대 ×2)
+ * 거리→크기·투명도 규칙 (FP_CAST_RETRIEVE_SPEC):
+ *  approach = 1 − distM/castDist, vp = easeOutCubic(approach) (0 착수 ~ 1 = 70% 지점)
+ *  anchorY  = GAME_HEIGHT × TUNING.retrieve.anchorYRatio (기본 0.70)
+ *  scale    = castScaleMin × (1 + vp·(growFactor − 1))    (착수 최소 → 최대 ×2)
+ *  수중 채비 α = vp (착수 시 숨김 → 접근할수록 불투명), 원줄 α = 채비α × 0.5
  */
-/** 채비 세트 기본 스케일 (원거리) */
-const BASE_RIG_SCALE = 0.72;
 /** 밑밥 투척점 간격 (m) — 개수는 TUNING.chumThrow.pointCount */
 const CHUM_THROW_SPACING_M = 1.5;
+
+// ── 연속 보간 헬퍼 (FP_FLOAT_RIG_DEPTH_SPEC §7 — 분기점 급전환 금지) ──────
+/** 역보간 (0~1 클램프) */
+function invLerp01(a: number, b: number, x: number): number {
+  return a === b ? 0 : Phaser.Math.Clamp((x - a) / (b - a), 0, 1);
+}
+/**
+ * 앵커 포인트 조각 보간 — 모든 α는 진행도 변수에 대한 연속 lerp로 계산한다.
+ * 예) [[0.9,0.10],[0.95,0.30]] 이면 0.93 → 0.22 자동 보간 (step 금지).
+ */
+function piecewiseLerp(x: number, pts: [number, number][]): number {
+  if (x <= pts[0][0]) return pts[0][1];
+  for (let i = 1; i < pts.length; i++) {
+    const [x0, y0] = pts[i - 1];
+    const [x1, y1] = pts[i];
+    if (x <= x1) return Phaser.Math.Linear(y0, y1, invLerp01(x0, x1, x));
+  }
+  return pts[pts.length - 1][1];
+}
 
 /** 어종 → 실사 픽셀 생선 이미지 텍스처 (어획 팝업/아이템 상세 표시용) */
 const FISH_TEXTURE: Record<string, string> = {
@@ -304,7 +324,13 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   private setG!: Phaser.GameObjects.Graphics;
   /** 세트 top 앵커 월드 좌표 — 원줄(초릿대→세트) 연결점 */
   private groupTopWorld = { x: GAME_WIDTH / 2, y: WATERLINE };
-  private fishShadow?: Phaser.GameObjects.Ellipse;
+  /** 착수 침강 카메오 시작 시각 — -1 = 착수 직후 시작 대기 / 0 = 종료·취소 */
+  private sinkCameoStart = -1;
+  /**
+   * 구멍찌 완전 잠김 래치 — 입질 3단계 진입 또는 파이팅 시작 시 true.
+   * 래치 중 구멍찌는 숨김 유지, 회수 후반(appearFrom~1)에 수면 위로 떠오르며 재등장.
+   */
+  private floatSubmerged = false;
 
   // UI
   private uiG!: Phaser.GameObjects.Graphics;
@@ -342,8 +368,9 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.chumThrowIdx = Math.floor(TUNING.chumThrow.pointCount / 2);
     this.chumPredPeak = -1;
     this.groupTopWorld = { x: GAME_WIDTH / 2, y: WATERLINE };
+    this.sinkCameoStart = -1;
+    this.floatSubmerged = false;
     this.resultContainer = undefined;
-    this.fishShadow = undefined;
     this.biteSeq = new BiteSequenceEngine();
     this.rodBendDeg = 0;
     this.floatSinkM = 0;
@@ -782,14 +809,9 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.lastFatigue = null;
     this.fightDepthNorm = 0;
 
-    // 물고기 실루엣 접근 연출
-    const bx = this.screenX(this.rig.baitX);
-    const by = this.depthY(this.rig.baitZ);
-    this.fishShadow = this.add.ellipse(bx + 220, WATERLINE + 60, 46, 14, 0x0a1a28, 0.0).setDepth(32);
-    this.fishShadow.setScale(0.35);
-    this.tweens.add({
-      targets: this.fishShadow, x: bx, y: by, scale: 1, alpha: 0.75, duration: 620, ease: 'Quad.easeIn',
-    });
+    // 물고기 표현은 정면뷰 거리 기반 **방향 타원 그림자**가 전담 (renderRigVisuals —
+    // 구 fishShadow 타원 접근 트윈은 아이콘과 겹쳐 보여 폐기, 피드백 ②)
+    this.floatSubmerged = true;   // 파이트 = 구멍찌 완전 잠김 래치 (회수 후반 재등장)
     this.cameras.main.shake(180, 0.004);
     this.playHookUpEffect();
     this.prevStage = null;
@@ -911,8 +933,6 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   /** 제압 성공 → 끌어오기 시작 — 지친 고기가 세트에 편입되어 수면에 떠서 끌려온다 */
   private beginDragIn(): void {
     this.dragInMode = true;
-    // 물고기는 이제 회수 세트(retrieveGroup) 안에 렌더 — 그림자 실루엣은 숨김
-    this.fishShadow?.setVisible(false);
     this.flashState('제압 성공! 지친 고기를 릴링으로 발앞까지 끌어오세요');
   }
 
@@ -1203,14 +1223,25 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.retrieveGroup = this.add.container(GAME_WIDTH / 2, WATERLINE, [this.setG]).setDepth(35);
   }
 
-  /** 찌 드로잉 (구멍찌 스타일 — 주황 상단 + 흰 몸통) — 세트 로컬/파이트 절대 좌표 공용 */
+  /**
+   * 구멍찌 드로잉 (주황 몸통 + 스템 + 수면 경계 얇은 밴드) — 세트 로컬/파이트 절대 좌표 공용.
+   * 흰 몸통은 제거 — 수중찌처럼 붙어 보이던 문제 (스펙 §3, 수중찌는 drawSubFloatShape로 분리).
+   */
   private drawFloatShape(g: Phaser.GameObjects.Graphics, x: number, y: number, scale: number, alpha: number): void {
     g.fillStyle(0x222222, alpha);
-    g.fillRect(x - 1 * scale, y - 18 * scale, 2 * scale, 8 * scale);
+    g.fillRect(x - 1 * scale, y - 16 * scale, 2 * scale, 8 * scale);
     g.fillStyle(0xff6a2a, alpha);
-    g.fillEllipse(x, y - 7 * scale, 10 * scale, 12 * scale);
-    g.fillStyle(0xfff4e0, alpha);
-    g.fillEllipse(x, y + 2 * scale, 8 * scale, 10 * scale);
+    g.fillEllipse(x, y - 4 * scale, 10 * scale, 13 * scale);
+    g.fillStyle(0xfff4e0, alpha * 0.9);
+    g.fillRect(x - 4.5 * scale, y + 3 * scale, 9 * scale, 2.6 * scale);
+  }
+
+  /** 수중찌 드로잉 (흰 구슬) — 드리프트·파이트 내내 잠겨 숨겨져 있다가 회수 후반에만 등장 */
+  private drawSubFloatShape(g: Phaser.GameObjects.Graphics, x: number, y: number, scale: number, alpha: number): void {
+    g.fillStyle(0xffffff, alpha);
+    g.fillEllipse(x, y, 8 * scale, 10 * scale);
+    g.lineStyle(1, 0xb8c4cc, alpha * 0.8);
+    g.strokeEllipse(x, y, 8 * scale, 10 * scale);
   }
 
   // ═══════════════════════════════════════════════════
@@ -1493,6 +1524,11 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     // 실시간 시계·날씨 연출은 계속되고, 가이드를 닫는 순간부터 액션이 재개된다.
     if (this.guideHub) return;
 
+    // 착수 침강 카메오 취소 — 릴링/루어 액션/뒷줄견제가 시작되면 즉시 RETRIEVE 규칙(α=vp)으로
+    if (this.sinkCameoStart > 0 && (this.reeling || this.rigPose !== 'idle' || this.hKey?.isDown)) {
+      this.sinkCameoStart = 0;
+    }
+
     // ── 조류 엔진 — 수면 거리(distM) 기반 존 판정 + 힘 벡터 ──
     const hoursNow = new Date().getHours() + new Date().getMinutes() / 60;
     const influence = this.tidal.calc(
@@ -1623,10 +1659,11 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     const prevZ = this.rig.baitZ;
     // 해저 지형 프로필 — 현재 거리의 실제 바닥 수심 (암초 융기 반영, 릴링 시 단차를 타고 오름)
     const bedHereM = this.seabed.depthAt(this.distM);
-    // 조류 존이 침강 속도에 저항 (조경지대 가속 / 본류·강한 횡류 감속)
+    // 조류 존이 침강 속도에 저항 (조경지대 가속 / 본류·강한 횡류 감속).
+    // 조경지대 침강 가속은 상한(sinkMultCap)으로 캡 — 급수직강하 인상 완화 (스펙 §2-B)
     const frameParams: RigPhysicsParams = {
       ...this.rigParams,
-      tackleWeightG: this.rigParams.tackleWeightG * influence.sinkMult,
+      tackleWeightG: this.rigParams.tackleWeightG * Math.min(TUNING.zone.sinkMultCap, influence.sinkMult),
     };
     stepUnderwater(this.rig, {
       dtSec: dt, tide, params: frameParams,
@@ -1705,6 +1742,18 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       this.rigPose = 'idle';
     }
 
+    // ── 지형 관통 방지 (스펙 §2-A — 핵심 버그 수정): 채비는 항상 바닥 위 clearance 유지 ──
+    // stepUnderwater의 zMaxM은 '하강 한계'일 뿐 이미 깊이 내려간 채비를 끌어올리지 않는다.
+    // 깊은 물에서 가라앉은 채비가 얕은 여밭(융기) 쪽으로 흘러/끌려오면 릴링 상승(0.28m/s)이
+    // 융기 속도를 못 따라가 바닥을 파고들던 문제 — 매프레임 바닥 위로 부드럽게 끌어올린다.
+    {
+      const ceilFromBed = Math.max(0.3, this.seabed.depthAt(this.distM) - TUNING.seabed.rigClearanceM);
+      if (this.rig.baitZ > ceilFromBed) {
+        this.rig.baitZ = Math.max(ceilFromBed, this.rig.baitZ - TUNING.seabed.followRiseMps * dt);
+        this.rig.settled = this.rig.baitZ >= ceilFromBed - 0.05;
+      }
+    }
+
     const hold = isHoldState(this.rig);
     const nearBottom = this.rig.baitZ >= Math.min(this.zLimitM, bedHereM) - 1.2;
     const inReef = nearBottom && this.seabed.isRockAt(this.distM);
@@ -1751,7 +1800,14 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     // ── 입질 시퀀스 진행 (초릿대 굽힘/찌 잠김 구동) ──
     const seq = this.biteSeq.update(dt);
     this.rodBendDeg = seq.bendAngleDeg;
-    this.floatSinkM = seq.floatSinkM;
+    // 잠김 깊이 = TUNING.float.biteDip* 데이터 재매핑 (core 기본 진폭 0.05/0.10/0.25 대비 배율 —
+    // 1단계 살짝 / 2단계 더 깊이 / 3단계 쭉. core BiteSequenceEngine은 불변)
+    const dipScale = seq.activeStage === 1 ? TUNING.float.biteDipS1M / 0.05
+      : seq.activeStage === 2 ? TUNING.float.biteDipS2M / 0.10
+        : seq.activeStage === 3 ? TUNING.float.biteDipS3M / 0.25 : 1;
+    this.floatSinkM = seq.floatSinkM * dipScale;
+    // 3단계(완전 흡입) 진입 = 구멍찌 완전 잠김 래치 (파이트 진입 시에도 래치 — attemptHookset)
+    if (seq.activeStage === 3) this.floatSubmerged = true;
     // 단계 진입 순간 1회 이펙트 (파문/느낌표/쉐이크 — 강도별)
     if (seq.activeStage !== this.prevStage) {
       if (seq.activeStage !== null) this.playStageEffect(seq.activeStage);
@@ -1946,15 +2002,6 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       this.patternText.setVisible(false);
     }
 
-    // 물고기 실루엣 요동 — 얕을수록 선명, 깊을수록 옅게 (찌 투명도와 같은 방향)
-    if (this.fishShadow) {
-      const bx = this.screenX(this.rig.baitX);
-      const wob = Math.sin(this.time.now / 90) * (6 + this.hookedFish.powerFactor * 10);
-      const zTarget = st.pattern === 'jump' ? WATERLINE + 6 : this.depthY(Math.min(this.cfg.zMaxM, this.rig.baitZ + (st.pattern === 'dive' ? 1.5 : 0)));
-      this.fishShadow.setPosition(bx + wob, zTarget + Math.abs(wob) * 0.4);
-      this.fishShadow.setAlpha(Phaser.Math.Clamp(1 - this.fightDepthNorm, 0.15, 0.9));
-    }
-
     if (st.event !== 'none') {
       this.patternText.setVisible(false);
       switch (st.event) {
@@ -2025,8 +2072,6 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.fpState = 'result';
     this.fight = null;
     this.clearFight2DStage();
-    this.fishShadow?.destroy();
-    this.fishShadow = undefined;
     this.patternText.setVisible(false);
     this.uiG.clear();
 
@@ -2061,13 +2106,15 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       const extra = this.rollMultiHit();
       this.refreshCoolerUi();
 
-      // 보관/방생 선택은 유저 몫 — 결정 패널 표시
+      // 보관/방생 선택은 유저 몫 — 결정 패널은 세트 접근 애니가 정착한 뒤 표시 (겹침 방지)
       this.fpState = 'result';
       this.fight = null;
       this.clearFight2DStage();
-      this.fishShadow?.destroy();
-      this.fishShadow = undefined;
-        this.showCatchDecisionPanel(f, extra, fishTexture);
+      this.time.delayedCall(420, () => {
+        if (this.fpState === 'result' && !this.resultContainer) {
+          this.showCatchDecisionPanel(f, extra, fishTexture);
+        }
+      });
     }
   }
 
@@ -2277,8 +2324,6 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.fpState = 'result';
     this.fight = null;
     this.clearFight2DStage();
-    this.fishShadow?.destroy();
-    this.fishShadow = undefined;
     this.showResultPanel(title, body, color, fishTexture);
   }
 
@@ -2371,6 +2416,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.distM = this.cfg.castDistanceM;
     this.overstrain = 0;
     this.rigPose = 'idle';
+    this.sinkCameoStart = -1;   // 재캐스팅 = 새 착수 — 침강 카메오 재시작
+    this.floatSubmerged = false;
     this.refreshCoolerUi();
     this.stateText.setText('채비 흘리는 중 — 우클릭 챔질 · H 뒷줄견제 · C 밑밥 · ↑ 리프트');
   }
@@ -2417,37 +2464,54 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       ? Phaser.Math.Clamp(this.rodBendDeg / 50, 0, 1.1) * 44
       : 0;
 
-    // 세트 스케일 — 수평선 부근 0.72배 → 회수 완료 시 ×scaleMax (기본 2, 과대 확대 금지)
-    const setScale = BASE_RIG_SCALE * (1 + p * (TUNING.retrieve.scaleMax - 1));
+    // 세트 스케일 — 착수 최소(castScaleMin) → 70% 도달 시 ×growFactor (기본 2배).
+    // 전방(유저 쪽) 조류는 distM을 줄여 자연히 커지지만, 필요 시 forwardCurrentScaleK로 미세 가산.
+    const fwd = Math.max(0, -(this.lastTidal?.force.y ?? 0));
+    const setScale = TUNING.retrieve.castScaleMin
+      * (1 + p * (TUNING.retrieve.growFactor - 1))
+      * (1 + TUNING.retrieve.forwardCurrentScaleK * fwd);
 
     // ── 표시 heading — 목표각으로 머리가 먼저 돌고(빠른 lerp) 몸이 따라온다 ──
     this.visHeading = this.lerpHeading(this.visHeading, this.rigHeadingTarget(), 0.16);
 
     if (this.fpState === 'fighting' && !this.dragInMode && this.hookedFish) {
-      // ── 활성 파이트 — 세트 그룹 숨김: 찌 + 정면 물고기 투영 (v2 연출 유지) ──
+      // ── 활성 파이트 — 세트 그룹 숨김. 물고기는 아이콘이 아니라 **방향 타원 그림자**로만
+      //  표현하고, 먼 거리에선 아예 보이지 않는다 (접근 α: 9/10 0.10 → 9.5/10 0.30 → 도달 0.50).
       this.retrieveGroup.setVisible(false);
+      const a = this.retrieveT();
       const dn = this.fightDepthNorm;
+      // 물고기 견인 대각 이동 — 찌/원줄 앵커가 물고기 횡 방향으로 일부 딸려간다 (~15° 체감)
+      const latOff = Phaser.Math.Clamp(this.f2dPos.x * 0.35, -70, 70);
+      const fxF = Phaser.Math.Clamp(fx + latOff * 0.45, 30, GAME_WIDTH - 30);
       const floatY = surfY + wave + dn * 30;
-      if (!this.surfMode) {
-        this.drawFloatShape(g, fx, floatY, setScale, Phaser.Math.Clamp(1 - dn * 1.15, 0, 1));
+      // 파이트 = 구멍찌 완전 잠김 래치 (스펙 §4 — 파이트 내내 숨김, 회수 후반 재등장)
+      if (!this.surfMode && !this.lureMode && !this.floatSubmerged) {
+        this.drawFloatShape(g, fxF, floatY, setScale, Phaser.Math.Clamp(1 - dn * 1.15, 0, 1));
       }
-      const bxF = Phaser.Math.Clamp(fx + this.f2dPos.x * 0.55, 30, GAME_WIDTH - 30);
+      const bxF = Phaser.Math.Clamp(fxF + this.f2dPos.x * 0.55, 30, GAME_WIDTH - 30);
       const byF = surfY + 12 + dn * Math.max(40, Math.min(170, GAME_HEIGHT - 70 - surfY));
-      const fAlpha = Phaser.Math.Clamp(1 - dn, 0.15, 0.9);
-      const fScale = setScale * Phaser.Math.Clamp(0.9 + this.hookedFish.powerFactor * 0.7, 0.9, 1.7);
-      // 목줄은 물고기 "머리 꼭짓점"에 연결 (몸통 중앙 금지)
-      const head = fishHeadPoint(bxF, byF, this.visHeading, fScale);
-      g.lineStyle(1.4, 0xd8ecf8, 0.5);
-      g.beginPath();
-      g.moveTo(fx, surfY + 6);
-      g.lineTo((fx + head.x) / 2, (surfY + 6 + head.y) / 2);
-      g.lineTo(head.x, head.y);
-      g.strokePath();
-      drawRigIcon(g, bxF, byF, { t: 'fish', speciesId: this.hookedFish.speciesId }, this.visHeading, fScale, fAlpha);
-      // 원줄 연결점 — 찌낚시는 찌 상단, 원투/루어는 물고기 머리
-      this.groupTopWorld = this.surfMode
-        ? { x: head.x, y: head.y }
-        : { x: fx, y: floatY - 16 * setScale };
+
+      const shadowA = this.shadowApproachAlpha(a) * Phaser.Math.Clamp(1 - dn * 0.5, 0.5, 1);
+      if (shadowA > 0.005) {
+        // 방향 타원 그림자 — 장축 = heading (좁은 끝 = 머리/꼬리), 가까울수록 크고 진하게
+        const len = (36 + this.hookedFish.powerFactor * 26) * this.shadowApproachGrow(a) * setScale;
+        const head = this.drawFishShadowOriented(g, bxF, byF, this.visHeading, len, shadowA);
+        // 수중 목줄 — 그림자 머리와 연결 (접근 알파 — 먼 거리에선 함께 숨김)
+        const leadA = this.rigApproachAlpha(a) * 0.6;
+        if (leadA > 0.01) {
+          g.lineStyle(1.4, 0xd8ecf8, leadA);
+          g.beginPath();
+          g.moveTo(fxF, this.surfMode || this.lureMode ? surfY + 6 : floatY + 4);
+          g.lineTo((fxF + head.x) / 2, (surfY + 6 + head.y) / 2);
+          g.lineTo(head.x, head.y);
+          g.strokePath();
+        }
+      }
+      // 원줄 연결점 — 항상 수면까지만 (찌 상단 / 수면 진입점 — 수면 아래 원줄 비표시).
+      // 구멍찌가 잠김 래치로 숨겨진 동안은 수면 진입점으로 종단한다.
+      this.groupTopWorld = this.surfMode || this.lureMode || this.floatSubmerged
+        ? { x: fxF, y: surfY + 4 }
+        : { x: fxF, y: floatY - 16 * setScale };
     } else {
       // ── 채비 세트 (retrieveGroup) — 드리프트/결과/제압 끌어오기(dragIn) 공통 ──
       this.retrieveGroup.setVisible(true);
@@ -2472,25 +2536,38 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     const sg = this.setG;
     sg.clear();
 
-    // 컨테이너 변환 — x는 회수될수록 화면 중앙으로 수렴 (A-1)
+    // 컨테이너 변환 — x는 회수될수록 화면 중앙으로 수렴 (A-1). 알파는 요소별(찌 vs 수중) 분리
     const gx = Phaser.Math.Linear(fx, GAME_WIDTH / 2, p);
-    const alpha = Phaser.Math.Linear(0.8, 1, p);
-    this.retrieveGroup.setPosition(gx, gy).setScale(scale).setAlpha(alpha);
+    this.retrieveGroup.setPosition(gx, gy).setScale(scale).setAlpha(1);
+
+    // ── 거리 → 투명도 (피드백 반영 — 후반 램프): 수중 채비는 이동 거리 7/8 지점까지
+    //  거의 보이지 않다가(α≤0.10) 7.5/8에서 α0.55, 도달 시 α1로 그라데이션 복구.
+    //  (easeOutCubic(vp)를 그대로 쓰면 절반 거리에서 이미 88%가 보이는 문제 — 선형 거리 기준으로 후반 집중)
+    //  SINK CAMEO: 착수 직후 무입력일 때만 수중 채비를 α0.5→0으로 잠깐 보여주며 살짝 하강.
+    const approach = this.retrieveT();
+    const cameo01 = this.sinkCameo01();
+    const cameoAlpha = cameo01 !== null ? Phaser.Math.Linear(0.5, 0, cameo01) : 0;
+    const cameoDescent = cameo01 !== null ? TUNING.retrieve.sinkCameoDescentPx * cameo01 : 0;
+    const la = Math.max(this.rigApproachAlpha(approach), cameoAlpha);   // 수중 요소 알파
+    const lineA = la * TUNING.retrieve.mainLineAlphaFactor;             // 수중 원줄/목줄 = 채비α × 0.5
 
     // 로컬 좌표계 — (0,0) = 세트 top 앵커. 수심은 로컬 px 압축 (원근은 컨테이너 scale)
     const dl = this.pxPerMZ * 0.55;
     const latLocal = Phaser.Math.Clamp((this.rig.baitX - this.rig.floatX) * PX_PER_M_X * 0.6, -140, 140);
     const maxLocal = Math.max(20, (GAME_HEIGHT - 46 - gy) / scale);
-    const depthLocal = Math.min(maxLocal, this.rig.baitZ * dl);
-    const la = Phaser.Math.Linear(0.62, 0.95, p);   // 수중 요소 알파 — 회수될수록 선명
+    const depthLocal = Math.min(maxLocal, this.rig.baitZ * dl + cameoDescent);
     const dragFish = this.dragInMode && !!this.hookedFish;
     const foreshorten = this.rigPose === 'retrieve' ? 0.55 : 1;
 
     if (this.lureMode) {
-      // ── B 모드: 루어 단독 (찌 없음) — 원줄은 루어 라인타이로 직결 ──
+      // ── B 모드: 루어 단독 (찌 없음) — "원줄이 바다에 꽂힌 느낌": 원줄은 **수면 진입점에서
+      //  종단**하고 수면 아래(진입점→루어) 원줄은 항상 비표시. 루어 자체도 접근 램프(la)로만
+      //  서서히 드러난다 (먼 거리 = 수면 진입 마커만 보임).
+      sg.fillStyle(0x9fd0e4, 0.85);
+      sg.fillCircle(0, 0, 2.4);   // 수면 진입 마커
       if (dragFish) this.drawSetFish(sg, latLocal, depthLocal);
       else drawRigIcon(sg, latLocal, depthLocal, this.currentIconKind(), this.visHeading, 1, la, foreshorten);
-      this.groupTopWorld = { x: gx + latLocal * scale, y: gy + (depthLocal - 12) * scale };
+      this.groupTopWorld = { x: gx, y: gy };
       return;
     }
 
@@ -2498,7 +2575,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     const sinkLocal = this.surfMode ? 0 : sinkPx * 0.8;   // 찌 잠김 (로컬)
     const lineTop = this.surfMode ? 2 : sinkLocal + 8;
     const midX = latLocal / 2 + (1 - this.lineTension.alignmentIndex) * 14;
-    sg.lineStyle(1.2, 0xd8ecf8, la * 0.62);
+    sg.lineStyle(1.2, 0xd8ecf8, lineA);
     sg.beginPath();
     sg.moveTo(0, lineTop);
     sg.lineTo(midX, (lineTop + depthLocal) / 2);
@@ -2506,7 +2583,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     sg.strokePath();
 
     if (this.surfMode) {
-      // 수면 진입점 마커 (원투 — 찌 없음)
+      // 수면 진입점 마커 (원투 — 찌 없음. 수면 요소라 항상 표시)
       sg.fillStyle(0x9fd0e4, 0.9);
       sg.fillTriangle(-4, -2, 4, -2, 0, 5);
       // 무게추 봉돌 — 터미널 바로 위 (바닥 공략 표현)
@@ -2515,9 +2592,29 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       sg.lineStyle(1, 0x2a2e34, la * 0.8);
       sg.strokeEllipse(latLocal, depthLocal - 13, 7, 12);
     } else {
-      // 찌 (세트 top — 잠김 반영) + 좁쌀봉돌 (목줄 70% 지점)
-      const biteAlpha = Phaser.Math.Clamp(1 - (this.floatSinkM / 0.25) * 0.55, 0.45, 1);
-      this.drawFloatShape(sg, 0, sinkLocal, 1, biteAlpha);
+      // ── 구멍찌 — 잠김 깊이 → 연속 α 페이드 (잠길수록 옅어짐) + 3단계/파이트 래치 ──
+      let floatAlpha = Phaser.Math.Clamp(1 - sinkPx / TUNING.float.biteFadeSpanPx, 0, 1);
+      let floatYLocal = sinkLocal;
+      if (this.floatSubmerged) {
+        // 래치 중 숨김 — 회수 후반(appearFrom~1)에 수면 위로 떠오르며 재등장
+        const re = invLerp01(TUNING.subfloat.appearFrom, 1, approach);
+        floatAlpha = re;
+        floatYLocal = Phaser.Math.Linear(30, 0, re);
+        if (approach >= 0.999) this.floatSubmerged = false;
+      }
+      if (floatAlpha > 0.004) this.drawFloatShape(sg, 0, floatYLocal, 1, floatAlpha);
+
+      // ── 수중찌 — 드리프트·파이트 내내 잠겨 숨김, 회수 후반에만 등장하며 구멍찌 곁까지 상승 ──
+      // 등장 앵커 [appearFrom→0, 0.95→0.10, 1.00→1.0] (9.5/10 = 투명도 90%, 도달 = 0%)
+      const subA = piecewiseLerp(approach, [[TUNING.subfloat.appearFrom, 0], [0.95, 0.10], [1.0, 1.0]]);
+      if (subA > 0.004) {
+        const subYBase = Math.min(depthLocal - 8, lineTop + TUNING.subfloat.buoyancyDepthM * dl);
+        const subY = Phaser.Math.Linear(subYBase, floatYLocal + 9, invLerp01(0.95, 1, approach));
+        const subX = latLocal * Phaser.Math.Clamp(subY / Math.max(1, depthLocal), 0, 1);
+        this.drawSubFloatShape(sg, subX, subY, 1, subA);
+      }
+
+      // 좁쌀봉돌 (목줄 70% 지점 — 추후 tackle 커스터마이징 자리)
       sg.fillStyle(0x3a3f48, la);
       sg.fillCircle(Phaser.Math.Linear(0, latLocal, 0.7), Phaser.Math.Linear(lineTop, depthLocal, 0.7), 2.2);
     }
@@ -2526,25 +2623,86 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     if (dragFish) this.drawSetFish(sg, latLocal, depthLocal);
     else drawRigIcon(sg, latLocal, depthLocal, this.currentIconKind(), this.visHeading, 1, la, foreshorten);
 
-    // 원줄 연결점 (월드) — 찌 상단 / 원투 수면 진입점
+    // 원줄 연결점 (월드) — 찌 상단 / 원투 수면 진입점.
+    // 구멍찌 잠김 래치 중엔 수면 진입점 종단 (수면 아래 원줄 비표시 원칙)
     this.groupTopWorld = {
       x: gx,
-      y: this.surfMode ? gy : gy + (sinkLocal - 16) * scale,
+      y: this.surfMode || this.floatSubmerged ? gy : gy + (sinkLocal - 16) * scale,
     };
   }
 
   /**
-   * 세트 편입 물고기 (dragIn — A-3): 머리 카메라쪽(정면 foreshorten 0.5) + 지친 롤
-   * (은빛 배 셰이드 + 좌우 요동). 수면 부상은 updateDragIn의 fightDepthNorm이 구동.
+   * 세트 편입 물고기 (dragIn) — 아이콘이 아니라 **방향 타원 그림자**로만 표현 (피드백 ②).
+   * 접근할수록 커지고 진해지며, 수면 부상은 updateDragIn의 fightDepthNorm이 구동.
    */
   private drawSetFish(sg: Phaser.GameObjects.Graphics, x: number, y: number): void {
+    const a = this.retrieveT();
+    const alpha = this.shadowApproachAlpha(a);
+    if (alpha <= 0.005) return;
     const f = this.hookedFish!;
-    const roll = Math.sin(this.time.now / 240) * 0.18;
-    const fScale = Phaser.Math.Clamp(0.9 + f.powerFactor * 0.7, 0.9, 1.7);
-    // 은빛 롤 셰이드 (지쳐 옆으로 누운 배)
-    sg.fillStyle(0xe8f0f4, 0.28);
-    sg.fillEllipse(x, y + 2, 30 * fScale, 10 * fScale);
-    drawRigIcon(sg, x, y, { t: 'fish', speciesId: f.speciesId }, this.visHeading + roll, fScale, 0.95, 0.5);
+    const roll = Math.sin(this.time.now / 240) * 0.12;   // 지친 요동 — 그림자 방향이 살짝 흔들림
+    const len = (34 + f.powerFactor * 26) * this.shadowApproachGrow(a);
+    this.drawFishShadowOriented(sg, x, y, this.visHeading + roll, len, alpha);
+  }
+
+  // ── 거리 접근 알파 곡선 (피드백 ①·② — 후반 집중 그라데이션) ──────────
+  /**
+   * 수중 채비(수중찌/목줄/봉돌/바늘/미끼/루어) 접근 알파.
+   * 이동 거리 기준: 7/8 지점 α0.10 → 7.5/8 α0.55 → 도달 α1.0 (그 전엔 숨김).
+   */
+  private rigApproachAlpha(a: number): number {
+    return piecewiseLerp(a, [[0.80, 0], [0.875, 0.10], [0.9375, 0.55], [1.0, 1.0]]);
+  }
+
+  /**
+   * 물고기 그림자 접근 알파 — 채비보다 늦게 드러난다.
+   * 9/10 지점 α0.10 → 9.5/10 α0.30 → 도달 α0.50 (그림자라 완전 불투명은 없음).
+   */
+  private shadowApproachAlpha(a: number): number {
+    return piecewiseLerp(a, [[0.85, 0], [0.90, 0.10], [0.95, 0.30], [1.0, 0.50]]);
+  }
+
+  /** 물고기 그림자 크기 배율 — 가까울수록 커진다 (등장 구간 0.85~1.0에서 0.6→1.3배) */
+  private shadowApproachGrow(a: number): number {
+    return Phaser.Math.Linear(0.6, 1.3, Phaser.Math.Clamp((a - 0.85) / 0.15, 0, 1));
+  }
+
+  /**
+   * 방향 타원 그림자 — 장축이 heading을 향해 좁은 양 끝이 머리/꼬리가 된다.
+   * 반환값 = 머리 끝 좌표 (릴링 채비 목줄과의 연결점 보장 — 피드백 ②).
+   */
+  private drawFishShadowOriented(
+    g: Phaser.GameObjects.Graphics, x: number, y: number,
+    heading: number, len: number, alpha: number,
+  ): { x: number; y: number } {
+    g.save();
+    g.translateCanvas(x, y);
+    g.rotateCanvas(heading);
+    g.fillStyle(0x07131e, alpha);
+    g.fillEllipse(0, 0, len, len * 0.34);
+    // 꼬리 쪽 얕은 지느러미 암시 (형상 힌트 — 과한 디테일 금지)
+    g.fillEllipse(-len * 0.52, 0, len * 0.16, len * 0.2);
+    g.restore();
+    return { x: x + Math.cos(heading) * len * 0.5, y: y + Math.sin(heading) * len * 0.5 };
+  }
+
+  /**
+   * 착수 침강 카메오 진행도 (0~1) — 비활성이면 null.
+   * 착수 직후 무입력·무조류일 때만 수중 채비를 잠깐 보여주는 연출 (스펙 §3-3).
+   * 릴링/액션/견제가 시작되면 즉시 취소되고 RETRIEVE 규칙(α=vp)으로 넘어간다.
+   */
+  private sinkCameo01(): number | null {
+    if (this.fpState !== 'drift') return null;
+    if (this.sinkCameoStart === -1) {
+      // 시작 대기 — 강한 조류면 카메오 생략 (채비가 흐르는 중이라 어울리지 않음)
+      const tf = this.lastTidal?.force;
+      if (tf && Math.hypot(tf.x, tf.y) > 0.35) { this.sinkCameoStart = 0; return null; }
+      this.sinkCameoStart = this.time.now;
+    }
+    if (this.sinkCameoStart <= 0) return null;
+    const t01 = (this.time.now - this.sinkCameoStart) / Math.max(100, TUNING.retrieve.sinkCameoMs);
+    if (t01 >= 1) { this.sinkCameoStart = 0; return null; }
+    return Phaser.Math.Clamp(t01, 0, 1);
   }
 
   /**
@@ -2583,20 +2741,22 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     g.fillStyle(0xd8d4c8, 1);
     g.fillTriangle(mx - 5, my + 5, mx + 5, my + 5, mx, my - 6);
 
-    // 조류 화살표 (우상단 소형 — +y(멀어짐)를 화면 위로 투영)
+    // 조류 방향 + 강도 (우상단 — 셰브론 개수로 강도 표기: 약함 < / 중간 << / 매우 강함 <<<)
     const tf = this.lastTidal?.force ?? { x: 0, y: 0 };
-    if (Math.hypot(tf.x, tf.y) > 0.02) {
+    const tMag = Math.hypot(tf.x, tf.y);
+    if (tMag > 0.02) {
       const ang = Math.atan2(-tf.y, tf.x);
-      const ax = PX + PW - 26, ay = PY + 20;
+      const tier = tMag >= 0.40 ? 3 : tMag >= 0.15 ? 2 : 1;
+      const ax = PX + PW - 30, ay = PY + 20;
       const hxA = Math.cos(ang), hyA = Math.sin(ang);
-      g.lineStyle(1.6, 0x5cd0ff, 0.85);
-      g.lineBetween(ax - hxA * 9, ay - hyA * 9, ax + hxA * 6, ay + hyA * 6);
-      g.fillStyle(0x5cd0ff, 0.85);
-      g.fillTriangle(
-        ax + hxA * 11, ay + hyA * 11,
-        ax + hxA * 4 - hyA * 3.4, ay + hyA * 4 + hxA * 3.4,
-        ax + hxA * 4 + hyA * 3.4, ay + hyA * 4 - hxA * 3.4,
-      );
+      g.lineStyle(2, 0x5cd0ff, 0.9);
+      for (let i = 0; i < tier; i++) {
+        // 흐름 방향으로 나란히 배치되는 화살촉(셰브론)들 — 뒤에서 앞으로 진행
+        const off = (i - (tier - 1) / 2) * 7;
+        const cx = ax + hxA * off, cy = ay + hyA * off;
+        g.lineBetween(cx - hxA * 5 - hyA * 4.2, cy - hyA * 5 + hxA * 4.2, cx + hxA * 3.5, cy + hyA * 3.5);
+        g.lineBetween(cx - hxA * 5 + hyA * 4.2, cy - hyA * 5 - hxA * 4.2, cx + hxA * 3.5, cy + hyA * 3.5);
+      }
     }
 
     // ── 밑밥 파슬 (수평뷰 투영 — 정면/수직뷰와 같은 parcel 시뮬) ──
@@ -2963,7 +3123,10 @@ export class FirstPersonFishingScene extends Phaser.Scene {
 
     // 기저 휨: H 견제/파이팅 기본 자세 — 입질(rodBendDeg)이 여기에 더해진다
     const baseTension = this.fight ? 0.12 : (this.hKey?.isDown ? 0.18 : 0.06);
-    const bendDeg = this.rodBendDeg;
+    // 로드팁 추가 휨 — 끌려오는 채비 쪽으로, 접근 진행(부하) 비례 (스펙 §4)
+    const approachP = Phaser.Math.Easing.Cubic.Out(this.retrieveT());
+    const retrieveBend = (this.reeling || this.dragInMode) ? approachP * 10 : 0;
+    const bendDeg = this.rodBendDeg + retrieveBend;
 
     // 손잡이(버트): 하단 모서리(릴이 보이도록 살짝 안쪽) / 무부하 팁 목표: 화면 중상단
     const baseX = right ? GAME_WIDTH - 30 : 30;
@@ -3059,7 +3222,18 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     // ── 원줄: 초릿대 끝 → 세트 top 앵커 (A-2 — 컨테이너 밖 동적 연결) ──
     // 세트가 딸려오면 원줄이 자연히 따라오고 길이·각도가 축소된다.
     // 굵기는 고정(scale 왜곡 없음 — TUNING.retrieve.mainLineWidth), 좌표만 매 프레임 갱신.
-    g.lineStyle(TUNING.retrieve.mainLineWidth, 0xf2f8ff, 0.65);
+    // α = 채비α × mainLineAlphaFactor(0.5) — 물고기보다 2배 투명 (스펙 §3-2).
+    //  수면 위 구간은 드리프트에서도 보이도록 하한(0.5×factor = 연한 반투명)을 둔다.
+    //  색: 비파이트 = 연한 흰색(0xeef6ff) / 파이팅 = 텐션 색 (느슨 파랑/안전 초록/위험 빨강)
+    const lineAlpha = Math.max(0.5, approachP) * TUNING.retrieve.mainLineAlphaFactor;
+    let lineColor = 0xeef6ff;
+    let drawAlpha = lineAlpha;
+    if (this.fight) {
+      const t = this.fight.tension;
+      lineColor = t < 30 ? 0x66b8ff : t > 80 ? 0xff5a4a : 0x4af2a1;
+      drawAlpha = Math.max(lineAlpha, 0.75);   // 파이팅 텐션 피드백은 항상 또렷하게
+    }
+    g.lineStyle(TUNING.retrieve.mainLineWidth, lineColor, drawAlpha);
     g.lineBetween(px, py, this.groupTopWorld.x, this.groupTopWorld.y);
   }
 

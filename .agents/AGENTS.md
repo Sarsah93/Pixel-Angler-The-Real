@@ -344,14 +344,36 @@ npx pnpm --filter @tra/client-pc run dev
 
 ---
 
-## 9. 현재 빌드 상태 (2026-07-22 기준)
+## 9. 현재 빌드 상태 (2026-07-23 기준)
 
 ```
-npx pnpm run build → ✅ 4/4 패키지 성공 (2026-07-22)
-npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류 (2026-07-22)
+npx pnpm run build → ✅ 4/4 패키지 성공 (2026-07-23)
+npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류 (2026-07-23)
 ```
 
-**최근 주요 변경 (2026-07-23 27차) — 통합 가이드 시스템 (GuidePanel 허브 — 파이트·회수·밑밥·회뜨기)** (GUIDE_SYSTEM_SPEC + game_guide_hub.html 목업 반영 — 빌드/타입체크 통과):
+**최근 주요 변경 (2026-07-23 30차) — FP 찌 채비 심화 (지형 관통 클램프·구멍찌/수중찌 분리·입질 잠김 래치·연속 투명도)** (FP_FLOAT_RIG_DEPTH_SPEC 반영 — 빌드/타입체크 통과 + 수치 검증):
+- **[핵심 버그 수정] 채비 지형 관통 클램프** (`updateDrift` — 수심 패널 "채비 5.2m / 바닥 3.6m" 관통 현상): `stepUnderwater`의 zMaxM은 **하강 한계일 뿐 이미 깊은 채비를 끌어올리지 않아**, 깊은 물에서 가라앉은 채비가 얕은 여밭(융기)으로 흘러올 때 릴링 상승(0.28m/s)이 융기 속도를 못 따라가 바닥을 파고들던 실버그 — **매프레임 `바닥−rigClearanceM(0.15)` 위로 followRiseMps(3.0)로 부드럽게 클램프** (찌/원투/루어 공통, 수심 패널 자동 정합. 검증: 5.2m→3.45m/0.58s). **조경지대 급수직강하 완화**: `influence.sinkMult`에 상한 `zone.sinkMultCap(1.6)`.
+- **[분리] 구멍찌/수중찌** (`drawFloatShape` 흰 몸통 제거 → 주황 몸통+스템+수면 밴드 / `drawSubFloatShape` 흰 구슬 신설): 수중찌는 드리프트·파이트 내내 잠겨 숨김, **회수 후반 앵커 [appearFrom(0.90)→0, 0.95→0.10, 1.0→1.0]**로 등장하며 잠김 깊이(buoyancyDepthM 0.8)에서 구멍찌 곁까지 상승.
+- **[신규] 입질 단계별 구멍찌 잠김** — 잠김 깊이 = `TUNING.float.biteDipS1~S3M`(0.06/0.14/0.40m — core 진폭 0.05/0.10/0.25 대비 배율 재매핑, core 불변) → **잠김px/biteFadeSpanPx(26) 연속 α 페이드**(1단계 α0.79 살짝→복귀 / 2단계 α0.52 / 3단계 α0 완전 잠김). **`floatSubmerged` 래치**: 3단계 진입 or 파이트 시작 = 완전 숨김 유지(원줄은 수면 진입점 종단), 회수 approach≥0.90부터 수면 위로 떠오르며 재등장(≥0.999 해제). 리셋: init/recast.
+- **[헬퍼] `invLerp01`/`piecewiseLerp`** — "분기점 급전환 금지" 공통 유틸 (기존 rigApproachAlpha/shadowApproachAlpha도 piecewise로 리팩토링. 검증: 그림자 9.3/10 = 0.22 자동 보간).
+- **[tuning.ts] 신설**: `seabed.rigClearanceM/followRiseMps`, `zone.sinkMultCap`, `float.biteDipS1~S3M/biteFadeSpanPx`, `subfloat.buoyancyDepthM/appearFrom` + META 슬라이더 5종 (F8 라이브 튜닝).
+- 참고: 목줄/바늘 분기(§6)는 기존 구조가 이미 충족 — 활성 파이트 = 세트 숨김·그림자+목줄만(바늘 미표시) / dragIn = 그림자가 미끼 아이콘 대체 / 단순 릴링 = 후반 램프 α로 바늘·미끼 표시.
+
+**이전 변경 (2026-07-23 29차) — 접근 연출 피드백 5건 반영 (후반 램프 α·방향 그림자·대각 이동·고스트 제거·조류 셰브론)** (인게임 스크린샷 피드백 — 빌드/타입체크 통과 + 곡선 수치 검증):
+- **[정정 ①] 수중 채비 후반 램프 α** (`rigApproachAlpha` — 구 easeOutCubic(vp) α는 절반 거리에서 이미 88% 노출되던 문제): **선형 이동 비율 기준** 7/8 지점 α0.10(투명 90%) → 7.5/8 α0.55 → 도달 α1.0 그라데이션, 그 전엔 완전 숨김 (스샷 케이스 18.4m/22m = α0). **루어 = 원줄이 수면에 꽂힌 느낌**: 원줄은 수면 진입점(마커)에서 종단, 수면 아래 원줄 항상 비표시, 루어 자체도 후반 램프로만 등장.
+- **[정정 ②] 파이트 물고기 = 방향 타원 그림자 전담** (`drawFishShadowOriented` — 정면 물고기 아이콘 + 구 fishShadow 타원 트윈이 겹치던 문제 → 둘 다 폐기): 장축 = heading(좁은 끝 = 머리/꼬리), **머리 끝 좌표를 반환해 목줄 연결점 보장**. `shadowApproachAlpha` 9/10 α0.10 → 9.5/10 α0.30 → 도달 α0.50(그림자는 완전 불투명 없음) + `shadowApproachGrow` 0.6→1.3배 크기 증가. 활성 파이트/dragIn(drawSetFish) 공통. 수중 목줄도 접근 램프 α(×0.6)로 함께 숨김/등장.
+- **[신규 ③] 파이트 대각 이동**: 물고기 횡 견인(f2dPos.x)의 일부(×0.35×0.45, ±70px 클램프)가 **찌/원줄 앵커에 반영** — 수평뷰 좌상+수직뷰 하강 이동 시 정면뷰도 완만한 대각(~15° 체감)으로 딸려간다. 수직은 distM(줄 풀림/감김)이 기존 구동.
+- **[제거 ④] 밑밥 예측 드리프트 고스트 기본 off** (`TUNING.chumThrow.predictGhost = false`): 투척점 스냅 행은 유지, 흘러갈 경로 점선·동조 피크 ✳·"(투척 예측 N%)" 표기 제거 — **수평뷰 조류를 보고 감으로 리드**를 잡는 플레이 유도 (dev 패널에서 재활성 가능).
+- **[신규 ⑤] 수평뷰 조류 강도 셰브론**: 단일 화살표 → **강도 3단계 화살촉 개수** (약함 < 0.15 = 1개 / 중간 = 2개 / 매우 강함 ≥ 0.40 = 3개) — 흐름 방향으로 나란히 배치.
+
+**이전 변경 (2026-07-23 28차) — FP 착수→침강→회수 접근 연출 (거리 기반 크기·투명도)** (FP_CAST_RETRIEVE_SPEC 반영 — 이전 "중앙·3배" 정정 → **70% 지점·2배**. 빌드/타입체크 통과 + 매핑 수치 검증):
+- **[규칙] 거리 → 크기·투명도** (`updateRetrieveGroup` — approach = 1−distM/castDist, **vp = easeOutCubic(approach)** 하나로 위치·크기·투명도 전부 구동): 착수 시 채비 세트 = **castScaleMin(0.72)·수중 채비 α0(숨김)** → 릴링/파이트/전방 조류로 끌려올수록 커지고 불투명 복구 → **70% 지점(anchorYRatio 0.70) 도달 시 2배(growFactor)·완전 불투명**. 검증: distM 25→0.5에서 y 268→504·scale 0.72→1.44·수중α 0→1.
+- **[규칙] 원줄 = 물고기보다 2배 투명**: 원줄 α = 채비α × **mainLineAlphaFactor(0.5)** (vp 0.5에서 물고기 0.53·원줄 0.25 — 스펙 예시 정합). 수면 위 구간은 드리프트에서도 하한(0.25)으로 연하게 보임. **비파이트 원줄색 = 연한 흰색(0xeef6ff) / 파이팅 = 텐션 색**(느슨 파랑/안전 초록/위험 빨강, α≥0.75). 물고기 그림자 α = lerp(shadowAlphaFar 0.15, shadowAlphaNear 0.90, vp).
+- **[신규] SINK CAMEO** (착수 침강 연출): 착수 직후 **무입력·무조류**(합력>0.35면 생략)일 때만 수중 채비를 아주 작게 **α0.5→0으로 800ms 페이드 + 14px 하강**. 릴링/루어 액션/뒷줄견제 시작 시 즉시 취소 → RETRIEVE 규칙(α=vp)으로 전환. 재캐스팅마다 리셋(`sinkCameoStart`).
+- **[신규] 로드팁 추가 휨**: 릴링/드래그인 중 approach 비례 최대 +10° — 끌려오는 채비 쪽으로 더 휜다. **[신규] 결과 팝업 지연**: 랜딩 후 420ms 세트 정착 애니 뒤 결정 패널 표시(겹침 방지). 루어 = 원줄만(수면 아래 목줄 비표시 유지).
+- **[tuning.ts] retrieve 섹션 확장**: anchorYRatio **0.75→0.70** / `scaleMax`→**`growFactor`**(2.0) 개명 / **castScaleMin**(0.72 — 구 BASE_RIG_SCALE 상수 폐기) / mainLineAlphaFactor 0.5 / shadowAlphaFar·Near / sinkCameoMs 800·sinkCameoDescentPx 14 / forwardCurrentScaleK 0(선택 가산) 신설. META 슬라이더: growFactor·mainLineAlphaFactor·sinkCameoMs 추가 (F8 라이브 튜닝).
+
+**이전 변경 (2026-07-23 27차) — 통합 가이드 시스템 (GuidePanel 허브 — 파이트·회수·밑밥·회뜨기)** (GUIDE_SYSTEM_SPEC + game_guide_hub.html 목업 반영 — 빌드/타입체크 통과):
 - **[신규] 데이터 구동 가이드 허브**: `data/GuideContent.ts` — `GUIDES = [{key, label, pages:[{textureKey, heading, body, tip}]}]` 4카테고리 19페이지(파이트 5·회수 4·밑밥 5·회뜨기 5, 문구 = 목업 확정본). `ui/GuidePanel.ts` 공용 컴포넌트가 **상단 탭 + 삽화 카드(640×300 PNG) + 캡션/💡팁 + ◀▶/점 네비 + 마지막 '완료 ✕'** 렌더 — **새 시스템 가이드는 GuideCategory 데이터 하나 추가로 끝**. DraggablePanel(dim 모달) 상속, `showCategory(key)`로 열림 중 탭 전환.
 - **[에셋] 삽화 19장**: `game_guide_hub.html`의 페이지 SVG를 헤드리스 크롬으로 `guide_<cat>_<n>.png` 텍스처화 → BootScene이 GUIDES 데이터 순회로 preload (키/파일명 = textureKey 일원화). 파이트 1·3페이지 로드 곡선은 다크 배경과 대비가 없어(#16161a) 밝은 톤(#c8ccd4)으로 보정 재생성. **26차 chum_guide_1~5.png/ChumGuidePanel은 허브로 흡수·폐기.**
 - **[교체] FP 씬 구 텍스트 가이드 전면 대체** (410줄 제거 — toggleGuide/GUIDE_PAGES/renderGuidePage/drawGuideDiagram): F1·? 버튼·가이드북 버튼 = **허브 토글**, '밑밥'(양동이) 버튼 = 허브 '밑밥' 탭. 열림 중 낚시 진행/입력 일시정지·ESC LIFO 최우선은 기존과 동일 (`guideContainer`→`guideHub` 가드 일원화).
