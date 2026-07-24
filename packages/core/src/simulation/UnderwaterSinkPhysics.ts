@@ -12,6 +12,8 @@
  * 순수 TS — 렌더링/브라우저 API 없음.
  */
 
+import { TUNING, SinkBodyType } from '../config/tuning.js';
+
 /** 조류 벡터 (m/s) — x: 화면 좌우 성분, y: 전후 성분(연출용) */
 export interface TideVector {
   x: number;
@@ -107,4 +109,55 @@ export function stepUnderwater(state: UnderwaterRigState, input: UnderwaterStepI
 /** Hold 판정 — 안착 + 흐름 정지(속도 0 수렴) */
 export function isHoldState(state: UnderwaterRigState, speedEpsilon = 0.05): boolean {
   return state.settled && state.driftSpeed < speedEpsilon;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 루어/봉돌 침강 물리 — 조류 세기 × 유효무게 → 중력 (LURE_SINK_PHYSICS)
+//
+//  무게가 조류 임계(Wthr)를 뚫어야 가라앉는다. 못 뚫으면(Weff ≤ Wthr) 표층에
+//  떠 조류 방향으로 쓸리고(swept), 뚫으면 초과 무게만큼 종단속도로 포화 침강한다.
+//  유효무게 Weff = Wg / dragC (유선형일수록 잘 가라앉음). 단일 루어=루어 무게 /
+//  봉돌 채비=봉돌 무게. 모든 계수는 TUNING.sink에서 소비 (dev 패널/시뮬 공유).
+// ═══════════════════════════════════════════════════════════════
+
+/** 침강 판정 결과 */
+export interface SinkRateResult {
+  /** 조류를 못 뚫음 → 표층 부근 유지 + 조류 방향 횡류 */
+  swept: boolean;
+  /** 침강 속도 (m/s) — swept면 0 */
+  sinkRateMps: number;
+  /** 라인 각도 (도, 수직 기준) — 78=수평쓸림 / 45~60=적정 / 작을수록 수직 */
+  lineAngleDeg: number;
+  /** 유효무게 (무드래그 환산 g) */
+  weffG: number;
+  /** 조류 침강 임계 (g) */
+  wthrG: number;
+}
+
+/**
+ * 조류 세기(cur01 0~1) × 무게(g) × 형상(bodyType) → 침강 거동.
+ * threshMult: 조류 존 보정 (조경지대=임계↓ 잘 가라앉음 / 본류=임계↑) — sinkMult 이중적용 방지.
+ */
+export function computeSinkRate(
+  cur01: number, weightG: number, bodyType: SinkBodyType, threshMult = 1,
+): SinkRateResult {
+  const S = TUNING.sink;
+  const dragC = S.dragC[bodyType];
+  const weffG = weightG / dragC;
+  const cur = Math.max(0, Math.min(1, cur01));
+  const wthrG = Math.max(1, (S.thr0 + S.thrSlope * cur) * threshMult);
+  let swept = false;
+  let sinkRateMps = 0;
+  if (weffG <= wthrG) {
+    // 조류 못 뚫음 → 표층 쓸림
+    swept = true;
+  } else {
+    // 초과 무게분 → 종단속도로 포화 (무게↑ = 빠른 침강)
+    const vT = S.vTerminal[bodyType];
+    sinkRateMps = vT * (1 - Math.exp(-(weffG - wthrG) / S.scaleG));
+  }
+  // 라인각 — 간신히 뚫으면(ratio≈1) 78°(수평쓸림 근접), 무게 초과할수록 수직(작아짐)
+  const ratio = weffG / wthrG;
+  const lineAngleDeg = Math.max(18, Math.min(85, 78 - 30 * (ratio - 1)));
+  return { swept, sinkRateMps, lineAngleDeg, weffG, wthrG };
 }

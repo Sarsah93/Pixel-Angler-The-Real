@@ -26,6 +26,9 @@ export interface ChumTypeSpec {
 /** 밑밥 종류 — powder(크릴/미세 파우더) / grain(압맥·보리) / ball(무거운 경단) */
 export type ChumTypeKey = 'powder' | 'grain' | 'ball';
 
+/** 침강 형상 바디 타입 — 드래그/종단속도 프로파일 (루어 kind·봉돌에서 매핑) */
+export type SinkBodyType = 'metalJig' | 'minnow' | 'egi' | 'softPlastic' | 'sinker';
+
 export interface TuningConfig {
   // ── 회수·랜딩 접근 연출 (feel — FP_CAST_RETRIEVE_SPEC) ──
   retrieve: {
@@ -237,6 +240,25 @@ export interface TuningConfig {
     /** 목줄 길이 (m — 커스텀 없을 때) */
     defaultLenM: number;
   };
+  // ── 루어/봉돌 침강 물리 (balance — LURE_SINK_PHYSICS) ──
+  // 무게가 조류 임계(Wthr)를 뚫어야 가라앉고, 못 뚫으면 표층에서 조류로 쓸린다.
+  sink: {
+    /** 침강 임계 절편·기울기 (g) — Wthr = thr0 + thrSlope·cur01 (약19/중41/강63) */
+    thr0: number;
+    thrSlope: number;
+    /** 임계 초과분 → 종단속도 포화 스케일 (g) */
+    scaleG: number;
+    /** 조류 세기 정규화 기준 (m/s → cur01 = speed/ref 클램프) */
+    currentRefMps: number;
+    /** 형상 드래그 계수 — 유효무게 Weff = Wg / dragC (유선형일수록 작음) */
+    dragC: Record<SinkBodyType, number>;
+    /** 종단 침강 속도 (m/s) */
+    vTerminal: Record<SinkBodyType, number>;
+    /** 릴링 시 채비 상승 각 (도) */
+    reelAngleDeg: number;
+    /** 못 뚫을 때(swept) 표층 횡류 배율 */
+    sweptDriftK: number;
+  };
   // ── 데이터 테이블 (balance, 슬라이더 대상 아님) ──
   /** 어종 id → 피로 스태미나 base */
   fatigueStaminaBase: Record<string, number>;
@@ -313,6 +335,12 @@ export const TUNING: TuningConfig = {
   },
   fightPull: { lateralStagePerSec: 60 },
   leader: { baseDeg: 8, holdDeg: 34, curGain: 60, maxDeg: 78, defaultLenM: 1.2 },
+  sink: {
+    thr0: 8, thrSlope: 55, scaleG: 25, currentRefMps: 0.45,
+    dragC: { metalJig: 1.0, minnow: 1.25, egi: 1.4, softPlastic: 1.6, sinker: 0.7 },
+    vTerminal: { softPlastic: 0.9, minnow: 1.1, egi: 1.0, metalJig: 1.4, sinker: 1.6 },
+    reelAngleDeg: 45, sweptDriftK: 1.0,
+  },
   // 데이터 테이블 (대표값 — 나머지 어종 동일 형식으로 채움)
   fatigueStaminaBase: {
     yellowtail: 1.6, amberjack: 1.7, greater_amberjack: 1.9, spanish_mackerel: 1.0,
@@ -390,6 +418,13 @@ export const TUNING_META: TuningParamMeta[] = [
   { path: 'leader.holdDeg', min: 10, max: 50, step: 1, category: 'balance', label: '목줄 홀드각' },
   { path: 'leader.curGain', min: 20, max: 90, step: 1, category: 'balance', label: '목줄 조류각 게인' },
   { path: 'leader.maxDeg', min: 55, max: 85, step: 1, category: 'balance', label: '목줄 스트리밍 상한' },
+  { path: 'sink.thr0', min: 0, max: 20, step: 1, category: 'balance', label: '침강 임계 절편(g)' },
+  { path: 'sink.thrSlope', min: 20, max: 90, step: 1, category: 'balance', label: '침강 임계 기울기(g)' },
+  { path: 'sink.scaleG', min: 10, max: 50, step: 1, category: 'balance', label: '침강 포화 스케일(g)' },
+  { path: 'sink.currentRefMps', min: 0.2, max: 0.8, step: 0.05, category: 'balance', label: '침강 조류 기준(m/s)' },
+  { path: 'sink.vTerminal.metalJig', min: 0.6, max: 2.2, step: 0.05, category: 'balance', label: '종단속도 메탈지그' },
+  { path: 'sink.vTerminal.sinker', min: 0.8, max: 2.4, step: 0.05, category: 'balance', label: '종단속도 봉돌' },
+  { path: 'sink.reelAngleDeg', min: 30, max: 60, step: 1, category: 'feel', label: '릴링 상승각' },
 ];
 
 // ── path 유틸 (dev 패널 공용) ──

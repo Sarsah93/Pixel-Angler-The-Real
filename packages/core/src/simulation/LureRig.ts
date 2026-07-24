@@ -11,10 +11,26 @@
  * 순수 TS.
  */
 
-import type { LureSpec, SinkType } from '../types/Lure.js';
+import type { LureSpec, SinkType, LureKind } from '../types/Lure.js';
+import type { SinkBodyType } from '../config/tuning.js';
 
 /** 지그헤드 무게 옵션 (g) — 소프트 베이트 결합용 */
 export const JIGHEAD_WEIGHTS_G = [3, 5, 7, 10, 14] as const;
+
+/** 루어 종류 → 침강 형상 바디 타입 (computeSinkRate 드래그/종단속도 프로파일) */
+export function lureBodyType(kind: LureKind): SinkBodyType {
+  switch (kind) {
+    case 'metal_jig':
+    case 'tairaba': return 'metalJig';       // 무겁고 유선형 — 잘 뚫고 빠름
+    case 'plug_minnow':
+    case 'spoon': return 'minnow';           // 중간 드래그
+    case 'egi':
+    case 'spinner': return 'egi';            // 저항 큼 — 천천히
+    case 'worm_grub':
+    case 'soft_jerkbait': return 'softPlastic';
+    default: return 'softPlastic';
+  }
+}
 
 /** 지그헤드 아이템 id → 무게(g) 파싱 (예: 'lure_jighead_7' → 7) */
 export function jigHeadWeightById(id: string | null | undefined): number {

@@ -351,7 +351,15 @@ npx pnpm run build → ✅ 4/4 패키지 성공 (2026-07-24)
 npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류 (2026-07-24)
 ```
 
-**최근 주요 변경 (2026-07-24 36차) — FP 조작 개편(←/→ 채비 이동·파이트 홀드 ↑) + 초릿대 색/가이드 + 인벤 신선도 실시간 + 뷰 폴리시** (사용자 7건 피드백 반영 — 빌드 4/4·typecheck 0):
+**최근 주요 변경 (2026-07-24 37차) — 루어/봉돌 침강 물리 (조류 세기 × 유효무게 → 중력)** (LURE_SINK_PHYSICS 반영 — 3케이스 수치 재현 PASS, 빌드 4/4·typecheck 0):
+- **[신규 core] `computeSinkRate(cur01, weightG, bodyType, threshMult)`** (`UnderwaterSinkPhysics.ts`): 무게가 조류 임계 `Wthr = thr0 + thrSlope·cur01`(약19/중41/강63)를 뚫어야 가라앉는다. **유효무게 Weff = Wg / dragC**(유선형일수록 잘 뚫음). Weff ≤ Wthr → **swept(표층 유지 + 조류 방향 쓸림)** / 초과 → **종단속도 포화 침강** `vT·(1−e^(−(Weff−Wthr)/scaleG))`. 라인각 `78 − 30·(Weff/Wthr − 1)` 클램프(45~60=적정). `SinkRateResult{swept, sinkRateMps, lineAngleDeg, weffG, wthrG}`.
+- **[신규 core] `lureBodyType(kind)`** (`LureRig.ts`): 루어 kind → `SinkBodyType`(metalJig/minnow/egi/softPlastic). 봉돌 채비는 'sinker'(dragC 0.7 — 잘 뚫음).
+- **[배선 client] `updateDrift` 침강 교체**: 고정 sinkRate 폐기 → **루어(무게=`getLureRigWeightG`)·봉돌 채비(무게=`getSinkerWeightG` 신설)** 모두 `computeSinkRate` 소비. stepUnderwater 수직 침강은 `baitZ=prevZ`로 취소(수평 드리프트만 유지 — 이중적용 방지). 조류 존은 `threshMult = 1/influence.sinkMult`로 임계에 반영(조경지대=임계↓). swept 시 `baitX/floatX += tide.x·sweptDriftK·dt` 표층 쓸림. 플로팅 루어는 기존 부력(리트리브 파고듦/부상) 유지.
+- **[HUD] 라인각 표기** (수심 패널): `라인각 52° · 적정 무게`(45~60) / `무게 충분(수직)`(≤45) / `무게 부족`(>60) / `~80° · 못 뚫음(쓸림)`. 수직뷰 채비 형태(단일 루어 하강 / 봉돌+목줄 트레일)는 기존 baitX/baitZ 렌더가 이미 반영.
+- **[tuning.ts] `sink` 섹션** + `SinkBodyType` 타입: thr0(8)/thrSlope(55)/scaleG(25)/currentRefMps(0.45)/dragC/vTerminal/reelAngleDeg(45)/sweptDriftK(1.0) + META 슬라이더 8종. **검증(수치)**: 약+50g softPlastic → 0.35m/s(~10s) / 중+50g softPlastic → swept(0) / 중+50g 봉돌 → 1.13m/s(~8s) — 3케이스 정합.
+- 잔여(차기): 다운샷(봉돌 위 바늘) hookAboveSinker 데이터 훅, 로드 Max weight 초과 페널티, 카탈로그 루어 무게/종류 밴드 재배정, 라인각 수직뷰 각도 정밀 렌더.
+
+**이전 변경 (2026-07-24 36차) — FP 조작 개편(←/→ 채비 이동·파이트 홀드 ↑) + 초릿대 색/가이드 + 인벤 신선도 실시간 + 뷰 폴리시** (사용자 7건 피드백 반영 — 빌드 4/4·typecheck 0):
 - **[초릿대 색/가이드]** (`renderRod`): 5분절 전체 흰색 → **끝 2분절만 흰색(형광), 아래 3분절은 로드 블랭크색(0x16161a)**. **분절마다 원줄 가이드 링 복원** — 조인트에 `u`(로드 진행 0~1) 저장, 가이드 크기/굵기를 u로 산정(버트쪽 크게·팁쪽 작게, 분절 수 무관). 팁 최말단은 형광 마커가 대신(가이드 제외).
 - **[인벤 신선도 실시간]** (`InventoryPanel`): 껐다 켜야 반영되던 문제 → **1초 주기 타이머 + 상태 시그니처 비교**로 전이 시에만 그리드 리랜더. `renderGrid`가 아이템별 `refreshCondition` 호출(렌더 시점 실상태) + `condSig` 저장. 드래그 중엔 스킵, destroy 시 타이머 해제.
 - **[설정 단축키 현행화]** (`SettingsScene`): 구 필드 전용 평면 목록 폐기 → **섹션 3분류(필드/1인칭 낚시/파이팅) 2열 레이아웃**(`HOTKEY_SECTIONS`). 이번 개편(←/→ 이동, ↑ 버티기 등) 전부 반영.

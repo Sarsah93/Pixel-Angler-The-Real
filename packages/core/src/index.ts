@@ -247,8 +247,8 @@ export { GATHER_ITEM_DATABASE, checkSlipHazard, getAvailableGatherItems, attempt
 // 1인칭 낚시 물리 파이프라인 (캐스팅 → 수중 침강/흘림 → 입질 → 파이팅)
 export type { WindVector, CastLaunchParams, CastProjectile } from './simulation/CastingPhysicsEngine.js';
 export { launchCast, stepCast, simulateCastTrajectory } from './simulation/CastingPhysicsEngine.js';
-export type { TideVector, RigPhysicsParams, UnderwaterRigState, UnderwaterStepInput } from './simulation/UnderwaterSinkPhysics.js';
-export { createUnderwaterRig, computeSinkSpeed, stepUnderwater, isHoldState } from './simulation/UnderwaterSinkPhysics.js';
+export type { TideVector, RigPhysicsParams, UnderwaterRigState, UnderwaterStepInput, SinkRateResult } from './simulation/UnderwaterSinkPhysics.js';
+export { createUnderwaterRig, computeSinkSpeed, stepUnderwater, isHoldState, computeSinkRate } from './simulation/UnderwaterSinkPhysics.js';
 export type { LineTensionInput, LineTensionOutput } from './simulation/LineTensionPhysics.js';
 export { LineTensionPhysics, HOLD_LIFT_M } from './simulation/LineTensionPhysics.js';
 export type { ChumBall, ChumProbePos, ChumParcel, ChumDrift, ChumSyncTarget, ChumPathPrediction, ChumSyncOpts } from './simulation/ChumPhysics.js';
@@ -259,7 +259,7 @@ export {
 } from './simulation/ChumPhysics.js';
 
 // 튜닝값 단일 소스 (feel=dev 패널 / balance=시뮬) — 매직넘버 중앙화
-export type { TuningConfig, TuningParamMeta, ChumTypeSpec, ChumTypeKey } from './config/tuning.js';
+export type { TuningConfig, TuningParamMeta, ChumTypeSpec, ChumTypeKey, SinkBodyType } from './config/tuning.js';
 export { TUNING, TUNING_META, getTuning, setTuning } from './config/tuning.js';
 export type { BiteContext, BiteTickResult } from './simulation/BiteProbabilityEngine.js';
 export { BiteProbabilityEngine } from './simulation/BiteProbabilityEngine.js';
@@ -293,7 +293,7 @@ export { LURES_CATALOG_DB, getLureSpec, getLuresByKind } from './db-schema/Lures
 export type { LureSinkProfile } from './simulation/LureRig.js';
 export {
   JIGHEAD_WEIGHTS_G, jigHeadWeightById,
-  computeLureRigWeight, getLureCastCd, getLureSinkProfile,
+  computeLureRigWeight, getLureCastCd, getLureSinkProfile, lureBodyType,
 } from './simulation/LureRig.js';
 export type { FightPattern, FightInput, FightEvent, FightStatus, FightingFishSpec } from './simulation/FightingPhase.js';
 export { FightingPhase } from './simulation/FightingPhase.js';

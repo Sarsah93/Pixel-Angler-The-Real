@@ -904,6 +904,12 @@ class InventoryStoreManager {
     return computeLureRigWeight(spec, jigHeadWeightById(this._jigHead));
   }
 
+  /** 원투 메인 무게추 봉돌 무게 (g) — 봉돌 채비 침강 물리 무게 소스 */
+  getSinkerWeightG(): number {
+    const item = this._rig.sinker ? this.find(this._rig.sinker) : undefined;
+    return item?.sinkerWeightG ?? 0;
+  }
+
   /** 비어 있는 필수 채비 부품 라벨 목록 (비어 있으면 캐스팅 불가) */
   getMissingRigParts(): string[] {
     // ── 루어 모드: 원줄+목줄+루어(+소프트면 지그헤드)만 필수 ──

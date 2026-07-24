@@ -27,7 +27,7 @@
 
 import Phaser from 'phaser';
 import {
-  createUnderwaterRig, stepUnderwater, isHoldState,
+  createUnderwaterRig, stepUnderwater, isHoldState, computeSinkRate, SinkBodyType,
   UnderwaterRigState, RigPhysicsParams, TideVector,
   LineTensionPhysics, BiteProbabilityEngine,
   ChumParcel, createChumParcel, stepChum, maxChumSync, predictChumPath,
@@ -37,7 +37,7 @@ import {
   getAreaSnagRiskMult,
   BiteSequenceEngine, TidalCurrentEngine, TidalInfluence,
   SeabedProfile, kstHour,
-  LureSpec, LureSinkProfile, getLureSinkProfile, jigHeadWeightById,
+  LureSpec, LureSinkProfile, getLureSinkProfile, jigHeadWeightById, lureBodyType,
   computeFeedingActivity, feedingRegionProfileOf, FeedingActivityResult,
   getMovementProfile, pickRunHeading,
   FishFatigueModel, FatigueTick, FATIGUE_PHASE_LABEL,
@@ -284,6 +284,9 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   private lureSpec?: LureSpec;
   /** 루어 침강 프로파일 (sinkType/sinkRate/dive) */
   private lureSink?: LureSinkProfile;
+  /** 침강 물리 — 현재 라인각(도) + 못뚫음(표층 쓸림) 상태 (루어/봉돌, HUD/수직뷰 표기) */
+  private rigLineAngleDeg = 60;
+  private rigSwept = false;
   /** 루어 액션 반응형 입질 배율 (방치 0.15 ~ 트위칭 3.0, 지깅 보정) — 게이지 표기용 */
   private lureActionMult = 1;
   /** 입질 유도용 연속 릴링 시간 (초) — 1~2단계 중 1초 릴링 시 provoke */
@@ -1772,25 +1775,52 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       driftBrake: lt.driftBrake, baitLiftMps: lt.baitLiftMps,
     });
 
-    // ── 루어 침강 오버라이드 (sinkType 데이터 소비 — 하드코딩 버프 금지) ──
-    // floating: 리트리브로 파고들고, 멈추면 부상 / sinking·fast_sinking: 자체 속도로 하강.
-    // 하강 하한 = 투척 지점 국소 수심(getBottomDepthAt — 추후 지형/어탐으로 교체 가능).
-    if (this.lureMode && this.lureSink && !holding && !this.upKey.isDown) {
+    // ── 루어/봉돌 침강 물리 — 조류 세기 × 유효무게 → 중력 (LURE_SINK_PHYSICS) ──
+    // 무게가 조류 임계를 뚫어야 가라앉고, 못 뚫으면 표층에서 조류 방향으로 쓸린다.
+    // 단일 루어 = 루어 무게 / 봉돌 채비(원투) = 봉돌 무게. 찌 채비는 기존 stepUnderwater 유지.
+    const applySinkModel = (this.lureMode || this.surfMode) && !holding && !this.upKey.isDown;
+    if (applySinkModel) {
+      this.rig.baitZ = prevZ;   // stepUnderwater 수직 침강 취소 (수평 드리프트는 유지) — 이중적용 방지
       const bottom = this.getBottomDepthAt();
       const retrieving0 = this.reeling && this.time.now - this.pointerDownAt > 220;
-      if (this.lureSink.sinkType === 'floating') {
+      const cur01 = Phaser.Math.Clamp(Math.hypot(tide.x, tide.y) / TUNING.sink.currentRefMps, 0, 1);
+      // 조류 존 보정 — 조경지대(sinkMult↑)=임계↓ 잘 가라앉음 / 본류=임계↑ (sinkMult 이중적용 방지)
+      const threshMult = 1 / Math.max(0.3, influence.sinkMult);
+
+      if (this.lureMode && this.lureSink?.sinkType === 'floating') {
+        // 플로팅 루어 — 부력: 리트리브로 파고들고 멈추면 수면 복귀 (중력 침강 없음)
         if (retrieving0) {
-          // 리트리브 중 파고듦 (diveDepthPerRetrieve 계수 × 속도)
           this.rig.baitZ = Math.min(bottom, this.rig.baitZ + this.lureSink.diveDepthPerRetrieve * 1.1 * dt);
         } else {
-          // 멈추면 부력으로 서서히 수면 복귀
           this.rig.baitZ = Math.max(0.15, this.rig.baitZ - 0.9 * dt);
         }
         this.rig.settled = false;
+        this.rigSwept = false;
+        this.rigLineAngleDeg = retrieving0 ? TUNING.sink.reelAngleDeg : 22;
       } else {
-        // 싱킹 계열 — 고유 속도로 바닥까지 하강
-        this.rig.baitZ = Math.min(bottom, this.rig.baitZ + this.lureSink.sinkRateMps * dt);
-        this.rig.settled = this.rig.baitZ >= bottom - 0.05;
+        // 싱킹 루어(무게=루어) / 봉돌 채비(무게=봉돌) — 조류×무게 침강
+        const isSinkerRig = !this.lureMode && this.surfMode;
+        const weightG = isSinkerRig ? InventoryStore.getSinkerWeightG() : InventoryStore.getLureRigWeightG();
+        const body: SinkBodyType = isSinkerRig
+          ? 'sinker' : (this.lureSpec ? lureBodyType(this.lureSpec.kind) : 'softPlastic');
+        const sr = computeSinkRate(cur01, weightG, body, threshMult);
+        this.rigSwept = sr.swept;
+        if (retrieving0) {
+          // 릴링 — 채비 상승은 아래 릴링 블록이 담당. 라인각만 상승각으로 표기.
+          this.rigLineAngleDeg = TUNING.sink.reelAngleDeg;
+        } else if (sr.swept) {
+          // 조류 못 뚫음 → 표층 부근 유지 + 조류 방향(하류)으로 쓸림
+          this.rig.baitZ = Math.max(0.2, this.rig.baitZ - 0.5 * dt);
+          const sweptDx = tide.x * TUNING.sink.sweptDriftK * dt;
+          this.rig.floatX += sweptDx; this.rig.baitX += sweptDx;
+          this.rig.settled = false;
+          this.rigLineAngleDeg = sr.lineAngleDeg;
+        } else {
+          // 임계 뚫음 → 종단속도 포화 침강 (초과 무게↑ = 빠름)
+          this.rig.baitZ = Math.min(bottom, this.rig.baitZ + sr.sinkRateMps * dt);
+          this.rig.settled = this.rig.baitZ >= bottom - 0.05;
+          this.rigLineAngleDeg = sr.lineAngleDeg;
+        }
       }
     }
 
@@ -3148,10 +3178,18 @@ export class FirstPersonFishingScene extends Phaser.Scene {
           `찌  ${this.floatSinkM > 0 ? `-${this.floatSinkM.toFixed(2)}m` : '0m'}`,
           Number.isFinite(this.zLimitM) ? `매듭  ${this.zLimitM}m` : '매듭 없음 (전유동)',
         ];
+    // 라인각 (루어/봉돌 침강 물리) — 적정 45~60° / 쓸림 / 무게 과부족
+    const la = this.rigLineAngleDeg;
+    const laRow = (this.lureMode || this.surfMode)
+      ? (this.rigSwept
+          ? '라인각 ~80° · 못 뚫음(쓸림)'
+          : `라인각 ${la.toFixed(0)}° · ${la <= 45 ? '무게 충분(수직)' : la <= 60 ? '적정 무게' : '무게 부족'}`)
+      : null;
     this.depthValsText?.setText([
       ...topRows,
       `채비  ${this.rig.baitZ.toFixed(1)}m`,
       `바닥  ${bedHere.toFixed(1)}m`,
+      ...(laRow ? [laRow] : []),
       inReefHere ? (kelpHere ? '여 밭 + 수초' : '여 밭 (암초)') : '모래/갯벌',
       hitZone ? `${zoneLabel} ★` : zoneLabel,
     ].join('\n'));
