@@ -1,6 +1,6 @@
 /**
  * @file FishSpawningOracle.ts
- * @description 다차원 어종 마스터 + 물때/미끼/지형 연동 오라클 (Phase 3, 43종)
+ * @description 다차원 어종 마스터 + 물때/미끼/지형 연동 오라클 (Phase 3, 49종)
  *
  * 입질이 성공했을 때 어떤 물고기가 낚일지 결정한다.
  *  - 마스터 스키마: 서식 지형/수심 범위/수심층/미끼 선호도(0~100)/크기·무게 분포/
@@ -9,7 +9,7 @@
  *  - 필터·가중: 현재 미끼 수심층 + 지형(여밭/모래) + 미끼 종류 + 물때 + 주야간
  *  - 정규 분포(Box-Muller)로 최종 크기(cm)/무게(g)/성별 결정
  *
- * 실측 기반 데이터 (2026-07-15~16 사용자 제공 43종 + 2026-07-20 지깅 중대형 확장) —
+ * 실측 기반 데이터 (2026-07-15~16 사용자 제공 43종 + 2026-07-20~25 지깅 중대형 확장) —
  * 추후 API 연동으로 교체 예정. 중대형 회유어는 SizeTierRules(크기 등급/주간·급심 게이트)와 연동.
  * 순수 TS — 렌더링/브라우저 API 없음.
  */
@@ -103,7 +103,7 @@ function sariPeak(base: number, peak: number): number[] {
 }
 
 /**
- * 어종 마스터 DB (43종 — 사용자 제공 실측 데이터 기반)
+ * 어종 마스터 DB (49종 — 사용자 제공 실측 데이터 기반)
  * 추후 API 연동 매칭 예정.
  */
 export const ORACLE_FISH_DB: FishMasterSpec[] = [
@@ -184,13 +184,14 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     fight: { basePower: 0.15, patternWeights: { jump: 0.1, dive: 0.5, lateral: 0.4 }, intervalMult: 1.2, mouthFragility: 0.3 },
   },
   {
-    speciesId: 'fine_puffer', nameKo: '졸복어', nameEn: 'Finepatterned Puffer',
-    habitat: ['sand', 'structure'], minDepthM: 1, maxDepthM: 10, preferredLayers: ['bottom'],
+    // 표준명 정정: 구 '졸복어'(fine_puffer) → 복섬 (Takifugu alboplumbeus, 항·방파제 흔한 소형 복어)
+    speciesId: 'grass_puffer', nameKo: '복섬', nameEn: 'Grass Puffer',
+    habitat: ['sand', 'structure'], minDepthM: 1, maxDepthM: 20, preferredLayers: ['bottom'],
     baitPreference: { krill: 50, worm_blue: 45, shellfish: 5 },
-    minCm: 6, maxCm: 15, meanCm: 10, sdCm: 2, weightFactor: 0.05, maleRatio: 0.5,
-    sexNote: '테트로도톡신 맹독 — 이빨로 바늘과 목줄을 갉아 끊음',
-    // 복어류는 주행성 — 밤엔 모래에 몸을 묻고 휴면
-    nightBonus: 0.4, tideActivity: flatTide(0.8),
+    minCm: 6, maxCm: 15, meanCm: 10, sdCm: 2, weightFactor: 0.024, maleRatio: 0.5,
+    sexNote: '테트로도톡신 맹독 — 이빨로 바늘과 목줄을 갉아 끊는 미끼 도둑',
+    // 복어류 — 주야 모두 먹는 잡식성 (강한 야행성 아님)
+    nightBonus: 1.0, tideActivity: flatTide(0.8),
     fight: { basePower: 0.1, patternWeights: { jump: 0.2, dive: 0.3, lateral: 0.5 }, intervalMult: 1.3, mouthFragility: 0.2, lineCutter: true },
   },
   {
@@ -263,12 +264,13 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     fight: { basePower: 0.2, patternWeights: { jump: 0.1, dive: 0.6, lateral: 0.3 }, intervalMult: 1.3, mouthFragility: 0.2 },
   },
   {
-    speciesId: 'golden_rockfish', nameKo: '황볼락', nameEn: 'Golden Rockfish',
-    habitat: ['reef'], minDepthM: 15, maxDepthM: 50, preferredLayers: ['bottom'],
+    // 황볼락 = Sebastes owstoni — 다소 깊은 암초·구조물의 난태생 볼락 (법정 금지체장 근거 없음)
+    speciesId: 'golden_rockfish', nameKo: '황볼락', nameEn: 'Owston\'s Rockfish',
+    habitat: ['reef', 'structure'], minDepthM: 20, maxDepthM: 90, preferredLayers: ['bottom', 'mid'],
     baitPreference: { fishcut: 45, worm_king: 35, krill: 20 },
     minCm: 12, maxCm: 35, meanCm: 21, sdCm: 4, weightFactor: 0.026, maleRatio: 0.5,
-    sexNote: '난태생 — 야간에 바위 그늘에 군집',
-    legalMinCm: 15, nightBonus: 2.0, tideActivity: flatTide(0.6),
+    sexNote: '난태생 — 다소 깊은 암초대에서 밤에 활발히 먹이 활동',
+    nightBonus: 1.3, tideActivity: flatTide(0.6),
     fight: { basePower: 0.3, patternWeights: { jump: 0.1, dive: 0.6, lateral: 0.3 }, intervalMult: 1.1, mouthFragility: 0.2 },
   },
   {
@@ -283,11 +285,12 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
   },
   {
     speciesId: 'black_rockfish', nameKo: '조피볼락(우럭)', nameEn: 'Jacopever',
-    habitat: ['reef', 'structure'], minDepthM: 5, maxDepthM: 80, preferredLayers: ['bottom'],
+    habitat: ['reef', 'structure'], minDepthM: 3, maxDepthM: 100, preferredLayers: ['bottom'],
     baitPreference: { livefish: 45, fishcut: 30, worm_king: 20, krill: 5 },
     minCm: 15, maxCm: 60, meanCm: 35, sdCm: 8, weightFactor: 0.021, maleRatio: 0.5,
     sexNote: '탐식성 — 물면 돌 틈으로 단숨에 파고드는 여박기 대표 주자',
-    legalMinCm: 23, nightBonus: 1.4, tideActivity: flatTide(0.6),
+    // 텔레메트리상 볼락/열기만큼 강한 야행성은 아님 — 주야 매복형 (야간 보정 완화 1.4→1.2)
+    legalMinCm: 23, nightBonus: 1.2, tideActivity: flatTide(0.6),
     fight: { basePower: 0.6, patternWeights: { jump: 0.05, dive: 0.85, lateral: 0.1 }, intervalMult: 0.9, mouthFragility: 0.1 },
   },
   {
@@ -609,6 +612,63 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     // 주행성 — 여명/황혼 피딩, 한밤 억제. 5월 금어기
     closedMonths: [5], nightBonus: 0.4, tideActivity: flatTide(0.7),
     fight: { basePower: 0.6, patternWeights: { jump: 0.2, dive: 0.1, lateral: 0.7 }, intervalMult: 0.75, mouthFragility: 0.35 },
+  },
+  // ══ 신규 어종 6종 (2026-07-25 실측 리서치 — 에셋 추가에 따른 DB 확보) ══
+  {
+    speciesId: 'yellowfin_puffer', nameKo: '까치복', nameEn: 'Yellowfin Puffer',
+    habitat: ['reef', 'mixed', 'open'], minDepthM: 10, maxDepthM: 100, preferredLayers: ['bottom', 'mid'],
+    baitPreference: { fishcut: 35, shellfish: 20, crab: 20, worm_blue: 15, krill: 10 },
+    minCm: 20, maxCm: 50, meanCm: 33, sdCm: 7, weightFactor: 0.02, maleRatio: 0.5,
+    sexNote: '등에 흰 줄무늬·노란 지느러미의 대형 참복류. 테트로도톡신 보유, 이빨로 목줄을 끊는다',
+    nightBonus: 1.0, tideActivity: flatTide(0.65),
+    fight: { basePower: 0.35, patternWeights: { jump: 0.1, dive: 0.5, lateral: 0.4 }, intervalMult: 1.1, mouthFragility: 0.1, lineCutter: true },
+  },
+  {
+    speciesId: 'bartail_flathead', nameKo: '양태', nameEn: 'Bartail Flathead',
+    habitat: ['sand', 'mud'], minDepthM: 5, maxDepthM: 100, preferredLayers: ['bottom'],
+    baitPreference: { livefish: 30, worm_king: 25, fishcut: 20, lure: 15, worm_blue: 10 },
+    minCm: 25, maxCm: 90, meanCm: 55, sdCm: 12, weightFactor: 0.007, maleRatio: 0.5,
+    sexNote: '모래·펄 바닥에 몸을 묻고 매복하는 여름 대표 어종. 넓적한 머리와 큰 입으로 소어를 삼킨다',
+    // 여명/황혼·야간 매복 포식자
+    nightBonus: 1.3, tideActivity: flatTide(0.6),
+    fight: { basePower: 0.4, patternWeights: { jump: 0.1, dive: 0.4, lateral: 0.5 }, intervalMult: 1.0, mouthFragility: 0.2 },
+  },
+  {
+    speciesId: 'bluefin_searobin', nameKo: '성대', nameEn: 'Spiny Red Gurnard',
+    habitat: ['sand', 'mud'], minDepthM: 20, maxDepthM: 150, preferredLayers: ['bottom'],
+    baitPreference: { worm_blue: 30, fishcut: 25, krill: 20, lure: 15, shellfish: 10 },
+    minCm: 15, maxCm: 40, meanCm: 27, sdCm: 6, weightFactor: 0.011, maleRatio: 0.5,
+    sexNote: '큰 가슴지느러미 아래 발가락 모양 유리기조로 모래 바닥을 기어 먹이를 찾는다',
+    nightBonus: 1.0, tideActivity: flatTide(0.55),
+    fight: { basePower: 0.25, patternWeights: { jump: 0.1, dive: 0.45, lateral: 0.45 }, intervalMult: 1.1, mouthFragility: 0.25 },
+  },
+  {
+    speciesId: 'hagfish', nameKo: '먹장어', nameEn: 'Inshore Hagfish',
+    habitat: ['mud'], minDepthM: 10, maxDepthM: 100, preferredLayers: ['bottom'],
+    baitPreference: { fishcut: 60, shellfish: 25, crab: 15 },
+    minCm: 25, maxCm: 60, meanCm: 40, sdCm: 8, weightFactor: 0.0015, maleRatio: 0.5,
+    sexNote: '턱이 없는 원구류(곰장어). 펄 바닥에 숨어 밤에 죽은 물고기를 파고드는 청소부 — 위협 시 점액 분비',
+    nightBonus: 2.0, tideActivity: flatTide(0.55),
+    fight: { basePower: 0.15, patternWeights: { jump: 0.05, dive: 0.6, lateral: 0.35 }, intervalMult: 1.3, mouthFragility: 0.1 },
+  },
+  {
+    speciesId: 'halfbeak', nameKo: '학꽁치', nameEn: 'Japanese Halfbeak',
+    habitat: ['open', 'structure'], minDepthM: 0, maxDepthM: 30, preferredLayers: ['surface'],
+    baitPreference: { krill: 70, bread: 20, worm_blue: 10 },
+    minCm: 18, maxCm: 40, meanCm: 28, sdCm: 5, weightFactor: 0.002, maleRatio: 0.5,
+    sexNote: '아랫턱이 바늘처럼 길게 뻗은 표층 회유어. 무리 지어 수면을 스치며 크릴 밑밥에 잘 모인다',
+    // 주행성 표층 무리 — 약한 입가로 과텐션 시 잘 떨어짐
+    nightBonus: 0.9, tideActivity: flatTide(0.75),
+    fight: { basePower: 0.15, patternWeights: { jump: 0.4, dive: 0.1, lateral: 0.5 }, intervalMult: 1.1, mouthFragility: 0.55 },
+  },
+  {
+    speciesId: 'northern_whiting', nameKo: '보리멸', nameEn: 'Japanese Whiting',
+    habitat: ['sand'], minDepthM: 0, maxDepthM: 30, preferredLayers: ['bottom'],
+    baitPreference: { worm_blue: 55, worm_king: 25, krill: 10, fishcut: 10 },
+    minCm: 12, maxCm: 30, meanCm: 20, sdCm: 4, weightFactor: 0.006, maleRatio: 0.5,
+    sexNote: '여름 모래 해변 원투낚시의 대표 손맛. 갯지렁이 미끼에 잘 물며 은백색 몸이 파도밭을 훑는다',
+    nightBonus: 0.9, tideActivity: flatTide(0.7),
+    fight: { basePower: 0.2, patternWeights: { jump: 0.15, dive: 0.25, lateral: 0.6 }, intervalMult: 1.0, mouthFragility: 0.35 },
   },
 ];
 

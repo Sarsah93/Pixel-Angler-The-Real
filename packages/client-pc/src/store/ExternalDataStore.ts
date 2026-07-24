@@ -99,10 +99,18 @@ const KOSIS_SPECIES_MATCH: { keywords: string[]; speciesIds: string[] }[] = [
   { keywords: ['말쥐치'], speciesIds: ['black_scraper'] },
   { keywords: ['쥐치'], speciesIds: ['filefish'] },
   { keywords: ['갈치'], speciesIds: ['hairtail'] },
-  { keywords: ['복'], speciesIds: ['tiger_puffer', 'fine_puffer'] },
+  // '까치복'⊃'복' — 반드시 까치복을 먼저. '복'은 복섬/자주복 등 소형·참복류로.
+  { keywords: ['까치복'], speciesIds: ['yellowfin_puffer'] },
+  { keywords: ['복'], speciesIds: ['tiger_puffer', 'grass_puffer', 'yellowfin_puffer'] },
   { keywords: ['망둥어', '망둑'], speciesIds: ['yellowfin_goby'] },
   // ── 신규 어종 (2026-07-16) ──
   { keywords: ['꽁치'], speciesIds: ['pacific_saury'] },
+  // ── 신규 어종 (2026-07-25) ──
+  { keywords: ['양태'], speciesIds: ['bartail_flathead'] },
+  { keywords: ['성대'], speciesIds: ['bluefin_searobin'] },
+  { keywords: ['먹장어', '곰장어'], speciesIds: ['hagfish'] },
+  { keywords: ['학꽁치'], speciesIds: ['halfbeak'] },
+  { keywords: ['보리멸'], speciesIds: ['northern_whiting'] },
   { keywords: ['눈볼대', '금태'], speciesIds: ['blackthroat_seaperch'] },
   { keywords: ['눈퉁멸'], speciesIds: ['round_herring'] },
   { keywords: ['대구'], speciesIds: ['pacific_cod'] },

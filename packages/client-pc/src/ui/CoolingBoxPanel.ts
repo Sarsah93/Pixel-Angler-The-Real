@@ -139,12 +139,12 @@ export class CoolingBoxPanel extends Phaser.GameObjects.Container {
       }).setOrigin(0, 0.5);
       itemContainer.add(nameTxt);
 
-      // 신선도 및 무게
-      const detailTxt = this.scene.add.text(180, 0, `${item.weightGrams}g | 신선도: ${this.getConditionLabel(item.condition)}`, {
+      // 신선도 및 무게 — 조리 버튼(x=310) 아래로 밀리지 않게 우측 정렬(끝 x=302) (텍스트 전수조사)
+      const detailTxt = this.scene.add.text(302, 0, `${item.weightGrams}g · ${this.getConditionLabel(item.condition)}`, {
         fontFamily: '"Noto Sans KR", sans-serif',
         fontSize: '11px',
         color: '#aaccff',
-      }).setOrigin(0, 0.5);
+      }).setOrigin(1, 0.5);
       itemContainer.add(detailTxt);
 
       // 손질 버튼 (캐치앤쿡 진입)

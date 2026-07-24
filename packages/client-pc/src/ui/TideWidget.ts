@@ -38,6 +38,8 @@ export class TideWidget extends Phaser.GameObjects.Container {
       fontSize: '11px',
       color: '#4af2a1',
       align: 'center',
+      // 100px 박스 안에서 줄바꿈 — 긴 물때 라벨이 박스 밖으로 삐지지 않게 (텍스트 전수조사)
+      wordWrap: { width: 92 },
     }).setOrigin(0.5);
     this.add(this.labelText);
   }

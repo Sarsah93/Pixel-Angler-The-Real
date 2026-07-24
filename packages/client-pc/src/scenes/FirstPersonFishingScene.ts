@@ -171,6 +171,18 @@ const FISH_TEXTURE: Record<string, string> = {
   greenling: 'fish_greenling',             // 놀래미
   fat_greenling: 'fish_fat_greenling',     // 쥐노래미
   surfperch: 'fish_surfperch',             // 망상어
+  // 2026-07-25 추가 (기존 4종 텍스처 + 복섬 개명 + 신규 6종)
+  spanish_mackerel: 'fish_spanish_mackerel', // 삼치
+  conger_eel: 'fish_conger_eel',           // 붕장어
+  pike_conger: 'fish_pike_conger',         // 갯장어(하모)
+  pacific_saury: 'fish_pacific_saury',     // 꽁치
+  grass_puffer: 'fish_grass_puffer',       // 복섬
+  yellowfin_puffer: 'fish_yellowfin_puffer', // 까치복
+  bartail_flathead: 'fish_bartail_flathead', // 양태
+  bluefin_searobin: 'fish_bluefin_searobin', // 성대
+  hagfish: 'fish_hagfish',                 // 먹장어
+  halfbeak: 'fish_halfbeak',               // 학꽁치
+  northern_whiting: 'fish_northern_whiting', // 보리멸
 };
 
 /**
@@ -1351,8 +1363,11 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.add.text(GAME_WIDTH - 352 + 169, 58, '수심 정보', {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#7fb8d8', fontStyle: 'bold',
     }).setOrigin(0.5).setDepth(91);
+    // wordWrap = 게이지 박스 우측 텍스트 열 폭 (텍스트 x=1152 → 패널 우측 DP_X+DP_W=1266).
+    // 라인각 등 긴 행이 패널 밖으로 넘치지 않게 열 안에서 줄바꿈 (텍스트 전수조사 규칙).
     this.depthValsText = this.add.text(GAME_WIDTH - 352 + 224, 112, '', {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#d0e8f5', lineSpacing: 11,
+      wordWrap: { width: DP_X + DP_W - (GAME_WIDTH - 352 + 224) - 6 },
     }).setDepth(91);
 
     // ── 쿨러 (중앙 하단 — 어획 보관함 / 밑밥 보관함 2분할) ──
@@ -1783,8 +1798,9 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       this.rig.baitZ = prevZ;   // stepUnderwater 수직 침강 취소 (수평 드리프트는 유지) — 이중적용 방지
       const bottom = this.getBottomDepthAt();
       const retrieving0 = this.reeling && this.time.now - this.pointerDownAt > 220;
-      const cur01 = Phaser.Math.Clamp(Math.hypot(tide.x, tide.y) / TUNING.sink.currentRefMps, 0, 1);
-      // 조류 존 보정 — 조경지대(sinkMult↑)=임계↓ 잘 가라앉음 / 본류=임계↑ (sinkMult 이중적용 방지)
+      // 라인각 모델 rev2 — 실제 조류 속도(m/s)를 그대로 넘긴다 (구 cur01 클램프는 약~강조류를
+      // 전부 1로 뭉개 약조류 침강을 막았음). 조류 존 보정(조경지대=잘 가라앉음 → θ↓ / 본류 θ↑)
+      const curMps = Math.hypot(tide.x, tide.y);
       const threshMult = 1 / Math.max(0.3, influence.sinkMult);
 
       if (this.lureMode && this.lureSink?.sinkType === 'floating') {
@@ -1803,7 +1819,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
         const weightG = isSinkerRig ? InventoryStore.getSinkerWeightG() : InventoryStore.getLureRigWeightG();
         const body: SinkBodyType = isSinkerRig
           ? 'sinker' : (this.lureSpec ? lureBodyType(this.lureSpec.kind) : 'softPlastic');
-        const sr = computeSinkRate(cur01, weightG, body, threshMult);
+        const sr = computeSinkRate(curMps, weightG, body, threshMult);
         this.rigSwept = sr.swept;
         if (retrieving0) {
           // 릴링 — 채비 상승은 아래 릴링 블록이 담당. 라인각만 상승각으로 표기.
@@ -3182,8 +3198,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     const la = this.rigLineAngleDeg;
     const laRow = (this.lureMode || this.surfMode)
       ? (this.rigSwept
-          ? '라인각 ~80° · 못 뚫음(쓸림)'
-          : `라인각 ${la.toFixed(0)}° · ${la <= 45 ? '무게 충분(수직)' : la <= 60 ? '적정 무게' : '무게 부족'}`)
+          ? '라인각 ~80° 쓸림'
+          : `라인각 ${la.toFixed(0)}° ${la <= 45 ? '충분' : la <= 60 ? '적정' : '부족'}`)
       : null;
     this.depthValsText?.setText([
       ...topRows,

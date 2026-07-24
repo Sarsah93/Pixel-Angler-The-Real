@@ -155,6 +155,19 @@ export class BootScene extends Phaser.Scene {
     this.load.image('fish_rainbow_wrasse_female', 'fish/multicolorfin_rainbowfish_female.png');
     this.load.image('fish_rainbow_wrasse_male', 'fish/multicolorfin_rainbowfish_male.png');
 
+    // 2026-07-25 추가 — 신규 어종 이미지 11종 (기존 4종 텍스처 + 복섬 개명 + 신규 6종)
+    this.load.image('fish_spanish_mackerel', 'fish/spanish_mackerel.png');            // 삼치
+    this.load.image('fish_conger_eel', 'fish/conger_eel.png');                        // 붕장어
+    this.load.image('fish_pike_conger', 'fish/daggertooth_pike_conger.png');          // 갯장어(하모)
+    this.load.image('fish_pacific_saury', 'fish/saury.png');                          // 꽁치
+    this.load.image('fish_grass_puffer', 'fish/grass_puffer.png');                    // 복섬 (구 졸복)
+    this.load.image('fish_yellowfin_puffer', 'fish/yellowfin_puffer.png');            // 까치복
+    this.load.image('fish_bartail_flathead', 'fish/bartail_flathead.png');            // 양태
+    this.load.image('fish_bluefin_searobin', 'fish/bluefin_searobin.png');            // 성대
+    this.load.image('fish_hagfish', 'fish/hagfish.png');                              // 먹장어(곰장어)
+    this.load.image('fish_halfbeak', 'fish/halfbeak.png');                            // 학꽁치
+    this.load.image('fish_northern_whiting', 'fish/northern_whiting.png');            // 보리멸
+
     // ─── 남자 캐릭터 스프라이트 (12장) ───
     // 정지 4방향
     this.load.image('man-idle-front', 'characters/man/man-idle-front.png');

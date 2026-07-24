@@ -254,6 +254,14 @@ export const SEAFOOD_AUCTION_MAPPING: Record<string, AuctionMappingDef> = {
     defaultPricePerKg: 28000,
     sizeFactorMultiplier: 1.1,
   },
+  // ── 신규 어종 6종 + 복섬 (2026-07-25) ──
+  yellowfin_puffer: { itemCode: '100901', defaultPricePerKg: 40000, sizeFactorMultiplier: 1.2 }, // 까치복
+  bartail_flathead: { itemCode: '100112', defaultPricePerKg: 22000, sizeFactorMultiplier: 1.1 }, // 양태
+  bluefin_searobin: { itemCode: '100113', defaultPricePerKg: 15000, sizeFactorMultiplier: 1.0 }, // 성대
+  hagfish: { itemCode: '100210', defaultPricePerKg: 18000, sizeFactorMultiplier: 0.9 },          // 먹장어(곰장어)
+  halfbeak: { itemCode: '100211', defaultPricePerKg: 14000, sizeFactorMultiplier: 0.9 },         // 학꽁치
+  northern_whiting: { itemCode: '100114', defaultPricePerKg: 16000, sizeFactorMultiplier: 1.0 }, // 보리멸
+  grass_puffer: { itemCode: '100902', defaultPricePerKg: 5000, sizeFactorMultiplier: 0.8 },      // 복섬
 };
 
 /**

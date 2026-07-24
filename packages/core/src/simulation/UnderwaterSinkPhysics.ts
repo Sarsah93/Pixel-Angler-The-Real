@@ -112,52 +112,56 @@ export function isHoldState(state: UnderwaterRigState, speedEpsilon = 0.05): boo
 }
 
 // ═══════════════════════════════════════════════════════════════
-// 루어/봉돌 침강 물리 — 조류 세기 × 유효무게 → 중력 (LURE_SINK_PHYSICS)
+// 루어/봉돌 침강 물리 rev2 — 라인각(줄 처짐) 모델 (LURE_SINK_PHYSICS_V2)
 //
-//  무게가 조류 임계(Wthr)를 뚫어야 가라앉는다. 못 뚫으면(Weff ≤ Wthr) 표층에
-//  떠 조류 방향으로 쓸리고(swept), 뚫으면 초과 무게만큼 종단속도로 포화 침강한다.
-//  유효무게 Weff = Wg / dragC (유선형일수록 잘 가라앉음). 단일 루어=루어 무게 /
-//  봉돌 채비=봉돌 무게. 모든 계수는 TUNING.sink에서 소비 (dev 패널/시뮬 공유).
+//  실측 기반 (2026-07-25 리서치): 정수·약조류에서는 10g 지그헤드도 바닥에 닿는다.
+//  조류는 채비를 "못 가라앉게" 막는 게 아니라 원줄에 배(belly)를 만들어 **라인각(θ)**을
+//  키우고, 침강 속도를 cosθ로 줄인다. θ가 스윕각(≈72°, 수직 기준)을 넘어서야 비로소
+//  표층에서 흘러가며(swept) 바닥에 못 닿는다.
+//    tanθ ≈ angleK · curMps / Weff^weightExp   (경량·강조류일수록 θ↑)
+//    v_sink = v_terminal(Weff, 형상) · cosθ     (θ가 클수록 느림)
+//  유효무게 Weff = Wg / dragC (유선형일수록 큼 → 수직). 종단속도는 무게에 약비례
+//  (10g≈0.8·30g≈1.2·60g≈2.0 m/s 정도, 형상 배율). 모든 계수는 TUNING.sink에서 소비.
+//  ⚠ 구 모델(무게 임계 thr0+thrSlope·cur 이진 swept)은 10g가 무조류에서도 못 가라앉던
+//    버그가 있어 폐기 — 조류에 비례한 임계 폭증이 약조류 침강까지 막았다.
 // ═══════════════════════════════════════════════════════════════
 
 /** 침강 판정 결과 */
 export interface SinkRateResult {
-  /** 조류를 못 뚫음 → 표층 부근 유지 + 조류 방향 횡류 */
+  /** 라인각이 스윕각 초과 → 못 가라앉고 표층 흐름 */
   swept: boolean;
-  /** 침강 속도 (m/s) — swept면 0 */
+  /** 침강 속도 (m/s) — swept면 미세 잔류만 */
   sinkRateMps: number;
-  /** 라인 각도 (도, 수직 기준) — 78=수평쓸림 / 45~60=적정 / 작을수록 수직 */
+  /** 라인 각도 (도, 수직 기준) — 0=수직 / 45~60=흘러내림 / 72+=스윕 */
   lineAngleDeg: number;
   /** 유효무게 (무드래그 환산 g) */
   weffG: number;
-  /** 조류 침강 임계 (g) */
+  /** 이 조류에서 수직 침강을 유지하는 유효무게 기준 (참고용 — θ=스윕각 되는 Weff) */
   wthrG: number;
 }
 
 /**
- * 조류 세기(cur01 0~1) × 무게(g) × 형상(bodyType) → 침강 거동.
- * threshMult: 조류 존 보정 (조경지대=임계↓ 잘 가라앉음 / 본류=임계↑) — sinkMult 이중적용 방지.
+ * 조류 속도(m/s) × 무게(g) × 형상(bodyType) → 침강 거동 (라인각 모델).
+ * threshMult: 조류 존 보정 (조경지대=잘 가라앉음 → θ↓ / 본류=θ↑) — sinkMult 이중적용 방지.
  */
 export function computeSinkRate(
-  cur01: number, weightG: number, bodyType: SinkBodyType, threshMult = 1,
+  currentMps: number, weightG: number, bodyType: SinkBodyType, threshMult = 1,
 ): SinkRateResult {
   const S = TUNING.sink;
   const dragC = S.dragC[bodyType];
-  const weffG = weightG / dragC;
-  const cur = Math.max(0, Math.min(1, cur01));
-  const wthrG = Math.max(1, (S.thr0 + S.thrSlope * cur) * threshMult);
-  let swept = false;
-  let sinkRateMps = 0;
-  if (weffG <= wthrG) {
-    // 조류 못 뚫음 → 표층 쓸림
-    swept = true;
-  } else {
-    // 초과 무게분 → 종단속도로 포화 (무게↑ = 빠른 침강)
-    const vT = S.vTerminal[bodyType];
-    sinkRateMps = vT * (1 - Math.exp(-(weffG - wthrG) / S.scaleG));
-  }
-  // 라인각 — 간신히 뚫으면(ratio≈1) 78°(수평쓸림 근접), 무게 초과할수록 수직(작아짐)
-  const ratio = weffG / wthrG;
-  const lineAngleDeg = Math.max(18, Math.min(85, 78 - 30 * (ratio - 1)));
-  return { swept, sinkRateMps, lineAngleDeg, weffG, wthrG };
+  const weffG = Math.max(0.5, weightG / dragC);
+  const cur = Math.max(0, currentMps);
+  // 라인각 θ (수직 기준) — 조류가 원줄에 배를 만들어 채비를 눕힌다.
+  const tanTheta = (S.angleK * cur / Math.pow(weffG, S.weightExp)) * threshMult;
+  const thetaDeg = Math.atan(tanTheta) * (180 / Math.PI);
+  const swept = thetaDeg >= S.sweptAngleDeg;
+  // 종단 침강속도 — 무게에 약비례 (형상 배율), cosθ로 감쇠
+  const vTerm = Math.max(S.vTermMin, Math.min(S.vTermMax,
+    S.vTermRefMps[bodyType] * Math.pow(weffG / S.vTermRefG, S.vTermWeightExp)));
+  const sinkRateMps = swept
+    ? S.residualSweptMps
+    : Math.max(S.residualSweptMps, vTerm * Math.cos((thetaDeg * Math.PI) / 180));
+  // 참고 임계: 이 조류에서 θ=스윕각을 만드는 Weff (그 이상이면 수직 유지)
+  const wthrG = Math.pow((S.angleK * cur * threshMult) / Math.tan((S.sweptAngleDeg * Math.PI) / 180), 1 / S.weightExp);
+  return { swept, sinkRateMps, lineAngleDeg: thetaDeg, weffG, wthrG };
 }

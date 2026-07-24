@@ -101,6 +101,15 @@ this.events.on('resume', () => {
 - 인터페이스/타입 필드의 설명 주석은 한국어로 작성
 - 영어 주석도 혼용 가능하나, 핵심 설명은 한국어 우선
 
+### 텍스트 오버플로 금지 정책 (2026-07-25 신규 — 사용자 지시)
+- **모든 텍스트 컴포넌트(`scene.add.text`)는 자신이 속한 컨테이너(패널/박스/게이지/버튼) 경계 밖으로 절대 나가지 않아야 한다.**
+- 가변 길이 문자열(수치·라벨·어종명 등)을 그리는 텍스트는 반드시 다음 중 하나로 방어:
+  1. `wordWrap: { width: <컨테이너 안쪽 폭> }` — 넘치면 줄바꿈 (세로 여유 확인)
+  2. `setOrigin(1, …)` 우측 정렬 + 우측 경계 안쪽 x — 우측 열/버튼 침범 방지
+  3. 라벨 단축 — 길이 상한이 확실할 때
+- **UI 텍스트를 추가/수정할 때마다** 해당 컴포넌트뿐 아니라 인접 텍스트까지 **한 번 더 전수 검수**할 것 (긴 값·다국어·큰 수치 케이스). 신규 패널은 가장 긴 예상 문자열로 렌더 확인.
+- 참고 위험 패턴: 좁은 열에 좌측정렬(origin 0) + wordWrap 없음 + 가변 내용 = 오버플로 1순위.
+
 ---
 
 ## 5. 게임 시스템 목록 및 구현 상태
@@ -344,14 +353,23 @@ npx pnpm --filter @tra/client-pc run dev
 
 ---
 
-## 9. 현재 빌드 상태 (2026-07-24 기준)
+## 9. 현재 빌드 상태 (2026-07-25 기준)
 
 ```
-npx pnpm run build → ✅ 4/4 패키지 성공 (2026-07-24)
-npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류 (2026-07-24)
+npx pnpm run build → ✅ 4/4 패키지 성공 (2026-07-25)
+npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류 (2026-07-25)
 ```
 
-**최근 주요 변경 (2026-07-24 37차) — 루어/봉돌 침강 물리 (조류 세기 × 유효무게 → 중력)** (LURE_SINK_PHYSICS 반영 — 3케이스 수치 재현 PASS, 빌드 4/4·typecheck 0):
+**최근 주요 변경 (2026-07-25 38차) — 어종 11종 추가·졸복→복섬·볼락 다종화 + 침강 물리 rev2(라인각 모델) + 수심뷰 라인각 텍스트 오버플로 + 텍스트 전수조사** (사용자 4건 피드백 + 웹서치 리서치 3건 — 브라우저 검증 완료, 빌드 4/4·typecheck 0):
+- **[신규 어종 11종 — 에셋+DB 4계층]** (`food assets/` → `public/fish/` 11장): 기존 오라클 有 4종 텍스처만(삼치 spanish_mackerel·붕장어 conger_eel·갯장어 pike_conger·꽁치 pacific_saury) + **졸복→복섬 개명** + **신규 6종 풀 DB**(까치복 yellowfin_puffer·양태 bartail_flathead·성대 bluefin_searobin·먹장어 hagfish·학꽁치 halfbeak·보리멸 northern_whiting). 각 종 **오라클(ORACLE_FISH_DB)+FISH_DATABASE(도감)+FISH_TEXTURE/BootScene+SEAFOOD_AUCTION_MAPPING(판매가)** 4계층 등록. 실측 데이터(FishBase/국립수산과학원) 웹서치 — 서식지형·수심층·미끼선호·크기·야행성·파이팅·목줄절단(복어류) 반영. 오라클 43→49종. **검증**: 신규 7종 전부 스폰 가능, 양태 66.5cm 어획 팝업 실사 이미지 정상, 텍스처 11장 로드 확인.
+- **[졸복→복섬 개명]** 표준명 이슈 — 구 `fine_puffer`(졸복어) → `grass_puffer`(복섬, Takifugu alboplumbeus). 오라클·FISH_DATABASE·ExternalDataStore(KOSIS '복' 매칭) 3곳 일괄. 소형 항·방파제 복어, lineCutter·독 유지.
+- **[볼락 다종화 검증 + 정확화]** 오라클엔 이미 볼락류 5종(볼락 dark_banded·조피볼락/우럭 black·황볼락 golden·청볼락 blue·열기/불볼락 red_snapper) — **인게임 실제로 5종 분화 스폰 확인**(암초 야간 4천 스폰: dark_banded 503·열기 441·황볼락 138·청볼락 102·조피 15). 리서치 정정: **황볼락 = Sebastes owstoni**(불볼락 thompsoni와 별종), 수심 15→20~90m 심화, 법정 금지체장(근거 없음) 제거 / **조피볼락 야행성 완화**(nightBonus 1.4→1.2 — 텔레메트리상 강한 야행성 아님), 수심 3~100m. 오라클·FISH_DATABASE 정합.
+- **[침강 물리 rev2 — 라인각 모델]** (`computeSinkRate` 재작성 — 37차 이진 임계 모델 폐기): 구 모델은 **10g 지그헤드(softPlastic weff 6.25g < thr0 8) → 무조류에서도 못 가라앉던 버그** + `cur01` 클램프가 약~강조류를 전부 1로 뭉갬. 실측 리서치(약조류<0.2m/s→10g도 바닥, 스윕 온셋 10g@0.3·30g@0.6·60g@1.0) 반영 → **라인각 θ 모델**: `tanθ = angleK·curMps / Weff^weightExp`(경량·강조류일수록 θ↑), `v_sink = v_terminal(무게 약비례)·cosθ`, θ≥sweptAngle(72°)면 표층 흐름(swept). 호출부 raw m/s 전달(클램프 폐기). **검증(수치)**: 약조류 0.05~0.15 → 10g v 0.51→0.33(침강) / 0.4 → 10g swept·30g+ 침강 / 0.82(사리) → 60g만 — 리서치 온셋 정합. 게임 조류 조금(0.04~0.12)~사리(0.8+) 범위라 약조류에서 10g 침강 복원. TUNING.sink 재정의(angleK/weightExp/sweptAngleDeg/vTermRefMps/vTermWeightExp) + META 슬라이더.
+- **[수심뷰 라인각 텍스트 오버플로 (P1)]** (`renderDepthPanel` 우측 텍스트 열): `depthValsText`(x=1152, wordWrap 없음)에 "라인각 ~80° · 못 뚫음(쓸림)"(~145px)이 패널 우측(1266)을 넘쳐 화면 밖으로 삐짐 — **라벨 단축**("~80° 쓸림"/"52° 적정") + **wordWrap(열 폭 108px)** 추가. 검증: 스윕 상태 텍스트 우측 끝 1232 ≤ 1266.
+- **[텍스트 전수조사 (감사 에이전트)]** P2 EnvironmentHUD(tide/lunar, wordWrap 200) · P3 TideWidget(물때 라벨, wordWrap 92) · P4 CoolingBoxPanel(신선도/무게 우측정렬로 조리버튼 침범 방지) 수정. ⚠ **신규 규칙 §4 추가**: 모든 텍스트 컴포넌트는 컨테이너 경계 밖으로 나가지 않게 wordWrap/우측정렬/단축 처리 + 코딩 시 전수 검수.
+- 잔여(차기): 볼락류 전용 텍스처(현재 청볼락/황볼락만 이미지, 조피·볼락·열기는 폴백), 침강 depth 의존(얕은 물 얕은 침강 완화), 신규 어종 손질 프로필(ButcheryProfiles) 확장.
+
+**이전 변경 (2026-07-24 37차) — 루어/봉돌 침강 물리 (조류 세기 × 유효무게 → 중력)** (LURE_SINK_PHYSICS 반영 — 3케이스 수치 재현 PASS, 빌드 4/4·typecheck 0):
 - **[신규 core] `computeSinkRate(cur01, weightG, bodyType, threshMult)`** (`UnderwaterSinkPhysics.ts`): 무게가 조류 임계 `Wthr = thr0 + thrSlope·cur01`(약19/중41/강63)를 뚫어야 가라앉는다. **유효무게 Weff = Wg / dragC**(유선형일수록 잘 뚫음). Weff ≤ Wthr → **swept(표층 유지 + 조류 방향 쓸림)** / 초과 → **종단속도 포화 침강** `vT·(1−e^(−(Weff−Wthr)/scaleG))`. 라인각 `78 − 30·(Weff/Wthr − 1)` 클램프(45~60=적정). `SinkRateResult{swept, sinkRateMps, lineAngleDeg, weffG, wthrG}`.
 - **[신규 core] `lureBodyType(kind)`** (`LureRig.ts`): 루어 kind → `SinkBodyType`(metalJig/minnow/egi/softPlastic). 봉돌 채비는 'sinker'(dragC 0.7 — 잘 뚫음).
 - **[배선 client] `updateDrift` 침강 교체**: 고정 sinkRate 폐기 → **루어(무게=`getLureRigWeightG`)·봉돌 채비(무게=`getSinkerWeightG` 신설)** 모두 `computeSinkRate` 소비. stepUnderwater 수직 침강은 `baitZ=prevZ`로 취소(수평 드리프트만 유지 — 이중적용 방지). 조류 존은 `threshMult = 1/influence.sinkMult`로 임계에 반영(조경지대=임계↓). swept 시 `baitX/floatX += tide.x·sweptDriftK·dt` 표층 쓸림. 플로팅 루어는 기존 부력(리트리브 파고듦/부상) 유지.

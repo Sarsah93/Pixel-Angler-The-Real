@@ -58,6 +58,8 @@ export class EnvironmentHUD {
       fontSize: '11px',
       color: '#ccddff',
       fontFamily: 'monospace',
+      // 패널(220px) 안에서 줄바꿈 — 긴 물때 라벨/큰 조위값이 우측으로 넘치지 않게 (텍스트 전수조사)
+      wordWrap: { width: 200 },
     };
 
     // 시간 표시
