@@ -17,7 +17,7 @@ import Phaser from 'phaser';
 import { GameState } from '../store/GameState.js';
 import {
   InventoryStore, InvCategory, InvItem, GRID_CAPACITY,
-  CATEGORY_LABEL, CONDITION_LABEL, CONDITION_COLOR,
+  CATEGORY_LABEL, CONDITION_LABEL, CONDITION_COLOR, refreshCondition,
 } from '../store/InventoryStore.js';
 import { CoolerStore } from '../store/CoolerStore.js';
 import { DraggablePanel } from './DraggablePanel.js';
@@ -71,6 +71,10 @@ export class InventoryPanel extends DraggablePanel {
   /** 그리드 좌상단 (패널 로컬 좌표) */
   private gridX0 = 0;
   private gridY0 = 0;
+
+  /** 신선도 실시간 갱신 타이머 + 마지막 상태 시그니처 (변화 시에만 리랜더) */
+  private freshnessTimer?: Phaser.Time.TimerEvent;
+  private condSig = '';
 
   constructor(scene: Phaser.Scene, x: number, y: number, cbs: InventoryPanelCallbacks) {
     super(scene, { x, y, width: PANEL_W, height: PANEL_H, title: '인벤토리', onClose: cbs.onClose, depth: 800 });
@@ -146,7 +150,33 @@ export class InventoryPanel extends DraggablePanel {
     // 외부(상점 구매 등) 인벤토리 변경 반영
     scene.events.on('inventory-changed', this.onExternalChange, this);
 
+    // 신선도 실시간 리랜더 — 열려 있는 동안 어획물 상태가 전이되면 즉시 배지·색 갱신
+    // (닫았다 켜는 리프레시 없이 실시간 반영. Task 2)
+    this.freshnessTimer = scene.time.addEvent({
+      delay: 1000, loop: true, callback: () => this.tickFreshness(),
+    });
+
     this.applyFix();
+  }
+
+  /** 현재 탭 아이템의 신선도 상태 시그니처 (변화 감지용) */
+  private conditionSig(): string {
+    let sig = '';
+    for (let idx = 0; idx < GRID_CAPACITY; idx++) {
+      const it = InventoryStore.itemAtSlot(this.currentTab, idx);
+      if (it?.condition) sig += `${it.id}:${it.condition}|`;
+    }
+    return sig;
+  }
+
+  /** 1초 주기 — 신선도 지연 갱신 후 상태가 바뀌었으면 그리드만 다시 그린다 */
+  private tickFreshness(): void {
+    if (!this.scene || this.itemDrag?.moved) return;   // 드래그 중엔 건드리지 않음
+    for (let idx = 0; idx < GRID_CAPACITY; idx++) {
+      const it = InventoryStore.itemAtSlot(this.currentTab, idx);
+      if (it) refreshCondition(it);
+    }
+    if (this.conditionSig() !== this.condSig) this.renderGrid();
   }
 
   private onExternalChange = (): void => {
@@ -235,6 +265,7 @@ export class InventoryPanel extends DraggablePanel {
       this.gridContainer.add(box);
 
       if (!item) continue;
+      refreshCondition(item);   // 렌더 시점 실상태 반영 (신선도 지연 갱신)
 
       const icon = createItemIcon(this.scene, sx + SLOT / 2, sy + SLOT / 2 - 6, item, 30);
       this.gridContainer.add(icon);
@@ -288,6 +319,7 @@ export class InventoryPanel extends DraggablePanel {
       this.gridContainer.add(hit);
     }
 
+    this.condSig = this.conditionSig();
     this.applyFix();
   }
 
@@ -531,6 +563,8 @@ export class InventoryPanel extends DraggablePanel {
   }
 
   override destroy(fromScene?: boolean): void {
+    this.freshnessTimer?.remove();
+    this.freshnessTimer = undefined;
     if (this.keyHandler) {
       this.scene?.input?.keyboard?.off('keydown', this.keyHandler);
       this.keyHandler = undefined;

@@ -193,6 +193,50 @@ export interface TuningConfig {
     /** 텐션 임계 (줄 색 경고/위험) */
     lineColorWarn: number; lineColorCritical: number;
   };
+  // ── 뒷줄견제 미세 리프트 (feel — FP_HOLD_AND_VIEW_POLISH §1) ──
+  hold: {
+    /** 뒷줄견제(H) 순간 미세 상승 (m) — 손가락 두 마디 (구 core HOLD_LIFT_M 2m 대체) */
+    liftM: number;
+    /** 상승 속도 (m/s, 완만) */
+    liftRateMps: number;
+  };
+  // ── 조경 포말 (feel — §3) ──
+  foam: {
+    /** 찌 부근 포말 X 분산 (px — 좁게 뭉침) */
+    spreadPx: number;
+  };
+  // ── 정면뷰 배경 그라데이션 밴드 (feel — §4) ──
+  view: {
+    /** 바다 그라데이션 밴드 수 (반전: 상단 어둡게/깊게 → 하단 옅게) */
+    seaBands: number;
+    /** 하늘 그라데이션 보간 밴드 수 (4 앵커 → N밴드) */
+    skyBands: number;
+  };
+  // ── 착수/드리프트 ←/→ 채비 횡 이동 (feel — CAST_MOVE_SPEC) ──
+  castMove: {
+    /** 이동 강도 단계 (m/s) — 조금씩<서서히<보통<많이<과감히 (mockup) */
+    tinyMps: number; slowMps: number; normalMps: number; lotsMps: number; boldMps: number;
+    /** 조류 세기 경계 (m/s) — 정지 / 약함 / 중간(이상=강함) */
+    stillCur: number; weakCur: number; mediumCur: number;
+  };
+  // ── 파이트 ←/→ + 릴링 물고기 견인 (feel — §3) ──
+  fightPull: {
+    /** 물고기 무대 횡 견인 속도 (px/s — f2d 좌표계) */
+    lateralStagePerSec: number;
+  };
+  // ── 뒷줄견제 목줄 스트리밍 (balance — CHUM_3D_OVERLAP §3) ──
+  leader: {
+    /** 무부하 목줄 처짐 각 (수직 기준, 도) */
+    baseDeg: number;
+    /** 뒷줄견제 홀드 시 추가 눕힘 (도) */
+    holdDeg: number;
+    /** 조류 세기(0~1)당 추가 각 (도) — 중간(0.5)에서 ~70° */
+    curGain: number;
+    /** 스트리밍 상한 (도) */
+    maxDeg: number;
+    /** 목줄 길이 (m — 커스텀 없을 때) */
+    defaultLenM: number;
+  };
   // ── 데이터 테이블 (balance, 슬라이더 대상 아님) ──
   /** 어종 id → 피로 스태미나 base */
   fatigueStaminaBase: Record<string, number>;
@@ -260,6 +304,15 @@ export const TUNING: TuningConfig = {
     bobberAlphaFactor: 1.15, shadowAlphaMin: 0.15, depthAlphaMin: 0.25,
     lineColorWarn: 0.60, lineColorCritical: 0.85,
   },
+  hold: { liftM: 0.02, liftRateMps: 0.2 },
+  foam: { spreadPx: 30 },
+  view: { seaBands: 14, skyBands: 12 },
+  castMove: {
+    tinyMps: 0.15, slowMps: 0.35, normalMps: 0.6, lotsMps: 0.9, boldMps: 1.3,
+    stillCur: 0.05, weakCur: 0.18, mediumCur: 0.35,
+  },
+  fightPull: { lateralStagePerSec: 60 },
+  leader: { baseDeg: 8, holdDeg: 34, curGain: 60, maxDeg: 78, defaultLenM: 1.2 },
   // 데이터 테이블 (대표값 — 나머지 어종 동일 형식으로 채움)
   fatigueStaminaBase: {
     yellowtail: 1.6, amberjack: 1.7, greater_amberjack: 1.9, spanish_mackerel: 1.0,
@@ -325,6 +378,18 @@ export const TUNING_META: TuningParamMeta[] = [
   { path: 'chumTypes.ball.sinkRate', min: 0.8, max: 2.4, step: 0.05, category: 'balance', label: '경단 침강' },
   { path: 'fight.sideLoadCoef', min: 0.3, max: 1.5, step: 0.05, category: 'balance', label: '측면하중 계수' },
   { path: 'fight.recoverRatePerSec', min: 0.0, max: 0.06, step: 0.005, category: 'balance', label: '스태미나 회복' },
+  { path: 'hold.liftM', min: 0, max: 0.3, step: 0.01, category: 'feel', label: '뒷줄견제 리프트(m)' },
+  { path: 'foam.spreadPx', min: 10, max: 120, step: 2, category: 'feel', label: '포말 분산(px)' },
+  { path: 'view.seaBands', min: 6, max: 20, step: 1, category: 'feel', label: '바다 밴드 수' },
+  { path: 'view.skyBands', min: 4, max: 20, step: 1, category: 'feel', label: '하늘 밴드 수' },
+  { path: 'castMove.slowMps', min: 0.15, max: 0.6, step: 0.05, category: 'feel', label: '횡이동 서서히(m/s)' },
+  { path: 'castMove.normalMps', min: 0.3, max: 1.0, step: 0.05, category: 'feel', label: '횡이동 보통(m/s)' },
+  { path: 'castMove.lotsMps', min: 0.6, max: 1.4, step: 0.05, category: 'feel', label: '횡이동 많이(m/s)' },
+  { path: 'castMove.boldMps', min: 0.8, max: 2.0, step: 0.05, category: 'feel', label: '횡이동 과감(m/s)' },
+  { path: 'fightPull.lateralStagePerSec', min: 20, max: 140, step: 5, category: 'feel', label: '파이트 견인(px/s)' },
+  { path: 'leader.holdDeg', min: 10, max: 50, step: 1, category: 'balance', label: '목줄 홀드각' },
+  { path: 'leader.curGain', min: 20, max: 90, step: 1, category: 'balance', label: '목줄 조류각 게인' },
+  { path: 'leader.maxDeg', min: 55, max: 85, step: 1, category: 'balance', label: '목줄 스트리밍 상한' },
 ];
 
 // ── path 유틸 (dev 패널 공용) ──

@@ -48,24 +48,57 @@ export function saveSettings(settings: GameSettings): void {
 }
 
 // ─────────────────────────────────────────────
-// 단축키 정의 목록
+// 단축키 정의 목록 (2026-07-24 현행화 — 필드/1인칭 낚시/파이팅)
 // ─────────────────────────────────────────────
-const HOTKEY_LIST = [
-  { key: '방향키 ↑↓←→', desc: '플레이어 이동 (이동 전용)' },
-  { key: 'SPACE / ENTER', desc: '낚시 포인트 진입 / 캐스팅' },
-  { key: 'E', desc: '건물 / NPC 상호작용' },
-  { key: 'H', desc: '해루질 씬 진입' },
-  { key: 'T', desc: '통발 관리 씬 진입' },
-  { key: 'C', desc: '요리(캐치앤쿡) 씬 진입' },
-  { key: 'U', desc: '제작대 씬 진입' },
-  { key: 'L', desc: '면허 패널 토글' },
-  { key: 'I', desc: '인벤토리 패널 토글' },
-  { key: 'Q', desc: '퀘스트 저널 패널 토글' },
-  { key: 'S', desc: '능력치(스탯) 패널 토글' },
-  { key: 'M', desc: '미니맵 크기 순환' },
-  { key: 'V', desc: '조류/수심 오버레이 토글' },
-  { key: '1 ~ 8', desc: '퀵슬롯 선택' },
-  { key: 'ESC', desc: '팝업 닫기 / 이전 화면 복귀' },
+interface HotkeyEntry { key: string; desc: string; }
+interface HotkeySection { title: string; items: HotkeyEntry[]; }
+
+const HOTKEY_SECTIONS: HotkeySection[] = [
+  {
+    title: '필드 (탑다운)',
+    items: [
+      { key: '방향키', desc: '캐릭터 이동' },
+      { key: '좌클릭(유지)', desc: '캐스팅 차지 → 착수 시 낚시 진입' },
+      { key: '좌클릭', desc: '클릭 위치로 이동' },
+      { key: 'E', desc: '장비 패널 (건물 근접 시 상호작용 우선)' },
+      { key: 'R', desc: '자전거 승·하차 (탑승 시 이동 2배)' },
+      { key: 'B', desc: '쿨러(어창) 열기' },
+      { key: 'S', desc: '능력치(스탯) 패널' },
+      { key: 'U', desc: '활용 (요리·채비 조립)' },
+      { key: 'I', desc: '인벤토리 토글' },
+      { key: 'L', desc: '면허 패널 토글' },
+      { key: 'Q', desc: '퀘스트 저널 토글' },
+      { key: 'M', desc: '미니맵 크기 순환' },
+      { key: 'V', desc: '조류/수심 오버레이 토글' },
+      { key: '1 ~ 8', desc: '퀵슬롯 선택' },
+      { key: 'ESC', desc: '팝업 닫기(LIFO) / 일시정지 메뉴' },
+    ],
+  },
+  {
+    title: '1인칭 낚시 (채비 흘림)',
+    items: [
+      { key: '우클릭', desc: '챔질 (3단계에 성공률 최고)' },
+      { key: '좌클릭(유지)', desc: '릴링 (발앞까지 감으면 채비 회수)' },
+      { key: '좌클릭 탭', desc: '호핑 (루어 머리 들기)' },
+      { key: '좌클릭 더블탭', desc: '트위칭 / 저킹' },
+      { key: '←/→', desc: '채비 횡 이동 (조류 방향·세기 연동)' },
+      { key: '↑ (유지)', desc: '리프트 (채비 수심 상승)' },
+      { key: 'H', desc: '뒷줄견제 (그 지점 홀드)' },
+      { key: 'C', desc: '밑밥 투척 (동조율)' },
+      { key: 'I', desc: '인벤토리 토글' },
+      { key: 'SPACE', desc: '다시 캐스팅 (결과 화면)' },
+      { key: 'F1 / ?', desc: '도움말 가이드' },
+      { key: 'ESC', desc: '종료 (인벤→쿨러→나가기 LIFO)' },
+    ],
+  },
+  {
+    title: '1인칭 파이팅',
+    items: [
+      { key: '좌클릭(유지)', desc: '릴링 (거리 좁힘)' },
+      { key: '←/→', desc: '로드 스티어 (+릴링 = 물고기 횡 견인)' },
+      { key: '↑ (유지)', desc: '버티기 (홀드 — 구 H)' },
+    ],
+  },
 ];
 
 // ─────────────────────────────────────────────
@@ -284,49 +317,57 @@ export class SettingsScene extends Phaser.Scene {
     this.contentContainer.add(note);
   }
 
-  // ── 단축키 탭 ─────────────────────────────────────────
+  // ── 단축키 탭 (섹션별 2열: 좌=필드 / 우=1인칭 낚시·파이팅) ─────────────────
   private renderHotkeyTab(): void {
     const panelX = (GAME_WIDTH - 800) / 2;
     const panelY = (GAME_HEIGHT - 560) / 2;
-    const startX = panelX + 30;
-    const startY = panelY + 112;
-    const colW = 360;
+    const startX = panelX + 24;
+    const startY = panelY + 106;
+    const colW = 374;
 
-    const headerNote = this.add.text(startX, startY, '※ 단축키 변경은 추후 지원 예정입니다.', {
-      fontFamily: '"Noto Sans KR", sans-serif',
-      fontSize: '11px',
-      color: '#607b8e',
-      fontStyle: 'italic',
+    const headerNote = this.add.text(startX, startY, '※ 이번 업데이트까지의 조작을 반영했습니다. 단축키 변경(리맵)은 추후 지원 예정입니다.', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#607b8e', fontStyle: 'italic',
     });
     this.contentContainer.add(headerNote);
 
-    HOTKEY_LIST.forEach((item, i) => {
-      const col = i < 8 ? 0 : 1;
-      const row = i < 8 ? i : i - 8;
-      const ix = startX + col * (colW + 20);
-      const iy = startY + 24 + row * 34;
+    // 좌측 열 = 필드, 우측 열 = 낚시 + 파이팅
+    const columns: { x: number; sections: HotkeySection[] }[] = [
+      { x: startX, sections: [HOTKEY_SECTIONS[0]] },
+      { x: startX + colW + 8, sections: [HOTKEY_SECTIONS[1], HOTKEY_SECTIONS[2]] },
+    ];
+    const keyW = 118;
+    const rowH = 22;
 
-      // 키 박스
-      const keyBg = this.add.graphics();
-      keyBg.fillStyle(0x0e1c2d, 0.9);
-      keyBg.fillRoundedRect(ix, iy, 120, 26, 3);
-      keyBg.lineStyle(1, 0x2a5a8a, 0.7);
-      keyBg.strokeRoundedRect(ix, iy, 120, 26, 3);
+    columns.forEach((col) => {
+      let y = startY + 20;
+      col.sections.forEach((sec) => {
+        const header = this.add.text(col.x, y, `▸ ${sec.title}`, {
+          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px', color: '#5cd0ff', fontStyle: 'bold',
+        });
+        this.contentContainer.add(header);
+        y += 22;
 
-      const keyText = this.add.text(ix + 60, iy + 13, item.key, {
-        fontFamily: 'monospace',
-        fontSize: '11px',
-        color: '#4af2a1',
-        fontStyle: 'bold',
-      }).setOrigin(0.5);
+        sec.items.forEach((item) => {
+          const keyBg = this.add.graphics();
+          keyBg.fillStyle(0x0e1c2d, 0.9);
+          keyBg.fillRoundedRect(col.x, y, keyW, rowH - 3, 3);
+          keyBg.lineStyle(1, 0x2a5a8a, 0.7);
+          keyBg.strokeRoundedRect(col.x, y, keyW, rowH - 3, 3);
 
-      const descText = this.add.text(ix + 128, iy + 5, item.desc, {
-        fontFamily: '"Noto Sans KR", sans-serif',
-        fontSize: '11px',
-        color: '#a0b8c8',
+          const keyText = this.add.text(col.x + keyW / 2, y + (rowH - 3) / 2, item.key, {
+            fontFamily: 'monospace', fontSize: '10px', color: '#4af2a1', fontStyle: 'bold',
+          }).setOrigin(0.5);
+          if (keyText.width > keyW - 6) keyText.setScale((keyW - 6) / keyText.width);
+
+          const descText = this.add.text(col.x + keyW + 8, y + 2, item.desc, {
+            fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#a0b8c8',
+          });
+
+          this.contentContainer.add([keyBg, keyText, descText]);
+          y += rowH;
+        });
+        y += 8;   // 섹션 간 간격
       });
-
-      this.contentContainer.add([keyBg, keyText, descText]);
     });
   }
 
