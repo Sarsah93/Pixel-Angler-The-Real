@@ -314,7 +314,7 @@ export class TrapScene extends Phaser.Scene {
       const discardBtn = this.createSmallButton(60, 120, '🗑️ 파기하기', '#662222');
       discardBtn.on('pointerdown', () => {
         GameState.removeTrap(trap.instanceId);
-        GameState.save();
+        GameState.markDirty();   // 저장은 집 침대에서만 (HOMETOWN_HOME_SPEC)
         this.loadDeployedTraps();
         panel.destroy();
       });
@@ -350,7 +350,7 @@ export class TrapScene extends Phaser.Scene {
     // GameState 반영
     GameState.addTrapCatchToCooler(result.items);
     GameState.removeTrap(trap.instanceId);
-    GameState.save();
+    GameState.markDirty();   // 저장은 집 침대에서만 (HOMETOWN_HOME_SPEC)
 
     // 통발 목록 갱신
     this.loadDeployedTraps();
@@ -458,7 +458,7 @@ export class TrapScene extends Phaser.Scene {
     };
 
     GameState.deployTrap(newTrap);
-    GameState.save();
+    GameState.markDirty();   // 저장은 집 침대에서만 (HOMETOWN_HOME_SPEC)
 
     this.statusBar.setText('✅ 통발이 정상적으로 설치되었습니다!');
     this.loadDeployedTraps();

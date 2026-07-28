@@ -118,6 +118,7 @@ export type {
   OrientationState, ButcheryTool, CutPoint, CutSpec, ButcheryProfile,
   ButcheryPrimitive, ButcheryStage, CutEvalResult, SashimiGrade, ButcheryResult,
   FilletShape, KnifeSpec, FilletYieldInput, FilletYieldResult, ButcheryFamily,
+  ButcheryByproducts,
 } from './types/Butchery.js';
 export { ORIENTATION_LABEL } from './types/Butchery.js';
 export {
@@ -325,5 +326,18 @@ export type {
 } from './types/RegionMap.js';
 export {
   TERRAIN_BY_CHAR, OPPOSITE_EDGE, SOKCHO_MAP_GRAPH, BUSAN_MAP_GRAPH,
-  REGION_MAP_GRAPHS, getRegionMapNode,
+  HOMETOWN_MAP_GRAPH, REGION_MAP_GRAPHS, getRegionMapNode,
 } from './types/RegionMap.js';
+
+// 홈타운(집) 거점 — 오브젝트 인스턴스/영속 · 칸 단위 배치 · 수족관 · 하우스 확장 · 교통비
+export type {
+  MapObjectType, MapObjectInteract, MapObject, WorldObjectState,
+  PlaceTerrain, PlacementRule, PlaceWorld, PlacementCheck, PlacementDef,
+  AquariumSpec, AquariumState, HouseTier, TransportProfile,
+} from './types/HomeBase.js';
+export {
+  createEmptyWorldObjectState, effectiveObjects, canPlaceAt,
+  PLACEMENT_DEFS, AQUARIUM_SPECS, HOUSE_TIERS,
+  TRANSPORT_PROFILES, computeTravelFare,
+  HOMETOWN_SPAWN, HOMETOWN_OBJECTS,
+} from './types/HomeBase.js';

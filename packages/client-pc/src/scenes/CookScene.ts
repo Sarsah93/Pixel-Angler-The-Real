@@ -2,11 +2,10 @@
  * @file CookScene.ts
  * @description 캐치앤쿡 씬 (Phaser 3)
  *
- * 잡은 생선/채취물을 직접 손질하고 조리하는 미니게임.
- * - 손질 단계 순차 진행 (비늘 제거 → 내장 제거 → 포 뜨기)
- * - 조리 선택 (회/구이/탕/찜)
- * - 완성 요리 → 식당 메뉴 등록 or 자가 취식
- * - 위치별 가능 조리법 제한
+ * 잡은 생선/채취물을 조리하는 레거시 씬 (FieldScene 계열 C/U 키에서 진입).
+ * - 손질(회 뜨기)은 요리(U) 창의 도마 + ButcheryPanel로 일원화됨 (41차) —
+ *   이 씬은 안내 후 레시피 조리(회/구이/탕/찜)만 진행.
+ * - 완성 요리 → 식당 메뉴 등록 or 자가 취식 / 위치별 가능 조리법 제한.
  */
 
 import Phaser from 'phaser';
@@ -344,7 +343,7 @@ export class CookScene extends Phaser.Scene {
       const ingredient = recipe.requiredIngredients.find((ing) => ing.itemId === item.speciesId || (ing.isFishSpecies && item.type === 'fish'));
       if (ingredient) {
         GameState.removeFromCooler(item.speciesId, ingredient.requiredAmountG);
-        GameState.save();
+        GameState.markDirty();   // 저장은 집 침대에서만 (HOMETOWN_HOME_SPEC)
       }
 
       this.showFinalMessage('맛있게 드셨습니다! 체력이 회복되고 기운이 솟아납니다.', true);
@@ -377,12 +376,12 @@ export class CookScene extends Phaser.Scene {
           }
           GameState.restaurant.todayRevenue += recipe.estimatedSaleValue;
         }
-        GameState.save();
+        GameState.markDirty();   // 저장은 집 침대에서만 (HOMETOWN_HOME_SPEC)
         this.showFinalMessage(`${recipe.nameKo}을(를) 식당 메뉴에 추가하고 재료를 소모했습니다!`, false);
       } else {
         // 즉시 판매로 코인 추가
         GameState.addCoins(recipe.estimatedSaleValue);
-        GameState.save();
+        GameState.markDirty();   // 저장은 집 침대에서만 (HOMETOWN_HOME_SPEC)
         this.showFinalMessage(`${recipe.nameKo}을(를) 즉시 판매하여 ₩${recipe.estimatedSaleValue.toLocaleString()}을 획득했습니다!`, false);
       }
     });

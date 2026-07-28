@@ -153,6 +153,15 @@ export interface InvItem {
    * 없으면 이름 기반 폴백(구멍찌 +8 / 수중찌 −8)으로 계산된다.
    */
   floatBuoyG?: number;
+
+  /**
+   * 설치형 아이템 — core PLACEMENT_DEFS 키 (텃밭/울타리/수족관 등).
+   * 존재하면 인벤토리 '설치하기' → 홈타운 칸 단위 배치 모드 (HOMETOWN_HOME_SPEC).
+   */
+  placeKey?: string;
+
+  /** 손질 부산물 종류 (subCategory '부산물') — boneHead=중골·머리(육수) / skin=껍질 */
+  byproductKind?: 'boneHead' | 'skin';
 }
 
 /** 상점 카탈로그/구매용 아이템 템플릿 (slot/qty 없이 정의) */
@@ -345,6 +354,11 @@ function createSeedItems(): InvItem[] {
     { id: 'inv_bucket',    name: '낚시용 두레박',           icon: '🪣', category: 'etc', subCategory: '낚시도구', qty: 1, basePrice: 9000, equippable: false },
     // 쿨러 (아이스박스) — 보유해야 어창 보관/밑밥 배합 기능 사용 가능 (들고 다니는 개념)
     { id: 'inv_cooler',    name: '쿨러 (아이스박스)',        icon: '🛅', category: 'etc', subCategory: '낚시도구', qty: 1, basePrice: 45000, equippable: false },
+    // ── 설치형 (HOMETOWN_HOME_SPEC — 홈타운 칸 단위 자유 배치. placeKey = core PLACEMENT_DEFS) ──
+    { id: 'inv_place_farm',    name: '텃밭 개간 키트',       icon: '🌱', category: 'etc', subCategory: '설치형', qty: 1, basePrice: 8000,  equippable: false, placeKey: 'farm_plot' },
+    { id: 'inv_place_fence',   name: '울타리',              icon: '🪵', category: 'etc', subCategory: '설치형', qty: 6, basePrice: 1500,  equippable: false, placeKey: 'fence' },
+    { id: 'inv_place_aq_live', name: '활어 수조 (업소용)',   icon: '🐠', category: 'etc', subCategory: '설치형', qty: 1, basePrice: 120000, equippable: false, placeKey: 'aquarium_live' },
+    { id: 'inv_place_aq_disp', name: '관상용 수족관',        icon: '🐟', category: 'etc', subCategory: '설치형', qty: 1, basePrice: 60000, equippable: false, placeKey: 'aquarium_display' },
   ];
 
   // ── 원투 메인 싱커(무게추 봉돌) — SinkerDatabase(core)에서 생성 ──
@@ -759,6 +773,25 @@ class InventoryStoreManager {
     item.qty -= qty;
     if (item.qty <= 0) this.deleteInstance(itemId);
     return true;
+  }
+
+  /**
+   * 설치물 회수 — 설치 시 소모했던 설치형 아이템 1개를 되돌린다 (HOMETOWN_HOME_SPEC).
+   * 인스턴스가 남아 있으면 수량 +1, 소멸했으면 템플릿으로 재생성.
+   */
+  private static readonly PLACEABLE_TPL: Record<string, InvItemTemplate> = {
+    inv_place_farm:    { id: 'inv_place_farm',    name: '텃밭 개간 키트',     icon: '🌱', category: 'etc', subCategory: '설치형', basePrice: 8000,   equippable: false, placeKey: 'farm_plot' },
+    inv_place_fence:   { id: 'inv_place_fence',   name: '울타리',            icon: '🪵', category: 'etc', subCategory: '설치형', basePrice: 1500,   equippable: false, placeKey: 'fence' },
+    inv_place_aq_live: { id: 'inv_place_aq_live', name: '활어 수조 (업소용)', icon: '🐠', category: 'etc', subCategory: '설치형', basePrice: 120000, equippable: false, placeKey: 'aquarium_live' },
+    inv_place_aq_disp: { id: 'inv_place_aq_disp', name: '관상용 수족관',      icon: '🐟', category: 'etc', subCategory: '설치형', basePrice: 60000,  equippable: false, placeKey: 'aquarium_display' },
+  };
+
+  recoverPlaceable(itemId: string): boolean {
+    const existing = this.find(itemId);
+    if (existing) { existing.qty += 1; return true; }
+    const tpl = InventoryStoreManager.PLACEABLE_TPL[itemId];
+    if (!tpl) return false;
+    return this.addItem(tpl, 1);
   }
 
   // ── 착용 ────────────────────────────────────────────

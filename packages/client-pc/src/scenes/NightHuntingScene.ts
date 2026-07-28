@@ -529,7 +529,7 @@ export class NightHuntingScene extends Phaser.Scene {
     confirmBtn.on('pointerdown', () => {
       // GameState에 저장
       GameState.addHarvestToCooler(this.caughtItems);
-      GameState.save();
+      GameState.markDirty();   // 저장은 집 침대에서만 (HOMETOWN_HOME_SPEC)
 
       this.cameras.main.fadeOut(220, 0, 10, 20);
       this.cameras.main.once('camerafadeoutcomplete', () => {

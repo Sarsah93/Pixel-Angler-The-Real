@@ -28,7 +28,11 @@ import type {
   TrapCatchItem,
   CaughtFishRecord,
 } from '@tra/core';
-import { getLicenseByType, getCurrentGameMinute, calculateTideInfo, getFishById } from '@tra/core';
+import type { WorldObjectState } from '@tra/core';
+import {
+  getLicenseByType, getCurrentGameMinute, calculateTideInfo, getFishById,
+  createEmptyWorldObjectState, TUNING,
+} from '@tra/core';
 import { EnvironmentStore } from './EnvironmentStore.js';
 import { CoolerStore, CoolerSaveState } from './CoolerStore.js';
 import { InventoryStore, InventorySaveState } from './InventoryStore.js';
@@ -133,6 +137,8 @@ interface SaveData {
   inventoryStore?: InventorySaveState;
   /** 1회성 안내 플래그 (chumGuideSeen 등 — 최초 표시 여부) */
   flags?: Record<string, boolean>;
+  /** 맵별 오브젝트 월드 상태 — 초기 배치 − removed + moved + placed (HOMETOWN_HOME_SPEC) */
+  worldObjects?: Record<string, WorldObjectState>;
   version: number;
 }
 
@@ -166,12 +172,22 @@ export class GameStateManager {
   private _skills: SkillState = createDefaultSkills();
   /** 1회성 안내 플래그 (세이브 대상) — 예: chumGuideSeen */
   private _flags: Record<string, boolean> = {};
+  /** 맵별 오브젝트 월드 상태 (세이브 대상) — key = mapId */
+  private _worldObjects: Record<string, WorldObjectState> = {};
   private _currentSpotId: string | null = null;
   private _isInitialized = false;
   /** 현재 진행 중인 저장 슬롯 (1~3, 미지정 시 null) */
   private _activeSlot: number | null = null;
   /** 자전거 탑승 여부 — 필드 씬(Field/RegionField) 간 유지되는 세션 상태 (저장 비대상) */
   isMounted = false;
+  /**
+   * 현재 위치 태그 (세션 — 씬 진입 시 설정).
+   * 'menu' | 'hometown' | 'hometown_interior' | 'region_field' | 'fishing' …
+   * 저장은 TUNING.save.allowedTags 위치에서만 허용 (집 침대 = hometown_interior).
+   */
+  locationTag = 'menu';
+  /** 마지막 디스크 저장 이후 진행 여부 (세션) — 침대 저장 시 해제 */
+  private _dirty = false;
 
   readonly environment = EnvironmentStore;
 
@@ -209,6 +225,7 @@ export class GameStateManager {
     this._completedQuestIds = new Set(saved.completedQuestIds ?? []);
     this._skills = saved.skills ?? createDefaultSkills();
     this._flags = saved.flags ?? {};
+    this._worldObjects = saved.worldObjects ?? {};
     // 쿨러 복원 — 저장~로드 사이 실경과 시간을 sync로 반영 (어획 신선도/매질 만료, 밑밥은 그대로)
     CoolerStore.deserialize(saved.coolerBox);
     // 인벤토리 복원 — 구버전 세이브(필드 없음)는 시드로 리셋
@@ -527,6 +544,7 @@ export class GameStateManager {
       coolerBox: CoolerStore.serialize(),
       inventoryStore: InventoryStore.serialize(),
       flags: this._flags,
+      worldObjects: this._worldObjects,
       version: SAVE_VERSION,
     };
   }
@@ -540,24 +558,57 @@ export class GameStateManager {
     this._flags[key] = value;
   }
 
-  /** 세이브 — 활성 슬롯이 있으면 슬롯에, 없으면 슬롯 1에 저장 */
-  save(): void {
-    this.saveToSlot(this._activeSlot ?? 1);
+  // ─── 저장 정책 (HOMETOWN_HOME_SPEC — "집 침대에서만 저장") ───
+
+  /** 현재 위치에서 저장 가능한지 — TUNING.save.allowedTags (기본: 집 실내 침대) */
+  canSaveHere(): boolean {
+    return TUNING.save.allowedTags.includes(this.locationTag);
   }
 
-  /** 지정 슬롯(1~3)에 저장. 성공 여부 반환 */
+  /** 마지막 디스크 저장 이후 진행이 있는지 (종료 경고용) */
+  get isDirty(): boolean {
+    return this._dirty;
+  }
+
+  /** 진행 발생 표시 — 구 자동저장 지점들이 호출 (디스크 기록은 침대에서만) */
+  markDirty(): void {
+    this._dirty = true;
+  }
+
+  /**
+   * 세이브 — 저장 허용 위치(집 침대)에서만 디스크 기록.
+   * 불가 위치면 false 반환 (호출부가 안내 표시). 슬롯 생성 등 강제 저장은 saveToSlot 직접 사용.
+   */
+  save(): boolean {
+    if (!this.canSaveHere()) {
+      console.log(`[GameState] Save blocked — location '${this.locationTag}' not allowed (집 침대에서만 저장).`);
+      return false;
+    }
+    return this.saveToSlot(this._activeSlot ?? 1);
+  }
+
+  /** 지정 슬롯(1~3)에 저장. 성공 여부 반환 (위치 게이트 없는 프리미티브 — 슬롯 생성용) */
   saveToSlot(slot: number): boolean {
     const data = this.buildSaveData();
     if (!data) return false;
     try {
       localStorage.setItem(SLOT_KEY(slot), JSON.stringify(data));
       this._activeSlot = slot;
+      this._dirty = false;
       console.log(`[GameState] Saved to slot ${slot}.`);
       return true;
     } catch (e) {
       console.error('[GameState] Save failed:', e);
       return false;
     }
+  }
+
+  // ─── 맵 오브젝트 월드 상태 (초기 배치 − removed + moved + placed) ───
+
+  /** 맵의 오브젝트 월드 상태 조회 (없으면 빈 상태 생성) */
+  getWorldObjects(mapId: string): WorldObjectState {
+    if (!this._worldObjects[mapId]) this._worldObjects[mapId] = createEmptyWorldObjectState();
+    return this._worldObjects[mapId];
   }
 
   /** 지정 슬롯(1~3)에서 불러오기. 성공 여부 반환 */
@@ -662,6 +713,8 @@ export class GameStateManager {
     this._completedQuestIds = new Set();
     this._skills = createDefaultSkills();
     this._flags = {};
+    this._worldObjects = {};
+    this._dirty = false;
     CoolerStore.resetAll();
     InventoryStore.resetAll();
     this._currentSpotId = null;

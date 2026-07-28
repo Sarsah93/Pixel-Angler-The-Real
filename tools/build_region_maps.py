@@ -253,6 +253,11 @@ def extract_pois(gw, gh, grid, poi_hits, min_hits=4):
 
 # ── 지역별 지도 목록 및 표시 이름 ──
 REGIONS = {
+    # 홈타운(집) — 단일 맵, 엣지 전환 없음 (HOMETOWN_MAP_GRAPH — core/RegionMap.ts)
+    # 원본: scratchpad gen_hometown_png.py 생성 (목업 hometown_map_mockup.svg 레이아웃)
+    'hometown': [
+        ('hometown_home', '홈타운 (집)'),
+    ],
     'sokcho': [
         ('sokcho_sokchohang_3',              '속초항 (남측)'),
         ('sokcho_sokchohang_2',              '속초항 (중앙)'),

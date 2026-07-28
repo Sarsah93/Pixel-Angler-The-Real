@@ -179,6 +179,38 @@ export const RECIPE_DATABASE: CookingRecipe[] = [
       durationMinutes: 90,
     },
   },
+
+  // ────────── 탕/지리 (부산물 활용 — 회뜨기 부산물 소비 훅. 2026-07-28 P1-1) ──────────
+  // itemId 'byproduct_boneHead'는 손질 부산물(subCategory '부산물', byproductKind 'boneHead')을
+  // 가리킨다. 조리 플로우가 부산물 소비를 지원하면 실사용(현재는 데이터 훅).
+  {
+    id: 'stew_spicy_bone',
+    nameKo: '생선 매운탕',
+    description: '회 뜨고 남은 중골·머리로 얼큰하게 끓인 매운탕. 버릴 게 없다.',
+    requiredIngredients: [
+      { itemId: 'byproduct_boneHead', nameKo: '중골·머리', requiredAmountG: 200, isFishSpecies: false },
+    ],
+    processingSteps: [],
+    cookingMethod: 'soup',
+    requiredLocation: ['restaurant', 'condo'],
+    estimatedSaleValue: 9000,
+    staminaRestore: 35,
+    buffEffect: { type: 'fatigue_recovery', value: 20, durationMinutes: 60 },
+  },
+  {
+    id: 'stew_clear_bone',
+    nameKo: '생선 지리 (맑은탕)',
+    description: '중골·머리를 맑게 우려낸 담백한 지리. 해장에 좋다.',
+    requiredIngredients: [
+      { itemId: 'byproduct_boneHead', nameKo: '중골·머리', requiredAmountG: 200, isFishSpecies: false },
+    ],
+    processingSteps: [],
+    cookingMethod: 'soup',
+    requiredLocation: ['restaurant', 'condo'],
+    estimatedSaleValue: 9500,
+    staminaRestore: 30,
+    buffEffect: { type: 'fatigue_recovery', value: 25, durationMinutes: 60 },
+  },
 ];
 
 export function getRecipeById(id: string): CookingRecipe | undefined {

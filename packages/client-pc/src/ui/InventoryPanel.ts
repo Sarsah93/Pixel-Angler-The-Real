@@ -18,6 +18,7 @@ import { GameState } from '../store/GameState.js';
 import {
   InventoryStore, InvCategory, InvItem, GRID_CAPACITY,
   CATEGORY_LABEL, CONDITION_LABEL, CONDITION_COLOR, refreshCondition,
+  CONDITION_NEXT, conditionRemainMs, formatDhms,
 } from '../store/InventoryStore.js';
 import { CoolerStore } from '../store/CoolerStore.js';
 import { DraggablePanel } from './DraggablePanel.js';
@@ -50,6 +51,8 @@ export class InventoryPanel extends DraggablePanel {
   private gridContainer!: Phaser.GameObjects.Container;
   private footerText!: Phaser.GameObjects.Text;
   private statusText!: Phaser.GameObjects.Text;
+  /** 하단 요약이 가리키는 선택 아이템 id — 남은 시간 실시간 갱신 대상 (다른 안내 표시 시 해제) */
+  private summaryItemId: string | null = null;
   private contextMenu?: Phaser.GameObjects.Container;
 
   private cbs: InventoryPanelCallbacks;
@@ -133,8 +136,10 @@ export class InventoryPanel extends DraggablePanel {
       this.itemDrag = null;
       drag.ghost?.destroy();
       if (!drag.moved) {
-        // 클릭으로 간주 — 정보 라인 표시
-        this.setStatus(`${drag.item.name}  ·  ${drag.item.subCategory}${drag.item.condition ? '  ·  ' + CONDITION_LABEL[drag.item.condition] : ''}`);
+        // 클릭으로 간주 — 정보 라인 표시 (소모성 재료는 다음 상태까지 남은 시간 병기·실시간)
+        this.statusText.setText(this.itemSummaryLine(drag.item));
+        this.footerText.setText(`보유 재화  ${GameState.player.inventory.coins.toLocaleString()} 원`);
+        this.summaryItemId = drag.item.condition ? drag.item.id : null;
         return;
       }
       const toSlot = this.slotAtPointer(p);
@@ -177,6 +182,12 @@ export class InventoryPanel extends DraggablePanel {
       if (it) refreshCondition(it);
     }
     if (this.conditionSig() !== this.condSig) this.renderGrid();
+    // 선택 요약의 남은 시간 실시간 카운트다운 (선택 아이템이 살아있는 동안만)
+    if (this.summaryItemId) {
+      const sel = InventoryStore.find(this.summaryItemId);
+      if (sel) this.statusText.setText(this.itemSummaryLine(sel));
+      else this.summaryItemId = null;
+    }
   }
 
   private onExternalChange = (): void => {
@@ -372,6 +383,18 @@ export class InventoryPanel extends DraggablePanel {
         },
       });
     }
+    // 설치형 (placeKey) — 홈타운 칸 단위 자유 배치 (HOMETOWN_HOME_SPEC)
+    if (item.placeKey) {
+      actions.push({
+        label: '설치하기',
+        color: '#ffd257', hoverColor: '#ffe9a0',
+        run: () => {
+          // 씬(RegionFieldScene)이 수신 — 홈타운이 아니면 씬이 안내를 표시
+          this.scene.events.emit('placement-request', item);
+          this.cbs.onClose();
+        },
+      });
+    }
     if (item.equippable && item.tool) {
       // 손 도구(낚싯대/뜰채): 왼손/오른손 선택 착용 — 기존 장비는 교체
       if (item.equipped) {
@@ -558,8 +581,36 @@ export class InventoryPanel extends DraggablePanel {
   }
 
   private setStatus(msg: string): void {
+    this.summaryItemId = null;   // 다른 안내(퀵슬롯/착용 등)로 전환 — 요약 실시간 갱신 해제
     this.statusText.setText(msg);
     this.footerText.setText(`보유 재화  ${GameState.player.inventory.coins.toLocaleString()} 원`);
+  }
+
+  /**
+   * 선택 아이템 요약 라인 — "이름 · 소분류 · 신선도 · 남은 시간".
+   * 소모성 재료(condition 보유)는 **다음 상태까지 남은 시간**을 병기.
+   * 종착(부패)/시계 정지(쿨러·시각 없음)는 상태 문구로 대체.
+   */
+  private itemSummaryLine(item: InvItem): string {
+    let line = `${item.name}  ·  ${item.subCategory}`;
+    if (item.condition) {
+      refreshCondition(item);   // 지연 갱신 — 클릭 시점 실상태
+      line += `  ·  ${CONDITION_LABEL[item.condition]}`;
+      if (CONDITION_NEXT[item.condition] === null) {
+        line += '  ·  종착 상태';
+      } else {
+        const remain = conditionRemainMs(item);
+        line += Number.isFinite(remain)
+          ? `  ·  다음 상태까지 ${this.compactRemain(remain)}`
+          : '  ·  변질 정지';
+      }
+    }
+    return line;
+  }
+
+  /** 카운트다운 압축 — 상위 0단위(00일/00시)는 생략 ("07분 36초") */
+  private compactRemain(ms: number): string {
+    return formatDhms(ms).replace(/^(00일 )?(00시 )?/, '') || formatDhms(ms);
   }
 
   override destroy(fromScene?: boolean): void {

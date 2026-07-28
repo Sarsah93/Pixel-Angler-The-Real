@@ -266,6 +266,23 @@ export interface TuningConfig {
     /** 못 뚫을 때(swept) 표층 횡류 배율 */
     sweptDriftK: number;
   };
+  // ── 홈타운(집) · 출조 요금 · 저장 정책 (HOMETOWN_HOME_SPEC 2026-07-28) ──
+  travel: {
+    /** 출조 일괄 교통비 (₩) */
+    baseFareKrw: number;
+    /** 귀가(지역→홈타운) 요금 — 우선 무료(하루 왕복권 개념) */
+    returnFareKrw: number;
+  };
+  save: {
+    /** 저장 허용 위치 태그 (침대 상호작용 지점 — 민박 등 확장 시 태그 추가) */
+    allowedTags: string[];
+  };
+  hometown: {
+    mapW: number;
+    mapH: number;
+    /** 바다 비율 (지도 생성 기준값 — 정보성) */
+    seaRatio: number;
+  };
   // ── 회뜨기 미니게임 흐름 (SASHIMI_STAGE_FLOW_FIX 2026-07-28) ──
   butchery: {
     /**
@@ -366,6 +383,10 @@ export const TUNING: TuningConfig = {
     vTermRefG: 30, vTermWeightExp: 0.4, vTermMin: 0.12, vTermMax: 2.6,
     residualSweptMps: 0.03, reelAngleDeg: 45, sweptDriftK: 1.0,
   },
+  // 홈타운·출조 — 일괄 ₩10,000 출발 1회 + 귀가 무료 · 저장 = 집 침대에서만
+  travel: { baseFareKrw: 10000, returnFareKrw: 0 },
+  save: { allowedTags: ['hometown_interior'] },
+  hometown: { mapW: 48, mapH: 32, seaRatio: 0.30 },
   // 회뜨기 흐름 — 자동 방향 스냅 on(먹통 방지) · 회칼 하드락 off(막칼 폴백)
   butchery: { autoOrient: true, flipAnimMs: 220, knifeHardLock: false },
   // 데이터 테이블 (대표값 — 나머지 어종 동일 형식으로 채움)

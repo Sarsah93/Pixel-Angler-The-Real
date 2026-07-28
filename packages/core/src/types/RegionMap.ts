@@ -180,8 +180,23 @@ export const BUSAN_MAP_GRAPH: RegionMapGraph = {
   ],
 };
 
+/**
+ * 홈타운(집) 맵 그래프 (HOMETOWN_HOME_SPEC 2026-07-28)
+ * 단일 맵 — 엣지 연결 없음(4방 경계 이동 불가). 저장은 집 실내 침대에서만.
+ * 오브젝트 초기 배치·스폰은 core/types/HomeBase.ts (HOMETOWN_OBJECTS/HOMETOWN_SPAWN).
+ */
+export const HOMETOWN_MAP_GRAPH: RegionMapGraph = {
+  region: 'hometown',
+  entryMapId: 'hometown_home',
+  dataDir: 'data/hometown',
+  nodes: [
+    { id: 'hometown_home', name: '홈타운 (집)', links: {} },
+  ],
+};
+
 /** 지역 ID → 맵 그래프 조회 */
 export const REGION_MAP_GRAPHS: Record<string, RegionMapGraph> = {
+  hometown: HOMETOWN_MAP_GRAPH,
   gangwon_sokcho: SOKCHO_MAP_GRAPH,
   busan: BUSAN_MAP_GRAPH,
 };

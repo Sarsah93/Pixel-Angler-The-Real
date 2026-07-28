@@ -18,6 +18,7 @@ import { BootScene } from './scenes/BootScene.js';
 import { MainMenuScene } from './scenes/MainMenuScene.js';
 import { WorldMapScene } from './scenes/WorldMapScene.js';
 import { RegionFieldScene } from './scenes/RegionFieldScene.js';
+import { HomeInteriorScene } from './scenes/HomeInteriorScene.js';
 import { FirstPersonFishingScene } from './scenes/FirstPersonFishingScene.js';
 import { FieldScene } from './scenes/FieldScene.js';
 import { FishingScene } from './scenes/FishingScene.js';
@@ -62,6 +63,7 @@ export function createGame(): Phaser.Game {
       MainMenuScene,
       WorldMapScene,
       RegionFieldScene,
+      HomeInteriorScene,
       FirstPersonFishingScene,
       FieldScene,
       FishingScene,

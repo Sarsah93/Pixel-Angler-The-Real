@@ -42,6 +42,13 @@ import {
   calculateTideInfo,
   computeFeedingActivity,
   feedingRegionProfileOf,
+  MapObject,
+  effectiveObjects,
+  canPlaceAt,
+  PLACEMENT_DEFS,
+  PlacementDef,
+  HOMETOWN_OBJECTS,
+  HOMETOWN_SPAWN,
 } from '@tra/core';
 import { GameState } from '../store/GameState.js';
 import { ExternalDataStore } from '../store/ExternalDataStore.js';
@@ -146,6 +153,18 @@ export class RegionFieldScene extends Phaser.Scene {
   private buildings: { x: number; y: number; kind: BuildingKind }[] = [];
   private nearBuilding: { x: number; y: number; kind: BuildingKind } | null = null;
 
+  // ── 홈타운(집) — 오브젝트 인스턴스 + 칸 단위 설치 모드 (HOMETOWN_HOME_SPEC) ──
+  /** 유효 오브젝트 (초기 배치 − removed + moved + placed) */
+  private homeObjects: MapObject[] = [];
+  /** 오브젝트 스프라이트 (instanceId → 표시 오브젝트들) */
+  private homeObjSprites = new Map<string, Phaser.GameObjects.GameObject[]>();
+  private nearObject: MapObject | null = null;
+  /** 설치 모드 상태 (아이템 사용 → 그리드 프리뷰 → 클릭 설치) */
+  private placing: { def: PlacementDef; itemId: string } | null = null;
+  private placeG?: Phaser.GameObjects.Graphics;
+  /** '타이틀 화면' 미저장 경고 1회 무장 (한 번 더 선택 시 이동) */
+  private titleConfirmArmed = false;
+
   // ── 자전거 (R 승·하차 — 이동 속도 2배, GameState.isMounted로 씬 간 유지) ──
   private bike?: BikeComposite;
 
@@ -221,6 +240,12 @@ export class RegionFieldScene extends Phaser.Scene {
     this.shopPanel = null;
     this.buildings = [];
     this.nearBuilding = null;
+    this.homeObjects = [];
+    this.homeObjSprites = new Map();
+    this.nearObject = null;
+    this.placing = null;
+    this.placeG = undefined;
+    this.titleConfirmArmed = false;
     this.castProj = null;
     this.castShadow = undefined;
     this.castBobber = undefined;
@@ -258,11 +283,17 @@ export class RegionFieldScene extends Phaser.Scene {
     this.worldW = this.cols * TR;
     this.worldH = this.rows * TR;
 
+    // 위치 태그 — 저장 정책(집 침대에서만)의 기준 (HOMETOWN_HOME_SPEC)
+    GameState.locationTag = this.region === 'hometown' ? 'hometown' : 'region_field';
+
     this.buildTerrainGrid();
+    // 홈타운 오브젝트 유효 상태 산출 → 충돌 타일 선반영 (병합 충돌/걷기 판정 공유)
+    if (this.region === 'hometown') this.computeHomeObjects();
     this.renderTerrain();
     this.buildCollision();
     this.spawnPlayer();
     this.drawPois();
+    if (this.region === 'hometown') this.renderHomeObjects();
     this.setupInput();
     this.createHud();
     // 낮/밤 명암 + 건물 조명·네온·가로등 + 날씨(비/안개) 효과
@@ -496,6 +527,13 @@ export class RegionFieldScene extends Phaser.Scene {
   // ═══════════════════════════════════════════════════
   private buildCollision(): void {
     const walls = this.physics.add.staticGroup();
+    this.fillWallRects(walls);
+    // 충돌은 spawnPlayer 이후 collider 등록 (playerBody 필요) → 임시 저장
+    this._walls = walls;
+  }
+
+  /** blocked 그리드 → 행 병합 정적 바디 (초기 빌드/설치 후 재베이크 공용) */
+  private fillWallRects(walls: Phaser.Physics.Arcade.StaticGroup): void {
     for (let r = 0; r < this.rows; r++) {
       let cStart = -1;
       for (let c = 0; c <= this.cols; c++) {
@@ -514,8 +552,14 @@ export class RegionFieldScene extends Phaser.Scene {
         }
       }
     }
-    // 충돌은 spawnPlayer 이후 collider 등록 (playerBody 필요) → 임시 저장
-    this._walls = walls;
+  }
+
+  /** 설치/회수 후 충돌 재베이크 — blocked 재계산 + 기존 그룹 리필 (collider 유지) */
+  private rebuildCollision(): void {
+    this.buildTerrainGrid();          // 지형 기반 blocked 리셋
+    this.applyObjectBlocking();       // 오브젝트 충돌 타일 재반영
+    this._walls.clear(true, true);
+    this.fillWallRects(this._walls);
   }
   private _walls!: Phaser.Physics.Arcade.StaticGroup;
 
@@ -557,6 +601,10 @@ export class RegionFieldScene extends Phaser.Scene {
   /** 진입 엣지/기본 진입에 따라 스폰 타일 계산 (걷기 가능 타일 보장) */
   private computeSpawnTile(): { col: number; row: number } {
     if (!this.entryEdge) {
+      // 홈타운 = 집 문 앞 스폰 (새 게임/귀가 공통)
+      if (this.region === 'hometown') {
+        return this.nearestWalkable(HOMETOWN_SPAWN.col, HOMETOWN_SPAWN.row);
+      }
       return this.nearestWalkable(Math.floor(this.cols / 2), Math.floor(this.rows / 2));
     }
     // 엣지 진입: 이전 맵에서 나온 상대 위치(entryT)를 유지한 채,
@@ -723,8 +771,9 @@ export class RegionFieldScene extends Phaser.Scene {
   private setupInput(): void {
     this.cursors = this.input.keyboard!.createCursorKeys();
 
-    // ESC: 최상단 팝업부터 닫기 → 팝업 없으면 일시정지 메뉴 토글
+    // ESC: 설치 모드 취소 → 최상단 팝업 닫기 → 일시정지 메뉴 토글
     this.input.keyboard!.on('keydown-ESC', () => {
+      if (this.placing) { this.cancelPlacement(); return; }
       if (this.closeTopPopup()) return;
       this.togglePauseMenu();
     });
@@ -743,8 +792,9 @@ export class RegionFieldScene extends Phaser.Scene {
     this.input.keyboard!.on('keydown-R', () => { if (!this.isPaused && !this.uiBlocked) this.toggleBike(); });
     this.input.keyboard!.on('keydown-E', () => {
       if (this.isPaused) return;
-      // 건물 근접 시 = 거래 상호작용, 아니면 장비 창 토글
-      if (this.nearBuilding && !this.uiBlocked) this.promptTrade(this.nearBuilding.kind);
+      // 홈타운 오브젝트(문/버스/설치물 회수) > 건물 거래 > 장비 창
+      if (this.nearObject && !this.uiBlocked) this.interactWithObject(this.nearObject);
+      else if (this.nearBuilding && !this.uiBlocked) this.promptTrade(this.nearBuilding.kind);
       else this.toggleEquipment();
     });
 
@@ -758,12 +808,21 @@ export class RegionFieldScene extends Phaser.Scene {
       });
     });
 
-    // 좌클릭 차지 캐스팅 (바다 인접 + 낚싯대 슬롯)
+    // 좌클릭 차지 캐스팅 (바다 인접 + 낚싯대 슬롯) / 설치 모드 중엔 설치 확정
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
+      if (this.placing) {
+        if (p.rightButtonDown()) this.cancelPlacement();
+        else if (p.leftButtonDown()) this.confirmPlacement(p);
+        return;
+      }
       if (this.uiBlocked || this.time.now < this.suppressClickUntil) return;
       if (p.leftButtonDown()) this.tryStartCharge();
     });
     this.input.on('pointerup', () => this.releaseCast());
+
+    // 인벤토리 '설치하기' → 설치 모드 진입 (홈타운 전용 — InvItem.placeKey)
+    this.events.off('placement-request');
+    this.events.on('placement-request', (item: InvItem) => this.startPlacement(item));
   }
 
   // ═══════════════════════════════════════════════════
@@ -1551,9 +1610,14 @@ export class RegionFieldScene extends Phaser.Scene {
     // 캐스팅 비행은 UI 상태와 무관하게 진행 (착수까지 물리 유지)
     if (this.castProj) this.stepCastFlight(delta);
     if (this.isTransitioning || this.uiBlocked) { this.playerBody.setVelocity(0, 0); return; }
+    if (this.placing) {
+      // 설치 모드 — 이동은 허용, 프리뷰는 커서 추적 (클릭=설치 / 우클릭·ESC=취소)
+      this.updatePlacementPreview();
+    }
     this.handleMovement();
     this.updateSpriteAndShadow();
     this.updateBuildingProximity();
+    this.updateObjectProximity();
     this.updateWaterProximity();
     this.updateCharge();
     this.checkEdgeTransition();
@@ -1569,6 +1633,342 @@ export class RegionFieldScene extends Phaser.Scene {
       if (d < bestDist) { bestDist = d; nearest = b; }
     }
     this.nearBuilding = nearest;
+  }
+
+  // ═══════════════════════════════════════════════════
+  // 홈타운(집) — 오브젝트 인스턴스 렌더/충돌/상호작용 + 칸 단위 설치 모드
+  // (HOMETOWN_HOME_SPEC 2026-07-28 — 초기 배치 − removed + moved + placed)
+  // ═══════════════════════════════════════════════════
+
+  /** 유효 오브젝트 산출 + 충돌 타일 반영 (buildCollision 전에 호출) */
+  private computeHomeObjects(): void {
+    const state = GameState.getWorldObjects(this.mapId);
+    this.homeObjects = effectiveObjects(HOMETOWN_OBJECTS, state);
+    this.applyObjectBlocking();
+  }
+
+  /** collides 오브젝트의 footprint 타일을 blocked에 반영 */
+  private applyObjectBlocking(): void {
+    for (const o of this.homeObjects) {
+      if (!o.collides) continue;
+      const fw = o.fw ?? 1, fh = o.fh ?? 1;
+      for (let dr = 0; dr < fh; dr++) {
+        for (let dc = 0; dc < fw; dc++) {
+          const c = o.tx + dc, r = o.ty + dr;
+          if (c >= 0 && c < this.cols && r >= 0 && r < this.rows) this.blocked[r][c] = true;
+        }
+      }
+    }
+  }
+
+  /** 오브젝트 스프라이트 전체 렌더 (파라메트릭 텍스처 — 타입별 1회 베이킹) */
+  private renderHomeObjects(): void {
+    this.homeObjSprites.forEach((objs) => objs.forEach((s) => s.destroy()));
+    this.homeObjSprites.clear();
+    for (const o of this.homeObjects) this.renderHomeObject(o);
+  }
+
+  private renderHomeObject(o: MapObject): void {
+    this.ensureObjTexture(o.type, o);
+    const fw = o.fw ?? 1, fh = o.fh ?? 1;
+    const cx = o.tx * TR + (fw * TR) / 2;
+    const bottomY = o.ty * TR + fh * TR;
+    const img = this.add.image(cx, bottomY, this.objTexKey(o.type, o))
+      .setOrigin(0.5, 1)
+      .setDepth(o.type === 'pier' || o.type === 'farmPlot' || o.type === 'tidalRock' ? 6 : 14 + bottomY * 0.001);
+    const objs: Phaser.GameObjects.GameObject[] = [img];
+    if (o.type === 'busStop') {
+      const lbl = this.add.text(cx, bottomY + 2, '출조 버스', {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#aee8ff', fontStyle: 'bold',
+        backgroundColor: '#0a1628cc', padding: { x: 4, y: 1 },
+      }).setOrigin(0.5, 0).setDepth(15);
+      objs.push(lbl);
+    }
+    this.homeObjSprites.set(o.instanceId, objs);
+  }
+
+  private objTexKey(type: string, o: MapObject): string {
+    return `hobj_${type}_${o.fw ?? 1}x${o.fh ?? 1}`;
+  }
+
+  /** 타입별 파라메트릭 오브젝트 텍스처 (도트 톤 — 추후 실사 에셋 교체 자리) */
+  private ensureObjTexture(type: MapObject['type'], o: MapObject): void {
+    const key = this.objTexKey(type, o);
+    if (this.textures.exists(key)) return;
+    const fw = o.fw ?? 1, fh = o.fh ?? 1;
+    const g = this.add.graphics();
+    let w = TR, h = TR;
+    switch (type) {
+      case 'tree': {
+        w = 30; h = 40;
+        g.fillStyle(0x6a4a2c, 1); g.fillRect(13, 26, 5, 14);              // 줄기
+        g.fillStyle(0x2e6b34, 1); g.fillCircle(15, 16, 13);               // 수관
+        g.fillStyle(0x3b8a42, 1); g.fillCircle(10, 12, 8); g.fillCircle(21, 13, 8);
+        break;
+      }
+      case 'rock': {
+        w = 26; h = 18;
+        g.fillStyle(0x8a8f96, 1); g.fillEllipse(13, 11, 24, 13);
+        g.fillStyle(0xa8adb4, 1); g.fillEllipse(9, 8, 11, 7);
+        break;
+      }
+      case 'stump': {
+        w = 18; h = 12;
+        g.fillStyle(0x7a5a38, 1); g.fillEllipse(9, 6, 16, 9);
+        g.fillStyle(0xa8845a, 1); g.fillEllipse(9, 5, 10, 5);
+        break;
+      }
+      case 'well': {
+        w = 24; h = 26;
+        g.fillStyle(0x7d8288, 1); g.fillEllipse(12, 18, 22, 12);          // 돌 테
+        g.fillStyle(0x1c2a36, 1); g.fillEllipse(12, 17, 13, 7);           // 구멍
+        g.fillStyle(0x6a4a2c, 1); g.fillRect(3, 4, 3, 14); g.fillRect(18, 4, 3, 14);
+        g.fillStyle(0x8a3a34, 1); g.fillTriangle(0, 6, 12, 0, 24, 6);     // 지붕
+        break;
+      }
+      case 'tidalRock': {
+        w = 24; h = 14;
+        g.fillStyle(0x5a6068, 1); g.fillEllipse(9, 9, 15, 9);
+        g.fillStyle(0x6d737b, 1); g.fillEllipse(18, 10, 10, 6);
+        break;
+      }
+      case 'pier': {
+        w = fw * TR; h = 16;
+        g.fillStyle(0x8a6a44, 1); g.fillRect(0, 4, w, 9);                 // 상판
+        g.lineStyle(1, 0x5a4028, 1);
+        for (let x = 8; x < w; x += 12) g.lineBetween(x, 4, x, 13);       // 널빤지
+        g.fillStyle(0x5a4028, 1);
+        for (let x = 4; x < w; x += 24) g.fillRect(x, 12, 3, 4);          // 말뚝
+        break;
+      }
+      case 'busStop': {
+        w = 26; h = 36;
+        g.fillStyle(0x8a8f96, 1); g.fillRect(12, 8, 3, 26);               // 기둥
+        g.fillStyle(0x155a7c, 1); g.fillRoundedRect(2, 2, 22, 12, 3);     // 표지판
+        g.lineStyle(1.5, 0x5cd0ff, 1); g.strokeRoundedRect(2, 2, 22, 12, 3);
+        break;
+      }
+      case 'door': {
+        w = 16; h = 22;
+        g.fillStyle(0x5a3a22, 1); g.fillRect(0, 0, 16, 22);
+        g.fillStyle(0x7a5232, 1); g.fillRect(2, 2, 12, 20);
+        g.fillStyle(0xffd257, 1); g.fillCircle(12, 12, 1.6);              // 손잡이
+        break;
+      }
+      case 'fence': {
+        w = TR; h = TR;
+        g.fillStyle(0x8a6a44, 1);
+        g.fillRect(2, 6, 3, 12); g.fillRect(15, 6, 3, 12);                // 말뚝 2
+        g.fillRect(0, 8, TR, 3); g.fillRect(0, 13, TR, 3);                // 가로대 2
+        break;
+      }
+      case 'farmPlot': {
+        w = fw * TR; h = fh * TR;
+        g.fillStyle(0x6a4a2c, 0.95); g.fillRoundedRect(0, 0, w, h, 4);    // 개간 흙
+        g.lineStyle(1, 0x54381f, 0.9);
+        for (let r2 = 1; r2 < fh; r2++) g.lineBetween(2, r2 * TR, w - 2, r2 * TR);
+        for (let c2 = 1; c2 < fw; c2++) g.lineBetween(c2 * TR, 2, c2 * TR, h - 2);
+        break;
+      }
+      case 'aquarium_live': {
+        w = fw * TR; h = fh * TR + 8;
+        g.fillStyle(0x2a3846, 1); g.fillRect(0, h - 6, w, 6);             // 받침
+        g.fillStyle(0x9ac8e0, 0.85); g.fillRect(2, 4, w - 4, h - 12);     // 수조 물
+        g.lineStyle(2, 0xd8dde2, 1); g.strokeRect(1, 2, w - 2, h - 8);    // 프레임
+        break;
+      }
+      case 'aquarium_display': {
+        w = fw * TR; h = fh * TR + 6;
+        g.fillStyle(0x2a3846, 1); g.fillRect(0, h - 4, w, 4);
+        g.fillStyle(0xaed4ea, 0.85); g.fillRect(2, 2, w - 4, h - 8);
+        g.lineStyle(1.5, 0xd8dde2, 1); g.strokeRect(1, 1, w - 2, h - 6);
+        break;
+      }
+      default: {
+        w = TR; h = TR;
+        g.fillStyle(0x8a6a44, 1); g.fillRoundedRect(2, 2, TR - 4, TR - 4, 3);
+      }
+    }
+    g.generateTexture(key, w, h);
+    g.destroy();
+  }
+
+  /** 상호작용 가능한 오브젝트 근접 감지 → [E] 힌트 */
+  private objHintText?: Phaser.GameObjects.Text;
+  private updateObjectProximity(): void {
+    if (this.region !== 'hometown') return;
+    const px = this.playerBody.x, py = this.playerBody.y;
+    let nearest: MapObject | null = null;
+    let bestDist = 46;
+    for (const o of this.homeObjects) {
+      const canInteract = (o.interact && o.interact !== 'none') || (o.placedByPlayer && o.removable);
+      if (!canInteract) continue;
+      const fw = o.fw ?? 1, fh = o.fh ?? 1;
+      const cx = o.tx * TR + (fw * TR) / 2, cy = o.ty * TR + (fh * TR) / 2;
+      const d = Math.hypot(cx - px, cy - py);
+      if (d < bestDist + Math.max(fw, fh) * TR * 0.4) { bestDist = d; nearest = o; }
+    }
+    this.nearObject = nearest;
+
+    // [E] 힌트 (플레이어 머리 위)
+    if (nearest && !this.uiBlocked && !this.placing) {
+      const label = this.objInteractLabel(nearest);
+      if (!this.objHintText) {
+        this.objHintText = this.add.text(0, 0, '', {
+          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#ffe9b0', fontStyle: 'bold',
+          backgroundColor: '#0a1628cc', padding: { x: 5, y: 2 },
+        }).setOrigin(0.5, 1).setDepth(30);
+      }
+      this.objHintText.setText(label).setPosition(px, py - 34).setVisible(true);
+    } else {
+      this.objHintText?.setVisible(false);
+    }
+  }
+
+  private objInteractLabel(o: MapObject): string {
+    if (o.placedByPlayer && o.removable) return '[E] 회수';
+    switch (o.interact) {
+      case 'door': return '[E] 집으로 들어가기';
+      case 'bus': return '[E] 출조 버스 (전국 지도)';
+      case 'aquarium': return '[E] 수조 열기';
+      case 'chop': return '[E] 벌목 (추후)';
+      case 'mine': return '[E] 채굴 (추후)';
+      case 'gather': return '[E] 채집 (추후)';
+      case 'board': return '[E] 보트 (추후)';
+      default: return '[E]';
+    }
+  }
+
+  private interactWithObject(o: MapObject): void {
+    // 플레이어 설치물 회수 (설치의 역방향 — 아이템 반환 + 충돌 재베이크)
+    if (o.placedByPlayer && o.removable) { this.recoverPlacedObject(o); return; }
+    switch (o.interact) {
+      case 'door': this.enterHomeInterior(); break;
+      case 'bus': this.exitToWorldMap(); break;
+      case 'aquarium':
+        this.floatingHint('수조 패널은 준비 중입니다 (활어 보관 — 후속)');
+        break;
+      case 'chop': this.floatingHint('벌목은 추후 — 도끼가 필요합니다'); break;
+      case 'mine': this.floatingHint('채굴은 추후 — 곡괭이가 필요합니다'); break;
+      case 'gather': this.floatingHint('갯바위 채집은 추후 개방됩니다'); break;
+      case 'board': this.floatingHint('개인 보트 출조는 추후 개방됩니다'); break;
+      default: break;
+    }
+  }
+
+  /** 집 문 → 실내 (pause + launch — 복귀는 stop + resume 규칙) */
+  private enterHomeInterior(): void {
+    if (this.isTransitioning) return;
+    this.isTransitioning = true;
+    this.cameras.main.fadeOut(250, 0, 10, 20);
+    this.cameras.main.once('camerafadeoutcomplete', () => {
+      this.isTransitioning = false;
+      this.scene.pause('RegionFieldScene');
+      this.scene.launch('HomeInteriorScene');
+    });
+  }
+
+  // ── 칸 단위 자유 배치 (설치 모드 — 인벤토리 '설치하기'로 진입) ──
+
+  private startPlacement(item: InvItem): void {
+    if (this.region !== 'hometown') { this.floatingHint('설치는 홈타운에서만 가능합니다'); return; }
+    const def = item.placeKey ? PLACEMENT_DEFS[item.placeKey] : undefined;
+    if (!def) return;
+    if (!def.rule.scope.includes('exterior')) {
+      this.floatingHint(`${def.label}은(는) 실내 전용입니다 (실내 배치는 추후)`);
+      return;
+    }
+    this.placing = { def, itemId: item.id };
+    if (!this.placeG) this.placeG = this.add.graphics().setDepth(48);
+    this.hud?.pushLog(`[설치] ${def.label} — 클릭 = 설치 · 우클릭/ESC = 취소`);
+    this.floatingHint(`${def.label} 설치 모드 (초록=가능 / 빨강=불가)`);
+  }
+
+  /** 설치 그리드 프리뷰 — footprint 칸별 초록/빨강 */
+  private updatePlacementPreview(): void {
+    if (!this.placing || !this.placeG) return;
+    const p = this.input.activePointer;
+    const tx = Math.floor(p.worldX / TR), ty = Math.floor(p.worldY / TR);
+    const rule = this.placing.def.rule;
+    const check = canPlaceAt(tx, ty, rule, this.placementWorld());
+    const g = this.placeG;
+    g.clear();
+    // 주변 타일 그리드 (가독)
+    g.lineStyle(1, 0xffffff, 0.12);
+    for (let r = Math.max(0, ty - 4); r <= Math.min(this.rows, ty + rule.footprint.h + 4); r++) {
+      g.lineBetween(Math.max(0, tx - 4) * TR, r * TR, Math.min(this.cols, tx + rule.footprint.w + 4) * TR, r * TR);
+    }
+    for (let c = Math.max(0, tx - 4); c <= Math.min(this.cols, tx + rule.footprint.w + 4); c++) {
+      g.lineBetween(c * TR, Math.max(0, ty - 4) * TR, c * TR, Math.min(this.rows, ty + rule.footprint.h + 4) * TR);
+    }
+    // footprint 칸별 판정 색
+    for (const cell of check.cells) {
+      g.fillStyle(cell.ok ? 0x4af2a1 : 0xff5a4a, 0.38);
+      g.fillRect(cell.c * TR + 1, cell.r * TR + 1, TR - 2, TR - 2);
+    }
+    g.lineStyle(2, check.ok ? 0x4af2a1 : 0xff5a4a, 0.9);
+    g.strokeRect(tx * TR, ty * TR, rule.footprint.w * TR, rule.footprint.h * TR);
+  }
+
+  /** canPlaceAt이 소비하는 월드 뷰 (지형 + 유효 오브젝트) */
+  private placementWorld(): Parameters<typeof canPlaceAt>[3] {
+    return {
+      cols: this.cols,
+      rows: this.rows,
+      terrainAt: (c: number, r: number) => this.terrainAt(c, r) ?? null,
+      objects: this.homeObjects,
+      scope: 'exterior',
+    };
+  }
+
+  private placeSeq = 0;
+  private confirmPlacement(p: Phaser.Input.Pointer): void {
+    if (!this.placing) return;
+    const def = this.placing.def;
+    const tx = Math.floor(p.worldX / TR), ty = Math.floor(p.worldY / TR);
+    const check = canPlaceAt(tx, ty, def.rule, this.placementWorld());
+    if (!check.ok) { this.floatingHint('여기에는 설치할 수 없습니다'); return; }
+
+    // 인벤토리 1개 소모 → placed 등록 → 충돌/렌더 재베이크
+    if (!InventoryStore.removeQty(this.placing.itemId, 1)) {
+      this.floatingHint('아이템이 없습니다'); this.cancelPlacement(); return;
+    }
+    const obj: MapObject = {
+      instanceId: `pl_${Date.now().toString(36)}_${this.placeSeq++}`,
+      type: def.objectType, tx, ty,
+      fw: def.rule.footprint.w, fh: def.rule.footprint.h,
+      collides: def.collides, interact: def.interact,
+      movable: true, removable: true, placedByPlayer: true,
+      itemId: this.placing.itemId,
+      specId: def.objectType === 'aquarium_live' ? 'aq_live_std'
+        : def.objectType === 'aquarium_display' ? 'aq_display_std' : undefined,
+    };
+    GameState.getWorldObjects(this.mapId).placed.push(obj);
+    GameState.markDirty();
+    this.computeHomeObjects();
+    this.rebuildCollision();
+    this.renderHomeObjects();
+    this.hud?.pushLog(`[설치] ${def.label} 설치 완료 (${tx}, ${ty})`);
+    // 같은 아이템이 남아 있으면 설치 모드 유지, 없으면 종료
+    const remain = InventoryStore.find(this.placing.itemId);
+    if (!remain || remain.qty <= 0) this.cancelPlacement();
+  }
+
+  private cancelPlacement(): void {
+    this.placing = null;
+    this.placeG?.clear();
+  }
+
+  /** 플레이어 설치물 회수 — placed에서 제거 + 아이템 반환 + 재베이크 */
+  private recoverPlacedObject(o: MapObject): void {
+    const state = GameState.getWorldObjects(this.mapId);
+    state.placed = state.placed.filter((x) => x.instanceId !== o.instanceId);
+    GameState.markDirty();
+    if (o.itemId) InventoryStore.recoverPlaceable(o.itemId);
+    this.computeHomeObjects();
+    this.rebuildCollision();
+    this.renderHomeObjects();
+    this.floatingHint('회수했습니다 (인벤토리로 반환)');
   }
 
   private handleMovement(): void {
@@ -1785,15 +2185,32 @@ export class RegionFieldScene extends Phaser.Scene {
       {
         label: '저장하기',
         action: () => {
-          GameState.save();
-          this.hud?.pushLog(`[시스템] 슬롯 ${GameState.activeSlot ?? 1}에 저장했습니다.`);
-          this.closePauseMenu();
-          this.floatingHint('저장 완료');
+          // 저장은 집 실내 침대에서만 (HOMETOWN_HOME_SPEC — SavePolicy)
+          if (GameState.save()) {
+            this.hud?.pushLog(`[시스템] 슬롯 ${GameState.activeSlot ?? 1}에 저장했습니다.`);
+            this.closePauseMenu();
+            this.floatingHint('저장 완료');
+          } else {
+            this.closePauseMenu();
+            this.floatingHint('집 침대에서만 저장할 수 있습니다');
+          }
         },
       },
       { label: '전국 지도', action: () => this.exitToWorldMap() },
-      { label: '타이틀 화면', action: () => this.gotoTitle() },
+      {
+        label: '타이틀 화면',
+        action: () => {
+          // 미저장 진행 경고 — 한 번 더 선택 시 이동 (스타듀형 리스크 안내)
+          if (GameState.isDirty && !this.titleConfirmArmed) {
+            this.titleConfirmArmed = true;
+            this.floatingHint('저장되지 않은 진행이 있습니다 — 한 번 더 선택하면 이동합니다');
+            return;
+          }
+          this.gotoTitle();
+        },
+      },
     ];
+    this.titleConfirmArmed = false;
     this.pauseSelIndex = 0;
     this.pauseRowBgs = [];
 

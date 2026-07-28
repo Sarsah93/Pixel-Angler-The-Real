@@ -11,7 +11,8 @@
  *  최대 공략 수심)이 실시간 합산된다. (낚싯대 우클릭 → '채비하기' 로도 진입)
  *
  * 요리하기(Cooking):
- *  도마 위 생선 손질(삼면뜨기) 시스템 자리 — 회칼(장비) 필요. 추후 정식 구현 예정.
+ *  우측 인벤토리 어획물을 좌측 도마로 드래그(넣기/빼기/교환) → [손질 시작] → ButcheryPanel
+ *  회 뜨기 미니게임. finfish 활성 / 두족류·복어는 준비중 스텁 (getButcheryFamily 게이트).
  *
  * 밑밥 품질(Chum):
  *  좌측 밑밥 통(탑뷰)에 우측 인벤토리의 재료(파우더/냉동 크릴/압맥·옥수수)를
@@ -984,7 +985,7 @@ export class UtilizationPanel extends DraggablePanel {
   }
 
   // ═══════════════════════════════════════════════════
-  // 요리하기 (Cooking) — 손질 시스템 자리 (추후 정식 구현)
+  // 요리하기 (Cooking) — 도마 DnD → [손질 시작] → ButcheryPanel 회 뜨기
   // ═══════════════════════════════════════════════════
   private renderCooking(): void {
     const top = this.contentTop + 56;
@@ -1729,6 +1730,24 @@ export class UtilizationPanel extends DraggablePanel {
         this.cookBoardFishId = null;
         this.renderBody();
         this.scene.events.emit('inventory-changed');
+      },
+      // [다음 생선 손질] — 인벤토리의 다음 finfish 어획물을 도마에 올려 바로 이어서 (P1-4)
+      onNext: () => {
+        const next = InventoryStore.items.find(
+          (i) => i.subCategory === '어획물' && getButcheryFamily(i.speciesId ?? '') === 'finfish',
+        );
+        this.butcheryPanel?.destroy();
+        this.butcheryPanel = undefined;
+        this.scene.events.emit('inventory-changed');
+        if (next) {
+          this.cookBoardFishId = next.id;
+          this.cookSelectedId = next.id;
+          this.renderBody();
+          this.openButchery(next);
+        } else {
+          this.cookBoardFishId = null;
+          this.renderBody();
+        }
       },
     });
     this.scene.add.existing(this.butcheryPanel);

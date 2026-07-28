@@ -285,7 +285,7 @@ export class TackleRoomScene extends Phaser.Scene {
       GameState.equipTackle(tackle);
       
       // 저장
-      GameState.save();
+      GameState.markDirty();   // 저장은 집 침대에서만 (HOMETOWN_HOME_SPEC)
 
       // 화면 피드백 후 WorldMapScene으로 이동
       const { width, height } = this.scale;

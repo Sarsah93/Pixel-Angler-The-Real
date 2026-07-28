@@ -18,7 +18,7 @@
 import Phaser from 'phaser';
 import {
   ButcheryProcess, getButcheryProfile, CutPoint, OrientationState,
-  ORIENTATION_LABEL, FISH_DATABASE,
+  ORIENTATION_LABEL, FISH_DATABASE, FilletShape, getButcheryFamily,
   computeFilletYield, getBestKnife, KnifeSpec,
   TUNING,
 } from '@tra/core';
@@ -35,6 +35,8 @@ export interface ButcheryCallbacks {
   onClose: () => void;
   /** 손질 완료 — 필렛 지급/원본 소모까지 끝난 뒤 호출 (도마 비우기용) */
   onComplete: () => void;
+  /** [다음 생선 손질] — 인벤토리의 다음 finfish 어획물로 이어서 손질 (연속 흐름, P1-4). 없으면 미제공 */
+  onNext?: () => void;
 }
 
 export class ButcheryPanel extends DraggablePanel {
@@ -207,6 +209,12 @@ export class ButcheryPanel extends DraggablePanel {
   private isFilletingStage(): boolean {
     const id = this.process.stage?.id ?? '';
     return id === 'tail_grip' || id.startsWith('fillet_') || id === 'peel';
+  }
+
+  /** 체장 미달 — 회뜨기 비효율(통마리 유도 대상) */
+  private isUndersized(): boolean {
+    const len = this.source.lengthCm ?? 999;
+    return len < this.process.profile.minFilletLengthCm;
   }
 
   /**
@@ -669,9 +677,13 @@ export class ButcheryPanel extends DraggablePanel {
         this.uiC.add([bg, t, hit]);
       }
 
-      // 회칼 미보유 소프트 안내 — 회뜨기 단계에서 막칼 폴백 진행 + 통마리 선택지 유지
-      if (!this.knife && this.isFilletingStage() && !this.knifeLocked()) {
-        mkText(sx, this.contentTop + 292, '회칼 없음 — 막칼로 손질 중 (수율·등급 저하)', 11, '#ffb454', true);
+      // 통마리 유도 — 회칼 미보유(막칼 폴백) 또는 체장 미달(회뜨기 비효율) 시 선택지 제공
+      const noKnifeSoft = !this.knife && this.isFilletingStage() && !this.knifeLocked();
+      const undersizedSoft = this.isUndersized() && this.isFilletingStage();
+      if (noKnifeSoft || undersizedSoft) {
+        const warn = noKnifeSoft ? '회칼 없음 — 막칼로 손질 중 (수율·등급 저하)'
+          : `체장 미달 (${this.source.lengthCm}cm < ${this.process.profile.minFilletLengthCm}cm) — 회뜨기 비효율`;
+        mkText(sx, this.contentTop + 292, warn, 11, '#ffb454', true);
         const by = this.contentTop + 314;
         const bg = this.scene.add.graphics();
         bg.fillStyle(0x2a2214, 0.96);
@@ -696,7 +708,66 @@ export class ButcheryPanel extends DraggablePanel {
     mkText(sx, PANEL_H - 96,
       this.process.profile.bodyShape === 'flat' ? '광어 5장뜨기 (4필렛 + 중골)' : '삼면뜨기 (양살 2필렛 + 중골)',
       11, '#7a98ac');
-    mkText(sx, PANEL_H - 74, '키: F/Space 뒤집기 · 1~5 방향 · Enter 세척', 10, '#607b8e');
+    // 손질 스킬 레벨 + XP 진행 (상시 표시 — 상한 Lv.20)
+    const fl = GameState.skills.filleting;
+    const skillLine = fl.level >= 20
+      ? '손질 스킬 Lv.20 (MAX)'
+      : `손질 스킬 Lv.${fl.level}  ·  ${fl.xp} / ${(fl.level + 1) * 100} XP`;
+    mkText(sx, PANEL_H - 74, skillLine, 11, '#ffd257');
+    mkText(sx, PANEL_H - 54, '키: F/Space 뒤집기 · 1~5 방향 · Enter 세척', 10, '#607b8e');
+  }
+
+  /**
+   * 필렛 아이콘 텍스처 키 — filletShape 3종 × 어종 색 틴트 (P1-2).
+   * 색이 겹치는 어종은 텍스처를 공유(키에 색 hex 포함).
+   */
+  private filletIconKey(shape: FilletShape, speciesId: string): string {
+    const col = getFishColors(speciesId).body;
+    const key = `fillet_${shape}_${col.toString(16)}`;
+    if (!this.scene.textures.exists(key)) this.bakeFilletIcon(key, shape, col);
+    return key;
+  }
+
+  /** filletShape별 파라메트릭 필렛 아이콘 (살색 + 어종 틴트 + 껍질 엣지) */
+  private bakeFilletIcon(key: string, shape: FilletShape, speciesCol: number): void {
+    const W = 64, H = 48;
+    const g = this.scene.add.graphics();
+    // 살색(분홍) + 어종 색 22% 블렌드 = 틴트
+    const flesh = this.blendColor(0xf2a6a2, speciesCol, 0.22);
+    const fleshDark = this.blendColor(flesh, 0x000000, 0.22);
+    const mid = W / 2, cy = H / 2;
+    if (shape === 'flat_wide') {
+      // 넓은 흰살 슬랩 (광어) — 가로로 길고 얇게
+      g.fillStyle(flesh, 1); g.fillRoundedRect(4, cy - 9, W - 8, 18, 8);
+      g.fillStyle(speciesCol, 0.85); g.fillRect(4, cy + 6, W - 8, 4);           // 껍질 엣지
+      g.lineStyle(1.2, 0xffffff, 0.5);
+      for (let i = 1; i <= 6; i++) g.lineBetween(6 + i * 8, cy - 7, 4 + i * 8, cy + 5);
+    } else if (shape === 'small') {
+      // 작은 조각 (볼락/전갱이) — 통통한 소형
+      g.fillStyle(flesh, 1); g.fillEllipse(mid, cy, W * 0.6, H * 0.5);
+      g.fillStyle(speciesCol, 0.85); g.fillEllipse(mid, cy + 9, W * 0.55, 7);   // 껍질
+      g.lineStyle(1.2, 0xffffff, 0.5);
+      for (let i = 1; i <= 4; i++) g.lineBetween(mid - 14 + i * 7, cy - 8, mid - 16 + i * 7, cy + 6);
+    } else {
+      // loin_thick — 두꺼운 붉은살 로인 (방어/참돔) — 중앙 핏줄 라인
+      g.fillStyle(flesh, 1); g.fillRoundedRect(6, cy - 12, W - 12, 24, 10);
+      g.fillStyle(fleshDark, 1); g.fillRoundedRect(10, cy - 3, W - 20, 6, 3);   // 혈합육 라인
+      g.fillStyle(speciesCol, 0.85); g.fillRect(6, cy + 8, W - 12, 4);          // 껍질 엣지
+      g.lineStyle(1.4, 0xffffff, 0.45);
+      for (let i = 1; i <= 5; i++) g.lineBetween(10 + i * 9, cy - 10, 7 + i * 9, cy + 6);
+    }
+    g.generateTexture(key, W, H);
+    g.destroy();
+  }
+
+  /** 색 블렌드 (a에 b를 t 비율로 섞음) */
+  private blendColor(a: number, b: number, t: number): number {
+    const ar = (a >> 16) & 255, ag = (a >> 8) & 255, ab = a & 255;
+    const br = (b >> 16) & 255, bg = (b >> 8) & 255, bb = b & 255;
+    const r = Math.round(ar + (br - ar) * t);
+    const gg = Math.round(ag + (bg - ag) * t);
+    const bl = Math.round(ab + (bb - ab) * t);
+    return (r << 16) | (gg << 8) | bl;
   }
 
   /** 채움 진행 바 (비늘/내장 — 즉석 표시) */
@@ -758,23 +829,42 @@ export class ButcheryPanel extends DraggablePanel {
     const xpGain = Math.round(20 + r.avgCutQuality * 40 + gradeXp);
     const lv = GameState.addFilletingXp(xpGain);
 
+    // 부산물·필렛은 원본 신선도를 승계 (같은 시점부터 감쇄)
+    const srcCond = this.source.condition ?? 'fresh';
+    const srcSince = this.source.conditionSinceMs ?? Date.now();
+    const perFilletG = Math.round(yieldRes.yieldMassG / Math.max(1, yieldRes.filletCount));
+
     const seq = InventoryStore.nextCatchSeq();
+    // 필렛 — 어종 색 틴트 + filletShape별 아이콘 (P1-2)
     InventoryStore.addItem({
       id: `inv_fillet_${speciesId}_${seq}`,
-      name: `${nameKo} 필렛 (${yieldRes.grade})`,
-      icon: '🍣', iconTexture: 'food_assorted_sashimi',
+      name: `${nameKo} 필렛 (${yieldRes.grade}) ${perFilletG}g`,
+      icon: '🍣', iconTexture: this.filletIconKey(this.process.profile.filletShape, speciesId),
       category: 'food', subCategory: '손질 필렛',
       basePrice: perFillet,
-      condition: this.source.condition ?? 'fresh',
+      condition: srcCond, conditionSinceMs: srcSince,
       equippable: false,
-      speciesId, lengthCm: this.source.lengthCm,
+      speciesId, lengthCm: this.source.lengthCm, weightG: perFilletG,
     }, yieldRes.filletCount);
+    // 부산물 ① 중골+머리 (매운탕/지리·육수) — 무게 비례가 + 신선도 승계
     InventoryStore.addItem({
       id: `inv_bone_${speciesId}_${seq}`,
-      name: `${nameKo} 중골·머리 (육수용)`,
-      icon: '🦴', category: 'food', subCategory: '부산물',
-      basePrice: 600, equippable: false,
+      name: `${nameKo} 중골·머리 (육수용) ${yieldRes.byproducts.boneHeadG}g`,
+      icon: '🦴', category: 'food', subCategory: '부산물', byproductKind: 'boneHead',
+      basePrice: Math.max(400, Math.round(yieldRes.byproducts.boneHeadG * 3)),
+      condition: srcCond, conditionSinceMs: srcSince, equippable: false,
+      speciesId, weightG: yieldRes.byproducts.boneHeadG,
     }, 1);
+    // 부산물 ② 껍질 (구이·육수) — 박피가 있는 어종만
+    if (yieldRes.byproducts.skinPieces > 0) {
+      InventoryStore.addItem({
+        id: `inv_skin_${speciesId}_${seq}`,
+        name: `${nameKo} 껍질 (구이·육수용)`,
+        icon: '🫓', category: 'food', subCategory: '부산물', byproductKind: 'skin',
+        basePrice: 250, condition: srcCond, conditionSinceMs: srcSince, equippable: false,
+        speciesId,
+      }, yieldRes.byproducts.skinPieces);
+    }
     // 원본 생선 1마리 소모
     InventoryStore.removeItem(this.source.id, false);
 
@@ -790,8 +880,10 @@ export class ButcheryPanel extends DraggablePanel {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '22px', color: '#4af2a1', fontStyle: 'bold',
     }).setOrigin(0.5);
     const knifeName = this.knife ? this.knife.nameKo : '막칼(폴백)';
+    const skinNote = yieldRes.byproducts.skinPieces > 0 ? ` · 껍질 x${yieldRes.byproducts.skinPieces}` : '';
     const desc = this.scene.add.text(this.fishX + this.fishW / 2, this.fishY + 74, [
-      `${nameKo} 필렛 x${yieldRes.filletCount} (장당 ${perFillet.toLocaleString()}원) + 중골·머리`,
+      `${nameKo} 필렛 x${yieldRes.filletCount} (장당 ${perFillet.toLocaleString()}원)`,
+      `부산물: 중골·머리 ${yieldRes.byproducts.boneHeadG}g${skinNote}  (매운탕/지리·육수)`,
       `수율 ${yieldRes.yieldMassG}g · 슬라이스 ${yieldRes.sliceCount}점 · 컷 정확도 ${(r.avgCutQuality * 100).toFixed(0)}%`,
       `칼: ${knifeName} · 시메 ${r.ikejimeDone ? 'O' : 'X'} · 방혈 ${r.bledDone ? 'O' : 'X'} · 손질 스킬 Lv.${lv.level}${lv.leveledUp ? ' (레벨업!)' : ` (+${xpGain} XP)`}`,
       yieldRes.undersizedForFillet ? '체장이 작아 회뜨기 비효율 — 통마리 판매/조림 권장' : '인벤토리(음식 탭)에 지급되었습니다.',
@@ -799,18 +891,42 @@ export class ButcheryPanel extends DraggablePanel {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px',
       color: yieldRes.undersizedForFillet ? '#ffce9a' : '#d0e8f5', align: 'center', lineSpacing: 7,
     }).setOrigin(0.5, 0);
-    const btnBg = this.scene.add.graphics();
-    btnBg.fillStyle(0x0d4a2e, 0.95);
-    btnBg.fillRoundedRect(this.fishX + this.fishW / 2 - 80, this.fishY + this.fishH - 44, 160, 38, 6);
-    btnBg.lineStyle(2, 0x4af2a1, 0.95);
-    btnBg.strokeRoundedRect(this.fishX + this.fishW / 2 - 80, this.fishY + this.fishH - 44, 160, 38, 6);
-    const btnTxt = this.scene.add.text(this.fishX + this.fishW / 2, this.fishY + this.fishH - 25, '확인', {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '14px', color: '#4af2a1', fontStyle: 'bold',
-    }).setOrigin(0.5);
-    const btnHit = this.scene.add.rectangle(this.fishX + this.fishW / 2, this.fishY + this.fishH - 25, 160, 38, 0xffffff, 0.001)
-      .setInteractive({ useHandCursor: true });
-    btnHit.on('pointerdown', () => this.cbs.onComplete());
-    c.add([title, desc, btnBg, btnTxt, btnHit]);
+    c.add([title, desc]);
+
+    // 레벨업 배너 (강조 — 레벨업 시에만)
+    if (lv.leveledUp) {
+      const banner = this.scene.add.text(this.fishX + this.fishW / 2, this.fishY + 54,
+        `★ 손질 스킬 레벨업! Lv.${lv.level} ★`, {
+          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '14px', color: '#ffd257', fontStyle: 'bold',
+          backgroundColor: '#3a2e0acc', padding: { x: 10, y: 3 },
+        }).setOrigin(0.5);
+      c.add(banner);
+      this.scene.tweens.add({ targets: banner, scale: { from: 0.8, to: 1.08 }, yoyo: true, repeat: 2, duration: 220 });
+    }
+
+    // 버튼 — [다음 생선 손질](인벤에 finfish 어획물 남아 있으면) + [확인]
+    const hasNext = !!this.cbs.onNext && InventoryStore.items.some(
+      (i) => i.subCategory === '어획물' && getButcheryFamily(i.speciesId ?? '') === 'finfish',
+    );
+    const btnY = this.fishY + this.fishH - 25;
+    const mkResultBtn = (bx: number, bw: number, label: string, fill: number, stroke: number, color: string, onClick: () => void): void => {
+      const g = this.scene.add.graphics();
+      g.fillStyle(fill, 0.95); g.fillRoundedRect(bx - bw / 2, btnY - 19, bw, 38, 6);
+      g.lineStyle(2, stroke, 0.95); g.strokeRoundedRect(bx - bw / 2, btnY - 19, bw, 38, 6);
+      const t = this.scene.add.text(bx, btnY, label, {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px', color, fontStyle: 'bold',
+      }).setOrigin(0.5);
+      const hit = this.scene.add.rectangle(bx, btnY, bw, 38, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
+      hit.on('pointerdown', onClick);
+      c.add([g, t, hit]);
+    };
+    const cxm = this.fishX + this.fishW / 2;
+    if (hasNext) {
+      mkResultBtn(cxm - 92, 168, '다음 생선 손질', 0x14425e, 0x33b0e0, '#aee8ff', () => this.cbs.onNext!());
+      mkResultBtn(cxm + 92, 150, '확인', 0x0d4a2e, 0x4af2a1, '#4af2a1', () => this.cbs.onComplete());
+    } else {
+      mkResultBtn(cxm, 160, '확인', 0x0d4a2e, 0x4af2a1, '#4af2a1', () => this.cbs.onComplete());
+    }
     this.add(c);
     this.applyFix();
   }

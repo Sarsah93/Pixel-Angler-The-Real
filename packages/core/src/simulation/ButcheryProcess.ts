@@ -172,7 +172,15 @@ export function computeFilletYield(input: FilletYieldInput): FilletYieldResult {
   if (!knife && grade === '특') grade = '상';
   const gradeMult = grade === '특' ? 1.5 : grade === '상' ? 1.25 : grade === '중' ? 1.0 : 0.7;
 
-  return { yieldMassG, filletCount, sliceCount, grade, gradeMult, undersizedForFillet };
+  // 부산물 — 살(yieldMass)을 뺀 나머지 중 중골+머리(육수용) + 껍질(박피 산출).
+  // 중골·머리 ≈ 원물 무게의 22%(어종 무관 근사). 껍질은 박피가 있는 어종만 필렛 수만큼.
+  const boneHeadG = Math.round(weightGram * 0.22);
+  const skinPieces = profile.skinToughness >= 0.4 ? filletCount : 0;
+
+  return {
+    yieldMassG, filletCount, sliceCount, grade, gradeMult, undersizedForFillet,
+    byproducts: { boneHeadG, skinPieces },
+  };
 }
 
 // ────────────────────────────────────────────────────────────

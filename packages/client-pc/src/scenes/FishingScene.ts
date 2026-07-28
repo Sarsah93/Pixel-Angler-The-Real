@@ -779,7 +779,7 @@ export class FishingScene extends Phaser.Scene {
           this.fishLength,
           this.fishWeight
         );
-        GameState.save();
+        GameState.markDirty();   // 저장은 집 침대에서만 (HOMETOWN_HOME_SPEC)
       }
     } else if (outcome === 'line_break') {
       titleText = '채비 손실';

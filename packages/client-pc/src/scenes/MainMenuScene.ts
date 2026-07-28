@@ -499,7 +499,8 @@ export class MainMenuScene extends Phaser.Scene {
   private startAdventure(): void {
     this.cameras.main.fadeOut(320, 1, 8, 18);
     this.cameras.main.once('camerafadeoutcomplete', () => {
-      this.scene.start('WorldMapScene');
+      // 시작 지점 = 홈타운(집) — 출조는 버스정류장/전국 지도에서 (HOMETOWN_HOME_SPEC)
+      this.scene.start('RegionFieldScene', { region: 'hometown' });
     });
   }
 
@@ -535,12 +536,15 @@ export class MainMenuScene extends Phaser.Scene {
   private quitGame(): void {
     this.cameras.main.fadeOut(420, 0, 0, 0);
     this.cameras.main.once('camerafadeoutcomplete', () => {
-      GameState.save();
+      // 저장은 집 침대에서만 (HOMETOWN_HOME_SPEC) — 종료 시 자동 저장하지 않는다.
       window.close();
       // 브라우저에서 window.close()가 무시될 수 있음 — 안내 표시
       this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2,
-        '저장 완료. 창을 닫아 게임을 종료하세요.', {
+        GameState.isDirty
+          ? '저장되지 않은 진행이 있습니다 — 집 침대에서 저장할 수 있습니다.\n창을 닫아 게임을 종료하세요.'
+          : '창을 닫아 게임을 종료하세요.', {
           fontFamily: '"Noto Sans KR", sans-serif', fontSize: '16px', color: '#8faabf',
+          align: 'center', lineSpacing: 6,
         }).setOrigin(0.5).setDepth(200);
       this.cameras.main.fadeIn(200, 0, 0, 0);
     });

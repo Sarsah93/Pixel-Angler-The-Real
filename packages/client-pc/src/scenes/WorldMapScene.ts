@@ -29,6 +29,7 @@ import {
   SNAG_RISK_LABEL,
   isRegionUnlocked,
   getRegionAreaNodes,
+  computeTravelFare,
 } from '@tra/core';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { ConfirmTripModal } from '../ui/ConfirmTripModal.js';
@@ -137,6 +138,22 @@ export class WorldMapScene extends Phaser.Scene {
 
     // ── ESC 핸들링 ───────────────────────────────────────
     this.input.keyboard?.on('keydown-ESC', () => this.handleEsc());
+
+    // ── 홈타운(집) 귀가 버튼 — 좌상단 고정 (귀가 무료. HOMETOWN_HOME_SPEC §3) ──
+    {
+      const bx = 16, by = 14, bw = 150, bh = 34;
+      const g = this.add.graphics().setDepth(120);
+      g.fillStyle(0x0d2a40, 0.95); g.fillRoundedRect(bx, by, bw, bh, 6);
+      g.lineStyle(1.5, 0x33b0e0, 0.95); g.strokeRoundedRect(bx, by, bw, bh, 6);
+      const t = this.add.text(bx + bw / 2, by + bh / 2, '집으로 돌아가기', {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px', color: '#aee8ff', fontStyle: 'bold',
+      }).setOrigin(0.5).setDepth(121);
+      const hit = this.add.rectangle(bx + bw / 2, by + bh / 2, bw, bh, 0xffffff, 0.001)
+        .setInteractive({ useHandCursor: true }).setDepth(122);
+      hit.on('pointerover', () => t.setColor('#ffffff'));
+      hit.on('pointerout', () => t.setColor('#aee8ff'));
+      hit.on('pointerdown', () => this.goHome());
+    }
 
     // ── P 키: 핀 위치 편집 모드 토글 (개발자 도구) ──────────
     // 핀 편집 Dev Tool은 dev 빌드 전용 — 프로덕션에서는 키 바인딩 자체를 만들지 않는다
@@ -1111,12 +1128,41 @@ export class WorldMapScene extends Phaser.Scene {
     if (this.viewState === 'areaconfirm') this.viewState = 'regionmap';
   }
 
-  /** '예' 확정 → RegionFieldScene(해당 구역 맵)로 입장 */
+  /** '예' 확정 → 교통비 차감 → RegionFieldScene(해당 구역 맵)로 입장 (HOMETOWN_HOME_SPEC §3) */
   private enterFieldArea(region: RegionDef, area: RegionAreaNode): void {
+    // 출조 요금 (일괄 — TransportProfile 확장 자리). 잔액 부족 시 출조 불가.
+    const fare = computeTravelFare(region.id);
+    const coins = GameState.player.inventory.coins;
+    if (coins < fare) {
+      this.showFareAlert(`교통비가 부족합니다 (₩${fare.toLocaleString()}) — 보유 ₩${coins.toLocaleString()}`);
+      return;
+    }
+    GameState.player.inventory.coins = coins - fare;
+    GameState.markDirty();
+
     GameState.setCurrentSpot(area.id);
     this.cameras.main.fadeOut(300, 0, 10, 20);
     this.cameras.main.once('camerafadeoutcomplete', () => {
       this.scene.start('RegionFieldScene', { region: region.id, mapId: area.fieldMapId });
+    });
+  }
+
+  /** 요금 관련 알림 토스트 */
+  private fareAlertText?: Phaser.GameObjects.Text;
+  private showFareAlert(msg: string): void {
+    this.fareAlertText?.destroy();
+    this.fareAlertText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 90, msg, {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '14px', color: '#ff9a6a', fontStyle: 'bold',
+      backgroundColor: '#0a1628ee', padding: { x: 14, y: 8 },
+    }).setOrigin(0.5).setDepth(300);
+    this.time.delayedCall(2600, () => { this.fareAlertText?.destroy(); this.fareAlertText = undefined; });
+  }
+
+  /** 홈타운(집) 귀가 — 무료 (TUNING.travel.returnFareKrw = 0, 하루 왕복권 개념) */
+  private goHome(): void {
+    this.cameras.main.fadeOut(280, 0, 10, 20);
+    this.cameras.main.once('camerafadeoutcomplete', () => {
+      this.scene.start('RegionFieldScene', { region: 'hometown' });
     });
   }
 

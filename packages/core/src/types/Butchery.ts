@@ -137,6 +137,16 @@ export interface FilletYieldResult {
   gradeMult: number;
   /** 체장 미달 — 회뜨기 비효율(통마리 유도) */
   undersizedForFillet: boolean;
+  /** 부산물 (수율의 나머지 — 중골+머리 육수용, 껍질) */
+  byproducts: ButcheryByproducts;
+}
+
+/** 손질 부산물 — 매운탕/지리(중골·머리), 구이/육수(껍질) 재료 */
+export interface ButcheryByproducts {
+  /** 중골(뼈)+머리 질량 (g) — 육수/매운탕용 */
+  boneHeadG: number;
+  /** 껍질 장수 (박피 산출 — 구이/육수용). 껍질 없는 어종은 0 */
+  skinPieces: number;
 }
 
 /** 인터랙션 프리미티브 종류 (client가 종류별 입력을 렌더) */
