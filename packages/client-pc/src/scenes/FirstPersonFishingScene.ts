@@ -41,6 +41,7 @@ import {
   computeFeedingActivity, feedingRegionProfileOf, FeedingActivityResult,
   getMovementProfile, pickRunHeading,
   FishFatigueModel, FatigueTick, FATIGUE_PHASE_LABEL,
+  fishImageSizeScale,
   TUNING,
 } from '@tra/core';
 import { drawRigIcon, RigIconKind } from '../ui/RigIconRenderer.js';
@@ -55,6 +56,7 @@ import { InventoryPanel } from '../ui/InventoryPanel.js';
 import { ItemDetailPanel } from '../ui/ItemDetailPanel.js';
 import { GuidePanel } from '../ui/GuidePanel.js';
 import { GuideCatKey } from '../data/GuideContent.js';
+import { resolveFishTexture } from '../data/FishTextures.js';
 import { loadSettings } from './SettingsScene.js';
 
 export interface FirstPersonFishingInit {
@@ -144,63 +146,7 @@ function piecewiseLerp(x: number, pts: [number, number][]): number {
   return pts[pts.length - 1][1];
 }
 
-/** 어종 → 실사 픽셀 생선 이미지 텍스처 (어획 팝업/아이템 상세 표시용) */
-const FISH_TEXTURE: Record<string, string> = {
-  black_seabream: 'fish_black_sea_bream',
-  flatfish: 'fish_halibut',
-  largescale_blackfish: 'fish_largescale_blackfish',   // 벵에돔
-  longtail_blackfish: 'fish_longtail_blackfish',       // 긴꼬리벵에돔
-  // 2026-07-22 추가 (food assets/)
-  squid: 'fish_squid',                     // 무늬오징어
-  hairtail: 'fish_hairtail',               // 갈치
-  cuttlefish: 'fish_cuttlefish',           // 갑오징어
-  blue_rockfish: 'fish_blue_rockfish',     // 청볼락
-  filefish: 'fish_filefish',               // 쥐치
-  golden_rockfish: 'fish_golden_rockfish', // 황볼락
-  sea_bass: 'fish_sea_bass',               // 농어
-  amberjack: 'fish_amberjack',             // 부시리
-  yellowtail: 'fish_yellowtail',           // 방어
-  striped_mullet: 'fish_striped_mullet',   // 숭어
-  redlip_mullet: 'fish_redlip_mullet',     // 가숭어
-  spotted_knifejaw: 'fish_spotted_knifejaw', // 강담돔
-  red_seabream: 'fish_red_seabream',       // 참돔
-  night_seabream: 'fish_red_seabream',     // 참돔(야간) — 같은 생물종이라 이미지 공용
-  horse_mackerel: 'fish_horse_mackerel',   // 전갱이
-  chub_mackerel: 'fish_chub_mackerel',     // 고등어
-  // 2026-07-22 2차 추가
-  greenling: 'fish_greenling',             // 놀래미
-  fat_greenling: 'fish_fat_greenling',     // 쥐노래미
-  surfperch: 'fish_surfperch',             // 망상어
-  // 2026-07-25 추가 (기존 4종 텍스처 + 복섬 개명 + 신규 6종)
-  spanish_mackerel: 'fish_spanish_mackerel', // 삼치
-  conger_eel: 'fish_conger_eel',           // 붕장어
-  pike_conger: 'fish_pike_conger',         // 갯장어(하모)
-  pacific_saury: 'fish_pacific_saury',     // 꽁치
-  grass_puffer: 'fish_grass_puffer',       // 복섬
-  yellowfin_puffer: 'fish_yellowfin_puffer', // 까치복
-  bartail_flathead: 'fish_bartail_flathead', // 양태
-  bluefin_searobin: 'fish_bluefin_searobin', // 성대
-  hagfish: 'fish_hagfish',                 // 먹장어
-  halfbeak: 'fish_halfbeak',               // 학꽁치
-  northern_whiting: 'fish_northern_whiting', // 보리멸
-};
-
-/**
- * 어획 개체 → 텍스처 해소.
- *  - 돌돔(stone_beakperch): 40cm를 넘어야 암수 구별 — 수컷만 줄무늬 소실.
- *    40cm 미만은 개체 성별과 무관하게 암컷(무늬 유지) 이미지를 쓴다.
- *  - 용치놀래기(rainbow_wrasse): 암컷→수컷 성전환 — 성별에 따라 체색이 완전히 달라
- *    암/수 이미지를 분기한다 (수컷 = 화려한 녹색 혼인색).
- */
-function resolveFishTexture(speciesId: string, lengthCm: number, sex: 'M' | 'F'): string | undefined {
-  if (speciesId === 'stone_beakperch') {
-    return (lengthCm >= 40 && sex === 'M') ? 'fish_stone_beakperch_male' : 'fish_stone_beakperch_female';
-  }
-  if (speciesId === 'rainbow_wrasse') {
-    return sex === 'M' ? 'fish_rainbow_wrasse_male' : 'fish_rainbow_wrasse_female';
-  }
-  return FISH_TEXTURE[speciesId];
-}
+// 어종 → 실사 픽셀 생선 이미지 텍스처 해소 (공용 모듈 — 인벤토리 폴백과 동일 소스)
 
 export class FirstPersonFishingScene extends Phaser.Scene {
   private cfg!: FirstPersonFishingInit;
@@ -2295,11 +2241,12 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     const protectedFish = f.isUndersized || f.isClosedSeason;
     const sexLabel = f.sex === 'M' ? '수컷' : '암컷';
     const fishTexture = resolveFishTexture(f.speciesId, f.lengthCm, f.sex);
+    const imgScale = fishImageSizeScale(f.speciesId, f.lengthCm);
 
     if (protectedFish) {
       const reason = f.isClosedSeason ? '금어기' : `금지체장 미만`;
       this.finishFight(`${f.nameKo} ${f.lengthCm}cm — 방생`,
-        `${f.nameKo} ${f.lengthCm}cm / ${(f.weightG / 1000).toFixed(2)}kg / ${sexLabel}\n\n${reason} 개체입니다. 규정에 따라 방생합니다.`, '#9fd0e4', fishTexture);
+        `${f.nameKo} ${f.lengthCm}cm / ${(f.weightG / 1000).toFixed(2)}kg / ${sexLabel}\n\n${reason} 개체입니다. 규정에 따라 방생합니다.`, '#9fd0e4', fishTexture, imgScale);
     } else {
       // 도감/기록 등록은 어획 시점 (쿨러 보관/방생 선택과 무관)
       this.sessionCatch.push(`${f.nameKo} ${f.lengthCm}cm (${sexLabel})`);
@@ -2333,6 +2280,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       : '';
     const body = `${f.nameKo} ${f.lengthCm}cm / ${(f.weightG / 1000).toFixed(2)}kg / ${sexLabel}${extraLine}`;
     const hasCooler = InventoryStore.hasCooler();
+    const imgScale = fishImageSizeScale(f.speciesId, f.lengthCm);
     this.buildDecisionPanel(
       `${f.nameKo} ${f.lengthCm}cm 낚음!${extra.length > 0 ? ` (+${extra.length})` : ''}`,
       body, '#4af2a1', fishTexture,
@@ -2351,7 +2299,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
               weightG: f.weightG, sex: f.sex, iconTexture: fishTexture,
             });
             this.refreshCoolerUi();
-            this.showPostDecisionPanel('쿨러에 보관하였습니다.', '#4af2a1', fishTexture);
+            this.showPostDecisionPanel('쿨러에 보관하였습니다.', '#4af2a1', fishTexture, imgScale);
           },
         },
         {
@@ -2370,19 +2318,20 @@ export class FirstPersonFishingScene extends Phaser.Scene {
               this.flashState('인벤토리(음식) 공간이 없습니다 — 방생하거나 자리를 비우세요');
               return;
             }
-            this.showPostDecisionPanel('인벤토리에 보관하였습니다. (활어 10분부터 신선도 진행)', '#aee8ff', fishTexture);
+            this.showPostDecisionPanel('인벤토리에 보관하였습니다. (활어 10분부터 신선도 진행)', '#aee8ff', fishTexture, imgScale);
           },
         },
         {
           label: '방생하기', fill: 0x123a52, stroke: 0x5cd0ff, color: '#9fd0e4',
-          onClick: () => this.showPostDecisionPanel('해당 어종을 방생하였습니다.', '#9fd0e4', fishTexture),
+          onClick: () => this.showPostDecisionPanel('해당 어종을 방생하였습니다.', '#9fd0e4', fishTexture, imgScale),
         },
       ],
+      imgScale,
     );
   }
 
   /** 보관/방생 후 안내 — [계속하기] / [그만하기] */
-  private showPostDecisionPanel(message: string, color: string, fishTexture?: string): void {
+  private showPostDecisionPanel(message: string, color: string, fishTexture?: string, imgScale = 1): void {
     const missing = InventoryStore.getMissingRigParts();
     const buttons: DecisionButton[] = [];
     if (missing.length === 0) {
@@ -2398,14 +2347,28 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.buildDecisionPanel(
       message,
       missing.length > 0 ? `채비 보충 필요: ${missing.join(', ')}\n(U 채비하기에서 재장착 후 다시 캐스팅)` : '계속 낚시하거나 필드로 복귀하세요.',
-      color, fishTexture, buttons,
+      color, fishTexture, buttons, imgScale,
     );
+  }
+
+  /**
+   * 어종 이미지 표시 크기 — 보통 크기 개체를 refBox에 맞춘 뒤 개체 크기배율(sizeMul)을 곱한다.
+   * 소형 < 보통 < 대형 < 특대 순으로 단조 증가(각 tier가 구별됨) + capBox로 레이아웃 보호.
+   * refBox는 보통(sizeMul 1.0) 기준, capBox는 sizeMul 최대(1.35)에도 팝업/텍스트와 겹치지 않게 넉넉히.
+   */
+  private fishDisplaySize(
+    src: { width: number; height: number },
+    refW: number, refH: number, capW: number, capH: number, sizeMul: number,
+  ): [number, number] {
+    const fitRef = Math.min(refW / src.width, refH / src.height);
+    const ds = Math.min(fitRef * sizeMul, capW / src.width, capH / src.height);
+    return [src.width * ds, src.height * ds];
   }
 
   /** 결정 패널 공통 렌더 — 제목/본문/어종 이미지 + 버튼 목록 */
   private buildDecisionPanel(
     title: string, body: string, color: string, fishTexture: string | undefined,
-    buttons: DecisionButton[],
+    buttons: DecisionButton[], imgScale = 1,
   ): void {
     this.resultContainer?.destroy();
     const hasImage = !!fishTexture && this.textures.exists(fishTexture);
@@ -2427,9 +2390,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
 
     if (hasImage && fishTexture) {
       const src = this.textures.get(fishTexture).getSourceImage() as HTMLImageElement;
-      const scale = Math.min(320 / src.width, 130 / src.height);
-      const img = this.add.image(0, -half + 122, fishTexture)
-        .setDisplaySize(src.width * scale, src.height * scale);
+      const [dw, dh] = this.fishDisplaySize(src, 264, 107, 360, 146, imgScale);
+      const img = this.add.image(0, -half + 122, fishTexture).setDisplaySize(dw, dh);
       c.add(img);
     }
 
@@ -2523,15 +2485,15 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     return extra;
   }
 
-  private finishFight(title: string, body: string, color: string, fishTexture?: string): void {
+  private finishFight(title: string, body: string, color: string, fishTexture?: string, imgScale = 1): void {
     this.fpState = 'result';
     this.fight = null;
     this.clearFight2DStage();
-    this.showResultPanel(title, body, color, fishTexture);
+    this.showResultPanel(title, body, color, fishTexture, imgScale);
   }
 
   /** 결과 패널 (다시 캐스팅 / 그만하기) — 어종 이미지가 있으면 실사 픽셀 생선 표시 */
-  private showResultPanel(title: string, body: string, color: string, fishTexture?: string): void {
+  private showResultPanel(title: string, body: string, color: string, fishTexture?: string, imgScale = 1): void {
     this.resultContainer?.destroy();
     const hasImage = !!fishTexture && this.textures.exists(fishTexture);
     const ph = hasImage ? 360 : 230;
@@ -2550,12 +2512,11 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     }).setOrigin(0.5);
     c.add(t1);
 
-    // 실사 픽셀 생선 이미지 (감성돔/광어 등)
+    // 실사 픽셀 생선 이미지 (감성돔/광어 등) — 개체 크기에 따라 확대/축소
     if (hasImage && fishTexture) {
       const src = this.textures.get(fishTexture).getSourceImage() as HTMLImageElement;
-      const scale = Math.min(320 / src.width, 130 / src.height);
-      const img = this.add.image(0, -half + 122, fishTexture)
-        .setDisplaySize(src.width * scale, src.height * scale);
+      const [dw, dh] = this.fishDisplaySize(src, 264, 107, 360, 146, imgScale);
+      const img = this.add.image(0, -half + 122, fishTexture).setDisplaySize(dw, dh);
       c.add(img);
     }
 

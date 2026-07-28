@@ -28,6 +28,11 @@ export interface WholesalePriceInfo {
   totalVolumeKg: number;
   /** 경매일자 (YYYY-MM-DD) */
   auctionDate: Date;
+  /**
+   * 시세 구분 (활어/선어) — API가 활어·선어를 분리 제공할 때 지정.
+   * 미지정(구분 없음)이면 활어/선어 모두에 동일 적용 (사용자 규칙 2026-07-25).
+   */
+  tier?: 'live' | 'fresh';
 }
 
 /**
@@ -38,10 +43,16 @@ export interface AuctionMappingDef {
   itemCode: string;
   /** 농정원 세부 품종 코드 (선택 사항) */
   breedCode?: string;
-  /** API 통신 실패 또는 오프라인 상태일 때 사용할 기본 kg당 수매단가 (원) */
+  /** API 통신 실패 또는 오프라인 상태일 때 사용할 기본 kg당 수매단가 (원, 1kg 기준) */
   defaultPricePerKg: number;
   /** 어종별 크기에 따른 품질 보정계수 */
   sizeFactorMultiplier: number;
+  /**
+   * 무게-가격 지수 (기본 1 = 선형). 방어처럼 크게 자라는 어종은 <1로 두어 대형 개체
+   * 가격이 무게에 정비례해 폭증하는 것을 완화한다 (실측: 방어 소형~중형 마리당 가격이
+   * 거의 평탄 → per-kg 단가가 크기에 따라 감소). price ∝ weightKg^weightExp.
+   */
+  weightExp?: number;
 }
 
 /** 어종별 경락 코드 매핑 테이블 */
@@ -67,9 +78,12 @@ export const SEAFOOD_AUCTION_MAPPING: Record<string, AuctionMappingDef> = {
     sizeFactorMultiplier: 1.1,
   },
   yellowtail: {
-    itemCode: '100301', // 부시리
-    defaultPricePerKg: 18000,
-    sizeFactorMultiplier: 1.0,
+    itemCode: '100301', // 방어
+    // 실측 시세: 소형(1~4kg) 마리당 2.5~3만 / 중형(4~8kg) 4.5만 / 특대(10kg+) 5만+·kg당 2.5~3만.
+    // 마리당 가격이 크기에 거의 평탄 → weightExp<1로 대형 폭증 완화 (1kg≈2.7만, 8kg≈9만 수준).
+    defaultPricePerKg: 27000,
+    sizeFactorMultiplier: 0.15,
+    weightExp: 0.4,
   },
   red_seabream: {
     itemCode: '100402', // 참돔
@@ -99,8 +113,10 @@ export const SEAFOOD_AUCTION_MAPPING: Record<string, AuctionMappingDef> = {
   // ── 어종 마스터 통합 추가분 (2026-07-16) — MAFRA 경락가 매칭 대상 ──
   amberjack: {
     itemCode: '100302', // 부시리
-    defaultPricePerKg: 17000,
-    sizeFactorMultiplier: 1.05,
+    // 대형 회유어(최대 150cm) — 방어류와 동일하게 대형 개체 폭증 완화
+    defaultPricePerKg: 22000,
+    sizeFactorMultiplier: 0.15,
+    weightExp: 0.45,
   },
   chub_mackerel: {
     itemCode: '100202', // 고등어
@@ -231,13 +247,17 @@ export const SEAFOOD_AUCTION_MAPPING: Record<string, AuctionMappingDef> = {
   // ── 루어/지깅 중대형 + 두족류 (2026-07-20) ──
   greater_amberjack: {
     itemCode: '100303', // 잿방어
-    defaultPricePerKg: 22000,
-    sizeFactorMultiplier: 1.2,
+    // 잿방어 = 방어류 최고급 대형어 — 폭증 완화 + 프리미엄 단가
+    defaultPricePerKg: 30000,
+    sizeFactorMultiplier: 0.15,
+    weightExp: 0.45,
   },
   spanish_mackerel: {
     itemCode: '100204', // 삼치
-    defaultPricePerKg: 12000,
-    sizeFactorMultiplier: 1.05,
+    // 삼치도 대형(최대 100cm) — 완만한 sub-linear
+    defaultPricePerKg: 15000,
+    sizeFactorMultiplier: 0.2,
+    weightExp: 0.6,
   },
   squid: {
     itemCode: '101401', // 무늬오징어(한치류)
@@ -250,9 +270,15 @@ export const SEAFOOD_AUCTION_MAPPING: Record<string, AuctionMappingDef> = {
     sizeFactorMultiplier: 1.0,
   },
   octopus: {
-    itemCode: '101403', // 문어
+    itemCode: '101403', // 참문어(돌문어)
     defaultPricePerKg: 28000,
     sizeFactorMultiplier: 1.1,
+  },
+  giant_octopus: {
+    itemCode: '101403', // 대문어(피문어) — 대물은 무게 폭증 완화(weightExp)
+    defaultPricePerKg: 24000,
+    sizeFactorMultiplier: 0.2,
+    weightExp: 0.5,
   },
   // ── 신규 어종 6종 + 복섬 (2026-07-25) ──
   yellowfin_puffer: { itemCode: '100901', defaultPricePerKg: 40000, sizeFactorMultiplier: 1.2 }, // 까치복

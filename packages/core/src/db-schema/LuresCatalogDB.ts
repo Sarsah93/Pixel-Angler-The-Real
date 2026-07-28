@@ -103,14 +103,14 @@ export const LURES_CATALOG_DB: LureSpec[] = [
     id: 'lure_egi_25', nameKo: '다트 마스터 에기 2.5호', nameEn: 'Dart Master Egi #2.5',
     brand: 'Kraken', family: 'hard', kind: 'egi', sizeLabel: '2.5호',
     weightG: 10.5, sinkType: 'sinking', sinkRateMps: 0.28, dragCoefficient: 0.46,
-    spawnBinding: ['squid', 'octopus', 'cuttlefish'], actionFlags: ['dart'], snagRiskMult: 0.7,
+    spawnBinding: ['squid', 'octopus', 'giant_octopus', 'cuttlefish'], actionFlags: ['dart'], snagRiskMult: 0.7,
     fallLureWeight: 0.2,
   },
   {
     id: 'lure_egi_35', nameKo: '다트 마스터 에기 3.5호', nameEn: 'Dart Master Egi #3.5',
     brand: 'Kraken', family: 'hard', kind: 'egi', sizeLabel: '3.5호',
     weightG: 20.0, sinkType: 'sinking', sinkRateMps: 0.40, dragCoefficient: 0.46,
-    spawnBinding: ['squid', 'octopus', 'cuttlefish'], actionFlags: ['dart'], snagRiskMult: 0.7,
+    spawnBinding: ['squid', 'octopus', 'giant_octopus', 'cuttlefish'], actionFlags: ['dart'], snagRiskMult: 0.7,
     fallLureWeight: 0.2,
   },
   // 메탈지그 · Iron Forge · Hyper Bullet (초고속 싱킹, C_d -35% 초장타 — 지깅 핵심)

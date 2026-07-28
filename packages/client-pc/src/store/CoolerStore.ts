@@ -336,15 +336,20 @@ class CoolerStoreImpl {
       return { ...f, condition: f.condition ?? 'live', stateElapsedMs: f.stateElapsedMs ?? 0 };
     });
     this.medium = s.medium ?? 'none';
-    this.mediumSetAtMs = s.mediumSetAtMs ?? 0;
     this.mediumExpiredApplied = s.mediumExpiredApplied ?? false;
-    this.lastSyncMs = s.lastSyncMs ?? Date.now();
     this.chumIngredients = (s.chumIngredients ?? []).map((c) => ({ ...c }));
     this.chumWaterAdded = s.chumWaterAdded ?? false;
     this.chumMixed = s.chumMixed ?? false;
     this.chumRemaining = s.chumRemaining ?? 0;
-    // 저장~로드 사이 흐른 실제 시간 적용 (매질 만료 이벤트 포함)
-    this.sync();
+    // ── 오프라인(게임 종료) 중에는 신선도가 진행하지 않는다 ──
+    // 구 구현은 저장~로드 wall-clock 갭 전체를 sync()로 적용해, 하루 뒤 재접속하면
+    // 방금 넣은 어획까지 전부 부패로 점프하던 버그가 있었다(활어→부패 상온 ~10시간).
+    // → 오프라인 경과만큼 lastSyncMs·매질 투입시각을 앞으로 밀어 "정지"시킨다.
+    //   (신선도/매질은 활성 플레이 중에만 진행 — 게임 표준 방식)
+    const savedSync = s.lastSyncMs ?? Date.now();
+    const offlineGap = Math.max(0, Date.now() - savedSync);
+    this.mediumSetAtMs = (s.mediumSetAtMs ?? 0) + offlineGap;   // 매질 잔여시간 보존
+    this.lastSyncMs = Date.now();                               // 오프라인 경과 미적용
   }
 
   /** 전체 초기화 (새 게임/세이브 없음) */

@@ -13,6 +13,8 @@
  * 순수 TS — 렌더/브라우저 API 없음.
  */
 
+import { getFishById } from '../db-schema/FishDatabase.js';
+
 /** 크기 등급 */
 export type SizeTier = 'small' | 'medium' | 'large';
 
@@ -38,6 +40,35 @@ export const SIZE_TIER_BOUNDS: Record<string, [number, number]> = {
 export const PELAGIC_DAYTIME_SPECIES: ReadonlySet<string> = new Set([
   'yellowtail', 'amberjack', 'greater_amberjack', 'spanish_mackerel',
 ]);
+
+/**
+ * 어획물 이미지 표시 배율 — 개체 길이(cm)를 어종 "보통 사이즈" 기준과 비교해
+ * 소형은 조금 작게 / 대형·특대는 더 크게 보이도록 하는 배율(1.0 = 보통 크기).
+ *
+ * 기준 길이(ref):
+ *  - tier 등재 어종(방어·부시리 등): 중형 밴드 중앙 = 소/중/대 실체감 반영
+ *  - 그 외: FISH_DATABASE avgSizeRangeCm 중앙값(보통 크기)
+ *
+ * 비대칭 커브 — 소형은 완만히(지수 0.38), 대형·특대는 뚜렷이(지수 0.55) 반영.
+ * 레이아웃(팝업/상세 이미지 박스) 보호를 위해 [0.80, 1.35]로 클램프.
+ * 반환값은 호출부의 fit 스케일에 곱해서 사용한다.
+ */
+export function fishImageSizeScale(speciesId: string, lengthCm: number): number {
+  if (!Number.isFinite(lengthCm) || lengthCm <= 0) return 1.0;
+  let ref = 0;
+  const bounds = SIZE_TIER_BOUNDS[speciesId];
+  if (bounds) {
+    ref = (bounds[0] + bounds[1]) / 2;
+  } else {
+    const fish = getFishById(speciesId);
+    if (fish) ref = (fish.avgSizeRangeCm[0] + fish.avgSizeRangeCm[1]) / 2;
+  }
+  if (ref <= 0) return 1.0;
+  const ratio = lengthCm / ref;
+  const exp = ratio < 1 ? 0.38 : 0.55;
+  const scale = Math.pow(ratio, exp);
+  return Math.max(0.80, Math.min(1.35, scale));
+}
 
 /** roll된 길이 → 크기 등급 (경계 미등재 어종은 max 대비 비율로 근사) */
 export function classifySizeTier(speciesId: string, lengthCm: number, maxCm: number): SizeTier {

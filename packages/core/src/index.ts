@@ -117,10 +117,13 @@ export type { LineState } from './simulation/LinePhysics.js';
 export type {
   OrientationState, ButcheryTool, CutPoint, CutSpec, ButcheryProfile,
   ButcheryPrimitive, ButcheryStage, CutEvalResult, SashimiGrade, ButcheryResult,
-  FilletShape, KnifeSpec, FilletYieldInput, FilletYieldResult,
+  FilletShape, KnifeSpec, FilletYieldInput, FilletYieldResult, ButcheryFamily,
 } from './types/Butchery.js';
 export { ORIENTATION_LABEL } from './types/Butchery.js';
-export { BUTCHERY_PROFILES, DEFAULT_BUTCHERY_PROFILE, getButcheryProfile } from './db-schema/ButcheryProfiles.js';
+export {
+  BUTCHERY_PROFILES, DEFAULT_BUTCHERY_PROFILE, getButcheryProfile,
+  getButcheryFamily, BUTCHERY_FAMILY_NOTICE,
+} from './db-schema/ButcheryProfiles.js';
 export { KNIFE_SPECS, getBestKnife, isKnifeItem } from './db-schema/KnifeDatabase.js';
 export type { SashimiGradeInput } from './simulation/ButcheryProcess.js';
 export {
@@ -273,7 +276,7 @@ export { ORACLE_FISH_DB, spawnFish, classifyLayer, getBaitAffinity } from './sim
 export type { SizeTier, TierRollContext } from './simulation/SizeTierRules.js';
 export {
   SIZE_TIER_BOUNDS, SIZE_TIER_LABEL, PELAGIC_DAYTIME_SPECIES,
-  classifySizeTier, rollTierWeights, rollTieredLength,
+  classifySizeTier, rollTierWeights, rollTieredLength, fishImageSizeScale,
 } from './simulation/SizeTierRules.js';
 
 // 피딩타임 (계절 시간창 × 조류 × 날씨 → 활성도 배율 — 입질/보일링/스쿨링 공통 입력)

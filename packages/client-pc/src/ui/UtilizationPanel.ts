@@ -30,10 +30,15 @@ import {
 } from '../store/InventoryStore.js';
 import { RecommendationStore } from '../store/RecommendationStore.js';
 import { CoolerStore, ChumIngredientKind, CHUM_THROW_COST } from '../store/CoolerStore.js';
-import { LureFamily, LureKind, getLureSpec, getLureSinkProfile, jigHeadWeightById } from '@tra/core';
+import {
+  LureFamily, LureKind, getLureSpec, getLureSinkProfile, jigHeadWeightById,
+  getButcheryFamily, BUTCHERY_FAMILY_NOTICE, ButcheryFamily,
+} from '@tra/core';
 import { DraggablePanel } from './DraggablePanel.js';
 import { ButcheryPanel } from './ButcheryPanel.js';
 import { GuidePanel } from './GuidePanel.js';
+import { ConfirmDialog } from './Dialogs.js';
+import { makeFishPreview } from './FishTemplateRenderer.js';
 import { createItemIcon } from './ItemIcon.js';
 import { GameState } from '../store/GameState.js';
 
@@ -99,12 +104,18 @@ export class UtilizationPanel extends DraggablePanel {
   /** 요리 탭 임베드 인벤토리 — 현재 카테고리/선택 아이템 */
   private cookInvCat: InvCategory = 'food';
   private cookSelectedId: string | null = null;
-  /** 도마에 올린 생선 아이템 id (풀렌더 이미지 보유 어획물만) */
+  /** 도마에 올린 생선 아이템 id (손질 프로필 보유 어획물) */
   private cookBoardFishId: string | null = null;
   /** 도마 영역 (패널 로컬 좌표 — 드랍 판정용) */
   private cookBoardRect = { x: 0, y: 0, w: 0, h: 0 };
-  /** 드래그 중 생선 고스트 이미지 */
-  private dragGhost?: Phaser.GameObjects.Image;
+  /** 드래그 중 생선 고스트 (실사 이미지 or 파라메트릭 컨테이너) */
+  private dragGhost?: Phaser.GameObjects.Container;
+  /** 드래그 중 도마 드롭존 하이라이트 (renderCooking에서 생성, drag 핸들러가 토글) */
+  private cookBoardHighlight?: Phaser.GameObjects.Graphics;
+  /** 도마 안내 토스트 (일시 표시) */
+  private boardToast?: Phaser.GameObjects.Text;
+  /** 교환 확인 모달 */
+  private swapConfirm?: ConfirmDialog;
   /** 회 뜨기 손질 자식 팝업 */
   private butcheryPanel?: ButcheryPanel;
   /** 통합 가이드 팝업 (최초 회뜨기 — '회뜨기' 탭 1회 자동 표시) */
@@ -123,6 +134,15 @@ export class UtilizationPanel extends DraggablePanel {
     this.finishChumDrag(p);
   };
 
+  // ── 요리 탭 도마 드래그 상태 (Phaser 네이티브 draggable은 scrollFactor 0 UI에서
+  //    scroll 씬 하에 drag 이벤트가 안 오므로, 밑밥 탭과 동일한 커스텀 포인터 방식 사용) ──
+  private cookDragItem: InvItem | null = null;
+  private cookDragMode: 'add' | 'remove' = 'add';
+  private cookDragStart = { x: 0, y: 0 };
+  private cookDragging = false;
+  private cookMoveHandler = (p: Phaser.Input.Pointer): void => this.onCookDragMove(p);
+  private cookUpHandler = (p: Phaser.Input.Pointer): void => this.onCookDragUp(p);
+
   constructor(scene: Phaser.Scene, onClose: () => void, initialTab: UtilizationTab = 'tackles') {
     super(scene, {
       x: (GAME_WIDTH - PANEL_W) / 2,
@@ -138,9 +158,11 @@ export class UtilizationPanel extends DraggablePanel {
     this.add(this.bodyContainer);
     this.renderBody();
 
-    // 밑밥 재료 드래그 앤 드랍 (씬 레벨 포인터 추적)
+    // 밑밥 재료 / 요리 도마 드래그 앤 드랍 (씬 레벨 포인터 추적)
     scene.input.on('pointermove', this.chumMoveHandler);
     scene.input.on('pointerup', this.chumUpHandler);
+    scene.input.on('pointermove', this.cookMoveHandler);
+    scene.input.on('pointerup', this.cookUpHandler);
   }
 
   // ── 상단 탭 (요리하기 / 채비하기) ─────────────────────
@@ -979,38 +1001,56 @@ export class UtilizationPanel extends DraggablePanel {
     board.strokeRoundedRect(boardX, boardY, boardW, boardH, 12);
     this.bodyContainer.add(board);
 
-    // ── 도마 위 생선 (드래그 앤 드랍으로 올림 — 풀렌더 이미지 어획물만) ──
+    // ── 드롭존 하이라이트 (드래그 중 도마 hover 시 토글) ──
+    const hl = this.scene.add.graphics();
+    hl.lineStyle(3, 0x4af2a1, 0.95);
+    hl.strokeRoundedRect(boardX, boardY, boardW, boardH, 12);
+    hl.setVisible(false);
+    this.bodyContainer.add(hl);
+    this.cookBoardHighlight = hl;
+
+    // ── 도마 위 생선 (드래그 앤 드랍으로 올림 — 손질 프로필 보유 어획물, 실사→파라메트릭) ──
     const boardFish = this.cookBoardFishId ? InventoryStore.find(this.cookBoardFishId) : undefined;
-    const boardTex = boardFish?.iconTexture;
-    if (this.cookBoardFishId && (!boardFish || !boardTex || !this.scene.textures.exists(boardTex))) {
-      this.cookBoardFishId = null;   // 아이템 소멸/텍스처 없음 — 도마 비움
-    }
+    if (this.cookBoardFishId && !boardFish) this.cookBoardFishId = null;   // 아이템 소멸 — 도마 비움
 
-    if (boardFish && boardTex && this.scene.textures.exists(boardTex)) {
-      const src = this.scene.textures.get(boardTex).getSourceImage() as HTMLImageElement;
-      const sc = Math.min((boardW - 70) / src.width, (boardH - 64) / src.height);
-      const fishImg = this.scene.add.image(boardX + boardW / 2, boardY + boardH / 2, boardTex)
-        .setDisplaySize(src.width * sc, src.height * sc);
-      this.bodyContainer.add(fishImg);
+    if (boardFish) {
+      const cx = boardX + boardW / 2, cy = boardY + boardH / 2;
+      const family = getButcheryFamily(boardFish.speciesId ?? '');
+      // 실사 있으면 실사, 없으면 파라메트릭 생선 프리뷰
+      const preview = makeFishPreview(this.scene, {
+        speciesId: boardFish.speciesId, iconTexture: boardFish.iconTexture,
+        boxW: boardW - 70, boxH: boardH - 74, cx, cy,
+      });
+      this.bodyContainer.add(preview);
 
-      const nameLbl = this.scene.add.text(boardX + boardW / 2, boardY + boardH - 18,
-        boardFish.name, {
-          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#3a2c1a', fontStyle: 'bold',
-        }).setOrigin(0.5);
+      // 도마 생선 드래그 = 빼기 (도마 밖으로 놓으면 내려감 — 커스텀 포인터 방식)
+      const grab = this.scene.add.rectangle(cx, cy, boardW - 60, boardH - 96, 0xffffff, 0.001)
+        .setInteractive({ useHandCursor: true });
+      grab.on('pointerdown', (p: Phaser.Input.Pointer) => this.startCookDrag(boardFish, 'remove', p));
+      this.bodyContainer.add(grab);
+
+      const nameLbl = this.scene.add.text(cx, boardY + boardH - 18, boardFish.name, {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#3a2c1a', fontStyle: 'bold',
+      }).setOrigin(0.5);
       this.bodyContainer.add(nameLbl);
 
-      // [손질 시작] — 회 뜨기 미니게임 (시메→방혈→비늘→머리→내장→삼면뜨기→박피)
+      // [손질 시작] — finfish만 활성 (두족류는 준비중, 안내)
+      const cutEnabled = family === 'finfish';
       const cutBg = this.scene.add.graphics();
-      cutBg.fillStyle(0x0d4a2e, 0.96);
+      cutBg.fillStyle(cutEnabled ? 0x0d4a2e : 0x1c2530, 0.96);
       cutBg.fillRoundedRect(boardX + 8, boardY + 8, 92, 24, 4);
-      cutBg.lineStyle(1.5, 0x4af2a1, 0.95);
+      cutBg.lineStyle(1.5, cutEnabled ? 0x4af2a1 : 0x3a4a58, 0.95);
       cutBg.strokeRoundedRect(boardX + 8, boardY + 8, 92, 24, 4);
       const cutTxt = this.scene.add.text(boardX + 54, boardY + 20, '손질 시작', {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#4af2a1', fontStyle: 'bold',
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px',
+        color: cutEnabled ? '#4af2a1' : '#5a6a78', fontStyle: 'bold',
       }).setOrigin(0.5);
       const cutHit = this.scene.add.rectangle(boardX + 54, boardY + 20, 92, 24, 0xffffff, 0.001)
         .setInteractive({ useHandCursor: true });
-      cutHit.on('pointerdown', () => this.openButchery(boardFish));
+      cutHit.on('pointerdown', () => {
+        if (cutEnabled) this.openButchery(boardFish);
+        else this.flashBoardToast(BUTCHERY_FAMILY_NOTICE[family]);
+      });
       this.bodyContainer.add([cutBg, cutTxt, cutHit]);
 
       // [내리기] — 도마 비우기
@@ -1032,22 +1072,137 @@ export class UtilizationPanel extends DraggablePanel {
       this.bodyContainer.add(boardLbl);
     }
 
-    const hasKnife = false; // 회칼 장비 아이템 추가 예정
-    const lines = [
-      '생선 손질(삼면뜨기) 시스템은 추후 정식 구현 예정입니다.',
-      '',
-      `회칼 장비 상태: ${hasKnife ? '장비됨' : '미보유 — 회칼(장비)을 착용해야 손질할 수 있습니다'}`,
-      '· 실사 이미지가 있는 어획물(감성돔/광어/벵에돔/긴꼬리벵에돔)만 도마에 올릴 수 있습니다',
-      '· 신선도에 따라 요리 결과/버프(근력 1.5배 등)가 달라집니다',
-    ];
-    const info = this.scene.add.text(boardX, boardY + boardH + 26, lines.join('\n'), {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#9fc0d4',
-      lineSpacing: 6, wordWrap: { width: boardW },
-    });
+    const info = this.scene.add.text(boardX, boardY + boardH + 26,
+      [
+        '생선을 도마에 올리고 [손질 시작]으로 회를 뜹니다 (넣기·빼기·교환 = 드래그).',
+        '· 원형어=삼면뜨기(양살 2필렛) / 광어·도다리=다섯장뜨기(4~5필렛)',
+        '· 복어(자격·독)·두족류(오징어·문어·갑오징어)는 준비 중입니다',
+        '· 신선도가 높을수록 회 등급이 오릅니다 (활어회는 활어 상태에서만 특 가능)',
+      ].join('\n'), {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#9fc0d4',
+        lineSpacing: 6, wordWrap: { width: boardW },
+      });
     this.bodyContainer.add(info);
 
     // ── 우측: 종속 인벤토리 (요리 창에 임베드 — 별도 드래그 창 아님) ──
     this.renderEmbeddedInventory(560, top, PANEL_W - 560 - 24);
+  }
+
+  /** 포인터가 도마 영역(패널 로컬) 위인지 */
+  private overBoard(p: Phaser.Input.Pointer): boolean {
+    const lx = p.x - this.x, ly = p.y - this.y, b = this.cookBoardRect;
+    return lx >= b.x && lx <= b.x + b.w && ly >= b.y && ly <= b.y + b.h;
+  }
+
+  /**
+   * 요리 도마 드래그 시작 (커스텀 포인터 방식 — pointerdown에서 잠재 드래그 등록).
+   * mode 'add' = 인벤 셀에서 도마로 / 'remove' = 도마 생선을 밖으로 빼기.
+   * 이동 임계(6px) 미만이면 클릭(선택)으로 처리한다.
+   */
+  private startCookDrag(item: InvItem, mode: 'add' | 'remove', p: Phaser.Input.Pointer): void {
+    this.cookDragItem = item;
+    this.cookDragMode = mode;
+    this.cookDragStart = { x: p.x, y: p.y };
+    this.cookDragging = false;
+  }
+
+  private onCookDragMove(p: Phaser.Input.Pointer): void {
+    if (!this.cookDragItem) return;
+    if (!this.cookDragging) {
+      if (Math.hypot(p.x - this.cookDragStart.x, p.y - this.cookDragStart.y) < 6) return;   // 클릭 임계
+      this.cookDragging = true;
+      this.spawnDragGhost(this.cookDragItem, p.x - this.x, p.y - this.y);
+    }
+    this.dragGhost?.setPosition(p.x - this.x, p.y - this.y);
+    this.cookBoardHighlight?.setVisible(this.overBoard(p));
+  }
+
+  private onCookDragUp(p: Phaser.Input.Pointer): void {
+    const item = this.cookDragItem;
+    if (!item) return;
+    const mode = this.cookDragMode, dragged = this.cookDragging;
+    this.cookDragItem = null;
+    this.cookDragging = false;
+    this.dragGhost?.destroy();
+    this.dragGhost = undefined;
+    this.cookBoardHighlight?.setVisible(false);
+    if (this.currentTab !== 'cooking') return;
+    if (!dragged) {
+      // 이동 없음 = 클릭 → 인벤 셀이면 선택
+      if (mode === 'add') { this.cookSelectedId = item.id; this.renderBody(); }
+      return;
+    }
+    if (mode === 'add') {
+      if (this.overBoard(p)) this.dropFishOnBoard(item);
+    } else if (!this.overBoard(p)) {
+      this.cookBoardFishId = null; this.renderBody();   // 도마 밖으로 빼기 = 내리기
+    }
+  }
+
+  /** 드래그 고스트 생성 (실사 이미지 or 파라메트릭 — 화면 고정) */
+  private spawnDragGhost(item: InvItem, lx: number, ly: number): void {
+    this.dragGhost?.destroy();
+    const gh = makeFishPreview(this.scene, {
+      speciesId: item.speciesId, iconTexture: item.iconTexture, boxW: 110, boxH: 60, cx: lx, cy: ly,
+    });
+    gh.setAlpha(0.85).setScrollFactor(0);
+    this.bodyContainer.add(gh);
+    this.dragGhost = gh;
+  }
+
+  /** 도마에 생선 놓기 — 게이트(복어 차단) + 점유 중 교환 */
+  private dropFishOnBoard(item: InvItem): void {
+    const family: ButcheryFamily = getButcheryFamily(item.speciesId ?? '');
+    if (family === 'pufferfish' || family === 'unsupported') {
+      this.flashBoardToast(BUTCHERY_FAMILY_NOTICE[family]);
+      return;
+    }
+    // finfish/cephalopod — 점유 중(다른 생선)이면 교환
+    if (this.cookBoardFishId && this.cookBoardFishId !== item.id) {
+      this.trySwapBoard(item.id);
+      return;
+    }
+    this.cookBoardFishId = item.id;
+    this.cookSelectedId = item.id;
+    this.renderBody();
+  }
+
+  /** 도마 점유 중 새 생선 드롭 = 교체 (손질 진행 중이면 확인 모달) */
+  private trySwapBoard(newId: string): void {
+    const doSwap = (): void => {
+      this.cookBoardFishId = newId;
+      this.cookSelectedId = newId;
+      this.renderBody();
+      this.flashBoardToast('교환됨');
+    };
+    if (this.butcheryPanel) {
+      this.swapConfirm?.destroy();
+      const close = (): void => { this.swapConfirm?.destroy(); this.swapConfirm = undefined; };
+      const dlg = new ConfirmDialog(this.scene, '진행 중인 손질을 취소하고 생선을 교체할까요?',
+        () => { close(); this.butcheryPanel?.destroy(); this.butcheryPanel = undefined; doSwap(); },
+        () => { close(); });
+      this.scene.add.existing(dlg);
+      this.swapConfirm = dlg;
+      return;
+    }
+    doSwap();
+  }
+
+  /** 도마 안내 토스트 (1.8초 표시) */
+  private flashBoardToast(msg: string): void {
+    this.boardToast?.destroy();
+    const b = this.cookBoardRect;
+    const t = this.scene.add.text(b.x + b.w / 2, b.y + b.h / 2, msg, {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px', color: '#ffce9a', fontStyle: 'bold',
+      backgroundColor: '#0a1628ee', padding: { x: 14, y: 10 }, align: 'center',
+      wordWrap: { width: b.w - 40 },
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(60);
+    this.bodyContainer.add(t);
+    this.boardToast = t;
+    this.scene.time.delayedCall(1800, () => {
+      t.destroy();
+      if (this.boardToast === t) this.boardToast = undefined;
+    });
   }
 
   /** 요리 탭에 임베드되는 인벤토리 뷰 — InventoryStore를 직접 읽는 읽기 전용 그리드 */
@@ -1126,40 +1281,16 @@ export class UtilizationPanel extends DraggablePanel {
         this.bodyContainer.add(dot);
       }
 
-      // 풀렌더 이미지가 있는 어획물은 도마로 드래그 앤 드랍 가능
-      const draggableFish = item.subCategory === '어획물'
-        && !!item.iconTexture && this.scene.textures.exists(item.iconTexture);
+      // 손질 프로필 보유 어획물(finfish) + 두족류는 도마로 드래그 가능 (복어/미지원은 불가)
+      const fam = item.subCategory === '어획물' ? getButcheryFamily(item.speciesId ?? '') : 'unsupported';
+      const draggableFish = fam === 'finfish' || fam === 'cephalopod';
       const hit = this.scene.add.rectangle(cx + cell / 2, cy + cell / 2, cell, cell, 0xffffff, 0.001)
-        .setInteractive({ useHandCursor: true, draggable: draggableFish });
-      hit.on('pointerdown', () => { this.cookSelectedId = item.id; this.renderBody(); });
-      if (draggableFish && item.iconTexture) {
-        const tex = item.iconTexture;
-        hit.on('dragstart', () => {
-          this.dragGhost?.destroy();
-          const src = this.scene.textures.get(tex).getSourceImage() as HTMLImageElement;
-          const sc = Math.min(110 / src.width, 60 / src.height);
-          this.dragGhost = this.scene.add.image(cx + cell / 2, cy + cell / 2, tex)
-            .setDisplaySize(src.width * sc, src.height * sc)
-            .setAlpha(0.85)
-            .setScrollFactor(0);
-          this.bodyContainer.add(this.dragGhost);
-        });
-        hit.on('drag', (p: Phaser.Input.Pointer) => {
-          // 패널은 화면 고정(scrollFactor 0) — 스크린 좌표 → 패널 로컬 변환
-          this.dragGhost?.setPosition(p.x - this.x, p.y - this.y);
-        });
-        hit.on('dragend', (p: Phaser.Input.Pointer) => {
-          this.dragGhost?.destroy();
-          this.dragGhost = undefined;
-          const lx = p.x - this.x;
-          const ly = p.y - this.y;
-          const b = this.cookBoardRect;
-          if (lx >= b.x && lx <= b.x + b.w && ly >= b.y && ly <= b.y + b.h) {
-            this.cookBoardFishId = item.id;
-            this.cookSelectedId = item.id;
-            this.renderBody();
-          }
-        });
+        .setInteractive({ useHandCursor: true });
+      if (draggableFish) {
+        // 커스텀 드래그(pointerdown→씬 pointermove/up) — 이동 없으면 클릭=선택
+        hit.on('pointerdown', (p: Phaser.Input.Pointer) => this.startCookDrag(item, 'add', p));
+      } else {
+        hit.on('pointerdown', () => { this.cookSelectedId = item.id; this.renderBody(); });
       }
       this.bodyContainer.add(hit);
       if (this.cookSelectedId === item.id) {
@@ -1170,13 +1301,20 @@ export class UtilizationPanel extends DraggablePanel {
       }
     }
 
-    // 하단: 선택 아이템 안내 (도마 연동은 손질 시스템 구현 시)
+    // 하단: 선택 아이템 안내
     const selItem = this.cookSelectedId ? InventoryStore.find(this.cookSelectedId) : undefined;
     const footY = gridY + 5 * (cell + gap) + 4;
+    const selFam = selItem?.subCategory === '어획물' ? getButcheryFamily(selItem.speciesId ?? '') : 'unsupported';
+    const selHint = selItem
+      ? (selFam === 'finfish' || selFam === 'cephalopod'
+          ? '왼쪽 도마로 드래그해서 올리세요'
+          : selFam === 'pufferfish' ? '복어는 자격·독 처리 준비 중 — 도마 불가'
+          : '이 아이템은 도마에 올릴 수 없습니다')
+      : '';
     const foot = this.scene.add.text(x + 14, footY,
       selItem
-        ? `선택: ${selItem.name}${selItem.condition ? ` (${CONDITION_LABEL[selItem.condition]})` : ''} — 손질 시스템 구현 후 도마에 올릴 수 있습니다`
-        : '아이템을 클릭해 선택하세요', {
+        ? `선택: ${selItem.name}${selItem.condition ? ` (${CONDITION_LABEL[selItem.condition]})` : ''} — ${selHint}`
+        : '어종을 왼쪽 도마로 드래그하세요 (클릭 = 선택)', {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px',
         color: selItem ? '#7fe6b0' : '#7a98ac', wordWrap: { width: w - 28 },
       });
@@ -1600,8 +1738,14 @@ export class UtilizationPanel extends DraggablePanel {
     this.closeChooser();
     this.butcheryPanel?.destroy();
     this.butcheryPanel = undefined;
+    this.swapConfirm?.destroy();
+    this.swapConfirm = undefined;
+    this.dragGhost?.destroy();
+    this.dragGhost = undefined;
     this.scene?.input?.off('pointermove', this.chumMoveHandler);
     this.scene?.input?.off('pointerup', this.chumUpHandler);
+    this.scene?.input?.off('pointermove', this.cookMoveHandler);
+    this.scene?.input?.off('pointerup', this.cookUpHandler);
     this.chumGhost?.destroy();
     super.destroy(fromScene);
   }

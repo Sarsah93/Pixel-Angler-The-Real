@@ -20,43 +20,16 @@ import {
   ButcheryProcess, getButcheryProfile, CutPoint, OrientationState,
   ORIENTATION_LABEL, FISH_DATABASE,
   computeFilletYield, getBestKnife, KnifeSpec,
+  TUNING,
 } from '@tra/core';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { InventoryStore, InvItem } from '../store/InventoryStore.js';
 import { GameState } from '../store/GameState.js';
 import { DraggablePanel } from './DraggablePanel.js';
+import { drawFishTemplate, getFishColors } from './FishTemplateRenderer.js';
 
 const PANEL_W = 1080;
 const PANEL_H = 620;
-
-/** 어종별 몸통 팔레트 (파라메트릭 템플릿 주입값) */
-const FISH_COLORS: Record<string, { body: number; belly: number; fin: number }> = {
-  black_seabream: { body: 0x4a5560, belly: 0xb8bec6, fin: 0x333a44 },
-  largescale_blackfish: { body: 0x2e3a46, belly: 0x9aa6b0, fin: 0x1e2830 },
-  longtail_blackfish: { body: 0x35506a, belly: 0xa8c0d4, fin: 0x24384e },
-  flatfish: { body: 0x6a5a3e, belly: 0xd8cdb4, fin: 0x4a3f2c },
-  flounder: { body: 0x6a5a3e, belly: 0xd8cdb4, fin: 0x4a3f2c },
-  sea_bass: { body: 0x5a6a74, belly: 0xc6d0d6, fin: 0x3e4c56 },
-  yellowtail: { body: 0x3e5a74, belly: 0xc0ccd4, fin: 0x2c4256 },
-  amberjack: { body: 0x466a80, belly: 0xc8d2d8, fin: 0x2c4a5e },
-  greater_amberjack: { body: 0x5a6a5a, belly: 0xd0d4c4, fin: 0x3e4a3a },
-  red_seabream: { body: 0xb85a54, belly: 0xecc4bc, fin: 0x8a3a38 },
-  spanish_mackerel: { body: 0x4a6470, belly: 0xc4d0d6, fin: 0x30464e },
-  chub_mackerel: { body: 0x33505e, belly: 0xc0ccd0, fin: 0x203640 },
-  horse_mackerel: { body: 0x6a7c82, belly: 0xd2dade, fin: 0x4a5c62 },
-  stone_beakperch: { body: 0x8a8a7a, belly: 0xd8d6c4, fin: 0x3a3a30 },
-  spotted_knifejaw: { body: 0x6a6a60, belly: 0xcaccbe, fin: 0x2e2e28 },
-  dark_banded_rockfish: { body: 0x6a4a4a, belly: 0xc8b4ac, fin: 0x442e2e },
-  blue_rockfish: { body: 0x3a4a68, belly: 0xb4c0d0, fin: 0x263048 },
-  golden_rockfish: { body: 0x8a6a3a, belly: 0xd8c49a, fin: 0x5e4622 },
-  black_rockfish: { body: 0x40484e, belly: 0xb8c0c4, fin: 0x282e32 },
-  filefish: { body: 0x7a7050, belly: 0xcac2a0, fin: 0x4e4632 },
-  pacific_cod: { body: 0x8a8474, belly: 0xd6d2c0, fin: 0x5a564a },
-  hairtail: { body: 0xb8bcc4, belly: 0xe8ecf2, fin: 0x8a8e96 },
-  striped_mullet: { body: 0x5e6a6e, belly: 0xccd2d4, fin: 0x40484c },
-  redlip_mullet: { body: 0x64706a, belly: 0xcfd6cc, fin: 0x444c46 },
-};
-const DEFAULT_COLORS = { body: 0x50606c, belly: 0xbcc6cc, fin: 0x38444e };
 
 export interface ButcheryCallbacks {
   onClose: () => void;
@@ -96,8 +69,14 @@ export class ButcheryPanel extends DraggablePanel {
   private gutted = false;
   private washCount = 0;
 
+  // 뒤집기 연출 상태 — 화면에 그려진 방향(process.orientation과 다르면 flip 연출 후 동기화)
+  private renderedOrientation: OrientationState = 'BASE';
+  private flipping = false;
+  private flipTweens: Phaser.Tweens.Tween[] = [];
+
   private butcheryMoveHandler: (p: Phaser.Input.Pointer) => void;
   private butcheryUpHandler: (p: Phaser.Input.Pointer) => void;
+  private keyHandler: (ev: KeyboardEvent) => void;
 
   constructor(scene: Phaser.Scene, source: InvItem, cbs: ButcheryCallbacks) {
     super(scene, {
@@ -128,6 +107,11 @@ export class ButcheryPanel extends DraggablePanel {
     scene.input.on('pointerup', this.butcheryUpHandler);
     scene.input.on('pointerdown', this.onPointerDownBound, this);
 
+    // 키보드 — F/Space 요구 방향 뒤집기 · 1~5 방향 직접 · Enter 세척 확정
+    this.keyHandler = (ev) => this.onKey(ev);
+    scene.input.keyboard?.on('keydown', this.keyHandler);
+
+    this.renderedOrientation = this.process.orientation;
     this.refresh();
     this.applyFix();
   }
@@ -140,7 +124,40 @@ export class ButcheryPanel extends DraggablePanel {
     this.scene?.input?.off('pointermove', this.butcheryMoveHandler);
     this.scene?.input?.off('pointerup', this.butcheryUpHandler);
     this.scene?.input?.off('pointerdown', this.onPointerDownBound, this);
+    this.scene?.input?.keyboard?.off('keydown', this.keyHandler);
+    this.flipTweens.forEach((t) => t.remove());
+    this.flipTweens = [];
     super.destroy(fromScene);
+  }
+
+  // ═══════════════════════════════════════════════════
+  // 키보드 — F/Space 뒤집기 · 1~5 방향 · Enter 세척
+  // ═══════════════════════════════════════════════════
+  private onKey(ev: KeyboardEvent): void {
+    if (this.done || this.flipping || this.process.finished) return;
+    const stage = this.process.stage;
+    if (!stage) return;
+    if (ev.code === 'KeyF' || ev.code === 'Space') {
+      // 요구 방향으로 원터치 정렬 (autoOrient on이면 대부분 이미 정렬 상태)
+      if (this.process.orientation !== stage.orientation) {
+        this.process.orientation = stage.orientation;
+        this.refresh();
+      }
+    } else if (ev.code === 'Enter' || ev.code === 'NumpadEnter') {
+      if (stage.primitive === 'wash' && this.process.submitWash()) {
+        this.washCount++;
+        this.flash(stage.id === 'bleed_ice' ? '방혈 완료 — 선도 보너스!' : '깨끗이 씻었습니다', true);
+        this.refresh();
+        if (this.process.finished) this.showResult();
+      }
+    } else if (ev.code.startsWith('Digit')) {
+      const idx = Number(ev.code.slice(5)) - 1;
+      const orients: OrientationState[] = ['BASE', 'FLIP', 'BELLY_UP', 'BACK_DOWN', 'FLESH_UP'];
+      if (idx >= 0 && idx < orients.length && this.process.orientation !== orients[idx]) {
+        this.process.orientation = orients[idx];
+        this.refresh();
+      }
+    }
   }
 
   // ═══════════════════════════════════════════════════
@@ -192,8 +209,13 @@ export class ButcheryPanel extends DraggablePanel {
     return id === 'tail_grip' || id.startsWith('fillet_') || id === 'peel';
   }
 
-  /** 회칼 미보유 + 회뜨기 단계 도달 → 잠금 (입력 차단 + 안내) */
+  /**
+   * 회칼 미보유 + 회뜨기 단계 하드 잠금 — TUNING.butchery.knifeHardLock=true일 때만.
+   * 기본(false)은 소프트 페널티: 막칼 폴백으로 진행 허용(수율 0.85 + 등급 '상' 캡),
+   * 사이드바에 안내 + [통마리로 마무리] 선택지 유지.
+   */
   private knifeLocked(): boolean {
+    if (!TUNING.butchery.knifeHardLock) return false;
     return !this.knife && !this.process.finished && !this.done && this.isFilletingStage();
   }
 
@@ -201,11 +223,16 @@ export class ButcheryPanel extends DraggablePanel {
   // 입력 (프리미티브별)
   // ═══════════════════════════════════════════════════
   private onPointerDown(p: Phaser.Input.Pointer): void {
-    if (this.process.finished || this.done || this.knifeLocked()) return;
+    if (this.process.finished || this.done || this.knifeLocked() || this.flipping) return;
     const stage = this.process.stage;
-    if (!stage || !this.process.canAct()) return;
+    if (!stage) return;
     const n = this.toNorm(p);
     if (!n) return;
+    // 방향 불일치 — 조용한 무시 대신 명확한 안내 (F/뒤집기 버튼 유도, 먹통 방지)
+    if (!this.process.canAct()) {
+      this.flash(`먼저 [${ORIENTATION_LABEL[stage.orientation]}] 방향으로 뒤집으세요 — F키 또는 [뒤집기] 버튼`, false);
+      return;
+    }
 
     if (stage.primitive === 'tap') {
       const tp = stage.tapPoint ?? { x: 0.16, y: 0.38 };
@@ -228,7 +255,7 @@ export class ButcheryPanel extends DraggablePanel {
   }
 
   private onPointerMove(p: Phaser.Input.Pointer): void {
-    if (this.done || this.knifeLocked()) return;
+    if (this.done || this.knifeLocked() || this.flipping) return;
     if (!this.tracing && !this.peelStart) return;
     const stage = this.process.stage;
     if (!stage) return;
@@ -265,7 +292,7 @@ export class ButcheryPanel extends DraggablePanel {
   }
 
   private onPointerUp(p: Phaser.Input.Pointer): void {
-    if (this.done || this.knifeLocked()) { this.tracing = false; this.peelStart = null; return; }
+    if (this.done || this.knifeLocked() || this.flipping) { this.tracing = false; this.peelStart = null; return; }
     const stage = this.process.stage;
 
     // 박피 당김 판정
@@ -311,13 +338,65 @@ export class ButcheryPanel extends DraggablePanel {
   // ═══════════════════════════════════════════════════
   // 렌더
   // ═══════════════════════════════════════════════════
+  /**
+   * 리렌더 — 방향이 바뀌어 있으면(자동 스냅/수동 전환) 뒤집기 연출을 먼저 재생하고
+   * 완료 시점에 실제 리렌더(doRefresh). 연출 중 입력은 flipping 가드로 차단.
+   */
   private refresh(): void {
+    if (!this.done && !this.flipping && this.process.orientation !== this.renderedOrientation) {
+      this.playFlipAnim();
+      return;
+    }
+    this.doRefresh();
+  }
+
+  private doRefresh(): void {
     this.uiC.removeAll(true);
     this.drawFish();
     if (!this.knifeLocked()) this.drawGuide();
     this.drawSidebar();
     if (this.knifeLocked()) this.drawKnifeLock();
     this.applyFix();
+  }
+
+  /** 뒤집기 연출 — 생선을 가로로 접었다 펴며 새 방향으로 리렌더 */
+  private playFlipAnim(): void {
+    this.flipping = true;
+    this.guideG.clear();
+    this.traceG.clear();
+    this.tracing = false;
+    this.peelStart = null;
+    const dur = Math.max(80, TUNING.butchery.flipAnimMs);
+    const cx = this.fishX + this.fishW / 2;   // 패널 로컬 뒤집기 축
+    const st = { s: 1 };
+    const apply = (): void => {
+      if (!this.scene) return;
+      this.fishG.scaleX = st.s;
+      this.fishG.x = cx * (1 - st.s);
+    };
+    const t1 = this.scene.tweens.add({
+      targets: st, s: 0, duration: dur / 2, ease: 'Sine.easeIn',
+      onUpdate: apply,
+      onComplete: () => {
+        if (!this.scene) return;
+        // 접힌 시점에 새 방향으로 몸통 교체
+        this.renderedOrientation = this.process.orientation;
+        this.drawFish();
+        const t2 = this.scene.tweens.add({
+          targets: st, s: 1, duration: dur / 2, ease: 'Sine.easeOut',
+          onUpdate: apply,
+          onComplete: () => {
+            if (!this.scene) return;
+            this.fishG.scaleX = 1;
+            this.fishG.x = 0;
+            this.flipping = false;
+            this.doRefresh();
+          },
+        });
+        this.flipTweens.push(t2);
+      },
+    });
+    this.flipTweens.push(t1);
   }
 
   /** 회칼 미보유 잠금 오버레이 — 회뜨기 단계 진입 시 안내 + [통마리로 마무리] */
@@ -412,13 +491,7 @@ export class ButcheryPanel extends DraggablePanel {
   private drawFish(): void {
     const g = this.fishG;
     g.clear();
-    const o = this.process.orientation;
-    const colors = FISH_COLORS[this.process.profile.speciesId] ?? DEFAULT_COLORS;
-    const flat = this.process.profile.bodyShape === 'flat';
     const X = this.fishX, Y = this.fishY, W = this.fishW, H = this.fishH;
-    const cx = X + W / 2, cy = Y + H / 2;
-    // 체고/체장 비(bodyRatio)로 몸통 높이 변형 — 방어는 길쭉·낮게, 쥐치는 통통·높게
-    const bodyH = H * (flat ? 0.72 : Math.max(0.35, Math.min(0.72, 0.34 + this.process.profile.bodyRatio * 0.55)));
 
     // 작업대 (도마 배경)
     g.fillStyle(0x8a6a44, 1);
@@ -426,87 +499,21 @@ export class ButcheryPanel extends DraggablePanel {
     g.fillStyle(0xa8845a, 1);
     g.fillRoundedRect(X - 6, Y - 16, W + 12, H + 32, 8);
 
-    if (this.process.finished || o === 'FLESH_UP') {
-      // 필렛 뷰 — 분홍 살 슬랩 + 줄무늬 (+박피 전 껍질층)
-      const peelsDone = (this.process.stage?.primitive === 'peel')
-        ? (this.process.profile.filletCount - this.process.currentPullsLeft) : this.process.profile.filletCount;
-      g.fillStyle(0xf0a0a0, 1);
-      g.fillRoundedRect(X + W * 0.1, cy - bodyH * 0.3, W * 0.8, bodyH * 0.6, 18);
-      g.lineStyle(1.4, 0xffffff, 0.5);
-      for (let i = 1; i <= 5; i++) {
-        const sx = X + W * (0.14 + i * 0.12);
-        g.lineBetween(sx, cy - bodyH * 0.22, sx - W * 0.05, cy + bodyH * 0.22);
-      }
-      if (!this.process.finished && this.process.currentPullsLeft > 0) {
-        // 남은 껍질층 (아래 어두운 띠) + 꼬리 손잡이
-        g.fillStyle(colors.body, 0.95);
-        g.fillRoundedRect(X + W * 0.1, cy + bodyH * 0.18, W * 0.8, bodyH * 0.14, 8);
-        g.fillStyle(0x3a2c1e, 1);
-        g.fillRoundedRect(X + W * 0.86, cy - bodyH * 0.1, W * 0.07, bodyH * 0.34, 5);
-      }
-      void peelsDone;
-      return;
-    }
-
-    const mirror = o === 'FLIP';
-    const headX = mirror ? X + W * 0.92 : X + W * 0.08;
-    const tailX = mirror ? X + W * 0.06 : X + W * 0.94;
-    const dir = mirror ? -1 : 1;
-
-    // 몸통
-    g.fillStyle(colors.body, 1);
-    g.fillEllipse(cx, cy, W * 0.74, bodyH);
-    // 배/등 밴드 (방향별)
-    g.fillStyle(colors.belly, 0.9);
-    if (o === 'BELLY_UP') g.fillEllipse(cx, cy - bodyH * 0.22, W * 0.66, bodyH * 0.34);
-    else if (o === 'BACK_DOWN') g.fillEllipse(cx, cy - bodyH * 0.1, W * 0.66, bodyH * 0.5);
-    else g.fillEllipse(cx, cy + bodyH * 0.18, W * 0.66, bodyH * 0.4);
-
-    // 꼬리
-    g.fillStyle(colors.fin, 1);
-    g.fillTriangle(tailX, cy, tailX + dir * -W * 0.0, cy, tailX + dir * W * 0.06, cy - bodyH * 0.34);
-    g.fillTriangle(tailX, cy, tailX + dir * W * 0.06, cy + bodyH * 0.34, tailX + dir * W * 0.02, cy);
-
-    // 머리/눈/아가미 (BASE·FLIP에서만, 머리 분리 전)
-    if (!this.headOff && (o === 'BASE' || o === 'FLIP')) {
-      g.fillStyle(colors.body, 1);
-      g.fillEllipse(headX + dir * W * 0.05, cy, W * 0.2, bodyH * 0.8);
-      g.fillStyle(0xffffff, 1);
-      g.fillCircle(headX + dir * W * 0.03, cy - bodyH * 0.16, 7);
-      g.fillStyle(0x111418, 1);
-      g.fillCircle(headX + dir * W * 0.035, cy - bodyH * 0.16, 3.6);
-      g.lineStyle(2, colors.fin, 0.9);
-      g.beginPath();
-      g.arc(headX + dir * W * 0.1, cy, bodyH * 0.34, mirror ? Math.PI * 0.6 : -Math.PI * 0.4, mirror ? Math.PI * 1.4 : Math.PI * 0.4);
-      g.strokePath();
-    } else if (this.headOff && (o === 'BASE' || o === 'FLIP')) {
-      // 머리 분리 단면
-      g.fillStyle(0xd87878, 1);
-      g.fillEllipse(headX + dir * W * 0.08, cy, W * 0.035, bodyH * 0.66);
-    }
-
-    // 비늘 오버레이 (제거 전 반짝임 점)
-    const needScale = this.process.profile.hasScales && this.scaledSides < 2 && (o === 'BASE' || o === 'FLIP');
-    if (needScale && !(this.scaledSides >= 1 && o === 'BASE')) {
-      g.fillStyle(0xe8f0f6, 0.5);
-      for (let i = 0; i < 40; i++) {
-        const sx = cx + (((i * 73) % 100) / 100 - 0.5) * W * 0.6;
-        const sy = cy + (((i * 37) % 100) / 100 - 0.5) * bodyH * 0.7;
-        g.fillCircle(sx, sy, 2);
-      }
-    }
-
-    // 내장 오버레이 (BELLY_UP, 개복 후·제거 전)
-    if (o === 'BELLY_UP' && !this.gutted && this.process.stage?.id === 'gut_scoop') {
-      g.fillStyle(0x8a3040, 0.9);
-      g.fillEllipse(cx - W * 0.08, cy - bodyH * 0.2, W * 0.3, bodyH * 0.24);
-    }
-
-    // 항문 마커 (BACK_DOWN — 위쪽)
-    if (o === 'BACK_DOWN') {
-      g.fillStyle(0xffd257, 1);
-      g.fillCircle(X + W * this.process.profile.anusRatio, cy - bodyH * 0.42, 3.5);
-    }
+    // 파라메트릭 생선 — FSM 진행 상태 주입 (공용 렌더러 — 도마/고스트와 동일 소스)
+    // orientation은 화면 표시 방향(renderedOrientation) — 뒤집기 연출 중간(접힌 시점)에
+    // 새 방향으로 교체된다 (process.orientation은 로직/게이트 기준).
+    drawFishTemplate(g, { x: X, y: Y, w: W, h: H }, this.process.profile,
+      getFishColors(this.process.profile.speciesId), {
+        orientation: this.renderedOrientation,
+        headOff: this.headOff,
+        scaledSides: this.scaledSides,
+        gutted: this.gutted,
+        finished: this.process.finished,
+        filletCount: this.process.profile.filletCount,
+        currentPullsLeft: this.process.currentPullsLeft,
+        stagePrimitive: this.process.stage?.primitive,
+        stageId: this.process.stage?.id,
+      });
   }
 
   /** 현재 스테이지 가이드 (노란 점선 칼선 / 탭 목표점 / 손잡이 표시) */
@@ -515,13 +522,16 @@ export class ButcheryPanel extends DraggablePanel {
     g.clear();
     const stage = this.process.stage;
     if (!stage || this.process.finished) return;
-    if (!this.process.canAct()) return;   // 방향 불일치 시 가이드 숨김 (힌트만)
+    // 방향 불일치 시에도 숨기지 않고 고스트(흐리게)로 표시 — "먹통" 방지.
+    // (autoOrient on이면 대부분 정렬 상태라 고스트는 수동 전환 중에만 보임)
+    const ghost = !this.process.canAct();
+    const ga = ghost ? 0.28 : 0.95;
 
     const toPx = (p: CutPoint): [number, number] => [this.fishX + p.x * this.fishW, this.fishY + p.y * this.fishH];
 
     if (stage.primitive === 'guided_cut' && stage.cut) {
       const path = stage.cut.guidePath;
-      g.lineStyle(2, 0xffd257, 0.95);
+      g.lineStyle(2, 0xffd257, ga);
       for (let i = 1; i < path.length; i++) {
         const [ax, ay] = toPx(path[i - 1]);
         const [bx, by] = toPx(path[i]);
@@ -533,22 +543,22 @@ export class ButcheryPanel extends DraggablePanel {
         }
       }
       const [sx, sy] = toPx(path[0]);
-      g.fillStyle(0xffd257, 1);
+      g.fillStyle(0xffd257, ga);
       g.fillCircle(sx, sy, 5);
     } else if (stage.primitive === 'tap' && stage.tapPoint) {
       const [tx, ty] = toPx(stage.tapPoint);
-      g.lineStyle(2, 0xff5a4a, 0.95);
+      g.lineStyle(2, 0xff5a4a, ga);
       g.strokeCircle(tx, ty, 14);
-      g.fillStyle(0xff5a4a, 0.9);
+      g.fillStyle(0xff5a4a, ga);
       g.fillCircle(tx, ty, 3);
     } else if (stage.primitive === 'peel') {
       // 손잡이 존 + 당김 방향 화살표
-      g.lineStyle(2, 0x7fe6b0, 0.9);
+      g.lineStyle(2, 0x7fe6b0, ghost ? 0.28 : 0.9);
       g.strokeRoundedRect(this.fishX + this.fishW * 0.74, this.fishY + this.fishH * 0.3, this.fishW * 0.2, this.fishH * 0.4, 8);
-      g.lineStyle(3, 0xffd257, 0.95);
+      g.lineStyle(3, 0xffd257, ga);
       const ay = this.fishY + this.fishH * 0.5;
       g.lineBetween(this.fishX + this.fishW * 0.7, ay, this.fishX + this.fishW * 0.24, ay);
-      g.fillStyle(0xffd257, 1);
+      g.fillStyle(0xffd257, ga);
       g.fillTriangle(this.fishX + this.fishW * 0.24, ay, this.fishX + this.fishW * 0.3, ay - 8, this.fishX + this.fishW * 0.3, ay + 8);
     }
   }
@@ -584,12 +594,32 @@ export class ButcheryPanel extends DraggablePanel {
           : `${ORIENTATION_LABEL[stage.orientation]} 방향으로 바꿔주세요`,
         12, ok ? '#7fe6b0' : '#ff9a6a', true);
 
-      // 반복/진행 표시
-      if (stage.primitive === 'guided_cut' && this.process.currentStrokesLeft > 1) {
-        mkText(sx, this.contentTop + 124, `남은 칼집: ${this.process.currentStrokesLeft}회`, 11, '#9fd0e4');
-      }
-      if (stage.primitive === 'peel') {
-        mkText(sx, this.contentTop + 124, `남은 장: ${this.process.currentPullsLeft}`, 11, '#9fd0e4');
+      if (!ok) {
+        // 원터치 뒤집기 대형 버튼 — 불일치 상태에서 즉시 요구 방향으로 (F키 동일)
+        const by = this.contentTop + 122;
+        const bg = this.scene.add.graphics();
+        bg.fillStyle(0x3a2e14, 0.98);
+        bg.fillRoundedRect(sx, by, 220, 32, 5);
+        bg.lineStyle(2, 0xffd257, 1);
+        bg.strokeRoundedRect(sx, by, 220, 32, 5);
+        const t = this.scene.add.text(sx + 110, by + 16, `뒤집기 → ${ORIENTATION_LABEL[stage.orientation]} (F)`, {
+          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#ffd257', fontStyle: 'bold',
+        }).setOrigin(0.5);
+        const hit = this.scene.add.rectangle(sx + 110, by + 16, 220, 32, 0xffffff, 0.001)
+          .setInteractive({ useHandCursor: true });
+        hit.on('pointerdown', () => {
+          this.process.orientation = stage.orientation;
+          this.refresh();
+        });
+        this.uiC.add([bg, t, hit]);
+      } else {
+        // 반복/진행 표시
+        if (stage.primitive === 'guided_cut' && this.process.currentStrokesLeft > 1) {
+          mkText(sx, this.contentTop + 124, `남은 칼집: ${this.process.currentStrokesLeft}회`, 11, '#9fd0e4');
+        }
+        if (stage.primitive === 'peel') {
+          mkText(sx, this.contentTop + 124, `남은 장: ${this.process.currentPullsLeft}`, 11, '#9fd0e4');
+        }
       }
 
       // 방향(Orient) 버튼
@@ -638,6 +668,24 @@ export class ButcheryPanel extends DraggablePanel {
         });
         this.uiC.add([bg, t, hit]);
       }
+
+      // 회칼 미보유 소프트 안내 — 회뜨기 단계에서 막칼 폴백 진행 + 통마리 선택지 유지
+      if (!this.knife && this.isFilletingStage() && !this.knifeLocked()) {
+        mkText(sx, this.contentTop + 292, '회칼 없음 — 막칼로 손질 중 (수율·등급 저하)', 11, '#ffb454', true);
+        const by = this.contentTop + 314;
+        const bg = this.scene.add.graphics();
+        bg.fillStyle(0x2a2214, 0.96);
+        bg.fillRoundedRect(sx, by, 200, 30, 5);
+        bg.lineStyle(1.5, 0xffb454, 0.9);
+        bg.strokeRoundedRect(sx, by, 200, 30, 5);
+        const t = this.scene.add.text(sx + 100, by + 15, '통마리로 마무리', {
+          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#ffd9a0',
+        }).setOrigin(0.5);
+        const hit = this.scene.add.rectangle(sx + 100, by + 15, 200, 30, 0xffffff, 0.001)
+          .setInteractive({ useHandCursor: true });
+        hit.on('pointerdown', () => this.finishWhole());
+        this.uiC.add([bg, t, hit]);
+      }
     }
 
     // 필렛/상태 요약
@@ -648,6 +696,7 @@ export class ButcheryPanel extends DraggablePanel {
     mkText(sx, PANEL_H - 96,
       this.process.profile.bodyShape === 'flat' ? '광어 5장뜨기 (4필렛 + 중골)' : '삼면뜨기 (양살 2필렛 + 중골)',
       11, '#7a98ac');
+    mkText(sx, PANEL_H - 74, '키: F/Space 뒤집기 · 1~5 방향 · Enter 세척', 10, '#607b8e');
   }
 
   /** 채움 진행 바 (비늘/내장 — 즉석 표시) */

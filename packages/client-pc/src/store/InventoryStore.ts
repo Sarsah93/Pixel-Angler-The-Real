@@ -261,6 +261,8 @@ export interface InventorySaveState {
   rigMode: 'bait' | 'lure';
   lure: string | null;
   jigHead: string | null;
+  /** 저장 시각 (ms) — 로드 시 오프라인 경과만큼 신선도 시각을 밀어 "정지"시킨다 */
+  savedAtMs?: number;
 }
 
 /** 시작 시 지급되는 목업 아이템 세트 (slot은 카테고리별 순차 배정) */
@@ -451,6 +453,27 @@ export function refreshCondition(item: Pick<InvItem, 'condition' | 'conditionSin
   item.conditionSinceMs = since;
 }
 
+/**
+ * 상태별 어획물 가치 배율 (실시간 시세 최종가에 곱함, 사용자 지정 2026-07-25):
+ *  - 활어/신선 = 각각 활어/선어 시세 그대로(1.0) · 냉장/냉동/해동 = 선어와 동일(1.0)
+ *  - 보통 = 50% · 나쁨 = 10% · 부패 = 0 (판매 불가)
+ * (활어 vs 선어 "시세 데이터" 구분은 getWholesaleCache의 tier가 담당 — 여기선 상태 감가만)
+ */
+export function conditionSellMultiplier(cond: InvCondition | undefined): number {
+  switch (cond) {
+    case 'normal': return 0.5;
+    case 'bad': return 0.1;
+    case 'spoiled': return 0;
+    // live/fresh/chilled/frozen/thawed = 감가 없음 (시세 그대로)
+    default: return 1.0;
+  }
+}
+
+/** 상태 → 시세 tier (활어 = 활어 시세 / 그 외 식용 상태 = 선어 시세) */
+export function conditionPriceTier(cond: InvCondition | undefined): 'live' | 'fresh' {
+  return cond === 'live' ? 'live' : 'fresh';
+}
+
 /** 다음 단계로 변질까지 남은 시간 (ms) — 종착(상함)이면 Infinity */
 export function conditionRemainMs(item: Pick<InvItem, 'condition' | 'conditionSinceMs'>): number {
   if (!item.condition || item.conditionSinceMs === undefined) return Number.POSITIVE_INFINITY;
@@ -590,6 +613,7 @@ class InventoryStoreManager {
       rigMode: this.rigMode,
       lure: this._lure,
       jigHead: this._jigHead,
+      savedAtMs: Date.now(),
     };
   }
 
@@ -601,7 +625,13 @@ class InventoryStoreManager {
    */
   deserialize(s: InventorySaveState | undefined | null): void {
     if (!s || !Array.isArray(s.items)) { this.resetAll(); return; }
-    this._items = s.items.map((i) => ({ ...i }));
+    // 오프라인(게임 종료) 중에는 신선도가 진행하지 않는다 — 저장~로드 실경과만큼
+    // 각 아이템의 conditionSinceMs를 앞으로 밀어 "정지"시킨다 (쿨러와 동일 원칙).
+    const offlineGap = Math.max(0, Date.now() - (s.savedAtMs ?? Date.now()));
+    this._items = s.items.map((i) => ({
+      ...i,
+      conditionSinceMs: i.conditionSinceMs !== undefined ? i.conditionSinceMs + offlineGap : undefined,
+    }));
     this._catchSeq = s.catchSeq ?? 0;
     const valid = new Set(this._items.map((i) => i.id));
     const ref = (id: string | null | undefined): string | null => (id && valid.has(id) ? id : null);
@@ -654,14 +684,20 @@ class InventoryStoreManager {
    */
   getSellPrice(item: InvItem): number {
     if (item.subCategory === '어획물') {
+      // 상태별 가치 배율 (부패 = 0, 나쁨 10%, 보통 50%, 그 외 시세 그대로)
+      const stateMul = conditionSellMultiplier(item.condition);
+      if (stateMul <= 0) return 0;   // 부패 = 판매 불가
       const speciesId = item.speciesId ?? (item.id === 'inv_fish_1' ? 'black_seabream' : undefined);
       if (speciesId && item.weightG) {
-        const cache = ExternalDataStore.getWholesaleCache(speciesId);
-        return evaluateFishSellPrice(speciesId, item.lengthCm ?? 0, item.weightG, cache).finalPrice;
+        // 활어 → 활어 시세 / 그 외 식용 상태 → 선어 시세 (실시간 경락가 API 캐시 tier)
+        const tier = conditionPriceTier(item.condition);
+        const cache = ExternalDataStore.getWholesaleCache(speciesId, tier);
+        const base = evaluateFishSellPrice(speciesId, item.lengthCm ?? 0, item.weightG, cache).finalPrice;
+        return Math.max(0, Math.round(base * stateMul));
       }
-      // 레거시 폴백 — 실측치가 없으면 기존 방식(기준가 × 시세 배율)
+      // 레거시 폴백 — 실측치가 없으면 기존 방식(기준가 × 시세 배율) × 상태 배율
       const factor = speciesId ? ExternalDataStore.getMarketPriceFactor(speciesId) : 1;
-      return Math.max(100, Math.floor(item.basePrice * 0.6 * factor));
+      return Math.max(0, Math.floor(item.basePrice * 0.6 * factor * stateMul));
     }
     return Math.max(100, Math.floor(item.basePrice * 0.6));
   }

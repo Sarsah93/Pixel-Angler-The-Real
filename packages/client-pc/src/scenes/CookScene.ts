@@ -10,15 +10,12 @@
  */
 
 import Phaser from 'phaser';
-import type { FishProcessingStep } from '@tra/core';
 import { RECIPE_DATABASE } from '@tra/core';
 import type { CoolerSlotItem } from '@tra/core';
 import { GameState } from '../store/GameState.js';
 
 export class CookScene extends Phaser.Scene {
   private coolerItems: CoolerSlotItem[] = [];
-  private currentStepIndex = 0;
-  private processingSteps: FishProcessingStep[] = [];
   private availableRecipes: typeof RECIPE_DATABASE = [];
 
   // UI
@@ -199,65 +196,46 @@ export class CookScene extends Phaser.Scene {
   }
 
   private showProcessingPanel(item: CoolerSlotItem): void {
+    // 회뜨기(비늘·내장·삼면/다섯장뜨기·박피)는 요리(U) 창의 도마 + ButcheryPanel로 일원화됨.
+    // 이 화면(레거시)에서는 손질을 흉내내지 않고 안내만 하고 레시피 조리로 넘어간다.
     const { width, height } = this.scale;
-
-    this.processingSteps = ['descaling', 'gutting', 'filleting'];
-    this.currentStepIndex = 0;
 
     if (this.processPanel) this.processPanel.destroy();
     this.processPanel = this.add.container(width * 0.5, height * 0.52).setDepth(25);
 
-    const bg = this.add.rectangle(0, 0, 400, 280, 0x1a0800, 0.92);
+    const bg = this.add.rectangle(0, 0, 420, 240, 0x1a0800, 0.92);
     bg.setStrokeStyle(1.5, 0x553311);
 
-    const title = this.add.text(0, -125, `🔪 ${item.nameKo} 손질`, {
+    const title = this.add.text(0, -95, `${item.nameKo} 조리`, {
       fontFamily: '"Noto Sans KR", sans-serif',
       fontSize: '16px', color: '#ffeeaa', fontStyle: 'bold',
     }).setOrigin(0.5, 0.5);
 
-    const stepLabels: Record<string, string> = {
-      descaling: '비늘 제거',
-      gutting: '내장 제거',
-      filleting: '포 뜨기 (회뜨기)',
-      skinning: '껍질 제거',
-      portioning: '포션 분할',
-    };
-
-    this.processPanel.add([bg, title]);
-
-    let stepY = -80;
-    this.processingSteps.forEach((step, i) => {
-      const stepBg = this.add.rectangle(0, stepY, 360, 40, 0x001133, 0.8);
-      const stepText = this.add.text(-170, stepY, `${i + 1}. ${stepLabels[step] ?? step}`, {
+    const notice = this.add.text(0, -20,
+      '회뜨기(비늘·내장·삼면/다섯장뜨기·박피)는\n요리(U) 창의 도마에서 진행합니다.\n\n여기서는 레시피 조리만 진행합니다.', {
         fontFamily: '"Noto Sans KR", sans-serif',
-        fontSize: '13px', color: this.currentStepIndex === i ? '#ffcc00' : '#8899aa',
-      }).setOrigin(0, 0.5);
-      const checkText = this.add.text(160, stepY, i < this.currentStepIndex ? '✅' : '○', {
-        fontSize: '16px',
+        fontSize: '13px', color: '#cfe3f2', align: 'center', lineSpacing: 6,
       }).setOrigin(0.5, 0.5);
 
-      this.processPanel.add([stepBg, stepText, checkText]);
-      stepY += 50;
-    });
+    this.processPanel.add([bg, title, notice]);
 
-    // 손질 버튼
-    const processBtn = this.add.container(0, 90).setInteractive(
+    const cookBtn = this.add.container(0, 85).setInteractive(
       new Phaser.Geom.Rectangle(-90, -20, 180, 40),
       Phaser.Geom.Rectangle.Contains
     );
     const btnBg = this.add.rectangle(0, 0, 180, 40, 0x553300, 0.9);
     btnBg.setStrokeStyle(1, 0xaa8833);
-    const btnText = this.add.text(0, 0, '🔪 손질하기', {
+    const btnText = this.add.text(0, 0, '조리하기', {
       fontFamily: '"Noto Sans KR", sans-serif',
-      fontSize: '14px', color: '#ffeeaa', fontStyle: 'bold'
+      fontSize: '14px', color: '#ffeeaa', fontStyle: 'bold',
     }).setOrigin(0.5, 0.5);
-    processBtn.add([btnBg, btnText]);
-    processBtn.on('pointerdown', () => {
+    cookBtn.add([btnBg, btnText]);
+    cookBtn.on('pointerdown', () => {
       this.processPanel.destroy();
       this.showCookingPanel(item);
     });
 
-    this.processPanel.add(processBtn);
+    this.processPanel.add(cookBtn);
   }
 
   private showCookingPanel(item: CoolerSlotItem): void {

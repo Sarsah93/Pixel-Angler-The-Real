@@ -19,6 +19,7 @@ import type {
   OrientationState, ButcheryResult, SashimiGrade,
   FilletYieldInput, FilletYieldResult,
 } from '../types/Butchery.js';
+import { TUNING } from '../config/tuning.js';
 
 /** 0~1 등 범위 클램프 */
 function clamp(v: number, lo: number, hi: number): number {
@@ -166,7 +167,9 @@ export function computeFilletYield(input: FilletYieldInput): FilletYieldResult {
   });
   const qualBoost = clamp(toolYield * (skillYield / 1.0), 0.75, 1.18);
   const score = clamp(base.score * qualBoost, 0, 1);
-  const grade: SashimiGrade = score >= 0.9 ? '특' : score >= 0.68 ? '상' : score >= 0.5 ? '중' : '하';
+  let grade: SashimiGrade = score >= 0.9 ? '특' : score >= 0.68 ? '상' : score >= 0.5 ? '중' : '하';
+  // 회칼 미보유(막칼 폴백) = 최고 등급 '상' 캡 — 회칼 없이 특급 사시미 불가 (고증)
+  if (!knife && grade === '특') grade = '상';
   const gradeMult = grade === '특' ? 1.5 : grade === '상' ? 1.25 : grade === '중' ? 1.0 : 0.7;
 
   return { yieldMassG, filletCount, sliceCount, grade, gradeMult, undersizedForFillet };
@@ -264,21 +267,25 @@ export function buildButcheryStages(profile: ButcheryProfile): ButcheryStage[] {
   });
 
   // 7~8. 장 뜨기 — 등 경계 얕은 칼집 ×3 → 강한 썰기(뼈 끊기) 분리. 필렛 수만큼 반복.
-  const filletPairs = profile.filletCount / 2;
+  //  round=삼면뜨기(양살 2장), flat=다섯장뜨기(중앙선 기준 상·하 양측 4~5장).
+  const flat = profile.bodyShape === 'flat';
   for (let f = 0; f < profile.filletCount; f++) {
-    const sideLabel = profile.bodyShape === 'flat'
-      ? `${f + 1}번째 장 (5장뜨기 ${f + 1}/${profile.filletCount})`
+    const sideLabel = flat
+      ? `다섯장뜨기 ${f + 1}/${profile.filletCount}장`
       : f === 0 ? '첫 장' : '둘째 장';
-    void filletPairs;
     stages.push({
-      id: `fillet_${f}_score`, label: `${sideLabel} — 등 경계 칼집`, orientation: 'BACK_DOWN', primitive: 'guided_cut',
-      guide: '등 경계를 따라 얕은 칼집을 3회 넣으세요 (머리 자리→꼬리)',
+      id: `fillet_${f}_score`, label: `${sideLabel} — 경계 칼집`, orientation: 'BACK_DOWN', primitive: 'guided_cut',
+      guide: flat
+        ? '몸통 중앙선을 기준으로 한쪽 반신의 지느러미 경계를 따라 얕은 칼집 3회 (머리→꼬리)'
+        : '등 경계를 따라 얕은 칼집을 3회 넣으세요 (머리 자리→꼬리)',
       cut: cut(`fillet_${f}_score`, 'BACK_DOWN',
         [{ x: 0.14, y: 0.3 }, { x: 0.86, y: 0.28 }], { strokesRequired: 3, tolerance: 0.09 }),
     });
     stages.push({
       id: `fillet_${f}_sever`, label: `${sideLabel} — 중골 위 강한 분리`, orientation: 'BACK_DOWN', primitive: 'guided_cut',
-      guide: '내장 자리~척추 위를 강하게 썰어(뼈 끊기) 한 장을 분리하세요',
+      guide: flat
+        ? '중앙 뼈(중골) 위를 강하게 썰어 반신 한 장을 분리 — 상·하 양측으로 남은 장 반복'
+        : '내장 자리~척추 위를 강하게 썰어(뼈 끊기) 한 장을 분리하세요',
       cut: cut(`fillet_${f}_sever`, 'BACK_DOWN',
         [{ x: 0.13, y: 0.5 }, { x: 0.88, y: 0.5 }], { strong: true, tolerance: 0.1 }),
       yieldsFillet: true,
@@ -439,7 +446,11 @@ export class ButcheryProcess {
   private advance(): void {
     this.idx++;
     this.resetStageCounters();
-    // 다음 스테이지 방향 게이트 힌트를 위해 orientation은 유지 (client가 버튼으로 전환)
+    // 단계 전환 시 요구 방향으로 자동 정렬 (SASHIMI_STAGE_FLOW_FIX) —
+    // 구 방식("client가 버튼으로 전환")은 수동 전환 누락 시 canAct() false로
+    // 가이드·입력이 조용히 죽어 "머리따기 이후 진행 불가"로 체감되던 주원인.
+    // autoOrient=false면 구 방식 유지 (client가 뒤집기 버튼/키로 전환).
+    if (TUNING.butchery.autoOrient && this.stage) this.orientation = this.stage.orientation;
   }
 
   private resetStageCounters(): void {

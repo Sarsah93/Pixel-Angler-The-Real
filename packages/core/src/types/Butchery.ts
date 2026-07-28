@@ -53,6 +53,15 @@ export interface CutSpec {
 /** 필렛 형상 — 아이콘/템플릿 렌더 분기 (붉은살 로인 / 넓은 흰살 / 작은 조각) */
 export type FilletShape = 'loin_thick' | 'flat_wide' | 'small';
 
+/**
+ * 손질 형태 분류 — 어종을 손질 방식별로 나눈다 (도마 투입/미니게임 게이트 기준).
+ *  - finfish     : 원형/납작 지느러미어 (삼면뜨기·다섯장뜨기) — ButcheryProcess FSM 구현
+ *  - cephalopod  : 두족류 (오징어·문어·갑오징어) — 눈 위 신경·먹물·다리 손질(준비중 스텁)
+ *  - pufferfish  : 복어류 — 자격증·독 제거 필요 (준비중 스텁, 투입 차단)
+ *  - unsupported : 손질 프로필 미정 어종
+ */
+export type ButcheryFamily = 'finfish' | 'cephalopod' | 'pufferfish' | 'unsupported';
+
 /** 어종 해부/손질 파라미터 */
 export interface ButcheryProfile {
   /** FISH_DATABASE / 오라클 표준 id */

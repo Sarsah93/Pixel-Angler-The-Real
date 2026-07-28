@@ -571,14 +571,27 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     fight: { basePower: 0.4, patternWeights: { jump: 0.1, dive: 0.3, lateral: 0.6 }, intervalMult: 1.1, mouthFragility: 0.4 },
   },
   {
-    speciesId: 'octopus', nameKo: '문어', nameEn: 'Common Octopus',
-    habitat: ['reef', 'structure'], minDepthM: 2, maxDepthM: 25, preferredLayers: ['bottom'],
+    speciesId: 'octopus', nameKo: '참문어(돌문어)', nameEn: 'Common Octopus',
+    // 남해·서해 따뜻한 연안 암초/방파제 바닥 — 대문어보다 소형(성체 최대 ~4kg 급)
+    habitat: ['reef', 'structure'], minDepthM: 2, maxDepthM: 30, preferredLayers: ['bottom'],
     baitPreference: { lure: 80, crab: 30 }, egiOnly: true,
-    minCm: 20, maxCm: 70, meanCm: 38, sdCm: 10, weightFactor: 0.05, maleRatio: 0.5,
-    sexNote: '바닥에 붙는 힘이 강해 초반에 띄우는 것이 관건',
+    minCm: 20, maxCm: 65, meanCm: 38, sdCm: 9, weightFactor: 0.018, maleRatio: 0.5,
+    sexNote: '따뜻한 남해권 돌문어 — 바닥에 붙는 힘이 강해 초반에 띄우는 것이 관건',
     // 야행성 — 밤에 은신처를 벗어나 사냥
     nightBonus: 1.5, tideActivity: flatTide(0.6),
     fight: { basePower: 0.55, patternWeights: { jump: 0.0, dive: 0.8, lateral: 0.2 }, intervalMult: 1.0, mouthFragility: 0.2 },
+  },
+  {
+    speciesId: 'giant_octopus', nameKo: '대문어(피문어)', nameEn: 'Giant Pacific Octopus',
+    // 동해 냉수대 암초 대형 문어 (Enteroctopus dofleini) — 작은 개체부터 팔 벌리면 사람만 한
+    // 초대형까지 편차가 매우 큼. 동해안 대표 대물 두족류.
+    habitat: ['reef', 'structure'], minDepthM: 5, maxDepthM: 80, preferredLayers: ['bottom'],
+    baitPreference: { lure: 80, crab: 40 }, egiOnly: true,
+    minCm: 30, maxCm: 200, meanCm: 80, sdCm: 40, weightFactor: 0.006, maleRatio: 0.5,
+    sexNote: '동해 대표 대물 문어 — 개체 편차가 커 작은 놈부터 수십 kg 대물까지 나온다',
+    // 냉수성 야행성 — 동해 깊은 바닥
+    nightBonus: 1.5, tideActivity: flatTide(0.6),
+    fight: { basePower: 0.85, patternWeights: { jump: 0.0, dive: 0.85, lateral: 0.15 }, intervalMult: 0.9, mouthFragility: 0.15 },
   },
   {
     speciesId: 'cuttlefish', nameKo: '갑오징어', nameEn: 'Cuttlefish',

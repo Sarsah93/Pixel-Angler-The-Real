@@ -168,6 +168,14 @@ export class BootScene extends Phaser.Scene {
     this.load.image('fish_halfbeak', 'fish/halfbeak.png');                            // 학꽁치
     this.load.image('fish_northern_whiting', 'fish/northern_whiting.png');            // 보리멸
 
+    // 2026-07-28 추가 — 대구·잿방어 텍스처 + 문어 2종 분화(대문어/참문어)
+    this.load.image('fish_pacific_cod', 'fish/pacific_cod.png');                      // 태평양 대구
+    this.load.image('fish_greater_amberjack', 'fish/greater_amberjack.png');          // 잿방어
+    // ⚠ 문어 파일명↔어종: 이미지 내용 기준 매칭 (사용자 메시지의 영문 파일명은 뒤바뀜 —
+    //   설명("대문어=동해·대형", "참문어=소형")과 이미지 내용이 일치하는 쪽으로 연결)
+    this.load.image('fish_octopus', 'fish/common_octopus.png');                       // 참문어(돌문어) — 얼룩덜룩 소형
+    this.load.image('fish_giant_octopus', 'fish/giant_pacific_octopus.png');          // 대문어(피문어) — 적갈색 대형
+
     // ─── 남자 캐릭터 스프라이트 (12장) ───
     // 정지 4방향
     this.load.image('man-idle-front', 'characters/man/man-idle-front.png');

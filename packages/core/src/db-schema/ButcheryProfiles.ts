@@ -11,7 +11,8 @@
  * 순수 TS 데이터.
  */
 
-import type { ButcheryProfile } from '../types/Butchery.js';
+import type { ButcheryProfile, ButcheryFamily } from '../types/Butchery.js';
+import { ORACLE_FISH_DB } from '../simulation/FishSpawningOracle.js';
 
 /** 어종별 손질 프로필 */
 export const BUTCHERY_PROFILES: Record<string, ButcheryProfile> = {
@@ -161,3 +162,27 @@ export const DEFAULT_BUTCHERY_PROFILE: ButcheryProfile = {
 export function getButcheryProfile(speciesId: string): ButcheryProfile {
   return BUTCHERY_PROFILES[speciesId] ?? { ...DEFAULT_BUTCHERY_PROFILE, speciesId };
 }
+
+/**
+ * 어종의 손질 형태 분류.
+ *  - 복어류: speciesId에 'puffer' 포함(복섬/참복/까치복) — 자격·독 제거 필요(스텁)
+ *  - 두족류: 오라클 egiOnly 플래그(오징어/문어/갑오징어) — 별도 손질 트리(스텁)
+ *  - finfish: round/flat 프로필 보유 = 삼면/다섯장뜨기 (FSM 구현)
+ *  - 그 외: unsupported
+ * (하드코딩 최소화 — 두족류는 egiOnly 의미 태그, 복어는 id 규칙에서 파생)
+ */
+export function getButcheryFamily(speciesId: string): ButcheryFamily {
+  if (!speciesId) return 'unsupported';
+  if (speciesId.includes('puffer')) return 'pufferfish';
+  const spec = ORACLE_FISH_DB.find((s) => s.speciesId === speciesId);
+  if (spec?.egiOnly) return 'cephalopod';
+  if (BUTCHERY_PROFILES[speciesId]) return 'finfish';
+  return 'unsupported';
+}
+
+/** 손질 형태별 안내 문구 (finfish는 정상 진행이라 문구 없음) */
+export const BUTCHERY_FAMILY_NOTICE: Record<Exclude<ButcheryFamily, 'finfish'>, string> = {
+  cephalopod: '두족류 손질은 준비 중입니다 (눈 위 신경 절단·먹물·다리 손질 예정)',
+  pufferfish: '복어는 자격증(독 제거)이 필요합니다 — 준비 중입니다',
+  unsupported: '이 어종은 아직 손질 프로필이 없습니다',
+};

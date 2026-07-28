@@ -72,9 +72,11 @@ export function evaluateFishSellPrice(
   const sizeMultiplier = 1.0 + (lengthCm * 0.01 * mapping.sizeFactorMultiplier);
 
   // 4. 최종 가격 연산
-  // 가격 = kg당 단가 * 중량(kg) * 등급 가중치 * 크기 가중치
+  // 가격 = 1kg기준단가 * 중량(kg)^weightExp * 등급 가중치 * 크기 가중치
+  // weightExp<1(방어 등 대형어)이면 대형 개체의 무게 정비례 폭증을 완화 (실측 시세 반영).
   const weightKg = weightGram / 1000;
-  const rawPrice = pricePerKg * weightKg * gradeMultiplier * sizeMultiplier;
+  const weightTerm = Math.pow(Math.max(0, weightKg), mapping.weightExp ?? 1);
+  const rawPrice = pricePerKg * weightTerm * gradeMultiplier * sizeMultiplier;
   const finalPrice = Math.max(100, Math.round(rawPrice));
 
   return {

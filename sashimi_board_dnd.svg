@@ -1,0 +1,123 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1320" height="900" viewBox="0 0 1320 900" font-family="'Segoe UI','Noto Sans KR',sans-serif">
+  <defs>
+    <marker id="ar" markerWidth="11" markerHeight="11" refX="7" refY="4" orient="auto"><path d="M0,0 L9,4 L0,8 Z" fill="#2f7fd0"/></marker>
+    <marker id="arG" markerWidth="10" markerHeight="10" refX="6" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#8a8a8a"/></marker>
+  </defs>
+  <rect width="1320" height="900" fill="#f7f9fb"/>
+  <text x="28" y="36" fill="#0d2740" font-size="21" font-weight="800">회뜨기 본격화 — 도마 드래그앤드롭 · 어종 확장 · 손질 형태 분류</text>
+  <text x="28" y="58" fill="#5b7186" font-size="12.5">실사 4종 제한 → 전(全) 프로필 어종. 이미지=실사 있으면 실사 / 없으면 파라메트릭 템플릿. 넣기·빼기·교환.</text>
+
+  <!-- ===== 도마 DnD 흐름 (요리하기 탭) ===== -->
+  <g>
+    <rect x="24" y="76" width="828" height="500" rx="10" fill="#ffffff" stroke="#d3dde6"/>
+    <text x="44" y="104" fill="#0d2740" font-size="15" font-weight="700">A. 요리하기 탭 — 도마 ↔ 인벤토리</text>
+
+    <!-- 도마 (좌) -->
+    <rect x="52" y="128" width="440" height="240" rx="12" fill="#8a6a44"/>
+    <rect x="64" y="140" width="416" height="216" rx="10" fill="#a8845a"/>
+    <text x="272" y="126" fill="#5a4028" font-size="12" text-anchor="middle" font-weight="700">도마 (손질 작업대)</text>
+    <!-- 도마 위 생선(파라메트릭) -->
+    <g transform="translate(272,238)">
+      <ellipse rx="120" ry="42" fill="#5b7f8c" stroke="#cfe4ee" stroke-width="2"/>
+      <path d="M108,0 L150,-24 L150,24 Z" fill="#3f5f6a"/>
+      <circle cx="-84" cy="-8" r="7" fill="#eaf4ee"/>
+      <path d="M-40,-20 q40,-14 80,0" fill="none" stroke="#cfe4ee" stroke-width="1.4" opacity="0.6"/>
+    </g>
+    <text x="272" y="336" fill="#3a2a18" font-size="11" text-anchor="middle">감성돔 32cm · 활어 ●</text>
+    <!-- 손질 시작 / 내리기 버튼 -->
+    <rect x="72" y="150" width="86" height="24" rx="4" fill="#3a6a2a"/><text x="115" y="167" fill="#eaffea" font-size="11" text-anchor="middle">손질 시작</text>
+    <rect x="392" y="150" width="72" height="22" rx="4" fill="#6a3a2a"/><text x="428" y="166" fill="#ffe0d0" font-size="10.5" text-anchor="middle">내리기</text>
+
+    <!-- 드래그 화살표 -->
+    <path d="M600,220 C 540,220 520,238 500,238" stroke="#2f7fd0" stroke-width="2.4" fill="none" marker-end="url(#ar)"/>
+    <text x="560" y="206" fill="#2f7fd0" font-size="11">① 드래그(고스트)</text>
+    <path d="M500,300 C 540,320 560,300 600,300" stroke="#8a8a8a" stroke-width="1.8" fill="none" stroke-dasharray="5 4" marker-end="url(#arG)"/>
+    <text x="524" y="330" fill="#8a8a8a" font-size="10.5">③ 빼기/교환(양방향)</text>
+
+    <!-- 인벤토리 (우) -->
+    <rect x="600" y="128" width="228" height="424" rx="10" fill="#0e1a26"/>
+    <text x="614" y="150" fill="#9ad0ff" font-size="12" font-weight="700">인벤토리 (어획물)</text>
+    <g font-size="9" text-anchor="middle">
+      <!-- grid cells -->
+      <rect x="614" y="162" width="60" height="60" rx="5" fill="#16324a" stroke="#2f6d8f"/><text x="644" y="230" fill="#bcd">감성돔</text>
+      <rect x="684" y="162" width="60" height="60" rx="5" fill="#16324a" stroke="#2f6d8f"/><text x="714" y="230" fill="#bcd">광어</text>
+      <rect x="754" y="162" width="60" height="60" rx="5" fill="#16324a" stroke="#2f6d8f"/><text x="784" y="230" fill="#bcd">우럭</text>
+      <rect x="614" y="244" width="60" height="60" rx="5" fill="#16324a" stroke="#2f6d8f"/><text x="644" y="312" fill="#bcd">방어</text>
+      <rect x="684" y="244" width="60" height="60" rx="5" fill="#2a1616" stroke="#7a3a3a"/><text x="714" y="304" fill="#e69">복어</text><text x="714" y="316" fill="#e69">✕</text>
+      <rect x="754" y="244" width="60" height="60" rx="5" fill="#2a2416" stroke="#7a6a3a"/><text x="784" y="304" fill="#ec9">오징어</text><text x="784" y="316" fill="#ec9">준비중</text>
+    </g>
+    <text x="614" y="342" fill="#7fa9c4" font-size="10">· finfish = 드래그 O (실사/파라메트릭)</text>
+    <text x="614" y="360" fill="#e69a9a" font-size="10">· 복어 = 드래그 차단(자격/독)</text>
+    <text x="614" y="378" fill="#e6c99a" font-size="10">· 두족류 = 올라가나 손질 비활성</text>
+
+    <text x="44" y="418" fill="#334" font-size="12">② 드롭(cookBoardRect) → 도마에 이미지 + "손질 시작". 소모는 손질 완료 시에만.</text>
+    <text x="44" y="440" fill="#334" font-size="12">③ 내리기 버튼 or 도마→인벤 드래그로 빼기. 점유 중 새로 드롭 = 교환(진행 중이면 확인).</text>
+    <text x="44" y="462" fill="#7a8a99" font-size="11.5">스테일 제거: "추후 정식 구현 예정 / hasKnife=false" 안내문, CookScene 옛 3단계 손질.</text>
+    <text x="44" y="484" fill="#7a8a99" font-size="11.5">이미지 우선순위: 실사 iconTexture → 없으면 FishTemplateRenderer(파라메트릭 공유).</text>
+    <text x="44" y="520" fill="#b5541f" font-size="12" font-weight="700">현재: 실사 4종만 드래그 가능 → 변경: 프로필 보유 전 어종(~24) 가능.</text>
+  </g>
+
+  <!-- ===== 손질 형태 택소노미 ===== -->
+  <g>
+    <rect x="868" y="76" width="428" height="500" rx="10" fill="#ffffff" stroke="#d3dde6"/>
+    <text x="888" y="104" fill="#0d2740" font-size="15" font-weight="700">B. 손질 형태 분류 (ButcheryFamily)</text>
+    <!-- root -->
+    <rect x="1010" y="122" width="150" height="34" rx="6" fill="#0d2740"/><text x="1085" y="144" fill="#fff" font-size="12" text-anchor="middle">어획물</text>
+    <!-- branches -->
+    <line x1="1085" y1="156" x2="1085" y2="176" stroke="#9aa"/>
+    <!-- finfish -->
+    <rect x="900" y="176" width="200" height="40" rx="6" fill="#2e7d4f"/><text x="1000" y="201" fill="#fff" font-size="12" text-anchor="middle" font-weight="700">finfish — 구현</text>
+    <line x1="1010" y1="164" x2="1000" y2="176" stroke="#9aa"/>
+    <!-- finfish children -->
+    <rect x="892" y="236" width="96" height="60" rx="6" fill="#dff0e6" stroke="#2e7d4f"/>
+    <text x="940" y="258" fill="#1d5a38" font-size="11" text-anchor="middle" font-weight="700">일반·대형</text>
+    <text x="940" y="274" fill="#1d5a38" font-size="10" text-anchor="middle">round</text>
+    <text x="940" y="288" fill="#1d5a38" font-size="10" text-anchor="middle">삼면뜨기 2필렛</text>
+    <rect x="1000" y="236" width="96" height="60" rx="6" fill="#dff0e6" stroke="#2e7d4f"/>
+    <text x="1048" y="258" fill="#1d5a38" font-size="11" text-anchor="middle" font-weight="700">넙치류</text>
+    <text x="1048" y="274" fill="#1d5a38" font-size="10" text-anchor="middle">flat</text>
+    <text x="1048" y="288" fill="#1d5a38" font-size="10" text-anchor="middle">다섯장뜨기 4~5</text>
+    <line x1="960" y1="216" x2="940" y2="236" stroke="#2e7d4f"/>
+    <line x1="1040" y1="216" x2="1048" y2="236" stroke="#2e7d4f"/>
+    <text x="994" y="318" fill="#2e7d4f" font-size="11" text-anchor="middle" font-weight="700">↑ 한 과제로 묶어 구현(기존 FSM)</text>
+
+    <!-- cephalopod -->
+    <rect x="1150" y="360" width="120" height="52" rx="6" fill="#f0e6c8" stroke="#a08a3a"/>
+    <text x="1210" y="382" fill="#6a5a1a" font-size="11" text-anchor="middle" font-weight="700">두족류</text>
+    <text x="1210" y="398" fill="#6a5a1a" font-size="9.5" text-anchor="middle">스텁(준비중)</text>
+    <!-- pufferfish -->
+    <rect x="1150" y="424" width="120" height="52" rx="6" fill="#f0d0d0" stroke="#a03a3a"/>
+    <text x="1210" y="446" fill="#6a1a1a" font-size="11" text-anchor="middle" font-weight="700">복어류</text>
+    <text x="1210" y="462" fill="#6a1a1a" font-size="9.5" text-anchor="middle">스텁(자격·독)</text>
+    <line x1="1120" y1="150" x2="1150" y2="386" stroke="#c8c0a0" stroke-dasharray="4 4"/>
+    <line x1="1120" y1="152" x2="1150" y2="450" stroke="#e0c0c0" stroke-dasharray="4 4"/>
+
+    <text x="888" y="512" fill="#334" font-size="11.5">getButcheryFamily(id): 복어/두족 셋 우선 → 프로필 보유=finfish.</text>
+    <text x="888" y="532" fill="#334" font-size="11.5">round/flat 모두 buildButcheryStages가 처리 → 묶음 = FSM 재사용 + 게이트.</text>
+    <text x="888" y="552" fill="#7a8a99" font-size="11">복어·두족 id는 FishDatabase 태그(toxic/cephalopod)에서 파생 권장.</text>
+  </g>
+
+  <!-- ===== 하단: finfish 손질 파이프라인 (기존) ===== -->
+  <g>
+    <rect x="24" y="592" width="1272" height="284" rx="10" fill="#ffffff" stroke="#d3dde6"/>
+    <text x="44" y="620" fill="#0d2740" font-size="15" font-weight="700">C. finfish 손질 파이프라인 (기존 ButcheryProcess FSM — round/flat 공통)</text>
+    <g font-size="10.5" text-anchor="middle">
+      <!-- pipeline nodes -->
+      <g>
+        <rect x="44"  y="648" width="120" height="46" rx="6" fill="#eaf2f8" stroke="#7fa9c4"/><text x="104" y="668" fill="#0d2740">시메(탭)</text><text x="104" y="684" fill="#5b7186" font-size="9">뇌 지점</text>
+        <rect x="184" y="648" width="120" height="46" rx="6" fill="#eaf2f8" stroke="#7fa9c4"/><text x="244" y="668" fill="#0d2740">방혈</text><text x="244" y="684" fill="#5b7186" font-size="9">아가미+얼음물</text>
+        <rect x="324" y="648" width="120" height="46" rx="6" fill="#eaf2f8" stroke="#7fa9c4"/><text x="384" y="668" fill="#0d2740">비늘치기</text><text x="384" y="684" fill="#5b7186" font-size="9">양면+세척</text>
+        <rect x="464" y="648" width="120" height="46" rx="6" fill="#eaf2f8" stroke="#7fa9c4"/><text x="524" y="668" fill="#0d2740">머리따기</text><text x="524" y="684" fill="#5b7186" font-size="9">사선 양면</text>
+        <rect x="604" y="648" width="120" height="46" rx="6" fill="#eaf2f8" stroke="#7fa9c4"/><text x="664" y="668" fill="#0d2740">내장제거</text><text x="664" y="684" fill="#5b7186" font-size="9">개복·긁기·세척</text>
+        <rect x="744" y="648" width="120" height="46" rx="6" fill="#eaf2f8" stroke="#7fa9c4"/><text x="804" y="668" fill="#0d2740">꼬리 손잡이</text>
+        <rect x="884" y="648" width="150" height="46" rx="6" fill="#dff0e6" stroke="#2e7d4f"/><text x="959" y="666" fill="#1d5a38">장뜨기 ×N</text><text x="959" y="682" fill="#2e7d4f" font-size="9">round 2 / flat 4~5</text>
+        <rect x="1054" y="648" width="110" height="46" rx="6" fill="#eaf2f8" stroke="#7fa9c4"/><text x="1109" y="668" fill="#0d2740">박피</text><text x="1109" y="684" fill="#5b7186" font-size="9">15° 당김</text>
+        <rect x="1184" y="648" width="88" height="46" rx="6" fill="#f0ead0" stroke="#a08a3a"/><text x="1228" y="666" fill="#6a5a1a">회썰기</text><text x="1228" y="682" fill="#a08a3a" font-size="9">수율·등급</text>
+      </g>
+    </g>
+    <text x="44" y="728" fill="#334" font-size="11.5">수율 = 무게×baseYieldRate×칼×스킬×신선도 · 등급 = 방혈×시메×컷정확도×신선도 → 특/상/중/하 · 결과 필렛+부산물 인벤 지급.</text>
+    <text x="44" y="752" fill="#7a8a99" font-size="11.5">이미 구현됨 — 이번 과제는 도마 진입(전 어종)·이미지·round/flat 프리뷰·가이드 삽화 보강 + 복어/두족 스텁.</text>
+    <text x="44" y="792" fill="#b5541f" font-size="12" font-weight="700">공유 렌더러 FishTemplateRenderer: 도마 프리뷰 · 드래그 고스트 · 미니게임이 같은 파라메트릭 소스 사용.</text>
+    <text x="44" y="820" fill="#7a8a99" font-size="11">회칼(막칼/회칼/야나기바)은 KnifeDatabase에 있음 — 상점·드롭 경제 편입 시 등급 게이트 실작동(현재 막칼 폴백).</text>
+  </g>
+</svg>

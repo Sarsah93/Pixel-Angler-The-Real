@@ -266,6 +266,21 @@ export interface TuningConfig {
     /** 못 뚫을 때(swept) 표층 횡류 배율 */
     sweptDriftK: number;
   };
+  // ── 회뜨기 미니게임 흐름 (SASHIMI_STAGE_FLOW_FIX 2026-07-28) ──
+  butchery: {
+    /**
+     * 단계 전환 시 요구 방향으로 자동 스냅 — 수동 방향 전환 누락으로
+     * "가이드도 없고 클릭도 안 먹는" 먹통 방지. false면 구 방식(수동 버튼 전환).
+     */
+    autoOrient: boolean;
+    /** 뒤집기 연출 시간 (ms) */
+    flipAnimMs: number;
+    /**
+     * true = 회칼 미보유 시 장뜨기/박피 입력 하드 차단(구 방식 — 통마리 강제).
+     * false(기본) = 막칼 폴백으로 진행 허용 (수율 0.85 + 등급 '상' 캡 페널티).
+     */
+    knifeHardLock: boolean;
+  };
   // ── 데이터 테이블 (balance, 슬라이더 대상 아님) ──
   /** 어종 id → 피로 스태미나 base */
   fatigueStaminaBase: Record<string, number>;
@@ -351,6 +366,8 @@ export const TUNING: TuningConfig = {
     vTermRefG: 30, vTermWeightExp: 0.4, vTermMin: 0.12, vTermMax: 2.6,
     residualSweptMps: 0.03, reelAngleDeg: 45, sweptDriftK: 1.0,
   },
+  // 회뜨기 흐름 — 자동 방향 스냅 on(먹통 방지) · 회칼 하드락 off(막칼 폴백)
+  butchery: { autoOrient: true, flipAnimMs: 220, knifeHardLock: false },
   // 데이터 테이블 (대표값 — 나머지 어종 동일 형식으로 채움)
   fatigueStaminaBase: {
     yellowtail: 1.6, amberjack: 1.7, greater_amberjack: 1.9, spanish_mackerel: 1.0,
@@ -380,6 +397,7 @@ export interface TuningParamMeta {
   category: 'feel' | 'balance'; label: string;
 }
 export const TUNING_META: TuningParamMeta[] = [
+  { path: 'butchery.flipAnimMs', min: 80, max: 500, step: 20, category: 'feel', label: '손질 뒤집기 연출(ms)' },
   { path: 'retrieve.anchorYRatio', min: 0.65, max: 0.75, step: 0.01, category: 'feel', label: '회수 도달 Y비' },
   { path: 'retrieve.growFactor', min: 1.8, max: 2.4, step: 0.05, category: 'feel', label: '회수 최대 배율' },
   { path: 'retrieve.mainLineWidth', min: 0.8, max: 2.5, step: 0.1, category: 'feel', label: '원줄 굵기' },

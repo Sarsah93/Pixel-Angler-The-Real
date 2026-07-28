@@ -155,6 +155,7 @@ export class ShopPanel extends DraggablePanel {
         const recommended = RecommendationStore.isItemRecommended(entry as unknown as InvItem, reco);
         this.renderCell(gx0, gy0, idx, {
           icon: entry.icon, iconTexture: entry.iconTexture, name: entry.name,
+          speciesId: entry.speciesId, lengthCm: entry.lengthCm,
           priceLabel: `${entry.price.toLocaleString()}원`,
           qtyLabel: '',
           condition: entry.condition,
@@ -171,6 +172,7 @@ export class ShopPanel extends DraggablePanel {
       sellable.forEach((item, idx) => {
         this.renderCell(gx0, gy0, idx, {
           icon: item.icon, iconTexture: item.iconTexture, name: item.name,
+          speciesId: item.speciesId, lengthCm: item.lengthCm,
           priceLabel: `${InventoryStore.getSellPrice(item).toLocaleString()}원`,
           qtyLabel: item.qty > 1 ? `x${item.qty}` : '',
           condition: item.condition,
@@ -200,6 +202,8 @@ export class ShopPanel extends DraggablePanel {
   private renderCell(gx0: number, gy0: number, idx: number, cell: {
     icon: string; iconTexture?: string; name: string; priceLabel: string; qtyLabel: string;
     condition?: InvItem['condition']; recommended?: boolean;
+    // 어획물은 iconTexture가 비어도 speciesId로 이미지 폴백 해소 (createItemIcon)
+    speciesId?: string; lengthCm?: number;
     selected: boolean; tooltip: string;
     onSelect: () => void; onDetail: () => void;
   }): void {

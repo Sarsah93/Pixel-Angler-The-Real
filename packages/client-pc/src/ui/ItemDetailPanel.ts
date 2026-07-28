@@ -7,10 +7,11 @@
  */
 
 import Phaser from 'phaser';
-import { FISH_DATABASE } from '@tra/core';
+import { FISH_DATABASE, fishImageSizeScale } from '@tra/core';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { DraggablePanel } from './DraggablePanel.js';
 import { createItemIcon } from './ItemIcon.js';
+import { resolveFishTexture } from '../data/FishTextures.js';
 import {
   InvItem, InventoryStore, CONDITION_LABEL, CONDITION_COLOR, CONDITION_DESC,
   CONDITION_NEXT, refreshCondition, conditionRemainMs, formatDhms,
@@ -276,8 +277,17 @@ export class ItemDetailPanel extends DraggablePanel {
     if (!remainProvider) refreshCondition(item);
     const detail = buildItemDetail(item);
     // 어획물은 실사 픽셀 생선 이미지를 크게 표시
-    const hasFishImage = item.subCategory === '어획물'
-      && !!item.iconTexture && scene.textures.exists(item.iconTexture);
+    // iconTexture가 비었거나(구세이브) 미로드면 speciesId로 텍스처를 폴백 해소
+    const fishTexKey: string | undefined = (() => {
+      if (item.subCategory !== '어획물') return undefined;
+      if (item.iconTexture && scene.textures.exists(item.iconTexture)) return item.iconTexture;
+      if (item.speciesId) {
+        const r = resolveFishTexture(item.speciesId, item.lengthCm ?? 0, 'F');
+        if (r && scene.textures.exists(r)) return r;
+      }
+      return undefined;
+    })();
+    const hasFishImage = !!fishTexKey;
     const imgH = hasFishImage ? 126 : 0;
     // 긴 어종 설명(습성)은 줄바꿈 줄 수만큼 패널을 늘린다 (판매가 표기와 겹침 방지)
     const descExtra = detail.desc.length > 60 ? Math.ceil((detail.desc.length - 60) / 28) * 14 : 0;
@@ -324,12 +334,15 @@ export class ItemDetailPanel extends DraggablePanel {
     div.lineBetween(16, this.contentTop + 52, W - 16, this.contentTop + 52);
     body.add(div);
 
-    // 실사 픽셀 생선 이미지 (어획물)
-    if (hasFishImage && item.iconTexture) {
-      const src = scene.textures.get(item.iconTexture).getSourceImage() as HTMLImageElement;
-      const scale = Math.min(280 / src.width, 110 / src.height);
-      const fishImg = scene.add.image(W / 2, this.contentTop + 58 + imgH / 2 - 6, item.iconTexture)
-        .setDisplaySize(src.width * scale, src.height * scale);
+    // 실사 픽셀 생선 이미지 (어획물) — 개체 크기에 따라 확대/축소 (소형↓·보통·대형·특대↑ 단조)
+    if (fishTexKey) {
+      const src = scene.textures.get(fishTexKey).getSourceImage() as HTMLImageElement;
+      const sizeMul = item.speciesId && item.lengthCm ? fishImageSizeScale(item.speciesId, item.lengthCm) : 1;
+      // refBox = 보통 크기 기준(228×90), capBox = 특대에도 패널 폭·이미지 영역(imgH) 안에 들어오게
+      const fitRef = Math.min(228 / src.width, 90 / src.height);
+      const ds = Math.min(fitRef * sizeMul, 300 / src.width, 120 / src.height);
+      const fishImg = scene.add.image(W / 2, this.contentTop + 58 + imgH / 2 - 6, fishTexKey)
+        .setDisplaySize(src.width * ds, src.height * ds);
       body.add(fishImg);
     }
 

@@ -353,14 +353,66 @@ npx pnpm --filter @tra/client-pc run dev
 
 ---
 
-## 9. 현재 빌드 상태 (2026-07-25 기준)
+## 9. 현재 빌드 상태 (2026-07-28 기준)
 
 ```
-npx pnpm run build → ✅ 4/4 패키지 성공 (2026-07-25)
-npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류 (2026-07-25)
+npx pnpm run build → ✅ 4/4 패키지 성공 (2026-07-28)
+npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류 (2026-07-28)
 ```
 
-**최근 주요 변경 (2026-07-25 38차) — 어종 11종 추가·졸복→복섬·볼락 다종화 + 침강 물리 rev2(라인각 모델) + 수심뷰 라인각 텍스트 오버플로 + 텍스트 전수조사** (사용자 4건 피드백 + 웹서치 리서치 3건 — 브라우저 검증 완료, 빌드 4/4·typecheck 0):
+**최근 주요 변경 (2026-07-28 43차) — 회뜨기 머리따기 이후 진행 불가 수정 (자동 방향 전환·먹통 방지·회칼 소프트 페널티·키보드)** (SASHIMI_STAGE_FLOW_FIX_SPEC — core 시뮬 + Playwright 실마우스 17스테이지 완주 검증, 빌드 4/4·typecheck 0):
+- **[원인 확정]** ① `ButcheryProcess.advance()`가 단계를 넘겨도 방향을 유지("client가 버튼으로 전환") + 모든 submit이 `canAct()`(현재방향==요구방향) 게이트로 **조용히 실패**, `drawGuide`도 불일치 시 가이드 숨김 → 수동 방향 전환을 놓치면 "가이드도 없고 클릭도 안 먹는" 먹통. 머리따기 이후 요구 방향이 연쇄 전환(FLIP→BELLY_UP→BACK_DOWN→FLESH_UP)이라 여기서 도드라짐 ② `knifeLocked()` 하드 입력 차단(회칼 미보유 시 장뜨기 벽) ③ 키보드 미구현.
+- **[핵심 수정 — 자동 방향 전환]** `advance()`가 다음 스테이지 요구 방향으로 **자동 스냅**(`TUNING.butchery.autoOrient` 기본 on). 클라이언트는 `renderedOrientation`(화면 표시 방향) 분리 + **뒤집기 연출**(`playFlipAnim` — 가로 접힘 220ms, 접힌 시점에 새 방향 교체, 연출 중 `flipping` 입력 가드) 후 리렌더. 수동 방향 버튼/키는 학습용 유지.
+- **[먹통 방지 (autoOrient off/수동 이탈 대비)]** ① `drawGuide` 불일치 시 숨김 → **고스트(α0.28) 표시** ② 생선 영역 클릭 시 조용한 무시 → **플래시 안내**("먼저 [○○] 방향으로 뒤집으세요 — F키/[뒤집기]") ③ 사이드바 **원터치 뒤집기 대형 버튼**(요구 방향 스냅). 입력이 무반응인 상태가 존재하지 않음.
+- **[회칼 하드월 → 소프트 페널티]** `knifeLocked()`를 `TUNING.butchery.knifeHardLock`(기본 false) 게이트로 — 회칼 없어도 **막칼 폴백 진행**(computeFilletYield 기존 null→수율 0.85) + **등급 '특' 캡 = '상'**(core 신규 — 회칼 없이 특급 사시미 불가 고증) + 사이드바 "회칼 없음 — 막칼로 손질 중" 안내 + [통마리로 마무리] 선택지 유지(강제 아님). 회칼 3종 상점 편입은 기완료(41차 B6) — 잠금 안내가 가리키던 구매처 실존.
+- **[키보드]** `F`/`Space` = 요구 방향 뒤집기 · `1~5` = BASE/FLIP/BELLY_UP/BACK_DOWN/FLESH_UP 직접 · `Enter` = 세척/얼음물 확정. 사이드바 키 힌트 표기, destroy 시 해제. (RegionHud '[ENTER] 대화'는 플레이스홀더 텍스트라 충돌 없음 확인.)
+- **[tuning.ts]** `butchery.autoOrient(true)/flipAnimMs(220)/knifeHardLock(false)` + META 슬라이더(flipAnimMs).
+- **[검증]** ① core 시뮬: 감성돔(21스테이지)·광어(29)·방어(21) **수동 전환 0회 완주** + 등급 캡(야나기바 특/무회칼 상·수율 475→367g) ② **Playwright 실마우스 E2E**: 무회칼 상태로 탭·트레이스 컷·문지르기·박피 당김·Enter 세척 전부 실입력 — **17스테이지 완주(canAct 실패 0)**, 머리따기 이후 BELLY_UP/BACK_DOWN/FLESH_UP 자동 전환 확인, 필렛 x2(상) 지급 ③ 불일치 테스트(autoOrient off): 클릭 → 플래시 안내 PASS, F키 → 방향 스냅 PASS. 스크린샷 = BACK_DOWN 단계 정상 조작 + 결과(상등급·막칼 폴백).
+- 잔여(차기): 부록 좌표 일관성(방향별 가이드·입력 변환 통일)은 실플레이에서 특정 방향 컷 실패 관찰 시 별도 이슈로, 1~5 방향키가 탑다운 퀵슬롯(1~8)과 공유되는 문제(패널 모달 중 퀵슬롯 하이라이트 변경 — 무해하나 정리 여지).
+
+**이전 변경 (2026-07-28 42차) — 어종 이미지 에셋 연동(대구·잿방어 텍스처 + 문어 2종 분화 대문어/참문어)** (사용자 에셋 13종 추가 — 대부분 기연동, 신규 4종 배선 + 문어 분화. 브라우저 텍스처·어획 이미지 검증 완료, 빌드 4/4·typecheck 0):
+- **[배경] 사용자 제공 13종 중 9종은 이미 연동됨** (41차/38차 — 까치복·꽁치·학꽁치·붕장어·먹장어·갯장어·보리멸·성대·양태). 신규 배선 필요분: **태평양 대구(pacific_cod)·잿방어(greater_amberjack)** 텍스처 미로드 + **문어 2종 분화**.
+- **[텍스처 배선 4종]** `public/fish/`에 pacific_cod·greater_amberjack·common_octopus·giant_pacific_octopus.png 복사 → BootScene `load.image` 4건(`fish_pacific_cod`/`fish_greater_amberjack`/`fish_octopus`/`fish_giant_octopus`) + FISH_TEXTURE 맵 4건. 검증: 4 텍스처 로드(대구 1592×656 등) + 어획 팝업 실사 이미지 정상.
+- **[문어 2종 분화]** 구 단일 `octopus`(문어) → **참문어(돌문어)** + **대문어(피문어)** 2종:
+  - `octopus` = **참문어(돌문어)** (Octopus vulgaris, 남해·서해 소형·최대 ~4kg) — nameKo 개명, 텍스처 `common_octopus.png`(얼룩덜룩 소형), maxCm 65·weightFactor 0.018. speciesId 유지(egi spawnBinding·Economy·KOSIS 참조 보존).
+  - `giant_octopus` = **대문어(피문어)** 신규 (Enteroctopus dofleini, **동해 냉수대 대형·개체 편차 큼**, minCm 30~maxCm 200·weightFactor 0.006) — 오라클·FISH_DATABASE·Economy(weightExp 0.5로 대물 가격 폭증 완화)·egi spawnBinding·KOSIS('문어'/'대문어') 등재. 손질 분류 = **cephalopod**(egiOnly 파생 — 손질 스텁 유지). 검증: 대문어 판매가 초대형 48kg 279k(폭증 완화)·소형 13.6k.
+  - **⚠ 파일명↔어종 매칭 정정**: 사용자 메시지의 영문 파일명 페어링(대문어=common_octopus / 참문어=giant_pacific_octopus)이 **이미지 내용·크기 설명과 반대**여서(common_octopus.png=얼룩 소형=참문어 / giant_pacific_octopus.png=적갈색 대형=대문어) **이미지 내용 + 사용자 설명(대문어=동해·대형, 참문어=소형) 기준으로 연결**. 영문 통칭 혼동으로 판단 — 필요 시 텍스처 1줄 스왑으로 정정 가능(BootScene 주석 표기).
+- **[후속 수정 — 어획물 이미지 폴백(2단)]** 사용자 리포트("잿방어 인벤/상세 이미지 미표시") 원인 = **텍스처 배선(42차) 전에 낚은 구세이브 어획물은 `iconTexture`가 비어** 이미지 대신 emoji/공백(신규 캐치는 정상 렌더됨을 브라우저 확인). 해결: FP 씬의 `FISH_TEXTURE`/`resolveFishTexture`를 **공용 모듈 `data/FishTextures.ts`로 추출**(FP 씬 import) + `iconTexture` 없거나 미로드 시 **`item.speciesId`로 텍스처 폴백 해소** 를 두 렌더 경로 모두에 적용:
+  - ① **`createItemIcon`**(인벤/상점/퀵슬롯 소켓 소형 아이콘) — 검증: iconTexture 없는 잿방어도 speciesId('greater_amberjack')로 Image 렌더(구 emoji→Image).
+  - ② **`ItemDetailPanel` 대형 생선 이미지**(상세보기 헤더 아래) — 이건 createItemIcon과 별도 경로라 42차 폴백에 안 잡혀 **잿방어 상세보기에만 큰 이미지가 통째로 빠져 있던 것**(방어는 정상, 사용자 캡처로 발견). `fishTexKey` 폴백 해소로 수정 — 검증: iconTexture 없는 잿방어 상세보기에 대형 이미지(196×69) 렌더(방어 패널과 동일 레이아웃).
+  - ③ **`ShopPanel` 상점 셀** — 사용자 재지적("상점에서는 연동 안 됨"). 원인: `renderCell`이 `{icon, iconTexture, name, ...}` **부분 DTO만 넘겨 speciesId가 유실** → createItemIcon 폴백 불발(인벤은 되는데 상점만 emoji). 구매/판매 탭 셀에 **`speciesId`/`lengthCm` 전달** 추가 — 검증: iconTexture 없는 잿방어/대구 상점 판매 셀에 fish_ 텍스처 렌더.
+  - ④ **`makeFishPreview`**(도마 프리뷰·드래그 고스트) — iconTexture 없으면 파라메트릭 폴백만 하던 것을 **speciesId 실사 폴백** 우선으로 보강(구세이브 어획물도 도마에 실사 표시).
+  - **[전수조사]** 모든 아이콘 렌더 경로 점검 완료 — createItemIcon 8개 호출처(InventoryPanel·RegionHud 퀵슬롯·CoolerPanel[toInvItem에 speciesId 포함]·UtilizationPanel 임베드·ItemDetailPanel 소형·ShopPanel[수정]·밑밥셀[N/A]) + 직접 iconTexture 경로(ItemDetailPanel 대형[수정]·makeFishPreview[수정]·FP 캐치팝업[resolveFishTexture 직접]·ButcheryPanel[파라메트릭 설계]) 전부 확인. speciesId만 있으면 낚은 시점 무관하게 어종 이미지 표시.
+  - ⚠ 잔여: 잿방어 원본 PNG가 초광폭(1729×608)이라 소형 아이콘이 34×12 얇게 보임(전 광폭 어종 공통 — 별도 아이콘 크롭/사이징은 차기).
+- 잔여(차기): 대문어 동해 지역 스폰 가중(현재 habitat/수심 기반, region 하드게이트 없음), 두족류 전용 손질 트리(현재 cephalopod 스텁), MAFRA '문어' 시세를 대문어에도 tier 연동(현재 대문어는 Economy 기본단가 폴백).
+
+**이전 변경 (2026-07-27 41차) — 회뜨기 도마 본격화 (DnD 전 어종 확장·파라메트릭/실사 프리뷰·손질 형태 분류·CookScene 일원화)** (SASHIMI_BOARD_DND_SPEC Phase A+B — 브라우저 렌더·family 검증 완료, 빌드 4/4·typecheck 0):
+- **[신규 core] `ButcheryFamily` + `getButcheryFamily(speciesId)`** (`types/Butchery.ts`·`db-schema/ButcheryProfiles.ts` — index.ts export): 손질 형태 4분류 `finfish`(round/flat 프로필 = 삼면/다섯장뜨기 FSM 구현) / `cephalopod`(오라클 **egiOnly** 파생 — 오징어·문어·갑오징어, 스텁) / `pufferfish`(**speciesId 'puffer' 규칙** — 복섬·참복·까치복, 자격·독 스텁) / `unsupported`(붕장어 등 프로필 미정). **하드코딩 최소화** — 두족은 egiOnly 의미 태그, 복어는 id 규칙에서 파생. `BUTCHERY_FAMILY_NOTICE`(안내 문구) 동반. 검증: 감성돔/방어/광어/대구/갈치=finfish · 오징어/문어/갑오징어=cephalopod · 복섬/참복/까치복=pufferfish · 붕장어/미지정=unsupported.
+- **[신규 client] `FishTemplateRenderer.ts`** — 파라메트릭 생선 템플릿 공용 렌더러(ButcheryPanel.drawFish의 본체 로직을 **회귀 없이** 추출): `drawFishTemplate(g, geom, profile, colors, state)`(FSM 상태 주입 — 방향/머리분리/비늘/개복/필렛) + `makeFishPreview(scene, {speciesId, iconTexture, boxW, boxH})`(**실사 iconTexture 있으면 실사 Image, 없으면 파라메트릭 Graphics 컨테이너**) + `FISH_COLORS`/`getFishColors`. ButcheryPanel은 도마 배경만 그리고 이 렌더러 호출 — 미니게임·도마 프리뷰·드래그 고스트가 **동일 소스** 사용. **[B1] round/flat 시각 구분**: 납작형(광어)은 몸통 폭↑(0.84W)·눈 위쪽 편위(−0.30) 반영.
+- **[개편 client] 도마 DnD 전면 확장** (`UtilizationPanel.renderCooking`/`renderEmbeddedInventory` + 헬퍼): ① **[A5] 드래그 자격** = 구 "실사 이미지 4종만" → **finfish 전체(~24종) + cephalopod**(복어/미지원은 드래그 불가). 고스트도 `makeFishPreview` 폴백(실사/파라메트릭) ② **[A4] 도마 프리뷰** = `makeFishPreview`로 실사 없는 어종도 파라메트릭 생선 표시(대구=파라메트릭 렌더 확인) ③ **[A6] 드롭 게이트** = finfish/cephalopod 올림·복어/미지원 차단+토스트. **손질 시작** 버튼은 finfish만 활성, 두족은 회색+준비중 안내 ④ **[A7] 빼기 양방향** = 도마 생선을 도마 밖으로 드래그하면 내려감(+기존 '내리기' 버튼) ⑤ **[A8] 교환** = 점유 중 새 생선 드롭 = 교체("교환됨" 플래시, 손질 진행 중이면 ConfirmDialog) ⑥ **[A9] 드롭존 하이라이트** = 드래그 중 도마 위 hover 시 초록 테두리. 전용 헬퍼 `overBoard`/`spawnDragGhost`/`dropFishOnBoard`/`trySwapBoard`/`flashBoardToast` + destroy 정리.
+- **⚠️ [드래그 방식 교정 — 41차 후속(2026-07-28)]** 초기 구현이 Phaser 네이티브 `setInteractive({draggable})`를 썼으나 **dev 실플레이에서 드래그가 전혀 안 됨** (사용자 리포트). **실측 진단**(실 마우스 드래그): `dragstart`는 발화하나 `drag`/`dragend`가 **한 번도 안 옴** — **scrollFactor 0 화면고정 UI + 스크롤 카메라(RegionFieldScene) 조합에서 Phaser drag 업데이트가 월드좌표 불일치로 죽는 알려진 이슈**. 해결: 밑밥 탭이 이미 쓰던 **커스텀 포인터 방식**(cell `pointerdown`→씬 레벨 `pointermove`/`pointerup` 추적)으로 교체 — `startCookDrag(item, 'add'|'remove', p)` + `onCookDragMove`(6px 임계 초과 시 고스트 생성·하이라이트)/`onCookDragUp`(드롭/내리기, 이동 없으면 클릭=선택). 인벤 셀·도마 grab 모두 네이티브 draggable 제거. **검증(실 마우스 드래그)**: 농어→도마 PASS / 통조림(비어획물)→차단 PASS / 문어→교환 PASS / 도마→밖=내리기 PASS + 클릭 선택 유지. ⚠️ **규칙**: DraggablePanel(scrollFactor 0) 계열 UI의 드래그는 **네이티브 draggable 금지, 커스텀 포인터 방식 사용**(헤더 드래그·밑밥·도마 모두 이 방식).
+- **[B2 core] flat 가이드 문구 보강** (`ButcheryProcess.buildButcheryStages`): 다섯장뜨기 스테이지가 "중앙선 기준 반신 경계 칼집 → 중골 위 분리 → 상·하 양측 반복"으로 명확화(round는 기존 삼면뜨기 문구 유지). 사이드 라벨 "다섯장뜨기 N/M장". 죽은 `filletPairs` 제거.
+- **[B4 client] 스테일 제거**: 구 "추후 정식 구현 예정 / 회칼 미보유 / 실사 4종만" 모순 안내문 삭제 → 실제 흐름 안내(삼면/다섯장뜨기·복어·두족류 준비중·활어회 등급)로 교체.
+- **[B5 client] CookScene 일원화** (`showProcessingPanel`): 옛 3단계 가짜 손질 체크리스트(비늘→내장→포뜨기 흉내) 제거 → "회뜨기는 요리(U) 도마에서 진행" 안내 + 조리 진행 버튼. 미사용 `processingSteps`/`currentStepIndex`/`FishProcessingStep` 정리.
+- **[B6 확인] 회칼 경제 = 이미 완비**: KnifeDatabase 3종(막칼/회칼/야나기바) 전부 식자재마트 카탈로그 등록(15k/45k/150k) + `knife_sashimi` 기본 지급 + ButcheryPanel이 `getBestKnife(InventoryStore.items)` 실게이트 사용 중 — 추가 작업 불필요.
+- **[A10 설계 노트] tuning.butchery 생략**: 스펙의 cephalopodIds/pufferIds는 **데이터 파생(egiOnly·id 규칙)으로 대체**해 id 리스트 튜닝 자체가 불필요. swapConfirm(진행 중 확인)·실사 우선 프리뷰는 합리적 기본값으로 baked. 순수 렌더 토글을 core tuning에 넣지 않음.
+- 잔여(차기): 두족류 손질(눈 위 신경·먹물·다리)·복어 손질(자격/독·목줄째) 실로직, 회썰기(두께/각도) 인터랙션, 부산물(중골/머리/껍질) 활용 트리, 두족류 전용 프리뷰 템플릿(현재 기본 원형어로 폴백), 가이드 팝업 round/flat 2케이스 삽화(B3 — 기존 guide_butchery PNG 유지, 신규 삽화 생성은 후속).
+
+**이전 변경 (2026-07-27 40차) — 어획물 이미지 개체 크기 반영(어획 팝업 + 인벤 상세보기)** (사용자 피드백 1건 — 브라우저 수치·스크린샷 검증 완료, 빌드 4/4·typecheck 0):
+- **[신규 core] `fishImageSizeScale(speciesId, lengthCm)`** (`SizeTierRules.ts` — index.ts export): 개체 길이를 어종 "보통 사이즈"와 비교해 **소형은 작게 / 대형·특대는 크게** 보이는 표시 배율(1.0 = 보통). 기준 길이(ref) = tier 등재 어종(방어 등)은 **중형 밴드 중앙**(`SIZE_TIER_BOUNDS` 평균), 그 외는 **FISH_DATABASE avgSizeRangeCm 중앙값**. 비대칭 커브(소형 지수 0.38·대형 0.55) + [0.80, 1.35] 클램프. 미등록 어종/길이 0 = 1.0 안전값.
+- **[배선] 어획 팝업 이미지** (`FirstPersonFishingScene`): `fishDisplaySize(src, refW, refH, capW, capH, sizeMul)` 공용 헬퍼 — 보통 개체를 refBox(264×107)에 맞춘 뒤 sizeMul 곱, capBox(360×146)로 레이아웃 보호. `buildDecisionPanel`(쿨러/인벤/방생 결정 + 보관 후 안내)·`showResultPanel`(방생·결과)에 `imgScale` 인자 배선, `onLanded`/`showCatchDecisionPanel`에서 `fishImageSizeScale`로 산출·전달. 다관점 히트 추가 어획은 팝업 이미지 없음(텍스트만)이라 무관.
+- **[배선] 인벤토리 상세보기 이미지** (`ItemDetailPanel`): 어획물 이미지에 동일 로직(refBox 228×90, capBox 300×120 — imgH 126 슬롯·W 320 패널 안). `item.speciesId`/`lengthCm` 있을 때만 적용.
+- **[설계] 단조 증가 + 캡**: 소형<보통<대형<특대 순으로 이미지가 커지되(각 tier 구별), capBox로 팝업/텍스트/패널 경계는 절대 안 넘음. 보통은 refBox 기준(구 full-box 대비 ~82%)이라 대형·특대가 구 "현재" 크기를 상회. **검증(방어 fish_yellowtail)**: 어획 팝업 소형30cm 213w → 보통52cm 263w → 대형80cm 333w → 특대120cm 356w(단조·특대/소형 1.67배, 패널 460w 안) / 상세 184w→227w→287w→300w(특대 폭 300·높이 106 ≤ 캡). 스크린샷 = 소형 컴팩트·특대 패널 폭 채움, 제목/본문/버튼 겹침 없음.
+- 잔여(차기): 상세보기 신선도 실시간 카운트다운은 이미지 스케일과 독립(기존 유지), 손질/회뜨기 패널의 생선 렌더는 파라메트릭(bodyRatio)이라 별개.
+
+**이전 변경 (2026-07-25 39차) — 어획물 즉시 부패 버그(오프라인 신선도 정지) + 상태별 판매가 배율 + 방어류 시세 실측 반영** (사용자 2건 피드백 — 브라우저 수치 검증 완료, 빌드 4/4·typecheck 0):
+- **[치명 버그 수정] 어획물 즉시 부패 = 오프라인 wall-clock 감쇠**: `CoolerStore.deserialize`가 `lastSyncMs`를 저장시각으로 두고 `sync()`로 **저장~로드 실경과(wall-clock) 전체를 적용** → 상온 활어→부패가 ~10.2시간이라, 하루 뒤(또는 dev 반복 로드) 재접속 시 방금 넣은 어획까지 전부 부패로 점프. **오프라인(게임 종료) 중엔 신선도 정지**로 변경 — deserialize에서 오프라인 갭만큼 `lastSyncMs`·`mediumSetAtMs`를 앞으로 밀어 경과 미적용(매질 잔여시간 보존). **InventoryStore도 동일** — `savedAtMs` 필드 신설, 로드 시 각 아이템 `conditionSinceMs`를 갭만큼 밀어 정지. 신선도는 **활성 플레이 중에만** 진행. 검증: 24h 전 저장 로드 → 쿨러·인벤 둘 다 활어 유지.
+- **[상태별 판매가 배율]** (`conditionSellMultiplier` 신설 + `getSellPrice` 배선): **활어/신선 = 각각 활어/선어 시세**(getWholesaleCache tier — 데이터 구분 없으면 동일) · **냉장/냉동/해동 = 선어 동일(1.0)** · **보통 = 50%** · **나쁨 = 10%** · **부패 = 0(판매 불가)**. `getSellPrice`가 `evaluateFishSellPrice`(경락 API 캐시/기본단가) × 상태배율. 검증(2kg 방어): 활어=신선=냉장=냉동 46,600 / 보통 23,300 / 나쁨 4,660 / 부패 0.
+- **[시세 API tier 구조]** `WholesalePriceInfo.tier?('live'|'fresh')` + `getWholesaleCache(id, tier)` — API가 활어/선어 분리 제공 시 tier 매칭, 단일(구분 없음)이면 공통 적용. 현재 MAFRA는 단일/Mock이라 활어=선어 동일가(사용자 규칙 "구분 없으면 동일").
+- **[방어류 시세 폭증 완화 — weightExp]** 방어 오라클 meanCm 90cm(≈8.7kg)인데 구 모델(kg단가×무게×등급×크기 이중곱)이 **359,000원**(실측 중형 4.5만의 8배!) 산출. `AuctionMappingDef.weightExp`(기본 1=선형) 신설 — `price ∝ weightKg^weightExp`. 방어 exp 0.4·sizeFactor 0.15·단가 27,000 → **소형 1kg 28,620원(실측 2.5~3만 부합)·전형 8.7kg ~9만**(폭증 해소). 부시리/잿방어/삼치도 대형이라 sub-linear 적용. 검증(방어 크기별): 0.3kg 15k·1kg 28.6k·2kg 46k·4kg 62k.
+- 잔여(차기): 방어 실측은 소형~중형 마리당 평탄(step)인데 게임은 크기 비례 스케일 유지(게임성) — 완전 평탄화는 미적용. 활어/선어 실데이터 분리(MAFRA fish_live/fish_fresh 동시 수집) 연동, 오프라인 정지의 매질 만료 UI 표기 점검.
+
+**이전 변경 (2026-07-25 38차) — 어종 11종 추가·졸복→복섬·볼락 다종화 + 침강 물리 rev2(라인각 모델) + 수심뷰 라인각 텍스트 오버플로 + 텍스트 전수조사** (사용자 4건 피드백 + 웹서치 리서치 3건 — 브라우저 검증 완료, 빌드 4/4·typecheck 0):
 - **[신규 어종 11종 — 에셋+DB 4계층]** (`food assets/` → `public/fish/` 11장): 기존 오라클 有 4종 텍스처만(삼치 spanish_mackerel·붕장어 conger_eel·갯장어 pike_conger·꽁치 pacific_saury) + **졸복→복섬 개명** + **신규 6종 풀 DB**(까치복 yellowfin_puffer·양태 bartail_flathead·성대 bluefin_searobin·먹장어 hagfish·학꽁치 halfbeak·보리멸 northern_whiting). 각 종 **오라클(ORACLE_FISH_DB)+FISH_DATABASE(도감)+FISH_TEXTURE/BootScene+SEAFOOD_AUCTION_MAPPING(판매가)** 4계층 등록. 실측 데이터(FishBase/국립수산과학원) 웹서치 — 서식지형·수심층·미끼선호·크기·야행성·파이팅·목줄절단(복어류) 반영. 오라클 43→49종. **검증**: 신규 7종 전부 스폰 가능, 양태 66.5cm 어획 팝업 실사 이미지 정상, 텍스처 11장 로드 확인.
 - **[졸복→복섬 개명]** 표준명 이슈 — 구 `fine_puffer`(졸복어) → `grass_puffer`(복섬, Takifugu alboplumbeus). 오라클·FISH_DATABASE·ExternalDataStore(KOSIS '복' 매칭) 3곳 일괄. 소형 항·방파제 복어, lineCutter·독 유지.
 - **[볼락 다종화 검증 + 정확화]** 오라클엔 이미 볼락류 5종(볼락 dark_banded·조피볼락/우럭 black·황볼락 golden·청볼락 blue·열기/불볼락 red_snapper) — **인게임 실제로 5종 분화 스폰 확인**(암초 야간 4천 스폰: dark_banded 503·열기 441·황볼락 138·청볼락 102·조피 15). 리서치 정정: **황볼락 = Sebastes owstoni**(불볼락 thompsoni와 별종), 수심 15→20~90m 심화, 법정 금지체장(근거 없음) 제거 / **조피볼락 야행성 완화**(nightBonus 1.4→1.2 — 텔레메트리상 강한 야행성 아님), 수심 3~100m. 오라클·FISH_DATABASE 정합.

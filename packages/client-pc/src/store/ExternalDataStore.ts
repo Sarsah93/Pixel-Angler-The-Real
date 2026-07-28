@@ -121,7 +121,9 @@ const KOSIS_SPECIES_MATCH: { keywords: string[]; speciesIds: string[] }[] = [
   { keywords: ['삼치'], speciesIds: ['spanish_mackerel'] },
   { keywords: ['갑오징어'], speciesIds: ['cuttlefish'] },
   { keywords: ['오징어', '한치'], speciesIds: ['squid', 'cuttlefish'] },
-  { keywords: ['문어'], speciesIds: ['octopus'] },
+  // '대문어'⊃'문어' — 대문어 키워드를 먼저 두되 speciesIds는 참문어/대문어 공통 매칭
+  { keywords: ['대문어', '피문어'], speciesIds: ['giant_octopus', 'octopus'] },
+  { keywords: ['문어'], speciesIds: ['octopus', 'giant_octopus'] },
 ];
 
 /**
@@ -300,9 +302,19 @@ class ExternalDataStoreManager {
   }
 
   // ── 2) 경락 시세 → 직판장/어판장 가격 ─────────────────
-  /** 어종별 실시간 경락 시세 캐시 (evaluateFishSellPrice 입력용) */
-  getWholesaleCache(speciesId: string): WholesalePriceInfo | undefined {
-    return this._snapshot?.marketPrices.find((p) => p.speciesId === speciesId);
+  /**
+   * 어종별 실시간 경락 시세 캐시 (evaluateFishSellPrice 입력용).
+   * tier(활어/선어) 지정 시 해당 구분 시세를 우선 반환하고, 구분이 없는(단일) 시세면
+   * 활어·선어 동일 적용 (사용자 규칙 2026-07-25 — "구분 없으면 동일").
+   */
+  getWholesaleCache(speciesId: string, tier?: 'live' | 'fresh'): WholesalePriceInfo | undefined {
+    const rows = this._snapshot?.marketPrices.filter((p) => p.speciesId === speciesId) ?? [];
+    if (rows.length === 0) return undefined;
+    if (tier) {
+      // 구분 있는 경우: tier 일치 우선 / 없으면 tier 미지정(공통) 행 / 그래도 없으면 아무거나
+      return rows.find((p) => p.tier === tier) ?? rows.find((p) => p.tier === undefined) ?? rows[0];
+    }
+    return rows[0];
   }
 
   /**
