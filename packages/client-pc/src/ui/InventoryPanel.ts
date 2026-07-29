@@ -395,6 +395,21 @@ export class InventoryPanel extends DraggablePanel {
         },
       });
     }
+    // 내장 부산물 — '만들기' (소모성 밑밥 전환. 추후 통발 미끼 겸용)
+    if (item.byproductKind === 'viscera') {
+      actions.push({
+        label: '만들기',
+        color: '#4af2a1', hoverColor: '#8dffce',
+        run: () => {
+          const made = InventoryStore.makeChumFromViscera(item.id);
+          this.setStatus(made
+            ? `${made} 1개를 만들었습니다 (소모성 밑밥 — 통발 미끼 활용은 추후)`
+            : '부패한 내장은 사용할 수 없습니다 — 버리세요');
+          this.renderGrid();
+          this.scene.events.emit('inventory-changed');
+        },
+      });
+    }
     if (item.equippable && item.tool) {
       // 손 도구(낚싯대/뜰채): 왼손/오른손 선택 착용 — 기존 장비는 교체
       if (item.equipped) {

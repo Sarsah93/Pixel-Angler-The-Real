@@ -172,14 +172,18 @@ export function computeFilletYield(input: FilletYieldInput): FilletYieldResult {
   if (!knife && grade === '특') grade = '상';
   const gradeMult = grade === '특' ? 1.5 : grade === '상' ? 1.25 : grade === '중' ? 1.0 : 0.7;
 
-  // 부산물 — 살(yieldMass)을 뺀 나머지 중 중골+머리(육수용) + 껍질(박피 산출).
-  // 중골·머리 ≈ 원물 무게의 22%(어종 무관 근사). 껍질은 박피가 있는 어종만 필렛 수만큼.
-  const boneHeadG = Math.round(weightGram * 0.22);
+  // 부산물 — 살(yieldMass)을 뺀 나머지를 부위별로 분리 지급 (어종 무관 근사 비율):
+  //  머리 12% + 척추뼈(중골) 6% + 갈빗대뼈 4% (= 구 boneHead 22%) + 내장 8%.
+  //  껍질은 박피가 있는 어종만 필렛 수만큼.
+  const headG = Math.round(weightGram * 0.12);
+  const spineG = Math.round(weightGram * 0.06);
+  const ribG = Math.round(weightGram * 0.04);
+  const visceraG = Math.round(weightGram * 0.08);
   const skinPieces = profile.skinToughness >= 0.4 ? filletCount : 0;
 
   return {
     yieldMassG, filletCount, sliceCount, grade, gradeMult, undersizedForFillet,
-    byproducts: { boneHeadG, skinPieces },
+    byproducts: { headG, spineG, ribG, visceraG, skinPieces },
   };
 }
 
@@ -199,8 +203,17 @@ function cut(
   };
 }
 
+/** 스테이지 빌더 옵션 (SASHIMI_PIXEL_GUIDE_SPEC §3-2) */
+export interface ButcheryStageOptions {
+  /**
+   * 비늘치기 스킵 (선-1·선-2 분기) — 박피까지 갈 거면 생략 가능.
+   * 스킵 개체의 껍질(fish_skin) 부산물은 등급 하락(비늘 붙은 껍질 = 식용 불가) 대상.
+   */
+  skipDescale?: boolean;
+}
+
 /** 프로필 기반 손질 스테이지 목록 생성 (오리엔티드 뷰 정규화 좌표 — 머리는 항상 왼쪽 기준) */
-export function buildButcheryStages(profile: ButcheryProfile): ButcheryStage[] {
+export function buildButcheryStages(profile: ButcheryProfile, opts?: ButcheryStageOptions): ButcheryStage[] {
   const stages: ButcheryStage[] = [];
 
   // 1. 시메 — 눈 뒤 뇌 지점 탭 (활어→즉살, 선도 유지)
@@ -221,8 +234,9 @@ export function buildButcheryStages(profile: ButcheryProfile): ButcheryStage[] {
     guide: '얼음물에 담가 방혈을 완료하세요 (잡내 감소·선도 향상)',
   });
 
-  // 3. 비늘치기 (양면) + 세척 — hasScales 어종만
-  if (profile.hasScales) {
+  // 3. 비늘치기 (양면) + 세척 — hasScales 어종만. skipDescale = 선-1·2 스킵 분기
+  //  (박피 예정이면 생략 가능 — 스킵 개체의 껍질 부산물은 등급 하락. §3-2)
+  if (profile.hasScales && !opts?.skipDescale) {
     stages.push({
       id: 'scale_base', label: '비늘치기 (앞면)', orientation: 'BASE', primitive: 'drag_fill',
       guide: '꼬리→머리 역결 방향으로 문질러 비늘을 벗기세요',
@@ -249,6 +263,14 @@ export function buildButcheryStages(profile: ButcheryProfile): ButcheryStage[] {
     id: 'head_flip', label: '머리따기 (뒷면 사선 → 분리)', orientation: 'FLIP', primitive: 'guided_cut',
     guide: '뒤집어 같은 사선을 맞추면 머리가 분리됩니다',
     cut: cut('head_flip', 'FLIP', [{ x: 0.825, y: 0.22 }, { x: 0.73, y: 0.7 }], { strong: true }),
+  });
+
+  // 4b. 지느러미 제거 (선-5 — 등·뒷지느러미 양옆 칼집 → 뽑기. 픽셀 가이드 선행부 신설)
+  stages.push({
+    id: 'finectomy', label: '지느러미 제거 (등·뒷 칼집 → 뽑기)', orientation: 'BASE', primitive: 'guided_cut',
+    guide: '등지느러미 양옆에 칼집을 넣고 잡아 뽑으세요 (뒷지느러미 동일 — 칼집 2회)',
+    cut: cut('finectomy', 'BASE',
+      [{ x: 0.3, y: 0.15 }, { x: 0.78, y: 0.13 }], { strokesRequired: 2, tolerance: 0.09, minCoverage: 0.5 }),
   });
 
   // 5. 내장 제거 — 개복(항문→머리 경계) → 긁어내기 → 세척
@@ -330,10 +352,10 @@ export class ButcheryProcess {
   private _bled = false;
   private freshnessFactor: number;
 
-  constructor(profile: ButcheryProfile, freshnessFactor: number) {
+  constructor(profile: ButcheryProfile, freshnessFactor: number, opts?: ButcheryStageOptions) {
     this.profile = profile;
     this.freshnessFactor = freshnessFactor;
-    this.stages = buildButcheryStages(profile);
+    this.stages = buildButcheryStages(profile, opts);
     this.resetStageCounters();
   }
 

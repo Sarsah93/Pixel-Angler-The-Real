@@ -21,12 +21,15 @@ import {
   ORIENTATION_LABEL, FISH_DATABASE, FilletShape, getButcheryFamily,
   computeFilletYield, getBestKnife, KnifeSpec,
   TUNING,
+  SASHIMI_GUIDE_GROUP, SASHIMI_GUIDE_SHEET, LIVE_STAGE_GUIDE,
+  resolveLiveGuideCut, guideCutByKey, GUIDE_CUT_DONE_KEY,
 } from '@tra/core';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { InventoryStore, InvItem } from '../store/InventoryStore.js';
 import { GameState } from '../store/GameState.js';
-import { DraggablePanel } from './DraggablePanel.js';
+import { DraggablePanel, applyScreenFixed } from './DraggablePanel.js';
 import { drawFishTemplate, getFishColors } from './FishTemplateRenderer.js';
+import { SASHIMI_GUIDE_TEXTURE, guideFrameName, hasGuideFrames } from '../data/SashimiGuideFrames.js';
 
 const PANEL_W = 1080;
 const PANEL_H = 620;
@@ -80,6 +83,18 @@ export class ButcheryPanel extends DraggablePanel {
   private butcheryUpHandler: (p: Phaser.Input.Pointer) => void;
   private keyHandler: (ev: KeyboardEvent) => void;
 
+  // 삼면뜨기 픽셀 가이드 (선행 9컷 + 본편 38컷 시트) — 돔류 + 프레임 등록 시에만 활성
+  private guideSpeciesOk = false;
+  private sheetViewer?: Phaser.GameObjects.Container;
+
+  // ── 가이드/액션 애니메이션 (2026-07-29 — 2s 기본, TUNING.butchery.*AnimMs로 조율) ──
+  private guideAnimG!: Phaser.GameObjects.Graphics;
+  private actionAnimG!: Phaser.GameObjects.Graphics;
+  private guideAnimTween?: Phaser.Tweens.Tween;
+  private actionTween?: Phaser.Tweens.Tween;
+  /** 액션 연출 재생 중 — 입력 차단 (flipping과 동일 계열 가드) */
+  private actionAnim = false;
+
   constructor(scene: Phaser.Scene, source: InvItem, cbs: ButcheryCallbacks) {
     super(scene, {
       x: (GAME_WIDTH - PANEL_W) / 2,
@@ -96,11 +111,17 @@ export class ButcheryPanel extends DraggablePanel {
     // 회칼 게이팅 — 인벤토리 '기타' 아이템에 회칼이 있어야 회뜨기(장 뜨기/박피)가 열린다
     this.knife = getBestKnife(InventoryStore.items.map((i) => i.id));
 
+    // 픽셀 가이드 활성 — 돔류(SASHIMI_GUIDE_GROUP 등재) + 시트 프레임 등록 완료 시
+    this.guideSpeciesOk = !!SASHIMI_GUIDE_GROUP[speciesId] && hasGuideFrames(scene);
+    if (import.meta.env.DEV) this.devAssertGuideBinding();
+
     this.fishG = scene.add.graphics();
     this.guideG = scene.add.graphics();
+    this.guideAnimG = scene.add.graphics();    // 가이드 경로 루프 연출 (칼 프리뷰)
     this.traceG = scene.add.graphics();
+    this.actionAnimG = scene.add.graphics();   // 조작 성공 액션 연출 (칼질/탭/문지르기/박피)
     this.uiC = scene.add.container(0, 0);
-    this.add([this.fishG, this.guideG, this.traceG, this.uiC]);
+    this.add([this.fishG, this.guideG, this.guideAnimG, this.traceG, this.actionAnimG, this.uiC]);
 
     // 씬 레벨 포인터 (트레이스가 히트 영역 밖으로 나가도 추적)
     this.butcheryMoveHandler = (p) => this.onPointerMove(p);
@@ -123,6 +144,9 @@ export class ButcheryPanel extends DraggablePanel {
   }
 
   override destroy(fromScene?: boolean): void {
+    this.closeSheetViewer();
+    this.stopGuideAnim();
+    this.stopActionAnim();
     this.scene?.input?.off('pointermove', this.butcheryMoveHandler);
     this.scene?.input?.off('pointerup', this.butcheryUpHandler);
     this.scene?.input?.off('pointerdown', this.onPointerDownBound, this);
@@ -136,7 +160,12 @@ export class ButcheryPanel extends DraggablePanel {
   // 키보드 — F/Space 뒤집기 · 1~5 방향 · Enter 세척
   // ═══════════════════════════════════════════════════
   private onKey(ev: KeyboardEvent): void {
-    if (this.done || this.flipping || this.process.finished) return;
+    // 시트 뷰어 열림 중 — ESC = 뷰어만 닫기 (손질 입력 차단)
+    if (this.sheetViewer) {
+      if (ev.key === 'Escape') this.closeSheetViewer();
+      return;
+    }
+    if (this.done || this.flipping || this.actionAnim || this.process.finished) return;
     const stage = this.process.stage;
     if (!stage) return;
     if (ev.code === 'KeyF' || ev.code === 'Space') {
@@ -149,7 +178,9 @@ export class ButcheryPanel extends DraggablePanel {
       if (stage.primitive === 'wash' && this.process.submitWash()) {
         this.washCount++;
         this.flash(stage.id === 'bleed_ice' ? '방혈 완료 — 선도 보너스!' : '깨끗이 씻었습니다', true);
+        const willFlip = this.process.orientation !== this.renderedOrientation;
         this.refresh();
+        if (!willFlip && !this.process.finished) this.playActionAnim(stage);
         if (this.process.finished) this.showResult();
       }
     } else if (ev.code.startsWith('Digit')) {
@@ -231,7 +262,8 @@ export class ButcheryPanel extends DraggablePanel {
   // 입력 (프리미티브별)
   // ═══════════════════════════════════════════════════
   private onPointerDown(p: Phaser.Input.Pointer): void {
-    if (this.process.finished || this.done || this.knifeLocked() || this.flipping) return;
+    if (this.sheetViewer) return;   // 시트 뷰어 열림 중 — 손질 입력 차단 (뷰어 자체 핸들러가 처리)
+    if (this.process.finished || this.done || this.knifeLocked() || this.flipping || this.actionAnim) return;
     const stage = this.process.stage;
     if (!stage) return;
     const n = this.toNorm(p);
@@ -247,7 +279,9 @@ export class ButcheryPanel extends DraggablePanel {
       const dist = Math.hypot(n.x - tp.x, n.y - tp.y);
       const r = this.process.submitTap(dist);
       this.flash(r.passed ? `시메 성공 (정확도 ${(r.quality * 100).toFixed(0)}%) — 선도가 유지됩니다` : '빗나갔습니다 — 눈 뒤 지점을 다시 탭하세요', r.passed);
+      const willFlip = this.process.orientation !== this.renderedOrientation;
       this.refresh();
+      if (r.passed && !willFlip) this.playActionAnim(stage);
     } else if (stage.primitive === 'guided_cut') {
       this.tracing = true;
       this.tracePoints = [n];
@@ -263,7 +297,7 @@ export class ButcheryPanel extends DraggablePanel {
   }
 
   private onPointerMove(p: Phaser.Input.Pointer): void {
-    if (this.done || this.knifeLocked() || this.flipping) return;
+    if (this.done || this.knifeLocked() || this.flipping || this.actionAnim) return;
     if (!this.tracing && !this.peelStart) return;
     const stage = this.process.stage;
     if (!stage) return;
@@ -290,7 +324,9 @@ export class ButcheryPanel extends DraggablePanel {
           else this.gutted = true;
           this.tracing = false;
           this.flash(stage.primitive === 'drag_fill' ? '비늘을 말끔히 벗겼습니다' : '내장을 비우고 척추 피를 긁었습니다', true);
+          const willFlip = this.process.orientation !== this.renderedOrientation;
           this.refresh();
+          if (!willFlip) this.playActionAnim(stage);
         } else {
           this.updateFillBar(res.progress);
         }
@@ -315,7 +351,9 @@ export class ButcheryPanel extends DraggablePanel {
         ? (r.stageDone ? '박피 완료! 필렛이 완성되었습니다' : `껍질 분리 — 남은 장 ${r.pullsLeft}`)
         : '당김이 약합니다 — 손잡이를 잡고 왼쪽으로 길게 당기세요', r.passed);
       this.peelStart = null;
+      const willFlip = this.process.orientation !== this.renderedOrientation;
       this.refresh();
+      if (r.passed && !willFlip && !this.process.finished) this.playActionAnim(stage);
       if (this.process.finished) this.showResult();
       return;
     }
@@ -335,7 +373,10 @@ export class ButcheryPanel extends DraggablePanel {
           ? `컷 성공 — 정확도 ${(r.quality * 100).toFixed(0)}%`
           : `칼집 ${r.strokesLeft}회 남음 (정확도 ${(r.quality * 100).toFixed(0)}%)`, true);
       }
+      const willFlip = this.process.orientation !== this.renderedOrientation;
       this.refresh();
+      // 컷 성공 액션 연출 — 방향 전환(플립 연출)이 이어지면 스킵 (플립이 피드백)
+      if (r.passed && !willFlip && !this.process.finished) this.playActionAnim(stage);
       if (this.process.finished) this.showResult();
       return;
     }
@@ -364,12 +405,16 @@ export class ButcheryPanel extends DraggablePanel {
     if (!this.knifeLocked()) this.drawGuide();
     this.drawSidebar();
     if (this.knifeLocked()) this.drawKnifeLock();
+    // 가이드 경로 루프 연출 재시작 (액션 연출 중이면 완료 콜백이 재시작)
+    if (!this.actionAnim) this.startGuideAnim();
     this.applyFix();
   }
 
   /** 뒤집기 연출 — 생선을 가로로 접었다 펴며 새 방향으로 리렌더 */
   private playFlipAnim(): void {
     this.flipping = true;
+    this.stopGuideAnim();     // 옛 방향 좌표의 루프/액션 연출 정리
+    this.stopActionAnim();
     this.guideG.clear();
     this.traceG.clear();
     this.tracing = false;
@@ -571,6 +616,257 @@ export class ButcheryPanel extends DraggablePanel {
     }
   }
 
+  // ═══════════════════════════════════════════════════
+  // 가이드 루프 연출 + 액션 성공 연출 (2026-07-29 — 기본 2s, TUNING으로 조율)
+  //  가이드 루프: 칼이 지나갈 길을 프리뷰 (경로 하이라이트 + 이동하는 칼)
+  //  액션 연출:   조작 성공 시 프리미티브별 애니 (칼질 스윕/탭 파문/문지르기/박피 당김/세척)
+  // ═══════════════════════════════════════════════════
+  /** 정규화(0~1) → 패널 로컬 px */
+  private toPanelPx(p: CutPoint): [number, number] {
+    return [this.fishX + p.x * this.fishW, this.fishY + p.y * this.fishH];
+  }
+
+  /** 폴리라인 호길이 비례 보간 — t(0~1) 지점 좌표 + 진행 각 */
+  private pathPointAt(path: CutPoint[], t: number): { x: number; y: number; ang: number } {
+    const pts = path.map((p) => this.toPanelPx(p));
+    if (pts.length < 2) return { x: pts[0]?.[0] ?? 0, y: pts[0]?.[1] ?? 0, ang: 0 };
+    const lens: number[] = [];
+    let total = 0;
+    for (let i = 1; i < pts.length; i++) {
+      const l = Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+      lens.push(l); total += l;
+    }
+    let target = Math.max(0, Math.min(1, t)) * total;
+    for (let i = 0; i < lens.length; i++) {
+      if (target <= lens[i] || i === lens.length - 1) {
+        const tt = lens[i] > 0 ? Math.min(1, target / lens[i]) : 0;
+        const [ax, ay] = pts[i];
+        const [bx, by] = pts[i + 1];
+        return { x: ax + (bx - ax) * tt, y: ay + (by - ay) * tt, ang: Math.atan2(by - ay, bx - ax) };
+      }
+      target -= lens[i];
+    }
+    const [lx, ly] = pts[pts.length - 1];
+    return { x: lx, y: ly, ang: 0 };
+  }
+
+  /** 폴리라인을 호길이 t(0~1)까지만 스트로크 (lineStyle은 호출측이 설정) */
+  private strokePathPartial(g: Phaser.GameObjects.Graphics, path: CutPoint[], t: number): void {
+    const pts = path.map((p) => this.toPanelPx(p));
+    if (pts.length < 2) return;
+    const lens: number[] = [];
+    let total = 0;
+    for (let i = 1; i < pts.length; i++) {
+      const l = Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+      lens.push(l); total += l;
+    }
+    let remain = Math.max(0, Math.min(1, t)) * total;
+    for (let i = 0; i < lens.length && remain > 0; i++) {
+      const frac = Math.min(1, lens[i] > 0 ? remain / lens[i] : 1);
+      const [ax, ay] = pts[i];
+      const [bx, by] = pts[i + 1];
+      g.lineBetween(ax, ay, ax + (bx - ax) * frac, ay + (by - ay) * frac);
+      remain -= lens[i];
+    }
+  }
+
+  /** 작은 회칼 글리프 — 칼끝이 진행 방향(ang), 블레이드+손잡이 */
+  private drawKnifeGlyph(g: Phaser.GameObjects.Graphics, x: number, y: number, ang: number, alpha = 1): void {
+    const c = Math.cos(ang), s = Math.sin(ang);
+    const P = (dx: number, dy: number): [number, number] => [x + dx * c - dy * s, y + dx * s + dy * c];
+    // 손잡이 (뒤쪽)
+    const [h0x, h0y] = P(-5, -0.5);
+    const [h1x, h1y] = P(-15, -0.5);
+    g.lineStyle(4, 0x6a4a2c, alpha);
+    g.lineBetween(h0x, h0y, h1x, h1y);
+    // 블레이드 (앞쪽 삼각 — 칼끝 = 진행 방향)
+    const [tipX, tipY] = P(15, 0.5);
+    const [heelTX, heelTY] = P(-5, -3.6);
+    const [heelBX, heelBY] = P(-5, 2.4);
+    g.fillStyle(0xe8f0f6, alpha);
+    g.fillTriangle(tipX, tipY, heelTX, heelTY, heelBX, heelBY);
+    g.lineStyle(1, 0x9aa8b4, alpha * 0.9);
+    g.lineBetween(heelTX, heelTY, tipX, tipY);
+  }
+
+  private stopGuideAnim(): void {
+    this.guideAnimTween?.remove();
+    this.guideAnimTween = undefined;
+    this.guideAnimG?.clear();
+  }
+
+  /**
+   * 가이드 경로 루프 연출 — 현재 스테이지에서 칼(또는 손)이 지나갈 길을 반복 재생.
+   * doRefresh 끝에서 재시작 (방향 불일치/잠금/세척 스테이지는 미표시).
+   */
+  private startGuideAnim(): void {
+    this.stopGuideAnim();
+    if (this.done || this.process.finished || this.flipping || this.knifeLocked()) return;
+    const stage = this.process.stage;
+    if (!stage || !this.process.canAct()) return;
+    const g = this.guideAnimG;
+    let drawFn: ((t: number) => void) | null = null;
+
+    if (stage.primitive === 'guided_cut' && stage.cut) {
+      const path = stage.cut.guidePath;
+      drawFn = (t) => {
+        g.clear();
+        const p = this.pathPointAt(path, t);
+        g.lineStyle(3, 0xfff2b0, 0.5);
+        this.strokePathPartial(g, path, t);
+        g.fillStyle(0xfff2b0, 0.3);
+        g.fillCircle(p.x, p.y, 9);
+        this.drawKnifeGlyph(g, p.x, p.y, p.ang, 0.95);
+      };
+    } else if (stage.primitive === 'tap' && stage.tapPoint) {
+      const [tx, ty] = this.toPanelPx(stage.tapPoint);
+      drawFn = (t) => {
+        g.clear();
+        g.lineStyle(2.5, 0xff5a4a, 0.9 * (1 - t));
+        g.strokeCircle(tx, ty, 5 + t * 22);
+        g.fillStyle(0xff5a4a, 0.9);
+        g.fillCircle(tx, ty, 3.2);
+      };
+    } else if (stage.primitive === 'drag_fill' || stage.primitive === 'scoop') {
+      // 문지르기 프리뷰 — 지그재그 스와이프 (scoop = 배 영역 / drag_fill = 몸통 전체)
+      const zig: CutPoint[] = stage.primitive === 'scoop'
+        ? [{ x: 0.62, y: 0.6 }, { x: 0.3, y: 0.66 }, { x: 0.58, y: 0.72 }, { x: 0.28, y: 0.76 }]
+        : [{ x: 0.78, y: 0.32 }, { x: 0.24, y: 0.38 }, { x: 0.74, y: 0.5 }, { x: 0.22, y: 0.58 }, { x: 0.7, y: 0.66 }];
+      drawFn = (t) => {
+        g.clear();
+        g.lineStyle(2, 0xaee8ff, 0.3);
+        this.strokePathPartial(g, zig, t);
+        const p = this.pathPointAt(zig, t);
+        g.fillStyle(0xd8ecf8, 0.85);
+        g.fillCircle(p.x, p.y, 6);
+        g.lineStyle(1.4, 0x8fb8cc, 0.9);
+        g.strokeCircle(p.x, p.y, 9.5);
+      };
+    } else if (stage.primitive === 'peel') {
+      const path: CutPoint[] = [{ x: 0.72, y: 0.5 }, { x: 0.26, y: 0.5 }];
+      drawFn = (t) => {
+        g.clear();
+        g.lineStyle(3, 0x7fe6b0, 0.4);
+        this.strokePathPartial(g, path, t);
+        const p = this.pathPointAt(path, t);
+        this.drawKnifeGlyph(g, p.x, p.y, Math.PI, 0.9);   // 좌로 진행 (칼 눕혀 밀기)
+      };
+    }
+    if (!drawFn) return;   // wash 등 — 루프 연출 없음 (버튼이 인터페이스)
+    const fn = drawFn;
+    this.guideAnimTween = this.scene.tweens.addCounter({
+      from: 0, to: 1, duration: Math.max(400, TUNING.butchery.guideAnimMs),
+      repeat: -1, repeatDelay: 260,
+      onUpdate: (tw) => fn(tw.getValue() ?? 0),
+    });
+  }
+
+  private stopActionAnim(): void {
+    this.actionTween?.remove();
+    this.actionTween = undefined;
+    this.actionAnimG?.clear();
+    this.actionAnim = false;
+  }
+
+  /**
+   * 조작 성공 액션 연출 — 프리미티브별 애니 (입력 차단, actionAnimMs).
+   * 완료 시 가이드 루프 재시작. 방향 전환(플립)이 이어질 때는 호출측이 스킵.
+   */
+  private playActionAnim(stage: { primitive: string; cut?: { guidePath: CutPoint[] }; tapPoint?: CutPoint } | null): void {
+    if (!stage || !this.scene) return;
+    this.stopActionAnim();
+    this.stopGuideAnim();
+    const g = this.actionAnimG;
+    this.actionAnim = true;
+    let drawFn: (t: number) => void;
+
+    if (stage.primitive === 'guided_cut') {
+      const path = stage.cut?.guidePath ?? [{ x: 0.2, y: 0.5 }, { x: 0.8, y: 0.5 }];
+      drawFn = (t) => {
+        g.clear();
+        // 지나간 자리 = 밝은 절개선 + 여열 글로우
+        g.lineStyle(6, 0xff8a5a, 0.22);
+        this.strokePathPartial(g, path, t);
+        g.lineStyle(3.2, 0xffffff, 0.9);
+        this.strokePathPartial(g, path, t);
+        const p = this.pathPointAt(path, t);
+        this.drawKnifeGlyph(g, p.x, p.y, p.ang, 1);
+        // 스파크
+        for (let k = 0; k < 4; k++) {
+          const a = t * 20 + k * 1.7;
+          g.fillStyle(0xffe28a, 0.7 * (1 - t));
+          g.fillCircle(p.x + Math.cos(a) * 9, p.y + Math.sin(a) * 9, 1.6);
+        }
+      };
+    } else if (stage.primitive === 'tap') {
+      const [tx, ty] = this.toPanelPx(stage.tapPoint ?? { x: 0.16, y: 0.38 });
+      drawFn = (t) => {
+        g.clear();
+        for (let k = 0; k < 3; k++) {
+          const tt = Math.max(0, Math.min(1, t * 1.6 - k * 0.22));
+          if (tt <= 0) continue;
+          g.lineStyle(2.4, 0xff5a4a, 0.9 * (1 - tt));
+          g.strokeCircle(tx, ty, 5 + tt * 30);
+        }
+        g.fillStyle(0xffffff, Math.max(0, 0.9 - t * 1.4));
+        g.fillCircle(tx, ty, 4);
+      };
+    } else if (stage.primitive === 'drag_fill' || stage.primitive === 'scoop') {
+      // 빠른 3연속 스와이프 + 부스러기 튐 (비늘/내장 마무리)
+      drawFn = (t) => {
+        g.clear();
+        for (let k = 0; k < 3; k++) {
+          const tt = Math.max(0, Math.min(1, t * 2.2 - k * 0.35));
+          if (tt <= 0) continue;
+          const y = this.fishY + this.fishH * (0.36 + k * 0.14);
+          const x0 = this.fishX + this.fishW * 0.72;
+          const x1 = this.fishX + this.fishW * (0.72 - 0.5 * tt);
+          g.lineStyle(3, 0xd8ecf8, 0.7 * (1 - tt * 0.6));
+          g.lineBetween(x0, y, x1, y);
+          g.fillStyle(0xbfd8e8, 0.8 * (1 - tt));
+          g.fillCircle(x1 + 6, y - 6 - tt * 14, 1.8);
+          g.fillCircle(x1 + 14, y - 3 - tt * 20, 1.4);
+        }
+      };
+    } else if (stage.primitive === 'peel') {
+      // 껍질 스트립이 왼쪽으로 벗겨져 늘어짐 + 진행 트레일
+      const path: CutPoint[] = [{ x: 0.72, y: 0.52 }, { x: 0.24, y: 0.52 }];
+      drawFn = (t) => {
+        g.clear();
+        g.lineStyle(3, 0x7fe6b0, 0.65);
+        this.strokePathPartial(g, path, t);
+        const p = this.pathPointAt(path, t);
+        this.drawKnifeGlyph(g, p.x, p.y, Math.PI, 1);
+        // 벗겨진 껍질 스트립 (칼 뒤쪽 → 아래로 젖혀짐)
+        const stripLen = this.fishW * 0.46 * t;
+        g.fillStyle(0x5a6a76, 0.85);
+        g.fillRoundedRect(p.x + 6, p.y + 4, stripLen, 7, 3);
+      };
+    } else {
+      // wash — 물방울 낙하 + 푸른 세척광
+      drawFn = (t) => {
+        g.clear();
+        g.fillStyle(0x66b8ff, 0.10 * (1 - Math.abs(t * 2 - 1)));
+        g.fillRoundedRect(this.fishX, this.fishY, this.fishW, this.fishH, 12);
+        for (let k = 0; k < 10; k++) {
+          const dx = this.fishX + ((k * 61) % this.fishW);
+          const dy = this.fishY - 8 + ((t * 1.3 + k * 0.1) % 1) * (this.fishH + 16);
+          g.fillStyle(0x9fd0ff, 0.8);
+          g.fillCircle(dx, dy, 1.8);
+        }
+      };
+    }
+
+    this.actionTween = this.scene.tweens.addCounter({
+      from: 0, to: 1, duration: Math.max(300, TUNING.butchery.actionAnimMs),
+      onUpdate: (tw) => drawFn(tw.getValue() ?? 0),
+      onComplete: () => {
+        this.stopActionAnim();
+        this.startGuideAnim();
+      },
+    });
+  }
+
   /** 우측 사이드바 — 진행/안내/방향·세척 버튼/필렛 카운트 */
   private drawSidebar(): void {
     const sx = 700;
@@ -715,6 +1011,182 @@ export class ButcheryPanel extends DraggablePanel {
       : `손질 스킬 Lv.${fl.level}  ·  ${fl.xp} / ${(fl.level + 1) * 100} XP`;
     mkText(sx, PANEL_H - 74, skillLine, 11, '#ffd257');
     mkText(sx, PANEL_H - 54, '키: F/Space 뒤집기 · 1~5 방향 · Enter 세척', 10, '#607b8e');
+
+    // 삼면뜨기 픽셀 가이드 슬롯 (돔류 — 현재 스테이지의 가이드 컷 + 전체 시트 버튼)
+    this.drawGuideSlot();
+  }
+
+  // ═══════════════════════════════════════════════════
+  // 삼면뜨기 픽셀 가이드 (선행 9컷 + 본편 38컷 — SASHIMI_PIXEL_GUIDE_SPEC §4-A/§4-B)
+  // ═══════════════════════════════════════════════════
+  /** 현재 스테이지의 가이드 컷 해소 — 다회 스테이지는 진행 회차로 컷 전환 */
+  private currentGuideCutKey(): string | null {
+    if (this.process.finished) return GUIDE_CUT_DONE_KEY;
+    const stage = this.process.stage;
+    if (!stage) return null;
+    // 진행 회차 = 완료한 스트로크/당김 수 (스테이지 시작 시 0)
+    let passIdx = 0;
+    if (stage.primitive === 'guided_cut' && stage.cut?.strokesRequired) {
+      passIdx = stage.cut.strokesRequired - this.process.currentStrokesLeft;
+    } else if (stage.primitive === 'peel' && stage.pullsRequired) {
+      passIdx = stage.pullsRequired - this.process.currentPullsLeft;
+    }
+    return resolveLiveGuideCut(stage.id, passIdx)?.key ?? null;
+  }
+
+  /** 사이드바 하단 가이드 컷 슬롯 + [전체 시트] 버튼 (drawSidebar에서 호출 — uiC에 추가) */
+  private drawGuideSlot(): void {
+    if (!this.guideSpeciesOk) return;
+    const key = this.currentGuideCutKey();
+
+    const gx = 700, gy = PANEL_H - 238;   // 이미지 190×112 — 요약 라인(PANEL_H-120) 위
+    const imgW = 190, imgH = 112;
+
+    // [전체 시트] 버튼 — 슬롯 우측 상단
+    const bx = gx + imgW + 12, by = gy;
+    const bg = this.scene.add.graphics();
+    bg.fillStyle(0x14283c, 0.96);
+    bg.fillRoundedRect(bx, by, 132, 26, 4);
+    bg.lineStyle(1.2, 0x33b0e0, 0.9);
+    bg.strokeRoundedRect(bx, by, 132, 26, 4);
+    const bt = this.scene.add.text(bx + 66, by + 13, '가이드 시트 (47컷)', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#aee8ff', fontStyle: 'bold',
+    }).setOrigin(0.5);
+    const bhit = this.scene.add.rectangle(bx + 66, by + 13, 132, 26, 0xffffff, 0.001)
+      .setInteractive({ useHandCursor: true });
+    bhit.on('pointerdown', () => this.openSheetViewer());
+    this.uiC.add([bg, bt, bhit]);
+
+    if (!key) return;   // 시메/방혈 = 가이드 범위 밖 (버튼만 표시)
+    const cut = guideCutByKey(key);
+
+    // 컷 일러스트 (시트 프레임) + 테두리 + 번호 칩
+    const frame = this.scene.add.image(gx, gy, SASHIMI_GUIDE_TEXTURE, guideFrameName(key))
+      .setOrigin(0, 0).setDisplaySize(imgW, imgH);
+    const border = this.scene.add.graphics();
+    border.lineStyle(1.4, 0x2a5a8a, 0.95);
+    border.strokeRoundedRect(gx - 1, gy - 1, imgW + 2, imgH + 2, 4);
+    const chipLabel = cut?.pre !== undefined ? `선-${cut.pre}` : `${cut?.panel ?? '?'} / 38`;
+    const chip = this.scene.add.text(gx + 3, gy + 3, `가이드 ${chipLabel}`, {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#ffe28a', fontStyle: 'bold',
+      backgroundColor: '#0a1628dd', padding: { x: 3, y: 1 },
+    });
+    this.uiC.add([frame, border, chip]);
+
+    // 캡션 (버튼 아래 우측 열)
+    if (cut) {
+      const cap = this.scene.add.text(bx, by + 32, cut.caption, {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#9fb8c8',
+        wordWrap: { width: PANEL_W - bx - 28 }, lineSpacing: 2,
+      });
+      this.uiC.add(cap);
+    }
+  }
+
+  /** 전체 시트 뷰어 — 화면 고정 오버레이 (휠 = 세로 스크롤 · 드래그 = 팬 · ESC/X = 닫기) */
+  private openSheetViewer(): void {
+    if (this.sheetViewer || !this.scene) return;
+    const scene = this.scene;
+    const vx = 40, vy = 30, vw = GAME_WIDTH - 80, vh = GAME_HEIGHT - 60;
+    const c = scene.add.container(0, 0).setDepth(1500);
+
+    // 딤 배경 (클릭 = 닫기 아님 — 오클릭 방지, X/ESC로만)
+    const dim = scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.72)
+      .setInteractive();
+    c.add(dim);
+
+    // 뷰포트 프레임
+    const frame = scene.add.graphics();
+    frame.fillStyle(0x0a1628, 0.97);
+    frame.fillRoundedRect(vx - 6, vy - 6, vw + 12, vh + 12, 8);
+    frame.lineStyle(2, 0x2a5a8a, 1);
+    frame.strokeRoundedRect(vx - 6, vy - 6, vw + 12, vh + 12, 8);
+    c.add(frame);
+
+    // 시트 이미지 (네이티브 스케일 — 캡션 가독성 유지, 드래그 팬)
+    const S = SASHIMI_GUIDE_SHEET;
+    const img = scene.add.image(vx, vy, SASHIMI_GUIDE_TEXTURE).setOrigin(0, 0);
+    c.add(img);
+
+    // 마스크 — 화면 고정 지오메트리 (33차 교훈: scrollFactor 0 필수)
+    const maskG = scene.make.graphics({}, false).setScrollFactor(0);
+    maskG.fillRect(vx, vy, vw, vh);
+    img.setMask(maskG.createGeometryMask());
+
+    // 팬 상태 + 클램프
+    let ox = 0, oy = 0;
+    const clampPan = (): void => {
+      ox = Phaser.Math.Clamp(ox, Math.min(0, vw - S.sheetW), 0);
+      oy = Phaser.Math.Clamp(oy, Math.min(0, vh - S.sheetH), 0);
+      img.setPosition(vx + ox, vy + oy);
+    };
+    clampPan();
+
+    // 드래그 팬 + 휠 스크롤
+    let dragging = false, lastX = 0, lastY = 0;
+    dim.on('pointerdown', (p: Phaser.Input.Pointer) => { dragging = true; lastX = p.x; lastY = p.y; });
+    const moveH = (p: Phaser.Input.Pointer): void => {
+      if (!dragging || !p.isDown) { dragging = false; return; }
+      ox += p.x - lastX; oy += p.y - lastY;
+      lastX = p.x; lastY = p.y;
+      clampPan();
+    };
+    const upH = (): void => { dragging = false; };
+    const wheelH = (_p: Phaser.Input.Pointer, _o: unknown[], _dx: number, dy: number): void => {
+      oy -= dy * 0.9;
+      clampPan();
+    };
+    scene.input.on('pointermove', moveH);
+    scene.input.on('pointerup', upH);
+    scene.input.on('wheel', wheelH);
+
+    // 헤더 + 닫기
+    const title = scene.add.text(vx + 8, vy + 6, '삼면뜨기 픽셀 가이드 — 선행 9컷 + 본편 38컷 (드래그 이동 · 휠 스크롤)', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#ffe28a', fontStyle: 'bold',
+      backgroundColor: '#0a1628dd', padding: { x: 6, y: 3 },
+    });
+    const closeBg = scene.add.circle(vx + vw - 16, vy + 16, 14, 0x14283c, 0.98).setStrokeStyle(1.5, 0x4a6a8a);
+    const closeTxt = scene.add.text(vx + vw - 16, vy + 16, '✕', {
+      fontFamily: 'monospace', fontSize: '14px', color: '#ff9a9a', fontStyle: 'bold',
+    }).setOrigin(0.5);
+    const closeHit = scene.add.rectangle(vx + vw - 16, vy + 16, 34, 34, 0xffffff, 0.001)
+      .setInteractive({ useHandCursor: true });
+    closeHit.on('pointerdown', () => this.closeSheetViewer());
+    c.add([title, closeBg, closeTxt, closeHit]);
+
+    applyScreenFixed(c);
+    // 뷰어 파괴 시 씬 레벨 핸들러/마스크 정리
+    c.once(Phaser.GameObjects.Events.DESTROY, () => {
+      scene.input?.off('pointermove', moveH);
+      scene.input?.off('pointerup', upH);
+      scene.input?.off('wheel', wheelH);
+      maskG.destroy();
+    });
+    this.sheetViewer = c;
+  }
+
+  private closeSheetViewer(): void {
+    this.sheetViewer?.destroy();
+    this.sheetViewer = undefined;
+  }
+
+  /**
+   * dev 어서션 (§7) — 모든 스테이지의 가이드 매핑이 실제 컷/프레임으로 해소되는지 +
+   * 컷 방향/스테이지 방향 어긋남 목록 (브리지는 의도적 근사 — 정보 로그로만).
+   */
+  private devAssertGuideBinding(): void {
+    if (!this.guideSpeciesOk) return;
+    const problems: string[] = [];
+    for (const [sid, seq] of Object.entries(LIVE_STAGE_GUIDE)) {
+      for (const key of seq) {
+        const cut = guideCutByKey(key);
+        if (!cut) { problems.push(`${sid} → ${key}: 컷 행 없음`); continue; }
+        if (!this.scene.textures.get(SASHIMI_GUIDE_TEXTURE).has(guideFrameName(key))) {
+          problems.push(`${sid} → ${key}: 프레임 미등록`);
+        }
+      }
+    }
+    if (problems.length) console.warn('[ButcheryGuide] 바인딩 문제:', problems);
   }
 
   /**
@@ -829,9 +1301,9 @@ export class ButcheryPanel extends DraggablePanel {
     const xpGain = Math.round(20 + r.avgCutQuality * 40 + gradeXp);
     const lv = GameState.addFilletingXp(xpGain);
 
-    // 부산물·필렛은 원본 신선도를 승계 (같은 시점부터 감쇄)
-    const srcCond = this.source.condition ?? 'fresh';
-    const srcSince = this.source.conditionSinceMs ?? Date.now();
+    // 손질 산출물은 전부 **활어 상태로 새 시계 시작** (사용자 지정 2026-07-29 — "처음은 활어로")
+    const outCond = 'live' as const;
+    const outSince = Date.now();
     const perFilletG = Math.round(yieldRes.yieldMassG / Math.max(1, yieldRes.filletCount));
 
     const seq = InventoryStore.nextCatchSeq();
@@ -842,28 +1314,42 @@ export class ButcheryPanel extends DraggablePanel {
       icon: '🍣', iconTexture: this.filletIconKey(this.process.profile.filletShape, speciesId),
       category: 'food', subCategory: '손질 필렛',
       basePrice: perFillet,
-      condition: srcCond, conditionSinceMs: srcSince,
+      condition: outCond, conditionSinceMs: outSince,
       equippable: false,
       speciesId, lengthCm: this.source.lengthCm, weightG: perFilletG,
     }, yieldRes.filletCount);
-    // 부산물 ① 중골+머리 (매운탕/지리·육수) — 무게 비례가 + 신선도 승계
-    InventoryStore.addItem({
-      id: `inv_bone_${speciesId}_${seq}`,
-      name: `${nameKo} 중골·머리 (육수용) ${yieldRes.byproducts.boneHeadG}g`,
-      icon: '🦴', category: 'food', subCategory: '부산물', byproductKind: 'boneHead',
-      basePrice: Math.max(400, Math.round(yieldRes.byproducts.boneHeadG * 3)),
-      condition: srcCond, conditionSinceMs: srcSince, equippable: false,
-      speciesId, weightG: yieldRes.byproducts.boneHeadG,
-    }, 1);
-    // 부산물 ② 껍질 (구이·육수) — 박피가 있는 어종만
-    if (yieldRes.byproducts.skinPieces > 0) {
+
+    // ── 부산물 — 어종명 접두 개별 아이템 (매운탕 3종 + 내장 + 껍질) ──
+    const bp = yieldRes.byproducts;
+    const addByproduct = (
+      kind: 'head' | 'spine' | 'rib' | 'viscera', label: string, icon: string,
+      weightG: number, priceFactor: number,
+    ): void => {
+      if (weightG <= 0) return;
+      InventoryStore.addItem({
+        id: `inv_byp_${kind}_${speciesId}_${seq}`,
+        name: `${nameKo} ${label} ${weightG}g`,
+        icon, category: 'food', subCategory: '부산물', byproductKind: kind,
+        basePrice: Math.max(200, Math.round(weightG * priceFactor)),
+        condition: outCond, conditionSinceMs: outSince, equippable: false,
+        speciesId, weightG,
+        // 내장 = 신선도 급감 프로필 (활어 10분 → 나쁨 → 1시간 후 부패)
+        ...(kind === 'viscera' ? { condProfile: 'viscera' as const } : {}),
+      }, 1);
+    };
+    addByproduct('head', '생선 머리', '🐟', bp.headG, 3);        // 매운탕/지리·육수
+    addByproduct('spine', '척추뼈', '🦴', bp.spineG, 3);          // 매운탕/지리·육수
+    addByproduct('rib', '갈빗대뼈', '🍖', bp.ribG, 3);            // 매운탕/지리·육수
+    addByproduct('viscera', '내장', '🫀', bp.visceraG, 1.5);      // 밑밥 전환('만들기')
+    // 껍질 (구이·육수) — 박피가 있는 어종만, 필렛 수만큼
+    if (bp.skinPieces > 0) {
       InventoryStore.addItem({
         id: `inv_skin_${speciesId}_${seq}`,
-        name: `${nameKo} 껍질 (구이·육수용)`,
+        name: `${nameKo} 껍질`,
         icon: '🫓', category: 'food', subCategory: '부산물', byproductKind: 'skin',
-        basePrice: 250, condition: srcCond, conditionSinceMs: srcSince, equippable: false,
+        basePrice: 250, condition: outCond, conditionSinceMs: outSince, equippable: false,
         speciesId,
-      }, yieldRes.byproducts.skinPieces);
+      }, bp.skinPieces);
     }
     // 원본 생선 1마리 소모
     InventoryStore.removeItem(this.source.id, false);
@@ -880,10 +1366,10 @@ export class ButcheryPanel extends DraggablePanel {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '22px', color: '#4af2a1', fontStyle: 'bold',
     }).setOrigin(0.5);
     const knifeName = this.knife ? this.knife.nameKo : '막칼(폴백)';
-    const skinNote = yieldRes.byproducts.skinPieces > 0 ? ` · 껍질 x${yieldRes.byproducts.skinPieces}` : '';
+    const skinNote = bp.skinPieces > 0 ? ` · 껍질 x${bp.skinPieces}` : '';
     const desc = this.scene.add.text(this.fishX + this.fishW / 2, this.fishY + 74, [
       `${nameKo} 필렛 x${yieldRes.filletCount} (장당 ${perFillet.toLocaleString()}원)`,
-      `부산물: 중골·머리 ${yieldRes.byproducts.boneHeadG}g${skinNote}  (매운탕/지리·육수)`,
+      `부산물: 머리 ${bp.headG}g · 척추뼈 ${bp.spineG}g · 갈빗대뼈 ${bp.ribG}g (매운탕) · 내장 ${bp.visceraG}g (밑밥)${skinNote}`,
       `수율 ${yieldRes.yieldMassG}g · 슬라이스 ${yieldRes.sliceCount}점 · 컷 정확도 ${(r.avgCutQuality * 100).toFixed(0)}%`,
       `칼: ${knifeName} · 시메 ${r.ikejimeDone ? 'O' : 'X'} · 방혈 ${r.bledDone ? 'O' : 'X'} · 손질 스킬 Lv.${lv.level}${lv.leveledUp ? ' (레벨업!)' : ` (+${xpGain} XP)`}`,
       yieldRes.undersizedForFillet ? '체장이 작아 회뜨기 비효율 — 통마리 판매/조림 권장' : '인벤토리(음식 탭)에 지급되었습니다.',

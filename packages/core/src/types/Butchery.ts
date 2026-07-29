@@ -141,10 +141,20 @@ export interface FilletYieldResult {
   byproducts: ButcheryByproducts;
 }
 
-/** 손질 부산물 — 매운탕/지리(중골·머리), 구이/육수(껍질) 재료 */
+/**
+ * 손질 부산물 — 어종명 접두 개별 아이템으로 지급 (2026-07-29 세분화):
+ *  생선 머리·척추뼈·갈빗대뼈 = 매운탕/지리 재료(요리 탭 사용) / 내장 = 밑밥 전환('만들기') /
+ *  껍질 = 구이·육수. (구 boneHeadG 22% 통합을 머리 12% + 척추 6% + 갈빗대 4%로 분리)
+ */
 export interface ButcheryByproducts {
-  /** 중골(뼈)+머리 질량 (g) — 육수/매운탕용 */
-  boneHeadG: number;
+  /** 생선 머리 질량 (g) — 매운탕/육수 */
+  headG: number;
+  /** 척추뼈(중골) 질량 (g) — 매운탕/육수 */
+  spineG: number;
+  /** 갈빗대뼈 질량 (g) — 매운탕/육수 */
+  ribG: number;
+  /** 내장 질량 (g) — 밑밥 전환용 (신선도 급감 프로필: 활어 10분 → 나쁨 1시간 → 부패) */
+  visceraG: number;
   /** 껍질 장수 (박피 산출 — 구이/육수용). 껍질 없는 어종은 0 */
   skinPieces: number;
 }
@@ -203,4 +213,119 @@ export interface ButcheryResult {
   grade: SashimiGrade;
   /** 판매가 배율 */
   gradeMult: number;
+}
+
+// ────────────────────────────────────────────────────────────
+// 픽셀 가이드 어종 프로필 (SASHIMI_PIXEL_GUIDE_SPEC §5-1)
+//  — 선행 9컷 + 본편 26컷(S/A/B/C군)을 어종별로 자동 재생성하는 파라미터.
+//  손그림 신규 드로잉 없이 이 값 + 팔레트만으로 시트 변형을 만든다.
+// ────────────────────────────────────────────────────────────
+/** 가이드 시트 파라메트릭 생성 프로필 — 어종 그룹 단위 */
+export interface ButcheryGuideProfile {
+  /** 시트 그룹 키 ('seabream' | 'seabass' | 'mackerel' ...) */
+  speciesGroup: string;
+  /** 체고/체장 비 — 감성돔 0.53, 농어 0.34, 고등어 0.28 */
+  depthRatio: number;
+  /** 꼬리자루 굵기 (감성돔 0.17) */
+  peduncle: number;
+  /** 꼬리지느러미 형태 */
+  caudal: 'forked' | 'truncate' | 'lunate' | 'rounded';
+  /** 등→배 8단계 피부색 */
+  skinRamp: string[];
+  /** 세로 줄무늬 위치 (감성돔 5줄 — 없으면 생략) */
+  bars?: number[];
+  /** 살색 5단계 (흰살/붉은살) */
+  fleshRamp: string[];
+  // ── 선행 9컷(S·A군)용 — 머리/지느러미/배따기 파라미터 ──
+  /** 머리 길이/체장 — 감성돔 0.22, 농어 0.28, 대구 0.32 */
+  headRatio: number;
+  /** 주둥이 형태 — 돔류 blunt */
+  snout: 'blunt' | 'pointed' | 'protruding';
+  /** 눈 지름(도트) */
+  eyeSize: number;
+  /** 아가미뚜껑 뒤 절단선 기울기 (감성돔 0.26) */
+  gillLine: number;
+  /** 등지느러미 가시 수 (감성돔 11) */
+  dorsalSpines: number;
+  /** 등지느러미 시작/끝 t */
+  dorsalSpan: [number, number];
+  /** 뒷지느러미 시작/끝 t */
+  analSpan: [number, number];
+  /** 항문 위치 t — 배 가르기 종점 */
+  ventPos: number;
+  /** 비늘 종류 — 비늘치기 연출(무린어는 선행 1·2컷 스킵) */
+  scaleType: 'ctenoid' | 'cycloid' | 'none';
+}
+
+// ────────────────────────────────────────────────────────────
+// 부산물 · 손질 진척 · 재장착 (SASHIMI_PIXEL_GUIDE_SPEC §6)
+//  — 스키마 선행 정의. 팝업/재장착 UI 배선은 47-스테이지 풀 트리와 함께 차기.
+// ────────────────────────────────────────────────────────────
+/** 손질 산출물 종류 */
+export type ButcheryProductId =
+  | 'fillet_raw'     // 필렛 (갈빗대+지아이+껍질)
+  | 'spine_bone'     // 척추뼈(중골) — 육수/사료
+  | 'tail'           // 꼬리
+  | 'rib_bone'       // 갈빗대뼈
+  | 'pin_bone'       // 지아이뼈
+  | 'loin_skinon'    // 껍질붙은 로인
+  | 'fish_skin'      // 껍질 (구이/부각)
+  | 'loin_clean'     // 순수 필렛(로인) → 회썰기
+  | 'fish_scale'     // 비늘
+  | 'fish_head'      // 머리 (매운탕/육수)
+  | 'fish_fin'       // 지느러미
+  | 'viscera'        // 내장
+  | 'fish_dressed';  // 손질 중인 몸통 (선행 도중 이탈 시)
+
+/** 아이템에 박아두는 손질 진척 스냅샷 — 도마 재장착 시 이 지점부터 재개 */
+export interface ButcheryProgress {
+  /** 다음에 수행할 캐노니컬 스테이지 id */
+  stageId: string;
+  /** 가이드 컷 번호 (오버레이 동기화 — 본편 1..38) */
+  panel: number;
+  /** 필렛 2장 구분 */
+  side?: 'A' | 'B';
+  /** 로인 4조각 중 몇 번째 */
+  loinIndex?: 0 | 1 | 2 | 3;
+  flags: { ribRemoved: boolean; pinRemoved: boolean; skinRemoved: boolean };
+}
+
+/** 손질 중 분리된 부산물 팝업 페이로드 (§6-B) */
+export interface ButcheryYieldPopup {
+  productId: ButcheryProductId;
+  /** 팝업 문구의 "{어종명}" */
+  speciesName: string;
+  /** '필렛(갈빗대+지아이+껍질)' 등 표시명 */
+  label: string;
+  count: number;
+  /** 수율 계산 결과 (SASHIMI_YIELD_SPEC) */
+  weightG: number;
+  /** 아이템에 그대로 승계 */
+  freshness: number;
+  /** 살 계열만 */
+  grade?: SashimiGrade;
+  /** 도마에 다시 올릴 수 있는가 (§6-D) */
+  remountable: boolean;
+  /** remountable일 때 이어갈 스테이지 */
+  nextStageId?: string;
+}
+
+/** 스택 판정 최소 형태 — 인벤토리 아이템에서 발췌 */
+export interface ButcheryStackable {
+  productId?: ButcheryProductId | string;
+  speciesId?: string;
+  progress?: ButcheryProgress;
+  grade?: SashimiGrade | string;
+}
+
+/**
+ * 손질 산출물 스택 판정 (§6-F) — progress 보유 = 개체별 진척이 달라 항상 비스택.
+ * 부산물(비늘/머리/내장/뼈 등)만 어종+등급 단위로 스택된다.
+ * 전용 임시 슬롯 없이 일반 인벤토리 규칙만으로 성립하는 것이 §6-F의 결정.
+ */
+export function canStack(a: ButcheryStackable, b: ButcheryStackable): boolean {
+  if (a.productId !== b.productId) return false;
+  if (a.speciesId !== b.speciesId) return false;
+  if (a.progress || b.progress) return false;   // progress 보유 = 항상 개체 취급
+  return a.grade === b.grade;
 }

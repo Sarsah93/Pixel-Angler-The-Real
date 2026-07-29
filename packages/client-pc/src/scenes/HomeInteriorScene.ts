@@ -16,6 +16,7 @@ import Phaser from 'phaser';
 import { MapObject } from '@tra/core';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { GameState } from '../store/GameState.js';
+import { FridgePanel } from '../ui/FridgePanel.js';
 
 /** 실내 타일 렌더 크기 (px) — 외부(20px)보다 큼직하게 */
 const IT = 48;
@@ -46,6 +47,8 @@ const INTERIOR_OBJECTS: MapObject[] = [
 
 /** 실내 캐릭터 표시 높이 (px) — 실내 타일(48px)에 맞춰 큼직하게 */
 const PLAYER_H = 56;
+/** man 스프라이트 하단 투명 여백 보정 — 발이 그림자에 닿도록 스프라이트만 아래로 (RegionFieldScene와 동일 패턴) */
+const PLAYER_FOOT_SINK = 6;
 
 export class HomeInteriorScene extends Phaser.Scene {
   /** 위치 판정용 논리 좌표 (스프라이트 발밑) */
@@ -59,6 +62,7 @@ export class HomeInteriorScene extends Phaser.Scene {
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private hintText!: Phaser.GameObjects.Text;
   private bedMenu?: Phaser.GameObjects.Container;
+  private fridgePanel?: FridgePanel;
   private nearObj: MapObject | null = null;
 
   constructor() {
@@ -70,6 +74,7 @@ export class HomeInteriorScene extends Phaser.Scene {
     GameState.locationTag = 'hometown_interior';
     this.cameras.main.fadeIn(300, 0, 10, 20);
     this.bedMenu = undefined;
+    this.fridgePanel = undefined;
     this.nearObj = null;
 
     this.drawRoom();
@@ -78,12 +83,13 @@ export class HomeInteriorScene extends Phaser.Scene {
     // 플레이어 (문 앞 스폰) — 실제 캐릭터 스프라이트 (RegionFieldScene와 동일 에셋)
     this.px = OX + 6 * IT; this.py = OY + 8.4 * IT;
     this.playerShadow = this.add.ellipse(this.px, this.py, PLAYER_H * 0.42, PLAYER_H * 0.12, 0x000000, 0.28).setDepth(18);
-    this.playerSprite = this.add.image(this.px, this.py, 'man-idle-front').setOrigin(0.5, 1).setDepth(20);
+    this.playerSprite = this.add.image(this.px, this.py + PLAYER_FOOT_SINK, 'man-idle-front').setOrigin(0.5, 1).setDepth(20);
     this.applySpriteSize();
 
     this.cursors = this.input.keyboard!.createCursorKeys();
     this.input.keyboard!.on('keydown-E', () => this.tryInteract());
     this.input.keyboard!.on('keydown-ESC', () => {
+      if (this.fridgePanel) { this.closeFridge(); return; }
       if (this.bedMenu) { this.closeBedMenu(); return; }
       this.exitToField();
     });
@@ -230,7 +236,7 @@ export class HomeInteriorScene extends Phaser.Scene {
   // ── 이동/충돌 (간이 AABB — 물리 미사용) ──────────────
 
   update(_t: number, delta: number): void {
-    if (this.bedMenu) { this.updateWalkTexture(false); return; }   // 메뉴 열림 중 이동 정지
+    if (this.bedMenu || this.fridgePanel) { this.updateWalkTexture(false); return; }   // 메뉴/패널 열림 중 이동 정지
     const spd = 0.18 * delta;
     let dx = 0, dy = 0;
     if (this.cursors.left.isDown) { dx = -spd; this.facing = 'left'; }
@@ -242,7 +248,7 @@ export class HomeInteriorScene extends Phaser.Scene {
     if (!this.collides(this.px + dx, this.py)) this.px += dx;
     if (!this.collides(this.px, this.py + dy)) this.py += dy;
 
-    this.playerSprite.setPosition(this.px, this.py).setDepth(20 + this.py * 0.001);
+    this.playerSprite.setPosition(this.px, this.py + PLAYER_FOOT_SINK).setDepth(20 + this.py * 0.001);
     this.playerShadow.setPosition(this.px, this.py);
     this.updateWalkTexture(dx !== 0 || dy !== 0);
     this.updateProximity();
@@ -298,6 +304,7 @@ export class HomeInteriorScene extends Phaser.Scene {
       const label = nearest.interact === 'save' ? '[E] 침대 — 저장하고 쉬기'
         : nearest.interact === 'door' ? '[E] 나가기'
         : nearest.interact === 'cook' ? '[E] 주방 (요리 준비중)'
+        : nearest.instanceId === 'fridge' ? '[E] 냉장고 열기'
         : '[E] 수납 (추후)';
       this.hintText.setText(label).setPosition(this.px, this.py - PLAYER_H - 6).setVisible(true);
     } else {
@@ -306,14 +313,30 @@ export class HomeInteriorScene extends Phaser.Scene {
   }
 
   private tryInteract(): void {
-    if (this.bedMenu || !this.nearObj) return;
+    if (this.bedMenu || this.fridgePanel || !this.nearObj) return;
     switch (this.nearObj.interact) {
       case 'save': this.openBedMenu(); break;
       case 'door': this.exitToField(); break;
       case 'cook': this.flash('주방 조리는 준비 중입니다 (요리는 U 창의 도마 — 추후 실내 연결)'); break;
-      case 'storage': this.flash('수납은 추후 구현됩니다'); break;
+      case 'storage':
+        if (this.nearObj.instanceId === 'fridge') this.openFridge();
+        else this.flash('수납은 추후 구현됩니다');
+        break;
       default: break;
     }
+  }
+
+  // ── 냉장고 (냉동고 8칸 + 냉장고 16칸) ─────────────────
+  private openFridge(): void {
+    if (this.fridgePanel) return;
+    const panel = new FridgePanel(this, GAME_WIDTH / 2 - 290, 60, () => this.closeFridge());
+    this.add.existing(panel);
+    this.fridgePanel = panel;
+  }
+
+  private closeFridge(): void {
+    this.fridgePanel?.destroy();
+    this.fridgePanel = undefined;
   }
 
   // ── 침대 — 저장하고 쉬기 / 그냥 쉬기 ─────────────────

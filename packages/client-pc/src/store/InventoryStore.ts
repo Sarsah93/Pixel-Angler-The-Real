@@ -160,8 +160,18 @@ export interface InvItem {
    */
   placeKey?: string;
 
-  /** 손질 부산물 종류 (subCategory '부산물') — boneHead=중골·머리(육수) / skin=껍질 */
-  byproductKind?: 'boneHead' | 'skin';
+  /**
+   * 손질 부산물 종류 (subCategory '부산물') — 어종명 접두 개별 아이템 (2026-07-29 세분화):
+   *  head=생선 머리 / spine=척추뼈 / rib=갈빗대뼈 (3종 = 매운탕/지리 재료, 요리 탭 사용) /
+   *  viscera=내장 (우클릭 '만들기' → 밑밥 전환, 신선도 급감 프로필) / skin=껍질(구이·육수) /
+   *  boneHead=구 중골·머리 통합 (레거시 세이브 호환)
+   */
+  byproductKind?: 'boneHead' | 'skin' | 'head' | 'spine' | 'rib' | 'viscera';
+  /**
+   * 신선도 감쇄 프로필 — 기본 그래프 대신 특수 전이를 쓰는 아이템 (viscera:
+   * 활어 10분 → 곧바로 나쁨 → 1시간 후 부패. 사용자 지정 2026-07-29)
+   */
+  condProfile?: 'viscera';
 }
 
 /** 상점 카탈로그/구매용 아이템 템플릿 (slot/qty 없이 정의) */
@@ -434,13 +444,33 @@ export const CONDITION_DURATION_MIN: Record<InvCondition, number> = {
   spoiled: Number.POSITIVE_INFINITY,
 };
 
+// ── 특수 신선도 프로필 (condProfile) — 내장: 활어 10분 → 곧바로 나쁨 → 1시간 후 부패 ──
+//  (프로필에 없는 상태는 기본 그래프 폴백 — 냉장고 냉동 보관 등 경로도 안전)
+const VISCERA_NEXT: Partial<Record<InvCondition, InvCondition | null>> = {
+  live: 'bad', bad: 'spoiled',
+};
+const VISCERA_DURATION_MIN: Partial<Record<InvCondition, number>> = {
+  live: 10, bad: 60,
+};
+
+/** 프로필 반영 다음 전이 상태 */
+function condNextOf(cond: InvCondition, profile?: InvItem['condProfile']): InvCondition | null {
+  if (profile === 'viscera' && cond in VISCERA_NEXT) return VISCERA_NEXT[cond] ?? null;
+  return CONDITION_NEXT[cond];
+}
+/** 프로필 반영 단계 유지 시간 (분) */
+function condDurationOf(cond: InvCondition, profile?: InvItem['condProfile']): number {
+  if (profile === 'viscera' && cond in VISCERA_DURATION_MIN) return VISCERA_DURATION_MIN[cond]!;
+  return CONDITION_DURATION_MIN[cond];
+}
+
 /** 현재 상태부터 종착까지의 전이 경로 (상세보기 '신선도 단계' 표기용) */
-export function conditionPath(cond: InvCondition): InvCondition[] {
+export function conditionPath(cond: InvCondition, profile?: InvItem['condProfile']): InvCondition[] {
   const path: InvCondition[] = [cond];
-  let cur: InvCondition | null = CONDITION_NEXT[cond];
+  let cur: InvCondition | null = condNextOf(cond, profile);
   while (cur) {
     path.push(cur);
-    cur = CONDITION_NEXT[cur];
+    cur = condNextOf(cur, profile);
   }
   return path;
 }
@@ -448,17 +478,18 @@ export function conditionPath(cond: InvCondition): InvCondition[] {
 /**
  * 신선도 지연 갱신 — 마지막 단계 시작 시각(conditionSinceMs)부터의 경과로
  * 상태 그래프를 진행시킨다 (상세보기/인벤 열람 시 호출되는 lazy 방식).
+ * condProfile 보유 아이템(내장)은 특수 전이(활어→나쁨→부패)를 따른다.
  */
-export function refreshCondition(item: Pick<InvItem, 'condition' | 'conditionSinceMs'>): void {
+export function refreshCondition(item: Pick<InvItem, 'condition' | 'conditionSinceMs' | 'condProfile'>): void {
   if (!item.condition || item.conditionSinceMs === undefined) return;
   let cond = item.condition;
   let since = item.conditionSinceMs;
   for (;;) {
-    const durMin = CONDITION_DURATION_MIN[cond];
+    const durMin = condDurationOf(cond, item.condProfile);
     if (!Number.isFinite(durMin)) break;
     const durMs = durMin * 60_000;
     if (Date.now() - since < durMs) break;
-    const next = CONDITION_NEXT[cond];
+    const next = condNextOf(cond, item.condProfile);
     if (!next) break;
     since += durMs;
     cond = next;
@@ -489,10 +520,12 @@ export function conditionPriceTier(cond: InvCondition | undefined): 'live' | 'fr
 }
 
 /** 다음 단계로 변질까지 남은 시간 (ms) — 종착(상함)이면 Infinity */
-export function conditionRemainMs(item: Pick<InvItem, 'condition' | 'conditionSinceMs'>): number {
+export function conditionRemainMs(item: Pick<InvItem, 'condition' | 'conditionSinceMs' | 'condProfile'>): number {
   if (!item.condition || item.conditionSinceMs === undefined) return Number.POSITIVE_INFINITY;
-  const durMin = CONDITION_DURATION_MIN[item.condition];
+  const durMin = condDurationOf(item.condition, item.condProfile);
   if (!Number.isFinite(durMin)) return Number.POSITIVE_INFINITY;
+  // 종착 직전 상태에서 다음 전이가 없으면(프로필 종착) Infinity
+  if (!condNextOf(item.condition, item.condProfile)) return Number.POSITIVE_INFINITY;
   return Math.max(0, durMin * 60_000 - (Date.now() - item.conditionSinceMs));
 }
 
@@ -611,6 +644,30 @@ class InventoryStoreManager {
   /** 쿨러(아이스박스) 보유 여부 — 어창 보관/밑밥 배합 기능 게이트 */
   hasCooler(): boolean {
     return !!this.find('inv_cooler');
+  }
+
+  /**
+   * 내장 부산물 → 소모성 밑밥 재료 전환 ('만들기' — 1개 소모. 추후 통발 미끼 겸용).
+   * 부패(spoiled) 내장은 전환 불가. 반환 = 만든 아이템 이름 (실패 null).
+   */
+  makeChumFromViscera(itemId: string): string | null {
+    const item = this.find(itemId);
+    if (!item || item.byproductKind !== 'viscera') return null;
+    refreshCondition(item);
+    if (item.condition === 'spoiled') return null;
+    // "감성돔 내장 120g" → "감성돔 내장 밑밥"
+    const speciesName = item.name.replace(/\s*내장.*$/, '');
+    const chumName = `${speciesName} 내장 밑밥`;
+    if (!this.removeQty(item.id, 1)) return null;
+    // 동일 어종 내장 밑밥은 스택 (id = 어종 기준 공유)
+    this.addItem({
+      id: `inv_chum_viscera_${item.speciesId ?? 'fish'}`,
+      name: chumName,
+      icon: '🫙', category: 'consumable', subCategory: '집어제/밑밥',
+      basePrice: 1500, equippable: false, chumKind: 'krill',
+      speciesId: item.speciesId,
+    }, 1);
+    return chumName;
   }
 
   // ── 세이브/로드 (GameState SaveData에 포함) ──────────

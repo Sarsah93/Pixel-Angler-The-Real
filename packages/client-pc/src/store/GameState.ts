@@ -36,6 +36,7 @@ import {
 import { EnvironmentStore } from './EnvironmentStore.js';
 import { CoolerStore, CoolerSaveState } from './CoolerStore.js';
 import { InventoryStore, InventorySaveState } from './InventoryStore.js';
+import { FridgeStore, FridgeSaveState } from './FridgeStore.js';
 
 // ─────────────────────────────────────────────
 // 기본 쿨러 상태
@@ -135,6 +136,8 @@ interface SaveData {
   coolerBox?: CoolerSaveState;
   /** 인벤토리 상태 (아이템/퀵슬롯/채비/편대/루어 모드) — 신선도는 lazy refresh로 실경과 반영 */
   inventoryStore?: InventorySaveState;
+  /** 집 냉장고 보관 (냉동고 8칸 + 냉장고 16칸) */
+  fridge?: FridgeSaveState;
   /** 1회성 안내 플래그 (chumGuideSeen 등 — 최초 표시 여부) */
   flags?: Record<string, boolean>;
   /** 맵별 오브젝트 월드 상태 — 초기 배치 − removed + moved + placed (HOMETOWN_HOME_SPEC) */
@@ -230,6 +233,8 @@ export class GameStateManager {
     CoolerStore.deserialize(saved.coolerBox);
     // 인벤토리 복원 — 구버전 세이브(필드 없음)는 시드로 리셋
     InventoryStore.deserialize(saved.inventoryStore);
+    // 집 냉장고 복원 (냉동고/냉장고 보관물)
+    FridgeStore.deserialize(saved.fridge);
   }
 
   // ─── Getter ───────────────────────────────
@@ -543,6 +548,7 @@ export class GameStateManager {
       skills: this._skills,
       coolerBox: CoolerStore.serialize(),
       inventoryStore: InventoryStore.serialize(),
+      fridge: FridgeStore.serialize(),
       flags: this._flags,
       worldObjects: this._worldObjects,
       version: SAVE_VERSION,
@@ -717,6 +723,7 @@ export class GameStateManager {
     this._dirty = false;
     CoolerStore.resetAll();
     InventoryStore.resetAll();
+    FridgeStore.resetAll();
     this._currentSpotId = null;
     this._isInitialized = true;
   }

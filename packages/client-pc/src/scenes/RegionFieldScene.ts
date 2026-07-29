@@ -285,6 +285,8 @@ export class RegionFieldScene extends Phaser.Scene {
 
     // 위치 태그 — 저장 정책(집 침대에서만)의 기준 (HOMETOWN_HOME_SPEC)
     GameState.locationTag = this.region === 'hometown' ? 'hometown' : 'region_field';
+    // 홈타운은 실데이터 지역이 아니므로 날씨를 방문마다 랜덤 추첨 (HUD/조명/날씨효과 공유)
+    if (this.region === 'hometown') ExternalDataStore.rerollHometownWeather();
 
     this.buildTerrainGrid();
     // 홈타운 오브젝트 유효 상태 산출 → 충돌 타일 선반영 (병합 충돌/걷기 판정 공유)
@@ -330,6 +332,8 @@ export class RegionFieldScene extends Phaser.Scene {
     // 1인칭 낚시 뷰(pause+launch)에서 복귀 시: 페이드인 + 캐스팅 상태 정리
     this.events.off('resume');
     this.events.on('resume', () => {
+      // 안전망 — 하위 씬(낚시/실내)에서 복귀 시 전환 플래그가 남아 이동이 막히는 일 방지
+      this.isTransitioning = false;
       this.cameras.main.fadeIn(300, 0, 10, 20);
       this.clearCastFlight();
       this.hud?.refreshQuickslots();
@@ -1303,8 +1307,8 @@ export class RegionFieldScene extends Phaser.Scene {
     const shoreKind: 'sand' | 'grass' | 'gravel' =
       standing === 'grass' ? 'grass' : nearSea ? 'sand' : 'gravel';
 
-    this.cameras.main.fadeOut(260, 2, 12, 24);
-    this.cameras.main.once('camerafadeoutcomplete', () => {
+    // keepTransitioning=false — pause+launch(씬 살아있음). 폴백 타이머로 멈춤 방지.
+    this.fadeOutThen(() => {
       // 착수점이 보일링/스쿨링 패치와 겹치면 입질 보너스/페널티를 1인칭에 전달
       const fieldEvent = this.fieldEvents?.getLandingBonus(landX, landY);
       if (fieldEvent) {
@@ -1315,7 +1319,7 @@ export class RegionFieldScene extends Phaser.Scene {
       this.scene.launch('FirstPersonFishingScene', {
         zMaxM, castDistanceM, reefSeed, region: this.region, shoreKind, fieldEvent,
       });
-    });
+    }, 260, false);
   }
 
   /**
@@ -1858,14 +1862,11 @@ export class RegionFieldScene extends Phaser.Scene {
 
   /** 집 문 → 실내 (pause + launch — 복귀는 stop + resume 규칙) */
   private enterHomeInterior(): void {
-    if (this.isTransitioning) return;
-    this.isTransitioning = true;
-    this.cameras.main.fadeOut(250, 0, 10, 20);
-    this.cameras.main.once('camerafadeoutcomplete', () => {
-      this.isTransitioning = false;
+    // keepTransitioning=false — 씬이 살아있는(paused) 전환이라 액션 직전 플래그 해제
+    this.fadeOutThen(() => {
       this.scene.pause('RegionFieldScene');
       this.scene.launch('HomeInteriorScene');
-    });
+    }, 250, false);
   }
 
   // ── 칸 단위 자유 배치 (설치 모드 — 인벤토리 '설치하기'로 진입) ──
@@ -2142,26 +2143,43 @@ export class RegionFieldScene extends Phaser.Scene {
       ? Phaser.Math.Clamp(r / this.rows, 0, 1)
       : Phaser.Math.Clamp(c / this.cols, 0, 1);
 
-    this.isTransitioning = true;
-    this.playerBody.setVelocity(0, 0);
-    this.cameras.main.fadeOut(240, 0, 10, 20);
-    this.cameras.main.once('camerafadeoutcomplete', () => {
+    this.fadeOutThen(() => {
       this.scene.restart({
         region: this.region,
         mapId: neighbor,
         entryEdge: OPPOSITE_EDGE[edge!],
         entryT: t,
       } as RegionFieldInit);
-    });
+    }, 240);
+  }
+
+  /**
+   * 씬 전환 공용 안전망 — 페이드아웃 후 action 실행.
+   * camerafadeoutcomplete 이벤트가 오지 않는 엣지 케이스(fadeIn 중 재fadeOut, 리셋 등)를
+   * 대비해 폴백 타이머를 함께 걸어 **전환 중 멈춤(black/frozen)을 원천 차단**한다.
+   * keepTransitioning=false: pause+launch처럼 씬이 살아있는 전환 — 액션 직전 플래그 해제
+   * (복귀 시 이동 차단이 남지 않게). scene.start/restart는 true(새 씬 init이 리셋).
+   */
+  private fadeOutThen(action: () => void, fadeMs = 260, keepTransitioning = true): void {
+    if (this.isTransitioning) return;
+    this.isTransitioning = true;
+    this.charging = false;
+    this.chargeBar?.clear();
+    this.playerBody?.setVelocity(0, 0);
+    let done = false;
+    const run = (): void => {
+      if (done) return;
+      done = true;
+      if (!keepTransitioning) this.isTransitioning = false;
+      action();
+    };
+    this.cameras.main.once('camerafadeoutcomplete', run);
+    this.cameras.main.fadeOut(fadeMs, 0, 10, 20);
+    this.time.delayedCall(fadeMs + 150, run);   // 폴백 — 이벤트 미발화 방어
   }
 
   private exitToWorldMap(): void {
-    if (this.isTransitioning) return;
-    this.isTransitioning = true;
-    this.cameras.main.fadeOut(280, 0, 10, 20);
-    this.cameras.main.once('camerafadeoutcomplete', () => {
-      this.scene.start('WorldMapScene');
-    });
+    this.fadeOutThen(() => this.scene.start('WorldMapScene'), 280);
   }
 
   // ═══════════════════════════════════════════════════
@@ -2196,7 +2214,10 @@ export class RegionFieldScene extends Phaser.Scene {
           }
         },
       },
-      { label: '전국 지도', action: () => this.exitToWorldMap() },
+      // 홈타운에서는 '전국 지도' 직행 없음 — 출조는 반드시 출조 버스(교통비 지불)로만.
+      ...(this.region === 'hometown'
+        ? []
+        : [{ label: '전국 지도', action: (): void => this.exitToWorldMap() }]),
       {
         label: '타이틀 화면',
         action: () => {
@@ -2338,11 +2359,6 @@ export class RegionFieldScene extends Phaser.Scene {
   }
 
   private gotoTitle(): void {
-    if (this.isTransitioning) return;
-    this.isTransitioning = true;
-    this.cameras.main.fadeOut(280, 0, 10, 20);
-    this.cameras.main.once('camerafadeoutcomplete', () => {
-      this.scene.start('MainMenuScene');
-    });
+    this.fadeOutThen(() => this.scene.start('MainMenuScene'), 280);
   }
 }

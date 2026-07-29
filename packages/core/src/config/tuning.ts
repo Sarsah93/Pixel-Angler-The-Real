@@ -297,6 +297,10 @@ export interface TuningConfig {
      * false(기본) = 막칼 폴백으로 진행 허용 (수율 0.85 + 등급 '상' 캡 페널티).
      */
     knifeHardLock: boolean;
+    /** 가이드 경로 루프 연출 시간 (ms) — 칼이 지나갈 길을 미리 보여주는 애니메이션 1회 주기 */
+    guideAnimMs: number;
+    /** 조작 성공 액션 연출 시간 (ms) — 칼질/탭/문지르기/박피 성공 애니메이션 (입력 차단) */
+    actionAnimMs: number;
   };
   // ── 데이터 테이블 (balance, 슬라이더 대상 아님) ──
   /** 어종 id → 피로 스태미나 base */
@@ -388,7 +392,7 @@ export const TUNING: TuningConfig = {
   save: { allowedTags: ['hometown_interior'] },
   hometown: { mapW: 48, mapH: 32, seaRatio: 0.30 },
   // 회뜨기 흐름 — 자동 방향 스냅 on(먹통 방지) · 회칼 하드락 off(막칼 폴백)
-  butchery: { autoOrient: true, flipAnimMs: 220, knifeHardLock: false },
+  butchery: { autoOrient: true, flipAnimMs: 220, knifeHardLock: false, guideAnimMs: 2000, actionAnimMs: 2000 },
   // 데이터 테이블 (대표값 — 나머지 어종 동일 형식으로 채움)
   fatigueStaminaBase: {
     yellowtail: 1.6, amberjack: 1.7, greater_amberjack: 1.9, spanish_mackerel: 1.0,
@@ -419,6 +423,8 @@ export interface TuningParamMeta {
 }
 export const TUNING_META: TuningParamMeta[] = [
   { path: 'butchery.flipAnimMs', min: 80, max: 500, step: 20, category: 'feel', label: '손질 뒤집기 연출(ms)' },
+  { path: 'butchery.guideAnimMs', min: 800, max: 4000, step: 100, category: 'feel', label: '손질 가이드 루프(ms)' },
+  { path: 'butchery.actionAnimMs', min: 500, max: 4000, step: 100, category: 'feel', label: '손질 액션 연출(ms)' },
   { path: 'retrieve.anchorYRatio', min: 0.65, max: 0.75, step: 0.01, category: 'feel', label: '회수 도달 Y비' },
   { path: 'retrieve.growFactor', min: 1.8, max: 2.4, step: 0.05, category: 'feel', label: '회수 최대 배율' },
   { path: 'retrieve.mainLineWidth', min: 0.8, max: 2.5, step: 0.1, category: 'feel', label: '원줄 굵기' },

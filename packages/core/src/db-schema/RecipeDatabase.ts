@@ -180,15 +180,16 @@ export const RECIPE_DATABASE: CookingRecipe[] = [
     },
   },
 
-  // ────────── 탕/지리 (부산물 활용 — 회뜨기 부산물 소비 훅. 2026-07-28 P1-1) ──────────
-  // itemId 'byproduct_boneHead'는 손질 부산물(subCategory '부산물', byproductKind 'boneHead')을
-  // 가리킨다. 조리 플로우가 부산물 소비를 지원하면 실사용(현재는 데이터 훅).
+  // ────────── 탕/지리 (부산물 활용 — 회뜨기 부산물 소비 훅. 2026-07-29 세분화) ──────────
+  // itemId 'byproduct_soup_bones'는 손질 부산물(subCategory '부산물') 중 매운탕 재료 3종 —
+  // byproductKind 'head'(생선 머리) | 'spine'(척추뼈) | 'rib'(갈빗대뼈) — 을 통칭한다
+  // (구 'boneHead' 통합 아이템도 호환 매칭). 조리 플로우가 부산물 소비를 지원하면 실사용.
   {
     id: 'stew_spicy_bone',
     nameKo: '생선 매운탕',
-    description: '회 뜨고 남은 중골·머리로 얼큰하게 끓인 매운탕. 버릴 게 없다.',
+    description: '회 뜨고 남은 생선 머리·척추뼈·갈빗대뼈로 얼큰하게 끓인 매운탕. 버릴 게 없다.',
     requiredIngredients: [
-      { itemId: 'byproduct_boneHead', nameKo: '중골·머리', requiredAmountG: 200, isFishSpecies: false },
+      { itemId: 'byproduct_soup_bones', nameKo: '생선 머리·뼈 (매운탕 재료)', requiredAmountG: 200, isFishSpecies: false },
     ],
     processingSteps: [],
     cookingMethod: 'soup',
@@ -200,9 +201,9 @@ export const RECIPE_DATABASE: CookingRecipe[] = [
   {
     id: 'stew_clear_bone',
     nameKo: '생선 지리 (맑은탕)',
-    description: '중골·머리를 맑게 우려낸 담백한 지리. 해장에 좋다.',
+    description: '생선 머리·뼈를 맑게 우려낸 담백한 지리. 해장에 좋다.',
     requiredIngredients: [
-      { itemId: 'byproduct_boneHead', nameKo: '중골·머리', requiredAmountG: 200, isFishSpecies: false },
+      { itemId: 'byproduct_soup_bones', nameKo: '생선 머리·뼈 (매운탕 재료)', requiredAmountG: 200, isFishSpecies: false },
     ],
     processingSteps: [],
     cookingMethod: 'soup',

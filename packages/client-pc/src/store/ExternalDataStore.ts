@@ -168,6 +168,14 @@ class ExternalDataStoreManager {
   private _marine = new Map<string, MarineWeatherInfo>();
   /** 지역별 기상청 현재 기상 (지역 ID → 기상) */
   private _kma = new Map<string, KmaWeatherInfo>();
+  /** 홈타운 랜덤 날씨 캐시 — 실데이터가 없는 홈타운은 방문마다 무작위(방문 중 안정) */
+  private _hometownWeather?: WeatherKind;
+
+  /** 홈타운 날씨 재추첨 — RegionFieldScene(hometown) 진입 시 1회 호출 */
+  rerollHometownWeather(): void {
+    const opts: WeatherKind[] = ['clear', 'partly', 'cloudy', 'rain', 'shower', 'fog'];
+    this._hometownWeather = opts[Math.floor(Math.random() * opts.length)];
+  }
 
   get snapshot(): ExternalDataSnapshot | null {
     return this._snapshot;
@@ -256,6 +264,11 @@ class ExternalDataStoreManager {
    * 강수 중이 아니고 시정 1km 미만이면 안개로 본다.
    */
   getWeatherKind(regionId: string): WeatherKind {
+    // 홈타운은 실데이터가 없으므로 랜덤(방문 중 안정 — rerollHometownWeather로 갱신)
+    if (regionId === 'hometown') {
+      if (!this._hometownWeather) this.rerollHometownWeather();
+      return this._hometownWeather!;
+    }
     const kma = this._kma.get(regionId);
     const kind = kma?.kind ?? 'clear';
     // 비/눈이 오는 중이면 안개보다 강수 표시가 우선

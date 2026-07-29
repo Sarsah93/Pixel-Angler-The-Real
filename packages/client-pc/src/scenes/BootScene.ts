@@ -8,6 +8,7 @@
 
 import Phaser from 'phaser';
 import { GUIDES } from '../data/GuideContent.js';
+import { SASHIMI_GUIDE_TEXTURE, registerSashimiGuideFrames } from '../data/SashimiGuideFrames.js';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -20,6 +21,8 @@ export class BootScene extends Phaser.Scene {
   }
 
   create(): void {
+    // 삼면뜨기 픽셀 가이드 시트 → 47컷 그리드 프레임 등록 (지오메트리 = core 단일 소스)
+    registerSashimiGuideFrames(this);
     this.scene.start('MainMenuScene');
   }
 
@@ -113,6 +116,10 @@ export class BootScene extends Phaser.Scene {
         this.load.image(pg.textureKey, `guide/${pg.textureKey}.png`);
       }
     }
+
+    // ─── 삼면뜨기 픽셀 가이드 시트 (선행 9컷 + 본편 38컷, 2024×2154 단일 시트) ───
+    // 개별 컷은 자르지 않고 create()에서 그리드 프레임으로 등록 (SashimiGuideFrames)
+    this.load.image(SASHIMI_GUIDE_TEXTURE, 'guide/sashimi_pixel_guide.png');
 
     // ─── 음식/생선 아이템 이미지 에셋 ───
     // food/: 아이템 아이콘 (인벤토리/상점 소켓용, 64x64 도트)

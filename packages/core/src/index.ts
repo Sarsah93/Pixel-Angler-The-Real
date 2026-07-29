@@ -119,8 +119,17 @@ export type {
   ButcheryPrimitive, ButcheryStage, CutEvalResult, SashimiGrade, ButcheryResult,
   FilletShape, KnifeSpec, FilletYieldInput, FilletYieldResult, ButcheryFamily,
   ButcheryByproducts,
+  ButcheryGuideProfile, ButcheryProductId, ButcheryProgress, ButcheryYieldPopup, ButcheryStackable,
 } from './types/Butchery.js';
-export { ORIENTATION_LABEL } from './types/Butchery.js';
+export { ORIENTATION_LABEL, canStack } from './types/Butchery.js';
+// 삼면뜨기 픽셀 가이드 — 선행 9컷 + 본편 38컷 시트 바인딩 (SASHIMI_PIXEL_GUIDE_SPEC)
+export type { ButcheryGuideCut, ButcheryByproductRow } from './db-schema/ButcheryGuideCuts.js';
+export {
+  SASHIMI_GUIDE_SHEET, SASHIMI_GUIDE_CUTS, LIVE_STAGE_GUIDE, GUIDE_CUT_DONE_KEY,
+  SASHIMI_GUIDE_GROUP, SEABREAM_GUIDE_PROFILE, BUTCHERY_BYPRODUCT_TABLE,
+  guideCutKey, guideCutByKey, guideCutGridIndex, guideCutFrameRect, allGuideCutKeys,
+  getGuideCuts, resolveLiveGuideCut,
+} from './db-schema/ButcheryGuideCuts.js';
 export {
   BUTCHERY_PROFILES, DEFAULT_BUTCHERY_PROFILE, getButcheryProfile,
   getButcheryFamily, BUTCHERY_FAMILY_NOTICE,
@@ -130,6 +139,7 @@ export type { SashimiGradeInput } from './simulation/ButcheryProcess.js';
 export {
   ButcheryProcess, evaluateCut, computeSashimiGrade, buildButcheryStages, computeFilletYield,
 } from './simulation/ButcheryProcess.js';
+export type { ButcheryStageOptions } from './simulation/ButcheryProcess.js';
 
 // 파이트 피로 4페이즈 (어종·사이즈별 스태미나 풀 + 회복/서지 — thrust 게이팅)
 export type { FatiguePhase, FatigueInput, FatigueTick } from './simulation/FishFatigueModel.js';

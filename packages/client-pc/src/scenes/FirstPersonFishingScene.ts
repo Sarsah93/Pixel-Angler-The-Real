@@ -106,6 +106,11 @@ const WATERLINE = 268;
 const PX_PER_M_X = 24;
 /** 뒷줄견제(H) 시 속채비(목줄·미끼)가 조류 방향(하류)으로 펴지는 최대 거리 계수 (m per m/s, 정렬도 가중) */
 const SUBRIG_EXTEND_K = 7;
+/** 홈타운(집 앞 바다) 어획 규제 어종 — 볼락류 5종 + 보리멸 (초보 구역) */
+const HOMETOWN_SPECIES = [
+  'dark_banded_rockfish', 'black_rockfish', 'golden_rockfish',
+  'blue_rockfish', 'red_snapper_rockfish', 'northern_whiting',
+];
 /** 정면뷰 뷰 중심이 찌를 따라가지 않고 캐스터를 기준으로 유지할 화면 여백(px) — 이보다 밖으로 나가면 그만큼만 팬 */
 const VIEW_EDGE_MARGIN = 220;
 
@@ -390,14 +395,16 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     // 면사매듭 제거(전유동) 시 Z_limit 무한 — 바닥까지 무한 침강
     this.zLimitM = InventoryStore.hasFloatStop ? InventoryStore.rigDepthLimitM : Number.POSITIVE_INFINITY;
 
-    // 물때 기반 조류 속력
+    // 물때 기반 조류 속력 — 홈타운(집 앞 바다)은 실물때 데이터가 없으므로 물살을 랜덤화
     const tide = calculateTideInfo();
-    this.tideBase = 0.12 + tide.currentStrength * 0.5;
+    const isHometown = this.cfg.region === 'hometown';
+    const curStrength = isHometown ? Math.random() : tide.currentStrength;   // 0~1 랜덤
+    this.tideBase = 0.12 + curStrength * 0.5;
 
     // 조류 엔진 — 물때 세기/밀물썰물/횡류 방향, 존 경계는 캐스팅 거리 비례
     this.tidal = new TidalCurrentEngine({
-      tideStrength: 0.5 + tide.currentStrength,
-      isFloodTide: tide.nextTideType === 'high',   // 다음이 만조 = 지금 밀물(상승)
+      tideStrength: 0.5 + curStrength,
+      isFloodTide: isHometown ? Math.random() < 0.5 : tide.nextTideType === 'high',
       crossSpeed: this.tideBase * (Math.random() < 0.5 ? 1 : -1),
       maxCastM: Math.max(12, this.cfg.castDistanceM * 1.15),
     });
@@ -2054,6 +2061,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       // 루어 총중량 → 크기 등급(tier) 가중 (큰 지그일수록 대물, 소형은 항상 가능)
       ctx.lureWeightG = InventoryStore.getLureRigWeightG();
     }
+    // 홈타운(집 앞 바다) 어획 규제 — 볼락류 + 보리멸만 (초보 구역. 루어 바인딩보다 우선)
+    if (this.cfg.region === 'hometown') ctx.speciesFilter = HOMETOWN_SPECIES;
     // 포말지대(농어 야간 예외) — 발앞 반탄류(counter) 존이 백파·포말대에 해당
     ctx.inWashZone = this.lastTidal?.zone === 'counter';
     // 필드 이벤트(보일링/스쿨링) 착수 보너스 — 어종 가중 병합 + tier 상향

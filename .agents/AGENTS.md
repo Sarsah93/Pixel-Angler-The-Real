@@ -353,14 +353,43 @@ npx pnpm --filter @tra/client-pc run dev
 
 ---
 
-## 9. 현재 빌드 상태 (2026-07-28 기준)
+## 9. 현재 빌드 상태 (2026-07-29 기준)
 
 ```
-npx pnpm run build → ✅ 4/4 패키지 성공 (2026-07-28)
-npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류 (2026-07-28)
+npx pnpm run build → ✅ 4/4 패키지 성공 (2026-07-29)
+npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류 (2026-07-29)
 ```
 
-**최근 주요 변경 (2026-07-28 45차) — 회뜨기 P1 완결성 (부산물·필렛 아이콘·스킬 루프·연속 손질) + P0 정리** (회뜨기 백로그 P1 — Playwright 실마우스 완주+산출물 검증, 빌드 4/4·typecheck 0):
+**최근 주요 변경 (2026-07-29 48차) — 손질 가이드/액션 애니메이션 + 부산물 세분화(어종명 접두·내장 밑밥 전환)** (사용자 2건 지시 — 수치검증(부산물 분리 900g→270g 정합), 빌드 4/4·typecheck 0):
+- **[가이드/액션 애니 — ButcheryPanel]** 전용 레이어 2장(guideAnimG/actionAnimG — fishG·guideG 위, uiC 아래) + 폴리라인 호길이 보간 헬퍼(`pathPointAt`/`strokePathPartial`) + **회칼 글리프**(`drawKnifeGlyph` — 블레이드+손잡이, 진행각 회전):
+  - **가이드 루프**(2s 반복, `TUNING.butchery.guideAnimMs`): 칼이 지나갈 길 프리뷰 — guided_cut = 경로 하이라이트+이동 칼 / tap = 맥동 링 / drag_fill·scoop = 지그재그 문지르기 궤적 / peel = 좌진행 칼. canAct(방향 일치)·비잠금 시에만, doRefresh마다 재시작.
+  - **액션 연출**(2s, `actionAnimMs`, **입력 차단** actionAnim 가드 — pointerdown/move/onKey 편입): 성공 시 프리미티브별 — 칼질 = 흰 절개선+여열 글로우+스파크 스윕 / 시메 = 3중 확산 링 / 비늘·내장 = 3연속 스와이프+부스러기 / 박피 = 껍질 스트립 벗겨짐 / 세척 = 물방울+세척광. **플립(방향 전환)이 이어지는 성공은 스킵**(willFlip 캡처 — 플립 연출이 피드백, 좌표 어긋남 방지). 완료 시 가이드 루프 재시작. 훅 5곳(컷/탭/문지르기 완료/박피/세척×2). destroy/playFlipAnim에서 정리. ⚠ 2s는 초기값 — 실검증 후 F8 슬라이더(guideAnimMs·actionAnimMs META 등록)로 조율 예정(사용자 지침).
+- **[부산물 세분화 — core]** `ButcheryByproducts` 재구성: 구 boneHeadG(22%) → **headG 12% + spineG 6% + ribG 4%** + **visceraG 8%** 신설(+skinPieces 유지). computeFilletYield 소비·RecipeDatabase 매운탕/지리 훅을 `byproduct_soup_bones`(= byproductKind head|spine|rib 통칭, 구 boneHead 호환)로 갱신.
+- **[부산물 지급 — showResult]** **어종명 접두 개별 아이템 5종**: `감성돔 생선 머리 108g`(head)/`척추뼈 54g`(spine)/`갈빗대뼈 36g`(rib — 3종 = 매운탕/지리 재료, category food라 요리 탭 임베드 인벤에 노출)/`내장 72g`(viscera)/`껍질`(skin). **필렛 포함 전 산출물 = 활어 시작·새 시계**(사용자 지정 "처음은 활어로" — 구 원본 신선도 승계 폐기). byproductKind 확장('head'|'spine'|'rib'|'viscera' 추가, 구 'boneHead' 레거시 호환). 결과 오버레이 부산물 행 갱신.
+- **[내장 특수 신선도 — InventoryStore]** `InvItem.condProfile: 'viscera'` 신설 — **활어(10분) → 곧바로 나쁨 → 1시간 후 부패**(VISCERA_NEXT/DURATION 오버레이, 프로필에 없는 상태는 기본 그래프 폴백 — 냉장고 냉동 경로 안전). refreshCondition/conditionRemainMs/conditionPath가 프로필 소비(Pick 확장 — 시그니처 호환).
+- **[내장 '만들기' — 밑밥 전환]** 인벤 우클릭 메뉴에 **'만들기'**(viscera 전용, 녹색): `InventoryStore.makeChumFromViscera` — 1개 소모 → `{어종} 내장 밑밥`(consumable·집어제/밑밥·**chumKind 'krill'** = U 밑밥 탭 배합 재료로 즉시 사용 가능, 어종별 id 스택). **부패 내장은 전환 불가**. 통발 미끼 활용은 추후(안내 문구 표기).
+- 잔여(차기): 애니 2s 실플레이 조율(다회 칼집 스테이지 체감 속도), 통발 미끼로 내장 밑밥 소비 배선, 매운탕 조리 플로우의 byproduct_soup_bones 실소비, 내장 밑밥 전용 침강/동조 특성(현재 krill 프로필 공유).
+
+**이전 변경 (2026-07-29 47차) — 삼면뜨기 픽셀 가이드 47컷 인게임 적용 (시트 프레임·스테이지 바인딩·가이드 슬롯·시트 뷰어·선행 스테이지)** (SASHIMI_PIXEL_GUIDE_SPEC — 테이블 정합성 수치검증 + 프레임 크롭 시각검증, 빌드 4/4·typecheck 0):
+- **[에셋]** 루트 `sashimi_pixel_guide.svg`(2024×2154, 감성돔 47컷 = 선행 9 + 본편 38)를 **헤드리스 크롬으로 1:1 PNG 렌더** → `public/guide/sashimi_pixel_guide.png`. **개별 47장으로 굽지 않고 시트 1장을 단일 텍스처로 로드 후 그리드 프레임 등록** (`data/SashimiGuideFrames.ts` — 프레임 키 `sg_pre1~9`/`sg_p01~38`, BootScene create에서 1회). 그리드 지오메트리는 core `SASHIMI_GUIDE_SHEET`가 단일 소스(패널 316×186 · x=24+col·332 · y=112+row·254 · 6열). 스펙의 "고유 28컷+반복 매핑" 최적화는 개별 파일 전제라 불필요(시트 프레임 = 중복 비용 0, pre9=p01 별칭 자동 해소).
+- **[core 신규] `db-schema/ButcheryGuideCuts.ts`** (index.ts export): ① **캐노니컬 47행 테이블** `SASHIMI_GUIDE_CUTS`(pre/panel 번호·스펙 stageId·pass·캡션·orientation·startEdge — §1-A/§2 대조표 그대로) + `getGuideCuts`/`guideCutByKey`/`guideCutFrameRect`/`allGuideCutKeys` ② **LIVE 브리지** `LIVE_STAGE_GUIDE`: 기존 검증된 FSM id(scale_base→pre1 · head_flip→pre4 · gut_open→pre6 · tail_grip→p34(박피① 손잡이) · fillet_0_score→[p02,p03,p04] 스트로크 회차 전환 · fillet_0_sever→[p05,p07] · fillet_1_*→[p09~p13] · peel→[p35,p36,p37] 당김 회차) + `resolveLiveGuideCut(liveStageId, passIndex)`. **47-스테이지 풀 트리 재작성 없이 그림만 바인딩** — 스펙 §0 "로직 신규 정의가 아니라 바인딩 규격" 준수, 풀 트리는 차기에 1:1 수렴 ③ **`SASHIMI_GUIDE_GROUP`** — 돔류 7종(감성돔·참돔·참돔야간·벵에돔·긴꼬리·돌돔·강담돔) → 'seabream' 시트 공유(등재 어종만 가이드 활성. 광어 오면뜨기·장어·두족류·복어 미등재 = §5-2) ④ `SEABREAM_GUIDE_PROFILE`(§5-1 파라메트릭 9필드 포함) ⑤ **부산물 테이블** `BUTCHERY_BYPRODUCT_TABLE`(§6-C 16행 — cutKey·productId·remountable·nextStageId).
+- **[core 타입] `types/Butchery.ts`**: `ButcheryGuideProfile`(depthRatio/headRatio/snout/dorsalSpan/ventPos/scaleType 등 — 어종 시트 자동 재생성 파라미터) + **§6 스키마** `ButcheryProductId`(13종)/`ButcheryProgress`(stageId·panel·side·flags)/`ButcheryYieldPopup`/`canStack()`(progress 보유 = 항상 비스택, 부산물만 어종+등급 스택 — §6-F 일반 인벤토리 결정).
+- **[core FSM] `buildButcheryStages(profile, opts?)`**: ① **`finectomy` 스테이지 신설**(선-5 지느러미 제거 — head_flip 뒤·gut_open 앞, guided_cut ×2. 감성돔 17→18 스테이지) ② **`skipDescale` 분기**(§3-2 — 비늘치기 선-1·2 스킵 가능. 스킵 개체 껍질 부산물 등급 하락은 데이터 훅만, 클라 선택 UI는 차기). ButcheryProcess 생성자 3번째 opts 관통(비파괴).
+- **[client] ButcheryPanel**: ① **가이드 슬롯** — 사이드바 하단(700, H-238)에 현재 스테이지의 컷 일러스트(190×112 프레임)+번호 칩(`가이드 선-3`/`12 / 38`)+캡션. 다회 스테이지는 **스트로크/당김 회차로 컷 자동 전환**(fillet score ①→②→③, peel ②→③→④), 완료 시 p38. 시메/방혈은 범위 밖(슬롯 숨김) ② **[가이드 시트 (47컷)] 버튼 → 전체 시트 뷰어** — 화면고정 오버레이(딤+마스크 scrollFactor 0 — 33차 교훈), 네이티브 스케일 **드래그 팬 + 휠 스크롤**, ESC/X 닫기(열림 중 손질 입력 차단) ③ **dev 어서션** — LIVE_STAGE_GUIDE 전 키의 컷 행/프레임 등록 검사(문제 시 console.warn).
+- **[검증]** 테이블: 47행·중복 0·프레임 rect 시트 경계 내 0 OOB·allKeys↔행 1:1·브리지 전부 해소·감성돔 18 스테이지 중 시메/방혈 외 **미매핑 0**·skipDescale 15 스테이지 / **프레임 크롭 시각검증**(pre5=지느러미 제거·p01=손질 몸통·p36=박피③ — 3점 크롭이 기대 컷과 픽셀 정합) / dev 서버 시트+모듈 서빙 200.
+- **[돔류 팔레트]** 참돔 등 변형 시트는 **SVG 팔레트 스왑 → 재렌더**로 생성 예정(§5-1 — 작업량 최소화. 스왑 전까지 돔류 전체가 감성돔 시트 공유 = 사용자 지침 "원본 차용 가능" 반영).
+- 잔여(차기): **47-스테이지 풀 트리**(fil_spine/rib/pin/loin/lift 개별 스테이지 — 브리지 1:1 수렴), **부산물 팝업 모달(보관/버리기) + 도마 재장착**(§6-B/D — ButcheryProgress·resumeStagesFrom 배선, 스키마는 완비), 인벤 progress 배지, 참돔 팔레트 시트, skipDescale 선택 UI(요리 의도 분기), 도감 시트 해금(첫 삼면뜨기 어종), 무린어(갈치·장어) 선-1·2 자동 스킵.
+
+**이전 변경 (2026-07-28 46차) — 홈타운 버그 수정 6건 (씬 전환 멈춤·출조 게이팅·집 냉장고·어획 규제·랜덤 날씨/물살·실내 접지)** (사용자 피드백 6건 — 빌드 4/4·typecheck 0·dev 서버 부팅+모듈 트랜스폼 확인):
+- **[씬 전환 안전망]** (`RegionFieldScene.fadeOutThen` 신규): `camerafadeoutcomplete` 이벤트가 안 오는 엣지 케이스(fadeIn 중 재fadeOut 등)로 전환이 멈추던 문제 → **폴백 타이머(fadeMs+150)** 로 액션 보장 실행. exitToWorldMap/gotoTitle/checkEdgeTransition(scene.start·restart)·enterHomeInterior/enterFirstPersonFishing(pause+launch, keepTransitioning=false)를 전부 이 헬퍼로 일원화. **resume 핸들러에 `isTransitioning=false` 안전망**(하위 씬 복귀 시 이동 잠김 잔존 방지).
+- **[출조 게이팅]** 홈타운 ESC 일시정지 메뉴에서 **'전국 지도' 항목 제거** — 홈타운 이탈은 **출조 버스 [E]로만**(→ 전국 지도 → 지역 선택 시 교통비 차감 = 비용 지불). 타 지역은 '전국 지도' 유지.
+- **[집 냉장고]** (`store/FridgeStore.ts` + `ui/FridgePanel.ts` 신규): 냉동고 8칸(4×2) + 냉장고 16칸(4×4). 보관 시 냉동('frozen')/냉장('chilled') 전환·신선도 시계 정지, 꺼낼 때 재시작. **GameState SaveData.fridge 영속**. HomeInteriorScene 냉장고 [E] → 패널(구획 토글·인벤 음식 클릭 보관/보관물 클릭 꺼내기). ⚠ Phaser Container 예약 프로퍼티 `body` 충돌 → 필드명 `gridC`.
+- **[어획 규제]** (`FirstPersonFishingScene.buildSpawnCtx`): region==='hometown'이면 `ctx.speciesFilter = HOMETOWN_SPECIES`(볼락류 5종 + 보리멸) — 루어 바인딩보다 우선. spawnFish 후보 0 시 전체 폴백이라 크래시 없음.
+- **[랜덤 날씨/물살]** 홈타운 실데이터 없음 → 날씨 `ExternalDataStore.rerollHometownWeather()`(방문마다 추첨, HUD/조명/날씨효과 공유) / 물살 FP create `Math.random()`(홈타운 한정 curStrength·밀물썰물 랜덤).
+- **[실내 접지]** (`HomeInteriorScene`): 캐릭터 붕뜸 → `PLAYER_FOOT_SINK=6`(스프라이트만 아래로, 그림자는 발밑 — RegionFieldScene 동일 패턴). 스폰·update 양쪽 적용.
+- 잔여(차기): 냉장고 드래그 이송(현재 클릭)·신선도 보존 곡선(현재 정지)·가구 텍스처 실사화, 씬 전환 멈춤 근본원인(카메라 페이드 이벤트) 실플레이 재확인.
+
+**이전 변경 (2026-07-28 45차) — 회뜨기 P1 완결성 (부산물·필렛 아이콘·스킬 루프·연속 손질) + P0 정리** (회뜨기 백로그 P1 — Playwright 실마우스 완주+산출물 검증, 빌드 4/4·typecheck 0):
 - **[P0 확인]** SASHIMI_BOARD_DND_SPEC Phase A/B는 41·42차에 전부 구현됨(DnD family 게이트·FishTemplateRenderer 공유·교환/빼기·round/flat 프리뷰·CookScene 일원화). 잔여 = **스테일 주석 3곳** 정리(UtilizationPanel 헤더·섹션, CookScene 헤더 — 실동작과 정합). **1~5 방향키 ↔ 퀵슬롯 겹침**: 실경로(U창=openPopup→popupStack→uiBlocked) 게이팅 검증 — 손질 중 Digit3 → 퀵슬롯 0→0 불변·방향만 BELLY_UP(43차 "무해" 노트는 popupStack 미경유 테스트 아티팩트였음. 프로덕션 누수 없음).
 - **[P1-1 부산물]** (`computeFilletYield` + `FilletYieldResult.byproducts` 신설): 손질 완료 시 필렛 외 **중골·머리(육수용, 무게 22% 비례가)** + **껍질(박피 어종 skinToughness≥0.4, 필렛 수만큼)** 지급. **원본 신선도 승계**(condition/conditionSinceMs 동일 시점부터 감쇄). RecipeDatabase **매운탕/지리**(itemId 'byproduct_boneHead' — 부산물 소비 데이터 훅, 조리 플로우 연동은 후속). `InvItem.byproductKind`('boneHead'|'skin'). 검증: 방어 3kg → 중골·머리 660g(1,980원·live) + 껍질 x2.
 - **[P1-2 필렛 아이콘]** (`ButcheryPanel.filletIconKey`/`bakeFilletIcon`): filletShape 3종 파라메트릭 아이콘(loin_thick 두꺼운 붉은살+혈합육 라인 / flat_wide 넓은 흰살 / small 소형) × **어종 색 22% 블렌드 틴트** + 껍질 엣지. 필렛 아이템명 규격화 `방어 필렛 (특) 739g`(등급+장당 무게) + weightG 저장(상세 패널 어종 정보 스레딩). 텍스처 키 `fillet_<shape>_<colorHex>`(색 공유 어종 dedup). 검증: 필렛 tex=fillet_loin_thick_3e5a74.
