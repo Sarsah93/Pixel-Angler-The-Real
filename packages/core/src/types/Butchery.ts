@@ -153,6 +153,8 @@ export interface ButcheryByproducts {
   spineG: number;
   /** 갈빗대뼈 질량 (g) — 매운탕/육수 */
   ribG: number;
+  /** 가시뼈(핀본) 질량 (g) — 필렛에서 발라낸 잔가시. 육수/폐기 */
+  pinBoneG: number;
   /** 내장 질량 (g) — 밑밥 전환용 (신선도 급감 프로필: 활어 10분 → 나쁨 1시간 → 부패) */
   visceraG: number;
   /** 껍질 장수 (박피 산출 — 구이/육수용). 껍질 없는 어종은 0 */

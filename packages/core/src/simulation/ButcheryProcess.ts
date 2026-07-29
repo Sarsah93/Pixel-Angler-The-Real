@@ -173,17 +173,18 @@ export function computeFilletYield(input: FilletYieldInput): FilletYieldResult {
   const gradeMult = grade === '특' ? 1.5 : grade === '상' ? 1.25 : grade === '중' ? 1.0 : 0.7;
 
   // 부산물 — 살(yieldMass)을 뺀 나머지를 부위별로 분리 지급 (어종 무관 근사 비율):
-  //  머리 12% + 척추뼈(중골) 6% + 갈빗대뼈 4% (= 구 boneHead 22%) + 내장 8%.
+  //  머리 12% + 척추뼈(중골) 6% + 갈빗대뼈 4% (= 구 boneHead 22%) + 가시뼈(핀본) 2% + 내장 8%.
   //  껍질은 박피가 있는 어종만 필렛 수만큼.
   const headG = Math.round(weightGram * 0.12);
   const spineG = Math.round(weightGram * 0.06);
   const ribG = Math.round(weightGram * 0.04);
+  const pinBoneG = Math.round(weightGram * 0.02);
   const visceraG = Math.round(weightGram * 0.08);
   const skinPieces = profile.skinToughness >= 0.4 ? filletCount : 0;
 
   return {
     yieldMassG, filletCount, sliceCount, grade, gradeMult, undersizedForFillet,
-    byproducts: { headG, spineG, ribG, visceraG, skinPieces },
+    byproducts: { headG, spineG, ribG, pinBoneG, visceraG, skinPieces },
   };
 }
 

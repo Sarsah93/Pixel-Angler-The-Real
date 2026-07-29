@@ -125,6 +125,15 @@ export class BootScene extends Phaser.Scene {
     // food/: 아이템 아이콘 (인벤토리/상점 소켓용, 64x64 도트)
     // fish/: 어획 연출용 실사 픽셀화 생선 이미지 (낚시 성공 팝업/상세보기)
     this.load.image('food_assorted_sashimi', 'food/assorted_sashimi.png');
+    // trimmings/: 손질 부산물 아이콘 (회뜨기 산출 — 머리/중골/내장/껍질/필렛).
+    // 머리는 감성돔 기준 원본 → 타 돔류는 런타임 색 변형(참돔 붉게·돌돔 아가미 줄무늬 등, ButcheryPanel.trimHeadKey).
+    this.load.image('trim_head', 'trimmings/black_sea_bream_head.png');
+    this.load.image('trim_spine', 'trimmings/rests_main_spine.png');
+    this.load.image('trim_rib', 'trimmings/rib_bone.png');
+    this.load.image('trim_pin', 'trimmings/pin_bone.png');
+    this.load.image('trim_guts', 'trimmings/pile_of_fish_guts.png');
+    this.load.image('trim_skin', 'trimmings/fish_skin.png');
+    this.load.image('trim_fillet', 'trimmings/pure_pilet.png');
     this.load.image('fish_black_sea_bream', 'fish/black_sea_bream.png');
     this.load.image('fish_halibut', 'fish/halibut.png');
     this.load.image('fish_largescale_blackfish', 'fish/large_scale_blackfish.png');   // 벵에돔

@@ -164,19 +164,32 @@ export function getButcheryProfile(speciesId: string): ButcheryProfile {
 }
 
 /**
+ * 손질 미니게임이 **현재 구현된** 어종 (2026-07-30 사용자 지시 — 우선 이 그룹만 활성):
+ *  - 돔류(bream): 감성돔·참돔(주/야)·벵에돔·긴꼬리벵에돔·돌돔·강담돔
+ *  - 방어류: 방어·부시리·잿방어 (손질 절차 동일 — 픽셀 가이드는 잿방어 형태 기준)
+ * 그 외 finfish(넙치류·농어·고등어 등)·두족류·복어는 미구현(banned) — 추후 별도 구현.
+ */
+export const BUTCHERY_IMPLEMENTED_SPECIES: ReadonlySet<string> = new Set<string>([
+  // 돔류
+  'black_seabream', 'red_seabream', 'night_seabream',
+  'largescale_blackfish', 'longtail_blackfish', 'stone_beakperch', 'spotted_knifejaw',
+  // 방어류
+  'yellowtail', 'amberjack', 'greater_amberjack',
+]);
+
+/**
  * 어종의 손질 형태 분류.
  *  - 복어류: speciesId에 'puffer' 포함(복섬/참복/까치복) — 자격·독 제거 필요(스텁)
  *  - 두족류: 오라클 egiOnly 플래그(오징어/문어/갑오징어) — 별도 손질 트리(스텁)
- *  - finfish: round/flat 프로필 보유 = 삼면/다섯장뜨기 (FSM 구현)
- *  - 그 외: unsupported
- * (하드코딩 최소화 — 두족류는 egiOnly 의미 태그, 복어는 id 규칙에서 파생)
+ *  - finfish: **BUTCHERY_IMPLEMENTED_SPECIES(돔류+방어류)만** = 삼면/다섯장뜨기 (FSM 구현)
+ *  - 그 외(넙치류 등 미구현): unsupported (banned — 추후 구현)
  */
 export function getButcheryFamily(speciesId: string): ButcheryFamily {
   if (!speciesId) return 'unsupported';
   if (speciesId.includes('puffer')) return 'pufferfish';
   const spec = ORACLE_FISH_DB.find((s) => s.speciesId === speciesId);
   if (spec?.egiOnly) return 'cephalopod';
-  if (BUTCHERY_PROFILES[speciesId]) return 'finfish';
+  if (BUTCHERY_IMPLEMENTED_SPECIES.has(speciesId)) return 'finfish';
   return 'unsupported';
 }
 
@@ -184,5 +197,5 @@ export function getButcheryFamily(speciesId: string): ButcheryFamily {
 export const BUTCHERY_FAMILY_NOTICE: Record<Exclude<ButcheryFamily, 'finfish'>, string> = {
   cephalopod: '두족류 손질은 준비 중입니다 (눈 위 신경 절단·먹물·다리 손질 예정)',
   pufferfish: '복어는 자격증(독 제거)이 필요합니다 — 준비 중입니다',
-  unsupported: '이 어종은 아직 손질 프로필이 없습니다',
+  unsupported: '아직 손질할 수 없는 어종입니다 (현재 돔류·방어류만 지원 — 넙치류 등은 추후 구현)',
 };

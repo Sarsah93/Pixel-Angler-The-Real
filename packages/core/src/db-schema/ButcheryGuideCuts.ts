@@ -213,7 +213,7 @@ export const SASHIMI_GUIDE_GROUP: Record<string, string> = {
   black_seabream: 'seabream',      // 감성돔 (기본 작화)
   red_seabream: 'seabream',        // 참돔 (팔레트 변형 대상 — 배 흰색/중간 주황/등 분홍)
   night_seabream: 'seabream',      // 참돔 야간 엔트리
-  blackfish: 'seabream',           // 벵에돔
+  largescale_blackfish: 'seabream', // 벵에돔 (실제 어종 id — 구 'blackfish' 오기 정정)
   longtail_blackfish: 'seabream',  // 긴꼬리벵에돔
   stone_beakperch: 'seabream',     // 돌돔
   spotted_knifejaw: 'seabream',    // 강담돔

@@ -353,14 +353,36 @@ npx pnpm --filter @tra/client-pc run dev
 
 ---
 
-## 9. 현재 빌드 상태 (2026-07-29 기준)
+## 9. 현재 빌드 상태 (2026-07-30 기준)
 
 ```
-npx pnpm run build → ✅ 4/4 패키지 성공 (2026-07-29)
-npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류 (2026-07-29)
+npx pnpm run build → ✅ 4/4 패키지 성공 (2026-07-30)
+npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류 (2026-07-30)
 ```
 
-**최근 주요 변경 (2026-07-29 48차) — 손질 가이드/액션 애니메이션 + 부산물 세분화(어종명 접두·내장 밑밥 전환)** (사용자 2건 지시 — 수치검증(부산물 분리 900g→270g 정합), 빌드 4/4·typecheck 0):
+**최근 주요 변경 (2026-07-30 51차) — 가이드선 dev 드래그 에디터 + 손질 어종 게이팅(돔류+방어류) + 방어류 픽셀 생선(잿방어 추출) + 부산물 rib/pin 에셋** (사용자 4건 지시 — dev 실렌더 검증, 빌드 4/4·typecheck 0):
+- **[가이드선 편집 에디터 — dev 전용, F9]** (ButcheryPanel): 사용자가 유도선 위치를 직접 조정하도록 **끝점 드래그 에디터**. `import.meta.env.DEV` 게이트 + **F9 키 / 사이드바 [dev: 가이드선 편집·F9] 버튼** 토글. editMode 시: 현재 스테이지 편집점(가변 참조 — guided_cut=`stage.cut.guidePath`(core) / tap=`stage.tapPoint` / 비늘·내장·박피=`sweepOverride` Map 합성선)에 **시안 링 핸들 + 드래그**(onPointerDown/Move/Up 최상단 editMode 분기 — 손질 입력 차단) + **도마 위 좌표 리드아웃**(`cut('id','ORIENT',[{x,y}...])` / `tapPoint: {x,y}` 코드 스니펫) + **[복사] 버튼**(navigator.clipboard + console). 드래그는 유도선/핸들/리드아웃만 경량 갱신(doRefresh 없이). 편집한 좌표를 ButcheryProcess.ts/drawGuide에 붙여넣어 확정. 검증: F9 핸들 1개(시메)·드래그 (0.16,0.38)→(0.30,0.57)·복사.
+- **[손질 지원 어종 게이팅]** (core `getButcheryFamily` 재작성): **BUTCHERY_IMPLEMENTED_SPECIES**(돔류 7 + 방어류 3 = yellowtail/amberjack/greater_amberjack)만 `finfish`(손질 가능), **그 외 finfish(넙치류 flatfish/flounder·농어 sea_bass·고등어 등)는 `unsupported`(banned — 추후 구현)**. 두족류=cephalopod·복어=pufferfish 스텁 유지. UtilizationPanel 도마 게이트(family==='finfish')·드래그 자격·[다음 생선]·[손질 시작]이 전부 이 분류 소비(자동 반영). notice 갱신("현재 돔류·방어류만 지원 — 넙치류 등 추후"). **id 정합 수정**: SASHIMI_GUIDE_GROUP·trimHeadKey의 벵에돔 키 `blackfish`→`largescale_blackfish`(실제 어종 id — 구 오기 정정, 벵에돔 가이드 시트·머리 변형 정상화). 검증: 돔류+방어류 finfish / 넙치·농어 unsupported / 오징어 cephalopod / 복섬 pufferfish 전부 PASS.
+- **[방어류 도마 픽셀 생선 — 잿방어 추출]** (data/PixelFishSprites `FISH_WHOLE_AMBERJACK`/`FISH_DRESSED_AMBERJACK` 신설): 돔류(deep-body)와 형태가 다른 방어류를 위해 **greater_amberjack.png에서 방추형 픽셀 스프라이트 추출**(scratchpad/extract_amberjack.cjs — 헤드리스 크롬 다운샘플+팔레트 양자화 128×44·46색, bbox 타이트·머리 좌향, DRESSED=머리 좌15% 컷). `PixelButcherFish.butcherSpritesFor(speciesId)` — 방어류=잿방어 세트(nativeColor=틴트금지, 실색) / 그 외=감성돔 세트. drawFish가 세트+틴트(방어류·돔류=무틴트) 소비. 검증: 방어 도마 = 방추형 잿방어(등 청록·측선 노랑·배 은색·꼬리 갈라짐, 11887 draw ops) 렌더.
+- **[부산물 rib/pin 에셋]** 사용자 매핑 확정 + 2에셋 추가: 갈비뼈=`rib_bone`(구 중골 공용 → 전용 `trim_rib`), **지아이뼈(핀본)=`pin_bone`** — core `ButcheryByproducts.pinBoneG`(무게 2%) 신설 + 손질 완료 시 `가시뼈` 부산물 지급(byproductKind 'pin', trim_pin). 5+2=7 trimmings 전부 아이콘 연동(머리/중골/갈비/가시/내장/껍질/필렛).
+- 잔여(차기): 방어류 FILLET 상태는 공용 스프라이트 재사용(방어 전용 필렛 도트 미추출) / 방어류 가이드 시트(47컷 일러스트)는 돔류 전용이라 팝업 없음(유도선+에디터로 커버 — 사용자 dev 좌표 작업 예정) / 넙치류·두족류 손질은 별도 구현 예약 / pin bone은 소재 아이템(레시피 미연동).
+
+**이전 변경 (2026-07-30 50차) — 손질 부산물 실사 아이콘(trimmings 5종) + 머리 어종별 색 변형** (사용자 지시 "trimmings 5종을 아이템 아이콘으로, 머리는 돔류별 색 변형(참돔 붉게·돌돔 아가미 줄무늬)" — dev 실렌더 검증, 빌드 4/4·typecheck 0):
+- **[에셋]** `food assets/trimmings/` 5종 → `public/trimmings/` 복사 + BootScene 로드: `trim_head`(black_sea_bream_head=감성돔 머리)·`trim_spine`(rests_main_spine=중골)·`trim_guts`(pile_of_fish_guts=내장)·`trim_skin`(fish_skin=껍질)·`trim_fillet`(pure_pilet=로인 필렛). 상대경로(배포 규칙 — 선행 `/` 금지).
+- **[머리 색 변형 — ButcheryPanel.trimHeadKey + bakeTintedTrim]** 감성돔 원본(trim_head)을 **캔버스 멀티플라이 틴트(+선택 줄무늬)로 어종별 재합성** → `Phaser.Textures.createCanvas`(게임 레벨 TextureManager — 씬 재시작에도 유지, RenderTexture 라이프사이클 회피). 아이콘용 200px 축소. HEAD_MULT 맵: **감성돔=원본 / 참돔(red_seabream)·야간=붉은 발색(0xff7a55) / 돌돔(stone_beakperch)·강담돔(spotted_knifejaw)=유사+아가미 세로 줄무늬(source-atop 3바) / 벵에돔·긴꼬리=회청** / 미등재 어종=`blendColor(흰, getFishColors.body, 0.45)` 종별색. 감성돔은 원본 키 재사용(`trim_head`). 틴트 = multiply + `destination-in`(원본 알파 클립, 투명 배경 유지).
+- **[부산물/필렛 배선 — showResult]** `byproductTex(kind)`: 머리 → `trimHeadKey(speciesId)` / 중골·갈빗대 → `trim_spine`(뼈 공용) / 내장 → `trim_guts` / 껍질 → `trim_skin`. **필렛**: 48차 파라메트릭 `bakeFilletIcon`(filletShape 3종) 폐기 → **`trimFilletKey`(pure_pilet 로인 사진 + 은은한 어종 색 26% 블렌드)**. `createItemIcon`이 iconTexture(존재 시)로 렌더 → 인벤/상점/상세/퀵슬롯 전 경로 자동(42차 speciesId 폴백 유지 — 리로드 시 baked 키 없으면 어종 이미지로 폴백, 파라메트릭 시절과 동일 패턴).
+- **[검증]** dev 실렌더: 8아이콘 베이크·존재·렌더 PASS(스크린샷 = 참돔 붉은 머리·돌돔 줄무늬·방어 회청·감성돔 원본 + 중골/내장/껍질/필렛) + 손질 완주 산출물 iconTexture 배선(방어: fillet=trimfillet_3e5a74·head=trimhead_yellowtail·spine/rib=trim_spine·skin=trim_skin, 전부 textures.exists) PASS. `FilletShape` import·bakeFilletIcon 제거(noUnusedLocals).
+- 잔여(차기): 리로드 후 머리/필렛 baked 변형은 어종 이미지로 폴백(base 4종은 상시 로드라 유지) — 완전 영속은 세이브에 baked 재생성 훅 필요 시. 갈빗대(rib)는 전용 에셋 없어 중골 공용. 강담돔은 줄무늬로 근사(반점 미구현). 필렛 실사 사진이 흰살 어종엔 다소 붉을 수 있음(로인 사진 특성 — 필요 시 흰살/붉은살 2에셋 분기).
+
+**이전 변경 (2026-07-30 49차) — 회뜨기 가이드 켜기/끄기 토글 (유도선은 항상 유지)** (사용자 지시 "가이드를 켜고 끌 수 있도록 하되, 유도선 표시만은 유지" — dev 실마우스 검증 + 무회귀 확인, 빌드 4/4·typecheck 0):
+- **[세션 시작 정리]** 진입 시 client typecheck 5건 오류 = **stale `@tra/core/dist`**(48차 부산물 세분화 headG/spineG/ribG/visceraG 소스는 반영됐으나 dist 미빌드 — `ButcheryByproducts`가 구 boneHeadG 노출). `pnpm --filter @tra/core run build` 재빌드로 0 오류(정상 플로우 `pnpm run build`는 core→client 순이라 애초 무해). `sashimi_impl_status_deck.html`의 "오류"가 이것.
+- **[유도선 복원 — ButcheryPanel.drawGuide]** 48차에 원물 위 오버레이가 전면 제거(빈 함수)됐던 것을 **스테이지별 온-피시 절단 유도선으로 재구현(상시 표시)**: guided_cut = `stage.cut.guidePath` 점선 + **시작(초록 링)/끝(붉은 사각) 마커 + 진행 방향 화살촉**(경로 80% 지점) / tap(시메) = 목표점 링+점 / drag_fill·scoop = 몸통 가로 스윕(꼬리→머리 좌향) / peel = 꼬리 손잡이(우)→머리(좌) 당김 / wash = 없음(버튼). 헬퍼 `dashSeg`/`drawArrowHead`/`strokeGuideLine`. **칼 모양(글리프)은 원물 위에 그리지 않음**(48차 "원물 위 칼 금지" 준수 — 선+마커+화살촉만). 방향 불일치 시 좌표 어긋남 방지로 숨김(autoOrient로 대부분 정렬).
+- **[가이드 토글 — guideOff]** 사이드바 하단 **[가이드 켜짐·[G] 끄기]/[가이드 꺼짐(유도선 유지)·[G] 켜기] 버튼** + **G 키**(`onKey` — 손질 진행 중에만) + **`GameState.flags.butcheryGuideOff` 영속**(재오픈·세션 넘어 유지). `drawGuideToggle`는 전 어종 공통(guideSpeciesOk 무관 — 외곽 화살표는 전 어종 발생). `toggleGuide` = 플래그 저장 + 리렌더.
+- **[OFF 시 숨김 대상 = "가이드"뿐, 유도선은 유지]** guideOff이면: ① `startGuideAnim`(원물 밖 주황 화살표 큐) 정지 — 가드에 `if (guideOff) return` + doRefresh에서 `stopGuideAnim` ② `drawGuideCutPopup`(도마 위 시트 컷 일러스트 팝업)·캡션 숨김 — `drawGuideSlot`이 시트 버튼(수동 열람)만 남기고 early-return(lastPopupKey 리셋). **`drawGuide`(유도선)는 토글과 무관하게 항상 호출** — OFF에서도 절단 유도선 그대로.
+- **[검증]** dev 실키/실렌더 2스크립트: ① 유도선 커맨드 ON 27 → G OFF 27(유지)·화살표 tween 정지·팝업 숨김·**플래그 영속(재오픈 시 OFF로 시작)**·재-G 켜기 복원 ② 매핑 스테이지(비늘치기 scale_base→pre1)에서 **ON=팝업+유도선(line 292)·OFF=팝업X·유도선 유지(292)·화살표 정지** 전부 PASS. 스크린샷 = ON(유도선+선-1 팝업+주황 화살표+캡션+"켜짐" 버튼) / OFF(유도선만+"꺼짐" 버튼). **무회귀**: 48차-현행 actionAnim 대기 반영 완주 스크립트로 손질 끝까지 완주(방어 필렛 특 739g·부산물 head/spine/rib·껍질·스킬 Lv1) — 가이드 변경이 렌더 루프/입력 무영향(doRefresh 기본 경로는 원본과 동일, drawGuide는 렌더만 추가). ⚠ 기존 45차 butcheryP1.cjs는 48차 드리프트(byproductKind boneHead→head/spine/rib·actionAnim 대기 누락)로 어서션 스테일 — butcheryComplete.cjs로 대체 검증.
+- 잔여(차기): 유도선 색은 게임 기존 관례(노란 점선) 유지(스펙 SASHIMI_GUIDE_FIX의 붉은 점선·21스테이지·VENTRAL·부산물 팝업 풀 리워크는 별도 대작업 — 이번은 토글+유도선 유지만). 시메/방혈은 LIVE_STAGE_GUIDE 미매핑이라 팝업 원래 없음(정상).
+
+**이전 변경 (2026-07-29 48차) — 손질 가이드/액션 애니메이션 + 부산물 세분화(어종명 접두·내장 밑밥 전환)** (사용자 2건 지시 — 수치검증(부산물 분리 900g→270g 정합), 빌드 4/4·typecheck 0):
 - **[가이드/액션 애니 — ButcheryPanel]** 전용 레이어 2장(guideAnimG/actionAnimG — fishG·guideG 위, uiC 아래) + 폴리라인 호길이 보간 헬퍼(`pathPointAt`/`strokePathPartial`) + **회칼 글리프**(`drawKnifeGlyph` — 블레이드+손잡이, 진행각 회전):
   - **가이드 루프**(2s 반복, `TUNING.butchery.guideAnimMs`): 칼이 지나갈 길 프리뷰 — guided_cut = 경로 하이라이트+이동 칼 / tap = 맥동 링 / drag_fill·scoop = 지그재그 문지르기 궤적 / peel = 좌진행 칼. canAct(방향 일치)·비잠금 시에만, doRefresh마다 재시작.
   - **액션 연출**(2s, `actionAnimMs`, **입력 차단** actionAnim 가드 — pointerdown/move/onKey 편입): 성공 시 프리미티브별 — 칼질 = 흰 절개선+여열 글로우+스파크 스윕 / 시메 = 3중 확산 링 / 비늘·내장 = 3연속 스와이프+부스러기 / 박피 = 껍질 스트립 벗겨짐 / 세척 = 물방울+세척광. **플립(방향 전환)이 이어지는 성공은 스킵**(willFlip 캡처 — 플립 연출이 피드백, 좌표 어긋남 방지). 완료 시 가이드 루프 재시작. 훅 5곳(컷/탭/문지르기 완료/박피/세척×2). destroy/playFlipAnim에서 정리. ⚠ 2s는 초기값 — 실검증 후 F8 슬라이더(guideAnimMs·actionAnimMs META 등록)로 조율 예정(사용자 지침).

@@ -166,7 +166,7 @@ export interface InvItem {
    *  viscera=내장 (우클릭 '만들기' → 밑밥 전환, 신선도 급감 프로필) / skin=껍질(구이·육수) /
    *  boneHead=구 중골·머리 통합 (레거시 세이브 호환)
    */
-  byproductKind?: 'boneHead' | 'skin' | 'head' | 'spine' | 'rib' | 'viscera';
+  byproductKind?: 'boneHead' | 'skin' | 'head' | 'spine' | 'rib' | 'pin' | 'viscera';
   /**
    * 신선도 감쇄 프로필 — 기본 그래프 대신 특수 전이를 쓰는 아이템 (viscera:
    * 활어 10분 → 곧바로 나쁨 → 1시간 후 부패. 사용자 지정 2026-07-29)

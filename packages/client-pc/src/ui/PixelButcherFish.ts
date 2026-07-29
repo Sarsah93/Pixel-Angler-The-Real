@@ -13,11 +13,34 @@
 
 import Phaser from 'phaser';
 import type { OrientationState } from '@tra/core';
-import { PixelFishSprite, FISH_WHOLE, FISH_DRESSED, FISH_FILLET } from '../data/PixelFishSprites.js';
+import {
+  PixelFishSprite, FISH_WHOLE, FISH_DRESSED, FISH_FILLET,
+  FISH_WHOLE_AMBERJACK, FISH_DRESSED_AMBERJACK,
+} from '../data/PixelFishSprites.js';
 
 const AB = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+/';
 
 export interface PixelFishGeom { x: number; y: number; w: number; h: number; }
+
+/** 도마 스프라이트 세트 (온마리/손질 몸통/필렛) + 틴트 여부 */
+export interface ButcherSpriteSet {
+  whole: PixelFishSprite; dressed: PixelFishSprite; fillet: PixelFishSprite;
+  /** true = 스프라이트가 어종 실색을 가짐(틴트 금지) — 방어류 전용 잿방어 스프라이트 */
+  nativeColor: boolean;
+}
+
+const AMBERJACK_SPECIES = new Set<string>(['yellowtail', 'amberjack', 'greater_amberjack']);
+
+/**
+ * 어종별 도마 스프라이트 세트 — 방어류(방어/부시리/잿방어)는 잿방어 형태(방추형 실색),
+ * 그 외(돔류 등)는 감성돔 가이드 형태. (2026-07-30 — 방어류 별도 형태 추출)
+ */
+export function butcherSpritesFor(speciesId: string): ButcherSpriteSet {
+  if (AMBERJACK_SPECIES.has(speciesId)) {
+    return { whole: FISH_WHOLE_AMBERJACK, dressed: FISH_DRESSED_AMBERJACK, fillet: FISH_FILLET, nativeColor: true };
+  }
+  return { whole: FISH_WHOLE, dressed: FISH_DRESSED, fillet: FISH_FILLET, nativeColor: false };
+}
 
 export interface PixelFishState {
   orientation: OrientationState;
@@ -82,10 +105,11 @@ function drawSprite(
 export function drawPixelButcherFish(
   g: Phaser.GameObjects.Graphics, geom: PixelFishGeom,
   tint: number | null, state: PixelFishState,
+  sprites: ButcherSpriteSet = { whole: FISH_WHOLE, dressed: FISH_DRESSED, fillet: FISH_FILLET, nativeColor: false },
 ): void {
   const o = state.orientation;
   const filletView = state.finished || o === 'FLESH_UP';
-  const spr = filletView ? FISH_FILLET : state.headOff ? FISH_DRESSED : FISH_WHOLE;
+  const spr = filletView ? sprites.fillet : state.headOff ? sprites.dressed : sprites.whole;
   const mirrorX = !filletView && o === 'FLIP';
   const mirrorY = !filletView && (o === 'BELLY_UP' || o === 'BACK_DOWN');
   const drawn = drawSprite(g, spr, geom, mirrorX, mirrorY, tint, 0.22);

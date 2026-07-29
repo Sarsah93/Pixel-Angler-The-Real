@@ -132,7 +132,7 @@ export {
 } from './db-schema/ButcheryGuideCuts.js';
 export {
   BUTCHERY_PROFILES, DEFAULT_BUTCHERY_PROFILE, getButcheryProfile,
-  getButcheryFamily, BUTCHERY_FAMILY_NOTICE,
+  getButcheryFamily, BUTCHERY_FAMILY_NOTICE, BUTCHERY_IMPLEMENTED_SPECIES,
 } from './db-schema/ButcheryProfiles.js';
 export { KNIFE_SPECS, getBestKnife, isKnifeItem } from './db-schema/KnifeDatabase.js';
 export type { SashimiGradeInput } from './simulation/ButcheryProcess.js';
