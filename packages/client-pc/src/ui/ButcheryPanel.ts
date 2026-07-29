@@ -28,7 +28,8 @@ import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { InventoryStore, InvItem } from '../store/InventoryStore.js';
 import { GameState } from '../store/GameState.js';
 import { DraggablePanel, applyScreenFixed } from './DraggablePanel.js';
-import { drawFishTemplate, getFishColors } from './FishTemplateRenderer.js';
+import { getFishColors } from './FishTemplateRenderer.js';
+import { drawPixelButcherFish } from './PixelButcherFish.js';
 import { SASHIMI_GUIDE_TEXTURE, guideFrameName, hasGuideFrames } from '../data/SashimiGuideFrames.js';
 
 const PANEL_W = 1080;
@@ -94,6 +95,9 @@ export class ButcheryPanel extends DraggablePanel {
   private actionTween?: Phaser.Tweens.Tween;
   /** 액션 연출 재생 중 — 입력 차단 (flipping과 동일 계열 가드) */
   private actionAnim = false;
+  /** 유도 팝업 마지막 컷 키 — 전환 시에만 팝인 연출 */
+  private lastPopupKey: string | null = null;
+  private popupTween?: Phaser.Tweens.Tween;
 
   constructor(scene: Phaser.Scene, source: InvItem, cbs: ButcheryCallbacks) {
     super(scene, {
@@ -147,6 +151,8 @@ export class ButcheryPanel extends DraggablePanel {
     this.closeSheetViewer();
     this.stopGuideAnim();
     this.stopActionAnim();
+    this.popupTween?.remove();
+    this.popupTween = undefined;
     this.scene?.input?.off('pointermove', this.butcheryMoveHandler);
     this.scene?.input?.off('pointerup', this.butcheryUpHandler);
     this.scene?.input?.off('pointerdown', this.onPointerDownBound, this);
@@ -400,6 +406,8 @@ export class ButcheryPanel extends DraggablePanel {
   }
 
   private doRefresh(): void {
+    this.popupTween?.remove();          // 파괴될 팝업 컨테이너 대상 트윈 정리
+    this.popupTween = undefined;
     this.uiC.removeAll(true);
     this.drawFish();
     if (!this.knifeLocked()) this.drawGuide();
@@ -540,7 +548,7 @@ export class ButcheryPanel extends DraggablePanel {
     this.applyFix();
   }
 
-  /** 파라메트릭 생선 템플릿 — 방향 상태 + 손질 진행 플래그 기반 렌더 */
+  /** 도마 위 픽셀 생선 — 가이드 시트와 동일한 도트 스프라이트 (FSM 상태 기반) */
   private drawFish(): void {
     const g = this.fishG;
     g.clear();
@@ -552,68 +560,34 @@ export class ButcheryPanel extends DraggablePanel {
     g.fillStyle(0xa8845a, 1);
     g.fillRoundedRect(X - 6, Y - 16, W + 12, H + 32, 8);
 
-    // 파라메트릭 생선 — FSM 진행 상태 주입 (공용 렌더러 — 도마/고스트와 동일 소스)
+    // 가이드 시트 추출 픽셀 생선 (data/PixelFishSprites) — 온마리/손질 몸통/필렛 3상태.
     // orientation은 화면 표시 방향(renderedOrientation) — 뒤집기 연출 중간(접힌 시점)에
     // 새 방향으로 교체된다 (process.orientation은 로직/게이트 기준).
-    drawFishTemplate(g, { x: X, y: Y, w: W, h: H }, this.process.profile,
-      getFishColors(this.process.profile.speciesId), {
-        orientation: this.renderedOrientation,
-        headOff: this.headOff,
-        scaledSides: this.scaledSides,
-        gutted: this.gutted,
-        finished: this.process.finished,
-        filletCount: this.process.profile.filletCount,
-        currentPullsLeft: this.process.currentPullsLeft,
-        stagePrimitive: this.process.stage?.primitive,
-        stageId: this.process.stage?.id,
-      });
+    // 돔류(가이드 원본 어종군)는 원본 회색 그대로, 그 외 어종은 어종 색으로 약한 틴트.
+    const speciesId = this.process.profile.speciesId;
+    const tint = SASHIMI_GUIDE_GROUP[speciesId] ? null : getFishColors(speciesId).body;
+    drawPixelButcherFish(g, { x: X, y: Y, w: W, h: H }, tint, {
+      orientation: this.renderedOrientation,
+      headOff: this.headOff,
+      scaledSides: this.scaledSides,
+      gutted: this.gutted,
+      hasScales: this.process.profile.hasScales,
+      finished: this.process.finished,
+      currentPullsLeft: this.process.currentPullsLeft,
+      anusRatio: this.process.profile.anusRatio,
+      stageId: this.process.stage?.id,
+    });
   }
 
-  /** 현재 스테이지 가이드 (노란 점선 칼선 / 탭 목표점 / 손잡이 표시) */
+  /**
+   * 스테이지 가이드 — **원물 위에는 아무것도 그리지 않는다** (사용자 지시 2026-07-29:
+   * 방향선·칼 모양 금지, 단계별 원물만 표시). 유도는 원물 주변 팝업/화살표 큐가 담당:
+   *  - drawGuideCutPopup: 시트 컷 일러스트 팝업 (도마 위쪽 — 스테이지 전환 시 팝인)
+   *  - startGuideAnim: 시트 스타일 주황 화살표 큐 (원물 밖에서 진행 방향 유도)
+   *  예외: 시메(tap)는 목표점 좌표 자체가 게임플레이라 맥동 링만 유지 (선/칼 아님).
+   */
   private drawGuide(): void {
-    const g = this.guideG;
-    g.clear();
-    const stage = this.process.stage;
-    if (!stage || this.process.finished) return;
-    // 방향 불일치 시에도 숨기지 않고 고스트(흐리게)로 표시 — "먹통" 방지.
-    // (autoOrient on이면 대부분 정렬 상태라 고스트는 수동 전환 중에만 보임)
-    const ghost = !this.process.canAct();
-    const ga = ghost ? 0.28 : 0.95;
-
-    const toPx = (p: CutPoint): [number, number] => [this.fishX + p.x * this.fishW, this.fishY + p.y * this.fishH];
-
-    if (stage.primitive === 'guided_cut' && stage.cut) {
-      const path = stage.cut.guidePath;
-      g.lineStyle(2, 0xffd257, ga);
-      for (let i = 1; i < path.length; i++) {
-        const [ax, ay] = toPx(path[i - 1]);
-        const [bx, by] = toPx(path[i]);
-        // 점선
-        const segs = Math.max(4, Math.floor(Math.hypot(bx - ax, by - ay) / 12));
-        for (let s = 0; s < segs; s += 2) {
-          const t0 = s / segs, t1 = Math.min(1, (s + 1) / segs);
-          g.lineBetween(ax + (bx - ax) * t0, ay + (by - ay) * t0, ax + (bx - ax) * t1, ay + (by - ay) * t1);
-        }
-      }
-      const [sx, sy] = toPx(path[0]);
-      g.fillStyle(0xffd257, ga);
-      g.fillCircle(sx, sy, 5);
-    } else if (stage.primitive === 'tap' && stage.tapPoint) {
-      const [tx, ty] = toPx(stage.tapPoint);
-      g.lineStyle(2, 0xff5a4a, ga);
-      g.strokeCircle(tx, ty, 14);
-      g.fillStyle(0xff5a4a, ga);
-      g.fillCircle(tx, ty, 3);
-    } else if (stage.primitive === 'peel') {
-      // 손잡이 존 + 당김 방향 화살표
-      g.lineStyle(2, 0x7fe6b0, ghost ? 0.28 : 0.9);
-      g.strokeRoundedRect(this.fishX + this.fishW * 0.74, this.fishY + this.fishH * 0.3, this.fishW * 0.2, this.fishH * 0.4, 8);
-      g.lineStyle(3, 0xffd257, ga);
-      const ay = this.fishY + this.fishH * 0.5;
-      g.lineBetween(this.fishX + this.fishW * 0.7, ay, this.fishX + this.fishW * 0.24, ay);
-      g.fillStyle(0xffd257, ga);
-      g.fillTriangle(this.fishX + this.fishW * 0.24, ay, this.fishX + this.fishW * 0.3, ay - 8, this.fishX + this.fishW * 0.3, ay + 8);
-    }
+    this.guideG.clear();
   }
 
   // ═══════════════════════════════════════════════════
@@ -695,9 +669,24 @@ export class ButcheryPanel extends DraggablePanel {
     this.guideAnimG?.clear();
   }
 
+  /** 시트 스타일 주황 화살표 (굵은 샤프트+삼각 헤드 — 가이드 시트와 동일 시각 언어) */
+  private drawSheetArrow(g: Phaser.GameObjects.Graphics, x: number, y: number, ang: number, len: number, alpha: number): void {
+    const c = Math.cos(ang), s = Math.sin(ang);
+    const P = (dx: number, dy: number): Phaser.Geom.Point =>
+      new Phaser.Geom.Point(x + dx * c - dy * s, y + dx * s + dy * c);
+    const half = len / 2;
+    g.fillStyle(0xe0592c, alpha);
+    // 샤프트 (회전 사각)
+    g.fillPoints([P(-half, -3.4), P(half - 13, -3.4), P(half - 13, 3.4), P(-half, 3.4)], true);
+    // 헤드 (삼각)
+    const tip = P(half, 0), h1 = P(half - 14, -9.5), h2 = P(half - 14, 9.5);
+    g.fillTriangle(tip.x, tip.y, h1.x, h1.y, h2.x, h2.y);
+  }
+
   /**
-   * 가이드 경로 루프 연출 — 현재 스테이지에서 칼(또는 손)이 지나갈 길을 반복 재생.
-   * doRefresh 끝에서 재시작 (방향 불일치/잠금/세척 스테이지는 미표시).
+   * 유도 연출 루프 — **원물 주변**에서 진행 방향을 안내 (원물 위 방향선/칼 금지.
+   * 사용자 지시 2026-07-29). 시트 스타일 주황 화살표가 원물 밖(경로에 가까운 가장자리)
+   * 에서 진행 방향으로 슬라이드하며 반복. 시메(tap)만 목표점 맥동 링 유지.
    */
   private startGuideAnim(): void {
     this.stopGuideAnim();
@@ -707,18 +696,35 @@ export class ButcheryPanel extends DraggablePanel {
     const g = this.guideAnimG;
     let drawFn: ((t: number) => void) | null = null;
 
+    // 원물 밖 화살표 배치 — 경로 중심/방향에서 가장 가까운 바깥 가장자리 산출
+    const arrowCueFor = (path: CutPoint[]): { ax: number; ay: number; ang: number } => {
+      const pts = path.map((p) => this.toPanelPx(p));
+      const p0 = pts[0], p1 = pts[pts.length - 1];
+      const dx = p1[0] - p0[0], dy = p1[1] - p0[1];
+      const ang = Math.atan2(dy, dx);
+      const midX = (p0[0] + p1[0]) / 2, midY = (p0[1] + p1[1]) / 2;
+      if (Math.abs(dx) >= Math.abs(dy)) {
+        // 수평 컷 — 경로가 몸 위쪽이면 원물 위, 아래쪽이면 원물 아래
+        const above = midY < this.fishY + this.fishH / 2;
+        return { ax: midX, ay: above ? this.fishY - 16 : this.fishY + this.fishH + 16, ang };
+      }
+      // 수직 컷(방혈/꼬리 홈 등) — 경로 쪽 좌/우 바깥
+      const leftSide = midX < this.fishX + this.fishW / 2;
+      return { ax: leftSide ? this.fishX - 20 : this.fishX + this.fishW + 20, ay: midY, ang };
+    };
+
+    const arrowLoop = (cue: { ax: number; ay: number; ang: number }): ((t: number) => void) => (t) => {
+      g.clear();
+      // 진행 방향 슬라이드(0~85%) + 페이드아웃(85~100%) 루프
+      const move = (t < 0.85 ? t / 0.85 : 1) * 30 - 15;
+      const alpha = t < 0.85 ? 0.95 : 0.95 * (1 - (t - 0.85) / 0.15);
+      this.drawSheetArrow(g, cue.ax + Math.cos(cue.ang) * move, cue.ay + Math.sin(cue.ang) * move, cue.ang, 46, alpha);
+    };
+
     if (stage.primitive === 'guided_cut' && stage.cut) {
-      const path = stage.cut.guidePath;
-      drawFn = (t) => {
-        g.clear();
-        const p = this.pathPointAt(path, t);
-        g.lineStyle(3, 0xfff2b0, 0.5);
-        this.strokePathPartial(g, path, t);
-        g.fillStyle(0xfff2b0, 0.3);
-        g.fillCircle(p.x, p.y, 9);
-        this.drawKnifeGlyph(g, p.x, p.y, p.ang, 0.95);
-      };
+      drawFn = arrowLoop(arrowCueFor(stage.cut.guidePath));
     } else if (stage.primitive === 'tap' && stage.tapPoint) {
+      // 시메 — 목표점 맥동 링 (탭 좌표 자체가 게임플레이 — 선/칼 아님)
       const [tx, ty] = this.toPanelPx(stage.tapPoint);
       drawFn = (t) => {
         g.clear();
@@ -728,29 +734,11 @@ export class ButcheryPanel extends DraggablePanel {
         g.fillCircle(tx, ty, 3.2);
       };
     } else if (stage.primitive === 'drag_fill' || stage.primitive === 'scoop') {
-      // 문지르기 프리뷰 — 지그재그 스와이프 (scoop = 배 영역 / drag_fill = 몸통 전체)
-      const zig: CutPoint[] = stage.primitive === 'scoop'
-        ? [{ x: 0.62, y: 0.6 }, { x: 0.3, y: 0.66 }, { x: 0.58, y: 0.72 }, { x: 0.28, y: 0.76 }]
-        : [{ x: 0.78, y: 0.32 }, { x: 0.24, y: 0.38 }, { x: 0.74, y: 0.5 }, { x: 0.22, y: 0.58 }, { x: 0.7, y: 0.66 }];
-      drawFn = (t) => {
-        g.clear();
-        g.lineStyle(2, 0xaee8ff, 0.3);
-        this.strokePathPartial(g, zig, t);
-        const p = this.pathPointAt(zig, t);
-        g.fillStyle(0xd8ecf8, 0.85);
-        g.fillCircle(p.x, p.y, 6);
-        g.lineStyle(1.4, 0x8fb8cc, 0.9);
-        g.strokeCircle(p.x, p.y, 9.5);
-      };
+      // 문지르기 — 원물 위쪽 바깥에서 꼬리→머리(좌향) 화살표 (시트 선-1·선-7과 동일)
+      drawFn = arrowLoop({ ax: this.fishX + this.fishW / 2, ay: this.fishY - 16, ang: Math.PI });
     } else if (stage.primitive === 'peel') {
-      const path: CutPoint[] = [{ x: 0.72, y: 0.5 }, { x: 0.26, y: 0.5 }];
-      drawFn = (t) => {
-        g.clear();
-        g.lineStyle(3, 0x7fe6b0, 0.4);
-        this.strokePathPartial(g, path, t);
-        const p = this.pathPointAt(path, t);
-        this.drawKnifeGlyph(g, p.x, p.y, Math.PI, 0.9);   // 좌로 진행 (칼 눕혀 밀기)
-      };
+      // 박피 — 슬랩 위쪽 바깥에서 좌향 당김 화살표
+      drawFn = arrowLoop({ ax: this.fishX + this.fishW / 2, ay: this.fishY + this.fishH * 0.12, ang: Math.PI });
     }
     if (!drawFn) return;   // wash 등 — 루프 연출 없음 (버튼이 인터페이스)
     const fn = drawFn;
@@ -1034,52 +1022,75 @@ export class ButcheryPanel extends DraggablePanel {
     return resolveLiveGuideCut(stage.id, passIdx)?.key ?? null;
   }
 
-  /** 사이드바 하단 가이드 컷 슬롯 + [전체 시트] 버튼 (drawSidebar에서 호출 — uiC에 추가) */
+  /** 사이드바 [전체 시트] 버튼 + 캡션 (일러스트는 원물 주변 팝업으로 이동 — drawGuideCutPopup) */
   private drawGuideSlot(): void {
     if (!this.guideSpeciesOk) return;
-    const key = this.currentGuideCutKey();
 
-    const gx = 700, gy = PANEL_H - 238;   // 이미지 190×112 — 요약 라인(PANEL_H-120) 위
-    const imgW = 190, imgH = 112;
-
-    // [전체 시트] 버튼 — 슬롯 우측 상단
-    const bx = gx + imgW + 12, by = gy;
+    const bx = 700, by = PANEL_H - 238;
     const bg = this.scene.add.graphics();
     bg.fillStyle(0x14283c, 0.96);
-    bg.fillRoundedRect(bx, by, 132, 26, 4);
+    bg.fillRoundedRect(bx, by, 152, 26, 4);
     bg.lineStyle(1.2, 0x33b0e0, 0.9);
-    bg.strokeRoundedRect(bx, by, 132, 26, 4);
-    const bt = this.scene.add.text(bx + 66, by + 13, '가이드 시트 (47컷)', {
+    bg.strokeRoundedRect(bx, by, 152, 26, 4);
+    const bt = this.scene.add.text(bx + 76, by + 13, '가이드 시트 (47컷)', {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#aee8ff', fontStyle: 'bold',
     }).setOrigin(0.5);
-    const bhit = this.scene.add.rectangle(bx + 66, by + 13, 132, 26, 0xffffff, 0.001)
+    const bhit = this.scene.add.rectangle(bx + 76, by + 13, 152, 26, 0xffffff, 0.001)
       .setInteractive({ useHandCursor: true });
     bhit.on('pointerdown', () => this.openSheetViewer());
     this.uiC.add([bg, bt, bhit]);
 
-    if (!key) return;   // 시메/방혈 = 가이드 범위 밖 (버튼만 표시)
-    const cut = guideCutByKey(key);
-
-    // 컷 일러스트 (시트 프레임) + 테두리 + 번호 칩
-    const frame = this.scene.add.image(gx, gy, SASHIMI_GUIDE_TEXTURE, guideFrameName(key))
-      .setOrigin(0, 0).setDisplaySize(imgW, imgH);
-    const border = this.scene.add.graphics();
-    border.lineStyle(1.4, 0x2a5a8a, 0.95);
-    border.strokeRoundedRect(gx - 1, gy - 1, imgW + 2, imgH + 2, 4);
-    const chipLabel = cut?.pre !== undefined ? `선-${cut.pre}` : `${cut?.panel ?? '?'} / 38`;
-    const chip = this.scene.add.text(gx + 3, gy + 3, `가이드 ${chipLabel}`, {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#ffe28a', fontStyle: 'bold',
-      backgroundColor: '#0a1628dd', padding: { x: 3, y: 1 },
-    });
-    this.uiC.add([frame, border, chip]);
-
-    // 캡션 (버튼 아래 우측 열)
+    // 현재 컷 캡션 (버튼 아래 — 팝업 일러스트의 텍스트 보조)
+    const key = this.currentGuideCutKey();
+    const cut = key ? guideCutByKey(key) : undefined;
     if (cut) {
       const cap = this.scene.add.text(bx, by + 32, cut.caption, {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#9fb8c8',
         wordWrap: { width: PANEL_W - bx - 28 }, lineSpacing: 2,
       });
       this.uiC.add(cap);
+    }
+
+    // 유도 팝업 (원물 주변 — 도마 위쪽)
+    this.drawGuideCutPopup();
+  }
+
+  /**
+   * 유도 팝업 — 현재 스테이지의 시트 컷 일러스트가 **원물 주변(도마 위쪽)에서 팝업**.
+   * 일러스트 안에 시트의 화살표·절단선이 들어 있어 "안내하듯" 행동을 유도한다
+   * (원물 자체에는 아무 표시 없음). 스테이지/회차 전환 시 팝인 연출.
+   */
+  private drawGuideCutPopup(): void {
+    if (!this.guideSpeciesOk) { this.lastPopupKey = null; return; }
+    const key = this.currentGuideCutKey();
+    if (!key) { this.lastPopupKey = null; return; }
+    const cut = guideCutByKey(key);
+
+    const imgW = 168, imgH = 99;   // 도마 위 공간(contentTop~보드 상단 164px)에 맞춤
+    const cx = this.fishX + this.fishW - imgW / 2 - 2;
+    const cy = this.contentTop + 10 + imgH / 2;
+    const cont = this.scene.add.container(cx, cy);
+    const frame = this.scene.add.image(0, 0, SASHIMI_GUIDE_TEXTURE, guideFrameName(key))
+      .setDisplaySize(imgW, imgH);
+    const border = this.scene.add.graphics();
+    border.lineStyle(2, 0xffd257, 0.95);
+    border.strokeRoundedRect(-imgW / 2 - 2, -imgH / 2 - 2, imgW + 4, imgH + 4, 5);
+    const chipLabel = cut?.pre !== undefined ? `선-${cut.pre}` : `${cut?.panel ?? '?'} / 38`;
+    const chip = this.scene.add.text(-imgW / 2 + 2, -imgH / 2 + 2, `가이드 ${chipLabel}`, {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#ffe28a', fontStyle: 'bold',
+      backgroundColor: '#0a1628dd', padding: { x: 3, y: 1 },
+    });
+    cont.add([frame, border, chip]);
+    this.uiC.add(cont);
+
+    // 스테이지/회차 전환 시 팝인 (동일 컷 리렌더는 조용히)
+    if (this.lastPopupKey !== key) {
+      this.lastPopupKey = key;
+      this.popupTween?.remove();
+      cont.setScale(0.62).setAlpha(0.3);
+      this.popupTween = this.scene.tweens.add({
+        targets: cont, scale: 1, alpha: 1, duration: 260, ease: 'Back.easeOut',
+      });
     }
   }
 
