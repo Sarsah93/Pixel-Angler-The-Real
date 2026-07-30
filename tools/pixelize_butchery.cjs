@@ -171,6 +171,8 @@ const SVG_ERASE = {
   bream_vessel: [{ x0: 0, y0: 0.7, x1: 0.75, y1: 1 }],
   bream_fillet1: [{ x0: 0, y0: 0.68, x1: 0.8, y1: 1 }],
   bream_fillet2: [{ x0: 0, y0: 0.5, x1: 0.1, y1: 1 }],
+  // 배 따기 컷 — 몸통 밖으로 튀어나온 칼(날+손잡이) 제거 (복면 절개선은 x<0.34라 보존)
+  bream_finless: [{ x0: 0.34, y0: 0.72, x1: 0.66, y1: 1 }],
 };
 
 function extractSvgPanel(svg, px0, py0, key) {
@@ -264,7 +266,11 @@ function extractBreamStages() {
   if (!fs.existsSync(SVG_PATH)) return [];
   const svg = fs.readFileSync(SVG_PATH, 'utf8');
   const picks = [
+    // ── 손질 중간 상태 (원물) — 진행도에 맞는 몸통을 도마에 표시 ──
+    ['bream_headless', 3],   // 선-4 — 머리만 분리 (지느러미 有 · 내장 有)
+    ['bream_finless', 5],    // 선-6 — 지느러미 제거 후 배 따기 직전 (내장 有)
     ['bream_vessel', 7],     // 선-8 (idx 7) — 핏줄(신장) 긁기 뷰
+    // ── 장뜨기 진행 ──
     ['bream_fillet1', 11],   // 본편 3 (idx 9+3-1) — 길 만들기 ② (얕은→깊은 선)
     ['bream_fillet2', 13],   // 본편 5 — 척추 끊기 (벌어진 몸통)
     ['bream_fillet3', 15],   // 본편 7 — 잘라내기 (3층 스택)

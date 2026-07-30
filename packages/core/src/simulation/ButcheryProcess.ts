@@ -201,6 +201,7 @@ function cut(
     minCoverage: opts.minCoverage ?? 0.6,
     strokesRequired: opts.strokesRequired,
     strong: opts.strong,
+    guidePaths: opts.guidePaths,
   };
 }
 
@@ -221,14 +222,20 @@ export function buildButcheryStages(profile: ButcheryProfile, opts?: ButcherySta
   stages.push({
     id: 'ikejime', label: '시메 (즉살)', orientation: 'BASE', primitive: 'tap',
     guide: '눈 뒤 뇌 지점을 정확히 탭하세요 — 신경 차단으로 선도가 유지됩니다',
-    tapPoint: { x: 0.16, y: 0.38 }, tapRadius: 0.09,
+    // dev 가이드 편집기(F9) 실측 좌표 — 돔류 (2026-07-30 사용자 확정)
+    tapPoint: { x: 0.239, y: 0.410 }, tapRadius: 0.09,
   });
 
   // 2. 방혈 — 아가미 절개 + 얼음물
   stages.push({
     id: 'bleed_cut', label: '방혈 — 아가미 절개', orientation: 'BASE', primitive: 'guided_cut',
     guide: '아가미 안쪽을 세로로 그어 피를 빼세요',
-    cut: cut('bleed_cut', 'BASE', [{ x: 0.22, y: 0.28 }, { x: 0.245, y: 0.62 }]),
+    // 아가미 안쪽을 따라 도는 곡선 (7점 — dev 곡선 편집기 실측, 2026-07-30 사용자 확정)
+    cut: cut('bleed_cut', 'BASE', [
+      { x: 0.255, y: 0.392 }, { x: 0.275, y: 0.454 }, { x: 0.283, y: 0.518 },
+      { x: 0.285, y: 0.583 }, { x: 0.285, y: 0.648 }, { x: 0.277, y: 0.713 },
+      { x: 0.259, y: 0.775 },
+    ]),
   });
   stages.push({
     id: 'bleed_ice', label: '방혈 — 얼음물 담그기', orientation: 'BASE', primitive: 'wash',
@@ -238,15 +245,29 @@ export function buildButcheryStages(profile: ButcheryProfile, opts?: ButcherySta
   // 3. 비늘치기 (양면) + 세척 — hasScales 어종만. skipDescale = 선-1·2 스킵 분기
   //  (박피 예정이면 생략 가능 — 스킵 개체의 껍질 부산물은 등급 하락. §3-2)
   if (profile.hasScales && !opts?.skipDescale) {
+    // 비늘치기 — 스윕 경로 전 구간 커버리지가 게이지 기준 (dev 편집기 실측 좌표, 2026-07-30)
     stages.push({
       id: 'scale_base', label: '비늘치기 (앞면)', orientation: 'BASE', primitive: 'drag_fill',
-      guide: '꼬리→머리 역결 방향으로 문질러 비늘을 벗기세요',
-      fillTarget: 0.55 + profile.scaleToughness * 0.35,
+      guide: '꼬리→머리 역결 방향으로 지그재그로 문질러 비늘을 전부 벗기세요',
+      fillTarget: 0.92,
+      sweepPath: [
+        { x: 0.734, y: 0.477 }, { x: 0.695, y: 0.605 }, { x: 0.694, y: 0.403 }, { x: 0.625, y: 0.704 },
+        { x: 0.648, y: 0.368 }, { x: 0.564, y: 0.779 }, { x: 0.601, y: 0.304 }, { x: 0.492, y: 0.839 },
+        { x: 0.549, y: 0.247 }, { x: 0.402, y: 0.828 }, { x: 0.493, y: 0.190 }, { x: 0.319, y: 0.828 },
+        { x: 0.436, y: 0.144 }, { x: 0.239, y: 0.864 }, { x: 0.375, y: 0.109 }, { x: 0.165, y: 0.807 },
+        { x: 0.303, y: 0.070 }, { x: 0.162, y: 0.446 }, { x: 0.225, y: 0.080 }, { x: 0.172, y: 0.158 },
+      ],
     });
     stages.push({
       id: 'scale_flip', label: '비늘치기 (뒷면)', orientation: 'FLIP', primitive: 'drag_fill',
-      guide: '뒤집어서 반대면 비늘도 벗기세요',
-      fillTarget: 0.55 + profile.scaleToughness * 0.35,
+      guide: '뒤집어서 반대면 비늘도 전부 벗기세요',
+      fillTarget: 0.92,
+      sweepPath: [
+        { x: 0.311, y: 0.509 }, { x: 0.314, y: 0.641 }, { x: 0.367, y: 0.417 }, { x: 0.358, y: 0.701 },
+        { x: 0.419, y: 0.339 }, { x: 0.406, y: 0.772 }, { x: 0.469, y: 0.258 }, { x: 0.463, y: 0.853 },
+        { x: 0.528, y: 0.233 }, { x: 0.527, y: 0.889 }, { x: 0.589, y: 0.229 }, { x: 0.588, y: 0.889 },
+        { x: 0.649, y: 0.236 },
+      ],
     });
     stages.push({
       id: 'scale_wash', label: '세척', orientation: 'FLIP', primitive: 'wash',
@@ -258,20 +279,34 @@ export function buildButcheryStages(profile: ButcheryProfile, opts?: ButcherySta
   stages.push({
     id: 'head_base', label: '머리따기 (앞면 사선)', orientation: 'BASE', primitive: 'guided_cut',
     guide: '아가미 뒤에서 가슴지느러미 쪽으로 사선을 넣으세요',
-    cut: cut('head_base', 'BASE', [{ x: 0.175, y: 0.22 }, { x: 0.27, y: 0.7 }]),
+    cut: cut('head_base', 'BASE', [{ x: 0.283, y: 0.307 }, { x: 0.346, y: 0.867 }]),
   });
   stages.push({
     id: 'head_flip', label: '머리따기 (뒷면 사선 → 분리)', orientation: 'FLIP', primitive: 'guided_cut',
     guide: '뒤집어 같은 사선을 맞추면 머리가 분리됩니다',
-    cut: cut('head_flip', 'FLIP', [{ x: 0.825, y: 0.22 }, { x: 0.73, y: 0.7 }], { strong: true }),
+    cut: cut('head_flip', 'FLIP', [{ x: 0.703, y: 0.300 }, { x: 0.649, y: 0.867 }], { strong: true }),
   });
 
   // 4b. 지느러미 제거 (선-5 — 등·뒷지느러미 양옆 칼집 → 뽑기. 픽셀 가이드 선행부 신설)
+  // 지느러미 제거 — **다중 유도선 3개**(등 / 뒷(배) / 가슴). 순서 자유, 각 1회씩.
+  //  좌표는 dev 곡선 편집기(F9)로 실측 조정 예정 — 현재는 실루엣 근사 기본값.
   stages.push({
-    id: 'finectomy', label: '지느러미 제거 (등·뒷 칼집 → 뽑기)', orientation: 'BASE', primitive: 'guided_cut',
-    guide: '등지느러미 양옆에 칼집을 넣고 잡아 뽑으세요 (뒷지느러미 동일 — 칼집 2회)',
+    id: 'finectomy', label: '지느러미 제거 (등·뒷·가슴)', orientation: 'BASE', primitive: 'guided_cut',
+    guide: '등·뒷·가슴 지느러미 밑동을 따라 각각 칼집을 넣어 뽑으세요 (3곳 — 순서 자유)',
+    // dev 곡선 편집기(F9) 실측 좌표 — 돔류 (2026-07-30 사용자 확정)
     cut: cut('finectomy', 'BASE',
-      [{ x: 0.3, y: 0.15 }, { x: 0.78, y: 0.13 }], { strokesRequired: 2, tolerance: 0.09, minCoverage: 0.5 }),
+      [{ x: 0.338, y: 0.282 }, { x: 0.382, y: 0.261 }, { x: 0.430, y: 0.271 }, { x: 0.467, y: 0.301 }, { x: 0.501, y: 0.338 }, { x: 0.532, y: 0.377 }, { x: 0.557, y: 0.421 }],
+      {
+        tolerance: 0.09, minCoverage: 0.5,
+        guidePaths: [
+          // 선1 — 등지느러미 밑동 (등 능선을 따라 꼬리쪽으로)
+          [{ x: 0.338, y: 0.282 }, { x: 0.382, y: 0.261 }, { x: 0.430, y: 0.271 }, { x: 0.467, y: 0.301 }, { x: 0.501, y: 0.338 }, { x: 0.532, y: 0.377 }, { x: 0.557, y: 0.421 }],
+          // 선2 — 뒷(배)지느러미 밑동
+          [{ x: 0.362, y: 0.729 }, { x: 0.406, y: 0.751 }, { x: 0.455, y: 0.757 }, { x: 0.492, y: 0.724 }, { x: 0.518, y: 0.682 }, { x: 0.542, y: 0.638 }, { x: 0.568, y: 0.594 }],
+          // 선3 — 가슴지느러미 밑동 (아가미 뒤 — 짧은 곡선)
+          [{ x: 0.400, y: 0.467 }, { x: 0.391, y: 0.479 }, { x: 0.381, y: 0.490 }, { x: 0.377, y: 0.505 }, { x: 0.371, y: 0.519 }, { x: 0.370, y: 0.534 }, { x: 0.367, y: 0.548 }],
+        ],
+      }),
   });
 
   // 5. 내장 제거 — 개복(항문→머리 경계) → 긁어내기 → 세척
@@ -283,13 +318,17 @@ export function buildButcheryStages(profile: ButcheryProfile, opts?: ButcherySta
   stages.push({
     id: 'gut_scoop', label: '내장 비우기', orientation: 'BELLY_UP', primitive: 'scoop',
     guide: '갈빗대 안쪽 내장 덩어리를 긁어 통째로 꺼내세요',
-    fillTarget: 0.6,
+    fillTarget: 0.85,
+    // 복면 뷰 — 가른 정중선을 따라 항문 → 머리 경계까지 훑어 비운다
+    sweepPath: [{ x: profile.anusRatio, y: 0.5 }, { x: 0.2, y: 0.5 }],
   });
   // 5b. 핏줄(신장) 긁기 — 척추 아래 혈관막 제거 (자유 손질 개편 2026-07-30 — 내장과 분리)
   stages.push({
     id: 'vessel_scrub', label: '핏줄(신장) 긁기', orientation: 'BELLY_UP', primitive: 'scoop',
     guide: '내장 자리 천장 — 척추뼈 아래 검붉은 혈관막을 긁어 남은 피를 제거하세요',
-    fillTarget: 0.5,
+    fillTarget: 0.85,
+    // 체강 탑뷰 — 척추 아래 고인 피 홈(중앙 검붉은 띠)을 머리 쪽으로 긁는다
+    sweepPath: [{ x: 0.74, y: 0.5 }, { x: 0.16, y: 0.5 }],
   });
   stages.push({
     id: 'gut_wash', label: '뱃속 세척', orientation: 'BELLY_UP', primitive: 'wash',
@@ -300,12 +339,12 @@ export function buildButcheryStages(profile: ButcheryProfile, opts?: ButcherySta
   stages.push({
     id: 'tail_grip', label: '꼬리 칼집 (앞면)', orientation: 'BASE', primitive: 'guided_cut',
     guide: '꼬리 쪽에 얕은 홈을 내 박피 손잡이를 만드세요 (앞면)',
-    cut: cut('tail_grip', 'BASE', [{ x: 0.87, y: 0.36 }, { x: 0.885, y: 0.62 }], { minCoverage: 0.5 }),
+    cut: cut('tail_grip', 'BASE', [{ x: 0.732, y: 0.376 }, { x: 0.736, y: 0.627 }], { minCoverage: 0.5 }),
   });
   stages.push({
     id: 'tail_grip_b', label: '꼬리 칼집 (뒷면)', orientation: 'FLIP', primitive: 'guided_cut',
     guide: '뒤집어 반대면 꼬리에도 얕은 홈을 내세요',
-    cut: cut('tail_grip_b', 'FLIP', [{ x: 0.13, y: 0.36 }, { x: 0.115, y: 0.62 }], { minCoverage: 0.5 }),
+    cut: cut('tail_grip_b', 'FLIP', [{ x: 0.274, y: 0.395 }, { x: 0.273, y: 0.624 }], { minCoverage: 0.5 }),
   });
 
   // 7~8. 장 뜨기 — 면별 등쪽/배쪽 각각 척추까지 (자유 손질: 두 컷 순서 무관, 둘 다 = 분리).
@@ -315,21 +354,27 @@ export function buildButcheryStages(profile: ButcheryProfile, opts?: ButcherySta
     const sideLabel = flat
       ? `다섯장뜨기 ${f + 1}/${profile.filletCount}장`
       : f === 0 ? '1면' : '2면';
+    // 등쪽 = **등을 카메라 쪽으로 눕힌 뷰**(머리 오른쪽·꼬리 왼쪽 — 실사 정합).
+    //  칼집 3회로 길이 점점 깊어지며 벌어진다(1회 붉은 살 조금 → 2회 뼈 노출 → 3회 반대쪽까지).
     stages.push({
-      id: `fillet_${f}_score`, label: `${sideLabel} — 등쪽 칼집 → 척추까지`, orientation: 'BACK_DOWN', primitive: 'guided_cut',
+      id: `fillet_${f}_score`, label: `${sideLabel} — 등쪽 → 척추까지`, orientation: 'BACK_DOWN', primitive: 'guided_cut',
       guide: flat
-        ? '몸통 중앙선을 기준으로 한쪽 반신의 지느러미 경계를 따라 얕은 칼집 3회 (머리→꼬리)'
-        : '등 지느러미 자리를 따라 칼집을 넣어 척추뼈까지 뜨세요 (3회 반복)',
+        ? '몸통 중앙선을 기준으로 한쪽 반신의 지느러미 경계를 따라 얕은 칼집 3회'
+        : '등 지느러미 자리를 따라 머리쪽(우) → 꼬리쪽(좌)으로 칼집을 넣어 척추뼈까지 뜨세요 (3회 — 점점 깊게)',
       cut: cut(`fillet_${f}_score`, 'BACK_DOWN',
-        [{ x: 0.14, y: 0.3 }, { x: 0.86, y: 0.28 }], { strokesRequired: 3, tolerance: 0.09 }),
+        [{ x: 0.88, y: 0.575 }, { x: 0.5, y: 0.565 }, { x: 0.12, y: 0.55 }], { strokesRequired: 3, tolerance: 0.09 }),
     });
+    // 배쪽 = **배를 카메라 쪽으로 눕힌 뷰**(꼬리 오른쪽·머리 왼쪽). 사용자 지정 3구간 경로:
+    //  ① 꼬리 칼집(우) → 항문까지 척추뼈 바로 위를 일자로 ② 항문 → 내장막 → 아가미 지느러미(좌)
+    //  ③ 척추뼈에 걸리는 지점에서 **왼쪽 대각선 위**로 깊게 썰어 1면 분리.
     stages.push({
-      id: `fillet_${f}_sever`, label: `${sideLabel} — 배쪽 칼집 → 척추까지 (분리)`, orientation: 'BACK_DOWN', primitive: 'guided_cut',
+      id: `fillet_${f}_sever`, label: `${sideLabel} — 배쪽 → 척추 (분리)`, orientation: 'BELLY_UP', primitive: 'guided_cut',
       guide: flat
         ? '중앙 뼈(중골) 위를 강하게 썰어 반신 한 장을 분리 — 상·하 양측으로 남은 장 반복'
-        : '배쪽 항문~꼬리 라인을 척추까지 뜨고, 척추 위를 강하게 썰어 분리하세요',
-      cut: cut(`fillet_${f}_sever`, 'BACK_DOWN',
-        [{ x: 0.13, y: 0.5 }, { x: 0.88, y: 0.5 }], { strong: true, tolerance: 0.1 }),
+        : '꼬리 칼집(우)에서 항문 → 아가미까지 척추뼈 바로 위를 일자로 뜨고, 걸리는 지점에서 왼쪽 대각선 위로 썰어 분리하세요',
+      cut: cut(`fillet_${f}_sever`, 'BELLY_UP',
+        [{ x: 0.88, y: 0.56 }, { x: 0.62, y: 0.56 }, { x: 0.36, y: 0.555 }, { x: 0.2, y: 0.545 }, { x: 0.1, y: 0.44 }],
+        { strong: true, tolerance: 0.1 }),
       yieldsFillet: true,
     });
   }
@@ -382,6 +427,8 @@ export class ButcheryProcess {
   private cutQualities: number[] = [];
   private fillProgress = 0;
   private strokesLeft = 0;
+  /** 다중 유도선 — 이미 그은 선 인덱스 (스테이지 전환 시 리셋) */
+  private pathsDone = new Set<number>();
   private pullsLeft = 0;
   private _fillets = 0;
   private _ikejime = false;
@@ -410,6 +457,8 @@ export class ButcheryProcess {
   get currentStrokesLeft(): number { return this.strokesLeft; }
   /** peel 남은 당김 수 */
   get currentPullsLeft(): number { return this.pullsLeft; }
+  /** 다중 유도선 — 이미 그은 선 인덱스 (client가 완료선을 흐리게 렌더) */
+  get donePathIndices(): ReadonlySet<number> { return this.pathsDone; }
 
   /** 현재 방향이 스테이지 요구와 일치하는가 (칼질 활성 게이트) */
   canAct(): boolean {
@@ -431,24 +480,41 @@ export class ButcheryProcess {
   }
 
   /** 가이드 컷 제출 — strokesRequired 반복 처리 */
-  submitCut(traced: CutPoint[]): CutEvalResult & { strokesLeft: number; stageDone: boolean } {
+  submitCut(traced: CutPoint[]): CutEvalResult & { strokesLeft: number; stageDone: boolean; matchedPath: number } {
     const s = this.stage;
     if (!s || s.primitive !== 'guided_cut' || !s.cut || !this.canAct()) {
-      return { coverage: 0, avgDeviationRatio: 9, quality: 0, passed: false, strokesLeft: this.strokesLeft, stageDone: false };
+      return { coverage: 0, avgDeviationRatio: 9, quality: 0, passed: false, strokesLeft: this.strokesLeft, stageDone: false, matchedPath: -1 };
     }
-    const res = evaluateCut(traced, s.cut);
+    const multi = s.cut.guidePaths;
+    let res: CutEvalResult;
+    let matchedPath = -1;
+
+    if (multi && multi.length > 0) {
+      // ── 다중 유도선 — 미완료 선 중 **가장 잘 맞는 것**으로 판정 (그은 순서 자유) ──
+      let best: CutEvalResult | null = null;
+      for (let i = 0; i < multi.length; i++) {
+        if (this.pathsDone.has(i)) continue;
+        const r = evaluateCut(traced, { ...s.cut, guidePath: multi[i] });
+        if (!best || r.coverage > best.coverage) { best = r; matchedPath = i; }
+      }
+      res = best ?? { coverage: 0, avgDeviationRatio: 9, quality: 0, passed: false };
+    } else {
+      res = evaluateCut(traced, s.cut);
+    }
+
     if (!res.passed) {
-      return { ...res, strokesLeft: this.strokesLeft, stageDone: false };
+      return { ...res, strokesLeft: this.strokesLeft, stageDone: false, matchedPath: -1 };
     }
     this.cutQualities.push(res.quality);
     if (s.id === 'bleed_cut') this._bled = true;   // 얼음물까지 완료 시 확정되지만 컷 자체를 방혈로 기록
+    if (matchedPath >= 0) this.pathsDone.add(matchedPath);
     this.strokesLeft = Math.max(0, this.strokesLeft - 1);
     if (this.strokesLeft > 0) {
-      return { ...res, strokesLeft: this.strokesLeft, stageDone: false };
+      return { ...res, strokesLeft: this.strokesLeft, stageDone: false, matchedPath };
     }
     if (s.yieldsFillet) this._fillets++;
     this.advance();
-    return { ...res, strokesLeft: 0, stageDone: true };
+    return { ...res, strokesLeft: 0, stageDone: true, matchedPath };
   }
 
   /** 비늘치기/내장 긁기 — 스트로크 이동량 누적 (0~1 delta) */
@@ -547,7 +613,12 @@ export class ButcheryProcess {
   private resetStageCounters(): void {
     const s = this.stage;
     this.fillProgress = 0;
-    this.strokesLeft = s?.cut?.strokesRequired ?? (s?.primitive === 'guided_cut' ? 1 : 0);
+    // 다중 유도선이면 선 개수만큼 = 각 선 1회씩 (strokesRequired보다 우선)
+    const multiN = s?.cut?.guidePaths?.length ?? 0;
+    this.strokesLeft = multiN > 0
+      ? multiN
+      : (s?.cut?.strokesRequired ?? (s?.primitive === 'guided_cut' ? 1 : 0));
     this.pullsLeft = s?.pullsRequired ?? (s?.primitive === 'peel' ? 1 : 0);
+    this.pathsDone.clear();
   }
 }

@@ -22,8 +22,8 @@ import {
   computeFilletYield, getBestKnife, KnifeSpec,
   TUNING,
   SASHIMI_GUIDE_GROUP, SASHIMI_GUIDE_SHEET, LIVE_STAGE_GUIDE,
-  resolveLiveGuideCut, guideCutByKey, GUIDE_CUT_DONE_KEY,
-  WHOLE_FISH_SECTIONS, ButcherySectionDef,
+  guideCutByKey,
+  WHOLE_FISH_SECTIONS, ButcherySectionDef, ButcherySectionYield,
 } from '@tra/core';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { InventoryStore, InvItem } from '../store/InventoryStore.js';
@@ -69,11 +69,20 @@ export class ButcheryPanel extends DraggablePanel {
   private tracePoints: CutPoint[] = [];
   private lastFillPt: CutPoint | null = null;
   private peelStart: CutPoint | null = null;
+  /** 스윕 커버리지 게이지 상태 (drag_fill·scoop) — 스테이지 단위 */
+  private sweepCoverStage = '';
+  private sweepCover: { pts: CutPoint[]; hit: boolean[] } | null = null;
+  /** 비늘 튐 파티클 (드래그 중 커서 위치마다 생성 — destroy 시 일괄 정리) */
+  private flakes = new Set<Phaser.GameObjects.Rectangle>();
+  private lastFlakeMs = 0;
+  /** 장뜨기 벌어짐 — 액션 연출 중 표시할 단계(연출이 끝나면 해제) */
+  private filletOpen: { view: 'dorsal' | 'belly'; state: number } | null = null;
+  /** 다음 액션 연출에서 적용할 벌어짐 단계 (칼이 지나간 뒤 벌어지도록 지연 적용) */
+  private filletOpenPending: { view: 'dorsal' | 'belly'; state: number } | null = null;
 
   // 연출 상태 플래그 (렌더 전용)
   private scaledSides = 0;
   private headOff = false;
-  private gutted = false;
   private washCount = 0;
 
   // 뒤집기 연출 상태 — 화면에 그려진 방향(process.orientation과 다르면 flip 연출 후 동기화)
@@ -96,11 +105,8 @@ export class ButcheryPanel extends DraggablePanel {
   private actionTween?: Phaser.Tweens.Tween;
   /** 액션 연출 재생 중 — 입력 차단 (flipping과 동일 계열 가드) */
   private actionAnim = false;
-  /** 유도 팝업 마지막 컷 키 — 전환 시에만 팝인 연출 */
-  private lastPopupKey: string | null = null;
-  private popupTween?: Phaser.Tweens.Tween;
   /**
-   * 가이드 끄기 — true면 팝업 일러스트·외곽 화살표 큐·캡션을 숨긴다.
+   * 가이드 끄기 — true면 외곽 화살표 큐(유도 연출)를 숨긴다.
    * **유도선(drawGuide)은 토글과 무관하게 항상 표시.** GameState.flags에 영속.
    */
   private guideOff = false;
@@ -121,13 +127,24 @@ export class ButcheryPanel extends DraggablePanel {
   /** 손질 종료 가능 체크포인트 (none = 이탈 시 원물 복구) */
   private checkpoint: 'none' | 'fillets' | 'ribs' = 'none';
   private byproductPopup?: Phaser.GameObjects.Container;
+  /** 부산물 팝업 확인 후 이어질 진행 (작업 완료 → 남은 작업 선택 / 섹션 완료 → 다음 섹션) */
+  private byproductDone?: () => void;
 
-  // ── 가이드선 편집 (dev 전용, F9) — 유도선 끝점을 드래그해 위치 조정 + 좌표 복사 ──
+  // ── 가이드선 편집 (dev 전용, F9) — 핸들 드래그 + **곡선 그리기** + 좌표 복사 ──
   private editMode = false;
   private editDragIdx = -1;
   private editHandles: { pt: CutPoint; sx: number; sy: number }[] = [];
   private editHandleG?: Phaser.GameObjects.Graphics;
   private editReadout?: Phaser.GameObjects.Text;
+  /** 곡선 그리기 모드 — 도마 위 드래그로 자유곡선을 그려 경로 전체를 교체 */
+  private editDraw = false;
+  /** 곡선 그리기 중 캡처된 원시 궤적 (정규화) */
+  private editDrawPts: CutPoint[] = [];
+  private editDrawG?: Phaser.GameObjects.Graphics;
+  /** 곡선 리샘플 점 수 (그리기 커밋 시 이 개수로 균등 리샘플) */
+  private editCurveN = 7;
+  /** 편집 중인 유도선 인덱스 (다중 유도선 — 지느러미 등/뒷/가슴) */
+  private editLineIdx = 0;
   /** 합성 스윕선(비늘/내장/박피)의 편집 오버라이드 — stage.id별 편집 가능 배열 */
   private sweepOverride = new Map<string, CutPoint[]>();
 
@@ -136,7 +153,7 @@ export class ButcheryPanel extends DraggablePanel {
       x: (GAME_WIDTH - PANEL_W) / 2,
       y: (GAME_HEIGHT - PANEL_H) / 2,
       width: PANEL_W, height: PANEL_H,
-      title: `생선 손질 — 회 뜨기 (${source.name})`,
+      title: '손질하기',   // create 이후 refreshTitle()이 '손질하기 — {작업} ({어종}, 무게, 길이)'로 갱신
       onClose: cbs.onClose, dim: true, depth: 900,
     });
     this.source = source;
@@ -198,10 +215,11 @@ export class ButcheryPanel extends DraggablePanel {
   override destroy(fromScene?: boolean): void {
     this.closeSheetViewer();
     this.closeByproductPopup();
+    this.editDrawG?.destroy();
+    this.editDrawG = undefined;
     this.stopGuideAnim();
     this.stopActionAnim();
-    this.popupTween?.remove();
-    this.popupTween = undefined;
+    this.clearFlakes();
     this.scene?.input?.off('pointermove', this.butcheryMoveHandler);
     this.scene?.input?.off('pointerup', this.butcheryUpHandler);
     this.scene?.input?.off('pointerdown', this.onPointerDownBound, this);
@@ -277,6 +295,29 @@ export class ButcheryPanel extends DraggablePanel {
   // ═══════════════════════════════════════════════════
   private get section(): ButcherySectionDef { return this.sections[this.sectionIdx]; }
 
+  /**
+   * 현재 작업 단계 이름 — 구현 계획서의 3단계 (사용자 지시 2026-07-30).
+   *  원물 손질(시메~2면 뜨기) / 필렛 손질(갈빗대~박피) / 회뜨기(썰기 — 추후)
+   */
+  private phaseLabel(): string {
+    const id = this.section.id;
+    if (id === 'sec_rib' || id === 'sec_pin' || id === 'sec_peel') return '필렛 손질';
+    return '원물 손질';
+  }
+
+  /** 헤더 타이틀 갱신 — '손질하기 — {작업} ({어종}, {무게}, {길이})' */
+  private refreshTitle(): void {
+    const nameKo = this.speciesName();
+    const w = this.source.weightG;
+    const l = this.source.lengthCm;
+    const spec = [
+      nameKo,
+      w !== undefined ? (w >= 1000 ? `${(w / 1000).toFixed(1)}kg` : `${w}g`) : null,
+      l !== undefined ? `${l}cm` : null,
+    ].filter(Boolean).join(', ');
+    this.setTitle(`손질하기 — ${this.phaseLabel()} (${spec})`);
+  }
+
   private taskDone(taskId: string): boolean { return this.doneTasks.has(taskId); }
 
   /** 섹션 진입 — 선형 섹션은 첫 미완료 작업 자동 선택, 자유 섹션은 선택 대기 */
@@ -317,24 +358,43 @@ export class ButcheryPanel extends DraggablePanel {
     acc.push(Math.max(0, Math.min(1, quality)));
     this.taskAcc.set(task.id, acc);
 
-    if (task.stageIds.every((id) => this.doneStages.has(id))) {
-      // 작업 완료 — 도장 (정확도 %)
-      const avg = acc.length ? acc.reduce((a, b) => a + b, 0) / acc.length : 1;
-      this.doneTasks.set(task.id, Math.round(avg * 100));
-      this.activeTaskId = null;
-      const sec = this.section;
-      if (sec.tasks.every((t) => this.taskDone(t.id))) {
-        // 섹션 완료 — 부산물 팝업(있으면) → 다음 섹션
-        if (sec.yields?.length) this.showByproductPopup(sec);
-        else this.advanceSection();
-      } else if (sec.anyOrder) {
+    // 작업의 모든 스테이지가 끝나야 작업 완료 (예: 머리 제거 = 앞면 + 뒷면 2스테이지)
+    if (!task.stageIds.every((id) => this.doneStages.has(id))) {
+      // 같은 작업의 다음 스테이지로 계속 — 방향이 바뀌는 스테이지면 뒤집기 안내가 뜬다
+      this.refresh();
+      return;
+    }
+
+    // 작업 완료 — 도장 (정확도 %)
+    const avg = acc.length ? acc.reduce((a, b) => a + b, 0) / acc.length : 1;
+    this.doneTasks.set(task.id, Math.round(avg * 100));
+    this.activeTaskId = null;
+    const sec = this.section;
+    const secDone = sec.tasks.every((t) => this.taskDone(t.id));
+
+    // 작업/섹션 완료 후 진행 — 부산물 팝업이 있으면 그 확인 뒤에 실행된다
+    const after = (): void => {
+      if (secDone) {
+        if (sec.yields?.length) {
+          this.showByproductPopup(sec.yields, sec.label, !!sec.exitAfter, () => this.advanceSection());
+        } else {
+          this.advanceSection();
+        }
+        return;
+      }
+      if (sec.anyOrder) {
+        // 남은 작업을 플레이어가 다시 고른다 (자유 순서)
         this.awaitingSelect = true;
         this.refresh();
       } else {
         const next = sec.tasks.find((t) => !this.taskDone(t.id));
         if (next) this.selectTask(next.id);
       }
-    }
+    };
+
+    // **작업 단위 부산물** (머리·내장처럼 그 작업만으로 분리되는 것) — 즉시 팝업
+    if (task.yields?.length) this.showByproductPopup(task.yields, task.label, false, after);
+    else after();
   }
 
   /** 다음 섹션으로 (마지막 섹션이면 최종 완료) */
@@ -371,8 +431,8 @@ export class ButcheryPanel extends DraggablePanel {
     };
   }
 
-  /** 섹션 yields → 팝업/레저 행 목록 */
-  private buildYieldRows(sec: ButcherySectionDef): { key: string; tpl: Omit<InvItem, 'slot' | 'qty'>; qty: number }[] {
+  /** yields 종류 목록 → 팝업/레저 행 목록 */
+  private buildYieldRows(yields: ButcherySectionYield[]): { key: string; tpl: Omit<InvItem, 'slot' | 'qty'>; qty: number }[] {
     const speciesId = this.process.profile.speciesId;
     const nameKo = this.speciesName();
     const fam = this.trimFamily(speciesId);
@@ -381,7 +441,7 @@ export class ButcheryPanel extends DraggablePanel {
     const seq = InventoryStore.nextCatchSeq();
     const base = { category: 'food' as const, subCategory: '부산물', condition: 'live' as const, conditionSinceMs: now, equippable: false };
     const rows: { key: string; tpl: Omit<InvItem, 'slot' | 'qty'>; qty: number }[] = [];
-    for (const y of sec.yields ?? []) {
+    for (const y of yields) {
       switch (y) {
         case 'head':
           rows.push({ key: 'head', qty: 1, tpl: { ...base, id: `inv_byp_head_${speciesId}_${seq}`, name: `${nameKo} 머리 ${wts.headG}g`, icon: '🐟', iconTexture: this.trimHeadKey(speciesId), byproductKind: 'head', basePrice: Math.max(200, wts.headG * 3), speciesId, weightG: wts.headG } });
@@ -424,24 +484,30 @@ export class ButcheryPanel extends DraggablePanel {
     }
   }
 
-  /** 섹션 완료 부산물 팝업 — [보관/버리기] 토글 + 확인 / (exitAfter) 손질 마치기 */
-  private showByproductPopup(sec: ButcherySectionDef): void {
+  /**
+   * 부산물 팝업 — [보관/버리기] 토글 + 확인 / (exitAfter) 손질 마치기.
+   * **작업 완료**(머리·내장) 또는 **섹션 완료**(필렛·척추뼈 등) 시점에 호출되고,
+   * 확인 후 onDone으로 진행을 이어받는다.
+   */
+  private showByproductPopup(
+    yields: ButcherySectionYield[], label: string, exitBtn: boolean, onDone: () => void,
+  ): void {
     this.closeByproductPopup();
     this.stopGuideAnim();
-    const rows = this.buildYieldRows(sec);
-    if (rows.length === 0) { this.advanceSection(); return; }
+    const rows = this.buildYieldRows(yields);
+    if (rows.length === 0) { onDone(); return; }
+    this.byproductDone = onDone;
     const keep = rows.map(() => true);
 
     const scene = this.scene;
     const W = 420, rowH = 42;
-    const exitBtn = !!sec.exitAfter;
     const H = 92 + rows.length * rowH + (exitBtn ? 92 : 52);
     const c = scene.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2).setDepth(1600);
     const dim = scene.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.55).setInteractive();
     const bg = scene.add.graphics();
     bg.fillStyle(0x0a1628, 0.98); bg.fillRoundedRect(-W / 2, -H / 2, W, H, 8);
     bg.lineStyle(2, 0xc8a060, 1); bg.strokeRoundedRect(-W / 2, -H / 2, W, H, 8);
-    const title = scene.add.text(0, -H / 2 + 24, `부산물 발생 — ${sec.label.replace(/ \(.*\)$/, '')}`, {
+    const title = scene.add.text(0, -H / 2 + 24, `부산물 발생 — ${label.replace(/ \(.*\)$/, '')}`, {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '15px', color: '#ffe28a', fontStyle: 'bold',
     }).setOrigin(0.5);
     c.add([dim, bg, title]);
@@ -515,8 +581,14 @@ export class ButcheryPanel extends DraggablePanel {
     if (!c) return;
     const rows = c.__rows ?? [];
     const keep = c.__keep ?? [];
-    rows.forEach((row, i) => { if (keep[i]) this.pendingItems.push(row); });
+    const kept = rows.filter((_, i) => keep[i]);
+    kept.forEach((row) => this.pendingItems.push(row));
     this.closeByproductPopup();
+    const done = this.byproductDone;
+    this.byproductDone = undefined;
+    this.flash(kept.length
+      ? `부산물 ${kept.length}종 보관 예정 — 손질 마칠 때 인벤토리에 지급됩니다`
+      : '부산물을 버렸습니다', true);
     if (exitNow) {
       // 즉시 종료 — 체크포인트 갱신 후 정산 (필렛만 저장하고 손질 마침)
       if (this.section.id === 'sec_fillet_b') this.checkpoint = 'fillets';
@@ -524,7 +596,8 @@ export class ButcheryPanel extends DraggablePanel {
       this.settleAtCheckpoint();
       return;
     }
-    this.advanceSection();
+    if (done) done();
+    else this.advanceSection();
   }
 
   /** 레저 실지급 */
@@ -648,10 +721,25 @@ export class ButcheryPanel extends DraggablePanel {
   // ═══════════════════════════════════════════════════
   private onPointerDown(p: Phaser.Input.Pointer): void {
     if (this.sheetViewer) return;   // 시트 뷰어 열림 중 — 손질 입력 차단 (뷰어 자체 핸들러가 처리)
-    if (this.editMode) {            // dev 가이드 편집 — 핸들 드래그 시작 (손질 입력 차단)
+    if (this.editMode) {            // dev 가이드 편집 (손질 입력 차단)
       const lx = p.x - this.x, ly = p.y - this.y;
       let best = -1, bestD = 16;
       this.editHandles.forEach((h, i) => { const d = Math.hypot(lx - h.sx, ly - h.sy); if (d < bestD) { bestD = d; best = i; } });
+      // 우클릭 = 핸들 점 삭제 (곡선 다듬기)
+      if (p.rightButtonDown()) {
+        if (best >= 0) this.editDeletePoint(best);
+        return;
+      }
+      // 곡선 그리기 모드 — 도마 안에서 시작하면 자유곡선 캡처
+      if (this.editDraw) {
+        const n0 = this.toNorm(p, 0.05);
+        if (n0) {
+          this.editDrawPts = [n0];
+          if (!this.editDrawG) { this.editDrawG = this.scene.add.graphics(); this.add(this.editDrawG); }
+          this.paintEditDraw();
+        }
+        return;
+      }
       this.editDragIdx = best;
       return;
     }
@@ -695,7 +783,22 @@ export class ButcheryPanel extends DraggablePanel {
   }
 
   private onPointerMove(p: Phaser.Input.Pointer): void {
-    if (this.editMode) { this.updateEditDrag(p); return; }   // dev 편집 — 핸들 드래그
+    if (this.editMode) {
+      // 곡선 그리기 캡처 중 — 일정 간격으로 궤적 누적 (그 외에는 핸들 드래그)
+      if (this.editDraw) {
+        if (this.editDrawPts.length > 0 && p.isDown) {
+          const n = this.toNorm(p, 0.08);
+          const last = this.editDrawPts[this.editDrawPts.length - 1];
+          if (n && Math.hypot(n.x - last.x, n.y - last.y) > 0.006) {
+            this.editDrawPts.push(n);
+            this.paintEditDraw();
+          }
+        }
+        return;
+      }
+      this.updateEditDrag(p);
+      return;
+    }
     if (this.done || this.knifeLocked() || this.flipping || this.actionAnim) return;
     if (!this.tracing && !this.peelStart) return;
     const stage = this.process.stage;
@@ -716,17 +819,30 @@ export class ButcheryPanel extends DraggablePanel {
       }
     } else if (this.tracing && (stage.primitive === 'drag_fill' || stage.primitive === 'scoop')) {
       if (this.lastFillPt) {
-        const d = Math.hypot(n.x - this.lastFillPt.x, n.y - this.lastFillPt.y);
-        const res = this.process.submitFill(d * 0.28);
+        // 게이지 = 스윕 경로 커버리지 (제자리 흔들기로는 안 찬다)
+        const delta = this.sweepCoverDelta(stage, n);
+        // 커서가 지나가는 위치마다 비늘/부스러기 튐 (진행 방향 앞쪽으로)
+        const nowMs = this.scene.time.now;
+        const mvx = n.x - this.lastFillPt.x, mvy = n.y - this.lastFillPt.y;
+        if (nowMs - this.lastFlakeMs > 40 && Math.hypot(mvx, mvy) > 0.004) {
+          this.lastFlakeMs = nowMs;
+          this.spawnScaleBurst(
+            this.fishX + n.x * this.fishW, this.fishY + n.y * this.fishH,
+            Math.atan2(mvy * this.fishH, mvx * this.fishW),
+            delta > 0 ? 5 : 2,
+            stage.primitive === 'drag_fill' ? 'scale' : 'gut',
+          );
+        }
+        const res = this.process.submitFill(delta);
         if (res.stageDone) {
+          // 내장/핏줄(scoop) 상태는 doneStages에서 파생 — 여기선 비늘 면수만 센다
           if (stage.primitive === 'drag_fill') this.scaledSides++;
-          else this.gutted = true;
           this.tracing = false;
           this.flash(stage.primitive === 'drag_fill' ? '비늘을 말끔히 벗겼습니다'
             : stage.id === 'vessel_scrub' ? '척추 아래 핏줄을 긁어냈습니다' : '내장을 통째로 꺼냈습니다', true);
           const willFlip = this.process.orientation !== this.renderedOrientation;
           this.refresh();
-          if (!willFlip) this.playActionAnim(stage);
+          if (!willFlip) this.playActionAnim(stage, this.sweepPathFor(stage));
           this.onStageComplete(stage.id, 1);
         } else {
           this.updateFillBar(res.progress);
@@ -737,7 +853,11 @@ export class ButcheryPanel extends DraggablePanel {
   }
 
   private onPointerUp(p: Phaser.Input.Pointer): void {
-    if (this.editMode) { this.editDragIdx = -1; return; }   // dev 편집 — 드래그 종료
+    if (this.editMode) {                                    // dev 편집 — 드래그/캡처 종료
+      if (this.editDraw && this.editDrawPts.length > 0) this.commitEditDraw();
+      this.editDragIdx = -1;
+      return;
+    }
     if (this.done || this.knifeLocked() || this.flipping) { this.tracing = false; this.peelStart = null; return; }
     const stage = this.process.stage;
 
@@ -764,6 +884,9 @@ export class ButcheryPanel extends DraggablePanel {
     // 가이드 컷 판정
     if (this.tracing && stage?.primitive === 'guided_cut') {
       this.tracing = false;
+      const strokesBefore = stage.cut?.strokesRequired
+        ? stage.cut.strokesRequired - this.process.currentStrokesLeft
+        : 0;
       const r = this.process.submitCut(this.tracePoints);
       this.tracePoints = [];
       this.scene.time.delayedCall(150, () => this.traceG.clear());
@@ -775,10 +898,20 @@ export class ButcheryPanel extends DraggablePanel {
           ? `컷 성공 — 정확도 ${(r.quality * 100).toFixed(0)}%`
           : `칼집 ${r.strokesLeft}회 남음 (정확도 ${(r.quality * 100).toFixed(0)}%)`, true);
       }
+      // 장뜨기 — 칼이 지나간 뒤 **벌어지는 연출** 단계 예약 (칼집 회차 = 벌어짐 정도).
+      //  스테이지가 넘어가도(3회째/분리) 연출 동안은 마지막 벌어짐을 유지한다.
+      if (r.passed && stage.id.startsWith('fillet_')) {
+        const view = stage.id.endsWith('_sever') ? 'belly' : 'dorsal';
+        this.filletOpenPending = { view, state: Math.min(3, strokesBefore + 1) };
+      }
       const willFlip = this.process.orientation !== this.renderedOrientation;
       this.refresh();
-      // 컷 성공 액션 연출 — 방향 전환(플립 연출)이 이어지면 스킵 (플립이 피드백)
-      if (r.passed && !willFlip) this.playActionAnim(stage);
+      // 컷 성공 액션 연출 — 방향 전환(플립 연출)이 이어지면 스킵 (플립이 피드백).
+      // 다중 유도선이면 방금 판정된 그 선(matchedPath)을 따라 칼이 지나간다.
+      const multi = stage.cut?.guidePaths;
+      const cutPath = multi && r.matchedPath >= 0 ? multi[r.matchedPath] : undefined;
+      if (r.passed && !willFlip) this.playActionAnim(stage, cutPath);
+      else this.filletOpenPending = null;
       if (r.passed && r.stageDone) this.onStageComplete(stage.id, r.quality);
       return;
     }
@@ -802,8 +935,7 @@ export class ButcheryPanel extends DraggablePanel {
   }
 
   private doRefresh(): void {
-    this.popupTween?.remove();          // 파괴될 팝업 컨테이너 대상 트윈 정리
-    this.popupTween = undefined;
+    this.refreshTitle();   // '손질하기 — 원물 손질 (감성돔, 900g, 38cm)'
     this.uiC.removeAll(true);
     this.drawFish();
     if (!this.knifeLocked()) this.drawGuide();
@@ -965,11 +1097,17 @@ export class ButcheryPanel extends DraggablePanel {
     const speciesId = this.process.profile.speciesId;
     const sprites = butcherSpritesFor(speciesId);
     const tint = (SASHIMI_GUIDE_GROUP[speciesId] || sprites.nativeColor) ? null : getFishColors(speciesId).body;
+    // 몸통 상태는 **완료 스테이지 집합에서 파생** — 자유 순서에서도 화면과 실제 진행이 어긋나지
+    // 않는다 (구 구현은 this.headOff/this.gutted 플래그라 순서에 따라 불일치 가능).
+    const headOff = this.doneStages.has('head_flip') || this.headOff;
+    const finsOff = this.doneStages.has('finectomy');
+    const gutted = this.doneStages.has('gut_scoop');
     drawPixelButcherFish(g, { x: X, y: Y, w: W, h: H }, tint, {
       orientation: this.renderedOrientation,
-      headOff: this.headOff,
+      headOff,
+      finsOff,
       scaledSides: this.scaledSides,
-      gutted: this.gutted,
+      gutted,
       hasScales: this.process.profile.hasScales,
       finished: this.process.finished,
       currentPullsLeft: this.process.currentPullsLeft,
@@ -979,6 +1117,8 @@ export class ButcheryPanel extends DraggablePanel {
       strokesDone: this.process.stage?.cut?.strokesRequired
         ? this.process.stage.cut.strokesRequired - this.process.currentStrokesLeft
         : 0,
+      // 칼질 성공 연출 중에만 — 스테이지가 넘어가도 마지막 벌어짐을 유지
+      openOverride: this.filletOpen ?? undefined,
     }, sprites);
   }
 
@@ -992,13 +1132,33 @@ export class ButcheryPanel extends DraggablePanel {
   private drawGuide(): void {
     this.guideG.clear();
     if (this.done || this.process.finished) return;
-    // 방향 불일치(수동 이탈) 시엔 좌표가 어긋나므로 유도선 숨김 — autoOrient로 대부분 정렬됨
-    if (this.process.orientation !== this.renderedOrientation) return;
+    // ① 작업 미선택(awaitingSelect) / 부산물 팝업 중 = **아직 과제를 지급하지 않은 상태** —
+    //    유도선을 그리면 "고르기 전에 과제가 이미 떠 있는" 문제가 된다 (사용자 지적 2026-07-30).
+    if (this.awaitingSelect || this.byproductPopup) return;
     const stage = this.process.stage;
     if (!stage) return;
+    // ② 방향 불일치 = 유도선 좌표가 **다른 면 기준**이라 화면에 엉뚱한 위치로 찍힌다
+    //    (예: head_flip(뒷면 x0.83)을 BASE 화면에 그리면 꼬리에 사선이 생김 — 실제 버그였음).
+    //    선을 숨기고 도마 중앙에 뒤집기 안내를 띄운다.
+    if (this.process.orientation !== this.renderedOrientation
+      || this.process.orientation !== stage.orientation) {
+      if (!this.editMode) this.drawFlipNeededHint(stage);
+      return;
+    }
     const g = this.guideG;
     if (stage.primitive === 'guided_cut' && stage.cut) {
-      this.strokeGuideLine(g, stage.cut.guidePath);
+      const multi = stage.cut.guidePaths;
+      if (multi?.length) {
+        // 다중 유도선 (지느러미 등·뒷·가슴) — 완료선은 흐리게, 미완료선만 또렷하게.
+        // dev 편집 중에는 **편집 대상 선만** 또렷하게(나머지는 흐리게) 해 작업 대상을 구분.
+        const done = this.process.donePathIndices;
+        multi.forEach((path, i) => {
+          const faint = this.editMode ? i !== this.editLineIdx : done.has(i);
+          this.strokeGuideLine(g, path, faint);
+        });
+      } else {
+        this.strokeGuideLine(g, stage.cut.guidePath);
+      }
     } else if (stage.primitive === 'tap' && stage.tapPoint) {
       // 시메 — 목표점 링(탭 좌표 = 게임플레이)
       const [tx, ty] = this.toPanelPx(stage.tapPoint);
@@ -1011,6 +1171,39 @@ export class ButcheryPanel extends DraggablePanel {
       this.strokeGuideLine(g, this.sweepPathFor(stage));
     }
     // wash — 버튼 인터페이스라 유도선 없음
+  }
+
+  /**
+   * 뒤집기 필요 안내 — 유도선 좌표가 현재 화면 방향과 다를 때 도마 위에 크게 표시.
+   * (자동 뒤집기 폐지 후 "왜 아무것도 안 되지" 먹통 체감을 막는 장치)
+   */
+  private drawFlipNeededHint(stage: ButcheryStage): void {
+    const need = this.flipHintFor(this.process.orientation, stage.orientation);
+    const g = this.guideG;
+    const cx = this.fishX + this.fishW / 2, cy = this.fishY + this.fishH / 2;
+    g.fillStyle(0x0a1420, 0.8);
+    g.fillRoundedRect(cx - 186, cy - 28, 372, 56, 8);
+    g.lineStyle(2, 0xffd257, 0.95);
+    g.strokeRoundedRect(cx - 186, cy - 28, 372, 56, 8);
+    const t = this.scene.add.text(cx, cy, `${need}\n${ORIENTATION_LABEL[stage.orientation]} 상태에서 손질합니다`, {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px', color: '#ffd257',
+      fontStyle: 'bold', align: 'center', lineSpacing: 4,
+    }).setOrigin(0.5);
+    this.uiC.add(t);
+  }
+
+  /** 현재 방향 → 목표 방향에 필요한 뒤집기 안내 문구 (좌우 F / 상하 V / 둘 다) */
+  private flipHintFor(cur: OrientationState, want: OrientationState): string {
+    const LR: Partial<Record<OrientationState, OrientationState>> = {
+      BASE: 'FLIP', FLIP: 'BASE', BELLY_UP: 'BACK_DOWN', BACK_DOWN: 'BELLY_UP',
+    };
+    const UD: Partial<Record<OrientationState, OrientationState>> = {
+      BASE: 'BELLY_UP', BELLY_UP: 'BASE', FLIP: 'BACK_DOWN', BACK_DOWN: 'FLIP',
+    };
+    if (LR[cur] === want) return '[좌우 뒤집기] 필요 — F 또는 버튼';
+    if (UD[cur] === want) return '[상하 뒤집기] 필요 — V 또는 버튼';
+    if (want === 'FLESH_UP') return '필렛 뷰 전환 필요';
+    return '[좌우(F)] + [상하(V)] 뒤집기 필요';
   }
 
   /** 점선 세그먼트 (lineStyle은 호출측이 설정) */
@@ -1037,9 +1230,17 @@ export class ButcheryPanel extends DraggablePanel {
   }
 
   /** 절단 유도선 — 점선 경로 + 시작(초록 링)/끝(붉은 사각) 마커 + 방향 화살촉 */
-  private strokeGuideLine(g: Phaser.GameObjects.Graphics, path: CutPoint[]): void {
+  private strokeGuideLine(g: Phaser.GameObjects.Graphics, path: CutPoint[], done = false): void {
     const pts = path.map((p) => this.toPanelPx(p));
     if (pts.length < 2) return;
+    if (done) {
+      // 이미 그은 선 (다중 유도선) — 흐린 실선 + 체크 마커만
+      g.lineStyle(1.6, 0x4af2a1, 0.35);
+      for (let i = 1; i < pts.length; i++) g.lineBetween(pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1]);
+      g.fillStyle(0x4af2a1, 0.5);
+      g.fillCircle(pts[0][0], pts[0][1], 3);
+      return;
+    }
     g.lineStyle(2, 0xffd257, 0.92);
     for (let i = 1; i < pts.length; i++) this.dashSeg(g, pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1]);
     // 시작 마커 (초록 링)
@@ -1060,23 +1261,134 @@ export class ButcheryPanel extends DraggablePanel {
   //  비늘·내장·박피 → sweepOverride(합성선). 드래그로 맞춘 뒤 [복사]로 코드 스니펫을
   //  클립보드에 담아 ButcheryProcess.ts(cut/tapPoint) / drawGuide(스윕)에 붙여넣는다.
   // ═══════════════════════════════════════════════════
-  /** 합성 스윕선(비늘/내장/박피)의 편집 가능 경로 — 오버라이드 없으면 기본값 생성 */
+  /**
+   * 스윕선(비늘/내장/박피)의 편집 가능 경로.
+   * **core 스테이지 데이터(`stage.sweepPath`)가 1차 소스** — 있으면 그 배열을 그대로 참조해
+   * dev 편집(F9)이 제자리 수정되고 [복사] 스니펫이 실좌표와 일치한다. 없으면 기본 직선.
+   */
   private sweepPathFor(stage: ButcheryStage): CutPoint[] {
     let p = this.sweepOverride.get(stage.id);
     if (!p) {
-      p = stage.primitive === 'peel' ? [{ x: 0.9, y: 0.5 }, { x: 0.14, y: 0.5 }]
-        : stage.primitive === 'scoop' ? [{ x: 0.85, y: 0.55 }, { x: 0.28, y: 0.55 }]
-          : [{ x: 0.85, y: 0.5 }, { x: 0.28, y: 0.5 }];   // drag_fill
+      p = stage.sweepPath
+        ?? (stage.primitive === 'peel' ? [{ x: 0.9, y: 0.5 }, { x: 0.14, y: 0.5 }]
+          : stage.primitive === 'scoop' ? [{ x: 0.85, y: 0.55 }, { x: 0.28, y: 0.55 }]
+            : [{ x: 0.85, y: 0.5 }, { x: 0.28, y: 0.5 }]);   // drag_fill
       this.sweepOverride.set(stage.id, p);
     }
     return p;
+  }
+
+  // ── 스윕 커버리지 게이지 (drag_fill·scoop) ──────────────────
+  //  게이지 = **지정된 스윕 경로를 얼마나 훑었는지**(구현 전: 누적 이동거리 × 계수라
+  //  제자리에서 흔들어도 찼다). 경로를 SWEEP_SAMPLES등분해 커서 반경 안에 든 샘플을
+  //  체크 → 진행률 = 체크수/전체. 전 구간을 훑어야 100%(fillTarget 0.92) — 사용자 지시
+  //  "지정한 스윕을 전부 충족할 때를 100% 기준" (2026-07-30).
+  private static readonly SWEEP_SAMPLES = 44;
+  /** 커서 반경(정규 좌표) — 이 안의 샘플이 훑힌 것으로 인정 */
+  private static readonly SWEEP_BRUSH = 0.06;
+
+  /** 현재 스테이지의 스윕 샘플/체크 배열 확보 (스테이지 전환 시 리셋) */
+  private sweepSamplesFor(stage: ButcheryStage): { pts: CutPoint[]; hit: boolean[] } {
+    if (this.sweepCoverStage !== stage.id || !this.sweepCover) {
+      const path = this.sweepPathFor(stage);
+      const n = ButcheryPanel.SWEEP_SAMPLES;
+      const pts: CutPoint[] = [];
+      // 호길이 균등 샘플 (pathPointAt은 패널 픽셀 반환이라 정규 좌표로 별도 보간)
+      const segs: number[] = [];
+      let total = 0;
+      for (let i = 1; i < path.length; i++) {
+        const d = Math.hypot(path[i].x - path[i - 1].x, path[i].y - path[i - 1].y);
+        segs.push(d); total += d;
+      }
+      for (let k = 0; k < n; k++) {
+        let target = total * (k / (n - 1));
+        let i = 0;
+        while (i < segs.length && target > segs[i]) { target -= segs[i]; i++; }
+        if (i >= segs.length) { pts.push(path[path.length - 1]); continue; }
+        const t = segs[i] > 0 ? target / segs[i] : 0;
+        pts.push({
+          x: path[i].x + (path[i + 1].x - path[i].x) * t,
+          y: path[i].y + (path[i + 1].y - path[i].y) * t,
+        });
+      }
+      this.sweepCoverStage = stage.id;
+      this.sweepCover = { pts, hit: pts.map(() => false) };
+    }
+    return this.sweepCover;
+  }
+
+  /** 커서 위치로 새로 훑은 샘플 비율(0~1) — submitFill 델타 */
+  private sweepCoverDelta(stage: ButcheryStage, n: CutPoint): number {
+    const { pts, hit } = this.sweepSamplesFor(stage);
+    const r = ButcheryPanel.SWEEP_BRUSH;
+    let added = 0;
+    for (let i = 0; i < pts.length; i++) {
+      if (hit[i]) continue;
+      if (Math.hypot(pts[i].x - n.x, pts[i].y - n.y) <= r) { hit[i] = true; added++; }
+    }
+    return added / pts.length;
+  }
+
+  /**
+   * 비늘/부스러기 튐 — **마우스가 지나가는 위치마다** 즉시 튀는 파티클
+   * (사용자 지시: "게이지를 채우면서 비늘을 치는 동작 시, 마우스가 호버링 되는 위치마다
+   * 비늘이 튀는 연출"). 진행 방향 앞쪽으로 부채꼴 분사 후 낙하·소멸.
+   */
+  private spawnScaleBurst(
+    px: number, py: number, ang: number, count = 4, kind: 'scale' | 'gut' = 'scale',
+  ): void {
+    if (!this.scene) return;
+    const cols = kind === 'gut' ? [0x8a3040, 0x5a1218] : [0xeaf6ff, 0xc3dced];
+    for (let k = 0; k < count; k++) {
+      const spread = (Math.random() - 0.5) * 1.3;
+      const dist = 14 + Math.random() * 26;
+      const size = 2 + Math.round(Math.random() * 2);
+      const flake = this.scene.add.rectangle(px, py, size, size,
+        cols[k % 2], 0.95);
+      flake.setScrollFactor(0);
+      this.add(flake);
+      this.flakes.add(flake);
+      this.scene.tweens.add({
+        targets: flake,
+        x: px + Math.cos(ang + spread) * dist,
+        y: py + Math.sin(ang + spread) * dist + 10 + Math.random() * 14,
+        alpha: 0,
+        angle: (Math.random() - 0.5) * 220,
+        duration: 260 + Math.random() * 220,
+        ease: 'Quad.easeOut',
+        onComplete: () => { this.flakes.delete(flake); flake.destroy(); },
+      });
+    }
+  }
+
+  private clearFlakes(): void {
+    this.flakes.forEach((f) => { this.scene?.tweens.killTweensOf(f); f.destroy(); });
+    this.flakes.clear();
+  }
+
+  /**
+   * 편집 대상 선 목록 — guided_cut은 다중 유도선(guidePaths)을 지원한다.
+   * 없으면 guidePath 단일 선을 1개짜리 목록으로 승격해 편집 경로를 통일한다.
+   */
+  private editableLines(): CutPoint[][] | null {
+    const stage = this.process.stage;
+    if (!stage || stage.primitive !== 'guided_cut' || !stage.cut) return null;
+    if (!stage.cut.guidePaths) stage.cut.guidePaths = [stage.cut.guidePath];
+    return stage.cut.guidePaths;
   }
 
   /** 현재 스테이지의 편집 대상 점들(가변 참조) — wash는 없음 */
   private editablePoints(): CutPoint[] | null {
     const stage = this.process.stage;
     if (!stage) return null;
-    if (stage.primitive === 'guided_cut' && stage.cut) return stage.cut.guidePath;
+    if (stage.primitive === 'guided_cut' && stage.cut) {
+      const lines = this.editableLines();
+      if (lines?.length) {
+        this.editLineIdx = Math.min(this.editLineIdx, lines.length - 1);
+        return lines[this.editLineIdx];
+      }
+      return stage.cut.guidePath;
+    }
     if (stage.primitive === 'tap') {
       if (!stage.tapPoint) stage.tapPoint = { x: 0.16, y: 0.38 };
       return [stage.tapPoint];
@@ -1092,11 +1404,190 @@ export class ButcheryPanel extends DraggablePanel {
     if (!import.meta.env.DEV) return;
     this.editMode = !this.editMode;
     this.editDragIdx = -1;
-    this.flash(this.editMode ? '가이드 편집 ON — 끝점을 드래그, [복사]로 좌표 획득' : '가이드 편집 OFF', true);
+    this.editDraw = false;
+    this.editDrawPts = [];
+    this.flash(this.editMode
+      ? '가이드 편집 ON — 핸들 드래그 / [곡선 그리기]로 자유곡선 / 우클릭 = 점 삭제'
+      : '가이드 편집 OFF', true);
     this.refresh();
   }
 
-  /** 편집 오버레이(핸들 + 좌표 리드아웃 + 복사 버튼) — editMode일 때 doRefresh에서 렌더 */
+  // ── 곡선 편집 수학 (정규화 좌표계 — 생선 bbox 0~1) ──────────
+  /** 폴리라인 호길이 균등 리샘플 (n점, 시작·끝 보존) */
+  private resampleNorm(path: CutPoint[], n: number): CutPoint[] {
+    if (path.length < 2 || n < 2) return path.slice();
+    const seg: number[] = [];
+    let total = 0;
+    for (let i = 1; i < path.length; i++) {
+      const l = Math.hypot(path[i].x - path[i - 1].x, path[i].y - path[i - 1].y);
+      seg.push(l); total += l;
+    }
+    if (total <= 1e-6) return [path[0], path[path.length - 1]];
+    const out: CutPoint[] = [];
+    for (let k = 0; k < n; k++) {
+      let target = (k / (n - 1)) * total;
+      let i = 0;
+      while (i < seg.length && target > seg[i]) { target -= seg[i]; i++; }
+      if (i >= seg.length) { out.push({ ...path[path.length - 1] }); continue; }
+      const t = seg[i] > 1e-9 ? target / seg[i] : 0;
+      out.push({
+        x: path[i].x + (path[i + 1].x - path[i].x) * t,
+        y: path[i].y + (path[i + 1].y - path[i].y) * t,
+      });
+    }
+    return out;
+  }
+
+  /** Chaikin 스무딩 1회 (끝점 고정 — 모서리를 둥글게) */
+  private smoothNorm(path: CutPoint[]): CutPoint[] {
+    if (path.length < 3) return path.slice();
+    const out: CutPoint[] = [{ ...path[0] }];
+    for (let i = 0; i < path.length - 1; i++) {
+      const a = path[i], b = path[i + 1];
+      out.push({ x: a.x * 0.75 + b.x * 0.25, y: a.y * 0.75 + b.y * 0.25 });
+      out.push({ x: a.x * 0.25 + b.x * 0.75, y: a.y * 0.25 + b.y * 0.75 });
+    }
+    out.push({ ...path[path.length - 1] });
+    return out;
+  }
+
+  /**
+   * 편집 대상 배열을 **제자리 교체** (splice) — stage.cut.guidePath / sweepOverride 배열은
+   * 가변 참조라 배열 자체를 바꾸면 렌더·판정이 옛 배열을 계속 본다.
+   */
+  private replaceEditPath(next: CutPoint[]): void {
+    const pts = this.editablePoints();
+    if (!pts || next.length < 2) return;
+    pts.splice(0, pts.length, ...next.map((p) => ({
+      x: Phaser.Math.Clamp(p.x, 0, 1), y: Phaser.Math.Clamp(p.y, 0, 1),
+    })));
+  }
+
+  /** [+ 점] — 각 세그먼트 중점을 삽입해 세분화 (직선 → 곡선으로 다듬을 준비) */
+  private editSubdivide(): void {
+    const pts = this.editablePoints();
+    if (!pts || pts.length < 2) { this.flash('이 단계는 점 추가 대상이 아닙니다', false); return; }
+    if (pts.length >= 15) { this.flash('점이 너무 많습니다 (최대 15)', false); return; }
+    const next: CutPoint[] = [];
+    for (let i = 0; i < pts.length - 1; i++) {
+      next.push({ ...pts[i] });
+      next.push({ x: (pts[i].x + pts[i + 1].x) / 2, y: (pts[i].y + pts[i + 1].y) / 2 });
+    }
+    next.push({ ...pts[pts.length - 1] });
+    this.replaceEditPath(next);
+    this.flash(`점 ${next.length}개 — 중간 핸들을 끌어 곡선을 만드세요`, true);
+    this.refresh();
+  }
+
+  /** [스무딩] — Chaikin 1회 후 같은 점 수로 리샘플 (형태 유지·모서리 완화) */
+  private editSmooth(): void {
+    const pts = this.editablePoints();
+    if (!pts || pts.length < 3) { this.flash('점 3개 이상에서 스무딩 가능 ([+ 점] 먼저)', false); return; }
+    const n = pts.length;
+    this.replaceEditPath(this.resampleNorm(this.smoothNorm(pts), n));
+    this.flash('곡선 스무딩 적용', true);
+    this.refresh();
+  }
+
+  /** 핸들 우클릭 삭제 (2점 미만으로는 줄이지 않음) */
+  private editDeletePoint(idx: number): void {
+    const pts = this.editablePoints();
+    if (!pts) return;
+    if (pts.length <= 2) { this.flash('점은 최소 2개 필요합니다', false); return; }
+    if (idx < 0 || idx >= pts.length) return;
+    const next = pts.filter((_, i) => i !== idx);
+    this.replaceEditPath(next);
+    this.editDragIdx = -1;
+    this.flash(`점 삭제 — 남은 점 ${next.length}개`, true);
+    this.refresh();
+  }
+
+  // ── 다중 유도선 편집 (지느러미 등·뒷·가슴처럼 한 스테이지에 선이 여러 개) ──
+  /** [+ 선] — 새 유도선 추가 (현재 선을 아래로 오프셋 복제 → 바로 편집 대상으로 전환) */
+  private editAddLine(): void {
+    const lines = this.editableLines();
+    if (!lines) { this.flash('이 단계는 다중 유도선 대상이 아닙니다 (칼질 단계만)', false); return; }
+    if (lines.length >= 6) { this.flash('유도선은 최대 6개입니다', false); return; }
+    const src = lines[this.editLineIdx] ?? lines[0];
+    lines.push(src.map((p) => ({
+      x: Phaser.Math.Clamp(p.x, 0, 1),
+      y: Phaser.Math.Clamp(p.y + 0.18, 0, 1),   // 겹치지 않게 아래로 살짝 내려 복제
+    })));
+    this.editLineIdx = lines.length - 1;
+    this.flash(`유도선 ${lines.length}개 — 선 ${this.editLineIdx + 1} 편집 중 (드래그/곡선 그리기로 조정)`, true);
+    this.refresh();
+  }
+
+  /** [선 삭제] — 현재 선 제거 (마지막 1개는 유지) */
+  private editRemoveLine(): void {
+    const lines = this.editableLines();
+    if (!lines) return;
+    if (lines.length <= 1) { this.flash('유도선은 최소 1개 필요합니다', false); return; }
+    lines.splice(this.editLineIdx, 1);
+    this.editLineIdx = Math.max(0, Math.min(this.editLineIdx, lines.length - 1));
+    // guidePath(단일 선 소비 경로)도 첫 선으로 동기화
+    const stage = this.process.stage;
+    if (stage?.cut) stage.cut.guidePath = lines[0];
+    this.flash(`선 삭제 — 남은 유도선 ${lines.length}개`, true);
+    this.refresh();
+  }
+
+  /** [◀ 선 ▶] — 편집 대상 선 전환 */
+  private editCycleLine(dir: -1 | 1): void {
+    const lines = this.editableLines();
+    if (!lines || lines.length < 2) return;
+    this.editLineIdx = (this.editLineIdx + dir + lines.length) % lines.length;
+    this.flash(`선 ${this.editLineIdx + 1} / ${lines.length} 편집 중`, true);
+    this.refresh();
+  }
+
+  /** [곡선 그리기] 토글 — ON이면 도마 드래그가 자유곡선 캡처가 된다 */
+  private toggleEditDraw(): void {
+    const pts = this.editablePoints();
+    if (!pts || pts.length < 2) { this.flash('이 단계는 곡선 편집 대상이 아닙니다 (탭/세척)', false); return; }
+    this.editDraw = !this.editDraw;
+    this.editDrawPts = [];
+    this.editDrawG?.clear();
+    this.flash(this.editDraw
+      ? `곡선 그리기 ON — 시작점에서 끝점까지 드래그 (${this.editCurveN}점으로 자동 리샘플)`
+      : '곡선 그리기 OFF — 핸들 드래그 모드', true);
+    this.refresh();
+  }
+
+  /** 곡선 캡처 미리보기 (드래그 중 — 경량 렌더) */
+  private paintEditDraw(): void {
+    if (!this.editDrawG) return;
+    const g = this.editDrawG;
+    g.clear();
+    if (this.editDrawPts.length < 2) return;
+    g.lineStyle(2.4, 0x00e0ff, 0.9);
+    for (let i = 1; i < this.editDrawPts.length; i++) {
+      const a = this.toPanelPx(this.editDrawPts[i - 1]);
+      const b = this.toPanelPx(this.editDrawPts[i]);
+      g.lineBetween(a[0], a[1], b[0], b[1]);
+    }
+  }
+
+  /** 곡선 캡처 커밋 — 스무딩 → N점 균등 리샘플 → 경로 제자리 교체 */
+  private commitEditDraw(): void {
+    const raw = this.editDrawPts;
+    this.editDrawPts = [];
+    this.editDrawG?.clear();
+    if (raw.length < 2) return;
+    // 총 길이가 너무 짧으면 오조작으로 보고 무시 (클릭 튐 방지)
+    let len = 0;
+    for (let i = 1; i < raw.length; i++) len += Math.hypot(raw[i].x - raw[i - 1].x, raw[i].y - raw[i - 1].y);
+    if (len < 0.08) { this.flash('너무 짧습니다 — 시작점에서 끝점까지 길게 드래그하세요', false); return; }
+    const curve = this.resampleNorm(this.smoothNorm(this.smoothNorm(raw)), this.editCurveN);
+    this.replaceEditPath(curve);
+    this.flash(`곡선 적용 — ${curve.length}점 (핸들로 미세조정 후 [복사])`, true);
+    this.refresh();
+  }
+
+  /**
+   * 편집 오버레이 — 핸들 + 좌표 리드아웃 + 툴 버튼 4종.
+   * 박스는 **도마 아래**에 둔다 (도마 위는 가이드 컷 팝업/작업 선택 목록 자리라 겹침 방지).
+   */
   private drawGuideEditor(): void {
     const pts = this.editablePoints();
     const stage = this.process.stage;
@@ -1106,46 +1597,111 @@ export class ButcheryPanel extends DraggablePanel {
     this.uiC.add(this.editHandleG);
     this.paintEditHandles();
 
-    // 좌표 리드아웃(도마 위 좌상단) + 복사 버튼
-    const bx = this.fishX, by = this.fishY - 66;
+    // 좌표 리드아웃 + 툴 버튼 (도마 아래 — flash 메시지 y+34 아래)
+    const bw = this.fishW, bh = 64;
+    const bx = this.fishX, by = this.fishY + this.fishH + 52;
     const box = this.scene.add.graphics();
-    box.fillStyle(0x0a1420, 0.92); box.fillRoundedRect(bx, by, 424, 54, 5);
-    box.lineStyle(1.2, 0x00c8e0, 0.9); box.strokeRoundedRect(bx, by, 424, 54, 5);
+    box.fillStyle(0x0a1420, 0.94); box.fillRoundedRect(bx, by, bw, bh, 5);
+    box.lineStyle(1.2, this.editDraw ? 0x00e0ff : 0x00c8e0, 0.9); box.strokeRoundedRect(bx, by, bw, bh, 5);
     this.uiC.add(box);
     this.editReadout = this.scene.add.text(bx + 8, by + 6, this.formatEditPath(stage, pts), {
-      fontFamily: 'monospace', fontSize: '11px', color: '#bfe8ff', wordWrap: { width: 322 },
+      fontFamily: 'monospace', fontSize: '10px', color: '#bfe8ff', wordWrap: { width: 330 }, lineSpacing: 2,
     });
     this.uiC.add(this.editReadout);
-    const cbx = bx + 348, cby = by + 8;
-    const cbg = this.scene.add.graphics();
-    cbg.fillStyle(0x1a3a4a, 0.98); cbg.fillRoundedRect(cbx, cby, 66, 38, 4);
-    cbg.lineStyle(1.2, 0x33d0e8, 1); cbg.strokeRoundedRect(cbx, cby, 66, 38, 4);
-    const ct = this.scene.add.text(cbx + 33, cby + 19, '복사', {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#aef0ff', fontStyle: 'bold',
-    }).setOrigin(0.5);
-    const chit = this.scene.add.rectangle(cbx + 33, cby + 19, 66, 38, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
-    chit.on('pointerdown', () => this.copyEditPath(stage, this.editHandles.map((e) => e.pt)));
-    this.uiC.add([cbg, ct, chit]);
+
+    // 툴 버튼 3×2 — [곡선 그리기] [+ 점] [+ 선] / [스무딩] [복사] [선 삭제]
+    const mkBtn = (
+      col: number, row: number, label: string, on: boolean, act: () => void, dim = false,
+    ): void => {
+      const w = 66, h = 26;
+      const x = bx + 348 + col * 70, y = by + 6 + row * 30;
+      const g = this.scene.add.graphics();
+      g.fillStyle(on ? 0x14505e : dim ? 0x18242e : 0x1a3a4a, 0.98); g.fillRoundedRect(x, y, w, h, 4);
+      g.lineStyle(1.2, on ? 0x00e0ff : dim ? 0x39505e : 0x33d0e8, 1); g.strokeRoundedRect(x, y, w, h, 4);
+      const t = this.scene.add.text(x + w / 2, y + h / 2, label, {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px',
+        color: on ? '#ffffff' : dim ? '#6f8595' : '#aef0ff', fontStyle: 'bold',
+      }).setOrigin(0.5);
+      if (t.width > w - 6) t.setScale((w - 6) / t.width);
+      const hit = this.scene.add.rectangle(x + w / 2, y + h / 2, w, h, 0xffffff, 0.001)
+        .setInteractive({ useHandCursor: true });
+      hit.on('pointerdown', act);
+      this.uiC.add([g, t, hit]);
+    };
+    const lines = this.editableLines();
+    const nLines = lines?.length ?? 0;
+    mkBtn(0, 0, this.editDraw ? '곡선 ON' : '곡선 그리기', this.editDraw, () => this.toggleEditDraw());
+    mkBtn(1, 0, `+ 점 (${pts.length})`, false, () => this.editSubdivide());
+    mkBtn(2, 0, '+ 선', false, () => this.editAddLine(), !lines);
+    mkBtn(0, 1, '스무딩', false, () => this.editSmooth());
+    mkBtn(1, 1, '복사', false, () => this.copyEditPath(stage, this.editHandles.map((e) => e.pt)));
+    mkBtn(2, 1, '선 삭제', false, () => this.editRemoveLine(), nLines <= 1);
+
+    // 다중 유도선 선택기 (선이 2개 이상일 때 — ◀ 선 n/N ▶)
+    if (nLines >= 2) {
+      const selY = by + bh - 20, selX = bx + 348;
+      const mkArrow = (ax: number, label: string, dir: -1 | 1): void => {
+        const t = this.scene.add.text(ax, selY, label, {
+          fontFamily: 'monospace', fontSize: '13px', color: '#aef0ff', fontStyle: 'bold',
+        }).setOrigin(0.5);
+        const hit = this.scene.add.rectangle(ax, selY, 20, 18, 0xffffff, 0.001)
+          .setInteractive({ useHandCursor: true });
+        hit.on('pointerdown', () => this.editCycleLine(dir));
+        this.uiC.add([t, hit]);
+      };
+      mkArrow(selX + 8, '◀', -1);
+      const lbl = this.scene.add.text(selX + 66, selY, `선 ${this.editLineIdx + 1} / ${nLines}`, {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#ffd257', fontStyle: 'bold',
+      }).setOrigin(0.5);
+      this.uiC.add(lbl);
+      mkArrow(selX + 124, '▶', 1);
+    }
+
+    // 조작 힌트
+    const hint = this.scene.add.text(bx + 8, by + bh - 15,
+      this.editDraw
+        ? '드래그 = 자유곡선 그리기 (놓으면 현재 선에 적용) · 우클릭 = 점 삭제'
+        : '핸들 드래그 = 이동 · 우클릭 = 점 삭제 · [+ 선]으로 유도선 추가 (지느러미 3곳 등)', {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#6f8ba0',
+      });
+    this.uiC.add(hint);
   }
 
   private paintEditHandles(): void {
     const g = this.editHandleG;
     if (!g) return;
     g.clear();
+    // 곡선 그리기 모드에서는 핸들을 작게(참고용) — 드래그는 곡선 캡처가 가져간다
+    const rk = this.editDraw ? 0.6 : 1;
     this.editHandles.forEach((h, i) => {
       const single = this.editHandles.length === 1;
       const col = single ? 0xff5a4a : (i === 0 ? 0x2ecc71 : (i === this.editHandles.length - 1 ? 0xff3b30 : 0xffd257));
-      g.fillStyle(col, 0.92); g.fillCircle(h.sx, h.sy, 7);
-      g.lineStyle(2, 0x00e0ff, 1); g.strokeCircle(h.sx, h.sy, 8.5);
+      g.fillStyle(col, this.editDraw ? 0.5 : 0.92); g.fillCircle(h.sx, h.sy, 7 * rk);
+      g.lineStyle(2 * rk, 0x00e0ff, this.editDraw ? 0.5 : 1); g.strokeCircle(h.sx, h.sy, 8.5 * rk);
+      // 중간점 번호 (곡선 다듬기 시 어느 점인지 식별)
+      if (!single && !this.editDraw && i > 0 && i < this.editHandles.length - 1) {
+        g.fillStyle(0x0a1420, 0.85); g.fillCircle(h.sx + 10, h.sy - 10, 6.5);
+        g.lineStyle(1, 0xffd257, 0.9); g.strokeCircle(h.sx + 10, h.sy - 10, 6.5);
+      }
     });
   }
 
   private formatEditPath(stage: ButcheryStage, pts: CutPoint[]): string {
     const f = (p: CutPoint): string => `{ x: ${p.x.toFixed(3)}, y: ${p.y.toFixed(3)} }`;
-    const arr = `[${pts.map(f).join(', ')}]`;
-    if (stage.primitive === 'guided_cut') return `cut('${stage.id}', '${stage.orientation}', ${arr})`;
+    const arr = (a: CutPoint[]): string => `[${a.map(f).join(', ')}]`;
+    if (stage.primitive === 'guided_cut') {
+      const lines = stage.cut?.guidePaths;
+      // 다중 유도선 — guidePaths 배열 스니펫 (지느러미 3곳 등). 단일이면 기존 형식 유지.
+      if (lines && lines.length > 1) {
+        return `cut('${stage.id}', '${stage.orientation}', ${arr(lines[0])}, { guidePaths: [\n`
+          + lines.map((l, i) => `  /* 선${i + 1} */ ${arr(l)},`).join('\n')
+          + '\n] })';
+      }
+      return `cut('${stage.id}', '${stage.orientation}', ${arr(pts)})`;
+    }
     if (stage.primitive === 'tap') return `tapPoint: ${f(pts[0])}`;
-    return `${stage.id} (${stage.primitive}) 스윕: ${arr}`;
+    // 스윕 경로 — core 스테이지의 sweepPath 필드에 그대로 붙여넣는 형식
+    return `sweepPath: ${arr(pts)}   // ${stage.id} (${stage.primitive})`;
   }
 
   private copyEditPath(stage: ButcheryStage, pts: CutPoint[]): void {
@@ -1220,6 +1776,19 @@ export class ButcheryPanel extends DraggablePanel {
   }
 
   /** 폴리라인을 호길이 t(0~1)까지만 스트로크 (lineStyle은 호출측이 설정) */
+  /** 경로를 법선 방향으로 offsetPx 만큼 밀어 그린다 (장뜨기 벌어짐 궤적) */
+  private strokePathOffset(g: Phaser.GameObjects.Graphics, path: CutPoint[], offsetPx: number): void {
+    const pts = path.map((p) => this.toPanelPx(p));
+    if (pts.length < 2) return;
+    for (let i = 1; i < pts.length; i++) {
+      const [ax, ay] = pts[i - 1];
+      const [bx, by] = pts[i];
+      const len = Math.hypot(bx - ax, by - ay) || 1;
+      const nx = -(by - ay) / len, ny = (bx - ax) / len;   // 법선
+      g.lineBetween(ax + nx * offsetPx, ay + ny * offsetPx, bx + nx * offsetPx, by + ny * offsetPx);
+    }
+  }
+
   private strokePathPartial(g: Phaser.GameObjects.Graphics, path: CutPoint[], t: number): void {
     const pts = path.map((p) => this.toPanelPx(p));
     if (pts.length < 2) return;
@@ -1318,7 +1887,12 @@ export class ButcheryPanel extends DraggablePanel {
     };
 
     if (stage.primitive === 'guided_cut' && stage.cut) {
-      drawFn = arrowLoop(arrowCueFor(stage.cut.guidePath));
+      // 다중 유도선이면 **아직 안 그은 첫 선**으로 화살표 큐를 맞춘다 (지느러미 3곳)
+      const multi = stage.cut.guidePaths;
+      const target = multi?.length
+        ? (multi.find((_, i) => !this.process.donePathIndices.has(i)) ?? multi[0])
+        : stage.cut.guidePath;
+      drawFn = arrowLoop(arrowCueFor(target));
     } else if (stage.primitive === 'tap' && stage.tapPoint) {
       // 시메 — 목표점 맥동 링 (탭 좌표 자체가 게임플레이 — 선/칼 아님)
       const [tx, ty] = this.toPanelPx(stage.tapPoint);
@@ -1330,8 +1904,8 @@ export class ButcheryPanel extends DraggablePanel {
         g.fillCircle(tx, ty, 3.2);
       };
     } else if (stage.primitive === 'drag_fill' || stage.primitive === 'scoop') {
-      // 문지르기 — 원물 위쪽 바깥에서 꼬리→머리(좌향) 화살표 (시트 선-1·선-7과 동일)
-      drawFn = arrowLoop({ ax: this.fishX + this.fishW / 2, ay: this.fishY - 16, ang: Math.PI });
+      // 문지르기 — 실제 스윕 경로의 시작→끝 방향으로 원물 밖 화살표 (지그재그 비늘치기 포함)
+      drawFn = arrowLoop(arrowCueFor(this.sweepPathFor(stage)));
     } else if (stage.primitive === 'peel') {
       // 박피 — 슬랩 위쪽 바깥에서 좌향 당김 화살표
       drawFn = arrowLoop({ ax: this.fishX + this.fishW / 2, ay: this.fishY + this.fishH * 0.12, ang: Math.PI });
@@ -1356,7 +1930,10 @@ export class ButcheryPanel extends DraggablePanel {
    * 조작 성공 액션 연출 — 프리미티브별 애니 (입력 차단, actionAnimMs).
    * 완료 시 가이드 루프 재시작. 방향 전환(플립)이 이어질 때는 호출측이 스킵.
    */
-  private playActionAnim(stage: { primitive: string; cut?: { guidePath: CutPoint[] }; tapPoint?: CutPoint } | null): void {
+  private playActionAnim(
+    stage: { primitive: string; cut?: { guidePath: CutPoint[] }; tapPoint?: CutPoint; id?: string } | null,
+    pathOverride?: CutPoint[],
+  ): void {
     if (!stage || !this.scene) return;
     this.stopActionAnim();
     this.stopGuideAnim();
@@ -1365,21 +1942,43 @@ export class ButcheryPanel extends DraggablePanel {
     let drawFn: (t: number) => void;
 
     if (stage.primitive === 'guided_cut') {
-      const path = stage.cut?.guidePath ?? [{ x: 0.2, y: 0.5 }, { x: 0.8, y: 0.5 }];
+      // 다중 유도선(지느러미 3곳)은 **방금 그은 그 선**을 따라 칼이 지나가야 한다
+      // (구 구현은 항상 guidePath = 1번 선만 연출 — 사용자 리포트 2026-07-30).
+      const path = pathOverride ?? stage.cut?.guidePath ?? [{ x: 0.2, y: 0.5 }, { x: 0.8, y: 0.5 }];
+      // 장뜨기 = 칼이 지나간 뒤 절개면이 **벌어지는** 연출 (사용자 지시 2026-07-30)
+      const openTo = this.filletOpenPending;
+      this.filletOpenPending = null;
+      let openApplied = false;
+      const SWEEP_T = openTo ? 0.5 : 1;          // 벌어짐이 있으면 전반 = 칼질 / 후반 = 벌어짐
       drawFn = (t) => {
         g.clear();
+        const st = Math.min(1, t / SWEEP_T);
         // 지나간 자리 = 밝은 절개선 + 여열 글로우
         g.lineStyle(6, 0xff8a5a, 0.22);
-        this.strokePathPartial(g, path, t);
+        this.strokePathPartial(g, path, st);
         g.lineStyle(3.2, 0xffffff, 0.9);
-        this.strokePathPartial(g, path, t);
-        const p = this.pathPointAt(path, t);
-        this.drawKnifeGlyph(g, p.x, p.y, p.ang, 1);
-        // 스파크
-        for (let k = 0; k < 4; k++) {
-          const a = t * 20 + k * 1.7;
-          g.fillStyle(0xffe28a, 0.7 * (1 - t));
-          g.fillCircle(p.x + Math.cos(a) * 9, p.y + Math.sin(a) * 9, 1.6);
+        this.strokePathPartial(g, path, st);
+        const p = this.pathPointAt(path, st);
+        if (st < 1) {
+          this.drawKnifeGlyph(g, p.x, p.y, p.ang, 1);
+          for (let k = 0; k < 4; k++) {            // 스파크
+            const a = t * 20 + k * 1.7;
+            g.fillStyle(0xffe28a, 0.7 * (1 - t));
+            g.fillCircle(p.x + Math.cos(a) * 9, p.y + Math.sin(a) * 9, 1.6);
+          }
+        }
+        if (!openTo) return;
+        // 후반 — 스프라이트를 벌어진 단계로 교체하고, 절개선 양쪽이 밀려나며 열리는 궤적
+        if (!openApplied && t >= SWEEP_T) {
+          openApplied = true;
+          this.filletOpen = openTo;
+          this.drawFish();
+        }
+        const u = Math.max(0, (t - SWEEP_T) / (1 - SWEEP_T));
+        const lift = u * (openTo.state >= 3 ? 16 : openTo.state === 2 ? 8 : 4);
+        for (const s of [-1, 1]) {
+          g.lineStyle(2.4, s < 0 ? 0xffd9c8 : 0xe8b0a4, 0.55 * (1 - u * 0.5));
+          this.strokePathOffset(g, path, s * lift);
         }
       };
     } else if (stage.primitive === 'tap') {
@@ -1396,20 +1995,24 @@ export class ButcheryPanel extends DraggablePanel {
         g.fillCircle(tx, ty, 4);
       };
     } else if (stage.primitive === 'drag_fill' || stage.primitive === 'scoop') {
-      // 빠른 3연속 스와이프 + 부스러기 튐 (비늘/내장 마무리)
+      // 마무리 스와이프 — **지정된 스윕 경로를 그대로 따라간다**(구 구현은 고정 수평선 3줄이라
+      // 실제 문지른 방향과 어긋났다 — 사용자 리포트 "비늘 애니 방향이 맞지 않음").
+      // 비늘/부스러기는 칼이 **진행하는 쪽 앞으로** 튄다 (날에 밀려 나가는 방향).
+      const sweep = pathOverride ?? [{ x: 0.82, y: 0.5 }, { x: 0.22, y: 0.5 }];
       drawFn = (t) => {
         g.clear();
-        for (let k = 0; k < 3; k++) {
-          const tt = Math.max(0, Math.min(1, t * 2.2 - k * 0.35));
-          if (tt <= 0) continue;
-          const y = this.fishY + this.fishH * (0.36 + k * 0.14);
-          const x0 = this.fishX + this.fishW * 0.72;
-          const x1 = this.fishX + this.fishW * (0.72 - 0.5 * tt);
-          g.lineStyle(3, 0xd8ecf8, 0.7 * (1 - tt * 0.6));
-          g.lineBetween(x0, y, x1, y);
-          g.fillStyle(0xbfd8e8, 0.8 * (1 - tt));
-          g.fillCircle(x1 + 6, y - 6 - tt * 14, 1.8);
-          g.fillCircle(x1 + 14, y - 3 - tt * 20, 1.4);
+        g.lineStyle(5, 0xd8ecf8, 0.28);
+        this.strokePathPartial(g, sweep, t);
+        const p = this.pathPointAt(sweep, t);
+        this.drawKnifeGlyph(g, p.x, p.y, p.ang, 1);
+        // 진행 방향(ang) 앞쪽으로 부스러기 분사 — 좌우로 퍼지며 낙하
+        for (let k = 0; k < 7; k++) {
+          const spread = (k / 6 - 0.5) * 1.15;
+          const dist = 8 + ((k * 13) % 17) + t * 10;
+          const bx = p.x + Math.cos(p.ang + spread) * dist;
+          const by = p.y + Math.sin(p.ang + spread) * dist - 4 + t * 6;
+          g.fillStyle(k % 2 === 0 ? 0xeaf6ff : 0xbfd8e8, 0.85 * (1 - t * 0.7));
+          g.fillCircle(bx, by, 1.3 + (k % 3) * 0.4);
         }
       };
     } else if (stage.primitive === 'peel') {
@@ -1446,6 +2049,8 @@ export class ButcheryPanel extends DraggablePanel {
       onUpdate: (tw) => drawFn(tw.getValue() ?? 0),
       onComplete: () => {
         this.stopActionAnim();
+        // 벌어짐 오버라이드 해제 후 정상 렌더 (doRefresh가 가이드 루프도 재시작)
+        if (this.filletOpen) { this.filletOpen = null; this.doRefresh(); return; }
         this.startGuideAnim();
       },
     });
@@ -1486,8 +2091,12 @@ export class ButcheryPanel extends DraggablePanel {
         12, ok ? '#7fe6b0' : '#ff9a6a', true);
 
       if (ok) {
-        // 반복/진행 표시
-        if (stage.primitive === 'guided_cut' && this.process.currentStrokesLeft > 1) {
+        // 반복/진행 표시 — 다중 유도선은 '남은 절단선 n / N곳'으로 표기 (지느러미 등·뒷·가슴)
+        const nLines = stage.cut?.guidePaths?.length ?? 0;
+        if (stage.primitive === 'guided_cut' && nLines > 1) {
+          mkText(sx, this.contentTop + 124,
+            `남은 절단선: ${this.process.currentStrokesLeft} / ${nLines}곳 (순서 자유)`, 11, '#9fd0e4');
+        } else if (stage.primitive === 'guided_cut' && this.process.currentStrokesLeft > 1) {
           mkText(sx, this.contentTop + 124, `남은 칼집: ${this.process.currentStrokesLeft}회`, 11, '#9fd0e4');
         }
         if (stage.primitive === 'peel') {
@@ -1629,20 +2238,28 @@ export class ButcheryPanel extends DraggablePanel {
       const active = this.activeTaskId === task.id;
       const selectable = !done && sec.anyOrder && this.awaitingSelect;
 
+      // 진행 중 작업의 하위 스테이지 진행도 (예: 머리 제거 = 앞면/뒷면 2스테이지)
+      const stepTotal = task.stageIds.length;
+      const stepDone = task.stageIds.filter((id) => this.doneStages.has(id)).length;
+
       const rg = this.scene.add.graphics();
-      rg.fillStyle(done ? 0x0d2a1a : active ? 0x155a7c : 0x0e1c2d, 0.95);
+      rg.fillStyle(done ? 0x0d2a1a : active ? 0x155a7c : 0x0e1c2d, done ? 0.6 : 0.95);
       rg.fillRoundedRect(px + 6, ry, W - 12, rowH - 4, 4);
-      rg.lineStyle(1.2, done ? 0x4af2a1 : active ? 0x5cd0ff : selectable ? 0xffd257 : 0x1f3d5a, 0.9);
+      rg.lineStyle(1.2, done ? 0x2e7a58 : active ? 0x5cd0ff : selectable ? 0xffd257 : 0x1f3d5a, done ? 0.6 : 0.9);
       rg.strokeRoundedRect(px + 6, ry, W - 12, rowH - 4, 4);
       const label = done
-        ? `${task.label} — 완료됨 (${this.doneTasks.get(task.id)}%)`
-        : active ? `▶ ${task.label}` : task.label;
+        ? `✔ ${task.label} — 완료됨 (${this.doneTasks.get(task.id)}%)`
+        : active
+          ? `▶ ${task.label}${stepTotal > 1 ? ` (${stepDone + 1}/${stepTotal})` : ''}`
+          : task.label;
       const t = this.scene.add.text(px + 12, ry + (rowH - 4) / 2, label, {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px',
-        color: done ? '#7fe6b0' : active ? '#aee8ff' : selectable ? '#ffd257' : '#8faabf',
+        color: done ? '#5f8f78' : active ? '#aee8ff' : selectable ? '#ffd257' : '#8faabf',
         fontStyle: done || active ? 'bold' : 'normal',
       }).setOrigin(0, 0.5);
       if (t.width > W - 24) t.setScale((W - 24) / t.width);
+      // 완료 작업 = 딤 처리 (도장만 남기고 흐리게)
+      if (done) { rg.setAlpha(0.55); t.setAlpha(0.75); }
       this.uiC.add([rg, t]);
 
       if (selectable) {
@@ -1688,27 +2305,14 @@ export class ButcheryPanel extends DraggablePanel {
   }
 
   // ═══════════════════════════════════════════════════
-  // 삼면뜨기 픽셀 가이드 (선행 9컷 + 본편 38컷 — SASHIMI_PIXEL_GUIDE_SPEC §4-A/§4-B)
+  // 삼면뜨기 픽셀 가이드 시트 (선행 9컷 + 본편 38컷) — **수동 열람 전용**
+  //  (자유 손질 개편 후 도마 위 컷 팝업은 폐지 — 시트는 1~38 순차라 섹션 진행과 매칭되지 않음)
   // ═══════════════════════════════════════════════════
-  /** 현재 스테이지의 가이드 컷 해소 — 다회 스테이지는 진행 회차로 컷 전환 */
-  private currentGuideCutKey(): string | null {
-    if (this.process.finished) return GUIDE_CUT_DONE_KEY;
-    // 작업 선택 대기 중 — 아직 스테이지가 확정되지 않았으므로 가이드 표시 안 함
-    // (도마 생선 진행도와 가이드 컷 불일치 방지)
-    if (this.awaitingSelect) return null;
-    const stage = this.process.stage;
-    if (!stage) return null;
-    // 진행 회차 = 완료한 스트로크/당김 수 (스테이지 시작 시 0)
-    let passIdx = 0;
-    if (stage.primitive === 'guided_cut' && stage.cut?.strokesRequired) {
-      passIdx = stage.cut.strokesRequired - this.process.currentStrokesLeft;
-    } else if (stage.primitive === 'peel' && stage.pullsRequired) {
-      passIdx = stage.pullsRequired - this.process.currentPullsLeft;
-    }
-    return resolveLiveGuideCut(stage.id, passIdx)?.key ?? null;
-  }
-
-  /** 사이드바 [전체 시트] 버튼 + 캡션 (일러스트는 원물 주변 팝업으로 이동 — drawGuideCutPopup) */
+  /**
+   * 사이드바 [전체 시트] 버튼만 — **도마 위 가이드 컷 팝업/캡션은 폐지**
+   * (사용자 지시 2026-07-30: 47컷 시트는 1~38 순차 나열이라 자유 손질 섹션/작업 진행과
+   *  매칭되지 않아 오히려 혼란. 시트는 수동 열람용으로만 남긴다.)
+   */
   private drawGuideSlot(): void {
     if (!this.guideSpeciesOk) return;
 
@@ -1725,63 +2329,6 @@ export class ButcheryPanel extends DraggablePanel {
       .setInteractive({ useHandCursor: true });
     bhit.on('pointerdown', () => this.openSheetViewer());
     this.uiC.add([bg, bt, bhit]);
-
-    // 가이드 꺼짐이면 여기서 종료 — 시트 버튼(수동 열람)만 남기고 캡션·팝업은 숨김
-    if (this.guideOff) { this.lastPopupKey = null; return; }
-
-    // 현재 컷 캡션 (버튼 아래 — 팝업 일러스트의 텍스트 보조)
-    const key = this.currentGuideCutKey();
-    const cut = key ? guideCutByKey(key) : undefined;
-    if (cut) {
-      const cap = this.scene.add.text(bx, by + 32, cut.caption, {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#9fb8c8',
-        wordWrap: { width: PANEL_W - bx - 28 }, lineSpacing: 2,
-      });
-      this.uiC.add(cap);
-    }
-
-    // 유도 팝업 (원물 주변 — 도마 위쪽)
-    this.drawGuideCutPopup();
-  }
-
-  /**
-   * 유도 팝업 — 현재 스테이지의 시트 컷 일러스트가 **원물 주변(도마 위쪽)에서 팝업**.
-   * 일러스트 안에 시트의 화살표·절단선이 들어 있어 "안내하듯" 행동을 유도한다
-   * (원물 자체에는 아무 표시 없음). 스테이지/회차 전환 시 팝인 연출.
-   */
-  private drawGuideCutPopup(): void {
-    if (!this.guideSpeciesOk) { this.lastPopupKey = null; return; }
-    const key = this.currentGuideCutKey();
-    if (!key) { this.lastPopupKey = null; return; }
-    const cut = guideCutByKey(key);
-
-    const imgW = 168, imgH = 99;   // 도마 위 공간(contentTop~보드 상단 164px)에 맞춤
-    // 좌측 상단 배치 — 우측 상단은 작업 선택 목록(drawTaskPanel) 자리 (자유 손질 개편)
-    const cx = this.fishX + imgW / 2 + 2;
-    const cy = this.contentTop + 10 + imgH / 2;
-    const cont = this.scene.add.container(cx, cy);
-    const frame = this.scene.add.image(0, 0, SASHIMI_GUIDE_TEXTURE, guideFrameName(key))
-      .setDisplaySize(imgW, imgH);
-    const border = this.scene.add.graphics();
-    border.lineStyle(2, 0xffd257, 0.95);
-    border.strokeRoundedRect(-imgW / 2 - 2, -imgH / 2 - 2, imgW + 4, imgH + 4, 5);
-    const chipLabel = cut?.pre !== undefined ? `선-${cut.pre}` : `${cut?.panel ?? '?'} / 38`;
-    const chip = this.scene.add.text(-imgW / 2 + 2, -imgH / 2 + 2, `가이드 ${chipLabel}`, {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#ffe28a', fontStyle: 'bold',
-      backgroundColor: '#0a1628dd', padding: { x: 3, y: 1 },
-    });
-    cont.add([frame, border, chip]);
-    this.uiC.add(cont);
-
-    // 스테이지/회차 전환 시 팝인 (동일 컷 리렌더는 조용히)
-    if (this.lastPopupKey !== key) {
-      this.lastPopupKey = key;
-      this.popupTween?.remove();
-      cont.setScale(0.62).setAlpha(0.3);
-      this.popupTween = this.scene.tweens.add({
-        targets: cont, scale: 1, alpha: 1, duration: 260, ease: 'Back.easeOut',
-      });
-    }
   }
 
   /** 전체 시트 뷰어 — 화면 고정 오버레이 (휠 = 세로 스크롤 · 드래그 = 팬 · ESC/X = 닫기) */

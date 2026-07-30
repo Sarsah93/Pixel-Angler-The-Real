@@ -30,6 +30,11 @@ export interface ButcheryTaskDef {
   id: string;
   label: string;
   stageIds: string[];
+  /**
+   * **작업 완료 시점**에 발생하는 부산물 (머리·내장처럼 그 작업만으로 물리적으로 분리되는 것).
+   * 섹션 전체가 끝나야 나오는 것(필렛·척추뼈 등)은 ButcherySectionDef.yields에 둔다.
+   */
+  yields?: ButcherySectionYield[];
 }
 
 /** 손질 섹션 — 순서 강제 구간. anyOrder면 내부 작업은 자유 순서 */
@@ -62,18 +67,17 @@ export const WHOLE_FISH_SECTIONS: ButcherySectionDef[] = [
   {
     id: 'sec_prep', label: '밑손질 (자유 순서)', anyOrder: true,
     tasks: [
-      { id: 't_head', label: '머리 제거', stageIds: ['head_base', 'head_flip'] },
+      // 머리는 '머리 제거' 작업이 끝나는 순간 물리적으로 분리된다 → 작업 단위 부산물
+      { id: 't_head', label: '머리 제거', stageIds: ['head_base', 'head_flip'], yields: ['head'] },
       { id: 't_fins', label: '지느러미 제거', stageIds: ['finectomy'] },
       { id: 't_descale', label: '비늘치기', stageIds: ['scale_base', 'scale_flip', 'scale_wash'] },
     ],
-    yields: ['head'],
   },
   {
     id: 'sec_gut', label: '배따기·내장 제거', anyOrder: false,
     tasks: [
-      { id: 't_gut', label: '개복 → 내장 꺼내기', stageIds: ['gut_open', 'gut_scoop'] },
+      { id: 't_gut', label: '개복 → 내장 꺼내기', stageIds: ['gut_open', 'gut_scoop'], yields: ['viscera'] },
     ],
-    yields: ['viscera'],
   },
   {
     id: 'sec_vessel', label: '핏줄 긁기', anyOrder: false,

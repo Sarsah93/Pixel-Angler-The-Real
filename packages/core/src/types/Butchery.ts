@@ -23,7 +23,8 @@ export const ORIENTATION_LABEL: Record<OrientationState, string> = {
   BASE: '기본 (머리 왼쪽)',
   FLIP: '뒤집기 (머리 오른쪽)',
   BELLY_UP: '배 위로',
-  BACK_DOWN: '등 아래로 (항문 위)',
+  // 장뜨기 전용 — 등을 카메라 쪽으로 눕힌 자세 (머리 오른쪽)
+  BACK_DOWN: '등 위로 (머리 오른쪽)',
   FLESH_UP: '살 위로 (필렛)',
 };
 
@@ -38,8 +39,14 @@ export interface CutSpec {
   id: string;
   orientationRequired: OrientationState;
   tool: ButcheryTool;
-  /** 정규화(0~1) 가이드 폴리라인 (오리엔티드 뷰 기준) */
+  /** 정규화(0~1) 가이드 폴리라인 (오리엔티드 뷰 기준) — 다중 유도선이면 첫 선 */
   guidePath: CutPoint[];
+  /**
+   * **다중 유도선** — 한 스테이지에 서로 다른 절단선이 여러 개일 때 (지느러미 = 등/뒷/가슴 3곳).
+   * 각 선을 1회씩 그어야 스테이지 완료이며 **순서는 자유**(그은 획에 가장 잘 맞는 미완료 선으로 판정).
+   * 없으면 guidePath 단일 선 + strokesRequired(같은 선 반복) 방식.
+   */
+  guidePaths?: CutPoint[][];
   /** 허용 이탈 (0~1 정규화 거리) */
   tolerance: number;
   /** 경로 커버율 임계 (0~1) — 미달 시 컷 실패(재시도) */
@@ -185,6 +192,11 @@ export interface ButcheryStage {
   tapRadius?: number;
   /** drag_fill/scoop 요구 채움량 (0~1) */
   fillTarget?: number;
+  /**
+   * 문지르기/박피 스윕 경로 (drag_fill·scoop·peel) — 커서가 따라가야 할 유도선.
+   * **채움 게이지는 이 경로의 커버리지 기준**(전 구간을 문질러야 100%). 없으면 client 기본값.
+   */
+  sweepPath?: CutPoint[];
   /** peel 당김 반복 수 (필렛 수만큼) */
   pullsRequired?: number;
   /** 완료 시 필렛 +1 (장 뜨기 분리 스테이지) */

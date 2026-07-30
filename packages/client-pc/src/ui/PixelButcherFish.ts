@@ -18,6 +18,12 @@ import {
   FISH_WHOLE_AMBERJACK, FISH_DRESSED_AMBERJACK,
 } from '../data/PixelFishSprites.js';
 import { FISH_STAGE_SPRITES } from '../data/PixelFishStages.js';
+import { FISH_VIEW_SPRITES } from '../data/PixelFishViews.js';
+
+/** 단계 스프라이트 조회 — 실사 사진 레지스트리 우선, 없으면 파라메트릭 뷰 폴백 */
+function stageSpr(key: string): PixelFishSprite | undefined {
+  return FISH_STAGE_SPRITES[key] ?? FISH_VIEW_SPRITES[key];
+}
 
 const AB = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+/';
 
@@ -46,29 +52,62 @@ export function butcherSpritesFor(speciesId: string): ButcherSpriteSet {
 }
 
 /**
+ * 진행도별 몸통 스프라이트 (사용자 리포트 2026-07-30 — "내장 제거 전인데 배가 정리돼 있고
+ * 지느러미 3종이 다 없는 그림"). 구 구현은 headOff만 보고 곧장 `dressed`(본편1 = 머리·
+ * 지느러미·내장 **전부** 제거 상태)를 써서 아직 안 한 작업까지 끝난 것처럼 보였다.
+ *  온마리 → 머리만 제거(지느러미·내장 有) → 지느러미 제거(내장 有) → 내장 제거(dressed)
+ * 어종군 전용 중간 스프라이트가 없으면(방어류 — 사진 대기) dressed로 폴백한다.
+ */
+function bodySpriteFor(sprites: ButcherSpriteSet, state: PixelFishState): PixelFishSprite {
+  if (!state.headOff) return sprites.whole;
+  const S = FISH_STAGE_SPRITES;
+  const fam = sprites.familyKey;
+  if (state.gutted) return S[`${fam}_gutted`] ?? sprites.dressed;
+  if (state.finsOff) return S[`${fam}_finless`] ?? sprites.dressed;
+  return S[`${fam}_headless`] ?? sprites.dressed;
+}
+
+/**
  * 손질 단계 스프라이트 선택 — 세장뜨기 구조는 어종군 공통 (사용자 지시 2026-07-30):
- *  BELLY_UP 핏줄/세척 = `{fam}_vessel`(배 안쪽·척추 혈관 뷰) /
- *  BACK_DOWN 장뜨기 = `{fam}_fillet1~3`(길내기 1·2 → 잘라내기, 스트로크 진행 연동.
- *  2면(fillet_1_*)은 좌우 미러). 레지스트리에 없으면 null → 제네릭 + 폴백 오버레이.
+ *  BELLY_UP 배따기·내장 = `{fam}_ventral`(**뱃살을 정면으로 바라보는 복면 뷰**) /
+ *  BELLY_UP 핏줄·세척 = `{fam}_vessel`(사진) → `{fam}_cavity`(**내장 꺼낸 체강 탑뷰**) /
+ *  BACK_DOWN 등쪽 장뜨기 = `{fam}_dorsal0~3`(등을 카메라 쪽으로 눕힌 뷰 — 머리 오른쪽) /
+ *  BELLY_UP 배쪽 장뜨기 = `{fam}_belly0~3`(배를 카메라 쪽으로 — 꼬리 오른쪽).
+ *  단계 = 칼집 회차(0 닫힘 / 1 붉은 살 조금 / 2 뼈 노출 / 3 반대쪽까지 벌어짐),
+ *  2면(fillet_1_*)은 좌우 미러. 방향이 안 맞으면 null → 측면 몸통(뒤집기 유도).
  */
 function pickStageSprite(
   fam: string, state: PixelFishState,
-): { spr: PixelFishSprite; mirrorX: boolean } | null {
+): { spr: PixelFishSprite; mirrorX: boolean; view?: 'ventral' | 'cavity' | 'dorsal' | 'belly' } | null {
   const o = state.orientation;
   if (state.finished || o === 'FLESH_UP') return null;
-  const S = FISH_STAGE_SPRITES;
-  if (o === 'BELLY_UP' && state.headOff
-    && (state.stageId === 'vessel_scrub' || state.stageId === 'gut_wash')) {
-    const spr = S[`${fam}_vessel`];
-    return spr ? { spr, mirrorX: false } : null;
+  if (o === 'BELLY_UP' && (state.stageId === 'gut_open' || state.stageId === 'gut_scoop')) {
+    const spr = stageSpr(`${fam}_ventral`);
+    return spr ? { spr, mirrorX: false, view: 'ventral' } : null;
   }
-  if (o === 'BACK_DOWN' && state.stageId?.startsWith('fillet_')) {
-    const mirrorX = state.stageId.startsWith('fillet_1');
-    const sever = state.stageId.endsWith('_sever');
-    const n = sever ? 3 : Math.min(2, state.strokesDone ?? 0);
-    if (n <= 0) return null;
-    const spr = S[`${fam}_fillet${n}`];
-    return spr ? { spr, mirrorX } : null;
+  if (o === 'BELLY_UP' && (state.stageId === 'vessel_scrub' || state.stageId === 'gut_wash')) {
+    // 체강 탑뷰 우선 — 구 `{fam}_vessel`(시트 추출 측면 그림)은 "내장 꺼낸 공간을 위에서
+    // 들여다보는" 뷰가 아니어서 폴백으로만 둔다 (사용자 지시 2026-07-30).
+    const spr = stageSpr(`${fam}_cavity`) ?? FISH_STAGE_SPRITES[`${fam}_vessel`];
+    return spr ? { spr, mirrorX: false, view: 'cavity' } : null;
+  }
+  // ── 장뜨기 — 등/배를 카메라 쪽으로 눕힌 뷰 + 칼집 벌어짐 단계 ──
+  //  등쪽(BACK_DOWN) = `{fam}_dorsal0~3`(머리 우) / 배쪽(BELLY_UP) = `{fam}_belly0~3`(꼬리 우).
+  //  단계 = 칼집 회차(strokesDone) — 0 닫힘 / 1 붉은 살 조금 / 2 뼈 노출 / 3 반대쪽까지.
+  //  스테이지가 넘어간 직후엔 호출측이 openOverride로 마지막 벌어짐을 잠시 유지한다.
+  const ov = state.openOverride;
+  const isFillet = !!state.stageId?.startsWith('fillet_');
+  if (ov || isFillet) {
+    const sever = ov ? ov.view === 'belly' : !!state.stageId?.endsWith('_sever');
+    // 방향이 아직 안 맞으면 뷰를 바꾸지 않는다 — 현재 자세(측면)를 보여주고 뒤집기를 유도
+    const oriOk = !!ov || (sever ? o === 'BELLY_UP' : o === 'BACK_DOWN');
+    if (!oriOk) return null;
+    const view = sever ? 'belly' : 'dorsal';
+    const n = ov ? ov.state : Math.min(3, state.strokesDone ?? 0);
+    const spr = stageSpr(`${fam}_${view}${n}`) ?? stageSpr(`${fam}_fillet${Math.max(1, n)}`);
+    // 2면(fillet_1)은 반대쪽 살 — 좌우 미러로 구분
+    const mirrorX = (state.stageId ?? '').startsWith('fillet_1');
+    return spr ? { spr, mirrorX, view } : null;
   }
   return null;
 }
@@ -76,6 +115,8 @@ function pickStageSprite(
 export interface PixelFishState {
   orientation: OrientationState;
   headOff: boolean;
+  /** 지느러미 제거 완료 (finectomy) — 몸통 스프라이트 분기 */
+  finsOff?: boolean;
   gutted: boolean;
   scaledSides: number;
   hasScales: boolean;
@@ -86,6 +127,11 @@ export interface PixelFishState {
   stageId?: string;
   /** 현재 스테이지 완료 스트로크 수 (장뜨기 길내기 진행 — 단계 스프라이트 선택) */
   strokesDone?: number;
+  /**
+   * 장뜨기 벌어짐 강제 표시 — 칼질 성공 직후 스테이지가 넘어가도 마지막 벌어짐을
+   * 연출 동안 유지하기 위한 오버라이드 (ButcheryPanel가 액션 애니 중에만 설정).
+   */
+  openOverride?: { view: 'dorsal' | 'belly'; state: number };
 }
 
 /** 팔레트 색 → 어종 틴트 블렌드 (k=0 원본 유지) */
@@ -133,7 +179,9 @@ function drawSprite(
 
 /**
  * 도마 위 생선 렌더 — FSM 상태로 스프라이트 선택 + 방향 미러 + 상태 오버레이.
- *  BASE = 원본(머리 왼쪽) / FLIP = 좌우 미러 / BELLY_UP·BACK_DOWN = 상하 미러(배 위로)
+ *  BASE = 원본(머리 왼쪽) / FLIP = 좌우 미러.
+ *  ⚠ 상하 미러는 쓰지 않는다 — **뱃살은 항상 아래쪽**이고, "배 위로"·"등 위로"는
+ *  전용 뷰 스프라이트(복면/체강/장뜨기)로 표현한다 (사용자 지시 2026-07-30).
  */
 export function drawPixelButcherFish(
   g: Phaser.GameObjects.Graphics, geom: PixelFishGeom,
@@ -142,19 +190,35 @@ export function drawPixelButcherFish(
 ): void {
   const o = state.orientation;
 
-  // ── 손질 단계 스프라이트 (핏줄 뷰 / 장뜨기 길내기 1~3) — 있으면 우선 사용 ──
+  // ── 손질 단계 스프라이트 (복면 뷰 / 체강 탑뷰 / 장뜨기 길내기 1~3) — 있으면 우선 사용 ──
   const stagePick = pickStageSprite(sprites.familyKey, state);
   if (stagePick) {
-    drawSprite(g, stagePick.spr, geom, stagePick.mirrorX, false,
+    const dr = drawSprite(g, stagePick.spr, geom, stagePick.mirrorX, false,
       sprites.nativeColor ? null : tint, 0.22);
+    // 복면 뷰 — 개복 전에는 정중선을 따라 아직 부푼 배(내장) 음영, 개복 후엔 붉은 내장 노출
+    if (stagePick.view === 'ventral' && !state.gutted && state.stageId === 'gut_scoop') {
+      // 가른 정중선 사이로 드러난 내장 덩어리 (간·위·장) — 좁고 길게
+      g.fillStyle(0x8a3040, 0.92);
+      g.fillEllipse(dr.x + dr.w * 0.38, dr.y + dr.h * 0.5, dr.w * 0.26, dr.h * 0.13);
+      g.fillStyle(0x6a2030, 0.92);
+      g.fillEllipse(dr.x + dr.w * 0.28, dr.y + dr.h * 0.5, dr.w * 0.1, dr.h * 0.1);
+      g.fillStyle(0x9c4a4a, 0.85);
+      g.fillEllipse(dr.x + dr.w * 0.48, dr.y + dr.h * 0.5, dr.w * 0.09, dr.h * 0.07);
+    }
+    // 체강 탑뷰 — 세척 단계는 고인 피가 씻겨나간 상태 (밝은 물기 오버레이)
+    if (stagePick.view === 'cavity' && state.stageId === 'gut_wash') {
+      g.fillStyle(0xbfe0ff, 0.16);
+      g.fillEllipse(dr.x + dr.w * 0.45, dr.y + dr.h * 0.5, dr.w * 0.7, dr.h * 0.4);
+    }
     return;
   }
 
   const filletView = state.finished || o === 'FLESH_UP';
-  const spr = filletView ? sprites.fillet : state.headOff ? sprites.dressed : sprites.whole;
+  const spr = filletView ? sprites.fillet : bodySpriteFor(sprites, state);
   const mirrorX = !filletView && o === 'FLIP';
-  const mirrorY = !filletView && (o === 'BELLY_UP' || o === 'BACK_DOWN');
-  const drawn = drawSprite(g, spr, geom, mirrorX, mirrorY, tint, 0.22);
+  // ⚠ 상하 미러 금지 — **뱃살은 항상 아래쪽**에 오도록 배치한다 (사용자 지시 2026-07-30).
+  //  "배 위로(BELLY_UP)"는 미러가 아니라 전용 복면 뷰 스프라이트로 표현한다.
+  const drawn = drawSprite(g, spr, geom, mirrorX, false, tint, 0.22);
 
   if (filletView) {
     // 박피 전 — 슬랩 아래 남은 껍질층 + 꼬리 손잡이 (본편 34~37 연출 근사)
@@ -167,41 +231,36 @@ export function drawPixelButcherFish(
     return;
   }
 
-  // 비늘 반짝임 (비늘치기 전 — BASE/FLIP 측면에서만)
+  // 비늘 반짝임 (비늘치기 전 — "아직 비늘이 남아 있다" 상태 표시. BASE/FLIP 측면에서만).
+  //  ⚠ 구 배치는 (i*73)%100 / (i*37)%100 모듈러라 주기가 겹쳐 **점 3개가 일직선**으로 찍히는
+  //  격자 아티팩트가 있었다(사용자 리포트). 황금비 무리수 산포로 교체해 균일 분포로.
   if (state.hasScales && state.scaledSides < 2 && (o === 'BASE' || o === 'FLIP')
     && !(state.scaledSides >= 1 && o === 'BASE')) {
-    g.fillStyle(0xffffff, 0.35);
-    for (let i = 0; i < 34; i++) {
-      const sx = drawn.x + drawn.w * (0.16 + ((i * 73) % 100) / 100 * 0.62);
-      const sy = drawn.y + drawn.h * (0.22 + ((i * 37) % 100) / 100 * 0.5);
-      g.fillCircle(sx, sy, 1.6);
+    g.fillStyle(0xffffff, 0.3);
+    const PHI = 0.6180339887, G2 = 0.7548776662;
+    for (let i = 0; i < 30; i++) {
+      const fx = ((i + 1) * PHI) % 1, fy = ((i + 1) * G2) % 1;
+      const sx = drawn.x + drawn.w * (0.16 + fx * 0.62);
+      const sy = drawn.y + drawn.h * (0.22 + fy * 0.5);
+      g.fillCircle(sx, sy, 1.5);
     }
   }
 
-  // 내장 오버레이 (BELLY_UP 개복 후·제거 전 — 배(위) 쪽에 붉은 내장)
+  // 내장 오버레이 (BELLY_UP 개복 후·제거 전 — 복면 뷰 미보유 폴백. 뱃살 = 아래쪽)
   if (o === 'BELLY_UP' && !state.gutted && state.stageId === 'gut_scoop') {
     g.fillStyle(0x8a3040, 0.92);
-    g.fillEllipse(drawn.x + drawn.w * 0.42, drawn.y + drawn.h * 0.3, drawn.w * 0.34, drawn.h * 0.2);
+    g.fillEllipse(drawn.x + drawn.w * 0.42, drawn.y + drawn.h * 0.7, drawn.w * 0.34, drawn.h * 0.2);
     g.fillStyle(0x6a2030, 0.9);
-    g.fillEllipse(drawn.x + drawn.w * 0.3, drawn.y + drawn.h * 0.28, drawn.w * 0.14, drawn.h * 0.12);
+    g.fillEllipse(drawn.x + drawn.w * 0.3, drawn.y + drawn.h * 0.72, drawn.w * 0.14, drawn.h * 0.12);
   }
 
-  // 항문 마커 (BACK_DOWN — 장뜨기 기준점. 상하 미러라 위쪽 가장자리)
+  // 항문 마커 (BACK_DOWN — 장뜨기 기준점. 배쪽 = 아래 가장자리)
   if (o === 'BACK_DOWN') {
     const ax = mirrorX
       ? drawn.x + drawn.w * (1 - state.anusRatio)
       : drawn.x + drawn.w * state.anusRatio;
     g.fillStyle(0xffd257, 1);
-    g.fillCircle(ax, drawn.y + drawn.h * 0.08, 3.5);
-  }
-
-  // ── 단계 폴백 오버레이 — 단계 스프라이트 미보유 어종군 (예: 방어류 사진 대기 중) ──
-  if (o === 'BELLY_UP' && state.headOff
-    && (state.stageId === 'vessel_scrub' || state.stageId === 'gut_wash')) {
-    // 척추 아래 혈관 라인 (핏줄) — 세척 단계는 옅게 (씻겨나감)
-    const a = state.stageId === 'gut_wash' ? 0.3 : 0.9;
-    g.lineStyle(3.5, 0x5a1218, a);
-    g.lineBetween(drawn.x + drawn.w * 0.18, drawn.y + drawn.h * 0.6, drawn.x + drawn.w * 0.76, drawn.y + drawn.h * 0.6);
+    g.fillCircle(ax, drawn.y + drawn.h * 0.9, 3.5);
   }
   if (o === 'BACK_DOWN' && state.stageId?.startsWith('fillet_') && (state.strokesDone ?? 0) > 0) {
     // 장뜨기 길내기 진행 — 등 경계 절개선이 점점 깊어짐 (1=가는 선 → 3=벌어진 분홍 살)
