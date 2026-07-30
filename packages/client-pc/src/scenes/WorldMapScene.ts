@@ -499,10 +499,7 @@ export class WorldMapScene extends Phaser.Scene {
         break;
       case 'region':
       default:
-        this.cameras.main.fadeOut(300, 0, 10, 20);
-        this.cameras.main.once('camerafadeoutcomplete', () => {
-          this.scene.start('MainMenuScene');
-        });
+        this.fadeOutThen(() => this.scene.start('MainMenuScene'));
         break;
     }
   }
@@ -1141,10 +1138,29 @@ export class WorldMapScene extends Phaser.Scene {
     GameState.markDirty();
 
     GameState.setCurrentSpot(area.id);
-    this.cameras.main.fadeOut(300, 0, 10, 20);
-    this.cameras.main.once('camerafadeoutcomplete', () => {
+    this.fadeOutThen(() => {
       this.scene.start('RegionFieldScene', { region: region.id, mapId: area.fieldMapId });
     });
+  }
+
+  /**
+   * 씬 전환 공용 안전망 — 페이드아웃 후 action 실행 (RegionFieldScene.fadeOutThen과 동일 패턴).
+   * camerafadeoutcomplete가 오지 않는 엣지 케이스(fadeIn 중 재fadeOut 등)를 폴백 타이머로
+   * 방어해 **'집으로 돌아가기' 등에서 검정 화면 멈춤을 원천 차단**한다. 이중 클릭도 가드.
+   */
+  private isTransitioning = false;
+  private fadeOutThen(action: () => void, fadeMs = 300): void {
+    if (this.isTransitioning) return;
+    this.isTransitioning = true;
+    let done = false;
+    const run = (): void => {
+      if (done) return;
+      done = true;
+      action();
+    };
+    this.cameras.main.once('camerafadeoutcomplete', run);
+    this.cameras.main.fadeOut(fadeMs, 0, 10, 20);
+    this.time.delayedCall(fadeMs + 150, run);   // 폴백 — 이벤트 미발화 방어
   }
 
   /** 요금 관련 알림 토스트 */
@@ -1160,10 +1176,9 @@ export class WorldMapScene extends Phaser.Scene {
 
   /** 홈타운(집) 귀가 — 무료 (TUNING.travel.returnFareKrw = 0, 하루 왕복권 개념) */
   private goHome(): void {
-    this.cameras.main.fadeOut(280, 0, 10, 20);
-    this.cameras.main.once('camerafadeoutcomplete', () => {
+    this.fadeOutThen(() => {
       this.scene.start('RegionFieldScene', { region: 'hometown' });
-    });
+    }, 280);
   }
 
   // ═══════════════════════════════════════════════════════
@@ -1316,10 +1331,7 @@ export class WorldMapScene extends Phaser.Scene {
       onConfirm: () => {
         this.closeConfirmModal();
         GameState.setCurrentSpot(spot.id);
-        this.cameras.main.fadeOut(300, 0, 10, 20);
-        this.cameras.main.once('camerafadeoutcomplete', () => {
-          this.scene.start('FieldScene', { spotId: spot.id });
-        });
+        this.fadeOutThen(() => this.scene.start('FieldScene', { spotId: spot.id }));
       },
       onCancel: () => {
         this.closeConfirmModal();

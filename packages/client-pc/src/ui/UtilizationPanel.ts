@@ -1049,8 +1049,14 @@ export class UtilizationPanel extends DraggablePanel {
       const cutHit = this.scene.add.rectangle(boardX + 54, boardY + 20, 92, 24, 0xffffff, 0.001)
         .setInteractive({ useHandCursor: true });
       cutHit.on('pointerdown', () => {
-        if (cutEnabled) this.openButchery(boardFish);
-        else this.flashBoardToast(BUTCHERY_FAMILY_NOTICE[family]);
+        if (!cutEnabled) { this.flashBoardToast(BUTCHERY_FAMILY_NOTICE[family]); return; }
+        // 회칼 손 장착 게이트 (2026-07-30 자유 손질 개편) — 왼손/오른손에 회칼이 있어야 시작
+        const handKnife = InventoryStore.items.some((i) => i.tool === 'knife' && i.equipped);
+        if (!handKnife) {
+          this.flashBoardToast('회칼을 손에 장착해야 손질할 수 있습니다 — 인벤토리(기타)에서 회칼 우클릭 → 착용');
+          return;
+        }
+        this.openButchery(boardFish);
       });
       this.bodyContainer.add([cutBg, cutTxt, cutHit]);
 

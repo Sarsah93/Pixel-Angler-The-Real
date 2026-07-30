@@ -140,6 +140,9 @@ export {
   ButcheryProcess, evaluateCut, computeSashimiGrade, buildButcheryStages, computeFilletYield,
 } from './simulation/ButcheryProcess.js';
 export type { ButcheryStageOptions } from './simulation/ButcheryProcess.js';
+// 자유 손질 섹션/작업 정의 (달성도 기반 — 2026-07-30 자유 손질 개편)
+export type { ButcheryTaskDef, ButcherySectionDef, ButcherySectionYield } from './db-schema/ButcherySections.js';
+export { WHOLE_FISH_SECTIONS, findTaskOfStage } from './db-schema/ButcherySections.js';
 
 // 파이트 피로 4페이즈 (어종·사이즈별 스태미나 풀 + 회복/서지 — thrust 게이팅)
 export type { FatiguePhase, FatigueInput, FatigueTick } from './simulation/FishFatigueModel.js';

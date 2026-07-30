@@ -23,6 +23,7 @@ import {
   TUNING,
   SASHIMI_GUIDE_GROUP, SASHIMI_GUIDE_SHEET, LIVE_STAGE_GUIDE,
   resolveLiveGuideCut, guideCutByKey, GUIDE_CUT_DONE_KEY,
+  WHOLE_FISH_SECTIONS, ButcherySectionDef,
 } from '@tra/core';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { InventoryStore, InvItem } from '../store/InventoryStore.js';
@@ -104,6 +105,23 @@ export class ButcheryPanel extends DraggablePanel {
    */
   private guideOff = false;
 
+  // ── 자유 손질 섹션 컨트롤러 (2026-07-30 개편 — 달성도 기반 작업 선택) ──
+  private sections = WHOLE_FISH_SECTIONS;
+  private sectionIdx = 0;
+  private doneStages = new Set<string>();
+  /** taskId → 스트로크 정확도 누적 */
+  private taskAcc = new Map<string, number[]>();
+  /** taskId → 완료 정확도 % (도장) */
+  private doneTasks = new Map<string, number>();
+  private activeTaskId: string | null = null;
+  /** anyOrder 섹션에서 작업 선택 대기 중 — 손질 입력 차단 */
+  private awaitingSelect = false;
+  /** 부산물 보관 레저 — 팝업 [보관] 선택분. 정산(체크포인트/완료) 시점에 실지급 */
+  private pendingItems: { key: string; tpl: Omit<InvItem, 'slot' | 'qty'>; qty: number }[] = [];
+  /** 손질 종료 가능 체크포인트 (none = 이탈 시 원물 복구) */
+  private checkpoint: 'none' | 'fillets' | 'ribs' = 'none';
+  private byproductPopup?: Phaser.GameObjects.Container;
+
   // ── 가이드선 편집 (dev 전용, F9) — 유도선 끝점을 드래그해 위치 조정 + 좌표 복사 ──
   private editMode = false;
   private editDragIdx = -1;
@@ -126,8 +144,20 @@ export class ButcheryPanel extends DraggablePanel {
 
     const speciesId = source.speciesId ?? this.guessSpecies(source);
     this.process = new ButcheryProcess(getButcheryProfile(speciesId), this.freshnessFactor(source));
-    // 회칼 게이팅 — 인벤토리 '기타' 아이템에 회칼이 있어야 회뜨기(장 뜨기/박피)가 열린다
-    this.knife = getBestKnife(InventoryStore.items.map((i) => i.id));
+    // 회칼 = **손 장착** 기준 (2026-07-30 자유 손질 개편) — 손에 든 칼만 수율/등급에 반영.
+    // 시작 게이트(장착 필수)는 UtilizationPanel [손질 시작]이 담당.
+    this.knife = getBestKnife(
+      InventoryStore.items.filter((i) => i.tool === 'knife' && i.equipped).map((i) => i.id));
+
+    // 닫기(X/ESC) 가로채기 — 체크포인트 전 = 원물 복구(레저 폐기), 후 = 체크포인트 정산
+    const origClose = cbs.onClose;
+    this.requestClose = (): void => {
+      if (!this.done && this.checkpoint !== 'none') {
+        this.settleAtCheckpoint();   // 필렛 저장 시점 이후 이탈 = 그 시점으로 정산
+        return;                      // settle이 결과 오버레이 → [확인]에서 닫힘
+      }
+      origClose();                   // 체크포인트 전 = 아무것도 지급 안 함 (원물 보존)
+    };
 
     // 가이드 켜짐/꺼짐 — 영속 플래그 (유도선은 이 값과 무관하게 항상 표시)
     this.guideOff = GameState.getFlag('butcheryGuideOff');
@@ -154,7 +184,9 @@ export class ButcheryPanel extends DraggablePanel {
     this.keyHandler = (ev) => this.onKey(ev);
     scene.input.keyboard?.on('keydown', this.keyHandler);
 
+    // 자유 손질 섹션 컨트롤러 초기화 (그래픽 레이어 생성 이후 — selectTask가 refresh 호출)
     this.renderedOrientation = this.process.orientation;
+    this.enterSection(0);
     this.refresh();
     this.applyFix();
   }
@@ -165,6 +197,7 @@ export class ButcheryPanel extends DraggablePanel {
 
   override destroy(fromScene?: boolean): void {
     this.closeSheetViewer();
+    this.closeByproductPopup();
     this.stopGuideAnim();
     this.stopActionAnim();
     this.popupTween?.remove();
@@ -194,15 +227,18 @@ export class ButcheryPanel extends DraggablePanel {
     }
     // F9 = dev 가이드선 편집 토글 (끝점 드래그 + 좌표 복사)
     if (import.meta.env.DEV && ev.code === 'F9') { this.toggleEditMode(); return; }
-    if (this.done || this.flipping || this.actionAnim || this.process.finished) return;
+    if (this.byproductPopup) {
+      if (ev.code === 'Enter' || ev.code === 'NumpadEnter') this.confirmByproductPopup(false);
+      return;
+    }
+    if (this.done || this.flipping || this.actionAnim || this.awaitingSelect || this.process.finished) return;
     const stage = this.process.stage;
     if (!stage) return;
+    // 수동 뒤집기 (자동 뒤집기 폐지 — 2026-07-30): F/Space = 좌우 · V = 상하
     if (ev.code === 'KeyF' || ev.code === 'Space') {
-      // 요구 방향으로 원터치 정렬 (autoOrient on이면 대부분 이미 정렬 상태)
-      if (this.process.orientation !== stage.orientation) {
-        this.process.orientation = stage.orientation;
-        this.refresh();
-      }
+      this.doFlipLR();
+    } else if (ev.code === 'KeyV') {
+      this.doFlipUD();
     } else if (ev.code === 'Enter' || ev.code === 'NumpadEnter') {
       if (stage.primitive === 'wash' && this.process.submitWash()) {
         this.washCount++;
@@ -210,16 +246,336 @@ export class ButcheryPanel extends DraggablePanel {
         const willFlip = this.process.orientation !== this.renderedOrientation;
         this.refresh();
         if (!willFlip && !this.process.finished) this.playActionAnim(stage);
-        if (this.process.finished) this.showResult();
-      }
-    } else if (ev.code.startsWith('Digit')) {
-      const idx = Number(ev.code.slice(5)) - 1;
-      const orients: OrientationState[] = ['BASE', 'FLIP', 'BELLY_UP', 'BACK_DOWN', 'FLESH_UP'];
-      if (idx >= 0 && idx < orients.length && this.process.orientation !== orients[idx]) {
-        this.process.orientation = orients[idx];
-        this.refresh();
+        this.onStageComplete(stage.id, 1);
       }
     }
+  }
+
+  // ═══════════════════════════════════════════════════
+  // 수동 뒤집기 — 상하/좌우 (자동 뒤집기 폐지. FLESH_UP(필렛 뷰)에서는 비활성)
+  // ═══════════════════════════════════════════════════
+  private doFlipLR(): void {
+    if (this.process.orientation === 'FLESH_UP') return;
+    const map: Record<OrientationState, OrientationState> = {
+      BASE: 'FLIP', FLIP: 'BASE', BELLY_UP: 'BACK_DOWN', BACK_DOWN: 'BELLY_UP', FLESH_UP: 'FLESH_UP',
+    };
+    this.process.orientation = map[this.process.orientation];
+    this.refresh();
+  }
+
+  private doFlipUD(): void {
+    if (this.process.orientation === 'FLESH_UP') return;
+    const map: Record<OrientationState, OrientationState> = {
+      BASE: 'BELLY_UP', BELLY_UP: 'BASE', FLIP: 'BACK_DOWN', BACK_DOWN: 'FLIP', FLESH_UP: 'FLESH_UP',
+    };
+    this.process.orientation = map[this.process.orientation];
+    this.refresh();
+  }
+
+  // ═══════════════════════════════════════════════════
+  // 자유 손질 섹션 컨트롤러 — 섹션 순서 강제 + 섹션 내 작업 자유 선택 (달성도)
+  // ═══════════════════════════════════════════════════
+  private get section(): ButcherySectionDef { return this.sections[this.sectionIdx]; }
+
+  private taskDone(taskId: string): boolean { return this.doneTasks.has(taskId); }
+
+  /** 섹션 진입 — 선형 섹션은 첫 미완료 작업 자동 선택, 자유 섹션은 선택 대기 */
+  private enterSection(i: number): void {
+    this.sectionIdx = Math.min(i, this.sections.length - 1);
+    const sec = this.section;
+    const next = sec.tasks.find((t) => !this.taskDone(t.id));
+    if (!next) { this.advanceSection(); return; }
+    if (sec.anyOrder) {
+      this.activeTaskId = null;
+      this.awaitingSelect = true;
+    } else {
+      this.selectTask(next.id);
+    }
+  }
+
+  /** 작업 선택 (작업 목록 클릭 / 선형 자동) — 해당 작업의 첫 미완료 스테이지로 점프 */
+  private selectTask(taskId: string): void {
+    const task = this.section.tasks.find((t) => t.id === taskId);
+    if (!task || this.taskDone(taskId)) return;
+    const stageId = task.stageIds.find((id) => !this.doneStages.has(id)) ?? task.stageIds[0];
+    this.activeTaskId = taskId;
+    this.awaitingSelect = false;
+    this.process.jumpTo(stageId);
+    this.refresh();
+  }
+
+  /**
+   * 스테이지 완료 훅 — 모든 submit 성공 지점이 호출 (구 `finished → showResult` 대체).
+   * 작업/섹션 달성도를 갱신하고, 섹션 완료 시 부산물 팝업 → 다음 섹션.
+   */
+  private onStageComplete(stageId: string, quality: number): void {
+    this.doneStages.add(stageId);
+    const task = this.section.tasks.find((t) => t.id === this.activeTaskId)
+      ?? this.section.tasks.find((t) => t.stageIds.includes(stageId));
+    if (!task) return;
+    const acc = this.taskAcc.get(task.id) ?? [];
+    acc.push(Math.max(0, Math.min(1, quality)));
+    this.taskAcc.set(task.id, acc);
+
+    if (task.stageIds.every((id) => this.doneStages.has(id))) {
+      // 작업 완료 — 도장 (정확도 %)
+      const avg = acc.length ? acc.reduce((a, b) => a + b, 0) / acc.length : 1;
+      this.doneTasks.set(task.id, Math.round(avg * 100));
+      this.activeTaskId = null;
+      const sec = this.section;
+      if (sec.tasks.every((t) => this.taskDone(t.id))) {
+        // 섹션 완료 — 부산물 팝업(있으면) → 다음 섹션
+        if (sec.yields?.length) this.showByproductPopup(sec);
+        else this.advanceSection();
+      } else if (sec.anyOrder) {
+        this.awaitingSelect = true;
+        this.refresh();
+      } else {
+        const next = sec.tasks.find((t) => !this.taskDone(t.id));
+        if (next) this.selectTask(next.id);
+      }
+    }
+  }
+
+  /** 다음 섹션으로 (마지막 섹션이면 최종 완료) */
+  private advanceSection(): void {
+    // 체크포인트 갱신 — 2면 뜨기 완료 = 'fillets' / 갈빗대 완료 = 'ribs'
+    if (this.section.id === 'sec_fillet_b') this.checkpoint = 'fillets';
+    if (this.section.id === 'sec_rib') { this.checkpoint = 'ribs'; this.morphPendingFilletsToSkinOnly(); }
+    if (this.sectionIdx >= this.sections.length - 1) {
+      this.process.forceFinish();
+      this.showResult();
+      return;
+    }
+    this.enterSection(this.sectionIdx + 1);
+    this.refresh();
+  }
+
+  // ═══════════════════════════════════════════════════
+  // 부산물 팝업 (보관/버리기) + 보관 레저 + 정산
+  //  — 지급은 레저에 쌓았다가 **정산 시점**(체크포인트 종료/최종 완료)에만 실지급.
+  //  체크포인트 전 이탈 = 레저 폐기 + 원물 보존 (중간 상태 에셋 없음 — 사용자 규칙).
+  // ═══════════════════════════════════════════════════
+  private speciesName(): string {
+    const def = FISH_DATABASE.find((f) => f.id === this.process.profile.speciesId);
+    return def?.nameKo ?? this.source.name.replace(/\s*\(.*$/, '');
+  }
+
+  /** 부산물 무게 근사 (core computeFilletYield와 동일 비율) */
+  private bypWeights(): { headG: number; spineG: number; ribG: number; pinG: number; visceraG: number; filletG: number } {
+    const w = this.source.weightG ?? 800;
+    return {
+      headG: Math.round(w * 0.12), spineG: Math.round(w * 0.06), ribG: Math.round(w * 0.04),
+      pinG: Math.round(w * 0.02), visceraG: Math.round(w * 0.08),
+      filletG: Math.round((w * this.process.profile.baseYieldRate) / 2 + w * 0.02),
+    };
+  }
+
+  /** 섹션 yields → 팝업/레저 행 목록 */
+  private buildYieldRows(sec: ButcherySectionDef): { key: string; tpl: Omit<InvItem, 'slot' | 'qty'>; qty: number }[] {
+    const speciesId = this.process.profile.speciesId;
+    const nameKo = this.speciesName();
+    const fam = this.trimFamily(speciesId);
+    const wts = this.bypWeights();
+    const now = Date.now();
+    const seq = InventoryStore.nextCatchSeq();
+    const base = { category: 'food' as const, subCategory: '부산물', condition: 'live' as const, conditionSinceMs: now, equippable: false };
+    const rows: { key: string; tpl: Omit<InvItem, 'slot' | 'qty'>; qty: number }[] = [];
+    for (const y of sec.yields ?? []) {
+      switch (y) {
+        case 'head':
+          rows.push({ key: 'head', qty: 1, tpl: { ...base, id: `inv_byp_head_${speciesId}_${seq}`, name: `${nameKo} 머리 ${wts.headG}g`, icon: '🐟', iconTexture: this.trimHeadKey(speciesId), byproductKind: 'head', basePrice: Math.max(200, wts.headG * 3), speciesId, weightG: wts.headG } });
+          break;
+        case 'viscera':
+          rows.push({ key: 'viscera', qty: 1, tpl: { ...base, id: 'inv_byp_guts', name: '생선 내장', icon: '🫀', iconTexture: 'trim_guts', byproductKind: 'viscera', basePrice: 300, condProfile: 'viscera' } });
+          break;
+        case 'filletA':
+        case 'filletB':
+          rows.push({ key: y, qty: 1, tpl: { ...base, subCategory: '손질 필렛', id: `inv_filletribs_${speciesId}_${seq}_${y === 'filletA' ? 'a' : 'b'}`, name: `껍질과 갈빗대가 붙어있는 ${nameKo} 필렛 ${wts.filletG}g`, icon: '🍣', iconTexture: 'trim_fillet_ribs', basePrice: Math.max(1000, wts.filletG * 6), speciesId, weightG: wts.filletG, lengthCm: this.source.lengthCm } });
+          break;
+        case 'spine':
+          rows.push({ key: 'spine', qty: 1, tpl: { ...base, id: `inv_byp_spine_${speciesId}_${seq}`, name: `${nameKo} 척추뼈 ${wts.spineG}g`, icon: '🦴', iconTexture: `trim_spine_${fam}`, byproductKind: 'spine', basePrice: Math.max(200, wts.spineG * 3), speciesId, weightG: wts.spineG } });
+          break;
+        case 'rib':
+          rows.push({ key: 'rib', qty: 1, tpl: { ...base, id: `inv_byp_rib_${speciesId}_${seq}`, name: `${nameKo} 갈빗대뼈 ${wts.ribG}g`, icon: '🍖', iconTexture: `trim_rib_${fam}`, byproductKind: 'rib', basePrice: Math.max(200, wts.ribG * 3), speciesId, weightG: wts.ribG } });
+          break;
+        case 'pin':
+          rows.push({ key: 'pin', qty: 1, tpl: { ...base, id: 'inv_byp_pin', name: '생선 지아이뼈', icon: '🦴', iconTexture: 'trim_pin', byproductKind: 'pin', basePrice: 200 } });
+          break;
+        case 'skin':
+          rows.push({ key: 'skin', qty: Math.max(1, this.process.profile.skinToughness >= 0.4 ? this.process.profile.filletCount : 1), tpl: { ...base, id: 'inv_byp_skin', name: '생선 껍질', icon: '🫓', iconTexture: 'trim_skin', byproductKind: 'skin', basePrice: 250 } });
+          break;
+        case 'pureFillet':
+          break;   // 순수 필렛은 최종 정산(showResult)에서 수율 계산으로 지급
+      }
+    }
+    return rows;
+  }
+
+  /** 갈빗대 제거 완료 — 레저의 필렛(갈빗대 포함)을 '껍질이 붙어있는 필렛'으로 갱신 */
+  private morphPendingFilletsToSkinOnly(): void {
+    const nameKo = this.speciesName();
+    for (const p of this.pendingItems) {
+      if (p.key !== 'filletA' && p.key !== 'filletB') continue;
+      const w = Math.max(1, Math.round((p.tpl.weightG ?? 100) - (this.bypWeights().ribG / 2)));
+      p.tpl.name = `껍질이 붙어있는 ${nameKo} 필렛 ${w}g`;
+      p.tpl.iconTexture = 'trim_fillet_skin';
+      p.tpl.weightG = w;
+    }
+  }
+
+  /** 섹션 완료 부산물 팝업 — [보관/버리기] 토글 + 확인 / (exitAfter) 손질 마치기 */
+  private showByproductPopup(sec: ButcherySectionDef): void {
+    this.closeByproductPopup();
+    this.stopGuideAnim();
+    const rows = this.buildYieldRows(sec);
+    if (rows.length === 0) { this.advanceSection(); return; }
+    const keep = rows.map(() => true);
+
+    const scene = this.scene;
+    const W = 420, rowH = 42;
+    const exitBtn = !!sec.exitAfter;
+    const H = 92 + rows.length * rowH + (exitBtn ? 92 : 52);
+    const c = scene.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2).setDepth(1600);
+    const dim = scene.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.55).setInteractive();
+    const bg = scene.add.graphics();
+    bg.fillStyle(0x0a1628, 0.98); bg.fillRoundedRect(-W / 2, -H / 2, W, H, 8);
+    bg.lineStyle(2, 0xc8a060, 1); bg.strokeRoundedRect(-W / 2, -H / 2, W, H, 8);
+    const title = scene.add.text(0, -H / 2 + 24, `부산물 발생 — ${sec.label.replace(/ \(.*\)$/, '')}`, {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '15px', color: '#ffe28a', fontStyle: 'bold',
+    }).setOrigin(0.5);
+    c.add([dim, bg, title]);
+
+    rows.forEach((row, i) => {
+      const ry = -H / 2 + 56 + i * rowH;
+      if (row.tpl.iconTexture && scene.textures.exists(row.tpl.iconTexture)) {
+        const img = scene.add.image(-W / 2 + 34, ry + 12, row.tpl.iconTexture);
+        const s = Math.min(36 / img.width, 30 / img.height);
+        img.setScale(s);
+        c.add(img);
+      }
+      const nameT = scene.add.text(-W / 2 + 62, ry + 12, `${row.tpl.name}${row.qty > 1 ? `  x${row.qty}` : ''}`, {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#d0e8f5',
+      }).setOrigin(0, 0.5);
+      if (nameT.width > W - 190) nameT.setScale((W - 190) / nameT.width);
+      // [보관]/[버리기] 토글
+      const tg = scene.add.graphics();
+      const tt = scene.add.text(W / 2 - 62, ry + 12, '', {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', fontStyle: 'bold',
+      }).setOrigin(0.5);
+      const paint = (): void => {
+        tg.clear();
+        tg.fillStyle(keep[i] ? 0x0d4a2e : 0x4a1d1d, 0.95);
+        tg.fillRoundedRect(W / 2 - 104, ry, 84, 24, 4);
+        tg.lineStyle(1.4, keep[i] ? 0x4af2a1 : 0xff6b6b, 0.95);
+        tg.strokeRoundedRect(W / 2 - 104, ry, 84, 24, 4);
+        tt.setText(keep[i] ? '보관' : '버리기').setColor(keep[i] ? '#7fe6b0' : '#ff9a9a');
+      };
+      paint();
+      const hit = scene.add.rectangle(W / 2 - 62, ry + 12, 84, 24, 0xffffff, 0.001)
+        .setInteractive({ useHandCursor: true });
+      hit.on('pointerdown', () => { keep[i] = !keep[i]; paint(); });
+      c.add([tg, tt, nameT, hit]);
+    });
+
+    const mkBtn = (y: number, label: string, color: string, stroke: number, onClick: () => void): void => {
+      const g = scene.add.graphics();
+      g.fillStyle(0x14283c, 0.98); g.fillRoundedRect(-150, y - 16, 300, 32, 5);
+      g.lineStyle(1.5, stroke, 0.95); g.strokeRoundedRect(-150, y - 16, 300, 32, 5);
+      const t = scene.add.text(0, y, label, {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px', color, fontStyle: 'bold',
+      }).setOrigin(0.5);
+      const hit = scene.add.rectangle(0, y, 300, 32, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
+      hit.on('pointerdown', onClick);
+      c.add([g, t, hit]);
+    };
+    const by0 = H / 2 - (exitBtn ? 66 : 32);
+    mkBtn(by0, '확인 후 계속 (Enter)', '#aee8ff', 0x33b0e0, () => this.confirmByproductPopup(false));
+    if (exitBtn) {
+      mkBtn(by0 + 38, '보관 후 손질 마치기 (필렛 저장)', '#ffd257', 0xc8a060, () => this.confirmByproductPopup(true));
+    }
+
+    applyScreenFixed(c);
+    this.byproductPopup = c;
+    // 확정 시점에 keep 상태를 읽도록 보관
+    (c as Phaser.GameObjects.Container & { __rows?: typeof rows; __keep?: boolean[] }).__rows = rows;
+    (c as Phaser.GameObjects.Container & { __rows?: typeof rows; __keep?: boolean[] }).__keep = keep;
+  }
+
+  private closeByproductPopup(): void {
+    this.byproductPopup?.destroy();
+    this.byproductPopup = undefined;
+  }
+
+  /** 팝업 확정 — [보관] 행을 레저에 적립. exitNow면 체크포인트 정산으로 종료 */
+  private confirmByproductPopup(exitNow: boolean): void {
+    const c = this.byproductPopup as (Phaser.GameObjects.Container & {
+      __rows?: { key: string; tpl: Omit<InvItem, 'slot' | 'qty'>; qty: number }[]; __keep?: boolean[];
+    }) | undefined;
+    if (!c) return;
+    const rows = c.__rows ?? [];
+    const keep = c.__keep ?? [];
+    rows.forEach((row, i) => { if (keep[i]) this.pendingItems.push(row); });
+    this.closeByproductPopup();
+    if (exitNow) {
+      // 즉시 종료 — 체크포인트 갱신 후 정산 (필렛만 저장하고 손질 마침)
+      if (this.section.id === 'sec_fillet_b') this.checkpoint = 'fillets';
+      if (this.section.id === 'sec_rib') { this.checkpoint = 'ribs'; this.morphPendingFilletsToSkinOnly(); }
+      this.settleAtCheckpoint();
+      return;
+    }
+    this.advanceSection();
+  }
+
+  /** 레저 실지급 */
+  private grantPending(): void {
+    for (const p of this.pendingItems) {
+      const tpl = p.tpl as Parameters<typeof InventoryStore.addItem>[0];
+      InventoryStore.addItem(tpl, p.qty);
+    }
+    this.pendingItems = [];
+  }
+
+  /** 체크포인트 정산 — 필렛(레저) 지급 + 원물 소모 + XP + 종료 오버레이 */
+  private settleAtCheckpoint(): void {
+    if (this.done) return;
+    this.done = true;
+    this.stopGuideAnim();
+    this.stopActionAnim();
+    this.closeByproductPopup();
+    this.grantPending();
+    InventoryStore.removeItem(this.source.id, false);
+    const xp = Math.round(14 + (this.checkpoint === 'ribs' ? 10 : 0));
+    const lv = GameState.addFilletingXp(xp);
+
+    const c = this.scene.add.container(0, 0);
+    const bg = this.scene.add.graphics();
+    bg.fillStyle(0x081422, 0.96);
+    bg.fillRoundedRect(this.fishX + 40, this.fishY + 20, this.fishW - 80, this.fishH - 40, 8);
+    bg.lineStyle(2, 0xffd257, 0.95);
+    bg.strokeRoundedRect(this.fishX + 40, this.fishY + 20, this.fishW - 80, this.fishH - 40, 8);
+    const title = this.scene.add.text(this.fishX + this.fishW / 2, this.fishY + 58, '손질 종료 — 필렛 저장', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '20px', color: '#ffd257', fontStyle: 'bold',
+    }).setOrigin(0.5);
+    const desc = this.scene.add.text(this.fishX + this.fishW / 2, this.fishY + 92,
+      `보관 선택한 부산물이 인벤토리에 지급되었습니다. (+${xp} XP · Lv.${lv.level})\n`
+      + '필렛은 나중에 도마에 다시 올려 이어서 손질할 수 있습니다 (추후 재장착 지원).', {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#d0e8f5', align: 'center', lineSpacing: 6,
+      }).setOrigin(0.5, 0);
+    const btnBg = this.scene.add.graphics();
+    btnBg.fillStyle(0x14425e, 0.98);
+    btnBg.fillRoundedRect(this.fishX + this.fishW / 2 - 70, this.fishY + this.fishH - 66, 140, 34, 5);
+    btnBg.lineStyle(1.5, 0x33b0e0, 1);
+    btnBg.strokeRoundedRect(this.fishX + this.fishW / 2 - 70, this.fishY + this.fishH - 66, 140, 34, 5);
+    const btnTxt = this.scene.add.text(this.fishX + this.fishW / 2, this.fishY + this.fishH - 49, '확인', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px', color: '#aee8ff', fontStyle: 'bold',
+    }).setOrigin(0.5);
+    const hit = this.scene.add.rectangle(this.fishX + this.fishW / 2, this.fishY + this.fishH - 49, 140, 34, 0xffffff, 0.001)
+      .setInteractive({ useHandCursor: true });
+    hit.on('pointerdown', () => this.cbs.onComplete());
+    c.add([bg, title, desc, btnBg, btnTxt, hit]);
+    this.add(c);
+    this.applyFix();
   }
 
   // ═══════════════════════════════════════════════════
@@ -300,13 +656,18 @@ export class ButcheryPanel extends DraggablePanel {
       return;
     }
     if (this.process.finished || this.done || this.knifeLocked() || this.flipping || this.actionAnim) return;
+    if (this.awaitingSelect) {
+      this.flash('우측 상단 작업 목록에서 다음 작업을 선택하세요', false);
+      return;
+    }
+    if (this.byproductPopup) return;
     const stage = this.process.stage;
     if (!stage) return;
     const n = this.toNorm(p);
     if (!n) return;
-    // 방향 불일치 — 조용한 무시 대신 명확한 안내 (F/뒤집기 버튼 유도, 먹통 방지)
+    // 방향 불일치 — 조용한 무시 대신 명확한 안내 (수동 뒤집기 유도, 먹통 방지)
     if (!this.process.canAct()) {
-      this.flash(`먼저 [${ORIENTATION_LABEL[stage.orientation]}] 방향으로 뒤집으세요 — F키 또는 [뒤집기] 버튼`, false);
+      this.flash(`먼저 [${ORIENTATION_LABEL[stage.orientation]}] 방향으로 — 좌우(F)/상하(V) 뒤집기`, false);
       return;
     }
 
@@ -318,6 +679,7 @@ export class ButcheryPanel extends DraggablePanel {
       const willFlip = this.process.orientation !== this.renderedOrientation;
       this.refresh();
       if (r.passed && !willFlip) this.playActionAnim(stage);
+      if (r.passed) this.onStageComplete(stage.id, r.quality);
     } else if (stage.primitive === 'guided_cut') {
       this.tracing = true;
       this.tracePoints = [n];
@@ -360,10 +722,12 @@ export class ButcheryPanel extends DraggablePanel {
           if (stage.primitive === 'drag_fill') this.scaledSides++;
           else this.gutted = true;
           this.tracing = false;
-          this.flash(stage.primitive === 'drag_fill' ? '비늘을 말끔히 벗겼습니다' : '내장을 비우고 척추 피를 긁었습니다', true);
+          this.flash(stage.primitive === 'drag_fill' ? '비늘을 말끔히 벗겼습니다'
+            : stage.id === 'vessel_scrub' ? '척추 아래 핏줄을 긁어냈습니다' : '내장을 통째로 꺼냈습니다', true);
           const willFlip = this.process.orientation !== this.renderedOrientation;
           this.refresh();
           if (!willFlip) this.playActionAnim(stage);
+          this.onStageComplete(stage.id, 1);
         } else {
           this.updateFillBar(res.progress);
         }
@@ -391,8 +755,8 @@ export class ButcheryPanel extends DraggablePanel {
       this.peelStart = null;
       const willFlip = this.process.orientation !== this.renderedOrientation;
       this.refresh();
-      if (r.passed && !willFlip && !this.process.finished) this.playActionAnim(stage);
-      if (this.process.finished) this.showResult();
+      if (r.passed && !willFlip && r.stageDone === false) this.playActionAnim(stage);
+      if (r.stageDone) this.onStageComplete(stage.id, quality);
       return;
     }
     this.peelStart = null;
@@ -414,8 +778,8 @@ export class ButcheryPanel extends DraggablePanel {
       const willFlip = this.process.orientation !== this.renderedOrientation;
       this.refresh();
       // 컷 성공 액션 연출 — 방향 전환(플립 연출)이 이어지면 스킵 (플립이 피드백)
-      if (r.passed && !willFlip && !this.process.finished) this.playActionAnim(stage);
-      if (this.process.finished) this.showResult();
+      if (r.passed && !willFlip) this.playActionAnim(stage);
+      if (r.passed && r.stageDone) this.onStageComplete(stage.id, r.quality);
       return;
     }
     this.tracing = false;
@@ -611,6 +975,10 @@ export class ButcheryPanel extends DraggablePanel {
       currentPullsLeft: this.process.currentPullsLeft,
       anusRatio: this.process.profile.anusRatio,
       stageId: this.process.stage?.id,
+      // 장뜨기 길내기 진행 (완료 스트로크 수) — 단계 스프라이트/폴백 절개선 선택
+      strokesDone: this.process.stage?.cut?.strokesRequired
+        ? this.process.stage.cut.strokesRequired - this.process.currentStrokesLeft
+        : 0,
     }, sprites);
   }
 
@@ -918,7 +1286,7 @@ export class ButcheryPanel extends DraggablePanel {
   private startGuideAnim(): void {
     this.stopGuideAnim();
     if (this.guideOff) return;   // 가이드 꺼짐 — 외곽 화살표 큐 정지 (유도선은 drawGuide가 유지)
-    if (this.done || this.process.finished || this.flipping || this.knifeLocked()) return;
+    if (this.done || this.process.finished || this.flipping || this.knifeLocked() || this.awaitingSelect) return;
     const stage = this.process.stage;
     if (!stage || !this.process.canAct()) return;
     const g = this.guideAnimG;
@@ -1097,42 +1465,27 @@ export class ButcheryPanel extends DraggablePanel {
       return t;
     };
 
-    // 진행도
+    // 진행도 — 섹션 n/N + 현재 스테이지 (자유 손질 개편)
+    const sec = this.section;
     mkText(sx, this.contentTop + 16,
       this.process.finished
         ? '손질 완료!'
-        : `단계 ${this.process.stageIndex + 1} / ${this.process.stageCount} — ${stage?.label ?? ''}`,
+        : `섹션 ${this.sectionIdx + 1} / ${this.sections.length} — ${sec.label}`,
       15, '#ffe28a', true);
 
     if (!this.process.finished && stage) {
-      mkText(sx, this.contentTop + 46, stage.guide, 12, '#d0e8f5');
+      mkText(sx, this.contentTop + 42,
+        this.awaitingSelect ? '우측 상단 작업 목록에서 다음 작업을 선택하세요' : stage.guide,
+        12, this.awaitingSelect ? '#ffd257' : '#d0e8f5');
 
       // 방향 게이트 상태
       const ok = this.process.canAct();
       mkText(sx, this.contentTop + 100,
         ok ? `방향 OK — ${ORIENTATION_LABEL[this.process.orientation]}`
-          : `${ORIENTATION_LABEL[stage.orientation]} 방향으로 바꿔주세요`,
+          : `${ORIENTATION_LABEL[stage.orientation]} 방향으로 — 좌우(F)/상하(V) 뒤집기`,
         12, ok ? '#7fe6b0' : '#ff9a6a', true);
 
-      if (!ok) {
-        // 원터치 뒤집기 대형 버튼 — 불일치 상태에서 즉시 요구 방향으로 (F키 동일)
-        const by = this.contentTop + 122;
-        const bg = this.scene.add.graphics();
-        bg.fillStyle(0x3a2e14, 0.98);
-        bg.fillRoundedRect(sx, by, 220, 32, 5);
-        bg.lineStyle(2, 0xffd257, 1);
-        bg.strokeRoundedRect(sx, by, 220, 32, 5);
-        const t = this.scene.add.text(sx + 110, by + 16, `뒤집기 → ${ORIENTATION_LABEL[stage.orientation]} (F)`, {
-          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#ffd257', fontStyle: 'bold',
-        }).setOrigin(0.5);
-        const hit = this.scene.add.rectangle(sx + 110, by + 16, 220, 32, 0xffffff, 0.001)
-          .setInteractive({ useHandCursor: true });
-        hit.on('pointerdown', () => {
-          this.process.orientation = stage.orientation;
-          this.refresh();
-        });
-        this.uiC.add([bg, t, hit]);
-      } else {
+      if (ok) {
         // 반복/진행 표시
         if (stage.primitive === 'guided_cut' && this.process.currentStrokesLeft > 1) {
           mkText(sx, this.contentTop + 124, `남은 칼집: ${this.process.currentStrokesLeft}회`, 11, '#9fd0e4');
@@ -1142,27 +1495,35 @@ export class ButcheryPanel extends DraggablePanel {
         }
       }
 
-      // 방향(Orient) 버튼
-      const orients: OrientationState[] = ['BASE', 'FLIP', 'BELLY_UP', 'BACK_DOWN', 'FLESH_UP'];
-      orients.forEach((o, i) => {
-        const bx = sx + (i % 2) * 170;
-        const by = this.contentTop + 160 + Math.floor(i / 2) * 38;
-        const sel = this.process.orientation === o;
-        const need = stage.orientation === o;
+      // ── 수동 뒤집기 버튼 2종 (자동 뒤집기 폐지 — 상하/좌우 분리. FLESH_UP=필렛 뷰는 비활성) ──
+      const filletView = this.process.orientation === 'FLESH_UP';
+      const flipDefs: { label: string; act: () => void }[] = [
+        { label: '좌우 뒤집기 (F)', act: () => this.doFlipLR() },
+        { label: '상하 뒤집기 (V)', act: () => this.doFlipUD() },
+      ];
+      flipDefs.forEach((fd, i) => {
+        const bx = sx + i * 170;
+        const by = this.contentTop + 160;
         const bg = this.scene.add.graphics();
-        bg.fillStyle(sel ? 0x155a7c : 0x0e1c2d, 0.95);
-        bg.fillRoundedRect(bx, by, 160, 30, 4);
-        bg.lineStyle(1.5, sel ? 0x5cd0ff : need ? 0xffd257 : 0x2a5a8a, 0.95);
-        bg.strokeRoundedRect(bx, by, 160, 30, 4);
-        const t = this.scene.add.text(bx + 80, by + 15, ORIENTATION_LABEL[o], {
-          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px',
-          color: sel ? '#aee8ff' : need ? '#ffd257' : '#8faabf',
+        bg.fillStyle(filletView ? 0x101820 : 0x155a7c, 0.95);
+        bg.fillRoundedRect(bx, by, 160, 34, 4);
+        bg.lineStyle(1.5, filletView ? 0x2a3a48 : 0x5cd0ff, 0.95);
+        bg.strokeRoundedRect(bx, by, 160, 34, 4);
+        const t = this.scene.add.text(bx + 80, by + 17, fd.label, {
+          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px',
+          color: filletView ? '#4a5a68' : '#aee8ff', fontStyle: 'bold',
         }).setOrigin(0.5);
-        const hit = this.scene.add.rectangle(bx + 80, by + 15, 160, 30, 0xffffff, 0.001)
-          .setInteractive({ useHandCursor: true });
-        hit.on('pointerdown', () => { this.process.orientation = o; this.refresh(); });
-        this.uiC.add([bg, t, hit]);
+        if (!filletView) {
+          const hit = this.scene.add.rectangle(bx + 80, by + 17, 160, 34, 0xffffff, 0.001)
+            .setInteractive({ useHandCursor: true });
+          hit.on('pointerdown', fd.act);
+          this.uiC.add(hit);
+        }
+        this.uiC.add([bg, t]);
       });
+      if (filletView) {
+        mkText(sx, this.contentTop + 200, '필렛 뷰 — 뒤집기 없음 (살 위)', 10, '#607b8e');
+      }
 
       // 세척/얼음물 버튼 (wash 프리미티브에서만)
       if (stage.primitive === 'wash') {
@@ -1183,7 +1544,7 @@ export class ButcheryPanel extends DraggablePanel {
             this.washCount++;
             this.flash(stage.id === 'bleed_ice' ? '방혈 완료 — 선도 보너스!' : '깨끗이 씻었습니다', true);
             this.refresh();
-            if (this.process.finished) this.showResult();
+            this.onStageComplete(stage.id, 1);
           }
         });
         this.uiC.add([bg, t, hit]);
@@ -1226,7 +1587,7 @@ export class ButcheryPanel extends DraggablePanel {
       ? '손질 스킬 Lv.20 (MAX)'
       : `손질 스킬 Lv.${fl.level}  ·  ${fl.xp} / ${(fl.level + 1) * 100} XP`;
     mkText(sx, PANEL_H - 74, skillLine, 11, '#ffd257');
-    mkText(sx, PANEL_H - 54, '키: F/Space 뒤집기 · 1~5 방향 · Enter 세척', 10, '#607b8e');
+    mkText(sx, PANEL_H - 54, '키: F/Space 좌우 뒤집기 · V 상하 뒤집기 · Enter 세척', 10, '#607b8e');
 
     // 가이드 켜기/끄기 토글 (전 어종 — 끄더라도 유도선은 항상 표시)
     this.drawGuideToggle();
@@ -1234,6 +1595,63 @@ export class ButcheryPanel extends DraggablePanel {
 
     // 삼면뜨기 픽셀 가이드 슬롯 (돔류 — 현재 스테이지의 가이드 컷 + 전체 시트 버튼)
     this.drawGuideSlot();
+
+    // 작업 선택 목록 (도마 우측 상단 — 섹션별 작업 유형 + 완료 도장)
+    this.drawTaskPanel();
+  }
+
+  /**
+   * 작업 선택 목록 — 도마 우측 상단 (자유 손질 개편). 현재 섹션의 작업들을 표시하고,
+   * anyOrder 섹션은 클릭으로 직접 선택. 완료 작업은 '완료됨 (정확도 %)' 도장.
+   */
+  private drawTaskPanel(): void {
+    if (this.done || this.process.finished) return;
+    const sec = this.section;
+    const W = 216, rowH = 26;
+    const px = this.fishX + this.fishW - W + 10;
+    const py = this.contentTop + 6;
+    const H = 26 + sec.tasks.length * rowH + 6;
+
+    const bg = this.scene.add.graphics();
+    bg.fillStyle(0x0a1628, 0.94);
+    bg.fillRoundedRect(px, py, W, H, 6);
+    bg.lineStyle(1.5, this.awaitingSelect ? 0xffd257 : 0x2a5a8a, 0.95);
+    bg.strokeRoundedRect(px, py, W, H, 6);
+    const hdr = this.scene.add.text(px + 8, py + 6, `${sec.label}${sec.anyOrder ? ' — 작업 선택' : ''}`, {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#ffe28a', fontStyle: 'bold',
+    });
+    if (hdr.width > W - 16) hdr.setScale((W - 16) / hdr.width);
+    this.uiC.add([bg, hdr]);
+
+    sec.tasks.forEach((task, i) => {
+      const ry = py + 26 + i * rowH;
+      const done = this.taskDone(task.id);
+      const active = this.activeTaskId === task.id;
+      const selectable = !done && sec.anyOrder && this.awaitingSelect;
+
+      const rg = this.scene.add.graphics();
+      rg.fillStyle(done ? 0x0d2a1a : active ? 0x155a7c : 0x0e1c2d, 0.95);
+      rg.fillRoundedRect(px + 6, ry, W - 12, rowH - 4, 4);
+      rg.lineStyle(1.2, done ? 0x4af2a1 : active ? 0x5cd0ff : selectable ? 0xffd257 : 0x1f3d5a, 0.9);
+      rg.strokeRoundedRect(px + 6, ry, W - 12, rowH - 4, 4);
+      const label = done
+        ? `${task.label} — 완료됨 (${this.doneTasks.get(task.id)}%)`
+        : active ? `▶ ${task.label}` : task.label;
+      const t = this.scene.add.text(px + 12, ry + (rowH - 4) / 2, label, {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px',
+        color: done ? '#7fe6b0' : active ? '#aee8ff' : selectable ? '#ffd257' : '#8faabf',
+        fontStyle: done || active ? 'bold' : 'normal',
+      }).setOrigin(0, 0.5);
+      if (t.width > W - 24) t.setScale((W - 24) / t.width);
+      this.uiC.add([rg, t]);
+
+      if (selectable) {
+        const hit = this.scene.add.rectangle(px + W / 2, ry + (rowH - 4) / 2, W - 12, rowH - 4, 0xffffff, 0.001)
+          .setInteractive({ useHandCursor: true });
+        hit.on('pointerdown', () => this.selectTask(task.id));
+        this.uiC.add(hit);
+      }
+    });
   }
 
   /**
@@ -1275,6 +1693,9 @@ export class ButcheryPanel extends DraggablePanel {
   /** 현재 스테이지의 가이드 컷 해소 — 다회 스테이지는 진행 회차로 컷 전환 */
   private currentGuideCutKey(): string | null {
     if (this.process.finished) return GUIDE_CUT_DONE_KEY;
+    // 작업 선택 대기 중 — 아직 스테이지가 확정되지 않았으므로 가이드 표시 안 함
+    // (도마 생선 진행도와 가이드 컷 불일치 방지)
+    if (this.awaitingSelect) return null;
     const stage = this.process.stage;
     if (!stage) return null;
     // 진행 회차 = 완료한 스트로크/당김 수 (스테이지 시작 시 0)
@@ -1335,7 +1756,8 @@ export class ButcheryPanel extends DraggablePanel {
     const cut = guideCutByKey(key);
 
     const imgW = 168, imgH = 99;   // 도마 위 공간(contentTop~보드 상단 164px)에 맞춤
-    const cx = this.fishX + this.fishW - imgW / 2 - 2;
+    // 좌측 상단 배치 — 우측 상단은 작업 선택 목록(drawTaskPanel) 자리 (자유 손질 개편)
+    const cx = this.fishX + imgW / 2 + 2;
     const cy = this.contentTop + 10 + imgH / 2;
     const cont = this.scene.add.container(cx, cy);
     const frame = this.scene.add.image(0, 0, SASHIMI_GUIDE_TEXTURE, guideFrameName(key))
@@ -1469,11 +1891,21 @@ export class ButcheryPanel extends DraggablePanel {
   }
 
   // ═══════════════════════════════════════════════════
-  // 손질 부산물/필렛 아이콘 — trimmings 실사 에셋 (머리는 어종별 색 변형)
+  // 손질 부산물/필렛 아이콘 — trimmings 실사 에셋
+  //  어종군 분리 (2026-07-30 사용자 매핑): 머리/척추뼈/갈빗대/순수 필렛 = 돔류(bream)·
+  //  방어류(amberjack) 별도 에셋 / 껍질·내장·지아이뼈 = 물고기류 공통.
   // ═══════════════════════════════════════════════════
-  /** 어종별 머리 아이콘 키 — 감성돔 원본 기준, 돔류는 색/무늬 변형 (참돔 붉게·돌돔 아가미 줄무늬) */
+  /** 어종 → trimmings 어종군 ('amberjack' = 방어류 / 'bream' = 돔류·기본) */
+  private trimFamily(speciesId: string): 'amberjack' | 'bream' {
+    return speciesId === 'yellowtail' || speciesId === 'amberjack' || speciesId === 'greater_amberjack'
+      ? 'amberjack' : 'bream';
+  }
+
+  /** 어종별 머리 아이콘 키 — 어종군 베이스 + 돔류는 색/무늬 변형 (참돔 붉게·돌돔 아가미 줄무늬) */
   private trimHeadKey(speciesId: string): string {
-    // 감성돔 원본(trim_head)을 기준으로 돔류별 색/무늬만 바꿔 재사용 (사용자 지시 2026-07-30)
+    const fam = this.trimFamily(speciesId);
+    const base = `trim_head_${fam}`;
+    if (fam === 'amberjack') return base;   // 방어류 = 잿방어 머리 실색 그대로
     const HEAD_MULT: Record<string, { mult: number; stripes?: boolean }> = {
       black_seabream: { mult: 0xffffff },                    // 감성돔 — 원본
       red_seabream: { mult: 0xff7a55 },                      // 참돔 — 붉은 발색
@@ -1485,17 +1917,20 @@ export class ButcheryPanel extends DraggablePanel {
     };
     const spec = HEAD_MULT[speciesId]
       ?? { mult: this.blendColor(0xffffff, getFishColors(speciesId).body, 0.45) };
-    const key = speciesId === 'black_seabream' ? 'trim_head' : `trimhead_${speciesId}`;
-    this.bakeTintedTrim('trim_head', key, spec.mult, spec.stripes ?? false);
-    return this.scene.textures.exists(key) ? key : 'trim_head';
+    const key = speciesId === 'black_seabream' ? base : `trimhead_${speciesId}`;
+    this.bakeTintedTrim(base, key, spec.mult, spec.stripes ?? false);
+    return this.scene.textures.exists(key) ? key : base;
   }
 
-  /** 어종별 필렛 아이콘 키 — pure_pilet 로인 사진 + 은은한 어종 색 (흰살 옅게 / 붉은살 진하게) */
+  /** 어종별 순수 필렛 아이콘 키 — 어종군 로인 사진 (방어류 실색 / 돔류는 은은한 어종 색) */
   private trimFilletKey(speciesId: string): string {
+    const fam = this.trimFamily(speciesId);
+    const base = `trim_fillet_${fam}`;
+    if (fam === 'amberjack') return base;   // 방어류 = 잿방어 로인 실색 그대로
     const body = getFishColors(speciesId).body;
     const key = `trimfillet_${body.toString(16)}`;
-    this.bakeTintedTrim('trim_fillet', key, this.blendColor(0xffffff, body, 0.26), false);
-    return this.scene.textures.exists(key) ? key : 'trim_fillet';
+    this.bakeTintedTrim(base, key, this.blendColor(0xffffff, body, 0.26), false);
+    return this.scene.textures.exists(key) ? key : base;
   }
 
   /**
@@ -1623,48 +2058,12 @@ export class ButcheryPanel extends DraggablePanel {
       speciesId, lengthCm: this.source.lengthCm, weightG: perFilletG,
     }, yieldRes.filletCount);
 
-    // ── 부산물 — 어종명 접두 개별 아이템 (매운탕 3종 + 내장 + 껍질) ──
+    // ── 부산물 — 자유 손질 개편: 각 섹션 완료 팝업에서 [보관] 선택분(레저)을 여기서 실지급 ──
+    //  (머리 S2 / 내장 S3 / 필렛·척추 S8 / 갈빗대 S9 / 지아이 S10 / 껍질 S11 팝업.
+    //   최종 완료 시 레저의 중간 필렛 항목은 순수 필렛으로 대체되므로 제거)
     const bp = yieldRes.byproducts;
-    // 부산물 아이콘 = trimmings 실사 에셋 (머리는 어종별 색 변형 / 부위별 전용 뼈 에셋)
-    const byproductTex = (kind: 'head' | 'spine' | 'rib' | 'pin' | 'viscera'): string =>
-      kind === 'head' ? this.trimHeadKey(speciesId)
-        : kind === 'spine' ? 'trim_spine'
-          : kind === 'rib' ? 'trim_rib'
-            : kind === 'pin' ? 'trim_pin'
-              : 'trim_guts';   // viscera
-    const addByproduct = (
-      kind: 'head' | 'spine' | 'rib' | 'pin' | 'viscera', label: string, icon: string,
-      weightG: number, priceFactor: number,
-    ): void => {
-      if (weightG <= 0) return;
-      InventoryStore.addItem({
-        id: `inv_byp_${kind}_${speciesId}_${seq}`,
-        name: `${nameKo} ${label} ${weightG}g`,
-        icon, iconTexture: byproductTex(kind),
-        category: 'food', subCategory: '부산물', byproductKind: kind,
-        basePrice: Math.max(200, Math.round(weightG * priceFactor)),
-        condition: outCond, conditionSinceMs: outSince, equippable: false,
-        speciesId, weightG,
-        // 내장 = 신선도 급감 프로필 (활어 10분 → 나쁨 → 1시간 후 부패)
-        ...(kind === 'viscera' ? { condProfile: 'viscera' as const } : {}),
-      }, 1);
-    };
-    addByproduct('head', '생선 머리', '🐟', bp.headG, 3);        // 매운탕/지리·육수
-    addByproduct('spine', '척추뼈', '🦴', bp.spineG, 3);          // 매운탕/지리·육수
-    addByproduct('rib', '갈빗대뼈', '🍖', bp.ribG, 3);            // 매운탕/지리·육수
-    addByproduct('pin', '가시뼈', '🦴', bp.pinBoneG, 2);          // 잔가시(핀본) — 육수/폐기
-    addByproduct('viscera', '내장', '🫀', bp.visceraG, 1.5);      // 밑밥 전환('만들기')
-    // 껍질 (구이·육수) — 박피가 있는 어종만, 필렛 수만큼
-    if (bp.skinPieces > 0) {
-      InventoryStore.addItem({
-        id: `inv_skin_${speciesId}_${seq}`,
-        name: `${nameKo} 껍질`,
-        icon: '🫓', iconTexture: 'trim_skin',
-        category: 'food', subCategory: '부산물', byproductKind: 'skin',
-        basePrice: 250, condition: outCond, conditionSinceMs: outSince, equippable: false,
-        speciesId,
-      }, bp.skinPieces);
-    }
+    this.pendingItems = this.pendingItems.filter((p) => p.key !== 'filletA' && p.key !== 'filletB');
+    this.grantPending();
     // 원본 생선 1마리 소모
     InventoryStore.removeItem(this.source.id, false);
 
@@ -1683,7 +2082,7 @@ export class ButcheryPanel extends DraggablePanel {
     const skinNote = bp.skinPieces > 0 ? ` · 껍질 x${bp.skinPieces}` : '';
     const desc = this.scene.add.text(this.fishX + this.fishW / 2, this.fishY + 74, [
       `${nameKo} 필렛 x${yieldRes.filletCount} (장당 ${perFillet.toLocaleString()}원)`,
-      `부산물: 머리 ${bp.headG}g · 척추뼈 ${bp.spineG}g · 갈빗대뼈 ${bp.ribG}g (매운탕) · 내장 ${bp.visceraG}g (밑밥)${skinNote}`,
+      `부산물: 각 단계 팝업에서 보관 선택분 지급${skinNote}`,
       `수율 ${yieldRes.yieldMassG}g · 슬라이스 ${yieldRes.sliceCount}점 · 컷 정확도 ${(r.avgCutQuality * 100).toFixed(0)}%`,
       `칼: ${knifeName} · 시메 ${r.ikejimeDone ? 'O' : 'X'} · 방혈 ${r.bledDone ? 'O' : 'X'} · 손질 스킬 Lv.${lv.level}${lv.leveledUp ? ' (레벨업!)' : ` (+${xpGain} XP)`}`,
       yieldRes.undersizedForFillet ? '체장이 작아 회뜨기 비효율 — 통마리 판매/조림 권장' : '인벤토리(음식 탭)에 지급되었습니다.',

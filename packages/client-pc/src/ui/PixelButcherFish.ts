@@ -17,16 +17,19 @@ import {
   PixelFishSprite, FISH_WHOLE, FISH_DRESSED, FISH_FILLET,
   FISH_WHOLE_AMBERJACK, FISH_DRESSED_AMBERJACK,
 } from '../data/PixelFishSprites.js';
+import { FISH_STAGE_SPRITES } from '../data/PixelFishStages.js';
 
 const AB = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+/';
 
 export interface PixelFishGeom { x: number; y: number; w: number; h: number; }
 
-/** 도마 스프라이트 세트 (온마리/손질 몸통/필렛) + 틴트 여부 */
+/** 도마 스프라이트 세트 (온마리/손질 몸통/필렛) + 틴트 여부 + 어종군 키 */
 export interface ButcherSpriteSet {
   whole: PixelFishSprite; dressed: PixelFishSprite; fillet: PixelFishSprite;
   /** true = 스프라이트가 어종 실색을 가짐(틴트 금지) — 방어류 전용 잿방어 스프라이트 */
   nativeColor: boolean;
+  /** 단계 스프라이트 조회 키 (`{family}_vessel` / `{family}_fillet1~3` — FISH_STAGE_SPRITES) */
+  familyKey: 'amberjack' | 'bream';
 }
 
 const AMBERJACK_SPECIES = new Set<string>(['yellowtail', 'amberjack', 'greater_amberjack']);
@@ -37,9 +40,37 @@ const AMBERJACK_SPECIES = new Set<string>(['yellowtail', 'amberjack', 'greater_a
  */
 export function butcherSpritesFor(speciesId: string): ButcherSpriteSet {
   if (AMBERJACK_SPECIES.has(speciesId)) {
-    return { whole: FISH_WHOLE_AMBERJACK, dressed: FISH_DRESSED_AMBERJACK, fillet: FISH_FILLET, nativeColor: true };
+    return { whole: FISH_WHOLE_AMBERJACK, dressed: FISH_DRESSED_AMBERJACK, fillet: FISH_FILLET, nativeColor: true, familyKey: 'amberjack' };
   }
-  return { whole: FISH_WHOLE, dressed: FISH_DRESSED, fillet: FISH_FILLET, nativeColor: false };
+  return { whole: FISH_WHOLE, dressed: FISH_DRESSED, fillet: FISH_FILLET, nativeColor: false, familyKey: 'bream' };
+}
+
+/**
+ * 손질 단계 스프라이트 선택 — 세장뜨기 구조는 어종군 공통 (사용자 지시 2026-07-30):
+ *  BELLY_UP 핏줄/세척 = `{fam}_vessel`(배 안쪽·척추 혈관 뷰) /
+ *  BACK_DOWN 장뜨기 = `{fam}_fillet1~3`(길내기 1·2 → 잘라내기, 스트로크 진행 연동.
+ *  2면(fillet_1_*)은 좌우 미러). 레지스트리에 없으면 null → 제네릭 + 폴백 오버레이.
+ */
+function pickStageSprite(
+  fam: string, state: PixelFishState,
+): { spr: PixelFishSprite; mirrorX: boolean } | null {
+  const o = state.orientation;
+  if (state.finished || o === 'FLESH_UP') return null;
+  const S = FISH_STAGE_SPRITES;
+  if (o === 'BELLY_UP' && state.headOff
+    && (state.stageId === 'vessel_scrub' || state.stageId === 'gut_wash')) {
+    const spr = S[`${fam}_vessel`];
+    return spr ? { spr, mirrorX: false } : null;
+  }
+  if (o === 'BACK_DOWN' && state.stageId?.startsWith('fillet_')) {
+    const mirrorX = state.stageId.startsWith('fillet_1');
+    const sever = state.stageId.endsWith('_sever');
+    const n = sever ? 3 : Math.min(2, state.strokesDone ?? 0);
+    if (n <= 0) return null;
+    const spr = S[`${fam}_fillet${n}`];
+    return spr ? { spr, mirrorX } : null;
+  }
+  return null;
 }
 
 export interface PixelFishState {
@@ -53,6 +84,8 @@ export interface PixelFishState {
   /** 머리(0)~꼬리(1) 항문 위치 — BACK_DOWN 마커 */
   anusRatio: number;
   stageId?: string;
+  /** 현재 스테이지 완료 스트로크 수 (장뜨기 길내기 진행 — 단계 스프라이트 선택) */
+  strokesDone?: number;
 }
 
 /** 팔레트 색 → 어종 틴트 블렌드 (k=0 원본 유지) */
@@ -105,9 +138,18 @@ function drawSprite(
 export function drawPixelButcherFish(
   g: Phaser.GameObjects.Graphics, geom: PixelFishGeom,
   tint: number | null, state: PixelFishState,
-  sprites: ButcherSpriteSet = { whole: FISH_WHOLE, dressed: FISH_DRESSED, fillet: FISH_FILLET, nativeColor: false },
+  sprites: ButcherSpriteSet = { whole: FISH_WHOLE, dressed: FISH_DRESSED, fillet: FISH_FILLET, nativeColor: false, familyKey: 'bream' },
 ): void {
   const o = state.orientation;
+
+  // ── 손질 단계 스프라이트 (핏줄 뷰 / 장뜨기 길내기 1~3) — 있으면 우선 사용 ──
+  const stagePick = pickStageSprite(sprites.familyKey, state);
+  if (stagePick) {
+    drawSprite(g, stagePick.spr, geom, stagePick.mirrorX, false,
+      sprites.nativeColor ? null : tint, 0.22);
+    return;
+  }
+
   const filletView = state.finished || o === 'FLESH_UP';
   const spr = filletView ? sprites.fillet : state.headOff ? sprites.dressed : sprites.whole;
   const mirrorX = !filletView && o === 'FLIP';
@@ -151,5 +193,24 @@ export function drawPixelButcherFish(
       : drawn.x + drawn.w * state.anusRatio;
     g.fillStyle(0xffd257, 1);
     g.fillCircle(ax, drawn.y + drawn.h * 0.08, 3.5);
+  }
+
+  // ── 단계 폴백 오버레이 — 단계 스프라이트 미보유 어종군 (예: 방어류 사진 대기 중) ──
+  if (o === 'BELLY_UP' && state.headOff
+    && (state.stageId === 'vessel_scrub' || state.stageId === 'gut_wash')) {
+    // 척추 아래 혈관 라인 (핏줄) — 세척 단계는 옅게 (씻겨나감)
+    const a = state.stageId === 'gut_wash' ? 0.3 : 0.9;
+    g.lineStyle(3.5, 0x5a1218, a);
+    g.lineBetween(drawn.x + drawn.w * 0.18, drawn.y + drawn.h * 0.6, drawn.x + drawn.w * 0.76, drawn.y + drawn.h * 0.6);
+  }
+  if (o === 'BACK_DOWN' && state.stageId?.startsWith('fillet_') && (state.strokesDone ?? 0) > 0) {
+    // 장뜨기 길내기 진행 — 등 경계 절개선이 점점 깊어짐 (1=가는 선 → 3=벌어진 분홍 살)
+    const n = Math.min(3, (state.strokesDone ?? 0) + (state.stageId.endsWith('_sever') ? 1 : 0));
+    if (n >= 2) {
+      g.fillStyle(0xe8b8b0, 0.9);
+      g.fillRect(drawn.x + drawn.w * 0.14, drawn.y + drawn.h * 0.14, drawn.w * 0.68, 2 + n * 2);
+    }
+    g.lineStyle(1.5 + n, 0x2a1214, 0.9);
+    g.lineBetween(drawn.x + drawn.w * 0.12, drawn.y + drawn.h * 0.15, drawn.x + drawn.w * 0.85, drawn.y + drawn.h * 0.13);
   }
 }

@@ -127,13 +127,23 @@ export class BootScene extends Phaser.Scene {
     this.load.image('food_assorted_sashimi', 'food/assorted_sashimi.png');
     // trimmings/: 손질 부산물 아이콘 (회뜨기 산출 — 머리/중골/내장/껍질/필렛).
     // 머리는 감성돔 기준 원본 → 타 돔류는 런타임 색 변형(참돔 붉게·돌돔 아가미 줄무늬 등, ButcheryPanel.trimHeadKey).
-    this.load.image('trim_head', 'trimmings/black_sea_bream_head.png');
-    this.load.image('trim_spine', 'trimmings/rests_main_spine.png');
-    this.load.image('trim_rib', 'trimmings/rib_bone.png');
+    // 손질 부산물(trimmings) — 어종군(돔류/방어류) 분리 + 공통 3종 (2026-07-30 사용자 매핑):
+    //  머리/척추뼈/갈빗대/순수 필렛 = 돔류(bream)·방어류(amberjack) 별도 에셋,
+    //  껍질/내장/지아이뼈 = 물고기류 공통. 필렛 중간 산출물 2종(갈빗대 유/무)은 공통 에셋
+    //  + 어종명 접두 아이템명("껍질과 갈빗대가 붙어있는 잿방어 필렛").
+    this.load.image('trim_head_bream', 'trimmings/head_black_sea_bream.png');
+    this.load.image('trim_head_amberjack', 'trimmings/head_amberjack.png');
+    this.load.image('trim_spine_bream', 'trimmings/rests_main_spine_bream.png');
+    this.load.image('trim_spine_amberjack', 'trimmings/rests_main_spine_amberjack.png');
+    this.load.image('trim_rib_bream', 'trimmings/rib_bone_bream.png');
+    this.load.image('trim_rib_amberjack', 'trimmings/rib_bone_amberjack.png');
+    this.load.image('trim_fillet_bream', 'trimmings/pure_pillet_bream.png');
+    this.load.image('trim_fillet_amberjack', 'trimmings/pure_pillet_amberjack.png');
+    this.load.image('trim_fillet_ribs', 'trimmings/skinned_pillet_with_ribs.png');
+    this.load.image('trim_fillet_skin', 'trimmings/skinned_pillet_without_ribs.png');
     this.load.image('trim_pin', 'trimmings/pin_bone.png');
     this.load.image('trim_guts', 'trimmings/pile_of_fish_guts.png');
     this.load.image('trim_skin', 'trimmings/fish_skin.png');
-    this.load.image('trim_fillet', 'trimmings/pure_pilet.png');
     this.load.image('fish_black_sea_bream', 'fish/black_sea_bream.png');
     this.load.image('fish_halibut', 'fish/halibut.png');
     this.load.image('fish_largescale_blackfish', 'fish/large_scale_blackfish.png');   // 벵에돔

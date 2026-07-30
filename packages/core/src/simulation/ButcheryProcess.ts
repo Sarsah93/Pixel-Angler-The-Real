@@ -281,49 +281,84 @@ export function buildButcheryStages(profile: ButcheryProfile, opts?: ButcherySta
     cut: cut('gut_open', 'BELLY_UP', [{ x: profile.anusRatio, y: 0.5 }, { x: 0.14, y: 0.5 }], { tolerance: 0.09 }),
   });
   stages.push({
-    id: 'gut_scoop', label: '내장 비우기 + 척추 피 긁기', orientation: 'BELLY_UP', primitive: 'scoop',
-    guide: '내장을 긁어내고 척추의 피(신장막)를 긁으세요',
-    fillTarget: 0.7,
+    id: 'gut_scoop', label: '내장 비우기', orientation: 'BELLY_UP', primitive: 'scoop',
+    guide: '갈빗대 안쪽 내장 덩어리를 긁어 통째로 꺼내세요',
+    fillTarget: 0.6,
+  });
+  // 5b. 핏줄(신장) 긁기 — 척추 아래 혈관막 제거 (자유 손질 개편 2026-07-30 — 내장과 분리)
+  stages.push({
+    id: 'vessel_scrub', label: '핏줄(신장) 긁기', orientation: 'BELLY_UP', primitive: 'scoop',
+    guide: '내장 자리 천장 — 척추뼈 아래 검붉은 혈관막을 긁어 남은 피를 제거하세요',
+    fillTarget: 0.5,
   });
   stages.push({
     id: 'gut_wash', label: '뱃속 세척', orientation: 'BELLY_UP', primitive: 'wash',
     guide: '뱃속을 흐르는 물에 깨끗이 씻으세요',
   });
 
-  // 6. 꼬리 손잡이 — 박피용 홈
+  // 6. 꼬리 칼집 — 앞/뒤 양면 (박피 손잡이 홈)
   stages.push({
-    id: 'tail_grip', label: '꼬리 손잡이 홈', orientation: 'BASE', primitive: 'guided_cut',
-    guide: '꼬리 쪽에 얕은 홈을 내 박피 손잡이를 만드세요',
+    id: 'tail_grip', label: '꼬리 칼집 (앞면)', orientation: 'BASE', primitive: 'guided_cut',
+    guide: '꼬리 쪽에 얕은 홈을 내 박피 손잡이를 만드세요 (앞면)',
     cut: cut('tail_grip', 'BASE', [{ x: 0.87, y: 0.36 }, { x: 0.885, y: 0.62 }], { minCoverage: 0.5 }),
   });
+  stages.push({
+    id: 'tail_grip_b', label: '꼬리 칼집 (뒷면)', orientation: 'FLIP', primitive: 'guided_cut',
+    guide: '뒤집어 반대면 꼬리에도 얕은 홈을 내세요',
+    cut: cut('tail_grip_b', 'FLIP', [{ x: 0.13, y: 0.36 }, { x: 0.115, y: 0.62 }], { minCoverage: 0.5 }),
+  });
 
-  // 7~8. 장 뜨기 — 등 경계 얕은 칼집 ×3 → 강한 썰기(뼈 끊기) 분리. 필렛 수만큼 반복.
+  // 7~8. 장 뜨기 — 면별 등쪽/배쪽 각각 척추까지 (자유 손질: 두 컷 순서 무관, 둘 다 = 분리).
   //  round=삼면뜨기(양살 2장), flat=다섯장뜨기(중앙선 기준 상·하 양측 4~5장).
   const flat = profile.bodyShape === 'flat';
   for (let f = 0; f < profile.filletCount; f++) {
     const sideLabel = flat
       ? `다섯장뜨기 ${f + 1}/${profile.filletCount}장`
-      : f === 0 ? '첫 장' : '둘째 장';
+      : f === 0 ? '1면' : '2면';
     stages.push({
-      id: `fillet_${f}_score`, label: `${sideLabel} — 경계 칼집`, orientation: 'BACK_DOWN', primitive: 'guided_cut',
+      id: `fillet_${f}_score`, label: `${sideLabel} — 등쪽 칼집 → 척추까지`, orientation: 'BACK_DOWN', primitive: 'guided_cut',
       guide: flat
         ? '몸통 중앙선을 기준으로 한쪽 반신의 지느러미 경계를 따라 얕은 칼집 3회 (머리→꼬리)'
-        : '등 경계를 따라 얕은 칼집을 3회 넣으세요 (머리 자리→꼬리)',
+        : '등 지느러미 자리를 따라 칼집을 넣어 척추뼈까지 뜨세요 (3회 반복)',
       cut: cut(`fillet_${f}_score`, 'BACK_DOWN',
         [{ x: 0.14, y: 0.3 }, { x: 0.86, y: 0.28 }], { strokesRequired: 3, tolerance: 0.09 }),
     });
     stages.push({
-      id: `fillet_${f}_sever`, label: `${sideLabel} — 중골 위 강한 분리`, orientation: 'BACK_DOWN', primitive: 'guided_cut',
+      id: `fillet_${f}_sever`, label: `${sideLabel} — 배쪽 칼집 → 척추까지 (분리)`, orientation: 'BACK_DOWN', primitive: 'guided_cut',
       guide: flat
         ? '중앙 뼈(중골) 위를 강하게 썰어 반신 한 장을 분리 — 상·하 양측으로 남은 장 반복'
-        : '내장 자리~척추 위를 강하게 썰어(뼈 끊기) 한 장을 분리하세요',
+        : '배쪽 항문~꼬리 라인을 척추까지 뜨고, 척추 위를 강하게 썰어 분리하세요',
       cut: cut(`fillet_${f}_sever`, 'BACK_DOWN',
         [{ x: 0.13, y: 0.5 }, { x: 0.88, y: 0.5 }], { strong: true, tolerance: 0.1 }),
       yieldsFillet: true,
     });
   }
 
-  // 9. 박피 — 꼬리 손잡이 잡고 15도 삽입 → 좌로 당김 (필렛 수만큼)
+  // 9. 필렛 손질 ① 갈빗대 제거 — 척추 자리→내장막 대각 도려내기 (필렛 A/B)
+  stages.push({
+    id: 'rib_a', label: '갈빗대 제거 (필렛 A)', orientation: 'FLESH_UP', primitive: 'guided_cut',
+    guide: '척추뼈 자리에서 내장막 쪽으로 대각선 칼집 — 갈빗대 판만 얇게 도려내세요',
+    cut: cut('rib_a', 'FLESH_UP', [{ x: 0.12, y: 0.58 }, { x: 0.3, y: 0.68 }, { x: 0.46, y: 0.72 }], { tolerance: 0.09 }),
+  });
+  stages.push({
+    id: 'rib_b', label: '갈빗대 제거 (필렛 B)', orientation: 'FLESH_UP', primitive: 'guided_cut',
+    guide: '반대쪽 필렛도 같은 방식으로 갈빗대 판을 도려내세요',
+    cut: cut('rib_b', 'FLESH_UP', [{ x: 0.12, y: 0.58 }, { x: 0.3, y: 0.68 }, { x: 0.46, y: 0.72 }], { tolerance: 0.09 }),
+  });
+
+  // 10. 필렛 손질 ② 지아이뼈 분리 — 세로 2회 절단 (머리쪽 가운데 → 꼬리쪽 일자)
+  stages.push({
+    id: 'pin_a', label: '지아이뼈 분리 (필렛 A)', orientation: 'FLESH_UP', primitive: 'guided_cut',
+    guide: '가운데 지아이뼈 라인을 따라 세로로 2회 잘라 등살/지아이뼈/뱃살로 분리하세요',
+    cut: cut('pin_a', 'FLESH_UP', [{ x: 0.16, y: 0.5 }, { x: 0.9, y: 0.5 }], { strokesRequired: 2, tolerance: 0.08 }),
+  });
+  stages.push({
+    id: 'pin_b', label: '지아이뼈 분리 (필렛 B)', orientation: 'FLESH_UP', primitive: 'guided_cut',
+    guide: '반대쪽 필렛도 지아이 라인을 2회 잘라 분리하세요',
+    cut: cut('pin_b', 'FLESH_UP', [{ x: 0.16, y: 0.5 }, { x: 0.9, y: 0.5 }], { strokesRequired: 2, tolerance: 0.08 }),
+  });
+
+  // 11. 박피 — 꼬리 손잡이 잡고 15도 삽입 → 좌로 당김 (필렛 수만큼)
   stages.push({
     id: 'peel', label: '박피 (껍질 벗기기)', orientation: 'FLESH_UP', primitive: 'peel',
     guide: '꼬리 손잡이를 잡고 껍질/살 사이 15도로 칼을 눕혀 왼쪽으로 당기세요',
@@ -472,6 +507,31 @@ export class ButcheryProcess {
       grade: g.grade,
       gradeMult: g.gradeMult,
     };
+  }
+
+  /** 전체 스테이지 정의 (자유 손질 섹션 컨트롤러/검증용 — 읽기 전용) */
+  get stageList(): readonly ButcheryStage[] { return this.stages; }
+
+  /**
+   * 자유 손질 — 지정 스테이지로 점프 (섹션/작업 선택이 호출. 2026-07-30 자유 손질 개편).
+   * 방향은 자동 전환하지 않는다(수동 뒤집기 원칙) — 단 FLESH_UP(필렛 뷰) 진입은
+   * 뒤집기로 도달 불가한 뷰 전환이라 예외로 스냅한다.
+   */
+  jumpTo(stageId: string): boolean {
+    const i = this.stages.findIndex((s) => s.id === stageId);
+    if (i < 0) return false;
+    this.idx = i;
+    this.resetStageCounters();
+    const s = this.stage;
+    if (s && (s.orientation === 'FLESH_UP' || TUNING.butchery.autoOrient)) {
+      this.orientation = s.orientation;
+    }
+    return true;
+  }
+
+  /** 섹션 컨트롤러가 모든 작업 완료를 판정했을 때 강제 완료 처리 */
+  forceFinish(): void {
+    this.idx = this.stages.length;
   }
 
   private advance(): void {

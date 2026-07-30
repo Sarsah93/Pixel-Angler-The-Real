@@ -94,9 +94,9 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
       { id: 'inv_bucket',     name: '낚시용 두레박',    icon: '🪣', category: 'etc', subCategory: '낚시도구', basePrice: 9000, price: 11000, maxPerPurchase: 1, equippable: false, desc: '바다 근처에서 쿨러에 해수를 채우는 도구 (소모되지 않음).' },
       { id: 'inv_cooler',     name: '쿨러 (아이스박스)', icon: '🛅', category: 'etc', subCategory: '낚시도구', basePrice: 45000, price: 55000, maxPerPurchase: 1, equippable: false, desc: '어획 보관(어창 9칸)·밑밥 배합의 필수 장비 — 해수/얼음을 채워 신선도를 유지한다.' },
       // 회칼 (조리도구) — 회뜨기 게이팅용. 등급이 높을수록 수율·슬라이스·등급 상향.
-      { id: 'knife_utility',  name: '범용 막칼',        icon: '🔪', category: 'etc', subCategory: '조리도구', basePrice: 12000, price: 15000, maxPerPurchase: 1, equippable: false, desc: '손질은 되나 낭비가 많은 막칼 (수율 0.85).' },
-      { id: 'knife_sashimi',  name: '회칼 (사시미)',    icon: '🔪', category: 'etc', subCategory: '조리도구', basePrice: 38000, price: 45000, maxPerPurchase: 1, equippable: false, desc: '표준 사시미 칼 — 회뜨기·회썰기 가능 (수율 1.0).' },
-      { id: 'knife_yanagiba', name: '장인 야나기바',    icon: '🔪', category: 'etc', subCategory: '조리도구', basePrice: 120000, price: 150000, maxPerPurchase: 1, equippable: false, desc: '얇게 많이 뜨는 장인 야나기바 (수율 1.10 + 등급 보너스).' },
+      { id: 'knife_utility',  name: '범용 막칼',        icon: '🔪', category: 'etc', subCategory: '조리도구', basePrice: 12000, price: 15000, maxPerPurchase: 1, equippable: true, tool: 'knife', desc: '손질은 되나 낭비가 많은 막칼 (수율 0.85).' },
+      { id: 'knife_sashimi',  name: '회칼 (사시미)',    icon: '🔪', category: 'etc', subCategory: '조리도구', basePrice: 38000, price: 45000, maxPerPurchase: 1, equippable: true, tool: 'knife', desc: '표준 사시미 칼 — 회뜨기·회썰기 가능 (수율 1.0).' },
+      { id: 'knife_yanagiba', name: '장인 야나기바',    icon: '🔪', category: 'etc', subCategory: '조리도구', basePrice: 120000, price: 150000, maxPerPurchase: 1, equippable: true, tool: 'knife', desc: '얇게 많이 뜨는 장인 야나기바 (수율 1.10 + 등급 보너스).' },
     ],
   },
   market: {

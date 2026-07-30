@@ -392,7 +392,8 @@ export const TUNING: TuningConfig = {
   save: { allowedTags: ['hometown_interior'] },
   hometown: { mapW: 48, mapH: 32, seaRatio: 0.30 },
   // 회뜨기 흐름 — 자동 방향 스냅 on(먹통 방지) · 회칼 하드락 off(막칼 폴백)
-  butchery: { autoOrient: true, flipAnimMs: 220, knifeHardLock: false, guideAnimMs: 2000, actionAnimMs: 2000 },
+  // autoOrient=false (2026-07-30 자유 손질 개편) — 자동 뒤집기 폐지, 수동 상하/좌우 뒤집기 버튼
+  butchery: { autoOrient: false, flipAnimMs: 220, knifeHardLock: false, guideAnimMs: 2000, actionAnimMs: 2000 },
   // 데이터 테이블 (대표값 — 나머지 어종 동일 형식으로 채움)
   fatigueStaminaBase: {
     yellowtail: 1.6, amberjack: 1.7, greater_amberjack: 1.9, spanish_mackerel: 1.0,

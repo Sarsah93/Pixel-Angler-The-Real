@@ -2182,6 +2182,23 @@ export class RegionFieldScene extends Phaser.Scene {
     this.fadeOutThen(() => this.scene.start('WorldMapScene'), 280);
   }
 
+  /** ESC 메뉴 '집으로 가기' — 확인 팝업 후 '예'면 홈타운(집)으로 이동 (귀가 무료) */
+  private confirmGoHome(): void {
+    const dlg = new ConfirmDialog(
+      this,
+      '정말로 집으로 돌아가시겠습니까?',
+      () => {
+        dlg.destroy();
+        this.closePauseMenu();
+        this.fadeOutThen(() => {
+          this.scene.start('RegionFieldScene', { region: 'hometown' } as RegionFieldInit);
+        }, 280);
+      },
+      () => dlg.destroy(),
+    );
+    this.add.existing(dlg);
+  }
+
   // ═══════════════════════════════════════════════════
   // ESC 일시정지 메뉴 (Traveler's Rest 풍 도트 메뉴)
   // ═══════════════════════════════════════════════════
@@ -2214,10 +2231,11 @@ export class RegionFieldScene extends Phaser.Scene {
           }
         },
       },
-      // 홈타운에서는 '전국 지도' 직행 없음 — 출조는 반드시 출조 버스(교통비 지불)로만.
+      // 홈타운 밖 = '집으로 가기' (확인 팝업 → 예 = 홈타운 이동. '전국 지도'는 폐지 —
+      //  출조는 홈타운 출조 버스로만, 귀가는 여기서 바로. 사용자 지시 2026-07-30)
       ...(this.region === 'hometown'
         ? []
-        : [{ label: '전국 지도', action: (): void => this.exitToWorldMap() }]),
+        : [{ label: '집으로 가기', action: (): void => this.confirmGoHome() }]),
       {
         label: '타이틀 화면',
         action: () => {

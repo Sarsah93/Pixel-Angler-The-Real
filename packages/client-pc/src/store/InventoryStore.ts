@@ -19,6 +19,7 @@ import {
   computeLureRigWeight, getLureCastCd,
 } from '@tra/core';
 import { ExternalDataStore } from './ExternalDataStore.js';
+import { resolveFishTexture } from '../data/FishTextures.js';
 
 /** 인벤토리 카테고리 탭 */
 export type InvCategory = 'gear' | 'consumable' | 'food' | 'tackle' | 'lure' | 'etc';
@@ -88,7 +89,7 @@ export const CONDITION_DESC: Record<InvCondition, string> = {
 };
 
 /** 손 도구 종류 (좌/우 손 착용 대상) */
-export type HandTool = 'rod' | 'net';
+export type HandTool = 'rod' | 'net' | 'knife';
 
 /** 착용 손 (L = 왼손, R = 오른손) */
 export type EquipHand = 'L' | 'R';
@@ -285,6 +286,34 @@ export interface InventorySaveState {
 }
 
 /** 시작 시 지급되는 목업 아이템 세트 (slot은 카테고리별 순차 배정) */
+/**
+ * dev 전용 손질 검증용 테스트 어획 6종 — 돔류 3 + 방어류 3, 크기/무게 랜덤·활어
+ * (사용자 지시 2026-07-30 — localhost 수동 손질 테스트용. 새 게임 시드 + 기존 세이브
+ * 로드 시에도 없으면 주입).
+ */
+function createDevFishDefs(): Omit<InvItem, 'slot'>[] {
+  const devFish: { sp: string; nameKo: string; lo: number; hi: number; wf: number }[] = [
+    { sp: 'black_seabream', nameKo: '감성돔', lo: 30, hi: 50, wf: 0.0165 },
+    { sp: 'stone_beakperch', nameKo: '돌돔', lo: 30, hi: 55, wf: 0.023 },
+    { sp: 'largescale_blackfish', nameKo: '벵에돔', lo: 28, hi: 48, wf: 0.019 },
+    { sp: 'greater_amberjack', nameKo: '잿방어', lo: 60, hi: 120, wf: 0.014 },
+    { sp: 'yellowtail', nameKo: '방어', lo: 50, hi: 100, wf: 0.0135 },
+    { sp: 'amberjack', nameKo: '부시리', lo: 50, hi: 110, wf: 0.013 },
+  ];
+  return devFish.map((f) => {
+    const lengthCm = Math.round(f.lo + Math.random() * (f.hi - f.lo));
+    const weightG = Math.round(f.wf * lengthCm ** 3);
+    return {
+      id: `inv_devfish_${f.sp}`, name: `${f.nameKo} (${lengthCm}cm)`, icon: '🐟',
+      iconTexture: resolveFishTexture(f.sp, lengthCm, Math.random() < 0.5 ? 'M' : 'F'),
+      category: 'food' as InvCategory, subCategory: '어획물', qty: 1,
+      basePrice: 12000, condition: 'live' as InvCondition, equippable: false,
+      speciesId: f.sp, lengthCm, weightG,
+      conditionSinceMs: Date.now(),
+    };
+  });
+}
+
 function createSeedItems(): InvItem[] {
   const defs: Omit<InvItem, 'slot'>[] = [
     // ── 장비 (손/의류) ──
@@ -359,7 +388,8 @@ function createSeedItems(): InvItem[] {
     // 자전거 — 보유 시 필드에서 R 키로 승·하차 (이동 속도 2배)
     { id: 'inv_bike',     name: '자전거',                   icon: '🚲', category: 'etc', subCategory: '탈것', qty: 1, basePrice: 120000, equippable: false },
     // 회칼 (조리도구) — 보유 시 회뜨기(장 뜨기/박피) 활성. 미보유 시 손질까지만 (마트에서 등급 구매).
-    { id: 'knife_sashimi', name: '회칼 (사시미)',           icon: '🔪', category: 'etc', subCategory: '조리도구', qty: 1, basePrice: 38000, equippable: false },
+    // 회칼 = 손 도구 (2026-07-30 자유 손질 개편 — 왼손/오른손 장착해야 손질 가능)
+    { id: 'knife_sashimi', name: '회칼 (사시미)',           icon: '🔪', category: 'etc', subCategory: '조리도구', qty: 1, basePrice: 38000, equippable: true, tool: 'knife' },
     // 낚시용 두레박 — 보유 + 바다 근처일 때 쿨러 '해수 넣기' 가능 (소모되지 않는 도구)
     { id: 'inv_bucket',    name: '낚시용 두레박',           icon: '🪣', category: 'etc', subCategory: '낚시도구', qty: 1, basePrice: 9000, equippable: false },
     // 쿨러 (아이스박스) — 보유해야 어창 보관/밑밥 배합 기능 사용 가능 (들고 다니는 개념)
@@ -402,6 +432,9 @@ function createSeedItems(): InvItem[] {
       basePrice: 1500 + w * 200, equippable: false,
     });
   }
+
+  // dev 전용: 손질 검증용 테스트 어획 6종 (프로덕션 빌드에는 시드되지 않는다)
+  if (import.meta.env.DEV) defs.push(...createDevFishDefs());
 
   // 카테고리별 소켓 순차 배정 + 신선도 시계 시작 (조건 보유 아이템)
   const counters: Record<InvCategory, number> = { gear: 0, consumable: 0, food: 0, tackle: 0, lure: 0, etc: 0 };
@@ -727,6 +760,15 @@ class InventoryStoreManager {
     this.rigMode = s.rigMode ?? 'bait';
     this._lure = ref(s.lure);
     this._jigHead = ref(s.jigHead);
+
+    // dev 전용 — 기존 세이브에도 손질 검증용 테스트 어획 6종이 없으면 주입 (2026-07-30)
+    if (import.meta.env.DEV) {
+      for (const d of createDevFishDefs()) {
+        if (this.find(d.id)) continue;
+        const { qty, ...tpl } = d;
+        this.addItem(tpl, qty);
+      }
+    }
   }
 
   /** 전체 초기화 (새 게임/세이브 없음 — 시드 아이템·기본 채비 재지급) */

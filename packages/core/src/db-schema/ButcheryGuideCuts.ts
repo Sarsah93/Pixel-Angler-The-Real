@@ -165,9 +165,16 @@ export const LIVE_STAGE_GUIDE: Record<string, string[]> = {
   finectomy: ['pre5'],
   gut_open: ['pre6'],
   gut_scoop: ['pre7'],
+  vessel_scrub: ['pre8'],
   gut_wash: ['pre8'],
   // 꼬리 손잡이 홈 = 박피① 손잡이 만들기 (실 FSM은 필렛 전에 먼저 파둔다)
   tail_grip: ['p34'],
+  tail_grip_b: ['p34'],
+  // 필렛 손질 — 갈빗대/지아이 (자유 손질 개편 2026-07-30)
+  rib_a: ['p18', 'p19', 'p20'],
+  rib_b: ['p21', 'p22', 'p23'],
+  pin_a: ['p25', 'p26'],
+  pin_b: ['p29', 'p30'],
   // 1면(첫 장): 배쪽 길 ①②③ → 잘라내기
   fillet_0_score: ['p02', 'p03', 'p04'],
   fillet_0_sever: ['p05', 'p07'],
