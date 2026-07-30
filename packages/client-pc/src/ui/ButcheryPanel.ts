@@ -75,10 +75,16 @@ export class ButcheryPanel extends DraggablePanel {
   /** 비늘 튐 파티클 (드래그 중 커서 위치마다 생성 — destroy 시 일괄 정리) */
   private flakes = new Set<Phaser.GameObjects.Rectangle>();
   private lastFlakeMs = 0;
-  /** 장뜨기 벌어짐 — 액션 연출 중 표시할 단계(연출이 끝나면 해제) */
-  private filletOpen: { view: 'dorsal' | 'belly'; state: number } | null = null;
+  /** 장뜨기 벌어짐 — 액션 연출 중 표시할 단계(연출이 끝나면 해제). mirrorX = 방금 자른 필렛(1/2면) */
+  private filletOpen: { view: 'dorsal' | 'belly'; state: number; mirrorX: boolean } | null = null;
   /** 다음 액션 연출에서 적용할 벌어짐 단계 (칼이 지나간 뒤 벌어지도록 지연 적용) */
-  private filletOpenPending: { view: 'dorsal' | 'belly'; state: number } | null = null;
+  private filletOpenPending: { view: 'dorsal' | 'belly'; state: number; mirrorX: boolean } | null = null;
+  /**
+   * 작업/섹션 완료 처리(전환·부산물 팝업·작업 선택)를 **연출 완료 후**로 미루는 큐.
+   * 액션 연출/뒤집기 재생 중에 스프라이트가 다음 상태로 먼저 바뀌거나 팝업이 뜨지 않도록
+   * (사용자 지시 2026-07-30 — "연출이 다 끝난 뒤에 이미지 전환"). onComplete에서 실행.
+   */
+  private pendingAfterAction: (() => void) | null = null;
 
   // 연출 상태 플래그 (렌더 전용)
   private scaledSides = 0;
@@ -262,8 +268,8 @@ export class ButcheryPanel extends DraggablePanel {
         this.washCount++;
         this.flash(stage.id === 'bleed_ice' ? '방혈 완료 — 선도 보너스!' : '깨끗이 씻었습니다', true);
         const willFlip = this.process.orientation !== this.renderedOrientation;
-        this.refresh();
-        if (!willFlip && !this.process.finished) this.playActionAnim(stage);
+        if (!willFlip && !this.process.finished) this.playActionAnim(stage);   // 전환은 연출 완료 후
+        else this.refresh();
         this.onStageComplete(stage.id, 1);
       }
     }
@@ -360,8 +366,9 @@ export class ButcheryPanel extends DraggablePanel {
 
     // 작업의 모든 스테이지가 끝나야 작업 완료 (예: 머리 제거 = 앞면 + 뒷면 2스테이지)
     if (!task.stageIds.every((id) => this.doneStages.has(id))) {
-      // 같은 작업의 다음 스테이지로 계속 — 방향이 바뀌는 스테이지면 뒤집기 안내가 뜬다
-      this.refresh();
+      // 같은 작업의 다음 스테이지로 계속 — 방향이 바뀌는 스테이지면 뒤집기 안내가 뜬다.
+      // 액션 연출 재생 중이면 전환은 연출 완료(onComplete doRefresh)까지 미룬다 (플래시 방지).
+      if (!this.actionAnim) this.refresh();
       return;
     }
 
@@ -371,6 +378,8 @@ export class ButcheryPanel extends DraggablePanel {
     this.activeTaskId = null;
     const sec = this.section;
     const secDone = sec.tasks.every((t) => this.taskDone(t.id));
+    // 렌더-영향 상태(작업 선택 대기)를 미리 확정 — 연출 완료 후 doRefresh가 올바른 상태를 그린다.
+    if (!secDone && sec.anyOrder) this.awaitingSelect = true;
 
     // 작업/섹션 완료 후 진행 — 부산물 팝업이 있으면 그 확인 뒤에 실행된다
     const after = (): void => {
@@ -383,18 +392,23 @@ export class ButcheryPanel extends DraggablePanel {
         return;
       }
       if (sec.anyOrder) {
-        // 남은 작업을 플레이어가 다시 고른다 (자유 순서)
-        this.awaitingSelect = true;
+        this.awaitingSelect = true;      // 남은 작업을 플레이어가 다시 고른다 (자유 순서)
         this.refresh();
       } else {
         const next = sec.tasks.find((t) => !this.taskDone(t.id));
         if (next) this.selectTask(next.id);
       }
     };
-
-    // **작업 단위 부산물** (머리·내장처럼 그 작업만으로 분리되는 것) — 즉시 팝업
-    if (task.yields?.length) this.showByproductPopup(task.yields, task.label, false, after);
-    else after();
+    const runCompletion = (): void => {
+      // **작업 단위 부산물**(머리·내장처럼 그 작업만으로 분리) — 팝업 후 진행
+      if (task.yields?.length) this.showByproductPopup(task.yields, task.label, false, after);
+      else after();
+    };
+    // **연출/뒤집기 재생 중이면 완료 처리(전환·팝업·작업 선택)를 연출 완료 후로 미룬다** —
+    //  칼질 연출이 다 끝나기 전에 픽셀 이미지·작업 목록·부산물 팝업이 먼저 뜨지 않도록
+    //  (사용자 지시 2026-07-30). 연출 없으면 즉시.
+    if (this.actionAnim || this.flipping) this.pendingAfterAction = runCompletion;
+    else runCompletion();
   }
 
   /** 다음 섹션으로 (마지막 섹션이면 최종 완료) */
@@ -765,8 +779,8 @@ export class ButcheryPanel extends DraggablePanel {
       const r = this.process.submitTap(dist);
       this.flash(r.passed ? `시메 성공 (정확도 ${(r.quality * 100).toFixed(0)}%) — 선도가 유지됩니다` : '빗나갔습니다 — 눈 뒤 지점을 다시 탭하세요', r.passed);
       const willFlip = this.process.orientation !== this.renderedOrientation;
-      this.refresh();
-      if (r.passed && !willFlip) this.playActionAnim(stage);
+      if (r.passed && !willFlip) this.playActionAnim(stage);   // 전환은 연출 완료 후 (플래시 방지)
+      else this.refresh();
       if (r.passed) this.onStageComplete(stage.id, r.quality);
     } else if (stage.primitive === 'guided_cut') {
       this.tracing = true;
@@ -841,8 +855,8 @@ export class ButcheryPanel extends DraggablePanel {
           this.flash(stage.primitive === 'drag_fill' ? '비늘을 말끔히 벗겼습니다'
             : stage.id === 'vessel_scrub' ? '척추 아래 핏줄을 긁어냈습니다' : '내장을 통째로 꺼냈습니다', true);
           const willFlip = this.process.orientation !== this.renderedOrientation;
-          this.refresh();
-          if (!willFlip) this.playActionAnim(stage, this.sweepPathFor(stage));
+          if (!willFlip) this.playActionAnim(stage, this.sweepPathFor(stage));   // 전환은 연출 완료 후
+          else this.refresh();
           this.onStageComplete(stage.id, 1);
         } else {
           this.updateFillBar(res.progress);
@@ -874,8 +888,8 @@ export class ButcheryPanel extends DraggablePanel {
         : '당김이 약합니다 — 손잡이를 잡고 왼쪽으로 길게 당기세요', r.passed);
       this.peelStart = null;
       const willFlip = this.process.orientation !== this.renderedOrientation;
-      this.refresh();
-      if (r.passed && !willFlip && r.stageDone === false) this.playActionAnim(stage);
+      if (r.passed && !willFlip && r.stageDone === false) this.playActionAnim(stage);   // 전환은 연출 완료 후
+      else this.refresh();
       if (r.stageDone) this.onStageComplete(stage.id, quality);
       return;
     }
@@ -901,17 +915,25 @@ export class ButcheryPanel extends DraggablePanel {
       // 장뜨기 — 칼이 지나간 뒤 **벌어지는 연출** 단계 예약 (칼집 회차 = 벌어짐 정도).
       //  스테이지가 넘어가도(3회째/분리) 연출 동안은 마지막 벌어짐을 유지한다.
       if (r.passed && stage.id.startsWith('fillet_')) {
-        const view = stage.id.endsWith('_sever') ? 'belly' : 'dorsal';
-        this.filletOpenPending = { view, state: Math.min(3, strokesBefore + 1) };
+        // 배쪽(sever·ribsever)=belly / 등쪽(score)=dorsal · mirrorX = 방금 자른 필렛(fillet_1=2면)
+        const view = stage.id.includes('sever') ? 'belly' : 'dorsal';
+        // 갈비뼈 끊기(ribsever)는 배쪽이 이미 열린 상태에서 진행 — 벌어짐 최대(3) 유지
+        const openState = stage.id.includes('ribsever') ? 3 : Math.min(3, strokesBefore + 1);
+        this.filletOpenPending = { view, state: openState, mirrorX: stage.id.startsWith('fillet_1') };
       }
       const willFlip = this.process.orientation !== this.renderedOrientation;
-      this.refresh();
-      // 컷 성공 액션 연출 — 방향 전환(플립 연출)이 이어지면 스킵 (플립이 피드백).
       // 다중 유도선이면 방금 판정된 그 선(matchedPath)을 따라 칼이 지나간다.
       const multi = stage.cut?.guidePaths;
       const cutPath = multi && r.matchedPath >= 0 ? multi[r.matchedPath] : undefined;
-      if (r.passed && !willFlip) this.playActionAnim(stage, cutPath);
-      else this.filletOpenPending = null;
+      // 컷 성공 + 방향 유지 = 연출을 **pre-cut 스프라이트 위에서** 재생하고, 스프라이트/사이드바
+      //  전환은 연출 완료(onComplete doRefresh)까지 미룬다 (플래시 방지). 방향 전환(뒤집기)이
+      //  이어지면 flip 연출이 전환을 담당하므로 즉시 refresh.
+      if (r.passed && !willFlip) {
+        this.playActionAnim(stage, cutPath);
+      } else {
+        this.filletOpenPending = null;
+        this.refresh();
+      }
       if (r.passed && r.stageDone) this.onStageComplete(stage.id, r.quality);
       return;
     }
@@ -982,6 +1004,7 @@ export class ButcheryPanel extends DraggablePanel {
             this.fishG.x = 0;
             this.flipping = false;
             this.doRefresh();
+            this.runPendingAfterAction();   // 뒤집기 후로 미뤄둔 완료 처리 실행
           },
         });
         this.flipTweens.push(t2);
@@ -1926,6 +1949,13 @@ export class ButcheryPanel extends DraggablePanel {
     this.actionAnim = false;
   }
 
+  /** 미뤄둔 완료 처리(작업/섹션 전환·부산물 팝업) 실행 — 연출/뒤집기 onComplete에서 호출 */
+  private runPendingAfterAction(): void {
+    const fn = this.pendingAfterAction;
+    this.pendingAfterAction = null;
+    if (fn) fn();
+  }
+
   /**
    * 조작 성공 액션 연출 — 프리미티브별 애니 (입력 차단, actionAnimMs).
    * 완료 시 가이드 루프 재시작. 방향 전환(플립)이 이어질 때는 호출측이 스킵.
@@ -2049,9 +2079,12 @@ export class ButcheryPanel extends DraggablePanel {
       onUpdate: (tw) => drawFn(tw.getValue() ?? 0),
       onComplete: () => {
         this.stopActionAnim();
-        // 벌어짐 오버라이드 해제 후 정상 렌더 (doRefresh가 가이드 루프도 재시작)
-        if (this.filletOpen) { this.filletOpen = null; this.doRefresh(); return; }
-        this.startGuideAnim();
+        // **연출이 다 끝난 뒤에만** 스프라이트·사이드바를 다음 상태로 전환한다 (사용자 지시
+        //  2026-07-30 — "다음 단계로 넘어가기 전에 연출이 끝나야 한다"). doRefresh가 스프라이트
+        //  갱신 + 가이드 루프 재시작을 담당. 연출 중엔 pre-cut 스프라이트가 그대로 유지된다.
+        this.filletOpen = null;
+        this.doRefresh();
+        this.runPendingAfterAction();   // 미뤄둔 작업/섹션 완료 처리(전환·팝업) 실행
       },
     });
   }

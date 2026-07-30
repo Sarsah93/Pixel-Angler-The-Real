@@ -98,15 +98,28 @@ function pickStageSprite(
   const ov = state.openOverride;
   const isFillet = !!state.stageId?.startsWith('fillet_');
   if (ov || isFillet) {
-    const sever = ov ? ov.view === 'belly' : !!state.stageId?.endsWith('_sever');
+    // 배쪽(sever·ribsever)=belly / 등쪽(score)=dorsal — id에 'sever' 포함 여부로 판정
+    const sever = ov ? ov.view === 'belly' : !!state.stageId?.includes('sever');
     // 방향이 아직 안 맞으면 뷰를 바꾸지 않는다 — 현재 자세(측면)를 보여주고 뒤집기를 유도
     const oriOk = !!ov || (sever ? o === 'BELLY_UP' : o === 'BACK_DOWN');
     if (!oriOk) return null;
     const view = sever ? 'belly' : 'dorsal';
-    const n = ov ? ov.state : Math.min(3, state.strokesDone ?? 0);
+    // ribsever(갈비뼈·척추 끊기)는 배쪽이 이미 완전히 열린 상태에서 진행 — 벌어짐 3 고정(재닫힘 방지)
+    const n = ov ? ov.state
+      : (state.stageId?.includes('ribsever') ? 3 : Math.min(3, state.strokesDone ?? 0));
+    // **2면(fillet_1)은 1면이 이미 분리돼 [척추뼈+2면 살] 덩어리** — 양쪽 살 붙은 뷰가 아니라:
+    //  등쪽/갈비뼈끊기(dorsal) = 척추 붙은 덩어리 **측면 spine 뷰**(머리 우) /
+    //  배쪽 분리(sever·belly) = **정면 배쪽 뷰**(머리 좌·미러 없음). (사용자 지시 2026-07-30~31)
+    const isFillet1 = ov ? !!ov.mirrorX : (state.stageId ?? '').startsWith('fillet_1');
+    if (isFillet1) {
+      const spr2 = stageSpr(view === 'belly' ? `${fam}_belly${n}` : `${fam}_spine${n}`);
+      if (spr2) return { spr: spr2, mirrorX: false, view };
+    }
     const spr = stageSpr(`${fam}_${view}${n}`) ?? stageSpr(`${fam}_fillet${Math.max(1, n)}`);
-    // 2면(fillet_1)은 반대쪽 살 — 좌우 미러로 구분
-    const mirrorX = (state.stageId ?? '').startsWith('fillet_1');
+    // 2면(fillet_1)은 반대쪽 살 — 좌우 미러. **벌어짐 연출 중(ov)엔 방금 자른 필렛
+    //  기준(ov.mirrorX)** — 진행 스테이지가 다음 필렛으로 넘어가도 좌우가 뒤집히지 않는다
+    //  (사용자 리포트 2026-07-30 — 잘린 직후 좌우 전환 플래시).
+    const mirrorX = ov ? !!ov.mirrorX : (state.stageId ?? '').startsWith('fillet_1');
     return spr ? { spr, mirrorX, view } : null;
   }
   return null;
@@ -131,7 +144,7 @@ export interface PixelFishState {
    * 장뜨기 벌어짐 강제 표시 — 칼질 성공 직후 스테이지가 넘어가도 마지막 벌어짐을
    * 연출 동안 유지하기 위한 오버라이드 (ButcheryPanel가 액션 애니 중에만 설정).
    */
-  openOverride?: { view: 'dorsal' | 'belly'; state: number };
+  openOverride?: { view: 'dorsal' | 'belly'; state: number; mirrorX?: boolean };
 }
 
 /** 팔레트 색 → 어종 틴트 블렌드 (k=0 원본 유지) */

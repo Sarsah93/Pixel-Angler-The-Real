@@ -98,15 +98,15 @@ export const WHOLE_FISH_SECTIONS: ButcherySectionDef[] = [
     id: 'sec_fillet_a', label: '1면 뜨기 (자유 순서)', anyOrder: true,
     tasks: [
       { id: 't_fa_back', label: '등쪽 → 척추까지', stageIds: ['fillet_0_score'] },
-      { id: 't_fa_belly', label: '배쪽 → 척추까지 (분리)', stageIds: ['fillet_0_sever'] },
+      { id: 't_fa_belly', label: '배쪽 → 척추 + 갈비뼈 끊어 분리', stageIds: ['fillet_0_sever', 'fillet_0_ribsever'] },
     ],
     yields: ['filletA'],
   },
   {
     id: 'sec_fillet_b', label: '2면 뜨기 (자유 순서)', anyOrder: true,
     tasks: [
-      { id: 't_fb_back', label: '등쪽 → 척추까지 + 척추 끊기', stageIds: ['fillet_1_score'] },
-      { id: 't_fb_belly', label: '배쪽 → 척추까지 (분리)', stageIds: ['fillet_1_sever'] },
+      { id: 't_fb_back', label: '등쪽 → 척추까지 + 갈비뼈 끊기', stageIds: ['fillet_1_score', 'fillet_1_ribcut'] },
+      { id: 't_fb_belly', label: '꼬리쪽 → 배쪽 분리', stageIds: ['fillet_1_sever'] },
     ],
     yields: ['filletB', 'spine'],
     exitAfter: true,   // ← 필렛(껍질+갈빗대)만 저장하고 손질 종료 가능

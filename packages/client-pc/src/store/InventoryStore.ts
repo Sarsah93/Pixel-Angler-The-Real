@@ -16,7 +16,7 @@ import {
   evaluateFishSellPrice, WEIGHT_SINKER_DB, WeightSinkerKind,
   SINKER_BASE_DRAG_CD, SINKER_BUNDLE_DRAG_CD, SINKER_HOLE_FEEDBACK_MULT,
   LURES_CATALOG_DB, JIGHEAD_WEIGHTS_G, getLureSpec, jigHeadWeightById,
-  computeLureRigWeight, getLureCastCd,
+  computeLureRigWeight, getLureCastCd, isKnifeItem,
 } from '@tra/core';
 import { ExternalDataStore } from './ExternalDataStore.js';
 import { resolveFishTexture } from '../data/FishTextures.js';
@@ -732,10 +732,26 @@ class InventoryStoreManager {
     // 오프라인(게임 종료) 중에는 신선도가 진행하지 않는다 — 저장~로드 실경과만큼
     // 각 아이템의 conditionSinceMs를 앞으로 밀어 "정지"시킨다 (쿨러와 동일 원칙).
     const offlineGap = Math.max(0, Date.now() - (s.savedAtMs ?? Date.now()));
-    this._items = s.items.map((i) => ({
-      ...i,
-      conditionSinceMs: i.conditionSinceMs !== undefined ? i.conditionSinceMs + offlineGap : undefined,
-    }));
+    // 구세이브 마이그레이션 — 시드 아이템의 정적 속성(손 도구 tool·착용가능 equippable)을 복원.
+    // 52차 회칼 손 장착 개편 이전 세이브는 knife_sashimi에 tool/equippable이 없어 왼손/오른손
+    // 장착이 안 됐다 (기타 아이템으로만 취급). id가 시드와 같으면 누락된 정적 속성만 채워준다.
+    const seedById = new Map(createSeedItems().map((sd) => [sd.id, sd]));
+    this._items = s.items.map((i) => {
+      const sd = seedById.get(i.id);
+      // 정적 기능 게이트 필드 — 구세이브에 누락됐으면 복원.
+      //  tool/equippable = 손 도구(회칼/낚싯대/뜰채) 착용 게이트 · placeKey = 설치형 배치 게이트.
+      //  **회칼 3종(KnifeDatabase)은 시드 미등재분(상점 구매 knife_utility/yanagiba)까지
+      //   isKnifeItem으로 손 도구 강제 복원** — 52차 손 장착 개편 전 세이브 대응.
+      //  유저 상태(qty/condition/equipped/equippedHand/slot 등)는 절대 덮어쓰지 않는다(?? = null/undefined만).
+      const knife = isKnifeItem(i.id);
+      return {
+        ...i,
+        tool: i.tool ?? sd?.tool ?? (knife ? ('knife' as const) : undefined),
+        equippable: i.equippable ?? sd?.equippable ?? (knife ? true : undefined),
+        placeKey: i.placeKey ?? sd?.placeKey,
+        conditionSinceMs: i.conditionSinceMs !== undefined ? i.conditionSinceMs + offlineGap : undefined,
+      };
+    });
     this._catchSeq = s.catchSeq ?? 0;
     const valid = new Set(this._items.map((i) => i.id));
     const ref = (id: string | null | undefined): string | null => (id && valid.has(id) ? id : null);

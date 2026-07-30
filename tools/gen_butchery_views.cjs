@@ -353,6 +353,95 @@ function makeFilletCut(opts) {
 }
 
 // ────────────────────────────────────────────────────────────
+// 2면 덩어리 (척추뼈 붙은 살) — 1면 분리 후 남은 [척추뼈+2면 살]을 **옆에서** 본 뷰.
+//  척추뼈가 도마 바닥에 깔리고 그 위에 2면 살이 얹힌 단면. 살-뼈 경계를 칼집으로 갈라
+//  state 0(닫힘)→1(붉은 살 조금)→2(뼈 노출)→3(반대쪽까지 들림)으로 살이 뼈에서 들린다.
+//  머리는 오른쪽(2면 등쪽 뷰 정합). (사용자 지시 2026-07-30 — 2면 전용 스프라이트)
+// ────────────────────────────────────────────────────────────
+function makeSpineFillet(opts) {
+  const W = 128, H = 64;
+  const X0 = 6, X1 = 120;
+  const BOARD = 50;            // 척추뼈가 놓인 바닥 y
+  const boneH = 5;             // 척추뼈 밴드 두께
+  const grid = makeGrid(W, H);
+  const st = opts.state;
+  const pal = [
+    0xf0cfc6, // 0 살 연분홍
+    0xdca79c, // 1 살 중간
+    0xb2544f, // 2 붉은 살
+    0x7b2b2f, // 3 혈합육 라인
+    0x2c4038, // 4 등 skin(살 바깥 상단)
+    0x1e2e28, // 5 skin 중간
+    0x0d1512, // 6 외곽 엣지
+    0xe8e6de, // 7 척추뼈(밝은)
+    0xc9c4b8, // 8 뼈 마디
+    0xa8a49a, // 9 뼈 그늘
+    0x1a1012, // 10 벌어진 틈 그늘
+    0xf2ded2, // 11 절단면(들린 살 하단)
+    0x223029, // 12 지느러미 흔적
+    0xf7ece4, // 13 힘줄 흰선
+  ];
+  const fleshH = (t) => pw(t, opts.flesh);        // 살 두께 (t: 1=머리 우)
+  // 들림 — 칼집 회차별 **점진 + 비대칭**: 1·2회는 머리(우)·등쪽부터 조금씩, 3회는 꼬리(좌)까지 전부.
+  //  state 0 = 닫힘(껍질 덮인 살이 척추뼈에 붙어 연결). (사용자 지시 2026-07-31)
+  const liftAt = (t) => {                          // t: 1=머리(우), 0=꼬리(좌)
+    if (st <= 0) return 0;
+    let env;
+    if (st === 1) env = Math.max(0, (t - 0.5) / 0.5) ** 0.9;                        // 머리쪽만 아주 조금
+    else if (st === 2) env = Math.max(0, (t - 0.22) / 0.78) ** 0.75;                // 머리~중간
+    else env = Math.sin(Math.PI * Math.min(1, Math.max(0, (t + 0.03) / 0.97))) ** 0.4;  // 꼬리까지 전부
+    const mx = st === 1 ? 3 : st === 2 ? 8 : 16;
+    return env * mx;
+  };
+  const boneTop = BOARD - boneH;
+  for (let x = X0; x <= X1; x++) {
+    const tRaw = (x - X0) / (X1 - X0);
+    const t = opts.headRight ? tRaw : 1 - tRaw;
+    const fh = fleshH(t);
+    if (fh < 1) continue;
+    // ── 척추뼈 = 바닥 밴드 (고정) ──
+    for (let y = boneTop; y <= BOARD; y++) {
+      const by = (y - boneTop) / boneH;
+      let idx = by < 0.4 ? 7 : by < 0.75 ? 8 : 9;
+      if (Math.round(x) % 6 === 0 && by < 0.65) idx = 9;      // 척추 마디
+      grid[y][x] = idx;
+    }
+    // ── 2면 살 블록 = 뼈 위, lift만큼 들림 ──
+    const lift = liftAt(t);
+    const fleshBot = boneTop - 1 - lift;
+    const fleshTop = fleshBot - fh;
+    for (let y = Math.round(fleshTop); y <= Math.round(fleshBot); y++) {
+      if (y < 0 || y >= H) continue;
+      const fy = (y - fleshTop) / Math.max(1, fleshBot - fleshTop);   // 0 상단 skin .. 1 하단(뼈쪽)
+      let idx;
+      // **껍질 덮인 살** — 겉면은 대부분 skin(등 껍질), 붉은 단면은 **뼈에서 들린 하단에서만** 노출.
+      if (fy < 0.08) idx = 6;                                         // 외곽 엣지
+      else if (fy < 0.55) idx = (Math.round(x) % 13 === 0 ? 5 : 4);   // 등 skin(바깥면)+미세 sheen
+      else if (fy < 0.8) idx = 5;                                     // skin 하부(짙음)
+      else idx = lift > 0.5                                           // 하단: 들렸으면 붉은 절단면, 아니면 skin(붙음)
+        ? band((fy - 0.8) / 0.2, [[0.45, 0], [0.8, 1], [1.01, 2]])
+        : 5;
+      grid[y][x] = idx;
+    }
+    // ── 벌어진 틈 (살 하단 ↔ 뼈 상단) — 들린 만큼 그늘 ──
+    if (lift > 1) {
+      for (let y = Math.round(fleshBot) + 1; y < boneTop; y++) {
+        if (y >= 0 && y < H) grid[y][x] = 10;
+      }
+    } else {
+      // 닫힘/미세 들림 — 뼈-살 경계 칼선만 (연결된 상태)
+      if (grid[boneTop - 1] && grid[boneTop - 1][x] >= 0) grid[boneTop - 1][x] = 10;
+    }
+  }
+  // 머리 절단면 (끝단 살 단면)
+  const cx = opts.headRight ? [X1 - 4, X1] : [X0, X0 + 4];
+  for (let x = Math.max(X0, cx[0]); x <= Math.min(X1, cx[1]); x++) {
+    for (let y = 0; y < boneTop; y++) if (grid[y][x] >= 0 && grid[y][x] <= 3) grid[y][x] = 11;
+  }
+  return toSprite(W, H, pal, grid);
+}
+
+// ────────────────────────────────────────────────────────────
 // 어종군 파라미터 — 돔류(체고 높은 방추) / 방어류(가늘고 긴 방추)
 // ────────────────────────────────────────────────────────────
 const VENTRAL = {
@@ -376,6 +465,12 @@ const TRUNK = {
   amberjack: [[0, 3], [0.1, 6], [0.25, 11], [0.45, 15.5], [0.65, 19], [0.85, 22], [1, 23]],
 };
 
+/** 2면 덩어리 — 척추뼈 위에 얹힌 2면 살 두께 프로필 (t: 0=꼬리 → 1=머리) */
+const SPINE_FLESH = {
+  bream: [[0, 5], [0.12, 12], [0.3, 22], [0.5, 30], [0.7, 34], [0.88, 36], [1, 36]],
+  amberjack: [[0, 4], [0.12, 9], [0.3, 16], [0.5, 22], [0.7, 26], [0.88, 28], [1, 28]],
+};
+
 const out = {};
 for (const fam of ['bream', 'amberjack']) {
   out[`${fam}_ventral`] = makeVentral(VENTRAL[fam]);
@@ -388,6 +483,8 @@ for (const fam of ['bream', 'amberjack']) {
     out[`${fam}_belly${st}`] = makeFilletCut({
       skin: 'belly', headRight: false, state: st, cutOffset: 0.2, halfHeight: TRUNK[fam],
     });
+    // 2면 덩어리 (척추뼈 붙은 살) — 1면 분리 후 [척추뼈+살] 측면 뷰 (머리 우)
+    out[`${fam}_spine${st}`] = makeSpineFillet({ headRight: true, state: st, flesh: SPINE_FLESH[fam] });
   }
 }
 

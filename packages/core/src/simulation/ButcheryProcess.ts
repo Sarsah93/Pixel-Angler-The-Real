@@ -362,21 +362,44 @@ export function buildButcheryStages(profile: ButcheryProfile, opts?: ButcherySta
         ? '몸통 중앙선을 기준으로 한쪽 반신의 지느러미 경계를 따라 얕은 칼집 3회'
         : '등 지느러미 자리를 따라 머리쪽(우) → 꼬리쪽(좌)으로 칼집을 넣어 척추뼈까지 뜨세요 (3회 — 점점 깊게)',
       cut: cut(`fillet_${f}_score`, 'BACK_DOWN',
-        [{ x: 0.88, y: 0.575 }, { x: 0.5, y: 0.565 }, { x: 0.12, y: 0.55 }], { strokesRequired: 3, tolerance: 0.09 }),
+        [{ x: 0.798, y: 0.575 }, { x: 0.197, y: 0.490 }], { strokesRequired: 3, tolerance: 0.09 }),
     });
-    // 배쪽 = **배를 카메라 쪽으로 눕힌 뷰**(꼬리 오른쪽·머리 왼쪽). 사용자 지정 3구간 경로:
-    //  ① 꼬리 칼집(우) → 항문까지 척추뼈 바로 위를 일자로 ② 항문 → 내장막 → 아가미 지느러미(좌)
-    //  ③ 척추뼈에 걸리는 지점에서 **왼쪽 대각선 위**로 깊게 썰어 1면 분리.
-    stages.push({
-      id: `fillet_${f}_sever`, label: `${sideLabel} — 배쪽 → 척추 (분리)`, orientation: 'BELLY_UP', primitive: 'guided_cut',
-      guide: flat
-        ? '중앙 뼈(중골) 위를 강하게 썰어 반신 한 장을 분리 — 상·하 양측으로 남은 장 반복'
-        : '꼬리 칼집(우)에서 항문 → 아가미까지 척추뼈 바로 위를 일자로 뜨고, 걸리는 지점에서 왼쪽 대각선 위로 썰어 분리하세요',
-      cut: cut(`fillet_${f}_sever`, 'BELLY_UP',
-        [{ x: 0.88, y: 0.56 }, { x: 0.62, y: 0.56 }, { x: 0.36, y: 0.555 }, { x: 0.2, y: 0.545 }, { x: 0.1, y: 0.44 }],
-        { strong: true, tolerance: 0.1 }),
-      yieldsFillet: true,
-    });
+    if (f === 1 && !flat) {
+      // ── 2면 전용 구조 (사용자 지시 2026-07-31) — 1면이 이미 분리돼 [척추뼈+2면 살] 덩어리 ──
+      //  등쪽 작업: 척추경계 3컷(위 score) + ④ 머리쪽 갈비뼈 z-index 끊기.
+      //  머리 부근에서 칼을 깊게 넣어 척추뼈 뒤(z축·먼쪽·안 보임)에서 내장막을 감싼 갈비뼈가
+      //  만나므로, 그 갈비뼈를 부러뜨리며 내장쪽으로 썰어낸다 (등쪽 작업 마무리).
+      stages.push({
+        id: 'fillet_1_ribcut', label: '2면 — 갈비뼈 끊기 (머리쪽 깊이·z축)', orientation: 'BACK_DOWN', primitive: 'guided_cut',
+        guide: '머리 부근에서 칼을 깊숙히 넣어 척추뼈 뒤(안 보이는 z축)의 갈비뼈를 부러뜨리며 내장쪽으로 썰어내세요',
+        cut: cut('fillet_1_ribcut', 'BACK_DOWN', [{ x: 0.78, y: 0.5 }, { x: 0.6, y: 0.62 }], { strong: true, tolerance: 0.12 }),
+      });
+      // 배쪽 작업 = **꼬리쪽 → 배쪽 분리** (척추는 등쪽서 이미 끊었으니 재절단 없음).
+      //  꼬리쪽에서 아가미(내장 있던) 방향으로 척추뼈와 위 살덩어리 사이를 여러 번 그어 분리.
+      stages.push({
+        id: 'fillet_1_sever', label: '2면 — 꼬리쪽 → 배쪽 분리', orientation: 'BELLY_UP', primitive: 'guided_cut',
+        guide: '꼬리쪽에서 아가미(내장 있던) 방향으로 척추뼈와 위 살덩어리 사이를 여러 번 그어 분리하세요 (3회 — 점점 깊게)',
+        cut: cut('fillet_1_sever', 'BELLY_UP', [{ x: 0.2, y: 0.5 }, { x: 0.82, y: 0.5 }], { strokesRequired: 3, tolerance: 0.1 }),
+        yieldsFillet: true,
+      });
+    } else {
+      // ── 1면(및 광어 각 장) 구조 — 배쪽 2회 분리 + 갈비뼈·척추 끊어 분리 ──
+      stages.push({
+        id: `fillet_${f}_sever`, label: `${sideLabel} — 배쪽 → 척추까지`, orientation: 'BELLY_UP', primitive: 'guided_cut',
+        guide: flat
+          ? '중앙 뼈(중골) 위를 강하게 썰어 반신 한 장을 분리 — 상·하 양측으로 남은 장 반복'
+          : '꼬리 칼집(우)에서 항문 위 뱃살을 지나 아가미까지 척추뼈 바로 위를 일자로 뜨세요 (2회 — 점점 깊게)',
+        cut: cut(`fillet_${f}_sever`, 'BELLY_UP',
+          [{ x: 0.796, y: 0.470 }, { x: 0.189, y: 0.470 }], { strokesRequired: 2, tolerance: 0.1 }),
+      });
+      stages.push({
+        id: `fillet_${f}_ribsever`, label: `${sideLabel} — 갈비뼈·척추 끊어 분리`, orientation: 'BELLY_UP', primitive: 'guided_cut',
+        guide: '아가미 지느러미 쪽 갈비뼈와 척추뼈 사이를 등쪽 지느러미 방향으로 강하게 썰어 뼈를 끊고 윗면 살을 떠내세요',
+        cut: cut(`fillet_${f}_ribsever`, 'BELLY_UP',
+          [{ x: 0.42, y: 0.44 }, { x: 0.16, y: 0.42 }], { strong: true, tolerance: 0.11 }),
+        yieldsFillet: true,
+      });
+    }
   }
 
   // 9. 필렛 손질 ① 갈빗대 제거 — 척추 자리→내장막 대각 도려내기 (필렛 A/B)
