@@ -29,8 +29,9 @@ import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { InventoryStore, InvItem } from '../store/InventoryStore.js';
 import { GameState } from '../store/GameState.js';
 import { DraggablePanel, applyScreenFixed } from './DraggablePanel.js';
+import { fitTextHeight, clampTextWidth } from './TextFit.js';
 import { getFishColors } from './FishTemplateRenderer.js';
-import { drawPixelButcherFish, butcherSpritesFor } from './PixelButcherFish.js';
+import { drawPixelButcherFish, butcherSpritesFor, computeFishFrame } from './PixelButcherFish.js';
 import { SASHIMI_GUIDE_TEXTURE, guideFrameName, hasGuideFrames } from '../data/SashimiGuideFrames.js';
 
 const PANEL_W = 1080;
@@ -154,6 +155,15 @@ export class ButcheryPanel extends DraggablePanel {
   /** 합성 스윕선(비늘/내장/박피)의 편집 오버라이드 — stage.id별 편집 가능 배열 */
   private sweepOverride = new Map<string, CutPoint[]>();
 
+  /** dev 개별 작업 목록 확장 (좌측 하단) */
+  private devExpand = false;
+
+  // ── 좌표 로그 스크롤 (마더 HUD 안 — 넘치면 스크롤바) ──
+  private editLogRect?: { x: number; y: number; w: number; h: number };
+  private editLogBarG?: Phaser.GameObjects.Graphics;
+  private editLogScroll = 0;
+  private editLogMax = 0;
+
   constructor(scene: Phaser.Scene, source: InvItem, cbs: ButcheryCallbacks) {
     super(scene, {
       x: (GAME_WIDTH - PANEL_W) / 2,
@@ -202,6 +212,7 @@ export class ButcheryPanel extends DraggablePanel {
     scene.input.on('pointermove', this.butcheryMoveHandler);
     scene.input.on('pointerup', this.butcheryUpHandler);
     scene.input.on('pointerdown', this.onPointerDownBound, this);
+    if (import.meta.env.DEV) scene.input.on('wheel', this.onEditLogWheel);   // 좌표 로그 스크롤
 
     // 키보드 — F/Space 요구 방향 뒤집기 · 1~5 방향 직접 · Enter 세척 확정
     this.keyHandler = (ev) => this.onKey(ev);
@@ -229,6 +240,7 @@ export class ButcheryPanel extends DraggablePanel {
     this.scene?.input?.off('pointermove', this.butcheryMoveHandler);
     this.scene?.input?.off('pointerup', this.butcheryUpHandler);
     this.scene?.input?.off('pointerdown', this.onPointerDownBound, this);
+    this.scene?.input?.off('wheel', this.onEditLogWheel);
     this.scene?.input?.keyboard?.off('keydown', this.keyHandler);
     this.flipTweens.forEach((t) => t.remove());
     this.flipTweens = [];
@@ -1128,6 +1140,8 @@ export class ButcheryPanel extends DraggablePanel {
     drawPixelButcherFish(g, { x: X, y: Y, w: W, h: H }, tint, {
       orientation: this.renderedOrientation,
       headOff,
+      // 머리 삭제 영역 = **실제 머리 절단선**을 따라간다 (F9로 선을 옮기면 잘린 모양도 따라옴)
+      headCutPath: this.headCutPathForFrame({ x: X, y: Y, w: W, h: H }, sprites),
       finsOff,
       scaledSides: this.scaledSides,
       gutted,
@@ -1143,6 +1157,22 @@ export class ButcheryPanel extends DraggablePanel {
       // 칼질 성공 연출 중에만 — 스테이지가 넘어가도 마지막 벌어짐을 유지
       openOverride: this.filletOpen ?? undefined,
     }, sprites);
+  }
+
+  /**
+   * 현재 표시 방향의 머리 절단선을 **그려진 생선 rect 정규화 좌표**로 변환.
+   * 유도선은 도마 rect(toPanelPx) 기준이고 삭제 판정은 생선 rect 기준이라 한 번 환산한다.
+   */
+  private headCutPathForFrame(geom: { x: number; y: number; w: number; h: number },
+    sprites: ReturnType<typeof butcherSpritesFor>): { x: number; y: number }[] | undefined {
+    const id = this.renderedOrientation === 'FLIP' ? 'head_flip' : 'head_base';
+    const path = this.process.stageList.find((s) => s.id === id)?.cut?.guidePath;
+    if (!path?.length) return undefined;
+    const f = computeFishFrame(sprites.whole, geom);
+    return path.map((p) => ({
+      x: (geom.x + p.x * geom.w - f.ox) / f.dw,
+      y: (geom.y + p.y * geom.h - f.oy) / f.dh,
+    }));
   }
 
   /**
@@ -1429,6 +1459,8 @@ export class ButcheryPanel extends DraggablePanel {
     this.editDragIdx = -1;
     this.editDraw = false;
     this.editDrawPts = [];
+    this.editLogScroll = 0;
+    if (this.editMode) this.devExpand = false;   // 좌표 편집 박스와 자리 충돌 (둘 다 도마 아래)
     this.flash(this.editMode
       ? '가이드 편집 ON — 핸들 드래그 / [곡선 그리기]로 자유곡선 / 우클릭 = 점 삭제'
       : '가이드 편집 OFF', true);
@@ -1560,6 +1592,7 @@ export class ButcheryPanel extends DraggablePanel {
     const lines = this.editableLines();
     if (!lines || lines.length < 2) return;
     this.editLineIdx = (this.editLineIdx + dir + lines.length) % lines.length;
+    this.editLogScroll = 0;      // 다른 선 = 다른 로그 — 맨 위부터
     this.flash(`선 ${this.editLineIdx + 1} / ${lines.length} 편집 중`, true);
     this.refresh();
   }
@@ -1620,17 +1653,25 @@ export class ButcheryPanel extends DraggablePanel {
     this.uiC.add(this.editHandleG);
     this.paintEditHandles();
 
-    // 좌표 리드아웃 + 툴 버튼 (도마 아래 — flash 메시지 y+34 아래)
-    const bw = this.fishW, bh = 64;
-    const bx = this.fishX, by = this.fishY + this.fishH + 52;
+    // ── 마더 HUD (좌표 로그 + 툴 버튼) — 도마 아래 상태 텍스트와 dev 항법 버튼 **사이**를 꽉 채운다 ──
+    //  구 레이아웃은 고정 높이 64라 긴 좌표 로그가 박스 밖으로 흘러 버튼·하단 UI를 침범했다.
+    const bw = this.fishW;
+    const bx = this.fishX, by = this.fishY + this.fishH + 62;
+    const bh = (PANEL_H - 36) - by;          // dev 항법 버튼(PANEL_H-30) 바로 위까지
     const box = this.scene.add.graphics();
     box.fillStyle(0x0a1420, 0.94); box.fillRoundedRect(bx, by, bw, bh, 5);
     box.lineStyle(1.2, this.editDraw ? 0x00e0ff : 0x00c8e0, 0.9); box.strokeRoundedRect(bx, by, bw, bh, 5);
     this.uiC.add(box);
-    this.editReadout = this.scene.add.text(bx + 8, by + 6, this.formatEditPath(stage, pts), {
-      fontFamily: 'monospace', fontSize: '10px', color: '#bfe8ff', wordWrap: { width: 330 }, lineSpacing: 2,
+
+    // 좌표 로그 — 넘치면 잘라 보여주고 우측(버튼 앞)에 세로 스크롤바
+    this.editLogRect = { x: bx + 8, y: by + 6, w: 322, h: bh - 30 };
+    this.editReadout = this.scene.add.text(this.editLogRect.x, this.editLogRect.y, '', {
+      fontFamily: 'monospace', fontSize: '10px', color: '#bfe8ff', lineSpacing: 2,
     });
     this.uiC.add(this.editReadout);
+    this.editLogBarG = this.scene.add.graphics();
+    this.uiC.add(this.editLogBarG);
+    this.refreshEditReadout(stage, pts);
 
     // 툴 버튼 3×2 — [곡선 그리기] [+ 점] [+ 선] / [스무딩] [복사] [선 삭제]
     const mkBtn = (
@@ -1660,9 +1701,10 @@ export class ButcheryPanel extends DraggablePanel {
     mkBtn(1, 1, '복사', false, () => this.copyEditPath(stage, this.editHandles.map((e) => e.pt)));
     mkBtn(2, 1, '선 삭제', false, () => this.editRemoveLine(), nLines <= 1);
 
-    // 다중 유도선 선택기 (선이 2개 이상일 때 — ◀ 선 n/N ▶)
+    // 다중 유도선 선택기 (선이 2개 이상일 때 — ◀ 선 n/N ▶).
+    //  ⚠ 툴 버튼 2행(by+6 ~ by+62) **아래**에 배치 — 구 위치(by+bh-20)는 버튼과 겹쳤다.
     if (nLines >= 2) {
-      const selY = by + bh - 20, selX = bx + 348;
+      const selY = by + 78, selX = bx + 348;
       const mkArrow = (ax: number, label: string, dir: -1 | 1): void => {
         const t = this.scene.add.text(ax, selY, label, {
           fontFamily: 'monospace', fontSize: '13px', color: '#aef0ff', fontStyle: 'bold',
@@ -1680,8 +1722,8 @@ export class ButcheryPanel extends DraggablePanel {
       mkArrow(selX + 124, '▶', 1);
     }
 
-    // 조작 힌트
-    const hint = this.scene.add.text(bx + 8, by + bh - 15,
+    // 조작 힌트 (로그 뷰포트 아래 — 박스 하단)
+    const hint = this.scene.add.text(bx + 8, by + bh - 16,
       this.editDraw
         ? '드래그 = 자유곡선 그리기 (놓으면 현재 선에 적용) · 우클릭 = 점 삭제'
         : '핸들 드래그 = 이동 · 우클릭 = 점 삭제 · [+ 선]으로 유도선 추가 (지느러미 3곳 등)', {
@@ -1689,6 +1731,53 @@ export class ButcheryPanel extends DraggablePanel {
       });
     this.uiC.add(hint);
   }
+
+  /**
+   * 좌표 로그 갱신 — 워드랩된 줄을 **보이는 만큼만** 잘라 표시하고 스크롤바를 그린다.
+   * (마스크 대신 윈도우드 렌더 — 박스 밖으로 글자가 흘러 버튼/하단 UI를 침범하지 않는다)
+   */
+  private refreshEditReadout(stage: ButcheryStage, pts: CutPoint[]): void {
+    const r = this.editLogRect;
+    if (!this.editReadout || !r) return;
+    const full = this.formatEditPath(stage, pts);
+    // 워드랩 결과 줄 배열을 얻기 위한 프로브 (표시는 랩 없이 슬라이스로)
+    const probe = this.scene.add.text(0, 0, full, {
+      fontFamily: 'monospace', fontSize: '10px', wordWrap: { width: r.w }, lineSpacing: 2,
+    }).setVisible(false);
+    const lines = probe.getWrappedText(full);
+    probe.destroy();
+
+    const lineH = 14;
+    const visible = Math.max(1, Math.floor(r.h / lineH));
+    this.editLogMax = Math.max(0, lines.length - visible);
+    this.editLogScroll = Phaser.Math.Clamp(this.editLogScroll, 0, this.editLogMax);
+    this.editReadout.setText(lines.slice(this.editLogScroll, this.editLogScroll + visible).join('\n'));
+
+    const g = this.editLogBarG;
+    if (!g) return;
+    g.clear();
+    if (this.editLogMax <= 0) return;
+    const barX = r.x + r.w + 6;                  // 로그와 우측 버튼(bx+348) 사이
+    g.fillStyle(0x14324a, 0.9); g.fillRoundedRect(barX, r.y, 5, r.h, 2);
+    const thumbH = Math.max(20, (r.h * visible) / lines.length);
+    const prog = this.editLogScroll / this.editLogMax;
+    g.fillStyle(0x33d0e8, 0.95);
+    g.fillRoundedRect(barX, r.y + (r.h - thumbH) * prog, 5, thumbH, 2);
+  }
+
+  /** 좌표 로그 휠 스크롤 (편집 모드 + 로그 영역 위에서만) */
+  private onEditLogWheel = (p: Phaser.Input.Pointer, _o: unknown, _dx: number, dy: number): void => {
+    if (!this.editMode || this.editLogMax <= 0) return;
+    const r = this.editLogRect;
+    const stage = this.process.stage;
+    if (!r || !stage) return;
+    const lx = p.x - this.x, ly = p.y - this.y;
+    if (lx < r.x || lx > r.x + r.w + 14 || ly < r.y || ly > r.y + r.h) return;
+    const next = Phaser.Math.Clamp(this.editLogScroll + Math.sign(dy), 0, this.editLogMax);
+    if (next === this.editLogScroll) return;
+    this.editLogScroll = next;
+    this.refreshEditReadout(stage, this.editHandles.map((e) => e.pt));
+  };
 
   private paintEditHandles(): void {
     const g = this.editHandleG;
@@ -1747,7 +1836,164 @@ export class ButcheryPanel extends DraggablePanel {
     this.drawGuide();
     this.paintEditHandles();
     const stage = this.process.stage;
-    if (stage && this.editReadout) this.editReadout.setText(this.formatEditPath(stage, this.editHandles.map((e) => e.pt)));
+    if (stage && this.editReadout) this.refreshEditReadout(stage, this.editHandles.map((e) => e.pt));
+  }
+
+  // ═══════════════════════════════════════════════════
+  // dev 항법 — 섹션 건너뛰기 / 개별 작업 점프 (좌측 하단, import.meta.env.DEV 전용)
+  //  손질은 앞 단계를 해야만 다음으로 넘어가므로, 뒤쪽 단계를 눈으로 확인하려면 매번
+  //  처음부터 다 해야 했다. 임의 지점으로 점프하되 **앞 단계는 모두 수행된 것으로 처리**해
+  //  픽셀 이미지·달성도가 그 시점 상태로 나오게 한다 (사용자 지시 2026-07-31).
+  // ═══════════════════════════════════════════════════
+
+  /** doneStages에서 파생 상태(비늘 면수·머리·체크포인트)를 재동기화 */
+  private syncDerivedFromDone(): void {
+    this.scaledSides = (this.doneStages.has('scale_base') ? 1 : 0)
+      + (this.doneStages.has('scale_flip') ? 1 : 0);
+    this.headOff = this.doneStages.has('head_flip');
+    const secDone = (id: string): boolean => {
+      const sec = this.sections.find((s) => s.id === id);
+      return !!sec && sec.tasks.every((t) => t.stageIds.every((sid) => this.doneStages.has(sid)));
+    };
+    this.checkpoint = secDone('sec_rib') ? 'ribs' : secDone('sec_fillet_b') ? 'fillets' : 'none';
+  }
+
+  /** 현재 섹션의 모든 작업을 완료 처리하고 다음 섹션으로 (부산물 팝업/지급은 건너뜀) */
+  private devSkipSection(): void {
+    if (this.done || this.process.finished) return;
+    const sec = this.section;
+    sec.tasks.forEach((t) => {
+      t.stageIds.forEach((id) => this.doneStages.add(id));
+      this.doneTasks.set(t.id, 100);
+    });
+    this.syncDerivedFromDone();
+    this.activeTaskId = null;
+    this.awaitingSelect = false;
+    this.flash(`dev: '${sec.label}' 건너뜀`, true);
+    this.advanceSection();   // 체크포인트 갱신 + 다음 섹션 (마지막이면 최종 완료)
+  }
+
+  /**
+   * 임의 작업으로 점프 — **그 앞의 모든 섹션/작업을 완료 처리**한 뒤 해당 작업의 첫 스테이지로.
+   * (뒷 단계를 눌러도 앞 단계가 다 된 픽셀 이미지가 나오도록)
+   */
+  private devJumpToTask(secIdx: number, taskId: string): void {
+    if (this.done || this.process.finished) return;
+    const target = this.sections[secIdx]?.tasks.find((t) => t.id === taskId);
+    if (!target) return;
+    const tIdx = this.sections[secIdx].tasks.indexOf(target);
+
+    this.doneStages.clear(); this.doneTasks.clear(); this.taskAcc.clear();
+    this.sections.forEach((sec, i) => {
+      sec.tasks.forEach((t, j) => {
+        if (!(i < secIdx || (i === secIdx && j < tIdx))) return;
+        t.stageIds.forEach((id) => this.doneStages.add(id));
+        this.doneTasks.set(t.id, 100);
+      });
+    });
+    this.syncDerivedFromDone();
+
+    this.sectionIdx = secIdx;
+    this.activeTaskId = taskId;
+    this.awaitingSelect = false;
+    this.byproductPopup?.destroy(); this.byproductPopup = undefined;
+    const stageId = target.stageIds[0];
+    this.process.jumpTo(stageId);
+    // 표시 방향도 스테이지 요구 방향으로 스냅 (자동 뒤집기 폐지 상태라 수동 정렬 대기 방지)
+    this.renderedOrientation = this.process.orientation;
+    this.flash(`dev: ${this.sections[secIdx].label} › ${target.label}`, true);
+    this.refresh();
+  }
+
+  /** dev 항법 UI — 좌측 하단 버튼 2개 + (확장 시) 전 섹션/작업 목록 */
+  private drawDevNav(): void {
+    if (this.done || this.process.finished) return;
+    const mkBtn = (bx: number, by: number, w: number, h: number, label: string,
+      on: boolean, onClick: () => void): void => {
+      const g = this.scene.add.graphics();
+      g.fillStyle(on ? 0x143a4a : 0x1a2230, 0.96); g.fillRoundedRect(bx, by, w, h, 4);
+      g.lineStyle(1.2, on ? 0x33d0e8 : 0x546074, 0.9); g.strokeRoundedRect(bx, by, w, h, 4);
+      const t = this.scene.add.text(bx + w / 2, by + h / 2, label, {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px',
+        color: on ? '#aef0ff' : '#8a97a8',
+      }).setOrigin(0.5);
+      const hit = this.scene.add.rectangle(bx + w / 2, by + h / 2, w, h, 0xffffff, 0.001)
+        .setInteractive({ useHandCursor: true });
+      hit.on('pointerdown', onClick);
+      this.uiC.add([g, t, hit]);
+    };
+
+    const by = PANEL_H - 30;
+    mkBtn(20, by, 130, 22, 'dev: 섹션 건너뛰기', false, () => this.devSkipSection());
+    mkBtn(156, by, 130, 22, this.devExpand ? '개별 작업 ▼ 닫기' : 'dev: 개별 작업(확장)',
+      this.devExpand, () => {
+        this.devExpand = !this.devExpand;
+        if (this.devExpand && this.editMode) this.toggleEditMode();  // 좌표 편집 박스와 자리 충돌
+        this.refresh();
+      });
+    if (!this.devExpand) return;
+
+    // ── 확장 목록 — 전 섹션 × 작업 (클릭 = 그 지점으로 점프, 앞 단계 완료 처리) ──
+    // 상태 텍스트(fishY+fishH+44) 아래에서 시작 — 겹치지 않게
+    const LX = 20, LY = this.fishY + this.fishH + 58, LW = 660, LH = PANEL_H - 36 - LY;
+    const bg = this.scene.add.graphics();
+    bg.fillStyle(0x081420, 0.96); bg.fillRoundedRect(LX, LY, LW, LH, 6);
+    bg.lineStyle(1.4, 0x33d0e8, 0.7); bg.strokeRoundedRect(LX, LY, LW, LH, 6);
+    this.uiC.add(bg);
+    const head = this.scene.add.text(LX + 10, LY + 6,
+      'dev 개별 작업 — 클릭 시 그 작업으로 점프 (앞 단계는 모두 완료 처리)', {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#7fe6b0',
+      });
+    this.uiC.add(head);
+
+    // 열 수 자동 결정 — **11개 섹션이 하나도 잘리지 않도록** 들어갈 때까지 열을 늘린다
+    //  (구 고정 3열은 8~11번 섹션을 조용히 버렸다)
+    const SEC_H = 11, TASK_H = 14, SEC_GAP = 3;
+    const colTop = LY + 22;
+    const colH = LY + LH - 4 - colTop;
+    const needOf = (sec: typeof this.sections[number]): number =>
+      SEC_H + sec.tasks.length * TASK_H + SEC_GAP;
+    const fits = (n: number): boolean => {
+      let col = 0, y = 0;
+      for (const sec of this.sections) {
+        const h = needOf(sec);
+        if (y + h > colH) { col++; y = 0; }
+        if (col >= n) return false;
+        y += h;
+      }
+      return true;
+    };
+    let COLS = 3;
+    while (COLS < 6 && !fits(COLS)) COLS++;
+    const COLW = Math.floor((LW - 20) / COLS);
+    let col = 0, y = colTop;
+    this.sections.forEach((sec, si) => {
+      const need = needOf(sec);
+      if (y + need > colTop + colH) { col++; y = colTop; }
+      const cx = LX + 10 + col * COLW;
+      // 열이 좁아져도 줄바꿈으로 높이가 밀리지 않도록 한 줄 고정(말줄임)
+      const secT = clampTextWidth(this.scene.add.text(cx, y, `${si + 1}. ${sec.label}`, {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#c8a060',
+      }), COLW - 10);
+      this.uiC.add(secT);
+      y += SEC_H;
+      sec.tasks.forEach((t) => {
+        const doneMark = this.doneTasks.has(t.id) ? '✔ ' : '';
+        const cur = this.sectionIdx === si && this.activeTaskId === t.id;
+        const label = clampTextWidth(this.scene.add.text(cx + 6, y, `${doneMark}${t.label}`, {
+          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px',
+          color: cur ? '#4af2a1' : this.doneTasks.has(t.id) ? '#5f7d8e' : '#d0e8f5',
+        }), COLW - 18);
+        const hit = this.scene.add.rectangle(cx + COLW / 2 - 4, y + 6, COLW - 12, TASK_H, 0xffffff, 0.001)
+          .setInteractive({ useHandCursor: true });
+        hit.on('pointerover', () => label.setColor('#ffd257'));
+        hit.on('pointerout', () => label.setColor(cur ? '#4af2a1' : this.doneTasks.has(t.id) ? '#5f7d8e' : '#d0e8f5'));
+        hit.on('pointerdown', () => this.devJumpToTask(si, t.id));
+        this.uiC.add([label, hit]);
+        y += TASK_H;
+      });
+      y += SEC_GAP;
+    });
   }
 
   /** dev 가이드 편집 토글 버튼 (사이드바 — 가이드 토글 우측) */
@@ -2233,7 +2479,10 @@ export class ButcheryPanel extends DraggablePanel {
 
     // 가이드 켜기/끄기 토글 (전 어종 — 끄더라도 유도선은 항상 표시)
     this.drawGuideToggle();
-    if (import.meta.env.DEV) this.drawEditToggle();   // dev — 가이드선 편집 토글
+    if (import.meta.env.DEV) {
+      this.drawEditToggle();   // dev — 가이드선 편집 토글
+      this.drawDevNav();       // dev — 섹션 건너뛰기 / 개별 작업 점프 (좌측 하단)
+    }
 
     // 삼면뜨기 픽셀 가이드 슬롯 (돔류 — 현재 스테이지의 가이드 컷 + 전체 시트 버튼)
     this.drawGuideSlot();
@@ -2574,10 +2823,12 @@ export class ButcheryPanel extends DraggablePanel {
   private flashMsg?: Phaser.GameObjects.Text;
   private flash(msg: string, good: boolean): void {
     this.flashMsg?.destroy();
-    this.flashMsg = this.scene.add.text(this.fishX + this.fishW / 2, this.fishY + this.fishH + 34, msg, {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px',
+    // 도마 하단(fishY+fishH+26)과 마더 HUD(+62) **사이**에 배치 — 양쪽 어디와도 겹치지 않게
+    // 조금 내리고 크기를 줄인다 (구 y+34·13px는 도마 테두리를 물었다)
+    this.flashMsg = this.scene.add.text(this.fishX + this.fishW / 2, this.fishY + this.fishH + 44, msg, {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px',
       color: good ? '#7fe6b0' : '#ff9a6a', fontStyle: 'bold',
-      backgroundColor: '#0a1628dd', padding: { x: 10, y: 5 },
+      backgroundColor: '#0a1628dd', padding: { x: 8, y: 3 },
     }).setOrigin(0.5);
     this.add(this.flashMsg);
     this.applyFix();
@@ -2660,16 +2911,24 @@ export class ButcheryPanel extends DraggablePanel {
     }).setOrigin(0.5);
     const knifeName = this.knife ? this.knife.nameKo : '막칼(폴백)';
     const skinNote = bp.skinPieces > 0 ? ` · 껍질 x${bp.skinPieces}` : '';
-    const desc = this.scene.add.text(this.fishX + this.fishW / 2, this.fishY + 74, [
+    // 결과 본문 — 버튼(btnY-19) 위쪽 공간 안에 반드시 들어가야 한다 (AGENTS §4 겹침 금지).
+    //  구 레이아웃은 12px·lineSpacing 7 5줄(≈100px)이 버튼 상단(fishY+fishH-44)을 약 8px 침범했다.
+    const descTop = this.fishY + 68;
+    const descMaxH = (this.fishY + this.fishH - 44) - descTop - 8;
+    const desc = this.scene.add.text(this.fishX + this.fishW / 2, descTop, [
       `${nameKo} 필렛 x${yieldRes.filletCount} (장당 ${perFillet.toLocaleString()}원)`,
       `부산물: 각 단계 팝업에서 보관 선택분 지급${skinNote}`,
       `수율 ${yieldRes.yieldMassG}g · 슬라이스 ${yieldRes.sliceCount}점 · 컷 정확도 ${(r.avgCutQuality * 100).toFixed(0)}%`,
       `칼: ${knifeName} · 시메 ${r.ikejimeDone ? 'O' : 'X'} · 방혈 ${r.bledDone ? 'O' : 'X'} · 손질 스킬 Lv.${lv.level}${lv.leveledUp ? ' (레벨업!)' : ` (+${xpGain} XP)`}`,
       yieldRes.undersizedForFillet ? '체장이 작아 회뜨기 비효율 — 통마리 판매/조림 권장' : '인벤토리(음식 탭)에 지급되었습니다.',
     ].join('\n'), {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px',
-      color: yieldRes.undersizedForFillet ? '#ffce9a' : '#d0e8f5', align: 'center', lineSpacing: 7,
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px',
+      color: yieldRes.undersizedForFillet ? '#ffce9a' : '#d0e8f5', align: 'center', lineSpacing: 4,
+      // 긴 칼 이름·레벨업 문구가 결과 박스(fishW-80) 밖으로 나가지 않게 줄바꿈
+      wordWrap: { width: this.fishW - 140 },
     }).setOrigin(0.5, 0);
+    // 줄바꿈으로 줄 수가 늘어도 버튼과 겹치지 않도록 넘칠 때만 축소
+    fitTextHeight(desc, descMaxH);
     c.add([title, desc]);
 
     // 레벨업 배너 (강조 — 레벨업 시에만)

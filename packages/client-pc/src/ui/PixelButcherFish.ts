@@ -29,6 +29,71 @@ const AB = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+/';
 
 export interface PixelFishGeom { x: number; y: number; w: number; h: number; }
 
+/**
+ * 그려진 생선 rect (원형 틀) — **기준 스프라이트 1장으로 산출해 고정**한다.
+ *
+ * ⚠ 구 구현은 스프라이트마다 `min(geom.w/spr.w, geom.h/spr.h)`로 셀 크기를 따로 잡고
+ * 각자 중앙정렬해서, 같은 도마인데도 **온마리 384px → 머리 제거 192px → 지느러미 제거 472px**로
+ * 생선이 확대·축소·이동했다. 유도선은 도마 rect에 고정 매핑(toPanelPx)이라 자유 순서에서
+ * 작업 순서마다 선이 전부 틀어졌다 (사용자 리포트 2026-07-31).
+ */
+export interface PixelFishFrame { cell: number; ox: number; oy: number; dw: number; dh: number; }
+
+/** 프레임 정규화 좌표(그려진 생선 rect 기준 0~1) 다각형 — 부분 삭제 영역 */
+export type FishPoly = { x: number; y: number }[];
+
+/** 기준 스프라이트로 프레임 산출 — 스테이지가 바뀌어도 이 값은 불변 */
+export function computeFishFrame(ref: PixelFishSprite, geom: PixelFishGeom): PixelFishFrame {
+  const cell = Math.max(2, Math.floor(Math.min(geom.w / ref.w, geom.h / ref.h)));
+  const dw = ref.w * cell, dh = ref.h * cell;
+  return {
+    cell,
+    ox: geom.x + Math.floor((geom.w - dw) / 2),
+    oy: geom.y + Math.floor((geom.h - dh) / 2),
+    dw, dh,
+  };
+}
+
+/** 다각형 내부 판정 (레이 캐스팅) */
+function pointInPoly(px: number, py: number, poly: FishPoly): boolean {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const xi = poly[i].x, yi = poly[i].y, xj = poly[j].x, yj = poly[j].y;
+    if ((yi > py) !== (yj > py) && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+
+/**
+ * 지느러미 삭제 영역 (BASE 기준 프레임 정규화 — FLIP은 x를 좌우 반전해서 사용).
+ * 몸통 실루엣은 남기고 **밖으로 돌출한 지느러미만** 지운다:
+ *  등지느러미(가시열 위쪽 띠) / 배지느러미(아래 앞쪽 돌출) / 뒷지느러미(아래 뒤쪽 돌출).
+ * 가슴지느러미는 몸통 표면에 겹쳐 그려져 있어 지우면 몸통에 구멍이 나므로 제외한다.
+ */
+const FIN_ERASE: Record<string, FishPoly[]> = {
+  bream: [
+    [{ x: 0.24, y: -0.05 }, { x: 0.65, y: -0.05 }, { x: 0.65, y: 0.17 }, { x: 0.24, y: 0.17 }],
+    [{ x: 0.37, y: 0.90 }, { x: 0.55, y: 0.90 }, { x: 0.55, y: 1.05 }, { x: 0.37, y: 1.05 }],
+    [{ x: 0.56, y: 0.88 }, { x: 0.73, y: 0.88 }, { x: 0.73, y: 1.05 }, { x: 0.56, y: 1.05 }],
+  ],
+};
+
+/** 절단선을 따라 머리 쪽 전체를 덮는 삭제 다각형 (선 바깥으로 연장 후 머리 방향 모서리로 폐합) */
+function headErasePoly(path: FishPoly, headLeft: boolean): FishPoly | null {
+  if (!path || path.length < 2) return null;
+  // 선분 방향으로 위/아래 바깥까지 연장 — 세로로만 늘리면 절단선이 기울어진 만큼 살이 남는다
+  const extendTo = (a: { x: number; y: number }, b: { x: number; y: number }, ty: number) => {
+    const dy = b.y - a.y;
+    if (Math.abs(dy) < 1e-4) return { x: b.x, y: ty };
+    const t = (ty - a.y) / dy;
+    return { x: a.x + (b.x - a.x) * t, y: ty };
+  };
+  const top = extendTo(path[1], path[0], -0.4);
+  const bot = extendTo(path[path.length - 2], path[path.length - 1], 1.4);
+  const edge = headLeft ? -0.4 : 1.4;
+  return [top, ...path, bot, { x: edge, y: 1.4 }, { x: edge, y: -0.4 }];
+}
+
 /** 도마 스프라이트 세트 (온마리/손질 몸통/필렛) + 틴트 여부 + 어종군 키 */
 export interface ButcherSpriteSet {
   whole: PixelFishSprite; dressed: PixelFishSprite; fillet: PixelFishSprite;
@@ -125,9 +190,38 @@ function pickStageSprite(
   return null;
 }
 
+/**
+ * 밑손질 삭제 영역 조립 — 완료된 작업의 부위만 지운다.
+ *  머리 = 실제 절단선(현재 표시 방향의 head 스테이지 guidePath)을 따라 머리 쪽 전체 /
+ *  지느러미 = 어종군 지느러미 영역 테이블 (FLIP이면 좌우 반전).
+ */
+function buildPrepErase(fam: string, state: PixelFishState, o: OrientationState): FishPoly[] {
+  const out: FishPoly[] = [];
+  if (state.headOff) {
+    const poly = state.headCutPath ? headErasePoly(state.headCutPath, o === 'BASE') : null;
+    // 절단선 좌표가 없으면(구 세이브·데이터 누락) 머리 비율 근사로 폴백
+    out.push(poly ?? (o === 'BASE'
+      ? [{ x: -0.4, y: -0.4 }, { x: 0.26, y: -0.4 }, { x: 0.26, y: 1.4 }, { x: -0.4, y: 1.4 }]
+      : [{ x: 0.74, y: -0.4 }, { x: 1.4, y: -0.4 }, { x: 1.4, y: 1.4 }, { x: 0.74, y: 1.4 }]));
+  }
+  if (state.finsOff) {
+    const fins = FIN_ERASE[fam] ?? FIN_ERASE.bream;
+    out.push(...(o === 'FLIP'
+      ? fins.map((p) => p.map((q) => ({ x: 1 - q.x, y: q.y })))
+      : fins));
+  }
+  return out;
+}
+
 export interface PixelFishState {
   orientation: OrientationState;
   headOff: boolean;
+  /**
+   * 머리 절단선 (현재 표시 방향 기준, **그려진 생선 rect 정규화**) — 머리 삭제 영역 산출용.
+   * 패널이 head 스테이지의 guidePath를 프레임 좌표로 변환해 넘긴다 (F9로 선을 재측정하면
+   * 삭제 영역도 자동으로 따라온다).
+   */
+  headCutPath?: FishPoly;
   /** 지느러미 제거 완료 (finectomy) — 몸통 스프라이트 분기 */
   finsOff?: boolean;
   gutted: boolean;
@@ -163,13 +257,24 @@ function tintColor(color: number, tint: number, k: number): number {
 function drawSprite(
   g: Phaser.GameObjects.Graphics, spr: PixelFishSprite, geom: PixelFishGeom,
   mirrorX: boolean, mirrorY: boolean, tint: number | null, tintK: number,
+  opts?: { frame?: PixelFishFrame; erase?: FishPoly[] },
 ): PixelFishGeom {
-  const cell = Math.max(2, Math.floor(Math.min(geom.w / spr.w, geom.h / spr.h)));
+  // 프레임이 주어지면 그 셀 크기를 그대로 쓴다 = 스테이지가 바뀌어도 확대/축소 없음.
+  const cell = opts?.frame?.cell
+    ?? Math.max(2, Math.floor(Math.min(geom.w / spr.w, geom.h / spr.h)));
   const dw = spr.w * cell, dh = spr.h * cell;
-  const ox = geom.x + Math.floor((geom.w - dw) / 2);
-  const oy = geom.y + Math.floor((geom.h - dh) / 2);
+  const ox = opts?.frame ? opts.frame.ox + Math.floor((opts.frame.dw - dw) / 2) : geom.x + Math.floor((geom.w - dw) / 2);
+  const oy = opts?.frame ? opts.frame.oy + Math.floor((opts.frame.dh - dh) / 2) : geom.y + Math.floor((geom.h - dh) / 2);
   // 팔레트 사전 변환 (틴트 1회)
   const pal = spr.palette.map((c) => (tint !== null ? tintColor(c, tint, tintK) : c));
+  const erase = opts?.erase?.length ? opts.erase : null;
+  /** 셀 중심이 삭제 영역 안인가 — 좌표는 **그려진 rect 정규화(미러 적용 후 화면 기준)** */
+  const erased = (drawnX: number, ry: number): boolean => {
+    if (!erase) return false;
+    const px = (drawnX + cell / 2 - ox) / dw;
+    const py = (ry + cell / 2 - oy) / dh;
+    return erase.some((poly) => pointInPoly(px, py, poly));
+  };
 
   for (let r = 0; r < spr.h; r++) {
     const row = spr.rows[r];
@@ -183,7 +288,17 @@ function drawSprite(
       const idx = AB.indexOf(ch);
       g.fillStyle(pal[idx] ?? 0x000000, 1);
       const cx = mirrorX ? spr.w - c - run : c;
-      g.fillRect(ox + cx * cell, ry, run * cell, cell);
+      if (!erase) {
+        g.fillRect(ox + cx * cell, ry, run * cell, cell);
+      } else {
+        // 삭제 영역과 겹치면 런을 쪼개 남는 부분만 그린다 (원형 틀 유지 부분 제거)
+        let s = -1;
+        for (let k = 0; k <= run; k++) {
+          const keep = k < run && !erased(ox + (cx + k) * cell, ry);
+          if (keep && s < 0) s = k;
+          if (!keep && s >= 0) { g.fillRect(ox + (cx + s) * cell, ry, (k - s) * cell, cell); s = -1; }
+        }
+      }
       c += run;
     }
   }
@@ -227,11 +342,23 @@ export function drawPixelButcherFish(
   }
 
   const filletView = state.finished || o === 'FLESH_UP';
-  const spr = filletView ? sprites.fillet : bodySpriteFor(sprites, state);
   const mirrorX = !filletView && o === 'FLIP';
+  /**
+   * **밑손질 구간(개복 전 측면 뷰) = 원형 틀 고정 + 부분 삭제** (사용자 지시 2026-07-31).
+   * 머리/지느러미/비늘은 자유 순서라, 스프라이트를 통째로 갈아끼우면 작업 순서마다 생선이
+   * 확대·축소·이동해 유도선(도마 rect 고정 매핑)이 전부 틀어졌다. 항상 온마리를 기준 틀로
+   * 그리고 **없어진 부위 영역만 지운다** → 어떤 순서로 해도 좌표가 불변.
+   * 개복(gutted) 이후는 전용 뷰(복면/체강/장뜨기)가 담당하므로 기존 동작 유지.
+   */
+  const useBaseFrame = !filletView && (o === 'BASE' || o === 'FLIP') && !state.gutted;
+  const spr = filletView ? sprites.fillet
+    : useBaseFrame ? sprites.whole : bodySpriteFor(sprites, state);
+  const frame = useBaseFrame ? computeFishFrame(sprites.whole, geom) : undefined;
+  const erase = useBaseFrame ? buildPrepErase(sprites.familyKey, state, o) : undefined;
   // ⚠ 상하 미러 금지 — **뱃살은 항상 아래쪽**에 오도록 배치한다 (사용자 지시 2026-07-30).
   //  "배 위로(BELLY_UP)"는 미러가 아니라 전용 복면 뷰 스프라이트로 표현한다.
-  const drawn = drawSprite(g, spr, geom, mirrorX, false, tint, 0.22);
+  const drawn = drawSprite(g, spr, geom, mirrorX, false, tint, 0.22,
+    frame ? { frame, erase } : undefined);
 
   if (filletView) {
     // 박피 전 — 슬랩 아래 남은 껍질층 + 꼬리 손잡이 (본편 34~37 연출 근사)

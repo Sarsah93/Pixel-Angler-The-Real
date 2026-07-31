@@ -25,6 +25,23 @@ const PANEL_H = 596;
 const GRID_COLS = 5;
 const SLOT = 70;
 const SLOT_GAP = 7;
+/**
+ * 그리드 뷰포트 하단 — 하단 안내문(PANEL_H-104, 2줄까지 늘 수 있음) 위쪽에서 끊는다.
+ * 이 아래로는 어떤 셀도 그리지 않고 스크롤로 접근한다 (AGENTS §4 오버플로/스크롤).
+ */
+const GRID_VP_BOTTOM = PANEL_H - 124;
+/** 스크롤바 트랙 x (그리드 우측 바깥) */
+const BAR_X = PANEL_W - 16;
+
+/** 그리드 셀 1칸 렌더 스펙 (구매 entry / 판매 InvItem 공통) */
+interface ShopCell {
+  icon: string; iconTexture?: string; name: string; priceLabel: string; qtyLabel: string;
+  condition?: InvItem['condition']; recommended?: boolean;
+  // 어획물은 iconTexture가 비어도 speciesId로 이미지 폴백 해소 (createItemIcon)
+  speciesId?: string; lengthCm?: number;
+  selected: boolean; tooltip: string;
+  onSelect: () => void; onDetail: () => void;
+}
 
 export interface ShopPanelCallbacks {
   onClose: () => void;
@@ -53,10 +70,39 @@ export class ShopPanel extends DraggablePanel {
   private selectedBuy: ShopEntry | null = null;
   private selectedSell: InvItem | null = null;
 
+  /** 스크롤 — 최상단에 보이는 행 인덱스 (판매 탭은 인벤토리 수량이 무한 증가 가능) */
+  private scrollRow = 0;
+  private maxScrollRow = 0;
+  /** 스크롤바 트랙 기하 (썸 드래그 판정용) */
+  private barGeom: { top: number; h: number } | null = null;
+  private thumbDrag = false;
+  private wheelHandler: (p: Phaser.Input.Pointer, go: unknown, dx: number, dy: number) => void;
+  private barMoveHandler: (p: Phaser.Input.Pointer) => void;
+  private barUpHandler: () => void;
+
   constructor(scene: Phaser.Scene, x: number, y: number, shop: ShopDef, cbs: ShopPanelCallbacks) {
     super(scene, { x, y, width: PANEL_W, height: PANEL_H, title: shop.name, onClose: cbs.onClose, depth: 820 });
     this.shop = shop;
     this.cbs = cbs;
+
+    // 휠 스크롤 — 포인터가 이 패널 위에 있을 때만 (동시에 열리는 인벤토리 휠을 가로채지 않음)
+    this.wheelHandler = (p, _go, _dx, dy): void => {
+      if (this.maxScrollRow <= 0 || !this.containsPointer(p)) return;
+      const next = Phaser.Math.Clamp(this.scrollRow + Math.sign(dy), 0, this.maxScrollRow);
+      if (next !== this.scrollRow) { this.scrollRow = next; this.renderGrid(); }
+    };
+    scene.input.on('wheel', this.wheelHandler);
+
+    // 스크롤바 썸 드래그 (트랙 클릭 = 그 위치로 점프)
+    this.barMoveHandler = (p: Phaser.Input.Pointer): void => {
+      if (!this.thumbDrag || !this.barGeom || this.maxScrollRow <= 0) return;
+      const prog = Phaser.Math.Clamp((p.y - this.y - this.barGeom.top) / Math.max(1, this.barGeom.h), 0, 1);
+      const next = Math.round(prog * this.maxScrollRow);
+      if (next !== this.scrollRow) { this.scrollRow = next; this.renderGrid(); }
+    };
+    this.barUpHandler = (): void => { this.thumbDrag = false; };
+    scene.input.on('pointermove', this.barMoveHandler);
+    scene.input.on('pointerup', this.barUpHandler);
 
     const greeting = scene.add.text(14, this.contentTop + 2, shop.greeting, {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#8faabf',
@@ -116,6 +162,7 @@ export class ShopPanel extends DraggablePanel {
         this.currentTab = def.id;
         this.selectedBuy = null;
         this.selectedSell = null;
+        this.scrollRow = 0;
         this.paintTabs();
         this.renderGrid();
       });
@@ -149,11 +196,13 @@ export class ShopPanel extends DraggablePanel {
     const gx0 = (PANEL_W - gridW) / 2;
     const gy0 = this.contentTop + 60;
 
+    // ── 1) 셀 스펙 수집 ──
+    const cells: ShopCell[] = [];
     if (this.currentTab === 'buy') {
       const reco = RecommendationStore.get();
-      this.shop.sells.forEach((entry, idx) => {
+      this.shop.sells.forEach((entry) => {
         const recommended = RecommendationStore.isItemRecommended(entry as unknown as InvItem, reco);
-        this.renderCell(gx0, gy0, idx, {
+        cells.push({
           icon: entry.icon, iconTexture: entry.iconTexture, name: entry.name,
           speciesId: entry.speciesId, lengthCm: entry.lengthCm,
           priceLabel: `${entry.price.toLocaleString()}원`,
@@ -166,11 +215,11 @@ export class ShopPanel extends DraggablePanel {
           onDetail: () => this.cbs.onOpenDetail(entry),
         });
       });
-      if (this.shop.sells.length === 0) this.renderEmptyNote(gy0, '판매 품목이 없습니다.');
+      if (cells.length === 0) this.renderEmptyNote(gy0, '판매 품목이 없습니다.');
     } else {
       const sellable = InventoryStore.items.filter((i) => this.shop.buysCategories.includes(i.category));
-      sellable.forEach((item, idx) => {
-        this.renderCell(gx0, gy0, idx, {
+      sellable.forEach((item) => {
+        cells.push({
           icon: item.icon, iconTexture: item.iconTexture, name: item.name,
           speciesId: item.speciesId, lengthCm: item.lengthCm,
           priceLabel: `${InventoryStore.getSellPrice(item).toLocaleString()}원`,
@@ -189,7 +238,58 @@ export class ShopPanel extends DraggablePanel {
       }
     }
 
+    // ── 2) 윈도우드 렌더 — 보이는 행만 생성 ──
+    //  마스크로 가리는 방식은 스크롤아웃된 셀의 입력 히트가 그대로 남아(Phaser는 마스크로
+    //  입력을 클립하지 않음) 패널 밖 오클릭이 생긴다. 드래그 팝업 안의 인터랙티브 목록은
+    //  UtilizationPanel.mountChooserList와 동일하게 "보이는 행만 생성"으로 처리한다.
+    const vpH = GRID_VP_BOTTOM - gy0;
+    const rowsVisible = Math.max(1, Math.floor((vpH + SLOT_GAP) / (SLOT + SLOT_GAP)));
+    const totalRows = Math.ceil(cells.length / GRID_COLS);
+    this.maxScrollRow = Math.max(0, totalRows - rowsVisible);
+    this.scrollRow = Phaser.Math.Clamp(this.scrollRow, 0, this.maxScrollRow);
+
+    const first = this.scrollRow * GRID_COLS;
+    const last = Math.min(cells.length, first + rowsVisible * GRID_COLS);
+    for (let i = first; i < last; i++) this.renderCell(gx0, gy0, i - first, cells[i]);
+
+    this.drawScrollBar(gy0, vpH, totalRows, rowsVisible);
     this.applyFix();
+  }
+
+  /** 우측 스크롤바 (트랙 + 행 비례 썸) — 스크롤이 필요한 경우에만 표시 */
+  private drawScrollBar(gy0: number, vpH: number, totalRows: number, rowsVisible: number): void {
+    if (this.maxScrollRow <= 0) { this.barGeom = null; return; }
+
+    const g = this.scene.add.graphics();
+    g.fillStyle(0x14324a, 0.9);
+    g.fillRoundedRect(BAR_X, gy0, 5, vpH, 2);
+    const thumbH = Math.max(26, (vpH * rowsVisible) / totalRows);
+    const prog = this.scrollRow / this.maxScrollRow;
+    g.fillStyle(0x5cd0ff, 0.95);
+    g.fillRoundedRect(BAR_X, gy0 + (vpH - thumbH) * prog, 5, thumbH, 2);
+    this.gridContainer.add(g);
+
+    const hit = this.scene.add.rectangle(BAR_X + 2.5, gy0 + vpH / 2, 18, vpH, 0xffffff, 0.001)
+      .setInteractive({ useHandCursor: true });
+    hit.on('pointerdown', (p: Phaser.Input.Pointer) => {
+      this.thumbDrag = true;
+      this.barMoveHandler(p);
+    });
+    this.gridContainer.add(hit);
+    this.barGeom = { top: gy0, h: vpH };
+
+    // 현재 위치 표기 (숨겨진 품목이 있다는 신호 — 조용한 잘림 금지).
+    // 뷰포트 **안쪽** 하단에 둔다 — 아래(PANEL_H-104)의 안내문과 세로로 겹치지 않게.
+    const info = this.scene.add.text(BAR_X + 2.5, GRID_VP_BOTTOM - 12,
+      `${this.scrollRow + 1}–${Math.min(totalRows, this.scrollRow + rowsVisible)} / ${totalRows}행`, {
+        fontFamily: 'monospace', fontSize: '8px', color: '#5f8ba6',
+      }).setOrigin(1, 0);
+    this.gridContainer.add(info);
+  }
+
+  /** 화면 고정 패널이라 포인터 화면좌표와 직접 비교 가능 */
+  private containsPointer(p: Phaser.Input.Pointer): boolean {
+    return p.x >= this.x && p.x <= this.x + PANEL_W && p.y >= this.y && p.y <= this.y + PANEL_H;
   }
 
   private renderEmptyNote(gy0: number, msg: string): void {
@@ -199,14 +299,8 @@ export class ShopPanel extends DraggablePanel {
     this.gridContainer.add(note);
   }
 
-  private renderCell(gx0: number, gy0: number, idx: number, cell: {
-    icon: string; iconTexture?: string; name: string; priceLabel: string; qtyLabel: string;
-    condition?: InvItem['condition']; recommended?: boolean;
-    // 어획물은 iconTexture가 비어도 speciesId로 이미지 폴백 해소 (createItemIcon)
-    speciesId?: string; lengthCm?: number;
-    selected: boolean; tooltip: string;
-    onSelect: () => void; onDetail: () => void;
-  }): void {
+  /** idx = **표시 인덱스**(스크롤 윈도우 기준 0부터) — 데이터 인덱스가 아니다 */
+  private renderCell(gx0: number, gy0: number, idx: number, cell: ShopCell): void {
     const col = idx % GRID_COLS;
     const row = Math.floor(idx / GRID_COLS);
     const sx = gx0 + col * (SLOT + SLOT_GAP);
@@ -351,6 +445,9 @@ export class ShopPanel extends DraggablePanel {
 
   override destroy(fromScene?: boolean): void {
     this.scene?.events?.off('inventory-changed', this.onInventoryChanged, this);
+    this.scene?.input?.off('wheel', this.wheelHandler);
+    this.scene?.input?.off('pointermove', this.barMoveHandler);
+    this.scene?.input?.off('pointerup', this.barUpHandler);
     super.destroy(fromScene);
   }
 }

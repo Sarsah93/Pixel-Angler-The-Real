@@ -11,9 +11,19 @@ import Phaser from 'phaser';
 import { InventoryStore, InvItem } from '../store/InventoryStore.js';
 import { DraggablePanel } from './DraggablePanel.js';
 import { buildItemDetail } from './ItemDetailPanel.js';
+import { clampTextWidth } from './TextFit.js';
 
 const PANEL_W = 420;
 const PANEL_H = 620;
+
+/** 이름/파라미터 열 시작 x (아이콘 우측) */
+const NAME_X = 116;
+/** [해제] 버튼 좌측 경계 — 이름/파라미터는 이 안쪽까지만 (침범 금지) */
+const UNEQUIP_X = PANEL_W - 78;
+/** 착용 행 텍스트 최대 폭 — 버튼 앞에서 말줄임 (긴 아이템명 오버플로 방지) */
+const NAME_MAX_W = UNEQUIP_X - NAME_X - 10;
+/** 빈 슬롯 행은 버튼이 없어 패널 우측 여백까지 사용 */
+const EMPTY_MAX_W = PANEL_W - NAME_X - 24;
 
 /** 장비 부위 슬롯 정의 — hand 지정 시 손 착용 도구 조회, 아니면 subCategory 매핑 */
 const EQUIP_SLOTS: { part: string; note: string; hand?: 'L' | 'R' }[] = [
@@ -74,15 +84,17 @@ export class EquipmentPanel extends DraggablePanel {
 
       if (item) {
         const icon = this.scene.add.text(96, ry + rowH / 2, item.icon, { fontSize: '20px' }).setOrigin(0.5);
-        const name = this.scene.add.text(116, ry + 8, item.name, {
+        // 아이템명은 한 줄 고정 행이라 줄바꿈 불가 — [해제] 버튼 앞에서 말줄임
+        // (예: "껍질과 갈빗대가 붙어있는 잿방어 필렛"이 버튼을 침범하던 문제)
+        const name = clampTextWidth(this.scene.add.text(NAME_X, ry + 8, item.name, {
           fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#e8f4fd', fontStyle: 'bold',
-        });
+        }), NAME_MAX_W);
         // 첫 물리 파라미터 요약
         const detail = buildItemDetail(item);
         const firstRow = detail.rows[0];
-        const param = this.scene.add.text(116, ry + 28, firstRow ? `${firstRow.label}: ${firstRow.value}` : '', {
+        const param = clampTextWidth(this.scene.add.text(NAME_X, ry + 28, firstRow ? `${firstRow.label}: ${firstRow.value}` : '', {
           fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#7fe6b0',
-        });
+        }), NAME_MAX_W);
         this.listContainer.add([icon, name, param]);
 
         // 해제 버튼
@@ -105,12 +117,12 @@ export class EquipmentPanel extends DraggablePanel {
         });
         this.listContainer.add([unequipBg, unequipTxt, unequipHit]);
       } else {
-        const empty = this.scene.add.text(116, ry + 8, '비어있음', {
+        const empty = this.scene.add.text(NAME_X, ry + 8, '비어있음', {
           fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#4a5a68',
         });
-        const note = this.scene.add.text(116, ry + 28, slot.note, {
+        const note = clampTextWidth(this.scene.add.text(NAME_X, ry + 28, slot.note, {
           fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#4a5a68',
-        });
+        }), EMPTY_MAX_W);
         this.listContainer.add([empty, note]);
       }
     });

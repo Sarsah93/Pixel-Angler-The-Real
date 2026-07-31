@@ -7,6 +7,12 @@ import Phaser from 'phaser';
 import { LICENSE_DATABASE, getLicenseByType, checkUnlockRequirements } from '@tra/core';
 import type { LicenseType } from '@tra/core';
 import { GameState } from '../store/GameState.js';
+import { clampTextWidth } from './TextFit.js';
+
+/** 목록 행: 면허명 시작 x=10, 비용 열 시작 x=230 → 그 안쪽까지만 (여백 8px) */
+const LIST_NAME_MAX_W = 230 - 10 - 8;
+/** 상세 뷰 본문 폭 (설명 wordWrap과 동일) */
+const DETAIL_W = 220;
 
 export class LicensePanel extends Phaser.GameObjects.Container {
   private bg?: Phaser.GameObjects.Graphics;
@@ -118,11 +124,13 @@ export class LicensePanel extends Phaser.GameObjects.Container {
       itemContainer.add(itemBg);
 
       const statusIcon = isHeld ? '🟢' : '🔒';
-      const title = this.scene.add.text(10, 0, `${statusIcon} ${lic.nameKo}`, {
+      // 한 줄 고정 행 — 긴 면허명("통발 조업 심화 면허 (장어·문어)")이 우측 비용 열(x=230)을
+      // 침범하지 않도록 말줄임 (AGENTS §4)
+      const title = clampTextWidth(this.scene.add.text(10, 0, `${statusIcon} ${lic.nameKo}`, {
         fontFamily: '"Noto Sans KR", sans-serif',
         fontSize: '12px',
         color: isHeld ? '#aaffcc' : '#ccddee',
-      }).setOrigin(0, 0.5);
+      }).setOrigin(0, 0.5), LIST_NAME_MAX_W);
       itemContainer.add(title);
 
       const costText = this.scene.add.text(230, 0, isHeld ? '보유중' : `₩${lic.costCoins.toLocaleString()}`, {
@@ -149,24 +157,28 @@ export class LicensePanel extends Phaser.GameObjects.Container {
     const lic = getLicenseByType(type);
     if (!lic) return;
 
+    // 상세 제목 — 설명과 같은 폭 안에서 줄바꿈 (긴 면허명이 패널 우측으로 삐지지 않게)
     const nameText = this.scene.add.text(0, 10, lic.nameKo, {
       fontFamily: '"Noto Sans KR", sans-serif',
       fontSize: '15px',
       color: '#ffeeaa',
       fontStyle: 'bold',
+      wordWrap: { width: DETAIL_W },
     });
 
-    const descText = this.scene.add.text(0, 35, lic.description, {
+    // 제목이 2줄이 되면 설명이 밀려나야 겹치지 않는다 — 상단 블록은 높이에 따라 흐르게 배치
+    const descText = this.scene.add.text(0, nameText.y + nameText.height + 6, lic.description, {
       fontFamily: '"Noto Sans KR", sans-serif',
       fontSize: '11px',
       color: '#ccddee',
-      wordWrap: { width: 220 },
+      wordWrap: { width: DETAIL_W },
       lineSpacing: 4,
     });
 
     this.detailContainer?.add([nameText, descText]);
 
-    let reqY = 110;
+    // 요구사항 블록도 설명 아래로 흐르되, 최소 y는 기존 레이아웃(110) 유지
+    let reqY = Math.max(110, descText.y + descText.height + 12);
     const reqTitle = this.scene.add.text(0, reqY, '📋 해금 요구사항', {
       fontFamily: '"Noto Sans KR", sans-serif',
       fontSize: '12px',
@@ -193,13 +205,16 @@ export class LicensePanel extends Phaser.GameObjects.Container {
         else if (req.type === 'license_held') reqDesc = `• 선행 면허: ${getLicenseByType(req.licenseType)?.nameKo}`;
         else if (req.type === 'spot_visited') reqDesc = `• 특정 장소 방문 필요`;
 
+        // 선행 면허명이 길 수 있어 줄바꿈 — 실제 높이만큼 다음 행을 내린다
         const reqTxt = this.scene.add.text(0, reqY, reqDesc, {
           fontFamily: '"Noto Sans KR", sans-serif',
           fontSize: '11px',
           color: '#ffaa66',
+          wordWrap: { width: DETAIL_W },
+          lineSpacing: 2,
         });
         this.detailContainer?.add(reqTxt);
-        reqY += 18;
+        reqY += Math.max(18, reqTxt.height + 4);
       });
     }
 
@@ -277,6 +292,7 @@ export class LicensePanel extends Phaser.GameObjects.Container {
         fontFamily: '"Noto Sans KR", sans-serif',
         fontSize: '11px',
         color: '#aaffcc',
+        wordWrap: { width: DETAIL_W },
       });
       this.detailContainer?.add(heldMsg);
     }
