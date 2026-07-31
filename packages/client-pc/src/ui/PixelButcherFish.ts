@@ -145,6 +145,13 @@ function pickStageSprite(
   fam: string, state: PixelFishState,
 ): { spr: PixelFishSprite; mirrorX: boolean; view?: 'ventral' | 'cavity' | 'dorsal' | 'belly' } | null {
   const o = state.orientation;
+  // 갈빗대 제거 — 실사 사진 픽셀화(`fillet_ribs` = 껍질 벗긴 갈빗대 붙은 필렛).
+  //  구 파라메트릭 FISH_FILLET 폴백은 갈빗대가 안 보였다 (사용자 지시 2026-07-31).
+  if (o === 'FLESH_UP' && !state.finished
+    && (state.stageId === 'rib_a' || state.stageId === 'rib_b')) {
+    const spr = stageSpr('fillet_ribs');
+    if (spr) return { spr, mirrorX: state.stageId === 'rib_b' };
+  }
   if (state.finished || o === 'FLESH_UP') return null;
   if (o === 'BELLY_UP' && (state.stageId === 'gut_open' || state.stageId === 'gut_scoop')) {
     const spr = stageSpr(`${fam}_ventral`);
@@ -169,15 +176,25 @@ function pickStageSprite(
     const oriOk = !!ov || (sever ? o === 'BELLY_UP' : o === 'BACK_DOWN');
     if (!oriOk) return null;
     const view = sever ? 'belly' : 'dorsal';
+    const isF1 = ov ? !!ov.mirrorX : (state.stageId ?? '').startsWith('fillet_1');
     // ribsever(갈비뼈·척추 끊기)는 배쪽이 이미 완전히 열린 상태에서 진행 — 벌어짐 3 고정(재닫힘 방지)
+    //  2면 등쪽은 **작업 누적 진행(spineOpen)** 기준 — 3단계로 나뉘어 스테이지마다 strokesDone이
+    //  리셋되므로 그것만 보면 벌어졌던 살이 다시 닫힌다 (사용자 지시 2026-07-31).
     const n = ov ? ov.state
-      : (state.stageId?.includes('ribsever') ? 3 : Math.min(3, state.strokesDone ?? 0));
+      : (isF1 && !sever) ? Math.min(3, (state.spineOpen ?? 0) + (state.strokesDone ?? 0))
+        : (state.stageId?.includes('ribsever') ? 3 : Math.min(3, state.strokesDone ?? 0));
     // **2면(fillet_1)은 1면이 이미 분리돼 [척추뼈+2면 살] 덩어리** — 양쪽 살 붙은 뷰가 아니라:
     //  등쪽/갈비뼈끊기(dorsal) = 척추 붙은 덩어리 **측면 spine 뷰**(머리 우) /
     //  배쪽 분리(sever·belly) = **정면 배쪽 뷰**(머리 좌·미러 없음). (사용자 지시 2026-07-30~31)
-    const isFillet1 = ov ? !!ov.mirrorX : (state.stageId ?? '').startsWith('fillet_1');
-    if (isFillet1) {
-      const spr2 = stageSpr(view === 'belly' ? `${fam}_belly${n}` : `${fam}_spine${n}`);
+    if (isF1) {
+      // 2면 = [척추뼈 + 2면 살] 한 덩어리 —
+      //  등쪽 1·2회차 = 측면 spine 뷰 / **3단계(갈비뼈·척추 연결부) = 갈비뼈 노출 전용 뷰** /
+      //  배쪽 분리 = **2면 전용 배쪽 뷰**(양쪽 살 붙은 장뜨기 belly 뷰 재활용 금지 — 사용자 지시).
+      const ribcut = (state.stageId ?? '') === 'fillet_1_ribcut';
+      const key = view === 'belly' ? `${fam}_bellyspine${n}`
+        : ribcut ? `${fam}_spineribs` : `${fam}_spine${n}`;
+      const spr2 = stageSpr(key)
+        ?? stageSpr(view === 'belly' ? `${fam}_belly${n}` : `${fam}_spine${n}`);
       if (spr2) return { spr: spr2, mirrorX: false, view };
     }
     const spr = stageSpr(`${fam}_${view}${n}`) ?? stageSpr(`${fam}_fillet${Math.max(1, n)}`);
@@ -213,6 +230,52 @@ function buildPrepErase(fam: string, state: PixelFishState, o: OrientationState)
   return out;
 }
 
+/**
+ * 박피 탑뷰 — 도마 위에 [껍질(회색)] → [살코기] 순으로 겹쳐 그린다 (사용자 캡처 2 탑 뷰).
+ * `peelProgress`(0~1)만큼 **껍질이 도마 왼쪽으로 늘어나고**, 살코기는 그 방향으로 조금씩 밀린다.
+ */
+function drawPeelTop(
+  g: Phaser.GameObjects.Graphics, geom: PixelFishGeom,
+  sprites: ButcherSpriteSet, state: PixelFishState, tint: number | null,
+): void {
+  const fam = sprites.familyKey;
+  const flesh = stageSpr(`pure_fillet_${fam}`) ?? sprites.fillet;
+  const frame = computeFishFrame(flesh, geom);
+  const prog = Math.max(0, Math.min(1, state.peelProgress ?? 0));
+
+  // ── 껍질 — 살 아래에 깔린 회색 층. 왼쪽으로 늘어난다 (도마 밖으로는 나가지 않게 클램프) ──
+  const stretch = Math.min(frame.dw * 0.24 * prog, Math.max(0, frame.ox - (geom.x + 10)));
+  const sx = frame.ox - stretch;
+  const sy = frame.oy + frame.dh * 0.16;
+  const sh = frame.dh * 0.72;
+  const sw = frame.dw * 0.94 + stretch;            // 살 아래 전체 + 벗겨져 나온 부분
+  g.fillStyle(0x8a8f92, 1);
+  g.fillRoundedRect(sx, sy, sw, sh, 6);
+  g.fillStyle(0xa9aeb1, 1);                        // 상단 하이라이트
+  g.fillRect(sx + 3, sy + 3, sw - 6, Math.max(2, sh * 0.12));
+  if (prog > 0.02) {
+    // 늘어나며 생기는 주름 (당겨지는 결)
+    g.fillStyle(0x5f6467, 0.9);
+    for (let i = 0; i < 6; i++) {
+      const wx = sx + 6 + (stretch + frame.dw * 0.2) * (i / 6);
+      g.fillRect(wx, sy + sh * 0.2, 2, sh * 0.6);
+    }
+  }
+
+  // ── 살코기 — 껍질이 벗겨진 만큼 왼쪽으로 밀린다 (머리쪽=우측에서 밀려옴) ──
+  const shift = frame.dw * 0.1 * prog;
+  drawSprite(g, flesh, geom, false, false, sprites.nativeColor ? null : tint, 0.18, {
+    frame: { ...frame, ox: frame.ox - shift },
+  });
+
+  // ── 꼬리 손잡이 칼집 (1단계 완료 표시) ──
+  if (state.peelGripDone) {
+    g.lineStyle(2.5, 0x2b1a1c, 0.9);
+    const gx = frame.ox - shift + frame.dw * 0.1;
+    g.lineBetween(gx, frame.oy + frame.dh * 0.2, gx, frame.oy + frame.dh * 0.8);
+  }
+}
+
 export interface PixelFishState {
   orientation: OrientationState;
   headOff: boolean;
@@ -234,6 +297,15 @@ export interface PixelFishState {
   stageId?: string;
   /** 현재 스테이지 완료 스트로크 수 (장뜨기 길내기 진행 — 단계 스프라이트 선택) */
   strokesDone?: number;
+  /**
+   * 2면 등쪽 벌어짐 누적 단계 — 완료된 등쪽 스테이지 수(척추까지 1·2회차).
+   * 3단계로 나뉘어 스테이지마다 strokesDone이 리셋되므로 별도로 넘긴다.
+   */
+  spineOpen?: number;
+  /** 박피 당기기 진행 (0~1) — 껍질이 왼쪽으로 늘어나는 정도 */
+  peelProgress?: number;
+  /** 박피 ① 꼬리 손잡이 칼집 완료 */
+  peelGripDone?: boolean;
   /**
    * 장뜨기 벌어짐 강제 표시 — 칼질 성공 직후 스테이지가 넘어가도 마지막 벌어짐을
    * 연출 동안 유지하기 위한 오버라이드 (ButcheryPanel가 액션 애니 중에만 설정).
@@ -318,6 +390,17 @@ export function drawPixelButcherFish(
 ): void {
   const o = state.orientation;
 
+  // ── 박피 (2단계 — 사용자 지시 2026-07-31) ──
+  //  ①꼬리 손잡이·③당기기 = 탑뷰(껍질 위에 살코기) / ②경계 칼 넣기 = 측면 단면 뷰
+  if (!state.finished && (state.stageId === 'peel_grip' || state.stageId === 'peel_pull')) {
+    drawPeelTop(g, geom, sprites, state, tint);
+    return;
+  }
+  if (!state.finished && state.stageId === 'peel_insert') {
+    const cross = stageSpr(`${sprites.familyKey}_peelcross`);
+    if (cross) { drawSprite(g, cross, geom, false, false, null, 0); return; }
+  }
+
   // ── 손질 단계 스프라이트 (복면 뷰 / 체강 탑뷰 / 장뜨기 길내기 1~3) — 있으면 우선 사용 ──
   const stagePick = pickStageSprite(sprites.familyKey, state);
   if (stagePick) {
@@ -361,13 +444,8 @@ export function drawPixelButcherFish(
     frame ? { frame, erase } : undefined);
 
   if (filletView) {
-    // 박피 전 — 슬랩 아래 남은 껍질층 + 꼬리 손잡이 (본편 34~37 연출 근사)
-    if (!state.finished && state.currentPullsLeft > 0) {
-      g.fillStyle(0x4a555c, 0.95);
-      g.fillRoundedRect(drawn.x + drawn.w * 0.04, drawn.y + drawn.h * 0.92, drawn.w * 0.9, Math.max(5, drawn.h * 0.1), 3);
-      g.fillStyle(0x3a2c1e, 1);
-      g.fillRoundedRect(drawn.x - Math.max(8, drawn.w * 0.035), drawn.y + drawn.h * 0.55, Math.max(10, drawn.w * 0.045), drawn.h * 0.4, 3);
-    }
+    // 박피 단계 — 구 오버레이(회색 껍질층 바 + 갈색 꼬리 손잡이 블럭)는 제거
+    //  (사용자 지시 2026-07-31 — 실제 필렛 형태와 맞지 않아 둘 다 삭제. 박피 연출은 추후 재설계)
     return;
   }
 

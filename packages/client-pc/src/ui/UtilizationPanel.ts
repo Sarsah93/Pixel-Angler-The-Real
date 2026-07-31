@@ -1158,7 +1158,22 @@ export class UtilizationPanel extends DraggablePanel {
   }
 
   /** 도마에 생선 놓기 — 게이트(복어 차단) + 점유 중 교환 */
+  /**
+   * 껍질이 붙어있는 순살 필렛 — 도마에 다시 올리면 **박피 섹션부터 이어서** 진행 (재장착).
+   * (지아이뼈 분리 후 나오는 4장 — 사용자 지시 2026-07-31)
+   */
+  private isSkinFillet(item: InvItem): boolean {
+    return item.subCategory === '손질 필렛' && item.id.startsWith('inv_filletskin_');
+  }
+
   private dropFishOnBoard(item: InvItem): void {
+    if (this.isSkinFillet(item)) {
+      if (this.cookBoardFishId && this.cookBoardFishId !== item.id) { this.trySwapBoard(item.id); return; }
+      this.cookBoardFishId = item.id;
+      this.cookSelectedId = item.id;
+      this.renderBody();
+      return;
+    }
     const family: ButcheryFamily = getButcheryFamily(item.speciesId ?? '');
     if (family === 'pufferfish' || family === 'unsupported') {
       this.flashBoardToast(BUTCHERY_FAMILY_NOTICE[family]);
@@ -1290,7 +1305,8 @@ export class UtilizationPanel extends DraggablePanel {
 
       // 손질 프로필 보유 어획물(finfish) + 두족류는 도마로 드래그 가능 (복어/미지원은 불가)
       const fam = item.subCategory === '어획물' ? getButcheryFamily(item.speciesId ?? '') : 'unsupported';
-      const draggableFish = fam === 'finfish' || fam === 'cephalopod';
+      // 껍질 붙은 필렛도 드래그 가능 — 도마에 올리면 박피부터 재개
+      const draggableFish = fam === 'finfish' || fam === 'cephalopod' || this.isSkinFillet(item);
       const hit = this.scene.add.rectangle(cx + cell / 2, cy + cell / 2, cell, cell, 0xffffff, 0.001)
         .setInteractive({ useHandCursor: true });
       if (draggableFish) {
@@ -1313,7 +1329,8 @@ export class UtilizationPanel extends DraggablePanel {
     const footY = gridY + 5 * (cell + gap) + 4;
     const selFam = selItem?.subCategory === '어획물' ? getButcheryFamily(selItem.speciesId ?? '') : 'unsupported';
     const selHint = selItem
-      ? (selFam === 'finfish' || selFam === 'cephalopod'
+      ? (selItem && this.isSkinFillet(selItem) ? '도마로 드래그하면 박피부터 이어서 진행합니다'
+        : selFam === 'finfish' || selFam === 'cephalopod'
           ? '왼쪽 도마로 드래그해서 올리세요'
           : selFam === 'pufferfish' ? '복어는 자격·독 처리 준비 중 — 도마 불가'
           : '이 아이템은 도마에 올릴 수 없습니다')
@@ -1725,6 +1742,8 @@ export class UtilizationPanel extends DraggablePanel {
       return;
     }
     this.butcheryPanel = new ButcheryPanel(this.scene, fish, {
+      // 껍질 붙은 필렛 재장착 = 앞 섹션을 모두 마친 것으로 보고 **박피부터** 시작
+      resumeSectionId: this.isSkinFillet(fish) ? 'sec_peel' : undefined,
       onClose: () => {
         this.butcheryPanel?.destroy();
         this.butcheryPanel = undefined;

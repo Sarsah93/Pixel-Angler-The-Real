@@ -380,7 +380,15 @@ function makeSpineFillet(opts) {
     0xf2ded2, // 11 절단면(들린 살 하단)
     0x223029, // 12 지느러미 흔적
     0xf7ece4, // 13 힘줄 흰선
+    0xdcd6c6, // 14 갈비뼈 (밝은 뼈)
+    0xb6afa0, // 15 갈비뼈 그늘
+    0xc8bfae, // 16 은백 뱃살 skin (배쪽 뷰)
+    0xd6cebd, // 17 은백 미세 sheen (줄무늬로 도드라지지 않게 약하게)
   ];
+  // 배쪽 뷰 = 등 껍질(어두운 청록) 대신 은백 뱃살로 겉면 교체
+  const SKIN_OUT = opts.skin === 'belly' ? 16 : 4;
+  const SKIN_MID = opts.skin === 'belly' ? 17 : 5;
+  const SKIN_LOW = opts.skin === 'belly' ? 16 : 5;
   const fleshH = (t) => pw(t, opts.flesh);        // 살 두께 (t: 1=머리 우)
   // 들림 — 칼집 회차별 **점진 + 비대칭**: 1·2회는 머리(우)·등쪽부터 조금씩, 3회는 꼬리(좌)까지 전부.
   //  state 0 = 닫힘(껍질 덮인 살이 척추뼈에 붙어 연결). (사용자 지시 2026-07-31)
@@ -416,11 +424,11 @@ function makeSpineFillet(opts) {
       let idx;
       // **껍질 덮인 살** — 겉면은 대부분 skin(등 껍질), 붉은 단면은 **뼈에서 들린 하단에서만** 노출.
       if (fy < 0.08) idx = 6;                                         // 외곽 엣지
-      else if (fy < 0.55) idx = (Math.round(x) % 13 === 0 ? 5 : 4);   // 등 skin(바깥면)+미세 sheen
-      else if (fy < 0.8) idx = 5;                                     // skin 하부(짙음)
-      else idx = lift > 0.5                                           // 하단: 들렸으면 붉은 절단면, 아니면 skin(붙음)
+      else if (fy < 0.55) idx = (Math.round(x) % 13 === 0 ? SKIN_MID : SKIN_OUT);   // 겉면+미세 sheen
+      else if (fy < 0.8) idx = SKIN_LOW;                              // 겉면 하부
+      else idx = lift > 0.5                                           // 하단: 들렸으면 붉은 절단면, 아니면 겉면(붙음)
         ? band((fy - 0.8) / 0.2, [[0.45, 0], [0.8, 1], [1.01, 2]])
-        : 5;
+        : SKIN_LOW;
       grid[y][x] = idx;
     }
     // ── 벌어진 틈 (살 하단 ↔ 뼈 상단) — 들린 만큼 그늘 ──
@@ -437,6 +445,74 @@ function makeSpineFillet(opts) {
   const cx = opts.headRight ? [X1 - 4, X1] : [X0, X0 + 4];
   for (let x = Math.max(X0, cx[0]); x <= Math.min(X1, cx[1]); x++) {
     for (let y = 0; y < boneTop; y++) if (grid[y][x] >= 0 && grid[y][x] <= 3) grid[y][x] = 11;
+  }
+
+  // ── 갈비뼈 노출 (3단계 전용) — 머리쪽에서 척추뼈와 들린 살을 잇는 뼈대 ──
+  //  사용자 캡처의 "척추뼈와 갈비뼈 사이 연결된 뼈대를 끊어야 함" 지점. 이 뼈들을 끊으면 2면이 떨어진다.
+  if (opts.ribs) {
+    const headX = opts.headRight ? X1 - 6 : X0 + 6;
+    const dir = opts.headRight ? -1 : 1;               // 꼬리 방향
+    for (let r = 0; r < 5; r++) {
+      const bx = headX + dir * (3 + r * 5);            // 갈비뼈 간격
+      const len = 16 - r * 2;                          // 머리쪽이 길다
+      for (let k = 0; k < len; k++) {
+        // 척추 위쪽으로 살짝 휘며 올라가는 뼈
+        const yy = Math.round(boneTop - 1 - k);
+        const xx = Math.round(bx + dir * (k * k) * 0.035);
+        if (yy < 0 || yy >= H || xx < X0 || xx > X1) continue;
+        grid[yy][xx] = k < len - 3 ? 14 : 15;
+        if (grid[yy][xx + dir] !== undefined && k < len - 5) grid[yy][xx + dir] = 15;
+      }
+    }
+  }
+  return toSprite(W, H, pal, grid);
+}
+
+/**
+ * 박피 ② 측면 단면 뷰 (x plane 정면 · y plane 바닥) — 사용자 캡처 2 참고.
+ *  도마 바닥 위에 **회색 껍질층**이 깔리고 그 위에 살코기 마운드가 얹힌 단면.
+ *  경계면(껍질 위)이 칼을 넣을 자리 = 유도선이 그 높이를 지난다.
+ */
+function makePeelCross(opts) {
+  const W = 128, H = 64;
+  const X0 = 10, X1 = 118;
+  const BOARD = 52;            // 도마 상면
+  const skinH = 6;             // 껍질층 두께 (회색 — 칼 넣을 경계가 또렷하게 보이도록)
+  const grid = makeGrid(W, H);
+  const pal = [
+    0x6b4a2c, // 0 도마
+    0x8a8f92, // 1 껍질(회색)
+    0xa9aeb1, // 2 껍질 하이라이트
+    0x5f6467, // 3 껍질 그늘
+    0xf0cfc6, // 4 살 연분홍
+    0xdca79c, // 5 살 중간
+    0xb2544f, // 6 붉은 살(혈합육)
+    0xf7ece4, // 7 살 하이라이트
+    0x2b1a1c, // 8 외곽 엣지
+  ];
+  // 도마 상면 밴드
+  for (let x = 0; x < W; x++) for (let y = BOARD + skinH; y < BOARD + skinH + 4; y++) grid[y][x] = 0;
+  const top = BOARD;
+  for (let x = X0; x <= X1; x++) {
+    const t = (x - X0) / (X1 - X0);
+    // 살코기 마운드 (가운데가 두껍고 양끝이 얇다)
+    const h = pw(t, opts.mound);
+    // 껍질층 — 살보다 좌우로 조금 더 넓게 (벗겨낼 여유)
+    for (let y = top; y < top + skinH; y++) {
+      grid[y][x] = y === top ? 2 : (y === top + skinH - 1 ? 3 : 1);
+    }
+    if (h < 1) continue;
+    const fTop = Math.round(top - h);
+    for (let y = fTop; y < top; y++) {
+      const fy = (y - fTop) / Math.max(1, top - fTop);
+      let idx;
+      if (fy < 0.1) idx = 8;                       // 상단 엣지
+      else if (fy < 0.3) idx = 7;                  // 하이라이트
+      else if (fy < 0.62) idx = 4;
+      else if (fy < 0.85) idx = 5;
+      else idx = 6;                                // 껍질에 닿는 하단 = 붉은 살
+      grid[y][x] = idx;
+    }
   }
   return toSprite(W, H, pal, grid);
 }
@@ -471,6 +547,12 @@ const SPINE_FLESH = {
   amberjack: [[0, 4], [0.12, 9], [0.3, 16], [0.5, 22], [0.7, 26], [0.88, 28], [1, 28]],
 };
 
+/** 박피 단면 — 살코기 마운드 높이 프로필 (t: 0=꼬리(좌) → 1=머리(우)) */
+const PEEL_MOUND = {
+  bream: [[0, 3], [0.12, 9], [0.3, 15], [0.5, 18], [0.7, 17], [0.88, 12], [1, 5]],
+  amberjack: [[0, 3], [0.12, 8], [0.3, 13], [0.5, 16], [0.7, 15], [0.88, 11], [1, 4]],
+};
+
 const out = {};
 for (const fam of ['bream', 'amberjack']) {
   out[`${fam}_ventral`] = makeVentral(VENTRAL[fam]);
@@ -485,7 +567,18 @@ for (const fam of ['bream', 'amberjack']) {
     });
     // 2면 덩어리 (척추뼈 붙은 살) — 1면 분리 후 [척추뼈+살] 측면 뷰 (머리 우)
     out[`${fam}_spine${st}`] = makeSpineFillet({ headRight: true, state: st, flesh: SPINE_FLESH[fam] });
+    // 2면 **배쪽** 뷰 — 양쪽 살이 다 붙은 장뜨기 belly 뷰 재활용 금지 (사용자 지시 2026-07-31).
+    //  같은 [척추뼈+2면 살] 덩어리를 배쪽에서 본 것 = 은백 뱃살 겉면 · 머리 좌/꼬리 우.
+    out[`${fam}_bellyspine${st}`] = makeSpineFillet({
+      headRight: false, state: st, flesh: SPINE_FLESH[fam], skin: 'belly',
+    });
   }
+  // 3단계(갈비뼈·척추 연결부 끊기) 전용 — 완전히 벌어진 상태 + 머리쪽 갈비뼈 노출
+  out[`${fam}_spineribs`] = makeSpineFillet({
+    headRight: true, state: 3, flesh: SPINE_FLESH[fam], ribs: true,
+  });
+  // 박피 ② 측면 단면 — 껍질(회색) 위에 살코기 마운드
+  out[`${fam}_peelcross`] = makePeelCross({ mound: PEEL_MOUND[fam] });
 }
 
 const header = `/**

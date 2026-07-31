@@ -251,11 +251,9 @@ export function buildButcheryStages(profile: ButcheryProfile, opts?: ButcherySta
       guide: '꼬리→머리 역결 방향으로 지그재그로 문질러 비늘을 전부 벗기세요',
       fillTarget: 0.92,
       sweepPath: [
-        { x: 0.734, y: 0.477 }, { x: 0.695, y: 0.605 }, { x: 0.694, y: 0.403 }, { x: 0.625, y: 0.704 },
-        { x: 0.648, y: 0.368 }, { x: 0.564, y: 0.779 }, { x: 0.601, y: 0.304 }, { x: 0.492, y: 0.839 },
-        { x: 0.549, y: 0.247 }, { x: 0.402, y: 0.828 }, { x: 0.493, y: 0.190 }, { x: 0.319, y: 0.828 },
-        { x: 0.436, y: 0.144 }, { x: 0.239, y: 0.864 }, { x: 0.375, y: 0.109 }, { x: 0.165, y: 0.807 },
-        { x: 0.303, y: 0.070 }, { x: 0.162, y: 0.446 }, { x: 0.225, y: 0.080 }, { x: 0.172, y: 0.158 },
+        { x: 0.522, y: 0.250 }, { x: 0.360, y: 0.260 }, { x: 0.584, y: 0.353 }, { x: 0.310, y: 0.376 },
+        { x: 0.640, y: 0.456 }, { x: 0.324, y: 0.506 }, { x: 0.693, y: 0.586 }, { x: 0.340, y: 0.640 },
+        { x: 0.648, y: 0.693 }, { x: 0.357, y: 0.776 }, { x: 0.575, y: 0.810 }, { x: 0.367, y: 0.897 },
       ],
     });
     stages.push({
@@ -263,10 +261,10 @@ export function buildButcheryStages(profile: ButcheryProfile, opts?: ButcherySta
       guide: '뒤집어서 반대면 비늘도 전부 벗기세요',
       fillTarget: 0.92,
       sweepPath: [
-        { x: 0.311, y: 0.509 }, { x: 0.314, y: 0.641 }, { x: 0.367, y: 0.417 }, { x: 0.358, y: 0.701 },
-        { x: 0.419, y: 0.339 }, { x: 0.406, y: 0.772 }, { x: 0.469, y: 0.258 }, { x: 0.463, y: 0.853 },
-        { x: 0.528, y: 0.233 }, { x: 0.527, y: 0.889 }, { x: 0.589, y: 0.229 }, { x: 0.588, y: 0.889 },
-        { x: 0.649, y: 0.236 },
+        { x: 0.454, y: 0.240 }, { x: 0.640, y: 0.233 }, { x: 0.399, y: 0.346 }, { x: 0.678, y: 0.343 },
+        { x: 0.348, y: 0.453 }, { x: 0.669, y: 0.476 }, { x: 0.302, y: 0.570 }, { x: 0.655, y: 0.610 },
+        { x: 0.329, y: 0.663 }, { x: 0.644, y: 0.723 }, { x: 0.377, y: 0.756 }, { x: 0.635, y: 0.830 },
+        { x: 0.433, y: 0.857 },
       ],
     });
     stages.push({
@@ -293,18 +291,18 @@ export function buildButcheryStages(profile: ButcheryProfile, opts?: ButcherySta
   stages.push({
     id: 'finectomy', label: '지느러미 제거 (등·뒷·가슴)', orientation: 'BASE', primitive: 'guided_cut',
     guide: '등·뒷·가슴 지느러미 밑동을 따라 각각 칼집을 넣어 뽑으세요 (3곳 — 순서 자유)',
-    // dev 곡선 편집기(F9) 실측 좌표 — 돔류 (2026-07-30 사용자 확정)
+    // dev 곡선 편집기(F9) 실측 좌표 — 돔류 (2026-07-31 사용자 재실측: 원형 틀 고정 프레임 기준)
     cut: cut('finectomy', 'BASE',
-      [{ x: 0.338, y: 0.282 }, { x: 0.382, y: 0.261 }, { x: 0.430, y: 0.271 }, { x: 0.467, y: 0.301 }, { x: 0.501, y: 0.338 }, { x: 0.532, y: 0.377 }, { x: 0.557, y: 0.421 }],
+      [{ x: 0.295, y: 0.276 }, { x: 0.358, y: 0.217 }, { x: 0.443, y: 0.230 }, { x: 0.519, y: 0.271 }, { x: 0.579, y: 0.336 }, { x: 0.643, y: 0.397 }, { x: 0.682, y: 0.476 }],
       {
         tolerance: 0.09, minCoverage: 0.5,
         guidePaths: [
           // 선1 — 등지느러미 밑동 (등 능선을 따라 꼬리쪽으로)
-          [{ x: 0.338, y: 0.282 }, { x: 0.382, y: 0.261 }, { x: 0.430, y: 0.271 }, { x: 0.467, y: 0.301 }, { x: 0.501, y: 0.338 }, { x: 0.532, y: 0.377 }, { x: 0.557, y: 0.421 }],
+          [{ x: 0.295, y: 0.276 }, { x: 0.358, y: 0.217 }, { x: 0.443, y: 0.230 }, { x: 0.519, y: 0.271 }, { x: 0.579, y: 0.336 }, { x: 0.643, y: 0.397 }, { x: 0.682, y: 0.476 }],
           // 선2 — 뒷(배)지느러미 밑동
-          [{ x: 0.362, y: 0.729 }, { x: 0.406, y: 0.751 }, { x: 0.455, y: 0.757 }, { x: 0.492, y: 0.724 }, { x: 0.518, y: 0.682 }, { x: 0.542, y: 0.638 }, { x: 0.568, y: 0.594 }],
+          [{ x: 0.320, y: 0.830 }, { x: 0.379, y: 0.896 }, { x: 0.462, y: 0.927 }, { x: 0.536, y: 0.879 }, { x: 0.604, y: 0.821 }, { x: 0.651, y: 0.745 }, { x: 0.699, y: 0.670 }],
           // 선3 — 가슴지느러미 밑동 (아가미 뒤 — 짧은 곡선)
-          [{ x: 0.400, y: 0.467 }, { x: 0.391, y: 0.479 }, { x: 0.381, y: 0.490 }, { x: 0.377, y: 0.505 }, { x: 0.371, y: 0.519 }, { x: 0.370, y: 0.534 }, { x: 0.367, y: 0.548 }],
+          [{ x: 0.407, y: 0.516 }, { x: 0.373, y: 0.516 }, { x: 0.349, y: 0.540 }, { x: 0.334, y: 0.571 }, { x: 0.320, y: 0.603 }, { x: 0.308, y: 0.636 }, { x: 0.299, y: 0.670 }],
         ],
       }),
   });
@@ -313,14 +311,15 @@ export function buildButcheryStages(profile: ButcheryProfile, opts?: ButcherySta
   stages.push({
     id: 'gut_open', label: '개복 (항문→머리 경계)', orientation: 'BELLY_UP', primitive: 'guided_cut',
     guide: '항문에서 머리 경계까지 배를 가르세요',
-    cut: cut('gut_open', 'BELLY_UP', [{ x: profile.anusRatio, y: 0.5 }, { x: 0.14, y: 0.5 }], { tolerance: 0.09 }),
+    // 복면 뷰 실측 (2026-07-31 사용자) — 항문(우) → 머리 경계(좌) 정중선
+    cut: cut('gut_open', 'BELLY_UP', [{ x: 0.217, y: 0.510 }, { x: 0.558, y: 0.506 }], { tolerance: 0.09 }),
   });
   stages.push({
     id: 'gut_scoop', label: '내장 비우기', orientation: 'BELLY_UP', primitive: 'scoop',
     guide: '갈빗대 안쪽 내장 덩어리를 긁어 통째로 꺼내세요',
     fillTarget: 0.85,
-    // 복면 뷰 — 가른 정중선을 따라 항문 → 머리 경계까지 훑어 비운다
-    sweepPath: [{ x: profile.anusRatio, y: 0.5 }, { x: 0.2, y: 0.5 }],
+    // 복면 뷰 — 가른 정중선을 따라 항문 → 머리 경계까지 훑어 비운다 (2026-07-31 실측)
+    sweepPath: [{ x: 0.529, y: 0.496 }, { x: 0.272, y: 0.503 }],
   });
   // 5b. 핏줄(신장) 긁기 — 척추 아래 혈관막 제거 (자유 손질 개편 2026-07-30 — 내장과 분리)
   stages.push({
@@ -356,23 +355,46 @@ export function buildButcheryStages(profile: ButcheryProfile, opts?: ButcherySta
       : f === 0 ? '1면' : '2면';
     // 등쪽 = **등을 카메라 쪽으로 눕힌 뷰**(머리 오른쪽·꼬리 왼쪽 — 실사 정합).
     //  칼집 3회로 길이 점점 깊어지며 벌어진다(1회 붉은 살 조금 → 2회 뼈 노출 → 3회 반대쪽까지).
+    // 2면(f=1)은 **회차별 실측 경로가 다르다** — 1회차와 2회차를 별도 스테이지로 나눈다.
+    //  (구조: 한 스테이지 strokesRequired 3 = 세 번 모두 같은 선 → 벌어진 뒤엔 선이 살과 안 맞아
+    //   손이 쏠리고 커버율이 떨어졌다. 사용자 리포트 2026-07-31 "2단계부터 커버율 부족")
+    const score2 = f === 1 && !flat;
     stages.push({
-      id: `fillet_${f}_score`, label: `${sideLabel} — 등쪽 → 척추까지`, orientation: 'BACK_DOWN', primitive: 'guided_cut',
+      id: `fillet_${f}_score`, label: `${sideLabel} — 등쪽 → 척추까지${score2 ? ' (1회차)' : ''}`,
+      orientation: 'BACK_DOWN', primitive: 'guided_cut',
       guide: flat
         ? '몸통 중앙선을 기준으로 한쪽 반신의 지느러미 경계를 따라 얕은 칼집 3회'
-        : '등 지느러미 자리를 따라 머리쪽(우) → 꼬리쪽(좌)으로 칼집을 넣어 척추뼈까지 뜨세요 (3회 — 점점 깊게)',
-      cut: cut(`fillet_${f}_score`, 'BACK_DOWN',
-        [{ x: 0.798, y: 0.575 }, { x: 0.197, y: 0.490 }], { strokesRequired: 3, tolerance: 0.09 }),
+        : score2
+          ? '등 지느러미 자리를 따라 머리쪽(우) → 꼬리쪽(좌)으로 칼집을 넣어 척추뼈까지 뜨세요 (1회차)'
+          : '등 지느러미 자리를 따라 머리쪽(우) → 꼬리쪽(좌)으로 칼집을 넣어 척추뼈까지 뜨세요 (3회 — 점점 깊게)',
+      cut: score2
+        // 2면 1회차 — 사용자 F9 실측 (2026-07-31)
+        ? cut(`fillet_${f}_score`, 'BACK_DOWN',
+          [{ x: 0.804, y: 0.663 }, { x: 0.192, y: 0.666 }], { tolerance: 0.1 })
+        : cut(`fillet_${f}_score`, 'BACK_DOWN',
+          [{ x: 0.798, y: 0.575 }, { x: 0.197, y: 0.490 }], { strokesRequired: 3, tolerance: 0.09 }),
     });
+    if (f === 1 && !flat) {
+      // 2면 2회차 — 벌어진 상태에 맞춰 다시 실측한 경로 (머리쪽 시작점이 앞으로 당겨진다)
+      stages.push({
+        id: 'fillet_1_score2', label: '2면 — 등쪽 → 척추까지 (2회차)', orientation: 'BACK_DOWN', primitive: 'guided_cut',
+        guide: '벌어진 틈을 따라 한 번 더 깊게 그어 척추뼈까지 완전히 뜨세요 (2회차)',
+        cut: cut('fillet_1_score2', 'BACK_DOWN',
+          [{ x: 0.725, y: 0.646 }, { x: 0.192, y: 0.666 }], { tolerance: 0.1 }),
+      });
+    }
     if (f === 1 && !flat) {
       // ── 2면 전용 구조 (사용자 지시 2026-07-31) — 1면이 이미 분리돼 [척추뼈+2면 살] 덩어리 ──
       //  등쪽 작업: 척추경계 3컷(위 score) + ④ 머리쪽 갈비뼈 z-index 끊기.
       //  머리 부근에서 칼을 깊게 넣어 척추뼈 뒤(z축·먼쪽·안 보임)에서 내장막을 감싼 갈비뼈가
       //  만나므로, 그 갈비뼈를 부러뜨리며 내장쪽으로 썰어낸다 (등쪽 작업 마무리).
+      //  ③ 벌어진 상태에서 **머리쪽에 드러난 척추뼈 ↔ 갈비뼈 연결부**를 끊는다
+      //     (사용자 지시 2026-07-31 — 캡처의 노란 점선 자리. 좌표는 F9 재실측 예정)
       stages.push({
-        id: 'fillet_1_ribcut', label: '2면 — 갈비뼈 끊기 (머리쪽 깊이·z축)', orientation: 'BACK_DOWN', primitive: 'guided_cut',
-        guide: '머리 부근에서 칼을 깊숙히 넣어 척추뼈 뒤(안 보이는 z축)의 갈비뼈를 부러뜨리며 내장쪽으로 썰어내세요',
-        cut: cut('fillet_1_ribcut', 'BACK_DOWN', [{ x: 0.78, y: 0.5 }, { x: 0.6, y: 0.62 }], { strong: true, tolerance: 0.12 }),
+        id: 'fillet_1_ribcut', label: '2면 — 갈비뼈·척추 연결부 끊기', orientation: 'BACK_DOWN', primitive: 'guided_cut',
+        guide: '머리쪽에 드러난 척추뼈와 갈비뼈가 연결된 지점을 끊어 2면을 완전히 떼어내세요',
+        cut: cut('fillet_1_ribcut', 'BACK_DOWN',
+          [{ x: 0.775, y: 0.455 }, { x: 0.792, y: 0.650 }], { strong: true, tolerance: 0.11 }),
       });
       // 배쪽 작업 = **꼬리쪽 → 배쪽 분리** (척추는 등쪽서 이미 끊었으니 재절단 없음).
       //  꼬리쪽에서 아가미(내장 있던) 방향으로 척추뼈와 위 살덩어리 사이를 여러 번 그어 분리.
@@ -426,11 +448,33 @@ export function buildButcheryStages(profile: ButcheryProfile, opts?: ButcherySta
     cut: cut('pin_b', 'FLESH_UP', [{ x: 0.16, y: 0.5 }, { x: 0.9, y: 0.5 }], { strokesRequired: 2, tolerance: 0.08 }),
   });
 
-  // 11. 박피 — 꼬리 손잡이 잡고 15도 삽입 → 좌로 당김 (필렛 수만큼)
+  // 11. 박피 — **2단계** (사용자 지시 2026-07-31): ① 꼬리 손잡이 칼집 ② 껍질 분리(경계 칼 → 당기기).
+  //  껍질 붙은 필렛 1장을 벗겨 [생선 껍질 + 순수 필렛 1개]를 얻는다. 꼬리는 **도마 왼쪽**.
   stages.push({
-    id: 'peel', label: '박피 (껍질 벗기기)', orientation: 'FLESH_UP', primitive: 'peel',
-    guide: '꼬리 손잡이를 잡고 껍질/살 사이 15도로 칼을 눕혀 왼쪽으로 당기세요',
-    pullsRequired: profile.filletCount,
+    id: 'peel_grip', label: '박피 ① 꼬리 손잡이 만들기', orientation: 'FLESH_UP', primitive: 'guided_cut',
+    guide: '꼬리(왼쪽) 살코기에 작은 칼집을 넣어 잡을 손잡이를 만드세요',
+    cut: cut('peel_grip', 'FLESH_UP',
+      [{ x: 0.175, y: 0.335 }, { x: 0.175, y: 0.700 }], { tolerance: 0.1 }),
+  });
+  stages.push({
+    id: 'peel_insert', label: '박피 ② 껍질과 살 사이 칼 넣기', orientation: 'FLESH_UP', primitive: 'guided_cut',
+    guide: '측면에서 껍질(회색)과 살코기 경계면을 따라 칼을 넣으세요',
+    // 측면 단면 뷰 기준 — **껍질(회색) 상단 경계**를 좌→우로 (뷰 스프라이트 실측 y≈0.81)
+    cut: cut('peel_insert', 'FLESH_UP',
+      [{ x: 0.230, y: 0.812 }, { x: 0.775, y: 0.812 }], { tolerance: 0.09 }),
+  });
+  stages.push({
+    id: 'peel_pull', label: '박피 ③ 껍질 잡고 분리', orientation: 'FLESH_UP', primitive: 'drag_fill',
+    guide: '껍질을 잡고 도마 왼쪽으로 지그재그로 당겨 벗기세요',
+    fillTarget: 0.9,
+    // 왼쪽으로 진행하는 지그재그 — 경로가 길어 완주에 약 4~5초 걸린다 (사용자 지정)
+    sweepPath: [
+      { x: 0.320, y: 0.500 }, { x: 0.292, y: 0.320 }, { x: 0.268, y: 0.680 },
+      { x: 0.244, y: 0.320 }, { x: 0.220, y: 0.680 }, { x: 0.196, y: 0.320 },
+      { x: 0.172, y: 0.680 }, { x: 0.148, y: 0.330 }, { x: 0.124, y: 0.670 },
+      { x: 0.100, y: 0.360 }, { x: 0.078, y: 0.640 }, { x: 0.058, y: 0.420 },
+      { x: 0.042, y: 0.580 }, { x: 0.030, y: 0.500 },
+    ],
   });
 
   return stages;

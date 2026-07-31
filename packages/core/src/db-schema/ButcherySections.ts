@@ -22,6 +22,7 @@ export type ButcherySectionYield =
   | 'spine'       // 척추뼈 (어종군)
   | 'rib'         // 갈빗대뼈 ×2 (어종군)
   | 'pin'         // 생선 지아이뼈 (공통)
+  | 'skinFillet'  // 껍질이 붙어있는 순살 필렛 ×4 (지아이 분리 후 — 1·2면에서 각 2장)
   | 'skin'        // 생선 껍질 (공통)
   | 'pureFillet'; // 순수 필렛 (완료)
 
@@ -105,7 +106,8 @@ export const WHOLE_FISH_SECTIONS: ButcherySectionDef[] = [
   {
     id: 'sec_fillet_b', label: '2면 뜨기 (자유 순서)', anyOrder: true,
     tasks: [
-      { id: 't_fb_back', label: '등쪽 → 척추까지 + 갈비뼈 끊기', stageIds: ['fillet_1_score', 'fillet_1_ribcut'] },
+      // 3단계 — 척추까지 칼집 1·2회차 → 머리쪽 갈비뼈·척추 연결부 끊기 (사용자 지시 2026-07-31)
+      { id: 't_fb_back', label: '등쪽 → 척추까지 + 갈비뼈 끊기', stageIds: ['fillet_1_score', 'fillet_1_score2', 'fillet_1_ribcut'] },
       { id: 't_fb_belly', label: '꼬리쪽 → 배쪽 분리', stageIds: ['fillet_1_sever'] },
     ],
     yields: ['filletB', 'spine'],
@@ -126,12 +128,18 @@ export const WHOLE_FISH_SECTIONS: ButcherySectionDef[] = [
       { id: 't_pin_a', label: '필렛 A 지아이 라인 ×2', stageIds: ['pin_a'] },
       { id: 't_pin_b', label: '필렛 B 지아이 라인 ×2', stageIds: ['pin_b'] },
     ],
-    yields: ['pin'],
-    // 종료 불가 — 분리 직후 낱장 상태 에셋 없음 (사용자 순서도 10번)
+    // 지아이 분리 결과 = 지아이뼈 2개 + **껍질 붙은 순살 필렛 4장**(1·2면에서 각 2장)
+    yields: ['pin', 'skinFillet'],
+    exitAfter: true,   // ← 껍질 붙은 필렛 4장 상태로 종료 가능 (박피는 재장착으로 이어서)
   },
   {
+    // 박피 = **필렛 1장** 처리 → 생선 껍질 + 순수 필렛 1개 (사용자 지시 2026-07-31).
+    //  ① 꼬리 손잡이 칼집 ② 껍질 분리(경계 칼 넣기 → 잡고 좌측 지그재그 당기기)
     id: 'sec_peel', label: '박피 (껍질 벗기기)', anyOrder: false,
-    tasks: [{ id: 't_peel', label: '껍질 분리', stageIds: ['peel'] }],
+    tasks: [
+      { id: 't_peel_grip', label: '꼬리 손잡이 만들기', stageIds: ['peel_grip'] },
+      { id: 't_peel_skin', label: '껍질 분리', stageIds: ['peel_insert', 'peel_pull'] },
+    ],
     yields: ['skin', 'pureFillet'],
   },
 ];

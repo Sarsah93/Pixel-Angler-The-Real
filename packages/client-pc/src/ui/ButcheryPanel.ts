@@ -43,6 +43,11 @@ export interface ButcheryCallbacks {
   onComplete: () => void;
   /** [다음 생선 손질] — 인벤토리의 다음 finfish 어획물로 이어서 손질 (연속 흐름, P1-4). 없으면 미제공 */
   onNext?: () => void;
+  /**
+   * 재장착 시작 섹션 — 껍질 붙은 필렛을 도마에 올리면 `'sec_peel'`로 시작한다.
+   * 그 앞 섹션·작업은 모두 완료 처리된다 (원물이 아니라 중간 산출물이므로).
+   */
+  resumeSectionId?: string;
 }
 
 export class ButcheryPanel extends DraggablePanel {
@@ -157,6 +162,8 @@ export class ButcheryPanel extends DraggablePanel {
 
   /** dev 개별 작업 목록 확장 (좌측 하단) */
   private devExpand = false;
+  /** 중간 산출물 재장착으로 시작했는가 (박피부터 등) — 정산 로직 분기 */
+  private resumed = false;
 
   // ── 좌표 로그 스크롤 (마더 HUD 안 — 넘치면 스크롤바) ──
   private editLogRect?: { x: number; y: number; w: number; h: number };
@@ -220,7 +227,8 @@ export class ButcheryPanel extends DraggablePanel {
 
     // 자유 손질 섹션 컨트롤러 초기화 (그래픽 레이어 생성 이후 — selectTask가 refresh 호출)
     this.renderedOrientation = this.process.orientation;
-    this.enterSection(0);
+    if (cbs.resumeSectionId) this.resumeAtSection(cbs.resumeSectionId);
+    else this.enterSection(0);
     this.refresh();
     this.applyFix();
   }
@@ -350,6 +358,25 @@ export class ButcheryPanel extends DraggablePanel {
     } else {
       this.selectTask(next.id);
     }
+  }
+
+  /**
+   * 재장착 시작 — 지정 섹션 앞의 모든 섹션/작업을 완료 처리하고 그 섹션부터 진행.
+   * (껍질 붙은 필렛을 도마에 올린 경우 = 박피부터)
+   */
+  private resumeAtSection(sectionId: string): void {
+    const si = this.sections.findIndex((s) => s.id === sectionId);
+    if (si <= 0) { this.enterSection(0); return; }
+    this.sections.forEach((sec, i) => {
+      if (i >= si) return;
+      sec.tasks.forEach((t) => {
+        t.stageIds.forEach((id) => this.doneStages.add(id));
+        this.doneTasks.set(t.id, 100);
+      });
+    });
+    this.syncDerivedFromDone();
+    this.resumed = true;
+    this.enterSection(si);
   }
 
   /** 작업 선택 (작업 목록 클릭 / 선형 자동) — 해당 작업의 첫 미완료 스테이지로 점프 */
@@ -486,10 +513,28 @@ export class ButcheryPanel extends DraggablePanel {
           rows.push({ key: 'rib', qty: 1, tpl: { ...base, id: `inv_byp_rib_${speciesId}_${seq}`, name: `${nameKo} 갈빗대뼈 ${wts.ribG}g`, icon: '🍖', iconTexture: `trim_rib_${fam}`, byproductKind: 'rib', basePrice: Math.max(200, wts.ribG * 3), speciesId, weightG: wts.ribG } });
           break;
         case 'pin':
-          rows.push({ key: 'pin', qty: 1, tpl: { ...base, id: 'inv_byp_pin', name: '생선 지아이뼈', icon: '🦴', iconTexture: 'trim_pin', byproductKind: 'pin', basePrice: 200 } });
+          rows.push({ key: 'pin', qty: 2, tpl: { ...base, id: 'inv_byp_pin', name: '생선 지아이뼈', icon: '🦴', iconTexture: 'trim_pin', byproductKind: 'pin', basePrice: 200 } });
           break;
+        case 'skinFillet': {
+          // 지아이 분리 후 = 1·2면에서 각 2장 → **껍질 붙은 순살 필렛 4장**.
+          //  이 아이템을 도마에 다시 올리면 박피 섹션부터 이어서 진행한다 (재장착).
+          const sw = Math.max(1, Math.round(wts.filletG / 2));
+          rows.push({
+            key: 'skinFillet', qty: 4,
+            tpl: {
+              ...base, subCategory: '손질 필렛',
+              id: `inv_filletskin_${speciesId}_${seq}`,
+              name: `껍질이 붙어있는 ${nameKo} 순살 필렛 ${sw}g`,
+              icon: '🍣', iconTexture: 'trim_fillet_skin',
+              basePrice: Math.max(1000, sw * 7),
+              speciesId, weightG: sw, lengthCm: this.source.lengthCm,
+            },
+          });
+          break;
+        }
         case 'skin':
-          rows.push({ key: 'skin', qty: Math.max(1, this.process.profile.skinToughness >= 0.4 ? this.process.profile.filletCount : 1), tpl: { ...base, id: 'inv_byp_skin', name: '생선 껍질', icon: '🫓', iconTexture: 'trim_skin', byproductKind: 'skin', basePrice: 250 } });
+          // 박피는 **필렛 1장** 처리 → 껍질 1장 (사용자 지시 2026-07-31)
+          rows.push({ key: 'skin', qty: 1, tpl: { ...base, id: 'inv_byp_skin', name: '생선 껍질', icon: '🫓', iconTexture: 'trim_skin', byproductKind: 'skin', basePrice: 250 } });
           break;
         case 'pureFillet':
           break;   // 순수 필렛은 최종 정산(showResult)에서 수율 계산으로 지급
@@ -799,6 +844,11 @@ export class ButcheryPanel extends DraggablePanel {
       this.tracePoints = [n];
       this.traceG.clear();
     } else if (stage.primitive === 'drag_fill' || stage.primitive === 'scoop') {
+      // 박피 당기기 = **껍질(도마 왼쪽 회색)을 클릭**해서 시작 (사용자 지시 2026-07-31)
+      if (stage.id === 'peel_pull' && n.x > 0.42) {
+        this.flash('왼쪽 껍질을 잡고 시작하세요', false);
+        return;
+      }
       this.tracing = true;
       this.lastFillPt = n;
     } else if (stage.primitive === 'peel') {
@@ -1154,6 +1204,13 @@ export class ButcheryPanel extends DraggablePanel {
       strokesDone: this.process.stage?.cut?.strokesRequired
         ? this.process.stage.cut.strokesRequired - this.process.currentStrokesLeft
         : 0,
+      // 2면 등쪽은 3스테이지로 나뉘어 있어 완료 스테이지 수로 벌어짐을 누적한다
+      spineOpen: (this.doneStages.has('fillet_1_score') ? 1 : 0)
+        + (this.doneStages.has('fillet_1_score2') ? 1 : 0),
+      // 박피 — 당기기 진행(껍질이 늘어나는 정도) + 꼬리 손잡이 완료 여부
+      peelProgress: this.process.stage?.id === 'peel_pull'
+        ? Math.min(1, this.process.currentFill / (this.process.stage.fillTarget ?? 0.9)) : 0,
+      peelGripDone: this.doneStages.has('peel_grip'),
       // 칼질 성공 연출 중에만 — 스테이지가 넘어가도 마지막 벌어짐을 유지
       openOverride: this.filletOpen ?? undefined,
     }, sprites);
@@ -2877,17 +2934,23 @@ export class ButcheryPanel extends DraggablePanel {
     const perFilletG = Math.round(yieldRes.yieldMassG / Math.max(1, yieldRes.filletCount));
 
     const seq = InventoryStore.nextCatchSeq();
+    // **재장착(껍질 붙은 필렛 1장 박피)** = 순수 필렛 1개만 (원물 수율 계산 대상이 아님)
+    const single = this.resumed;
+    const outCount = single ? 1 : yieldRes.filletCount;
+    const outWeight = single
+      ? Math.max(1, Math.round((this.source.weightG ?? 100) * 0.88))   // 껍질 제거분
+      : perFilletG;
     // 필렛 — pure_pilet 실사 로인 + 어종 색 (P1-2 파라메트릭 → 2026-07-30 실사 에셋)
     InventoryStore.addItem({
       id: `inv_fillet_${speciesId}_${seq}`,
-      name: `${nameKo} 필렛 (${yieldRes.grade}) ${perFilletG}g`,
+      name: `${nameKo} 순수 필렛 (${yieldRes.grade}) ${outWeight}g`,
       icon: '🍣', iconTexture: this.trimFilletKey(speciesId),
       category: 'food', subCategory: '손질 필렛',
       basePrice: perFillet,
       condition: outCond, conditionSinceMs: outSince,
       equippable: false,
-      speciesId, lengthCm: this.source.lengthCm, weightG: perFilletG,
-    }, yieldRes.filletCount);
+      speciesId, lengthCm: this.source.lengthCm, weightG: outWeight,
+    }, outCount);
 
     // ── 부산물 — 자유 손질 개편: 각 섹션 완료 팝업에서 [보관] 선택분(레저)을 여기서 실지급 ──
     //  (머리 S2 / 내장 S3 / 필렛·척추 S8 / 갈빗대 S9 / 지아이 S10 / 껍질 S11 팝업.
@@ -2916,7 +2979,7 @@ export class ButcheryPanel extends DraggablePanel {
     const descTop = this.fishY + 68;
     const descMaxH = (this.fishY + this.fishH - 44) - descTop - 8;
     const desc = this.scene.add.text(this.fishX + this.fishW / 2, descTop, [
-      `${nameKo} 필렛 x${yieldRes.filletCount} (장당 ${perFillet.toLocaleString()}원)`,
+      `${nameKo} 순수 필렛 x${outCount} (장당 ${perFillet.toLocaleString()}원)`,
       `부산물: 각 단계 팝업에서 보관 선택분 지급${skinNote}`,
       `수율 ${yieldRes.yieldMassG}g · 슬라이스 ${yieldRes.sliceCount}점 · 컷 정확도 ${(r.avgCutQuality * 100).toFixed(0)}%`,
       `칼: ${knifeName} · 시메 ${r.ikejimeDone ? 'O' : 'X'} · 방혈 ${r.bledDone ? 'O' : 'X'} · 손질 스킬 Lv.${lv.level}${lv.leveledUp ? ' (레벨업!)' : ` (+${xpGain} XP)`}`,
