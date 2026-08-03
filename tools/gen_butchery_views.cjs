@@ -392,12 +392,14 @@ function makeSpineFillet(opts) {
   const fleshH = (t) => pw(t, opts.flesh);        // 살 두께 (t: 1=머리 우)
   // 들림 — 칼집 회차별 **점진 + 비대칭**: 1·2회는 머리(우)·등쪽부터 조금씩, 3회는 꼬리(좌)까지 전부.
   //  state 0 = 닫힘(껍질 덮인 살이 척추뼈에 붙어 연결). (사용자 지시 2026-07-31)
-  const liftAt = (t) => {                          // t: 1=머리(우), 0=꼬리(좌)
+  //  `liftFrom: 'tail'`이면 **꼬리쪽부터** 들린다 (배쪽 뜨기 = 꼬리→배 방향 — 사용자 지시 2026-07-31)
+  const liftAt = (tIn) => {                        // t: 1=머리, 0=꼬리
     if (st <= 0) return 0;
+    const t = opts.liftFrom === 'tail' ? 1 - tIn : tIn;
     let env;
-    if (st === 1) env = Math.max(0, (t - 0.5) / 0.5) ** 0.9;                        // 머리쪽만 아주 조금
-    else if (st === 2) env = Math.max(0, (t - 0.22) / 0.78) ** 0.75;                // 머리~중간
-    else env = Math.sin(Math.PI * Math.min(1, Math.max(0, (t + 0.03) / 0.97))) ** 0.4;  // 꼬리까지 전부
+    if (st === 1) env = Math.max(0, (t - 0.5) / 0.5) ** 0.9;                        // 시작쪽만 아주 조금
+    else if (st === 2) env = Math.max(0, (t - 0.22) / 0.78) ** 0.75;                // 시작~중간
+    else env = Math.sin(Math.PI * Math.min(1, Math.max(0, (t + 0.03) / 0.97))) ** 0.4;  // 반대끝까지 전부
     const mx = st === 1 ? 3 : st === 2 ? 8 : 16;
     return env * mx;
   };
@@ -569,13 +571,18 @@ for (const fam of ['bream', 'amberjack']) {
     out[`${fam}_spine${st}`] = makeSpineFillet({ headRight: true, state: st, flesh: SPINE_FLESH[fam] });
     // 2면 **배쪽** 뷰 — 양쪽 살이 다 붙은 장뜨기 belly 뷰 재활용 금지 (사용자 지시 2026-07-31).
     //  같은 [척추뼈+2면 살] 덩어리를 배쪽에서 본 것 = 은백 뱃살 겉면 · 머리 좌/꼬리 우.
+    //  배쪽은 **꼬리쪽(우)부터** 들린다 (꼬리 → 배 방향으로 긋기 때문)
     out[`${fam}_bellyspine${st}`] = makeSpineFillet({
-      headRight: false, state: st, flesh: SPINE_FLESH[fam], skin: 'belly',
+      headRight: false, state: st, flesh: SPINE_FLESH[fam], skin: 'belly', liftFrom: 'tail',
     });
   }
   // 3단계(갈비뼈·척추 연결부 끊기) 전용 — 완전히 벌어진 상태 + 머리쪽 갈비뼈 노출
   out[`${fam}_spineribs`] = makeSpineFillet({
     headRight: true, state: 3, flesh: SPINE_FLESH[fam], ribs: true,
+  });
+  // 배쪽 갈비뼈·척추 연결부 끊기 전용 (머리 좌 · 꼬리쪽부터 들림)
+  out[`${fam}_bellyspineribs`] = makeSpineFillet({
+    headRight: false, state: 3, flesh: SPINE_FLESH[fam], skin: 'belly', liftFrom: 'tail', ribs: true,
   });
   // 박피 ② 측면 단면 — 껍질(회색) 위에 살코기 마운드
   out[`${fam}_peelcross`] = makePeelCross({ mound: PEEL_MOUND[fam] });

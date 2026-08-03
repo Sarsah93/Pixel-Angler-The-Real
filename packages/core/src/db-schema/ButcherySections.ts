@@ -108,7 +108,8 @@ export const WHOLE_FISH_SECTIONS: ButcherySectionDef[] = [
     tasks: [
       // 3단계 — 척추까지 칼집 1·2회차 → 머리쪽 갈비뼈·척추 연결부 끊기 (사용자 지시 2026-07-31)
       { id: 't_fb_back', label: '등쪽 → 척추까지 + 갈비뼈 끊기', stageIds: ['fillet_1_score', 'fillet_1_score2', 'fillet_1_ribcut'] },
-      { id: 't_fb_belly', label: '꼬리쪽 → 배쪽 분리', stageIds: ['fillet_1_sever'] },
+      // 등쪽과 같은 구조 — 2회 긋기 + 배쪽 갈비뼈·척추 연결부 끊기 (사용자 지시 2026-07-31)
+      { id: 't_fb_belly', label: '꼬리쪽 → 배쪽 분리', stageIds: ['fillet_1_sever', 'fillet_1_bellyribcut'] },
     ],
     yields: ['filletB', 'spine'],
     exitAfter: true,   // ← 필렛(껍질+갈빗대)만 저장하고 손질 종료 가능

@@ -1265,3 +1265,10 @@ class InventoryStoreManager {
 }
 
 export const InventoryStore = new InventoryStoreManager();
+
+// dev 검증용 전역 노출 — Vite dev에서 하네스가 `import('/src/…')`로 얻는 모듈은
+// 게임이 쓰는 인스턴스와 **다를 수 있어**(URL이 다르면 별개 모듈) 인벤 반영 검증이 불가능했다.
+// 게임 번들이 실제로 쓰는 싱글턴을 그대로 노출해 그 함정을 없앤다. (프로덕션 미노출)
+if (import.meta.env.DEV) {
+  (globalThis as unknown as { __INV?: unknown }).__INV = InventoryStore;
+}

@@ -1166,8 +1166,20 @@ export class UtilizationPanel extends DraggablePanel {
     return item.subCategory === '손질 필렛' && item.id.startsWith('inv_filletskin_');
   }
 
+  /** 껍질·갈빗대가 아직 붙어있는 필렛 — 도마에 올리면 **갈빗대 제거부터** 재개 */
+  private isRibFillet(item: InvItem): boolean {
+    return item.subCategory === '손질 필렛' && item.id.startsWith('inv_filletribs_');
+  }
+
+  /** 도마 재장착 가능한 중간 산출물 → 시작 섹션 */
+  private resumeSectionOf(item: InvItem): string | undefined {
+    if (this.isRibFillet(item)) return 'sec_rib';
+    if (this.isSkinFillet(item)) return 'sec_peel';
+    return undefined;
+  }
+
   private dropFishOnBoard(item: InvItem): void {
-    if (this.isSkinFillet(item)) {
+    if (this.resumeSectionOf(item)) {
       if (this.cookBoardFishId && this.cookBoardFishId !== item.id) { this.trySwapBoard(item.id); return; }
       this.cookBoardFishId = item.id;
       this.cookSelectedId = item.id;
@@ -1306,7 +1318,7 @@ export class UtilizationPanel extends DraggablePanel {
       // 손질 프로필 보유 어획물(finfish) + 두족류는 도마로 드래그 가능 (복어/미지원은 불가)
       const fam = item.subCategory === '어획물' ? getButcheryFamily(item.speciesId ?? '') : 'unsupported';
       // 껍질 붙은 필렛도 드래그 가능 — 도마에 올리면 박피부터 재개
-      const draggableFish = fam === 'finfish' || fam === 'cephalopod' || this.isSkinFillet(item);
+      const draggableFish = fam === 'finfish' || fam === 'cephalopod' || !!this.resumeSectionOf(item);
       const hit = this.scene.add.rectangle(cx + cell / 2, cy + cell / 2, cell, cell, 0xffffff, 0.001)
         .setInteractive({ useHandCursor: true });
       if (draggableFish) {
@@ -1329,7 +1341,7 @@ export class UtilizationPanel extends DraggablePanel {
     const footY = gridY + 5 * (cell + gap) + 4;
     const selFam = selItem?.subCategory === '어획물' ? getButcheryFamily(selItem.speciesId ?? '') : 'unsupported';
     const selHint = selItem
-      ? (selItem && this.isSkinFillet(selItem) ? '도마로 드래그하면 박피부터 이어서 진행합니다'
+      ? (selItem && this.resumeSectionOf(selItem) ? (this.isRibFillet(selItem) ? '도마로 드래그하면 갈빗대 제거부터 이어서 진행합니다' : '도마로 드래그하면 박피부터 이어서 진행합니다')
         : selFam === 'finfish' || selFam === 'cephalopod'
           ? '왼쪽 도마로 드래그해서 올리세요'
           : selFam === 'pufferfish' ? '복어는 자격·독 처리 준비 중 — 도마 불가'
@@ -1743,7 +1755,7 @@ export class UtilizationPanel extends DraggablePanel {
     }
     this.butcheryPanel = new ButcheryPanel(this.scene, fish, {
       // 껍질 붙은 필렛 재장착 = 앞 섹션을 모두 마친 것으로 보고 **박피부터** 시작
-      resumeSectionId: this.isSkinFillet(fish) ? 'sec_peel' : undefined,
+      resumeSectionId: this.resumeSectionOf(fish),
       onClose: () => {
         this.butcheryPanel?.destroy();
         this.butcheryPanel = undefined;
@@ -1776,6 +1788,19 @@ export class UtilizationPanel extends DraggablePanel {
       },
     });
     this.scene.add.existing(this.butcheryPanel);
+  }
+
+  /**
+   * 씬 ESC 인터셉트 — 손질(ButcheryPanel)이 열려 있으면 **U패널 대신 손질부터 닫는다**(LIFO).
+   * requestClose 경유라 체크포인트 정산/원물 보존 규칙이 그대로 적용된다.
+   * true 반환 = ESC를 소비했으니 U패널은 닫지 말 것 (RegionFieldScene.closeTopPopup).
+   */
+  onEscIntercept(): boolean {
+    if (this.butcheryPanel) {
+      this.butcheryPanel.escClose();
+      return true;
+    }
+    return false;
   }
 
   override destroy(fromScene?: boolean): void {

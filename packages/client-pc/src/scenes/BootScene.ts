@@ -141,6 +141,9 @@ export class BootScene extends Phaser.Scene {
     this.load.image('trim_fillet_amberjack', 'trimmings/pure_pillet_amberjack.png');
     this.load.image('trim_fillet_ribs', 'trimmings/skinned_pillet_with_ribs.png');
     this.load.image('trim_fillet_skin', 'trimmings/skinned_pillet_without_ribs.png');
+    // 지아이뼈 분리 후 나오는 '껍질이 붙어있는 순살 필렛' — 어종군 분리 (사용자 지시 2026-07-31)
+    this.load.image('trim_fillet_skinonly_bream', 'trimmings/skinned_pillet_bream.png');
+    this.load.image('trim_fillet_skinonly_amberjack', 'trimmings/skinned_pillet_amberjack.png');
     this.load.image('trim_pin', 'trimmings/pin_bone.png');
     this.load.image('trim_guts', 'trimmings/pile_of_fish_guts.png');
     this.load.image('trim_skin', 'trimmings/fish_skin.png');

@@ -859,6 +859,10 @@ export class RegionFieldScene extends Phaser.Scene {
   private closeTopPopup(): boolean {
     const top = this.popupStack[this.popupStack.length - 1];
     if (!top) return false;
+    // 패널이 자식 팝업(도마 손질 등)을 먼저 닫아야 하면 ESC를 위임한다 (LIFO —
+    //  구 동작은 U패널을 통째로 destroy해 진행 중 손질의 부산물 레저가 조용히 소실됐다)
+    const intercept = top.panel as unknown as { onEscIntercept?: () => boolean };
+    if (intercept.onEscIntercept?.()) return true;
     top.close();
     return true;
   }

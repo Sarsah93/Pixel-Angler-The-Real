@@ -396,12 +396,20 @@ export function buildButcheryStages(profile: ButcheryProfile, opts?: ButcherySta
         cut: cut('fillet_1_ribcut', 'BACK_DOWN',
           [{ x: 0.775, y: 0.455 }, { x: 0.792, y: 0.650 }], { strong: true, tolerance: 0.11 }),
       });
-      // 배쪽 작업 = **꼬리쪽 → 배쪽 분리** (척추는 등쪽서 이미 끊었으니 재절단 없음).
-      //  꼬리쪽에서 아가미(내장 있던) 방향으로 척추뼈와 위 살덩어리 사이를 여러 번 그어 분리.
+      // 배쪽 작업 = **꼬리쪽 → 배쪽 분리** — 등쪽과 같은 구조로 2회 긋고,
+      //  마지막에 머리(배)쪽에 연결된 척추뼈·갈비뼈를 끊어 완전 분리 (사용자 지시 2026-07-31).
       stages.push({
         id: 'fillet_1_sever', label: '2면 — 꼬리쪽 → 배쪽 분리', orientation: 'BELLY_UP', primitive: 'guided_cut',
-        guide: '꼬리쪽에서 아가미(내장 있던) 방향으로 척추뼈와 위 살덩어리 사이를 여러 번 그어 분리하세요 (3회 — 점점 깊게)',
-        cut: cut('fillet_1_sever', 'BELLY_UP', [{ x: 0.2, y: 0.5 }, { x: 0.82, y: 0.5 }], { strokesRequired: 3, tolerance: 0.1 }),
+        guide: '꼬리쪽(우)에서 머리(배)쪽으로 척추뼈와 살덩어리 사이를 그어 분리하세요 (2회 — 점점 깊게)',
+        // 사용자 F9 실측 (2026-07-31)
+        cut: cut('fillet_1_sever', 'BELLY_UP',
+          [{ x: 0.798, y: 0.657 }, { x: 0.190, y: 0.647 }], { strokesRequired: 2, tolerance: 0.1 }),
+      });
+      stages.push({
+        id: 'fillet_1_bellyribcut', label: '2면 — 배쪽 갈비뼈·척추 연결부 끊기', orientation: 'BELLY_UP', primitive: 'guided_cut',
+        guide: '머리(배)쪽에 드러난 척추뼈와 갈비뼈가 연결된 지점을 끊어 2면을 완전히 떼어내세요',
+        cut: cut('fillet_1_bellyribcut', 'BELLY_UP',
+          [{ x: 0.208, y: 0.455 }, { x: 0.191, y: 0.650 }], { strong: true, tolerance: 0.11 }),
         yieldsFillet: true,
       });
     } else {
@@ -428,12 +436,18 @@ export function buildButcheryStages(profile: ButcheryProfile, opts?: ButcherySta
   stages.push({
     id: 'rib_a', label: '갈빗대 제거 (필렛 A)', orientation: 'FLESH_UP', primitive: 'guided_cut',
     guide: '척추뼈 자리에서 내장막 쪽으로 대각선 칼집 — 갈빗대 판만 얇게 도려내세요',
-    cut: cut('rib_a', 'FLESH_UP', [{ x: 0.12, y: 0.58 }, { x: 0.3, y: 0.68 }, { x: 0.46, y: 0.72 }], { tolerance: 0.09 }),
+    // 사용자 F9 실측 (2026-07-31 — 실사 fillet_ribs 뷰 기준)
+    cut: cut('rib_a', 'FLESH_UP',
+      [{ x: 0.117, y: 0.446 }, { x: 0.197, y: 0.504 }, { x: 0.274, y: 0.567 }, { x: 0.348, y: 0.633 },
+        { x: 0.418, y: 0.703 }, { x: 0.463, y: 0.791 }, { x: 0.486, y: 0.888 }], { tolerance: 0.09 }),
   });
   stages.push({
     id: 'rib_b', label: '갈빗대 제거 (필렛 B)', orientation: 'FLESH_UP', primitive: 'guided_cut',
     guide: '반대쪽 필렛도 같은 방식으로 갈빗대 판을 도려내세요',
-    cut: cut('rib_b', 'FLESH_UP', [{ x: 0.12, y: 0.58 }, { x: 0.3, y: 0.68 }, { x: 0.46, y: 0.72 }], { tolerance: 0.09 }),
+    // 사용자 F9 실측 (2026-07-31 — 좌우 미러된 필렛 B 기준)
+    cut: cut('rib_b', 'FLESH_UP',
+      [{ x: 0.917, y: 0.373 }, { x: 0.817, y: 0.431 }, { x: 0.711, y: 0.482 }, { x: 0.622, y: 0.556 },
+        { x: 0.561, y: 0.655 }, { x: 0.529, y: 0.768 }, { x: 0.511, y: 0.885 }], { tolerance: 0.09 }),
   });
 
   // 10. 필렛 손질 ② 지아이뼈 분리 — 세로 2회 절단 (머리쪽 가운데 → 꼬리쪽 일자)
@@ -453,15 +467,16 @@ export function buildButcheryStages(profile: ButcheryProfile, opts?: ButcherySta
   stages.push({
     id: 'peel_grip', label: '박피 ① 꼬리 손잡이 만들기', orientation: 'FLESH_UP', primitive: 'guided_cut',
     guide: '꼬리(왼쪽) 살코기에 작은 칼집을 넣어 잡을 손잡이를 만드세요',
+    // 사용자 F9 실측 (2026-07-31)
     cut: cut('peel_grip', 'FLESH_UP',
-      [{ x: 0.175, y: 0.335 }, { x: 0.175, y: 0.700 }], { tolerance: 0.1 }),
+      [{ x: 0.106, y: 0.350 }, { x: 0.065, y: 0.562 }], { tolerance: 0.1 }),
   });
   stages.push({
     id: 'peel_insert', label: '박피 ② 껍질과 살 사이 칼 넣기', orientation: 'FLESH_UP', primitive: 'guided_cut',
     guide: '측면에서 껍질(회색)과 살코기 경계면을 따라 칼을 넣으세요',
-    // 측면 단면 뷰 기준 — **껍질(회색) 상단 경계**를 좌→우로 (뷰 스프라이트 실측 y≈0.81)
+    // 측면 단면 뷰 — 껍질(회색)↔살 경계에 칼끝을 꽂아 넣는 짧은 컷 (사용자 F9 실측 2026-07-31)
     cut: cut('peel_insert', 'FLESH_UP',
-      [{ x: 0.230, y: 0.812 }, { x: 0.775, y: 0.812 }], { tolerance: 0.09 }),
+      [{ x: 0.209, y: 0.779 }, { x: 0.281, y: 0.783 }], { tolerance: 0.09 }),
   });
   stages.push({
     id: 'peel_pull', label: '박피 ③ 껍질 잡고 분리', orientation: 'FLESH_UP', primitive: 'drag_fill',

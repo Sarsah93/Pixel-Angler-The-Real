@@ -276,12 +276,12 @@ export class ItemDetailPanel extends DraggablePanel {
     // 열람 시점에 신선도를 지연 갱신 (경과 시간만큼 단계 진행 — 외부 공급자 있으면 외부 규칙 우선)
     if (!remainProvider) refreshCondition(item);
     const detail = buildItemDetail(item);
-    // 어획물은 실사 픽셀 생선 이미지를 크게 표시
-    // iconTexture가 비었거나(구세이브) 미로드면 speciesId로 텍스처를 폴백 해소
+    // **픽셀아트가 제공된 모든 아이템은 확대 이미지를 크게 표시** (사용자 지시 2026-07-31 —
+    //  어획물 실사 생선뿐 아니라 손질 부산물(trim_*)·필렛·가공식품 등 iconTexture 보유 전체).
+    //  어획물은 iconTexture가 비어도(구세이브) speciesId로 텍스처를 폴백 해소.
     const fishTexKey: string | undefined = (() => {
-      if (item.subCategory !== '어획물') return undefined;
       if (item.iconTexture && scene.textures.exists(item.iconTexture)) return item.iconTexture;
-      if (item.speciesId) {
+      if (item.subCategory === '어획물' && item.speciesId) {
         const r = resolveFishTexture(item.speciesId, item.lengthCm ?? 0, 'F');
         if (r && scene.textures.exists(r)) return r;
       }

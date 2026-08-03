@@ -134,8 +134,13 @@ export class ButcheryPanel extends DraggablePanel {
   private activeTaskId: string | null = null;
   /** anyOrder 섹션에서 작업 선택 대기 중 — 손질 입력 차단 */
   private awaitingSelect = false;
-  /** 부산물 보관 레저 — 팝업 [보관] 선택분. 정산(체크포인트/완료) 시점에 실지급 */
-  private pendingItems: { key: string; tpl: Omit<InvItem, 'slot' | 'qty'>; qty: number }[] = [];
+  /**
+   * 이번 세션에서 **즉시 지급**한 부산물 로그 — [id, qty].
+   * (구 "레저 적립 후 정산 시 일괄 지급" 구조 폐지 — 사용자 지시 2026-08-03 "과정마다 지급".
+   *  체크포인트 전 이탈 시 원물 복구 규칙은 이 로그로 **지급분을 회수**해 유지한다.
+   *  손질 중엔 인벤토리를 열 수 없어(모달) 회수 시점에 아이템이 이미 소비됐을 수 없다.)
+   */
+  private grantedLog: { id: string; qty: number }[] = [];
   /** 손질 종료 가능 체크포인트 (none = 이탈 시 원물 복구) */
   private checkpoint: 'none' | 'fillets' | 'ribs' = 'none';
   private byproductPopup?: Phaser.GameObjects.Container;
@@ -165,6 +170,13 @@ export class ButcheryPanel extends DraggablePanel {
   /** 중간 산출물 재장착으로 시작했는가 (박피부터 등) — 정산 로직 분기 */
   private resumed = false;
 
+  /** 인벤토리 칸 부족으로 지급하지 못한 부산물 이름 (결과 화면 경고) */
+  private grantFailed: string[] = [];
+
+  // ── 박피 톱질 연출 — 드래그하는 동안 칼이 제자리에서 위아래로 왕복 ──
+  private peelSawPhase = 0;
+  private peelSawEvent?: Phaser.Time.TimerEvent;
+
   // ── 좌표 로그 스크롤 (마더 HUD 안 — 넘치면 스크롤바) ──
   private editLogRect?: { x: number; y: number; w: number; h: number };
   private editLogBarG?: Phaser.GameObjects.Graphics;
@@ -192,6 +204,12 @@ export class ButcheryPanel extends DraggablePanel {
     // 닫기(X/ESC) 가로채기 — 체크포인트 전 = 원물 복구(레저 폐기), 후 = 체크포인트 정산
     const origClose = cbs.onClose;
     this.requestClose = (): void => {
+      // 체크포인트 이후 이탈 = 그 시점으로 정산. **부산물 팝업이 떠 있으면 [보관] 선택분을 먼저 적립**
+      // 하고 정산한다 (팝업에서 ESC를 눌러도 그 단계 부산물을 잃지 않도록).
+      if (!this.done && this.byproductPopup && this.checkpoint !== 'none') {
+        this.confirmByproductPopup(true);
+        return;
+      }
       if (!this.done && this.checkpoint !== 'none') {
         this.settleAtCheckpoint();   // 필렛 저장 시점 이후 이탈 = 그 시점으로 정산
         return;                      // settle이 결과 오버레이 → [확인]에서 닫힘
@@ -237,7 +255,28 @@ export class ButcheryPanel extends DraggablePanel {
     this.onPointerDown(p);
   }
 
+  /**
+   * ESC 위임 진입점 — 씬의 popupStack ESC가 U패널을 닫기 전에 이 패널을 먼저 닫도록
+   * (UtilizationPanel.onEscIntercept → 여기). requestClose는 protected라 공개 래퍼.
+   */
+  escClose(): void {
+    this.requestClose();
+  }
+
   override destroy(fromScene?: boolean): void {
+    // ── 이탈 정산 안전망 (사용자 리포트 2026-07-31 "ESC로 나가면 부산물이 사라짐") ──
+    //  씬 ESC → UtilizationPanel.destroy → 이 destroy가 **requestClose를 거치지 않고 직행**하는
+    //  경로가 있다(교체 확인·씬 셧다운도 동일). 부산물은 팝업 확인 시점에 이미 지급돼 있으므로:
+    //  체크포인트 이후 = 열린 팝업 선택분 지급 → 원물 소모 → XP /
+    //  체크포인트 전 = 원물 보존 규칙 — **이번 세션 지급분을 회수**(revokeGranted).
+    if (!this.done && this.checkpoint !== 'none') {
+      this.done = true;
+      this.absorbByproductPopup();
+      InventoryStore.removeItem(this.source.id, false);
+      GameState.addFilletingXp(Math.round(14 + (this.checkpoint === 'ribs' ? 10 : 0)));
+    } else if (!this.done) {
+      this.revokeGranted();
+    }
     this.closeSheetViewer();
     this.closeByproductPopup();
     this.editDrawG?.destroy();
@@ -248,6 +287,8 @@ export class ButcheryPanel extends DraggablePanel {
     this.scene?.input?.off('pointermove', this.butcheryMoveHandler);
     this.scene?.input?.off('pointerup', this.butcheryUpHandler);
     this.scene?.input?.off('pointerdown', this.onPointerDownBound, this);
+    this.peelSawEvent?.remove();
+    this.peelSawEvent = undefined;
     this.scene?.input?.off('wheel', this.onEditLogWheel);
     this.scene?.input?.keyboard?.off('keydown', this.keyHandler);
     this.flipTweens.forEach((t) => t.remove());
@@ -374,8 +415,18 @@ export class ButcheryPanel extends DraggablePanel {
         this.doneTasks.set(t.id, 100);
       });
     });
-    this.syncDerivedFromDone();
     this.resumed = true;
+    // 재장착은 **필렛 1장** 세션 — 반대쪽(B면) 작업은 이 세션 대상이 아니다(별도 세션에서 처리).
+    if (sectionId === 'sec_rib') {
+      const all = this.sections.flatMap((s) => s.tasks);
+      for (const id of ['t_rib_b', 't_pin_b']) {
+        const t = all.find((x) => x.id === id);
+        if (!t) continue;
+        t.stageIds.forEach((sid) => this.doneStages.add(sid));
+        this.doneTasks.set(id, 100);
+      }
+    }
+    this.syncDerivedFromDone();
     this.enterSection(si);
   }
 
@@ -396,9 +447,19 @@ export class ButcheryPanel extends DraggablePanel {
    */
   private onStageComplete(stageId: string, quality: number): void {
     this.doneStages.add(stageId);
-    const task = this.section.tasks.find((t) => t.id === this.activeTaskId)
+    let task = this.section.tasks.find((t) => t.id === this.activeTaskId)
       ?? this.section.tasks.find((t) => t.stageIds.includes(stageId));
-    if (!task) return;
+    // **자가 복구** — 완료된 스테이지가 현재 섹션에 없다면 섹션 인덱스가 어긋난 것이다.
+    //  구 구현은 여기서 조용히 return해, 한 번 어긋나면 이후 **모든 부산물 팝업/정산이 통째로
+    //  사라졌다**(사용자 리포트 2026-07-31 — "부산물이 어디 갔는지 없고 순수 필렛만 나옴").
+    if (!task) {
+      const si = this.sections.findIndex((s) => s.tasks.some((t) => t.stageIds.includes(stageId)));
+      if (si < 0) return;
+      this.sectionIdx = si;
+      task = this.sections[si].tasks.find((t) => t.stageIds.includes(stageId));
+      if (!task) return;
+      this.activeTaskId = task.id;
+    }
     const acc = this.taskAcc.get(task.id) ?? [];
     acc.push(Math.max(0, Math.min(1, quality)));
     this.taskAcc.set(task.id, acc);
@@ -423,6 +484,14 @@ export class ButcheryPanel extends DraggablePanel {
     // 작업/섹션 완료 후 진행 — 부산물 팝업이 있으면 그 확인 뒤에 실행된다
     const after = (): void => {
       if (secDone) {
+        // **체크포인트를 팝업보다 먼저 확정** — 팝업 도중/직후 ESC로 나가도 그 시점 부산물을
+        //  받을 수 있어야 한다 (구 구현은 advanceSection에서야 설정돼, 팝업에서 ESC = 전부 폐기.
+        //  사용자 리포트 2026-07-31 "여기까지 하고 나가면 아이템이 하나도 안 보임").
+        if (sec.exitAfter) {
+          if (sec.id === 'sec_fillet_b') this.checkpoint = 'fillets';
+          else if (sec.id === 'sec_rib') this.checkpoint = 'ribs';
+          else if (this.checkpoint === 'none') this.checkpoint = 'fillets';
+        }
         if (sec.yields?.length) {
           this.showByproductPopup(sec.yields, sec.label, !!sec.exitAfter, () => this.advanceSection());
         } else {
@@ -446,8 +515,12 @@ export class ButcheryPanel extends DraggablePanel {
     // **연출/뒤집기 재생 중이면 완료 처리(전환·팝업·작업 선택)를 연출 완료 후로 미룬다** —
     //  칼질 연출이 다 끝나기 전에 픽셀 이미지·작업 목록·부산물 팝업이 먼저 뜨지 않도록
     //  (사용자 지시 2026-07-30). 연출 없으면 즉시.
-    if (this.actionAnim || this.flipping) this.pendingAfterAction = runCompletion;
-    else runCompletion();
+    // ⚠ 큐가 이미 차 있으면 **덮어쓰지 말고 이어붙인다** — 덮어쓰면 앞 완료 처리(팝업·섹션 전환)가
+    //   통째로 유실된다.
+    if (this.actionAnim || this.flipping) {
+      const prev = this.pendingAfterAction;
+      this.pendingAfterAction = prev ? (): void => { prev(); runCompletion(); } : runCompletion;
+    } else runCompletion();
   }
 
   /** 다음 섹션으로 (마지막 섹션이면 최종 완료) */
@@ -510,22 +583,24 @@ export class ButcheryPanel extends DraggablePanel {
           rows.push({ key: 'spine', qty: 1, tpl: { ...base, id: `inv_byp_spine_${speciesId}_${seq}`, name: `${nameKo} 척추뼈 ${wts.spineG}g`, icon: '🦴', iconTexture: `trim_spine_${fam}`, byproductKind: 'spine', basePrice: Math.max(200, wts.spineG * 3), speciesId, weightG: wts.spineG } });
           break;
         case 'rib':
-          rows.push({ key: 'rib', qty: 1, tpl: { ...base, id: `inv_byp_rib_${speciesId}_${seq}`, name: `${nameKo} 갈빗대뼈 ${wts.ribG}g`, icon: '🍖', iconTexture: `trim_rib_${fam}`, byproductKind: 'rib', basePrice: Math.max(200, wts.ribG * 3), speciesId, weightG: wts.ribG } });
+          // 필렛 A/B 각각의 갈빗대 → **2개** (사용자 지시 2026-07-31)
+          // 재장착 = 필렛 1장 세션 → 갈빗대 1개 / 원물 통짜 = 2개
+          rows.push({ key: 'rib', qty: this.resumed ? 1 : 2, tpl: { ...base, id: `inv_byp_rib_${speciesId}_${seq}`, name: `${nameKo} 갈빗대뼈 ${Math.max(1, Math.round(wts.ribG / 2))}g`, icon: '🍖', iconTexture: `trim_rib_${fam}`, byproductKind: 'rib', basePrice: Math.max(200, wts.ribG * 2), speciesId, weightG: Math.max(1, Math.round(wts.ribG / 2)) } });
           break;
         case 'pin':
-          rows.push({ key: 'pin', qty: 2, tpl: { ...base, id: 'inv_byp_pin', name: '생선 지아이뼈', icon: '🦴', iconTexture: 'trim_pin', byproductKind: 'pin', basePrice: 200 } });
+          rows.push({ key: 'pin', qty: this.resumed ? 1 : 2, tpl: { ...base, id: 'inv_byp_pin', name: '생선 지아이뼈', icon: '🦴', iconTexture: 'trim_pin', byproductKind: 'pin', basePrice: 200 } });
           break;
         case 'skinFillet': {
           // 지아이 분리 후 = 1·2면에서 각 2장 → **껍질 붙은 순살 필렛 4장**.
           //  이 아이템을 도마에 다시 올리면 박피 섹션부터 이어서 진행한다 (재장착).
           const sw = Math.max(1, Math.round(wts.filletG / 2));
           rows.push({
-            key: 'skinFillet', qty: 4,
+            key: 'skinFillet', qty: this.resumed ? 2 : 4,
             tpl: {
               ...base, subCategory: '손질 필렛',
               id: `inv_filletskin_${speciesId}_${seq}`,
               name: `껍질이 붙어있는 ${nameKo} 순살 필렛 ${sw}g`,
-              icon: '🍣', iconTexture: 'trim_fillet_skin',
+              icon: '🍣', iconTexture: `trim_fillet_skinonly_${fam}`,
               basePrice: Math.max(1000, sw * 7),
               speciesId, weightG: sw, lengthCm: this.source.lengthCm,
             },
@@ -543,16 +618,28 @@ export class ButcheryPanel extends DraggablePanel {
     return rows;
   }
 
-  /** 갈빗대 제거 완료 — 레저의 필렛(갈빗대 포함)을 '껍질이 붙어있는 필렛'으로 갱신 */
+  /** 갈빗대 제거 완료 — **이미 지급된** 갈빗대 필렛 아이템을 '껍질이 붙어있는 필렛'으로 갱신 */
   private morphPendingFilletsToSkinOnly(): void {
     const nameKo = this.speciesName();
-    for (const p of this.pendingItems) {
-      if (p.key !== 'filletA' && p.key !== 'filletB') continue;
-      const w = Math.max(1, Math.round((p.tpl.weightG ?? 100) - (this.bypWeights().ribG / 2)));
-      p.tpl.name = `껍질이 붙어있는 ${nameKo} 필렛 ${w}g`;
-      p.tpl.iconTexture = 'trim_fillet_skin';
-      p.tpl.weightG = w;
+    for (const g of this.grantedLog) {
+      if (!g.id.startsWith('inv_filletribs_')) continue;
+      const item = InventoryStore.find(g.id);
+      if (!item) continue;
+      const w = Math.max(1, Math.round((item.weightG ?? 100) - (this.bypWeights().ribG / 2)));
+      item.name = `껍질이 붙어있는 ${nameKo} 필렛 ${w}g`;
+      item.iconTexture = 'trim_fillet_skin';
+      item.weightG = w;
     }
+    this.scene.events.emit('inventory-changed');
+  }
+
+  /** 지아이 분리로 껍질 필렛 4장이 나올 때 — 지급돼 있던 갈빗대 필렛(2장) 회수 (분할됨) */
+  private removeGrantedRibFillets(): void {
+    this.grantedLog = this.grantedLog.filter((g) => {
+      if (!g.id.startsWith('inv_filletribs_')) return true;
+      InventoryStore.removeQty(g.id, g.qty);
+      return false;
+    });
   }
 
   /**
@@ -594,25 +681,40 @@ export class ButcheryPanel extends DraggablePanel {
       const nameT = scene.add.text(-W / 2 + 62, ry + 12, `${row.tpl.name}${row.qty > 1 ? `  x${row.qty}` : ''}`, {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#d0e8f5',
       }).setOrigin(0, 0.5);
-      if (nameT.width > W - 190) nameT.setScale((W - 190) / nameT.width);
-      // [보관]/[버리기] 토글
+      if (nameT.width > W - 240) nameT.setScale((W - 240) / nameT.width);
+      // [보관] [버리기] — **선택형 2버튼** (선택된 쪽만 강조).
+      //  ⚠ 구 단일 토글은 "현재 상태 표시"였는데 액션 버튼처럼 읽혀, '보관'이라 떠 있을 때
+      //    누르면 오히려 버리기로 뒤집혔다 (사용자가 부산물을 의도치 않게 버리던 함정 UI).
       const tg = scene.add.graphics();
-      const tt = scene.add.text(W / 2 - 62, ry + 12, '', {
+      const keepT = scene.add.text(W / 2 - 128, ry + 12, '보관', {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', fontStyle: 'bold',
+      }).setOrigin(0.5);
+      const dropT = scene.add.text(W / 2 - 58, ry + 12, '버리기', {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', fontStyle: 'bold',
       }).setOrigin(0.5);
       const paint = (): void => {
         tg.clear();
-        tg.fillStyle(keep[i] ? 0x0d4a2e : 0x4a1d1d, 0.95);
-        tg.fillRoundedRect(W / 2 - 104, ry, 84, 24, 4);
-        tg.lineStyle(1.4, keep[i] ? 0x4af2a1 : 0xff6b6b, 0.95);
-        tg.strokeRoundedRect(W / 2 - 104, ry, 84, 24, 4);
-        tt.setText(keep[i] ? '보관' : '버리기').setColor(keep[i] ? '#7fe6b0' : '#ff9a9a');
+        // 보관 버튼 (좌)
+        tg.fillStyle(keep[i] ? 0x0d4a2e : 0x14202e, keep[i] ? 0.95 : 0.7);
+        tg.fillRoundedRect(W / 2 - 158, ry, 60, 24, 4);
+        tg.lineStyle(1.4, keep[i] ? 0x4af2a1 : 0x39505e, 0.95);
+        tg.strokeRoundedRect(W / 2 - 158, ry, 60, 24, 4);
+        // 버리기 버튼 (우)
+        tg.fillStyle(!keep[i] ? 0x4a1d1d : 0x14202e, !keep[i] ? 0.95 : 0.7);
+        tg.fillRoundedRect(W / 2 - 92, ry, 68, 24, 4);
+        tg.lineStyle(1.4, !keep[i] ? 0xff6b6b : 0x39505e, 0.95);
+        tg.strokeRoundedRect(W / 2 - 92, ry, 68, 24, 4);
+        keepT.setColor(keep[i] ? '#7fe6b0' : '#5f7d8e');
+        dropT.setColor(!keep[i] ? '#ff9a9a' : '#5f7d8e');
       };
       paint();
-      const hit = scene.add.rectangle(W / 2 - 62, ry + 12, 84, 24, 0xffffff, 0.001)
+      const keepHit = scene.add.rectangle(W / 2 - 128, ry + 12, 60, 24, 0xffffff, 0.001)
         .setInteractive({ useHandCursor: true });
-      hit.on('pointerdown', () => { keep[i] = !keep[i]; paint(); });
-      c.add([tg, tt, nameT, hit]);
+      keepHit.on('pointerdown', () => { keep[i] = true; paint(); });
+      const dropHit = scene.add.rectangle(W / 2 - 58, ry + 12, 68, 24, 0xffffff, 0.001)
+        .setInteractive({ useHandCursor: true });
+      dropHit.on('pointerdown', () => { keep[i] = false; paint(); });
+      c.add([tg, keepT, dropT, nameT, keepHit, dropHit]);
     });
 
     const mkBtn = (y: number, label: string, color: string, stroke: number, onClick: () => void): void => {
@@ -644,21 +746,31 @@ export class ButcheryPanel extends DraggablePanel {
     this.byproductPopup = undefined;
   }
 
-  /** 팝업 확정 — [보관] 행을 레저에 적립. exitNow면 체크포인트 정산으로 종료 */
-  private confirmByproductPopup(exitNow: boolean): void {
+  /** 열린 부산물 팝업의 [보관] 선택분을 **즉시 지급**하고 팝업을 닫는다. 지급 수 반환 */
+  private absorbByproductPopup(): number {
     const c = this.byproductPopup as (Phaser.GameObjects.Container & {
       __rows?: { key: string; tpl: Omit<InvItem, 'slot' | 'qty'>; qty: number }[]; __keep?: boolean[];
     }) | undefined;
-    if (!c) return;
+    if (!c) return 0;
     const rows = c.__rows ?? [];
     const keep = c.__keep ?? [];
     const kept = rows.filter((_, i) => keep[i]);
-    kept.forEach((row) => this.pendingItems.push(row));
+    // 껍질 붙은 순살 필렛(지아이 분리 산출)이 나오면 — 갈빗대 필렛 2장이 4장으로 쪼개진 것이므로
+    // 앞서 지급한 갈빗대 필렛을 회수한다 (중복 방지)
+    if (kept.some((r) => r.key === 'skinFillet')) this.removeGrantedRibFillets();
+    this.grantRows(kept);
     this.closeByproductPopup();
+    return kept.length;
+  }
+
+  /** 팝업 확정 — [보관] 행 **즉시 인벤토리 지급** (사용자 지시 2026-08-03). exitNow면 정산 종료 */
+  private confirmByproductPopup(exitNow: boolean): void {
+    if (!this.byproductPopup) return;
+    const kept = { length: this.absorbByproductPopup() };
     const done = this.byproductDone;
     this.byproductDone = undefined;
     this.flash(kept.length
-      ? `부산물 ${kept.length}종 보관 예정 — 손질 마칠 때 인벤토리에 지급됩니다`
+      ? `부산물 ${kept.length}종 인벤토리에 지급되었습니다`
       : '부산물을 버렸습니다', true);
     if (exitNow) {
       // 즉시 종료 — 체크포인트 갱신 후 정산 (필렛만 저장하고 손질 마침)
@@ -671,23 +783,45 @@ export class ButcheryPanel extends DraggablePanel {
     else this.advanceSection();
   }
 
-  /** 레저 실지급 */
-  private grantPending(): void {
-    for (const p of this.pendingItems) {
+  /**
+   * 레저 실지급 — `addItem`은 **칸이 없으면 조용히 false**를 반환하므로 실패를 모아 알린다.
+   * (부산물이 말없이 사라지던 원인 중 하나 — 사용자 리포트 2026-07-31)
+   */
+  /** 부산물 행 **즉시 지급** — 성공분은 grantedLog에 기록(이탈 회수/변형용), 실패는 경고 */
+  private grantRows(rows: { key: string; tpl: Omit<InvItem, 'slot' | 'qty'>; qty: number }[]): void {
+    for (const p of rows) {
       const tpl = p.tpl as Parameters<typeof InventoryStore.addItem>[0];
-      InventoryStore.addItem(tpl, p.qty);
+      if (InventoryStore.addItem(tpl, p.qty)) this.grantedLog.push({ id: p.tpl.id, qty: p.qty });
+      else this.grantFailed.push(p.tpl.name);
     }
-    this.pendingItems = [];
+    // dev 진단 — "부산물이 안 들어왔다" 리포트 시 콘솔에서 지급 시점 상태를 확인
+    if (import.meta.env.DEV) {
+      console.log('[Butchery] 부산물 지급:',
+        rows.map((p) => `${p.tpl.name} x${p.qty}`).join(', ') || '(지급 대상 없음)',
+        this.grantFailed.length ? `실패 ${this.grantFailed.length}건(칸 부족)` : '');
+    }
+    if (this.grantFailed.length) {
+      this.flash(`⚠ 인벤토리 칸 부족 — ${this.grantFailed.length}종 미지급`, false);
+    }
+    this.scene.events.emit('inventory-changed');
   }
 
-  /** 체크포인트 정산 — 필렛(레저) 지급 + 원물 소모 + XP + 종료 오버레이 */
+  /** 체크포인트 **전** 이탈 — 원물 보존 규칙: 이번 세션에 지급했던 부산물을 전량 회수 */
+  private revokeGranted(): void {
+    for (const g of this.grantedLog) InventoryStore.removeQty(g.id, g.qty);
+    if (import.meta.env.DEV && this.grantedLog.length) {
+      console.log('[Butchery] 체크포인트 전 이탈 — 지급분 회수:', this.grantedLog.length, '건');
+    }
+    this.grantedLog = [];
+  }
+
+  /** 체크포인트 정산 — 부산물은 팝업 시점에 이미 지급됨. 원물 소모 + XP + 종료 오버레이 */
   private settleAtCheckpoint(): void {
     if (this.done) return;
     this.done = true;
     this.stopGuideAnim();
     this.stopActionAnim();
-    this.closeByproductPopup();
-    this.grantPending();
+    this.absorbByproductPopup();   // 아직 열린 팝업이 있으면 그 선택분까지 지급
     InventoryStore.removeItem(this.source.id, false);
     const xp = Math.round(14 + (this.checkpoint === 'ribs' ? 10 : 0));
     const lv = GameState.addFilletingXp(xp);
@@ -977,10 +1111,26 @@ export class ButcheryPanel extends DraggablePanel {
       // 장뜨기 — 칼이 지나간 뒤 **벌어지는 연출** 단계 예약 (칼집 회차 = 벌어짐 정도).
       //  스테이지가 넘어가도(3회째/분리) 연출 동안은 마지막 벌어짐을 유지한다.
       if (r.passed && stage.id.startsWith('fillet_')) {
-        // 배쪽(sever·ribsever)=belly / 등쪽(score)=dorsal · mirrorX = 방금 자른 필렛(fillet_1=2면)
-        const view = stage.id.includes('sever') ? 'belly' : 'dorsal';
-        // 갈비뼈 끊기(ribsever)는 배쪽이 이미 열린 상태에서 진행 — 벌어짐 최대(3) 유지
-        const openState = stage.id.includes('ribsever') ? 3 : Math.min(3, strokesBefore + 1);
+        // 배쪽(sever·ribsever·bellyribcut)=belly / 등쪽(score·ribcut)=dorsal
+        const belly = stage.id.includes('sever') || stage.id.includes('belly');
+        const view = belly ? 'belly' : 'dorsal';
+        // **연결부 끊기 단계는 이미 완전히 벌어진 상태** — 벌어짐 3 고정.
+        //  ⚠ 구 구현은 `strokesBefore + 1`이라 1스트로크 스테이지(ribcut/bellyribcut)에서 **1**이 되어,
+        //    연출 순간 "살짝만 열린" 그림이 튀었다 (사용자 리포트 2026-07-31).
+        //    2면은 스테이지가 쪼개져 있으므로 **완료된 앞 단계까지 누적**해서 계산한다.
+        const done = (id: string): boolean => this.doneStages.has(id);
+        const junction = stage.id.includes('ribsever') || stage.id.endsWith('ribcut');
+        let openState: number;
+        if (junction) {
+          openState = 3;
+        } else if (stage.id.startsWith('fillet_1')) {
+          const base = belly
+            ? (done('fillet_1_bellyribcut') ? 1 : 0)
+            : (done('fillet_1_score') ? 1 : 0) + (done('fillet_1_score2') ? 1 : 0);
+          openState = Math.min(3, base + strokesBefore + 1);
+        } else {
+          openState = Math.min(3, strokesBefore + 1);
+        }
         this.filletOpenPending = { view, state: openState, mirrorX: stage.id.startsWith('fillet_1') };
       }
       const willFlip = this.process.orientation !== this.renderedOrientation;
@@ -1021,6 +1171,7 @@ export class ButcheryPanel extends DraggablePanel {
   private doRefresh(): void {
     this.refreshTitle();   // '손질하기 — 원물 손질 (감성돔, 900g, 38cm)'
     this.uiC.removeAll(true);
+    this.syncPeelSaw();    // 박피 톱질 루프 on/off
     this.drawFish();
     if (!this.knifeLocked()) this.drawGuide();
     this.drawSidebar();
@@ -1163,6 +1314,30 @@ export class ButcheryPanel extends DraggablePanel {
     this.applyFix();
   }
 
+  /**
+   * 박피 톱질 루프 — `peel_pull` 단계에서 **드래그하는 동안** 칼이 제자리 위아래로 움직인다.
+   * (사용자 지시 2026-07-31 — "칼을 제자리에서 위아래로만 톱질하듯이")
+   * 도마 그래픽만 다시 그려 비용을 낮춘다 (doRefresh 아님).
+   */
+  private syncPeelSaw(): void {
+    const active = this.process.stage?.id === 'peel_pull' && !this.done && !this.process.finished;
+    if (active && !this.peelSawEvent) {
+      this.peelSawEvent = this.scene.time.addEvent({
+        delay: 40, loop: true,
+        callback: () => {
+          // 드래그 중일 때만 톱질 (멈추면 그 자리에 정지)
+          if (!this.tracing) return;
+          this.peelSawPhase = (this.peelSawPhase + 0.09) % 1;
+          this.drawFish();
+        },
+      });
+    } else if (!active && this.peelSawEvent) {
+      this.peelSawEvent.remove();
+      this.peelSawEvent = undefined;
+      this.peelSawPhase = 0;
+    }
+  }
+
   /** 도마 위 픽셀 생선 — 가이드 시트와 동일한 도트 스프라이트 (FSM 상태 기반) */
   private drawFish(): void {
     const g = this.fishG;
@@ -1204,13 +1379,19 @@ export class ButcheryPanel extends DraggablePanel {
       strokesDone: this.process.stage?.cut?.strokesRequired
         ? this.process.stage.cut.strokesRequired - this.process.currentStrokesLeft
         : 0,
-      // 2면 등쪽은 3스테이지로 나뉘어 있어 완료 스테이지 수로 벌어짐을 누적한다
+      // 2면은 여러 스테이지로 나뉘어 있어 완료 스테이지 수로 벌어짐을 누적한다.
+      //  ⚠ 연결부 끊기(ribcut)까지 포함해야 **완료 직후 전환에서 덜 벌어진 그림으로 되돌아가지 않는다**
+      //    (사용자 리포트 2026-07-31 — 순간적으로 살짝 열린 이미지가 보이던 문제).
       spineOpen: (this.doneStages.has('fillet_1_score') ? 1 : 0)
-        + (this.doneStages.has('fillet_1_score2') ? 1 : 0),
+        + (this.doneStages.has('fillet_1_score2') ? 1 : 0)
+        + (this.doneStages.has('fillet_1_ribcut') ? 1 : 0),
+      bellyOpen: (this.doneStages.has('fillet_1_sever') ? 2 : 0)
+        + (this.doneStages.has('fillet_1_bellyribcut') ? 1 : 0),
       // 박피 — 당기기 진행(껍질이 늘어나는 정도) + 꼬리 손잡이 완료 여부
       peelProgress: this.process.stage?.id === 'peel_pull'
         ? Math.min(1, this.process.currentFill / (this.process.stage.fillTarget ?? 0.9)) : 0,
       peelGripDone: this.doneStages.has('peel_grip'),
+      peelSawPhase: this.peelSawPhase,
       // 칼질 성공 연출 중에만 — 스테이지가 넘어가도 마지막 벌어짐을 유지
       openOverride: this.filletOpen ?? undefined,
     }, sprites);
@@ -1915,18 +2096,34 @@ export class ButcheryPanel extends DraggablePanel {
     this.checkpoint = secDone('sec_rib') ? 'ribs' : secDone('sec_fillet_b') ? 'fillets' : 'none';
   }
 
-  /** 현재 섹션의 모든 작업을 완료 처리하고 다음 섹션으로 (부산물 팝업/지급은 건너뜀) */
+  /** 부산물 yields를 팝업 없이 **즉시 지급** (dev 항법 전용) */
+  private accrueYields(yields: ButcherySectionYield[] | undefined): void {
+    if (!yields?.length) return;
+    if (yields.includes('skinFillet')) this.removeGrantedRibFillets();
+    this.grantRows(this.buildYieldRows(yields));
+  }
+
+  /**
+   * 현재 섹션의 모든 작업을 완료 처리하고 다음 섹션으로.
+   * ⚠ 부산물은 팝업 없이 **레저에 자동 [보관] 적립**된다 — 구 동작(적립도 안 함)은
+   *   dev로 진행한 뒤 나가면 원물만 소모되고 부산물이 0개가 되어 "부산물이 사라졌다"로
+   *   체감됐다 (사용자 리포트 2026-08-03. 55차의 문서화된 한계였으나 함정이라 폐지).
+   */
   private devSkipSection(): void {
     if (this.done || this.process.finished) return;
     const sec = this.section;
     sec.tasks.forEach((t) => {
+      if (this.taskDone(t.id)) return;
       t.stageIds.forEach((id) => this.doneStages.add(id));
       this.doneTasks.set(t.id, 100);
+      this.accrueYields(t.yields);            // 작업 단위 부산물 (머리·내장)
     });
+    this.accrueYields(sec.yields);            // 섹션 단위 부산물 (필렛·척추뼈 등)
+    if (sec.id === 'sec_rib') this.morphPendingFilletsToSkinOnly();
     this.syncDerivedFromDone();
     this.activeTaskId = null;
     this.awaitingSelect = false;
-    this.flash(`dev: '${sec.label}' 건너뜀`, true);
+    this.flash(`dev: '${sec.label}' 건너뜀 — 부산물 레저 적립`, true);
     this.advanceSection();   // 체크포인트 갱신 + 다음 섹션 (마지막이면 최종 완료)
   }
 
@@ -1940,13 +2137,22 @@ export class ButcheryPanel extends DraggablePanel {
     if (!target) return;
     const tIdx = this.sections[secIdx].tasks.indexOf(target);
 
+    // 상태를 처음부터 재구성 — **이번 세션 지급분을 회수한 뒤** 완료 처리분을 다시 지급
+    // (구 동작은 지급 없음 → dev 진행 후 나가면 부산물 0개 함정 — 사용자 리포트 2026-08-03)
     this.doneStages.clear(); this.doneTasks.clear(); this.taskAcc.clear();
+    this.revokeGranted();
     this.sections.forEach((sec, i) => {
+      const whole = i < secIdx;
       sec.tasks.forEach((t, j) => {
         if (!(i < secIdx || (i === secIdx && j < tIdx))) return;
         t.stageIds.forEach((id) => this.doneStages.add(id));
         this.doneTasks.set(t.id, 100);
+        this.accrueYields(t.yields);
       });
+      if (whole) {
+        this.accrueYields(sec.yields);
+        if (sec.id === 'sec_rib') this.morphPendingFilletsToSkinOnly();
+      }
     });
     this.syncDerivedFromDone();
 
@@ -2952,12 +3158,14 @@ export class ButcheryPanel extends DraggablePanel {
       speciesId, lengthCm: this.source.lengthCm, weightG: outWeight,
     }, outCount);
 
-    // ── 부산물 — 자유 손질 개편: 각 섹션 완료 팝업에서 [보관] 선택분(레저)을 여기서 실지급 ──
-    //  (머리 S2 / 내장 S3 / 필렛·척추 S8 / 갈빗대 S9 / 지아이 S10 / 껍질 S11 팝업.
-    //   최종 완료 시 레저의 중간 필렛 항목은 순수 필렛으로 대체되므로 제거)
+    // ── 부산물 — 각 팝업 확인 시점에 **이미 즉시 지급**됨 (2026-08-03 개편).
+    //  최종 완료 시 남아있는 중간 필렛(껍질 필렛)은 순수 필렛으로 대체되므로 회수한다.
     const bp = yieldRes.byproducts;
-    this.pendingItems = this.pendingItems.filter((p) => p.key !== 'filletA' && p.key !== 'filletB');
-    this.grantPending();
+    this.grantedLog = this.grantedLog.filter((g) => {
+      if (!g.id.startsWith('inv_filletskin_') && !g.id.startsWith('inv_filletribs_')) return true;
+      InventoryStore.removeQty(g.id, g.qty);
+      return false;
+    });
     // 원본 생선 1마리 소모
     InventoryStore.removeItem(this.source.id, false);
 
@@ -2983,7 +3191,9 @@ export class ButcheryPanel extends DraggablePanel {
       `부산물: 각 단계 팝업에서 보관 선택분 지급${skinNote}`,
       `수율 ${yieldRes.yieldMassG}g · 슬라이스 ${yieldRes.sliceCount}점 · 컷 정확도 ${(r.avgCutQuality * 100).toFixed(0)}%`,
       `칼: ${knifeName} · 시메 ${r.ikejimeDone ? 'O' : 'X'} · 방혈 ${r.bledDone ? 'O' : 'X'} · 손질 스킬 Lv.${lv.level}${lv.leveledUp ? ' (레벨업!)' : ` (+${xpGain} XP)`}`,
-      yieldRes.undersizedForFillet ? '체장이 작아 회뜨기 비효율 — 통마리 판매/조림 권장' : '인벤토리(음식 탭)에 지급되었습니다.',
+      this.grantFailed.length
+        ? `⚠ 인벤토리 칸 부족 — ${this.grantFailed.length}종 미지급 (${this.grantFailed.slice(0, 2).join(', ')}…)`
+        : yieldRes.undersizedForFillet ? '체장이 작아 회뜨기 비효율 — 통마리 판매/조림 권장' : '인벤토리(음식 탭)에 지급되었습니다.',
     ].join('\n'), {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px',
       color: yieldRes.undersizedForFillet ? '#ffce9a' : '#d0e8f5', align: 'center', lineSpacing: 4,
