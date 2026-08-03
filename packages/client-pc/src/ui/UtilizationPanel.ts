@@ -34,9 +34,14 @@ import { CoolerStore, ChumIngredientKind, CHUM_THROW_COST } from '../store/Coole
 import {
   LureFamily, LureKind, getLureSpec, getLureSinkProfile, jigHeadWeightById,
   getButcheryFamily, BUTCHERY_FAMILY_NOTICE, ButcheryFamily,
+  getBestKnife, SashimiMode, SASHIMI_MODES,
+  SASHIMI_PLATE_SPECS, MIXED_SASHIMI_PRICING, singleSashimiPlatePrice, SashimiSizeTier,
+  evaluateFishSellPrice, FISH_DATABASE,
 } from '@tra/core';
+import { ExternalDataStore } from '../store/ExternalDataStore.js';
 import { DraggablePanel } from './DraggablePanel.js';
 import { ButcheryPanel } from './ButcheryPanel.js';
+import { SashimiPanel } from './SashimiPanel.js';
 import { GuidePanel } from './GuidePanel.js';
 import { ConfirmDialog } from './Dialogs.js';
 import { makeFishPreview } from './FishTemplateRenderer.js';
@@ -119,6 +124,26 @@ export class UtilizationPanel extends DraggablePanel {
   private swapConfirm?: ConfirmDialog;
   /** 회 뜨기 손질 자식 팝업 */
   private butcheryPanel?: ButcheryPanel;
+  private sashimiPanel?: SashimiPanel;
+
+  // ── 사시미 만들기 (접시 플레이팅 — 2026-08-03 사용자 도식) ──
+  /** 도마 아래 서브 영역 상태 — 'sashimi' = 사시미 만들기 확장 */
+  private cookSub: 'none' | 'sashimi' = 'none';
+  /** 장착된 접시 + 배치 상태 (세션 메모리 — 패널 destroy 시 접시/조각 반환) */
+  private plateState: {
+    tmpl: InvItem;                       // 접시 아이템 스냅샷 (반환용)
+    size: SashimiSizeTier;
+    rotation: number;                    // 0..3 — 접시 돌리기 (활성 방위 = quads[rotation])
+    quads: { tmpl: InvItem; speciesId: string; weightG: number; adv: boolean }[][];   // [우상,좌상,좌하,우하]
+  } | null = null;
+  /** 접시 드롭 판정 rect (패널 로컬) */
+  private plateAreaRect = { x: 0, y: 0, w: 0, h: 0 };
+  private cookHelpPopup?: Phaser.GameObjects.Container;
+  /**
+   * 도마 조각 스테이징 — 회썰기 완료 시 썰린 조각들이 **도마 위에 그대로 진열**되고
+   * 한 점씩 아래 접시로 드래그한다 (사용자 도식 2026-08-04. 조각 재고 = 인벤 스택과 동기).
+   */
+  private boardSlicedItemId: string | null = null;
   /** 통합 가이드 팝업 (최초 회뜨기 — '회뜨기' 탭 1회 자동 표시) */
   private guideHubPanel?: GuidePanel;
   /** 루어 채비 트리 네비게이션 상태 */
@@ -1035,6 +1060,34 @@ export class UtilizationPanel extends DraggablePanel {
       }).setOrigin(0.5);
       this.bodyContainer.add(nameLbl);
 
+      if (this.isPureFillet(boardFish)) {
+        // ── 순수 필렛 = 회썰기(사시미) — [일반 회뜨기] + [고급 사시미 뜨기] (사용자 도식 2026-08-03) ──
+        //  일반 = 손 장착 회칼(막칼 포함 — 등급 캡) / 고급 = **야나기바 이상** 장착 시에만 활성.
+        const handKnife = getBestKnife(
+          InventoryStore.items.filter((i) => i.tool === 'knife' && i.equipped).map((i) => i.id));
+        const mkBtn = (bx: number, w: number, label: string, on: boolean, mode: SashimiMode, offMsg: string): void => {
+          const bg = this.scene.add.graphics();
+          bg.fillStyle(on ? 0x0d4a2e : 0x1c2530, 0.96);
+          bg.fillRoundedRect(bx, boardY + 8, w, 24, 4);
+          bg.lineStyle(1.5, on ? 0x4af2a1 : 0x3a4a58, 0.95);
+          bg.strokeRoundedRect(bx, boardY + 8, w, 24, 4);
+          const tx = this.scene.add.text(bx + w / 2, boardY + 20, label, {
+            fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px',
+            color: on ? '#4af2a1' : '#5a6a78', fontStyle: 'bold',
+          }).setOrigin(0.5);
+          const hit = this.scene.add.rectangle(bx + w / 2, boardY + 20, w, 24, 0xffffff, 0.001)
+            .setInteractive({ useHandCursor: true });
+          hit.on('pointerdown', () => {
+            if (!on) { this.flashBoardToast(offMsg); return; }
+            this.openSashimi(boardFish, mode);
+          });
+          this.bodyContainer.add([bg, tx, hit]);
+        };
+        mkBtn(boardX + 8, 96, SASHIMI_MODES.basic.label, !!handKnife, 'basic',
+          '회칼을 손에 장착해야 회를 뜰 수 있습니다 — 인벤토리(기타)에서 회칼 우클릭 → 착용');
+        mkBtn(boardX + 110, 122, SASHIMI_MODES.advanced.label, handKnife?.tier === 'yanagiba', 'advanced',
+          '고급 사시미 뜨기는 야나기바 이상 회칼을 손에 장착해야 합니다');
+      } else {
       // [손질 시작] — finfish만 활성 (두족류는 준비중, 안내)
       const cutEnabled = family === 'finfish';
       const cutBg = this.scene.add.graphics();
@@ -1059,6 +1112,7 @@ export class UtilizationPanel extends DraggablePanel {
         this.openButchery(boardFish);
       });
       this.bodyContainer.add([cutBg, cutTxt, cutHit]);
+      }
 
       // [내리기] — 도마 비우기
       const offBg = this.scene.add.graphics();
@@ -1071,7 +1125,11 @@ export class UtilizationPanel extends DraggablePanel {
         .setInteractive({ useHandCursor: true });
       offHit.on('pointerdown', () => { this.cookBoardFishId = null; this.renderBody(); });
       this.bodyContainer.add([offBg, offTxt, offHit]);
+    } else if (this.boardSlicedItemId && InventoryStore.find(this.boardSlicedItemId)) {
+      // 썰린 회 조각 진열 — 한 점씩 아래 접시로 드래그 (사용자 도식 2026-08-04)
+      this.renderSlicedBoard(boardX, boardY, boardW, boardH);
     } else {
+      if (this.boardSlicedItemId) this.boardSlicedItemId = null;   // 조각 소진 — 스테이징 해제
       const boardLbl = this.scene.add.text(boardX + boardW / 2, boardY + boardH / 2,
         '도마 — 우측 인벤토리의 생선을 드래그해서 올리세요', {
           fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px', color: '#5a4028', fontStyle: 'bold',
@@ -1079,17 +1137,9 @@ export class UtilizationPanel extends DraggablePanel {
       this.bodyContainer.add(boardLbl);
     }
 
-    const info = this.scene.add.text(boardX, boardY + boardH + 26,
-      [
-        '생선을 도마에 올리고 [손질 시작]으로 회를 뜹니다 (넣기·빼기·교환 = 드래그).',
-        '· 원형어=삼면뜨기(양살 2필렛) / 광어·도다리=다섯장뜨기(4~5필렛)',
-        '· 복어(자격·독)·두족류(오징어·문어·갑오징어)는 준비 중입니다',
-        '· 신선도가 높을수록 회 등급이 오릅니다 (활어회는 활어 상태에서만 특 가능)',
-      ].join('\n'), {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#9fc0d4',
-        lineSpacing: 6, wordWrap: { width: boardW },
-      });
-    this.bodyContainer.add(info);
+    // 안내 텍스트 블록은 [?] 도움말로 이동 (사용자 지시 2026-08-03) — 아래 공간은 서브 영역이 사용
+    this.renderCookHelpButton(boardX + boardW - 100, boardY + 8);
+    this.renderCookSubBoxes(boardX, boardY + boardH + 12, boardW, PANEL_H - (boardY + boardH + 12) - 14);
 
     // ── 우측: 종속 인벤토리 (요리 창에 임베드 — 별도 드래그 창 아님) ──
     this.renderEmbeddedInventory(560, top, PANEL_W - 560 - 24);
@@ -1140,6 +1190,11 @@ export class UtilizationPanel extends DraggablePanel {
       return;
     }
     if (mode === 'add') {
+      // 사시미 만들기 영역 — 접시 장착 / 회 조각 배치 (도마보다 우선 판정)
+      if (this.overPlate(p)) {
+        if (this.isPlateItem(item)) { this.mountPlate(item); return; }
+        if (this.isSashimiPiece(item)) { this.placePiece(item); return; }
+      }
       if (this.overBoard(p)) this.dropFishOnBoard(item);
     } else if (!this.overBoard(p)) {
       this.cookBoardFishId = null; this.renderBody();   // 도마 밖으로 빼기 = 내리기
@@ -1171,14 +1226,47 @@ export class UtilizationPanel extends DraggablePanel {
     return item.subCategory === '손질 필렛' && item.id.startsWith('inv_filletribs_');
   }
 
+  /** 갈빗대만 제거된 필렛(재장착 세션 모프 대체분) — 도마에 올리면 **지아이 분리부터** 재개 */
+  private isPinFillet(item: InvItem): boolean {
+    return item.subCategory === '손질 필렛' && item.id.startsWith('inv_filletpin_');
+  }
+
   /** 도마 재장착 가능한 중간 산출물 → 시작 섹션 */
   private resumeSectionOf(item: InvItem): string | undefined {
     if (this.isRibFillet(item)) return 'sec_rib';
+    if (this.isPinFillet(item)) return 'sec_pin';
     if (this.isSkinFillet(item)) return 'sec_peel';
     return undefined;
   }
 
+  /**
+   * 순수 필렛 — 도마에 올리면 **회썰기(사시미) 미니게임** 대상 (2026-08-03).
+   * id 접두 `inv_fillet_`는 skin(`inv_filletskin_`)/ribs(`inv_filletribs_`)와 겹치지 않는다.
+   */
+  private isPureFillet(item: InvItem): boolean {
+    return item.subCategory === '손질 필렛' && item.id.startsWith('inv_fillet_');
+  }
+
   private dropFishOnBoard(item: InvItem): void {
+    // 회 조각 = 도마 스테이징 (썰린 조각 진열 — 접시 드래그의 출발점)
+    if (this.isSashimiPiece(item)) {
+      this.boardSlicedItemId = item.id;
+      this.cookBoardFishId = null;
+      this.cookSub = 'sashimi';
+      this.renderBody();
+      return;
+    }
+    if (this.isPlateItem(item)) {
+      this.flashBoardToast('접시는 아래 [사시미 만들기] 영역에 놓으세요');
+      return;
+    }
+    if (this.isPureFillet(item)) {
+      if (this.cookBoardFishId && this.cookBoardFishId !== item.id) { this.trySwapBoard(item.id); return; }
+      this.cookBoardFishId = item.id;
+      this.cookSelectedId = item.id;
+      this.renderBody();
+      return;
+    }
     if (this.resumeSectionOf(item)) {
       if (this.cookBoardFishId && this.cookBoardFishId !== item.id) { this.trySwapBoard(item.id); return; }
       this.cookBoardFishId = item.id;
@@ -1209,11 +1297,17 @@ export class UtilizationPanel extends DraggablePanel {
       this.renderBody();
       this.flashBoardToast('교환됨');
     };
-    if (this.butcheryPanel) {
+    if (this.butcheryPanel || this.sashimiPanel) {
       this.swapConfirm?.destroy();
       const close = (): void => { this.swapConfirm?.destroy(); this.swapConfirm = undefined; };
-      const dlg = new ConfirmDialog(this.scene, '진행 중인 손질을 취소하고 생선을 교체할까요?',
-        () => { close(); this.butcheryPanel?.destroy(); this.butcheryPanel = undefined; doSwap(); },
+      const dlg = new ConfirmDialog(this.scene,
+        this.sashimiPanel ? '진행 중인 회썰기를 취소하고 교체할까요? (필렛은 보존)' : '진행 중인 손질을 취소하고 생선을 교체할까요?',
+        () => {
+          close();
+          this.butcheryPanel?.destroy(); this.butcheryPanel = undefined;
+          this.sashimiPanel?.destroy(); this.sashimiPanel = undefined;
+          doSwap();
+        },
         () => { close(); });
       this.scene.add.existing(dlg);
       this.swapConfirm = dlg;
@@ -1237,6 +1331,475 @@ export class UtilizationPanel extends DraggablePanel {
       t.destroy();
       if (this.boardToast === t) this.boardToast = undefined;
     });
+  }
+
+  // ═══════════════════════════════════════════════════
+  // 사시미 만들기 — 도마 아래 서브 영역 (접시 플레이팅. 사용자 도식 2026-08-03)
+  // ═══════════════════════════════════════════════════
+
+  /** 사시미 접시 아이템 (소/중/대/특대 — id 접미로 크기 판별) */
+  private isPlateItem(item: InvItem): boolean {
+    return item.id.startsWith('inv_plate_') && item.subCategory === '식기';
+  }
+
+  private plateSizeOf(item: InvItem): SashimiSizeTier {
+    if (item.id.endsWith('_xl')) return '특대';
+    if (item.id.endsWith('_l')) return '대';
+    if (item.id.endsWith('_m')) return '중';
+    return '소';
+  }
+
+  /** 회 조각 (회썰기 산출 — 접시 배치 재료) */
+  private isSashimiPiece(item: InvItem): boolean {
+    return item.id.startsWith('inv_sashimi_cut_');
+  }
+
+  /** 도마 [?] 도움말 버튼 — 구 안내 텍스트 블록의 이동처 */
+  private renderCookHelpButton(x: number, y: number): void {
+    const bg = this.scene.add.graphics();
+    bg.fillStyle(0x1c3550, 0.95);
+    bg.fillCircle(x + 11, y + 11, 11);
+    bg.lineStyle(1.5, 0x9fc0d4, 0.9);
+    bg.strokeCircle(x + 11, y + 11, 11);
+    const q = this.scene.add.text(x + 11, y + 11, '?', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px', color: '#cfe3f2', fontStyle: 'bold',
+    }).setOrigin(0.5);
+    const hit = this.scene.add.circle(x + 11, y + 11, 12, 0xffffff, 0.001)
+      .setInteractive({ useHandCursor: true });
+    hit.on('pointerdown', () => this.showCookHelp());
+    this.bodyContainer.add([bg, q, hit]);
+  }
+
+  private showCookHelp(): void {
+    this.cookHelpPopup?.destroy();
+    const c = this.scene.add.container(0, 0).setDepth(80);
+    const W = 460, H = 240;
+    const x = 60, y = 150;
+    const bg = this.scene.add.graphics();
+    bg.fillStyle(0x081422, 0.97);
+    bg.fillRoundedRect(x, y, W, H, 10);
+    bg.lineStyle(2, 0x4af2a1, 0.9);
+    bg.strokeRoundedRect(x, y, W, H, 10);
+    const title = this.scene.add.text(x + 18, y + 14, '도마 사용법', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '15px', color: '#ffd257', fontStyle: 'bold',
+    });
+    const body = this.scene.add.text(x + 18, y + 44, [
+      '· 생선을 도마에 올리고 [손질 시작]으로 회를 뜹니다 (넣기·빼기·교환 = 드래그)',
+      '· 원형어 = 삼면뜨기(양살 2필렛) / 광어·도다리 = 다섯장뜨기(4~5필렛)',
+      '· 순수 필렛을 올리면 [일반 회뜨기]/[고급 사시미 뜨기(야나기바)]로 회를 썹니다',
+      '· 썰어진 회 조각은 아래 [사시미 만들기] 접시에 담아 완성 (모듬/단품)',
+      '· 복어(자격·독)·두족류(오징어·문어·갑오징어)는 준비 중입니다',
+      '· 신선도가 높을수록 회 등급이 오릅니다 (활어회는 활어 상태에서만 특 가능)',
+    ].join('\n'), {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#9fc0d4',
+      lineSpacing: 7, wordWrap: { width: W - 36 },
+    });
+    const closeHint = this.scene.add.text(x + W / 2, y + H - 18, '클릭하여 닫기', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#5a6a78',
+    }).setOrigin(0.5);
+    const hit = this.scene.add.rectangle(x + W / 2, y + H / 2, W, H, 0xffffff, 0.001)
+      .setInteractive({ useHandCursor: true });
+    hit.on('pointerdown', () => { c.destroy(); if (this.cookHelpPopup === c) this.cookHelpPopup = undefined; });
+    c.add([bg, title, body, closeHint, hit]);
+    this.bodyContainer.add(c);
+    this.cookHelpPopup = c;
+  }
+
+  /**
+   * 도마 아래 서브 영역 — [사시미 만들기(접시 필요)] / [불을 이용한 요리 만들기(미구현)].
+   * 순수 필렛이 도마에 있거나, 회 조각 보유/플레이팅 진행 중일 때 표시.
+   * 선택 시 한쪽이 확대되며 다른 쪽을 밀어내는 연출 (도마/패널 영역 침범 금지).
+   */
+  private renderCookSubBoxes(bx: number, by: number, bw: number, bh: number): void {
+    const boardFish = this.cookBoardFishId ? InventoryStore.find(this.cookBoardFishId) : undefined;
+    const hasPieces = InventoryStore.items.some((i) => this.isSashimiPiece(i));
+    const relevant = (boardFish && this.isPureFillet(boardFish)) || hasPieces
+      || this.cookSub === 'sashimi' || !!this.plateState;
+    if (!relevant) return;
+    bh = Math.min(206, bh);
+
+    if (this.cookSub === 'sashimi') {
+      this.renderSashimiArea(bx, by, bw, bh);
+      return;
+    }
+
+    // ── 접힘 상태 — 2버튼 박스 ──
+    const halfW = (bw - 8) / 2;
+    const hasPlate = !!this.plateState || InventoryStore.items.some((i) => this.isPlateItem(i));
+    const mkBox = (x: number, w: number, label: string, sub: string, on: boolean, onClick: () => void): void => {
+      const g = this.scene.add.graphics();
+      g.fillStyle(on ? 0x0d2438 : 0x141c26, 0.95);
+      g.fillRoundedRect(x, by, w, bh, 10);
+      g.lineStyle(1.5, on ? 0x4af2a1 : 0x3a4a58, 0.9);
+      g.strokeRoundedRect(x, by, w, bh, 10);
+      const t1 = this.scene.add.text(x + w / 2, by + bh / 2 - 12, label, {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '14px',
+        color: on ? '#cfe3f2' : '#5a6a78', fontStyle: 'bold',
+      }).setOrigin(0.5);
+      const t2 = this.scene.add.text(x + w / 2, by + bh / 2 + 12, sub, {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px',
+        color: on ? '#8faabf' : '#4a5a68',
+      }).setOrigin(0.5);
+      const hit = this.scene.add.rectangle(x + w / 2, by + bh / 2, w, bh, 0xffffff, 0.001)
+        .setInteractive({ useHandCursor: true });
+      hit.on('pointerdown', onClick);
+      this.bodyContainer.add([g, t1, t2, hit]);
+    };
+    mkBox(bx, halfW, '사시미 만들기', hasPlate ? '접시에 회 조각을 담아 완성' : '(접시 필요 — 식자재마트 판매)', hasPlate,
+      () => {
+        if (!hasPlate) { this.flashBoardToast('사시미 접시가 필요합니다 — 식자재마트에서 판매합니다'); return; }
+        this.animateSashimiExpand(bx, by, bw, bh, halfW);
+      });
+    mkBox(bx + halfW + 8, halfW, '불을 이용한 요리 만들기', '(화구, 담을 용기 등 필요 — 준비 중)', false,
+      () => this.flashBoardToast('불을 이용한 요리는 준비 중입니다 (화구·담을 용기 필요 — 추후 구현)'));
+  }
+
+  /** 확장 연출 — 좌측 박스가 커지며 우측 박스를 밀어냄 (완료 후 확장 레이아웃 렌더) */
+  private animateSashimiExpand(bx: number, by: number, bw: number, bh: number, halfW: number): void {
+    const g = this.scene.add.graphics();
+    this.bodyContainer.add(g);
+    this.scene.tweens.addCounter({
+      from: 0, to: 1, duration: 240, ease: 'Cubic.easeOut',
+      onUpdate: (tw) => {
+        const t = tw.getValue() ?? 0;
+        g.clear();
+        g.fillStyle(0x0d2438, 0.95);
+        g.fillRoundedRect(bx, by, halfW + (bw - 26 - halfW) * t, bh, 10);
+        const rw = halfW * (1 - t) + 18 * t;
+        g.fillStyle(0x141c26, 0.9);
+        g.fillRoundedRect(bx + bw - rw, by, rw, bh, 8);
+      },
+      onComplete: () => {
+        this.cookSub = 'sashimi';
+        this.renderBody();
+      },
+    });
+  }
+
+  /** 확장된 사시미 만들기 영역 — 접시 장착/플레이팅/완성 */
+  private renderSashimiArea(bx: number, by: number, bw: number, bh: number): void {
+    const areaW = bw - 26;   // 우측 축소 스트립 자리
+    // 배경 + 우측 축소 스트립 (불요리 자리 — 사용자 도식 "우측 칸은 축소")
+    const g = this.scene.add.graphics();
+    g.fillStyle(0x0d2438, 0.95);
+    g.fillRoundedRect(bx, by, areaW, bh, 10);
+    g.lineStyle(1.5, 0x2a4a68, 0.9);
+    g.strokeRoundedRect(bx, by, areaW, bh, 10);
+    g.fillStyle(0x141c26, 0.9);
+    g.fillRoundedRect(bx + bw - 18, by, 18, bh, 8);
+    this.bodyContainer.add(g);
+    const stripTxt = this.scene.add.text(bx + bw - 9, by + bh / 2, '요 리', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#4a5a68',
+    }).setOrigin(0.5).setAngle(90);
+    this.bodyContainer.add(stripTxt);
+
+    // 타이틀 + [접기]
+    const title = this.scene.add.text(bx + 14, by + 10, '사시미 만들기', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '15px', color: '#ffd257', fontStyle: 'bold',
+    });
+    this.bodyContainer.add(title);
+    const fold = this.scene.add.text(bx + areaW - 14, by + 10, '[접기]', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#8faabf',
+    }).setOrigin(1, 0).setInteractive({ useHandCursor: true });
+    fold.on('pointerdown', () => { this.cookSub = 'none'; this.renderBody(); });
+    this.bodyContainer.add(fold);
+
+    // 접시 놓는 곳 rect (드롭 판정 공유)
+    const px = bx + 120, pyTop = by + 8, pw = areaW - 240, ph = bh - 16;
+    this.plateAreaRect = { x: px, y: pyTop, w: pw, h: ph };
+
+    if (!this.plateState) {
+      const drop = this.scene.add.graphics();
+      drop.lineStyle(1.5, 0x4a6a88, 0.9);
+      // 점선 사각 (수동 대시)
+      const dash = 8;
+      for (let dx = 0; dx < pw; dx += dash * 2) drop.lineBetween(px + dx, pyTop, px + Math.min(dx + dash, pw), pyTop);
+      for (let dx = 0; dx < pw; dx += dash * 2) drop.lineBetween(px + dx, pyTop + ph, px + Math.min(dx + dash, pw), pyTop + ph);
+      for (let dy = 0; dy < ph; dy += dash * 2) drop.lineBetween(px, pyTop + dy, px, pyTop + Math.min(dy + dash, ph));
+      for (let dy = 0; dy < ph; dy += dash * 2) drop.lineBetween(px + pw, pyTop + dy, px + pw, pyTop + Math.min(dy + dash, ph));
+      this.bodyContainer.add(drop);
+      const hint = this.scene.add.text(px + pw / 2, pyTop + ph / 2,
+        '사시미 접시를 이곳에 드래그\n(인벤토리 · 기타 탭)', {
+          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#5a7a98', align: 'center', lineSpacing: 6,
+        }).setOrigin(0.5);
+      this.bodyContainer.add(hint);
+      return;
+    }
+
+    this.drawPlate(px + pw / 2, pyTop + ph / 2 + 4);
+
+    // 우측 컨트롤 — 접시 돌리기 + 용량 안내 + [완성]/[접시 빼기]
+    const cx = bx + areaW - 108;
+    const rotLbl = this.scene.add.text(cx + 46, by + 34, '접시 돌리기', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#8faabf',
+    }).setOrigin(0.5);
+    this.bodyContainer.add(rotLbl);
+    const mkRot = (x: number, glyph: string, dir: number): void => {
+      const bg2 = this.scene.add.graphics();
+      bg2.fillStyle(0x1c3550, 0.95);
+      bg2.fillRoundedRect(x, by + 44, 40, 26, 5);
+      bg2.lineStyle(1.2, 0xff6a5a, 0.9);
+      bg2.strokeRoundedRect(x, by + 44, 40, 26, 5);
+      const t = this.scene.add.text(x + 20, by + 57, glyph, {
+        fontFamily: 'monospace', fontSize: '14px', color: '#cfe3f2', fontStyle: 'bold',
+      }).setOrigin(0.5);
+      const hit = this.scene.add.rectangle(x + 20, by + 57, 40, 26, 0xffffff, 0.001)
+        .setInteractive({ useHandCursor: true });
+      hit.on('pointerdown', () => this.rotatePlate(dir));
+      this.bodyContainer.add([bg2, t, hit]);
+    };
+    mkRot(cx, '↶', 1);
+    mkRot(cx + 50, '↷', -1);
+
+    const st = this.plateState;
+    const spec = SASHIMI_PLATE_SPECS[st.size];
+    const placed = st.quads.reduce((s, q) => s + q.length, 0);
+    const total = spec.perQuad * 4;
+    const totalG = st.quads.flat().reduce((s, p) => s + p.weightG, 0);
+    const species = new Set(st.quads.flat().map((p) => p.speciesId));
+    const allAdv = st.quads.flat().length > 0 && st.quads.flat().every((p) => p.adv);
+    const info = this.scene.add.text(cx, by + 82, [
+      `접시 ${st.size} — 방위당 ${spec.perQuad}점`,
+      `배치 ${placed} / ${total}점`,
+      `총 ${totalG}g · ${species.size}종${allAdv ? ' · 고급' : ''}`,
+    ].join('\n'), {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#9fc0d4', lineSpacing: 5,
+    });
+    this.bodyContainer.add(info);
+
+    // [완성] — 전 방위 만석 시 활성
+    const canDone = placed >= total;
+    const doneBg = this.scene.add.graphics();
+    doneBg.fillStyle(canDone ? 0x0d4a2e : 0x1c2530, 0.96);
+    doneBg.fillRoundedRect(cx, by + bh - 66, 96, 26, 5);
+    doneBg.lineStyle(1.5, canDone ? 0x4af2a1 : 0x3a4a58, 0.9);
+    doneBg.strokeRoundedRect(cx, by + bh - 66, 96, 26, 5);
+    const doneTxt = this.scene.add.text(cx + 48, by + bh - 53, '사시미 완성', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px',
+      color: canDone ? '#4af2a1' : '#5a6a78', fontStyle: 'bold',
+    }).setOrigin(0.5);
+    const doneHit = this.scene.add.rectangle(cx + 48, by + bh - 53, 96, 26, 0xffffff, 0.001)
+      .setInteractive({ useHandCursor: true });
+    doneHit.on('pointerdown', () => this.finalizePlate());
+    this.bodyContainer.add([doneBg, doneTxt, doneHit]);
+
+    // [접시 빼기] — 접시+조각 반환
+    const outTxt = this.scene.add.text(cx + 48, by + bh - 26, '[접시 빼기]', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#8faabf',
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    outTxt.on('pointerdown', () => this.unmountPlate());
+    this.bodyContainer.add(outTxt);
+  }
+
+  /** 접시 렌더 — 크기별 스케일, 4방위, 우상(활성 방위)부터 배치 표시 */
+  private drawPlate(cx: number, cy: number): void {
+    const st = this.plateState;
+    if (!st) return;
+    const scale = { '소': 0.62, '중': 0.75, '대': 0.88, '특대': 1.0 }[st.size];
+    const rx = 132 * scale, ry = 52 * scale;
+    const g = this.scene.add.graphics();
+    // 접시 (테두리 림 + 안쪽 링)
+    g.fillStyle(0xdfe4e8, 1);
+    g.fillEllipse(cx, cy, rx * 2, ry * 2);
+    g.fillStyle(0xeef2f5, 1);
+    g.fillEllipse(cx, cy, rx * 1.72, ry * 1.72);
+    g.lineStyle(1, 0xb8c2ca, 0.8);
+    g.strokeEllipse(cx, cy, rx * 1.3, ry * 1.3);
+    g.strokeEllipse(cx, cy, rx * 2, ry * 2);
+    // 활성 방위(우상) 하이라이트
+    g.lineStyle(2, 0x4af2a1, 0.85);
+    g.beginPath();
+    g.arc(cx, cy, rx * 0.99, -Math.PI / 2, 0, false);
+    g.strokePath();
+    this.bodyContainer.add(g);
+    const activeLbl = this.scene.add.text(cx + rx * 0.72, cy - ry - 12, '배치 방위', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#4af2a1',
+    }).setOrigin(0.5);
+    this.bodyContainer.add(activeLbl);
+
+    // 조각 렌더 — 저장 방위 q의 화면 방위 = (q - rotation + 4) % 4. [0 우상, 1 좌상, 2 좌하, 3 우하]
+    const spec = SASHIMI_PLATE_SPECS[st.size];
+    const quadDir = [
+      { sx: 1, sy: -1 }, { sx: -1, sy: -1 }, { sx: -1, sy: 1 }, { sx: 1, sy: 1 },
+    ];
+    for (let q = 0; q < 4; q++) {
+      const screen = (q - st.rotation + 4) % 4;
+      const dir = quadDir[screen];
+      for (let i = 0; i < st.quads[q].length; i++) {
+        const p = st.quads[q][i];
+        // 방위 내 호를 따라 겹치듯 배치 (사용자 도식 — 가운데부터 바깥으로)
+        const t = (i + 0.5) / spec.perQuad;
+        const ang = (screen === 0 || screen === 2)
+          ? -Math.PI / 2 + t * (Math.PI / 2)
+          : Math.PI - (-Math.PI / 2 + t * (Math.PI / 2));
+        const flipY = dir.sy > 0 ? -1 : 1;
+        const pxx = cx + Math.cos(ang) * rx * 0.62;
+        const pyy = cy + Math.sin(ang) * ry * 0.62 * flipY * -1 * (dir.sy);
+        const pg = this.scene.add.graphics();
+        const col = p.adv ? 0xff9a7a : 0xffb2a0;
+        pg.fillStyle(col, 1);
+        pg.fillRoundedRect(-8, -5, 16, 10, 3);
+        pg.fillStyle(0xffffff, 0.75);
+        pg.fillRect(-6, -1, 12, 2);
+        pg.lineStyle(1, 0xc86a55, 0.9);
+        pg.strokeRoundedRect(-8, -5, 16, 10, 3);
+        pg.setPosition(pxx, pyy);
+        pg.setAngle(-18 + (i % 3) * 14);
+        this.bodyContainer.add(pg);
+      }
+    }
+  }
+
+  /** 접시 장착 — 인벤토리에서 1개 소모(스냅샷 보관, 빼기/파괴 시 반환) */
+  private mountPlate(item: InvItem): void {
+    if (this.plateState) { this.flashBoardToast('이미 접시가 놓여 있습니다 — [접시 빼기] 후 교체하세요'); return; }
+    const tmpl = { ...item, qty: 1 };
+    InventoryStore.removeQty(item.id, 1);
+    this.plateState = { tmpl, size: this.plateSizeOf(item), rotation: 0, quads: [[], [], [], []] };
+    this.renderBody();
+    this.scene.events.emit('inventory-changed');
+  }
+
+  /** 회 조각 배치 — 활성 방위(quads[rotation], 화면 우상)에 1점 */
+  private placePiece(item: InvItem): void {
+    const st = this.plateState;
+    if (!st) { this.flashBoardToast('먼저 사시미 접시를 놓으세요'); return; }
+    const spec = SASHIMI_PLATE_SPECS[st.size];
+    const quad = st.quads[st.rotation % 4];
+    if (quad.length >= spec.perQuad) {
+      this.flashBoardToast(`이 방위는 가득 찼습니다 (${spec.perQuad}점) — 접시를 돌리세요`);
+      return;
+    }
+    const adv = item.id.startsWith('inv_sashimi_cut_adv_');
+    quad.push({ tmpl: { ...item, qty: 1 }, speciesId: item.speciesId ?? '', weightG: item.weightG ?? 20, adv });
+    InventoryStore.removeQty(item.id, 1);
+    this.renderBody();
+    this.scene.events.emit('inventory-changed');
+  }
+
+  private rotatePlate(dir: number): void {
+    const st = this.plateState;
+    if (!st) return;
+    st.rotation = (st.rotation + dir + 4) % 4;
+    this.renderBody();
+  }
+
+  /** 완성 — 전 방위 만석: 2종 이상 = 모듬(고정가·g 하한) / 1종 = 단품(원물 kg 시세 계수) */
+  private finalizePlate(): void {
+    const st = this.plateState;
+    if (!st) return;
+    const spec = SASHIMI_PLATE_SPECS[st.size];
+    const pieces = st.quads.flat();
+    if (pieces.length < spec.perQuad * 4) {
+      this.flashBoardToast(`모든 방위를 채워야 완성할 수 있습니다 (${pieces.length}/${spec.perQuad * 4}점)`);
+      return;
+    }
+    const totalG = pieces.reduce((s, p) => s + p.weightG, 0);
+    const species = [...new Set(pieces.map((p) => p.speciesId))];
+    const adv = pieces.every((p) => p.adv);
+    const kind = adv ? 'advanced' : 'basic';
+    let name: string;
+    let price: number;
+    if (species.length >= 2) {
+      // 모듬 — 고정 가격표 + g 하한 (싼 어종만으로 큰 접시 구성 제한)
+      const row = MIXED_SASHIMI_PRICING[kind][st.size];
+      if (totalG < row.minG) {
+        this.flashBoardToast(`모듬 사시미 (${st.size})는 ${row.minG}g 이상이어야 합니다 — 현재 ${totalG}g`);
+        return;
+      }
+      name = `${adv ? '고급 ' : ''}모듬 사시미 (${st.size}) ${totalG}g`;
+      price = row.price;
+    } else {
+      // 단품 — **횟집 괴리율 보정식** (2026-08-04): 원물 1kg 시세 × 필요 원물량(회중량÷실수율) × 인분 마진
+      const sp = species[0] ?? '';
+      const def = FISH_DATABASE.find((f) => f.id === sp);
+      const avgLen = def ? (def.avgSizeRangeCm[0] + def.avgSizeRangeCm[1]) / 2 : 30;
+      const cache = ExternalDataStore.getWholesaleCache(sp, 'live');
+      const kgPrice = evaluateFishSellPrice(sp, avgLen, 1000, cache).finalPrice;
+      price = singleSashimiPlatePrice(kgPrice, kind, st.size);
+      name = `${def?.nameKo ?? '생선'} ${adv ? '고급 ' : ''}사시미 (${st.size}) ${totalG}g`;
+    }
+    const seq = InventoryStore.nextCatchSeq();
+    InventoryStore.addItem({
+      id: `inv_sashimi_plate_${adv ? 'adv' : 'std'}_${seq}`,
+      name, icon: '🍣', iconTexture: 'food_assorted_sashimi',
+      category: 'food', subCategory: '회(사시미)',
+      basePrice: price,
+      condition: 'fresh', conditionSinceMs: Date.now(),
+      equippable: false,
+      weightG: totalG,
+      ...(species.length === 1 ? { speciesId: species[0] } : {}),
+    }, 1);
+    this.plateState = null;   // 접시는 요리에 소모 (완성 접시째 판매)
+    this.renderBody();
+    this.scene.events.emit('inventory-changed');
+    this.flashBoardToast(`${name} 완성! — 판매가 ${price.toLocaleString()}원`);
+  }
+
+  /** 접시 빼기/중단 — 접시 + 배치 조각 전부 인벤토리 반환 */
+  private unmountPlate(): void {
+    const st = this.plateState;
+    if (!st) return;
+    InventoryStore.addItem({ ...st.tmpl }, 1);
+    for (const p of st.quads.flat()) InventoryStore.addItem({ ...p.tmpl }, 1);
+    this.plateState = null;
+    this.renderBody();
+    this.scene.events.emit('inventory-changed');
+  }
+
+  /**
+   * 도마 조각 스테이징 렌더 — 회썰기 직후의 썰린 모양 그대로, 조각(피스 아이콘)들을
+   * 부채꼴로 진열한다. 각 조각 = 드래그 시작점(아래 접시로 1점씩) — 재고는 인벤 스택과 동기.
+   */
+  private renderSlicedBoard(bx: number, by: number, bw: number, bh: number): void {
+    const item = InventoryStore.find(this.boardSlicedItemId!);
+    if (!item) return;
+    const fam = new Set(['yellowtail', 'amberjack', 'greater_amberjack']).has(item.speciesId ?? '')
+      ? 'amberjack' : 'bream';
+    const texKey = `sashimi_piece_${fam}`;
+    const hasTex = this.scene.textures.exists(texKey);
+    const n = Math.min(item.qty, 16);
+    const cols = 8;
+    const cellW = (bw - 120) / (cols - 1);
+    for (let i = 0; i < n; i++) {
+      const px = bx + 60 + (i % cols) * cellW;
+      const py = by + 74 + Math.floor(i / cols) * 86 + (i % 2) * 6;
+      const ang = -14 + (i % 4) * 9;
+      if (hasTex) {
+        const img = this.scene.add.image(px, py, texKey);
+        const src = this.scene.textures.get(texKey).getSourceImage();
+        const s = Math.min(40 / src.width, 66 / src.height);
+        img.setDisplaySize(src.width * s, src.height * s);
+        img.setAngle(ang);
+        this.bodyContainer.add(img);
+      } else {
+        const icon = createItemIcon(this.scene, px, py, item, 34);
+        this.bodyContainer.add(icon);
+      }
+      const hit = this.scene.add.rectangle(px, py, 44, 70, 0xffffff, 0.001)
+        .setInteractive({ useHandCursor: true });
+      hit.on('pointerdown', (p: Phaser.Input.Pointer) => this.startCookDrag(item, 'add', p));
+      this.bodyContainer.add(hit);
+    }
+    const lbl = this.scene.add.text(bx + bw / 2, by + bh - 18,
+      `${item.name} ×${item.qty} — 한 점씩 아래 접시로 드래그하세요`, {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#3a2c1a', fontStyle: 'bold',
+      }).setOrigin(0.5);
+    this.bodyContainer.add(lbl);
+    // [치우기] — 진열 해제 (조각은 인벤토리에 그대로)
+    const off = this.scene.add.text(bx + bw - 41, by + 19, '치우기', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#ffce9a',
+      backgroundColor: '#3a2a20f2', padding: { x: 8, y: 4 },
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    off.on('pointerdown', () => { this.boardSlicedItemId = null; this.renderBody(); });
+    this.bodyContainer.add(off);
+  }
+
+  /** 포인터가 접시 영역 위인지 (패널 로컬) */
+  private overPlate(p: Phaser.Input.Pointer): boolean {
+    if (this.cookSub !== 'sashimi') return false;
+    const lx = p.x - this.x, ly = p.y - this.y, r = this.plateAreaRect;
+    return lx >= r.x && lx <= r.x + r.w && ly >= r.y && ly <= r.y + r.h;
   }
 
   /** 요리 탭에 임베드되는 인벤토리 뷰 — InventoryStore를 직접 읽는 읽기 전용 그리드 */
@@ -1317,8 +1880,10 @@ export class UtilizationPanel extends DraggablePanel {
 
       // 손질 프로필 보유 어획물(finfish) + 두족류는 도마로 드래그 가능 (복어/미지원은 불가)
       const fam = item.subCategory === '어획물' ? getButcheryFamily(item.speciesId ?? '') : 'unsupported';
-      // 껍질 붙은 필렛도 드래그 가능 — 도마에 올리면 박피부터 재개
-      const draggableFish = fam === 'finfish' || fam === 'cephalopod' || !!this.resumeSectionOf(item);
+      // 껍질 붙은 필렛(재개)·순수 필렛(회썰기)·접시/회 조각(플레이팅)도 드래그 가능
+      const draggableFish = fam === 'finfish' || fam === 'cephalopod'
+        || !!this.resumeSectionOf(item) || this.isPureFillet(item)
+        || this.isPlateItem(item) || this.isSashimiPiece(item);
       const hit = this.scene.add.rectangle(cx + cell / 2, cy + cell / 2, cell, cell, 0xffffff, 0.001)
         .setInteractive({ useHandCursor: true });
       if (draggableFish) {
@@ -1341,7 +1906,12 @@ export class UtilizationPanel extends DraggablePanel {
     const footY = gridY + 5 * (cell + gap) + 4;
     const selFam = selItem?.subCategory === '어획물' ? getButcheryFamily(selItem.speciesId ?? '') : 'unsupported';
     const selHint = selItem
-      ? (selItem && this.resumeSectionOf(selItem) ? (this.isRibFillet(selItem) ? '도마로 드래그하면 갈빗대 제거부터 이어서 진행합니다' : '도마로 드래그하면 박피부터 이어서 진행합니다')
+      ? (this.isPureFillet(selItem) ? '도마로 드래그하면 회썰기(사시미)를 진행합니다 — 야나기바 장착 시 고급 사시미'
+        : this.isPlateItem(selItem) ? '[사시미 만들기] 영역으로 드래그해 접시를 놓으세요'
+        : this.isSashimiPiece(selItem) ? '접시로 드래그해 배치하세요 (활성 방위에 1점씩 — 접시 돌리기로 방위 전환)'
+        : selItem && this.resumeSectionOf(selItem) ? (this.isRibFillet(selItem) ? '도마로 드래그하면 갈빗대 제거부터 이어서 진행합니다'
+          : this.isPinFillet(selItem) ? '도마로 드래그하면 지아이뼈 분리부터 이어서 진행합니다'
+          : '도마로 드래그하면 박피부터 이어서 진행합니다')
         : selFam === 'finfish' || selFam === 'cephalopod'
           ? '왼쪽 도마로 드래그해서 올리세요'
           : selFam === 'pufferfish' ? '복어는 자격·독 처리 준비 중 — 도마 불가'
@@ -1790,12 +2360,40 @@ export class UtilizationPanel extends DraggablePanel {
     this.scene.add.existing(this.butcheryPanel);
   }
 
+  /** 회썰기(사시미) 미니게임 열기 — 순수 필렛 + 모드 (버튼 게이트는 renderCooking이 담당) */
+  private openSashimi(fillet: InvItem, mode: SashimiMode): void {
+    if (this.sashimiPanel || this.butcheryPanel) return;
+    this.sashimiPanel = new SashimiPanel(this.scene, fillet, mode, {
+      onClose: () => {
+        // 중단 = 필렛 보존 — 도마 그대로
+        this.sashimiPanel?.destroy();
+        this.sashimiPanel = undefined;
+      },
+      onComplete: (grantedId) => {
+        // 조각 지급/필렛 소모는 SashimiPanel이 처리 — **썰린 조각을 도마에 진열**하고
+        // 사시미 만들기 영역을 펼쳐 바로 접시 드래그로 이어진다 (사용자 도식 2026-08-04)
+        this.sashimiPanel?.destroy();
+        this.sashimiPanel = undefined;
+        this.cookBoardFishId = null;
+        this.boardSlicedItemId = grantedId ?? null;
+        this.cookSub = 'sashimi';
+        this.renderBody();
+        this.scene.events.emit('inventory-changed');
+      },
+    });
+    this.scene.add.existing(this.sashimiPanel);
+  }
+
   /**
-   * 씬 ESC 인터셉트 — 손질(ButcheryPanel)이 열려 있으면 **U패널 대신 손질부터 닫는다**(LIFO).
-   * requestClose 경유라 체크포인트 정산/원물 보존 규칙이 그대로 적용된다.
+   * 씬 ESC 인터셉트 — 손질(ButcheryPanel)/회썰기(SashimiPanel)가 열려 있으면
+   * **U패널 대신 그쪽부터 닫는다**(LIFO). requestClose 경유라 정산/보존 규칙 유지.
    * true 반환 = ESC를 소비했으니 U패널은 닫지 말 것 (RegionFieldScene.closeTopPopup).
    */
   onEscIntercept(): boolean {
+    if (this.sashimiPanel) {
+      this.sashimiPanel.escClose();
+      return true;
+    }
     if (this.butcheryPanel) {
       this.butcheryPanel.escClose();
       return true;
@@ -1805,8 +2403,16 @@ export class UtilizationPanel extends DraggablePanel {
 
   override destroy(fromScene?: boolean): void {
     this.closeChooser();
+    // 플레이팅 진행 중 파괴 = 접시 + 배치 조각 반환 (아이템 유실 방지 — 61차 destroy 안전망 규칙)
+    if (this.plateState) {
+      InventoryStore.addItem({ ...this.plateState.tmpl }, 1);
+      for (const p of this.plateState.quads.flat()) InventoryStore.addItem({ ...p.tmpl }, 1);
+      this.plateState = null;
+    }
     this.butcheryPanel?.destroy();
     this.butcheryPanel = undefined;
+    this.sashimiPanel?.destroy();
+    this.sashimiPanel = undefined;
     this.swapConfirm?.destroy();
     this.swapConfirm = undefined;
     this.dragGhost?.destroy();

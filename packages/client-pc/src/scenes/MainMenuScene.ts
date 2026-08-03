@@ -236,31 +236,31 @@ export class MainMenuScene extends Phaser.Scene {
   }
 
   // ═══════════════════════════════════════════════════
-  // 타이틀 로고 (잘림 없이 중앙 정렬, 2단 구성)
+  // 타이틀 로고 (투명 배경 PNG — 구 텍스트 2단 로고 대체)
   // ═══════════════════════════════════════════════════
   private drawTitle(): void {
-    const cx = GAME_WIDTH / 2 - 190;
-    const ty = 150;
+    const cx = GAME_WIDTH / 2;
+    const ty = 158;
 
-    // 그림자 → 본문 (정확히 같은 위치 오프셋으로 겹침 방지)
-    this.add.text(cx + 4, ty + 4, 'PIXEL ANGLER', {
-      fontFamily: '"Press Start 2P", monospace', fontSize: '46px', color: '#02101f',
-    }).setOrigin(0.5).setDepth(10);
-    const main = this.add.text(cx, ty, 'PIXEL ANGLER', {
-      fontFamily: '"Press Start 2P", monospace', fontSize: '46px', color: '#5fe8c8',
-    }).setOrigin(0.5).setDepth(11);
-    main.setShadow(0, 0, '#2aa88a', 8, true, true);
+    // 이미지 로고: 원본(991×359) 종횡비 유지, 목표 폭에 맞춰 스케일 (잘림 방지)
+    const logo = this.add.image(cx, ty, 'title_logo').setOrigin(0.5).setDepth(11);
+    const targetW = 500;
+    logo.setScale(targetW / logo.width);
 
-    this.add.text(cx + 3, ty + 61, 'THE REAL', {
-      fontFamily: '"Press Start 2P", monospace', fontSize: '22px', color: '#02101f',
-    }).setOrigin(0.5).setDepth(10);
-    const sub = this.add.text(cx, ty + 58, 'THE REAL', {
-      fontFamily: '"Press Start 2P", monospace', fontSize: '22px', color: '#ffd75e',
-    }).setOrigin(0.5).setDepth(11);
+    // 가시성 배킹 — 어두운 밤하늘에서 짙은 골드 'Pixel Angler' 글자가 묻히는 문제
+    // (사용자 리포트 2026-08-04): 로고 뒤에 밝은 반투명 라운드 패널을 겹겹이 깔아
+    // 부드러운 글로우처럼 대비를 올린다 (바깥으로 갈수록 옅게 — 하드 엣지 없음).
+    const bw = targetW + 40, bh = logo.height * logo.scaleY + 26;
+    const backing = this.add.graphics().setDepth(10);
+    const layers: [number, number][] = [[26, 0.05], [14, 0.08], [0, 0.12]];
+    for (const [pad, alpha] of layers) {
+      backing.fillStyle(0xdfe8f2, alpha);
+      backing.fillRoundedRect(cx - bw / 2 - pad, ty - bh / 2 - pad, bw + pad * 2, bh + pad * 2, 26 + pad);
+    }
 
     // 은은한 부유 연출 (스케일 펄스 제거 — 잘림/블러 원인)
     this.tweens.add({
-      targets: [main, sub], y: '+=5', duration: 2600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+      targets: [logo, backing], y: '+=5', duration: 2600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
     });
   }
 

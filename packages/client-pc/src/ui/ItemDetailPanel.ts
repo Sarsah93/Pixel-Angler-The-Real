@@ -294,8 +294,11 @@ export class ItemDetailPanel extends DraggablePanel {
     // 신선도 실시간 블록 (상태 1행 + 남은 시간 라벨/값 2행)
     const condExtra = item.condition ? 66 : 0;
     const W = 320;
+    // 긴 이름(중간 필렛 등)은 줄바꿈되므로 그 줄 수만큼 패널을 늘린다 (§4 오버플로 정책 —
+    //  구 고정 레이아웃은 제목 2줄이 배지/소분류/구분선과 겹쳤다. 사용자 리포트 2026-08-03)
+    const titleExtra = Math.max(0, Math.ceil(detail.title.length / 12) - 1) * 18;
     // 내용 전체 높이 추정 → 화면을 넘기지 않게 캡(초과분은 본문 스크롤), 위치도 화면 안으로 클램프
-    const fullH = 176 + detail.rows.length * 24 + imgH + descExtra + condExtra;
+    const fullH = 176 + titleExtra + detail.rows.length * 24 + imgH + descExtra + condExtra;
     const maxH = Math.min(fullH, GAME_HEIGHT - 20);
     const px = Phaser.Math.Clamp(x, 8, GAME_WIDTH - W - 8);
     const py = Phaser.Math.Clamp(y, 8, GAME_HEIGHT - maxH - 8);
@@ -307,16 +310,19 @@ export class ItemDetailPanel extends DraggablePanel {
     const body = scene.add.container(0, 0);
     this.add(body);
 
-    // 아이콘 + 이름 + 소분류
+    // 아이콘 + 이름 + 소분류 — 이름은 **배지 열을 피해**(wrap 172) 줄바꿈하고,
+    //  줄 수만큼 아래 요소 전체를 내린다(hShift — 흐름 배치. 겹침 수정 2026-08-03)
     const icon = createItemIcon(scene, 42, this.contentTop + 22, item, 36);
     const name = scene.add.text(70, this.contentTop + 12, detail.title, {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '14px', color: '#e8f4fd', fontStyle: 'bold',
-      wordWrap: { width: 230 },
+      wordWrap: { width: 172 },
     });
-    const sub = scene.add.text(70, this.contentTop + 32, detail.subtitle, {
+    const sub = scene.add.text(70, this.contentTop + 12 + name.height + 4, detail.subtitle, {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#8faabf',
     });
     body.add([icon, name, sub]);
+    /** 제목 줄바꿈으로 늘어난 만큼 이후 요소 전체가 내려간다 */
+    const hShift = Math.max(0, (sub.y + sub.height + 8) - (this.contentTop + 52));
 
     // 신선도 배지 (실시간 갱신 대상)
     if (item.condition) {
@@ -331,7 +337,7 @@ export class ItemDetailPanel extends DraggablePanel {
     // 구분선
     const div = scene.add.graphics();
     div.lineStyle(1, 0x1f3d5a, 0.8);
-    div.lineBetween(16, this.contentTop + 52, W - 16, this.contentTop + 52);
+    div.lineBetween(16, this.contentTop + 52 + hShift, W - 16, this.contentTop + 52 + hShift);
     body.add(div);
 
     // 실사 픽셀 생선 이미지 (어획물) — 개체 크기에 따라 확대/축소 (소형↓·보통·대형·특대↑ 단조)
@@ -341,14 +347,14 @@ export class ItemDetailPanel extends DraggablePanel {
       // refBox = 보통 크기 기준(228×90), capBox = 특대에도 패널 폭·이미지 영역(imgH) 안에 들어오게
       const fitRef = Math.min(228 / src.width, 90 / src.height);
       const ds = Math.min(fitRef * sizeMul, 300 / src.width, 120 / src.height);
-      const fishImg = scene.add.image(W / 2, this.contentTop + 58 + imgH / 2 - 6, fishTexKey)
+      const fishImg = scene.add.image(W / 2, this.contentTop + 58 + hShift + imgH / 2 - 6, fishTexKey)
         .setDisplaySize(src.width * ds, src.height * ds);
       body.add(fishImg);
     }
 
     // 스펙 행
     detail.rows.forEach((row, i) => {
-      const ry = this.contentTop + 64 + imgH + i * 24;
+      const ry = this.contentTop + 64 + hShift + imgH + i * 24;
       const lbl = scene.add.text(22, ry, row.label, {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#c8a060', fontStyle: 'bold',
       });
@@ -360,7 +366,7 @@ export class ItemDetailPanel extends DraggablePanel {
 
     // ── 신선도 실시간 블록 — 단일 상태 표기 + 초단위 카운트다운 ──
     if (item.condition) {
-      const fy = this.contentTop + 64 + imgH + detail.rows.length * 24;
+      const fy = this.contentTop + 64 + hShift + imgH + detail.rows.length * 24;
       const condLbl = scene.add.text(22, fy, '신선도 상태', {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#c8a060', fontStyle: 'bold',
       });
@@ -382,7 +388,7 @@ export class ItemDetailPanel extends DraggablePanel {
     }
 
     // 설명
-    const descY = this.contentTop + 68 + imgH + detail.rows.length * 24 + condExtra;
+    const descY = this.contentTop + 68 + hShift + imgH + detail.rows.length * 24 + condExtra;
     const descText = scene.add.text(22, descY, detail.desc, {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#9fc0d4',
       wordWrap: { width: W - 44 }, lineSpacing: 4,

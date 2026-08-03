@@ -393,8 +393,9 @@ export function buildButcheryStages(profile: ButcheryProfile, opts?: ButcherySta
       stages.push({
         id: 'fillet_1_ribcut', label: '2면 — 갈비뼈·척추 연결부 끊기', orientation: 'BACK_DOWN', primitive: 'guided_cut',
         guide: '머리쪽에 드러난 척추뼈와 갈비뼈가 연결된 지점을 끊어 2면을 완전히 떼어내세요',
+        // 사용자 F9 실측 (2026-08-04)
         cut: cut('fillet_1_ribcut', 'BACK_DOWN',
-          [{ x: 0.775, y: 0.455 }, { x: 0.792, y: 0.650 }], { strong: true, tolerance: 0.11 }),
+          [{ x: 0.819, y: 0.610 }, { x: 0.640, y: 0.670 }], { strong: true, tolerance: 0.11 }),
       });
       // 배쪽 작업 = **꼬리쪽 → 배쪽 분리** — 등쪽과 같은 구조로 2회 긋고,
       //  마지막에 머리(배)쪽에 연결된 척추뼈·갈비뼈를 끊어 완전 분리 (사용자 지시 2026-07-31).
@@ -408,8 +409,9 @@ export function buildButcheryStages(profile: ButcheryProfile, opts?: ButcherySta
       stages.push({
         id: 'fillet_1_bellyribcut', label: '2면 — 배쪽 갈비뼈·척추 연결부 끊기', orientation: 'BELLY_UP', primitive: 'guided_cut',
         guide: '머리(배)쪽에 드러난 척추뼈와 갈비뼈가 연결된 지점을 끊어 2면을 완전히 떼어내세요',
+        // 사용자 F9 실측 (2026-08-04)
         cut: cut('fillet_1_bellyribcut', 'BELLY_UP',
-          [{ x: 0.208, y: 0.455 }, { x: 0.191, y: 0.650 }], { strong: true, tolerance: 0.11 }),
+          [{ x: 0.180, y: 0.565 }, { x: 0.367, y: 0.702 }], { strong: true, tolerance: 0.11 }),
         yieldsFillet: true,
       });
     } else {

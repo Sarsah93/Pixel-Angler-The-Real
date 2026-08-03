@@ -152,7 +152,14 @@ function pickStageSprite(
     const spr = stageSpr('fillet_ribs');
     if (spr) return { spr, mirrorX: state.stageId === 'rib_b' };
   }
-  if (state.finished || o === 'FLESH_UP') return null;
+  // 지아이뼈 분리·완료 뷰 = **실사 순수 필렛**(pure_pillet 픽셀화) — 구 파라메트릭
+  //  FISH_FILLET 폴백이 지아이 단계와 완료 안내 창 뒤에 "구 이미지"로 남아 있었다
+  //  (사용자 지시 2026-08-04). 박피 단계는 전용 렌더(drawPeelTop 등)가 담당.
+  if (state.finished || o === 'FLESH_UP') {
+    const spr = stageSpr(`pure_fillet_${fam}`);
+    if (spr) return { spr, mirrorX: !state.finished && state.stageId === 'pin_b' };
+    return null;
+  }
   if (o === 'BELLY_UP' && (state.stageId === 'gut_open' || state.stageId === 'gut_scoop')) {
     const spr = stageSpr(`${fam}_ventral`);
     return spr ? { spr, mirrorX: false, view: 'ventral' } : null;

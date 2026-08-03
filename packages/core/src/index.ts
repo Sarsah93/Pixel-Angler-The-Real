@@ -135,6 +135,11 @@ export {
   getButcheryFamily, BUTCHERY_FAMILY_NOTICE, BUTCHERY_IMPLEMENTED_SPECIES,
 } from './db-schema/ButcheryProfiles.js';
 export { KNIFE_SPECS, getBestKnife, isKnifeItem } from './db-schema/KnifeDatabase.js';
+export {
+  SASHIMI_MODES, SASHIMI_SIZE_BOUNDS, sashimiSizeTier, sashimiGradeFromQuality, buildSashimiCutPaths,
+  SASHIMI_PLATE_SPECS, MIXED_SASHIMI_PRICING, SINGLE_SASHIMI_PRICING, singleSashimiPlatePrice,
+} from './db-schema/SashimiSlicing.js';
+export type { SashimiMode, SashimiModeSpec, SashimiSizeTier } from './db-schema/SashimiSlicing.js';
 export type { SashimiGradeInput } from './simulation/ButcheryProcess.js';
 export {
   ButcheryProcess, evaluateCut, computeSashimiGrade, buildButcheryStages, computeFilletYield,

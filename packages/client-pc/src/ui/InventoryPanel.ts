@@ -395,6 +395,16 @@ export class InventoryPanel extends DraggablePanel {
         },
       });
     }
+    // 고급 회 조각/사시미 — '요리하기' (스시 만들기 연계 산출물 — 사용자 지시 2026-08-03. 현재 준비 중 스텁)
+    if (item.id.startsWith('inv_sashimi_cut_adv_') || item.id.startsWith('inv_sashimi_plate_adv_')) {
+      actions.push({
+        label: '요리하기',
+        color: '#ffd257', hoverColor: '#ffe9a0',
+        run: () => {
+          this.setStatus('스시 만들기 — 준비 중입니다 (고급 사시미는 추후 스시 재료로 사용)');
+        },
+      });
+    }
     // 내장 부산물 — '만들기' (소모성 밑밥 전환. 추후 통발 미끼 겸용)
     if (item.byproductKind === 'viscera') {
       actions.push({

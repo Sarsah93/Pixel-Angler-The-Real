@@ -97,6 +97,11 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
       { id: 'knife_utility',  name: '범용 막칼',        icon: '🔪', category: 'etc', subCategory: '조리도구', basePrice: 12000, price: 15000, maxPerPurchase: 1, equippable: true, tool: 'knife', desc: '손질은 되나 낭비가 많은 막칼 (수율 0.85).' },
       { id: 'knife_sashimi',  name: '회칼 (사시미)',    icon: '🔪', category: 'etc', subCategory: '조리도구', basePrice: 38000, price: 45000, maxPerPurchase: 1, equippable: true, tool: 'knife', desc: '표준 사시미 칼 — 회뜨기·회썰기 가능 (수율 1.0).' },
       { id: 'knife_yanagiba', name: '장인 야나기바',    icon: '🔪', category: 'etc', subCategory: '조리도구', basePrice: 120000, price: 150000, maxPerPurchase: 1, equippable: true, tool: 'knife', desc: '얇게 많이 뜨는 장인 야나기바 (수율 1.10 + 등급 보너스).' },
+      // 사시미 접시 — 회 조각 플레이팅용 (방위당 소4/중5/대6/특대7점 — 요리 탭 사시미 만들기)
+      { id: 'inv_plate_s',  name: '사시미 접시 (소)',   icon: '🍽️', category: 'etc', subCategory: '식기', basePrice: 2500, price: 3000, maxPerPurchase: 3, equippable: false, desc: '방위당 4점 × 4방위 = 16점. 모듬 350g~ / 고급 320g~.' },
+      { id: 'inv_plate_m',  name: '사시미 접시 (중)',   icon: '🍽️', category: 'etc', subCategory: '식기', basePrice: 4500, price: 5500, maxPerPurchase: 3, equippable: false, desc: '방위당 5점 × 4방위 = 20점. 모듬 550g~ / 고급 500g~.' },
+      { id: 'inv_plate_l',  name: '사시미 접시 (대)',   icon: '🍽️', category: 'etc', subCategory: '식기', basePrice: 7000, price: 8500, maxPerPurchase: 3, equippable: false, desc: '방위당 6점 × 4방위 = 24점. 모듬 750g~ / 고급 700g~.' },
+      { id: 'inv_plate_xl', name: '사시미 접시 (특대)', icon: '🍽️', category: 'etc', subCategory: '식기', basePrice: 12000, price: 14000, maxPerPurchase: 3, equippable: false, desc: '방위당 7점 × 4방위 = 28점. 모듬 1.2kg~ / 고급 1.0kg~.' },
     ],
   },
   market: {

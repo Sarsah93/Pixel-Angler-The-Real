@@ -125,6 +125,17 @@ export class BootScene extends Phaser.Scene {
     // food/: 아이템 아이콘 (인벤토리/상점 소켓용, 64x64 도트)
     // fish/: 어획 연출용 실사 픽셀화 생선 이미지 (낚시 성공 팝업/상세보기)
     this.load.image('food_assorted_sashimi', 'food/assorted_sashimi.png');
+    // 회썰기(사시미) 미니게임 — 필렛 2뷰 (tools/gen_sashimi_fillet.cjs 생성, 원본 실사 리매핑)
+    //  탑뷰 = 일반 회뜨기(위에서 본 필렛) / 측면 = 고급 회뜨기(완만한 슬랩)
+    this.load.image('sashimi_fillet_top_bream', 'sashimi/fillet_top_bream.png');
+    this.load.image('sashimi_fillet_top_amberjack', 'sashimi/fillet_top_amberjack.png');
+    this.load.image('sashimi_fillet_side_bream', 'sashimi/fillet_side_bream.png');
+    this.load.image('sashimi_fillet_side_amberjack', 'sashimi/fillet_side_amberjack.png');
+    // 회 조각 아이콘 — 탑뷰 살코기 한 점 슬라이스 (인벤 아이콘 + 도마 조각 스테이징)
+    this.load.image('sashimi_piece_bream', 'sashimi/piece_bream.png');
+    this.load.image('sashimi_piece_amberjack', 'sashimi/piece_amberjack.png');
+    // 메인 메뉴 타이틀 로고 (투명 배경 PNG — 구 텍스트 2단 로고 대체)
+    this.load.image('title_logo', 'ui/title_logo.png');
     // trimmings/: 손질 부산물 아이콘 (회뜨기 산출 — 머리/중골/내장/껍질/필렛).
     // 머리는 감성돔 기준 원본 → 타 돔류는 런타임 색 변형(참돔 붉게·돌돔 아가미 줄무늬 등, ButcheryPanel.trimHeadKey).
     // 손질 부산물(trimmings) — 어종군(돔류/방어류) 분리 + 공통 3종 (2026-07-30 사용자 매핑):

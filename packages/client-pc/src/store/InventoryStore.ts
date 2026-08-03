@@ -394,6 +394,8 @@ function createSeedItems(): InvItem[] {
     { id: 'inv_bucket',    name: '낚시용 두레박',           icon: '🪣', category: 'etc', subCategory: '낚시도구', qty: 1, basePrice: 9000, equippable: false },
     // 쿨러 (아이스박스) — 보유해야 어창 보관/밑밥 배합 기능 사용 가능 (들고 다니는 개념)
     { id: 'inv_cooler',    name: '쿨러 (아이스박스)',        icon: '🛅', category: 'etc', subCategory: '낚시도구', qty: 1, basePrice: 45000, equippable: false },
+    // 사시미 접시 (소) — 회 조각 플레이팅 (요리 탭 사시미 만들기. 중/대/특대는 식자재마트 판매)
+    { id: 'inv_plate_s',   name: '사시미 접시 (소)',        icon: '🍽️', category: 'etc', subCategory: '식기', qty: 1, basePrice: 2500, equippable: false },
     // ── 설치형 (HOMETOWN_HOME_SPEC — 홈타운 칸 단위 자유 배치. placeKey = core PLACEMENT_DEFS) ──
     { id: 'inv_place_farm',    name: '텃밭 개간 키트',       icon: '🌱', category: 'etc', subCategory: '설치형', qty: 1, basePrice: 8000,  equippable: false, placeKey: 'farm_plot' },
     { id: 'inv_place_fence',   name: '울타리',              icon: '🪵', category: 'etc', subCategory: '설치형', qty: 6, basePrice: 1500,  equippable: false, placeKey: 'fence' },
@@ -827,6 +829,12 @@ class InventoryStoreManager {
       // 레거시 폴백 — 실측치가 없으면 기존 방식(기준가 × 시세 배율) × 상태 배율
       const factor = speciesId ? ExternalDataStore.getMarketPriceFactor(speciesId) : 1;
       return Math.max(0, Math.floor(item.basePrice * 0.6 * factor * stateMul));
+    }
+    // 완성 사시미 접시 — **책정가(가격표) 그대로 판매** (사용자 가격 개편 2026-08-03:
+    //  모듬 = 고정표 / 단품 = 원물 kg 시세 계수. 0.6 매입 할인 미적용 — 노력 가치 보전)
+    if (item.id.startsWith('inv_sashimi_plate_')) {
+      const stateMul = conditionSellMultiplier(item.condition);
+      return Math.max(0, Math.round(item.basePrice * stateMul));
     }
     return Math.max(100, Math.floor(item.basePrice * 0.6));
   }

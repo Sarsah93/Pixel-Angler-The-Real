@@ -417,7 +417,7 @@ export class ButcheryPanel extends DraggablePanel {
     });
     this.resumed = true;
     // 재장착은 **필렛 1장** 세션 — 반대쪽(B면) 작업은 이 세션 대상이 아니다(별도 세션에서 처리).
-    if (sectionId === 'sec_rib') {
+    if (sectionId === 'sec_rib' || sectionId === 'sec_pin') {
       const all = this.sections.flatMap((s) => s.tasks);
       for (const id of ['t_rib_b', 't_pin_b']) {
         const t = all.find((x) => x.id === id);
@@ -593,7 +593,20 @@ export class ButcheryPanel extends DraggablePanel {
         case 'skinFillet': {
           // 지아이 분리 후 = 1·2면에서 각 2장 → **껍질 붙은 순살 필렛 4장**.
           //  이 아이템을 도마에 다시 올리면 박피 섹션부터 이어서 진행한다 (재장착).
-          const sw = Math.max(1, Math.round(wts.filletG / 2));
+          //  ⚠ 재장착(필렛 1장) 세션은 원물 = 필렛인데 bypWeights가 '통짜 생선' %로 계산해
+          //    880g 필렛이 97g 반쪽 2장이 되던 결함 — **원물 실중량/가치를 반씩 분할** (2026-08-04).
+          let sw: number;
+          let price: number;
+          if (this.resumed) {
+            const srcW = this.source.weightG ?? 100;
+            // 갈빗대 필렛(rib 미제거)에서 시작했으면 갈빗대 몫을 빼고 분할
+            const baseW = this.source.id.startsWith('inv_filletpin_') ? srcW : srcW - wts.ribG / 2;
+            sw = Math.max(1, Math.round(baseW / 2));
+            price = Math.max(500, Math.round((this.source.basePrice || 2000) / 2));   // 가치 승계 (원물가 분할 철학)
+          } else {
+            sw = Math.max(1, Math.round(wts.filletG / 2));
+            price = Math.max(1000, sw * 7);
+          }
           rows.push({
             key: 'skinFillet', qty: this.resumed ? 2 : 4,
             tpl: {
@@ -601,7 +614,7 @@ export class ButcheryPanel extends DraggablePanel {
               id: `inv_filletskin_${speciesId}_${seq}`,
               name: `껍질이 붙어있는 ${nameKo} 순살 필렛 ${sw}g`,
               icon: '🍣', iconTexture: `trim_fillet_skinonly_${fam}`,
-              basePrice: Math.max(1000, sw * 7),
+              basePrice: price,
               speciesId, weightG: sw, lengthCm: this.source.lengthCm,
             },
           });
@@ -630,13 +643,33 @@ export class ButcheryPanel extends DraggablePanel {
       item.iconTexture = 'trim_fillet_skin';
       item.weightG = w;
     }
+    // ── 재장착 세션 — 필렛이 grantedLog가 아니라 **원물(source)** 이다 (사용자 리포트 2026-08-04:
+    //  "갈빗대 제거 후 순살 필렛이 안 나옴"). 정산이 원물을 소모하므로 모프 대상이 없으면
+    //  필렛이 통째로 증발했다 → **대체 필렛을 새로 지급**한다 (id `inv_filletpin_` = 지아이
+    //  분리부터 재개하는 재장착 대상. 가치는 원물 필렛 몫 승계).
+    if (this.resumed && this.source.id.startsWith('inv_filletribs_')) {
+      const speciesId = this.process.profile.speciesId;
+      const w = Math.max(1, Math.round((this.source.weightG ?? 100) - (this.bypWeights().ribG / 2)));
+      const tpl = {
+        id: `inv_filletpin_${speciesId}_${InventoryStore.nextCatchSeq()}`,
+        name: `껍질이 붙어있는 ${nameKo} 필렛 ${w}g`,
+        icon: '🍣', iconTexture: 'trim_fillet_skin',
+        category: 'food' as const, subCategory: '손질 필렛',
+        basePrice: Math.max(500, Math.round(this.source.basePrice)),
+        condition: 'live' as const, conditionSinceMs: Date.now(),
+        equippable: false,
+        speciesId, weightG: w, lengthCm: this.source.lengthCm,
+      };
+      if (InventoryStore.addItem(tpl, 1)) this.grantedLog.push({ id: tpl.id, qty: 1 });
+      else this.grantFailed.push(tpl.name);
+    }
     this.scene.events.emit('inventory-changed');
   }
 
-  /** 지아이 분리로 껍질 필렛 4장이 나올 때 — 지급돼 있던 갈빗대 필렛(2장) 회수 (분할됨) */
+  /** 지아이 분리로 껍질 필렛이 나올 때 — 지급돼 있던 갈빗대 필렛/모프 대체 필렛 회수 (분할됨) */
   private removeGrantedRibFillets(): void {
     this.grantedLog = this.grantedLog.filter((g) => {
-      if (!g.id.startsWith('inv_filletribs_')) return true;
+      if (!g.id.startsWith('inv_filletribs_') && !g.id.startsWith('inv_filletpin_')) return true;
       InventoryStore.removeQty(g.id, g.qty);
       return false;
     });
@@ -3123,11 +3156,11 @@ export class ButcheryPanel extends DraggablePanel {
       ikejimeDone: r.ikejimeDone, bledDone: r.bledDone,
     });
 
-    // 필렛 가격 — 어종 kg당 횟값 × 실제 수율(kg) × 등급 배율 / 필렛 수
-    const totalValue = Math.round(
-      (fishDef?.sashimiValuePerKg ?? 20000) * (yieldRes.yieldMassG / 1000) * yieldRes.gradeMult,
-    );
-    const perFillet = Math.max(1500, Math.round(totalValue / yieldRes.filletCount));
+    // 필렛 가격 — **원물에 적용되던 판매가를 그대로 필렛 수로 분할** (사용자 가격 개편 2026-08-03:
+    //  "필렛 덩어리 합가격 = 원물 가격" — 구 kg당 횟값×수율 방식은 350g 필렛이 헐값이 됐다.
+    //  가치 상승은 사시미 접시 완성(모듬/단품 가격표)에서 발생).
+    const totalValue = Math.max(1000, InventoryStore.getSellPrice(this.source));
+    const perFillet = Math.max(500, Math.round(totalValue / yieldRes.filletCount));
 
     // 손질 스킬 XP 지급 (정확도·등급 비례)
     const gradeXp = yieldRes.grade === '특' ? 40 : yieldRes.grade === '상' ? 25 : yieldRes.grade === '중' ? 12 : 5;
@@ -3152,7 +3185,8 @@ export class ButcheryPanel extends DraggablePanel {
       name: `${nameKo} 순수 필렛 (${yieldRes.grade}) ${outWeight}g`,
       icon: '🍣', iconTexture: this.trimFilletKey(speciesId),
       category: 'food', subCategory: '손질 필렛',
-      basePrice: perFillet,
+      // 재장착(1장 세션)은 원물 필렛의 기존 몫을 승계 — 이중 분할 방지
+      basePrice: single ? Math.max(500, Math.round(this.source.basePrice)) : perFillet,
       condition: outCond, conditionSinceMs: outSince,
       equippable: false,
       speciesId, lengthCm: this.source.lengthCm, weightG: outWeight,
@@ -3162,7 +3196,15 @@ export class ButcheryPanel extends DraggablePanel {
     //  최종 완료 시 남아있는 중간 필렛(껍질 필렛)은 순수 필렛으로 대체되므로 회수한다.
     const bp = yieldRes.byproducts;
     this.grantedLog = this.grantedLog.filter((g) => {
-      if (!g.id.startsWith('inv_filletskin_') && !g.id.startsWith('inv_filletribs_')) return true;
+      if (!g.id.startsWith('inv_filletskin_') && !g.id.startsWith('inv_filletribs_')
+        && !g.id.startsWith('inv_filletpin_')) return true;
+      // 재장착(1장) 세션 — 지아이 분리 2장 중 **박피된 1장만** 회수, 나머지 1장은 남긴다
+      // (박피는 필렛 1장 처리 — 전량 회수하면 반쪽 하나가 증발. 2026-08-04)
+      if (single && g.id.startsWith('inv_filletskin_') && g.qty > 1) {
+        InventoryStore.removeQty(g.id, 1);
+        g.qty -= 1;
+        return true;
+      }
       InventoryStore.removeQty(g.id, g.qty);
       return false;
     });
