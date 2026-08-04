@@ -43,6 +43,7 @@ import type {
 import { FishingFocusWindow } from '../ui/FishingFocusWindow.js';
 import { BiteIndicator } from '../ui/BiteIndicator.js';
 import { InventoryStore } from '../store/InventoryStore.js';
+import { fadeOutThen } from './SceneFade.js';
 
 export class FishingScene extends Phaser.Scene {
   private phase: FishingPhase = 'idle';
@@ -808,11 +809,10 @@ export class FishingScene extends Phaser.Scene {
     // 아무 키나 누르면 필드로 귀환
     this.time.delayedCall(1500, () => {
       this.input.keyboard?.once('keydown', () => {
-        this.cameras.main.fadeOut(300, 0, 10, 20);
-        this.cameras.main.once('camerafadeoutcomplete', () => {
+        fadeOutThen(this, () => {
           this.scene.stop();
           this.scene.resume('FieldScene');
-        });
+        }, 300);
       });
     });
   }

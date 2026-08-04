@@ -6,6 +6,7 @@
 import Phaser from 'phaser';
 import { calculateTideInfo, SPOT_DATABASE } from '@tra/core';
 import { GAME_WIDTH } from '../PhaserConfig.js';
+import { fadeOutThen } from './SceneFade.js';
 
 export class TideChartScene extends Phaser.Scene {
   constructor() {
@@ -37,10 +38,9 @@ export class TideChartScene extends Phaser.Scene {
 
     // ESC 설정
     this.input.keyboard?.on('keydown-ESC', () => {
-      this.cameras.main.fadeOut(300, 0, 10, 20);
-      this.cameras.main.once('camerafadeoutcomplete', () => {
+      fadeOutThen(this, () => {
         this.scene.start('MainMenuScene');
-      });
+      }, 300);
     });
 
     this.cameras.main.fadeIn(300, 0, 10, 20);

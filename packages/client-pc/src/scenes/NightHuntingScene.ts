@@ -12,6 +12,7 @@ import Phaser from 'phaser';
 import { GameState } from '../store/GameState.js';
 import { getSpotById, SPOT_DATABASE, calculateTideInfo, getHuntableCreatures, attemptHunt } from '@tra/core';
 import type { ShoreHuntingGear, ShoreHarvestItem, NightHuntingContext, ShoreCreature } from '@tra/core';
+import { fadeOutThen } from './SceneFade.js';
 
 export class NightHuntingScene extends Phaser.Scene {
   private darkOverlay!: Phaser.GameObjects.Rectangle;
@@ -178,11 +179,10 @@ export class NightHuntingScene extends Phaser.Scene {
   }
 
   private exitScene(): void {
-    this.cameras.main.fadeOut(220, 0, 10, 20);
-    this.cameras.main.once('camerafadeoutcomplete', () => {
+    fadeOutThen(this, () => {
       this.scene.stop();
       this.scene.resume('FieldScene');
-    });
+    }, 220);
   }
 
   private drawRockyShore(): void {
@@ -531,11 +531,10 @@ export class NightHuntingScene extends Phaser.Scene {
       GameState.addHarvestToCooler(this.caughtItems);
       GameState.markDirty();   // 저장은 집 침대에서만 (HOMETOWN_HOME_SPEC)
 
-      this.cameras.main.fadeOut(220, 0, 10, 20);
-      this.cameras.main.once('camerafadeoutcomplete', () => {
+      fadeOutThen(this, () => {
         this.scene.stop();
         this.scene.resume('FieldScene');
-      });
+      }, 220);
     });
 
     panel.add([bg, title, summary, confirmBtn]);

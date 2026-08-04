@@ -24,7 +24,11 @@ export type ButcherySectionYield =
   | 'pin'         // 생선 지아이뼈 (공통)
   | 'skinFillet'  // 껍질이 붙어있는 순살 필렛 ×4 (지아이 분리 후 — 1·2면에서 각 2장)
   | 'skin'        // 생선 껍질 (공통)
-  | 'pureFillet'; // 순수 필렛 (완료)
+  | 'pureFillet'  // 순수 필렛 (완료)
+  // ── 넙치류 다섯장뜨기 전용 (2026-08-05) ──
+  | 'flatFillet'      // 껍질+엔가와 붙은 필렛 1장 (포 뜨기 작업마다 1장 — 총 4장)
+  | 'engawaSkin'      // 껍질이 붙어있는 엔가와 1장 (엔가와 분리 작업마다 — 총 4장)
+  | 'flatSkinFillet'; // 엔가와 제거된 껍질 필렛 ×4 (엔가와 섹션 완료 — 기존 flatFillet 대체)
 
 /** 섹션 내 작업 1건 — 스테이지 id 목록을 순서대로 수행하면 작업 완료 */
 export interface ButcheryTaskDef {
@@ -144,6 +148,83 @@ export const WHOLE_FISH_SECTIONS: ButcherySectionDef[] = [
     yields: ['skin', 'pureFillet'],
   },
 ];
+
+/**
+ * 넙치류(광어·도다리) **다섯장뜨기** 섹션 트리 (사용자 순서도 2026-08-05):
+ *  1 시메·방혈 → 2 밑손질(머리 S자 절단/비늘 자유 — 지느러미 제거 없음) → 3 꼬리 칼집(앞/뒤) →
+ *  4 배쪽(흰 면) 뜨기: 중앙선 → 위(내장 위치) 포 → 내장 제거 → 아래 포 (2장) [종료 가능] →
+ *  5 등쪽 뜨기: 동일 (2장 + 중골) [종료 가능] → 6 엔가와 4장 분리 [종료 가능] → 7 박피 (완료).
+ *  필렛 4장 + 중골 = 5장. 척추뼈 끊기 작업 없음 (중앙 척추 기준 4면을 각각 뜬다).
+ *  내장은 배따기 없이 **배쪽 위 필렛을 뜨면 드러나는 주머니를 긁어낸다** (개복/핏줄/세척 섹션 없음).
+ */
+export const FLAT_FISH_SECTIONS: ButcherySectionDef[] = [
+  {
+    id: 'sec_ikejime', label: '시메·방혈', anyOrder: false,
+    tasks: [
+      { id: 't_ikejime', label: '시메 (즉살)', stageIds: ['ikejime'] },
+      { id: 't_bleed', label: '방혈', stageIds: ['bleed_cut', 'bleed_ice'] },
+    ],
+  },
+  {
+    id: 'sec_prep', label: '밑손질 (자유 순서)', anyOrder: true,
+    tasks: [
+      { id: 't_head', label: '머리 S자 절단', stageIds: ['flat_head_scut'], yields: ['head'] },
+      { id: 't_descale', label: '비늘치기', stageIds: ['scale_base', 'scale_flip', 'scale_wash'] },
+    ],
+  },
+  {
+    id: 'sec_tail', label: '꼬리 칼집 (앞/뒤)', anyOrder: true,
+    tasks: [
+      { id: 't_tail_a', label: '꼬리 칼집 (등면)', stageIds: ['tail_grip'] },
+      { id: 't_tail_b', label: '꼬리 칼집 (배면)', stageIds: ['tail_grip_b'] },
+    ],
+  },
+  {
+    id: 'sec_flat_belly', label: '배쪽 뜨기 (흰 면 — 2장)', anyOrder: false,
+    tasks: [
+      { id: 't_flb_center', label: '중앙선 칼집', stageIds: ['flat_belly_center'] },
+      { id: 't_flb_upper', label: '위쪽(내장 위치) 포 뜨기', stageIds: ['flat_belly_up_score', 'flat_belly_up_lift'], yields: ['flatFillet'] },
+      { id: 't_flb_guts', label: '내장 제거', stageIds: ['flat_gut_scoop'], yields: ['viscera'] },
+      { id: 't_flb_lower', label: '아래쪽 포 뜨기', stageIds: ['flat_belly_dn_score', 'flat_belly_dn_lift'], yields: ['flatFillet'] },
+    ],
+    exitAfter: true,   // ← 배쪽 필렛 2장 저장하고 종료 가능
+  },
+  {
+    id: 'sec_flat_back', label: '등쪽 뜨기 (2장)', anyOrder: false,
+    tasks: [
+      { id: 't_flk_center', label: '중앙선 칼집', stageIds: ['flat_back_center'] },
+      { id: 't_flk_upper', label: '위쪽 포 뜨기', stageIds: ['flat_back_up_score', 'flat_back_up_lift'], yields: ['flatFillet'] },
+      { id: 't_flk_lower', label: '아래쪽 포 뜨기', stageIds: ['flat_back_dn_score', 'flat_back_dn_lift'], yields: ['flatFillet'] },
+    ],
+    yields: ['spine'],   // 4장을 다 뜨면 중골(뼈 프레임)이 남는다 — 다섯장뜨기의 5번째 장
+    exitAfter: true,
+  },
+  {
+    id: 'sec_engawa', label: '엔가와 분리 (자유 순서)', anyOrder: true,
+    tasks: [
+      { id: 't_engawa_1', label: '필렛 1 엔가와', stageIds: ['engawa_1'], yields: ['engawaSkin'] },
+      { id: 't_engawa_2', label: '필렛 2 엔가와', stageIds: ['engawa_2'], yields: ['engawaSkin'] },
+      { id: 't_engawa_3', label: '필렛 3 엔가와', stageIds: ['engawa_3'], yields: ['engawaSkin'] },
+      { id: 't_engawa_4', label: '필렛 4 엔가와', stageIds: ['engawa_4'], yields: ['engawaSkin'] },
+    ],
+    // 엔가와가 다 분리되면 기존 필렛(엔가와 붙음)을 **엔가와 제거된 껍질 필렛**으로 대체 지급
+    yields: ['flatSkinFillet'],
+    exitAfter: true,
+  },
+  {
+    id: 'sec_peel', label: '박피 (껍질 벗기기)', anyOrder: false,
+    tasks: [
+      { id: 't_peel_grip', label: '꼬리 손잡이 만들기', stageIds: ['peel_grip'] },
+      { id: 't_peel_skin', label: '껍질 분리', stageIds: ['peel_insert', 'peel_pull'] },
+    ],
+    yields: ['skin', 'pureFillet'],
+  },
+];
+
+/** 프로필 체형 → 섹션 트리 선택 */
+export function sectionsForBodyShape(bodyShape: 'round' | 'flat'): ButcherySectionDef[] {
+  return bodyShape === 'flat' ? FLAT_FISH_SECTIONS : WHOLE_FISH_SECTIONS;
+}
 
 /** 스테이지 id → 소속 작업/섹션 조회 (클라 컨트롤러 유틸) */
 export function findTaskOfStage(

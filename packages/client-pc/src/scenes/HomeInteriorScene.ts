@@ -17,6 +17,7 @@ import { MapObject } from '@tra/core';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { GameState } from '../store/GameState.js';
 import { FridgePanel } from '../ui/FridgePanel.js';
+import { fadeOutThen } from './SceneFade.js';
 
 /** 실내 타일 렌더 크기 (px) — 외부(20px)보다 큼직하게 */
 const IT = 48;
@@ -395,10 +396,9 @@ export class HomeInteriorScene extends Phaser.Scene {
   /** 문 → 홈타운 외부 복귀 (stop + resume 규칙 — RegionFieldScene 재생성 금지) */
   private exitToField(): void {
     GameState.locationTag = 'hometown';
-    this.cameras.main.fadeOut(220, 0, 10, 20);
-    this.cameras.main.once('camerafadeoutcomplete', () => {
+    fadeOutThen(this, () => {
       this.scene.stop();
       this.scene.resume('RegionFieldScene');
-    });
+    }, 220);
   }
 }

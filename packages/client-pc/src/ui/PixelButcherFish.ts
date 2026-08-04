@@ -17,6 +17,7 @@ import {
   PixelFishSprite, FISH_WHOLE, FISH_DRESSED, FISH_FILLET,
   FISH_WHOLE_AMBERJACK, FISH_DRESSED_AMBERJACK,
 } from '../data/PixelFishSprites.js';
+import { HALIBUT_DARK, HALIBUT_WHITE } from '../data/PixelFishFlat.js';
 import { FISH_STAGE_SPRITES } from '../data/PixelFishStages.js';
 import { FISH_VIEW_SPRITES } from '../data/PixelFishViews.js';
 
@@ -135,18 +136,36 @@ export interface ButcherSpriteSet {
   /** true = 스프라이트가 어종 실색을 가짐(틴트 금지) — 방어류 전용 잿방어 스프라이트 */
   nativeColor: boolean;
   /** 단계 스프라이트 조회 키 (`{family}_vessel` / `{family}_fillet1~3` — FISH_STAGE_SPRITES) */
-  familyKey: 'amberjack' | 'bream';
+  familyKey: 'amberjack' | 'bream' | 'halibut';
+  /**
+   * 넙치류(다섯장뜨기) — 렌더가 통째로 다르다:
+   *  BASE = 등면(어두운 면, whole) / FLIP = 배면(흰 면, flatWhite) — **좌우 미러 없음**
+   *  (납작한 생선을 장축 기준으로 뒤집으므로 머리는 항상 왼쪽).
+   */
+  flat?: boolean;
+  /** 넙치류 배면(흰 면) 스프라이트 */
+  flatWhite?: PixelFishSprite;
 }
 
 const AMBERJACK_SPECIES = new Set<string>(['yellowtail', 'amberjack', 'greater_amberjack']);
+/** 넙치류 (다섯장뜨기 — 광어 형태 공유. 2026-08-05) */
+const FLAT_SPECIES = new Set<string>(['flatfish', 'flounder', 'frog_flounder', 'starry_flounder']);
 
 /**
  * 어종별 도마 스프라이트 세트 — 방어류(방어/부시리/잿방어)는 잿방어 형태(방추형 실색),
- * 그 외(돔류 등)는 감성돔 가이드 형태. (2026-07-30 — 방어류 별도 형태 추출)
+ * 넙치류(광어·도다리)는 광어 탑뷰(등면/배면 — halibut.png 추출), 그 외는 감성돔 가이드 형태.
  */
 export function butcherSpritesFor(speciesId: string): ButcherSpriteSet {
   if (AMBERJACK_SPECIES.has(speciesId)) {
     return { whole: FISH_WHOLE_AMBERJACK, dressed: FISH_DRESSED_AMBERJACK, fillet: FISH_FILLET, nativeColor: true, familyKey: 'amberjack' };
+  }
+  if (FLAT_SPECIES.has(speciesId)) {
+    return {
+      whole: HALIBUT_DARK, dressed: HALIBUT_DARK, fillet: FISH_FILLET,
+      // 광어 = 실색 그대로 / 도다리류 = 어종 색 약한 틴트
+      nativeColor: speciesId === 'flatfish',
+      familyKey: 'halibut', flat: true, flatWhite: HALIBUT_WHITE,
+    };
   }
   return { whole: FISH_WHOLE, dressed: FISH_DRESSED, fillet: FISH_FILLET, nativeColor: false, familyKey: 'bream' };
 }
@@ -396,6 +415,153 @@ export interface PixelFishState {
    * 연출 동안 유지하기 위한 오버라이드 (ButcheryPanel가 액션 애니 중에만 설정).
    */
   openOverride?: { view: 'dorsal' | 'belly'; state: number; mirrorX?: boolean };
+  /** 넙치류 — **현재 표시 면**의 다섯장뜨기 진행 상태 (패널이 doneStages에서 파생) */
+  flatSide?: FlatSideState;
+}
+
+/**
+ * 넙치류 다섯장뜨기 — 한쪽 면(등/배)의 진행 상태.
+ * 반대쪽 면의 포는 위에서 보이지 않으므로 면별로 독립 렌더된다 (물리적으로 정확).
+ */
+export interface FlatSideState {
+  /** 중앙선(척추선) 칼집 완료 */
+  center: boolean;
+  /** 위쪽 지느러미 경계 칼길 완료 */
+  upScore: boolean;
+  /** 위쪽 포 뜨기 진행 (0~1 — 1 = 떠냄. 진행 중엔 strokesDone/2) */
+  upLift: number;
+  /** 아래쪽 경계 칼길 완료 */
+  dnScore: boolean;
+  /** 아래쪽 포 뜨기 진행 (0~1) */
+  dnLift: number;
+  /** 내장 주머니 노출 (배면 위 필렛 떠낸 후 · 내장 제거 전) */
+  gutsExposed: boolean;
+  /** 이 면의 비늘치기 완료 여부 (반짝임 오버레이 소거) */
+  scaled: boolean;
+}
+
+/**
+ * 넙치류(다섯장뜨기) 도마 렌더 (2026-08-05) — 탑뷰 고정:
+ *  BASE = 등면(어두운 면) / FLIP = 배면(흰 면) — 머리 항상 왼쪽 (좌우 미러 없음).
+ *  머리 S자 절단은 headCutPath(erase)로 실제 절단선을 따라 지워진다 (55차 메커니즘 재사용).
+ *  포 뜨기 진행은 오버레이 — 중앙선/경계 칼길(어두운 선) → 떠낸 자리(분홍 살+갈비살 결) 노출.
+ */
+function drawFlatFish(
+  g: Phaser.GameObjects.Graphics, geom: PixelFishGeom,
+  sprites: ButcherSpriteSet, state: PixelFishState, tint: number | null,
+): void {
+  const o = state.orientation;
+
+  // ── FLESH_UP(엔가와 분리 등) / 완료 = 필렛 슬랩 뷰 ──
+  if (state.finished || o === 'FLESH_UP') {
+    const slab = stageSpr('pure_fillet_bream') ?? sprites.fillet;   // 광어 전용 필렛 에셋 전 폴백
+    const dr = drawSprite(g, slab, geom, false, false, tint, 0.12);
+    // 엔가와 스트립 — 필렛 아래 가장자리의 지느러미살 (분리 대상 표시)
+    if (!state.finished && state.stageId?.startsWith('engawa_')) {
+      const sy = dr.y + dr.h * 0.78;
+      g.fillStyle(0xd8b878, 0.95);
+      g.fillRoundedRect(dr.x + dr.w * 0.06, sy, dr.w * 0.88, Math.max(6, dr.h * 0.14), 4);
+      g.fillStyle(0xc09858, 0.9);
+      for (let i = 0; i < 9; i++) {
+        g.fillRect(dr.x + dr.w * (0.10 + i * 0.09), sy + 2, 2, Math.max(3, dr.h * 0.10));
+      }
+    }
+    return;
+  }
+
+  // ── 몸통 탑뷰 — 등면(dark)/배면(white). 프레임은 등면 기준 고정 ──
+  const spr = o === 'FLIP' ? (sprites.flatWhite ?? sprites.whole) : sprites.whole;
+  const frame = computeFishFrame(sprites.whole, geom);
+  const erase: FishPoly[] = [];
+  if (state.headOff) {
+    // 넙치류는 뒤집어도 머리가 왼쪽 그대로 — 미러 없이 같은 S 절단선을 쓴다
+    const poly = state.headCutPath ? headErasePoly(state.headCutPath, true) : null;
+    erase.push(poly ?? [{ x: -0.4, y: -0.4 }, { x: 0.30, y: -0.4 }, { x: 0.30, y: 1.4 }, { x: -0.4, y: 1.4 }]);
+  }
+  const drawn = drawSprite(g, spr, geom, false, false, sprites.nativeColor ? null : tint, 0.22,
+    { frame, erase: erase.length ? erase : undefined });
+
+  // 비늘 반짝임 — 표시 면이 아직 비늘치기 전일 때
+  const fs = state.flatSide;
+  if (state.hasScales && fs && !fs.scaled) {
+    g.fillStyle(0xffffff, 0.3);
+    const PHI = 0.6180339887, G2 = 0.7548776662;
+    for (let i = 0; i < 26; i++) {
+      const fx = ((i + 1) * PHI) % 1, fy = ((i + 1) * G2) % 1;
+      g.fillCircle(drawn.x + drawn.w * (0.3 + fx * 0.45), drawn.y + drawn.h * (0.2 + fy * 0.6), 1.5);
+    }
+  }
+  if (!fs) return;
+
+  // ── 다섯장뜨기 오버레이 (프레임 정규화 좌표 → 화면 px) ──
+  const px = (x: number): number => drawn.x + x * drawn.w;
+  const py = (y: number): number => drawn.y + y * drawn.h;
+  const bodyL = state.headOff ? 0.33 : 0.36;   // 필렛 시작 (머리 경계)
+  const bodyR = 0.72;                           // 꼬리자루 앞
+  // 경계 곡선 (위/아래) — 지느러미(엔가와) 밑동 라인
+  const upEdge = (x: number): number => 0.13 + 0.10 * Math.abs((x - (bodyL + bodyR) / 2) / ((bodyR - bodyL) / 2)) ** 1.6;
+  const dnEdge = (x: number): number => 1 - upEdge(x);
+
+  /** 포 뜨기 진행 오버레이 — p(0~1)만큼 중앙선에서 경계 쪽으로 살이 벌어진다 */
+  const liftOverlay = (upper: boolean, p: number): void => {
+    if (p <= 0) return;
+    const cy = upper ? 0.475 : 0.525;
+    const pts: { x: number; y: number }[] = [];
+    const N = 10;
+    for (let i = 0; i <= N; i++) {
+      const x = bodyL + ((bodyR - bodyL) * i) / N;
+      const edge = upper ? upEdge(x) : dnEdge(x);
+      pts.push({ x, y: cy + (edge - cy) * Math.min(1, p) });
+    }
+    g.fillStyle(p >= 1 ? 0xf3e2dc : 0xe8b8b0, p >= 1 ? 0.97 : 0.92);
+    g.beginPath();
+    g.moveTo(px(bodyL), py(cy));
+    for (const pt of pts) g.lineTo(px(pt.x), py(pt.y));
+    g.lineTo(px(bodyR), py(cy));
+    g.closePath();
+    g.fillPath();
+    if (p >= 1) {
+      // 떠낸 자리 = 드러난 갈비살 결 (사용자 캡처 6~8 — 흰 분홍 뼈 부챗살)
+      g.lineStyle(1.2, 0xd8a8a0, 0.85);
+      for (let i = 1; i < 9; i++) {
+        const x = bodyL + ((bodyR - bodyL) * i) / 9;
+        const edge = upper ? upEdge(x) : dnEdge(x);
+        g.lineBetween(px(x), py(cy), px(x + 0.02), py(cy + (edge - cy) * 0.9));
+      }
+      g.lineStyle(2, 0xcfbab4, 0.9);   // 중앙 척추 라인 노출
+      g.lineBetween(px(bodyL), py(cy), px(bodyR), py(cy));
+    }
+  };
+
+  liftOverlay(true, fs.upLift);
+  liftOverlay(false, fs.dnLift);
+
+  // 중앙선/경계 칼길 자국 (완료 표시 — 어두운 절개선)
+  if (fs.center) {
+    g.lineStyle(2, 0x3a2226, 0.9);
+    g.lineBetween(px(bodyL), py(0.5), px(bodyR), py(0.5));
+  }
+  const scoreLine = (upper: boolean): void => {
+    g.lineStyle(1.6, 0x3a2226, 0.85);
+    g.beginPath();
+    let first = true;
+    for (let i = 0; i <= 8; i++) {
+      const x = bodyL + ((bodyR - bodyL) * i) / 8;
+      const y = upper ? upEdge(x) : dnEdge(x);
+      if (first) { g.moveTo(px(x), py(y)); first = false; } else g.lineTo(px(x), py(y));
+    }
+    g.strokePath();
+  };
+  if (fs.upScore && fs.upLift < 1) scoreLine(true);
+  if (fs.dnScore && fs.dnLift < 1) scoreLine(false);
+
+  // 내장 주머니 노출 (배면 — 위 필렛 떠낸 후 · 제거 전. 사용자 캡처 1 빨간 영역 = 좌상단)
+  if (fs.gutsExposed) {
+    g.fillStyle(0x8a3040, 0.94);
+    g.fillEllipse(px(bodyL + 0.07), py(0.30), drawn.w * 0.13, drawn.h * 0.18);
+    g.fillStyle(0x6a2030, 0.92);
+    g.fillEllipse(px(bodyL + 0.03), py(0.34), drawn.w * 0.06, drawn.h * 0.10);
+  }
 }
 
 /** 팔레트 색 → 어종 틴트 블렌드 (k=0 원본 유지) */
@@ -482,8 +648,16 @@ export function drawPixelButcherFish(
     return;
   }
   if (!state.finished && state.stageId === 'peel_insert') {
-    const cross = stageSpr(`${sprites.familyKey}_peelcross`);
+    // 넙치류는 전용 단면 뷰 미제작 — 돔류 단면으로 폴백 (경계 위치 동일 컨벤션)
+    const cross = stageSpr(`${sprites.familyKey}_peelcross`)
+      ?? (sprites.flat ? stageSpr('bream_peelcross') : undefined);
     if (cross) { drawSprite(g, cross, geom, false, false, null, 0); return; }
+  }
+
+  // ── 넙치류(다섯장뜨기) — 탑뷰 전용 렌더 (박피 단계는 위 공용 경로가 처리) ──
+  if (sprites.flat) {
+    drawFlatFish(g, geom, sprites, state, tint);
+    return;
   }
 
   // ── 손질 단계 스프라이트 (복면 뷰 / 체강 탑뷰 / 장뜨기 길내기 1~3) — 있으면 우선 사용 ──

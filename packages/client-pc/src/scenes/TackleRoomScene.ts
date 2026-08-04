@@ -17,6 +17,7 @@ import {
 } from '@tra/core';
 import type { TackleSetup } from '@tra/core';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
+import { fadeOutThen } from './SceneFade.js';
 
 export class TackleRoomScene extends Phaser.Scene {
   // 선택된 장비 인덱스
@@ -299,18 +300,16 @@ export class TackleRoomScene extends Phaser.Scene {
 
       this.time.delayedCall(1200, () => {
         toast.destroy();
-        this.cameras.main.fadeOut(300, 0, 10, 20);
-        this.cameras.main.once('camerafadeoutcomplete', () => {
+        fadeOutThen(this, () => {
           this.scene.start('MainMenuScene');
-        });
+        }, 300);
       });
     });
 
     this.input.keyboard?.on('keydown-ESC', () => {
-      this.cameras.main.fadeOut(300, 0, 10, 20);
-      this.cameras.main.once('camerafadeoutcomplete', () => {
+      fadeOutThen(this, () => {
         this.scene.start('MainMenuScene');
-      });
+      }, 300);
     });
   }
 

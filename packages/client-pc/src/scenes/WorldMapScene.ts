@@ -122,6 +122,11 @@ export class WorldMapScene extends Phaser.Scene {
   }
 
   create(): void {
+    // ⚠ 전환 플래그 리셋 — Phaser 씬은 1회 생성 후 재사용되므로 필드 초기값은 재진입 시
+    //   다시 적용되지 않는다. 리셋이 없으면 첫 출조/귀가 후 월드맵 재진입 시 플래그가
+    //   true로 남아 '집으로 돌아가기'·출조 클릭이 전부 무시되는 실버그 (QA 2026-08-05 재현 확정).
+    this.isTransitioning = false;
+
     // 배경 (어두운 해양 색조)
     this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x050b14).setOrigin(0, 0);
 
@@ -1127,6 +1132,8 @@ export class WorldMapScene extends Phaser.Scene {
 
   /** '예' 확정 → 교통비 차감 → RegionFieldScene(해당 구역 맵)로 입장 (HOMETOWN_HOME_SPEC §3) */
   private enterFieldArea(region: RegionDef, area: RegionAreaNode): void {
+    // 전환 중 재클릭 가드 — 요금 차감보다 먼저 (없으면 페이드 중 더블클릭에 요금이 이중 차감된다)
+    if (this.isTransitioning) return;
     // 출조 요금 (일괄 — TransportProfile 확장 자리). 잔액 부족 시 출조 불가.
     const fare = computeTravelFare(region.id);
     const coins = GameState.player.inventory.coins;

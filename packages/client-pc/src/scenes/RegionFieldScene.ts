@@ -2192,12 +2192,14 @@ export class RegionFieldScene extends Phaser.Scene {
 
   /** ESC 메뉴 '집으로 가기' — 확인 팝업 후 '예'면 홈타운(집)으로 이동 (귀가 무료) */
   private confirmGoHome(): void {
+    // 일시정지 메뉴(depth 1000)를 먼저 닫는다 — 안 닫으면 확인 팝업(950)이 메뉴 뒤에
+    // 가려져 "아무 일도 안 일어나는" 것처럼 보였다 (QA 2026-08-05 스크린샷 확정).
+    this.closePauseMenu();
     const dlg = new ConfirmDialog(
       this,
       '정말로 집으로 돌아가시겠습니까?',
       () => {
         dlg.destroy();
-        this.closePauseMenu();
         this.fadeOutThen(() => {
           this.scene.start('RegionFieldScene', { region: 'hometown' } as RegionFieldInit);
         }, 280);
@@ -2205,6 +2207,7 @@ export class RegionFieldScene extends Phaser.Scene {
       () => dlg.destroy(),
     );
     this.add.existing(dlg);
+    dlg.setDepth(1200);   // 이중 안전 — ESC로 메뉴를 다시 열어도 확인 팝업이 항상 위
   }
 
   // ═══════════════════════════════════════════════════

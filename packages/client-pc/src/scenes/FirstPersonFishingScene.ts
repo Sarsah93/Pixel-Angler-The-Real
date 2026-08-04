@@ -58,6 +58,7 @@ import { GuidePanel } from '../ui/GuidePanel.js';
 import { GuideCatKey } from '../data/GuideContent.js';
 import { resolveFishTexture } from '../data/FishTextures.js';
 import { loadSettings } from './SettingsScene.js';
+import { fadeOutThen } from './SceneFade.js';
 
 export interface FirstPersonFishingInit {
   /** 착수 지점 바닥 수심 Z_max (m) */
@@ -3713,10 +3714,9 @@ export class FirstPersonFishingScene extends Phaser.Scene {
    * 쿨러의 매질(해수/얼음) 규칙에 따라 신선도가 진행된다.
    */
   private exitToField(): void {
-    this.cameras.main.fadeOut(240, 2, 12, 24);
-    this.cameras.main.once('camerafadeoutcomplete', () => {
+    fadeOutThen(this, () => {
       this.scene.stop();
       this.scene.resume('RegionFieldScene');
-    });
+    }, 240, [2, 12, 24]);
   }
 }

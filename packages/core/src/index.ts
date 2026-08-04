@@ -138,6 +138,7 @@ export { KNIFE_SPECS, getBestKnife, isKnifeItem } from './db-schema/KnifeDatabas
 export {
   SASHIMI_MODES, SASHIMI_SIZE_BOUNDS, sashimiSizeTier, sashimiGradeFromQuality, buildSashimiCutPaths,
   SASHIMI_PLATE_SPECS, MIXED_SASHIMI_PRICING, SINGLE_SASHIMI_PRICING, singleSashimiPlatePrice,
+  ENGAWA_CUTS, ENGAWA_PIECES,
 } from './db-schema/SashimiSlicing.js';
 export type { SashimiMode, SashimiModeSpec, SashimiSizeTier } from './db-schema/SashimiSlicing.js';
 export type { SashimiGradeInput } from './simulation/ButcheryProcess.js';
@@ -147,7 +148,7 @@ export {
 export type { ButcheryStageOptions } from './simulation/ButcheryProcess.js';
 // 자유 손질 섹션/작업 정의 (달성도 기반 — 2026-07-30 자유 손질 개편)
 export type { ButcheryTaskDef, ButcherySectionDef, ButcherySectionYield } from './db-schema/ButcherySections.js';
-export { WHOLE_FISH_SECTIONS, findTaskOfStage } from './db-schema/ButcherySections.js';
+export { WHOLE_FISH_SECTIONS, FLAT_FISH_SECTIONS, sectionsForBodyShape, findTaskOfStage } from './db-schema/ButcherySections.js';
 
 // 파이트 피로 4페이즈 (어종·사이즈별 스태미나 풀 + 회복/서지 — thrust 게이팅)
 export type { FatiguePhase, FatigueInput, FatigueTick } from './simulation/FishFatigueModel.js';

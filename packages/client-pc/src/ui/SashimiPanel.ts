@@ -14,8 +14,8 @@
 
 import Phaser from 'phaser';
 import {
-  evaluateCut, CutPoint, SASHIMI_MODES, SashimiMode, buildSashimiCutPaths,
-  sashimiGradeFromQuality, getBestKnife, FISH_DATABASE,
+  evaluateCut, CutPoint, SASHIMI_MODES, SashimiMode, SashimiModeSpec, buildSashimiCutPaths,
+  sashimiGradeFromQuality, getBestKnife, FISH_DATABASE, ENGAWA_CUTS, ENGAWA_PIECES,
 } from '@tra/core';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { InventoryStore, InvItem } from '../store/InventoryStore.js';
@@ -44,6 +44,15 @@ export class SashimiPanel extends DraggablePanel {
   private readonly fam: 'bream' | 'amberjack';
   /** 뷰 — 일반 = 탑뷰(위에서 본 필렛) / 고급 = 측면 뷰 (사용자 정정 2026-08-03) */
   private readonly view: 'top' | 'side';
+  /**
+   * 엔가와(넙치류 지느러미살) 스트립 모드 — **총 2컷 = 3조각** (사용자 지시 2026-08-05).
+   * 실사 스트립 에셋(trim_engawa)을 탑뷰로 놓고 세로 2컷만 긋는다.
+   */
+  private readonly engawa: boolean;
+  /** 유효 모드 스펙 — 엔가와는 컷 수만 2로 오버라이드 */
+  private readonly spec: SashimiModeSpec;
+  /** 필렛/엔가와 표시 텍스처 키 */
+  private readonly texKey: string;
   /** 필렛 표시 rect (패널 로컬 px) — 뷰별 스프라이트 비율에 맞춰 산출 */
   private readonly fr: { x: number; y: number; w: number; h: number };
   private readonly cutPaths: CutPoint[][];
@@ -86,8 +95,12 @@ export class SashimiPanel extends DraggablePanel {
     this.cbs = cbs;
     this.mode = mode;
     this.fam = AMBERJACK_SPECIES.has(source.speciesId ?? '') ? 'amberjack' : 'bream';
+    // 엔가와 스트립 — 총 2컷 (사용자 지시 2026-08-05). 뷰는 항상 탑뷰(실사 스트립 에셋).
+    this.engawa = source.subCategory === '엔가와' || source.id.startsWith('inv_engawa_');
+    this.spec = this.engawa ? { ...spec, cuts: ENGAWA_CUTS } : spec;
     // 일반 = 탑뷰(y plane 정면 — 위에서 본 필렛) / 고급 = 측면(z plane 정면) — 사용자 정정 2026-08-03
-    this.view = mode === 'advanced' ? 'side' : 'top';
+    this.view = this.engawa ? 'top' : mode === 'advanced' ? 'side' : 'top';
+    this.texKey = this.engawa ? 'trim_engawa' : SASHIMI_FILLET_TEX[this.view][this.fam];
 
     // 닫기(X/ESC) — 완료 전 = 단순 취소(필렛 보존) / 완료 후 = onComplete로 정리
     this.requestClose = (): void => {
@@ -96,9 +109,16 @@ export class SashimiPanel extends DraggablePanel {
     };
 
     // ── 표시 rect — 뷰별 스프라이트 비율 유지 (폭 640 고정, 스테이지 세로 중앙) ──
+    //  엔가와 = 실사 스트립 실제 비율 (512×74 ≈ 6.9:1 — 얇고 길게)
     const profAll = SASHIMI_FILLET_PROFILES[this.fam];
     const frW = 640;
-    const aspect = this.view === 'top' ? profAll.top.aspect : 384 / 120;
+    let aspect: number;
+    if (this.engawa) {
+      const src = this.scene.textures.get(this.texKey).getSourceImage() as { width: number; height: number };
+      aspect = src.width && src.height ? src.width / src.height : 512 / 74;
+    } else {
+      aspect = this.view === 'top' ? profAll.top.aspect : 384 / 120;
+    }
     const frH = Math.min(300, Math.round(frW / aspect));
     this.fr = { x: 70, y: 300 - Math.round(frH / 2), w: frW, h: frH };
 
@@ -113,7 +133,13 @@ export class SashimiPanel extends DraggablePanel {
     let botAt: (u: number) => number;
     let meatH: (u: number) => number;
     let minMeat: number;
-    if (this.view === 'top') {
+    if (this.engawa) {
+      // 엔가와 스트립 — 평평한 밴드 (상·하 여백만 제외). 2컷 = 3등분
+      topAt = () => 0.14;
+      botAt = () => 0.86;
+      meatH = () => 0.72;
+      minMeat = 0.1;
+    } else if (this.view === 'top') {
       // 탑뷰 — 유도선이 필렛 폭(상·하 윤곽 사이)을 가로지른다
       const tp = profAll.top;
       topAt = (u) => Math.min(0.98, interp(tp.topEdge, u));
@@ -139,7 +165,7 @@ export class SashimiPanel extends DraggablePanel {
     for (let u = 1; u >= 0; u -= 0.01) {
       if (meatH(u) >= minMeat) { u1 = u; break; }
     }
-    this.cutPaths = buildSashimiCutPaths(spec, topAt, botAt, u0 + 0.01, u1 - 0.01, this.fr.w / this.fr.h);
+    this.cutPaths = buildSashimiCutPaths(this.spec, topAt, botAt, u0 + 0.01, u1 - 0.01, this.fr.w / this.fr.h);
     // 컷 순서 — 아랫점 x 내림차순(머리쪽 오른쪽부터)
     this.cutOrder = this.cutPaths.map((_, i) => i)
       .sort((a, b) => this.cutPaths[b][1].x - this.cutPaths[a][1].x);
@@ -167,7 +193,7 @@ export class SashimiPanel extends DraggablePanel {
 
   private buildBody(): void {
     const { x: fx, y: fy, w: fw, h: fh } = this.fr;
-    const spec = SASHIMI_MODES[this.mode];
+    const spec = this.spec;
 
     // 도마 — 탑뷰 = 필렛 뒤 전체 도마판 / 측면 = 접지 라인 나무 바
     this.boardG = this.scene.add.graphics();
@@ -191,7 +217,7 @@ export class SashimiPanel extends DraggablePanel {
     this.add(this.boardG);
 
     // 필렛 이미지 (뷰별 스프라이트 — 원본 실사 다운샘플/리매핑)
-    this.filletImg = this.scene.add.image(fx + fw / 2, fy + fh / 2, SASHIMI_FILLET_TEX[this.view][this.fam]);
+    this.filletImg = this.scene.add.image(fx + fw / 2, fy + fh / 2, this.texKey);
     this.filletImg.setDisplaySize(fw, fh);
     this.add(this.filletImg);
 
@@ -210,7 +236,9 @@ export class SashimiPanel extends DraggablePanel {
     });
     const sub = this.scene.add.text(sx, 126, [
       `사용 칼: ${knife?.nameKo ?? '없음'}`,
-      `컷 방향: ${this.mode === 'advanced' ? '사선 (소기즈쿠리) — 옆에서 본 뷰' : '세로 (히라즈쿠리) — 위에서 본 뷰'}`,
+      this.engawa
+        ? `컷: 총 ${spec.cuts}회 — 짧은 지느러미살 스트립을 3등분합니다`
+        : `컷 방향: ${this.mode === 'advanced' ? '사선 (소기즈쿠리) — 옆에서 본 뷰' : '세로 (히라즈쿠리) — 위에서 본 뷰'}`,
       '',
       '머리쪽(오른쪽)부터 왼쪽으로,',
       '노란 유도선을 위 → 아래로 드래그해 썰어냅니다.',
@@ -275,7 +303,7 @@ export class SashimiPanel extends DraggablePanel {
   }
 
   private refreshProgress(): void {
-    const spec = SASHIMI_MODES[this.mode];
+    const spec = this.spec;
     const avg = this.qualities.length
       ? this.qualities.reduce((s, q) => s + q, 0) / this.qualities.length : 0;
     this.progressTxt.setText([
@@ -320,7 +348,7 @@ export class SashimiPanel extends DraggablePanel {
     this.tracing = false;
     this.traceG.clear();
     if (this.done) return;
-    const spec = SASHIMI_MODES[this.mode];
+    const spec = this.spec;
     const pathIdx = this.cutOrder[this.cutIdx];
     const r = evaluateCut(this.tracePoints, {
       id: `sashimi_${this.mode}_${pathIdx}`,
@@ -359,7 +387,7 @@ export class SashimiPanel extends DraggablePanel {
     });
 
     // 분리 조각 — 이번 컷(왼쪽 경계)과 직전 컷(오른쪽 경계) 사이 세로 크롭
-    const texKey = SASHIMI_FILLET_TEX[this.view][this.fam];
+    const texKey = this.texKey;
     const tex = this.scene.textures.get(texKey).getSourceImage();
     const texW = tex.width, texH = tex.height;
     const leftU = this.cutPaths[pathIdx][1].x;
@@ -402,7 +430,7 @@ export class SashimiPanel extends DraggablePanel {
   private showResult(): void {
     this.done = true;
     this.guideG.clear();
-    const spec = SASHIMI_MODES[this.mode];
+    const spec = this.spec;
     const speciesId = this.source.speciesId ?? '';
     const fishDef = FISH_DATABASE.find((fd) => fd.id === speciesId);
     const nameKo = fishDef?.nameKo ?? '생선';
@@ -417,25 +445,29 @@ export class SashimiPanel extends DraggablePanel {
     const weightG = this.source.weightG ?? 200;
     // 회 조각 — 접시 플레이팅 재료 (가격 개편 2026-08-03: 완성 사시미 가치는 **접시 완성 시**
     //  모듬/단품 가격표로 산정. 조각 자체는 원물 필렛 가치를 점수로 분할해 승계).
-    const perPieceG = Math.max(1, Math.round(weightG / spec.cuts));
-    const pieceValue = Math.max(100, Math.round((this.source.basePrice || 2000) * (mult / 1.5) / spec.cuts * spec.priceMult));
-    const xp = Math.round(10 + avg * 20 + (this.mode === 'advanced' ? 8 : 0));
+    //  엔가와 = 2컷 → **3조각**(스트립 3등분 — 잔여 없음. ENGAWA_PIECES)
+    const pieceCount = this.engawa ? ENGAWA_PIECES : spec.cuts;
+    const perPieceG = Math.max(1, Math.round(weightG / pieceCount));
+    const pieceValue = Math.max(100, Math.round((this.source.basePrice || 2000) * (mult / 1.5) / pieceCount * spec.priceMult));
+    const xp = Math.round((this.engawa ? 6 : 10) + avg * 20 + (this.mode === 'advanced' ? 8 : 0));
     const lv = GameState.addFilletingXp(xp);
 
-    // 회 조각 지급(컷 수만큼 스택) + 원물 필렛 소모 (고급 = id 'adv' — 접시/스시 판별)
-    //  아이콘 = 탑뷰 한 점 슬라이스(sashimi_piece_{fam}) — 구 모듬회 사진 대체 (사용자 지시 2026-08-04)
+    // 회 조각 지급 + 원물 필렛/엔가와 소모 (고급 = id 'adv' — 접시/스시 판별)
+    //  아이콘 = 엔가와는 실사 스트립 / 필렛은 탑뷰 한 점 슬라이스(sashimi_piece_{fam})
     const seq = InventoryStore.nextCatchSeq();
-    const grantedId = `inv_sashimi_cut_${this.mode === 'advanced' ? 'adv_' : ''}${speciesId}_${seq}`;
+    const grantedId = `inv_sashimi_cut_${this.mode === 'advanced' ? 'adv_' : ''}${this.engawa ? 'engw_' : ''}${speciesId}_${seq}`;
     InventoryStore.addItem({
       id: grantedId,
-      name: `${nameKo} ${spec.namePrefix}회 조각 (${grade}) ${perPieceG}g`,
-      icon: '🍣', iconTexture: `sashimi_piece_${this.fam}`,
+      name: this.engawa
+        ? `${nameKo} ${spec.namePrefix}엔가와 회 조각 (${grade}) ${perPieceG}g`
+        : `${nameKo} ${spec.namePrefix}회 조각 (${grade}) ${perPieceG}g`,
+      icon: '🍣', iconTexture: this.engawa ? 'trim_engawa' : `sashimi_piece_${this.fam}`,
       category: 'food', subCategory: '회(사시미)',
       basePrice: pieceValue,
       condition: 'fresh', conditionSinceMs: Date.now(),
       equippable: false,
       speciesId, weightG: perPieceG,
-    }, spec.cuts);
+    }, pieceCount);
     this.grantedPieceId = grantedId;
     InventoryStore.removeItem(this.source.id, false);
 
@@ -452,7 +484,7 @@ export class SashimiPanel extends DraggablePanel {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '20px', color: '#ffd257', fontStyle: 'bold',
     }).setOrigin(0.5);
     const body = this.scene.add.text(bx + bw / 2, by + 64, [
-      `${nameKo} ${spec.namePrefix}회 조각 (${grade}) ×${spec.cuts}점  —  ${perPieceG}g/점`,
+      `${nameKo} ${spec.namePrefix}${this.engawa ? '엔가와 ' : ''}회 조각 (${grade}) ×${pieceCount}점  —  ${perPieceG}g/점`,
       `평균 정확도 ${Math.round(avg * 100)}%  ·  조각당 ${pieceValue.toLocaleString()}원`,
       `손질 스킬 +${xp} XP${lv.leveledUp ? `  ★ 레벨업! Lv.${lv.level} ★` : ''}`,
       '요리 탭 [사시미 만들기]에서 접시에 담아 사시미를 완성하세요 (모듬/단품)',

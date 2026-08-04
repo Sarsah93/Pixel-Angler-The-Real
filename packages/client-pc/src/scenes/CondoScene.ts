@@ -11,6 +11,7 @@
 
 import Phaser from 'phaser';
 import type { FloatingCondoState } from '@tra/core';
+import { fadeOutThen } from './SceneFade.js';
 
 export class CondoScene extends Phaser.Scene {
   private condoState!: FloatingCondoState;
@@ -54,11 +55,10 @@ export class CondoScene extends Phaser.Scene {
   }
 
   private exitScene(): void {
-    this.cameras.main.fadeOut(220, 0, 10, 20);
-    this.cameras.main.once('camerafadeoutcomplete', () => {
+    fadeOutThen(this, () => {
       this.scene.stop();
       this.scene.resume('FieldScene');
-    });
+    }, 220);
   }
 
   private initDummyCondo(): FloatingCondoState {

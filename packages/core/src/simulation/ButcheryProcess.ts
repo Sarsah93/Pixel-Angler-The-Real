@@ -151,9 +151,9 @@ export function computeFilletYield(input: FilletYieldInput): FilletYieldResult {
     weightGram * profile.baseYieldRate * toolYield * skillYield * freshness,
   ));
 
-  // 필렛 장수 — 대형 광어는 5장뜨기 분기
-  let filletCount: number = profile.filletCount;
-  if (profile.bodyShape === 'flat' && lengthCm >= 45) filletCount = 5;
+  // 필렛 장수 — 넙치류는 항상 4장 (다섯장뜨기의 '5장' = 필렛 4장 + 중골 뼈 프레임.
+  //  구 "대형 ≥45cm = 5필렛" 분기는 오해였음 — 사용자 순서도 2026-08-05로 정정)
+  const filletCount: number = profile.filletCount;
 
   const sliceGramEff = profile.sliceGramBase / (toolThin * skillThin);
   const sliceCount = Math.max(1, Math.floor(yieldMassG / Math.max(1, sliceGramEff)));
@@ -298,8 +298,222 @@ const GUIDE_COORDS: Record<'bream' | 'amberjack', GuideCoordSet> = {
   },
 };
 
+/**
+ * 넙치류(flat) 다섯장뜨기 가이드 좌표 — 도마 rect 정규화 (근사 기본값, dev F9 실측 예정).
+ * 뷰 규칙: BASE = 등면(어두운 면) 위 / FLIP = 배면(흰 면) 위 — **둘 다 머리 왼쪽**
+ * (납작한 생선을 장축 기준으로 뒤집으므로 좌우 미러 없음).
+ */
+const FLAT_GUIDE = {
+  /** 시메 — 눈 뒤 뇌 지점 (등면 좌상단) */
+  ikejime: { x: 0.30, y: 0.40 },
+  /** 방혈 — 아가미 안쪽 세로 호 */
+  bleed: [
+    { x: 0.345, y: 0.38 }, { x: 0.356, y: 0.46 }, { x: 0.360, y: 0.54 }, { x: 0.350, y: 0.62 },
+  ],
+  /**
+   * 머리 S자 절단 (사용자 캡처 1 — 도마 왼쪽에 머리, 절단면이 'S' 모양).
+   * 위에서 아래로: 왼쪽으로 파고들다 → 내장 주머니를 피해 오른쪽으로 불룩 → 다시 왼쪽 아래로.
+   */
+  headScut: [
+    { x: 0.375, y: 0.10 }, { x: 0.345, y: 0.25 }, { x: 0.335, y: 0.40 }, { x: 0.375, y: 0.55 },
+    { x: 0.395, y: 0.68 }, { x: 0.365, y: 0.80 }, { x: 0.325, y: 0.92 },
+  ],
+  /** 비늘치기 스윕 (등면/배면 공용 지그재그) */
+  scaleSweep: [
+    { x: 0.62, y: 0.16 }, { x: 0.42, y: 0.22 }, { x: 0.66, y: 0.32 }, { x: 0.40, y: 0.40 },
+    { x: 0.68, y: 0.50 }, { x: 0.40, y: 0.58 }, { x: 0.66, y: 0.68 }, { x: 0.42, y: 0.78 },
+    { x: 0.60, y: 0.86 },
+  ],
+  /** 꼬리 칼집 (앞/뒤) — 꼬리자루 세로 */
+  tail: [{ x: 0.665, y: 0.38 }, { x: 0.668, y: 0.62 }],
+  /** 중앙선(척추선) 칼집 — 머리 경계 → 꼬리 */
+  center: [{ x: 0.38, y: 0.50 }, { x: 0.66, y: 0.50 }],
+  /** 위쪽 지느러미 경계 칼길 (사용자 캡처 4·5) */
+  upScore: [
+    { x: 0.385, y: 0.28 }, { x: 0.46, y: 0.20 }, { x: 0.55, y: 0.17 }, { x: 0.62, y: 0.22 }, { x: 0.66, y: 0.33 },
+  ],
+  /** 위쪽 포 뜨기 — 중앙선에서 지느러미 방향으로 (2회 점점 깊게. 캡처 6~8) */
+  upLift: [{ x: 0.40, y: 0.36 }, { x: 0.52, y: 0.32 }, { x: 0.64, y: 0.38 }],
+  /** 내장 긁어내기 — 머리 없다고 가정 시 왼쪽 상단 주머니 (사용자 캡처 1 빨간 영역) */
+  gutSweep: [{ x: 0.475, y: 0.30 }, { x: 0.415, y: 0.33 }, { x: 0.395, y: 0.42 }],
+  /** 아래쪽 지느러미 경계 칼길 */
+  dnScore: [
+    { x: 0.385, y: 0.72 }, { x: 0.46, y: 0.80 }, { x: 0.55, y: 0.83 }, { x: 0.62, y: 0.78 }, { x: 0.66, y: 0.67 },
+  ],
+  /** 아래쪽 포 뜨기 */
+  dnLift: [{ x: 0.40, y: 0.64 }, { x: 0.52, y: 0.68 }, { x: 0.64, y: 0.62 }],
+  /** 엔가와 분리 — 필렛 아래 긴 경계선 (지느러미살 ↔ 살코기) */
+  engawa: [{ x: 0.20, y: 0.70 }, { x: 0.80, y: 0.70 }],
+};
+
+/**
+ * 넙치류(광어·도다리) **다섯장뜨기** 스테이지 트리 (사용자 순서도 2026-08-05):
+ *  시메 → 방혈 → [머리 S자 절단 / 비늘치기 — 자유] (지느러미 제거 없음 — 엔가와로 뜬다) →
+ *  꼬리 앞뒤 칼집 → **배쪽(흰 면·FLIP) 먼저**: 중앙선 → 위쪽(내장 위치) 칼길+포 뜨기 →
+ *  내장 제거 → 아래쪽 칼길+포 뜨기 (2장) → **등쪽(BASE)**: 동일 구조 (2장) →
+ *  엔가와 4장 분리 → 박피 (필렛 1장 — 재장착으로 나머지).
+ *  = 필렛 4장 + 중골(뼈 프레임) = 5장. **척추뼈 끊기 없음** (중앙 척추 기준 4면을 각각 뜬다).
+ */
+function buildFlatStages(profile: ButcheryProfile, opts?: ButcheryStageOptions): ButcheryStage[] {
+  const F = FLAT_GUIDE;
+  const stages: ButcheryStage[] = [];
+
+  stages.push({
+    id: 'ikejime', label: '시메 (즉살)', orientation: 'BASE', primitive: 'tap',
+    guide: '눈 뒤 뇌 지점을 정확히 탭하세요 — 신경 차단으로 선도가 유지됩니다',
+    tapPoint: F.ikejime, tapRadius: 0.09,
+  });
+  stages.push({
+    id: 'bleed_cut', label: '방혈 — 아가미 절개', orientation: 'BASE', primitive: 'guided_cut',
+    guide: '아가미 안쪽을 세로로 그어 피를 빼세요',
+    cut: cut('bleed_cut', 'BASE', F.bleed),
+  });
+  stages.push({
+    id: 'bleed_ice', label: '방혈 — 얼음물 담그기', orientation: 'BASE', primitive: 'wash',
+    guide: '얼음물에 담가 방혈을 완료하세요 (잡내 감소·선도 향상)',
+  });
+
+  if (profile.hasScales && !opts?.skipDescale) {
+    stages.push({
+      id: 'scale_base', label: '비늘치기 (등면)', orientation: 'BASE', primitive: 'drag_fill',
+      guide: '꼬리→머리 역결 방향으로 지그재그로 문질러 비늘을 전부 벗기세요',
+      fillTarget: 0.92, sweepPath: F.scaleSweep,
+    });
+    stages.push({
+      id: 'scale_flip', label: '비늘치기 (배면)', orientation: 'FLIP', primitive: 'drag_fill',
+      guide: '뒤집어서 흰 면 비늘도 전부 벗기세요',
+      fillTarget: 0.92, sweepPath: F.scaleSweep,
+    });
+    stages.push({
+      id: 'scale_wash', label: '세척', orientation: 'FLIP', primitive: 'wash',
+      guide: '비늘 부스러기를 씻어내세요',
+    });
+  }
+
+  // 머리 S자 절단 — 내장 주머니를 피해 S자로 (한 번에 관통. 사용자 캡처 1의 검은 S 선)
+  stages.push({
+    id: 'flat_head_scut', label: '머리 S자 절단', orientation: 'BASE', primitive: 'guided_cut',
+    guide: '내장 주머니를 피해 S자로 머리를 잘라내세요 (절단면이 S 모양이 되도록)',
+    cut: cut('flat_head_scut', 'BASE', F.headScut, { strong: true, tolerance: 0.09 }),
+  });
+
+  // 꼬리 끝 앞뒤 살짝 절단
+  stages.push({
+    id: 'tail_grip', label: '꼬리 칼집 (등면)', orientation: 'BASE', primitive: 'guided_cut',
+    guide: '꼬리 끝 쪽에 얕은 칼집을 넣으세요 (등면)',
+    cut: cut('tail_grip', 'BASE', F.tail, { minCoverage: 0.5 }),
+  });
+  stages.push({
+    id: 'tail_grip_b', label: '꼬리 칼집 (배면)', orientation: 'FLIP', primitive: 'guided_cut',
+    guide: '뒤집어 배면 꼬리에도 얕은 칼집을 넣으세요',
+    cut: cut('tail_grip_b', 'FLIP', F.tail, { minCoverage: 0.5 }),
+  });
+
+  // ── 배쪽(흰 면·FLIP) 먼저 — 위(내장 위치)/아래 2장 ──
+  stages.push({
+    id: 'flat_belly_center', label: '배쪽 — 중앙선 칼집', orientation: 'FLIP', primitive: 'guided_cut',
+    guide: '머리 경계에서 꼬리까지 몸통 중앙(척추선)을 따라 칼집을 넣으세요',
+    cut: cut('flat_belly_center', 'FLIP', F.center, { tolerance: 0.07 }),
+  });
+  stages.push({
+    id: 'flat_belly_up_score', label: '배쪽 위 — 지느러미 경계 칼길', orientation: 'FLIP', primitive: 'guided_cut',
+    guide: '위쪽 지느러미(엔가와)와 살 경계를 따라 칼길을 내세요',
+    cut: cut('flat_belly_up_score', 'FLIP', F.upScore, { tolerance: 0.09 }),
+  });
+  stages.push({
+    id: 'flat_belly_up_lift', label: '배쪽 위 — 포 뜨기 (내장 위치)', orientation: 'FLIP', primitive: 'guided_cut',
+    guide: '중앙선에서 지느러미 방향으로 뼈를 타며 포를 떠내세요 (2회 — 점점 깊게)',
+    cut: cut('flat_belly_up_lift', 'FLIP', F.upLift, { strokesRequired: 2, strong: true, tolerance: 0.1 }),
+    yieldsFillet: true,
+  });
+  stages.push({
+    id: 'flat_gut_scoop', label: '내장 제거', orientation: 'FLIP', primitive: 'scoop',
+    guide: '드러난 왼쪽 상단 내장 주머니를 긁어 통째로 꺼내세요',
+    fillTarget: 0.85, sweepPath: F.gutSweep,
+  });
+  stages.push({
+    id: 'flat_belly_dn_score', label: '배쪽 아래 — 지느러미 경계 칼길', orientation: 'FLIP', primitive: 'guided_cut',
+    guide: '아래쪽 지느러미(엔가와)와 살 경계를 따라 칼길을 내세요',
+    cut: cut('flat_belly_dn_score', 'FLIP', F.dnScore, { tolerance: 0.09 }),
+  });
+  stages.push({
+    id: 'flat_belly_dn_lift', label: '배쪽 아래 — 포 뜨기', orientation: 'FLIP', primitive: 'guided_cut',
+    guide: '중앙선에서 아래 지느러미 방향으로 포를 떠내세요 (2회 — 점점 깊게)',
+    cut: cut('flat_belly_dn_lift', 'FLIP', F.dnLift, { strokesRequired: 2, strong: true, tolerance: 0.1 }),
+    yieldsFillet: true,
+  });
+
+  // ── 등쪽(어두운 면·BASE) — 동일 구조 2장 ──
+  stages.push({
+    id: 'flat_back_center', label: '등쪽 — 중앙선 칼집', orientation: 'BASE', primitive: 'guided_cut',
+    guide: '뒤집어 등면도 중앙(척추선)을 따라 칼집을 넣으세요',
+    cut: cut('flat_back_center', 'BASE', F.center, { tolerance: 0.07 }),
+  });
+  stages.push({
+    id: 'flat_back_up_score', label: '등쪽 위 — 지느러미 경계 칼길', orientation: 'BASE', primitive: 'guided_cut',
+    guide: '등지느러미와 등살 경계를 따라 칼길을 내세요',
+    cut: cut('flat_back_up_score', 'BASE', F.upScore, { tolerance: 0.09 }),
+  });
+  stages.push({
+    id: 'flat_back_up_lift', label: '등쪽 위 — 포 뜨기', orientation: 'BASE', primitive: 'guided_cut',
+    guide: '척추쪽에서 지느러미 방향으로 뼈를 타며 포를 떠내세요 (2회 — 점점 깊게)',
+    cut: cut('flat_back_up_lift', 'BASE', F.upLift, { strokesRequired: 2, strong: true, tolerance: 0.1 }),
+    yieldsFillet: true,
+  });
+  stages.push({
+    id: 'flat_back_dn_score', label: '등쪽 아래 — 지느러미 경계 칼길', orientation: 'BASE', primitive: 'guided_cut',
+    guide: '아래쪽 지느러미와 살 경계를 따라 칼길을 내세요',
+    cut: cut('flat_back_dn_score', 'BASE', F.dnScore, { tolerance: 0.09 }),
+  });
+  stages.push({
+    id: 'flat_back_dn_lift', label: '등쪽 아래 — 포 뜨기', orientation: 'BASE', primitive: 'guided_cut',
+    guide: '척추쪽에서 지느러미 방향으로 포를 떠내세요 (2회 — 점점 깊게)',
+    cut: cut('flat_back_dn_lift', 'BASE', F.dnLift, { strokesRequired: 2, strong: true, tolerance: 0.1 }),
+    yieldsFillet: true,
+  });
+
+  // ── 엔가와 분리 — 필렛 4장 각각 지느러미살/살코기 경계 절단 ──
+  for (let i = 1; i <= 4; i++) {
+    stages.push({
+      id: `engawa_${i}`, label: `엔가와 분리 (필렛 ${i})`, orientation: 'FLESH_UP', primitive: 'guided_cut',
+      guide: '필렛 가장자리의 지느러미살(엔가와)과 살코기 경계를 칼로 갈라 분리하세요',
+      cut: cut(`engawa_${i}`, 'FLESH_UP', F.engawa, { tolerance: 0.09 }),
+    });
+  }
+
+  // ── 박피 — 원형어와 동일 절차 (필렛 1장 처리, id 공유 = 클라 전용 렌더 재사용) ──
+  stages.push({
+    id: 'peel_grip', label: '박피 ① 꼬리 손잡이 만들기', orientation: 'FLESH_UP', primitive: 'guided_cut',
+    guide: '꼬리(왼쪽) 살코기에 작은 칼집을 넣어 잡을 손잡이를 만드세요',
+    cut: cut('peel_grip', 'FLESH_UP',
+      [{ x: 0.106, y: 0.350 }, { x: 0.065, y: 0.562 }], { tolerance: 0.1 }),
+  });
+  stages.push({
+    id: 'peel_insert', label: '박피 ② 껍질과 살 사이 칼 넣기', orientation: 'FLESH_UP', primitive: 'guided_cut',
+    guide: '측면에서 껍질과 살코기 경계면을 따라 칼을 넣으세요',
+    cut: cut('peel_insert', 'FLESH_UP',
+      [{ x: 0.209, y: 0.779 }, { x: 0.281, y: 0.783 }], { tolerance: 0.09 }),
+  });
+  stages.push({
+    id: 'peel_pull', label: '박피 ③ 껍질 잡고 분리', orientation: 'FLESH_UP', primitive: 'drag_fill',
+    guide: '껍질을 잡고 도마 왼쪽으로 지그재그로 당겨 벗기세요',
+    fillTarget: 0.9,
+    sweepPath: [
+      { x: 0.320, y: 0.500 }, { x: 0.292, y: 0.320 }, { x: 0.268, y: 0.680 },
+      { x: 0.244, y: 0.320 }, { x: 0.220, y: 0.680 }, { x: 0.196, y: 0.320 },
+      { x: 0.172, y: 0.680 }, { x: 0.148, y: 0.330 }, { x: 0.124, y: 0.670 },
+      { x: 0.100, y: 0.360 }, { x: 0.078, y: 0.640 }, { x: 0.058, y: 0.420 },
+      { x: 0.042, y: 0.580 }, { x: 0.030, y: 0.500 },
+    ],
+  });
+
+  return stages;
+}
+
 /** 프로필 기반 손질 스테이지 목록 생성 (오리엔티드 뷰 정규화 좌표 — 머리는 항상 왼쪽 기준) */
 export function buildButcheryStages(profile: ButcheryProfile, opts?: ButcheryStageOptions): ButcheryStage[] {
+  // 넙치류 = 다섯장뜨기 전용 트리 (2026-08-05 — 원형어 삼면뜨기와 구조가 다르다)
+  if (profile.bodyShape === 'flat') return buildFlatStages(profile, opts);
   const stages: ButcheryStage[] = [];
   const G = GUIDE_COORDS[AMBERJACK_GUIDE_SPECIES.has(profile.speciesId) ? 'amberjack' : 'bream'];
 
@@ -409,8 +623,9 @@ export function buildButcheryStages(profile: ButcheryProfile, opts?: ButcherySta
   });
 
   // 7~8. 장 뜨기 — 면별 등쪽/배쪽 각각 척추까지 (자유 손질: 두 컷 순서 무관, 둘 다 = 분리).
-  //  round=삼면뜨기(양살 2장), flat=다섯장뜨기(중앙선 기준 상·하 양측 4~5장).
-  const flat = profile.bodyShape === 'flat';
+  //  ⚠ flat(다섯장뜨기)은 함수 최상단에서 buildFlatStages로 조기 분기 (2026-08-05) —
+  //    이 루프는 round(삼면뜨기) 전용이다. flat 상수는 구 분기 코드 보존용 false 고정.
+  const flat = false as boolean;
   for (let f = 0; f < profile.filletCount; f++) {
     const sideLabel = flat
       ? `다섯장뜨기 ${f + 1}/${profile.filletCount}장`

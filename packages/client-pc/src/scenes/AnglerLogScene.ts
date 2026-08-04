@@ -8,6 +8,7 @@ import { GameState } from '../store/GameState.js';
 import { FISH_DATABASE, getSpotById } from '@tra/core';
 import { FISH_TEXTURE } from '../data/FishTextures.js';
 import { clampTextWidth } from '../ui/TextFit.js';
+import { fadeOutThen } from './SceneFade.js';
 
 export class AnglerLogScene extends Phaser.Scene {
   private currentTab: 'encyclopedia' | 'history' = 'encyclopedia';
@@ -122,11 +123,10 @@ export class AnglerLogScene extends Phaser.Scene {
   }
 
   private onBack(): void {
-    this.cameras.main.fadeOut(220, 0, 10, 20);
-    this.cameras.main.once('camerafadeoutcomplete', () => {
+    fadeOutThen(this, () => {
       this.scene.stop();
       this.scene.resume(this.returnScene);
-    });
+    }, 220);
   }
 
   private switchTab(tab: 'encyclopedia' | 'history'): void {

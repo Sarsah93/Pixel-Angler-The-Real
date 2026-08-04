@@ -1,7 +1,8 @@
 /**
  * gen_sashimi_fillet.cjs — 회썰기(사시미) 미니게임용 필렛 스프라이트 생성기 (2뷰).
  *
- * `food assets/trimmings/pure_pillet_{bream,amberjack}.png`(고해상 픽셀아트 실사)에서:
+ * `food assets/trimmings/{fam}/pure_pillet_{bream,amberjack}.png`(고해상 픽셀아트 실사 —
+ * 2026-08-05 어종군 하위 폴더로 재정리)에서:
  *  ① **탑뷰**(일반 회뜨기 — y plane 정면뷰, 위에서 본 필렛): 원본이 이미 탑뷰 사진이므로
  *     **리매핑 없이 고품질 박스 다운샘플만** — 원본 충실도 최대 (사용자 지시 2026-08-03).
  *  ② **측면 뷰**(고급 회뜨기 — z plane 정면뷰): 원본 컬럼을 **낮고 완만한 슬랩 실루엣**으로
@@ -30,8 +31,8 @@ const FAMILIES = [
   // flipX = 측면 뷰 텍스처 방향 / flipTop = 탑뷰 방향
   //  탑뷰: 꼬리 = **왼쪽** (사용자 정정 2026-08-04 — 구 flip이 꼬리를 오른쪽에 두어
   //  "우측(첫 컷)부터 꼬리를 자르는" 연출이 됐었다. 컷은 오른쪽(머리)부터 = 정석 유지)
-  { fam: 'bream', src: path.join(ROOT, 'food assets', 'trimmings', 'pure_pillet_bream.png'), flipX: true, flipTop: false },
-  { fam: 'amberjack', src: path.join(ROOT, 'food assets', 'trimmings', 'pure_pillet_amberjack.png'), flipX: false, flipTop: false },
+  { fam: 'bream', src: path.join(ROOT, 'food assets', 'trimmings', 'bream', 'pure_pillet_bream.png'), flipX: true, flipTop: false },
+  { fam: 'amberjack', src: path.join(ROOT, 'food assets', 'trimmings', 'amberjack', 'pure_pillet_amberjack.png'), flipX: false, flipTop: false },
 ];
 
 /** 탑뷰 목표 폭 (높이는 원본 비율 유지) / 측면 뷰 크기 */

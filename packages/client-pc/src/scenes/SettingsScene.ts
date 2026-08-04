@@ -13,6 +13,7 @@
 
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
+import { fadeOutThen } from './SceneFade.js';
 
 // ─────────────────────────────────────────────
 // 설정 저장 구조체
@@ -563,10 +564,9 @@ export class SettingsScene extends Phaser.Scene {
   // ── 씬 닫기 ───────────────────────────────────────────
   private closeScene(): void {
     saveSettings(this.settings);
-    this.cameras.main.fadeOut(200, 0, 10, 20);
-    this.cameras.main.once('camerafadeoutcomplete', () => {
+    fadeOutThen(this, () => {
       this.scene.stop();
       this.scene.resume('MainMenuScene');
-    });
+    }, 200);
   }
 }

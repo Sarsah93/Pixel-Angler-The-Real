@@ -158,6 +158,18 @@ export class BootScene extends Phaser.Scene {
     this.load.image('trim_pin', 'trimmings/pin_bone.png');
     this.load.image('trim_guts', 'trimmings/pile_of_fish_guts.png');
     this.load.image('trim_skin', 'trimmings/fish_skin.png');
+    // ── 넙치류(광어) 다섯장뜨기 부산물 (2026-08-05 — 사용자 에셋 12종 중 9종 사용) ──
+    //  ⚠ 소스 파일명 오탈자 rib_bone_hailbut → 복사 시 rib_bone_halibut로 정정 /
+    //    'inventory icon' 공백 파일명 → engawa_halibut_icon으로 정정.
+    this.load.image('trim_head_halibut', 'trimmings/head_halibut.png');
+    this.load.image('trim_spine_halibut', 'trimmings/main_spine_bone_halibut.png');
+    this.load.image('trim_rib_halibut', 'trimmings/rib_bone_halibut.png');   // 예비 (현 트리 미사용)
+    this.load.image('trim_fillet_engw_halibut_1', 'trimmings/skinned_pillet_with_ribs_halibut_1.png');
+    this.load.image('trim_fillet_engw_halibut_2', 'trimmings/skinned_pillet_with_ribs_halibut_2.png');
+    this.load.image('trim_fillet_skinonly_halibut', 'trimmings/skinned_pillet_without_engawa_halibut.png');
+    this.load.image('trim_engawa_skin', 'trimmings/skinned_engawa_halibut.png');   // 껍질 붙은 엔가와
+    this.load.image('trim_engawa', 'trimmings/engawa_halibut.png');                // 순수 엔가와 (스트립)
+    this.load.image('trim_engawa_icon', 'trimmings/engawa_halibut_icon.png');      // 순수 엔가와 인벤 아이콘
     this.load.image('fish_black_sea_bream', 'fish/black_sea_bream.png');
     this.load.image('fish_halibut', 'fish/halibut.png');
     this.load.image('fish_largescale_blackfish', 'fish/large_scale_blackfish.png');   // 벵에돔

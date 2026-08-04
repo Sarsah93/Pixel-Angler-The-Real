@@ -49,6 +49,14 @@ export const SASHIMI_MODES: Record<SashimiMode, SashimiModeSpec> = {
   },
 };
 
+/**
+ * 엔가와(넙치류 지느러미살) 전용 컷 수 — 짧은 스트립이라 **총 2회만** 자른다
+ * (사용자 지시 2026-08-05). 2컷 = 조각 3점 (스트립 3등분 — 잔여 없음).
+ */
+export const ENGAWA_CUTS = 2;
+/** 엔가와 조각 수 (2컷 → 3등분) */
+export const ENGAWA_PIECES = ENGAWA_CUTS + 1;
+
 /** 사시미 크기 등급 — 원물 필렛 무게(g) 연동 (소/중/대/특대) */
 export type SashimiSizeTier = '소' | '중' | '대' | '특대';
 

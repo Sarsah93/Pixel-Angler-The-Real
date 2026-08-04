@@ -25,6 +25,7 @@ import { InfoOverlayPanel } from '../ui/InfoOverlayPanel.js';
 import { HydroCurrentRenderer } from '../ui/HydroCurrentRenderer.js';
 import { BikeComposite, RiderDir } from '../ui/BikeComposite.js';
 import { InventoryStore } from '../store/InventoryStore.js';
+import { fadeOutThen } from './SceneFade.js';
 
 // 월드 크기 (중형 — 방파제+마을+갯벌 포함)
 const TILE = 16; // 픽셀 타일 크기
@@ -1003,11 +1004,10 @@ export class FieldScene extends Phaser.Scene {
     };
 
     this.dismountBike();   // 낚시 진입 시 자동 하차
-    this.cameras.main.fadeOut(250, 0, 10, 20);
-    this.cameras.main.once('camerafadeoutcomplete', () => {
+    fadeOutThen(this, () => {
       this.scene.pause('FieldScene');
       this.scene.launch('FishingScene', { point });
-    });
+    }, 250);
   }
 
   // ─────────────────────────────────────────────────────────
@@ -1115,11 +1115,10 @@ export class FieldScene extends Phaser.Scene {
   // ─────────────────────────────────────────────────────────
   private launchSubscene(sceneKey: string): void {
     this.dismountBike();   // 하위 씬(활동) 진입 시 자동 하차
-    this.cameras.main.fadeOut(250, 0, 10, 20);
-    this.cameras.main.once('camerafadeoutcomplete', () => {
+    fadeOutThen(this, () => {
       this.scene.pause('FieldScene');
       this.scene.launch(sceneKey);
-    });
+    }, 250);
   }
 
   // ─────────────────────────────────────────────────────────
@@ -1140,10 +1139,9 @@ export class FieldScene extends Phaser.Scene {
     }
     
     // 열린 팝업창이 모두 없을 때 월드맵 복귀
-    this.cameras.main.fadeOut(300, 0, 10, 20);
-    this.cameras.main.once('camerafadeoutcomplete', () => {
+    fadeOutThen(this, () => {
       this.scene.start('WorldMapScene');
-    });
+    }, 300);
   }
 
   // ─────────────────────────────────────────────────────────
@@ -1463,11 +1461,10 @@ export class FieldScene extends Phaser.Scene {
     // 낚시 씬 진입 — 파워 데이터 전달 (FishingScene에서 activeFishingZone 기반)
     this.time.delayedCall(300, () => {
       const point = (this.activeFishingZone as Zone & { action?: string }) as { id?: string };
-      this.cameras.main.fadeOut(250, 0, 10, 20);
-      this.cameras.main.once('camerafadeoutcomplete', () => {
+      fadeOutThen(this, () => {
         this.scene.pause('FieldScene');
         this.scene.launch('FishingScene', { point, castPower: power });
-      });
+      }, 250);
     });
   }
 }

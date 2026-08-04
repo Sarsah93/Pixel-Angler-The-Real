@@ -1060,9 +1060,10 @@ export class UtilizationPanel extends DraggablePanel {
       }).setOrigin(0.5);
       this.bodyContainer.add(nameLbl);
 
-      if (this.isPureFillet(boardFish)) {
-        // ── 순수 필렛 = 회썰기(사시미) — [일반 회뜨기] + [고급 사시미 뜨기] (사용자 도식 2026-08-03) ──
+      if (this.isPureFillet(boardFish) || this.isPureEngawa(boardFish)) {
+        // ── 순수 필렛/순수 엔가와 = 회썰기(사시미) — [일반 회뜨기] + [고급 사시미 뜨기] ──
         //  일반 = 손 장착 회칼(막칼 포함 — 등급 캡) / 고급 = **야나기바 이상** 장착 시에만 활성.
+        //  엔가와는 SashimiPanel이 스트립 전용 2컷으로 분기한다 (사용자 지시 2026-08-05).
         const handKnife = getBestKnife(
           InventoryStore.items.filter((i) => i.tool === 'knife' && i.equipped).map((i) => i.id));
         const mkBtn = (bx: number, w: number, label: string, on: boolean, mode: SashimiMode, offMsg: string): void => {
@@ -1232,10 +1233,22 @@ export class UtilizationPanel extends DraggablePanel {
     return item.subCategory === '손질 필렛' && item.id.startsWith('inv_filletpin_');
   }
 
+  /** 껍질+엔가와 붙은 넙치류 필렛 — 도마에 올리면 **엔가와 분리부터** 재개 (2026-08-05) */
+  private isEngwFillet(item: InvItem): boolean {
+    return item.subCategory === '손질 필렛' && item.id.startsWith('inv_filletengw_');
+  }
+
+  /** 껍질 붙은 엔가와 — 도마에 올리면 **박피부터** 재개 (순수 엔가와 산출) */
+  private isEngwSkin(item: InvItem): boolean {
+    return item.subCategory === '손질 필렛' && item.id.startsWith('inv_engwskin_');
+  }
+
   /** 도마 재장착 가능한 중간 산출물 → 시작 섹션 */
   private resumeSectionOf(item: InvItem): string | undefined {
     if (this.isRibFillet(item)) return 'sec_rib';
     if (this.isPinFillet(item)) return 'sec_pin';
+    if (this.isEngwFillet(item)) return 'sec_engawa';
+    if (this.isEngwSkin(item)) return 'sec_peel';
     if (this.isSkinFillet(item)) return 'sec_peel';
     return undefined;
   }
@@ -1246,6 +1259,14 @@ export class UtilizationPanel extends DraggablePanel {
    */
   private isPureFillet(item: InvItem): boolean {
     return item.subCategory === '손질 필렛' && item.id.startsWith('inv_fillet_');
+  }
+
+  /**
+   * 순수 엔가와(넙치류 지느러미살) — 도마에 올리면 **회썰기(총 2컷)** 대상 (사용자 지시 2026-08-05).
+   * 순수 필렛과 동일 흐름이되 SashimiPanel이 엔가와 스트립 전용(2컷·실사 에셋)으로 분기한다.
+   */
+  private isPureEngawa(item: InvItem): boolean {
+    return item.subCategory === '엔가와' && item.id.startsWith('inv_engawa_');
   }
 
   private dropFishOnBoard(item: InvItem): void {
@@ -1261,7 +1282,7 @@ export class UtilizationPanel extends DraggablePanel {
       this.flashBoardToast('접시는 아래 [사시미 만들기] 영역에 놓으세요');
       return;
     }
-    if (this.isPureFillet(item)) {
+    if (this.isPureFillet(item) || this.isPureEngawa(item)) {
       if (this.cookBoardFishId && this.cookBoardFishId !== item.id) { this.trySwapBoard(item.id); return; }
       this.cookBoardFishId = item.id;
       this.cookSelectedId = item.id;
@@ -1419,7 +1440,7 @@ export class UtilizationPanel extends DraggablePanel {
   private renderCookSubBoxes(bx: number, by: number, bw: number, bh: number): void {
     const boardFish = this.cookBoardFishId ? InventoryStore.find(this.cookBoardFishId) : undefined;
     const hasPieces = InventoryStore.items.some((i) => this.isSashimiPiece(i));
-    const relevant = (boardFish && this.isPureFillet(boardFish)) || hasPieces
+    const relevant = (boardFish && (this.isPureFillet(boardFish) || this.isPureEngawa(boardFish))) || hasPieces
       || this.cookSub === 'sashimi' || !!this.plateState;
     if (!relevant) return;
     bh = Math.min(206, bh);
@@ -1612,35 +1633,24 @@ export class UtilizationPanel extends DraggablePanel {
     g.lineStyle(1, 0xb8c2ca, 0.8);
     g.strokeEllipse(cx, cy, rx * 1.3, ry * 1.3);
     g.strokeEllipse(cx, cy, rx * 2, ry * 2);
-    // 활성 방위(우상) 하이라이트
-    g.lineStyle(2, 0x4af2a1, 0.85);
-    g.beginPath();
-    g.arc(cx, cy, rx * 0.99, -Math.PI / 2, 0, false);
-    g.strokePath();
     this.bodyContainer.add(g);
-    const activeLbl = this.scene.add.text(cx + rx * 0.72, cy - ry - 12, '배치 방위', {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#4af2a1',
-    }).setOrigin(0.5);
-    this.bodyContainer.add(activeLbl);
+    // (활성 방위 녹색 호 + '배치 방위' 라벨은 제거 — 조각이 놓이는 걸 보면 알 수 있음. 사용자 지시 2026-08-05)
 
     // 조각 렌더 — 저장 방위 q의 화면 방위 = (q - rotation + 4) % 4. [0 우상, 1 좌상, 2 좌하, 3 우하]
+    // 화면 방위별 타원 호 시작각(도, 화면좌표 y+아래): 우상 -90→0 / 좌상 180→270 / 좌하 90→180 / 우하 0→90.
+    // ⚠ 구 수식은 하단 방위(좌하/우하)의 sin 부호가 항상 위쪽이라 우상/좌상 위치에 겹쳐 그려져
+    //    3번째 회전부터 "접시가 안 돌아가는" 것처럼 보이던 실버그 (QA 리포트 2026-08-05).
     const spec = SASHIMI_PLATE_SPECS[st.size];
-    const quadDir = [
-      { sx: 1, sy: -1 }, { sx: -1, sy: -1 }, { sx: -1, sy: 1 }, { sx: 1, sy: 1 },
-    ];
+    const QUAD_BASE_DEG = [-90, 180, 90, 0];
     for (let q = 0; q < 4; q++) {
       const screen = (q - st.rotation + 4) % 4;
-      const dir = quadDir[screen];
       for (let i = 0; i < st.quads[q].length; i++) {
         const p = st.quads[q][i];
         // 방위 내 호를 따라 겹치듯 배치 (사용자 도식 — 가운데부터 바깥으로)
         const t = (i + 0.5) / spec.perQuad;
-        const ang = (screen === 0 || screen === 2)
-          ? -Math.PI / 2 + t * (Math.PI / 2)
-          : Math.PI - (-Math.PI / 2 + t * (Math.PI / 2));
-        const flipY = dir.sy > 0 ? -1 : 1;
+        const ang = Phaser.Math.DegToRad(QUAD_BASE_DEG[screen] + t * 90);
         const pxx = cx + Math.cos(ang) * rx * 0.62;
-        const pyy = cy + Math.sin(ang) * ry * 0.62 * flipY * -1 * (dir.sy);
+        const pyy = cy + Math.sin(ang) * ry * 0.62;
         const pg = this.scene.add.graphics();
         const col = p.adv ? 0xff9a7a : 0xffb2a0;
         pg.fillStyle(col, 1);
@@ -1653,6 +1663,17 @@ export class UtilizationPanel extends DraggablePanel {
         pg.setAngle(-18 + (i % 3) * 14);
         this.bodyContainer.add(pg);
       }
+    }
+
+    // 활성 방위가 가득 찬 동안 상시 안내 — 접시 아래 중앙 (배치는 placePiece가 계속 차단.
+    //  우측 컨트롤 열은 [완성] 버튼과 겹쳐 이곳에 배치. 사용자 지시 2026-08-05)
+    const activeQuad = st.quads[st.rotation % 4];
+    const totalPlaced = st.quads.reduce((s, qd) => s + qd.length, 0);
+    if (activeQuad.length >= spec.perQuad && totalPlaced < spec.perQuad * 4) {
+      const warn = this.scene.add.text(cx, cy + ry + 16, '해당 방위는 가득 찼습니다 — 접시를 돌리세요', {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#ffb45a', fontStyle: 'bold',
+      }).setOrigin(0.5);
+      this.bodyContainer.add(warn);
     }
   }
 
@@ -1686,8 +1707,14 @@ export class UtilizationPanel extends DraggablePanel {
   private rotatePlate(dir: number): void {
     const st = this.plateState;
     if (!st) return;
+    // 가득 찬 방위가 있어도 양방향 회전은 항상 가능 (사용자 지시 2026-08-05) —
+    // 가득 찬 방위로 돌린 경우엔 안내만 띄우고, 그 방위 배치는 placePiece가 계속 차단.
     st.rotation = (st.rotation + dir + 4) % 4;
     this.renderBody();
+    const spec = SASHIMI_PLATE_SPECS[st.size];
+    if (st.quads[st.rotation % 4].length >= spec.perQuad) {
+      this.flashBoardToast(`해당 방위는 가득 찼습니다 (${spec.perQuad}점) — 다른 방위로 돌려 배치하세요`);
+    }
   }
 
   /** 완성 — 전 방위 만석: 2종 이상 = 모듬(고정가·g 하한) / 1종 = 단품(원물 kg 시세 계수) */
@@ -1888,7 +1915,7 @@ export class UtilizationPanel extends DraggablePanel {
       const fam = item.subCategory === '어획물' ? getButcheryFamily(item.speciesId ?? '') : 'unsupported';
       // 껍질 붙은 필렛(재개)·순수 필렛(회썰기)·접시/회 조각(플레이팅)도 드래그 가능
       const draggableFish = fam === 'finfish' || fam === 'cephalopod'
-        || !!this.resumeSectionOf(item) || this.isPureFillet(item)
+        || !!this.resumeSectionOf(item) || this.isPureFillet(item) || this.isPureEngawa(item)
         || this.isPlateItem(item) || this.isSashimiPiece(item);
       const hit = this.scene.add.rectangle(cx + cell / 2, cy + cell / 2, cell, cell, 0xffffff, 0.001)
         .setInteractive({ useHandCursor: true });
@@ -1912,11 +1939,13 @@ export class UtilizationPanel extends DraggablePanel {
     const footY = gridY + 5 * (cell + gap) + 4;
     const selFam = selItem?.subCategory === '어획물' ? getButcheryFamily(selItem.speciesId ?? '') : 'unsupported';
     const selHint = selItem
-      ? (this.isPureFillet(selItem) ? '도마로 드래그하면 회썰기(사시미)를 진행합니다 — 야나기바 장착 시 고급 사시미'
+      ? (this.isPureEngawa(selItem) ? '도마로 드래그하면 엔가와 회썰기(총 2컷)를 진행합니다'
+        : this.isPureFillet(selItem) ? '도마로 드래그하면 회썰기(사시미)를 진행합니다 — 야나기바 장착 시 고급 사시미'
         : this.isPlateItem(selItem) ? '[사시미 만들기] 영역으로 드래그해 접시를 놓으세요'
         : this.isSashimiPiece(selItem) ? '접시로 드래그해 배치하세요 (활성 방위에 1점씩 — 접시 돌리기로 방위 전환)'
         : selItem && this.resumeSectionOf(selItem) ? (this.isRibFillet(selItem) ? '도마로 드래그하면 갈빗대 제거부터 이어서 진행합니다'
           : this.isPinFillet(selItem) ? '도마로 드래그하면 지아이뼈 분리부터 이어서 진행합니다'
+          : this.isEngwFillet(selItem) ? '도마로 드래그하면 엔가와 분리부터 이어서 진행합니다'
           : '도마로 드래그하면 박피부터 이어서 진행합니다')
         : selFam === 'finfish' || selFam === 'cephalopod'
           ? '왼쪽 도마로 드래그해서 올리세요'

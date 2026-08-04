@@ -14,6 +14,7 @@
 import Phaser from 'phaser';
 import { LICENSE_LABEL, groupAttributionsByProvider } from '@tra/core';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
+import { fadeOutThen } from './SceneFade.js';
 
 interface CreditsInit {
   /** 복귀할 씬 키 (기본 MainMenuScene) */
@@ -238,10 +239,9 @@ export class CreditsScene extends Phaser.Scene {
   // 복귀 — 하위 씬 규칙: stop() + resume(부모)
   // ═══════════════════════════════════════════════════
   private close(): void {
-    this.cameras.main.fadeOut(200, 1, 8, 18);
-    this.cameras.main.once('camerafadeoutcomplete', () => {
+    fadeOutThen(this, () => {
       this.scene.stop();
       this.scene.resume(this.returnScene);
-    });
+    }, 200, [1, 8, 18]);
   }
 }
