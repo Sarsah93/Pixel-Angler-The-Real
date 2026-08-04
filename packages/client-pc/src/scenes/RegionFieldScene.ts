@@ -903,8 +903,9 @@ export class RegionFieldScene extends Phaser.Scene {
       this.popupStack.find((e) => e.panel === this.equipPanel)?.close();
       return;
     }
+    // 인체 배치형 장비창(382×674) — 세로가 길어 상단 22에 배치 (하단 696 ≤ 720)
     this.equipPanel = this.openPopup(
-      (close) => new EquipmentPanel(this, GAME_WIDTH - 500, 70, close, () => this.hud?.refreshQuickslots()),
+      (close) => new EquipmentPanel(this, GAME_WIDTH - 420, 22, close, () => this.hud?.refreshQuickslots()),
       () => { this.equipPanel = null; },
     );
   }
@@ -1102,19 +1103,22 @@ export class RegionFieldScene extends Phaser.Scene {
     if (this.castBusy || this.isTransitioning || this.uiBlocked) return;
     // 자전거 탑승 중엔 낚시 액션 자체가 발동하지 않는다 (안내 없이 무시 — 내려야 가능)
     if (GameState.isMounted) return;
+    // ── 장비 게이팅이 **최우선** (사용자 지시 2026-08-05) ──
+    //  손에 낚싯대가 없으면 애초에 캐스팅 시도가 아니다 → 안내 없이 무시.
+    //  (구 구현은 물가 판정을 먼저 해서, 낚싯대가 없어도 아무 데나 클릭하면
+    //   "바다 가까이에서 캐스팅하세요"가 떴다.)
+    const rod = InventoryStore.getEquippedRod();
+    if (!rod) {
+      // 퀵슬롯에 낚싯대를 올려둔 상태 = 낚시 의도 → 착용 안내만 제공
+      const activeId = InventoryStore.quickslots[GameState.player.activeQuickslotIndex];
+      const activeItem = activeId ? InventoryStore.find(activeId) : undefined;
+      if (activeItem?.tool === 'rod') {
+        this.floatingHint('낚싯대를 손에 착용하세요 (E 장비창 — 인벤토리에서 손 슬롯으로 드래그)');
+      }
+      return;
+    }
     if (!this.nearWater) {
       this.floatingHint('바다 가까이에서 캐스팅하세요');
-      return;
-    }
-    // ── 장비 게이팅: 퀵슬롯 선택 + 실제 손 착용 상태 모두 필요 ──
-    const activeId = InventoryStore.quickslots[GameState.player.activeQuickslotIndex];
-    const activeItem = activeId ? InventoryStore.find(activeId) : undefined;
-    if (!activeItem || activeItem.tool !== 'rod') {
-      this.floatingHint('낚싯대가 등록된 퀵슬롯을 선택하세요');
-      return;
-    }
-    if (!activeItem.equipped) {
-      this.floatingHint('낚싯대를 손에 착용하세요 (인벤토리 우클릭 → 왼손/오른손 착용)');
       return;
     }
     // 채비 완성도 게이트: 필수 부품(원줄/찌/목줄/바늘·미끼)이 모두 장착되어야 캐스팅 가능
@@ -2054,14 +2058,14 @@ export class RegionFieldScene extends Phaser.Scene {
       this.promptText.setText(`[E] ${BUILDING_LABEL[this.nearBuilding.kind]} — 거래하기`);
       this.promptText.setVisible(true);
     } else if (this.nearWater) {
+      // 캐스팅 가능 조건 = **손에 낚싯대 착용** (퀵슬롯 선택은 무관 — 2026-08-05 개편)
+      const rodEquipped = !!InventoryStore.getEquippedRod();
       const activeId = InventoryStore.quickslots[GameState.player.activeQuickslotIndex];
-      const activeItem = activeId ? InventoryStore.find(activeId) : undefined;
-      const rodSelected = activeItem?.tool === 'rod';
-      const rodEquipped = rodSelected && !!activeItem?.equipped;
+      const rodInQuickslot = activeId ? InventoryStore.find(activeId)?.tool === 'rod' : false;
       this.promptText.setText(
         rodEquipped ? '좌클릭 유지 = 조준·차지 → 놓으면 캐스팅 (마우스로 각도 조절)'
-        : rodSelected ? '낚싯대를 손에 착용하세요 (인벤토리 우클릭 → 착용)'
-        : '낚싯대 퀵슬롯을 선택하세요',
+        : rodInQuickslot ? '낚싯대를 손에 착용하세요 (E 장비창)'
+        : '낚싯대를 손에 착용하면 캐스팅할 수 있습니다 (E 장비창)',
       );
       this.promptText.setVisible(true);
     } else {

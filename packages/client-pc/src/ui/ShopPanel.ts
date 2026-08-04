@@ -217,7 +217,10 @@ export class ShopPanel extends DraggablePanel {
       });
       if (cells.length === 0) this.renderEmptyNote(gy0, '판매 품목이 없습니다.');
     } else {
-      const sellable = InventoryStore.items.filter((i) => this.shop.buysCategories.includes(i.category));
+      // 착용 중 장비(slot < 0 = 그리드 이탈)는 판매 목록에서 제외 — 먼저 해제해야 한다 (2026-08-05 개편)
+      const sellable = InventoryStore.items.filter(
+        (i) => this.shop.buysCategories.includes(i.category) && i.slot >= 0,
+      );
       sellable.forEach((item) => {
         cells.push({
           icon: item.icon, iconTexture: item.iconTexture, name: item.name,

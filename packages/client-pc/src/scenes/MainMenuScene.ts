@@ -36,6 +36,40 @@ const PANEL_Y = 236;
 const ROW_H = 46;
 const SLOT_ROW_H = 74;
 
+/**
+ * 타이틀 로고 배치·배킹 튜닝 지점 (사용자 조정용 — 2026-08-04).
+ * 여기 숫자만 바꾸면 로고 위치/크기와 배킹 3겹 전체 크기가 함께 따라간다.
+ */
+const TITLE_LOGO = {
+  /**
+   * 로고 중심 x — 화면 중앙 기준 오프셋 (+ = 오른쪽).
+   * 왼쪽으로 90px: 우측 메뉴 패널(x=844~)과 배킹이 겹치던 것도 함께 해소된다.
+   */
+  offsetX: -90,
+  /** 로고 중심 y */
+  y: 158,
+  /** 로고 목표 폭 (px) — 원본 991×359 종횡비 유지 */
+  width: 500,
+
+  /**
+   * 배킹 **전체 크기 배율** — 1.0 = 기본(최외곽 632×285). 0.85 = 537×242.
+   * ⚠ 하한 ≈ **0.83** — 최외곽 폭이 `632 × scale`이라 그 아래로 내리면
+   *   로고(폭 500)가 배킹 밖으로 삐져나온다.
+   */
+  backingScale: 0.85,
+  /** 배킹 기본 여백 (로고 rect 기준 좌우/상하 추가 px) */
+  backingPadX: 40,
+  backingPadY: 26,
+  /** 배킹 중심 미세 조정 (로고와 따로 밀 때 — + = 오른쪽/아래) */
+  backingOffsetX: 0,
+  backingOffsetY: 0,
+  /** 3겹 레이어 [바깥으로 번지는 여백 px, 알파] — 바깥일수록 옅게 */
+  backingLayers: [[26, 0.05], [14, 0.08], [0, 0.12]] as [number, number][],
+  backingColor: 0xdfe8f2,
+  /** 라운드 반경 (레이어 여백만큼 자동 증가) */
+  backingRadius: 26,
+} as const;
+
 export class MainMenuScene extends Phaser.Scene {
   private view: MenuView = 'main';
   private slotMode: SlotMode = 'new';
@@ -56,6 +90,9 @@ export class MainMenuScene extends Phaser.Scene {
   /** 삭제 확인 대기 중인 슬롯 (2단계 클릭) */
   private deleteConfirmSlot: number | null = null;
 
+  /** 씬 전환(페이드아웃) 진행 중 — 이중 클릭/키 입력으로 전환이 겹치는 것을 막는다 */
+  private isTransitioning = false;
+
   constructor() {
     super({ key: 'MainMenuScene' });
   }
@@ -64,6 +101,7 @@ export class MainMenuScene extends Phaser.Scene {
     this.view = 'main';
     this.selectedIndex = 0;
     this.confirmSlot = null;
+    this.isTransitioning = false;
 
     this.drawBackground();
     this.drawTitle();
@@ -239,23 +277,31 @@ export class MainMenuScene extends Phaser.Scene {
   // 타이틀 로고 (투명 배경 PNG — 구 텍스트 2단 로고 대체)
   // ═══════════════════════════════════════════════════
   private drawTitle(): void {
-    const cx = GAME_WIDTH / 2;
-    const ty = 158;
+    const T = TITLE_LOGO;
+    const cx = GAME_WIDTH / 2 + T.offsetX;
+    const ty = T.y;
 
     // 이미지 로고: 원본(991×359) 종횡비 유지, 목표 폭에 맞춰 스케일 (잘림 방지)
     const logo = this.add.image(cx, ty, 'title_logo').setOrigin(0.5).setDepth(11);
-    const targetW = 500;
-    logo.setScale(targetW / logo.width);
+    logo.setScale(T.width / logo.width);
 
     // 가시성 배킹 — 어두운 밤하늘에서 짙은 골드 'Pixel Angler' 글자가 묻히는 문제
     // (사용자 리포트 2026-08-04): 로고 뒤에 밝은 반투명 라운드 패널을 겹겹이 깔아
     // 부드러운 글로우처럼 대비를 올린다 (바깥으로 갈수록 옅게 — 하드 엣지 없음).
-    const bw = targetW + 40, bh = logo.height * logo.scaleY + 26;
+    //  `backingScale`이 3겹 전체(기본 rect + 레이어 여백 + 반경)를 한 번에 키우고 줄인다.
+    const S = T.backingScale;
+    const bw = (T.width + T.backingPadX * 2) * S;
+    const bh = (logo.height * logo.scaleY + T.backingPadY * 2) * S;
+    const bx = cx + T.backingOffsetX;
+    const by = ty + T.backingOffsetY;
     const backing = this.add.graphics().setDepth(10);
-    const layers: [number, number][] = [[26, 0.05], [14, 0.08], [0, 0.12]];
-    for (const [pad, alpha] of layers) {
-      backing.fillStyle(0xdfe8f2, alpha);
-      backing.fillRoundedRect(cx - bw / 2 - pad, ty - bh / 2 - pad, bw + pad * 2, bh + pad * 2, 26 + pad);
+    for (const [pad0, alpha] of T.backingLayers) {
+      const pad = pad0 * S;
+      backing.fillStyle(T.backingColor, alpha);
+      backing.fillRoundedRect(
+        bx - bw / 2 - pad, by - bh / 2 - pad,
+        bw + pad * 2, bh + pad * 2, (T.backingRadius + pad0) * S,
+      );
     }
 
     // 은은한 부유 연출 (스케일 펄스 제거 — 잘림/블러 원인)
@@ -496,46 +542,67 @@ export class MainMenuScene extends Phaser.Scene {
     this.startAdventure();
   }
 
-  private startAdventure(): void {
-    this.cameras.main.fadeOut(320, 1, 8, 18);
-    this.cameras.main.once('camerafadeoutcomplete', () => {
-      // 시작 지점 = 홈타운(집) — 출조는 버스정류장/전국 지도에서 (HOMETOWN_HOME_SPEC)
-      this.scene.start('RegionFieldScene', { region: 'hometown' });
+  /**
+   * 페이드아웃 후 액션 — **폴백 타이머 + 이중 실행 가드** (46차 RegionFieldScene·52차
+   * WorldMapScene와 동일 패턴). `camerafadeoutcomplete` 단독 대기는 fadeIn 중에 다시
+   * fadeOut이 걸리면 이벤트가 발화하지 않아 **검정 화면에서 멈춘다** — 도감/설정에서
+   * 돌아온 직후(fadeIn 220ms) 같은 항목을 다시 고르면 재현되는 경로였다.
+   */
+  private fadeOutThen(fadeMs: number, action: () => void, rgb: [number, number, number] = [1, 8, 18]): void {
+    if (this.isTransitioning) return;
+    this.isTransitioning = true;
+    let done = false;
+    const run = (): void => {
+      if (done) return;
+      done = true;
+      action();
+    };
+    this.cameras.main.fadeOut(fadeMs, rgb[0], rgb[1], rgb[2]);
+    this.cameras.main.once('camerafadeoutcomplete', run);
+    this.time.delayedCall(fadeMs + 150, run);
+  }
+
+  /** 하위 씬에서 복귀(resume) 시 — 페이드인 + 전환 잠금 해제 */
+  private onReturnFadeIn(): void {
+    this.events.once('resume', () => {
+      this.isTransitioning = false;
+      this.cameras.main.fadeIn(220, 1, 8, 18);
     });
+  }
+
+  private startAdventure(): void {
+    // 시작 지점 = 홈타운(집) — 출조는 버스정류장/전국 지도에서 (HOMETOWN_HOME_SPEC)
+    this.fadeOutThen(320, () => this.scene.start('RegionFieldScene', { region: 'hometown' }));
   }
 
   // ── 도감 / 설정 / 종료 ─────────────────────────────
   private openAnglerLog(): void {
-    this.cameras.main.fadeOut(200, 1, 8, 18);
-    this.cameras.main.once('camerafadeoutcomplete', () => {
+    this.fadeOutThen(200, () => {
       this.scene.pause('MainMenuScene');
       this.scene.launch('AnglerLogScene', { returnScene: 'MainMenuScene' });
     });
-    this.events.once('resume', () => this.cameras.main.fadeIn(220, 1, 8, 18));
+    this.onReturnFadeIn();
   }
 
   /** 데이터 출처·저작권 고지 (공공데이터 이용약관 출처 표시 의무) */
   private openCredits(): void {
-    this.cameras.main.fadeOut(200, 1, 8, 18);
-    this.cameras.main.once('camerafadeoutcomplete', () => {
+    this.fadeOutThen(200, () => {
       this.scene.pause('MainMenuScene');
       this.scene.launch('CreditsScene', { returnScene: 'MainMenuScene' });
     });
-    this.events.once('resume', () => this.cameras.main.fadeIn(220, 1, 8, 18));
+    this.onReturnFadeIn();
   }
 
   private openSettings(): void {
-    this.cameras.main.fadeOut(200, 1, 8, 18);
-    this.cameras.main.once('camerafadeoutcomplete', () => {
+    this.fadeOutThen(200, () => {
       this.scene.pause('MainMenuScene');
       this.scene.launch('SettingsScene');
     });
-    this.events.once('resume', () => this.cameras.main.fadeIn(220, 1, 8, 18));
+    this.onReturnFadeIn();
   }
 
   private quitGame(): void {
-    this.cameras.main.fadeOut(420, 0, 0, 0);
-    this.cameras.main.once('camerafadeoutcomplete', () => {
+    this.fadeOutThen(420, () => {
       // 저장은 집 침대에서만 (HOMETOWN_HOME_SPEC) — 종료 시 자동 저장하지 않는다.
       window.close();
       // 브라우저에서 window.close()가 무시될 수 있음 — 안내 표시
@@ -547,7 +614,7 @@ export class MainMenuScene extends Phaser.Scene {
           align: 'center', lineSpacing: 6,
         }).setOrigin(0.5).setDepth(200);
       this.cameras.main.fadeIn(200, 0, 0, 0);
-    });
+    }, [0, 0, 0]);
   }
 
   // ═══════════════════════════════════════════════════

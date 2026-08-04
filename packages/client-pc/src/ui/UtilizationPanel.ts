@@ -39,7 +39,7 @@ import {
   evaluateFishSellPrice, FISH_DATABASE,
 } from '@tra/core';
 import { ExternalDataStore } from '../store/ExternalDataStore.js';
-import { DraggablePanel } from './DraggablePanel.js';
+import { DraggablePanel, applyScreenFixed } from './DraggablePanel.js';
 import { ButcheryPanel } from './ButcheryPanel.js';
 import { SashimiPanel } from './SashimiPanel.js';
 import { GuidePanel } from './GuidePanel.js';
@@ -1138,7 +1138,8 @@ export class UtilizationPanel extends DraggablePanel {
     }
 
     // 안내 텍스트 블록은 [?] 도움말로 이동 (사용자 지시 2026-08-03) — 아래 공간은 서브 영역이 사용
-    this.renderCookHelpButton(boardX + boardW - 100, boardY + 8);
+    // [?] 도움말 — 도마 **바깥 우상단**(도마 위 콘텐츠를 가리지 않게. 사용자 지시 2026-08-04)
+    this.renderCookHelpButton(boardX + boardW + 2, top - 14);
     this.renderCookSubBoxes(boardX, boardY + boardH + 12, boardW, PANEL_H - (boardY + boardH + 12) - 14);
 
     // ── 우측: 종속 인벤토리 (요리 창에 임베드 — 별도 드래그 창 아님) ──
@@ -1370,20 +1371,22 @@ export class UtilizationPanel extends DraggablePanel {
     this.bodyContainer.add([bg, q, hit]);
   }
 
+  /**
+   * 도마 사용법 팝업 — **화면 중앙 · 헤더 드래그 이동 · X 버튼 닫기** (사용자 지시 2026-08-04).
+   * 구 구현은 패널 로컬 고정 위치 + "아무 데나 클릭하면 닫힘"이라, 읽는 중 실수로 닫히고
+   * 위치도 옮길 수 없었다. 공통 `DraggablePanel`로 교체 (씬 레벨 — U패널 리렌더와 독립).
+   */
   private showCookHelp(): void {
-    this.cookHelpPopup?.destroy();
-    const c = this.scene.add.container(0, 0).setDepth(80);
-    const W = 460, H = 240;
-    const x = 60, y = 150;
-    const bg = this.scene.add.graphics();
-    bg.fillStyle(0x081422, 0.97);
-    bg.fillRoundedRect(x, y, W, H, 10);
-    bg.lineStyle(2, 0x4af2a1, 0.9);
-    bg.strokeRoundedRect(x, y, W, H, 10);
-    const title = this.scene.add.text(x + 18, y + 14, '도마 사용법', {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '15px', color: '#ffd257', fontStyle: 'bold',
+    if (this.cookHelpPopup) { this.closeCookHelp(); return; }   // 같은 버튼 = 토글
+    const W = 520, H = 268;
+    const panel = new DraggablePanel(this.scene, {
+      x: Math.round((GAME_WIDTH - W) / 2),
+      y: Math.round((GAME_HEIGHT - H) / 2),
+      width: W, height: H, title: '도마 사용법',
+      onClose: () => this.closeCookHelp(),
+      depth: 900,
     });
-    const body = this.scene.add.text(x + 18, y + 44, [
+    const body = this.scene.add.text(18, 52, [
       '· 생선을 도마에 올리고 [손질 시작]으로 회를 뜹니다 (넣기·빼기·교환 = 드래그)',
       '· 원형어 = 삼면뜨기(양살 2필렛) / 광어·도다리 = 다섯장뜨기(4~5필렛)',
       '· 순수 필렛을 올리면 [일반 회뜨기]/[고급 사시미 뜨기(야나기바)]로 회를 썹니다',
@@ -1392,17 +1395,20 @@ export class UtilizationPanel extends DraggablePanel {
       '· 신선도가 높을수록 회 등급이 오릅니다 (활어회는 활어 상태에서만 특 가능)',
     ].join('\n'), {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#9fc0d4',
-      lineSpacing: 7, wordWrap: { width: W - 36 },
+      lineSpacing: 8, wordWrap: { width: W - 36 },
     });
-    const closeHint = this.scene.add.text(x + W / 2, y + H - 18, '클릭하여 닫기', {
+    const hint = this.scene.add.text(W / 2, H - 20, '헤더를 끌어 이동 · ✕ 또는 ESC로 닫기', {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#5a6a78',
     }).setOrigin(0.5);
-    const hit = this.scene.add.rectangle(x + W / 2, y + H / 2, W, H, 0xffffff, 0.001)
-      .setInteractive({ useHandCursor: true });
-    hit.on('pointerdown', () => { c.destroy(); if (this.cookHelpPopup === c) this.cookHelpPopup = undefined; });
-    c.add([bg, title, body, closeHint, hit]);
-    this.bodyContainer.add(c);
-    this.cookHelpPopup = c;
+    panel.add([body, hint]);
+    this.scene.add.existing(panel);
+    applyScreenFixed(panel);
+    this.cookHelpPopup = panel;
+  }
+
+  private closeCookHelp(): void {
+    this.cookHelpPopup?.destroy();
+    this.cookHelpPopup = undefined;
   }
 
   /**
@@ -2390,6 +2396,8 @@ export class UtilizationPanel extends DraggablePanel {
    * true 반환 = ESC를 소비했으니 U패널은 닫지 말 것 (RegionFieldScene.closeTopPopup).
    */
   onEscIntercept(): boolean {
+    // LIFO — 도움말 → 회썰기 → 손질 순으로 먼저 닫는다 (U패널 자체는 마지막)
+    if (this.cookHelpPopup) { this.closeCookHelp(); return true; }
     if (this.sashimiPanel) {
       this.sashimiPanel.escClose();
       return true;
@@ -2403,6 +2411,7 @@ export class UtilizationPanel extends DraggablePanel {
 
   override destroy(fromScene?: boolean): void {
     this.closeChooser();
+    this.closeCookHelp();   // 씬 레벨 팝업이라 U패널과 함께 정리해야 잔상이 남지 않는다
     // 플레이팅 진행 중 파괴 = 접시 + 배치 조각 반환 (아이템 유실 방지 — 61차 destroy 안전망 규칙)
     if (this.plateState) {
       InventoryStore.addItem({ ...this.plateState.tmpl }, 1);

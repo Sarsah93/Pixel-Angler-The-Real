@@ -36,6 +36,16 @@ const SLOT = 66;
 const SLOT_GAP = 7;
 const DRAG_THRESHOLD = 6;
 
+/**
+ * 그리드 밖 드랍 라우팅 결과 — `inventory-drop` 이벤트로 전달된다.
+ * 수신자(장비창 등)가 처리하면 handled=true로 표시하고, 안내 문구를 message에 담는다.
+ * (인벤토리는 수신자를 알 필요가 없다 — 씬 이벤트로 느슨하게 연결)
+ */
+export interface InvDropResult {
+  handled: boolean;
+  message?: string;
+}
+
 export interface InventoryPanelCallbacks {
   onClose: () => void;
   /** 상세보기 액션 */
@@ -143,8 +153,20 @@ export class InventoryPanel extends DraggablePanel {
         return;
       }
       const toSlot = this.slotAtPointer(p);
-      if (toSlot >= 0 && toSlot !== drag.fromSlot) {
-        InventoryStore.moveItem(this.currentTab, drag.fromSlot, toSlot);
+      if (toSlot >= 0) {
+        if (toSlot !== drag.fromSlot) {
+          InventoryStore.moveItem(this.currentTab, drag.fromSlot, toSlot);
+          this.renderGrid();
+          this.scene.events.emit('inventory-changed');
+        }
+        return;
+      }
+      // 그리드 밖 드랍 — 장비창 등 외부 수신자에게 라우팅 (RPG식 드래그 장착).
+      // 수신자가 처리하면 res.handled = true + 안내 문구를 채워준다.
+      const res: InvDropResult = { handled: false };
+      this.scene.events.emit('inventory-drop', drag.item, p, res);
+      if (res.handled) {
+        if (res.message) this.setStatus(res.message);
         this.renderGrid();
         this.scene.events.emit('inventory-changed');
       }
@@ -297,14 +319,7 @@ export class InventoryPanel extends DraggablePanel {
         this.gridContainer.add(badge);
       }
 
-      if (item.equipped) {
-        const eq = this.scene.add.text(sx + SLOT - 4, sy + 3, '착용', {
-          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '8px', color: '#4af2a1', fontStyle: 'bold',
-          backgroundColor: '#0d4a2ecc', padding: { x: 2, y: 1 },
-        }).setOrigin(1, 0);
-        this.gridContainer.add(eq);
-      }
-
+      // (착용 배지 없음 — 착용 아이템은 그리드에서 빠져 장비창(E)에 표시된다. 2026-08-05)
       const nameTxt = this.scene.add.text(sx + SLOT / 2, sy + SLOT - 14, item.name, {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '7px', color: '#a8c4d8',
       }).setOrigin(0.5, 0);
@@ -334,12 +349,12 @@ export class InventoryPanel extends DraggablePanel {
     this.applyFix();
   }
 
-  private paintSlotBox(box: Phaser.GameObjects.Graphics, sx: number, sy: number, item: InvItem | undefined, hover: boolean): void {
+  private paintSlotBox(box: Phaser.GameObjects.Graphics, sx: number, sy: number, _item: InvItem | undefined, hover: boolean): void {
     box.clear();
     box.fillStyle(hover ? 0x162a40 : 0x0e1c2d, hover ? 0.95 : 0.92);
     box.fillRoundedRect(sx, sy, SLOT, SLOT, 4);
-    const strokeColor = hover ? 0x4af2a1 : (item?.equipped ? 0x4af2a1 : 0x1f3d5a);
-    box.lineStyle(hover ? 1.5 : 1.2, strokeColor, item?.equipped || hover ? 1 : 0.8);
+    const strokeColor = hover ? 0x4af2a1 : 0x1f3d5a;
+    box.lineStyle(hover ? 1.5 : 1.2, strokeColor, hover ? 1 : 0.8);
     box.strokeRoundedRect(sx, sy, SLOT, SLOT, 4);
   }
 
@@ -420,43 +435,29 @@ export class InventoryPanel extends DraggablePanel {
         },
       });
     }
+    // 착용 — 그리드의 아이템은 항상 미착용 상태다(착용 아이템은 장비창에만 존재).
+    // 해제는 장비창(E)에서 슬롯 우클릭으로 수행한다.
     if (item.equippable && item.tool) {
-      // 손 도구(낚싯대/뜰채): 왼손/오른손 선택 착용 — 기존 장비는 교체
-      if (item.equipped) {
+      // 손 도구(낚싯대/뜰채/회칼): 왼손/오른손 선택 착용 — 기존 장비는 그리드로 반환
+      (['R', 'L'] as const).forEach((hand) => {
         actions.push({
-          label: `해제하기 (${item.equippedHand === 'L' ? '왼손' : '오른손'})`,
+          label: hand === 'R' ? '오른손 착용' : '왼손 착용',
           run: () => {
-            InventoryStore.toggleEquip(item.id);
-            this.setStatus(`${item.name} 해제 완료`);
+            const r = InventoryStore.equipHand(item.id, hand);
+            this.setStatus(r.ok
+              ? `${item.name} → ${hand === 'R' ? '오른' : '왼'}손 착용 완료`
+              : r.reason ?? '착용할 수 없습니다.');
             this.renderGrid();
             this.scene.events.emit('inventory-changed');
           },
         });
-      }
-      actions.push({
-        label: item.equippedHand === 'R' ? '오른손 착용 중' : '오른손 착용',
-        run: () => {
-          InventoryStore.equipHand(item.id, 'R');
-          this.setStatus(`${item.name} → 오른손 착용 완료`);
-          this.renderGrid();
-          this.scene.events.emit('inventory-changed');
-        },
-      });
-      actions.push({
-        label: item.equippedHand === 'L' ? '왼손 착용 중' : '왼손 착용',
-        run: () => {
-          InventoryStore.equipHand(item.id, 'L');
-          this.setStatus(`${item.name} → 왼손 착용 완료`);
-          this.renderGrid();
-          this.scene.events.emit('inventory-changed');
-        },
       });
     } else if (item.equippable) {
       actions.push({
-        label: item.equipped ? '해제하기' : '착용하기',
+        label: '착용하기',
         run: () => {
-          InventoryStore.toggleEquip(item.id);
-          this.setStatus(`${item.name} ${item.equipped ? '착용' : '해제'} 완료`);
+          const r = InventoryStore.equipItem(item.id);
+          this.setStatus(r.ok ? `${item.name} 착용 완료` : r.reason ?? '착용할 수 없습니다.');
           this.renderGrid();
           this.scene.events.emit('inventory-changed');
         },

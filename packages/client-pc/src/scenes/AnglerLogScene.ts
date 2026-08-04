@@ -6,6 +6,8 @@
 import Phaser from 'phaser';
 import { GameState } from '../store/GameState.js';
 import { FISH_DATABASE, getSpotById } from '@tra/core';
+import { FISH_TEXTURE } from '../data/FishTextures.js';
+import { clampTextWidth } from '../ui/TextFit.js';
 
 export class AnglerLogScene extends Phaser.Scene {
   private currentTab: 'encyclopedia' | 'history' = 'encyclopedia';
@@ -15,7 +17,8 @@ export class AnglerLogScene extends Phaser.Scene {
   private filterSpotId: string = 'all';
   private sortBy: 'latest' | 'length' | 'weight' = 'latest';
   private currentPage = 0;
-  private readonly ITEMS_PER_PAGE = 5;
+  /** 조과 기록 1페이지 표시 수 — 행 60px, 시작 210 → 210+6*60+50=620 ≤ 네비(675) */
+  private readonly ITEMS_PER_PAGE = 7;
 
   // 탭 버튼 오브젝트 참조
   private tabBtnEncyBg?: Phaser.GameObjects.Rectangle;
@@ -127,6 +130,7 @@ export class AnglerLogScene extends Phaser.Scene {
   }
 
   private switchTab(tab: 'encyclopedia' | 'history'): void {
+    if (this.currentTab !== tab) this.currentPage = 0;   // 탭마다 페이지 수가 달라 초기화
     this.currentTab = tab;
 
     // 활성 탭 버튼 시각적 효과 설정
@@ -157,20 +161,37 @@ export class AnglerLogScene extends Phaser.Scene {
   // 1. 어종 도감 탭 렌더링
   // ─────────────────────────────────────────────
   private renderEncyclopedia(): void {
+    const { width, height } = this.scale;
     const startX = 40;
     const startY = 160;
     const itemW = 220;
     const itemH = 150;
     const colCount = 4;
+    // 페이지 네비(height-45) 위까지만 채운다 — 구 구현은 전 어종을 한 번에 그려 하단이 잘렸다
+    // (마지막 행 아래엔 간격이 필요 없으므로 +GAP 후 나눈다)
+    const GAP = 20;
+    const rowsPerPage = Math.max(1, Math.floor((height - 45 - 24 - startY + GAP) / (itemH + GAP)));
+    const perPage = rowsPerPage * colCount;
+    const maxPage = Math.max(0, Math.ceil(FISH_DATABASE.length / perPage) - 1);
+    this.currentPage = Math.min(this.currentPage, maxPage);   // 탭 전환 시 범위 밖 페이지 방어
 
     const records = GameState.player.caughtFishHistory;
+    const pageFish = FISH_DATABASE.slice(this.currentPage * perPage, (this.currentPage + 1) * perPage);
 
-    FISH_DATABASE.forEach((fish, idx) => {
+    // 발견 현황 요약 (전체 기준)
+    const found = FISH_DATABASE.filter((f) => records.some((r) => r.fishSpeciesId === f.id)).length;
+    const summary = this.add.text(width - 40, startY - 26,
+      `발견 ${found} / ${FISH_DATABASE.length}종`, {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#8faabf',
+      }).setOrigin(1, 0);
+    this.tabContainer?.add(summary);
+
+    pageFish.forEach((fish, idx) => {
       const col = idx % colCount;
       const row = Math.floor(idx / colCount);
 
-      const x = startX + col * (itemW + 20);
-      const y = startY + row * (itemH + 20);
+      const x = startX + col * (itemW + GAP);
+      const y = startY + row * (itemH + GAP);
 
       // 카드 배경
       const card = this.add.graphics();
@@ -184,35 +205,55 @@ export class AnglerLogScene extends Phaser.Scene {
       const bestRecord = GameState.player.personalRecords[fish.id] || 0;
 
       if (caughtCount > 0) {
-        const nameText = this.add.text(x + 15, y + 15, fish.nameKo, {
+        // 이름·학명 = 카드 전체 폭(안쪽 여백 15/12), 실사 이미지는 좌측 아래
+        const nameText = clampTextWidth(this.add.text(x + 15, y + 12, fish.nameKo, {
           fontFamily: '"Noto Sans KR", sans-serif',
-          fontSize: '16px',
+          fontSize: '15px',
           color: '#4af2a1',
           fontStyle: 'bold'
-        });
-        const sciText = this.add.text(x + 15, y + 38, fish.scientificName, {
+        }), itemW - 27);
+        const sciText = clampTextWidth(this.add.text(x + 15, y + 32, fish.scientificName, {
           fontFamily: 'monospace',
           fontSize: '9px',
           color: '#5a8fab',
           fontStyle: 'italic'
-        });
-        const recordText = this.add.text(x + 15, y + 65, `최대어: ${bestRecord} cm`, {
-          fontFamily: '"Noto Sans KR", sans-serif',
-          fontSize: '12px',
-          color: '#e8f4fd'
-        });
-        const countText = this.add.text(x + 15, y + 85, `누적 조과: ${caughtCount} 수`, {
-          fontFamily: '"Noto Sans KR", sans-serif',
-          fontSize: '12px',
-          color: '#e8f4fd'
-        });
-        const priceText = this.add.text(x + 15, y + 110, `횟값: kg당 ${fish.sashimiValuePerKg.toLocaleString()}원`, {
-          fontFamily: '"Noto Sans KR", sans-serif',
-          fontSize: '11px',
-          color: '#c8a060'
-        });
+        }), itemW - 27);
+        this.tabContainer?.add([nameText, sciText]);
 
-        this.tabContainer?.add([nameText, sciText, recordText, countText, priceText]);
+        // 어종 실사 픽셀 이미지(있는 어종만) — 좌측 박스 안에 종횡비 유지로 축소
+        const IMG_X = x + 12, IMG_Y = y + 48, IMG_W = 84, IMG_H = 66;
+        const texKey = FISH_TEXTURE[fish.id];
+        if (texKey && this.textures.exists(texKey)) {
+          const src = this.textures.get(texKey).getSourceImage() as { width: number; height: number };
+          const k = Math.min(IMG_W / src.width, IMG_H / src.height);
+          const img = this.add.image(IMG_X + IMG_W / 2, IMG_Y + IMG_H / 2, texKey)
+            .setDisplaySize(Math.round(src.width * k), Math.round(src.height * k));
+          this.tabContainer?.add(img);
+        } else {
+          const noImg = this.add.text(IMG_X + IMG_W / 2, IMG_Y + IMG_H / 2, '이미지 없음', {
+            fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#24455f',
+          }).setOrigin(0.5);
+          this.tabContainer?.add(noImg);
+        }
+
+        // 우측 스탯 열 (좁으므로 폭 상한 고정 — §4 텍스트 오버플로 금지)
+        const SX = x + 104;
+        const SW = itemW - 104 - 12;
+        const season = fish.peakSeasonMonths.length > 0
+          ? `제철 ${fish.peakSeasonMonths.slice(0, 4).join('·')}월`
+          : '제철 연중';
+        const rows: [string, string][] = [
+          [`최대어 ${bestRecord} cm`, '#e8f4fd'],
+          [`누적 ${caughtCount} 수`, '#e8f4fd'],
+          [season, '#8faabf'],
+          [`kg당 ${fish.sashimiValuePerKg.toLocaleString()}원`, '#c8a060'],
+        ];
+        rows.forEach(([label, color], i) => {
+          const t = clampTextWidth(this.add.text(SX, y + 50 + i * 19, label, {
+            fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color,
+          }), SW);
+          this.tabContainer?.add(t);
+        });
       } else {
         const secretText = this.add.text(x + itemW / 2, y + itemH / 2 - 10, '???', {
           fontFamily: '"Press Start 2P", monospace',
@@ -228,6 +269,8 @@ export class AnglerLogScene extends Phaser.Scene {
         this.tabContainer?.add([secretText, descText]);
       }
     });
+
+    this.renderPageNav(maxPage, width, height);
   }
 
   // ─────────────────────────────────────────────
@@ -259,7 +302,8 @@ export class AnglerLogScene extends Phaser.Scene {
       { id: 'yeosu_odongdo_boat', label: '여수 선상' },
     ];
 
-    let filterBtnX = 120;
+    // 라벨 실측 폭 기준으로 첫 버튼을 배치 — 구 고정값(120)은 라벨(우측 끝 ≈112)과 버튼(좌측 85)이 겹쳤다
+    let filterBtnX = 40 + filterLabel.width + 12 + 35;
     filters.forEach((filter) => {
       const isSelected = this.filterSpotId === filter.id;
       const btn = this.add.container(filterBtnX, controlY + 6).setInteractive(
@@ -298,7 +342,9 @@ export class AnglerLogScene extends Phaser.Scene {
       { id: 'weight', label: '무게순' },
     ];
 
-    let sortBtnX = width - 240;
+    // 정렬 버튼 3개(폭 60·간격 66)를 우측 끝(width-40)에 맞춰 역산 — 라벨과 겹치지 않게
+    let sortBtnX = width - 40 - 30 - 66 * (sorts.length - 1);
+    sortLabel.setX(Math.min(width - 320, sortBtnX - 30 - 12 - sortLabel.width));
     sorts.forEach((sort) => {
       const isSelected = this.sortBy === sort.id;
       const btn = this.add.container(sortBtnX, controlY + 6).setInteractive(
@@ -376,12 +422,12 @@ export class AnglerLogScene extends Phaser.Scene {
 
         // 어종명 및 크기 정보
         const nameTxt = `${fish ? fish.nameKo : '알 수 없는 어종'}   ${log.lengthCm} cm  /  ${(log.weightGram / 1000).toFixed(2)} kg`;
-        const nameTextObj = this.add.text(60, itemY + 10, nameTxt, {
+        const nameTextObj = clampTextWidth(this.add.text(60, itemY + 10, nameTxt, {
           fontFamily: '"Noto Sans KR", sans-serif',
           fontSize: '14px',
           color: log.isBestRecord ? '#ffeeaa' : '#e8f4fd',
           fontStyle: log.isBestRecord ? 'bold' : 'normal',
-        });
+        }), width - 200);   // 우측 왕관 배지 자리 확보
         this.tabContainer?.add(nameTextObj);
 
         // 왕관 표시 (최대어일 때)
@@ -398,71 +444,50 @@ export class AnglerLogScene extends Phaser.Scene {
         // 장비, 미끼 정보 및 수온/물때 정보
         const dateStr = new Date(log.caughtAt).toLocaleDateString('ko-KR', { hour: '2-digit', minute: '2-digit' });
         const subTxt = `📍 ${spot ? spot.name : '알 수 없는 낚시터'}  |  ⚙️ ${log.tackleUsed.rigType.replace('_flowing', '').replace('_sinker', '')} (${log.baitUsed})  |  🌡️ ${log.waterTempC}°C  |  🌊 ${log.tidePhase}물  |  📅 ${dateStr}`;
-        const subTextObj = this.add.text(60, itemY + 30, subTxt, {
+        const subTextObj = clampTextWidth(this.add.text(60, itemY + 30, subTxt, {
           fontFamily: '"Noto Sans KR", sans-serif',
           fontSize: '11px',
           color: '#8faabf',
-        });
+        }), width - 120);   // 행 배경(width-80) 안쪽
         this.tabContainer?.add(subTextObj);
       });
     }
 
-    // ─────────────────────────────────────────────
-    // [UI] 페이징 네비게이션 컨트롤러
-    // ─────────────────────────────────────────────
-    const maxPage = Math.max(0, Math.ceil(rawLogs.length / this.ITEMS_PER_PAGE) - 1);
+    this.renderPageNav(Math.max(0, Math.ceil(rawLogs.length / this.ITEMS_PER_PAGE) - 1), width, height);
+  }
+
+  /**
+   * 페이지 네비게이션 (◀ 이전 · n/N · 다음 ▶) — 두 탭이 공유.
+   * 구 구현은 조과 기록 탭 안에만 있어, **도감 탭은 페이징 없이 전 어종을 그려**
+   * 화면(720) 밖으로 넘쳤다 (사용자 리포트 2026-08-04 "하단이 잘림").
+   */
+  private renderPageNav(maxPage: number, width: number, height: number): void {
     const navY = height - 45;
+    const mkBtn = (dx: number, label: string, enabled: boolean, onClick: () => void): void => {
+      const btn = this.add.container(width / 2 + dx, navY).setInteractive(
+        new Phaser.Geom.Rectangle(-40, -12, 80, 24),
+        Phaser.Geom.Rectangle.Contains,
+      );
+      const bg = this.add.rectangle(0, 0, 80, 24, 0x1f3d5a).setStrokeStyle(1.0, 0x2a5a8a);
+      const t = this.add.text(0, 0, label, {
+        fontFamily: '"Noto Sans KR", sans-serif',
+        fontSize: '11px',
+        color: enabled ? '#ffffff' : '#607b8e',
+      }).setOrigin(0.5);
+      btn.add([bg, t]);
+      if (enabled) {
+        btn.on('pointerdown', onClick);
+        btn.on('pointerover', () => bg.setFillStyle(0x2a5a8a));
+        btn.on('pointerout', () => bg.setFillStyle(0x1f3d5a));
+      }
+      this.tabContainer?.add(btn);
+    };
 
-    // 이전 페이지 버튼
-    const prevBtn = this.add.container(width / 2 - 80, navY).setInteractive(
-      new Phaser.Geom.Rectangle(-40, -12, 80, 24),
-      Phaser.Geom.Rectangle.Contains
-    );
-    const prevBg = this.add.rectangle(0, 0, 80, 24, 0x1f3d5a).setStrokeStyle(1.0, 0x2a5a8a);
-    const prevText = this.add.text(0, 0, '◀ 이전', {
-      fontFamily: '"Noto Sans KR", sans-serif',
-      fontSize: '11px',
-      color: this.currentPage > 0 ? '#ffffff' : '#607b8e',
-    }).setOrigin(0.5);
-    prevBtn.add([prevBg, prevText]);
-    if (this.currentPage > 0) {
-      prevBtn.on('pointerdown', () => {
-        this.currentPage--;
-        this.renderCurrentTab();
-      });
-      prevBtn.on('pointerover', () => prevBg.setFillStyle(0x2a5a8a));
-      prevBtn.on('pointerout', () => prevBg.setFillStyle(0x1f3d5a));
-    }
-    this.tabContainer?.add(prevBtn);
-
-    // 페이지 인덱스 표시
+    mkBtn(-80, '◀ 이전', this.currentPage > 0, () => { this.currentPage--; this.renderCurrentTab(); });
     const pageIndexText = this.add.text(width / 2, navY, `${this.currentPage + 1} / ${maxPage + 1}`, {
-      fontFamily: 'monospace',
-      fontSize: '12px',
-      color: '#e8f4fd',
+      fontFamily: 'monospace', fontSize: '12px', color: '#e8f4fd',
     }).setOrigin(0.5);
     this.tabContainer?.add(pageIndexText);
-
-    // 다음 페이지 버튼
-    const nextBtn = this.add.container(width / 2 + 80, navY).setInteractive(
-      new Phaser.Geom.Rectangle(-40, -12, 80, 24),
-      Phaser.Geom.Rectangle.Contains
-    );
-    const nextBg = this.add.rectangle(0, 0, 80, 24, 0x1f3d5a).setStrokeStyle(1.0, 0x2a5a8a);
-    const nextText = this.add.text(0, 0, '다음 ▶', {
-      fontFamily: '"Noto Sans KR", sans-serif',
-      fontSize: '11px',
-      color: this.currentPage < maxPage ? '#ffffff' : '#607b8e',
-    }).setOrigin(0.5);
-    nextBtn.add([nextBg, nextText]);
-    if (this.currentPage < maxPage) {
-      nextBtn.on('pointerdown', () => {
-        this.currentPage++;
-        this.renderCurrentTab();
-      });
-      nextBtn.on('pointerover', () => nextBg.setFillStyle(0x2a5a8a));
-      nextBtn.on('pointerout', () => nextBg.setFillStyle(0x1f3d5a));
-    }
-    this.tabContainer?.add(nextBtn);
+    mkBtn(80, '다음 ▶', this.currentPage < maxPage, () => { this.currentPage++; this.renderCurrentTab(); });
   }
 }

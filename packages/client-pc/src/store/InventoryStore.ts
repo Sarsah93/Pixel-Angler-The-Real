@@ -45,6 +45,19 @@ export type InvCondition =
 /** 카테고리별 소켓 수 (5x5) */
 export const GRID_CAPACITY = 25;
 
+/**
+ * 착용 중 아이템의 slot 값 — **그리드에서 빠진 상태** (사용자 지시 2026-08-05).
+ * 장착한 장비는 인벤토리 소켓을 차지하지 않는다(소켓 확보 + 장비창 연계).
+ * `itemAtSlot`은 0~24만 조회하므로 -1은 어떤 소켓에도 잡히지 않는다.
+ */
+export const SLOT_EQUIPPED = -1;
+
+/** 착용/해제 결과 — 실패 사유를 UI가 그대로 안내한다 (예: 인벤토리 칸 부족) */
+export interface EquipResult {
+  ok: boolean;
+  reason?: string;
+}
+
 export const CATEGORY_LABEL: Record<InvCategory, string> = {
   gear: '장비',
   consumable: '소모품',
@@ -438,11 +451,12 @@ function createSeedItems(): InvItem[] {
   // dev 전용: 손질 검증용 테스트 어획 6종 (프로덕션 빌드에는 시드되지 않는다)
   if (import.meta.env.DEV) defs.push(...createDevFishDefs());
 
-  // 카테고리별 소켓 순차 배정 + 신선도 시계 시작 (조건 보유 아이템)
+  // 카테고리별 소켓 순차 배정 + 신선도 시계 시작 (조건 보유 아이템).
+  // **착용 상태로 시드되는 장비는 그리드에서 빠진다**(slot = SLOT_EQUIPPED) — 2026-08-05 개편.
   const counters: Record<InvCategory, number> = { gear: 0, consumable: 0, food: 0, tackle: 0, lure: 0, etc: 0 };
   return defs.map((d) => ({
     ...d,
-    slot: counters[d.category]++,
+    slot: d.equipped ? SLOT_EQUIPPED : counters[d.category]++,
     conditionSinceMs: d.condition ? Date.now() : undefined,
   }));
 }
@@ -751,6 +765,9 @@ class InventoryStoreManager {
         tool: i.tool ?? sd?.tool ?? (knife ? ('knife' as const) : undefined),
         equippable: i.equippable ?? sd?.equippable ?? (knife ? true : undefined),
         placeKey: i.placeKey ?? sd?.placeKey,
+        // 착용 장비는 그리드에서 빠진다 (2026-08-05 개편) — 구세이브는 소켓을 차지한 채
+        // 저장돼 있으므로 로드 시 비워준다. 소켓만 반납하므로 손실 위험 없음.
+        slot: i.equipped ? SLOT_EQUIPPED : i.slot,
         conditionSinceMs: i.conditionSinceMs !== undefined ? i.conditionSinceMs + offlineGap : undefined,
       };
     });
@@ -866,9 +883,12 @@ class InventoryStoreManager {
     return -1;
   }
 
-  /** 카테고리 그리드의 빈 소켓 수 — 쿨러 어획 이송 가능량 판정용 */
+  /**
+   * 카테고리 그리드의 빈 소켓 수 — 쿨러 어획 이송 가능량 판정용.
+   * 착용 중 아이템(slot < 0)은 그리드를 차지하지 않으므로 제외한다.
+   */
   freeSlotCount(cat: InvCategory): number {
-    return GRID_CAPACITY - this.getByCategory(cat).length;
+    return GRID_CAPACITY - this._items.filter((i) => i.category === cat && i.slot >= 0).length;
   }
 
   // ── 획득/구매 ───────────────────────────────────────
@@ -919,50 +939,88 @@ class InventoryStoreManager {
 
   // ── 착용 ────────────────────────────────────────────
   /**
-   * 착용/해제 토글 (손 도구 제외 일반 장비).
-   * 동일 부위(subCategory) 기존 착용은 교체 해제.
-   * 손 도구(tool 존재)는 equipHand()를 사용해야 하므로 false 반환.
+   * 착용 아이템은 **인벤토리 그리드에서 빠진다** (slot = SLOT_EQUIPPED).
+   * 해제할 때 원래 카테고리 그리드에 빈 소켓이 없으면 실패 —
+   * UI가 "아이템 창 공간이 부족합니다."를 안내한다 (사용자 지시 2026-08-05).
    */
-  toggleEquip(itemId: string): boolean {
-    const item = this.find(itemId);
-    if (!item || !item.equippable) return false;
-    if (item.tool) {
-      // 손 도구: 착용 중이면 해제만 허용, 착용은 equipHand()로
-      if (item.equipped) {
-        item.equipped = false;
-        item.equippedHand = undefined;
-        return true;
-      }
-      return false;
-    }
-    if (item.equipped) {
-      item.equipped = false;
-    } else {
-      this._items.forEach((i) => {
-        if (i.subCategory === item.subCategory && i.equipped) i.equipped = false;
-      });
-      item.equipped = true;
-    }
+  private static readonly NO_ROOM = '아이템 창 공간이 부족합니다.';
+
+  /** 착용 중이던 아이템을 그리드로 되돌린다 (빈 소켓 없으면 false — 상태 불변) */
+  private returnToGrid(item: InvItem): boolean {
+    if (item.slot >= 0) return true;              // 이미 그리드에 있음
+    const free = this.findFreeSlot(item.category);
+    if (free < 0) return false;
+    item.slot = free;
     return true;
+  }
+
+  /** 착용 (일반 장비) — 같은 부위 기존 착용은 그리드로 반환 후 교체 */
+  equipItem(itemId: string): EquipResult {
+    const item = this.find(itemId);
+    if (!item || !item.equippable) return { ok: false, reason: '착용할 수 없는 아이템입니다.' };
+    if (item.tool) return { ok: false, reason: '손 도구는 왼손/오른손을 지정해 착용합니다.' };
+    if (item.equipped) return { ok: true };
+    const prev = this._items.find((i) => i.equipped && !i.tool && i.subCategory === item.subCategory);
+    // 새로 착용할 아이템이 소켓을 비우므로, 교체 대상은 그 자리로 들어갈 수 있다
+    item.slot = SLOT_EQUIPPED;
+    item.equipped = true;
+    if (prev && prev !== item) {
+      prev.equipped = false;
+      if (!this.returnToGrid(prev)) {   // 이론상 발생하지 않음(방금 1칸 비움) — 안전 롤백
+        prev.equipped = true;
+        item.equipped = false;
+        this.returnToGrid(item);
+        return { ok: false, reason: InventoryStoreManager.NO_ROOM };
+      }
+    }
+    return { ok: true };
+  }
+
+  /** 해제 — 그리드에 빈 소켓이 필요하다 */
+  unequipItem(itemId: string): EquipResult {
+    const item = this.find(itemId);
+    if (!item || !item.equipped) return { ok: false, reason: '착용 중인 아이템이 아닙니다.' };
+    if (!this.returnToGrid(item)) return { ok: false, reason: InventoryStoreManager.NO_ROOM };
+    item.equipped = false;
+    item.equippedHand = undefined;
+    return { ok: true };
+  }
+
+  /** 착용/해제 토글 (레거시 호환 — 결과 객체 반환) */
+  toggleEquip(itemId: string): EquipResult {
+    const item = this.find(itemId);
+    if (!item) return { ok: false, reason: '아이템을 찾을 수 없습니다.' };
+    return item.equipped ? this.unequipItem(itemId) : this.equipItem(itemId);
   }
 
   /**
    * 손 도구를 지정한 손에 착용.
-   * 해당 손에 기존 도구가 있으면 교체(해제 후 착용), 없으면 그 자리에 착용.
+   * 해당 손에 기존 도구가 있으면 그리드로 반환 후 교체 (칸 부족 시 실패).
    */
-  equipHand(itemId: string, hand: EquipHand): boolean {
+  equipHand(itemId: string, hand: EquipHand): EquipResult {
     const item = this.find(itemId);
-    if (!item || !item.tool) return false;
-    // 대상 손의 기존 도구 해제
-    this._items.forEach((i) => {
-      if (i.equipped && i.equippedHand === hand) {
-        i.equipped = false;
-        i.equippedHand = undefined;
+    if (!item || !item.tool) return { ok: false, reason: '손에 들 수 있는 도구가 아닙니다.' };
+    if (item.equipped && item.equippedHand === hand) return { ok: true };
+    const prev = this._items.find((i) => i.equipped && i.equippedHand === hand);
+    const wasEquipped = !!item.equipped;
+    const prevSlot = item.slot;
+    // 착용할 도구가 그리드에서 빠지며 1칸이 비므로 교체 대상이 그 자리로 들어간다.
+    // 단 이미 반대 손에 착용 중이던 도구를 옮기는 경우엔 비는 칸이 없다 → 칸 부족 가능.
+    item.slot = SLOT_EQUIPPED;
+    if (prev && prev !== item) {
+      prev.equipped = false;
+      prev.equippedHand = undefined;
+      if (!this.returnToGrid(prev)) {
+        prev.equipped = true;
+        prev.equippedHand = hand;
+        item.slot = prevSlot;
+        return { ok: false, reason: InventoryStoreManager.NO_ROOM };
       }
-    });
+    }
     item.equipped = true;
     item.equippedHand = hand;
-    return true;
+    if (wasEquipped && prev === item) item.slot = SLOT_EQUIPPED;
+    return { ok: true };
   }
 
   /** 부위(subCategory)별 현재 착용 아이템 (손 도구 제외 일반 장비) */

@@ -214,16 +214,101 @@ export interface ButcheryStageOptions {
   skipDescale?: boolean;
 }
 
+/** 방어류(방추형) — 돔류(체고형)와 실루엣이 달라 가이드 좌표를 따로 둔다 */
+const AMBERJACK_GUIDE_SPECIES: ReadonlySet<string> = new Set([
+  'yellowtail', 'amberjack', 'greater_amberjack',
+]);
+
+/** 어종군별 가이드 좌표 세트 (전부 dev F9 실측 — 도마 rect 정규화) */
+interface GuideCoordSet {
+  ikejime: CutPoint;
+  bleed: CutPoint[];
+  headBase: CutPoint[];
+  headFlip: CutPoint[];
+  scaleBase: CutPoint[];
+  scaleFlip: CutPoint[];
+  /** 지느러미 3선 — [등, 뒷(배), 가슴] 순서 무관하게 각 1회 */
+  finectomy: [CutPoint[], CutPoint[], CutPoint[]];
+  tailA: CutPoint[];
+  tailB: CutPoint[];
+}
+
+const GUIDE_COORDS: Record<'bream' | 'amberjack', GuideCoordSet> = {
+  // ── 돔류 (2026-07-30~31 실측) ──
+  bream: {
+    ikejime: { x: 0.239, y: 0.410 },
+    bleed: [
+      { x: 0.255, y: 0.392 }, { x: 0.275, y: 0.454 }, { x: 0.283, y: 0.518 },
+      { x: 0.285, y: 0.583 }, { x: 0.285, y: 0.648 }, { x: 0.277, y: 0.713 },
+      { x: 0.259, y: 0.775 },
+    ],
+    headBase: [{ x: 0.283, y: 0.307 }, { x: 0.346, y: 0.867 }],
+    headFlip: [{ x: 0.703, y: 0.300 }, { x: 0.649, y: 0.867 }],
+    scaleBase: [
+      { x: 0.522, y: 0.250 }, { x: 0.360, y: 0.260 }, { x: 0.584, y: 0.353 }, { x: 0.310, y: 0.376 },
+      { x: 0.640, y: 0.456 }, { x: 0.324, y: 0.506 }, { x: 0.693, y: 0.586 }, { x: 0.340, y: 0.640 },
+      { x: 0.648, y: 0.693 }, { x: 0.357, y: 0.776 }, { x: 0.575, y: 0.810 }, { x: 0.367, y: 0.897 },
+    ],
+    scaleFlip: [
+      { x: 0.454, y: 0.240 }, { x: 0.640, y: 0.233 }, { x: 0.399, y: 0.346 }, { x: 0.678, y: 0.343 },
+      { x: 0.348, y: 0.453 }, { x: 0.669, y: 0.476 }, { x: 0.302, y: 0.570 }, { x: 0.655, y: 0.610 },
+      { x: 0.329, y: 0.663 }, { x: 0.644, y: 0.723 }, { x: 0.377, y: 0.756 }, { x: 0.635, y: 0.830 },
+      { x: 0.433, y: 0.857 },
+    ],
+    finectomy: [
+      [{ x: 0.295, y: 0.276 }, { x: 0.358, y: 0.217 }, { x: 0.443, y: 0.230 }, { x: 0.519, y: 0.271 }, { x: 0.579, y: 0.336 }, { x: 0.643, y: 0.397 }, { x: 0.682, y: 0.476 }],
+      [{ x: 0.320, y: 0.830 }, { x: 0.379, y: 0.896 }, { x: 0.462, y: 0.927 }, { x: 0.536, y: 0.879 }, { x: 0.604, y: 0.821 }, { x: 0.651, y: 0.745 }, { x: 0.699, y: 0.670 }],
+      [{ x: 0.407, y: 0.516 }, { x: 0.373, y: 0.516 }, { x: 0.349, y: 0.540 }, { x: 0.334, y: 0.571 }, { x: 0.320, y: 0.603 }, { x: 0.308, y: 0.636 }, { x: 0.299, y: 0.670 }],
+    ],
+    tailA: [{ x: 0.732, y: 0.376 }, { x: 0.736, y: 0.627 }],
+    tailB: [{ x: 0.274, y: 0.395 }, { x: 0.273, y: 0.624 }],
+  },
+  // ── 방어류 (2026-08-04 사용자 실측 — 방추형 전용) ──
+  amberjack: {
+    ikejime: { x: 0.159, y: 0.341 },
+    bleed: [
+      { x: 0.218, y: 0.288 }, { x: 0.228, y: 0.343 }, { x: 0.230, y: 0.399 },
+      { x: 0.227, y: 0.456 }, { x: 0.220, y: 0.512 }, { x: 0.208, y: 0.568 },
+      { x: 0.192, y: 0.622 },
+    ],
+    headBase: [{ x: 0.255, y: 0.236 }, { x: 0.295, y: 0.795 }],
+    headFlip: [{ x: 0.761, y: 0.225 }, { x: 0.686, y: 0.830 }],
+    scaleBase: [
+      { x: 0.427, y: 0.225 }, { x: 0.259, y: 0.257 }, { x: 0.520, y: 0.278 }, { x: 0.272, y: 0.362 },
+      { x: 0.589, y: 0.355 }, { x: 0.279, y: 0.475 }, { x: 0.645, y: 0.443 }, { x: 0.288, y: 0.584 },
+      { x: 0.717, y: 0.517 }, { x: 0.295, y: 0.689 }, { x: 0.722, y: 0.626 }, { x: 0.299, y: 0.805 },
+      { x: 0.660, y: 0.763 }, { x: 0.383, y: 0.875 },
+    ],
+    scaleFlip: [
+      { x: 0.524, y: 0.222 }, { x: 0.747, y: 0.225 }, { x: 0.462, y: 0.288 }, { x: 0.734, y: 0.327 },
+      { x: 0.402, y: 0.359 }, { x: 0.723, y: 0.429 }, { x: 0.341, y: 0.440 }, { x: 0.711, y: 0.524 },
+      { x: 0.279, y: 0.517 }, { x: 0.697, y: 0.636 }, { x: 0.287, y: 0.633 }, { x: 0.684, y: 0.749 },
+      { x: 0.334, y: 0.745 }, { x: 0.665, y: 0.858 }, { x: 0.399, y: 0.830 },
+    ],
+    finectomy: [
+      // 선1 = 가슴지느러미 밑동 (아가미 뒤 짧은 곡선)
+      [{ x: 0.255, y: 0.408 }, { x: 0.256, y: 0.449 }, { x: 0.265, y: 0.490 }, { x: 0.278, y: 0.529 }, { x: 0.289, y: 0.569 }, { x: 0.308, y: 0.605 }, { x: 0.328, y: 0.640 }],
+      // 선2 = 등지느러미 밑동 (등 능선을 따라 꼬리쪽으로)
+      [{ x: 0.254, y: 0.190 }, { x: 0.357, y: 0.183 }, { x: 0.453, y: 0.213 }, { x: 0.535, y: 0.273 }, { x: 0.612, y: 0.340 }, { x: 0.678, y: 0.418 }, { x: 0.740, y: 0.499 }],
+      // 선3 = 배(뒷)지느러미 밑동 — 뱃살에서 꼬리로 이어지는 라인
+      [{ x: 0.241, y: 0.791 }, { x: 0.335, y: 0.840 }, { x: 0.439, y: 0.851 }, { x: 0.538, y: 0.816 }, { x: 0.634, y: 0.773 }, { x: 0.708, y: 0.697 }, { x: 0.760, y: 0.605 }],
+    ],
+    tailA: [{ x: 0.756, y: 0.489 }, { x: 0.755, y: 0.643 }],
+    tailB: [{ x: 0.247, y: 0.464 }, { x: 0.245, y: 0.651 }],
+  },
+};
+
 /** 프로필 기반 손질 스테이지 목록 생성 (오리엔티드 뷰 정규화 좌표 — 머리는 항상 왼쪽 기준) */
 export function buildButcheryStages(profile: ButcheryProfile, opts?: ButcheryStageOptions): ButcheryStage[] {
   const stages: ButcheryStage[] = [];
+  const G = GUIDE_COORDS[AMBERJACK_GUIDE_SPECIES.has(profile.speciesId) ? 'amberjack' : 'bream'];
 
   // 1. 시메 — 눈 뒤 뇌 지점 탭 (활어→즉살, 선도 유지)
   stages.push({
     id: 'ikejime', label: '시메 (즉살)', orientation: 'BASE', primitive: 'tap',
     guide: '눈 뒤 뇌 지점을 정확히 탭하세요 — 신경 차단으로 선도가 유지됩니다',
     // dev 가이드 편집기(F9) 실측 좌표 — 돔류 (2026-07-30 사용자 확정)
-    tapPoint: { x: 0.239, y: 0.410 }, tapRadius: 0.09,
+    tapPoint: G.ikejime, tapRadius: 0.09,
   });
 
   // 2. 방혈 — 아가미 절개 + 얼음물
@@ -231,11 +316,7 @@ export function buildButcheryStages(profile: ButcheryProfile, opts?: ButcherySta
     id: 'bleed_cut', label: '방혈 — 아가미 절개', orientation: 'BASE', primitive: 'guided_cut',
     guide: '아가미 안쪽을 세로로 그어 피를 빼세요',
     // 아가미 안쪽을 따라 도는 곡선 (7점 — dev 곡선 편집기 실측, 2026-07-30 사용자 확정)
-    cut: cut('bleed_cut', 'BASE', [
-      { x: 0.255, y: 0.392 }, { x: 0.275, y: 0.454 }, { x: 0.283, y: 0.518 },
-      { x: 0.285, y: 0.583 }, { x: 0.285, y: 0.648 }, { x: 0.277, y: 0.713 },
-      { x: 0.259, y: 0.775 },
-    ]),
+    cut: cut('bleed_cut', 'BASE', G.bleed),
   });
   stages.push({
     id: 'bleed_ice', label: '방혈 — 얼음물 담그기', orientation: 'BASE', primitive: 'wash',
@@ -250,22 +331,13 @@ export function buildButcheryStages(profile: ButcheryProfile, opts?: ButcherySta
       id: 'scale_base', label: '비늘치기 (앞면)', orientation: 'BASE', primitive: 'drag_fill',
       guide: '꼬리→머리 역결 방향으로 지그재그로 문질러 비늘을 전부 벗기세요',
       fillTarget: 0.92,
-      sweepPath: [
-        { x: 0.522, y: 0.250 }, { x: 0.360, y: 0.260 }, { x: 0.584, y: 0.353 }, { x: 0.310, y: 0.376 },
-        { x: 0.640, y: 0.456 }, { x: 0.324, y: 0.506 }, { x: 0.693, y: 0.586 }, { x: 0.340, y: 0.640 },
-        { x: 0.648, y: 0.693 }, { x: 0.357, y: 0.776 }, { x: 0.575, y: 0.810 }, { x: 0.367, y: 0.897 },
-      ],
+      sweepPath: G.scaleBase,
     });
     stages.push({
       id: 'scale_flip', label: '비늘치기 (뒷면)', orientation: 'FLIP', primitive: 'drag_fill',
       guide: '뒤집어서 반대면 비늘도 전부 벗기세요',
       fillTarget: 0.92,
-      sweepPath: [
-        { x: 0.454, y: 0.240 }, { x: 0.640, y: 0.233 }, { x: 0.399, y: 0.346 }, { x: 0.678, y: 0.343 },
-        { x: 0.348, y: 0.453 }, { x: 0.669, y: 0.476 }, { x: 0.302, y: 0.570 }, { x: 0.655, y: 0.610 },
-        { x: 0.329, y: 0.663 }, { x: 0.644, y: 0.723 }, { x: 0.377, y: 0.756 }, { x: 0.635, y: 0.830 },
-        { x: 0.433, y: 0.857 },
-      ],
+      sweepPath: G.scaleFlip,
     });
     stages.push({
       id: 'scale_wash', label: '세척', orientation: 'FLIP', primitive: 'wash',
@@ -277,12 +349,12 @@ export function buildButcheryStages(profile: ButcheryProfile, opts?: ButcherySta
   stages.push({
     id: 'head_base', label: '머리따기 (앞면 사선)', orientation: 'BASE', primitive: 'guided_cut',
     guide: '아가미 뒤에서 가슴지느러미 쪽으로 사선을 넣으세요',
-    cut: cut('head_base', 'BASE', [{ x: 0.283, y: 0.307 }, { x: 0.346, y: 0.867 }]),
+    cut: cut('head_base', 'BASE', G.headBase),
   });
   stages.push({
     id: 'head_flip', label: '머리따기 (뒷면 사선 → 분리)', orientation: 'FLIP', primitive: 'guided_cut',
     guide: '뒤집어 같은 사선을 맞추면 머리가 분리됩니다',
-    cut: cut('head_flip', 'FLIP', [{ x: 0.703, y: 0.300 }, { x: 0.649, y: 0.867 }], { strong: true }),
+    cut: cut('head_flip', 'FLIP', G.headFlip, { strong: true }),
   });
 
   // 4b. 지느러미 제거 (선-5 — 등·뒷지느러미 양옆 칼집 → 뽑기. 픽셀 가이드 선행부 신설)
@@ -292,19 +364,9 @@ export function buildButcheryStages(profile: ButcheryProfile, opts?: ButcherySta
     id: 'finectomy', label: '지느러미 제거 (등·뒷·가슴)', orientation: 'BASE', primitive: 'guided_cut',
     guide: '등·뒷·가슴 지느러미 밑동을 따라 각각 칼집을 넣어 뽑으세요 (3곳 — 순서 자유)',
     // dev 곡선 편집기(F9) 실측 좌표 — 돔류 (2026-07-31 사용자 재실측: 원형 틀 고정 프레임 기준)
-    cut: cut('finectomy', 'BASE',
-      [{ x: 0.295, y: 0.276 }, { x: 0.358, y: 0.217 }, { x: 0.443, y: 0.230 }, { x: 0.519, y: 0.271 }, { x: 0.579, y: 0.336 }, { x: 0.643, y: 0.397 }, { x: 0.682, y: 0.476 }],
-      {
-        tolerance: 0.09, minCoverage: 0.5,
-        guidePaths: [
-          // 선1 — 등지느러미 밑동 (등 능선을 따라 꼬리쪽으로)
-          [{ x: 0.295, y: 0.276 }, { x: 0.358, y: 0.217 }, { x: 0.443, y: 0.230 }, { x: 0.519, y: 0.271 }, { x: 0.579, y: 0.336 }, { x: 0.643, y: 0.397 }, { x: 0.682, y: 0.476 }],
-          // 선2 — 뒷(배)지느러미 밑동
-          [{ x: 0.320, y: 0.830 }, { x: 0.379, y: 0.896 }, { x: 0.462, y: 0.927 }, { x: 0.536, y: 0.879 }, { x: 0.604, y: 0.821 }, { x: 0.651, y: 0.745 }, { x: 0.699, y: 0.670 }],
-          // 선3 — 가슴지느러미 밑동 (아가미 뒤 — 짧은 곡선)
-          [{ x: 0.407, y: 0.516 }, { x: 0.373, y: 0.516 }, { x: 0.349, y: 0.540 }, { x: 0.334, y: 0.571 }, { x: 0.320, y: 0.603 }, { x: 0.308, y: 0.636 }, { x: 0.299, y: 0.670 }],
-        ],
-      }),
+    cut: cut('finectomy', 'BASE', G.finectomy[0], {
+      tolerance: 0.09, minCoverage: 0.5, guidePaths: G.finectomy,
+    }),
   });
 
   // 5. 내장 제거 — 개복(항문→머리 경계) → 긁어내기 → 세척
@@ -338,12 +400,12 @@ export function buildButcheryStages(profile: ButcheryProfile, opts?: ButcherySta
   stages.push({
     id: 'tail_grip', label: '꼬리 칼집 (앞면)', orientation: 'BASE', primitive: 'guided_cut',
     guide: '꼬리 쪽에 얕은 홈을 내 박피 손잡이를 만드세요 (앞면)',
-    cut: cut('tail_grip', 'BASE', [{ x: 0.732, y: 0.376 }, { x: 0.736, y: 0.627 }], { minCoverage: 0.5 }),
+    cut: cut('tail_grip', 'BASE', G.tailA, { minCoverage: 0.5 }),
   });
   stages.push({
     id: 'tail_grip_b', label: '꼬리 칼집 (뒷면)', orientation: 'FLIP', primitive: 'guided_cut',
     guide: '뒤집어 반대면 꼬리에도 얕은 홈을 내세요',
-    cut: cut('tail_grip_b', 'FLIP', [{ x: 0.274, y: 0.395 }, { x: 0.273, y: 0.624 }], { minCoverage: 0.5 }),
+    cut: cut('tail_grip_b', 'FLIP', G.tailB, { minCoverage: 0.5 }),
   });
 
   // 7~8. 장 뜨기 — 면별 등쪽/배쪽 각각 척추까지 (자유 손질: 두 컷 순서 무관, 둘 다 = 분리).

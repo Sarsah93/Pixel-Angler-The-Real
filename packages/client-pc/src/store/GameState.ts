@@ -730,3 +730,9 @@ export class GameStateManager {
 }
 
 export const GameState = new GameStateManager();
+
+// dev 검증용 전역 노출 — 하네스의 `import('/src/…')` 모듈은 게임 인스턴스와 다를 수
+// 있으므로(InventoryStore `__INV`와 동일한 함정) 실싱글턴을 노출한다. (프로덕션 미노출)
+if (import.meta.env.DEV) {
+  (globalThis as unknown as { __GS?: unknown }).__GS = GameState;
+}

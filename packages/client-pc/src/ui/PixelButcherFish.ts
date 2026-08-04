@@ -76,6 +76,41 @@ const FIN_ERASE: Record<string, FishPoly[]> = {
     [{ x: 0.37, y: 0.90 }, { x: 0.55, y: 0.90 }, { x: 0.55, y: 1.05 }, { x: 0.37, y: 1.05 }],
     [{ x: 0.56, y: 0.88 }, { x: 0.73, y: 0.88 }, { x: 0.73, y: 1.05 }, { x: 0.56, y: 1.05 }],
   ],
+  // 방어류 — 사용자 실측 지느러미 밑동 선(등 선2 / 배 선3)이 **몸통 윤곽을 그대로 따라가므로**,
+  //  그 선의 바깥쪽(위/아래)이 곧 지느러미다. 선을 그대로 경계로 삼아 폴리곤을 닫는다.
+  //  (꼬리지느러미는 u > 0.78 구간을 건드리지 않아 보존된다 — 사용자 지시 2026-08-04)
+  amberjack: [
+    // 등지느러미 — 선2 위쪽 전부 (1·2등지느러미 + 꼬리쪽 잔가시)
+    [
+      { x: 0.231, y: 0.130 }, { x: 0.344, y: 0.122 }, { x: 0.449, y: 0.157 }, { x: 0.538, y: 0.229 },
+      { x: 0.622, y: 0.309 }, { x: 0.695, y: 0.402 }, { x: 0.763, y: 0.499 },
+      { x: 0.763, y: -0.15 }, { x: 0.231, y: -0.15 },
+    ],
+    // 배(뒷)지느러미 — 선3 아래쪽 전부 (뱃살~꼬리로 이어지는 라인)
+    [
+      { x: 0.217, y: 0.847 }, { x: 0.319, y: 0.906 }, { x: 0.433, y: 0.919 }, { x: 0.542, y: 0.877 },
+      { x: 0.647, y: 0.826 }, { x: 0.728, y: 0.735 }, { x: 0.784, y: 0.626 },
+      { x: 0.784, y: 1.15 }, { x: 0.217, y: 1.15 },
+    ],
+  ],
+};
+
+/**
+ * 머리 제거 시 **절단선 너머로 추가 제거**할 영역 (어종군별).
+ * 방어류는 머리와 함께 아가미 뒤 목덜미·가슴지느러미 자리까지 떨어져 나간다
+ * (사용자 캡처의 좌측 빨간 점선 영역 — "앞에 제거된 머리 부분보다 더 영역까지").
+ * 경계는 사용자 실측 가슴지느러미 밑동 선(선1)을 따른다.
+ */
+const HEAD_EXTRA_ERASE: Record<string, FishPoly[]> = {
+  amberjack: [
+    [
+      { x: 0.232, y: 0.300 }, { x: 0.233, y: 0.439 }, { x: 0.243, y: 0.488 }, { x: 0.257, y: 0.535 },
+      { x: 0.269, y: 0.582 }, { x: 0.290, y: 0.625 }, { x: 0.330, y: 0.690 },
+      // 아래로 내려가며 다시 좁아진다 — 수직으로 닫으면 뱃살이 네모나게 잘린다
+      { x: 0.300, y: 0.800 }, { x: 0.248, y: 0.900 }, { x: 0.215, y: 1.15 },
+      { x: -0.15, y: 1.15 }, { x: -0.15, y: 0.300 },
+    ],
+  ],
 };
 
 /** 절단선을 따라 머리 쪽 전체를 덮는 삭제 다각형 (선 바깥으로 연장 후 머리 방향 모서리로 폐합) */
@@ -225,19 +260,20 @@ function pickStageSprite(
  */
 function buildPrepErase(fam: string, state: PixelFishState, o: OrientationState): FishPoly[] {
   const out: FishPoly[] = [];
+  /** BASE 기준 폴리곤 — FLIP이면 좌우 반전 */
+  const oriented = (polys: FishPoly[]): FishPoly[] => (o === 'FLIP'
+    ? polys.map((p) => p.map((q) => ({ x: 1 - q.x, y: q.y })))
+    : polys);
   if (state.headOff) {
     const poly = state.headCutPath ? headErasePoly(state.headCutPath, o === 'BASE') : null;
     // 절단선 좌표가 없으면(구 세이브·데이터 누락) 머리 비율 근사로 폴백
     out.push(poly ?? (o === 'BASE'
       ? [{ x: -0.4, y: -0.4 }, { x: 0.26, y: -0.4 }, { x: 0.26, y: 1.4 }, { x: -0.4, y: 1.4 }]
       : [{ x: 0.74, y: -0.4 }, { x: 1.4, y: -0.4 }, { x: 1.4, y: 1.4 }, { x: 0.74, y: 1.4 }]));
+    // 절단선 너머 추가 제거 (방어류 목덜미·가슴지느러미 자리)
+    if (HEAD_EXTRA_ERASE[fam]) out.push(...oriented(HEAD_EXTRA_ERASE[fam]));
   }
-  if (state.finsOff) {
-    const fins = FIN_ERASE[fam] ?? FIN_ERASE.bream;
-    out.push(...(o === 'FLIP'
-      ? fins.map((p) => p.map((q) => ({ x: 1 - q.x, y: q.y })))
-      : fins));
-  }
+  if (state.finsOff) out.push(...oriented(FIN_ERASE[fam] ?? FIN_ERASE.bream));
   return out;
 }
 
