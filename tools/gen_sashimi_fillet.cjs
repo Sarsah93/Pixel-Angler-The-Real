@@ -19,8 +19,17 @@
 const fs = require('fs');
 const path = require('path');
 
-const PW = 'C:/Users/dungy/AppData/Local/npm-cache/_npx/e41f203b7505f1fb/node_modules/playwright';
-const { chromium } = require(PW);
+// playwright 해석 — 로컬 설치 → npx 캐시(_npx/<hash>/node_modules) 순 (사용자 계정 무관)
+function resolvePlaywright() {
+  try { return require('playwright'); } catch { /* npx 캐시 탐색 */ }
+  const base = path.join(process.env.LOCALAPPDATA || '', 'npm-cache', '_npx');
+  for (const d of fs.existsSync(base) ? fs.readdirSync(base) : []) {
+    const p = path.join(base, d, 'node_modules', 'playwright');
+    if (fs.existsSync(p)) return require(p);
+  }
+  throw new Error('playwright를 찾을 수 없습니다 — npx -p playwright@1.62.1 로 설치 후 재실행');
+}
+const { chromium } = resolvePlaywright();
 const CHROME = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 
 const ROOT = path.resolve(__dirname, '..');
@@ -33,6 +42,10 @@ const FAMILIES = [
   //  "우측(첫 컷)부터 꼬리를 자르는" 연출이 됐었다. 컷은 오른쪽(머리)부터 = 정석 유지)
   { fam: 'bream', src: path.join(ROOT, 'food assets', 'trimmings', 'bream', 'pure_pillet_bream.png'), flipX: true, flipTop: false },
   { fam: 'amberjack', src: path.join(ROOT, 'food assets', 'trimmings', 'amberjack', 'pure_pillet_amberjack.png'), flipX: false, flipTop: false },
+  //  넙치류(광어·도다리) — 소스는 **두꺼운 머리쪽이 왼쪽**이라 두 뷰 모두 미러(head = 오른쪽 규칙).
+  //  에셋 이름은 skinned_…이지만 껍질층은 박피 연출이 따로 그리므로 순살 필렛과 공용한다
+  //  (사용자 지시 2026-08-05 — 껍질 분리 연출은 돔류·방어류와 동일).
+  { fam: 'halibut', src: path.join(ROOT, 'food assets', 'trimmings', 'halibut', 'skinned_pillet_without_engawa_halibut.png'), flipX: true, flipTop: true },
 ];
 
 /** 탑뷰 목표 폭 (높이는 원본 비율 유지) / 측면 뷰 크기 */
@@ -240,12 +253,14 @@ const SIDE_H = 120;
 export interface SashimiTopProfile { topEdge: number[]; botEdge: number[]; aspect: number; }
 export interface SashimiSideProfile { top: number[]; baseY: number; }
 
-export const SASHIMI_FILLET_PROFILES: Record<'bream' | 'amberjack', { top: SashimiTopProfile; side: SashimiSideProfile }> = ${JSON.stringify(profiles, null, 2).replace(/"(\w+)":/g, '$1:')};
+export type SashimiFilletFamily = 'bream' | 'amberjack' | 'halibut';
+
+export const SASHIMI_FILLET_PROFILES: Record<SashimiFilletFamily, { top: SashimiTopProfile; side: SashimiSideProfile }> = ${JSON.stringify(profiles, null, 2).replace(/"(\w+)":/g, '$1:')};
 
 /** 뷰별 텍스처 키 (BootScene: public/sashimi/fillet_{top,side}_{fam}.png) */
-export const SASHIMI_FILLET_TEX: Record<'top' | 'side', Record<'bream' | 'amberjack', string>> = {
-  top: { bream: 'sashimi_fillet_top_bream', amberjack: 'sashimi_fillet_top_amberjack' },
-  side: { bream: 'sashimi_fillet_side_bream', amberjack: 'sashimi_fillet_side_amberjack' },
+export const SASHIMI_FILLET_TEX: Record<'top' | 'side', Record<SashimiFilletFamily, string>> = {
+  top: { bream: 'sashimi_fillet_top_bream', amberjack: 'sashimi_fillet_top_amberjack', halibut: 'sashimi_fillet_top_halibut' },
+  side: { bream: 'sashimi_fillet_side_bream', amberjack: 'sashimi_fillet_side_amberjack', halibut: 'sashimi_fillet_side_halibut' },
 };
 `;
   fs.writeFileSync(OUT_TS, ts, 'utf8');

@@ -1,0 +1,51 @@
+---
+name: asset-pipeline
+description: Pixel Angler 이미지 에셋 투입/교체 절차. 사용자가 새 PNG(어종 실사·손질 단계·부산물 trimmings·필렛·가이드 일러스트)를 제공하거나 기존 에셋을 교체할 때 반드시 로드. "에셋", "이미지 교체", "픽셀화", "스프라이트 생성", "trimmings", "재생성" 작업이면 이 스킬을 따른다.
+---
+
+# 에셋 파이프라인 (투입·교체·재생성)
+
+## ⓪ 가장 중요한 구분 — "구운 스냅샷" vs "PNG 직접 로드"
+
+PNG만 바꾸면 되는지, 생성기를 돌려야 하는지부터 판별한다:
+
+| 소비 형태 | 대상 | PNG 교체 시 |
+|---|---|---|
+| **PNG 직접 로드** (BootScene `load.image`) | `public/fish/`(어획 팝업·인벤·도감) · `public/trimmings/`(부산물 아이콘) · `public/food/` · `public/guide/` · `public/sashimi/*.png` · `public/ui/` | 교체만으로 자동 반영 (브라우저 F5) |
+| **구운 TS 스냅샷** (생성기가 도트 매트릭스로 인코딩) | `data/PixelFishStages.ts` · `data/PixelFishFlat.ts` · `data/PixelFishViews.ts` · `data/PixelFishSprites.ts` · `data/SashimiFilletProfiles.ts` | **생성기 재실행 필수** — PNG만 바꾸면 옛 그림이 계속 나온다 (76차 광어 사례) |
+
+주의: `public/sashimi/*.png`는 직접 로드지만 **그 PNG 자체가 생성물** — 원본(`food assets/trimmings/…`)이 바뀌면 `gen_sashimi_fillet.cjs` 재실행.
+
+## ① 생성기 목록 (전부 `node tools/<파일>` — Playwright+설치 Chrome, 자동 탐색)
+
+| 도구 | 입력 | 출력 | 용도 |
+|---|---|---|---|
+| `pixelize_butchery.cjs` | `food assets/butchery/*.png` (**파일명 = 키**) | `data/PixelFishStages.ts` | 손질 단계 실사 → 도트 (누끼 BFS + 128폭 다운샘플 + 44색) |
+| `gen_sashimi_fillet.cjs` | `food assets/trimmings/{fam}/pure_pillet_*` 등 (FAMILIES 배열) | `public/sashimi/fillet_{top,side}_{fam}.png` + `piece_{fam}.png` + `SashimiFilletProfiles.ts` | 회썰기 필렛 3뷰 |
+| `gen_flatfish_sprites.cjs` | `public/fish/halibut.png` | `data/PixelFishFlat.ts` | 광어 도마 온마리 (등면 + 배면 파생) |
+| `gen_butchery_views.cjs` | (파라메트릭 — 입력 없음) | `data/PixelFishViews.ts` | 복면/체강/장뜨기 뷰 |
+| `py tools/build_region_maps.py <region>` | `pixelazed/<region>/*.png` | `public/data/<region>/*.json` | 지역 타일맵 |
+
+- 생성물 TS는 헤더에 "자동 생성 — 수동 편집 금지" — 절대 손으로 고치지 말고 재생성.
+- 도구의 playwright 경로는 자동 탐색(로컬 → `%LOCALAPPDATA%/npm-cache/_npx`) — 특정 계정 경로 하드코딩 금지. ⚠ `.cjs` 주석에 `_npx/*/…` 글롭을 쓰면 `*/`가 블록 주석을 조기 종료시킨다 — 라인 주석 사용.
+
+## ② 방향 규칙 (전 필렛 뷰 공통 컨벤션)
+
+- **온마리(도마)**: 머리 **왼쪽** (돔류/방어류/광어 전부. 광어는 BASE=등면·FLIP=배면, 좌우 미러 없음).
+- **필렛류(도마 박피·회썰기 탑/측면)**: **꼬리 왼쪽 · 머리 오른쪽** — 박피 peel_grip(꼬리 칼집)·회썰기 컷 순서(머리부터)가 이 기준.
+- 원본 사진이 반대 방향이면: `pixelize_butchery.cjs`의 **`MIRROR_KEYS`**(도마용) / `gen_sashimi_fillet.cjs`의 **`flipX`/`flipTop`**(회썰기용)에 등록해 굽는 시점에 반전. 렌더 코드에서 뒤집지 않는다.
+
+## ③ 투입 체크리스트
+
+1. **테두리 불투명 검사**: 투명 배경 전제 에셋에 흰/근백색 배경이 구워져 있는지 확인 (65차 — skinned_pillet 2장 사례). 불투명이면 테두리 BFS 누끼 후 `public/`에 배치. **원본(`food assets/`)은 수정하지 않는다** — 재복사 시 재적용 필요함을 인지.
+2. 원본은 `food assets/`(어종군 하위 폴더: `trimmings/{bream,amberjack,halibut}/`)에 보존, 게임 소비본은 `packages/client-pc/public/`에 복사.
+3. BootScene `load.image('키', '상대/경로.png')` — **선행 `/` 절대 금지** (gh-pages 서브패스에서 404).
+4. 어종 실사는 `data/FishTextures.ts`의 `FISH_TEXTURE` 맵에도 등록 (키 규칙 `fish_<speciesId>` — 성별/체장 분기는 `resolveFishTexture`).
+5. 어종군 판정은 `PixelButcherFish.butcherFamilyOf(speciesId)` 단일 소스 — 로컬 셋 중복 생성 금지.
+6. 재생성 후 `git diff --stat`으로 생성물 변화 확인 → **실렌더 스크린샷 검증** (verify-render 스킬) → 빌드 4/4 · typecheck 0.
+
+## ④ 아이콘/렌더 배선 참고
+
+- 아이템 아이콘 = `InvItem.iconTexture` (createItemIcon 8개 호출처 공용, speciesId 폴백 있음).
+- 어종별 색 변형(머리 틴트 등)은 캔버스 베이크(`bakeTintedTrim` 패턴) — 원본 1장 + 런타임 합성.
+- 도마 단계 스프라이트 조회 = `stageSpr('키')` (PixelFishStages 레지스트리, 없으면 파라메트릭 폴백).

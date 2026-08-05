@@ -304,33 +304,47 @@ const GUIDE_COORDS: Record<'bream' | 'amberjack', GuideCoordSet> = {
  * (납작한 생선을 장축 기준으로 뒤집으므로 좌우 미러 없음).
  */
 const FLAT_GUIDE = {
-  /** 시메 — 눈 뒤 뇌 지점 (등면 좌상단) */
-  ikejime: { x: 0.30, y: 0.40 },
-  /** 방혈 — 아가미 안쪽 세로 호 */
+  /** 시메 — 눈 뒤 뇌 지점 (등면 좌상단). F9 실측 2026-08-05 */
+  ikejime: { x: 0.230, y: 0.400 },
+  /** 방혈 — 아가미 안쪽 세로 호 (F9 실측 7점) */
   bleed: [
-    { x: 0.345, y: 0.38 }, { x: 0.356, y: 0.46 }, { x: 0.360, y: 0.54 }, { x: 0.350, y: 0.62 },
+    { x: 0.265, y: 0.249 }, { x: 0.253, y: 0.330 }, { x: 0.259, y: 0.411 }, { x: 0.276, y: 0.491 },
+    { x: 0.281, y: 0.573 }, { x: 0.270, y: 0.653 }, { x: 0.237, y: 0.726 },
   ],
   /**
-   * 머리 S자 절단 (사용자 캡처 1 — 도마 왼쪽에 머리, 절단면이 'S' 모양).
+   * 머리 S자 절단 (사용자 캡처 1 — 도마 왼쪽에 머리, 절단면이 'S' 모양. F9 실측 7점).
    * 위에서 아래로: 왼쪽으로 파고들다 → 내장 주머니를 피해 오른쪽으로 불룩 → 다시 왼쪽 아래로.
    */
   headScut: [
-    { x: 0.375, y: 0.10 }, { x: 0.345, y: 0.25 }, { x: 0.335, y: 0.40 }, { x: 0.375, y: 0.55 },
-    { x: 0.395, y: 0.68 }, { x: 0.365, y: 0.80 }, { x: 0.325, y: 0.92 },
+    { x: 0.278, y: 0.178 }, { x: 0.265, y: 0.278 }, { x: 0.256, y: 0.379 }, { x: 0.280, y: 0.475 },
+    { x: 0.288, y: 0.572 }, { x: 0.260, y: 0.669 }, { x: 0.208, y: 0.755 },
   ],
-  /** 비늘치기 스윕 (등면/배면 공용 지그재그) */
-  scaleSweep: [
-    { x: 0.62, y: 0.16 }, { x: 0.42, y: 0.22 }, { x: 0.66, y: 0.32 }, { x: 0.40, y: 0.40 },
-    { x: 0.68, y: 0.50 }, { x: 0.40, y: 0.58 }, { x: 0.66, y: 0.68 }, { x: 0.42, y: 0.78 },
-    { x: 0.60, y: 0.86 },
+  /** 비늘치기 스윕 — 면별 실측 분리 (F9 2026-08-05. 등면/배면 지그재그가 미묘하게 다름) */
+  scaleSweepBase: [
+    { x: 0.439, y: 0.125 }, { x: 0.312, y: 0.202 }, { x: 0.496, y: 0.173 }, { x: 0.269, y: 0.302 },
+    { x: 0.550, y: 0.211 }, { x: 0.281, y: 0.421 }, { x: 0.600, y: 0.259 }, { x: 0.317, y: 0.498 },
+    { x: 0.650, y: 0.307 }, { x: 0.303, y: 0.617 }, { x: 0.693, y: 0.378 }, { x: 0.263, y: 0.722 },
+    { x: 0.712, y: 0.474 }, { x: 0.304, y: 0.793 }, { x: 0.673, y: 0.602 }, { x: 0.360, y: 0.865 },
+    { x: 0.573, y: 0.769 },
   ],
-  /** 꼬리 칼집 (앞/뒤) — 꼬리자루 세로 */
-  tail: [{ x: 0.665, y: 0.38 }, { x: 0.668, y: 0.62 }],
-  /** 중앙선(척추선) 칼집 — 머리 경계 → 꼬리 */
-  center: [{ x: 0.38, y: 0.50 }, { x: 0.66, y: 0.50 }],
-  /** 위쪽 지느러미 경계 칼길 (사용자 캡처 4·5) */
+  scaleSweepFlip: [
+    { x: 0.449, y: 0.102 }, { x: 0.312, y: 0.202 }, { x: 0.505, y: 0.121 }, { x: 0.269, y: 0.302 },
+    { x: 0.558, y: 0.178 }, { x: 0.281, y: 0.421 }, { x: 0.609, y: 0.240 }, { x: 0.306, y: 0.512 },
+    { x: 0.655, y: 0.316 }, { x: 0.296, y: 0.636 }, { x: 0.684, y: 0.421 }, { x: 0.272, y: 0.760 },
+    { x: 0.682, y: 0.550 }, { x: 0.355, y: 0.827 }, { x: 0.625, y: 0.717 }, { x: 0.423, y: 0.898 },
+    { x: 0.564, y: 0.850 },
+  ],
+  /** 꼬리 칼집 (등/배 공통 세로선 — F9 실측) */
+  tail: [{ x: 0.732, y: 0.393 }, { x: 0.732, y: 0.574 }],
+  /**
+   * 중앙선(척추선) 칼집 — **머리 절단면(S컷)부터 꼬리 칼집(x 0.732)까지 전장**
+   * (사용자 지시 2026-08-05 — F9 실측 0.288→0.718을 양끝 랜드마크까지 연장).
+   */
+  center: [{ x: 0.280, y: 0.500 }, { x: 0.732, y: 0.488 }],
+  /** 위쪽 지느러미 경계 칼길 (F9 실측 7점 — 배면 FLIP 기준, 등면 공용) */
   upScore: [
-    { x: 0.385, y: 0.28 }, { x: 0.46, y: 0.20 }, { x: 0.55, y: 0.17 }, { x: 0.62, y: 0.22 }, { x: 0.66, y: 0.33 },
+    { x: 0.262, y: 0.283 }, { x: 0.329, y: 0.177 }, { x: 0.428, y: 0.100 }, { x: 0.541, y: 0.107 },
+    { x: 0.619, y: 0.206 }, { x: 0.667, y: 0.323 }, { x: 0.737, y: 0.421 },
   ],
   /** 위쪽 포 뜨기 — 중앙선에서 지느러미 방향으로 (2회 점점 깊게. 캡처 6~8) */
   upLift: [{ x: 0.40, y: 0.36 }, { x: 0.52, y: 0.32 }, { x: 0.64, y: 0.38 }],
@@ -377,12 +391,12 @@ function buildFlatStages(profile: ButcheryProfile, opts?: ButcheryStageOptions):
     stages.push({
       id: 'scale_base', label: '비늘치기 (등면)', orientation: 'BASE', primitive: 'drag_fill',
       guide: '꼬리→머리 역결 방향으로 지그재그로 문질러 비늘을 전부 벗기세요',
-      fillTarget: 0.92, sweepPath: F.scaleSweep,
+      fillTarget: 0.92, sweepPath: F.scaleSweepBase,
     });
     stages.push({
       id: 'scale_flip', label: '비늘치기 (배면)', orientation: 'FLIP', primitive: 'drag_fill',
       guide: '뒤집어서 흰 면 비늘도 전부 벗기세요',
-      fillTarget: 0.92, sweepPath: F.scaleSweep,
+      fillTarget: 0.92, sweepPath: F.scaleSweepFlip,
     });
     stages.push({
       id: 'scale_wash', label: '세척', orientation: 'FLIP', primitive: 'wash',
@@ -422,8 +436,8 @@ function buildFlatStages(profile: ButcheryProfile, opts?: ButcheryStageOptions):
   });
   stages.push({
     id: 'flat_belly_up_lift', label: '배쪽 위 — 포 뜨기 (내장 위치)', orientation: 'FLIP', primitive: 'guided_cut',
-    guide: '중앙선에서 지느러미 방향으로 뼈를 타며 포를 떠내세요 (2회 — 점점 깊게)',
-    cut: cut('flat_belly_up_lift', 'FLIP', F.upLift, { strokesRequired: 2, strong: true, tolerance: 0.1 }),
+    guide: '중앙선에서 지느러미 방향으로 뼈를 타며 포를 떠내세요 (3회 — 점점 깊게)',
+    cut: cut('flat_belly_up_lift', 'FLIP', F.upLift, { strokesRequired: 3, strong: true, tolerance: 0.1 }),
     yieldsFillet: true,
   });
   stages.push({
@@ -438,8 +452,8 @@ function buildFlatStages(profile: ButcheryProfile, opts?: ButcheryStageOptions):
   });
   stages.push({
     id: 'flat_belly_dn_lift', label: '배쪽 아래 — 포 뜨기', orientation: 'FLIP', primitive: 'guided_cut',
-    guide: '중앙선에서 아래 지느러미 방향으로 포를 떠내세요 (2회 — 점점 깊게)',
-    cut: cut('flat_belly_dn_lift', 'FLIP', F.dnLift, { strokesRequired: 2, strong: true, tolerance: 0.1 }),
+    guide: '중앙선에서 아래 지느러미 방향으로 포를 떠내세요 (3회 — 점점 깊게)',
+    cut: cut('flat_belly_dn_lift', 'FLIP', F.dnLift, { strokesRequired: 3, strong: true, tolerance: 0.1 }),
     yieldsFillet: true,
   });
 
@@ -456,8 +470,8 @@ function buildFlatStages(profile: ButcheryProfile, opts?: ButcheryStageOptions):
   });
   stages.push({
     id: 'flat_back_up_lift', label: '등쪽 위 — 포 뜨기', orientation: 'BASE', primitive: 'guided_cut',
-    guide: '척추쪽에서 지느러미 방향으로 뼈를 타며 포를 떠내세요 (2회 — 점점 깊게)',
-    cut: cut('flat_back_up_lift', 'BASE', F.upLift, { strokesRequired: 2, strong: true, tolerance: 0.1 }),
+    guide: '척추쪽에서 지느러미 방향으로 뼈를 타며 포를 떠내세요 (3회 — 점점 깊게)',
+    cut: cut('flat_back_up_lift', 'BASE', F.upLift, { strokesRequired: 3, strong: true, tolerance: 0.1 }),
     yieldsFillet: true,
   });
   stages.push({
@@ -467,8 +481,8 @@ function buildFlatStages(profile: ButcheryProfile, opts?: ButcheryStageOptions):
   });
   stages.push({
     id: 'flat_back_dn_lift', label: '등쪽 아래 — 포 뜨기', orientation: 'BASE', primitive: 'guided_cut',
-    guide: '척추쪽에서 지느러미 방향으로 포를 떠내세요 (2회 — 점점 깊게)',
-    cut: cut('flat_back_dn_lift', 'BASE', F.dnLift, { strokesRequired: 2, strong: true, tolerance: 0.1 }),
+    guide: '척추쪽에서 지느러미 방향으로 포를 떠내세요 (3회 — 점점 깊게)',
+    cut: cut('flat_back_dn_lift', 'BASE', F.dnLift, { strokesRequired: 3, strong: true, tolerance: 0.1 }),
     yieldsFillet: true,
   });
 

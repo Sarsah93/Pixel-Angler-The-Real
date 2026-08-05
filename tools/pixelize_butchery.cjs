@@ -162,7 +162,7 @@ function serialize(key, spr) {
 //  선-8(핏줄 뷰) → bream_vessel / 본편 3·5·7(길내기 1~3) → bream_fillet1~3
 //  (47차 extract_fish.js와 동일 기법 — 마커색 제외 + 행 인페인트 + 최대 연결요소)
 // ────────────────────────────────────────────────────────────
-const SVG_PATH = path.resolve(__dirname, '..', 'sashimi_pixel_guide.svg');
+const SVG_PATH = path.resolve(__dirname, '..', 'assets', 'guide', 'sashimi_pixel_guide.svg');
 const SVG_MARKERS = ['#d63b2c', '#e0592c', '#c9a63c', '#8a6242', '#6d4a30', '#3d2818'];
 const SVG_BG = new Set(['#edefee', '#fbfcfb']);
 
@@ -298,14 +298,20 @@ if (!fs.existsSync(SRC_DIR)) {
   fs.mkdirSync(SRC_DIR, { recursive: true });
   console.log(`입력 폴더 생성: ${SRC_DIR} — 실사 사진(png)을 넣으면 사진 스프라이트가 추가됩니다.`);
 }
+// 좌우 미러 키 — 도마 필렛 방향 규칙 = **꼬리 왼쪽·머리 오른쪽** (박피 peel_grip 꼬리 칼집·회썰기
+// 컷 순서와 동일 컨벤션). 원본 사진이 머리 왼쪽인 에셋은 여기 등록해 굽는 시점에 반전한다.
+const MIRROR_KEYS = new Set(['pure_fillet_halibut']);
+const mirrorSprite = (spr) => ({ ...spr, rows: spr.rows.map((r) => [...r].reverse().join('')) });
+
 // ① 돔류 = SVG 자동 추출 (기본) → ② 사진 폴더가 같은 키를 덮어씀 (사진 우선)
 const map = new Map(extractBreamStages());
 const files = fs.existsSync(SRC_DIR) ? fs.readdirSync(SRC_DIR).filter((f) => f.toLowerCase().endsWith('.png')) : [];
 for (const f of files) {
   const key = path.basename(f, '.png');
-  const spr = processImage(path.join(SRC_DIR, f));
+  let spr = processImage(path.join(SRC_DIR, f));
+  if (MIRROR_KEYS.has(key)) spr = mirrorSprite(spr);
   map.set(key, spr);
-  console.log(`${key}: ${spr.w}x${spr.h}, pal ${spr.palette.length} (사진)`);
+  console.log(`${key}: ${spr.w}x${spr.h}, pal ${spr.palette.length} (사진${MIRROR_KEYS.has(key) ? '·미러' : ''})`);
 }
 const entries = [...map.entries()];
 const ts = `/**

@@ -4,7 +4,7 @@
 build_depth_profiles.py — 국립해양조사원 1/25,000 연안정보도 수심(SHP) →
 게임용 "거리별 수심 프로필" JSON 변환 도구 (표준 라이브러리만 사용)
 
-입력: 루트의 09.수심.zip (WGIS_DEPTHWATER.shp/dbf — Point + HSL 수심 속성)
+입력: docs/reference/09.수심.zip (WGIS_DEPTHWATER.shp/dbf — Point + HSL 수심 속성)
   기준계 WGS84 / 좌표계 UTM-K (TM, lon0=127.5, lat0=38, k=0.99996,
   FE=1,000,000, FN=2,000,000)
 
@@ -24,7 +24,7 @@ import sys
 import zipfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ZIP_PATH = os.path.join(ROOT, '09.수심.zip')
+ZIP_PATH = os.path.join(ROOT, 'docs', 'reference', '09.수심.zip')
 OUT_DIR = os.path.join(ROOT, 'packages', 'client-pc', 'public', 'data', 'depth')
 
 # ── 지역/앵커 정의 (실제 항구 좌표) ─────────────────────────

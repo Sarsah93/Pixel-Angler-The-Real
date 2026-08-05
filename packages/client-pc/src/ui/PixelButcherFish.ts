@@ -152,6 +152,16 @@ const AMBERJACK_SPECIES = new Set<string>(['yellowtail', 'amberjack', 'greater_a
 const FLAT_SPECIES = new Set<string>(['flatfish', 'flounder', 'frog_flounder', 'starry_flounder']);
 
 /**
+ * 어종 → 손질/회썰기 스프라이트 어종군 ('amberjack' = 방어류 / 'halibut' = 넙치류 / 'bream' = 돔류·기본).
+ * SashimiPanel·UtilizationPanel 조각 아이콘/필렛 뷰 선택도 이 판정을 공유한다 (중복 셋 금지).
+ */
+export function butcherFamilyOf(speciesId: string): 'amberjack' | 'bream' | 'halibut' {
+  if (AMBERJACK_SPECIES.has(speciesId)) return 'amberjack';
+  if (FLAT_SPECIES.has(speciesId)) return 'halibut';
+  return 'bream';
+}
+
+/**
  * 어종별 도마 스프라이트 세트 — 방어류(방어/부시리/잿방어)는 잿방어 형태(방추형 실색),
  * 넙치류(광어·도다리)는 광어 탑뷰(등면/배면 — halibut.png 추출), 그 외는 감성돔 가이드 형태.
  */
@@ -454,7 +464,8 @@ function drawFlatFish(
 
   // ── FLESH_UP(엔가와 분리 등) / 완료 = 필렛 슬랩 뷰 ──
   if (state.finished || o === 'FLESH_UP') {
-    const slab = stageSpr('pure_fillet_bream') ?? sprites.fillet;   // 광어 전용 필렛 에셋 전 폴백
+    // 광어 순살 필렛 실사 (skinned_pillet_without_engawa 픽셀화 — 2026-08-05 투입)
+    const slab = stageSpr('pure_fillet_halibut') ?? stageSpr('pure_fillet_bream') ?? sprites.fillet;
     const dr = drawSprite(g, slab, geom, false, false, tint, 0.12);
     // 엔가와 스트립 — 필렛 아래 가장자리의 지느러미살 (분리 대상 표시)
     if (!state.finished && state.stageId?.startsWith('engawa_')) {
@@ -496,64 +507,115 @@ function drawFlatFish(
   // ── 다섯장뜨기 오버레이 (프레임 정규화 좌표 → 화면 px) ──
   const px = (x: number): number => drawn.x + x * drawn.w;
   const py = (y: number): number => drawn.y + y * drawn.h;
-  const bodyL = state.headOff ? 0.33 : 0.36;   // 필렛 시작 (머리 경계)
-  const bodyR = 0.72;                           // 꼬리자루 앞
-  // 경계 곡선 (위/아래) — 지느러미(엔가와) 밑동 라인
-  const upEdge = (x: number): number => 0.13 + 0.10 * Math.abs((x - (bodyL + bodyR) / 2) / ((bodyR - bodyL) / 2)) ** 1.6;
-  const dnEdge = (x: number): number => 1 - upEdge(x);
-
-  /** 포 뜨기 진행 오버레이 — p(0~1)만큼 중앙선에서 경계 쪽으로 살이 벌어진다 */
-  const liftOverlay = (upper: boolean, p: number): void => {
-    if (p <= 0) return;
-    const cy = upper ? 0.475 : 0.525;
-    const pts: { x: number; y: number }[] = [];
-    const N = 10;
-    for (let i = 0; i <= N; i++) {
-      const x = bodyL + ((bodyR - bodyL) * i) / N;
-      const edge = upper ? upEdge(x) : dnEdge(x);
-      pts.push({ x, y: cy + (edge - cy) * Math.min(1, p) });
+  const bodyL = state.headOff ? 0.28 : 0.36;    // 필렛 시작 = 머리 S컷 절단면 (F9 실측 정합)
+  const bodyR = 0.732;                          // 꼬리 칼집 위치 (F9 실측)
+  /** 중앙선(척추선) — F9 실측 {0.280,0.500}→{0.732,0.488} 선형 보간 */
+  const cyAt = (x: number): number => 0.500 + ((x - 0.280) / (0.732 - 0.280)) * (0.488 - 0.500);
+  // 위 경계 곡선 = F9 실측 upScore 7점 보간 (지느러미/엔가와 밑동) / 아래 = 중앙선 대칭 미러
+  //  (dnScore 실측 전 근사 — 실측 반영 시 별도 테이블로 교체)
+  const UP_PTS = [
+    { x: 0.262, y: 0.283 }, { x: 0.329, y: 0.177 }, { x: 0.428, y: 0.100 }, { x: 0.541, y: 0.107 },
+    { x: 0.619, y: 0.206 }, { x: 0.667, y: 0.323 }, { x: 0.737, y: 0.421 },
+  ];
+  const upEdge = (x: number): number => {
+    if (x <= UP_PTS[0].x) return UP_PTS[0].y;
+    for (let i = 1; i < UP_PTS.length; i++) {
+      if (x <= UP_PTS[i].x) {
+        const a = UP_PTS[i - 1], b = UP_PTS[i];
+        return a.y + ((x - a.x) / (b.x - a.x)) * (b.y - a.y);
+      }
     }
-    g.fillStyle(p >= 1 ? 0xf3e2dc : 0xe8b8b0, p >= 1 ? 0.97 : 0.92);
+    return UP_PTS[UP_PTS.length - 1].y;
+  };
+  const dnEdge = (x: number): number => 2 * cyAt(x) - upEdge(x);
+
+  const N = 12;
+  const xs: number[] = [];
+  for (let i = 0; i <= N; i++) xs.push(bodyL + ((bodyR - bodyL) * i) / N);
+
+  /**
+   * 포 뜨기 진행 — 사용자 스케치의 3D 구조 (2026-08-05):
+   *  칼이 중앙선에서 경계(지느러미) 방향으로 뼈를 타며 3회 지날수록,
+   *  ① 떠진 자리 = 척추 라인 + 갈비뼈 부챗살 노출 (해당 반쪽, 중앙선→경계로 p 비례 확장)
+   *  ② 뜬 살(플랩) = **중앙선을 힌지로 반대편을 덮으며 젖혀진다** — FLIP 뷰에서는
+   *     분홍 절단면(살)이 위로 보인다 (겉껍질은 바닥 쪽). 완료(p=1) = 필렛 회수 → 플랩 소멸.
+   */
+  const boneRegion = (upper: boolean, p: number): void => {
+    if (p <= 0) return;
+    const f = Math.min(1, p);
+    // 노출 폴리곤: 중앙선 ~ (중앙선→경계 f 지점)
+    g.fillStyle(0xefe0d6, 0.96);
     g.beginPath();
-    g.moveTo(px(bodyL), py(cy));
-    for (const pt of pts) g.lineTo(px(pt.x), py(pt.y));
-    g.lineTo(px(bodyR), py(cy));
+    g.moveTo(px(xs[0]), py(cyAt(xs[0])));
+    for (const x of xs) {
+      const edge = upper ? upEdge(x) : dnEdge(x);
+      g.lineTo(px(x), py(cyAt(x) + (edge - cyAt(x)) * f));
+    }
+    g.lineTo(px(xs[N]), py(cyAt(xs[N])));
     g.closePath();
     g.fillPath();
-    if (p >= 1) {
-      // 떠낸 자리 = 드러난 갈비살 결 (사용자 캡처 6~8 — 흰 분홍 뼈 부챗살)
-      g.lineStyle(1.2, 0xd8a8a0, 0.85);
-      for (let i = 1; i < 9; i++) {
-        const x = bodyL + ((bodyR - bodyL) * i) / 9;
-        const edge = upper ? upEdge(x) : dnEdge(x);
-        g.lineBetween(px(x), py(cy), px(x + 0.02), py(cy + (edge - cy) * 0.9));
-      }
-      g.lineStyle(2, 0xcfbab4, 0.9);   // 중앙 척추 라인 노출
-      g.lineBetween(px(bodyL), py(cy), px(bodyR), py(cy));
+    // 갈비뼈 부챗살 — 중앙선(척추)에서 경계 방향으로 뻗는 빗살 (스케치 2)
+    g.lineStyle(1.2, 0xcaa89a, 0.9);
+    for (let i = 1; i < 11; i++) {
+      const x = bodyL + ((bodyR - bodyL) * i) / 11;
+      const edge = upper ? upEdge(x) : dnEdge(x);
+      const tipY = cyAt(x) + (edge - cyAt(x)) * f * 0.94;
+      g.lineBetween(px(x), py(cyAt(x)), px(x + 0.018), py(tipY));
     }
+    // 척추 라인 (중앙선 위 노출 뼈)
+    g.lineStyle(2, 0xcfbab4, 0.95);
+    g.lineBetween(px(bodyL), py(cyAt(bodyL)), px(bodyR), py(cyAt(bodyR)));
   };
 
-  liftOverlay(true, fs.upLift);
-  liftOverlay(false, fs.dnLift);
-
-  // 중앙선/경계 칼길 자국 (완료 표시 — 어두운 절개선)
-  if (fs.center) {
-    g.lineStyle(2, 0x3a2226, 0.9);
-    g.lineBetween(px(bodyL), py(0.5), px(bodyR), py(0.5));
-  }
-  const scoreLine = (upper: boolean): void => {
-    g.lineStyle(1.6, 0x3a2226, 0.85);
+  const flapOverlay = (upper: boolean, p: number): void => {
+    if (p <= 0 || p >= 1) return;   // 완료 = 필렛 회수(지급) — 플랩 없음
+    const f = Math.min(1, p);
+    // 플랩 = 노출 폭만큼 중앙선 반대편으로 미러된 살 덩어리 (반대편 흰 배/뼈 위를 덮는다)
+    const flapY = (x: number): number => {
+      const edge = upper ? upEdge(x) : dnEdge(x);
+      return cyAt(x) - (edge - cyAt(x)) * f;    // 중앙선 힌지 미러
+    };
+    g.fillStyle(0xe8a89e, 0.96);                 // 분홍 절단면 (살)
+    g.beginPath();
+    g.moveTo(px(xs[0]), py(cyAt(xs[0])));
+    for (const x of xs) g.lineTo(px(x), py(flapY(x)));
+    g.lineTo(px(xs[N]), py(cyAt(xs[N])));
+    g.closePath();
+    g.fillPath();
+    // 플랩 가장자리(젖힌 살 끝) — 어두운 절단면 라인
+    g.lineStyle(1.6, 0xb0685e, 0.9);
     g.beginPath();
     let first = true;
-    for (let i = 0; i <= 8; i++) {
-      const x = bodyL + ((bodyR - bodyL) * i) / 8;
-      const y = upper ? upEdge(x) : dnEdge(x);
-      if (first) { g.moveTo(px(x), py(y)); first = false; } else g.lineTo(px(x), py(y));
+    for (const x of xs) {
+      if (first) { g.moveTo(px(x), py(flapY(x))); first = false; } else g.lineTo(px(x), py(flapY(x)));
     }
     g.strokePath();
+    // 살결 몇 줄 (플랩 위 — 결 방향 = 중앙선과 평행)
+    g.lineStyle(1, 0xd8968c, 0.7);
+    for (let k = 1; k <= 2; k++) {
+      g.beginPath();
+      first = true;
+      for (const x of xs) {
+        const y = cyAt(x) + (flapY(x) - cyAt(x)) * (k / 3);
+        if (first) { g.moveTo(px(x), py(y)); first = false; } else g.lineTo(px(x), py(y));
+      }
+      g.strokePath();
+    }
   };
-  if (fs.upScore && fs.upLift < 1) scoreLine(true);
-  if (fs.dnScore && fs.dnLift < 1) scoreLine(false);
+
+  // 렌더 순서: 노출 뼈(양쪽) → 플랩(양쪽 — 반대편 위를 덮으므로 나중에)
+  boneRegion(true, fs.upLift);
+  boneRegion(false, fs.dnLift);
+  flapOverlay(true, fs.upLift);
+  flapOverlay(false, fs.dnLift);
+
+  // 중앙선 칼집 자국 (완료 표시 — 머리 절단면부터 꼬리 칼집까지 전장. 어두운 절개선)
+  //  ⚠ 지느러미 경계 칼길(upScore/dnScore)은 **자국을 그리지 않는다** (사용자 지시 2026-08-05
+  //  — 검정 경계선이 몸통 위에 남는 것이 부자연스러움. 칼길은 판정만).
+  if (fs.center && fs.upLift <= 0 && fs.dnLift <= 0) {
+    g.lineStyle(2, 0x3a2226, 0.9);
+    g.lineBetween(px(bodyL), py(cyAt(bodyL)), px(bodyR), py(cyAt(bodyR)));
+  }
 
   // 내장 주머니 노출 (배면 — 위 필렛 떠낸 후 · 제거 전. 사용자 캡처 1 빨간 영역 = 좌상단)
   if (fs.gutsExposed) {

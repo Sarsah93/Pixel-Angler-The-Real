@@ -162,7 +162,7 @@ npx pnpm --filter @tra/client-pc run typecheck
 ### 데이터 파이프라인 재생성
 ```bash
 py tools/build_region_maps.py sokcho    # 지형 지도 → 타일맵 JSON (busan 등 지역명)
-py tools/build_depth_profiles.py        # 수심 SHP(09.수심.zip) → 수심 프로필 JSON
+py tools/build_depth_profiles.py        # 수심 SHP(docs/reference/09.수심.zip) → 수심 프로필 JSON
 ```
 
 ### API 키 (`packages/client-pc/.env` — 없으면 Mock으로 동작)

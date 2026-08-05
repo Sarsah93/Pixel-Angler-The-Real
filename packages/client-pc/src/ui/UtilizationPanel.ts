@@ -45,6 +45,7 @@ import { SashimiPanel } from './SashimiPanel.js';
 import { GuidePanel } from './GuidePanel.js';
 import { ConfirmDialog } from './Dialogs.js';
 import { makeFishPreview } from './FishTemplateRenderer.js';
+import { butcherFamilyOf } from './PixelButcherFish.js';
 import { createItemIcon } from './ItemIcon.js';
 import { GameState } from '../store/GameState.js';
 
@@ -1787,8 +1788,7 @@ export class UtilizationPanel extends DraggablePanel {
   private renderSlicedBoard(bx: number, by: number, bw: number, bh: number): void {
     const item = InventoryStore.find(this.boardSlicedItemId!);
     if (!item) return;
-    const fam = new Set(['yellowtail', 'amberjack', 'greater_amberjack']).has(item.speciesId ?? '')
-      ? 'amberjack' : 'bream';
+    const fam = butcherFamilyOf(item.speciesId ?? '');
     const texKey = `sashimi_piece_${fam}`;
     const hasTex = this.scene.textures.exists(texKey);
     const n = Math.min(item.qty, 16);

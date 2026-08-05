@@ -50,6 +50,12 @@ the-real-angler/
 
 ## 4. 코딩 규칙 (절대 준수)
 
+> **절차·함정 노하우는 `.claude/skills/` 10종 스킬로 추출됨** (목록·한 줄 요약은 CLAUDE.md) —
+> 해당 작업 시 반드시 해당 스킬을 로드한다: verify-render(실렌더 검증) · asset-pipeline(에셋) ·
+> add-species(어종 등록) · ui-panel(UI 검수) · save-migration(세이브) · deploy-ghpages(배포) ·
+> f9-guide-coords(가이드 좌표) · add-region(타일맵) · add-tuning(튜닝) · scene-transition(씬 전환).
+> 이 문서(§4·§8)는 **상시 적용 절대 규칙 요약**만 유지한다.
+
 ### TypeScript
 - **strict 모드** 사용 (`tsconfig.base.json` 참고)
 - `any` 타입 사용 절대 금지 (불가피한 경우 `// eslint-disable-next-line` 주석 필수)
@@ -66,64 +72,25 @@ the-real-angler/
 - `GameState` import 시 반드시 named export 방식: `import { GameState } from '../store/GameState.js'`
 - `gameState` (소문자) 인스턴스는 존재하지 않음 — 항상 `GameState` (대문자) 사용
 
-### 씬 전환 패턴 (중요 — 반드시 준수)
-모든 씬 전환은 아래 패턴을 따름:
-
-**FieldScene → 하위 씬 진입:**
-```typescript
-this.cameras.main.fadeOut(250, 0, 10, 20);
-this.cameras.main.once('camerafadeoutcomplete', () => {
-  this.scene.pause('FieldScene');
-  this.scene.launch('TargetScene'); // start 대신 launch
-});
-```
-
-**하위 씬 → FieldScene 복귀 (나가기 버튼):**
-```typescript
-this.cameras.main.fadeOut(220, 0, 10, 20);
-this.cameras.main.once('camerafadeoutcomplete', () => {
-  this.scene.stop();               // this.scene.stop('SelfScene') 아님
-  this.scene.resume('FieldScene');
-});
-```
-
-**FieldScene create() 에서 반드시:**
-```typescript
-this.events.on('resume', () => {
-  this.cameras.main.fadeIn(300, 0, 10, 20);
-});
-```
-
-**절대 사용 금지**: 하위 씬에서 `this.scene.start('FieldScene')` — FieldScene이 재생성되어 플레이어 위치, 상태 모두 초기화됨
+### 씬 전환 패턴 (중요 — 반드시 준수) → 상세는 **스킬 `scene-transition`**
+- 필드 → 하위 씬 = `pause` + `launch` / 복귀 = `this.scene.stop()`(인자 없이) + `resume`. **하위 씬에서 `scene.start('FieldScene')` 절대 금지**(필드 재생성 = 상태 초기화). 필드 create()에 `on('resume', fadeIn)` 필수.
+- 페이드아웃 대기는 bare `camerafadeoutcomplete` 금지 — **`scenes/SceneFade.ts`의 `fadeOutThen`**(폴백 타이머+이중 실행 가드) 경유 (73차 전수 적용. 대형 씬 3곳은 자체 fadeOutThen 유지).
+- 재진입 가드(`isTransitioning`)는 **create()에서 리셋** + 비용 차감은 가드 통과 후.
 
 ### 한국어 주석 정책
 - 모든 파일 상단 JSDoc 주석은 한국어로 작성
 - 인터페이스/타입 필드의 설명 주석은 한국어로 작성
 - 영어 주석도 혼용 가능하나, 핵심 설명은 한국어 우선
 
-### 텍스트 오버플로 금지 정책 (2026-07-25 신규 — 사용자 지시)
-- **모든 텍스트 컴포넌트(`scene.add.text`)는 자신이 속한 컨테이너(패널/박스/게이지/버튼) 경계 밖으로 절대 나가지 않아야 한다.**
-- 가변 길이 문자열(수치·라벨·어종명 등)을 그리는 텍스트는 반드시 다음 중 하나로 방어:
-  1. `wordWrap: { width: <컨테이너 안쪽 폭> }` — 넘치면 줄바꿈 (세로 여유 확인)
-  2. `setOrigin(1, …)` 우측 정렬 + 우측 경계 안쪽 x — 우측 열/버튼 침범 방지
-  3. 라벨 단축 — 길이 상한이 확실할 때
-- **UI 텍스트를 추가/수정할 때마다** 해당 컴포넌트뿐 아니라 인접 텍스트까지 **한 번 더 전수 검수**할 것 (긴 값·다국어·큰 수치 케이스). 신규 패널은 가장 긴 예상 문자열로 렌더 확인.
-- 참고 위험 패턴: 좁은 열에 좌측정렬(origin 0) + wordWrap 없음 + 가변 내용 = 오버플로 1순위.
+### UI 텍스트·레이아웃 검수 정책 (2026-07-25/30 — 사용자 지시) → 상세는 **스킬 `ui-panel`**
+- 모든 텍스트는 컨테이너 경계 밖 금지 — wordWrap / 우측정렬 / `clampTextWidth` 중 하나로 방어.
+- 모든 패널은 신규·수정 시 **오버플로·겹침·스크롤/클립 3항 검수** + 가장 긴 콘텐츠로 실렌더 확인.
+- 인터랙티브 목록 = 윈도우드 렌더(마스크는 팬텀 히트) / 화면 고정 마스크 = `setScrollFactor(0)` / z-order 밴드(일반 800대·모달 900대) / 드래그 = 커스텀 포인터 방식 — 전부 스킬 참조.
 
-### UI 레이아웃 검수 정책 — 오버플로·겹침·스크롤 (2026-07-30 확장 — 사용자 지시)
-위 텍스트 오버플로 정책에 더해, **모든 패널/팝업/HUD는 아래 3항을 신규·수정 시마다 검수**한다:
-1. **오버플로**: 어떤 요소도 패널 경계(width/height) 밖으로 나가지 않는다. 콘텐츠 총높이가 패널을 넘길 수 있으면 **높이 캡 + 위치 클램프(화면 안)** 를 건다(예: `ItemDetailPanel` 720 캡).
-2. **겹침**: 새 요소를 추가할 때 **인접/기존 요소와 좌표가 겹치지 않는지** 확인(같은 행의 버튼·라벨·값, 사이드바 하단 밀집 구역). 새 버튼/텍스트는 기존 레이아웃의 여백 좌표를 재확인 후 배치.
-3. **스크롤/클립**: 무한 증가 가능한 콘텐츠(목록·로그·인벤 그리드·긴 설명)는 **스크롤 + 지오메트리 마스크** 필수. **카메라가 스크롤되는 씬(RegionFieldScene 등)의 화면 고정 마스크는 `setScrollFactor(0)` 필수**(33차·32차 교훈 — 없으면 카메라 이동량만큼 클립이 어긋남). DraggablePanel 계열은 `applyScreenFixed()` 재귀 적용.
-- 검수 방법: **가장 긴/가장 많은 콘텐츠**(최장 어종명·특대 수치·꽉 찬 목록)로 렌더해 육안 확인. dev 실렌더 스크린샷 권장.
-
-### 세이브 하위호환 · 시드 복원 정책 (2026-07-30 신규 — 사용자 지시)
-> **구 세이브 데이터가 최신 업데이트(신규 필드·게이트·아이템)를 받지 못하는 경우까지 반드시 고려한다.** 세이브는 항상 과거 스키마일 수 있다 — 최신 스키마를 가정하지 말 것.
-- **아이템에 정적 기능 필드를 새로 추가하면**(예: `tool`(손 장착)·`equippable`·`placeKey`(배치)·게이트 플래그), `InventoryStore.deserialize`의 **시드 백필 마이그레이션에 그 필드를 추가**한다: `createSeedItems()` id→시드 맵에서 `i.<field> ?? seed.<field>`로 **누락분만 복원**. (구세이브의 회칼이 `tool` 없이 저장돼 손 장착이 안 되던 53차 버그가 이 원칙 위반 사례.)
-- **유저 상태는 절대 덮어쓰지 않는다** — `qty`·`condition`·`conditionSinceMs`·`equipped`·`equippedHand`·`slot` 등은 저장값 유지(`??`는 null/undefined만 채우므로 명시적 false·0도 보존).
-- **적용 시점**: deserialize는 **세이브 로드 시**(loadFromSlot → applySaveData) 실행 → 기존 세이브도 **재로드하면 마이그레이션 적용**(라이브 세션은 재로드 필요). 코드 레벨 변경(게이팅/렌더/DB)은 세이브 무관 즉시 적용.
-- **세이브에 없을 수 있는 값을 소비하는 신규 로직**은 그레이스풀 폴백을 갖춰야 한다: ① 시드 백필(위) ② 이름 휴리스틱 폴백(예: `floatBuoyG` 미보유 시 이름 추정 — 25차) ③ 안전 기본값. **폴백 없이 신규 필드를 강제 참조 금지.**
-- 신규 아이템을 "구세이브에도 반드시 지급"해야 하면(예: dev 테스트 어획), deserialize에서 **부재 시 주입**(id 존재 검사 후 addItem — `createDevFishDefs` 패턴). 단 유저가 팔았을 수 있는 소모/판매 아이템은 재주입 신중(놀람 방지).
+### 세이브 하위호환 · 시드 복원 정책 (2026-07-30 — 사용자 지시) → 상세는 **스킬 `save-migration`**
+- **세이브는 항상 과거 스키마일 수 있다** — 아이템 정적 필드 추가 시 `deserialize` 시드 백필(`?? seed` — 누락분만), **유저 상태(qty/condition/equipped/slot 등)는 절대 덮어쓰지 않음**.
+- 신규 필드 소비 로직은 폴백 3단계(시드 백필 → 휴리스틱 → 안전 기본값) 없이 강제 참조 금지.
+- 적용은 세이브 로드 시점 — 라이브 세션은 재로드 필요(사용자 안내 포함). 백필/주입 패턴·검증법은 스킬 참조.
 
 ---
 
@@ -375,7 +342,45 @@ npx pnpm run build → ✅ 4/4 패키지 성공 (2026-08-05)
 npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류 (2026-08-05)
 ```
 
-**최근 주요 변경 (2026-08-05 74차) — 넙치류(광어·도다리) 다섯장뜨기 손질 구현** (사용자 순서도 + 캡처 8장 — core 정합/FSM 완주/실 스토어·실렌더 완주/재장착 3체인 검증 전 PASS, 빌드 4/4·typecheck 0):
+> **아래 차수 히스토리는 "무엇을·왜 바꿨나"의 변경 기록이다.** 히스토리 곳곳에 흩어져 있던
+> 반복 절차·함정(검증 하네스·에셋 파이프라인·어종 등록·UI 검수·세이브 마이그레이션·배포·
+> F9 좌표·타일맵·튜닝·씬 전환)은 **`.claude/skills/` 10종으로 추출·정리됨** — 작업 방법을
+> 찾을 때는 히스토리를 뒤지지 말고 해당 스킬을 먼저 로드할 것.
+
+**최근 주요 변경 (2026-08-05 78차) — 광어 F9 실측 1차 반영 + 배쪽 포 뜨기 3D 렌더 개편 + 작업 패널 2열** (사용자 F9 측정 7종 + 스케치 2장 + 피드백 3건 — core 실판정 완주·실렌더 4단계 검증, 빌드 4/4·typecheck 0):
+- **[FLAT_GUIDE 실측 반영]** 시메 tapPoint {0.230,0.400} / 방혈 7점 / 머리 S커브 7점 / **비늘 스윕 면별 분리**(`scaleSweepBase`·`scaleSweepFlip` 각 17점 — 구 공용 scaleSweep 폐기, scale_base/scale_flip 배선) / 꼬리 칼집 {0.732, 0.393→0.574}(등·배 공통) / **중앙선 = 머리 절단면→꼬리 칼집 전장 연장** {0.280,0.500}→{0.732,0.488}(실측 0.288→0.718을 양끝 랜드마크로 — 사용자 지시) / 위 경계 칼길(upScore) 7점. 잔여 근사: upLift/dnScore/dnLift/gutSweep/엔가와(사용자 후속 F9 — 포 뜨기 렌더 확정 후).
+- **[포 뜨기 = 3회]** lift 4스테이지(배 위/아래·등 위/아래) strokesRequired 2→**3** + 문구 "(3회 — 점점 깊게)" (사용자 "세 번 정도"). ⚠ 일괄 치환이 원형어 sever·belly 문구 2곳을 오염 — diff로 발견·원복 (flat 스코프만).
+- **[drawFlatFish 3D 개편]** (사용자 스케치 — 광어 단면 구조): ① 경계 곡선 = **실측 upScore 7점 보간**(구 파라메트릭 근사 폐기, dnEdge = 중앙선 대칭 미러 — dnScore 실측 시 교체) ② `boneRegion` — 떠진 자리 = 중앙선(척추 라인)에서 경계로 p 비례 확장되는 크림 바탕 + **갈비뼈 부챗살 빗살** ③ `flapOverlay` — 뜬 살 = **중앙선을 힌지로 미러되어 반대편(흰 배)을 덮는 분홍 절단면 플랩**(가장자리 어두운 컷라인 + 살결 2줄, p≥1 = 필렛 회수 → 플랩 소멸) ④ 렌더 순서 = 뼈(양쪽) → 플랩(양쪽 — 반대편 위 덮음) ⑤ **경계 칼길 검정선 렌더 제거**(사용자 지시 — 판정만, 자국 없음) ⑥ 중앙선 자국 = 전장(cyAt 보간 — 실측 기울기), 포 시작 후엔 척추 라인이 대체 ⑦ bodyL 0.28(S컷 절단면)·bodyR 0.732(꼬리 칼집) 실측 정렬.
+- **[작업 패널 2열]** `drawTaskPanel` — 작업 **4개 이상 = 2열 그리드**(216px 열 × 행 우선 배치, 왼쪽 확장·헤더 폭 자동): 광어 배쪽 섹션(4작업)이 세로 스택으로 도마 프레임을 11px 침범하던 것 해소(실측 하단 180 ≤ 프레임 176 → 2행 130). 3개 이하 섹션은 기존 1열 유지.
+- **[검증]** core 실판정: 실측 반영 전 구간(방혈·S컷·꼬리×2·중앙선·경계 칼길) **가이드 트레이스 cov 1.00** + lift 3회 진행(3→2→1→0) + **35스테이지 완주** + 이탈 트레이스 passed:false(cov 0.34)·정타 1.00 / 실렌더: lift 4단계(중앙선 전장 → 1/3 → 2/3 → 완료+내장) 스크린샷 — 뼈 성장·플랩 덮음·완료 시 소멸 정합 + 작업 패널 2×2. pageerror 0. ⚠ 하네스: `jumpTo`는 방향을 안 바꿈 — `process.orientation` 직접 대입(공개 필드) / `devJumpToTask(secIdx, taskId)` 2인자.
+- 잔여(사용자 재진입 예정): upLift/dnScore/dnLift/gutSweep/엔가와 좌표 F9 재실측(새 렌더 기준) · 등쪽(BASE) 포 뜨기도 같은 플랩 구조 공유(어두운 면 위 — 톤 확인) · dnEdge 실측 교체.
+
+**이전 변경 (2026-08-05 77차) — 레포 파일 정리 (루트 잡파일 이동·폐기 삭제·프로젝트 스킬 10종 도입)** (사용자 지시 — 전 파일 참조 조사 후 실행, 생성기 재실행·빌드 4/4·typecheck 0 검증):
+- **[스킬 도입]** `.claude/skills/` 10종 신설 (verify-render/asset-pipeline/add-species/ui-panel/save-migration/deploy-ghpages/f9-guide-coords/add-region/add-tuning/scene-transition — 목록은 CLAUDE.md) + **AGENTS §4 중복 정책 3건을 스킬 포인터로 축약**(씬 전환 코드 예시는 73차 SceneFade 이전의 낡은 패턴이라 교체가 정정 효과) + §9 히스토리 상단 "작업 방법은 스킬 먼저" 안내.
+- **[삭제 6건]** (전부 git tracked — 히스토리 복구 가능): 폐기 스펙 삽화 `sashimi_guide_fix.svg`·`sashimi_board_dnd.svg`(참조 0) / 1회성 상태 덱 `sashimi_impl_status_deck.html` / 27차 허브로 흡수·폐기된 `chum_guide_popup.html` / 루트 `webglmap_pixelazed.png`(public+pixelazed 사본 존재 — 중복) / `public/webglmap_pixel.png`(미로드 — 주석 언급만).
+- **[이동 — git mv]** ① `docs/reference/` = 공공 API 활용가이드(hwp 2·xlsx 2·docx)·경락 CSV·**09.수심.zip**(build_depth_profiles 입력 — ZIP_PATH 갱신) ② `docs/mockups/` = game_guide_hub.html(가이드 삽화 재렌더 소스)·hometown 목업 svg 2 ③ `assets/branding/` = 타이틀/아이콘 원본 PNG ④ `assets/characters/{man,girl}/` = **구 packages/man·girl**(패키지 아님 — 소비본은 public/characters, diff 동일 확인) ⑤ `assets/guide/` = sashimi_pixel_guide.svg(**pixelize_butchery SVG_PATH 갱신** — bream 스테이지 추출 입력).
+- **[유지 판정]** `food assets/`(파이프라인 경로 참조 다수 — 이름 변경 금지) / `pixelazed/`(타일맵 입력 + WorldMap zoom 원본) / `tools/` 전체(build_map.py·pixelize.py는 지도 픽셀화 재사용 대비).
+- **[검증]** pixelize_butchery 재실행 = 12 스프라이트 동일 / build_depth_profiles 재실행 = 속초 JSON diff 0 / 빌드 4/4·typecheck 0. README ZIP 경로 표기 갱신.
+
+**이전 변경 (2026-08-05 76차) — 팝업 z-order 포커스 시스템 (클릭 = 최상단) + ESC 포커스 정합 + 광어 온마리 신규 에셋 재추출 + dev 광어 지급** (사용자 리포트 "인벤 우클릭 메뉴가 장비창 뒤에 가려짐 — 상호작용 중인 패널이 최상단이어야" — 실마우스 5시나리오 검증, 빌드 4/4·typecheck 0):
+- **[근본 원인 — bringSelfToTop 사문]** `DraggablePanel.bringSelfToTop()`의 구 구현 `scene.children.bringToTop()`은 **디스플레이 리스트 순서만** 바꾸는데, Phaser 렌더/입력 정렬은 **depth 값이 우선**이라 정적 depth가 다른 패널(인벤 800 vs 장비 810)끼리는 완전히 무력했다 — "패널 클릭 시 최상단" 기능이 도입(15차) 이후 줄곧 동작한 적 없음. 인벤 우클릭 컨텍스트 메뉴는 패널의 **자식**이라 패널 depth(800)에 갇혀 장비창(810)에 항상 가려졌고, Phaser 입력도 depth 우선이라 **가려진 메뉴 항목 클릭을 장비창이 가로챘다**.
+- **[재작성 — depth 기반 동적 최상단 + 밴드]** `bringSelfToTop()` = 같은 밴드 피어들의 max depth + 1로 `setDepth`(dim은 항상 depth−1 동행). **밴드 규칙 신설**: 일반 팝업 [800, 899)(인벤/장비/상점/쿨러/상세보기 — 클릭으로 자유 전환) / 모달 [900~)(손질/회썰기/가이드/다이얼로그) — **일반 팝업은 모달 밴드 침범 금지**(캡 898, 다이얼로그 950이 항상 위 보장), 밴드 포화 시 depth 서열 유지 재정규화. 정적 depth는 "처음 열릴 때 초기 서열"로만 의미.
+- **[포커스 캡처 — 씬 레벨 pointerdown]** 자식 인터랙티브 요소(그리드 셀 등)를 누르면 basePlate가 이벤트를 못 받아 최상단이 안 되던 것 → 씬 `pointerdown`에서 "포인터가 패널 rect 안 + **나를 덮는 상위 패널 없음 + 위에 모달(dim) 없음**"이면 raise. 겹침 영역은 최상단 패널만 올라오고, 모달 dim 뒤 클릭은 서열 불변.
+- **[ESC = 포커스 정합]** `RegionFieldScene.closeTopPopup` — 구 스택 LIFO(마지막 연 것)에서 **depth 최고(=시각적 최상단) 팝업부터** 닫도록 변경(동률이면 기존 LIFO와 동일). onEscIntercept 위임 유지.
+- **[광어 온마리 신규 에셋]** 사용자 교체 `food assets/halibut.png`(8/4 고품질본) → `public/fish/halibut.png` 교체 + `gen_flatfish_sprites.cjs` 재실행(100×51 — **도마 스프라이트는 PixelFishFlat.ts에 구워둔 스냅샷이라 PNG 교체만으론 반영 안 됨**, 재생성 필수. `fish_halibut` 텍스처(어획 팝업·인벤·도감)는 PNG 직접 로드라 자동 반영). 생성기 playwright 경로 하드코딩도 자동 탐색으로 교체(75차와 동일).
+- **[dev 광어 지급]** `createDevFishDefs`에 광어(flatfish, 40~80cm·wf 0.013) 추가 — 다섯장뜨기 수동 검증용. 기존 세이브도 재로드 시 주입(minFilletLengthCm 30이라 전 밴드 회뜨기 가능).
+- **[검증 — 실마우스 5시나리오]** 초기 800/810 → 인벤 클릭 812(raise) → **셀 우클릭 = 자동 raise + 메뉴가 장비창 위 렌더**(스크린샷 — 사용자 캡처 상황 재현) → 장비 클릭 814(상호 전환) → 모달 다이얼로그(950 dim) 중 뒤 패널 클릭 = raise 차단. pageerror 0. + 광어 온마리 등면/배면 신규 스프라이트 렌더.
+- ⚠ 잔여: FP 씬 ESC는 popupStack이 아닌 하드코딩 순서(인벤→쿨러→종료 — 강제 방생 lockedOpen이 얽혀 있어 이번 스코프 제외. 쿨러·인벤 포커스 전환 자체는 공통 적용됨).
+
+**이전 변경 (2026-08-05 75차) — 광어 회썰기·도마 필렛 실사 에셋 마무리 (bream 폴백 해소)** (사용자 지시 "엔가와 + skinned_pillet_without_engawa 2에셋으로 마무리 — skinned 네이밍이지만 순살과 공용(껍질 분리 연출이 돔류·방어류와 동일)" — 실렌더 4스크린샷 검증, 빌드 4/4·typecheck 0):
+- **[회썰기 3뷰]** `gen_sashimi_fillet.cjs` FAMILIES에 halibut 추가(`flipX/flipTop: true` — 원본이 머리 왼쪽이라 **머리 오른쪽 규칙**으로 미러) → `public/sashimi/fillet_top_halibut.png`(384×107)·`fillet_side_halibut.png`(384×120)·`piece_halibut.png`(회 조각 아이콘) 생성 + `SashimiFilletProfiles`에 **`SashimiFilletFamily`('bream'|'amberjack'|'halibut') 타입 신설**·PROFILES/TEX 3군 확장. BootScene 3텍스처 로드.
+- **[어종군 판정 일원화]** `PixelButcherFish.butcherFamilyOf(speciesId)` 신설 — AMBERJACK/FLAT 셋 기반 'amberjack'|'halibut'|'bream' 판정을 **SashimiPanel**(구 로컬 AMBERJACK_SPECIES 셋 폐기)·**UtilizationPanel.renderSlicedBoard**(구 인라인 셋 폐기)가 공유. 광어 순수 필렛(`inv_fillet_flatfish_*`)을 도마에 올리면 fam 'halibut' → 전용 뷰·조각 아이콘 자동.
+- **[도마 실사 슬랩]** `food assets/butchery/pure_fillet_halibut.png`(= skinned_pillet_without_engawa 복사) 투입 → `pixelize_butchery.cjs` 재실행(128×36·44색). **`MIRROR_KEYS` 신설** — 도마 필렛 방향 규칙 = **꼬리 왼쪽·머리 오른쪽**(박피 peel_grip 꼬리 칼집·회썰기 컷 순서와 동일 컨벤션)인데 광어 원본은 머리 왼쪽이라 굽는 시점 행 반전. `drawFlatFish` FLESH_UP 슬랩이 `pure_fillet_halibut` 우선 픽업(구 bream 폴백 해소), `drawPeelTop`도 skin_fillet_halibut 부재 → pure_fillet_halibut 폴백으로 자동 실사화.
+- **[도구 이식성]** `gen_sashimi_fillet.cjs`의 playwright 경로가 특정 사용자 계정(`C:/Users/dungy/…`) 하드코딩이던 것 → **로컬 require → `%LOCALAPPDATA%/npm-cache/_npx` 자동 탐색**으로 교체. ⚠ 주석에 `_npx/*/…` 글롭을 쓰면 `*/`가 블록 주석을 조기 종료시킨다(실수 1회 — 라인 주석 사용).
+- **[검증 — 실렌더]** ① SashimiPanel 광어 필렛: 일반 = 탑뷰 14컷(fam halibut·texKey top_halibut·머리 오른쪽에서 첫 컷) / 고급 = 측면 슬랩 16컷 ② 도마: 엔가와 분리 단계 = 실사 슬랩 + 엔가와 스트립 / 박피 당김 = **미러 후 꼬리 왼쪽·회색 껍질 바가 꼬리쪽에서 당겨짐**(돔류 지오메트리 정합) — pageerror 0. ⚠ drawPixelButcherFish 시그니처 = `(g, geom, tint, state, sprites)` — 하네스에서 sprites를 3번째로 넣는 실수 주의.
+- 잔여: FLAT_GUIDE 좌표 F9 실측(사용자 진행 예정 — 76차) / skin_fillet_halibut 전용 에셋은 pure와 공용 유지(사용자 결정).
+
+**이전 변경 (2026-08-05 74차) — 넙치류(광어·도다리) 다섯장뜨기 손질 구현** (사용자 순서도 + 캡처 8장 — core 정합/FSM 완주/실 스토어·실렌더 완주/재장착 3체인 검증 전 PASS, 빌드 4/4·typecheck 0):
 - **[구조]** 다섯장뜨기 = **필렛 4장 + 중골(뼈 프레임) = 5장**. **척추뼈 끊기 작업 없음**(중앙 척추 기준 4면을 각각 뜬다 — 사용자 명시). 구 computeFilletYield "대형 ≥45cm = 5필렛" 분기는 오해였음 — **filletCount 4 고정**으로 정정.
 - **[core 스테이지 트리]** `buildFlatStages`(ButcheryProcess — flat이면 최상단 조기 분기, 27스테이지): 시메 → 방혈 → [**머리 S자 절단**(`flat_head_scut` — 내장 주머니를 피하는 S 커브, 캡처 1) / 비늘 2면 — 자유] (**지느러미 제거 없음** — 엔가와로 뜬다) → 꼬리 앞뒤 칼집 → **배쪽(흰 면·FLIP) 먼저**: 중앙선 → 위(내장 위치) 경계 칼길+포 뜨기(×2 strong) → **내장 긁어내기**(개복 없음 — 필렛 뜨면 드러나는 좌상단 주머니, 캡처 1 빨간 영역) → 아래 칼길+포 → **등쪽(BASE)** 동일 5스테이지 → **엔가와 분리 ×4**(FLESH_UP — 지느러미살/살코기 경계) → 박피(peel_grip/insert/pull — **id 공유로 기존 전용 렌더 재사용**). `FLAT_GUIDE` 좌표는 근사 기본값(F9 실측 예정).
 - **[core 섹션 트리]** `FLAT_FISH_SECTIONS` + `sectionsForBodyShape(bodyShape)`(export): 7섹션 — 시메·방혈 / 밑손질(자유: S머리·비늘) / 꼬리 / **배쪽 뜨기**[exitAfter] / **등쪽 뜨기**(yields spine)[exitAfter] / **엔가와 분리**(자유 4작업)[exitAfter] / 박피. 신규 yield 3종: `flatFillet`(포 작업마다 껍질+엔가와 필렛 1장 — 총 4) · `engawaSkin`(분리마다 껍질 붙은 엔가와 1) · `flatSkinFillet`(엔가와 섹션 완료 — 기존 flatFillet **대체 지급**, id `inv_filletskin_` = 기존 박피 재장착 체인 그대로 재사용).

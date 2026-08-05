@@ -2934,10 +2934,16 @@ export class ButcheryPanel extends DraggablePanel {
   private drawTaskPanel(): void {
     if (this.done || this.process.finished) return;
     const sec = this.section;
-    const W = 216, rowH = 26;
+    const rowH = 26;
+    // 작업 4개 이상 = **2열 그리드** (사용자 지시 2026-08-05 — 세로 스택이 도마 프레임을
+    //  침범하던 것을 왼쪽으로 확장해 해소. 광어 배쪽 섹션 = 4작업 → 2×2).
+    const cols = sec.tasks.length >= 4 ? 2 : 1;
+    const colW = 216;
+    const W = cols * colW + 6;
+    const rows = Math.ceil(sec.tasks.length / cols);
     const px = this.fishX + this.fishW - W + 10;
     const py = this.contentTop + 6;
-    const H = 26 + sec.tasks.length * rowH + 6;
+    const H = 26 + rows * rowH + 6;
 
     const bg = this.scene.add.graphics();
     bg.fillStyle(0x0a1628, 0.94);
@@ -2951,7 +2957,8 @@ export class ButcheryPanel extends DraggablePanel {
     this.uiC.add([bg, hdr]);
 
     sec.tasks.forEach((task, i) => {
-      const ry = py + 26 + i * rowH;
+      const rx = px + 6 + (i % cols) * colW;             // 행 우선 배치 (좌→우, 위→아래)
+      const ry = py + 26 + Math.floor(i / cols) * rowH;
       const done = this.taskDone(task.id);
       const active = this.activeTaskId === task.id;
       const selectable = !done && sec.anyOrder && this.awaitingSelect;
@@ -2962,26 +2969,26 @@ export class ButcheryPanel extends DraggablePanel {
 
       const rg = this.scene.add.graphics();
       rg.fillStyle(done ? 0x0d2a1a : active ? 0x155a7c : 0x0e1c2d, done ? 0.6 : 0.95);
-      rg.fillRoundedRect(px + 6, ry, W - 12, rowH - 4, 4);
+      rg.fillRoundedRect(rx, ry, colW - 12, rowH - 4, 4);
       rg.lineStyle(1.2, done ? 0x2e7a58 : active ? 0x5cd0ff : selectable ? 0xffd257 : 0x1f3d5a, done ? 0.6 : 0.9);
-      rg.strokeRoundedRect(px + 6, ry, W - 12, rowH - 4, 4);
+      rg.strokeRoundedRect(rx, ry, colW - 12, rowH - 4, 4);
       const label = done
         ? `✔ ${task.label} — 완료됨 (${this.doneTasks.get(task.id)}%)`
         : active
           ? `▶ ${task.label}${stepTotal > 1 ? ` (${stepDone + 1}/${stepTotal})` : ''}`
           : task.label;
-      const t = this.scene.add.text(px + 12, ry + (rowH - 4) / 2, label, {
+      const t = this.scene.add.text(rx + 6, ry + (rowH - 4) / 2, label, {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px',
         color: done ? '#5f8f78' : active ? '#aee8ff' : selectable ? '#ffd257' : '#8faabf',
         fontStyle: done || active ? 'bold' : 'normal',
       }).setOrigin(0, 0.5);
-      if (t.width > W - 24) t.setScale((W - 24) / t.width);
+      if (t.width > colW - 24) t.setScale((colW - 24) / t.width);
       // 완료 작업 = 딤 처리 (도장만 남기고 흐리게)
       if (done) { rg.setAlpha(0.55); t.setAlpha(0.75); }
       this.uiC.add([rg, t]);
 
       if (selectable) {
-        const hit = this.scene.add.rectangle(px + W / 2, ry + (rowH - 4) / 2, W - 12, rowH - 4, 0xffffff, 0.001)
+        const hit = this.scene.add.rectangle(rx + (colW - 12) / 2, ry + (rowH - 4) / 2, colW - 12, rowH - 4, 0xffffff, 0.001)
           .setInteractive({ useHandCursor: true });
         hit.on('pointerdown', () => this.selectTask(task.id));
         this.uiC.add(hit);

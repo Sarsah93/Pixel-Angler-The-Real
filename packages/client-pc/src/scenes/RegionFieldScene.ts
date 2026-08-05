@@ -857,10 +857,13 @@ export class RegionFieldScene extends Phaser.Scene {
 
   /** 최상단(가장 나중에 열린) 팝업 닫기. 닫은 게 있으면 true */
   private closeTopPopup(): boolean {
-    const top = this.popupStack[this.popupStack.length - 1];
-    if (!top) return false;
-    // 패널이 자식 팝업(도마 손질 등)을 먼저 닫아야 하면 ESC를 위임한다 (LIFO —
-    //  구 동작은 U패널을 통째로 destroy해 진행 중 손질의 부산물 레저가 조용히 소실됐다)
+    if (!this.popupStack.length) return false;
+    // ESC = "시각적 최상단(포커스)" 팝업부터 (76차 — 클릭 포커스로 z순서가 바뀌면
+    //  열림 순서(LIFO)와 어긋나므로 depth 최고 = 사용자가 보고 있는 패널을 닫는다.
+    //  depth 동률이면 나중에 연 것(스택 뒤쪽) 우선 = 기존 LIFO와 동일).
+    const top = this.popupStack.reduce((a, b) => (b.panel.depth >= a.panel.depth ? b : a));
+    // 패널이 자식 팝업(도마 손질 등)을 먼저 닫아야 하면 ESC를 위임한다 —
+    //  구 동작은 U패널을 통째로 destroy해 진행 중 손질의 부산물 레저가 조용히 소실됐다
     const intercept = top.panel as unknown as { onEscIntercept?: () => boolean };
     if (intercept.onEscIntercept?.()) return true;
     top.close();

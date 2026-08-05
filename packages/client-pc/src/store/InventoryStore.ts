@@ -312,6 +312,8 @@ function createDevFishDefs(): Omit<InvItem, 'slot'>[] {
     { sp: 'greater_amberjack', nameKo: '잿방어', lo: 60, hi: 120, wf: 0.014 },
     { sp: 'yellowtail', nameKo: '방어', lo: 50, hi: 100, wf: 0.0135 },
     { sp: 'amberjack', nameKo: '부시리', lo: 50, hi: 110, wf: 0.013 },
+    // 넙치류 — 다섯장뜨기 검증용 (75차. 오라클 wf 0.013·minFilletLengthCm 여유 밴드)
+    { sp: 'flatfish', nameKo: '광어', lo: 40, hi: 80, wf: 0.013 },
   ];
   return devFish.map((f) => {
     const lengthCm = Math.round(f.lo + Math.random() * (f.hi - f.lo));

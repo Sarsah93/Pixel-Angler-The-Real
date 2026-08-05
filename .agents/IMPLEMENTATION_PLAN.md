@@ -17,8 +17,8 @@
 >      칼길 · 포 뜨기 경로 · 내장 스윕 · 엔가와 경계선. (돔류·방어류 때와 같은 실측 → 코드 반영 흐름.)
 >    - 뷰/연출 피드백 — S 절단면 모양, 포 뜨기 벌어짐 오버레이(경계 곡선 upEdge/dnEdge 근사),
 >      배쪽 섹션 고정 순서(중앙선→위(내장)→내장→아래) 유지 여부, 엔가와/필렛 가격 체감.
->    - 잔여 에셋 — 회썰기용 광어 필렛 스프라이트(현재 돔류(bream) 폴백 — 엔가와는 실사 완료),
->      광어 단계 실사 사진 투입 시 `pixelize_butchery.cjs` 파이프라인 재사용 가능.
+>    - ~~잔여 에셋 — 회썰기용 광어 필렛 스프라이트~~ → **75차 완료** (탑/측면/조각 3뷰 + 도마 슬랩·박피
+>      실사 — 아래 75차 참조). 광어 단계 실사 사진 투입 시 `pixelize_butchery.cjs` 파이프라인 재사용 가능.
 > **2. 두족류 손질 추가 — 문어·무늬오징어·한치·갑오징어** (전용 트리 신규):
 >    - 현재 cephalopod = 도마 게이트만 있는 스텁(`BUTCHERY_FAMILY_NOTICE` 안내문). 대상 4종:
 >      **참문어(octopus)** · **무늬오징어(squid)** · **갑오징어(cuttlefish)** · **한치/창꼴뚜기(swordtip_squid)**.
@@ -36,7 +36,30 @@
 >    NightHuntingScene/NightHuntingEngine·ShoreCreatureDatabase 기반 확장. 불요리·CookScene 실조리는 그 뒤).
 >    **퀘스트/스토리는 모든 컴포넌트 구현 후 도입** (사용자 방침).
 
-### ✅ 직전 완료 (74차, 2026-08-05) — 넙치류 다섯장뜨기 손질 (필렛 4장 + 중골 = 5장)
+### ✅ 직전 완료 (78차, 2026-08-05) — 광어 F9 실측 1차 + 배쪽 포 뜨기 3D 렌더 + 작업 패널 2열
+- FLAT_GUIDE 실측 7종(시메·방혈·S커브·비늘 base/flip 분리·꼬리·**중앙선 전장 연장**·경계 칼길) + 포 뜨기 4스테이지 3회화.
+- drawFlatFish 개편(사용자 스케치): 떠진 자리 = 척추+갈비뼈 부챗살 / 뜬 살 = **중앙선 힌지 플랩이 반대편 흰 배를 덮음**(완료 시 소멸) / 경계 검정선 제거 / 경계 곡선 = 실측 보간. + 작업 패널 4작업 이상 2×2 그리드(도마 침범 해소).
+- 검증: 실측 구간 cov 1.00·35스테이지 완주·lift 3회·실렌더 4단계. **잔여: upLift/dnScore/dnLift/내장/엔가와 F9 재실측(사용자 재진입 예정 — 새 렌더 기준)**.
+
+### ✅ 이전 완료 (77차, 2026-08-05) — 레포 파일 정리 + 프로젝트 스킬 10종
+- `.claude/skills/` 10종 도입(작업별 절차·함정 노하우 추출 — 목록은 CLAUDE.md) + AGENTS §4 중복 정책 스킬 포인터 축약.
+- 루트 잡파일 정리: 폐기 6건 삭제(sashimi_guide_fix/board_dnd svg·상태 덱·chum_guide_popup·webglmap 중복 2) / `docs/reference/`(API 가이드·수심 zip·경락 CSV) · `docs/mockups/` · `assets/{branding,characters,guide}/`로 git mv(구 packages/man·girl 포함). 도구 경로 2건 갱신(ZIP_PATH·SVG_PATH) — 생성기 재실행 diff 0·빌드 4/4.
+
+### ✅ 이전 완료 (76차, 2026-08-05) — 팝업 z-order 포커스 시스템 + ESC 정합 + 광어 온마리 신규 에셋
+- **클릭 = 최상단**: `DraggablePanel.bringSelfToTop()` 재작성 — 구 `children.bringToTop()`은 depth가 다른 패널 간 완전 무력(사문)이던 것을 **depth 기반 동적 최상단**으로. 밴드 규칙(일반 [800,899) 자유 전환 / 모달 [900~) — 일반은 모달 침범 금지·포화 시 재정규화) + **씬 레벨 pointerdown 포커스 캡처**(자식 요소 클릭도 raise·겹침은 최상단만·모달 dim 뒤는 차단) → 인벤 우클릭 메뉴가 장비창에 가려지던 사용자 리포트 해소(메뉴 = 패널 자식이라 자동 해결).
+- **ESC = 시각적 최상단부터**: `closeTopPopup`이 스택 LIFO 대신 depth 최고 팝업을 닫음(동률 = 기존과 동일).
+- **광어 온마리**: 사용자 교체 halibut.png(고품질) → public 교체 + `gen_flatfish_sprites.cjs` 재생성(도마 스프라이트는 구운 스냅샷이라 재생성 필수 — fish_halibut 텍스처는 자동 반영). dev 테스트 어획에 광어(40~80cm) 추가.
+- 검증: 실마우스 5시나리오(초기 서열→클릭 전환→우클릭 메뉴 최상단 렌더→상호 전환→모달 가드) + 온마리 2면 렌더. 빌드 4/4·typecheck 0. ⚠ FP 씬 ESC 하드코딩 순서는 스코프 제외.
+
+### ✅ 이전 완료 (75차, 2026-08-05) — 광어 회썰기·도마 필렛 실사 에셋 마무리 (bream 폴백 해소)
+- **에셋 2종 활용** (사용자 지정): 순수 필렛 = `skinned_pillet_without_engawa_halibut.png`(skinned 네이밍이지만 순살과 공용 — 껍질 분리 연출이 돔류·방어류와 동일하기 때문) / 엔가와 = `engawa_halibut.png`(74차 기배선 유지).
+- **회썰기 3뷰** — `gen_sashimi_fillet.cjs`에 halibut 계열 추가(`flipX/flipTop: true` — 원본 머리 왼쪽 → **머리 오른쪽 규칙** 정렬) → `fillet_top/side_halibut.png` + `piece_halibut.png` + SashimiFilletProfiles `SashimiFilletFamily` 3군 확장. BootScene 3텍스처.
+- **어종군 판정 일원화** — `PixelButcherFish.butcherFamilyOf(speciesId)` 신설(amberjack/halibut/bream) — SashimiPanel(구 로컬 AMBERJACK 셋)·UtilizationPanel 조각 스테이징이 공유. 광어 필렛 → fam 'halibut' → 전용 뷰/조각 아이콘 자동.
+- **도마 실사 슬랩** — `pixelize_butchery.cjs`에 `pure_fillet_halibut` 투입 + **MIRROR_KEYS 신설**(도마 필렛 방향 규칙 = **꼬리 왼쪽·머리 오른쪽** — 박피 peel_grip 꼬리 칼집·회썰기 컷 순서와 동일 컨벤션. 원본이 머리 왼쪽인 에셋은 굽는 시점 반전). drawFlatFish FLESH_UP 슬랩·drawPeelTop(skin_fillet 폴백)이 실사 픽업 — 구 bream 폴백 해소.
+- **도구 이식성** — `gen_sashimi_fillet.cjs` playwright 경로가 특정 사용자 계정 하드코딩이던 것 → 로컬 설치 → npx 캐시 자동 탐색.
+- 검증: 실렌더 4스크린샷(회썰기 탑뷰 14컷·측면 16컷 — fam/texKey/fr 정합 / 도마 엔가와 슬랩·박피 당김 뷰 — 미러 후 꼬리 왼쪽·껍질 바 정합) + pageerror 0. 빌드 4/4·typecheck 0.
+
+### ✅ 이전 완료 (74차, 2026-08-05) — 넙치류 다섯장뜨기 손질 (필렛 4장 + 중골 = 5장)
 - **core**: `buildFlatStages` 27스테이지(머리 **S자 절단**·개복 없는 내장 긁기·배쪽 먼저 위/아래 포 뜨기·등쪽 동일·엔가와 ×4·박피 id 공유) + `FLAT_FISH_SECTIONS` 7섹션(`sectionsForBodyShape`) + yield 3종(flatFillet/engawaSkin/flatSkinFillet) + 게이트 해제(광어·도다리 3종 finfish) + filletCount 4 고정(구 ≥45cm 5필렛 분기 폐기 — 5장 = 4필렛+중골).
 - **client**: `PixelFishFlat.ts`(신규 `gen_flatfish_sprites.cjs` — 신 halibut.png 등면 추출 + 배면 크림 파생) + `drawFlatFish`(탑뷰·S컷 erase·면별 포뜨기 진행 오버레이·내장 노출) + ButcheryPanel flat 배선(섹션 선택·orientLabel·checkpoint·대체 지급 회수·showResult 필렛4+엔가와4) + 재장착 3체인(engw→엔가와 / skin→박피 / engwskin→**순수 엔가와**) + halibut trimmings 9키.
 - **박피 연출**(전 어종): peel_pull 게이지 완료 시 선 따라 칼 스윕 제거 (사용자 지시 — 톱질 연출과 중복).

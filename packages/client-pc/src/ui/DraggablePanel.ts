@@ -47,6 +47,15 @@ export interface DraggablePanelConfig {
 
 const HEADER_H = 32;
 
+/**
+ * 팝업 depth 밴드 — 정적 depth는 "처음 열릴 때의 초기 서열"일 뿐이고,
+ * 상호작용(클릭) 시 같은 밴드 안에서 동적으로 최상단이 된다 (76차 z-order 규칙):
+ *  - 일반 팝업 밴드 [800, 899): 인벤토리/장비/상점/쿨러/상세보기 등 — 서로 자유 전환
+ *  - 모달 밴드 [900, ∞): 손질/회썰기/가이드/확인·수량 다이얼로그 — dim이 아래 입력을 흡수
+ * 일반 팝업은 모달 밴드 위로 절대 올라가지 않는다 (다이얼로그가 항상 최상단 보장).
+ */
+const MODAL_BAND_MIN = 900;
+
 export class DraggablePanel extends Phaser.GameObjects.Container {
   protected panelW: number;
   protected panelH: number;
@@ -55,18 +64,22 @@ export class DraggablePanel extends Phaser.GameObjects.Container {
   protected titleText!: Phaser.GameObjects.Text;
 
   private dimRect?: Phaser.GameObjects.Rectangle;
+  /** 생성 시 지정된 기준 depth — 밴드 판정 기준 (동적 최상단은 이 밴드 안에서만 이동) */
+  private readonly zBase: number;
   private dragActive = false;
   private dragOffX = 0;
   private dragOffY = 0;
   private moveHandler: (p: Phaser.Input.Pointer) => void;
   private upHandler: () => void;
+  private focusDownHandler: (p: Phaser.Input.Pointer) => void;
 
   constructor(scene: Phaser.Scene, cfg: DraggablePanelConfig) {
     super(scene, cfg.x, cfg.y);
     this.panelW = cfg.width;
     this.panelH = cfg.height;
     this.requestClose = cfg.onClose;
-    this.setDepth(cfg.depth ?? 800);
+    this.zBase = cfg.depth ?? 800;
+    this.setDepth(this.zBase);
     this.setScrollFactor(0);
 
     // ── 모달 딤 (패널과 별개로 화면 전체 고정 — 드래그와 무관) ──
@@ -134,6 +147,30 @@ export class DraggablePanel extends Phaser.GameObjects.Container {
     this.upHandler = () => { this.dragActive = false; };
     scene.input.on('pointermove', this.moveHandler);
     scene.input.on('pointerup', this.upHandler);
+
+    // ── 포커스 = 최상단 (씬 레벨 캡처) ──
+    //  자식 인터랙티브 요소(그리드 셀·버튼)를 눌러도 basePlate가 이벤트를 못 받으므로,
+    //  씬 pointerdown에서 "포인터가 패널 안 + 나를 덮는 상위 패널 없음"이면 최상단으로.
+    //  (우클릭 컨텍스트 메뉴 등 자식 팝업이 다른 패널에 가려지는 문제의 근본 해결.)
+    this.focusDownHandler = (p: Phaser.Input.Pointer) => {
+      if (!this.containsPoint(p.x, p.y)) return;
+      const blocked = this.scene.children.list.some((o) =>
+        o instanceof DraggablePanel && o !== this && o.depth > this.depth
+        && (o.dimRect !== undefined || o.containsPoint(p.x, p.y)));
+      if (!blocked) this.bringSelfToTop();
+    };
+    scene.input.on('pointerdown', this.focusDownHandler);
+  }
+
+  /** 스크린 좌표가 패널 rect 안인지 (패널은 scrollFactor 0 — p.x/p.y 그대로 비교) */
+  private containsPoint(sx: number, sy: number): boolean {
+    return sx >= this.x && sx <= this.x + this.panelW && sy >= this.y && sy <= this.y + this.panelH;
+  }
+
+  /** 패널 depth 적용 — 모달 dim은 항상 패널 바로 아래를 따라간다 */
+  private applyDepth(d: number): void {
+    this.setDepth(d);
+    this.dimRect?.setDepth(d - 1);
   }
 
   /** 콘텐츠 시작 Y (헤더 아래) */
@@ -146,8 +183,25 @@ export class DraggablePanel extends Phaser.GameObjects.Container {
     this.titleText.setText(title);
   }
 
+  /**
+   * 같은 밴드 안에서 동적 최상단으로 (76차 재작성).
+   * ⚠ 구 `children.bringToTop()`은 디스플레이 리스트 순서만 바꾸는데, Phaser 렌더/입력
+   * 정렬은 depth 값이 우선이라 정적 depth가 다른 패널(인벤 800 vs 장비 810)끼리는
+   * 완전히 무력했다 — "클릭 시 최상단"이 사실상 사문이던 원인.
+   */
   protected bringSelfToTop(): void {
-    this.scene.children.bringToTop(this);
+    const modal = this.zBase >= MODAL_BAND_MIN;
+    const bandBase = modal ? MODAL_BAND_MIN : 800;
+    const bandCap = modal ? Number.MAX_SAFE_INTEGER : MODAL_BAND_MIN - 2;   // 일반 밴드는 모달(dim 899) 침범 금지
+    const peers = this.scene.children.list.filter((o): o is DraggablePanel =>
+      o instanceof DraggablePanel && o !== this && (o.zBase >= MODAL_BAND_MIN) === modal);
+    let next = Math.max(this.depth, ...peers.map((p) => p.depth)) + 1;
+    if (next >= bandCap) {
+      // 밴드 포화 — depth 순서를 유지한 채 base부터 촘촘히 재정규화
+      peers.sort((a, b) => a.depth - b.depth).forEach((p, i) => p.applyDepth(bandBase + i));
+      next = bandBase + peers.length;
+    }
+    this.applyDepth(next);
   }
 
   /** 자식 추가/재구성 후 반드시 호출 — 화면 고정 히트 영역 보정 */
@@ -158,6 +212,7 @@ export class DraggablePanel extends Phaser.GameObjects.Container {
   override destroy(fromScene?: boolean): void {
     this.scene?.input?.off('pointermove', this.moveHandler);
     this.scene?.input?.off('pointerup', this.upHandler);
+    this.scene?.input?.off('pointerdown', this.focusDownHandler);
     this.dimRect?.destroy();
     super.destroy(fromScene);
   }

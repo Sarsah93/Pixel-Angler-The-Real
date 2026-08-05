@@ -12,8 +12,17 @@
 const fs = require('fs');
 const path = require('path');
 
-const PW = 'C:/Users/dungy/AppData/Local/npm-cache/_npx/e41f203b7505f1fb/node_modules/playwright';
-const { chromium } = require(PW);
+// playwright 해석 — 로컬 설치 → npx 캐시(_npx/<hash>/node_modules) 순 (사용자 계정 무관)
+function resolvePlaywright() {
+  try { return require('playwright'); } catch { /* npx 캐시 탐색 */ }
+  const base = path.join(process.env.LOCALAPPDATA || '', 'npm-cache', '_npx');
+  for (const d of fs.existsSync(base) ? fs.readdirSync(base) : []) {
+    const p = path.join(base, d, 'node_modules', 'playwright');
+    if (fs.existsSync(p)) return require(p);
+  }
+  throw new Error('playwright를 찾을 수 없습니다 — npx -p playwright@1.62.1 로 설치 후 재실행');
+}
+const { chromium } = resolvePlaywright();
 
 const ROOT = path.resolve(__dirname, '..');
 const SRC = path.join(ROOT, 'packages', 'client-pc', 'public', 'fish', 'halibut.png');

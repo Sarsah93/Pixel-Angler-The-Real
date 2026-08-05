@@ -21,13 +21,11 @@ import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { InventoryStore, InvItem } from '../store/InventoryStore.js';
 import { GameState } from '../store/GameState.js';
 import { DraggablePanel, applyScreenFixed } from './DraggablePanel.js';
-import { SASHIMI_FILLET_PROFILES, SASHIMI_FILLET_TEX } from '../data/SashimiFilletProfiles.js';
+import { SASHIMI_FILLET_PROFILES, SASHIMI_FILLET_TEX, SashimiFilletFamily } from '../data/SashimiFilletProfiles.js';
+import { butcherFamilyOf } from './PixelButcherFish.js';
 
 const PANEL_W = 1080;
 const PANEL_H = 620;
-
-/** 방어류 어종군 (PixelButcherFish의 분류와 동일 — 스프라이트 선택) */
-const AMBERJACK_SPECIES = new Set(['yellowtail', 'amberjack', 'greater_amberjack']);
 
 export interface SashimiCallbacks {
   /** 중단(필렛 보존) 닫기 */
@@ -41,7 +39,7 @@ export class SashimiPanel extends DraggablePanel {
   private readonly cbs: SashimiCallbacks;
   private readonly mode: SashimiMode;
 
-  private readonly fam: 'bream' | 'amberjack';
+  private readonly fam: SashimiFilletFamily;
   /** 뷰 — 일반 = 탑뷰(위에서 본 필렛) / 고급 = 측면 뷰 (사용자 정정 2026-08-03) */
   private readonly view: 'top' | 'side';
   /**
@@ -94,7 +92,7 @@ export class SashimiPanel extends DraggablePanel {
     this.source = source;
     this.cbs = cbs;
     this.mode = mode;
-    this.fam = AMBERJACK_SPECIES.has(source.speciesId ?? '') ? 'amberjack' : 'bream';
+    this.fam = butcherFamilyOf(source.speciesId ?? '');
     // 엔가와 스트립 — 총 2컷 (사용자 지시 2026-08-05). 뷰는 항상 탑뷰(실사 스트립 에셋).
     this.engawa = source.subCategory === '엔가와' || source.id.startsWith('inv_engawa_');
     this.spec = this.engawa ? { ...spec, cuts: ENGAWA_CUTS } : spec;
