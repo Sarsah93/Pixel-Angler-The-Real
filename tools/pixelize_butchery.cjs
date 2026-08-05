@@ -38,7 +38,7 @@ const PALETTE_N = 44;    // 팔레트 색 수
 const AB = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+/';
 
 /** 크롬 페이지에서 실행할 처리 스크립트 (이미지 → {w,h,palette,rows} JSON) */
-function pageHtml(fileUrl) {
+function pageHtml(fileUrl, bgTol) {
   return `<!doctype html><body><script>
 const img = new Image();
 img.onload = () => {
@@ -48,13 +48,27 @@ img.onload = () => {
   cx.drawImage(img, 0, 0);
   const d = cx.getImageData(0, 0, W, H).data;
   // ── ① 누끼: 테두리에서 배경색 샘플 → 근접색만 BFS 투명화 (내부 흰 살은 보존) ──
-  const bg = [0, 0, 0]; let n = 0;
-  const samp = (x, y) => { const i = (y * W + x) * 4; bg[0] += d[i]; bg[1] += d[i+1]; bg[2] += d[i+2]; n++; };
+  // ⚠ 평균이 아니라 **중앙값** — 피사체가 프레임 가장자리에 닿으면 평균이 배경색에서 밀려나
+  //    (흰 배경인데 bg≈230으로 추정) 임계를 좁힐수록 오히려 아무것도 안 지워진다.
+  const bs = [[], [], []];
+  const samp = (x, y) => { const i = (y * W + x) * 4; bs[0].push(d[i]); bs[1].push(d[i+1]); bs[2].push(d[i+2]); };
   for (let x = 0; x < W; x += 7) { samp(x, 0); samp(x, H - 1); }
   for (let y = 0; y < H; y += 7) { samp(0, y); samp(W - 1, y); }
-  bg[0] /= n; bg[1] /= n; bg[2] /= n;
-  const TH = 46;   // 배경 근접 임계 (그림자 약간 포함)
-  const near = (i) => Math.abs(d[i] - bg[0]) + Math.abs(d[i+1] - bg[1]) + Math.abs(d[i+2] - bg[2]) < TH * 3;
+  const bg = bs.map((a) => { a.sort((p, q) => p - q); return a[a.length >> 1]; });
+  const TH = ${bgTol};   // 배경 근접 임계 (키별 조정 — BG_TOL)
+  // 원본이 **투명 배경 PNG**면 알파로 바로 판정한다 — 피사체와 배경이 둘 다 흰색이라
+  // 색 근접 BFS로는 분리할 수 없는 사진(흰 살코기 + 순백 배경)을 위한 경로.
+  // ⚠ 테두리만 보면 안 된다 — 타이트하게 잘린 누끼본은 피사체가 프레임을 꽉 채워
+  //    테두리가 대부분 불투명하다. **전체 픽셀 중 투명 비율**로 판정한다.
+  let alphaBg = 0, alphaN = 0;
+  for (let p = 0; p < W * H; p += 13) { alphaN++; if (d[p * 4 + 3] < 8) alphaBg++; }
+  const useAlpha = alphaN > 0 && alphaBg / alphaN > 0.03;
+  // 알파 경로에서도 **순백 매트**는 함께 제거한다 — 손누끼본에 흰 여백이 남아 있는 경우가 많다.
+  //  임계 246: 크림색 살(≈235~245)은 살리고 순백(250~255)만 걷어낸다.
+  const WHITE_CUT = 246;
+  const near = (i) => useAlpha
+    ? (d[i+3] < 8 || (d[i] >= WHITE_CUT && d[i+1] >= WHITE_CUT && d[i+2] >= WHITE_CUT))
+    : Math.abs(d[i] - bg[0]) + Math.abs(d[i+1] - bg[1]) + Math.abs(d[i+2] - bg[2]) < TH * 3;
   const removed = new Uint8Array(W * H);
   const q = [];
   for (let x = 0; x < W; x++) { q.push(x, x + (H - 1) * W); }
@@ -139,9 +153,9 @@ img.src = ${JSON.stringify(fileUrl)};
 }
 
 /** 크롬 dump-dom으로 1장 처리 */
-function processImage(absPngPath) {
+function processImage(absPngPath, bgTol = 46) {
   const tmpHtml = path.join(os.tmpdir(), `pixbut_${Date.now()}_${Math.random().toString(36).slice(2)}.html`);
-  fs.writeFileSync(tmpHtml, pageHtml('file:///' + absPngPath.replace(/\\/g, '/')));
+  fs.writeFileSync(tmpHtml, pageHtml('file:///' + absPngPath.replace(/\\/g, '/'), bgTol));
   const dom = execFileSync(CHROME, [
     '--headless', '--disable-gpu', '--allow-file-access-from-files',
     '--virtual-time-budget=8000', '--dump-dom', 'file:///' + tmpHtml.replace(/\\/g, '/'),
@@ -301,6 +315,18 @@ if (!fs.existsSync(SRC_DIR)) {
 // 좌우 미러 키 — 도마 필렛 방향 규칙 = **꼬리 왼쪽·머리 오른쪽** (박피 peel_grip 꼬리 칼집·회썰기
 // 컷 순서와 동일 컨벤션). 원본 사진이 머리 왼쪽인 에셋은 여기 등록해 굽는 시점에 반전한다.
 const MIRROR_KEYS = new Set(['pure_fillet_halibut']);
+/**
+ * 키별 배경 근접 임계 (기본 46). **배경이 흰색이고 피사체도 흰색**인 사진은 기본값이
+ * 살코기까지 먹어버리므로 낮춘다 (halibut_open_cross — 크림색 살 vs 순백 배경).
+ */
+/**
+ * 키별 배경 근접 임계 (기본 46). **배경도 피사체도 흰색**인 사진은 낮춰도 분리가 안 되므로
+ * 투명 배경 PNG로 다시 받는 편이 정확하다 (그 경우 알파 경로가 자동 적용된다).
+ */
+const BG_TOL = {
+  // 순백 배경 + 크림색 살 — 기본 46(임계 138)은 살까지 먹으므로 순백만 걷어내게 좁힌다
+  halibut_belly_open: 6,
+};
 const mirrorSprite = (spr) => ({ ...spr, rows: spr.rows.map((r) => [...r].reverse().join('')) });
 
 // ① 돔류 = SVG 자동 추출 (기본) → ② 사진 폴더가 같은 키를 덮어씀 (사진 우선)
@@ -308,7 +334,7 @@ const map = new Map(extractBreamStages());
 const files = fs.existsSync(SRC_DIR) ? fs.readdirSync(SRC_DIR).filter((f) => f.toLowerCase().endsWith('.png')) : [];
 for (const f of files) {
   const key = path.basename(f, '.png');
-  let spr = processImage(path.join(SRC_DIR, f));
+  let spr = processImage(path.join(SRC_DIR, f), BG_TOL[key] ?? 46);
   if (MIRROR_KEYS.has(key)) spr = mirrorSprite(spr);
   map.set(key, spr);
   console.log(`${key}: ${spr.w}x${spr.h}, pal ${spr.palette.length} (사진${MIRROR_KEYS.has(key) ? '·미러' : ''})`);

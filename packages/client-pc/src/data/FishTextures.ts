@@ -53,6 +53,8 @@ export const FISH_TEXTURE: Record<string, string> = {
   greater_amberjack: 'fish_greater_amberjack', // 잿방어
   octopus: 'fish_octopus',                 // 참문어(돌문어) — common_octopus.png
   giant_octopus: 'fish_giant_octopus',     // 대문어(피문어) — giant_pacific_octopus.png
+  // 2026-08-05 추가 — 한치 어종 DB 등록에 따른 배선 (에셋은 20차부터 선로드 상태였음)
+  swordtip_squid: 'fish_swordtip_squid',   // 한치(창꼴뚜기) — swordtip_squid.png
 };
 
 /**

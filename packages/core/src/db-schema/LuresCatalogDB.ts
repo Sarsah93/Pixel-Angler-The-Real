@@ -98,19 +98,20 @@ export const LURES_CATALOG_DB: LureSpec[] = [
     targetHabitatBias: ['structure', 'reef'], actionFlags: ['rolling'],
     speciesWeightBias: { greenling: 0.12, fat_greenling: 0.10, dark_banded_rockfish: 0.12 },
   },
-  // 에기 · Kraken · Dart Master Egi (두족류 전용 — 무늬오징어/문어/갑오징어, 바닥 걸림 -30%)
+  // 에기 · Kraken · Dart Master Egi (두족류 전용 — 무늬오징어/문어/갑오징어/한치, 바닥 걸림 -30%)
+  // ⚠ egiOnly 두족류는 이 spawnBinding에 있을 때만 스폰 후보에 오른다 — 신규 두족류 추가 시 필수 배선
   {
     id: 'lure_egi_25', nameKo: '다트 마스터 에기 2.5호', nameEn: 'Dart Master Egi #2.5',
     brand: 'Kraken', family: 'hard', kind: 'egi', sizeLabel: '2.5호',
     weightG: 10.5, sinkType: 'sinking', sinkRateMps: 0.28, dragCoefficient: 0.46,
-    spawnBinding: ['squid', 'octopus', 'giant_octopus', 'cuttlefish'], actionFlags: ['dart'], snagRiskMult: 0.7,
+    spawnBinding: ['squid', 'octopus', 'giant_octopus', 'cuttlefish', 'swordtip_squid'], actionFlags: ['dart'], snagRiskMult: 0.7,
     fallLureWeight: 0.2,
   },
   {
     id: 'lure_egi_35', nameKo: '다트 마스터 에기 3.5호', nameEn: 'Dart Master Egi #3.5',
     brand: 'Kraken', family: 'hard', kind: 'egi', sizeLabel: '3.5호',
     weightG: 20.0, sinkType: 'sinking', sinkRateMps: 0.40, dragCoefficient: 0.46,
-    spawnBinding: ['squid', 'octopus', 'giant_octopus', 'cuttlefish'], actionFlags: ['dart'], snagRiskMult: 0.7,
+    spawnBinding: ['squid', 'octopus', 'giant_octopus', 'cuttlefish', 'swordtip_squid'], actionFlags: ['dart'], snagRiskMult: 0.7,
     fallLureWeight: 0.2,
   },
   // 메탈지그 · Iron Forge · Hyper Bullet (초고속 싱킹, C_d -35% 초장타 — 지깅 핵심)

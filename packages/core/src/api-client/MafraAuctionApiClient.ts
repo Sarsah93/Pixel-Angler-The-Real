@@ -143,7 +143,9 @@ export const MAFRA_ITEM_TO_SPECIES: { item: string; variety?: string; speciesId:
   { item: '삼치', speciesId: 'spanish_mackerel' },
   { item: '갑오징어', speciesId: 'cuttlefish' },
   { item: '무늬오징어', speciesId: 'squid' },
-  { item: '한치', speciesId: 'squid' },
+  // 한치 = 창꼴뚜기 (2026-08-05 어종 등록 — 구 매핑은 무늬오징어로 흘렸음)
+  { item: '창꼴뚜기', speciesId: 'swordtip_squid' },
+  { item: '한치', speciesId: 'swordtip_squid' },
   { item: '문어', speciesId: 'octopus' },
 ];
 

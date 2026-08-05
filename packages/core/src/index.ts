@@ -119,9 +119,26 @@ export type {
   ButcheryPrimitive, ButcheryStage, CutEvalResult, SashimiGrade, ButcheryResult,
   FilletShape, KnifeSpec, FilletYieldInput, FilletYieldResult, ButcheryFamily,
   ButcheryByproducts,
-  ButcheryGuideProfile, ButcheryProductId, ButcheryProgress, ButcheryYieldPopup, ButcheryStackable,
+  BoardRotation, ButcheryGuideProfile, ButcheryProductId, ButcheryProgress, ButcheryYieldPopup, ButcheryStackable,
 } from './types/Butchery.js';
-export { ORIENTATION_LABEL, canStack } from './types/Butchery.js';
+export { ORIENTATION_LABEL, ROTATION_LABEL, canStack } from './types/Butchery.js';
+// 두족류 손질 (CEPHALOPOD_BUTCHERY_SPEC v3.1) — 뷰 유니온 2종 + 프로필 4종 + 가이드 좌표
+export type {
+  CephOrientation, OctopusOrientation, ButcheryOrientation, FlipKind,
+  CephalopodKind, CephalopodProfile, CephByproductId, CephByproductDef,
+} from './types/Butchery.js';
+export { CEPH_ORIENTATION_LABEL, orientationLabel } from './types/Butchery.js';
+export {
+  BIGFIN_REEF_SQUID, SWORDTIP_SQUID, GOLDEN_CUTTLEFISH, COMMON_OCTOPUS,
+  getCephalopodProfile, isCephalopodButcherable, CEPH_BYPRODUCTS, cephByproductIcon,
+} from './db-schema/CephalopodProfiles.js';
+export {
+  CEPH_SLIT_PATH, CEPH_SHIME_1, CEPH_SHIME_2, CEPH_SKIN_GRIP, CEPH_PEEL_PATH,
+  CEPH_INNER_SKIN_PATH, CEPH_TOWEL_GRIP, CEPH_BONE_OUTLINE, CEPH_BONE_LIFT_PATH,
+  CEPH_BEAK_CENTER, CEPH_BEAK_PATH,
+  OCTO_INVERT_PATH, OCTO_VISCERA_GRIP, OCTO_VISCERA_PATH, OCTO_BEAK_CENTER,
+  OCTO_BEAK_PATH, OCTO_SALT_REGION, OCTO_SCRUB_REGION,
+} from './db-schema/CephalopodGuides.js';
 // 삼면뜨기 픽셀 가이드 — 선행 9컷 + 본편 38컷 시트 바인딩 (SASHIMI_PIXEL_GUIDE_SPEC)
 export type { ButcheryGuideCut, ButcheryByproductRow } from './db-schema/ButcheryGuideCuts.js';
 export {

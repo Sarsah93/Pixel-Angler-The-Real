@@ -16,7 +16,7 @@
 
 import type {
   ButcheryProfile, ButcheryStage, CutSpec, CutPoint, CutEvalResult,
-  OrientationState, ButcheryResult, SashimiGrade,
+  ButcheryOrientation, BoardRotation, ButcheryResult, SashimiGrade,
   FilletYieldInput, FilletYieldResult,
 } from '../types/Butchery.js';
 import { TUNING } from '../config/tuning.js';
@@ -192,7 +192,7 @@ export function computeFilletYield(input: FilletYieldInput): FilletYieldResult {
 // 스테이지 빌더 — 프로필 → 손질 단계 목록
 // ────────────────────────────────────────────────────────────
 function cut(
-  id: string, orientation: OrientationState, guidePath: CutPoint[],
+  id: string, orientation: ButcheryOrientation, guidePath: CutPoint[],
   opts: Partial<CutSpec> = {},
 ): CutSpec {
   return {
@@ -341,18 +341,22 @@ const FLAT_GUIDE = {
    * (사용자 지시 2026-08-05 — F9 실측 0.288→0.718을 양끝 랜드마크까지 연장).
    */
   center: [{ x: 0.280, y: 0.500 }, { x: 0.732, y: 0.488 }],
-  /** 위쪽 지느러미 경계 칼길 (F9 실측 7점 — 배면 FLIP 기준, 등면 공용) */
+  /**
+   * 위쪽 지느러미 경계 칼길 (F9 실측 7점 — 배면 FLIP 기준, 등면 공용).
+   * ⚠ 점 순서 = **꼬리(x 0.737) → 머리(x 0.262)** — 세로로 세운 도마에서 꼬리 끝부터 머리쪽으로
+   * 긋는 실제 손질 방향(사용자 지시 + 자세한 뷰.pdf). 화살촉·유도 큐가 이 순서를 따른다.
+   */
   upScore: [
-    { x: 0.262, y: 0.283 }, { x: 0.329, y: 0.177 }, { x: 0.428, y: 0.100 }, { x: 0.541, y: 0.107 },
-    { x: 0.619, y: 0.206 }, { x: 0.667, y: 0.323 }, { x: 0.737, y: 0.421 },
+    { x: 0.737, y: 0.421 }, { x: 0.667, y: 0.323 }, { x: 0.619, y: 0.206 }, { x: 0.541, y: 0.107 },
+    { x: 0.428, y: 0.100 }, { x: 0.329, y: 0.177 }, { x: 0.262, y: 0.283 },
   ],
   /** 위쪽 포 뜨기 — 중앙선에서 지느러미 방향으로 (2회 점점 깊게. 캡처 6~8) */
   upLift: [{ x: 0.40, y: 0.36 }, { x: 0.52, y: 0.32 }, { x: 0.64, y: 0.38 }],
   /** 내장 긁어내기 — 머리 없다고 가정 시 왼쪽 상단 주머니 (사용자 캡처 1 빨간 영역) */
   gutSweep: [{ x: 0.475, y: 0.30 }, { x: 0.415, y: 0.33 }, { x: 0.395, y: 0.42 }],
-  /** 아래쪽 지느러미 경계 칼길 */
+  /** 아래쪽 지느러미 경계 칼길 — upScore와 같이 **꼬리 → 머리** 순서 */
   dnScore: [
-    { x: 0.385, y: 0.72 }, { x: 0.46, y: 0.80 }, { x: 0.55, y: 0.83 }, { x: 0.62, y: 0.78 }, { x: 0.66, y: 0.67 },
+    { x: 0.66, y: 0.67 }, { x: 0.62, y: 0.78 }, { x: 0.55, y: 0.83 }, { x: 0.46, y: 0.80 }, { x: 0.385, y: 0.72 },
   ],
   /** 아래쪽 포 뜨기 */
   dnLift: [{ x: 0.40, y: 0.64 }, { x: 0.52, y: 0.68 }, { x: 0.64, y: 0.62 }],
@@ -426,32 +430,38 @@ function buildFlatStages(profile: ButcheryProfile, opts?: ButcheryStageOptions):
   // ── 배쪽(흰 면·FLIP) 먼저 — 위(내장 위치)/아래 2장 ──
   stages.push({
     id: 'flat_belly_center', label: '배쪽 — 중앙선 칼집', orientation: 'FLIP', primitive: 'guided_cut',
+    rotationRequired: 90,
     guide: '머리 경계에서 꼬리까지 몸통 중앙(척추선)을 따라 칼집을 넣으세요',
     cut: cut('flat_belly_center', 'FLIP', F.center, { tolerance: 0.07 }),
   });
   stages.push({
     id: 'flat_belly_up_score', label: '배쪽 위 — 지느러미 경계 칼길', orientation: 'FLIP', primitive: 'guided_cut',
+    rotationRequired: 90,
     guide: '위쪽 지느러미(엔가와)와 살 경계를 따라 칼길을 내세요',
     cut: cut('flat_belly_up_score', 'FLIP', F.upScore, { tolerance: 0.09 }),
   });
   stages.push({
     id: 'flat_belly_up_lift', label: '배쪽 위 — 포 뜨기 (내장 위치)', orientation: 'FLIP', primitive: 'guided_cut',
+    rotationRequired: 90,
     guide: '중앙선에서 지느러미 방향으로 뼈를 타며 포를 떠내세요 (3회 — 점점 깊게)',
     cut: cut('flat_belly_up_lift', 'FLIP', F.upLift, { strokesRequired: 3, strong: true, tolerance: 0.1 }),
     yieldsFillet: true,
   });
   stages.push({
     id: 'flat_gut_scoop', label: '내장 제거', orientation: 'FLIP', primitive: 'scoop',
+    rotationRequired: 90,
     guide: '드러난 왼쪽 상단 내장 주머니를 긁어 통째로 꺼내세요',
     fillTarget: 0.85, sweepPath: F.gutSweep,
   });
   stages.push({
     id: 'flat_belly_dn_score', label: '배쪽 아래 — 지느러미 경계 칼길', orientation: 'FLIP', primitive: 'guided_cut',
+    rotationRequired: 90,
     guide: '아래쪽 지느러미(엔가와)와 살 경계를 따라 칼길을 내세요',
     cut: cut('flat_belly_dn_score', 'FLIP', F.dnScore, { tolerance: 0.09 }),
   });
   stages.push({
     id: 'flat_belly_dn_lift', label: '배쪽 아래 — 포 뜨기', orientation: 'FLIP', primitive: 'guided_cut',
+    rotationRequired: 90,
     guide: '중앙선에서 아래 지느러미 방향으로 포를 떠내세요 (3회 — 점점 깊게)',
     cut: cut('flat_belly_dn_lift', 'FLIP', F.dnLift, { strokesRequired: 3, strong: true, tolerance: 0.1 }),
     yieldsFillet: true,
@@ -460,27 +470,32 @@ function buildFlatStages(profile: ButcheryProfile, opts?: ButcheryStageOptions):
   // ── 등쪽(어두운 면·BASE) — 동일 구조 2장 ──
   stages.push({
     id: 'flat_back_center', label: '등쪽 — 중앙선 칼집', orientation: 'BASE', primitive: 'guided_cut',
+    rotationRequired: 90,
     guide: '뒤집어 등면도 중앙(척추선)을 따라 칼집을 넣으세요',
     cut: cut('flat_back_center', 'BASE', F.center, { tolerance: 0.07 }),
   });
   stages.push({
     id: 'flat_back_up_score', label: '등쪽 위 — 지느러미 경계 칼길', orientation: 'BASE', primitive: 'guided_cut',
+    rotationRequired: 90,
     guide: '등지느러미와 등살 경계를 따라 칼길을 내세요',
     cut: cut('flat_back_up_score', 'BASE', F.upScore, { tolerance: 0.09 }),
   });
   stages.push({
     id: 'flat_back_up_lift', label: '등쪽 위 — 포 뜨기', orientation: 'BASE', primitive: 'guided_cut',
+    rotationRequired: 90,
     guide: '척추쪽에서 지느러미 방향으로 뼈를 타며 포를 떠내세요 (3회 — 점점 깊게)',
     cut: cut('flat_back_up_lift', 'BASE', F.upLift, { strokesRequired: 3, strong: true, tolerance: 0.1 }),
     yieldsFillet: true,
   });
   stages.push({
     id: 'flat_back_dn_score', label: '등쪽 아래 — 지느러미 경계 칼길', orientation: 'BASE', primitive: 'guided_cut',
+    rotationRequired: 90,
     guide: '아래쪽 지느러미와 살 경계를 따라 칼길을 내세요',
     cut: cut('flat_back_dn_score', 'BASE', F.dnScore, { tolerance: 0.09 }),
   });
   stages.push({
     id: 'flat_back_dn_lift', label: '등쪽 아래 — 포 뜨기', orientation: 'BASE', primitive: 'guided_cut',
+    rotationRequired: 90,
     guide: '척추쪽에서 지느러미 방향으로 포를 떠내세요 (3회 — 점점 깊게)',
     cut: cut('flat_back_dn_lift', 'BASE', F.dnLift, { strokesRequired: 3, strong: true, tolerance: 0.1 }),
     yieldsFillet: true,
@@ -797,7 +812,13 @@ export class ButcheryProcess {
   private idx = 0;
 
   /** 현재 방향 상태 (client의 Orient 버튼이 전환) */
-  orientation: OrientationState = 'BASE';
+  orientation: ButcheryOrientation = 'BASE';
+
+  /**
+   * 도마 회전 (0 = 가로·머리 왼쪽 / 90 = 세로·머리 위). 좌우·상하 뒤집기와 **독립 축**이다 —
+   * 넙치류 지느러미쪽 칼길·포 뜨기는 세로로 세운 자세에서 꼬리→머리로 긋는다(자세한 뷰.pdf).
+   */
+  rotation: BoardRotation = 0;
 
   private cutQualities: number[] = [];
   private fillProgress = 0;
@@ -838,7 +859,19 @@ export class ButcheryProcess {
   /** 현재 방향이 스테이지 요구와 일치하는가 (칼질 활성 게이트) */
   canAct(): boolean {
     const s = this.stage;
-    return !!s && this.orientation === s.orientation;
+    return !!s && this.orientation === s.orientation && this.rotation === (s.rotationRequired ?? 0);
+  }
+
+  /** 도마 회전이 스테이지 요구와 맞는가 (방향은 맞는데 회전만 어긋난 경우 구분용) */
+  rotationOk(): boolean {
+    const s = this.stage;
+    return !!s && this.rotation === (s.rotationRequired ?? 0);
+  }
+
+  /** 도마 90° 회전 — dir 1 = 시계방향 / -1 = 반시계방향 */
+  rotate(dir: 1 | -1): BoardRotation {
+    this.rotation = (((this.rotation + dir * 90) % 360) + 360) % 360 as BoardRotation;
+    return this.rotation;
   }
 
   /** 시메 탭 — 목표점과의 거리(정규화)로 품질 판정 */
@@ -967,6 +1000,8 @@ export class ButcheryProcess {
     if (s && (s.orientation === 'FLESH_UP' || TUNING.butchery.autoOrient)) {
       this.orientation = s.orientation;
     }
+    // dev 항법·재개는 회전도 스냅 — 수동 회전 대기로 멈추지 않게
+    if (s) this.rotation = s.rotationRequired ?? 0;
     return true;
   }
 

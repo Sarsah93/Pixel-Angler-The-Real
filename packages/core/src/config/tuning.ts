@@ -301,6 +301,78 @@ export interface TuningConfig {
     guideAnimMs: number;
     /** 조작 성공 액션 연출 시간 (ms) — 칼질/탭/문지르기/박피 성공 애니메이션 (입력 차단) */
     actionAnimMs: number;
+    /**
+     * 넙치류 포 뜨기 — **칼질 액션이 끝난 뒤** 살이 젖혀 열리는 연출 시간 (ms).
+     * 칼 따라가기와 동시에 하지 않는다 (사용자 지시 2026-08-05).
+     */
+    flatOpenMs: number;
+  };
+  /**
+   * 두족류 손질 (CEPHALOPOD_BUTCHERY_SPEC §10) — 오징어류 3종 + 문어.
+   * ⚠ 전부 mockup 초기값 — 실플레이 조율 후 스냅샷으로 확정한다.
+   */
+  ceph: {
+    // ── 시메·개복·먹물 ──
+    /** 신경 차단 허용 반경 (정규화) */
+    nerveTolerance: number;
+    /** 가위 소지 시 허용 반경 배율 (시메는 가위로도 가능) */
+    nerveScissorsBonus: number;
+    /** 2차 시메(다리쪽) 성공 시 먹물 분출 위험 감소율 */
+    shimeInkRiskCut: number;
+    /** 개복 절개 허용 깊이 편차 */
+    slitDepthBand: number;
+    /** 깊이 위반 누적 이 횟수 초과 시 먹물 터짐 */
+    slitDepthFailCount: number;
+    /** 시메 없이 개복 시 깊이 밴드 배율 (몸이 굳지 않아 더 어렵다) */
+    slitBandNoShime: number;
+    /** 내장 당김 속도 임계 (초과 시 먹물 터짐) */
+    inkBurstSpeed: number;
+    /** 먹물 터짐 시 등급 배율 하한 (종별 inkAmount로 보간) */
+    inkPenaltyMult: number;
+    /** 먹물 얼룩으로 늘어나는 세척 커버리지 */
+    inkStainScrubAdd: number;
+    // ── 껍질·뼈 ──
+    /** 껍질 당김 중단 1회당 몸통 수율 감소 */
+    peelBreakPenalty: number;
+    /** 껍질 완주 요구 진행률 */
+    peelTargetCoverage: number;
+    /** 연골(펜) 뽑기 허용 이탈 */
+    penPullTolerance: number;
+    /** 한치 껍질 — **완주가 아니라 정지**가 성공 조건인 진행률 밴드 */
+    peelStopBand: [number, number];
+    /** 키친타월 없이 속껍질 시도 시 중단 페널티 배율 */
+    peelTowelMissMult: number;
+    /** 갑 들어내기 허용 각도(도) — 초과 시 파편 */
+    boneLiftAngleMax: number;
+    /** 막을 안 젖히고 갑을 들 때 허용 각도 배율 */
+    boneLiftNoMembrane: number;
+    /** 갑 파편 1개당 몸통 수율 감소 */
+    boneBreakPenalty: number;
+    /** 파편 발생 시 정리 커버리지 가산 */
+    boneFragScrubAdd: number;
+    // ── 문어 ──
+    /** 외번 완료 판정 진행률 */
+    invertProgressTarget: number;
+    /** 외번 속도 상한 — 초과 시 목 살 찢김 */
+    invertSpeedMax: number;
+    /** 찢김 1회당 등급 하락 단계 */
+    invertTearGradeDrop: number;
+    /** 악판 뽑기 허용 이탈 */
+    beakPullTolerance: number;
+    /** 소금 양 밴드 (부족하면 점액이 안 지고, 과하면 조직이 조여 등급 하락) */
+    saltAmountBand: [number, number];
+    /** 소금 부족 시 문지르기 목표 가산 */
+    saltMissScrubAdd: number;
+    /** 소금 과다 시 등급 배율 */
+    saltOverGradeMult: number;
+    /** 점액 제거 목표 커버리지 */
+    slimeScrubTarget: number;
+    /** 점액 문지르기 왕복 횟수 */
+    slimeScrubCycles: number;
+    /** 점액 잔존 시 등급 하락 단계 */
+    slimeLeftGradeDrop: number;
+    /** 두족류 손질 해금 스킬 레벨 (0 = 제한 없음) */
+    unlockSkillLv: number;
   };
   // ── 데이터 테이블 (balance, 슬라이더 대상 아님) ──
   /** 어종 id → 피로 스태미나 base */
@@ -393,7 +465,19 @@ export const TUNING: TuningConfig = {
   hometown: { mapW: 48, mapH: 32, seaRatio: 0.30 },
   // 회뜨기 흐름 — 자동 방향 스냅 on(먹통 방지) · 회칼 하드락 off(막칼 폴백)
   // autoOrient=false (2026-07-30 자유 손질 개편) — 자동 뒤집기 폐지, 수동 상하/좌우 뒤집기 버튼
-  butchery: { autoOrient: false, flipAnimMs: 220, knifeHardLock: false, guideAnimMs: 2000, actionAnimMs: 2000 },
+  butchery: { autoOrient: false, flipAnimMs: 220, knifeHardLock: false, guideAnimMs: 2000, actionAnimMs: 2000, flatOpenMs: 650 },
+  ceph: {
+    nerveTolerance: 0.045, nerveScissorsBonus: 1.4, shimeInkRiskCut: 0.6,
+    slitDepthBand: 0.035, slitDepthFailCount: 3, slitBandNoShime: 0.5,
+    inkBurstSpeed: 0.6, inkPenaltyMult: 0.85, inkStainScrubAdd: 0.25,
+    peelBreakPenalty: 0.06, peelTargetCoverage: 0.92, penPullTolerance: 0.05,
+    peelStopBand: [0.82, 0.94], peelTowelMissMult: 3.0,
+    boneLiftAngleMax: 22, boneLiftNoMembrane: 0.5, boneBreakPenalty: 0.10, boneFragScrubAdd: 0.15,
+    invertProgressTarget: 0.90, invertSpeedMax: 0.55, invertTearGradeDrop: 1,
+    beakPullTolerance: 0.05, saltAmountBand: [0.60, 1.00], saltMissScrubAdd: 0.20,
+    saltOverGradeMult: 0.94, slimeScrubTarget: 0.85, slimeScrubCycles: 6, slimeLeftGradeDrop: 1,
+    unlockSkillLv: 0,
+  },
   // 데이터 테이블 (대표값 — 나머지 어종 동일 형식으로 채움)
   fatigueStaminaBase: {
     yellowtail: 1.6, amberjack: 1.7, greater_amberjack: 1.9, spanish_mackerel: 1.0,
@@ -426,6 +510,19 @@ export const TUNING_META: TuningParamMeta[] = [
   { path: 'butchery.flipAnimMs', min: 80, max: 500, step: 20, category: 'feel', label: '손질 뒤집기 연출(ms)' },
   { path: 'butchery.guideAnimMs', min: 800, max: 4000, step: 100, category: 'feel', label: '손질 가이드 루프(ms)' },
   { path: 'butchery.actionAnimMs', min: 500, max: 4000, step: 100, category: 'feel', label: '손질 액션 연출(ms)' },
+  { path: 'butchery.flatOpenMs', min: 200, max: 1500, step: 50, category: 'feel', label: '포 뜨기 벌어짐(ms)' },
+  // ── 두족류 손질 (CEPHALOPOD_BUTCHERY_SPEC §10 노출 목록) ──
+  // saltAmountBand는 [하한, 상한] 튜플이라 인덱스 경로로 각각 노출한다(getTuning이 o[k]라 동작).
+  { path: 'ceph.nerveTolerance', min: 0.02, max: 0.09, step: 0.005, category: 'feel', label: '두족류 시메 허용반경' },
+  { path: 'ceph.slitDepthBand', min: 0.015, max: 0.07, step: 0.005, category: 'feel', label: '개복 깊이 밴드' },
+  { path: 'ceph.inkBurstSpeed', min: 0.3, max: 1.0, step: 0.05, category: 'balance', label: '먹물 터짐 속도임계' },
+  { path: 'ceph.peelBreakPenalty', min: 0.0, max: 0.15, step: 0.01, category: 'balance', label: '껍질 중단 수율감소' },
+  { path: 'ceph.boneLiftAngleMax', min: 10, max: 40, step: 1, category: 'feel', label: '갑 들어내기 각도(도)' },
+  { path: 'ceph.invertSpeedMax', min: 0.3, max: 1.0, step: 0.05, category: 'feel', label: '문어 외번 속도상한' },
+  { path: 'ceph.saltAmountBand.0', min: 0.2, max: 0.9, step: 0.05, category: 'balance', label: '소금 양 하한' },
+  { path: 'ceph.saltAmountBand.1', min: 0.7, max: 1.5, step: 0.05, category: 'balance', label: '소금 양 상한' },
+  { path: 'ceph.slimeScrubTarget', min: 0.6, max: 1.0, step: 0.05, category: 'balance', label: '점액 제거 목표' },
+  { path: 'ceph.unlockSkillLv', min: 0, max: 20, step: 1, category: 'balance', label: '두족류 해금 Lv' },
   { path: 'retrieve.anchorYRatio', min: 0.65, max: 0.75, step: 0.01, category: 'feel', label: '회수 도달 Y비' },
   { path: 'retrieve.growFactor', min: 1.8, max: 2.4, step: 0.05, category: 'feel', label: '회수 최대 배율' },
   { path: 'retrieve.mainLineWidth', min: 0.8, max: 2.5, step: 0.1, category: 'feel', label: '원줄 굵기' },

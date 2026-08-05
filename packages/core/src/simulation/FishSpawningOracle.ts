@@ -103,7 +103,7 @@ function sariPeak(base: number, peak: number): number[] {
 }
 
 /**
- * 어종 마스터 DB (49종 — 사용자 제공 실측 데이터 기반)
+ * 어종 마스터 DB (56종 — 사용자 제공 실측 데이터 기반. 구 주석 "49종"은 실제 수와 어긋나 있었음)
  * 추후 API 연동 매칭 예정.
  */
 export const ORACLE_FISH_DB: FishMasterSpec[] = [
@@ -602,6 +602,19 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     sexNote: '주야 무관하게 먹는 연안 에깅 입문 대상 — 바닥 단차에 에기를 붙여 노린다',
     nightBonus: 1.2, tideActivity: flatTide(0.65),
     fight: { basePower: 0.3, patternWeights: { jump: 0.0, dive: 0.6, lateral: 0.4 }, intervalMult: 1.2, mouthFragility: 0.3 },
+  },
+  {
+    speciesId: 'swordtip_squid', nameKo: '한치(창꼴뚜기)', nameEn: 'Swordtip Squid',
+    // 난류성 연안 두족류 (Uroteuthis edulis) — 제주·남해 여름 밤 집어등 채낚기 대상 (2026-08 리서치).
+    // 서식 수심 30~170m이나, 밤이면 불빛을 따라 20~30m권 중층까지 떠오른다 → 연안 공략 가능.
+    habitat: ['open', 'structure'], minDepthM: 15, maxDepthM: 120, preferredLayers: ['mid', 'surface'],
+    baitPreference: { lure: 95 }, egiOnly: true,
+    // 크기 = 외투장(몸통) 기준 — 두족류 공통 관례. 최대 외투장 35~40cm
+    minCm: 12, maxCm: 40, meanCm: 22, sdCm: 5, weightFactor: 0.016, maleRatio: 0.5,
+    sexNote: '몸통이 가늘고 길어 같은 길이 무늬오징어보다 가볍다 — 여름 제주 밤바다의 주인공',
+    // 두족류 중 가장 강한 야행성 (집어등 조업이 기본) — 야간 표층~중층에서 압도적
+    nightBonus: 1.9, tideActivity: flatTide(0.65),
+    fight: { basePower: 0.35, patternWeights: { jump: 0.05, dive: 0.35, lateral: 0.6 }, intervalMult: 1.15, mouthFragility: 0.45 },
   },
   // ── 루어/지깅 중대형 (2026-07 리서치 — 잿방어/삼치 신규) ──
   {

@@ -174,6 +174,25 @@ export class BootScene extends Phaser.Scene {
     this.load.image('trim_engawa', 'trimmings/engawa_halibut.png');                // 순수 엔가와 (스트립)
     this.load.image('trim_engawa_icon', 'trimmings/engawa_halibut_icon.png');      // 순수 엔가와 인벤 아이콘
     this.load.image('fish_black_sea_bream', 'fish/black_sea_bream.png');
+    // ── 두족류 부산물 (2026-08-05 — food assets/trimmings/{squid,octopus}) ──
+    //  squid 폴더: 이름에 어종이 없으면 오징어류 3종 공용 / '무늬오징어, 한치' = 갑오징어 제외 /
+    //  '갑오징어' = 갑오징어 전용. 한글 파일명은 복사 시 ASCII 키명으로 정규화했다.
+    this.load.image('trim_ceph_mantle_squid', 'trimmings/ceph_mantle_squid.png');           // 무늬오징어·한치 몸통살
+    this.load.image('trim_ceph_mantle_cuttlefish', 'trimmings/ceph_mantle_cuttlefish.png'); // 갑오징어 몸통살
+    this.load.image('trim_ceph_fin', 'trimmings/ceph_fin_squid.png');                       // 무늬오징어·한치 날개
+    this.load.image('trim_ceph_pen', 'trimmings/ceph_pen.png');                             // 무늬오징어 연골
+    this.load.image('trim_ceph_cuttlebone', 'trimmings/ceph_cuttlebone.png');               // 갑오징어 갑(뼈)
+    this.load.image('trim_ceph_mantle_skin', 'trimmings/ceph_mantle_skin.png');             // 껍질 붙은 몸통 (박피 전)
+    this.load.image('trim_ceph_arms', 'trimmings/ceph_arms.png');                           // 다리 (촉완 포함 — 분리 전)
+    this.load.image('trim_ceph_arms_only', 'trimmings/ceph_arms_only.png');                 // 촉완 제거된 다리부
+    this.load.image('trim_ceph_tentacle', 'trimmings/ceph_tentacle.png');                   // 촉완 2가닥
+    this.load.image('trim_ceph_head', 'trimmings/ceph_head.png');                           // 머리 (공용)
+    this.load.image('trim_ceph_beak', 'trimmings/ceph_beak.png');                           // 입 (공용)
+    this.load.image('trim_ceph_viscera', 'trimmings/ceph_viscera.png');                     // 내장 주변부 (공용)
+    this.load.image('trim_octo_whole', 'trimmings/octo_whole.png');                         // 손질된 문어
+    this.load.image('trim_octo_viscera', 'trimmings/octo_viscera.png');                     // 문어 내장
+    this.load.image('trim_octo_beak', 'trimmings/octo_beak.png');                           // 문어 입(악판)
+
     this.load.image('fish_halibut', 'fish/halibut.png');
     this.load.image('fish_largescale_blackfish', 'fish/large_scale_blackfish.png');   // 벵에돔
     this.load.image('fish_longtail_blackfish', 'fish/small_scale_blackfish.png');     // 긴꼬리벵에돔
@@ -201,7 +220,7 @@ export class BootScene extends Phaser.Scene {
     this.load.image('fish_stone_beakperch_male', 'fish/barred_knifejaw_male.png');
     // DB 미등록 어종 — 어종 추가 시 FISH_TEXTURE에 매핑만 연결하면 됨 (에셋은 선(先)로드)
     this.load.image('fish_spotbelly_rockfish', 'fish/spotbelly_rockfish.png'); // 개볼락 (FISH_DATABASE 미등록)
-    this.load.image('fish_swordtip_squid', 'fish/swordtip_squid.png');         // 창꼴뚜기(한치) (FISH_DATABASE 미등록)
+    this.load.image('fish_swordtip_squid', 'fish/swordtip_squid.png');         // 한치(창꼴뚜기) — 2026-08-05 DB 등록 완료 (FISH_TEXTURE 배선됨)
     // 2026-07-22 2차 추가 (놀래미/쥐노래미/망상어 + 용치놀래기 암/수)
     this.load.image('fish_greenling', 'fish/spotbelly_greenling.png');         // 놀래미
     this.load.image('fish_fat_greenling', 'fish/fat_greenling.png');           // 쥐노래미

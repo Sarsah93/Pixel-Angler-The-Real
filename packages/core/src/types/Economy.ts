@@ -280,6 +280,12 @@ export const SEAFOOD_AUCTION_MAPPING: Record<string, AuctionMappingDef> = {
     sizeFactorMultiplier: 0.2,
     weightExp: 0.5,
   },
+  swordtip_squid: {
+    itemCode: '101401', // 한치(창꼴뚜기) — 무늬오징어와 동일 품목 코드(오징어류) 공유
+    // 오징어류 중 최고가 — 여름 제주 활한치는 무늬오징어·참문어보다 높게 거래된다
+    defaultPricePerKg: 32000,
+    sizeFactorMultiplier: 1.1,
+  },
   // ── 신규 어종 6종 + 복섬 (2026-07-25) ──
   yellowfin_puffer: { itemCode: '100901', defaultPricePerKg: 40000, sizeFactorMultiplier: 1.2 }, // 까치복
   bartail_flathead: { itemCode: '100112', defaultPricePerKg: 22000, sizeFactorMultiplier: 1.1 }, // 양태

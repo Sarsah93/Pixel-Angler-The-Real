@@ -18,7 +18,7 @@
 import Phaser from 'phaser';
 import {
   ButcheryProcess, getButcheryProfile, CutPoint, OrientationState, ButcheryStage,
-  ORIENTATION_LABEL, FISH_DATABASE, getButcheryFamily,
+  orientationLabel, ButcheryOrientation, ROTATION_LABEL, FISH_DATABASE, getButcheryFamily,
   computeFilletYield, getBestKnife, KnifeSpec,
   TUNING,
   SASHIMI_GUIDE_GROUP, SASHIMI_GUIDE_SHEET, LIVE_STAGE_GUIDE,
@@ -33,6 +33,12 @@ import { fitTextHeight, clampTextWidth } from './TextFit.js';
 import { getFishColors } from './FishTemplateRenderer.js';
 import { drawPixelButcherFish, butcherSpritesFor, computeFishFrame } from './PixelButcherFish.js';
 import { SASHIMI_GUIDE_TEXTURE, guideFrameName, hasGuideFrames } from '../data/SashimiGuideFrames.js';
+
+/**
+ * 어류 트리 전용 뷰 좁히기 — 이 패널의 어류 경로는 항상 어류 5종 뷰(OrientationState)만 낸다.
+ * 두족류 9종 뷰는 별도 렌더러가 담당하므로, `ButcheryOrientation` 위드닝(v3.1) 이후의 경계 어댑터.
+ */
+const asFishOri = (o: ButcheryOrientation): OrientationState => o as OrientationState;
 
 const PANEL_W = 1080;
 const PANEL_H = 620;
@@ -59,11 +65,48 @@ export class ButcheryPanel extends DraggablePanel {
   /** 결과 처리 완료 후 추가 입력 차단 */
   private done = false;
 
-  // 생선 렌더 영역 (패널 로컬)
-  private readonly fishX = 56;
-  private readonly fishY = 190;
-  private readonly fishW = 560;
-  private readonly fishH = 210;
+  // 생선 렌더 영역 (패널 로컬) — 가로 배치 기준값
+  private static readonly FISH_X0 = 56;
+  private static readonly FISH_Y0 = 190;
+  private static readonly FISH_W0 = 560;
+  private static readonly FISH_H0 = 210;
+  /**
+   * 세로 배치 시 축소율 — 긴 축(560)이 패널 세로 여백에 들어가도록.
+   * 0.50 → 세로 280px. 도마 프레임 184~516이라 **상단 작업 패널(하단 ≈180)과 겹치지 않고**
+   * 하단 dev 상태줄(≈534)도 피한다 — 실렌더 실측으로 잡은 값.
+   */
+  private static readonly ROT_SCALE = 0.50;
+  /** 세로 배치 도마 중심 Y — 작업 패널 아래로 내린다 (가로 배치는 기존 위치 유지) */
+  private static readonly ROT_CY = 350;
+
+  /** 도마가 세로로 서 있는가 (90·270°) */
+  private get rotated(): boolean {
+    const r = this.process.rotation;
+    return r === 90 || r === 270;
+  }
+  /** 도마 중심 (회전과 무관하게 고정) */
+  private get boardCx(): number { return ButcheryPanel.FISH_X0 + ButcheryPanel.FISH_W0 / 2; }
+  private get boardCy(): number {
+    return this.rotated ? ButcheryPanel.ROT_CY : ButcheryPanel.FISH_Y0 + ButcheryPanel.FISH_H0 / 2;
+  }
+
+  // 회전이 반영된 생선 rect — 유도선(toPanelPx)·입력(toNorm)·도마 프레임이 공유한다.
+  private get fishW(): number {
+    const S = ButcheryPanel.ROT_SCALE;
+    return this.rotated ? Math.round(ButcheryPanel.FISH_H0 * S) : ButcheryPanel.FISH_W0;
+  }
+  private get fishH(): number {
+    const S = ButcheryPanel.ROT_SCALE;
+    return this.rotated ? Math.round(ButcheryPanel.FISH_W0 * S) : ButcheryPanel.FISH_H0;
+  }
+  private get fishX(): number { return Math.round(this.boardCx - this.fishW / 2); }
+  private get fishY(): number { return Math.round(this.boardCy - this.fishH / 2); }
+
+  /** 넙치류 포 뜨기 — 칼질 후 살이 젖혀 열리는 연출 상태 (from→to 보간) */
+  private flatOpenAnim: { stageId: string; from: number; to: number; t: number } | null = null;
+  private flatOpenTween: Phaser.Tweens.Tween | null = null;
+  /** 칼질 성공 시 기록 → 액션 연출 완료 시점에 벌어짐 연출을 시작한다 */
+  private pendingFlatOpen: { stageId: string; from: number } | null = null;
 
   private fishG!: Phaser.GameObjects.Graphics;
   private guideG!: Phaser.GameObjects.Graphics;
@@ -247,7 +290,7 @@ export class ButcheryPanel extends DraggablePanel {
     scene.input.keyboard?.on('keydown', this.keyHandler);
 
     // 자유 손질 섹션 컨트롤러 초기화 (그래픽 레이어 생성 이후 — selectTask가 refresh 호출)
-    this.renderedOrientation = this.process.orientation;
+    this.renderedOrientation = asFishOri(this.process.orientation);
     if (cbs.resumeSectionId) this.resumeAtSection(cbs.resumeSectionId);
     else this.enterSection(0);
     this.refresh();
@@ -286,6 +329,7 @@ export class ButcheryPanel extends DraggablePanel {
     this.editDrawG = undefined;
     this.stopGuideAnim();
     this.stopActionAnim();
+    this.stopFlatOpenAnim();
     this.clearFlakes();
     this.scene?.input?.off('pointermove', this.butcheryMoveHandler);
     this.scene?.input?.off('pointerup', this.butcheryUpHandler);
@@ -327,6 +371,9 @@ export class ButcheryPanel extends DraggablePanel {
       this.doFlipLR();
     } else if (ev.code === 'KeyV') {
       this.doFlipUD();
+    } else if (ev.code === 'KeyR') {
+      // R = 시계방향 90° / Shift+R = 반시계방향 (넙치류 세로 배치 — 자세한 뷰.pdf)
+      this.doRotate(ev.shiftKey ? -1 : 1);
     } else if (ev.code === 'Enter' || ev.code === 'NumpadEnter') {
       if (stage.primitive === 'wash' && this.process.submitWash()) {
         this.washCount++;
@@ -347,7 +394,43 @@ export class ButcheryPanel extends DraggablePanel {
     const map: Record<OrientationState, OrientationState> = {
       BASE: 'FLIP', FLIP: 'BASE', BELLY_UP: 'BACK_DOWN', BACK_DOWN: 'BELLY_UP', FLESH_UP: 'FLESH_UP',
     };
-    this.process.orientation = map[this.process.orientation];
+    this.process.orientation = map[asFishOri(this.process.orientation)];
+    this.refresh();
+  }
+
+  /**
+   * 넙치류 포 뜨기 벌어짐 연출 시작 — **칼질 액션이 끝난 뒤** 호출한다.
+   * 바닥(뼈 쪽)은 그대로 있고 **위쪽 살 덩어리만 중앙선을 힌지로 젖혀 열리며** 안쪽 면
+   * (분홍 절단면 · 갈비뼈 부챗살 · 척추)이 드러난다 (사용자 지시 + 실사 사진 3·4).
+   */
+  private startFlatOpenAnim(stageId: string, from: number, to: number): void {
+    if (!this.scene || to <= from) return;
+    this.stopFlatOpenAnim();
+    this.flatOpenAnim = { stageId, from, to, t: 0 };
+    this.flatOpenTween = this.scene.tweens.addCounter({
+      from: 0, to: 1, duration: Math.max(120, TUNING.butchery.flatOpenMs), ease: 'Sine.easeOut',
+      onUpdate: (tw) => {
+        if (!this.flatOpenAnim) return;
+        this.flatOpenAnim.t = tw.getValue() ?? 0;
+        this.drawFish();       // 몸통만 다시 그린다 (사이드바·가이드는 그대로)
+      },
+      onComplete: () => { this.stopFlatOpenAnim(); this.drawFish(); },
+    });
+  }
+
+  private stopFlatOpenAnim(): void {
+    this.flatOpenTween?.remove();
+    this.flatOpenTween = null;
+    this.flatOpenAnim = null;
+  }
+
+  /**
+   * 도마 90° 회전 (dir 1 = 시계 / -1 = 반시계) — 뒤집기와 **독립 축**.
+   * 넙치류 지느러미쪽 칼길·포 뜨기는 꼬리를 아래로 세워 꼬리→머리 방향으로 긋는다(자세한 뷰.pdf).
+   */
+  private doRotate(dir: 1 | -1): void {
+    this.process.rotate(dir);
+    this.flash(`도마 배치: ${ROTATION_LABEL[this.process.rotation]}`, true);
     this.refresh();
   }
 
@@ -356,7 +439,7 @@ export class ButcheryPanel extends DraggablePanel {
     const map: Record<OrientationState, OrientationState> = {
       BASE: 'BELLY_UP', BELLY_UP: 'BASE', FLIP: 'BACK_DOWN', BACK_DOWN: 'FLIP', FLESH_UP: 'FLESH_UP',
     };
-    this.process.orientation = map[this.process.orientation];
+    this.process.orientation = map[asFishOri(this.process.orientation)];
     this.refresh();
   }
 
@@ -394,12 +477,12 @@ export class ButcheryPanel extends DraggablePanel {
    * 방향 라벨 — 넙치류는 뒤집어도 머리가 왼쪽 그대로라 원형어 라벨('머리 오른쪽')이 맞지 않는다.
    * flat: BASE = 등면(어두운 면) / FLIP = 배면(흰 면).
    */
-  private orientLabel(o: OrientationState): string {
+  private orientLabel(o: ButcheryOrientation): string {
     if (this.process.profile.bodyShape === 'flat') {
       if (o === 'BASE') return '등면 (어두운 면 위)';
       if (o === 'FLIP') return '배면 (흰 면 위)';
     }
-    return ORIENTATION_LABEL[o];
+    return orientationLabel(o);
   }
 
   /** 섹션 진입 — 선형 섹션은 첫 미완료 작업 자동 선택, 자유 섹션은 선택 대기 */
@@ -997,8 +1080,10 @@ export class ButcheryPanel extends DraggablePanel {
   // ═══════════════════════════════════════════════════
   /** 스크린 → 생선 bbox 정규화 (0~1). 영역 밖이면 null */
   private toNorm(p: Phaser.Input.Pointer, slack = 0.12): CutPoint | null {
-    const lx = (p.x - this.x - this.fishX) / this.fishW;
-    const ly = (p.y - this.y - this.fishY) / this.fishH;
+    const u = (p.x - this.x - this.fishX) / this.fishW;
+    const v = (p.y - this.y - this.fishY) / this.fishH;
+    // 회전된 도마에서도 판정은 항상 **생선 로컬 좌표**에서 한다 (가이드 좌표계와 동일 기준)
+    const [lx, ly] = this.unrotNorm(u, v);
     if (lx < -slack || lx > 1 + slack || ly < -slack || ly > 1 + slack) return null;
     return { x: lx, y: ly };
   }
@@ -1237,7 +1322,12 @@ export class ButcheryPanel extends DraggablePanel {
       const strokesBefore = stage.cut?.strokesRequired
         ? stage.cut.strokesRequired - this.process.currentStrokesLeft
         : 0;
+      // 넙치류 포 뜨기 — **칼질 연출이 끝난 뒤** 살이 젖혀 열리는 연출을 위해 직전 진행값을 잡아둔다
+      //  (사용자 지시 2026-08-05: 칼 따라가기와 벌어짐을 동시에 하지 말고, 칼 지나간 뒤 열리게)
+      const flatLiftId = /^flat_(belly|back)_(up|dn)_lift$/.test(stage.id) ? stage.id : null;
+      const flatOpenFrom = flatLiftId ? this.flatLiftProgress(flatLiftId) : 0;
       const r = this.process.submitCut(this.tracePoints);
+      if (flatLiftId && r.passed) this.pendingFlatOpen = { stageId: flatLiftId, from: flatOpenFrom };
       this.tracePoints = [];
       this.scene.time.delayedCall(150, () => this.traceG.clear());
       if (!r.passed) {
@@ -1346,7 +1436,7 @@ export class ButcheryPanel extends DraggablePanel {
       onComplete: () => {
         if (!this.scene) return;
         // 접힌 시점에 새 방향으로 몸통 교체
-        this.renderedOrientation = this.process.orientation;
+        this.renderedOrientation = asFishOri(this.process.orientation);
         this.drawFish();
         const t2 = this.scene.tweens.add({
           targets: st, s: 1, duration: dur / 2, ease: 'Sine.easeOut',
@@ -1502,11 +1592,23 @@ export class ButcheryPanel extends DraggablePanel {
     const headOff = this.doneStages.has('head_flip') || this.doneStages.has('flat_head_scut') || this.headOff;
     const finsOff = this.doneStages.has('finectomy');
     const gutted = this.doneStages.has('gut_scoop') || this.doneStages.has('flat_gut_scoop');
-    drawPixelButcherFish(g, { x: X, y: Y, w: W, h: H }, tint, {
+    // 회전된 도마 — 스프라이트는 **가로 기준 geom으로 그린 뒤 캔버스 변환으로 회전**한다.
+    // (유도선 toPanelPx의 rotNorm과 수학적으로 동일한 변환이라 좌표가 정확히 일치한다.)
+    const rot = this.process.rotation;
+    const W0 = ButcheryPanel.FISH_W0, H0 = ButcheryPanel.FISH_H0;
+    const geom = rot === 0 ? { x: X, y: Y, w: W, h: H } : { x: -W0 / 2, y: -H0 / 2, w: W0, h: H0 };
+    if (rot !== 0) {
+      g.save();
+      g.translateCanvas(this.boardCx, this.boardCy);
+      g.rotateCanvas((rot * Math.PI) / 180);
+      const s = this.rotated ? ButcheryPanel.ROT_SCALE : 1;
+      g.scaleCanvas(s, s);
+    }
+    drawPixelButcherFish(g, geom, tint, {
       orientation: this.renderedOrientation,
       headOff,
       // 머리 삭제 영역 = **실제 머리 절단선**을 따라간다 (F9로 선을 옮기면 잘린 모양도 따라옴)
-      headCutPath: this.headCutPathForFrame({ x: X, y: Y, w: W, h: H }, sprites),
+      headCutPath: this.headCutPathForFrame(geom, sprites),
       finsOff,
       scaledSides: this.scaledSides,
       gutted,
@@ -1538,6 +1640,15 @@ export class ButcheryPanel extends DraggablePanel {
       flatSide: this.process.profile.bodyShape === 'flat'
         ? this.buildFlatSideState() : undefined,
     }, sprites);
+    if (rot !== 0) g.restore();
+  }
+
+  /** 포 뜨기 스테이지의 이산 진행값 (완료 1 / 진행 중 = 완료 스트로크 비율 / 미착수 0) */
+  private flatLiftProgress(id: string): number {
+    if (this.doneStages.has(id)) return 1;
+    if (this.process.stage?.id !== id) return 0;
+    const req = this.process.stage.cut?.strokesRequired ?? 2;
+    return Math.min(0.95, (req - this.process.currentStrokesLeft) / req);
   }
 
   /**
@@ -1549,10 +1660,10 @@ export class ButcheryPanel extends DraggablePanel {
     const p = belly ? 'flat_belly' : 'flat_back';
     const has = (id: string): boolean => this.doneStages.has(id);
     const liftOf = (id: string): number => {
-      if (has(id)) return 1;
-      if (this.process.stage?.id !== id) return 0;
-      const req = this.process.stage.cut?.strokesRequired ?? 2;
-      return Math.min(0.95, (req - this.process.currentStrokesLeft) / req);
+      // 벌어짐 연출 중이면 보간값을 쓴다 (칼질 완료 → from에서 to로 서서히 열림)
+      const a = this.flatOpenAnim;
+      if (a && a.stageId === id) return a.from + (a.to - a.from) * a.t;
+      return this.flatLiftProgress(id);
     };
     return {
       center: has(`${p}_center`),
@@ -1603,7 +1714,8 @@ export class ButcheryPanel extends DraggablePanel {
     //    (예: head_flip(뒷면 x0.83)을 BASE 화면에 그리면 꼬리에 사선이 생김 — 실제 버그였음).
     //    선을 숨기고 도마 중앙에 뒤집기 안내를 띄운다.
     if (this.process.orientation !== this.renderedOrientation
-      || this.process.orientation !== stage.orientation) {
+      || this.process.orientation !== stage.orientation
+      || !this.process.rotationOk()) {
       if (!this.editMode) this.drawFlipNeededHint(stage);
       return;
     }
@@ -1640,14 +1752,21 @@ export class ButcheryPanel extends DraggablePanel {
    * (자동 뒤집기 폐지 후 "왜 아무것도 안 되지" 먹통 체감을 막는 장치)
    */
   private drawFlipNeededHint(stage: ButcheryStage): void {
-    const need = this.flipHintFor(this.process.orientation, stage.orientation);
+    // 회전 어긋남이 우선 — 뒤집기로는 도달할 수 없는 자세라 먼저 안내한다
+    const need = !this.process.rotationOk()
+      ? `[90° 회전] 필요 — R (반대: Shift+R)`
+      : this.flipHintFor(this.process.orientation, stage.orientation);
     const g = this.guideG;
     const cx = this.fishX + this.fishW / 2, cy = this.fishY + this.fishH / 2;
     g.fillStyle(0x0a1420, 0.8);
     g.fillRoundedRect(cx - 186, cy - 28, 372, 56, 8);
     g.lineStyle(2, 0xffd257, 0.95);
     g.strokeRoundedRect(cx - 186, cy - 28, 372, 56, 8);
-    const t = this.scene.add.text(cx, cy, `${need}\n${this.orientLabel(stage.orientation)} 상태에서 손질합니다`, {
+    const want = stage.rotationRequired ?? 0;
+    const sub = this.process.rotationOk()
+      ? `${this.orientLabel(stage.orientation)} 상태에서 손질합니다`
+      : `${ROTATION_LABEL[want]} 배치에서 손질합니다`;
+    const t = this.scene.add.text(cx, cy, `${need}\n${sub}`, {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px', color: '#ffd257',
       fontStyle: 'bold', align: 'center', lineSpacing: 4,
     }).setOrigin(0.5);
@@ -1655,15 +1774,15 @@ export class ButcheryPanel extends DraggablePanel {
   }
 
   /** 현재 방향 → 목표 방향에 필요한 뒤집기 안내 문구 (좌우 F / 상하 V / 둘 다) */
-  private flipHintFor(cur: OrientationState, want: OrientationState): string {
+  private flipHintFor(cur: ButcheryOrientation, want: ButcheryOrientation): string {
     const LR: Partial<Record<OrientationState, OrientationState>> = {
       BASE: 'FLIP', FLIP: 'BASE', BELLY_UP: 'BACK_DOWN', BACK_DOWN: 'BELLY_UP',
     };
     const UD: Partial<Record<OrientationState, OrientationState>> = {
       BASE: 'BELLY_UP', BELLY_UP: 'BASE', FLIP: 'BACK_DOWN', BACK_DOWN: 'FLIP',
     };
-    if (LR[cur] === want) return '[좌우 뒤집기] 필요 — F 또는 버튼';
-    if (UD[cur] === want) return '[상하 뒤집기] 필요 — V 또는 버튼';
+    if (LR[asFishOri(cur)] === want) return '[좌우 뒤집기] 필요 — F 또는 버튼';
+    if (UD[asFishOri(cur)] === want) return '[상하 뒤집기] 필요 — V 또는 버튼';
     if (want === 'FLESH_UP') return '필렛 뷰 전환 필요';
     return '[좌우(F)] + [상하(V)] 뒤집기 필요';
   }
@@ -2238,10 +2357,12 @@ export class ButcheryPanel extends DraggablePanel {
   private updateEditDrag(p: Phaser.Input.Pointer): void {
     if (this.editDragIdx < 0 || this.editDragIdx >= this.editHandles.length) return;
     const h = this.editHandles[this.editDragIdx];
-    const nx = Phaser.Math.Clamp((p.x - this.x - this.fishX) / this.fishW, 0, 1);
-    const ny = Phaser.Math.Clamp((p.y - this.y - this.fishY) / this.fishH, 0, 1);
-    h.pt.x = nx; h.pt.y = ny;
-    h.sx = this.fishX + nx * this.fishW; h.sy = this.fishY + ny * this.fishH;
+    const u = Phaser.Math.Clamp((p.x - this.x - this.fishX) / this.fishW, 0, 1);
+    const v = Phaser.Math.Clamp((p.y - this.y - this.fishY) / this.fishH, 0, 1);
+    const [nx, ny] = this.unrotNorm(u, v);
+    h.pt.x = Phaser.Math.Clamp(nx, 0, 1); h.pt.y = Phaser.Math.Clamp(ny, 0, 1);
+    const [hx, hy] = this.toPanelPx(h.pt);
+    h.sx = hx; h.sy = hy;
     this.drawGuide();
     this.paintEditHandles();
     const stage = this.process.stage;
@@ -2336,7 +2457,7 @@ export class ButcheryPanel extends DraggablePanel {
     const stageId = target.stageIds[0];
     this.process.jumpTo(stageId);
     // 표시 방향도 스테이지 요구 방향으로 스냅 (자동 뒤집기 폐지 상태라 수동 정렬 대기 방지)
-    this.renderedOrientation = this.process.orientation;
+    this.renderedOrientation = asFishOri(this.process.orientation);
     this.flash(`dev: ${this.sections[secIdx].label} › ${target.label}`, true);
     this.refresh();
   }
@@ -2451,9 +2572,33 @@ export class ButcheryPanel extends DraggablePanel {
   //  가이드 루프: 칼이 지나갈 길을 프리뷰 (경로 하이라이트 + 이동하는 칼)
   //  액션 연출:   조작 성공 시 프리미티브별 애니 (칼질 스윕/탭 파문/문지르기/박피 당김/세척)
   // ═══════════════════════════════════════════════════
-  /** 정규화(0~1) → 패널 로컬 px */
+  /**
+   * 생선 로컬 정규화 → 화면 정규화 (도마 회전 적용).
+   * 90°(시계) = 머리(x=0)가 위로 간다 → 화면 u = 1−y, v = x.
+   */
+  private rotNorm(x: number, y: number): [number, number] {
+    switch (this.process.rotation) {
+      case 90: return [1 - y, x];
+      case 180: return [1 - x, 1 - y];
+      case 270: return [y, 1 - x];
+      default: return [x, y];
+    }
+  }
+
+  /** 화면 정규화 → 생선 로컬 정규화 (rotNorm 역변환 — 입력 판정용) */
+  private unrotNorm(u: number, v: number): [number, number] {
+    switch (this.process.rotation) {
+      case 90: return [v, 1 - u];
+      case 180: return [1 - u, 1 - v];
+      case 270: return [1 - v, u];
+      default: return [u, v];
+    }
+  }
+
+  /** 정규화(0~1) → 패널 로컬 px (회전 반영) */
   private toPanelPx(p: CutPoint): [number, number] {
-    return [this.fishX + p.x * this.fishW, this.fishY + p.y * this.fishH];
+    const [u, v] = this.rotNorm(p.x, p.y);
+    return [this.fishX + u * this.fishW, this.fishY + v * this.fishH];
   }
 
   /** 폴리라인 호길이 비례 보간 — t(0~1) 지점 좌표 + 진행 각 */
@@ -2766,6 +2911,10 @@ export class ButcheryPanel extends DraggablePanel {
         //  갱신 + 가이드 루프 재시작을 담당. 연출 중엔 pre-cut 스프라이트가 그대로 유지된다.
         this.filletOpen = null;
         this.doRefresh();
+        // 칼이 지나간 **뒤에** 살이 젖혀 열린다 (동시 진행 금지 — 사용자 지시 2026-08-05)
+        const fo = this.pendingFlatOpen;
+        this.pendingFlatOpen = null;
+        if (fo) this.startFlatOpenAnim(fo.stageId, fo.from, this.flatLiftProgress(fo.stageId));
         this.runPendingAfterAction();   // 미뤄둔 작업/섹션 완료 처리(전환·팝업) 실행
       },
     });
@@ -2824,20 +2973,27 @@ export class ButcheryPanel extends DraggablePanel {
       const flipDefs: { label: string; act: () => void }[] = [
         { label: '좌우 뒤집기 (F)', act: () => this.doFlipLR() },
         { label: '상하 뒤집기 (V)', act: () => this.doFlipUD() },
+        // 회전은 뒤집기와 **독립 축** — 넙치류 지느러미쪽 칼길·포 뜨기는 세로로 세워서 한다
+        { label: '↻ 90° 회전 (R)', act: () => this.doRotate(1) },
+        { label: '↺ 90° 회전 (Shift+R)', act: () => this.doRotate(-1) },
       ];
+      // 2×2 그리드 — 4버튼을 한 줄로 두면 사이드바 폭(160×4+간격)을 넘는다
       flipDefs.forEach((fd, i) => {
-        const bx = sx + i * 170;
-        const by = this.contentTop + 160;
+        const isRotate = i >= 2;
+        // 회전은 필렛 뷰에서도 가능 (뒤집기와 독립 축이라 살 위 상태에서도 세워 놓을 수 있다)
+        const dim = filletView && !isRotate;
+        const bx = sx + (i % 2) * 170;
+        const by = this.contentTop + 160 + Math.floor(i / 2) * 40;
         const bg = this.scene.add.graphics();
-        bg.fillStyle(filletView ? 0x101820 : 0x155a7c, 0.95);
+        bg.fillStyle(dim ? 0x101820 : (isRotate ? 0x175f4a : 0x155a7c), 0.95);
         bg.fillRoundedRect(bx, by, 160, 34, 4);
-        bg.lineStyle(1.5, filletView ? 0x2a3a48 : 0x5cd0ff, 0.95);
+        bg.lineStyle(1.5, dim ? 0x2a3a48 : (isRotate ? 0x5fe0a8 : 0x5cd0ff), 0.95);
         bg.strokeRoundedRect(bx, by, 160, 34, 4);
         const t = this.scene.add.text(bx + 80, by + 17, fd.label, {
           fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px',
-          color: filletView ? '#4a5a68' : '#aee8ff', fontStyle: 'bold',
+          color: dim ? '#4a5a68' : (isRotate ? '#aef2d4' : '#aee8ff'), fontStyle: 'bold',
         }).setOrigin(0.5);
-        if (!filletView) {
+        if (!dim) {
           const hit = this.scene.add.rectangle(bx + 80, by + 17, 160, 34, 0xffffff, 0.001)
             .setInteractive({ useHandCursor: true });
           hit.on('pointerdown', fd.act);
@@ -2845,6 +3001,13 @@ export class ButcheryPanel extends DraggablePanel {
         }
         this.uiC.add([bg, t]);
       });
+      // 현재 배치 상태 표기 — 요구 회전과 어긋나면 강조
+      const rotWant = this.process.stage?.rotationRequired ?? 0;
+      const rotOk = this.process.rotation === rotWant;
+      mkText(sx, this.contentTop + 240,
+        rotOk ? `배치: ${ROTATION_LABEL[this.process.rotation]}`
+          : `배치 필요: ${ROTATION_LABEL[rotWant]} — R로 회전`,
+        11, rotOk ? '#7fa8c0' : '#ffd257', !rotOk);
       if (filletView) {
         mkText(sx, this.contentTop + 200, '필렛 뷰 — 뒤집기 없음 (살 위)', 10, '#607b8e');
       }
@@ -2911,7 +3074,7 @@ export class ButcheryPanel extends DraggablePanel {
       ? '손질 스킬 Lv.20 (MAX)'
       : `손질 스킬 Lv.${fl.level}  ·  ${fl.xp} / ${(fl.level + 1) * 100} XP`;
     mkText(sx, PANEL_H - 74, skillLine, 11, '#ffd257');
-    mkText(sx, PANEL_H - 54, '키: F/Space 좌우 뒤집기 · V 상하 뒤집기 · Enter 세척', 10, '#607b8e');
+    mkText(sx, PANEL_H - 54, '키: F/Space 좌우 · V 상하 · R 회전(Shift+R 반대) · Enter 세척', 10, '#607b8e');
 
     // 가이드 켜기/끄기 토글 (전 어종 — 끄더라도 유도선은 항상 표시)
     this.drawGuideToggle();

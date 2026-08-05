@@ -120,7 +120,9 @@ const KOSIS_SPECIES_MATCH: { keywords: string[]; speciesIds: string[] }[] = [
   // ── 루어/지깅 중대형 + 두족류 (2026-07-20) — '갑오징어'⊃'오징어' 순서 준수
   { keywords: ['삼치'], speciesIds: ['spanish_mackerel'] },
   { keywords: ['갑오징어'], speciesIds: ['cuttlefish'] },
-  { keywords: ['오징어', '한치'], speciesIds: ['squid', 'cuttlefish'] },
+  // 한치(창꼴뚜기) 전용 — 아래 '오징어' 항목도 '한치'를 갖고 있으므로 반드시 앞에 둔다 (선착순 매칭)
+  { keywords: ['한치', '창꼴뚜기'], speciesIds: ['swordtip_squid'] },
+  { keywords: ['오징어'], speciesIds: ['squid', 'cuttlefish', 'swordtip_squid'] },
   // '대문어'⊃'문어' — 대문어 키워드를 먼저 두되 speciesIds는 참문어/대문어 공통 매칭
   { keywords: ['대문어', '피문어'], speciesIds: ['giant_octopus', 'octopus'] },
   { keywords: ['문어'], speciesIds: ['octopus', 'giant_octopus'] },

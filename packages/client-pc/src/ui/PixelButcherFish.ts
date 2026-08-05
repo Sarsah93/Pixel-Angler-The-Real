@@ -480,6 +480,15 @@ function drawFlatFish(
     return;
   }
 
+  // ── 배쪽 벌어진 단면 실사 (2026-08-05 투입 — 사용자 사진 3번) ──
+  //  배면 위 필렛을 떠내 **갈비뼈·척추가 드러나고 머리쪽에 내장 자리가 보이는** 상태는
+  //  파라메트릭으로 근사하기보다 실사 도트가 정확하다. 내장 제거 전까지만 이 뷰를 쓴다.
+  const bellyOpenSpr = state.flatSide?.gutsExposed ? stageSpr('halibut_belly_open') : null;
+  if (bellyOpenSpr) {
+    drawSprite(g, bellyOpenSpr, geom, false, false, sprites.nativeColor ? null : tint, 0.12);
+    return;
+  }
+
   // ── 몸통 탑뷰 — 등면(dark)/배면(white). 프레임은 등면 기준 고정 ──
   const spr = o === 'FLIP' ? (sprites.flatWhite ?? sprites.whole) : sprites.whole;
   const frame = computeFishFrame(sprites.whole, geom);
