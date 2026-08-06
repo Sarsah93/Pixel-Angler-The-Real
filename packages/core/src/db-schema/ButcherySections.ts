@@ -150,12 +150,13 @@ export const WHOLE_FISH_SECTIONS: ButcherySectionDef[] = [
 ];
 
 /**
- * 넙치류(광어·도다리) **다섯장뜨기** 섹션 트리 (사용자 순서도 2026-08-05):
+ * 넙치류(광어·도다리) **다섯장뜨기** 섹션 트리 (사용자 순서도 2026-08-05 · 공정 재정의 2026-08-06):
  *  1 시메·방혈 → 2 밑손질(머리 S자 절단/비늘 자유 — 지느러미 제거 없음) → 3 꼬리 칼집(앞/뒤) →
- *  4 배쪽(흰 면) 뜨기: 중앙선 → 위(내장 위치) 포 → 내장 제거 → 아래 포 (2장) [종료 가능] →
+ *  4 배쪽(흰 면) 뜨기: 중앙선 → 위(내장 위치) 포 3단계 → 아래 포 3단계 (2장) [종료 가능] →
  *  5 등쪽 뜨기: 동일 (2장 + 중골) [종료 가능] → 6 엔가와 4장 분리 [종료 가능] → 7 박피 (완료).
  *  필렛 4장 + 중골 = 5장. 척추뼈 끊기 작업 없음 (중앙 척추 기준 4면을 각각 뜬다).
- *  내장은 배따기 없이 **배쪽 위 필렛을 뜨면 드러나는 주머니를 긁어낸다** (개복/핏줄/세척 섹션 없음).
+ *  **내장은 머리 S자 절단 시 머리와 함께 딸려 나온다** (사용자 지시 2026-08-06) —
+ *  별도 내장 제거 작업 없음, viscera는 머리 작업 yields로 지급.
  */
 export const FLAT_FISH_SECTIONS: ButcherySectionDef[] = [
   {
@@ -168,7 +169,8 @@ export const FLAT_FISH_SECTIONS: ButcherySectionDef[] = [
   {
     id: 'sec_prep', label: '밑손질 (자유 순서)', anyOrder: true,
     tasks: [
-      { id: 't_head', label: '머리 S자 절단', stageIds: ['flat_head_scut'], yields: ['head'] },
+      // 넙치류는 머리와 내장이 한 덩어리로 딸려 나온다 — viscera를 머리 작업에서 함께 지급
+      { id: 't_head', label: '머리 S자 절단 (내장 동반)', stageIds: ['flat_head_scut'], yields: ['head', 'viscera'] },
       { id: 't_descale', label: '비늘치기', stageIds: ['scale_base', 'scale_flip', 'scale_wash'] },
     ],
   },
@@ -183,9 +185,14 @@ export const FLAT_FISH_SECTIONS: ButcherySectionDef[] = [
     id: 'sec_flat_belly', label: '배쪽 뜨기 (흰 면 — 2장)', anyOrder: false,
     tasks: [
       { id: 't_flb_center', label: '중앙선 칼집', stageIds: ['flat_belly_center'] },
-      { id: 't_flb_upper', label: '위쪽(내장 위치) 포 뜨기', stageIds: ['flat_belly_up_score', 'flat_belly_up_lift'], yields: ['flatFillet'] },
-      { id: 't_flb_guts', label: '내장 제거', stageIds: ['flat_gut_scoop'], yields: ['viscera'] },
-      { id: 't_flb_lower', label: '아래쪽 포 뜨기', stageIds: ['flat_belly_dn_score', 'flat_belly_dn_lift'], yields: ['flatFillet'] },
+      {
+        id: 't_flb_upper', label: '위쪽(내장 위치) 포 뜨기',
+        stageIds: ['flat_belly_up_score', 'flat_belly_up_sep1', 'flat_belly_up_sep2'], yields: ['flatFillet'],
+      },
+      {
+        id: 't_flb_lower', label: '아래쪽 포 뜨기',
+        stageIds: ['flat_belly_dn_score', 'flat_belly_dn_sep1', 'flat_belly_dn_sep2'], yields: ['flatFillet'],
+      },
     ],
     exitAfter: true,   // ← 배쪽 필렛 2장 저장하고 종료 가능
   },
@@ -193,8 +200,14 @@ export const FLAT_FISH_SECTIONS: ButcherySectionDef[] = [
     id: 'sec_flat_back', label: '등쪽 뜨기 (2장)', anyOrder: false,
     tasks: [
       { id: 't_flk_center', label: '중앙선 칼집', stageIds: ['flat_back_center'] },
-      { id: 't_flk_upper', label: '위쪽 포 뜨기', stageIds: ['flat_back_up_score', 'flat_back_up_lift'], yields: ['flatFillet'] },
-      { id: 't_flk_lower', label: '아래쪽 포 뜨기', stageIds: ['flat_back_dn_score', 'flat_back_dn_lift'], yields: ['flatFillet'] },
+      {
+        id: 't_flk_upper', label: '위쪽 포 뜨기',
+        stageIds: ['flat_back_up_score', 'flat_back_up_sep1', 'flat_back_up_sep2'], yields: ['flatFillet'],
+      },
+      {
+        id: 't_flk_lower', label: '아래쪽 포 뜨기',
+        stageIds: ['flat_back_dn_score', 'flat_back_dn_sep1', 'flat_back_dn_sep2'], yields: ['flatFillet'],
+      },
     ],
     yields: ['spine'],   // 4장을 다 뜨면 중골(뼈 프레임)이 남는다 — 다섯장뜨기의 5번째 장
     exitAfter: true,

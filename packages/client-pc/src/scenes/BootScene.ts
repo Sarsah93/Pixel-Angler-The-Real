@@ -173,6 +173,9 @@ export class BootScene extends Phaser.Scene {
     this.load.image('trim_engawa_skin', 'trimmings/skinned_engawa_halibut.png');   // 껍질 붙은 엔가와
     this.load.image('trim_engawa', 'trimmings/engawa_halibut.png');                // 순수 엔가와 (스트립)
     this.load.image('trim_engawa_icon', 'trimmings/engawa_halibut_icon.png');      // 순수 엔가와 인벤 아이콘
+    // 손질 연출 — 사시미칼(야나기바) 픽셀 스프라이트 (포 뜨기 칼 팔로우 연출.
+    //  ref5 실사 비례를 따라 자체 제작 — 규약: 가로·칼끝 오른쪽·칼날 아래쪽. 84차)
+    this.load.image('butchery_knife', 'butchery/knife_sashimi.png');
     this.load.image('fish_black_sea_bream', 'fish/black_sea_bream.png');
     // ── 두족류 부산물 (2026-08-05 — food assets/trimmings/{squid,octopus}) ──
     //  squid 폴더: 이름에 어종이 없으면 오징어류 3종 공용 / '무늬오징어, 한치' = 갑오징어 제외 /

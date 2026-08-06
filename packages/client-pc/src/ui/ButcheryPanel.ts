@@ -108,11 +108,24 @@ export class ButcheryPanel extends DraggablePanel {
   private get fishX(): number { return Math.round(this.boardCx - this.fishW / 2); }
   private get fishY(): number { return Math.round(this.boardCy - this.fishH / 2); }
 
-  /** 넙치류 포 뜨기 — 칼질 후 살이 젖혀 열리는 연출 상태 (from→to 보간) */
-  private flatOpenAnim: { stageId: string; from: number; to: number; t: number } | null = null;
-  private flatOpenTween: Phaser.Tweens.Tween | null = null;
-  /** 칼질 성공 시 기록 → 액션 연출 완료 시점에 벌어짐 연출을 시작한다 */
-  private pendingFlatOpen: { stageId: string; from: number } | null = null;
+  // ── 넙치류 포 뜨기 — 칼 팔로우 연출 (84차. 사용자 공정 재정의 2026-08-06) ──
+  //  유저가 드래그한 자리(= 칼길과 칼의 접점)를 **딜레이 후 사시미칼 스프라이트가 천천히
+  //  따라오고**(칼끝은 살에 파묻혀 비표시), 칼이 지나간 구간부터 살이 두더지처럼 들린다.
+  //  컷 성공 시 경로 끝까지 자동 진행(그동안 입력 차단 = actionAnim) 후 완료 처리 실행.
+  //  구 "칼질 후 일괄 벌어짐 보간"(80차 flatOpenAnim)은 이 시스템이 대체·폐지.
+  private knifeImg: Phaser.GameObjects.Image | null = null;
+  private knifeFx: {
+    stageId: string; half: 'up' | 'dn';
+    path: CutPoint[];                        // 가이드 경로 (도마 정규화)
+    pts: [number, number][];                 // 패널 px 변환 경로점
+    cum: number[]; total: number;            // 호길이 테이블 (px)
+    travel: number;                          // 칼 진행 호길이
+    delayedMax: number;                      // 딜레이 반영된 드래그 목표 호길이
+    samples: { s: number; t: number }[];     // 드래그 샘플 (딜레이 추종)
+    finishing: boolean;                      // 성공 — 경로 끝까지 자동 진행 중
+    fromDepth: number; toDepth: number;      // 벌어짐 깊이 (이 스테이지 전 → 후)
+  } | null = null;
+  private knifeEvent?: Phaser.Time.TimerEvent;
 
   private fishG!: Phaser.GameObjects.Graphics;
   private guideG!: Phaser.GameObjects.Graphics;
@@ -335,7 +348,7 @@ export class ButcheryPanel extends DraggablePanel {
     this.editDrawG = undefined;
     this.stopGuideAnim();
     this.stopActionAnim();
-    this.stopFlatOpenAnim();
+    this.stopKnifeFx();
     this.clearFlakes();
     this.scene?.input?.off('pointermove', this.butcheryMoveHandler);
     this.scene?.input?.off('pointerup', this.butcheryUpHandler);
@@ -404,30 +417,193 @@ export class ButcheryPanel extends DraggablePanel {
     this.refresh();
   }
 
-  /**
-   * 넙치류 포 뜨기 벌어짐 연출 시작 — **칼질 액션이 끝난 뒤** 호출한다.
-   * 바닥(뼈 쪽)은 그대로 있고 **위쪽 살 덩어리만 중앙선을 힌지로 젖혀 열리며** 안쪽 면
-   * (분홍 절단면 · 갈비뼈 부챗살 · 척추)이 드러난다 (사용자 지시 + 실사 사진 3·4).
-   */
-  private startFlatOpenAnim(stageId: string, from: number, to: number): void {
-    if (!this.scene || to <= from) return;
-    this.stopFlatOpenAnim();
-    this.flatOpenAnim = { stageId, from, to, t: 0 };
-    this.flatOpenTween = this.scene.tweens.addCounter({
-      from: 0, to: 1, duration: Math.max(120, TUNING.butchery.flatOpenMs), ease: 'Sine.easeOut',
-      onUpdate: (tw) => {
-        if (!this.flatOpenAnim) return;
-        this.flatOpenAnim.t = tw.getValue() ?? 0;
-        this.drawFish();       // 몸통만 다시 그린다 (사이드바·가이드는 그대로)
-      },
-      onComplete: () => { this.stopFlatOpenAnim(); this.drawFish(); },
-    });
+  // ═══════════════════════════════════════════════════
+  // 넙치류 포 뜨기 — 칼 팔로우 연출 (84차)
+  //  드래그 접점 = 파묻힌 칼끝과 보이는 칼날의 경계(사용자 캡처의 노란 점선).
+  //  칼 몸체·손잡이 경로(빨간·검정 점선)는 접점 + 진행각 + 바깥 기울기에서 자동 파생.
+  // ═══════════════════════════════════════════════════
+  private static readonly FLAT_KNIFE_RE = /^flat_(belly|back)_(up|dn)_(score|sep1|sep2)$/;
+  /** 칼끝이 살에 파묻히는 비율 (텍스처 오른쪽 끝부터) — 그 경계가 드래그 접점이 된다 */
+  private static readonly KNIFE_BURY_FRAC = 0.30;
+  /** 포 뜨기 단계별 벌어짐 깊이 — 힌지가 지느러미 경계→중앙선으로 이동한 비율 */
+  private static readonly FLAT_DEPTH = { score: 0.18, sep1: 0.55, sep2: 1 } as const;
+
+  private flatKnifeInfo(id: string | undefined):
+  { side: 'belly' | 'back'; half: 'up' | 'dn'; step: 'score' | 'sep1' | 'sep2' } | null {
+    const m = id ? ButcheryPanel.FLAT_KNIFE_RE.exec(id) : null;
+    return m
+      ? { side: m[1] as 'belly' | 'back', half: m[2] as 'up' | 'dn', step: m[3] as 'score' | 'sep1' | 'sep2' }
+      : null;
   }
 
-  private stopFlatOpenAnim(): void {
-    this.flatOpenTween?.remove();
-    this.flatOpenTween = null;
-    this.flatOpenAnim = null;
+  /** 해당 반쪽의 확정(완료 스테이지 기준) 벌어짐 깊이 */
+  private flatHalfDepth(side: 'belly' | 'back', half: 'up' | 'dn'): number {
+    const p = `flat_${side}_${half}`;
+    if (this.doneStages.has(`${p}_sep2`)) return 1;
+    if (this.doneStages.has(`${p}_sep1`)) return ButcheryPanel.FLAT_DEPTH.sep1;
+    if (this.doneStages.has(`${p}_score`)) return ButcheryPanel.FLAT_DEPTH.score;
+    return 0;
+  }
+
+  /** 드래그 시작 — 칼 팔로우 세션 준비 (칼은 첫 이동부터 표시) */
+  private startKnifeFollow(stage: ButcheryStage): void {
+    const info = this.flatKnifeInfo(stage.id);
+    const path = stage.cut?.guidePath;
+    if (!info || !path?.length || !this.scene) return;
+    this.stopKnifeFx();
+    const pts = path.map((p) => this.toPanelPx(p));
+    const cum = [0];
+    for (let i = 1; i < pts.length; i++) {
+      cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+    }
+    this.knifeFx = {
+      stageId: stage.id, half: info.half, path, pts, cum, total: cum[cum.length - 1],
+      travel: 0, delayedMax: 0, samples: [], finishing: false,
+      fromDepth: this.flatHalfDepth(info.side, info.half),
+      toDepth: ButcheryPanel.FLAT_DEPTH[info.step],
+    };
+    if (!this.knifeImg) {
+      const img = this.scene.add.image(0, 0, 'butchery_knife');
+      const tex = img.width;   // 텍스처 원폭 (74)
+      const visW = Math.round(tex * (1 - ButcheryPanel.KNIFE_BURY_FRAC));
+      img.setCrop(0, 0, visW, img.height);            // 칼끝(오른쪽) 파묻힘 — 비표시
+      img.setOrigin(visW / tex, 0.5);                 // 원점 = 파묻힘 경계 = 드래그 접점
+      this.addAt(img, this.getIndex(this.uiC));       // 생선 위 · UI 아래
+      this.knifeImg = img;
+      this.applyFix();
+    }
+    this.knifeImg.setVisible(false).setAlpha(1);
+    this.knifeEvent = this.scene.time.addEvent({ delay: 33, loop: true, callback: () => this.tickKnife() });
+  }
+
+  /** 드래그 좌표(생선 로컬)를 경로 호길이로 투영해 딜레이 샘플로 적립 (단조 증가) */
+  private feedKnife(n: CutPoint): void {
+    const kf = this.knifeFx;
+    if (!kf || kf.finishing) return;
+    const [nx, ny] = this.toPanelPx(n);
+    let best = 0, bestD = Infinity;
+    for (let i = 1; i < kf.pts.length; i++) {
+      const [ax, ay] = kf.pts[i - 1], [bx, by] = kf.pts[i];
+      const vx = bx - ax, vy = by - ay;
+      const len2 = vx * vx + vy * vy || 1;
+      const t = Math.max(0, Math.min(1, ((nx - ax) * vx + (ny - ay) * vy) / len2));
+      const d = Math.hypot(nx - (ax + vx * t), ny - (ay + vy * t));
+      if (d < bestD) { bestD = d; best = kf.cum[i - 1] + Math.sqrt(len2) * t; }
+    }
+    const lastS = kf.samples.length ? kf.samples[kf.samples.length - 1].s : 0;
+    kf.samples.push({ s: Math.max(lastS, best), t: this.scene.time.now });
+  }
+
+  /** 33ms 틱 — 딜레이 지난 샘플을 목표로 승격 → 제한 속도로 추종 · 벌어짐 재드로우 */
+  private tickKnife(): void {
+    const kf = this.knifeFx;
+    if (!kf) return;
+    const now = this.scene.time.now;
+    while (kf.samples.length && kf.samples[0].t <= now - TUNING.butchery.knifeFollowDelayMs) {
+      kf.delayedMax = Math.max(kf.delayedMax, kf.samples.shift()!.s);
+    }
+    const target = kf.finishing ? kf.total : kf.delayedMax;
+    if (kf.travel < target) {
+      kf.travel = Math.min(target, kf.travel + (TUNING.butchery.knifeFollowSpeedPx / 1000) * 33);
+      this.updateKnifeVisual();
+      this.drawFish();               // 칼이 지나간 구간의 벌어짐 갱신 (도마 그래픽만)
+    }
+    if (kf.finishing && kf.travel >= kf.total - 0.5) this.completeKnife();
+  }
+
+  /** 호길이 s 지점의 패널 px 좌표 + 진행각 */
+  private knifeArcPoint(s: number): { x: number; y: number; ang: number } {
+    const kf = this.knifeFx!;
+    const sc = Math.max(0, Math.min(kf.total, s));
+    let i = 1;
+    while (i < kf.cum.length - 1 && kf.cum[i] < sc) i++;
+    const segLen = kf.cum[i] - kf.cum[i - 1] || 1;
+    const t = (sc - kf.cum[i - 1]) / segLen;
+    const [ax, ay] = kf.pts[i - 1], [bx, by] = kf.pts[i];
+    return { x: ax + (bx - ax) * t, y: ay + (by - ay) * t, ang: Math.atan2(by - ay, bx - ax) };
+  }
+
+  /** 칼 진행 위치의 가이드 좌표계 x (길이축) — 렌더 라이브 엔벌로프용 */
+  private knifeLocalX(): number {
+    const kf = this.knifeFx!;
+    const sc = Math.max(0, Math.min(kf.total, kf.travel));
+    let i = 1;
+    while (i < kf.cum.length - 1 && kf.cum[i] < sc) i++;
+    const segLen = kf.cum[i] - kf.cum[i - 1] || 1;
+    const t = (sc - kf.cum[i - 1]) / segLen;
+    return kf.path[i - 1].x + (kf.path[i].x - kf.path[i - 1].x) * t;
+  }
+
+  /** 칼 스프라이트 배치 — 접점 고정·진행각 + 바깥 기울기·칼날은 살 쪽 */
+  private updateKnifeVisual(): void {
+    const kf = this.knifeFx;
+    const img = this.knifeImg;
+    if (!kf || !img) return;
+    const p = this.knifeArcPoint(kf.travel);
+    // 바깥(지느러미) 방향 = 생선 중심에서 먼 쪽 — 손잡이가 그쪽으로 눕는다
+    const outX = p.x - (this.fishX + this.fishW / 2);
+    const outY = p.y - (this.fishY + this.fishH / 2);
+    const tilt = (TUNING.butchery.knifeTiltDeg * Math.PI) / 180;
+    // 후보 두 기울기 중 손잡이(칼끝 반대)가 바깥으로 가는 쪽을 고른다 — 면/방향 무관 일반식
+    const handleOut = (side: 1 | -1): number => {
+      const a = p.ang + tilt * side;
+      return -Math.cos(a) * outX - Math.sin(a) * outY;
+    };
+    const side: 1 | -1 = handleOut(1) >= handleOut(-1) ? 1 : -1;
+    const ang = p.ang + tilt * side;
+    img.setPosition(p.x, p.y).setRotation(ang);
+    img.setScale(TUNING.butchery.knifeLenPx / img.width);
+    // 칼날(텍스처 아래 변)이 생선 안쪽을 향하게 — 에지 법선·안쪽 내적으로 플립
+    const en = [-Math.sin(ang), Math.cos(ang)];
+    img.setFlipY(en[0] * -outX + en[1] * -outY < 0);
+    if (!img.visible && kf.travel > 0.5) img.setVisible(true);
+  }
+
+  /** 컷 실패 — 칼 페이드아웃 + 라이브 벌어짐 해제 */
+  private failKnife(): void {
+    if (!this.knifeFx) return;
+    this.knifeFx = null;
+    this.knifeEvent?.remove(); this.knifeEvent = undefined;
+    const img = this.knifeImg;
+    if (img?.visible) {
+      this.scene.tweens.add({
+        targets: img, alpha: 0, duration: 200,
+        onComplete: () => img.setVisible(false).setAlpha(1),
+      });
+    }
+    this.drawFish();
+  }
+
+  /** 컷 성공 — 칼이 경로 끝까지 마저 진행 (연출 동안 입력 차단 · 완료 처리는 그 후) */
+  private finishKnife(): void {
+    const kf = this.knifeFx;
+    if (!kf) return;
+    kf.finishing = true;
+    kf.samples.length = 0;
+    this.actionAnim = true;          // playActionAnim과 동일 계열 입력 가드
+    this.stopGuideAnim();
+    if (kf.travel > 0.5) this.knifeImg?.setVisible(true);
+  }
+
+  private completeKnife(): void {
+    this.knifeFx = null;
+    this.knifeEvent?.remove(); this.knifeEvent = undefined;
+    const img = this.knifeImg;
+    if (img?.visible) {
+      this.scene.tweens.add({
+        targets: img, alpha: 0, duration: 160,
+        onComplete: () => img.setVisible(false).setAlpha(1),
+      });
+    }
+    this.actionAnim = false;
+    this.doRefresh();                // 벌어짐 확정 상태로 전환 + 가이드 루프 재시작
+    this.runPendingAfterAction();    // 미뤄둔 작업/섹션 완료 처리 (팝업·전환)
+  }
+
+  private stopKnifeFx(): void {
+    this.knifeFx = null;
+    this.knifeEvent?.remove(); this.knifeEvent = undefined;
+    this.knifeImg?.setVisible(false).setAlpha(1);
   }
 
   /**
@@ -1208,6 +1384,8 @@ export class ButcheryPanel extends DraggablePanel {
       this.tracing = true;
       this.tracePoints = [n];
       this.traceG.clear();
+      // 넙치류 포 뜨기(경계 칼길·분리 1/2) — 칼 팔로우 세션 시작 (84차)
+      if (this.flatKnifeInfo(stage.id)) this.startKnifeFollow(stage);
     } else if (stage.primitive === 'drag_fill' || stage.primitive === 'scoop') {
       // 박피 당기기 = **껍질(도마 왼쪽 회색)을 클릭**해서 시작 (사용자 지시 2026-07-31)
       if (stage.id === 'peel_pull' && n.x > 0.42) {
@@ -1258,6 +1436,7 @@ export class ButcheryPanel extends DraggablePanel {
         const [npx, npy] = this.toPanelPx(n);
         this.traceG.lineStyle(2.2, 0xe8f4ff, 0.9);
         this.traceG.lineBetween(lpx, lpy, npx, npy);
+        this.feedKnife(n);   // 포 뜨기 칼 팔로우 — 드래그 샘플 적립 (해당 스테이지가 아니면 no-op)
       }
     } else if (this.tracing && (stage.primitive === 'drag_fill' || stage.primitive === 'scoop')) {
       if (this.lastFillPt) {
@@ -1334,16 +1513,14 @@ export class ButcheryPanel extends DraggablePanel {
       const strokesBefore = stage.cut?.strokesRequired
         ? stage.cut.strokesRequired - this.process.currentStrokesLeft
         : 0;
-      // 넙치류 포 뜨기 — **칼질 연출이 끝난 뒤** 살이 젖혀 열리는 연출을 위해 직전 진행값을 잡아둔다
-      //  (사용자 지시 2026-08-05: 칼 따라가기와 벌어짐을 동시에 하지 말고, 칼 지나간 뒤 열리게)
-      const flatLiftId = /^flat_(belly|back)_(up|dn)_lift$/.test(stage.id) ? stage.id : null;
-      const flatOpenFrom = flatLiftId ? this.flatLiftProgress(flatLiftId) : 0;
+      // 넙치류 포 뜨기 — 이 스테이지의 칼 팔로우 세션이 살아 있는가 (84차)
+      const knife = !!this.knifeFx && this.knifeFx.stageId === stage.id;
       const r = this.process.submitCut(this.tracePoints);
-      if (flatLiftId && r.passed) this.pendingFlatOpen = { stageId: flatLiftId, from: flatOpenFrom };
       this.tracePoints = [];
       this.scene.time.delayedCall(150, () => this.traceG.clear());
       if (!r.passed) {
         this.flash('가이드 선을 따라 다시 그어주세요 (커버율 부족)', false);
+        if (knife) this.failKnife();   // 칼 페이드아웃 + 라이브 벌어짐 원복
       } else {
         if (stage.id === 'head_flip') this.headOff = true;
         this.flash(r.stageDone
@@ -1382,9 +1559,12 @@ export class ButcheryPanel extends DraggablePanel {
       // 컷 성공 + 방향 유지 = 연출을 **pre-cut 스프라이트 위에서** 재생하고, 스프라이트/사이드바
       //  전환은 연출 완료(onComplete doRefresh)까지 미룬다 (플래시 방지). 방향 전환(뒤집기)이
       //  이어지면 flip 연출이 전환을 담당하므로 즉시 refresh.
+      //  포 뜨기 칼 팔로우 스테이지는 playActionAnim 대신 **칼이 경로 끝까지 마저 진행**한다.
       if (r.passed && !willFlip) {
-        this.playActionAnim(stage, cutPath);
+        if (knife) this.finishKnife();
+        else this.playActionAnim(stage, cutPath);
       } else {
+        if (knife && r.passed) this.stopKnifeFx();   // 뒤집기가 전환을 담당 — 칼만 정리
         this.filletOpenPending = null;
         this.refresh();
       }
@@ -1430,6 +1610,7 @@ export class ButcheryPanel extends DraggablePanel {
     this.flipping = true;
     this.stopGuideAnim();     // 옛 방향 좌표의 루프/액션 연출 정리
     this.stopActionAnim();
+    this.stopKnifeFx();   // 뒤집기 중 칼 팔로우 세션은 무효 (라이브 엔벌로프 해제)
     this.guideG.clear();
     this.traceG.clear();
     this.tracing = false;
@@ -1605,7 +1786,8 @@ export class ButcheryPanel extends DraggablePanel {
     // 않는다 (구 구현은 this.headOff/this.gutted 플래그라 순서에 따라 불일치 가능).
     const headOff = this.doneStages.has('head_flip') || this.doneStages.has('flat_head_scut') || this.headOff;
     const finsOff = this.doneStages.has('finectomy');
-    const gutted = this.doneStages.has('gut_scoop') || this.doneStages.has('flat_gut_scoop');
+    // 넙치류는 내장이 머리와 함께 나간다(84차 — 내장 스테이지 없음) — flat은 headOff가 대변
+    const gutted = this.doneStages.has('gut_scoop');
     // 90° 회전 = **생선만** 회전 (도마는 가로 고정) — 스프라이트는 가로 기준 geom으로
     // 그린 뒤 캔버스 변환으로 회전한다. (유도선 toPanelPx의 rotNorm과 수학적으로 동일한
     // 변환이라 좌표가 정확히 일치한다.)
@@ -1658,36 +1840,32 @@ export class ButcheryPanel extends DraggablePanel {
     if (rot !== 0) g.restore();
   }
 
-  /** 포 뜨기 스테이지의 이산 진행값 (완료 1 / 진행 중 = 완료 스트로크 비율 / 미착수 0) */
-  private flatLiftProgress(id: string): number {
-    if (this.doneStages.has(id)) return 1;
-    if (this.process.stage?.id !== id) return 0;
-    const req = this.process.stage.cut?.strokesRequired ?? 2;
-    return Math.min(0.95, (req - this.process.currentStrokesLeft) / req);
-  }
-
   /**
    * 넙치류 — 표시 면(BASE = 등 / FLIP = 배)의 다섯장뜨기 진행 상태를 doneStages에서 파생.
    * 반대쪽 면의 포는 위에서 보이지 않으므로 면별 독립 (물리적으로 정확).
+   * 벌어짐 깊이 = 완료 스테이지 기준(확정) + 칼 팔로우 라이브 엔벌로프(진행 구간만).
    */
   private buildFlatSideState(): import('./PixelButcherFish.js').FlatSideState {
     const belly = this.renderedOrientation === 'FLIP';
-    const p = belly ? 'flat_belly' : 'flat_back';
+    const side: 'belly' | 'back' = belly ? 'belly' : 'back';
+    const p = `flat_${side}`;
     const has = (id: string): boolean => this.doneStages.has(id);
-    const liftOf = (id: string): number => {
-      // 벌어짐 연출 중이면 보간값을 쓴다 (칼질 완료 → from에서 to로 서서히 열림)
-      const a = this.flatOpenAnim;
-      if (a && a.stageId === id) return a.from + (a.to - a.from) * a.t;
-      return this.flatLiftProgress(id);
-    };
+    // 칼 팔로우 라이브 엔벌로프 — 현재 면의 스테이지가 진행 중일 때만
+    const kf = this.knifeFx;
+    let live: import('./PixelButcherFish.js').FlatSideState['live'];
+    if (kf && kf.stageId.startsWith(p) && kf.travel > 1) {
+      live = {
+        half: kf.half, fromDepth: kf.fromDepth, toDepth: kf.toDepth,
+        xFrom: kf.path[0].x, xKnife: this.knifeLocalX(),
+      };
+    }
     return {
       center: has(`${p}_center`),
-      upScore: has(`${p}_up_score`),
-      upLift: liftOf(`${p}_up_lift`),
-      dnScore: has(`${p}_dn_score`),
-      dnLift: liftOf(`${p}_dn_lift`),
-      gutsExposed: belly && has('flat_belly_up_lift') && !has('flat_gut_scoop'),
-      opening: !!this.flatOpenAnim,
+      upDepth: this.flatHalfDepth(side, 'up'),
+      dnDepth: this.flatHalfDepth(side, 'dn'),
+      upTaken: has(`${p}_up_sep2`),
+      dnTaken: has(`${p}_dn_sep2`),
+      live,
       scaled: has(belly ? 'scale_flip' : 'scale_base') || !this.process.profile.hasScales,
     };
   }
@@ -2932,10 +3110,6 @@ export class ButcheryPanel extends DraggablePanel {
         //  갱신 + 가이드 루프 재시작을 담당. 연출 중엔 pre-cut 스프라이트가 그대로 유지된다.
         this.filletOpen = null;
         this.doRefresh();
-        // 칼이 지나간 **뒤에** 살이 젖혀 열린다 (동시 진행 금지 — 사용자 지시 2026-08-05)
-        const fo = this.pendingFlatOpen;
-        this.pendingFlatOpen = null;
-        if (fo) this.startFlatOpenAnim(fo.stageId, fo.from, this.flatLiftProgress(fo.stageId));
         this.runPendingAfterAction();   // 미뤄둔 작업/섹션 완료 처리(전환·팝업) 실행
       },
     });

@@ -302,10 +302,17 @@ export interface TuningConfig {
     /** 조작 성공 액션 연출 시간 (ms) — 칼질/탭/문지르기/박피 성공 애니메이션 (입력 차단) */
     actionAnimMs: number;
     /**
-     * 넙치류 포 뜨기 — **칼질 액션이 끝난 뒤** 살이 젖혀 열리는 연출 시간 (ms).
-     * 칼 따라가기와 동시에 하지 않는다 (사용자 지시 2026-08-05).
+     * 넙치류 포 뜨기 칼 팔로우 연출 (2026-08-06 사용자 공정 재정의):
+     *  유저 드래그 자리를 **딜레이 후 실사 칼 스프라이트가 천천히 따라오고**,
+     *  칼이 지나간 구간부터 살이 두더지처럼 들린다 (구 후연출 flatOpenMs 폐지).
      */
-    flatOpenMs: number;
+    knifeFollowDelayMs: number;
+    /** 칼 팔로우 이동 속도 (px/s) — 낮을수록 천천히 따라온다 */
+    knifeFollowSpeedPx: number;
+    /** 칼 스프라이트 표시 길이 (px) — 화면상 약 2cm 권장 */
+    knifeLenPx: number;
+    /** 칼 진행각 대비 바깥쪽 기울기 (deg) — 손잡이가 생선 바깥으로 눕는 각 */
+    knifeTiltDeg: number;
   };
   /**
    * 두족류 손질 (CEPHALOPOD_BUTCHERY_SPEC §10) — 오징어류 3종 + 문어.
@@ -465,7 +472,10 @@ export const TUNING: TuningConfig = {
   hometown: { mapW: 48, mapH: 32, seaRatio: 0.30 },
   // 회뜨기 흐름 — 자동 방향 스냅 on(먹통 방지) · 회칼 하드락 off(막칼 폴백)
   // autoOrient=false (2026-07-30 자유 손질 개편) — 자동 뒤집기 폐지, 수동 상하/좌우 뒤집기 버튼
-  butchery: { autoOrient: false, flipAnimMs: 220, knifeHardLock: false, guideAnimMs: 2000, actionAnimMs: 2000, flatOpenMs: 650 },
+  butchery: {
+    autoOrient: false, flipAnimMs: 220, knifeHardLock: false, guideAnimMs: 2000, actionAnimMs: 2000,
+    knifeFollowDelayMs: 100, knifeFollowSpeedPx: 240, knifeLenPx: 74, knifeTiltDeg: 34,
+  },
   ceph: {
     nerveTolerance: 0.045, nerveScissorsBonus: 1.4, shimeInkRiskCut: 0.6,
     slitDepthBand: 0.035, slitDepthFailCount: 3, slitBandNoShime: 0.5,
@@ -510,7 +520,10 @@ export const TUNING_META: TuningParamMeta[] = [
   { path: 'butchery.flipAnimMs', min: 80, max: 500, step: 20, category: 'feel', label: '손질 뒤집기 연출(ms)' },
   { path: 'butchery.guideAnimMs', min: 800, max: 4000, step: 100, category: 'feel', label: '손질 가이드 루프(ms)' },
   { path: 'butchery.actionAnimMs', min: 500, max: 4000, step: 100, category: 'feel', label: '손질 액션 연출(ms)' },
-  { path: 'butchery.flatOpenMs', min: 200, max: 1500, step: 50, category: 'feel', label: '포 뜨기 벌어짐(ms)' },
+  { path: 'butchery.knifeFollowDelayMs', min: 0, max: 500, step: 20, category: 'feel', label: '포뜨기 칼 딜레이(ms)' },
+  { path: 'butchery.knifeFollowSpeedPx', min: 80, max: 600, step: 20, category: 'feel', label: '포뜨기 칼 속도(px/s)' },
+  { path: 'butchery.knifeLenPx', min: 40, max: 140, step: 4, category: 'feel', label: '포뜨기 칼 길이(px)' },
+  { path: 'butchery.knifeTiltDeg', min: 0, max: 80, step: 2, category: 'feel', label: '포뜨기 칼 기울기(°)' },
   // ── 두족류 손질 (CEPHALOPOD_BUTCHERY_SPEC §10 노출 목록) ──
   // saltAmountBand는 [하한, 상한] 튜플이라 인덱스 경로로 각각 노출한다(getTuning이 o[k]라 동작).
   { path: 'ceph.nerveTolerance', min: 0.02, max: 0.09, step: 0.005, category: 'feel', label: '두족류 시메 허용반경' },
