@@ -38,7 +38,7 @@ const PALETTE_N = 44;    // 팔레트 색 수
 const AB = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+/';
 
 /** 크롬 페이지에서 실행할 처리 스크립트 (이미지 → {w,h,palette,rows} JSON) */
-function pageHtml(fileUrl, bgTol) {
+function pageHtml(fileUrl, bgTol, erasePolys) {
   return `<!doctype html><body><script>
 const img = new Image();
 img.onload = () => {
@@ -83,6 +83,24 @@ img.onload = () => {
     if (x < W - 1) q.push(p + 1);
     if (y > 0) q.push(p - W);
     if (y < H - 1) q.push(p + W);
+  }
+  // ── ①-b 영역 제거 (ERASE_POLY) ──
+  //  사진에 **게임이 자체 연출로 그리는 요소**(칼 등)가 찍혀 있으면 굽기 전에 지운다.
+  //  좌표는 원본 정규화(0~1) 폴리곤 — 회전/미러보다 **먼저** 적용된다.
+  const polys = ${JSON.stringify(erasePolys || [])};
+  if (polys.length) {
+    const inPoly = (px, py, poly) => {
+      let hit = false;
+      for (let a = 0, b = poly.length - 1; a < poly.length; b = a++) {
+        const [xa, ya] = poly[a], [xb, yb] = poly[b];
+        if ((ya > py) !== (yb > py) && px < (xb - xa) * (py - ya) / (yb - ya) + xa) hit = !hit;
+      }
+      return hit;
+    };
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const nx = x / W, ny = y / H;
+      for (const poly of polys) if (inPoly(nx, ny, poly)) { removed[y * W + x] = 1; break; }
+    }
   }
   // bbox
   let x0 = W, x1 = -1, y0 = H, y1 = -1;
@@ -153,9 +171,9 @@ img.src = ${JSON.stringify(fileUrl)};
 }
 
 /** 크롬 dump-dom으로 1장 처리 */
-function processImage(absPngPath, bgTol = 46) {
+function processImage(absPngPath, bgTol = 46, erasePolys = []) {
   const tmpHtml = path.join(os.tmpdir(), `pixbut_${Date.now()}_${Math.random().toString(36).slice(2)}.html`);
-  fs.writeFileSync(tmpHtml, pageHtml('file:///' + absPngPath.replace(/\\/g, '/'), bgTol));
+  fs.writeFileSync(tmpHtml, pageHtml('file:///' + absPngPath.replace(/\\/g, '/'), bgTol, erasePolys));
   const dom = execFileSync(CHROME, [
     '--headless', '--disable-gpu', '--allow-file-access-from-files',
     '--virtual-time-budget=8000', '--dump-dom', 'file:///' + tmpHtml.replace(/\\/g, '/'),
@@ -314,7 +332,11 @@ if (!fs.existsSync(SRC_DIR)) {
 }
 // 좌우 미러 키 — 도마 필렛 방향 규칙 = **꼬리 왼쪽·머리 오른쪽** (박피 peel_grip 꼬리 칼집·회썰기
 // 컷 순서와 동일 컨벤션). 원본 사진이 머리 왼쪽인 에셋은 여기 등록해 굽는 시점에 반전한다.
-const MIRROR_KEYS = new Set(['pure_fillet_halibut']);
+const MIRROR_KEYS = new Set([
+  'pure_fillet_halibut',
+  'halibut_fin_score',   // 원본이 머리 오른쪽 — 온마리 규칙(머리 왼쪽)으로 반전
+  'halibut_lift_done',   // cw 회전 후 머리가 오른쪽이 되므로 함께 반전
+]);
 /**
  * 키별 배경 근접 임계 (기본 46). **배경이 흰색이고 피사체도 흰색**인 사진은 기본값이
  * 살코기까지 먹어버리므로 낮춘다 (halibut_open_cross — 크림색 살 vs 순백 배경).
@@ -325,19 +347,117 @@ const MIRROR_KEYS = new Set(['pure_fillet_halibut']);
  */
 const BG_TOL = {
   // 순백 배경 + 크림색 살 — 기본 46(임계 138)은 살까지 먹으므로 순백만 걷어내게 좁힌다
-  halibut_belly_open: 6,
+  halibut_gut_lift: 6,
+  halibut_lift_b: 6,
 };
 const mirrorSprite = (spr) => ({ ...spr, rows: spr.rows.map((r) => [...r].reverse().join('')) });
+
+/**
+ * 90° 회전 — **세로로 찍힌 원본을 가로 기준으로 정규화**할 때 쓴다.
+ * 도마 스프라이트는 전부 "가로·머리 왼쪽" 기준으로 구워야 한다 —
+ * 세로 배치는 패널의 회전 축(80차 `BoardRotation`)이 렌더 시점에 만들어내므로,
+ * 원본이 이미 세로면 이중 회전이 되어 눕는다.
+ *  'cw'  = 시계방향(원본 위 → 오른쪽)   'ccw' = 반시계(원본 위 → 왼쪽)
+ */
+function rotateSprite(spr, dir) {
+  const h = spr.rows.length, w = spr.rows[0].length;
+  const out = [];
+  for (let y = 0; y < w; y++) {
+    let row = '';
+    for (let x = 0; x < h; x++) {
+      row += dir === 'cw' ? spr.rows[h - 1 - x][y] : spr.rows[x][w - 1 - y];
+    }
+    out.push(row);
+  }
+  return { ...spr, w: h, h: w, rows: out };
+}
+
+/**
+ * 키별 방향 정규화 (미러보다 먼저 적용). 원본 사진의 촬영 방향을 "가로·머리 왼쪽"으로 맞춘다.
+ *  halibut_lift_done — 원본이 **세로(머리 위·꼬리 아래)** + 열린 살이 왼쪽
+ *    → cw 회전(머리 오른쪽·열린 살 위) 후 미러(머리 왼쪽·열린 살 위 유지) = 한 장을 떠낸 상태
+ */
+const ROTATE_KEYS = { halibut_lift_done: 'cw', halibut_fin_score: 'cw' };
+
+/**
+ * 굽기 전에 지울 영역 (원본 정규화 폴리곤 — 회전·미러보다 먼저).
+ *  halibut_fin_score — 사용자가 **칼길 위치를 알려주려고 포토샵으로 그려 넣은 칼**.
+ *    게임은 칼을 별도 연출(actionAnimG)로 그리므로 스프라이트에 구우면 칼이 둘이 된다.
+ *    행별 실루엣 실측: y≥0.62부터 생선(~0.526)과 칼(0.541~)이 **별도 런으로 분리**되므로
+ *    그 사이를 지나는 직선으로 잘라낸다. (y<0.61 구간의 칼끝은 몸통과 겹쳐 있어 남지만
+ *    원본 2~3px = 다운샘플 후 1셀 미만이라 무시 가능.)
+ */
+const ERASE_POLY = {
+  halibut_fin_score: [[
+    [0.60, 0.585], [1.0, 0.585], [1.0, 1.0], [0.746, 1.0], [0.528, 0.612], [0.60, 0.612],
+  ]],
+};
 
 // ① 돔류 = SVG 자동 추출 (기본) → ② 사진 폴더가 같은 키를 덮어씀 (사진 우선)
 const map = new Map(extractBreamStages());
 const files = fs.existsSync(SRC_DIR) ? fs.readdirSync(SRC_DIR).filter((f) => f.toLowerCase().endsWith('.png')) : [];
 for (const f of files) {
   const key = path.basename(f, '.png');
-  let spr = processImage(path.join(SRC_DIR, f), BG_TOL[key] ?? 46);
+  let spr = processImage(path.join(SRC_DIR, f), BG_TOL[key] ?? 46, ERASE_POLY[key] ?? []);
+  const rot = ROTATE_KEYS[key];
+  if (rot) spr = rotateSprite(spr, rot);
   if (MIRROR_KEYS.has(key)) spr = mirrorSprite(spr);
+  const tag = [rot ? `회전 ${rot}` : null, MIRROR_KEYS.has(key) ? '미러' : null].filter(Boolean).join('·');
   map.set(key, spr);
-  console.log(`${key}: ${spr.w}x${spr.h}, pal ${spr.palette.length} (사진${MIRROR_KEYS.has(key) ? '·미러' : ''})`);
+  console.log(`${key}: ${spr.w}x${spr.h}, pal ${spr.palette.length} (사진${tag ? '·' + tag : ''})`);
+}
+
+/**
+ * ── 파생: `halibut_lift_a` (오로시 길 1회 = 지느러미쪽이 살짝 들린 상태) ───────────────
+ * 이 상태만 담긴 전용 사진이 없어도, **이미 가진 에셋 + 해부 구조**로 합성할 수 있다:
+ *   베이스 = `halibut_fin_score`(칼길만 낸 배면 전체 뷰 — 흰 뱃살·지느러미 경계가 온전)
+ *   더할 것 = 경계 안쪽으로 칼이 한 번 들어가 **살이 들리며 드러나는 얇은 붉은 단면**
+ *   두께   = 꼬리(오른쪽)에서 가장 두껍고 머리로 갈수록 0 — 사용자 ref_4가 보여준 "저 정도만 들림"
+ * 74차에서 등면 스프라이트로 배면을 파생한 것과 같은 방식이다(사진 1장 = 상태 1개가 아니다).
+ */
+function deriveLiftA(base, sideDir) {
+  if (!base) return null;
+  const H = base.rows.length, W = base.rows[0].length;
+  const idx = (ch) => (ch === '.' ? -1 : AB.indexOf(ch));
+  const lum = (c) => (((c >> 16) & 255) * 299 + ((c >> 8) & 255) * 587 + (c & 255) * 114) / 1000;
+  // 단면(칼이 들어가 드러난 살) 색 2단 — 팔레트에 추가한다(AB 64자라 여유 있음).
+  //  팔레트 최근접 재사용은 흰 뱃살에 묻혀 보이지 않았다(실측) → 전용 색을 넣는다.
+  const palette = [...base.palette];
+  const cutIdx = palette.push(0xb86f66) - 1;   // 단면(붉은 살)
+  const rimIdx = palette.push(0x8d4b45) - 1;   // 칼이 지나간 자리 그늘
+  const rows = base.rows.map((r) => [...r]);
+  for (let x = 0; x < W; x++) {
+    // 작업 중인 면의 바깥(지느러미·어두움) → 안쪽(살·밝음) 전이점을 찾는다
+    {
+      const dir = sideDir;
+      let sawFin = false, edge = -1;
+      for (let n = 0; n < H; n++) {
+        const y = dir === 1 ? n : H - 1 - n;
+        const i = idx(base.rows[y][x]);
+        if (i < 0) continue;                       // 투명 = 실루엣 밖
+        const L = lum(base.palette[i]);
+        if (L < 110) { sawFin = true; continue; }  // 어두운 지느러미
+        if (sawFin && L > 175) { edge = y; break; } // 지느러미 → 밝은 살 전이
+      }
+      if (edge < 0) continue;
+      // 꼬리(오른쪽)로 갈수록 두껍게 — 머리쪽은 아직 칼이 닿지 않았다
+      const t = Math.max(0, (x / (W - 1) - 0.20) / 0.80);
+      const th = Math.round(t * t * 6);          // 제곱 램프 = 꼬리쪽에 몰림
+      for (let k = 0; k < th; k++) {
+        const y = edge + dir * k;
+        if (y < 0 || y >= H) break;
+        if (idx(base.rows[y][x]) < 0) break;
+        rows[y][x] = AB[k === 0 ? rimIdx : cutIdx];
+      }
+    }
+  }
+  return { ...base, palette, rows: rows.map((r) => r.join('')) };
+}
+for (const [suffix, dir] of [['up', 1], ['dn', -1]]) {
+  const liftA = deriveLiftA(map.get('halibut_fin_score'), dir);
+  if (!liftA) continue;
+  map.set(`halibut_lift_a_${suffix}`, liftA);
+  console.log(`halibut_lift_a_${suffix}: ${liftA.w}x${liftA.h} (파생 ← halibut_fin_score)`);
 }
 const entries = [...map.entries()];
 const ts = `/**

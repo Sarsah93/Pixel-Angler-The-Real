@@ -446,6 +446,8 @@ export interface FlatSideState {
   dnLift: number;
   /** 내장 주머니 노출 (배면 위 필렛 떠낸 후 · 내장 제거 전) */
   gutsExposed: boolean;
+  /** 벌어짐 보간 연출 진행 중 — 이 동안은 실사 대신 파라메트릭 플랩이 움직인다 */
+  opening?: boolean;
   /** 이 면의 비늘치기 완료 여부 (반짝임 오버레이 소거) */
   scaled: boolean;
 }
@@ -483,10 +485,38 @@ function drawFlatFish(
   // ── 배쪽 벌어진 단면 실사 (2026-08-05 투입 — 사용자 사진 3번) ──
   //  배면 위 필렛을 떠내 **갈비뼈·척추가 드러나고 머리쪽에 내장 자리가 보이는** 상태는
   //  파라메트릭으로 근사하기보다 실사 도트가 정확하다. 내장 제거 전까지만 이 뷰를 쓴다.
-  const bellyOpenSpr = state.flatSide?.gutsExposed ? stageSpr('halibut_belly_open') : null;
-  if (bellyOpenSpr) {
-    drawSprite(g, bellyOpenSpr, geom, false, false, sprites.nativeColor ? null : tint, 0.12);
-    return;
+  // ── 포 뜨기 공정 실사 (2026-08-06 — 사용자 사진 ref_1~5) ──────────────────────────────
+  //  다섯 장은 **한 장의 필렛을 뜨는 연속 공정**이다 (사용자 해부 설명 2026-08-06):
+  //    ref_5 지느러미↔껍질 경계에 오로시 길 내기 → ref_4 길 따라 1회 → 지느러미 끝만 살짝 들림
+  //    → ref_2 뼈를 타고 한 번 더 → 살코기면이 벌어짐 → ref_1 한 장 떠냄
+  //    ref_3 = 같은 동작이지만 **내장 쪽 필렛** (갈비뼈·내장 자리가 드러난다)
+  //  들린 필렛이 껍질면을 가려 **사진만으로는 배/등 구별이 안 되므로**(사용자 확인) 면 무관하게
+  //  진행도로만 고른다. 벌어짐 보간(80차) 중에는 실사를 쓰지 않는다 — 정지 그림은 트윈할 수 없고,
+  //  움직이는 구간은 파라메트릭 플랩이 담당해야 연출이 산다.
+  const fsP = state.flatSide;
+  if (fsP && !fsP.opening) {
+    const inProg = (p: number): boolean => p > 0 && p < 1;
+    // 내장이 붙은 면 — **장축으로 뒤집으면 위/아래 가장자리가 바뀐다** (사용자 확인 2026-08-06):
+    //   배면(FLIP)을 위에서 보면 내장은 **위쪽**  /  등면(BASE)을 위에서 보면 **아래쪽**.
+    //   그래서 그 면의 포를 뜨면 갈비뼈·내장 자리가 드러나고 ref_3 컷이 맞다.
+    const gutIsUp = o === 'FLIP';
+    const gutKey = 'halibut_gut_lift';
+    //  1회(칼길 따라 한 번 — 작업 중인 면만 들린다) / 후반(살코기면이 벌어짐)
+    const progKey = (p: number, up: boolean): string =>
+      (p < 0.5 ? (up ? 'halibut_lift_a_up' : 'halibut_lift_a_dn') : 'halibut_lift_b');
+    let key: string | null = null;
+    if (fsP.gutsExposed) key = gutKey;                                // 내장 노출 · 긁기 전 (ref_3)
+    else if (inProg(fsP.upLift)) key = gutIsUp ? gutKey : progKey(fsP.upLift, true);
+    else if (inProg(fsP.dnLift)) key = gutIsUp ? progKey(fsP.dnLift, false) : gutKey;
+    else if (fsP.upLift >= 1 && fsP.dnLift < 1) key = 'halibut_lift_done';  // 한 장 떠냄 (ref_1)
+    else if ((fsP.upScore || fsP.dnScore) && fsP.upLift === 0 && fsP.dnLift === 0) {
+      key = 'halibut_fin_score';                                      // 오로시 길만 (ref_5)
+    }
+    const spr2 = key ? stageSpr(key) : undefined;
+    if (spr2) {
+      drawSprite(g, spr2, geom, false, false, sprites.nativeColor ? null : tint, 0.12);
+      return;
+    }
   }
 
   // ── 몸통 탑뷰 — 등면(dark)/배면(white). 프레임은 등면 기준 고정 ──

@@ -50,11 +50,17 @@ the-real-angler/
 
 ## 4. 코딩 규칙 (절대 준수)
 
-> **절차·함정 노하우는 `.claude/skills/` 10종 스킬로 추출됨** (목록·한 줄 요약은 CLAUDE.md) —
+> **절차·함정 노하우는 `.claude/skills/` 11종 스킬로 추출됨** (목록·한 줄 요약은 CLAUDE.md) —
 > 해당 작업 시 반드시 해당 스킬을 로드한다: verify-render(실렌더 검증) · asset-pipeline(에셋) ·
 > add-species(어종 등록) · ui-panel(UI 검수) · save-migration(세이브) · deploy-ghpages(배포) ·
-> f9-guide-coords(가이드 좌표) · add-region(타일맵) · add-tuning(튜닝) · scene-transition(씬 전환).
+> f9-guide-coords(가이드 좌표) · add-region(타일맵) · add-tuning(튜닝) · scene-transition(씬 전환) ·
+> **work-log(작업 기록 — 모든 작업 완료 시 필수)**.
 > 이 문서(§4·§8)는 **상시 적용 절대 규칙 요약**만 유지한다.
+
+### 작업 기록 정책 (2026-08-06 — 사용자 지시) → 상세는 **스킬 `work-log`**
+- 구조화 뷰는 **`docs/wiki/`** 4층(구조 / 시스템별 과제 / 워크로그 / 백로그). 착수 전 해당 시스템 페이지를 읽는다.
+- **본문 기록은 `docs/wiki/03-WORKLOG/` 1건**(8절 양식)에 쓰고, **이 문서 §9와 PLAN에는 요약 3~5줄 + 링크**만 남긴다.
+- 시스템 페이지(`02-SYSTEMS/*.md`)는 **누적이 아니라 갱신** — "지금 상태"를 답하는 문서다. 새 함정은 그 §6에 올린다.
 
 ### TypeScript
 - **strict 모드** 사용 (`tsconfig.base.json` 참고)
@@ -344,8 +350,13 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류 (2026-08-06)
 
 > **아래 차수 히스토리는 "무엇을·왜 바꿨나"의 변경 기록이다.** 히스토리 곳곳에 흩어져 있던
 > 반복 절차·함정(검증 하네스·에셋 파이프라인·어종 등록·UI 검수·세이브 마이그레이션·배포·
-> F9 좌표·타일맵·튜닝·씬 전환)은 **`.claude/skills/` 10종으로 추출·정리됨** — 작업 방법을
+> F9 좌표·타일맵·튜닝·씬 전환)은 **`.claude/skills/` 11종으로 추출·정리됨** — 작업 방법을
 > 찾을 때는 히스토리를 뒤지지 말고 해당 스킬을 먼저 로드할 것.
+>
+> ⚠ **81차부터는 여기에 길게 쓰지 않는다** (2026-08-06 정책 — 이 절이 375 KB까지 커져 세션 컨텍스트를 잠식했다):
+> 본문은 **`docs/wiki/03-WORKLOG/<날짜>-<차수>-<슬러그>.md`**, 여기엔 **요약 3~5줄 + 링크**.
+> "지금 무엇이 어디까지 되어 있나"는 **`docs/wiki/README.md` 대시보드**와 `02-SYSTEMS/*.md`를 본다.
+> 80차 이하 원문은 아래에 **그대로 보존**(불변 원장) — 구조화 인덱스는 `03-WORKLOG/README.md` §3.1.
 
 **최근 주요 변경 (2026-08-06 80차) — 도마 90° 회전 축 신설 + 광어 포 뜨기 벌어짐 연출 + 배쪽 단면 실사 + 두족류 스펙 정합(v3.1)·에셋 15키·부리 공정** (사용자 지시 다건 — 실렌더 검증, 빌드 4/4·typecheck 0):
 - **[신규 축] 도마 90° 회전** (`BoardRotation` 0/90/180/270) — 좌우·상하 뒤집기와 **독립 축**. 넙치류 지느러미쪽 칼길·포 뜨기는 **꼬리를 아래로 세운 세로 배치**에서 꼬리→머리로 긋는다(사용자 지시 + `docs/mockups/자세한 뷰.pdf` 전 페이지가 세로 뷰).
@@ -1420,8 +1431,9 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류 (2026-08-06)
 ## 11. 작업 이어받기 절차
 
 1. 이 파일 (`AGENTS.md`) 완독
-2. `IMPLEMENTATION_PLAN.md` 확인 — 현재 단계와 다음 작업 파악
-3. `npx pnpm run build`로 현재 빌드 상태 확인
-4. 빌드 오류 먼저 수정 후 새 기능 구현
-5. 새 기능 추가 후 반드시 `npx pnpm run build`로 검증
-6. 작업 완료 시 `IMPLEMENTATION_PLAN.md`와 이 파일(`AGENTS.md`) 최신 상태로 업데이트
+2. **`docs/wiki/README.md`** 대시보드 → **건드릴 시스템의 `docs/wiki/02-SYSTEMS/*.md`**(§4 과제·§5 잔여·§6 함정) 확인
+3. `IMPLEMENTATION_PLAN.md` 확인 — 현재 단계와 다음 작업 파악
+4. `npx pnpm run build`로 현재 빌드 상태 확인
+5. 빌드 오류 먼저 수정 후 새 기능 구현
+6. 새 기능 추가 후 반드시 `npx pnpm run build` + `typecheck`로 검증
+7. **작업 완료 시 스킬 `work-log` 절차 실행** — 워크로그 1건(8절) → 시스템 페이지 갱신 → `04-BACKLOG.md` → **`IMPLEMENTATION_PLAN.md`·이 파일 §9는 요약 3~5줄 + 링크**

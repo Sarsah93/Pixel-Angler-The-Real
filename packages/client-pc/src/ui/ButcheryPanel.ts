@@ -1672,6 +1672,7 @@ export class ButcheryPanel extends DraggablePanel {
       dnScore: has(`${p}_dn_score`),
       dnLift: liftOf(`${p}_dn_lift`),
       gutsExposed: belly && has('flat_belly_up_lift') && !has('flat_gut_scoop'),
+      opening: !!this.flatOpenAnim,
       scaled: has(belly ? 'scale_flip' : 'scale_base') || !this.process.profile.hasScales,
     };
   }
