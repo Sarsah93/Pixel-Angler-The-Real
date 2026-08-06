@@ -41,7 +41,8 @@ import { SASHIMI_GUIDE_TEXTURE, guideFrameName, hasGuideFrames } from '../data/S
 const asFishOri = (o: ButcheryOrientation): OrientationState => o as OrientationState;
 
 const PANEL_W = 1080;
-const PANEL_H = 620;
+/** 656 = 세로 생선(90° 회전)이 도마 밖으로 자연스럽게 튀어나올 하단 여유 확보 (화면 720 안 — 32~688) */
+const PANEL_H = 656;
 
 export interface ButcheryCallbacks {
   onClose: () => void;
@@ -71,26 +72,31 @@ export class ButcheryPanel extends DraggablePanel {
   private static readonly FISH_W0 = 560;
   private static readonly FISH_H0 = 210;
   /**
-   * 세로 배치 시 축소율 — 긴 축(560)이 패널 세로 여백에 들어가도록.
-   * 0.50 → 세로 280px. 도마 프레임 184~516이라 **상단 작업 패널(하단 ≈180)과 겹치지 않고**
-   * 하단 dev 상태줄(≈534)도 피한다 — 실렌더 실측으로 잡은 값.
+   * 90° 회전 시 생선 축소율 — **도마는 가로 그대로 두고 생선만 세로로 돌린다**
+   * (사용자 지시 2026-08-06 — 구 "도마 프레임 자체를 세로로 세우는" 방식 폐기).
+   * 생선이 도마 밖으로는 튀어나와도 되지만(사용자 승인 — 실물처럼 머리/꼬리가 도마를 넘음)
+   * **손질 창 안에는 들어와야 한다**: 0.55 → 세로 308px(141~449) — 상단 작업 패널(하단 ≈130)과
+   * 하단 상태줄(≈455)을 피한다. PANEL_H 656 확장과 한 쌍으로 잡은 값.
    */
-  private static readonly ROT_SCALE = 0.50;
-  /** 세로 배치 도마 중심 Y — 작업 패널 아래로 내린다 (가로 배치는 기존 위치 유지) */
-  private static readonly ROT_CY = 350;
+  private static readonly ROT_SCALE = 0.55;
 
-  /** 도마가 세로로 서 있는가 (90·270°) */
+  /** 생선이 세로로 서 있는가 (90·270°) — 도마는 회전과 무관하게 가로 고정 */
   private get rotated(): boolean {
     const r = this.process.rotation;
     return r === 90 || r === 270;
   }
   /** 도마 중심 (회전과 무관하게 고정) */
   private get boardCx(): number { return ButcheryPanel.FISH_X0 + ButcheryPanel.FISH_W0 / 2; }
-  private get boardCy(): number {
-    return this.rotated ? ButcheryPanel.ROT_CY : ButcheryPanel.FISH_Y0 + ButcheryPanel.FISH_H0 / 2;
-  }
+  private get boardCy(): number { return ButcheryPanel.FISH_Y0 + ButcheryPanel.FISH_H0 / 2; }
 
-  // 회전이 반영된 생선 rect — 유도선(toPanelPx)·입력(toNorm)·도마 프레임이 공유한다.
+  // 도마 rect — **항상 가로 고정**. 도마 프레임·오버레이·플래시·dev 목록 등
+  // 레이아웃 앵커는 전부 이 rect를 쓴다 (회전해도 UI가 밀리지 않는다).
+  private get boardX(): number { return ButcheryPanel.FISH_X0; }
+  private get boardY(): number { return ButcheryPanel.FISH_Y0; }
+  private get boardW(): number { return ButcheryPanel.FISH_W0; }
+  private get boardH(): number { return ButcheryPanel.FISH_H0; }
+
+  // 회전이 반영된 **생선** rect — 유도선(toPanelPx)·입력(toNorm)·스프라이트 렌더만 공유한다.
   private get fishW(): number {
     const S = ButcheryPanel.ROT_SCALE;
     return this.rotated ? Math.round(ButcheryPanel.FISH_H0 * S) : ButcheryPanel.FISH_W0;
@@ -1045,29 +1051,31 @@ export class ButcheryPanel extends DraggablePanel {
     const xp = Math.round(14 + (this.checkpoint === 'ribs' ? 10 : 0));
     const lv = GameState.addFilletingXp(xp);
 
+    // 오버레이는 고정 도마 rect 기준 — 생선 회전 상태와 무관하게 같은 자리
+    const BX = this.boardX, BY = this.boardY, BW = this.boardW, BH = this.boardH;
     const c = this.scene.add.container(0, 0);
     const bg = this.scene.add.graphics();
     bg.fillStyle(0x081422, 0.96);
-    bg.fillRoundedRect(this.fishX + 40, this.fishY + 20, this.fishW - 80, this.fishH - 40, 8);
+    bg.fillRoundedRect(BX + 40, BY + 20, BW - 80, BH - 40, 8);
     bg.lineStyle(2, 0xffd257, 0.95);
-    bg.strokeRoundedRect(this.fishX + 40, this.fishY + 20, this.fishW - 80, this.fishH - 40, 8);
-    const title = this.scene.add.text(this.fishX + this.fishW / 2, this.fishY + 58, '손질 종료 — 필렛 저장', {
+    bg.strokeRoundedRect(BX + 40, BY + 20, BW - 80, BH - 40, 8);
+    const title = this.scene.add.text(BX + BW / 2, BY + 58, '손질 종료 — 필렛 저장', {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '20px', color: '#ffd257', fontStyle: 'bold',
     }).setOrigin(0.5);
-    const desc = this.scene.add.text(this.fishX + this.fishW / 2, this.fishY + 92,
+    const desc = this.scene.add.text(BX + BW / 2, BY + 92,
       `보관 선택한 부산물이 인벤토리에 지급되었습니다. (+${xp} XP · Lv.${lv.level})\n`
       + '필렛은 나중에 도마에 다시 올려 이어서 손질할 수 있습니다 (추후 재장착 지원).', {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#d0e8f5', align: 'center', lineSpacing: 6,
       }).setOrigin(0.5, 0);
     const btnBg = this.scene.add.graphics();
     btnBg.fillStyle(0x14425e, 0.98);
-    btnBg.fillRoundedRect(this.fishX + this.fishW / 2 - 70, this.fishY + this.fishH - 66, 140, 34, 5);
+    btnBg.fillRoundedRect(BX + BW / 2 - 70, BY + BH - 66, 140, 34, 5);
     btnBg.lineStyle(1.5, 0x33b0e0, 1);
-    btnBg.strokeRoundedRect(this.fishX + this.fishW / 2 - 70, this.fishY + this.fishH - 66, 140, 34, 5);
-    const btnTxt = this.scene.add.text(this.fishX + this.fishW / 2, this.fishY + this.fishH - 49, '확인', {
+    btnBg.strokeRoundedRect(BX + BW / 2 - 70, BY + BH - 66, 140, 34, 5);
+    const btnTxt = this.scene.add.text(BX + BW / 2, BY + BH - 49, '확인', {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px', color: '#aee8ff', fontStyle: 'bold',
     }).setOrigin(0.5);
-    const hit = this.scene.add.rectangle(this.fishX + this.fishW / 2, this.fishY + this.fishH - 49, 140, 34, 0xffffff, 0.001)
+    const hit = this.scene.add.rectangle(BX + BW / 2, BY + BH - 49, 140, 34, 0xffffff, 0.001)
       .setInteractive({ useHandCursor: true });
     hit.on('pointerdown', () => this.cbs.onComplete());
     c.add([bg, title, desc, btnBg, btnTxt, hit]);
@@ -1243,12 +1251,13 @@ export class ButcheryPanel extends DraggablePanel {
       const last = this.tracePoints[this.tracePoints.length - 1];
       if (Math.hypot(n.x - last.x, n.y - last.y) > 0.01) {
         this.tracePoints.push(n);
-        // 칼선 렌더 (은색)
+        // 칼선 렌더 (은색) — 반드시 toPanelPx(회전 변환) 경유.
+        //  ⚠ 좌표는 생선 로컬 정규화라, 직접 fishX+n.x·fishW로 그리면 90° 회전 시
+        //    세로로 그었는데 자국이 가로로 남는다 (사용자 리포트 2026-08-06).
+        const [lpx, lpy] = this.toPanelPx(last);
+        const [npx, npy] = this.toPanelPx(n);
         this.traceG.lineStyle(2.2, 0xe8f4ff, 0.9);
-        this.traceG.lineBetween(
-          this.fishX + last.x * this.fishW, this.fishY + last.y * this.fishH,
-          this.fishX + n.x * this.fishW, this.fishY + n.y * this.fishH,
-        );
+        this.traceG.lineBetween(lpx, lpy, npx, npy);
       }
     } else if (this.tracing && (stage.primitive === 'drag_fill' || stage.primitive === 'scoop')) {
       if (this.lastFillPt) {
@@ -1259,9 +1268,12 @@ export class ButcheryPanel extends DraggablePanel {
         const mvx = n.x - this.lastFillPt.x, mvy = n.y - this.lastFillPt.y;
         if (nowMs - this.lastFlakeMs > 40 && Math.hypot(mvx, mvy) > 0.004) {
           this.lastFlakeMs = nowMs;
+          // 위치·진행 방향 모두 화면 좌표(toPanelPx) 기준 — 회전 시에도 커서를 따라간다
+          const [bpx, bpy] = this.toPanelPx(n);
+          const [blx, bly] = this.toPanelPx(this.lastFillPt);
           this.spawnScaleBurst(
-            this.fishX + n.x * this.fishW, this.fishY + n.y * this.fishH,
-            Math.atan2(mvy * this.fishH, mvx * this.fishW),
+            bpx, bpy,
+            Math.atan2(bpy - bly, bpx - blx),
             delta > 0 ? 5 : 2,
             stage.primitive === 'drag_fill' ? 'scale' : 'gut',
           );
@@ -1458,7 +1470,7 @@ export class ButcheryPanel extends DraggablePanel {
 
   /** 회칼 미보유 잠금 오버레이 — 회뜨기 단계 진입 시 안내 + [통마리로 마무리] */
   private drawKnifeLock(): void {
-    const X = this.fishX, Y = this.fishY, W = this.fishW, H = this.fishH;
+    const X = this.boardX, Y = this.boardY, W = this.boardW, H = this.boardH;   // 고정 도마 rect
     const g = this.scene.add.graphics();
     g.fillStyle(0x081422, 0.9);
     g.fillRoundedRect(X + 20, Y - 6, W - 40, H + 12, 8);
@@ -1513,30 +1525,31 @@ export class ButcheryPanel extends DraggablePanel {
     InventoryStore.removeItem(this.source.id, false);
     GameState.addFilletingXp(8);
 
-    // 완료 오버레이
+    // 완료 오버레이 — 고정 도마 rect 기준
     this.uiC.removeAll(true);
+    const BX = this.boardX, BY = this.boardY, BW = this.boardW, BH = this.boardH;
     const c = this.scene.add.container(0, 0);
     const bg = this.scene.add.graphics();
     bg.fillStyle(0x081422, 0.96);
-    bg.fillRoundedRect(this.fishX + 40, this.fishY - 10, this.fishW - 80, this.fishH + 20, 8);
+    bg.fillRoundedRect(BX + 40, BY - 10, BW - 80, BH + 20, 8);
     bg.lineStyle(2, 0xffb454, 0.95);
-    bg.strokeRoundedRect(this.fishX + 40, this.fishY - 10, this.fishW - 80, this.fishH + 20, 8);
-    const title = this.scene.add.text(this.fishX + this.fishW / 2, this.fishY + 50, '손질 완료 (통마리)', {
+    bg.strokeRoundedRect(BX + 40, BY - 10, BW - 80, BH + 20, 8);
+    const title = this.scene.add.text(BX + BW / 2, BY + 50, '손질 완료 (통마리)', {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '20px', color: '#ffd9a0', fontStyle: 'bold',
     }).setOrigin(0.5);
-    const desc = this.scene.add.text(this.fishX + this.fishW / 2, this.fishY + 100,
+    const desc = this.scene.add.text(BX + BW / 2, BY + 100,
       `${nameKo} 손질 (통마리) — ${price.toLocaleString()}원\n회칼이 없어 회뜨기는 하지 못했습니다. 통마리 판매/조림용으로 인벤토리에 지급되었습니다.`, {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px', color: '#e0d0b8', align: 'center', lineSpacing: 8,
       }).setOrigin(0.5, 0);
     const btnBg = this.scene.add.graphics();
     btnBg.fillStyle(0x3a2e14, 0.95);
-    btnBg.fillRoundedRect(this.fishX + this.fishW / 2 - 80, this.fishY + this.fishH - 44, 160, 38, 6);
+    btnBg.fillRoundedRect(BX + BW / 2 - 80, BY + BH - 44, 160, 38, 6);
     btnBg.lineStyle(2, 0xffb454, 0.95);
-    btnBg.strokeRoundedRect(this.fishX + this.fishW / 2 - 80, this.fishY + this.fishH - 44, 160, 38, 6);
-    const btnTxt = this.scene.add.text(this.fishX + this.fishW / 2, this.fishY + this.fishH - 25, '확인', {
+    btnBg.strokeRoundedRect(BX + BW / 2 - 80, BY + BH - 44, 160, 38, 6);
+    const btnTxt = this.scene.add.text(BX + BW / 2, BY + BH - 25, '확인', {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '14px', color: '#ffd9a0', fontStyle: 'bold',
     }).setOrigin(0.5);
-    const btnHit = this.scene.add.rectangle(this.fishX + this.fishW / 2, this.fishY + this.fishH - 25, 160, 38, 0xffffff, 0.001)
+    const btnHit = this.scene.add.rectangle(BX + BW / 2, BY + BH - 25, 160, 38, 0xffffff, 0.001)
       .setInteractive({ useHandCursor: true });
     btnHit.on('pointerdown', () => this.cbs.onComplete());
     c.add([bg, title, desc, btnBg, btnTxt, btnHit]);
@@ -1574,11 +1587,12 @@ export class ButcheryPanel extends DraggablePanel {
     g.clear();
     const X = this.fishX, Y = this.fishY, W = this.fishW, H = this.fishH;
 
-    // 작업대 (도마 배경)
+    // 작업대 (도마 배경) — **회전과 무관하게 가로 고정** (생선만 돈다)
+    const BX = this.boardX, BY = this.boardY, BW = this.boardW, BH = this.boardH;
     g.fillStyle(0x8a6a44, 1);
-    g.fillRoundedRect(X - 16, Y - 26, W + 32, H + 52, 10);
+    g.fillRoundedRect(BX - 16, BY - 26, BW + 32, BH + 52, 10);
     g.fillStyle(0xa8845a, 1);
-    g.fillRoundedRect(X - 6, Y - 16, W + 12, H + 32, 8);
+    g.fillRoundedRect(BX - 6, BY - 16, BW + 12, BH + 32, 8);
 
     // 도마 픽셀 생선 — 어종별 스프라이트 세트(방어류=잿방어 형태 / 그 외=감성돔 가이드 형태).
     // orientation은 화면 표시 방향(renderedOrientation) — 뒤집기 연출 중간(접힌 시점)에
@@ -1592,8 +1606,9 @@ export class ButcheryPanel extends DraggablePanel {
     const headOff = this.doneStages.has('head_flip') || this.doneStages.has('flat_head_scut') || this.headOff;
     const finsOff = this.doneStages.has('finectomy');
     const gutted = this.doneStages.has('gut_scoop') || this.doneStages.has('flat_gut_scoop');
-    // 회전된 도마 — 스프라이트는 **가로 기준 geom으로 그린 뒤 캔버스 변환으로 회전**한다.
-    // (유도선 toPanelPx의 rotNorm과 수학적으로 동일한 변환이라 좌표가 정확히 일치한다.)
+    // 90° 회전 = **생선만** 회전 (도마는 가로 고정) — 스프라이트는 가로 기준 geom으로
+    // 그린 뒤 캔버스 변환으로 회전한다. (유도선 toPanelPx의 rotNorm과 수학적으로 동일한
+    // 변환이라 좌표가 정확히 일치한다.)
     const rot = this.process.rotation;
     const W0 = ButcheryPanel.FISH_W0, H0 = ButcheryPanel.FISH_H0;
     const geom = rot === 0 ? { x: X, y: Y, w: W, h: H } : { x: -W0 / 2, y: -H0 / 2, w: W0, h: H0 };
@@ -2177,15 +2192,18 @@ export class ButcheryPanel extends DraggablePanel {
     const pts = this.editablePoints();
     const stage = this.process.stage;
     if (!pts || !stage) return;
-    this.editHandles = pts.map((pt) => ({ pt, sx: this.fishX + pt.x * this.fishW, sy: this.fishY + pt.y * this.fishH }));
+    this.editHandles = pts.map((pt) => {
+      const [sx, sy] = this.toPanelPx(pt);   // 회전 변환 경유 — 90° 배치에서도 핸들이 선 위에 얹힌다
+      return { pt, sx, sy };
+    });
     this.editHandleG = this.scene.add.graphics();
     this.uiC.add(this.editHandleG);
     this.paintEditHandles();
 
     // ── 마더 HUD (좌표 로그 + 툴 버튼) — 도마 아래 상태 텍스트와 dev 항법 버튼 **사이**를 꽉 채운다 ──
     //  구 레이아웃은 고정 높이 64라 긴 좌표 로그가 박스 밖으로 흘러 버튼·하단 UI를 침범했다.
-    const bw = this.fishW;
-    const bx = this.fishX, by = this.fishY + this.fishH + 62;
+    const bw = this.boardW;
+    const bx = this.boardX, by = this.boardY + this.boardH + 84;   // 고정 도마 rect — 상태줄(466) 아래
     const bh = (PANEL_H - 36) - by;          // dev 항법 버튼(PANEL_H-30) 바로 위까지
     const box = this.scene.add.graphics();
     box.fillStyle(0x0a1420, 0.94); box.fillRoundedRect(bx, by, bw, bh, 5);
@@ -2492,8 +2510,10 @@ export class ButcheryPanel extends DraggablePanel {
     if (!this.devExpand) return;
 
     // ── 확장 목록 — 전 섹션 × 작업 (클릭 = 그 지점으로 점프, 앞 단계 완료 처리) ──
-    // 상태 텍스트(fishY+fishH+44) 아래에서 시작 — 겹치지 않게
-    const LX = 20, LY = this.fishY + this.fishH + 58, LW = 660, LH = PANEL_H - 36 - LY;
+    // 상태 텍스트(boardY+boardH+66) 아래에서 시작 — **고정 도마 rect 기준**
+    //  ⚠ 구 fishY+fishH 기준은 90° 회전 시 548까지 밀려 세로 공간이 소멸 → 열이
+    //    무한정 우측으로 흘러넘쳐 사이드바·HUD를 덮었다 (사용자 리포트 2026-08-06).
+    const LX = 20, LY = this.boardY + this.boardH + 80, LW = 660, LH = PANEL_H - 36 - LY;
     const bg = this.scene.add.graphics();
     bg.fillStyle(0x081420, 0.96); bg.fillRoundedRect(LX, LY, LW, LH, 6);
     bg.lineStyle(1.4, 0x33d0e8, 0.7); bg.strokeRoundedRect(LX, LY, LW, LH, 6);
@@ -2522,7 +2542,7 @@ export class ButcheryPanel extends DraggablePanel {
       return true;
     };
     let COLS = 3;
-    while (COLS < 6 && !fits(COLS)) COLS++;
+    while (COLS < 8 && !fits(COLS)) COLS++;   // 상한 8 — 상한 초과 렌더가 박스 밖으로 새지 않게
     const COLW = Math.floor((LW - 20) / COLS);
     let col = 0, y = colTop;
     this.sections.forEach((sec, si) => {
@@ -3105,7 +3125,7 @@ export class ButcheryPanel extends DraggablePanel {
     const colW = 216;
     const W = cols * colW + 6;
     const rows = Math.ceil(sec.tasks.length / cols);
-    const px = this.fishX + this.fishW - W + 10;
+    const px = this.boardX + this.boardW - W + 10;   // 고정 도마 rect 기준 (회전과 무관)
     const py = this.contentTop + 6;
     const H = 26 + rows * rowH + 6;
 
@@ -3420,10 +3440,10 @@ export class ButcheryPanel extends DraggablePanel {
     return (r << 16) | (gg << 8) | bl;
   }
 
-  /** 채움 진행 바 (비늘/내장 — 즉석 표시) */
+  /** 채움 진행 바 (비늘/내장 — 즉석 표시) — 고정 도마 rect 기준 */
   private updateFillBar(progress: number): void {
     this.traceG.clear();
-    const bx = this.fishX, by = this.fishY - 40, bw = this.fishW;
+    const bx = this.boardX, by = this.boardY - 40, bw = this.boardW;
     this.traceG.fillStyle(0x101820, 0.9);
     this.traceG.fillRoundedRect(bx, by, bw, 12, 4);
     this.traceG.fillStyle(0x4af2a1, 0.95);
@@ -3433,9 +3453,9 @@ export class ButcheryPanel extends DraggablePanel {
   private flashMsg?: Phaser.GameObjects.Text;
   private flash(msg: string, good: boolean): void {
     this.flashMsg?.destroy();
-    // 도마 하단(fishY+fishH+26)과 마더 HUD(+62) **사이**에 배치 — 양쪽 어디와도 겹치지 않게
-    // 조금 내리고 크기를 줄인다 (구 y+34·13px는 도마 테두리를 물었다)
-    this.flashMsg = this.scene.add.text(this.fishX + this.fishW / 2, this.fishY + this.fishH + 44, msg, {
+    // 세로 생선 하단(≈449)과 F9 편집 박스(+84) **사이**에 배치 — 양쪽 어디와도 겹치지 않게.
+    // 고정 도마 rect 기준 (+66 = 466 · 텍스트 상단 ≈455).
+    this.flashMsg = this.scene.add.text(this.boardX + this.boardW / 2, this.boardY + this.boardH + 66, msg, {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px',
       color: good ? '#7fe6b0' : '#ff9a6a', fontStyle: 'bold',
       backgroundColor: '#0a1628dd', padding: { x: 8, y: 3 },
@@ -3551,22 +3571,24 @@ export class ButcheryPanel extends DraggablePanel {
 
     // 결과 오버레이
     const c = this.scene.add.container(0, 0);
+    // 결과 오버레이 — 고정 도마 rect 기준 (생선 회전 상태와 무관)
+    const BX = this.boardX, BY = this.boardY, BW = this.boardW, BH = this.boardH;
     const bg = this.scene.add.graphics();
     bg.fillStyle(0x081422, 0.96);
-    bg.fillRoundedRect(this.fishX + 40, this.fishY - 10, this.fishW - 80, this.fishH + 20, 8);
+    bg.fillRoundedRect(BX + 40, BY - 10, BW - 80, BH + 20, 8);
     bg.lineStyle(2, 0x4af2a1, 0.95);
-    bg.strokeRoundedRect(this.fishX + 40, this.fishY - 10, this.fishW - 80, this.fishH + 20, 8);
+    bg.strokeRoundedRect(BX + 40, BY - 10, BW - 80, BH + 20, 8);
     c.add(bg);
-    const title = this.scene.add.text(this.fishX + this.fishW / 2, this.fishY + 30, `손질 완료 — ${yieldRes.grade}등급`, {
+    const title = this.scene.add.text(BX + BW / 2, BY + 30, `손질 완료 — ${yieldRes.grade}등급`, {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '22px', color: '#4af2a1', fontStyle: 'bold',
     }).setOrigin(0.5);
     const knifeName = this.knife ? this.knife.nameKo : '막칼(폴백)';
     const skinNote = bp.skinPieces > 0 ? ` · 껍질 x${bp.skinPieces}` : '';
     // 결과 본문 — 버튼(btnY-19) 위쪽 공간 안에 반드시 들어가야 한다 (AGENTS §4 겹침 금지).
-    //  구 레이아웃은 12px·lineSpacing 7 5줄(≈100px)이 버튼 상단(fishY+fishH-44)을 약 8px 침범했다.
-    const descTop = this.fishY + 68;
-    const descMaxH = (this.fishY + this.fishH - 44) - descTop - 8;
-    const desc = this.scene.add.text(this.fishX + this.fishW / 2, descTop, [
+    //  구 레이아웃은 12px·lineSpacing 7 5줄(≈100px)이 버튼 상단(boardY+boardH-44)을 약 8px 침범했다.
+    const descTop = BY + 68;
+    const descMaxH = (BY + BH - 44) - descTop - 8;
+    const desc = this.scene.add.text(BX + BW / 2, descTop, [
       `${nameKo} ${engawaSrc ? '순수 엔가와' : '순수 필렛'} x${outCount} (장당 ${perFillet.toLocaleString()}원)`
       + (flat && !single ? ' · 순수 엔가와 x4' : ''),
       `부산물: 각 단계 팝업에서 보관 선택분 지급${skinNote}`,
@@ -3578,8 +3600,8 @@ export class ButcheryPanel extends DraggablePanel {
     ].join('\n'), {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px',
       color: yieldRes.undersizedForFillet ? '#ffce9a' : '#d0e8f5', align: 'center', lineSpacing: 4,
-      // 긴 칼 이름·레벨업 문구가 결과 박스(fishW-80) 밖으로 나가지 않게 줄바꿈
-      wordWrap: { width: this.fishW - 140 },
+      // 긴 칼 이름·레벨업 문구가 결과 박스(boardW-80) 밖으로 나가지 않게 줄바꿈
+      wordWrap: { width: BW - 140 },
     }).setOrigin(0.5, 0);
     // 줄바꿈으로 줄 수가 늘어도 버튼과 겹치지 않도록 넘칠 때만 축소
     fitTextHeight(desc, descMaxH);
@@ -3587,7 +3609,7 @@ export class ButcheryPanel extends DraggablePanel {
 
     // 레벨업 배너 (강조 — 레벨업 시에만)
     if (lv.leveledUp) {
-      const banner = this.scene.add.text(this.fishX + this.fishW / 2, this.fishY + 54,
+      const banner = this.scene.add.text(BX + BW / 2, BY + 54,
         `★ 손질 스킬 레벨업! Lv.${lv.level} ★`, {
           fontFamily: '"Noto Sans KR", sans-serif', fontSize: '14px', color: '#ffd257', fontStyle: 'bold',
           backgroundColor: '#3a2e0acc', padding: { x: 10, y: 3 },
@@ -3600,7 +3622,7 @@ export class ButcheryPanel extends DraggablePanel {
     const hasNext = !!this.cbs.onNext && InventoryStore.items.some(
       (i) => i.subCategory === '어획물' && getButcheryFamily(i.speciesId ?? '') === 'finfish',
     );
-    const btnY = this.fishY + this.fishH - 25;
+    const btnY = BY + BH - 25;
     const mkResultBtn = (bx: number, bw: number, label: string, fill: number, stroke: number, color: string, onClick: () => void): void => {
       const g = this.scene.add.graphics();
       g.fillStyle(fill, 0.95); g.fillRoundedRect(bx - bw / 2, btnY - 19, bw, 38, 6);
@@ -3612,7 +3634,7 @@ export class ButcheryPanel extends DraggablePanel {
       hit.on('pointerdown', onClick);
       c.add([g, t, hit]);
     };
-    const cxm = this.fishX + this.fishW / 2;
+    const cxm = BX + BW / 2;
     if (hasNext) {
       mkResultBtn(cxm - 92, 168, '다음 생선 손질', 0x14425e, 0x33b0e0, '#aee8ff', () => this.cbs.onNext!());
       mkResultBtn(cxm + 92, 150, '확인', 0x0d4a2e, 0x4af2a1, '#4af2a1', () => this.cbs.onComplete());

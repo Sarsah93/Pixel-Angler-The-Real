@@ -358,7 +358,20 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류 (2026-08-06)
 > "지금 무엇이 어디까지 되어 있나"는 **`docs/wiki/README.md` 대시보드**와 `02-SYSTEMS/*.md`를 본다.
 > 80차 이하 원문은 아래에 **그대로 보존**(불변 원장) — 구조화 인덱스는 `03-WORKLOG/README.md` §3.1.
 
-**최근 주요 변경 (2026-08-06 80차) — 도마 90° 회전 축 신설 + 광어 포 뜨기 벌어짐 연출 + 배쪽 단면 실사 + 두족류 스펙 정합(v3.1)·에셋 15키·부리 공정** (사용자 지시 다건 — 실렌더 검증, 빌드 4/4·typecheck 0):
+**최근 변경 (2026-08-06 83차) — 90° 회전 재설계: 도마 가로 고정·생선만 회전 + 자국 방향 버그 + HUD 겹침 해소** (사용자 리포트 3건 — 실렌더 검증, 빌드 4/4·typecheck 0):
+- 80차 "도마 프레임 세로 전환" 폐기 → **board rect(가로 고정) / fish rect(회전 반영) 분리** — 오버레이·플래시·dev 목록 등 앵커 9곳 board 기준, 트레이스·F9 핸들은 `toPanelPx` 경유(직접 매핑이 자국을 가로로 눕히던 버그). `jumpTo`는 방향·회전 모두 스냅(dev 점프 조용한 입력 차단 해소).
+- 후속(사용자 승인): 세로 생선은 **도마 밖 허용·창 안 제한** — `PANEL_H` 620→656 + `ROT_SCALE` 0.55(생선 141~449, 상단 작업 패널·하단 상태줄 사이) + 도마 아래 요소 +22px 이동.
+- 상세: `docs/wiki/03-WORKLOG/2026-08-06-083-rotation-fish-only.md`
+
+**이전 변경 (2026-08-06 82차) — 광어 포 뜨기 실사 5단계 픽셀화·배선 + 파이프라인 회전/합성** (실사 투명본 5장 = 한 필렛의 연속 공정):
+- `fin_score`/`lift_a_up·dn`(합성 파생)/`lift_b`/`lift_done`/`gut_lift` 6키 굽기 + `drawFlatFish` 진행도 기반 선택 + `ROTATE_KEYS`·`ERASE_POLY` 파이프라인 신설. 구 면 기준 키 3개 삭제(상태 기준 명명).
+- 상세: `docs/wiki/03-WORKLOG/2026-08-06-082-halibut-photo-stages.md`
+
+**이전 변경 (2026-08-06 81차) — 작업 기록 체계 전환 (docs/wiki 4층 + `work-log` 스킬)**:
+- 81차부터 상세 본문은 `docs/wiki/03-WORKLOG/`, 이 절과 PLAN에는 요약+링크만. 시스템 현황은 `02-SYSTEMS/*.md`, 잔여/위험은 `04-BACKLOG.md`.
+- 상세: `docs/wiki/03-WORKLOG/2026-08-06-081-wiki-worklog-system.md`
+
+**이전 변경 (2026-08-06 80차) — 도마 90° 회전 축 신설 + 광어 포 뜨기 벌어짐 연출 + 배쪽 단면 실사 + 두족류 스펙 정합(v3.1)·에셋 15키·부리 공정** (사용자 지시 다건 — 실렌더 검증, 빌드 4/4·typecheck 0):
 - **[신규 축] 도마 90° 회전** (`BoardRotation` 0/90/180/270) — 좌우·상하 뒤집기와 **독립 축**. 넙치류 지느러미쪽 칼길·포 뜨기는 **꼬리를 아래로 세운 세로 배치**에서 꼬리→머리로 긋는다(사용자 지시 + `docs/mockups/자세한 뷰.pdf` 전 페이지가 세로 뷰).
   - core: `ButcheryStage.rotationRequired` · `process.rotation`/`rotate(±1)`/`rotationOk()` · `canAct()`에 회전 조건 편입 · `jumpTo`는 회전 자동 스냅(dev 항법이 수동 회전 대기로 멈추지 않게) · `ROTATION_LABEL`.
   - client: 사이드바 **2×2 버튼**(뒤집기 2 + 회전 2) · **R / Shift+R** 키 · 회전 시 도마가 **세로 프레임**으로 전환(`fishX/Y/W/H`를 getter화 — 기존 ~50개 사용처 무수정) · 좌표 변환 `rotNorm`/`unrotNorm`(유도선·입력·F9 편집 핸들 공통) · 스프라이트는 **캔버스 변환**(save/rotateCanvas/scaleCanvas)으로 회전해 유도선 매핑과 수학적으로 동일 · 회전 어긋남은 뒤집기 힌트보다 **우선 안내**.

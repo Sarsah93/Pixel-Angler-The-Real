@@ -31,14 +31,27 @@
 >      없어도 트리는 진행 가능(아이콘만 비고 텍스트 표기).
 > **2. 광어 가이드 잔여**:
 >    - **F9 실측** — `FLAT_GUIDE`의 `upLift`·`dnScore`·`dnLift`·`gutSweep`·`engawa`가 아직 근사값
->      (78차에서 7종은 실측 반영 완료). **78차 이후 렌더가 바뀌었으므로 새 화면 기준으로 측정**할 것.
+>      (78차에서 7종은 실측 반영 완료). **측정 화면은 83차 재설계(도마 가로 고정·생선만 회전) + 82차 실사가 최종 기준** —
+>      그 이전 화면에서 잰 값은 무효.
 >    - **등쪽 단면 실사** — 사용자 사진 2번(등쪽 위쪽 단면)의 **투명본**을 받으면 `halibut_back_open`으로
 >      굽고 배쪽(`halibut_belly_open`)과 동일하게 배선. 현재 등쪽은 파라메트릭.
 > **3. 해루질 관련 작업** — 손질 어종 확장이 끝나면 바로 착수 (NightHuntingScene/NightHuntingEngine·
 >    ShoreCreatureDatabase 기반 확장. 불요리·CookScene 실조리는 그 뒤).
 >    **퀘스트/스토리는 모든 컴포넌트 구현 후 도입** (사용자 방침).
 
-### ✅ 직전 완료 (80차, 2026-08-06) — 도마 90° 회전 + 포 뜨기 벌어짐 연출 + 배쪽 단면 실사 + 두족류 정합/에셋
+### ✅ 직전 완료 (83차, 2026-08-06) — 90° 회전 재설계: 도마 가로 고정·생선만 회전
+- 사용자 리포트 3건(도마가 세로로 서는 설계 / 세로로 그은 자국이 가로로 남음 / HUD 겹침·튀어나감) 해소 —
+  **board rect(가로 고정)/fish rect(회전 반영) 분리**, 트레이스·F9 핸들 `toPanelPx` 경유, 레이아웃 앵커 9곳 board 전환,
+  `jumpTo` 방향·회전 동시 스냅. 후속: 세로 생선 **도마 밖 허용·창 안 제한**(PANEL_H 656 + ROT_SCALE 0.55 — 생선 141~449).
+  검증: 유도선 세로 스팬·드래그 cov 통과·F9 핸들 오차 0·devExpand 박스 내·실사 도마 걸침 렌더·pageerror 0.
+- 상세: [워크로그 083](../docs/wiki/03-WORKLOG/2026-08-06-083-rotation-fish-only.md)
+
+### ✅ 이전 완료 (82차, 2026-08-06) — 광어 포 뜨기 실사 5단계 픽셀화·배선
+- 실사 투명본 5장(= 한 필렛의 연속 공정) → 6키(`fin_score`·`lift_a_up/dn` 합성·`lift_b`·`lift_done`·`gut_lift`) +
+  `drawFlatFish` 진행도 기반 선택 + 파이프라인 `ROTATE_KEYS`/`ERASE_POLY`. 세로 배치 실렌더는 83차에서 확인 완료.
+- 상세: [워크로그 082](../docs/wiki/03-WORKLOG/2026-08-06-082-halibut-photo-stages.md)
+
+### ✅ 이전 완료 (80차, 2026-08-06) — 도마 90° 회전 + 포 뜨기 벌어짐 연출 + 배쪽 단면 실사 + 두족류 정합/에셋
 - **90° 회전 = 독립 축**(`BoardRotation`): core(`rotationRequired`·`rotate()`·`rotationOk()`·canAct 편입·jumpTo 스냅) + client(2×2 버튼·R/Shift+R·세로 도마 프레임·`rotNorm`/`unrotNorm`·캔버스 변환 렌더·회전 우선 힌트). 넙치류 포 뜨기 11스테이지에 `rotationRequired: 90` + 칼길 **꼬리→머리** 반전.
 - **벌어짐 연출**: 칼질 성공 → **액션 연출 완료 후** `flatOpenMs`(650ms) 보간으로 **바닥 고정·위쪽 덩어리만** 중앙선 힌지로 열림(이산 단계 → 연속 보간).
 - **배쪽 단면 실사**: 사진 3번 투명본 → `halibut_belly_open`(128×93) → `gutsExposed` 상태에 렌더. 나머지 4장은 `butchery/reference/`로 보존.

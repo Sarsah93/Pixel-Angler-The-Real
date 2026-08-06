@@ -997,11 +997,12 @@ export class ButcheryProcess {
     this.idx = i;
     this.resetStageCounters();
     const s = this.stage;
-    if (s && (s.orientation === 'FLESH_UP' || TUNING.butchery.autoOrient)) {
+    // dev 항법·재개는 **방향·회전 모두 스냅** — 수동 정렬/회전 대기로 조용히 멈추지 않게.
+    //  (구: FLESH_UP·autoOrient만 방향 스냅 → dev 점프 후 FLIP 스테이지가 입력 차단되던 결함)
+    if (s) {
       this.orientation = s.orientation;
+      this.rotation = s.rotationRequired ?? 0;
     }
-    // dev 항법·재개는 회전도 스냅 — 수동 회전 대기로 멈추지 않게
-    if (s) this.rotation = s.rotationRequired ?? 0;
     return true;
   }
 

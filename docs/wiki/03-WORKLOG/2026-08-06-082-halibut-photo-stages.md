@@ -101,5 +101,5 @@ gutsExposed              → gut_lift        (내장 노출 · 긁기 전)
 ## 8. 후속 반영
 - [x] `02-SYSTEMS/butchery.md` §4·§5·§6
 - [x] `04-BACKLOG.md` A2
-- [ ] `AGENTS.md` §9 요약 (커밋 시)
-- [ ] `IMPLEMENTATION_PLAN.md` 직전 완료 (커밋 시)
+- [x] `AGENTS.md` §9 요약 (83차 작업에서 보충)
+- [x] `IMPLEMENTATION_PLAN.md` 직전 완료 (83차 작업에서 보충)
