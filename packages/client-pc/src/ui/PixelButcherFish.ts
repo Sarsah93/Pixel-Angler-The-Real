@@ -427,6 +427,12 @@ export interface PixelFishState {
   openOverride?: { view: 'dorsal' | 'belly'; state: number; mirrorX?: boolean };
   /** 넙치류 — **현재 표시 면**의 다섯장뜨기 진행 상태 (패널이 doneStages에서 파생) */
   flatSide?: FlatSideState;
+  /**
+   * 넙치류 엔가와 분리 슬랩 — 현재 작업 중인 반쪽 필렛의 종류 (2026-08-07 사용자 지시).
+   * upper = 내장 없는 쪽 / under = 내장쪽 (skinned_upper/under_pillet 도트화 — 각 2장씩).
+   * 미설정 = 기존 순수 필렛 슬랩 폴백 (구세이브 재장착 등 반쪽 불명 케이스).
+   */
+  flatFilletKind?: 'upper' | 'under';
 }
 
 /**
@@ -468,11 +474,16 @@ function drawFlatFish(
 
   // ── FLESH_UP(엔가와 분리 등) / 완료 = 필렛 슬랩 뷰 ──
   if (state.finished || o === 'FLESH_UP') {
-    // 광어 순살 필렛 실사 (skinned_pillet_without_engawa 픽셀화 — 2026-08-05 투입)
-    const slab = stageSpr('pure_fillet_halibut') ?? stageSpr('pure_fillet_bream') ?? sprites.fillet;
+    // 엔가와 분리 = **반쪽 필렛 실사** (skinned_upper/under_pillet 도트화 — 2026-08-07 사용자 지시:
+    //  upper = 내장 없는 쪽 / under = 내장쪽, 필렛 4장 = 각 2장씩). 사진에 엔가와가 이미 붙어 있다.
+    //  완료(finished)/반쪽 불명은 순수 필렛(엔가와 제거본) 슬랩 폴백 — 물리 상태 정합.
+    const kindSpr = state.flatFilletKind
+      ? stageSpr(`fillet_${state.flatFilletKind}_halibut`) : undefined;
+    const slab = kindSpr ?? stageSpr('pure_fillet_halibut') ?? stageSpr('pure_fillet_bream') ?? sprites.fillet;
     const dr = drawSprite(g, slab, geom, false, false, tint, 0.12);
-    // 엔가와 스트립 — 필렛 아래 가장자리의 지느러미살 (분리 대상 표시)
-    if (!state.finished && state.stageId?.startsWith('engawa_')) {
+    // 엔가와 스트립 — 필렛 아래 가장자리의 지느러미살 (분리 대상 표시).
+    //  반쪽 실사 슬랩은 사진 자체에 엔가와가 있어 파라메트릭 스트립을 겹쳐 그리지 않는다.
+    if (!state.finished && !kindSpr && state.stageId?.startsWith('engawa_')) {
       const sy = dr.y + dr.h * 0.78;
       g.fillStyle(0xd8b878, 0.95);
       g.fillRoundedRect(dr.x + dr.w * 0.06, sy, dr.w * 0.88, Math.max(6, dr.h * 0.14), 4);
@@ -516,7 +527,62 @@ function drawFlatFish(
   // ── 다섯장뜨기 오버레이 (프레임 정규화 좌표 → 화면 px) ──
   const px = (x: number): number => drawn.x + x * drawn.w;
   const py = (y: number): number => drawn.y + y * drawn.h;
-  const bodyL = state.headOff ? 0.28 : 0.36;    // 필렛 시작 = 머리 S컷 절단면 (F9 실측 정합)
+  /**
+   * 머리쪽 개방 한계 = **머리 S컷 절단면 곡선** (사용자 지시 2026-08-07 — "열려지는 부분을
+   * 조금 더 위(머리쪽)까지, 전체 포 뜨기 공통으로"). 구 구현은 세로선 x=0.28에서 잘라
+   * S컷과의 사이 쐐기 구간이 안 열렸다. headCutPath(프레임 정규화·y 단조)를 그대로 경계로
+   * 삼고, 각 컬럼의 y 스팬을 절단면 몸통 쪽(cutX(y) ≤ x)으로 클리핑한다 — 4개 포 전부 공통.
+   */
+  const hcp = state.headOff && state.headCutPath && state.headCutPath.length >= 2
+    ? state.headCutPath : null;
+  const hcpMinX = hcp ? Math.min(...hcp.map((p) => p.x)) : 0;
+  const hcpMaxX = hcp ? Math.max(...hcp.map((p) => p.x)) : 0;
+  /** S컷 절단면의 y→x (경로는 위→아래 y 단조 — FLAT_GUIDE.headScut) */
+  const cutXatY = (y: number): number => {
+    if (!hcp) return 0;
+    if (y <= hcp[0].y) return hcp[0].x;
+    for (let i = 1; i < hcp.length; i++) {
+      if (y <= hcp[i].y) {
+        const a = hcp[i - 1], b = hcp[i];
+        return a.x + ((y - a.y) / (b.y - a.y || 1)) * (b.x - a.x);
+      }
+    }
+    return hcp[hcp.length - 1].x;
+  };
+  /**
+   * 컬럼 x의 y 스팬 [a,b]를 절단면 몸통 쪽으로 자른다 — 허용 구간 중 가장 긴 런을 취하고
+   * 경계는 선형 보간으로 다듬는다. null = 이 컬럼은 전부 머리 쪽(그리지 않음).
+   */
+  const clipSpan = (x: number, a: number, b: number): [number, number] | null => {
+    if (!hcp || x >= hcpMaxX || b - a < 1e-6) return [a, b];
+    const K = 16;
+    const f = (y: number): number => cutXatY(y) - x;   // ≤ 0 = 몸통 쪽(허용)
+    const yAt = (k: number): number => a + ((b - a) * k) / K;
+    let bestLo = 0, bestHi = 0, best = -1;
+    let i = 0;
+    while (i <= K) {
+      if (f(yAt(i)) <= 0) {
+        let j = i;
+        while (j < K && f(yAt(j + 1)) <= 0) j++;
+        if (j - i > best) { best = j - i; bestLo = i; bestHi = j; }
+        i = j + 1;
+      } else i++;
+    }
+    if (best < 0) return null;
+    let lo = yAt(bestLo), hi = yAt(bestHi);
+    if (bestLo > 0) {
+      const y0 = yAt(bestLo - 1), f0 = f(y0), f1 = f(lo);
+      if (f0 > 0 && f0 !== f1) lo = y0 + (lo - y0) * (f0 / (f0 - f1));
+    }
+    if (bestHi < K) {
+      const y1 = yAt(bestHi + 1), f1 = f(y1), f0 = f(hi);
+      if (f1 > 0 && f1 !== f0) hi = hi + (y1 - hi) * (-f0 / (f1 - f0));
+    }
+    return [lo, hi];
+  };
+  // 필렛 시작 = S컷 절단면 최전방(곡선 최소 x)까지 확장 — 실제 클리핑은 clipSpan이 담당
+  const bodyL = state.headOff ? (hcp ? Math.max(0.19, hcpMinX) : 0.28) : 0.36;
+  const centerL = state.headOff ? 0.28 : 0.36;  // 중앙선 칼집 자국 시작 (F9 실측 landmark — 불변)
   const bodyR = 0.732;                          // 꼬리 칼집 위치 (F9 실측)
   /** 중앙선(척추선) — F9 실측 {0.280,0.500}→{0.732,0.488} 선형 보간 */
   const cyAt = (x: number): number => 0.500 + ((x - 0.280) / (0.732 - 0.280)) * (0.488 - 0.500);
@@ -538,7 +604,7 @@ function drawFlatFish(
   };
   const dnEdge = (x: number): number => 2 * cyAt(x) - upEdge(x);
 
-  const N = 12;
+  const N = 16;                                 // S컷 곡선 경계를 따라가도록 컬럼 증설 (12→16)
   const xs: number[] = [];
   for (let i = 0; i <= N; i++) xs.push(bodyL + ((bodyR - bodyL) * i) / N);
 
@@ -574,23 +640,41 @@ function drawFlatFish(
   const boneRegion = (upper: boolean): void => {
     const dMax = Math.max(...xs.map((x) => depthAt(upper, x)));
     if (dMax <= 0.01) return;
-    // 노출 폴리곤: 경계 → (되짚어) 힌지
+    // 노출 폴리곤: 경계 → (되짚어) 힌지 — 컬럼별로 S컷 절단면에 클리핑
+    const eTop: { x: number; y: number }[] = [];   // 경계 쪽 (클립 반영)
+    const eBot: { x: number; y: number }[] = [];   // 힌지 쪽 (클립 반영)
+    for (const x of xs) {
+      const e = upper ? upEdge(x) : dnEdge(x);
+      const h = hingeY(upper, x);
+      const sp = clipSpan(x, Math.min(e, h), Math.max(e, h));
+      if (!sp) continue;
+      // upper = 경계가 위(작은 y) / dn = 경계가 아래(큰 y)
+      eTop.push({ x, y: upper ? sp[0] : sp[1] });
+      eBot.push({ x, y: upper ? sp[1] : sp[0] });
+    }
+    if (eTop.length < 2) return;
     g.fillStyle(0xefe0d6, 0.96);
     g.beginPath();
-    g.moveTo(px(xs[0]), py(upper ? upEdge(xs[0]) : dnEdge(xs[0])));
-    for (const x of xs) g.lineTo(px(x), py(upper ? upEdge(x) : dnEdge(x)));
-    for (let i = N; i >= 0; i--) g.lineTo(px(xs[i]), py(hingeY(upper, xs[i])));
+    g.moveTo(px(eTop[0].x), py(eTop[0].y));
+    for (const p of eTop) g.lineTo(px(p.x), py(p.y));
+    for (let i = eBot.length - 1; i >= 0; i--) g.lineTo(px(eBot[i].x), py(eBot[i].y));
     g.closePath();
     g.fillPath();
     // 갈비뼈 부챗살 — 중앙선(척추)에서 경계로 뻗는 빗살의 **노출 구간만** 보인다
     g.lineStyle(1.2, 0xcaa89a, 0.9);
-    for (let i = 1; i < 11; i++) {
-      const x = bodyL + ((bodyR - bodyL) * i) / 11;
+    for (let i = 1; i < 13; i++) {
+      const x = bodyL + ((bodyR - bodyL) * i) / 13;
       const d = depthAt(upper, x);
       if (d <= 0.02) continue;
       const edge = upper ? upEdge(x) : dnEdge(x);
       const h = hingeY(upper, x);
-      g.lineBetween(px(x + 0.014), py(edge + (h - edge) * 0.06), px(x), py(h - (h - edge) * 0.04));
+      const sp = clipSpan(x, Math.min(edge, h), Math.max(edge, h));
+      if (!sp) continue;
+      const clampY = (y: number): number => Math.max(sp[0], Math.min(sp[1], y));
+      const y1 = clampY(edge + (h - edge) * 0.06);
+      const y2 = clampY(h - (h - edge) * 0.04);
+      if (Math.abs(y2 - y1) < 0.01) continue;
+      g.lineBetween(px(x + 0.014), py(y1), px(x), py(y2));
     }
     // 척추 마디 — 힌지가 중앙선에 거의 닿은 구간만 (캡처 3 — 드러난 척추뼈)
     g.lineStyle(2, 0xcfbab4, 0.95);
@@ -605,7 +689,8 @@ function drawFlatFish(
       run = [];
     };
     for (const x of xs) {
-      if (depthAt(upper, x) >= 0.9) run.push(x); else flush();
+      // 절단면 너머(머리 쪽) 컬럼은 척추 마디도 그리지 않는다
+      if (depthAt(upper, x) >= 0.9 && (!hcp || cutXatY(cyAt(x)) <= x)) run.push(x); else flush();
     }
     flush();
   };
@@ -614,25 +699,38 @@ function drawFlatFish(
     if (taken) return;                            // 필렛 회수(지급) — 플랩 소멸
     const dMax = Math.max(...xs.map((x) => depthAt(upper, x)));
     if (dMax <= 0.01) return;
-    // 플랩 = 노출 폭만큼 **힌지 기준 미러** [힌지 .. 2·힌지−경계] — 반대편 쪽으로 젖혀짐
+    // 플랩 = 노출 폭만큼 **힌지 기준 미러** [힌지 .. 2·힌지−경계] — 반대편 쪽으로 젖혀짐.
+    //  컬럼별 S컷 클리핑 — 힌지 쪽/플랩 끝 쪽 경계를 각각 잘라 배열로 모은다.
     const flapY = (x: number): number => {
       const edge = upper ? upEdge(x) : dnEdge(x);
       const h = hingeY(upper, x);
       return h + (h - edge);
     };
+    const hingePts: { x: number; y: number }[] = [];
+    const flapPts: { x: number; y: number }[] = [];
+    for (const x of xs) {
+      const h = hingeY(upper, x);
+      const fy = flapY(x);
+      const sp = clipSpan(x, Math.min(h, fy), Math.max(h, fy));
+      if (!sp) continue;
+      // upper = 플랩이 아래(큰 y)로 젖혀짐 / dn = 위(작은 y)로
+      hingePts.push({ x, y: upper ? sp[0] : sp[1] });
+      flapPts.push({ x, y: upper ? sp[1] : sp[0] });
+    }
+    if (hingePts.length < 2) return;
     g.fillStyle(0xe8a89e, 0.96);                 // 분홍 절단면 (살 — 뒤집혀 껍질은 안 보임)
     g.beginPath();
-    g.moveTo(px(xs[0]), py(hingeY(upper, xs[0])));
-    for (const x of xs) g.lineTo(px(x), py(hingeY(upper, x)));
-    for (let i = N; i >= 0; i--) g.lineTo(px(xs[i]), py(flapY(xs[i])));
+    g.moveTo(px(hingePts[0].x), py(hingePts[0].y));
+    for (const p of hingePts) g.lineTo(px(p.x), py(p.y));
+    for (let i = flapPts.length - 1; i >= 0; i--) g.lineTo(px(flapPts[i].x), py(flapPts[i].y));
     g.closePath();
     g.fillPath();
     // 플랩 가장자리(젖힌 살 끝 = 원래 경계였던 자리) — 어두운 절단면 라인
     g.lineStyle(1.6, 0xb0685e, 0.9);
     g.beginPath();
     let first = true;
-    for (const x of xs) {
-      if (first) { g.moveTo(px(x), py(flapY(x))); first = false; } else g.lineTo(px(x), py(flapY(x)));
+    for (const p of flapPts) {
+      if (first) { g.moveTo(px(p.x), py(p.y)); first = false; } else g.lineTo(px(p.x), py(p.y));
     }
     g.strokePath();
     // 살결 몇 줄 (플랩 위 — 결 방향 = 길이축과 평행)
@@ -640,10 +738,9 @@ function drawFlatFish(
     for (let k = 1; k <= 2; k++) {
       g.beginPath();
       first = true;
-      for (const x of xs) {
-        const h = hingeY(upper, x);
-        const y = h + (flapY(x) - h) * (k / 3);
-        if (first) { g.moveTo(px(x), py(y)); first = false; } else g.lineTo(px(x), py(y));
+      for (let i = 0; i < hingePts.length; i++) {
+        const y = hingePts[i].y + (flapPts[i].y - hingePts[i].y) * (k / 3);
+        if (first) { g.moveTo(px(hingePts[i].x), py(y)); first = false; } else g.lineTo(px(hingePts[i].x), py(y));
       }
       g.strokePath();
     }
@@ -653,7 +750,7 @@ function drawFlatFish(
   //  ⚠ 지느러미 경계 칼길은 **자국을 그리지 않는다** (사용자 지시 2026-08-05 — 판정만).
   if (fs.center) {
     g.lineStyle(2, 0x3a2226, 0.9);
-    g.lineBetween(px(bodyL), py(cyAt(bodyL)), px(bodyR), py(cyAt(bodyR)));
+    g.lineBetween(px(centerL), py(cyAt(centerL)), px(bodyR), py(cyAt(bodyR)));
   }
 
   // 렌더 순서: 노출 뼈(양쪽) → 플랩(양쪽 — 힌지 너머를 덮으므로 나중에)

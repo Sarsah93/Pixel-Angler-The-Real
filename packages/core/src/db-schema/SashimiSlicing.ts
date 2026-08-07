@@ -212,3 +212,17 @@ export function buildSashimiCutPaths(
   }
   return paths;
 }
+
+/**
+ * 회썰기 유도선 **실측 오버라이드** (dev F9 편집 → [복사] 스니펫 반영 — 2026-08-07 사용자 지시).
+ * 키 = `'engawa'`(엔가와 스트립 — 모드 무관 2컷) | `'{family}_{mode}'`(예: `'halibut_basic'`).
+ * 좌표는 SashimiPanel 필렛 표시 rect 정규화(0~1). **컷 수가 스펙과 다르면 무시**(자동 배치 폴백) —
+ * 컷 수·조각 수·가격 로직이 스펙 cuts에 묶여 있어 개수는 여기서 못 바꾼다.
+ */
+export const SASHIMI_CUT_OVERRIDES: Record<string, CutPoint[][]> = {
+  // dev F9 [복사] 스니펫을 여기에 붙여넣는다. 예:
+  // 'engawa': [
+  //   [{ x: 0.340, y: 0.100 }, { x: 0.335, y: 0.900 }],
+  //   [{ x: 0.670, y: 0.100 }, { x: 0.665, y: 0.900 }],
+  // ],
+};

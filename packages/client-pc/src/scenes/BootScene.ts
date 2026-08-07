@@ -167,6 +167,12 @@ export class BootScene extends Phaser.Scene {
     this.load.image('trim_head_halibut', 'trimmings/head_halibut.png');
     this.load.image('trim_spine_halibut', 'trimmings/main_spine_bone_halibut.png');
     this.load.image('trim_rib_halibut', 'trimmings/rib_bone_halibut.png');   // 예비 (현 트리 미사용)
+    //  껍질+엔가와 필렛 = **반쪽 단위 에셋** (2026-08-07 사용자 교체 — 구 _1/_2는 등·배 포 2장이
+    //  한 덩어리로 붙은 3면뜨기용 이미지라 다섯장뜨기 결과물과 어긋났다):
+    //  upper = 내장이 **없는** 쪽 반 필렛 / under = **내장쪽** 반 필렛 (사용자 확정 명명).
+    this.load.image('trim_fillet_engw_halibut_upper', 'trimmings/skinned_upper_pillet_halibut.png');
+    this.load.image('trim_fillet_engw_halibut_under', 'trimmings/skinned_under_pillet_halibut.png');
+    //  구 키 2종은 **구세이브 아이콘 호환**으로만 유지 (기지급 아이템의 iconTexture 문자열이 세이브에 남음)
     this.load.image('trim_fillet_engw_halibut_1', 'trimmings/skinned_pillet_with_ribs_halibut_1.png');
     this.load.image('trim_fillet_engw_halibut_2', 'trimmings/skinned_pillet_with_ribs_halibut_2.png');
     this.load.image('trim_fillet_skinonly_halibut', 'trimmings/skinned_pillet_without_engawa_halibut.png');

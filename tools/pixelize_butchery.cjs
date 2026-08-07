@@ -336,6 +336,9 @@ const MIRROR_KEYS = new Set([
   'pure_fillet_halibut',
   'halibut_fin_score',   // 원본이 머리 오른쪽 — 온마리 규칙(머리 왼쪽)으로 반전
   'halibut_lift_done',   // cw 회전 후 머리가 오른쪽이 되므로 함께 반전
+  // 반쪽 필렛 2종(엔가와 분리 슬랩) — 원본 머리 왼쪽 → **필렛 규칙(꼬리 왼쪽·머리 오른쪽)**으로 반전
+  'fillet_upper_halibut',
+  'fillet_under_halibut',
 ]);
 /**
  * 키별 배경 근접 임계 (기본 46). **배경이 흰색이고 피사체도 흰색**인 사진은 기본값이

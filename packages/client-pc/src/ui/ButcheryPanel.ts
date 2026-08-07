@@ -799,7 +799,7 @@ export class ButcheryPanel extends DraggablePanel {
     };
     const runCompletion = (): void => {
       // **작업 단위 부산물**(머리·내장처럼 그 작업만으로 분리) — 팝업 후 진행
-      if (task.yields?.length) this.showByproductPopup(task.yields, task.label, false, after);
+      if (task.yields?.length) this.showByproductPopup(task.yields, task.label, false, after, task.id);
       else after();
     };
     // **연출/뒤집기 재생 중이면 완료 처리(전환·팝업·작업 선택)를 연출 완료 후로 미룬다** —
@@ -854,7 +854,7 @@ export class ButcheryPanel extends DraggablePanel {
   }
 
   /** yields 종류 목록 → 팝업/레저 행 목록 */
-  private buildYieldRows(yields: ButcherySectionYield[]): { key: string; tpl: Omit<InvItem, 'slot' | 'qty'>; qty: number }[] {
+  private buildYieldRows(yields: ButcherySectionYield[], taskId?: string): { key: string; tpl: Omit<InvItem, 'slot' | 'qty'>; qty: number }[] {
     const speciesId = this.process.profile.speciesId;
     const nameKo = this.speciesName();
     const fam = this.trimFamily(speciesId);
@@ -922,9 +922,14 @@ export class ButcheryPanel extends DraggablePanel {
           break;
         // ── 넙치류 다섯장뜨기 전용 (2026-08-05) ──
         case 'flatFillet': {
-          // 포 뜨기 작업마다 1장 — 껍질+엔가와 붙은 필렛 (배쪽 = 에셋 _1 / 등쪽 = _2)
+          // 포 뜨기 작업마다 1장 — 껍질+엔가와 붙은 **반쪽 필렛** (2026-08-07 사용자 교체):
+          //  에셋은 내장 유무로 나뉜다 — upper = 내장 없는 쪽 / under = 내장쪽 (사용자 확정 명명).
+          //  내장쪽 반 = 배쪽(FLIP) **위** / 등쪽(BASE) **아래** (082차 — 면마다 반대) →
+          //  작업 id로 판정: t_flb_upper(배·위) / t_flk_lower(등·아래) = 내장쪽.
+          //  구 _1/_2(등·배 포 2장이 붙은 3면뜨기용 합체 이미지)는 구세이브 아이콘 호환으로만 잔존.
           const n = this.grantedLog.filter((g) => g.id.startsWith('inv_filletengw_')).length + 1;
-          const tex = this.section.id === 'sec_flat_back' ? 'trim_fillet_engw_halibut_2' : 'trim_fillet_engw_halibut_1';
+          const gutSide = taskId === 't_flb_upper' || taskId === 't_flk_lower';
+          const tex = gutSide ? 'trim_fillet_engw_halibut_under' : 'trim_fillet_engw_halibut_upper';
           rows.push({
             key: y, qty: 1,
             tpl: {
@@ -1048,10 +1053,11 @@ export class ButcheryPanel extends DraggablePanel {
    */
   private showByproductPopup(
     yields: ButcherySectionYield[], label: string, exitBtn: boolean, onDone: () => void,
+    taskId?: string,
   ): void {
     this.closeByproductPopup();
     this.stopGuideAnim();
-    const rows = this.buildYieldRows(yields);
+    const rows = this.buildYieldRows(yields, taskId);
     if (rows.length === 0) { onDone(); return; }
     this.byproductDone = onDone;
     const keep = rows.map(() => true);
@@ -1836,8 +1842,30 @@ export class ButcheryPanel extends DraggablePanel {
       // 넙치류 — 현재 표시 면의 다섯장뜨기 진행 상태
       flatSide: this.process.profile.bodyShape === 'flat'
         ? this.buildFlatSideState() : undefined,
+      // 엔가와 분리 슬랩 — 현재 필렛의 반쪽 종류 (upper=내장 없음 / under=내장쪽)
+      flatFilletKind: this.flatFilletKind(),
     }, sprites);
     if (rot !== 0) g.restore();
+  }
+
+  /**
+   * 넙치류 엔가와 분리 — 현재 작업 중인 반쪽 필렛 종류 (2026-08-07 사용자 지시).
+   * 통짜 세션 = 지급 순서 매핑(배·위(1)·등·아래(4) = 내장쪽 under / 2·3 = upper).
+   * 재장착(1장) 세션 = 원물 아이콘 텍스처가 반쪽을 안다 (85차 upper/under 아이콘).
+   * 구세이브 합체 아이콘(_1/_2) = 반쪽 불명 → undefined (순수 필렛 슬랩 폴백).
+   */
+  private flatFilletKind(): 'upper' | 'under' | undefined {
+    if (this.process.profile.bodyShape !== 'flat') return undefined;
+    const sid = this.process.stage?.id;
+    if (!sid?.startsWith('engawa_')) return undefined;
+    if (this.resumed && this.source.id.startsWith('inv_filletengw_')) {
+      const t = this.source.iconTexture ?? '';
+      if (t.endsWith('_under')) return 'under';
+      if (t.endsWith('_upper')) return 'upper';
+      return undefined;
+    }
+    const n = Number(sid.slice('engawa_'.length));
+    return n === 1 || n === 4 ? 'under' : 'upper';
   }
 
   /**
@@ -2587,11 +2615,11 @@ export class ButcheryPanel extends DraggablePanel {
   }
 
   /** 부산물 yields를 팝업 없이 **즉시 지급** (dev 항법 전용) */
-  private accrueYields(yields: ButcherySectionYield[] | undefined): void {
+  private accrueYields(yields: ButcherySectionYield[] | undefined, taskId?: string): void {
     if (!yields?.length) return;
     if (yields.includes('skinFillet')) this.removeGrantedRibFillets();
     if (yields.includes('flatSkinFillet')) this.removeGrantedFlatFillets();
-    this.grantRows(this.buildYieldRows(yields));
+    this.grantRows(this.buildYieldRows(yields, taskId));
   }
 
   /**
@@ -2607,7 +2635,7 @@ export class ButcheryPanel extends DraggablePanel {
       if (this.taskDone(t.id)) return;
       t.stageIds.forEach((id) => this.doneStages.add(id));
       this.doneTasks.set(t.id, 100);
-      this.accrueYields(t.yields);            // 작업 단위 부산물 (머리·내장)
+      this.accrueYields(t.yields, t.id);      // 작업 단위 부산물 (머리·내장)
     });
     this.accrueYields(sec.yields);            // 섹션 단위 부산물 (필렛·척추뼈 등)
     if (sec.id === 'sec_rib') this.morphPendingFilletsToSkinOnly();
@@ -2638,7 +2666,7 @@ export class ButcheryPanel extends DraggablePanel {
         if (!(i < secIdx || (i === secIdx && j < tIdx))) return;
         t.stageIds.forEach((id) => this.doneStages.add(id));
         this.doneTasks.set(t.id, 100);
-        this.accrueYields(t.yields);
+        this.accrueYields(t.yields, t.id);
       });
       if (whole) {
         this.accrueYields(sec.yields);

@@ -16,6 +16,7 @@ import Phaser from 'phaser';
 import {
   evaluateCut, CutPoint, SASHIMI_MODES, SashimiMode, SashimiModeSpec, buildSashimiCutPaths,
   sashimiGradeFromQuality, getBestKnife, FISH_DATABASE, ENGAWA_CUTS, ENGAWA_PIECES,
+  SASHIMI_CUT_OVERRIDES,
 } from '@tra/core';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { InventoryStore, InvItem } from '../store/InventoryStore.js';
@@ -65,6 +66,13 @@ export class SashimiPanel extends DraggablePanel {
   private tracePoints: CutPoint[] = [];
   /** 완료 시 지급된 회 조각 아이템 id — onComplete로 전달 (도마 스테이징) */
   private grantedPieceId?: string;
+
+  // ── dev(F9) 유도선 편집 — 엔가와/순수 필렛 전 레이아웃 공통 (2026-08-07 사용자 지시) ──
+  private editMode = false;
+  private editDrag?: { path: number; pt: number };
+  private editG?: Phaser.GameObjects.Graphics;
+  private editC?: Phaser.GameObjects.Container;
+  private f9Handler?: () => void;
 
   private filletImg!: Phaser.GameObjects.Image;
   private readonly pieces: Phaser.GameObjects.Image[] = [];
@@ -163,7 +171,15 @@ export class SashimiPanel extends DraggablePanel {
     for (let u = 1; u >= 0; u -= 0.01) {
       if (meatH(u) >= minMeat) { u1 = u; break; }
     }
-    this.cutPaths = buildSashimiCutPaths(this.spec, topAt, botAt, u0 + 0.01, u1 - 0.01, this.fr.w / this.fr.h);
+    // 실측 오버라이드(dev F9 → SASHIMI_CUT_OVERRIDES) 우선 — 컷 수가 스펙과 다르면 자동 배치 폴백
+    const built = buildSashimiCutPaths(this.spec, topAt, botAt, u0 + 0.01, u1 - 0.01, this.fr.w / this.fr.h);
+    const ov = SASHIMI_CUT_OVERRIDES[this.overrideKey()];
+    if (ov && ov.length !== this.spec.cuts) {
+      console.warn(`[Sashimi] 오버라이드 '${this.overrideKey()}' 컷 수 불일치 (${ov.length} ≠ ${this.spec.cuts}) — 자동 배치 사용`);
+    }
+    this.cutPaths = ov && ov.length === this.spec.cuts
+      ? ov.map((path) => path.map((pt) => ({ ...pt })))    // 사본 — 편집이 core 상수를 오염하지 않게
+      : built;
     // 컷 순서 — 아랫점 x 내림차순(머리쪽 오른쪽부터)
     this.cutOrder = this.cutPaths.map((_, i) => i)
       .sort((a, b) => this.cutPaths[b][1].x - this.cutPaths[a][1].x);
@@ -178,8 +194,18 @@ export class SashimiPanel extends DraggablePanel {
     scene.input.on('pointerup', this.sashimiUpHandler);
     scene.input.on('pointerdown', this.sashimiDownHandler);
 
+    if (import.meta.env.DEV) {
+      this.f9Handler = (): void => this.toggleEdit();
+      scene.input.keyboard?.on('keydown-F9', this.f9Handler);
+    }
+
     this.refreshGuide();
     applyScreenFixed(this);
+  }
+
+  /** 오버라이드 키 — 레이아웃 결정 인자(엔가와 여부 / 어종군×모드) 단위 */
+  private overrideKey(): string {
+    return this.engawa ? 'engawa' : `${this.fam}_${this.mode}`;
   }
 
   /** ESC 위임 진입점 (UtilizationPanel.onEscIntercept → 여기) */
@@ -252,7 +278,79 @@ export class SashimiPanel extends DraggablePanel {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#5a6a78',
     });
     this.uiC.add([head, sub, this.progressTxt, escHint]);
+
+    // dev: 유도선 편집 토글 버튼 (F9 동일 — 프로덕션 미렌더)
+    if (import.meta.env.DEV) {
+      const devBtn = this.scene.add.text(70, PANEL_H - 48, '[dev: 유도선 편집·F9]', {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#66e2ff',
+      }).setInteractive({ useHandCursor: true });
+      devBtn.on('pointerdown', () => this.toggleEdit());
+      this.uiC.add(devBtn);
+    }
     this.refreshProgress();
+  }
+
+  // ═══════════════ dev(F9) 유도선 편집 ═══════════════
+
+  /**
+   * 유도선 편집 모드 — 각 컷의 위/아래 끝점을 드래그로 조정하고 [복사]로
+   * `SASHIMI_CUT_OVERRIDES` 스니펫을 출력한다 (엔가와·순수 필렛·고급 전 레이아웃 공통).
+   * F9 편집은 런타임 전용 — core 반영(붙여넣기 + 리빌드) 없이는 휘발된다.
+   */
+  private toggleEdit(): void {
+    if (!import.meta.env.DEV || this.done) return;
+    this.editMode = !this.editMode;
+    this.editDrag = undefined;
+    if (this.editMode && !this.editG) {
+      this.editG = this.scene.add.graphics();
+      this.add(this.editG);
+      this.editC = this.scene.add.container(0, 0);
+      const label = this.scene.add.text(70, PANEL_H - 76, `편집 중: '${this.overrideKey()}' — 끝점 드래그 · 썰기 입력 잠금`, {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#ffd257',
+      });
+      const copyBg = this.scene.add.rectangle(320, PANEL_H - 42, 64, 22, 0x1a3a52)
+        .setOrigin(0, 0.5).setStrokeStyle(1, 0x66e2ff).setInteractive({ useHandCursor: true });
+      const copyTx = this.scene.add.text(352, PANEL_H - 42, '복사', {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#cfe9f7',
+      }).setOrigin(0.5);
+      copyBg.on('pointerdown', () => this.copyEditSnippet());
+      this.editC.add([label, copyBg, copyTx]);
+      this.add(this.editC);
+    }
+    this.editG?.setVisible(this.editMode);
+    this.editC?.setVisible(this.editMode);
+    if (this.editMode) this.drawEditHandles();
+    else this.editG?.clear();
+    this.refreshGuide();
+  }
+
+  /** 편집 핸들 — 컷별 위(하늘)/아래(주황) 끝점 링. 완료 컷은 흐리게 */
+  private drawEditHandles(): void {
+    const g = this.editG;
+    if (!g) return;
+    g.clear();
+    const doneSet = new Set(this.cutOrder.slice(0, this.cutIdx));
+    this.cutPaths.forEach((path, i) => {
+      const dim = doneSet.has(i);
+      path.forEach((pt, j) => {
+        const p = this.toPx(pt);
+        g.lineStyle(2, j === 0 ? 0x66e2ff : 0xffa257, dim ? 0.35 : 0.95);
+        g.strokeCircle(p.x, p.y, 7);
+        g.fillStyle(j === 0 ? 0x66e2ff : 0xffa257, dim ? 0.2 : 0.6);
+        g.fillCircle(p.x, p.y, 2.5);
+      });
+    });
+  }
+
+  /** 현재 유도선 전체를 SASHIMI_CUT_OVERRIDES 스니펫으로 복사 (클립보드 + 콘솔) */
+  private copyEditSnippet(): void {
+    const body = this.cutPaths.map((path) =>
+      `  [${path.map((q) => `{ x: ${q.x.toFixed(3)}, y: ${q.y.toFixed(3)} }`).join(', ')}],`).join('\n');
+    const snip = `'${this.overrideKey()}': [\n${body}\n],`;
+    // eslint-disable-next-line no-console
+    console.log('[SashimiPanel F9] SASHIMI_CUT_OVERRIDES 스니펫:\n' + snip);
+    void navigator.clipboard?.writeText(snip).catch(() => { /* http 컨텍스트 등 — 콘솔로 대체 */ });
+    this.flashToast('스니펫 복사됨 — core SASHIMI_CUT_OVERRIDES에 붙여넣고 리빌드');
   }
 
   // ═══════════════ 유도선 렌더 ═══════════════
@@ -271,8 +369,8 @@ export class SashimiPanel extends DraggablePanel {
       const [top, bot] = this.cutPaths[i];
       const a = this.toPx(top), b = this.toPx(bot);
       // 완료 컷은 표시하지 않는다 — 조각이 오른쪽으로 이동해 원 좌표 자국은 잔상이 된다
-      //  (분리·팬아웃 자체가 완료 피드백)
-      if (doneSet.has(i)) continue;
+      //  (분리·팬아웃 자체가 완료 피드백). dev 편집 중엔 전 선을 보여준다.
+      if (!this.editMode && doneSet.has(i)) continue;
       const cur = i === curPath;
       // 점선 (현재 = 노랑 강조 / 대기 = 흐림)
       g.lineStyle(cur ? 2.5 : 1.2, cur ? 0xffe28a : 0x7a8a98, cur ? 0.98 : 0.4);
@@ -319,6 +417,19 @@ export class SashimiPanel extends DraggablePanel {
 
   private onDown(p: Phaser.Input.Pointer): void {
     if (this.done || this.tracing) return;
+    // dev 편집 — 핸들 잡기 (썰기 입력은 잠금)
+    if (this.editMode) {
+      const lx = p.x - this.x, ly = p.y - this.y;
+      let best: { path: number; pt: number } | undefined;
+      let bd = 14;
+      this.cutPaths.forEach((path, i) => path.forEach((pt, j) => {
+        const q = this.toPx(pt);
+        const d = Math.hypot(q.x - lx, q.y - ly);
+        if (d < bd) { bd = d; best = { path: i, pt: j }; }
+      }));
+      this.editDrag = best;
+      return;
+    }
     const n = this.toNorm(p);
     if (n.x < -0.08 || n.x > 1.08 || n.y < -0.15 || n.y > 1.15) return;   // 필렛 영역 근처만
     this.tracing = true;
@@ -326,6 +437,17 @@ export class SashimiPanel extends DraggablePanel {
   }
 
   private onMove(p: Phaser.Input.Pointer): void {
+    // dev 편집 — 잡은 끝점을 끌어 이동 (도마 밖 소폭 허용)
+    if (this.editMode) {
+      if (!this.editDrag) return;
+      const n = this.toNorm(p);
+      const pt = this.cutPaths[this.editDrag.path][this.editDrag.pt];
+      pt.x = Math.max(-0.1, Math.min(1.1, n.x));
+      pt.y = Math.max(-0.1, Math.min(1.1, n.y));
+      this.refreshGuide();
+      this.drawEditHandles();
+      return;
+    }
     if (!this.tracing) return;
     const n = this.toNorm(p);
     const last = this.tracePoints[this.tracePoints.length - 1];
@@ -342,6 +464,7 @@ export class SashimiPanel extends DraggablePanel {
   }
 
   private onUp(_p: Phaser.Input.Pointer): void {
+    if (this.editMode) { this.editDrag = undefined; return; }
     if (!this.tracing) return;
     this.tracing = false;
     this.traceG.clear();
@@ -512,6 +635,7 @@ export class SashimiPanel extends DraggablePanel {
     this.scene?.input?.off('pointermove', this.sashimiMoveHandler);
     this.scene?.input?.off('pointerup', this.sashimiUpHandler);
     this.scene?.input?.off('pointerdown', this.sashimiDownHandler);
+    if (this.f9Handler) this.scene?.input?.keyboard?.off('keydown-F9', this.f9Handler);
     super.destroy(fromScene);
   }
 }

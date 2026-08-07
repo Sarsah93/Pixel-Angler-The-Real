@@ -155,7 +155,7 @@ export { KNIFE_SPECS, getBestKnife, isKnifeItem } from './db-schema/KnifeDatabas
 export {
   SASHIMI_MODES, SASHIMI_SIZE_BOUNDS, sashimiSizeTier, sashimiGradeFromQuality, buildSashimiCutPaths,
   SASHIMI_PLATE_SPECS, MIXED_SASHIMI_PRICING, SINGLE_SASHIMI_PRICING, singleSashimiPlatePrice,
-  ENGAWA_CUTS, ENGAWA_PIECES,
+  ENGAWA_CUTS, ENGAWA_PIECES, SASHIMI_CUT_OVERRIDES,
 } from './db-schema/SashimiSlicing.js';
 export type { SashimiMode, SashimiModeSpec, SashimiSizeTier } from './db-schema/SashimiSlicing.js';
 export type { SashimiGradeInput } from './simulation/ButcheryProcess.js';

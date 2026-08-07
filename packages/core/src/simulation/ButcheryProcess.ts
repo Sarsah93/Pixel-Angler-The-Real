@@ -509,17 +509,19 @@ function buildFlatStages(profile: ButcheryProfile, opts?: ButcheryStageOptions):
   }
 
   // ── 박피 — 원형어와 동일 절차 (필렛 1장 처리, id 공유 = 클라 전용 렌더 재사용) ──
+  //  좌표는 **광어 필렛 실측** (사용자 F9 2026-08-07) — 원형어 블록과 별도 유지.
   stages.push({
     id: 'peel_grip', label: '박피 ① 꼬리 손잡이 만들기', orientation: 'FLESH_UP', primitive: 'guided_cut',
     guide: '꼬리(왼쪽) 살코기에 작은 칼집을 넣어 잡을 손잡이를 만드세요',
     cut: cut('peel_grip', 'FLESH_UP',
-      [{ x: 0.106, y: 0.350 }, { x: 0.065, y: 0.562 }], { tolerance: 0.1 }),
+      [{ x: 0.096, y: 0.539 }, { x: 0.093, y: 0.575 }, { x: 0.091, y: 0.612 }, { x: 0.091, y: 0.648 },
+        { x: 0.089, y: 0.685 }, { x: 0.089, y: 0.721 }, { x: 0.093, y: 0.757 }], { tolerance: 0.1 }),
   });
   stages.push({
     id: 'peel_insert', label: '박피 ② 껍질과 살 사이 칼 넣기', orientation: 'FLESH_UP', primitive: 'guided_cut',
     guide: '측면에서 껍질과 살코기 경계면을 따라 칼을 넣으세요',
     cut: cut('peel_insert', 'FLESH_UP',
-      [{ x: 0.209, y: 0.779 }, { x: 0.281, y: 0.783 }], { tolerance: 0.09 }),
+      [{ x: 0.245, y: 0.715 }, { x: 0.288, y: 0.783 }], { tolerance: 0.09 }),
   });
   stages.push({
     id: 'peel_pull', label: '박피 ③ 껍질 잡고 분리', orientation: 'FLESH_UP', primitive: 'drag_fill',
