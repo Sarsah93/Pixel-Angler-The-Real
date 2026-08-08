@@ -76,6 +76,12 @@ export class SashimiPanel extends DraggablePanel {
 
   private filletImg!: Phaser.GameObjects.Image;
   private readonly pieces: Phaser.GameObjects.Image[] = [];
+  /** 베이킹 텍스처 키 일련번호 — 패널을 여러 번 열어도 키가 겹치지 않게 */
+  private static bakeSeq = 0;
+  /** 대각 절단면 베이킹으로 만든 캔버스 텍스처 키 — destroy에서 전부 해제 (87차) */
+  private readonly bakedKeys: string[] = [];
+  /** 남은 몸통 전용 캔버스 키 (컷마다 왼쪽 영역만 다시 굽는다) */
+  private bodyBakeKey?: string;
   private boardG!: Phaser.GameObjects.Graphics;
   private guideG!: Phaser.GameObjects.Graphics;
   private traceG!: Phaser.GameObjects.Graphics;
@@ -507,28 +513,110 @@ export class SashimiPanel extends DraggablePanel {
       onComplete: () => { f.clear(); f.setAlpha(1); },
     });
 
-    // 분리 조각 — 이번 컷(왼쪽 경계)과 직전 컷(오른쪽 경계) 사이 세로 크롭
-    const texKey = this.texKey;
-    const tex = this.scene.textures.get(texKey).getSourceImage();
+    // ── 분리 조각 — 이번 컷(왼쪽 경계)과 직전 컷(오른쪽 경계) 사이 **대각 영역** ──
+    //  구 구현은 setCrop(직사각)이라 컷이 기울어도 절단면이 수직으로 남았다 (사용자 리포트 2026-08-07).
+    const tex = this.scene.textures.get(this.texKey).getSourceImage() as { width: number; height: number };
     const texW = tex.width, texH = tex.height;
-    const leftU = this.cutPaths[pathIdx][1].x;
-    const rightU = this.cutIdx === 0
-      ? 1
-      : this.cutPaths[this.cutOrder[this.cutIdx - 1]][1].x;
-    const cropX = Math.floor(leftU * texW);
-    const cropW = Math.max(2, Math.ceil((rightU - leftU) * texW));
-    const piece = this.scene.add.image(this.filletImg.x, this.filletImg.y, texKey);
-    piece.setDisplaySize(this.fr.w, this.fr.h);
-    piece.setCrop(cropX, 0, cropW, texH);
-    this.addAt(piece, this.getIndex(this.guideG));   // 유도선 아래 레이어
-    this.pieces.push(piece);
-    // 남은 몸통 = 이번 컷 왼쪽만 표시
-    this.filletImg.setCrop(0, 0, cropX, texH);
-    // 새 조각 + 기존 조각 오른쪽으로 벌어짐 (사시미 눕는 팬 아웃)
-    this.scene.tweens.add({ targets: piece, x: piece.x + 8, angle: 2.5, duration: 240, ease: 'Cubic.easeOut' });
+    const left = this.cutLineTexX(pathIdx, texW);
+    const right = this.cutIdx === 0
+      ? { top: texW, bot: texW }                                   // 첫 조각의 오른쪽 = 텍스처 끝
+      : this.cutLineTexX(this.cutOrder[this.cutIdx - 1], texW);
+
+    const baked = this.bakeRegion(
+      `sashimi_piece_${SashimiPanel.bakeSeq++}`,
+      [[left.top, 0], [right.top, 0], [right.bot, texH], [left.bot, texH]],
+      texW, texH,
+    );
+    if (baked) {
+      const { w: frW, h: frH, x: frX, y: frY } = this.fr;
+      const piece = this.scene.add.image(
+        frX + ((baked.minX + baked.maxX) / 2 / texW) * frW, frY + frH / 2, baked.key,
+      );
+      piece.setDisplaySize(((baked.maxX - baked.minX) / texW) * frW, frH);
+      this.addAt(piece, this.getIndex(this.guideG));   // 유도선 아래 레이어
+      this.pieces.push(piece);
+      // 새 조각이 오른쪽으로 눕는다 (사시미 팬 아웃)
+      this.scene.tweens.add({
+        targets: piece, x: piece.x + 8, angle: 2.5, duration: 240, ease: 'Cubic.easeOut',
+      });
+    }
+    // 남은 몸통 = 이번 컷 **왼쪽 대각 영역**만 (전체 크기 캔버스로 다시 구워 위치·크기 불변)
+    this.bakeBody([[0, 0], [left.top, 0], [left.bot, texH], [0, texH]], texW, texH);
+    // 기존 조각도 조금씩 더 벌어짐
     for (let i = 0; i < this.pieces.length - 1; i++) {
       const pc = this.pieces[i];
       this.scene.tweens.add({ targets: pc, x: pc.x + 5, duration: 240, ease: 'Cubic.easeOut' });
+    }
+  }
+
+  /**
+   * 컷 경로를 텍스처 상·하단(y=0 / y=texH)까지 연장한 x (텍스처 px).
+   * 컷은 2점(윗점·아랫점)이지만 살 밖에서 시작·끝나므로 경계까지 외삽해야 영역이 닫힌다.
+   * 수평에 가까운 퇴화 경로는 아랫점 기준 수직선으로 폴백.
+   */
+  private cutLineTexX(pathIdx: number, texW: number): { top: number; bot: number } {
+    const path = this.cutPaths[pathIdx];
+    const a = path[0], b = path[path.length - 1];
+    const clamp = (v: number): number => Math.max(0, Math.min(texW, v));
+    if (Math.abs(b.y - a.y) < 1e-4) return { top: clamp(b.x * texW), bot: clamp(b.x * texW) };
+    const slope = (b.x - a.x) / (b.y - a.y);                 // dx/dy (정규화)
+    return {
+      top: clamp((a.x + slope * (0 - a.y)) * texW),
+      bot: clamp((a.x + slope * (1 - a.y)) * texW),
+    };
+  }
+
+  /**
+   * 다각형 영역만 남긴 캔버스 텍스처를 굽는다 (bbox로 잘라 최소 크기).
+   * `destination-in` 합성 — 50차 `bakeTintedTrim`과 같은 패턴. 마스크를 쓰지 않는 이유는
+   * GeometryMask가 **월드 좌표**라 패널 드래그·조각 트윈마다 재계산이 필요하기 때문.
+   */
+  private bakeRegion(key: string, poly: [number, number][], texW: number, texH: number):
+  { key: string; minX: number; maxX: number } | null {
+    const xs = poly.map((p) => p[0]);
+    const minX = Math.max(0, Math.floor(Math.min(...xs)));
+    const maxX = Math.min(texW, Math.ceil(Math.max(...xs)));
+    const w = maxX - minX;
+    if (w < 1) return null;
+    const cv = this.scene.textures.createCanvas(key, w, texH);
+    if (!cv) return null;
+    const ctx = cv.getContext();
+    ctx.clearRect(0, 0, w, texH);
+    ctx.drawImage(this.scene.textures.get(this.texKey).getSourceImage() as CanvasImageSource, -minX, 0);
+    ctx.globalCompositeOperation = 'destination-in';
+    ctx.beginPath();
+    poly.forEach(([px, py], i) => (i ? ctx.lineTo(px - minX, py) : ctx.moveTo(px - minX, py)));
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalCompositeOperation = 'source-over';
+    cv.refresh();
+    this.bakedKeys.push(key);
+    return { key, minX, maxX };
+  }
+
+  /** 남은 몸통 재굽기 — 전체 크기 캔버스라 filletImg의 위치·표시 크기는 그대로 유지된다 */
+  private bakeBody(poly: [number, number][], texW: number, texH: number): void {
+    if (!this.bodyBakeKey) {
+      const key = `sashimi_body_${SashimiPanel.bakeSeq++}`;
+      if (!this.scene.textures.createCanvas(key, texW, texH)) return;
+      this.bodyBakeKey = key;
+      this.bakedKeys.push(key);
+    }
+    const cv = this.scene.textures.get(this.bodyBakeKey) as Phaser.Textures.CanvasTexture;
+    const ctx = cv.getContext();
+    ctx.clearRect(0, 0, texW, texH);
+    ctx.drawImage(this.scene.textures.get(this.texKey).getSourceImage() as CanvasImageSource, 0, 0);
+    ctx.globalCompositeOperation = 'destination-in';
+    ctx.beginPath();
+    poly.forEach(([px, py], i) => (i ? ctx.lineTo(px, py) : ctx.moveTo(px, py)));
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalCompositeOperation = 'source-over';
+    cv.refresh();
+    if (this.filletImg.texture.key !== this.bodyBakeKey) {
+      const { w, h } = this.fr;
+      this.filletImg.setTexture(this.bodyBakeKey);
+      this.filletImg.setDisplaySize(w, h);
     }
   }
 
@@ -636,6 +724,9 @@ export class SashimiPanel extends DraggablePanel {
     this.scene?.input?.off('pointerup', this.sashimiUpHandler);
     this.scene?.input?.off('pointerdown', this.sashimiDownHandler);
     if (this.f9Handler) this.scene?.input?.keyboard?.off('keydown-F9', this.f9Handler);
+    // 대각 절단면 캔버스 텍스처 해제 — 안 지우면 세션마다 누적된다 (조각당 1장 + 몸통 1장)
+    this.bakedKeys.forEach((k) => this.scene?.textures?.remove(k));
+    this.bakedKeys.length = 0;
     super.destroy(fromScene);
   }
 }

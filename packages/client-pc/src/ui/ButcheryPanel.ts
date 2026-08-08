@@ -423,8 +423,6 @@ export class ButcheryPanel extends DraggablePanel {
   //  칼 몸체·손잡이 경로(빨간·검정 점선)는 접점 + 진행각 + 바깥 기울기에서 자동 파생.
   // ═══════════════════════════════════════════════════
   private static readonly FLAT_KNIFE_RE = /^flat_(belly|back)_(up|dn)_(score|sep1|sep2)$/;
-  /** 칼끝이 살에 파묻히는 비율 (텍스처 오른쪽 끝부터) — 그 경계가 드래그 접점이 된다 */
-  private static readonly KNIFE_BURY_FRAC = 0.30;
   /** 포 뜨기 단계별 벌어짐 깊이 — 힌지가 지느러미 경계→중앙선으로 이동한 비율 */
   private static readonly FLAT_DEPTH = { score: 0.18, sep1: 0.55, sep2: 1 } as const;
 
@@ -464,15 +462,17 @@ export class ButcheryPanel extends DraggablePanel {
     };
     if (!this.knifeImg) {
       const img = this.scene.add.image(0, 0, 'butchery_knife');
-      const tex = img.width;   // 텍스처 원폭 (74)
-      const visW = Math.round(tex * (1 - ButcheryPanel.KNIFE_BURY_FRAC));
-      img.setCrop(0, 0, visW, img.height);            // 칼끝(오른쪽) 파묻힘 — 비표시
-      img.setOrigin(visW / tex, 0.5);                 // 원점 = 파묻힘 경계 = 드래그 접점
       this.addAt(img, this.getIndex(this.uiC));       // 생선 위 · UI 아래
       this.knifeImg = img;
       this.applyFix();
     }
-    this.knifeImg.setVisible(false).setAlpha(1);
+    // 파묻힘 비율은 F8 라이브 튜닝 대상 — 세션마다 크롭·원점 재계산 (setCrop은 width를 바꾸지 않음)
+    const knife = this.knifeImg;
+    const tex = knife.width;                          // 텍스처 원폭 (74)
+    const visW = Math.round(tex * (1 - TUNING.butchery.knifeBuryFrac));
+    knife.setCrop(0, 0, visW, knife.height);          // 칼끝(오른쪽) 파묻힘 — 비표시
+    knife.setOrigin(visW / tex, 0.5);                 // 원점 = 파묻힘 경계 = 드래그 접점
+    knife.setVisible(false).setAlpha(1);
     this.knifeEvent = this.scene.time.addEvent({ delay: 33, loop: true, callback: () => this.tickKnife() });
   }
 

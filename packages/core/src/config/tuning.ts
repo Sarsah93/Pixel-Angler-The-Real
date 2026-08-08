@@ -313,6 +313,12 @@ export interface TuningConfig {
     knifeLenPx: number;
     /** 칼 진행각 대비 바깥쪽 기울기 (deg) — 손잡이가 생선 바깥으로 눕는 각 */
     knifeTiltDeg: number;
+    /**
+     * 칼끝이 살에 파묻히는 비율 (텍스처 오른쪽 끝부터 0~1) — 그 경계가 드래그 접점이 된다.
+     * 크게 잡을수록 칼이 더 깊이 박힌 것처럼 보이고, 보이는 날 길이는 짧아진다.
+     * ⚠ 크롭·원점은 칼 세션 시작(`startKnifeFollow`) 시 재계산 — 슬라이더 변경은 다음 드래그부터 반영.
+     */
+    knifeBuryFrac: number;
   };
   /**
    * 두족류 손질 (CEPHALOPOD_BUTCHERY_SPEC §10) — 오징어류 3종 + 문어.
@@ -475,6 +481,7 @@ export const TUNING: TuningConfig = {
   butchery: {
     autoOrient: false, flipAnimMs: 220, knifeHardLock: false, guideAnimMs: 2000, actionAnimMs: 2000,
     knifeFollowDelayMs: 100, knifeFollowSpeedPx: 240, knifeLenPx: 74, knifeTiltDeg: 34,
+    knifeBuryFrac: 0.30,
   },
   ceph: {
     nerveTolerance: 0.045, nerveScissorsBonus: 1.4, shimeInkRiskCut: 0.6,
@@ -524,6 +531,7 @@ export const TUNING_META: TuningParamMeta[] = [
   { path: 'butchery.knifeFollowSpeedPx', min: 80, max: 600, step: 20, category: 'feel', label: '포뜨기 칼 속도(px/s)' },
   { path: 'butchery.knifeLenPx', min: 40, max: 140, step: 4, category: 'feel', label: '포뜨기 칼 길이(px)' },
   { path: 'butchery.knifeTiltDeg', min: 0, max: 80, step: 2, category: 'feel', label: '포뜨기 칼 기울기(°)' },
+  { path: 'butchery.knifeBuryFrac', min: 0, max: 0.6, step: 0.02, category: 'feel', label: '포뜨기 칼 파묻힘 비율' },
   // ── 두족류 손질 (CEPHALOPOD_BUTCHERY_SPEC §10 노출 목록) ──
   // saltAmountBand는 [하한, 상한] 튜플이라 인덱스 경로로 각각 노출한다(getTuning이 o[k]라 동작).
   { path: 'ceph.nerveTolerance', min: 0.02, max: 0.09, step: 0.005, category: 'feel', label: '두족류 시메 허용반경' },
