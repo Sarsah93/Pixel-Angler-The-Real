@@ -18,6 +18,8 @@ import {
   FISH_WHOLE_AMBERJACK, FISH_DRESSED_AMBERJACK,
 } from '../data/PixelFishSprites.js';
 import { HALIBUT_DARK, HALIBUT_WHITE } from '../data/PixelFishFlat.js';
+import { SPECIES_WHOLE } from '../data/PixelFishSpecies.js';
+import { isStripelessMale } from '../data/FishTextures.js';
 import { FISH_STAGE_SPRITES } from '../data/PixelFishStages.js';
 import { FISH_VIEW_SPRITES } from '../data/PixelFishViews.js';
 
@@ -130,11 +132,23 @@ function headErasePoly(path: FishPoly, headLeft: boolean): FishPoly | null {
   return [top, ...path, bot, { x: edge, y: 1.4 }, { x: edge, y: -0.4 }];
 }
 
+/**
+ * 스프라이트 선택에 쓰는 **개체 정보** — 성별로 외형이 갈리는 어종(돌돔) 분기용.
+ * 없으면 암컷(무늬 유지) 기준 — 구세이브 어획물처럼 성별을 모르는 개체의 안전 기본값.
+ */
+export interface ButcherIndividual { lengthCm?: number; sex?: 'M' | 'F' }
+
 /** 도마 스프라이트 세트 (온마리/손질 몸통/필렛) + 틴트 여부 + 어종군 키 */
 export interface ButcherSpriteSet {
   whole: PixelFishSprite; dressed: PixelFishSprite; fillet: PixelFishSprite;
   /** true = 스프라이트가 어종 실색을 가짐(틴트 금지) — 방어류 전용 잿방어 스프라이트 */
   nativeColor: boolean;
+  /**
+   * true = `whole`이 **어종 실사에서 구운 전용 스프라이트**(`SPECIES_WHOLE`)라 틴트 금지 (87차).
+   * `nativeColor`와 분리한 이유: 개복 이후 단계 뷰(`{fam}_vessel`·`dorsal`·`belly`…)는 여전히
+   * **어종군 공용**이라 어종 색 틴트가 필요하다 — 온마리만 실색이다.
+   */
+  wholeNative?: boolean;
   /** 단계 스프라이트 조회 키 (`{family}_vessel` / `{family}_fillet1~3` — FISH_STAGE_SPRITES) */
   familyKey: 'amberjack' | 'bream' | 'halibut';
   /**
@@ -165,9 +179,17 @@ export function butcherFamilyOf(speciesId: string): 'amberjack' | 'bream' | 'hal
  * 어종별 도마 스프라이트 세트 — 방어류(방어/부시리/잿방어)는 잿방어 형태(방추형 실색),
  * 넙치류(광어·도다리)는 광어 탑뷰(등면/배면 — halibut.png 추출), 그 외는 감성돔 가이드 형태.
  */
-export function butcherSpritesFor(speciesId: string): ButcherSpriteSet {
+export function butcherSpritesFor(speciesId: string, indiv?: ButcherIndividual): ButcherSpriteSet {
+  // 어종 실사에서 구운 온마리 (87차) — 있으면 어종군 대표 스프라이트 대신 쓴다.
+  //  돌돔처럼 개체 조건(체장·성별)으로 외형이 갈리는 어종은 전용 키로 분기 (어획 팝업과 동일 규칙)
+  const key = isStripelessMale(speciesId, indiv?.lengthCm ?? 0, indiv?.sex ?? 'F')
+    ? `${speciesId}_male` : speciesId;
+  const own = SPECIES_WHOLE[key] ?? SPECIES_WHOLE[speciesId];
   if (AMBERJACK_SPECIES.has(speciesId)) {
-    return { whole: FISH_WHOLE_AMBERJACK, dressed: FISH_DRESSED_AMBERJACK, fillet: FISH_FILLET, nativeColor: true, familyKey: 'amberjack' };
+    return {
+      whole: own ?? FISH_WHOLE_AMBERJACK, dressed: FISH_DRESSED_AMBERJACK, fillet: FISH_FILLET,
+      nativeColor: true, wholeNative: !!own, familyKey: 'amberjack',
+    };
   }
   if (FLAT_SPECIES.has(speciesId)) {
     return {
@@ -177,7 +199,10 @@ export function butcherSpritesFor(speciesId: string): ButcherSpriteSet {
       familyKey: 'halibut', flat: true, flatWhite: HALIBUT_WHITE,
     };
   }
-  return { whole: FISH_WHOLE, dressed: FISH_DRESSED, fillet: FISH_FILLET, nativeColor: false, familyKey: 'bream' };
+  return {
+    whole: own ?? FISH_WHOLE, dressed: FISH_DRESSED, fillet: FISH_FILLET,
+    nativeColor: false, wholeNative: !!own, familyKey: 'bream',
+  };
 }
 
 /**
@@ -893,9 +918,11 @@ export function drawPixelButcherFish(
     : useBaseFrame ? sprites.whole : bodySpriteFor(sprites, state);
   const frame = useBaseFrame ? computeFishFrame(sprites.whole, geom) : undefined;
   const erase = useBaseFrame ? buildPrepErase(sprites.familyKey, state, o) : undefined;
+  // 어종 실사 온마리(87차)·방어류 실색 스프라이트는 틴트 금지 — 어종군 공용 도형일 때만 색을 입힌다
+  const bodyTint = (useBaseFrame && (sprites.wholeNative || sprites.nativeColor)) ? null : tint;
   // ⚠ 상하 미러 금지 — **뱃살은 항상 아래쪽**에 오도록 배치한다 (사용자 지시 2026-07-30).
   //  "배 위로(BELLY_UP)"는 미러가 아니라 전용 복면 뷰 스프라이트로 표현한다.
-  const drawn = drawSprite(g, spr, geom, mirrorX, false, tint, 0.22,
+  const drawn = drawSprite(g, spr, geom, mirrorX, false, bodyTint, 0.22,
     frame ? { frame, erase } : undefined);
 
   if (filletView) {

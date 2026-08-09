@@ -1,7 +1,7 @@
 # S3. 손질 (회뜨기) 시스템
 
-> 상태 **🚧 진행 중** — 어류 3어종군 마감, 두족류 트리 미착수.
-> 최종 갱신 2026-08-07 (84차) · 관련 차수 14·20·41·43·45·47~63·65·67·70·74·75·78·80·82~84
+> 상태 **🚧 진행 중** — 어류 3어종군 마감, 두족류는 **무늬오징어 1종 개방**(87차) · 나머지 3종 미착수.
+> 최종 갱신 2026-08-09 (87차) · 관련 차수 14·20·41·43·45·47~63·65·67·70·74·75·78·80·82~84
 
 ---
 
@@ -98,10 +98,12 @@ inv_engwskin_   → sec_peel → 순수 엔가와
 | **회전 재설계 — 도마 가로 고정·생선만 회전** | ✅ | 83 | board/fish rect 분리 · 자국 방향 버그 · HUD 겹침 · [워크로그](../03-WORKLOG/2026-08-06-083-rotation-fish-only.md) |
 | **포 뜨기 3단계 × 4작업 + 칼 팔로우 + 내장·머리 동반** | ✅ | 84 | 이동 힌지 벌어짐 · 자체 픽셀 야나기바 · [워크로그](../03-WORKLOG/2026-08-07-084-flat-lift-3stage-knife.md) |
 | **개방 범위 머리쪽 확장 + 필렛 반쪽 에셋(아이콘·엔가와 슬랩)** | ✅ | 85 | S컷 곡선 클리핑(`clipSpan`) · upper/under = 내장 유무(아이콘 + 도트 슬랩 `flatFilletKind`) · [워크로그](../03-WORKLOG/2026-08-07-085-flat-open-extent-fillet-assets.md) |
+| **어종별 도마 온마리 스프라이트** | ✅ | 87 | 돔류 6 + 돌돔 암/수 + 방어류 3 = 10키. `gen_species_sprites.cjs` · `wholeNative`(온마리만 실색) |
+| 돌돔 성별 분기(40cm↑ 수컷 무늬 소실) | ✅ | 87 | `isStripelessMale` 공용 술어 · `InvItem.sex` 신설·4경로 배선 |
 | **광어 F9 잔여 5종** | 🔶 | — | §5-① |
 | 실사 에셋 보정 3건 | 🔶 | — | §5-② (사용자 대기) |
 
-### B2. 두족류 손질 — 🚧 **트리 미착수**
+### B2. 두족류 손질 — 🚧 **무늬오징어 개방 / 나머지 3종 미착수**
 | 과제 | 상태 | 근거 |
 |---|---|---|
 | 스펙 정합 v3.1 (§0.5) | ✅ 80차 | `.agents/CEPHALOPOD_BUTCHERY_SPEC.md` — **본문보다 §0.5가 우선** |
@@ -111,11 +113,13 @@ inv_engwskin_   → sec_peel → 순수 엔가와
 | trimmings 에셋 15키 + 아이콘 분기 | ✅ 80차 | squid 12 · octopus 3 |
 | 한치 어종 4계층 등록(선행) | ✅ 79차 | `swordtip_squid` |
 | 가이드 SVG 4장 | ✅ 80차 | `docs/mockups/{squid,hanchi,gapo,octo}_guide.svg` |
-| **스테이지 트리 4종** | ⬜ | 무늬오징어14 · 한치15 · 갑오징어13 · 문어11 |
-| **섹션 매핑**(1:1 작업, `anyOrder:false`) | ⬜ | 스펙 §0.5.4 |
-| **신규 프리미티브 판정** | ⬜ | `nerve_cut`·`mantle_slit`·`lift_flap`·`drag_out`·`vessel_cut`·`fin_cut`·`hold_scrub`·`result` + `bone_lift`·`invert`·`salt_apply`·`flip` |
-| **`CephalopodTemplateRenderer`** | ⬜ | 종별 레이어 세트 |
-| `getButcheryFamily` 스텁 해제 | ⬜ | 해제 시 [손질 시작] 활성 |
+| **무늬오징어 14스테이지 트리** | ✅ | 87차 — `CephalopodStages.ts`. 사진 대응 S1~S14 순서 그대로(§1.1 + §0.5.6 부리) |
+| **섹션 매핑**(1:1 작업, `anyOrder:false`) | ✅ | 87차 — `SQUID_SECTIONS` 6섹션 14작업 · `sectionsForSpecies` |
+| **프리미티브 판정**(무늬오징어 사용분 9종) | ✅ | 87차 — `primitiveInput` 분류 + `evalNerveCut`. `bone_lift`·`invert`·`salt_apply`·`flip`은 나머지 3종 착수 시 |
+| **두족류 렌더러** | 🔶 | 87차 — `ui/CephalopodFish.ts` 6뷰. **파라메트릭 플레이스홀더**(시트 도트 추출 미착수) |
+| 게이트 분리 | ✅ | 87차 — `canButcherSpecies`(분류 ≠ 구현 여부). **squid만 개방** |
+| **한치 15 · 갑오징어 13 · 문어 11** | ⬜ | 스펙 §4.2~§4.4 — 1종 실플레이 피드백 후 |
+| 두족류 수율·등급 · 슬라이싱(`whole`) | ⬜ | 스펙 §8·§6 |
 
 ### B3. 복어 손질 — ⬜ (License 게이트 선행)
 
@@ -129,16 +133,21 @@ inv_engwskin_   → sec_peel → 순수 엔가와
   회썰기(사시미) 유도선은 별도 편집기·오버라이드(86차 — `SASHIMI_CUT_OVERRIDES`) — 측정값 대기.
   ⚠ **84차 화면(3단계·칼 팔로우) 기준으로 측정**(85차 변경은 렌더 클리핑뿐이라 좌표 유효). 절차 → 스킬 `f9-guide-coords`.
 **② 칼 연출 체감 튜닝** — `knifeFollowDelayMs`(100)·`knifeFollowSpeedPx`(240)·`knifeTiltDeg`(34)는 초기값 — F8 조율.
-**③ 두족류 트리** — **광어 잔여(①②) 소화 후 착수** (사용자 우선순위 확정 2026-08-07). 착수 순서(스펙 §11.3):
+**⏸ ⓪ 무늬오징어 수동 실플레이 검증 — 최우선** (87차는 자동 검증만 통과. 재현 절차는 워크로그 087 §5)
+**③ 두족류 — 무늬오징어 개방 완료(87차), 나머지는 스펙 §11.3 ④~⑧**:
 ```
-② 무늬오징어 14스테이지 + ButcheryProcess 분기 + 게이트 해제
-③ SquidLayers 렌더  → 1종 완주 가능
-④ 한치 15 (peelStopBand)      ⑤ 갑오징어 13 (bone_lift·속껍질)
-⑥ 문어 11 (invert·salt_apply·flip·radial 뷰)
-⑦ 수율·등급 연동             ⑧ 슬라이싱(whole 모드) 연동
+✅ ② 무늬오징어 14스테이지 + ButcheryProcess 분기 + 게이트 해제
+✅ ③ 렌더 6뷰 → 1종 완주 가능 (파라메트릭 — 시트 도트 추출은 잔여)
+⬜ ④ 한치 15 (peelStopBand)      ⬜ ⑤ 갑오징어 13 (bone_lift·속껍질)
+⬜ ⑥ 문어 11 (invert·salt_apply·flip·radial 뷰)
+⬜ ⑦ 수율·등급 연동             ⬜ ⑧ 슬라이싱(whole 모드) 연동
 ```
   선행 부족: 소모품 2종 미등록(`coarse_salt`·`kitchen_towel` — ⑤⑥에서 필요),
   에셋 3종 미보유(`ceph_skin`·`ceph_gill`·`ceph_inner_skin` — 아이콘만 비고 진행 가능).
+**④ 두족류 가이드 좌표 F9 실측** — 87차 신설 9경로(펼치기·내장·펜·껍질 들춤·아가미·날개 2선·3분할 2컷)가
+  근사값이다. 시메·절개·박리·부리는 스펙 §4.6 값. 정본은 `docs/mockups/squid_guide.svg`.
+**⑤ 시트 도트 추출** — `gen_ceph_stages.cjs`(미신설)로 SVG 4장 → `PixelCephStages.ts`.
+  들어오면 `CephalopodFish.ts`는 파라메트릭 → 스프라이트 배치로 교체된다.
 
 ---
 
@@ -168,6 +177,19 @@ inv_engwskin_   → sec_peel → 순수 엔가와
    **오버레이/버튼/목록/플래시**는 board rect(`boardX/Y/W/H` — 가로 고정) 앵커 — fish rect에 앵커하면 회전 시 밀린다.
 13. **`jumpTo`는 방향·회전을 모두 스냅한다** (83차) — dev 항법·재장착 재개가 조용히 입력 차단되지 않게 하기 위함.
    수동 정렬을 기대하는 코드를 jumpTo 뒤에 두지 말 것.
+15. **프리미티브 분기는 `primitiveInput()`으로** (87차) — 프리미티브는 19종인데 조작은 5가지(tap/path/fill/peel/button)다.
+   패널에서 `stage.primitive === 'guided_cut'` 식으로 이름을 직접 비교하면 종류가 늘 때마다 15곳을 손봐야 한다.
+   ⚠ **새 프리미티브를 추가하면 `primitiveInput`의 switch에 반드시 등록할 것** — 빠뜨리면 조용히 `'path'`로 떨어진다(default).
+16. **두족류는 뷰를 자동 스냅한다** (87차) — 어류의 "수동 뒤집기" 원칙과 **반대**다. 개복→펼침→껍질면→살코기면 전이는
+   뒤집기 버튼으로 도달할 수 있는 자세가 아니라 공정 자체다. `advance()`의 `cephalopod ||` 조건을 지우면 첫 전이에서 입력이 죽는다.
+   같은 이유로 패널의 뒤집기·회전 버튼은 두족류에서 숨긴다.
+17. **`ButcherySectionYield`는 어류 키 + `CephByproductId` 유니온** (87차) — 두 집합에 같은 문자열이 생기면 조용히 오매칭된다.
+   어류는 카멜케이스, 두족류는 `ceph_`/`octo_` 접두를 유지할 것.
+18. **체크포인트는 `exitAfter` 기준 일반 규칙이 있다** (87차) — 구 구현은 어류 섹션 id만 나열해 두족류가 항상 `'none'`이었고,
+   중도 이탈 시 지급분이 전부 회수됐다(부산물 소실 계열 재발). 새 트리를 추가할 때 id 매핑을 잊어도 `exitAfter`가 받아준다.
+19. **도마 온마리는 어종별 스프라이트** (87차) — `SPECIES_WHOLE[speciesId]`. 실사 색이라 **틴트 금지**(`wholeNative`)지만,
+   개복 이후 단계 뷰는 여전히 어종군 공용이라 어종 색 틴트를 유지한다. 두 값을 하나로 합치지 말 것.
+
 14. **knifeFx와 actionAnim은 한 쌍** (84차) — 칼 완주(finishing) 동안 `actionAnim` 가드가 서고 `completeKnife`가
    해제 + `runPendingAfterAction`을 실행한다. 칼 세션을 우회 종료하는 경로는 반드시 `stopKnifeFx()`를 태울 것
    (playFlipAnim·destroy 편입됨). **칼 텍스처 규약 = 가로·칼끝 오른쪽·칼날 아래** — 어기면 crop/flipY가 반전된다.

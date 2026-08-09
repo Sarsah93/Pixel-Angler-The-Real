@@ -344,8 +344,8 @@ npx pnpm --filter @tra/client-pc run dev
 ## 9. 현재 빌드 상태 (2026-08-06 기준)
 
 ```
-npx pnpm run build → ✅ 4/4 패키지 성공 (2026-08-06)
-npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류 (2026-08-06)
+npx pnpm run build → ✅ 4/4 패키지 성공 (2026-08-09)
+npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류 (2026-08-09)
 ```
 
 > **아래 차수 히스토리는 "무엇을·왜 바꿨나"의 변경 기록이다.** 히스토리 곳곳에 흩어져 있던
@@ -357,6 +357,15 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류 (2026-08-06)
 > 본문은 **`docs/wiki/03-WORKLOG/<날짜>-<차수>-<슬러그>.md`**, 여기엔 **요약 3~5줄 + 링크**.
 > "지금 무엇이 어디까지 되어 있나"는 **`docs/wiki/README.md` 대시보드**와 `02-SYSTEMS/*.md`를 본다.
 > 80차 이하 원문은 아래에 **그대로 보존**(불변 원장) — 구조화 인덱스는 `03-WORKLOG/README.md` §3.1.
+
+**최근 변경 (2026-08-09 87차) — 두족류 손질 잠금 해제: 무늬오징어 14스테이지 완주 + 어종별 도마 스프라이트 + 돌돔 성별 배선** (사용자 지시 3건 — core 실판정 12/12·실렌더 완주·부산물 10종 실지급, 빌드 4/4·typecheck 0):
+- ⚠ **잠금은 플래그가 아니었다** — 80차는 재료 준비였고 트리·프리미티브 판정·렌더러가 **전부 0건**이었다. 스텁만 풀면 오징어가 어류 트리를 타고 도마엔 감성돔이 뜬다. 해제 = 구현.
+- **두족류 트리**: `CephalopodStages.ts`(무늬오징어 14스테이지 — §1.1 13 + §0.5.6 부리) · `SQUID_SECTIONS`(6섹션 14작업 · **스테이지 1개=작업 1개**·전부 순서강제) · `ButcheryProcess` 분기(+`cephalopod` 플래그·뷰 자동 스냅·`evalNerveCut`) · **`primitiveInput()`**(프리미티브 19종 → 조작 5종 분류 — 패널 분기 15곳 정규화) · **`canButcherSpecies`**(분류 ≠ 구현 여부 — squid만 개방) · `ui/CephalopodFish.ts` 6뷰 렌더(파라메트릭 플레이스홀더).
+- **어종별 도마 온마리**: `gen_species_sprites.cjs` 신설 → `PixelFishSpecies.ts` 10키(돔류 6 + 돌돔 암/수 + 방어류 3). 개복 전 측면 뷰 전용 · `wholeNative`로 온마리만 무틴트. **긴꼬리벵에돔 원본만 머리 오른쪽**이라 미러.
+- **돌돔 성별**: `isStripelessMale` 공용 술어(40cm↑ 수컷) + **`InvItem.sex` 신설**(쿨러엔 있는데 인벤 이송에서 유실되던 것) 4경로 배선. 두족류 dev 어획 4종 지급.
+- 검증: core 12/12 ALL PASS(14스테이지 완주·섹션 1:1·nerve_cut 실패 케이스·게이트·어류 회귀) / 실렌더 6뷰·패널 완주·**부산물 10종 지급**(몸통 순살 362g = 786g×0.46)·중도 이탈 체크포인트 / pageerror 0.
+- ⏸ **수동 실플레이 검증은 미완**(2026-08-09 시간 부족) — 다음 세션 최우선. 나머지 3종 확장은 그 뒤.
+- 상세: `docs/wiki/03-WORKLOG/2026-08-09-087-cephalopod-squid-tree.md`
 
 **최근 변경 (2026-08-07 86차) — 광어 박피 F9 실측 반영 + 회썰기 유도선 dev 편집기(F9)·오버라이드 테이블 신설** (사용자 측정본 2건 + 지시 — core 실판정·실렌더 검증, 빌드 4/4·typecheck 0):
 - **박피 좌표**: 넙치류 트리 `peel_grip` 실측 7점 · `peel_insert` 실측 교체 (opts 보존 · **돔류/방어류 블록 무변경**). 가이드 트레이스 cov 1.00·이탈 실패·원형어 회귀 없음.

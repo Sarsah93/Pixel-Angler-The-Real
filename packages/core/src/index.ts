@@ -120,8 +120,9 @@ export type {
   FilletShape, KnifeSpec, FilletYieldInput, FilletYieldResult, ButcheryFamily,
   ButcheryByproducts,
   BoardRotation, ButcheryGuideProfile, ButcheryProductId, ButcheryProgress, ButcheryYieldPopup, ButcheryStackable,
+  PrimitiveInputKind,
 } from './types/Butchery.js';
-export { ORIENTATION_LABEL, ROTATION_LABEL, canStack } from './types/Butchery.js';
+export { ORIENTATION_LABEL, ROTATION_LABEL, canStack, primitiveInput } from './types/Butchery.js';
 // 두족류 손질 (CEPHALOPOD_BUTCHERY_SPEC v3.1) — 뷰 유니온 2종 + 프로필 4종 + 가이드 좌표
 export type {
   CephOrientation, OctopusOrientation, ButcheryOrientation, FlipKind,
@@ -149,7 +150,7 @@ export {
 } from './db-schema/ButcheryGuideCuts.js';
 export {
   BUTCHERY_PROFILES, DEFAULT_BUTCHERY_PROFILE, getButcheryProfile,
-  getButcheryFamily, BUTCHERY_FAMILY_NOTICE, BUTCHERY_IMPLEMENTED_SPECIES,
+  getButcheryFamily, BUTCHERY_FAMILY_NOTICE, BUTCHERY_IMPLEMENTED_SPECIES, canButcherSpecies,
 } from './db-schema/ButcheryProfiles.js';
 export { KNIFE_SPECS, getBestKnife, isKnifeItem } from './db-schema/KnifeDatabase.js';
 export {
@@ -165,7 +166,12 @@ export {
 export type { ButcheryStageOptions } from './simulation/ButcheryProcess.js';
 // 자유 손질 섹션/작업 정의 (달성도 기반 — 2026-07-30 자유 손질 개편)
 export type { ButcheryTaskDef, ButcherySectionDef, ButcherySectionYield } from './db-schema/ButcherySections.js';
-export { WHOLE_FISH_SECTIONS, FLAT_FISH_SECTIONS, sectionsForBodyShape, findTaskOfStage } from './db-schema/ButcherySections.js';
+export {
+  WHOLE_FISH_SECTIONS, FLAT_FISH_SECTIONS, SQUID_SECTIONS,
+  sectionsForBodyShape, sectionsForCephalopod, sectionsForSpecies, findTaskOfStage,
+} from './db-schema/ButcherySections.js';
+// 두족류 스테이지 트리 (87차 — 무늬오징어 1종)
+export { buildCephalopodStages, isCephalopodTreeReady } from './db-schema/CephalopodStages.js';
 
 // 파이트 피로 4페이즈 (어종·사이즈별 스태미나 풀 + 회복/서지 — thrust 게이팅)
 export type { FatiguePhase, FatigueInput, FatigueTick } from './simulation/FishFatigueModel.js';

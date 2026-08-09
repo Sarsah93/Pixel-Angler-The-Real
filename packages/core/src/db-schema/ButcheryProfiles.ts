@@ -13,6 +13,7 @@
 
 import type { ButcheryProfile, ButcheryFamily } from '../types/Butchery.js';
 import { ORACLE_FISH_DB } from '../simulation/FishSpawningOracle.js';
+import { isCephalopodTreeReady } from './CephalopodStages.js';
 
 /** 어종별 손질 프로필 */
 export const BUTCHERY_PROFILES: Record<string, ButcheryProfile> = {
@@ -209,7 +210,21 @@ export function getButcheryFamily(speciesId: string): ButcheryFamily {
 
 /** 손질 형태별 안내 문구 (finfish는 정상 진행이라 문구 없음) */
 export const BUTCHERY_FAMILY_NOTICE: Record<Exclude<ButcheryFamily, 'finfish'>, string> = {
-  cephalopod: '두족류 손질은 준비 중입니다 (눈 위 신경 절단·먹물·다리 손질 예정)',
+  cephalopod: '이 두족류의 손질은 준비 중입니다 (현재 무늬오징어만 지원)',
   pufferfish: '복어는 자격증(독 제거)이 필요합니다 — 준비 중입니다',
   unsupported: '아직 손질할 수 없는 어종입니다 (현재 돔류·방어류·넙치류 지원 — 그 외는 추후 구현)',
 };
+
+/**
+ * **손질을 시작할 수 있는가** — UI 게이트의 단일 기준 (87차).
+ *
+ * 구 게이트는 `family === 'finfish'`만 봤다. 두족류 트리가 종별로 순차 구현되므로
+ * (87차 = 무늬오징어만) 분류(`getButcheryFamily`)와 **구현 여부**를 분리한다.
+ * 분류는 계속 'cephalopod'을 돌려주고(렌더러·수율이 이걸로 갈린다), 개방 여부만 여기서 판단한다.
+ */
+export function canButcherSpecies(speciesId: string): boolean {
+  const fam = getButcheryFamily(speciesId);
+  if (fam === 'finfish') return true;
+  if (fam === 'cephalopod') return isCephalopodTreeReady(speciesId);
+  return false;
+}

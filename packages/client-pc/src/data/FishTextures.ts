@@ -65,9 +65,17 @@ export const FISH_TEXTURE: Record<string, string> = {
  *    암/수 이미지를 분기한다 (수컷 = 화려한 녹색 혼인색).
  * sex 정보가 없을 때는 'F'를 기본값으로 넘긴다(대부분 어종은 성별 무관).
  */
+/**
+ * 돌돔 **줄무늬 없는 수컷** 판정 — 40cm를 넘겨야 암수 구별이 되고, 그때 수컷만 줄무늬를 잃는다.
+ * 어획 팝업/인벤 텍스처와 손질 도마 스프라이트가 같은 기준을 쓰도록 여기서 단일 정의한다.
+ */
+export function isStripelessMale(speciesId: string, lengthCm: number, sex: 'M' | 'F'): boolean {
+  return speciesId === 'stone_beakperch' && lengthCm >= 40 && sex === 'M';
+}
+
 export function resolveFishTexture(speciesId: string, lengthCm: number, sex: 'M' | 'F'): string | undefined {
   if (speciesId === 'stone_beakperch') {
-    return (lengthCm >= 40 && sex === 'M') ? 'fish_stone_beakperch_male' : 'fish_stone_beakperch_female';
+    return isStripelessMale(speciesId, lengthCm, sex) ? 'fish_stone_beakperch_male' : 'fish_stone_beakperch_female';
   }
   if (speciesId === 'rainbow_wrasse') {
     return sex === 'M' ? 'fish_rainbow_wrasse_male' : 'fish_rainbow_wrasse_female';

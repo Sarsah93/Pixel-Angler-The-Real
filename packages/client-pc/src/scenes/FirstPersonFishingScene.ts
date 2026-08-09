@@ -2322,7 +2322,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
               category: 'food', subCategory: '어획물',
               basePrice: Math.max(2000, Math.round(f.weightG * 12)),
               condition: 'live', equippable: false,
-              speciesId: f.speciesId, lengthCm: f.lengthCm, weightG: f.weightG,
+              speciesId: f.speciesId, lengthCm: f.lengthCm, weightG: f.weightG, sex: f.sex,
             }, 1);
             if (!ok) {
               this.flashState('인벤토리(음식) 공간이 없습니다 — 방생하거나 자리를 비우세요');
@@ -2482,7 +2482,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
             category: 'food', subCategory: '어획물',
             basePrice: Math.max(2000, Math.round(ef.weightG * 12)),
             condition: 'live', equippable: false,
-            speciesId: ef.speciesId, lengthCm: ef.lengthCm, weightG: ef.weightG,
+            speciesId: ef.speciesId, lengthCm: ef.lengthCm, weightG: ef.weightG, sex: ef.sex,
           }, 1);
           tag = ok ? ' (인벤토리)' : ' (인벤 가득 — 방생)';
         }

@@ -248,6 +248,31 @@ export type ButcheryPrimitive =
   | 'hold_scrub'   // 왕복 문지르기 (아가미·점액)
   | 'flip';        // 뷰 반전 단독 — 반전 방향만 맞으면 성공
 
+/**
+ * 프리미티브 → **입력 방식** 분류 (87차 신설).
+ *
+ * 프리미티브는 계속 늘어나지만 플레이어 조작은 5가지뿐이다. 패널이 프리미티브 이름을
+ * 하나하나 비교하면(구 구현: 15개 분기점) 종류가 늘 때마다 전부 손봐야 하므로 여기서 묶는다.
+ *  - `tap`    한 점 탭
+ *  - `path`   유도 경로 트레이스 (드래그) — 판정은 커버율 + 이탈
+ *  - `fill`   영역 문지르기 (커버리지 게이지)
+ *  - `peel`   잡고 당기기
+ *  - `button` 조작 없음 — 버튼 1탭 (세척·결과 확인·뷰 반전)
+ */
+export type PrimitiveInputKind = 'tap' | 'path' | 'fill' | 'peel' | 'button';
+
+export function primitiveInput(p: ButcheryPrimitive): PrimitiveInputKind {
+  switch (p) {
+    case 'tap': return 'tap';
+    case 'drag_fill': case 'scoop': case 'hold_scrub': case 'salt_apply': return 'fill';
+    case 'peel': return 'peel';
+    case 'wash': case 'result': case 'flip': return 'button';
+    // guided_cut · nerve_cut · mantle_slit · lift_flap · drag_out · vessel_cut · fin_cut ·
+    // bone_lift · invert — 전부 "유도선을 따라 드래그" (판정 세부는 프리미티브별로 갈린다)
+    default: return 'path';
+  }
+}
+
 /** 손질 스테이지 정의 (FSM 노드) */
 export interface ButcheryStage {
   id: string;

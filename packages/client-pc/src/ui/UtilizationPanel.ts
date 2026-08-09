@@ -33,7 +33,7 @@ import { RecommendationStore } from '../store/RecommendationStore.js';
 import { CoolerStore, ChumIngredientKind, CHUM_THROW_COST } from '../store/CoolerStore.js';
 import {
   LureFamily, LureKind, getLureSpec, getLureSinkProfile, jigHeadWeightById,
-  getButcheryFamily, BUTCHERY_FAMILY_NOTICE, ButcheryFamily,
+  getButcheryFamily, BUTCHERY_FAMILY_NOTICE, ButcheryFamily, canButcherSpecies,
   getBestKnife, SashimiMode, SASHIMI_MODES,
   SASHIMI_PLATE_SPECS, MIXED_SASHIMI_PRICING, singleSashimiPlatePrice, SashimiSizeTier,
   evaluateFishSellPrice, FISH_DATABASE,
@@ -1091,7 +1091,8 @@ export class UtilizationPanel extends DraggablePanel {
           '고급 사시미 뜨기는 야나기바 이상 회칼을 손에 장착해야 합니다');
       } else {
       // [손질 시작] — finfish만 활성 (두족류는 준비중, 안내)
-      const cutEnabled = family === 'finfish';
+      // 87차 — 두족류는 종별로 순차 개방(현재 무늬오징어)이라 분류가 아니라 구현 여부로 판단
+      const cutEnabled = canButcherSpecies(boardFish.speciesId ?? '');
       const cutBg = this.scene.add.graphics();
       cutBg.fillStyle(cutEnabled ? 0x0d4a2e : 0x1c2530, 0.96);
       cutBg.fillRoundedRect(boardX + 8, boardY + 8, 92, 24, 4);
@@ -1104,7 +1105,11 @@ export class UtilizationPanel extends DraggablePanel {
       const cutHit = this.scene.add.rectangle(boardX + 54, boardY + 20, 92, 24, 0xffffff, 0.001)
         .setInteractive({ useHandCursor: true });
       cutHit.on('pointerdown', () => {
-        if (!cutEnabled) { this.flashBoardToast(BUTCHERY_FAMILY_NOTICE[family]); return; }
+        // 미개방 사유 — finfish는 항상 개방이라 여기 오면 두족류(미구현 종)/복어/미지원이다
+        if (!cutEnabled) {
+          if (family !== 'finfish') this.flashBoardToast(BUTCHERY_FAMILY_NOTICE[family]);
+          return;
+        }
         // 회칼 손 장착 게이트 (2026-07-30 자유 손질 개편) — 왼손/오른손에 회칼이 있어야 시작
         const handKnife = InventoryStore.items.some((i) => i.tool === 'knife' && i.equipped);
         if (!handKnife) {

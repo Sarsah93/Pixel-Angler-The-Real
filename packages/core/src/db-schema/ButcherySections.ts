@@ -13,6 +13,8 @@
  * 순수 TS — 렌더/브라우저 API 없음.
  */
 
+import type { CephByproductId } from '../types/Butchery.js';
+
 /** 섹션 완료 시 발생하는 부산물 종류 (클라이언트 팝업/지급 레저가 소비) */
 export type ButcherySectionYield =
   | 'head'        // 생선 머리 (어종군)
@@ -28,7 +30,14 @@ export type ButcherySectionYield =
   // ── 넙치류 다섯장뜨기 전용 (2026-08-05) ──
   | 'flatFillet'      // 껍질+엔가와 붙은 필렛 1장 (포 뜨기 작업마다 1장 — 총 4장)
   | 'engawaSkin'      // 껍질이 붙어있는 엔가와 1장 (엔가와 분리 작업마다 — 총 4장)
-  | 'flatSkinFillet'; // 엔가와 제거된 껍질 필렛 ×4 (엔가와 섹션 완료 — 기존 flatFillet 대체)
+  | 'flatSkinFillet'  // 엔가와 제거된 껍질 필렛 ×4 (엔가와 섹션 완료 — 기존 flatFillet 대체)
+  /**
+   * ── 두족류 (87차) ──
+   * 어류는 부위 종류를 yield 키로 추상화했지만, 두족류는 부산물 테이블
+   * (`CEPH_BYPRODUCTS`)이 이미 id 단위로 존재한다. 중간 매핑 층을 또 만들지 않고
+   * **`CephByproductId`를 그대로 yield 키로 쓴다** — 값이 겹치지 않아 안전하다.
+   */
+  | CephByproductId;
 
 /** 섹션 내 작업 1건 — 스테이지 id 목록을 순서대로 수행하면 작업 완료 */
 export interface ButcheryTaskDef {
@@ -234,7 +243,88 @@ export const FLAT_FISH_SECTIONS: ButcherySectionDef[] = [
   },
 ];
 
-/** 프로필 체형 → 섹션 트리 선택 */
+/**
+ * 무늬오징어 섹션 트리 (CEPHALOPOD_BUTCHERY_SPEC §0.5.4 — 87차).
+ *
+ * 구조 규약이 어류와 다르다:
+ *  - **스테이지 1개 = 작업 1개** (v3 스테이지별 부산물이 `ButcheryTaskDef.yields`로 그대로 산다)
+ *  - **전 섹션 `anyOrder: false`** — 두족류 공정은 순서가 고정이다
+ *  - 섹션 경계 = v3의 `result` 스테이지(= 구간 종료 지점)
+ *  - `exitAfter`는 **몸통 순살이 확정되는 섹션 이후**에만 (오징어류 = 껍질 완료)
+ *
+ * 몸통 순살(`ceph_mantle_fillet`)은 어느 스테이지도 내놓지 않는다 — "다 떼고 남은 것"이라
+ * 트리 완주 시점에 자동 산출한다 (§4.5).
+ */
+export const SQUID_SECTIONS: ButcherySectionDef[] = [
+  {
+    id: 'sec_ceph_shime', label: '시메 (신경 차단)', anyOrder: false,
+    tasks: [
+      { id: 't_ceph_shime_1', label: '시메 ① 갑–눈 사이', stageIds: ['ceph_shime_mantle'] },
+      { id: 't_ceph_shime_2', label: '시메 ② 눈–다리 사이', stageIds: ['ceph_shime_arms'] },
+    ],
+  },
+  {
+    id: 'sec_ceph_open', label: '개복 · 내장 분리', anyOrder: false,
+    tasks: [
+      { id: 't_ceph_open', label: '몸통 절개', stageIds: ['ceph_mantle_open'] },
+      { id: 't_ceph_spread', label: '펼치기 · 내장 노출', stageIds: ['ceph_mantle_spread'] },
+      { id: 't_ceph_viscera', label: '내장 분리', stageIds: ['ceph_viscera_pull'] },
+      // result 스테이지 = 구간 종료 — 머리+다리+내장 덩어리가 여기서 확정된다
+      { id: 't_ceph_split_check', label: '분리 결과 확인', stageIds: ['ceph_split_check'], yields: ['ceph_head_mass'] },
+    ],
+  },
+  {
+    id: 'sec_ceph_pen', label: '연골 제거', anyOrder: false,
+    tasks: [
+      { id: 't_ceph_pen', label: '오징어뼈(연골) 빼기', stageIds: ['ceph_pen_out'], yields: ['ceph_pen'] },
+    ],
+  },
+  {
+    id: 'sec_ceph_skin', label: '껍질 벗기기', anyOrder: false,
+    tasks: [
+      { id: 't_ceph_flip_skin', label: '뒤집어 껍질 잡기', stageIds: ['ceph_flip_skin'] },
+      { id: 't_ceph_peel', label: '껍질 분리', stageIds: ['ceph_skin_peel'] },
+      { id: 't_ceph_skin_done', label: '껍질 분리 완료', stageIds: ['ceph_skin_done'], yields: ['ceph_skin'] },
+    ],
+    // 여기까지 하면 몸통 순살이 확정된다 — 이후 이탈은 정산(§0.5.4)
+    exitAfter: true,
+  },
+  {
+    id: 'sec_ceph_trim', label: '아가미 · 날개 정리', anyOrder: false,
+    tasks: [
+      { id: 't_ceph_gill', label: '아가미 제거 · 내장면 닦기', stageIds: ['ceph_gill_wash'], yields: ['ceph_gill'] },
+      { id: 't_ceph_fin', label: '날개 제거', stageIds: ['ceph_fin_off'], yields: ['ceph_fin_meat'] },
+    ],
+    exitAfter: true,
+  },
+  {
+    id: 'sec_ceph_head', label: '머리부 분할', anyOrder: false,
+    tasks: [
+      {
+        id: 't_ceph_head_split', label: '머리부 3분할', stageIds: ['ceph_head_split'],
+        yields: ['ceph_arms', 'ceph_head', 'ceph_ink_sac'],
+      },
+      { id: 't_ceph_beak', label: '부리 빼내기', stageIds: ['ceph_beak_out'], yields: ['ceph_beak'] },
+    ],
+    // 완주 산출물 — 몸통 순살은 "다 떼고 남은 것"이라 여기서 확정한다 (§4.5)
+    yields: ['ceph_mantle_fillet'],
+  },
+];
+
+/** 두족류 섹션 트리 — 미구현 종은 undefined (게이트가 준비 중 안내를 유지한다) */
+export function sectionsForCephalopod(speciesId: string): ButcherySectionDef[] | undefined {
+  return speciesId === 'squid' ? SQUID_SECTIONS : undefined;
+}
+
+/**
+ * 어종 → 섹션 트리 선택. 두족류 우선, 그다음 체형(넙치/원형어).
+ * ⚠ `bodyShape`만 보던 구 `sectionsForBodyShape`는 두족류를 어류 트리로 흘린다 — 신규 호출은 이쪽을 쓸 것.
+ */
+export function sectionsForSpecies(speciesId: string, bodyShape: 'round' | 'flat'): ButcherySectionDef[] {
+  return sectionsForCephalopod(speciesId) ?? sectionsForBodyShape(bodyShape);
+}
+
+/** 프로필 체형 → 섹션 트리 선택 (어류 전용) */
 export function sectionsForBodyShape(bodyShape: 'round' | 'flat'): ButcherySectionDef[] {
   return bodyShape === 'flat' ? FLAT_FISH_SECTIONS : WHOLE_FISH_SECTIONS;
 }

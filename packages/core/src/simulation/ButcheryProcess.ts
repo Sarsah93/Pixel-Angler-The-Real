@@ -19,6 +19,8 @@ import type {
   ButcheryOrientation, BoardRotation, ButcheryResult, SashimiGrade,
   FilletYieldInput, FilletYieldResult,
 } from '../types/Butchery.js';
+import { primitiveInput } from '../types/Butchery.js';
+import { buildCephalopodStages } from '../db-schema/CephalopodStages.js';
 import { TUNING } from '../config/tuning.js';
 
 /** 0~1 등 범위 클램프 */
@@ -851,10 +853,21 @@ export class ButcheryProcess {
   private _bled = false;
   private freshnessFactor: number;
 
+  /**
+   * 두족류 트리로 돌고 있는가 (87차) — 뷰 전환 방식이 어류와 다르다.
+   * 어류는 플레이어가 뒤집기 버튼으로 방향을 맞추지만, 두족류의 뷰 전이는
+   * **공정 자체**(개복 → 펼침 → 껍질면 → 살코기면)라 스테이지 진행에 딸려간다.
+   */
+  readonly cephalopod: boolean;
+
   constructor(profile: ButcheryProfile, freshnessFactor: number, opts?: ButcheryStageOptions) {
     this.profile = profile;
     this.freshnessFactor = freshnessFactor;
-    this.stages = buildButcheryStages(profile, opts);
+    // 두족류는 어류 스테이지 트리와 구조가 통째로 달라 최상단에서 갈라진다
+    const ceph = buildCephalopodStages(profile.speciesId);
+    this.cephalopod = !!ceph;
+    this.stages = ceph ?? buildButcheryStages(profile, opts);
+    if (ceph) this.orientation = ceph[0].orientation;
     this.resetStageCounters();
   }
 
@@ -910,8 +923,16 @@ export class ButcheryProcess {
   /** 가이드 컷 제출 — strokesRequired 반복 처리 */
   submitCut(traced: CutPoint[]): CutEvalResult & { strokesLeft: number; stageDone: boolean; matchedPath: number } {
     const s = this.stage;
-    if (!s || s.primitive !== 'guided_cut' || !s.cut || !this.canAct()) {
+    // 경로형 프리미티브 전부 수용 — guided_cut + 두족류 신규(mantle_slit·lift_flap·drag_out…)
+    if (!s || primitiveInput(s.primitive) !== 'path' || !s.cut || !this.canAct()) {
       return { coverage: 0, avgDeviationRatio: 9, quality: 0, passed: false, strokesLeft: this.strokesLeft, stageDone: false, matchedPath: -1 };
+    }
+    // nerve_cut — 길이 무관, **시작 위치 정확도** 단독 판정 (§3.1). 짧게 정확히 끊는 동작이라
+    //  커버율을 요구하면 오히려 길게 긋도록 유도된다.
+    if (s.primitive === 'nerve_cut') {
+      const r = this.evalNerveCut(traced, s);
+      if (r.passed) { this.cutQualities.push(r.quality); this._ikejime = true; this.advance(); }
+      return { ...r, strokesLeft: 0, stageDone: r.passed, matchedPath: r.passed ? 0 : -1 };
     }
     const multi = s.cut.guidePaths;
     let res: CutEvalResult;
@@ -948,7 +969,8 @@ export class ButcheryProcess {
   /** 비늘치기/내장 긁기 — 스트로크 이동량 누적 (0~1 delta) */
   submitFill(delta: number): { progress: number; stageDone: boolean } {
     const s = this.stage;
-    if (!s || (s.primitive !== 'drag_fill' && s.primitive !== 'scoop') || !this.canAct()) {
+    // 영역 문지르기 계열 — drag_fill·scoop + 두족류 hold_scrub·salt_apply
+    if (!s || primitiveInput(s.primitive) !== 'fill' || !this.canAct()) {
       return { progress: this.fillProgress, stageDone: false };
     }
     this.fillProgress = Math.min(1, this.fillProgress + delta);
@@ -961,13 +983,42 @@ export class ButcheryProcess {
     return { progress: this.fillProgress / target, stageDone: false };
   }
 
-  /** 세척/얼음물 버튼 */
+  /**
+   * 버튼 1탭으로 통과하는 스테이지 — 세척/얼음물 + 두족류 `result`(결과 확인)·`flip`(뷰 반전).
+   * `result`는 조작이 없으므로 `canAct()`가 항상 참이어야 한다 (§3.1).
+   */
   submitWash(): boolean {
     const s = this.stage;
-    if (!s || s.primitive !== 'wash' || !this.canAct()) return false;
+    if (!s || primitiveInput(s.primitive) !== 'button') return false;
+    if (s.primitive !== 'result' && !this.canAct()) return false;
     if (s.id === 'bleed_ice') this._bled = true;
     this.advance();
     return true;
+  }
+
+  /**
+   * `nerve_cut` 판정 (§3.1) — 경로 **중점 반경** 안에서 시작 + 스트로크 길이 0.03~0.12.
+   * 커버율을 보지 않는 이유: 시메는 "짧고 정확하게"가 요구조건이라 길이를 늘리면 오히려 실패다.
+   */
+  private evalNerveCut(traced: CutPoint[], s: ButcheryStage): CutEvalResult {
+    const fail = { coverage: 0, avgDeviationRatio: 9, quality: 0, passed: false };
+    if (traced.length < 2 || !s.cut) return fail;
+    const g = s.cut.guidePath;
+    const mid = s.tapPoint ?? {
+      x: (g[0].x + g[g.length - 1].x) / 2, y: (g[0].y + g[g.length - 1].y) / 2,
+    };
+    const r = s.tapRadius ?? 0.06;
+    const d0 = Math.hypot(traced[0].x - mid.x, traced[0].y - mid.y);
+    let len = 0;
+    for (let i = 1; i < traced.length; i++) {
+      len += Math.hypot(traced[i].x - traced[i - 1].x, traced[i].y - traced[i - 1].y);
+    }
+    const NERVE_LEN: [number, number] = [0.03, 0.12];
+    if (d0 > r * 1.6 || len < NERVE_LEN[0] || len > NERVE_LEN[1]) {
+      return { ...fail, coverage: d0 <= r * 1.6 ? 1 : 0, avgDeviationRatio: d0 / r };
+    }
+    const quality = Math.max(0.3, 1 - d0 / (r * 1.6));
+    return { coverage: 1, avgDeviationRatio: d0 / r, quality, passed: true };
   }
 
   /** 박피 당김 1회 (품질 0~1: 각도·거리 판정은 client가 계산해 전달) */
@@ -1038,7 +1089,11 @@ export class ButcheryProcess {
     // 구 방식("client가 버튼으로 전환")은 수동 전환 누락 시 canAct() false로
     // 가이드·입력이 조용히 죽어 "머리따기 이후 진행 불가"로 체감되던 주원인.
     // autoOrient=false면 구 방식 유지 (client가 뒤집기 버튼/키로 전환).
-    if (TUNING.butchery.autoOrient && this.stage) this.orientation = this.stage.orientation;
+    //  ⚠ 두족류는 예외 — 뷰 전이(개복→펼침→껍질면→살코기면)가 **공정 자체**라
+    //    뒤집기 버튼으로 도달할 수 있는 자세가 아니다. 항상 스테이지 요구 뷰로 스냅한다.
+    if ((this.cephalopod || TUNING.butchery.autoOrient) && this.stage) {
+      this.orientation = this.stage.orientation;
+    }
   }
 
   private resetStageCounters(): void {
@@ -1046,9 +1101,11 @@ export class ButcheryProcess {
     this.fillProgress = 0;
     // 다중 유도선이면 선 개수만큼 = 각 선 1회씩 (strokesRequired보다 우선)
     const multiN = s?.cut?.guidePaths?.length ?? 0;
+    // 경로형 프리미티브는 기본 1회 (nerve_cut은 자체 판정이라 카운터를 쓰지 않는다)
+    const pathPrim = !!s && primitiveInput(s.primitive) === 'path' && s.primitive !== 'nerve_cut';
     this.strokesLeft = multiN > 0
       ? multiN
-      : (s?.cut?.strokesRequired ?? (s?.primitive === 'guided_cut' ? 1 : 0));
+      : (s?.cut?.strokesRequired ?? (pathPrim ? 1 : 0));
     this.pullsLeft = s?.pullsRequired ?? (s?.primitive === 'peel' ? 1 : 0);
     this.pathsDone.clear();
   }

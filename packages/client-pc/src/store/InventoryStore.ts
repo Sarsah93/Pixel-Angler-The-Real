@@ -151,6 +151,12 @@ export interface InvItem {
   lengthCm?: number;
   /** 개체 무게 (g) */
   weightG?: number;
+  /**
+   * 개체 성별 — 성별로 외형이 달라지는 어종의 이미지/도마 스프라이트 분기용
+   * (돌돔 = 40cm↑ 수컷만 줄무늬 소실 · 용치놀래기 = 성전환 체색).
+   * 없으면 'F'(무늬 유지) 취급 — 구세이브·성별 무관 어종의 기본값.
+   */
+  sex?: 'M' | 'F';
 
   // ── 원투 메인 싱커(무게추 봉돌) 전용 ──
   /** 봉돌 종류 (고리/구멍/묶음추) — 존재하면 무게추 봉돌 */
@@ -314,16 +320,23 @@ function createDevFishDefs(): Omit<InvItem, 'slot'>[] {
     { sp: 'amberjack', nameKo: '부시리', lo: 50, hi: 110, wf: 0.013 },
     // 넙치류 — 다섯장뜨기 검증용 (75차. 오라클 wf 0.013·minFilletLengthCm 여유 밴드)
     { sp: 'flatfish', nameKo: '광어', lo: 40, hi: 80, wf: 0.013 },
+    // 두족류 — 손질 트리 검증용 (87차 사용자 요청). **lengthCm = 외투장**(두족류 관례, 79차)
+    //  문어만 전장 기준 밴드. 손질은 아직 cephalopod 스텁이라 가이드/렌더 확인용이다.
+    { sp: 'squid', nameKo: '무늬오징어', lo: 20, hi: 40, wf: 0.020 },
+    { sp: 'swordtip_squid', nameKo: '한치', lo: 15, hi: 35, wf: 0.016 },
+    { sp: 'cuttlefish', nameKo: '갑오징어', lo: 12, hi: 25, wf: 0.045 },
+    { sp: 'octopus', nameKo: '참문어', lo: 30, hi: 60, wf: 0.018 },
   ];
   return devFish.map((f) => {
     const lengthCm = Math.round(f.lo + Math.random() * (f.hi - f.lo));
     const weightG = Math.round(f.wf * lengthCm ** 3);
+    const sex: 'M' | 'F' = Math.random() < 0.5 ? 'M' : 'F';
     return {
       id: `inv_devfish_${f.sp}`, name: `${f.nameKo} (${lengthCm}cm)`, icon: '🐟',
-      iconTexture: resolveFishTexture(f.sp, lengthCm, Math.random() < 0.5 ? 'M' : 'F'),
+      iconTexture: resolveFishTexture(f.sp, lengthCm, sex),
       category: 'food' as InvCategory, subCategory: '어획물', qty: 1,
       basePrice: 12000, condition: 'live' as InvCondition, equippable: false,
-      speciesId: f.sp, lengthCm, weightG,
+      speciesId: f.sp, lengthCm, weightG, sex,
       conditionSinceMs: Date.now(),
     };
   });
