@@ -86,8 +86,8 @@ export function isCephalopodButcherable(speciesId: string): boolean {
  * `octo_slime`만 인벤토리에 들어가지 않고 "제거됨" 칩으로만 표시된다.
  */
 export const CEPH_BYPRODUCTS: Record<CephByproductId, CephByproductDef> = {
-  // 중간 덩어리 전용 에셋 없음 — 내장 주변부로 대체 (분할 전이라 내장이 붙어 있는 상태)
-  ceph_head_mass:     { id: 'ceph_head_mass', nameKo: '머리+다리+내장 덩어리', defaultAction: 'keep', forced: true, stack: 1, price: 0, use: '중간 산출물 — 머리부 분할 공정의 입력', icon: 'trim_ceph_viscera' },
+  // 전용 에셋(촉완이 붙어있는 다리부와 머리부) — 사용자 제공 2026-08-10. 구 대체본(내장 주변부) 폐기
+  ceph_head_mass:     { id: 'ceph_head_mass', nameKo: '머리+다리+내장 덩어리', defaultAction: 'keep', forced: true, stack: 1, price: 0, use: '중간 산출물 — 머리부 분할 공정의 입력', icon: 'trim_ceph_head_mass' },
   ceph_pen:           { id: 'ceph_pen', nameKo: '오징어뼈(연골)', defaultAction: 'discard', stack: 20, price: 0, use: '폐기 · 공예 소품', icon: 'trim_ceph_pen' },
   ceph_cuttlebone:    { id: 'ceph_cuttlebone', nameKo: '갑(석회질 판)', defaultAction: 'discard', stack: 10, price: 50, use: '폐기 · 공예 · 사료', icon: 'trim_ceph_cuttlebone' },
   ceph_skin:          { id: 'ceph_skin', nameKo: '오징어 껍질', defaultAction: 'discard', stack: 10, price: 100, use: '잡부산물 — 판매' },

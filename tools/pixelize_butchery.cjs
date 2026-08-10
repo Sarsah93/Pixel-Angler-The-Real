@@ -38,7 +38,7 @@ const PALETTE_N = 44;    // 팔레트 색 수
 const AB = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+/';
 
 /** 크롬 페이지에서 실행할 처리 스크립트 (이미지 → {w,h,palette,rows} JSON) */
-function pageHtml(fileUrl, bgTol, erasePolys) {
+function pageHtml(fileUrl, bgTol, erasePolys, fitLong) {
   return `<!doctype html><body><script>
 const img = new Image();
 img.onload = () => {
@@ -108,9 +108,15 @@ img.onload = () => {
     if (!removed[y * W + x]) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
   }
   // ── ② 다운샘플 (박스 평균 — 불투명 커버리지 35% 미만 셀은 투명) ──
+  //  기본은 **가로 기준**(GRID_W). FIT_LONG이면 **긴 축 기준**으로 잡는다 —
+  //  세로로 찍힌 원본(두족류 사진 다수)은 가로 기준이면 다운샘플이 거의 걸리지 않아
+  //  bbox가 좁을수록 행이 폭증한다(실측: 121x449 원본이 cell=1로 449행 그대로 구워짐).
+  //  가로 원본(bw >= bh)에서는 longPx === bw라 기존 결과와 **완전히 동일**하다.
   const bw = x1 - x0 + 1, bh = y1 - y0 + 1;
-  const gw = Math.min(${GRID_W}, bw);
-  const cell = bw / gw;
+  const longPx = ${fitLong ? 'Math.max(bw, bh)' : 'bw'};
+  const longG = Math.min(${GRID_W}, longPx);
+  const cell = longPx / longG;
+  const gw = Math.max(1, Math.round(bw / cell));
   const gh = Math.max(1, Math.round(bh / cell));
   const cells = [];   // [r][c] = [r,g,b] | null
   for (let r = 0; r < gh; r++) {
@@ -171,9 +177,11 @@ img.src = ${JSON.stringify(fileUrl)};
 }
 
 /** 크롬 dump-dom으로 1장 처리 */
-function processImage(absPngPath, bgTol = 46, erasePolys = []) {
+function processImage(absPngPath, bgTol = 46, erasePolys = [], fitLong = false) {
   const tmpHtml = path.join(os.tmpdir(), `pixbut_${Date.now()}_${Math.random().toString(36).slice(2)}.html`);
-  fs.writeFileSync(tmpHtml, pageHtml('file:///' + absPngPath.replace(/\\/g, '/'), bgTol, erasePolys));
+  fs.writeFileSync(tmpHtml, pageHtml(
+    'file:///' + encodeURI(absPngPath.replace(/\\/g, '/')), bgTol, erasePolys, fitLong,
+  ));
   const dom = execFileSync(CHROME, [
     '--headless', '--disable-gpu', '--allow-file-access-from-files',
     '--virtual-time-budget=8000', '--dump-dom', 'file:///' + tmpHtml.replace(/\\/g, '/'),
@@ -380,7 +388,53 @@ function rotateSprite(spr, dir) {
  *  halibut_lift_done — 원본이 **세로(머리 위·꼬리 아래)** + 열린 살이 왼쪽
  *    → cw 회전(머리 오른쪽·열린 살 위) 후 미러(머리 왼쪽·열린 살 위 유지) = 한 장을 떠낸 상태
  */
-const ROTATE_KEYS = { halibut_lift_done: 'cw', halibut_fin_score: 'cw' };
+const ROTATE_KEYS = {
+  halibut_lift_done: 'cw',
+  halibut_fin_score: 'cw',
+  // ── 두족류(무늬오징어) — 세로로 찍힌 원본을 "가로 · 다리 왼쪽 / 외투막 끝 오른쪽"으로 정규화 ──
+  //  기준은 가로로 찍힌 원물 사진(squid_whole/shime1/shime2)이다: 다리가 왼쪽, 몸통이 오른쪽.
+  //  세로 사진은 전부 **외투막 끝이 위 · 다리(또는 입구)가 아래**라 cw(위→오른쪽) 하나로 정렬된다.
+  squid_spread: 'cw',     // 펼치기 — 다리 아래 → 왼쪽
+  squid_pen: 'cw',        // 연골 노출 — 몸통 끝 위 → 오른쪽
+  squid_headmass: 'cw',   // 머리+다리 덩어리 — 절단면 위 → 오른쪽, 다리 아래 → 왼쪽
+  squid_skin_pull: 'cw',  // 껍질 위→아래 당김 → 오른쪽→왼쪽 (squid_skin_grip과 같은 방향)
+  squid_fin1: 'cw',
+  squid_fin2: 'cw',
+  squid_clean: 'cw',      // 완료 — 몸통 끝 위 → 오른쪽
+};
+
+/**
+ * 긴 축 기준 다운샘플 키 — 세로 원본은 가로 기준(GRID_W)이면 다운샘플이 안 걸린다.
+ * 두족류는 뷰마다 종횡비가 0.27~2.6으로 크게 흔들리므로 전 키를 긴 축 기준으로 통일한다
+ * (뷰가 바뀌어도 디테일 예산이 같다).
+ */
+const FIT_LONG_PREFIX = ['squid_'];
+const fitsLong = (key) => FIT_LONG_PREFIX.some((p) => key.startsWith(p));
+
+/**
+ * ── 추가 입력 폴더 (파일명이 키가 아닌 경우) ────────────────────────────────
+ * 두족류 손질 단계 실사는 사용자가 **공정 순서 한글 파일명**으로 관리한다
+ * (`food assets/butchery/reference/cephalopod/`). 원본을 ASCII로 복제하면 사본이 갈라지므로
+ * 여기서 파일명 → 키를 명시적으로 잇는다. 파이프라인 기본 스캔은 하위 폴더를 보지 않는다.
+ *
+ * 매핑 근거 = 사용자 지정 공정 6구간(시메 / 개복·내장 / 연골 / 껍질 / 아가미·날개 / 머리부 분할).
+ * 사진 번호는 **촬영 순서**이고 구간 번호와 1:1이 아니다 — `3.`은 구간 2에서 떨어져 나온
+ * 머리+다리 덩어리이며, 구간 6(머리부 분할)의 도마 피사체가 된다.
+ */
+const CEPH_SRC_DIR = path.resolve(SRC_DIR, 'reference', 'cephalopod');
+const CEPH_SRC = {
+  '0. 무늬오징어 원물(손질대기).png': 'squid_whole',
+  '1.1. 갑-눈 사이(몸통부 신경 차단).png': 'squid_shime1',
+  '1.2. 눈-다리 사이(다리부 신경 차단).png': 'squid_shime2',
+  '2.1. 개복 및 내장 분리(펼치기 및 내장  노출).png': 'squid_spread',
+  '2.2. 개복 및 내장 분리(내장 분리 결과 확인 및 가운데 연골 노출).png': 'squid_pen',
+  '3. 내장이 제거된 머리부와 다리부.png': 'squid_headmass',
+  '4.1. 껍질 제거 - 오른쪽 부분에서 왼쪽으로 잡아뜯기.png': 'squid_skin_grip',
+  '4.2. 껍질 제거 - 위쪽 부분에서 아래쪽 부분으로 잡아뜯기.png': 'squid_skin_pull',
+  '5.1. 한 쪽 날개를 껍질로부터 분리하는 중.png': 'squid_fin1',
+  '5.2. 다른 쪽 날개를 껍질로부터 분리.png': 'squid_fin2',
+  '6. 아가미 제거 및 내장면 닦기가 완료된 사진.png': 'squid_clean',
+};
 
 /**
  * 굽기 전에 지울 영역 (원본 정규화 폴리곤 — 회전·미러보다 먼저).
@@ -398,14 +452,30 @@ const ERASE_POLY = {
 
 // ① 돔류 = SVG 자동 추출 (기본) → ② 사진 폴더가 같은 키를 덮어씀 (사진 우선)
 const map = new Map(extractBreamStages());
-const files = fs.existsSync(SRC_DIR) ? fs.readdirSync(SRC_DIR).filter((f) => f.toLowerCase().endsWith('.png')) : [];
-for (const f of files) {
-  const key = path.basename(f, '.png');
-  let spr = processImage(path.join(SRC_DIR, f), BG_TOL[key] ?? 46, ERASE_POLY[key] ?? []);
+
+/** [절대경로, 키] 목록 — 기본 폴더(파일명=키) + 명시 매핑 폴더 */
+const photoJobs = [];
+if (fs.existsSync(SRC_DIR)) {
+  for (const f of fs.readdirSync(SRC_DIR).filter((n) => n.toLowerCase().endsWith('.png'))) {
+    photoJobs.push([path.join(SRC_DIR, f), path.basename(f, '.png')]);
+  }
+}
+for (const [fname, key] of Object.entries(CEPH_SRC)) {
+  const abs = path.join(CEPH_SRC_DIR, fname);
+  if (!fs.existsSync(abs)) { console.warn(`⚠ 두족류 입력 없음 (건너뜀): ${fname}`); continue; }
+  photoJobs.push([abs, key]);
+}
+
+for (const [abs, key] of photoJobs) {
+  let spr = processImage(abs, BG_TOL[key] ?? 46, ERASE_POLY[key] ?? [], fitsLong(key));
   const rot = ROTATE_KEYS[key];
   if (rot) spr = rotateSprite(spr, rot);
   if (MIRROR_KEYS.has(key)) spr = mirrorSprite(spr);
-  const tag = [rot ? `회전 ${rot}` : null, MIRROR_KEYS.has(key) ? '미러' : null].filter(Boolean).join('·');
+  const tag = [
+    rot ? `회전 ${rot}` : null,
+    MIRROR_KEYS.has(key) ? '미러' : null,
+    fitsLong(key) ? '긴축' : null,
+  ].filter(Boolean).join('·');
   map.set(key, spr);
   console.log(`${key}: ${spr.w}x${spr.h}, pal ${spr.palette.length} (사진${tag ? '·' + tag : ''})`);
 }

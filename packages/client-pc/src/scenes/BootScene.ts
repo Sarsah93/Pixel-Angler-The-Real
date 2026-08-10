@@ -198,6 +198,7 @@ export class BootScene extends Phaser.Scene {
     this.load.image('trim_ceph_head', 'trimmings/ceph_head.png');                           // 머리 (공용)
     this.load.image('trim_ceph_beak', 'trimmings/ceph_beak.png');                           // 입 (공용)
     this.load.image('trim_ceph_viscera', 'trimmings/ceph_viscera.png');                     // 내장 주변부 (공용)
+    this.load.image('trim_ceph_head_mass', 'trimmings/ceph_head_mass.png');                 // 촉완 붙은 다리부+머리부 (분할 전 덩어리)
     this.load.image('trim_octo_whole', 'trimmings/octo_whole.png');                         // 손질된 문어
     this.load.image('trim_octo_viscera', 'trimmings/octo_viscera.png');                     // 문어 내장
     this.load.image('trim_octo_beak', 'trimmings/octo_beak.png');                           // 문어 입(악판)

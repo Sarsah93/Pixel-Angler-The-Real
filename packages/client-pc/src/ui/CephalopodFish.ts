@@ -15,6 +15,8 @@
 
 import Phaser from 'phaser';
 import type { ButcheryOrientation } from '@tra/core';
+import { drawStageSprite, getStageSprite } from './PixelButcherFish.js';
+import type { PixelFishSprite } from '../data/PixelFishSprites.js';
 
 export interface CephFishGeom { x: number; y: number; w: number; h: number }
 
@@ -36,6 +38,10 @@ export interface CephFishState {
   beakOut: boolean;     // 부리 제거
   /** 진행 중 스테이지의 채움 게이지 (hold_scrub 연출) */
   fillProgress?: number;
+  /** 다중 경로 스테이지에서 이미 끝낸 경로 수 (날개 2곳 — 사진 5.1 → 5.2 전환) */
+  finPathsDone?: number;
+  /** 손질 완료 — 결과 오버레이 뒤 도마에 최종 산출물(손질된 몸통)이 남는다 */
+  finished?: boolean;
 }
 
 // ── 팔레트 (§9 — 시메 전 갈색 + 청록 발색점 / 시메 후 유백색) ──
@@ -277,14 +283,110 @@ function drawParts(g: Phaser.GameObjects.Graphics, geom: CephFishGeom, st: CephF
   }
 }
 
-/** 두족류 도마 렌더 — 뷰 상태로 분기 */
+/**
+ * ── 스테이지 → 실사 도트 스프라이트 (무늬오징어) ─────────────────────────────
+ * 원본은 `food assets/butchery/reference/cephalopod/`의 공정 순서 사진 11장이며,
+ * `pixelize_butchery.cjs`가 `squid_*` 키로 구워 `FISH_STAGE_SPRITES`에 넣는다.
+ *
+ * 방향 규약(굽는 시점에 정규화됨): **다리·외투막 입구 = 왼쪽 / 외투막 끝 = 오른쪽**.
+ * 세로로 찍힌 원본은 파이프라인 `ROTATE_KEYS`가 cw로 눕혀 이 규약에 맞춘다.
+ *
+ * 사진 11장 < 스테이지 14개라 일부는 공유한다:
+ *  - `squid_spread`  = 펼치기·내장 분리 (한 장면의 두 동작)
+ *  - `squid_headmass`= 분리 결과 확인 · 머리부 3분할 · 부리 (모두 같은 덩어리가 피사체)
+ *  - `ceph_fin_off`  = 날개 2곳이라 완료한 경로 수로 `squid_fin1`→`squid_fin2` 전환
+ *
+ * ⚠ 사진이 없는 상태 2개는 **가장 가까운 장면으로 대체**했다 (사용자 확인 대상):
+ *  - `ceph_skin_done`(껍질 분리 완료) → 박리 직후라 `squid_skin_pull` 연속 사용
+ *  - `ceph_gill_wash`(아가미 제거·닦기) → 결과 사진 `squid_clean`(사진 6)
+ */
+const SQUID_STAGE_SPRITE: Record<string, string> = {
+  ceph_shime_mantle: 'squid_whole',      // 0. 원물 (손질대기)
+  ceph_shime_arms: 'squid_shime1',       // 1.1 갑–눈 사이 절단 완료
+  ceph_mantle_open: 'squid_shime2',      // 1.2 눈–다리 사이 절단 완료
+  ceph_mantle_spread: 'squid_spread',    // 2.1 펼치기 · 내장 노출
+  ceph_viscera_pull: 'squid_spread',     // 2.1 (같은 장면에서 내장을 떼어낸다)
+  ceph_split_check: 'squid_headmass',    // 3.  내장이 제거된 머리부와 다리부
+  ceph_pen_out: 'squid_pen',             // 2.2 가운데 연골 노출
+  ceph_flip_skin: 'squid_skin_grip',     // 4.1 오른쪽 → 왼쪽 잡아뜯기
+  ceph_skin_peel: 'squid_skin_pull',     // 4.2 위쪽 → 아래쪽 잡아뜯기
+  ceph_skin_done: 'squid_skin_pull',     // ⚠ 전용 사진 없음
+  ceph_gill_wash: 'squid_clean',         // 6.  아가미 제거 · 내장면 닦기 완료
+  ceph_fin_off: 'squid_fin1',            // 5.1 → (1곳 완료 시) 5.2
+  ceph_head_split: 'squid_headmass',     // 3.  덩어리를 3조각으로 가른다
+  ceph_beak_out: 'squid_headmass',       // 3.  다리 밑동에서 부리를 뽑는다
+};
+
+/** 스테이지 → 스프라이트 키 (다중 경로 스테이지는 진행도로 분기) */
+function squidSpriteKey(st: CephStageRef): string | undefined {
+  // 손질 완료 = **최종 산출물**을 도마에 남긴다 — 어류가 `pure_fillet_{fam}`(순수 필렛)을
+  //  남기는 것과 같은 규칙(69·84차). 두족류의 대응물은 손질 끝난 몸통 = 사진 6.
+  //  ⚠ 완료 시점엔 `stage`가 없어서 이 분기가 없으면 파라메트릭 폴백("구 픽셀 이미지")이 뜬다.
+  if (st.finished) return 'squid_clean';
+  const id = st.stageId;
+  if (!id) return undefined;
+  if (id === 'ceph_fin_off') return (st.finPathsDone ?? 0) >= 1 ? 'squid_fin2' : 'squid_fin1';
+  return SQUID_STAGE_SPRITE[id];
+}
+
+/** 스프라이트 선택에 필요한 최소 정보 — 패널이 좌표계 산출에 쓴다 */
+export interface CephStageRef { stageId?: string; finPathsDone?: number; finished?: boolean }
+
+/** 현재 스테이지의 실사 스프라이트 (없으면 undefined = 파라메트릭 폴백) */
+export function cephStageSprite(ref: CephStageRef): PixelFishSprite | undefined {
+  const key = squidSpriteKey(ref);
+  return key ? getStageSprite(key) : undefined;
+}
+
+/**
+ * 도마 rect 안에서 스프라이트가 **실제로 차지하는 rect** (비율 유지·중앙).
+ *
+ * 유도선·입력·F9 핸들의 정규화 기준이 이 rect다 — 도마 전체가 아니라 **피사체 기준**이라야
+ * ① 세로로 긴 뷰(연골·완료 등 128x127급)가 도마 밖으로 삐져나가지 않고
+ * ② 좌표 0~1이 오징어 몸 전체에 대응하며
+ * ③ `tolerance`(정규화 단위)가 뷰마다 다른 의미가 되지 않는다.
+ */
+export function cephFitRect(geom: CephFishGeom, spr: PixelFishSprite): CephFishGeom {
+  const cell = Math.min(geom.w / spr.w, geom.h / spr.h);
+  const dw = spr.w * cell, dh = spr.h * cell;
+  return { x: geom.x + (geom.w - dw) / 2, y: geom.y + (geom.h - dh) / 2, w: dw, h: dh };
+}
+
+/** 두족류 도마 렌더 — 실사 도트가 있으면 그것, 없으면 파라메트릭 폴백 */
 export function drawCephalopodFish(
   g: Phaser.GameObjects.Graphics, geom: CephFishGeom, state: CephFishState,
 ): void {
+  // ── 실사 도트 우선 (사진이 곧 그 단계의 도마 그림이다 — 사용자 지시 2026-08-10) ──
+  const spr = cephStageSprite(state);
+  if (spr) {
+    const fit = cephFitRect(geom, spr);
+    drawStageSprite(g, spr, geom);
+    // 사진에 담기지 않는 **진행 상태**만 위에 얹는다 (닦기 게이지 등)
+    drawProgressOverlay(g, fit, state);
+    return;
+  }
   switch (state.orientation) {
     case 'CEPH_PARTS': drawParts(g, geom, state); return;
     case 'CEPH_OPEN': case 'CEPH_SKIN_UP': case 'CEPH_FLESH_UP': drawSheet(g, geom, state); return;
     default: drawWhole(g, geom, state); return;
+  }
+}
+
+/**
+ * 실사 위 진행 오버레이 — 사진 1장으로는 표현되지 않는 **중간 진행**만 그린다.
+ * (스프라이트 교체로 표현되는 상태는 여기서 다시 그리지 않는다 — 이중 표기 금지.)
+ */
+function drawProgressOverlay(
+  g: Phaser.GameObjects.Graphics, geom: CephFishGeom, st: CephFishState,
+): void {
+  // 내장면 닦기 — 남은 잔막이 문지를수록 걷힌다
+  if (st.stageId === 'ceph_gill_wash' && !st.gillClean) {
+    const left = 1 - Math.max(0, Math.min(1, st.fillProgress ?? 0));
+    if (left > 0.02) {
+      g.fillStyle(C.membrane, 0.34 * left);
+      const [mx, my] = px(geom, 0.55, 0.5);
+      g.fillEllipse(mx, my, geom.w * 0.62, geom.h * 0.58);
+    }
   }
 }
 

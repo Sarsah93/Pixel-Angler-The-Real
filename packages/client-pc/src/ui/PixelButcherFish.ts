@@ -801,14 +801,20 @@ function tintColor(color: number, tint: number, k: number): number {
 function drawSprite(
   g: Phaser.GameObjects.Graphics, spr: PixelFishSprite, geom: PixelFishGeom,
   mirrorX: boolean, mirrorY: boolean, tint: number | null, tintK: number,
-  opts?: { frame?: PixelFishFrame; erase?: FishPoly[] },
+  opts?: { frame?: PixelFishFrame; erase?: FishPoly[]; cell?: number },
 ): PixelFishGeom {
   // 프레임이 주어지면 그 셀 크기를 그대로 쓴다 = 스테이지가 바뀌어도 확대/축소 없음.
-  const cell = opts?.frame?.cell
+  //  `cell` 직접 지정 = **정확 맞춤**(정수 반올림 없음) — 세로로 긴 뷰가 도마 밖으로
+  //  삐져나가지 않아야 하는 두족류 경로에서 쓴다. 정수 셀 경로(어류)는 그대로 둔다.
+  const cell = opts?.cell
+    ?? opts?.frame?.cell
     ?? Math.max(2, Math.floor(Math.min(geom.w / spr.w, geom.h / spr.h)));
   const dw = spr.w * cell, dh = spr.h * cell;
-  const ox = opts?.frame ? opts.frame.ox + Math.floor((opts.frame.dw - dw) / 2) : geom.x + Math.floor((geom.w - dw) / 2);
-  const oy = opts?.frame ? opts.frame.oy + Math.floor((opts.frame.dh - dh) / 2) : geom.y + Math.floor((geom.h - dh) / 2);
+  const exact = opts?.cell !== undefined;
+  const ox = opts?.frame ? opts.frame.ox + Math.floor((opts.frame.dw - dw) / 2)
+    : geom.x + (exact ? (geom.w - dw) / 2 : Math.floor((geom.w - dw) / 2));
+  const oy = opts?.frame ? opts.frame.oy + Math.floor((opts.frame.dh - dh) / 2)
+    : geom.y + (exact ? (geom.h - dh) / 2 : Math.floor((geom.h - dh) / 2));
   // 팔레트 사전 변환 (틴트 1회)
   const pal = spr.palette.map((c) => (tint !== null ? tintColor(c, tint, tintK) : c));
   const erase = opts?.erase?.length ? opts.erase : null;
@@ -847,6 +853,25 @@ function drawSprite(
     }
   }
   return { x: ox, y: oy, w: dw, h: dh };
+}
+
+/**
+ * 단계 스프라이트 1장을 geom에 **비율 유지·중앙 정렬**로 그린다 (타 렌더러 공용 진입점).
+ * 두족류 렌더러(`CephalopodFish`)가 이 경로로 실사 도트를 올린다 — 어류 전용 옵션
+ * (프레임 고정·부분 삭제·틴트)은 노출하지 않는다.
+ * @returns 실제 그린 rect — 유도선/오버레이를 스프라이트에 맞출 때 쓴다.
+ */
+export function drawStageSprite(
+  g: Phaser.GameObjects.Graphics, spr: PixelFishSprite, geom: PixelFishGeom,
+): PixelFishGeom {
+  return drawSprite(g, spr, geom, false, false, null, 0, {
+    cell: Math.min(geom.w / spr.w, geom.h / spr.h),
+  });
+}
+
+/** 단계 스프라이트 조회 (레지스트리 통합 — 없으면 undefined = 호출부 폴백) */
+export function getStageSprite(key: string): PixelFishSprite | undefined {
+  return stageSpr(key);
 }
 
 /**

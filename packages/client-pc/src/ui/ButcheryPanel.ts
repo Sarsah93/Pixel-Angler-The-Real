@@ -34,7 +34,9 @@ import { fitTextHeight, clampTextWidth } from './TextFit.js';
 import { getFishColors } from './FishTemplateRenderer.js';
 import { drawPixelButcherFish, butcherSpritesFor, computeFishFrame } from './PixelButcherFish.js';
 import { SASHIMI_GUIDE_TEXTURE, guideFrameName, hasGuideFrames } from '../data/SashimiGuideFrames.js';
-import { drawCephalopodFish, CephFishState, CEPH_VIEW_LABEL } from './CephalopodFish.js';
+import {
+  drawCephalopodFish, CephFishState, CEPH_VIEW_LABEL, cephStageSprite, cephFitRect,
+} from './CephalopodFish.js';
 
 /**
  * 어류 트리 전용 뷰 좁히기 — 이 패널의 어류 경로는 항상 어류 5종 뷰(OrientationState)만 낸다.
@@ -109,6 +111,25 @@ export class ButcheryPanel extends DraggablePanel {
   }
   private get fishX(): number { return Math.round(this.boardCx - this.fishW / 2); }
   private get fishY(): number { return Math.round(this.boardCy - this.fishH / 2); }
+
+  /**
+   * 좌표 정규화 기준 rect — 유도선(`toPanelPx`)·입력(`toNorm`)·F9 핸들이 전부 이걸 쓴다.
+   *
+   * 어류는 생선 rect 그대로(회귀 없음). **두족류만** 실사 스프라이트가 실제로 차지하는
+   * rect로 좁힌다 — 뷰마다 종횡비가 0.27~2.6으로 흔들려서, 도마 rect를 기준으로 두면
+   * 좌표 0~1이 오징어 몸이 아니라 빈 도마까지 덮고 `tolerance`의 실제 관대함도 뷰마다
+   * 달라진다. (스프라이트가 없으면 = 파라메트릭 폴백이라 생선 rect가 곧 피사체다.)
+   */
+  private get subjectRect(): { x: number; y: number; w: number; h: number } {
+    const base = { x: this.fishX, y: this.fishY, w: this.fishW, h: this.fishH };
+    if (!this.process.cephalopod) return base;
+    const spr = cephStageSprite({
+      stageId: this.process.stage?.id,
+      finPathsDone: this.process.donePathIndices.size,
+      finished: this.process.finished,
+    });
+    return spr ? cephFitRect(base, spr) : base;
+  }
 
   // ── 넙치류 포 뜨기 — 칼 팔로우 연출 (84차. 사용자 공정 재정의 2026-08-06) ──
   //  유저가 드래그한 자리(= 칼길과 칼의 접점)를 **딜레이 후 사시미칼 스프라이트가 천천히
@@ -1320,8 +1341,9 @@ export class ButcheryPanel extends DraggablePanel {
   // ═══════════════════════════════════════════════════
   /** 스크린 → 생선 bbox 정규화 (0~1). 영역 밖이면 null */
   private toNorm(p: Phaser.Input.Pointer, slack = 0.12): CutPoint | null {
-    const u = (p.x - this.x - this.fishX) / this.fishW;
-    const v = (p.y - this.y - this.fishY) / this.fishH;
+    const R = this.subjectRect;
+    const u = (p.x - this.x - R.x) / R.w;
+    const v = (p.y - this.y - R.y) / R.h;
     // 회전된 도마에서도 판정은 항상 **생선 로컬 좌표**에서 한다 (가이드 좌표계와 동일 기준)
     const [lx, ly] = this.unrotNorm(u, v);
     if (lx < -slack || lx > 1 + slack || ly < -slack || ly > 1 + slack) return null;
@@ -1843,6 +1865,10 @@ export class ButcheryPanel extends DraggablePanel {
       headSplit: d.has('ceph_head_split'),
       beakOut: d.has('ceph_beak_out'),
       fillProgress: this.process.currentFill,
+      // 날개 2곳(다중 경로) — 끝낸 경로 수로 실사 5.1 → 5.2 전환
+      finPathsDone: this.process.donePathIndices.size,
+      // 완료 시엔 stage가 없다 — 이 플래그가 없으면 파라메트릭 폴백이 뜬다(어류 `finished`와 동일 규칙)
+      finished: this.process.finished,
     };
   }
 
@@ -2667,8 +2693,9 @@ export class ButcheryPanel extends DraggablePanel {
   private updateEditDrag(p: Phaser.Input.Pointer): void {
     if (this.editDragIdx < 0 || this.editDragIdx >= this.editHandles.length) return;
     const h = this.editHandles[this.editDragIdx];
-    const u = Phaser.Math.Clamp((p.x - this.x - this.fishX) / this.fishW, 0, 1);
-    const v = Phaser.Math.Clamp((p.y - this.y - this.fishY) / this.fishH, 0, 1);
+    const R = this.subjectRect;
+    const u = Phaser.Math.Clamp((p.x - this.x - R.x) / R.w, 0, 1);
+    const v = Phaser.Math.Clamp((p.y - this.y - R.y) / R.h, 0, 1);
     const [nx, ny] = this.unrotNorm(u, v);
     h.pt.x = Phaser.Math.Clamp(nx, 0, 1); h.pt.y = Phaser.Math.Clamp(ny, 0, 1);
     const [hx, hy] = this.toPanelPx(h.pt);
@@ -2910,7 +2937,8 @@ export class ButcheryPanel extends DraggablePanel {
   /** 정규화(0~1) → 패널 로컬 px (회전 반영) */
   private toPanelPx(p: CutPoint): [number, number] {
     const [u, v] = this.rotNorm(p.x, p.y);
-    return [this.fishX + u * this.fishW, this.fishY + v * this.fishH];
+    const R = this.subjectRect;
+    return [R.x + u * R.w, R.y + v * R.h];
   }
 
   /** 폴리라인 호길이 비례 보간 — t(0~1) 지점 좌표 + 진행 각 */
