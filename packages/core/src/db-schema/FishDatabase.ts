@@ -1204,7 +1204,8 @@ export const FISH_DATABASE: FishSpecies[] = [
     minLegalSizeCm: 0,
     avgSizeRangeCm: [15, 30],
     maxRecordCm: 45,
-    avgWeightRangeG: [300, 3000],
+    // 전장 기준 W=0.015·L³ 정합 (실측 캡처 2026-08-10 — 전장 30cm 400~500g / 45cm 1.2~1.3kg)
+    avgWeightRangeG: [50, 500],
     preferredDepthM: [1, 30],
     preferredTempC: [15, 24],
     preferredBaits: ['artificial_lure'],
@@ -1217,7 +1218,7 @@ export const FISH_DATABASE: FishSpecies[] = [
     sashimiValuePerKg: 25000,
     swimmingLayer: 'mid',
     isBoilingSpecies: false,
-    description: '에깅의 꽃. 가을 연안 시즌과 봄 대형 산란기가 최성기다. 밤이면 얕은 곳으로 붙으며 에기 폴링에 달려든다. 제주권에서는 3kg 오버 대형도 나온다.',
+    description: '에깅의 꽃. 가을 연안 시즌과 봄 대형 산란기가 최성기다. 밤이면 얕은 곳으로 붙으며 에기 폴링에 달려든다. 전장 45cm급 대물은 1.2~1.3kg에 이른다.',
   },
   {
     id: 'octopus',

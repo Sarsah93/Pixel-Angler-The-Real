@@ -375,7 +375,7 @@ export class MainMenuScene extends Phaser.Scene {
         this.paintRows();
       });
       hit.on('pointerdown', () => {
-        if (entry.disabled) return;
+        if (entry.disabled || this.isTransitioning) return;   // 전환(페이드) 중 재클릭 차단
         this.selectedIndex = i;
         this.paintRows();
         entry.action();
@@ -430,6 +430,7 @@ export class MainMenuScene extends Phaser.Scene {
     hit.on('pointerover', () => label.setColor('#ffffff'));
     hit.on('pointerout', () => label.setColor(this.deleteConfirmSlot === slot ? '#ffffff' : '#ff9a9a'));
     hit.on('pointerdown', () => {
+      if (this.isTransitioning) return;   // 전환 중 슬롯 삭제/뷰 재구축 차단
       if (this.deleteConfirmSlot === slot) {
         GameState.deleteSlot(slot);
         this.buildView();   // 슬롯 목록 갱신 (LOAD 뷰에서 저장이 모두 사라지면 빈 슬롯 표시)
@@ -525,6 +526,7 @@ export class MainMenuScene extends Phaser.Scene {
 
   // ── 슬롯 선택 처리 ──────────────────────────────────
   private onSlotPicked(slot: number, exists: boolean): void {
+    if (this.isTransitioning) return;   // 이중 시작 방지 (startNewGameInSlot 재실행 차단)
     if (this.slotMode === 'load') {
       if (!exists) return;
       if (GameState.loadFromSlot(slot)) this.startAdventure();
@@ -605,15 +607,18 @@ export class MainMenuScene extends Phaser.Scene {
     this.fadeOutThen(420, () => {
       // 저장은 집 침대에서만 (HOMETOWN_HOME_SPEC) — 종료 시 자동 저장하지 않는다.
       window.close();
-      // 브라우저에서 window.close()가 무시될 수 있음 — 안내 표시
-      this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2,
+      // 브라우저는 스크립트가 열지 않은 탭의 window.close()를 무시한다 — 여기 도달하면
+      // 안내를 잠시 보여주고 **메뉴를 다시 활성화**한다. (구 구현은 isTransitioning이
+      // true로 남아 메뉴 전체가 영구 잠기는 소프트락 — 2026-08-10 전수검사에서 발견)
+      const msg = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2,
         GameState.isDirty
           ? '저장되지 않은 진행이 있습니다 — 집 침대에서 저장할 수 있습니다.\n창을 닫아 게임을 종료하세요.'
           : '창을 닫아 게임을 종료하세요.', {
           fontFamily: '"Noto Sans KR", sans-serif', fontSize: '16px', color: '#8faabf',
-          align: 'center', lineSpacing: 6,
+          align: 'center', lineSpacing: 6, backgroundColor: '#081422cc', padding: { x: 18, y: 12 },
         }).setOrigin(0.5).setDepth(200);
       this.cameras.main.fadeIn(200, 0, 0, 0);
+      this.time.delayedCall(2600, () => { msg.destroy(); this.isTransitioning = false; });
     }, [0, 0, 0]);
   }
 
@@ -821,6 +826,7 @@ export class MainMenuScene extends Phaser.Scene {
     this.input.keyboard?.on('keydown-UP', () => move(-1));
     this.input.keyboard?.on('keydown-DOWN', () => move(1));
     const activate = (): void => {
+      if (this.isTransitioning) return;   // 전환(페이드) 중 Enter 연타 차단
       const entry = this.entries[this.selectedIndex];
       if (entry && !entry.disabled) entry.action();
     };

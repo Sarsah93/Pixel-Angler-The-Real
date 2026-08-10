@@ -82,5 +82,73 @@ export function createGame(): Phaser.Game {
 
   const game = new Phaser.Game(config);
   holder[GAME_KEY] = game;
+  installCrashGuards(game);
   return game;
+}
+
+/**
+ * "에러 표시 없는 검은 화면" 방어 2종 (2026-08-10 전수검사).
+ *
+ * 1) WebGL 컨텍스트 유실 — GPU 부하·드라이버 리셋 시 캔버스가 JS 에러 0으로 검게 멈춘다
+ *    (씬은 계속 활성이라 유저는 원인을 알 수 없음). 안내 오버레이를 띄우고 클릭 시 새로고침.
+ *    브라우저가 컨텍스트를 복구(webglcontextrestored)하면 오버레이는 자동 제거된다.
+ * 2) 처리되지 않은 런타임 예외 — 씬 create 도중 예외가 나면 그 씬이 그리다 만 채 멈춰
+ *    검은 화면처럼 보인다. 콘솔을 열지 않아도 알 수 있게 상단 배너로 1회 노출한다.
+ */
+function installCrashGuards(game: Phaser.Game): void {
+  const makeDiv = (css: string, html: string): HTMLDivElement => {
+    const div = document.createElement('div');
+    div.style.cssText = css;
+    div.innerHTML = html;
+    document.body.appendChild(div);
+    return div;
+  };
+
+  // ── 1) WebGL 컨텍스트 유실 오버레이 ──
+  game.events.once(Phaser.Core.Events.READY, () => {
+    const canvas = game.canvas;
+    if (!canvas) return;
+    let lostOverlay: HTMLDivElement | null = null;
+    canvas.addEventListener('webglcontextlost', (e) => {
+      e.preventDefault();   // 기본 처리를 막아야 복구(restored) 이벤트를 받을 수 있다
+      if (lostOverlay) return;
+      lostOverlay = makeDiv(
+        'position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;'
+        + 'background:#05090f;color:#d0e8f5;font-family:"Noto Sans KR",sans-serif;text-align:center;cursor:pointer;',
+        '<div style="font-size:20px;font-weight:bold;margin-bottom:12px;">화면 출력이 중단되었습니다</div>'
+        + '<div style="font-size:14px;color:#8faabf;line-height:1.7;">그래픽 장치(WebGL) 연결이 끊겼습니다 — 다른 프로그램의 GPU 부하가 원인일 수 있습니다.<br>'
+        + '화면을 클릭하면 게임을 새로고침합니다. (마지막 침대 저장 이후 진행은 복구되지 않습니다)</div>',
+      );
+      lostOverlay.addEventListener('click', () => location.reload());
+      console.error('[PixelAngler] WebGL context lost — 오버레이 표시');
+    });
+    canvas.addEventListener('webglcontextrestored', () => {
+      lostOverlay?.remove();
+      lostOverlay = null;
+      console.warn('[PixelAngler] WebGL context restored');
+    });
+  });
+
+  // ── 2) 전역 런타임 에러 배너 (1회) ──
+  let errorBannerShown = false;
+  const showErrorBanner = (summary: string): void => {
+    if (errorBannerShown) return;
+    errorBannerShown = true;
+    const banner = makeDiv(
+      'position:fixed;top:0;left:0;right:0;z-index:99998;background:#5a1616;color:#ffd9d0;'
+      + 'font-family:"Noto Sans KR",sans-serif;font-size:12px;line-height:1.6;padding:8px 14px;'
+      + 'border-bottom:1px solid #a04030;',
+      `<b>게임 내부 오류가 발생했습니다</b> — 화면이 멈췄다면 새로고침(F5)하세요. `
+      + `<span style="color:#e8a89a">${summary.replace(/</g, '&lt;').slice(0, 300)}</span>`
+      + ' <span style="float:right;cursor:pointer;font-weight:bold;">✕</span>',
+    );
+    banner.querySelector('span[style*="float"]')?.addEventListener('click', () => banner.remove());
+  };
+  window.addEventListener('error', (ev) => {
+    if (!ev.error) return;   // 리소스 로드 실패(img 등)는 제외 — 스크립트 예외만
+    showErrorBanner(String(ev.error?.message ?? ev.message));
+  });
+  window.addEventListener('unhandledrejection', (ev) => {
+    showErrorBanner(String((ev.reason as Error | undefined)?.message ?? ev.reason));
+  });
 }

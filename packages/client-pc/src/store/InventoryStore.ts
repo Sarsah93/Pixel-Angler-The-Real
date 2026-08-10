@@ -321,8 +321,9 @@ function createDevFishDefs(): Omit<InvItem, 'slot'>[] {
     // 넙치류 — 다섯장뜨기 검증용 (75차. 오라클 wf 0.013·minFilletLengthCm 여유 밴드)
     { sp: 'flatfish', nameKo: '광어', lo: 40, hi: 80, wf: 0.013 },
     // 두족류 — 손질 트리 검증용 (87차 사용자 요청). **lengthCm = 외투장**(두족류 관례, 79차)
-    //  문어만 전장 기준 밴드. 손질은 아직 cephalopod 스텁이라 가이드/렌더 확인용이다.
-    { sp: 'squid', nameKo: '무늬오징어', lo: 20, hi: 40, wf: 0.020 },
+    //  예외 2종: 무늬오징어·문어는 **전장** 기준 밴드 (무늬오징어 = 실측 캡처 정합 2026-08-10 —
+    //  전장 30cm 400~500g / 45cm 1.2~1.3kg, 오라클 wf 0.015와 동일). 손질은 가이드/렌더 확인용.
+    { sp: 'squid', nameKo: '무늬오징어', lo: 22, hi: 42, wf: 0.015 },
     { sp: 'swordtip_squid', nameKo: '한치', lo: 15, hi: 35, wf: 0.016 },
     { sp: 'cuttlefish', nameKo: '갑오징어', lo: 12, hi: 25, wf: 0.045 },
     { sp: 'octopus', nameKo: '참문어', lo: 30, hi: 60, wf: 0.018 },

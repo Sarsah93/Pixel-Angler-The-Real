@@ -564,7 +564,11 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     speciesId: 'squid', nameKo: '무늬오징어', nameEn: 'Bigfin Reef Squid',
     habitat: ['reef', 'structure', 'open'], minDepthM: 3, maxDepthM: 30, preferredLayers: ['mid', 'bottom'],
     baitPreference: { lure: 90 }, egiOnly: true,
-    minCm: 15, maxCm: 45, meanCm: 26, sdCm: 6, weightFactor: 0.02, maleRatio: 0.5,
+    // ⚠ 무늬오징어 lengthCm = **전장** 기준 (두족류 관례인 외투장의 예외 — 실측 캡처 정합,
+    //   2026-08-10 사용자 제공: 전장 30cm(몸통 10cm) = 400~500g / 전장 45cm(몸통 18cm) = 1.2~1.3kg).
+    //   W = 0.015·L³ → 30cm 405g · 40cm 960g · 45cm 1,367g — 1kg 돌파는 전장 40.5cm부터.
+    //   (구 wf 0.02는 45cm에서 1,823g로 캡처 대비 +46% 과체중이었음)
+    minCm: 15, maxCm: 45, meanCm: 26, sdCm: 6, weightFactor: 0.015, maleRatio: 0.5,
     sexNote: '가을 무늬오징어 시즌이 에깅 최성기 — 먹물 주의',
     // 야행성 — 야간 에깅이 최성기
     nightBonus: 1.6, tideActivity: sariPeak(0.4, 0.9),

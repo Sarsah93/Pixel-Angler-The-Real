@@ -54,3 +54,9 @@ RegionFieldScene: JSON → generateTexture 1회 베이킹(맵당 캐시) + 행 �
 3. `RegionMapGraph.depthProfileUrl`은 **등록된 지역만** — 없는 URL을 로드하면 dev SPA 폴백이 index.html을 반환해 JSON 파싱 pageerror.
 4. **`isTransitioning`은 create()에서 리셋** — Phaser 씬은 재사용되므로 필드 초기값이 재진입에 적용되지 않는다(73차 먹통 원인).
 5. 비용 차감은 **전환 가드 통과 후**(더블클릭 이중 차감 방지).
+6. **"에러 표시 없는 검은 화면" 3계열과 방어선**(088차): ① WebGL 컨텍스트 유실(JS 에러 0 — GPU 부하) →
+   `game.ts installCrashGuards` 오버레이 ② 씬 create 중 예외(그리다 만 채 멈춤) → 전역 에러 배너
+   ③ 맵 JSON 캐시 미스 → `RegionFieldScene.create` 가드(`bootFailed`) + 메인 메뉴 복귀.
+   새 씬의 create가 외부 데이터를 소비하면 **캐시 미스 가드부터** 넣는다.
+7. **WebGL 캔버스 픽셀 직접 샘플(drawImage) 금지** — `preserveDrawingBuffer=false`라 항상 검정.
+   밝기 검증은 Playwright 스크린샷 버퍼를 디코드한다(088차 하네스 오판 사례).

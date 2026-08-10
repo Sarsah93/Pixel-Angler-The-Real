@@ -124,6 +124,8 @@ export class RegionFieldScene extends Phaser.Scene {
   private _walkFrame: 1 | 2 = 1;
 
   private isTransitioning = false;
+  /** 맵 JSON 로드 실패로 안내 화면만 띄운 상태 — update()가 필드 오브젝트를 만지면 안 된다 */
+  private bootFailed = false;
 
   // ESC 일시정지 메뉴
   private isPaused = false;
@@ -276,8 +278,25 @@ export class RegionFieldScene extends Phaser.Scene {
   }
 
   create(): void {
-    this.mapData = this.cache.json.get(`rmap_${this.mapId}`) as RegionMapData;
-    this.node = getRegionMapNode(this.graph, this.mapId)!;
+    // 맵 JSON 로드 실패(서버 순단·404 등) 시 mapData가 캐시에 없다 — 그대로 진행하면
+    // 아래 필드 접근에서 TypeError로 create가 중단돼 **에러 표시 없는 검은 화면**이 된다
+    // (2026-08-10 전수검사). 안내를 띄우고 메인 메뉴로 안전 복귀한다.
+    const loadedMap = this.cache.json.get(`rmap_${this.mapId}`) as RegionMapData | undefined;
+    const loadedNode = getRegionMapNode(this.graph, this.mapId);
+    if (!loadedMap || !loadedNode) {
+      this.bootFailed = true;
+      this.cameras.main.setBackgroundColor(0x101820);
+      this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2,
+        `맵 데이터를 불러오지 못했습니다 (${this.mapId})\n잠시 후 메인 메뉴로 돌아갑니다`, {
+          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '16px', color: '#d0e8f5',
+          align: 'center', lineSpacing: 8,
+        }).setOrigin(0.5);
+      this.time.delayedCall(2200, () => this.scene.start('MainMenuScene'));
+      return;
+    }
+    this.bootFailed = false;
+    this.mapData = loadedMap;
+    this.node = loadedNode;
     this.cols = this.mapData.cols;
     this.rows = this.mapData.rows;
     this.worldW = this.cols * TR;
@@ -1618,6 +1637,7 @@ export class RegionFieldScene extends Phaser.Scene {
   }
 
   update(_time: number, delta: number): void {
+    if (this.bootFailed) return;   // 맵 로드 실패 안내 화면 — 필드 오브젝트가 없다
     this.hud?.updatePlayerMarker(this.playerBody.x, this.playerBody.y);
     this.updateWeatherFx(delta);
     // 보일링/스쿨링 필드 이벤트 (피딩 활성도 기반 발생/이동/소멸)
