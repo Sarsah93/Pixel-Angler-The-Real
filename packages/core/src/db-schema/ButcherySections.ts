@@ -267,10 +267,9 @@ export const SQUID_SECTIONS: ButcherySectionDef[] = [
     id: 'sec_ceph_open', label: '개복 · 내장 분리', anyOrder: false,
     tasks: [
       { id: 't_ceph_open', label: '몸통 절개', stageIds: ['ceph_mantle_open'] },
-      { id: 't_ceph_spread', label: '펼치기 · 내장 노출', stageIds: ['ceph_mantle_spread'] },
-      { id: 't_ceph_viscera', label: '내장 분리', stageIds: ['ceph_viscera_pull'] },
-      // result 스테이지 = 구간 종료 — 머리+다리+내장 덩어리가 여기서 확정된다
-      { id: 't_ceph_split_check', label: '분리 결과 확인', stageIds: ['ceph_split_check'], yields: ['ceph_head_mass'] },
+      // 펼치기·분리 결과 확인은 사용자 지시로 제거(2026-08-11) — 개복 완료 화면이 곧 펼쳐진
+      // 화면이고, 결과는 머리+다리 덩어리 **부산물 팝업**(전용 실사 아이콘)이 보여준다.
+      { id: 't_ceph_viscera', label: '내장 분리', stageIds: ['ceph_viscera_pull'], yields: ['ceph_head_mass'] },
     ],
   },
   {

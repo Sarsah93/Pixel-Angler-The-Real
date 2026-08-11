@@ -6,8 +6,9 @@
  * 한치 15 / 갑오징어 13 / 문어 11은 트리 미작성이라 `undefined`를 돌려주고,
  * 게이트(`isCephalopodTreeReady`)가 준비 중 안내를 유지한다.
  *
- * ⚠ 스테이지 ↔ 사진 대응은 §1.1 표 그대로다 (`S1`~`S14` = 스테이지 · `①`~`⑪` = 실사 컷).
- *   임의 병합·생략 금지 — 대응을 주석에 남겨 감사 추적이 되게 한다.
+ * ⚠ 스테이지 ↔ 사진 대응은 §1.1 표 기반 (`①`~`⑪` = 실사 컷) — 단 **사용자 지시(2026-08-11)로
+ *   2건 제거**: 펼치기(`ceph_mantle_spread` — 개복 완료 화면이 곧 펼쳐진 화면) ·
+ *   분리 결과 확인(`ceph_split_check` — 부산물 팝업의 결과 이미지로 대체). 총 14 → **12스테이지**.
  * ⚠ 구조 규약(§0.5.4): **스테이지 1개 = 작업 1개**, 섹션은 전부 `anyOrder: false`.
  *
  * 순수 TS — 렌더/브라우저 API 없음.
@@ -16,7 +17,7 @@
 import type { ButcheryStage, CutPoint, CutSpec, ButcheryOrientation } from '../types/Butchery.js';
 import {
   CEPH_SHIME_1, CEPH_SHIME_2, CEPH_SHIME_1_PATH, CEPH_SHIME_2_PATH,
-  CEPH_SLIT_PATH, CEPH_SPREAD_PATH, CEPH_VISCERA_PATH, CEPH_PEN_PATH,
+  CEPH_SLIT_PATH, CEPH_VISCERA_PATH, CEPH_PEN_PATH,
   CEPH_SKIN_LIFT_PATH, CEPH_SKIN_GRIP, CEPH_PEEL_PATH,
   CEPH_GILL_REGION, CEPH_GILL_SWEEP, CEPH_FIN_PATHS, CEPH_HEAD_SPLIT_PATHS,
   CEPH_BEAK_CENTER, CEPH_BEAK_PATH,
@@ -39,10 +40,11 @@ function cCut(
 }
 
 /**
- * 무늬오징어 — **14스테이지** (§1.1 13스테이지 + §0.5.6 부리 공정).
+ * 무늬오징어 — **12스테이지** (§1.1 13 + §0.5.6 부리 − 사용자 지시 제거 2 · 2026-08-11).
  *
- * 시메①② + 실사 ①~⑪이 순서 그대로 S1~S13이 되는 유일한 종이다(병합·생략·재배치 없음).
- * S14(`ceph_beak_out`)만 실사에 없는 추가 공정 — 사용자 지시에 따른 명시적 예외(§0.5.6).
+ * 제거 2건: 펼치기(개복 완료 = 곧 펼쳐진 화면이라 별도 조작 불필요) ·
+ * 분리 결과 확인(머리+다리 덩어리 부산물 팝업이 결과 이미지를 겸한다).
+ * `ceph_beak_out`은 실사에 없는 추가 공정 — 명시적 예외(§0.5.6).
  */
 function buildSquidStages(): ButcheryStage[] {
   return [
@@ -68,23 +70,13 @@ function buildSquidStages(): ButcheryStage[] {
       guide: '외투막 입구에 칼을 넣어 몸통 끝까지 한 번에 갈라주세요',
       cut: cCut('ceph_mantle_open', 'CEPH_VENTRAL', CEPH_SLIT_PATH, { tolerance: 0.09 }),
     },
-    {
-      id: 'ceph_mantle_spread', label: '펼치기 · 내장 노출', orientation: 'CEPH_OPEN',
-      primitive: 'lift_flap',
-      guide: '갈라진 몸통을 바깥으로 젖혀 펼치세요',
-      cut: cCut('ceph_mantle_spread', 'CEPH_OPEN', CEPH_SPREAD_PATH, { tolerance: 0.13 }),
-    },
-    // ── 내장 분리 (실사 ③④) ──
+    // ── 내장 분리 (실사 ②③ — 펼쳐진 화면에서 바로 뜯는다. 구 펼치기·결과 확인 스테이지는
+    //    사용자 지시로 제거 2026-08-11 · 결과는 머리+다리 덩어리 부산물 팝업이 보여준다) ──
     {
       id: 'ceph_viscera_pull', label: '내장 분리', orientation: 'CEPH_OPEN',
       primitive: 'drag_out',
-      guide: '머리를 들어올려 내장을 몸통에서 떼어내세요',
+      guide: '머리·다리 덩어리를 잡고 내장과 함께 위로 뜯어내세요',
       cut: cCut('ceph_viscera_pull', 'CEPH_OPEN', CEPH_VISCERA_PATH, { tolerance: 0.13 }),
-    },
-    {
-      id: 'ceph_split_check', label: '분리 결과 확인', orientation: 'CEPH_PARTS',
-      primitive: 'result',
-      guide: '머리·다리·내장이 한 덩어리로 분리되었습니다',
     },
     // ── 연골 (실사 ⑤) ──
     {

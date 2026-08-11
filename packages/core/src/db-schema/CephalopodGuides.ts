@@ -15,12 +15,14 @@
 import type { CutPoint } from '../types/Butchery.js';
 
 // ── 오징어류 3종 공통 ────────────────────────────────
-/** 개복 절개 — 외투막 입구 → 몸통 끝 */
-export const CEPH_SLIT_PATH: readonly CutPoint[] = [{ x: 0.39, y: 0.50 }, { x: 0.95, y: 0.50 }];
-/** 시메 ① — 갑(몸통)–눈 사이 */
-export const CEPH_SHIME_1: CutPoint = { x: 0.36, y: 0.50 };
-/** 시메 ② — 눈–다리 사이 */
-export const CEPH_SHIME_2: CutPoint = { x: 0.29, y: 0.50 };
+// ⚠ 무늬오징어(squid) 값은 **F9 실측 확정** (사용자 측정 2026-08-11 — 89차 피사체 rect 기준).
+//   좌표 기준은 도마 전체가 아니라 **그 스테이지 스프라이트의 실점유 rect**다.
+/** 개복 절개 — 외투막 입구 → 몸통 끝 (실측: squid_shime2 뷰) */
+export const CEPH_SLIT_PATH: readonly CutPoint[] = [{ x: 0.538, y: 0.499 }, { x: 0.971, y: 0.531 }];
+/** 시메 ① — 갑(몸통)–눈 사이 (실측 경로 중점) */
+export const CEPH_SHIME_1: CutPoint = { x: 0.535, y: 0.571 };
+/** 시메 ② — 눈–다리 사이 (실측 경로 중점) */
+export const CEPH_SHIME_2: CutPoint = { x: 0.441, y: 0.576 };
 
 // ── 종별 분리 — 시작점·방향이 실사에서 서로 다르다 ──
 /** 껍질 잡는 지점 */
@@ -55,22 +57,33 @@ export const CEPH_BEAK_PATH: readonly CutPoint[] = [{ x: 0.22, y: 0.50 }, { x: 0
  * 내장 중심 0.72 · 몸통 끝 0.95)에 맞춰 **근사값**으로 둔다.
  * ⚠ 전부 **F9 실측 대상** — 시트(`docs/mockups/squid_guide.svg`)가 정본이다.
  */
-/** 시메 ①② — 축을 가로지르는 짧은 정밀 절단 (중점이 CEPH_SHIME_1/2) */
-export const CEPH_SHIME_1_PATH: readonly CutPoint[] = [{ x: 0.36, y: 0.42 }, { x: 0.36, y: 0.58 }];
-export const CEPH_SHIME_2_PATH: readonly CutPoint[] = [{ x: 0.29, y: 0.42 }, { x: 0.29, y: 0.58 }];
-/** 펼치기 — 절개선에서 한쪽 시트를 바깥으로 젖힌다 */
-export const CEPH_SPREAD_PATH: readonly CutPoint[] = [
-  { x: 0.66, y: 0.50 }, { x: 0.66, y: 0.34 }, { x: 0.64, y: 0.20 },
-];
-/** 내장 분리 — 머리를 들어 내장 덩어리(0.72)를 머리 바깥쪽으로 뜯어낸다 */
+/** 시메 ①② — 축을 가로지르는 짧은 정밀 절단 (F9 실측 — 중점이 CEPH_SHIME_1/2) */
+export const CEPH_SHIME_1_PATH: readonly CutPoint[] = [{ x: 0.535, y: 0.432 }, { x: 0.535, y: 0.709 }];
+export const CEPH_SHIME_2_PATH: readonly CutPoint[] = [{ x: 0.441, y: 0.418 }, { x: 0.440, y: 0.733 }];
+/**
+ * 내장 분리 (F9 실측 — squid_spread 뷰) — 머리·다리 덩어리를 잡고 내장과 함께 뜯어낸다.
+ * ⚠ 펼치기(구 ceph_mantle_spread)는 사용자 지시로 **스테이지에서 제거**(2026-08-11) —
+ *   개복 완료 시 펼쳐진 화면으로 바로 넘어가고, 그 화면에서 이 경로로 내장을 분리한다.
+ */
 export const CEPH_VISCERA_PATH: readonly CutPoint[] = [
-  { x: 0.70, y: 0.50 }, { x: 0.52, y: 0.48 }, { x: 0.32, y: 0.44 }, { x: 0.16, y: 0.38 },
+  { x: 0.045, y: 0.514 }, { x: 0.882, y: 0.507 },
 ];
-/** 펜(연골) 뽑기 — 중심선의 가는 막대를 몸통 끝에서 머리 쪽으로 당긴다 */
-export const CEPH_PEN_PATH: readonly CutPoint[] = [{ x: 0.92, y: 0.50 }, { x: 0.46, y: 0.50 }];
+/**
+ * 펜(연골) 뽑기 (F9 실측 — squid_pen 뷰) — 몸통 끝에서 잡아 머리 쪽으로 **당겨 빼내는** 동작.
+ * 칼 절삭이 아니다 — 연출도 칼 글리프 없이 당김으로 표현한다 (사용자 지시 2026-08-11).
+ */
+export const CEPH_PEN_PATH: readonly CutPoint[] = [{ x: 0.929, y: 0.507 }, { x: 0.089, y: 0.524 }];
 /** 껍질 시작점 잡기 — 몸통 끝 가장자리를 들춘다 (박리 시작 전 준비 동작) */
 export const CEPH_SKIN_LIFT_PATH: readonly CutPoint[] = [
   { x: 0.92, y: 0.42 }, { x: 0.86, y: 0.34 }, { x: 0.80, y: 0.30 },
+];
+/**
+ * 껍질 분리 **마무리 스윕** (F9 실측 — squid_skin_pull 뷰, 사용자 측정 2026-08-11).
+ * 4단계 재구성(껍질 온전 → 잡기 → 왼쪽까지 뜯김 → 아래로 마무리) 시 최종 당김 경로로 배선한다.
+ * ⚠ 아직 미배선 — 재구성은 "껍질 온전 상태" 에셋 입수 후 (현 스테이지는 구 CEPH_PEEL_PATH 유지).
+ */
+export const CEPH_PEEL_FINISH_SWEEP: readonly CutPoint[] = [
+  { x: 0.716, y: 0.106 }, { x: 0.435, y: 0.468 },
 ];
 /** 아가미 제거·내장면 닦기 영역 — 외투막 안쪽 전면 */
 export const CEPH_GILL_REGION: readonly CutPoint[] = [

@@ -1852,7 +1852,8 @@ export class ButcheryPanel extends DraggablePanel {
       stageId: this.process.stage?.id,
       shime: (d.has('ceph_shime_mantle') ? 1 : 0) + (d.has('ceph_shime_arms') ? 1 : 0),
       opened: d.has('ceph_mantle_open'),
-      spread: d.has('ceph_mantle_spread'),
+      // 펼치기 스테이지 제거(2026-08-11) — 개복 완료 = 곧 펼쳐진 상태 (파라메트릭 폴백용 파생)
+      spread: d.has('ceph_mantle_open'),
       visceraOut: d.has('ceph_viscera_pull'),
       penOut: d.has('ceph_pen_out'),
       // 박리 진행 — 완료 후엔 1, 진행 중이면 채움 게이지를 그대로 쓴다
@@ -3142,6 +3143,9 @@ export class ButcheryPanel extends DraggablePanel {
       // 다중 유도선(지느러미 3곳)은 **방금 그은 그 선**을 따라 칼이 지나가야 한다
       // (구 구현은 항상 guidePath = 1번 선만 연출 — 사용자 리포트 2026-07-30).
       const path = pathOverride ?? stage.cut?.guidePath ?? [{ x: 0.2, y: 0.5 }, { x: 0.8, y: 0.5 }];
+      // 잡아 뜯는 계열(내장 분리·연골 뽑기·들추기)은 **칼이 아니다** — 칼 글리프·절개 스파크 대신
+      // 손으로 잡고 당기는 연출 (사용자 지시 2026-08-11 "칼로 절삭하는 행위가 아님").
+      const isPull = stage.primitive === 'drag_out' || stage.primitive === 'lift_flap';
       // 장뜨기 = 칼이 지나간 뒤 절개면이 **벌어지는** 연출 (사용자 지시 2026-07-30)
       const openTo = this.filletOpenPending;
       this.filletOpenPending = null;
@@ -3150,13 +3154,30 @@ export class ButcheryPanel extends DraggablePanel {
       drawFn = (t) => {
         g.clear();
         const st = Math.min(1, t / SWEEP_T);
-        // 지나간 자리 = 밝은 절개선 + 여열 글로우
-        g.lineStyle(6, 0xff8a5a, 0.22);
-        this.strokePathPartial(g, path, st);
-        g.lineStyle(3.2, 0xffffff, 0.9);
-        this.strokePathPartial(g, path, st);
+        if (isPull) {
+          // 지나간 자리 = 뜯겨 나온 흔적 (여열 글로우 없음)
+          g.lineStyle(4, 0xd8ecf8, 0.4);
+          this.strokePathPartial(g, path, st);
+        } else {
+          // 지나간 자리 = 밝은 절개선 + 여열 글로우
+          g.lineStyle(6, 0xff8a5a, 0.22);
+          this.strokePathPartial(g, path, st);
+          g.lineStyle(3.2, 0xffffff, 0.9);
+          this.strokePathPartial(g, path, st);
+        }
         const p = this.pathPointAt(path, st);
-        if (st < 1) {
+        if (st < 1 && isPull) {
+          // 잡은 손(그립 링) + 당김 방향 뒤로 끌려 나오는 잔선
+          g.lineStyle(2.4, 0xffffff, 0.9);
+          g.strokeCircle(p.x, p.y, 7.5);
+          g.fillStyle(0xffd9c8, 0.95);
+          g.fillCircle(p.x, p.y, 3.4);
+          for (let k = 1; k <= 3; k++) {
+            const bx = p.x - Math.cos(p.ang) * k * 8, by = p.y - Math.sin(p.ang) * k * 8;
+            g.lineStyle(1.6, 0xe8eef4, Math.max(0, 0.55 - k * 0.14));
+            g.lineBetween(bx - 4, by - 2, bx + 4, by + 2);
+          }
+        } else if (st < 1) {
           this.drawKnifeGlyph(g, p.x, p.y, p.ang, 1);
           for (let k = 0; k < 4; k++) {            // 스파크
             const a = t * 20 + k * 1.7;

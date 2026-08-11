@@ -997,24 +997,31 @@ export class ButcheryProcess {
   }
 
   /**
-   * `nerve_cut` 판정 (§3.1) — 경로 **중점 반경** 안에서 시작 + 스트로크 길이 0.03~0.12.
+   * `nerve_cut` 판정 (§3.1) — **유도선 위에서 시작** + 스트로크 길이가 유도선 길이에 비례.
    * 커버율을 보지 않는 이유: 시메는 "짧고 정확하게"가 요구조건이라 길이를 늘리면 오히려 실패다.
+   * ⚠ 구 판정(경로 **중점** 반경 시작 + 절대 길이 0.03~0.12)은 F9 실측으로 유도선이 길어지자
+   *   (0.28~0.32) **가이드의 시작 링에서 긋기 시작해도 실패**했다(끝점↔중점 거리 > 반경) —
+   *   시작점을 "선 위 아무 지점"으로, 길이 상한을 선 길이 비례로 완화 (2026-08-11).
    */
   private evalNerveCut(traced: CutPoint[], s: ButcheryStage): CutEvalResult {
     const fail = { coverage: 0, avgDeviationRatio: 9, quality: 0, passed: false };
     if (traced.length < 2 || !s.cut) return fail;
     const g = s.cut.guidePath;
-    const mid = s.tapPoint ?? {
-      x: (g[0].x + g[g.length - 1].x) / 2, y: (g[0].y + g[g.length - 1].y) / 2,
-    };
     const r = s.tapRadius ?? 0.06;
-    const d0 = Math.hypot(traced[0].x - mid.x, traced[0].y - mid.y);
+    // 시작 정확도 = 유도선까지의 거리 (선 위 어디서 시작해도 좋다 — 끝점 시작이 자연스럽다)
+    const d0 = distToPath(traced[0], g);
+    let gLen = 0;
+    for (let i = 1; i < g.length; i++) {
+      gLen += Math.hypot(g[i].x - g[i - 1].x, g[i].y - g[i - 1].y);
+    }
     let len = 0;
     for (let i = 1; i < traced.length; i++) {
       len += Math.hypot(traced[i].x - traced[i - 1].x, traced[i].y - traced[i - 1].y);
     }
-    const NERVE_LEN: [number, number] = [0.03, 0.12];
-    if (d0 > r * 1.6 || len < NERVE_LEN[0] || len > NERVE_LEN[1]) {
+    // 하한 = 유도선의 1/3은 그어야 "끊었다" / 상한 = 유도선 1.8배 넘게 길게 끌면 실패
+    const minLen = Math.max(0.03, gLen * 0.35);
+    const maxLen = Math.max(0.12, gLen * 1.8);
+    if (d0 > r * 1.6 || len < minLen || len > maxLen) {
       return { ...fail, coverage: d0 <= r * 1.6 ? 1 : 0, avgDeviationRatio: d0 / r };
     }
     const quality = Math.max(0.3, 1 - d0 / (r * 1.6));

@@ -304,9 +304,9 @@ const SQUID_STAGE_SPRITE: Record<string, string> = {
   ceph_shime_mantle: 'squid_whole',      // 0. 원물 (손질대기)
   ceph_shime_arms: 'squid_shime1',       // 1.1 갑–눈 사이 절단 완료
   ceph_mantle_open: 'squid_shime2',      // 1.2 눈–다리 사이 절단 완료
-  ceph_mantle_spread: 'squid_spread',    // 2.1 펼치기 · 내장 노출
-  ceph_viscera_pull: 'squid_spread',     // 2.1 (같은 장면에서 내장을 떼어낸다)
-  ceph_split_check: 'squid_headmass',    // 3.  내장이 제거된 머리부와 다리부
+  // 펼치기·분리 결과 확인 스테이지는 제거됨(사용자 지시 2026-08-11) — 개복 완료 즉시
+  // 펼쳐진 화면(2.1)에서 내장 분리 가이드가 뜬다. 결과는 부산물 팝업이 대신 보여준다.
+  ceph_viscera_pull: 'squid_spread',     // 2.1 펼쳐진 화면에서 내장을 떼어낸다
   ceph_pen_out: 'squid_pen',             // 2.2 가운데 연골 노출
   ceph_flip_skin: 'squid_skin_grip',     // 4.1 오른쪽 → 왼쪽 잡아뜯기
   ceph_skin_peel: 'squid_skin_pull',     // 4.2 위쪽 → 아래쪽 잡아뜯기
