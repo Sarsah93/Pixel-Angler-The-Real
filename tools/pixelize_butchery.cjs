@@ -401,6 +401,11 @@ const ROTATE_KEYS = {
   squid_fin1: 'cw',
   squid_fin2: 'cw',
   squid_clean: 'cw',      // 완료 — 몸통 끝 위 → 오른쪽
+  // 내장 분리 연출 2프레임 — 원본은 "펼친 몸통 아래 + 들어올린 덩어리 위".
+  //  ccw(위→왼쪽)로 눕히면 덩어리가 **왼쪽으로 뽑히는** 그림이 되어
+  //  squid_spread(다리·머리 = 왼쪽)의 레이아웃과 이어진다. cw면 좌우가 뒤집혀 튄다.
+  squid_viscera_lift1: 'ccw',
+  squid_viscera_lift2: 'ccw',
 };
 
 /**
@@ -434,6 +439,11 @@ const CEPH_SRC = {
   '5.1. 한 쪽 날개를 껍질로부터 분리하는 중.png': 'squid_fin1',
   '5.2. 다른 쪽 날개를 껍질로부터 분리.png': 'squid_fin2',
   '6. 아가미 제거 및 내장면 닦기가 완료된 사진.png': 'squid_clean',
+  // ── 091차 추가분 (사용자 2026-08-12) — 내장 분리 연출 2프레임 + 날개 뜯기 시작 ──
+  //  ⚠ 파일명 공백이 둘이 다르다 — 1번은 `(내장부)위로`(공백 없음), 2번은 `(내장부) 위로`.
+  '다리부+머리부를 몸통부(내장부)위로 뽑기 1.png': 'squid_viscera_lift1',
+  '다리부+머리부를 몸통부(내장부) 위로 뽑기 2.png': 'squid_viscera_lift2',
+  '날개뜯기1.png': 'squid_fin_tear',
 };
 
 /**
@@ -531,6 +541,121 @@ for (const [suffix, dir] of [['up', 1], ['dn', -1]]) {
   if (!liftA) continue;
   map.set(`halibut_lift_a_${suffix}`, liftA);
   console.log(`halibut_lift_a_${suffix}: ${liftA.w}x${liftA.h} (파생 ← halibut_fin_score)`);
+}
+
+/**
+ * ── 파생: 두족류 추론 합성 3종 (091차 — 사용자 지시 2026-08-12) ─────────────────
+ * "뜯기 전" 상태의 실사가 존재하지 않아(사용자: "원물 실사를 찾기가 어려워. 결국 추론해서
+ * 이미지를 만드는 수 밖에 없어") **영상(껍질벗기기.mp4) 형태 참고 + 보유 에셋 색 샘플링**으로
+ * 그리드 레벨 합성한다 — deriveLiftA(84차)와 같은 방식(사진 1장 = 상태 1개가 아니다).
+ *
+ *  squid_skin_on   : 껍질이 온전히 붙은 펼친 몸통 (베이스 = squid_clean 실루엣 + 4.1 껍질 색)
+ *  squid_skin_down : 아래로 뜯기 **시작** 상태 (베이스 = 4.2 — 살 위로 껍질을 되덮어 덜 뜯긴 상태)
+ *  squid_finskin_on: 필렛+껍질+날개 온전 (베이스 = 날개뜯기1 — 하얀 절단면 띠를 껍질 색으로 되덮음)
+ *
+ * 껍질 질감(영상 실측): 유백 바탕에 회갈색 얼룩 + 검은 색소포 반점. 원본 명암을 유지해
+ * 입체감을 보존한다(원본 밝기 → 껍질 셰이드 10단 매핑 + 해시 지터 + 반점 5%).
+ */
+function hash2(x, y) {
+  let h = (x * 374761393 + y * 668265263) >>> 0;
+  h = ((h ^ (h >> 13)) * 1274126177) >>> 0;
+  return ((h ^ (h >> 16)) >>> 0) / 4294967295;
+}
+const lumOf = (c) => (((c >> 16) & 255) * 299 + ((c >> 8) & 255) * 587 + (c & 255) * 114) / 1000;
+
+/**
+ * 스프라이트에서 조건에 맞는 픽셀의 평균 톤을 뽑는다.
+ * @param pickFn (x, y, lum) => boolean — 샘플 대상 판정
+ */
+function sampleTone(spr, pickFn, fallback) {
+  let r = 0, g = 0, b = 0, n = 0;
+  for (let y = 0; y < spr.rows.length; y++) {
+    const row = spr.rows[y];
+    for (let x = 0; x < row.length; x++) {
+      if (row[x] === '.') continue;
+      const c = spr.palette[AB.indexOf(row[x])];
+      if (!pickFn(x, y, lumOf(c))) continue;
+      r += (c >> 16) & 255; g += (c >> 8) & 255; b += c & 255; n++;
+    }
+  }
+  if (!n) return fallback;
+  return { r: r / n, g: g / n, b: b / n };
+}
+
+/**
+ * base의 특정 픽셀들을 껍질 질감으로 되덮는다.
+ * @param regionFn (x, y, lum) => boolean — 덮을 픽셀 판정
+ */
+function deriveSkinOver(base, tone, regionFn) {
+  if (!base || !tone) return null;
+  const palette = [...base.palette];
+  const clamp8 = (v) => Math.max(0, Math.min(255, Math.round(v)));
+  // 껍질 셰이드 10단 (0.62 ~ 1.16 배) + 색소포 반점
+  const SH = 10;
+  const shadeIdx = [];
+  for (let k = 0; k < SH; k++) {
+    const s = 0.62 + (k / (SH - 1)) * 0.54;
+    shadeIdx.push(palette.push((clamp8(tone.r * s) << 16) | (clamp8(tone.g * s) << 8) | clamp8(tone.b * s)) - 1);
+  }
+  const speckIdx = palette.push((clamp8(tone.r * 0.42) << 16) | (clamp8(tone.g * 0.42) << 8) | clamp8(tone.b * 0.42)) - 1;
+  if (palette.length > AB.length) throw new Error('팔레트 초과: ' + palette.length);
+
+  const rows = base.rows.map((r) => [...r]);
+  const H = rows.length, W = rows[0].length;
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const ch = base.rows[y][x];
+      if (ch === '.') continue;
+      const L = lumOf(base.palette[AB.indexOf(ch)]);
+      if (!regionFn(x, y, L)) continue;
+      if (hash2(x * 7 + 3, y * 13 + 1) < 0.05) { rows[y][x] = AB[speckIdx]; continue; }  // 색소포 반점
+      // 원본 명암 유지 + 지터 1단
+      let k = Math.round(((Math.max(110, Math.min(230, L)) - 110) / 120) * (SH - 1));
+      const j = hash2(x, y);
+      k = Math.max(0, Math.min(SH - 1, k + (j < 0.22 ? -1 : j > 0.78 ? 1 : 0)));
+      rows[y][x] = AB[shadeIdx[k]];
+    }
+  }
+  return { ...base, palette, rows: rows.map((r) => r.join('')) };
+}
+
+{
+  const skinRef = map.get('squid_skin_grip');
+  // 껍질 톤 = 4.1의 껍질 몸통 픽셀(밝은 살·짙은 그늘 제외) — 영상 실측(유백 회갈 얼룩)과 정합
+  const skinTone = skinRef
+    ? sampleTone(skinRef, (_x, _y, L) => L >= 60 && L <= 150, { r: 168, g: 152, b: 140 })
+    : null;
+
+  // ① 껍질 온전 — 펼친 몸통(squid_clean) 전면을 껍질로
+  const skinOn = deriveSkinOver(map.get('squid_clean'), skinTone, () => true);
+  if (skinOn) { map.set('squid_skin_on', skinOn); console.log(`squid_skin_on: ${skinOn.w}x${skinOn.h} (합성 ← squid_clean + 4.1 껍질톤)`); }
+
+  // ② 아래로 뜯기 시작 — 4.2(왼쪽 = 껍질 덩어리 · 오른쪽 = 드러난 살)에서
+  //    살 영역 왼쪽 절반가량을 다시 껍질로 덮어 "덜 뜯긴" 시작 상태를 만든다.
+  //    ⚠ 경계는 **전역 x 기준**(휘도 맵 실측: 살 돔 = x/W 0.40~0.95) — 행별 최좌측 밝은 픽셀
+  //      기준은 껍질 덩어리의 젖은 하이라이트에 걸려 빗살 아티팩트가 났다(1차 시도 실패).
+  //      지터는 4행 단위 청크로 — 1행 단위는 빗살, 청크는 뜯긴 가장자리로 읽힌다.
+  const pull = map.get('squid_skin_pull');
+  if (pull && skinTone) {
+    const W2 = pull.rows[0].length;
+    const skinDown = deriveSkinOver(pull, skinTone, (x, y, L) => {
+      if (L < 160) return false;
+      const boundary = W2 * 0.62 + (hash2(1, y >> 2) - 0.5) * 8;
+      return x < boundary;
+    });
+    if (skinDown) { map.set('squid_skin_down', skinDown); console.log(`squid_skin_down: ${skinDown.w}x${skinDown.h} (합성 ← squid_skin_pull 경계 0.62W 되덮음)`); }
+  }
+
+  // ③ 필렛+껍질+날개 온전 — 날개뜯기1의 **하얀 절단면 띠**(뜯기며 드러난 살, 휘도 맵 실측:
+  //    y ≥ 48 · L ≥ 205의 세로 띠)만 되덮는다. 톤은 4.1 껍질이 아니라 **자기 돔(위쪽 황갈 껍질)**
+  //    에서 샘플 — 돔과 이어져 "아직 뜯지 않은 한 덩어리"로 읽힌다. 상단 돔의 젖은 하이라이트와
+  //    하단 자투리는 보존(전역 휘도 기준으로 덮으면 돔 전체가 얼룩져 탁해진다 — 1차 시도 실패).
+  const tear = map.get('squid_fin_tear');
+  if (tear) {
+    const domeTone = sampleTone(tear, (_x, y, L) => y < 48 && L >= 160 && L <= 215, { r: 196, g: 182, b: 165 });
+    const finskinOn = deriveSkinOver(tear, domeTone, (_x, y, L) => y >= 48 && L >= 205);
+    if (finskinOn) { map.set('squid_finskin_on', finskinOn); console.log(`squid_finskin_on: ${finskinOn.w}x${finskinOn.h} (합성 ← squid_fin_tear 절단면 띠 되덮음)`); }
+  }
 }
 const entries = [...map.entries()];
 const ts = `/**

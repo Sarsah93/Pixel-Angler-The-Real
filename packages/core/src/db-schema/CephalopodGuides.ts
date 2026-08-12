@@ -78,12 +78,20 @@ export const CEPH_SKIN_LIFT_PATH: readonly CutPoint[] = [
   { x: 0.92, y: 0.42 }, { x: 0.86, y: 0.34 }, { x: 0.80, y: 0.30 },
 ];
 /**
- * 껍질 분리 **마무리 스윕** (F9 실측 — squid_skin_pull 뷰, 사용자 측정 2026-08-11).
- * 4단계 재구성(껍질 온전 → 잡기 → 왼쪽까지 뜯김 → 아래로 마무리) 시 최종 당김 경로로 배선한다.
- * ⚠ 아직 미배선 — 재구성은 "껍질 온전 상태" 에셋 입수 후 (현 스테이지는 구 CEPH_PEEL_PATH 유지).
+ * 껍질 뜯기 ② — **아래로 마무리 스윕** (F9 실측 — squid_skin_pull 뷰, 사용자 측정 2026-08-11).
+ * 091차에 `ceph_skin_finish` 스테이지로 배선됨 (가로 뜯기 ① 뒤의 잔여 껍질을 아래로 뜯는다).
  */
 export const CEPH_PEEL_FINISH_SWEEP: readonly CutPoint[] = [
   { x: 0.716, y: 0.106 }, { x: 0.435, y: 0.468 },
+];
+/**
+ * 날개 뜯기 ① — **껍질째 분리** 2경로 (091차 신설 — squid_finskin_on/fin_tear 옆면 뷰 기준).
+ * 실사(날개뜯기1)의 절단면 띠(휘도 맵: x 0.04~0.49 · y 0.38~0.94)를 따라 아래→위로 뜯는다.
+ * ⚠ **근사값 — F9 실측 대상** (두 날개가 한 옆면 뷰에 겹쳐 보이므로 좌·우 경로를 나란히 근사).
+ */
+export const CEPH_FINSKIN_PATHS: readonly (readonly CutPoint[])[] = [
+  [{ x: 0.24, y: 0.82 }, { x: 0.36, y: 0.55 }, { x: 0.48, y: 0.30 }],   // 첫째 날개 (안쪽 띠)
+  [{ x: 0.40, y: 0.90 }, { x: 0.54, y: 0.65 }, { x: 0.66, y: 0.42 }],   // 둘째 날개 (바깥 띠)
 ];
 /** 아가미 제거·내장면 닦기 영역 — 외투막 안쪽 전면 */
 export const CEPH_GILL_REGION: readonly CutPoint[] = [

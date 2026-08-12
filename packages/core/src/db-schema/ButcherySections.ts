@@ -282,17 +282,22 @@ export const SQUID_SECTIONS: ButcherySectionDef[] = [
     id: 'sec_ceph_skin', label: '껍질 벗기기', anyOrder: false,
     tasks: [
       { id: 't_ceph_flip_skin', label: '뒤집어 껍질 잡기', stageIds: ['ceph_flip_skin'] },
-      { id: 't_ceph_peel', label: '껍질 분리', stageIds: ['ceph_skin_peel'] },
+      { id: 't_ceph_peel', label: '껍질 뜯기 ① (가로)', stageIds: ['ceph_skin_peel'] },
+      // 사용자 공정 재정의(2026-08-12): 가로로 먼저, 나머지는 아래로 — 2회 뜯기
+      { id: 't_ceph_peel_finish', label: '껍질 뜯기 ② (아래로)', stageIds: ['ceph_skin_finish'] },
       { id: 't_ceph_skin_done', label: '껍질 분리 완료', stageIds: ['ceph_skin_done'], yields: ['ceph_skin'] },
     ],
     // 여기까지 하면 몸통 순살이 확정된다 — 이후 이탈은 정산(§0.5.4)
     exitAfter: true,
   },
   {
-    id: 'sec_ceph_trim', label: '아가미 · 날개 정리', anyOrder: false,
+    id: 'sec_ceph_trim', label: '날개 · 아가미 정리', anyOrder: false,
     tasks: [
+      // 날개 2단(사용자 공정 재정의 2026-08-12): 필렛에서 껍질째 뜯기 → 껍질에서 날개살 분리.
+      // 아가미·닦기(완료본 실사)는 맨 뒤 — 날개 앞에 두면 완료본 다음에 날개가 다시 나타난다.
+      { id: 't_ceph_finskin', label: '날개 뜯기 (껍질째)', stageIds: ['ceph_finskin_off'] },
+      { id: 't_ceph_fin', label: '날개살 분리', stageIds: ['ceph_fin_off'], yields: ['ceph_fin_meat'] },
       { id: 't_ceph_gill', label: '아가미 제거 · 내장면 닦기', stageIds: ['ceph_gill_wash'], yields: ['ceph_gill'] },
-      { id: 't_ceph_fin', label: '날개 제거', stageIds: ['ceph_fin_off'], yields: ['ceph_fin_meat'] },
     ],
     exitAfter: true,
   },

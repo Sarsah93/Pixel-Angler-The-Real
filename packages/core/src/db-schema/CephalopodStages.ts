@@ -6,9 +6,11 @@
  * 한치 15 / 갑오징어 13 / 문어 11은 트리 미작성이라 `undefined`를 돌려주고,
  * 게이트(`isCephalopodTreeReady`)가 준비 중 안내를 유지한다.
  *
- * ⚠ 스테이지 ↔ 사진 대응은 §1.1 표 기반 (`①`~`⑪` = 실사 컷) — 단 **사용자 지시(2026-08-11)로
- *   2건 제거**: 펼치기(`ceph_mantle_spread` — 개복 완료 화면이 곧 펼쳐진 화면) ·
- *   분리 결과 확인(`ceph_split_check` — 부산물 팝업의 결과 이미지로 대체). 총 14 → **12스테이지**.
+ * ⚠ 스테이지 ↔ 사진 대응은 §1.1 표 기반 (`①`~`⑪` = 실사 컷) — 단 사용자 공정 재정의 3건:
+ *   - **제거 2** (2026-08-11): 펼치기(개복 완료 화면이 곧 펼쳐진 화면) · 분리 결과 확인(부산물 팝업 대체)
+ *   - **추가 2** (2026-08-12): 껍질 뜯기 ②(아래로 마무리 — 가로 뜯기 뒤 잔여 껍질) ·
+ *     날개 뜯기 ①(껍질째 분리 — 필렛에서 날개+껍질을 먼저 뜯고, 기존 스테이지가 날개살 분리 ②가 된다)
+ *   총 14 → 12 → **14스테이지**. 아가미·닦기는 날개 2단 **뒤**로 이동(완료본 실사와 진행 정합).
  * ⚠ 구조 규약(§0.5.4): **스테이지 1개 = 작업 1개**, 섹션은 전부 `anyOrder: false`.
  *
  * 순수 TS — 렌더/브라우저 API 없음.
@@ -18,9 +20,9 @@ import type { ButcheryStage, CutPoint, CutSpec, ButcheryOrientation } from '../t
 import {
   CEPH_SHIME_1, CEPH_SHIME_2, CEPH_SHIME_1_PATH, CEPH_SHIME_2_PATH,
   CEPH_SLIT_PATH, CEPH_VISCERA_PATH, CEPH_PEN_PATH,
-  CEPH_SKIN_LIFT_PATH, CEPH_SKIN_GRIP, CEPH_PEEL_PATH,
-  CEPH_GILL_REGION, CEPH_GILL_SWEEP, CEPH_FIN_PATHS, CEPH_HEAD_SPLIT_PATHS,
-  CEPH_BEAK_CENTER, CEPH_BEAK_PATH,
+  CEPH_SKIN_LIFT_PATH, CEPH_SKIN_GRIP, CEPH_PEEL_PATH, CEPH_PEEL_FINISH_SWEEP,
+  CEPH_GILL_REGION, CEPH_GILL_SWEEP, CEPH_FIN_PATHS, CEPH_FINSKIN_PATHS,
+  CEPH_HEAD_SPLIT_PATHS, CEPH_BEAK_CENTER, CEPH_BEAK_PATH,
 } from './CephalopodGuides.js';
 
 /** 컷 스펙 헬퍼 — 두족류는 tolerance가 어류보다 후하다(덩어리를 다루는 동작이 많다) */
@@ -40,10 +42,11 @@ function cCut(
 }
 
 /**
- * 무늬오징어 — **12스테이지** (§1.1 13 + §0.5.6 부리 − 사용자 지시 제거 2 · 2026-08-11).
+ * 무늬오징어 — **14스테이지** (§1.1 13 + 부리 − 제거 2(08-11) + 껍질②·날개① 추가 2(08-12)).
  *
  * 제거 2건: 펼치기(개복 완료 = 곧 펼쳐진 화면이라 별도 조작 불필요) ·
  * 분리 결과 확인(머리+다리 덩어리 부산물 팝업이 결과 이미지를 겸한다).
+ * 추가 2건: 껍질은 가로 → 아래 **2회 뜯기**, 날개는 껍질째 분리 → 날개살 분리 **2단**.
  * `ceph_beak_out`은 실사에 없는 추가 공정 — 명시적 예외(§0.5.6).
  */
 function buildSquidStages(): ButcheryStage[] {
@@ -93,33 +96,54 @@ function buildSquidStages(): ButcheryStage[] {
       cut: cCut('ceph_flip_skin', 'CEPH_SKIN_UP', CEPH_SKIN_LIFT_PATH, { tolerance: 0.12 }),
     },
     {
-      id: 'ceph_skin_peel', label: '껍질 분리', orientation: 'CEPH_SKIN_UP',
+      id: 'ceph_skin_peel', label: '껍질 뜯기 ① — 가로', orientation: 'CEPH_SKIN_UP',
       primitive: 'peel', pullsRequired: 1,
-      guide: '몸통 끝에서 머리 방향으로 껍질을 끝까지 벗기세요',
+      guide: '몸통 끝에서 머리 방향으로(가로) 껍질을 뜯어내세요',
       // 잡는 지점 = 몸통 끝 가장자리 (여기서 시작해야 껍질이 물린다)
       tapPoint: CEPH_SKIN_GRIP.squid, tapRadius: 0.14,
       sweepPath: CEPH_PEEL_PATH.squid as CutPoint[],
+    },
+    // 껍질 뜯기 ② — 사용자 공정 재정의(2026-08-12): 가로로 먼저 뜯고 **나머지를 아래로** 뜯는다.
+    //  스윕 좌표는 F9 실측(90차 보관분 `CEPH_PEEL_FINISH_SWEEP` — squid_skin_pull 뷰 기준).
+    {
+      id: 'ceph_skin_finish', label: '껍질 뜯기 ② — 아래로 마무리', orientation: 'CEPH_SKIN_UP',
+      primitive: 'peel', pullsRequired: 1,
+      guide: '남은 껍질을 위쪽 가장자리에서 잡아 아래로 끝까지 뜯어내세요',
+      tapPoint: CEPH_PEEL_FINISH_SWEEP[0], tapRadius: 0.14,
+      sweepPath: CEPH_PEEL_FINISH_SWEEP as CutPoint[],
     },
     {
       id: 'ceph_skin_done', label: '껍질 분리 완료', orientation: 'CEPH_PARTS',
       primitive: 'result',
       guide: '껍질이 통째로 벗겨졌습니다',
     },
-    // ── 마무리 (실사 ⑨⑩⑪) ──
+    // ── 마무리 — 날개 2단 뜯기 → 아가미·닦기 (사용자 공정 재정의 2026-08-12) ──
+    //  날개는 [필렛+껍질+날개 → 날개+껍질 분리] → [날개+껍질 → 날개살 분리] 2단이다.
+    //  아가미·닦기(실사 ⑪ = 완료본)를 **날개 뒤로** 보내 완료본 그림과 진행이 어긋나지 않게 한다
+    //  (앞에 두면 날개 없는 완료본 다음에 날개 달린 필렛이 다시 나타난다).
+    {
+      id: 'ceph_finskin_off', label: '날개 뜯기 ① — 껍질째 분리', orientation: 'CEPH_FLESH_UP',
+      primitive: 'drag_out',
+      guide: '날개를 껍질째 잡고 몸통 살에서 뜯어내세요 (양쪽 — 순서 자유)',
+      cut: cCut('ceph_finskin_off', 'CEPH_FLESH_UP', CEPH_FINSKIN_PATHS[0], {
+        tolerance: 0.12, guidePaths: CEPH_FINSKIN_PATHS.map((p) => p as CutPoint[]),
+      }),
+    },
+    {
+      id: 'ceph_fin_off', label: '날개 뜯기 ② — 날개살 분리', orientation: 'CEPH_FLESH_UP',
+      // 칼 절삭이 아니라 손으로 뜯는 동작(실사 ⑨⑩ = 껍질에서 날개살을 벗겨낸다) — 당김 연출 계열
+      primitive: 'drag_out',
+      guide: '뜯어낸 날개(껍질째)에서 날개살만 벗겨 분리하세요 (양쪽 — 순서 자유)',
+      cut: cCut('ceph_fin_off', 'CEPH_FLESH_UP', CEPH_FIN_PATHS[0], {
+        tolerance: 0.10, guidePaths: CEPH_FIN_PATHS.map((p) => p as CutPoint[]),
+      }),
+    },
     {
       id: 'ceph_gill_wash', label: '아가미 제거 · 내장면 닦기', orientation: 'CEPH_FLESH_UP',
       primitive: 'hold_scrub', fillTarget: 0.85,
       guide: '몸통 안쪽을 왕복으로 훑어 아가미와 잔막을 걷어내세요',
       regionPoly: CEPH_GILL_REGION as CutPoint[],
       sweepPath: CEPH_GILL_SWEEP as CutPoint[],
-    },
-    {
-      id: 'ceph_fin_off', label: '날개(지느러미) 제거', orientation: 'CEPH_FLESH_UP',
-      primitive: 'fin_cut',
-      guide: '양쪽 날개 밑동을 각각 잘라 분리하세요 (순서 자유 — 2곳)',
-      cut: cCut('ceph_fin_off', 'CEPH_FLESH_UP', CEPH_FIN_PATHS[0], {
-        tolerance: 0.10, guidePaths: CEPH_FIN_PATHS.map((p) => p as CutPoint[]),
-      }),
     },
     {
       id: 'ceph_head_split', label: '머리부 3분할', orientation: 'CEPH_PARTS',

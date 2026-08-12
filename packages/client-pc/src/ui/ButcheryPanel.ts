@@ -160,8 +160,8 @@ export class ButcheryPanel extends DraggablePanel {
   private tracePoints: CutPoint[] = [];
   private lastFillPt: CutPoint | null = null;
   private peelStart: CutPoint | null = null;
-  /** 두족류 껍질 박리 — 잡은 지점에서 끈 비율 (0~1). 렌더 전용, 판정은 submitPeelPull */
-  private cephPeelDrag = 0;
+  /** 두족류 액션 연출 중간 프레임 (내장 뽑기 lift1→lift2) — 연출 재생 동안만, doRefresh가 해제 */
+  private cephAnimOverride?: string;
   /** 스윕 커버리지 게이지 상태 (drag_fill·scoop) — 스테이지 단위 */
   private sweepCoverStage = '';
   private sweepCover: { pts: CutPoint[]; hit: boolean[] } | null = null;
@@ -1473,8 +1473,14 @@ export class ButcheryPanel extends DraggablePanel {
       this.tracing = true;
       this.lastFillPt = n;
     } else if (stage.primitive === 'peel') {
-      // 꼬리 손잡이(우측 끝)에서만 잡기 시작
-      if (n.x > 0.72) this.peelStart = n;
+      // 잡기 시작 지점 — 스테이지가 지정한 tapPoint(두족류: 몸통 끝/위 가장자리) 우선,
+      // 없으면 어류 관례(꼬리 손잡이 = 우측 끝). ⚠ 구 구현은 x>0.72 하드코딩이라
+      // 대각 스윕(껍질 뜯기 ② — 시작점 y 0.106)의 잡기 지점을 인식하지 못했다 (091차).
+      if (stage.tapPoint) {
+        const rad = (stage.tapRadius ?? 0.14) * 1.6;
+        if (Math.hypot(n.x - stage.tapPoint.x, n.y - stage.tapPoint.y) <= rad) this.peelStart = n;
+        else this.flash('표시된 지점을 잡고 시작하세요', false);
+      } else if (n.x > 0.72) this.peelStart = n;
       else this.flash('꼬리 쪽 손잡이를 잡고 시작하세요', false);
     }
   }
@@ -1565,17 +1571,26 @@ export class ButcheryPanel extends DraggablePanel {
     if (this.done || this.knifeLocked() || this.flipping) { this.tracing = false; this.peelStart = null; return; }
     const stage = this.process.stage;
 
-    // 박피 당김 판정
+    // 박피 당김 판정 — 당김 방향은 **스테이지의 스윕 경로**를 따른다 (없으면 어류 관례 = 좌로).
+    //  ⚠ 구 구현은 "좌로 당김" 고정이라 대각 스윕(껍질 뜯기 ② — 아래·왼쪽 45°)에서
+    //    수직 성분이 전부 벌점 처리되어 가이드를 그대로 따라도 실패했다 (091차).
     if (this.peelStart && stage?.primitive === 'peel') {
       const n = this.toNorm(p, 0.4) ?? this.peelStart;
-      const dx = this.peelStart.x - n.x;              // 좌로 당김 = +
-      const dy = Math.abs(n.y - this.peelStart.y);
-      const angleQ = Math.max(0.2, 1 - dy / Math.max(0.12, dx));   // 15도 유지 근사
-      const quality = Math.max(0, Math.min(1, dx * 1.5)) * angleQ;
+      const sw = stage.sweepPath;
+      const dirRaw = sw && sw.length >= 2
+        ? { x: sw[sw.length - 1].x - sw[0].x, y: sw[sw.length - 1].y - sw[0].y }
+        : { x: -1, y: 0 };
+      const dirLen = Math.max(1e-6, Math.hypot(dirRaw.x, dirRaw.y));
+      const dir = { x: dirRaw.x / dirLen, y: dirRaw.y / dirLen };
+      const mvx = n.x - this.peelStart.x, mvy = n.y - this.peelStart.y;
+      const along = mvx * dir.x + mvy * dir.y;                       // 스윕 방향 성분 = +
+      const perp = Math.abs(mvx * -dir.y + mvy * dir.x);             // 직각 이탈
+      const angleQ = Math.max(0.2, 1 - perp / Math.max(0.12, along));
+      const quality = Math.max(0, Math.min(1, along * 1.5)) * angleQ;
       const r = this.process.submitPeelPull(quality);
       this.flash(r.passed
-        ? (r.stageDone ? '박피 완료! 필렛이 완성되었습니다' : `껍질 분리 — 남은 장 ${r.pullsLeft}`)
-        : '당김이 약합니다 — 손잡이를 잡고 왼쪽으로 길게 당기세요', r.passed);
+        ? (r.stageDone ? '분리 완료!' : `껍질 분리 — 남은 장 ${r.pullsLeft}`)
+        : '당김이 약합니다 — 잡은 지점에서 유도선 방향으로 길게 당기세요', r.passed);
       this.peelStart = null;
       const willFlip = this.process.orientation !== this.renderedOrientation;
       if (r.passed && !willFlip && r.stageDone === false) this.playActionAnim(stage);   // 전환은 연출 완료 후
@@ -1669,6 +1684,7 @@ export class ButcheryPanel extends DraggablePanel {
   }
 
   private doRefresh(): void {
+    this.cephAnimOverride = undefined;   // 연출 중간 프레임 해제 — 정식 상태로 복귀
     this.refreshTitle();   // '손질하기 — 원물 손질 (감성돔, 900g, 38cm)'
     this.uiC.removeAll(true);
     this.syncPeelSaw();    // 박피 톱질 루프 on/off
@@ -1856,20 +1872,20 @@ export class ButcheryPanel extends DraggablePanel {
       spread: d.has('ceph_mantle_open'),
       visceraOut: d.has('ceph_viscera_pull'),
       penOut: d.has('ceph_pen_out'),
-      // 박리 진행 — 완료 후엔 1, 진행 중이면 채움 게이지를 그대로 쓴다
-      // 껍질 박리 — 완료면 1. 진행 중에는 잡은 지점에서 얼마나 끌었는지(드래그 비율)를 쓴다
-      peelProgress: d.has('ceph_skin_peel') ? 1
-        : (this.process.stage?.id === 'ceph_skin_peel' ? this.cephPeelDrag : 0),
-      skinOff: d.has('ceph_skin_peel'),
+      // 껍질 박리 진행(파라메트릭 폴백 전용) — 2회 뜯기(091차): 가로 완료 = 0.6, 아래로 완료 = 1
+      peelProgress: d.has('ceph_skin_finish') ? 1 : d.has('ceph_skin_peel') ? 0.6 : 0,
+      skinOff: d.has('ceph_skin_finish'),
       gillClean: d.has('ceph_gill_wash'),
       finsOff: d.has('ceph_fin_off'),
       headSplit: d.has('ceph_head_split'),
       beakOut: d.has('ceph_beak_out'),
       fillProgress: this.process.currentFill,
-      // 날개 2곳(다중 경로) — 끝낸 경로 수로 실사 5.1 → 5.2 전환
+      // 날개 2곳(다중 경로) — 끝낸 경로 수로 실사 전환 (finskin: 온전→날개뜯기1 / fin: 5.1→5.2)
       finPathsDone: this.process.donePathIndices.size,
       // 완료 시엔 stage가 없다 — 이 플래그가 없으면 파라메트릭 폴백이 뜬다(어류 `finished`와 동일 규칙)
       finished: this.process.finished,
+      // 액션 연출 중간 프레임 (내장 뽑기 lift1→lift2) — 렌더 전용
+      overrideKey: this.cephAnimOverride,
     };
   }
 
@@ -3129,7 +3145,10 @@ export class ButcheryPanel extends DraggablePanel {
    * 완료 시 가이드 루프 재시작. 방향 전환(플립)이 이어질 때는 호출측이 스킵.
    */
   private playActionAnim(
-    stage: { primitive: ButcheryPrimitive; cut?: { guidePath: CutPoint[] }; tapPoint?: CutPoint; id?: string } | null,
+    stage: {
+      primitive: ButcheryPrimitive; cut?: { guidePath: CutPoint[] };
+      tapPoint?: CutPoint; sweepPath?: CutPoint[]; id?: string;
+    } | null,
     pathOverride?: CutPoint[],
   ): void {
     if (!stage || !this.scene) return;
@@ -3139,6 +3158,23 @@ export class ButcheryPanel extends DraggablePanel {
     this.actionAnim = true;
     let drawFn: (t: number) => void;
 
+    // ── 두족류 내장 뽑기 — 연출 동안 도마 그림이 실사 2프레임(뽑기 시작 → 크게 젖힘)으로
+    //    진행한다 (사용자 지시 2026-08-12 "두 픽셀 이미지를 모두 애니메이션 연출로 활용").
+    //    doRefresh(연출 완료)가 오버라이드를 해제하고 다음 상태를 그린다.
+    let cephFrames: string[] | null = null;
+    if (stage.id === 'ceph_viscera_pull' && this.process.cephalopod) {
+      cephFrames = ['squid_viscera_lift1', 'squid_viscera_lift2'];
+    }
+    let cephFrameIdx = -1;
+    const cephFrameAt = (t: number): void => {
+      if (!cephFrames) return;
+      const idx = t >= 0.5 ? 1 : 0;
+      if (idx === cephFrameIdx) return;
+      cephFrameIdx = idx;
+      this.cephAnimOverride = cephFrames[idx];
+      this.drawFish();                      // 도마 그림만 경량 재드로우 (doRefresh 아님)
+    };
+
     if (primitiveInput(stage.primitive) === 'path') {
       // 다중 유도선(지느러미 3곳)은 **방금 그은 그 선**을 따라 칼이 지나가야 한다
       // (구 구현은 항상 guidePath = 1번 선만 연출 — 사용자 리포트 2026-07-30).
@@ -3146,6 +3182,7 @@ export class ButcheryPanel extends DraggablePanel {
       // 잡아 뜯는 계열(내장 분리·연골 뽑기·들추기)은 **칼이 아니다** — 칼 글리프·절개 스파크 대신
       // 손으로 잡고 당기는 연출 (사용자 지시 2026-08-11 "칼로 절삭하는 행위가 아님").
       const isPull = stage.primitive === 'drag_out' || stage.primitive === 'lift_flap';
+      if (cephFrames) cephFrameAt(0);      // 내장 뽑기 — 첫 프레임(뽑기 시작)로 즉시 전환
       // 장뜨기 = 칼이 지나간 뒤 절개면이 **벌어지는** 연출 (사용자 지시 2026-07-30)
       const openTo = this.filletOpenPending;
       this.filletOpenPending = null;
@@ -3153,6 +3190,7 @@ export class ButcheryPanel extends DraggablePanel {
       const SWEEP_T = openTo ? 0.5 : 1;          // 벌어짐이 있으면 전반 = 칼질 / 후반 = 벌어짐
       drawFn = (t) => {
         g.clear();
+        if (cephFrames) cephFrameAt(t);   // 내장 뽑기 — t 0.5에서 2프레임(크게 젖힘)으로
         const st = Math.min(1, t / SWEEP_T);
         if (isPull) {
           // 지나간 자리 = 뜯겨 나온 흔적 (여열 글로우 없음)
@@ -3234,18 +3272,25 @@ export class ButcheryPanel extends DraggablePanel {
         }
       };
     } else if (stage.primitive === 'peel') {
-      // 껍질 스트립이 왼쪽으로 벗겨져 늘어짐 + 진행 트레일
-      const path: CutPoint[] = [{ x: 0.72, y: 0.52 }, { x: 0.24, y: 0.52 }];
+      // 껍질 뜯기 — **스테이지 스윕 경로**를 그대로 따라간다 (구: 수평선 하드코딩이라
+      // 대각 스윕(뜯기 ② 아래로)과 어긋났다). 'peel' 프리미티브는 두족류 전용(손으로 뜯는
+      // 동작)이라 칼 글리프 대신 그립 링 + 껍질 스트립 잔상 (091차).
+      const path: CutPoint[] = stage.sweepPath && stage.sweepPath.length >= 2
+        ? stage.sweepPath : [{ x: 0.72, y: 0.52 }, { x: 0.24, y: 0.52 }];
       drawFn = (t) => {
         g.clear();
         g.lineStyle(3, 0x7fe6b0, 0.65);
         this.strokePathPartial(g, path, t);
         const p = this.pathPointAt(path, t);
-        this.drawKnifeGlyph(g, p.x, p.y, Math.PI, 1);
-        // 벗겨진 껍질 스트립 (칼 뒤쪽 → 아래로 젖혀짐)
-        const stripLen = this.fishW * 0.46 * t;
-        g.fillStyle(0x5a6a76, 0.85);
-        g.fillRoundedRect(p.x + 6, p.y + 4, stripLen, 7, 3);
+        // 잡은 손(그립 링)
+        g.lineStyle(2.4, 0xffffff, 0.9);
+        g.strokeCircle(p.x, p.y, 7.5);
+        g.fillStyle(0xffd9c8, 0.95);
+        g.fillCircle(p.x, p.y, 3.4);
+        // 벗겨져 딸려오는 껍질 스트립 — 진행 방향 뒤로 늘어짐
+        const stripLen = Math.min(this.fishW, this.fishH) * 0.4 * t;
+        g.lineStyle(7, 0x5a6a76, 0.85);
+        g.lineBetween(p.x, p.y, p.x - Math.cos(p.ang) * stripLen, p.y - Math.sin(p.ang) * stripLen);
       };
     } else {
       // wash — 물방울 낙하 + 푸른 세척광

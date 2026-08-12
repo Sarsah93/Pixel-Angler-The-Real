@@ -9,8 +9,9 @@
  * 랜드마크(§2.1): 팔 끝 0.00 · 팔 밑동 0.25 · 눈 0.33 · 외투막 입구 0.39 ·
  * 내장 중심 0.72 · 외투막 끝 0.95.
  *
- * ⚠ 실사/시트 도트 에셋 전 **파라메트릭 플레이스홀더**다. `docs/mockups/squid_guide.svg`가 정본이며,
- *   시트 추출 도구(`gen_ceph_stages.cjs`)가 들어오면 이 렌더러는 스프라이트 배치로 교체된다.
+ * 89차부터 **실사 도트 우선 · 파라메트릭 폴백** — 무늬오징어 정본은 구운 실사 스프라이트
+ * (`squid_*` — `pixelize_butchery.cjs`)다. 파라메트릭 렌더는 스프라이트가 없는 종(한치·갑오징어·
+ * 문어)과 미배정 상태의 폴백으로 남는다. SVG 4장은 그 3종 착수 시 참고자료.
  */
 
 import Phaser from 'phaser';
@@ -42,6 +43,8 @@ export interface CephFishState {
   finPathsDone?: number;
   /** 손질 완료 — 결과 오버레이 뒤 도마에 최종 산출물(손질된 몸통)이 남는다 */
   finished?: boolean;
+  /** 액션 연출 중간 프레임 (내장 뽑기 lift1→lift2) — 렌더 전용 오버라이드 */
+  overrideKey?: string;
 }
 
 // ── 팔레트 (§9 — 시메 전 갈색 + 청록 발색점 / 시메 후 유백색) ──
@@ -306,31 +309,44 @@ const SQUID_STAGE_SPRITE: Record<string, string> = {
   ceph_mantle_open: 'squid_shime2',      // 1.2 눈–다리 사이 절단 완료
   // 펼치기·분리 결과 확인 스테이지는 제거됨(사용자 지시 2026-08-11) — 개복 완료 즉시
   // 펼쳐진 화면(2.1)에서 내장 분리 가이드가 뜬다. 결과는 부산물 팝업이 대신 보여준다.
-  ceph_viscera_pull: 'squid_spread',     // 2.1 펼쳐진 화면에서 내장을 떼어낸다
+  ceph_viscera_pull: 'squid_spread',     // 2.1 펼쳐진 화면에서 내장을 떼어낸다 (연출 = lift1→lift2)
   ceph_pen_out: 'squid_pen',             // 2.2 가운데 연골 노출
-  ceph_flip_skin: 'squid_skin_grip',     // 4.1 오른쪽 → 왼쪽 잡아뜯기
-  ceph_skin_peel: 'squid_skin_pull',     // 4.2 위쪽 → 아래쪽 잡아뜯기
-  ceph_skin_done: 'squid_skin_pull',     // ⚠ 전용 사진 없음
-  ceph_gill_wash: 'squid_clean',         // 6.  아가미 제거 · 내장면 닦기 완료
-  ceph_fin_off: 'squid_fin1',            // 5.1 → (1곳 완료 시) 5.2
+  // ── 껍질 구간 (091차 재구성 — "뜯기 전" 상태부터 시작하도록 합성 스프라이트 편입) ──
+  ceph_flip_skin: 'squid_skin_on',       // 합성 — 껍질이 온전히 붙은 몸통 (잡기 시작)
+  ceph_skin_peel: 'squid_skin_grip',     // 4.1 가로(오른쪽→왼쪽)로 뜯는 중
+  ceph_skin_finish: 'squid_skin_down',   // 합성 — 아래로 뜯기 시작 (4.2보다 덜 뜯긴 상태)
+  ceph_skin_done: 'squid_skin_pull',     // 4.2 아래로 뜯겨 거의 벌어진 상태 (⚠ 완전 분리본 에셋 대기)
+  ceph_gill_wash: 'squid_clean',         // 6.  아가미 제거 · 내장면 닦기 완료 (마무리 — 날개 뒤로 이동)
+  // ceph_finskin_off / ceph_fin_off — 다중 경로 진행도 분기 (squidSpriteKey)
   ceph_head_split: 'squid_headmass',     // 3.  덩어리를 3조각으로 가른다
   ceph_beak_out: 'squid_headmass',       // 3.  다리 밑동에서 부리를 뽑는다
 };
 
 /** 스테이지 → 스프라이트 키 (다중 경로 스테이지는 진행도로 분기) */
 function squidSpriteKey(st: CephStageRef): string | undefined {
+  // 연출 오버라이드 — 액션 애니 재생 중 중간 프레임(내장 뽑기 lift1→lift2 등)이 최우선.
+  //  입력은 actionAnim 가드로 차단된 구간이라 좌표계(subjectRect)는 이 키를 따라가지 않는다.
+  if (st.overrideKey) return st.overrideKey;
   // 손질 완료 = **최종 산출물**을 도마에 남긴다 — 어류가 `pure_fillet_{fam}`(순수 필렛)을
   //  남기는 것과 같은 규칙(69·84차). 두족류의 대응물은 손질 끝난 몸통 = 사진 6.
   //  ⚠ 완료 시점엔 `stage`가 없어서 이 분기가 없으면 파라메트릭 폴백("구 픽셀 이미지")이 뜬다.
   if (st.finished) return 'squid_clean';
   const id = st.stageId;
   if (!id) return undefined;
+  // 날개 2단(091차) — ① 껍질째 뜯기: 온전(합성) → 한쪽 뜯김(날개뜯기1) / ② 날개살 분리: 5.1 → 5.2
+  if (id === 'ceph_finskin_off') return (st.finPathsDone ?? 0) >= 1 ? 'squid_fin_tear' : 'squid_finskin_on';
   if (id === 'ceph_fin_off') return (st.finPathsDone ?? 0) >= 1 ? 'squid_fin2' : 'squid_fin1';
   return SQUID_STAGE_SPRITE[id];
 }
 
 /** 스프라이트 선택에 필요한 최소 정보 — 패널이 좌표계 산출에 쓴다 */
-export interface CephStageRef { stageId?: string; finPathsDone?: number; finished?: boolean }
+export interface CephStageRef {
+  stageId?: string;
+  finPathsDone?: number;
+  finished?: boolean;
+  /** 액션 연출 중간 프레임 키 — 렌더 전용 (subjectRect에는 넣지 않는다) */
+  overrideKey?: string;
+}
 
 /** 현재 스테이지의 실사 스프라이트 (없으면 undefined = 파라메트릭 폴백) */
 export function cephStageSprite(ref: CephStageRef): PixelFishSprite | undefined {
