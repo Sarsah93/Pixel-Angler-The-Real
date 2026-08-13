@@ -347,7 +347,18 @@ const MIRROR_KEYS = new Set([
   // 반쪽 필렛 2종(엔가와 분리 슬랩) — 원본 머리 왼쪽 → **필렛 규칙(꼬리 왼쪽·머리 오른쪽)**으로 반전
   'fillet_upper_halibut',
   'fillet_under_halibut',
+  // 내장 뽑기 연출 2프레임 — 개복 화면(squid_spread)과 좌우가 반대 (사용자 확인 2026-08-13)
+  'squid_viscera_lift1',
+  'squid_viscera_lift2',
+  // 날개살 분리 1/2 진행 사진(5.1) — 095차 "아직 좌우반전이 안 되어 있네" (상하반전과 병행)
+  'squid_fin1',
 ]);
+/**
+ * 상하 반전 키 (회전·미러 뒤 적용) — 날개살 분리 1/2의 진행 프레임(5.1)은 cw 베이크로
+ * 살이 위쪽으로 들리는데, 사용자 지시(2026-08-13)로 아래쪽 들림(원본 사진 방향)으로 뒤집는다.
+ */
+const FLIPV_KEYS = new Set(['squid_fin1']);
+const flipVSprite = (spr) => ({ ...spr, rows: [...spr.rows].reverse() });
 /**
  * 키별 배경 근접 임계 (기본 46). **배경이 흰색이고 피사체도 흰색**인 사진은 기본값이
  * 살코기까지 먹어버리므로 낮춘다 (halibut_open_cross — 크림색 살 vs 순백 배경).
@@ -398,6 +409,14 @@ const ROTATE_KEYS = {
   squid_pen: 'cw',        // 연골 노출 — 몸통 끝 위 → 오른쪽
   squid_headmass: 'cw',   // 머리+다리 덩어리 — 절단면 위 → 오른쪽, 다리 아래 → 왼쪽
   squid_skin_pull: 'cw',  // 껍질 위→아래 당김 → 오른쪽→왼쪽 (squid_skin_grip과 같은 방향)
+  // ── 껍질 섹션 = 표시 회전 270(ccw) 통일 (093차) — 세로 사진을 cw로 눕혀 두면
+  //    회전 뷰에서 촬영 방향 그대로 보인다. 4.1도 같은 뷰에 편입되어 cw 재배향.
+  squid_skin_grip: 'cw',  // 4.1 — 093차부터 회전 뷰(270) 전용 (구 무회전 표시 폐기)
+  squid_skin_lift: 'cw', // 목업 0-1 (회전 뷰 방향 캡처)
+  squid_peel1: 'cw',
+  squid_peel2: 'cw',
+  squid_peel3: 'cw',
+  squid_skin_done: 'cw',  // 완료 순살 (사진 6)
   squid_fin1: 'cw',
   squid_fin2: 'cw',
   squid_clean: 'cw',      // 완료 — 몸통 끝 위 → 오른쪽
@@ -447,6 +466,26 @@ const CEPH_SRC = {
 };
 
 /**
+ * ── 껍질·날개 detail 시퀀스 (093차 — 사용자 준비 2026-08-13) ────────────────────
+ * `껍질 제거 및 날개 뜯기 detail/` 하위 폴더. 껍질 뜯기 진행 프레임 3장 + 완료본 + 날개 시작본.
+ * 시퀀스 번호 중 0(현재 상태 캡처)·0-1(들추기 목업 — 링 포함이라 파생으로 대체)·1(가이드 목업)·
+ * 4(기존 4.1)·5(기존 4.2)·날개 1(기존 5.1 캡처)·이빨 제거(부리 좌표 목업)는 **베이크하지 않는다**.
+ * ⚠ 파일명 공백 불일치 주의 — 1-2·2·3은 `벗기기  N`(공백 2), 6은 `벗기기 6`(공백 1).
+ * ⚠ 세로(회전 뷰 방향) 사진은 cw로 눕혀 굽는다 — 표시 회전 270(ccw)이 원래 방향으로 되돌린다.
+ */
+const CEPH_DETAIL_DIR = path.resolve(CEPH_SRC_DIR, '껍질 제거 및 날개 뜯기 detail');
+const CEPH_DETAIL_SRC = {
+  // 095차: 손잡이 플랩은 절차 합성이 아니라 **목업 0-1을 그대로 베이크** (사용자 "두 번째
+  // 캡처화면처럼 되어야 해"). 조준 링은 굽은 뒤 색 필터로 걷어내고 이웃 색으로 메운다(아래 파생).
+  '껍질 벗기기  0-1.png': 'squid_skin_lift',
+  '껍질 벗기기  1-2.png': 'squid_peel1',   // 우→좌 뜯기는 중 (초반)
+  '껍질 벗기기  2.png': 'squid_peel2',     // 절반까지 딸려옴
+  '껍질 벗기기  3.png': 'squid_peel3',     // 절반보다 조금 더
+  '껍질 벗기기 6.png': 'squid_skin_done',  // 다 벗겨진 순살 (구 파생 대체 — 실사)
+  '날개 0.png': 'squid_fin0',              // 날개+껍질 덩어리 — 날개살이 아직 안 뜯긴 시작 상태
+};
+
+/**
  * 굽기 전에 지울 영역 (원본 정규화 폴리곤 — 회전·미러보다 먼저).
  *  halibut_fin_score — 사용자가 **칼길 위치를 알려주려고 포토샵으로 그려 넣은 칼**.
  *    게임은 칼을 별도 연출(actionAnimG)로 그리므로 스프라이트에 구우면 칼이 둘이 된다.
@@ -458,6 +497,9 @@ const ERASE_POLY = {
   halibut_fin_score: [[
     [0.60, 0.585], [1.0, 0.585], [1.0, 1.0], [0.746, 1.0], [0.528, 0.612], [0.60, 0.612],
   ]],
+  // ⚠ squid_skin_lift(목업 0-1)에 ERASE_POLY를 쓰면 안 된다 — 사전 지우기가 투명 비율을
+  //   3% 넘겨 **알파 경로로 오판**되고 도마색 배경 제거가 통째로 꺼진다 (095차 실측).
+  //   검은 띠·링·프린지는 굽은 뒤 파생 단계에서 정리한다.
 };
 
 // ① 돔류 = SVG 자동 추출 (기본) → ② 사진 폴더가 같은 키를 덮어씀 (사진 우선)
@@ -475,15 +517,22 @@ for (const [fname, key] of Object.entries(CEPH_SRC)) {
   if (!fs.existsSync(abs)) { console.warn(`⚠ 두족류 입력 없음 (건너뜀): ${fname}`); continue; }
   photoJobs.push([abs, key]);
 }
+for (const [fname, key] of Object.entries(CEPH_DETAIL_SRC)) {
+  const abs = path.join(CEPH_DETAIL_DIR, fname);
+  if (!fs.existsSync(abs)) { console.warn(`⚠ 두족류 detail 입력 없음 (건너뜀): ${fname}`); continue; }
+  photoJobs.push([abs, key]);
+}
 
 for (const [abs, key] of photoJobs) {
   let spr = processImage(abs, BG_TOL[key] ?? 46, ERASE_POLY[key] ?? [], fitsLong(key));
   const rot = ROTATE_KEYS[key];
   if (rot) spr = rotateSprite(spr, rot);
   if (MIRROR_KEYS.has(key)) spr = mirrorSprite(spr);
+  if (FLIPV_KEYS.has(key)) spr = flipVSprite(spr);
   const tag = [
     rot ? `회전 ${rot}` : null,
     MIRROR_KEYS.has(key) ? '미러' : null,
+    FLIPV_KEYS.has(key) ? '상하반전' : null,
     fitsLong(key) ? '긴축' : null,
   ].filter(Boolean).join('·');
   map.set(key, spr);
@@ -655,6 +704,292 @@ function deriveSkinOver(base, tone, regionFn) {
     const domeTone = sampleTone(tear, (_x, y, L) => y < 48 && L >= 160 && L <= 215, { r: 196, g: 182, b: 165 });
     const finskinOn = deriveSkinOver(tear, domeTone, (_x, y, L) => y >= 48 && L >= 205);
     if (finskinOn) { map.set('squid_finskin_on', finskinOn); console.log(`squid_finskin_on: ${finskinOn.w}x${finskinOn.h} (합성 ← squid_fin_tear 절단면 띠 되덮음)`); }
+  }
+}
+
+/**
+ * ── 파생: 두족류 092~095차 ─────────────────────────────
+ *  squid_skin_lift : **목업 0-1 베이크의 조준 링 제거** — 붉은 링 픽셀을 색으로 골라 지우고
+ *                    이웃 다수색으로 메운다 (095차 — 구 절차 합성 플랩은 "이상한 걸 넣어놨네"로 폐기)
+ *  squid_gill_on   : 아가미 온전 = squid_clean 위에 2.2(squid_pen)의 아가미(깃털 기관)만 얹음
+ *  *_m 미러 3키    : 날개 뜯기(껍질째) 2/2 + 날개살 분리 2/2 시작 프레임용 좌우 반전
+ */
+{
+  // ① 목업 0-1 정리 — 캡처의 도마색(불투명 배경) 잔여 프린지를 침식으로 걷어낸 뒤,
+  //    조준 링(적색 — 채도 인지: 갈색 프린지(g−b 큼)와 구분)을 플랩 주변 영역에서만 지우고
+  //    3×3 이웃 다수색으로 인페인트한다.
+  const liftRaw = map.get('squid_skin_lift');
+  if (liftRaw) {
+    const W2 = liftRaw.rows[0].length, H2 = liftRaw.rows.length;
+    const rows = liftRaw.rows.map((r) => [...r]);
+    const rgbOf = (ch) => {
+      const c = liftRaw.palette[AB.indexOf(ch)];
+      return [(c >> 16) & 255, (c >> 8) & 255, c & 255];
+    };
+    // (0) 도마색 보더 플러드 제거 — 목업 PNG는 **투명 여백이 있는 캡처**라 알파 경로로 판정되어
+    //     도마색(불투명 배경)이 그대로 구워진다(095차 실측). 테두리에서 도마 유사색만 타고
+    //     퍼지는 BFS로 걷어낸다 (표준 누끼의 그리드판 — 색 제한이라 플랩 검은 테두리는 안전).
+    {
+      const border = [];
+      const colorCount = new Map();
+      for (let y = 0; y < H2; y++) {
+        for (let x = 0; x < W2; x++) {
+          if (y !== 0 && y !== H2 - 1 && x !== 0 && x !== W2 - 1) continue;
+          const ch = rows[y][x];
+          if (ch === '.') continue;
+          border.push([x, y]);
+          colorCount.set(ch, (colorCount.get(ch) ?? 0) + 1);
+        }
+      }
+      let boardCh = null, boardN = 0;
+      for (const [ch, n] of colorCount) if (n > boardN) { boardN = n; boardCh = ch; }
+      if (boardCh) {
+        const [br, bg2, bb] = rgbOf(boardCh);
+        const boardLike = (ch) => {
+          if (ch === '.') return false;
+          const [r, g, b] = rgbOf(ch);
+          // 도마 유사색 = 색 근접 **그리고 따뜻함(r−b) 유지** — 몸통 회색(r≈b)은 맨해튼 거리만으로
+          // 도마와 99까지 근접해서(095차 실측 — 거리 110 단독이면 몸통까지 먹었다) 따뜻함으로 가른다.
+          return Math.abs(r - br) + Math.abs(g - bg2) + Math.abs(b - bb) < 130 && r - b >= 40;
+        };
+        const q = border.filter(([x, y]) => boardLike(rows[y][x]));
+        const inQ = rows.map((r) => r.map(() => false));
+        for (const [x, y] of q) inQ[y][x] = true;
+        while (q.length) {
+          const [x, y] = q.pop();
+          rows[y][x] = '.';
+          for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+            const ax = x + dx, ay = y + dy;
+            if (ax < 0 || ay < 0 || ax >= W2 || ay >= H2 || inQ[ay][ax]) continue;
+            if (!boardLike(rows[ay][ax])) continue;
+            inQ[ay][ax] = true;
+            q.push([ax, ay]);
+          }
+        }
+      }
+    }
+    // (a0) 캡처 최하단 검은 띠 (cw 로컬 = 좌측 5% 열의 어두운 셀 — 좌표 한정이라 플랩 테두리 안전)
+    for (let y = 0; y < H2; y++) {
+      for (let x = 0; x < Math.ceil(W2 * 0.05); x++) {
+        const ch = rows[y][x];
+        if (ch === '.') continue;
+        const [r, g, b] = rgbOf(ch);
+        if ((r * 299 + g * 587 + b * 114) / 1000 < 70) rows[y][x] = '.';
+      }
+    }
+    // (a) 테두리 침식 — 투명(또는 그리드 밖)과 맞닿은 따뜻한 갈색(도마 잔여)을 3패스 제거
+    const warmTan = (ch) => {
+      if (ch === '.') return false;
+      const [r, g, b] = rgbOf(ch);
+      return r - b >= 40 && r - g >= 15 && r > 120;
+    };
+    let eroded = 0;
+    for (let pass = 0; pass < 3; pass++) {
+      const kill = [];
+      for (let y = 0; y < H2; y++) {
+        for (let x = 0; x < W2; x++) {
+          if (!warmTan(rows[y][x])) continue;
+          const edge = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => {
+            const ax = x + dx, ay = y + dy;
+            return ax < 0 || ay < 0 || ax >= W2 || ay >= H2 || rows[ay][ax] === '.';
+          });
+          if (edge) kill.push([x, y]);
+        }
+      }
+      for (const [x, y] of kill) rows[y][x] = '.';
+      eroded += kill.length;
+    }
+    // (b) 조준 링 제거 — 플랩 주변 영역(cw 로컬: 우하단) 한정 + 채도 인지 적색 판정
+    const isRed = (ch) => {
+      if (ch === '.') return false;
+      const [r, g, b] = rgbOf(ch);
+      return r - g >= 35 && r - b >= 35 && Math.abs(g - b) <= 25;
+    };
+    const marked = [];
+    for (let y = Math.floor(H2 * 0.55); y < H2; y++) {
+      for (let x = Math.floor(W2 * 0.45); x < W2; x++) {
+        if (isRed(rows[y][x])) { marked.push([x, y]); }
+      }
+    }
+    for (const [x, y] of marked) rows[y][x] = '.';
+    for (const [x, y] of marked) {
+      const votes = new Map();
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (!dx && !dy) continue;
+          const ax = x + dx, ay = y + dy;
+          if (ax < 0 || ay < 0 || ax >= W2 || ay >= H2) continue;
+          const ch = rows[ay][ax];
+          if (ch === '.') continue;
+          votes.set(ch, (votes.get(ch) ?? 0) + 1);
+        }
+      }
+      let best = null, bestN = 0, total = 0;
+      for (const [ch, n] of votes) { total += n; if (n > bestN) { bestN = n; best = ch; } }
+      if (best && total >= 3) rows[y][x] = best;
+    }
+    // (d) 최대 연결요소만 유지 — 몸 밖 허공의 링 조각·도마 잔재 제거 (skin_done과 동일 방식)
+    {
+      const seen = rows.map((r) => r.map(() => 0));
+      let compId = 0, bestId = 0, bestN = 0;
+      for (let y = 0; y < H2; y++) {
+        for (let x = 0; x < W2; x++) {
+          if (rows[y][x] === '.' || seen[y][x]) continue;
+          compId++;
+          let n = 0;
+          const q = [[x, y]];
+          seen[y][x] = compId;
+          while (q.length) {
+            const [cx, cy] = q.pop();
+            n++;
+            for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+              const ax = cx + dx, ay = cy + dy;
+              if (ax < 0 || ay < 0 || ax >= W2 || ay >= H2) continue;
+              if (rows[ay][ax] === '.' || seen[ay][ax]) continue;
+              seen[ay][ax] = compId;
+              q.push([ax, ay]);
+            }
+          }
+          if (n > bestN) { bestN = n; bestId = compId; }
+        }
+      }
+      for (let y = 0; y < H2; y++) {
+        for (let x = 0; x < W2; x++) {
+          if (rows[y][x] !== '.' && seen[y][x] !== bestId) rows[y][x] = '.';
+        }
+      }
+    }
+    // (e) 플랩 재채색 (096차 — 사용자 "뒤집힌 부분은 배경색임. 왼쪽 = 껍질 컬러 / 우측 = 흰색"):
+    //     목업 캡처의 플랩이 도마색 계열로 구워지므로, 플랩 셀(우하단 영역의 따뜻/밝은 셀 —
+    //     검은 테두리 제외)을 로컬 y 하위 절반 = 몸통 껍질톤 / 상위 절반 = 흰 살 톤으로 다시 칠한다.
+    //     (회전 뷰(270)에서 로컬 y = 화면 가로축: 작은 y = 왼쪽 ✓)
+    const palette = [...liftRaw.palette];
+    let recolored = 0;
+    {
+      const lumOf2 = (r, g2, b) => (r * 299 + g2 * 587 + b * 114) / 1000;
+      // 몸통 껍질톤 = 좌측 절반(몸통부)의 중간 명도 셀 평균
+      let br2 = 0, bg3 = 0, bb2 = 0, bn = 0;
+      for (let y = 0; y < H2; y++) {
+        for (let x = 0; x < Math.floor(W2 * 0.5); x++) {
+          const ch = rows[y][x];
+          if (ch === '.') continue;
+          const [r, g2, b] = rgbOf(ch);
+          const L = lumOf2(r, g2, b);
+          if (L < 80 || L > 160) continue;
+          br2 += r; bg3 += g2; bb2 += b; bn++;
+        }
+      }
+      const tone = bn ? { r: br2 / bn, g: bg3 / bn, b: bb2 / bn } : { r: 128, g: 118, b: 122 };
+      const clamp8 = (v) => Math.max(0, Math.min(255, Math.round(v)));
+      const SKIN_SH = 5, WHITE_SH = 4;
+      const skinIdx = [], whiteIdx = [];
+      for (let k = 0; k < SKIN_SH; k++) {
+        const s = 0.72 + (k / (SKIN_SH - 1)) * 0.44;
+        skinIdx.push(palette.push((clamp8(tone.r * s) << 16) | (clamp8(tone.g * s) << 8) | clamp8(tone.b * s)) - 1);
+      }
+      for (let k = 0; k < WHITE_SH; k++) {
+        const v = 205 + k * 13;
+        whiteIdx.push(palette.push((clamp8(v) << 16) | (clamp8(v) << 8) | clamp8(v - 8)) - 1);
+      }
+      if (palette.length > AB.length) throw new Error('팔레트 초과(skin_lift 재채색): ' + palette.length);
+      // 플랩 셀 수집 (우하단 영역 · 따뜻하거나 밝은 셀 — 검은 테두리는 보존)
+      const flap = [];
+      let yMin = H2, yMax = 0;
+      for (let y = Math.floor(H2 * 0.5); y < H2; y++) {
+        for (let x = Math.floor(W2 * 0.5); x < W2; x++) {
+          const ch = rows[y][x];
+          if (ch === '.') continue;
+          const [r, g2, b] = rgbOf(ch);
+          const L = lumOf2(r, g2, b);
+          if (L < 85) continue;                       // 테두리·짙은 그늘 보존
+          if (!(r - b >= 18 || L >= 170)) continue;   // 몸통 회색(중성)은 제외
+          flap.push([x, y, L]);
+          if (y < yMin) yMin = y;
+          if (y > yMax) yMax = y;
+        }
+      }
+      const range = Math.max(1, yMax - yMin);
+      for (const [x, y, L] of flap) {
+        const half = (y - yMin) / range;
+        if (half < 0.45) {
+          const k = Math.max(0, Math.min(SKIN_SH - 1, Math.round(((L - 85) / 130) * (SKIN_SH - 1))));
+          rows[y][x] = AB[skinIdx[k]];
+        } else {
+          const k = Math.max(0, Math.min(WHITE_SH - 1, Math.round(((L - 85) / 150) * (WHITE_SH - 1))));
+          rows[y][x] = AB[whiteIdx[k]];
+        }
+        recolored++;
+      }
+    }
+    const lift = { ...liftRaw, palette, rows: rows.map((r) => r.join('')) };
+    map.set('squid_skin_lift', lift);
+    console.log(`squid_skin_lift: ${lift.w}x${lift.h} (목업 0-1 — 프린지 ${eroded}px 침식 · 링 ${marked.length}px · 플랩 ${recolored}px 재채색)`);
+  }
+
+  // ② 아가미 온전 — 2.2(squid_pen)의 깃털 기관 2개를 **색으로 골라**(갈분홍 — 청록 외투막·
+  //    회백 연골 배제) squid_clean의 같은 정규화 위치에 얹는다. 두 스프라이트 모두 펼친 몸통
+  //    전신 뷰(128×127 / 128×121)라 위치가 근사 정합. 톤은 아가미 샘플 → 셰이드 8단 양자화
+  //    (팔레트 상한 64 방어 — deriveSkinOver 방식).
+  const pen = map.get('squid_pen');
+  const clean = map.get('squid_clean');
+  if (pen && clean) {
+    const PW = pen.rows[0].length, PH = pen.rows.length;
+    const CW = clean.rows[0].length, CH = clean.rows.length;
+    const gillPick = (x, y) => {
+      const nx = x / (PW - 1), ny = y / (PH - 1);
+      if (nx < 0.16 || nx > 0.64 || ny < 0.26 || ny > 0.78) return false;   // 아가미 존재 영역(실측)
+      const ch = pen.rows[y][x];
+      if (ch === '.') return false;
+      const c = pen.palette[AB.indexOf(ch)];
+      const r = (c >> 16) & 255, g = (c >> 8) & 255, b = c & 255;
+      // 갈색조(아가미 깃털) = 적 > 청 뚜렷 + 적 ≥ 녹. 청록 외투막(g·b > r)과
+      // 회백 연골(r ≈ g ≈ b)은 탈락 — r>g+12는 은회색 깃털 축을 놓쳐 137px 낙서가 됐다(1차 실패).
+      return r - b > 14 && r >= g - 2;
+    };
+    const tone = (() => {
+      let r = 0, g = 0, b = 0, n = 0;
+      for (let y = 0; y < PH; y++) for (let x = 0; x < PW; x++) {
+        if (!gillPick(x, y)) continue;
+        const c = pen.palette[AB.indexOf(pen.rows[y][x])];
+        r += (c >> 16) & 255; g += (c >> 8) & 255; b += c & 255; n++;
+      }
+      return n ? { r: r / n, g: g / n, b: b / n } : { r: 176, g: 138, b: 128 };
+    })();
+    const palette = [...clean.palette];
+    const clamp8 = (v) => Math.max(0, Math.min(255, Math.round(v)));
+    const SH = 8;
+    const shadeIdx = [];
+    for (let k = 0; k < SH; k++) {
+      const s = 0.55 + (k / (SH - 1)) * 0.65;
+      shadeIdx.push(palette.push((clamp8(tone.r * s) << 16) | (clamp8(tone.g * s) << 8) | clamp8(tone.b * s)) - 1);
+    }
+    if (palette.length > AB.length) throw new Error('팔레트 초과(gill_on): ' + palette.length);
+    const rows = clean.rows.map((r) => [...r]);
+    let stamped = 0;
+    for (let cy = 0; cy < CH; cy++) {
+      for (let cx = 0; cx < CW; cx++) {
+        if (clean.rows[cy][cx] === '.') continue;             // 몸 실루엣 밖에는 얹지 않는다
+        const px2 = Math.round((cx / (CW - 1)) * (PW - 1));
+        const py2 = Math.round((cy / (CH - 1)) * (PH - 1));
+        if (!gillPick(px2, py2)) continue;
+        const L = lumOf(pen.palette[AB.indexOf(pen.rows[py2][px2])]);
+        const k = Math.max(0, Math.min(SH - 1, Math.round(((Math.max(70, Math.min(210, L)) - 70) / 140) * (SH - 1))));
+        rows[cy][cx] = AB[shadeIdx[k]];
+        stamped++;
+      }
+    }
+    const gillOn = { ...clean, palette, rows: rows.map((r) => r.join('')) };
+    map.set('squid_gill_on', gillOn);
+    console.log(`squid_gill_on: ${gillOn.w}x${gillOn.h} (합성 ← squid_clean + squid_pen 아가미 ${stamped}px)`);
+  }
+
+  // ③ 미러 3키 — 날개 뜯기(껍질째) 2/2 + 날개살 분리 2/2 시작 프레임 (좌우 반전)
+  for (const key of ['squid_finskin_on', 'squid_fin_tear', 'squid_fin0']) {
+    const s = map.get(key);
+    if (!s) continue;
+    const m = mirrorSprite(s);
+    map.set(`${key}_m`, m);
+    console.log(`${key}_m: ${m.w}x${m.h} (미러 ← ${key})`);
   }
 }
 const entries = [...map.entries()];

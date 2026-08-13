@@ -40,7 +40,7 @@
 |---|---|---|---|---|
 | S1 | [낚시 루프 (1인칭)](02-SYSTEMS/fishing-loop.md) | 🟢 | `FirstPersonFishingScene` · core 물리 9종 | 어탐 레이더, 가이드 삽화 실사화 |
 | S2 | [필드·캐스팅 (탑다운)](02-SYSTEMS/world-field.md) | 🟢 | `RegionFieldScene` | POI 세분화, 사운드 |
-| S3 | [**손질 (회뜨기)**](02-SYSTEMS/butchery.md) | 🚧 | `ButcheryProcess` · `ButcheryPanel` · `CephalopodStages` | 두족류 **무늬오징어 개방**(87차) · 나머지 3종 · 광어 F9 잔여 |
+| S3 | [**손질 (회뜨기)**](02-SYSTEMS/butchery.md) | 🚧 | `ButcheryProcess` · `ButcheryPanel` · `CephalopodStages` | 두족류 **무늬오징어·한치·문어 개방**(97차) · 갑오징어 잔여 · 광어 F9 잔여 |
 | S4 | [회썰기·플레이팅](02-SYSTEMS/sashimi-cooking.md) | 🟢 | `SashimiPanel` · `UtilizationPanel` | 스시, 불요리(화구·용기) |
 | S5 | [인벤토리·장비·보관](02-SYSTEMS/inventory-equipment.md) | 🟢 | `InventoryStore` · `CoolerStore` · `FridgeStore` | 예약 슬롯 6종 아이템 대기 |
 | S6 | [경제·상점·시세](02-SYSTEMS/economy-data.md) | 🟢 | `MarketPriceEvaluator` · `ShopPanel` | 낚시점 전용 상점 |
@@ -60,13 +60,14 @@
 
 ---
 
-## 3. 지금 위치 (2026-08-09)
+## 3. 지금 위치 (2026-08-13)
 
 - **Phase 6** (게임플레이 심화) 내부, **손질 시스템(S3)** 확장 중.
-- **두족류 잠금 해제(87차)** — 무늬오징어 14스테이지 완주 가능. 한치·갑오징어·문어는 미착수(스펙 §4.2~§4.4).
-- ⏸ **다음 세션 재개 지점 = 무늬오징어 수동 실플레이 검증** — 87차는 자동 검증만 통과했다(사람 조작 미확인).
-  재현 절차 → [워크로그 087 §5](03-WORKLOG/2026-08-09-087-cephalopod-squid-tree.md).
-  렌더는 파라메트릭 플레이스홀더 — 시트 도트 추출(`gen_ceph_stages.cjs`)이 잔여.
+- **두족류 3종 개방(97차)** — 무늬오징어 20스테이지(90~96차 재구성) + **한치(트리 공유)·문어 8스테이지** +
+  **부산물 개편·회뜨기 3모드**(몸통살 22점·날개살 4점·촉완 분리). 갑오징어 13만 미착수.
+- ⏸ **다음 세션 재개 지점 = 두족류 수동 검증** — 무늬오징어 잔여 F9(내장 2/2·뜯기 ②·날개 껍질째) +
+  97차 신설분 체감(문어 파라메트릭 뷰·OCTO 가이드 좌표 = 근사 — F9 실측 대상).
+  상세 → [워크로그 097](03-WORKLOG/2026-08-13-097-ceph-byproducts-slicing-octopus.md).
 - **광어 잔여**: F9 좌표 4종(`upSep1/2`·`dnSep1/2`·`dnScore` — 엔가와·박피는 반영 완료) · 등쪽 단면 실사 투명본 대기.
   칼 연출은 **현행 확정**(사용자 2026-08-09).
 - 상세: [`04-BACKLOG.md`](04-BACKLOG.md) · [`02-SYSTEMS/butchery.md`](02-SYSTEMS/butchery.md)

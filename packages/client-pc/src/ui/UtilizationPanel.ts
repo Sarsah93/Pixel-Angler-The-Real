@@ -1061,7 +1061,35 @@ export class UtilizationPanel extends DraggablePanel {
       }).setOrigin(0.5);
       this.bodyContainer.add(nameLbl);
 
-      if (this.isPureFillet(boardFish) || this.isPureEngawa(boardFish)) {
+      const boardCephKind = this.cephSliceKind(boardFish);
+      if (boardCephKind) {
+        // ── 두족류 부산물 회뜨기/분리 (097차) — 단일 버튼, 회칼 손 장착 게이트 ──
+        const handKnife = getBestKnife(
+          InventoryStore.items.filter((i) => i.tool === 'knife' && i.equipped).map((i) => i.id));
+        const label = boardCephKind === 'mantle' ? '오징어 회뜨기 (22점)'
+          : boardCephKind === 'fin' ? '날개살 회뜨기 (4점)' : '촉완 분리';
+        const bw2 = boardCephKind === 'arms' ? 96 : 158;
+        const on = !!handKnife;
+        const bg2 = this.scene.add.graphics();
+        bg2.fillStyle(on ? 0x0d4a2e : 0x1c2530, 0.96);
+        bg2.fillRoundedRect(boardX + 8, boardY + 8, bw2, 24, 4);
+        bg2.lineStyle(1.5, on ? 0x4af2a1 : 0x3a4a58, 0.95);
+        bg2.strokeRoundedRect(boardX + 8, boardY + 8, bw2, 24, 4);
+        const tx2 = this.scene.add.text(boardX + 8 + bw2 / 2, boardY + 20, label, {
+          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px',
+          color: on ? '#4af2a1' : '#5a6a78', fontStyle: 'bold',
+        }).setOrigin(0.5);
+        const hit2 = this.scene.add.rectangle(boardX + 8 + bw2 / 2, boardY + 20, bw2, 24, 0xffffff, 0.001)
+          .setInteractive({ useHandCursor: true });
+        hit2.on('pointerdown', () => {
+          if (!on) {
+            this.flashBoardToast('회칼을 손에 장착해야 합니다 — 인벤토리(기타)에서 회칼 우클릭 → 착용');
+            return;
+          }
+          this.openSashimi(boardFish, 'basic');
+        });
+        this.bodyContainer.add([bg2, tx2, hit2]);
+      } else if (this.isPureFillet(boardFish) || this.isPureEngawa(boardFish)) {
         // ── 순수 필렛/순수 엔가와 = 회썰기(사시미) — [일반 회뜨기] + [고급 사시미 뜨기] ──
         //  일반 = 손 장착 회칼(막칼 포함 — 등급 캡) / 고급 = **야나기바 이상** 장착 시에만 활성.
         //  엔가와는 SashimiPanel이 스트립 전용 2컷으로 분기한다 (사용자 지시 2026-08-05).
@@ -1275,6 +1303,20 @@ export class UtilizationPanel extends DraggablePanel {
     return item.subCategory === '엔가와' && item.id.startsWith('inv_engawa_');
   }
 
+  /**
+   * 두족류 회뜨기 대상 부산물 (097차) — 도마에 올리면 SashimiPanel이 전용 레이아웃으로 분기.
+   *  - 몸통살: 가운데 1컷 + 세로 10컷 = **회 22점**
+   *  - 날개살: 좌우 날개 각 1컷 = **회 4점**
+   *  - 다리부: 1컷 = **촉완 ×2 + 촉완이 제거된 다리부** (회 아님 — 별도 요리 재료)
+   * id는 ButcheryPanel.buildYieldRows 규칙 그대로 — 몸통살은 개체별, 날개살/다리부는 공유 스택.
+   */
+  private cephSliceKind(item: InvItem): 'mantle' | 'fin' | 'arms' | null {
+    if (item.id.startsWith('inv_ceph_ceph_mantle_fillet_')) return 'mantle';
+    if (item.id === 'inv_ceph_ceph_fin_meat') return 'fin';
+    if (item.id === 'inv_ceph_ceph_arms') return 'arms';
+    return null;
+  }
+
   private dropFishOnBoard(item: InvItem): void {
     // 회 조각 = 도마 스테이징 (썰린 조각 진열 — 접시 드래그의 출발점)
     if (this.isSashimiPiece(item)) {
@@ -1288,7 +1330,7 @@ export class UtilizationPanel extends DraggablePanel {
       this.flashBoardToast('접시는 아래 [사시미 만들기] 영역에 놓으세요');
       return;
     }
-    if (this.isPureFillet(item) || this.isPureEngawa(item)) {
+    if (this.isPureFillet(item) || this.isPureEngawa(item) || this.cephSliceKind(item)) {
       if (this.cookBoardFishId && this.cookBoardFishId !== item.id) { this.trySwapBoard(item.id); return; }
       this.cookBoardFishId = item.id;
       this.cookSelectedId = item.id;
@@ -1446,7 +1488,9 @@ export class UtilizationPanel extends DraggablePanel {
   private renderCookSubBoxes(bx: number, by: number, bw: number, bh: number): void {
     const boardFish = this.cookBoardFishId ? InventoryStore.find(this.cookBoardFishId) : undefined;
     const hasPieces = InventoryStore.items.some((i) => this.isSashimiPiece(i));
-    const relevant = (boardFish && (this.isPureFillet(boardFish) || this.isPureEngawa(boardFish))) || hasPieces
+    const bk = boardFish ? this.cephSliceKind(boardFish) : null;
+    const relevant = (boardFish && (this.isPureFillet(boardFish) || this.isPureEngawa(boardFish)
+      || bk === 'mantle' || bk === 'fin')) || hasPieces
       || this.cookSub === 'sashimi' || !!this.plateState;
     if (!relevant) return;
     bh = Math.min(206, bh);
@@ -1921,6 +1965,7 @@ export class UtilizationPanel extends DraggablePanel {
       // 껍질 붙은 필렛(재개)·순수 필렛(회썰기)·접시/회 조각(플레이팅)도 드래그 가능
       const draggableFish = fam === 'finfish' || fam === 'cephalopod'
         || !!this.resumeSectionOf(item) || this.isPureFillet(item) || this.isPureEngawa(item)
+        || !!this.cephSliceKind(item)
         || this.isPlateItem(item) || this.isSashimiPiece(item);
       const hit = this.scene.add.rectangle(cx + cell / 2, cy + cell / 2, cell, cell, 0xffffff, 0.001)
         .setInteractive({ useHandCursor: true });
@@ -1944,7 +1989,10 @@ export class UtilizationPanel extends DraggablePanel {
     const footY = gridY + 5 * (cell + gap) + 4;
     const selFam = selItem?.subCategory === '어획물' ? getButcheryFamily(selItem.speciesId ?? '') : 'unsupported';
     const selHint = selItem
-      ? (this.isPureEngawa(selItem) ? '도마로 드래그하면 엔가와 회썰기(총 2컷)를 진행합니다'
+      ? (this.cephSliceKind(selItem) === 'mantle' ? '도마로 드래그하면 오징어 회뜨기(가운데 1컷 + 세로 10컷 = 22점)를 진행합니다'
+        : this.cephSliceKind(selItem) === 'fin' ? '도마로 드래그하면 날개살 회뜨기(날개당 1컷 = 4점)를 진행합니다'
+        : this.cephSliceKind(selItem) === 'arms' ? '도마로 드래그하면 촉완 분리(촉완 ×2 + 다리부)를 진행합니다 — 회가 아닌 요리 재료'
+        : this.isPureEngawa(selItem) ? '도마로 드래그하면 엔가와 회썰기(총 2컷)를 진행합니다'
         : this.isPureFillet(selItem) ? '도마로 드래그하면 회썰기(사시미)를 진행합니다 — 야나기바 장착 시 고급 사시미'
         : this.isPlateItem(selItem) ? '[사시미 만들기] 영역으로 드래그해 접시를 놓으세요'
         : this.isSashimiPiece(selItem) ? '접시로 드래그해 배치하세요 (활성 방위에 1점씩 — 접시 돌리기로 방위 전환)'

@@ -368,6 +368,8 @@ function createSeedItems(): InvItem[] {
     { id: 'inv_chum_corn',         name: '옥수수 캔 (밑밥용)',   icon: '🌽', category: 'consumable', subCategory: '집어제/밑밥', qty: 2, basePrice: 4500,  equippable: false, chumKind: 'grain' },
     // 대용량 각얼음 — 쿨러 '얼음 넣기' 재료 (1회 1개 소모, 2시간 유지)
     { id: 'inv_ice_bulk', name: '대용량 각얼음',            icon: '🧊', category: 'consumable', subCategory: '보냉',          qty: 2, basePrice: 4000,  equippable: false },
+    // 굵은소금 — 문어 손질 '소금 치대기' 재료 (1회 1개 소모 — 097차)
+    { id: 'inv_coarse_salt', name: '굵은소금',              icon: '🧂', category: 'consumable', subCategory: '조미/손질',     qty: 3, basePrice: 2000,  equippable: false },
     { id: 'inv_spray',    name: '기능성 스프레이',          icon: '🧴', category: 'consumable', subCategory: '스프레이/오일', qty: 2, basePrice: 9000,  equippable: false },
     { id: 'inv_oil',      name: '릴 오일',                  icon: '🧴', category: 'consumable', subCategory: '스프레이/오일', qty: 1, basePrice: 7000,  equippable: false },
     { id: 'inv_carekit',  name: '도구 케어 세트',           icon: '🧰', category: 'consumable', subCategory: '장비 수리',     qty: 1, basePrice: 15000, equippable: false },
@@ -812,12 +814,20 @@ class InventoryStoreManager {
     this._lure = ref(s.lure);
     this._jigHead = ref(s.jigHead);
 
-    // dev 전용 — 기존 세이브에도 손질 검증용 테스트 어획 6종이 없으면 주입 (2026-07-30)
+    // dev 전용 — 기존 세이브에도 손질 검증용 테스트 어획이 없으면 주입 (2026-07-30)
     if (import.meta.env.DEV) {
       for (const d of createDevFishDefs()) {
         if (this.find(d.id)) continue;
         const { qty, ...tpl } = d;
         this.addItem(tpl, qty);
+      }
+      // 굵은소금 — 문어 '소금 치대기' 게이트 검증용 (097차. 시드는 신규 게임에만 들어가므로
+      //  구세이브에도 없으면 3개 주입 — dev 전용, 프로덕션은 식자재마트 구매)
+      if (!this.find('inv_coarse_salt')) {
+        this.addItem({
+          id: 'inv_coarse_salt', name: '굵은소금', icon: '🧂',
+          category: 'consumable', subCategory: '조미/손질', basePrice: 2000, equippable: false,
+        }, 3);
       }
     }
   }

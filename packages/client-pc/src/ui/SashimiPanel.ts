@@ -16,7 +16,7 @@ import Phaser from 'phaser';
 import {
   evaluateCut, CutPoint, SASHIMI_MODES, SashimiMode, SashimiModeSpec, buildSashimiCutPaths,
   sashimiGradeFromQuality, getBestKnife, FISH_DATABASE, ENGAWA_CUTS, ENGAWA_PIECES,
-  SASHIMI_CUT_OVERRIDES,
+  SASHIMI_CUT_OVERRIDES, cephByproductIcon,
 } from '@tra/core';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { InventoryStore, InvItem } from '../store/InventoryStore.js';
@@ -48,6 +48,13 @@ export class SashimiPanel extends DraggablePanel {
    * 실사 스트립 에셋(trim_engawa)을 탑뷰로 놓고 세로 2컷만 긋는다.
    */
   private readonly engawa: boolean;
+  /**
+   * 두족류 부산물 모드 (097차) — 엔가와와 같은 "특수 원물 분기" 문법:
+   *  - mantle: 몸통살 — 가운데 가로 1컷(두 덩어리) + 세로 10컷(양 덩어리 관통) = **22점**
+   *  - fin: 날개살 — 좌우 날개 2장 렌더, 각 1컷 = **4점**
+   *  - arms: 다리부 — 1컷으로 촉완 분리 = **촉완 ×2 + 촉완이 제거된 다리부** (회 아님)
+   */
+  private readonly ceph: 'mantle' | 'fin' | 'arms' | null;
   /** 유효 모드 스펙 — 엔가와는 컷 수만 2로 오버라이드 */
   private readonly spec: SashimiModeSpec;
   /** 필렛/엔가와 표시 텍스처 키 */
@@ -76,6 +83,13 @@ export class SashimiPanel extends DraggablePanel {
 
   private filletImg!: Phaser.GameObjects.Image;
   private readonly pieces: Phaser.GameObjects.Image[] = [];
+  /** 날개살 모드 — 좌우 날개 이미지 (컷 성공 시 반쪽 2장으로 교체) */
+  private readonly finWings: (Phaser.GameObjects.Image | undefined)[] = [undefined, undefined];
+  /** 몸통살 모드 — 가로 1컷 후의 위/아래 덩어리 (세로 컷마다 왼쪽 영역만 재굽기) */
+  private mantleTopImg?: Phaser.GameObjects.Image;
+  private mantleBotImg?: Phaser.GameObjects.Image;
+  private mantleTopKey?: string;
+  private mantleBotKey?: string;
   /** 베이킹 텍스처 키 일련번호 — 패널을 여러 번 열어도 키가 겹치지 않게 */
   private static bakeSeq = 0;
   /** 대각 절단면 베이킹으로 만든 캔버스 텍스처 키 — destroy에서 전부 해제 (87차) */
@@ -94,25 +108,50 @@ export class SashimiPanel extends DraggablePanel {
   private readonly sashimiUpHandler: (p: Phaser.Input.Pointer) => void;
   private readonly sashimiDownHandler: (p: Phaser.Input.Pointer) => void;
 
+  /** 두족류 부산물 판별 — UtilizationPanel.cephSliceKind와 동일 id 규칙 (097차) */
+  private static cephKindOf(item: InvItem): 'mantle' | 'fin' | 'arms' | null {
+    if (item.id.startsWith('inv_ceph_ceph_mantle_fillet_')) return 'mantle';
+    if (item.id === 'inv_ceph_ceph_fin_meat') return 'fin';
+    if (item.id === 'inv_ceph_ceph_arms') return 'arms';
+    return null;
+  }
+
+  private static cephLabel(kind: 'mantle' | 'fin' | 'arms'): string {
+    return kind === 'mantle' ? '몸통살 회뜨기 (22점)'
+      : kind === 'fin' ? '날개살 회뜨기 (4점)' : '촉완 분리';
+  }
+
   constructor(scene: Phaser.Scene, source: InvItem, mode: SashimiMode, cbs: SashimiCallbacks) {
     const spec = SASHIMI_MODES[mode];
+    const cephKind = SashimiPanel.cephKindOf(source);
     super(scene, {
       x: (GAME_WIDTH - PANEL_W) / 2,
       y: (GAME_HEIGHT - PANEL_H) / 2,
       width: PANEL_W, height: PANEL_H,
-      title: `회뜨기 — ${source.name} · ${spec.label}`,
+      title: `회뜨기 — ${source.name} · ${cephKind ? SashimiPanel.cephLabel(cephKind) : spec.label}`,
       onClose: cbs.onClose, dim: true, depth: 910,
     });
     this.source = source;
     this.cbs = cbs;
     this.mode = mode;
     this.fam = butcherFamilyOf(source.speciesId ?? '');
+    this.ceph = cephKind;
     // 엔가와 스트립 — 총 2컷 (사용자 지시 2026-08-05). 뷰는 항상 탑뷰(실사 스트립 에셋).
-    this.engawa = source.subCategory === '엔가와' || source.id.startsWith('inv_engawa_');
-    this.spec = this.engawa ? { ...spec, cuts: ENGAWA_CUTS } : spec;
+    this.engawa = !this.ceph && (source.subCategory === '엔가와' || source.id.startsWith('inv_engawa_'));
+    this.spec = this.ceph
+      ? {
+        ...spec, label: SashimiPanel.cephLabel(this.ceph),
+        cuts: this.ceph === 'mantle' ? 11 : this.ceph === 'fin' ? 2 : 1,
+        tolerance: Math.max(spec.tolerance, 0.1), minCoverage: Math.min(spec.minCoverage, 0.55),
+      }
+      : this.engawa ? { ...spec, cuts: ENGAWA_CUTS } : spec;
     // 일반 = 탑뷰(y plane 정면 — 위에서 본 필렛) / 고급 = 측면(z plane 정면) — 사용자 정정 2026-08-03
-    this.view = this.engawa ? 'top' : mode === 'advanced' ? 'side' : 'top';
-    this.texKey = this.engawa ? 'trim_engawa' : SASHIMI_FILLET_TEX[this.view][this.fam];
+    this.view = this.engawa || this.ceph ? 'top' : mode === 'advanced' ? 'side' : 'top';
+    this.texKey = this.ceph
+      ? (cephByproductIcon(
+        this.ceph === 'mantle' ? 'ceph_mantle_fillet' : this.ceph === 'fin' ? 'ceph_fin_meat' : 'ceph_arms',
+        source.speciesId) ?? 'trim_ceph_mantle_squid')
+      : this.engawa ? 'trim_engawa' : SASHIMI_FILLET_TEX[this.view][this.fam];
 
     // 닫기(X/ESC) — 완료 전 = 단순 취소(필렛 보존) / 완료 후 = onComplete로 정리
     this.requestClose = (): void => {
@@ -125,14 +164,64 @@ export class SashimiPanel extends DraggablePanel {
     const profAll = SASHIMI_FILLET_PROFILES[this.fam];
     const frW = 640;
     let aspect: number;
-    if (this.engawa) {
+    if (this.engawa || this.ceph) {
       const src = this.scene.textures.get(this.texKey).getSourceImage() as { width: number; height: number };
-      aspect = src.width && src.height ? src.width / src.height : 512 / 74;
+      const texAspect = src.width && src.height ? src.width / src.height : 512 / 74;
+      // 날개살 = 좌우 날개 2장 병렬 배치 → 표시 rect 종횡비는 (2장 + 간격) 기준
+      aspect = this.ceph === 'fin' ? texAspect * 2.15 : texAspect;
     } else {
       aspect = this.view === 'top' ? profAll.top.aspect : 384 / 120;
     }
     const frH = Math.min(300, Math.round(frW / aspect));
-    this.fr = { x: 70, y: 300 - Math.round(frH / 2), w: frW, h: frH };
+    // 두족류 — 높이 캡에 걸리면 폭을 줄여 원본 비율 유지 (몸통살 사진이 왜곡되지 않게)
+    const frW2 = this.ceph ? Math.min(frW, Math.round(frH * aspect)) : frW;
+    this.fr = { x: 70 + Math.round((frW - frW2) / 2), y: 300 - Math.round(frH / 2), w: frW2, h: frH };
+
+    // ── 두족류 — 고정 배치 컷 (윤곽 콜백 불필요. F9 오버라이드는 아래 공통 경로가 적용) ──
+    if (this.ceph) {
+      let paths: CutPoint[][];
+      let order: number[];
+      if (this.ceph === 'mantle') {
+        // ① 가운데 가로 1컷(두 덩어리) → ② 세로 10컷 — 오른쪽부터 (양 덩어리 관통 = 22점)
+        paths = [[{ x: 0.02, y: 0.5 }, { x: 0.98, y: 0.5 }]];
+        for (let k = 1; k <= 10; k++) {
+          const u = k / 11;
+          paths.push([{ x: u, y: 0.04 }, { x: u, y: 0.96 }]);
+        }
+        order = [0, ...Array.from({ length: 10 }, (_, i) => 10 - i)];
+      } else if (this.ceph === 'fin') {
+        // 좌우 날개 각 1컷 — 오른쪽 날개부터
+        paths = [
+          [{ x: 0.245, y: 0.08 }, { x: 0.245, y: 0.92 }],
+          [{ x: 0.755, y: 0.08 }, { x: 0.755, y: 0.92 }],
+        ];
+        order = [1, 0];
+      } else {
+        // 다리부 — 촉완(오른쪽) 분리 1컷 (근사 — F9 실측 대상)
+        paths = [[{ x: 0.70, y: 0.06 }, { x: 0.72, y: 0.94 }]];
+        order = [0];
+      }
+      const cephOv = SASHIMI_CUT_OVERRIDES[this.overrideKey()];
+      this.cutPaths = cephOv && cephOv.length === paths.length
+        ? cephOv.map((path) => path.map((pt) => ({ ...pt })))
+        : paths;
+      this.cutOrder = order;
+
+      this.buildBody();
+      this.sashimiMoveHandler = (p): void => this.onMove(p);
+      this.sashimiUpHandler = (p): void => this.onUp(p);
+      this.sashimiDownHandler = (p): void => this.onDown(p);
+      scene.input.on('pointermove', this.sashimiMoveHandler);
+      scene.input.on('pointerup', this.sashimiUpHandler);
+      scene.input.on('pointerdown', this.sashimiDownHandler);
+      if (import.meta.env.DEV) {
+        this.f9Handler = (): void => this.toggleEdit();
+        scene.input.keyboard?.on('keydown-F9', this.f9Handler);
+      }
+      this.refreshGuide();
+      applyScreenFixed(this);
+      return;
+    }
 
     // ── 컷 유도선 — 뷰별 윤곽 콜백으로 살코기 구간을 찾아 균등 배치 ──
     const interp = (arr: number[], u: number): number => {
@@ -209,9 +298,9 @@ export class SashimiPanel extends DraggablePanel {
     applyScreenFixed(this);
   }
 
-  /** 오버라이드 키 — 레이아웃 결정 인자(엔가와 여부 / 어종군×모드) 단위 */
+  /** 오버라이드 키 — 레이아웃 결정 인자(두족류 부위 / 엔가와 여부 / 어종군×모드) 단위 */
   private overrideKey(): string {
-    return this.engawa ? 'engawa' : `${this.fam}_${this.mode}`;
+    return this.ceph ? `ceph_${this.ceph}` : this.engawa ? 'engawa' : `${this.fam}_${this.mode}`;
   }
 
   /** ESC 위임 진입점 (UtilizationPanel.onEscIntercept → 여기) */
@@ -246,10 +335,24 @@ export class SashimiPanel extends DraggablePanel {
     }
     this.add(this.boardG);
 
-    // 필렛 이미지 (뷰별 스프라이트 — 원본 실사 다운샘플/리매핑)
-    this.filletImg = this.scene.add.image(fx + fw / 2, fy + fh / 2, this.texKey);
-    this.filletImg.setDisplaySize(fw, fh);
-    this.add(this.filletImg);
+    if (this.ceph === 'fin') {
+      // 날개살 — **좌우 날개 2장** 병렬 (왼쪽은 미러. 097차 사용자 지시 "둘 다 한 번에")
+      const wingW = fw * 0.45, gap = fw * 0.1;
+      for (const s of [0, 1]) {
+        const wing = this.scene.add.image(
+          fx + (s === 0 ? wingW / 2 : wingW * 1.5 + gap), fy + fh / 2, this.texKey);
+        wing.setDisplaySize(wingW, fh * 0.92);
+        wing.setFlipX(s === 0);
+        this.add(wing);
+        this.finWings[s] = wing;
+      }
+      // 파이프라인 참조용 filletImg는 만들지 않는다 — fin 컷 연출은 finSliceFx가 전담
+    } else {
+      // 필렛 이미지 (뷰별 스프라이트 — 원본 실사 다운샘플/리매핑)
+      this.filletImg = this.scene.add.image(fx + fw / 2, fy + fh / 2, this.texKey);
+      this.filletImg.setDisplaySize(fw, fh);
+      this.add(this.filletImg);
+    }
 
     this.guideG = this.scene.add.graphics();
     this.traceG = this.scene.add.graphics();
@@ -266,14 +369,18 @@ export class SashimiPanel extends DraggablePanel {
     });
     const sub = this.scene.add.text(sx, 126, [
       `사용 칼: ${knife?.nameKo ?? '없음'}`,
-      this.engawa
-        ? `컷: 총 ${spec.cuts}회 — 짧은 지느러미살 스트립을 3등분합니다`
-        : `컷 방향: ${this.mode === 'advanced' ? '사선 (소기즈쿠리) — 옆에서 본 뷰' : '세로 (히라즈쿠리) — 위에서 본 뷰'}`,
+      this.ceph === 'mantle'
+        ? '컷: 가운데 가로 1회(두 덩어리) + 세로 10회 — 양 덩어리를 관통해 총 22점'
+        : this.ceph === 'fin' ? '컷: 날개당 1회 — 좌우 날개를 각각 반으로 (총 4점)'
+        : this.ceph === 'arms' ? '컷: 1회 — 촉완 2가닥을 다리 뭉치에서 분리 (회가 아닌 요리 재료)'
+        : this.engawa
+          ? `컷: 총 ${spec.cuts}회 — 짧은 지느러미살 스트립을 3등분합니다`
+          : `컷 방향: ${this.mode === 'advanced' ? '사선 (소기즈쿠리) — 옆에서 본 뷰' : '세로 (히라즈쿠리) — 위에서 본 뷰'}`,
       '',
-      '머리쪽(오른쪽)부터 왼쪽으로,',
-      '노란 유도선을 위 → 아래로 드래그해 썰어냅니다.',
-      '유도선을 벗어나면 실패 — 다시 그으면 됩니다.',
-    ].join('\n'), {
+      this.ceph ? '노란 유도선 순서대로 드래그해 썰어냅니다.' : '머리쪽(오른쪽)부터 왼쪽으로,',
+      this.ceph ? '유도선을 벗어나면 실패 — 다시 그으면 됩니다.' : '노란 유도선을 위 → 아래로 드래그해 썰어냅니다.',
+      this.ceph ? '' : '유도선을 벗어나면 실패 — 다시 그으면 됩니다.',
+    ].filter(Boolean).join('\n'), {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#9fc0d4', lineSpacing: 6,
       wordWrap: { width: PANEL_W - sx - 30 },
     });
@@ -513,6 +620,10 @@ export class SashimiPanel extends DraggablePanel {
       onComplete: () => { f.clear(); f.setAlpha(1); },
     });
 
+    // 두족류 전용 연출 — 몸통살(가로 분리 + 양 덩어리 관통 세로컷) / 날개살(날개별 반쪽)
+    if (this.ceph === 'mantle') { this.mantleSliceFx(pathIdx); return; }
+    if (this.ceph === 'fin') { this.finSliceFx(pathIdx); return; }
+
     // ── 분리 조각 — 이번 컷(왼쪽 경계)과 직전 컷(오른쪽 경계) 사이 **대각 영역** ──
     //  구 구현은 setCrop(직사각)이라 컷이 기울어도 절단면이 수직으로 남았다 (사용자 리포트 2026-08-07).
     const tex = this.scene.textures.get(this.texKey).getSourceImage() as { width: number; height: number };
@@ -547,6 +658,126 @@ export class SashimiPanel extends DraggablePanel {
       const pc = this.pieces[i];
       this.scene.tweens.add({ targets: pc, x: pc.x + 5, duration: 240, ease: 'Cubic.easeOut' });
     }
+  }
+
+  /** 캔버스 텍스처에 "원본을 그리고 poly만 남기기" — 몸통살 위/아래 덩어리 재굽기 공용 */
+  private repaintCanvasRegion(key: string, poly: [number, number][], texW: number, texH: number): void {
+    const cv = this.scene.textures.get(key) as Phaser.Textures.CanvasTexture;
+    const ctx = cv.getContext();
+    ctx.clearRect(0, 0, texW, texH);
+    ctx.drawImage(this.scene.textures.get(this.texKey).getSourceImage() as CanvasImageSource, 0, 0);
+    ctx.globalCompositeOperation = 'destination-in';
+    ctx.beginPath();
+    poly.forEach(([px, py], i) => (i ? ctx.lineTo(px, py) : ctx.moveTo(px, py)));
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalCompositeOperation = 'source-over';
+    cv.refresh();
+  }
+
+  /**
+   * 몸통살 연출 (097차) — 컷 ①(가로) = 위/아래 두 덩어리로 분리(아래가 살짝 내려앉음),
+   * 컷 ②~⑪(세로) = **양 덩어리를 동시에 관통**해 각 덩어리에서 조각 1점씩 떨어져 나간다.
+   */
+  private mantleSliceFx(pathIdx: number): void {
+    const tex = this.scene.textures.get(this.texKey).getSourceImage() as { width: number; height: number };
+    const texW = tex.width, texH = tex.height;
+    const { x: frX, y: frY, w: frW, h: frH } = this.fr;
+
+    if (pathIdx === 0) {
+      // ── 가로 1컷 — 위/아래 전체 크기 캔버스 2장 (표시 위치·크기 불변, 반대편은 투명) ──
+      const mk = (y0: number, y1: number): string | null => {
+        const key = `sashimi_mhalf_${SashimiPanel.bakeSeq++}`;
+        if (!this.scene.textures.createCanvas(key, texW, texH)) return null;
+        this.bakedKeys.push(key);
+        this.repaintCanvasRegion(key, [[0, y0], [texW, y0], [texW, y1], [0, y1]], texW, texH);
+        return key;
+      };
+      const tk = mk(0, texH / 2), bk = mk(texH / 2, texH);
+      if (!tk || !bk) return;
+      this.mantleTopKey = tk;
+      this.mantleBotKey = bk;
+      this.filletImg.setVisible(false);
+      const mkImg = (key: string): Phaser.GameObjects.Image => {
+        const img = this.scene.add.image(frX + frW / 2, frY + frH / 2, key);
+        img.setDisplaySize(frW, frH);
+        this.addAt(img, this.getIndex(this.guideG));
+        return img;
+      };
+      this.mantleTopImg = mkImg(tk);
+      this.mantleBotImg = mkImg(bk);
+      this.scene.tweens.add({ targets: this.mantleTopImg, y: this.mantleTopImg.y - 4, duration: 240, ease: 'Cubic.easeOut' });
+      this.scene.tweens.add({ targets: this.mantleBotImg, y: this.mantleBotImg.y + 7, duration: 240, ease: 'Cubic.easeOut' });
+      return;
+    }
+
+    // ── 세로 컷 — 이번 컷(왼쪽)과 직전 세로 컷(오른쪽) 사이 스트립을 위/아래 각각 분리 ──
+    const left = this.cutLineTexX(pathIdx, texW);
+    // cutIdx 1 = 첫 세로 컷 (cutOrder[0]은 가로 컷이라 오른쪽 경계는 텍스처 끝)
+    const right = this.cutIdx <= 1
+      ? { top: texW, bot: texW }
+      : this.cutLineTexX(this.cutOrder[this.cutIdx - 1], texW);
+    const halves: { img?: Phaser.GameObjects.Image; key?: string; y0: number; y1: number; dy: number }[] = [
+      { img: this.mantleTopImg, key: this.mantleTopKey, y0: 0, y1: texH / 2, dy: -4 },
+      { img: this.mantleBotImg, key: this.mantleBotKey, y0: texH / 2, y1: texH, dy: 7 },
+    ];
+    for (const hh of halves) {
+      if (!hh.img || !hh.key) continue;
+      const baked = this.bakeRegion(
+        `sashimi_piece_${SashimiPanel.bakeSeq++}`,
+        [[left.top, hh.y0], [right.top, hh.y0], [right.bot, hh.y1], [left.bot, hh.y1]],
+        texW, texH,
+      );
+      if (baked) {
+        const piece = this.scene.add.image(
+          frX + ((baked.minX + baked.maxX) / 2 / texW) * frW, frY + frH / 2 + hh.dy, baked.key);
+        piece.setDisplaySize(((baked.maxX - baked.minX) / texW) * frW, frH);
+        this.addAt(piece, this.getIndex(this.guideG));
+        this.pieces.push(piece);
+        this.scene.tweens.add({
+          targets: piece, x: piece.x + 8, angle: hh.y0 === 0 ? 2 : -2, duration: 240, ease: 'Cubic.easeOut',
+        });
+      }
+      // 남은 덩어리 = 이번 컷 왼쪽 영역만
+      this.repaintCanvasRegion(hh.key, [[0, hh.y0], [left.top, hh.y0], [left.bot, hh.y1], [0, hh.y1]], texW, texH);
+    }
+    // 기존 조각도 조금씩 벌어짐
+    for (let i = 0; i < this.pieces.length - 2; i++) {
+      const pc = this.pieces[i];
+      this.scene.tweens.add({ targets: pc, x: pc.x + 5, duration: 240, ease: 'Cubic.easeOut' });
+    }
+  }
+
+  /** 날개살 연출 (097차) — 해당 날개를 반쪽 2장으로 교체 후 벌어지는 팬아웃 */
+  private finSliceFx(pathIdx: number): void {
+    const wingIdx = pathIdx === 0 ? 0 : 1;
+    const wing = this.finWings[wingIdx];
+    if (!wing) return;
+    const tex = this.scene.textures.get(this.texKey).getSourceImage() as { width: number; height: number };
+    const texW = tex.width, texH = tex.height;
+    const l = this.bakeRegion(`sashimi_finh_${SashimiPanel.bakeSeq++}`,
+      [[0, 0], [texW / 2, 0], [texW / 2, texH], [0, texH]], texW, texH);
+    const r = this.bakeRegion(`sashimi_finh_${SashimiPanel.bakeSeq++}`,
+      [[texW / 2, 0], [texW, 0], [texW, texH], [texW / 2, texH]], texW, texH);
+    if (!l || !r) return;
+    const dw = wing.displayWidth, dh = wing.displayHeight;
+    const mkHalf = (key: string, texLeft: boolean): Phaser.GameObjects.Image => {
+      // 미러(flipX) 날개는 텍스처 왼쪽 반이 화면 오른쪽에 보인다 — 배치 부호 반전
+      const side = texLeft !== wing.flipX ? -1 : 1;
+      const img = this.scene.add.image(wing.x + side * dw / 4, wing.y, key);
+      img.setDisplaySize(dw / 2, dh);
+      img.setFlipX(wing.flipX);
+      this.addAt(img, this.getIndex(this.guideG));
+      this.pieces.push(img);
+      this.scene.tweens.add({
+        targets: img, x: img.x + side * 7, angle: side * 2.5, duration: 240, ease: 'Cubic.easeOut',
+      });
+      return img;
+    };
+    mkHalf(l.key, true);
+    mkHalf(r.key, false);
+    wing.destroy();
+    this.finWings[wingIdx] = undefined;
   }
 
   /**
@@ -651,26 +882,59 @@ export class SashimiPanel extends DraggablePanel {
       InventoryStore.items.filter((i) => i.tool === 'knife' && i.equipped).map((i) => i.id));
     if (knife?.tier === 'utility' && grade === '특') { grade = '상'; mult = 1.25; }
 
-    const weightG = this.source.weightG ?? 200;
+    // ── 다리부 촉완 분리 (097차) — 회 조각이 아니라 **촉완 ×2 + 촉완이 제거된 다리부** ──
+    if (this.ceph === 'arms') {
+      const seqA = InventoryStore.nextCatchSeq();
+      InventoryStore.addItem({
+        id: 'inv_ceph_ceph_tentacle', name: '촉완(긴 다리)', icon: '🦑',
+        iconTexture: cephByproductIcon('ceph_tentacle', speciesId),
+        category: 'food', subCategory: '부산물', basePrice: 700,
+        condition: 'live', conditionSinceMs: Date.now(), equippable: false, speciesId,
+      }, 2);
+      InventoryStore.addItem({
+        id: `inv_ceph_arms_only_${speciesId}_${seqA}`,
+        name: `촉완이 제거된 ${nameKo} 다리부`, icon: '🦑',
+        iconTexture: cephByproductIcon('ceph_arms', speciesId, { tentacleRemoved: true }),
+        category: 'food', subCategory: '부산물',
+        basePrice: Math.max(1200, Math.round((this.source.basePrice || 1800) * 0.8)),
+        condition: 'live', conditionSinceMs: Date.now(), equippable: false, speciesId,
+      }, 1);
+      InventoryStore.removeQty(this.source.id, 1);
+      this.grantedPieceId = undefined;                       // 회 조각 아님 — 도마 스테이징 없음
+      const xpA = Math.round(6 + avg * 10);
+      const lvA = GameState.addFilletingXp(xpA);
+      this.buildResultOverlay('촉완 분리 완료!', [
+        `촉완(긴 다리) ×2 + 촉완이 제거된 ${nameKo} 다리부 ×1`,
+        `평균 정확도 ${Math.round(avg * 100)}%  ·  손질 스킬 +${xpA} XP${lvA.leveledUp ? `  ★ 레벨업! Lv.${lvA.level} ★` : ''}`,
+        '다리부는 회가 아닌 요리 재료입니다 — 촉완은 판매·미끼로도 쓸 수 있습니다',
+      ]);
+      return;
+    }
+
+    const weightG = this.source.weightG
+      ?? (this.ceph === 'mantle' ? 350 : this.ceph === 'fin' ? 60 : 200);
     // 회 조각 — 접시 플레이팅 재료 (가격 개편 2026-08-03: 완성 사시미 가치는 **접시 완성 시**
     //  모듬/단품 가격표로 산정. 조각 자체는 원물 필렛 가치를 점수로 분할해 승계).
-    //  엔가와 = 2컷 → **3조각**(스트립 3등분 — 잔여 없음. ENGAWA_PIECES)
-    const pieceCount = this.engawa ? ENGAWA_PIECES : spec.cuts;
+    //  엔가와 = 2컷 → **3조각** / 몸통살 = 11컷 → **22점**(양 덩어리 관통) / 날개살 = 2컷 → **4점**
+    const pieceCount = this.ceph === 'mantle' ? 22 : this.ceph === 'fin' ? 4
+      : this.engawa ? ENGAWA_PIECES : spec.cuts;
     const perPieceG = Math.max(1, Math.round(weightG / pieceCount));
     const pieceValue = Math.max(100, Math.round((this.source.basePrice || 2000) * (mult / 1.5) / pieceCount * spec.priceMult));
-    const xp = Math.round((this.engawa ? 6 : 10) + avg * 20 + (this.mode === 'advanced' ? 8 : 0));
+    const xp = Math.round((this.engawa ? 6 : this.ceph === 'fin' ? 8 : this.ceph === 'mantle' ? 12 : 10) + avg * 20 + (this.mode === 'advanced' ? 8 : 0));
     const lv = GameState.addFilletingXp(xp);
 
-    // 회 조각 지급 + 원물 필렛/엔가와 소모 (고급 = id 'adv' — 접시/스시 판별)
-    //  아이콘 = 엔가와는 실사 스트립 / 필렛은 탑뷰 한 점 슬라이스(sashimi_piece_{fam})
+    // 회 조각 지급 + 원물 필렛/엔가와/부산물 소모 (고급 = id 'adv' — 접시/스시 판별)
+    //  아이콘 = 엔가와는 실사 스트립 / 두족류는 부위 실사 / 필렛은 탑뷰 슬라이스(sashimi_piece_{fam})
+    const partLbl = this.ceph === 'mantle' ? '몸통살 ' : this.ceph === 'fin' ? '날개살 '
+      : this.engawa ? '엔가와 ' : '';
     const seq = InventoryStore.nextCatchSeq();
-    const grantedId = `inv_sashimi_cut_${this.mode === 'advanced' ? 'adv_' : ''}${this.engawa ? 'engw_' : ''}${speciesId}_${seq}`;
+    const grantedId = `inv_sashimi_cut_${this.mode === 'advanced' ? 'adv_' : ''}`
+      + `${this.ceph ? `ceph_${this.ceph}_` : this.engawa ? 'engw_' : ''}${speciesId}_${seq}`;
     InventoryStore.addItem({
       id: grantedId,
-      name: this.engawa
-        ? `${nameKo} ${spec.namePrefix}엔가와 회 조각 (${grade}) ${perPieceG}g`
-        : `${nameKo} ${spec.namePrefix}회 조각 (${grade}) ${perPieceG}g`,
-      icon: '🍣', iconTexture: this.engawa ? 'trim_engawa' : `sashimi_piece_${this.fam}`,
+      name: `${nameKo} ${spec.namePrefix}${partLbl}회 조각 (${grade}) ${perPieceG}g`,
+      icon: '🍣',
+      iconTexture: this.ceph ? this.texKey : this.engawa ? 'trim_engawa' : `sashimi_piece_${this.fam}`,
       category: 'food', subCategory: '회(사시미)',
       basePrice: pieceValue,
       condition: 'fresh', conditionSinceMs: Date.now(),
@@ -678,27 +942,36 @@ export class SashimiPanel extends DraggablePanel {
       speciesId, weightG: perPieceG,
     }, pieceCount);
     this.grantedPieceId = grantedId;
-    InventoryStore.removeItem(this.source.id, false);
+    // 날개살은 공유 스택 — 1개만 소모 (몸통살/필렛은 개체 아이템 통째)
+    if (this.ceph === 'fin') InventoryStore.removeQty(this.source.id, 1);
+    else InventoryStore.removeItem(this.source.id, false);
 
-    // 결과 오버레이
+    this.buildResultOverlay(`${spec.label} 완료!`, [
+      `${nameKo} ${spec.namePrefix}${partLbl}회 조각 (${grade}) ×${pieceCount}점  —  ${perPieceG}g/점`,
+      `평균 정확도 ${Math.round(avg * 100)}%  ·  조각당 ${pieceValue.toLocaleString()}원`,
+      `손질 스킬 +${xp} XP${lv.leveledUp ? `  ★ 레벨업! Lv.${lv.level} ★` : ''}`,
+      '요리 탭 [사시미 만들기]에서 접시에 담아 사시미를 완성하세요 (모듬/단품)',
+      this.mode === 'advanced' ? "고급 회 조각은 '스시' 요리 재료로도 쓸 수 있습니다 (추후)" : '',
+    ]);
+  }
+
+  /** 결과 오버레이 — 필렛/엔가와/두족류 공용 (제목 + 본문 + [확인] → onComplete) */
+  private buildResultOverlay(titleTxt: string, lines: string[]): void {
     const c = this.scene.add.container(0, 0);
-    const bx = this.fr.x + 60, by = this.fr.y - 30, bw = this.fr.w - 120, bh = this.fr.h + 60;
+    // 두족류처럼 표시 rect가 좁아도 본문이 감기지 않게 최소 폭 520 보장 (fr 중앙 정렬)
+    const bw = Math.max(520, this.fr.w - 120);
+    const bx = this.fr.x + this.fr.w / 2 - bw / 2;
+    const by = this.fr.y - 30, bh = Math.max(240, this.fr.h + 60);
     const bg = this.scene.add.graphics();
     bg.fillStyle(0x081422, 0.96);
     bg.fillRoundedRect(bx, by, bw, bh, 8);
     bg.lineStyle(2, 0x4af2a1, 0.95);
     bg.strokeRoundedRect(bx, by, bw, bh, 8);
     c.add(bg);
-    const title = this.scene.add.text(bx + bw / 2, by + 34, `${spec.label} 완료!`, {
+    const title = this.scene.add.text(bx + bw / 2, by + 34, titleTxt, {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '20px', color: '#ffd257', fontStyle: 'bold',
     }).setOrigin(0.5);
-    const body = this.scene.add.text(bx + bw / 2, by + 64, [
-      `${nameKo} ${spec.namePrefix}${this.engawa ? '엔가와 ' : ''}회 조각 (${grade}) ×${pieceCount}점  —  ${perPieceG}g/점`,
-      `평균 정확도 ${Math.round(avg * 100)}%  ·  조각당 ${pieceValue.toLocaleString()}원`,
-      `손질 스킬 +${xp} XP${lv.leveledUp ? `  ★ 레벨업! Lv.${lv.level} ★` : ''}`,
-      '요리 탭 [사시미 만들기]에서 접시에 담아 사시미를 완성하세요 (모듬/단품)',
-      this.mode === 'advanced' ? "고급 회 조각은 '스시' 요리 재료로도 쓸 수 있습니다 (추후)" : '',
-    ].filter(Boolean).join('\n'), {
+    const body = this.scene.add.text(bx + bw / 2, by + 64, lines.filter(Boolean).join('\n'), {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px', color: '#cfe3f2',
       lineSpacing: 8, align: 'center', wordWrap: { width: bw - 60 },
     }).setOrigin(0.5, 0);

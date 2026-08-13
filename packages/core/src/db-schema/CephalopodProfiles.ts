@@ -88,14 +88,17 @@ export function isCephalopodButcherable(speciesId: string): boolean {
 export const CEPH_BYPRODUCTS: Record<CephByproductId, CephByproductDef> = {
   // 전용 에셋(촉완이 붙어있는 다리부와 머리부) — 사용자 제공 2026-08-10. 구 대체본(내장 주변부) 폐기
   ceph_head_mass:     { id: 'ceph_head_mass', nameKo: '머리+다리+내장 덩어리', defaultAction: 'keep', forced: true, stack: 1, price: 0, use: '중간 산출물 — 머리부 분할 공정의 입력', icon: 'trim_ceph_head_mass' },
-  ceph_pen:           { id: 'ceph_pen', nameKo: '오징어뼈(연골)', defaultAction: 'discard', stack: 20, price: 0, use: '폐기 · 공예 소품', icon: 'trim_ceph_pen' },
-  ceph_cuttlebone:    { id: 'ceph_cuttlebone', nameKo: '갑(석회질 판)', defaultAction: 'discard', stack: 10, price: 50, use: '폐기 · 공예 · 사료', icon: 'trim_ceph_cuttlebone' },
-  ceph_skin:          { id: 'ceph_skin', nameKo: '오징어 껍질', defaultAction: 'discard', stack: 10, price: 100, use: '잡부산물 — 판매' },
+  // 뼈 명명 (097차 사용자 지시) — 오징어류(무늬·한치) = '무늬오징어 뼈' 공용 / 갑오징어 = '갑오징어 뼈'
+  ceph_pen:           { id: 'ceph_pen', nameKo: '무늬오징어 뼈', defaultAction: 'discard', stack: 20, price: 0, use: '폐기 · 공예 소품', icon: 'trim_ceph_pen' },
+  ceph_cuttlebone:    { id: 'ceph_cuttlebone', nameKo: '갑오징어 뼈', defaultAction: 'discard', stack: 10, price: 50, use: '폐기 · 공예 · 사료', icon: 'trim_ceph_cuttlebone' },
+  // ⚠ 껍질·아가미는 097차부터 **부산물로 지급하지 않는다** (트리 yields에서 제거 — def는 참조용 잔존)
+  ceph_skin:          { id: 'ceph_skin', nameKo: '오징어 껍질', defaultAction: 'discard', stack: 10, price: 100, use: '(미지급 — 097차)' },
   ceph_inner_skin:    { id: 'ceph_inner_skin', nameKo: '속껍질(얇은 막)', defaultAction: 'discard', stack: 20, price: 0, use: '폐기' },
-  ceph_gill:          { id: 'ceph_gill', nameKo: '아가미', defaultAction: 'discard', stack: 10, price: 50, use: '잡부산물 — 판매' },
-  ceph_fin_meat:      { id: 'ceph_fin_meat', nameKo: '날개살', defaultAction: 'keep', stack: 5, price: 1200, use: '식용 · 판매', icon: 'trim_ceph_fin' },
+  ceph_gill:          { id: 'ceph_gill', nameKo: '아가미', defaultAction: 'discard', stack: 10, price: 50, use: '(미지급 — 097차)' },
+  // 날개살 — 갑오징어는 실제로 거의 없어 **미지급** (갑오징어 트리에서 yields 제외 — 097차)
+  ceph_fin_meat:      { id: 'ceph_fin_meat', nameKo: '날개살', defaultAction: 'keep', stack: 5, price: 1200, use: '식용 · 회뜨기(4점)', icon: 'trim_ceph_fin' },
     // 다리부 — 촉완을 따로 자른 뒤면 'trim_ceph_arms_only'(cephByproductIcon 분기)
-  ceph_arms:          { id: 'ceph_arms', nameKo: '다리부', defaultAction: 'keep', stack: 5, price: 1800, use: '식용 · 판매 (숙회 · 구이)', icon: 'trim_ceph_arms' },
+  ceph_arms:          { id: 'ceph_arms', nameKo: '다리부', defaultAction: 'keep', stack: 5, price: 1800, use: '식용 — 회뜨기에서 촉완 분리', icon: 'trim_ceph_arms' },
   /**
    * 촉완 = 짧은 팔 8개와 **별개 부산물**. 한치는 전용 분리 스테이지(`ceph_tentacle_cut`)가 있고
    * 길이·식감이 달라 값도 따로 매긴다. 2026-08-05 전용 에셋 투입 — 다리 공용 해제.
@@ -106,8 +109,9 @@ export const CEPH_BYPRODUCTS: Record<CephByproductId, CephByproductDef> = {
   // 먹물주머니·생식소는 내장 덩어리에 딸려 나온다 — 전용 에셋 전까지 내장 주변부 공용
   ceph_ink_sac:       { id: 'ceph_ink_sac', nameKo: '먹물주머니', defaultAction: 'keep', stack: 10, price: 2500, use: '요리 재료', icon: 'trim_ceph_viscera' },
   ceph_gonad:         { id: 'ceph_gonad', nameKo: '생식소(알집)', defaultAction: 'keep', stack: 5, price: 1500, use: '계절 별미 — 산란기 한정', icon: 'trim_ceph_viscera' },
-  // 몸통 순살 = 종별 에셋 분기 (cephByproductIcon 참조 — 여기 icon은 오징어류 기본값)
-  ceph_mantle_fillet: { id: 'ceph_mantle_fillet', nameKo: '몸통 순살', defaultAction: 'keep', forced: true, stack: 1, price: 0, use: '메인 수율 → 회썰기', icon: 'trim_ceph_mantle_squid' },
+  // 몸통살 = **곧 필렛** (097차 — 구 "순수 필렛" 별도 지급 폐지). 이름은 지급 시
+  // 어종 접두가 붙는다("무늬오징어 몸통살"/"한치 몸통살"/"갑오징어 몸통살") · 에셋은 종별 분기
+  ceph_mantle_fillet: { id: 'ceph_mantle_fillet', nameKo: '몸통살 (body tube)', defaultAction: 'keep', forced: true, stack: 1, price: 0, use: '메인 수율 → 회뜨기(22점)', icon: 'trim_ceph_mantle_squid' },
   octo_viscera:       { id: 'octo_viscera', nameKo: '문어 내장 덩어리', defaultAction: 'discard', stack: 5, price: 30, use: '폐기 · 잡부산물', icon: 'trim_octo_viscera' },
   octo_ink_sac:       { id: 'octo_ink_sac', nameKo: '문어 먹물주머니', defaultAction: 'keep', stack: 10, price: 900, use: '요리 재료 (오징어보다 소량)', icon: 'trim_octo_viscera' },
   octo_beak:          { id: 'octo_beak', nameKo: '악판(입)', defaultAction: 'discard', stack: 20, price: 0, use: '폐기', icon: 'trim_octo_beak' },

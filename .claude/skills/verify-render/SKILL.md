@@ -67,7 +67,13 @@ const { chromium } = resolvePlaywright();
 - 텍스트 오버플로 측정은 **origin 보정**: 우측 끝 = `x + width * (1 - originX)` — origin 0.5를 `x+width`로 재면 오판 (54차).
 - InventoryPanel 그리드: 셀 피치 = SLOT(66) + GAP(7) = **73px**, 시작 = `panel.x + gridX0` / `panel.y + gridY0`.
 - 실마우스: `page.mouse.click(x, y)` / 우클릭 `{ button: 'right' }` / 드래그 = `mouse.move → down → move(스텝) → up`.
+- ⚠ **`page.keyboard.press`는 아래 씬(MainMenuScene 메뉴 등)까지 구동한다** (97차 실측 — Enter 연타로
+  NEW GAME이 시작돼 `InventoryStore.resetAll()`이 중간 지급분을 지움). 마우스는 topOnly 게이트가 있지만
+  **키보드에는 없다** — 패널 버튼류 확정은 `panel.onKey({ code: 'Enter', shiftKey: false })` 직접 호출로.
 - 헤드리스에서 `--virtual-time-budget` 방식은 Phaser 트윈/타이머가 진행되지 않는다 — 트윈 결과 검증은 실브라우저 + `waitForTimeout`.
+- **손질 완주 하네스는 부산물 팝업(모달·depth 1600)에 막힌다**(92차) — 작업/섹션 완료마다 뜨며 이후 입력이 전부 무시된다.
+  settle 루프에서 `if (panel.byproductPopup) panel.confirmByproductPopup(false)`(확인 후 계속)를 태울 것.
+- `process.jumpTo` 직접 호출은 `renderedOrientation`/`renderedRotation`을 스냅하지 않는다 — 하네스 점프는 `panel.devJumpToTask(secIdx, taskId)` 사용(둘 다 스냅).
 
 ## 검증 종료 기준
 

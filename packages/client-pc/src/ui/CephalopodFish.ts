@@ -16,6 +16,7 @@
 
 import Phaser from 'phaser';
 import type { ButcheryOrientation } from '@tra/core';
+import { CEPH_HEAD_SPLIT_PATHS } from '@tra/core';
 import { drawStageSprite, getStageSprite } from './PixelButcherFish.js';
 import type { PixelFishSprite } from '../data/PixelFishSprites.js';
 
@@ -39,12 +40,24 @@ export interface CephFishState {
   beakOut: boolean;     // 부리 제거
   /** 진행 중 스테이지의 채움 게이지 (hold_scrub 연출) */
   fillProgress?: number;
-  /** 다중 경로 스테이지에서 이미 끝낸 경로 수 (날개 2곳 — 사진 5.1 → 5.2 전환) */
+  /** 다중 경로 스테이지에서 이미 끝낸 경로 수 (092차부터 날개는 스테이지 분할 — 폴백용 유지) */
   finPathsDone?: number;
   /** 손질 완료 — 결과 오버레이 뒤 도마에 최종 산출물(손질된 몸통)이 남는다 */
   finished?: boolean;
+  /** 문어 트리 여부 — 오징어 실사 폴백(squid_clean 등) 차단 (097차) */
+  octopus?: boolean;
   /** 액션 연출 중간 프레임 (내장 뽑기 lift1→lift2) — 렌더 전용 오버라이드 */
   overrideKey?: string;
+  /**
+   * 껍질 뜯기(peel) 드래그 진행 (0~1) — 잡은 지점에서 스윕 방향으로 끌어낸 비율.
+   * 뜯기 ①(온전 → 4.1)·②(4.1 → 합성B)의 **진행 프레임 전환**이 이 값을 본다 (092차).
+   * ⚠ subjectRect(좌표 기준)는 이 값을 넣지 않는다 — 스테이지 시작 프레임이 캐노니컬.
+   */
+  peelDragT?: number;
+  /** 머리부 3분할 — 이미 끝낸 절단선 인덱스(CEPH_HEAD_SPLIT_PATHS 기준) — 조각이 벌어진 상태 유지 */
+  headSplitDone?: number[];
+  /** 머리부 3분할 — 방금 그은 선의 밀림 연출 진행 (연출 후반 0→1 — 096차) */
+  headSplitAnim?: { idx: number; t: number };
 }
 
 // ── 팔레트 (§9 — 시메 전 갈색 + 청록 발색점 / 시메 후 유백색) ──
@@ -294,14 +307,11 @@ function drawParts(g: Phaser.GameObjects.Graphics, geom: CephFishGeom, st: CephF
  * 방향 규약(굽는 시점에 정규화됨): **다리·외투막 입구 = 왼쪽 / 외투막 끝 = 오른쪽**.
  * 세로로 찍힌 원본은 파이프라인 `ROTATE_KEYS`가 cw로 눕혀 이 규약에 맞춘다.
  *
- * 사진 11장 < 스테이지 14개라 일부는 공유한다:
+ * 사진 11장 < 스테이지 16개라 일부는 공유·합성·진행 분기한다:
  *  - `squid_spread`  = 펼치기·내장 분리 (한 장면의 두 동작)
  *  - `squid_headmass`= 분리 결과 확인 · 머리부 3분할 · 부리 (모두 같은 덩어리가 피사체)
- *  - `ceph_fin_off`  = 날개 2곳이라 완료한 경로 수로 `squid_fin1`→`squid_fin2` 전환
- *
- * ⚠ 사진이 없는 상태 2개는 **가장 가까운 장면으로 대체**했다 (사용자 확인 대상):
- *  - `ceph_skin_done`(껍질 분리 완료) → 박리 직후라 `squid_skin_pull` 연속 사용
- *  - `ceph_gill_wash`(아가미 제거·닦기) → 결과 사진 `squid_clean`(사진 6)
+ *  - 껍질 뜯기 ①/② = **드래그 진행 프레임**(peelDragT — 온전→4.1 / 4.1→합성B, 092차)
+ *  - 날개 2단 ×2  = 스테이지별 고정 (2/2는 미러 `_m` — 092차 분할)
  */
 const SQUID_STAGE_SPRITE: Record<string, string> = {
   ceph_shime_mantle: 'squid_whole',      // 0. 원물 (손질대기)
@@ -309,20 +319,40 @@ const SQUID_STAGE_SPRITE: Record<string, string> = {
   ceph_mantle_open: 'squid_shime2',      // 1.2 눈–다리 사이 절단 완료
   // 펼치기·분리 결과 확인 스테이지는 제거됨(사용자 지시 2026-08-11) — 개복 완료 즉시
   // 펼쳐진 화면(2.1)에서 내장 분리 가이드가 뜬다. 결과는 부산물 팝업이 대신 보여준다.
-  ceph_viscera_pull: 'squid_spread',     // 2.1 펼쳐진 화면에서 내장을 떼어낸다 (연출 = lift1→lift2)
+  // 094차: 내장 = 드래그 2회 분할 — 1/2 완료 시 뽑기 1(미러), 2/2 완료 연출 = 뽑기 2(미러)
+  ceph_viscera_pull_1: 'squid_spread',        // 2.1 펼쳐진 화면에서 뜯기 시작
+  ceph_viscera_pull_2: 'squid_viscera_lift1', // 뽑기 1(미러) — 들린 덩어리를 마저 뽑는다
   ceph_pen_out: 'squid_pen',             // 2.2 가운데 연골 노출
-  // ── 껍질 구간 (091차 재구성 — "뜯기 전" 상태부터 시작하도록 합성 스프라이트 편입) ──
-  ceph_flip_skin: 'squid_skin_on',       // 합성 — 껍질이 온전히 붙은 몸통 (잡기 시작)
-  ceph_skin_peel: 'squid_skin_grip',     // 4.1 가로(오른쪽→왼쪽)로 뜯는 중
-  ceph_skin_finish: 'squid_skin_down',   // 합성 — 아래로 뜯기 시작 (4.2보다 덜 뜯긴 상태)
-  ceph_skin_done: 'squid_skin_pull',     // 4.2 아래로 뜯겨 거의 벌어진 상태 (⚠ 완전 분리본 에셋 대기)
-  ceph_gill_wash: 'squid_clean',         // 6.  아가미 제거 · 내장면 닦기 완료 (마무리 — 날개 뒤로 이동)
-  // ceph_finskin_off / ceph_fin_off — 다중 경로 진행도 분기 (squidSpriteKey)
+  // ── 껍질 구간 (095차 — 가로 4단계 분할 · 섹션 전체 좌 90° 회전 뷰(270) 유지) ──
+  //  각 단계 = 시작 사진 고정, 완료 연출(CEPH_ANIM_FRAMES)이 다음 사진을 보여준다.
+  ceph_flip_skin: 'squid_skin_on',       // 합성 — 껍질 온전 (탭 성공 = 손잡이 플랩 연출 → skin_lift)
+  ceph_skin_peel_1: 'squid_skin_lift',   // 목업 0-1 — 들춘 손잡이
+  ceph_skin_peel_2: 'squid_peel1',       // 1-2 — 딸려오는 중
+  ceph_skin_peel_3: 'squid_peel2',       // 2 — 절반
+  ceph_skin_peel_4: 'squid_peel3',       // 3 — 절반보다 조금 더
+  ceph_skin_finish: 'squid_skin_grip',   // 4.1 — 70%+ (아래로 마무리 시작, 완료 연출 = 4.2)
+  ceph_skin_done: 'squid_skin_done',     // 실사 — detail 「껍질 벗기기 6」(다 벗겨진 순살, 093차)
+  ceph_gill_wash: 'squid_gill_on',       // 합성 — 사진 6 + 2.2의 아가미 기관 (제거 전 상태, 092차)
+  // 날개살 분리(fin_off)도 시작 사진 고정 — "드래그 후에 전환된 이미지" (095차 사용자 지시)
+  ceph_fin_off_1: 'squid_fin0',
+  ceph_fin_off_2: 'squid_fin0_m',
+  // ceph_finskin_off_1/2 — 드래그 진행 프레임 분기 (CEPH_DRAG_FRAMES)
   ceph_head_split: 'squid_headmass',     // 3.  덩어리를 3조각으로 가른다
   ceph_beak_out: 'squid_headmass',       // 3.  다리 밑동에서 부리를 뽑는다
 };
 
-/** 스테이지 → 스프라이트 키 (다중 경로 스테이지는 진행도로 분기) */
+/**
+ * **드래그 진행 프레임** — 드래그가 진행(peelDragT 0~1)될수록 뜯기는 실사가 넘어간다.
+ * 095차부터 껍질(4단계 분할)·날개살(완료 후 전환)은 **여기서 제외** — 남은 것은
+ * 날개 뜯기(껍질째)의 실시간 들림뿐. 시작 프레임(frames[0])이 좌표 캐노니컬(subjectRect).
+ */
+const CEPH_DRAG_FRAMES: Record<string, { frames: string[]; thresholds: number[] }> = {
+  // 날개 뜯기(껍질째): 온전(합성) → 뜯김(날개뜯기1) — 2/2는 미러
+  ceph_finskin_off_1: { frames: ['squid_finskin_on', 'squid_fin_tear'], thresholds: [0.5] },
+  ceph_finskin_off_2: { frames: ['squid_finskin_on_m', 'squid_fin_tear_m'], thresholds: [0.5] },
+};
+
+/** 스테이지 → 스프라이트 키 (진행 프레임 스테이지는 peelDragT로 분기) */
 function squidSpriteKey(st: CephStageRef): string | undefined {
   // 연출 오버라이드 — 액션 애니 재생 중 중간 프레임(내장 뽑기 lift1→lift2 등)이 최우선.
   //  입력은 actionAnim 가드로 차단된 구간이라 좌표계(subjectRect)는 이 키를 따라가지 않는다.
@@ -330,22 +360,37 @@ function squidSpriteKey(st: CephStageRef): string | undefined {
   // 손질 완료 = **최종 산출물**을 도마에 남긴다 — 어류가 `pure_fillet_{fam}`(순수 필렛)을
   //  남기는 것과 같은 규칙(69·84차). 두족류의 대응물은 손질 끝난 몸통 = 사진 6.
   //  ⚠ 완료 시점엔 `stage`가 없어서 이 분기가 없으면 파라메트릭 폴백("구 픽셀 이미지")이 뜬다.
-  if (st.finished) return 'squid_clean';
+  if (st.finished) return st.octopus ? undefined : 'squid_clean';
   const id = st.stageId;
   if (!id) return undefined;
-  // 날개 2단(091차) — ① 껍질째 뜯기: 온전(합성) → 한쪽 뜯김(날개뜯기1) / ② 날개살 분리: 5.1 → 5.2
-  if (id === 'ceph_finskin_off') return (st.finPathsDone ?? 0) >= 1 ? 'squid_fin_tear' : 'squid_finskin_on';
-  if (id === 'ceph_fin_off') return (st.finPathsDone ?? 0) >= 1 ? 'squid_fin2' : 'squid_fin1';
+  const seq = CEPH_DRAG_FRAMES[id];
+  if (seq) {
+    const t = st.peelDragT ?? 0;
+    let idx = 0;
+    while (idx < seq.thresholds.length && t >= seq.thresholds[idx]) idx++;
+    return seq.frames[idx];
+  }
   return SQUID_STAGE_SPRITE[id];
 }
+
+/** 이 스테이지가 드래그 진행 프레임을 갖는가 — 패널이 path 드래그 중 진행을 넣을지 판단 */
+export function cephHasDragFrames(stageId?: string): boolean {
+  return !!stageId && !!CEPH_DRAG_FRAMES[stageId];
+}
+// (구 STAGE_ALL_FRAMES/cephStageFrames는 096차에 폐기 — 회전 스케일이 "스테이지 내 최대 프레임"
+//  기준에서 **표시 중 스프라이트의 고정 목표 높이** 기준으로 바뀌어 프레임 목록이 불필요해졌다.)
 
 /** 스프라이트 선택에 필요한 최소 정보 — 패널이 좌표계 산출에 쓴다 */
 export interface CephStageRef {
   stageId?: string;
   finPathsDone?: number;
   finished?: boolean;
+  /** 문어 트리 여부 — 실사가 전부 오징어 것이라 완료 폴백(squid_clean)을 차단한다 (097차) */
+  octopus?: boolean;
   /** 액션 연출 중간 프레임 키 — 렌더 전용 (subjectRect에는 넣지 않는다) */
   overrideKey?: string;
+  /** 껍질 뜯기 드래그 진행 — 렌더 전용 (subjectRect에는 넣지 않는다 — 시작 프레임이 캐노니컬) */
+  peelDragT?: number;
 }
 
 /** 현재 스테이지의 실사 스프라이트 (없으면 undefined = 파라메트릭 폴백) */
@@ -368,6 +413,69 @@ export function cephFitRect(geom: CephFishGeom, spr: PixelFishSprite): CephFishG
   return { x: geom.x + (geom.w - dw) / 2, y: geom.y + (geom.h - dh) / 2, w: dw, h: dh };
 }
 
+/** 도트 인코딩 문자표 (PixelFishSprites 규약과 동일 — 세그먼트 렌더 전용 디코더) */
+const AB64 = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+/';
+
+/**
+ * 스프라이트를 세로 절단선(x 구간)으로 나눠 조각별 x 오프셋을 주며 그린다 —
+ * 머리부 3분할의 "잘려서 옆으로 밀리는" 연출 (096차 — 회썰기 조각 분리와 같은 문법).
+ */
+function drawSpriteSegments(
+  g: Phaser.GameObjects.Graphics, spr: PixelFishSprite, geom: CephFishGeom,
+  segs: { x0: number; x1: number; dx: number }[],
+): void {
+  const cell = Math.min(geom.w / spr.w, geom.h / spr.h);
+  const ox = geom.x + (geom.w - spr.w * cell) / 2;
+  const oy = geom.y + (geom.h - spr.h * cell) / 2;
+  for (const seg of segs) {
+    const cx0 = Math.max(0, Math.floor(seg.x0 * spr.w));
+    const cx1 = Math.min(spr.w, Math.ceil(seg.x1 * spr.w));
+    for (let y = 0; y < spr.h; y++) {
+      const row = spr.rows[y];
+      let runStart = -1, runCh = '';
+      const flush = (endX: number): void => {
+        if (runStart < 0) return;
+        g.fillStyle(spr.palette[AB64.indexOf(runCh)], 1);
+        g.fillRect(ox + runStart * cell + seg.dx, oy + y * cell, (endX - runStart) * cell + 0.5, cell + 0.5);
+        runStart = -1;
+      };
+      for (let x = cx0; x < cx1; x++) {
+        const ch = row[x];
+        if (ch === '.') { flush(x); continue; }
+        if (runStart < 0) { runStart = x; runCh = ch; }
+        else if (ch !== runCh) { flush(x); runStart = x; runCh = ch; }
+      }
+      flush(cx1);
+    }
+  }
+}
+
+/**
+ * 머리부 뷰 — 3분할 = 절단선마다 조각이 옆으로 밀리며 벌어지고,
+ * 부리 빼내기 = **잘린 가운데 조각만** 남긴다 (096차 사용자 지시).
+ * 좌표(subjectRect)는 전체 스프라이트 기준 그대로 — 조각을 재배치하지 않아 실측 좌표가 유지된다.
+ */
+function drawHeadmass(
+  g: Phaser.GameObjects.Graphics, spr: PixelFishSprite, geom: CephFishGeom, st: CephFishState,
+): void {
+  const seams = CEPH_HEAD_SPLIT_PATHS
+    .map((p, idx) => ({ x: (p[0].x + p[p.length - 1].x) / 2, idx }))
+    .sort((a, b) => a.x - b.x);
+  if (st.stageId === 'ceph_beak_out') {
+    drawSpriteSegments(g, spr, geom, [{ x0: seams[0].x, x1: seams[1].x, dx: 0 }]);
+    return;
+  }
+  const fit = cephFitRect(geom, spr);
+  const GAP = fit.w * 0.06;
+  const amt = (idx: number): number => st.headSplitDone?.includes(idx) ? 1
+    : st.headSplitAnim?.idx === idx ? Math.max(0, Math.min(1, st.headSplitAnim.t)) : 0;
+  drawSpriteSegments(g, spr, geom, [
+    { x0: 0, x1: seams[0].x, dx: -GAP * amt(seams[0].idx) },
+    { x0: seams[0].x, x1: seams[1].x, dx: 0 },
+    { x0: seams[1].x, x1: 1, dx: GAP * amt(seams[1].idx) },
+  ]);
+}
+
 /** 두족류 도마 렌더 — 실사 도트가 있으면 그것, 없으면 파라메트릭 폴백 */
 export function drawCephalopodFish(
   g: Phaser.GameObjects.Graphics, geom: CephFishGeom, state: CephFishState,
@@ -376,7 +484,13 @@ export function drawCephalopodFish(
   const spr = cephStageSprite(state);
   if (spr) {
     const fit = cephFitRect(geom, spr);
-    drawStageSprite(g, spr, geom);
+    // 머리부 구간 — 3분할 조각 벌어짐 / 부리 = 가운데 조각만 (096차)
+    if (!state.finished && !state.overrideKey
+      && (state.stageId === 'ceph_head_split' || state.stageId === 'ceph_beak_out')) {
+      drawHeadmass(g, spr, geom, state);
+    } else {
+      drawStageSprite(g, spr, geom);
+    }
     // 사진에 담기지 않는 **진행 상태**만 위에 얹는다 (닦기 게이지 등)
     drawProgressOverlay(g, fit, state);
     return;
@@ -384,7 +498,130 @@ export function drawCephalopodFish(
   switch (state.orientation) {
     case 'CEPH_PARTS': drawParts(g, geom, state); return;
     case 'CEPH_OPEN': case 'CEPH_SKIN_UP': case 'CEPH_FLESH_UP': drawSheet(g, geom, state); return;
+    // 문어 3뷰 (097차) — 실사 미확보라 파라메트릭 전용 (사진 입수 시 stage-id 키로 자동 교체)
+    case 'OCTO_WHOLE': case 'OCTO_INVERTED': case 'OCTO_ORAL': drawOctopus(g, geom, state); return;
     default: drawWhole(g, geom, state); return;
+  }
+}
+
+// ── 문어 파라메트릭 렌더 (097차 — 참문어·대문어 공용) ─────────────────────────
+//  좌표 규약은 오징어와 동일: **다리 = 좌측, 머리(외투막) = 우측**.
+//  스테이지 스윕 좌표(octo_salt/scrub)가 이 배치를 전제한다.
+
+const OC = {
+  skin: 0x8a4a3f, skinDark: 0x6b3830, skinLight: 0xa8625a,
+  inner: 0xe8d8c8, innerShade: 0xd2bca8,          // 외번 속면 (유백 크림)
+  sucker: 0xd8c0a8, beak: 0x2a2018, foam: 0xf2f6f8,
+} as const;
+
+/** 문어 다리 8가닥 — 좌측으로 굽이치는 곡선 + 빨판 점열 */
+function drawOctoLegs(g: Phaser.GameObjects.Graphics, geom: CephFishGeom, color: number): void {
+  for (let i = 0; i < 8; i++) {
+    const spread = (i / 7 - 0.5) * 0.62;
+    const wave = (i % 2 === 0 ? 1 : -1) * 0.05;
+    const [bx, by] = px(geom, 0.40, 0.5 + spread * 0.35);
+    const [mx, my] = px(geom, 0.20, 0.5 + spread * 0.8 + wave);
+    const [tx, ty] = px(geom, 0.03, 0.5 + spread + wave * 1.6);
+    g.lineStyle(Math.max(3, geom.h * 0.05 - i % 3), color, 1);
+    g.beginPath(); g.moveTo(bx, by); g.lineTo(mx, my); g.lineTo(tx, ty); g.strokePath();
+    // 빨판 — 다리 안쪽 점열
+    g.fillStyle(OC.sucker, 0.85);
+    for (let k = 1; k <= 4; k++) {
+      const t = k / 5;
+      const sx = bx + (tx - bx) * t, sy = by + (ty - by) * t;
+      g.fillCircle(sx, sy, Math.max(1.2, geom.h * 0.014 * (1 - t * 0.5)));
+    }
+  }
+}
+
+/**
+ * 문어 뷰 3종:
+ * - OCTO_WHOLE: 머리 돔(우) + 눈 + 다리 8가닥(좌). 소금/문지르기 진행은 거품 오버레이.
+ * - OCTO_INVERTED: 머리가 뒤집혀 속면(크림색 주머니) 노출 — 내장 덩어리는 분리 전만.
+ * - OCTO_ORAL: 다리 방사 뷰 — 중심 입(악판)이 있고, 뽑으면 구멍만 남는다.
+ */
+function drawOctopus(g: Phaser.GameObjects.Graphics, geom: CephFishGeom, st: CephFishState): void {
+  if (st.orientation === 'OCTO_ORAL') {
+    // 방사 8다리 — 중심(0.42, 0.5) 기준 (OCTO_BEAK_CENTER 정합)
+    const [cx, cy] = px(geom, 0.42, 0.5);
+    const R = Math.min(geom.w, geom.h) * 0.42;
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2 + 0.25;
+      g.lineStyle(Math.max(4, R * 0.14), OC.skin, 1);
+      g.beginPath(); g.moveTo(cx, cy);
+      g.lineTo(cx + Math.cos(a) * R, cy + Math.sin(a) * R); g.strokePath();
+      g.fillStyle(OC.sucker, 0.8);
+      for (let k = 2; k <= 4; k++) {
+        const t = k / 5;
+        g.fillCircle(cx + Math.cos(a) * R * t, cy + Math.sin(a) * R * t, Math.max(1.4, R * 0.03));
+      }
+    }
+    // 중심 입/악판 — 뽑기 전 = 검은 부리 / 후 = 빈 구멍
+    g.fillStyle(OC.skinDark, 1);
+    g.fillCircle(cx, cy, R * 0.2);
+    if (!st.beakOut) {
+      g.fillStyle(OC.beak, 1);
+      g.fillCircle(cx, cy, R * 0.1);
+      g.fillStyle(0xf2f6fa, 0.5);
+      g.fillCircle(cx - R * 0.03, cy - R * 0.03, R * 0.028);
+    } else {
+      g.fillStyle(0x1a1216, 0.9);
+      g.fillCircle(cx, cy, R * 0.09);
+    }
+    return;
+  }
+
+  const inverted = st.orientation === 'OCTO_INVERTED';
+  drawOctoLegs(g, geom, inverted ? OC.skinDark : OC.skin);
+  // 머리(외투막) 돔 — 우측. 외번 시엔 속면 크림색 주머니로 반전
+  const [hx, hy] = px(geom, 0.68, 0.5);
+  g.fillStyle(inverted ? OC.inner : OC.skin, 1);
+  g.fillEllipse(hx, hy, geom.w * 0.5, geom.h * 0.62);
+  if (inverted) {
+    // 뒤집힌 테두리 주름 + 내장 덩어리(분리 전)
+    g.lineStyle(Math.max(2, geom.h * 0.02), OC.skinLight, 0.9);
+    g.strokeEllipse(hx, hy, geom.w * 0.5, geom.h * 0.62);
+    g.fillStyle(OC.innerShade, 0.7);
+    g.fillEllipse(hx + geom.w * 0.06, hy + geom.h * 0.08, geom.w * 0.3, geom.h * 0.3);
+    if (!st.visceraOut) {
+      const [vx, vy] = px(geom, 0.70, 0.46);           // OCTO_VISCERA_GRIP 근방
+      g.fillStyle(C.viscera, 1);
+      g.fillEllipse(vx, vy, geom.w * 0.2, geom.h * 0.26);
+      g.fillStyle(C.ink, 0.9);
+      g.fillEllipse(vx + geom.w * 0.045, vy + geom.h * 0.05, geom.w * 0.06, geom.h * 0.1);
+    }
+  } else {
+    // 등면 질감 — 돌기 점열 + 눈
+    g.fillStyle(OC.skinDark, 0.55);
+    const PHI = 0.6180339887;
+    for (let i = 0; i < 18; i++) {
+      const t = ((i + 1) * PHI) % 1, r = ((i + 3) * PHI * PHI) % 1;
+      const ex = 0.48 + t * 0.4, ey = 0.26 + r * 0.48;
+      const [sx, sy] = px(geom, ex, ey);
+      g.fillCircle(sx, sy, Math.max(1.1, geom.h * 0.012));
+    }
+    for (const s of [-1, 1]) {
+      const [ex, ey] = px(geom, 0.46, 0.5 + s * 0.13);
+      g.fillStyle(C.eye, 1); g.fillEllipse(ex, ey, geom.w * 0.045, geom.h * 0.09);
+      g.fillStyle(C.eyeHi, 0.85); g.fillCircle(ex - geom.w * 0.008, ey - geom.h * 0.016, geom.w * 0.01);
+    }
+  }
+  // 소금 치대기/문지르기 진행 — 거품 오버레이 (fillProgress 비례)
+  const foaming = st.stageId === 'octo_salt' || st.stageId === 'octo_scrub';
+  if (foaming && !inverted) {
+    const p = Math.max(0, Math.min(1, st.fillProgress ?? 0));
+    if (p > 0.02) {
+      const PHI = 0.6180339887;
+      const n = Math.round(6 + p * 22);
+      g.fillStyle(OC.foam, 0.5 + p * 0.3);
+      for (let i = 0; i < n; i++) {
+        const t = ((i + 1) * PHI) % 1, r = ((i + 5) * PHI * PHI) % 1;
+        // scrub은 다리 쪽(좌), salt는 몸 전체
+        const x0 = st.stageId === 'octo_scrub' ? 0.03 + t * 0.42 : 0.06 + t * 0.84;
+        const [sx, sy] = px(geom, x0, 0.28 + r * 0.46);
+        g.fillCircle(sx, sy, Math.max(1.6, geom.h * 0.02));
+      }
+    }
   }
 }
 
@@ -414,6 +651,9 @@ export const CEPH_VIEW_LABEL: Record<string, string> = {
   CEPH_SKIN_UP: '펼친 시트 (껍질면 위)',
   CEPH_FLESH_UP: '펼친 시트 (살코기면 위)',
   CEPH_PARTS: '분리 덩어리 (도마 배치)',
+  OCTO_WHOLE: '통몸 (다리 왼쪽)',
+  OCTO_INVERTED: '머리 뒤집힘 (외번 — 속면)',
+  OCTO_ORAL: '입면 위 (다리 방사)',
 };
 
 /** 두족류 뷰인가 — 어류 렌더 경로와 갈라내는 판정 */

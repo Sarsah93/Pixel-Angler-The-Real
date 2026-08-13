@@ -91,6 +91,7 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
       { id: 'inv_breadbait', name: '빵가루 경단',            icon: '🍞', category: 'tackle',     subCategory: '반죽미끼',    basePrice: 3000, price: 3500, maxPerPurchase: 10, equippable: false, desc: '벵에돔·숭어용 반죽 미끼 — 잡어 성화를 피한다.' },
       { id: 'inv_can',      name: '참치 통조림 (묶음)',      icon: '🥫', category: 'food',       subCategory: '가공품',     basePrice: 2000, price: 2200, maxPerPurchase: 20, equippable: false, desc: '마트 대용량 특가.' },
       { id: 'inv_ice_bulk',   name: '대용량 각얼음',    icon: '🧊', category: 'consumable', subCategory: '보냉', basePrice: 4000, price: 4500, maxPerPurchase: 10, equippable: false, desc: '쿨러 얼음 넣기 재료 — 1개로 2시간 보냉 (마트 특가).' },
+      { id: 'inv_coarse_salt', name: '굵은소금',        icon: '🧂', category: 'consumable', subCategory: '조미/손질', basePrice: 2000, price: 2500, maxPerPurchase: 10, equippable: false, desc: '문어 손질(소금 치대기) 재료 — 점액과 이물을 걷어낸다. 1회 1개 소모.' },
       { id: 'inv_bucket',     name: '낚시용 두레박',    icon: '🪣', category: 'etc', subCategory: '낚시도구', basePrice: 9000, price: 11000, maxPerPurchase: 1, equippable: false, desc: '바다 근처에서 쿨러에 해수를 채우는 도구 (소모되지 않음).' },
       { id: 'inv_cooler',     name: '쿨러 (아이스박스)', icon: '🛅', category: 'etc', subCategory: '낚시도구', basePrice: 45000, price: 55000, maxPerPurchase: 1, equippable: false, desc: '어획 보관(어창 9칸)·밑밥 배합의 필수 장비 — 해수/얼음을 채워 신선도를 유지한다.' },
       // 회칼 (조리도구) — 회뜨기 게이팅용. 등급이 높을수록 수율·슬라이스·등급 상향.

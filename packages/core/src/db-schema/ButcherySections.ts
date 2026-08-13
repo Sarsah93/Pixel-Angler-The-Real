@@ -269,7 +269,9 @@ export const SQUID_SECTIONS: ButcherySectionDef[] = [
       { id: 't_ceph_open', label: '몸통 절개', stageIds: ['ceph_mantle_open'] },
       // 펼치기·분리 결과 확인은 사용자 지시로 제거(2026-08-11) — 개복 완료 화면이 곧 펼쳐진
       // 화면이고, 결과는 머리+다리 덩어리 **부산물 팝업**(전용 실사 아이콘)이 보여준다.
-      { id: 't_ceph_viscera', label: '내장 분리', stageIds: ['ceph_viscera_pull'], yields: ['ceph_head_mass'] },
+      // 094차: 내장 분리 = 드래그 2회 분할 (뽑기 1 → 뽑기 2 미러 — 프레임 연결이 아니라 단계)
+      { id: 't_ceph_viscera_1', label: '내장 분리 1/2', stageIds: ['ceph_viscera_pull_1'] },
+      { id: 't_ceph_viscera_2', label: '내장 분리 2/2', stageIds: ['ceph_viscera_pull_2'], yields: ['ceph_head_mass'] },
     ],
   },
   {
@@ -282,10 +284,14 @@ export const SQUID_SECTIONS: ButcherySectionDef[] = [
     id: 'sec_ceph_skin', label: '껍질 벗기기', anyOrder: false,
     tasks: [
       { id: 't_ceph_flip_skin', label: '뒤집어 껍질 잡기', stageIds: ['ceph_flip_skin'] },
-      { id: 't_ceph_peel', label: '껍질 뜯기 ① (가로)', stageIds: ['ceph_skin_peel'] },
-      // 사용자 공정 재정의(2026-08-12): 가로로 먼저, 나머지는 아래로 — 2회 뜯기
+      // 095차: 가로 뜯기 = 4단계 분할 (조금씩 당길 때마다 다음 사진 — 사용자 지시)
+      { id: 't_ceph_peel_1', label: '껍질 뜯기(가로) 1/4', stageIds: ['ceph_skin_peel_1'] },
+      { id: 't_ceph_peel_2', label: '껍질 뜯기(가로) 2/4', stageIds: ['ceph_skin_peel_2'] },
+      { id: 't_ceph_peel_3', label: '껍질 뜯기(가로) 3/4', stageIds: ['ceph_skin_peel_3'] },
+      { id: 't_ceph_peel_4', label: '껍질 뜯기(가로) 4/4', stageIds: ['ceph_skin_peel_4'] },
       { id: 't_ceph_peel_finish', label: '껍질 뜯기 ② (아래로)', stageIds: ['ceph_skin_finish'] },
-      { id: 't_ceph_skin_done', label: '껍질 분리 완료', stageIds: ['ceph_skin_done'], yields: ['ceph_skin'] },
+      // 껍질은 097차부터 부산물 미지급 (사용자 지시)
+      { id: 't_ceph_skin_done', label: '껍질 분리 완료', stageIds: ['ceph_skin_done'] },
     ],
     // 여기까지 하면 몸통 순살이 확정된다 — 이후 이탈은 정산(§0.5.4)
     exitAfter: true,
@@ -293,11 +299,16 @@ export const SQUID_SECTIONS: ButcherySectionDef[] = [
   {
     id: 'sec_ceph_trim', label: '날개 · 아가미 정리', anyOrder: false,
     tasks: [
-      // 날개 2단(사용자 공정 재정의 2026-08-12): 필렛에서 껍질째 뜯기 → 껍질에서 날개살 분리.
+      // 날개별 2스테이지 분할(2026-08-13) + **094차 순서 재정의**(사용자):
+      // **날개살 분리 1/2·2/2 → 껍질째 뜯기 1/2·2/2** (2/2는 좌우 반전 뷰).
       // 아가미·닦기(완료본 실사)는 맨 뒤 — 날개 앞에 두면 완료본 다음에 날개가 다시 나타난다.
-      { id: 't_ceph_finskin', label: '날개 뜯기 (껍질째)', stageIds: ['ceph_finskin_off'] },
-      { id: 't_ceph_fin', label: '날개살 분리', stageIds: ['ceph_fin_off'], yields: ['ceph_fin_meat'] },
-      { id: 't_ceph_gill', label: '아가미 제거 · 내장면 닦기', stageIds: ['ceph_gill_wash'], yields: ['ceph_gill'] },
+      { id: 't_ceph_fin_1', label: '날개살 분리 1/2', stageIds: ['ceph_fin_off_1'] },
+      // 날개살 부산물(2장 스택)은 양쪽을 다 분리한 시점에 일괄 지급
+      { id: 't_ceph_fin_2', label: '날개살 분리 2/2', stageIds: ['ceph_fin_off_2'], yields: ['ceph_fin_meat'] },
+      { id: 't_ceph_finskin_1', label: '날개 뜯기(껍질째) 1/2', stageIds: ['ceph_finskin_off_1'] },
+      { id: 't_ceph_finskin_2', label: '날개 뜯기(껍질째) 2/2', stageIds: ['ceph_finskin_off_2'] },
+      // 아가미는 097차부터 부산물 미지급 (사용자 지시)
+      { id: 't_ceph_gill', label: '아가미 제거 · 내장면 닦기', stageIds: ['ceph_gill_wash'] },
     ],
     exitAfter: true,
   },
@@ -315,9 +326,46 @@ export const SQUID_SECTIONS: ButcherySectionDef[] = [
   },
 ];
 
+/**
+ * 참문어 섹션 트리 (097차 — 칼을 쓰지 않는 유일한 트리: 외번·내장·소금·문지르기·세척·악판).
+ * §0.5.4 규약 동일: 스테이지 1개 = 작업 1개 · 전부 순서 강제.
+ */
+export const OCTOPUS_SECTIONS: ButcherySectionDef[] = [
+  {
+    id: 'sec_octo_invert', label: '외번 · 내장 분리', anyOrder: false,
+    tasks: [
+      { id: 't_octo_invert', label: '머리 뒤집기(외번)', stageIds: ['octo_invert'] },
+      { id: 't_octo_viscera', label: '내장 떼어내기', stageIds: ['octo_viscera_pull'], yields: ['octo_viscera', 'octo_ink_sac'] },
+      { id: 't_octo_revert', label: '머리 되돌리기', stageIds: ['octo_revert'] },
+    ],
+  },
+  {
+    id: 'sec_octo_clean', label: '소금 치대기 · 세척', anyOrder: false,
+    tasks: [
+      { id: 't_octo_salt', label: '굵은소금 치대기', stageIds: ['octo_salt'] },
+      { id: 't_octo_scrub', label: '거품 · 점액 문지르기', stageIds: ['octo_scrub'] },
+      { id: 't_octo_wash', label: '흐르는 물 세척', stageIds: ['octo_wash'] },
+    ],
+    exitAfter: true,
+  },
+  {
+    id: 'sec_octo_beak', label: '악판(입) 제거 · 완료', anyOrder: false,
+    tasks: [
+      { id: 't_octo_beak', label: '악판 뽑아내기', stageIds: ['octo_beak_out'], yields: ['octo_beak'] },
+      // 완주 산출물 — 문어 통마리 순살 (숙회·슬라이싱 입력)
+      { id: 't_octo_done', label: '손질 완료', stageIds: ['octo_done'], yields: ['octo_whole'] },
+    ],
+  },
+];
+
 /** 두족류 섹션 트리 — 미구현 종은 undefined (게이트가 준비 중 안내를 유지한다) */
 export function sectionsForCephalopod(speciesId: string): ButcherySectionDef[] | undefined {
-  return speciesId === 'squid' ? SQUID_SECTIONS : undefined;
+  switch (speciesId) {
+    // 한치 = 무늬오징어와 같은 공정 공유 (097차 — 부산물·회뜨기 규칙 공통)
+    case 'squid': case 'swordtip_squid': return SQUID_SECTIONS;
+    case 'octopus': case 'giant_octopus': return OCTOPUS_SECTIONS;
+    default: return undefined;
+  }
 }
 
 /**

@@ -1101,6 +1101,11 @@ export class ButcheryProcess {
     if ((this.cephalopod || TUNING.butchery.autoOrient) && this.stage) {
       this.orientation = this.stage.orientation;
     }
+    // 두족류는 회전도 공정의 일부 — 스테이지 요구 회전(껍질 들추기 270° · 마무리 90°)으로
+    // 자동 스냅한다 (092차). 어류는 수동 회전(R) 유지 — 넙치류 세로 배치는 플레이 요소.
+    if (this.cephalopod && this.stage) {
+      this.rotation = this.stage.rotationRequired ?? 0;
+    }
   }
 
   private resetStageCounters(): void {
