@@ -23,16 +23,19 @@ const { execFileSync } = require('child_process');
 
 const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 const SRC_DIR = path.resolve(__dirname, '..', 'food assets', 'butchery', 'reference', 'cephalopod', 'octopus');
+const TRIM_DIR = path.resolve(__dirname, '..', 'food assets', 'trimmings', 'octopus');
 const PUB = path.resolve(__dirname, '..', 'packages', 'client-pc', 'public');
-const STAGES_TS = path.resolve(__dirname, '..', 'packages', 'client-pc', 'src', 'data', 'PixelFishStages.ts');
 const AB = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+/';
 
-/** [원본 파일명, 출력 상대경로, 목표 긴 축 px] — 알파 보존 다운스케일 */
+/** [입력 폴더, 원본 파일명, 출력 상대경로, 목표 긴 축 px] — 알파 보존 다운스케일 */
 const RESIZE_JOBS = [
-  ['삶은 문어.png', 'trimmings/octo_boiled.png', 420],
-  ['삶은 문어 머리.png', 'trimmings/octo_boiled_head.png', 300],
-  ['문어 다리(octopus_legs)_cutting.png', 'trimmings/octo_boiled_leg.png', 640],
-  ['문어 숙회 한점.png', 'sashimi/piece_octopus.png', 300],
+  [SRC_DIR, '삶은 문어.png', 'trimmings/octo_boiled.png', 420],
+  [SRC_DIR, '삶은 문어 머리.png', 'trimmings/octo_boiled_head.png', 300],
+  [SRC_DIR, '문어 다리(octopus_legs)_cutting.png', 'trimmings/octo_boiled_leg.png', 640],
+  [SRC_DIR, '문어 숙회 한점.png', 'sashimi/piece_octopus.png', 300],
+  // 통마리 아이콘 = '손질 완료된 문어' 투명본 직접 다운스케일 (098-b —
+  //  구 "구운 octo_clean 스프라이트 재렌더" 경로 폐기: 원본이 이미 도트 아트라 직접이 더 선명)
+  [TRIM_DIR, '손질 완료된 문어(preparated octopus).png', 'trimmings/octo_whole.png', 420],
 ];
 
 function chromeDataUrl(html) {
@@ -56,8 +59,8 @@ function writeDataUrl(dataUrl, outRel) {
 }
 
 // ── ① 투명 PNG 다운스케일 (bbox 크롭 + 긴 축 목표 px) ──
-for (const [fname, outRel, longPx] of RESIZE_JOBS) {
-  const abs = path.join(SRC_DIR, fname);
+for (const [dir, fname, outRel, longPx] of RESIZE_JOBS) {
+  const abs = path.join(dir, fname);
   if (!fs.existsSync(abs)) { console.warn(`⚠ 입력 없음 (건너뜀): ${fname}`); continue; }
   const html = `<!doctype html><body><script>
 const img = new Image();
@@ -86,32 +89,6 @@ img.src = ${JSON.stringify('file:///' + encodeURI(abs.replace(/\\/g, '/')))};
   console.log(`${fname} → ${path.relative(PUB, out)}`);
 }
 
-// ── ② octo_clean 도트 스프라이트 → 문어 통마리 아이콘 PNG (투명 배경 · 셀 2px) ──
-{
-  const src = fs.readFileSync(STAGES_TS, 'utf8');
-  const m = src.match(/"octo_clean": \{\s*\n\s*w: (\d+), h: (\d+), cellPx: \d+,\s*\n\s*palette: \[([^\]]*)\],\s*\n\s*rows: \[\n([\s\S]*?)\n\s*\],/);
-  if (!m) { console.error('octo_clean 스프라이트 없음 — pixelize_butchery.cjs 먼저 실행'); process.exit(1); }
-  const spr = {
-    w: +m[1], h: +m[2],
-    palette: m[3].split(',').map((s) => parseInt(s.trim(), 16)).filter((n) => !Number.isNaN(n)),
-    rows: [...m[4].matchAll(/'([^']*)'/g)].map((r) => r[1]),
-  };
-  const html = `<!doctype html><body><script>
-const AB = ${JSON.stringify(AB)};
-const s = ${JSON.stringify(spr)};
-const scale = 2;
-const cv = document.createElement('canvas');
-cv.width = s.w * scale; cv.height = s.h * scale;
-const cx = cv.getContext('2d');
-for (let y = 0; y < s.h; y++) for (let x = 0; x < s.w; x++) {
-  const ch = (s.rows[y] || '')[x];
-  if (!ch || ch === '.') continue;
-  const c = s.palette[AB.indexOf(ch)] ?? 0;
-  cx.fillStyle = '#' + c.toString(16).padStart(6, '0');
-  cx.fillRect(x * scale, y * scale, scale, scale);
-}
-document.body.textContent = cv.toDataURL('image/png');
-<\/script></body>`;
-  const out = writeDataUrl(chromeDataUrl(html), 'trimmings/octo_whole.png');
-  console.log(`octo_clean (${spr.w}x${spr.h}) → ${path.relative(PUB, out)} (통마리 아이콘 교체)`);
-}
+// (구 ② "구운 octo_clean 스프라이트 → 아이콘 재렌더"는 098-b에 폐기 —
+//  '손질 완료된 문어' 투명본 직접 다운스케일이 RESIZE_JOBS에 편입됐다. AB 상수는 향후 재사용 대비 유지.)
+void AB;

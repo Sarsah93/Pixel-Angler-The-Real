@@ -348,14 +348,14 @@ const SQUID_STAGE_SPRITE: Record<string, string> = {
  * 플레이스홀더를 대체한다. 드래그 진행 스테이지(외번·내장·악판)는 CEPH_DRAG_FRAMES가 우선.
  */
 const OCTO_STAGE_SPRITE: Record<string, string> = {
-  octo_invert: 'octo_invert1',       // 1. 외번 시작 (드래그 프레임이 2로 진행)
+  octo_invert: 'octo_live',          // 활어 통마리(098-b 투명본) — 도마 시작 뷰 (드래그가 2로 진행)
   octo_viscera_pull: 'octo_invert3', // 3. 내장 노출 (드래그 프레임이 4로 진행)
   octo_revert: 'octo_viscera',       // 4. 내장 분리 직후 — 버튼으로 되돌린다
   octo_beak_out: 'octo_beak1',       // 5. 입면 — 악판 뽑기 (드래그 프레임이 7로 진행)
   octo_salt: 'octo_salt',            // 8. 굵은소금 뿌린 상태
   octo_scrub: 'octo_scrub',          // 9. 거품 문지르기
   octo_wash: 'octo_scrub',           // 세척 — 9 공유 (완료 시 다음 스테이지가 완료본)
-  octo_done: 'octo_clean',           // 손질 완료 (트레이 사진 — 통마리 아이콘 원본 겸용)
+  octo_done: 'octo_clean',           // 손질 최종 완료 = '손질 완료된 문어'(098-b 투명본 — 아이콘 겸용)
 };
 
 /**
@@ -367,9 +367,10 @@ const CEPH_DRAG_FRAMES: Record<string, { frames: string[]; thresholds: number[] 
   // 날개 뜯기(껍질째): 온전(합성) → 뜯김(날개뜯기1) — 2/2는 미러
   ceph_finskin_off_1: { frames: ['squid_finskin_on', 'squid_fin_tear'], thresholds: [0.5] },
   ceph_finskin_off_2: { frames: ['squid_finskin_on_m', 'squid_fin_tear_m'], thresholds: [0.5] },
-  // ── 문어 (098차 — 실사 9장 배선) — path 드래그 진행에 따라 다음 사진으로 넘어간다 ──
-  //  외번: 밀어넣기 시작(1) → 속면 절반(2). 완료 후 다음 스테이지가 3(내장 노출)을 보여준다.
-  octo_invert: { frames: ['octo_invert1', 'octo_invert2'], thresholds: [0.5] },
+  // ── 문어 (098차 — 실사 배선) — path 드래그 진행에 따라 다음 사진으로 넘어간다 ──
+  //  외번: 활어 통마리(octo_live — 098-b 사용자 투명본. 구 손 사진 1 폐기) → 속면 절반(2).
+  //  완료 후 다음 스테이지가 3(내장 노출)을 보여준다.
+  octo_invert: { frames: ['octo_live', 'octo_invert2'], thresholds: [0.5] },
   //  내장: 노출(3) → 당겨 분리 중(4)
   octo_viscera_pull: { frames: ['octo_invert3', 'octo_viscera'], thresholds: [0.45] },
   //  악판: 입면·부리 보임(5) → 뽑힌 자리 구멍(7). 사진 6은 손가락 위주라 미채택.

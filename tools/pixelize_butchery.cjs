@@ -377,9 +377,9 @@ const BG_TOL = {
   halibut_lift_b: 6,
   // 문어 싱크대 실사 — 젖은 회색 문어가 싱크대 스테인리스 색과 겹쳐 BFS가 피사체를 먹는다
   // (098차 실측: 기본 46이면 몸통이 얼룩으로 분해). 분리는 KEEP_POLY 전담, BFS는 사실상 끔.
-  octo_invert1: 4, octo_invert2: 4, octo_invert3: 4, octo_viscera: 4,
+  octo_invert2: 4, octo_invert3: 4, octo_viscera: 4,
   octo_beak1: 4, octo_beak3: 4, octo_salt: 4, octo_scrub: 4,
-  // 완료 사진은 흰 테이블 배경이라 기본 임계 유지 (트레이 정리는 폴리곤이 담당)
+  // octo_live/octo_clean = 투명 PNG 완성본 — 알파 경로 자동이라 임계 무관
 };
 const mirrorSprite = (spr) => ({ ...spr, rows: spr.rows.map((r) => [...r].reverse().join('')) });
 
@@ -505,7 +505,7 @@ const CEPH_DETAIL_SRC = {
  */
 const OCTO_SRC_DIR = path.resolve(CEPH_SRC_DIR, 'octopus');
 const OCTO_SRC = {
-  '1문어 머리 뒤집기1.jpg': 'octo_invert1',   // 외번 시작 — 외투막을 밀어 넣는 중
+  // '1문어 머리 뒤집기1.jpg'는 미채택 (098-b — 손이 피사체 대부분. 시작 뷰는 octo_live가 대체)
   '2문어 머리 뒤집기2.jpg': 'octo_invert2',   // 외번 진행 — 속면(흰 주머니)이 나옴
   '3문어 머리 뒤집기3.jpg': 'octo_invert3',   // 외번 완료 — 내장 덩어리 노출
   '4문어 머리 내장 제거.jpg': 'octo_viscera', // 내장 떼어내기 — 덩어리를 당겨 분리
@@ -513,7 +513,18 @@ const OCTO_SRC = {
   '7문어 부리 제거3.jpg': 'octo_beak3',       // 악판 제거 완료 — 입 자리 구멍
   '8문어 다리 소금세척1.jpg': 'octo_salt',    // 굵은소금 뿌린 상태
   '9문어 다리 소금세척2.jpg': 'octo_scrub',   // 거품 문지르기 (손·거품 위주 — 품질 확인 대상)
-  '문어 손질 완료.jpg': 'octo_clean',         // 완료 — 트레이 위 통마리 (아이콘 원본 겸용)
+};
+
+/**
+ * 문어 완성본 (098-b — 사용자 직접 제작 투명 PNG, `trimmings/octopus/`).
+ * 알파 경로 자동이라 KEEP_POLY 불필요 — 실황 JPG 추출본보다 이쪽이 정본이다.
+ *  - octo_live  = 손질 전 활어 통마리 — 도마에 올린 시작 뷰 + 외번 시작 프레임
+ *  - octo_clean = 손질 최종 완료(내장·소금 치대기·세척 끝) — 구 트레이 사진 추출본 대체
+ */
+const OCTO_TRIM_DIR = path.resolve(__dirname, '..', 'food assets', 'trimmings', 'octopus');
+const OCTO_TRIM_SRC = {
+  '손질 전 문어(live octopus).png': 'octo_live',
+  '손질 완료된 문어(preparated octopus).png': 'octo_clean',
 };
 
 /**
@@ -523,10 +534,7 @@ const OCTO_SRC = {
  */
 const KEEP_POLY = {
   // 그리드 오버레이 실측 (0.1 간격 — scratchpad grid_overlay.cjs, 2026-08-13)
-  octo_invert1: [[
-    [0.440, 0.740], [0.470, 0.670], [0.520, 0.630], [0.585, 0.615], [0.635, 0.635],
-    [0.640, 0.680], [0.590, 0.710], [0.565, 0.800], [0.530, 0.910], [0.470, 0.895], [0.440, 0.820],
-  ]],
+  // ⚠ octo_live/octo_clean(사용자 제작 투명 PNG)에는 폴리곤을 걸지 않는다 — 알파 경로가 정본.
   octo_invert2: [[
     [0.415, 0.215], [0.520, 0.215], [0.585, 0.260], [0.635, 0.330], [0.645, 0.420],
     [0.600, 0.490], [0.545, 0.525], [0.470, 0.555], [0.415, 0.545], [0.370, 0.500],
@@ -572,13 +580,6 @@ const KEEP_POLY = {
     [0.365, 0.430], [0.330, 0.470], [0.300, 0.450], [0.290, 0.380],
     [0.300, 0.300], [0.320, 0.160],
   ]],
-  octo_clean: [[
-    [0.185, 0.285], [0.270, 0.252], [0.360, 0.262], [0.440, 0.272], [0.525, 0.175],
-    [0.620, 0.148], [0.715, 0.175], [0.810, 0.205], [0.870, 0.270], [0.900, 0.350],
-    [0.920, 0.470], [0.900, 0.580], [0.830, 0.680], [0.780, 0.780], [0.700, 0.880],
-    [0.620, 0.950], [0.500, 0.930], [0.420, 0.880], [0.370, 0.800], [0.335, 0.700],
-    [0.260, 0.660], [0.185, 0.600], [0.157, 0.500], [0.157, 0.360],
-  ]],
 };
 
 /**
@@ -621,6 +622,11 @@ for (const [fname, key] of Object.entries(CEPH_DETAIL_SRC)) {
 for (const [fname, key] of Object.entries(OCTO_SRC)) {
   const abs = path.join(OCTO_SRC_DIR, fname);
   if (!fs.existsSync(abs)) { console.warn(`⚠ 문어 입력 없음 (건너뜀): ${fname}`); continue; }
+  photoJobs.push([abs, key]);
+}
+for (const [fname, key] of Object.entries(OCTO_TRIM_SRC)) {
+  const abs = path.join(OCTO_TRIM_DIR, fname);
+  if (!fs.existsSync(abs)) { console.warn(`⚠ 문어 완성본 없음 (건너뜀): ${fname}`); continue; }
   photoJobs.push([abs, key]);
 }
 

@@ -95,6 +95,21 @@
 - KEEP_POLY는 원본 해상도 무관 정규화 좌표 — 사용자가 같은 구도의 고해상 사진으로 교체해도 유효.
   **다른 구도로 교체하면 폴리곤 재실측 필요**.
 
+## 7-b. 후속 (098-b, 2026-08-14) — 사용자 완성본 2종 교체
+
+사용자 제작 투명 PNG(`food assets/trimmings/octopus/`)로 시작·완료 뷰를 교체:
+
+- **`octo_live`** ← '손질 전 문어(live octopus).png' — 활어 문어를 도마에 올린 시작 뷰 +
+  외번 시작 프레임(드래그 진행 `octo_live` → `octo_invert2`). 구 손 사진 1(`octo_invert1`) **폐기**.
+- **`octo_clean`** ← '손질 완료된 문어(preparated octopus).png' — 손질 최종 완료 도마.
+  통마리 아이콘(`trimmings/octo_whole.png`)도 이 원본 **직접 다운스케일**로 전환
+  (`gen_octo_assets.cjs` — 구 "구운 스프라이트 재렌더" 경로 폐기).
+- `OCTO_INVERT_PATH` 재근사(octo_live 기준 — 머리 돔 왼쪽: 목 0.33,0.28 → 끝 0.06,0.44).
+  KEEP_POLY/BG_TOL에서 두 키 제거(투명본 = 알파 경로 — 폴리곤을 걸면 오려낸다).
+- 검증: 하네스 재실행 **32/32 PASS** · 빌드 4/4 · typecheck 0.
+  ⚠ 하네스 함정 — 스프라이트 **객체 동일성(===) 비교는 모듈 인스턴스 분화로 깨질 수 있다**
+  (`?t=` 분화 계열) → 값 시그니처(`w x h : rows[0]`) 비교로 전환.
+
 ## 8. 후속 반영
 
 - [x] 워크로그 098 (이 문서) + `03-WORKLOG/README.md` 인덱스

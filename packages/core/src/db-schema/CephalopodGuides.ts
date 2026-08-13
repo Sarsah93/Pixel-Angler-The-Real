@@ -186,8 +186,8 @@ export const CEPH_BONE_LIFT_PATH: readonly CutPoint[] = [{ x: 0.50, y: 0.48 }, {
 // ── 문어 전용 ────────────────────────────────────────
 // 098차 — 실사 스프라이트(octo_* — KEEP_POLY 추출본)의 subjectRect 기준으로 재근사.
 // 구 097차 값은 파라메트릭 렌더 기준이라 전부 폐기. ⚠ 여전히 근사 — 사용자 F9 실측 대상.
-/** 외번 — 목(입구 위쪽) → 외투막 끝(아래) 로 밀어 넣는다 (사진 1 기준) */
-export const OCTO_INVERT_PATH: readonly CutPoint[] = [{ x: 0.60, y: 0.16 }, { x: 0.38, y: 0.84 }];
+/** 외번 — 목(눈 부근) → 외투막 끝으로 밀어 넣는다 (098-b `octo_live` 기준 — 머리 돔이 왼쪽) */
+export const OCTO_INVERT_PATH: readonly CutPoint[] = [{ x: 0.33, y: 0.28 }, { x: 0.06, y: 0.44 }];
 /** 내장 잡기·뽑기 — 외번된 속면(사진 3)의 내장 덩어리 중심 → 우상단으로 당김 */
 export const OCTO_VISCERA_GRIP: CutPoint = { x: 0.50, y: 0.42 };
 export const OCTO_VISCERA_PATH: readonly CutPoint[] = [{ x: 0.50, y: 0.42 }, { x: 0.84, y: 0.16 }];

@@ -60,6 +60,9 @@ const { chromium } = resolvePlaywright();
 
 - **패널 직접 생성 시** `scene.add.existing(panel)` 필수 — DraggablePanel(Container)은 자동 등록되지 않는다 (7차).
 - HMR 후에는 `?t=` 버전 분화 가능 — 이상하면 dev 서버 재시작 후 검증.
+- **모듈 데이터 객체의 동일성(===) 비교 금지** (98차 실측) — 하네스가 import한 레지스트리와 게임/모듈이
+  든 레지스트리는 인스턴스가 갈라질 수 있다(서버 재시작 직후에도 재현). 스프라이트 비교는
+  **값 시그니처**(`w x h : rows[0]` 등)로 할 것.
 
 ## 자주 틀리는 시그니처·측정
 
