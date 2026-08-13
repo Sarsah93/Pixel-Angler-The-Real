@@ -420,6 +420,20 @@ export class InventoryPanel extends DraggablePanel {
         },
       });
     }
+    // 문어 통마리 순살 — '삶기' (098차 — 불을 이용한 요리 간이 경로. 삶아야 도마에 올릴 수 있다)
+    if (item.id.startsWith('inv_ceph_octo_whole_')) {
+      actions.push({
+        label: '삶기',
+        color: '#ffb45a', hoverColor: '#ffd8a0',
+        run: () => {
+          const made = InventoryStore.boilOctopus(item.id);
+          this.setStatus(made
+            ? '삶은 문어를 만들었습니다 — 요리(U) 도마에 올려 다리를 분리하세요'
+            : '삶을 수 없습니다 (부패했거나 인벤토리 공간이 부족합니다)');
+          this.renderGrid();
+        },
+      });
+    }
     // 내장 부산물 — '만들기' (소모성 밑밥 전환. 추후 통발 미끼 겸용)
     if (item.byproductKind === 'viscera') {
       actions.push({

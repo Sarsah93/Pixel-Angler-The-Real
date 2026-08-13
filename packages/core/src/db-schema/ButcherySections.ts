@@ -331,6 +331,7 @@ export const SQUID_SECTIONS: ButcherySectionDef[] = [
  * §0.5.4 규약 동일: 스테이지 1개 = 작업 1개 · 전부 순서 강제.
  */
 export const OCTOPUS_SECTIONS: ButcherySectionDef[] = [
+  // 098차 — 악판 제거가 소금 **앞**으로 이동 (사용자 실사 넘버링 = 실제 공정 순서)
   {
     id: 'sec_octo_invert', label: '외번 · 내장 분리', anyOrder: false,
     tasks: [
@@ -340,19 +341,19 @@ export const OCTOPUS_SECTIONS: ButcherySectionDef[] = [
     ],
   },
   {
-    id: 'sec_octo_clean', label: '소금 치대기 · 세척', anyOrder: false,
+    id: 'sec_octo_beak', label: '악판(입) 제거', anyOrder: false,
     tasks: [
-      { id: 't_octo_salt', label: '굵은소금 치대기', stageIds: ['octo_salt'] },
-      { id: 't_octo_scrub', label: '거품 · 점액 문지르기', stageIds: ['octo_scrub'] },
-      { id: 't_octo_wash', label: '흐르는 물 세척', stageIds: ['octo_wash'] },
+      { id: 't_octo_beak', label: '악판 뽑아내기', stageIds: ['octo_beak_out'], yields: ['octo_beak'] },
     ],
     exitAfter: true,
   },
   {
-    id: 'sec_octo_beak', label: '악판(입) 제거 · 완료', anyOrder: false,
+    id: 'sec_octo_clean', label: '소금 치대기 · 세척 · 완료', anyOrder: false,
     tasks: [
-      { id: 't_octo_beak', label: '악판 뽑아내기', stageIds: ['octo_beak_out'], yields: ['octo_beak'] },
-      // 완주 산출물 — 문어 통마리 순살 (숙회·슬라이싱 입력)
+      { id: 't_octo_salt', label: '굵은소금 치대기', stageIds: ['octo_salt'] },
+      { id: 't_octo_scrub', label: '거품 · 점액 문지르기', stageIds: ['octo_scrub'] },
+      { id: 't_octo_wash', label: '흐르는 물 세척', stageIds: ['octo_wash'] },
+      // 완주 산출물 — 문어 통마리 순살 (삶은 뒤 숙회·슬라이싱 입력)
       { id: 't_octo_done', label: '손질 완료', stageIds: ['octo_done'], yields: ['octo_whole'] },
     ],
   },

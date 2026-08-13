@@ -199,9 +199,14 @@ export class BootScene extends Phaser.Scene {
     this.load.image('trim_ceph_beak', 'trimmings/ceph_beak.png');                           // 입 (공용)
     this.load.image('trim_ceph_viscera', 'trimmings/ceph_viscera.png');                     // 내장 주변부 (공용)
     this.load.image('trim_ceph_head_mass', 'trimmings/ceph_head_mass.png');                 // 촉완 붙은 다리부+머리부 (분할 전 덩어리)
-    this.load.image('trim_octo_whole', 'trimmings/octo_whole.png');                         // 손질된 문어
+    this.load.image('trim_octo_whole', 'trimmings/octo_whole.png');                         // 손질된 문어 (098차 — 손질 완료 실사 도트)
     this.load.image('trim_octo_viscera', 'trimmings/octo_viscera.png');                     // 문어 내장
     this.load.image('trim_octo_beak', 'trimmings/octo_beak.png');                           // 문어 입(악판)
+    // ── 삶은 문어 계열 (098차 — gen_octo_assets.cjs 생성. 불요리 산출 → 다리 분리 → 숙회) ──
+    this.load.image('trim_octo_boiled', 'trimmings/octo_boiled.png');                       // 삶은 문어 (통) — 아이콘·도마
+    this.load.image('trim_octo_boiled_head', 'trimmings/octo_boiled_head.png');             // 삶은 문어 머리
+    this.load.image('trim_octo_boiled_leg', 'trimmings/octo_boiled_leg.png');               // 삶은 문어 다리 — 아이콘·회뜨기 도마
+    this.load.image('sashimi_piece_octopus', 'sashimi/piece_octopus.png');                  // 문어 숙회 한 점 (접시 조각)
 
     this.load.image('fish_halibut', 'fish/halibut.png');
     this.load.image('fish_largescale_blackfish', 'fish/large_scale_blackfish.png');   // 벵에돔

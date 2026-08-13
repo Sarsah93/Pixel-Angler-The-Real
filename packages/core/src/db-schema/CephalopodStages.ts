@@ -234,8 +234,10 @@ export function buildCephalopodStages(speciesId: string): ButcheryStage[] | unde
 
 /**
  * 참문어 — **8스테이지** (칼을 쓰지 않는 유일한 트리 — §4.4 기반).
- * 외번(머리 뒤집기) → 내장 떼기 → 되돌리기 → 굵은소금 치대기 → 거품 문지르기 → 세척 →
- * 악판 뽑기 → 완주(통마리 순살). 소금 단계는 client가 '굵은소금' 아이템을 소모 게이트로 건다.
+ * 외번(머리 뒤집기) → 내장 떼기 → 되돌리기 → **악판 뽑기** → 굵은소금 치대기 → 거품 문지르기 →
+ * 세척 → 완주(통마리 순살). 소금 단계는 client가 '굵은소금' 아이템을 소모 게이트로 건다.
+ * ⚠ 098차 — 악판이 소금 **앞**으로 이동: 사용자 실사 넘버링(부리 제거 5~7 → 소금세척 8~9)이
+ *   실제 공정 순서다. 구 097차 순서(세척 뒤 악판)는 사진과 어긋나 정정.
  */
 function buildOctopusStages(): ButcheryStage[] {
   return [
@@ -259,11 +261,18 @@ function buildOctopusStages(): ButcheryStage[] {
       guide: '뒤집었던 머리를 원래대로 되돌리세요',
     },
     {
+      id: 'octo_beak_out', label: '악판(입) 뽑아내기', orientation: 'OCTO_ORAL',
+      primitive: 'drag_out',
+      guide: '다리 가운데(입)를 눌러 악판을 밀어낸 뒤 통째로 뽑으세요',
+      tapPoint: OCTO_BEAK_CENTER, tapRadius: 0.1, radialSpace: true,
+      cut: cCut('octo_beak_out', 'OCTO_ORAL', OCTO_BEAK_PATH, { tolerance: 0.12 }),
+    },
+    {
       id: 'octo_salt', label: '굵은소금 치대기', orientation: 'OCTO_WHOLE',
       primitive: 'salt_apply', fillTarget: 0.85,
       guide: '굵은소금을 뿌리고 몸 전체를 왕복으로 치대세요 (굵은소금 1개 소모)',
       regionPoly: OCTO_SALT_REGION as CutPoint[],
-      // 몸 전체 왕복 지그재그 (근사 — 파라메트릭 렌더 기준. 실사 도입 시 F9 재실측)
+      // 몸 전체 왕복 지그재그 (근사 — 실사 스프라이트 기준 F9 재실측 대상)
       sweepPath: [
         { x: 0.14, y: 0.34 }, { x: 0.86, y: 0.40 },
         { x: 0.18, y: 0.55 }, { x: 0.84, y: 0.64 },
@@ -274,10 +283,10 @@ function buildOctopusStages(): ButcheryStage[] {
       primitive: 'hold_scrub', fillTarget: 0.9,
       guide: '다리와 빨판 쪽을 집중적으로 문질러 점액과 이물을 걷어내세요',
       regionPoly: OCTO_SCRUB_REGION as CutPoint[],
-      // 다리·빨판(좌측) 집중 스윕 (근사)
+      // 움켜쥔 몸통 띠(사진 9 — 세로로 긴 스프라이트)를 따라 내려가는 왕복 스윕 (근사)
       sweepPath: [
-        { x: 0.05, y: 0.32 }, { x: 0.42, y: 0.40 },
-        { x: 0.06, y: 0.56 }, { x: 0.40, y: 0.68 },
+        { x: 0.62, y: 0.10 }, { x: 0.30, y: 0.30 },
+        { x: 0.55, y: 0.50 }, { x: 0.25, y: 0.75 },
       ],
     },
     {
@@ -286,16 +295,9 @@ function buildOctopusStages(): ButcheryStage[] {
       guide: '거품과 소금기를 흐르는 물에 깨끗이 씻어내세요',
     },
     {
-      id: 'octo_beak_out', label: '악판(입) 뽑아내기', orientation: 'OCTO_ORAL',
-      primitive: 'drag_out',
-      guide: '다리 가운데(입)를 눌러 악판을 밀어낸 뒤 통째로 뽑으세요',
-      tapPoint: OCTO_BEAK_CENTER, tapRadius: 0.1, radialSpace: true,
-      cut: cCut('octo_beak_out', 'OCTO_ORAL', OCTO_BEAK_PATH, { tolerance: 0.12 }),
-    },
-    {
       id: 'octo_done', label: '손질 완료', orientation: 'OCTO_WHOLE',
       primitive: 'result',
-      guide: '손질이 끝났습니다 — 통마리 순살 (숙회 · 슬라이싱 입력)',
+      guide: '손질이 끝났습니다 — 통마리 순살 (삶은 뒤 숙회 재료)',
     },
   ];
 }

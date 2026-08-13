@@ -184,18 +184,21 @@ export const CEPH_BONE_OUTLINE: readonly CutPoint[] = [
 export const CEPH_BONE_LIFT_PATH: readonly CutPoint[] = [{ x: 0.50, y: 0.48 }, { x: 0.84, y: 0.50 }];
 
 // ── 문어 전용 ────────────────────────────────────────
-/** 외번 — 목(0.46) → 외투막 끝 */
-export const OCTO_INVERT_PATH: readonly CutPoint[] = [{ x: 0.46, y: 0.50 }, { x: 0.93, y: 0.50 }];
-export const OCTO_VISCERA_GRIP: CutPoint = { x: 0.70, y: 0.46 };
-export const OCTO_VISCERA_PATH: readonly CutPoint[] = [{ x: 0.70, y: 0.46 }, { x: 0.92, y: 0.34 }];
-/** 악판 중심 — radial space (OCTO_ORAL 뷰) */
-export const OCTO_BEAK_CENTER: CutPoint = { x: 0.42, y: 0.50 };
-export const OCTO_BEAK_PATH: readonly CutPoint[] = [{ x: 0.42, y: 0.50 }, { x: 0.16, y: 0.34 }];
-/** 소금 도포 영역 — 몸 전체 */
+// 098차 — 실사 스프라이트(octo_* — KEEP_POLY 추출본)의 subjectRect 기준으로 재근사.
+// 구 097차 값은 파라메트릭 렌더 기준이라 전부 폐기. ⚠ 여전히 근사 — 사용자 F9 실측 대상.
+/** 외번 — 목(입구 위쪽) → 외투막 끝(아래) 로 밀어 넣는다 (사진 1 기준) */
+export const OCTO_INVERT_PATH: readonly CutPoint[] = [{ x: 0.60, y: 0.16 }, { x: 0.38, y: 0.84 }];
+/** 내장 잡기·뽑기 — 외번된 속면(사진 3)의 내장 덩어리 중심 → 우상단으로 당김 */
+export const OCTO_VISCERA_GRIP: CutPoint = { x: 0.50, y: 0.42 };
+export const OCTO_VISCERA_PATH: readonly CutPoint[] = [{ x: 0.50, y: 0.42 }, { x: 0.84, y: 0.16 }];
+/** 악판 중심 — 사진 5의 검은 부리 위치 (radial space — OCTO_ORAL 뷰) */
+export const OCTO_BEAK_CENTER: CutPoint = { x: 0.28, y: 0.42 };
+export const OCTO_BEAK_PATH: readonly CutPoint[] = [{ x: 0.28, y: 0.42 }, { x: 0.10, y: 0.20 }];
+/** 소금 도포 영역 — 몸 전체 (사진 8 — 소금 덮인 몸통) */
 export const OCTO_SALT_REGION: readonly CutPoint[] = [
   { x: 0.03, y: 0.06 }, { x: 0.95, y: 0.06 }, { x: 0.95, y: 0.94 }, { x: 0.03, y: 0.94 },
 ];
-/** 문지르기 영역 — 다리·빨판 쪽 */
+/** 문지르기 영역 — 사진 9(움켜쥔 몸통 띠) 전체 */
 export const OCTO_SCRUB_REGION: readonly CutPoint[] = [
-  { x: 0.03, y: 0.10 }, { x: 0.44, y: 0.10 }, { x: 0.44, y: 0.92 }, { x: 0.03, y: 0.92 },
+  { x: 0.05, y: 0.04 }, { x: 0.95, y: 0.04 }, { x: 0.95, y: 0.95 }, { x: 0.05, y: 0.95 },
 ];

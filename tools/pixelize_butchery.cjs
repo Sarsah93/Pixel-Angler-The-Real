@@ -38,7 +38,7 @@ const PALETTE_N = 44;    // 팔레트 색 수
 const AB = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+/';
 
 /** 크롬 페이지에서 실행할 처리 스크립트 (이미지 → {w,h,palette,rows} JSON) */
-function pageHtml(fileUrl, bgTol, erasePolys, fitLong) {
+function pageHtml(fileUrl, bgTol, erasePolys, fitLong, keepPolys) {
   return `<!doctype html><body><script>
 const img = new Image();
 img.onload = () => {
@@ -84,21 +84,25 @@ img.onload = () => {
     if (y > 0) q.push(p - W);
     if (y < H - 1) q.push(p + W);
   }
-  // ── ①-b 영역 제거 (ERASE_POLY) ──
-  //  사진에 **게임이 자체 연출로 그리는 요소**(칼 등)가 찍혀 있으면 굽기 전에 지운다.
-  //  좌표는 원본 정규화(0~1) 폴리곤 — 회전/미러보다 **먼저** 적용된다.
+  // ── ①-b 영역 제거 (ERASE_POLY) / 영역 한정 (KEEP_POLY) ──
+  //  ERASE = 사진에 **게임이 자체 연출로 그리는 요소**(칼 등)가 찍혀 있으면 굽기 전에 지운다.
+  //  KEEP  = **피사체 폴리곤 바깥을 전부 지운다** — 손·도마·싱크대가 프레임을 채우는
+  //          공정 실사(문어 손질 등)에서 배경 BFS만으로는 분리가 안 되는 경우의 주 수단.
+  //  좌표는 둘 다 원본 정규화(0~1) 폴리곤 — 회전/미러보다 **먼저** 적용된다.
+  const inPoly = (px, py, poly) => {
+    let hit = false;
+    for (let a = 0, b = poly.length - 1; a < poly.length; b = a++) {
+      const [xa, ya] = poly[a], [xb, yb] = poly[b];
+      if ((ya > py) !== (yb > py) && px < (xb - xa) * (py - ya) / (yb - ya) + xa) hit = !hit;
+    }
+    return hit;
+  };
   const polys = ${JSON.stringify(erasePolys || [])};
-  if (polys.length) {
-    const inPoly = (px, py, poly) => {
-      let hit = false;
-      for (let a = 0, b = poly.length - 1; a < poly.length; b = a++) {
-        const [xa, ya] = poly[a], [xb, yb] = poly[b];
-        if ((ya > py) !== (yb > py) && px < (xb - xa) * (py - ya) / (yb - ya) + xa) hit = !hit;
-      }
-      return hit;
-    };
+  const keeps = ${JSON.stringify(keepPolys || [])};
+  if (polys.length || keeps.length) {
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
       const nx = x / W, ny = y / H;
+      if (keeps.length && !keeps.some((poly) => inPoly(nx, ny, poly))) { removed[y * W + x] = 1; continue; }
       for (const poly of polys) if (inPoly(nx, ny, poly)) { removed[y * W + x] = 1; break; }
     }
   }
@@ -177,10 +181,10 @@ img.src = ${JSON.stringify(fileUrl)};
 }
 
 /** 크롬 dump-dom으로 1장 처리 */
-function processImage(absPngPath, bgTol = 46, erasePolys = [], fitLong = false) {
+function processImage(absPngPath, bgTol = 46, erasePolys = [], fitLong = false, keepPolys = []) {
   const tmpHtml = path.join(os.tmpdir(), `pixbut_${Date.now()}_${Math.random().toString(36).slice(2)}.html`);
   fs.writeFileSync(tmpHtml, pageHtml(
-    'file:///' + encodeURI(absPngPath.replace(/\\/g, '/')), bgTol, erasePolys, fitLong,
+    'file:///' + encodeURI(absPngPath.replace(/\\/g, '/')), bgTol, erasePolys, fitLong, keepPolys,
   ));
   const dom = execFileSync(CHROME, [
     '--headless', '--disable-gpu', '--allow-file-access-from-files',
@@ -371,6 +375,11 @@ const BG_TOL = {
   // 순백 배경 + 크림색 살 — 기본 46(임계 138)은 살까지 먹으므로 순백만 걷어내게 좁힌다
   halibut_gut_lift: 6,
   halibut_lift_b: 6,
+  // 문어 싱크대 실사 — 젖은 회색 문어가 싱크대 스테인리스 색과 겹쳐 BFS가 피사체를 먹는다
+  // (098차 실측: 기본 46이면 몸통이 얼룩으로 분해). 분리는 KEEP_POLY 전담, BFS는 사실상 끔.
+  octo_invert1: 4, octo_invert2: 4, octo_invert3: 4, octo_viscera: 4,
+  octo_beak1: 4, octo_beak3: 4, octo_salt: 4, octo_scrub: 4,
+  // 완료 사진은 흰 테이블 배경이라 기본 임계 유지 (트레이 정리는 폴리곤이 담당)
 };
 const mirrorSprite = (spr) => ({ ...spr, rows: spr.rows.map((r) => [...r].reverse().join('')) });
 
@@ -432,7 +441,7 @@ const ROTATE_KEYS = {
  * 두족류는 뷰마다 종횡비가 0.27~2.6으로 크게 흔들리므로 전 키를 긴 축 기준으로 통일한다
  * (뷰가 바뀌어도 디테일 예산이 같다).
  */
-const FIT_LONG_PREFIX = ['squid_'];
+const FIT_LONG_PREFIX = ['squid_', 'octo_'];
 const fitsLong = (key) => FIT_LONG_PREFIX.some((p) => key.startsWith(p));
 
 /**
@@ -486,6 +495,93 @@ const CEPH_DETAIL_SRC = {
 };
 
 /**
+ * ── 문어(참문어) 공정 실사 (098차 — 사용자 준비 2026-08-13) ──────────────────────
+ * `reference/cephalopod/octopus/` 하위 폴더. 번호 = 공정 순서(사용자 넘버링).
+ * 싱크대·손이 프레임을 채우는 촬영이라 **KEEP_POLY(피사체 폴리곤)**가 주 분리 수단이고,
+ * 배경 BFS는 폴리곤 안에 남은 싱크대/트레이 조각 정리용 보조다.
+ * ⚠ 사진 6(부리 제거2)은 손가락이 피사체 대부분을 가려 **스프라이트로 채택하지 않는다**.
+ * '문어 삶기 준비 완료.jpg'는 사용자 지시로 무시. PNG 4종(삶은 문어·머리·다리·숙회)은
+ * 투명 배경이라 이 파이프라인이 아니라 `gen_octo_assets.cjs`(직접 로드 아이콘)가 소비한다.
+ */
+const OCTO_SRC_DIR = path.resolve(CEPH_SRC_DIR, 'octopus');
+const OCTO_SRC = {
+  '1문어 머리 뒤집기1.jpg': 'octo_invert1',   // 외번 시작 — 외투막을 밀어 넣는 중
+  '2문어 머리 뒤집기2.jpg': 'octo_invert2',   // 외번 진행 — 속면(흰 주머니)이 나옴
+  '3문어 머리 뒤집기3.jpg': 'octo_invert3',   // 외번 완료 — 내장 덩어리 노출
+  '4문어 머리 내장 제거.jpg': 'octo_viscera', // 내장 떼어내기 — 덩어리를 당겨 분리
+  '5문어 부리 제거1.jpg': 'octo_beak1',       // 입면 — 악판(검은 부리) 눌러내기 시작
+  '7문어 부리 제거3.jpg': 'octo_beak3',       // 악판 제거 완료 — 입 자리 구멍
+  '8문어 다리 소금세척1.jpg': 'octo_salt',    // 굵은소금 뿌린 상태
+  '9문어 다리 소금세척2.jpg': 'octo_scrub',   // 거품 문지르기 (손·거품 위주 — 품질 확인 대상)
+  '문어 손질 완료.jpg': 'octo_clean',         // 완료 — 트레이 위 통마리 (아이콘 원본 겸용)
+};
+
+/**
+ * 피사체 폴리곤 (원본 정규화 0~1) — 바깥은 전부 제거. 손·트레이·싱크대를 걷어내고
+ * "문어로 추정되는 영역"만 남긴다 (사용자 지시 2026-08-13 — 근사 추론 허용).
+ * 손가락이 피사체에 겹친 부분은 폴리곤 경계로 근사 절단한다.
+ */
+const KEEP_POLY = {
+  // 그리드 오버레이 실측 (0.1 간격 — scratchpad grid_overlay.cjs, 2026-08-13)
+  octo_invert1: [[
+    [0.440, 0.740], [0.470, 0.670], [0.520, 0.630], [0.585, 0.615], [0.635, 0.635],
+    [0.640, 0.680], [0.590, 0.710], [0.565, 0.800], [0.530, 0.910], [0.470, 0.895], [0.440, 0.820],
+  ]],
+  octo_invert2: [[
+    [0.415, 0.215], [0.520, 0.215], [0.585, 0.260], [0.635, 0.330], [0.645, 0.420],
+    [0.600, 0.490], [0.545, 0.525], [0.470, 0.555], [0.415, 0.545], [0.370, 0.500],
+    [0.345, 0.420], [0.350, 0.320], [0.380, 0.250],
+  ]],
+  octo_invert3: [[
+    [0.310, 0.430], [0.380, 0.375], [0.440, 0.360], [0.500, 0.405], [0.545, 0.470],
+    [0.545, 0.565], [0.500, 0.655], [0.440, 0.725], [0.375, 0.755], [0.315, 0.715],
+    [0.283, 0.620], [0.278, 0.500],
+  ]],
+  // 내장 제거 — 외번 머리(흰 주머니) + 내장 줄 + 트레이 위 다리 뭉치 + 뽑히는 내장 덩어리(우)
+  octo_viscera: [
+    [[0.075, 0.500], [0.150, 0.440], [0.240, 0.470], [0.295, 0.550], [0.300, 0.630],
+      [0.270, 0.700], [0.190, 0.775], [0.100, 0.730], [0.050, 0.620], [0.045, 0.545]],
+    [[0.245, 0.500], [0.320, 0.475], [0.420, 0.500], [0.500, 0.530], [0.600, 0.500],
+      [0.680, 0.510], [0.685, 0.560], [0.620, 0.585], [0.655, 0.630], [0.640, 0.720],
+      [0.570, 0.780], [0.550, 0.880], [0.460, 0.930], [0.350, 0.935], [0.270, 0.880],
+      [0.220, 0.780], [0.235, 0.620]],
+    [[0.775, 0.410], [0.815, 0.395], [0.855, 0.425], [0.875, 0.480], [0.855, 0.545],
+      [0.810, 0.570], [0.775, 0.545], [0.765, 0.480]],
+  ],
+  // 부리1 — 좌 검지·우 엄지 끝이 입 주변에 겹쳐 노치로 근사 절단 (부리 0.385,0.59는 보존)
+  octo_beak1: [[
+    [0.380, 0.340], [0.460, 0.315], [0.540, 0.360], [0.555, 0.440], [0.530, 0.500],
+    [0.495, 0.560], [0.500, 0.660], [0.560, 0.720], [0.640, 0.780], [0.625, 0.860],
+    [0.550, 0.940], [0.460, 0.985], [0.370, 0.950], [0.300, 0.860], [0.275, 0.750],
+    [0.300, 0.660], [0.345, 0.620], [0.335, 0.550], [0.360, 0.470], [0.360, 0.400],
+  ]],
+  octo_beak3: [[
+    [0.455, 0.380], [0.520, 0.330], [0.580, 0.380], [0.600, 0.470], [0.565, 0.520],
+    [0.550, 0.580], [0.515, 0.660], [0.530, 0.760], [0.580, 0.820], [0.550, 0.900],
+    [0.460, 0.950], [0.360, 0.930], [0.270, 0.900], [0.200, 0.830], [0.210, 0.770],
+    [0.310, 0.730], [0.380, 0.680], [0.430, 0.580], [0.455, 0.470],
+  ]],
+  octo_salt: [[
+    [0.600, 0.300], [0.700, 0.300], [0.780, 0.330], [0.820, 0.400], [0.840, 0.480],
+    [0.800, 0.560], [0.720, 0.600], [0.700, 0.680], [0.630, 0.760], [0.540, 0.800],
+    [0.460, 0.760], [0.410, 0.680], [0.400, 0.580], [0.440, 0.500], [0.500, 0.440], [0.550, 0.360],
+  ]],
+  // 문지르기 — 거품 낀 대각 몸통 띠만 (손·거품이 대부분이라 근사 — 품질 미달 시 salt 공유)
+  octo_scrub: [[
+    [0.360, 0.020], [0.500, 0.020], [0.460, 0.120], [0.430, 0.220], [0.400, 0.320],
+    [0.365, 0.430], [0.330, 0.470], [0.300, 0.450], [0.290, 0.380],
+    [0.300, 0.300], [0.320, 0.160],
+  ]],
+  octo_clean: [[
+    [0.185, 0.285], [0.270, 0.252], [0.360, 0.262], [0.440, 0.272], [0.525, 0.175],
+    [0.620, 0.148], [0.715, 0.175], [0.810, 0.205], [0.870, 0.270], [0.900, 0.350],
+    [0.920, 0.470], [0.900, 0.580], [0.830, 0.680], [0.780, 0.780], [0.700, 0.880],
+    [0.620, 0.950], [0.500, 0.930], [0.420, 0.880], [0.370, 0.800], [0.335, 0.700],
+    [0.260, 0.660], [0.185, 0.600], [0.157, 0.500], [0.157, 0.360],
+  ]],
+};
+
+/**
  * 굽기 전에 지울 영역 (원본 정규화 폴리곤 — 회전·미러보다 먼저).
  *  halibut_fin_score — 사용자가 **칼길 위치를 알려주려고 포토샵으로 그려 넣은 칼**.
  *    게임은 칼을 별도 연출(actionAnimG)로 그리므로 스프라이트에 구우면 칼이 둘이 된다.
@@ -522,9 +618,14 @@ for (const [fname, key] of Object.entries(CEPH_DETAIL_SRC)) {
   if (!fs.existsSync(abs)) { console.warn(`⚠ 두족류 detail 입력 없음 (건너뜀): ${fname}`); continue; }
   photoJobs.push([abs, key]);
 }
+for (const [fname, key] of Object.entries(OCTO_SRC)) {
+  const abs = path.join(OCTO_SRC_DIR, fname);
+  if (!fs.existsSync(abs)) { console.warn(`⚠ 문어 입력 없음 (건너뜀): ${fname}`); continue; }
+  photoJobs.push([abs, key]);
+}
 
 for (const [abs, key] of photoJobs) {
-  let spr = processImage(abs, BG_TOL[key] ?? 46, ERASE_POLY[key] ?? [], fitsLong(key));
+  let spr = processImage(abs, BG_TOL[key] ?? 46, ERASE_POLY[key] ?? [], fitsLong(key), KEEP_POLY[key] ?? []);
   const rot = ROTATE_KEYS[key];
   if (rot) spr = rotateSprite(spr, rot);
   if (MIRROR_KEYS.has(key)) spr = mirrorSprite(spr);

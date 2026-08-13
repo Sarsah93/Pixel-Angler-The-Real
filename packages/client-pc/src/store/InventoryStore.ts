@@ -737,6 +737,33 @@ class InventoryStoreManager {
     return chumName;
   }
 
+  /**
+   * 문어 통마리 순살 → **삶은 문어** (098차 — 불을 이용한 요리의 간이 경로.
+   * 화구·용기 불요리 시스템이 서면 CookScene 실조리로 이관한다).
+   * 규칙(사용자 지시 2026-08-13): 삶은 뒤는 '활어'가 아니라 **'신선'** 상태로 시작하고,
+   * 도마(다리 분리·숙회)는 **삶은 문어만** 올릴 수 있다 — 생 통마리는 도마 불가.
+   * @returns 성공 시 지급 아이템 이름, 실패(부패/공간 부족) 시 null
+   */
+  boilOctopus(itemId: string): string | null {
+    const item = this.find(itemId);
+    if (!item || !item.id.startsWith('inv_ceph_octo_whole_')) return null;
+    refreshCondition(item);
+    if (item.condition === 'spoiled') return null;
+    const seq = this.nextCatchSeq();
+    const g = Math.max(1, Math.round((item.weightG ?? 800) * 0.8));   // 삶으면 수분이 빠져 ~20% 감량
+    const ok = this.addItem({
+      id: `inv_octo_boiled_${item.speciesId ?? 'octopus'}_${seq}`,
+      name: `삶은 문어 ${g}g`, icon: '🐙', iconTexture: 'trim_octo_boiled',
+      category: 'food', subCategory: '요리(삶음)',
+      basePrice: Math.max(1000, Math.round((item.basePrice || 2000) * 1.15)),
+      condition: 'fresh', conditionSinceMs: Date.now(),
+      equippable: false, speciesId: item.speciesId, weightG: g,
+    }, 1);
+    if (!ok) return null;
+    this.removeItem(item.id, false);
+    return '삶은 문어';
+  }
+
   // ── 세이브/로드 (GameState SaveData에 포함) ──────────
   /** 현재 상태 스냅샷 — 아이템/퀵슬롯/채비/편대/루어 모드 전부 */
   serialize(): InventorySaveState {

@@ -1067,8 +1067,10 @@ export class UtilizationPanel extends DraggablePanel {
         const handKnife = getBestKnife(
           InventoryStore.items.filter((i) => i.tool === 'knife' && i.equipped).map((i) => i.id));
         const label = boardCephKind === 'mantle' ? '오징어 회뜨기 (22점)'
-          : boardCephKind === 'fin' ? '날개살 회뜨기 (4점)' : '촉완 분리';
-        const bw2 = boardCephKind === 'arms' ? 96 : 158;
+          : boardCephKind === 'fin' ? '날개살 회뜨기 (4점)'
+          : boardCephKind === 'octoWhole' ? '다리 분리 (머리 1 + 다리 8)'
+          : boardCephKind === 'octoLeg' ? '숙회 썰기 (8점)' : '촉완 분리';
+        const bw2 = boardCephKind === 'arms' ? 96 : boardCephKind === 'octoWhole' ? 178 : 158;
         const on = !!handKnife;
         const bg2 = this.scene.add.graphics();
         bg2.fillStyle(on ? 0x0d4a2e : 0x1c2530, 0.96);
@@ -1310,10 +1312,13 @@ export class UtilizationPanel extends DraggablePanel {
    *  - 다리부: 1컷 = **촉완 ×2 + 촉완이 제거된 다리부** (회 아님 — 별도 요리 재료)
    * id는 ButcheryPanel.buildYieldRows 규칙 그대로 — 몸통살은 개체별, 날개살/다리부는 공유 스택.
    */
-  private cephSliceKind(item: InvItem): 'mantle' | 'fin' | 'arms' | null {
+  private cephSliceKind(item: InvItem): 'mantle' | 'fin' | 'arms' | 'octoWhole' | 'octoLeg' | null {
     if (item.id.startsWith('inv_ceph_ceph_mantle_fillet_')) return 'mantle';
     if (item.id === 'inv_ceph_ceph_fin_meat') return 'fin';
     if (item.id === 'inv_ceph_ceph_arms') return 'arms';
+    // ── 삶은 문어 (098차) — 생 통마리(inv_ceph_octo_whole_)는 도마 불가, **삶은 뒤에만** ──
+    if (item.id === 'inv_octo_boiled_leg') return 'octoLeg';          // 다리 → 숙회 썰기 (7컷)
+    if (item.id.startsWith('inv_octo_boiled_') && item.id !== 'inv_octo_boiled_head') return 'octoWhole';
     return null;
   }
 
@@ -1701,6 +1706,17 @@ export class UtilizationPanel extends DraggablePanel {
         const ang = Phaser.Math.DegToRad(QUAD_BASE_DEG[screen] + t * 90);
         const pxx = cx + Math.cos(ang) * rx * 0.62;
         const pyy = cy + Math.sin(ang) * ry * 0.62;
+        // 문어 숙회 한 점 = 전용 실사 조각 이미지 (098차 — 파라메트릭 '생선회 한 점' 대체)
+        if ((p.speciesId === 'octopus' || p.speciesId === 'giant_octopus')
+          && this.scene.textures.exists('sashimi_piece_octopus')) {
+          const img = this.scene.add.image(pxx, pyy, 'sashimi_piece_octopus');
+          const src = this.scene.textures.get('sashimi_piece_octopus').getSourceImage();
+          const s = Math.min(26 / src.width, 20 / src.height);
+          img.setDisplaySize(src.width * s, src.height * s);
+          img.setAngle(-18 + (i % 3) * 14);
+          this.bodyContainer.add(img);
+          continue;
+        }
         const pg = this.scene.add.graphics();
         const col = p.adv ? 0xff9a7a : 0xffb2a0;
         pg.fillStyle(col, 1);
@@ -1838,7 +1854,9 @@ export class UtilizationPanel extends DraggablePanel {
     const item = InventoryStore.find(this.boardSlicedItemId!);
     if (!item) return;
     const fam = butcherFamilyOf(item.speciesId ?? '');
-    const texKey = `sashimi_piece_${fam}`;
+    // 문어 숙회 한 점은 전용 실사 조각 (098차) — 어류 fam 폴백(bream 슬라이스)을 타면 안 된다
+    const texKey = item.speciesId === 'octopus' || item.speciesId === 'giant_octopus'
+      ? 'sashimi_piece_octopus' : `sashimi_piece_${fam}`;
     const hasTex = this.scene.textures.exists(texKey);
     const n = Math.min(item.qty, 16);
     const cols = 8;
@@ -1992,6 +2010,9 @@ export class UtilizationPanel extends DraggablePanel {
       ? (this.cephSliceKind(selItem) === 'mantle' ? '도마로 드래그하면 오징어 회뜨기(가운데 1컷 + 세로 10컷 = 22점)를 진행합니다'
         : this.cephSliceKind(selItem) === 'fin' ? '도마로 드래그하면 날개살 회뜨기(날개당 1컷 = 4점)를 진행합니다'
         : this.cephSliceKind(selItem) === 'arms' ? '도마로 드래그하면 촉완 분리(촉완 ×2 + 다리부)를 진행합니다 — 회가 아닌 요리 재료'
+        : this.cephSliceKind(selItem) === 'octoWhole' ? '도마로 드래그하면 다리 분리(3컷 — 삶은 문어 머리 1 + 다리 8)를 진행합니다'
+        : this.cephSliceKind(selItem) === 'octoLeg' ? '도마로 드래그하면 숙회 썰기(사선 7컷 = 8점)를 진행합니다'
+        : selItem.id.startsWith('inv_ceph_octo_whole_') ? '생 문어는 도마에 올릴 수 없습니다 — 우클릭 [삶기]로 삶은 뒤 도마에 올리세요'
         : this.isPureEngawa(selItem) ? '도마로 드래그하면 엔가와 회썰기(총 2컷)를 진행합니다'
         : this.isPureFillet(selItem) ? '도마로 드래그하면 회썰기(사시미)를 진행합니다 — 야나기바 장착 시 고급 사시미'
         : this.isPlateItem(selItem) ? '[사시미 만들기] 영역으로 드래그해 접시를 놓으세요'

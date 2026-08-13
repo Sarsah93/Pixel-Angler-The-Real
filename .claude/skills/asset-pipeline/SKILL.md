@@ -24,6 +24,7 @@ PNG만 바꾸면 되는지, 생성기를 돌려야 하는지부터 판별한다:
 | `gen_sashimi_fillet.cjs` | `food assets/trimmings/{fam}/pure_pillet_*` 등 (FAMILIES 배열) | `public/sashimi/fillet_{top,side}_{fam}.png` + `piece_{fam}.png` + `SashimiFilletProfiles.ts` | 회썰기 필렛 3뷰 |
 | `gen_flatfish_sprites.cjs` | `public/fish/halibut.png` | `data/PixelFishFlat.ts` | 광어 도마 온마리 (등면 + 배면 파생) |
 | `gen_butchery_views.cjs` | (파라메트릭 — 입력 없음) | `data/PixelFishViews.ts` | 복면/체강/장뜨기 뷰 |
+| `gen_octo_assets.cjs` | `reference/cephalopod/octopus/` 투명 PNG 4종 + `octo_clean` 도트 | `public/trimmings/octo_boiled{,_head,_leg}.png` · `public/sashimi/piece_octopus.png` · `public/trimmings/octo_whole.png` | 삶은 문어 계열 직접 로드 아이콘 (098차) |
 | `py tools/build_region_maps.py <region>` | `pixelazed/<region>/*.png` | `public/data/<region>/*.json` | 지역 타일맵 |
 
 - 생성물 TS는 헤더에 "자동 생성 — 수동 편집 금지" — 절대 손으로 고치지 말고 재생성.
@@ -40,6 +41,12 @@ PNG만 바꾸면 되는지, 생성기를 돌려야 하는지부터 판별한다:
   거의 안 걸린다. bbox가 좁으면 `cell=1`이 되어 **원본 행이 그대로 구워진다**(실측: 121×449 → 449행).
   종횡비가 흔들리는 어군(두족류 0.27~2.6)은 접두 등록해 긴 축 기준으로 통일한다.
   가로 원본(bw ≥ bh)은 `longPx === bw`라 **기존 결과와 바이트 동일** — 회귀는 `git diff`의 삭제 0줄로 확인.
+- **KEEP_POLY**(피사체 폴리곤 — 098차 신설): 손·싱크대·트레이가 프레임을 채우는 **공정 실사**는 배경
+  BFS로 분리가 안 된다(젖은 회색 피사체 ≈ 스테인리스 색 — `BG_TOL`을 4로 사실상 끄고 폴리곤 전담).
+  키별 폴리곤(정규화 0~1, 복수 가능) **바깥을 전부 제거** — ERASE_POLY와 별개·둘 다 회전/미러보다 먼저.
+  좌표는 **그리드 오버레이**(0.1 간격 좌표선을 얹은 프리뷰 — scratchpad `grid_overlay.cjs` 패턴)로
+  트레이스하고, `render_octo_preview.cjs` 패턴(레지스트리 → PNG)으로 육안 검수하며 조인다.
+  ⚠ 폴리곤은 **구도 종속** — 같은 키에 다른 구도 사진을 넣으면 재실측 필수.
 
 ## ② 방향 규칙 (전 필렛 뷰 공통 컨벤션)
 

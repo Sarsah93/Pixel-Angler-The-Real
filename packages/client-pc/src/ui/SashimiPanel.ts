@@ -53,8 +53,10 @@ export class SashimiPanel extends DraggablePanel {
    *  - mantle: 몸통살 — 가운데 가로 1컷(두 덩어리) + 세로 10컷(양 덩어리 관통) = **22점**
    *  - fin: 날개살 — 좌우 날개 2장 렌더, 각 1컷 = **4점**
    *  - arms: 다리부 — 1컷으로 촉완 분리 = **촉완 ×2 + 촉완이 제거된 다리부** (회 아님)
+   *  - octoWhole: **삶은 문어** — 머리 밑동 3컷 = 삶은 문어 머리 ×1 + 다리 ×8 (098차 — 회 아님)
+   *  - octoLeg: **삶은 문어 다리** — 사선 7컷 = 문어 숙회 한 점 ×8 (098차)
    */
-  private readonly ceph: 'mantle' | 'fin' | 'arms' | null;
+  private readonly ceph: 'mantle' | 'fin' | 'arms' | 'octoWhole' | 'octoLeg' | null;
   /** 유효 모드 스펙 — 엔가와는 컷 수만 2로 오버라이드 */
   private readonly spec: SashimiModeSpec;
   /** 필렛/엔가와 표시 텍스처 키 */
@@ -108,17 +110,21 @@ export class SashimiPanel extends DraggablePanel {
   private readonly sashimiUpHandler: (p: Phaser.Input.Pointer) => void;
   private readonly sashimiDownHandler: (p: Phaser.Input.Pointer) => void;
 
-  /** 두족류 부산물 판별 — UtilizationPanel.cephSliceKind와 동일 id 규칙 (097차) */
-  private static cephKindOf(item: InvItem): 'mantle' | 'fin' | 'arms' | null {
+  /** 두족류 부산물 판별 — UtilizationPanel.cephSliceKind와 동일 id 규칙 (097차/098차) */
+  private static cephKindOf(item: InvItem): 'mantle' | 'fin' | 'arms' | 'octoWhole' | 'octoLeg' | null {
     if (item.id.startsWith('inv_ceph_ceph_mantle_fillet_')) return 'mantle';
     if (item.id === 'inv_ceph_ceph_fin_meat') return 'fin';
     if (item.id === 'inv_ceph_ceph_arms') return 'arms';
+    if (item.id === 'inv_octo_boiled_leg') return 'octoLeg';
+    if (item.id.startsWith('inv_octo_boiled_') && item.id !== 'inv_octo_boiled_head') return 'octoWhole';
     return null;
   }
 
-  private static cephLabel(kind: 'mantle' | 'fin' | 'arms'): string {
+  private static cephLabel(kind: 'mantle' | 'fin' | 'arms' | 'octoWhole' | 'octoLeg'): string {
     return kind === 'mantle' ? '몸통살 회뜨기 (22점)'
-      : kind === 'fin' ? '날개살 회뜨기 (4점)' : '촉완 분리';
+      : kind === 'fin' ? '날개살 회뜨기 (4점)'
+      : kind === 'octoWhole' ? '다리 분리 (머리 1 + 다리 8)'
+      : kind === 'octoLeg' ? '숙회 썰기 (8점)' : '촉완 분리';
   }
 
   constructor(scene: Phaser.Scene, source: InvItem, mode: SashimiMode, cbs: SashimiCallbacks) {
@@ -141,17 +147,20 @@ export class SashimiPanel extends DraggablePanel {
     this.spec = this.ceph
       ? {
         ...spec, label: SashimiPanel.cephLabel(this.ceph),
-        cuts: this.ceph === 'mantle' ? 11 : this.ceph === 'fin' ? 2 : 1,
+        cuts: this.ceph === 'mantle' ? 11 : this.ceph === 'fin' ? 2
+          : this.ceph === 'octoWhole' ? 3 : this.ceph === 'octoLeg' ? 7 : 1,
         tolerance: Math.max(spec.tolerance, 0.1), minCoverage: Math.min(spec.minCoverage, 0.55),
       }
       : this.engawa ? { ...spec, cuts: ENGAWA_CUTS } : spec;
     // 일반 = 탑뷰(y plane 정면 — 위에서 본 필렛) / 고급 = 측면(z plane 정면) — 사용자 정정 2026-08-03
     this.view = this.engawa || this.ceph ? 'top' : mode === 'advanced' ? 'side' : 'top';
-    this.texKey = this.ceph
-      ? (cephByproductIcon(
-        this.ceph === 'mantle' ? 'ceph_mantle_fillet' : this.ceph === 'fin' ? 'ceph_fin_meat' : 'ceph_arms',
-        source.speciesId) ?? 'trim_ceph_mantle_squid')
-      : this.engawa ? 'trim_engawa' : SASHIMI_FILLET_TEX[this.view][this.fam];
+    this.texKey = this.ceph === 'octoWhole' ? 'trim_octo_boiled'          // 삶은 문어 실사 (098차)
+      : this.ceph === 'octoLeg' ? 'trim_octo_boiled_leg'                  // 삶은 문어 다리 실사
+      : this.ceph
+        ? (cephByproductIcon(
+          this.ceph === 'mantle' ? 'ceph_mantle_fillet' : this.ceph === 'fin' ? 'ceph_fin_meat' : 'ceph_arms',
+          source.speciesId) ?? 'trim_ceph_mantle_squid')
+        : this.engawa ? 'trim_engawa' : SASHIMI_FILLET_TEX[this.view][this.fam];
 
     // 닫기(X/ESC) — 완료 전 = 단순 취소(필렛 보존) / 완료 후 = onComplete로 정리
     this.requestClose = (): void => {
@@ -196,6 +205,26 @@ export class SashimiPanel extends DraggablePanel {
           [{ x: 0.755, y: 0.08 }, { x: 0.755, y: 0.92 }],
         ];
         order = [1, 0];
+      } else if (this.ceph === 'octoWhole') {
+        // 삶은 문어 — 머리 밑동을 감싸는 3컷 (좌 사선 → 아래 가로 → 우 사선. 근사 — F9 실측 대상)
+        paths = [
+          [{ x: 0.26, y: 0.30 }, { x: 0.38, y: 0.56 }],
+          [{ x: 0.38, y: 0.62 }, { x: 0.60, y: 0.62 }],
+          [{ x: 0.62, y: 0.56 }, { x: 0.73, y: 0.30 }],
+        ];
+        order = [0, 1, 2];
+      } else if (this.ceph === 'octoLeg') {
+        // 삶은 문어 다리 — 굵은 단면(오른쪽)부터 다리 결을 따라 **사선 7컷** (근사 — F9 실측 대상)
+        paths = [
+          [{ x: 0.82, y: 0.20 }, { x: 0.76, y: 0.52 }],
+          [{ x: 0.74, y: 0.16 }, { x: 0.67, y: 0.48 }],
+          [{ x: 0.65, y: 0.14 }, { x: 0.59, y: 0.45 }],
+          [{ x: 0.56, y: 0.15 }, { x: 0.51, y: 0.47 }],
+          [{ x: 0.47, y: 0.19 }, { x: 0.44, y: 0.52 }],
+          [{ x: 0.38, y: 0.26 }, { x: 0.38, y: 0.60 }],
+          [{ x: 0.29, y: 0.36 }, { x: 0.33, y: 0.68 }],
+        ];
+        order = [0, 1, 2, 3, 4, 5, 6];
       } else {
         // 다리부 — 촉완(오른쪽) 분리 1컷 (근사 — F9 실측 대상)
         paths = [[{ x: 0.70, y: 0.06 }, { x: 0.72, y: 0.94 }]];
@@ -373,6 +402,8 @@ export class SashimiPanel extends DraggablePanel {
         ? '컷: 가운데 가로 1회(두 덩어리) + 세로 10회 — 양 덩어리를 관통해 총 22점'
         : this.ceph === 'fin' ? '컷: 날개당 1회 — 좌우 날개를 각각 반으로 (총 4점)'
         : this.ceph === 'arms' ? '컷: 1회 — 촉완 2가닥을 다리 뭉치에서 분리 (회가 아닌 요리 재료)'
+        : this.ceph === 'octoWhole' ? '컷: 3회 — 머리 밑동을 따라 다리를 잘라냅니다 (삶은 문어 머리 1 + 다리 8)'
+        : this.ceph === 'octoLeg' ? '컷: 사선 7회 — 다리 결을 따라 얇게 썰어 숙회 8점을 냅니다'
         : this.engawa
           ? `컷: 총 ${spec.cuts}회 — 짧은 지느러미살 스트립을 3등분합니다`
           : `컷 방향: ${this.mode === 'advanced' ? '사선 (소기즈쿠리) — 옆에서 본 뷰' : '세로 (히라즈쿠리) — 위에서 본 뷰'}`,
@@ -623,6 +654,9 @@ export class SashimiPanel extends DraggablePanel {
     // 두족류 전용 연출 — 몸통살(가로 분리 + 양 덩어리 관통 세로컷) / 날개살(날개별 반쪽)
     if (this.ceph === 'mantle') { this.mantleSliceFx(pathIdx); return; }
     if (this.ceph === 'fin') { this.finSliceFx(pathIdx); return; }
+    // 삶은 문어 다리 분리 — 조각 베이크 없이 몸이 살짝 벌어지는 진동 (결과는 완료 팝업이 보여준다)
+    if (this.ceph === 'octoWhole') { this.octoWholeSliceFx(pathIdx); return; }
+    // octoLeg(숙회)는 아래 기본 경로 그대로 — 조각이 잘려 오른쪽으로 밀리는 팬아웃 연출을 공유한다
 
     // ── 분리 조각 — 이번 컷(왼쪽 경계)과 직전 컷(오른쪽 경계) 사이 **대각 영역** ──
     //  구 구현은 setCrop(직사각)이라 컷이 기울어도 절단면이 수직으로 남았다 (사용자 리포트 2026-08-07).
@@ -746,6 +780,22 @@ export class SashimiPanel extends DraggablePanel {
       const pc = this.pieces[i];
       this.scene.tweens.add({ targets: pc, x: pc.x + 5, duration: 240, ease: 'Cubic.easeOut' });
     }
+  }
+
+  /**
+   * 삶은 문어 다리 분리 연출 (098차) — 컷 방향으로 몸이 살짝 밀렸다 돌아오는 진동.
+   * 3컷이 서로 다른 방향(좌 사선/가로/우 사선)이라 조각 베이크 대신 촉감만 준다 —
+   * 실제 분리 결과(머리 1 + 다리 8)는 완료 팝업과 지급 아이템이 보여준다.
+   */
+  private octoWholeSliceFx(pathIdx: number): void {
+    const img = this.filletImg;
+    if (!img) return;
+    const dx = pathIdx === 0 ? -5 : pathIdx === 2 ? 5 : 0;
+    const dy = pathIdx === 1 ? 5 : 2;
+    this.scene.tweens.add({
+      targets: img, x: img.x + dx, y: img.y + dy, angle: dx * 0.5,
+      yoyo: true, duration: 110, ease: 'Sine.easeInOut',
+    });
   }
 
   /** 날개살 연출 (097차) — 해당 날개를 반쪽 2장으로 교체 후 벌어지는 팬아웃 */
@@ -911,12 +961,46 @@ export class SashimiPanel extends DraggablePanel {
       return;
     }
 
+    // ── 삶은 문어 다리 분리 (098차) — 회 조각이 아니라 **머리 ×1 + 다리 ×8** ──
+    if (this.ceph === 'octoWhole') {
+      const gW = this.source.weightG ?? 640;
+      const headG = Math.max(1, Math.round(gW * 0.28));
+      const legG = Math.max(1, Math.round((gW - headG) / 8));
+      const basePrice = this.source.basePrice || 2500;
+      InventoryStore.addItem({
+        id: 'inv_octo_boiled_head', name: '삶은 문어 머리', icon: '🐙',
+        iconTexture: 'trim_octo_boiled_head',
+        category: 'food', subCategory: '요리(삶음)',
+        basePrice: Math.max(500, Math.round(basePrice * 0.2)),
+        condition: 'fresh', conditionSinceMs: Date.now(), equippable: false, weightG: headG,
+      }, 1);
+      InventoryStore.addItem({
+        id: 'inv_octo_boiled_leg', name: '삶은 문어 다리', icon: '🐙',
+        iconTexture: 'trim_octo_boiled_leg',
+        category: 'food', subCategory: '요리(삶음)',
+        basePrice: Math.max(400, Math.round(basePrice * 0.8 / 8)),
+        condition: 'fresh', conditionSinceMs: Date.now(), equippable: false,
+        speciesId, weightG: legG,
+      }, 8);
+      InventoryStore.removeItem(this.source.id, false);
+      this.grantedPieceId = undefined;                       // 회 조각 아님 — 도마 스테이징 없음
+      const xpW = Math.round(8 + avg * 12);
+      const lvW = GameState.addFilletingXp(xpW);
+      this.buildResultOverlay('다리 분리 완료!', [
+        `삶은 문어 머리 ×1 (${headG}g) + 삶은 문어 다리 ×8 (${legG}g/개)`,
+        `평균 정확도 ${Math.round(avg * 100)}%  ·  손질 스킬 +${xpW} XP${lvW.leveledUp ? `  ★ 레벨업! Lv.${lvW.level} ★` : ''}`,
+        '다리를 도마에 올리면 [숙회 썰기 (8점)]로 문어 숙회를 낼 수 있습니다',
+      ]);
+      return;
+    }
+
     const weightG = this.source.weightG
-      ?? (this.ceph === 'mantle' ? 350 : this.ceph === 'fin' ? 60 : 200);
+      ?? (this.ceph === 'mantle' ? 350 : this.ceph === 'fin' ? 60 : this.ceph === 'octoLeg' ? 150 : 200);
     // 회 조각 — 접시 플레이팅 재료 (가격 개편 2026-08-03: 완성 사시미 가치는 **접시 완성 시**
     //  모듬/단품 가격표로 산정. 조각 자체는 원물 필렛 가치를 점수로 분할해 승계).
     //  엔가와 = 2컷 → **3조각** / 몸통살 = 11컷 → **22점**(양 덩어리 관통) / 날개살 = 2컷 → **4점**
     const pieceCount = this.ceph === 'mantle' ? 22 : this.ceph === 'fin' ? 4
+      : this.ceph === 'octoLeg' ? 8
       : this.engawa ? ENGAWA_PIECES : spec.cuts;
     const perPieceG = Math.max(1, Math.round(weightG / pieceCount));
     const pieceValue = Math.max(100, Math.round((this.source.basePrice || 2000) * (mult / 1.5) / pieceCount * spec.priceMult));
@@ -925,16 +1009,22 @@ export class SashimiPanel extends DraggablePanel {
 
     // 회 조각 지급 + 원물 필렛/엔가와/부산물 소모 (고급 = id 'adv' — 접시/스시 판별)
     //  아이콘 = 엔가와는 실사 스트립 / 두족류는 부위 실사 / 필렛은 탑뷰 슬라이스(sashimi_piece_{fam})
+    //  문어 숙회(098차)는 전용 실사('문어 숙회 한점') — 이름도 사용자 지정 명칭 그대로.
     const partLbl = this.ceph === 'mantle' ? '몸통살 ' : this.ceph === 'fin' ? '날개살 '
       : this.engawa ? '엔가와 ' : '';
     const seq = InventoryStore.nextCatchSeq();
     const grantedId = `inv_sashimi_cut_${this.mode === 'advanced' ? 'adv_' : ''}`
       + `${this.ceph ? `ceph_${this.ceph}_` : this.engawa ? 'engw_' : ''}${speciesId}_${seq}`;
+    const octoLeg = this.ceph === 'octoLeg';
+    const grantedName = octoLeg
+      ? `문어 숙회 한 점 (${grade}) ${perPieceG}g`
+      : `${nameKo} ${spec.namePrefix}${partLbl}회 조각 (${grade}) ${perPieceG}g`;
     InventoryStore.addItem({
       id: grantedId,
-      name: `${nameKo} ${spec.namePrefix}${partLbl}회 조각 (${grade}) ${perPieceG}g`,
+      name: grantedName,
       icon: '🍣',
-      iconTexture: this.ceph ? this.texKey : this.engawa ? 'trim_engawa' : `sashimi_piece_${this.fam}`,
+      iconTexture: octoLeg ? 'sashimi_piece_octopus'
+        : this.ceph ? this.texKey : this.engawa ? 'trim_engawa' : `sashimi_piece_${this.fam}`,
       category: 'food', subCategory: '회(사시미)',
       basePrice: pieceValue,
       condition: 'fresh', conditionSinceMs: Date.now(),
@@ -942,12 +1032,14 @@ export class SashimiPanel extends DraggablePanel {
       speciesId, weightG: perPieceG,
     }, pieceCount);
     this.grantedPieceId = grantedId;
-    // 날개살은 공유 스택 — 1개만 소모 (몸통살/필렛은 개체 아이템 통째)
-    if (this.ceph === 'fin') InventoryStore.removeQty(this.source.id, 1);
+    // 날개살·삶은 문어 다리는 공유 스택 — 1개만 소모 (몸통살/필렛은 개체 아이템 통째)
+    if (this.ceph === 'fin' || octoLeg) InventoryStore.removeQty(this.source.id, 1);
     else InventoryStore.removeItem(this.source.id, false);
 
     this.buildResultOverlay(`${spec.label} 완료!`, [
-      `${nameKo} ${spec.namePrefix}${partLbl}회 조각 (${grade}) ×${pieceCount}점  —  ${perPieceG}g/점`,
+      octoLeg
+        ? `문어 숙회 한 점 (${grade}) ×${pieceCount}점  —  ${perPieceG}g/점`
+        : `${nameKo} ${spec.namePrefix}${partLbl}회 조각 (${grade}) ×${pieceCount}점  —  ${perPieceG}g/점`,
       `평균 정확도 ${Math.round(avg * 100)}%  ·  조각당 ${pieceValue.toLocaleString()}원`,
       `손질 스킬 +${xp} XP${lv.leveledUp ? `  ★ 레벨업! Lv.${lv.level} ★` : ''}`,
       '요리 탭 [사시미 만들기]에서 접시에 담아 사시미를 완성하세요 (모듬/단품)',

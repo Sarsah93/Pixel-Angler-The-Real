@@ -997,7 +997,11 @@ export class ButcheryPanel extends DraggablePanel {
             id: def.stack > 1 ? `inv_ceph_${def.id}` : `inv_ceph_${def.id}_${speciesId}_${seq}`,
             name: def.stack > 1 ? def.nameKo : `${nameKo} ${def.nameKo} ${g}g`,
             icon: '🦑', iconTexture: cephByproductIcon(def.id, speciesId),
-            byproductKind: 'viscera', basePrice: price,
+            // ⚠ 'viscera'는 **내장류에만** — 전 부산물에 박으면 몸통살·통마리에 인벤 우클릭
+            //   '만들기'(내장→밑밥 전환)가 떠서 메인 수율이 밑밥으로 갈리는 함정 (098차 정정)
+            byproductKind: def.id === 'octo_viscera' || def.id === 'octo_ink_sac' || def.id === 'ceph_gonad'
+              ? 'viscera' : undefined,
+            basePrice: price,
             speciesId, weightG: def.stack > 1 ? undefined : g,
           },
         });
