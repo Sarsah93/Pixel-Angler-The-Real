@@ -67,6 +67,7 @@ import { ConfirmDialog, QuantityDialog } from '../ui/Dialogs.js';
 import { applyScreenFixed } from '../ui/DraggablePanel.js';
 import { InventoryStore, InvItem } from '../store/InventoryStore.js';
 import { CoolerStore } from '../store/CoolerStore.js';
+import { DiscoveryStore } from '../store/DiscoveryStore.js';
 import { BuildingKind, BUILDING_LABEL, BUILDING_KIND_CYCLE, SHOP_CATALOG, ShopEntry } from '../data/ShopCatalog.js';
 
 interface RegionFieldInit {
@@ -332,6 +333,13 @@ export class RegionFieldScene extends Phaser.Scene {
     });
     this.add.existing(this.hud);
     this.hud.pushLog(`[이동] ${this.node.name}에 도착했습니다.`);
+
+    // ── 신규 발견 토스트 — 도감/위키에 처음 등록되는 순간 HUD 로그로 알림 ──
+    DiscoveryStore.onNew = (entry, name) => {
+      const kindLabel = entry.kind === 'fish' ? '어종' : entry.kind === 'creature' ? '해양생물' : '아이템';
+      this.hud?.pushLog(`[도감] 새로운 ${kindLabel} 발견 — ${name} (N 키로 확인)`);
+    };
+    this.events.once('shutdown', () => { DiscoveryStore.onNew = null; });
 
     // ── 보일링/스쿨링 필드 이벤트 (피딩타임 활성도 기반 발생 롤) ──
     this.refreshFieldFeeding();
@@ -813,6 +821,12 @@ export class RegionFieldScene extends Phaser.Scene {
     this.input.keyboard!.on('keydown-U', () => { if (!this.isPaused) this.toggleUtilization('tackles'); });
     this.input.keyboard!.on('keydown-B', () => { if (!this.isPaused) this.toggleCooler(); });
     this.input.keyboard!.on('keydown-R', () => { if (!this.isPaused && !this.uiBlocked) this.toggleBike(); });
+    // N: 도감 & 조과첩 (발견 도감 — 인게임 열람. 복귀는 stop+resume)
+    this.input.keyboard!.on('keydown-N', () => {
+      if (this.isPaused || this.uiBlocked) return;
+      this.scene.pause();
+      this.scene.launch('AnglerLogScene', { returnScene: 'RegionFieldScene' });
+    });
     this.input.keyboard!.on('keydown-E', () => {
       if (this.isPaused) return;
       // 홈타운 오브젝트(문/버스/설치물 회수) > 건물 거래 > 장비 창

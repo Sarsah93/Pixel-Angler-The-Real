@@ -19,8 +19,10 @@
 | [`inventory-equipment.md`](inventory-equipment.md) | 인벤토리·장비·쿨러/냉장고·신선도·세이브 |
 | [`economy-data.md`](economy-data.md) | 상점·판매가·경락 시세·공공 API 5종 |
 | [`world-field.md`](world-field.md) | 월드맵·지역 타일맵·필드 이동/환경/조명·씬 전환 |
-| [`home-base.md`](home-base.md) | 홈타운·집 실내·설치(배치)·저장 정책 |
+| [`home-base.md`](home-base.md) | 홈타운·집 실내·설치(배치)·저장 정책 · **농장 경영 로드맵(E1~E5)** |
+| [`night-hunting-trap.md`](night-hunting-trap.md) | 해루질·통발 — 엔진/씬 현황·배선 로드맵(D1~D5) |
+| [`discovery-wiki.md`](discovery-wiki.md) | 발견 도감(어종/해양생물/아이템 위키)·dev 크리에이티브 콘솔(F10) |
 | [`ui-framework.md`](ui-framework.md) | DraggablePanel·z-order·텍스트 검수·가이드 허브·튜닝/검증 도구 |
 
-> 없는 시스템(해루질·통발·요리·제작·퀘스트·멀티)은 착수 시점에 페이지를 만든다.
+> 없는 시스템(요리·제작·퀘스트·멀티)은 착수 시점에 페이지를 만든다.
 > 만들기 전까지는 [`../04-BACKLOG.md`](../04-BACKLOG.md)에 한 줄로만 존재한다.

@@ -1,17 +1,41 @@
 /**
  * @file AnglerLogScene.ts
- * @description 조과첩(실데이터 기록) 및 어종 도감 씬
+ * @description 도감 & 조과첩 씬 — 어종/해양생물/아이템 위키 + 조과 기록
+ *
+ * 모든 도감 탭은 DiscoveryStore(발견 기록) 기반 —
+ * 한 번이라도 조우(어획/포획/채집/취득)한 항목만 공개하고, 미발견은 실루엣/???로 가린다.
  */
 
 import Phaser from 'phaser';
 import { GameState } from '../store/GameState.js';
-import { FISH_DATABASE, getSpotById } from '@tra/core';
+import {
+  FISH_DATABASE, getSpotById, SHORE_CREATURE_DATABASE,
+  DISCOVERY_SOURCE_LABEL,
+} from '@tra/core';
+import type { ShoreCreatureCategory } from '@tra/core';
+import { DiscoveryStore } from '../store/DiscoveryStore.js';
 import { FISH_TEXTURE } from '../data/FishTextures.js';
+import { itemWikiByCategory } from '../data/WikiCatalog.js';
+import { createItemIcon } from '../ui/ItemIcon.js';
+import { CATEGORY_LABEL } from '../store/InventoryStore.js';
+import type { InvCategory } from '../store/InventoryStore.js';
 import { clampTextWidth } from '../ui/TextFit.js';
 import { fadeOutThen } from './SceneFade.js';
 
+type LogTab = 'encyclopedia' | 'creatures' | 'items' | 'history';
+
+/** 해양생물 카테고리 라벨/이모지 (위키 카드용) */
+const CREATURE_CAT_LABEL: Record<ShoreCreatureCategory, string> = {
+  shellfish: '조개류', crustacean: '갑각류', cephalopod: '두족류',
+  echinoderm: '극피동물', bivalve: '이매패류', gastropod: '복족류',
+};
+const CREATURE_CAT_EMOJI: Record<ShoreCreatureCategory, string> = {
+  shellfish: '🐚', crustacean: '🦀', cephalopod: '🐙',
+  echinoderm: '🦔', bivalve: '🦪', gastropod: '🐌',
+};
+
 export class AnglerLogScene extends Phaser.Scene {
-  private currentTab: 'encyclopedia' | 'history' = 'encyclopedia';
+  private currentTab: LogTab = 'encyclopedia';
   private tabContainer?: Phaser.GameObjects.Container;
 
   // 조과 기록용 정렬/필터/페이징 상태
@@ -20,10 +44,11 @@ export class AnglerLogScene extends Phaser.Scene {
   private currentPage = 0;
   /** 조과 기록 1페이지 표시 수 — 행 60px, 시작 210 → 210+6*60+50=620 ≤ 네비(675) */
   private readonly ITEMS_PER_PAGE = 7;
+  /** 아이템 위키 카테고리 필터 */
+  private itemCatFilter: InvCategory = 'gear';
 
-  // 탭 버튼 오브젝트 참조
-  private tabBtnEncyBg?: Phaser.GameObjects.Rectangle;
-  private tabBtnHistBg?: Phaser.GameObjects.Rectangle;
+  // 탭 버튼 배경 참조 (활성 하이라이트)
+  private tabBtnBgs: Partial<Record<LogTab, Phaser.GameObjects.Rectangle>> = {};
 
   /** 나가기 시 resume할 씬 (메인 메뉴/필드 어디서든 진입 가능) */
   private returnScene = 'FieldScene';
@@ -43,7 +68,7 @@ export class AnglerLogScene extends Phaser.Scene {
     this.add.rectangle(0, 0, width, height, 0x050b14).setOrigin(0, 0);
 
     // 타이틀
-    this.add.text(40, 30, '📖 꾼의 조과첩 & 어종 도감 (Angler\'s Log)', {
+    this.add.text(40, 30, '📖 도감 & 조과첩 (Angler\'s Log)', {
       fontFamily: '"Noto Sans KR", sans-serif',
       fontSize: '24px',
       color: '#4af2a1',
@@ -76,39 +101,34 @@ export class AnglerLogScene extends Phaser.Scene {
     backBtn.on('pointerout', () => backBg.setFillStyle(0x1f3d5a));
 
     // ─────────────────────────────────────────────
-    // [UI] 탭 버튼 영역
+    // [UI] 탭 버튼 영역 (배열 기반 4탭)
     // ─────────────────────────────────────────────
     const tabY = 110;
-
-    // 1) 어종 도감 탭 버튼
-    const tabBtnEncy = this.add.container(140, tabY).setInteractive(
-      new Phaser.Geom.Rectangle(-80, -16, 160, 32),
-      Phaser.Geom.Rectangle.Contains
-    );
-    this.tabBtnEncyBg = this.add.rectangle(0, 0, 160, 32, 0x0e1c2d).setStrokeStyle(1.5, 0x2a5a8a);
-    const tabBtnEncyText = this.add.text(0, 0, '어종 도감', {
-      fontFamily: '"Noto Sans KR", sans-serif',
-      fontSize: '14px',
-      color: '#e8f4fd',
-      fontStyle: 'bold',
-    }).setOrigin(0.5);
-    tabBtnEncy.add([this.tabBtnEncyBg, tabBtnEncyText]);
-    tabBtnEncy.on('pointerdown', () => this.switchTab('encyclopedia'));
-
-    // 2) 조과 기록 탭 버튼
-    const tabBtnHist = this.add.container(310, tabY).setInteractive(
-      new Phaser.Geom.Rectangle(-80, -16, 160, 32),
-      Phaser.Geom.Rectangle.Contains
-    );
-    this.tabBtnHistBg = this.add.rectangle(0, 0, 160, 32, 0x0e1c2d).setStrokeStyle(1.5, 0x2a5a8a);
-    const tabBtnHistText = this.add.text(0, 0, '나의 조과 기록', {
-      fontFamily: '"Noto Sans KR", sans-serif',
-      fontSize: '14px',
-      color: '#e8f4fd',
-      fontStyle: 'bold',
-    }).setOrigin(0.5);
-    tabBtnHist.add([this.tabBtnHistBg, tabBtnHistText]);
-    tabBtnHist.on('pointerdown', () => this.switchTab('history'));
+    const TABS: { key: LogTab; label: string; w: number }[] = [
+      { key: 'encyclopedia', label: '어종 도감',     w: 140 },
+      { key: 'creatures',    label: '해양생물',      w: 130 },
+      { key: 'items',        label: '아이템 위키',   w: 140 },
+      { key: 'history',      label: '나의 조과 기록', w: 160 },
+    ];
+    let tabX = 60;
+    for (const tab of TABS) {
+      const cx = tabX + tab.w / 2;
+      const btn = this.add.container(cx, tabY).setInteractive(
+        new Phaser.Geom.Rectangle(-tab.w / 2, -16, tab.w, 32),
+        Phaser.Geom.Rectangle.Contains
+      );
+      const bg = this.add.rectangle(0, 0, tab.w, 32, 0x0e1c2d).setStrokeStyle(1.5, 0x2a5a8a);
+      const txt = this.add.text(0, 0, tab.label, {
+        fontFamily: '"Noto Sans KR", sans-serif',
+        fontSize: '14px',
+        color: '#e8f4fd',
+        fontStyle: 'bold',
+      }).setOrigin(0.5);
+      btn.add([bg, txt]);
+      btn.on('pointerdown', () => this.switchTab(tab.key));
+      this.tabBtnBgs[tab.key] = bg;
+      tabX += tab.w + 10;
+    }
 
     // ESC 설정
     this.input.keyboard?.on('keydown-ESC', () => this.onBack());
@@ -129,17 +149,13 @@ export class AnglerLogScene extends Phaser.Scene {
     }, 220);
   }
 
-  private switchTab(tab: 'encyclopedia' | 'history'): void {
+  private switchTab(tab: LogTab): void {
     if (this.currentTab !== tab) this.currentPage = 0;   // 탭마다 페이지 수가 달라 초기화
     this.currentTab = tab;
 
     // 활성 탭 버튼 시각적 효과 설정
-    if (tab === 'encyclopedia') {
-      this.tabBtnEncyBg?.setFillStyle(0x2a5a8a);
-      this.tabBtnHistBg?.setFillStyle(0x0e1c2d);
-    } else {
-      this.tabBtnEncyBg?.setFillStyle(0x0e1c2d);
-      this.tabBtnHistBg?.setFillStyle(0x2a5a8a);
+    for (const [key, bg] of Object.entries(this.tabBtnBgs)) {
+      bg?.setFillStyle(key === tab ? 0x2a5a8a : 0x0e1c2d);
     }
 
     this.renderCurrentTab();
@@ -150,11 +166,20 @@ export class AnglerLogScene extends Phaser.Scene {
       this.tabContainer.removeAll(true);
     }
 
-    if (this.currentTab === 'encyclopedia') {
-      this.renderEncyclopedia();
-    } else {
-      this.renderHistory();
+    switch (this.currentTab) {
+      case 'encyclopedia': this.renderEncyclopedia(); break;
+      case 'creatures':    this.renderCreatures();    break;
+      case 'items':        this.renderItems();        break;
+      case 'history':      this.renderHistory();      break;
     }
+  }
+
+  /** 발견 정보 한 줄 ("낚시로 어획 · 8/14") — 발견 카드 하단 공통 표기 */
+  private discoveryLine(kind: 'fish' | 'creature' | 'item', id: string): string | null {
+    const e = DiscoveryStore.get(kind, id);
+    if (!e) return null;
+    const d = new Date(e.firstAtMs);
+    return `${DISCOVERY_SOURCE_LABEL[e.source]} · ${d.getMonth() + 1}/${d.getDate()}`;
   }
 
   // ─────────────────────────────────────────────
@@ -178,8 +203,8 @@ export class AnglerLogScene extends Phaser.Scene {
     const records = GameState.player.caughtFishHistory;
     const pageFish = FISH_DATABASE.slice(this.currentPage * perPage, (this.currentPage + 1) * perPage);
 
-    // 발견 현황 요약 (전체 기준)
-    const found = FISH_DATABASE.filter((f) => records.some((r) => r.fishSpeciesId === f.id)).length;
+    // 발견 현황 요약 — 발견 = 낚시 어획 + 통발 포획 등 최초 조우 (DiscoveryStore 단일 기준)
+    const found = FISH_DATABASE.filter((f) => DiscoveryStore.isDiscovered('fish', f.id)).length;
     const summary = this.add.text(width - 40, startY - 26,
       `발견 ${found} / ${FISH_DATABASE.length}종`, {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#8faabf',
@@ -203,8 +228,9 @@ export class AnglerLogScene extends Phaser.Scene {
 
       const caughtCount = records.filter(r => r.fishSpeciesId === fish.id).length;
       const bestRecord = GameState.player.personalRecords[fish.id] || 0;
+      const discovered = DiscoveryStore.isDiscovered('fish', fish.id);
 
-      if (caughtCount > 0) {
+      if (discovered) {
         // 이름·학명 = 카드 전체 폭(안쪽 여백 15/12), 실사 이미지는 좌측 아래
         const nameText = clampTextWidth(this.add.text(x + 15, y + 12, fish.nameKo, {
           fontFamily: '"Noto Sans KR", sans-serif',
@@ -242,12 +268,21 @@ export class AnglerLogScene extends Phaser.Scene {
         const season = fish.peakSeasonMonths.length > 0
           ? `제철 ${fish.peakSeasonMonths.slice(0, 4).join('·')}월`
           : '제철 연중';
-        const rows: [string, string][] = [
-          [`최대어 ${bestRecord} cm`, '#e8f4fd'],
-          [`누적 ${caughtCount} 수`, '#e8f4fd'],
-          [season, '#8faabf'],
-          [`kg당 ${fish.sashimiValuePerKg.toLocaleString()}원`, '#c8a060'],
-        ];
+        // 낚시 어획이 없는 발견(통발 포획 등)은 기록 대신 발견 경로를 보여준다
+        const discLine = this.discoveryLine('fish', fish.id);
+        const rows: [string, string][] = caughtCount > 0
+          ? [
+              [`최대어 ${bestRecord} cm`, '#e8f4fd'],
+              [`누적 ${caughtCount} 수`, '#e8f4fd'],
+              [season, '#8faabf'],
+              [`kg당 ${fish.sashimiValuePerKg.toLocaleString()}원`, '#c8a060'],
+            ]
+          : [
+              [`🔍 ${discLine ?? '발견'}`, '#8fd4b8'],
+              ['낚시 기록 없음', '#607b8e'],
+              [season, '#8faabf'],
+              [`kg당 ${fish.sashimiValuePerKg.toLocaleString()}원`, '#c8a060'],
+            ];
         rows.forEach(([label, color], i) => {
           const t = clampTextWidth(this.add.text(SX, y + 50 + i * 19, label, {
             fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color,
@@ -255,20 +290,242 @@ export class AnglerLogScene extends Phaser.Scene {
           this.tabContainer?.add(t);
         });
       } else {
-        const secretText = this.add.text(x + itemW / 2, y + itemH / 2 - 10, '???', {
+        // ── 미발견 카드: 실루엣 + ??? + 서식 힌트 (어디서 만날 수 있는지만 귀띔) ──
+        const texKey = FISH_TEXTURE[fish.id];
+        if (texKey && this.textures.exists(texKey)) {
+          const src = this.textures.get(texKey).getSourceImage() as { width: number; height: number };
+          const SIL_W = 120, SIL_H = 60;
+          const k = Math.min(SIL_W / src.width, SIL_H / src.height);
+          // setTintFill = 알파만 남기고 단색 채움 → 검은 실루엣
+          const sil = this.add.image(x + itemW / 2, y + 52, texKey)
+            .setDisplaySize(Math.round(src.width * k), Math.round(src.height * k))
+            .setTintFill(0x152538)
+            .setAlpha(0.9);
+          this.tabContainer?.add(sil);
+        }
+        const secretText = this.add.text(x + itemW / 2, y + 96, '???', {
           fontFamily: '"Press Start 2P", monospace',
-          fontSize: '16px',
+          fontSize: '14px',
           color: '#2a5a8a'
         }).setOrigin(0.5);
-        const descText = this.add.text(x + itemW / 2, y + itemH / 2 + 15, '미발견', {
+        // 서식 힌트 — 수심대·수층 (이름은 숨긴 채 조우 조건만)
+        const LAYER_LABEL = { surface: '표층', mid: '중층', bottom: '바닥층' } as const;
+        const hint = `${fish.preferredDepthM[0]}~${fish.preferredDepthM[1]}m · ${LAYER_LABEL[fish.swimmingLayer]}${fish.isNocturnal ? ' · 야행성' : ''}`;
+        const descText = clampTextWidth(this.add.text(x + itemW / 2, y + 120, hint, {
           fontFamily: '"Noto Sans KR", sans-serif',
-          fontSize: '11px',
-          color: '#1f3d5a'
-        }).setOrigin(0.5);
+          fontSize: '10px',
+          color: '#3a5a78'
+        }).setOrigin(0.5), itemW - 24);
 
         this.tabContainer?.add([secretText, descText]);
       }
     });
+
+    this.renderPageNav(maxPage, width, height);
+  }
+
+  // ─────────────────────────────────────────────
+  // 1b. 해양생물 도감 탭 (해루질·통발 생물)
+  // ─────────────────────────────────────────────
+  private renderCreatures(): void {
+    const { width, height } = this.scale;
+    const startX = 40;
+    const startY = 160;
+    const itemW = 220;
+    const itemH = 150;
+    const colCount = 4;
+    const GAP = 20;
+    const rowsPerPage = Math.max(1, Math.floor((height - 45 - 24 - startY + GAP) / (itemH + GAP)));
+    const perPage = rowsPerPage * colCount;
+    const all = SHORE_CREATURE_DATABASE;
+    const maxPage = Math.max(0, Math.ceil(all.length / perPage) - 1);
+    this.currentPage = Math.min(this.currentPage, maxPage);
+
+    const found = all.filter((c) => DiscoveryStore.isDiscovered('creature', c.id)).length;
+    const summary = this.add.text(width - 40, startY - 26,
+      `발견 ${found} / ${all.length}종 — 해루질·통발로 채집해 발견`, {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#8faabf',
+      }).setOrigin(1, 0);
+    this.tabContainer?.add(summary);
+
+    const page = all.slice(this.currentPage * perPage, (this.currentPage + 1) * perPage);
+    page.forEach((cr, idx) => {
+      const col = idx % colCount;
+      const row = Math.floor(idx / colCount);
+      const x = startX + col * (itemW + GAP);
+      const y = startY + row * (itemH + GAP);
+
+      const card = this.add.graphics();
+      card.fillStyle(0x0e1c2d);
+      card.fillRoundedRect(x, y, itemW, itemH, 4);
+      card.lineStyle(1.5, 0x2a5a8a, 0.8);
+      card.strokeRoundedRect(x, y, itemW, itemH, 4);
+      this.tabContainer?.add(card);
+
+      if (DiscoveryStore.isDiscovered('creature', cr.id)) {
+        const nameText = clampTextWidth(this.add.text(x + 15, y + 12, cr.nameKo, {
+          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '15px', color: '#4af2a1', fontStyle: 'bold',
+        }), itemW - 27);
+        const sciText = clampTextWidth(this.add.text(x + 15, y + 32, cr.scientificName, {
+          fontFamily: 'monospace', fontSize: '9px', color: '#5a8fab', fontStyle: 'italic',
+        }), itemW - 27);
+        // 큰 이모지 아이콘 (전용 스프라이트 에셋 도입 전 — spriteKey는 예약)
+        const emoji = this.add.text(x + 44, y + 84, CREATURE_CAT_EMOJI[cr.category] ?? '🐚', {
+          fontSize: '38px',
+        }).setOrigin(0.5);
+        this.tabContainer?.add([nameText, sciText, emoji]);
+
+        const SX = x + 92;
+        const SW = itemW - 92 - 12;
+        const closed = cr.closedSeasonMonths.length > 0
+          ? `금어기 ${cr.closedSeasonMonths.join('·')}월` : '금어기 없음';
+        const discLine = this.discoveryLine('creature', cr.id);
+        const rows: [string, string][] = [
+          [CREATURE_CAT_LABEL[cr.category] ?? cr.category, '#8faabf'],
+          [`kg당 ${cr.marketValuePerKg.toLocaleString()}원`, '#c8a060'],
+          [closed, cr.closedSeasonMonths.length > 0 ? '#d47a6a' : '#607b8e'],
+          [`🔍 ${discLine ?? '발견'}`, '#8fd4b8'],
+        ];
+        rows.forEach(([label, color], i) => {
+          const t = clampTextWidth(this.add.text(SX, y + 54 + i * 19, label, {
+            fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color,
+          }), SW);
+          this.tabContainer?.add(t);
+        });
+      } else {
+        // 미발견 — 카테고리 실루엣 이모지(어둡게) + 조우 힌트
+        const emoji = this.add.text(x + itemW / 2, y + 52, CREATURE_CAT_EMOJI[cr.category] ?? '🐚', {
+          fontSize: '34px',
+        }).setOrigin(0.5).setAlpha(0.18);
+        const secretText = this.add.text(x + itemW / 2, y + 92, '???', {
+          fontFamily: '"Press Start 2P", monospace', fontSize: '14px', color: '#2a5a8a',
+        }).setOrigin(0.5);
+        const timeHint = cr.discoveryTime === 'night' ? '야간' : cr.discoveryTime === 'day' ? '주간' : '주야';
+        const licHint = cr.requiredLicense ? ' · 심화 면허' : '';
+        const hint = clampTextWidth(this.add.text(x + itemW / 2, y + 118,
+          `${timeHint} 해루질·통발${licHint}`, {
+            fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#3a5a78',
+          }).setOrigin(0.5), itemW - 24);
+        this.tabContainer?.add([emoji, secretText, hint]);
+      }
+    });
+
+    this.renderPageNav(maxPage, width, height);
+  }
+
+  // ─────────────────────────────────────────────
+  // 1c. 아이템 위키 탭 (시드 + 상점 전 품목)
+  // ─────────────────────────────────────────────
+  private renderItems(): void {
+    const { width, height } = this.scale;
+    const startX = 40;
+    const filterY = 160;
+    const startY = 196;
+    const itemW = 220;
+    const itemH = 118;
+    const colCount = 4;
+    const GAP = 16;
+
+    // 카테고리 필터 바
+    const cats: InvCategory[] = ['gear', 'consumable', 'food', 'tackle', 'lure', 'etc'];
+    let fx = startX;
+    for (const cat of cats) {
+      const selected = this.itemCatFilter === cat;
+      const label = CATEGORY_LABEL[cat];
+      const bw = 86;
+      const btn = this.add.container(fx + bw / 2, filterY + 10).setInteractive(
+        new Phaser.Geom.Rectangle(-bw / 2, -12, bw, 24),
+        Phaser.Geom.Rectangle.Contains
+      );
+      const bg = this.add.rectangle(0, 0, bw, 24, selected ? 0x2a5a8a : 0x0e1c2d).setStrokeStyle(1, 0x1f3d5a);
+      const t = this.add.text(0, 0, label, {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px',
+        color: selected ? '#4af2a1' : '#a0b8c8',
+      }).setOrigin(0.5);
+      btn.add([bg, t]);
+      btn.on('pointerdown', () => {
+        this.itemCatFilter = cat;
+        this.currentPage = 0;
+        this.renderCurrentTab();
+      });
+      this.tabContainer?.add(btn);
+      fx += bw + 8;
+    }
+
+    const entries = itemWikiByCategory(this.itemCatFilter);
+    const rowsPerPage = Math.max(1, Math.floor((height - 45 - 24 - startY + GAP) / (itemH + GAP)));
+    const perPage = rowsPerPage * colCount;
+    const maxPage = Math.max(0, Math.ceil(entries.length / perPage) - 1);
+    this.currentPage = Math.min(this.currentPage, maxPage);
+
+    const foundAll = entries.filter((e) => DiscoveryStore.isDiscovered('item', e.id)).length;
+    const summary = this.add.text(width - 40, filterY, `발견 ${foundAll} / ${entries.length} — 취득하면 등록`, {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#8faabf',
+    }).setOrigin(1, 0);
+    this.tabContainer?.add(summary);
+
+    const page = entries.slice(this.currentPage * perPage, (this.currentPage + 1) * perPage);
+    page.forEach((entry, idx) => {
+      const col = idx % colCount;
+      const row = Math.floor(idx / colCount);
+      const x = startX + col * (itemW + GAP);
+      const y = startY + row * (itemH + GAP);
+
+      const card = this.add.graphics();
+      card.fillStyle(0x0e1c2d);
+      card.fillRoundedRect(x, y, itemW, itemH, 4);
+      card.lineStyle(1, 0x1f3d5a, 0.9);
+      card.strokeRoundedRect(x, y, itemW, itemH, 4);
+      this.tabContainer?.add(card);
+
+      if (DiscoveryStore.isDiscovered('item', entry.id)) {
+        // 아이콘 (이미지 아이콘 있으면 이미지, 없으면 이모지)
+        const icon = createItemIcon(this, x + 26, y + 26, entry, 30);
+        this.tabContainer?.add(icon);
+
+        const nameText = clampTextWidth(this.add.text(x + 48, y + 12, entry.name, {
+          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px', color: '#e8f4fd', fontStyle: 'bold',
+        }), itemW - 60);
+        const subText = clampTextWidth(this.add.text(x + 48, y + 30, `${entry.subCategory} · ${entry.basePrice.toLocaleString()}원`, {
+          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#8faabf',
+        }), itemW - 60);
+        this.tabContainer?.add([nameText, subText]);
+
+        // 설명 (2줄 워드랩 — 카드 밖 금지)
+        if (entry.desc) {
+          const desc = this.add.text(x + 12, y + 50, entry.desc, {
+            fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#a0b8c8',
+            wordWrap: { width: itemW - 24 }, maxLines: 2,
+          });
+          this.tabContainer?.add(desc);
+        }
+
+        const discLine = this.discoveryLine('item', entry.id);
+        const foot = clampTextWidth(this.add.text(x + 12, y + itemH - 20, `🔍 ${discLine ?? '취득'}`, {
+          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#8fd4b8',
+        }), itemW - 24);
+        this.tabContainer?.add(foot);
+      } else {
+        const secretText = this.add.text(x + itemW / 2, y + 40, '???', {
+          fontFamily: '"Press Start 2P", monospace', fontSize: '13px', color: '#2a5a8a',
+        }).setOrigin(0.5);
+        // 입수 힌트 — 판매처(있으면) / 소분류만
+        const hintSrc = entry.soldAt.length > 0
+          ? `${entry.soldAt.join('·')}에서 구매`
+          : `${entry.subCategory} — 플레이로 입수`;
+        const hint = clampTextWidth(this.add.text(x + itemW / 2, y + 72, hintSrc, {
+          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#3a5a78',
+        }).setOrigin(0.5), itemW - 24);
+        this.tabContainer?.add([secretText, hint]);
+      }
+    });
+
+    if (entries.length === 0) {
+      const empty = this.add.text(width / 2, startY + 120, '이 카테고리에 등록된 품목이 없습니다.', {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px', color: '#607b8e',
+      }).setOrigin(0.5);
+      this.tabContainer?.add(empty);
+    }
 
     this.renderPageNav(maxPage, width, height);
   }

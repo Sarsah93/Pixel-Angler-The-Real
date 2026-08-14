@@ -103,6 +103,11 @@ export interface TrapSpec {
   maxDurability: number;
   /** 목표 생물 카테고리 */
   targetCategories: ShoreCreatureCategory[];
+  /**
+   * 목표 어종 (FishDatabase speciesId) — 장어 통발·어류 그물 통발용.
+   * 지정 시 해당 어종이 해루질 생물과 함께 포획 후보에 편입된다.
+   */
+  targetFishSpecies?: string[];
 }
 
 /** 통발 설치 상태 */
@@ -123,10 +128,13 @@ export interface DeployedTrap {
 }
 
 export interface TrapCatchItem {
+  /** 해루질 생물 id 또는 (isFishSpecies=true면) FishDatabase speciesId */
   creatureId: string;
   nameKo: string;
   countOrWeightG: number;
   enteredAt: Date;
+  /** true면 creatureId가 어종(FishDatabase) — 쿨러 이송 시 type 'fish'로 분류 */
+  isFishSpecies?: boolean;
 }
 
 /** 통발 조업 결과 */

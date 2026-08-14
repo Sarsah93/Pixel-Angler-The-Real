@@ -37,6 +37,7 @@ import { EnvironmentStore } from './EnvironmentStore.js';
 import { CoolerStore, CoolerSaveState } from './CoolerStore.js';
 import { InventoryStore, InventorySaveState } from './InventoryStore.js';
 import { FridgeStore, FridgeSaveState } from './FridgeStore.js';
+import { DiscoveryStore, DiscoverySaveState } from './DiscoveryStore.js';
 
 // ─────────────────────────────────────────────
 // 기본 쿨러 상태
@@ -142,6 +143,8 @@ interface SaveData {
   flags?: Record<string, boolean>;
   /** 맵별 오브젝트 월드 상태 — 초기 배치 − removed + moved + placed (HOMETOWN_HOME_SPEC) */
   worldObjects?: Record<string, WorldObjectState>;
+  /** 발견(도감/위키) 기록 — 어종·해양생물·아이템. 구세이브는 어획 기록에서 백필 */
+  discoveries?: DiscoverySaveState;
   version: number;
 }
 
@@ -212,6 +215,9 @@ export class GameStateManager {
       }];
     }
 
+    // 시드 인벤 발견 동기 — 첫 부팅(세이브 없음)은 applySaveData를 거치지 않으므로 여기서 보장 (멱등)
+    this.syncInventoryDiscoveries();
+
     this._isInitialized = true;
     console.log('[GameState] Initialized. Player:', this._player?.nickname);
   }
@@ -235,6 +241,25 @@ export class GameStateManager {
     InventoryStore.deserialize(saved.inventoryStore);
     // 집 냉장고 복원 (냉동고/냉장고 보관물)
     FridgeStore.deserialize(saved.fridge);
+    // 발견 기록 복원 — 구세이브(필드 없음)는 어획 기록의 어종을 'legacy'로 백필
+    DiscoveryStore.deserialize(
+      saved.discoveries,
+      (saved.player?.caughtFishHistory ?? []).map((r) => r.fishSpeciesId),
+    );
+    this.syncInventoryDiscoveries();
+  }
+
+  /**
+   * 인벤토리 보유 아이템을 위키 발견 처리 (로드/뉴게임 직후 — 갖고 있으면 본 것).
+   * onNew 훅을 잠시 꺼서 일괄 동기 시 토스트가 쏟아지지 않게 한다.
+   */
+  private syncInventoryDiscoveries(): void {
+    const hook = DiscoveryStore.onNew;
+    DiscoveryStore.onNew = null;
+    for (const it of InventoryStore.items) {
+      DiscoveryStore.record('item', it.id, 'inventory');
+    }
+    DiscoveryStore.onNew = hook;
   }
 
   // ─── Getter ───────────────────────────────
@@ -352,6 +377,9 @@ export class GameStateManager {
       this.player.personalRecords[speciesId] = lengthCm;
     }
 
+    // 도감 발견 기록 (최초 1회 — 이미 발견된 어종은 무시)
+    DiscoveryStore.record('fish', speciesId, 'catch');
+
     const record: CaughtFishRecord = {
       id: crypto.randomUUID(),
       fishSpeciesId: speciesId,
@@ -431,6 +459,7 @@ export class GameStateManager {
   /** 해루질 결과를 쿨러에 일괄 추가 */
   addHarvestToCooler(harvestItems: ShoreHarvestItem[]): void {
     for (const h of harvestItems) {
+      DiscoveryStore.record('creature', h.creatureId, 'night_hunting');
       this.addToCooler({
         instanceId: `harvest_${Date.now()}_${Math.random().toString(36).slice(2)}`,
         type: h.category === 'crustacean' ? 'crustacean'
@@ -448,9 +477,11 @@ export class GameStateManager {
   /** 통발 포획물을 쿨러에 일괄 추가 */
   addTrapCatchToCooler(catchItems: TrapCatchItem[]): void {
     for (const c of catchItems) {
+      DiscoveryStore.record(c.isFishSpecies ? 'fish' : 'creature', c.creatureId, 'trap');
       this.addToCooler({
         instanceId: `trap_${Date.now()}_${Math.random().toString(36).slice(2)}`,
-        type: 'crustacean',
+        // 어종(장어·볼락 등)은 'fish'로 — speciesId가 FishDatabase id라 판매가·도감 경로 연동
+        type: c.isFishSpecies ? 'fish' : 'crustacean',
         speciesId: c.creatureId,
         nameKo: c.nameKo,
         weightGrams: c.countOrWeightG,
@@ -551,6 +582,7 @@ export class GameStateManager {
       fridge: FridgeStore.serialize(),
       flags: this._flags,
       worldObjects: this._worldObjects,
+      discoveries: DiscoveryStore.serialize(),
       version: SAVE_VERSION,
     };
   }
@@ -724,6 +756,8 @@ export class GameStateManager {
     CoolerStore.resetAll();
     InventoryStore.resetAll();
     FridgeStore.resetAll();
+    DiscoveryStore.resetAll();
+    this.syncInventoryDiscoveries();
     this._currentSpotId = null;
     this._isInitialized = true;
   }

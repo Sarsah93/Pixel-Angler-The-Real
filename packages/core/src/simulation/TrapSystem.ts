@@ -9,6 +9,9 @@
 import type { DeployedTrap, TrapHarvestResult, TrapCatchItem } from '../types/Activities.js';
 import { getTrapById } from '../db-schema/TrapDatabase.js';
 import { SHORE_CREATURE_DATABASE } from '../db-schema/ShoreCreatureDatabase.js';
+import type { ShoreCreature } from '../db-schema/ShoreCreatureDatabase.js';
+import { FISH_DATABASE } from '../db-schema/FishDatabase.js';
+import type { FishSpecies } from '../db-schema/FishDatabase.js';
 import type { SpotType } from '../types/Environment.js';
 import type { TideInfo } from '../types/Environment.js';
 
@@ -67,8 +70,13 @@ export function harvestTrap(
     (soakTimeHours / 24) * 5 + context.currentStrength * 10
   );
 
-  // 총 가치
+  // 총 가치 (어종은 횟값 기준 추정 — 실판매가는 쿨러→인벤 판매 경로에서 산정)
   const totalValueEstimate = items.reduce((sum, item) => {
+    if (item.isFishSpecies) {
+      const fish = FISH_DATABASE.find((f) => f.id === item.creatureId);
+      if (!fish) return sum;
+      return sum + (item.countOrWeightG / 1000) * fish.sashimiValuePerKg;
+    }
     const creature = SHORE_CREATURE_DATABASE.find((c) => c.id === item.creatureId);
     if (!creature) return sum;
     return sum + (item.countOrWeightG / 1000) * creature.marketValuePerKg;
@@ -83,6 +91,11 @@ export function harvestTrap(
     durabilityLost,
   };
 }
+
+/** 통발 포획 후보 — 해루질 생물 또는 어종(FishDatabase) */
+type TrapCandidate =
+  | { kind: 'creature'; creature: ShoreCreature }
+  | { kind: 'fish'; fish: FishSpecies };
 
 /**
  * 침지 시간과 환경에 따라 포획물 계산
@@ -106,7 +119,17 @@ function calculateTrapCatch(
     return true;
   });
 
-  if (eligibleCreatures.length === 0) return [];
+  // 목표 어종(targetFishSpecies) — 장어·어류 통발이 실제 물고기를 잡는 경로
+  const eligibleFish = (spec.targetFishSpecies ?? [])
+    .map((id) => FISH_DATABASE.find((f) => f.id === id))
+    .filter((f): f is FishSpecies => !!f && f.habitatSpotTypes.includes(context.spotType));
+
+  const candidates: TrapCandidate[] = [
+    ...eligibleCreatures.map((creature) => ({ kind: 'creature' as const, creature })),
+    ...eligibleFish.map((fish) => ({ kind: 'fish' as const, fish })),
+  ];
+
+  if (candidates.length === 0) return [];
 
   // 침지 시간에 따른 포획 시도 횟수
   // 최적 침지 시간 = 8~12시간, 그 이후는 효율 감소
@@ -119,41 +142,64 @@ function calculateTrapCatch(
   const maxAttempts = Math.round(10 * adjustedEfficiency);
 
   for (let i = 0; i < maxAttempts; i++) {
-    const creature = eligibleCreatures[Math.floor(Math.random() * eligibleCreatures.length)];
-    if (!creature) continue;
+    const cand = candidates[Math.floor(Math.random() * candidates.length)];
+    if (!cand) continue;
 
-    // 기본 진입 확률
-    let entryChance = 50;
-    // 조류 강도 - 게/새우는 조류 따라 이동하므로 강할수록 유리
-    if (['crustacean'].includes(creature.category)) {
-      entryChance += context.currentStrength * 20;
+    let id: string;
+    let nameKo: string;
+    let weightG: number;
+    let isFishSpecies = false;
+
+    if (cand.kind === 'creature') {
+      const creature = cand.creature;
+      // 기본 진입 확률
+      let entryChance = 50;
+      // 조류 강도 - 게/새우는 조류 따라 이동하므로 강할수록 유리
+      if (creature.category === 'crustacean') {
+        entryChance += context.currentStrength * 20;
+      }
+      // 두족류는 조류 약할 때 유리
+      if (creature.category === 'cephalopod') {
+        entryChance += (1 - context.currentStrength) * 15;
+      }
+      if (Math.random() * 100 > entryChance) continue;
+
+      // 크기/무게 계산
+      const minSize = creature.minLegalSizeCm || 5;
+      const sizeDescCm = minSize + Math.random() * minSize * 1.5;
+      id = creature.id;
+      nameKo = creature.nameKo;
+      weightG = Math.round(sizeDescCm * 15 + Math.random() * sizeDescCm * 20);
+    } else {
+      const fish = cand.fish;
+      // 어종 진입 확률 — 미끼 냄새 유인 기반. 제철이면 활발.
+      let entryChance = 40;
+      if (fish.peakSeasonMonths.includes(context.month)) entryChance += 15;
+      if (Math.random() * 100 > entryChance) continue;
+
+      // 무게 = 평균 밴드 내 균등 랜덤 (금지체장 미달 개체는 통발 틈으로 빠져나간 것으로 간주)
+      const [wMin, wMax] = fish.avgWeightRangeG;
+      id = fish.id;
+      nameKo = fish.nameKo;
+      weightG = Math.round(wMin + Math.random() * (wMax - wMin));
+      isFishSpecies = true;
     }
-    // 두족류는 조류 약할 때 유리
-    if (['cephalopod'].includes(creature.category)) {
-      entryChance += (1 - context.currentStrength) * 15;
-    }
-
-    if (Math.random() * 100 > entryChance) continue;
-
-    // 크기/무게 계산
-    const minSize = creature.minLegalSizeCm || 5;
-    const sizeDescCm = minSize + Math.random() * minSize * 1.5;
-    const weightG = Math.round(sizeDescCm * 15 + Math.random() * sizeDescCm * 20);
 
     // 용량 초과 체크
     if (totalWeightG + weightG > spec.maxCapacityG) break;
     totalWeightG += weightG;
 
     // 기존 항목과 합산
-    const existing = items.find((i) => i.creatureId === creature.id);
+    const existing = items.find((i) => i.creatureId === id);
     if (existing) {
       existing.countOrWeightG += weightG;
     } else {
       items.push({
-        creatureId: creature.id,
-        nameKo: creature.nameKo,
+        creatureId: id,
+        nameKo,
         countOrWeightG: weightG,
         enteredAt: new Date(Date.now() - Math.random() * soakTimeHours * 3600000),
+        ...(isFishSpecies ? { isFishSpecies: true } : {}),
       });
     }
   }

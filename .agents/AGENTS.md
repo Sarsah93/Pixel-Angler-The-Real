@@ -339,6 +339,9 @@ npx pnpm --filter @tra/client-pc run dev
 5. **`@tra/core/src/index.ts` export 누락 금지** — 새 파일 추가 시 반드시 export 추가
 6. **씬 키 변경 금지** — 씬 키는 파일명과 동일, 변경 시 main.ts도 함께 변경
 7. **하위 씬에서 `scene.start('FieldScene')` 사용 금지** — 반드시 `scene.stop()` + `scene.resume('FieldScene')` 사용
+8. **에이전트의 `git commit`/`git push` 금지** (사용자 지시 2026-08-14) — 커밋과 푸시는 **사용자가 직접** 한다.
+   에이전트는 파일 변경까지만 하고, 작업 완료 시 "커밋 대기 상태"임을 보고한다.
+   (배경: 원격 세션 크리덴셜이 push 권한이 없어 403 — 이후로도 버전 관리 결정권은 사용자가 가진다.)
 
 ---
 
@@ -359,7 +362,24 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류 (2026-08-09)
 > "지금 무엇이 어디까지 되어 있나"는 **`docs/wiki/README.md` 대시보드**와 `02-SYSTEMS/*.md`를 본다.
 > 80차 이하 원문은 아래에 **그대로 보존**(불변 원장) — 구조화 인덱스는 `03-WORKLOG/README.md` §3.1.
 
-**최근 변경 (2026-08-13 98차) — 문어 실사 스프라이트 + 삶기 · 다리 분리 · 숙회 · 플레이팅** (사용자 실사 9장 + PNG 4종 — 실렌더 32/32, 빌드 4/4·typecheck 0):
+**최근 변경 (2026-08-14 99차) — 발견 도감·위키 + 통발 결함 2건 + Dev 크리에이티브 콘솔(F10)** (사용자 지시 4건 — 실렌더 19/19·pageerror 0, 빌드 4/4·typecheck 0):
+
+- **통발 결함 2건 수정**: `trap_crab_pro`의 `'shellfish'` 타깃은 생물 DB에 실생물 0이라 **영영 매칭 불가**였다
+  → `gastropod`(소라) 정정 · 장어/어류 통발에 **`targetFishSpecies` 신설**(FishDatabase 연동 —
+  붕장어·먹장어·갯장어·볼락류 실포획, 쿨러 이송 시 type 'fish' = 판매가·도감 연동).
+- **발견 시스템(신규 S20)**: `core/types/Discovery.ts` + `client/store/DiscoveryStore.ts` —
+  "한 번이라도 조우한 것만 도감/위키 공개"의 단일 기준. 세이브 영속 + **구세이브 legacy 백필** +
+  발견 소스 4곳(어획 catch/통발 trap/해루질 night_hunting/취득 inventory) + HUD 토스트 + **N 키 도감**.
+- **도감 4탭 개편**(AnglerLogScene): 어종(미발견 = **실루엣**+???+서식 힌트)/해양생물/
+  **아이템 위키**(시드+상점 카탈로그 `WikiCatalog.ts` — 미발견 = 판매처 입수 힌트)/조과 기록.
+- **Dev 크리에이티브 콘솔(F10)**: `dev/DevMode.ts`(god — 신선도 동결·채비/미끼 손실 없음·줄터짐 없음) +
+  `dev/DevConsolePanel.ts`(재화·아이템 검색 지급/제거·어종 지급 `devGrantFish`·도감 전체 해금). 프로덕션 데드코드 제거.
+- ⚠ 함정: 발견 기록은 리셋/로드/**첫 부팅** 3경로 전부 배선 필요(첫 부팅은 applySaveData를 안 거침 — 실측 FAIL로 발견) ·
+  일괄 동기는 onNew 훅 억제 · 아이템 카운트는 카탈로그 교집합으로.
+- 상세: `docs/wiki/03-WORKLOG/2026-08-14-099-discovery-wiki-trap-devmode.md` ·
+  신설 페이지: `02-SYSTEMS/night-hunting-trap.md`(S14) · `02-SYSTEMS/discovery-wiki.md`(S20)
+
+**이전 변경 (2026-08-13 98차) — 문어 실사 스프라이트 + 삶기 · 다리 분리 · 숙회 · 플레이팅** (사용자 실사 9장 + PNG 4종 — 실렌더 32/32, 빌드 4/4·typecheck 0):
 
 - **실사 9장 → `octo_*` 9키**: 파이프라인 **KEEP_POLY 신설**(피사체 폴리곤 — 손·싱크대·트레이 제거,
   BFS는 BG_TOL 4로 사실상 끔) + 스테이지 **재배열**(부리 제거를 소금 앞으로 — 사진 넘버링 = 실제 공정) +

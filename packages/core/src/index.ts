@@ -75,6 +75,8 @@ export type {
   InventoryItemInstance,
 } from './types/Item.js';
 export { evaluateItemCondition, getCurrentGameMinute } from './types/Item.js';
+export type { DiscoveryKind, DiscoverySource, DiscoveryEntry } from './types/Discovery.js';
+export { DISCOVERY_SOURCE_LABEL, discoveryKey } from './types/Discovery.js';
 
 // DB Schema
 export { FISH_DATABASE, getFishById, getFishBySpotType, getFishByMonth } from './db-schema/FishDatabase.js';

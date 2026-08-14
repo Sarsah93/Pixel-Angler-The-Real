@@ -1,0 +1,2255 @@
+From 13ea77069e704d740ed1133435aa37f10f522eb0 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 14 Aug 2026 05:55:40 +0000
+Subject: [PATCH] =?UTF-8?q?99=EC=B0=A8:=20=EB=B0=9C=EA=B2=AC=20=EB=8F=84?=
+ =?UTF-8?q?=EA=B0=90=C2=B7=EC=9C=84=ED=82=A4=20+=20=ED=86=B5=EB=B0=9C=20?=
+ =?UTF-8?q?=EA=B2=B0=ED=95=A8=202=EA=B1=B4=20=EC=88=98=EC=A0=95=20+=20Dev?=
+ =?UTF-8?q?=20=ED=81=AC=EB=A6=AC=EC=97=90=EC=9D=B4=ED=8B=B0=EB=B8=8C=20?=
+ =?UTF-8?q?=EC=BD=98=EC=86=94(F10)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- 통발: 'shellfish' 타깃 매칭 불가 정정(gastropod) + targetFishSpecies 신설
+  (장어 통발 = 붕장어·먹장어·갯장어 / 어류 그물 = 볼락류·노래미류 실포획)
+- 발견 시스템: DiscoveryStore(어종/해양생물/아이템 — 세이브 영속·구세이브 legacy 백필)
+  + 발견 소스 4곳 배선 + HUD 신규 발견 토스트 + N 키 도감 진입
+- 도감 4탭: 어종(미발견 실루엣+서식 힌트)/해양생물/아이템 위키(판매처 힌트)/조과 기록
+- Dev 콘솔(F10): 무적(신선도 동결·손실/줄터짐 없음)·재화·아이템/어종 지급·도감 해금
+- docs/wiki: S14 해루질·통발 페이지 신설(배선 로드맵 D1~D5) + S20 도감·발견 신설
+  + S8 농장 경영 로드맵(E1~E5) + 워크로그 099
+- 검증: 통발 시뮬 500×3 · 실렌더 19/19 · pageerror 0 · 빌드 4/4 · typecheck 0
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01PDUQVGZzM1dMSLCg8bzsf6
+---
+ .agents/AGENTS.md                             |  19 +-
+ .agents/IMPLEMENTATION_PLAN.md                |  22 +-
+ CLAUDE.md                                     |  14 +-
+ docs/wiki/02-SYSTEMS/README.md                |   6 +-
+ docs/wiki/02-SYSTEMS/discovery-wiki.md        |  73 ++++
+ docs/wiki/02-SYSTEMS/home-base.md             |  36 +-
+ docs/wiki/02-SYSTEMS/night-hunting-trap.md    |  79 ++++
+ ...6-08-14-099-discovery-wiki-trap-devmode.md | 126 ++++++
+ docs/wiki/03-WORKLOG/README.md                |   1 +
+ docs/wiki/04-BACKLOG.md                       |  18 +-
+ docs/wiki/README.md                           |   7 +-
+ packages/client-pc/src/data/WikiCatalog.ts    |  85 ++++
+ packages/client-pc/src/dev/DevConsolePanel.ts | 321 +++++++++++++++
+ packages/client-pc/src/dev/DevMode.ts         |  24 ++
+ packages/client-pc/src/game.ts                |   3 +
+ .../client-pc/src/scenes/AnglerLogScene.ts    | 385 +++++++++++++++---
+ .../src/scenes/FirstPersonFishingScene.ts     |   3 +
+ .../client-pc/src/scenes/RegionFieldScene.ts  |  14 +
+ .../client-pc/src/store/DiscoveryStore.ts     | 127 ++++++
+ packages/client-pc/src/store/GameState.ts     |  36 +-
+ .../client-pc/src/store/InventoryStore.ts     |  46 ++-
+ packages/core/src/db-schema/TrapDatabase.ts   |  13 +-
+ packages/core/src/index.ts                    |   2 +
+ packages/core/src/simulation/TrapSystem.ts    |  94 +++--
+ packages/core/src/types/Activities.ts         |   8 +
+ packages/core/src/types/Discovery.ts          |  49 +++
+ 26 files changed, 1492 insertions(+), 119 deletions(-)
+ create mode 100644 docs/wiki/02-SYSTEMS/discovery-wiki.md
+ create mode 100644 docs/wiki/02-SYSTEMS/night-hunting-trap.md
+ create mode 100644 docs/wiki/03-WORKLOG/2026-08-14-099-discovery-wiki-trap-devmode.md
+ create mode 100644 packages/client-pc/src/data/WikiCatalog.ts
+ create mode 100644 packages/client-pc/src/dev/DevConsolePanel.ts
+ create mode 100644 packages/client-pc/src/dev/DevMode.ts
+ create mode 100644 packages/client-pc/src/store/DiscoveryStore.ts
+ create mode 100644 packages/core/src/types/Discovery.ts
+
+diff --git a/.agents/AGENTS.md b/.agents/AGENTS.md
+index 0994e10..9dc1207 100644
+--- a/.agents/AGENTS.md
++++ b/.agents/AGENTS.md
+@@ -359,7 +359,24 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류 (2026-08-09)
+ > "지금 무엇이 어디까지 되어 있나"는 **`docs/wiki/README.md` 대시보드**와 `02-SYSTEMS/*.md`를 본다.
+ > 80차 이하 원문은 아래에 **그대로 보존**(불변 원장) — 구조화 인덱스는 `03-WORKLOG/README.md` §3.1.
+ 
+-**최근 변경 (2026-08-13 98차) — 문어 실사 스프라이트 + 삶기 · 다리 분리 · 숙회 · 플레이팅** (사용자 실사 9장 + PNG 4종 — 실렌더 32/32, 빌드 4/4·typecheck 0):
++**최근 변경 (2026-08-14 99차) — 발견 도감·위키 + 통발 결함 2건 + Dev 크리에이티브 콘솔(F10)** (사용자 지시 4건 — 실렌더 19/19·pageerror 0, 빌드 4/4·typecheck 0):
++
++- **통발 결함 2건 수정**: `trap_crab_pro`의 `'shellfish'` 타깃은 생물 DB에 실생물 0이라 **영영 매칭 불가**였다
++  → `gastropod`(소라) 정정 · 장어/어류 통발에 **`targetFishSpecies` 신설**(FishDatabase 연동 —
++  붕장어·먹장어·갯장어·볼락류 실포획, 쿨러 이송 시 type 'fish' = 판매가·도감 연동).
++- **발견 시스템(신규 S20)**: `core/types/Discovery.ts` + `client/store/DiscoveryStore.ts` —
++  "한 번이라도 조우한 것만 도감/위키 공개"의 단일 기준. 세이브 영속 + **구세이브 legacy 백필** +
++  발견 소스 4곳(어획 catch/통발 trap/해루질 night_hunting/취득 inventory) + HUD 토스트 + **N 키 도감**.
++- **도감 4탭 개편**(AnglerLogScene): 어종(미발견 = **실루엣**+???+서식 힌트)/해양생물/
++  **아이템 위키**(시드+상점 카탈로그 `WikiCatalog.ts` — 미발견 = 판매처 입수 힌트)/조과 기록.
++- **Dev 크리에이티브 콘솔(F10)**: `dev/DevMode.ts`(god — 신선도 동결·채비/미끼 손실 없음·줄터짐 없음) +
++  `dev/DevConsolePanel.ts`(재화·아이템 검색 지급/제거·어종 지급 `devGrantFish`·도감 전체 해금). 프로덕션 데드코드 제거.
++- ⚠ 함정: 발견 기록은 리셋/로드/**첫 부팅** 3경로 전부 배선 필요(첫 부팅은 applySaveData를 안 거침 — 실측 FAIL로 발견) ·
++  일괄 동기는 onNew 훅 억제 · 아이템 카운트는 카탈로그 교집합으로.
++- 상세: `docs/wiki/03-WORKLOG/2026-08-14-099-discovery-wiki-trap-devmode.md` ·
++  신설 페이지: `02-SYSTEMS/night-hunting-trap.md`(S14) · `02-SYSTEMS/discovery-wiki.md`(S20)
++
++**이전 변경 (2026-08-13 98차) — 문어 실사 스프라이트 + 삶기 · 다리 분리 · 숙회 · 플레이팅** (사용자 실사 9장 + PNG 4종 — 실렌더 32/32, 빌드 4/4·typecheck 0):
+ 
+ - **실사 9장 → `octo_*` 9키**: 파이프라인 **KEEP_POLY 신설**(피사체 폴리곤 — 손·싱크대·트레이 제거,
+   BFS는 BG_TOL 4로 사실상 끔) + 스테이지 **재배열**(부리 제거를 소금 앞으로 — 사진 넘버링 = 실제 공정) +
+diff --git a/.agents/IMPLEMENTATION_PLAN.md b/.agents/IMPLEMENTATION_PLAN.md
+index 03f081e..33c3747 100644
+--- a/.agents/IMPLEMENTATION_PLAN.md
++++ b/.agents/IMPLEMENTATION_PLAN.md
+@@ -1,7 +1,7 @@
+ # The Real Angler — 구현 계획서 (IMPLEMENTATION_PLAN)
+ 
+-> **최종 업데이트**: 2026-08-13 — **98차: 문어 실사 스프라이트 + 삶기·다리 분리·숙회 체인**.
+-> 상세는 아래 "✅ 직전 완료 (98차)"와 [워크로그 098](../docs/wiki/03-WORKLOG/2026-08-13-098-octopus-photo-boil-sukhoe.md).
++> **최종 업데이트**: 2026-08-14 — **99차: 발견 도감·위키 + 통발 결함 2건 + Dev 콘솔(F10)**.
++> 상세는 아래 "✅ 직전 완료 (99차)"와 [워크로그 099](../docs/wiki/03-WORKLOG/2026-08-14-099-discovery-wiki-trap-devmode.md).
+ >
+ > **차수별 상세 히스토리는 이 문서에 쓰지 않는다** — 80차 이하 원장은 `.agents/AGENTS.md` §9,
+ > 81차부터의 본문은 `docs/wiki/03-WORKLOG/`. (구 20~80차 압축 요약 블록은 AGENTS §9와 전부 중복이라 제거 — git 히스토리 보존)
+@@ -57,9 +57,23 @@ SVG 4장은 나머지 3종(한치·갑오징어·문어) 착수 시 참고자료
+ **2. 광어 가이드 잔여** — F9 `upSep1`·`upSep2`·`dnSep1`·`dnSep2`·`dnScore` (**엔가와·박피는 반영 완료**) ·
+ 등쪽 단면 실사(`halibut_back_open`) 투명본 대기. **칼 연출은 현행 확정**(사용자 2026-08-09).
+ 
+-**3. 해루질 관련 작업** — 손질 어종 확장이 끝나면 착수. **퀘스트/스토리는 모든 컴포넌트 구현 후**(사용자 방침).
++**3. 해루질·통발 완성** — 99차 조사로 실상 확정(엔진·씬 동작 / 배선 미완) + 결함 2건 수정 완료.
++잔여 배선 D2~D5는 [S14 페이지](../docs/wiki/02-SYSTEMS/night-hunting-trap.md) §4·§5.
++이후 **불요리(sink 최고 레버리지) → 농장 경영(스타듀밸리형 — E1~E5,
++[S8 페이지](../docs/wiki/02-SYSTEMS/home-base.md) §5)**. **퀘스트/스토리는 모든 컴포넌트 구현 후**(사용자 방침).
+ 
+-### ✅ 직전 완료 (98차, 2026-08-13) — 문어 실사 스프라이트 + 삶기 · 다리 분리 · 숙회 · 플레이팅
++### ✅ 직전 완료 (99차, 2026-08-14) — 발견 도감·위키 + 통발 결함 2건 + Dev 크리에이티브 콘솔
++
++- **통발 결함 2건**: `'shellfish'` 타깃 매칭 0 → `gastropod` 정정 · 장어/어류 통발에
++  `targetFishSpecies` 신설(붕장어·먹장어·갯장어·볼락류 실포획 — 쿨러 type 'fish' 연동).
++- **발견 시스템**: `DiscoveryStore`(어종/해양생물/아이템 공용 — 세이브 영속·구세이브 legacy 백필) +
++  발견 소스 4곳(어획/통발/해루질/취득) + HUD 신규 발견 토스트 + **N 키 도감 진입**.
++- **도감 4탭**: 어종(미발견 = 실루엣+서식 힌트)/해양생물/아이템 위키(판매처 입수 힌트)/조과 기록.
++- **Dev 콘솔(F10)**: 무적(신선도 동결·손실/줄터짐 없음)·재화·아이템/어종 지급·도감 전체 해금.
++- 검증: 통발 시뮬 500×3 · 실렌더 **19/19** · pageerror 0 · 빌드 4/4 · typecheck 0.
++- 상세: [워크로그 099](../docs/wiki/03-WORKLOG/2026-08-14-099-discovery-wiki-trap-devmode.md)
++
++### ✅ 이전 완료 (98차, 2026-08-13) — 문어 실사 스프라이트 + 삶기 · 다리 분리 · 숙회 · 플레이팅
+ 
+ - **실사 9장 → 도트 9키**: 파이프라인 **KEEP_POLY**(피사체 폴리곤 — 손·싱크대 제거) 신설 +
+   스테이지 **재배열**(부리를 소금 앞으로 — 사진 넘버링 = 실제 공정) + 드래그 진행 프레임 3구간.
+diff --git a/CLAUDE.md b/CLAUDE.md
+index 961a14e..6085849 100644
+--- a/CLAUDE.md
++++ b/CLAUDE.md
+@@ -29,16 +29,16 @@
+ - **`work-log`** — **작업 기록·문서 체계** (docs/wiki 4층·8절 양식·갱신 체크리스트). **모든 작업 완료 시 필수**
+ - **`doc-readability`** — **문서 가독성 규칙** (빈 줄·줄 길이 상한·블록인용 제한·차수 요약 양식). **문서 기록·갱신 시 `work-log`와 함께 로드**
+ 
+-## 현재 진행 상황 (2026-08-13) — 이어받기 요약
++## 현재 진행 상황 (2026-08-14) — 이어받기 요약
+ 
+ > 상세·우선순위·로드맵은 **`IMPLEMENTATION_PLAN.md` 최상단 "🚧 다음 착수"** 참고.
+ 
+-- **전체 위치**: Phase 6(게임플레이 심화) 안의 **손질(회뜨기) 시스템 확장** — 낚시 루프의 서브시스템 하나.
+-- **직전 작업**: 98차 — **문어 실사 스프라이트 + 삶기 · 다리 분리 · 숙회 · 플레이팅**:
+-  실사 9장 → `octo_*` 9키(**KEEP_POLY 피사체 추출** — 손·싱크대 제거) · 부리를 소금 앞으로 재배열 ·
+-  통마리 아이콘 = '손질 완료' 도트 · **삶기 체인**(통마리 우클릭 [삶기] → '신선' → **삶은 문어만 도마**
+-  → 3컷 다리 분리(머리 1+다리 8) → **사선 7컷 숙회** ×8 — 밀림 연출·접시 = 숙회 실사).
+-  상세는 `docs/wiki/03-WORKLOG/2026-08-13-098-octopus-photo-boil-sukhoe.md`.
++- **전체 위치**: Phase 6(게임플레이 심화) — 손질 마무리 + **다음 대과제(해루질→불요리→농장 경영) 진입 준비**.
++- **직전 작업**: 99차 — **발견 도감·위키 + 통발 결함 2건 + Dev 콘솔(F10)**:
++  `DiscoveryStore`(어종/해양생물/아이템 발견 게이트 — 세이브·legacy 백필) · 도감 4탭
++  (미발견 = 실루엣+힌트 · **N 키 인게임 진입**) · 통발 어종 연동(`targetFishSpecies` —
++  장어·볼락류 실포획) + `'shellfish'` 매칭 0 정정 · **F10 크리에이티브 콘솔**(무적·지급·해금).
++  상세는 `docs/wiki/03-WORKLOG/2026-08-14-099-discovery-wiki-trap-devmode.md`.
+ - **🚧 재개 지점**: **두족류 수동 검증** — ① 무늬오징어 잔여 F9(내장 2/2·뜯기 ②·날개 껍질째 2경로)
+   ② 97~98차 신설분 체감(회뜨기 모드들 · **문어 실사 8스테이지 · 삶기→숙회 체인** ·
+   가이드 좌표 — 98차 재근사 포함 **전부 근사, F9 실측 대상** — 키 `ceph_octoWhole`/`ceph_octoLeg` 포함).
+diff --git a/docs/wiki/02-SYSTEMS/README.md b/docs/wiki/02-SYSTEMS/README.md
+index ab68952..6b796f2 100644
+--- a/docs/wiki/02-SYSTEMS/README.md
++++ b/docs/wiki/02-SYSTEMS/README.md
+@@ -19,8 +19,10 @@
+ | [`inventory-equipment.md`](inventory-equipment.md) | 인벤토리·장비·쿨러/냉장고·신선도·세이브 |
+ | [`economy-data.md`](economy-data.md) | 상점·판매가·경락 시세·공공 API 5종 |
+ | [`world-field.md`](world-field.md) | 월드맵·지역 타일맵·필드 이동/환경/조명·씬 전환 |
+-| [`home-base.md`](home-base.md) | 홈타운·집 실내·설치(배치)·저장 정책 |
++| [`home-base.md`](home-base.md) | 홈타운·집 실내·설치(배치)·저장 정책 · **농장 경영 로드맵(E1~E5)** |
++| [`night-hunting-trap.md`](night-hunting-trap.md) | 해루질·통발 — 엔진/씬 현황·배선 로드맵(D1~D5) |
++| [`discovery-wiki.md`](discovery-wiki.md) | 발견 도감(어종/해양생물/아이템 위키)·dev 크리에이티브 콘솔(F10) |
+ | [`ui-framework.md`](ui-framework.md) | DraggablePanel·z-order·텍스트 검수·가이드 허브·튜닝/검증 도구 |
+ 
+-> 없는 시스템(해루질·통발·요리·제작·퀘스트·멀티)은 착수 시점에 페이지를 만든다.
++> 없는 시스템(요리·제작·퀘스트·멀티)은 착수 시점에 페이지를 만든다.
+ > 만들기 전까지는 [`../04-BACKLOG.md`](../04-BACKLOG.md)에 한 줄로만 존재한다.
+diff --git a/docs/wiki/02-SYSTEMS/discovery-wiki.md b/docs/wiki/02-SYSTEMS/discovery-wiki.md
+new file mode 100644
+index 0000000..1a1d331
+--- /dev/null
++++ b/docs/wiki/02-SYSTEMS/discovery-wiki.md
+@@ -0,0 +1,73 @@
++# S20. 도감 · 발견 · dev 도구
++
++> 상태 **🟢 운영** — 발견 게이트 도감(어종/해양생물/아이템 위키) + dev 크리에이티브 콘솔(F10).
++> 신설 099 (2026-08-14)
++
++---
++
++## 1. 목적·범위
++
++"**한 번이라도 조우한 것만 공개**"의 단일 기준(DiscoveryStore)과 그 소비자들:
++
++- **도감 & 조과첩**(AnglerLogScene 4탭) — 어종·해양생물·아이템 위키 + 조과 기록.
++- **dev 크리에이티브 콘솔**(F10) — 아이템/어종 지급·무적·도감 해금 (localhost 전용).
++
++## 2. 구성
++
++| 계층 | 파일 | 역할 |
++|---|---|---|
++| core | `types/Discovery.ts` | `DiscoveryKind`(fish/creature/item) · `DiscoverySource`(catch/trap/night_hunting/inventory/legacy/dev) · 라벨 |
++| client | `store/DiscoveryStore.ts` | 발견 기록 싱글톤 — record(최초 1회)·isDiscovered·세이브·`onNew` 훅·dev 해금. `__DISC` 노출 |
++| client | `data/WikiCatalog.ts` | 아이템 위키 정적 카탈로그 — 시드+상점 dedup·판매처 힌트·`tpl`(실지급용) |
++| client | `scenes/AnglerLogScene.ts` | 4탭 도감 — 미발견 실루엣/???/힌트 · 발견 카드(경로·일시) |
++| client | `dev/DevMode.ts` · `dev/DevConsolePanel.ts` | god 상태 + F10 콘솔 |
++
++## 3. 동작 구조
++
++```
++발견 기록(각 1곳): addCaughtFish → 'catch'  ·  addTrapCatchToCooler → 'trap'
++                   addHarvestToCooler → 'night_hunting'  ·  InventoryStore.addItem → 'inventory'
++세이브: SaveData.discoveries — 구세이브(필드 없음)는 caughtFishHistory에서 'legacy' 백필
++시드 동기: initialize/applySaveData/newGame 3경로 모두 syncInventoryDiscoveries (멱등·onNew 억제)
++알림: DiscoveryStore.onNew → RegionFieldScene HUD 토스트 ("N 키로 확인")
++진입: 메인 메뉴 '도감' + RegionFieldScene N 키 (pause+launch → stop+resume)
++```
++
++**도감 카드 규칙**: 발견 = 전체 정보 + "🔍 {발견 경로} · M/D" / 미발견 = 실루엣(`setTintFill`) +
++??? + **조우 힌트만**(어종 = 수심대·수층·야행성 / 생물 = 주야·면허 / 아이템 = 판매처).
++
++**dev 콘솔(F10)**: ①무적(신선도 동결·채비/미끼 손실 없음·줄터짐 없음) ②재화·회복
++③아이템 검색 지급/제거 ④어종 어획물 지급(`devGrantFish`) ⑤도감 전체 해금/초기화.
++god 가드 소비처 = `refreshCondition`·`loseRigParts`·`loseLureRig`·`consumeRigItem`·`forceLineBreak`.
++
++## 4. 세부과제 현황
++
++| 과제 | 상태 | 차수 |
++|---|---|---|
++| DiscoveryStore + 세이브 + legacy 백필 | ✅ | 099 |
++| 발견 소스 4곳 배선 (catch/trap/night_hunting/inventory) | ✅ | 099 |
++| 도감 4탭 + 미발견 실루엣/힌트 | ✅ | 099 |
++| 아이템 위키 카탈로그(시드+상점) | ✅ | 099 |
++| HUD 신규 발견 토스트 + N 키 진입 | ✅ | 099 |
++| dev 콘솔(F10) + god 모드 | ✅ | 099 |
++| 위키 카드 상세 팝업(클릭 확대) | ⬜ | — |
++| FP 씬 발견 토스트 (현재 RegionField HUD만) | ⬜ | — |
++| 해양생물 전용 스프라이트 (현재 이모지 — S14 D4와 공유) | ⬜ | 에셋 대기 |
++
++## 5. 잔여·차기
++
++- 위키 확장 후보: 통발/장비 스펙 페이지 · 지역/스팟 도감 · 요리 레시피 도감(불요리 도입 시).
++- 발견 통계(전체 진행률 %)를 메인 메뉴/저장 슬롯에 표기.
++
++## 6. 함정·불변조건
++
++1. **발견 기록은 세이브 필수 경로** — 새 리셋/로드 경로를 만들면 DiscoveryStore
++   resetAll/serialize/deserialize 배선을 잊지 말 것(부산물 지급 3경로 함정과 동류).
++2. **`record`는 onNew 훅을 발화한다** — 로드·일괄 동기에서는 훅을 억제하고 호출
++   (`syncInventoryDiscoveries` 패턴). 안 하면 로드 시 토스트 폭탄.
++3. **아이템 발견은 raw id** — 개체형(`inv_catch_*`)도 기록되지만 카탈로그에 없어 자연 무시.
++   카운트 UI는 반드시 **카탈로그 교집합**으로(099에서 126/113 실측 후 수정).
++4. **시드 동기는 3경로 전부** — 첫 부팅(세이브 없음)은 applySaveData·newGame을 안 거친다.
++   initialize 말미의 멱등 동기를 지우면 신규 프로필의 아이템 위키가 전부 잠긴다(099 실측 FAIL 2건).
++5. `isGod()`은 `import.meta.env.DEV` 게이트 — 프로덕션에서 상수 false로 데드코드 제거된다.
++   god 소비처를 추가할 때 이 함수만 쓰고 `DevMode.god`을 직접 읽지 말 것.
+diff --git a/docs/wiki/02-SYSTEMS/home-base.md b/docs/wiki/02-SYSTEMS/home-base.md
+index 16d1a92..c0d03d9 100644
+--- a/docs/wiki/02-SYSTEMS/home-base.md
++++ b/docs/wiki/02-SYSTEMS/home-base.md
+@@ -1,6 +1,8 @@
+-# S8. 홈베이스 (홈타운 · 집 · 설치)
++# S8. 홈베이스 (홈타운 · 집 · 농장 경영)
+ 
+-> 상태 **🔶 부분** — Tier 0 원룸 + 칸 단위 설치까지. 관련 차수 44·46
++> 상태 **🔶 부분** — Tier 0 원룸 + 칸 단위 설치까지. 관련 차수 44·46 · 조사 099
++> **목표(사용자 확정 2026-08-14): 스타듀밸리형 농장 경영** — 광질(채굴)·채집·해루질·농사를
++> 아우르는 생산 축 + 경영 루프. 세부 로드맵은 §5.
+ 
+ ---
+ 
+@@ -40,9 +42,33 @@
+ | 실내 가구 배치 모드 | ⬜ | 스키마 준비됨 |
+ | 주방 ↔ CookScene/도마 연결 | ⬜ | 불요리 선행 |
+ 
+-## 5. 잔여·차기
+-활어 수조는 **신선도 정지(freshnessMult 0.1) 루트**라 경제·손질과 직접 연결된다 — 불요리보다 먼저 붙일 가치가 있다.
+-침대 수면 = 날짜 진행/피로 회복 결합은 로드맵 4·5 단계.
++## 5. 잔여·차기 — 농장 경영 로드맵 (E1~E5, 099 조사 기반)
++
++**실상(2026-08-14 전수 조사)**: 동작하는 것은 **칸 단위 설치/회수뿐**. 농사·수조·하우스Tier·
++벌목/채굴/채집/보트는 전부 타입·"추후" 안내 스텁이다(`till` 핸들러는 코드에 아예 없음 ·
++`HOUSE_TIERS`는 어디서도 소비 안 됨 · `AquariumState.fish`는 `unknown[]`).
++
++**선행 결정 — 시간 모델**: 게임 시계는 실시간(`getCurrentGameMinute` = wall-clock).
++압축 달력을 새로 만들지 말고 **쿨러·냉장고의 "오프라인 경과" 패턴 재사용**
++(작물 = `plantedAt` 절대 시각 기준 lazy 성장, 계절 = 실제 월) — 정체성 일치·재작업 최소.
++
++- **E2 수조 (먼저 — 소~중)**: `AquariumState` 실타입화(InvItem[]) + 세이브 직렬화 +
++  `freshnessMult`(0.1) 소비(활어 신선도 정지 = 경제 직결) + 패널 UI(쿨러 패널 재사용) +
++  실내(interior) 배치 개방(현재 exterior만 — `aquarium_display`는 설치 불가 상태).
++
++- **E1 농사 (중)**: `CropDatabase`(씨앗·성장 단계·실시간 성장 h·계절 적합도) +
++  `FarmPlotState`(칸별 cropId/plantedAt — 세이브) + `till`/plant/harvest 핸들러 +
++  성장 렌더 + **레시피 재료 접점**(현재 레시피 13종에 농산물 0 — 채소 레시피 추가).
++
++- **E3 채집류 (각 소)**: 벌목/채굴/갯바위/보트 — 공통 패턴 "도구 게이트 → 드랍 →
++  `removedIds` 영속 → 리스폰". 나무 11·바위 2는 이미 배치·렌더됨(핸들러만).
++  갯바위 `gather`는 해루질(S14)과 통합 검토. 산출물 = 제작(CraftScene) 재료.
++
++- **E4 하우스 Tier (중)**: GameState에 tier 상태 + `interiorMapId` 기반 실내 씬 파라미터화 +
++  승급 구매·features(주방/지하/2층) 해금 + 실내 배치 모드.
++
++- **E5 경영 루프 (중~대)**: 판매 인프라(경매·직판·식당) 위에 납품 계약(어종·수량·기한)·
++  수요/시세 대응·재고 관리·일일 정산. 침대 수면 = 정산·피로 회복 지점으로 확장.
+ 
+ ## 6. 함정·불변조건
+ 1. **초기 오브젝트는 core TS 데이터**(JSON 아님) — 타입 안전 + 파이프라인 재생성 없이 조정 가능. 타 지역으로 확산되면 JSON 스키마 이관 검토.
+diff --git a/docs/wiki/02-SYSTEMS/night-hunting-trap.md b/docs/wiki/02-SYSTEMS/night-hunting-trap.md
+new file mode 100644
+index 0000000..6c141d1
+--- /dev/null
++++ b/docs/wiki/02-SYSTEMS/night-hunting-trap.md
+@@ -0,0 +1,79 @@
++# S14. 해루질 · 통발
++
++> 상태 **🔶 부분** — 엔진·DB·씬 전부 동작(레거시 FieldScene 경로), **배선·튜닝·에셋이 미완**.
++> 2026-08-14 전수 조사로 실상 확정(구 대시보드 "⬜ 미착수" 표기는 오류였다) · 관련 차수 099
++> 다음 대과제 1순위(사용자 지정) — 세부 로드맵은 §5.
++
++---
++
++## 1. 목적·범위
++
++낚시와 병렬인 **채집 생산 축**: 밤 조간대에서 생물을 줍는 **해루질**(실시간 미니게임)과
++설치 후 시간이 지나면 수거하는 **통발**(오프라인 침지 메타게임).
++산출물은 쿨러 → 인벤 → 판매/손질/요리로 흐른다.
++
++## 2. 구성
++
++| 계층 | 파일 | 역할 | 상태 |
++|---|---|---|---|
++| core | `simulation/NightHuntingEngine.ts` | 채집 판정 — 발견 확률(야간·집어등·간조·희귀종)·안전 판정·세션 시뮬 | ✅ 완성 |
++| core | `db-schema/ShoreCreatureDatabase.ts` | 생물 10종(조개·소라·굴·전복·꽃게·민꽃게·낙지·문어·성게·해삼) — 금어기·법정크기·시세 | ✅ 완성 |
++| core | `simulation/TrapSystem.ts` | 통발 수거 — 실경과 침지시간·효율 곡선·용량·내구도·분실 위험 | ✅ 완성 |
++| core | `db-schema/TrapDatabase.ts` | 통발 8종(게 2·새우·장어 2·문어 단지 2·어류 그물) + **어종 타깃(099)** | ✅ |
++| client | `scenes/NightHuntingScene.ts` | 해루질 씬 — 집어등 커서·생물 스폰/클릭 채집·쿨러 정산 | ✅ 플레이 가능 |
++| client | `scenes/TrapScene.ts` | 통발 씬 — 지도 마커·설치/수거/상세 팝업 | ✅ 플레이 가능 |
++
++진입은 현재 **레거시 FieldScene의 H/T 키** — RegionFieldScene 동선은 미배선(§5 D5).
++
++## 3. 동작 구조
++
++```
++해루질: NightHuntingScene → getHuntableCreatures(스팟·금어기·시간·집어등)
++        → 클릭마다 attemptHunt(발견 확률) → 미달 방류 → GameState.addHarvestToCooler
++통발:   TrapScene 설치(GameState.deployTrap) → 실경과 침지(Date 기반)
++        → harvestTrap = 생물+어종 후보 풀 → 효율 곡선(최적 침지 초과 시 감소)
++        → addTrapCatchToCooler (어종은 type 'fish' — 판매가·도감 연동)
++```
++
++- **어종 포획(099)**: `TrapSpec.targetFishSpecies`(FishDatabase id) — 장어 통발 = 붕장어·먹장어
++  (+대형식은 갯장어), 어류 그물 = 볼락·우럭·노래미류·문절망둑·붕장어.
++  진입 40% + 제철 +15, 무게 = `avgWeightRangeG` 길이 보간.
++- 발견(도감) 기록: 해루질 = `night_hunting` · 통발 = `trap` — [S20](discovery-wiki.md).
++
++## 4. 세부과제 현황
++
++| 과제 | 상태 | 차수 |
++|---|---|---|
++| 해루질 엔진·생물 DB·씬 | ✅ | (초기 구축) |
++| 통발 엔진·DB·씬 | ✅ | (초기 구축) |
++| **D1a `'shellfish'` 카테고리 불일치** — 매칭 0 → `gastropod` 정정 | ✅ | 099 |
++| **D1b 장어·어류 통발 어종 연동** — `targetFishSpecies` 신설·판정 편입 | ✅ | 099 |
++| D2a 통발 종류·미끼 선택 UI (현재 `trap_crab_basic`+청갯지렁이 하드코딩) | ⬜ | — |
++| D2b 통발 분실 배선 (`calculateTrapLossRisk` 구현돼 있으나 미호출) | ⬜ | — |
++| D2c 해루질 안전 판정 배선 (`canPerformNightHunting` 미호출 — 강풍에도 진입됨) | ⬜ | — |
++| D2d 수심·침지시간 실연동 (`depthM:5`·"4시간 후" 하드코딩) | ⬜ | — |
++| D3 확률 튜닝 중앙화 (`tuning.ts` + F8 — 현재 전부 매직넘버) | ⬜ | — |
++| D4 생물 스프라이트 (현재 이모지 렌더 — `spriteKey`는 예약됨) | ⬜ | 에셋 대기 |
++| D5 RegionFieldScene 진입 동선 (`gather` 갯바위 → 해루질 / 물가 → 통발) | ⬜ | — |
++
++## 5. 잔여·차기 (착수 로드맵)
++
++**D2(배선 완성)까지가 "제대로 동작"의 기준** — 신규 엔진 0, 기존 함수 호출 연결이 대부분.
++
++1. **D2** — 선택 UI·분실·안전·수심 배선 (규모 중).
++2. **D3·D4** — 튜닝 중앙화(스킬 `add-tuning`) + 생물 도트 에셋(스킬 `asset-pipeline`).
++3. **D5** — 진입 동선 + **채집물 손질 파이프라인 재사용**
++   (낙지·문어·소라·전복 → 기구현 두족류/회썰기 흐름 — 신규 구현 거의 없이 콘텐츠 배가).
++4. 심화(선택) — 통발 오프라인 침지 밸런스(길수록 수확↑·분실↑), 갯벌/타이드풀 지형,
++   `simulateNightHuntingSession`(현재 미사용) 기반 자동 채집 모드.
++
++## 6. 함정·불변조건
++
++1. **`targetCategories`와 생물 DB 카테고리는 같은 유니온이어도 매칭은 데이터가 결정한다** —
++   `'shellfish'`는 타입에 존재하지만 실생물 0이라 조용히 죽는 타깃이었다(099).
++   새 통발 추가 시 카테고리·어종 id의 **실존 여부**를 확인할 것(오타는 필터에서 조용히 사라진다).
++2. **통발 침지는 wall-clock**(`Date.now() - deployedAt`) — 게임 시계가 실시간이라 의도된 설계.
++   오프라인 정지 규칙(쿨러류)과 **반대**이니 세이브 마이그레이션 시 침지 시간을 밀지 말 것.
++3. `TrapCatchItem.isFishSpecies`가 쿨러 type(fish/crustacean) 분기를 결정한다(099) —
++   어종인데 플래그를 빠뜨리면 판매가·도감 연동이 끊긴다.
++4. 씬은 레거시 FieldScene 계열 — **신규 기능은 RegionFieldScene 쪽에 배선**(B4 이중 경로 부채).
+diff --git a/docs/wiki/03-WORKLOG/2026-08-14-099-discovery-wiki-trap-devmode.md b/docs/wiki/03-WORKLOG/2026-08-14-099-discovery-wiki-trap-devmode.md
+new file mode 100644
+index 0000000..c1cbf0a
+--- /dev/null
++++ b/docs/wiki/03-WORKLOG/2026-08-14-099-discovery-wiki-trap-devmode.md
+@@ -0,0 +1,126 @@
++# 099차 — 발견 도감·위키 + 통발 결함 2건 수정 + Dev 크리에이티브 콘솔(F10)
++
++| | |
++|---|---|
++| **날짜** | 2026-08-14 |
++| **시스템** | `해루질·통발` `도감` `인벤` `세이브` `인프라` |
++| **트리거** | 사용자 지시 4건 — 위키 반영·통발 결함 수정·도감 발견 게이트·전체 위키·dev 모드 |
++| **커밋** | 미커밋 |
++| **빌드·타입체크** | 4/4 · 0 오류 |
++
++---
++
++## 1. 배경 — 왜 했나
++
++사용자 지시(2026-08-14) 4건:
++
++1. 전체 과업 조사 결과를 docs/wiki에 정식 반영하고, **해루질 결함 2건**(shellfish 카테고리 ·
++   어류 통발 미연동)부터 수정할 것.
++2. 어종 도감은 "**한 번이라도 특정 어종을 본 적이 있으면 보여지도록**" — 발견 게이트.
++3. 어종뿐 아니라 "**전체 아이템이나 모든 구성요소 등에 대한 wiki**(발견 기준으로 구체적 설명,
++   카테고리)"를 구축할 것.
++4. "**마인크래프트 개발자모드처럼** localhost dev 서버에서 모든 아이템을 얻거나 제거하거나,
++   무적 상태가 되거나" — dev 크리에이티브 모드.
++
++선행 조사(같은 날, 서브에이전트 2건)로 해루질·통발은 **"엔진·DB·씬 전부 동작 / 배선·튜닝 미완"**,
++농장 계열은 **"배치 시스템만 동작, 나머지는 스키마·스텁"**임을 확정했다 — S14/S8 페이지에 반영.
++
++## 2. 원인 — 통발 결함 2건 (확정 기전)
++
++- **`trap_crab_pro`의 `'shellfish'` 타깃은 영영 매칭되지 않았다** — `ShoreCreatureCategory`
++  유니온에는 존재하지만 생물 DB 10종 중 그 값을 쓰는 생물이 0(조개류는 `bivalve`/`gastropod`).
++  `calculateTrapCatch`의 `targetCategories.includes(creature.category)` 필터에서 항상 탈락.
++- **장어·어류 통발은 물고기를 못 잡았다** — `targetCategories: ['crustacean']`뿐이고
++  주석("내부에서 어종은 FishDatabase 참조")만 있던 미구현. 어종 연동 메커니즘 자체가 없었다.
++
++## 3. 변경 — 어디를 어떻게
++
++### 3-a. 통발 결함 2건 (core)
++
++| 구분 | 위치 | 내용 |
++|---|---|---|
++| 수정 | `core/src/types/Activities.ts` | `TrapSpec.targetFishSpecies?: string[]` · `TrapCatchItem.isFishSpecies?` 신설 |
++| 수정 | `core/src/db-schema/TrapDatabase.ts` | `trap_crab_pro` `'shellfish'` → `'gastropod'`(소라만 통발에 기어듦 — bivalve는 매몰형 제외) · 장어 통발 2종에 `conger_eel`/`hagfish`(+pro는 `pike_conger`) · 어류 그물에 볼락·우럭·노래미류·문절망둑·붕장어 |
++| 수정 | `core/src/simulation/TrapSystem.ts` | `TrapCandidate` 유니온(생물\|어종) — 어종은 `habitatSpotTypes` 필터 + 진입 40%(제철 +15) + `avgWeightRangeG` 길이 보간. 가치 추정도 어종 분기(`sashimiValuePerKg`) |
++| 수정 | `client-pc/src/store/GameState.ts` | `addTrapCatchToCooler` — `isFishSpecies`면 쿨러 type `'fish'`(speciesId = FishDatabase id → 판매가·도감 연동) |
++
++### 3-b. 발견(도감/위키) 시스템
++
++| 구분 | 위치 | 내용 |
++|---|---|---|
++| 신설 | `core/src/types/Discovery.ts` | `DiscoveryKind`(fish/creature/item) · `DiscoverySource`(catch/trap/night_hunting/inventory/legacy/dev) · `DiscoveryEntry` · 라벨. index.ts export |
++| 신설 | `client-pc/src/store/DiscoveryStore.ts` | 발견 기록 싱글톤 — `record`(최초 1회·onNew 훅) · `isDiscovered` · serialize/deserialize(**구세이브 = 어획 기록 legacy 백필**) · `devUnlockAll`/`devResetAll` · `__DISC` dev 노출 |
++| 수정 | `client-pc/src/store/GameState.ts` | SaveData `discoveries` + applySaveData/buildSaveData/newGame 배선 · `syncInventoryDiscoveries`(로드·뉴게임·**첫 부팅** 3경로 — 시드 보유 아이템 일괄 발견, onNew 억제) · 발견 소스 3곳(addCaughtFish=catch / addHarvestToCooler=night_hunting / addTrapCatchToCooler=trap) |
++| 수정 | `client-pc/src/store/InventoryStore.ts` | `addItem`에 `record('item', id, 'inventory')` — 모든 취득 경로 1곳 커버 |
++| 수정 | `client-pc/src/scenes/RegionFieldScene.ts` | `DiscoveryStore.onNew` → HUD 토스트("[도감] 새로운 어종 발견 — … (N 키로 확인)") + shutdown 해제 · **N 키 = 도감 pause+launch** |
++
++### 3-c. 도감 4탭 개편 (AnglerLogScene)
++
++| 구분 | 위치 | 내용 |
++|---|---|---|
++| 수정 | `client-pc/src/scenes/AnglerLogScene.ts` | 탭 2→**4**(어종/해양생물/아이템 위키/조과 기록 — 배열 기반) · 어종 발견 판정을 caughtFishHistory 스캔 → `DiscoveryStore`로 교체 · **미발견 = 실루엣**(`setTintFill`) + ??? + 서식 힌트(수심대·수층·야행성) · 낚시 기록 없는 발견(통발)은 "🔍 통발로 포획 · M/D + 낚시 기록 없음" 표기 |
++| 신설(동일 파일) | `renderCreatures` | 해양생물 10종 카드 — 발견 = 이름/학명/카테고리/시세/금어기/발견 경로 · 미발견 = 흐린 이모지 + 조우 힌트(주야·심화 면허) |
++| 신설(동일 파일) | `renderItems` | 아이템 위키 — 카테고리 필터 6종 + 카드(아이콘/이름/소분류·가격/desc 2줄/발견 경로) · 미발견 = ??? + **입수 힌트(판매처)** |
++| 신설 | `client-pc/src/data/WikiCatalog.ts` | 정적 카탈로그 빌더 — 시드(`InventoryStore.seedCatalog` 신설) + `SHOP_CATALOG` dedup(desc·판매처 병합) · 개체형(어획물) 제외 · `tpl`(실지급용 원본 템플릿) |
++
++### 3-d. Dev 크리에이티브 콘솔 (F10)
++
++| 구분 | 위치 | 내용 |
++|---|---|---|
++| 신설 | `client-pc/src/dev/DevMode.ts` | `DevMode.god` + `isGod()`(프로덕션 = 상수 false 데드코드 제거) |
++| 신설 | `client-pc/src/dev/DevConsolePanel.ts` | F10 DOM 오버레이(F8 패턴) — ①무적 토글 ②재화(+10만/+100만/0)·스태미나/피로 회복 ③아이템 검색 지급/제거(+1/+10/−1·보유량) ④어종 어획물 지급 ⑤도감 전체 해금/초기화 |
++| 수정 | `client-pc/src/store/InventoryStore.ts` | god 가드 4곳(`refreshCondition` 동결·`loseRigParts`·`loseLureRig`·`consumeRigItem`) + `devGrantFish`(평균 밴드 랜덤 활어 지급) |
++| 수정 | `client-pc/src/scenes/FirstPersonFishingScene.ts` | `forceLineBreak`에 god 가드(줄터짐 무시) |
++| 수정 | `client-pc/src/game.ts` | `initDevConsolePanel()` 등록 |
++
++## 4. 구조상 위치
++
++- 통발 결함 = `S14 해루질·통발 → 통발 포획 판정(데이터+판정 층)`.
++- 발견 시스템 = **신규 시스템 S20(도감·발견·dev 도구)** — 계약(core 타입) + 데이터(스토어·세이브)
++  + 렌더(AnglerLogScene) 3층. 어종·생물·아이템 3종을 하나의 스토어가 담당.
++- dev 콘솔 = S13(튜닝·dev 도구) 확장 — F8(튜닝)/F9(좌표)/F10(크리에이티브) 체계.
++
++## 5. 검증
++
++Playwright 실렌더 하네스(`scratchpad/verify_discovery.cjs`) — **19/19 PASS · pageerror 0**:
++
++| 대상 | 방법 | 결과 |
++|---|---|---|
++| 통발 어종 포획 | dist 시뮬 500회×3종 | 장어 통발 = 붕장어 478·먹장어 431 / pro = +갯장어 / 어류 그물 = 볼락·우럭·노래미류·붕장어 5종 |
++| shellfish 정정 | 시뮬 500회 | 프로 게 통발 = 소라(turbo_cornutus) 464 + 민꽃게 486 — 매칭 성립 |
++| 발견 스토어 | `__DISC` 실스토어 | 시드 아이템 동기 >10 · 어종/생물 0 시작 · devGrantFish → source 'dev' |
++| 세이브 왕복·백필 | serialize/deserialize | 왕복 보존 · **구세이브(필드 없음) = legacy 백필 2종** |
++| 도감 4탭 | 실마우스 탭 클릭 + 스크린샷 4장 | 미발견 실루엣+힌트 · 발견 카드(방어 dev 해금 8/14) · 생물 2종 발견 카드 · 아이템 위키 발견 10/10 |
++| Dev 콘솔 | F10 + DOM 클릭 | 열림 · 전체 해금(어종 57/생물 10/아이템 전 카탈로그) |
++| god 가드 | 체크박스 ON 후 실호출 | `loseRigParts` = [](손실 0) · 활어 상태 유지 |
++
++첫 실행에서 FAIL 2건 → **첫 부팅(세이브 없음)은 applySaveData·newGame을 안 거쳐 시드 동기 누락**
++확정 → `initialize()` 말미 멱등 동기 추가로 해소(재실행 19/19).
++
++## 6. 잔여 — 착수 조건
++
++- 해루질·통발 배선 잔여(D2~D5 — 통발 선택 UI·분실 배선·안전 판정·튜닝 중앙화·생물 스프라이트·
++  RegionFieldScene 진입 동선)는 [S14 페이지](../02-SYSTEMS/night-hunting-trap.md) §5의 로드맵으로 이관.
++- 위키 카드 상세 팝업(클릭 → 큰 설명)·FP 씬 발견 토스트는 후속(현재는 RegionField HUD만).
++- dev 콘솔 무적의 HP/피로 지속 무시는 소비처가 생기면 그때 가드(현재는 회복 버튼).
++- 접시/통발 등 **비 인벤 경로 아이템**의 위키 발견은 addItem 커버 밖이면 개별 record 필요(발견 안 되는
++  아이템 리포트가 오면 그 경로에 record 1줄).
++
++## 7. 위험·부작용
++
++- **발견 기록은 세이브 필수 경로**(SaveData.discoveries) — 새 종료/리셋 경로를 만들면
++  DiscoveryStore.resetAll/serialize 배선을 잊지 말 것(부산물 지급 3경로 함정과 동류).
++- `record`는 **onNew 훅을 발화**한다 — 로드·일괄 동기 경로에서는 훅을 억제하고 호출할 것
++  (`syncInventoryDiscoveries` 패턴). 안 하면 로드 시 토스트 폭탄.
++- 아이템 발견은 **raw id 기준** — 개체형(`inv_catch_*` 등)도 기록되지만 위키 카탈로그에 없어
++  자연 무시된다. 카운트 UI는 반드시 **카탈로그 교집합**으로 셀 것(dev 콘솔에서 126/113 실측 후 수정).
++- 통발 어종 추가는 `targetFishSpecies`에 **FishDatabase 실존 id만** — 오타는 조용히 필터에서 사라진다.
++
++## 8. 후속 반영
++
++- [x] 워크로그(이 문서) + 인덱스
++- [x] `02-SYSTEMS/night-hunting-trap.md` 신설(S14) · `02-SYSTEMS/discovery-wiki.md` 신설(S20)
++- [x] `02-SYSTEMS/home-base.md` §5 농장 경영 로드맵(E1~E5) 갱신
++- [x] `04-BACKLOG.md` A(해루질 결함 완료·대과제 세분화)·B(발견 세이브 위험)
++- [x] `AGENTS.md` §9 + `IMPLEMENTATION_PLAN.md` 요약 3~5줄 + 링크
++- [x] `docs/wiki/README.md` 대시보드 — S14 ⬜→🔶 · S20 신규 행
+diff --git a/docs/wiki/03-WORKLOG/README.md b/docs/wiki/03-WORKLOG/README.md
+index 69059f9..78c30bd 100644
+--- a/docs/wiki/03-WORKLOG/README.md
++++ b/docs/wiki/03-WORKLOG/README.md
+@@ -16,6 +16,7 @@
+ 
+ | 차수 | 날짜 | 시스템 | 제목 |
+ |---|---|---|---|
++| [099](2026-08-14-099-discovery-wiki-trap-devmode.md) | 08-14 | 해루질·통발·도감·인프라 | **발견 도감·위키**(DiscoveryStore — 어종/해양생물/아이템 4탭·실루엣 게이트) + **통발 결함 2건**(shellfish 매칭 0 정정·장어/어류 통발 어종 연동) + **Dev 크리에이티브 콘솔(F10)** — 무적·아이템/어종 지급·도감 해금 |
+ | [098](2026-08-13-098-octopus-photo-boil-sukhoe.md) | 08-13 | 손질·회썰기·에셋 | **문어 실사 스프라이트**(KEEP_POLY 피사체 추출 — 9장·부리→소금 재배열) + **삶기**(통마리→삶은 문어 '신선') + **다리 분리**(머리 1+다리 8) + **숙회 7사선컷** + 접시 숙회 이미지 |
+ | [097](2026-08-13-097-ceph-byproducts-slicing-octopus.md) | 08-13 | 손질·회썰기·데이터 | **두족류 부산물 개편**(껍질·아가미 미지급·순수 필렛 제거) + **회뜨기 3모드**(몸통살 22점·날개살 4점·촉완 분리) + **한치 개방** + **문어 8스테이지 트리** |
+ | [096](2026-08-13-096-squid-layout-size-splitfx.md) | 08-13 | 손질·UI·에셋 | **작업 패널 침범 해소(3열)** + 회전 배치 크기 통일(250px) + 연출 후 전환 규칙 재적용 + 3분할 조각 밀림·부리 가운데 조각 + 가로 4스윕 실측 |
+diff --git a/docs/wiki/04-BACKLOG.md b/docs/wiki/04-BACKLOG.md
+index 1e31a72..ee51639 100644
+--- a/docs/wiki/04-BACKLOG.md
++++ b/docs/wiki/04-BACKLOG.md
+@@ -1,6 +1,6 @@
+ # 4. 잔여 · 위험/충돌 · 최적화
+ 
+-> 갱신 2026-08-10 (88차 기준). **작업 완료 시 이 문서도 함께 갱신한다**(스킬 `work-log`).
++> 갱신 2026-08-14 (99차 기준). **작업 완료 시 이 문서도 함께 갱신한다**(스킬 `work-log`).
+ > 여기 있는 항목은 "언젠가"가 아니라 **착수 조건이 명시된 것**만 남긴다.
+ 
+ ---
+@@ -36,11 +36,15 @@
+ | 두족류 가이드 시트 부리 카드 | SVG 카드 추가 | 스테이지는 동작, 삽화만 공백 |
+ | 방어류 단계 실사 4장 | — | **의도적 보류**(70차 판단 — 기존 스프라이트가 방어 실사 기반) |
+ 
+-### A3. 다음 대과제 (순서 = 사용자 지정)
+-1. **해루질 확장** — `NightHuntingEngine`·`ShoreCreatureDatabase` 기반
+-2. **불요리**(화구·용기) → CookScene 실조리 → 스시
+-3. 경영(식당 납품·판매) · `CraftScene`
+-4. 멀티(Phase 8) · Tauri/Steam(Phase 9)
++### A3. 다음 대과제 (순서 = 사용자 지정 · 99차 조사로 세분화)
++1. **해루질·통발 완성** — 실상은 "엔진·씬 동작 / 배선 미완"(99차 조사 — ⬜ 표기는 오류였다).
++   결함 2건(D1)은 99차 수정 완료. 잔여 = 배선 D2~D5 → [S14 페이지](02-SYSTEMS/night-hunting-trap.md) §4·§5.
++2. **불요리**(화구·용기) → CookScene 실조리 → 스시.
++   ⚠ 최고 레버리지 — 낚시/해루질/통발/농사 전 산출물의 "쓰임(sink)". 레시피 13종·부산물 훅은 데이터 완비.
++3. **농장 경영(스타듀밸리형 — 사용자 확정 2026-08-14)** — 광질(채굴)·채집·농사·수조 + 경영 루프.
++   실상은 "설치 시스템만 동작"(99차 조사). 로드맵 E1~E5 → [S8 페이지](02-SYSTEMS/home-base.md) §5.
++   선행 결정: 시간 모델 = **실시간 오프라인 성장**(쿨러 패턴 재사용) 권장.
++4. `CraftScene`(벌목/채굴 재료 소비) · 멀티(Phase 8) · Tauri/Steam(Phase 9)
+ 5. **퀘스트/스토리 — 모든 컴포넌트 구현 후**(사용자 방침)
+ 
+ ### A4. 시스템별 소소한 잔여
+@@ -69,6 +73,8 @@
+ | 지점 | 무엇이 깨졌었나 | 재발 방지 |
+ |---|---|---|
+ | 부산물 지급 경로 | 종료 경로 3개 중 하나만 빠져도 아이템 증발 (59·61·62·63차 4연속) | 새 종료 경로 추가 시 정산/회수 필수 |
++| 발견 기록 세이브/동기 | 첫 부팅(세이브 없음)은 applySaveData·newGame을 안 거쳐 시드 동기 누락(99차 실측 FAIL 2건) | 리셋/로드/부팅 3경로 전부 DiscoveryStore 배선 · 일괄 동기는 onNew 억제 |
++| 통발 타깃 데이터 | 타입 유니온에 있어도 실생물 0이면 조용히 죽는 타깃(`'shellfish'` — 99차) | 카테고리·어종 id **실존 확인** (오타는 필터에서 조용히 사라진다) |
+ | 씬 전환 페이드 | `camerafadeoutcomplete` 미발화 → 검은 화면 (46·52·71·73차) | `SceneFade.fadeOutThen` 경유 |
+ | 재진입 가드 | 씬 재사용이라 필드 초기값이 재진입에 미적용(73차 먹통·이중 차감) | `create()`에서 리셋 |
+ | 구운 스프라이트 | PNG만 바꾸고 생성기 미실행 → 반영 안 됨(74·76차) | `asset-pipeline` 스킬 체크리스트 |
+diff --git a/docs/wiki/README.md b/docs/wiki/README.md
+index 2fc6088..3efee98 100644
+--- a/docs/wiki/README.md
++++ b/docs/wiki/README.md
+@@ -51,17 +51,20 @@
+ | S11 | [가이드·온보딩](02-SYSTEMS/ui-framework.md#가이드-허브) | 🟢 | `GuidePanel` · `GuideContent` | 삽화 실게임 스크린샷 교체 |
+ | S12 | [세이브·슬롯](02-SYSTEMS/inventory-equipment.md#세이브) | 🟢 | `GameState` | 저장은 집 침대 전용 |
+ | S13 | [튜닝·dev 도구](02-SYSTEMS/ui-framework.md#dev-도구) | 🟢 | `config/tuning.ts` · `DevTuningPanel`(F8) | fight/rod/yield 테이블 소비 전환 |
+-| S14 | 해루질·통발 | ⬜ | `NightHuntingEngine` · `TrapSystem` | **다음 대과제(3순위)** |
++| S14 | [해루질·통발](02-SYSTEMS/night-hunting-trap.md) | 🔶 | `NightHuntingEngine` · `TrapSystem` | 엔진·씬 동작 확인(099 조사) · 결함 2건 수정 완료 · **배선 D2~D5 잔여 — 다음 대과제 1순위** |
+ | S15 | 요리(불요리)·CookScene | ⬜ | `CookScene` · `RecipeDatabase` | 화구·용기 시스템부터 |
+ | S16 | 제작 `CraftScene` | ⬜ | — | 예약(U 키) |
+ | S17 | 퀘스트·스토리 | ⬜ | `QuestDatabase` | **모든 컴포넌트 구현 후 도입**(사용자 방침) |
+ | S18 | 멀티플레이 | ⬜ | `packages/server` | Phase 8 |
+ | S19 | Tauri 패키징 | ⬜ | `apps/tauri-wrapper` | Phase 9 (아이콘만 준비됨) |
++| S20 | [도감·발견·dev 도구](02-SYSTEMS/discovery-wiki.md) | 🟢 | `DiscoveryStore` · `AnglerLogScene` · F10 콘솔 | 위키 상세 팝업 · FP 토스트 |
+ 
+ ---
+ 
+-## 3. 지금 위치 (2026-08-13)
++## 3. 지금 위치 (2026-08-14)
+ 
++- **99차**: 발견 도감·위키(S20 신설) + 통발 결함 2건 수정 + Dev 콘솔(F10).
++  다음 대과제 확정 순서 = **해루질·통발 배선(S14 D2~D5) → 불요리 → 농장 경영(S8 E1~E5, 스타듀밸리형)**.
+ - **Phase 6** (게임플레이 심화) 내부, **손질 시스템(S3)** 확장 중.
+ - **두족류 3종 개방(97차)** — 무늬오징어 20스테이지(90~96차 재구성) + **한치(트리 공유)·문어 8스테이지** +
+   **부산물 개편·회뜨기 3모드**(몸통살 22점·날개살 4점·촉완 분리). 갑오징어 13만 미착수.
+diff --git a/packages/client-pc/src/data/WikiCatalog.ts b/packages/client-pc/src/data/WikiCatalog.ts
+new file mode 100644
+index 0000000..f3e992f
+--- /dev/null
++++ b/packages/client-pc/src/data/WikiCatalog.ts
+@@ -0,0 +1,85 @@
++/**
++ * @file WikiCatalog.ts
++ * @description 아이템 위키 정적 카탈로그 — 시드 + 상점 전 품목 통합 목록
++ *
++ * 위키(도감)의 아이템 항목 단위는 "정적 카탈로그 id"다:
++ * - 시드 아이템 (InventoryStore.seedCatalog) + 상점 판매 품목 (SHOP_CATALOG) dedup.
++ * - 개체형 아이템(어획물·필렛 등 — id에 시퀀스가 붙는 것)은 카탈로그가 아니므로 제외.
++ * - 발견 판정은 DiscoveryStore('item', id) — 취득 순간 기록된 raw id와 카탈로그 id가 일치.
++ */
++
++import type { InvCategory, InvItemTemplate } from '../store/InventoryStore.js';
++import { InventoryStore } from '../store/InventoryStore.js';
++import { SHOP_CATALOG, BUILDING_LABEL } from './ShopCatalog.js';
++
++export interface WikiItemEntry {
++  id: string;
++  name: string;
++  icon: string;
++  iconTexture?: string;
++  category: InvCategory;
++  subCategory: string;
++  basePrice: number;
++  /** 설명 (상점 desc 우선) */
++  desc?: string;
++  /** 판매처 이름 목록 — 미발견 카드의 입수 힌트 */
++  soldAt: string[];
++  /** 시드(초기 지급) 여부 */
++  isSeed: boolean;
++  /** 원본 아이템 템플릿 — dev 콘솔 지급(addItem) 등 실지급용 */
++  tpl: InvItemTemplate;
++}
++
++/** 개체형(비카탈로그) 소분류 — 위키 항목에서 제외 */
++const INSTANCE_SUBCATS = new Set(['어획물']);
++
++let cache: WikiItemEntry[] | null = null;
++
++/** 아이템 위키 카탈로그 (1회 빌드 캐시 — 정적 데이터) */
++export function buildItemWikiCatalog(): WikiItemEntry[] {
++  if (cache) return cache;
++
++  const map = new Map<string, WikiItemEntry>();
++
++  // 1) 시드 품목
++  for (const it of InventoryStore.seedCatalog()) {
++    if (INSTANCE_SUBCATS.has(it.subCategory)) continue;
++    // 시드 상태(착용·소켓)는 카탈로그에 싣지 않는다 — 지급 시 미착용 신품으로
++    const { slot: _slot, qty: _qty, ...tpl } = it;
++    map.set(it.id, {
++      id: it.id, name: it.name, icon: it.icon, iconTexture: it.iconTexture,
++      category: it.category, subCategory: it.subCategory, basePrice: it.basePrice,
++      soldAt: [], isSeed: true,
++      tpl: { ...tpl, equipped: false, equippedHand: undefined },
++    });
++  }
++
++  // 2) 상점 품목 — 기존 항목엔 desc·판매처 병합, 신규는 추가
++  for (const shop of Object.values(SHOP_CATALOG)) {
++    const shopName = BUILDING_LABEL[shop.kind] ?? shop.name;
++    for (const e of shop.sells) {
++      const prev = map.get(e.id);
++      if (prev) {
++        if (!prev.desc && e.desc) prev.desc = e.desc;
++        if (!prev.soldAt.includes(shopName)) prev.soldAt.push(shopName);
++      } else {
++        map.set(e.id, {
++          id: e.id, name: e.name, icon: e.icon, iconTexture: e.iconTexture,
++          category: e.category, subCategory: e.subCategory, basePrice: e.basePrice,
++          desc: e.desc, soldAt: [shopName], isSeed: false,
++          tpl: e,
++        });
++      }
++    }
++  }
++
++  cache = [...map.values()];
++  return cache;
++}
++
++/** 카테고리별 카탈로그 (subCategory → 이름 순 정렬) */
++export function itemWikiByCategory(cat: InvCategory): WikiItemEntry[] {
++  return buildItemWikiCatalog()
++    .filter((e) => e.category === cat)
++    .sort((a, b) => a.subCategory.localeCompare(b.subCategory) || a.name.localeCompare(b.name));
++}
+diff --git a/packages/client-pc/src/dev/DevConsolePanel.ts b/packages/client-pc/src/dev/DevConsolePanel.ts
+new file mode 100644
+index 0000000..c0ed320
+--- /dev/null
++++ b/packages/client-pc/src/dev/DevConsolePanel.ts
+@@ -0,0 +1,321 @@
++/**
++ * @file DevConsolePanel.ts
++ * @description 개발 전용 크리에이티브 콘솔 오버레이 (F10 토글)
++ *
++ * 마인크래프트 크리에이티브 모드 컨셉 — localhost dev 서버 전용:
++ *  - 무적(갓모드): 신선도 동결 · 채비/미끼 손실 없음 · 줄터짐 없음 (DevMode.god)
++ *  - 재화 조작 / 스태미나·피로 회복
++ *  - 아이템 지급·제거 (시드+상점 전 카탈로그 검색)
++ *  - 어종 어획물 지급 (FISH_DATABASE 전 어종 — 활어·평균 밴드 랜덤)
++ *  - 도감/위키 전체 해금·초기화 (DiscoveryStore)
++ *
++ * DevTuningPanel(F8)과 동일한 DOM 오버레이 패턴 —
++ * 프로덕션 빌드에서는 initDevConsolePanel()이 즉시 반환하고 vite가 데드코드 제거.
++ */
++
++import { FISH_DATABASE, SHORE_CREATURE_DATABASE } from '@tra/core';
++import { GameState } from '../store/GameState.js';
++import { InventoryStore } from '../store/InventoryStore.js';
++import { DiscoveryStore } from '../store/DiscoveryStore.js';
++import { DevMode } from './DevMode.js';
++import { buildItemWikiCatalog } from '../data/WikiCatalog.js';
++
++let mounted = false;
++let root: HTMLDivElement | null = null;
++
++/** 엔트리(game.ts)에서 1회 호출 — F10 토글 리스너 등록 (DEV 전용) */
++export function initDevConsolePanel(): void {
++  if (!import.meta.env.DEV) return;      // 프로덕션 차단
++  if (mounted) return;
++  mounted = true;
++
++  window.addEventListener('keydown', (e) => {
++    if (e.code === 'F10') { e.preventDefault(); toggle(); }
++  });
++}
++
++function toggle(): void {
++  if (root) { root.remove(); root = null; return; }
++  root = buildPanel();
++  document.body.appendChild(root);
++}
++
++// ── UI 헬퍼 ─────────────────────────────────────
++
++function styleBtn(b: HTMLButtonElement, primary = false): void {
++  Object.assign(b.style, {
++    padding: '3px 8px', cursor: 'pointer', fontSize: '11px',
++    background: primary ? '#1c5a3d' : '#1c3d5a', color: '#e8f4fd',
++    border: '1px solid #2a5a8a', borderRadius: '4px', marginRight: '4px',
++  });
++}
++
++function section(box: HTMLElement, label: string): HTMLDivElement {
++  const h = document.createElement('div');
++  h.textContent = label;
++  Object.assign(h.style, { margin: '12px 0 6px', color: '#7fe0b0', fontWeight: '700' });
++  box.appendChild(h);
++  const body = document.createElement('div');
++  box.appendChild(body);
++  return body;
++}
++
++function flash(el: HTMLElement, msg: string): void {
++  const prev = el.textContent;
++  el.textContent = msg;
++  setTimeout(() => { el.textContent = prev; }, 900);
++}
++
++// ── 패널 본체 ────────────────────────────────────
++
++function buildPanel(): HTMLDivElement {
++  const box = document.createElement('div');
++  Object.assign(box.style, {
++    position: 'fixed', top: '12px', left: '12px', width: '330px',
++    maxHeight: '90vh', overflowY: 'auto', zIndex: '99999',
++    background: 'rgba(10,20,30,0.96)', border: '1px solid #3d8a5a',
++    borderRadius: '8px', padding: '10px', font: '12px "Noto Sans KR",sans-serif',
++    color: '#e8f4fd', boxShadow: '0 4px 18px rgba(0,0,0,0.5)',
++  });
++
++  const title = document.createElement('div');
++  title.textContent = '⚡ Dev Console (F10) — 크리에이티브';
++  Object.assign(title.style, { fontWeight: '700', marginBottom: '4px', color: '#7fe0b0' });
++  box.appendChild(title);
++
++  const note = document.createElement('div');
++  note.textContent = 'localhost dev 전용 — 프로덕션 빌드에는 존재하지 않음';
++  Object.assign(note.style, { fontSize: '10px', color: '#5a8fab', marginBottom: '6px' });
++  box.appendChild(note);
++
++  buildGodSection(box);
++  buildPlayerSection(box);
++  buildItemSection(box);
++  buildFishSection(box);
++  buildDiscoverySection(box);
++
++  return box;
++}
++
++/** ① 무적(갓모드) 토글 */
++function buildGodSection(box: HTMLElement): void {
++  const body = section(box, '① 무적 (갓모드)');
++  const label = document.createElement('label');
++  Object.assign(label.style, { display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' });
++  const cb = document.createElement('input');
++  cb.type = 'checkbox';
++  cb.checked = DevMode.god;
++  cb.onchange = () => { DevMode.god = cb.checked; };
++  const txt = document.createElement('span');
++  txt.textContent = '신선도 동결 · 채비/미끼 손실 없음 · 줄터짐 없음';
++  label.appendChild(cb);
++  label.appendChild(txt);
++  body.appendChild(label);
++}
++
++/** ② 재화·상태 */
++function buildPlayerSection(box: HTMLElement): void {
++  const body = section(box, '② 재화 · 상태');
++
++  const coinRow = document.createElement('div');
++  Object.assign(coinRow.style, { marginBottom: '4px' });
++  const coinLabel = document.createElement('span');
++  const refreshCoin = (): void => {
++    coinLabel.textContent = `보유 ${GameState.player.inventory.coins.toLocaleString()}원  `;
++  };
++  refreshCoin();
++  coinRow.appendChild(coinLabel);
++  for (const [label, delta] of [['+10만', 100_000], ['+100만', 1_000_000], ['0으로', 0]] as const) {
++    const b = document.createElement('button');
++    b.textContent = label;
++    styleBtn(b);
++    b.onclick = () => {
++      if (delta === 0) GameState.player.inventory.coins = 0;
++      else GameState.player.inventory.coins += delta;
++      GameState.markDirty();
++      refreshCoin();
++    };
++    coinRow.appendChild(b);
++  }
++  body.appendChild(coinRow);
++
++  const statRow = document.createElement('div');
++  const heal = document.createElement('button');
++  heal.textContent = '❤️ 스태미나·피로 회복';
++  styleBtn(heal, true);
++  heal.onclick = () => {
++    GameState.player.stamina = 100;
++    GameState.player.fatigue = 0;
++    GameState.markDirty();
++    flash(heal, '✓ 회복됨');
++  };
++  statRow.appendChild(heal);
++  body.appendChild(statRow);
++}
++
++/** ③ 아이템 지급/제거 — 카탈로그 검색 목록 */
++function buildItemSection(box: HTMLElement): void {
++  const body = section(box, '③ 아이템 지급 · 제거');
++
++  const search = document.createElement('input');
++  search.placeholder = '이름/소분류 검색…';
++  Object.assign(search.style, {
++    width: '100%', boxSizing: 'border-box', marginBottom: '5px', padding: '4px 6px',
++    background: '#0e1c2d', color: '#e8f4fd', border: '1px solid #2a5a8a', borderRadius: '4px',
++    font: '11px "Noto Sans KR",sans-serif',
++  });
++  body.appendChild(search);
++
++  const list = document.createElement('div');
++  Object.assign(list.style, {
++    maxHeight: '190px', overflowY: 'auto', border: '1px solid #1f3d5a',
++    borderRadius: '4px', padding: '3px',
++  });
++  body.appendChild(list);
++
++  const renderList = (): void => {
++    list.textContent = '';
++    const q = search.value.trim().toLowerCase();
++    const entries = buildItemWikiCatalog()
++      .filter((e) => !q || e.name.toLowerCase().includes(q) || e.subCategory.toLowerCase().includes(q))
++      .slice(0, 60);   // 상위 60개만 (검색으로 좁혀 쓰는 UI)
++    for (const e of entries) {
++      const row = document.createElement('div');
++      Object.assign(row.style, {
++        display: 'flex', alignItems: 'center', gap: '4px', padding: '2px 2px',
++        borderBottom: '1px solid #16283a',
++      });
++      const held = InventoryStore.find(e.id)?.qty ?? 0;
++      const name = document.createElement('span');
++      name.textContent = `${e.icon} ${e.name}`;
++      Object.assign(name.style, { flex: '1', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' });
++      name.title = `${e.subCategory} · ${e.basePrice.toLocaleString()}원`;
++      const qty = document.createElement('span');
++      qty.textContent = held > 0 ? `×${held}` : '';
++      Object.assign(qty.style, { color: '#7fe0b0', minWidth: '28px', textAlign: 'right', fontSize: '10px' });
++      row.appendChild(name);
++      row.appendChild(qty);
++      for (const [label, n] of [['+1', 1], ['+10', 10], ['−1', -1]] as const) {
++        const b = document.createElement('button');
++        b.textContent = label;
++        styleBtn(b);
++        b.style.marginRight = '0';
++        b.style.padding = '1px 5px';
++        b.onclick = () => {
++          if (n > 0) InventoryStore.addItem(e.tpl, n);
++          else InventoryStore.removeQty(e.id, 1);
++          GameState.markDirty();
++          renderList();
++        };
++        row.appendChild(b);
++      }
++      list.appendChild(row);
++    }
++    if (entries.length === 0) {
++      const empty = document.createElement('div');
++      empty.textContent = '검색 결과 없음';
++      Object.assign(empty.style, { color: '#5a8fab', padding: '4px' });
++      list.appendChild(empty);
++    }
++  };
++  search.oninput = renderList;
++  renderList();
++}
++
++/** ④ 어종 어획물 지급 */
++function buildFishSection(box: HTMLElement): void {
++  const body = section(box, '④ 어종 어획물 지급 (활어·랜덤 사이즈)');
++
++  const search = document.createElement('input');
++  search.placeholder = '어종명 검색…';
++  Object.assign(search.style, {
++    width: '100%', boxSizing: 'border-box', marginBottom: '5px', padding: '4px 6px',
++    background: '#0e1c2d', color: '#e8f4fd', border: '1px solid #2a5a8a', borderRadius: '4px',
++    font: '11px "Noto Sans KR",sans-serif',
++  });
++  body.appendChild(search);
++
++  const list = document.createElement('div');
++  Object.assign(list.style, {
++    maxHeight: '150px', overflowY: 'auto', border: '1px solid #1f3d5a',
++    borderRadius: '4px', padding: '3px',
++  });
++  body.appendChild(list);
++
++  const renderList = (): void => {
++    list.textContent = '';
++    const q = search.value.trim();
++    const fishes = FISH_DATABASE
++      .filter((f) => !q || f.nameKo.includes(q))
++      .slice(0, 40);
++    for (const f of fishes) {
++      const row = document.createElement('div');
++      Object.assign(row.style, {
++        display: 'flex', alignItems: 'center', gap: '4px', padding: '2px 2px',
++        borderBottom: '1px solid #16283a',
++      });
++      const name = document.createElement('span');
++      name.textContent = `🐟 ${f.nameKo}`;
++      Object.assign(name.style, { flex: '1', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' });
++      name.title = `${f.avgSizeRangeCm[0]}~${f.avgSizeRangeCm[1]}cm`;
++      row.appendChild(name);
++      const b = document.createElement('button');
++      b.textContent = '지급';
++      styleBtn(b, true);
++      b.style.marginRight = '0';
++      b.style.padding = '1px 6px';
++      b.onclick = () => {
++        const ok = InventoryStore.devGrantFish(f.id);
++        GameState.markDirty();
++        flash(b, ok ? '✓' : '실패');
++      };
++      row.appendChild(b);
++      list.appendChild(row);
++    }
++  };
++  search.oninput = renderList;
++  renderList();
++}
++
++/** ⑤ 도감/위키 발견 조작 */
++function buildDiscoverySection(box: HTMLElement): void {
++  const body = section(box, '⑤ 도감 · 위키 발견');
++
++  const status = document.createElement('div');
++  Object.assign(status.style, { fontSize: '10px', color: '#8faabf', marginBottom: '4px' });
++  const refreshStatus = (): void => {
++    // 아이템은 카탈로그 교집합으로 센다 — 개체형(어획물 등) 발견 id가 섞여 총수를 넘기지 않게
++    const catalog = buildItemWikiCatalog();
++    const itemFound = catalog.filter((e) => DiscoveryStore.isDiscovered('item', e.id)).length;
++    status.textContent =
++      `어종 ${DiscoveryStore.countByKind('fish')}/${FISH_DATABASE.length} · ` +
++      `생물 ${DiscoveryStore.countByKind('creature')}/${SHORE_CREATURE_DATABASE.length} · ` +
++      `아이템 ${itemFound}/${catalog.length}`;
++  };
++  refreshStatus();
++  body.appendChild(status);
++
++  const unlockAll = document.createElement('button');
++  unlockAll.textContent = '🔓 전체 해금';
++  styleBtn(unlockAll, true);
++  unlockAll.onclick = () => {
++    DiscoveryStore.devUnlockAll('fish', FISH_DATABASE.map((f) => f.id));
++    DiscoveryStore.devUnlockAll('creature', SHORE_CREATURE_DATABASE.map((c) => c.id));
++    DiscoveryStore.devUnlockAll('item', buildItemWikiCatalog().map((e) => e.id));
++    GameState.markDirty();
++    refreshStatus();
++    flash(unlockAll, '✓ 해금됨');
++  };
++  body.appendChild(unlockAll);
++
++  const reset = document.createElement('button');
++  reset.textContent = '🗑 발견 초기화';
++  styleBtn(reset);
++  reset.onclick = () => {
++    DiscoveryStore.devResetAll();
++    GameState.markDirty();
++    refreshStatus();
++    flash(reset, '✓ 초기화됨');
++  };
++  body.appendChild(reset);
++}
+diff --git a/packages/client-pc/src/dev/DevMode.ts b/packages/client-pc/src/dev/DevMode.ts
+new file mode 100644
+index 0000000..b6c52fb
+--- /dev/null
++++ b/packages/client-pc/src/dev/DevMode.ts
+@@ -0,0 +1,24 @@
++/**
++ * @file DevMode.ts
++ * @description dev 전용 치트 상태 (마인크래프트 크리에이티브 모드 컨셉)
++ *
++ * localhost dev 서버에서만 의미를 가진다 — isGod()은 프로덕션 빌드에서
++ * `import.meta.env.DEV`가 false 상수로 치환되어 항상 false(데드코드 제거)다.
++ * 토글 UI는 DevConsolePanel(F10).
++ *
++ * god(무적) 적용 범위:
++ *  - 신선도 동결 (InventoryStore.refreshCondition)
++ *  - 채비/루어 손실 없음 (loseRigParts / loseLureRig)
++ *  - 미끼 무한 (consumeRigItem)
++ *  - 줄터짐 없음 (FirstPersonFishingScene.forceLineBreak)
++ */
++
++export const DevMode = {
++  /** 무적(갓모드) 토글 — DevConsolePanel에서 변경 */
++  god: false,
++};
++
++/** 무적 여부 — 프로덕션에서는 항상 false (vite 데드코드 제거) */
++export function isGod(): boolean {
++  return import.meta.env.DEV && DevMode.god;
++}
+diff --git a/packages/client-pc/src/game.ts b/packages/client-pc/src/game.ts
+index b1c41ee..acce8a6 100644
+--- a/packages/client-pc/src/game.ts
++++ b/packages/client-pc/src/game.ts
+@@ -34,6 +34,7 @@ import { SettingsScene } from './scenes/SettingsScene.js';
+ import { CreditsScene } from './scenes/CreditsScene.js';
+ import { GameState } from './store/GameState.js';
+ import { initDevTuningPanel } from './dev/DevTuningPanel.js';
++import { initDevConsolePanel } from './dev/DevConsolePanel.js';
+ 
+ /** 싱글턴 보관 키 — HMR/재평가를 넘어 유지된다 */
+ const GAME_KEY = '__PIXEL_ANGLER_GAME';
+@@ -54,6 +55,8 @@ export function createGame(): Phaser.Game {
+   GameState.initialize();
+   // dev 전용 튜닝 슬라이더 오버레이 (F8) — 프로덕션에서는 즉시 반환/데드코드 제거
+   initDevTuningPanel();
++  // dev 전용 크리에이티브 콘솔 (F10) — 아이템/어종 지급·무적·도감 해금
++  initDevConsolePanel();
+ 
+   // 씬 등록 순서가 곧 씬 키 우선순위
+   const config: Phaser.Types.Core.GameConfig = {
+diff --git a/packages/client-pc/src/scenes/AnglerLogScene.ts b/packages/client-pc/src/scenes/AnglerLogScene.ts
+index 1512fe8..6749366 100644
+--- a/packages/client-pc/src/scenes/AnglerLogScene.ts
++++ b/packages/client-pc/src/scenes/AnglerLogScene.ts
+@@ -1,17 +1,41 @@
+ /**
+  * @file AnglerLogScene.ts
+- * @description 조과첩(실데이터 기록) 및 어종 도감 씬
++ * @description 도감 & 조과첩 씬 — 어종/해양생물/아이템 위키 + 조과 기록
++ *
++ * 모든 도감 탭은 DiscoveryStore(발견 기록) 기반 —
++ * 한 번이라도 조우(어획/포획/채집/취득)한 항목만 공개하고, 미발견은 실루엣/???로 가린다.
+  */
+ 
+ import Phaser from 'phaser';
+ import { GameState } from '../store/GameState.js';
+-import { FISH_DATABASE, getSpotById } from '@tra/core';
++import {
++  FISH_DATABASE, getSpotById, SHORE_CREATURE_DATABASE,
++  DISCOVERY_SOURCE_LABEL,
++} from '@tra/core';
++import type { ShoreCreatureCategory } from '@tra/core';
++import { DiscoveryStore } from '../store/DiscoveryStore.js';
+ import { FISH_TEXTURE } from '../data/FishTextures.js';
++import { itemWikiByCategory } from '../data/WikiCatalog.js';
++import { createItemIcon } from '../ui/ItemIcon.js';
++import { CATEGORY_LABEL } from '../store/InventoryStore.js';
++import type { InvCategory } from '../store/InventoryStore.js';
+ import { clampTextWidth } from '../ui/TextFit.js';
+ import { fadeOutThen } from './SceneFade.js';
+ 
++type LogTab = 'encyclopedia' | 'creatures' | 'items' | 'history';
++
++/** 해양생물 카테고리 라벨/이모지 (위키 카드용) */
++const CREATURE_CAT_LABEL: Record<ShoreCreatureCategory, string> = {
++  shellfish: '조개류', crustacean: '갑각류', cephalopod: '두족류',
++  echinoderm: '극피동물', bivalve: '이매패류', gastropod: '복족류',
++};
++const CREATURE_CAT_EMOJI: Record<ShoreCreatureCategory, string> = {
++  shellfish: '🐚', crustacean: '🦀', cephalopod: '🐙',
++  echinoderm: '🦔', bivalve: '🦪', gastropod: '🐌',
++};
++
+ export class AnglerLogScene extends Phaser.Scene {
+-  private currentTab: 'encyclopedia' | 'history' = 'encyclopedia';
++  private currentTab: LogTab = 'encyclopedia';
+   private tabContainer?: Phaser.GameObjects.Container;
+ 
+   // 조과 기록용 정렬/필터/페이징 상태
+@@ -20,10 +44,11 @@ export class AnglerLogScene extends Phaser.Scene {
+   private currentPage = 0;
+   /** 조과 기록 1페이지 표시 수 — 행 60px, 시작 210 → 210+6*60+50=620 ≤ 네비(675) */
+   private readonly ITEMS_PER_PAGE = 7;
++  /** 아이템 위키 카테고리 필터 */
++  private itemCatFilter: InvCategory = 'gear';
+ 
+-  // 탭 버튼 오브젝트 참조
+-  private tabBtnEncyBg?: Phaser.GameObjects.Rectangle;
+-  private tabBtnHistBg?: Phaser.GameObjects.Rectangle;
++  // 탭 버튼 배경 참조 (활성 하이라이트)
++  private tabBtnBgs: Partial<Record<LogTab, Phaser.GameObjects.Rectangle>> = {};
+ 
+   /** 나가기 시 resume할 씬 (메인 메뉴/필드 어디서든 진입 가능) */
+   private returnScene = 'FieldScene';
+@@ -43,7 +68,7 @@ export class AnglerLogScene extends Phaser.Scene {
+     this.add.rectangle(0, 0, width, height, 0x050b14).setOrigin(0, 0);
+ 
+     // 타이틀
+-    this.add.text(40, 30, '📖 꾼의 조과첩 & 어종 도감 (Angler\'s Log)', {
++    this.add.text(40, 30, '📖 도감 & 조과첩 (Angler\'s Log)', {
+       fontFamily: '"Noto Sans KR", sans-serif',
+       fontSize: '24px',
+       color: '#4af2a1',
+@@ -76,39 +101,34 @@ export class AnglerLogScene extends Phaser.Scene {
+     backBtn.on('pointerout', () => backBg.setFillStyle(0x1f3d5a));
+ 
+     // ─────────────────────────────────────────────
+-    // [UI] 탭 버튼 영역
++    // [UI] 탭 버튼 영역 (배열 기반 4탭)
+     // ─────────────────────────────────────────────
+     const tabY = 110;
+-
+-    // 1) 어종 도감 탭 버튼
+-    const tabBtnEncy = this.add.container(140, tabY).setInteractive(
+-      new Phaser.Geom.Rectangle(-80, -16, 160, 32),
+-      Phaser.Geom.Rectangle.Contains
+-    );
+-    this.tabBtnEncyBg = this.add.rectangle(0, 0, 160, 32, 0x0e1c2d).setStrokeStyle(1.5, 0x2a5a8a);
+-    const tabBtnEncyText = this.add.text(0, 0, '어종 도감', {
+-      fontFamily: '"Noto Sans KR", sans-serif',
+-      fontSize: '14px',
+-      color: '#e8f4fd',
+-      fontStyle: 'bold',
+-    }).setOrigin(0.5);
+-    tabBtnEncy.add([this.tabBtnEncyBg, tabBtnEncyText]);
+-    tabBtnEncy.on('pointerdown', () => this.switchTab('encyclopedia'));
+-
+-    // 2) 조과 기록 탭 버튼
+-    const tabBtnHist = this.add.container(310, tabY).setInteractive(
+-      new Phaser.Geom.Rectangle(-80, -16, 160, 32),
+-      Phaser.Geom.Rectangle.Contains
+-    );
+-    this.tabBtnHistBg = this.add.rectangle(0, 0, 160, 32, 0x0e1c2d).setStrokeStyle(1.5, 0x2a5a8a);
+-    const tabBtnHistText = this.add.text(0, 0, '나의 조과 기록', {
+-      fontFamily: '"Noto Sans KR", sans-serif',
+-      fontSize: '14px',
+-      color: '#e8f4fd',
+-      fontStyle: 'bold',
+-    }).setOrigin(0.5);
+-    tabBtnHist.add([this.tabBtnHistBg, tabBtnHistText]);
+-    tabBtnHist.on('pointerdown', () => this.switchTab('history'));
++    const TABS: { key: LogTab; label: string; w: number }[] = [
++      { key: 'encyclopedia', label: '어종 도감',     w: 140 },
++      { key: 'creatures',    label: '해양생물',      w: 130 },
++      { key: 'items',        label: '아이템 위키',   w: 140 },
++      { key: 'history',      label: '나의 조과 기록', w: 160 },
++    ];
++    let tabX = 60;
++    for (const tab of TABS) {
++      const cx = tabX + tab.w / 2;
++      const btn = this.add.container(cx, tabY).setInteractive(
++        new Phaser.Geom.Rectangle(-tab.w / 2, -16, tab.w, 32),
++        Phaser.Geom.Rectangle.Contains
++      );
++      const bg = this.add.rectangle(0, 0, tab.w, 32, 0x0e1c2d).setStrokeStyle(1.5, 0x2a5a8a);
++      const txt = this.add.text(0, 0, tab.label, {
++        fontFamily: '"Noto Sans KR", sans-serif',
++        fontSize: '14px',
++        color: '#e8f4fd',
++        fontStyle: 'bold',
++      }).setOrigin(0.5);
++      btn.add([bg, txt]);
++      btn.on('pointerdown', () => this.switchTab(tab.key));
++      this.tabBtnBgs[tab.key] = bg;
++      tabX += tab.w + 10;
++    }
+ 
+     // ESC 설정
+     this.input.keyboard?.on('keydown-ESC', () => this.onBack());
+@@ -129,17 +149,13 @@ export class AnglerLogScene extends Phaser.Scene {
+     }, 220);
+   }
+ 
+-  private switchTab(tab: 'encyclopedia' | 'history'): void {
++  private switchTab(tab: LogTab): void {
+     if (this.currentTab !== tab) this.currentPage = 0;   // 탭마다 페이지 수가 달라 초기화
+     this.currentTab = tab;
+ 
+     // 활성 탭 버튼 시각적 효과 설정
+-    if (tab === 'encyclopedia') {
+-      this.tabBtnEncyBg?.setFillStyle(0x2a5a8a);
+-      this.tabBtnHistBg?.setFillStyle(0x0e1c2d);
+-    } else {
+-      this.tabBtnEncyBg?.setFillStyle(0x0e1c2d);
+-      this.tabBtnHistBg?.setFillStyle(0x2a5a8a);
++    for (const [key, bg] of Object.entries(this.tabBtnBgs)) {
++      bg?.setFillStyle(key === tab ? 0x2a5a8a : 0x0e1c2d);
+     }
+ 
+     this.renderCurrentTab();
+@@ -150,13 +166,22 @@ export class AnglerLogScene extends Phaser.Scene {
+       this.tabContainer.removeAll(true);
+     }
+ 
+-    if (this.currentTab === 'encyclopedia') {
+-      this.renderEncyclopedia();
+-    } else {
+-      this.renderHistory();
++    switch (this.currentTab) {
++      case 'encyclopedia': this.renderEncyclopedia(); break;
++      case 'creatures':    this.renderCreatures();    break;
++      case 'items':        this.renderItems();        break;
++      case 'history':      this.renderHistory();      break;
+     }
+   }
+ 
++  /** 발견 정보 한 줄 ("낚시로 어획 · 8/14") — 발견 카드 하단 공통 표기 */
++  private discoveryLine(kind: 'fish' | 'creature' | 'item', id: string): string | null {
++    const e = DiscoveryStore.get(kind, id);
++    if (!e) return null;
++    const d = new Date(e.firstAtMs);
++    return `${DISCOVERY_SOURCE_LABEL[e.source]} · ${d.getMonth() + 1}/${d.getDate()}`;
++  }
++
+   // ─────────────────────────────────────────────
+   // 1. 어종 도감 탭 렌더링
+   // ─────────────────────────────────────────────
+@@ -178,8 +203,8 @@ export class AnglerLogScene extends Phaser.Scene {
+     const records = GameState.player.caughtFishHistory;
+     const pageFish = FISH_DATABASE.slice(this.currentPage * perPage, (this.currentPage + 1) * perPage);
+ 
+-    // 발견 현황 요약 (전체 기준)
+-    const found = FISH_DATABASE.filter((f) => records.some((r) => r.fishSpeciesId === f.id)).length;
++    // 발견 현황 요약 — 발견 = 낚시 어획 + 통발 포획 등 최초 조우 (DiscoveryStore 단일 기준)
++    const found = FISH_DATABASE.filter((f) => DiscoveryStore.isDiscovered('fish', f.id)).length;
+     const summary = this.add.text(width - 40, startY - 26,
+       `발견 ${found} / ${FISH_DATABASE.length}종`, {
+         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#8faabf',
+@@ -203,8 +228,9 @@ export class AnglerLogScene extends Phaser.Scene {
+ 
+       const caughtCount = records.filter(r => r.fishSpeciesId === fish.id).length;
+       const bestRecord = GameState.player.personalRecords[fish.id] || 0;
++      const discovered = DiscoveryStore.isDiscovered('fish', fish.id);
+ 
+-      if (caughtCount > 0) {
++      if (discovered) {
+         // 이름·학명 = 카드 전체 폭(안쪽 여백 15/12), 실사 이미지는 좌측 아래
+         const nameText = clampTextWidth(this.add.text(x + 15, y + 12, fish.nameKo, {
+           fontFamily: '"Noto Sans KR", sans-serif',
+@@ -242,12 +268,21 @@ export class AnglerLogScene extends Phaser.Scene {
+         const season = fish.peakSeasonMonths.length > 0
+           ? `제철 ${fish.peakSeasonMonths.slice(0, 4).join('·')}월`
+           : '제철 연중';
+-        const rows: [string, string][] = [
+-          [`최대어 ${bestRecord} cm`, '#e8f4fd'],
+-          [`누적 ${caughtCount} 수`, '#e8f4fd'],
+-          [season, '#8faabf'],
+-          [`kg당 ${fish.sashimiValuePerKg.toLocaleString()}원`, '#c8a060'],
+-        ];
++        // 낚시 어획이 없는 발견(통발 포획 등)은 기록 대신 발견 경로를 보여준다
++        const discLine = this.discoveryLine('fish', fish.id);
++        const rows: [string, string][] = caughtCount > 0
++          ? [
++              [`최대어 ${bestRecord} cm`, '#e8f4fd'],
++              [`누적 ${caughtCount} 수`, '#e8f4fd'],
++              [season, '#8faabf'],
++              [`kg당 ${fish.sashimiValuePerKg.toLocaleString()}원`, '#c8a060'],
++            ]
++          : [
++              [`🔍 ${discLine ?? '발견'}`, '#8fd4b8'],
++              ['낚시 기록 없음', '#607b8e'],
++              [season, '#8faabf'],
++              [`kg당 ${fish.sashimiValuePerKg.toLocaleString()}원`, '#c8a060'],
++            ];
+         rows.forEach(([label, color], i) => {
+           const t = clampTextWidth(this.add.text(SX, y + 50 + i * 19, label, {
+             fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color,
+@@ -255,16 +290,32 @@ export class AnglerLogScene extends Phaser.Scene {
+           this.tabContainer?.add(t);
+         });
+       } else {
+-        const secretText = this.add.text(x + itemW / 2, y + itemH / 2 - 10, '???', {
++        // ── 미발견 카드: 실루엣 + ??? + 서식 힌트 (어디서 만날 수 있는지만 귀띔) ──
++        const texKey = FISH_TEXTURE[fish.id];
++        if (texKey && this.textures.exists(texKey)) {
++          const src = this.textures.get(texKey).getSourceImage() as { width: number; height: number };
++          const SIL_W = 120, SIL_H = 60;
++          const k = Math.min(SIL_W / src.width, SIL_H / src.height);
++          // setTintFill = 알파만 남기고 단색 채움 → 검은 실루엣
++          const sil = this.add.image(x + itemW / 2, y + 52, texKey)
++            .setDisplaySize(Math.round(src.width * k), Math.round(src.height * k))
++            .setTintFill(0x152538)
++            .setAlpha(0.9);
++          this.tabContainer?.add(sil);
++        }
++        const secretText = this.add.text(x + itemW / 2, y + 96, '???', {
+           fontFamily: '"Press Start 2P", monospace',
+-          fontSize: '16px',
++          fontSize: '14px',
+           color: '#2a5a8a'
+         }).setOrigin(0.5);
+-        const descText = this.add.text(x + itemW / 2, y + itemH / 2 + 15, '미발견', {
++        // 서식 힌트 — 수심대·수층 (이름은 숨긴 채 조우 조건만)
++        const LAYER_LABEL = { surface: '표층', mid: '중층', bottom: '바닥층' } as const;
++        const hint = `${fish.preferredDepthM[0]}~${fish.preferredDepthM[1]}m · ${LAYER_LABEL[fish.swimmingLayer]}${fish.isNocturnal ? ' · 야행성' : ''}`;
++        const descText = clampTextWidth(this.add.text(x + itemW / 2, y + 120, hint, {
+           fontFamily: '"Noto Sans KR", sans-serif',
+-          fontSize: '11px',
+-          color: '#1f3d5a'
+-        }).setOrigin(0.5);
++          fontSize: '10px',
++          color: '#3a5a78'
++        }).setOrigin(0.5), itemW - 24);
+ 
+         this.tabContainer?.add([secretText, descText]);
+       }
+@@ -273,6 +324,212 @@ export class AnglerLogScene extends Phaser.Scene {
+     this.renderPageNav(maxPage, width, height);
+   }
+ 
++  // ─────────────────────────────────────────────
++  // 1b. 해양생물 도감 탭 (해루질·통발 생물)
++  // ─────────────────────────────────────────────
++  private renderCreatures(): void {
++    const { width, height } = this.scale;
++    const startX = 40;
++    const startY = 160;
++    const itemW = 220;
++    const itemH = 150;
++    const colCount = 4;
++    const GAP = 20;
++    const rowsPerPage = Math.max(1, Math.floor((height - 45 - 24 - startY + GAP) / (itemH + GAP)));
++    const perPage = rowsPerPage * colCount;
++    const all = SHORE_CREATURE_DATABASE;
++    const maxPage = Math.max(0, Math.ceil(all.length / perPage) - 1);
++    this.currentPage = Math.min(this.currentPage, maxPage);
++
++    const found = all.filter((c) => DiscoveryStore.isDiscovered('creature', c.id)).length;
++    const summary = this.add.text(width - 40, startY - 26,
++      `발견 ${found} / ${all.length}종 — 해루질·통발로 채집해 발견`, {
++        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#8faabf',
++      }).setOrigin(1, 0);
++    this.tabContainer?.add(summary);
++
++    const page = all.slice(this.currentPage * perPage, (this.currentPage + 1) * perPage);
++    page.forEach((cr, idx) => {
++      const col = idx % colCount;
++      const row = Math.floor(idx / colCount);
++      const x = startX + col * (itemW + GAP);
++      const y = startY + row * (itemH + GAP);
++
++      const card = this.add.graphics();
++      card.fillStyle(0x0e1c2d);
++      card.fillRoundedRect(x, y, itemW, itemH, 4);
++      card.lineStyle(1.5, 0x2a5a8a, 0.8);
++      card.strokeRoundedRect(x, y, itemW, itemH, 4);
++      this.tabContainer?.add(card);
++
++      if (DiscoveryStore.isDiscovered('creature', cr.id)) {
++        const nameText = clampTextWidth(this.add.text(x + 15, y + 12, cr.nameKo, {
++          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '15px', color: '#4af2a1', fontStyle: 'bold',
++        }), itemW - 27);
++        const sciText = clampTextWidth(this.add.text(x + 15, y + 32, cr.scientificName, {
++          fontFamily: 'monospace', fontSize: '9px', color: '#5a8fab', fontStyle: 'italic',
++        }), itemW - 27);
++        // 큰 이모지 아이콘 (전용 스프라이트 에셋 도입 전 — spriteKey는 예약)
++        const emoji = this.add.text(x + 44, y + 84, CREATURE_CAT_EMOJI[cr.category] ?? '🐚', {
++          fontSize: '38px',
++        }).setOrigin(0.5);
++        this.tabContainer?.add([nameText, sciText, emoji]);
++
++        const SX = x + 92;
++        const SW = itemW - 92 - 12;
++        const closed = cr.closedSeasonMonths.length > 0
++          ? `금어기 ${cr.closedSeasonMonths.join('·')}월` : '금어기 없음';
++        const discLine = this.discoveryLine('creature', cr.id);
++        const rows: [string, string][] = [
++          [CREATURE_CAT_LABEL[cr.category] ?? cr.category, '#8faabf'],
++          [`kg당 ${cr.marketValuePerKg.toLocaleString()}원`, '#c8a060'],
++          [closed, cr.closedSeasonMonths.length > 0 ? '#d47a6a' : '#607b8e'],
++          [`🔍 ${discLine ?? '발견'}`, '#8fd4b8'],
++        ];
++        rows.forEach(([label, color], i) => {
++          const t = clampTextWidth(this.add.text(SX, y + 54 + i * 19, label, {
++            fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color,
++          }), SW);
++          this.tabContainer?.add(t);
++        });
++      } else {
++        // 미발견 — 카테고리 실루엣 이모지(어둡게) + 조우 힌트
++        const emoji = this.add.text(x + itemW / 2, y + 52, CREATURE_CAT_EMOJI[cr.category] ?? '🐚', {
++          fontSize: '34px',
++        }).setOrigin(0.5).setAlpha(0.18);
++        const secretText = this.add.text(x + itemW / 2, y + 92, '???', {
++          fontFamily: '"Press Start 2P", monospace', fontSize: '14px', color: '#2a5a8a',
++        }).setOrigin(0.5);
++        const timeHint = cr.discoveryTime === 'night' ? '야간' : cr.discoveryTime === 'day' ? '주간' : '주야';
++        const licHint = cr.requiredLicense ? ' · 심화 면허' : '';
++        const hint = clampTextWidth(this.add.text(x + itemW / 2, y + 118,
++          `${timeHint} 해루질·통발${licHint}`, {
++            fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#3a5a78',
++          }).setOrigin(0.5), itemW - 24);
++        this.tabContainer?.add([emoji, secretText, hint]);
++      }
++    });
++
++    this.renderPageNav(maxPage, width, height);
++  }
++
++  // ─────────────────────────────────────────────
++  // 1c. 아이템 위키 탭 (시드 + 상점 전 품목)
++  // ─────────────────────────────────────────────
++  private renderItems(): void {
++    const { width, height } = this.scale;
++    const startX = 40;
++    const filterY = 160;
++    const startY = 196;
++    const itemW = 220;
++    const itemH = 118;
++    const colCount = 4;
++    const GAP = 16;
++
++    // 카테고리 필터 바
++    const cats: InvCategory[] = ['gear', 'consumable', 'food', 'tackle', 'lure', 'etc'];
++    let fx = startX;
++    for (const cat of cats) {
++      const selected = this.itemCatFilter === cat;
++      const label = CATEGORY_LABEL[cat];
++      const bw = 86;
++      const btn = this.add.container(fx + bw / 2, filterY + 10).setInteractive(
++        new Phaser.Geom.Rectangle(-bw / 2, -12, bw, 24),
++        Phaser.Geom.Rectangle.Contains
++      );
++      const bg = this.add.rectangle(0, 0, bw, 24, selected ? 0x2a5a8a : 0x0e1c2d).setStrokeStyle(1, 0x1f3d5a);
++      const t = this.add.text(0, 0, label, {
++        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px',
++        color: selected ? '#4af2a1' : '#a0b8c8',
++      }).setOrigin(0.5);
++      btn.add([bg, t]);
++      btn.on('pointerdown', () => {
++        this.itemCatFilter = cat;
++        this.currentPage = 0;
++        this.renderCurrentTab();
++      });
++      this.tabContainer?.add(btn);
++      fx += bw + 8;
++    }
++
++    const entries = itemWikiByCategory(this.itemCatFilter);
++    const rowsPerPage = Math.max(1, Math.floor((height - 45 - 24 - startY + GAP) / (itemH + GAP)));
++    const perPage = rowsPerPage * colCount;
++    const maxPage = Math.max(0, Math.ceil(entries.length / perPage) - 1);
++    this.currentPage = Math.min(this.currentPage, maxPage);
++
++    const foundAll = entries.filter((e) => DiscoveryStore.isDiscovered('item', e.id)).length;
++    const summary = this.add.text(width - 40, filterY, `발견 ${foundAll} / ${entries.length} — 취득하면 등록`, {
++      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#8faabf',
++    }).setOrigin(1, 0);
++    this.tabContainer?.add(summary);
++
++    const page = entries.slice(this.currentPage * perPage, (this.currentPage + 1) * perPage);
++    page.forEach((entry, idx) => {
++      const col = idx % colCount;
++      const row = Math.floor(idx / colCount);
++      const x = startX + col * (itemW + GAP);
++      const y = startY + row * (itemH + GAP);
++
++      const card = this.add.graphics();
++      card.fillStyle(0x0e1c2d);
++      card.fillRoundedRect(x, y, itemW, itemH, 4);
++      card.lineStyle(1, 0x1f3d5a, 0.9);
++      card.strokeRoundedRect(x, y, itemW, itemH, 4);
++      this.tabContainer?.add(card);
++
++      if (DiscoveryStore.isDiscovered('item', entry.id)) {
++        // 아이콘 (이미지 아이콘 있으면 이미지, 없으면 이모지)
++        const icon = createItemIcon(this, x + 26, y + 26, entry, 30);
++        this.tabContainer?.add(icon);
++
++        const nameText = clampTextWidth(this.add.text(x + 48, y + 12, entry.name, {
++          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px', color: '#e8f4fd', fontStyle: 'bold',
++        }), itemW - 60);
++        const subText = clampTextWidth(this.add.text(x + 48, y + 30, `${entry.subCategory} · ${entry.basePrice.toLocaleString()}원`, {
++          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#8faabf',
++        }), itemW - 60);
++        this.tabContainer?.add([nameText, subText]);
++
++        // 설명 (2줄 워드랩 — 카드 밖 금지)
++        if (entry.desc) {
++          const desc = this.add.text(x + 12, y + 50, entry.desc, {
++            fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#a0b8c8',
++            wordWrap: { width: itemW - 24 }, maxLines: 2,
++          });
++          this.tabContainer?.add(desc);
++        }
++
++        const discLine = this.discoveryLine('item', entry.id);
++        const foot = clampTextWidth(this.add.text(x + 12, y + itemH - 20, `🔍 ${discLine ?? '취득'}`, {
++          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#8fd4b8',
++        }), itemW - 24);
++        this.tabContainer?.add(foot);
++      } else {
++        const secretText = this.add.text(x + itemW / 2, y + 40, '???', {
++          fontFamily: '"Press Start 2P", monospace', fontSize: '13px', color: '#2a5a8a',
++        }).setOrigin(0.5);
++        // 입수 힌트 — 판매처(있으면) / 소분류만
++        const hintSrc = entry.soldAt.length > 0
++          ? `${entry.soldAt.join('·')}에서 구매`
++          : `${entry.subCategory} — 플레이로 입수`;
++        const hint = clampTextWidth(this.add.text(x + itemW / 2, y + 72, hintSrc, {
++          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#3a5a78',
++        }).setOrigin(0.5), itemW - 24);
++        this.tabContainer?.add([secretText, hint]);
++      }
++    });
++
++    if (entries.length === 0) {
++      const empty = this.add.text(width / 2, startY + 120, '이 카테고리에 등록된 품목이 없습니다.', {
++        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px', color: '#607b8e',
++      }).setOrigin(0.5);
++      this.tabContainer?.add(empty);
++    }
++
++    this.renderPageNav(maxPage, width, height);
++  }
++
+   // ─────────────────────────────────────────────
+   // 2. 조과 기록 탭 렌더링
+   // ─────────────────────────────────────────────
+diff --git a/packages/client-pc/src/scenes/FirstPersonFishingScene.ts b/packages/client-pc/src/scenes/FirstPersonFishingScene.ts
+index eac0e6a..0595a16 100644
+--- a/packages/client-pc/src/scenes/FirstPersonFishingScene.ts
++++ b/packages/client-pc/src/scenes/FirstPersonFishingScene.ts
+@@ -47,6 +47,7 @@ import {
+ import { drawRigIcon, RigIconKind } from '../ui/RigIconRenderer.js';
+ import { GameState } from '../store/GameState.js';
+ import { InventoryStore, RigStepKey, CARD_RIG_INFO } from '../store/InventoryStore.js';
++import { isGod } from '../dev/DevMode.js';
+ import { CoolerStore, COOLER_CAPACITY } from '../store/CoolerStore.js';
+ import { ExternalDataStore } from '../store/ExternalDataStore.js';
+ import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
+@@ -2214,6 +2215,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
+    * (텐션 저항 시스템: 릴링이 미끄러지는데도 초과 입력을 유지하면 강제 파단)
+    */
+   private forceLineBreak(): void {
++    // dev 무적(갓모드): 줄이 터지지 않는다 (손실·강제 종료 전부 무시)
++    if (isGod()) return;
+     const floatToo = Math.random() < 0.3;
+     const parts: RigStepKey[] = floatToo
+       ? ['float', 'subFloat', 'swivel', 'leader', 'sinker', 'hook', 'bait']
+diff --git a/packages/client-pc/src/scenes/RegionFieldScene.ts b/packages/client-pc/src/scenes/RegionFieldScene.ts
+index 1dc16ef..2acb6d0 100644
+--- a/packages/client-pc/src/scenes/RegionFieldScene.ts
++++ b/packages/client-pc/src/scenes/RegionFieldScene.ts
+@@ -67,6 +67,7 @@ import { ConfirmDialog, QuantityDialog } from '../ui/Dialogs.js';
+ import { applyScreenFixed } from '../ui/DraggablePanel.js';
+ import { InventoryStore, InvItem } from '../store/InventoryStore.js';
+ import { CoolerStore } from '../store/CoolerStore.js';
++import { DiscoveryStore } from '../store/DiscoveryStore.js';
+ import { BuildingKind, BUILDING_LABEL, BUILDING_KIND_CYCLE, SHOP_CATALOG, ShopEntry } from '../data/ShopCatalog.js';
+ 
+ interface RegionFieldInit {
+@@ -333,6 +334,13 @@ export class RegionFieldScene extends Phaser.Scene {
+     this.add.existing(this.hud);
+     this.hud.pushLog(`[이동] ${this.node.name}에 도착했습니다.`);
+ 
++    // ── 신규 발견 토스트 — 도감/위키에 처음 등록되는 순간 HUD 로그로 알림 ──
++    DiscoveryStore.onNew = (entry, name) => {
++      const kindLabel = entry.kind === 'fish' ? '어종' : entry.kind === 'creature' ? '해양생물' : '아이템';
++      this.hud?.pushLog(`[도감] 새로운 ${kindLabel} 발견 — ${name} (N 키로 확인)`);
++    };
++    this.events.once('shutdown', () => { DiscoveryStore.onNew = null; });
++
+     // ── 보일링/스쿨링 필드 이벤트 (피딩타임 활성도 기반 발생 롤) ──
+     this.refreshFieldFeeding();
+     this.time.addEvent({ delay: 60_000, loop: true, callback: () => this.refreshFieldFeeding() });
+@@ -813,6 +821,12 @@ export class RegionFieldScene extends Phaser.Scene {
+     this.input.keyboard!.on('keydown-U', () => { if (!this.isPaused) this.toggleUtilization('tackles'); });
+     this.input.keyboard!.on('keydown-B', () => { if (!this.isPaused) this.toggleCooler(); });
+     this.input.keyboard!.on('keydown-R', () => { if (!this.isPaused && !this.uiBlocked) this.toggleBike(); });
++    // N: 도감 & 조과첩 (발견 도감 — 인게임 열람. 복귀는 stop+resume)
++    this.input.keyboard!.on('keydown-N', () => {
++      if (this.isPaused || this.uiBlocked) return;
++      this.scene.pause();
++      this.scene.launch('AnglerLogScene', { returnScene: 'RegionFieldScene' });
++    });
+     this.input.keyboard!.on('keydown-E', () => {
+       if (this.isPaused) return;
+       // 홈타운 오브젝트(문/버스/설치물 회수) > 건물 거래 > 장비 창
+diff --git a/packages/client-pc/src/store/DiscoveryStore.ts b/packages/client-pc/src/store/DiscoveryStore.ts
+new file mode 100644
+index 0000000..d89a9bf
+--- /dev/null
++++ b/packages/client-pc/src/store/DiscoveryStore.ts
+@@ -0,0 +1,127 @@
++/**
++ * @file DiscoveryStore.ts
++ * @description 발견(도감/위키) 기록 스토어 — 어종·해양생물·아이템 공용 싱글톤
++ *
++ * "한 번이라도 조우한 것만 도감/위키에 공개"의 단일 소스.
++ * - 기록 시점: 낚시 어획 / 통발 포획 / 해루질 채집 / 인벤토리 취득 (각 배선처에서 record 호출)
++ * - 대상당 최초 1회만 기록 — 이후 호출은 무시 (최초 발견 경로·시각 보존)
++ * - 세이브 영속: GameState SaveData.discoveries (serialize/deserialize)
++ * - 구세이브 백필: 엔트리가 없으면 caughtFishHistory에서 어종 발견을 'legacy'로 복원
++ * - 신규 발견 알림: onNew 훅 (HUD가 등록 — pushLog "도감에 등록되었습니다")
++ */
++
++import type { DiscoveryKind, DiscoverySource, DiscoveryEntry } from '@tra/core';
++import { discoveryKey, FISH_DATABASE } from '@tra/core';
++import { SHORE_CREATURE_DATABASE } from '@tra/core';
++
++/** 세이브 직렬화 형태 */
++export interface DiscoverySaveState {
++  entries: DiscoveryEntry[];
++}
++
++class DiscoveryStoreClass {
++  private entries = new Map<string, DiscoveryEntry>();
++
++  /** 신규 발견 시 호출되는 훅 (HUD 토스트용 — 씬이 등록/해제) */
++  onNew: ((entry: DiscoveryEntry, displayName: string) => void) | null = null;
++
++  /**
++   * 발견 기록. 신규 발견이면 true 반환 + onNew 훅 발화.
++   * 이미 발견된 대상은 무시(false) — 최초 기록 불변.
++   */
++  record(kind: DiscoveryKind, id: string, source: DiscoverySource): boolean {
++    const key = discoveryKey(kind, id);
++    if (this.entries.has(key)) return false;
++    const entry: DiscoveryEntry = { kind, id, firstAtMs: Date.now(), source };
++    this.entries.set(key, entry);
++    if (this.onNew) {
++      this.onNew(entry, this.displayNameOf(kind, id));
++    }
++    return true;
++  }
++
++  isDiscovered(kind: DiscoveryKind, id: string): boolean {
++    return this.entries.has(discoveryKey(kind, id));
++  }
++
++  get(kind: DiscoveryKind, id: string): DiscoveryEntry | undefined {
++    return this.entries.get(discoveryKey(kind, id));
++  }
++
++  countByKind(kind: DiscoveryKind): number {
++    let n = 0;
++    for (const e of this.entries.values()) if (e.kind === kind) n++;
++    return n;
++  }
++
++  /** 표시용 이름 조회 (어종/생물은 DB, 아이템은 id 그대로 — 호출측이 이름을 알면 그쪽 우선) */
++  displayNameOf(kind: DiscoveryKind, id: string): string {
++    if (kind === 'fish') {
++      return FISH_DATABASE.find((f) => f.id === id)?.nameKo ?? id;
++    }
++    if (kind === 'creature') {
++      return SHORE_CREATURE_DATABASE.find((c) => c.id === id)?.nameKo ?? id;
++    }
++    return id;
++  }
++
++  // ─── dev 전용 ───────────────────────────────
++
++  /** dev: 특정 종류 전체 해금 (어종/생물 — 아이템은 카탈로그 목록을 호출측이 전달) */
++  devUnlockAll(kind: DiscoveryKind, ids: string[]): number {
++    let added = 0;
++    for (const id of ids) {
++      const key = discoveryKey(kind, id);
++      if (this.entries.has(key)) continue;
++      this.entries.set(key, { kind, id, firstAtMs: Date.now(), source: 'dev' });
++      added++;
++    }
++    return added;
++  }
++
++  /** dev: 전체 발견 기록 초기화 */
++  devResetAll(): void {
++    this.entries.clear();
++  }
++
++  // ─── 세이브 연동 ────────────────────────────
++
++  serialize(): DiscoverySaveState {
++    return { entries: [...this.entries.values()] };
++  }
++
++  /**
++   * 복원. 구세이브(필드 없음)는 legacyFishIds(caughtFishHistory의 어종)로 백필 —
++   * 기존 유저의 도감이 갑자기 전부 "미발견"으로 잠기지 않게 한다.
++   */
++  deserialize(saved: DiscoverySaveState | undefined, legacyFishIds?: string[]): void {
++    this.entries.clear();
++    if (saved?.entries?.length) {
++      for (const e of saved.entries) {
++        if (!e?.kind || !e?.id) continue;
++        this.entries.set(discoveryKey(e.kind, e.id), e);
++      }
++      return;
++    }
++    // 구세이브 백필 — 어획 기록이 있는 어종은 발견 처리
++    if (legacyFishIds?.length) {
++      for (const id of legacyFishIds) {
++        const key = discoveryKey('fish', id);
++        if (this.entries.has(key)) continue;
++        this.entries.set(key, { kind: 'fish', id, firstAtMs: Date.now(), source: 'legacy' });
++      }
++    }
++  }
++
++  /** 새 게임 시작 시 리셋 */
++  resetAll(): void {
++    this.entries.clear();
++  }
++}
++
++export const DiscoveryStore = new DiscoveryStoreClass();
++
++// dev 하네스 전용 노출 (__INV/__GS 관례 — 프로덕션 미노출)
++if (import.meta.env.DEV) {
++  (globalThis as Record<string, unknown>).__DISC = DiscoveryStore;
++}
+diff --git a/packages/client-pc/src/store/GameState.ts b/packages/client-pc/src/store/GameState.ts
+index 04c3059..84a4182 100644
+--- a/packages/client-pc/src/store/GameState.ts
++++ b/packages/client-pc/src/store/GameState.ts
+@@ -37,6 +37,7 @@ import { EnvironmentStore } from './EnvironmentStore.js';
+ import { CoolerStore, CoolerSaveState } from './CoolerStore.js';
+ import { InventoryStore, InventorySaveState } from './InventoryStore.js';
+ import { FridgeStore, FridgeSaveState } from './FridgeStore.js';
++import { DiscoveryStore, DiscoverySaveState } from './DiscoveryStore.js';
+ 
+ // ─────────────────────────────────────────────
+ // 기본 쿨러 상태
+@@ -142,6 +143,8 @@ interface SaveData {
+   flags?: Record<string, boolean>;
+   /** 맵별 오브젝트 월드 상태 — 초기 배치 − removed + moved + placed (HOMETOWN_HOME_SPEC) */
+   worldObjects?: Record<string, WorldObjectState>;
++  /** 발견(도감/위키) 기록 — 어종·해양생물·아이템. 구세이브는 어획 기록에서 백필 */
++  discoveries?: DiscoverySaveState;
+   version: number;
+ }
+ 
+@@ -212,6 +215,9 @@ export class GameStateManager {
+       }];
+     }
+ 
++    // 시드 인벤 발견 동기 — 첫 부팅(세이브 없음)은 applySaveData를 거치지 않으므로 여기서 보장 (멱등)
++    this.syncInventoryDiscoveries();
++
+     this._isInitialized = true;
+     console.log('[GameState] Initialized. Player:', this._player?.nickname);
+   }
+@@ -235,6 +241,25 @@ export class GameStateManager {
+     InventoryStore.deserialize(saved.inventoryStore);
+     // 집 냉장고 복원 (냉동고/냉장고 보관물)
+     FridgeStore.deserialize(saved.fridge);
++    // 발견 기록 복원 — 구세이브(필드 없음)는 어획 기록의 어종을 'legacy'로 백필
++    DiscoveryStore.deserialize(
++      saved.discoveries,
++      (saved.player?.caughtFishHistory ?? []).map((r) => r.fishSpeciesId),
++    );
++    this.syncInventoryDiscoveries();
++  }
++
++  /**
++   * 인벤토리 보유 아이템을 위키 발견 처리 (로드/뉴게임 직후 — 갖고 있으면 본 것).
++   * onNew 훅을 잠시 꺼서 일괄 동기 시 토스트가 쏟아지지 않게 한다.
++   */
++  private syncInventoryDiscoveries(): void {
++    const hook = DiscoveryStore.onNew;
++    DiscoveryStore.onNew = null;
++    for (const it of InventoryStore.items) {
++      DiscoveryStore.record('item', it.id, 'inventory');
++    }
++    DiscoveryStore.onNew = hook;
+   }
+ 
+   // ─── Getter ───────────────────────────────
+@@ -352,6 +377,9 @@ export class GameStateManager {
+       this.player.personalRecords[speciesId] = lengthCm;
+     }
+ 
++    // 도감 발견 기록 (최초 1회 — 이미 발견된 어종은 무시)
++    DiscoveryStore.record('fish', speciesId, 'catch');
++
+     const record: CaughtFishRecord = {
+       id: crypto.randomUUID(),
+       fishSpeciesId: speciesId,
+@@ -431,6 +459,7 @@ export class GameStateManager {
+   /** 해루질 결과를 쿨러에 일괄 추가 */
+   addHarvestToCooler(harvestItems: ShoreHarvestItem[]): void {
+     for (const h of harvestItems) {
++      DiscoveryStore.record('creature', h.creatureId, 'night_hunting');
+       this.addToCooler({
+         instanceId: `harvest_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+         type: h.category === 'crustacean' ? 'crustacean'
+@@ -448,9 +477,11 @@ export class GameStateManager {
+   /** 통발 포획물을 쿨러에 일괄 추가 */
+   addTrapCatchToCooler(catchItems: TrapCatchItem[]): void {
+     for (const c of catchItems) {
++      DiscoveryStore.record(c.isFishSpecies ? 'fish' : 'creature', c.creatureId, 'trap');
+       this.addToCooler({
+         instanceId: `trap_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+-        type: 'crustacean',
++        // 어종(장어·볼락 등)은 'fish'로 — speciesId가 FishDatabase id라 판매가·도감 경로 연동
++        type: c.isFishSpecies ? 'fish' : 'crustacean',
+         speciesId: c.creatureId,
+         nameKo: c.nameKo,
+         weightGrams: c.countOrWeightG,
+@@ -551,6 +582,7 @@ export class GameStateManager {
+       fridge: FridgeStore.serialize(),
+       flags: this._flags,
+       worldObjects: this._worldObjects,
++      discoveries: DiscoveryStore.serialize(),
+       version: SAVE_VERSION,
+     };
+   }
+@@ -724,6 +756,8 @@ export class GameStateManager {
+     CoolerStore.resetAll();
+     InventoryStore.resetAll();
+     FridgeStore.resetAll();
++    DiscoveryStore.resetAll();
++    this.syncInventoryDiscoveries();
+     this._currentSpotId = null;
+     this._isInitialized = true;
+   }
+diff --git a/packages/client-pc/src/store/InventoryStore.ts b/packages/client-pc/src/store/InventoryStore.ts
+index 67990d8..a0b3b76 100644
+--- a/packages/client-pc/src/store/InventoryStore.ts
++++ b/packages/client-pc/src/store/InventoryStore.ts
+@@ -16,9 +16,11 @@ import {
+   evaluateFishSellPrice, WEIGHT_SINKER_DB, WeightSinkerKind,
+   SINKER_BASE_DRAG_CD, SINKER_BUNDLE_DRAG_CD, SINKER_HOLE_FEEDBACK_MULT,
+   LURES_CATALOG_DB, JIGHEAD_WEIGHTS_G, getLureSpec, jigHeadWeightById,
+-  computeLureRigWeight, getLureCastCd, isKnifeItem,
++  computeLureRigWeight, getLureCastCd, isKnifeItem, FISH_DATABASE,
+ } from '@tra/core';
+ import { ExternalDataStore } from './ExternalDataStore.js';
++import { DiscoveryStore } from './DiscoveryStore.js';
++import { isGod } from '../dev/DevMode.js';
+ import { resolveFishTexture } from '../data/FishTextures.js';
+ 
+ /** 인벤토리 카테고리 탭 */
+@@ -549,6 +551,8 @@ export function conditionPath(cond: InvCondition, profile?: InvItem['condProfile
+  */
+ export function refreshCondition(item: Pick<InvItem, 'condition' | 'conditionSinceMs' | 'condProfile'>): void {
+   if (!item.condition || item.conditionSinceMs === undefined) return;
++  // dev 무적(갓모드): 신선도 동결 — 경과 기준점을 현재로 계속 밀어 진행을 멈춘다
++  if (isGod()) { item.conditionSinceMs = Date.now(); return; }
+   let cond = item.condition;
+   let since = item.conditionSinceMs;
+   for (;;) {
+@@ -944,6 +948,41 @@ class InventoryStoreManager {
+     return GRID_CAPACITY - this._items.filter((i) => i.category === cat && i.slot >= 0).length;
+   }
+ 
++  /**
++   * 위키/도감용 정적 카탈로그 — 시드 전 품목 스냅샷 (현재 보유와 무관).
++   * 개체형(어획물 등)은 호출측에서 subCategory로 걸러 쓴다.
++   */
++  seedCatalog(): InvItem[] {
++    return createSeedItems();
++  }
++
++  /**
++   * dev 콘솔 전용 — 임의 어종 어획물 1마리 지급 (활어·평균 밴드 랜덤 사이즈).
++   * FISH_DATABASE의 avgSizeRangeCm/avgWeightRangeG를 길이 비례 보간한다.
++   */
++  devGrantFish(speciesId: string): boolean {
++    if (!import.meta.env.DEV) return false;
++    const f = FISH_DATABASE.find((x) => x.id === speciesId);
++    if (!f) return false;
++    const [lo, hi] = f.avgSizeRangeCm;
++    const lengthCm = Math.round(lo + Math.random() * (hi - lo));
++    const t = hi > lo ? (lengthCm - lo) / (hi - lo) : 0.5;
++    const [wLo, wHi] = f.avgWeightRangeG;
++    const weightG = Math.round(wLo + t * (wHi - wLo));
++    const sex: 'M' | 'F' = Math.random() < 0.5 ? 'M' : 'F';
++    const seq = this.nextCatchSeq();
++    const ok = this.addItem({
++      id: `inv_catch_${speciesId}_${seq}`,
++      name: `${f.nameKo} (${lengthCm}cm)`, icon: '🐟',
++      iconTexture: resolveFishTexture(speciesId, lengthCm, sex),
++      category: 'food', subCategory: '어획물',
++      basePrice: 12000, condition: 'live', conditionSinceMs: Date.now(),
++      equippable: false, speciesId, lengthCm, weightG, sex,
++    }, 1);
++    if (ok) DiscoveryStore.record('fish', speciesId, 'dev');
++    return ok;
++  }
++
+   // ── 획득/구매 ───────────────────────────────────────
+   /** 아이템 추가 — 동일 id 존재 시 수량 병합, 없으면 빈 소켓에 배치. 실패 시 false */
+   addItem(template: InvItemTemplate, qty: number): boolean {
+@@ -959,6 +998,8 @@ class InventoryStoreManager {
+       // 신선도 시계 시작 — 획득(어창 이송 포함) 시점부터 상온 감쇄
+       conditionSinceMs: template.condition ? template.conditionSinceMs ?? Date.now() : undefined,
+     });
++    // 위키 발견 기록 (최초 취득 1회 — 개체형 id는 위키 카탈로그에 없어 자연 무시됨)
++    DiscoveryStore.record('item', template.id, 'inventory');
+     return true;
+   }
+ 
+@@ -1339,6 +1380,7 @@ class InventoryStoreManager {
+    * 수량이 남으면 소켓 유지(자동 재장착), 소진되면 소켓 비움.
+    */
+   consumeRigItem(step: RigStepKey): void {
++    if (isGod()) return;   // dev 무적: 미끼/소모 부품 무한
+     const id = this._rig[step];
+     if (!id) return;
+     this.removeQty(id, 1);
+@@ -1351,6 +1393,7 @@ class InventoryStoreManager {
+    * 잃은 부품 이름 목록 반환.
+    */
+   loseRigParts(steps: RigStepKey[]): string[] {
++    if (isGod()) return [];   // dev 무적: 채비 손실 없음
+     const lost: string[] = [];
+     for (const step of steps) {
+       const id = this._rig[step];
+@@ -1371,6 +1414,7 @@ class InventoryStoreManager {
+    * (입질 실패/챔질 실패/미끼 털림 등에는 호출하지 않는다 — 루어는 회수된다.)
+    */
+   loseLureRig(): string[] {
++    if (isGod()) return [];   // dev 무적: 루어 손실 없음
+     const lost: string[] = [];
+     for (const id of [this._lure, this._jigHead]) {
+       if (!id) continue;
+diff --git a/packages/core/src/db-schema/TrapDatabase.ts b/packages/core/src/db-schema/TrapDatabase.ts
+index d20cb86..e820699 100644
+--- a/packages/core/src/db-schema/TrapDatabase.ts
++++ b/packages/core/src/db-schema/TrapDatabase.ts
+@@ -29,7 +29,9 @@ export const TRAP_DATABASE: TrapSpec[] = [
+     maxDepthM: 40,
+     durability: 200,
+     maxDurability: 200,
+-    targetCategories: ['crustacean', 'shellfish'],
++    // ⚠ 'shellfish'는 생물 DB에 실생물이 0이라 영영 매칭되지 않는다 (조개류는 bivalve/gastropod).
++    //   통발에 실제로 기어드는 패류는 소라(복족류)뿐 — bivalve(바지락·굴)는 매몰·고착형이라 제외.
++    targetCategories: ['crustacean', 'gastropod'],
+   },
+   // ────────── 새우 통발 ──────────
+   {
+@@ -53,7 +55,8 @@ export const TRAP_DATABASE: TrapSpec[] = [
+     maxDepthM: 10,
+     durability: 150,
+     maxDurability: 150,
+-    targetCategories: ['crustacean'],  // 주로 장어, 내부에서 어종은 FishDatabase 참조
++    targetCategories: ['crustacean'],           // 게류 혼획
++    targetFishSpecies: ['conger_eel', 'hagfish'], // 붕장어·먹장어 (FishDatabase)
+   },
+   {
+     id: 'trap_eel_pro',
+@@ -65,6 +68,7 @@ export const TRAP_DATABASE: TrapSpec[] = [
+     durability: 300,
+     maxDurability: 300,
+     targetCategories: ['crustacean'],
++    targetFishSpecies: ['conger_eel', 'hagfish', 'pike_conger'], // 대형식은 갯장어(하모)까지
+   },
+   // ────────── 문어 단지 (심화 면허 필요) ──────────
+   {
+@@ -100,6 +104,11 @@ export const TRAP_DATABASE: TrapSpec[] = [
+     durability: 180,
+     maxDurability: 180,
+     targetCategories: ['crustacean', 'cephalopod'],
++    // 그물 통발에 실제로 드는 저서 어종 — 볼락·우럭·노래미류·문절망둑·붕장어
++    targetFishSpecies: [
++      'dark_banded_rockfish', 'black_rockfish', 'fat_greenling', 'greenling',
++      'yellowfin_goby', 'conger_eel',
++    ],
+   },
+ ];
+ 
+diff --git a/packages/core/src/index.ts b/packages/core/src/index.ts
+index 6362e49..816f92b 100644
+--- a/packages/core/src/index.ts
++++ b/packages/core/src/index.ts
+@@ -75,6 +75,8 @@ export type {
+   InventoryItemInstance,
+ } from './types/Item.js';
+ export { evaluateItemCondition, getCurrentGameMinute } from './types/Item.js';
++export type { DiscoveryKind, DiscoverySource, DiscoveryEntry } from './types/Discovery.js';
++export { DISCOVERY_SOURCE_LABEL, discoveryKey } from './types/Discovery.js';
+ 
+ // DB Schema
+ export { FISH_DATABASE, getFishById, getFishBySpotType, getFishByMonth } from './db-schema/FishDatabase.js';
+diff --git a/packages/core/src/simulation/TrapSystem.ts b/packages/core/src/simulation/TrapSystem.ts
+index b17f620..2d07df9 100644
+--- a/packages/core/src/simulation/TrapSystem.ts
++++ b/packages/core/src/simulation/TrapSystem.ts
+@@ -9,6 +9,9 @@
+ import type { DeployedTrap, TrapHarvestResult, TrapCatchItem } from '../types/Activities.js';
+ import { getTrapById } from '../db-schema/TrapDatabase.js';
+ import { SHORE_CREATURE_DATABASE } from '../db-schema/ShoreCreatureDatabase.js';
++import type { ShoreCreature } from '../db-schema/ShoreCreatureDatabase.js';
++import { FISH_DATABASE } from '../db-schema/FishDatabase.js';
++import type { FishSpecies } from '../db-schema/FishDatabase.js';
+ import type { SpotType } from '../types/Environment.js';
+ import type { TideInfo } from '../types/Environment.js';
+ 
+@@ -67,8 +70,13 @@ export function harvestTrap(
+     (soakTimeHours / 24) * 5 + context.currentStrength * 10
+   );
+ 
+-  // 총 가치
++  // 총 가치 (어종은 횟값 기준 추정 — 실판매가는 쿨러→인벤 판매 경로에서 산정)
+   const totalValueEstimate = items.reduce((sum, item) => {
++    if (item.isFishSpecies) {
++      const fish = FISH_DATABASE.find((f) => f.id === item.creatureId);
++      if (!fish) return sum;
++      return sum + (item.countOrWeightG / 1000) * fish.sashimiValuePerKg;
++    }
+     const creature = SHORE_CREATURE_DATABASE.find((c) => c.id === item.creatureId);
+     if (!creature) return sum;
+     return sum + (item.countOrWeightG / 1000) * creature.marketValuePerKg;
+@@ -84,6 +92,11 @@ export function harvestTrap(
+   };
+ }
+ 
++/** 통발 포획 후보 — 해루질 생물 또는 어종(FishDatabase) */
++type TrapCandidate =
++  | { kind: 'creature'; creature: ShoreCreature }
++  | { kind: 'fish'; fish: FishSpecies };
++
+ /**
+  * 침지 시간과 환경에 따라 포획물 계산
+  */
+@@ -106,7 +119,17 @@ function calculateTrapCatch(
+     return true;
+   });
+ 
+-  if (eligibleCreatures.length === 0) return [];
++  // 목표 어종(targetFishSpecies) — 장어·어류 통발이 실제 물고기를 잡는 경로
++  const eligibleFish = (spec.targetFishSpecies ?? [])
++    .map((id) => FISH_DATABASE.find((f) => f.id === id))
++    .filter((f): f is FishSpecies => !!f && f.habitatSpotTypes.includes(context.spotType));
++
++  const candidates: TrapCandidate[] = [
++    ...eligibleCreatures.map((creature) => ({ kind: 'creature' as const, creature })),
++    ...eligibleFish.map((fish) => ({ kind: 'fish' as const, fish })),
++  ];
++
++  if (candidates.length === 0) return [];
+ 
+   // 침지 시간에 따른 포획 시도 횟수
+   // 최적 침지 시간 = 8~12시간, 그 이후는 효율 감소
+@@ -119,41 +142,64 @@ function calculateTrapCatch(
+   const maxAttempts = Math.round(10 * adjustedEfficiency);
+ 
+   for (let i = 0; i < maxAttempts; i++) {
+-    const creature = eligibleCreatures[Math.floor(Math.random() * eligibleCreatures.length)];
+-    if (!creature) continue;
+-
+-    // 기본 진입 확률
+-    let entryChance = 50;
+-    // 조류 강도 - 게/새우는 조류 따라 이동하므로 강할수록 유리
+-    if (['crustacean'].includes(creature.category)) {
+-      entryChance += context.currentStrength * 20;
+-    }
+-    // 두족류는 조류 약할 때 유리
+-    if (['cephalopod'].includes(creature.category)) {
+-      entryChance += (1 - context.currentStrength) * 15;
++    const cand = candidates[Math.floor(Math.random() * candidates.length)];
++    if (!cand) continue;
++
++    let id: string;
++    let nameKo: string;
++    let weightG: number;
++    let isFishSpecies = false;
++
++    if (cand.kind === 'creature') {
++      const creature = cand.creature;
++      // 기본 진입 확률
++      let entryChance = 50;
++      // 조류 강도 - 게/새우는 조류 따라 이동하므로 강할수록 유리
++      if (creature.category === 'crustacean') {
++        entryChance += context.currentStrength * 20;
++      }
++      // 두족류는 조류 약할 때 유리
++      if (creature.category === 'cephalopod') {
++        entryChance += (1 - context.currentStrength) * 15;
++      }
++      if (Math.random() * 100 > entryChance) continue;
++
++      // 크기/무게 계산
++      const minSize = creature.minLegalSizeCm || 5;
++      const sizeDescCm = minSize + Math.random() * minSize * 1.5;
++      id = creature.id;
++      nameKo = creature.nameKo;
++      weightG = Math.round(sizeDescCm * 15 + Math.random() * sizeDescCm * 20);
++    } else {
++      const fish = cand.fish;
++      // 어종 진입 확률 — 미끼 냄새 유인 기반. 제철이면 활발.
++      let entryChance = 40;
++      if (fish.peakSeasonMonths.includes(context.month)) entryChance += 15;
++      if (Math.random() * 100 > entryChance) continue;
++
++      // 무게 = 평균 밴드 내 균등 랜덤 (금지체장 미달 개체는 통발 틈으로 빠져나간 것으로 간주)
++      const [wMin, wMax] = fish.avgWeightRangeG;
++      id = fish.id;
++      nameKo = fish.nameKo;
++      weightG = Math.round(wMin + Math.random() * (wMax - wMin));
++      isFishSpecies = true;
+     }
+ 
+-    if (Math.random() * 100 > entryChance) continue;
+-
+-    // 크기/무게 계산
+-    const minSize = creature.minLegalSizeCm || 5;
+-    const sizeDescCm = minSize + Math.random() * minSize * 1.5;
+-    const weightG = Math.round(sizeDescCm * 15 + Math.random() * sizeDescCm * 20);
+-
+     // 용량 초과 체크
+     if (totalWeightG + weightG > spec.maxCapacityG) break;
+     totalWeightG += weightG;
+ 
+     // 기존 항목과 합산
+-    const existing = items.find((i) => i.creatureId === creature.id);
++    const existing = items.find((i) => i.creatureId === id);
+     if (existing) {
+       existing.countOrWeightG += weightG;
+     } else {
+       items.push({
+-        creatureId: creature.id,
+-        nameKo: creature.nameKo,
++        creatureId: id,
++        nameKo,
+         countOrWeightG: weightG,
+         enteredAt: new Date(Date.now() - Math.random() * soakTimeHours * 3600000),
++        ...(isFishSpecies ? { isFishSpecies: true } : {}),
+       });
+     }
+   }
+diff --git a/packages/core/src/types/Activities.ts b/packages/core/src/types/Activities.ts
+index a5cff0c..60bd84a 100644
+--- a/packages/core/src/types/Activities.ts
++++ b/packages/core/src/types/Activities.ts
+@@ -103,6 +103,11 @@ export interface TrapSpec {
+   maxDurability: number;
+   /** 목표 생물 카테고리 */
+   targetCategories: ShoreCreatureCategory[];
++  /**
++   * 목표 어종 (FishDatabase speciesId) — 장어 통발·어류 그물 통발용.
++   * 지정 시 해당 어종이 해루질 생물과 함께 포획 후보에 편입된다.
++   */
++  targetFishSpecies?: string[];
+ }
+ 
+ /** 통발 설치 상태 */
+@@ -123,10 +128,13 @@ export interface DeployedTrap {
+ }
+ 
+ export interface TrapCatchItem {
++  /** 해루질 생물 id 또는 (isFishSpecies=true면) FishDatabase speciesId */
+   creatureId: string;
+   nameKo: string;
+   countOrWeightG: number;
+   enteredAt: Date;
++  /** true면 creatureId가 어종(FishDatabase) — 쿨러 이송 시 type 'fish'로 분류 */
++  isFishSpecies?: boolean;
+ }
+ 
+ /** 통발 조업 결과 */
+diff --git a/packages/core/src/types/Discovery.ts b/packages/core/src/types/Discovery.ts
+new file mode 100644
+index 0000000..16d7c65
+--- /dev/null
++++ b/packages/core/src/types/Discovery.ts
+@@ -0,0 +1,49 @@
++/**
++ * @file Discovery.ts
++ * @description 발견(도감/위키) 기록 타입 — 어종·해양생물·아이템 공용
++ *
++ * "한 번이라도 조우한 것만 도감/위키에 공개"의 단일 기준.
++ * 발견 = 최초 취득/포획/채집 순간 1회 기록 (이후 불변).
++ * 저장은 client의 DiscoveryStore가 담당하고, 여기는 순수 타입/라벨만 둔다.
++ */
++
++/** 발견 대상 종류 */
++export type DiscoveryKind =
++  | 'fish'      // 어종 (FishDatabase speciesId)
++  | 'creature'  // 해루질/통발 해양생물 (ShoreCreatureDatabase id)
++  | 'item';     // 아이템 (InvItem/상점 카탈로그 id)
++
++/** 발견 경로 — 도감/위키에 "어떻게 처음 만났나"로 표기 */
++export type DiscoverySource =
++  | 'catch'         // 낚시 어획
++  | 'trap'          // 통발 포획
++  | 'night_hunting' // 해루질 채집
++  | 'inventory'     // 인벤토리 취득 (구매·지급·손질 산출 등)
++  | 'legacy'        // 구세이브 어획 기록 백필
++  | 'dev';          // dev 모드 해금
++
++/** 발견 1건 (대상당 최초 1회만 기록) */
++export interface DiscoveryEntry {
++  kind: DiscoveryKind;
++  /** 대상 id — kind별 표준 id (speciesId / creatureId / itemId) */
++  id: string;
++  /** 최초 발견 시각 (epoch ms) */
++  firstAtMs: number;
++  /** 최초 발견 경로 */
++  source: DiscoverySource;
++}
++
++/** 발견 경로 한국어 라벨 */
++export const DISCOVERY_SOURCE_LABEL: Record<DiscoverySource, string> = {
++  catch: '낚시로 어획',
++  trap: '통발로 포획',
++  night_hunting: '해루질로 채집',
++  inventory: '아이템 취득',
++  legacy: '과거 조과 기록',
++  dev: 'dev 해금',
++};
++
++/** 발견 키 (스토어 내부 맵 키 규약) */
++export function discoveryKey(kind: DiscoveryKind, id: string): string {
++  return `${kind}:${id}`;
++}
+-- 
+2.43.0
+

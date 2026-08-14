@@ -29,7 +29,9 @@ export const TRAP_DATABASE: TrapSpec[] = [
     maxDepthM: 40,
     durability: 200,
     maxDurability: 200,
-    targetCategories: ['crustacean', 'shellfish'],
+    // ⚠ 'shellfish'는 생물 DB에 실생물이 0이라 영영 매칭되지 않는다 (조개류는 bivalve/gastropod).
+    //   통발에 실제로 기어드는 패류는 소라(복족류)뿐 — bivalve(바지락·굴)는 매몰·고착형이라 제외.
+    targetCategories: ['crustacean', 'gastropod'],
   },
   // ────────── 새우 통발 ──────────
   {
@@ -53,7 +55,8 @@ export const TRAP_DATABASE: TrapSpec[] = [
     maxDepthM: 10,
     durability: 150,
     maxDurability: 150,
-    targetCategories: ['crustacean'],  // 주로 장어, 내부에서 어종은 FishDatabase 참조
+    targetCategories: ['crustacean'],           // 게류 혼획
+    targetFishSpecies: ['conger_eel', 'hagfish'], // 붕장어·먹장어 (FishDatabase)
   },
   {
     id: 'trap_eel_pro',
@@ -65,6 +68,7 @@ export const TRAP_DATABASE: TrapSpec[] = [
     durability: 300,
     maxDurability: 300,
     targetCategories: ['crustacean'],
+    targetFishSpecies: ['conger_eel', 'hagfish', 'pike_conger'], // 대형식은 갯장어(하모)까지
   },
   // ────────── 문어 단지 (심화 면허 필요) ──────────
   {
@@ -100,6 +104,11 @@ export const TRAP_DATABASE: TrapSpec[] = [
     durability: 180,
     maxDurability: 180,
     targetCategories: ['crustacean', 'cephalopod'],
+    // 그물 통발에 실제로 드는 저서 어종 — 볼락·우럭·노래미류·문절망둑·붕장어
+    targetFishSpecies: [
+      'dark_banded_rockfish', 'black_rockfish', 'fat_greenling', 'greenling',
+      'yellowfin_goby', 'conger_eel',
+    ],
   },
 ];
 

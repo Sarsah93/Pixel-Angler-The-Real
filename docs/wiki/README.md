@@ -51,17 +51,20 @@
 | S11 | [가이드·온보딩](02-SYSTEMS/ui-framework.md#가이드-허브) | 🟢 | `GuidePanel` · `GuideContent` | 삽화 실게임 스크린샷 교체 |
 | S12 | [세이브·슬롯](02-SYSTEMS/inventory-equipment.md#세이브) | 🟢 | `GameState` | 저장은 집 침대 전용 |
 | S13 | [튜닝·dev 도구](02-SYSTEMS/ui-framework.md#dev-도구) | 🟢 | `config/tuning.ts` · `DevTuningPanel`(F8) | fight/rod/yield 테이블 소비 전환 |
-| S14 | 해루질·통발 | ⬜ | `NightHuntingEngine` · `TrapSystem` | **다음 대과제(3순위)** |
+| S14 | [해루질·통발](02-SYSTEMS/night-hunting-trap.md) | 🔶 | `NightHuntingEngine` · `TrapSystem` | 엔진·씬 동작 확인(099 조사) · 결함 2건 수정 완료 · **배선 D2~D5 잔여 — 다음 대과제 1순위** |
 | S15 | 요리(불요리)·CookScene | ⬜ | `CookScene` · `RecipeDatabase` | 화구·용기 시스템부터 |
 | S16 | 제작 `CraftScene` | ⬜ | — | 예약(U 키) |
 | S17 | 퀘스트·스토리 | ⬜ | `QuestDatabase` | **모든 컴포넌트 구현 후 도입**(사용자 방침) |
 | S18 | 멀티플레이 | ⬜ | `packages/server` | Phase 8 |
 | S19 | Tauri 패키징 | ⬜ | `apps/tauri-wrapper` | Phase 9 (아이콘만 준비됨) |
+| S20 | [도감·발견·dev 도구](02-SYSTEMS/discovery-wiki.md) | 🟢 | `DiscoveryStore` · `AnglerLogScene` · F10 콘솔 | 위키 상세 팝업 · FP 토스트 |
 
 ---
 
-## 3. 지금 위치 (2026-08-13)
+## 3. 지금 위치 (2026-08-14)
 
+- **99차**: 발견 도감·위키(S20 신설) + 통발 결함 2건 수정 + Dev 콘솔(F10).
+  다음 대과제 확정 순서 = **해루질·통발 배선(S14 D2~D5) → 불요리 → 농장 경영(S8 E1~E5, 스타듀밸리형)**.
 - **Phase 6** (게임플레이 심화) 내부, **손질 시스템(S3)** 확장 중.
 - **두족류 3종 개방(97차)** — 무늬오징어 20스테이지(90~96차 재구성) + **한치(트리 공유)·문어 8스테이지** +
   **부산물 개편·회뜨기 3모드**(몸통살 22점·날개살 4점·촉완 분리). 갑오징어 13만 미착수.

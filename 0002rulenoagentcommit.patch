@@ -1,0 +1,27 @@
+diff --git a/.agents/AGENTS.md b/.agents/AGENTS.md
+index 9dc1207..c540554 100644
+--- a/.agents/AGENTS.md
++++ b/.agents/AGENTS.md
+@@ -339,6 +339,9 @@ npx pnpm --filter @tra/client-pc run dev
+ 5. **`@tra/core/src/index.ts` export 누락 금지** — 새 파일 추가 시 반드시 export 추가
+ 6. **씬 키 변경 금지** — 씬 키는 파일명과 동일, 변경 시 main.ts도 함께 변경
+ 7. **하위 씬에서 `scene.start('FieldScene')` 사용 금지** — 반드시 `scene.stop()` + `scene.resume('FieldScene')` 사용
++8. **에이전트의 `git commit`/`git push` 금지** (사용자 지시 2026-08-14) — 커밋과 푸시는 **사용자가 직접** 한다.
++   에이전트는 파일 변경까지만 하고, 작업 완료 시 "커밋 대기 상태"임을 보고한다.
++   (배경: 원격 세션 크리덴셜이 push 권한이 없어 403 — 이후로도 버전 관리 결정권은 사용자가 가진다.)
+ 
+ ---
+ 
+diff --git a/CLAUDE.md b/CLAUDE.md
+index 6085849..d06a08d 100644
+--- a/CLAUDE.md
++++ b/CLAUDE.md
+@@ -87,6 +87,8 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
+ 
+ ## 절대 규칙 요약 (상세는 AGENTS.md §8)
+ 
++0. **`git commit`/`git push`는 사용자가 직접** (2026-08-14 지시) — 에이전트는 파일 변경까지만,
++   완료 시 변경 목록과 함께 "커밋 대기"로 보고.
+ 1. `@tra/core`에 렌더링/브라우저 코드 금지.
+ 2. 하위 씬에서 `scene.start('FieldScene')` 금지 — 반드시 `scene.stop()` + `scene.resume('FieldScene')`.
+ 3. `GameState`(대문자 싱글톤)만 사용, `gameState` 소문자 인스턴스 없음.

@@ -16,9 +16,11 @@ import {
   evaluateFishSellPrice, WEIGHT_SINKER_DB, WeightSinkerKind,
   SINKER_BASE_DRAG_CD, SINKER_BUNDLE_DRAG_CD, SINKER_HOLE_FEEDBACK_MULT,
   LURES_CATALOG_DB, JIGHEAD_WEIGHTS_G, getLureSpec, jigHeadWeightById,
-  computeLureRigWeight, getLureCastCd, isKnifeItem,
+  computeLureRigWeight, getLureCastCd, isKnifeItem, FISH_DATABASE,
 } from '@tra/core';
 import { ExternalDataStore } from './ExternalDataStore.js';
+import { DiscoveryStore } from './DiscoveryStore.js';
+import { isGod } from '../dev/DevMode.js';
 import { resolveFishTexture } from '../data/FishTextures.js';
 
 /** 인벤토리 카테고리 탭 */
@@ -549,6 +551,8 @@ export function conditionPath(cond: InvCondition, profile?: InvItem['condProfile
  */
 export function refreshCondition(item: Pick<InvItem, 'condition' | 'conditionSinceMs' | 'condProfile'>): void {
   if (!item.condition || item.conditionSinceMs === undefined) return;
+  // dev 무적(갓모드): 신선도 동결 — 경과 기준점을 현재로 계속 밀어 진행을 멈춘다
+  if (isGod()) { item.conditionSinceMs = Date.now(); return; }
   let cond = item.condition;
   let since = item.conditionSinceMs;
   for (;;) {
@@ -944,6 +948,41 @@ class InventoryStoreManager {
     return GRID_CAPACITY - this._items.filter((i) => i.category === cat && i.slot >= 0).length;
   }
 
+  /**
+   * 위키/도감용 정적 카탈로그 — 시드 전 품목 스냅샷 (현재 보유와 무관).
+   * 개체형(어획물 등)은 호출측에서 subCategory로 걸러 쓴다.
+   */
+  seedCatalog(): InvItem[] {
+    return createSeedItems();
+  }
+
+  /**
+   * dev 콘솔 전용 — 임의 어종 어획물 1마리 지급 (활어·평균 밴드 랜덤 사이즈).
+   * FISH_DATABASE의 avgSizeRangeCm/avgWeightRangeG를 길이 비례 보간한다.
+   */
+  devGrantFish(speciesId: string): boolean {
+    if (!import.meta.env.DEV) return false;
+    const f = FISH_DATABASE.find((x) => x.id === speciesId);
+    if (!f) return false;
+    const [lo, hi] = f.avgSizeRangeCm;
+    const lengthCm = Math.round(lo + Math.random() * (hi - lo));
+    const t = hi > lo ? (lengthCm - lo) / (hi - lo) : 0.5;
+    const [wLo, wHi] = f.avgWeightRangeG;
+    const weightG = Math.round(wLo + t * (wHi - wLo));
+    const sex: 'M' | 'F' = Math.random() < 0.5 ? 'M' : 'F';
+    const seq = this.nextCatchSeq();
+    const ok = this.addItem({
+      id: `inv_catch_${speciesId}_${seq}`,
+      name: `${f.nameKo} (${lengthCm}cm)`, icon: '🐟',
+      iconTexture: resolveFishTexture(speciesId, lengthCm, sex),
+      category: 'food', subCategory: '어획물',
+      basePrice: 12000, condition: 'live', conditionSinceMs: Date.now(),
+      equippable: false, speciesId, lengthCm, weightG, sex,
+    }, 1);
+    if (ok) DiscoveryStore.record('fish', speciesId, 'dev');
+    return ok;
+  }
+
   // ── 획득/구매 ───────────────────────────────────────
   /** 아이템 추가 — 동일 id 존재 시 수량 병합, 없으면 빈 소켓에 배치. 실패 시 false */
   addItem(template: InvItemTemplate, qty: number): boolean {
@@ -959,6 +998,8 @@ class InventoryStoreManager {
       // 신선도 시계 시작 — 획득(어창 이송 포함) 시점부터 상온 감쇄
       conditionSinceMs: template.condition ? template.conditionSinceMs ?? Date.now() : undefined,
     });
+    // 위키 발견 기록 (최초 취득 1회 — 개체형 id는 위키 카탈로그에 없어 자연 무시됨)
+    DiscoveryStore.record('item', template.id, 'inventory');
     return true;
   }
 
@@ -1339,6 +1380,7 @@ class InventoryStoreManager {
    * 수량이 남으면 소켓 유지(자동 재장착), 소진되면 소켓 비움.
    */
   consumeRigItem(step: RigStepKey): void {
+    if (isGod()) return;   // dev 무적: 미끼/소모 부품 무한
     const id = this._rig[step];
     if (!id) return;
     this.removeQty(id, 1);
@@ -1351,6 +1393,7 @@ class InventoryStoreManager {
    * 잃은 부품 이름 목록 반환.
    */
   loseRigParts(steps: RigStepKey[]): string[] {
+    if (isGod()) return [];   // dev 무적: 채비 손실 없음
     const lost: string[] = [];
     for (const step of steps) {
       const id = this._rig[step];
@@ -1371,6 +1414,7 @@ class InventoryStoreManager {
    * (입질 실패/챔질 실패/미끼 털림 등에는 호출하지 않는다 — 루어는 회수된다.)
    */
   loseLureRig(): string[] {
+    if (isGod()) return [];   // dev 무적: 루어 손실 없음
     const lost: string[] = [];
     for (const id of [this._lure, this._jigHead]) {
       if (!id) continue;

@@ -47,6 +47,7 @@ import {
 import { drawRigIcon, RigIconKind } from '../ui/RigIconRenderer.js';
 import { GameState } from '../store/GameState.js';
 import { InventoryStore, RigStepKey, CARD_RIG_INFO } from '../store/InventoryStore.js';
+import { isGod } from '../dev/DevMode.js';
 import { CoolerStore, COOLER_CAPACITY } from '../store/CoolerStore.js';
 import { ExternalDataStore } from '../store/ExternalDataStore.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
@@ -2214,6 +2215,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
    * (텐션 저항 시스템: 릴링이 미끄러지는데도 초과 입력을 유지하면 강제 파단)
    */
   private forceLineBreak(): void {
+    // dev 무적(갓모드): 줄이 터지지 않는다 (손실·강제 종료 전부 무시)
+    if (isGod()) return;
     const floatToo = Math.random() < 0.3;
     const parts: RigStepKey[] = floatToo
       ? ['float', 'subFloat', 'swivel', 'leader', 'sinker', 'hook', 'bait']
