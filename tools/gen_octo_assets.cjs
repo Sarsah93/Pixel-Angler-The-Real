@@ -23,6 +23,7 @@ const { execFileSync } = require('child_process');
 
 const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 const SRC_DIR = path.resolve(__dirname, '..', 'food assets', 'butchery', 'reference', 'cephalopod', 'octopus');
+const PIXEL_DIR = path.resolve(SRC_DIR, '손질 가이드에 적용할 픽셀 투명 에셋 이미지');
 const TRIM_DIR = path.resolve(__dirname, '..', 'food assets', 'trimmings', 'octopus');
 const PUB = path.resolve(__dirname, '..', 'packages', 'client-pc', 'public');
 const AB = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+/';
@@ -36,6 +37,8 @@ const RESIZE_JOBS = [
   // 통마리 아이콘 = '손질 완료된 문어' 투명본 직접 다운스케일 (098-b —
   //  구 "구운 octo_clean 스프라이트 재렌더" 경로 폐기: 원본이 이미 도트 아트라 직접이 더 선명)
   [TRIM_DIR, '손질 완료된 문어(preparated octopus).png', 'trimmings/octo_whole.png', 420],
+  // 부리(악판) 아이콘 = 픽셀 세트 7.png (100차 — 구 '입(beak).png' 1078px 원본 직접 복사본 대체)
+  [PIXEL_DIR, '7.png', 'trimmings/octo_beak.png', 300],
 ];
 
 function chromeDataUrl(html) {

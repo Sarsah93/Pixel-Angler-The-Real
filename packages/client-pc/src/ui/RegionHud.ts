@@ -18,6 +18,7 @@ import { ExternalDataStore } from '../store/ExternalDataStore.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { applyScreenFixed } from './DraggablePanel.js';
 import { createItemIcon } from './ItemIcon.js';
+import { paintHudPanel, paintHudSlot } from './HudPanelStyle.js';
 
 export interface RegionHudConfig {
   /** 지역 ID — 기상/해양 데이터 조회 키 (KMA_GRID_BY_REGION / REGION_TO_MMSI) */
@@ -36,6 +37,11 @@ const MINI_COL: Record<RegionTerrain, number> = {
   land: 0xbfae82,
   building: 0x6f523a,
   grass: 0x7ba352,
+  // OSM 심리스 v2 신규 지형 (필드 팔레트 축소판)
+  road: 0x4c4f54,
+  sidewalk: 0xb3b8bf,
+  sand: 0xe2d2a2,
+  pier: 0x9aa5b0,
 };
 
 const MINI_SIZES = [150, 250, 350] as const;
@@ -154,10 +160,7 @@ export class RegionHud extends Phaser.GameObjects.Container {
   // ═══════════════════════════════════════════════════
   private createStatusPanel(): void {
     const bg = this.scene.add.graphics();
-    bg.fillStyle(0x0a1628, 0.85);
-    bg.fillRoundedRect(SP.x, SP.y, SP.w, SP.h, 4);
-    bg.lineStyle(1.5, 0x2a5a8a, 0.8);
-    bg.strokeRoundedRect(SP.x, SP.y, SP.w, SP.h, 4);
+    paintHudPanel(bg, SP.x, SP.y, SP.w, SP.h);
     this.add(bg);
 
     const lx = SP.x + SP.pad;
@@ -293,15 +296,36 @@ export class RegionHud extends Phaser.GameObjects.Container {
     // 지형 그리드를 1타일=1px 텍스처로 1회 베이킹
     const texKey = `rhud_mini_${this.cfg.mapId}`;
     if (!this.scene.textures.exists(texKey)) {
-      const g = this.scene.add.graphics();
-      for (let r = 0; r < this.cfg.rows; r++) {
-        for (let c = 0; c < this.cfg.cols; c++) {
-          g.fillStyle(MINI_COL[this.cfg.terrain[r][c]], 1);
-          g.fillRect(c, r, 1, 1);
+      const total = this.cfg.cols * this.cfg.rows;
+      if (total > 60_000) {
+        // 대형(심리스) 맵 — Graphics 커맨드 수십만 개는 generateTexture가 느리다.
+        // CanvasTexture에 ImageData로 직접 픽셀을 쓰는 경로 (한 번에 O(N) 바이트 쓰기).
+        const tex = this.scene.textures.createCanvas(texKey, this.cfg.cols, this.cfg.rows)!;
+        const ctx = tex.getContext();
+        const img = ctx.createImageData(this.cfg.cols, this.cfg.rows);
+        const d = img.data;
+        let i = 0;
+        for (let r = 0; r < this.cfg.rows; r++) {
+          const row = this.cfg.terrain[r];
+          for (let c = 0; c < this.cfg.cols; c++) {
+            const col = MINI_COL[row[c]];
+            d[i] = (col >> 16) & 255; d[i + 1] = (col >> 8) & 255; d[i + 2] = col & 255; d[i + 3] = 255;
+            i += 4;
+          }
         }
+        ctx.putImageData(img, 0, 0);
+        tex.refresh();
+      } else {
+        const g = this.scene.add.graphics();
+        for (let r = 0; r < this.cfg.rows; r++) {
+          for (let c = 0; c < this.cfg.cols; c++) {
+            g.fillStyle(MINI_COL[this.cfg.terrain[r][c]], 1);
+            g.fillRect(c, r, 1, 1);
+          }
+        }
+        g.generateTexture(texKey, this.cfg.cols, this.cfg.rows);
+        g.destroy();
       }
-      g.generateTexture(texKey, this.cfg.cols, this.cfg.rows);
-      g.destroy();
     }
 
     this.miniContainer = this.scene.add.container(0, 0);
@@ -322,10 +346,7 @@ export class RegionHud extends Phaser.GameObjects.Container {
     this.miniContainer.setPosition(ox, oy);
 
     const frame = this.scene.add.graphics();
-    frame.fillStyle(0x0a1628, 0.7);
-    frame.fillRect(-3, -3, this.miniDispW + 6, this.miniDispH + 6);
-    frame.lineStyle(1.5, 0x2a5a8a, 0.9);
-    frame.strokeRect(-3, -3, this.miniDispW + 6, this.miniDispH + 6);
+    paintHudPanel(frame, -5, -5, this.miniDispW + 10, this.miniDispH + 10, { alpha: 0.95 });
     this.miniContainer.add(frame);
 
     const img = this.scene.add.image(0, 0, `rhud_mini_${this.cfg.mapId}`)
@@ -368,10 +389,7 @@ export class RegionHud extends Phaser.GameObjects.Container {
     const slotY = GAME_HEIGHT - slotH - 20;
 
     const barBg = this.scene.add.graphics();
-    barBg.fillStyle(0x060d1a, 0.72);
-    barBg.fillRoundedRect(startX - 10, slotY - 8, totalW + 20, slotH + 16, 5);
-    barBg.lineStyle(1.5, 0x1f3d5a, 0.6);
-    barBg.strokeRoundedRect(startX - 10, slotY - 8, totalW + 20, slotH + 16, 5);
+    paintHudPanel(barBg, startX - 10, slotY - 8, totalW + 20, slotH + 16, { alpha: 0.8 });
     this.add(barBg);
 
     for (let i = 0; i < 8; i++) {
@@ -431,17 +449,7 @@ export class RegionHud extends Phaser.GameObjects.Container {
       nameTxt.setText(item ? item.name.split(' ')[0] : '');
 
       box.clear();
-      if (i === activeIdx) {
-        box.fillStyle(0x1a7a7a, 0.4);
-        box.fillRoundedRect(-slotW / 2, -slotH / 2, slotW, slotH, 3);
-        box.lineStyle(2, 0x4af2a1, 1);
-        box.strokeRoundedRect(-slotW / 2, -slotH / 2, slotW, slotH, 3);
-      } else {
-        box.fillStyle(0x0a1628, 0.6);
-        box.fillRoundedRect(-slotW / 2, -slotH / 2, slotW, slotH, 3);
-        box.lineStyle(1.2, 0x2a5a8a, 0.6);
-        box.strokeRoundedRect(-slotW / 2, -slotH / 2, slotW, slotH, 3);
-      }
+      paintHudSlot(box, 0, 0, slotW, slotH, i === activeIdx);
     });
   }
 
@@ -458,10 +466,7 @@ export class RegionHud extends Phaser.GameObjects.Container {
     this.logAreaRect = { x: px, y: py, w, h };
 
     const bg = this.scene.add.graphics();
-    bg.fillStyle(0x0a1628, 0.8);
-    bg.fillRoundedRect(px, py, w, h, 4);
-    bg.lineStyle(1.5, 0x1f3d5a, 0.8);
-    bg.strokeRoundedRect(px, py, w, h, 4);
+    paintHudPanel(bg, px, py, w, h, { headerH: 21 });
     this.add(bg);
 
     const title = this.scene.add.text(px + 10, py + 7, '지역 채널', {

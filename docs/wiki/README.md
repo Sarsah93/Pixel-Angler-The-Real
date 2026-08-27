@@ -39,12 +39,12 @@
 | # | 시스템 | 상태 | 핵심 소스 | 잔여 요약 |
 |---|---|---|---|---|
 | S1 | [낚시 루프 (1인칭)](02-SYSTEMS/fishing-loop.md) | 🟢 | `FirstPersonFishingScene` · core 물리 9종 | 어탐 레이더, 가이드 삽화 실사화 |
-| S2 | [필드·캐스팅 (탑다운)](02-SYSTEMS/world-field.md) | 🟢 | `RegionFieldScene` | POI 세분화, 사운드 |
+| S2 | [필드·캐스팅 (탑다운)](02-SYSTEMS/world-field.md) | 🟢 | `RegionFieldScene` · **`SeamlessChunks`** | 비주얼 4레이어 에셋, 사운드 |
 | S3 | [**손질 (회뜨기)**](02-SYSTEMS/butchery.md) | 🚧 | `ButcheryProcess` · `ButcheryPanel` · `CephalopodStages` | 두족류 **무늬오징어·한치·문어 개방**(97차) · 갑오징어 잔여 · 광어 F9 잔여 |
 | S4 | [회썰기·플레이팅](02-SYSTEMS/sashimi-cooking.md) | 🟢 | `SashimiPanel` · `UtilizationPanel` | 스시, 불요리(화구·용기) |
 | S5 | [인벤토리·장비·보관](02-SYSTEMS/inventory-equipment.md) | 🟢 | `InventoryStore` · `CoolerStore` · `FridgeStore` | 예약 슬롯 6종 아이템 대기 |
 | S6 | [경제·상점·시세](02-SYSTEMS/economy-data.md) | 🟢 | `MarketPriceEvaluator` · `ShopPanel` | 낚시점 전용 상점 |
-| S7 | [월드맵·지역 타일맵](02-SYSTEMS/world-field.md) | 🔶 | `WorldMapScene` · `tools/build_region_maps.py` | 속초·부산·홈타운만 개방 |
+| S7 | [월드맵·지역 타일맵](02-SYSTEMS/world-field.md) | 🔶 | `WorldMapScene` · **OSM 파이프라인 3종** · `build_region_maps.py` | 속초(심리스 v2)·부산·홈타운 개방 — OSM 16개 지역 확장 잔여 |
 | S8 | [홈베이스 (집)](02-SYSTEMS/home-base.md) | 🔶 | `HomeInteriorScene` · `types/HomeBase.ts` | 하우스 Tier 1~3, 수조 패널, 농사 |
 | S9 | [외부 실데이터](02-SYSTEMS/economy-data.md#외부-api) | 🟢⚠ | `core/api-client/*` | **배포 시 CORS 프록시 필수** |
 | S10 | [UI 프레임워크](02-SYSTEMS/ui-framework.md) | 🟢 | `DraggablePanel` · `TextFit` · `SceneFade` | 저순위 팝업 검수 잔여 |
@@ -61,19 +61,18 @@
 
 ---
 
-## 3. 지금 위치 (2026-08-14)
+## 3. 지금 위치 (2026-08-27)
 
-- **99차**: 발견 도감·위키(S20 신설) + 통발 결함 2건 수정 + Dev 콘솔(F10).
-  다음 대과제 확정 순서 = **해루질·통발 배선(S14 D2~D5) → 불요리 → 농장 경영(S8 E1~E5, 스타듀밸리형)**.
-- **Phase 6** (게임플레이 심화) 내부, **손질 시스템(S3)** 확장 중.
-- **두족류 3종 개방(97차)** — 무늬오징어 20스테이지(90~96차 재구성) + **한치(트리 공유)·문어 8스테이지** +
-  **부산물 개편·회뜨기 3모드**(몸통살 22점·날개살 4점·촉완 분리). 갑오징어 13만 미착수.
-- ⏸ **다음 세션 재개 지점 = 두족류 수동 검증** — 무늬오징어 잔여 F9(내장 2/2·뜯기 ②·날개 껍질째) +
-  97차 신설분 체감(문어 파라메트릭 뷰·OCTO 가이드 좌표 = 근사 — F9 실측 대상).
-  상세 → [워크로그 097](03-WORKLOG/2026-08-13-097-ceph-byproducts-slicing-octopus.md).
+- **100차**: **문어 픽셀 에셋 10장 매핑**(octo_* 전량 교체) + **OSM 실지형 심리스 맵 v2 — 속초 완주**
+  (589×321 단일 맵 · `SeamlessChunks` 청크 스트리밍 · OSM POI 310 · 잠복 `pointer.worldX` 조준 버그 수정).
+  스펙 = `.agents/OSM_TILEMAP_SPEC.md`(**§0.5 코드 정합 노트가 본문보다 우선**).
+- **Phase 6** (게임플레이 심화) 내부 — 손질(S3) 확장 + **맵 인프라(S2/S7) OSM 전환 진행**.
+- **다음 재개 지점**: ① OSM 지역 16개 확장(fetch→build→검수 반복 — 사용자 terrain 대조 동반)
+  ② 두족류 수동 검증 — 무늬오징어 잔여 F9 + **문어 좌표 재실측**(100차 스프라이트 교체로 subjectRect 변동).
+  상세 → [워크로그 100](03-WORKLOG/2026-08-27-100-octo-pixel-osm-seamless.md).
+- 이후 순서: 갑오징어 13 → 광어 F9 잔여 → **해루질·통발 배선(S14 D2~D5) → 불요리 → 농장 경영(S8)**.
 - **광어 잔여**: F9 좌표 4종(`upSep1/2`·`dnSep1/2`·`dnScore` — 엔가와·박피는 반영 완료) · 등쪽 단면 실사 투명본 대기.
-  칼 연출은 **현행 확정**(사용자 2026-08-09).
-- 상세: [`04-BACKLOG.md`](04-BACKLOG.md) · [`02-SYSTEMS/butchery.md`](02-SYSTEMS/butchery.md)
+- 상세: [`04-BACKLOG.md`](04-BACKLOG.md) · [`02-SYSTEMS/world-field.md`](02-SYSTEMS/world-field.md) · [`02-SYSTEMS/butchery.md`](02-SYSTEMS/butchery.md)
 
 ## 4. 새 세션 읽는 순서
 

@@ -10,10 +10,16 @@
  *  '~' = 바다        (이동 불가, 낚시 캐스팅 대상)
  *  '#' = 건물        (충돌, 상호작용 후보)
  *  ',' = 잔디/공원   (이동 가능)
+ *
+ * OSM 심리스 v2 확장 (OSM_TILEMAP_SPEC §2 — 2026-08-27):
+ *  'r' = 차도        (이동 가능 — 시각 구분(차선·연석) + 자전거 속도 보정 예약)
+ *  'w' = 보도/인도   (이동 가능 — 차도와 분리. 차도 양옆 프린지 자동 생성)
+ *  's' = 모래사장    (이동 가능, 원투 낚시 가능)
+ *  'b' = 방파제·부두 (이동 가능, 낚시 캐스팅의 핵심 발판)
  */
 
-/** 타일 지형 종류 */
-export type RegionTerrain = 'land' | 'water' | 'building' | 'grass';
+/** 타일 지형 종류 (road/sidewalk/sand/pier = OSM 심리스 v2 신규) */
+export type RegionTerrain = 'land' | 'water' | 'building' | 'grass' | 'road' | 'sidewalk' | 'sand' | 'pier';
 
 /** 지형 문자 → 지형 종류 매핑 */
 export const TERRAIN_BY_CHAR: Record<string, RegionTerrain> = {
@@ -21,7 +27,94 @@ export const TERRAIN_BY_CHAR: Record<string, RegionTerrain> = {
   '~': 'water',
   '#': 'building',
   ',': 'grass',
+  'r': 'road',
+  'w': 'sidewalk',
+  's': 'sand',
+  'b': 'pier',
 };
+
+/** 이동 가능 지형 판정 (심리스 v2 — walkable = . , r w s b) */
+export function isWalkableTerrain(t: RegionTerrain | undefined): boolean {
+  return t === 'land' || t === 'grass' || t === 'road' || t === 'sidewalk'
+    || t === 'sand' || t === 'pier';
+}
+
+/**
+ * 낚시 발판 지형 판정 — 심리스 모드의 캐스팅 규칙(OSM_TILEMAP_SPEC §5):
+ * `fishableFrom = (방파제 'b' | 모래사장 's') && 인접 8방향에 바다 '~'`.
+ * 인접 검사는 그리드를 가진 호출측(씬)이 수행하고, 여기는 발판 지형 여부만 답한다.
+ */
+export function isFishableStandTerrain(t: RegionTerrain | undefined): boolean {
+  return t === 'pier' || t === 'sand';
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// OSM 심리스 v2 — 지역 메타 · POI (OSM_TILEMAP_SPEC §4·§5, 2026-08-27)
+// ═══════════════════════════════════════════════════════════════════
+
+/** 지역 메타 — `pixelazed/<region>/meta.json` 로드 결과 (build_osm_tilemap.py 산출) */
+export interface RegionMeta {
+  region: string;
+  /** (남, 서, 북, 동) — WGS84 */
+  bbox: [number, number, number, number];
+  /** 1타일 = N 미터 (현재 10) */
+  tileMeters: number;
+  width: number;
+  height: number;
+  /** 스폰 타일 [tx, ty] — 대략 좌표를 build가 최근접 이동가능 타일로 스냅한 값 */
+  spawn?: [number, number] | null;
+  spawnName?: string;
+  /** 스폰이 대략값(±수백 m)임을 표시 — terrain.txt 검수 대상 */
+  spawnApprox?: boolean;
+}
+
+/** OSM 추출 POI 타입 (스펙 §4 — ferry_terminal = 배낚시 확장 훅) */
+export type PoiType =
+  | 'shop' | 'toilet' | 'police' | 'ferry_terminal' | 'fuel' | 'restaurant'
+  | 'cafe' | 'market' | 'bank' | 'pharmacy' | 'lighthouse' | 'info'
+  | 'viewpoint' | 'lodging' | 'fishing_spot';
+
+/** OSM 심리스 POI — 타일과 분리된 `pois.json` 항목 */
+export interface RegionPoi {
+  type: PoiType;
+  /** type='shop'일 때 OSM shop=* 값 보존 (seafood/convenience/supermarket …) */
+  shopKind?: string;
+  name: string;
+  tx: number;
+  ty: number;
+  /**
+   * 출입구 타일 (손 지정 오버라이드). 없으면 클라이언트가 앵커에서 가장 가까운
+   * 'r'/'.' 타일을 문 위치로 자동 배치한다 (스펙 §4 출입구 규칙).
+   */
+  door?: [number, number];
+  osmId: number;
+}
+
+/**
+ * 지역 렌더 모드 — 'seamless'면 SEAMLESS_REGIONS에 등록된 지역은
+ * 심리스 단일 맵(청크 스트리밍)으로 열리고 맵 그래프(엣지 전환)를 무시한다.
+ * 미등록 지역(부산·홈타운 등)은 모드와 무관하게 legacy 그래프로 동작한다.
+ * legacy 7맵 체인(SOKCHO_MAP_GRAPH)은 삭제하지 않는다 — 폴백용 보존 (스펙 §5).
+ */
+export const ACTIVE_REGION_MODE: 'legacy' | 'seamless' = 'seamless';
+
+/** 심리스 지역 정의 — 데이터 폴더(`public/` 기준)와 표시 이름 */
+export interface SeamlessRegionDef {
+  /** 데이터 지역 키 (pixelazed·public/data 폴더명 — regions_config.py의 키) */
+  dataRegion: string;
+  dataDir: string;
+  name: string;
+}
+
+/** WorldMap 지역 ID → 심리스 지역 정의 (등록 = 심리스 개방) */
+export const SEAMLESS_REGIONS: Record<string, SeamlessRegionDef> = {
+  gangwon_sokcho: { dataRegion: 'sokcho_v2', dataDir: 'data/sokcho_v2', name: '속초' },
+};
+
+/** 현재 모드에서 이 지역이 심리스로 열리는가 (아니면 undefined = legacy 경로) */
+export function seamlessRegionOf(regionId: string): SeamlessRegionDef | undefined {
+  return ACTIVE_REGION_MODE === 'seamless' ? SEAMLESS_REGIONS[regionId] : undefined;
+}
 
 /** 맵 상의 관심지점(POI) — 식당/카페/마트 등 아이콘 추론 결과 */
 export interface RegionMapPoi {

@@ -280,10 +280,109 @@ REGIONS = {
     ],
 }
 
+# ── OSM 심리스 v2 (OSM_TILEMAP_SPEC §1·§2 — 2026-08-27) ──────────────────────
+# build_osm_tilemap.py 산출물(pixelazed/<region>/terrain.png 1px=1타일)을
+# 단일 seamless.json으로 변환한다. 지형 원본은 손수정 대상인 PNG가 정본이고
+# (terrain.txt는 diff·검증용 — 재빌드 시 덮어써짐), pois/meta JSON은 그대로 복사한다.
+# 지역 판별: pixelazed/<region>/meta.json 존재 = OSM 심리스 지역.
+
+# 스펙 §2 팔레트 (build_osm_tilemap.py PALETTE와 단일 값) — 손수정 오차 허용을 위해 최근접 매칭
+OSM_PALETTE = {
+    '~': (59, 111, 176), '.': (203, 185, 141), ',': (109, 163, 77),
+    's': (232, 217, 160), 'r': (138, 138, 138), 'b': (122, 136, 148),
+    'w': (184, 188, 196),
+    '#': (74, 74, 82),
+}
+OSM_WALKABLE = ('.', ',', 'r', 's', 'b', 'w')
+
+def classify_osm(r, g, b):
+    best, best_d = '.', 1 << 30
+    for ch, (pr, pg, pb) in OSM_PALETTE.items():
+        d = (r - pr) ** 2 + (g - pg) ** 2 + (b - pb) ** 2
+        if d < best_d:
+            best, best_d = ch, d
+    return best
+
+def osm_walk_components(gw, gh, grid):
+    """걷기 컴포넌트 라벨링 — (컴포넌트 수, 최대 컴포넌트 크기, 라벨 그리드)."""
+    comp = [[-1] * gw for _ in range(gh)]
+    sizes = []
+    for sy in range(gh):
+        for sx in range(gw):
+            if grid[sy][sx] not in OSM_WALKABLE or comp[sy][sx] != -1:
+                continue
+            cid = len(sizes); n = 0
+            dq = deque([(sx, sy)]); comp[sy][sx] = cid
+            while dq:
+                x, y = dq.popleft(); n += 1
+                for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    nx, ny = x + dx, y + dy
+                    if 0 <= nx < gw and 0 <= ny < gh and comp[ny][nx] == -1 \
+                       and grid[ny][nx] in OSM_WALKABLE:
+                        comp[ny][nx] = cid; dq.append((nx, ny))
+            sizes.append(n)
+    return len(sizes), (max(sizes) if sizes else 0), comp
+
+def build_seamless(root, region):
+    src_dir = os.path.join(root, 'pixelazed', region)
+    out_dir = os.path.join(root, 'packages', 'client-pc', 'public', 'data', region)
+    os.makedirs(out_dir, exist_ok=True)
+    with open(os.path.join(src_dir, 'meta.json'), encoding='utf-8') as f:
+        meta = json.load(f)
+    with open(os.path.join(src_dir, 'pois.json'), encoding='utf-8') as f:
+        pois = json.load(f)
+
+    w, h, ch, px = decode_png(os.path.join(src_dir, 'terrain.png'))
+    grid = []
+    for y in range(h):
+        base = y * w
+        row = []
+        for x in range(w):
+            i = (base + x) * ch
+            row.append(classify_osm(px[i], px[i + 1], px[i + 2]))
+        grid.append(row)
+
+    # 검증 리포트 — §9 체크리스트 보조 (자동 카브는 하지 않는다: OSM 벡터가 정본)
+    n_comp, max_comp, comp = osm_walk_components(w, h, grid)
+    counts = {}
+    for row in grid:
+        for c in row:
+            counts[c] = counts.get(c, 0) + 1
+    spawn = meta.get('spawn')
+    spawn_ok = bool(spawn) and grid[spawn[1]][spawn[0]] in OSM_WALKABLE
+    main_ok = bool(spawn) and spawn_ok and comp[spawn[1]][spawn[0]] is not None \
+        and comp[spawn[1]][spawn[0]] >= 0
+    spawn_comp = comp[spawn[1]][spawn[0]] if spawn_ok else -1
+
+    doc = {
+        'id': f'{region}_seamless', 'name': meta.get('spawnName') or region,
+        'tile': 1, 'cols': w, 'rows': h,
+        'terrain': [''.join(row) for row in grid],
+        'pois': [],   # 심리스 POI는 별도 pois.json(RegionPoi 스키마) — 레거시 필드는 비움
+    }
+    with open(os.path.join(out_dir, 'seamless.json'), 'w', encoding='utf-8') as f:
+        json.dump(doc, f, ensure_ascii=False, separators=(',', ':'))
+    with open(os.path.join(out_dir, 'pois.json'), 'w', encoding='utf-8') as f:
+        json.dump(pois, f, ensure_ascii=False, separators=(',', ':'))
+    with open(os.path.join(out_dir, 'meta.json'), 'w', encoding='utf-8') as f:
+        json.dump(meta, f, ensure_ascii=False, separators=(',', ':'))
+
+    tot = w * h
+    summary = ' '.join(f'{k}:{round(100 * v / tot, 1)}%' for k, v in sorted(counts.items()))
+    print(f'  ✓ {region} seamless {w}x{h}  [{summary}]')
+    print(f'    걷기 컴포넌트 {n_comp}개 (최대 {max_comp:,}타일) · POI {len(pois)}개'
+          f' · 스폰 {spawn} {"OK" if spawn_ok and main_ok else "⚠ 걷기 불가 — 검수 필요"}'
+          f' (컴포넌트 #{spawn_comp})')
+    print(f'[{region}] seamless → {out_dir}')
+
 def main():
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     targets = sys.argv[1:] or list(REGIONS.keys())
     for region in targets:
+        # OSM 심리스 지역 (meta.json 존재) — 단일 seamless.json 출력 후 종료
+        if os.path.exists(os.path.join(root, 'pixelazed', region, 'meta.json')):
+            build_seamless(root, region)
+            continue
         maps = REGIONS[region]
         src_dir = os.path.join(root, 'pixelazed', region)
         out_dir = os.path.join(root, 'packages', 'client-pc', 'public', 'data', region)

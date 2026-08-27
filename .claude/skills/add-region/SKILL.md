@@ -5,7 +5,34 @@ description: Pixel Angler 신규 지역(타일맵 필드) 추가 절차 — 실�
 
 # 신규 지역(타일맵) 추가
 
-## 파이프라인
+> ⚠ **100차부터 신규 지역의 기본 경로는 OSM 심리스(아래 §OSM)** — 손그림 legacy 파이프라인은
+> 기존 지역(부산·홈타운) 유지보수용으로만 남는다.
+
+## OSM 심리스 파이프라인 (v2 — 2026-08-27, 스펙 `.agents/OSM_TILEMAP_SPEC.md`)
+
+```
+tools/regions_config.py 에 지역 bbox 등록 (17개 기등록 — 신규는 bbox·seaEdges·spawn 한 줄)
+  → py tools/fetch_region_osm.py <region>     (Overpass 1회 온라인 — 파츠 캐시, 재수집 = 파일 삭제)
+  → py tools/build_osm_tilemap.py <region>    (→ pixelazed/<region>/terrain.png·pois·meta)
+  → py tools/build_region_maps.py <region>    (meta.json 존재 = 심리스 분기 → seamless.json + 복사)
+  → core RegionMap.ts SEAMLESS_REGIONS 등록 + WorldMap.ts REGION_AREA_NODES 구역 노드
+  → RegionFieldScene가 자동으로 심리스 모드(SeamlessChunks 청크 스트리밍)로 연다
+```
+
+- **스펙 §0.5 코드 정합 노트가 본문보다 우선** — **1타일 = 5m**(101차 확정 · TR 20px) ·
+  타일 8종(`. ~ # , r w s b` — `w` = 보도) · 도로 폭 미터 기준(`ROAD_W_M`) ·
+  캐스팅 = 기존 물가 규칙(b/s 전용 아님) · POI 거래 매핑 범위 · worldX 금지.
+- 비주얼은 `SeamlessChunks.bakeChunk`의 **절차 렌더(L1·L3)가 정본** — 지역 추가 시 별도 작업 불필요,
+  에셋 타일셋이 오면 그 자리에서 교체.
+- 빌드 후 **필수 검수**(§9): terrain.png ↔ OSM 화면 육안 대조 · sea ratio 25~65%(밖이면 해안선
+  누수 — PNG에서 막고 재실행) · 스폰이 최대 걷기 컴포넌트에 있는지(build_region_maps 리포트) ·
+  섬은 도보 불가.
+- terrain.png = **손수정 정본**(파이프라인 재실행이 덮어쓴다 — 수정본은 별도 백업 후 재실행 주의).
+- ⚠ 대형 지역 수집은 수백 MB·수십 분 가능(요청 간 5초 대기). 서해(taean)는 seaEdges 경고 시 조정.
+- ⚠ `pointer.worldX/Y` 사용 금지 — 스크롤 카메라에서 미갱신. `RegionFieldScene.pointerWorld` 경유.
+- 청크 크기(64) 변경 시 `SeamlessChunks` 기본값과 `RegionFieldScene.SEAMLESS_CHUNK_TILES` 동시 수정.
+
+## legacy 파이프라인 (손그림 — 부산·홈타운)
 
 ```
 pixelazed/<region>/<mapId>.png  (실지형 픽셀 지도 — 파일명 = mapId)

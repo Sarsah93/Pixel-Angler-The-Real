@@ -18,6 +18,7 @@ export type DataLicense =
   | 'KOGL-3'        // 공공누리 제3유형 (출처표시 + 변경금지)
   | 'KOGL-4'        // 공공누리 제4유형 (출처표시 + 상업적금지 + 변경금지)
   | 'PublicData'    // 공공데이터포털 이용약관
+  | 'ODbL'          // Open Database License (OpenStreetMap)
   | 'Custom';       // 개별 약관
 
 export const LICENSE_LABEL: Record<DataLicense, string> = {
@@ -26,6 +27,7 @@ export const LICENSE_LABEL: Record<DataLicense, string> = {
   'KOGL-3': '공공누리 제3유형 (출처표시 · 변경금지)',
   'KOGL-4': '공공누리 제4유형 (출처표시 · 상업적금지 · 변경금지)',
   'PublicData': '공공데이터포털 이용약관',
+  'ODbL': 'Open Database License (ODbL) 1.0',
   'Custom': '제공기관 개별 약관',
 };
 
@@ -89,6 +91,13 @@ export const DATA_ATTRIBUTIONS: DataAttribution[] = [
     usage: '지역별 어종 출현 빈도 가중',
     license: 'PublicData',
     url: 'https://kosis.kr',
+  },
+  {
+    provider: '© OpenStreetMap contributors',
+    service: 'OpenStreetMap 지도 데이터 (Overpass API)',
+    usage: '실지형 심리스 지역 타일맵 (해안선 · 도로 · 건물 · 방파제 · POI)',
+    license: 'ODbL',
+    url: 'https://www.openstreetmap.org/copyright',
   },
 ];
 

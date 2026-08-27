@@ -1,6 +1,6 @@
 # S2·S7. 월드맵 · 지역 타일맵 · 필드(이동·환경)
 
-> 상태 **🔶 부분**(지역 3곳 개방). 관련 차수 3·17·18·19·44·46·73
+> 상태 **🔶 부분**(지역 3곳 개방 — 속초는 **OSM 심리스 v2**). 관련 차수 3·17·18·19·44·46·73·**100**
 
 ---
 
@@ -11,29 +11,43 @@
 | 계층 | 파일 | 역할 |
 |---|---|---|
 | core | `types/WorldMap.ts` | 노드 11곳 · `REGION_AREA_NODES`(출조 구역) · 잠금 판정 |
-| core | `types/RegionMap.ts` | 타일맵 계약 + **맵 그래프**(속초 7 · 부산 8 · 홈타운 1) |
+| core | `types/RegionMap.ts` | 타일맵 계약(7문자) + 맵 그래프(legacy) + **심리스 등록**(`SEAMLESS_REGIONS`·`ACTIVE_REGION_MODE`·`RegionMeta`/`RegionPoi`) |
 | core | `types/DepthProfile.ts` | 실측 연안 수심(거리→수심 보간·외삽) |
-| tools | `build_region_maps.py` · `build_depth_profiles.py` | 지형 PNG → 타일 JSON / 수심 ZIP → 프로필 |
+| tools | `regions_config.py` · `fetch_region_osm.py` · `build_osm_tilemap.py` | **OSM 파이프라인** — 지역 17개 bbox 레지스트리 · Overpass 수집 캐시 · 10m/타일 래스터라이즈(flood·마스킹·스폰 스냅) |
+| tools | `build_region_maps.py` · `build_depth_profiles.py` | 지형 PNG → 타일 JSON(**심리스 분기 포함**) / 수심 ZIP → 프로필 |
 | client | `WorldMapScene` | 핀·툴팁·줌인 진입·교통비 결제·귀가 |
-| client | `RegionFieldScene` | 타일 렌더 베이킹 · 병합 충돌 · 맵 전환 · 캐스팅 · 조명/날씨 · 설치 모드 |
-| client | `RegionHud` · `MiniMap` · `FieldEventManager` · `HydroCurrentRenderer` | HUD·미니맵·이벤트·조류 시각화 |
+| client | `RegionFieldScene` | legacy 전맵 베이킹 / **심리스 분기**(meta 스폰·OSM POI·엣지 비활성) · 캐스팅 · 조명/날씨 · 설치 모드 |
+| client | `scenes/SeamlessChunks.ts` | **청크 스트리밍** — 64타일 청크 · RT 풀 12 LRU · 3×3 상주 · 프레임당 1베이킹 · 근접 충돌 |
+| client | `RegionHud` · `MiniMap` · `FieldEventManager` · `HydroCurrentRenderer` | HUD·미니맵(대형 맵 = CanvasTexture)·이벤트·조류 시각화 |
 
 ## 3. 동작 구조
+
 ```
-pixelazed/<region>/*.png ──build_region_maps.py──► public/data/<region>/<mapId>.json
-   타일 문자: '.' 육지/도로  '~' 바다(이동불가·낚시)  '#' 건물(충돌)  ',' 잔디
-RegionFieldScene: JSON → generateTexture 1회 베이킹(맵당 캐시) + 행 병합 정적 바디
-맵 전환: 엣지 접근 → 그래프 링크 → scene.restart({entryEdge, entryT}) → 반대편 엣지 스폰
-출조 진입(entryEdge 없음) = 맵 중앙 nearestWalkable
+[legacy]  pixelazed/<region>/*.png ──build_region_maps.py──► data/<region>/<mapId>.json
+          엣지 전환: 그래프 링크 → scene.restart({entryEdge, entryT})
+
+[심리스]  fetch_region_osm.py(1회 온라인) → pixelazed/_osmcache/
+          build_osm_tilemap.py → pixelazed/<region>/terrain.png(손수정 정본)·pois·meta
+          build_region_maps.py → data/<region>/seamless.json + pois.json + meta.json
+          RegionFieldScene + SeamlessChunks: 3×3 청크 상주 렌더/충돌 · meta.spawn · 엣지 없음
 ```
-- **바다 타일은 육지 거리 BFS로 6단계 수심 그라데이션** + 결정적 노이즈 암초.
+
+- 타일 문자 8종: `.` 육지 `~` 바다 `#` 건물 `,` 잔디 + **`r` 차도 `w` 보도 `s` 모래사장
+  `b` 방파제**(walkable). **1타일 = 5m**(101차 확정 — 도로 폭은 미터 기준 `ROAD_W_M`,
+  차도 양옆 보도 프린지 자동).
+- 심리스 베이커 = **§11 L1·L3 절차 구현**(101차): 질감 스페클 · 차선 점선/연석 · 신축이음 ·
+  계선주·포말·파도·배 · 연결요소 지붕(박공/패널)+그림자 · 나무 스프라이트(y-sort).
+  HUD는 `ui/HudPanelStyle.ts` 공용 픽셀 패널(타이틀 명패 포함).
+- 바다 = 육지 거리 BFS 6단계 수심 그라데이션 + 결정적 노이즈 암초 (legacy·심리스 공통 팔레트).
+- OSM POI(속초 310개) = 청크 상주 시 마커/라벨 · 거래 가능 매핑(마트/직판장/식당/카페 등)은
+  기존 건물 [E] 거래 흐름에 편입 · 문 위치 = 앵커가 `#` 안이면 최근접 걷기 타일 BFS.
 - 조명: KST 야간/황혼 명암 오버레이 + 건물 창·네온·가로등(파사드 요소는 플레이어 아래 depth).
 - 날씨: 기상청 실데이터 → 비 2레이어·물파문 / 소나기 / 진눈깨비 / 눈 / 안개.
 
 ## 4. 세부과제 현황
 | 과제 | 상태 | 차수 |
 |---|---|---|
-| 실지형 타일맵 파이프라인 + 속초 7맵 | ✅ | 6-5e |
+| 실지형 타일맵 파이프라인 + 속초 7맵(legacy 보존) | ✅ | 6-5e |
 | 부산 8맵 + 컴포넌트 자동 연결(`connect_components`) | ✅ | 17·19 |
 | 홈타운 단일 맵 + 오브젝트 스키마 | ✅ | 44 |
 | 실측 수심 프로필(속초) | ✅ | 8차 |
@@ -41,12 +55,20 @@ RegionFieldScene: JSON → generateTexture 1회 베이킹(맵당 캐시) + 행 �
 | 자전거(R) + 접지/크기 + 배타 액션 게이트 | ✅ | 17·18 |
 | 씬 전환 안전망(SceneFade 17곳) | ✅ | 73 |
 | 교통비·귀가·잠금 지역 | ✅ | 44 |
-| **타 지역 확장**(여수 등) | ⬜ | 파이프라인 준비됨 |
-| POI 세분화(건물별 진입 씬) | ⬜ | 현재 제네릭 마커 |
+| **OSM 심리스 v2 — 속초**(파이프라인·청크 스트리밍·POI·검증) | ✅ | 100 |
+| 스케일 5m/타일 + 보도 분리 + L1·L3 절차 렌더 + HUD 픽셀 패널 | ✅ | 100 후속 |
+| OSM 지역 17개 확장(fetch→build→검수 반복) | ⬜ | 코드 변경 없음 — 스폰·terrain 검수 필요 |
+| §11 에셋 교체(타일셋·프리팹) + L4 NPC | ⬜ | 절차 구현이 자리 — 에셋 도착 시 교체 |
+| POI 세분화(비거래 시설 전용 씬·지역 실상점 카탈로그) | ⬜ | 현재 마커+SHOP_CATALOG 프리셋 |
+| 스폰 다중화(`meta.spawns[]`) | ⬜ | 스펙 §12-2 |
 | 사운드 이펙트 | ⬜ | |
 
 ## 5. 잔여·차기
-지역 추가는 절차화되어 있다 → 스킬 `add-region`. POI 상호작용·사운드는 콘텐츠 확장 단계에서.
+
+- OSM 확장 절차: `regions_config.py`의 지역 키로 `fetch → build → build_region_maps →
+  SEAMLESS_REGIONS 등록 → terrain/스폰 검수` 반복. ⚠ 서해 2곳(taean)은 seaEdges 조정 가능성.
+- legacy 7맵 제거 시점은 사용자 결정(v2 안정화 후 권장 — 스펙 부록 3).
+- POI 상호작용·사운드는 콘텐츠 확장 단계에서. 상세 미결은 스펙 §13-5.
 
 ## 6. 함정·불변조건
 1. **타일 텍스처는 맵당 캐시(`rmaptex_`)** — 렌더 알고리즘을 바꾸면 브라우저 풀 리로드가 필요하다.
@@ -60,3 +82,11 @@ RegionFieldScene: JSON → generateTexture 1회 베이킹(맵당 캐시) + 행 �
    새 씬의 create가 외부 데이터를 소비하면 **캐시 미스 가드부터** 넣는다.
 7. **WebGL 캔버스 픽셀 직접 샘플(drawImage) 금지** — `preserveDrawingBuffer=false`라 항상 검정.
    밝기 검증은 Playwright 스크린샷 버퍼를 디코드한다(088차 하네스 오판 사례).
+8. **`pointer.worldX/Y` 사용 금지** (100차) — 스크롤된 카메라에서 갱신되지 않아 스크린 좌표가
+   그대로 들어온다(소형 맵은 스크롤 ≈ 0이라 잠복). 포인터→월드는 반드시
+   `camera.getWorldPoint`(`RegionFieldScene.pointerWorld`) 경유.
+9. **심리스 캐스팅 판정은 스펙 §5(b/s 전용)가 아니라 기존 물가 규칙** — 속초 OSM에 방파제
+   `man_made` 태그가 거의 없다(실측 `b` 25타일). 근거·조정은 스펙 §0.5 코드 정합 노트.
+10. 심리스 청크 충돌은 **상주 즉시**, 시각 베이킹만 프레임당 1청크 — 순서를 바꾸면 스폰 직후
+    바다/건물 관통이 생긴다. 청크 크기(64)를 바꾸면 `RegionFieldScene.SEAMLESS_CHUNK_TILES`
+    (POI 청크 키)와 함께 바꿔야 한다.

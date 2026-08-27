@@ -367,14 +367,17 @@ export {
   isRegionUnlocked, getRegionAreaNodes, getAreaNodeById, getAreaSnagRiskMult,
 } from './types/WorldMap.js';
 
-// Region Map (지역 상세 타일맵)
+// Region Map (지역 상세 타일맵 + OSM 심리스 v2)
 export type {
   RegionTerrain, RegionMapPoi, RegionMapData, EdgeDir,
   RegionMapLinks, RegionMapNode, RegionMapGraph,
+  RegionMeta, PoiType, RegionPoi, SeamlessRegionDef,
 } from './types/RegionMap.js';
 export {
   TERRAIN_BY_CHAR, OPPOSITE_EDGE, SOKCHO_MAP_GRAPH, BUSAN_MAP_GRAPH,
   HOMETOWN_MAP_GRAPH, REGION_MAP_GRAPHS, getRegionMapNode,
+  isWalkableTerrain, isFishableStandTerrain,
+  ACTIVE_REGION_MODE, SEAMLESS_REGIONS, seamlessRegionOf,
 } from './types/RegionMap.js';
 
 // 홈타운(집) 거점 — 오브젝트 인스턴스/영속 · 칸 단위 배치 · 수족관 · 하우스 확장 · 교통비
