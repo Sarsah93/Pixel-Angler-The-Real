@@ -29,6 +29,19 @@
 >    잔디/맨땅/모래 스페클 · 차선 점선(도로 축 자동 판정)·연석 · 보도/부두 신축이음 ·
 >    계선주·해안 포말·파도·배 · 건물 = 연결요소 박공/패널 지붕 + 그림자 · 나무 스프라이트(y-sort).
 >    에셋 타일셋(§11 최소 에셋 세트)이 오면 같은 자리에서 교체한다. L4(NPC)는 미착수.
+> 10. **차선·중앙선은 벡터**(101차) — 래스터라이저가 `roads.json`(차도 폴리라인·폭)을 동반 출력하고
+>     클라이언트가 임의 각도로 그린다(노란 중앙 실선 ≥ 2타일 · 흰 점선 차선 · 대각선 대응).
+>     **dev 맵 편집기(F7)** = `patch.json`(타일/프롭/지붕 오버라이드 — §11 L3 `props.json` 역할 통합):
+>     vite dev 미들웨어가 `pixelazed/<region>/patch.json`(정본)에 저장, `build_region_maps`가 굽는다.
+> 11. **§11 L2·L3·L4 에셋 = `pixelazed/tileset/` 통합**(101차 후속) — Gemini 생성본(빌딩·팝업·횟집·
+>     정자·테트라·경계·NPC 5) + TopDownCityPack(FisherG) + Kenney Roguelike City(CC0).
+>     추출 = `tools/extract_tileset_assets.py`(survey→build), 매니페스트 = `data/TilesetManifest.ts`,
+>     배치 규칙 = `SeamlessChunks.PROP_DEFS`/`RegionFieldScene.poiVisualTex`. 지면 타일셋(L1)은
+>     격자 비정수비(12/16px vs 20px)로 **미적용** — 절차 렌더 유지.
+>     차도 폭은 `ROAD_LANES`(방향당 차로) 기준 재산정, 마킹은 차도 타일 안에 들어온다.
+> 12. **심리스 TR = 32px**(사용자 확정 2026-08-28 — 1항의 20px 갱신). Kenney 16px 지면 타일 ×2 정수
+>     배율. 청크 32타일 = 1024px RT · 이동 210px/s · legacy 맵은 20 유지(`RegionFieldScene` init 분기).
+>     지면 L1 = Kenney 베이스(`GROUND_CELLS` 명시 셀) + 절차 전이 레이어. 바다·건물은 절차 유지.
 
 
 > 목표: 손그림 추정 지형("테두리만 육지, 나머지 바다") 폐기.

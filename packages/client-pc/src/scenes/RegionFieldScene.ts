@@ -51,10 +51,16 @@ import {
   HOMETOWN_SPAWN,
   RegionMeta,
   RegionPoi,
+  RegionRoad,
+  RegionPatch,
   SeamlessRegionDef,
   seamlessRegionOf,
 } from '@tra/core';
-import { SeamlessChunks } from './SeamlessChunks.js';
+import { SeamlessChunks, PROP_DEFS } from './SeamlessChunks.js';
+import { TILESET_MANIFEST } from '../data/TilesetManifest.js';
+import {
+  openMapEditor, closeMapEditor, isMapEditorOpen, mapEditorState, setMapEditorStatus,
+} from '../dev/MapEditorPanel.js';
 import { GameState } from '../store/GameState.js';
 import { ExternalDataStore } from '../store/ExternalDataStore.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
@@ -86,7 +92,11 @@ interface RegionFieldInit {
 }
 
 // ── 렌더/전환 상수 ──────────────────────────────────
-const TR = 20;              // 타일 렌더 크기(px)
+/**
+ * 타일 렌더 크기(px). legacy(손그림) 맵 = 20. **심리스 = 32**(101차 후속 — Kenney 16px 지면
+ * 타일의 정수 2배 = 픽셀 보존. 사용자 결정 2026-08-28). init()에서 모드에 따라 확정한다.
+ */
+let TR = 20;
 const EDGE_MARGIN = 0;      // 최외곽 타일에 닿아야 전환 (과거 2 → 인식 범위가 너무 넓었음)
 const SPAWN_INSET = 4;      // 전환 후 스폰 시 엣지에서 안쪽으로 들여쓸 타일 수
 
@@ -123,6 +133,17 @@ export class RegionFieldScene extends Phaser.Scene {
   private poiByChunk = new Map<string, number[]>();
   /** 상주 청크의 POI 마커 오브젝트 (청크 키 → 오브젝트들) */
   private poiObjects = new Map<string, Phaser.GameObjects.GameObject[]>();
+  /** 차도 중심선 벡터 (roads.json) — 차선·중앙선 마킹 */
+  private regionRoads: RegionRoad[] = [];
+  /** dev 편집 패치 (patch.json — 타일/프롭/지붕 오버라이드). 편집기가 수정·저장 */
+  private regionPatch: RegionPatch = { tiles: [], props: [], roofs: {} };
+  /** 편집기 — 드래그 페인트 중 (pointerup에 스트로크 확정) */
+  private editPainting = false;
+  /** 현재 스트로크의 변경 타일 (재베이킹 대상) */
+  private editDirty = new Map<number, { c: number; r: number }>();
+  /** 되돌리기 스택 — 스트로크 단위 [타일 idx → 이전 문자] (+ 프롭 스냅샷) */
+  private editUndo: { tiles: Map<number, string>; props?: RegionPatch['props']; roofs?: RegionPatch['roofs'] }[] = [];
+  private editStrokePrev = new Map<number, string>();
 
   private cols = 0;
   private rows = 0;
@@ -246,6 +267,7 @@ export class RegionFieldScene extends Phaser.Scene {
     // 심리스 모드 판정 — 등록 지역이면 맵 그래프(엣지 전환)를 무시하고 단일 맵으로 연다.
     // dataIn.mapId(구역별 fieldMapId)는 심리스에서 스폰 다중화 전까지 무시 (스펙 §12-2 후속).
     this.seamlessDef = seamlessRegionOf(this.region);
+    TR = this.seamlessDef ? 32 : 20;
     this.mapId = this.seamlessDef
       ? `${this.seamlessDef.dataRegion}_seamless`
       : (dataIn.mapId ?? this.graph!.entryMapId);
@@ -309,6 +331,17 @@ export class RegionFieldScene extends Phaser.Scene {
       if (!this.cache.json.has(`rmeta_${dr}`)) {
         this.load.json(`rmeta_${dr}`, `${this.seamlessDef.dataDir}/meta.json`);
       }
+      if (!this.cache.json.has(`rroads_${dr}`)) {
+        this.load.json(`rroads_${dr}`, `${this.seamlessDef.dataDir}/roads.json`);
+      }
+      // 패치는 build_region_maps가 항상 써 둔다(빈 패치라도) — 로드 실패 = SPA 폴백 pageerror 방지
+      if (!this.cache.json.has(`rpatch_${dr}`)) {
+        this.load.json(`rpatch_${dr}`, `${this.seamlessDef.dataDir}/patch.json`);
+      }
+      // 타일셋 스프라이트 (건물 프리팹·프롭·차량·NPC) — 심리스 전용, 1회 로드
+      for (const e of TILESET_MANIFEST) {
+        if (!this.textures.exists(e.key)) this.load.image(e.key, e.path);
+      }
     } else if (!this.cache.json.has(key)) {
       this.load.json(key, `${this.graph!.dataDir}/${this.mapId}.json`);
     }
@@ -357,8 +390,24 @@ export class RegionFieldScene extends Phaser.Scene {
     if (this.region === 'hometown') ExternalDataStore.rerollHometownWeather();
 
     if (this.seamlessDef) {
-      this.regionMeta = this.cache.json.get(`rmeta_${this.seamlessDef.dataRegion}`) as RegionMeta | undefined;
-      this.regionPois = (this.cache.json.get(`rpois_${this.seamlessDef.dataRegion}`) as RegionPoi[] | undefined) ?? [];
+      const dr = this.seamlessDef.dataRegion;
+      this.regionMeta = this.cache.json.get(`rmeta_${dr}`) as RegionMeta | undefined;
+      this.regionPois = (this.cache.json.get(`rpois_${dr}`) as RegionPoi[] | undefined) ?? [];
+      this.regionRoads = (this.cache.json.get(`rroads_${dr}`) as RegionRoad[] | undefined) ?? [];
+      const patch = this.cache.json.get(`rpatch_${dr}`) as Partial<RegionPatch> | undefined;
+      this.regionPatch = {
+        tiles: patch?.tiles ?? [], props: patch?.props ?? [], roofs: patch?.roofs ?? {},
+      };
+      // 패치 타일 오버라이드를 런타임 지형에 반영 (재빌드 없이 F5 반영)
+      const rows = this.mapData.terrain.slice();
+      for (const [c, r, ch] of this.regionPatch.tiles) {
+        if (r < 0 || r >= rows.length || c < 0 || c >= rows[r].length) continue;
+        rows[r] = rows[r].slice(0, c) + ch + rows[r].slice(c + 1);
+      }
+      this.mapData = { ...this.mapData, terrain: rows };
+      this.editUndo = [];
+      this.editDirty.clear();
+      this.editPainting = false;
     }
 
     this.buildTerrainGrid();
@@ -372,7 +421,11 @@ export class RegionFieldScene extends Phaser.Scene {
       }
       this.chunks = new SeamlessChunks(this, {
         terrainRows: this.mapData.terrain,
+        roads: this.regionRoads,
+        props: this.regionPatch.props,
+        roofOverrides: this.regionPatch.roofs,
         cols: this.cols, rows: this.rows, tr: TR, seed: mapSeed >>> 0,
+        chunkTiles: RegionFieldScene.SEAMLESS_CHUNK_TILES,
         onChunkLoad: (cc, cr) => this.loadChunkPois(cc, cr),
         onChunkUnload: (cc, cr) => this.unloadChunkPois(cc, cr),
       });
@@ -381,7 +434,7 @@ export class RegionFieldScene extends Phaser.Scene {
       this.spawnPlayer();
       // 스폰 지점 주변 상주 즉시 확보 (충돌 바디는 로드 즉시 생성 — 낙하/관통 방지)
       this.chunks.update(this.playerBody.x, this.playerBody.y);
-      this.events.once('shutdown', () => { this.chunks?.destroy(); this.chunks = undefined; });
+      this.events.once('shutdown', () => { this.chunks?.destroy(); this.chunks = undefined; closeMapEditor(); });
     } else {
       this.renderTerrain();
       this.buildCollision();
@@ -878,8 +931,8 @@ export class RegionFieldScene extends Phaser.Scene {
   // ═══════════════════════════════════════════════════
   // OSM 심리스 POI — 문(door) 규칙 · 청크 상주 마커 · 거래 연결 (OSM_TILEMAP_SPEC §4)
   // ═══════════════════════════════════════════════════
-  /** SeamlessChunks 기본 청크 한 변 타일 수와 동일해야 상주 훅과 키가 일치한다 */
-  private static readonly SEAMLESS_CHUNK_TILES = 64;
+  /** SeamlessChunks 청크 한 변 타일 수와 동일해야 상주 훅과 키가 일치한다 (TR 32 → 32타일 = 1024px RT) */
+  private static readonly SEAMLESS_CHUNK_TILES = 32;
 
   /** POI 타입 폴백 라벨 (name 없는 공공 POI 표기) */
   private static readonly POI_LABEL: Partial<Record<RegionPoi['type'], string>> = {
@@ -940,12 +993,55 @@ export class RegionFieldScene extends Phaser.Scene {
     return toWorld(poi.tx, poi.ty);
   }
 
+  /**
+   * POI → 건물 프리팹 텍스처 (의미 일치만 — 사용자 규칙 "편의점에 팝업스토어/횟집 금지").
+   *  횟집 = 음식점/수산 상점 중 이름이 횟집·회센터·활어·물회·해물 계열 → Gemini 횟집 2종
+   *  팝업스토어(노점) = 시장·기념품·잡화·수산물 판매(비음식점)·이름에 난전/노점/시장 → Gemini 팝업 4종
+   *  고층 = 호텔·은행 · 주택 = 민박/게스트하우스(TopDown 주택 2종)
+   */
+  private poiVisualTex(poi: RegionPoi): string | null {
+    const name = poi.name ?? '';
+    const kind = poi.shopKind ?? '';
+    const h = Math.abs(Math.imul(poi.osmId | 0, 2654435761) >>> 0) / 4294967296;
+    const seafoodName = /횟집|회센터|회 센터|활어|물회|해물|수산|어시장|생선|횟/.test(name);
+    if ((poi.type === 'restaurant' && seafoodName) || (poi.type === 'shop' && kind === 'seafood' && /횟집|회/.test(name))) {
+      return `ts_gem_sashimi_${1 + (Math.floor(h * 2) % 2)}`;
+    }
+    const popupKinds = ['gift', 'souvenir', 'kiosk', 'greengrocer', 'variety_store', 'seafood', 'fishing', 'farm', 'dried_fish'];
+    if (poi.type === 'market' || (poi.type === 'shop' && popupKinds.includes(kind)) || /난전|노점|시장/.test(name)) {
+      return `ts_gem_popup_${1 + (Math.floor(h * 4) % 4)}`;
+    }
+    if (poi.type === 'lodging') {
+      return /호텔|hotel|리조트|resort|콘도/i.test(name)
+        ? `ts_gem_building_${1 + (Math.floor(h * 5) % 5)}`
+        : (h < 0.5 ? 'ts_td_house_red' : 'ts_td_house_blue');
+    }
+    if (poi.type === 'bank') return `ts_gem_building_${1 + (Math.floor(h * 5) % 5)}`;
+    return null;
+  }
+
+  /** POI → 정적 NPC (L4 최소 구현 — 상호작용 없음, 후속 훅) */
+  private poiNpcTex(poi: RegionPoi): string | null {
+    const h = Math.abs(Math.imul((poi.osmId | 0) ^ 0x5bd1, 2246822519) >>> 0) / 4294967296;
+    if (poi.type === 'police') return 'ts_gem_npc_police';
+    if (poi.type === 'market' || (poi.type === 'shop' && (poi.shopKind === 'seafood' || poi.shopKind === 'fishing'))) {
+      return h < 0.6 ? 'ts_gem_npc_fish_vendor' : null;
+    }
+    if (poi.type === 'viewpoint' || poi.type === 'cafe' || poi.type === 'lodging' || poi.type === 'info') {
+      return h < 0.5 ? 'ts_gem_npc_tourist_f' : null;
+    }
+    if (poi.type === 'restaurant') return h < 0.25 ? 'ts_gem_npc_grandfather' : h < 0.4 ? 'ts_gem_npc_father_kid' : null;
+    if (poi.type === 'ferry_terminal' || poi.type === 'toilet') return h < 0.5 ? 'ts_gem_npc_father_kid' : null;
+    return null;
+  }
+
   /** POI 문 위치·청크 배정·거래 가능 목록 사전 계산 (create 1회) */
   private prepareSeamlessPois(): void {
     this.buildings = [];
     this.poiDoors = [];
     this.poiByChunk.clear();
     const N = RegionFieldScene.SEAMLESS_CHUNK_TILES;
+    const reserved = new Set<string>();
     this.regionPois.forEach((poi, i) => {
       const door = this.resolvePoiDoor(poi);
       this.poiDoors.push(door);
@@ -956,7 +1052,13 @@ export class RegionFieldScene extends Phaser.Scene {
       // 거래 가능 POI = 기존 건물 근접([E] 거래) 흐름에 그대로 편입
       const kind = this.poiBuildingKind(poi);
       if (kind) this.buildings.push({ x: door.x, y: door.y, kind });
+      // 건물 프리팹이 붙는 POI의 건물 컴포넌트는 고층 자동 배치에서 제외
+      if (this.poiVisualTex(poi)) {
+        const bk = this.chunks?.buildingKeyAt(poi.tx, poi.ty);
+        if (bk) reserved.add(bk);
+      }
     });
+    this.chunks?.setReservedBuildings(reserved);
   }
 
   /** 청크 상주 시작 — 해당 청크 POI 마커/라벨 생성 (스펙 §6-6: 상주 청크만 활성) */
@@ -971,9 +1073,27 @@ export class RegionFieldScene extends Phaser.Scene {
       const door = this.poiDoors[i];
       const kind = this.poiBuildingKind(poi);
       const notable = kind !== null || RegionFieldScene.POI_LABEL[poi.type] !== undefined;
+      // 건물 프리팹 (타일셋) — 앵커 타일이 건물이면 풋프린트 하단 중앙, 아니면 문 앞
+      const vis = this.poiVisualTex(poi);
+      let hasSprite = false;
+      if (vis && this.textures.exists(vis)) {
+        const b = this.chunks?.buildingBoundsAt(poi.tx, poi.ty);
+        const bx = b ? ((b.c0 + b.c1 + 1) / 2) * TR : poi.tx * TR + TR / 2;
+        const by = b ? (b.r1 + 1) * TR : poi.ty * TR + TR;
+        objs.push(this.add.image(bx, by, vis).setOrigin(0.5, 1).setDepth(20 + by * 0.001));
+        hasSprite = true;
+      }
+      // NPC (정적 — 문 옆에 선다)
+      const npc = this.poiNpcTex(poi);
+      if (npc && this.textures.exists(npc)) {
+        const side = (poi.osmId & 1) === 0 ? 1 : -1;
+        const nx = door.x + side * 14, ny = door.y + 8;
+        objs.push(this.add.image(nx, ny, npc).setOrigin(0.5, 1).setScale(0.5).setDepth(20 + ny * 0.001));
+      }
       const dot = this.add.circle(door.x, door.y, 3.5, kind ? 0xffd24a : 0x9fc3d8, notable ? 0.95 : 0.55)
         .setStrokeStyle(1, 0x0a1628, 0.8)
-        .setDepth(15 + door.y * 0.001);
+        .setDepth(15 + door.y * 0.001)
+        .setVisible(!hasSprite);
       objs.push(dot);
       const label = poi.name || RegionFieldScene.POI_LABEL[poi.type] || '';
       if (label && notable) {
@@ -995,6 +1115,166 @@ export class RegionFieldScene extends Phaser.Scene {
     if (!objs) return;
     this.poiObjects.delete(key);
     for (const o of objs) o.destroy();
+  }
+
+  // ═══════════════════════════════════════════════════
+  // dev 맵 편집기 (F7) · 순간이동 — 심리스 전용, 프로덕션 데드코드
+  // ═══════════════════════════════════════════════════
+  /** 순간이동 — 월드 좌표(클램프) + 청크 즉시 상주 (충돌 바디는 로드 즉시라 관통 없음) */
+  private devTeleport(x: number, y: number): void {
+    const cx = Phaser.Math.Clamp(x, TR, this.worldW - TR);
+    const cy = Phaser.Math.Clamp(y, TR, this.worldH - TR);
+    this.clearCastFlight();
+    this.playerBody.setPosition(cx, cy);
+    this.playerBody.setVelocity(0, 0);
+    this.chunks?.update(cx, cy);
+    this.cameras.main.centerOn(cx, cy);
+    this.hud?.pushLog(`[dev] 순간이동 → 타일 (${Math.floor(cx / TR)}, ${Math.floor(cy / TR)})`);
+  }
+
+  private toggleMapEditor(): void {
+    if (isMapEditorOpen()) { closeMapEditor(); this.hud?.pushLog('[dev] 맵 편집기 닫힘'); return; }
+    openMapEditor(this.seamlessDef?.dataRegion ?? this.region, PROP_DEFS, {
+      onSave: () => this.editSavePatch(),
+      onUndo: () => this.editUndoStroke(),
+      onClose: () => { closeMapEditor(); },
+    });
+    this.hud?.pushLog('[dev] 맵 편집기 열림 (F7) — 지형/프롭/지붕 편집 · 저장은 patch.json');
+  }
+
+  private editBeginStroke(p: Phaser.Input.Pointer): void {
+    this.editPainting = true;
+    this.editStrokePrev = new Map();
+    this.editDirty.clear();
+    this.editApplyAt(p);
+  }
+
+  /** 포인터 위치에 현재 모드 적용 (드래그 중 반복 호출 — 지형은 브러시 크기, 프롭/지붕은 1타일) */
+  private editApplyAt(p: Phaser.Input.Pointer): void {
+    const w = this.pointerWorld(p);
+    const tc = Math.floor(w.x / TR), trw = Math.floor(w.y / TR);
+    if (tc < 0 || tc >= this.cols || trw < 0 || trw >= this.rows) return;
+    const st = mapEditorState;
+    if (st.mode === 'tile') {
+      const half = Math.floor(st.brush / 2);
+      for (let dr = -half; dr <= half; dr++) {
+        for (let dc = -half; dc <= half; dc++) {
+          const c = tc + dc, r = trw + dr;
+          if (c < 0 || c >= this.cols || r < 0 || r >= this.rows) continue;
+          const row = this.mapData.terrain[r];
+          if (row[c] === st.tileChar) continue;
+          const key = r * this.cols + c;
+          if (!this.editStrokePrev.has(key)) this.editStrokePrev.set(key, row[c]);
+          this.mapData.terrain[r] = row.slice(0, c) + st.tileChar + row.slice(c + 1);
+          const t = TERRAIN_BY_CHAR[st.tileChar] ?? 'land';
+          this.terrain[r][c] = t;
+          this.blocked[r][c] = t === 'water' || t === 'building';
+          this.editDirty.set(key, { c, r });
+        }
+      }
+      setMapEditorStatus(`지형 '${st.tileChar}' — (${tc}, ${trw}) · 변경 ${this.editDirty.size}타일`);
+      return;
+    }
+    // 프롭/지붕은 스트로크당 1회 (드래그 반복 방지)
+    if (this.editDirty.has(-1)) return;
+    this.editDirty.set(-1, { c: tc, r: trw });
+    if (st.mode === 'prop') {
+      const def = PROP_DEFS.find((d) => d.id === st.propId);
+      const t = this.terrain[trw][tc];
+      if (def?.water ? t !== 'water' : (t === 'water' || t === 'building')) {
+        setMapEditorStatus(`'${def?.label ?? st.propId}'은(는) ${def?.water ? '바다' : '육지'} 타일에만 놓을 수 있습니다`);
+        return;
+      }
+      this.editUndo.push({ tiles: new Map(), props: this.regionPatch.props.slice() });
+      this.regionPatch.props = this.regionPatch.props.filter((q) => !(q.tx === tc && q.ty === trw));
+      this.regionPatch.props.push({ tx: tc, ty: trw, id: st.propId });
+      this.chunks?.setProps(this.regionPatch.props);
+      this.chunks?.rebakeResident();
+      setMapEditorStatus(`프롭 '${def?.label}' 배치 → (${tc}, ${trw}) · 총 ${this.regionPatch.props.length}개`);
+    } else if (st.mode === 'erase') {
+      const before = this.regionPatch.props.length;
+      this.editUndo.push({ tiles: new Map(), props: this.regionPatch.props.slice() });
+      this.regionPatch.props = this.regionPatch.props.filter((q) => Math.abs(q.tx - tc) > 1 || Math.abs(q.ty - trw) > 1);
+      this.chunks?.setProps(this.regionPatch.props);
+      this.chunks?.rebakeResident();
+      setMapEditorStatus(`프롭 제거 ${before - this.regionPatch.props.length}개 (3×3 범위)`);
+    } else if (st.mode === 'roof') {
+      const key = this.chunks?.buildingKeyAt(tc, trw);
+      if (!key) { setMapEditorStatus('건물 타일을 클릭하세요'); return; }
+      this.editUndo.push({ tiles: new Map(), roofs: { ...this.regionPatch.roofs } });
+      this.regionPatch.roofs[key] = ((this.regionPatch.roofs[key] ?? 0) + 1) % 5;
+      this.chunks?.setRoofOverrides(this.regionPatch.roofs);
+      this.chunks?.rebakeResident();
+      setMapEditorStatus(`지붕 팔레트 ${this.regionPatch.roofs[key]} — 건물 ${key}`);
+    }
+  }
+
+  /** 스트로크 확정 — 변경 타일을 패치에 기록하고 영향 청크 재베이킹 */
+  private editFinishStroke(): void {
+    this.editPainting = false;
+    if (this.editStrokePrev.size > 0) {
+      this.editUndo.push({ tiles: this.editStrokePrev });
+      this.editStrokePrev = new Map();
+      this.editSyncTilePatch();
+    }
+    const dirty = [...this.editDirty.values()].filter((d) => d.c >= 0);
+    this.editDirty.clear();
+    if (dirty.length > 0) this.chunks?.invalidateTiles(dirty);
+  }
+
+  /** 패치의 tiles = 원본(seamless.json) 대비 현재 지형 차이 — 패치 자체를 원본 기준으로 재구성 */
+  private editSyncTilePatch(): void {
+    const dr = this.seamlessDef?.dataRegion ?? '';
+    const base = this.cache.json.get(`rmap_${this.mapId}`) as RegionMapData | undefined;
+    if (!base) return;
+    const tiles: RegionPatch['tiles'] = [];
+    for (let r = 0; r < this.rows; r++) {
+      const cur = this.mapData.terrain[r], org = base.terrain[r] ?? '';
+      if (cur === org) continue;
+      for (let c = 0; c < this.cols; c++) if (cur[c] !== org[c]) tiles.push([c, r, cur[c]]);
+    }
+    this.regionPatch.tiles = tiles;
+    void dr;
+  }
+
+  private editUndoStroke(): void {
+    const last = this.editUndo.pop();
+    if (!last) { setMapEditorStatus('되돌릴 스트로크 없음'); return; }
+    if (last.props) {
+      this.regionPatch.props = last.props;
+      this.chunks?.setProps(last.props);
+      this.chunks?.rebakeResident();
+    }
+    if (last.roofs) {
+      this.regionPatch.roofs = last.roofs;
+      this.chunks?.setRoofOverrides(last.roofs);
+      this.chunks?.rebakeResident();
+    }
+    const dirty: { c: number; r: number }[] = [];
+    for (const [key, ch] of last.tiles) {
+      const c = key % this.cols, r = Math.floor(key / this.cols);
+      const row = this.mapData.terrain[r];
+      this.mapData.terrain[r] = row.slice(0, c) + ch + row.slice(c + 1);
+      const t = TERRAIN_BY_CHAR[ch] ?? 'land';
+      this.terrain[r][c] = t;
+      this.blocked[r][c] = t === 'water' || t === 'building';
+      dirty.push({ c, r });
+    }
+    if (dirty.length > 0) { this.editSyncTilePatch(); this.chunks?.invalidateTiles(dirty); }
+    setMapEditorStatus(`되돌림 (타일 ${dirty.length}) · 남은 스트로크 ${this.editUndo.length}`);
+  }
+
+  /** vite dev 미들웨어로 patch.json 저장 (정본 pixelazed/ + 런타임 public/data/) */
+  private async editSavePatch(): Promise<string> {
+    const region = this.seamlessDef?.dataRegion ?? this.region;
+    const res = await fetch(`/__dev/region-patch?region=${encodeURIComponent(region)}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(this.regionPatch),
+    });
+    if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
+    const t = this.regionPatch;
+    this.hud?.pushLog(`[dev] patch.json 저장 — 타일 ${t.tiles.length} · 프롭 ${t.props.length} · 지붕 ${Object.keys(t.roofs).length}`);
+    return `저장됨 — 타일 ${t.tiles.length} · 프롭 ${t.props.length} · 지붕 ${Object.keys(t.roofs).length}\n(재빌드 시 build_region_maps가 굽는다)`;
   }
 
   // ═══════════════════════════════════════════════════
@@ -1046,8 +1326,28 @@ export class RegionFieldScene extends Phaser.Scene {
       });
     });
 
+    // ── dev: F7 맵 편집기 · Ctrl+좌클릭 순간이동 · Ctrl+Z 되돌리기 ──
+    if (import.meta.env.DEV && this.seamless) {
+      this.input.keyboard!.on('keydown-F7', () => this.toggleMapEditor());
+      this.input.keyboard!.on('keydown-Z', (e: KeyboardEvent) => {
+        if (e.ctrlKey && isMapEditorOpen()) this.editUndoStroke();
+      });
+      this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
+        if (this.editPainting && p.isDown) this.editApplyAt(p);
+      });
+      this.input.on('pointerup', () => { if (this.editPainting) this.editFinishStroke(); });
+      this.events.on('minimap-click', (nx: number, ny: number, ctrl: boolean) => {
+        if (ctrl) this.devTeleport(nx * this.worldW, ny * this.worldH);
+      });
+    }
+
     // 좌클릭 차지 캐스팅 (바다 인접 + 낚싯대 슬롯) / 설치 모드 중엔 설치 확정
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
+      if (import.meta.env.DEV && this.seamless && p.leftButtonDown()) {
+        const ev = p.event as MouseEvent | undefined;
+        if (ev?.ctrlKey) { const w = this.pointerWorld(p); this.devTeleport(w.x, w.y); return; }
+        if (isMapEditorOpen()) { this.editBeginStroke(p); return; }
+      }
       if (this.placing) {
         if (p.rightButtonDown()) this.cancelPlacement();
         else if (p.leftButtonDown()) this.confirmPlacement(p);
@@ -2307,8 +2607,9 @@ export class RegionFieldScene extends Phaser.Scene {
   }
 
   private handleMovement(): void {
-    // 자전거 탑승 시 이동 속도 2배 (충돌/카메라 팔로우는 불변)
-    const speed = 150 * (GameState.isMounted ? 2 : 1);
+    // 자전거 탑승 시 이동 속도 2배 (충돌/카메라 팔로우는 불변).
+    // 심리스는 타일 32px라 같은 px/s면 타일 체감이 느려진다 → 1.4배 보정 (동서 횡단 ≈ 3분 유지)
+    const speed = (this.seamless ? 210 : 150) * (GameState.isMounted ? 2 : 1);
     let vx = 0, vy = 0;
     if (this.playerActionLocked) {
       // 배타 액션(캐스팅 차지·비행) 중에는 이동 정지 — 조준/자세 유지

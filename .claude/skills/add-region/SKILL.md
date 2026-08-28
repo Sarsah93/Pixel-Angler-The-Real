@@ -19,11 +19,14 @@ tools/regions_config.py 에 지역 bbox 등록 (17개 기등록 — 신규는 bb
   → RegionFieldScene가 자동으로 심리스 모드(SeamlessChunks 청크 스트리밍)로 연다
 ```
 
-- **스펙 §0.5 코드 정합 노트가 본문보다 우선** — **1타일 = 5m**(101차 확정 · TR 20px) ·
+- **스펙 §0.5 코드 정합 노트가 본문보다 우선** — **1타일 = 5m · 심리스 TR 32px**(legacy 20) ·
   타일 8종(`. ~ # , r w s b` — `w` = 보도) · 도로 폭 미터 기준(`ROAD_W_M`) ·
   캐스팅 = 기존 물가 규칙(b/s 전용 아님) · POI 거래 매핑 범위 · worldX 금지.
 - 비주얼은 `SeamlessChunks.bakeChunk`의 **절차 렌더(L1·L3)가 정본** — 지역 추가 시 별도 작업 불필요,
-  에셋 타일셋이 오면 그 자리에서 교체.
+  에셋 타일셋이 오면 그 자리에서 교체. 차선·중앙선은 `roads.json` 벡터(래스터라이저 동반 출력).
+- **수동 손질은 dev 맵 편집기(F7)** — 지형/프롭/지붕 페인트 → 저장하면 `pixelazed/<region>/patch.json`
+  (정본). `build_region_maps`가 패치를 굽고 `roads.json`/`patch.json`을 `public/data/`에 **항상** 복사
+  (없으면 SPA 폴백 pageerror). Ctrl+클릭 = 순간이동(맵·미니맵)으로 검수 지점 이동.
 - 빌드 후 **필수 검수**(§9): terrain.png ↔ OSM 화면 육안 대조 · sea ratio 25~65%(밖이면 해안선
   누수 — PNG에서 막고 재실행) · 스폰이 최대 걷기 컴포넌트에 있는지(build_region_maps 리포트) ·
   섬은 도보 불가.

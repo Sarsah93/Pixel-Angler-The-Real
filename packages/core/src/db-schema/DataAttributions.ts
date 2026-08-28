@@ -19,6 +19,7 @@ export type DataLicense =
   | 'KOGL-4'        // 공공누리 제4유형 (출처표시 + 상업적금지 + 변경금지)
   | 'PublicData'    // 공공데이터포털 이용약관
   | 'ODbL'          // Open Database License (OpenStreetMap)
+  | 'CC0'           // Creative Commons Zero (Kenney 등)
   | 'Custom';       // 개별 약관
 
 export const LICENSE_LABEL: Record<DataLicense, string> = {
@@ -28,6 +29,7 @@ export const LICENSE_LABEL: Record<DataLicense, string> = {
   'KOGL-4': '공공누리 제4유형 (출처표시 · 상업적금지 · 변경금지)',
   'PublicData': '공공데이터포털 이용약관',
   'ODbL': 'Open Database License (ODbL) 1.0',
+  'CC0': 'Creative Commons Zero (CC0 1.0)',
   'Custom': '제공기관 개별 약관',
 };
 
@@ -98,6 +100,20 @@ export const DATA_ATTRIBUTIONS: DataAttribution[] = [
     usage: '실지형 심리스 지역 타일맵 (해안선 · 도로 · 건물 · 방파제 · POI)',
     license: 'ODbL',
     url: 'https://www.openstreetmap.org/copyright',
+  },
+  {
+    provider: 'Kenney (www.kenney.nl)',
+    service: 'Roguelike Modern City pack',
+    usage: '심리스 필드 차량 · 노점 · 가로수 · 가로등 스프라이트',
+    license: 'CC0',
+    url: 'https://kenney.nl',
+  },
+  {
+    provider: 'FisherG (@TheFish523)',
+    service: 'TopDownCityPack (OpenGameArt / itch.io)',
+    usage: '심리스 필드 나무 · 야자수 · 가로등 · 벤치 · 표지판 · 주택 스프라이트',
+    license: 'Custom',
+    url: 'https://opengameart.org',
   },
 ];
 

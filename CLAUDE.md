@@ -41,8 +41,14 @@
   잠복 `pointer.worldX` 조준 버그 수정 · ODbL 크레딧.
   **후속(사용자 피드백)**: 스케일 2배(**1타일=5m** · 도로 미터 폭 · 보도 `w`) + §11 L1·L3 절차
   렌더(차선·연석·지붕·나무·포말·배) + HUD 픽셀 패널(`HudPanelStyle` — 타이틀 명패·구름 텍스처).
+  **101차(08-28)**: **dev 맵 편집기 F7**(지형/프롭/지붕 페인트 → `patch.json` 저장, Ctrl+Z) ·
+  **Ctrl+클릭 순간이동**(맵·미니맵) · F10 '+최대' · **차도 벡터 마킹**(노란 중앙선·흰 점선·대각선·연속) ·
+  **타일셋 통합**(`pixelazed/tileset/` Gemini·TopDown·Kenney → `tools/extract_tileset_assets.py` →
+  `data/TilesetManifest.ts` → POI 프리팹(횟집/팝업/고층/주택)·차량·NPC·프롭 40여종) ·
+  **심리스 TR 32**(Kenney 16px 지면 ×2 베이스 · legacy 20 유지 · 청크 32타일).
+  상세는 `docs/wiki/03-WORKLOG/2026-08-28-101-map-editor-road-vectors.md`.
   스펙 = **`.agents/OSM_TILEMAP_SPEC.md`** (⚠ **§0.5 코드 정합 노트가 본문보다 우선**).
-  상세는 `docs/wiki/03-WORKLOG/2026-08-27-100-octo-pixel-osm-seamless.md`.
+  100차 상세는 `docs/wiki/03-WORKLOG/2026-08-27-100-octo-pixel-osm-seamless.md`.
 - **🚧 재개 지점**: ① **OSM 지역 16개 확장**(fetch→build→`SEAMLESS_REGIONS` 등록 —
   지역마다 terrain ↔ OSM 육안 대조·스폰 검수는 사용자 동반, 서해 taean은 seaEdges 조정 가능성)
   ② **두족류 수동 검증** — 무늬오징어 잔여 F9(내장 2/2·뜯기 ②·날개 껍질째) +

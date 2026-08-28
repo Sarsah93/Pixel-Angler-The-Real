@@ -362,7 +362,27 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류 (2026-08-09)
 > "지금 무엇이 어디까지 되어 있나"는 **`docs/wiki/README.md` 대시보드**와 `02-SYSTEMS/*.md`를 본다.
 > 80차 이하 원문은 아래에 **그대로 보존**(불변 원장) — 구조화 인덱스는 `03-WORKLOG/README.md` §3.1.
 
-**최근 변경 (2026-08-27 100차) — 문어 픽셀 에셋 10장 매핑 + OSM 실지형 심리스 맵 v2(속초 청크 스트리밍)** (사용자 지시 2건 + 전달 파일 4종 — 실렌더 3하네스 PASS·60FPS·pageerror 0, 빌드 4/4·typecheck 0):
+**최근 변경 (2026-08-28 101차) — dev 맵 편집기(F7)·순간이동 + 차도 벡터 마킹(노란 중앙선·대각선) + 프롭 10종** (사용자 피드백 3건 — 실렌더 PASS·pageerror 0, 빌드 4/4·typecheck 0):
+
+- **맵 편집기(F7, dev)**: 지형 8종 페인트(브러시 1/3/5)·프롭 배치/제거·지붕 색 순환 — 스트로크마다
+  `SeamlessChunks.invalidateTiles`(수심/건물 재계산 + 영향 청크 충돌·재베이킹) · Ctrl+Z ·
+  **저장 = vite dev 미들웨어**(`/__dev/region-patch`) → `pixelazed/<region>/patch.json`(정본, 재빌드 시 굽힘)
+  + `public/data/<region>/patch.json`(런타임 F5 반영).
+- **순간이동**: Ctrl+좌클릭(맵) · Ctrl+클릭(미니맵 — `minimap-click` 이벤트). F10 콘솔 아이템 **'+최대'**(99).
+- **차도 마킹 = 벡터**: 래스터라이저가 `roads.json` 동반 출력 → 노란 중앙 실선(≥2타일)·흰 점선
+  차선(방향당 2차로↑ ±3.5m)·가장자리선 — **대각선 도로 대응**(타일 휴리스틱 `roadAxis` 폐기).
+- 프롭 10종 절차 텍스처(`PROP_DEFS` — 침엽수·덤불·바위·벤치·가로등·화단·기념탑·어선 …).
+- **후속(같은 날 — 피드백 3건)**: 차선 **연속 오프셋 폴리라인**(정점 인셋 폐기) + 차도 폭 차로 기준
+  재산정(마킹이 차도 안) · **타일셋 통합** — `tools/extract_tileset_assets.py`(Gemini 트림·TopDown
+  연결요소·Kenney 마젠타 키잉+마진 제거) → `data/TilesetManifest.ts` → `PROP_DEFS` 40여종(카테고리) ·
+  POI 의미 일치 프리팹(횟집 11·팝업 10·고층/주택) · 대형 건물 고층 자동 · 도로 벡터 차량 · POI NPC 73 ·
+  크레딧(Kenney CC0·FisherG).
+- **후속 2 — TR 32 전환**(사용자 결정): 심리스 타일 32px(legacy 20 유지) · 청크 32타일 · 이동 210px/s ·
+  Kenney 지면 베이스(`GROUND_CELLS` 수동 확정 — 자동 색 선별은 반복 무늬 함정) ×2 재베이크 +
+  절차 전이 레이어. 실렌더 5지점 · 60FPS.
+- 상세: `docs/wiki/03-WORKLOG/2026-08-28-101-map-editor-road-vectors.md`
+
+**이전 변경 (2026-08-27 100차) — 문어 픽셀 에셋 10장 매핑 + OSM 실지형 심리스 맵 v2(속초 청크 스트리밍)** (사용자 지시 2건 + 전달 파일 4종 — 실렌더 3하네스 PASS·60FPS·pageerror 0, 빌드 4/4·typecheck 0):
 
 - **문어 에셋**: 사용자 픽셀 투명 에셋 0~9.png → `octo_*` 전량 교체(KEEP_POLY/BG_TOL 폐기 —
   알파 경로) · `octo_invert1` 드래그 중간 프레임 신설 · 부리 아이콘 = 7.png ·

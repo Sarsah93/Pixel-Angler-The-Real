@@ -17,7 +17,8 @@
 | tools | `build_region_maps.py` · `build_depth_profiles.py` | 지형 PNG → 타일 JSON(**심리스 분기 포함**) / 수심 ZIP → 프로필 |
 | client | `WorldMapScene` | 핀·툴팁·줌인 진입·교통비 결제·귀가 |
 | client | `RegionFieldScene` | legacy 전맵 베이킹 / **심리스 분기**(meta 스폰·OSM POI·엣지 비활성) · 캐스팅 · 조명/날씨 · 설치 모드 |
-| client | `scenes/SeamlessChunks.ts` | **청크 스트리밍** — 64타일 청크 · RT 풀 12 LRU · 3×3 상주 · 프레임당 1베이킹 · 근접 충돌 |
+| client | `scenes/SeamlessChunks.ts` | **청크 스트리밍** — 64타일 청크 · RT 풀 12 LRU · 3×3 상주 · 프레임당 1베이킹 · 근접 충돌 · 벡터 차선 마킹 · 프롭 10종 · `invalidateTiles`(편집 반영) |
+| client(dev) | `dev/MapEditorPanel.ts` + `vite.config.ts` 미들웨어 | **맵 편집기(F7)** — 지형/프롭/지붕 페인트 · Ctrl+Z · `patch.json` 저장 · Ctrl+클릭 순간이동(맵·미니맵) |
 | client | `RegionHud` · `MiniMap` · `FieldEventManager` · `HydroCurrentRenderer` | HUD·미니맵(대형 맵 = CanvasTexture)·이벤트·조류 시각화 |
 
 ## 3. 동작 구조
@@ -33,8 +34,10 @@
 ```
 
 - 타일 문자 8종: `.` 육지 `~` 바다 `#` 건물 `,` 잔디 + **`r` 차도 `w` 보도 `s` 모래사장
-  `b` 방파제**(walkable). **1타일 = 5m**(101차 확정 — 도로 폭은 미터 기준 `ROAD_W_M`,
-  차도 양옆 보도 프린지 자동).
+  `b` 방파제**(walkable). **1타일 = 5m**(101차 확정 — 도로 폭은 차로 수 기준 `ROAD_W_M`/`ROAD_LANES`,
+  차도 양옆 보도 프린지 자동). **심리스 타일 = 32px**(Kenney 16px ×2 — legacy 맵은 20px 유지).
+- 지면 L1 = Kenney 베이스 타일(`extract_tileset_assets.py GROUND_CELLS` — 맨땅 베이지 포장·잔디·
+  아스팔트·회색 보도·크림 모래·청회색 부두) + 절차 전이(포말·젖은 모래·연석·캡·계선주·지붕·그림자).
 - 심리스 베이커 = **§11 L1·L3 절차 구현**(101차): 질감 스페클 · 차선 점선/연석 · 신축이음 ·
   계선주·포말·파도·배 · 연결요소 지붕(박공/패널)+그림자 · 나무 스프라이트(y-sort).
   HUD는 `ui/HudPanelStyle.ts` 공용 픽셀 패널(타이틀 명패 포함).
@@ -57,6 +60,10 @@
 | 교통비·귀가·잠금 지역 | ✅ | 44 |
 | **OSM 심리스 v2 — 속초**(파이프라인·청크 스트리밍·POI·검증) | ✅ | 100 |
 | 스케일 5m/타일 + 보도 분리 + L1·L3 절차 렌더 + HUD 픽셀 패널 | ✅ | 100 후속 |
+| dev 맵 편집기(F7)·순간이동 + 차도 벡터 마킹(대각선) + 프롭 10종 | ✅ | 101 |
+| 차선 연속성·차도 폭(차로 기준) + **타일셋 통합**(Gemini·TopDown·Kenney — POI 프리팹·차량·NPC·프롭 40여종) | ✅ | 101 후속 |
+| **TR 32 전환 + Kenney 지면 베이스**(L1) — 청크 32타일 | ✅ | 101 후속 2 |
+| 지면 오토타일 전이(잔디↔포장 코너/엣지 셀) · 물/지붕 타일셋 | ⬜ | Kenney 행 25~27 변형 활용 |
 | OSM 지역 17개 확장(fetch→build→검수 반복) | ⬜ | 코드 변경 없음 — 스폰·terrain 검수 필요 |
 | §11 에셋 교체(타일셋·프리팹) + L4 NPC | ⬜ | 절차 구현이 자리 — 에셋 도착 시 교체 |
 | POI 세분화(비거래 시설 전용 씬·지역 실상점 카탈로그) | ⬜ | 현재 마커+SHOP_CATALOG 프리셋 |
@@ -90,3 +97,17 @@
 10. 심리스 청크 충돌은 **상주 즉시**, 시각 베이킹만 프레임당 1청크 — 순서를 바꾸면 스폰 직후
     바다/건물 관통이 생긴다. 청크 크기(64)를 바꾸면 `RegionFieldScene.SEAMLESS_CHUNK_TILES`
     (POI 청크 키)와 함께 바꿔야 한다.
+11. **`roads.json`·`patch.json`은 항상 존재해야 한다** (101차) — build_region_maps가 빈 파일이라도
+    쓴다. 없는 URL을 로드하면 SPA 폴백 pageerror(함정 3과 동일). 편집기 저장은 vite dev
+    미들웨어(`/__dev/region-patch`) 전용 — 프로덕션엔 없다.
+12. **편집 패치가 terrain.png보다 우선** — 재빌드 시 patch.json 타일이 PNG 분류 위에 덮인다.
+    PNG를 손수정했다면 패치의 같은 타일을 비워야 반영된다.
+13. **Kenney `_transparent` 시트는 마젠타 배경 + 17px 마진선**(101차 후속) — 격자로 그대로 자르면
+    다중 셀 스프라이트 한가운데 빈 줄이 생긴다. `extract_tileset_assets.py`의 `kenney_sheet()`
+    (키잉 + 마진 제거) 경유 좌표만 유효. 컨택트시트 라벨은 **셀 아래**에 붙는다(오독 주의).
+14. **차선 마킹은 폴리라인 정점을 인셋하지 않는다** — 정점 인셋 = 연결 끊김(101차 후속 리포트).
+    교차부 완화는 양 끝점 인셋만. 차로 기하는 `lanes`(roads.json) 기준이라 폭을 바꿔도 안에 머문다.
+15. **`TR`은 모드별 값**(심리스 32 / legacy 20) — 하네스·툴에서 20을 하드코딩하지 말고 씬의
+    `worldW / cols`로 읽는다. 지면 타일셋 재베이크는 `tr % 16 === 0`일 때만(아니면 절차 폴백).
+16. **Kenney 지면 셀은 자동 색 통계로 고르지 않는다** — 환기구·균열·코너 변형 셀이 섞여 반복 무늬가
+    생긴다. `zoom` 컨택트에서 눈으로 확정한 `GROUND_CELLS`만 사용.

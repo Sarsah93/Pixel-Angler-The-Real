@@ -342,6 +342,20 @@ def build_seamless(root, region):
             row.append(classify_osm(px[i], px[i + 1], px[i + 2]))
         grid.append(row)
 
+    # dev 맵 편집기 패치 (pixelazed/<region>/patch.json — vite 미들웨어가 저장) —
+    # 타일 오버라이드는 여기서 굽고, 프롭/지붕 오버라이드는 그대로 복사해 클라이언트가 소비한다.
+    patch_path = os.path.join(src_dir, 'patch.json')
+    patch = {'tiles': [], 'props': [], 'roofs': {}}
+    if os.path.exists(patch_path):
+        with open(patch_path, encoding='utf-8') as f:
+            loaded = json.load(f)
+        patch.update({k: loaded.get(k, v) for k, v in patch.items()})
+        applied = 0
+        for c, r, tch in patch['tiles']:
+            if 0 <= c < w and 0 <= r < h and tch in OSM_PALETTE:
+                grid[r][c] = tch; applied += 1
+        print(f'    패치 적용: 타일 {applied}개 · 프롭 {len(patch["props"])}개 · 지붕 {len(patch["roofs"])}개')
+
     # 검증 리포트 — §9 체크리스트 보조 (자동 카브는 하지 않는다: OSM 벡터가 정본)
     n_comp, max_comp, comp = osm_walk_components(w, h, grid)
     counts = {}
@@ -366,10 +380,21 @@ def build_seamless(root, region):
         json.dump(pois, f, ensure_ascii=False, separators=(',', ':'))
     with open(os.path.join(out_dir, 'meta.json'), 'w', encoding='utf-8') as f:
         json.dump(meta, f, ensure_ascii=False, separators=(',', ':'))
+    # 차도 벡터(roads.json) + 패치(patch.json)는 항상 존재해야 한다 — 없는 URL을 로드하면
+    # dev SPA 폴백이 index.html을 돌려줘 JSON 파싱 pageerror (S7 함정 3).
+    roads_path = os.path.join(src_dir, 'roads.json')
+    roads = []
+    if os.path.exists(roads_path):
+        with open(roads_path, encoding='utf-8') as f:
+            roads = json.load(f)
+    with open(os.path.join(out_dir, 'roads.json'), 'w', encoding='utf-8') as f:
+        json.dump(roads, f, ensure_ascii=False, separators=(',', ':'))
+    with open(os.path.join(out_dir, 'patch.json'), 'w', encoding='utf-8') as f:
+        json.dump(patch, f, ensure_ascii=False, separators=(',', ':'))
 
     tot = w * h
     summary = ' '.join(f'{k}:{round(100 * v / tot, 1)}%' for k, v in sorted(counts.items()))
-    print(f'  ✓ {region} seamless {w}x{h}  [{summary}]')
+    print(f'  ✓ {region} seamless {w}x{h}  [{summary}] · 차도 벡터 {len(roads)}개')
     print(f'    걷기 컴포넌트 {n_comp}개 (최대 {max_comp:,}타일) · POI {len(pois)}개'
           f' · 스폰 {spawn} {"OK" if spawn_ok and main_ok else "⚠ 걷기 불가 — 검수 필요"}'
           f' (컴포넌트 #{spawn_comp})')

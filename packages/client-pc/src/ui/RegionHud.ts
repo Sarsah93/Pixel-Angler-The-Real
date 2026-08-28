@@ -352,7 +352,15 @@ export class RegionHud extends Phaser.GameObjects.Container {
     const img = this.scene.add.image(0, 0, `rhud_mini_${this.cfg.mapId}`)
       .setOrigin(0, 0)
       .setScale(scale)
-      .setAlpha(0.92);
+      .setAlpha(0.92)
+      .setInteractive();
+    // 미니맵 클릭 → 정규화 좌표 이벤트 (dev: Ctrl+클릭 순간이동 — RegionFieldScene가 소비)
+    img.on('pointerdown', (p: Phaser.Input.Pointer) => {
+      const ev = p.event as MouseEvent | undefined;
+      const nx = Phaser.Math.Clamp((p.x - ox) / this.miniDispW, 0, 1);
+      const ny = Phaser.Math.Clamp((p.y - oy) / this.miniDispH, 0, 1);
+      this.scene.events.emit('minimap-click', nx, ny, !!ev?.ctrlKey);
+    });
     this.miniContainer.add(img);
 
     const hint = this.scene.add.text(this.miniDispW / 2, this.miniDispH + 6, 'M 크기 전환', {

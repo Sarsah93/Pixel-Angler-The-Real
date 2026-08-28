@@ -195,7 +195,8 @@ function buildItemSection(box: HTMLElement): void {
       Object.assign(qty.style, { color: '#7fe0b0', minWidth: '28px', textAlign: 'right', fontSize: '10px' });
       row.appendChild(name);
       row.appendChild(qty);
-      for (const [label, n] of [['+1', 1], ['+10', 10], ['−1', -1]] as const) {
+      // '+최대' = 크리에이티브 모드식 즉시 만재 (99개 — 스택 상한과 무관하게 addItem이 소켓을 늘린다)
+      for (const [label, n] of [['+1', 1], ['+10', 10], ['+최대', 99], ['−1', -1]] as const) {
         const b = document.createElement('button');
         b.textContent = label;
         styleBtn(b);

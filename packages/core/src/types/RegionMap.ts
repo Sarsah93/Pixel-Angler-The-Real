@@ -90,6 +90,38 @@ export interface RegionPoi {
   osmId: number;
 }
 
+/** 차도 중심선 벡터 (build_osm_tilemap.py roads.json) — 타일 좌표 폴리라인 */
+export interface RegionRoad {
+  /** OSM highway 클래스 (primary/residential …) */
+  cls: string;
+  /** 차도 폭 (타일 수) */
+  w: number;
+  /** 방향당 차로 수 (차선 점선 개수 = lanes − 1) */
+  lanes?: number;
+  pts: [number, number][];
+}
+
+/** 수동 배치 프롭 (dev 맵 편집기 — patch.json) */
+export interface RegionProp {
+  tx: number;
+  ty: number;
+  /** 프롭 id (client SeamlessChunks PROP_DEFS 키) */
+  id: string;
+}
+
+/**
+ * dev 맵 편집기 패치 — `pixelazed/<region>/patch.json` (정본) = `public/data/<region>/patch.json`.
+ * 타일 오버라이드는 build_region_maps가 seamless.json에 굽고, 런타임도 로드 시 한 번 더 덮어쓴다
+ * (재빌드 없이 F5 반영). 프롭·지붕 오버라이드는 런타임 전용.
+ */
+export interface RegionPatch {
+  /** [col, row, 타일 문자] */
+  tiles: [number, number, string][];
+  props: RegionProp[];
+  /** 건물 컴포넌트 좌상단 "c,r" → 지붕 팔레트 인덱스 */
+  roofs: Record<string, number>;
+}
+
 /**
  * 지역 렌더 모드 — 'seamless'면 SEAMLESS_REGIONS에 등록된 지역은
  * 심리스 단일 맵(청크 스트리밍)으로 열리고 맵 그래프(엣지 전환)를 무시한다.

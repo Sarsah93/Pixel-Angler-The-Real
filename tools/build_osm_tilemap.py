@@ -29,9 +29,16 @@ PALETTE = {
 }
 # 도로 폭은 **미터 기준** — TILE_M을 바꿔도 실폭이 유지된다 (구 타일 수 기준 폐기).
 #  차도(r)는 실제보다 다소 관대하게(게임 체감 — 캐릭터 대비 폭 확보), 보행로(w)는 실측 수준.
+#  101차 후속: 차선 마킹(방향당 차로 수 × 3.5m + 가장자리 여유)이 **차도 타일 안에** 들어오도록
+#  클래스별 폭을 차로 수 기준으로 재산정 (사용자: "왕복 2차선 선들은 보도와 겹치면 안 됨").
 ROAD_W_M = {
-    'motorway': 28, 'trunk': 26, 'primary': 22, 'secondary': 18, 'tertiary': 14,
-    'residential': 10, 'unclassified': 10, 'service': 6, 'living_street': 8, 'track': 5,
+    'motorway': 40, 'trunk': 32, 'primary': 30, 'secondary': 22, 'tertiary': 20,
+    'residential': 14, 'unclassified': 14, 'living_street': 12, 'service': 10, 'track': 10,
+}
+# 방향당 차로 수 — roads.json에 실어 클라이언트가 차선 점선 개수를 정한다
+ROAD_LANES = {
+    'motorway': 4, 'trunk': 3, 'primary': 3, 'secondary': 2, 'tertiary': 2,
+    'residential': 1, 'unclassified': 1, 'living_street': 1, 'service': 1, 'track': 1,
 }
 SIDEWALK_M = {
     'pedestrian': 6, 'footway': 4, 'path': 4, 'steps': 4, 'cycleway': 4,
@@ -262,11 +269,17 @@ def build(region):
         else:
             wm = ROAD_W_M.get(hw, 8)
             stroke(grid, pts, 'w', road_tiles(wm) + 2)   # 양옆 보도 프린지
+    roads = []   # 차도 중심선 벡터 (타일 좌표) — 클라이언트가 차선·중앙선을 벡터로 그린다 (대각 대응)
     for wy in ways.values():
         hw = wy.get('tags', {}).get('highway')
         if not hw or hw in SIDEWALK_M:
             continue
-        stroke(grid, way_pts(wy, nodes, proj), 'r', road_tiles(ROAD_W_M.get(hw, 8)))
+        pts = way_pts(wy, nodes, proj)
+        wt = road_tiles(ROAD_W_M.get(hw, 8))
+        stroke(grid, pts, 'r', wt)
+        if len(pts) >= 2:
+            roads.append(dict(cls=hw, w=wt, lanes=ROAD_LANES.get(hw, 1),
+                              pts=[[round(x, 2), round(y, 2)] for x, y in pts]))
     for wy in ways.values():
         mm = wy.get('tags', {}).get('man_made')
         if mm in ('breakwater', 'pier', 'groyne', 'quay'):
@@ -367,6 +380,8 @@ def build(region):
         print('[warn] Pillow 없음 — terrain.png 생략 (pip install pillow)')
     (out / 'terrain.txt').write_bytes(b'\n'.join(bytes(r) for r in grid.g))
     (out / 'pois.json').write_text(json.dumps(pois, ensure_ascii=False, indent=1), encoding='utf-8')
+    (out / 'roads.json').write_text(json.dumps(roads, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+    print(f'[roads] 차도 벡터 {len(roads):,}개')
     (out / 'meta.json').write_text(json.dumps(dict(
         region=region, bbox=cfg['bbox'], tileMeters=TILE_M, width=W, height=H,
         spawn=spawn_tile, spawnName=cfg['spawnName'], spawnApprox=True,

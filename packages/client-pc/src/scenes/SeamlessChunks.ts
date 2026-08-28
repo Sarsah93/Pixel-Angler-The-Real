@@ -17,10 +17,100 @@
  */
 
 import Phaser from 'phaser';
+import type { RegionRoad, RegionProp } from '@tra/core';
+import { CAR_TOPDOWN_KEYS } from '../data/TilesetManifest.js';
+
+export interface PropDef {
+  id: string;
+  label: string;
+  /** 텍스처 키 — `ts_*`(타일셋 PNG 직접 로드) 또는 `smx_*`(절차 베이크) */
+  tex: string;
+  /** 편집기 팔레트 카테고리 */
+  cat: '자연' | '시설물' | '건물' | '차량' | 'NPC' | '해안';
+  /** 표시 배율 (정수 배율 우선 — 픽셀아트 보존. NPC는 0.5 = 2:1 다운샘플) */
+  scale?: number;
+  /** 바다 타일 전용 */
+  water?: boolean;
+  /** 앵커 — 기본 bottom(발밑 = 타일 하단 중앙). center = 타일 중앙 (지형 패치류) */
+  anchor?: 'bottom' | 'center';
+}
+
+/**
+ * 프롭 정의 (dev 맵 편집기 팔레트 = 이 표). 101차 후속: 오픈소스/생성 타일셋으로 전환 —
+ *  ts_td_* = TopDownCityPack · ts_kn_* = Kenney(16px, 2배 정수 확대) · ts_gem_* = Gemini 생성본.
+ *  절차 베이크(smx_*)는 타일셋에 대응물이 없는 것만 남긴다(바위·화단·기념탑·어선).
+ * 전부 y-sort 스프라이트(플레이어와 같은 depth 식). 텍스처 미로드 시 렌더 생략.
+ */
+export const PROP_DEFS: PropDef[] = [
+  // 자연
+  { id: 'tree', label: '활엽수', tex: 'ts_td_tree_big', cat: '자연' },
+  { id: 'tree2', label: '관목', tex: 'ts_td_tree_small', cat: '자연' },
+  { id: 'palm', label: '야자수', tex: 'ts_td_palm', cat: '자연' },
+  { id: 'pine', label: '측백(초록)', tex: 'ts_kn_ktree_a', cat: '자연', scale: 2 },
+  { id: 'pine2', label: '측백(단풍)', tex: 'ts_kn_ktree_b', cat: '자연', scale: 2 },
+  { id: 'bush', label: '둥근 나무', tex: 'ts_kn_ktree_d', cat: '자연', scale: 2 },
+  { id: 'rock', label: '바위', tex: 'smx_rock', cat: '자연' },
+  { id: 'flowerbed', label: '화단', tex: 'smx_flowerbed', cat: '자연' },
+  // 시설물
+  { id: 'bench', label: '벤치', tex: 'ts_td_bench', cat: '시설물' },
+  { id: 'lamp', label: '가로등', tex: 'ts_td_lamp_arm', cat: '시설물' },
+  { id: 'lamp2', label: '가로등 B', tex: 'ts_kn_klamp', cat: '시설물', scale: 2 },
+  { id: 'traffic', label: '신호등', tex: 'ts_td_traffic_light', cat: '시설물' },
+  { id: 'sign_stop', label: '정지 표지', tex: 'ts_td_traffic_light_stop', cat: '시설물' },
+  { id: 'sign_warn', label: '경고 표지', tex: 'ts_td_sign_warn', cat: '시설물' },
+  { id: 'sign_blue', label: '안내 표지', tex: 'ts_td_sign_blue', cat: '시설물' },
+  { id: 'trash', label: '쓰레기통', tex: 'ts_td_trash', cat: '시설물' },
+  { id: 'hydrant', label: '소화전', tex: 'ts_td_hydrant', cat: '시설물' },
+  { id: 'trash2', label: '철망 휴지통', tex: 'ts_kn_ktrash', cat: '시설물', scale: 2 },
+  { id: 'monument', label: '기념탑', tex: 'smx_monument', cat: '시설물' },
+  { id: 'jungja', label: '정자(쉼터)', tex: 'ts_gem_jungja', cat: '시설물' },
+  // 건물
+  { id: 'house_red', label: '주택(빨강)', tex: 'ts_td_house_red', cat: '건물' },
+  { id: 'house_blue', label: '주택(파랑)', tex: 'ts_td_house_blue', cat: '건물' },
+  { id: 'garage', label: '차고', tex: 'ts_td_garage', cat: '건물' },
+  { id: 'building_1', label: '고층 1', tex: 'ts_gem_building_1', cat: '건물' },
+  { id: 'building_2', label: '고층 2', tex: 'ts_gem_building_2', cat: '건물' },
+  { id: 'building_3', label: '고층 3', tex: 'ts_gem_building_3', cat: '건물' },
+  { id: 'building_4', label: '고층 4', tex: 'ts_gem_building_4', cat: '건물' },
+  { id: 'building_5', label: '고층 5', tex: 'ts_gem_building_5', cat: '건물' },
+  { id: 'popup_1', label: '팝업스토어 1', tex: 'ts_gem_popup_1', cat: '건물' },
+  { id: 'popup_2', label: '팝업스토어 2', tex: 'ts_gem_popup_2', cat: '건물' },
+  { id: 'popup_3', label: '팝업스토어 3', tex: 'ts_gem_popup_3', cat: '건물' },
+  { id: 'popup_4', label: '팝업스토어 4', tex: 'ts_gem_popup_4', cat: '건물' },
+  { id: 'sashimi_1', label: '횟집 1', tex: 'ts_gem_sashimi_1', cat: '건물' },
+  { id: 'sashimi_2', label: '횟집 2', tex: 'ts_gem_sashimi_2', cat: '건물' },
+  { id: 'stall_green', label: '노점(초록)', tex: 'ts_kn_stall_green', cat: '건물', scale: 2 },
+  { id: 'stall_orange', label: '노점(주황)', tex: 'ts_kn_stall_orange', cat: '건물', scale: 2 },
+  // 차량 (측면 — 가로 도로용 정적 배치)
+  { id: 'car_a', label: '승용차 초록', tex: 'ts_kn_car_a', cat: '차량', scale: 2 },
+  { id: 'car_c', label: '승용차 회색', tex: 'ts_kn_car_c', cat: '차량', scale: 2 },
+  { id: 'car_e', label: '승용차 주황', tex: 'ts_kn_car_e', cat: '차량', scale: 2 },
+  { id: 'car_g', label: '승용차(세로) 초록', tex: 'ts_kn_car_g', cat: '차량', scale: 2 },
+  { id: 'car_i', label: '승용차(세로) 회색', tex: 'ts_kn_car_i', cat: '차량', scale: 2 },
+  { id: 'car_k', label: '승용차(세로) 주황', tex: 'ts_kn_car_k', cat: '차량', scale: 2 },
+  { id: 'boat', label: '어선', tex: 'smx_boat', cat: '차량', water: true },
+  // NPC (정적 — L4 스폰 규칙은 씬이 POI 기준으로 자동 배치, 여기는 수동 오버라이드)
+  { id: 'npc_fish_vendor', label: '생선 장수', tex: 'ts_gem_npc_fish_vendor', cat: 'NPC', scale: 0.5 },
+  { id: 'npc_grandfather', label: '할아버지', tex: 'ts_gem_npc_grandfather', cat: 'NPC', scale: 0.5 },
+  { id: 'npc_police', label: '경찰관', tex: 'ts_gem_npc_police', cat: 'NPC', scale: 0.5 },
+  { id: 'npc_father_kid', label: '아빠와 아이', tex: 'ts_gem_npc_father_kid', cat: 'NPC', scale: 0.5 },
+  { id: 'npc_tourist_f', label: '관광객', tex: 'ts_gem_npc_tourist_f', cat: 'NPC', scale: 0.5 },
+  // 해안 (지형 패치 — 타일 중앙 앵커, 부두↔바다 경계에 놓는다)
+  { id: 'tetra', label: '테트라포드 석축', tex: 'ts_gem_tetra', cat: '해안', anchor: 'center' },
+  { id: 'boundary_port', label: '부두 경계(바다)', tex: 'ts_gem_boundary_port', cat: '해안', anchor: 'center' },
+];
 
 export interface SeamlessChunksConfig {
   /** 지형 문자 그리드 — [row] 문자열 (seamless.json terrain) */
   terrainRows: string[];
+  /** 차도 중심선 벡터 — 차선·중앙선 마킹 (없으면 마킹 생략) */
+  roads?: RegionRoad[];
+  /** 수동 배치 프롭 (patch.json) */
+  props?: RegionProp[];
+  /** 건물 지붕 팔레트 오버라이드 — 컴포넌트 좌상단 "c,r" → 인덱스 */
+  roofOverrides?: Record<string, number>;
+  /** 고층 프리팹 자동 배치에서 제외할 건물 컴포넌트 키(씬이 POI 건물 스프라이트를 붙인 곳) */
+  reservedBuildingKeys?: Set<string>;
   cols: number;
   rows: number;
   /** 타일 렌더 크기(px) — RegionFieldScene TR과 동일해야 좌표계가 일치한다 */
@@ -51,7 +141,7 @@ const COL = {
   land: 0xcbb98d, landAlt: 0xc4b287, landSpeck: 0xb2a077,
   grass: 0x69a24c, grassAlt: 0x639a47, grassDark: 0x578b3e, grassLight: 0x7fb35f,
   sand: 0xe8d9a0, sandAlt: 0xe2d298, sandSpeck: 0xcdbd85, sandWet: 0xc9b986,
-  road: 0x4c4f54, roadAlt: 0x484b50, roadLine: 0xe8ecf0,
+  road: 0x4c4f54, roadAlt: 0x484b50, roadLine: 0xe8ecf0, roadCenter: 0xe8c23a,
   walk: 0xb3b8bf, walkAlt: 0xaeb3ba, walkJoint: 0x999fa7, curb: 0xd2d6dc,
   pier: 0x9aa5b0, pierAlt: 0x94a0ab, pierJoint: 0x7d8894, pierEdge: 0x5a6773,
   bollard: 0x3a4450, bollardTop: 0x55616e,
@@ -102,6 +192,8 @@ function noise2(seed: number, x: number, y: number): number {
 
 interface BuildingComp {
   c0: number; r0: number; c1: number; r1: number;
+  /** 타일 수 (면적) */
+  n: number;
   palIdx: number;
   /** 대형(창고·터미널급) — 패널 지붕 */
   big: boolean;
@@ -127,6 +219,15 @@ export class SeamlessChunks {
   /** 건물 타일 → 컴포넌트 id (-1 = 비건물) — 지붕 렌더의 기준 */
   private compOf: Int32Array;
   private comps: BuildingComp[] = [];
+  /** 청크 idx → 그 청크에 걸치는 차도 벡터 인덱스 (마킹 렌더 시 전수 순회 회피) */
+  private roadsByChunk = new Map<number, number[]>();
+  /** 청크 idx → 수동 프롭 */
+  private propsByChunk = new Map<number, RegionProp[]>();
+  /**
+   * Kenney 지면 타일 (16px → tr 정수 배율 재베이크 키) — 지형 문자별 변형 목록.
+   * tr가 16의 배수가 아니거나 텍스처가 없으면 비어 있고, 절차 렌더로 폴백한다.
+   */
+  private groundTex = new Map<string, string[]>();
 
   constructor(scene: Phaser.Scene, cfg: SeamlessChunksConfig) {
     this.scene = scene;
@@ -138,7 +239,169 @@ export class SeamlessChunks {
     this.waterDist = this.computeWaterDistance();
     this.compOf = new Int32Array(cfg.cols * cfg.rows).fill(-1);
     this.labelBuildings();
+    this.indexRoads();
+    this.setProps(cfg.props ?? []);
     this.ensureDecoTextures();
+    this.ensureGroundTextures();
+  }
+
+  /**
+   * Kenney 16px 지면 타일을 tr 배율(정수)로 재베이크 — CanvasTexture + imageSmoothing off.
+   * 지형 문자 → 후보 텍스처 목록 (해시로 변형 선택). 타일 스트라이드와 정수비일 때만.
+   */
+  private ensureGroundTextures(): void {
+    const tr = this.cfg.tr;
+    if (tr % 16 !== 0) return;
+    const scale = tr / 16;
+    const groups: [string, string[]][] = [
+      ['.', ['tan_0', 'tan_1', 'tan_2']],          // 맨땅 = 베이지 포장 (항구 도시 광장 톤)
+      [',', ['grass_0', 'grass_1', 'grass_2']],
+      ['r', ['asphalt_0', 'asphalt_1', 'asphalt_2']],
+      ['w', ['pave_0', 'pave_1', 'pave_2']],
+      ['s', ['sand_0', 'sand_1']],
+      ['b', ['pier_0', 'pier_1', 'pier_2']],
+    ];
+    const tm = this.scene.textures;
+    for (const [ch, names] of groups) {
+      const keys: string[] = [];
+      for (const n of names) {
+        const src = `ts_kn_ground_${n}`;
+        if (!tm.exists(src)) continue;
+        const dst = `${src}_x${scale}`;
+        if (!tm.exists(dst)) {
+          const img = tm.get(src).getSourceImage() as HTMLImageElement | HTMLCanvasElement;
+          const cv = tm.createCanvas(dst, tr, tr);
+          if (!cv) continue;
+          const ctx = cv.getContext();
+          ctx.imageSmoothingEnabled = false;
+          ctx.drawImage(img, 0, 0, tr, tr);
+          cv.refresh();
+        }
+        keys.push(dst);
+      }
+      if (keys.length > 0) this.groundTex.set(ch, keys);
+    }
+  }
+
+  /** 차도 벡터를 청크에 배정 (세그먼트 bbox + 폭 여유) */
+  private indexRoads(): void {
+    this.roadsByChunk.clear();
+    const N = this.cfg.chunkTiles;
+    (this.cfg.roads ?? []).forEach((road, ri) => {
+      const pad = road.w + 1;
+      const seen = new Set<number>();
+      for (let i = 0; i < road.pts.length - 1; i++) {
+        const [x0, y0] = road.pts[i], [x1, y1] = road.pts[i + 1];
+        const cc0 = Math.max(0, Math.floor((Math.min(x0, x1) - pad) / N));
+        const cc1 = Math.min(this.chunkCols - 1, Math.floor((Math.max(x0, x1) + pad) / N));
+        const cr0 = Math.max(0, Math.floor((Math.min(y0, y1) - pad) / N));
+        const cr1 = Math.min(this.chunkRows - 1, Math.floor((Math.max(y0, y1) + pad) / N));
+        for (let cr = cr0; cr <= cr1; cr++) {
+          for (let cc = cc0; cc <= cc1; cc++) {
+            const idx = cr * this.chunkCols + cc;
+            if (seen.has(idx)) continue;
+            seen.add(idx);
+            const list = this.roadsByChunk.get(idx);
+            if (list) list.push(ri); else this.roadsByChunk.set(idx, [ri]);
+          }
+        }
+      }
+    });
+  }
+
+  /** 수동 프롭 목록 교체 (편집기) — 청크 배정 재구성. 상주 청크는 rebakeResident로 갱신 */
+  setProps(props: RegionProp[]): void {
+    this.cfg.props = props;
+    this.propsByChunk.clear();
+    const N = this.cfg.chunkTiles;
+    for (const p of props) {
+      if (p.tx < 0 || p.tx >= this.cfg.cols || p.ty < 0 || p.ty >= this.cfg.rows) continue;
+      const idx = Math.floor(p.ty / N) * this.chunkCols + Math.floor(p.tx / N);
+      const list = this.propsByChunk.get(idx);
+      if (list) list.push(p); else this.propsByChunk.set(idx, [p]);
+    }
+  }
+
+  /** 지붕 오버라이드 교체 (편집기) */
+  setRoofOverrides(roofs: Record<string, number>): void {
+    this.cfg.roofOverrides = roofs;
+  }
+
+  /** 건물 컴포넌트 키 ("c0,r0") — 편집기가 지붕 오버라이드를 걸 때 사용 */
+  buildingKeyAt(c: number, r: number): string | null {
+    const b = this.buildingBoundsAt(c, r);
+    return b ? `${b.c0},${b.r0}` : null;
+  }
+
+  /** 건물 컴포넌트 bbox·면적 (POI 건물 스프라이트 앵커용) */
+  buildingBoundsAt(c: number, r: number): { c0: number; r0: number; c1: number; r1: number; n: number } | null {
+    if (c < 0 || c >= this.cfg.cols || r < 0 || r >= this.cfg.rows) return null;
+    const id = this.compOf[r * this.cfg.cols + c];
+    if (id < 0) return null;
+    const { c0, r0, c1, r1, n } = this.comps[id];
+    return { c0, r0, c1, r1, n };
+  }
+
+  setReservedBuildings(keys: Set<string>): void {
+    this.cfg.reservedBuildingKeys = keys;
+  }
+
+  /** 프롭 스프라이트 생성 공용 — 텍스처 미로드면 null (타일셋 미배포 환경 방어) */
+  spawnProp(def: PropDef, tx: number, ty: number, slot?: ChunkSlot): Phaser.GameObjects.Image | null {
+    if (!this.scene.textures.exists(def.tex)) return null;
+    const tr = this.cfg.tr;
+    const x = tx * tr + tr / 2;
+    const y = def.anchor === 'center' ? ty * tr + tr / 2 : ty * tr + tr;
+    const img = this.scene.add.image(x, y, def.tex)
+      .setOrigin(0.5, def.anchor === 'center' ? 0.5 : 1)
+      .setScale(def.scale ?? 1)
+      .setDepth(def.anchor === 'center' ? 5 : 20 + (ty * tr + tr) * 0.001);
+    slot?.deco.push(img);
+    return img;
+  }
+
+  /**
+   * 타일 편집 반영 (dev 편집기) — 전역 파생(수심 BFS·건물 라벨)을 재계산하고,
+   * 영향 청크(타일의 청크 + 경계 1타일 이웃 청크)의 충돌·프롭을 재구성 + 재베이킹 큐 선두.
+   * ⚠ terrainRows는 씬과 공유하는 같은 배열 — 호출측이 행 문자열을 먼저 갱신해야 한다.
+   */
+  invalidateTiles(tiles: { c: number; r: number }[]): void {
+    if (tiles.length === 0) return;
+    this.waterDist = this.computeWaterDistance();
+    this.compOf.fill(-1);
+    this.comps = [];
+    this.labelBuildings();
+    const N = this.cfg.chunkTiles;
+    const affected = new Set<number>();
+    for (const { c, r } of tiles) {
+      for (const [dc, dr] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+        const cc = Math.floor((c + dc) / N), cr = Math.floor((r + dr) / N);
+        if (cc < 0 || cc >= this.chunkCols || cr < 0 || cr >= this.chunkRows) continue;
+        affected.add(cr * this.chunkCols + cc);
+      }
+    }
+    this.rebakeChunks(affected);
+  }
+
+  /** 상주 청크 전체 재베이킹 (프롭/지붕 오버라이드 변경 후) */
+  rebakeResident(): void {
+    this.rebakeChunks(new Set(this.resident.keys()));
+  }
+
+  private rebakeChunks(idxs: Set<number>): void {
+    for (const idx of idxs) {
+      const slot = this.resident.get(idx);
+      if (!slot) continue;
+      const cc = idx % this.chunkCols, cr = Math.floor(idx / this.chunkCols);
+      for (const b of slot.bodies) { this.walls.remove(b); b.destroy(); }
+      slot.bodies = [];
+      for (const d of slot.deco) d.destroy();
+      slot.deco = [];
+      this.buildChunkCollision(cc, cr, slot);
+      this.buildChunkDeco(cc, cr, slot);
+      slot.baked = false;
+      if (!this.bakeQueue.includes(idx)) this.bakeQueue.unshift(idx);
+    }
   }
 
   private tileAt(c: number, r: number): string {
@@ -205,7 +468,7 @@ export class SeamlessChunks {
           }
         }
         this.comps.push({
-          c0, r0, c1, r1,
+          c0, r0, c1, r1, n,
           palIdx: Math.floor(hash2(this.cfg.seed ^ 0xb17d, c0, r0) * ROOFS.length) % ROOFS.length,
           big: n >= 120,   // 5m/타일 기준 ≥ 3,000㎡ — 창고·터미널급
         });
@@ -213,9 +476,85 @@ export class SeamlessChunks {
     }
   }
 
-  /** 프롭 텍스처 1회 베이킹 — 나무 2종 (트렁크+2톤 캐노피, 발밑 그림자 포함) */
+  /** 프롭 텍스처 1회 베이킹 — 나무 2종 + 편집기 프롭 8종 (전부 절차 도트, 발밑 그림자 포함) */
   private ensureDecoTextures(): void {
     const tex = this.scene.textures;
+    const bake = (key: string, W: number, H: number, draw: (g: Phaser.GameObjects.Graphics) => void): void => {
+      if (tex.exists(key)) return;
+      const g = this.scene.add.graphics();
+      draw(g);
+      g.generateTexture(key, W, H);
+      g.destroy();
+    };
+    // 침엽수 — 3단 삼각 캐노피
+    bake('smx_pine', 36, 54, (g) => {
+      g.fillStyle(0x000000, 0.22); g.fillEllipse(18, 50, 22, 7);
+      g.fillStyle(0x5a3f26, 1); g.fillRect(15, 38, 6, 12);
+      g.fillStyle(0x2f6b3a, 1); g.fillTriangle(18, 2, 4, 26, 32, 26);
+      g.fillStyle(0x3b7d45, 1); g.fillTriangle(18, 12, 3, 38, 33, 38);
+      g.fillStyle(0x2a5f34, 1); g.fillTriangle(18, 22, 2, 46, 34, 46);
+      g.fillStyle(0x62a35c, 0.8); g.fillTriangle(18, 4, 12, 18, 18, 18);
+    });
+    // 덤불 — 낮은 둥근 클러스터
+    bake('smx_bush', 30, 22, (g) => {
+      g.fillStyle(0x000000, 0.18); g.fillEllipse(15, 19, 24, 6);
+      g.fillStyle(0x3f7a33, 1); g.fillCircle(10, 12, 8); g.fillCircle(20, 12, 8); g.fillCircle(15, 8, 8);
+      g.fillStyle(0x62a352, 1); g.fillCircle(12, 8, 4); g.fillCircle(18, 6, 3);
+      g.fillStyle(0xe8cf6a, 1); g.fillRect(8, 11, 2, 2); g.fillRect(20, 9, 2, 2);
+    });
+    // 바위 — 2톤 다각
+    bake('smx_rock', 30, 24, (g) => {
+      g.fillStyle(0x000000, 0.2); g.fillEllipse(15, 21, 24, 6);
+      g.fillStyle(0x6b7078, 1);
+      g.fillPoints([{ x: 4, y: 18 }, { x: 7, y: 8 }, { x: 15, y: 3 }, { x: 24, y: 7 }, { x: 27, y: 17 }, { x: 20, y: 20 }, { x: 8, y: 20 }], true);
+      g.fillStyle(0x8c929a, 1);
+      g.fillPoints([{ x: 8, y: 10 }, { x: 15, y: 5 }, { x: 22, y: 9 }, { x: 16, y: 12 }], true);
+      g.fillStyle(0x4d525a, 1); g.fillRect(9, 15, 12, 3);
+    });
+    // 벤치 — 나무 좌판 + 철제 다리
+    bake('smx_bench', 34, 18, (g) => {
+      g.fillStyle(0x000000, 0.18); g.fillEllipse(17, 16, 30, 5);
+      g.fillStyle(0x3a4048, 1); g.fillRect(5, 8, 3, 8); g.fillRect(26, 8, 3, 8);
+      g.fillStyle(0x9a6a3c, 1); g.fillRect(2, 6, 30, 5);
+      g.fillStyle(0xb8834a, 1); g.fillRect(2, 6, 30, 2);
+      g.fillStyle(0x7a5230, 1); g.fillRect(2, 1, 30, 4);
+    });
+    // 가로등 — 기둥 + 램프 헤드
+    bake('smx_lamp', 18, 40, (g) => {
+      g.fillStyle(0x000000, 0.18); g.fillEllipse(9, 37, 12, 4);
+      g.fillStyle(0x2a3138, 1); g.fillRect(6, 35, 6, 2); g.fillRect(8, 8, 2, 28);
+      g.fillRect(4, 5, 10, 3);
+      g.fillStyle(0xfff2b0, 1); g.fillRect(6, 8, 6, 2);
+      g.fillStyle(0xffe58a, 0.5); g.fillCircle(9, 9, 5);
+    });
+    // 화단 — 돌 테두리 + 꽃
+    bake('smx_flowerbed', 32, 20, (g) => {
+      g.fillStyle(0x6b6f76, 1); g.fillRect(0, 4, 32, 16);
+      g.fillStyle(0x5a4530, 1); g.fillRect(3, 7, 26, 10);
+      g.fillStyle(0x4f8a3c, 1); g.fillRect(4, 8, 24, 8);
+      for (const [x, y, c] of [[6, 9, 0xe85a5a], [12, 12, 0xf2e26a], [18, 8, 0xffffff], [24, 11, 0xe85a5a], [15, 9, 0xd88ae0]] as const) {
+        g.fillStyle(c, 1); g.fillRect(x, y, 3, 3);
+      }
+    });
+    // 기념탑 — 석재 기단 + 오벨리스크
+    bake('smx_monument', 22, 44, (g) => {
+      g.fillStyle(0x000000, 0.2); g.fillEllipse(11, 41, 18, 5);
+      g.fillStyle(0x8a8f96, 1); g.fillRect(3, 34, 16, 6);
+      g.fillStyle(0xa6abb2, 1); g.fillRect(5, 30, 12, 4);
+      g.fillStyle(0xb8bdc4, 1); g.fillRect(8, 6, 6, 24);
+      g.fillStyle(0x7d8289, 1); g.fillRect(12, 6, 2, 24);
+      g.fillStyle(0xd8dce0, 1); g.fillTriangle(11, 1, 8, 6, 14, 6);
+    });
+    // 어선 — 선체 + 조타실 (바다 전용)
+    bake('smx_boat', 40, 22, (g) => {
+      g.fillStyle(0x1c3c5c, 0.35); g.fillEllipse(20, 18, 36, 6);
+      g.fillStyle(0x2e4a66, 1);
+      g.fillPoints([{ x: 2, y: 10 }, { x: 36, y: 10 }, { x: 32, y: 17 }, { x: 6, y: 17 }], true);
+      g.fillStyle(0xe8eef2, 1); g.fillRect(4, 8, 30, 3);
+      g.fillRect(20, 2, 9, 7);
+      g.fillStyle(0x4a7aa8, 1); g.fillRect(22, 4, 5, 3);
+      g.fillStyle(0xd0483c, 1); g.fillRect(6, 11, 12, 2);
+    });
     for (let v = 0; v < 2; v++) {
       const key = `smx_tree_${v}`;
       if (tex.exists(key)) continue;
@@ -358,11 +697,14 @@ export class SeamlessChunks {
     const c1 = Math.min(c0 + N, this.cfg.cols);
     const r1 = Math.min(r0 + N, this.cfg.rows);
     const seed = this.cfg.seed ^ 0x7ee5;
+    const def = (id: string): PropDef | undefined => PROP_DEFS.find((d) => d.id === id);
+    const hasTs = this.scene.textures.exists('ts_td_tree_big');
+
+    // ── 자동 나무 산포 (잔디) — 타일셋 나무 3종 + 해변 인접은 야자수 ──
     for (let r = r0; r < r1; r++) {
       for (let c = c0; c < c1; c++) {
         if (this.tileAt(c, r) !== ',') continue;
         if (hash2(seed, c, r) < 0.982) continue;
-        // 도로·건물·물가 바로 옆은 피한다 (간판·통행 가림 방지)
         let clear = true;
         for (let dr = -1; dr <= 1 && clear; dr++) {
           for (let dc = -1; dc <= 1; dc++) {
@@ -371,13 +713,78 @@ export class SeamlessChunks {
           }
         }
         if (!clear) continue;
-        const v = hash2(seed ^ 0x11, c, r) < 0.5 ? 0 : 1;
-        const x = c * tr + tr / 2;
-        const y = r * tr + tr;
-        const img = this.scene.add.image(x, y, `smx_tree_${v}`)
-          .setOrigin(0.5, 1)
-          .setDepth(20 + y * 0.001);   // 플레이어(20 + y·0.001)와 y-sort
-        slot.deco.push(img);
+        const v = hash2(seed ^ 0x11, c, r);
+        let id = v < 0.55 ? 'tree' : v < 0.8 ? 'tree2' : 'pine';
+        // 모래사장 3타일 이내 = 야자수
+        for (let dr = -3; dr <= 3; dr++) for (let dc = -3; dc <= 3; dc++) if (this.tileAt(c + dc, r + dr) === 's') id = 'palm';
+        const d = def(id);
+        if (hasTs && d) this.spawnProp(d, c, r, slot);
+        else {
+          const x = c * tr + tr / 2, y = r * tr + tr;
+          slot.deco.push(this.scene.add.image(x, y, `smx_tree_${v < 0.5 ? 0 : 1}`).setOrigin(0.5, 1).setDepth(20 + y * 0.001));
+        }
+      }
+    }
+
+    // ── 고층 프리팹 — 대형 건물 컴포넌트(≥ 60타일)에 Gemini 빌딩 파사드 (POI 예약 건물 제외) ──
+    if (hasTs) {
+      for (const comp of this.comps) {
+        if (comp.n < 60) continue;
+        const key = `${comp.c0},${comp.r0}`;
+        if (this.cfg.reservedBuildingKeys?.has(key)) continue;
+        // 컴포넌트는 좌상단이 속한 청크가 소유 (중복 생성 방지)
+        if (Math.floor(comp.c0 / N) !== cc || Math.floor(comp.r0 / N) !== cr) continue;
+        const idx = 1 + (Math.floor(hash2(seed ^ 0xb1d, comp.c0, comp.r0) * 5) % 5);
+        const tex = `ts_gem_building_${idx}`;
+        if (!this.scene.textures.exists(tex)) continue;
+        const x = ((comp.c0 + comp.c1 + 1) / 2) * tr;
+        const y = (comp.r1 + 1) * tr;
+        slot.deco.push(this.scene.add.image(x, y, tex).setOrigin(0.5, 1).setDepth(20 + y * 0.001));
+      }
+    }
+
+    // ── 차량 — 차도 벡터를 따라 결정적 산포 (폭 ≥ 3타일, 첫 차로 중앙, 세그먼트 각도 회전) ──
+    if (hasTs && this.cfg.roads) {
+      const list = this.roadsByChunk.get(cr * this.chunkCols + cc) ?? [];
+      for (const ri of list) {
+        const road = this.cfg.roads[ri];
+        if (road.w < 3) continue;
+        const lanes = Math.max(1, road.lanes ?? 1);
+        const laneW = (road.w / 2 - 0.35) / lanes;
+        for (let i = 0; i < road.pts.length - 1; i++) {
+          const [x0, y0] = road.pts[i], [x1, y1] = road.pts[i + 1];
+          const dx = x1 - x0, dy = y1 - y0;
+          const len = Math.hypot(dx, dy);
+          if (len < 6) continue;
+          const ux = dx / len, uy = dy / len, nx = -uy, ny = ux;
+          for (let t = 4; t < len - 3; t += 9) {
+            const h = hash2(seed ^ 0xca7, Math.round((x0 + ux * t) * 7), Math.round((y0 + uy * t) * 7));
+            if (h > 0.32) continue;
+            const side = h < 0.16 ? 1 : -1;            // 우측통행 — 진행 방향별 차로
+            const px = x0 + ux * t + nx * side * laneW * 0.5;
+            const py = y0 + uy * t + ny * side * laneW * 0.5;
+            const tc = Math.floor(px), trr = Math.floor(py);
+            if (tc < c0 || tc >= c1 || trr < r0 || trr >= r1) continue;
+            if (this.tileAt(tc, trr) !== 'r') continue;
+            const tex = CAR_TOPDOWN_KEYS[Math.floor(hash2(seed ^ 0xc4, tc, trr) * CAR_TOPDOWN_KEYS.length) % CAR_TOPDOWN_KEYS.length];
+            if (!this.scene.textures.exists(tex)) continue;
+            const ang = Math.atan2(uy, ux) + Math.PI / 2 + (side < 0 ? Math.PI : 0);
+            const img = this.scene.add.image(px * tr, py * tr, tex)
+              .setOrigin(0.5, 0.5).setScale(2).setRotation(ang)
+              .setDepth(20 + py * tr * 0.001);
+            slot.deco.push(img);
+          }
+        }
+      }
+    }
+
+    // ── 수동 프롭 (patch.json — 편집기 배치) ──
+    const manual = this.propsByChunk.get(cr * this.chunkCols + cc);
+    if (manual) {
+      for (const p of manual) {
+        const d = def(p.id);
+        if (!d) continue;
+        this.spawnProp(d, p.tx, p.ty, slot);
       }
     }
   }
@@ -385,17 +792,105 @@ export class SeamlessChunks {
   // ═══════════════════════════════════════════════════
   // 시각 베이킹 (L1) — 절차 텍스처. 프레임당 1청크
   // ═══════════════════════════════════════════════════
-  /** 'r' 타일의 도로 진행축·중앙선 여부 (차선 점선 렌더) */
-  private roadAxis(c: number, r: number): { vertical: boolean; center: boolean } {
-    const span = (dc: number, dr: number): number => {
-      let d = 0;
-      while (d < 8 && this.tileAt(c + dc * (d + 1), r + dr * (d + 1)) === 'r') d++;
-      return d;
+  /**
+   * 차도 마킹 — 벡터 폴리라인 기준 (101차 — 타일 휴리스틱 폐기: 대각선 도로 대응).
+   *  중앙선 = **노란 실선**(폭 ≥ 2타일 = 왕복 2차로 이상 시내도로 관례),
+   *  차선 = **흰 점선**(방향당 2차로 이상일 때 ±3.5m 간격),
+   *  가장자리 = 흰 실선(폭 ≥ 3타일). 세그먼트별 법선 오프셋 — 꺾임부 미터 조인은 생략.
+   */
+  /**
+   * 폴리라인을 법선 방향으로 off(타일)만큼 평행 이동 — 정점에서는 인접 법선의 평균(미터 조인,
+   * 예각 폭주 방지 클램프)으로 **연속된** 오프셋 선을 만든다 (세그먼트별 오프셋은 정점마다 끊겼다).
+   */
+  private static offsetPolyline(pts: [number, number][], off: number): [number, number][] {
+    const n = pts.length;
+    const out: [number, number][] = [];
+    const segN: [number, number][] = [];
+    for (let i = 0; i < n - 1; i++) {
+      const dx = pts[i + 1][0] - pts[i][0], dy = pts[i + 1][1] - pts[i][1];
+      const len = Math.hypot(dx, dy) || 1;
+      segN.push([-dy / len, dx / len]);
+    }
+    for (let i = 0; i < n; i++) {
+      const a = segN[Math.max(0, i - 1)], b = segN[Math.min(n - 2, i)];
+      let nx = a[0] + b[0], ny = a[1] + b[1];
+      const l = Math.hypot(nx, ny);
+      if (l < 1e-6) { nx = b[0]; ny = b[1]; }
+      else {
+        nx /= l; ny /= l;
+        // 미터 길이 = off / cos(θ/2) — 예각에서 폭주하지 않게 2배로 클램프
+        const cosHalf = Math.max(0.5, nx * b[0] + ny * b[1]);
+        nx /= cosHalf; ny /= cosHalf;
+      }
+      out.push([pts[i][0] + nx * off, pts[i][1] + ny * off]);
+    }
+    return out;
+  }
+
+  private drawRoadMarkings(g: Phaser.GameObjects.Graphics, idx: number, c0: number, r0: number): void {
+    const list = this.roadsByChunk.get(idx);
+    if (!list || !this.cfg.roads) return;
+    const tr = this.cfg.tr;
+    const lx = (x: number): number => (x - c0) * tr;
+    const ly = (y: number): number => (y - r0) * tr;
+    const solid = (pl: [number, number][]): void => {
+      for (let i = 0; i < pl.length - 1; i++) {
+        g.lineBetween(lx(pl[i][0]), ly(pl[i][1]), lx(pl[i + 1][0]), ly(pl[i + 1][1]));
+      }
     };
-    const dE = span(1, 0), dW = span(-1, 0), dN = span(0, -1), dS = span(0, 1);
-    const vertical = (dE + dW) < (dN + dS);   // 가로 폭이 더 좁다 = 남북 방향 도로
-    const center = vertical ? Math.abs(dE - dW) <= 1 : Math.abs(dN - dS) <= 1;
-    return { vertical, center };
+    // 점선 — 폴리라인 전체에 위상(phase)을 이어 정점에서 끊기지 않게
+    const dashed = (pl: [number, number][], dash: number, gap: number): void => {
+      let phase = 0;
+      for (let i = 0; i < pl.length - 1; i++) {
+        const ax = lx(pl[i][0]), ay = ly(pl[i][1]), bx = lx(pl[i + 1][0]), by = ly(pl[i + 1][1]);
+        const len = Math.hypot(bx - ax, by - ay);
+        if (len < 0.5) continue;
+        const ux = (bx - ax) / len, uy = (by - ay) / len;
+        let t = phase;
+        while (t < len) {
+          const e = Math.min(len, t + dash);
+          if (e > 0 && e > t) g.lineBetween(ax + ux * Math.max(0, t), ay + uy * Math.max(0, t), ax + ux * e, ay + uy * e);
+          t += dash + gap;
+        }
+        phase = t - len;   // 다음 세그먼트로 위상 이월
+        if (phase > dash + gap) phase -= dash + gap;
+        phase = phase - (dash + gap);
+      }
+    };
+    for (const ri of list) {
+      const road = this.cfg.roads[ri];
+      if (road.pts.length < 2) continue;
+      const halfW = road.w / 2;
+      const lanesPerDir = Math.max(1, road.lanes ?? 1);
+      // 교차부 겹침 완화 — 폴리라인 **양 끝점만** 폭의 절반만큼 안쪽으로 (정점은 유지 = 연결성)
+      const pts = road.pts.map((p) => [p[0], p[1]] as [number, number]);
+      const trim = (i0: number, i1: number, amount: number): void => {
+        const dx = pts[i1][0] - pts[i0][0], dy = pts[i1][1] - pts[i0][1];
+        const len = Math.hypot(dx, dy);
+        if (len <= amount * 1.5) return;
+        pts[i0] = [pts[i0][0] + (dx / len) * amount, pts[i0][1] + (dy / len) * amount];
+      };
+      const inset = halfW * 0.8;
+      trim(0, 1, inset);
+      trim(pts.length - 1, pts.length - 2, inset);
+      // 차선 기하 — 가장자리 여유 0.35타일(7px) 안쪽에 차로를 균등 배치 (차도 타일 안에 들어온다)
+      const edgeM = 0.35;
+      const laneW = Math.max(0.5, (halfW - edgeM) / lanesPerDir);
+      if (road.w >= 3) {
+        g.lineStyle(2, COL.roadCenter, 0.95);
+        solid(pts);                                  // 중앙선 — 노란 실선
+      }
+      g.lineStyle(2, COL.roadLine, 0.85);
+      for (let k = 1; k < lanesPerDir; k++) {        // 차선 — 흰 점선
+        dashed(SeamlessChunks.offsetPolyline(pts, k * laneW), 12, 10);
+        dashed(SeamlessChunks.offsetPolyline(pts, -k * laneW), 12, 10);
+      }
+      if (road.w >= 4) {                             // 가장자리 실선 — 차도 안쪽
+        g.lineStyle(1.5, COL.roadLine, 0.6);
+        solid(SeamlessChunks.offsetPolyline(pts, halfW - edgeM));
+        solid(SeamlessChunks.offsetPolyline(pts, -(halfW - edgeM)));
+      }
+    }
   }
 
   private bakeChunk(idx: number, slot: ChunkSlot): void {
@@ -412,6 +907,22 @@ export class SeamlessChunks {
     const g = this.scene.make.graphics({ x: 0, y: 0 }, false);
     const at = (c: number, r: number): string => this.tileAt(c, r);
 
+    // ── L1 베이스: Kenney 지면 타일 (있으면) — RT에 직접 배치, 절차 레이어는 그 위에 얹는다 ──
+    slot.rt.clear();
+    const useGround = this.groundTex.size > 0;
+    if (useGround) {
+      slot.rt.beginDraw();
+      for (let r = r0; r < r1; r++) {
+        for (let c = c0; c < c1; c++) {
+          const keys = this.groundTex.get(at(c, r));
+          if (!keys) continue;
+          const k = keys[Math.floor(hash2(seed ^ 0x6e0d, c, r) * keys.length) % keys.length];
+          slot.rt.batchDraw(k, (c - c0) * tr, (r - r0) * tr);
+        }
+      }
+      slot.rt.endDraw();
+    }
+
     for (let r = r0; r < r1; r++) {
       for (let c = c0; c < c1; c++) {
         const ch = at(c, r);
@@ -419,6 +930,8 @@ export class SeamlessChunks {
         const checker = (c + r) % 2 === 0;
         const h1 = hash2(seed, c, r);
         const h2 = hash2(seed ^ 0x5f5f, c, r);
+        /** 이 타일이 Kenney 베이스로 이미 깔렸는가 — 절차 기본색/스페클/디더는 생략 */
+        const based = useGround && this.groundTex.has(ch);
 
         // ── 바다 ──
         if (ch === '~') {
@@ -463,8 +976,37 @@ export class SeamlessChunks {
           continue;
         }
 
-        // ── 육상 기본색 ──
-        if (ch === ',') {
+        // ── 육상 기본색 (Kenney 베이스가 깔린 타일은 접경 처리만) ──
+        if (based) {
+          if (ch === 's') {
+            g.fillStyle(COL.sandWet, 0.85);
+            if (at(c, r - 1) === '~') g.fillRect(lx, ly, tr, 6);
+            if (at(c, r + 1) === '~') g.fillRect(lx, ly + tr - 6, tr, 6);
+            if (at(c - 1, r) === '~') g.fillRect(lx, ly, 6, tr);
+            if (at(c + 1, r) === '~') g.fillRect(lx + tr - 6, ly, 6, tr);
+          } else if (ch === 'r') {
+            g.fillStyle(COL.curb, 0.9);
+            if (at(c, r - 1) === 'w') g.fillRect(lx, ly, tr, 2);
+            if (at(c, r + 1) === 'w') g.fillRect(lx, ly + tr - 2, tr, 2);
+            if (at(c - 1, r) === 'w') g.fillRect(lx, ly, 2, tr);
+            if (at(c + 1, r) === 'w') g.fillRect(lx + tr - 2, ly, 2, tr);
+          } else if (ch === 'b') {
+            // 방파제 — 베이스는 청회색 포장(타일셋), 계선벽 캡·계선주는 절차 유지
+            g.fillStyle(COL.pierEdge, 1);
+            const wN = at(c, r - 1) === '~', wS = at(c, r + 1) === '~';
+            const wW = at(c - 1, r) === '~', wE = at(c + 1, r) === '~';
+            if (wN) g.fillRect(lx, ly, tr, 4);
+            if (wS) g.fillRect(lx, ly + tr - 4, tr, 4);
+            if (wW) g.fillRect(lx, ly, 4, tr);
+            if (wE) g.fillRect(lx + tr - 4, ly, 4, tr);
+            if ((wN || wS || wW || wE) && (c + r) % 4 === 0) {
+              const bx = lx + (wE ? tr - 10 : wW ? 4 : tr / 2 - 3);
+              const by = ly + (wS ? tr - 10 : wN ? 4 : tr / 2 - 3);
+              g.fillStyle(COL.bollard, 1); g.fillRect(bx, by, 6, 6);
+              g.fillStyle(COL.bollardTop, 1); g.fillRect(bx + 1, by + 1, 4, 3);
+            }
+          }
+        } else if (ch === ',') {
           g.fillStyle(checker ? COL.grass : COL.grassAlt, 1);
           g.fillRect(lx, ly, tr, tr);
           // 풀결 스페클 (짧은 어두운 잎 + 밝은 점)
@@ -521,15 +1063,7 @@ export class SeamlessChunks {
             g.fillStyle(0x3f4247, 0.6);
             g.fillRect(lx + 4 + Math.floor(h2 * 8), ly + 5 + Math.floor(h1 * 8), 4, 3);
           }
-          const ax = this.roadAxis(c, r);
-          if (ax.center) {
-            g.fillStyle(COL.roadLine, 0.85);
-            if (ax.vertical) {
-              if (r % 2 === 0) g.fillRect(lx + tr / 2 - 1, ly + 2, 3, tr - 8);
-            } else if (c % 2 === 0) {
-              g.fillRect(lx + 2, ly + tr / 2 - 1, tr - 8, 3);
-            }
-          }
+          // (차선·중앙선은 타일이 아니라 차도 벡터로 그린다 — 아래 마킹 패스. 대각선 대응)
           // 연석 — 보도와 맞닿은 가장자리 밝은 띠
           g.fillStyle(COL.curb, 0.9);
           if (at(c, r - 1) === 'w') g.fillRect(lx, ly, tr, 2);
@@ -586,7 +1120,8 @@ export class SeamlessChunks {
               g.fillRect(lx + 6, ly + 7, 8, 6);
             }
           } else if (comp) {
-            const [lightC, darkC, ridgeC] = ROOFS[comp.palIdx];
+            const ov = this.cfg.roofOverrides?.[`${comp.c0},${comp.r0}`];
+            const [lightC, darkC, ridgeC] = ROOFS[(ov ?? comp.palIdx) % ROOFS.length];
             const wide = (comp.c1 - comp.c0) >= (comp.r1 - comp.r0);
             const mid = wide ? (comp.r0 + comp.r1) / 2 : (comp.c0 + comp.c1) / 2;
             const pos = wide ? r : c;
@@ -628,7 +1163,9 @@ export class SeamlessChunks {
       }
     }
 
-    slot.rt.clear();
+    // 차도 마킹 (벡터) — 타일 위에 얹는다
+    this.drawRoadMarkings(g, idx, c0, r0);
+
     slot.rt.draw(g, 0, 0);
     g.destroy();
     slot.baked = true;
