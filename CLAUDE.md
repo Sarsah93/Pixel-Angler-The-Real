@@ -45,7 +45,13 @@
   **Ctrl+클릭 순간이동**(맵·미니맵) · F10 '+최대' · **차도 벡터 마킹**(노란 중앙선·흰 점선·대각선·연속) ·
   **타일셋 통합**(`pixelazed/tileset/` Gemini·TopDown·Kenney → `tools/extract_tileset_assets.py` →
   `data/TilesetManifest.ts` → POI 프리팹(횟집/팝업/고층/주택)·차량·NPC·프롭 40여종) ·
-  **심리스 TR 32**(Kenney 16px 지면 ×2 베이스 · legacy 20 유지 · 청크 32타일).
+  **심리스 TR 32**(Kenney 16px 지면 ×2 베이스 · legacy 20 유지 · 청크 32타일) · **건물 2.5D**(하단 2줄
+  충돌 + 지붕 y-sort) · 상점 오브젝트 충돌 · **`TrafficSystem`**(우측통행 주행 차량) ·
+  **후속 4(08-29)**: 시트 격자 서베이 학습 → Kenney 건물 키트 채움 · 직각삼각형 대각 엣지 ·
+  전 오브젝트 충돌(`propFootprint`) + 편집기 배치 격자/탭 팔레트 · 정점 그래프 교통 · 보행자 ·
+  **후속 5**: 도로 = **벡터 밴드 렌더**(타일 r/w는 판정 전용) · 교차로 박스 · 차간/양보 · 페이드 재등장 ·
+  **후속 6**: 편집기 도로 벡터 툴(`RegionPatch.roads`) · 횡단보도 벡터 · 보행자 밴드 판정 ·
+  **후속 7**: 회전교차로(OSM 태그)·일방통행·이중 황색선 · 차량↔캐릭터(대기·충돌 넉백 HP−20%·180s 정지).
   상세는 `docs/wiki/03-WORKLOG/2026-08-28-101-map-editor-road-vectors.md`.
   스펙 = **`.agents/OSM_TILEMAP_SPEC.md`** (⚠ **§0.5 코드 정합 노트가 본문보다 우선**).
   100차 상세는 `docs/wiki/03-WORKLOG/2026-08-27-100-octo-pixel-osm-seamless.md`.

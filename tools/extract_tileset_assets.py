@@ -42,8 +42,24 @@ TOPDOWN_PICK = {
     21: 'traffic_light', 23: 'traffic_light_stop', 22: 'signpost', 24: 'signpost_red',
     31: 'sign_warn', 32: 'sign_blue', 33: 'sign_round',
     39: 'bench', 40: 'trash', 41: 'hydrant',
-    3: 'house_red', 4: 'house_blue', 5: 'garage', 1: 'road_patch', 0: 'block_gray',
+    # ── 12px 격자 좌표 직접 지정 (`_survey/topdown_tiles_zoom.png` 기준 — 101차 후속 4: 연결요소 크롭은
+    #    지붕 연장 조각(0행)과 펜스 세트가 붙어 나와 오류였다) ──
+    (216, 12, 288, 96): 'house_red',      # 주택(빨강) = 열 18~23 × 행 1~7 (6×7)
+    (288, 12, 360, 96): 'house_blue',     # 주택(파랑) = 열 24~29 × 행 1~7
+    (216, 0, 288, 12): 'roof_ext_red',    # 0행 = 지붕 연장 조각(층 올릴 때)
+    (288, 0, 360, 12): 'roof_ext_blue',
+    (60, 48, 108, 72): 'fence_h',         # 철망 펜스 가로 4칸×2 (구 '차고' 오독 — 펜스 세트)
+    (60, 72, 72, 108): 'fence_v1', (72, 72, 84, 108): 'fence_v2',
+    (84, 72, 96, 108): 'fence_v3', (96, 72, 108, 108): 'fence_v4',   # 세로 기둥/문 1칸×3
+    (240, 108, 264, 132): 'door_blue', (276, 108, 300, 132): 'door_brown', (312, 108, 336, 132): 'door_white',
+    (0, 228, 24, 240): 'ac_unit',         # 옥상 실외기 2×1
 }
+# Kenney 건물 키트 (정규화 시트 16px 셀) — 지붕 = 색상 블록당 3×3 오토타일 + 무지/환기구,
+#  벽 = 행 11~12의 4칸×2줄 모듈 (창문 포함) → 컴포넌트 하단 2줄(충돌 줄)에 가로 반복
+KENNEY_ROOF_COLORS = {'red': 0, 'gray': 8, 'light': 16, 'tan': 24}
+KENNEY_ROOF_PARTS = {'nw': (0, 0), 'ne': (1, 0), 'sw': (0, 1), 'se': (1, 1),
+                     'n': (2, 0), 's': (2, 1), 'w': (3, 0), 'e': (3, 1), 'in': (4, 0), 'vent': (6, 1)}
+KENNEY_WALLS = {'brick_red': 0, 'brick_gray': 4, 'brick_tan': 8, 'glass': 12, 'white': 16}
 # Kenney 정규화 시트 연결요소 인덱스(또는 bbox 튜플) → 이름 (`_survey/kenney_components.png` 기준)
 #  차량: 36×24 = 측면(가로 진행) · 22×29 = 탑다운(세로 진행 — 도로 각도로 회전해 배치)
 KENNEY_PICK = {
@@ -185,19 +201,61 @@ def build():
         im = trim(kns.crop(box))
         im.save(OUT / 'kn' / f'{name}.png')
         print(f'  kn/{name}.png {im.width}x{im.height}')
+    # TopDown 차량 — 세로 시트 4프레임 (0 = 우측면 · 1 = 정면(아래) · 2 = 좌측면 · 3 = 후면(위)).
+    #  승용차 시트는 배경이 불투명 흰색 → 테두리 연결 흰 배경만 투명화 (픽업은 투명)
+    VEH = {'sBlueCar': ('car', 'blue', 48), 'sGreenCar': ('car', 'green', 48), 'sRedCar': ('car', 'red', 48),
+           'sBluePickup': ('pickup', 'blue', 60), 'sGreenPickup': ('pickup', 'green', 60), 'sRedPickup': ('pickup', 'red', 60)}
+    DIRS = ['right', 'down', 'left', 'up']
+    for fname, (kind, color, fh) in VEH.items():
+        p = TS / 'TopDownCityPack' / 'Sprites' / 'Vehicles' / f'{fname}.png'
+        if not p.exists():
+            continue
+        sheet = Image.open(p).convert('RGBA')
+        for i, d in enumerate(DIRS):
+            fr = sheet.crop((0, i * fh, sheet.width, i * fh + fh))
+            px = fr.load(); w, h = fr.size
+            # 흰 배경 키잉 — 테두리에서 시작하는 BFS (차체 안 흰색은 보존)
+            seen = bytearray(w * h)
+            dq = deque([(x, y) for x in range(w) for y in (0, h - 1)] + [(x, y) for y in range(h) for x in (0, w - 1)])
+            while dq:
+                x, y = dq.popleft()
+                if x < 0 or y < 0 or x >= w or y >= h or seen[y * w + x]:
+                    continue
+                seen[y * w + x] = 1
+                r, g, b, a = px[x, y]
+                if a > 8 and not (r > 235 and g > 235 and b > 235):
+                    continue
+                px[x, y] = (0, 0, 0, 0)
+                dq.extend([(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)])
+            trim(fr).save(OUT / 'td' / f'{kind}_{color}_{d}.png')
+        print(f'  td/{kind}_{color}_[right|down|left|up].png')
+    # 건물 키트 — 트림 없이 셀 그대로 (격자 정합)
+    for color, c0 in KENNEY_ROOF_COLORS.items():
+        for part, (dc, dr) in KENNEY_ROOF_PARTS.items():
+            c, r = c0 + dc, dr
+            kns.crop((c * 16, r * 16, c * 16 + 16, r * 16 + 16)).save(OUT / 'kn' / f'roof_{color}_{part}.png')
+        print(f'  kn/roof_{color}_*.png (10)')
+    for name, c0 in KENNEY_WALLS.items():
+        kns.crop((c0 * 16, 11 * 16, c0 * 16 + 64, 13 * 16)).save(OUT / 'kn' / f'wall_{name}.png')
+        print(f'  kn/wall_{name}.png 64x32')
     print(f'[done] → {OUT}')
 
 
 # Kenney 지면 셀 (정규화 시트 16px 격자 (col,row) — `_survey/kenney_ground_zoom.png` 기준, 수동 확정)
 #  자동 색 통계 선별은 환기구·균열 무늬 셀을 잡아 반복 패턴이 생겼다(101차 후속 실측) → 명시 표.
+#  ⚠ 셀 가장자리 1px 밝기 분석(테두리 판정)으로 **무테(interior) 셀만** 고른다 — 테두리가 든 셀을 섞으면
+#    지형 한복판에 무작위 경계선이 생긴다(101차 후속 리포트). 경계선은 클라이언트가 지형 접경에서만 그린다.
 GROUND_CELLS = {
-    'asphalt': [(10, 19), (11, 19), (14, 21)],   # 차도 — 무지 아스팔트
-    'grass':   [(1, 26), (2, 26), (1, 27)],      # 잔디 — 무지 ((0,25)는 흙 테두리 코너 변형이라 제외)
-    'dirt':    [(4, 24), (5, 24), (11, 26)],     # 흙 — 예비 (현재 미사용)
-    'pave':    [(0, 19), (1, 20), (2, 20)],      # 보도 — 회색 벽돌 포장
-    'tan':     [(3, 19), (4, 20), (5, 20)],      # 맨땅 — 베이지 포장 (항구 도시 광장·주차장 톤)
+    'asphalt': [(11, 19)],                       # 차도 — 완전 무지 ((10,19)/(10,20)/(14,21)은 차선 포함)
+    'grass':   [(1, 26), (3, 26)],               # 잔디 — 무테 ((0,26)/(2,26)은 측면 밝기 변형)
+    'dirt':    [(4, 24), (5, 24)],               # 흙 — 예비 (현재 미사용)
+    #  행 21은 균열 변형(내부 밝기 −8~−9)이 섞여 있다 — 내부 밝기까지 같은 셀만 (블록 기준값 ±2)
+    #  행 22 셀은 13행에 밝은 모르타르 줄(228)이 있어 "타일 위쪽 흰 선"으로 보인다(리포트 5.1) → 제외.
+    #  행별 밝기 프로파일이 4행 주기로 완전히 반복되는 셀만(자기 타일링 무이음).
+    'pave':    [(1, 20)],                        # 보도 — 회색 벽돌, 무테·주기 반복
+    'tan':     [(4, 20), (5, 21)],               # 맨땅 — 베이지 포장, 무테·무균열
     'sand':    [(6, 24), (7, 24)],               # 모래사장 — 크림 모래
-    'pier':    [(6, 19), (7, 20), (8, 20)],      # 방파제·부두 — 청회색 포장
+    'pier':    [(7, 20), (8, 21)],               # 방파제·부두 — 청회색 포장, 무테
 }
 
 

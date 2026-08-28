@@ -98,6 +98,10 @@ export interface RegionRoad {
   w: number;
   /** 방향당 차로 수 (차선 점선 개수 = lanes − 1) */
   lanes?: number;
+  /** 회전교차로 링 (OSM junction=roundabout — pts 순서 = 주행 방향, 반시계) */
+  roundabout?: boolean;
+  /** 일방통행 (pts 순서 = 주행 방향) */
+  oneway?: boolean;
   pts: [number, number][];
 }
 
@@ -120,6 +124,8 @@ export interface RegionPatch {
   props: RegionProp[];
   /** 건물 컴포넌트 좌상단 "c,r" → 지붕 팔레트 인덱스 */
   roofs: Record<string, number>;
+  /** 도로 벡터 전체 오버라이드 (편집기 도로 툴 — 있으면 roads.json 대신 이 목록을 쓴다) */
+  roads?: RegionRoad[];
 }
 
 /**

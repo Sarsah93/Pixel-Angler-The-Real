@@ -22,9 +22,14 @@ tools/regions_config.py 에 지역 bbox 등록 (17개 기등록 — 신규는 bb
 - **스펙 §0.5 코드 정합 노트가 본문보다 우선** — **1타일 = 5m · 심리스 TR 32px**(legacy 20) ·
   타일 8종(`. ~ # , r w s b` — `w` = 보도) · 도로 폭 미터 기준(`ROAD_W_M`) ·
   캐스팅 = 기존 물가 규칙(b/s 전용 아님) · POI 거래 매핑 범위 · worldX 금지.
-- 비주얼은 `SeamlessChunks.bakeChunk`의 **절차 렌더(L1·L3)가 정본** — 지역 추가 시 별도 작업 불필요,
-  에셋 타일셋이 오면 그 자리에서 교체. 차선·중앙선은 `roads.json` 벡터(래스터라이저 동반 출력).
-- **수동 손질은 dev 맵 편집기(F7)** — 지형/프롭/지붕 페인트 → 저장하면 `pixelazed/<region>/patch.json`
+- 비주얼은 `SeamlessChunks.bakeChunk`(Kenney 지면 베이스 + 절차 전이) — 지역 추가 시 별도 작업 불필요.
+  **도로 그림은 `roads.json` 벡터 밴드**(보도→연석→아스팔트 — 타일 `r`/`w`는 걷기·스폰 판정 전용) ·
+  차선·중앙선은 교차 정점에서 조각 인셋(축 정렬은 타일 중앙 스냅). 건물 = **2.5D**(하단 2줄 충돌 · Kenney
+  키트 지붕+벽 RenderTexture y-sort), 주행 차량 = `TrafficSystem`(모든 정점 노드 그래프 · 맵 안 도로만).
+- 프롭은 `PROP_DEFS` 한 줄 = 충돌·편집기 격자·겹침 판정까지 자동(`propFootprint`). 타일셋 크롭 추가는
+  `_survey/*_zoom.png` 격자 라벨로 좌표를 확정한 뒤 `extract_tileset_assets.py`에 bbox로 넣는다.
+- **수동 손질은 dev 맵 편집기(F7)** — 지형/프롭/지붕 페인트 + **도로 벡터 툴**(도구 탭 — 정점 이동/삽입/
+  삭제, 저장 시 `patch.json.roads` 전체 오버라이드가 roads.json을 대체) → 저장하면 `pixelazed/<region>/patch.json`
   (정본). `build_region_maps`가 패치를 굽고 `roads.json`/`patch.json`을 `public/data/`에 **항상** 복사
   (없으면 SPA 폴백 pageerror). Ctrl+클릭 = 순간이동(맵·미니맵)으로 검수 지점 이동.
 - 빌드 후 **필수 검수**(§9): terrain.png ↔ OSM 화면 육안 대조 · sea ratio 25~65%(밖이면 해안선

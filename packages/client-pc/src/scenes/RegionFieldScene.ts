@@ -56,7 +56,9 @@ import {
   SeamlessRegionDef,
   seamlessRegionOf,
 } from '@tra/core';
-import { SeamlessChunks, PROP_DEFS } from './SeamlessChunks.js';
+import { SeamlessChunks, PROP_DEFS, propFootprint, type PropDef } from './SeamlessChunks.js';
+import { tilesetPathOf } from '../data/TilesetManifest.js';
+import { TrafficSystem } from './TrafficSystem.js';
 import { TILESET_MANIFEST } from '../data/TilesetManifest.js';
 import {
   openMapEditor, closeMapEditor, isMapEditorOpen, mapEditorState, setMapEditorStatus,
@@ -124,6 +126,14 @@ export class RegionFieldScene extends Phaser.Scene {
   private get seamless(): boolean { return !!this.seamlessDef; }
   /** 청크 스트리밍 베이킹 + 근접 충돌 관리자 */
   private chunks?: SeamlessChunks;
+  /** 주행 차량 (심리스 전용) */
+  private traffic?: TrafficSystem;
+  /** POI 상점 프리팹 충돌 바디 (심리스 전용 — 청크 walls와 별도) */
+  private poiWalls?: Phaser.Physics.Arcade.StaticGroup;
+  /** 현재 야간 여부 (setupAtmosphere가 갱신 — POI 발광 판단) */
+  private isNightNow = false;
+  /** dev 편집기 — 프롭 풋프린트 미리보기 격자 */
+  private editPreviewG?: Phaser.GameObjects.Graphics;
   private regionMeta?: RegionMeta;
   /** OSM POI 전체 (pois.json — RegionPoi 스키마) */
   private regionPois: RegionPoi[] = [];
@@ -142,7 +152,14 @@ export class RegionFieldScene extends Phaser.Scene {
   /** 현재 스트로크의 변경 타일 (재베이킹 대상) */
   private editDirty = new Map<number, { c: number; r: number }>();
   /** 되돌리기 스택 — 스트로크 단위 [타일 idx → 이전 문자] (+ 프롭 스냅샷) */
-  private editUndo: { tiles: Map<number, string>; props?: RegionPatch['props']; roofs?: RegionPatch['roofs'] }[] = [];
+  private editUndo: { tiles: Map<number, string>; props?: RegionPatch['props']; roofs?: RegionPatch['roofs']; roads?: RegionRoad[] }[] = [];
+  /** 도로 툴 — 드래그 중인 정점 [도로, 정점] */
+  private editRoadDrag: { ri: number; pi: number } | null = null;
+  /** 차량 충돌 넉백 (ms 시각·속도) · 재충돌 무적 */
+  private knockUntil = 0;
+  private knockVx = 0;
+  private knockVy = 0;
+  private hitCooldownUntil = 0;
   private editStrokePrev = new Map<number, string>();
 
   private cols = 0;
@@ -357,6 +374,17 @@ export class RegionFieldScene extends Phaser.Scene {
   }
 
   create(): void {
+    // ── 재진입 가드 — Phaser 씬은 1회 생성 후 재사용된다. 직전 지역의 심리스 객체(청크·차량·POI 충돌)가
+    //    shutdown 정리 도중 예외로 남으면, legacy 지역(홈타운)에서도 update()가 죽은 RenderTexture에
+    //    베이킹을 시도해 "Cannot read properties of null (reading 'drawImage')"가 난다(2026-08-29 리포트).
+    //    지역 무관하게 create 시작 시 반드시 비운다.
+    this.chunks = undefined;
+    this.traffic = undefined;
+    this.poiWalls = undefined;
+    this.poiObjects.clear();
+    // 지연 생성 Text — shutdown 때 디스플레이 리스트가 파괴해 캔버스 컨텍스트가 null이 된 채 참조만 남는다
+    //   (홈타운 재진입 시 setText → Frame.updateUVs → drawImage null = 사용자 리포트의 실제 스택).
+    this.objHintText = undefined;
     // 맵 JSON 로드 실패(서버 순단·404 등) 시 mapData가 캐시에 없다 — 그대로 진행하면
     // 아래 필드 접근에서 TypeError로 create가 중단돼 **에러 표시 없는 검은 화면**이 된다
     // (2026-08-10 전수검사). 안내를 띄우고 메인 메뉴로 안전 복귀한다.
@@ -393,10 +421,12 @@ export class RegionFieldScene extends Phaser.Scene {
       const dr = this.seamlessDef.dataRegion;
       this.regionMeta = this.cache.json.get(`rmeta_${dr}`) as RegionMeta | undefined;
       this.regionPois = (this.cache.json.get(`rpois_${dr}`) as RegionPoi[] | undefined) ?? [];
-      this.regionRoads = (this.cache.json.get(`rroads_${dr}`) as RegionRoad[] | undefined) ?? [];
       const patch = this.cache.json.get(`rpatch_${dr}`) as Partial<RegionPatch> | undefined;
+      // 도로 벡터 — 패치에 오버라이드가 있으면(편집기 도로 툴) roads.json 대신 사용
+      this.regionRoads = patch?.roads ?? (this.cache.json.get(`rroads_${dr}`) as RegionRoad[] | undefined) ?? [];
       this.regionPatch = {
         tiles: patch?.tiles ?? [], props: patch?.props ?? [], roofs: patch?.roofs ?? {},
+        ...(patch?.roads ? { roads: patch.roads } : {}),
       };
       // 패치 타일 오버라이드를 런타임 지형에 반영 (재빌드 없이 F5 반영)
       const rows = this.mapData.terrain.slice();
@@ -430,11 +460,19 @@ export class RegionFieldScene extends Phaser.Scene {
         onChunkUnload: (cc, cr) => this.unloadChunkPois(cc, cr),
       });
       this._walls = this.chunks.walls;
+      // POI 상점 프리팹(팝업/횟집) 전용 충돌 — 청크 walls와 별도 그룹 (POI 로드/언로드가 관리)
+      this.poiWalls = this.physics.add.staticGroup();
       this.prepareSeamlessPois();
       this.spawnPlayer();
+      this.physics.add.collider(this.playerBody, this.poiWalls);
       // 스폰 지점 주변 상주 즉시 확보 (충돌 바디는 로드 즉시 생성 — 낙하/관통 방지)
       this.chunks.update(this.playerBody.x, this.playerBody.y);
-      this.events.once('shutdown', () => { this.chunks?.destroy(); this.chunks = undefined; closeMapEditor(); });
+      // 주행 차량 — 도로 그래프 우측통행 (101차 후속)
+      this.traffic = new TrafficSystem(this, this.regionRoads, TR, 70, this.cols, this.rows);
+      this.events.once('shutdown', () => {
+        this.traffic?.destroy(); this.traffic = undefined;
+        this.chunks?.destroy(); this.chunks = undefined; closeMapEditor();
+      });
     } else {
       this.renderTerrain();
       this.buildCollision();
@@ -969,7 +1007,8 @@ export class RegionFieldScene extends Phaser.Scene {
       ({ x: c * TR + TR / 2, y: r * TR + TR / 2 });
     if (poi.door) return toWorld(poi.door[0], poi.door[1]);
     if (this.terrainAt(poi.tx, poi.ty) !== 'building') return toWorld(poi.tx, poi.ty);
-    // BFS ≤ 12타일 — 도로('road')/맨땅('land')을 우선하고, 없으면 아무 걷기 타일
+    // BFS ≤ 12타일 — 보도('sidewalk')/맨땅('land')을 우선. **차도는 최후 폴백**(101차 후속 4 —
+    //  "도로 위에 횟집": 문 앞 상점 오브젝트가 차도를 침범하던 원인이 도로 우선 선택이었다)
     let anyWalkable: { c: number; r: number } | null = null;
     const seen = new Set<number>();
     const queue: [number, number, number][] = [[poi.tx, poi.ty, 0]];
@@ -978,7 +1017,7 @@ export class RegionFieldScene extends Phaser.Scene {
       const [c, r, d] = queue.shift()!;
       if (d > 12) break;
       const t = this.terrainAt(c, r);
-      if (t === 'road' || t === 'land') return toWorld(c, r);
+      if ((t === 'sidewalk' || t === 'land' || t === 'grass') && this.terrainAt(c, r + 1) !== 'road') return toWorld(c, r);
       if (!anyWalkable && t !== undefined && t !== 'water' && t !== 'building') {
         anyWalkable = { c, r };
       }
@@ -1073,22 +1112,52 @@ export class RegionFieldScene extends Phaser.Scene {
       const door = this.poiDoors[i];
       const kind = this.poiBuildingKind(poi);
       const notable = kind !== null || RegionFieldScene.POI_LABEL[poi.type] !== undefined;
-      // 건물 프리팹 (타일셋) — 앵커 타일이 건물이면 풋프린트 하단 중앙, 아니면 문 앞
+      // 건물 프리팹 (타일셋):
+      //  - 빌딩 파사드(building_N) = 건물 풋프린트 하단 중앙 (지붕 스프라이트 위 +0.0005)
+      //  - 상점 오브젝트(팝업/횟집) = **건물 앞 문 위치에 별도 배치 + 자체 충돌**(하단 띠) —
+      //    건물 풋프린트(지붕)와 겹치지 않고, 캐릭터가 오브젝트 앞을 지나면 앞에 보인다(y-sort)
       const vis = this.poiVisualTex(poi);
       let hasSprite = false;
       if (vis && this.textures.exists(vis)) {
+        const isShop = /popup|sashimi/.test(vis);
         const b = this.chunks?.buildingBoundsAt(poi.tx, poi.ty);
-        const bx = b ? ((b.c0 + b.c1 + 1) / 2) * TR : poi.tx * TR + TR / 2;
-        const by = b ? (b.r1 + 1) * TR : poi.ty * TR + TR;
-        objs.push(this.add.image(bx, by, vis).setOrigin(0.5, 1).setDepth(20 + by * 0.001));
+        let lit: Phaser.GameObjects.Image | null = null;
+        if (isShop) {
+          const sx = door.x, sy = door.y + TR * 0.5;
+          const img = this.add.image(sx, sy, vis).setOrigin(0.5, 1).setDepth(20 + sy * 0.001);
+          objs.push(img);
+          const bw = Math.max(TR, img.displayWidth * 0.9), bh = TR * 0.6;
+          const body = this.add.rectangle(sx, sy - bh / 2, bw, bh, 0, 0).setVisible(false);
+          this.poiWalls?.add(body);
+          objs.push(body);
+          lit = img;
+        } else {
+          const bx = b ? ((b.c0 + b.c1 + 1) / 2) * TR : poi.tx * TR + TR / 2;
+          const by = b ? (b.r1 + 1) * TR : poi.ty * TR + TR;
+          lit = this.add.image(bx, by, vis).setOrigin(0.5, 1).setDepth(20 + by * 0.001 + 0.0005);
+          objs.push(lit);
+        }
+        // 야간 — 상호작용 건물은 **오브젝트 전체**를 덮는 발광 (오브젝트 위 깊이 — 뒤에 숨지 않게)
+        if (lit && kind && this.isNightNow) {
+          const glow = this.add.ellipse(lit.x, lit.y - lit.displayHeight * 0.45, lit.displayWidth * 1.3, lit.displayHeight * 1.25, 0xffd080, 0.16)
+            .setDepth(lit.depth + 0.0002).setBlendMode(Phaser.BlendModes.ADD);
+          objs.push(glow);
+        }
         hasSprite = true;
       }
-      // NPC (정적 — 문 옆에 선다)
+      // NPC (정적 — 문 옆에 선다, 충돌 있음)
       const npc = this.poiNpcTex(poi);
       if (npc && this.textures.exists(npc)) {
         const side = (poi.osmId & 1) === 0 ? 1 : -1;
-        const nx = door.x + side * 14, ny = door.y + 8;
-        objs.push(this.add.image(nx, ny, npc).setOrigin(0.5, 1).setScale(0.5).setDepth(20 + ny * 0.001));
+        const nx = door.x + side * 18, ny = door.y + 8;
+        // 깊이 = max(자기 y, 소속 건물 하단 y) — 문이 건물 북쪽이면 지붕 RT 뒤로 숨던 것(리포트 6)
+        const bb = this.chunks?.buildingBoundsAt(poi.tx, poi.ty);
+        const depthY = Math.max(ny, bb ? (bb.r1 + 1) * TR + 1 : 0);
+        const img = this.add.image(nx, ny, npc).setOrigin(0.5, 1).setScale(0.5).setDepth(20 + depthY * 0.001 + 0.0006);
+        objs.push(img);
+        const body = this.add.rectangle(nx, ny - 6, Math.max(12, img.displayWidth * 0.7), 12, 0, 0).setVisible(false);
+        this.poiWalls?.add(body);
+        objs.push(body);
       }
       const dot = this.add.circle(door.x, door.y, 3.5, kind ? 0xffd24a : 0x9fc3d8, notable ? 0.95 : 0.55)
         .setStrokeStyle(1, 0x0a1628, 0.8)
@@ -1134,11 +1203,12 @@ export class RegionFieldScene extends Phaser.Scene {
 
   private toggleMapEditor(): void {
     if (isMapEditorOpen()) { closeMapEditor(); this.hud?.pushLog('[dev] 맵 편집기 닫힘'); return; }
-    openMapEditor(this.seamlessDef?.dataRegion ?? this.region, PROP_DEFS, {
-      onSave: () => this.editSavePatch(),
-      onUndo: () => this.editUndoStroke(),
-      onClose: () => { closeMapEditor(); },
-    });
+    openMapEditor(this.seamlessDef?.dataRegion ?? this.region,
+      PROP_DEFS.map((d) => ({ id: d.id, label: d.label, cat: d.cat, thumb: tilesetPathOf(d.tex), scale: d.scale })), {
+        onSave: () => this.editSavePatch(),
+        onUndo: () => this.editUndoStroke(),
+        onClose: () => { closeMapEditor(); this.editPreviewG?.clear(); },
+      });
     this.hud?.pushLog('[dev] 맵 편집기 열림 (F7) — 지형/프롭/지붕 편집 · 저장은 patch.json');
   }
 
@@ -1175,22 +1245,45 @@ export class RegionFieldScene extends Phaser.Scene {
       setMapEditorStatus(`지형 '${st.tileChar}' — (${tc}, ${trw}) · 변경 ${this.editDirty.size}타일`);
       return;
     }
+    if (st.mode === 'road') {
+      // 드래그 중이면 정점 이동(재베이킹은 pointerup에서), 아니면 잡을 정점/세그먼트 탐색
+      const px = w.x / TR, py = w.y / TR;
+      if (this.editRoadDrag) {
+        this.regionRoads[this.editRoadDrag.ri].pts[this.editRoadDrag.pi] = [Math.round(px * 10) / 10, Math.round(py * 10) / 10];
+        this.editDrawPreview(p);
+        return;
+      }
+      const hit = this.editRoadHit(px, py);
+      if (!hit) { setMapEditorStatus('도로 정점(원)이나 선(세그먼트) 근처를 클릭하세요 · 우클릭 = 정점 삭제'); return; }
+      this.editUndo.push({ tiles: new Map(), roads: this.regionRoads.map((r) => ({ ...r, pts: r.pts.map((q) => [q[0], q[1]] as [number, number]) })) });
+      if (hit.kind === 'segment') {
+        this.regionRoads[hit.ri].pts.splice(hit.pi + 1, 0, [Math.round(px * 10) / 10, Math.round(py * 10) / 10]);
+        this.editRoadDrag = { ri: hit.ri, pi: hit.pi + 1 };
+        setMapEditorStatus(`정점 삽입 — 도로 ${hit.ri} (${this.regionRoads[hit.ri].cls}) · 드래그로 위치 조정`);
+      } else {
+        this.editRoadDrag = { ri: hit.ri, pi: hit.pi };
+        setMapEditorStatus(`정점 이동 — 도로 ${hit.ri} 정점 ${hit.pi}`);
+      }
+      return;
+    }
     // 프롭/지붕은 스트로크당 1회 (드래그 반복 방지)
     if (this.editDirty.has(-1)) return;
     this.editDirty.set(-1, { c: tc, r: trw });
     if (st.mode === 'prop') {
       const def = PROP_DEFS.find((d) => d.id === st.propId);
-      const t = this.terrain[trw][tc];
-      if (def?.water ? t !== 'water' : (t === 'water' || t === 'building')) {
-        setMapEditorStatus(`'${def?.label ?? st.propId}'은(는) ${def?.water ? '바다' : '육지'} 타일에만 놓을 수 있습니다`);
+      if (!def) return;
+      const cells = this.propPlacementCells(def, tc, trw);
+      const bad = cells.filter((k) => k.state === 'red');
+      if (bad.length > 0) {
+        setMapEditorStatus(`배치 불가 — ${bad[0].why} (${bad.length}칸)`);
         return;
       }
       this.editUndo.push({ tiles: new Map(), props: this.regionPatch.props.slice() });
-      this.regionPatch.props = this.regionPatch.props.filter((q) => !(q.tx === tc && q.ty === trw));
       this.regionPatch.props.push({ tx: tc, ty: trw, id: st.propId });
       this.chunks?.setProps(this.regionPatch.props);
       this.chunks?.rebakeResident();
-      setMapEditorStatus(`프롭 '${def?.label}' 배치 → (${tc}, ${trw}) · 총 ${this.regionPatch.props.length}개`);
+      const warn = cells.some((k) => k.state === 'yellow') ? ' · ⚠ 일부 칸이 차도/보도 위' : '';
+      setMapEditorStatus(`프롭 '${def.label}' 배치 → (${tc}, ${trw}) · ${cells.length}칸 · 총 ${this.regionPatch.props.length}개${warn}`);
     } else if (st.mode === 'erase') {
       const before = this.regionPatch.props.length;
       this.editUndo.push({ tiles: new Map(), props: this.regionPatch.props.slice() });
@@ -1209,9 +1302,143 @@ export class RegionFieldScene extends Phaser.Scene {
     }
   }
 
+  /**
+   * 프롭 풋프린트 칸별 판정 (101차 후속 4 — 배치 UI 격자):
+   *  green = 놓을 수 있음 · yellow = 가능하나 애매(차도/보도 위 비차량, 물가 등) · red = 불가
+   *  (바다/건물 타일 · 다른 프롭 풋프린트와 겹침 · 맵 밖). 겹침 방지가 "오브젝트 중복 적층"을 막는다.
+   */
+  private propPlacementCells(def: PropDef, tc: number, trw: number): { c: number; r: number; state: 'green' | 'yellow' | 'red'; why?: string }[] {
+    const fp = propFootprint(this, def, TR);
+    const cL = tc - Math.floor((fp.w - 1) / 2);
+    const rT = def.anchor === 'center' ? trw - Math.floor((fp.h - 1) / 2) : trw - fp.h + 1;
+    // 기존 수동 프롭 점유 칸
+    const occ = new Set<number>();
+    for (const p of this.regionPatch.props) {
+      const d = PROP_DEFS.find((x) => x.id === p.id);
+      if (!d) continue;
+      const f = propFootprint(this, d, TR);
+      const l = p.tx - Math.floor((f.w - 1) / 2);
+      const t = d.anchor === 'center' ? p.ty - Math.floor((f.h - 1) / 2) : p.ty - f.h + 1;
+      for (let r = t; r < t + f.h; r++) for (let c = l; c < l + f.w; c++) occ.add(r * this.cols + c);
+    }
+    const out: { c: number; r: number; state: 'green' | 'yellow' | 'red'; why?: string }[] = [];
+    for (let r = rT; r < rT + fp.h; r++) {
+      for (let c = cL; c < cL + fp.w; c++) {
+        if (c < 0 || c >= this.cols || r < 0 || r >= this.rows) { out.push({ c, r, state: 'red', why: '맵 밖' }); continue; }
+        const t = this.terrain[r][c];
+        if (occ.has(r * this.cols + c)) { out.push({ c, r, state: 'red', why: '다른 오브젝트와 겹침' }); continue; }
+        if (def.water) {
+          out.push(t === 'water' ? { c, r, state: 'green' } : { c, r, state: 'red', why: '바다 타일에만' });
+          continue;
+        }
+        if (t === 'water') { out.push({ c, r, state: 'red', why: '바다' }); continue; }
+        if (t === 'building') { out.push({ c, r, state: 'red', why: '건물 타일' }); continue; }
+        const vehicle = def.cat === '차량';
+        if ((t === 'road' && !vehicle) || (t === 'sidewalk' && def.cat === '건물')) { out.push({ c, r, state: 'yellow' }); continue; }
+        out.push({ c, r, state: 'green' });
+      }
+    }
+    return out;
+  }
+
+  /** 도로 툴 — 포인터(타일 좌표) 근처의 정점(반경 0.4타일) 또는 세그먼트(0.35타일) 탐색 */
+  private editRoadHit(px: number, py: number): { kind: 'vertex' | 'segment'; ri: number; pi: number } | null {
+    let best: { kind: 'vertex' | 'segment'; ri: number; pi: number; d: number } | null = null;
+    this.regionRoads.forEach((rd, ri) => {
+      rd.pts.forEach((q, pi) => {
+        const d = Math.hypot(q[0] - px, q[1] - py);
+        if (d < 0.4 && (!best || d < best.d)) best = { kind: 'vertex', ri, pi, d };
+      });
+    });
+    if (best) return best;
+    this.regionRoads.forEach((rd, ri) => {
+      for (let i = 0; i < rd.pts.length - 1; i++) {
+        const [ax, ay] = rd.pts[i], [bx, by] = rd.pts[i + 1];
+        const vx = bx - ax, vy = by - ay;
+        const len2 = vx * vx + vy * vy || 1;
+        const t = Phaser.Math.Clamp(((px - ax) * vx + (py - ay) * vy) / len2, 0, 1);
+        const d = Math.hypot(ax + vx * t - px, ay + vy * t - py);
+        if (d < 0.35 && t > 0.05 && t < 0.95 && (!best || d < best.d)) best = { kind: 'segment', ri, pi: i, d };
+      }
+    });
+    return best;
+  }
+
+  /** 도로 툴 — 우클릭 정점 삭제 (정점 2개는 유지) */
+  private editRoadDelete(p: Phaser.Input.Pointer): void {
+    const w = this.pointerWorld(p);
+    const hit = this.editRoadHit(w.x / TR, w.y / TR);
+    if (!hit || hit.kind !== 'vertex') { setMapEditorStatus('삭제할 정점 근처에서 우클릭하세요'); return; }
+    const rd = this.regionRoads[hit.ri];
+    if (rd.pts.length <= 2) { setMapEditorStatus('정점이 2개뿐인 도로 — 삭제 불가'); return; }
+    this.editUndo.push({ tiles: new Map(), roads: this.regionRoads.map((r) => ({ ...r, pts: r.pts.map((q) => [q[0], q[1]] as [number, number]) })) });
+    rd.pts.splice(hit.pi, 1);
+    this.editCommitRoads(`정점 삭제 — 도로 ${hit.ri}`);
+  }
+
+  /** 도로 벡터 변경 확정 — 청크 재색인·재베이킹 + 교통 재구성 + 패치 오버라이드 기록 */
+  private editCommitRoads(msg: string): void {
+    this.regionPatch.roads = this.regionRoads;
+    this.chunks?.setRoads(this.regionRoads);
+    this.traffic?.destroy();
+    this.traffic = new TrafficSystem(this, this.regionRoads, TR, 70, this.cols, this.rows);
+    setMapEditorStatus(`${msg} · 저장하면 patch.json roads 오버라이드 (타일 r/w는 판정용 — 필요하면 지형 탭에서 함께 칠하세요)`);
+  }
+
+  /** 편집기 프롭 모드 — 포인터 아래 풋프린트 격자 미리보기 (녹/황/적) · 도로 모드 — 정점/세그먼트 핸들 */
+  private editDrawPreview(p: Phaser.Input.Pointer): void {
+    if (!this.editPreviewG) this.editPreviewG = this.add.graphics().setDepth(60);
+    const g = this.editPreviewG;
+    g.clear();
+    if (!isMapEditorOpen()) return;
+    if (mapEditorState.mode === 'road') {
+      const cam = this.cameras.main.worldView;
+      const x0 = cam.x / TR - 2, y0 = cam.y / TR - 2, x1 = cam.right / TR + 2, y1 = cam.bottom / TR + 2;
+      const w = this.pointerWorld(p);
+      const hit = this.editRoadDrag ? { kind: 'vertex' as const, ri: this.editRoadDrag.ri, pi: this.editRoadDrag.pi } : this.editRoadHit(w.x / TR, w.y / TR);
+      this.regionRoads.forEach((rd, ri) => {
+        let vis = false;
+        for (const q of rd.pts) if (q[0] > x0 && q[0] < x1 && q[1] > y0 && q[1] < y1) { vis = true; break; }
+        if (!vis) return;
+        g.lineStyle(2, hit?.ri === ri ? 0x4af2a1 : 0x9ad0ff, 0.9);
+        for (let i = 0; i < rd.pts.length - 1; i++) {
+          g.lineBetween(rd.pts[i][0] * TR, rd.pts[i][1] * TR, rd.pts[i + 1][0] * TR, rd.pts[i + 1][1] * TR);
+        }
+        rd.pts.forEach((q, pi) => {
+          const active = hit?.kind === 'vertex' && hit.ri === ri && hit.pi === pi;
+          g.fillStyle(active ? 0xf2d24a : 0xffffff, 1);
+          g.fillCircle(q[0] * TR, q[1] * TR, active ? 6 : 4);
+          g.lineStyle(1, 0x0a1628, 1);
+          g.strokeCircle(q[0] * TR, q[1] * TR, active ? 6 : 4);
+        });
+      });
+      if (hit?.kind === 'segment') { g.fillStyle(0xf2d24a, 0.9); g.fillCircle(w.x, w.y, 5); }
+      return;
+    }
+    if (mapEditorState.mode !== 'prop') return;
+    const def = PROP_DEFS.find((d) => d.id === mapEditorState.propId);
+    if (!def) return;
+    const w = this.pointerWorld(p);
+    const tc = Math.floor(w.x / TR), trw = Math.floor(w.y / TR);
+    if (tc < 0 || tc >= this.cols || trw < 0 || trw >= this.rows) return;
+    const COLS = { green: 0x4af2a1, yellow: 0xf2d24a, red: 0xf25a4a } as const;
+    for (const cell of this.propPlacementCells(def, tc, trw)) {
+      g.fillStyle(COLS[cell.state], 0.28);
+      g.fillRect(cell.c * TR, cell.r * TR, TR, TR);
+      g.lineStyle(1, COLS[cell.state], 0.9);
+      g.strokeRect(cell.c * TR + 0.5, cell.r * TR + 0.5, TR - 1, TR - 1);
+    }
+  }
+
   /** 스트로크 확정 — 변경 타일을 패치에 기록하고 영향 청크 재베이킹 */
   private editFinishStroke(): void {
     this.editPainting = false;
+    if (this.editRoadDrag) {
+      const d = this.editRoadDrag;
+      this.editRoadDrag = null;
+      this.editCommitRoads(`정점 확정 — 도로 ${d.ri} 정점 ${d.pi}`);
+      return;
+    }
     if (this.editStrokePrev.size > 0) {
       this.editUndo.push({ tiles: this.editStrokePrev });
       this.editStrokePrev = new Map();
@@ -1249,6 +1476,10 @@ export class RegionFieldScene extends Phaser.Scene {
       this.regionPatch.roofs = last.roofs;
       this.chunks?.setRoofOverrides(last.roofs);
       this.chunks?.rebakeResident();
+    }
+    if (last.roads) {
+      this.regionRoads = last.roads;
+      this.editCommitRoads('도로 되돌림');
     }
     const dirty: { c: number; r: number }[] = [];
     for (const [key, ch] of last.tiles) {
@@ -1334,6 +1565,8 @@ export class RegionFieldScene extends Phaser.Scene {
       });
       this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
         if (this.editPainting && p.isDown) this.editApplyAt(p);
+        if (isMapEditorOpen()) this.editDrawPreview(p);
+        else this.editPreviewG?.clear();
       });
       this.input.on('pointerup', () => { if (this.editPainting) this.editFinishStroke(); });
       this.events.on('minimap-click', (nx: number, ny: number, ctrl: boolean) => {
@@ -1343,6 +1576,10 @@ export class RegionFieldScene extends Phaser.Scene {
 
     // 좌클릭 차지 캐스팅 (바다 인접 + 낚싯대 슬롯) / 설치 모드 중엔 설치 확정
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
+      if (import.meta.env.DEV && this.seamless && isMapEditorOpen() && p.rightButtonDown() && mapEditorState.mode === 'road') {
+        this.editRoadDelete(p);
+        return;
+      }
       if (import.meta.env.DEV && this.seamless && p.leftButtonDown()) {
         const ev = p.event as MouseEvent | undefined;
         if (ev?.ctrlKey) { const w = this.pointerWorld(p); this.devTeleport(w.x, w.y); return; }
@@ -1942,6 +2179,7 @@ export class RegionFieldScene extends Phaser.Scene {
   private setupAtmosphere(): void {
     const hour = kstHour();
     const isNight = hour >= 20 || hour < 5;
+    this.isNightNow = isNight;
     const isDusk = (hour >= 17 && hour < 20) || (hour >= 5 && hour < 7);
     const weather = ExternalDataStore.getWeatherKind(this.region);
 
@@ -2046,12 +2284,13 @@ export class RegionFieldScene extends Phaser.Scene {
     // (101차 사용자 리포트 "안개? 구름? 단순 도형" 중 일부가 이 발광 halo였음).
     // 문 앞 소형 가로등 불빛만 남긴다.
     if (this.seamless) {
+      // 문 앞 불빛 — 오브젝트(상점·NPC)보다 위 깊이(y-sort +0.003)라 뒤에 가려지지 않는다.
+      // 오브젝트 전체 발광은 loadChunkPois가 스프라이트 크기에 맞춰 얹는다(101차 후속 4).
       for (const b of this.buildings) {
-        const lamp = this.add.circle(b.x, b.y - 2, 14, 0xffd980, strong ? 0.1 : 0.05)
-          .setDepth(42).setBlendMode(Phaser.BlendModes.ADD);
-        void lamp;
+        this.add.circle(b.x, b.y + 6, 26, 0xffd980, strong ? 0.12 : 0.06)
+          .setDepth(20 + b.y * 0.001 + 0.003).setBlendMode(Phaser.BlendModes.ADD);
         this.add.circle(b.x, b.y - 6, 2, 0xfff2b0, strong ? 0.85 : 0.5)
-          .setDepth(16 + b.y * 0.001).setBlendMode(Phaser.BlendModes.ADD);
+          .setDepth(20 + b.y * 0.001 + 0.003).setBlendMode(Phaser.BlendModes.ADD);
       }
       return;
     }
@@ -2225,6 +2464,29 @@ export class RegionFieldScene extends Phaser.Scene {
   }
 
   update(_time: number, delta: number): void {
+    if (this.traffic) {
+      const cam = this.cameras.main;
+      const pl = this.playerBody ? { x: this.playerBody.x / TR, y: this.playerBody.y / TR } : null;
+      this.traffic.update(delta, cam.midPoint.x, cam.midPoint.y, pl);
+      // 캐릭터가 차량에 부딪힘 — 진행 방향 뒤로 넉백 + HP −20% (차량은 180초 정지)
+      if (pl) {
+        const hit = this.traffic.playerInteract(pl.x, pl.y);
+        const now = this.time.now;
+        if (hit && now > this.hitCooldownUntil) {
+          this.hitCooldownUntil = now + 1500;
+          const vx = this.playerBody.body ? (this.playerBody.body as Phaser.Physics.Arcade.Body).velocity.x : 0;
+          const vy = this.playerBody.body ? (this.playerBody.body as Phaser.Physics.Arcade.Body).velocity.y : 0;
+          const vl = Math.hypot(vx, vy);
+          const kx = vl > 10 ? -vx / vl : hit.dx, ky = vl > 10 ? -vy / vl : hit.dy;
+          this.knockVx = kx * 280; this.knockVy = ky * 280;
+          this.knockUntil = now + 260;
+          const st = GameState.player.stamina;
+          GameState.updatePlayer({ stamina: Math.max(0, st - 20) });
+          this.cameras.main.shake(180, 0.006);
+          this.hud?.pushLog('[사고] 차량과 부딪혔습니다 — HP -20% · 차량 정지');
+        }
+      }
+    }
     if (this.bootFailed) return;   // 맵 로드 실패 안내 화면 — 필드 오브젝트가 없다
     this.hud?.updatePlayerMarker(this.playerBody.x, this.playerBody.y);
     this.updateWeatherFx(delta);
@@ -2611,6 +2873,12 @@ export class RegionFieldScene extends Phaser.Scene {
     // 심리스는 타일 32px라 같은 px/s면 타일 체감이 느려진다 → 1.4배 보정 (동서 횡단 ≈ 3분 유지)
     const speed = (this.seamless ? 210 : 150) * (GameState.isMounted ? 2 : 1);
     let vx = 0, vy = 0;
+    if (this.time.now < this.knockUntil) {
+      // 차량 충돌 넉백 — 입력 무시, 진행 방향 뒤로 밀림
+      this.playerBody.setVelocity(this.knockVx, this.knockVy);
+      this.updateWalkTexture(false);
+      return;
+    }
     if (this.playerActionLocked) {
       // 배타 액션(캐스팅 차지·비행) 중에는 이동 정지 — 조준/자세 유지
       this.playerBody.setVelocity(0, 0);

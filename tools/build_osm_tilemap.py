@@ -278,8 +278,19 @@ def build(region):
         wt = road_tiles(ROAD_W_M.get(hw, 8))
         stroke(grid, pts, 'r', wt)
         if len(pts) >= 2:
-            roads.append(dict(cls=hw, w=wt, lanes=ROAD_LANES.get(hw, 1),
-                              pts=[[round(x, 2), round(y, 2)] for x, y in pts]))
+            tags = wy.get('tags', {})
+            rd = dict(cls=hw, w=wt, lanes=ROAD_LANES.get(hw, 1),
+                      pts=[[round(x, 2), round(y, 2)] for x, y in pts])
+            # 회전교차로(OSM junction=roundabout — way 방향 = 주행 방향, 우측통행이면 반시계) · 일방통행
+            if tags.get('junction') in ('roundabout', 'circular'):
+                rd['roundabout'] = True
+                rd['oneway'] = True
+            elif tags.get('oneway') in ('yes', 'true', '1'):
+                rd['oneway'] = True
+            elif tags.get('oneway') == '-1':
+                rd['oneway'] = True
+                rd['pts'] = rd['pts'][::-1]
+            roads.append(rd)
     for wy in ways.values():
         mm = wy.get('tags', {}).get('man_made')
         if mm in ('breakwater', 'pier', 'groyne', 'quay'):

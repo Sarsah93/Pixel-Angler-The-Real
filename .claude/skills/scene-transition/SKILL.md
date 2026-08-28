@@ -24,6 +24,10 @@ description: Pixel Angler Phaser 씬 전환·페이드 규칙 (SceneFade 안전�
 
 - 전환 시작 시 `isTransitioning = true` + 재클릭/연타 무시. **씬 create()에서 반드시 리셋** — Phaser 씬 인스턴스는 재사용되므로 미리셋 시 2회차 진입부터 먹통 (73차 WorldMapScene: 출조 1회 후 먹통 + **요금 이중 차감**).
 - 비용 차감·아이템 소모 같은 부수효과는 **가드 통과 후** 실행 (연타 시 이중 차감 방지).
+- **지연 생성 GameObject 참조·서브시스템 객체(청크·차량·충돌 그룹)도 create() 최상단에서 리셋** — shutdown
+  핸들러 정리에만 기대면 예외 한 번으로 죽은 참조가 다음 지역에 새어 나간다(08-29 홈타운 `drawImage` null:
+  파괴된 Text에 setText). shutdown 시 물리 그룹은 우리 핸들러보다 먼저 파괴되므로 `group.remove`는
+  `group.children` 확인 후 호출.
 - pause+launch 진입도 fadeOutThen 경유 시 `keepTransitioning=false`류 해제 시점 주의 — 복귀 후 이동 잠김 잔존 방지.
 
 ## 기타 규칙
