@@ -18,7 +18,7 @@
 
 import Phaser from 'phaser';
 import type { RegionRoad, RegionProp } from '@tra/core';
-import { GRASS_EDGE_SUFFIXES, PAVED_EDGE_SUFFIXES, KENNEY_ROOF_COLORS, KENNEY_ROOF_PARTS } from '../data/TilesetManifest.js';
+import { GRASS_EDGE_SUFFIXES, PAVED_EDGE_SUFFIXES, KENNEY_ROOF_COLORS, KENNEY_ROOF_PARTS, TTP_EDGE_TILES, TTP_UNITS, COAST_DECKS, COAST_RUBBLE, COAST_EDGE_SRC, COAST_ROCK_COUNT } from '../data/TilesetManifest.js';
 
 export interface PropDef {
   id: string;
@@ -134,7 +134,7 @@ export const PROP_DEFS: PropDef[] = [
   { id: 'npc_father_kid', label: '아빠와 아이', tex: 'ts_gem_npc_father_kid', cat: 'NPC', scale: 0.5 },
   { id: 'npc_tourist_f', label: '관광객', tex: 'ts_gem_npc_tourist_f', cat: 'NPC', scale: 0.5 },
   // 해안 (지형 패치 — 타일 중앙 앵커, 부두↔바다 경계에 놓는다)
-  { id: 'tetra', label: '테트라포드 석축', tex: 'ts_gem_tetra', cat: '해안', anchor: 'center' },
+  { id: 'tetra', label: '테트라포드 석축', tex: 'ts_ttp_ttp_l', cat: '해안', anchor: 'center' },
   { id: 'boundary_port', label: '부두 경계(바다)', tex: 'ts_gem_boundary_port', cat: '해안', anchor: 'center' },
 ];
 
@@ -265,6 +265,9 @@ export class SeamlessChunks {
   private waterDist: Uint16Array;
   /** 섬/암초 플래그 (computeIslets — 조도 등 소형 야생 육지 = 갯바위 렌더) */
   private islet: Uint8Array;
+  /** 외해(열린 바다) 마스크 — 맵 경계 물에서 '넉넉히 넓은 수역'만 타고 퍼진 영역.
+   *  방파제 피복(테트라포드) 판정에 쓴다. 석호(청초호)·좁은 수로·항 내측은 여기 안 든다. */
+  private openSea: Uint8Array;
   /** 건물 타일 → 컴포넌트 id (-1 = 비건물) — 지붕 렌더의 기준 */
   private compOf: Int32Array;
   private comps: BuildingComp[] = [];
@@ -290,6 +293,7 @@ export class SeamlessChunks {
     this.chunkRows = Math.ceil(cfg.rows / this.cfg.chunkTiles);
     this.walls = scene.physics.add.staticGroup();
     this.waterDist = this.computeWaterDistance();
+    this.openSea = this.computeOpenSea();
     this.islet = this.computeIslets();
     this.compOf = new Int32Array(cfg.cols * cfg.rows).fill(-1);
     this.labelBuildings();
@@ -446,10 +450,10 @@ export class SeamlessChunks {
       }
       this.waterTex.push(keys);
     }
-    // 테트라포드 클러스터 — gem 원본(124px)을 1.75타일로 축소 베이크. 외해측 방파제 피복
-    // (드론 실사 정합 — 항 내측 정온수역은 콘크리트 안벽 그대로). L1 물 타일 위에 얹는다.
+    // 테트라포드 폴백 — TTP 세트(ts_ttp_*)가 없을 때만 gem 원본(124px)을 1.75타일로 축소 베이크.
+    // (구 경로 보존 — legacy 지역/에셋 미배포 빌드용)
     const tw = Math.round(tr * 1.75);
-    if (!tm.exists('smx_tetra_s') && tm.exists('ts_gem_tetra')) {
+    if (!tm.exists('smx_tetra_s') && !tm.exists('ts_ttp_ttp_l') && tm.exists('ts_gem_tetra')) {
       const img = tm.get('ts_gem_tetra').getSourceImage() as HTMLImageElement;
       const cv = tm.createCanvas('smx_tetra_s', tw, tw);
       if (cv) {
@@ -458,6 +462,148 @@ export class SeamlessChunks {
         ctx.drawImage(img, 0, 0, img.width, img.height, 0, 0, tw, tw);
         cv.refresh();
       }
+    }
+    this.ensureTtpTextures();
+    this.ensureCoastTextures();
+  }
+
+  /**
+   * TTP(테트라포드)·해안 접경 세트 — 사용자 제작 시트에서 구운 `ts_ttp_*`(타일 32px = TR 1:1).
+   *
+   *  - **접경 타일**: 원본은 모래가 **북**·물이 남인 한 방위뿐이라, 4방위를 캔버스 회전으로 굽는다
+   *    (`smx_ttpe_<dir><variant>` — dir 0=N 1=E 2=S 3=W = "모래가 있는 쪽"). 물 타일 위에 얹으면
+   *    모래가 접경 방향으로 번지고 포말이 그 앞에 깔린다 → 103차 절차 서프 밴드를 대체한다.
+   *  - **피복 유닛**: 파이썬에서 이미 3크기 × 좌우 플립으로 구워 나오므로 재샘플 없이 그대로 쓴다.
+   *
+   * 전부 있을 때만 `ttpReady` — 하나라도 없으면 절차 폴백(구 렌더)이 그대로 돈다.
+   */
+  private ensureTtpTextures(): void {
+    const tr = this.cfg.tr;
+    const tm = this.scene.textures;
+    if (tr !== 32 || !tm.exists('ts_ttp_edge_foam')) return;   // 타일이 TR 1:1일 때만 (재샘플 금지)
+    this.ttpEdge = [[], [], [], []];
+    for (const name of TTP_EDGE_TILES) {
+      const src = `ts_ttp_${name}`;
+      if (!tm.exists(src)) continue;
+      // corner_ne 는 2×2 코너 조합의 우상 셀 = 모래가 **서**쪽 — 북 기준으로 정규화(+90°)
+      const base = name === 'corner_ne' ? 1 : 0;
+      for (let d = 0; d < 4; d++) {
+        const key = `smx_ttpe_${d}_${name}`;
+        if (!tm.exists(key)) {
+          const cv = tm.createCanvas(key, tr, tr);
+          if (!cv) continue;
+          const ctx = cv.getContext();
+          ctx.imageSmoothingEnabled = false;
+          ctx.translate(tr / 2, tr / 2);
+          ctx.rotate((((d - base) % 4 + 4) % 4) * Math.PI / 2);
+          ctx.translate(-tr / 2, -tr / 2);
+          ctx.drawImage(tm.get(src).getSourceImage() as CanvasImageSource, 0, 0);
+          cv.refresh();
+        }
+        if (tm.exists(key)) this.ttpEdge[d].push(key);
+      }
+    }
+    this.ttpReady = this.ttpEdge.every((v) => v.length > 0)
+      && TTP_UNITS.every((u) => tm.exists(`ts_ttp_${u}`) && tm.exists(`ts_ttp_${u}_fx`));
+  }
+
+  /**
+   * 해안 세트(105차) — 사용자 시트 3장에서 구운 `ts_coast_*`(전부 32px = TR 1:1).
+   *
+   *  - **방파제 몸통**: 상판(`deck_*`)·사석 사면(`rubble_*`)은 불투명 타일 → `'b'` 지면을 대체.
+   *  - **접경 오버레이**: `rubble_toe_*`(외해측 사석 발치)·`pier_edge_*`(항내 안벽)은 바다를
+   *    투명으로 판 셀이라 **물 타일 위**에 얹는다. 원본은 뭍이 한 방위뿐이라 4방위 회전 베이크
+   *    (`smx_ce_<dir>_<name>` — dir = **뭍(=방파제)이 있는 쪽**).
+   *  - **갯바위 산포**: `rock_01..20`은 알파 트림 스프라이트라 그대로 배치한다.
+   */
+  private ensureCoastTextures(): void {
+    const tr = this.cfg.tr;
+    const tm = this.scene.textures;
+    if (tr !== 32 || !tm.exists('ts_coast_deck_0')) return;
+    this.coastEdge = [[], [], [], []];
+    for (const { name, landDir } of COAST_EDGE_SRC) {
+      const src = `ts_coast_${name}`;
+      if (!tm.exists(src)) continue;
+      for (let d = 0; d < 4; d++) {
+        const key = `smx_ce_${d}_${name}`;
+        if (!tm.exists(key)) {
+          const cv = tm.createCanvas(key, tr, tr);
+          if (!cv) continue;
+          const ctx = cv.getContext();
+          ctx.imageSmoothingEnabled = false;
+          ctx.translate(tr / 2, tr / 2);
+          ctx.rotate((((d - landDir) % 4 + 4) % 4) * Math.PI / 2);
+          ctx.translate(-tr / 2, -tr / 2);
+          ctx.drawImage(tm.get(src).getSourceImage() as CanvasImageSource, 0, 0);
+          cv.refresh();
+        }
+        if (tm.exists(key)) this.coastEdge[d].push(key);
+      }
+    }
+    this.coastRocks = [];
+    for (let i = 1; i <= COAST_ROCK_COUNT; i++) {
+      const k = `ts_coast_rock_${String(i).padStart(2, '0')}`;
+      if (tm.exists(k)) this.coastRocks.push(k);
+    }
+    this.coastReady = this.coastEdge.every((v) => v.length > 0)
+      && COAST_DECKS.every((d) => tm.exists(`ts_coast_${d}`))
+      && COAST_RUBBLE.every((d) => tm.exists(`ts_coast_${d}`))
+      && this.coastRocks.length > 0;
+  }
+
+  /** 방파제 접경 오버레이 — 방위별(0=N 1=E 2=S 3=W = 방파제가 있는 쪽) 회전 셀 */
+  private coastEdge: string[][] = [];
+  /** 갯바위 산포 스프라이트 (알파 트림) */
+  private coastRocks: string[] = [];
+  /** 해안 세트 사용 가능 여부 — false면 Kenney pier 베이스 + 절차 렌더(구 경로) */
+  private coastReady = false;
+
+  /**
+   * `'b'`(방파제) 타일 텍스처 선택 — 실사 항공사진 기반 어휘.
+   *  물에 안 닿으면 **상판**, 외해측 물에 닿거나 3면이 물이면 **사석 사면**, 항내측은 상판 유지
+   *  (항내 접경은 물 타일 쪽 `pier_edge` 오버레이가 안벽을 그린다).
+   */
+  private coastPierKey(c: number, r: number): string {
+    const at = (cc: number, rr: number): string => this.tileAt(cc, rr);
+    const w = [at(c, r - 1) === '~', at(c + 1, r) === '~', at(c, r + 1) === '~', at(c - 1, r) === '~'];
+    const wc = w.filter(Boolean).length;
+    const h = hash2(this.cfg.seed ^ 0xc0a5, c, r);
+    if (wc > 0) {
+      const dv = [[0, -1], [1, 0], [0, 1], [-1, 0]] as const;
+      let open = wc >= 3;                       // 두부(3면 물)는 항상 사석
+      for (let d = 0; d < 4 && !open; d++) {
+        if (!w[d]) continue;
+        const nc = c + dv[d][0], nr = r + dv[d][1];
+        if (this.raysToOpenSea(nc, nr, dv[d][0], dv[d][1])) open = true;
+      }
+      if (open) return `ts_coast_${COAST_RUBBLE[Math.floor(h * COAST_RUBBLE.length) % COAST_RUBBLE.length]}`;
+    }
+    if (h > 0.965) return 'ts_coast_deck_seam';
+    return `ts_coast_${COAST_DECKS[Math.floor(h * 997) % COAST_DECKS.length]}`;
+  }
+
+  /** 모래 접경 방위별 회전 접경 타일 (0=N 1=E 2=S 3=W — 모래가 있는 쪽) */
+  private ttpEdge: string[][] = [];
+  /** TTP 세트 사용 가능 여부 — false면 103차 절차 서프/구 gem 테트라 폴백 */
+  private ttpReady = false;
+
+  /**
+   * 방파제 외해측 테트라포드 피복 — 유닛 2~3개를 해시 지터 + 좌우 플립으로 흩어 놓는다.
+   * (실사: 한 덩어리가 아니라 소형 유닛이 겹겹이 쌓인 사면. `dense=false`는 두 번째 밴드 = 성글게)
+   */
+  private drawTtpCluster(rt: Phaser.GameObjects.RenderTexture, dx: number, dy: number, c: number, r: number, dense: boolean): void {
+    const tr = this.cfg.tr;
+    const seed = this.cfg.seed;
+    const n = dense ? 3 : 1;
+    for (let i = 0; i < n; i++) {
+      const h1 = hash2(seed ^ (0x7e7a + i * 977), c, r);
+      const h2 = hash2(seed ^ (0x51ab + i * 313), c, r);
+      const big = dense && i === 0 && h1 > 0.55;
+      const px = big ? 38 : 26;
+      const key = `ts_ttp_ttp_${big ? 'm' : 's'}${h2 > 0.5 ? '_fx' : ''}`;
+      const ox = Math.floor(h2 * (tr - 6)) - (px - tr) / 2 - 3;
+      const oy = Math.floor(h1 * (tr - 6)) - (px - tr) / 2 - 3;
+      rt.batchDraw(key, dx + ox, dy + oy);
     }
   }
 
@@ -674,6 +820,7 @@ export class SeamlessChunks {
   invalidateTiles(tiles: { c: number; r: number }[]): void {
     if (tiles.length === 0) return;
     this.waterDist = this.computeWaterDistance();
+    this.openSea = this.computeOpenSea();
     this.islet = this.computeIslets();
     this.compOf.fill(-1);
     this.comps = [];
@@ -782,6 +929,63 @@ export class SeamlessChunks {
    * 섬/암초 검출 — 바다로 둘러싸인 소형 육지 컴포넌트(≤ 600타일 · 도로/건물 없음 — 조도 등).
    * 포장 광장 톤 대신 갯바위(절차)로 그린다(위성 실사 정합 — 사용자 리포트 7번 캡처).
    */
+  /**
+   * 외해 마스크 — 맵 경계의 물에서 시작해 **뭍에서 충분히 떨어진 물**(waterDist ≥ OPEN_SEA_MIN)만
+   * 타고 4방 확산. 좁은 수로(폭 < 2·OPEN_SEA_MIN)는 중심 waterDist가 문턱에 못 미쳐 통과하지 못하므로
+   * 석호(청초호)·항 내측 정온수역이 외해로 새지 않는다.
+   *
+   * ⚠ 구 판정("바깥 4·7타일 수심 ≥ 5")만으로는 청초호 제방에도 피복이 깔렸다 — 석호가 넓어
+   *   조건을 통과했다(실측: 인접 물 75타일 중 41타일 통과). 이 마스크와 AND로 걸러낸다.
+   */
+  private computeOpenSea(): Uint8Array {
+    const { cols, rows } = this.cfg;
+    const OPEN_SEA_MIN = 8;
+    const m = new Uint8Array(cols * rows);
+    const q = new Int32Array(cols * rows);
+    let head = 0, tail = 0;
+    const push = (c: number, r: number): void => {
+      const i = r * cols + c;
+      if (m[i] || this.tileAt(c, r) !== '~' || this.waterDist[i] < OPEN_SEA_MIN) return;
+      m[i] = 1;
+      q[tail++] = i;
+    };
+    for (let c = 0; c < cols; c++) { push(c, 0); push(c, rows - 1); }
+    for (let r = 0; r < rows; r++) { push(0, r); push(cols - 1, r); }
+    while (head < tail) {
+      const i = q[head++];
+      const c = i % cols, r = (i / cols) | 0;
+      if (c > 0) push(c - 1, r);
+      if (c < cols - 1) push(c + 1, r);
+      if (r > 0) push(c, r - 1);
+      if (r < rows - 1) push(c, r + 1);
+    }
+    return m;
+  }
+
+  /** 이 물 타일이 섬(갯바위) 둘레 2타일 안인가 — 여(스커리) 산포 판정 */
+  private nearIsletAt(c: number, r: number): boolean {
+    const { cols, rows } = this.cfg;
+    for (let dr = -2; dr <= 2; dr++) {
+      for (let dc = -2; dc <= 2; dc++) {
+        const nc = c + dc, nr = r + dr;
+        if (nc < 0 || nr < 0 || nc >= cols || nr >= rows) continue;
+        if (this.islet[nr * cols + nc]) return true;
+      }
+    }
+    return false;
+  }
+
+  /** 이 타일에서 (dirX,dirY) 바깥으로 뻗은 광선이 외해에 닿는가 (4~12타일) */
+  private raysToOpenSea(c: number, r: number, dirX: number, dirY: number): boolean {
+    const { cols, rows } = this.cfg;
+    for (const k of [4, 6, 8, 10, 12]) {
+      const nc = c + dirX * k, nr = r + dirY * k;
+      if (nc < 0 || nr < 0 || nc >= cols || nr >= rows) continue;
+      if (this.openSea[nr * cols + nc]) return true;
+    }
+    return false;
+  }
+
   private computeIslets(): Uint8Array {
     const { cols, rows } = this.cfg;
     const flag = new Uint8Array(cols * rows);
@@ -2000,19 +2204,70 @@ export class SeamlessChunks {
               const wk = this.waterTex[bucket];
               if (wk.length > 0) slot.rt.batchDraw(wk[Math.floor(hash2(seed ^ 0x77aa, c, r) * wk.length) % wk.length], dx, dy);
             }
-            // 외해측 방파제 테트라포드 피복 — 'b'에 붙은 바다 타일 중 방파제 바깥(4·7타일 너머
-            // 수심 ≥ 5 = 열린 바다)만. 항 내측(둘러싸인 정온수역 = waterDist 작음)은 안벽 그대로
-            if (this.scene.textures.exists('smx_tetra_s')) {
+            // ── 해변 접경 — 모래와 맞닿은 물 타일에 TTP 시트 접경 셀(방위 회전)을 얹는다.
+            //   모래가 접경 방향으로 번지고 그 앞에 포말이 깔린다(103차 절차 서프 밴드를 대체).
+            //   두 방위가 동시에 모래면 둘 다 그린다 = 모래 부분이 합집합(코너에서 기하학적으로 옳다)
+            if (this.ttpReady) {
+              const sd = [at(c, r - 1) === 's', at(c + 1, r) === 's', at(c, r + 1) === 's', at(c - 1, r) === 's'];
+              for (let d = 0; d < 4; d++) {
+                if (!sd[d]) continue;
+                const pool = this.ttpEdge[d];
+                slot.rt.batchDraw(pool[Math.floor(hash2(seed ^ (0x5ea1 + d), c, r) * pool.length) % pool.length], dx, dy);
+              }
+            }
+            // ── 섬 주변 여(스커리) — 실사 갯바위 스프라이트 산포(105차). 절차 사각형 대체.
+            //   본섬 둘레 2타일 안 물에만, 해시로 성기게. 물속 바위는 포말 링이 있는
+            //   `rockwater_*`를 섞어 물에 잠긴 느낌을 준다.
+            if (this.coastReady && hash2(seed ^ 0x5c07, c, r) > 0.62 && this.nearIsletAt(c, r)) {
+              const h = hash2(seed ^ 0x5c08, c, r), h2b = hash2(seed ^ 0x5c09, c, r);
+              const key = h > 0.55
+                ? this.coastRocks[Math.floor(h2b * this.coastRocks.length) % this.coastRocks.length]
+                : `ts_coast_rockwater_${Math.floor(h2b * 4) % 4}`;
+              const src = this.scene.textures.get(key).getSourceImage() as { width: number; height: number };
+              const ox = Math.floor(h2b * Math.max(1, tr - src.width));
+              const oy = Math.floor(h * Math.max(1, tr - src.height));
+              slot.rt.batchDraw(key, dx + ox, dy + oy);
+            }
+            // ── 방파제 접경 오버레이(105차) — 'b'에 붙은 물 타일. 방파제가 있는 방위로 회전한
+            //   셀을 얹는다(바다 부분은 투명이라 게임 물이 그대로 비친다).
+            //   외해측 = 사석 발치(`rubble_toe`) · 항내측 = 안벽 모서리(`pier_edge`, 흰 포말선)
+            if (this.coastReady) {
+              const dv = [[0, -1], [1, 0], [0, 1], [-1, 0]] as const;
+              for (let d = 0; d < 4; d++) {
+                if (at(c + dv[d][0], r + dv[d][1]) !== 'b') continue;
+                const open = this.raysToOpenSea(c, r, -dv[d][0], -dv[d][1]);
+                const pool = this.coastEdge[d].filter((k) => (open ? k.includes('rubble_toe') : k.includes('pier_edge')));
+                if (pool.length === 0) continue;
+                slot.rt.batchDraw(pool[Math.floor(hash2(seed ^ (0xc0e5 + d), c, r) * pool.length) % pool.length], dx, dy);
+              }
+            }
+            // ── 외해측 방파제 테트라포드 피복 — 'b'에 붙은 바다 타일 중 방파제 바깥(4·7타일 너머
+            //   수심 ≥ 5 = 열린 바다)만. 항 내측(둘러싸인 정온수역 = waterDist 작음)은 안벽 그대로.
+            //   TTP 세트가 있으면 소형 유닛 클러스터, 없으면 구 gem 스프라이트 1장(폴백)
+            {
               const bN = at(c, r - 1) === 'b', bS = at(c, r + 1) === 'b';
               const bW = at(c - 1, r) === 'b', bE = at(c + 1, r) === 'b';
-              if (bN || bS || bW || bE) {
-                const dirX = bW ? 1 : bE ? -1 : 0, dirY = bN ? 1 : bS ? -1 : 0;
+              const adj = bN || bS || bW || bE;
+              // 두 번째 밴드 — 방파제에서 2타일 떨어진 물 (피복 사면이 바다 쪽으로 흘러내린 자락)
+              const b2N = at(c, r - 2) === 'b', b2S = at(c, r + 2) === 'b';
+              const b2W = at(c - 2, r) === 'b', b2E = at(c + 2, r) === 'b';
+              const b2 = !adj && (b2N || b2S || b2W || b2E);
+              if (adj || (b2 && this.ttpReady)) {
+                const dirX = (adj ? bW : b2W) ? 1 : (adj ? bE : b2E) ? -1 : 0;   // 방파제 반대 = 바깥
+                const dirY = (adj ? bN : b2N) ? 1 : (adj ? bS : b2S) ? -1 : 0;
+                // ⚠ 개활도 판정 기준점은 **방파제에 붙은 첫 물 타일**로 고정 — 두 번째 밴드가
+                //   자기 위치에서 재면 2타일만큼 더 바깥에서 재는 셈이라, 내수면(청초호 제방)도
+                //   기준을 넘겨 테트라포드가 깔린다(실렌더로 확인한 회귀). 두 밴드가 같은 판정을 쓴다.
+                const bc = adj ? c : c - dirX, br = adj ? r : r - dirY;
                 const far = Math.max(
-                  this.waterDistAt(c + dirX * 4, r + dirY * 4),
-                  this.waterDistAt(c + dirX * 7, r + dirY * 7));
-                if (far >= 5) {
-                  const j = hash2(seed ^ 0x7e7a, c, r);
-                  slot.rt.batchDraw('smx_tetra_s', dx - 8 + Math.floor(j * 14), dy - 8 + Math.floor((1 - j) * 12));
+                  this.waterDistAt(bc + dirX * 4, br + dirY * 4),
+                  this.waterDistAt(bc + dirX * 7, br + dirY * 7));
+                if (far >= 5 && this.raysToOpenSea(bc, br, dirX, dirY)) {
+                  if (this.ttpReady) this.drawTtpCluster(slot.rt, dx, dy, c, r, adj);
+                  else if (this.scene.textures.exists('smx_tetra_s')) {
+                    const j = hash2(seed ^ 0x7e7a, c, r);
+                    slot.rt.batchDraw('smx_tetra_s', dx - 8 + Math.floor(j * 14), dy - 8 + Math.floor((1 - j) * 12));
+                  }
                 }
               }
             }
@@ -2024,6 +2279,11 @@ export class SeamlessChunks {
             if (this.waterTex.length > 0 && this.waterTex[0].length > 0) {
               slot.rt.batchDraw(this.waterTex[0][Math.floor(hash2(seed ^ 0x77aa, c, r) * this.waterTex[0].length) % this.waterTex[0].length], dx, dy);
             }
+            continue;
+          }
+          // ── 방파제 'b' — 실사 해안 세트가 있으면 Kenney pier 대신 상판/사석 타일 ──
+          if (ch === 'b' && this.coastReady) {
+            slot.rt.batchDraw(this.coastPierKey(c, r), dx, dy);
             continue;
           }
           const keys = this.groundTex.get(ch);
@@ -2117,18 +2377,22 @@ export class SeamlessChunks {
             g.fillStyle(COL.wave, 0.55);
             g.fillRect(lx + 3 + Math.floor(h2 * 6), ly + 4 + Math.floor(h1 * 10), 9, 2);
           }
-          // 해안 포말 — 뭍과 맞닿은 물 타일 가장자리
+          // 해안 포말 — 뭍과 맞닿은 물 타일 가장자리. TTP 접경 타일이 깔린 모래 쪽은 건너뛴다
+          // (그 셀이 이미 포말을 그리고 있어 2px 선을 더하면 모래 위에 흰 테두리가 얹힌다)
+          const noRim = (t: string): boolean => t !== '~' && !(this.ttpReady && t === 's');
           g.fillStyle(COL.foam, 0.4);
-          if (at(c, r - 1) !== '~') g.fillRect(lx, ly, tr, 2);
-          if (at(c, r + 1) !== '~') g.fillRect(lx, ly + tr - 2, tr, 2);
-          if (at(c - 1, r) !== '~') g.fillRect(lx, ly, 2, tr);
-          if (at(c + 1, r) !== '~') g.fillRect(lx + tr - 2, ly, 2, tr);
+          if (noRim(at(c, r - 1))) g.fillRect(lx, ly, tr, 2);
+          if (noRim(at(c, r + 1))) g.fillRect(lx, ly + tr - 2, tr, 2);
+          if (noRim(at(c - 1, r))) g.fillRect(lx, ly, 2, tr);
+          if (noRim(at(c + 1, r))) g.fillRect(lx + tr - 2, ly, 2, tr);
           // 해수욕장 서프 — 모래와 맞닿은 물가는 두꺼운 러프 포말 밴드 + 1타일 물속 부서진 거품 줄
           // (드론 실사 정합 — 사용자 리포트 5번 캡처: 모래 → 포말 파도 → 바다 연결부)
           {
             const sN = at(c, r - 1) === 's', sS = at(c, r + 1) === 's';
             const sW = at(c - 1, r) === 's', sE = at(c + 1, r) === 's';
-            if (sN || sS || sW || sE) {
+            if (this.ttpReady && (sN || sS || sW || sE)) {
+              // TTP 접경 셀이 L1에서 이미 모래·포말을 그렸다 — 절차 밴드 생략
+            } else if (sN || sS || sW || sE) {
               g.fillStyle(COL.foam, 0.85);
               for (let k = 0; k < tr; k += 4) {
                 const fh = 5 + Math.floor(hash2(seed ^ 0x5ea1, c * 8 + (k >> 2), r) * 9);
@@ -2155,7 +2419,8 @@ export class SeamlessChunks {
             }
           }
           // 섬 주변 여(스커리) — 위성처럼 본섬 둘레 잔바위 산포 (사각 실루엣 흩뜨리기 + 갯바위 낚시 예고)
-          if (h2 > 0.55) {
+          // ⚠ 해안 세트(105차)가 있으면 L1이 실사 바위 스프라이트를 뿌리므로 절차 사각형은 생략
+          if (!this.coastReady && h2 > 0.55) {
             let nearIslet = false;
             for (let dr2 = -2; dr2 <= 2 && !nearIslet; dr2++) {
               for (let dc2 = -2; dc2 <= 2; dc2++) {
@@ -2240,14 +2505,18 @@ export class SeamlessChunks {
             if (at(c - 1, r) === '~') g.fillRect(lx, ly, 6, tr);
             if (at(c + 1, r) === '~') g.fillRect(lx + tr - 6, ly, 6, tr);
           } else if (ch === 'b') {
-            // 방파제 — 베이스는 청회색 포장(타일셋), 계선벽 캡·계선주는 절차 유지
-            g.fillStyle(COL.pierEdge, 1);
+            // 방파제 — 베이스는 청회색 포장(타일셋), 계선벽 캡·계선주는 절차 유지.
+            // ⚠ 해안 세트(105차)가 깔렸으면 캡 라인은 생략 — 사석/안벽 셀이 이미 가장자리를
+            //   그리고 있어 4px 회색 띠를 더하면 사석 위에 인공 테두리가 얹힌다.
             const wN = at(c, r - 1) === '~', wS = at(c, r + 1) === '~';
             const wW = at(c - 1, r) === '~', wE = at(c + 1, r) === '~';
-            if (wN) g.fillRect(lx, ly, tr, 4);
-            if (wS) g.fillRect(lx, ly + tr - 4, tr, 4);
-            if (wW) g.fillRect(lx, ly, 4, tr);
-            if (wE) g.fillRect(lx + tr - 4, ly, 4, tr);
+            if (!this.coastReady) {
+              g.fillStyle(COL.pierEdge, 1);
+              if (wN) g.fillRect(lx, ly, tr, 4);
+              if (wS) g.fillRect(lx, ly + tr - 4, tr, 4);
+              if (wW) g.fillRect(lx, ly, 4, tr);
+              if (wE) g.fillRect(lx + tr - 4, ly, 4, tr);
+            }
             if ((wN || wS || wW || wE) && (c + r) % 4 === 0) {
               const bx = lx + (wE ? tr - 10 : wW ? 4 : tr / 2 - 3);
               const by = ly + (wS ? tr - 10 : wN ? 4 : tr / 2 - 3);

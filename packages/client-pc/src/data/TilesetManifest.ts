@@ -6,6 +6,11 @@
  *  - gem/  Gemini 생성 + 사용자 piskel 편집 (고해상 — 빌딩 5·팝업 4·횟집 2·정자·테트라·경계·NPC 5)
  *  - td/   TopDownCityPack (FisherG, 자유 이용 — 12px 그리드 도트: 나무·가로등·벤치·주택 …)
  *  - kn/   Kenney Roguelike Modern City (CC0 — 16px: 차량·노점·나무·프롭)
+ *  - ttp/  사용자 제작 TTP(테트라포드)·해안 접경 시트 (`pixelazed/tileset/1.png`·`2.png` →
+ *          `extract_tileset_assets.py ttp` — 타일 32px(TR 1:1) · 테트라포드 스프라이트 3크기 × 좌우 플립)
+ *  - coast/ 사용자 제작 해안 세트 (`돌 방파제 그리드`·`방파제 바위 및 바다 경계면 모서리`·
+ *          `부두 플랫폼 모서리` → `extract_tileset_assets.py coast` — 상판/사석/두부·바위 20·
+ *          Rock-Water 4·물 상세 7·부두 모서리 4)
  * 텍스처 키 = `ts_<폴더>_<파일명>`. RegionFieldScene(심리스)이 preload에서 일괄 로드한다.
  * 전부 **PNG 직접 로드** 에셋 — 재추출 + F5로 반영 (asset-pipeline 스킬 ⓪).
  */
@@ -72,6 +77,39 @@ const kn = [
   ...knKit,
 ];
 
+/** TTP(테트라포드)·해안 접경 세트 — 타일은 **TR(32px) 1:1**이라 런타임 재샘플이 없다.
+ *  edge_ · corner_ 셀 = 모래(북)↔물(남) 접경 → SeamlessChunks가 4방위로 회전 베이크해서 쓴다.
+ *  ttp_{l,m,s}(+_fx) = 방파제 외해측 피복 유닛(56/38/26px · 좌우 플립본). */
+export const TTP_EDGE_TILES = ['edge_still', 'edge_ripple', 'edge_foam', 'edge_foam2', 'corner_sw', 'corner_ne'] as const;
+export const TTP_UNITS = ['ttp_l', 'ttp_m', 'ttp_s'] as const;
+const ttp = [
+  ...TTP_EDGE_TILES, 'corner_land', 'corner_se',
+  'water_still', 'water_still2', 'water_ripple', 'water_rip1', 'water_rip2', 'water_splash', 'water_foam',
+  'base_concrete', 'base_sand', 'tile_ttp_a', 'tile_ttp_b',
+  ...TTP_UNITS.flatMap((u) => [u, `${u}_fx`]),
+];
+
+/** 해안 세트(105차) — 전부 32px(TR 1:1). 물이 섞인 셀은 **바다를 투명으로 판** 오버레이다.
+ *  deck/rubble = 방파제 몸통(불투명) · rubble_toe/pier_edge = 물 타일 위에 얹는 접경 ·
+ *  rock_NN = 갯바위 산포 스프라이트(알파 트림) · rockwater = 물속 바위 + 포말 */
+export const COAST_DECKS = ['deck_0', 'deck_1', 'deck_2', 'deck_3'] as const;
+export const COAST_RUBBLE = ['rubble_0', 'rubble_1', 'rubble_2', 'rubble_3'] as const;
+export const COAST_ROCK_COUNT = 20;
+/** 물 타일 위 접경 오버레이 — 원본에서 **뭍이 있는 방위**(SeamlessChunks가 4방위로 회전 베이크) */
+export const COAST_EDGE_SRC: { name: string; landDir: number }[] = [
+  { name: 'rubble_toe_0', landDir: 0 }, { name: 'rubble_toe_1', landDir: 0 },
+  { name: 'pier_edge_1', landDir: 0 }, { name: 'pier_edge_3', landDir: 3 },
+];
+const coast = [
+  ...COAST_DECKS, ...COAST_RUBBLE, 'deck_seam', 'head_0', 'head_1',
+  'rubble_toe_0', 'rubble_toe_1', 'submerged_0', 'submerged_1', 'submerged_2',
+  'pier_edge_0', 'pier_edge_1', 'pier_edge_2', 'pier_edge_3',
+  ...Array.from({ length: COAST_ROCK_COUNT }, (_, i) => `rock_${String(i + 1).padStart(2, '0')}`),
+  'rockwater_0', 'rockwater_1', 'rockwater_2', 'rockwater_3',
+  'wd_caustic_0', 'wd_caustic_1', 'wd_coast_sand', 'wd_shallow', 'wd_deep',
+  'wd_coast_rock_0', 'wd_coast_rock_1',
+];
+
 /** 텍스처 키 → 공개 경로 (편집기 팔레트 썸네일용) */
 export function tilesetPathOf(key: string): string | null {
   const e = TILESET_MANIFEST.find((m) => m.key === key);
@@ -85,4 +123,6 @@ export const TILESET_MANIFEST: TilesetEntry[] = [
   ...gem.map((n) => ({ key: `ts_gem_${n}`, path: `tileset/gem/${n}.png` })),
   ...td.map((n) => ({ key: `ts_td_${n}`, path: `tileset/td/${n}.png` })),
   ...kn.map((n) => ({ key: `ts_kn_${n}`, path: `tileset/kn/${n}.png` })),
+  ...ttp.map((n) => ({ key: `ts_ttp_${n}`, path: `tileset/ttp/${n}.png` })),
+  ...coast.map((n) => ({ key: `ts_coast_${n}`, path: `tileset/coast/${n}.png` })),
 ];

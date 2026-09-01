@@ -27,6 +27,8 @@ PNG만 바꾸면 되는지, 생성기를 돌려야 하는지부터 판별한다:
 | `gen_octo_assets.cjs` | `reference/cephalopod/octopus/` 투명 PNG 4종 + `octo_clean` 도트 | `public/trimmings/octo_boiled{,_head,_leg}.png` · `public/sashimi/piece_octopus.png` · `public/trimmings/octo_whole.png` | 삶은 문어 계열 직접 로드 아이콘 (098차) |
 | `py tools/build_region_maps.py <region>` | `pixelazed/<region>/*.png` | `public/data/<region>/*.json` | 지역 타일맵 |
 | `py tools/extract_tileset_assets.py survey\|build\|contact` | `pixelazed/tileset/` (Gemini 개별 PNG · TopDown 시트 · Kenney 시트) | `public/tileset/{gem,td,kn}/*.png` + `_survey/` 컨택트시트 | 심리스 프리팹·프롭·차량·NPC (101차). survey로 인덱스 컨택트 → 표(`TOPDOWN_PICK`/`KENNEY_PICK`) 갱신 → build → contact로 검수. 새 키는 `data/TilesetManifest.ts`에 등록 |
+| `py tools/extract_tileset_assets.py ttp` | `pixelazed/tileset/1.png`·`2.png` (사용자 제작 TTP 목업 시트) | `public/tileset/ttp/*.png` (25장) | 테트라포드·해안 접경 (104차). ⚠ **목업 스크린샷이라 격자가 아니다** — 셀 경계 실측표(`TTP_SHEET1/2`) → area 리샘플 → k-means 양자화. 접경 셀은 `cut_water`로 바다를 투명으로 판다(게임 물 색과 다름). 타일은 **32px = TR 1:1** |
+| `py tools/extract_tileset_assets.py coast` | `pixelazed/tileset/돌 방파제 그리드.png` · `방파제 바위 및 바다 경계면 모서리.png` · `부두 플랫폼 모서리.png` | `public/tileset/coast/*.png` (51장) | 방파제 상판·사석·부두 모서리·갯바위 (105차). 실사 사진 격자는 선 실측(`STONE_XS/YS`) 후 **선별** 크롭, 테두리 셀 시트는 **불투명 AND 근검정** 마스크로 탐지(흰 배경 = 알파 0 함정). 군 단위 **톤 정규화**(`_clean(match=)`) 필수 — 안 맞추면 바둑판 이음매 |
 
 - 생성물 TS는 헤더에 "자동 생성 — 수동 편집 금지" — 절대 손으로 고치지 말고 재생성.
 - 도구의 playwright 경로는 자동 탐색(로컬 → `%LOCALAPPDATA%/npm-cache/_npx`) — 특정 계정 경로 하드코딩 금지. ⚠ `.cjs` 주석에 `_npx/*/…` 글롭을 쓰면 `*/`가 블록 주석을 조기 종료시킨다 — 라인 주석 사용.
