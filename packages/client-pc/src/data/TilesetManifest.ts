@@ -32,9 +32,21 @@ const td = [
   // 차량 (Sprites/Vehicles — 4방향 프레임: 우측면·정면·좌측면·후면. 주차 차량 = 벽 방향에 맞는 프레임)
   ...['car', 'pickup'].flatMap((k) => ['blue', 'green', 'red'].flatMap((c) => ['right', 'down', 'left', 'up'].map((d) => `${k}_${c}_${d}`))),
 ];
-/** Kenney 건물 키트 — 지붕 오토타일(색 4 × 부위 10) + 벽 모듈(64×32, 5종). ×2 재베이크 후 사용 */
+/** 지면 오토타일 접미 — 잔디 = 블롭 완전 세트(16조합) + 이너코너 노치 4 / 포장 = 8방위 테두리 */
+export const GRASS_EDGE_SUFFIXES = [
+  'n', 'e', 's', 'w', 'nw', 'ne', 'sw', 'se', 'ns', 'we',
+  'nse', 'nsw', 'nwe', 'swe', 'nswe',
+  'notch_ne', 'notch_nw', 'notch_se', 'notch_sw',
+] as const;
+export const PAVED_EDGE_SUFFIXES = ['n', 'e', 's', 'w', 'nw', 'ne', 'sw', 'se'] as const;
+
+/** Kenney 건물 키트 — 지붕 오토타일(색 4 × 부위 18) + 벽 모듈(64×32, 5종). ×2 재베이크 후 사용.
+ *  p1/p2 = 2×2 옥상 패널 블록(지붕 인테리어 타일링 변형 — 101차 잔여 해소) */
 export const KENNEY_ROOF_COLORS = ['red', 'gray', 'light', 'tan'] as const;
-export const KENNEY_ROOF_PARTS = ['nw', 'ne', 'sw', 'se', 'n', 's', 'w', 'e', 'in', 'vent'] as const;
+export const KENNEY_ROOF_PARTS = [
+  'nw', 'ne', 'sw', 'se', 'n', 's', 'w', 'e', 'in', 'vent',
+  'p1_nw', 'p1_ne', 'p1_sw', 'p1_se', 'p2_nw', 'p2_ne', 'p2_sw', 'p2_se',
+] as const;
 export const KENNEY_WALLS = ['brick_red', 'brick_gray', 'brick_tan', 'glass', 'white'] as const;
 const knKit = [
   ...KENNEY_ROOF_COLORS.flatMap((c) => KENNEY_ROOF_PARTS.map((p) => `roof_${c}_${p}`)),
@@ -54,6 +66,9 @@ const kn = [
   'ground_tan_0', 'ground_tan_1',
   'ground_sand_0', 'ground_sand_1',
   'ground_pier_0', 'ground_pier_1',
+  // 지면 오토타일 엣지/코너 (extract_tileset_assets EDGE_CELLS — 접미 = 다른 지형이 보이는 방위)
+  ...GRASS_EDGE_SUFFIXES.map((s) => `ground_grass_edge_${s}`),
+  ...PAVED_EDGE_SUFFIXES.flatMap((s) => [`ground_tan_edge_${s}`, `ground_pier_edge_${s}`, `ground_pave_edge_${s}`]),
   ...knKit,
 ];
 

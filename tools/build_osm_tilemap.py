@@ -325,6 +325,126 @@ def build(region):
                     row[x] = SEA; cut += 1
         print(f'[mask] {cfg["boundaryMask"]} 경계 밖 육지 {cut:,}타일 → 바다 처리')
 
+    # 3b) 해변-바다 연결 — coastline 장벽(3타일 두께)이 전부 '.'가 되어 모래('s')와 바다 사이에
+    #     맨땅 띠가 남는다(속초해수욕장 실측 `ssss..~~`) → 포말·젖은모래 연결이 끊긴다.
+    #     모래에 붙은 '.'을 물가(2타일 안 바다)까지 모래로 넓힌다.
+    S_, DOT, B_, WW = ord('s'), ord('.'), ord('b'), ord('w')
+    for _ in range(3):
+        grown = []
+        for y in range(1, H - 1):
+            row = grid.g[y]
+            for x in range(1, W - 1):
+                if row[x] != DOT:
+                    continue
+                if S_ not in (grid.g[y - 1][x], grid.g[y + 1][x], row[x - 1], row[x + 1]):
+                    continue
+                near_sea = any(grid.g[yy][xx] == SEA
+                               for yy in range(max(0, y - 2), min(H, y + 3))
+                               for xx in range(max(0, x - 2), min(W, x + 3)))
+                if near_sea:
+                    grown.append((x, y))
+        for x, y in grown:
+            grid.g[y][x] = S_
+        if not grown:
+            break
+
+    # 3d→3c 사이) 지면 소금-후추 정리 — 폴리곤 래스터화 가장자리의 고립 1타일(잔디 안 점 ·
+    #     점 안 잔디)이 오토타일 엣지 셀을 발동시켜 "내부 경계선·파편"으로 보인다(사용자 리포트
+    #     103차 후속 — 팜트리 인렛 주변 `..,`/`.,,` 실측). ',','s','.' 상호 간 다수결 필터:
+    #     직교 이웃 3개 이상이 같은 다른 지면이면 동화 (2패스 — 도로/보도/방파제/건물은 불변).
+    GROUNDS = (ord(','), ord('s'), DOT)
+    for _ in range(2):
+        changes = []
+        for y in range(1, H - 1):
+            row = grid.g[y]
+            for x in range(1, W - 1):
+                ch = row[x]
+                if ch not in GROUNDS:
+                    continue
+                cnt = {}
+                for nch in (grid.g[y - 1][x], grid.g[y + 1][x], row[x - 1], row[x + 1]):
+                    if nch in GROUNDS and nch != ch:
+                        cnt[nch] = cnt.get(nch, 0) + 1
+                for nch, n in cnt.items():
+                    if n >= 3:
+                        changes.append((x, y, nch))
+                        break
+        for x, y, nch in changes:
+            grid.g[y][x] = nch
+        if not changes:
+            break
+        print(f'[post] 지면 디노이즈 {len(changes):,}타일 동화')
+
+    # 3c) 방파제 추론 — OSM man_made 태그는 거의 없고(속초 bbox 실측 3개 way), 실제 방파제는
+    #     coastline으로 둘러싸인 "가는 육지 조각"으로 온다(렌더는 맨땅 막대 — 사용자 리포트).
+    #     축 방향 런(경계 ∈ {바다, 건물, 그리드 밖})이 **양끝 바다 + 길이 ≤ 10타일(50m —
+    #     속초항 동방파제 실측 폭 5~10)**인 '.'/'w'를 'b'로 재분류.
+    #     가드 2종: ① 비바다 컴포넌트 < 12타일 = 고립 갯바위 → 클라이언트 섬/암초 렌더
+    #     ② 도로·건물이 전혀 없는 야생 컴포넌트(호수 섬·조도 등) → 섬 렌더 유지 (b 제외).
+    comp_id = [[-1] * W for _ in range(H)]
+    comp_sizes = []
+    comp_infra = []
+    ROAD_ = ord('r')
+    for sy in range(H):
+        for sx in range(W):
+            if grid.g[sy][sx] == SEA or comp_id[sy][sx] >= 0:
+                continue
+            cid = len(comp_sizes); n = 0; infra = False
+            dq = deque([(sx, sy)]); comp_id[sy][sx] = cid
+            while dq:
+                x, y = dq.popleft(); n += 1
+                if grid.g[y][x] in (ord('#'), ROAD_):
+                    infra = True
+                for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    nx, ny = x + dx, y + dy
+                    if 0 <= nx < W and 0 <= ny < H and comp_id[ny][nx] < 0 and grid.g[ny][nx] != SEA:
+                        comp_id[ny][nx] = cid; dq.append((nx, ny))
+            comp_sizes.append(n)
+            comp_infra.append(infra)
+    HASH_ = ord('#')
+    thin = [[0] * W for _ in range(H)]
+    for y in range(H):                                   # 가로 런
+        row = grid.g[y]
+        x = 0
+        while x < W:
+            if row[x] == SEA:
+                x += 1; continue
+            x0 = x
+            has_hash = False
+            while x < W and row[x] != SEA and row[x] != HASH_:
+                x += 1
+            seg_end_sea = x < W and row[x] == SEA
+            seg_start_sea = x0 > 0 and row[x0 - 1] == SEA
+            if row[x0] == HASH_ or (x < W and row[x] == HASH_):
+                has_hash = True
+            if seg_start_sea and seg_end_sea and not has_hash and (x - x0) <= 10:
+                for xx in range(x0, x):
+                    thin[y][xx] = 1
+            if x < W and row[x] == HASH_:
+                x += 1
+    for x in range(W):                                   # 세로 런
+        y = 0
+        while y < H:
+            if grid.g[y][x] == SEA:
+                y += 1; continue
+            y0 = y
+            while y < H and grid.g[y][x] != SEA and grid.g[y][x] != HASH_:
+                y += 1
+            seg_end_sea = y < H and grid.g[y][x] == SEA
+            seg_start_sea = y0 > 0 and grid.g[y0 - 1][x] == SEA
+            if seg_start_sea and seg_end_sea and (y - y0) <= 10:
+                for yy in range(y0, y):
+                    thin[yy][x] = 1
+            if y < H and grid.g[y][x] == HASH_:
+                y += 1
+    n_b = 0
+    for y in range(H):
+        row = grid.g[y]
+        for x in range(W):
+            if thin[y][x] and row[x] in (DOT, WW) and comp_sizes[comp_id[y][x]] >= 12 and comp_infra[comp_id[y][x]]:
+                row[x] = B_; n_b += 1
+    print(f'[post] 방파제 추론 {n_b:,}타일 → b (가는 육지 조각 재분류)')
+
     # 4) POI
     pois = []
     def poi_from(el, cx, cy):

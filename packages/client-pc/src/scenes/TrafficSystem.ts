@@ -32,6 +32,9 @@ interface Car {
   waiting: boolean;
   /** 사고 정지 잔여 초 (캐릭터 충돌 — 180s) */
   halt: number;
+  /** 추월 횡 오프셋 (타일 — 0 = 차로 정위치, 음수 = 왼쪽 차로) · lat은 latTarget으로 스무딩 */
+  lat: number;
+  latTarget: number;
 }
 
 export interface TrafficHit {
@@ -71,7 +74,7 @@ export class TrafficSystem {
       const tex = CAR_TOPDOWN_KEYS[Math.floor(Math.random() * CAR_TOPDOWN_KEYS.length)];
       if (!scene.textures.exists(tex)) continue;
       const sprite = scene.add.image(0, 0, tex).setOrigin(0.5, 0.5).setScale(1.3).setVisible(false);
-      const car: Car = { road: 0, dir: 1, seg: 0, t: 0, speed: 3 + Math.random() * 2.5, sprite, px: 0, py: 0, ux: 0, uy: -1, fade: 0, waiting: false, halt: 0 };
+      const car: Car = { road: 0, dir: 1, seg: 0, t: 0, speed: 3 + Math.random() * 2.5, sprite, px: 0, py: 0, ux: 0, uy: -1, fade: 0, waiting: false, halt: 0, lat: 0, latTarget: 0 };
       this.respawn(car);
       this.cars.push(car);
     }
@@ -91,8 +94,18 @@ export class TrafficSystem {
     car.t = Math.random() * this.segLen(road, car.seg);
     car.fade = 0;
     car.halt = 0;
+    car.lat = 0;
+    car.latTarget = 0;
     car.sprite.setAlpha(1);
     this.place(car);
+  }
+
+  /** 이 도로에서 차로 1개 폭 (추월 시 왼쪽으로 옮기는 거리) */
+  private laneWidth(ri: number): number {
+    const rd = this.roads[ri];
+    const lanes = Math.max(1, rd.lanes ?? 1);
+    const edgeM = 0.35;
+    return this.isOneway(ri) ? (rd.w - edgeM * 2) / lanes : (rd.w / 2 - edgeM) / lanes;
   }
 
   private segLen(road: number, seg: number): number {
@@ -120,8 +133,11 @@ export class TrafficSystem {
       ? (rd.w / 2 - edgeM) - ((rd.w - edgeM * 2) / lanes) * 0.5
       : ((rd.w / 2 - edgeM) / lanes) * 0.5;
     const nx = -uy, ny = ux;
-    const x = from[0] + ux * car.t + nx * laneOff;
-    const y = from[1] + uy * car.t + ny * laneOff;
+    // 추월 횡 오프셋 합산 — 도로 폭 밖으로는 나가지 않는다
+    const half = rd.w / 2 - edgeM;
+    const off = Math.max(-half, Math.min(half, laneOff + car.lat));
+    const x = from[0] + ux * car.t + nx * off;
+    const y = from[1] + uy * car.t + ny * off;
     car.px = x; car.py = y; car.ux = ux; car.uy = uy;
     car.sprite.setPosition(x * this.tr, y * this.tr).setRotation(Math.atan2(uy, ux) + Math.PI / 2).setDepth(20 + y * this.tr * 0.001);
   }
@@ -169,7 +185,12 @@ export class TrafficSystem {
     }
   }
 
-  /** 앞차·교차로·회전교차로·플레이어 — true면 이번 틱 정지 */
+  /**
+   * 앞차·교차로·회전교차로·플레이어 — true면 이번 틱 정지.
+   * **사고 차량(halt)은 대기 대상이 아니라 추월 대상** — 같은 차로 전방의 사고 차는 대향차 틈이
+   * 있으면 `latTarget = -차로폭`(왼쪽 차로)으로 비켜 지나가고, 틈이 없으면 그때만 대기한다
+   * (101차 잔여 "사고 정체 해소 — 추월 없음" 해소).
+   */
   private mustWait(car: Car, player: { x: number; y: number } | null): boolean {
     const FOLLOW = 2.6, CONE = 0.75;
     const rd = this.roads[car.road];
@@ -187,13 +208,26 @@ export class TrafficSystem {
       if (d < 1.0) return true;
       if (d < 1.6 && (dx * car.ux + dy * car.uy) / (d || 1) > 0.2) return true;
     }
+    // 추월 판정은 횡 오프셋을 뺀 "차로 기준" 위치로 잰다 (이미 비켜난 뒤에도 사고 차를 인지)
+    const nx = -car.uy, ny = car.ux;
+    const bx = car.px - nx * car.lat, by = car.py - ny * car.lat;
+    const laneW = this.laneWidth(car.road);
+    let wantOvertake = false;
     for (const o of this.cars) {
       if (o === car || o.fade > 0) continue;
-      const dx = o.px - car.px, dy = o.py - car.py;
+      const accident = o.halt > 0;
+      const fx = accident ? bx : car.px, fy = accident ? by : car.py;
+      const dx = o.px - fx, dy = o.py - fy;
       const d = Math.hypot(dx, dy);
-      if (d < FOLLOW) {
+      if (d < FOLLOW + (accident ? 0.8 : 0)) {
         const dot = (dx * car.ux + dy * car.uy) / (d || 1);
-        if (dot > CONE && (o.ux * car.ux + o.uy * car.uy) > -0.2) return true;
+        if (accident) {
+          // 우리 차로 위의 사고 차만 추월 대상 (대향 차로 사고에 뛰어들지 않는다)
+          const latD = Math.abs(dx * nx + dy * ny);
+          if (dot > 0.45 && latD < laneW * 0.55) wantOvertake = true;
+        } else if (dot > CONE && (o.ux * car.ux + o.uy * car.uy) > -0.2) {
+          return true;
+        }
       }
       // 회전교차로 진입 — 링 위 차량이 노드 3타일 안이면 양보 (링 위 차량은 우선)
       if (enteringRoundabout && this.roads[o.road].roundabout) {
@@ -203,6 +237,19 @@ export class TrafficSystem {
         const jd = Math.hypot(o.px - vp[0], o.py - vp[1]);
         if (jd < 2.2 && Math.hypot(car.px - vp[0], car.py - vp[1]) > jd) return true;
       }
+    }
+    if (wantOvertake) {
+      // 반대 차로로 나가기 전 대향차 틈 확인 (일방통행은 대향차가 없어 항상 통과)
+      for (const q of this.cars) {
+        if (q === car || q.fade > 0 || q.halt > 0) continue;
+        if ((q.ux * car.ux + q.uy * car.uy) >= -0.3) continue;
+        const dx = q.px - car.px, dy = q.py - car.py;
+        const ahead = dx * car.ux + dy * car.uy;
+        if (ahead > -0.5 && ahead < 5.0 && Math.hypot(dx, dy) < 5.5) { car.latTarget = 0; return true; }
+      }
+      car.latTarget = -laneW;
+    } else if (car.latTarget !== 0) {
+      car.latTarget = 0;   // 사고 차를 지나쳤다 — 원 차로 복귀
     }
     return false;
   }
@@ -239,10 +286,14 @@ export class TrafficSystem {
         car.waiting = true;
       } else {
         car.waiting = this.mustWait(car, player);
-        if (!car.waiting) {
-          this.advance(car, car.speed * dt);
-          if (car.fade <= 0) this.place(car);
+        // 추월 횡 이동 스무딩 — 대기 중(대향차 틈 기다림)에도 차로 복귀는 진행한다
+        const dLat = car.latTarget - car.lat;
+        if (dLat !== 0) {
+          const step = 2.5 * dt;
+          car.lat += Math.abs(dLat) <= step ? dLat : Math.sign(dLat) * step;
         }
+        if (!car.waiting) this.advance(car, car.speed * dt);
+        if (car.fade <= 0 && (!car.waiting || dLat !== 0)) this.place(car);
       }
       const near = Math.abs(car.sprite.x - viewX) < cull && Math.abs(car.sprite.y - viewY) < cull;
       car.sprite.setVisible(near);

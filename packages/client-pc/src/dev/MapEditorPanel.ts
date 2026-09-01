@@ -13,14 +13,26 @@
  * 프로덕션 빌드에서는 import.meta.env.DEV 가드로 데드코드 제거.
  */
 
-export type MapEditMode = 'tile' | 'prop' | 'erase' | 'roof' | 'road';
+export type MapEditMode = 'tile' | 'prop' | 'erase' | 'roof' | 'road' | 'roadNew';
 
 export interface MapEditorState {
   mode: MapEditMode;
   tileChar: string;
   propId: string;
   brush: 1 | 3 | 5;
+  /** 새 도로 그리기 프리셋 — roads.json 실측 분포(서비스 2 · 주택가 3 · 일반 4 · 대로 6)와 정합 */
+  roadCls: string;
+  roadW: number;
+  roadLanes: number;
 }
+
+/** 새 도로 프리셋 — [라벨, cls, w, lanes] */
+export const ROAD_PRESETS: [string, string, number, number][] = [
+  ['골목 2', 'service', 2, 1],
+  ['주택가 3', 'residential', 3, 1],
+  ['일반 4', 'tertiary', 4, 2],
+  ['대로 6', 'primary', 6, 3],
+];
 
 export interface MapEditorHooks {
   onSave: () => Promise<string>;
@@ -54,7 +66,10 @@ export const TILE_PALETTE: [string, string, string, string | null][] = [
 let root: HTMLDivElement | null = null;
 let statusEl: HTMLDivElement | null = null;
 
-export const mapEditorState: MapEditorState = { mode: 'tile', tileChar: '.', propId: 'tree', brush: 1 };
+export const mapEditorState: MapEditorState = {
+  mode: 'tile', tileChar: '.', propId: 'tree', brush: 1,
+  roadCls: 'residential', roadW: 3, roadLanes: 1,
+};
 
 export function isMapEditorOpen(): boolean {
   return root !== null;
@@ -196,9 +211,28 @@ export function openMapEditor(region: string, propDefs: MapEditorPropEntry[], ho
   // ── 도구 탭 ──
   const roadSec = sec(pages.tools, '도로 벡터 (roads.json 오버라이드)');
   roadSec.appendChild(btn('🛣 도로 정점 편집', () => { mapEditorState.mode = 'road'; }, () => mapEditorState.mode === 'road'));
+  roadSec.appendChild(btn('➕ 새 도로 그리기', () => { mapEditorState.mode = 'roadNew'; }, () => mapEditorState.mode === 'roadNew'));
+  // 새 도로 폭 프리셋 — 다음에 그릴 도로에 적용
+  const presetRow = document.createElement('div');
+  Object.assign(presetRow.style, { display: 'flex', gap: '3px', margin: '4px 0' });
+  for (const [label, cls, w, lanes] of ROAD_PRESETS) {
+    const b = document.createElement('button');
+    b.textContent = label;
+    Object.assign(b.style, { ...BTN_CSS, flex: '1', padding: '3px 0', fontSize: '10px' });
+    b.onclick = () => { mapEditorState.roadCls = cls; mapEditorState.roadW = w; mapEditorState.roadLanes = lanes; rerender(); };
+    refreshers.push(() => {
+      const on = mapEditorState.roadW === w && mapEditorState.roadCls === cls;
+      b.style.background = on ? '#1f6f5a' : '#123048';
+      b.style.borderColor = on ? '#4af2a1' : '#2a5a8a';
+    });
+    presetRow.appendChild(b);
+  }
+  roadSec.appendChild(presetRow);
   const roadHelp = document.createElement('div');
-  roadHelp.innerHTML = '정점(○) 드래그 = 이동 · 선 클릭 = 정점 삽입 후 드래그 · <b>우클릭</b> = 정점 삭제.<br>' +
-    '놓는 순간 청크 재베이킹 + 차량 재배치. 그림은 벡터, 걷기 판정은 타일 — 도로를 크게 옮기면 지형 탭에서 <code>r</code>/<code>w</code>도 칠하세요.';
+  roadHelp.innerHTML = '<b>정점 편집</b>: 정점(○) 드래그 = 이동 · 선 클릭 = 정점 삽입 후 드래그 · <b>우클릭</b> = 정점 삭제.<br>' +
+    '<b>새 도로</b>: 클릭 = 정점 추가(기존 정점·선 근처는 자동 접속) · <b>우클릭</b> = 마지막 정점 취소 · ' +
+    '<b>Enter</b>/같은 자리 재클릭 = 확정.<br>' +
+    '놓는 순간 청크 재베이킹 + 차량 재배치. 그림은 벡터, 걷기 판정은 타일 — 도로를 옮기거나 새로 그리면 지형 탭에서 <code>r</code>/<code>w</code>도 칠하세요.';
   Object.assign(roadHelp.style, { color: '#7fa8c4', fontSize: '10px', lineHeight: '1.5', margin: '4px 0 6px' });
   pages.tools.appendChild(roadHelp);
   const actions = sec(pages.tools, '저장 · 되돌리기');

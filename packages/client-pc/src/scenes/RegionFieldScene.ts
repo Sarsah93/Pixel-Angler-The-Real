@@ -155,6 +155,8 @@ export class RegionFieldScene extends Phaser.Scene {
   private editUndo: { tiles: Map<number, string>; props?: RegionPatch['props']; roofs?: RegionPatch['roofs']; roads?: RegionRoad[] }[] = [];
   /** 도로 툴 — 드래그 중인 정점 [도로, 정점] */
   private editRoadDrag: { ri: number; pi: number } | null = null;
+  /** 새 도로 그리기 — 진행 중 폴리라인 정점 (Enter/재클릭 확정, 우클릭 = 마지막 취소) */
+  private editRoadNewPts: [number, number][] = [];
   /** 차량 충돌 넉백 (ms 시각·속도) · 재충돌 무적 */
   private knockUntil = 0;
   private knockVx = 0;
@@ -438,6 +440,8 @@ export class RegionFieldScene extends Phaser.Scene {
       this.editUndo = [];
       this.editDirty.clear();
       this.editPainting = false;
+      this.editRoadDrag = null;      // 씬 재사용 — 이전 지역의 드래그/그리기 상태 오염 방지 (함정 23)
+      this.editRoadNewPts = [];
     }
 
     this.buildTerrainGrid();
@@ -1266,6 +1270,13 @@ export class RegionFieldScene extends Phaser.Scene {
       }
       return;
     }
+    if (st.mode === 'roadNew') {
+      // 클릭당 정점 1개 (드래그 반복 방지 — 프롭과 같은 스트로크 가드)
+      if (this.editDirty.has(-1)) return;
+      this.editDirty.set(-1, { c: -1, r: -1 });   // editFinishStroke의 invalidate 대상에서 제외
+      this.editRoadNewAddPoint(w.x / TR, w.y / TR);
+      return;
+    }
     // 프롭/지붕은 스트로크당 1회 (드래그 반복 방지)
     if (this.editDirty.has(-1)) return;
     this.editDirty.set(-1, { c: tc, r: trw });
@@ -1376,6 +1387,70 @@ export class RegionFieldScene extends Phaser.Scene {
     this.editCommitRoads(`정점 삭제 — 도로 ${hit.ri}`);
   }
 
+  /**
+   * 새 도로 그리기 — 정점 추가 (101차 잔여 해소).
+   * 접속 스냅: 기존 **정점** 0.45타일 안 = 그 정점 좌표로 스냅(노드 공유 → 교통 분기·마킹 컷 성립) ·
+   * 기존 **세그먼트** 0.4타일 안 = 그 도로에 정점을 삽입하고 삽입점으로 스냅(T자 접속 —
+   * 관통 도로는 정점이 있어야 노드가 된다). 그 외 = 0.1타일 스냅 자유 정점.
+   * 마지막 정점과 같은 자리(0.3타일 안) 재클릭 = 확정.
+   */
+  private editRoadNewAddPoint(px: number, py: number): void {
+    const pts = this.editRoadNewPts;
+    const last = pts[pts.length - 1];
+    if (last && Math.hypot(px - last[0], py - last[1]) < 0.3) {
+      this.editRoadNewCommit();
+      return;
+    }
+    let np: [number, number] = [Math.round(px * 10) / 10, Math.round(py * 10) / 10];
+    let snapMsg = '';
+    // 정점 스냅 — 노드 키(0.1 반올림) 일치를 위해 기존 좌표를 그대로 쓴다
+    let bestV: { q: [number, number]; d: number } | null = null;
+    for (const rd of this.regionRoads) {
+      for (const q of rd.pts) {
+        const d = Math.hypot(q[0] - px, q[1] - py);
+        if (d < 0.45 && (!bestV || d < bestV.d)) bestV = { q, d };
+      }
+    }
+    if (bestV) {
+      np = [bestV.q[0], bestV.q[1]];
+      snapMsg = ' · 기존 정점에 접속';
+    } else {
+      const hit = this.editRoadHit(px, py);
+      if (hit && hit.kind === 'segment') {
+        // 관통 도로에 접속 정점 삽입 (undo 스냅샷 포함 — 그리기 취소 시 함께 되돌아간다).
+        // 삽입점은 클릭점이 아니라 **선 위 투영점** — 기존 도로가 굴절되지 않는다.
+        const rd = this.regionRoads[hit.ri];
+        const [ax, ay] = rd.pts[hit.pi], [bx, by] = rd.pts[hit.pi + 1];
+        const vx = bx - ax, vy = by - ay;
+        const t = Phaser.Math.Clamp(((px - ax) * vx + (py - ay) * vy) / (vx * vx + vy * vy || 1), 0, 1);
+        np = [Math.round((ax + vx * t) * 10) / 10, Math.round((ay + vy * t) * 10) / 10];
+        this.editUndo.push({ tiles: new Map(), roads: this.regionRoads.map((r) => ({ ...r, pts: r.pts.map((q) => [q[0], q[1]] as [number, number]) })) });
+        this.regionRoads[hit.ri].pts.splice(hit.pi + 1, 0, np);
+        snapMsg = ` · 도로 ${hit.ri}에 접속 정점 삽입`;
+      }
+    }
+    pts.push(np);
+    setMapEditorStatus(`새 도로 — 정점 ${pts.length}개${snapMsg} · Enter/같은 자리 재클릭 = 확정 · 우클릭 = 마지막 취소`);
+  }
+
+  /** 새 도로 확정 — regionRoads에 추가 후 공통 커밋 (정점 2개 미만이면 폐기) */
+  private editRoadNewCommit(): void {
+    const pts = this.editRoadNewPts;
+    this.editRoadNewPts = [];
+    if (pts.length < 2) { setMapEditorStatus('새 도로 취소 — 정점이 2개 미만'); return; }
+    this.editUndo.push({ tiles: new Map(), roads: this.regionRoads.map((r) => ({ ...r, pts: r.pts.map((q) => [q[0], q[1]] as [number, number]) })) });
+    const st = mapEditorState;
+    this.regionRoads.push({ cls: st.roadCls, w: st.roadW, lanes: st.roadLanes, pts });
+    this.editCommitRoads(`새 도로 추가 — ${st.roadCls} 폭 ${st.roadW} · 정점 ${pts.length}개`);
+  }
+
+  /** 새 도로 그리기 — 우클릭: 마지막 정점 취소 (없으면 안내만) */
+  private editRoadNewUndoPoint(): void {
+    if (this.editRoadNewPts.length === 0) { setMapEditorStatus('그리는 중인 새 도로 없음 — 클릭으로 시작하세요'); return; }
+    this.editRoadNewPts.pop();
+    setMapEditorStatus(`마지막 정점 취소 — 남은 정점 ${this.editRoadNewPts.length}개`);
+  }
+
   /** 도로 벡터 변경 확정 — 청크 재색인·재베이킹 + 교통 재구성 + 패치 오버라이드 기록 */
   private editCommitRoads(msg: string): void {
     this.regionPatch.roads = this.regionRoads;
@@ -1391,7 +1466,7 @@ export class RegionFieldScene extends Phaser.Scene {
     const g = this.editPreviewG;
     g.clear();
     if (!isMapEditorOpen()) return;
-    if (mapEditorState.mode === 'road') {
+    if (mapEditorState.mode === 'road' || mapEditorState.mode === 'roadNew') {
       const cam = this.cameras.main.worldView;
       const x0 = cam.x / TR - 2, y0 = cam.y / TR - 2, x1 = cam.right / TR + 2, y1 = cam.bottom / TR + 2;
       const w = this.pointerWorld(p);
@@ -1412,7 +1487,27 @@ export class RegionFieldScene extends Phaser.Scene {
           g.strokeCircle(q[0] * TR, q[1] * TR, active ? 6 : 4);
         });
       });
-      if (hit?.kind === 'segment') { g.fillStyle(0xf2d24a, 0.9); g.fillCircle(w.x, w.y, 5); }
+      if (mapEditorState.mode === 'road' && hit?.kind === 'segment') { g.fillStyle(0xf2d24a, 0.9); g.fillCircle(w.x, w.y, 5); }
+      // 새 도로 — 그리는 중 폴리라인(초록) + 마지막 정점 → 커서 고스트 선
+      if (mapEditorState.mode === 'roadNew') {
+        const np = this.editRoadNewPts;
+        if (np.length > 0) {
+          g.lineStyle(3, 0x4af2a1, 0.95);
+          for (let i = 0; i < np.length - 1; i++) {
+            g.lineBetween(np[i][0] * TR, np[i][1] * TR, np[i + 1][0] * TR, np[i + 1][1] * TR);
+          }
+          g.lineStyle(2, 0x4af2a1, 0.5);
+          g.lineBetween(np[np.length - 1][0] * TR, np[np.length - 1][1] * TR, w.x, w.y);
+          np.forEach((q) => {
+            g.fillStyle(0x4af2a1, 1);
+            g.fillCircle(q[0] * TR, q[1] * TR, 5);
+            g.lineStyle(1, 0x0a1628, 1);
+            g.strokeCircle(q[0] * TR, q[1] * TR, 5);
+          });
+        }
+        // 접속 스냅 표시 — 커서가 기존 정점/선 근처면 노란 링
+        if (hit) { g.lineStyle(2, 0xf2d24a, 0.9); g.strokeCircle(w.x, w.y, 8); }
+      }
       return;
     }
     if (mapEditorState.mode !== 'prop') return;
@@ -1563,6 +1658,9 @@ export class RegionFieldScene extends Phaser.Scene {
       this.input.keyboard!.on('keydown-Z', (e: KeyboardEvent) => {
         if (e.ctrlKey && isMapEditorOpen()) this.editUndoStroke();
       });
+      this.input.keyboard!.on('keydown-ENTER', () => {
+        if (isMapEditorOpen() && mapEditorState.mode === 'roadNew') this.editRoadNewCommit();
+      });
       this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
         if (this.editPainting && p.isDown) this.editApplyAt(p);
         if (isMapEditorOpen()) this.editDrawPreview(p);
@@ -1578,6 +1676,10 @@ export class RegionFieldScene extends Phaser.Scene {
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       if (import.meta.env.DEV && this.seamless && isMapEditorOpen() && p.rightButtonDown() && mapEditorState.mode === 'road') {
         this.editRoadDelete(p);
+        return;
+      }
+      if (import.meta.env.DEV && this.seamless && isMapEditorOpen() && p.rightButtonDown() && mapEditorState.mode === 'roadNew') {
+        this.editRoadNewUndoPoint();
         return;
       }
       if (import.meta.env.DEV && this.seamless && p.leftButtonDown()) {

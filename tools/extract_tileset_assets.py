@@ -57,8 +57,13 @@ TOPDOWN_PICK = {
 # Kenney 건물 키트 (정규화 시트 16px 셀) — 지붕 = 색상 블록당 3×3 오토타일 + 무지/환기구,
 #  벽 = 행 11~12의 4칸×2줄 모듈 (창문 포함) → 컴포넌트 하단 2줄(충돌 줄)에 가로 반복
 KENNEY_ROOF_COLORS = {'red': 0, 'gray': 8, 'light': 16, 'tan': 24}
+#  p1/p2 = 행 2~3의 2×2 옥상 패널 블록 (지붕 인테리어 타일링 변형 — 101차 잔여 "지붕 Kenney 타일링").
+#  ⚠ 블록 경계 실측(roofpanel_zoom): 열 0 = 세로 1×2 패널 · 열 1~3 = 와이드 패널 — 2×2 정합 블록은
+#  열 4~5(테두리 패널)·열 6~7(코너 노치 패널)뿐. 열 0~3을 2×2로 묶으면 파편 합성("05" 오독)이 된다.
 KENNEY_ROOF_PARTS = {'nw': (0, 0), 'ne': (1, 0), 'sw': (0, 1), 'se': (1, 1),
-                     'n': (2, 0), 's': (2, 1), 'w': (3, 0), 'e': (3, 1), 'in': (4, 0), 'vent': (6, 1)}
+                     'n': (2, 0), 's': (2, 1), 'w': (3, 0), 'e': (3, 1), 'in': (4, 0), 'vent': (6, 1),
+                     'p1_nw': (4, 2), 'p1_ne': (5, 2), 'p1_sw': (4, 3), 'p1_se': (5, 3),
+                     'p2_nw': (6, 2), 'p2_ne': (7, 2), 'p2_sw': (6, 3), 'p2_se': (7, 3)}
 KENNEY_WALLS = {'brick_red': 0, 'brick_gray': 4, 'brick_tan': 8, 'glass': 12, 'white': 16}
 # Kenney 정규화 시트 연결요소 인덱스(또는 bbox 튜플) → 이름 (`_survey/kenney_components.png` 기준)
 #  차량: 36×24 = 측면(가로 진행) · 22×29 = 탑다운(세로 진행 — 도로 각도로 회전해 배치)
@@ -259,8 +264,33 @@ GROUND_CELLS = {
 }
 
 
+# 오토타일 엣지/코너 셀 (접미 = 다른 지형이 보이는 방위 — client SeamlessChunks EDGE_SUFFIX와 정합).
+#  잔디(행 25~27) = **유기 블롭 완전 세트**(모서리 4·변 4·띠 2·캡 4·섬 1) + 이너코너 노치 4
+#    (노치 = 흙 블롭의 바깥 모서리 셀을 역이용 — 잔디 타일의 대각만 다른 군일 때).
+#    셀 방위는 픽셀 색 분류로 실측(2026-09-01) — 흙 테두리가 "구워진" 불투명 셀이라 아무 지면 위에서나
+#    흙 가장자리 림으로 보인다(잔디밭 흙 테두리 — 의도).
+#  포장(pave/tan/pier — 행 19~23) = 어두운 테두리 셰이딩 변형(행 19 상단·행 23 하단 그림자·열 0/2 좌우).
+EDGE_CELLS = {
+    'grass': {
+        'n': (1, 25), 'e': (2, 26), 's': (1, 27), 'w': (0, 26),
+        'nw': (0, 25), 'ne': (2, 25), 'sw': (0, 27), 'se': (2, 27),
+        'ns': (19, 25), 'we': (19, 26),
+        'nse': (17, 25), 'nsw': (18, 25), 'nwe': (17, 26), 'swe': (18, 26),
+        'nswe': (13, 25),
+        'notch_ne': (10, 27), 'notch_nw': (12, 27), 'notch_se': (10, 25), 'notch_sw': (12, 25),
+    },
+    'pave': {'n': (1, 19), 's': (1, 23), 'w': (0, 20), 'e': (2, 20),
+             'nw': (0, 19), 'ne': (2, 19), 'sw': (0, 23), 'se': (2, 23)},
+    'tan':  {'n': (4, 19), 's': (4, 23), 'w': (3, 20), 'e': (5, 20),
+             'nw': (3, 19), 'ne': (5, 19), 'sw': (3, 23), 'se': (5, 23)},
+    'pier': {'n': (7, 19), 's': (7, 23), 'w': (6, 20), 'e': (8, 20),
+             'nw': (6, 19), 'ne': (8, 19), 'sw': (6, 23), 'se': (8, 23)},
+}
+
+
 def ground():
-    """Kenney 지면 타일 — GROUND_CELLS 명시 셀을 16px 그대로 출력 (TR 32 = ×2 정수 배율)."""
+    """Kenney 지면 타일 — GROUND_CELLS 명시 셀 + EDGE_CELLS 오토타일 셀을 16px 그대로 출력
+    (TR 32 = ×2 정수 배율)."""
     (OUT / 'kn').mkdir(parents=True, exist_ok=True)
     kns = kenney_sheet()
     for key, cells in GROUND_CELLS.items():
@@ -268,6 +298,11 @@ def ground():
             im = kns.crop((c * 16, r * 16, c * 16 + 16, r * 16 + 16))
             im.save(OUT / 'kn' / f'ground_{key}_{i}.png')
             print(f'  kn/ground_{key}_{i}.png  cell=({c},{r})')
+    for key, cells in EDGE_CELLS.items():
+        for suf, (c, r) in cells.items():
+            im = kns.crop((c * 16, r * 16, c * 16 + 16, r * 16 + 16))
+            im.save(OUT / 'kn' / f'ground_{key}_edge_{suf}.png')
+        print(f'  kn/ground_{key}_edge_*.png  {len(cells)}cells')
 
 
 def zoom():
