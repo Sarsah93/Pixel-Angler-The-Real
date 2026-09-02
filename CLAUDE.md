@@ -75,7 +75,7 @@
 - `packages/core` (`@tra/core`) — 순수 TS 게임 로직. **Phaser/DOM/브라우저 API 절대 금지.** 새 파일은 반드시 `src/index.ts`에서 export.
 - `packages/client-pc` (`@tra/client-pc`) — Phaser 씬 + UI. 게임 로직은 core에서 import (직접 구현 금지).
 - `packages/server` (`@tra/server`) — Express + Socket.IO 멀티플레이 서버 (Phase 8 예정).
-- `packages/map-builder` (`@tra/map-builder`) — GIS 타일 파이프라인 (TS + Python).
+- `packages/map-builder` — **deprecated**(2026-09-02, 워크스페이스 제외 — 빌드 미참여). 정본 파이프라인은 루트 `tools/`. 8차 GIS 잔재 보존용.
 - `apps/tauri-wrapper` — Tauri v2 데스크톱 패키징 (Phase 9 예정).
 - `tools/` — 루트 유틸 스크립트 (`build_region_maps.py`, `pixelize.py` 등).
 - `pixelazed/` — 지역 실지형 픽셀 지도 원본 PNG (타일맵 파이프라인 입력).
@@ -87,14 +87,14 @@
 
 ```bash
 npx pnpm install                                     # 의존성 설치
-npx pnpm run build                                   # 전체 빌드 (4패키지)
+npx pnpm run build                                   # 전체 빌드 (3패키지 — core·client-pc·server)
 npx pnpm --filter @tra/core run build                # core만 빌드
 npx pnpm --filter @tra/client-pc run typecheck       # 클라이언트 타입 체크
 npx pnpm --filter @tra/client-pc run dev             # 개발 서버 → http://localhost:5173
 py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재생성 (예: sokcho)
 ```
 
-- 검증 루틴: 작업 후 `npx pnpm run build` + `npx pnpm --filter @tra/client-pc run typecheck` 통과 필수 (기준: 2026-07-20 4/4 성공, 0 오류).
+- 검증 루틴: 작업 후 `npx pnpm run build` + `npx pnpm --filter @tra/client-pc run typecheck` 통과 필수 (기준: 2026-09-02 **3/3** 성공, 0 오류 — map-builder 워크스페이스 제외로 4/4 → 3/3).
 - `noUnusedLocals`/`noUnusedParameters` 활성화 — 미사용 심볼은 제거하거나 `_` 접두사.
 
 ## 절대 규칙 요약 (상세는 AGENTS.md §8)

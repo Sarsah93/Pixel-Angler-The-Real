@@ -22,7 +22,8 @@ the-real-angler/
 ├── packages/
 │   ├── core/          ← 순수 TS 게임 엔진 (렌더링 코드 절대 금지)
 │   ├── client-pc/     ← Phaser 3 + Vite 클라이언트
-│   └── server/        ← Socket.IO 서버 (멀티플레이)
+│   ├── server/        ← Socket.IO 서버 (멀티플레이)
+│   └── map-builder/   ← ⚠ deprecated (2026-09-02 워크스페이스 제외 — 빌드 3/3. 정본은 루트 tools/)
 ├── .agents/           ← 에이전트 지침서 (이 파일)
 │   ├── AGENTS.md
 │   └── IMPLEMENTATION_PLAN.md
@@ -361,6 +362,17 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류 (2026-08-09)
 > 본문은 **`docs/wiki/03-WORKLOG/<날짜>-<차수>-<슬러그>.md`**, 여기엔 **요약 3~5줄 + 링크**.
 > "지금 무엇이 어디까지 되어 있나"는 **`docs/wiki/README.md` 대시보드**와 `02-SYSTEMS/*.md`를 본다.
 > 80차 이하 원문은 아래에 **그대로 보존**(불변 원장) — 구조화 인덱스는 `03-WORKLOG/README.md` §3.1.
+
+**최근 변경 (2026-09-02 107차) — 래스터 보강 발주 선행 정정** (스펙 §0-2 + 사용자 지시 — 빌드 **3/3**·typecheck 0):
+
+- **OSM 스펙 자기모순 제거**: §0.5-1 "20px·청크 64타일" → **32px·청크 32타일**(101차 후속 2 전환 반영) ·
+  §0.5-11 지면 타일셋 "미적용" → "×2 적용됨" · §13-5/부록 1 타일 픽셀 미결 해소.
+- **파이프라인 단일화**: `packages/map-builder` 워크스페이스 제외(deprecated — import 사용처 0 실측,
+  정본 = 루트 `tools/`). **빌드 기준 4/4 → 3/3.** 삭제하지 않고 보존.
+- `.gitignore`에 `pixelazed/_rastercache/`(수백 MB — DEM 4장 로컬 배치 확인) · `_osmcache`는 커밋 유지.
+- **메인화면 저작권 푸터** 신설(하단 바 위 상시 한 줄 — OSM ODbL·Kenney CC0·FisherG·공공데이터,
+  전체는 [데이터 출처] 메뉴). Sentinel-2 등 신규 리소스 사용 시 갱신 주석 포함.
+- 상세: `docs/wiki/03-WORKLOG/2026-09-02-107-raster-spec-prep.md`
 
 **최근 변경 (2026-09-02 106차) — 도트 입자 2px 통일 + 해변 경계 재작업 + 개별 타일/오브젝트 편집기 카탈로그** (사용자 질의 1건 + 캡처 리포트 2건 + 편집기 지시 5건 — 실렌더 6지점·FPS 55·pageerror 0, 빌드 4/4·typecheck 0):
 

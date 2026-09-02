@@ -1,7 +1,8 @@
 # The Real Angler — 구현 계획서 (IMPLEMENTATION_PLAN)
 
-> **최종 업데이트**: 2026-09-02 — **106차: 도트 입자 2px 통일 + 해변 경계 재작업 + 편집기 카탈로그**.
-> 상세는 아래 "✅ 직전 완료 (106차)"와 [워크로그 106](../docs/wiki/03-WORKLOG/2026-09-02-106-tile-grain-editor-catalog.md).
+> **최종 업데이트**: 2026-09-02 — **107차: 래스터 보강 발주 선행 정정**(스펙 32px 정정 · map-builder
+> 제외 → 빌드 **3/3** · 저작권 푸터). 상세 [워크로그 107](../docs/wiki/03-WORKLOG/2026-09-02-107-raster-spec-prep.md).
+> 직전: 106차 도트 입자 2px 통일 + 해변 경계 + 편집기 카탈로그([워크로그 106](../docs/wiki/03-WORKLOG/2026-09-02-106-tile-grain-editor-catalog.md)).
 >
 > **차수별 상세 히스토리는 이 문서에 쓰지 않는다** — 80차 이하 원장은 `.agents/AGENTS.md` §9,
 > 81차부터의 본문은 `docs/wiki/03-WORKLOG/`. (구 20~80차 압축 요약 블록은 AGENTS §9와 전부 중복이라 제거 — git 히스토리 보존)

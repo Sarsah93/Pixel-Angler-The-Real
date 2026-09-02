@@ -648,6 +648,15 @@ export class MainMenuScene extends Phaser.Scene {
     this.add.text(GAME_WIDTH - 16, barY, 'v0.7 dev', {
       fontFamily: 'monospace', fontSize: '11px', color: '#3a5a74',
     }).setOrigin(1, 0).setDepth(41);
+
+    // ── 리소스 저작권 푸터 (2026-09-02 사용자 지시 — "리소스 사용은 메인화면에서 남겨야") ──
+    //  요약 한 줄 상시 표기 + 전체 목록은 [데이터 출처](CreditsScene ← DataAttributions.ts).
+    //  ⚠ 새 외부 리소스(위성·DEM 등)를 쓰게 되면 DataAttributions 등록과 함께 이 줄도 갱신할 것
+    //    (Sentinel-2는 이용약관상 출처 표기 의무 — 래스터 보강 스펙 §7).
+    this.add.text(GAME_WIDTH / 2, barY - 17,
+      '지도 © OpenStreetMap contributors (ODbL) · 에셋 Kenney (CC0) · FisherG · 기상청/해양수산부/MAFRA/KOSIS 공공데이터 — 전체 출처: 메뉴 [데이터 출처]', {
+        fontFamily: 'monospace', fontSize: '9px', color: '#41627e',
+      }).setOrigin(0.5, 0).setDepth(41);
   }
 
   // ═══════════════════════════════════════════════════

@@ -1,3 +1,7 @@
 packages:
   - "packages/*"
+  # map-builder = deprecated (2026-09-02 — 래스터 보강 스펙 §0-2 파이프라인 단일화):
+  # 현행 지도 파이프라인 정본은 루트 tools/ (fetch_region_osm·build_osm_tilemap·build_region_maps).
+  # 8차 GIS 잔재는 참고용으로 보존만 하고 빌드에서 제외한다 (import 사용처 0 실측).
+  - "!packages/map-builder"
   - "apps/*"

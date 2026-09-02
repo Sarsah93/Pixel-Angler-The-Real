@@ -52,3 +52,7 @@ coverage/
 
 # Vitest
 .vitest-cache/
+
+# 래스터 보강 파이프라인 캐시 (지역당 수백 MB — Sentinel-2 GeoTIFF·DEM 도엽. 커밋 금지)
+#  ⚠ pixelazed/_osmcache/ 는 반대로 **커밋 유지**(지역당 ~2MB JSON — 재fetch 없이 재빌드 재현)
+pixelazed/_rastercache/

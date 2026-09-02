@@ -2,8 +2,10 @@
 
 > ## §0.5 코드 정합 노트 (2026-08-27 구현 — 본문과 다른 확정 사항, **본문보다 우선**)
 >
-> 1. **타일 픽셀 = 20px** (`RegionFieldScene TR` — 부록 1의 32px 가정과 다름).
->    청크 64타일 = **1280px** RenderTexture. §0-1의 크기 수치는 20px 기준으로 재계산해 읽을 것.
+> 1. **타일 픽셀 = 32px** (`RegionFieldScene TR = seamlessDef ? 32 : 20` — 101차 후속 2에서
+>    20 → 32 전환, 20px는 legacy 그래프 맵 전용). 청크 **32타일 = 1024px** RenderTexture,
+>    3×3 상주 + LRU 풀 12장. §0-1의 크기 수치는 32px·32타일 기준으로 재계산해 읽을 것.
+>    (2026-09-02 정정 — 구 표기 "20px·청크 64타일"은 101차 후속 2 이전 값이었다.)
 > 2. **캐스팅 판정은 §5의 "b/s 전용"이 아니라 기존 물가 규칙 유지** — 속초 OSM에
 >    `man_made=breakwater|pier|quay` 태그가 거의 없어(실측 `b` 25타일 / 방파제는 해안선
 >    폴리곤 육지로 그려짐) 스펙대로면 낚시가 사실상 불가. 판정 = **걷기 가능 타일 + 인접 8방향
@@ -37,7 +39,8 @@
 >     정자·테트라·경계·NPC 5) + TopDownCityPack(FisherG) + Kenney Roguelike City(CC0).
 >     추출 = `tools/extract_tileset_assets.py`(survey→build), 매니페스트 = `data/TilesetManifest.ts`,
 >     배치 규칙 = `SeamlessChunks.PROP_DEFS`/`RegionFieldScene.poiVisualTex`. 지면 타일셋(L1)은
->     격자 비정수비(12/16px vs 20px)로 **미적용** — 절차 렌더 유지.
+>     TR 32 전환(101차 후속 2)으로 **Kenney 16px ×2 정수 재베이크 적용됨**(`ensureGroundTextures`)
+>    — 구 "비정수비로 미적용" 표기는 TR 20 시절 값(2026-09-02 정정).
 >     차도 폭은 `ROAD_LANES`(방향당 차로) 기준 재산정, 마킹은 차도 타일 안에 들어온다.
 > 12. **심리스 TR = 32px**(사용자 확정 2026-08-28 — 1항의 20px 갱신). Kenney 16px 지면 타일 ×2 정수
 >     배율. 청크 32타일 = 1024px RT · 이동 210px/s · legacy 맵은 20 유지(`RegionFieldScene` init 분기).
@@ -240,7 +243,7 @@ export interface RegionPoi { type: PoiType; shopKind?: string; name: string;
 
 ## 부록 — 남은 결정(사용자)
 
-1. 타일 픽셀 크기(현행 유지 가정 32px — 실제 값은 레포 확인 필요, 16px면 청크를 128타일로).
+1. ~~타일 픽셀 크기~~ → **32px 확정**(심리스 TR 32 · 청크 32타일 — §0.5-1, 2026-09-02).
 2. 조도를 배낚시 전 콘텐츠로 열어둘지(여객터미널 POI가 훅).
 3. legacy 7맵을 언제 완전 제거할지(v2 안정화 후 권장).
 
@@ -385,4 +388,5 @@ terrain.png 통행성 손질(생성물은 초벌) · 스폰 최종 위치 검수
 
 ### 13-5. 미결(후속 결정)
 리스폰 다중화 스키마(12-2) · 태안 갯벌/조수차 표현 · 남해군 지역 등록 여부 ·
-독도 콘텐츠 성격(도보 극소 — 배낚시 거점) · legacy 7맵 제거 시점 · 타일 픽셀 크기 확인(32px 가정).
+독도 콘텐츠 성격(도보 극소 — 배낚시 거점) · legacy 7맵 제거 시점.
+~~타일 픽셀 크기 확인~~ → **32px 확정**(§0.5-1, 2026-09-02 실측 정정).
