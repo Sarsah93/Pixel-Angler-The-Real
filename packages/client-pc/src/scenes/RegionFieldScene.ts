@@ -62,6 +62,7 @@ import { TrafficSystem } from './TrafficSystem.js';
 import { TILESET_MANIFEST } from '../data/TilesetManifest.js';
 import {
   openMapEditor, closeMapEditor, isMapEditorOpen, mapEditorState, setMapEditorStatus,
+  rotateEditorPlacement, flipEditorPlacement, toggleEditorOverlap,
 } from '../dev/MapEditorPanel.js';
 import { GameState } from '../store/GameState.js';
 import { ExternalDataStore } from '../store/ExternalDataStore.js';
@@ -134,6 +135,8 @@ export class RegionFieldScene extends Phaser.Scene {
   private isNightNow = false;
   /** dev 편집기 — 프롭 풋프린트 미리보기 격자 */
   private editPreviewG?: Phaser.GameObjects.Graphics;
+  /** dev 편집기 — 호버 고스트(선택 타일/오브젝트 실물 미리보기 — 회전·반전 반영, 106차-b) */
+  private editGhost?: Phaser.GameObjects.Image;
   private regionMeta?: RegionMeta;
   /** OSM POI 전체 (pois.json — RegionPoi 스키마) */
   private regionPois: RegionPoi[] = [];
@@ -152,7 +155,9 @@ export class RegionFieldScene extends Phaser.Scene {
   /** 현재 스트로크의 변경 타일 (재베이킹 대상) */
   private editDirty = new Map<number, { c: number; r: number }>();
   /** 되돌리기 스택 — 스트로크 단위 [타일 idx → 이전 문자] (+ 프롭 스냅샷) */
-  private editUndo: { tiles: Map<number, string>; props?: RegionPatch['props']; roofs?: RegionPatch['roofs']; roads?: RegionRoad[] }[] = [];
+  private editUndo: { tiles: Map<number, string>; props?: RegionPatch['props']; roofs?: RegionPatch['roofs']; roads?: RegionRoad[]; tileTex?: RegionPatch['tileTex'] }[] = [];
+  /** 스트로크 시작 시점의 타일 그림 오버라이드 스냅샷 (되돌리기용 — 106차) */
+  private editTexPrev: RegionPatch['tileTex'] | null = null;
   /** 도로 툴 — 드래그 중인 정점 [도로, 정점] */
   private editRoadDrag: { ri: number; pi: number } | null = null;
   /** 새 도로 그리기 — 진행 중 폴리라인 정점 (Enter/재클릭 확정, 우클릭 = 마지막 취소) */
@@ -429,6 +434,7 @@ export class RegionFieldScene extends Phaser.Scene {
       this.regionPatch = {
         tiles: patch?.tiles ?? [], props: patch?.props ?? [], roofs: patch?.roofs ?? {},
         ...(patch?.roads ? { roads: patch.roads } : {}),
+        tileTex: patch?.tileTex ?? [],
       };
       // 패치 타일 오버라이드를 런타임 지형에 반영 (재빌드 없이 F5 반영)
       const rows = this.mapData.terrain.slice();
@@ -444,6 +450,7 @@ export class RegionFieldScene extends Phaser.Scene {
       this.editRoadNewPts = [];
     }
 
+    if (this.seamlessDef) this.trimBuildingsOnRoads();
     this.buildTerrainGrid();
     // 홈타운 오브젝트 유효 상태 산출 → 충돌 타일 선반영 (병합 충돌/걷기 판정 공유)
     if (this.region === 'hometown') this.computeHomeObjects();
@@ -457,6 +464,7 @@ export class RegionFieldScene extends Phaser.Scene {
         terrainRows: this.mapData.terrain,
         roads: this.regionRoads,
         props: this.regionPatch.props,
+        tileTex: this.regionPatch.tileTex ?? [],
         roofOverrides: this.regionPatch.roofs,
         cols: this.cols, rows: this.rows, tr: TR, seed: mapSeed >>> 0,
         chunkTiles: RegionFieldScene.SEAMLESS_CHUNK_TILES,
@@ -1193,6 +1201,52 @@ export class RegionFieldScene extends Phaser.Scene {
   // ═══════════════════════════════════════════════════
   // dev 맵 편집기 (F7) · 순간이동 — 심리스 전용, 프로덕션 데드코드
   // ═══════════════════════════════════════════════════
+  /**
+   * 차도 안 건물 타일 정리(106차-b) — OSM 래스터화(terrain)와 도로 벡터가 어긋나 `'#'` 타일이
+   * 아스팔트 밴드 위로 튀어나오는 곳이 많다(사용자: "도로 위로 건물 지형이 얹혀져 있다 —
+   * 도로는 건드리지 말고 안쪽으로"). 도로 중심선에서 반폭 안에 **중심이 들어온** 건물 타일을
+   * 맨땅('.')으로 바꿔 건물 가장자리를 안쪽으로 밀어 넣는다. 걷기·충돌·지붕이 함께 따라온다.
+   * terrain 원본(JSON)은 그대로 — 로드 시 런타임 변환이라 전 지역에 일괄 적용된다.
+   */
+  /** trimBuildingsOnRoads가 바꾼 타일 키 — 편집기 저장 diff에서 제외(런타임 변환을 패치로 굽지 않기 위해) */
+  private roadTrimmed = new Set<number>();
+
+  private trimBuildingsOnRoads(): void {
+    this.roadTrimmed.clear();
+    if (this.regionRoads.length === 0) return;
+    const rows = this.mapData.terrain.slice();
+    let trimmed = 0;
+    for (const rd of this.regionRoads) {
+      const hw = rd.w / 2 - 0.05;
+      if (hw <= 0) continue;
+      for (let i = 0; i < rd.pts.length - 1; i++) {
+        const [ax, ay] = rd.pts[i], [bx, by] = rd.pts[i + 1];
+        const vx = bx - ax, vy = by - ay;
+        const l2 = vx * vx + vy * vy || 1;
+        const cMin = Math.max(0, Math.floor(Math.min(ax, bx) - hw - 1));
+        const cMax = Math.min(this.cols - 1, Math.ceil(Math.max(ax, bx) + hw + 1));
+        const rMin = Math.max(0, Math.floor(Math.min(ay, by) - hw - 1));
+        const rMax = Math.min(this.rows - 1, Math.ceil(Math.max(ay, by) + hw + 1));
+        for (let r = rMin; r <= rMax; r++) {
+          for (let c = cMin; c <= cMax; c++) {
+            if (rows[r][c] !== '#') continue;
+            const px = c + 0.5, py = r + 0.5;
+            const t = Math.max(0, Math.min(1, ((px - ax) * vx + (py - ay) * vy) / l2));
+            const dx = ax + vx * t - px, dy = ay + vy * t - py;
+            if (dx * dx + dy * dy > hw * hw) continue;
+            rows[r] = rows[r].slice(0, c) + '.' + rows[r].slice(c + 1);
+            this.roadTrimmed.add(r * this.cols + c);
+            trimmed++;
+          }
+        }
+      }
+    }
+    if (trimmed > 0) {
+      this.mapData = { ...this.mapData, terrain: rows };
+      console.log(`[RegionField] 차도 안 건물 타일 ${trimmed}개 정리 (건물을 도로 안쪽으로)`);
+    }
+  }
+
   /** 순간이동 — 월드 좌표(클램프) + 청크 즉시 상주 (충돌 바디는 로드 즉시라 관통 없음) */
   private devTeleport(x: number, y: number): void {
     const cx = Phaser.Math.Clamp(x, TR, this.worldW - TR);
@@ -1206,12 +1260,12 @@ export class RegionFieldScene extends Phaser.Scene {
   }
 
   private toggleMapEditor(): void {
-    if (isMapEditorOpen()) { closeMapEditor(); this.hud?.pushLog('[dev] 맵 편집기 닫힘'); return; }
+    if (isMapEditorOpen()) { closeMapEditor(); this.editGhost?.setVisible(false); this.hud?.pushLog('[dev] 맵 편집기 닫힘'); return; }
     openMapEditor(this.seamlessDef?.dataRegion ?? this.region,
       PROP_DEFS.map((d) => ({ id: d.id, label: d.label, cat: d.cat, thumb: tilesetPathOf(d.tex), scale: d.scale })), {
         onSave: () => this.editSavePatch(),
         onUndo: () => this.editUndoStroke(),
-        onClose: () => { closeMapEditor(); this.editPreviewG?.clear(); },
+        onClose: () => { closeMapEditor(); this.editPreviewG?.clear(); this.editGhost?.setVisible(false); },
       });
     this.hud?.pushLog('[dev] 맵 편집기 열림 (F7) — 지형/프롭/지붕 편집 · 저장은 patch.json');
   }
@@ -1219,6 +1273,7 @@ export class RegionFieldScene extends Phaser.Scene {
   private editBeginStroke(p: Phaser.Input.Pointer): void {
     this.editPainting = true;
     this.editStrokePrev = new Map();
+    this.editTexPrev = null;
     this.editDirty.clear();
     this.editApplyAt(p);
   }
@@ -1231,22 +1286,36 @@ export class RegionFieldScene extends Phaser.Scene {
     const st = mapEditorState;
     if (st.mode === 'tile') {
       const half = Math.floor(st.brush / 2);
+      // 개별 시트 셀(106차): 그림 오버라이드 + base 지형 문자를 함께 칠한다.
+      //   ⚠ 걷기·충돌은 **지형 문자**가 결정한다 — 그림만 바꾸면 바다 위를 걷게 된다.
+      const texList = this.regionPatch.tileTex ?? (this.regionPatch.tileTex = []);
+      if (this.editTexPrev === null) this.editTexPrev = texList.map((t) => ({ ...t }));
       for (let dr = -half; dr <= half; dr++) {
         for (let dc = -half; dc <= half; dc++) {
           const c = tc + dc, r = trw + dr;
           if (c < 0 || c >= this.cols || r < 0 || r >= this.rows) continue;
-          const row = this.mapData.terrain[r];
-          if (row[c] === st.tileChar) continue;
           const key = r * this.cols + c;
-          if (!this.editStrokePrev.has(key)) this.editStrokePrev.set(key, row[c]);
-          this.mapData.terrain[r] = row.slice(0, c) + st.tileChar + row.slice(c + 1);
-          const t = TERRAIN_BY_CHAR[st.tileChar] ?? 'land';
-          this.terrain[r][c] = t;
-          this.blocked[r][c] = t === 'water' || t === 'building';
+          const row = this.mapData.terrain[r];
+          if (row[c] !== st.tileChar) {
+            if (!this.editStrokePrev.has(key)) this.editStrokePrev.set(key, row[c]);
+            this.mapData.terrain[r] = row.slice(0, c) + st.tileChar + row.slice(c + 1);
+            const t = TERRAIN_BY_CHAR[st.tileChar] ?? 'land';
+            this.terrain[r][c] = t;
+            this.blocked[r][c] = t === 'water' || t === 'building';
+          }
+          const at = texList.findIndex((t) => t.tx === c && t.ty === r);
+          if (st.tileTex) {
+            const entry = { tx: c, ty: r, tex: st.tileTex, rot: st.rot, fx: st.fx, fy: st.fy };
+            if (at >= 0) texList[at] = entry; else texList.push(entry);
+          } else if (at >= 0) {
+            texList.splice(at, 1);           // 기본 지형 문자로 칠하면 그림 오버라이드는 해제
+          }
           this.editDirty.set(key, { c, r });
         }
       }
-      setMapEditorStatus(`지형 '${st.tileChar}' — (${tc}, ${trw}) · 변경 ${this.editDirty.size}타일`);
+      this.chunks?.setTileTex(texList);
+      setMapEditorStatus(`지형 '${st.tileChar}'${st.tileTex ? ` + 셀 ${st.tileTex.replace(/^ts_/, '')}` : ''}`
+        + ` — (${tc}, ${trw}) · 변경 ${this.editDirty.size}타일`);
       return;
     }
     if (st.mode === 'road') {
@@ -1283,14 +1352,27 @@ export class RegionFieldScene extends Phaser.Scene {
     if (st.mode === 'prop') {
       const def = PROP_DEFS.find((d) => d.id === st.propId);
       if (!def) return;
+      const tfm = { rot: st.rot, fx: st.fx, fy: st.fy };
+      if (st.overlap) {
+        // 자유 배치(106차) — 격자 스냅·겹침 검사 없이 포인터 위치 그대로. 충돌 바디도 만들지 않는다
+        //   (테트라포드처럼 겹쳐 쌓는 무더기가 통째로 벽이 되면 안 된다).
+        const fx = w.x / TR - 0.5, fy = w.y / TR - 0.5;
+        this.editUndo.push({ tiles: new Map(), props: this.regionPatch.props.slice() });
+        this.regionPatch.props.push({ tx: Math.round(fx * 4) / 4, ty: Math.round(fy * 4) / 4, id: st.propId, ...tfm, free: true });
+        this.chunks?.setProps(this.regionPatch.props);
+        this.chunks?.rebakeResident();
+        setMapEditorStatus(`자유 배치 '${def.label}' → (${fx.toFixed(2)}, ${fy.toFixed(2)}) · ${st.rot * 90}°`
+          + `${st.fx ? ' ↔' : ''}${st.fy ? ' ↕' : ''} · 총 ${this.regionPatch.props.length}개`);
+        return;
+      }
       const cells = this.propPlacementCells(def, tc, trw);
       const bad = cells.filter((k) => k.state === 'red');
       if (bad.length > 0) {
-        setMapEditorStatus(`배치 불가 — ${bad[0].why} (${bad.length}칸)`);
+        setMapEditorStatus(`배치 불가 — ${bad[0].why} (${bad.length}칸) · O 키 = 겹침 허용`);
         return;
       }
       this.editUndo.push({ tiles: new Map(), props: this.regionPatch.props.slice() });
-      this.regionPatch.props.push({ tx: tc, ty: trw, id: st.propId });
+      this.regionPatch.props.push({ tx: tc, ty: trw, id: st.propId, ...tfm });
       this.chunks?.setProps(this.regionPatch.props);
       this.chunks?.rebakeResident();
       const warn = cells.some((k) => k.state === 'yellow') ? ' · ⚠ 일부 칸이 차도/보도 위' : '';
@@ -1298,7 +1380,7 @@ export class RegionFieldScene extends Phaser.Scene {
     } else if (st.mode === 'erase') {
       const before = this.regionPatch.props.length;
       this.editUndo.push({ tiles: new Map(), props: this.regionPatch.props.slice() });
-      this.regionPatch.props = this.regionPatch.props.filter((q) => Math.abs(q.tx - tc) > 1 || Math.abs(q.ty - trw) > 1);
+      this.regionPatch.props = this.regionPatch.props.filter((q) => Math.abs(q.tx - tc) > 1.5 || Math.abs(q.ty - trw) > 1.5);
       this.chunks?.setProps(this.regionPatch.props);
       this.chunks?.rebakeResident();
       setMapEditorStatus(`프롭 제거 ${before - this.regionPatch.props.length}개 (3×3 범위)`);
@@ -1461,12 +1543,30 @@ export class RegionFieldScene extends Phaser.Scene {
   }
 
   /** 편집기 프롭 모드 — 포인터 아래 풋프린트 격자 미리보기 (녹/황/적) · 도로 모드 — 정점/세그먼트 핸들 */
+  /**
+   * 호버 고스트(106차-b) — 선택한 타일/오브젝트의 **실물 스프라이트**를 반투명으로 커서에 붙인다.
+   * 격자(녹/황/적)만으로는 회전·반전·실제 크기를 배치 전에 알 수 없다(사용자 리포트).
+   */
+  private editUpdateGhost(tex: string | null, x: number, y: number, opts?: { rot?: number; fx?: boolean; fy?: boolean; scale?: number; originY?: number }): void {
+    if (!tex || !this.textures.exists(tex)) { this.editGhost?.setVisible(false); return; }
+    if (!this.editGhost) this.editGhost = this.add.image(0, 0, tex).setDepth(61).setAlpha(0.55);
+    const gh = this.editGhost;
+    if (gh.texture.key !== tex) gh.setTexture(tex);
+    gh.setVisible(true);
+    gh.setPosition(x, y);
+    gh.setOrigin(0.5, opts?.originY ?? 0.5);
+    gh.setAngle((opts?.rot ?? 0) * 90);
+    gh.setFlip(!!opts?.fx, !!opts?.fy);
+    gh.setScale(opts?.scale ?? 1);
+  }
+
   private editDrawPreview(p: Phaser.Input.Pointer): void {
     if (!this.editPreviewG) this.editPreviewG = this.add.graphics().setDepth(60);
     const g = this.editPreviewG;
     g.clear();
-    if (!isMapEditorOpen()) return;
+    if (!isMapEditorOpen()) { this.editGhost?.setVisible(false); return; }
     if (mapEditorState.mode === 'road' || mapEditorState.mode === 'roadNew') {
+      this.editGhost?.setVisible(false);
       const cam = this.cameras.main.worldView;
       const x0 = cam.x / TR - 2, y0 = cam.y / TR - 2, x1 = cam.right / TR + 2, y1 = cam.bottom / TR + 2;
       const w = this.pointerWorld(p);
@@ -1510,13 +1610,34 @@ export class RegionFieldScene extends Phaser.Scene {
       }
       return;
     }
-    if (mapEditorState.mode !== 'prop') return;
-    const def = PROP_DEFS.find((d) => d.id === mapEditorState.propId);
-    if (!def) return;
+    const st = mapEditorState;
+    if (st.mode === 'tile') {
+      // 개별 시트 셀 = 실물 고스트 (기본 지형 문자는 그림이 해시 변형이라 고스트 없이 셀 테두리만)
+      const w = this.pointerWorld(p);
+      const tc = Math.floor(w.x / TR), trw = Math.floor(w.y / TR);
+      if (tc < 0 || tc >= this.cols || trw < 0 || trw >= this.rows) { this.editGhost?.setVisible(false); return; }
+      this.editUpdateGhost(st.tileTex, tc * TR + TR / 2, trw * TR + TR / 2, { rot: st.rot, fx: st.fx, fy: st.fy });
+      const half = Math.floor(st.brush / 2);
+      g.lineStyle(1, 0x9ad0ff, 0.9);
+      g.strokeRect((tc - half) * TR + 0.5, (trw - half) * TR + 0.5, st.brush * TR - 1, st.brush * TR - 1);
+      return;
+    }
+    if (st.mode !== 'prop') { this.editGhost?.setVisible(false); return; }
+    const def = PROP_DEFS.find((d) => d.id === st.propId);
+    if (!def) { this.editGhost?.setVisible(false); return; }
     const w = this.pointerWorld(p);
     const tc = Math.floor(w.x / TR), trw = Math.floor(w.y / TR);
-    if (tc < 0 || tc >= this.cols || trw < 0 || trw >= this.rows) return;
+    if (tc < 0 || tc >= this.cols || trw < 0 || trw >= this.rows) { this.editGhost?.setVisible(false); return; }
     const COLS = { green: 0x4af2a1, yellow: 0xf2d24a, red: 0xf25a4a } as const;
+    const center = def.anchor === 'center' || st.rot !== 0;
+    // 겹침 허용(106차) — 격자 판정 대신 **포인터 위치 고스트**(자유 배치라 칸 개념이 없다)
+    if (st.overlap) {
+      this.editUpdateGhost(def.tex, w.x, w.y, { rot: st.rot, fx: st.fx, fy: st.fy, scale: def.scale ?? 1 });
+      return;
+    }
+    // 격자 배치 — 스냅 위치에 실물 고스트(spawnProp와 같은 앵커) + 판정 격자
+    this.editUpdateGhost(def.tex, tc * TR + TR / 2, center ? trw * TR + TR / 2 : trw * TR + TR,
+      { rot: st.rot, fx: st.fx, fy: st.fy, scale: def.scale ?? 1, originY: center ? 0.5 : 1 });
     for (const cell of this.propPlacementCells(def, tc, trw)) {
       g.fillStyle(COLS[cell.state], 0.28);
       g.fillRect(cell.c * TR, cell.r * TR, TR, TR);
@@ -1534,9 +1655,10 @@ export class RegionFieldScene extends Phaser.Scene {
       this.editCommitRoads(`정점 확정 — 도로 ${d.ri} 정점 ${d.pi}`);
       return;
     }
-    if (this.editStrokePrev.size > 0) {
-      this.editUndo.push({ tiles: this.editStrokePrev });
+    if (this.editStrokePrev.size > 0 || this.editTexPrev) {
+      this.editUndo.push({ tiles: this.editStrokePrev, ...(this.editTexPrev ? { tileTex: this.editTexPrev } : {}) });
       this.editStrokePrev = new Map();
+      this.editTexPrev = null;
       this.editSyncTilePatch();
     }
     const dirty = [...this.editDirty.values()].filter((d) => d.c >= 0);
@@ -1553,7 +1675,12 @@ export class RegionFieldScene extends Phaser.Scene {
     for (let r = 0; r < this.rows; r++) {
       const cur = this.mapData.terrain[r], org = base.terrain[r] ?? '';
       if (cur === org) continue;
-      for (let c = 0; c < this.cols; c++) if (cur[c] !== org[c]) tiles.push([c, r, cur[c]]);
+      for (let c = 0; c < this.cols; c++) {
+        if (cur[c] === org[c]) continue;
+        // 차도 안 건물 트림(런타임 변환)은 사용자 편집이 아니다 — 패치에 굽지 않는다(106차-b)
+        if (cur[c] === '.' && this.roadTrimmed.has(r * this.cols + c)) continue;
+        tiles.push([c, r, cur[c]]);
+      }
     }
     this.regionPatch.tiles = tiles;
     void dr;
@@ -1575,6 +1702,11 @@ export class RegionFieldScene extends Phaser.Scene {
     if (last.roads) {
       this.regionRoads = last.roads;
       this.editCommitRoads('도로 되돌림');
+    }
+    if (last.tileTex) {
+      this.regionPatch.tileTex = last.tileTex;
+      this.chunks?.setTileTex(last.tileTex);
+      this.chunks?.rebakeResident();
     }
     const dirty: { c: number; r: number }[] = [];
     for (const [key, ch] of last.tiles) {
@@ -1627,7 +1759,11 @@ export class RegionFieldScene extends Phaser.Scene {
     this.input.keyboard!.on('keydown-S', () => { if (!this.isPaused) this.toggleStatus(); });
     this.input.keyboard!.on('keydown-U', () => { if (!this.isPaused) this.toggleUtilization('tackles'); });
     this.input.keyboard!.on('keydown-B', () => { if (!this.isPaused) this.toggleCooler(); });
-    this.input.keyboard!.on('keydown-R', () => { if (!this.isPaused && !this.uiBlocked) this.toggleBike(); });
+    this.input.keyboard!.on('keydown-R', (e: KeyboardEvent) => {
+      // 편집기가 열려 있으면 R = 배치 회전(자전거 승·하차보다 우선 — 106차)
+      if (isMapEditorOpen()) { rotateEditorPlacement(e.shiftKey ? -1 : 1); return; }
+      if (!this.isPaused && !this.uiBlocked) this.toggleBike();
+    });
     // N: 도감 & 조과첩 (발견 도감 — 인게임 열람. 복귀는 stop+resume)
     this.input.keyboard!.on('keydown-N', () => {
       if (this.isPaused || this.uiBlocked) return;
@@ -1658,6 +1794,10 @@ export class RegionFieldScene extends Phaser.Scene {
       this.input.keyboard!.on('keydown-Z', (e: KeyboardEvent) => {
         if (e.ctrlKey && isMapEditorOpen()) this.editUndoStroke();
       });
+      // 배치 변환 단축키 — X/Y 반전 · O 겹침 허용 토글 (편집기 열림 중에만)
+      this.input.keyboard!.on('keydown-X', () => { if (isMapEditorOpen()) flipEditorPlacement('x'); });
+      this.input.keyboard!.on('keydown-Y', () => { if (isMapEditorOpen()) flipEditorPlacement('y'); });
+      this.input.keyboard!.on('keydown-O', () => { if (isMapEditorOpen()) toggleEditorOverlap(); });
       this.input.keyboard!.on('keydown-ENTER', () => {
         if (isMapEditorOpen() && mapEditorState.mode === 'roadNew') this.editRoadNewCommit();
       });

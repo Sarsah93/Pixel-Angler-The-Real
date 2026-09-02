@@ -28,7 +28,9 @@ PNG만 바꾸면 되는지, 생성기를 돌려야 하는지부터 판별한다:
 | `py tools/build_region_maps.py <region>` | `pixelazed/<region>/*.png` | `public/data/<region>/*.json` | 지역 타일맵 |
 | `py tools/extract_tileset_assets.py survey\|build\|contact` | `pixelazed/tileset/` (Gemini 개별 PNG · TopDown 시트 · Kenney 시트) | `public/tileset/{gem,td,kn}/*.png` + `_survey/` 컨택트시트 | 심리스 프리팹·프롭·차량·NPC (101차). survey로 인덱스 컨택트 → 표(`TOPDOWN_PICK`/`KENNEY_PICK`) 갱신 → build → contact로 검수. 새 키는 `data/TilesetManifest.ts`에 등록 |
 | `py tools/extract_tileset_assets.py ttp` | `pixelazed/tileset/1.png`·`2.png` (사용자 제작 TTP 목업 시트) | `public/tileset/ttp/*.png` (25장) | 테트라포드·해안 접경 (104차). ⚠ **목업 스크린샷이라 격자가 아니다** — 셀 경계 실측표(`TTP_SHEET1/2`) → area 리샘플 → k-means 양자화. 접경 셀은 `cut_water`로 바다를 투명으로 판다(게임 물 색과 다름). 타일은 **32px = TR 1:1** |
-| `py tools/extract_tileset_assets.py coast` | `pixelazed/tileset/돌 방파제 그리드.png` · `방파제 바위 및 바다 경계면 모서리.png` · `부두 플랫폼 모서리.png` | `public/tileset/coast/*.png` (51장) | 방파제 상판·사석·부두 모서리·갯바위 (105차). 실사 사진 격자는 선 실측(`STONE_XS/YS`) 후 **선별** 크롭, 테두리 셀 시트는 **불투명 AND 근검정** 마스크로 탐지(흰 배경 = 알파 0 함정). 군 단위 **톤 정규화**(`_clean(match=)`) 필수 — 안 맞추면 바둑판 이음매 |
+| `py tools/extract_tileset_assets.py coast` | `pixelazed/tileset/돌 방파제 그리드.png` · `방파제 바위 및 바다 경계면 모서리.png` · `부두 플랫폼 모서리.png` | `public/tileset/coast/*.png` (147장) | 방파제 상판·사석·부두 모서리·갯바위 (105차 → **106차에 96셀 전량 개별화**). 실사 격자는 선 실측(`STONE_XS/YS`), 테두리 셀 시트는 **불투명 AND 근검정** 마스크(흰 배경 = 알파 0 함정). 군 단위 **톤 정규화**(`_clean(match=)`) 필수. **`grain=2` 필수** — 1:1로 구우면 그 타일만 입자가 절반이다 |
+| `py tools/extract_tileset_assets.py catalog` | 위 추출물(coast·ttp) | `src/data/TileCatalog.ts` (타일 126 · 오브젝트 27) | **F7 편집기 팔레트 단일 소스**(106차). 시트를 늘리면 `coast`/`ttp` 뒤에 반드시 이 모드를 돌린다 — 안 돌리면 새 셀이 팔레트·매니페스트에 안 뜬다 |
+| `py tools/extract_tileset_assets.py gem` | `pixelazed/tileset/Gemini generated and edited/*` | `public/tileset/gem/*.png` (19장) | Gemini 생성본 **도트 리베이크**(106차 — 22색 + 2px 입자). 원본은 그대로 두고 출력만 재가공. ⚠ TopDown(`td`)은 네이티브 도트(3~9색)라 **다시 굽지 않는다** |
 
 - 생성물 TS는 헤더에 "자동 생성 — 수동 편집 금지" — 절대 손으로 고치지 말고 재생성.
 - 도구의 playwright 경로는 자동 탐색(로컬 → `%LOCALAPPDATA%/npm-cache/_npx`) — 특정 계정 경로 하드코딩 금지. ⚠ `.cjs` 주석에 `_npx/*/…` 글롭을 쓰면 `*/`가 블록 주석을 조기 종료시킨다 — 라인 주석 사용.
@@ -55,6 +57,16 @@ PNG만 바꾸면 되는지, 생성기를 돌려야 하는지부터 판별한다:
 - ⚠ **두족류 소스 폴더는 사용자 구조 종속** — 무늬오징어는 `reference/cephalopod/무늬오징어 레퍼런스/`
   (100차 이동 반영). 폴더가 또 이동되면 파이프라인이 "입력 없음" **경고만 내고 건너뛰어 재생성 시
   해당 키가 소실**된다 — 재생성 로그에 경고가 보이면 `CEPH_SRC_DIR`/`OCTO_PIXEL_DIR`부터 확인.
+
+### ①-c 도트 입자 규칙 (106차 — 전 세트 공통)
+
+맵의 기준 입자는 **2px**(Kenney 16px ×2 · 절차 물 디더). 실사/생성 에셋을 32px 1:1로 구우면
+그 타일만 입자가 절반이라 인접 대비가 4~20배로 튄다(실측: 잔디 0.85 ↔ 사석 15~20).
+
+- 새 시트는 `_clean(..., grain=2)`로 굽는다(`COAST_GRAIN`/`TTP_GRAIN`/`GEM_GRAIN` 상수).
+- 트림 스프라이트는 **짝수 크기**로 맞춘다(홀수면 마지막 열/행이 1px 입자로 남는다).
+- 배치 오프셋도 **짝수 스냅** — 홀수로 놓으면 입자가 어긋난다.
+- 예외: **TopDownCityPack**은 원래 도트(3~9색)라 재베이크가 손해다.
 
 ## ② 방향 규칙 (전 필렛 뷰 공통 컨벤션)
 

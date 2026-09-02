@@ -13,6 +13,9 @@
  * 프로덕션 빌드에서는 import.meta.env.DEV 가드로 데드코드 제거.
  */
 
+import { PLACEABLE_TILES } from '../data/TileCatalog.js';
+import { tilesetPathOf } from '../data/TilesetManifest.js';
+
 export type MapEditMode = 'tile' | 'prop' | 'erase' | 'roof' | 'road' | 'roadNew';
 
 export interface MapEditorState {
@@ -20,6 +23,17 @@ export interface MapEditorState {
   tileChar: string;
   propId: string;
   brush: 1 | 3 | 5;
+  /** 개별 시트 셀 텍스처 키 — null이면 지형 문자만 칠한다(그림 오버라이드 해제) */
+  tileTex: string | null;
+  /** 배치 변환 — 타일·오브젝트 공용 (R / X / Y) */
+  rot: 0 | 1 | 2 | 3;
+  fx: boolean;
+  fy: boolean;
+  /**
+   * 겹침 허용 — 켜면 오브젝트를 **격자에 스냅하지 않고 포인터 위치 그대로**, 겹침 검사 없이 놓는다.
+   * 테트라포드처럼 무더기로 쌓는 오브젝트를 위해 필요(106차 사용자 지시 3).
+   */
+  overlap: boolean;
   /** 새 도로 그리기 프리셋 — roads.json 실측 분포(서비스 2 · 주택가 3 · 일반 4 · 대로 6)와 정합 */
   roadCls: string;
   roadW: number;
@@ -68,8 +82,45 @@ let statusEl: HTMLDivElement | null = null;
 
 export const mapEditorState: MapEditorState = {
   mode: 'tile', tileChar: '.', propId: 'tree', brush: 1,
+  tileTex: null, rot: 0, fx: false, fy: false, overlap: false,
   roadCls: 'residential', roadW: 3, roadLanes: 1,
 };
+
+/** 회전/반전/겹침 토글 — 씬의 키 핸들러(R/X/Y/O)도 이걸 호출한다 */
+export function rotateEditorPlacement(dir: 1 | -1): void {
+  mapEditorState.rot = (((mapEditorState.rot + dir) % 4) + 4) % 4 as 0 | 1 | 2 | 3;
+  refreshMapEditor();
+}
+export function flipEditorPlacement(axis: 'x' | 'y'): void {
+  if (axis === 'x') mapEditorState.fx = !mapEditorState.fx;
+  else mapEditorState.fy = !mapEditorState.fy;
+  refreshMapEditor();
+}
+export function toggleEditorOverlap(): void {
+  mapEditorState.overlap = !mapEditorState.overlap;
+  refreshMapEditor();
+}
+
+/** 패널 버튼 상태 재도색 (씬에서 상태를 바꿨을 때) */
+let refreshAll: (() => void) | null = null;
+export function refreshMapEditor(): void {
+  refreshAll?.();
+}
+
+/**
+ * dev 검증 하네스용 노출 — 하네스가 `import('/src/dev/MapEditorPanel.ts')` 로 가져오는 모듈은
+ * **게임이 쓰는 인스턴스와 다르다**(17·59·72차와 같은 함정: .ts/.js URL이 갈라진다).
+ * 편집기 상태를 실제로 움직이려면 이 전역을 써야 한다.
+ */
+if (import.meta.env.DEV) {
+  (globalThis as unknown as { __MAPEDIT?: unknown }).__MAPEDIT = {
+    state: mapEditorState,
+    rotate: rotateEditorPlacement,
+    flip: flipEditorPlacement,
+    toggleOverlap: toggleEditorOverlap,
+    isOpen: (): boolean => isMapEditorOpen(),
+  };
+}
 
 export function isMapEditorOpen(): boolean {
   return root !== null;
@@ -79,6 +130,7 @@ export function closeMapEditor(): void {
   root?.remove();
   root = null;
   statusEl = null;
+  refreshAll = null;
 }
 
 export function setMapEditorStatus(msg: string): void {
@@ -112,6 +164,7 @@ export function openMapEditor(region: string, propDefs: MapEditorPropEntry[], ho
 
   const refreshers: (() => void)[] = [];
   const rerender = (): void => { for (const f of refreshers) f(); };
+  refreshAll = rerender;
 
   // ── 탭 ──
   type Tab = 'tiles' | 'objects' | 'tools';
@@ -183,11 +236,38 @@ export function openMapEditor(region: string, propDefs: MapEditorPropEntry[], ho
     return cell;
   };
 
+  // ── 배치 변환 (타일·오브젝트 공용) — 회전·반전·겹침 허용 ──
+  const tf = document.createElement('div');
+  Object.assign(tf.style, { display: 'flex', gap: '4px', alignItems: 'center', margin: '0 0 6px', flexWrap: 'wrap' });
+  tf.appendChild(btn('↺ 회전', () => rotateEditorPlacement(-1), () => false));
+  tf.appendChild(btn('↻ 회전 (R)', () => rotateEditorPlacement(1), () => mapEditorState.rot !== 0));
+  tf.appendChild(btn('↔ 좌우 (X)', () => flipEditorPlacement('x'), () => mapEditorState.fx));
+  tf.appendChild(btn('↕ 상하 (Y)', () => flipEditorPlacement('y'), () => mapEditorState.fy));
+  tf.appendChild(btn('⧉ 겹침 허용 (O)', () => toggleEditorOverlap(), () => mapEditorState.overlap));
+  const tfInfo = document.createElement('span');
+  Object.assign(tfInfo.style, { fontSize: '10px', color: '#7fa8c4' });
+  refreshers.push(() => {
+    tfInfo.textContent = `${mapEditorState.rot * 90}°${mapEditorState.fx ? ' ↔' : ''}${mapEditorState.fy ? ' ↕' : ''}`
+      + (mapEditorState.overlap ? ' · 자유 배치(격자·겹침 무시)' : '');
+  });
+  tf.appendChild(tfInfo);
+  box.insertBefore(tf, pages.tiles);
+
   // ── 지형 타일 탭 ──
   const tiles = sec(pages.tiles, '지형 타일 (클릭·드래그 페인트)', true);
   for (const [ch, label, color, thumb] of TILE_PALETTE) {
-    tiles.appendChild(iconCell(label, thumb, color, () => { mapEditorState.mode = 'tile'; mapEditorState.tileChar = ch; },
-      () => mapEditorState.mode === 'tile' && mapEditorState.tileChar === ch));
+    tiles.appendChild(iconCell(label, thumb, color, () => { mapEditorState.mode = 'tile'; mapEditorState.tileChar = ch; mapEditorState.tileTex = null; },
+      () => mapEditorState.mode === 'tile' && mapEditorState.tileTex === null && mapEditorState.tileChar === ch));
+  }
+  // ── 개별 시트 셀(106차) — 카테고리별. 클릭하면 그림 오버라이드 + base 지형 문자를 함께 칠한다 ──
+  const tileCats = [...new Set(PLACEABLE_TILES.map((t) => t.cat))];
+  for (const cat of tileCats) {
+    const body = sec(pages.tiles, cat, true);
+    for (const t of PLACEABLE_TILES.filter((x) => x.cat === cat)) {
+      body.appendChild(iconCell(t.label, tilesetPathOf(t.key), null,
+        () => { mapEditorState.mode = 'tile'; mapEditorState.tileTex = t.key; mapEditorState.tileChar = t.base; },
+        () => mapEditorState.mode === 'tile' && mapEditorState.tileTex === t.key));
+    }
   }
   const brush = sec(pages.tiles, '브러시');
   for (const n of [1, 3, 5] as const) {

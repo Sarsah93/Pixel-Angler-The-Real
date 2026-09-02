@@ -179,17 +179,40 @@ def survey():
     print(f'[kenney] {cols}x{rows} cells → {SCRATCH / "kenney_grid.png"}')
 
 
-def build():
+
+
+# ── Gemini 생성본 도트화 (106차) ─────────────────────────────────────────────
+# 사용자 지시 5: "타일·오브젝트 간 픽셀레이션·해상도·밝기 정합을 맞춰라".
+# 실측: Kenney 지면 = 16px ×2(2px 입자·8~16색) · TopDown = 네이티브 도트(3~9색) ·
+#       **Gemini 생성본만 1px 입자에 15,000~24,000색** = 혼자 렌더링 그림처럼 보였다.
+# → 같은 2px 입자 + 소수 팔레트로 다시 구워 도트 문법에 맞춘다(원본은 그대로 보존).
+GEM_GRAIN = 2
+GEM_COLORS = 22          # 팔레트 색 수 — Kenney 셀(8~16)과 TopDown(3~9) 사이
+
+
+def gem():
+    """`Gemini generated and edited/*` → public/tileset/gem/*.png (트림 + 2px 도트 리베이크)."""
     (OUT / 'gem').mkdir(parents=True, exist_ok=True)
-    (OUT / 'td').mkdir(parents=True, exist_ok=True)
-    (OUT / 'kn').mkdir(parents=True, exist_ok=True)
+    n = 0
     for fname, slug in GEMINI.items():
         p = TS / 'Gemini generated and edited' / fname
         if not p.exists():
             print(f'  ⚠ 없음: {fname}'); continue
         im = trim(Image.open(p).convert('RGBA'))
-        im.save(OUT / 'gem' / f'{slug}.png')
-        print(f'  gem/{slug}.png {im.width}x{im.height}')
+        # 짝수로 맞춰야 2px 입자가 딱 떨어진다 (홀수면 마지막 열/행이 1px 입자로 남는다)
+        w, h = im.width - im.width % GEM_GRAIN, im.height - im.height % GEM_GRAIN
+        out = _clean(im.crop((0, 0, max(GEM_GRAIN, w), max(GEM_GRAIN, h))), (max(GEM_GRAIN, w), max(GEM_GRAIN, h)),
+                     k=GEM_COLORS, grain=GEM_GRAIN)
+        out.save(OUT / 'gem' / f'{slug}.png')
+        n += 1
+    print(f'[gem] {n} sprites → {OUT / "gem"}')
+
+
+def build():
+    (OUT / 'gem').mkdir(parents=True, exist_ok=True)
+    (OUT / 'td').mkdir(parents=True, exist_ok=True)
+    (OUT / 'kn').mkdir(parents=True, exist_ok=True)
+    gem()
     td = Image.open(TS / 'TopDownCityPack' / 'Sprites' / 'Tiles.png').convert('RGBA')
     comps = components(td)
     for idx, name in TOPDOWN_PICK.items():
@@ -363,6 +386,8 @@ def contact():
 #   투명 TTP = 알파<255 영역 bbox (679,34)-(750,105) 72×72 (알파 이진 — 유일하게 깨끗한 원본)
 
 TTP_TILE = 32          # 심리스 타일 스트라이드(TR) — 1:1로 굽는다(런타임 재샘플 없음)
+# 도트 입자 2px — Kenney 지면(16px ×2)·물 디더와 통일(106차). 1px 입자는 혼자 촘촘해 튄다
+TTP_GRAIN = 2
 # 게임 모래 발색과 맞추는 웜 틴트 — SeamlessChunks.ensureGroundTextures 의 's' 틴트와 **동일 값**
 # (Kenney sand(크림)와 tan 포장이 육안 구분 불가라 103차에 도입. 값이 바뀌면 양쪽 같이 고칠 것)
 TTP_SAND_TINT = (0xf6, 0xd4, 0x7c)
@@ -397,7 +422,9 @@ TTP_SHEET2 = {
 }
 TTP_SPRITE_BOX = (679, 34, 751, 106)      # 투명 TTP 72×72 (알파 이진)
 # 배치 크기 = 타일 배수. l=1.75타일(구 gem tetra와 동일 체적) · m/s = 피복 유닛
-TTP_SPRITE_SIZES = {'l': 56, 'm': 38, 's': 26}
+# 106차 — 사용자 지시 "테트라포드는 2×2가 아니라 1×1". 배치 단위 = 1타일(32px).
+#   촘촘히 쌓는 연출은 편집기의 **겹침 허용** 자유 배치로 만든다.
+TTP_SPRITE_SIZES = {'l': 32, 'm': 24, 's': 18}
 
 
 def _kmeans_palette(rgb, mask, k, iters=28):
@@ -438,14 +465,30 @@ def _is_water(c):
     return b > r + 18 and min(r, g, b) <= 170
 
 
-def _clean(im, size, k=6, sand_tint=False, resample=Image.BOX, cut_water=False, match=None):
+def _water_frac(im):
+    """셀에서 '바다' 팔레트에 해당하는 픽셀 비율 — 물 섞인 셀 자동 판정(106차)."""
+    a = np.array(im.convert('RGBA')).astype(int)
+    rgb, al = a[:, :, :3].reshape(-1, 3), a[:, :, 3].reshape(-1)
+    m = al > 128
+    if m.sum() == 0:
+        return 0.0
+    wet = np.array([_is_water(c) for c in rgb[m]])
+    return float(wet.mean())
+
+
+def _clean(im, size, k=6, sand_tint=False, resample=Image.BOX, cut_water=False, match=None, grain=1):
     """크롭 → 목표 크기 리샘플(노이즈 평균) → 팔레트 양자화(도트 복원). 알파는 이진 유지.
 
     cut_water=True 면 '바다' 팔레트 색을 **투명**으로 판다 — 접경 셀을 게임 물 타일 위에
     얹는 **오버레이**로 쓰기 위해서다. 시트의 청록(73,150,156)은 게임 수심 램프(연한 파랑)와
     달라, 통짜로 깔면 접경마다 사각 색 패치가 생긴다(실렌더 확인). 모래·젖은모래·포말만 남긴다.
+
+    grain=N 이면 **size/N 로 굽고 NEAREST ×N 확대** — 도트 입자를 N픽셀로 키운다(106차).
+    맵 전체가 Kenney 16px ×2 = **2px 입자** 규칙인데 실사 셀만 1px이면(TR 1:1) 인접 대비가
+    4~20배로 튀어 지글거린다(실측: 잔디 0.85 / 상판 3.2~8.6 / 사석 15~20). 해안 세트는 grain=2.
     """
-    im = im.resize(size, resample)
+    base = (max(1, size[0] // grain), max(1, size[1] // grain))
+    im = im.resize(base, resample)
     a = np.array(im).astype(float)
     rgb, al = a[:, :, :3], a[:, :, 3]
     mask = al > 128
@@ -467,7 +510,10 @@ def _clean(im, size, k=6, sand_tint=False, resample=Image.BOX, cut_water=False, 
         wet = np.array([_is_water(c) for c in cen])
         keep = mask & ~wet[lab].reshape(mask.shape)
     out = np.dstack([np.clip(q, 0, 255), np.where(keep, 255, 0)]).astype(np.uint8)
-    return Image.fromarray(out)
+    res = Image.fromarray(out)
+    if grain > 1:
+        res = res.resize(size, Image.NEAREST)
+    return res
 
 
 def _resize_rgba(im, size):
@@ -495,12 +541,12 @@ def ttp():
             edge = name.startswith(('edge_', 'corner_')) and name != 'corner_land'
             tint = name.startswith(('edge_', 'corner_')) or name == 'base_sand'
             im = _clean(src.crop(box), (TTP_TILE, TTP_TILE), k=8 if tint else 7,
-                        sand_tint=tint, cut_water=edge)
+                        sand_tint=tint, cut_water=edge, grain=TTP_GRAIN)
             im.save(dst / f'{name}.png')
             n += 1
     sp = s2.crop(TTP_SPRITE_BOX)
     for suf, px in TTP_SPRITE_SIZES.items():
-        u = _clean(_resize_rgba(sp, (px, px)), (px, px), k=7, resample=Image.NEAREST)
+        u = _clean(_resize_rgba(sp, (px, px)), (px, px), k=7, resample=Image.NEAREST, grain=TTP_GRAIN)
         u.save(dst / f'ttp_{suf}.png')
         u.transpose(Image.FLIP_LEFT_RIGHT).save(dst / f'ttp_{suf}_fx.png')
         n += 2
@@ -520,6 +566,8 @@ def ttp():
 #   ③ `부두 플랫폼 모서리.png` — 검정 테두리 셀 4개(부두 상판 ↔ 물 모서리/가장자리).
 
 COAST_TILE = 32        # = TR (1:1)
+# 도트 입자 — Kenney 지면(16px ×2)·절차 물 디더와 같은 2px. 실사 셀을 1:1로 깔면 혼자 촘촘하다(106차)
+COAST_GRAIN = 2
 
 # ── ① 돌 방파제 격자 (선 실측값) ───────────────────────────────
 STONE_XS = [0, 44, 92, 142, 189, 235, 283, 331, 377, 423, 469, 515, 562, 607, 652, 698, 745]
@@ -572,32 +620,152 @@ def coast():
         for key, name in table.items():
             tone = (DECK_TONE if name.startswith('deck') else
                     RUBBLE_TONE if name.startswith(('rubble', 'head')) else None)
-            im = _clean(stone.crop(stone_box(key)), (COAST_TILE, COAST_TILE), k=10, cut_water=cut, match=tone)
+            im = _clean(stone.crop(stone_box(key)), (COAST_TILE, COAST_TILE), k=10, cut_water=cut, match=tone, grain=COAST_GRAIN)
             im.save(dst / f'{name}.png'); n += 1
+    # 96셀 전량 개별 타일(106차 — 사용자 지시 "그리드화한 전체 타일을 각각 개별 타일로").
+    #   물이 섞인 셀은 **자동 판정**으로 바다를 투명으로 판다(게임 물 위에 얹는 오버레이).
+    #   톤 정규화는 행 의미(1·3 사석 / 2 상판)에만 — 물 셀에 걸면 바다색까지 끌려간다.
+    for rr in range(len(STONE_YS) - 1):
+        for cc in range(len(STONE_XS) - 1):
+            cell = stone.crop(stone_box(f'{rr}-{cc}'))
+            wf = _water_frac(cell)
+            # 물이 **섞인** 셀만 바다를 판다(오버레이). 온통 물인 셀(행 4·5)은 통짜 물 타일로 남긴다 —
+            # 파내면 빈 셀이 되어 팔레트에서 사라진다.
+            wet = 0.12 < wf <= 0.85
+            tone = (RUBBLE_TONE if rr in (1, 3) else DECK_TONE if rr == 2 else None) if not wet else None
+            im = _clean(cell, (COAST_TILE, COAST_TILE), k=10, cut_water=wet, match=tone, grain=COAST_GRAIN)
+            im.save(dst / f'stone_r{rr}c{cc}.png'); n += 1
     # ② 바위 20 + Rock-Water 4 + 물 상세 7
     sheet = Image.open(TS / '방파제 바위 및 바다 경계면 모서리.png').convert('RGBA')
     idx = 0
     for ri, count in enumerate(BOULDER_ROW_COUNT):
         for ci in range(count):
             box = (BOULDER_COLS[ci] + 2, BOULDER_ROWS[ri] + 2, BOULDER_COLS[ci + 1] - 1, BOULDER_ROWS[ri + 1] - 1)
-            im = trim(_clean(sheet.crop(box), (COAST_TILE, COAST_TILE), k=7))
+            im = trim(_clean(sheet.crop(box), (COAST_TILE, COAST_TILE), k=7, grain=COAST_GRAIN))
             idx += 1
             im.save(dst / f'rock_{idx:02d}.png'); n += 1
     for i, box in enumerate(ROCKWATER_BOXES):
-        im = _clean(sheet.crop(box), (COAST_TILE, COAST_TILE), k=8, cut_water=True)
+        im = _clean(sheet.crop(box), (COAST_TILE, COAST_TILE), k=8, cut_water=True, grain=COAST_GRAIN)
         im.save(dst / f'rockwater_{i}.png'); n += 1
     for name, box in WATERDET_BOXES.items():
-        im = _clean(sheet.crop(box), (COAST_TILE, COAST_TILE), k=8, cut_water=name in WATERDET_CUT)
+        im = _clean(sheet.crop(box), (COAST_TILE, COAST_TILE), k=8, cut_water=name in WATERDET_CUT, grain=COAST_GRAIN)
         im.save(dst / f'{name}.png'); n += 1
     # ③ 부두 모서리
     pier = Image.open(TS / '부두 플랫폼 모서리.png').convert('RGBA')
     for i, name in enumerate(PIER_BOXES):
         box = (PIER_XS[i], 42, PIER_XS[i] + 43, 86)
-        im = _clean(pier.crop(box), (COAST_TILE, COAST_TILE), k=8, cut_water=True)
+        im = _clean(pier.crop(box), (COAST_TILE, COAST_TILE), k=8, cut_water=True, grain=COAST_GRAIN)
         im.save(dst / f'{name}.png'); n += 1
     print(f'[coast] {n} sprites → {dst}')
 
 
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 편집기 배치 카탈로그 생성 (106차) — 개별 타일/오브젝트를 F7 팔레트에 그대로 노출
+# ══════════════════════════════════════════════════════════════════════════════
+# 사용자 지시: "그리드화한 전체 타일을 각각 개별 타일로 … 지형 타일로 배치 가능하도록
+#   편집기에 추가", "바위 20종·Rock-Water 4종은 오브젝트(카테고리 '돌 & 바위')".
+# 시트가 늘어날 때마다 손으로 TS를 고치지 않도록 **추출기가 카탈로그를 굽는다**.
+CATALOG_TS = ROOT / 'packages/client-pc/src/data/TileCatalog.ts'
+
+# 1.png(12) · 2.png(7) 개별 타일 — [키, 라벨, 카테고리, 바탕 지형 문자]
+TTP_CATALOG = [
+    ('edge_still', '모래-잔잔한물 경계', '해변 경계', '~'),
+    ('edge_ripple', '모래-잔물결 경계', '해변 경계', '~'),
+    ('edge_foam', '모래-포말 경계', '해변 경계', '~'),
+    ('edge_foam2', '모래-포말 경계 2', '해변 경계', '~'),
+    ('corner_land', '경계 코너(뭍)', '해변 경계', 's'),
+    ('corner_ne', '경계 코너 NE', '해변 경계', '~'),
+    ('corner_sw', '경계 코너 SW', '해변 경계', '~'),
+    ('corner_se', '경계 코너 SE', '해변 경계', '~'),
+    ('water_still2', '잔잔한 물 2', '물', '~'),
+    ('water_rip1', '잔물결 물 1', '물', '~'),
+    ('water_rip2', '잔물결 물 2', '물', '~'),
+    ('water_foam', '포말 물', '물', '~'),
+    ('water_still', '잔잔한 물', '물', '~'),
+    ('water_ripple', '잔물결', '물', '~'),
+    ('water_splash', '해안 물보라', '물', '~'),
+    ('base_sand', '해변 모래', '모래', 's'),
+    ('base_concrete', 'TTP 콘크리트 베이스', '콘크리트', 'b'),
+    ('tile_ttp_a', '콘크리트+TTP A', '콘크리트', 'b'),
+    ('tile_ttp_b', '콘크리트+TTP B', '콘크리트', 'b'),
+]
+
+
+def _cov(path):
+    """알파 커버리지 — 거의 빈 셀은 팔레트에서 뺀다(물만 있던 셀)."""
+    a = np.array(Image.open(path).convert('RGBA'))
+    return float((a[:, :, 3] > 8).mean())
+
+
+def catalog():
+    """추출된 스프라이트 → `data/TileCatalog.ts` (편집기 팔레트 단일 소스)."""
+    coast_dir, ttp_dir = OUT / 'coast', OUT / 'ttp'
+    tiles, objs = [], []
+    # ① 돌 방파제 96셀 — 행 의미로 카테고리 분류
+    ROW_CAT = {
+        0: ('방파제 물가', '~'), 1: ('방파제 사석', 'b'), 2: ('방파제 상판', 'b'),
+        3: ('방파제 사석', 'b'), 4: ('방파제 물가', '~'), 5: ('방파제 물가', '~'),
+    }
+    for rr in range(6):
+        for cc in range(16):
+            f = coast_dir / f'stone_r{rr}c{cc}.png'
+            if not f.exists() or _cov(f) < 0.10:
+                continue
+            cat, base = ROW_CAT[rr]
+            tiles.append((f'ts_coast_stone_r{rr}c{cc}', f'{cat[4:]} {rr}-{cc}', cat, base))
+    # ② 부두 플랫폼 모서리 4 + 물/가장자리 상세 7
+    for i in range(4):
+        tiles.append((f'ts_coast_pier_edge_{i}', f'부두 모서리 {i + 1}', '부두 모서리', '~'))
+    for k, lb in (('wd_caustic_0', '코스틱 1'), ('wd_caustic_1', '코스틱 2'), ('wd_coast_sand', '물가 모래'),
+                  ('wd_shallow', '얕은 물'), ('wd_deep', '깊은 물'),
+                  ('wd_coast_rock_0', '물가 암반 1'), ('wd_coast_rock_1', '물가 암반 2')):
+        tiles.append((f'ts_coast_{k}', lb, '물/가장자리 상세', '~'))
+    # ③ TTP 시트 개별 타일
+    for k, lb, cat, base in TTP_CATALOG:
+        tiles.append((f'ts_ttp_{k}', lb, cat, base))
+    # ④ 오브젝트 — 방파제 바위 20 · Rock-Water 4 · 테트라포드 3크기
+    for i in range(1, 21):
+        objs.append((f'coast_rock_{i:02d}', f'방파제 바위 {i}', f'ts_coast_rock_{i:02d}', '돌 & 바위'))
+    for i in range(4):
+        objs.append((f'coast_rockwater_{i}', f'물속 바위 {i + 1}', f'ts_coast_rockwater_{i}', '돌 & 바위'))
+    for suf, lb in (('l', '대'), ('m', '중'), ('s', '소')):
+        objs.append((f'ttp_{suf}', f'테트라포드 ({lb})', f'ts_ttp_ttp_{suf}', '해안 구조물'))
+    lines = [
+        '/**',
+        ' * @file TileCatalog.ts',
+        ' * @description **자동 생성 — 수동 편집 금지** (`py tools/extract_tileset_assets.py catalog`).',
+        ' *',
+        ' * F7 맵 편집기 팔레트에 노출되는 **개별 타일/오브젝트 카탈로그**(106차).',
+        ' *  - `PLACEABLE_TILES` = 지형 타일로 찍는 개별 셀. `base` = 함께 칠할 지형 문자',
+        ' *    (걷기·충돌 판정은 여전히 지형 문자가 결정한다 — 그림만 바꾸면 물 위를 걷게 된다).',
+        ' *  - `COAST_OBJECTS` = 지형 위에 얹는 스프라이트(회전·반전·겹침 허용 대상).',
+        ' */',
+        '',
+        'export interface PlaceableTile {',
+        '  /** 텍스처 키 (TILESET_MANIFEST 등록 키) */',
+        '  key: string;',
+        '  label: string;',
+        '  cat: string;',
+        '  /** 함께 칠할 지형 문자 — 걷기/충돌의 기준 */',
+        '  base: string;',
+        '}',
+        '',
+        'export const PLACEABLE_TILES: PlaceableTile[] = [',
+    ]
+    for k, lb, cat, base in tiles:
+        lines.append(f"  {{ key: '{k}', label: '{lb}', cat: '{cat}', base: '{base}' }},")
+    lines += ['];', '', 'export interface PlaceableObject {', '  id: string;', '  label: string;',
+              '  tex: string;', '  cat: string;', '}', '',
+              'export const COAST_OBJECTS: PlaceableObject[] = [']
+    for i, lb, tex, cat in objs:
+        lines.append(f"  {{ id: '{i}', label: '{lb}', tex: '{tex}', cat: '{cat}' }},")
+    lines += ['];', '']
+    CATALOG_TS.write_text(chr(10).join(lines), encoding='utf-8')
+    print(f'[catalog] tiles {len(tiles)} · objects {len(objs)} → {CATALOG_TS}')
+
+
 if __name__ == '__main__':
     mode = sys.argv[1] if len(sys.argv) > 1 else 'survey'
-    {'survey': survey, 'build': build, 'ground': ground, 'zoom': zoom, 'contact': contact, 'ttp': ttp, 'coast': coast}[mode]()
+    {'survey': survey, 'build': build, 'ground': ground, 'zoom': zoom, 'contact': contact, 'ttp': ttp, 'coast': coast, 'catalog': catalog, 'gem': gem}[mode]()

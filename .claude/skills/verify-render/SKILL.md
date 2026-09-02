@@ -56,6 +56,7 @@ const { chromium } = resolvePlaywright();
 | 게임 인스턴스 | `globalThis.__PIXEL_ANGLER_GAME` | — |
 | 인벤토리 스토어 | `globalThis.__INV` (dev 전용 노출) | `import('/src/store/InventoryStore.ts')`는 **게임과 별개 모듈 인스턴스** (17·59차 실측) — 조작이 게임에 반영 안 됨 |
 | GameState | `globalThis.__GS` (dev 전용) | 위와 동일 함정 (72차 실측) |
+| 맵 편집기(F7) 상태 | `globalThis.__MAPEDIT` (dev 전용 — `state`/`rotate`/`flip`/`toggleOverlap`/`isOpen`) | import한 `MapEditorPanel`은 게임과 별개 인스턴스 (106차 실측 — `mapEditorState` 동일성 false) |
 | 모듈 함수(렌더러 등) | `await import('/src/…​.ts')` — **`.ts` URL** | `.js` URL은 별개 모듈. 상태 없는 순수 함수 호출에만 사용 |
 
 - **패널 직접 생성 시** `scene.add.existing(panel)` 필수 — DraggablePanel(Container)은 자동 등록되지 않는다 (7차).
@@ -66,6 +67,9 @@ const { chromium } = resolvePlaywright();
 
 ## 자주 틀리는 시그니처·측정
 
+- 맵 편집 하네스: `s.toggleMapEditor()` → `__MAPEDIT.state` 설정 → `s.editBeginStroke(ptr)`/`s.editFinishStroke()`.
+  포인터는 **스크린 좌표**(`tile*32 - camera.scrollX`)로 만든다. 저장 왕복을 테스트하면 `patch.json`이
+  덮이므로 **백업 후 복원**할 것(106차 — 사용자 편집분 보호).
 - `drawPixelButcherFish(g, geom, tint, state, sprites)` — sprites가 **5번째** (3번째 아님).
 - 텍스트 오버플로 측정은 **origin 보정**: 우측 끝 = `x + width * (1 - originX)` — origin 0.5를 `x+width`로 재면 오판 (54차).
 - InventoryPanel 그리드: 셀 피치 = SLOT(66) + GAP(7) = **73px**, 시작 = `panel.x + gridX0` / `panel.y + gridY0`.

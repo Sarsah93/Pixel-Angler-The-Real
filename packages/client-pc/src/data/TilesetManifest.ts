@@ -15,6 +15,8 @@
  * 전부 **PNG 직접 로드** 에셋 — 재추출 + F5로 반영 (asset-pipeline 스킬 ⓪).
  */
 
+import { PLACEABLE_TILES, COAST_OBJECTS } from './TileCatalog.js';
+
 export interface TilesetEntry {
   key: string;
   path: string;
@@ -119,10 +121,30 @@ export function tilesetPathOf(key: string): string | null {
 /** 탑다운 차량 키 (세로 진행 스프라이트 — 도로 세그먼트 각도 + 90°로 회전) */
 export const CAR_TOPDOWN_KEYS = ['ts_kn_car_g', 'ts_kn_car_h', 'ts_kn_car_i', 'ts_kn_car_j', 'ts_kn_car_k', 'ts_kn_car_l'];
 
-export const TILESET_MANIFEST: TilesetEntry[] = [
+const base: TilesetEntry[] = [
   ...gem.map((n) => ({ key: `ts_gem_${n}`, path: `tileset/gem/${n}.png` })),
   ...td.map((n) => ({ key: `ts_td_${n}`, path: `tileset/td/${n}.png` })),
   ...kn.map((n) => ({ key: `ts_kn_${n}`, path: `tileset/kn/${n}.png` })),
   ...ttp.map((n) => ({ key: `ts_ttp_${n}`, path: `tileset/ttp/${n}.png` })),
   ...coast.map((n) => ({ key: `ts_coast_${n}`, path: `tileset/coast/${n}.png` })),
 ];
+
+/** `ts_<set>_<name>` → public 경로 (편집기 카탈로그 키를 자동 등록할 때 쓴다 — 106차) */
+function catalogPath(key: string): string | null {
+  const m = /^ts_(coast|ttp|kn|td|gem)_(.+)$/.exec(key);
+  return m ? `tileset/${m[1]}/${m[2]}.png` : null;
+}
+
+// 편집기 카탈로그(자동 생성)에 있는 키 중 위 목록에 없는 것은 여기서 채운다 —
+// 시트를 늘려도 manifest를 손으로 고칠 필요가 없다.
+const known = new Set(base.map((e) => e.key));
+const extra: TilesetEntry[] = [];
+for (const key of [...PLACEABLE_TILES.map((t) => t.key), ...COAST_OBJECTS.map((o) => o.tex)]) {
+  if (known.has(key)) continue;
+  const path = catalogPath(key);
+  if (!path) continue;
+  known.add(key);
+  extra.push({ key, path });
+}
+
+export const TILESET_MANIFEST: TilesetEntry[] = [...base, ...extra];

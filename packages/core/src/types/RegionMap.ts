@@ -107,10 +107,33 @@ export interface RegionRoad {
 
 /** 수동 배치 프롭 (dev 맵 편집기 — patch.json) */
 export interface RegionProp {
+  /** 타일 좌표 — **소수 허용**(106차 자유 배치: 겹침 허용 모드에서 타일 격자에 스냅하지 않는다) */
   tx: number;
   ty: number;
   /** 프롭 id (client SeamlessChunks PROP_DEFS 키) */
   id: string;
+  /** 회전 (0=0° 1=90° 2=180° 3=270°) — 편집기 R/Shift+R */
+  rot?: 0 | 1 | 2 | 3;
+  /** 좌우 반전 */
+  fx?: boolean;
+  /** 상하 반전 */
+  fy?: boolean;
+  /** 겹침 허용으로 놓인 것 — 충돌 바디를 만들지 않는다(테트라포드 무더기 등) */
+  free?: boolean;
+}
+
+/**
+ * 타일 그림 오버라이드(106차) — 편집기에서 **개별 시트 셀**을 지형 위에 찍은 것.
+ * 걷기·충돌은 여전히 지형 문자(`tiles`)가 결정하고, 이 목록은 **그림만** 바꾼다.
+ */
+export interface RegionTileTex {
+  tx: number;
+  ty: number;
+  /** 텍스처 키 (TileCatalog.PLACEABLE_TILES.key) */
+  tex: string;
+  rot?: 0 | 1 | 2 | 3;
+  fx?: boolean;
+  fy?: boolean;
 }
 
 /**
@@ -126,6 +149,8 @@ export interface RegionPatch {
   roofs: Record<string, number>;
   /** 도로 벡터 전체 오버라이드 (편집기 도로 툴 — 있으면 roads.json 대신 이 목록을 쓴다) */
   roads?: RegionRoad[];
+  /** 개별 타일 그림 오버라이드 (106차 — 그림만, 걷기는 tiles가 결정) */
+  tileTex?: RegionTileTex[];
 }
 
 /**
