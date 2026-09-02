@@ -58,6 +58,8 @@
 | 자전거(R) + 접지/크기 + 배타 액션 게이트 | ✅ | 17·18 |
 | 씬 전환 안전망(SceneFade 17곳) | ✅ | 73 |
 | 교통비·귀가·잠금 지역 | ✅ | 44 |
+| 래스터 보강 — Sentinel-2 fetch·분류·terrain 병합(Phase 1·2, 속초) | ✅ | 109 |
+| 래스터 Phase 3 — DEM 경사(해안 변형·음영) | ⬜ | DEM 도엽 재확보 후 |
 | **OSM 심리스 v2 — 속초**(파이프라인·청크 스트리밍·POI·검증) | ✅ | 100 |
 | 스케일 5m/타일 + 보도 분리 + L1·L3 절차 렌더 + HUD 픽셀 패널 | ✅ | 100 후속 |
 | dev 맵 편집기(F7)·순간이동 + 차도 벡터 마킹(대각선) + 프롭 10종 | ✅ | 101 |
@@ -89,6 +91,10 @@
 
 - OSM 확장 절차: `regions_config.py`의 지역 키로 `fetch → build → build_region_maps →
   SEAMLESS_REGIONS 등록 → terrain/스폰 검수` 반복. ⚠ 서해 2곳(taean)은 seaEdges 조정 가능성.
+- **래스터 보강(109차)**: 신규 지역은 Browser 정찰로 장면 날짜 확정 → `regions_config.raster`
+  딕셔너리 추가 → `fetch_region_raster → classify_raster → build_osm_tilemap`(병합 자동).
+  잔여 = 사용자 육안 확정(도심 포장 'r' 46k 체감 — 과하면 병합 가드 조정) ·
+  **Phase 3 DEM 도엽 4장 재다운로드**(이 PC 부재 — .env 와 같은 케이스) · b/s 발판 보너스 배선.
 - **확장 대상은 `access` 미지정(land) 14개만** — `'boat'`(울릉·독도)는 배 출조 콘텐츠
   (흘림낚시·다운샷·원도권 갯바위) 업데이트 시 개방(102차 — 사용자 결정).
   지역 bbox 안 부속 섬은 별도 조치 불요 — 심리스 빌드는 자동 카브를 안 해(OSM 벡터 정본)

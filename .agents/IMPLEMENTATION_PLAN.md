@@ -1,8 +1,16 @@
 # The Real Angler — 구현 계획서 (IMPLEMENTATION_PLAN)
 
-> **최종 업데이트**: 2026-09-02 — **107차: 래스터 보강 발주 선행 정정**(스펙 32px 정정 · map-builder
-> 제외 → 빌드 **3/3** · 저작권 푸터). 상세 [워크로그 107](../docs/wiki/03-WORKLOG/2026-09-02-107-raster-spec-prep.md).
-> 직전: 106차 도트 입자 2px 통일 + 해변 경계 + 편집기 카탈로그([워크로그 106](../docs/wiki/03-WORKLOG/2026-09-02-106-tile-grain-editor-catalog.md)).
+> **최종 업데이트**: 2026-09-02 — **111차: 주차장 차량 열 절차 배치**(래스터 'r' 광장 —
+> [워크로그 111](../docs/wiki/03-WORKLOG/2026-09-02-111-parking-lot-rows.md)) ·
+> **110차: 교차부 마킹 회랑 클리핑**(정점 없는 기하 교차의
+> 마킹 관통 제거 — [워크로그 110](../docs/wiki/03-WORKLOG/2026-09-02-110-junction-marking-clip.md)).
+> 직전: **109차: 래스터 보강 Phase 1·2 실행**(Sentinel-2 fetch → 좌표 정합
+> 98.84% → 피복 병합: 식생 58k·포장 46k·모래 880·b 497 — b diff 추론만 1,750 유지 · 회귀 0 ·
+> FPS 60). 잔여 = 사용자 육안 확정 · Phase 3 DEM 도엽 재확보 · b/s 보너스 배선.
+> 상세 [워크로그 109](../docs/wiki/03-WORKLOG/2026-09-02-109-raster-phase12-exec.md).
+> 직전: 108차 스펙 개정안 문서화([워크로그 108](../docs/wiki/03-WORKLOG/2026-09-02-108-raster-amendment-doc.md)) ·
+> 107차 래스터 발주 선행 정정([워크로그 107](../docs/wiki/03-WORKLOG/2026-09-02-107-raster-spec-prep.md)) ·
+> 106차 도트 입자 2px 통일 + 해변 경계 + 편집기 카탈로그([워크로그 106](../docs/wiki/03-WORKLOG/2026-09-02-106-tile-grain-editor-catalog.md)).
 >
 > **차수별 상세 히스토리는 이 문서에 쓰지 않는다** — 80차 이하 원장은 `.agents/AGENTS.md` §9,
 > 81차부터의 본문은 `docs/wiki/03-WORKLOG/`. (구 20~80차 압축 요약 블록은 AGENTS §9와 전부 중복이라 제거 — git 히스토리 보존)

@@ -29,7 +29,14 @@ v3 변경: 초대형 6지역(거제·여수·제주·인천·태안·포항)을 
 REGIONS = {
     # ── 동해 ──
     'sokcho_v2': dict(bbox=(38.18858, 128.56789, 38.21745, 128.63527), seaEdges='E',
-                      spawn=(38.2117, 128.5980), spawnName='동명항 방파제 입구'),
+                      spawn=(38.2117, 128.5980), spawnName='동명항 방파제 입구',
+                      # 래스터 보강 (RASTER_UPLIFT_SPEC §4 — 장면은 Browser 정찰로 확정, 자동 선택 금지)
+                      raster=dict(scenes=['2026-08-01'],
+                                  scenes_spare=['2026-07-30', '2026-07-22'],
+                                  tau_water=0.15, tau_nir=0.18,
+                                  ndvi_veg=0.35, ndvi_bare=0.15,
+                                  linearity_min=3.0,
+                                  dem_sheets=['38815014', '38815015', '38815024', '38815025'])),
     # 울릉·독도 = 배 전용 섬 지역 — 심리스 1차 확장에서 분리 (access 문서 참조)
     'ulleung': dict(bbox=(37.44284, 130.74966, 37.55941, 131.01917), seaEdges='NSEW',
                     spawn=(37.4835, 130.9070), spawnName='도동항', access='boat'),

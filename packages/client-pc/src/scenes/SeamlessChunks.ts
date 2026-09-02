@@ -686,7 +686,14 @@ export class SeamlessChunks {
   }
 
   /** 회전교차로 링 중심·반경 (타일) — 진입부 마킹 규칙(반경+2.5 안 = 양보선만) */
-  private roundabouts: { cx: number; cy: number; R: number }[] = [];
+  private roundabouts: { cx: number; cy: number; R: number; halfW: number }[] = [];
+
+  /** 마킹 회랑 클리핑용 도로 세그먼트 + 공간 해시 (109차-b — 교차부 마킹 관통 제거).
+   *  markingPieces는 **그래프 정점을 공유하는** 교차만 끊는다 — 정점 없이 기하적으로만 겹치는
+   *  교차(이중도로 쌍의 상대 도로·회전교차로 링·중간 관통)에서 중앙선/차선/가장자리선이
+   *  교차로 안을 관통했다(사용자 캡처 — 여객터미널 앞 복합 교차부). */
+  private markSegs: { ri: number; ax: number; ay: number; dx: number; dy: number; len2: number; ux: number; uy: number; halfW: number }[] = [];
+  private markSegHash = new Map<number, number[]>();
 
   /** 신호 교차로 (휴리스틱 — 101차 잔여 "신호등·대각선 횡단보도") — 중심·박스 반경 (타일) */
   private signals: { x: number; y: number; half: number }[] = [];
@@ -702,8 +709,33 @@ export class SeamlessChunks {
       cx /= rd.pts.length; cy /= rd.pts.length;
       let R = 0;
       for (const p of rd.pts) R += Math.hypot(p[0] - cx, p[1] - cy);
-      this.roundabouts.push({ cx, cy, R: R / rd.pts.length });
+      this.roundabouts.push({ cx, cy, R: R / rd.pts.length, halfW: rd.w / 2 });
     }
+    // 마킹 클리핑 세그먼트 해시 (109차-b) — 셀 8타일, 세그먼트는 halfW+1 팽창 bbox가 닿는 전 셀에
+    // 등록 → 조회는 점의 자기 셀만 보면 된다.
+    this.markSegs = [];
+    this.markSegHash.clear();
+    (this.cfg.roads ?? []).forEach((road, ri) => {
+      const halfW = road.w / 2;
+      for (let i = 0; i < road.pts.length - 1; i++) {
+        const [ax, ay] = road.pts[i], [bx, by] = road.pts[i + 1];
+        const dx = bx - ax, dy = by - ay;
+        const len = Math.hypot(dx, dy);
+        if (len < 0.2) continue;
+        const si = this.markSegs.length;
+        this.markSegs.push({ ri, ax, ay, dx, dy, len2: dx * dx + dy * dy, ux: dx / len, uy: dy / len, halfW });
+        const pad = halfW + 1;
+        const sc0 = Math.floor((Math.min(ax, bx) - pad) / 8), sc1 = Math.floor((Math.max(ax, bx) + pad) / 8);
+        const sr0 = Math.floor((Math.min(ay, by) - pad) / 8), sr1 = Math.floor((Math.max(ay, by) + pad) / 8);
+        for (let cr = sr0; cr <= sr1; cr++) {
+          for (let cc = sc0; cc <= sc1; cc++) {
+            const key = cr * 8192 + cc;
+            const l = this.markSegHash.get(key);
+            if (l) l.push(si); else this.markSegHash.set(key, [si]);
+          }
+        }
+      }
+    });
     (this.cfg.roads ?? []).forEach((road, ri) => {
       for (const p of road.pts) {
         const k = this.nodeKey(p);
@@ -1652,6 +1684,38 @@ export class SeamlessChunks {
       }
     }
 
+    // ── 주차장 차량 열 (110차-b — 사용자 위성 참고 이미지의 "밀도" 재현 1순위) ──
+    //    래스터 병합 'r'(109차)로 생긴 **도로 밴드 밖 아스팔트 면**(주차장·항만 광장)에 열 지어 주차.
+    //    행 r%4·칸 c%2 = 전역 위상 고정(청크 경계 정합·결정적) · 점유율 ~2/3(빈 칸이 실주차장답다).
+    //    3×3 전부 'r' 요구 → 보도 프린지·건물 문 앞(인접 '#')·래스터 스페클 자동 제외.
+    if (hasTs) {
+      const chunkIdx = cr * this.chunkCols + cc;
+      const kinds: [string, string][] = [['car', 'blue'], ['car', 'green'], ['car', 'red'], ['pickup', 'blue'], ['pickup', 'green'], ['pickup', 'red']];
+      for (let r = r0; r < r1; r++) {
+        if (((r % 4) + 4) % 4 !== 1) continue;     // 행 간격 4타일 (차 길이 ~2 + 통로 ~2)
+        for (let c = c0; c < c1; c++) {
+          if (((c % 2) + 2) % 2 !== 0) continue;   // 칸 간격 2타일 (차 폭 ~1.3 + 여유)
+          if (this.tileAt(c, r) !== 'r') continue;
+          let lot = true;
+          for (let dr = -1; dr <= 1 && lot; dr++) {
+            for (let dc = -1; dc <= 1; dc++) {
+              if (this.tileAt(c + dc, r + dr) !== 'r') { lot = false; break; }
+            }
+          }
+          if (!lot) continue;
+          const band = this.roadBand(c + 0.5, r + 0.5, chunkIdx);
+          if (band && band.d < band.halfW + 1.2) continue;   // 차도·연석 침범 금지
+          if (hash2(seed ^ 0x9a7c, c, r) > 0.66) continue;   // 점유율
+          const [kind, color] = kinds[Math.floor(hash2(seed ^ 0x9a7d, c, r) * kinds.length) % kinds.length];
+          // 가로 행 = 세로 주차(전면/후면 프레임) — 3/4 시점이라 회전 금지, 프레임 선택만
+          const dir = hash2(seed ^ 0x9a7e, c, r) < 0.5 ? 'up' : 'down';
+          const tex = `ts_td_${kind}_${color}_${dir}`;
+          if (!this.scene.textures.exists(tex)) continue;
+          this.spawnProp({ id: 'park_lot', label: '주차 차량', tex, cat: '차량', scale: 1.25 }, c, r, slot);
+        }
+      }
+    }
+
     // ── 신호등 — 신호 교차로(detectSignals) 박스의 대각 모서리 2곳(NE·SW). 모서리 타일이 속한
     //    청크가 배치(경계 교차로 중복 방지) · 바다/건물 타일 위는 생략 ──
     if (hasTs) {
@@ -1860,6 +1924,60 @@ export class SeamlessChunks {
       }
     }
     return null;
+  }
+
+  /** (x,y)의 마킹을 지워야 하는가 — 다른 도로 아스팔트 회랑 안 또는 회전교차로 원 안 (109차-b).
+   *  (ux,uy) = 그 지점 마킹 진행 방향. **준평행(|cos| > 0.92 ≈ 23° 미만) 도로는 면제** —
+   *  이중도로 쌍·합류 차로가 자기 마킹을 지우지 않게 한다(교차 도로는 각이 커서 걸린다). */
+  private markSuppressedAt(x: number, y: number, ux: number, uy: number, selfRi: number): boolean {
+    // 회전교차로 원 내부(교통섬 포함) — 링 자신(roundabout 도로)의 마킹은 면제
+    if (!this.cfg.roads![selfRi].roundabout) {
+      for (const ra of this.roundabouts) {
+        if (Math.hypot(x - ra.cx, y - ra.cy) < ra.R + ra.halfW + 0.15) return true;
+      }
+    }
+    const list = this.markSegHash.get(Math.floor(y / 8) * 8192 + Math.floor(x / 8));
+    if (!list) return false;
+    for (const si of list) {
+      const s = this.markSegs[si];
+      if (s.ri === selfRi) continue;
+      if (Math.abs(ux * s.ux + uy * s.uy) > 0.92) continue;   // 준평행 면제
+      const vx = x - s.ax, vy = y - s.ay;
+      const t = Math.max(0, Math.min(1, (vx * s.dx + vy * s.dy) / s.len2));
+      const px = s.ax + s.dx * t, py = s.ay + s.dy * t;
+      if (Math.hypot(x - px, y - py) < s.halfW + 0.15) return true;
+    }
+    return false;
+  }
+
+  /** 마킹 폴리라인을 회랑 밖 구간만 남기고 쪼갠다 (109차-b — 0.5타일 샘플링). */
+  private clipMarking(pl: [number, number][], selfRi: number): [number, number][][] {
+    if (!this.markSegs.length) return [pl];
+    const out: [number, number][][] = [];
+    let cur: [number, number][] = [];
+    const flush = (): void => { if (cur.length >= 2) out.push(cur); cur = []; };
+    for (let i = 0; i < pl.length - 1; i++) {
+      const [ax, ay] = pl[i], [bx, by] = pl[i + 1];
+      const len = Math.hypot(bx - ax, by - ay);
+      if (len < 1e-6) continue;
+      const ux = (bx - ax) / len, uy = (by - ay) / len;
+      const n = Math.max(1, Math.ceil(len / 0.5));
+      for (let k = 0; k < n; k++) {
+        const t0 = (k / n) * len, t1 = ((k + 1) / n) * len;
+        if (this.markSuppressedAt(ax + ux * (t0 + t1) / 2, ay + uy * (t0 + t1) / 2, ux, uy, selfRi)) {
+          flush();
+        } else {
+          if (cur.length === 0) cur.push([ax + ux * t0, ay + uy * t0]);
+          cur.push([ax + ux * t1, ay + uy * t1]);
+        }
+      }
+    }
+    flush();
+    return out.filter((sub) => {                    // 0.8타일 미만 부스러기 제거
+      let l = 0;
+      for (let i = 0; i < sub.length - 1; i++) l += Math.hypot(sub[i + 1][0] - sub[i][0], sub[i + 1][1] - sub[i][1]);
+      return l >= 0.8;
+    });
   }
 
   private markingPieces(road: RegionRoad, roadIdx: number): { pts: [number, number][]; cutStart: boolean; cutEnd: boolean; startNode?: [number, number]; endNode?: [number, number] }[] {
@@ -2086,23 +2204,40 @@ export class SeamlessChunks {
           const modeAt = (node: [number, number] | undefined): 'stop' | 'yield' | 'yield_only' | null =>
             nodeIsRoundabout(node, ri) ? 'yield' : nearRoundabout(node) ? ((roadLen.get(ri) ?? 0) >= 8 ? 'yield_only' : null) : 'stop';
           const mEnd = modeAt(piece.endNode), mStart = modeAt(piece.startNode);
+          // 109차-b: 조각 끝이 **다른 교차 도로의 회랑 안**이면(사선 교차·복합부) 횡단보도를
+          // 그리지 않는다 — 교차로 한복판에 뜬 줄무늬가 난잡함의 주범(사용자 캡처).
           if (piece.cutEnd && mEnd) {
-            this.drawCrosswalk(g, pts[pts.length - 1], dirAt(pts[pts.length - 2], pts[pts.length - 1]), halfW, c0, r0, drawnCw, mEnd, list);
+            const u = dirAt(pts[pts.length - 2], pts[pts.length - 1]);
+            const b = pts[pts.length - 1];
+            if (!this.markSuppressedAt(b[0], b[1], u[0], u[1], ri)) {
+              this.drawCrosswalk(g, b, u, halfW, c0, r0, drawnCw, mEnd, list);
+            }
           }
           if (piece.cutStart && mStart) {
-            this.drawCrosswalk(g, pts[0], dirAt(pts[1], pts[0]), halfW, c0, r0, drawnCw, mStart, list);
+            const u = dirAt(pts[1], pts[0]);
+            if (!this.markSuppressedAt(pts[0][0], pts[0][1], u[0], u[1], ri)) {
+              this.drawCrosswalk(g, pts[0], u, halfW, c0, r0, drawnCw, mStart, list);
+            }
           }
         }
+        // 마킹 회랑 클리핑 (109차-b) — 정점 없는 기하 교차(이중도로 상대·회전교차로 링·중간
+        //   관통)에서 마킹이 교차로 안을 지나가지 않게, 모든 선형 마킹을 클리핑 경유로 그린다.
+        const solidC = (pl: [number, number][]): void => {
+          for (const sub of this.clipMarking(pl, ri)) solid(sub);
+        };
+        const dashedC = (pl: [number, number][]): void => {
+          for (const sub of this.clipMarking(pl, ri)) dashed(sub, dash, gap);
+        };
         // 중앙선은 이면도로(w<2.5 — 골목·주차장 통로)에는 긋지 않는다(106차-b) — 실도로에서
         //   서비스 도로엔 중앙선이 없다. 구 규칙(w>=2 전부)은 주차장 통로에 노란 고리를 그렸다.
         if (road.w >= 2.5 && !oneway) {
           g.lineStyle(road.w >= 3 ? 4 : 3, COL.roadCenter, 0.95);
           if (lanesPerDir >= 2) {                    // 왕복 4차로 이상 = 이중 황색 실선
             g.lineStyle(3, COL.roadCenter, 0.95);
-            solid(SeamlessChunks.offsetPolyline(pts, 0.09));
-            solid(SeamlessChunks.offsetPolyline(pts, -0.09));
+            solidC(SeamlessChunks.offsetPolyline(pts, 0.09));
+            solidC(SeamlessChunks.offsetPolyline(pts, -0.09));
           } else {
-            solid(pts);                              // 중앙선 — 노란 실선 (주택가 2.8타일 도로도 — 끊김 금지)
+            solidC(pts);                             // 중앙선 — 노란 실선 (주택가 2.8타일 도로도 — 끊김 금지)
           }
         }
         if (oneway) {                                // 일방통행 — 차로 점선을 전 폭에 걸쳐
@@ -2111,30 +2246,30 @@ export class SeamlessChunks {
           if (dual) {
             g.lineStyle(3, COL.roadCenter, 0.95);
             if (dual.double) {
-              solid(SeamlessChunks.offsetPolyline(pts, dual.off + 0.09));
-              solid(SeamlessChunks.offsetPolyline(pts, dual.off - 0.09));
+              solidC(SeamlessChunks.offsetPolyline(pts, dual.off + 0.09));
+              solidC(SeamlessChunks.offsetPolyline(pts, dual.off - 0.09));
             } else {
-              solid(SeamlessChunks.offsetPolyline(pts, dual.off));
+              solidC(SeamlessChunks.offsetPolyline(pts, dual.off));
             }
           }
           g.lineStyle(3, COL.roadLine, 0.85);
-          for (let k = 1; k < lanesPerDir; k++) dashed(SeamlessChunks.offsetPolyline(pts, -halfW + edgeM + k * laneW), dash, gap);
+          for (let k = 1; k < lanesPerDir; k++) dashedC(SeamlessChunks.offsetPolyline(pts, -halfW + edgeM + k * laneW));
           if (road.w >= 4 && pieceLen(pts) >= 3) {   // 짧은 조각의 가장자리선은 교차부에서 "ㄷ" 자국이 된다
             g.lineStyle(2, COL.roadLine, 0.6);
-            solid(SeamlessChunks.offsetPolyline(pts, halfW - edgeM));
-            solid(SeamlessChunks.offsetPolyline(pts, -(halfW - edgeM)));
+            solidC(SeamlessChunks.offsetPolyline(pts, halfW - edgeM));
+            solidC(SeamlessChunks.offsetPolyline(pts, -(halfW - edgeM)));
           }
           continue;
         }
         g.lineStyle(3, COL.roadLine, 0.85);
         for (let k = 1; k < lanesPerDir; k++) {      // 차선 — 흰 점선
-          dashed(SeamlessChunks.offsetPolyline(pts, k * laneW), dash, gap);
-          dashed(SeamlessChunks.offsetPolyline(pts, -k * laneW), dash, gap);
+          dashedC(SeamlessChunks.offsetPolyline(pts, k * laneW));
+          dashedC(SeamlessChunks.offsetPolyline(pts, -k * laneW));
         }
         if (road.w >= 4 && pieceLen(pts) >= 3) {     // 가장자리 실선 — 차도 안쪽 (짧은 조각 제외)
           g.lineStyle(2, COL.roadLine, 0.6);
-          solid(SeamlessChunks.offsetPolyline(pts, halfW - edgeM));
-          solid(SeamlessChunks.offsetPolyline(pts, -(halfW - edgeM)));
+          solidC(SeamlessChunks.offsetPolyline(pts, halfW - edgeM));
+          solidC(SeamlessChunks.offsetPolyline(pts, -(halfW - edgeM)));
         }
       }
     }

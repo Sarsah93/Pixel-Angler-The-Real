@@ -102,6 +102,13 @@ export const DATA_ATTRIBUTIONS: DataAttribution[] = [
     url: 'https://www.openstreetmap.org/copyright',
   },
   {
+    provider: '© Copernicus Sentinel data (2026)',
+    service: 'Sentinel-2 L2A 위성영상 (Sentinel Hub Process API)',
+    usage: '실지형 심리스 타일맵 피복 보강 (식생 · 모래 · 포장 · 방파제 — 빌드 타임 분류, 영상 미동봉)',
+    license: 'Custom',
+    url: 'https://dataspace.copernicus.eu',
+  },
+  {
     provider: 'Kenney (www.kenney.nl)',
     service: 'Roguelike Modern City pack',
     usage: '심리스 필드 차량 · 노점 · 가로수 · 가로등 스프라이트',

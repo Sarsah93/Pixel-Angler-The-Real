@@ -1,0 +1,661 @@
+{
+ "region": "sokcho_v2",
+ "scene": "2026-08-01",
+ "params": {
+  "tau_water": 0.15,
+  "tau_nir": 0.18,
+  "ndvi_veg": 0.35,
+  "ndvi_bare": 0.15,
+  "linearity_min": 3.0,
+  "tau_sand_red": 0.22,
+  "sand_warm": 0.06,
+  "bright_lo": 0.06,
+  "bright_hi": 0.4,
+  "scenes": [
+   "2026-08-01"
+  ],
+  "scenes_spare": [
+   "2026-07-30",
+   "2026-07-22"
+  ],
+  "dem_sheets": [
+   "38815014",
+   "38815015",
+   "38815024",
+   "38815025"
+  ]
+ },
+ "grid": [
+  1179,
+  642
+ ],
+ "stats": {
+  "~": 403918,
+  "i": 46443,
+  "b": 1839,
+  ",": 101502,
+  "s": 2686,
+  "r": 110516,
+  ".": 90014,
+  " ": 0
+ },
+ "components": [
+  {
+   "size": 8,
+   "linearity": 2.0,
+   "ndvi": 0.21,
+   "kind": "b",
+   "detached": true,
+   "at": [
+    778,
+    21
+   ]
+  },
+  {
+   "size": 28,
+   "linearity": 1.29,
+   "ndvi": 0.02,
+   "kind": "b",
+   "detached": true,
+   "at": [
+    837,
+    47
+   ]
+  },
+  {
+   "size": 20,
+   "linearity": 5.0,
+   "ndvi": 0.15,
+   "kind": "b",
+   "detached": false,
+   "at": [
+    553,
+    52
+   ]
+  },
+  {
+   "size": 28,
+   "linearity": 2.63,
+   "ndvi": 0.15,
+   "kind": "b",
+   "detached": false,
+   "at": [
+    596,
+    61
+   ]
+  },
+  {
+   "size": 10,
+   "linearity": 10.0,
+   "ndvi": 0.17,
+   "kind": "b",
+   "detached": false,
+   "at": [
+    593,
+    65
+   ]
+  },
+  {
+   "size": 20,
+   "linearity": 5.0,
+   "ndvi": 0.2,
+   "kind": "b",
+   "detached": false,
+   "at": [
+    601,
+    75
+   ]
+  },
+  {
+   "size": 32,
+   "linearity": 4.08,
+   "ndvi": 0.19,
+   "kind": "b",
+   "detached": false,
+   "at": [
+    602,
+    90
+   ]
+  },
+  {
+   "size": 32,
+   "linearity": 2.04,
+   "ndvi": 0.07,
+   "kind": "b",
+   "detached": true,
+   "at": [
+    617,
+    101
+   ]
+  },
+  {
+   "size": 16,
+   "linearity": 1.0,
+   "ndvi": 0.3,
+   "kind": "islet",
+   "detached": false,
+   "at": [
+    600,
+    113
+   ]
+  },
+  {
+   "size": 20,
+   "linearity": 2.24,
+   "ndvi": 0.09,
+   "kind": "b",
+   "detached": false,
+   "at": [
+    570,
+    148
+   ]
+  },
+  {
+   "size": 48,
+   "linearity": 2.43,
+   "ndvi": 0.08,
+   "kind": "b",
+   "detached": false,
+   "at": [
+    580,
+    154
+   ]
+  },
+  {
+   "size": 8,
+   "linearity": 2.0,
+   "ndvi": 0.06,
+   "kind": "b",
+   "detached": false,
+   "at": [
+    588,
+    162
+   ]
+  },
+  {
+   "size": 60,
+   "linearity": 1.67,
+   "ndvi": 0.09,
+   "kind": "b",
+   "detached": false,
+   "at": [
+    600,
+    174
+   ]
+  },
+  {
+   "size": 20,
+   "linearity": 5.0,
+   "ndvi": 0.1,
+   "kind": "b",
+   "detached": false,
+   "at": [
+    606,
+    194
+   ]
+  },
+  {
+   "size": 8,
+   "linearity": 2.0,
+   "ndvi": 0.19,
+   "kind": "b",
+   "detached": false,
+   "at": [
+    468,
+    213
+   ]
+  },
+  {
+   "size": 20,
+   "linearity": 5.0,
+   "ndvi": 0.11,
+   "kind": "b",
+   "detached": false,
+   "at": [
+    612,
+    214
+   ]
+  },
+  {
+   "size": 60,
+   "linearity": 1.67,
+   "ndvi": 0.13,
+   "kind": "b",
+   "detached": false,
+   "at": [
+    614,
+    222
+   ]
+  },
+  {
+   "size": 8,
+   "linearity": 2.0,
+   "ndvi": 0.02,
+   "kind": "b",
+   "detached": false,
+   "at": [
+    499,
+    232
+   ]
+  },
+  {
+   "size": 40,
+   "linearity": 2.5,
+   "ndvi": 0.08,
+   "kind": "b",
+   "detached": false,
+   "at": [
+    612,
+    233
+   ]
+  },
+  {
+   "size": 8,
+   "linearity": 2.0,
+   "ndvi": -0.03,
+   "kind": "b",
+   "detached": false,
+   "at": [
+    554,
+    243
+   ]
+  },
+  {
+   "size": 20,
+   "linearity": 5.0,
+   "ndvi": 0.09,
+   "kind": "b",
+   "detached": false,
+   "at": [
+    610,
+    246
+   ]
+  },
+  {
+   "size": 12,
+   "linearity": 3.0,
+   "ndvi": 0.23,
+   "kind": "b",
+   "detached": false,
+   "at": [
+    554,
+    250
+   ]
+  },
+  {
+   "size": 20,
+   "linearity": 5.0,
+   "ndvi": 0.1,
+   "kind": "b",
+   "detached": false,
+   "at": [
+    608,
+    256
+   ]
+  },
+  {
+   "size": 48,
+   "linearity": 2.08,
+   "ndvi": 0.06,
+   "kind": "b",
+   "detached": false,
+   "at": [
+    557,
+    263
+   ]
+  },
+  {
+   "size": 16,
+   "linearity": 4.0,
+   "ndvi": 0.11,
+   "kind": "b",
+   "detached": false,
+   "at": [
+    600,
+    265
+   ]
+  },
+  {
+   "size": 12,
+   "linearity": 3.0,
+   "ndvi": 0.06,
+   "kind": "b",
+   "detached": false,
+   "at": [
+    516,
+    266
+   ]
+  },
+  {
+   "size": 40,
+   "linearity": 2.5,
+   "ndvi": 0.07,
+   "kind": "b",
+   "detached": false,
+   "at": [
+    608,
+    273
+   ]
+  },
+  {
+   "size": 8,
+   "linearity": 2.0,
+   "ndvi": 0.07,
+   "kind": "b",
+   "detached": true,
+   "at": [
+    897,
+    291
+   ]
+  },
+  {
+   "size": 20,
+   "linearity": 5.0,
+   "ndvi": 0.06,
+   "kind": "b",
+   "detached": false,
+   "at": [
+    614,
+    292
+   ]
+  },
+  {
+   "size": 20,
+   "linearity": 5.0,
+   "ndvi": 0.1,
+   "kind": "b",
+   "detached": false,
+   "at": [
+    616,
+    296
+   ]
+  },
+  {
+   "size": 20,
+   "linearity": 5.0,
+   "ndvi": 0.14,
+   "kind": "b",
+   "detached": false,
+   "at": [
+    610,
+    308
+   ]
+  },
+  {
+   "size": 16,
+   "linearity": 4.0,
+   "ndvi": 0.28,
+   "kind": "islet",
+   "detached": false,
+   "at": [
+    624,
+    309
+   ]
+  },
+  {
+   "size": 12,
+   "linearity": 3.0,
+   "ndvi": 0.1,
+   "kind": "b",
+   "detached": false,
+   "at": [
+    616,
+    316
+   ]
+  },
+  {
+   "size": 48,
+   "linearity": 3.19,
+   "ndvi": 0.08,
+   "kind": "b",
+   "detached": false,
+   "at": [
+    489,
+    329
+   ]
+  },
+  {
+   "size": 48,
+   "linearity": 2.12,
+   "ndvi": 0.04,
+   "kind": "b",
+   "detached": false,
+   "at": [
+    482,
+    334
+   ]
+  },
+  {
+   "size": 48,
+   "linearity": 4.05,
+   "ndvi": 0.12,
+   "kind": "b",
+   "detached": false,
+   "at": [
+    573,
+    341
+   ]
+  },
+  {
+   "size": 96,
+   "linearity": 1.68,
+   "ndvi": 0.11,
+   "kind": "b",
+   "detached": false,
+   "at": [
+    524,
+    347
+   ]
+  },
+  {
+   "size": 120,
+   "linearity": 2.62,
+   "ndvi": 0.07,
+   "kind": "b",
+   "detached": false,
+   "at": [
+    557,
+    348
+   ]
+  },
+  {
+   "size": 8,
+   "linearity": 2.0,
+   "ndvi": 0.13,
+   "kind": "b",
+   "detached": true,
+   "at": [
+    791,
+    347
+   ]
+  },
+  {
+   "size": 16,
+   "linearity": 2.8,
+   "ndvi": 0.14,
+   "kind": "b",
+   "detached": false,
+   "at": [
+    503,
+    350
+   ]
+  },
+  {
+   "size": 40,
+   "linearity": 2.5,
+   "ndvi": 0.08,
+   "kind": "b",
+   "detached": false,
+   "at": [
+    547,
+    352
+   ]
+  },
+  {
+   "size": 140,
+   "linearity": 2.55,
+   "ndvi": 0.07,
+   "kind": "b",
+   "detached": false,
+   "at": [
+    536,
+    356
+   ]
+  },
+  {
+   "size": 64,
+   "linearity": 2.4,
+   "ndvi": 0.05,
+   "kind": "b",
+   "detached": false,
+   "at": [
+    517,
+    363
+   ]
+  },
+  {
+   "size": 24,
+   "linearity": 1.5,
+   "ndvi": 0.03,
+   "kind": "b",
+   "detached": true,
+   "at": [
+    810,
+    410
+   ]
+  },
+  {
+   "size": 8,
+   "linearity": 2.0,
+   "ndvi": 0.07,
+   "kind": "b",
+   "detached": true,
+   "at": [
+    803,
+    411
+   ]
+  },
+  {
+   "size": 8,
+   "linearity": 2.0,
+   "ndvi": 0.19,
+   "kind": "b",
+   "detached": true,
+   "at": [
+    700,
+    417
+   ]
+  },
+  {
+   "size": 20,
+   "linearity": 3.11,
+   "ndvi": -0.01,
+   "kind": "b",
+   "detached": true,
+   "at": [
+    704,
+    418
+   ]
+  },
+  {
+   "size": 16,
+   "linearity": 4.0,
+   "ndvi": 0.11,
+   "kind": "b",
+   "detached": true,
+   "at": [
+    780,
+    424
+   ]
+  },
+  {
+   "size": 8,
+   "linearity": 2.0,
+   "ndvi": 0.26,
+   "kind": "islet",
+   "detached": true,
+   "at": [
+    820,
+    430
+   ]
+  },
+  {
+   "size": 8,
+   "linearity": 2.0,
+   "ndvi": 0.14,
+   "kind": "b",
+   "detached": true,
+   "at": [
+    803,
+    445
+   ]
+  },
+  {
+   "size": 16,
+   "linearity": 2.25,
+   "ndvi": 0.15,
+   "kind": "b",
+   "detached": true,
+   "at": [
+    810,
+    446
+   ]
+  },
+  {
+   "size": 16,
+   "linearity": 1.0,
+   "ndvi": 0.1,
+   "kind": "b",
+   "detached": true,
+   "at": [
+    718,
+    533
+   ]
+  },
+  {
+   "size": 52,
+   "linearity": 2.45,
+   "ndvi": 0.1,
+   "kind": "b",
+   "detached": false,
+   "at": [
+    643,
+    540
+   ]
+  },
+  {
+   "size": 40,
+   "linearity": 2.5,
+   "ndvi": 0.12,
+   "kind": "b",
+   "detached": false,
+   "at": [
+    649,
+    547
+   ]
+  },
+  {
+   "size": 72,
+   "linearity": 4.75,
+   "ndvi": -0.01,
+   "kind": "b",
+   "detached": false,
+   "at": [
+    636,
+    555
+   ]
+  },
+  {
+   "size": 64,
+   "linearity": 2.87,
+   "ndvi": 0.18,
+   "kind": "b",
+   "detached": false,
+   "at": [
+    653,
+    557
+   ]
+  }
+ ],
+ "source": "Copernicus Sentinel-2 L2A via Sentinel Hub Process API"
+}

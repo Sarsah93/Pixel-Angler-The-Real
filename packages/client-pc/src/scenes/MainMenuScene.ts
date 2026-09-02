@@ -654,7 +654,7 @@ export class MainMenuScene extends Phaser.Scene {
     //  ⚠ 새 외부 리소스(위성·DEM 등)를 쓰게 되면 DataAttributions 등록과 함께 이 줄도 갱신할 것
     //    (Sentinel-2는 이용약관상 출처 표기 의무 — 래스터 보강 스펙 §7).
     this.add.text(GAME_WIDTH / 2, barY - 17,
-      '지도 © OpenStreetMap contributors (ODbL) · 에셋 Kenney (CC0) · FisherG · 기상청/해양수산부/MAFRA/KOSIS 공공데이터 — 전체 출처: 메뉴 [데이터 출처]', {
+      '지도 © OpenStreetMap contributors (ODbL) · © Copernicus Sentinel data 2026 · 에셋 Kenney (CC0) · FisherG · 기상청/해양수산부/MAFRA/KOSIS 공공데이터 — 전체 출처: 메뉴 [데이터 출처]', {
         fontFamily: 'monospace', fontSize: '9px', color: '#41627e',
       }).setOrigin(0.5, 0).setDepth(41);
   }

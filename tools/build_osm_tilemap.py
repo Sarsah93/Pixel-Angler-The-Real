@@ -189,6 +189,91 @@ def edge_seeds(W, H, edges):
     return out
 
 
+NO_RASTER = False   # --no-raster (A/B 비교·회귀용 — RASTER_UPLIFT_SPEC §6)
+
+
+def merge_raster(grid, region, W, H):
+    """landcover.txt (classify_raster.py 산출)를 OSM 그리드에 병합 — §6 + 개정안 §2.
+
+    - 대상 셀 = OSM 기본값 '.' 만 ('b' 는 '.'/'w' 허용 — §6 예외 1건). 명시 태그 불가침.
+    - ','(식생)/'r'(포장·나지) = 직교 이웃 2개 이상 같은 라벨일 때만 (스페클 방지).
+    - 's'(모래) = 즉시 적용 (임계가 보수적 — B04 0.22 + 온도차 실측 분리).
+    - 'i'(내수면) = 성분 ≥ 50타일만 '~' (그늘 오검출 스페클이 걷기 구멍을 내지 않게).
+    - 'b' = 개정안 §2 4케이스 — 추론 b(기존 grid 'b')는 절대 삭제하지 않는다.
+      diff 를 raster_b_diff.json 으로 남긴다 (agree / raster_only / infer_only).
+    """
+    lc_path = Path(__file__).resolve().parent.parent / 'pixelazed' / region / 'landcover.txt'
+    if not lc_path.exists():
+        print('[raster] landcover.txt 없음 — 병합 생략 (py tools/classify_raster.py 로 생성)')
+        return
+    rows = [r.rstrip(b'\r') for r in lc_path.read_bytes().split(b'\n') if r.rstrip(b'\r')]
+    if len(rows) != H or any(len(r) != W for r in rows):
+        print(f'[raster][warn] landcover 격자 불일치 ({len(rows)}행) — 병합 생략')
+        return
+    DOT, WW, B_, SEA_ = ord('.'), ord('w'), ord('b'), ord('~')
+    C_, S_, R_, I_ = ord(','), ord('s'), ord('r'), ord('i')
+
+    def lc(x, y):
+        return rows[y][x] if 0 <= x < W and 0 <= y < H else 0
+
+    # b diff (병합 전 스냅샷 기준)
+    agree = raster_only = infer_only = 0
+    applied = {'veg': 0, 'sand': 0, 'pave': 0, 'inland': 0, 'b': 0}
+
+    # 내수면 성분 크기 (BFS — 'i' 셀 한정)
+    comp_ok = [[False] * W for _ in range(H)]
+    seen = [[False] * W for _ in range(H)]
+    for sy in range(H):
+        for sx in range(W):
+            if rows[sy][sx] != I_ or seen[sy][sx]:
+                continue
+            q = deque([(sx, sy)]); seen[sy][sx] = True
+            cells = []
+            while q:
+                x, y = q.popleft(); cells.append((x, y))
+                for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    nx, ny = x + dx, y + dy
+                    if 0 <= nx < W and 0 <= ny < H and rows[ny][nx] == I_ and not seen[ny][nx]:
+                        seen[ny][nx] = True; q.append((nx, ny))
+            if len(cells) >= 50:
+                for x, y in cells:
+                    comp_ok[y][x] = True
+
+    for y in range(H):
+        row = grid.g[y]
+        for x in range(W):
+            v = rows[y][x]
+            cur = row[x]
+            if v == B_:
+                if cur == B_:
+                    agree += 1
+                elif cur in (DOT, WW):
+                    row[x] = B_; raster_only += 1; applied['b'] += 1
+                continue
+            if cur == B_:
+                infer_only += 1          # 추론 b 단독 — 유지 (개정안 §2: 자동 삭제 금지)
+                continue
+            if cur != DOT:
+                continue                  # OSM 명시 태그 불가침
+            if v == C_ or v == R_:
+                n = sum(1 for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)) if lc(x + dx, y + dy) == v)
+                if n >= 2:
+                    row[x] = C_ if v == C_ else R_
+                    applied['veg' if v == C_ else 'pave'] += 1
+            elif v == S_:
+                row[x] = S_; applied['sand'] += 1
+            elif v == I_ and comp_ok[y][x]:
+                row[x] = SEA_; applied['inland'] += 1
+
+    diff = dict(agree=agree, raster_only=raster_only, infer_only=infer_only)
+    out = Path(__file__).resolve().parent.parent / 'pixelazed' / region
+    (out / 'raster_b_diff.json').write_text(json.dumps(diff), encoding='utf-8')
+    print(f'[raster] 병합: 식생 {applied["veg"]:,} · 모래 {applied["sand"]:,} · 포장 {applied["pave"]:,}'
+          f' · 내수면 {applied["inland"]:,} · b {applied["b"]:,}')
+    print(f'[raster] b diff: 합의 {agree:,} / 래스터만 {raster_only:,}(적용) / 추론만 {infer_only:,}(유지)'
+          f' → raster_b_diff.json')
+
+
 def build(region):
     cfg = REGIONS[region]
     root = Path(__file__).resolve().parent.parent
@@ -445,6 +530,12 @@ def build(region):
                 row[x] = B_; n_b += 1
     print(f'[post] 방파제 추론 {n_b:,}타일 → b (가는 육지 조각 재분류)')
 
+    # 3d) 래스터 병합 패스 (RASTER_UPLIFT_SPEC §6 + 개정안 §2 — --no-raster 로 끔)
+    #     우선순위: 래스터 추론 < OSM 벡터 < patch.json(build_region_maps 에서 최후 적용).
+    #     래스터는 OSM 이 기본값 '.'(또는 b 는 '.'/'w')로만 채운 셀을 채운다 — 명시 태그 불가침.
+    if not NO_RASTER:
+        merge_raster(grid, region, W, H)
+
     # 4) POI
     pois = []
     def poi_from(el, cx, cy):
@@ -523,8 +614,11 @@ def build(region):
 
 
 if __name__ == '__main__':
+    if '--no-raster' in sys.argv:
+        NO_RASTER = True
+        sys.argv.remove('--no-raster')
     if len(sys.argv) != 2 or sys.argv[1] not in REGIONS:
-        print('사용법: py tools/build_osm_tilemap.py <region>')
+        print('사용법: py tools/build_osm_tilemap.py <region> [--no-raster]')
         print('지역:', ', '.join(REGIONS))
         raise SystemExit(1)
     build(sys.argv[1])
