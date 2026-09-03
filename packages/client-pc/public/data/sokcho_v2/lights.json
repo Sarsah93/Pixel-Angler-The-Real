@@ -1,0 +1,35 @@
+[
+{
+"tx": 566,
+"ty": 84,
+"colour": "white",
+"kind": "lighthouse",
+"major": true,
+"name": "속초등대"
+},
+{
+"tx": 617,
+"ty": 308,
+"colour": "red",
+"kind": "lighthouse"
+},
+{
+"tx": 571,
+"ty": 343,
+"colour": "green",
+"kind": "lighthouse"
+},
+{
+"tx": 794,
+"ty": 427,
+"colour": "white",
+"kind": "lighthouse",
+"name": "조도등대"
+},
+{
+"tx": 719,
+"ty": 533,
+"colour": "green",
+"kind": "beacon"
+}
+]

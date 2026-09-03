@@ -167,11 +167,27 @@ export interface SeamlessRegionDef {
   dataRegion: string;
   dataDir: string;
   name: string;
+  /** `lights.json`(항로표지 — `tools/extract_lights.py`) 보유 여부. 없는 지역에서 로드하면
+   *  Vite dev SPA 폴백이 index.html을 돌려줘 JSON 파싱 pageerror가 난다(함정 — 17차 depthProfileUrl과 동일). */
+  hasLights?: boolean;
+}
+
+/** 항로표지(등대·등주) — `lights.json` 1건 (114차). OSM `seamark` 노드에서 추출 */
+export interface RegionLight {
+  tx: number;
+  ty: number;
+  /** 등화 색 — 한국 항로표지 관례: red = 홍색 등대(우현) · green = 백색 등대 + 녹색 등화(좌현) · white */
+  colour: 'red' | 'green' | 'white';
+  /** lighthouse = 등대 탑 · beacon = 등주(기둥 + 두표) */
+  kind: 'lighthouse' | 'beacon';
+  /** 언덕 위 대형 등대(`light_major`) — 방파제 등대보다 큰 스프라이트 */
+  major?: boolean;
+  name?: string;
 }
 
 /** WorldMap 지역 ID → 심리스 지역 정의 (등록 = 심리스 개방) */
 export const SEAMLESS_REGIONS: Record<string, SeamlessRegionDef> = {
-  gangwon_sokcho: { dataRegion: 'sokcho_v2', dataDir: 'data/sokcho_v2', name: '속초' },
+  gangwon_sokcho: { dataRegion: 'sokcho_v2', dataDir: 'data/sokcho_v2', name: '속초', hasLights: true },
 };
 
 /** 현재 모드에서 이 지역이 심리스로 열리는가 (아니면 undefined = legacy 경로) */

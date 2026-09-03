@@ -18,7 +18,7 @@
  */
 
 import Phaser from 'phaser';
-import {
+import { RegionLight,
   REGION_MAP_GRAPHS,
   getRegionMapNode,
   OPPOSITE_EDGE,
@@ -361,6 +361,8 @@ export class RegionFieldScene extends Phaser.Scene {
       // 패치는 build_region_maps가 항상 써 둔다(빈 패치라도) — 로드 실패 = SPA 폴백 pageerror 방지
       if (!this.cache.json.has(`rpatch_${dr}`)) {
         this.load.json(`rpatch_${dr}`, `${this.seamlessDef.dataDir}/patch.json`);
+        // 항로표지(114차) — 있는 지역만 (없는 지역에서 로드하면 SPA 폴백 HTML → JSON 파싱 pageerror)
+        if (this.seamlessDef.hasLights) this.load.json(`rlights_${dr}`, `${this.seamlessDef.dataDir}/lights.json`);
       }
       // 타일셋 스프라이트 (건물 프리팹·프롭·차량·NPC) — 심리스 전용, 1회 로드
       for (const e of TILESET_MANIFEST) {
@@ -465,6 +467,9 @@ export class RegionFieldScene extends Phaser.Scene {
         roads: this.regionRoads,
         props: this.regionPatch.props,
         tileTex: this.regionPatch.tileTex ?? [],
+        lights: this.seamlessDef.hasLights
+          ? ((this.cache.json.get(`rlights_${this.seamlessDef.dataRegion}`) as RegionLight[] | undefined) ?? [])
+          : [],
         roofOverrides: this.regionPatch.roofs,
         cols: this.cols, rows: this.rows, tr: TR, seed: mapSeed >>> 0,
         chunkTiles: RegionFieldScene.SEAMLESS_CHUNK_TILES,
@@ -2474,8 +2479,14 @@ export class RegionFieldScene extends Phaser.Scene {
         const wE = this.terrainAt(c + 1, r) === 'water', wW = this.terrainAt(c - 1, r) === 'water';
         if (this.seamless) {
           // 심리스(5m/타일) — 방파제가 2타일+ 폭이라 "양옆 바다" 규칙이 성립하지 않는다.
-          // 부두(b) 물가 가장자리를 따라 8타일 간격 배치.
-          if (this.terrain[r][c] !== 'pier' || !(wN || wS || wE || wW)) continue;
+          // 114차: 단면 분류가 있으면 **상판 가장자리**(피복/사석과 맞닿은 상판)에, 피복 위는 금지.
+          //   분류 없는 안벽(0)은 종전대로 부두(b) 물가 가장자리. 8타일 간격.
+          const k = this.chunks?.breakwaterClassAt(c, r) ?? 0;
+          if (k === 2 || k === 3) continue;
+          if (k === 1) {
+            const armor = (cc: number, rr: number): boolean => { const kk = this.chunks?.breakwaterClassAt(cc, rr) ?? 0; return kk === 2 || kk === 3; };
+            if (!(armor(c, r - 1) || armor(c, r + 1) || armor(c - 1, r) || armor(c + 1, r))) continue;
+          } else if (this.terrain[r][c] !== 'pier' || !(wN || wS || wE || wW)) continue;
           if ((c + r) % 8 !== 0) continue;
         } else {
           // 방파제 길: 진행 방향 양옆이 바다

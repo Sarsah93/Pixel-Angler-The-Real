@@ -372,7 +372,7 @@ export type {
   RegionTerrain, RegionMapPoi, RegionMapData, EdgeDir,
   RegionMapLinks, RegionMapNode, RegionMapGraph,
   RegionMeta, PoiType, RegionPoi, SeamlessRegionDef,
-  RegionRoad, RegionProp, RegionPatch, RegionTileTex,
+  RegionRoad, RegionProp, RegionPatch, RegionTileTex, RegionLight,
 } from './types/RegionMap.js';
 export {
   TERRAIN_BY_CHAR, OPPOSITE_EDGE, SOKCHO_MAP_GRAPH, BUSAN_MAP_GRAPH,

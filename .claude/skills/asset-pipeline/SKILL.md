@@ -90,3 +90,13 @@ PNG만 바꾸면 되는지, 생성기를 돌려야 하는지부터 판별한다:
 - 아이템 아이콘 = `InvItem.iconTexture` (createItemIcon 8개 호출처 공용, speciesId 폴백 있음).
 - 어종별 색 변형(머리 틴트 등)은 캔버스 베이크(`bakeTintedTrim` 패턴) — 원본 1장 + 런타임 합성.
 - 도마 단계 스프라이트 조회 = `stageSpr('키')` (PixelFishStages 레지스트리, 없으면 파라메트릭 폴백).
+
+## 섬 드론 사진 → 갯바위 타일 (115차)
+
+```bash
+py tools/pixelize_islet.py <photo.png> --region <region> --name <islet> --grid 32x27 --center <c>,<r> [--dry]
+```
+
+- 시트 `public/tileset/<islet>/sheet.png`(물 투명) + `patch.json`(정본·런타임) 병합. `--dry`로 본토 충돌 먼저 확인.
+- 런타임 등록 = `TilesetManifest.ISLET_SHEETS`에 이름 추가(셀은 `ensureSheetCell`이 자동 슬라이스).
+- 그리드는 사진 종횡비를 보존해 정한다(왜곡 금지). 램프는 휘도 **순위 균등화** — 분위 정규화는 밝은 사진에서 너무 밝다.

@@ -68,3 +68,26 @@ pixelazed/<region>/<mapId>.png  (실지형 픽셀 지도 — 파일명 = mapId)
 - 출조 진입(entryEdge 없음) = 맵 중앙 `nearestWalkable` 자동 / 맵 간 이동 = 진입 엣지 밴드 한정 스폰(entryT 유지) — 신규 코드 불필요, 기존 로직이 처리.
 - 검증: 실렌더로 ① 스폰 위치 정상(걷기 가능) ② 바다/건물 충돌 ③ 엣지 전환 왕복 ④ pageerror 0 (verify-render 스킬). 방파제 맵은 바다 비율(70%+)과 통로 연결성 확인.
 - 지역 실측 데이터 연동(선택): `REGION_TO_MMSI`(해양기상 관측소) · `REGION_TO_SIDO`(KOSIS) · `REGION_TO_INDEX_KEYWORDS`(낚시지수) — 매칭 가능한 것만.
+
+## 항로표지 등대 (114차)
+
+지형 빌드 뒤 **등대는 따로** 뽑는다 — 파이프라인 POI는 이름 있는 노드만 남겨 방파제 두부 등대
+(이름 없는 `seamark:type=light_minor`)가 빠진다.
+
+```bash
+py tools/extract_lights.py <region>        # → public/data/<region>/lights.json
+```
+
+그리고 core `SEAMLESS_REGIONS[<id>].hasLights = true`. ⚠ 파일 없이 플래그만 켜면 Vite dev SPA 폴백이
+index.html을 돌려줘 JSON 파싱 pageerror(함정 — depthProfileUrl과 동일). 방파제 단면(테트라포드/사석/
+상판)은 `computeBreakwaters`가 지형에서 자동 산출하므로 별도 데이터가 없다.
+
+## 섬 드론 사진 → 갯바위 타일 (115차)
+
+```bash
+py tools/pixelize_islet.py <photo.png> --region <region> --name <islet> --grid 32x27 --center <c>,<r> [--dry]
+```
+
+- 시트 `public/tileset/<islet>/sheet.png`(물 투명) + `patch.json`(정본·런타임) 병합. `--dry`로 본토 충돌 먼저 확인.
+- 런타임 등록 = `TilesetManifest.ISLET_SHEETS`에 이름 추가(셀은 `ensureSheetCell`이 자동 슬라이스).
+- 그리드는 사진 종횡비를 보존해 정한다(왜곡 금지). 램프는 휘도 **순위 균등화** — 분위 정규화는 밝은 사진에서 너무 밝다.

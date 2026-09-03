@@ -17,7 +17,7 @@
  */
 
 import Phaser from 'phaser';
-import type { RegionRoad, RegionProp, RegionTileTex } from '@tra/core';
+import type { RegionRoad, RegionProp, RegionTileTex, RegionLight } from '@tra/core';
 import { COAST_OBJECTS } from '../data/TileCatalog.js';
 import { GRASS_EDGE_SUFFIXES, PAVED_EDGE_SUFFIXES, KENNEY_ROOF_COLORS, KENNEY_ROOF_PARTS, TTP_EDGE_TILES, TTP_UNITS, COAST_DECKS, COAST_RUBBLE, COAST_EDGE_SRC, COAST_ROCK_COUNT } from '../data/TilesetManifest.js';
 
@@ -147,6 +147,12 @@ export const PROP_DEFS: PropDef[] = [
   { id: 'npc_tourist_f', label: '관광객', tex: 'ts_gem_npc_tourist_f', cat: 'NPC', scale: 0.5 },
   // 해안 (지형 패치 — 타일 중앙 앵커, 부두↔바다 경계에 놓는다)
   { id: 'tetra', label: '테트라포드 석축', tex: 'ts_ttp_ttp_l', cat: '해안', anchor: 'center' },
+  // 항로표지(114차) — lights.json이 자동 배치하고, 편집기 팔레트에서도 수동 배치 가능
+  { id: 'lighthouse_red', label: '등대(홍색)', tex: 'smx_light_red', cat: '해안' },
+  { id: 'lighthouse_green', label: '등대(백색·녹등)', tex: 'smx_light_green', cat: '해안' },
+  { id: 'lighthouse_white', label: '등대(백색)', tex: 'smx_light_white', cat: '해안' },
+  { id: 'lighthouse_major', label: '대형 등대', tex: 'smx_light_major', cat: '해안' },
+  { id: 'beacon_green', label: '등주(녹색)', tex: 'smx_beacon_green', cat: '해안' },
   { id: 'boundary_port', label: '부두 경계(바다)', tex: 'ts_gem_boundary_port', cat: '해안', anchor: 'center' },  // ── 해안 시트 오브젝트(106차 자동 생성 카탈로그) — 방파제 바위 20 · 물속 바위 4 · 테트라포드 3
   //    바위는 지형 위 장식(중앙 앵커·충돌 있음) · 테트라포드는 겹쳐 쌓는 대상이라 편집기 '겹침 허용'과 함께 쓴다.
   ...COAST_OBJECTS.map((o): PropDef => ({
@@ -164,6 +170,8 @@ export interface SeamlessChunksConfig {
   props?: RegionProp[];
   /** 개별 타일 그림 오버라이드 (편집기 — 106차) */
   tileTex?: RegionTileTex[];
+  /** 항로표지 등대·등주 (lights.json — 114차). 방파제 두부 등에 프롭으로 선다 */
+  lights?: RegionLight[];
   /** 건물 지붕 팔레트 오버라이드 — 컴포넌트 좌상단 "c,r" → 인덱스 */
   roofOverrides?: Record<string, number>;
   /** 고층 프리팹 자동 배치에서 제외할 건물 컴포넌트 키(씬이 POI 건물 스프라이트를 붙인 곳) */
@@ -291,6 +299,10 @@ export class SeamlessChunks {
   private lotAxis: Uint8Array;
   /** 주차장 구역 id(113차) — 0 = 주차장 아님. 차량은 **여기서만** 열을 이룬다. computeParkingLots */
   private parkLot: Uint16Array;
+  /** 방파제 단면 분류(114차) — 0 없음/안벽 · 1 상판(콘크리트) · 2 사석 · 3 테트라포드 피복. computeBreakwaters */
+  private bwClass: Uint8Array;
+  /** 항로표지 — 청크별(뭍 스냅 후 좌표 기준). setLights */
+  private lightsByChunk = new Map<number, RegionLight[]>();
   /** 구역별 목표 점유율 0.40~0.70 (구역마다 다르게 — 만차/한산이 섞이게) */
   private lotFill: Float32Array;
   /** 항만 수역(112차) — 뭍에 둘러싸인 물(항 내측·석호). 정박 어선·계선주·크레인의 기준. computeHarbor */
@@ -327,6 +339,7 @@ export class SeamlessChunks {
     this.islet = this.computeIslets();
     this.lotAxis = this.computeLotAxis();
     this.harbor = this.computeHarbor();
+    this.bwClass = this.computeBreakwaters();       // harbor 뒤 (항 내측/외해 구분에 쓴다)
     this.compOf = new Int32Array(cfg.cols * cfg.rows).fill(-1);
     this.labelBuildings();
     this.indexRoads();
@@ -335,6 +348,7 @@ export class SeamlessChunks {
     const lots = this.computeParkingLots();
     this.parkLot = lots.id;
     this.lotFill = lots.fill;
+    this.setLights(cfg.lights ?? []);               // bwClass 뒤 (상판 타일로 스냅)
     this.setProps(cfg.props ?? []);
     this.setTileTex(cfg.tileTex ?? []);
     this.ensureDecoTextures();
@@ -882,7 +896,30 @@ export class SeamlessChunks {
     for (const t of list) {
       if (t.tx < 0 || t.tx >= this.cfg.cols || t.ty < 0 || t.ty >= this.cfg.rows) continue;
       this.tileTexMap.set(Math.floor(t.ty) * this.cfg.cols + Math.floor(t.tx), t);
+      this.ensureSheetCell(t.tex);
     }
+  }
+
+  /**
+   * 시트 셀 텍스처 자동 슬라이스(115차) — `ts_<name>_r{r}c{c}`가 없고 `ts_<name>_sheet`가 있으면
+   * 시트에서 32px 셀을 캔버스로 잘라 등록한다. 섬 사진 시트(`pixelize_islet.py`)처럼 셀이 수백 개인
+   * 에셋을 파일 수백 장 대신 시트 1장으로 싣기 위한 경로. 물 부분은 시트가 투명이라 게임 물이 비친다.
+   */
+  private ensureSheetCell(tex: string): void {
+    const tm = this.scene.textures;
+    if (tm.exists(tex)) return;
+    const m = /^ts_([a-z0-9]+)_r(\d+)c(\d+)$/.exec(tex);
+    if (!m) return;
+    const sheetKey = `ts_${m[1]}_sheet`;
+    if (!tm.exists(sheetKey)) return;
+    const tr = this.cfg.tr;
+    const src = tm.get(sheetKey).getSourceImage() as HTMLImageElement | HTMLCanvasElement;
+    const r = Number(m[2]), c = Number(m[3]);
+    if ((c + 1) * tr > src.width || (r + 1) * tr > src.height) return;
+    const cv = tm.createCanvas(tex, tr, tr);
+    if (!cv) return;
+    cv.getContext().drawImage(src, c * tr, r * tr, tr, tr, 0, 0, tr, tr);
+    cv.refresh();
   }
 
   /**
@@ -1021,6 +1058,7 @@ export class SeamlessChunks {
     this.parkLot = lots2.id;
     this.lotFill = lots2.fill;
     this.harbor = this.computeHarbor();
+    this.bwClass = this.computeBreakwaters();
     this.compOf.fill(-1);
     this.comps = [];
     this.labelBuildings();
@@ -1289,6 +1327,161 @@ export class SeamlessChunks {
     return { id, fill: Float32Array.from(fills) };
   }
 
+  /**
+   * 방파제 단면 분류(114차 — 사용자 지시 "청호동 방파제를 위성 사진처럼: 테트라포드 + 등대").
+   *
+   * 지형은 방파제 전체를 `'b'`(+상판 자리 일부 `'.'`)로만 주고 단면 정보가 없다. 106차가 자동
+   * 사석/테트라포드 규칙을 폐기한 뒤로 방파제는 상판 셀만 깔려 **넓은 콘크리트 판**으로 보였다.
+   * 여기서는 `'b'` 성분마다 **물까지의 거리**로 단면을 만든다(위성 사진 비율 — 상판 좁고 양쪽 피복):
+   *  - dw ≤ 2 → 테트라포드 피복(TTP 시트 tile_ttp_a/b) · dw = 3(폭 넓은 방파제만) → 사석 · 안쪽 → 상판
+   *  - 상판 자리 `'.'`(8이웃이 b/./물뿐인 것)은 성분에 편입해 Kenney tan 대신 콘크리트 상판으로.
+   * **방파제 판정** = 성분 크기 ≥ 12 ∧ 외해(비항만) 접수 ≥ 8타일 ∧ 외해 비율 ≥ 0.35.
+   *  항 내측 안벽(`'b'`지만 항만 수역만 접함)은 0 = 기존 상판 렌더 유지. 섬(조도) 성분 제외.
+   * 전역 1회(함정 28) — 청크 경계에서 피복 폭이 갈리지 않는다.
+   */
+  private computeBreakwaters(): Uint8Array {
+    const { cols, rows } = this.cfg;
+    const n = cols * rows;
+    const cls = new Uint8Array(n);
+    const CAP = 7;
+    // 1) dw — 물까지 거리, b/'.' 위로만 전파
+    const dw = new Uint8Array(n).fill(CAP);
+    const queue: number[] = [];
+    for (let i = 0; i < n; i++) if (this.tileAt(i % cols, Math.floor(i / cols)) === '~') { dw[i] = 0; queue.push(i); }
+    for (let head = 0; head < queue.length; head++) {
+      const i = queue[head];
+      const d = dw[i] + 1;
+      if (d >= CAP) continue;
+      const c = i % cols, r = Math.floor(i / cols);
+      for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+        const nc = c + dc, nr = r + dr;
+        if (nc < 0 || nr < 0 || nc >= cols || nr >= rows) continue;
+        const j = nr * cols + nc;
+        const t = this.tileAt(nc, nr);
+        if ((t === 'b' || t === '.') && dw[j] > d) { dw[j] = d; queue.push(j); }
+      }
+    }
+    // 상판 자리 '.' 편입 자격 — 물가 4타일 안 ∧ 8이웃이 b/./물뿐 ∧ 섬 아님
+    const eligibleDot = (c: number, r: number): boolean => {
+      const i = r * cols + c;
+      if (dw[i] > 4 || this.islet[i]) return false;
+      for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+        const nc = c + dc, nr = r + dr;
+        if (nc < 0 || nr < 0 || nc >= cols || nr >= rows) return false;
+        const t = this.tileAt(nc, nr);
+        if (t !== 'b' && t !== '.' && t !== '~') return false;
+      }
+      return true;
+    };
+    // 2) 성분 — 'b'에서 시작, 8-연결, 자격 있는 '.'까지 확장
+    const seen = new Uint8Array(n);
+    const stack: number[] = [];
+    for (let i0 = 0; i0 < n; i0++) {
+      if (seen[i0] || this.tileAt(i0 % cols, Math.floor(i0 / cols)) !== 'b') continue;
+      const cells: number[] = [];
+      let sea = 0, har = 0, dwMax = 0, touchIslet = false;
+      stack.push(i0); seen[i0] = 1;
+      while (stack.length) {
+        const i = stack.pop()!;
+        cells.push(i);
+        if (dw[i] > dwMax) dwMax = dw[i];
+        const c = i % cols, r = Math.floor(i / cols);
+        for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+          if (dc === 0 && dr === 0) continue;
+          const nc = c + dc, nr = r + dr;
+          if (nc < 0 || nr < 0 || nc >= cols || nr >= rows) continue;
+          const j = nr * cols + nc;
+          if (this.islet[j]) touchIslet = true;
+          const t = this.tileAt(nc, nr);
+          const ortho = dc === 0 || dr === 0;
+          if (t === '~') { if (ortho) { if (this.harbor[j]) har++; else sea++; } continue; }
+          if (seen[j]) continue;
+          if (t === 'b' || (t === '.' && eligibleDot(nc, nr))) { seen[j] = 1; stack.push(j); }
+        }
+      }
+      if (touchIslet || cells.length < 12 || sea < 8 || sea / (sea + har) < 0.35) continue;
+      // 안쪽 구멍 메우기 — 폭 넓은 상판(예: 청호동 두부 8타일)의 가운데는 물에서 5타일 이상 떨어져
+      //   자격(dw ≤ 4)에서 빠진다. 편입 셀과 4-이웃 2개 이상 맞닿은 '.'을 수렴할 때까지 흡수한다
+      //   (8이웃 b/./물 조건은 유지 — 뭍 쪽으로는 새지 않는다).
+      const inComp = new Uint8Array(n);
+      for (const i of cells) inComp[i] = 1;
+      let grew = true;
+      while (grew) {
+        grew = false;
+        for (let k = 0, len = cells.length; k < len; k++) {
+          const i = cells[k];
+          const c = i % cols, r = Math.floor(i / cols);
+          for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+            const nc = c + dc, nr = r + dr;
+            if (nc < 0 || nr < 0 || nc >= cols || nr >= rows) continue;
+            const j = nr * cols + nc;
+            if (inComp[j] || this.tileAt(nc, nr) !== '.' || this.islet[j]) continue;
+            let adj = 0;
+            if (nc > 0 && inComp[j - 1]) adj++;
+            if (nc < cols - 1 && inComp[j + 1]) adj++;
+            if (nr > 0 && inComp[j - cols]) adj++;
+            if (nr < rows - 1 && inComp[j + cols]) adj++;
+            if (adj < 2) continue;
+            let clean = true;
+            for (let er = -1; er <= 1 && clean; er++) for (let ec = -1; ec <= 1; ec++) {
+              const t = this.tileAt(nc + ec, nr + er);
+              if (t !== 'b' && t !== '.' && t !== '~') { clean = false; break; }
+            }
+            if (!clean) continue;
+            inComp[j] = 1; seen[j] = 1; cells.push(j); grew = true;
+          }
+        }
+      }
+      for (const i of cells) {
+        const d = dw[i];
+        cls[i] = d <= 2 ? 3 : (d === 3 && dwMax >= 5 ? 2 : 1);
+      }
+    }
+    return cls;
+  }
+
+  /** 방파제 단면 분류 조회 — 0 없음/안벽 · 1 상판 · 2 사석 · 3 테트라포드 (씬의 가로등 배치 등이 소비) */
+  breakwaterClassAt(c: number, r: number): number {
+    if (c < 0 || r < 0 || c >= this.cfg.cols || r >= this.cfg.rows) return 0;
+    return this.bwClass[r * this.cfg.cols + c];
+  }
+
+  /**
+   * 항로표지 배치 준비(114차) — OSM 노드는 물 위나 피복 위에 찍혀 있어 **뭍 타일로 스냅**한다
+   * (반경 3, 상판(bwClass 1) > 기타 뭍 > 피복 순). 스냅한 좌표가 속한 청크가 프롭을 세운다.
+   */
+  private setLights(lights: RegionLight[]): void {
+    this.lightsByChunk.clear();
+    const { cols, rows } = this.cfg;
+    const N = this.cfg.chunkTiles;
+    for (const L of lights) {
+      let best: { c: number; r: number; score: number } | null = null;
+      for (let rad = 0; rad <= 3 && !best; rad++) {
+        let cand: { c: number; r: number; score: number } | null = null;
+        for (let dr = -rad; dr <= rad; dr++) for (let dc = -rad; dc <= rad; dc++) {
+          if (Math.max(Math.abs(dc), Math.abs(dr)) !== rad) continue;
+          const c = L.tx + dc, r = L.ty + dr;
+          if (c < 0 || r < 0 || c >= cols || r >= rows) continue;
+          const t = this.tileAt(c, r);
+          if (t === '~' || t === '#') continue;
+          const k = this.bwClass[r * cols + c];
+          const score = k === 1 ? 3 : k === 0 ? 2 : 1;
+          if (!cand || score > cand.score) cand = { c, r, score };
+        }
+        if (cand) best = cand;
+      }
+      // 등주(beacon)는 물 위 말뚝에 서는 표지 — 뭍이 없으면 원위치(물)에 그대로 세운다(충돌 없음)
+      if (!best) {
+        if (L.kind !== 'beacon') continue;
+        best = { c: L.tx, r: L.ty, score: 0 };
+      }
+      const idx = Math.floor(best.r / N) * this.chunkCols + Math.floor(best.c / N);
+      const list = this.lightsByChunk.get(idx);
+      const snapped: RegionLight = { ...L, tx: best.c, ty: best.r };
+      if (list) list.push(snapped); else this.lightsByChunk.set(idx, [snapped]);
+    }
+  }
+
   private computeIslets(): Uint8Array {
     const { cols, rows } = this.cfg;
     const flag = new Uint8Array(cols * rows);
@@ -1443,6 +1636,40 @@ export class SeamlessChunks {
       g.fillStyle(0x2a2f36, 1); g.fillRect(35, 28, 8, 4);              // 후크 블록
       g.fillStyle(COL.crane, 1); g.fillRect(8, 10, 12, 6);             // 운전실
       g.fillStyle(0x4a7aa8, 1); g.fillRect(10, 11, 6, 3);
+    });
+    // 등대(114차) — 받침 + 테이퍼 탑 + 회랑 + 등롱 + 색 돔. 홍색 = 우현 · 백색+녹돔 = 좌현 · 백색
+    const bakeLight = (key: string, W: number, H: number, tower: number, towerShade: number, cap: number, capShade: number) => {
+      bake(key, W, H, (g) => {
+        const cx = W / 2;
+        const padY = H - 8, top = Math.round(H * 0.24);
+        g.fillStyle(0x000000, 0.22); g.fillEllipse(cx, H - 3, W - 2, 6);
+        g.fillStyle(0x8f949c, 1); g.fillRect(2, padY, W - 4, 6);                 // 콘크리트 받침
+        g.fillStyle(0x6c7178, 1); g.fillRect(2, padY + 4, W - 4, 2);
+        const bw = W - 8, tw = Math.round(bw * 0.72);                               // 테이퍼 탑
+        g.fillStyle(tower, 1);
+        g.fillPoints([{ x: cx - bw / 2, y: padY }, { x: cx + bw / 2, y: padY }, { x: cx + tw / 2, y: top + 6 }, { x: cx - tw / 2, y: top + 6 }], true);
+        g.fillStyle(towerShade, 1);
+        g.fillPoints([{ x: cx + bw / 2 - 4, y: padY }, { x: cx + bw / 2, y: padY }, { x: cx + tw / 2, y: top + 6 }, { x: cx + tw / 2 - 3, y: top + 6 }], true);
+        g.fillStyle(0x4a4f56, 1); g.fillRect(cx - 2, padY - 10, 4, 10);            // 출입문
+        g.fillStyle(0x3a3f46, 1); g.fillRect(cx - tw / 2 - 3, top + 4, tw + 6, 3);  // 회랑
+        g.fillStyle(0x2c3137, 1); g.fillRect(cx - tw / 2 - 3, top + 7, tw + 6, 1);
+        g.fillStyle(0xdfe9f0, 1); g.fillRect(cx - tw / 2 + 1, top - 4, tw - 2, 8);  // 등롱 유리
+        g.fillStyle(0x8fb3c8, 1); g.fillRect(cx - 1, top - 4, 2, 8);
+        g.fillStyle(cap, 1); g.fillRect(cx - tw / 2, top - 8, tw, 4);              // 돔
+        g.fillStyle(capShade, 1); g.fillRect(cx - tw / 2 + 2, top - 11, tw - 4, 3);
+        g.fillStyle(0x2c3137, 1); g.fillRect(cx - 1, top - 14, 2, 3);              // 피뢰침
+      });
+    };
+    bakeLight('smx_light_red', 24, 64, 0xd8402c, 0xa82e1e, 0xd8402c, 0xa82e1e);
+    bakeLight('smx_light_green', 24, 64, 0xf0f0ec, 0xc9cbc6, 0x3a9a5a, 0x2c7a46);
+    bakeLight('smx_light_white', 24, 64, 0xf0f0ec, 0xc9cbc6, 0x6a6f76, 0x4a4f56);
+    bakeLight('smx_light_major', 34, 96, 0xf0f0ec, 0xc9cbc6, 0x6a6f76, 0x4a4f56);
+    bake('smx_beacon_green', 12, 40, (g) => {                                       // 등주 — 기둥 + 원통 두표
+      g.fillStyle(0x000000, 0.22); g.fillEllipse(6, 38, 10, 4);
+      g.fillStyle(0x8f949c, 1); g.fillRect(2, 34, 8, 4);
+      g.fillStyle(0x3a3f46, 1); g.fillRect(5, 10, 2, 24);
+      g.fillStyle(0x3a9a5a, 1); g.fillRect(3, 2, 6, 9);
+      g.fillStyle(0x2c7a46, 1); g.fillRect(7, 2, 2, 9);
     });
     bake('smx_boat', 44, 26, (g) => {
       g.fillStyle(0x1c3c5c, 0.35); g.fillEllipse(22, 22, 40, 6);
@@ -2001,6 +2228,7 @@ export class SeamlessChunks {
           for (let c = c0; c < c1; c++) {
             const t = this.tileAt(c, r);
             if (t !== '.' && t !== 'b' && t !== 'r') continue;
+            if (this.islet[r * cols + c]) continue;          // 섬(갯바위)엔 하역 크레인이 없다(115차 실측 — 조도 위 크레인)
             if (((c + r) % 9) !== 0 || hash2(seed ^ 0xc8a1, c, r) > 0.35) continue;
             // 안벽 위: 4방향 중 항만 수역이 인접 + 2×2 뭍 여유 + 도로 밴드 밖
             let sea = false;
@@ -2048,6 +2276,18 @@ export class SeamlessChunks {
             }
           }
         }
+      }
+    }
+
+    // ── 항로표지 등대·등주(114차 — lights.json · setLights가 뭍으로 스냅해 청크에 배정) ──
+    const lights = this.lightsByChunk.get(cr * this.chunkCols + cc);
+    if (lights) {
+      for (const L of lights) {
+        const id = L.kind === 'beacon' ? 'beacon_green' : L.major ? 'lighthouse_major' : `lighthouse_${L.colour}`;
+        const d = def(id);
+        if (!d) continue;
+        // 물 위 등주는 바디 없이(free) — 바다에 벽이 생기면 캐스팅 착수 판정을 막는다
+        this.spawnProp(d, L.tx, L.ty, slot, this.tileAt(L.tx, L.ty) === '~' ? { free: true } : undefined);
       }
     }
 
@@ -2888,7 +3128,8 @@ export class SeamlessChunks {
             // ── 섬 주변 여(스커리) — 실사 갯바위 스프라이트 산포(105차). 절차 사각형 대체.
             //   본섬 둘레 2타일 안 물에만, 해시로 성기게. 물속 바위는 포말 링이 있는
             //   `rockwater_*`를 섞어 물에 잠긴 느낌을 준다.
-            if (this.coastReady && hash2(seed ^ 0x5c07, c, r) > 0.62 && this.nearIsletAt(c, r)) {
+            //   ⚠ 사진 시트 셀(115차 — 물속 바위가 그려진 오버라이드)이 있는 물 타일은 생략(이중 바위)
+            if (this.coastReady && hash2(seed ^ 0x5c07, c, r) > 0.62 && this.nearIsletAt(c, r) && !this.tileTexMap.has(r * cols + c)) {
               const h = hash2(seed ^ 0x5c08, c, r), h2b = hash2(seed ^ 0x5c09, c, r);
               const key = h > 0.55
                 ? this.coastRocks[Math.floor(h2b * this.coastRocks.length) % this.coastRocks.length]
@@ -2912,10 +3153,21 @@ export class SeamlessChunks {
             }
             continue;
           }
-          // ── 방파제 'b' — 실사 해안 세트가 있으면 Kenney pier 대신 상판/사석 타일 ──
-          if (ch === 'b' && this.coastReady) {
-            slot.rt.batchDraw(this.coastPierKey(c, r), dx, dy);
-            continue;
+          // ── 방파제 'b'/상판 '.' — 단면 분류(114차 computeBreakwaters): 피복(TTP) / 사석 / 상판 ──
+          if ((ch === 'b' || ch === '.') && this.coastReady) {
+            const k = this.bwClass[r * cols + c];
+            if (k === 3 && this.ttpReady) {
+              slot.rt.batchDraw(`ts_ttp_tile_ttp_${hash2(seed ^ 0x77b1, c, r) < 0.5 ? 'a' : 'b'}`, dx, dy);
+              continue;
+            }
+            if (k === 2) {
+              slot.rt.batchDraw(`ts_coast_${COAST_RUBBLE[Math.floor(hash2(seed ^ 0x77b2, c, r) * 991) % COAST_RUBBLE.length]}`, dx, dy);
+              continue;
+            }
+            if (k === 1 || ch === 'b') {
+              slot.rt.batchDraw(this.coastPierKey(c, r), dx, dy);
+              continue;
+            }
           }
           const keys = this.groundTex.get(ch);
           if (!keys) continue;
@@ -3058,12 +3310,17 @@ export class SeamlessChunks {
           }
           // 해안 포말 — 뭍과 맞닿은 물 타일 가장자리. TTP 접경 타일이 깔린 모래 쪽은 건너뛴다
           // (그 셀이 이미 포말을 그리고 있어 2px 선을 더하면 모래 위에 흰 테두리가 얹힌다)
-          const noRim = (t: string): boolean => t !== '~' && !(this.ttpReady && t === 's');
+          //   사진 시트 셀(115차 — 섬 갯바위)과 맞닿은 변도 생략: 사진 속 해안선은 셀 안쪽에 있어
+          //   타일 변을 따라 포말을 그으면 섬 둘레에 **격자 이음선**이 생긴다(실렌더 확인).
+          const noRim = (nc: number, nr: number): boolean => {
+            const t = at(nc, nr);
+            return t !== '~' && !(this.ttpReady && t === 's') && !this.tileTexMap.has(nr * cols + nc);
+          };
           g.fillStyle(COL.foam, 0.4);
-          if (noRim(at(c, r - 1))) g.fillRect(lx, ly, tr, 2);
-          if (noRim(at(c, r + 1))) g.fillRect(lx, ly + tr - 2, tr, 2);
-          if (noRim(at(c - 1, r))) g.fillRect(lx, ly, 2, tr);
-          if (noRim(at(c + 1, r))) g.fillRect(lx + tr - 2, ly, 2, tr);
+          if (noRim(c, r - 1)) g.fillRect(lx, ly, tr, 2);
+          if (noRim(c, r + 1)) g.fillRect(lx, ly + tr - 2, tr, 2);
+          if (noRim(c - 1, r)) g.fillRect(lx, ly, 2, tr);
+          if (noRim(c + 1, r)) g.fillRect(lx + tr - 2, ly, 2, tr);
           // 해수욕장 서프 — 모래와 맞닿은 물가는 두꺼운 러프 포말 밴드 + 1타일 물속 부서진 거품 줄
           // (드론 실사 정합 — 사용자 리포트 5번 캡처: 모래 → 포말 파도 → 바다 연결부)
           {
@@ -3180,7 +3437,7 @@ export class SeamlessChunks {
           // 해변 접경 포장 = 모래 스필(106차). 차도('r')는 벡터 밴드가 위에 깔리므로 제외.
           if (ch === '.' || ch === 'w') this.drawSandSpill(g, lx, ly, c, r);
           // 안벽 계선주(112차) — 'b'뿐 아니라 항만 수역에 면한 '.'/'w' 안벽에도 4타일 간격
-          if ((ch === '.' || ch === 'w' || ch === 'r') && (c + r) % 4 === 0) {
+          if ((ch === '.' || ch === 'w' || ch === 'r') && (c + r) % 4 === 0 && this.bwClass[r * cols + c] !== 3) {
             const hb = (nc: number, nr: number): boolean =>
               nc >= 0 && nr >= 0 && nc < cols && nr < this.cfg.rows && at(nc, nr) === '~' && this.harbor[nr * cols + nc] === 1;
             const wN = hb(c, r - 1), wS = hb(c, r + 1), wW = hb(c - 1, r), wE = hb(c + 1, r);

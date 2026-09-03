@@ -1,8 +1,8 @@
 # The Real Angler — 구현 계획서 (IMPLEMENTATION_PLAN)
 
-> **최종 업데이트**: 2026-09-03 — **113차: 차량 배치 재설계**(주차장 구역 한정 40~70% · 도로 위 금지 ·
-> 노상 0.8대/화면 · 조도 어선 정리). 상세 [워크로그 113](../docs/wiki/03-WORKLOG/2026-09-03-113-vehicle-placement-rework.md).
-> 직전: 112차 밀도 트랙 4건([워크로그 112](../docs/wiki/03-WORKLOG/2026-09-03-112-density-track-batch.md)).
+> **최종 업데이트**: 2026-09-03 — **115차: 조도 드론 사진 → 갯바위 타일 시트**(`pixelize_islet.py` · 32×27 지형 패치 · 시트 슬라이스).
+> 상세 [워크로그 115](../docs/wiki/03-WORKLOG/2026-09-03-115-jodo-photo-islet.md).
+> 직전: 114차 방파제 단면 + 등대([워크로그 114](../docs/wiki/03-WORKLOG/2026-09-03-114-breakwater-section-lighthouse.md)).
 >
 > **차수별 상세 히스토리는 이 문서에 쓰지 않는다** — 80차 이하 원장은 `.agents/AGENTS.md` §9,
 > 81차부터의 본문은 `docs/wiki/03-WORKLOG/`. (구 20~80차 압축 요약 블록은 AGENTS §9와 전부 중복이라 제거 — git 히스토리 보존)

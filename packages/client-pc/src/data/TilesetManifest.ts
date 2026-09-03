@@ -121,7 +121,12 @@ export function tilesetPathOf(key: string): string | null {
 /** 탑다운 차량 키 (세로 진행 스프라이트 — 도로 세그먼트 각도 + 90°로 회전) */
 export const CAR_TOPDOWN_KEYS = ['ts_kn_car_g', 'ts_kn_car_h', 'ts_kn_car_i', 'ts_kn_car_j', 'ts_kn_car_k', 'ts_kn_car_l'];
 
+/** 섬 사진 시트(115차 — `tools/pixelize_islet.py`): `ts_<name>_sheet` 1장을 런타임이 셀 `ts_<name>_r{r}c{c}`로
+ *  잘라 tileTex로 쓴다(SeamlessChunks.setTileTex). 섬을 추가하면 이름만 여기 올린다. */
+export const ISLET_SHEETS = ['jodo'] as const;
+
 const base: TilesetEntry[] = [
+  ...ISLET_SHEETS.map((n) => ({ key: `ts_${n}_sheet`, path: `tileset/${n}/sheet.png` })),
   ...gem.map((n) => ({ key: `ts_gem_${n}`, path: `tileset/gem/${n}.png` })),
   ...td.map((n) => ({ key: `ts_td_${n}`, path: `tileset/td/${n}.png` })),
   ...kn.map((n) => ({ key: `ts_kn_${n}`, path: `tileset/kn/${n}.png` })),
