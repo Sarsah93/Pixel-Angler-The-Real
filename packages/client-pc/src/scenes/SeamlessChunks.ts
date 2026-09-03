@@ -137,6 +137,8 @@ export const PROP_DEFS: PropDef[] = [
   { id: 'tdcar_red_side', label: '승용차(3/4) 빨강(옆)', tex: 'ts_td_car_red_right', cat: '차량', scale: 1.25 },
   // 어선 — 승용차(≈44px)의 2배 (사용자 지시). 오픈소스 두 팩에는 배 스프라이트가 없어 절차 베이크 유지
   { id: 'boat', label: '어선', tex: 'smx_boat', cat: '차량', water: true, scale: 2 },
+  // 하역 크레인(112차 항만 디테일) — 절차 베이크. 안벽 위 자동 산포 + 편집기 수동 배치
+  { id: 'crane', label: '하역 크레인', tex: 'smx_crane', cat: '시설물' },
   // NPC (정적 — L4 스폰 규칙은 씬이 POI 기준으로 자동 배치, 여기는 수동 오버라이드)
   { id: 'npc_fish_vendor', label: '생선 장수', tex: 'ts_gem_npc_fish_vendor', cat: 'NPC', scale: 0.5 },
   { id: 'npc_grandfather', label: '할아버지', tex: 'ts_gem_npc_grandfather', cat: 'NPC', scale: 0.5 },
@@ -205,6 +207,9 @@ const COL = {
   walk: 0x9daaab, walkAlt: 0x94a1a2, walkJoint: 0x8a9697, curb: 0xd2d6dc,
   pier: 0x9aa5b0, pierAlt: 0x94a0ab, pierJoint: 0x7d8894, pierEdge: 0x5a6773,
   bollard: 0x3a4450, bollardTop: 0x55616e,
+  // 도로 밖 'r' = 콘크리트 광장/주차장(112차) — 보도(#9daaab 청회)보다 밝고 따뜻한 중성 회색
+  plaza: 0xbdbab3, plazaAlt: 0xb7b4ad, plazaJoint: 0xa6a39c, plazaStain: 0xaeaba4,
+  crane: 0xd9a441, craneDark: 0x8a6a1e, craneSteel: 0x3a3f47,
   buildEdge: 0x3a3f47, shadow: 0x101820,
   foam: 0xe8f4fa, wave: 0x9cc4dd, waveDeep: 0x1c3c5c,
   boatHull: 0x2e4a66, boatDeck: 0xe8eef2,
@@ -282,6 +287,14 @@ export class SeamlessChunks {
 
   /** 바다 타일의 육지 거리 (수심 그라데이션) — 전맵 1회 BFS */
   private waterDist: Uint16Array;
+  /** 주차장 열 주축(112차) — 0 없음 · 1 가로 행(세로 주차) · 2 세로 행(가로 주차). computeLotAxis */
+  private lotAxis: Uint8Array;
+  /** 주차장 구역 id(113차) — 0 = 주차장 아님. 차량은 **여기서만** 열을 이룬다. computeParkingLots */
+  private parkLot: Uint16Array;
+  /** 구역별 목표 점유율 0.40~0.70 (구역마다 다르게 — 만차/한산이 섞이게) */
+  private lotFill: Float32Array;
+  /** 항만 수역(112차) — 뭍에 둘러싸인 물(항 내측·석호). 정박 어선·계선주·크레인의 기준. computeHarbor */
+  private harbor: Uint8Array;
   /** 섬/암초 플래그 (computeIslets — 조도 등 소형 야생 육지 = 갯바위 렌더) */
   private islet: Uint8Array;
   /** 외해(열린 바다) 마스크 — 맵 경계 물에서 '넉넉히 넓은 수역'만 타고 퍼진 영역.
@@ -312,9 +325,16 @@ export class SeamlessChunks {
     this.walls = scene.physics.add.staticGroup();
     this.waterDist = this.computeWaterDistance();
     this.islet = this.computeIslets();
+    this.lotAxis = this.computeLotAxis();
+    this.harbor = this.computeHarbor();
     this.compOf = new Int32Array(cfg.cols * cfg.rows).fill(-1);
     this.labelBuildings();
     this.indexRoads();
+    // ⚠ 주차장 검출은 **indexRoads 뒤**여야 한다(113차 실측) — roadBand가 roadsByChunk를 쓰므로
+    //   앞에 두면 접근성 판정이 전부 false가 되어 구역이 0개가 된다(차량 전멸).
+    const lots = this.computeParkingLots();
+    this.parkLot = lots.id;
+    this.lotFill = lots.fill;
     this.setProps(cfg.props ?? []);
     this.setTileTex(cfg.tileTex ?? []);
     this.ensureDecoTextures();
@@ -488,8 +508,44 @@ export class SeamlessChunks {
         cv.refresh();
       }
     }
+    this.ensurePlazaTextures();
     this.ensureTtpTextures();
     this.ensureCoastTextures();
+  }
+
+  /** 도로 밖 'r'(광장·주차장) 콘크리트 톤 — 2px 그레인 절차 베이크 2변형(112차). L1이 'r' 위에 얹고
+   *  도로 밴드가 회랑을 덮는다 → 밴드 밖 'r'만 콘크리트로 남는다(구: tan 베이스 = 흙바닥 주차장처럼 보였다). */
+  private plazaTex: string[] = [];
+  private ensurePlazaTextures(): void {
+    const tr = this.cfg.tr;
+    const tm = this.scene.textures;
+    this.plazaTex = [];
+    for (let v = 0; v < 2; v++) {
+      const key = `kn_plaza_${v}`;
+      if (!tm.exists(key)) {
+        const cv = tm.createCanvas(key, tr, tr);
+        if (!cv) continue;
+        const ctx = cv.getContext();
+        const hex = (n: number): string => `#${n.toString(16).padStart(6, '0')}`;
+        for (let y = 0; y < tr; y += 2) {
+          for (let x = 0; x < tr; x += 2) {
+            const h = hash2(0x51a2 ^ (v * 977), x, y);
+            let col = h > 0.5 ? COL.plaza : COL.plazaAlt;
+            if (h > 0.975) col = COL.plazaStain;
+            ctx.fillStyle = hex(col);
+            ctx.fillRect(x, y, 2, 2);
+          }
+        }
+        // 신축이음 — 셀 좌/상 1줄 옅게 (변형별 농도 차로 격자 반복감 완화)
+        ctx.fillStyle = hex(COL.plazaJoint);
+        ctx.globalAlpha = v === 0 ? 0.55 : 0.35;
+        ctx.fillRect(0, 0, tr, 2);
+        ctx.fillRect(0, 0, 2, tr);
+        ctx.globalAlpha = 1;
+        cv.refresh();
+      }
+      if (tm.exists(key)) this.plazaTex.push(key);
+    }
   }
 
   /**
@@ -960,6 +1016,11 @@ export class SeamlessChunks {
     if (tiles.length === 0) return;
     this.waterDist = this.computeWaterDistance();
     this.islet = this.computeIslets();
+    this.lotAxis = this.computeLotAxis();
+    const lots2 = this.computeParkingLots();
+    this.parkLot = lots2.id;
+    this.lotFill = lots2.fill;
+    this.harbor = this.computeHarbor();
     this.compOf.fill(-1);
     this.comps = [];
     this.labelBuildings();
@@ -1072,6 +1133,160 @@ export class SeamlessChunks {
       }
     }
     return false;
+  }
+
+  /**
+   * 주차장 열 주축(112차) — 도로 밖 `'r'` 면을 **5×5 침식**한 성분의 bbox 종횡비로 행 방향을 정한다.
+   *  1 = 가로 행(세로 주차 — 정면/후면 프레임) · 2 = 세로 행(가로 주차 — 측면 프레임) · 0 = 해당 없음.
+   *  5×5 침식이라 폭 ≤ 4타일 도로 회랑은 사라지고 광장·주차장만 남는다 — 성분이 도로와 이어져
+   *  종횡비가 도로 방향에 끌리는 문제(111차 보류 사유)를 피한다. 청크와 무관한 전역 1회 계산이라
+   *  청크 경계에서 방향이 갈리지 않는다. 침식으로 빠진 가장자리 타일은 반경 2 팽창으로 축을 물려받는다.
+   */
+  private computeLotAxis(): Uint8Array {
+    const { cols, rows } = this.cfg;
+    const n = cols * rows;
+    const core = new Uint8Array(n);
+    for (let r = 2; r < rows - 2; r++) {
+      for (let c = 2; c < cols - 2; c++) {
+        if (this.tileAt(c, r) !== 'r') continue;
+        let ok = true;
+        for (let dr = -2; dr <= 2 && ok; dr++) for (let dc = -2; dc <= 2; dc++) if (this.tileAt(c + dc, r + dr) !== 'r') { ok = false; break; }
+        if (ok) core[r * cols + c] = 1;
+      }
+    }
+    const axis = new Uint8Array(n);
+    const seen = new Uint8Array(n);
+    const stack: number[] = [];
+    for (let i0 = 0; i0 < n; i0++) {
+      if (!core[i0] || seen[i0]) continue;
+      const comp: number[] = [];
+      let c0 = cols, c1 = -1, r0 = rows, r1 = -1;
+      stack.push(i0); seen[i0] = 1;
+      while (stack.length) {
+        const i = stack.pop()!;
+        comp.push(i);
+        const c = i % cols, r = Math.floor(i / cols);
+        if (c < c0) c0 = c; if (c > c1) c1 = c; if (r < r0) r0 = r; if (r > r1) r1 = r;
+        for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+          const nc = c + dc, nr = r + dr;
+          if (nc < 0 || nr < 0 || nc >= cols || nr >= rows) continue;
+          const j = nr * cols + nc;
+          if (core[j] && !seen[j]) { seen[j] = 1; stack.push(j); }
+        }
+      }
+      const a = (r1 - r0 + 1) >= (c1 - c0 + 1) * 1.35 ? 2 : 1;   // 세로로 길면 세로 행
+      for (const i of comp) axis[i] = a;
+    }
+    const out = new Uint8Array(n);
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        if (this.tileAt(c, r) !== 'r') continue;
+        let a = 0;
+        for (let dr = -2; dr <= 2 && !a; dr++) {
+          for (let dc = -2; dc <= 2; dc++) {
+            const nc = c + dc, nr = r + dr;
+            if (nc < 0 || nr < 0 || nc >= cols || nr >= rows) continue;
+            const v = axis[nr * cols + nc];
+            if (v) { a = v; break; }
+          }
+        }
+        out[r * cols + c] = a;
+      }
+    }
+    return out;
+  }
+
+  /**
+   * 항만 수역(112차) — 뭍 가까운 물(`waterDist ≤ 6`) 중 4방향 광선(14타일)이 **3개 이상 뭍에 닿는**
+   * 둘러싸인 물 = 항 내측·석호. 외해 쪽 방파제 바깥(광선 1~2개)은 제외돼 정박 어선이 외해에 놓이지 않는다.
+   */
+  private computeHarbor(): Uint8Array {
+    const { cols, rows } = this.cfg;
+    const out = new Uint8Array(cols * rows);
+    const RAY = 14;
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        if (this.tileAt(c, r) !== '~' || this.waterDist[r * cols + c] > 6) continue;
+        let hits = 0;
+        for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+          for (let k = 1; k <= RAY; k++) {
+            const nc = c + dc * k, nr = r + dr * k;
+            if (nc < 0 || nr < 0 || nc >= cols || nr >= rows) break;
+            if (this.tileAt(nc, nr) !== '~') { hits++; break; }
+          }
+        }
+        if (hits >= 3) out[r * cols + c] = 1;
+      }
+    }
+    return out;
+  }
+
+  /**
+   * 주차장 구역 검출(113차 — 사용자 지시 "주차장 같은 공간에만, 40~70% 랜덤").
+   *
+   * 112차는 **도로 밖 `'r'` 전부**(16,630타일)에 열을 깔아 광장·매립지·항만 에이프런까지
+   * 차로 뒤덮였다(사용자: "너무 많은 차"). 여기서는 그 중 **주차장처럼 생긴 성분만** 고른다:
+   *  - 크기 40~700타일 (그 이상은 광장·부지 — 실측 2,174 / 1,253타일 성분이 주범이었다)
+   *  - bbox 채움률 ≥ 0.5 · 최소 변 4타일 (직사각형에 가까운 면)
+   *  - 5타일 안에 차도 (진입로 없는 면은 주차장이 아니다)
+   *  - **섬(islet) 제외** — 갯바위 섬에 차가 설 수 없다
+   * 성분마다 목표 점유율 0.40~0.70을 해시로 뽑아 만차/한산이 섞이게 한다.
+   * 전역 1회 계산이라 청크 경계에서 구역이 갈리지 않는다(함정 28).
+   */
+  private computeParkingLots(): { id: Uint16Array; fill: Float32Array } {
+    const { cols, rows } = this.cfg;
+    const n = cols * rows;
+    const N = this.cfg.chunkTiles;
+    const id = new Uint16Array(n);
+    const fills: number[] = [0];
+    const core = new Uint8Array(n);
+    for (let r = 1; r < rows - 1; r++) {
+      for (let c = 1; c < cols - 1; c++) {
+        if (this.tileAt(c, r) !== 'r' || this.islet[r * cols + c]) continue;
+        let ok = true;
+        for (let dr = -1; dr <= 1 && ok; dr++) for (let dc = -1; dc <= 1; dc++) if (this.tileAt(c + dc, r + dr) !== 'r') { ok = false; break; }
+        if (!ok) continue;
+        const band = this.roadBand(c + 0.5, r + 0.5, Math.floor(r / N) * this.chunkCols + Math.floor(c / N));
+        if (band && band.d < band.halfW + 1.2) continue;      // 차도·연석 침범 금지
+        core[r * cols + c] = 1;
+      }
+    }
+    const seen = new Uint8Array(n);
+    const stack: number[] = [];
+    for (let i0 = 0; i0 < n; i0++) {
+      if (!core[i0] || seen[i0]) continue;
+      const cells: number[] = [];
+      let c0 = cols, c1 = -1, r0 = rows, r1 = -1;
+      stack.push(i0); seen[i0] = 1;
+      while (stack.length) {
+        const i = stack.pop()!;
+        cells.push(i);
+        const c = i % cols, r = Math.floor(i / cols);
+        if (c < c0) c0 = c; if (c > c1) c1 = c; if (r < r0) r0 = r; if (r > r1) r1 = r;
+        for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+          const nc = c + dc, nr = r + dr;
+          if (nc < 0 || nr < 0 || nc >= cols || nr >= rows) continue;
+          const j = nr * cols + nc;
+          if (core[j] && !seen[j]) { seen[j] = 1; stack.push(j); }
+        }
+      }
+      const w = c1 - c0 + 1, h = r1 - r0 + 1;
+      if (cells.length < 40 || cells.length > 700 || w < 4 || h < 4) continue;
+      if (cells.length / (w * h) < 0.5) continue;
+      let access = false;
+      for (const i of cells) {
+        if (access) break;
+        const c = i % cols, r = Math.floor(i / cols);
+        const band = this.roadBand(c + 0.5, r + 0.5, Math.floor(r / N) * this.chunkCols + Math.floor(c / N));
+        if (band && band.d < band.halfW + 5) access = true;
+      }
+      if (!access) continue;
+      const lotId = fills.length;
+      if (lotId > 65535) break;
+      fills.push(0.40 + hash2(this.cfg.seed ^ 0x9a90, c0, r0) * 0.30);
+      for (const i of cells) id[i] = lotId;
+    }
+    return { id, fill: Float32Array.from(fills) };
   }
 
   private computeIslets(): Uint8Array {
@@ -1215,6 +1430,20 @@ export class SeamlessChunks {
     });
     // 어선 — 선체 + 조타실 (바다 전용)
     // 어선 44×26 (프롭 정의에서 ×2 = 88×52 ≈ 승용차의 2배) — 선체·현측·조타실·마스트·부표
+    // 하역 크레인 44×66 — 콘크리트 받침 + 강철 마스트 + 노란 지브(대각) + 후크 줄 + 카운터웨이트
+    bake('smx_crane', 44, 66, (g) => {
+      g.fillStyle(0x000000, 0.22); g.fillEllipse(14, 63, 24, 6);
+      g.fillStyle(0x8f949c, 1); g.fillRect(6, 56, 16, 6);            // 받침
+      g.fillStyle(COL.craneSteel, 1); g.fillRect(11, 14, 6, 44);     // 마스트
+      g.fillStyle(0x555b64, 1); g.fillRect(12, 14, 2, 44);
+      g.fillStyle(COL.crane, 1);                                       // 지브 (우상향 대각)
+      g.fillPoints([{ x: 10, y: 16 }, { x: 40, y: 2 }, { x: 43, y: 6 }, { x: 14, y: 20 }], true);
+      g.fillStyle(COL.craneDark, 1); g.fillRect(2, 15, 12, 5);         // 카운터웨이트
+      g.fillStyle(COL.craneSteel, 1); g.fillRect(38, 6, 2, 22);        // 후크 줄
+      g.fillStyle(0x2a2f36, 1); g.fillRect(35, 28, 8, 4);              // 후크 블록
+      g.fillStyle(COL.crane, 1); g.fillRect(8, 10, 12, 6);             // 운전실
+      g.fillStyle(0x4a7aa8, 1); g.fillRect(10, 11, 6, 3);
+    });
     bake('smx_boat', 44, 26, (g) => {
       g.fillStyle(0x1c3c5c, 0.35); g.fillEllipse(22, 22, 40, 6);
       g.fillStyle(0x1f3a52, 1);
@@ -1663,11 +1892,15 @@ export class SeamlessChunks {
       const kinds: [string, string][] = [['car', 'blue'], ['car', 'green'], ['car', 'red'], ['pickup', 'blue'], ['pickup', 'green'], ['pickup', 'red']];
       for (let r = r0; r < r1; r++) {
         for (let c = c0; c < c1; c++) {
-          if (this.tileAt(c, r) !== '.') continue;
+          if (this.tileAt(c, r) !== '.' || this.islet[r * this.cfg.cols + c]) continue;
           const bN = this.tileAt(c, r - 1) === '#', bS = this.tileAt(c, r + 1) === '#';
           const bW = this.tileAt(c - 1, r) === '#', bE = this.tileAt(c + 1, r) === '#';
           if (!(bN || bS || bW || bE)) continue;
-          if (hash2(seed ^ 0xca7, c, r) > 0.03) continue;
+          // 밀도(113차) — 주차장 밖 노상 차량은 **화면(≈900타일)당 1대 안팎**만(사용자 지시 3).
+          //   실측: 조건 통과 후보가 화면당 0~37개(평균 6.9)로 편차가 크다 → 0.04면 상가 밀집지
+          //   1~2대 · 주택가 0대 = "가끔 한 대" 체감. 구 0.03은 여기에 **주차장 열(점유 0.66)**이
+          //   광장 전역에 겹쳐 화면이 차로 뒤덮였던 것이 실제 원인이었다.
+          if (hash2(seed ^ 0xca7, c, r) > 0.04) continue;
           // 2×2 여유(차 길이) + 도로 밴드 밖
           const band = this.roadBand(c + 0.5, r + 0.5, chunkIdx);
           if (band && band.d < band.halfW + 1.6) continue;
@@ -1690,12 +1923,22 @@ export class SeamlessChunks {
     //    3×3 전부 'r' 요구 → 보도 프린지·건물 문 앞(인접 '#')·래스터 스페클 자동 제외.
     if (hasTs) {
       const chunkIdx = cr * this.chunkCols + cc;
+      const cols = this.cfg.cols;
       const kinds: [string, string][] = [['car', 'blue'], ['car', 'green'], ['car', 'red'], ['pickup', 'blue'], ['pickup', 'green'], ['pickup', 'red']];
       for (let r = r0; r < r1; r++) {
-        if (((r % 4) + 4) % 4 !== 1) continue;     // 행 간격 4타일 (차 길이 ~2 + 통로 ~2)
         for (let c = c0; c < c1; c++) {
-          if (((c % 2) + 2) % 2 !== 0) continue;   // 칸 간격 2타일 (차 폭 ~1.3 + 여유)
           if (this.tileAt(c, r) !== 'r') continue;
+          // 주차장 구역 안에서만(113차) — 광장·매립지·항만 에이프런에는 차를 세우지 않는다
+          const lotId = this.parkLot[r * cols + c];
+          if (lotId === 0) continue;
+          // 열 주축(112차 — computeLotAxis): 세로로 긴 주차장은 세로 행(가로 주차·측면 프레임),
+          //   그 외는 가로 행(세로 주차·정면/후면 프레임). 위상은 전역 좌표 기준 = 청크 경계 정합.
+          const vertical = this.lotAxis[r * cols + c] === 2;
+          if (vertical) {
+            if (((c % 4) + 4) % 4 !== 1 || ((r % 2) + 2) % 2 !== 0) continue;   // 열 간격 4 · 칸 간격 2
+          } else {
+            if (((r % 4) + 4) % 4 !== 1 || ((c % 2) + 2) % 2 !== 0) continue;   // 행 간격 4 · 칸 간격 2
+          }
           let lot = true;
           for (let dr = -1; dr <= 1 && lot; dr++) {
             for (let dc = -1; dc <= 1; dc++) {
@@ -1705,16 +1948,81 @@ export class SeamlessChunks {
           if (!lot) continue;
           const band = this.roadBand(c + 0.5, r + 0.5, chunkIdx);
           if (band && band.d < band.halfW + 1.2) continue;   // 차도·연석 침범 금지
-          if (hash2(seed ^ 0x9a7c, c, r) > 0.66) continue;   // 점유율
+          if (hash2(seed ^ 0x9a7c, c, r) > this.lotFill[lotId]) continue;   // 구역별 점유율 0.40~0.70
           const [kind, color] = kinds[Math.floor(hash2(seed ^ 0x9a7d, c, r) * kinds.length) % kinds.length];
-          // 가로 행 = 세로 주차(전면/후면 프레임) — 3/4 시점이라 회전 금지, 프레임 선택만
-          const dir = hash2(seed ^ 0x9a7e, c, r) < 0.5 ? 'up' : 'down';
+          // 3/4 시점이라 회전 금지 — 행 방향에 맞는 프레임만 고른다
+          const hv = hash2(seed ^ 0x9a7e, c, r);
+          const dir = vertical ? (hv < 0.5 ? 'left' : 'right') : (hv < 0.5 ? 'up' : 'down');
           const tex = `ts_td_${kind}_${color}_${dir}`;
           if (!this.scene.textures.exists(tex)) continue;
           this.spawnProp({ id: 'park_lot', label: '주차 차량', tex, cat: '차량', scale: 1.25 }, c, r, slot);
         }
       }
     }
+
+    // ── 항만 디테일(112차) — 정박 어선 열 + 하역 크레인 (참고 이미지의 부두 문법) ──
+    //    항만 수역(computeHarbor)에 면한 안벽('.'|'b'|'w') 앞 물 타일에 어선을 열 지어 정박.
+    //    E-W 안벽 = 3타일 간격 접현(alongside) · N-S 안벽 = 2타일 간격 선수 접안(bow-in).
+    //    크레인은 안벽 위 뭍(2×2 여유·도로 밴드 밖)에 성기게.
+    if (hasTs) {
+      const chunkIdx = cr * this.chunkCols + cc;
+      const cols = this.cfg.cols;
+      const dBoat = def('boat'), dCrane = def('crane');
+      // 안벽 = '.'/'b'/'w' + 래스터 'r'(109차 — 항만 광장·부두 상판은 대부분 'r'로 온다. 빠뜨리면 어선 1척·크레인 0 실측)
+      const quay = (c: number, r: number): boolean => { const t = this.tileAt(c, r); return t === '.' || t === 'b' || t === 'w' || t === 'r'; };
+      for (let r = r0; r < r1; r++) {
+        for (let c = c0; c < c1; c++) {
+          if (this.tileAt(c, r) !== '~' || !this.harbor[r * cols + c]) continue;
+          // 섬(갯바위) 둘레 제외(113차) — 부두가 없는 조도에 어선이 접안해 **육지 위로 얹혔다**(실렌더 확인)
+          let nearIslet = false;
+          for (let dr = -2; dr <= 2 && !nearIslet; dr++) for (let dc = -2; dc <= 2; dc++) {
+            const nc = c + dc, nr = r + dr;
+            if (nc >= 0 && nr >= 0 && nc < cols && nr < this.cfg.rows && this.islet[nr * cols + nc]) { nearIslet = true; break; }
+          }
+          if (nearIslet) continue;
+          const lN = quay(c, r - 1), lS = quay(c, r + 1), lW = quay(c - 1, r), lE = quay(c + 1, r);
+          if (!(lN || lS || lW || lE)) continue;
+          const sx = lW ? 1 : lE ? -1 : 0, sy = lN ? 1 : lS ? -1 : 0;    // 바다 쪽 단위 방향
+          if (sx && sy) continue;                                       // 코너 물은 생략(겹침)
+          if (this.tileAt(c + sx * 2, r + sy * 2) !== '~' || this.tileAt(c + sx, r + sy) !== '~') continue;
+          const ew = sy !== 0;
+          if (ew ? ((c % 3) + 3) % 3 !== 0 : ((r % 2) + 2) % 2 !== 0) continue;
+          if (hash2(seed ^ 0xb0a1, c, r) > 0.55 || !dBoat) continue;
+          // 선체 = 44×26 × scale 2 = 88×52px(2.75 × 1.625타일), **바닥 앵커**(y = ty*tr + tr).
+          //   안벽 쪽으로 살짝(≤ 8px)만 물리고 나머지는 물 위에 뜨도록 앵커를 맞춘다(113차 —
+          //   구 값은 N-S 안벽에서 36px가 뭍으로 올라탔다).
+          const tx = c + (ew ? 0 : sx * 0.9);
+          const ty = ew ? (sy > 0 ? r + 0.5 : r - 0.1) : r + 0.3;
+          this.spawnProp(dBoat, tx, ty, slot, { fx: hash2(seed ^ 0xb0a2, c, r) < 0.5, free: true });
+        }
+      }
+      if (dCrane) {
+        for (let r = r0; r < r1; r++) {
+          for (let c = c0; c < c1; c++) {
+            const t = this.tileAt(c, r);
+            if (t !== '.' && t !== 'b' && t !== 'r') continue;
+            if (((c + r) % 9) !== 0 || hash2(seed ^ 0xc8a1, c, r) > 0.35) continue;
+            // 안벽 위: 4방향 중 항만 수역이 인접 + 2×2 뭍 여유 + 도로 밴드 밖
+            let sea = false;
+            for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+              const nc = c + dc, nr = r + dr;
+              if (nc >= 0 && nr >= 0 && nc < cols && nr < this.cfg.rows && this.tileAt(nc, nr) === '~' && this.harbor[nr * cols + nc]) { sea = true; break; }
+            }
+            if (!sea) continue;
+            // 물이 아닌 이웃은 전부 뭍이어야 한다(안벽 가장자리 한 칸 — 어느 방위의 안벽이든)
+            let landN = 0;
+            for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) if (quay(c + dc, r + dr)) landN++;
+            if (landN < 3) continue;
+            const band = this.roadBand(c + 0.5, r + 0.5, chunkIdx);
+            if (band && band.d < band.halfW + 1.5) continue;
+            this.spawnProp(dCrane, c, r, slot);
+          }
+        }
+      }
+    }
+
+    // ⚠ 도로변 평행 주차(112차)는 **폐기**(113차 — 사용자 지시 "차량 배치는 도로가 아니어야 한다").
+    //   연석 안쪽은 곧 주행 차로라 정지 차량이 도로 위에 서 있는 것으로 보였다.
 
     // ── 신호등 — 신호 교차로(detectSignals) 박스의 대각 모서리 2곳(NE·SW). 모서리 타일이 속한
     //    청크가 배치(경계 교차로 중복 방지) · 바다/건물 타일 위는 생략 ──
@@ -1845,6 +2153,9 @@ export class SeamlessChunks {
         if (this.tileAt(c, r) !== 'r') continue;
         const h = hash2(this.cfg.seed ^ 0xa5f, c, r), h2 = hash2(this.cfg.seed ^ 0xa60, c, r);
         if (h < 0.55) continue;
+        // 도로 밴드 밖 'r'은 콘크리트 광장(112차) — 아스팔트 반점을 찍지 않는다
+        const band = this.roadBand(c + 0.5, r + 0.5, idx);
+        if (!band || band.d > band.halfW) continue;
         g.fillStyle(h2 > 0.5 ? COL.roadSpeck : COL.roadAlt, 0.9);
         g.fillRect((c - c0) * tr + 4 + Math.floor(h * 20), (r - r0) * tr + 4 + Math.floor(h2 * 20), 2, 2);
         if (h > 0.9) g.fillRect((c - c0) * tr + 3 + Math.floor(h2 * 22), (r - r0) * tr + 14 + Math.floor(h * 10), 3, 1);
@@ -2634,6 +2945,10 @@ export class SeamlessChunks {
           }
           const k = keys[Math.floor(hash2(seed ^ 0x6e0d, c, r) * keys.length) % keys.length];
           slot.rt.batchDraw(k, dx, dy);
+          // 'r' = 콘크리트 광장 톤(112차) — 도로 회랑은 뒤의 벡터 밴드(보도·연석·아스팔트)가 덮는다
+          if (ch === 'r' && this.plazaTex.length > 0) {
+            slot.rt.batchDraw(this.plazaTex[Math.floor(hash2(seed ^ 0x51a3, c, r) * this.plazaTex.length) % this.plazaTex.length], dx, dy);
+          }
           // 직각삼각형 대각 엣지(101차 후속 4 — 사용자 제안 "4방위 직각삼각형 타일"): 계단식 경계를 45°로.
           //  이웃 두 변 + 대각이 같은 지형 B면 그 모서리에 B의 삼각형을 얹는다 (모래·부두 ↔ 맨땅.
           //  차도·보도는 벡터 밴드가 곡선으로 그리므로 여기서는 맨땅과 같은 군으로 취급)
@@ -2864,6 +3179,18 @@ export class SeamlessChunks {
         if (based) {
           // 해변 접경 포장 = 모래 스필(106차). 차도('r')는 벡터 밴드가 위에 깔리므로 제외.
           if (ch === '.' || ch === 'w') this.drawSandSpill(g, lx, ly, c, r);
+          // 안벽 계선주(112차) — 'b'뿐 아니라 항만 수역에 면한 '.'/'w' 안벽에도 4타일 간격
+          if ((ch === '.' || ch === 'w' || ch === 'r') && (c + r) % 4 === 0) {
+            const hb = (nc: number, nr: number): boolean =>
+              nc >= 0 && nr >= 0 && nc < cols && nr < this.cfg.rows && at(nc, nr) === '~' && this.harbor[nr * cols + nc] === 1;
+            const wN = hb(c, r - 1), wS = hb(c, r + 1), wW = hb(c - 1, r), wE = hb(c + 1, r);
+            if (wN || wS || wW || wE) {
+              const bx = lx + (wE ? tr - 8 : wW ? 3 : tr / 2 - 3);
+              const by = ly + (wS ? tr - 8 : wN ? 3 : tr / 2 - 3);
+              g.fillStyle(COL.bollard, 1); g.fillRect(bx, by, 5, 5);
+              g.fillStyle(COL.bollardTop, 1); g.fillRect(bx + 1, by + 1, 3, 2);
+            }
+          }
           if (ch === 's') {
             // 젖은 모래 띠 — ⚠ TTP 접경 셀이 깔리는 물가에는 **그리지 않는다**(106차). 접경 셀이
             //   이미 젖은 모래+포말을 갖고 있어, 여기에 6px 띠를 더하면 물가에 자로 그은
