@@ -112,7 +112,7 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
 
 - 지역 타일맵 추가/재생성 → **스킬 `add-region`** (`py tools/build_region_maps.py <region>` — 파이프라인·타일 문자·맵 그래프·함정 일체).
 - 차기 과제: 낚시점 전용 상점(루어 판매), 어탐 레이더(SeabedProfile 조회), 타 지역(여수 등) 확장, POI 세분화, 사운드 이펙트 (IMPLEMENTATION_PLAN §6-5l 차기 참고).
-- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages — 최근 5차 배포 2026-07-22. 재배포 절차는 **스킬 `deploy-ghpages`**).
+- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages — 최근 9차 배포 2026-09-03 = 89~115차 포함. 재배포 절차는 **스킬 `deploy-ghpages`**).
 
 ## 작업 이어받기 절차
 
