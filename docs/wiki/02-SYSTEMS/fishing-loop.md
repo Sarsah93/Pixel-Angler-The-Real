@@ -20,7 +20,8 @@
 | core | `LineTensionPhysics` | 뒷줄견제 = **그 지점 홀드** + 정렬도 A 진행 |
 | core | `ChumPhysics` | 밑밥 파슬 3D(침강·확산·코팅) + `computeChumSync` |
 | core | `BiteProbabilityEngine` · `BiteSequenceEngine` | 입질 확률 · **3단계 구부러짐 시퀀스**(패턴 7종·`provoke`) |
-| core | `FightingPhase` · `FightPhysics2D` · `FishFatigueModel` | 텐션·패턴·측면하중 2D·피로 페이즈 |
+| core | `FightingPhase` · `FightPhysics2D` · `FishFatigueModel` | **물리 텐션**(117차 — 요구 장력 ÷ 라인 강도)·패턴·측면하중 2D·피로 페이즈 |
+| core | `FishRarity` | 어종군(8) · 희귀도 6단계(평균 길이 대비 비율) · `lineStrengthKg`(호수 → kg) |
 | core | `FishSpawningOracle` · `SizeTierRules` · `FeedingTimeCalculator` | 어종 스폰 · 크기 등급 · 피딩타임 배율 |
 | core | `LureRig` · `SinkerDatabase` · `RigRecommender` | 루어 채비 연산 · 봉돌 · 채비 추천 |
 | client | `RegionFieldScene` | 조준 캐스팅(차지·탄도 미리보기·**릴링 경로 육지 차단**) |
@@ -60,12 +61,20 @@
 | 침강 라인각 모델 rev2 | ✅ | 38 |
 | 크기 등급 + 피딩타임 + 보일링/스쿨링 | ✅ | 11 |
 | 통합 가이드 허브 | ✅ | 27 |
+| **물리 텐션 모드**(체중×어종군 가속×대응 ÷ 라인 강도 · 드랙 상한) | ✅ | 117 |
+| 희귀도 6단계 색(어획 팝업·인벤·상세) | ✅ | 117 |
+| 입질 튜토리얼 선표시(첫 1단계 진입 정지) + dragIn 슬로우·화살표 | ✅ | 117 |
+| 도움말 라이브러리 낚시 카테고리(구매·채비·낚시하기 7토픽·밑밥·희귀도) | ✅ | 117 · 118 실캡처(입질 3단계·파이팅·끌어오기·어획 팝업) |
+| 캐스팅 힌트 = 맵 직접 클릭만(`over` 가드) | ✅ | 118 |
+| dev 훅 `__FP.devForceBite/devForceFight` | ✅ | 118 — 하네스가 입질/파이팅 강제 |
+| `TUNING.fightPhys` 실플레이 조율(F8 → 확정) | ⬜ | 시뮬 mockup 값 |
+| 어종군 `burst` 웹 리서치 재검(돔 4·방어 5.5·고등어 3 …) | ⬜ | 117 잔여 |
 | **어탐 레이더** | ⬜ | SeabedProfile 조회 UI |
 | 가이드 삽화 실게임 스크린샷 교체 | ⬜ | 현재 목업 SVG 렌더 |
 | 사운드 이펙트 | ⬜ | 전역 과제 |
 
 ## 5. 잔여·차기
-- 어탐 레이더(D1 구조는 준비됨) · 사운드 · 삽화 교체 · 탑다운에서 가이드 허브 진입.
+- 어탐 레이더(D1 구조는 준비됨) · 사운드 · 삽화 교체(`help_fp_fight` 실캡처) · `fightPhys` F8 확정.
 - 신규 해양 API 5종(어초·해수유동·수치조류도·수심·조석예보) 연동 — `IMPLEMENTATION_PLAN` Q5.
 
 ## 6. 함정·불변조건
@@ -73,4 +82,12 @@
 2. **조류 드리프트 거리 하한**(0.3m)이 회수 판정(0.5m)보다 커지면 영원히 회수 불가 — 19차 실버그.
 3. 입질 확률 배율은 **곱 체인**이다. 새 요소를 넣을 때 기존 배율을 대체하지 말 것(중복 확률식 금지).
 4. `FightingPhase`는 프레임레이트 정규화(`1−exp(−rate·dt)`)를 지킨다.
+5b. **`result` 상태는 시뮬을 멈춰야 한다**(119차) — `update()`가 상태와 무관하게 조류를 적용해
+    어획 후에도 `distM`이 반탄류로 **늘어났다**(= 물고기가 뒤로 가는 연출). 결과 상태에서는
+    `lastTidal`을 고정하고 tide를 0으로 두며, 남은 거리는 `LANDED_PULL_MPS`로 발앞(0.3m)까지 당긴다.
+    좌클릭 릴링도 `fpState === 'result'`에서 차단한다(배경 클릭으로 릴링 연출이 진행됐다).
 5. FP 씬 ESC는 popupStack이 아니라 **하드코딩 순서**(인벤→쿨러→종료) — 강제 방생 `lockedOpen`이 얽혀 있다.
+6. **물리 텐션에서 드랙 상한은 "릴을 안 감을 때" 전부**에 건다(117차) — 홀드에만 걸면 대물이 버티기 중에 터지고,
+   전부 빼면 소형이 안전 밴드 아래로 떨어져 바늘이 빠진다(`reelLoadKg`로 보정). 정석 = 달려 보내며 피로 대기 → 감기.
+7. 튜토리얼 플래그(`guideSeen.<cat>`)는 **[다시 표시하지 않기] 체크 시에만** 기록 — 열기 전에 기록하면 재표시 경로가 없다.
+8. 필드 씬 `pointerdown`은 `over`(인터랙티브 오브젝트 목록)를 먼저 본다 — HUD·버튼·팝업 위 클릭은 맵 클릭이 아니다(118차).

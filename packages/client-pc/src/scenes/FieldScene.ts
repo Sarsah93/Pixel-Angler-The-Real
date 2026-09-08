@@ -528,11 +528,12 @@ export class FieldScene extends Phaser.Scene {
     border.strokeRect(0, 0, this.worldW, this.worldH);
 
     // 스팟 이름 (상단 좌측)
-    this.add.text(20, 10, `📍 ${this.spotInfo.name}`, {
+    // 화면 고정(HUD 채널) — 월드 좌표에 두면 카메라가 상단에 클램프될 때 HUD HP 라벨과 겹친다.
+    this.add.text(20, 96, `📍 ${this.spotInfo.name}`, {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '16px',
       color: '#4af2a1', fontStyle: 'bold',
       backgroundColor: '#00000088', padding: { x: 8, y: 4 },
-    }).setDepth(5);
+    }).setScrollFactor(0).setDepth(190);
   }
 
   // ── 자전거 (R) — 승·하차 토글 (기타 인벤토리에 자전거 보유 필요) ──

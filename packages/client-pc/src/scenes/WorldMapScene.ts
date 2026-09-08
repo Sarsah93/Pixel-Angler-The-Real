@@ -66,6 +66,8 @@ const MAP_DISPLAY_H = 580;   // 지도 표시 높이
 export class WorldMapScene extends Phaser.Scene {
   // ── 상태 머신 ────────────────────────────────────────
   private viewState: ViewState = 'region';
+  /** 좌상단 '집으로 돌아가기' 버튼 부품 — 전국 지도 뷰에서만 표시 */
+  private homeBtnParts: Phaser.GameObjects.GameObject[] = [];
 
   // ── 컨테이너 ─────────────────────────────────────────
   private regionContainer!: Phaser.GameObjects.Container;
@@ -158,6 +160,10 @@ export class WorldMapScene extends Phaser.Scene {
       hit.on('pointerover', () => t.setColor('#ffffff'));
       hit.on('pointerout', () => t.setColor('#aee8ff'));
       hit.on('pointerdown', () => this.goHome());
+      // 부품을 보관해 **전국 지도 뷰에서만** 표시한다 (119차 ③):
+      // 지역/스팟 뷰의 '← 전국 지도'·'← 지역 지도' 버튼이 같은 좌상단 자리라, 그대로 두면
+      // depth 122 히트렉트가 뒤로가기 클릭을 통째로 삼킨다(실측 확정 버그).
+      this.homeBtnParts = [g, t, hit];
     }
 
     // ── P 키: 핀 위치 편집 모드 토글 (개발자 도구) ──────────
@@ -514,6 +520,7 @@ export class WorldMapScene extends Phaser.Scene {
   // ═══════════════════════════════════════════════════════
   private renderRegionView(): void {
     this.viewState = 'region';
+    this.setHomeBtnVisible(true);
     this.regionContainer.removeAll(true);
     this.spotContainer.removeAll(true);
     this.pinContainer.removeAll(true);
@@ -530,22 +537,24 @@ export class WorldMapScene extends Phaser.Scene {
     this.nationalMapLabel?.setVisible(true).setAlpha(0.4);
 
     // ── 타이틀 영역 ─────────────────────────────────────
-    const title = this.add.text(20, 22, '출조지 선택', {
+    // 타이틀·힌트·목록은 좌상단 홈 버튼(y 14~48) **아래**에서 시작한다 (119차 ③ 겹침 수정)
+    const title = this.add.text(20, 56, '출조지 선택', {
       fontFamily: '"Noto Sans KR", sans-serif',
       fontSize: '20px',
       color: '#4af2a1',
       fontStyle: 'bold',
     });
-    const hint = this.add.text(20, 50, '지역을 클릭하거나 지도의 핀을 선택해 출조지를 고르세요  [ESC] 메인 메뉴', {
+    const hint = this.add.text(20, 86, '지역을 클릭하거나 지도의 핀을 선택해 출조지를 고르세요  [ESC] 메인 메뉴', {
       fontFamily: '"Noto Sans KR", sans-serif',
       fontSize: '10px',
       color: '#607b8e',
+      wordWrap: { width: 336 },   // 목록 박스 폭(16~356) 안으로 강제
     });
     this.regionContainer.add([title, hint]);
 
     // ── 지역 목록 (왼쪽 패널) ────────────────────────────
     REGION_DATABASE.forEach((region, idx) => {
-      const itemY = 80 + idx * 52;
+      const itemY = 116 + idx * 52;   // 홈 버튼·타이틀·힌트 아래
       const node = WORLD_NODE_DATABASE.find((n: FishingSpotNode) => n.regionDatabaseId === region.id);
       this.addRegionListItem(region, node, itemY);
     });
@@ -557,6 +566,17 @@ export class WorldMapScene extends Phaser.Scene {
 
     // ── 범례 ─────────────────────────────────────────────
     this.drawLegend();
+  }
+
+  /** 홈 버튼 표시 전환 — 좌상단 자리를 뒤로가기 버튼과 공유하므로 뷰마다 배타적으로 쓴다 */
+  private setHomeBtnVisible(v: boolean): void {
+    this.homeBtnParts.forEach((o) => {
+      (o as unknown as { setVisible?: (b: boolean) => void }).setVisible?.(v);
+      // 입력은 **이미 인터랙티브한 오브젝트**의 enabled만 토글한다 —
+      // Graphics/Text에 setInteractive를 걸면 히트 영역이 없어 포인터 처리 중 터진다
+      // (실측: TypeError: input.hitAreaCallback is not a function)
+      if (o.input) o.input.enabled = v;
+    });
   }
 
   // ── 지역 리스트 아이템 ───────────────────────────────
@@ -757,6 +777,7 @@ export class WorldMapScene extends Phaser.Scene {
   // ═══════════════════════════════════════════════════════
   private renderRegionMapView(region: RegionDef, node: FishingSpotNode | undefined): void {
     this.viewState = 'regionmap';
+    this.setHomeBtnVisible(false);
     this._currentRegion = region;
     this.regionContainer.removeAll(true);
     this.spotContainer.removeAll(true);
@@ -1010,7 +1031,16 @@ export class WorldMapScene extends Phaser.Scene {
     const detailLines = area.details ?? [];
     const cardW = 560;
     const headerH = 96;                       // 이름 + 요약(수심/밑걸림)
-    const detailH = detailLines.length > 0 ? detailLines.length * 21 + 16 : 0;
+    // 상세 줄은 wordWrap으로 2줄이 될 수 있다 — 고정 피치(21px) 가정이 겹침의 원인이었다.
+    // 먼저 텍스트를 만들어 **실측 높이**로 카드 높이를 산출한다 (119차 ③).
+    const DETAIL_GAP = 6;
+    const detailTexts = detailLines.map((line) => this.add.text(0, 0, `· ${line}`, {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#c4dcea',
+      wordWrap: { width: cardW - 56 },
+    }));
+    const detailH = detailTexts.length > 0
+      ? detailTexts.reduce((sum, t) => sum + t.height + DETAIL_GAP, 0) + 16
+      : 0;
     const footerH = 96;                       // 질문 + 버튼
     const cardH = headerH + detailH + footerH;
     const cardX = W / 2 - cardW / 2, cardY = H / 2 - cardH / 2;
@@ -1044,17 +1074,16 @@ export class WorldMapScene extends Phaser.Scene {
     }
 
     // 특성 상세 (리서치 기반 낚시터 설명)
-    if (detailLines.length > 0) {
+    if (detailTexts.length > 0) {
       const sep = this.add.graphics();
       sep.lineStyle(1, 0x2a5a8a, 0.6);
       sep.lineBetween(cardX + 24, cardY + headerH - 2, cardX + cardW - 24, cardY + headerH - 2);
       c.add(sep);
-      detailLines.forEach((line, i) => {
-        const t = this.add.text(cardX + 28, cardY + headerH + 10 + i * 21, `· ${line}`, {
-          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#c4dcea',
-          wordWrap: { width: cardW - 56 },
-        });
+      let dy = cardY + headerH + 10;
+      detailTexts.forEach((t) => {
+        t.setPosition(cardX + 28, dy);
         c.add(t);
+        dy += t.height + DETAIL_GAP;
       });
     }
 
@@ -1193,6 +1222,7 @@ export class WorldMapScene extends Phaser.Scene {
   // ═══════════════════════════════════════════════════════
   private renderSpotView(region: RegionDef): void {
     this.viewState = 'spot';
+    this.setHomeBtnVisible(false);
     this.regionContainer.removeAll(true);
     this.spotContainer.removeAll(true);
     this.pinContainer.removeAll(true);
@@ -1354,6 +1384,7 @@ export class WorldMapScene extends Phaser.Scene {
     }
     if (this.viewState === 'confirm') {
       this.viewState = 'spot';
+      this.setHomeBtnVisible(false);
     }
   }
 
@@ -1408,6 +1439,7 @@ export class WorldMapScene extends Phaser.Scene {
       fontSize: '10px', color: '#ccddee', lineSpacing: 4,
       wordWrap: { width: 200 },
     });
+    // 본문(bodyTxt)이 3~4줄로 늘어나면 고정 y=76은 겹친다 — showXxxTooltip에서 흐름 배치한다
     const typeLine = this.add.text(12, 76, '', {
       fontFamily: '"Noto Sans KR", sans-serif',
       fontSize: '10px', color: '#8faabf',
@@ -1471,9 +1503,16 @@ export class WorldMapScene extends Phaser.Scene {
     (this.tooltipContainer.getAt(2) as Phaser.GameObjects.Text).setText(
       `물때: ${tide.tidePhaseLabel}\n수온: ${(mockTempC - 1.2).toFixed(1)}°C\n주요 어종: ${speciesNames}`
     );
-    (this.tooltipContainer.getAt(3) as Phaser.GameObjects.Text).setText(
-      `[${this.getSpotTypeLabel(spot.spotType)}]`
-    );
+    const bodyT = this.tooltipContainer.getAt(2) as Phaser.GameObjects.Text;
+    const typeT = this.tooltipContainer.getAt(3) as Phaser.GameObjects.Text;
+    typeT.setText(`[${this.getSpotTypeLabel(spot.spotType)}]`);
+    // 본문 아래로 흘려 배치 + 배경 높이를 실측에 맞춘다 (고정 y=76이면 3줄부터 겹쳤다)
+    typeT.setY(bodyT.y + bodyT.height + 6);
+    bg.clear();
+    bg.fillStyle(0x081422, 0.96);
+    bg.fillRoundedRect(0, 0, 230, typeT.y + typeT.height + 10, 4);
+    bg.lineStyle(1, 0x33b0e0, 0.9);
+    bg.strokeRoundedRect(0, 0, 230, typeT.y + typeT.height + 10, 4);
 
     this.tooltipContainer.setVisible(true);
   }

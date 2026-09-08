@@ -16,7 +16,7 @@ import {
   evaluateFishSellPrice, WEIGHT_SINKER_DB, WeightSinkerKind,
   SINKER_BASE_DRAG_CD, SINKER_BUNDLE_DRAG_CD, SINKER_HOLE_FEEDBACK_MULT,
   LURES_CATALOG_DB, JIGHEAD_WEIGHTS_G, getLureSpec, jigHeadWeightById,
-  computeLureRigWeight, getLureCastCd, isKnifeItem, FISH_DATABASE,
+  computeLureRigWeight, getLureCastCd, isKnifeItem, FISH_DATABASE, lineStrengthKg,
 } from '@tra/core';
 import { ExternalDataStore } from './ExternalDataStore.js';
 import { DiscoveryStore } from './DiscoveryStore.js';
@@ -300,6 +300,9 @@ export interface InventorySaveState {
   hasFloatStop: boolean;
   spreader: SpreaderState;
   rigMode: 'bait' | 'lure';
+  /** 루어 채비 전용 원줄/목줄 (116차 — 구세이브는 없음 → 첫 전환 시 시드) */
+  lureLine?: string | null;
+  lureLeader?: string | null;
   lure: string | null;
   jigHead: string | null;
   /** 저장 시각 (ms) — 로드 시 오프라인 경과만큼 신선도 시각을 밀어 "정지"시킨다 */
@@ -682,10 +685,17 @@ class InventoryStoreManager {
   rigMode: 'bait' | 'lure' = 'bait';
   /** 루어 소켓 (메인 1개) — lure 모드 전용 */
   private _lure: string | null = null;
+  /** 루어 채비 전용 원줄/목줄 소켓 (116차 — 피드백 7: 미끼 채비 소켓과 분리. 첫 전환 시 미끼 채비 값으로 시드) */
+  private _lureLine: string | null = null;
+  private _lureLeader: string | null = null;
   /** 지그헤드 소켓 — 소프트 베이트(requiresJigHead) 전용 */
   private _jigHead: string | null = null;
 
   get lureId(): string | null { return this._lure; }
+  get lureLineId(): string | null { return this._lureLine; }
+  get lureLeaderId(): string | null { return this._lureLeader; }
+  setLureLine(id: string | null): void { this._lureLine = id; }
+  setLureLeader(id: string | null): void { this._lureLeader = id; }
   get jigHeadId(): string | null { return this._jigHead; }
 
   get items(): InvItem[] {
@@ -782,6 +792,8 @@ class InventoryStoreManager {
       rigMode: this.rigMode,
       lure: this._lure,
       jigHead: this._jigHead,
+      lureLine: this._lureLine,
+      lureLeader: this._lureLeader,
       savedAtMs: Date.now(),
     };
   }
@@ -844,6 +856,8 @@ class InventoryStoreManager {
     this.rigMode = s.rigMode ?? 'bait';
     this._lure = ref(s.lure);
     this._jigHead = ref(s.jigHead);
+    this._lureLine = ref(s.lureLine);
+    this._lureLeader = ref(s.lureLeader);
 
     // dev 전용 — 기존 세이브에도 손질 검증용 테스트 어획이 없으면 주입 (2026-07-30)
     if (import.meta.env.DEV) {
@@ -875,6 +889,8 @@ class InventoryStoreManager {
     this.rigMode = 'bait';
     this._lure = null;
     this._jigHead = null;
+    this._lureLine = null;
+    this._lureLeader = null;
   }
 
   /**
@@ -1161,6 +1177,8 @@ class InventoryStoreManager {
     });
     if (this._lure === itemId) this._lure = null;
     if (this._jigHead === itemId) this._jigHead = null;
+    if (this._lureLine === itemId) this._lureLine = null;
+    if (this._lureLeader === itemId) this._lureLeader = null;
   }
 
   // ── 퀵슬롯 ──────────────────────────────────────────
@@ -1223,6 +1241,25 @@ class InventoryStoreManager {
   // ── 루어 채비 (rigMode === 'lure') ───────────────────
   setRigMode(mode: 'bait' | 'lure'): void {
     this.rigMode = mode;
+    // 루어 소켓이 비어 있으면 미끼 채비의 원줄/목줄을 시드 — 같은 스풀을 참조할 뿐 소모는 없다.
+    //   이후 두 모드는 서로 독립(피드백 7 — "미끼 채비에서 목줄을 못 골라 루어를 못 던진다" 해소)
+    if (mode === 'lure') {
+      if (!this._lureLine && this._rig.mainLine) this._lureLine = this._rig.mainLine;
+      if (!this._lureLeader && this._rig.leader) this._lureLeader = this._rig.leader;
+    }
+  }
+
+  /**
+   * 현재 채비의 라인 인장강도(kg) — 원줄·목줄 중 **약한 쪽**(파이팅 텐션 게이지 분모).
+   * 루어 모드는 루어 소켓, 미끼 모드는 채비 소켓 기준. 목줄이 없으면 원줄만, 둘 다 없으면 null.
+   */
+  lineCapacityKg(): number | null {
+    const lineId = this.rigMode === 'lure' ? this._lureLine : this._rig.mainLine;
+    const leaderId = this.rigMode === 'lure' ? this._lureLeader : this._rig.leader;
+    const a = lineStrengthKg(lineId ? this.find(lineId) : null);
+    const b = lineStrengthKg(leaderId ? this.find(leaderId) : null);
+    const vals = [a, b].filter((v): v is number => v !== null && v > 0);
+    return vals.length ? Math.min(...vals) : null;
   }
 
   /** 루어 소켓 설정 — 하드 베이트 장착 시 지그헤드 소켓은 자동 비움 */
@@ -1259,8 +1296,8 @@ class InventoryStoreManager {
     // ── 루어 모드: 원줄+목줄+루어(+소프트면 지그헤드)만 필수 ──
     if (this.rigMode === 'lure') {
       const missing: string[] = [];
-      if (!this._rig.mainLine) missing.push('원줄');
-      if (!this._rig.leader) missing.push('목줄');
+      if (!this._lureLine) missing.push('원줄');
+      if (!this._lureLeader) missing.push('목줄');
       const spec = this.getEquippedLureSpec();
       if (!spec) missing.push('루어');
       else if (spec.requiresJigHead && !this._jigHead) missing.push('지그헤드');
@@ -1273,8 +1310,10 @@ class InventoryStoreManager {
       .filter((r) => !(surfRig && r.key === 'float'))
       .filter((r) => !this._rig[r.key])
       .map((r) => r.label);
-    // 원투 모드: 메인 싱커(무게추 봉돌)를 반드시 달아야 캐스팅 가능
-    if (surfRig) {
+    // 원투 모드: 메인 싱커(무게추 봉돌)를 반드시 달아야 캐스팅 가능.
+    //   단 바늘 소켓에 루어(지그헤드 결합 웜·메탈지그 등 자중 있는 가짜미끼)가 있으면 봉돌 없이 던진다
+    //   (116차 — 피드백 6 "지그헤드 채비는 봉돌 없이 운용돼야 한다").
+    if (surfRig && this.hookNeedsBait()) {
       const sinker = this._rig.sinker ? this.find(this._rig.sinker) : undefined;
       if (!sinker || !isWeightSinker(sinker)) missing.push('무게추 봉돌');
     }

@@ -7,7 +7,7 @@
  */
 
 import Phaser from 'phaser';
-import { FISH_DATABASE, fishImageSizeScale } from '@tra/core';
+import { FISH_DATABASE, fishImageSizeScale, fishRarity } from '@tra/core';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { DraggablePanel } from './DraggablePanel.js';
 import { createItemIcon } from './ItemIcon.js';
@@ -25,6 +25,8 @@ const LAYER_LABEL: Record<'surface' | 'mid' | 'bottom', string> = {
 export interface ItemDetailRow {
   label: string;
   value: string;
+  /** 값 글자색 오버라이드 (희귀도 등급 등) */
+  color?: string;
 }
 
 export interface ItemDetailData {
@@ -130,6 +132,11 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
       // ── 개체 실측치 — 무게 미저장 시 길이-체중식 W ≈ a·L³ 근사 (범용 계수) ──
       const lengthCm = item.lengthCm;
       const weightG = item.weightG ?? (lengthCm ? Math.round(0.015 * Math.pow(lengthCm, 3)) : undefined);
+      // 희귀도(116차 ⑤) — 평균 개체 대비 길이 비율 6단계, 등급 색으로 표기
+      if (lengthCm && item.speciesId) {
+        const rr = fishRarity(item.speciesId, lengthCm);
+        rows.push({ label: '희귀도', value: `${rr.ratio.toFixed(2)}×, ${rr.label}`, color: rr.color });
+      }
       if (lengthCm) rows.push({ label: '길이', value: `${lengthCm} cm` });
       if (weightG) {
         rows.push({ label: '무게', value: weightG >= 1000 ? `${(weightG / 1000).toFixed(2)} kg` : `${weightG} g` });
@@ -359,7 +366,8 @@ export class ItemDetailPanel extends DraggablePanel {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#c8a060', fontStyle: 'bold',
       });
       const val = scene.add.text(W - 22, ry, row.value, {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#e8f4fd',
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: row.color ?? '#e8f4fd',
+        fontStyle: row.color ? 'bold' : 'normal',
       }).setOrigin(1, 0);
       body.add([lbl, val]);
     });

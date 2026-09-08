@@ -14,6 +14,7 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { fadeOutThen } from './SceneFade.js';
+import { setLocale } from '../i18n/I18n.js';
 
 // ─────────────────────────────────────────────
 // 설정 저장 구조체
@@ -26,6 +27,11 @@ export interface GameSettings {
   rodSide: 'left' | 'right';
   /** 릴 핸들(감는 손잡이) 위치 — 화면이 아닌 **로드 기준** 좌/우 */
   reelHandle: 'left' | 'right';
+  /** HUD 축소 단계 0(전체)/1/2(최소) · 투명도 단계 0(불투명)~3(거의 투명) — 상태 패널·지역 채널 (116차) */
+  hudStatusSize: number;
+  hudStatusAlpha: number;
+  hudChatSize: number;
+  hudChatAlpha: number;
 }
 
 const SETTINGS_STORAGE_KEY = 'pixelAngler_settings';
@@ -33,6 +39,7 @@ const SETTINGS_STORAGE_KEY = 'pixelAngler_settings';
 const DEFAULT_SETTINGS: GameSettings = {
   sfxVolume: 0.7, bgmVolume: 0.5, language: 'ko',
   rodSide: 'right', reelHandle: 'left',
+  hudStatusSize: 0, hudStatusAlpha: 0, hudChatSize: 0, hudChatAlpha: 0,
 };
 
 export function loadSettings(): GameSettings {
@@ -109,6 +116,8 @@ type SettingsTab = 'hotkey' | 'fishing' | 'audio' | 'language';
 
 export class SettingsScene extends Phaser.Scene {
   private currentTab: SettingsTab = 'hotkey';
+  /** 닫을 때 resume할 씬 — 메인 메뉴(기본) 또는 인게임 ESC 메뉴에서 열었으면 그 필드 씬 */
+  private returnScene = 'MainMenuScene';
   private settings: GameSettings = loadSettings();
   private contentContainer!: Phaser.GameObjects.Container;
 
@@ -117,6 +126,13 @@ export class SettingsScene extends Phaser.Scene {
 
   constructor() {
     super({ key: 'SettingsScene' });
+  }
+
+  init(data?: { returnScene?: string }): void {
+    this.returnScene = data?.returnScene ?? 'MainMenuScene';
+    this.settings = loadSettings();
+    this.currentTab = 'hotkey';
+    this.tabBgs = {};
   }
 
   create(): void {
@@ -501,13 +517,13 @@ export class SettingsScene extends Phaser.Scene {
 
     const langs: { id: 'ko' | 'en'; nameKo: string; desc: string }[] = [
       { id: 'ko', nameKo: '한국어', desc: '모든 텍스트를 한국어로 표시합니다. (기본값)' },
-      { id: 'en', nameKo: 'English (예정)', desc: '영문 지원은 추후 업데이트될 예정입니다.' },
+      { id: 'en', nameKo: 'English', desc: '인게임 텍스트를 영어로 표시합니다.' },
     ];
 
     langs.forEach((lang, i) => {
       const iy = startY + 50 + i * 80;
       const isSelected = this.settings.language === lang.id;
-      const isAvailable = lang.id === 'ko'; // en은 미구현
+      const isAvailable = true;   // 117차 — 영어 사전 적용
 
       const bg = this.add.graphics();
       bg.fillStyle(isSelected ? 0x162a40 : 0x0e1c2d, 0.9);
@@ -544,6 +560,8 @@ export class SettingsScene extends Phaser.Scene {
         hit.on('pointerdown', () => {
           this.settings.language = lang.id;
           saveSettings(this.settings);
+          // 살아 있는 모든 씬의 텍스트를 즉시 갈아입힌다 (재시작 불필요)
+          setLocale(lang.id, this.game);
           this.contentContainer.removeAll(true);
           this.renderTab();
         });
@@ -551,7 +569,7 @@ export class SettingsScene extends Phaser.Scene {
       }
     });
 
-    const note = this.add.text(startX, startY + 230, '※ 언어를 변경하면 즉시 저장됩니다. 재시작 없이 일부 텍스트는 다음 씬 진입 시 반영됩니다.', {
+    const note = this.add.text(startX, startY + 230, '※ 언어를 변경하면 즉시 저장·적용됩니다. 사전에 없는 일부 문장은 한국어로 남을 수 있습니다.', {
       fontFamily: '"Noto Sans KR", sans-serif',
       fontSize: '11px',
       color: '#607b8e',
@@ -566,7 +584,7 @@ export class SettingsScene extends Phaser.Scene {
     saveSettings(this.settings);
     fadeOutThen(this, () => {
       this.scene.stop();
-      this.scene.resume('MainMenuScene');
+      this.scene.resume(this.returnScene);
     }, 200);
   }
 }

@@ -151,6 +151,27 @@ export interface TuningConfig {
     /** 슬랙 시 회복 */
     recoverRatePerSec: number;
   };
+  // ── 파이팅 텐션 물리 (116차 — 요구 장력 kgf ÷ 라인 인장강도 = 게이지 %) (balance) ──
+  fightPhys: {
+    /** 물속 정적 하중 = 체중 × 이 값 (부력 차감 — 25cm 감성돔 300g → ≈100g) */
+    staticFrac: number;
+    /** 어종군별 순간 가속 배수 (체중 대비 — 돔류 여 박기 3~5배 실측 문헌) */
+    burst: Record<'seabream' | 'amberjack' | 'mackerel' | 'rockfish' | 'flatfish' | 'seabass' | 'cephalopod' | 'other', number>;
+    /** 패턴별 힘 배수 — none(유영) / dive / lateral / jump(줄이 느슨) */
+    pullIdle: number; pullDive: number; pullLateral: number; pullJump: number;
+    /** 패턴에 **맞게 대응**하면 요구 장력 감쇠 (로드·드랙이 흡수) / 틀리면 증폭 */
+    goodResponseMult: number; badResponseMult: number;
+    /** 릴링 부하 (배수 + 상수 kg) · 버티기(↑) 강성 배수 · 슬랙(무입력) 배수 */
+    reelLoadMult: number; reelLoadKg: number; holdStiffMult: number; slackMult: number;
+    /** 무입력 시 드랙이 미끄러지는 상한 (라인 강도 대비 비율) — 가벼운 채비로도 즉사하지 않게 */
+    dragCapFrac: number;
+    /** 게이지 추종 속도 (1/s — 상승/하강) */
+    tensionRiseRate: number; tensionFallRate: number;
+    /** 이 게이지 아래가 이 시간(초) 이상 지속되면 바늘 빠짐 */
+    slackHookOffBelow: number; slackHookOffSec: number;
+    /** 랜딩 후 끌어오기(dragIn) 시간 배율 — 연출을 따라올 수 있게 느리게 (피드백 1) */
+    dragInTimeScale: number;
+  };
   // ── 로드 벤딩 (feel/balance) ──
   rod: {
     maxBendRad: number; sub: number;
@@ -440,6 +461,19 @@ export const TUNING: TuningConfig = {
     phaseRun: 0.65, phaseLull: 0.35, phaseSurge: 0.15,
     recoverRatePerSec: 0.02,
   },
+  // ⚠ mockup 초기값 (116차) — 실플레이 조율 후 F8 스냅샷으로 확정. 근거: 25cm 감성돔(0.3kg)
+  //   여 박기 순간 인장 0.8~1.5kg(체중 3~5배) · 1.2~1.5호 목줄(2.5~3kg)이면 여유 — 사용자 제공 문헌.
+  fightPhys: {
+    staticFrac: 0.35,
+    burst: { seabream: 4.0, amberjack: 5.5, mackerel: 3.0, rockfish: 2.5, flatfish: 2.0, seabass: 3.5, cephalopod: 1.5, other: 2.2 },
+    pullIdle: 0.22, pullDive: 1.0, pullLateral: 0.8, pullJump: 0.35,   // idle 0.55는 45cm 감성돔을 1.5호로 못 감았다(시뮬) → 0.22
+    goodResponseMult: 0.6, badResponseMult: 1.35,
+    reelLoadMult: 1.15, reelLoadKg: 0.6, holdStiffMult: 1.1, slackMult: 0.7,   // reelLoadKg 0.6 = 낚시인 자체 당김 — 소형어가 안전대(30~) 아래로 처져 탈출하던 것 해소(시뮬)
+    dragCapFrac: 0.85,
+    tensionRiseRate: 3.2, tensionFallRate: 2.6,
+    slackHookOffBelow: 6, slackHookOffSec: 1.5,
+    dragInTimeScale: 0.55,
+  },
   rod: {
     maxBendRad: 1.15, sub: 6,
     tipSegments: 5,
@@ -580,6 +614,11 @@ export const TUNING_META: TuningParamMeta[] = [
   { path: 'chumTypes.ball.sinkRate', min: 0.8, max: 2.4, step: 0.05, category: 'balance', label: '경단 침강' },
   { path: 'fight.sideLoadCoef', min: 0.3, max: 1.5, step: 0.05, category: 'balance', label: '측면하중 계수' },
   { path: 'fight.recoverRatePerSec', min: 0.0, max: 0.06, step: 0.005, category: 'balance', label: '스태미나 회복' },
+  { path: 'fightPhys.goodResponseMult', min: 0.3, max: 1.0, step: 0.05, category: 'balance', label: '패턴 정대응 감쇠' },
+  { path: 'fightPhys.badResponseMult', min: 1.0, max: 2.0, step: 0.05, category: 'balance', label: '패턴 오대응 증폭' },
+  { path: 'fightPhys.dragCapFrac', min: 0.6, max: 1.0, step: 0.05, category: 'balance', label: '드랙 미끄럼 상한' },
+  { path: 'fightPhys.tensionRiseRate', min: 1.0, max: 8.0, step: 0.2, category: 'feel', label: '텐션 상승 속도' },
+  { path: 'fightPhys.dragInTimeScale', min: 0.25, max: 1.0, step: 0.05, category: 'feel', label: '끌어오기 슬로우' },
   { path: 'hold.liftM', min: 0, max: 0.3, step: 0.01, category: 'feel', label: '뒷줄견제 리프트(m)' },
   { path: 'foam.spreadPx', min: 10, max: 120, step: 2, category: 'feel', label: '포말 분산(px)' },
   { path: 'view.seaBands', min: 6, max: 20, step: 1, category: 'feel', label: '바다 밴드 수' },

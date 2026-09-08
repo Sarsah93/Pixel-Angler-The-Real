@@ -349,6 +349,8 @@ export {
 } from './simulation/LureRig.js';
 export type { FightPattern, FightInput, FightEvent, FightStatus, FightingFishSpec } from './simulation/FightingPhase.js';
 export { FightingPhase } from './simulation/FightingPhase.js';
+export type { FightGroup, RarityTier, FishRarityInfo } from './simulation/FishRarity.js';
+export { fightGroupOf, fishReferenceLengthCm, fishRarity, RARITY_STYLE, lineStrengthKg } from './simulation/FishRarity.js';
 
 // 실측 연안 수심 프로필 (연안정보도 SHP → 거리별 수심)
 export type { DepthAnchorProfile, RegionDepthProfile } from './types/DepthProfile.js';

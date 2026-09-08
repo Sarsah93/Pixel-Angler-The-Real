@@ -5,6 +5,7 @@
 
 import Phaser from 'phaser';
 import type { CoolerSlotItem } from '@tra/core';
+import { clampTextWidth } from './TextFit.js';
 
 export class CoolingBoxPanel extends Phaser.GameObjects.Container {
   private bg?: Phaser.GameObjects.Graphics;
@@ -137,6 +138,8 @@ export class CoolingBoxPanel extends Phaser.GameObjects.Container {
         color: '#ffffff',
         fontStyle: 'bold',
       }).setOrigin(0, 0.5);
+      // 어종명은 가변 — 우측 상세 열(끝 x=302, 폭 약 105px) 시작점 197을 넘지 않게 상한 고정
+      clampTextWidth(nameTxt, 175);
       itemContainer.add(nameTxt);
 
       // 신선도 및 무게 — 조리 버튼(x=310) 아래로 밀리지 않게 우측 정렬(끝 x=302) (텍스트 전수조사)

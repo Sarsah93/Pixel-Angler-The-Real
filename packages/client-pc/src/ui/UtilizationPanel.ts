@@ -21,6 +21,7 @@
  */
 
 import Phaser from 'phaser';
+import { enforceTextBounds } from './TextFit.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import {
   InventoryStore, InvItem, InvCategory, RigStepKey,
@@ -244,6 +245,8 @@ export class UtilizationPanel extends DraggablePanel {
     if (this.currentTab === 'tackles') this.renderTackles();
     else if (this.currentTab === 'chum') this.renderChumMixing();
     else this.renderCooking();
+    // 마지막 방어선 — 어떤 텍스트도 패널 우측 경계 밖으로 못 나간다 (117차 피드백 5)
+    enforceTextBounds(this.bodyContainer, PANEL_W - 20, 'UtilizationPanel');
     this.applyFix();
   }
 
@@ -500,17 +503,61 @@ export class UtilizationPanel extends DraggablePanel {
   private renderLureRig(): void {
     const top = this.contentTop + 80;
     const guide = this.scene.add.text(24, top,
-      '소프트/하드 → 종류 → 라인업을 선택하세요. 소프트 베이트는 지그헤드를 결합해야 캐스팅됩니다.', {
+      '원줄·목줄 소켓은 미끼 채비와 별개입니다. 소프트/하드 → 종류 → 라인업을 고르세요. 소프트 베이트는 지그헤드 결합 필수, 봉돌은 필요 없습니다.', {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#9fc0d4',
+        wordWrap: { width: PANEL_W - 48 },
       });
     this.bodyContainer.add(guide);
+
+    // ── 루어 전용 원줄/목줄 소켓 (116차 — 피드백 7: 미끼 채비 소켓과 분리) ──
+    const sockY = top + 24;
+    const lureSockets: { label: string; id: string | null; matcher: (i: InvItem) => boolean; set: (id: string | null) => void }[] = [
+      { label: '원줄', id: InventoryStore.lureLineId, matcher: (i) => i.subCategory === '원줄 스풀', set: (id) => InventoryStore.setLureLine(id) },
+      { label: '목줄', id: InventoryStore.lureLeaderId, matcher: (i) => i.subCategory === '목줄 스풀', set: (id) => InventoryStore.setLureLeader(id) },
+    ];
+    lureSockets.forEach((sk, i) => {
+      const bx = 24 + i * (SOCKET_W + SOCKET_GAP);
+      const assigned = sk.id ? InventoryStore.find(sk.id) : undefined;
+      const box = this.scene.add.graphics();
+      box.fillStyle(assigned ? 0x0e2a1e : 0x0e1c2d, 0.95);
+      box.fillRoundedRect(bx, sockY, SOCKET_W, SOCKET_H, 5);
+      box.lineStyle(1.5, assigned ? 0x2f7d5a : 0x2a5a8a, 0.95);
+      box.strokeRoundedRect(bx, sockY, SOCKET_W, SOCKET_H, 5);
+      const lbl = this.scene.add.text(bx + SOCKET_W / 2, sockY + 14, sk.label, {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#c8a060', fontStyle: 'bold',
+      }).setOrigin(0.5);
+      const nm = this.scene.add.text(bx + SOCKET_W / 2, sockY + SOCKET_H / 2 + 8, assigned ? assigned.name : '클릭해 선택', {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: assigned ? '#e8f4fd' : '#6f8ba0',
+        align: 'center', wordWrap: { width: SOCKET_W - 10 },
+      }).setOrigin(0.5);
+      const hit = this.scene.add.rectangle(bx + SOCKET_W / 2, sockY + SOCKET_H / 2, SOCKET_W, SOCKET_H, 0xffffff, 0.001)
+        .setInteractive({ useHandCursor: true });
+      hit.on('pointerdown', () => {
+        const cands = InventoryStore.items.filter(sk.matcher);
+        const rows: ChooserRow[] = cands.length === 0
+          ? [{ text: '사용 가능한 부품이 없습니다 — 직판장 채비 코너', onPick: () => { /* 안내 */ }, muted: true }, { text: '닫기', onPick: () => { /* 선택 없음 */ } }]
+          : [...cands.map((item): ChooserRow => ({ text: `${item.icon} ${item.name} (x${item.qty})`, onPick: () => { sk.set(item.id); this.renderBody(); } })),
+            { text: '비우기', onPick: () => { sk.set(null); this.renderBody(); } }];
+        this.closeChooser();
+        this.mountChooserList(this, rows, bx, sockY + SOCKET_H + 4, { listW: 240, title: `${sk.label} 선택` });
+      });
+      this.bodyContainer.add([box, lbl, nm, hit]);
+      if (i < lureSockets.length - 1) {
+        this.bodyContainer.add(this.scene.add.text(bx + SOCKET_W + SOCKET_GAP / 2, sockY + SOCKET_H / 2, '→', { fontSize: '16px', color: '#4a6a8a' }).setOrigin(0.5));
+      }
+    });
+    const capKg = InventoryStore.lineCapacityKg();
+    this.bodyContainer.add(this.scene.add.text(24 + 2 * (SOCKET_W + SOCKET_GAP) + 6, sockY + SOCKET_H / 2,
+      capKg ? `라인 인장강도 ≈ ${capKg.toFixed(1)}kg (원줄·목줄 중 약한 쪽 — 파이팅 텐션 분모)` : '원줄·목줄을 달아야 캐스팅됩니다', {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: capKg ? '#7fe6b0' : '#ff9a7a', wordWrap: { width: 300 },
+      }).setOrigin(0, 0.5));
 
     // 1단계: 소프트 / 하드
     const fam: { f: LureFamily; label: string }[] = [
       { f: 'soft', label: '소프트 베이트' }, { f: 'hard', label: '하드 베이트' },
     ];
     let fx = 24;
-    const famY = top + 22;
+    const famY = sockY + SOCKET_H + 16;
     fam.forEach(({ f, label }) => {
       const sel = this.lureFamily === f;
       const w = 130;
@@ -620,16 +667,24 @@ export class UtilizationPanel extends DraggablePanel {
         `타겟 가중: ${bias}`,
         `액션: ${eqSpec.actionFlags?.join(', ') ?? '-'}${eqSpec.snagRiskMult ? ` · 밑걸림 ×${eqSpec.snagRiskMult}` : ''}`,
       ];
+      // 2열 흐름 배치 — 타겟 가중처럼 긴 줄은 열 폭 안에서 줄바꿈하고 다음 줄을 그만큼 밀어낸다
+      //   (117차 — 고정 22px 행 배치가 창 밖으로 글자를 흘렸다)
+      const colW = [340, sbW - 16 - 376];
+      const colY = [specY + 38, specY + 38];
       lines.forEach((line, i) => {
-        this.bodyContainer.add(this.scene.add.text(40 + Math.floor(i / 3) * 360, specY + 38 + (i % 3) * 22, line, {
-          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#d0e8f5',
-        }));
+        const col = i < 3 ? 0 : 1;
+        const t = this.scene.add.text(40 + col * 360, colY[col], line, {
+          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#d0e8f5', wordWrap: { width: colW[col] },
+        });
+        this.bodyContainer.add(t);
+        colY[col] += Math.max(22, t.height + 4);
       });
       const advice = missing.length
         ? `필수 소켓이 비었습니다: ${missing.join(', ')} — 채워야 캐스팅할 수 있습니다.`
         : '루어 채비 완성 — 입질/챔질 실패로는 루어를 잃지 않습니다(목줄째 터질 때만 손실).';
       this.bodyContainer.add(this.scene.add.text(40, specY + sbH - 24, advice, {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: missing.length ? '#ff9a6a' : '#7fe6b0',
+        wordWrap: { width: sbW - 32 },
       }));
     } else {
       this.bodyContainer.add(this.scene.add.text(40, specY + 60, '루어를 선택하세요.', {
@@ -1966,7 +2021,7 @@ export class UtilizationPanel extends DraggablePanel {
       }).setOrigin(0.5);
       this.bodyContainer.add(nm);
       if (item.qty > 1) {
-        const q = this.scene.add.text(cx + cell - 6, cy + 4, `${item.qty}`, {
+        const q = this.scene.add.text(cx + cell - 6, cy + 4, `x${item.qty}`, {
           fontFamily: 'monospace', fontSize: '10px', color: '#ffe28a', fontStyle: 'bold',
         }).setOrigin(1, 0);
         this.bodyContainer.add(q);

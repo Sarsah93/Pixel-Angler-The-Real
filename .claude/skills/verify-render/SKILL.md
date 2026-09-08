@@ -56,6 +56,7 @@ const { chromium } = resolvePlaywright();
 | 게임 인스턴스 | `globalThis.__PIXEL_ANGLER_GAME` | — |
 | 인벤토리 스토어 | `globalThis.__INV` (dev 전용 노출) | `import('/src/store/InventoryStore.ts')`는 **게임과 별개 모듈 인스턴스** (17·59차 실측) — 조작이 게임에 반영 안 됨 |
 | GameState | `globalThis.__GS` (dev 전용) | 위와 동일 함정 (72차 실측) |
+| 1인칭 낚시 씬 | `globalThis.__FP` (dev 전용) — `devForceBite()` / `devForceFight('dive'|'jump'|'lateral'|'none', dir)` · 패턴을 유지하려면 `fight.patternTimer = 9`도 같이 | 입질을 기다리지 말 것 — 강제한다(118차). 캐스팅은 물 쪽(우하)으로 조준: `mouse.move(900,440) → down 400ms → up` |
 | 맵 편집기(F7) 상태 | `globalThis.__MAPEDIT` (dev 전용 — `state`/`rotate`/`flip`/`toggleOverlap`/`isOpen`) | import한 `MapEditorPanel`은 게임과 별개 인스턴스 (106차 실측 — `mapEditorState` 동일성 false) |
 | 모듈 함수(렌더러 등) | `await import('/src/…​.ts')` — **`.ts` URL** | `.js` URL은 별개 모듈. 상태 없는 순수 함수 호출에만 사용 |
 
@@ -85,6 +86,16 @@ const { chromium } = resolvePlaywright();
 ## 검증 종료 기준
 
 1. 시나리오별 수치 어서션(depth·좌표·아이템 수량 등) 콘솔 출력 → PASS 판정.
-2. **스크린샷** 저장(scratchpad) 후 Read로 육안 확인 — 레이아웃/겹침/방향은 눈으로 본다.
+2. **스크린샷** 저장(scratchpad) 후 Read로 육안 확인 — 레이아웃/겹침/방향은 눈으로 본다. **HUD/패널이 "보이는지"도 반드시 눈으로**
+   (118차: `statusC.add(statusC)`로 상태 패널이 통째로 안 그려졌는데 상태값 어서션은 전부 PASS였다).
 3. `pageerror 0` 확인.
-4. 마지막에 `npx pnpm run build`(4/4) + `npx pnpm --filter @tra/client-pc run typecheck`(0 오류).
+4. 마지막에 `npx pnpm run build`(3/3) + `npx pnpm --filter @tra/client-pc run typecheck`(0 오류).
+
+## 좀비 프로세스 (117차 실측)
+
+- 하네스가 타임아웃/크래시로 죽으면 **헤드리스 Chrome과 node가 남아** 다음 하네스의 스크린샷을 덮어쓰거나(백그라운드
+  하네스가 같은 파일명으로 저장) dev 서버를 느리게 만든다. 이상하면 먼저 정리:
+  `Get-CimInstance Win32_Process | ? { $_.CommandLine -match 'headless' } | % { Stop-Process -Id $_.ProcessId -Force }`
+- 백그라운드로 띄운 하네스는 **끝나기 전에 같은 출력 파일명으로 새 하네스를 돌리지 말 것**(116차 — 재캡처로 복구).
+- "Target crashed"가 **포인터 이동만으로** 나면 코드 문제(중첩 컨테이너 + GeometryMask + 인터랙티브 자식 — ui-panel 스킬)다.
+  `git stash`로 이등분해 원인 파일을 좁힌다.

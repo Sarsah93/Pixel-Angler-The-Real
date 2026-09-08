@@ -15,7 +15,7 @@ export interface GuidePage {
   tip: string;
 }
 
-export type GuideCatKey = 'fight' | 'retrieve' | 'chum' | 'butchery';
+export type GuideCatKey = 'bite' | 'fight' | 'retrieve' | 'chum' | 'butchery';
 
 export interface GuideCategory {
   key: GuideCatKey;
@@ -25,14 +25,34 @@ export interface GuideCategory {
 
 export const GUIDES: GuideCategory[] = [
   {
+    // 116차 — "챔질 타이밍이 챔질 뒤에 뜬다"(테스터) → 입질 1단계 진입 순간 게임을 멈추고 이 카테고리를 띄운다
+    key: 'bite',
+    label: '입질·챔질',
+    pages: [
+      {
+        textureKey: 'guide_fight_1',
+        heading: '입질 읽기 — 초릿대 3단계',
+        body: '물고기가 미끼를 건드리면 초릿대가 1단계(톡) → 2단계(끄덕끄덕) → 3단계(크게 실려 유지) 순으로 휘어요. 찌도 같이 잠깁니다. 지금은 게임이 멈춰 있어요 — 읽고 나서 [계속하기].',
+        tip: '3단계는 초릿대가 크게 휜 채 잠시 유지돼요 — 이때가 골든 타임.',
+      },
+      {
+        textureKey: 'guide_fight_1',
+        heading: '챔질 타이밍 — 3단계에서 우클릭',
+        body: '크게 휜 3단계에서 우클릭 챔질이 성공률 100% (1단계 5% · 2단계 20%). 3단계가 끝나 초릿대가 펴지는 순간은 무조건 실패예요.',
+        tip: '약은 입질(1~2단계)엔 1초 릴링이나 뒷줄견제(H)로 3단계를 유도할 수 있어요.',
+      },
+    ],
+  },
+  {
     key: 'fight',
     label: '파이트',
     pages: [
       {
-        textureKey: 'guide_fight_1',
-        heading: '챔질 타이밍',
-        body: '입질하면 초릿대가 3단계로 휘어요. 크게 휜 3단계에서 우클릭 챔질이 성공률 100% (1단계 5% · 2단계 20%).',
-        tip: '약은 입질엔 1초 릴링/뒷줄견제(H)로 3단계를 유도.',
+        // 117차 — 실캡처 3장 합성(여 박기/바늘털이/횡 러닝 — tools/compose_fight_guide.py). 구 guide_fight_3은 3페이지와 중복이었다.
+        textureKey: 'guide_fight_6',
+        heading: '패턴에 맞게 대응하면 텐션이 안 오른다',
+        body: '여 박기(dive)엔 ↑ 버티기, 바늘털이(jump)엔 릴링·버티기를 멈추고 줄 늦추기, 횡 러닝(lateral)엔 같은 쪽 ←/→ 스티어. 맞게 대응하면 화면 위에 "대응 OK"가 뜨고 텐션이 억제돼요. 틀리면 급등!',
+        tip: '텐션 게이지 = 물고기 요구 장력 ÷ 내 줄 인장강도. 줄보다 센 고기는 달려 보내며 지치길 기다려요.',
       },
       {
         textureKey: 'guide_fight_2',

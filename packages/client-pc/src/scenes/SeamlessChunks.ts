@@ -1509,7 +1509,10 @@ export class SeamlessChunks {
             seen[ni] = 1; qx[tail] = nc; qy[tail] = nr; tail++;
           }
         }
-        if (wild && members.length <= 600) for (const i of members) flag[i] = 1;
+        // 상한 1200(116차): 실제 조도는 사진 시트 적용 후 뭍 927타일이라 구 600에 걸려 섬 판정에서 빠졌고,
+        //   그 결과 '.' 밑에 얕은 물 베이스가 안 깔려 시트의 투명 물 부분에 Kenney tan이 비치고,
+        //   항만 규칙(정박 어선·크레인)이 섬에 반응했다. '#'/'r' 없는 600~1200 뭍 성분은 섬·사주뿐이다.
+        if (wild && members.length <= 1200) for (const i of members) flag[i] = 1;
       }
     }
     return flag;

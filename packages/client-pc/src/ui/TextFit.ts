@@ -49,3 +49,42 @@ export function fitTextHeight(t: Phaser.GameObjects.Text, maxH: number, minScale
   t.setScale(Math.max(minScale, maxH / t.height));
   return t;
 }
+
+/**
+ * 컨테이너 트리의 **모든 Text**가 오른쪽 경계 `maxRight`(컨테이너 로컬 x) 안에 들어가도록 강제한다
+ * (117차 — "채비하기 창 밖으로 글자가 또 튀어나옴" 재발 방지의 마지막 방어선).
+ *
+ * 규칙: 넘치는 텍스트에 남은 폭만큼 wordWrap을 걸고, 그래도 넘치면(한 단어가 너무 길면) 말줄임.
+ * 각 패널의 render 마지막에 한 번 호출한다 — 개별 배치를 잘못해도 창 밖으로는 절대 못 나간다.
+ * dev 빌드에서는 넘친 텍스트를 `console.warn('[TextOverflow] …')`로 남겨 근본 배치를 고치게 한다.
+ *
+ * @returns 보정한 텍스트 수
+ */
+export function enforceTextBounds(root: Phaser.GameObjects.Container, maxRight: number, tag = ''): number {
+  let fixed = 0;
+  const walk = (c: Phaser.GameObjects.Container, ox: number): void => {
+    for (const child of c.list) {
+      if (child instanceof Phaser.GameObjects.Container) { walk(child, ox + child.x); continue; }
+      if (!(child instanceof Phaser.GameObjects.Text)) continue;
+      const t = child;
+      const left = ox + t.x - t.width * t.originX;
+      const right = left + t.width;
+      if (right <= maxRight + 0.5) continue;
+      const avail = Math.floor(maxRight - left);
+      const src = t.text;
+      if (avail >= 60 && t.originX === 0) {
+        t.setWordWrapWidth(avail, true);
+        t.setText(src);   // 재배치 강제
+        if (t.width > avail + 0.5) clampTextWidth(t, avail);
+      } else {
+        clampTextWidth(t, Math.max(8, avail));
+      }
+      fixed++;
+      if (import.meta.env.DEV) {
+        console.warn(`[TextOverflow] ${tag} right=${Math.round(right)} > ${maxRight}: "${src.slice(0, 60)}"`);
+      }
+    }
+  };
+  walk(root, 0);
+  return fixed;
+}

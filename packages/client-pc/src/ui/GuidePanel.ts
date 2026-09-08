@@ -15,11 +15,19 @@ import Phaser from 'phaser';
 import { DraggablePanel, applyScreenFixed } from './DraggablePanel.js';
 import { GAME_WIDTH } from '../PhaserConfig.js';
 import { GUIDES, GuideCatKey, guideCategoryOf } from '../data/GuideContent.js';
+import { getLocale } from '../i18n/I18n.js';
 
 export interface GuidePanelConfig {
   onClose: () => void;
   /** 열람 시작 카테고리 (기본 첫 탭) */
   initialCat?: GuideCatKey;
+  /**
+   * 튜토리얼 모드(116차 — 테스터 피드백 2): 상황 진입 시 게임을 멈추고 그 상황의 페이지만 보여준다.
+   * 탭 없음 · 마지막 페이지 = [다시 표시하지 않기] 체크(기본 on) + [계속하기]. 닫히면 진행 재개.
+   */
+  tutorial?: boolean;
+  /** 튜토리얼 닫힘 콜백 — dontShowAgain = 체크 상태 (호출측이 guideSeen 플래그를 기록) */
+  onTutorialDone?: (dontShowAgain: boolean) => void;
 }
 
 const PANEL_W = 740;
@@ -33,14 +41,18 @@ export class GuidePanel extends DraggablePanel {
   private catKey: GuideCatKey;
   private page = 0;
   private pageC?: Phaser.GameObjects.Container;
+  private readonly tutorial: boolean;
+  private dontShowAgain = true;
 
   constructor(scene: Phaser.Scene, cfg: GuidePanelConfig) {
     super(scene, {
       x: (GAME_WIDTH - PANEL_W) / 2, y: 36,
       width: PANEL_W, height: PANEL_H,
-      title: '게임 가이드',
-      onClose: cfg.onClose, dim: true, depth: 900,
+      title: cfg.tutorial ? '튜토리얼' : '게임 가이드',
+      onClose: () => { if (cfg.tutorial) cfg.onTutorialDone?.(this.dontShowAgain); cfg.onClose(); },
+      dim: true, depth: 900,
     });
+    this.tutorial = !!cfg.tutorial;
     this.catKey = cfg.initialCat ?? GUIDES[0].key;
     this.renderPage();
   }
@@ -60,9 +72,9 @@ export class GuidePanel extends DraggablePanel {
     const cat = guideCategoryOf(this.catKey);
     const pg = cat.pages[Math.min(this.page, cat.pages.length - 1)];
 
-    // ── 상단 탭 (카테고리) ──
+    // ── 상단 탭 (카테고리) — 튜토리얼 모드는 상황 페이지만 보이므로 탭을 숨긴다 ──
     let tx = 14;
-    for (const g of GUIDES) {
+    for (const g of (this.tutorial ? [] : GUIDES)) {
       const sel = g.key === this.catKey;
       const w = 86;
       const tabG = this.scene.add.graphics();
@@ -94,8 +106,11 @@ export class GuidePanel extends DraggablePanel {
     frame.lineStyle(1.5, 0x1c3d5a, 1);
     frame.strokeRoundedRect(artX - 2, ART_Y - 2, ART_W + 4, ART_H + 4, 6);
     c.add(frame);
-    if (this.scene.textures.exists(pg.textureKey)) {
-      const img = this.scene.add.image(PANEL_W / 2, ART_Y + ART_H / 2, pg.textureKey)
+    // 영어 로케일이면 영문 삽화(`<key>_en`)를 쓰고, 없으면 한국어판으로 폴백 (119차)
+    const enArt = `${pg.textureKey}_en`;
+    const artKey = getLocale() === 'en' && this.scene.textures.exists(enArt) ? enArt : pg.textureKey;
+    if (this.scene.textures.exists(artKey)) {
+      const img = this.scene.add.image(PANEL_W / 2, ART_Y + ART_H / 2, artKey)
         .setDisplaySize(ART_W, ART_H);
       c.add(img);
     }
@@ -147,11 +162,30 @@ export class GuidePanel extends DraggablePanel {
     };
     const isLast = this.page === cat.pages.length - 1;
     mkNav(PANEL_W - 244, '◀ 이전', this.page > 0, () => { this.page -= 1; this.renderPage(); });
-    mkNav(PANEL_W - 144, isLast ? '완료 ✕' : '다음 ▶', true, () => {
+    const lastLabel = this.tutorial ? '계속하기 ▶' : '완료 ✕';
+    mkNav(PANEL_W - 144, isLast ? lastLabel : '다음 ▶', true, () => {
       if (isLast) { this.requestClose(); return; }
       this.page += 1;
       this.renderPage();
     });
+    // 튜토리얼 마지막 페이지 — [계속하기] 바로 위 "다시 표시하지 않기" 체크란
+    if (this.tutorial && isLast) {
+      const cbX = PANEL_W - 236, cbY = footY - 38;
+      const box = this.scene.add.graphics();
+      const drawBox = (): void => {
+        box.clear();
+        box.fillStyle(0x0c2036, 1); box.fillRoundedRect(cbX, cbY - 7, 14, 14, 3);
+        box.lineStyle(1.2, 0x7fb8d8, 1); box.strokeRoundedRect(cbX, cbY - 7, 14, 14, 3);
+        if (this.dontShowAgain) { box.fillStyle(0xffce54, 1); box.fillRoundedRect(cbX + 3, cbY - 4, 8, 8, 2); }
+      };
+      drawBox();
+      const lab = this.scene.add.text(cbX + 20, cbY, '다시 표시하지 않기', {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#cfe3f2',
+      }).setOrigin(0, 0.5);
+      const hit = this.scene.add.rectangle(cbX + 70, cbY, 150, 20, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
+      hit.on('pointerdown', () => { this.dontShowAgain = !this.dontShowAgain; drawBox(); });
+      c.add([box, lab, hit]);
+    }
 
     applyScreenFixed(this);
   }

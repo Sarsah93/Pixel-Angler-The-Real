@@ -8,6 +8,7 @@
 
 import Phaser from 'phaser';
 import { GUIDES } from '../data/GuideContent.js';
+import { HELP_IMAGE_KEYS } from '../data/HelpContent.js';
 import { SASHIMI_GUIDE_TEXTURE, registerSashimiGuideFrames } from '../data/SashimiGuideFrames.js';
 
 export class BootScene extends Phaser.Scene {
@@ -111,11 +112,22 @@ export class BootScene extends Phaser.Scene {
 
     // ─── 통합 가이드 허브 삽화 19장 (game_guide_hub.html SVG → PNG 640×300) ───
     // 파이트 5 · 회수 4 · 밑밥 5 · 회뜨기 5 — 텍스처 키/문구는 data/GuideContent.ts
+    const guideKeys = new Set<string>();   // 같은 삽화를 여러 페이지가 공유(116차 bite 카테고리) — 중복 로드 방지
     for (const cat of GUIDES) {
       for (const pg of cat.pages) {
+        if (guideKeys.has(pg.textureKey)) continue;
+        guideKeys.add(pg.textureKey);
         this.load.image(pg.textureKey, `guide/${pg.textureKey}.png`);
+        // 영어판 삽화 — 현재 guide_fight_6만 존재(나머지 목업 SVG는 한국어판 유지)
+        if (pg.textureKey === 'guide_fight_6') this.load.image(`${pg.textureKey}_en`, `guide/${pg.textureKey}_en.png`);
       }
     }
+
+    // ─── 도움말 라이브러리 실캡처 (116차 — tools/capture_help_images.cjs 산출, 주석 오버레이 포함) ───
+    for (const key of HELP_IMAGE_KEYS) this.load.image(key, `guide/help/${key}.png`);
+    // 영어 로케일용 주석판 — 파일이 없으면 로드 실패로 끝나고(404 무해)
+    // 패널은 textures.exists로 한국어판에 폴백한다 (119차 ⑥)
+    for (const key of HELP_IMAGE_KEYS) this.load.image(`${key}_en`, `guide/help/${key}_en.png`);
 
     // ─── 삼면뜨기 픽셀 가이드 시트 (선행 9컷 + 본편 38컷, 2024×2154 단일 시트) ───
     // 개별 컷은 자르지 않고 create()에서 그리드 프레임으로 등록 (SashimiGuideFrames)

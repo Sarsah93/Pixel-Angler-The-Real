@@ -52,8 +52,15 @@ function sinkerShopEntry(id: string): ShopEntry {
   };
 }
 
-/** 직판장 채비 코너 — 무게추 봉돌(대표 호수) + 찌 + 좁쌀봉돌 */
+/** 직판장 채비 코너 — 무게추 봉돌(대표 호수) + 찌 + 좁쌀봉돌 + **줄·바늘 소모품**(116차) */
 const TACKLE_CORNER: ShopEntry[] = [
+  // 줄·바늘은 줄터짐/밑걸림으로 잃는 소모품인데 어디서도 다시 살 수 없었다(외부 테스터 — 목줄을 잃고
+  //   채비를 못 채움). 호수 → 인장강도는 core lineStrengthKg 규칙(카본 1.8kg/호 · PE 9kg/호).
+  { id: 'inv_pe1',      name: 'PE 합사 원줄 1호',  icon: '🧵', category: 'tackle', subCategory: '원줄 스풀', basePrice: 18000, price: 21000, maxPerPurchase: 3, equippable: false, desc: '원줄 스풀. PE 1호 ≈ 인장 9kg — 목줄보다 항상 강하게.' },
+  { id: 'inv_carbon15', name: '카본 목줄 1.5호',   icon: '🧵', category: 'tackle', subCategory: '목줄 스풀', basePrice: 9000,  price: 10500, maxPerPurchase: 5, equippable: false, desc: '≈ 인장 2.7kg. 25~35cm 감성돔·볼락·광어용 표준.' },
+  { id: 'inv_nylon2',   name: '나일론 목줄 2호',   icon: '🧵', category: 'tackle', subCategory: '목줄 스풀', basePrice: 6000,  price: 7000,  maxPerPurchase: 5, equippable: false, desc: '≈ 인장 3.6kg. 중형 돔·농어까지.' },
+  { id: 'shop_carbon3', name: '카본 목줄 3호',     icon: '🧵', category: 'tackle', subCategory: '목줄 스풀', basePrice: 12000, price: 14000, maxPerPurchase: 5, equippable: false, desc: '≈ 인장 5.4kg. 방어·부시리·대물 돔 — 라이트 채비로는 못 버티는 어종용.' },
+  { id: 'inv_chinu3',   name: '감성돔 바늘 3호',   icon: '🪝', category: 'tackle', subCategory: '바늘/훅',   basePrice: 3000,  price: 3500,  maxPerPurchase: 20, equippable: false, desc: '범용 바늘 (미끼 채비).' },
   ...['inv_sinker_ring_20', 'inv_sinker_ring_25', 'inv_sinker_hole_15', 'inv_sinker_hole_20',
     'inv_sinker_hole_25', 'inv_sinker_bundle_25'].map(sinkerShopEntry),
   { id: 'inv_float08', name: '구멍찌 0.8호', icon: '🟠', category: 'tackle', subCategory: '채비 부속', basePrice: 8000, price: 9000, maxPerPurchase: 10, equippable: false, desc: '얕은 수심·약한 조류용 저부력 구멍찌.', floatBuoyG: 8 },

@@ -35,6 +35,8 @@ import { CreditsScene } from './scenes/CreditsScene.js';
 import { GameState } from './store/GameState.js';
 import { initDevTuningPanel } from './dev/DevTuningPanel.js';
 import { initDevConsolePanel } from './dev/DevConsolePanel.js';
+import { installI18n } from './i18n/I18n.js';
+import { loadSettings } from './scenes/SettingsScene.js';
 
 /** 싱글턴 보관 키 — HMR/재평가를 넘어 유지된다 */
 const GAME_KEY = '__PIXEL_ANGLER_GAME';
@@ -53,6 +55,8 @@ export function createGame(): Phaser.Game {
   if (existing) return existing;
 
   GameState.initialize();
+  // 다국어 훅 — Phaser Text 생성 전에 설치해야 모든 텍스트가 사전을 탄다 (117차)
+  installI18n(loadSettings().language === 'en' ? 'en' : 'ko');
   // dev 전용 튜닝 슬라이더 오버레이 (F8) — 프로덕션에서는 즉시 반환/데드코드 제거
   initDevTuningPanel();
   // dev 전용 크리에이티브 콘솔 (F10) — 아이템/어종 지급·무적·도감 해금

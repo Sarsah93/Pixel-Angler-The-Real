@@ -69,7 +69,10 @@ def main() -> None:
     ap.add_argument('--region', default='sokcho_v2')
     ap.add_argument('--name', default='jodo')
     ap.add_argument('--grid', default='32x27')
-    ap.add_argument('--center', default='277,529', help='사진 속 섬 bbox 중심을 놓을 타일')
+    ap.add_argument('--center', default='800,432', help='사진 속 본섬 무게중심을 놓을 타일 (인게임 섬 성분 무게중심)')
+    ap.add_argument('--islet-max', type=int, default=600,
+                    help='치환 대상 섬 성분의 최대 타일 수 (이보다 큰 뭍은 본토로 보고 덮지 않는다). '
+                         '래스터로 부풀려진 섬(조도 994타일)은 올려서 지정')
     ap.add_argument('--dry', action='store_true')
     a = ap.parse_args()
     gw, gh = (int(x) for x in a.grid.lower().split('x'))
@@ -121,12 +124,33 @@ def main() -> None:
                 land_bbox[0] = min(land_bbox[0], c); land_bbox[1] = min(land_bbox[1], r)
                 land_bbox[2] = max(land_bbox[2], c); land_bbox[3] = max(land_bbox[3], r)
         cells.append(row)
-    icx = (land_bbox[0] + land_bbox[2]) / 2
-    icy = (land_bbox[1] + land_bbox[3]) / 2
+    # 배치 기준 = **본섬(가장 큰 4-연결 뭍 셀 성분)의 무게중심** — 전체 bbox는 멀리 떨어진 여(잡석)
+    #   때문에 그리드가 촘촘할수록 중심이 쏠린다(72×60 실측: bbox 43×46인데 본섬은 그보다 작다).
+    seen_c: set[tuple[int, int]] = set()
+    best: list[tuple[int, int]] = []
+    for r0 in range(gh):
+        for c0 in range(gw):
+            if cells[r0][c0]['land'] < 0.5 or (c0, r0) in seen_c:
+                continue
+            comp = [(c0, r0)]
+            seen_c.add((c0, r0))
+            k = 0
+            while k < len(comp):
+                c, r = comp[k]; k += 1
+                for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    nc, nr = c + dc, r + dr
+                    if 0 <= nc < gw and 0 <= nr < gh and (nc, nr) not in seen_c and cells[nr][nc]['land'] >= 0.5:
+                        seen_c.add((nc, nr)); comp.append((nc, nr))
+            if len(comp) > len(best):
+                best = comp
+    icx = sum(c for c, _ in best) / max(1, len(best))
+    icy = sum(r for _, r in best) / max(1, len(best))
+    mb = [min(c for c, _ in best), min(r for _, r in best), max(c for c, _ in best), max(r for _, r in best)] if best else land_bbox
     ox, oy = round(cx - icx), round(cy - icy)
-    print(f'사진 섬 bbox 셀 {land_bbox} 중심 ({icx:.1f},{icy:.1f}) → 블록 원점 타일 ({ox},{oy}) · 블록 {gw}×{gh}')
+    print(f'사진 본섬 {len(best)}셀 bbox {mb} ({mb[2]-mb[0]+1}×{mb[3]-mb[1]+1}) 무게중심 ({icx:.1f},{icy:.1f}) '
+          f'· 전체 뭍 bbox {land_bbox} → 블록 원점 타일 ({ox},{oy}) · 블록 {gw}×{gh}')
 
-    # 지형 + 섬 플래그(성분 크기 ≤ 600 ∧ 본토 미접촉 근사: 4-연결 뭍 성분이 작으면 섬)
+    # 지형 + 섬 플래그(성분 크기 ≤ --islet-max ∧ 본토 미접촉 근사: 4-연결 뭍 성분이 작으면 섬)
     base = os.path.join(ROOT, 'packages', 'client-pc', 'public', 'data', a.region)
     with open(os.path.join(base, 'seamless.json'), encoding='utf-8') as f:
         terrain = json.load(f)['terrain']
@@ -150,7 +174,7 @@ def main() -> None:
         for c in range(ox, ox + gw):
             if 0 <= c < cols_n and 0 <= r < rows_n and terrain[r][c] != '~' and (r * cols_n + c) not in islet:
                 comp = land_comp(c, r)
-                if len(comp) <= 600:
+                if len(comp) <= a.islet_max:
                     islet |= comp
 
     tiles: list[list] = []

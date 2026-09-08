@@ -73,13 +73,14 @@ import { InventoryPanel } from '../ui/InventoryPanel.js';
 import { ItemDetailPanel } from '../ui/ItemDetailPanel.js';
 import { StatusPanel } from '../ui/StatusPanel.js';
 import { EquipmentPanel } from '../ui/EquipmentPanel.js';
+import { HelpLibraryPanel } from '../ui/HelpLibraryPanel.js';
 import { UtilizationPanel, UtilizationTab } from '../ui/UtilizationPanel.js';
 import { CoolerPanel } from '../ui/CoolerPanel.js';
 import { BikeComposite, RiderDir } from '../ui/BikeComposite.js';
 import { ShopPanel } from '../ui/ShopPanel.js';
 import { ConfirmDialog, QuantityDialog } from '../ui/Dialogs.js';
 import { paintHudPanel, paintTitlePlate } from '../ui/HudPanelStyle.js';
-import { applyScreenFixed } from '../ui/DraggablePanel.js';
+import { applyScreenFixed, restoreHandCursor } from '../ui/DraggablePanel.js';
 import { InventoryStore, InvItem } from '../store/InventoryStore.js';
 import { CoolerStore } from '../store/CoolerStore.js';
 import { DiscoveryStore } from '../store/DiscoveryStore.js';
@@ -215,6 +216,8 @@ export class RegionFieldScene extends Phaser.Scene {
   private invPanel: InventoryPanel | null = null;
   private statusPanel: StatusPanel | null = null;
   private equipPanel: EquipmentPanel | null = null;
+  /** 도움말 라이브러리 (116차 — F1 / 우하단 단축키 버튼) */
+  private helpPanel: HelpLibraryPanel | null = null;
   private utilPanel: UtilizationPanel | null = null;
   private coolerPanel: CoolerPanel | null = null;
   private shopPanel: ShopPanel | null = null;
@@ -1761,6 +1764,7 @@ export class RegionFieldScene extends Phaser.Scene {
     // M: 미니맵 / I: 인벤토리 / S: 스테이터스 / U: 활용 / E: 상호작용·장비
     this.input.keyboard!.on('keydown-M', () => { if (!this.uiBlocked) this.hud?.toggleMiniMapSize(); });
     this.input.keyboard!.on('keydown-I', () => { if (!this.isPaused) this.toggleInventory(); });
+    this.input.keyboard!.on('keydown-F1', (e: KeyboardEvent) => { e.preventDefault?.(); if (!this.isPaused) this.openHelpLibrary(); });
     this.input.keyboard!.on('keydown-S', () => { if (!this.isPaused) this.toggleStatus(); });
     this.input.keyboard!.on('keydown-U', () => { if (!this.isPaused) this.toggleUtilization('tackles'); });
     this.input.keyboard!.on('keydown-B', () => { if (!this.isPaused) this.toggleCooler(); });
@@ -1818,7 +1822,7 @@ export class RegionFieldScene extends Phaser.Scene {
     }
 
     // 좌클릭 차지 캐스팅 (바다 인접 + 낚싯대 슬롯) / 설치 모드 중엔 설치 확정
-    this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
+    this.input.on('pointerdown', (p: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
       if (import.meta.env.DEV && this.seamless && isMapEditorOpen() && p.rightButtonDown() && mapEditorState.mode === 'road') {
         this.editRoadDelete(p);
         return;
@@ -1832,12 +1836,16 @@ export class RegionFieldScene extends Phaser.Scene {
         if (ev?.ctrlKey) { const w = this.pointerWorld(p); this.devTeleport(w.x, w.y); return; }
         if (isMapEditorOpen()) { this.editBeginStroke(p); return; }
       }
+      // 입력 조건(117차 피드백 2): "맵(지면)을 직접 클릭했을 때"만 캐스팅/설치 시도다.
+      //   HUD 버튼·단축키 버튼·팝업·일시정지 메뉴 등 인터랙티브 오브젝트 위 클릭(over.length > 0)은
+      //   그 오브젝트의 몫이지 맵 클릭이 아니다 — 힌트("바다 가까이에서 캐스팅하세요")도 여기서 끊는다.
+      if (over.length > 0) return;
       if (this.placing) {
         if (p.rightButtonDown()) this.cancelPlacement();
         else if (p.leftButtonDown()) this.confirmPlacement(p);
         return;
       }
-      if (this.uiBlocked || this.time.now < this.suppressClickUntil) return;
+      if (this.uiBlocked || this.isPaused || this.time.now < this.suppressClickUntil) return;
       if (p.leftButtonDown()) this.tryStartCharge();
     });
     this.input.on('pointerup', () => this.releaseCast());
@@ -1919,6 +1927,19 @@ export class RegionFieldScene extends Phaser.Scene {
   }
 
   // ── 장비 (E) ──
+  /** 도움말 라이브러리 열기/토픽 이동 (116차) — 일반 팝업 밴드(890) · ESC LIFO 편입 */
+  private openHelpLibrary(topic?: string): void {
+    if (this.helpPanel) {
+      if (topic) this.helpPanel.showTopic(topic);
+      else this.popupStack.find((e) => e.panel === this.helpPanel)?.close();
+      return;
+    }
+    this.helpPanel = this.openPopup(
+      (close) => new HelpLibraryPanel(this, { onClose: close, initialTopic: topic }),
+      () => { this.helpPanel = null; },
+    );
+  }
+
   private toggleEquipment(): void {
     if (this.equipPanel) {
       this.popupStack.find((e) => e.panel === this.equipPanel)?.close();
@@ -2394,14 +2415,30 @@ export class RegionFieldScene extends Phaser.Scene {
     const plateG = this.add.graphics().setScrollFactor(0).setDepth(100);
     paintTitlePlate(plateG, GAME_WIDTH / 2 - plateW / 2, 10, plateW, 32);
 
-    // 조작 힌트 (우하단) — 얇은 패널 바
-    const hintTxt = this.add.text(GAME_WIDTH - 24, GAME_HEIGHT - 16,
-      '방향키 이동 · M 지도 · I 인벤토리 · S 스탯 · E 장비/상호작용 · U 활용 · ESC 메뉴', {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#9cb8ca',
-      }).setOrigin(1, 1).setScrollFactor(0).setDepth(101);
-    const hintG = this.add.graphics().setScrollFactor(0).setDepth(100);
-    paintHudPanel(hintG, GAME_WIDTH - 24 - hintTxt.width - 12, GAME_HEIGHT - 16 - hintTxt.height - 8,
-      hintTxt.width + 20, hintTxt.height + 14, { alpha: 0.72, studs: false, shadow: false });
+    // 단축키 버튼 (우하단, 116차) — 구 조작 힌트 바 대체. 모서리 둥근 정사각형, 라벨은 한글만(117차).
+    //   클릭 = 도움말 라이브러리 "조작·단축키 › 필드" 토픽.
+    const SB = 64;
+    const sbx = GAME_WIDTH - 20 - SB, sby = GAME_HEIGHT - 16 - SB;
+    const sbG = this.add.graphics().setScrollFactor(0).setDepth(100);
+    paintHudPanel(sbG, sbx, sby, SB, SB, { alpha: 0.9, studs: false, shadow: true });
+    const sbT = this.add.text(sbx + SB / 2, sby + SB / 2, '도움말', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#ffe9b0', fontStyle: 'bold',
+      align: 'center',
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(101);
+    const sbHit = this.add.rectangle(sbx + SB / 2, sby + SB / 2, SB, SB, 0xffffff, 0.001)
+      .setScrollFactor(0).setDepth(102).setInteractive({ useHandCursor: true });
+    sbHit.on('pointerover', () => sbT.setColor('#ffffff'));
+    sbHit.on('pointerout', () => sbT.setColor('#ffe9b0'));
+    sbHit.on('pointerdown', () => {
+      if (this.isPaused) return;
+      // 같은 버튼 재클릭 = 닫기 (토글, 118차)
+      if (this.helpPanel) this.popupStack.find((e) => e.panel === this.helpPanel)?.close();
+      else this.openHelpLibrary('keys-field');
+      // 팝업 열림/닫힘으로 인터랙티브 자식이 파괴되면 Phaser가 커서를 기본값으로 되돌린다 —
+      //   포인터는 여전히 버튼 위이므로 hover 상태를 되살린다 (실측 버그)
+      restoreHandCursor(this);
+      sbT.setColor('#ffffff');
+    });
 
     this.promptText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 96, '', {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px', color: '#ffe28a', fontStyle: 'bold',
@@ -3369,6 +3406,13 @@ export class RegionFieldScene extends Phaser.Scene {
     else this.openPauseMenu();
   }
 
+  /** ESC 메뉴 [환경설정] — SettingsScene을 위에 띄운다(pause+launch). 닫으면 `returnScene`으로 resume. */
+  private openSettingsFromPause(): void {
+    this.closePauseMenu();
+    this.scene.pause();
+    this.scene.launch('SettingsScene', { returnScene: 'RegionFieldScene' });
+  }
+
   private openPauseMenu(): void {
     if (this.isPaused) return;
     this.isPaused = true;
@@ -3392,6 +3436,8 @@ export class RegionFieldScene extends Phaser.Scene {
           }
         },
       },
+      // 환경설정 — 설정 씬을 pause+launch로 열고 닫으면 이 씬으로 복귀 (언어·HUD·낚시 탭 포함, 117차)
+      { label: '환경설정', action: (): void => this.openSettingsFromPause() },
       // 홈타운 밖 = '집으로 가기' (확인 팝업 → 예 = 홈타운 이동. '전국 지도'는 폐지 —
       //  출조는 홈타운 출조 버스로만, 귀가는 여기서 바로. 사용자 지시 2026-07-30)
       ...(this.region === 'hometown'

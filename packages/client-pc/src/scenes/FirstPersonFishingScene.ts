@@ -41,6 +41,7 @@ import {
   computeFeedingActivity, feedingRegionProfileOf, FeedingActivityResult,
   getMovementProfile, pickRunHeading,
   FishFatigueModel, FatigueTick, FATIGUE_PHASE_LABEL,
+  fightGroupOf, fishRarity, RARITY_STYLE,
   fishImageSizeScale,
   TUNING,
 } from '@tra/core';
@@ -122,6 +123,23 @@ const DP_W = 338, DP_H = 288;
 const DP_X = GAME_WIDTH - DP_W - 14, DP_Y = 44;
 const DP_BOX_X = DP_X + 14, DP_BOX_W = 196;
 const DP_GAUGE_TOP = DP_Y + 66, DP_GAUGE_H = DP_H - 92;
+
+/**
+ * 랜딩/회수 완료(result) 후 남은 수면 거리를 발앞으로 당겨 붙이는 속도(m/s).
+ * 랜딩 판정이 발앞 3m에서 나기 때문에, 그대로 두면 거리축 마커가 캐릭터 아이콘에
+ * 닿지 않은 채 멈춘다 (119차 ④-2).
+ */
+const LANDED_PULL_MPS = 6;
+
+/**
+ * 수심 정보 거리축 물고기 아이콘 색 — 희귀도 6단계 중 **괴물급(≥2.4×)만 대물(빨강)로 낮춰** 표시.
+ * 검붉은색을 미리 보여주지 않아, 랜딩 후 어획 팝업에서 더 강한 개체임을 확인하는
+ * 서프라이즈를 남긴다 (119차 ⑤-2, 사용자 지정).
+ */
+function depthFishTint(speciesId: string, lengthCm: number): number {
+  const r = fishRarity(speciesId, lengthCm);
+  return r.tier === 'monster' ? RARITY_STYLE.trophy.tint : r.tint;
+}
 /**
  * 회수 수렴 앵커/최대 배율/투척점 수 등 튜닝 스칼라는 TUNING(core 단일 소스)에서
  * 매 프레임 읽는다 — dev 튜닝 패널(F8)의 슬라이더 변경이 리빌드 없이 반영된다.
@@ -233,6 +251,10 @@ export class FirstPersonFishingScene extends Phaser.Scene {
    * 멀면 즉시 랜딩하지 않고, 지친 고기를 릴링으로 질질 끌어와야 랜딩된다.
    */
   private dragInMode = false;
+  /** 파이트 패턴 대응 판정 배지 (116차) */
+  private responseText!: Phaser.GameObjects.Text;
+  /** 끌어오기 방향 안내 화살표 (116차) */
+  private dragPromptText!: Phaser.GameObjects.Text;
   /** 좌측 수평뷰(plan) 전용 그래픽스 */
   private planG!: Phaser.GameObjects.Graphics;
   /** 파이트 피로 모델 (RUN/LULL/SURGE/SPENT — thrust 게이트) */
@@ -392,6 +414,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   }
 
   create(): void {
+    // dev 전용 — 하네스가 입질/파이팅을 강제할 수 있게 씬 인스턴스를 노출 (도움말 캡처·검증용, 117차)
+    if (import.meta.env.DEV) (globalThis as unknown as { __FP?: unknown }).__FP = this;
     const zMax = this.cfg.zMaxM;
     this.pxPerMZ = Math.min(46, (GAME_HEIGHT - WATERLINE - 110) / Math.max(2, zMax));
     // 면사매듭 제거(전유동) 시 Z_limit 무한 — 바닥까지 무한 침강
@@ -504,6 +528,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       if (this.guideHub || this.coolerPanel || this.invPanel) return;   // 가이드/어창/인벤 열림 중엔 낚시 입력 차단
       if (p.rightButtonDown()) { this.attemptHookset(); return; }
       if (p.leftButtonDown()) {
+        // 어종 정보창(result) 상태에서 배경을 좌클릭하면 릴링 연출이 진행되던 버그 차단 (119차 ④-3)
+        if (this.fpState === 'result') return;
         this.pointerDownAt = this.time.now;
         this.reeling = true;
       }
@@ -536,8 +562,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     // 첫 진입 시 회수/조작 가이드 1회 자동 표시 (세이브 플래그 —
     // 구 텍스트 가이드를 본 레거시 유저(localStorage)는 건너뛴다)
     if (!GameState.getFlag('guideSeen.retrieve') && !localStorage.getItem('tra_fp_guide_seen')) {
-      GameState.setFlag('guideSeen.retrieve');
-      this.time.delayedCall(400, () => this.openGuideHub('retrieve'));
+      this.time.delayedCall(400, () => this.openTutorial('retrieve'));
     }
 
     this.cameras.main.fadeIn(320, 2, 12, 24);
@@ -653,6 +678,22 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     if (!p) return;
     this.guideHub = undefined;
     p.destroy();
+  }
+
+  /**
+   * 상황 튜토리얼(116차 — 테스터 피드백 2): 착수 직후 / **첫 입질 1단계 진입** / 첫 파이팅 / 첫 밑밥에
+   * 게임을 멈추고(update가 guideHub로 정지) 그 상황 페이지만 띄운다. [계속하기]로 닫히면 재개.
+   * 플래그는 "다시 표시하지 않기"가 켜진 채 닫혔을 때만 기록한다(기본 on).
+   */
+  private openTutorial(cat: GuideCatKey): void {
+    if (this.guideHub) return;
+    const panel = new GuidePanel(this, {
+      initialCat: cat, tutorial: true,
+      onTutorialDone: (dontShowAgain) => { if (dontShowAgain) GameState.setFlag(`guideSeen.${cat}`); },
+      onClose: () => this.closeGuideHub(),
+    });
+    this.add.existing(panel);
+    this.guideHub = panel;
   }
 
   /** 밑밥 가이드 재열람 버튼 — 가이드북(?) 아이콘 바로 아래 (양동이 아이콘) */
@@ -807,12 +848,18 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     if (InventoryStore.hookNeedsBait()) InventoryStore.consumeRigItem('bait');
     this.refreshCoolerUi();
 
+    // 116차 — 물리 텐션: 체중 × 어종군 순간가속 ÷ 라인 인장강도(원줄·목줄 약한 쪽).
+    //   목줄이 없는 채비(구세이브 등)는 3kg(1.5호급)로 간주 — 텐션 게이지 분모가 0이 되지 않게.
+    const lineCap = InventoryStore.lineCapacityKg() ?? 3;
     this.fight = new FightingPhase({
       powerFactor: f.powerFactor,
       tackleA: this.computeTackleA(),
       patternWeights: f.fight.patternWeights,
       intervalMult: f.fight.intervalMult,
       mouthFragility: f.fight.mouthFragility,
+      weightKg: f.weightG / 1000,
+      burstMult: TUNING.fightPhys.burst[fightGroupOf(f.speciesId)],
+      lineCapacityKg: lineCap,
     });
 
     // ── 파이트 2D 무대 초기화 (상단 앵커 수중 단면뷰) ──
@@ -837,11 +884,33 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.prevStage = null;
     this.stateText.setText('챔질 성공! 좌클릭 릴링 · ←/→ 로드 스티어(+릴링=견인) · ↑ 버티기 — 텐션 30~80!');
 
-    // 최초 파이팅 — 파이트 가이드 1회 자동 표시 (열림 중엔 파이팅 진행 일시정지)
+    // 최초 파이팅 — 파이트 튜토리얼(게임 정지 · 계속하기 · 다시 표시 안 함)
     if (!GameState.getFlag('guideSeen.fight')) {
-      GameState.setFlag('guideSeen.fight');
-      this.time.delayedCall(700, () => this.openGuideHub('fight'));
+      this.time.delayedCall(700, () => this.openTutorial('fight'));
     }
+  }
+
+  /**
+   * dev 전용 — 즉시 파이팅 진입(어종 스폰 → enterFight) + 패턴 강제. 도움말/튜토리얼 실캡처와
+   * 하네스 검증에서 "입질을 기다릴 수 없다"는 한계를 푼다. 프로덕션에서는 no-op.
+   */
+  devForceFight(pattern?: 'dive' | 'jump' | 'lateral' | 'none', lateralDir: -1 | 1 = 1): void {
+    if (!import.meta.env.DEV) return;
+    if (this.fpState !== 'drift') return;
+    this.pendingFish = spawnFish(this.buildSpawnCtx(false));
+    this.enterFight();
+    if (this.fight && pattern) {
+      this.fight.pattern = pattern;
+      (this.fight as unknown as { lateralDir: number }).lateralDir = lateralDir;   // dev 강제 — private 우회
+    }
+  }
+
+  /** dev 전용 — 입질 시퀀스 즉시 시작(초릿대 굽힘·찌 잠김 캡처용). */
+  devForceBite(): void {
+    if (!import.meta.env.DEV) return;
+    if (this.fpState !== 'drift' || this.biteSeq.active) return;
+    this.pendingFish = spawnFish(this.buildSpawnCtx(false));
+    this.biteSeq.start({ speciesId: this.pendingFish.speciesId, biteProbPerSec: 0.5, stageTimeScale: 1 });
   }
 
   // ── 루어 액션 (호핑 / 트위칭·저킹) ──────────────────
@@ -951,6 +1020,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   private clearFight2DStage(): void {
     this.fightDepthNorm = 0;
     this.dragInMode = false;
+    this.dragPromptText?.setVisible(false);
+    this.responseText?.setVisible(false);
   }
 
   /** 제압 성공 → 끌어오기 시작 — 지친 고기가 세트에 편입되어 수면에 떠서 끌려온다 */
@@ -979,14 +1050,28 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.renderFightUi({
       tension: 24, progress: 100, pattern: 'none', patternTimeLeft: 0,
       event: 'none', escapeProbPerSec: 0, lateralDir: 1,
+      demandKg: 0, lineCapKg: 0, response: 'neutral',
     });
     this.patternText
       .setText(`제압 완료! 릴링으로 끌어오세요 — 남은 ${Math.max(0, this.distM - 3).toFixed(1)}m`)
       .setVisible(true);
+    // 물고기 머리가 치우친 쪽으로 ←/→ + 릴링 = 견인. 화살표를 물고기 바로 위에 크게 (슬로우 중)
+    const off = this.f2dPos.x;
+    const fs = this.fightFishScreen;
+    const px = fs ? fs.x : GAME_WIDTH / 2, py = fs ? fs.y - 70 : GAME_HEIGHT / 2 - 40;
+    const pulse = 0.85 + Math.sin(this.time.now / 140) * 0.15;
+    if (Math.abs(off) > 6) {
+      this.dragPromptText
+        .setText(off > 0 ? '◀  ← 키 + 릴링' : '→ 키 + 릴링  ▶')
+        .setPosition(px, py).setScale(pulse).setVisible(true);
+    } else {
+      this.dragPromptText.setText('▲ 릴링 유지').setPosition(px, py).setScale(pulse).setVisible(true);
+    }
 
     if (this.distM <= 3) {
       this.dragInMode = false;
       this.patternText.setVisible(false);
+      this.dragPromptText.setVisible(false);
       this.onLanded();
     }
   }
@@ -1296,6 +1381,15 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       backgroundColor: '#0a1628cc', padding: { x: 12, y: 5 },
     }).setOrigin(0.5, 0).setDepth(90);
 
+    this.responseText = this.add.text(GAME_WIDTH / 2, 96, '', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px', color: '#4af2a1', fontStyle: 'bold',
+      backgroundColor: '#0a1628cc', padding: { x: 8, y: 3 },
+    }).setOrigin(0.5).setDepth(105).setVisible(false);
+    // 끌어오기 방향 안내 — 물고기 위에 큰 화살표 (좌하단 수평뷰가 안 보인다는 피드백 116차 ①)
+    this.dragPromptText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2, '', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '34px', color: '#ffe28a', fontStyle: 'bold',
+      stroke: '#0a1628', strokeThickness: 6,
+    }).setOrigin(0.5).setDepth(112).setVisible(false);
     this.patternText = this.add.text(GAME_WIDTH / 2, 120, '', {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '17px', color: '#ff6a5a', fontStyle: 'bold',
       backgroundColor: '#0a1628dd', padding: { x: 14, y: 7 },
@@ -1476,8 +1570,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     }
     // 최초 사용 시 밑밥 가이드 1회 자동 표시 (세이브 플래그 — 구 chumGuideSeen 호환)
     if (!GameState.getFlag('guideSeen.chum') && !GameState.getFlag('chumGuideSeen')) {
-      GameState.setFlag('guideSeen.chum');
-      this.openGuideHub('chum');
+      this.openTutorial('chum');
       return;
     }
     // 배합 밑밥 1회 25 소모 (U 밑밥 품질 탭에서 배합 — 추후 능력치로 소모량 감소 예정)
@@ -1554,7 +1647,9 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   // 메인 업데이트 루프
   // ═══════════════════════════════════════════════════
   update(_time: number, deltaMs: number): void {
-    const dt = Math.min(0.05, deltaMs / 1000);
+    let dt = Math.min(0.05, deltaMs / 1000);
+    // 제압 후 끌어오기(dragIn)는 슬로우 — 연출이 너무 빨라 방향 대응을 못 따라간다는 피드백(116차 ①)
+    if (this.dragInMode) dt *= TUNING.fightPhys.dragInTimeScale;
 
     // 실시간 날씨 파티클 (비/눈/안개)
     this.updateFpWeather(dt);
@@ -1569,11 +1664,14 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     }
 
     // ── 조류 엔진 — 수면 거리(distM) 기반 존 판정 + 힘 벡터 ──
+    // 어획/회수가 끝난 result 상태에서는 조류·바람 영향을 **정지**시킨다 (119차 ④):
+    // 결과창을 띄운 채 채비가 계속 흘러가면 "다 잡았는데 물고기가 뒤로 간다"로 보인다.
+    // 마지막 조류값(lastTidal)을 그대로 유지해 수평뷰 화살표·포말도 그 자리에 멈춘다.
+    const landed = this.fpState === 'result';
     const hoursNow = new Date().getHours() + new Date().getMinutes() / 60;
-    const influence = this.tidal.calc(
-      { x: this.rig.baitX, y: this.distM, z: this.rig.baitZ },
-      0, hoursNow,
-    );
+    const influence = landed && this.lastTidal
+      ? this.lastTidal
+      : this.tidal.calc({ x: this.rig.baitX, y: this.distM, z: this.rig.baitZ }, 0, hoursNow);
     this.lastTidal = influence;
     // 존 전환 토스트 (조경지대 진입 강조 / 본류 경고)
     if (influence.zone !== this.prevZone) {
@@ -1582,12 +1680,19 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       }
       this.prevZone = influence.zone;
     }
-    // 반탄류(+Y)/횡류·본류(-Y)로 수면 거리가 변한다
-    // 하한 0.3m — 1m로 막으면 릴링이 발앞(0.5m) 회수 지점에 도달할 수 없다
-    this.distM = Math.max(0.3, this.distM + influence.force.y * dt);
+    if (landed) {
+      // 랜딩 판정은 발앞 3m에서 나므로, 결과 상태에서는 남은 거리를 **앞으로** 당겨 붙인다.
+      // (수심 정보 거리축 마커가 캐릭터 아이콘까지 도달 — 119차 ④-2)
+      this.distM = Math.max(0.3, this.distM - LANDED_PULL_MPS * dt);
+      this.reeling = false;   // 결과창 중 좌클릭이 남긴 릴링 상태 잔류 방지
+    } else {
+      // 반탄류(+Y)/횡류·본류(-Y)로 수면 거리가 변한다
+      // 하한 0.3m — 1m로 막으면 릴링이 발앞(0.5m) 회수 지점에 도달할 수 없다
+      this.distM = Math.max(0.3, this.distM + influence.force.y * dt);
+    }
 
-    // 조류 벡터 (존별 X 유속 + 완만한 요동)
-    const tide: TideVector = {
+    // 조류 벡터 (존별 X 유속 + 완만한 요동) — 결과 상태에서는 0 (채비 횡 드리프트 정지)
+    const tide: TideVector = landed ? { x: 0, y: 0 } : {
       x: influence.force.x * (0.85 + 0.15 * Math.sin(this.time.now / 6000)),
       y: 0,
     };
@@ -1951,6 +2056,11 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     // 단계 진입 순간 1회 이펙트 (파문/느낌표/쉐이크 — 강도별)
     if (seq.activeStage !== this.prevStage) {
       if (seq.activeStage !== null) this.playStageEffect(seq.activeStage);
+      // 첫 입질(1단계) 진입 순간 — 게임을 멈추고 "입질 읽기 · 챔질 타이밍" 튜토리얼 (116차 ② —
+      //   챔질한 뒤에 타이밍 설명이 뜨던 것을 **입질 시작 시점**으로)
+      if (seq.activeStage !== null && this.prevStage === null && !GameState.getFlag('guideSeen.bite')) {
+        this.openTutorial('bite');
+      }
       this.prevStage = seq.activeStage;
     }
     if (seq.ended) {
@@ -2109,7 +2219,10 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     const steerDir: -1 | 0 | 1 = this.steerLeftKey?.isDown ? -1 : this.steerRightKey?.isDown ? 1 : 0;
     // 버티기(홀드) = 방향키 ↑ (구 H → 파이트는 ↑로 통일)
     const fightHolding = this.upKey.isDown;
-    const st = this.fight.update({ dtSec: dt, holding: fightHolding, reeling: effectiveReeling, steerDir });
+    const st = this.fight.update({
+      dtSec: dt, holding: fightHolding, reeling: effectiveReeling, steerDir,
+      thrustGate: this.lastFatigue?.thrustGate,   // 직전 틱 피로 게이트 — 지칠수록 요구 장력↓
+    });
 
     // ── 피로 페이즈 갱신 — 장력·릴링·견제가 피로를 누적, 슬랙이면 회복(긴장 유지) ──
     this.lastFatigue = this.fatigue?.update({
@@ -2291,12 +2404,14 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     const extraLine = extra.length > 0
       ? `\n\n다관점 히트! 카드 채비 추가 어획 ${extra.length}마리:\n${extra.join(', ')}`
       : '';
-    const body = `${f.nameKo} ${f.lengthCm}cm / ${(f.weightG / 1000).toFixed(2)}kg / ${sexLabel}${extraLine}`;
+    // 희귀도(116차 ⑤) — 평균 개체 대비 길이 비율 6단계 (검붉 ≥2.4× … 초록 ≤0.8×). 제목이 그 색.
+    const rr = fishRarity(f.speciesId, f.lengthCm);
+    const body = `${f.nameKo} ${f.lengthCm}cm / ${(f.weightG / 1000).toFixed(2)}kg / ${sexLabel} [${rr.ratio.toFixed(2)}×, ${rr.label}]${extraLine}`;
     const hasCooler = InventoryStore.hasCooler();
     const imgScale = fishImageSizeScale(f.speciesId, f.lengthCm);
     this.buildDecisionPanel(
       `${f.nameKo} ${f.lengthCm}cm 낚음!${extra.length > 0 ? ` (+${extra.length})` : ''}`,
-      body, '#4af2a1', fishTexture,
+      body, rr.color, fishTexture,
       [
         {
           label: '쿨러에 보관하기', fill: 0x0d4a2e, stroke: 0x4af2a1, color: '#4af2a1',
@@ -3041,10 +3156,10 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     g.lineBetween(axL + 12, axY, axR - 12, axY);
     g.fillStyle(0x3a6a92, 0.9);
     g.fillTriangle(axR - 12, axY - 4, axR - 12, axY + 4, axR - 4, axY);
-    // 좌: 채비(물고기) / 우: 사람(나)
+    // 좌: 채비(물고기) / 우: 사람(나) — 물고기는 머리가 '나'(우측)를 향한다 (119차 ⑤-1 좌우 반전)
     g.fillStyle(0x7fb8d8, 1);
-    g.fillEllipse(axL + 5, axY, 11, 7);
-    g.fillTriangle(axL + 10, axY, axL + 15, axY - 3.5, axL + 15, axY + 3.5);
+    g.fillEllipse(axL + 10, axY, 11, 7);
+    g.fillTriangle(axL + 5, axY, axL, axY - 3.5, axL, axY + 3.5);
     g.fillStyle(0xffce54, 1);
     g.fillCircle(axR, axY - 6, 3.4);
     g.fillRect(axR - 2, axY - 3, 4, 9);
@@ -3052,9 +3167,13 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     const maxD = Math.max(this.cfg.castDistanceM, this.distM, 1);
     const dRatio = 1 - Phaser.Math.Clamp(this.distM / maxD, 0, 1);
     const mx = axL + 18 + (axR - axL - 36) * dRatio;
-    g.fillStyle(0x4af2a1, 1);
-    g.fillEllipse(mx, axY, 10, 6);
-    g.fillTriangle(mx + 5, axY, mx + 9, axY - 3, mx + 9, axY + 3);
+    // 머리는 '나'(우측)를 향하고 꼬리가 뒤(좌측)에 온다 (119차 ⑤-1).
+    // 챔질 성공 후에는 1.2배 확대 + 희귀도 색으로 개체 급을 미리 가늠하게 한다 (119차 ⑤-2).
+    const hooked = this.hookedFish;
+    const ms = hooked ? 1.2 : 1;
+    g.fillStyle(hooked ? depthFishTint(hooked.speciesId, hooked.lengthCm) : 0x4af2a1, 1);
+    g.fillEllipse(mx, axY, 10 * ms, 6 * ms);
+    g.fillTriangle(mx - 5 * ms, axY, mx - 9 * ms, axY - 3 * ms, mx - 9 * ms, axY + 3 * ms);
 
     const bottomM = this.cfg.zMaxM;
     const yOf = (z: number): number => gaugeTop + (Phaser.Math.Clamp(z, 0, bottomM) / bottomM) * gaugeH;
@@ -3277,8 +3396,15 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     g.strokeRoundedRect(bx, by + 26, bw, 10, 3);
 
     const ft = this.lastFatigue;
+    const load = st.lineCapKg > 0 ? `하중 ${st.demandKg.toFixed(1)}kg / 줄 ${st.lineCapKg.toFixed(1)}kg` : '';
+    // 패턴 대응 판정 — 맞게 대응하면 요구 장력이 감쇠돼 텐션이 오르지 않는다(116차 ③)
+    if (st.pattern !== 'none' && st.response !== 'neutral') {
+      this.responseText
+        .setText(st.response === 'good' ? '대응 OK — 텐션 억제 중' : '대응 실패 — 텐션 급등!')
+        .setColor(st.response === 'good' ? '#4af2a1' : '#ff5a4a').setVisible(true);
+    } else this.responseText.setVisible(false);
     this.probText.setText([
-      `텐션 ${st.tension.toFixed(0)} / 100  (안전 30~80)`,
+      `텐션 ${st.tension.toFixed(0)} / 100  (안전 30~80)${load ? '  ' + load : ''}`,
       `랜딩 ${st.progress.toFixed(0)}%`,
       this.hookedFish ? `상대: ??? (힘 ${(this.hookedFish.powerFactor * 100).toFixed(0)})` : '',
       ft

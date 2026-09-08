@@ -30,6 +30,20 @@ export function applyScreenFixed(root: Phaser.GameObjects.Container): void {
   walk(root);
 }
 
+/**
+ * hover 중인 버튼의 손 커서를 다시 세운다 (118차 실측 버그).
+ *
+ * Phaser의 `InputManager.resetCursor`는 **`useHandCursor` 객체가 파괴되기만 하면** 캔버스 커서를
+ * 기본값으로 되돌린다(그 객체가 포인터 아래 있었는지와 무관). 그래서 "버튼을 눌러 팝업을 열고/닫거나,
+ * 버튼 자신을 재생성"하면 포인터가 여전히 버튼 위인데도 손 커서가 풀린다 — 포인터가 나갔다 들어오기
+ * 전까지 `pointerover`가 다시 오지 않으므로 복구되지 않는다.
+ * 그런 동작 직후에 이 함수를 호출한다.
+ */
+export function restoreHandCursor(scene: Phaser.Scene): void {
+  const canvas = scene.input?.manager?.canvas;
+  if (canvas) canvas.style.cursor = 'pointer';
+}
+
 export interface DraggablePanelConfig {
   x: number;
   y: number;

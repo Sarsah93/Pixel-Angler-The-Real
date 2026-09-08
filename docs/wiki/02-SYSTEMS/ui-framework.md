@@ -16,7 +16,9 @@
 | `scenes/SceneFade.ts` | `fadeOutThen` — 폴백 타이머 + WeakSet 이중 실행 가드 |
 | `ui/GuidePanel.ts` · `data/GuideContent.ts` | 가이드 허브(4카테고리 19페이지, 데이터 추가만으로 확장) |
 | `core/config/tuning.ts` · `dev/DevTuningPanel.ts` | TUNING/META → **F8 슬라이더** + 스냅샷 복사 |
-| `ui/RegionHud.ts` · `HUD.ts` · `MiniMap.ts` | HUD 계열 |
+| `ui/RegionHud.ts` · `HUD.ts` · `MiniMap.ts` | HUD 계열 — 상태/채널 **크기 3단·투명 4단**(117차, `GameSettings.hud*`) |
+| `ui/HelpLibraryPanel.ts` · `data/HelpContent.ts` | **도움말 라이브러리**(117차) — 8카테고리 39토픽 트리 + 마스크 본문 · 실캡처 21장(`tools/annotate_help_images.py` — 표시 폭 688px에 라벨을 최종 픽셀로) · F1/단축키 버튼 |
+| `i18n/I18n.ts` · `i18n/en.ts` | **영어 설정**(118차) — `Text.setText` 훅 사전(원문 = 키) · `setLocale` 즉시 전환 · 어종명은 `FISH_DATABASE.nameEn` |
 
 ## 3. 동작 구조
 
@@ -35,6 +37,9 @@ ESC: depth 최고(시각적 최상단)부터 닫는다 (동률이면 LIFO)
 
 ### 텍스트 3항 검수
 신규·수정 패널은 **오버플로 · 겹침 · 스크롤/클립**을 가장 긴 콘텐츠로 실렌더 확인한다(§AGENTS 4).
+
+### 도움말 라이브러리 vs 가이드 허브
+라이브러리(`HELP_LIBRARY`) = 사전 — 언제든 여는 3단 트리 · 허브(`GUIDES`) = 상황 튜토리얼(`tutorial` 모드 = 탭 없음 · [계속하기] · [다시 표시하지 않기]). 새 시스템은 **라이브러리 토픽 + 허브 카테고리 둘 다** 데이터로 추가.
 
 ### 가이드 허브
 `GUIDES[{key,label,pages[]}]` 데이터 → 탭 + 삽화 카드 + ◀▶/점 네비. 카테고리별 **최초 1회 자동 표시**(`GameState.flags 'guideSeen.<cat>'`).
@@ -58,6 +63,11 @@ ESC: depth 최고(시각적 최상단)부터 닫는다 (동률이면 LIFO)
 | 가이드 허브(19페이지·자동 표시) | ✅ | 27 |
 | 튜닝 중앙화 + F8 | ✅ | 26 |
 | 텍스트 선명도(present 스무딩) | ✅ | 31 |
+| 도움말 라이브러리(트리+본문+실캡처 13장) | ✅ | 117 |
+| HUD 크기·투명 단계 + 단축키 버튼 | ✅ | 117 · **118 실버그 수정**(상태 패널 미표시·채널 중복) · **118-b 상태 패널 3단계 = 정보량 축소 + 호버 툴팁** |
+| `help_fp_fight` 실캡처 교체 | ✅ | 118 — `__FP.devForceFight` |
+| 영어 설정(i18n 훅 + 사전) | ✅ | 118 — 미수록 문장은 한국어 잔존(백로그) |
+| `enforceTextBounds` 패널 방어선 | ✅ | 118 — UtilizationPanel 적용, 타 패널은 필요 시 |
 | **저순위 팝업 전수 검수** | 🔶 | 잔여 목록은 BACKLOG |
 | `LicensePanel` 목록 스크롤 | ⬜ | 10개째부터 조용히 누락 |
 | fight/rod/yield 테이블 TUNING 소비 전환 | ⬜ | 선언만 이전됨 |
@@ -71,4 +81,25 @@ ESC: depth 최고(시각적 최상단)부터 닫는다 (동률이면 LIFO)
 3. **네이티브 draggable 금지**(위 §3).
 4. **UI 텍스트에 이모지 접두사 금지** — 아이콘이 콘텐츠인 경우만 예외(사용자 지시).
 5. 측정 시 **origin 보정**(`x + width*(1−originX)`) — origin 0.5 라벨을 `x+width`로 재면 오버플로로 오판한다.
-6. 하네스: `DraggablePanel`은 `scene.add.existing()` 필요 · `page.goto`는 `domcontentloaded` + 씬 활성 대기(외부 API 폴링 때문에 `networkidle` 불가) · 가이드 자동표시 플래그 프리시드.
+6. **중첩 컨테이너 안에 GeometryMask 자식 + 인터랙티브 자식을 함께 넣지 말 것** — 포인터가 움직이는 순간 렌더러 탭이
+   크래시한다(117차 실측 — 지역 채널을 래퍼 컨테이너로 감쌌을 때). 스케일이 필요하면 **패널을 그 크기로 재생성**한다.
+7. **컨테이너에 자기 자신을 add하지 말 것**(`c.add(c)`) — 예외 없이 조용히 화면에서 사라진다(118차 상태 패널). 래퍼는 반드시
+   부모(`this.add(wrapper)`)에 넣고, **스크린샷으로 육안 확인**한다(상태값 검증만으로는 못 잡았다).
+8. **재생성형 HUD는 파괴부터** — 구 파츠·마스크·씬 입력 핸들러를 안 걷으면 뒤에 겹쳐 남는다(118차 지역 채널).
+9. **Text 원문을 한국어와 비교하지 말 것**(`t.text === '보관'`) — i18n 훅이 EN으로 바꿔 놓는다. 상태는 별도 필드로.
+10. **HUD 축소는 scale이 아니라 레이아웃 재생성** — `setScale`로 줄이면 글씨까지 줄어 읽을 수 없다(118-b). 단계별 실치수 +
+    빠진 정보는 **호버 툴팁**으로 돌려준다.
+11. **`useHandCursor` 객체를 파괴하면 Phaser가 캔버스 커서를 기본값으로 되돌린다**(`InputManager.resetCursor` — 그 객체가
+    포인터 아래였는지 무관). 버튼 클릭으로 팝업을 열고/닫거나 버튼 자신을 재생성한 직후에는
+    **`restoreHandCursor(scene)`**(ui/DraggablePanel.ts)를 호출해야 hover 상태가 유지된다(118-b 실측).
+12. **타이틀바(캡션바)는 전용 영역** — 제목·조절 버튼만 들어가고 컨텐츠는 밴드 아래에서 시작한다.
+    밴드 높이는 상수 하나(`DraggablePanel.HEADER_H` / `RegionHud.HUD_HEADER_H`)로 관리하고, **축소 단계에서도
+    버튼(16px)이 들어갈 하한**을 건다. 119차 실측 위반: 상태 패널 ◱◐(y 16~32) ↔ HP 바(y 28~38) 4px 겹침,
+    지역 채널은 k=0.5에서 밴드가 11px로 줄어 버튼이 로그 뷰포트를 침범.
+13. **wordWrap 텍스트 아래는 고정 y·고정 피치 금지** — `앞 요소.y + height + gap` 흐름 배치.
+    높이를 미리 알아야 하면 텍스트를 먼저 만들어 실측한다. 한국어에서 안 겹쳐도 **영어 번역이 길어지면 겹친다**
+    (119차 월드맵 구역 카드·스팟 툴팁).
+14. **참조를 안 남긴 화면 고정 버튼은 숨길 수 없다** — 뷰가 바뀌어도 히트렉트가 남아 다른 버튼의 클릭을 삼킨다
+    (119차 월드맵 홈 버튼이 '← 전국 지도'·'← 지역 지도'를 통째로 가로챘다). 뷰 전환이 있는 씬의 고정 UI는
+    부품을 필드에 보관하고 뷰마다 `setVisible`/`disableInteractive` 한다.
+10. 하네스: `DraggablePanel`은 `scene.add.existing()` 필요 · `page.goto`는 `domcontentloaded` + 씬 활성 대기(외부 API 폴링 때문에 `networkidle` 불가) · 가이드 자동표시 플래그 프리시드.

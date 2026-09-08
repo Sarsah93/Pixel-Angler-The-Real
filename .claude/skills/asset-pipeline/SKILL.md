@@ -99,4 +99,7 @@ py tools/pixelize_islet.py <photo.png> --region <region> --name <islet> --grid 3
 
 - 시트 `public/tileset/<islet>/sheet.png`(물 투명) + `patch.json`(정본·런타임) 병합. `--dry`로 본토 충돌 먼저 확인.
 - 런타임 등록 = `TilesetManifest.ISLET_SHEETS`에 이름 추가(셀은 `ensureSheetCell`이 자동 슬라이스).
-- 그리드는 사진 종횡비를 보존해 정한다(왜곡 금지). 램프는 휘도 **순위 균등화** — 분위 정규화는 밝은 사진에서 너무 밝다.
+- 그리드는 사진 종횡비를 보존하되 **본섬 bbox가 인게임 섬 성분 bbox와 같아지게** 크기를 정한다(조도 72×60 → 41×33 정합).
+  `--center` = 인게임 성분 무게중심 · `--islet-max` = 그 성분 타일 수 이상(래스터 `'r'` 섞인 섬은 600을 넘는다).
+- ⚠ 섬 위치는 `islet` 플래그가 아니라 **`lights.json`·POI 좌표**로 확정한다(116차 — 엉뚱한 섬에 적용한 전례).
+- 램프는 휘도 **순위 균등화** — 분위 정규화는 밝은 사진에서 너무 밝다.

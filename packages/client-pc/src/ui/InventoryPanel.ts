@@ -14,6 +14,7 @@
  */
 
 import Phaser from 'phaser';
+import { fishRarity } from '@tra/core';
 import { GameState } from '../store/GameState.js';
 import {
   InventoryStore, InvCategory, InvItem, GRID_CAPACITY,
@@ -304,9 +305,9 @@ export class InventoryPanel extends DraggablePanel {
       this.gridContainer.add(icon);
 
       if (item.qty > 1) {
-        const qty = this.scene.add.text(sx + SLOT - 5, sy + SLOT - 4, `x${item.qty}`, {
+        const qty = this.scene.add.text(sx + SLOT - 5, sy + 3, `x${item.qty}`, {
           fontFamily: 'monospace', fontSize: '10px', color: '#ffe28a', fontStyle: 'bold',
-        }).setOrigin(1, 1);
+        }).setOrigin(1, 0);
         this.gridContainer.add(qty);
       }
 
@@ -633,6 +634,11 @@ export class InventoryPanel extends DraggablePanel {
    */
   private itemSummaryLine(item: InvItem): string {
     let line = `${item.name}  ·  ${item.subCategory}`;
+    // 어획물 희귀도(116차 ⑤) — 평균 대비 길이 비율 등급 병기
+    if (item.speciesId && item.lengthCm) {
+      const rr = fishRarity(item.speciesId, item.lengthCm);
+      line = line + `  [${rr.ratio.toFixed(2)}×, ${rr.label}]`;
+    }
     if (item.condition) {
       refreshCondition(item);   // 지연 갱신 — 클릭 시점 실상태
       line += `  ·  ${CONDITION_LABEL[item.condition]}`;
