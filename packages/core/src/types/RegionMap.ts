@@ -80,6 +80,12 @@ export interface RegionPoi {
   /** type='shop'일 때 OSM shop=* 값 보존 (seafood/convenience/supermarket …) */
   shopKind?: string;
   name: string;
+  /**
+   * OSM 공식 영문명(`name:en`) — 영어 로케일 라벨용 (120차).
+   * 상호명은 실제 간판이라 한국어 `name` 이 정본이고, 이건 표시층 보조다.
+   * OSM 에 태그가 없으면 빈 문자열이며 클라이언트 사전(`i18n/en_pois.ts`)이 메운다.
+   */
+  nameEn?: string;
   tx: number;
   ty: number;
   /**
@@ -167,6 +173,8 @@ export interface SeamlessRegionDef {
   dataRegion: string;
   dataDir: string;
   name: string;
+  /** 영문 표시 이름 — 영어 로케일 전용 (120차). 비면 사전(`i18n/places.ts`) 폴백 */
+  nameEn?: string;
   /** `lights.json`(항로표지 — `tools/extract_lights.py`) 보유 여부. 없는 지역에서 로드하면
    *  Vite dev SPA 폴백이 index.html을 돌려줘 JSON 파싱 pageerror가 난다(함정 — 17차 depthProfileUrl과 동일). */
   hasLights?: boolean;
@@ -187,7 +195,7 @@ export interface RegionLight {
 
 /** WorldMap 지역 ID → 심리스 지역 정의 (등록 = 심리스 개방) */
 export const SEAMLESS_REGIONS: Record<string, SeamlessRegionDef> = {
-  gangwon_sokcho: { dataRegion: 'sokcho_v2', dataDir: 'data/sokcho_v2', name: '속초', hasLights: true },
+  gangwon_sokcho: { dataRegion: 'sokcho_v2', dataDir: 'data/sokcho_v2', name: '속초', nameEn: 'Sokcho', hasLights: true },
 };
 
 /** 현재 모드에서 이 지역이 심리스로 열리는가 (아니면 undefined = legacy 경로) */
@@ -248,6 +256,8 @@ export interface RegionMapNode {
   id: string;
   /** 표시 이름 */
   name: string;
+  /** 영문 표시 이름 — 영어 로케일 전용 (120차). 비면 사전(`i18n/places.ts`) 폴백 */
+  nameEn?: string;
   /** 가장자리별 이웃 맵 연결 */
   links: RegionMapLinks;
 }
@@ -289,19 +299,19 @@ export const SOKCHO_MAP_GRAPH: RegionMapGraph = {
   dataDir: 'data/sokcho',
   depthProfileUrl: 'data/depth/gangwon_sokcho.json',
   nodes: [
-    { id: 'sokcho_sokchohang_3', name: '속초항 (남측)',
+    { id: 'sokcho_sokchohang_3', name: '속초항 (남측)', nameEn: 'Sokcho Port (South)',
       links: { N: 'sokcho_sokchohang_2' } },
-    { id: 'sokcho_sokchohang_2', name: '속초항 (중앙)',
+    { id: 'sokcho_sokchohang_2', name: '속초항 (중앙)', nameEn: 'Sokcho Port (Central)',
       links: { N: 'sokcho_sokchohang_1', S: 'sokcho_sokchohang_3' } },
-    { id: 'sokcho_sokchohang_1', name: '속초항 (북측)',
+    { id: 'sokcho_sokchohang_1', name: '속초항 (북측)', nameEn: 'Sokcho Port (North)',
       links: { S: 'sokcho_sokchohang_2', E: 'sokcho_sokchohang_dongmyeonghang' } },
-    { id: 'sokcho_sokchohang_dongmyeonghang', name: '속초항·동명항 연결로',
+    { id: 'sokcho_sokchohang_dongmyeonghang', name: '속초항·동명항 연결로', nameEn: 'Sokcho–Dongmyeong Link Road',
       links: { W: 'sokcho_sokchohang_1', E: 'sokcho_dongmyeonghang_1' } },
-    { id: 'sokcho_dongmyeonghang_1', name: '동명항 (북측)',
+    { id: 'sokcho_dongmyeonghang_1', name: '동명항 (북측)', nameEn: 'Dongmyeong Port (North)',
       links: { W: 'sokcho_sokchohang_dongmyeonghang', S: 'sokcho_dongmyeonghang_2' } },
-    { id: 'sokcho_dongmyeonghang_2', name: '동명항 (중앙)',
+    { id: 'sokcho_dongmyeonghang_2', name: '동명항 (중앙)', nameEn: 'Dongmyeong Port (Central)',
       links: { N: 'sokcho_dongmyeonghang_1', S: 'sokcho_dongmyeonghang_3' } },
-    { id: 'sokcho_dongmyeonghang_3', name: '동명항 (남측·방파제)',
+    { id: 'sokcho_dongmyeonghang_3', name: '동명항 (남측·방파제)', nameEn: 'Dongmyeong Port (South · Breakwater)',
       links: { N: 'sokcho_dongmyeonghang_2' } },
   ],
 };
@@ -327,27 +337,27 @@ export const BUSAN_MAP_GRAPH: RegionMapGraph = {
   dataDir: 'data/busan',
   nodes: [
     // ── 감천항 서방파제 (마을 위 ↕ 방파제 아래) ──
-    { id: 'busan_gamcheon_west_1', name: '감천항 서방파제 (감천동)',
+    { id: 'busan_gamcheon_west_1', name: '감천항 서방파제 (감천동)', nameEn: 'Gamcheon West Breakwater (Gamcheon-dong)',
       links: { S: 'busan_gamcheon_west_2' } },
-    { id: 'busan_gamcheon_west_2', name: '감천항 서방파제',
+    { id: 'busan_gamcheon_west_2', name: '감천항 서방파제', nameEn: 'Gamcheon West Breakwater',
       links: { N: 'busan_gamcheon_west_1' } },
 
     // ── 감천항 동방파제 (부두 위 ↕ 수산시장 ↕ 방파제 아래, 부두 동쪽 ↔ 암남) ──
-    { id: 'busan_gamcheon_east_1', name: '감천항 제3부두·모지포',
+    { id: 'busan_gamcheon_east_1', name: '감천항 제3부두·모지포', nameEn: 'Gamcheon Pier 3 · Mojipo',
       links: { S: 'busan_gamcheon_east_2', E: 'busan_amnam_1' } },
-    { id: 'busan_gamcheon_east_2', name: '감천항 제4부두·수산시장',
+    { id: 'busan_gamcheon_east_2', name: '감천항 제4부두·수산시장', nameEn: 'Gamcheon Pier 4 · Fish Market',
       links: { N: 'busan_gamcheon_east_1', S: 'busan_gamcheon_east_3' } },
-    { id: 'busan_gamcheon_east_3', name: '감천항 동방파제',
+    { id: 'busan_gamcheon_east_3', name: '감천항 동방파제', nameEn: 'Gamcheon East Breakwater',
       links: { N: 'busan_gamcheon_east_2' } },
 
     // ── 암남공원 주차장 (서쪽으로 동방파제 부두와 연결) ──
-    { id: 'busan_amnam_1', name: '암남공원 주차장',
+    { id: 'busan_amnam_1', name: '암남공원 주차장', nameEn: 'Amnam Park Parking',
       links: { W: 'busan_gamcheon_east_1' } },
 
     // ── 백운포 체육공원 (공원 위 ↕ 방파제 아래) ──
-    { id: 'busan_baegunpo_1', name: '백운포 체육공원',
+    { id: 'busan_baegunpo_1', name: '백운포 체육공원', nameEn: 'Baegunpo Sports Park',
       links: { S: 'busan_baegunpo_2' } },
-    { id: 'busan_baegunpo_2', name: '백운포 방파제',
+    { id: 'busan_baegunpo_2', name: '백운포 방파제', nameEn: 'Baegunpo Breakwater',
       links: { N: 'busan_baegunpo_1' } },
   ],
 };
@@ -362,7 +372,7 @@ export const HOMETOWN_MAP_GRAPH: RegionMapGraph = {
   entryMapId: 'hometown_home',
   dataDir: 'data/hometown',
   nodes: [
-    { id: 'hometown_home', name: '홈타운 (집)', links: {} },
+    { id: 'hometown_home', name: '홈타운 (집)', nameEn: 'Hometown (Home)', links: {} },
   ],
 };
 

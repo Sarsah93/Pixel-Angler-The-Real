@@ -18,7 +18,7 @@
 | `core/config/tuning.ts` · `dev/DevTuningPanel.ts` | TUNING/META → **F8 슬라이더** + 스냅샷 복사 |
 | `ui/RegionHud.ts` · `HUD.ts` · `MiniMap.ts` | HUD 계열 — 상태/채널 **크기 3단·투명 4단**(117차, `GameSettings.hud*`) |
 | `ui/HelpLibraryPanel.ts` · `data/HelpContent.ts` | **도움말 라이브러리**(117차) — 8카테고리 39토픽 트리 + 마스크 본문 · 실캡처 21장(`tools/annotate_help_images.py` — 표시 폭 688px에 라벨을 최종 픽셀로) · F1/단축키 버튼 |
-| `i18n/I18n.ts` · `i18n/en.ts` | **영어 설정**(118차) — `Text.setText` 훅 사전(원문 = 키) · `setLocale` 즉시 전환 · 어종명은 `FISH_DATABASE.nameEn` |
+| `i18n/I18n.ts` · `i18n/en.ts` + 사전 6벌 | **영어 설정**(118~120차) — `Text.setText` 훅 사전(원문 = 키) · `setLocale` 즉시 전환 · **데이터의 `nameEn` 이 사전보다 먼저**(어종·지명·지역 노드) · `registerNames()` 로 런타임 이름(POI 상호명) 합류 |
 
 ## 3. 동작 구조
 
@@ -66,14 +66,20 @@ ESC: depth 최고(시각적 최상단)부터 닫는다 (동률이면 LIFO)
 | 도움말 라이브러리(트리+본문+실캡처 13장) | ✅ | 117 |
 | HUD 크기·투명 단계 + 단축키 버튼 | ✅ | 117 · **118 실버그 수정**(상태 패널 미표시·채널 중복) · **118-b 상태 패널 3단계 = 정보량 축소 + 호버 툴팁** |
 | `help_fp_fight` 실캡처 교체 | ✅ | 118 — `__FP.devForceFight` |
-| 영어 설정(i18n 훅 + 사전) | ✅ | 118 — 미수록 문장은 한국어 잔존(백로그) |
+| 영어 설정(i18n 훅 + 사전) | ✅ | 118 → 119 규칙 캡처 재번역·사전 656 → **120 전수 잔여 0**(콘텐츠 산문 사전 + 상호명 `nameEn`) |
+| 지명·상호명 `nameEn` 데이터화 | ✅ | 120 — `RegionDef`/`FishingSpotNode`/`RegionAreaNode`/`RegionMapNode`/`SeamlessRegionDef`/`RegionPoi`. `places.ts` 는 폴백으로 축소 |
+| 튜토리얼 삽화 영문판 18장 | ⬜ | 목업 HTML 영어 재렌더 필요(BACKLOG) |
 | `enforceTextBounds` 패널 방어선 | ✅ | 118 — UtilizationPanel 적용, 타 패널은 필요 시 |
 | **저순위 팝업 전수 검수** | 🔶 | 잔여 목록은 BACKLOG |
 | `LicensePanel` 목록 스크롤 | ⬜ | 10개째부터 조용히 누락 |
 | fight/rod/yield 테이블 TUNING 소비 전환 | ⬜ | 선언만 이전됨 |
 
 ## 5. 잔여·차기
-저순위 팝업 검수 · LicensePanel 스크롤 · 튜닝 소비 전환 · 가이드 삽화 실사화 · i18n 키 분리.
+저순위 팝업 검수 · LicensePanel 스크롤 · 튜닝 소비 전환 · 가이드 삽화 실사화 ·
+**튜토리얼 삽화 영문판**(목업 재렌더) · 타 지역 POI `nameEn` 백필(OSM 확장 시).
+
+dev 전용 문자열(순간이동 로그·맵 편집기·손질 dev 버튼)은 **의도적으로 한국어**로 둔다 —
+`import.meta.env.DEV` 게이트라 프로덕션 빌드에 없다.
 
 ## 6. 함정·불변조건
 1. **화면 고정 UI는 트리 전체에 `scrollFactor 0`** — 자식은 자기 scrollFactor로 히트 판정한다(`applyScreenFixed` 필수).
@@ -102,4 +108,13 @@ ESC: depth 최고(시각적 최상단)부터 닫는다 (동률이면 LIFO)
 14. **참조를 안 남긴 화면 고정 버튼은 숨길 수 없다** — 뷰가 바뀌어도 히트렉트가 남아 다른 버튼의 클릭을 삼킨다
     (119차 월드맵 홈 버튼이 '← 전국 지도'·'← 지역 지도'를 통째로 가로챘다). 뷰 전환이 있는 씬의 고정 UI는
     부품을 필드에 보관하고 뷰마다 `setVisible`/`disableInteractive` 한다.
+15. **i18n 파일을 고친 뒤에는 dev 서버를 재시작하고 검증한다** — HMR 이 `/src/i18n/I18n.ts` 를
+    `?t=` 로 분화시키면 하네스가 **게임과 다른 인스턴스**(locale 기본 `ko`)를 잡아 `t()`가 전부 원문을
+    돌려준다. "고쳤는데 전 항목이 미번역"으로 보인다(120차에 두 번 밟음).
+16. **사전 우선순위는 `EN_PLACES`(지명) > `EN_POIS`(큐레이션) > OSM `nameEn` > 원문**.
+    `registerNames()` 가 **기존 키를 덮지 않는** 것으로 이 순서를 만든다 — 지명과 POI 상호명이 같은
+    글자일 때(`동명항`) 지명이 이겨야 하기 때문. 새 이름 소스를 붙일 때 이 규칙을 깨지 말 것.
+17. **규칙(`EN_RULES`)은 구체적인 것부터** — 포괄 규칙이 앞에 있으면 나머지 캡처가 원문으로 남는다.
+    구분자 분해도 규칙보다 나중이라, `필렛 0 / 2   시메 O · …` 처럼 **한 줄에 여러 조각**이면
+    통짜 규칙을 먼저 넣어야 한다(` / ` 분해가 '필렛 0' 조각을 만들어 어떤 규칙에도 안 맞는다).
 10. 하네스: `DraggablePanel`은 `scene.add.existing()` 필요 · `page.goto`는 `domcontentloaded` + 씬 활성 대기(외부 API 폴링 때문에 `networkidle` 불가) · 가이드 자동표시 플래그 프리시드.

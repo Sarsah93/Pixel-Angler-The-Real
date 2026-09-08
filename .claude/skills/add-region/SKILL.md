@@ -16,6 +16,7 @@ tools/regions_config.py 에 지역 bbox 등록 (17개 기등록 — 신규는 bb
   → py tools/build_osm_tilemap.py <region>    (→ pixelazed/<region>/terrain.png·pois·meta)
   → py tools/build_region_maps.py <region>    (meta.json 존재 = 심리스 분기 → seamless.json + 복사)
   → core RegionMap.ts SEAMLESS_REGIONS 등록 + WorldMap.ts REGION_AREA_NODES 구역 노드
+     (등록 시 **nameEn 도 함께 채운다** — 지명은 사전이 아니라 데이터가 정본, 120차)
   → RegionFieldScene가 자동으로 심리스 모드(SeamlessChunks 청크 스트리밍)로 연다
 ```
 
@@ -77,6 +78,18 @@ pixelazed/<region>/<mapId>.png  (실지형 픽셀 지도 — 파일명 = mapId)
 ```bash
 py tools/extract_lights.py <region>        # → public/data/<region>/lights.json
 ```
+
+## POI 상호명 영문 (120차)
+
+`build_osm_tilemap.py` 는 OSM `name:en` 을 `pois.json.nameEn` 으로 함께 내보낸다 — 신규 지역은 자동이다.
+**이미 구워둔 지역**만 백필이 필요하다(전체 재빌드는 래스터 병합·검증까지 다시 돌아 비싸다):
+
+```bash
+py tools/backfill_poi_nameen.py <region>   # 정본 + public 사본 동시, 멱등
+```
+
+`name:en` 이 없는 상호는 `packages/client-pc/src/i18n/en_pois.ts` 에 손으로 넣는다
+(속초 실측: 라벨 렌더 133건 중 91건은 OSM 보유 → 수작업 42건). 한국어 로케일에는 영향이 없다.
 
 그리고 core `SEAMLESS_REGIONS[<id>].hasLights = true`. ⚠ 파일 없이 플래그만 켜면 Vite dev SPA 폴백이
 index.html을 돌려줘 JSON 파싱 pageerror(함정 — depthProfileUrl과 동일). 방파제 단면(테트라포드/사석/

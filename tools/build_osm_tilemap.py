@@ -538,16 +538,22 @@ def build(region):
 
     # 4) POI
     pois = []
+    # 상호명은 한국어(name:ko/name)를 정본으로 두고, OSM 이 함께 제공하는 공식 영문명
+    # (name:en)을 nameEn 으로 흘려보낸다 — 영어 로케일 라벨이 이걸 쓴다(120차).
+    # 속초 실측: 이름 있는 요소 791개 중 556개가 name:en 을 갖고 있다. 없는 것은
+    # 클라이언트 사전(i18n/en_pois.ts)이 메운다.
     def poi_from(el, cx, cy):
         t = el.get('tags', {})
         for key, val, ptype in POI_TAGS:
             if t.get(key) == val:
                 pois.append(dict(type=ptype, name=t.get('name:ko') or t.get('name') or '',
+                                 nameEn=t.get('name:en') or '',
                                  tx=int(cx), ty=int(cy), osmId=el['id']))
                 return
         if 'shop' in t:
             pois.append(dict(type='shop', shopKind=t['shop'],
                              name=t.get('name:ko') or t.get('name') or '',
+                             nameEn=t.get('name:en') or '',
                              tx=int(cx), ty=int(cy), osmId=el['id']))
     for nd in nodes.values():
         if nd.get('tags'):

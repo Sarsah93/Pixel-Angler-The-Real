@@ -18,8 +18,10 @@
 import Phaser from 'phaser';
 import {
   FISH_DATABASE, SHORE_CREATURE_DATABASE, LURES_CATALOG_DB, ORACLE_FISH_DB,
+  REGION_DATABASE, WORLD_NODE_DATABASE, REGION_AREA_NODES, REGION_MAP_GRAPHS, SEAMLESS_REGIONS,
 } from '@tra/core';
 import { EN_PLACES } from './places.js';
+import { EN_POIS } from './en_pois.js';
 import { EN_DICT, EN_RULES } from './en.js';
 
 export type Locale = 'ko' | 'en';
@@ -48,7 +50,34 @@ function buildRuntimeDict(): void {
   for (const c of SHORE_CREATURE_DATABASE) put(c.nameKo, c.nameEn);
   for (const l of LURES_CATALOG_DB) put(l.nameKo, l.nameEn);
   for (const o of ORACLE_FISH_DB) put(o.nameKo, o.nameEn);
+  // 지명 — **데이터의 nameEn 이 먼저**, 사전(EN_PLACES)은 아직 필드가 없는 것만 메운다 (120차 ③).
+  for (const r of REGION_DATABASE) { put(r.nameKo, r.nameEn); put(r.shortNameKo, r.shortNameEn); }
+  for (const n of WORLD_NODE_DATABASE) { put(n.name, n.nameEn); put(n.shortName, n.shortNameEn); }
+  for (const list of Object.values(REGION_AREA_NODES)) for (const a of list) put(a.name, a.nameEn);
+  for (const g of Object.values(REGION_MAP_GRAPHS)) for (const n of g.nodes) put(n.name, n.nameEn);
+  for (const r of Object.values(SEAMLESS_REGIONS)) put(r.name, r.nameEn);
   for (const [ko, en] of Object.entries(EN_PLACES)) put(ko, en);
+  // 상호명 보정 사전 — OSM `name:en` 이 없거나(42건) 품질이 낮은 것(지구대 중복 등)을 덮는다.
+  // registerNames(OSM)보다 **먼저** 들어가므로 큐레이션이 이긴다.
+  for (const [ko, en] of Object.entries(EN_POIS)) put(ko, en);
+}
+
+/**
+ * 런타임 이름 등록 (120차) — 지역 데이터를 로드한 뒤 알게 되는 이름 쌍을 사전에 붙인다.
+ * 현재 소비처: OSM POI 상호명(`RegionPoi.name` → `nameEn`).
+ *
+ * 이미 있는 키는 **덮지 않는다** — 지명(`동명항` = Dongmyeong Port)과 POI 상호명이 같은 글자일 때
+ * 지명 쪽이 이겨야 하고, 큐레이션 사전(`EN_POIS`)도 OSM 원본보다 우선이기 때문이다.
+ */
+export function registerNames(pairs: Iterable<readonly [string, string]>): void {
+  buildRuntimeDict();
+  let added = 0;
+  for (const [ko, en] of pairs) {
+    if (!ko || !en || runtimeDict.has(ko)) continue;
+    runtimeDict.set(ko, en);
+    added++;
+  }
+  if (added) cache.clear();   // 이미 원문으로 굳은 번역 결과를 버린다
 }
 
 export function getLocale(): Locale { return locale; }
@@ -63,7 +92,7 @@ export function t(src: string): string {
 // 사전·규칙이 전부 빗나갔을 때만 쓰는 마지막 수단이다 (119차 ⑥).
 const SEP_PATTERNS: RegExp[] = [
   /(\s{2,}›\s{2,})/, /(\s{2,}·\s{2,})/, /(\s·\s)/, /(\s—\s)/, /(\s\|\s)/, /(\s\/\s)/,
-  /(\s{2,})/, /(·)/,
+  /(\s{2,})/, /(,\s)/, /(·)/,
 ];
 /** 트리 글리프·불릿 접두(▾ ▸ · ① 등) — 접두는 두고 본문만 번역 */
 const GLYPH_PREFIX = /^([^\w가-힣\[\(]+\s+)(.+)$/s;

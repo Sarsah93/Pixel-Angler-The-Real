@@ -65,6 +65,7 @@ import {
   rotateEditorPlacement, flipEditorPlacement, toggleEditorOverlap,
 } from '../dev/MapEditorPanel.js';
 import { GameState } from '../store/GameState.js';
+import { registerNames } from '../i18n/I18n.js';
 import { ExternalDataStore } from '../store/ExternalDataStore.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { RegionHud } from '../ui/RegionHud.js';
@@ -433,6 +434,14 @@ export class RegionFieldScene extends Phaser.Scene {
       const dr = this.seamlessDef.dataRegion;
       this.regionMeta = this.cache.json.get(`rmeta_${dr}`) as RegionMeta | undefined;
       this.regionPois = (this.cache.json.get(`rpois_${dr}`) as RegionPoi[] | undefined) ?? [];
+      // 상호명 영문 등록 (120차 ②) — OSM `name:en` 을 i18n 런타임 사전에 붙인다.
+      // 라벨은 Phaser Text 라 훅이 알아서 번역하고, 언어 전환(refreshAll)에도 따라온다.
+      // 이미 있는 키(지명·큐레이션 사전)는 덮지 않는다.
+      registerNames(
+        this.regionPois
+          .filter((p) => p.name && p.nameEn)
+          .map((p) => [p.name, p.nameEn as string] as const),
+      );
       const patch = this.cache.json.get(`rpatch_${dr}`) as Partial<RegionPatch> | undefined;
       // 도로 벡터 — 패치에 오버라이드가 있으면(편집기 도로 툴) roads.json 대신 사용
       this.regionRoads = patch?.roads ?? (this.cache.json.get(`rroads_${dr}`) as RegionRoad[] | undefined) ?? [];

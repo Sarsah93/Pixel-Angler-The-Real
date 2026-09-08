@@ -20,8 +20,15 @@ export interface FishingSpotNode {
   id: string;
   /** 표시 이름 (예: "경북 포항") */
   name: string;
+  /**
+   * 영문 표시 이름 (예: "Pohang, Gyeongbuk") — 영어 로케일 전용 (120차).
+   * 사전(`i18n/places.ts`)이 아니라 데이터가 곧 번역이다. 비면 사전 폴백.
+   */
+  nameEn?: string;
   /** 짧은 이름 (지도 레이블용, 예: "포항") */
   shortName: string;
+  /** 영문 짧은 이름 (지도 레이블용, 예: "Pohang") */
+  shortNameEn?: string;
   /** 지역 분류 텍스트 */
   region: string;
   /**
@@ -60,7 +67,9 @@ export const WORLD_NODE_DATABASE: FishingSpotNode[] = [
   {
     id: 'gangwon_sokcho',
     name: '강원 속초',
+    nameEn: 'Sokcho, Gangwon',
     shortName: '속초',
+    shortNameEn: 'Sokcho',
     region: '강원도',
     pixelX: 152,
     pixelY: 30,
@@ -73,7 +82,9 @@ export const WORLD_NODE_DATABASE: FishingSpotNode[] = [
   {
     id: 'incheon',
     name: '인천',
+    nameEn: 'Incheon',
     shortName: '인천',
+    shortNameEn: 'Incheon',
     region: '인천광역시',
     pixelX: 86,
     pixelY: 64,
@@ -86,7 +97,9 @@ export const WORLD_NODE_DATABASE: FishingSpotNode[] = [
   {
     id: 'chungnam_taean',
     name: '충남 태안',
+    nameEn: 'Taean, Chungnam',
     shortName: '태안',
+    shortNameEn: 'Taean',
     region: '충청남도',
     pixelX: 72,
     pixelY: 91,
@@ -99,7 +112,9 @@ export const WORLD_NODE_DATABASE: FishingSpotNode[] = [
   {
     id: 'gyeongbuk_pohang',
     name: '경북 포항',
+    nameEn: 'Pohang, Gyeongbuk',
     shortName: '포항',
+    shortNameEn: 'Pohang',
     region: '경상북도',
     pixelX: 183,
     pixelY: 123,
@@ -112,7 +127,9 @@ export const WORLD_NODE_DATABASE: FishingSpotNode[] = [
   {
     id: 'ulsan',
     name: '울산',
+    nameEn: 'Ulsan',
     shortName: '울산',
+    shortNameEn: 'Ulsan',
     region: '울산광역시',
     pixelX: 185,
     pixelY: 147,
@@ -125,7 +142,9 @@ export const WORLD_NODE_DATABASE: FishingSpotNode[] = [
   {
     id: 'busan',
     name: '부산',
+    nameEn: 'Busan',
     shortName: '부산',
+    shortNameEn: 'Busan',
     region: '부산광역시',
     pixelX: 173,
     pixelY: 163,
@@ -138,7 +157,9 @@ export const WORLD_NODE_DATABASE: FishingSpotNode[] = [
   {
     id: 'gyeongnam_geoje',
     name: '경남 거제',
+    nameEn: 'Geoje, Gyeongnam',
     shortName: '거제',
+    shortNameEn: 'Geoje',
     region: '경상남도',
     pixelX: 160,
     pixelY: 174,
@@ -151,7 +172,9 @@ export const WORLD_NODE_DATABASE: FishingSpotNode[] = [
   {
     id: 'jeonnam_yeosu',
     name: '전남 여수',
+    nameEn: 'Yeosu, Jeonnam',
     shortName: '여수',
+    shortNameEn: 'Yeosu',
     region: '전라남도',
     pixelX: 124,
     pixelY: 183,
@@ -164,7 +187,9 @@ export const WORLD_NODE_DATABASE: FishingSpotNode[] = [
   {
     id: 'jeju',
     name: '제주',
+    nameEn: 'Jeju',
     shortName: '제주',
+    shortNameEn: 'Jeju',
     region: '제주특별자치도',
     pixelX: 84,
     pixelY: 236,
@@ -177,7 +202,9 @@ export const WORLD_NODE_DATABASE: FishingSpotNode[] = [
   {
     id: 'ulleungdo',
     name: '울릉도',
+    nameEn: 'Ulleungdo',
     shortName: '울릉도',
+    shortNameEn: 'Ulleungdo',
     region: '경상북도',
     pixelX: 228,
     pixelY: 61,
@@ -190,7 +217,9 @@ export const WORLD_NODE_DATABASE: FishingSpotNode[] = [
   {
     id: 'dokdo',
     name: '독도',
+    nameEn: 'Dokdo',
     shortName: '독도',
+    shortNameEn: 'Dokdo',
     region: '경상북도',
     pixelX: 252,
     pixelY: 72,
@@ -213,6 +242,8 @@ export interface RegionAreaNode {
   id: string;
   /** 표시 이름 (예: "속초항") */
   name: string;
+  /** 영문 표시 이름 (예: "Sokcho Port") — 영어 로케일 전용 (120차). 비면 사전 폴백 */
+  nameEn?: string;
   /** 짧은 설명 (팝업/라벨용) */
   desc: string;
   /**
@@ -284,6 +315,7 @@ export const REGION_AREA_NODES: Record<string, RegionAreaNode[]> = {
     {
       id: 'sokcho_area_sokchohang',
       name: '속초항',
+      nameEn: 'Sokcho Port',
       desc: '속초 대표 항구 · 원투 도다리의 성지',
       pixelX: 184,
       pixelY: 60,
@@ -301,6 +333,7 @@ export const REGION_AREA_NODES: Record<string, RegionAreaNode[]> = {
     {
       id: 'sokcho_area_dongmyeonghang',
       name: '동명항',
+      nameEn: 'Dongmyeong Port',
       desc: '겨울 명태로 유명한 동해 어항 · 사계절 낚시',
       pixelX: 221,
       pixelY: 49,
@@ -322,6 +355,7 @@ export const REGION_AREA_NODES: Record<string, RegionAreaNode[]> = {
     {
       id: 'busan_area_gamcheon_west',
       name: '감천항 서방파제',
+      nameEn: 'Gamcheon West Breakwater',
       desc: '깊은 물골의 상항 방파제 · 겨울 감성돔',
       pixelX: 21,
       pixelY: 232,
@@ -339,6 +373,7 @@ export const REGION_AREA_NODES: Record<string, RegionAreaNode[]> = {
     {
       id: 'busan_area_gamcheon_east',
       name: '감천항 동방파제',
+      nameEn: 'Gamcheon East Breakwater',
       desc: '평균 12~16m 급심 · 14종+ 어종 백화점',
       pixelX: 32,
       pixelY: 227,
@@ -356,6 +391,7 @@ export const REGION_AREA_NODES: Record<string, RegionAreaNode[]> = {
     {
       id: 'busan_area_amnam',
       name: '암남공원 (송도)',
+      nameEn: 'Amnam Park (Songdo)',
       desc: '에깅 1번지 · 여밭 루어의 성지',
       pixelX: 52,
       pixelY: 208,
@@ -373,6 +409,7 @@ export const REGION_AREA_NODES: Record<string, RegionAreaNode[]> = {
     {
       id: 'busan_area_baekunpo',
       name: '백운포 체육공원',
+      nameEn: 'Baegunpo Sports Park',
       desc: '석축 생활낚시 · 여름밤 갈치 루어',
       pixelX: 176,
       pixelY: 137,

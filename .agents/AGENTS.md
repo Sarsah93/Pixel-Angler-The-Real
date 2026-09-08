@@ -367,7 +367,23 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류 (2026-08-09)
 > "지금 무엇이 어디까지 되어 있나"는 **`docs/wiki/README.md` 대시보드**와 `02-SYSTEMS/*.md`를 본다.
 > 80차 이하 원문은 아래에 **그대로 보존**(불변 원장) — 구조화 인덱스는 `03-WORKLOG/README.md` §3.1.
 
-**최근 변경 (2026-09-08 119차) — HUD 타이틀바 규칙 + 지역 채널 3단계 + 랜딩/수심 정보 + 영어 전수 보강** (사용자 피드백 8건 — 실렌더 검증·pageerror 0, 빌드 3/3·typecheck 0):
+**최근 변경 (2026-09-08 120차) — 영어 잔여 마무리: 상호명 `nameEn` + 지명 필드 구조화 + 콘텐츠 산문 사전** (119차 잔여 3건 사용자 결정 — 전수 스캔 잔여 0·pageerror 0, 빌드 3/3·typecheck 0):
+
+- **분류 오해 정정**: "간판 상호명 74개"는 타일 그림이 아니라 **문 위 Phaser Text 라벨**(실측 175건·한글 133).
+  상점류는 `[E]` 거래가 되는 길찾기 요소 → 사용자 확정 **로마자 표기**. 지역명·한반도 지도는 119차에 이미 완료.
+- **OSM `name:en` 573건을 파이프라인이 버리고 있었다** — `build_osm_tilemap.py` 가 `nameEn` 을 내보내게 하고,
+  이미 구운 지역용 `tools/backfill_poi_nameen.py` 신설(속초 310건 중 159 백필). **수작업 42건뿐** → `i18n/en_pois.ts`.
+- **`nameEn` 필드 구조화** — `RegionDef`/`FishingSpotNode`/`RegionAreaNode`/`RegionMapNode`/`SeamlessRegionDef`/
+  `RegionPoi`. `buildRuntimeDict` 가 데이터를 먼저 읽고 `places.ts` 는 폴백. `registerNames()` 신설
+  (**기존 키 불침범** = `EN_PLACES` > `EN_POIS` > OSM > 원문).
+- **콘텐츠 산문 사전** — 어종 57 · 손질 라벨/안내문 53 · 레시피 22 · 통발 8 · 신선도 8 · 발견 출처 8
+  (`en_fish.ts`·`en_content.ts`) + 조립 규칙 12. ⚠ **규칙은 구체적인 것부터**, 한 줄에 조각이 여럿이면 통짜 규칙 우선.
+- ⚠ **i18n 수정 후에는 dev 서버 재시작 후 검증** — HMR `?t=` 분화로 하네스가 게임과 다른 인스턴스(locale `ko`)를
+  잡아 "전 항목 미번역"으로 보인다(120차에 두 번 밟음).
+- 잔여: 튜토리얼 삽화 18장 영문판(목업 재렌더) · 타 지역 POI 백필 · dev 전용 문자열은 한국어 유지(의도).
+- 상세: `docs/wiki/03-WORKLOG/2026-09-08-120-i18n-remnants-nameen.md`
+
+**이전 변경 (2026-09-08 119차) — HUD 타이틀바 규칙 + 지역 채널 3단계 + 랜딩/수심 정보 + 영어 전수 보강** (사용자 피드백 8건 — 실렌더 검증·pageerror 0, 빌드 3/3·typecheck 0):
 
 - **HUD 타이틀바(캡션바) 규칙 신설** — 상태 패널에 밴드(`HUD_HEADER_H = 20`, 제목 '상태' + ◱ ◐)를 두고 컨텐츠를
   밴드 아래(`SP_CONTENT_Y`)로. **구 버그: 버튼 y 16~32 ↔ HP 바 y 28~38 4px 겹침**(116차부터). 지역 채널은

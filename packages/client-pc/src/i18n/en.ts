@@ -9,6 +9,8 @@
 import { EN_ITEMS } from './en_items.js';
 import { EN_RIG_COOKING } from './en_rig_cooking.js';
 import { EN_HELP } from './en_help.js';
+import { EN_CONTENT } from './en_content.js';
+import { EN_FISH } from './en_fish.js';
 
 /** 기본 사전 — 분야별 사전(EN_ITEMS/EN_RIG_COOKING/EN_HELP)보다 우선한다 */
 const EN_BASE: Record<string, string> = {
@@ -407,7 +409,7 @@ const EN_EXTRA: Record<string, string> = {
 
 /** 최종 사전 — 분야별 사전을 먼저 깔고 기본 사전이 덮는다(충돌 시 기본 우선) */
 export const EN_DICT: Record<string, string> = {
-  ...EN_ITEMS, ...EN_RIG_COOKING, ...EN_HELP, ...EN_EXTRA, ...EN_BASE,
+  ...EN_FISH, ...EN_CONTENT, ...EN_ITEMS, ...EN_RIG_COOKING, ...EN_HELP, ...EN_EXTRA, ...EN_BASE,
 };
 
 /**
@@ -520,6 +522,26 @@ export const EN_RULES: Rule[] = [
   [/^삶은 문어 (\d+)g$/, 'Boiled octopus $1g'],
   [/^지그헤드 (\d+)g$/, 'Jig head $1g'],
   [/^(.+) 필렛 \((.+)\) (\d+)g$/, '$1 fillet ($2) $3g'],
+  // 조립 문자열 (120차 ①) — 수치·코드가 끼어 규칙으로만 풀리는 것들
+  // ⚠ 순서 주의 — **구체적인 것부터**. 뒤의 포괄 규칙이 앞에 오면 나머지 캡처가 원문으로 남는다.
+  [/^평균 정확도 (\d+)%  ·  손질 스킬 \+(\d+) XP(.*)$/, (m, tr) => `Average accuracy ${m[1]}%  ·  Butchery +${m[2]} XP${tr(m[3])}`],
+  [/^평균 정확도 (\d+)%  ·  조각당 (.+)원$/, 'Average accuracy $1%  ·  ₩$2 per slice'],
+  [/^평균 정확도(\s+)(.+)$/, (m) => `Average accuracy${m[1]}${m[2]}`],
+  [/^  ★ 레벨업! Lv\.(\d+) ★$/, '  ★ Level up! Lv.$1 ★'],
+  [/^바늘 간격 ([\d.]+)m$/, 'Hook spacing $1 m'],
+  [/^바람 —$/, 'Wind —'],
+  // 손질 상태 줄 — 「필렛 0 / 2   시메 O · 방혈 X · 세척 2회」
+  // ⚠ 통짜로 잡아야 한다. 구분자 분해는 ` / `를 ` {2,}`보다 먼저 쪼개서 '필렛 0' 조각을 만들고,
+  //   그 조각은 어떤 규칙에도 안 맞아 한국어로 남는다(실측).
+  [/^필렛 (\d+) \/ (\d+)(\s+)([\s\S]+)$/, (m, tr) => `Fillets ${m[1]} / ${m[2]}${m[3]}${tr(m[4])}`],
+  // 손질 상태 줄 — 「시메 O · 방혈 X · 세척 2회」 (구분자 분해가 조각으로 넘긴다)
+  [/^시메 ([OX])$/, 'Ikejime $1'], [/^방혈 ([OX])$/, 'Bled $1'], [/^세척 (\d+)회$/, 'Rinsed ×$1'],
+  [/^칼: (.+)$/, 'Knife: $1'], [/^뷰: (.+)$/, 'View: $1'],
+  [/^방향 OK$/, 'Orientation OK'],
+  [/^손질 스킬 Lv\.(\d+) \(레벨업!\)$/, 'Butchery Lv.$1 (level up!)'],
+  [/^손질 스킬 Lv\.(\d+) \(\+(\d+) XP\)$/, 'Butchery Lv.$1 (+$2 XP)'],
+  // 번호 접두 — GLYPH_PREFIX 는 숫자를 \w 로 보고 안 잡는다(도움말 '1. 회칼이 필요해요')
+  [/^(\d+)\. (.+)$/s, (m, tr) => `${m[1]}. ${tr(m[2])}`],
   // 탐욕적 금액 규칙은 **맨 끝** — 앞에 두면 '2부위 착용  ·  280,000원' 같은 문장을 통째로 가로채서 본문이 한국어로 남는다 (119차 ⑥ 실측)
   [/^낚시하기 (.+)$/, 'Fishing $1'],
   [/^(.+) 원$/, '₩$1'], [/^(.+)원$/, '₩$1'],
