@@ -246,6 +246,8 @@ export interface RegionAreaNode {
   nameEn?: string;
   /** 짧은 설명 (팝업/라벨용) */
   desc: string;
+  /** 영어 한 줄 설명 (122차 — 데이터가 곧 번역) */
+  descEn?: string;
   /**
    * 지역 확대 지도(zoom_{slug}) 원본 이미지 기준 X 픽셀 좌표.
    * (WorldMapScene 핀 편집 Dev Tool로 캡처한 값)
@@ -259,6 +261,8 @@ export interface RegionAreaNode {
   // ── 낚시터 특성 (2026-07-16 실지 리서치 기반 — 지도 선택 화면 표시용) ──
   /** 특성 상세 라인 (지형/주요 어종/계절/시간대 등 — 출조 확인 카드에 표시) */
   details?: string[];
+  /** 영어 상세 라인 (details와 1:1) */
+  detailsEn?: string[];
   /** 대표 수심 범위 (m) — 스폰/캐스팅 밸런싱 참고치 */
   depthRangeM?: [number, number];
   /** 밑걸림 위험도 — 여밭/암반 지형의 채비 손실 위험 (high면 채비 손실 확률 상승) */
@@ -317,6 +321,7 @@ export const REGION_AREA_NODES: Record<string, RegionAreaNode[]> = {
       name: '속초항',
       nameEn: 'Sokcho Port',
       desc: '속초 대표 항구 · 원투 도다리의 성지',
+      descEn: "Sokcho's main harbour · surf-casting flounder heaven",
       pixelX: 184,
       pixelY: 60,
       fieldMapId: 'sokcho_sokchohang_1',
@@ -327,6 +332,13 @@ export const REGION_AREA_NODES: Record<string, RegionAreaNode[]> = {
         '봄·가을 도다리/가자미 · 여름 오징어(무늬/한치) · 겨울 볼락',
         '원투 도다리는 주간~해질녘, 볼락·오징어는 야간',
       ],
+      detailsEn: [
+        'Divided into outer harbour, inner harbour, channel and beach (difficulty: channel < inner < beach < outer)',
+        'Inner harbour and channel have a gentle bottom — good for families and beginners; the outer harbour is reef and deep main current',
+        'Key species: flounder (surf casting, worms) · halfbeak · rockfish · black rockfish · flatfish',
+        'Spring/autumn flounder and flatfish · summer squid (bigfin/swordtip) · winter rockfish',
+        'Surf-cast flounder by day to dusk; rockfish and squid at night',
+      ],
       depthRangeM: [3, 18],
       snagRisk: 'mid',
     },
@@ -335,6 +347,7 @@ export const REGION_AREA_NODES: Record<string, RegionAreaNode[]> = {
       name: '동명항',
       nameEn: 'Dongmyeong Port',
       desc: '겨울 명태로 유명한 동해 어항 · 사계절 낚시',
+      descEn: 'East Sea harbour famous for winter pollock · fishing all year',
       pixelX: 221,
       pixelY: 49,
       fieldMapId: 'sokcho_dongmyeonghang_1',
@@ -343,6 +356,12 @@ export const REGION_AREA_NODES: Record<string, RegionAreaNode[]> = {
         '대표 어종: 명태(겨울) · 가자미 · 임연수어 · 도다리 · 학공치 · 볼락 · 우럭',
         '사계절 가능, 겨울이 최고 시즌 (명태) · 학공치는 가을~겨울',
         '피크 시간대: 새벽 4~7시 / 밤 9시~자정 · 볼락·우럭은 야간 루어',
+      ],
+      detailsEn: [
+        'A well-equipped East Coast harbour — the outer side drops steeply',
+        'Key species: pollock (winter) · flatfish · Arabesque greenling · flounder · halfbeak · rockfish · black rockfish',
+        'Possible year round; winter is peak (pollock) · halfbeak autumn to winter',
+        'Peak hours: 4–7am / 9pm–midnight · rockfish on night lures',
       ],
       depthRangeM: [4, 20],
       snagRisk: 'mid',
@@ -357,6 +376,7 @@ export const REGION_AREA_NODES: Record<string, RegionAreaNode[]> = {
       name: '감천항 서방파제',
       nameEn: 'Gamcheon West Breakwater',
       desc: '깊은 물골의 상항 방파제 · 겨울 감성돔',
+      descEn: 'Deep-channel commercial breakwater · winter black seabream',
       pixelX: 21,
       pixelY: 232,
       fieldMapId: 'busan_gamcheon_west_1',
@@ -367,6 +387,13 @@ export const REGION_AREA_NODES: Record<string, RegionAreaNode[]> = {
         '원투: 도다리 · 보리멸 · 붕장어 생활낚시',
         '일몰 전후 1시간 집중 · 아침·해질녘 유리',
       ],
+      detailsEn: [
+        'A commercial harbour with a deep channel (about 12–16m)',
+        'Underwater reef on the outer side — black seabream point, but watch for snags',
+        'Key species: black seabream (year round, peak winter) · blackfish (early summer) · halfbeak · gizzard shad',
+        'Surf casting: flounder · whiting · conger eel',
+        'One hour around sunset is prime · mornings and dusk favourable',
+      ],
       depthRangeM: [12, 16],
       snagRisk: 'high',
     },
@@ -375,6 +402,7 @@ export const REGION_AREA_NODES: Record<string, RegionAreaNode[]> = {
       name: '감천항 동방파제',
       nameEn: 'Gamcheon East Breakwater',
       desc: '평균 12~16m 급심 · 14종+ 어종 백화점',
+      descEn: '12–16m deep · a department store of 14+ species',
       pixelX: 32,
       pixelY: 227,
       fieldMapId: 'busan_gamcheon_east_1',
@@ -385,6 +413,13 @@ export const REGION_AREA_NODES: Record<string, RegionAreaNode[]> = {
         '감성돔 피크 겨울 · 2월경 학공치/전어 · 3월 이후 전 어종 활성',
         '아침·저녁, 일몰 전~후 1시간 집중 · 학공치/전어는 낮 카드채비',
       ],
+      detailsEn: [
+        'Average depth 12–16m — ideal for winter black seabream; sheer wall gives good footing',
+        'Three underwater reefs on the outer side — seabream and knifejaw, frequent snags',
+        'Key species: black seabream · blackfish · knifejaw · halfbeak · horse mackerel · rockfish · gizzard shad · mackerel · filefish and more (14+)',
+        'Black seabream peaks in winter · halfbeak/shad around February · everything active from March',
+        'Mornings, evenings and one hour around sunset · halfbeak/shad on daytime sabiki rigs',
+      ],
       depthRangeM: [12, 16],
       snagRisk: 'high',
     },
@@ -393,6 +428,7 @@ export const REGION_AREA_NODES: Record<string, RegionAreaNode[]> = {
       name: '암남공원 (송도)',
       nameEn: 'Amnam Park (Songdo)',
       desc: '에깅 1번지 · 여밭 루어의 성지',
+      descEn: 'Eging No.1 · lure heaven over reef beds',
       pixelX: 52,
       pixelY: 208,
       fieldMapId: 'busan_amnam_1',
@@ -403,6 +439,13 @@ export const REGION_AREA_NODES: Record<string, RegionAreaNode[]> = {
         '겨울 전갱이·볼락 루어 호황 (겨울엔 전갱이가 볼락보다 잘 낚임)',
         '야간 루어·에깅 활발 — 진입 15분+ 후 활성화 경향',
       ],
+      detailsEn: [
+        'Near side: reef and rock with 4–5m drops (snag risk) / far side: 6–10m mixed sand, mud and reef',
+        'Key species: black rockfish · black seabream · flatfish · sea bass · beka squid · octopus',
+        'Bigfin and cuttlefish eging hotspot — Songdo reclaimed land is eging No.1',
+        'Winter horse mackerel and rockfish lures thrive (horse mackerel outfish rockfish in winter)',
+        'Night lures and eging are lively — tends to switch on 15+ minutes after arriving',
+      ],
       depthRangeM: [4, 10],
       snagRisk: 'high',
     },
@@ -411,6 +454,7 @@ export const REGION_AREA_NODES: Record<string, RegionAreaNode[]> = {
       name: '백운포 체육공원',
       nameEn: 'Baegunpo Sports Park',
       desc: '석축 생활낚시 · 여름밤 갈치 루어',
+      descEn: 'Stone-wall casual fishing · summer-night hairtail lures',
       pixelX: 176,
       pixelY: 137,
       fieldMapId: 'busan_baegunpo_1',
@@ -420,6 +464,13 @@ export const REGION_AREA_NODES: Record<string, RegionAreaNode[]> = {
         '볼락 · 감성돔 · 벵에돔 · 돌돔 · 갑오징어 · 무늬오징어',
         '초여름 풀치 ~ 가을 갈치 루어 포인트로 인기 · 벵에돔은 초여름(수온 15℃↑)',
         '야간 활발 (갈치·호래기·볼락 루어) · 일자방파제가 최고 조황',
+      ],
+      detailsEn: [
+        'Centred on the stone wall and straight breakwater — a shallow near-shore zone to drop floats from the wall',
+        'Key species: halfbeak · gizzard shad · mackerel (easy) · beka squid · sea bass · amberjack',
+        'Rockfish · black seabream · blackfish · knifejaw · cuttlefish · bigfin squid',
+        'Popular for early-summer to autumn hairtail lures · blackfish in early summer (water 15℃+)',
+        'Active at night (hairtail, beka squid, rockfish lures) · the straight breakwater fishes best',
       ],
       depthRangeM: [3, 8],
       snagRisk: 'mid',

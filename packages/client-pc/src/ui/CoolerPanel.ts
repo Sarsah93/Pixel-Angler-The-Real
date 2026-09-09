@@ -17,6 +17,7 @@ import { DraggablePanel } from './DraggablePanel.js';
 import { ConfirmDialog } from './Dialogs.js';
 import { ItemDetailPanel } from './ItemDetailPanel.js';
 import { createItemIcon } from './ItemIcon.js';
+import { getCreatureById } from '@tra/core';
 import {
   CoolerStore, COOLER_CAPACITY, CoolerFish, MEDIUM_LABEL,
 } from '../store/CoolerStore.js';
@@ -465,11 +466,13 @@ export class CoolerPanel extends DraggablePanel {
   private transferToInventory(idx: number): void {
     const f = CoolerStore.get(idx);
     if (!f) return;
+    // 해루질·통발 생물(ShoreCreatureDatabase id)은 '채집물' — 조례상 판매 금지 플래그 (121차)
+    const creature = getCreatureById(f.speciesId);
     const ok = InventoryStore.addItem({
-      id: `inv_catch_${f.speciesId}_${InventoryStore.nextCatchSeq()}`,
+      id: `inv_${creature ? 'forage' : 'catch'}_${f.speciesId}_${InventoryStore.nextCatchSeq()}`,
       name: `${f.nameKo} (${f.lengthCm}cm)`,
-      icon: '🐟', iconTexture: f.iconTexture,
-      category: 'food', subCategory: '어획물',
+      icon: creature ? '🐚' : '🐟', iconTexture: f.iconTexture,
+      category: 'food', subCategory: creature ? '채집물' : '어획물', ...(creature ? { forageCatch: true } : {}),
       basePrice: Math.max(2000, Math.round(f.weightG * 12)),
       condition: f.condition, equippable: false,
       speciesId: f.speciesId, lengthCm: f.lengthCm, weightG: f.weightG, sex: f.sex,

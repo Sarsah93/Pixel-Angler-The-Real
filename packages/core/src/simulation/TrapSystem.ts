@@ -14,6 +14,7 @@ import { FISH_DATABASE } from '../db-schema/FishDatabase.js';
 import type { FishSpecies } from '../db-schema/FishDatabase.js';
 import type { SpotType } from '../types/Environment.js';
 import type { TideInfo } from '../types/Environment.js';
+import { TUNING } from '../config/tuning.js';
 
 // ─────────────────────────────────────────────
 // 통발 설치 컨텍스트
@@ -227,11 +228,21 @@ export function calculateTrapLossRisk(
   // 강한 조류
   risk += currentStrength * 0.1;
 
-  // 내구도 낮을수록 위험
-  const durabilityRatio = trap.isLostOrDamaged ? 1 : spec.durability / spec.maxDurability;
+  // 내구도 낮을수록 위험 — 개체 내구도(121차)가 있으면 그것을, 없으면 스펙 기본값
+  const dur = trap.durability ?? spec.durability;
+  const durabilityRatio = trap.isLostOrDamaged ? 1 : dur / spec.maxDurability;
   risk += (1 - durabilityRatio) * 0.15;
 
-  return Math.min(0.5, risk);
+  return Math.min(0.5, risk * TUNING.trap.lossRiskMult);
+}
+
+/**
+ * 분실 판정 롤 (121차) — 수거 가능 상태로 넘어갈 때 **1회만** (lossRolled 플래그).
+ * 분실이면 `isLostOrDamaged = true` (통발 아이템 소멸 · 포획물 없음). 순수 함수 — 호출자가 상태를 갱신한다.
+ */
+export function rollTrapLoss(trap: DeployedTrap, currentStrength: number, soakTimeHours: number, rng: () => number = Math.random, riskMult = 1): boolean {
+  if (trap.lossRolled || trap.isLostOrDamaged) return false;
+  return rng() < calculateTrapLossRisk(trap, currentStrength, soakTimeHours) * Math.max(0, riskMult);
 }
 
 /**
@@ -241,10 +252,16 @@ export function validateTrapDeployment(
   trapSpecId: string,
   context: TrapDeploymentContext,
   existingTrapCount: number,
-  hasCommercialLicense: boolean
+  hasCommercialLicense: boolean,
+  hasAdvancedLicense = true,
 ): { valid: boolean; reason?: string } {
   const spec = getTrapById(trapSpecId);
   if (!spec) return { valid: false, reason: '유효하지 않은 통발입니다.' };
+
+  // 면허 등급 (121차) — 장어·문어·어류 그물은 심화 면허
+  if (spec.licenseTier === 'advanced' && !hasAdvancedLicense) {
+    return { valid: false, reason: '이 통발은 통발 조업 심화 면허(장어·문어)가 필요합니다.' };
+  }
 
   // 수심 체크
   if (context.depthM > spec.maxDepthM) {

@@ -95,6 +95,18 @@ py tools/backfill_poi_nameen.py <region>   # 정본 + public 사본 동시, 멱�
 index.html을 돌려줘 JSON 파싱 pageerror(함정 — depthProfileUrl과 동일). 방파제 단면(테트라포드/사석/
 상판)은 `computeBreakwaters`가 지형에서 자동 산출하므로 별도 데이터가 없다.
 
+## 어촌계 어장 폴리곤 (121차)
+
+```bash
+py tools/extract_fishfarms.py <region>      # → public/data/<region>/fishfarms.json (지역 bbox 교차 폴리곤만)
+```
+
+- 원본 = `docs/reference/gis/khoa_fishfarm_20250813/TL_DIST_FSHFRM.*`(국립해양조사원 어장정보, EPSG:5179, 114MB —
+  **gitignore**, 없으면 공공데이터포털 15130109에서 다시 받아 같은 폴더명으로). 파생 JSON(수 KB)만 커밋.
+- core `SEAMLESS_REGIONS[<id>].hasFishFarms = true` — `hasLights`와 같은 SPA 폴백 함정(파일 없이 플래그만 켜면 pageerror).
+- 마을어업(`village`)·협동양식업(`coop`)이 강원 조례 금지 구역. 다른 도는 조례가 다르다 — 지역 추가 시 규제 상수 확인.
+- 채집 스팟 후보는 지형에서 자동(`ForageSystem.computeCandidates`) — 별도 데이터 불요.
+
 ## 섬 드론 사진 → 갯바위 타일 (115차)
 
 ```bash

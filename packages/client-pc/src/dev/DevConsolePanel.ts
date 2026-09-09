@@ -14,6 +14,7 @@
  */
 
 import { FISH_DATABASE, SHORE_CREATURE_DATABASE } from '@tra/core';
+import { getLicenseByType, type LicenseType } from '@tra/core';
 import { GameState } from '../store/GameState.js';
 import { InventoryStore } from '../store/InventoryStore.js';
 import { DiscoveryStore } from '../store/DiscoveryStore.js';
@@ -93,8 +94,23 @@ function buildPanel(): HTMLDivElement {
   buildItemSection(box);
   buildFishSection(box);
   buildDiscoverySection(box);
+  buildLicenseSection(box);
 
   return box;
+}
+
+/** ⑥ 면허 즉시 발급 (121차 — 해루질·통발 검증용) */
+function buildLicenseSection(box: HTMLElement): void {
+  const body = section(box, '⑥ 면허 (해루질·통발)');
+  const types: LicenseType[] = ['shore_hunting_basic', 'shore_hunting_advanced', 'trap_basic', 'trap_advanced', 'commercial_trap'];
+  for (const t of types) {
+    const b = document.createElement('button');
+    const refresh = (): void => { b.textContent = `${getLicenseByType(t)?.nameKo ?? t}${GameState.hasLicense(t) ? ' ✓' : ''}`; };
+    refresh();
+    Object.assign(b.style, { display: 'block', width: '100%', marginBottom: '3px', textAlign: 'left' });
+    b.onclick = () => { GameState.acquireLicense(t); GameState.markDirty(); refresh(); flash(b, '발급'); };
+    body.appendChild(b);
+  }
 }
 
 /** ① 무적(갓모드) 토글 */

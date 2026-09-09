@@ -58,10 +58,14 @@ const { chromium } = resolvePlaywright();
 | GameState | `globalThis.__GS` (dev 전용) | 위와 동일 함정 (72차 실측) |
 | 1인칭 낚시 씬 | `globalThis.__FP` (dev 전용) — `devForceBite()` / `devForceFight('dive'|'jump'|'lateral'|'none', dir)` · 패턴을 유지하려면 `fight.patternTimer = 9`도 같이 | 입질을 기다리지 말 것 — 강제한다(118차). 캐스팅은 물 쪽(우하)으로 조준: `mouse.move(900,440) → down 400ms → up` |
 | 맵 편집기(F7) 상태 | `globalThis.__MAPEDIT` (dev 전용 — `state`/`rotate`/`flip`/`toggleOverlap`/`isOpen`) | import한 `MapEditorPanel`은 게임과 별개 인스턴스 (106차 실측 — `mapEditorState` 동일성 false) |
+| 채집·통발 필드 시스템 | `globalThis.__FIELD` (dev 전용 — `forage`(`allSpots`/`devForceSpot`/`candidateStats`) · `trapField`(`placing` 주입 → `confirmAt`/`devRewind`/`harvest`) · `cooler` · `tuning`(TUNING 실인스턴스) · `getTrapById`) | **실데이터 파고 ≥1.5m·풍속 ≥12m/s면 [E]가 거부된다**(121차 실측 2.1m) — `__FIELD.tuning.forage.maxWaveM = 9`로 올리고 진행. 적발 확률은 `tuning.forage.enforcementChance = 1`. 씬 진입은 `__GS.startNewGameInSlot(3)` → `scene.start('RegionFieldScene',{region:'gangwon_sokcho'})` |
 | 모듈 함수(렌더러 등) | `await import('/src/…​.ts')` — **`.ts` URL** | `.js` URL은 별개 모듈. 상태 없는 순수 함수 호출에만 사용 |
 
 - **패널 직접 생성 시** `scene.add.existing(panel)` 필수 — DraggablePanel(Container)은 자동 등록되지 않는다 (7차).
 - HMR 후에는 `?t=` 버전 분화 가능 — 이상하면 dev 서버 재시작 후 검증.
+- **dev 서버를 `| head`로 파이프하지 말 것**(122차) — head가 닫히면 vite가 SIGPIPE로 죽어 하네스가 ECONNREFUSED. 로그는 `> vite.log 2>&1`로.
+- **core 데이터가 하네스에 필요하면 `await import('/@id/@tra/core')`**(122차 — `REGION_DATABASE`·`FISH_DATABASE` 등. 상태 없는 데이터 전용).
+- 도감 카드 전부 채우기 = `__DISC.devUnlockAll('fish', ids)` / `('creature', ids)` — **(kind, ids) 2인자**(122차).
 - ⚠ **i18n 검증은 특히 위험** — `i18n/*.ts` 를 고친 뒤 하네스가 `import('/src/i18n/I18n.ts')` 하면
   HMR 분화로 **게임과 다른 인스턴스**(locale 기본 `ko`)를 잡아 `t()`가 전부 원문을 돌려준다.
   "고쳤는데 전 항목 미번역"으로 보인다(120차에 두 번). **i18n 수정 → dev 서버 재시작 → 스캔.**

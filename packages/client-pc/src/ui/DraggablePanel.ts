@@ -203,6 +203,9 @@ export class DraggablePanel extends Phaser.GameObjects.Container {
    * 정렬은 depth 값이 우선이라 정적 depth가 다른 패널(인벤 800 vs 장비 810)끼리는
    * 완전히 무력했다 — "클릭 시 최상단"이 사실상 사문이던 원인.
    */
+  /** 열리는 순간 같은 밴드 최상단으로 (122차 — 새 팝업이 먼저 열린 큰 패널 아래로 깔리지 않게. ESC LIFO와 정합) */
+  raiseToTop(): void { this.bringSelfToTop(); }
+
   protected bringSelfToTop(): void {
     const modal = this.zBase >= MODAL_BAND_MIN;
     const bandBase = modal ? MODAL_BAND_MIN : 800;

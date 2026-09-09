@@ -75,7 +75,7 @@ export class AnglerLogScene extends Phaser.Scene {
       fontStyle: 'bold',
     });
 
-    this.add.text(40, 65, 'ESC 키 또는 상단 [나가기] 버튼을 누르면 월드로 귀환합니다.', {
+    this.add.text(40, 65, 'ESC 키 또는 우측 상단 ✕ 버튼을 누르면 월드로 귀환합니다.', {
       fontFamily: '"Noto Sans KR", sans-serif',
       fontSize: '12px',
       color: '#8faabf',
@@ -84,21 +84,17 @@ export class AnglerLogScene extends Phaser.Scene {
     // ─────────────────────────────────────────────
     // [UI] 나가기 버튼
     // ─────────────────────────────────────────────
-    const backBtn = this.add.container(width - 120, 30).setInteractive(
-      new Phaser.Geom.Rectangle(-40, -14, 80, 28),
-      Phaser.Geom.Rectangle.Contains
+    // 닫기 = 우측 상단 ✕ (122차 — 팝업 공통 디자인. 구 '나가기' 사각 버튼 폐기)
+    const closeBtn = this.add.container(width - 40, 34).setInteractive(
+      new Phaser.Geom.Rectangle(-14, -14, 28, 28), Phaser.Geom.Rectangle.Contains,
     );
-    const backBg = this.add.rectangle(0, 0, 80, 28, 0x1f3d5a).setStrokeStyle(1.5, 0x2a5a8a);
-    const backText = this.add.text(0, 0, '나가기', {
-      fontFamily: '"Noto Sans KR", sans-serif',
-      fontSize: '12px',
-      color: '#ffffff',
-      fontStyle: 'bold',
-    }).setOrigin(0.5);
-    backBtn.add([backBg, backText]);
-    backBtn.on('pointerdown', () => this.onBack());
-    backBtn.on('pointerover', () => backBg.setFillStyle(0x2a5a8a));
-    backBtn.on('pointerout', () => backBg.setFillStyle(0x1f3d5a));
+    const closeBg = this.add.graphics();
+    closeBg.lineStyle(2, 0x4a6a8a, 0.8); closeBg.strokeCircle(0, 0, 12);
+    const closeTxt = this.add.text(0, 0, '✕', { fontFamily: 'monospace', fontSize: '14px', color: '#8faabf' }).setOrigin(0.5);
+    closeBtn.add([closeBg, closeTxt]);
+    closeBtn.on('pointerdown', () => this.onBack());
+    closeBtn.on('pointerover', () => closeTxt.setColor('#ff6b6b'));
+    closeBtn.on('pointerout', () => closeTxt.setColor('#8faabf'));
 
     // ─────────────────────────────────────────────
     // [UI] 탭 버튼 영역 (배열 기반 4탭)
@@ -560,19 +556,21 @@ export class AnglerLogScene extends Phaser.Scene {
     ];
 
     // 라벨 실측 폭 기준으로 첫 버튼을 배치 — 구 고정값(120)은 라벨(우측 끝 ≈112)과 버튼(좌측 85)이 겹쳤다
-    let filterBtnX = 40 + filterLabel.width + 12 + 35;
+    let filterBtnX = 40 + filterLabel.width + 12;   // 버튼 좌측 끝 (폭 가변)
     filters.forEach((filter) => {
       const isSelected = this.filterSpotId === filter.id;
-      const btn = this.add.container(filterBtnX, controlY + 6).setInteractive(
-        new Phaser.Geom.Rectangle(-35, -10, 70, 20),
-        Phaser.Geom.Rectangle.Contains
-      );
-      const bg = this.add.rectangle(0, 0, 70, 20, isSelected ? 0x2a5a8a : 0x0e1c2d).setStrokeStyle(1, 0x1f3d5a);
       const text = this.add.text(0, 0, filter.label, {
         fontFamily: '"Noto Sans KR", sans-serif',
         fontSize: '9px',
         color: isSelected ? '#4af2a1' : '#a0b8c8',
       }).setOrigin(0.5);
+      // 버튼 폭 = 라벨 실측 + 패딩 (122차 — 영문 'Geoje Breakwater'·'Yangyang Naksan'이 고정 70px 테두리에 닿았다)
+      const w = Math.max(70, Math.ceil(text.width) + 14);
+      const btn = this.add.container(filterBtnX + w / 2, controlY + 6).setInteractive(
+        new Phaser.Geom.Rectangle(-w / 2, -10, w, 20),
+        Phaser.Geom.Rectangle.Contains
+      );
+      const bg = this.add.rectangle(0, 0, w, 20, isSelected ? 0x2a5a8a : 0x0e1c2d).setStrokeStyle(1, 0x1f3d5a);
 
       btn.add([bg, text]);
       btn.on('pointerdown', () => {
@@ -581,7 +579,7 @@ export class AnglerLogScene extends Phaser.Scene {
         this.renderCurrentTab();
       });
       this.tabContainer?.add(btn);
-      filterBtnX += 76;
+      filterBtnX += w + 6;
     });
 
     // 2) 정렬 텍스트 라벨

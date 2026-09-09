@@ -108,6 +108,10 @@ export interface TrapSpec {
    * 지정 시 해당 어종이 해루질 생물과 함께 포획 후보에 편입된다.
    */
   targetFishSpecies?: string[];
+  /** 필요 면허 등급 (121차) — basic = 게·새우 / advanced = 장어·문어·어류 그물 */
+  licenseTier: 'basic' | 'advanced';
+  /** 직판장 판매가(원) — 아이템으로 구매·소유·설치 시 소모·수거 시 반환(121차) */
+  priceWon: number;
 }
 
 /** 통발 설치 상태 */
@@ -125,6 +129,15 @@ export interface DeployedTrap {
   /** 현재 포획된 생물 목록 */
   catchInside: TrapCatchItem[];
   isLostOrDamaged: boolean;       // 해류/무단수거 등으로 분실/손상
+  // ── 121차 인-맵 통발 (구세이브에는 없다 — 전부 optional, 소비처 폴백 필수) ──
+  /** 설치 지점 실측 수심(m) — 육지 거리 × 수심 프로필 */
+  depthM?: number;
+  /** 분실 판정 완료 (수거 가능 전이 시 1회만 롤) */
+  lossRolled?: boolean;
+  /** 개체 내구도 (수거마다 감소 — 0이면 파손) */
+  durability?: number;
+  /** 설치 맵 id (심리스 = region 데이터 키) — 씬이 자기 맵 통발만 렌더 */
+  mapId?: string;
 }
 
 export interface TrapCatchItem {

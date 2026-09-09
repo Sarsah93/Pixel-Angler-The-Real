@@ -8,7 +8,7 @@
  * 표시 내용은 `DATA_ATTRIBUTIONS`(@tra/core)가 원본 — 새 API를 연동하면
  * 그 목록에 추가하기만 하면 이 화면에 자동 반영된다.
  *
- * 조작: ↑↓ / 마우스 휠 스크롤 · ESC 또는 [뒤로] 복귀
+ * 조작: ↑↓ / 마우스 휠 스크롤 · ESC 또는 우측 상단 ✕ 복귀 (122차 — 하단 걸침 버튼 폐기)
  */
 
 import Phaser from 'phaser';
@@ -24,7 +24,7 @@ interface CreditsInit {
 // ── 레이아웃 ────────────────────────────────────────
 const MARGIN_X = 90;
 const HEADER_H = 118;
-const FOOTER_H = 64;
+const FOOTER_H = 70;
 const CONTENT_X = MARGIN_X + 28;
 const CONTENT_W = GAME_WIDTH - MARGIN_X * 2 - 56;
 
@@ -90,6 +90,18 @@ export class CreditsScene extends Phaser.Scene {
     const line = this.add.graphics();
     line.lineStyle(1, 0x2a5a8a, 0.7);
     line.lineBetween(CONTENT_X, HEADER_H + 8, CONTENT_X + CONTENT_W, HEADER_H + 8);
+
+    // 닫기 = 우측 상단 ✕ (팝업 공통 디자인 — 122차)
+    const closeBtn = this.add.container(GAME_WIDTH - MARGIN_X - 28, 66).setInteractive(
+      new Phaser.Geom.Rectangle(-14, -14, 28, 28), Phaser.Geom.Rectangle.Contains,
+    );
+    const closeBg = this.add.graphics();
+    closeBg.lineStyle(2, 0x4a6a8a, 0.8); closeBg.strokeCircle(0, 0, 12);
+    const closeTxt = this.add.text(0, 0, '✕', { fontFamily: 'monospace', fontSize: '14px', color: '#8faabf' }).setOrigin(0.5);
+    closeBtn.add([closeBg, closeTxt]);
+    closeBtn.on('pointerdown', () => this.close());
+    closeBtn.on('pointerover', () => closeTxt.setColor('#ff6b6b'));
+    closeBtn.on('pointerout', () => closeTxt.setColor('#8faabf'));
   }
 
   private drawFooter(): void {
@@ -98,33 +110,11 @@ export class CreditsScene extends Phaser.Scene {
     line.lineStyle(1, 0x2a5a8a, 0.7);
     line.lineBetween(CONTENT_X, y - 6, CONTENT_X + CONTENT_W, y - 6);
 
-    this.add.text(CONTENT_X, y + 6,
+    // 푸터 한 줄 — 패널 하단(680) 안쪽에 머문다 (구: 660+15 = 675 ✓ / 구 버튼은 692까지 걸쳐 있었다)
+    this.add.text(CONTENT_X, y + 4,
       '공공데이터포털(data.go.kr) 제공 데이터 · 출처 표시 후 이용', {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#7a97ab',
     });
-
-    // 뒤로 버튼
-    const bw = 96, bh = 30;
-    const bx = CONTENT_X + CONTENT_W - bw, by = y + 2;
-    const g = this.add.graphics();
-    this.drawButton(g, bx, by, bw, bh, false);
-
-    const label = this.add.text(bx + bw / 2, by + bh / 2, '뒤로 (ESC)', {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#cfe3f2',
-    }).setOrigin(0.5);
-
-    const zone = this.add.zone(bx, by, bw, bh).setOrigin(0).setInteractive({ useHandCursor: true });
-    zone.on('pointerover', () => { this.drawButton(g, bx, by, bw, bh, true); label.setColor('#ffffff'); });
-    zone.on('pointerout', () => { this.drawButton(g, bx, by, bw, bh, false); label.setColor('#cfe3f2'); });
-    zone.on('pointerup', () => this.close());
-  }
-
-  private drawButton(g: Phaser.GameObjects.Graphics, x: number, y: number, w: number, h: number, hover: boolean): void {
-    g.clear();
-    g.fillStyle(hover ? 0x2a5a8a : 0x16293e, 1);
-    g.fillRoundedRect(x, y, w, h, 3);
-    g.lineStyle(1.5, hover ? 0x6fd3e0 : 0x2a5a8a, 1);
-    g.strokeRoundedRect(x, y, w, h, 3);
   }
 
   // ═══════════════════════════════════════════════════
@@ -199,7 +189,8 @@ export class CreditsScene extends Phaser.Scene {
   // 스크롤
   // ═══════════════════════════════════════════════════
   private maxScroll(): number {
-    return Math.max(0, this.contentH - this.viewH);
+    // 본문 top 오프셋(+4)과 마지막 줄 하단 여백을 더해야 끝 줄이 마스크에 잘리지 않는다 (122차 실측 — 마지막 ※ 줄 절반 절단)
+    return Math.max(0, this.contentH + 24 - this.viewH);
   }
 
   private applyScroll(delta: number): void {

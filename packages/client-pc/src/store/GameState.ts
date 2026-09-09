@@ -30,6 +30,10 @@ import type {
 } from '@tra/core';
 import type { WorldObjectState } from '@tra/core';
 import {
+  skillPointsForLevel, skillPointsSpent, skillPrereqsMet, getSkillById, SKILL_CATEGORIES,
+  skillMult as coreSkillMult, skillBonus as coreSkillBonus, type SkillRanks, type SkillEffectKey,
+} from '@tra/core';
+import {
   getLicenseByType, getCurrentGameMinute, calculateTideInfo, getFishById,
   createEmptyWorldObjectState, TUNING,
 } from '@tra/core';
@@ -133,6 +137,8 @@ interface SaveData {
   visitedSpotIds: string[];
   completedQuestIds: string[];
   skills?: SkillState;
+  /** 스킬 트리 랭크 (122차) — 포인트는 레벨에서 파생하므로 랭크만 저장 */
+  skillTree?: SkillRanks;
   /** 휴대 쿨러 상태 (어획/매질/밑밥) — 로드 시 실경과 시간만큼 신선도/매질 진행 */
   coolerBox?: CoolerSaveState;
   /** 인벤토리 상태 (아이템/퀵슬롯/채비/편대/루어 모드) — 신선도는 lazy refresh로 실경과 반영 */
@@ -176,6 +182,7 @@ export class GameStateManager {
   private _visitedSpotIds: Set<string> = new Set();
   private _completedQuestIds: Set<string> = new Set();
   private _skills: SkillState = createDefaultSkills();
+  private _skillRanks: SkillRanks = {};
   /** 1회성 안내 플래그 (세이브 대상) — 예: chumGuideSeen */
   private _flags: Record<string, boolean> = {};
   /** 맵별 오브젝트 월드 상태 (세이브 대상) — key = mapId */
@@ -233,6 +240,7 @@ export class GameStateManager {
     this._visitedSpotIds = new Set(saved.visitedSpotIds ?? []);
     this._completedQuestIds = new Set(saved.completedQuestIds ?? []);
     this._skills = saved.skills ?? createDefaultSkills();
+    this._skillRanks = saved.skillTree ?? {};
     this._flags = saved.flags ?? {};
     this._worldObjects = saved.worldObjects ?? {};
     // 쿨러 복원 — 저장~로드 사이 실경과 시간을 sync로 반영 (어획 신선도/매질 만료, 밑밥은 그대로)
@@ -427,6 +435,30 @@ export class GameStateManager {
     }
   }
 
+  // ─── 스킬 트리 (122차) — 포인트 = 레벨 파생 · 랭크만 영속 ───
+  get skillRanks(): SkillRanks { return this._skillRanks; }
+  skillRank(id: string): number { return this._skillRanks[id] ?? 0; }
+  skillPointsTotal(): number { return skillPointsForLevel(this._player?.level ?? 1); }
+  skillPointsAvailable(): number { return Math.max(0, this.skillPointsTotal() - skillPointsSpent(this._skillRanks)); }
+  canLearnSkill(id: string): { ok: boolean; reason?: string } {
+    const d = getSkillById(id);
+    if (!d) return { ok: false, reason: '알 수 없는 스킬' };
+    if (SKILL_CATEGORIES.find((c) => c.id === d.category)?.locked) return { ok: false, reason: '이 카테고리는 아직 잠겨 있습니다' };
+    if ((this._skillRanks[id] ?? 0) >= d.maxRank) return { ok: false, reason: '이미 최대 랭크입니다' };
+    if (!skillPrereqsMet(d, this._skillRanks)) return { ok: false, reason: '선행 스킬이 필요합니다' };
+    if (this.skillPointsAvailable() < d.costPerRank) return { ok: false, reason: '스킬 포인트가 부족합니다' };
+    return { ok: true };
+  }
+  learnSkill(id: string): boolean {
+    if (!this.canLearnSkill(id).ok) return false;
+    this._skillRanks[id] = (this._skillRanks[id] ?? 0) + 1;
+    this.markDirty();
+    return true;
+  }
+  /** 효과 배율 (1 + Σ) — 소비처는 매 호출 읽는다 */
+  skillMult(key: SkillEffectKey): number { return coreSkillMult(this._skillRanks, key); }
+  skillBonus(key: SkillEffectKey): number { return coreSkillBonus(this._skillRanks, key); }
+
   // ─── 통발 조작 ─────────────────────────────
 
   /** 통발 설치 */
@@ -577,6 +609,7 @@ export class GameStateManager {
       visitedSpotIds: Array.from(this._visitedSpotIds),
       completedQuestIds: Array.from(this._completedQuestIds),
       skills: this._skills,
+      skillTree: this._skillRanks,
       coolerBox: CoolerStore.serialize(),
       inventoryStore: InventoryStore.serialize(),
       fridge: FridgeStore.serialize(),
@@ -750,6 +783,7 @@ export class GameStateManager {
     this._visitedSpotIds = new Set();
     this._completedQuestIds = new Set();
     this._skills = createDefaultSkills();
+    this._skillRanks = {};
     this._flags = {};
     this._worldObjects = {};
     this._dirty = false;

@@ -39,6 +39,7 @@ export type {
 export type {
   LicenseType,
   LicenseDef,
+  LicenseCategory,
   UnlockRequirement,
   UnlockableFeature,
   PlayerLicenses,
@@ -96,7 +97,7 @@ export { TRAP_DATABASE, getTrapById, getTrapsByType } from './db-schema/TrapData
 export { RECIPE_DATABASE, getRecipeById, getRecipesByLocation, getRecipesByIngredient } from './db-schema/RecipeDatabase.js';
 export { ANGLER_APP_REGIONS, TIDAL_CHARACTERISTICS, getRegionByCode, getRegionsByProvince, getRegionsByTidalCharacteristic, getAnglerAppRegions } from './db-schema/AnglerAppSpots.js';
 export type { AnglerAppRegion } from './db-schema/AnglerAppSpots.js';
-export { LICENSE_DATABASE, getLicenseByType, checkUnlockRequirements } from './types/License.js'; // Note: Defined directly inside types/License.ts
+export { LICENSE_DATABASE, LICENSE_CATEGORY_LABEL, LICENSE_CATEGORY_ORDER, getLicenseByType, checkUnlockRequirements } from './types/License.js'; // Note: Defined directly inside types/License.ts
 export { QUEST_DATABASE, getQuestById, getQuestsByCategory, getAvailableQuests } from './db-schema/QuestDatabase.js';
 export { FISH_BEHAVIOR_DB, getBehaviorProfile, interpolateTempActivity, isClosedSeason } from './db-schema/FishBehaviorDatabase.js';
 export type { FishBehaviorProfile, TempActivityPoint } from './db-schema/FishBehaviorDatabase.js';
@@ -197,7 +198,30 @@ export type { CastInput, CastResult } from './simulation/CastingModel.js';
 export { evaluateFishingSafety, isGoldenHour, isNighttime, buildFishingEnvironment, getWindDirectionLabel } from './simulation/WeatherModel.js';
 export { canPerformNightHunting, getHuntableCreatures, attemptHunt, simulateNightHuntingSession } from './simulation/NightHuntingEngine.js';
 export type { NightHuntingContext } from './simulation/NightHuntingEngine.js';
-export { harvestTrap, calculateTrapLossRisk, validateTrapDeployment, getNextOptimalHarvestTime } from './simulation/TrapSystem.js';
+export { harvestTrap, calculateTrapLossRisk, rollTrapLoss, validateTrapDeployment, getNextOptimalHarvestTime } from './simulation/TrapSystem.js';
+
+// 인-맵 채집(해루질) · 어장 폴리곤 · 강원 조례 (121차)
+export type {
+  ForageTool, ForageAccess, ForageSpotKind, ForageCandidate, ForageSpot,
+  FishFarmKind, FishFarm, RegionFishFarms,
+} from './types/Foraging.js';
+export {
+  isProtectedFarmKind, FISH_FARM_KIND_LABEL, pointInRing, farmAt,
+  GANGWON_FORAGE_ORDINANCE, FORAGE_CATCH_SELLABLE,
+} from './types/Foraging.js';
+export type { ForageEnvContext, ForageSafety, RollForageOpts, ForageOutcome, ForageResult, EnforcementResult, ForageMods } from './simulation/ForagingEngine.js';
+
+// 스킬 트리 (122차) — 카테고리·노드·포인트·효과 배율
+export type { SkillCategoryId, SkillEffectKey, SkillEffect, SkillDef, SkillCategoryDef, SkillRanks } from './types/Skills.js';
+export { SKILL_POINTS_PER_LEVEL, skillPointsForLevel } from './types/Skills.js';
+export {
+  SKILL_CATEGORIES, SKILL_DATABASE, getSkillById, skillsOfCategory, skillPointsSpent, skillPrereqsMet, skillMult, skillBonus,
+} from './db-schema/SkillDatabase.js';
+export {
+  mulberry32, forageSeed, forageSafety, creatureSpotKinds, creatureTools, FORAGE_TOOL_LABEL,
+  pickForageTool, forageHoldMs, rollForageSpots, attemptForage, isOrdinanceViolation,
+  rollEnforcement, trapSeasonViolations,
+} from './simulation/ForagingEngine.js';
 export type { TrapDeploymentContext } from './simulation/TrapSystem.js';
 export { evaluateFishSellPrice } from './simulation/MarketPriceEvaluator.js';
 export type { PriceEvaluationResult } from './simulation/MarketPriceEvaluator.js';
@@ -257,7 +281,7 @@ export { KMA_GRID_BY_REGION, getKmaGrid } from './db-schema/KmaGridPoints.js';
 // 공공데이터 출처 표기 (이용약관상 출처 표시 의무)
 export type { DataAttribution, DataLicense } from './db-schema/DataAttributions.js';
 export {
-  DATA_ATTRIBUTIONS, LICENSE_LABEL, groupAttributionsByProvider,
+  DATA_ATTRIBUTIONS, LICENSE_LABEL, LICENSE_LABEL_EN, groupAttributionsByProvider,
 } from './db-schema/DataAttributions.js';
 
 // 입질 시퀀스 (초릿대 구부러짐 3단계 + 챔질 판정)

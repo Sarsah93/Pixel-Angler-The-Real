@@ -88,7 +88,7 @@ export class HomeInteriorScene extends Phaser.Scene {
     this.applySpriteSize();
 
     this.cursors = this.input.keyboard!.createCursorKeys();
-    this.input.keyboard!.on('keydown-E', () => this.tryInteract());
+    this.input.keyboard!.on('keydown-F', () => this.tryInteract());   // 122차: 상호작용 키 E → F
     this.input.keyboard!.on('keydown-ESC', () => {
       if (this.fridgePanel) { this.closeFridge(); return; }
       if (this.bedMenu) { this.closeBedMenu(); return; }
@@ -302,11 +302,11 @@ export class HomeInteriorScene extends Phaser.Scene {
     }
     this.nearObj = nearest;
     if (nearest) {
-      const label = nearest.interact === 'save' ? '[E] 침대 — 저장하고 쉬기'
-        : nearest.interact === 'door' ? '[E] 나가기'
-        : nearest.interact === 'cook' ? '[E] 주방 (요리 준비중)'
-        : nearest.instanceId === 'fridge' ? '[E] 냉장고 열기'
-        : '[E] 수납 (추후)';
+      const label = nearest.interact === 'save' ? '[F] 침대 — 저장하고 쉬기'
+        : nearest.interact === 'door' ? '[F] 나가기'
+        : nearest.interact === 'cook' ? '[F] 주방 (요리 준비중)'
+        : nearest.instanceId === 'fridge' ? '[F] 냉장고 열기'
+        : '[F] 수납 (추후)';
       this.hintText.setText(label).setPosition(this.px, this.py - PLAYER_H - 6).setVisible(true);
     } else {
       this.hintText.setVisible(false);

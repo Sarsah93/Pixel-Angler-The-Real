@@ -411,6 +411,17 @@ export class InventoryPanel extends DraggablePanel {
         },
       });
     }
+    // 통발 아이템 (trapSpecId) — 물가에서 설치 모드 (121차)
+    if (item.trapSpecId) {
+      actions.push({
+        label: '통발 놓기',
+        color: '#ffd257', hoverColor: '#ffe9a0',
+        run: () => {
+          this.scene.events.emit('trap-place-request', item);
+          this.cbs.onClose();
+        },
+      });
+    }
     // 고급 회 조각/사시미 — '요리하기' (스시 만들기 연계 산출물 — 사용자 지시 2026-08-03. 현재 준비 중 스텁)
     if (item.id.startsWith('inv_sashimi_cut_adv_') || item.id.startsWith('inv_sashimi_plate_adv_')) {
       actions.push({

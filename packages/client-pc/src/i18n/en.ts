@@ -9,6 +9,8 @@
 import { EN_ITEMS } from './en_items.js';
 import { EN_RIG_COOKING } from './en_rig_cooking.js';
 import { EN_HELP } from './en_help.js';
+import { EN_FORAGE } from './en_forage.js';
+import { EN_PANELS } from './en_panels.js';
 import { EN_CONTENT } from './en_content.js';
 import { EN_FISH } from './en_fish.js';
 
@@ -53,8 +55,8 @@ const EN_BASE: Record<string, string> = {
   '바다 가까이에서 캐스팅하세요': 'Cast closer to the sea',
   '육지에 떨어졌습니다 — 바다를 조준하세요': 'Landed on ground — aim at the sea',
   '잘못된 캐스팅입니다 — 릴링 경로가 육지에 걸립니다': 'Bad cast — the reeling path crosses land',
-  '출조 버스': 'Trip Bus', '[E] 회수': '[E] Pick up', '[E] 집으로 들어가기': '[E] Enter home', '[E] 출조 버스 (전국 지도)': '[E] Trip bus (national map)',
-  '[E] 수조 열기': '[E] Open tank', '[E] 벌목 (추후)': '[E] Chop (later)', '[E] 채굴 (추후)': '[E] Mine (later)', '[E] 채집 (추후)': '[E] Gather (later)', '[E] 보트 (추후)': '[E] Boat (later)',
+  '출조 버스': 'Trip Bus', '[F] 회수': '[F] Pick up', '[F] 집으로 들어가기': '[F] Enter home', '[F] 출조 버스 (전국 지도)': '[F] Trip bus (national map)',
+  '[F] 수조 열기': '[F] Open tank', '[F] 벌목 (추후)': '[F] Chop (later)', '[F] 채굴 (추후)': '[F] Mine (later)', '[F] 채집 (추후)': '[F] Gather (later)', '[F] 보트 (추후)': '[F] Boat (later)',
   '수조 패널은 준비 중입니다 (활어 보관 — 후속)': 'Tank panel is coming soon (live storage)',
   '벌목은 추후 — 도끼가 필요합니다': 'Chopping comes later — needs an axe', '채굴은 추후 — 곡괭이가 필요합니다': 'Mining comes later — needs a pickaxe',
   '갯바위 채집은 추후 개방됩니다': 'Rock gathering opens later', '개인 보트 출조는 추후 개방됩니다': 'Private boat trips open later',
@@ -170,12 +172,12 @@ const EN_BASE: Record<string, string> = {
   '지역을 클릭하거나 지도의 핀을 선택해 출조지를 고르세요  [ESC] 메인 메뉴': 'Click a region or a pin on the map  [ESC] Main menu', '준비중 — 현재 잠금': 'Coming soon — locked',
   '← 전국 지도': '← National Map', '지도의 핀 또는 아래 목록에서\n활동할 구역을 선택하세요.\n\n[ESC] 전국 지도로 돌아가기': 'Pick an area from the pins or the list below.\n\n[ESC] Back to national map',
   '이 지역의 세부 낚시 포인트는\n준비중입니다 (타일맵 에셋 제작 예정).\n\n[ESC] 전국 지도로 돌아가기': "This region's fishing spots are\ncoming soon (tilemap in production).\n\n[ESC] Back to national map",
-  '낚시터 목록 (임시)': 'Spots (temp.)', '해당 구역으로 출조하시겠습니까?': 'Travel to this area?', '필드 지도 준비중 — 타일맵 제작 후 출조할 수 있습니다.': 'Field map coming soon — available after the tilemap is built.',
+  '낚시터 목록 (임시)': 'Spots (temp.)', '지도 준비중': 'Map coming soon', '해당 구역으로 출조하시겠습니까?': 'Travel to this area?', '필드 지도 준비중 — 타일맵 제작 후 출조할 수 있습니다.': 'Field map coming soon — available after the tilemap is built.',
   '예, 출조하기 ▶': 'Yes, go ▶', '준비중': 'Coming soon', '[ESC] 취소': '[ESC] Cancel', '← 지역 지도': '← Region Map', '포인트 클릭 → 이동 확인  [ESC] 지역 지도로': 'Click a spot → confirm  [ESC] region map', '낚시 유형': 'Fishing types',
   '면허가 없어 이동할 수 없습니다. 필드에서 면허사무소를 이용해 주세요.': "You don't have the license. Visit the license office in the field.", 'VWorld 기반 픽셀 지도': 'Pixel map based on VWorld',
   '집 (Tier 0 원룸) — 침대에서 저장 · 문으로 나가기 (ESC)': 'Home (Tier 0 studio) — save at bed · leave by door (ESC)', '지하실 (확장 예약)': 'Basement (reserved)', '▶\n평수\n확장': '▶\nfloor\nexpand',
-  '저장★ 침대': 'Save★ Bed', '문 → 홈타운 외부': 'Door → outside', '주방': 'Kitchen', '[E] 침대 — 저장하고 쉬기': '[E] Bed — save & rest', '[E] 나가기': '[E] Leave', '[E] 주방 (요리 준비중)': '[E] Kitchen (cooking soon)',
-  '[E] 냉장고 열기': '[E] Open fridge', '[E] 수납 (추후)': '[E] Storage (later)', '주방 조리는 준비 중입니다 (요리는 U 창의 도마 — 추후 실내 연결)': 'Kitchen cooking is coming soon (use the board in U for now)',
+  '저장★ 침대': 'Save★ Bed', '문 → 홈타운 외부': 'Door → outside', '주방': 'Kitchen', '[F] 침대 — 저장하고 쉬기': '[F] Bed — save & rest', '[F] 나가기': '[F] Leave', '[F] 주방 (요리 준비중)': '[F] Kitchen (cooking soon)',
+  '[F] 냉장고 열기': '[F] Open fridge', '[F] 수납 (추후)': '[F] Storage (later)', '주방 조리는 준비 중입니다 (요리는 U 창의 도마 — 추후 실내 연결)': 'Kitchen cooking is coming soon (use the board in U for now)',
   '수납은 추후 구현됩니다': 'Storage comes later', '침대에서 쉬어갑니다': 'Rest in bed', '저장하고 쉬기': 'Save & rest', '저장에 실패했습니다': 'Save failed', '그냥 쉬기': 'Just rest',
   '잠깐 눈을 붙였습니다. (피로 회복은 추후)': 'You dozed off for a bit. (fatigue recovery later)', '취소 (ESC)': 'Cancel (ESC)',
   '냉장고 (냉동고 · 냉장고)': 'Fridge (freezer · fridge)', '아이템을 클릭해 보관 · 보관물 클릭해 꺼내기': 'Click an item to store · click stored to take out', '냉동고': 'Freezer', '냉장고': 'Fridge',
@@ -409,7 +411,7 @@ const EN_EXTRA: Record<string, string> = {
 
 /** 최종 사전 — 분야별 사전을 먼저 깔고 기본 사전이 덮는다(충돌 시 기본 우선) */
 export const EN_DICT: Record<string, string> = {
-  ...EN_FISH, ...EN_CONTENT, ...EN_ITEMS, ...EN_RIG_COOKING, ...EN_HELP, ...EN_EXTRA, ...EN_BASE,
+  ...EN_FISH, ...EN_CONTENT, ...EN_ITEMS, ...EN_RIG_COOKING, ...EN_HELP, ...EN_FORAGE, ...EN_PANELS, ...EN_EXTRA, ...EN_BASE,
 };
 
 /**
@@ -425,6 +427,60 @@ const DOW_EN: Record<string, string> = {
 };
 /** 수치·이름이 끼어 있는 문장 — 정규식 규칙. 캡처 그룹은 그대로 옮긴다(이름은 사전을 다시 타지 않으므로 어종·아이템명은 한국어로 남을 수 있음). */
 export const EN_RULES: Rule[] = [
+  // ── 122차 면허·스킬·일지 패널 (캡처 = 이름·수치 — tr()로 재번역) ──
+  [/^스킬 포인트 (\d+) 사용 가능 · Lv\.(\d+) \(누적 (\d+)\)$/, (m) => `Skill points ${m[1]} available · Lv.${m[2]} (total ${m[3]})`],
+  [/^(.+)  (\d+)\/(\d+)$/, (m, tr) => `${tr(m[1])}  ${m[2]}/${m[3]}`],
+  [/^배우기 \((\d+)pt\)$/, (m) => `Learn (${m[1]}pt)`],
+  [/^선행: (.+)  ·  랭크당 (\d+)pt(  ·  효과 배선 예정)?$/, (m, tr) => `Requires: ${m[1].split(', ').map((x) => tr(x)).join(', ')}  ·  ${m[2]}pt per rank${m[3] ? '  ·  effect wiring planned' : ''}`],
+  [/^선행 없음 \(루트 스킬\)  ·  랭크당 (\d+)pt(  ·  효과 배선 예정)?$/, (m) => `No prerequisite (root skill)  ·  ${m[1]}pt per rank${m[2] ? '  ·  effect wiring planned' : ''}`],
+  [/^(.+) Lv(\d+)$/, (m, tr) => `${tr(m[1])} Lv${m[2]}`],
+  [/^· (.+) — 목표 (\d+)( \((.+)\))?$/, (m, tr) => `· ${tr(m[1])} — target ${m[2]}${m[3] ? ` (${m[4]})` : ''}`],
+  [/^메인 퀘스트 \((\d+)\/(\d+)\)$/, (m) => `Main quests (${m[1]}/${m[2]})`],
+  [/^서브 퀘스트 \((\d+)\)$/, (m) => `Side quests (${m[1]})`],
+  [/^선행: (.+)$/, (m, tr) => `Prerequisite: ${m[1].split(', ').map((x) => tr(x)).join(', ')}`],
+  [/^• 선행 면허: (.+)$/, (m, tr) => `• Prerequisite licence: ${m[1].split(', ').map((x) => tr(x)).join(', ')}`],
+  [/^• 출조 횟수: (\d+)회 이상 \(현재 (\d+)\)$/, (m) => `• Trips: ${m[1]}+ (now ${m[2]})`],
+  [/^• 어획 누계: (\d+)마리 이상 \(현재 (\d+)\)$/, (m) => `• Total catches: ${m[1]}+ (now ${m[2]})`],
+  [/^• 코인 보유: ₩([\d,]+) 이상$/, (m) => `• Coins: ₩${m[1]}+`],
+  [/^• 특정 장소 방문: (.+)$/, (m, tr) => `• Visit: ${tr(m[1])}`],
+  [/^• 퀘스트 완료: (.+)$/, (m, tr) => `• Quest: ${tr(m[1])}`],
+  [/^• 평판 (\d+) 이상$/, (m) => `• Reputation ${m[1]}+`],
+  [/^• 특정 어종 포획: (.+)$/, (m, tr) => `• Catch: ${tr(m[1])}`],
+  [/^해금: (.+)$/, (m) => `Unlocks: ${m[1]}`],
+  [/^※ (.+)$/, (m, tr) => `※ ${tr(m[1])}`],
+  // 출처 화면 (122차) — '사용: …' 접두 · '라이선스  ·  URL' 꼬리
+  [/^사용: (.+)$/, (m, tr) => `Used for: ${tr(m[1])}`],
+  [/^(.+)  ·  (https?:\/\/\S+)$/, (m, tr) => `${tr(m[1])}  ·  ${m[2]}`],
+  [/^면허 발급 \(₩([\d,]+)\)$/, (m) => `Issue licence (₩${m[1]})`],
+  // ── 121차 인-맵 채집·어장·통발 (캡처 = 생물명·도구·수치 — 사전 재조회) ──
+  [/^\[F 길게\] 채집 — (.+) \((.+)\)$/, (m, tr) => `[Hold F] Gather — ${tr(m[1])} (${tr(m[2])})`],
+  [/^(.+) 채집 중… \((.+)\)$/, (m, tr) => `Gathering ${tr(m[1])}… (${tr(m[2])})`],
+  [/^(.+) — 해루질 입문 허가 필요 \(L\)$/, (m, tr) => `${tr(m[1])} — basic gleaning permit required (L)`],
+  [/^(.+) — (.+) 필요$/, (m, tr) => `${tr(m[1])} — needs ${m[2].split('/').map((t) => tr(t)).join('/')}`],
+  [/^(.+)은\(는\) (.+)\(으\)로만 (?:잡을|채집할) 수 있(?:다|습니다)$/, (m, tr) => `${tr(m[1])} can only be taken with ${m[2].split('/').map((t) => tr(t)).join('/')}`],
+  [/^(.+)에 맨손이 찔렸다 — 집게가 필요하다 \(HP -(\d+)\)$/, (m, tr) => `Stung by ${tr(m[1])} with bare hands — use tongs (HP -${m[2]})`],
+  [/^(.+)이\(가\) 바위틈으로 달아났다!$/, (m, tr) => `${tr(m[1])} slipped away into the rocks!`],
+  [/^(.+)을\(를\) 놓쳤다…$/, (m, tr) => `Missed ${tr(m[1])}…`],
+  [/^(.+) (\d+)g 채집!$/, (m, tr) => `Gathered ${tr(m[1])} ${m[2]}g!`],
+  [/^(.+) ([\d.]+)cm — 법정 크기\(([\d.]+)cm\) 미달, 방류$/, (m, tr) => `${tr(m[1])} ${m[2]}cm — under the legal size (${m[3]}cm), released`],
+  [/^풍속 ([\d.]+)m\/s — 해루질 위험 \(([\d.]+)m\/s 초과\)$/, (m) => `Wind ${m[1]}m/s — gleaning is dangerous (over ${m[2]}m/s)`],
+  [/^파고 ([\d.]+)m — 갯바위·조간대 접근 위험 \(([\d.]+)m 초과\)$/, (m) => `Waves ${m[1]}m — rocks and shore are unsafe (over ${m[2]}m)`],
+  [/^너울 ([\d.]+)m — 갯바위 미끄러짐 주의$/, (m) => `Swell ${m[1]}m — slippery rocks`],
+  [/^단속 적발! (.+) 압수 · 벌금 ([\d,]+)원$/, (m, tr) => `Caught by patrol! ${tr(m[1])} confiscated · fine ₩${m[2]}`],
+  [/^단속 적발! 산란기 (.+) 압수 · 벌금 ([\d,]+)원$/, (m, tr) => `Caught by patrol! spawning-season ${tr(m[1])} confiscated · fine ₩${m[2]}`],
+  [/^(.+) — (마을어장|협동양식장|정치망|패류 양식장|가두리 양식장|어장)( \(채취 금지\))?$/, (m, tr) => `${tr(m[1])} — ${tr(m[2])}${m[3] ? ' (no gathering)' : ''}`],
+  [/^\[F\] (.+) — 침지 (.+) \(최적 (\d+)h\)$/, (m, tr) => `[F] ${tr(m[1])} — soaked ${m[2].replace('분', 'min')} (best ${m[3]}h)`],
+  [/^\[F\] (.+) — 침지 (.+) · 수거 적기$/, (m, tr) => `[F] ${tr(m[1])} — soaked ${m[2].replace('분', 'min')} · ready`],
+  [/^\[F\] (.+) — 분실\/파손$/, (m, tr) => `[F] ${tr(m[1])} — lost/broken`],
+  [/^침지 (.+) \(최적 (\d+)h\)$/, (m) => `soaked ${m[1].replace('분', 'min')} (best ${m[2]}h)`],
+  [/^침지 (.+) · 수거 적기$/, (m) => `soaked ${m[1].replace('분', 'min')} · ready`],
+  [/^(.+)을\(를\) 놓았습니다$/, (m, tr) => `Set ${tr(m[1])}`],
+  [/^(\d+)종 수거 \((\d+) 쿨러\)$/, (m) => `Retrieved ${m[1]} kinds (${m[2]} in cooler)`],
+  [/^(.+) — 용량 ([\d.]+)kg · 미끼 지속 (\d+)h · 최대 수심 (\d+)m · 내구도 (\d+)$/, (m, tr) => `${tr(m[1])} — capacity ${m[2]}kg · bait ${m[3]}h · max depth ${m[4]}m · durability ${m[5]}`],
+  [/^\[채집\] (.+) (\d+)g — (쿨러 보관|인벤토리\(채집물\))$/, (m, tr) => `[Gather] ${tr(m[1])} ${m[2]}g — ${m[3] === '쿨러 보관' ? 'stored in cooler' : 'inventory (foraged)'}`],
+  [/^\[어장\] (.+) — 어촌계 (.+) 구역: 전복·해삼·성게·홍합·문어 채취 금지 \(강원 조례\)$/, (m, tr) => `[Fishery] ${m[1]} — fishing-village ${tr(m[2])}: no abalone, sea cucumber, urchin, mussel or octopus (Gangwon ordinance)`],
+  [/^(마을어업|협동양식|정치망어업|패류양식|복합양식|어류등양식)(\D+?)(\d+)$/, (m, tr) => `${({ '마을어업': 'Village Fishery', '협동양식': 'Co-op Farm', '정치망어업': 'Set Net', '패류양식': 'Shellfish Farm', '복합양식': 'Mixed Farm', '어류등양식': 'Fish Farm' })[m[1]]} ${tr(m[2])} No.${m[3]}`],
+  [/^(기본|심화) x(\d+)$/, (m, tr) => `${tr(m[1])} x${m[2]}`],
   [/^\[이동\] (.+)에 도착했습니다\.$/, '[Move] Arrived at $1.'],
   [/^\[도감\] 새로운 (.+) 발견 — (.+) \(N 키로 확인\)$/, '[Codex] New $1 discovered — $2 (press N)'],
   [/^\[상점\] (.+) 이용 시작$/, '[Shop] Now trading at $1'],
@@ -439,7 +495,7 @@ export const EN_RULES: Rule[] = [
   [/^\[낚시\] 캐스팅 — 파워 (\d+)%$/, '[Fishing] Cast — power $1%'],
   [/^\[수심\] (.+) 기준 실측 ([\d.]+)m \(거리 (\d+)m\)$/, '[Depth] $2m measured from $1 (distance $3m)'],
   [/^\[이벤트\] (.+) — 입질 x([\d.]+)$/, '[Event] $1 — bites ×$2'],
-  [/^\[E\] (.+) — 거래하기$/, '[E] $1 — trade'],
+  [/^\[F\] (.+) — 거래하기$/, '[F] $1 — trade'],
   [/^(.+)에 들어갑니다\.\n상품을 거래하시겠습니까\?$/, 'Entering $1.\nTrade goods?'],
   [/^\[시스템\] 슬롯 (\d+)에 저장했습니다\.$/, '[System] Saved to slot $1.'],
   [/^슬롯 (\d+)에 저장했습니다\. 푹 쉬었습니다\.$/, 'Saved to slot $1. You rested well.'],
@@ -544,6 +600,7 @@ export const EN_RULES: Rule[] = [
   [/^(\d+)\. (.+)$/s, (m, tr) => `${m[1]}. ${tr(m[2])}`],
   // 탐욕적 금액 규칙은 **맨 끝** — 앞에 두면 '2부위 착용  ·  280,000원' 같은 문장을 통째로 가로채서 본문이 한국어로 남는다 (119차 ⑥ 실측)
   [/^낚시하기 (.+)$/, 'Fishing $1'],
-  [/^(.+) 원$/, '₩$1'], [/^(.+)원$/, '₩$1'],
+  // 금액 규칙은 숫자만 (122차 — '국립해양측위정보원'이 '₩국립해양측위정보'로 잘리던 함정)
+  [/^([\d,.]+) 원$/, '₩$1'], [/^([\d,.]+)원$/, '₩$1'],
   [/^\[(\d\d:\d\d)\] ([\s\S]+)$/, (m, tr) => `[${m[1]}] ${tr(m[2])}`],
 ];

@@ -8,6 +8,7 @@
 
 import type { ShoreCreatureCategory } from '../types/Activities.js';
 import type { SpotType } from '../types/Environment.js';
+import type { ForageTool, ForageSpotKind, ForageAccess } from '../types/Foraging.js';
 
 // ─────────────────────────────────────────────
 // 해루질 생물 스키마
@@ -44,6 +45,17 @@ export interface ShoreCreature {
   description: string;
   /** 해금 라이선스 타입 (null = 기본 허가로 채취 가능) */
   requiredLicense: 'shore_hunting_basic' | 'shore_hunting_advanced' | null;
+  // ── 인-맵 채집 (121차) — 없으면 ForagingEngine이 카테고리·서식지로 추론 ──
+  /** 허용 도구 (앞이 1순위 — 성공률 가산) */
+  tools?: ForageTool[];
+  /** 나올 수 있는 스팟 종류 */
+  spotKinds?: ForageSpotKind[];
+  /** 맨손 시도 시 부상(성게 가시·굴 껍질) */
+  handInjury?: boolean;
+  /** 접근 방식 — 'shore'(기본) / 후속 'wade'·'dive'(스킨/스쿠버 전용 생물) */
+  access?: ForageAccess;
+  /** 강원 조례 어촌계 어장 보호 5종 — 표기용 (판정은 GANGWON_FORAGE_ORDINANCE) */
+  ordinanceProtected?: boolean;
 }
 
 // ─────────────────────────────────────────────
@@ -91,6 +103,7 @@ export const SHORE_CREATURE_DATABASE: ShoreCreature[] = [
     canBeUsedAsBait: true,
     description: '해루질의 대표 종. 야간에 바위 표면을 기어다니므로 집어등으로 쉽게 발견 가능.',
     requiredLicense: 'shore_hunting_basic',
+    tools: ['tongs', 'hand'],
   },
   {
     id: 'oyster_gigas',
@@ -111,6 +124,7 @@ export const SHORE_CREATURE_DATABASE: ShoreCreature[] = [
     canBeUsedAsBait: true,
     description: '바위에 붙어있는 굴은 장갑 끼고 돌칼로 분리. 生굴 특유의 달콤한 바다향.',
     requiredLicense: 'shore_hunting_basic',
+    tools: ['tongs'], handInjury: true, spotKinds: ['rock_shore', 'harbor_wall'],
   },
   {
     id: 'haliotis_discus',
@@ -131,6 +145,7 @@ export const SHORE_CREATURE_DATABASE: ShoreCreature[] = [
     canBeUsedAsBait: false,
     description: '해루질의 로망. 작은 갈고리로 바위에서 분리. 심화 라이선스 필수.',
     requiredLicense: 'shore_hunting_advanced',
+    tools: ['gaff'], spotKinds: ['tidepool'], ordinanceProtected: true,
   },
   // ────────── 갑각류 ──────────
   {
@@ -172,6 +187,7 @@ export const SHORE_CREATURE_DATABASE: ShoreCreature[] = [
     canBeUsedAsBait: true,
     description: '돌 뒤를 뒤지면 자주 나오는 게. 감성돔/농어 미끼로도 최고급.',
     requiredLicense: 'shore_hunting_basic',
+    tools: ['tongs', 'net', 'hand'], spotKinds: ['armor_foot', 'rock_shore'],
   },
   // ────────── 두족류 ──────────
   {
@@ -213,6 +229,7 @@ export const SHORE_CREATURE_DATABASE: ShoreCreature[] = [
     canBeUsedAsBait: false,
     description: '야간 갯바위 해루질의 최고 목표. 발견 시 재빠르게 잡아야 도망 가지 않음.',
     requiredLicense: 'shore_hunting_advanced',
+    tools: ['gaff', 'net'], spotKinds: ['rock_shore', 'armor_foot', 'tidepool'], ordinanceProtected: true,
   },
   // ────────── 극피동물 ──────────
   {
@@ -234,6 +251,7 @@ export const SHORE_CREATURE_DATABASE: ShoreCreature[] = [
     canBeUsedAsBait: false,
     description: '성게알 (생식소)은 고급 횟집 재료. 채취 시 장갑 필수.',
     requiredLicense: 'shore_hunting_basic',
+    tools: ['tongs', 'hand'], handInjury: true, spotKinds: ['rock_shore', 'tidepool', 'armor_foot'], ordinanceProtected: true,
   },
   {
     id: 'stichopus_japonicus',
@@ -254,6 +272,92 @@ export const SHORE_CREATURE_DATABASE: ShoreCreature[] = [
     canBeUsedAsBait: false,
     description: '겨울이 제철인 귀한 식재료. 건해삼은 가격이 매우 비쌈.',
     requiredLicense: 'shore_hunting_basic',
+    tools: ['tongs', 'hand'], spotKinds: ['tidepool', 'rock_shore'], ordinanceProtected: true,
+  },
+  // ────────── 동해 암반 조간대 4종 (121차 — 속초 갯바위·방파제 실제 채집물) ──────────
+  {
+    id: 'mytilus_coruscus',
+    nameKo: '홍합 (섭)',
+    nameEn: 'Korean Mussel',
+    scientificName: 'Mytilus coruscus',
+    spriteKey: 'creature_mussel',
+    category: 'bivalve',
+    habitatSpotTypes: ['rocky_shore', 'breakwater'],
+    habitatDesc: '파도가 치는 암반·방파제 발밑에 족사로 붙어 군락. 동해 해루질의 가장 흔한 수확물.',
+    minLegalSizeCm: 0,
+    dailyLimitG: 5000,
+    closedSeasonMonths: [],
+    discoveryTime: 'both',
+    minLampLumens: 0,
+    marketValuePerKg: 6000,
+    isRestaurantIngredient: true,
+    canBeUsedAsBait: true,
+    description: '강원 조례 보호종 — 어촌계 어장 안에서는 채취 금지. 섭국·섭죽의 주재료.',
+    requiredLicense: 'shore_hunting_basic',
+    tools: ['hand', 'tongs'], spotKinds: ['rock_shore', 'harbor_wall', 'armor_foot'], ordinanceProtected: true,
+  },
+  {
+    id: 'omphalius_rusticus',
+    nameKo: '보말 (팽이고둥)',
+    nameEn: 'Top Shell',
+    scientificName: 'Omphalius rusticus',
+    spriteKey: 'creature_top_shell',
+    category: 'gastropod',
+    habitatSpotTypes: ['rocky_shore', 'breakwater'],
+    habitatDesc: '조간대 바위 틈과 웅덩이. 낮에도 줍는다.',
+    minLegalSizeCm: 0,
+    dailyLimitG: 3000,
+    closedSeasonMonths: [],
+    discoveryTime: 'both',
+    minLampLumens: 0,
+    marketValuePerKg: 9000,
+    isRestaurantIngredient: true,
+    canBeUsedAsBait: false,
+    description: '해녀들이 보말이라 부르는 작은 고둥. 삶아서 이쑤시개로 빼 먹거나 보말죽으로.',
+    requiredLicense: 'shore_hunting_basic',
+    tools: ['hand', 'tongs'], spotKinds: ['rock_shore', 'tidepool', 'armor_foot'],
+  },
+  {
+    id: 'capitulum_mitella',
+    nameKo: '거북손',
+    nameEn: 'Goose Barnacle',
+    scientificName: 'Capitulum mitella',
+    spriteKey: 'creature_barnacle',
+    category: 'shellfish',
+    habitatSpotTypes: ['rocky_shore'],
+    habitatDesc: '파도가 세게 치는 갯바위 틈에 다닥다닥. 집게로 뜯어낸다.',
+    minLegalSizeCm: 0,
+    dailyLimitG: 2000,
+    closedSeasonMonths: [],
+    discoveryTime: 'both',
+    minLampLumens: 0,
+    marketValuePerKg: 15000,
+    isRestaurantIngredient: true,
+    canBeUsedAsBait: true,
+    description: '삶으면 게와 조개 사이의 맛. 갯바위 채집의 별미.',
+    requiredLicense: 'shore_hunting_basic',
+    tools: ['tongs'], handInjury: true, spotKinds: ['rock_shore'],
+  },
+  {
+    id: 'cellana_grata',
+    nameKo: '삿갓조개 (배말)',
+    nameEn: 'Limpet',
+    scientificName: 'Cellana grata',
+    spriteKey: 'creature_limpet',
+    category: 'gastropod',
+    habitatSpotTypes: ['rocky_shore', 'breakwater'],
+    habitatDesc: '바위 표면에 삿갓처럼 붙어 있다. 순간적으로 떼어내야 한다.',
+    minLegalSizeCm: 0,
+    dailyLimitG: 2000,
+    closedSeasonMonths: [],
+    discoveryTime: 'both',
+    minLampLumens: 0,
+    marketValuePerKg: 8000,
+    isRestaurantIngredient: true,
+    canBeUsedAsBait: false,
+    description: '눌러 붙으면 안 떨어진다 — 집게로 한 번에. 배말국·배말밥.',
+    requiredLicense: 'shore_hunting_basic',
+    tools: ['tongs', 'hand'], spotKinds: ['rock_shore', 'harbor_wall'],
   },
 ];
 

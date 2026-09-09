@@ -23,6 +23,7 @@
 | [`night-hunting-trap.md`](night-hunting-trap.md) | 해루질·통발 — 엔진/씬 현황·배선 로드맵(D1~D5) |
 | [`discovery-wiki.md`](discovery-wiki.md) | 발견 도감(어종/해양생물/아이템 위키)·dev 크리에이티브 콘솔(F10) |
 | [`ui-framework.md`](ui-framework.md) | DraggablePanel·z-order·텍스트 검수·가이드 허브·튜닝/검증 도구 |
+| [`progression.md`](progression.md) | 진행 — 면허(L)·스킬 트리(K)·일지(J) · 스킬 효과 배선 현황 |
 
 > 없는 시스템(요리·제작·퀘스트·멀티)은 착수 시점에 페이지를 만든다.
 > 만들기 전까지는 [`../04-BACKLOG.md`](../04-BACKLOG.md)에 한 줄로만 존재한다.

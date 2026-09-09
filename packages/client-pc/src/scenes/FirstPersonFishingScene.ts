@@ -26,6 +26,7 @@
  */
 
 import Phaser from 'phaser';
+import { isNightNow as isNightNowKst } from '@tra/core';
 import {
   createUnderwaterRig, stepUnderwater, isHoldState, computeSinkRate, SinkBodyType,
   UnderwaterRigState, RigPhysicsParams, TideVector,
@@ -2028,7 +2029,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       // 조경지대(Hit Zone) 1.6배 / 본대조류 0.35배 — 조류 존 입질 배율
       // × 피딩타임 활성도(계절/조류/날씨) × 필드 이벤트(보일링 링/스쿨 히트) 보너스
       baseProbPerSec: 0.035 * baitAffinity * indexModifier * influence.biteMult * this.lureActionMult
-        * this.feeding.activity * (this.cfg.fieldEvent?.biteMult ?? 1),
+        * this.feeding.activity * (this.cfg.fieldEvent?.biteMult ?? 1) * this.skillBiteMult(),
       inReefZone: inReef,
       isHold: hold,
       alignmentIndex: this.lineTension.alignmentIndex,
@@ -2150,6 +2151,13 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   }
 
   /** 오라클 스폰/친화도 컨텍스트 구성 (루어 스펙 데이터 소비) */
+  /** 스킬 트리 입질 배율 (122차) — 입질 감각 × 궂은날(비·눈) × 야간 */
+  private skillBiteMult(): number {
+    const wk = ExternalDataStore.getWeatherKind(this.cfg.region);
+    const foul = wk === 'rain' || wk === 'shower' || wk === 'sleet' || wk === 'snow';
+    return GameState.skillMult('bite_chance') * (foul ? GameState.skillMult('weather_bite') : 1) * (isNightNowKst() ? GameState.skillMult('night_bite') : 1);
+  }
+
   private buildSpawnCtx(inReef: boolean): SpawnContext {
     const hour = new Date().getHours();
     const ctx: SpawnContext = {

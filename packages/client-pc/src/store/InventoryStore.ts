@@ -18,6 +18,7 @@ import {
   LURES_CATALOG_DB, JIGHEAD_WEIGHTS_G, getLureSpec, jigHeadWeightById,
   computeLureRigWeight, getLureCastCd, isKnifeItem, FISH_DATABASE, lineStrengthKg,
 } from '@tra/core';
+import type { ForageTool } from '@tra/core';
 import { ExternalDataStore } from './ExternalDataStore.js';
 import { DiscoveryStore } from './DiscoveryStore.js';
 import { isGod } from '../dev/DevMode.js';
@@ -181,6 +182,15 @@ export interface InvItem {
    * 존재하면 인벤토리 '설치하기' → 홈타운 칸 단위 배치 모드 (HOMETOWN_HOME_SPEC).
    */
   placeKey?: string;
+  // ── 인-맵 채집·통발 (121차) ──
+  /** 헤드랜턴 루멘 — 야간 채집 스팟 발견 반경 */
+  lampLumens?: number;
+  /** 채집 도구 종류 (집게/갈고리 — 뜰채는 tool 'net') */
+  forageTool?: ForageTool;
+  /** 통발 아이템 → TrapDatabase id (설치 시 1개 소모·수거 시 반환) */
+  trapSpecId?: string;
+  /** 채집물(해루질·통발 생물) — 강원 조례상 판매·유통 금지 (상점 매입 거부) */
+  forageCatch?: boolean;
 
   /**
    * 손질 부산물 종류 (subCategory '부산물') — 어종명 접두 개별 아이템 (2026-07-29 세분화):
@@ -430,6 +440,10 @@ function createSeedItems(): InvItem[] {
     { id: 'inv_bucket',    name: '낚시용 두레박',           icon: '🪣', category: 'etc', subCategory: '낚시도구', qty: 1, basePrice: 9000, equippable: false },
     // 쿨러 (아이스박스) — 보유해야 어창 보관/밑밥 배합 기능 사용 가능 (들고 다니는 개념)
     { id: 'inv_cooler',    name: '쿨러 (아이스박스)',        icon: '🛅', category: 'etc', subCategory: '낚시도구', qty: 1, basePrice: 45000, equippable: false },
+    // ── 인-맵 채집·통발 (121차) — 헤드랜턴(야간 발견 반경)·집게·기본 게 통발. 갈고리·나머지 통발은 직판장 ──
+    { id: 'inv_headlamp',  name: '헤드랜턴 (800lm)',         icon: '🔦', category: 'etc', subCategory: '해루질 도구', qty: 1, basePrice: 25000, equippable: false, lampLumens: 800 },
+    { id: 'inv_tongs',     name: '채집 집게',                icon: '🥢', category: 'etc', subCategory: '해루질 도구', qty: 1, basePrice: 8000,  equippable: false, forageTool: 'tongs' },
+    { id: 'inv_trap_trap_crab_basic', name: '기본 게 통발',   icon: '🪤', category: 'etc', subCategory: '통발', qty: 1, basePrice: 14000, equippable: false, trapSpecId: 'trap_crab_basic' },
     // 사시미 접시 (소) — 회 조각 플레이팅 (요리 탭 사시미 만들기. 중/대/특대는 식자재마트 판매)
     { id: 'inv_plate_s',   name: '사시미 접시 (소)',        icon: '🍽️', category: 'etc', subCategory: '식기', qty: 1, basePrice: 2500, equippable: false },
     // ── 설치형 (HOMETOWN_HOME_SPEC — 홈타운 칸 단위 자유 배치. placeKey = core PLACEMENT_DEFS) ──
@@ -826,6 +840,10 @@ class InventoryStoreManager {
         tool: i.tool ?? sd?.tool ?? (knife ? ('knife' as const) : undefined),
         equippable: i.equippable ?? sd?.equippable ?? (knife ? true : undefined),
         placeKey: i.placeKey ?? sd?.placeKey,
+        // 121차 채집·통발 정적 필드 — 시드 백필 + id 규칙 폴백(상점 구매분: inv_trap_<specId>)
+        lampLumens: i.lampLumens ?? sd?.lampLumens,
+        forageTool: i.forageTool ?? sd?.forageTool,
+        trapSpecId: i.trapSpecId ?? sd?.trapSpecId ?? (i.id.startsWith('inv_trap_') ? i.id.slice('inv_trap_'.length) : undefined),
         // 착용 장비는 그리드에서 빠진다 (2026-08-05 개편) — 구세이브는 소켓을 차지한 채
         // 저장돼 있으므로 로드 시 비워준다. 소켓만 반납하므로 손실 위험 없음.
         slot: i.equipped ? SLOT_EQUIPPED : i.slot,
@@ -859,6 +877,14 @@ class InventoryStoreManager {
     this._lureLine = ref(s.lureLine);
     this._lureLeader = ref(s.lureLeader);
 
+    // 121차 — 구세이브에 채집·통발 기본 도구가 없으면 1회 주입 (상점에서 팔 수 없는 etc 아이템이라 '판매 후 재주입' 혼선 없음)
+    for (const id of ['inv_headlamp', 'inv_tongs', 'inv_trap_trap_crab_basic']) {
+      if (this.find(id)) continue;
+      const sd = seedById.get(id);
+      if (!sd) continue;
+      const { qty, slot: _slot, ...tpl } = sd;
+      this.addItem(tpl, qty);
+    }
     // dev 전용 — 기존 세이브에도 손질 검증용 테스트 어획이 없으면 주입 (2026-07-30)
     if (import.meta.env.DEV) {
       for (const d of createDevFishDefs()) {
@@ -904,6 +930,8 @@ class InventoryStoreManager {
    * 개체 실측치(speciesId/weightG)가 없는 레거시 어획물은 basePrice 폴백.
    */
   getSellPrice(item: InvItem): number {
+    // 채집물(해루질·통발 생물)은 판매·유통 금지 — 강원 조례 (121차). 요리·자가 소비 sink 전용
+    if (item.forageCatch) return 0;
     if (item.subCategory === '어획물') {
       // 상태별 가치 배율 (부패 = 0, 나쁨 10%, 보통 50%, 그 외 시세 그대로)
       const stateMul = conditionSellMultiplier(item.condition);

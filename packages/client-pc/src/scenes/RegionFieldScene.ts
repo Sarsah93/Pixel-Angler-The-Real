@@ -57,6 +57,13 @@ import { RegionLight,
   seamlessRegionOf,
 } from '@tra/core';
 import { SeamlessChunks, PROP_DEFS, propFootprint, type PropDef } from './SeamlessChunks.js';
+import { ForageSystem } from './field/ForageSystem.js';
+import { TrapFieldSystem } from './field/TrapFieldSystem.js';
+import { TrapDeployPanel } from '../ui/TrapDeployPanel.js';
+import { LicensePanel } from '../ui/LicensePanel.js';
+import { SkillTreePanel } from '../ui/SkillTreePanel.js';
+import { JournalPanel } from '../ui/JournalPanel.js';
+import { TUNING, getTrapById, type RegionFishFarms } from '@tra/core';
 import { tilesetPathOf } from '../data/TilesetManifest.js';
 import { TrafficSystem } from './TrafficSystem.js';
 import { TILESET_MANIFEST } from '../data/TilesetManifest.js';
@@ -81,7 +88,7 @@ import { BikeComposite, RiderDir } from '../ui/BikeComposite.js';
 import { ShopPanel } from '../ui/ShopPanel.js';
 import { ConfirmDialog, QuantityDialog } from '../ui/Dialogs.js';
 import { paintHudPanel, paintTitlePlate } from '../ui/HudPanelStyle.js';
-import { applyScreenFixed, restoreHandCursor } from '../ui/DraggablePanel.js';
+import { DraggablePanel, applyScreenFixed, restoreHandCursor } from '../ui/DraggablePanel.js';
 import { InventoryStore, InvItem } from '../store/InventoryStore.js';
 import { CoolerStore } from '../store/CoolerStore.js';
 import { DiscoveryStore } from '../store/DiscoveryStore.js';
@@ -233,6 +240,17 @@ export class RegionFieldScene extends Phaser.Scene {
   /** 오브젝트 스프라이트 (instanceId → 표시 오브젝트들) */
   private homeObjSprites = new Map<string, Phaser.GameObjects.GameObject[]>();
   private nearObject: MapObject | null = null;
+  /** 인-맵 채집(해루질)·어장·통발 필드 시스템 (121차) */
+  private forage?: ForageSystem;
+  private trapField?: TrapFieldSystem;
+  /** 면허(L) · 스킬(K) · 일지(J) 팝업 (122차) */
+  private licensePanel: LicensePanel | null = null;
+  private skillPanel: SkillTreePanel | null = null;
+  private journalPanel: JournalPanel | null = null;
+  /** 지역 타이틀 명패 — 로케일 전환 시 텍스트 폭이 바뀌므로 다시 그린다 (122차) */
+  private titleTxt?: Phaser.GameObjects.Text;
+  private titlePlateG?: Phaser.GameObjects.Graphics;
+  private localeHandler?: () => void;
   /** 설치 모드 상태 (아이템 사용 → 그리드 프리뷰 → 클릭 설치) */
   private placing: { def: PlacementDef; itemId: string } | null = null;
   private placeG?: Phaser.GameObjects.Graphics;
@@ -367,6 +385,8 @@ export class RegionFieldScene extends Phaser.Scene {
         this.load.json(`rpatch_${dr}`, `${this.seamlessDef.dataDir}/patch.json`);
         // 항로표지(114차) — 있는 지역만 (없는 지역에서 로드하면 SPA 폴백 HTML → JSON 파싱 pageerror)
         if (this.seamlessDef.hasLights) this.load.json(`rlights_${dr}`, `${this.seamlessDef.dataDir}/lights.json`);
+        // 어촌계 어장 폴리곤 (121차) — hasFishFarms 지역만 (없는 URL = SPA 폴백 pageerror 함정)
+        if (this.seamlessDef.hasFishFarms) this.load.json(`rfarms_${dr}`, `${this.seamlessDef.dataDir}/fishfarms.json`);
       }
       // 타일셋 스프라이트 (건물 프리팹·프롭·차량·NPC) — 심리스 전용, 1회 로드
       for (const e of TILESET_MANIFEST) {
@@ -526,6 +546,7 @@ export class RegionFieldScene extends Phaser.Scene {
     });
     this.add.existing(this.hud);
     this.hud.pushLog(`[이동] ${this.node.name}에 도착했습니다.`);
+    this.initFieldSystems();
 
     // ── 신규 발견 토스트 — 도감/위키에 처음 등록되는 순간 HUD 로그로 알림 ──
     DiscoveryStore.onNew = (entry, name) => {
@@ -1761,6 +1782,7 @@ export class RegionFieldScene extends Phaser.Scene {
     // ESC: 설치 모드 취소 → 최상단 팝업 닫기 → 일시정지 메뉴 토글
     this.input.keyboard!.on('keydown-ESC', () => {
       if (this.placing) { this.cancelPlacement(); return; }
+      if (this.trapField?.placing) { this.trapField.cancelPlacement(); return; }
       if (this.closeTopPopup()) return;
       this.togglePauseMenu();
     });
@@ -1788,12 +1810,24 @@ export class RegionFieldScene extends Phaser.Scene {
       this.scene.pause();
       this.scene.launch('AnglerLogScene', { returnScene: 'RegionFieldScene' });
     });
-    this.input.keyboard!.on('keydown-E', () => {
-      if (this.isPaused) return;
-      // 홈타운 오브젝트(문/버스/설치물 회수) > 건물 거래 > 장비 창
-      if (this.nearObject && !this.uiBlocked) this.interactWithObject(this.nearObject);
-      else if (this.nearBuilding && !this.uiBlocked) this.promptTrade(this.nearBuilding.kind);
-      else this.toggleEquipment();
+    // E = 장비창 전용 · F = 상호작용 (122차 — 사용자 지시: E가 장비창과 혼용되던 것을 분리)
+    this.input.keyboard!.on('keydown-E', () => { if (!this.isPaused) this.toggleEquipment(); });
+    this.input.keyboard!.on('keydown-F', () => {
+      if (this.isPaused || this.uiBlocked) return;
+      // 홈타운 오브젝트(문/버스/설치물 회수) > 건물 거래 > 채집 스팟 > 통발
+      if (this.nearObject) this.interactWithObject(this.nearObject);
+      else if (this.nearBuilding) this.promptTrade(this.nearBuilding.kind);
+      else if (this.forage?.onInteractKey()) { /* 채집 홀드 시작 */ }
+      else if (this.trapField?.onInteractKey()) { /* 통발 수거 확인 */ }
+    });
+    // L 면허 · K 스킬 · J 일지 (122차 복원)
+    this.input.keyboard!.on('keydown-L', () => { if (!this.isPaused) this.togglePanel('license'); });
+    this.input.keyboard!.on('keydown-K', () => { if (!this.isPaused) this.togglePanel('skill'); });
+    this.input.keyboard!.on('keydown-J', () => { if (!this.isPaused) this.togglePanel('journal'); });
+    // T: 통발 놓기 (121차 — 보유 통발 + 미끼 선택 → 물 위 클릭 설치)
+    this.input.keyboard!.on('keydown-T', () => {
+      if (this.isPaused || this.uiBlocked) return;
+      this.trapField?.openDeploy();
     });
 
     // 1~8: 퀵슬롯 선택 (팝업 열림 중엔 각 패널의 키 처리가 우선)
@@ -1849,6 +1883,11 @@ export class RegionFieldScene extends Phaser.Scene {
       //   HUD 버튼·단축키 버튼·팝업·일시정지 메뉴 등 인터랙티브 오브젝트 위 클릭(over.length > 0)은
       //   그 오브젝트의 몫이지 맵 클릭이 아니다 — 힌트("바다 가까이에서 캐스팅하세요")도 여기서 끊는다.
       if (over.length > 0) return;
+      if (this.trapField?.placing) {
+        if (p.rightButtonDown()) this.trapField.cancelPlacement();
+        else if (p.leftButtonDown()) { const pw = this.pointerWorld(p); this.trapField.confirmAt(pw.x, pw.y); }
+        return;
+      }
       if (this.placing) {
         if (p.rightButtonDown()) this.cancelPlacement();
         else if (p.leftButtonDown()) this.confirmPlacement(p);
@@ -1862,6 +1901,9 @@ export class RegionFieldScene extends Phaser.Scene {
     // 인벤토리 '설치하기' → 설치 모드 진입 (홈타운 전용 — InvItem.placeKey)
     this.events.off('placement-request');
     this.events.on('placement-request', (item: InvItem) => this.startPlacement(item));
+    // 인벤토리 '통발 놓기' (121차)
+    this.events.off('trap-place-request');
+    this.events.on('trap-place-request', (item: InvItem) => this.trapField?.openDeploy(item));
   }
 
   // ═══════════════════════════════════════════════════
@@ -1886,6 +1928,8 @@ export class RegionFieldScene extends Phaser.Scene {
     };
     panel = factory(close);
     this.add.existing(panel);
+    // 새로 연 팝업은 밴드 최상단 (122차 — 스킬 892 위에 일지 891이 열리면 통째로 가려졌다)
+    if (panel instanceof DraggablePanel) panel.raiseToTop();
     this.popupStack.push({ panel, close });
     return panel;
   }
@@ -1933,6 +1977,19 @@ export class RegionFieldScene extends Phaser.Scene {
       (close) => new StatusPanel(this, 80, 80, close),
       () => { this.statusPanel = null; },
     );
+  }
+
+  // ── 면허(L) · 스킬(K) · 일지(J) — 토글 (122차) ──
+  private togglePanel(kind: 'license' | 'skill' | 'journal'): void {
+    const cur = kind === 'license' ? this.licensePanel : kind === 'skill' ? this.skillPanel : this.journalPanel;
+    if (cur) { this.popupStack.find((e) => e.panel === cur)?.close(); return; }
+    if (kind === 'license') {
+      this.licensePanel = this.openPopup((close) => new LicensePanel(this, (GAME_WIDTH - 720) / 2, 100, close), () => { this.licensePanel = null; });
+    } else if (kind === 'skill') {
+      this.skillPanel = this.openPopup((close) => new SkillTreePanel(this, { onClose: close }), () => { this.skillPanel = null; });
+    } else {
+      this.journalPanel = this.openPopup((close) => new JournalPanel(this, { onClose: close }), () => { this.journalPanel = null; });
+    }
   }
 
   // ── 장비 (E) ──
@@ -2068,7 +2125,8 @@ export class RegionFieldScene extends Phaser.Scene {
   /** 구매 플로우: (수량 지정) → 확인 → 재화 차감 + 인벤토리 추가 */
   private handleBuy(entry: ShopEntry): void {
     const confirmBuy = (qty: number): void => {
-      const total = entry.price * qty;
+      // 스킬 흥정(122차): 랭크당 구매가 -3%
+      const total = Math.round(entry.price * qty * (1 - 0.03 * GameState.skillRank('eco_haggle')));
       this.openPopup((close) => new ConfirmDialog(
         this,
         `${entry.name} ${qty}개를 구매하시겠습니까?\n소요 재화: ${total.toLocaleString()} 원`,
@@ -2114,7 +2172,7 @@ export class RegionFieldScene extends Phaser.Scene {
       this.shopPanel?.setStatus('쿨러 안에 내용물(어획/해수·얼음/밑밥)이 있어 판매할 수 없습니다 — 먼저 비우세요');
       return;
     }
-    const unit = InventoryStore.getSellPrice(item);
+    const unit = this.sellPriceOf(item);
     const confirmSell = (qty: number): void => {
       const total = unit * qty;
       this.openPopup((close) => new ConfirmDialog(
@@ -2217,7 +2275,7 @@ export class RegionFieldScene extends Phaser.Scene {
       originX, originY,
       dirX: dir.x, dirY: dir.y,
       power,
-      strength: DEFAULT_ANGLER_STATS.strength,
+      strength: DEFAULT_ANGLER_STATS.strength * GameState.skillMult('cast_distance'),   // 스킬 롱캐스트(122차)
       wind: this.getWindVector(),
       // 채비 공기저항(루어 dragCoefficient/봉돌 종류) → 비거리 (메탈지그 초장타)
       airDragCd: InventoryStore.getRigDragCd(),
@@ -2414,15 +2472,27 @@ export class RegionFieldScene extends Phaser.Scene {
   // ═══════════════════════════════════════════════════
   // HUD
   // ═══════════════════════════════════════════════════
+  /** 지역 타이틀 명패 — 텍스트 실측 폭 기준 (생성 시 + 로케일 전환 시) */
+  private layoutTitlePlate(): void {
+    if (!this.titleTxt || !this.titlePlateG) return;
+    const plateW = Math.max(120, this.titleTxt.width + 56);
+    this.titlePlateG.clear();
+    paintTitlePlate(this.titlePlateG, GAME_WIDTH / 2 - plateW / 2, 10, plateW, 32);
+  }
+
   private createHud(): void {
     // 지역 타이틀 — 명패 플레이트 (구 "배경 없는 글자" → HudPanelStyle 공용 문법)
     const titleTxt = this.add.text(GAME_WIDTH / 2, 26, this.node.name, {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '17px', color: '#ffe9b0', fontStyle: 'bold',
     }).setOrigin(0.5, 0.5).setScrollFactor(0).setDepth(101);
     titleTxt.setShadow(0, 2, '#06090f', 2, true, true);
-    const plateW = Math.max(120, titleTxt.width + 56);
     const plateG = this.add.graphics().setScrollFactor(0).setDepth(100);
-    paintTitlePlate(plateG, GAME_WIDTH / 2 - plateW / 2, 10, plateW, 32);
+    this.titleTxt = titleTxt; this.titlePlateG = plateG;
+    this.layoutTitlePlate();
+    // 로케일 전환(설정) 시 i18n 훅이 텍스트를 갈아끼워 폭이 바뀐다 — 명패를 실측 폭으로 다시 그린다 (122차 HUD 텍스트 이탈)
+    this.localeHandler = () => this.layoutTitlePlate();
+    this.game.events.on('locale-changed', this.localeHandler);
+    this.events.once('shutdown', () => { if (this.localeHandler) this.game.events.off('locale-changed', this.localeHandler); });
 
     // 단축키 버튼 (우하단, 116차) — 구 조작 힌트 바 대체. 모서리 둥근 정사각형, 라벨은 한글만(117차).
     //   클릭 = 도움말 라이브러리 "조작·단축키 › 필드" 토픽.
@@ -2801,11 +2871,17 @@ export class RegionFieldScene extends Phaser.Scene {
       // 설치 모드 — 이동은 허용, 프리뷰는 커서 추적 (클릭=설치 / 우클릭·ESC=취소)
       this.updatePlacementPreview();
     }
+    if (this.trapField?.placing) {
+      const pw = this.pointerWorld(this.input.activePointer);
+      this.trapField.updatePreview(pw.x, pw.y);
+    }
     this.handleMovement();
     this.updateSpriteAndShadow();
     this.updateBuildingProximity();
     this.updateObjectProximity();
     this.updateWaterProximity();
+    this.forage?.update(delta);
+    this.trapField?.update(delta);
     this.updateCharge();
     this.checkEdgeTransition();
   }
@@ -3013,16 +3089,16 @@ export class RegionFieldScene extends Phaser.Scene {
   }
 
   private objInteractLabel(o: MapObject): string {
-    if (o.placedByPlayer && o.removable) return '[E] 회수';
+    if (o.placedByPlayer && o.removable) return '[F] 회수';
     switch (o.interact) {
-      case 'door': return '[E] 집으로 들어가기';
-      case 'bus': return '[E] 출조 버스 (전국 지도)';
-      case 'aquarium': return '[E] 수조 열기';
-      case 'chop': return '[E] 벌목 (추후)';
-      case 'mine': return '[E] 채굴 (추후)';
-      case 'gather': return '[E] 채집 (추후)';
-      case 'board': return '[E] 보트 (추후)';
-      default: return '[E]';
+      case 'door': return '[F] 집으로 들어가기';
+      case 'bus': return '[F] 출조 버스 (전국 지도)';
+      case 'aquarium': return '[F] 수조 열기';
+      case 'chop': return '[F] 벌목 (추후)';
+      case 'mine': return '[F] 채굴 (추후)';
+      case 'gather': return '[F] 채집 (추후)';
+      case 'board': return '[F] 보트 (추후)';
+      default: return '[F]';
     }
   }
 
@@ -3167,10 +3243,80 @@ export class RegionFieldScene extends Phaser.Scene {
     this.floatingHint('회수했습니다 (인벤토리로 반환)');
   }
 
+  // ═══════════════════════════════════════════════════
+  // 인-맵 채집(해루질) · 어장 · 통발 (121차) — 씬은 접근자만 넘긴다
+  // ═══════════════════════════════════════════════════
+  private initFieldSystems(): void {
+    const dr = this.seamlessDef?.dataRegion;
+    const farmsJson = dr && this.seamlessDef?.hasFishFarms
+      ? (this.cache.json.get(`rfarms_${dr}`) as RegionFishFarms | undefined)
+      : undefined;
+    const farms = farmsJson?.farms ?? [];
+    const chunks = this.chunks;
+    const common = {
+      scene: this, tr: TR, cols: this.cols, rows: this.rows, regionId: this.region,
+      mapKey: dr ?? this.mapId,
+      terrainAt: (c: number, r: number) => this.terrainAt(c, r),
+      isIsletAt: chunks ? (c: number, r: number) => chunks.isIsletAt(c, r) : undefined,
+      breakwaterClassAt: chunks ? (c: number, r: number) => chunks.breakwaterClassAt(c, r) : undefined,
+      isHarborAt: chunks ? (c: number, r: number) => chunks.isHarborAt(c, r) : undefined,
+      waterDistAt: chunks ? (c: number, r: number) => chunks.waterDistAt(c, r) : undefined,
+      player: () => ({ x: this.playerBody.x, y: this.playerBody.y }),
+      blocked: () => this.uiBlocked || this.isPaused || this.isTransitioning || this.castBusy,
+      pushLog: (msg: string) => this.hud?.pushLog(msg),
+      floatingHint: (msg: string) => this.floatingHint(msg),
+    };
+    this.forage = new ForageSystem({
+      ...common,
+      knockback: (dx: number, dy: number) => {
+        this.knockVx = dx * 220; this.knockVy = dy * 220; this.knockUntil = this.time.now + 220;
+      },
+    }, farms);
+    this.trapField = new TrapFieldSystem({
+      ...common,
+      depthAtWaterTile: (c: number, r: number) => this.depthAtWaterTile(c, r),
+      confirm: (message: string, onYes: () => void) => {
+        this.openPopup((close) => new ConfirmDialog(this, message, () => { close(); onYes(); }, close));
+      },
+      openDeployPanel: (onPick) => {
+        this.openPopup((close) => new TrapDeployPanel(this, GAME_WIDTH / 2 - 210, 110, { onClose: close, onPick }));
+      },
+    });
+    if (import.meta.env.DEV) {
+      const st = this.forage.candidateStats();
+      this.hud?.pushLog(`[dev] 채집 후보 갯바위 ${st.rock_shore} · 사석/TTP ${st.armor_foot} · 웅덩이 ${st.tidepool} · 안벽 ${st.harbor_wall} · 스팟 ${this.forage.allSpots().length} · 어장 ${farms.length}`);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (globalThis as any).__FIELD = { forage: this.forage, trapField: this.trapField, scene: this, cooler: CoolerStore, tuning: TUNING, getTrapById };
+    }
+    this.events.once('shutdown', () => {
+      this.forage?.destroy(); this.forage = undefined;
+      this.trapField?.destroy(); this.trapField = undefined;
+    });
+  }
+
+  /** 물 타일의 실측 수심(m) — 육지 거리(타일 × 5m)를 수심 프로필 앵커로 환산 (캐스팅 수심과 같은 규칙) */
+  private depthAtWaterTile(c: number, r: number): number {
+    const wd = this.chunks?.waterDistAt(c, r) ?? 1;
+    const distM = Math.max(5, wd * 5);
+    const profile = this.cache.json.get(`depth_${this.region}`) as RegionDepthProfile | undefined;
+    if (profile && Array.isArray(profile.anchors) && profile.anchors.length > 0) {
+      const anchorKey = this.seamless ? (r * TR < this.worldH * 0.5 ? 'dongmyeonghang' : 'sokchohang') : this.mapId;
+      const anchor = findDepthAnchor(profile, anchorKey);
+      if (anchor) return Math.max(1, Math.round(depthAtDistance(anchor, distM) * 10) / 10);
+    }
+    return Math.max(1, Math.round(computeZoneMaxDepth(Phaser.Math.Clamp(distM / 70, 0, 1)) * 10) / 10);
+  }
+
+  /** 판매가 — 스킬 흥정·단골 배율 (122차) */
+  private sellPriceOf(item: InvItem): number {
+    return Math.round(InventoryStore.getSellPrice(item) * GameState.skillMult('sell_price'));
+  }
+
   private handleMovement(): void {
     // 자전거 탑승 시 이동 속도 2배 (충돌/카메라 팔로우는 불변).
     // 심리스는 타일 32px라 같은 px/s면 타일 체감이 느려진다 → 1.4배 보정 (동서 횡단 ≈ 3분 유지)
-    const speed = (this.seamless ? 210 : 150) * (GameState.isMounted ? 2 : 1);
+    // 스킬 트리(122차): 달리기 배율 · 자전거 배율
+    const speed = (this.seamless ? 210 : 150) * GameState.skillMult('run_speed') * (GameState.isMounted ? 2 * GameState.skillMult('bike_speed') : 1);
     let vx = 0, vy = 0;
     if (this.time.now < this.knockUntil) {
       // 차량 충돌 넉백 — 입력 무시, 진행 방향 뒤로 밀림
@@ -3249,7 +3395,7 @@ export class RegionFieldScene extends Phaser.Scene {
     if (this.castBusy) { this.promptText.setVisible(false); return; }
     // 건물 근접 힌트가 캐스팅 힌트보다 우선
     if (this.nearBuilding) {
-      this.promptText.setText(`[E] ${BUILDING_LABEL[this.nearBuilding.kind]} — 거래하기`);
+      this.promptText.setText(`[F] ${BUILDING_LABEL[this.nearBuilding.kind]} — 거래하기`);
       this.promptText.setVisible(true);
     } else if (this.nearWater) {
       // 캐스팅 가능 조건 = **손에 낚싯대 착용** (퀵슬롯 선택은 무관 — 2026-08-05 개편)
@@ -3305,7 +3451,7 @@ export class RegionFieldScene extends Phaser.Scene {
       originX: px, originY: py,
       dirX: this.lastAimDir.x, dirY: this.lastAimDir.y,
       power: this.chargePower,
-      strength: DEFAULT_ANGLER_STATS.strength,
+      strength: DEFAULT_ANGLER_STATS.strength * GameState.skillMult('cast_distance'),   // 스킬 롱캐스트(122차)
       wind: this.getWindVector(),
     });
     for (let i = 4; i < traj.length; i += 6) {

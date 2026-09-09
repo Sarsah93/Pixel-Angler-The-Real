@@ -2,7 +2,7 @@
 
 > **이 위키의 목적**: 날짜·차수 순으로만 쌓이던 작업 기록을 **구조(시스템) 기준**으로 다시 배열해,
 > "지금 무엇이 어디까지 되어 있고 / 무엇이 남았고 / 어디가 위험한가"를 한 화면에서 판별한다.
-> 최종 업데이트: 2026-09-01 (105차 반영)
+> 최종 업데이트: 2026-09-09 (122차 반영)
 
 ---
 
@@ -47,22 +47,30 @@
 | S7 | [월드맵·지역 타일맵](02-SYSTEMS/world-field.md) | 🔶 | `WorldMapScene` · **OSM 파이프라인 3종** · `build_region_maps.py` | 속초(심리스 v2)·부산·홈타운 개방 — OSM 16개 지역 확장 잔여 |
 | S8 | [홈베이스 (집)](02-SYSTEMS/home-base.md) | 🔶 | `HomeInteriorScene` · `types/HomeBase.ts` | 하우스 Tier 1~3, 수조 패널, 농사 |
 | S9 | [외부 실데이터](02-SYSTEMS/economy-data.md#외부-api) | 🟢⚠ | `core/api-client/*` | **배포 시 CORS 프록시 필수** |
-| S10 | [UI 프레임워크](02-SYSTEMS/ui-framework.md) | 🟢 | `DraggablePanel` · `TextFit` · `SceneFade` | 저순위 팝업 검수 잔여 |
+| S10 | [UI 프레임워크](02-SYSTEMS/ui-framework.md) | 🟢 | `DraggablePanel` · `TextFit` · `SceneFade` | 저순위 팝업 검수 잔여 · 122차 ✕ 통일·새 팝업 최상단·명패 로케일 재배치 |
 | S11 | [가이드·온보딩](02-SYSTEMS/ui-framework.md#가이드-허브) | 🟢 | `GuidePanel` · `GuideContent` | 삽화 실게임 스크린샷 교체 |
 | S12 | [세이브·슬롯](02-SYSTEMS/inventory-equipment.md#세이브) | 🟢 | `GameState` | 저장은 집 침대 전용 |
 | S13 | [튜닝·dev 도구](02-SYSTEMS/ui-framework.md#dev-도구) | 🟢 | `config/tuning.ts` · `DevTuningPanel`(F8) | fight/rod/yield 테이블 소비 전환 |
-| S14 | [해루질·통발](02-SYSTEMS/night-hunting-trap.md) | 🔶 | `NightHuntingEngine` · `TrapSystem` | 엔진·씬 동작 확인(099 조사) · 결함 2건 수정 완료 · **배선 D2~D5 잔여 — 다음 대과제 1순위** |
+| S14 | [해루질·통발](02-SYSTEMS/night-hunting-trap.md) | 🟢 | `ForagingEngine` · `ForageSystem` · `TrapFieldSystem` · `extract_fishfarms.py` | **121차 인-맵 1차 완료**(채집 스팟·어장 실폴리곤·강원 조례·통발 아이템) — 야간 실검증·F8 조율·실사 스프라이트·wade/dive 잔여 · **122차 상호작용 F 키 + 스킬 배율 훅** |
 | S15 | 요리(불요리)·CookScene | ⬜ | `CookScene` · `RecipeDatabase` | 화구·용기 시스템부터 |
 | S16 | 제작 `CraftScene` | ⬜ | — | 예약(U 키) |
-| S17 | 퀘스트·스토리 | ⬜ | `QuestDatabase` | **모든 컴포넌트 구현 후 도입**(사용자 방침) |
+| S17 | 퀘스트·스토리 | ⬜ | `QuestDatabase` · `JournalPanel`(J) | **모든 컴포넌트 구현 후 도입**(사용자 방침) — 122차 일지 골격만 |
 | S18 | 멀티플레이 | ⬜ | `packages/server` | Phase 8 |
 | S19 | Tauri 패키징 | ⬜ | `apps/tauri-wrapper` | Phase 9 (아이콘만 준비됨) |
 | S20 | [도감·발견·dev 도구](02-SYSTEMS/discovery-wiki.md) | 🟢 | `DiscoveryStore` · `AnglerLogScene` · F10 콘솔 | 위키 상세 팝업 · FP 토스트 |
+| S21 | [진행 — 면허·스킬·일지](02-SYSTEMS/progression.md) | 🔶 | `SkillDatabase` · `License.ts` · `LicensePanel`/`SkillTreePanel`/`JournalPanel` | **스킬 효과 배선 13/40** · 신규 면허 효과 1/7 · 농사 카테고리 잠김 |
 
 ---
 
-## 3. 지금 위치 (2026-09-01)
+## 3. 지금 위치 (2026-09-09)
 
+- **122차**: **121차 피드백 5건** — 상호작용 **E → F**(E = 장비창) · 영문 잔여(도감·지역/구역·출처) · 팝업 ✕ 통일 ·
+  HUD 명패 로케일 재배치 · **면허(L)·스킬(K)·일지(J)** 패널(S21 신설 — 스킬 40종/배선 13). 실렌더 41/41 ·
+  [워크로그 122](03-WORKLOG/2026-09-09-122-feedback-fkey-i18n-panels-skills.md).
+- **121차**: **인-맵 채집(해루질) 1차** — 속초 맵 갯바위·테트라포드 발밑·안벽에 시간 시드 스팟(≤220) ·
+  [F] 홀드 채집(122차 E→F) · 국립해양조사원 어장 SHP → 어촌계 어장 3폴리곤 오버레이 · 강원 조례(5종 금지 → 적발/압수/벌금 ·
+  판매 금지 · 산란기 도루묵) · 통발 아이템 T 설치·wall-clock 침지·[E] 수거. 상세 →
+  [워크로그 121](03-WORKLOG/2026-09-09-121-inmap-foraging-fishfarms-traps.md). 116~120차는 조도 재적용·도움말·HUD·영어(각 워크로그).
 - **105차**: **해안 시트 3장 에셋화·적용**(사용자 에셋 3장) — 실사 항공사진 격자 선별 +
   검정 테두리 셀 탐지(알파 기준) → 51스프라이트 · 방파제 `'b'` = **상판/사석 실사 타일**
   (그룹 톤 정규화) · 항내 안벽·외해 사석 발치 접경 · **갯바위 실사 산포**.

@@ -408,6 +408,53 @@ export interface TuningConfig {
     /** 두족류 손질 해금 스킬 레벨 (0 = 제한 없음) */
     unlockSkillLv: number;
   };
+  // ── 인-맵 채집(해루질) · 통발 (121차 — 강원 조례 재현. 초기값은 mockup, F8 조율 대기) ──
+  forage: {
+    /** 후보 100타일당 스팟 수 (밀도) */
+    spotsPerHundred: number;
+    /** 간조(조위 0)일 때 밀도 배율 (조위 1 = 1.0) */
+    lowTideBonus: number;
+    /** 스팟 재롤링 주기(분) — 시간 시드 슬롯 */
+    respawnMinutes: number;
+    /** 한 번에 존재하는 스팟 상한 */
+    maxSpots: number;
+    /** 기본 채집 성공 확률 */
+    baseSuccess: number;
+    /** 1순위 도구 사용 시 가산 */
+    toolMatchBonus: number;
+    /** 문어류 도주 확률 (뜰채 기준 — 갈고리는 절반) */
+    octopusEscape: number;
+    /** 맨손 부상(성게·굴) 스태미나 손실 */
+    handInjuryStamina: number;
+    /** [E] 홀드 기본 시간(ms) */
+    holdMsBase: number;
+    /** 랜턴 100루멘당 야간 발견 반경(타일) */
+    lampRadiusPer100lm: number;
+    /** 낮 발견 반경(타일) — 고착 생물만 */
+    dayRadiusTiles: number;
+    /** 진입 불가 풍속(m/s) · 파고(m) */
+    maxWindMps: number;
+    maxWaveM: number;
+    /** 너울 경고 파고(m) — 이 이상이면 미끄러짐 확률 상승 */
+    slipWaveM: number;
+    slipChanceBase: number;
+    slipChanceSwell: number;
+    /** 조례 위반 채집 회차당 적발 확률 */
+    enforcementChance: number;
+    /** 적발 벌금 = 보유 재화 × 비율 (상한 fineCapWon) */
+    fineRatio: number;
+    fineCapWon: number;
+  };
+  trap: {
+    /** 분실 위험 배율 (calculateTrapLossRisk 결과에 곱) */
+    lossRiskMult: number;
+    /** 수거 가능 최소 침지 시간(시간) */
+    minSoakHours: number;
+    /** 설치 가능 거리 — 플레이어로부터 타일 */
+    maxRangeTiles: number;
+    /** 설치 가능 물 타일의 최대 육지 거리(타일) — 던져 넣는 범위 */
+    maxWaterDistTiles: number;
+  };
   // ── 데이터 테이블 (balance, 슬라이더 대상 아님) ──
   /** 어종 id → 피로 스태미나 base */
   fatigueStaminaBase: Record<string, number>;
@@ -530,6 +577,14 @@ export const TUNING: TuningConfig = {
     unlockSkillLv: 0,
   },
   // 데이터 테이블 (대표값 — 나머지 어종 동일 형식으로 채움)
+  forage: {
+    spotsPerHundred: 5, lowTideBonus: 1.6, respawnMinutes: 60, maxSpots: 220,
+    baseSuccess: 0.72, toolMatchBonus: 0.18, octopusEscape: 0.35, handInjuryStamina: 15,
+    holdMsBase: 900, lampRadiusPer100lm: 0.55, dayRadiusTiles: 3,
+    maxWindMps: 12, maxWaveM: 1.5, slipWaveM: 1.0, slipChanceBase: 0.04, slipChanceSwell: 0.22,
+    enforcementChance: 0.25, fineRatio: 0.3, fineCapWon: 300_000,
+  },
+  trap: { lossRiskMult: 1.0, minSoakHours: 1, maxRangeTiles: 4, maxWaterDistTiles: 3 },
   fatigueStaminaBase: {
     yellowtail: 1.6, amberjack: 1.7, greater_amberjack: 1.9, spanish_mackerel: 1.0,
     pacific_cod: 1.2, red_seabream: 1.1, sea_bass: 0.95, flatfish: 0.7,
@@ -638,6 +693,18 @@ export const TUNING_META: TuningParamMeta[] = [
   { path: 'sink.vTermRefMps.sinker', min: 0.8, max: 2.4, step: 0.05, category: 'balance', label: '종단속도 봉돌' },
   { path: 'sink.vTermWeightExp', min: 0.2, max: 0.7, step: 0.05, category: 'balance', label: '종단속도 무게지수' },
   { path: 'sink.reelAngleDeg', min: 30, max: 60, step: 1, category: 'feel', label: '릴링 상승각' },
+  // ── 채집(해루질)·통발 (121차 mockup) ──
+  { path: 'forage.spotsPerHundred', min: 1, max: 20, step: 0.5, category: 'balance', label: '채집 스팟 밀도(/100타일)' },
+  { path: 'forage.lowTideBonus', min: 1, max: 3, step: 0.1, category: 'balance', label: '간조 밀도 배율' },
+  { path: 'forage.baseSuccess', min: 0.3, max: 0.95, step: 0.01, category: 'balance', label: '채집 기본 성공률' },
+  { path: 'forage.octopusEscape', min: 0, max: 0.8, step: 0.05, category: 'balance', label: '문어 도주 확률' },
+  { path: 'forage.holdMsBase', min: 300, max: 2500, step: 50, category: 'feel', label: '채집 홀드(ms)' },
+  { path: 'forage.lampRadiusPer100lm', min: 0.2, max: 1.5, step: 0.05, category: 'feel', label: '랜턴 발견 반경(타일/100lm)' },
+  { path: 'forage.enforcementChance', min: 0, max: 1, step: 0.05, category: 'balance', label: '조례 위반 적발 확률' },
+  { path: 'forage.fineRatio', min: 0, max: 1, step: 0.05, category: 'balance', label: '벌금 재화 비율' },
+  { path: 'forage.fineCapWon', min: 0, max: 2_000_000, step: 50_000, category: 'balance', label: '벌금 상한(원)' },
+  { path: 'trap.lossRiskMult', min: 0, max: 3, step: 0.1, category: 'balance', label: '통발 분실 위험 배율' },
+  { path: 'trap.minSoakHours', min: 0, max: 8, step: 0.5, category: 'balance', label: '통발 최소 침지(h)' },
 ];
 
 // ── path 유틸 (dev 패널 공용) ──

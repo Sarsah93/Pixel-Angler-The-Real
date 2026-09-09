@@ -178,6 +178,8 @@ export interface SeamlessRegionDef {
   /** `lights.json`(항로표지 — `tools/extract_lights.py`) 보유 여부. 없는 지역에서 로드하면
    *  Vite dev SPA 폴백이 index.html을 돌려줘 JSON 파싱 pageerror가 난다(함정 — 17차 depthProfileUrl과 동일). */
   hasLights?: boolean;
+  /** `fishfarms.json`(어촌계 어장 폴리곤 — `tools/extract_fishfarms.py`) 보유 여부. 같은 SPA 폴백 함정 */
+  hasFishFarms?: boolean;
 }
 
 /** 항로표지(등대·등주) — `lights.json` 1건 (114차). OSM `seamark` 노드에서 추출 */
@@ -195,7 +197,7 @@ export interface RegionLight {
 
 /** WorldMap 지역 ID → 심리스 지역 정의 (등록 = 심리스 개방) */
 export const SEAMLESS_REGIONS: Record<string, SeamlessRegionDef> = {
-  gangwon_sokcho: { dataRegion: 'sokcho_v2', dataDir: 'data/sokcho_v2', name: '속초', nameEn: 'Sokcho', hasLights: true },
+  gangwon_sokcho: { dataRegion: 'sokcho_v2', dataDir: 'data/sokcho_v2', name: '속초', nameEn: 'Sokcho', hasLights: true, hasFishFarms: true },
 };
 
 /** 현재 모드에서 이 지역이 심리스로 열리는가 (아니면 undefined = legacy 경로) */

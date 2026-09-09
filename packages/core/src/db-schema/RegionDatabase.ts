@@ -27,6 +27,8 @@ export interface RegionDef {
   shortNameEn?: string;
   /** 지역 설명 */
   description: string;
+  /** 영어 로케일 설명 (122차 — 데이터가 곧 번역) */
+  descriptionEn?: string;
   /** 지역 중심 위도 */
   latitude: number;
   /** 지역 중심 경도 */
@@ -52,6 +54,7 @@ export const REGION_DATABASE: RegionDef[] = [
     shortNameKo: '포항',
     shortNameEn: 'Pohang',
     description: '동해 최대 항구도시 포항. 영일만을 중심으로 감성돔·농어·갈치 명소가 발달해 있다.',
+    descriptionEn: "Pohang, the East Sea's biggest port city — black seabream, sea bass and hairtail spots around Yeongil Bay.",
     latitude: 36.019,
     longitude: 129.343,
     subSpotIds: [
@@ -72,6 +75,7 @@ export const REGION_DATABASE: RegionDef[] = [
     shortNameKo: '거제',
     shortNameEn: 'Geoje',
     description: '맑은 수질과 다채로운 갯바위 포인트를 자랑하는 벵에돔·감성돔 낚시 천국 거제.',
+    descriptionEn: 'Geoje — clear water and varied rock points, a paradise for blackfish and black seabream.',
     latitude: 34.788,
     longitude: 128.621,
     subSpotIds: [
@@ -88,6 +92,7 @@ export const REGION_DATABASE: RegionDef[] = [
     shortNameKo: '여수',
     shortNameEn: 'Yeosu',
     description: '한려수도의 관문 여수. 오동도 앞바다 선상에서 갈치·부시리·감성돔이 쏟아지는 남해 낚시의 메카.',
+    descriptionEn: 'Yeosu, gateway to Hallyeosudo — hairtail, amberjack and black seabream pour in on boats off Odongdo.',
     latitude: 34.7395,
     longitude: 127.7561,
     subSpotIds: [
@@ -103,6 +108,7 @@ export const REGION_DATABASE: RegionDef[] = [
     shortNameKo: '속초',
     shortNameEn: 'Sokcho',
     description: '동해안 북단 대표 낚시터. 속초항 및 낙산 인근 방파제 갈치 낚시 명소.',
+    descriptionEn: "Sokcho, the northern East Coast's signature fishing town — hairtail off the breakwaters near Sokcho Port and Naksan.",
     latitude: 38.207,
     longitude: 128.591,
     subSpotIds: [
@@ -118,6 +124,7 @@ export const REGION_DATABASE: RegionDef[] = [
     shortNameKo: '제주',
     shortNameEn: 'Jeju',
     description: '참돔, 벵에돔, 부시리가 쏟아지는 한국 최남단 낚시 성지 제주도.',
+    descriptionEn: "Jeju, Korea\'s southernmost fishing mecca — red seabream, blackfish and amberjack.",
     latitude: 33.455,
     longitude: 126.935,
     subSpotIds: [
@@ -133,6 +140,7 @@ export const REGION_DATABASE: RegionDef[] = [
     shortNameKo: '인천',
     shortNameEn: 'Incheon',
     description: '서해안의 거대 조간대를 품은 인천. 광활한 갯벌과 해루질, 망둥어 낚시의 성지.',
+    descriptionEn: 'Incheon and its vast West Sea tidal flats — the home of gleaning and goby fishing.',
     latitude: 37.456,
     longitude: 126.705,
     subSpotIds: [
@@ -148,6 +156,7 @@ export const REGION_DATABASE: RegionDef[] = [
     shortNameKo: '태안',
     shortNameEn: 'Taean',
     description: '리아스식 해안과 다양한 갯벌, 해수욕장을 품은 서해 원투 낚시의 요람.',
+    descriptionEn: 'Taean — ria coast, tidal flats and beaches, the cradle of West Sea surf casting.',
     latitude: 36.745,
     longitude: 126.297,
     subSpotIds: [
@@ -163,6 +172,7 @@ export const REGION_DATABASE: RegionDef[] = [
     shortNameKo: '울산',
     shortNameEn: 'Ulsan',
     description: '슬도와 이덕 등 동해 남부의 명방파제와 갯바위 우럭 낚시 요충지.',
+    descriptionEn: 'Ulsan — Seuldo, Ideok and other fine breakwaters and rocks of the southern East Sea, rockfish country.',
     latitude: 35.538,
     longitude: 129.311,
     subSpotIds: [
@@ -178,6 +188,7 @@ export const REGION_DATABASE: RegionDef[] = [
     shortNameKo: '부산',
     shortNameEn: 'Busan',
     description: '태종대, 오륙도 등 강한 조류가 흐르는 대물 벵에돔·참돔 선상 갯바위 낚시터.',
+    descriptionEn: 'Busan — Taejongdae, Oryukdo and strong currents, big blackfish and red seabream from boats and rocks.',
     latitude: 35.179,
     longitude: 129.075,
     subSpotIds: [
@@ -193,6 +204,7 @@ export const REGION_DATABASE: RegionDef[] = [
     shortNameKo: '울릉도',
     shortNameEn: 'Ulleungdo',
     description: '동해의 깊은 수심과 천혜의 절경 속에서 참돔과 우럭 손맛을 보는 섬.',
+    descriptionEn: 'Ulleungdo — deep East Sea water and dramatic scenery, red seabream and rockfish.',
     latitude: 37.484,
     longitude: 130.898,
     subSpotIds: [
@@ -208,6 +220,7 @@ export const REGION_DATABASE: RegionDef[] = [
     shortNameKo: '독도',
     shortNameEn: 'Dokdo',
     description: '대한민국 동단 끝자락. 거센 파도와 함께 활어들의 황금 어장을 형성하는 화산섬.',
+    descriptionEn: "Dokdo, Korea's easternmost point — a volcanic isle whose rough seas form a golden fishing ground.",
     latitude: 37.242,
     longitude: 131.868,
     subSpotIds: [

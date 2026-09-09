@@ -18,7 +18,9 @@
 import Phaser from 'phaser';
 import {
   FISH_DATABASE, SHORE_CREATURE_DATABASE, LURES_CATALOG_DB, ORACLE_FISH_DB,
+  LICENSE_DATABASE, SKILL_DATABASE, SKILL_CATEGORIES,
   REGION_DATABASE, WORLD_NODE_DATABASE, REGION_AREA_NODES, REGION_MAP_GRAPHS, SEAMLESS_REGIONS,
+  DATA_ATTRIBUTIONS, LICENSE_LABEL, LICENSE_LABEL_EN,
 } from '@tra/core';
 import { EN_PLACES } from './places.js';
 import { EN_POIS } from './en_pois.js';
@@ -56,6 +58,18 @@ function buildRuntimeDict(): void {
   for (const list of Object.values(REGION_AREA_NODES)) for (const a of list) put(a.name, a.nameEn);
   for (const g of Object.values(REGION_MAP_GRAPHS)) for (const n of g.nodes) put(n.name, n.nameEn);
   for (const r of Object.values(SEAMLESS_REGIONS)) put(r.name, r.nameEn);
+  // 122차 — 면허·스킬·지역 설명·구역 상세: 데이터 필드(nameEn/descriptionEn/descEn/detailsEn)가 정본
+  for (const l of LICENSE_DATABASE) { put(l.nameKo, l.nameEn); put(l.description, l.descriptionEn); if (l.plannedNote) put(l.plannedNote, l.plannedNoteEn); }
+  for (const sk of SKILL_DATABASE) { put(sk.nameKo, sk.nameEn); put(sk.descKo, sk.descEn); }
+  for (const c of SKILL_CATEGORIES) { put(c.nameKo, c.nameEn); put(c.descKo, c.descEn); put(c.lockedNoteKo, c.lockedNoteEn); }
+  for (const r of REGION_DATABASE) put(r.description, r.descriptionEn);
+  // 122차 — 출처 화면(데이터 제공기관·서비스·사용처·라이선스 라벨)
+  for (const a of DATA_ATTRIBUTIONS) { put(a.provider, a.providerEn); put(a.service, a.serviceEn); put(a.usage, a.usageEn); }
+  for (const k of Object.keys(LICENSE_LABEL) as (keyof typeof LICENSE_LABEL)[]) put(LICENSE_LABEL[k], LICENSE_LABEL_EN[k]);
+  for (const list of Object.values(REGION_AREA_NODES)) for (const a of list) {
+    put(a.desc, a.descEn);
+    (a.details ?? []).forEach((d, i) => put(d, a.detailsEn?.[i]));
+  }
   for (const [ko, en] of Object.entries(EN_PLACES)) put(ko, en);
   // 상호명 보정 사전 — OSM `name:en` 이 없거나(42건) 품질이 낮은 것(지구대 중복 등)을 덮는다.
   // registerNames(OSM)보다 **먼저** 들어가므로 큐레이션이 이긴다.
@@ -223,7 +237,7 @@ export function setLocale(next: Locale, game?: Phaser.Game): void {
   if (locale === next) return;
   locale = next;
   cache.clear();
-  if (game) refreshAll(game);
+  if (game) { refreshAll(game); game.events.emit('locale-changed', next); }   // 명패 등 실측 폭 레이아웃 재배치 훅 (122차)
 }
 
 export function refreshAll(game: Phaser.Game): void {

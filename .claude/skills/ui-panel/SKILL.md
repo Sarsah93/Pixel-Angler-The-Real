@@ -8,6 +8,7 @@ description: Pixel Angler 팝업/패널/HUD UI 작성·수정·검수 규칙. Dr
 ## 패널 골격 (DraggablePanel 상속)
 
 - 모든 팝업은 `ui/DraggablePanel.ts` 상속 — 헤더 드래그·X 닫기·dim(모달)·`contentTop` 제공.
+- **닫기는 우측 상단 ✕ 하나로 통일**(122차 사용자 지시) — 전체 화면 씬(도감·출처)도 하단/엣지 버튼 없이 우상단 ✕ + ESC. 푸터 텍스트는 뷰포트 계산(`maxScroll`)에 포함.
 - **씬에서 `scene.add.existing(panel)` + popupStack 등록** (ESC LIFO 편입). 하네스에서도 add.existing 필수.
 - **자식 추가/재구성 후 `this.applyFix()`(= applyScreenFixed) 필수** — 카메라 스크롤 씬에서 자식 scrollFactor 1이면 히트 판정이 카메라 이동량만큼 어긋난다.
 
@@ -17,6 +18,8 @@ description: Pixel Angler 팝업/패널/HUD UI 작성·수정·검수 규칙. Dr
 - **모달 [900~)**: 손질 900 / 회썰기 910 / 확인·수량 다이얼로그 950 — dim이 아래 입력 흡수.
 - ⚠ `scene.children.bringToTop()`은 depth가 다르면 **무력** — z 조정은 반드시 setDepth로.
 - 자식 팝업(컨텍스트 메뉴·툴팁)은 패널의 자식으로 넣으면 패널 depth를 따라 자동 해결.
+- **새 팝업은 여는 순간 밴드 최상단**(122차 — `RegionFieldScene.openPopup` → `DraggablePanel.raiseToTop()`). 정적 depth는 밴드 안 초기값일 뿐 —
+  큰 패널(스킬 892) 위에 작은 정적 depth(일지 891)를 열면 통째로 가려지고 ESC 순서가 어긋났다.
 - 밴드 밖 특수값: HUD 200 / 드래그 고스트 1500 / 일시정지·최상위 확인 1200.
 
 ## 타이틀바(캡션바) 규칙 (119차 확립 — 위반 금지)

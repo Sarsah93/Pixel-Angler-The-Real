@@ -9,7 +9,7 @@
  */
 
 import type { InvCategory, InvItemTemplate } from '../store/InventoryStore.js';
-import { WEIGHT_SINKER_DB } from '@tra/core';
+import { WEIGHT_SINKER_DB, TRAP_DATABASE } from '@tra/core';
 
 /** 건물(상점) 종류 */
 export type BuildingKind = 'convenience' | 'mart' | 'market' | 'restaurant' | 'cafe' | 'pub';
@@ -70,6 +70,18 @@ const TACKLE_CORNER: ShopEntry[] = [
   { id: 'inv_sinkerG2', name: '좁쌀봉돌 G2', icon: '⚙️', category: 'tackle', subCategory: '채비 부속', basePrice: 2000, price: 2500, maxPerPurchase: 20, equippable: false, desc: '찌낚시 목줄 미세 조정용 좁쌀 봉돌.' },
 ];
 
+/** 직판장 채집·통발 코너 (121차) — 시행령 허용 도구(집게·갈고리·통발) + 헤드랜턴. 통발은 아이템 소유·설치 소모·수거 반환 */
+const FORAGE_CORNER: ShopEntry[] = [
+  { id: 'inv_headlamp', name: '헤드랜턴 (800lm)', icon: '🔦', category: 'etc', subCategory: '해루질 도구', basePrice: 25000, price: 28000, maxPerPurchase: 1, equippable: false, lampLumens: 800, desc: '야간 채집 필수 — 루멘이 발견 반경. 100lm당 약 0.55타일.' },
+  { id: 'inv_tongs',    name: '채집 집게',        icon: '🥢', category: 'etc', subCategory: '해루질 도구', basePrice: 8000,  price: 9500,  maxPerPurchase: 1, equippable: false, forageTool: 'tongs', desc: '소라·홍합·성게·해삼. 맨손으로 성게를 집으면 가시에 찔린다.' },
+  { id: 'inv_gaff',     name: '채집 갈고리',      icon: '🪝', category: 'etc', subCategory: '해루질 도구', basePrice: 12000, price: 14000, maxPerPurchase: 1, equippable: false, forageTool: 'gaff', desc: '바위틈 문어·전복. 뜰채보다 문어를 덜 놓친다.' },
+  ...TRAP_DATABASE.map((t): ShopEntry => ({
+    id: `inv_trap_${t.id}`, name: t.nameKo, icon: '🪤', category: 'etc', subCategory: '통발',
+    basePrice: Math.round(t.priceWon * 0.8), price: t.priceWon, maxPerPurchase: 3, equippable: false, trapSpecId: t.id,
+    desc: `${t.licenseTier === 'advanced' ? '심화 면허 필요. ' : ''}용량 ${(t.maxCapacityG / 1000).toFixed(1)}kg · 미끼 ${t.baitDurationHours}h · 최대 수심 ${t.maxDepthM}m.`,
+  })),
+];
+
 export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
   convenience: {
     kind: 'convenience',
@@ -125,6 +137,8 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
       { id: 'inv_ragworm',   name: '갯지렁이',      icon: '🪱', category: 'tackle', subCategory: '생미끼',   basePrice: 6000,  price: 7000,  maxPerPurchase: 10, condition: 'live', equippable: false, desc: '원투·도다리용 생미끼.' },
       // 채비 코너 — 무게추 봉돌(원투)/찌/좁쌀봉돌 (추천 마크 연동)
       ...TACKLE_CORNER,
+      // 채집·통발 코너 (121차)
+      ...FORAGE_CORNER,
     ],
   },
   restaurant: {

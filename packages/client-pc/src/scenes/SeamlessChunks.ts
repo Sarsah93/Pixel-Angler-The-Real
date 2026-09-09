@@ -1446,6 +1446,24 @@ export class SeamlessChunks {
     return this.bwClass[r * this.cfg.cols + c];
   }
 
+  /** 섬/암초 셀 (computeIslets — 조도 등) — 채집 스팟 후보(갯바위) 판정 (121차) */
+  isIsletAt(c: number, r: number): boolean {
+    if (c < 0 || r < 0 || c >= this.cfg.cols || r >= this.cfg.rows) return false;
+    return this.islet[r * this.cfg.cols + c] === 1;
+  }
+
+  /** 물 타일의 육지 거리(타일) — 통발 설치 범위·실측 수심 환산 (121차). 뭍이면 0 */
+  waterDistAt(c: number, r: number): number {
+    if (c < 0 || r < 0 || c >= this.cfg.cols || r >= this.cfg.rows) return 0;
+    return this.waterDist[r * this.cfg.cols + c];
+  }
+
+  /** 항만 수역(computeHarbor — 항 내측·석호) 여부 — 안벽 채집 후보 판정 (121차) */
+  isHarborAt(c: number, r: number): boolean {
+    if (c < 0 || r < 0 || c >= this.cfg.cols || r >= this.cfg.rows) return false;
+    return this.harbor[r * this.cfg.cols + c] === 1;
+  }
+
   /**
    * 항로표지 배치 준비(114차) — OSM 노드는 물 위나 피복 위에 찍혀 있어 **뭍 타일로 스냅**한다
    * (반경 3, 상판(bwClass 1) > 기타 뭍 > 피복 순). 스냅한 좌표가 속한 청크가 프롭을 세운다.

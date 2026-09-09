@@ -188,6 +188,15 @@ export class ShopPanel extends DraggablePanel {
   }
 
   // ── 그리드 ────────────────────────────────────────
+  /** 구매가 — 스킬 흥정(랭크당 -3%) (122차) */
+  private buyPriceOf(entry: { price: number }): number {
+    return Math.round(entry.price * (1 - 0.03 * GameState.skillRank('eco_haggle')));
+  }
+  /** 판매가 — 스킬 흥정·단골 배율 (122차) */
+  private sellPriceOf(item: InvItem): number {
+    return Math.round(InventoryStore.getSellPrice(item) * GameState.skillMult('sell_price'));
+  }
+
   private renderGrid(): void {
     this.gridContainer.removeAll(true);
     this.hideTooltip();
@@ -205,12 +214,12 @@ export class ShopPanel extends DraggablePanel {
         cells.push({
           icon: entry.icon, iconTexture: entry.iconTexture, name: entry.name,
           speciesId: entry.speciesId, lengthCm: entry.lengthCm,
-          priceLabel: `${entry.price.toLocaleString()}원`,
+          priceLabel: `${this.buyPriceOf(entry).toLocaleString()}원`,
           qtyLabel: '',
           condition: entry.condition,
           recommended,
           selected: this.selectedBuy?.id === entry.id && this.selectedBuy?.name === entry.name,
-          tooltip: `${recommended ? '[추천] ' : ''}${entry.name}\n${entry.price.toLocaleString()}원 · ${entry.desc}`,
+          tooltip: `${recommended ? '[추천] ' : ''}${entry.name}\n${this.buyPriceOf(entry).toLocaleString()}원 · ${entry.desc}`,
           onSelect: () => { this.selectedBuy = entry; this.renderGrid(); },
           onDetail: () => this.cbs.onOpenDetail(entry),
         });
@@ -218,18 +227,20 @@ export class ShopPanel extends DraggablePanel {
       if (cells.length === 0) this.renderEmptyNote(gy0, '판매 품목이 없습니다.');
     } else {
       // 착용 중 장비(slot < 0 = 그리드 이탈)는 판매 목록에서 제외 — 먼저 해제해야 한다 (2026-08-05 개편)
+      // 채집물(forageCatch)은 조례상 판매·유통 금지 — 목록에서 제외 (121차)
+      const hasForage = InventoryStore.items.some((i) => i.forageCatch && i.slot >= 0);
       const sellable = InventoryStore.items.filter(
-        (i) => this.shop.buysCategories.includes(i.category) && i.slot >= 0,
+        (i) => this.shop.buysCategories.includes(i.category) && i.slot >= 0 && !i.forageCatch,
       );
       sellable.forEach((item) => {
         cells.push({
           icon: item.icon, iconTexture: item.iconTexture, name: item.name,
           speciesId: item.speciesId, lengthCm: item.lengthCm,
-          priceLabel: `${InventoryStore.getSellPrice(item).toLocaleString()}원`,
+          priceLabel: `${this.sellPriceOf(item).toLocaleString()}원`,
           qtyLabel: item.qty > 1 ? `x${item.qty}` : '',
           condition: item.condition,
           selected: this.selectedSell?.id === item.id,
-          tooltip: `${item.name}\n매입가 ${InventoryStore.getSellPrice(item).toLocaleString()}원${item.condition ? ' · ' + CONDITION_LABEL[item.condition] : ''}`,
+          tooltip: `${item.name}\n매입가 ${this.sellPriceOf(item).toLocaleString()}원${item.condition ? ' · ' + CONDITION_LABEL[item.condition] : ''}`,
           onSelect: () => { this.selectedSell = item; this.renderGrid(); },
           onDetail: () => this.cbs.onOpenDetail(item),
         });
@@ -237,7 +248,7 @@ export class ShopPanel extends DraggablePanel {
       if (this.shop.buysCategories.length === 0) {
         this.renderEmptyNote(gy0, '이 상점은 아이템을 매입하지 않습니다.');
       } else if (sellable.length === 0) {
-        this.renderEmptyNote(gy0, '판매할 수 있는 아이템이 없습니다.');
+        this.renderEmptyNote(gy0, hasForage ? '채집물은 판매·유통이 금지되어 있습니다 (강원 조례) — 요리·자가 소비만' : '판매할 수 있는 아이템이 없습니다.');
       }
     }
 

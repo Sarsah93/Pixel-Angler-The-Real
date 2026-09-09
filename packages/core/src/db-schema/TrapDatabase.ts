@@ -19,6 +19,7 @@ export const TRAP_DATABASE: TrapSpec[] = [
     durability: 100,
     maxDurability: 100,
     targetCategories: ['crustacean'],
+    licenseTier: 'basic', priceWon: 18000,
   },
   {
     id: 'trap_crab_pro',
@@ -32,6 +33,7 @@ export const TRAP_DATABASE: TrapSpec[] = [
     // ⚠ 'shellfish'는 생물 DB에 실생물이 0이라 영영 매칭되지 않는다 (조개류는 bivalve/gastropod).
     //   통발에 실제로 기어드는 패류는 소라(복족류)뿐 — bivalve(바지락·굴)는 매몰·고착형이라 제외.
     targetCategories: ['crustacean', 'gastropod'],
+    licenseTier: 'basic', priceWon: 45000,
   },
   // ────────── 새우 통발 ──────────
   {
@@ -44,6 +46,7 @@ export const TRAP_DATABASE: TrapSpec[] = [
     durability: 80,
     maxDurability: 80,
     targetCategories: ['crustacean'],
+    licenseTier: 'basic', priceWon: 12000,
   },
   // ────────── 장어 통발 (심화 면허 필요) ──────────
   {
@@ -57,6 +60,7 @@ export const TRAP_DATABASE: TrapSpec[] = [
     maxDurability: 150,
     targetCategories: ['crustacean'],           // 게류 혼획
     targetFishSpecies: ['conger_eel', 'hagfish'], // 붕장어·먹장어 (FishDatabase)
+    licenseTier: 'advanced', priceWon: 35000,
   },
   {
     id: 'trap_eel_pro',
@@ -69,6 +73,7 @@ export const TRAP_DATABASE: TrapSpec[] = [
     maxDurability: 300,
     targetCategories: ['crustacean'],
     targetFishSpecies: ['conger_eel', 'hagfish', 'pike_conger'], // 대형식은 갯장어(하모)까지
+    licenseTier: 'advanced', priceWon: 90000,
   },
   // ────────── 문어 단지 (심화 면허 필요) ──────────
   {
@@ -81,6 +86,7 @@ export const TRAP_DATABASE: TrapSpec[] = [
     durability: 60,
     maxDurability: 60,
     targetCategories: ['cephalopod'],
+    licenseTier: 'advanced', priceWon: 15000,
   },
   {
     id: 'trap_octopus_pvc',
@@ -92,6 +98,7 @@ export const TRAP_DATABASE: TrapSpec[] = [
     durability: 250,
     maxDurability: 250,
     targetCategories: ['cephalopod'],
+    licenseTier: 'advanced', priceWon: 28000,
   },
   // ────────── 어류 통발 ──────────
   {
@@ -108,7 +115,10 @@ export const TRAP_DATABASE: TrapSpec[] = [
     targetFishSpecies: [
       'dark_banded_rockfish', 'black_rockfish', 'fat_greenling', 'greenling',
       'yellowfin_goby', 'conger_eel',
+      // 도루묵 — 겨울 동해 산란 접안. 10~12월 산란기 통발 포획은 강원 조례 위반(단속 이벤트)
+      'sandfish',
     ],
+    licenseTier: 'advanced', priceWon: 60000,
   },
 ];
 
