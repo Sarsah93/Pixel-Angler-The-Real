@@ -182,6 +182,15 @@ export interface InvItem {
    * 존재하면 인벤토리 '설치하기' → 홈타운 칸 단위 배치 모드 (HOMETOWN_HOME_SPEC).
    */
   placeKey?: string;
+  // ── 생존 지표 회복 (125차 — SPEC §4-3) ──
+  /** 섭취 시 허기 회복 % (음수 허용) */
+  /** 사용 시 스킬 포인트를 전부 환급한다 (127차 P5 — 리스펙 아이템) */
+  skillReset?: boolean;
+  hungerRestore?: number;
+  /** 섭취 시 수분 회복 % (음수 허용 — 술은 −8) */
+  hydrationRestore?: number;
+  /** 섭취 시 체력 회복 */
+  hpRestore?: number;
   // ── 인-맵 채집·통발 (121차) ──
   /** 헤드랜턴 루멘 — 야간 채집 스팟 발견 반경 */
   lampLumens?: number;

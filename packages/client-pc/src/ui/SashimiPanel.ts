@@ -16,7 +16,7 @@ import Phaser from 'phaser';
 import {
   evaluateCut, CutPoint, SASHIMI_MODES, SashimiMode, SashimiModeSpec, buildSashimiCutPaths,
   sashimiGradeFromQuality, getBestKnife, FISH_DATABASE, ENGAWA_CUTS, ENGAWA_PIECES,
-  SASHIMI_CUT_OVERRIDES, cephByproductIcon,
+  SASHIMI_CUT_OVERRIDES, cephByproductIcon, GRADE_XP_MULT,
 } from '@tra/core';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { InventoryStore, InvItem } from '../store/InventoryStore.js';
@@ -1006,6 +1006,9 @@ export class SashimiPanel extends DraggablePanel {
     const pieceValue = Math.max(100, Math.round((this.source.basePrice || 2000) * (mult / 1.5) / pieceCount * spec.priceMult));
     const xp = Math.round((this.engawa ? 6 : this.ceph === 'fin' ? 8 : this.ceph === 'mantle' ? 12 : 10) + avg * 20 + (this.mode === 'advanced' ? 8 : 0));
     const lv = GameState.addFilletingXp(xp);
+    // 플레이어 레벨 XP (124차 — 손질 숙련과 별개 축. 등급 계수 하0.6/중1.0/상1.5/특2.5)
+    GameState.addActivityXp('sashimi', GRADE_XP_MULT[grade] ?? 1);
+    GameState.applyVitalsAction('sashimi');   // 125차 — 회뜨기 1건 행동 비용
 
     // 회 조각 지급 + 원물 필렛/엔가와/부산물 소모 (고급 = id 'adv' — 접시/스시 판별)
     //  아이콘 = 엔가와는 실사 스트립 / 두족류는 부위 실사 / 필렛은 탑뷰 슬라이스(sashimi_piece_{fam})

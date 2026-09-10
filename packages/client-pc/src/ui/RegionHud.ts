@@ -10,8 +10,11 @@
  */
 
 import Phaser from 'phaser';
-import type { RegionTerrain, WeatherKind } from '@tra/core';
-import { WEATHER_LABEL, kstParts, isNightHour } from '@tra/core';
+import type { RegionTerrain, WeatherKind, StatusEffectId } from '@tra/core';
+import {
+  WEATHER_LABEL, kstParts, isNightHour,
+  getStatusEffect, statusRemainMs, STATUS_CURE_LABEL, xpToNext, MAX_LEVEL,
+} from '@tra/core';
 import { GameState } from '../store/GameState.js';
 import { loadSettings, saveSettings } from '../scenes/SettingsScene.js';
 import { InventoryStore } from '../store/InventoryStore.js';
@@ -19,8 +22,9 @@ import { ExternalDataStore } from '../store/ExternalDataStore.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { applyScreenFixed, restoreHandCursor } from './DraggablePanel.js';
 import { createItemIcon } from './ItemIcon.js';
+import { addPixelIcon } from './PixelIcon.js';
 import { paintHudPanel, paintHudSlot } from './HudPanelStyle.js';
-import { t } from '../i18n/I18n.js';
+import { t, getLocale } from '../i18n/I18n.js';
 
 export interface RegionHudConfig {
   /** 지역 ID — 기상/해양 데이터 조회 키 (KMA_GRID_BY_REGION / REGION_TO_MMSI) */
@@ -107,7 +111,12 @@ const HUD_ALPHAS = [1, 0.7, 0.4, 0.05];   // 최저 = 뒤 배경이 거의 그�
 const BADGE_COLS = 2;
 const BADGE_STEP_X = (SP.w - SP.pad * 2) / BADGE_COLS;
 const BADGE_STEP_Y = 30;
-const BADGE_ROW0_Y = SP_CONTENT_Y + 106;
+/**
+ * 배지 첫 행 y — '대' 단계 전용.
+ * 126차에 경험치 바(+52)가 끼면서 날짜·시계가 각각 14px씩 밀렸다.
+ * 시계(18px, y +82)의 실제 하단이 +106이므로 첫 행 중심은 +122(= 배지 상단 +109)에 둔다.
+ */
+const BADGE_ROW0_Y = SP_CONTENT_Y + 122;
 /** 캡션 최대 폭 — 이 값을 넘으면 줄바꿈되므로 패널 밖으로는 절대 못 나간다 */
 const CAPTION_MAX_W = BADGE_STEP_X - BADGE_R * 2 - 8;
 
@@ -124,6 +133,55 @@ const SP_LAYOUTS: StatusLayout[] = [
   { w: 236, h: 132 + HUD_HEADER_H, date: true, badges: 'icons' },
   { w: 196, h: 84 + HUD_HEADER_H, date: false, badges: 'none' },
 ];
+
+/**
+ * 상태 패널 게이지 키 — 렌더와 호버 히트가 **같은 rect 소스**(`barRects`)를 공유한다.
+ * xp·hunger·hydration은 '대' 단계 전용(중·소는 118차 정보량 축소 원칙대로 무변경).
+ */
+type VitalKey = 'hp' | 'fatigue' | 'xp' | 'hunger' | 'hydration';
+
+/** 게이지 라벨 Ko/En — 이 텍스트만 사전을 타고, 수치는 숫자만이라 번역 대상이 아니다 (119차 규칙) */
+const VITAL_LABEL: Record<VitalKey, { ko: string; en: string; color: number; icon?: string }> = {
+  hp: { ko: '체력', en: 'HP', color: 0x37d97b },
+  fatigue: { ko: '피로도', en: 'Fatigue', color: 0xff8a3d },
+  xp: { ko: '경험치', en: 'EXP', color: 0xe8ddc0 },
+  // 허기·수분은 **라벨 텍스트 대신 픽셀 아이콘**(빵·물방울) — 로케일과 무관해 폭이 흔들리지 않는다
+  hunger: { ko: '허기', en: 'Hunger', color: 0xd8a24a, icon: 'hunger' },
+  hydration: { ko: '수분', en: 'Water', color: 0x4fb8e0, icon: 'hydration' },
+};
+
+/** 생존 지표 아이콘 표시 크기(px) */
+const VITAL_ICON = 16;
+
+/** 게이지 한 줄의 기하 — `barRects()`가 렌더·히트·툴팁 앵커에 같은 값을 공급한다 */
+interface VitalRect {
+  key: VitalKey;
+  /** 라벨(또는 아이콘) 좌측 x */
+  labelX: number;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/** 툴팁 앵커 사각형 — 이 박스를 피해 여유 있는 쪽으로 팝업이 펼쳐진다 */
+interface TipAnchor { x: number; y: number; w: number; h: number }
+
+/**
+ * 상태이상 스트립 — **패널 밖 하단 좌정렬**(SPEC §7).
+ * 통일된 칩 프레임 + **16x16 손그림 픽셀 아이콘**(텍스트 약어·이모지 금지 — AGENTS §4).
+ * 4개를 넘으면 둘째 줄로 접힌다.
+ */
+const STRIP = { chip: 22, gap: 4, perRow: 4, top: 6, icon: 16 } as const;
+
+/** 남은 활동 시간 표기 — 상위 0단위는 생략 (44차 compactRemain과 같은 문법) */
+function formatRemain(ms: number): string {
+  const total = Math.max(0, Math.round(ms / 1000));
+  const h = Math.floor(total / 3600), m = Math.floor((total % 3600) / 60), sec = total % 60;
+  if (h > 0) return `${h}h ${String(m).padStart(2, '0')}m`;
+  if (m > 0) return `${m}m ${String(sec).padStart(2, '0')}s`;
+  return `${sec}s`;
+}
 
 /** 배지 idx → 중심 좌표 (레이아웃별) */
 function badgePos(layout: StatusLayout, idx: number): { x: number; y: number } {
@@ -175,6 +233,20 @@ export class RegionHud extends Phaser.GameObjects.Container {
   private weatherTip?: Phaser.GameObjects.Container;
   /** 현재 상태 패널 레이아웃 */
   private statusLayout: StatusLayout = SP_LAYOUTS[0];
+
+  // ── 생존 지표 UI (126차 P3) ──
+  /** 게이지 라벨(체력/피로도/경험치/허기/수분) — 로케일 전환 시 setText 훅이 처리 */
+  private vitalLabels = new Map<VitalKey, Phaser.GameObjects.Text>();
+  /** 열려 있는 호버 팝업의 매초 갱신 훅 (없으면 팝업 없음) */
+  private tipRefresh?: () => void;
+  /** 게이지 호버 히트 — 수치는 상시 표기하지 않고 호버 팝업으로만 (118차 방향) */
+  private vitalHits: Phaser.GameObjects.Rectangle[] = [];
+  /** 수치 호버 팝업 */
+  private valueTip?: Phaser.GameObjects.Container;
+  /** 상태이상 스트립 (패널 밖 — 크기 단계와 무관하게 항상 표시) */
+  private stripC?: Phaser.GameObjects.Container;
+  /** 스트립 재생성 판단용 시그니처 (id 목록 + 로케일) */
+  private stripSig = '';
 
   /** 상태 패널·지역 채널 래퍼 — 크기(scale)·투명도(alpha)를 통째로 조절 (116차) */
   private statusC!: Phaser.GameObjects.Container;
@@ -246,10 +318,17 @@ export class RegionHud extends Phaser.GameObjects.Container {
   /** 상태 패널 파괴 — 단계 재생성 전 필수(안 걷으면 뒤에 겹쳐 남는다, 118차 채널 사례와 동일) */
   private destroyStatusPanel(): void {
     this.hideWeatherTip();
+    this.hideValueTip();
     this.statusC?.destroy();          // 컨테이너 destroy = 자식까지
     this.badgeGlyphs = [];
     this.badgeCaptions = [];
     this.badgeHits = [];
+    this.vitalHits = [];
+    this.vitalLabels.clear();
+    // 스트립은 패널 밖 컨테이너 — 단계마다 y가 달라지므로 시그니처를 비워 다음 틱에 재생성시킨다
+    this.stripC?.destroy();
+    this.stripC = undefined;
+    this.stripSig = '';
   }
 
   /**
@@ -275,20 +354,34 @@ export class RegionHud extends Phaser.GameObjects.Container {
     this.statusC.add(titleT);
 
     const lx = SP.x + SP.pad;
-    const hpLabel = this.scene.add.text(lx, SP_CONTENT_Y + 10, 'HP', {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#a0b8c8', fontStyle: 'bold',
-    });
-    const fatigueLabel = this.scene.add.text(lx, SP_CONTENT_Y + 30, '피로도', {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#a0b8c8', fontStyle: 'bold',
-    });
-    this.statusC.add([hpLabel, fatigueLabel]);
+    const full = L.badges === 'full';
 
+    // ── 게이지 라벨 — rect는 barRects()가 단일 소스(렌더·히트 공유) ──
+    this.vitalLabels.clear();
     this.barsG = this.scene.add.graphics();
+    for (const r of this.barRects()) {
+      const iconKey = VITAL_LABEL[r.key].icon;
+      if (iconKey) {
+        // 허기·수분 = 텍스트 라벨 대신 픽셀 아이콘 (호버 툴팁이 이름을 설명한다)
+        const img = addPixelIcon(this.scene, iconKey, r.labelX + VITAL_ICON / 2, r.y + r.h / 2, VITAL_ICON);
+        if (img) this.statusC.add(img);
+        continue;
+      }
+      // 경험치 라벨은 `Lv.n`이라 updateStatus에서 매초 갱신한다(생성 시엔 빈 문자열)
+      const label = this.scene.add.text(r.labelX, r.y + r.h / 2,
+        r.key === 'xp' ? '' : this.vitalLabelText(r.key), {
+          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#a0b8c8', fontStyle: 'bold',
+        }).setOrigin(0, 0.5);
+      this.vitalLabels.set(r.key, label);
+      this.statusC.add(label);
+    }
     this.statusC.add(this.barsG);
+    this.createVitalHits();
 
     // ── 날짜 / 시각 (KST 명시) — 최소 단계는 시각만 ──
+    // '대'는 경험치 바(+52)가 끼어 날짜·시계가 14px 아래로 밀린다. '중/소'는 무변경.
     if (L.date) {
-      this.dateText = this.scene.add.text(lx, SP_CONTENT_Y + 52, '', {
+      this.dateText = this.scene.add.text(lx, SP_CONTENT_Y + (full ? 66 : 52), '', {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#9fd0e4',
       });
       this.statusC.add(this.dateText);
@@ -296,7 +389,7 @@ export class RegionHud extends Phaser.GameObjects.Container {
       this.dateText = undefined;
     }
 
-    const clockY = L.date ? SP_CONTENT_Y + 68 : SP_CONTENT_Y + 50;
+    const clockY = L.date ? SP_CONTENT_Y + (full ? 82 : 68) : SP_CONTENT_Y + 50;
     this.clockText = this.scene.add.text(lx, clockY, '', {
       fontFamily: 'monospace', fontSize: '18px', color: '#e8f4fd', fontStyle: 'bold',
     });
@@ -350,6 +443,249 @@ export class RegionHud extends Phaser.GameObjects.Container {
       this.badgeHits.push(hit);
       this.statusC.add(hit);
     }
+  }
+
+  // ── 생존 지표 게이지 (126차 P3) ─────────────────────
+  /**
+   * 게이지 라벨 텍스트 — **항상 한국어 원문**을 넘긴다.
+   * `Text.setText` i18n 훅이 사전으로 번역하고, 로케일 전환 시 `setLocale`이 원문으로 되돌려 다시 번역한다
+   * (여기서 영어를 직접 넣으면 ko로 되돌아올 때 역방향 사전이 없어 영어가 굳는다 — 118차 규칙).
+   */
+  private vitalLabelText(key: VitalKey): string {
+    return VITAL_LABEL[key].ko;
+  }
+
+  /**
+   * 게이지 rect 단일 소스. 렌더(`updateStatus`)와 호버 히트(`createVitalHits`)가 이 값을 공유하므로
+   * 레이아웃을 고쳐도 툴팁 판정이 어긋나지 않는다.
+   *
+   * '대' 배치 (CONTENT_Y 기준):
+   *   좌: 체력 +12 / 피로도 +32 / 경험치 +52(얇게 6px)
+   *   우: 허기 +68 / 수분 +84 (컴팩트 — 날짜·시계 우측 컬럼)
+   */
+  private barRects(): VitalRect[] {
+    const L = this.statusLayout;
+    const lx = SP.x + SP.pad;
+    const bx = lx + SP.labelW;
+    const bw = L.w - SP.pad * 2 - SP.labelW;
+    const rows: VitalRect[] = [
+      { key: 'hp', labelX: lx, x: bx, y: SP_CONTENT_Y + 12, w: bw, h: 10 },
+      { key: 'fatigue', labelX: lx, x: bx, y: SP_CONTENT_Y + 32, w: bw, h: 10 },
+    ];
+    if (L.badges !== 'full') return rows;
+    // 경험치 — 피로도보다 얇게(6px), 좌측 라벨은 `Lv.n`
+    rows.push({ key: 'xp', labelX: lx, x: bx, y: SP_CONTENT_Y + 52, w: bw, h: 6 });
+    // 허기·수분 — 우측 컬럼 컴팩트 바. 라벨은 픽셀 아이콘(빵·물방울)이라 로케일 폭 문제가 없다.
+    // 아이콘(16px) 컬럼 — 행 간격 22px라 위아래 아이콘이 맞닿지 않는다(실측 6px 여유).
+    // 바는 아이콘 우측 224에서 시작해 324에서 끝난다(패널 컨텐츠 우측 한계 326).
+    const rx = SP.x + SP.pad + 176;
+    rows.push({ key: 'hunger', labelX: rx, x: rx + 22, y: SP_CONTENT_Y + 62, w: 100, h: 8 });
+    rows.push({ key: 'hydration', labelX: rx, x: rx + 22, y: SP_CONTENT_Y + 84, w: 100, h: 8 });
+    return rows;
+  }
+
+  /** 게이지 호버 히트 — 라벨~바 전체를 덮는다(얇은 바를 정확히 겨냥하지 않아도 뜨게) */
+  private createVitalHits(): void {
+    for (const r of this.barRects()) {
+      const x0 = Math.min(r.labelX, r.x) - 2;
+      const w = r.x + r.w - x0 + 2;
+      const hit = this.scene.add.rectangle(x0 + w / 2, r.y + r.h / 2, w, Math.max(r.h + 8, 16), 0xffffff, 0.001)
+        .setInteractive({ useHandCursor: false });
+      const anchor: TipAnchor = { x: x0, y: r.y - 4, w, h: r.h + 8 };
+      hit.on('pointerover', () => this.showValueTip(r.key, anchor));
+      hit.on('pointerout', () => this.hideValueTip());
+      this.vitalHits.push(hit);
+      this.statusC.add(hit);
+    }
+  }
+
+  /** 게이지 현재/최대 + 비율 — 툴팁과 렌더가 같은 값을 쓴다 */
+  private vitalValue(key: VitalKey): { cur: number; max: number; ratio: number; extra?: string } {
+    const v = GameState.vitals;
+    const p = GameState.player;
+    switch (key) {
+      case 'hp': return { cur: Math.round(v.hp), max: v.maxHp, ratio: v.maxHp > 0 ? v.hp / v.maxHp : 0 };
+      case 'fatigue': return { cur: Math.round(v.fatigue), max: v.maxFatigue, ratio: v.maxFatigue > 0 ? v.fatigue / v.maxFatigue : 0 };
+      case 'hunger': return { cur: Math.round(v.hunger), max: 100, ratio: v.hunger / 100 };
+      case 'hydration': return { cur: Math.round(v.hydration), max: 100, ratio: v.hydration / 100 };
+      case 'xp': {
+        const lv = p.level ?? 1;
+        if (lv >= MAX_LEVEL) return { cur: 0, max: 0, ratio: 1, extra: `Lv.${lv} MAX` };
+        const need = xpToNext(lv);
+        return { cur: Math.round(p.experience ?? 0), max: need, ratio: need > 0 ? (p.experience ?? 0) / need : 0, extra: `Lv.${lv}` };
+      }
+    }
+  }
+
+  /**
+   * 수치 호버 팝업 — 상시 숫자를 없앤 대신(SPEC §7) 호버로만 보여준다.
+   * 라벨(사전 대상)과 수치(숫자만)를 **분리된 Text**로 그린다 — 통짜 문자열은 i18n 규칙이 갉아먹는다(119차).
+   */
+  private showValueTip(key: VitalKey, anchor: TipAnchor): void {
+    this.hideValueTip();
+    const d = VITAL_LABEL[key];
+    const val = this.vitalValue(key);
+    const pct = Math.round(val.ratio * 100);
+    // 허기·수분은 100 만점 지표라 **비율 표기**가 직관적이다 — `62% / 100%`.
+    // 체력·피로도·경험치는 절대치가 의미를 가지므로 `현재 / 최대 (비율)`을 유지한다.
+    const valueStr = d.icon
+      ? `${pct}% / 100%`
+      : (val.max > 0 ? `${val.cur} / ${val.max} (${pct}%)` : `(${pct}%)`);
+
+    const c = this.scene.add.container(0, 0);
+    const g = this.scene.add.graphics();
+    c.add(g);
+    const padX = 10, padY = 7;
+    const label = this.scene.add.text(padX, padY, this.vitalLabelText(key), {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#cfe3f2', fontStyle: 'bold',
+    });
+    const value = this.scene.add.text(padX, padY + 16, valueStr, {
+      fontFamily: 'monospace', fontSize: '12px', color: '#e8f4fd',
+    });
+    c.add([label, value]);
+    let h = padY * 2 + 32;
+    let w = padX * 2 + Math.max(label.width, value.width);
+    if (val.extra) {
+      const ex = this.scene.add.text(padX, padY + 32, val.extra, {
+        fontFamily: 'monospace', fontSize: '11px', color: '#e8ddc0',
+      });
+      c.add(ex);
+      w = Math.max(w, padX * 2 + ex.width);
+      h += 16;
+    }
+    g.fillStyle(0x06101e, 0.96);
+    g.fillRoundedRect(0, 0, w, h, 5);
+    g.lineStyle(1.2, d.color, 0.9);
+    g.strokeRoundedRect(0, 0, w, h, 5);
+    c.setSize(w, h);
+    this.valueTip = c;
+    this.add(c);
+    applyScreenFixed(this);
+    this.anchorTip(c, anchor);
+    // 매초 갱신 — 게이지는 실시간으로 줄어든다(팝업이 멈춰 있으면 거짓 정보가 된다)
+    this.tipRefresh = () => this.showValueTip(key, anchor);
+  }
+
+  private hideValueTip(): void {
+    this.tipRefresh = undefined;
+    this.valueTip?.destroy();
+    this.valueTip = undefined;
+  }
+
+  /**
+   * 툴팁을 **앵커 옆 여유 공간 쪽으로** 펼친다 (커서 추종 아님 —
+   * 칩/게이지 위에서 마우스를 움직여도 팝업이 흔들리지 않는다).
+   * 좌우는 남는 폭이 큰 쪽, 상하는 남는 높이가 큰 쪽으로 확장하고 화면 안으로 클램프한다.
+   */
+  private anchorTip(c: Phaser.GameObjects.Container, a: TipAnchor): void {
+    const gap = 6;
+    const w = c.width, h = c.height;
+    const roomR = GAME_WIDTH - (a.x + a.w) - gap * 2;
+    const roomL = a.x - gap * 2;
+    let x = (roomR >= w || roomR >= roomL) ? a.x + a.w + gap : a.x - gap - w;
+    x = Math.min(Math.max(4, x), Math.max(4, GAME_WIDTH - w - 4));
+    const roomD = GAME_HEIGHT - a.y - 4;
+    const roomU = a.y + a.h - 4;
+    let y = (roomD >= h || roomD >= roomU) ? a.y : a.y + a.h - h;
+    y = Math.min(Math.max(4, y), Math.max(4, GAME_HEIGHT - h - 4));
+    c.setPosition(x, y);
+  }
+
+  // ── 상태이상 스트립 (패널 밖 하단 좌정렬) ────────────
+  /** 활성 목록이 바뀔 때만 재생성 — 매초 파괴/생성하면 호버가 끊긴다 */
+  private refreshStatusStrip(): void {
+    const list = GameState.statuses;
+    const sig = `${getLocale()}|${this.statusSize}|${list.map((a) => a.id).join(',')}`;
+    if (sig === this.stripSig) return;
+    this.stripSig = sig;
+    this.stripC?.destroy();
+    this.stripC = undefined;
+    if (list.length === 0) return;
+
+    const c = this.scene.add.container(0, 0);
+    const y0 = SP.y + this.statusLayout.h + STRIP.top;
+    // 툴팁 앵커는 **스트립 전체 박스**다 — 칩 하나에 붙이면 팝업이 옆 칩들을 덮어
+    // 다른 상태이상으로 커서를 옮길 수 없다(실렌더에서 확인).
+    const rows = Math.ceil(list.length / STRIP.perRow);
+    const stripBox: TipAnchor = {
+      x: SP.x,
+      y: y0,
+      w: Math.min(list.length, STRIP.perRow) * (STRIP.chip + STRIP.gap) - STRIP.gap,
+      h: rows * (STRIP.chip + STRIP.gap) - STRIP.gap,
+    };
+    list.forEach((a, i) => {
+      const def = getStatusEffect(a.id);
+      if (!def) return;
+      const col = i % STRIP.perRow;
+      const row = Math.floor(i / STRIP.perRow);
+      const x = SP.x + col * (STRIP.chip + STRIP.gap);
+      const y = y0 + row * (STRIP.chip + STRIP.gap);
+      const g = this.scene.add.graphics();
+      g.fillStyle(def.badge.color, 0.32);
+      g.fillRoundedRect(x, y, STRIP.chip, STRIP.chip, 4);
+      g.lineStyle(1.2, def.badge.color, 0.95);
+      g.strokeRoundedRect(x, y, STRIP.chip, STRIP.chip, 4);
+      // 칩 안의 그림 = 16x16 손그림 픽셀 아이콘 (로케일 무관 — 사전을 타지 않는다)
+      const icon = addPixelIcon(this.scene, def.badge.icon, x + STRIP.chip / 2, y + STRIP.chip / 2, STRIP.icon);
+      const hit = this.scene.add.rectangle(x + STRIP.chip / 2, y + STRIP.chip / 2, STRIP.chip + 2, STRIP.chip + 2, 0xffffff, 0.001)
+        .setInteractive({ useHandCursor: false });
+      hit.on('pointerover', () => this.showStatusTip(def.id, stripBox));
+      hit.on('pointerout', () => this.hideValueTip());
+      c.add(icon ? [g, icon, hit] : [g, hit]);
+    });
+    this.stripC = c;
+    this.add(c);
+    applyScreenFixed(this);
+  }
+
+  /**
+   * 상태이상 툴팁 — 아이콘 · 이름 · 남은 시간(자연치유) 또는 치료 수단 · 설명 (Ko/En).
+   * **매초 갱신**되므로 남은 시간이 실시간으로 줄어든다. 상태가 풀리면 스스로 닫힌다.
+   */
+  private showStatusTip(id: StatusEffectId, anchor: TipAnchor): void {
+    this.hideValueTip();
+    const a = GameState.statuses.find((x) => x.id === id);
+    const def = a ? getStatusEffect(a.id) : undefined;
+    if (!a || !def) return;
+    const en = getLocale() === 'en';
+    const remain = statusRemainMs(a);
+    const sub = remain !== null
+      ? `${en ? 'Recovers in' : '자연치유까지'} ${formatRemain(remain)}`
+      : (en ? STATUS_CURE_LABEL[def.cure].en : STATUS_CURE_LABEL[def.cure].ko);
+
+    const c = this.scene.add.container(0, 0);
+    const g = this.scene.add.graphics();
+    c.add(g);
+    const padX = 10, padY = 8, maxW = 240;
+    // 제목 줄 = 아이콘 + 이름 (스트립 칩과 같은 그림이라 어느 배지의 설명인지 즉시 연결된다)
+    const tipIcon = addPixelIcon(this.scene, def.badge.icon, padX + 9, padY + 9, 18);
+    if (tipIcon) c.add(tipIcon);
+    const nameX = tipIcon ? padX + 24 : padX;
+    const name = this.scene.add.text(nameX, padY + 2, en ? def.nameEn : def.nameKo, {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#f2f8ff', fontStyle: 'bold',
+    });
+    // wordWrap 아래는 고정 y 금지 — 실측 흐름 배치 (119차 규칙)
+    const subT = this.scene.add.text(padX, name.y + name.height + 4, sub, {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#ffcc44',
+      wordWrap: { width: maxW },
+    });
+    const desc = this.scene.add.text(padX, subT.y + subT.height + 4, en ? def.descEn : def.descKo, {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#cfe3f2',
+      wordWrap: { width: maxW },
+    });
+    c.add([name, subT, desc]);
+    const w = padX * 2 + Math.max(nameX - padX + name.width, subT.width, desc.width);
+    const h = desc.y + desc.height + padY;
+    g.fillStyle(0x06101e, 0.96);
+    g.fillRoundedRect(0, 0, w, h, 5);
+    g.lineStyle(1.2, def.badge.color, 0.95);
+    g.strokeRoundedRect(0, 0, w, h, 5);
+    c.setSize(w, h);
+    this.valueTip = c;
+    this.add(c);
+    applyScreenFixed(this);
+    this.anchorTip(c, anchor);
+    this.tipRefresh = () => this.showStatusTip(id, anchor);
   }
 
   // ── 날씨 호버 툴팁 (축소 단계 전용) ──────────────────
@@ -435,20 +771,34 @@ export class RegionHud extends Phaser.GameObjects.Container {
   private updateStatus = (): void => {
     const p = GameState.player;
 
-    // ── 게이지 (HP: stamina, 피로도: fatigue) ──
-    const bx = SP.x + SP.pad + SP.labelW;
-    const bw = this.statusLayout.w - SP.pad * 2 - SP.labelW;
+    // ── 게이지 (체력·피로도 / '대'는 경험치·허기·수분 추가) ──
+    // 최대치는 100 고정이 아니다 — 레벨·스킬·상태이상이 maxHp/maxFatigue를 바꾼다(125차).
     this.barsG.clear();
-    this.barsG.fillStyle(0x101820, 0.9);
-    this.barsG.fillRect(bx, SP_CONTENT_Y + 12, bw, 10);
-    this.barsG.fillRect(bx, SP_CONTENT_Y + 32, bw, 10);
-    this.barsG.fillStyle(0x37d97b, 0.95);
-    this.barsG.fillRect(bx, SP_CONTENT_Y + 12, bw * Phaser.Math.Clamp(p.stamina / 100, 0, 1), 10);
-    this.barsG.fillStyle(0xff8a3d, 0.95);
-    this.barsG.fillRect(bx, SP_CONTENT_Y + 32, bw * Phaser.Math.Clamp(p.fatigue / 100, 0, 1), 10);
-    this.barsG.lineStyle(1, 0x2a5a8a, 0.9);
-    this.barsG.strokeRect(bx, SP_CONTENT_Y + 12, bw, 10);
-    this.barsG.strokeRect(bx, SP_CONTENT_Y + 32, bw, 10);
+    const low = GameState.isVitalsLow;
+    for (const r of this.barRects()) {
+      const val = this.vitalValue(r.key);
+      this.barsG.fillStyle(0x101820, 0.9);
+      this.barsG.fillRect(r.x, r.y, r.w, r.h);
+      // 허기·수분은 임계(20%) 미만이면 경고색 — 숫자를 안 띄우는 대신 색으로 알린다
+      const warn = (r.key === 'hunger' || r.key === 'hydration') && val.ratio < 0.2;
+      this.barsG.fillStyle(warn ? 0xe04b3a : VITAL_LABEL[r.key].color, 0.95);
+      this.barsG.fillRect(r.x, r.y, r.w * Phaser.Math.Clamp(val.ratio, 0, 1), r.h);
+      this.barsG.lineStyle(1, 0x2a5a8a, 0.9);
+      this.barsG.strokeRect(r.x, r.y, r.w, r.h);
+      if (r.key === 'xp') {
+        const lv = p.level ?? 1;
+        this.vitalLabels.get('xp')?.setText(lv >= MAX_LEVEL ? 'Lv.MAX' : `Lv.${lv}`);
+      }
+    }
+    // 허기·수분 임계 시 라벨을 붉게 (감속·피로 가중이 걸린 상태)
+    for (const key of ['hunger', 'hydration'] as const) {
+      this.vitalLabels.get(key)?.setColor(low ? '#ff9a8a' : '#a0b8c8');
+    }
+
+    // ── 상태이상 스트립 (패널 밖) ──
+    this.refreshStatusStrip();
+    // 열린 호버 팝업이 있으면 같은 주기로 다시 그린다(남은 시간·수치 실시간)
+    this.tipRefresh?.();
 
     // ── 날짜/시각 (KST 고정) ──
     // 사용자의 로컬 타임존이 KST가 아니어도 게임 시간은 항상 한국시간 기준이므로

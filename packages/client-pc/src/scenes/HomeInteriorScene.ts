@@ -364,18 +364,30 @@ export class HomeInteriorScene extends Phaser.Scene {
       c.add([g, t, hit]);
     };
     mkBtn(-22, '저장하고 쉬기', '#4af2a1', 0x4af2a1, () => {
-      // 유일한 저장 지점 — locationTag='hometown_interior'라 게이트 통과
+      // 수면 회복이 먼저 — 저장 스냅샷에 회복 결과가 담기게 한다 (125차)
+      const rec = this.restInBed();
       const ok = GameState.save();
       this.closeBedMenu();
-      this.flash(ok ? `슬롯 ${GameState.activeSlot ?? 1}에 저장했습니다. 푹 쉬었습니다.` : '저장에 실패했습니다');
-      // (추후) 날짜 진행/피로 회복 훅 — 로드맵 4·5에서 결합
+      this.flash(ok ? `슬롯 ${GameState.activeSlot ?? 1}에 저장했습니다. ${rec}` : '저장에 실패했습니다');
+      // (추후) 날짜 진행 훅 — 로드맵 4·5에서 결합
     });
     mkBtn(18, '그냥 쉬기', '#9fd0e4', 0x33b0e0, () => {
+      const rec = this.restInBed();
       this.closeBedMenu();
-      this.flash('잠깐 눈을 붙였습니다. (피로 회복은 추후)');
+      this.flash(rec);
     });
     mkBtn(58, '취소 (ESC)', '#8faabf', 0x2a5a8a, () => this.closeBedMenu());
     this.bedMenu = c;
+  }
+
+  /**
+   * 수면 회복 (125차 — SPEC §4-2): 피로 0 · HP +50% · 허기/수분 −10.
+   * `life_sleep` 배율은 P5 배선 시 곱한다(현재 노드는 wired:false).
+   */
+  private restInBed(): string {
+    GameState.sleepRecover();
+    const v = GameState.vitals;
+    return `푹 쉬었습니다 — 피로 0 · 체력 ${Math.round(v.hp)}/${v.maxHp} · 허기 ${Math.round(v.hunger)}% · 수분 ${Math.round(v.hydration)}%`;
   }
 
   private closeBedMenu(): void {

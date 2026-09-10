@@ -25,6 +25,7 @@ import {
   guideCutByKey,
   WHOLE_FISH_SECTIONS, sectionsForSpecies, ButcherySectionDef, ButcherySectionYield,
   primitiveInput, CEPH_BYPRODUCTS, cephByproductIcon, CephByproductId, getCephalopodProfile,
+  GRADE_XP_MULT,
 } from '@tra/core';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { InventoryStore, InvItem } from '../store/InventoryStore.js';
@@ -4095,7 +4096,9 @@ export class ButcheryPanel extends DraggablePanel {
       profile: this.process.profile,
       weightGram, lengthCm,
       knife: this.knife,
-      skillLevel: GameState.skills.filleting.level,
+      // 127차 P5 — 손질 손(life_fillet)은 수율 계산의 스킬 레벨을 끌어올린다(Lv 환산 가산)
+      skillLevel: GameState.skills.filleting.level
+        + Math.round((GameState.skillMult('fillet_yield') - 1) * 100 / 3),
       cutAccuracyAvg: r.avgCutQuality,
       freshnessFactor: this.freshnessFactor(this.source),
       ikejimeDone: r.ikejimeDone, bledDone: r.bledDone,
@@ -4111,6 +4114,9 @@ export class ButcheryPanel extends DraggablePanel {
     const gradeXp = yieldRes.grade === '특' ? 40 : yieldRes.grade === '상' ? 25 : yieldRes.grade === '중' ? 12 : 5;
     const xpGain = Math.round(20 + r.avgCutQuality * 40 + gradeXp);
     const lv = GameState.addFilletingXp(xpGain);
+    // 플레이어 레벨 XP (124차 — 손질 숙련과 별개 축. 등급 계수 하0.6/중1.0/상1.5/특2.5)
+    GameState.addActivityXp('butcher', GRADE_XP_MULT[yieldRes.grade] ?? 1);
+    GameState.applyVitalsAction('butcher');   // 125차 — 손질 1마리 행동 비용
 
     // 손질 산출물은 전부 **활어 상태로 새 시계 시작** (사용자 지정 2026-07-29 — "처음은 활어로")
     const outCond = 'live' as const;

@@ -36,6 +36,15 @@ export interface CastLaunchParams {
   wind: WindVector;
   /** 채비 공기저항 계수 (0.2 가벼움 ~ 0.8 무거움/저항 큼) — 기본 0.4 */
   airDragCd?: number;
+  /**
+   * 초기 수평 속도 배율 — 기본 1 (127차).
+   *
+   * 날씨 비거리 배율(`CastWeatherEffect.distanceMult`)이 소비한다.
+   * ⚠ **완력(strength)에 곱하면 안 된다** — 완력은 초기 속도의 일부(약 15%)에 불과해
+   * 0.73배를 먹여도 실제 비거리는 7%밖에 안 줄어든다(실측 466px → 431px).
+   * 수평 속도 전체에 곱해야 비거리가 배율만큼 줄어든다.
+   */
+  speedMult?: number;
 }
 
 /** 비행 중인 캐스팅 발사체 상태 */
@@ -60,7 +69,7 @@ const GRAVITY = 420;
 /** 캐스팅 발사체 생성 — 완력·파워에 비례한 초기 벡터 */
 export function launchCast(p: CastLaunchParams): CastProjectile {
   // 수평 초기 속도: 파워 + 완력 기여 (맞바람 극복은 비행 중 바람 가속으로 반영)
-  const horizontal = 170 + p.power * 230 + p.strength * 6;
+  const horizontal = (170 + p.power * 230 + p.strength * 6) * (p.speedMult ?? 1);
   // 수직 초기 속도: 포물선 고각 — 파워가 클수록 높게 떠서 멀리 감
   const vertical = 120 + p.power * 150;
 
@@ -116,4 +125,30 @@ export function simulateCastTrajectory(p: CastLaunchParams, maxSteps = 300): { x
     points.push({ x: proj.x, y: proj.y, z: proj.z });
   }
   return points;
+}
+
+/**
+ * 목표 거리(px)에 착수시키는 **파워(0~1) 역산** — 조준 홀드 가이드(정투 1랭크)가 소비한다 (127차).
+ * 물리 공식을 따로 풀지 않고 `simulateCastTrajectory`를 이분 탐색해, 실제 비행과 항상 같은 답을 낸다.
+ *
+ * @returns 0~1 파워. 최대 파워로도 못 닿으면 `null`("초과" 표시).
+ */
+export function solveCastPower(
+  base: Omit<CastLaunchParams, 'power'>,
+  targetDistPx: number,
+  iterations = 14,
+): number | null {
+  const reach = (power: number): number => {
+    const pts = simulateCastTrajectory({ ...base, power });
+    const last = pts[pts.length - 1];
+    if (!last) return 0;
+    return Math.hypot(last.x - base.originX, last.y - base.originY);
+  };
+  if (reach(1) < targetDistPx) return null;
+  let lo = 0, hi = 1;
+  for (let i = 0; i < iterations; i++) {
+    const mid = (lo + hi) / 2;
+    if (reach(mid) < targetDistPx) lo = mid; else hi = mid;
+  }
+  return (lo + hi) / 2;
 }

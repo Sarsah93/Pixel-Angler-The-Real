@@ -123,11 +123,14 @@ export class SkillTreePanel extends DraggablePanel {
   private nodePos(def: SkillDef, list: SkillDef[]): { x: number; y: number } {
     const sameTier = list.filter((s) => s.tier === def.tier);
     const idx = sameTier.indexOf(def);
-    const colH = sameTier.length * ROW_DY;
     const top = this.contentTop + 34;
     const availH = PANEL_H - DETAIL_H - 8 - top;
+    // 티어당 최대 6노드 수용(124차 증설) — 기본 간격이 안 들어가면 세로로 압축해 상세 스트립 침범을 막는다
+    const n = sameTier.length;
+    const dy = n > 1 ? Math.min(ROW_DY, Math.floor((availH - NODE_H) / (n - 1))) : ROW_DY;
+    const colH = (n - 1) * dy + NODE_H;
     const y0 = top + Math.max(0, (availH - colH) / 2);
-    return { x: CONTENT_X + 14 + def.tier * TIER_DX, y: y0 + idx * ROW_DY };
+    return { x: CONTENT_X + 14 + def.tier * TIER_DX, y: y0 + idx * dy };
   }
 
   private renderTree(): void {

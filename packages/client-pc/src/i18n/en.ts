@@ -33,6 +33,7 @@ const EN_BASE: Record<string, string> = {
     'Map © OpenStreetMap contributors (ODbL) · © Copernicus Sentinel data 2026 · Assets Kenney (CC0) · FisherG · KMA/MOF/MAFRA/KOSIS open data — full credits: [Data Sources] menu',
 
   // ── HUD ──
+  '체력': 'HP', '경험치': 'EXP', '허기': 'Hunger', '수분': 'Water',
   '피로도': 'Fatigue', '야간': 'Night', '주간': 'Day', '어두움': 'Dark', '밝음': 'Bright', '안개 —': 'Fog —', 'M 크기 전환': 'M: resize',
   '지역 채널': 'Local Channel', '[ENTER] 대화 입력 (멀티플레이 준비중)': '[ENTER] Chat (multiplayer coming soon)',
   '[시스템] 지역 채널에 접속했습니다.': '[System] Joined the local channel.',
@@ -404,6 +405,30 @@ const EN_EXTRA: Record<string, string> = {
   '어군 부근': 'Near the school',
   '지역 채널에 접속했습니다.': 'Connected to the region channel.',
   '지역 채널': 'Region Channel',
+  // ── 127차 P5·P6 (스킬 실배선 · 날씨 캐스팅 · 리스펙) ──
+  '조업 재교육 이수증': 'Retraining Certificate',
+  '증서': 'Certificate',
+  '조합 재교육 과정 수료증. 사용하면 지금까지 찍은 스킬 포인트를 전부 되돌려 받는다.':
+    'A guild retraining certificate. Using it refunds every skill point you have spent.',
+  '되돌릴 스킬 포인트가 없습니다.': 'No skill points to refund.',
+  '옆바람 — 착수점 밀림': 'Crosswind — landing pushed',
+  '뒷바람 — 비거리 증가': 'Tailwind — extra distance',
+  '강수 — 유속·밑걸림 상승': 'Rain — faster current, more snags',
+  // ── 126차 P3·P4 (생존 지표 UI · 기절/사망) ──
+  '기절했습니다!': 'You blacked out!',
+  '사망했습니다!': 'You died!',
+  '일으키기': 'Get up',
+  '집에서 부활하기': 'Wake up at home',
+  '잠시 정신을 잃었습니다. 일어나도 피로가 완전히 풀리지는 않습니다 — 침대에서 자야 회복됩니다.':
+    'You passed out for a moment. Getting up will not clear your fatigue — sleep in a bed to recover.',
+  '[경고] 피로도가 한계에 도달해 쓰러졌습니다': '[Warning] Fatigue hit its limit and you collapsed',
+  '[치명] 의식을 잃고 쓰러졌습니다': '[Critical] You lost consciousness and collapsed',
+  '[상태] 정신을 차렸습니다 — 탈진 상태입니다': '[Status] You came to — you are exhausted',
+  '[경고] 허기·수분이 바닥났습니다 — 체력이 줄고 있습니다':
+    '[Warning] Out of food and water — your HP is draining',
+  '기절했습니다': 'You blacked out',
+  '의식을 잃었습니다': 'You lost consciousness',
+  '채비를 회수하고 물러났습니다.': 'You reeled in and backed off.',
   '상태': 'Status',
   '주간': 'Day',
   '야간': 'Night',
@@ -427,6 +452,21 @@ const DOW_EN: Record<string, string> = {
 };
 /** 수치·이름이 끼어 있는 문장 — 정규식 규칙. 캡처 그룹은 그대로 옮긴다(이름은 사전을 다시 타지 않으므로 어종·아이템명은 한국어로 남을 수 있음). */
 export const EN_RULES: Rule[] = [
+  // ── 127차 날씨 캐스팅 (수치 포함) ──
+  [/^맞바람 — 비거리 (\d+)% 감소$/, (m) => `Headwind — distance ${m[1]}% shorter`],
+  [/^\[낚시\] 캐스팅 — 파워 (\d+)%$/, (m) => `[Fishing] Cast — power ${m[1]}%`],
+  [/^\[낚시\] 캐스팅 — 파워 (\d+)% · (.+)$/, (m, tr) => `[Fishing] Cast — power ${m[1]}% · ${tr(m[2])}`],
+  [/^스킬 포인트를 전부 되돌립니다\.\n(.+) 1장이 소모됩니다\. \(환급 (\d+)점\)$/,
+    (m, tr) => `All skill points will be refunded.\n1 ${tr(m[1])} will be consumed. (${m[2]} pt back)`],
+  [/^(.+) 사용 — 스킬 포인트 (\d+)점을 되돌려 받았습니다\.$/,
+    (m, tr) => `Used ${tr(m[1])} — ${m[2]} skill points refunded.`],
+  // ── 126차 기절·사망 (수치 포함) ──
+  [/^체력이 바닥났습니다\. 집에서 눈을 뜨면 소지금 일부\((\d+)%\)를 잃고 탈진 상태로 시작합니다\. 가방 속 물건과 창고·냉장고 보관분은 그대로입니다\.$/,
+    (m) => `Your HP ran out. You wake up at home, lose ${m[1]}% of your cash and start out exhausted. Everything in your bag, storage and fridge is untouched.`],
+  [/^\[상태\] 집에서 눈을 떴습니다 — 소지금 ([\d,]+)원을 잃었습니다$/,
+    (m) => `[Status] You woke up at home — lost ${m[1]} won`],
+  [/^\[상태\] (.+) 증상이 나타났습니다$/, (m, tr) => `[Status] ${tr(m[1])} has set in`],
+  [/^\[상태\] (.+) 증상이 가라앉았습니다$/, (m, tr) => `[Status] ${tr(m[1])} has subsided`],
   // ── 122차 면허·스킬·일지 패널 (캡처 = 이름·수치 — tr()로 재번역) ──
   [/^스킬 포인트 (\d+) 사용 가능 · Lv\.(\d+) \(누적 (\d+)\)$/, (m) => `Skill points ${m[1]} available · Lv.${m[2]} (total ${m[3]})`],
   [/^(.+)  (\d+)\/(\d+)$/, (m, tr) => `${tr(m[1])}  ${m[2]}/${m[3]}`],

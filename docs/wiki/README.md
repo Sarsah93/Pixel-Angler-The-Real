@@ -58,12 +58,36 @@
 | S18 | 멀티플레이 | ⬜ | `packages/server` | Phase 8 |
 | S19 | Tauri 패키징 | ⬜ | `apps/tauri-wrapper` | Phase 9 (아이콘만 준비됨) |
 | S20 | [도감·발견·dev 도구](02-SYSTEMS/discovery-wiki.md) | 🟢 | `DiscoveryStore` · `AnglerLogScene` · F10 콘솔 | 위키 상세 팝업 · FP 토스트 |
-| S21 | [진행 — 면허·스킬·일지](02-SYSTEMS/progression.md) | 🔶 | `SkillDatabase` · `License.ts` · `LicensePanel`/`SkillTreePanel`/`JournalPanel` | **스킬 효과 배선 13/40** · 신규 면허 효과 1/7 · 농사 카테고리 잠김 |
+| S21 | [진행 — 레벨·스킬·생존·면허·일지](02-SYSTEMS/progression.md) | 🔶 | `Progression.ts` · `Vitals.ts`·`StatusEffects.ts` · `SkillDatabase`(83노드 Σ=200) · `License.ts` · 패널 3종 · `CollapseOverlay` | **스킬 효과 배선 24/83**(127차) · 신규 면허 효과 1/7 · 농사·제작 카테고리 잠김 · 치료 아이템·병원은 P7 · 눕기 스프라이트 대기 |
 
 ---
 
-## 3. 지금 위치 (2026-09-09)
+## 3. 지금 위치 (2026-09-10)
 
+- **127차**: **성장·생존 P5·P6** — core `CastWeather.ts` 신설: **바람 3m/s 초과부터** 맞바람 비거리 감소
+  (9m/s ×0.73 — 실비행 466px → 332px) · 옆바람 산포 ×1.6 + 착수점 밀림 · **비 = 유속 ×1.27 · 밑걸림 ×1.33** /
+  **스킬 실배선 13 → 24/83**(생활 6·채집 속도·정투·바람 읽기 — 바람 보정은 **손실의 20%만**, 사용자 "아주 미비") /
+  **조준 400ms 홀드 = 필요 파워 눈금**(`solveCastPower`) · 산포 링 · 바람 화살표 · 비행 카메라 팔로우 /
+  리스펙 아이템('조업 재교육 이수증'). core 28/28 · 실렌더 19/19.
+  [워크로그 127](03-WORKLOG/2026-09-10-127-cast-weather-skill-wiring.md).
+- **126차**: **성장·생존 P3·P4 + UI 이모지 금지 규칙** — 상태 패널 '대'에 경험치 바 · 허기/수분 컴팩트 바 ·
+  **수치 호버 팝업**(상시 숫자 제거) · **상태이상 스트립**(패널 밖 색 칩 + Ko/En 툴팁, '중/소' 회귀 0) /
+  **기절·사망 FSM**(`CollapseOverlay` — 눕기 · 비네트 · 팝업 · 재화 15%·인벤 유지) /
+  **UI 이모지·특수문자 금지 전면 규칙화**(AGENTS §4·§8 · CLAUDE · ui-panel 스킬). 실렌더 29/29.
+  [워크로그 126](03-WORKLOG/2026-09-10-126-vitals-panel-collapse-fsm.md).
+- **125차**: **성장·생존 P2** — core `Vitals.ts`(활동 드레인 6 · 행동 비용 8 · 임계 20% · 온도 · 수면) +
+  `StatusEffects.ts`(11종 · 진행 체인 · 재발) · `GameState.vitals` 세이브(**활동 시간만 진행 → 오프라인 정지**) ·
+  배선 9곳(드레인 · 5개 행동 비용 · 음식 회복치 · 침대 수면 · 채집 부상 → 상태이상). core 44/44 · 실렌더 12/12.
+  [워크로그 125](03-WORKLOG/2026-09-10-125-vitals-status-effects.md).
+- **124차**: **성장·생존 P1** — core `Progression.ts`(레벨 200 · `xpToNext = 25n^1.5+75` · 어획 XP =
+  희귀도×체장 · 첫 발견 ×5) + `GameState.grantXp` 배선 4곳(손질/회 ×등급·채집·준법 방생) ·
+  **스킬 트리 44→83노드 Σ=200pt**(제작 카테고리 신설 — 잠금) · 제작 설계 정정(기본 = U 창 '제작' 탭 /
+  고급 = 설치 제작대 [F]). core 42/42 · 실렌더 ko/en 9/9.
+  [워크로그 124](03-WORKLOG/2026-09-10-124-progression-p1-level200-skilltree.md).
+- **123차**: **성장·생존 통합 스펙 v2** — 사용자 원안을 122차 코드에 정합한
+  `.agents/PROGRESSION_SURVIVAL_SPEC.md`(레벨 200 · 스킬 Σ=200pt · 생존 지표 · 상태이상 · 기절/사망 ·
+  P1~P9) + 도움말 '성장 · 생존' 카테고리 선반영(영문 사전 포함). 착수 순서는 124차에 확정(백로그 H).
+  [워크로그 123](03-WORKLOG/2026-09-10-123-progression-survival-spec-v2.md).
 - **122차**: **121차 피드백 5건** — 상호작용 **E → F**(E = 장비창) · 영문 잔여(도감·지역/구역·출처) · 팝업 ✕ 통일 ·
   HUD 명패 로케일 재배치 · **면허(L)·스킬(K)·일지(J)** 패널(S21 신설 — 스킬 40종/배선 13). 실렌더 41/41 ·
   [워크로그 122](03-WORKLOG/2026-09-09-122-feedback-fkey-i18n-panels-skills.md).

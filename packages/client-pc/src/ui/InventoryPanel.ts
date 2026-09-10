@@ -376,23 +376,45 @@ export class InventoryPanel extends DraggablePanel {
     // 조리(요리) 후에만 먹을 수 있으므로 사용하기 자체를 제공하지 않는다.
     const rawFishSubCats = ['어획물', '손질 필렛', '손질 통마리', '부산물'];
     const usable = item.category === 'consumable'
+      || item.skillReset === true
       || (item.category === 'food' && !rawFishSubCats.includes(item.subCategory));
     if (usable) {
       actions.push({
         label: '사용하기',
         color: '#4af2a1', hoverColor: '#8dffce',
         run: () => {
+          // 127차 P5 — 리스펙(조업 재교육 이수증): 되돌릴 수 없으니 확인창을 거친다
+          if (item.skillReset) {
+            const spent = GameState.skillPointsTotal() - GameState.skillPointsAvailable();
+            if (spent <= 0) { this.setStatus('되돌릴 스킬 포인트가 없습니다.'); return; }
+            const dlg = new ConfirmDialog(
+              this.scene,
+              `스킬 포인트를 전부 되돌립니다.\n${item.name} 1장이 소모됩니다. (환급 ${spent}점)`,
+              () => {
+                const back = GameState.resetSkills();
+                InventoryStore.removeItem(item.id, false);
+                this.setStatus(`${item.name} 사용 — 스킬 포인트 ${back}점을 되돌려 받았습니다.`);
+                dlg.destroy();
+                this.renderGrid();
+                this.scene.events.emit('inventory-changed');
+              },
+              () => dlg.destroy(),
+            );
+            this.scene.add.existing(dlg);
+            return;
+          }
           if (item.category === 'food') {
-            if (item.condition === 'bad' || item.condition === 'spoiled') {
-              this.setStatus(`${item.name} — 상태가 나빠 먹을 수 없습니다 (${CONDITION_LABEL[item.condition]})`);
+            // 부패는 섭취 불가. '나쁨'은 먹을 수 있으나 식중독 롤(125차 — SPEC §4-3·§5)
+            if (item.condition === 'spoiled') {
+              this.setStatus(`${item.name} — 상해서 먹을 수 없습니다 (${CONDITION_LABEL[item.condition]})`);
               return;
             }
             playEatSfx();
             InventoryStore.removeItem(item.id, false);
-            this.setStatus(`${item.name}을(를) 맛있게 먹었습니다. (효과 적용은 추후 구현)`);
+            this.setStatus(this.applyIntakeOf(item));
           } else {
             InventoryStore.removeItem(item.id, false);
-            this.setStatus(`${item.name}을(를) 사용했습니다. (효과 적용은 추후 구현)`);
+            this.setStatus(this.applyIntakeOf(item, '사용'));
           }
           this.renderGrid();
           this.scene.events.emit('inventory-changed');
@@ -630,6 +652,30 @@ export class InventoryPanel extends DraggablePanel {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '14px', color: '#ffe28a', fontStyle: 'bold',
       }).setOrigin(0.5);
     this.add(this.footerText);
+  }
+
+  /**
+   * 섭취 효과 적용 (125차 — SPEC §4-3). 회복치가 없는 아이템은 종전처럼 소모만 하고 안내한다.
+   * '나쁨' 상태 음식은 식중독 롤(§5) — 상한 음식이 상태이상의 실제 발생 소스다.
+   */
+  private applyIntakeOf(item: InvItem, verb = '섭취'): string {
+    const h = item.hungerRestore ?? 0;
+    const w = item.hydrationRestore ?? 0;
+    const hp = item.hpRestore ?? 0;
+    if (!h && !w && !hp) {
+      return `${item.name}을(를) ${verb === '사용' ? '사용했습니다' : '맛있게 먹었습니다'}. (효과 적용은 추후 구현)`;
+    }
+    GameState.applyIntake(h, w, hp);
+    const parts: string[] = [];
+    if (h) parts.push(`허기 ${h > 0 ? '+' : ''}${h}`);
+    if (w) parts.push(`수분 ${w > 0 ? '+' : ''}${w}`);
+    if (hp) parts.push(`체력 ${hp > 0 ? '+' : ''}${hp}`);
+    let msg = `${item.name} — ${parts.join(' · ')}`;
+    if (item.category === 'food' && item.condition === 'bad'
+      && GameState.rollStatus('food_poison', 0.3)) {
+      msg += ' · 배가 아프기 시작한다… (식중독)';
+    }
+    return msg;
   }
 
   private setStatus(msg: string): void {

@@ -31,6 +31,7 @@ import { RegionLight,
   launchCast,
   stepCast,
   simulateCastTrajectory,
+  solveCastPower,
   CastProjectile,
   WindVector,
   DEFAULT_ANGLER_STATS,
@@ -55,6 +56,10 @@ import { RegionLight,
   RegionPatch,
   SeamlessRegionDef,
   seamlessRegionOf,
+  getStatusEffect,
+  computeCastWeather, castScatterRadius, applyCastScatter, castWeatherLabelKo,
+  type CastWeatherEffect,
+  type VitalsActivity,
 } from '@tra/core';
 import { SeamlessChunks, PROP_DEFS, propFootprint, type PropDef } from './SeamlessChunks.js';
 import { ForageSystem } from './field/ForageSystem.js';
@@ -63,6 +68,7 @@ import { TrapDeployPanel } from '../ui/TrapDeployPanel.js';
 import { LicensePanel } from '../ui/LicensePanel.js';
 import { SkillTreePanel } from '../ui/SkillTreePanel.js';
 import { JournalPanel } from '../ui/JournalPanel.js';
+import { playCollapse, type CollapseKind } from '../ui/CollapseOverlay.js';
 import { TUNING, getTrapById, type RegionFishFarms } from '@tra/core';
 import { tilesetPathOf } from '../data/TilesetManifest.js';
 import { TrafficSystem } from './TrafficSystem.js';
@@ -176,6 +182,12 @@ export class RegionFieldScene extends Phaser.Scene {
   private knockVx = 0;
   private knockVy = 0;
   private hitCooldownUntil = 0;
+  /** 허기·수분 고갈 경고 재표시 시각 (125차 — 30초 간격) */
+  private starveWarnAt = 0;
+  /** 기절·사망 연출 진행 중 — 이동·상호작용 전면 차단 (126차 P4) */
+  private collapsing = false;
+  /** 연출 오버레이 정리자 (씬 전환·재시작 시 잔상 방지) */
+  private collapseCleanup?: () => void;
   private editStrokePrev = new Map<number, string>();
 
   private cols = 0;
@@ -274,9 +286,9 @@ export class RegionFieldScene extends Phaser.Scene {
   /** 현재 강수 종류 — 물파문/연출 게이트 */
   private precipKind: 'none' | 'rain' | 'shower' | 'sleet' = 'none';
 
-  /** 이동/캐스팅을 차단해야 하는 UI 상태 (일시정지 or 팝업 열림) */
+  /** 이동/캐스팅을 차단해야 하는 UI 상태 (일시정지 or 팝업 열림 or 쓰러짐 연출) */
   private get uiBlocked(): boolean {
-    return this.isPaused || this.popupStack.length > 0;
+    return this.isPaused || this.collapsing || this.popupStack.length > 0;
   }
 
   /**
@@ -299,6 +311,16 @@ export class RegionFieldScene extends Phaser.Scene {
   private castLineG?: Phaser.GameObjects.Graphics;
   private aimG?: Phaser.GameObjects.Graphics;
   private lastAimDir: { x: number; y: number } = { x: 1, y: 0 };
+  /** 이번 캐스팅의 날씨 계수 (127차) — 착수 산포·1인칭 인계에 쓰고 착수 후 비운다 */
+  private castWeatherEff?: CastWeatherEffect;
+  /** 조준 홀드 가이드(127차 P6) — 같은 방향을 이만큼 유지하면 필요 파워 눈금이 뜬다 */
+  private aimHoldSince = 0;
+  private aimHoldDir: { x: number; y: number } = { x: 1, y: 0 };
+  /** 역산된 필요 파워 (0~1) · null = 최대 파워로도 사거리 초과 */
+  private aimGuidePower: number | null = null;
+  private aimGuideReady = false;
+  /** 캐스팅 비행 중 카메라가 채비를 좇는 중인가 (127차 P6) */
+  private castCamFollow = false;
 
   // UI
   private promptText!: Phaser.GameObjects.Text;
@@ -327,6 +349,11 @@ export class RegionFieldScene extends Phaser.Scene {
     this.poiObjects = new Map();
     // 상태 초기화 (scene.restart 대비)
     this.isTransitioning = false;
+    // 쓰러짐 연출은 씬을 넘어가지 않는다 — 재진입 시 남아 있으면 조작이 영구히 잠긴다
+    this.collapseCleanup?.();
+    this.collapseCleanup = undefined;
+    this.collapsing = false;
+    this.castCamFollow = false;
     this.charging = false;
     this.chargePower = 0;
     this.castBusy = false;
@@ -554,6 +581,7 @@ export class RegionFieldScene extends Phaser.Scene {
       this.hud?.pushLog(`[도감] 새로운 ${kindLabel} 발견 — ${name} (N 키로 확인)`);
     };
     this.events.once('shutdown', () => { DiscoveryStore.onNew = null; });
+    this.events.once('shutdown', () => { this.collapseCleanup?.(); this.collapseCleanup = undefined; this.collapsing = false; });
 
     // ── 보일링/스쿨링 필드 이벤트 (피딩타임 활성도 기반 발생 롤) ──
     this.refreshFieldFeeding();
@@ -576,6 +604,7 @@ export class RegionFieldScene extends Phaser.Scene {
       // 안전망 — 하위 씬(낚시/실내)에서 복귀 시 전환 플래그가 남아 이동이 막히는 일 방지
       this.isTransitioning = false;
       this.cameras.main.fadeIn(300, 0, 10, 20);
+      this.restoreCamFollow();   // 127차 — 1인칭에서 돌아오면 카메라를 플레이어로
       this.clearCastFlight();
       this.hud?.refreshQuickslots();
       // 1인칭 씬이 남긴 종료 사유(채비 손실 등) 표시
@@ -2242,15 +2271,32 @@ export class RegionFieldScene extends Phaser.Scene {
     if (!this.aimG) this.aimG = this.add.graphics().setDepth(29);
   }
 
-  /** 현재 바람 벡터 (환경 데이터 없으면 목업) */
-  private getWindVector(): WindVector {
+  /**
+   * 캐스팅 시점의 날씨 계수 (127차 — SPEC §3-3 + 사용자 지시).
+   * 풍속 `TUNING.castWeather.calmMs`(3m/s) 이하면 전부 1배 = 아무 영향 없음.
+   */
+  private castWeather(aim?: { x: number; y: number }): CastWeatherEffect {
     const env = GameState.environment.environment;
-    if (env) {
-      const rad = (env.weather.windDirectionDeg ?? 0) * Math.PI / 180;
-      const s = env.weather.windSpeedMs * 6;
-      return { x: Math.sin(rad) * s, y: -Math.cos(rad) * s };
-    }
-    return { x: 22, y: -9 };
+    const kma = ExternalDataStore.getKmaWeather(this.region);
+    const marine = ExternalDataStore.getRegionMarineWeather(this.region);
+    const speed = kma?.windSpeedMs ?? marine?.windSpeedMs ?? env?.weather.windSpeedMs ?? 0;
+    const fromDeg = kma?.windDirectionDeg ?? env?.weather.windDirectionDeg ?? 0;
+    return computeCastWeather({
+      windSpeedMs: speed,
+      windFromDeg: fromDeg,
+      weatherKind: ExternalDataStore.getWeatherKind(this.region),
+      rain1hMm: kma?.rain1hMm,
+      windComp: GameState.skillBonus('wind_comp'),   // 바람 읽기(fish_wind) — 상한은 core
+    }, aim);
+  }
+
+  /**
+   * 비행 중 바람 가속 (px/s²) — **횡 성분만**.
+   * 맞바람의 비거리 손실은 `distanceMult`가 발사 속도에서 처리하므로 여기서 또 빼면 이중 계산이다.
+   */
+  private windForce(eff: CastWeatherEffect): WindVector {
+    const g = 260;   // 횡풍 강도 게인 (crossWind는 0~driftMax 비율값)
+    return { x: eff.crossWind.x * g, y: eff.crossWind.y * g };
   }
 
   private releaseCast(): void {
@@ -2262,6 +2308,27 @@ export class RegionFieldScene extends Phaser.Scene {
     this.startCastFlight(this.lastAimDir, power);
   }
 
+  /** 비행 중 채비가 화면 밖으로 나가면 카메라가 좇는다 (127차 P6) */
+  private updateCastCamera(): void {
+    const b = this.castBobber;
+    if (!b) return;
+    const cam = this.cameras.main;
+    const v = cam.worldView;
+    const m = 90;   // 가장자리 여유 — 이 안쪽이면 굳이 카메라를 흔들지 않는다
+    const outside = b.x < v.x + m || b.x > v.right - m || b.y < v.y + m || b.y > v.bottom - m;
+    if (!outside && !this.castCamFollow) return;
+    if (!this.castCamFollow) { this.castCamFollow = true; cam.stopFollow(); }
+    cam.scrollX += (b.x - cam.width / 2 - cam.scrollX) * 0.15;
+    cam.scrollY += (b.y - cam.height / 2 - cam.scrollY) * 0.15;
+  }
+
+  /** 카메라를 플레이어 추적으로 되돌린다 (착수 홀드 후·회수·복귀 공통) */
+  private restoreCamFollow(): void {
+    if (!this.castCamFollow) return;
+    this.castCamFollow = false;
+    this.cameras.main.startFollow(this.playerBody, true, 0.14, 0.14);
+  }
+
   /**
    * 3D 탄도 캐스팅 발사 — 조준 방향(마우스) × 파워 × 완력 + 바람/공기저항.
    * 그림자는 (x, y) 평면을 미끄러지고, 찌는 y - z 보정으로 포물선 비행.
@@ -2271,12 +2338,21 @@ export class RegionFieldScene extends Phaser.Scene {
     const originX = this.playerBody.x;
     const originY = this.playerBody.y;
 
+    GameState.applyVitalsAction('cast');   // 125차 — 캐스팅 1회 행동 비용
+
+    // 127차 — 날씨: 맞바람이면 비거리가 줄고, 옆바람이면 비행 중 횡으로 휜다.
+    //   착수 무작위 산포는 착수 판정(finishCast) 시점에 적용한다.
+    const eff = this.castWeather(dir);
+    this.castWeatherEff = eff;
     this.castProj = launchCast({
       originX, originY,
       dirX: dir.x, dirY: dir.y,
       power,
-      strength: DEFAULT_ANGLER_STATS.strength * GameState.skillMult('cast_distance'),   // 스킬 롱캐스트(122차)
-      wind: this.getWindVector(),
+      // 스킬 롱캐스트(122차)
+      strength: DEFAULT_ANGLER_STATS.strength * GameState.skillMult('cast_distance'),
+      // 날씨 비거리 배율(127차) — 완력이 아니라 **수평 속도 전체**에 곱한다
+      speedMult: eff.distanceMult,
+      wind: this.windForce(eff),
       // 채비 공기저항(루어 dragCoefficient/봉돌 종류) → 비거리 (메탈지그 초장타)
       airDragCd: InventoryStore.getRigDragCd(),
     });
@@ -2287,7 +2363,8 @@ export class RegionFieldScene extends Phaser.Scene {
     if (!this.castLineG) this.castLineG = this.add.graphics().setDepth(22);
 
     this.floatingHint(`캐스팅! 파워 ${Math.round(power * 100)}%`);
-    this.hud?.pushLog(`[낚시] 캐스팅 — 파워 ${Math.round(power * 100)}%`);
+    const wl = castWeatherLabelKo(eff);
+    this.hud?.pushLog(`[낚시] 캐스팅 — 파워 ${Math.round(power * 100)}%${wl ? ` · ${wl}` : ''}`);
   }
 
   /** 캐스팅 비행 1프레임 진행 (update 루프에서 호출) */
@@ -2311,10 +2388,32 @@ export class RegionFieldScene extends Phaser.Scene {
       this.castBobber.x, this.castBobber.y,
     );
 
+    // ── 카메라 팔로우 (127차 P6 — SPEC §3-1) ──
+    //   예상 착수점이 뷰포트 밖이면 캐스팅 중 카메라가 채비를 lerp로 좇는다.
+    //   심리스 카메라 bounds는 그대로라 맵 밖으로는 나가지 않는다.
+    this.updateCastCamera();
+
     if (!proj.landed) return;
 
     // ── 착수 판정 (z <= 0) ──
     this.castProj = null;
+    // 착수 후 0.4초 홀드 뒤 플레이어 추적 복귀 (1인칭 인계 시엔 resume에서 복귀)
+    if (this.castCamFollow) this.time.delayedCall(400, () => this.restoreCamFollow());
+
+    // 127차 — 무작위 산포: 조준한 그대로 꽂히지 않는다. 거리 비례 + 날씨 가산 − 정투(fish_scatter).
+    //   조준 미리보기(궤적 마커)는 **평균 착수점**을 보여주고, 실제 착수는 이 반경 안에서 흩어진다.
+    const eff = this.castWeatherEff;
+    const flightDist = Math.hypot(proj.x - this.playerBody.x, proj.y - this.playerBody.y);
+    const radius = castScatterRadius(flightDist, eff?.scatterMult ?? 1, GameState.skillMult('cast_scatter'));
+    if (radius > 0.5) {
+      const aim = { x: (proj.x - this.playerBody.x) / (flightDist || 1), y: (proj.y - this.playerBody.y) / (flightDist || 1) };
+      const p2 = applyCastScatter({ x: proj.x, y: proj.y }, aim, radius);
+      proj.x = p2.x; proj.y = p2.y;
+      this.castShadow?.setPosition(proj.x, proj.y);
+      this.castBobber?.setPosition(proj.x, proj.y - 6);
+    }
+    this.castWeatherEff = undefined;
+
     const col = Math.floor(proj.x / TR);
     const row = Math.floor(proj.y / TR);
 
@@ -2399,6 +2498,7 @@ export class RegionFieldScene extends Phaser.Scene {
 
   /** 캐스팅 비행 오브젝트 정리 */
   private clearCastFlight(): void {
+    this.restoreCamFollow();   // 127차 — 비행 중단(회수·전환)에도 카메라를 놓치지 않는다
     this.castProj = null;
     this.castShadow?.destroy(); this.castShadow = undefined;
     this.castBobber?.destroy(); this.castBobber = undefined;
@@ -2876,6 +2976,7 @@ export class RegionFieldScene extends Phaser.Scene {
       this.trapField.updatePreview(pw.x, pw.y);
     }
     this.handleMovement();
+    this.tickVitals(delta);
     this.updateSpriteAndShadow();
     this.updateBuildingProximity();
     this.updateObjectProximity();
@@ -2884,6 +2985,75 @@ export class RegionFieldScene extends Phaser.Scene {
     this.trapField?.update(delta);
     this.updateCharge();
     this.checkEdgeTransition();
+  }
+
+  /**
+   * 생존 지표 드레인 (125차 — SPEC §4). **활동 시간만** 진행하므로
+   * `update()`의 일시정지·모달 가드(`uiBlocked`/`isTransitioning`) 뒤에서만 호출한다.
+   */
+  private tickVitals(delta: number): void {
+    const body = this.playerBody.body as Phaser.Physics.Arcade.Body | undefined;
+    const moving = !!body && Math.hypot(body.velocity.x, body.velocity.y) > 4;
+    const activity: VitalsActivity = this.forage?.isHolding ? 'forage'
+      : moving ? (GameState.isMounted ? 'bike' : 'walk')
+      : 'idle';
+    const feelsLikeC = ExternalDataStore.getRegionMarineWeather(this.region)?.airTempC;
+    const r = GameState.tickVitals(delta, activity, { feelsLikeC });
+    // 126차 P4 — 사망이 기절보다 우선(HP 0이면 피로도와 무관하게 사망)
+    if (r.dead) { this.beginCollapse('death'); return; }
+    if (r.fainted) { this.beginCollapse('faint'); return; }
+    if (r.starving && this.time.now > this.starveWarnAt) {
+      this.starveWarnAt = this.time.now + 30_000;
+      this.hud?.pushLog('[경고] 허기·수분이 바닥났습니다 — 체력이 줄고 있습니다');
+    }
+    for (const id of r.added) {
+      this.hud?.pushLog(`[상태] ${getStatusEffect(id)?.nameKo ?? id} 증상이 나타났습니다`);
+    }
+    for (const id of r.removed) {
+      this.hud?.pushLog(`[상태] ${getStatusEffect(id)?.nameKo ?? id} 증상이 가라앉았습니다`);
+    }
+  }
+
+  /**
+   * 기절·사망 연출 시작 (126차 P4 — SPEC §6).
+   * 연출 중에는 이동·상호작용을 전부 막고(`collapsing`), 팝업 버튼으로만 빠져나온다.
+   * ⚠ 부활은 **저장하지 않는다** — 저장은 집 침대에서만(§SavePolicy)이라는 규칙을 건드리지 않는다.
+   */
+  private beginCollapse(kind: CollapseKind): void {
+    if (this.collapsing) return;
+    this.collapsing = true;
+    if (kind === 'faint') GameState.addStatus('faint');
+    this.playerBody.setVelocity(0, 0);
+    this.hud?.pushLog(kind === 'death' ? '[치명] 의식을 잃고 쓰러졌습니다' : '[경고] 피로도가 한계에 도달해 쓰러졌습니다');
+
+    const detail = kind === 'death'
+      ? `체력이 바닥났습니다. 집에서 눈을 뜨면 소지금 일부(${Math.round(TUNING.collapse.deathCoinLossRate * 100)}%)를 잃고 탈진 상태로 시작합니다. 가방 속 물건과 창고·냉장고 보관분은 그대로입니다.`
+      : '잠시 정신을 잃었습니다. 일어나도 피로가 완전히 풀리지는 않습니다 — 침대에서 자야 회복됩니다.';
+
+    this.collapseCleanup = playCollapse(this, kind, {
+      sprite: this.playerSprite,
+      detail,
+      onConfirm: () => {
+        this.collapseCleanup = undefined;
+        this.collapsing = false;
+        if (kind === 'faint') {
+          GameState.reviveFromFaint();
+          this.hud?.pushLog('[상태] 정신을 차렸습니다 — 탈진 상태입니다');
+        } else {
+          const { coinLost } = GameState.reviveFromDeath();
+          this.hud?.pushLog(`[상태] 집에서 눈을 떴습니다 — 소지금 ${coinLost.toLocaleString()}원을 잃었습니다`);
+          this.goHomeAfterDeath();
+        }
+      },
+    });
+  }
+
+  /** 사망 부활 — 홈타운 집 앞으로 이동(장면 재시작). 요금은 받지 않는다 */
+  private goHomeAfterDeath(): void {
+    this.collapseCleanup?.();
+    this.collapseCleanup = undefined;
+    if (this.region === 'hometown') { this.scene.restart({ region: 'hometown' }); return; }
+    this.scene.start('RegionFieldScene', { region: 'hometown' });
   }
 
   /** 건물 입구 근접 감지 → [E] 거래 힌트 */
@@ -3316,7 +3486,10 @@ export class RegionFieldScene extends Phaser.Scene {
     // 자전거 탑승 시 이동 속도 2배 (충돌/카메라 팔로우는 불변).
     // 심리스는 타일 32px라 같은 px/s면 타일 체감이 느려진다 → 1.4배 보정 (동서 횡단 ≈ 3분 유지)
     // 스킬 트리(122차): 달리기 배율 · 자전거 배율
-    const speed = (this.seamless ? 210 : 150) * GameState.skillMult('run_speed') * (GameState.isMounted ? 2 * GameState.skillMult('bike_speed') : 1);
+    // 125차: 허기·수분 임계(−20%)와 상태이상(골절 등) 배율을 곱한다
+    const speed = (this.seamless ? 210 : 150) * GameState.skillMult('run_speed')
+      * (GameState.isMounted ? 2 * GameState.skillMult('bike_speed') : 1)
+      * GameState.moveSpeedMult;
     let vx = 0, vy = 0;
     if (this.time.now < this.knockUntil) {
       // 차량 충돌 넉백 — 입력 무시, 진행 방향 뒤로 밀림
@@ -3435,7 +3608,41 @@ export class RegionFieldScene extends Phaser.Scene {
     const dy = pw.y - this.playerBody.y;
     const len = Math.hypot(dx, dy);
     if (len > 8) {
-      this.lastAimDir = { x: dx / len, y: dy / len };
+      const nd = { x: dx / len, y: dy / len };
+      // 방향이 흔들리면 홀드 타이머 리셋 (dot < 0.995 ≈ 5.7° 이상 틀어짐)
+      if (nd.x * this.aimHoldDir.x + nd.y * this.aimHoldDir.y < 0.995) {
+        this.aimHoldDir = nd;
+        this.aimHoldSince = this.time.now;
+        this.aimGuideReady = false;
+      }
+      this.lastAimDir = nd;
+    }
+
+    // ── 조준 홀드 가이드 — 정투(fish_scatter) 1랭크 해금 (SPEC §3-2) ──
+    //   커서까지의 거리를 실제 비행 시뮬로 역산해 차지 게이지 위에 필요 파워 눈금을 찍는다.
+    const guideUnlocked = GameState.skillRank('fish_scatter') >= 1;
+    if (guideUnlocked && !this.aimGuideReady
+      && this.time.now - this.aimHoldSince >= 400 && len > 8) {
+      this.aimGuideReady = true;
+      const effG = this.castWeather(this.lastAimDir);
+      this.aimGuidePower = solveCastPower({
+        originX: this.playerBody.x, originY: this.playerBody.y,
+        dirX: this.lastAimDir.x, dirY: this.lastAimDir.y,
+        strength: DEFAULT_ANGLER_STATS.strength * GameState.skillMult('cast_distance'),
+        speedMult: effG.distanceMult,
+        wind: this.windForce(effG),
+        airDragCd: InventoryStore.getRigDragCd(),
+      }, len);
+    }
+    if (guideUnlocked && this.aimGuideReady) {
+      if (this.aimGuidePower === null) {
+        this.chargeBar.fillStyle(0xff6a5a, 0.9);
+        this.chargeBar.fillRect(bx + 76, by - 3, 4, 14);   // 사거리 초과 = 우측 끝 경고 블록
+      } else {
+        const gx = bx + 80 * this.aimGuidePower;
+        this.chargeBar.fillStyle(0xffe08a, 1);
+        this.chargeBar.fillRect(gx - 1, by - 3, 2, 14);    // 필요 파워 눈금
+      }
     }
 
     if (!this.aimG) return;
@@ -3447,12 +3654,16 @@ export class RegionFieldScene extends Phaser.Scene {
     this.aimG.lineBetween(px, py, px + this.lastAimDir.x * 90, py + this.lastAimDir.y * 90);
 
     // 예상 탄도 점선 (현재 파워 기준 — 그림자 경로 + 착수 지점)
+    // 미리보기는 발사와 **같은 계수**를 쓴다 — 안 그러면 예상 착수 마커가 거짓말을 한다
+    const eff = this.castWeather(this.lastAimDir);
     const traj = simulateCastTrajectory({
       originX: px, originY: py,
       dirX: this.lastAimDir.x, dirY: this.lastAimDir.y,
       power: this.chargePower,
-      strength: DEFAULT_ANGLER_STATS.strength * GameState.skillMult('cast_distance'),   // 스킬 롱캐스트(122차)
-      wind: this.getWindVector(),
+      strength: DEFAULT_ANGLER_STATS.strength * GameState.skillMult('cast_distance'),
+      speedMult: eff.distanceMult,
+      wind: this.windForce(eff),
+      airDragCd: InventoryStore.getRigDragCd(),
     });
     for (let i = 4; i < traj.length; i += 6) {
       const pt = traj[i];
@@ -3464,6 +3675,24 @@ export class RegionFieldScene extends Phaser.Scene {
       const landsWater = this.terrainAt(Math.floor(last.x / TR), Math.floor(last.y / TR)) === 'water';
       this.aimG.lineStyle(1.5, landsWater ? 0x4af2a1 : 0xff6a5a, 0.9);
       this.aimG.strokeCircle(last.x, last.y, 8);
+
+      // 산포 반경 링 — 실제 착수는 이 안에서 흩어진다(정투 랭크로 줄어든다)
+      const distPx = Math.hypot(last.x - px, last.y - py);
+      const rad = castScatterRadius(distPx, eff.scatterMult, GameState.skillMult('cast_scatter'));
+      if (rad > 2) {
+        this.aimG.lineStyle(1, 0xffe08a, 0.45);
+        this.aimG.strokeCircle(last.x, last.y, rad);
+      }
+
+      // 바람 편향 화살표 — 바람 읽기(fish_wind) 1랭크부터 (SPEC §3-3)
+      if (eff.active && eff.excessMs > 0 && GameState.skillRank('fish_wind') >= 1) {
+        const ax = last.x + eff.windUnit.x * 26, ay = last.y + eff.windUnit.y * 26;
+        this.aimG.lineStyle(2, 0x9fd0e4, 0.9);
+        this.aimG.lineBetween(last.x, last.y, ax, ay);
+        const bax = -eff.windUnit.x, bay = -eff.windUnit.y;
+        this.aimG.lineBetween(ax, ay, ax + bax * 7 - bay * 5, ay + bay * 7 + bax * 5);
+        this.aimG.lineBetween(ax, ay, ax + bax * 7 + bay * 5, ay + bay * 7 - bax * 5);
+      }
     }
   }
 

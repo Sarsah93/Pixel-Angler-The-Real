@@ -32,6 +32,16 @@ import type { WorldObjectState } from '@tra/core';
 import {
   skillPointsForLevel, skillPointsSpent, skillPrereqsMet, getSkillById, SKILL_CATEGORIES,
   skillMult as coreSkillMult, skillBonus as coreSkillBonus, type SkillRanks, type SkillEffectKey,
+  MAX_LEVEL, xpToNext, catchXp, activityXp, type XpActivity,
+} from '@tra/core';
+import {
+  tickVitals as coreTickVitals, applyVitalsAction as coreVitalsAction,
+  applyIntake as coreApplyIntake, applySleep as coreApplySleep,
+  vitalsSpeedMult as coreVitalsSpeed, isVitalsLow as coreVitalsLow,
+  aggregateStatus, tickStatuses as coreTickStatuses, addStatus as coreAddStatus,
+  cureStatus as coreCureStatus,
+  type VitalsState, type VitalsActivity, type VitalsAction, type VitalsEnv,
+  type ActiveStatus, type StatusEffectId, type StatusModifiers,
 } from '@tra/core';
 import {
   getLicenseByType, getCurrentGameMinute, calculateTideInfo, getFishById,
@@ -125,6 +135,19 @@ function createDefaultSkills(): SkillState {
 }
 
 // ─────────────────────────────────────────────
+// 생존 지표 저장 구조 (125차 — SPEC §4)
+// ─────────────────────────────────────────────
+/**
+ * 허기·수분·상태이상만 저장한다 — HP(=`player.stamina`)·피로도(=`player.fatigue`)는
+ * 기존 필드가 원본이라 중복 저장하지 않는다(승계 원칙). 구세이브는 만복(100/100)으로 시작.
+ */
+export interface VitalsSaveState {
+  hunger: number;
+  hydration: number;
+  statuses: ActiveStatus[];
+}
+
+// ─────────────────────────────────────────────
 // 저장 가능한 전체 게임 데이터 구조
 // ─────────────────────────────────────────────
 interface SaveData {
@@ -151,6 +174,8 @@ interface SaveData {
   worldObjects?: Record<string, WorldObjectState>;
   /** 발견(도감/위키) 기록 — 어종·해양생물·아이템. 구세이브는 어획 기록에서 백필 */
   discoveries?: DiscoverySaveState;
+  /** 생존 지표 — 허기·수분·상태이상 (125차). HP·피로도는 `player.stamina/fatigue`가 원본 */
+  vitals?: VitalsSaveState;
   version: number;
 }
 
@@ -183,6 +208,11 @@ export class GameStateManager {
   private _completedQuestIds: Set<string> = new Set();
   private _skills: SkillState = createDefaultSkills();
   private _skillRanks: SkillRanks = {};
+  /** 생존 지표 — 허기·수분 (HP/피로도는 player.stamina/fatigue가 원본, 125차) */
+  private _hunger = 100;
+  private _hydration = 100;
+  /** 활성 상태이상 (125차) */
+  private _statuses: ActiveStatus[] = [];
   /** 1회성 안내 플래그 (세이브 대상) — 예: chumGuideSeen */
   private _flags: Record<string, boolean> = {};
   /** 맵별 오브젝트 월드 상태 (세이브 대상) — key = mapId */
@@ -254,6 +284,10 @@ export class GameStateManager {
       saved.discoveries,
       (saved.player?.caughtFishHistory ?? []).map((r) => r.fishSpeciesId),
     );
+    // 생존 지표 — 구세이브(필드 없음)는 만복 시작. 오프라인 경과는 반영하지 않는다(활동 시간만 진행).
+    this._hunger = saved.vitals?.hunger ?? 100;
+    this._hydration = saved.vitals?.hydration ?? 100;
+    this._statuses = saved.vitals?.statuses ?? [];
     this.syncInventoryDiscoveries();
   }
 
@@ -385,8 +419,8 @@ export class GameStateManager {
       this.player.personalRecords[speciesId] = lengthCm;
     }
 
-    // 도감 발견 기록 (최초 1회 — 이미 발견된 어종은 무시)
-    DiscoveryStore.record('fish', speciesId, 'catch');
+    // 도감 발견 기록 (최초 1회 — 이미 발견된 어종은 무시. true = 첫 포획 → XP ×firstDiscoveryMult)
+    const firstDiscovery = DiscoveryStore.record('fish', speciesId, 'catch');
 
     const record: CaughtFishRecord = {
       id: crypto.randomUUID(),
@@ -405,34 +439,243 @@ export class GameStateManager {
     this.player.inventory.livewell.push(record);
     this.player.caughtFishHistory.push(record);
 
-    // 경험치 획득 연산 (희귀도 점수 + 크기 점수)
+    // 경험치 획득 — 어획 XP = 희귀도 기본 × 체장계수 (core catchXp — 124차 스펙 §1-3).
+    // 첫 포획(도감 신규)은 ×firstDiscoveryMult.
     const fish = getFishById(speciesId);
-    const rarity = fish ? fish.rarity : 'common';
-    const expMap: Record<string, number> = {
-      common: 10,
-      uncommon: 25,
-      rare: 60,
-      epic: 150,
-      legendary: 400,
+    const avgCm = fish ? (fish.avgSizeRangeCm[0] + fish.avgSizeRangeCm[1]) / 2 : undefined;
+    let gained = catchXp(fish?.rarity ?? 'common', lengthCm, avgCm);
+    if (firstDiscovery) gained = Math.round(gained * TUNING.xp.firstDiscoveryMult);
+    this.grantXp(gained);
+  }
+
+  // ─── 플레이어 레벨 XP (124차 — core Progression 곡선 · MAX_LEVEL 200 캡) ───
+
+  /**
+   * 레벨 XP 지급 + 레벨업 처리. `experience`는 레벨 내 잔여값(현행 저장 구조 유지),
+   * 임계 = `xpToNext(level)` (구 `level × 100` 폐기 — 구세이브 잔여 XP는 새 임계와 그대로 비교).
+   * 반환 = 이번 지급으로 오른 레벨 수.
+   */
+  grantXp(amount: number): number {
+    const add = Math.max(0, Math.round(amount));
+    if (add <= 0) return 0;
+    const p = this.player;
+    if ((p.level ?? 1) >= MAX_LEVEL) return 0;   // 만렙 — XP 누적 정지
+    p.experience = (p.experience ?? 0) + add;
+    let ups = 0;
+    while ((p.level ?? 1) < MAX_LEVEL && p.experience >= xpToNext(p.level ?? 1)) {
+      p.experience -= xpToNext(p.level ?? 1);
+      p.level = (p.level ?? 1) + 1;
+      ups++;
+    }
+    if ((p.level ?? 1) >= MAX_LEVEL) p.experience = 0;
+    if (ups > 0) {
+      console.log(`[GameState] Level Up! Lv.${(p.level ?? 1) - ups} -> Lv.${p.level} (스킬 포인트 +${ups})`);
+      this.markDirty();
+    }
+    return ups;
+  }
+
+  /** 활동 XP — 손질/회뜨기/채집/제작/요리 완료 시 호출 (mult = 등급·품질 계수). 반환 = 레벨업 수 */
+  addActivityXp(kind: XpActivity, mult = 1): number {
+    return this.grantXp(activityXp(kind, mult));
+  }
+
+  /** 준법 방생 XP — 금지체장·금어기 개체 자동 방생 보상 (어획 XP × lawfulReleaseMult) */
+  addLawfulReleaseXp(speciesId: string, lengthCm: number): number {
+    const fish = getFishById(speciesId);
+    const avgCm = fish ? (fish.avgSizeRangeCm[0] + fish.avgSizeRangeCm[1]) / 2 : undefined;
+    return this.grantXp(catchXp(fish?.rarity ?? 'common', lengthCm, avgCm) * TUNING.xp.lawfulReleaseMult);
+  }
+
+  // ─── 생존 지표 · 상태이상 (125차 — SPEC §4·§5) ───
+
+  /** 활성 상태이상 합산 효과 (최대치·소모 배율·이동 배율) */
+  get statusModifiers(): StatusModifiers {
+    return aggregateStatus(this._statuses);
+  }
+
+  /** 최대 체력 — `100 + floor(level×0.5) + stamina_max 보너스` − 상태이상 감소 (SPEC §1-4) */
+  get maxHp(): number {
+    const m = this.statusModifiers;
+    const base = 100 + Math.floor((this.player.level ?? 1) * 0.5) + this.skillBonus('stamina_max');
+    return Math.max(10, Math.round(base * (1 - m.maxHpPct) - m.maxHpDelta));
+  }
+
+  /** 최대 피로도 — 상태이상(감기·골절 등)이 상한을 깎는다 = 더 빨리 기절 */
+  get maxFatigue(): number {
+    return Math.max(20, 100 - this.statusModifiers.maxFatigueDelta);
+  }
+
+  /** 생존 지표 스냅샷 (HP·피로도는 player에서, 허기·수분은 자체 필드에서) */
+  get vitals(): VitalsState {
+    const p = this.player;
+    return {
+      hp: p.stamina, maxHp: this.maxHp,
+      fatigue: p.fatigue, maxFatigue: this.maxFatigue,
+      hunger: this._hunger, hydration: this._hydration,
     };
-    const baseExp = expMap[rarity] ?? 10;
-    const sizeExp = Math.floor(lengthCm * 0.5);
-    const totalGained = baseExp + sizeExp;
+  }
 
-    this._player.experience = (this._player.experience ?? 0) + totalGained;
-    let nextLevelThreshold = (this._player.level ?? 1) * 100;
-    let levelUpCount = 0;
+  /** 허기 또는 수분이 임계(20%) 미만인가 — 감속·피로 가중 표기용 */
+  get isVitalsLow(): boolean {
+    return coreVitalsLow(this.vitals);
+  }
 
-    while (this._player.experience >= nextLevelThreshold) {
-      this._player.experience -= nextLevelThreshold;
-      this._player.level = (this._player.level ?? 1) + 1;
-      nextLevelThreshold = this._player.level * 100;
-      levelUpCount++;
+  /** 이동 속도 배율 — 생존 임계(−20%) × 상태이상(골절 등) */
+  get moveSpeedMult(): number {
+    return coreVitalsSpeed(this.vitals) * this.statusModifiers.moveMult;
+  }
+
+  /** 자전거 탑승 가능 여부 — 골절 시 불가 */
+  get canRideBike(): boolean {
+    return !this.statusModifiers.noBike;
+  }
+
+  private commitVitals(v: VitalsState): void {
+    const p = this.player;
+    p.stamina = Math.max(0, Math.min(v.hp, v.maxHp));
+    p.fatigue = Math.max(0, Math.min(v.fatigue, v.maxFatigue));
+    this._hunger = Math.max(0, Math.min(100, v.hunger));
+    this._hydration = Math.max(0, Math.min(100, v.hydration));
+  }
+
+  /**
+   * 활동 시간 드레인 + 상태이상 진행. **활동 시간만** 넘길 것
+   * (오프라인·일시정지·모달 중에는 호출하지 않는다 — 그것이 오프라인 정지 규약).
+   */
+  tickVitals(dtMs: number, activity: VitalsActivity = 'idle', env: VitalsEnv = {}): {
+    hpLost: number; starving: boolean; fainted: boolean; dead: boolean;
+    added: StatusEffectId[]; removed: StatusEffectId[];
+  } {
+    const v = this.vitals;
+    const mods = this.statusModifiers;
+    // 127차 P5 — 상태이상 발생·진행 롤에 면역력(life_immune) 반영
+    const st = coreTickStatuses(this._statuses, dtMs, { chanceMult: this.skillMult('immunity') });
+    // 상태이상 지속 피해 + 설사 등 추가 수분 소모
+    if (st.hpLoss > 0) v.hp = Math.max(0, v.hp - st.hpLoss);
+    if (mods.hydrationPerHour > 0) {
+      v.hydration = Math.max(0, v.hydration - mods.hydrationPerHour * (dtMs / 3_600_000));
     }
+    // 소모 배율 = 상태이상 × 스킬(소식가·수분 관리·회복력). 피로는 **음수 드레인(앉기)일 때 회복 배율**이라
+    // 부호에 따라 다른 키를 쓴다 — 회복력은 회복을 키우고, 그 외 구간은 상태이상만 곱한다.
+    const restoring = activity === 'sit';
+    const sk: [number, number, number] = [
+      this.skillMult('hunger_drain'),
+      this.skillMult('thirst_drain'),
+      restoring ? this.skillMult('fatigue_recovery') : 1,
+    ];
+    const r = coreTickVitals(v, dtMs, activity, {
+      ...env,
+      coldResistRank: env.coldResistRank ?? this.skillRank('life_cold'),
+      extraMult: [
+        mods.drainMult[0] * sk[0],
+        mods.drainMult[1] * sk[1],
+        mods.drainMult[2] * sk[2],
+      ],
+    });
+    this.commitVitals(v);
+    if (r.hpLost > 0 || st.hpLoss > 0 || st.added.length > 0 || st.removed.length > 0) this.markDirty();
+    return {
+      hpLost: r.hpLost + st.hpLoss, starving: r.starving,
+      fainted: r.fainted, dead: this.player.stamina <= 0,
+      added: st.added, removed: st.removed,
+    };
+  }
 
-    if (levelUpCount > 0) {
-      console.log(`[GameState] Level Up! Lv.${this._player.level - levelUpCount} -> Lv.${this._player.level}`);
-    }
+  /** 1회성 행동 비용 (캐스팅·파이팅·손질·출조 등) */
+  applyVitalsAction(action: VitalsAction, mult = 1): void {
+    const v = this.vitals;
+    coreVitalsAction(v, action, mult);
+    this.commitVitals(v);
+    this.markDirty();
+  }
+
+  /** 섭취 회복 — 음수 허용(술 = 수분 −). 상한 클램프는 core가 처리 */
+  applyIntake(hunger = 0, hydration = 0, hp = 0): void {
+    const v = this.vitals;
+    coreApplyIntake(v, hunger, hydration, hp);
+    this.commitVitals(v);
+    this.markDirty();
+  }
+
+  /** 수면(침대) — 피로 0 · HP +50% · 허기/수분 −10 */
+  sleepRecover(mult = 1): void {
+    const v = this.vitals;
+    coreApplySleep(v, mult * this.skillMult('sleep_recovery'));   // 127차 — 쾌면(life_sleep)
+    this.commitVitals(v);
+    this.markDirty();
+  }
+
+  /** 활성 상태이상 목록 (읽기 전용 뷰) */
+  get statuses(): readonly ActiveStatus[] {
+    return this._statuses;
+  }
+
+  /** 상태이상 보유 여부 */
+  hasStatus(id: StatusEffectId): boolean {
+    return this._statuses.some((a) => a.id === id);
+  }
+
+  /**
+   * 확률 판정 후 상태이상 부여 (127차 P5) — **면역력(`life_immune`)이 발생 확률을 깎는다**.
+   * 명시적 롤(채집 부상·식중독 등)은 전부 이 함수를 거쳐야 스킬이 반영된다.
+   */
+  rollStatus(id: StatusEffectId, chance: number, rng: () => number = Math.random): boolean {
+    const p = Math.max(0, Math.min(1, chance * this.skillMult('immunity')));
+    return rng() < p && this.addStatus(id);
+  }
+
+  /** 상태이상 부여 — 중복이면 false. 최대치 변화가 있으면 현재값을 즉시 클램프 */
+  addStatus(id: StatusEffectId): boolean {
+    const ok = coreAddStatus(this._statuses, id);
+    if (ok) { this.commitVitals(this.vitals); this.markDirty(); }
+    return ok;
+  }
+
+  /** 상태이상 치료 — 재발 확률이 걸리면 `relapse: true`(호출측이 잠시 뒤 재부여) */
+  cureStatus(id: StatusEffectId): { removed: boolean; relapse: boolean } {
+    const r = coreCureStatus(this._statuses, id);
+    if (r.removed) { this.commitVitals(this.vitals); this.markDirty(); }
+    return r;
+  }
+
+  // ─── 기절·사망 (126차 P4 — SPEC §6) ───
+
+  /**
+   * 기절에서 기상. 피로도를 **최대치의 faintFatiguePct까지만** 되돌린다
+   * (0으로 풀면 공짜 휴식, 최대치 그대로 두면 즉시 재기절 — 그 사이 안전거리).
+   * 후유증으로 `exhaust`(탈진)를 부여한다.
+   */
+  reviveFromFaint(): void {
+    const t = TUNING.collapse;
+    const p = this.player;
+    p.fatigue = Math.min(p.fatigue, this.maxFatigue * (t.faintFatiguePct / 100));
+    this.cureStatus('faint');
+    this.addStatus('exhaust');
+    this.markDirty();
+  }
+
+  /**
+   * 사망 후 집(침대)에서 부활. 기본 프리셋은 **재화 일부 상실 + 인벤토리 유지**
+   * (하드코어 프리셋은 `TUNING.collapse.deathDropInventory = 1`).
+   * 창고·냉장고 보관분은 어떤 프리셋에서도 손대지 않는다.
+   */
+  reviveFromDeath(): { coinLost: number } {
+    const t = TUNING.collapse;
+    const p = this.player;
+    const coinLost = Math.floor((p.inventory.coins ?? 0) * t.deathCoinLossRate);
+    if (coinLost > 0) this.addCoins(-coinLost);
+    // 사망 판정을 부른 상태이상은 전부 해제하고 후유증만 남긴다
+    for (const a of [...this._statuses]) this.cureStatus(a.id);
+    this._statuses.length = 0;
+    // 후유증(탈진)을 **먼저** 부여해야 `maxHp`가 확정된다 — 순서를 바꾸면 'HP 50%'가 최대치 감소분만큼 후해진다
+    this.addStatus('exhaust');
+    p.stamina = Math.max(1, Math.round(this.maxHp * (t.deathReviveHpPct / 100)));
+    p.fatigue = 0;
+    this._hunger = t.deathReviveVitalsPct;
+    this._hydration = t.deathReviveVitalsPct;
+    this.markDirty();
+    return { coinLost };
   }
 
   // ─── 스킬 트리 (122차) — 포인트 = 레벨 파생 · 랭크만 영속 ───
@@ -456,6 +699,18 @@ export class GameStateManager {
     return true;
   }
   /** 효과 배율 (1 + Σ) — 소비처는 매 호출 읽는다 */
+  /**
+   * 스킬 포인트 전부 환급 (127차 P5 — '조업 재교육 이수증').
+   * 랭크만 지우면 `skillPointsAvailable`이 레벨 파생 총량으로 되돌아온다(포인트를 따로 보관하지 않는다).
+   */
+  resetSkills(): number {
+    const spent = skillPointsSpent(this._skillRanks);
+    for (const k of Object.keys(this._skillRanks)) delete this._skillRanks[k];
+    this.commitVitals(this.vitals);   // stamina_max 등 최대치 즉시 재클램프
+    this.markDirty();
+    return spent;
+  }
+
   skillMult(key: SkillEffectKey): number { return coreSkillMult(this._skillRanks, key); }
   skillBonus(key: SkillEffectKey): number { return coreSkillBonus(this._skillRanks, key); }
 
@@ -616,6 +871,7 @@ export class GameStateManager {
       flags: this._flags,
       worldObjects: this._worldObjects,
       discoveries: DiscoveryStore.serialize(),
+      vitals: { hunger: this._hunger, hydration: this._hydration, statuses: this._statuses },
       version: SAVE_VERSION,
     };
   }
@@ -786,6 +1042,9 @@ export class GameStateManager {
     this._skillRanks = {};
     this._flags = {};
     this._worldObjects = {};
+    this._hunger = 100;
+    this._hydration = 100;
+    this._statuses = [];
     this._dirty = false;
     CoolerStore.resetAll();
     InventoryStore.resetAll();

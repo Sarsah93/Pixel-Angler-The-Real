@@ -215,8 +215,32 @@ export type { ForageEnvContext, ForageSafety, RollForageOpts, ForageOutcome, For
 export type { SkillCategoryId, SkillEffectKey, SkillEffect, SkillDef, SkillCategoryDef, SkillRanks } from './types/Skills.js';
 export { SKILL_POINTS_PER_LEVEL, skillPointsForLevel } from './types/Skills.js';
 export {
-  SKILL_CATEGORIES, SKILL_DATABASE, getSkillById, skillsOfCategory, skillPointsSpent, skillPrereqsMet, skillMult, skillBonus,
+  SKILL_CATEGORIES, SKILL_DATABASE, SKILL_TREE_TOTAL_PT, getSkillById, skillsOfCategory, skillPointsSpent, skillPrereqsMet, skillMult, skillBonus,
 } from './db-schema/SkillDatabase.js';
+export type { XpActivity } from './types/Progression.js';
+export {
+  MAX_LEVEL, xpToNext, cumulativeXp, rarityBaseXp, catchXp, activityXp, GRADE_XP_MULT,
+} from './types/Progression.js';
+// 생존 지표·상태이상 (125차 — SPEC §4·§5)
+export type { VitalsState, VitalsActivity, VitalsAction, VitalsEnv, VitalsTickResult } from './types/Vitals.js';
+export {
+  createVitals, tickVitals, applyVitalsAction, applyIntake, applySleep, setVitalsCaps,
+  isVitalsLow, vitalsSpeedMult, vitalsFatigueMult,
+} from './types/Vitals.js';
+export type {
+  CastWeatherInput, CastWeatherEffect, Vec2 as CastVec2,
+} from './simulation/CastWeather.js';
+export {
+  computeCastWeather, castScatterRadius, applyCastScatter,
+  windUnitFromBearing, rainIntensityOf, castWeatherLabelKo, castWeatherLabelEn,
+} from './simulation/CastWeather.js';
+export type {
+  StatusEffectId, StatusCure, StatusEffectDef, StatusBadge, ActiveStatus, StatusModifiers, StatusTickResult,
+} from './types/StatusEffects.js';
+export {
+  STATUS_EFFECTS, getStatusEffect, aggregateStatus, tickStatuses, addStatus, cureStatus,
+  STATUS_CURE_LABEL, statusRemainMs,
+} from './types/StatusEffects.js';
 export {
   mulberry32, forageSeed, forageSafety, creatureSpotKinds, creatureTools, FORAGE_TOOL_LABEL,
   pickForageTool, forageHoldMs, rollForageSpots, attemptForage, isOrdinanceViolation,
@@ -322,7 +346,7 @@ export { GATHER_ITEM_DATABASE, checkSlipHazard, getAvailableGatherItems, attempt
 // World Map
 // 1인칭 낚시 물리 파이프라인 (캐스팅 → 수중 침강/흘림 → 입질 → 파이팅)
 export type { WindVector, CastLaunchParams, CastProjectile } from './simulation/CastingPhysicsEngine.js';
-export { launchCast, stepCast, simulateCastTrajectory } from './simulation/CastingPhysicsEngine.js';
+export { launchCast, stepCast, simulateCastTrajectory, solveCastPower } from './simulation/CastingPhysicsEngine.js';
 export type { TideVector, RigPhysicsParams, UnderwaterRigState, UnderwaterStepInput, SinkRateResult } from './simulation/UnderwaterSinkPhysics.js';
 export { createUnderwaterRig, computeSinkSpeed, stepUnderwater, isHoldState, computeSinkRate } from './simulation/UnderwaterSinkPhysics.js';
 export type { LineTensionInput, LineTensionOutput } from './simulation/LineTensionPhysics.js';

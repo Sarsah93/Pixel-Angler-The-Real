@@ -455,6 +455,134 @@ export interface TuningConfig {
     /** 설치 가능 물 타일의 최대 육지 거리(타일) — 던져 넣는 범위 */
     maxWaterDistTiles: number;
   };
+  /** 플레이어 레벨 경험치 소스 (124차 — PROGRESSION_SURVIVAL_SPEC §1-3. 손질 숙련 XP와 별개) */
+  xp: {
+    /** 어획 기본 XP — 어종 희귀도(FishRarity)별 */
+    rarityCommon: number;
+    rarityUncommon: number;
+    rarityRare: number;
+    rarityEpic: number;
+    rarityLegendary: number;
+    /** 체장계수 하한/상한 (개체 길이 ÷ 어종 평균 길이 클램프) */
+    sizeFactorMin: number;
+    sizeFactorMax: number;
+    /** 첫 포획(도감 신규) 배율 */
+    firstDiscoveryMult: number;
+    /** 활동 기본 XP — 등급/품질 계수는 호출부 mult로 곱 */
+    butcherBase: number;
+    sashimiBase: number;
+    forageBase: number;
+    craftBase: number;
+    cookBase: number;
+    /** 준법 방생(금지체장·금어기 자동 방생) = 어획 XP × 이 배율 */
+    lawfulReleaseMult: number;
+  };
+  /** 생존 지표 — 허기·수분·피로 (125차 — SPEC §4. 드레인은 **활동 시간** 기준, 오프라인 정지) */
+  vitals: {
+    /** 활동별 시간 드레인 (활동 1시간당 %) — [허기, 수분, 피로] */
+    drainIdle: [number, number, number];
+    drainSit: [number, number, number];
+    drainWalk: [number, number, number];
+    drainRun: [number, number, number];
+    drainBike: [number, number, number];
+    drainForage: [number, number, number];
+    /** 행동 1회 비용 — [허기, 수분, 피로] */
+    costCast: [number, number, number];
+    costFightWin: [number, number, number];
+    costFightLose: [number, number, number];
+    costButcher: [number, number, number];
+    costSashimi: [number, number, number];
+    costTravel: [number, number, number];
+    costCraft: [number, number, number];
+    costCook: [number, number, number];
+    /** 임계 — 허기·수분이 이 % 미만이면 이동 감속·피로 가중 */
+    lowPct: number;
+    lowMovePenalty: number;
+    lowFatigueMult: number;
+    /** 허기 또는 수분 0% 시 HP 감소(분당) */
+    zeroHpPerMin: number;
+    /** 온도 계수 — 체감 이 온도 이상이면 수분 드레인 ×hot / 이하면 허기 ×cold */
+    hotC: number;
+    hotHydrationMult: number;
+    coldC: number;
+    coldHungerMult: number;
+    /** 추위 내성(life_cold) 랭크당 저온 경계 완충(℃) */
+    coldResistBufferC: number;
+    /** 수면(침대) 회복 — 피로 목표치·HP 회복 비율·허기/수분 소모 */
+    sleepFatigueTo: number;
+    sleepHpPct: number;
+    sleepHungerCost: number;
+    sleepHydrationCost: number;
+  };
+  /** 상태이상 (125차 — SPEC §5. 시간은 활동 시간 기준 분) */
+  status: {
+    /** 진행 체인(오한→감기→독감 등) 판정 주기(활동 분) */
+    progressRollMin: number;
+    /** 주기당 진행 확률 */
+    progressChance: number;
+    /** 자연 치유 소요(활동 분) — 식중독 등 자연치유 대상 */
+    selfHealMin: number;
+    /** 치료 후 재발 확률 — 출혈 / 골절 */
+    relapseBleed: number;
+    relapseFracture: number;
+    /** 이상고열 퇴원 후 '회복기' 지속(활동 분) */
+    recoveryMin: number;
+    /** 탈진 해제에 필요한 허기·수분 하한(%) */
+    exhaustClearPct: number;
+  };
+  /**
+   * 날씨 → 캐스팅·채비 (127차 — 사용자 지시 3건).
+   * 바람은 `calmMs` **초과분만** 작동하고, 스킬 보정은 바람 몫에만·`windCompCap`까지만 먹는다.
+   */
+  castWeather: {
+    /** 이 풍속(m/s) 이하는 아무 영향 없음 */
+    calmMs: number;
+    /** 맞바람 초과 1m/s당 비거리 감소율 */
+    distPerMs: number;
+    /** 뒷바람 초과 1m/s당 비거리 증가율 */
+    tailGain: number;
+    /** 비거리 배율 하한 */
+    distMultMin: number;
+    /** 초과 1m/s당 산포 반경 증가율 (옆바람일수록 큼) */
+    scatterPerMs: number;
+    /** 산포 배율 상한 */
+    scatterMultMax: number;
+    /** 초과 1m/s당 착수점 밀림 (캐스팅 거리 대비 비율) */
+    driftPerMs: number;
+    /** 밀림 비율 상한 */
+    driftMax: number;
+    /** 바람 보정 스킬(`wind_comp`) 상한 — "아주 미비한 정도" 유지 장치 */
+    windCompCap: number;
+    /** 기본 산포 반경 (거리 대비 비율 — 무스킬·무풍) */
+    baseScatter: number;
+    /** 강수 강도 1일 때 조류 세기 가산 */
+    rainCurrentGain: number;
+    /** 강수 강도 1일 때 밑걸림·채비 손실 가산 */
+    rainSnagGain: number;
+    /** 강수 강도 1일 때 산포 가산 */
+    rainScatterGain: number;
+  };
+  /**
+   * 기절·사망 (§6 — P4). 기본값은 v2 완화 프리셋.
+   * **하드코어 프리셋**(원안): `deathCoinLossRate 0.8` · `deathDropInventory 1`.
+   * 창고·냉장고 보관분은 어떤 프리셋에서도 안전하다.
+   */
+  collapse: {
+    /** 비네트 암전 시간(ms) */
+    dimMs: number;
+    /** 쓰러진 뒤 팝업이 뜨기까지(ms) */
+    popupDelayMs: number;
+    /** 기상 시 피로도를 여기까지만 되돌린다(%) — 연속 기절 루프 방지 안전거리 */
+    faintFatiguePct: number;
+    /** 사망 시 재화 상실 비율 */
+    deathCoinLossRate: number;
+    /** 1이면 인벤토리 전량 상실 (하드코어) */
+    deathDropInventory: number;
+    /** 부활 시 HP(%) */
+    deathReviveHpPct: number;
+    /** 부활 시 허기·수분(%) */
+    deathReviveVitalsPct: number;
+  };
   // ── 데이터 테이블 (balance, 슬라이더 대상 아님) ──
   /** 어종 id → 피로 스태미나 base */
   fatigueStaminaBase: Record<string, number>;
@@ -585,6 +713,40 @@ export const TUNING: TuningConfig = {
     enforcementChance: 0.25, fineRatio: 0.3, fineCapWon: 300_000,
   },
   trap: { lossRiskMult: 1.0, minSoakHours: 1, maxRangeTiles: 4, maxWaterDistTiles: 3 },
+  xp: {
+    rarityCommon: 10, rarityUncommon: 25, rarityRare: 60, rarityEpic: 150, rarityLegendary: 400,
+    sizeFactorMin: 0.5, sizeFactorMax: 3.0, firstDiscoveryMult: 5,
+    butcherBase: 30, sashimiBase: 50, forageBase: 12, craftBase: 15, cookBase: 12,
+    lawfulReleaseMult: 0.5,
+  },
+  vitals: {
+    drainIdle: [4.8, 6.0, 0], drainSit: [4.8, 6.0, -16], drainWalk: [10, 14, 12],
+    drainRun: [16, 26, 32], drainBike: [14, 24, 20], drainForage: [14, 22, 32],
+    costCast: [0.2, 0.3, 0.4], costFightWin: [1.2, 1.8, 3.0], costFightLose: [0.7, 1.0, 2.0],
+    costButcher: [0.8, 0.6, 2.0], costSashimi: [1.2, 0.8, 3.0], costTravel: [5.0, 6.0, 10],
+    costCraft: [0.4, 0.3, 0.8], costCook: [0.3, 0.4, 0.6],
+    lowPct: 20, lowMovePenalty: 0.2, lowFatigueMult: 1.3, zeroHpPerMin: 2,
+    hotC: 28, hotHydrationMult: 1.5, coldC: 5, coldHungerMult: 1.3, coldResistBufferC: 2,
+    sleepFatigueTo: 0, sleepHpPct: 0.5, sleepHungerCost: 10, sleepHydrationCost: 10,
+  },
+  status: {
+    progressRollMin: 30, progressChance: 0.35, selfHealMin: 90,
+    relapseBleed: 0.3, relapseFracture: 0.25, recoveryMin: 30, exhaustClearPct: 50,
+  },
+  castWeather: {
+    calmMs: 3,
+    distPerMs: 0.045, tailGain: 0.020, distMultMin: 0.55,
+    scatterPerMs: 0.10, scatterMultMax: 2.5,
+    driftPerMs: 0.035, driftMax: 0.35,
+    windCompCap: 0.30,
+    baseScatter: 0.10,
+    rainCurrentGain: 0.45, rainSnagGain: 0.55, rainScatterGain: 0.15,
+  },
+  collapse: {
+    dimMs: 500, popupDelayMs: 2000, faintFatiguePct: 80,
+    deathCoinLossRate: 0.15, deathDropInventory: 0,
+    deathReviveHpPct: 50, deathReviveVitalsPct: 50,
+  },
   fatigueStaminaBase: {
     yellowtail: 1.6, amberjack: 1.7, greater_amberjack: 1.9, spanish_mackerel: 1.0,
     pacific_cod: 1.2, red_seabream: 1.1, sea_bass: 0.95, flatfish: 0.7,
@@ -613,6 +775,15 @@ export interface TuningParamMeta {
   category: 'feel' | 'balance'; label: string;
 }
 export const TUNING_META: TuningParamMeta[] = [
+  // ── 날씨 → 캐스팅·채비 (127차) ──
+  { path: 'castWeather.calmMs', min: 0, max: 8, step: 0.5, category: 'balance', label: '바람 무시 임계(m/s)' },
+  { path: 'castWeather.distPerMs', min: 0, max: 0.12, step: 0.005, category: 'balance', label: '맞바람 비거리 감소/ms' },
+  { path: 'castWeather.scatterPerMs', min: 0, max: 0.3, step: 0.01, category: 'balance', label: '바람 산포 증가/ms' },
+  { path: 'castWeather.driftPerMs', min: 0, max: 0.1, step: 0.005, category: 'balance', label: '바람 착수 밀림/ms' },
+  { path: 'castWeather.baseScatter', min: 0, max: 0.25, step: 0.005, category: 'balance', label: '기본 산포(거리 비율)' },
+  { path: 'castWeather.windCompCap', min: 0, max: 1, step: 0.05, category: 'balance', label: '바람 보정 스킬 상한' },
+  { path: 'castWeather.rainCurrentGain', min: 0, max: 1.2, step: 0.05, category: 'balance', label: '강수 유속 가산' },
+  { path: 'castWeather.rainSnagGain', min: 0, max: 1.5, step: 0.05, category: 'balance', label: '강수 밑걸림 가산' },
   { path: 'butchery.flipAnimMs', min: 80, max: 500, step: 20, category: 'feel', label: '손질 뒤집기 연출(ms)' },
   { path: 'butchery.guideAnimMs', min: 800, max: 4000, step: 100, category: 'feel', label: '손질 가이드 루프(ms)' },
   { path: 'butchery.actionAnimMs', min: 500, max: 4000, step: 100, category: 'feel', label: '손질 액션 연출(ms)' },

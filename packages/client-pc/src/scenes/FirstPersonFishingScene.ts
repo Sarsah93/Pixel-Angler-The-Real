@@ -45,6 +45,8 @@ import {
   fightGroupOf, fishRarity, RARITY_STYLE,
   fishImageSizeScale,
   TUNING,
+  computeCastWeather,
+  type CastWeatherEffect,
 } from '@tra/core';
 import { drawRigIcon, RigIconKind } from '../ui/RigIconRenderer.js';
 import { GameState } from '../store/GameState.js';
@@ -204,6 +206,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
 
   private zLimitM = 5;
   private pxPerMZ = 30;
+  /** 이번 출조의 날씨 계수 (127차) — 강수 유속·밑걸림 배율 소비 */
+  private castWx!: CastWeatherEffect;
   private tideBase = 0.3;
   private viewCenterX = 0;
 
@@ -426,11 +430,22 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     const tide = calculateTideInfo();
     const isHometown = this.cfg.region === 'hometown';
     const curStrength = isHometown ? Math.random() : tide.currentStrength;   // 0~1 랜덤
-    this.tideBase = 0.12 + curStrength * 0.5;
+
+    // 127차 — 비 오는 날은 유속이 빨라지고 밑걸림·채비 손실이 잦다 (사용자 지시 3).
+    //   같은 계수를 조류 세기·횡류·밑걸림 배율에 함께 먹인다.
+    this.castWx = computeCastWeather({
+      windSpeedMs: ExternalDataStore.getKmaWeather(this.cfg.region)?.windSpeedMs ?? 0,
+      windFromDeg: ExternalDataStore.getKmaWeather(this.cfg.region)?.windDirectionDeg ?? 0,
+      weatherKind: ExternalDataStore.getWeatherKind(this.cfg.region),
+      rain1hMm: ExternalDataStore.getKmaWeather(this.cfg.region)?.rain1hMm,
+      windComp: GameState.skillBonus('wind_comp'),
+    });
+    const rainCur = this.castWx.currentMult;
+    this.tideBase = (0.12 + curStrength * 0.5) * rainCur;
 
     // 조류 엔진 — 물때 세기/밀물썰물/횡류 방향, 존 경계는 캐스팅 거리 비례
     this.tidal = new TidalCurrentEngine({
-      tideStrength: 0.5 + curStrength,
+      tideStrength: (0.5 + curStrength) * rainCur,
       isFloodTide: isHometown ? Math.random() < 0.5 : tide.nextTideType === 'high',
       crossSpeed: this.tideBase * (Math.random() < 0.5 ? 1 : -1),
       maxCastM: Math.max(12, this.cfg.castDistanceM * 1.15),
@@ -439,7 +454,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     // 해저 지형 프로필 — 지형 지도 연동:
     //  시드 = 착수 타일 해시 / 원거리 수심 = 실측 Z_max / 암초 비율 = 낚시터 snagRisk
     //  (snagRiskMult low 0.6 → 암초 21% / mid 1.0 → 35% / high 1.6 → 56%)
-    const snagMult = getAreaSnagRiskMult(GameState.currentSpotId);
+    const snagMult = getAreaSnagRiskMult(GameState.currentSpotId) * this.castWx.snagMult;
     const rockRatio = Phaser.Math.Clamp(0.35 + (snagMult - 1) * 0.35, 0.15, 0.6);
     this.seabed = new SeabedProfile(
       this.cfg.reefSeed,
@@ -1659,6 +1674,16 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     // 실시간 시계·날씨 연출은 계속되고, 가이드를 닫는 순간부터 액션이 재개된다.
     if (this.guideHub) return;
 
+    // 생존 지표 드레인 (125차) — 1인칭 낚시 중에는 서 있는 상태(idle).
+    // 가이드 열람(위 return) 중에는 진행하지 않는다 = 활동 시간만 계산.
+    const vit = GameState.tickVitals(deltaMs, 'idle');
+    // 126차 P4 — 기절·사망 연출은 **필드 씬이 전담**한다(캐릭터 스프라이트가 거기 있다).
+    //   여기서는 채비를 정리하고 즉시 빠져나가고, 다음 필드 틱이 쓰러짐을 감지한다.
+    if ((vit.fainted || vit.dead) && this.fpState !== 'result') {
+      this.failAndExit(vit.dead ? '의식을 잃었습니다' : '기절했습니다', '채비를 회수하고 물러났습니다.');
+      return;
+    }
+
     // 착수 침강 카메오 취소 — 릴링/루어 액션/뒷줄견제가 시작되면 즉시 RETRIEVE 규칙(α=vp)으로
     if (this.sinkCameoStart > 0 && (this.reeling || this.rigPose !== 'idle' || this.hKey?.isDown)) {
       this.sinkCameoStart = 0;
@@ -2037,7 +2062,9 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       // 동조→입질 배율 스케일 (TUNING.chumSync.syncToBiteMul — balance 튜닝)
       chumSyncRate: Math.min(1, sync * TUNING.chumSync.syncToBiteMul),
       // 낚시터 특성(RegionAreaNode.snagRisk) × 루어 밑걸림 배율(에기 바닥 드래깅 -30%)
-      snagRiskMult: getAreaSnagRiskMult(GameState.currentSpotId) * (this.lureSpec?.snagRiskMult ?? 1),
+      // 127차 — 강수 시 밑걸림·채비 손실 확률 상승
+      snagRiskMult: getAreaSnagRiskMult(GameState.currentSpotId)
+        * (this.lureSpec?.snagRiskMult ?? 1) * (this.castWx?.snagMult ?? 1),
     });
 
     // ── 입질 시퀀스 진행 (초릿대 굽힘/찌 잠김 구동) ──
@@ -2352,6 +2379,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
    * 재캐스팅은 U 채비하기에서 손실 부품 재장착 후 가능.
    */
   private failAndExit(title: string, body: string): void {
+    GameState.applyVitalsAction('fightLose');   // 125차 — 실패 파이팅 행동 비용
     this.fpState = 'result';
     this.fight = null;
     this.clearFight2DStage();
@@ -2371,6 +2399,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
 
   /** 랜딩 성공 — 오라클 결과 반영 */
   private onLanded(): void {
+    GameState.applyVitalsAction('fightWin');   // 125차 — 성공 파이팅 행동 비용
     const f = this.hookedFish!;
     const protectedFish = f.isUndersized || f.isClosedSeason;
     const sexLabel = f.sex === 'M' ? '수컷' : '암컷';
@@ -2378,6 +2407,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     const imgScale = fishImageSizeScale(f.speciesId, f.lengthCm);
 
     if (protectedFish) {
+      GameState.addLawfulReleaseXp(f.speciesId, f.lengthCm);   // 준법 방생 XP (124차 — 어획 XP × 0.5)
       const reason = f.isClosedSeason ? '금어기' : `금지체장 미만`;
       this.finishFight(`${f.nameKo} ${f.lengthCm}cm — 방생`,
         `${f.nameKo} ${f.lengthCm}cm / ${(f.weightG / 1000).toFixed(2)}kg / ${sexLabel}\n\n${reason} 개체입니다. 규정에 따라 방생합니다.`, '#9fd0e4', fishTexture, imgScale);

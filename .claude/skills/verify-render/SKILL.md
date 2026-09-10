@@ -15,6 +15,12 @@ npx pnpm --filter @tra/client-pc run dev   # → http://localhost:5173 (백그�
 
 - typecheck가 통째로 깨져 보이면 십중팔구 **stale `@tra/core` dist** — `npx pnpm --filter @tra/core run build` 선행 (31·32차 반복 함정).
 - Playwright는 설치하지 않는다 — npx 캐시 재사용 (아래 보일러플레이트). 없을 때만 `npx -p playwright@1.62.1 node ...`.
+- ⚠ **core를 고쳤으면 `packages/client-pc/node_modules/.vite`를 지우고 dev를 재시작한다**(127차 실측) —
+  vite dev는 `@tra/core`를 **사전 번들(deps)로 캐시**하므로, core를 다시 빌드해도 브라우저는 **옛 core를 계속 본다**.
+  씬 코드(HMR)만 새 값이라 "배선은 맞는데 수치가 안 바뀐다"로 보이고, 조용히 잘못된 결론을 낸다.
+- ⚠ **i18n·에셋을 고친 뒤에도 dev 재시작** — HMR `?t=` 분화로 하네스의 `/src/...ts` import가
+  게임과 **다른 모듈 인스턴스**를 잡는다(120차). `setLocale(l)`은 **`setLocale(l, game)`으로 부를 것** —
+  game 인자가 없으면 `refreshAll`이 안 돌아 이미 그려진 Text가 한국어로 남는다(127차 오진 1회).
 
 ## 하네스 보일러플레이트 (.cjs — scratchpad에 작성)
 
@@ -87,6 +93,14 @@ const { chromium } = resolvePlaywright();
   NEW GAME이 시작돼 `InventoryStore.resetAll()`이 중간 지급분을 지움). 마우스는 topOnly 게이트가 있지만
   **키보드에는 없다** — 패널 버튼류 확정은 `panel.onKey({ code: 'Enter', shiftKey: false })` 직접 호출로.
 - 헤드리스에서 `--virtual-time-budget` 방식은 Phaser 트윈/타이머가 진행되지 않는다 — 트윈 결과 검증은 실브라우저 + `waitForTimeout`.
+- ⚠ **실브라우저(playwright) 헤드리스에서도 `scene.time` 타이머 이벤트가 발화하지 않는다**(128차 실측 —
+  씬 status 5·`time.paused` false·`time.now` 증가인데도 **새로 등록한 프로브 이벤트조차 0회**).
+  1초 루프로 갱신되는 HUD(시계·상태 패널·스트립)는 **콜백을 직접 호출**해 검증할 것(`hud.updateStatus()`).
+- ⚠ **`__GS.vitals`는 게터가 매번 새 객체를 만든다**(128차) — `__GS.vitals.hunger = 62`는 버려진다.
+  `__GS.commitVitals({ ...__GS.vitals, hunger: 62, hydration: 41 })`로 실필드에 쓸 것.
+- ⚠ **픽셀 아이콘·도트 아트는 반드시 실사이즈(16px) 스크린샷을 육안 확인**(128차) — 10배 미리보기에서는
+  다 그럴듯해 보이지만 16px에서 형태가 뭉개진다(마스크가 흰 알약, 뼈가 나비넥타이로 읽혀 3종 재작업).
+  판정 어서션으로는 절대 못 잡는 종류의 결함이다.
 - **손질 완주 하네스는 부산물 팝업(모달·depth 1600)에 막힌다**(92차) — 작업/섹션 완료마다 뜨며 이후 입력이 전부 무시된다.
   settle 루프에서 `if (panel.byproductPopup) panel.confirmByproductPopup(false)`(확인 후 계속)를 태울 것.
 - `process.jumpTo` 직접 호출은 `renderedOrientation`/`renderedRotation`을 스냅하지 않는다 — 하네스 점프는 `panel.devJumpToTask(secIdx, taskId)` 사용(둘 다 스냅).

@@ -1171,6 +1171,7 @@ export class WorldMapScene extends Phaser.Scene {
       return;
     }
     GameState.player.inventory.coins = coins - fare;
+    GameState.applyVitalsAction('travel');   // 125차 — 지역 간 이동(출조) 행동 비용
     GameState.markDirty();
 
     GameState.setCurrentSpot(area.id);

@@ -52,6 +52,19 @@ function sinkerShopEntry(id: string): ShopEntry {
   };
 }
 
+/**
+ * 조합 사무 코너 (127차) — **조업 재교육 이수증** = 스킬 리스펙.
+ * 아이콘은 이모지가 아니라 **짧은 한글 라벨**(AGENTS §4 「UI 특수문자·이모지 금지」).
+ */
+const GUILD_CORNER: ShopEntry[] = [
+  {
+    id: 'inv_skill_reset', name: '조업 재교육 이수증', icon: '증',
+    category: 'etc', subCategory: '증서', basePrice: 160000,
+    price: 200000, maxPerPurchase: 2, equippable: false, skillReset: true,
+    desc: '조합 재교육 과정 수료증. 사용하면 지금까지 찍은 스킬 포인트를 전부 되돌려 받는다.',
+  },
+];
+
 /** 직판장 채비 코너 — 무게추 봉돌(대표 호수) + 찌 + 좁쌀봉돌 + **줄·바늘 소모품**(116차) */
 const TACKLE_CORNER: ShopEntry[] = [
   // 줄·바늘은 줄터짐/밑걸림으로 잃는 소모품인데 어디서도 다시 살 수 없었다(외부 테스터 — 목줄을 잃고
@@ -93,7 +106,9 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
       { id: 'inv_potion',   name: 'HP 회복 드링크', icon: '💊', category: 'consumable', subCategory: '의약품',   basePrice: 5000, price: 6000, maxPerPurchase: 5,  equippable: false, desc: 'HP를 40 회복한다.' },
       { id: 'inv_mosquito', name: '모기향',         icon: '🌀', category: 'consumable', subCategory: '야간 대비', basePrice: 2500, price: 3000, maxPerPurchase: 10, equippable: false, desc: '야간 낚시 모기 디버프 방지.' },
       { id: 'inv_seasick',  name: '멀미약',         icon: '💊', category: 'consumable', subCategory: '의약품',   basePrice: 4000, price: 5000, maxPerPurchase: 5,  equippable: false, desc: '선상 낚시 멀미 내성 10분.' },
-      { id: 'shop_snackbar', name: '초코바',        icon: '🥫', category: 'food',       subCategory: '가공품',   basePrice: 1200, price: 1500, maxPerPurchase: 10, equippable: false, desc: '간단한 요기. 피로도 -5.' },
+      { id: 'shop_snackbar', name: '초코바',        icon: '🥫', category: 'food',       subCategory: '가공품',   basePrice: 1200, price: 1500, maxPerPurchase: 10, equippable: false, hungerRestore: 12, hydrationRestore: -2, desc: '간단한 요기. 허기 +12.' },
+      { id: 'shop_water',    name: '생수 500ml',    icon: '🥫', category: 'food',       subCategory: '가공품',   basePrice: 900,  price: 1200, maxPerPurchase: 10, equippable: false, hungerRestore: 0, hydrationRestore: 30, desc: '수분 +30. 갈증 해소의 기본.' },
+      { id: 'shop_riceball', name: '주먹밥',        icon: '🥫', category: 'food',       subCategory: '가공품',   basePrice: 1800, price: 2200, maxPerPurchase: 10, equippable: false, hungerRestore: 22, hydrationRestore: 2, desc: '허기 +22 · 수분 +2. 출조 전 간편식.' },
       { id: 'inv_ice_bulk',  name: '대용량 각얼음', icon: '🧊', category: 'consumable', subCategory: '보냉',     basePrice: 4000, price: 5000, maxPerPurchase: 5,  equippable: false, desc: '쿨러 얼음 넣기 재료 — 1개로 2시간 보냉.' },
     ],
   },
@@ -139,6 +154,8 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
       ...TACKLE_CORNER,
       // 채집·통발 코너 (121차)
       ...FORAGE_CORNER,
+      // 조합 사무 코너 (127차) — 스킬 리스펙
+      ...GUILD_CORNER,
     ],
   },
   restaurant: {

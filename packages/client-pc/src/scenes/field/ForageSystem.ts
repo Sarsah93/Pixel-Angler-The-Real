@@ -79,6 +79,11 @@ export class ForageSystem {
   /** 홀드 진행 */
   private hold: { spot: ForageSpot; creature: ShoreCreature; tool: ForageTool; startedAt: number; ms: number } | null = null;
 
+  /** 채집 홀드 진행 중인가 — 생존 지표 드레인 활동 판정(125차) */
+  get isHolding(): boolean {
+    return this.hold !== null;
+  }
+
   constructor(host: ForageHost, farms: FishFarm[]) {
     this.host = host;
     this.farms = farms;
@@ -443,12 +448,21 @@ export class ForageSystem {
         this.host.knockback(dx / l, dy / l);
         this.host.scene.cameras.main.shake(160, 0.005);
         this.host.floatingHint(safety.warning ? '너울에 미끄러졌다! 갯바위 주의' : '이끼에 미끄러졌다!');
-        this.host.pushLog('[안전] 갯바위에서 미끄러졌습니다 — HP 감소');
+        // 125차: 단발 HP 감소 → 상태이상 승격 (골절 20% / 출혈 35%)
+        // 127차: `rollStatus` 경유 — 면역력(life_immune)이 발생 확률을 깎는다
+        const r = Math.random();
+        const hurt = r < 0.2 ? (GameState.rollStatus('fracture', 1) ? '골절' : '')
+          : r < 0.55 ? (GameState.rollStatus('bleed', 1) ? '출혈' : '') : '';
+        this.host.pushLog(hurt
+          ? `[안전] 갯바위에서 미끄러졌습니다 — HP 감소 · ${hurt}`
+          : '[안전] 갯바위에서 미끄러졌습니다 — HP 감소');
         return true;
       }
     }
     if (safety.warning) this.host.floatingHint(safety.warning);
-    this.hold = { spot: s, creature: c, tool, startedAt: Date.now(), ms: forageHoldMs(c, tool) };
+    // 127차 P5 — 채집 손놀림(gath_speed): 홀드 시간을 배율만큼 줄인다
+    const holdMs = forageHoldMs(c, tool) / Math.max(0.3, GameState.skillMult('forage_speed'));
+    this.hold = { spot: s, creature: c, tool, startedAt: Date.now(), ms: holdMs };
     this.showHint(`${c.nameKo} 채집 중… (${FORAGE_TOOL_LABEL[tool]})`, this.host.player().x, this.host.player().y - 80);
     return true;
   }
@@ -475,12 +489,19 @@ export class ForageSystem {
     });
     const p = this.host.player();
     switch (res.outcome) {
-      case 'injured':
+      case 'injured': {
         GameState.updatePlayer({ stamina: Math.max(0, GameState.player.stamina - res.staminaLoss) });
         this.host.scene.cameras.main.shake(140, 0.004);
         this.host.floatingHint(res.message);
-        this.host.pushLog(`[채집] ${res.message}`);
+        // 125차: 부상 → 상태이상 (쏘이는 생물 = 생물중독 / 그 외 = 출혈 60%)
+        // 독성 = 가시·독침 보유종만 (해삼 같은 극피동물은 제외 — 이름으로 판정)
+        const venomous = /성게|해파리|쏠|쐐기|미역치/.test(h.creature.nameKo);
+        const st = venomous
+          ? (GameState.rollStatus('bio_poison', 1) ? '생물중독' : '')
+          : (GameState.rollStatus('bleed', 0.6) ? '출혈' : '');
+        this.host.pushLog(`[채집] ${res.message}${st ? ` · ${st}` : ''}`);
         return;
+      }
       case 'escaped':
         this.removeSpot(h.spot.id);
         this.host.floatingHint(res.message);
@@ -523,6 +544,7 @@ export class ForageSystem {
       return;
     }
     DiscoveryStore.record('creature', res.creatureId, 'night_hunting');
+    GameState.addActivityXp('forage');   // 플레이어 레벨 XP (124차 — 수확 1회)
     this.host.floatingHint(res.message);
     this.host.pushLog(`[채집] ${res.nameKo} ${res.weightG}g — ${where === 'cooler' ? '쿨러 보관' : '인벤토리(채집물)'}`);
     this.host.scene.cameras.main.flash(120, 40, 160, 90);
