@@ -42,7 +42,7 @@ import {
   computeFeedingActivity, feedingRegionProfileOf, FeedingActivityResult,
   getMovementProfile, pickRunHeading,
   FishFatigueModel, FatigueTick, FATIGUE_PHASE_LABEL,
-  fightGroupOf, fishRarity, RARITY_STYLE,
+  fightGroupOf, fightBodyFormOf, fishRarity, RARITY_STYLE,
   fishImageSizeScale,
   TUNING,
   computeCastWeather,
@@ -891,6 +891,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       mouthFragility: f.fight.mouthFragility,
       weightKg: f.weightG / 1000,
       burstMult: TUNING.fightPhys.burst[fightGroupOf(f.speciesId)],
+      // 133차 — 체형: 어종군(힘의 크기)과 직교하는 "힘의 성질"(면적·추력·요동)
+      bodyForm: f.bodyForm ?? fightBodyFormOf(f.speciesId),
       lineCapacityKg: lineCap,
     });
 
@@ -2321,15 +2323,18 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     //   reelCap은 릴링 여부와 무관한 기준값이라, 손을 놓아도 고기는 줄을 끌고 나간다.
     const resist01 = (this.dragInMode || subdued) ? 0 : gate * (1 - sub01 * D.subdueFleeCut);
     const reelCap = this.fightReelMps(false);
+    // 133차 — 체형 배수: 방추형(회유어)은 줄을 끌고 나가고, 장어형은 직선 도주력이 약하다
+    const formResist = TUNING.fightPhys.form[f.bodyForm ?? fightBodyFormOf(f.speciesId)].resist;
     const resistMps = reelCap * D.resistFrac
-      * (D.fleePowerBase + f.powerFactor * D.fleePowerGain) * resist01 * patMul;
+      * (D.fleePowerBase + f.powerFactor * D.fleePowerGain) * resist01 * patMul * formResist;
 
     // ③ 거리 = 도주 전진분 − 릴링 회수분 (랜딩의 유일한 시계)
     //    패턴이 진행되는 동안에는 물고기가 줄을 버텨(하한 holdMps) 릴링이 거의 거리를 못 번다 —
     //    이 구간이 "패턴 대응으로 제압도를 쌓는" 상호작용 몫이고, 제압·피로가 오르면 무너진다.
     const reelMps = reeling ? this.fightReelMps(subdued) : 0;
     const holdMps = st.pattern !== 'none'
-      ? reelCap * D.patternHoldFrac * resist01 * (D.fleePowerBase + f.powerFactor * D.fleePowerGain)
+      ? reelCap * D.patternHoldFrac * resist01 * formResist
+        * (D.fleePowerBase + f.powerFactor * D.fleePowerGain)
       : 0;
     let fwd = Math.max(holdMps, Math.max(0, Math.cos(this.fleePlanAng)) * resistMps);
     // 릴링 중에는 도주 전진을 회수 속도 아래로 묶는다 — **감는 동안은 항상 조금씩 가까워진다**.
@@ -2434,6 +2439,9 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       this.patternText
         .setText(`횡으로 쏩니다! 릴링을 멈추고 ${st.lateralDir < 0 ? '←' : '→'} 같은쪽 스티어로 버티세요!`)
         .setVisible(true);
+    } else if ((TUNING.fightPhys.form[this.hookedFish.bodyForm ?? 'roundish'].thrashAmp) >= 0.4) {
+      // 133차 — 장어·리본형: 패턴이 없어도 몸을 비틀어 텐션이 출렁인다(요구 장력 주기 변동)
+      this.patternText.setText('몸을 비틀며 요동칩니다 — 텐션이 출렁이니 안전대를 지키세요').setVisible(true);
     } else {
       this.patternText.setVisible(false);
     }

@@ -15,6 +15,20 @@
  */
 
 import { rollTieredLength } from './SizeTierRules.js';
+import { TUNING, type BodyFormKey } from '../config/tuning.js';
+
+/**
+ * 체형 분류 (133차) — **같은 체중이라도 파이트에서 내는 힘·압력이 다르다.**
+ *  - deepBody  측편·체고형(돔류·벵에돔·병어): 옆면이 넓어 kg당 박는 힘이 크다
+ *  - fusiform  방추형(방어류·고등어·삼치·농어): 지속 고속 러닝
+ *  - elongated 장어·리본형(갈치·붕장어·갯장어·학꽁치): **몸을 비틀며 요동**친다.
+ *              단면이 작아 직선 추력·정적 하중은 작지만 텐션이 출렁이고 바늘구멍이 넓어진다
+ *  - flat      저서 납작형(광어·가자미·서대·양태): 바닥에 붙어 **판자처럼 버티는** 정적 하중
+ *  - globular  뭉툭·구형(복어류·쥐치): 부풀어 항력은 크지만 추력은 약함
+ *  - cephalopod 두족류: 제트 추진 단발
+ *  - roundish  일반 통통형(볼락·노래미·망둑 등 — 기본)
+ */
+export type FishBodyForm = BodyFormKey;
 
 /** 수심층 분류 */
 export type SwimLayer = 'surface' | 'mid' | 'bottom';
@@ -69,8 +83,16 @@ export interface FishMasterSpec {
   maxCm: number;
   meanCm: number;
   sdCm: number;
-  /** 무게 계수 — W(g) ≈ factor × L(cm)^3 */
-  weightFactor: number;
+  /**
+   * 체장-체중 관계(LWR) 계수 a — **W(g) = lwrA × L(cm)^lwrB** (FishBase 표준형).
+   * ⚠ 133차 이전은 `weightFactor × L^3`(b = 3 고정)이라 체형 차이를 표현하지 못했다:
+   *   길쭉한 갈치가 전장 1m에 10kg(실제 ≈ 0.7kg), 붕장어 1m에 5kg(실제 ≈ 1.4kg).
+   */
+  lwrA: number;
+  /** LWR 지수 b — 미지정 = 3(등척). 장어·리본형 3.1~3.3 / 두족류 2.3~2.9 */
+  lwrB?: number;
+  /** 체형 — 파이트 힘·압력(TUNING.fightPhys.form)과 비만도 계산이 공유 */
+  bodyForm: FishBodyForm;
   /** 수컷 비율 (0~1) — sexRule 있으면 크기 기반으로 대체 */
   maleRatio: number;
   /** 크기(cm) → 수컷 비율 (성전환 어종: 감성돔/참돔/용치놀래기 등) */
@@ -111,7 +133,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     speciesId: 'stone_beakperch', nameKo: '돌돔', nameEn: 'Striped Beakperch',
     habitat: ['reef'], minDepthM: 5, maxDepthM: 30, preferredLayers: ['bottom'],
     baitPreference: { urchin: 50, worm_king: 30, crab: 15, krill: 5 },
-    minCm: 20, maxCm: 80, meanCm: 48, sdCm: 10, weightFactor: 0.022, maleRatio: 0.5,
+    minCm: 20, maxCm: 80, meanCm: 48, sdCm: 10, lwrA: 0.0185, lwrB: 3.04, bodyForm: 'deepBody', maleRatio: 0.5,
     sexNote: '수컷 성어는 줄무늬가 사라지고 주둥이가 검게 변함(강구)',
     // 주행성 — 시력에 의존하는 낮 사냥꾼, 야간 활동 거의 없음
     legalMinCm: 24, nightBonus: 0.35, tideActivity: sariPeak(0.4, 0.85),
@@ -121,7 +143,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     speciesId: 'spotted_knifejaw', nameKo: '강담돔', nameEn: 'Spotted Knifejaw',
     habitat: ['reef'], minDepthM: 10, maxDepthM: 40, preferredLayers: ['bottom'],
     baitPreference: { urchin: 45, crab: 30, worm_king: 20, krill: 5 },
-    minCm: 22, maxCm: 90, meanCm: 52, sdCm: 11, weightFactor: 0.024, maleRatio: 0.5,
+    minCm: 22, maxCm: 90, meanCm: 52, sdCm: 11, lwrA: 0.02, lwrB: 3.04, bodyForm: 'deepBody', maleRatio: 0.5,
     sexNote: '수컷 성어는 주둥이가 하얗게 변함(백화)',
     // 주행성 — 돌돔과 동일한 낮 시력 사냥꾼
     legalMinCm: 24, nightBonus: 0.35, tideActivity: sariPeak(0.35, 0.8),
@@ -131,7 +153,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     speciesId: 'amberjack', nameKo: '부시리', nameEn: 'Yellowtail Amberjack',
     habitat: ['open'], minDepthM: 2, maxDepthM: 30, preferredLayers: ['surface', 'mid'],
     baitPreference: { livefish: 50, lure: 30, krill: 20 },
-    minCm: 50, maxCm: 150, meanCm: 95, sdCm: 20, weightFactor: 0.01, maleRatio: 0.5,
+    minCm: 50, maxCm: 150, meanCm: 95, sdCm: 20, lwrA: 0.0092, lwrB: 3.02, bodyForm: 'fusiform', maleRatio: 0.5,
     sexNote: '자웅이체 — 드랙을 치고 나가 여 밭에 줄을 쓸어버리는 힘이 강함',
     // 여명/황혼 피딩 회유어 — 한밤엔 활성 급감
     nightBonus: 0.5, tideActivity: sariPeak(0.3, 0.9),
@@ -142,7 +164,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     habitat: ['mixed'], minDepthM: 20, maxDepthM: 100, preferredLayers: ['mid', 'bottom'],
     // 타이라바(러버지그) 폴링·등속 릴링에 잘 반응 — lure 선호 반영 (2026-07 리서치)
     baitPreference: { worm_king: 40, krill: 30, shellfish: 20, lure: 25, corn: 10 },
-    minCm: 22, maxCm: 100, meanCm: 52, sdCm: 13, weightFactor: 0.019,
+    minCm: 22, maxCm: 100, meanCm: 52, sdCm: 13, lwrA: 0.0145, lwrB: 3.02, bodyForm: 'deepBody',
     maleRatio: 0.5,
     sexRule: (len) => (len < 30 ? 0.5 : 0.55),
     sexNote: '자웅동체 성전환 — 이마가 튀어나온 개체는 주로 수컷 성어',
@@ -155,7 +177,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     // 표층~중층 회유 — 서식 수심대 자체는 0~300m로 넓음 (실측 데이터 2026-07-16)
     habitat: ['open', 'structure'], minDepthM: 0, maxDepthM: 300, preferredLayers: ['surface', 'mid'],
     baitPreference: { krill: 60, worm_blue: 30, lure: 10 },
-    minCm: 15, maxCm: 60, meanCm: 32, sdCm: 5, weightFactor: 0.0185, maleRatio: 0.5,
+    minCm: 15, maxCm: 60, meanCm: 32, sdCm: 5, lwrA: 0.0092, lwrB: 3.1, bodyForm: 'fusiform', maleRatio: 0.5,
     sexNote: '무리 지어 회유 — 찌를 사방으로 빠르게 끌고 다님',
     // 야간 집어등 불빛에 유집 — 방파제 밤 고등어 카드채비 실적
     legalMinCm: 21, closedMonths: [4, 5, 6], nightBonus: 1.2, tideActivity: flatTide(0.75),
@@ -166,7 +188,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     // 연안 회유 5~50m, 야간 집어등에 강하게 반응 (실측 데이터 2026-07-16)
     habitat: ['structure', 'reef'], minDepthM: 5, maxDepthM: 50, preferredLayers: ['mid', 'bottom'],
     baitPreference: { krill: 60, worm_blue: 30, lure: 10 },
-    minCm: 12, maxCm: 50, meanCm: 25, sdCm: 5, weightFactor: 0.016, maleRatio: 0.5,
+    minCm: 12, maxCm: 50, meanCm: 25, sdCm: 5, lwrA: 0.0088, lwrB: 3.1, bodyForm: 'fusiform', maleRatio: 0.5,
     sexNote: '입가가 약해 과텐션 시 입술이 찢어져 바늘이 빠지기 쉬움. 야간 집어등 불빛에 강하게 반응',
     nightBonus: 1.4, tideActivity: flatTide(0.75),
     fight: { basePower: 0.3, patternWeights: { jump: 0.3, dive: 0.1, lateral: 0.6 }, intervalMult: 1.0, mouthFragility: 0.8 },
@@ -175,7 +197,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     speciesId: 'rainbow_wrasse', nameKo: '용치놀래기', nameEn: 'Multicolorfin Rainbow Wrasse',
     habitat: ['reef'], minDepthM: 2, maxDepthM: 15, preferredLayers: ['bottom'],
     baitPreference: { worm_blue: 50, krill: 40, shellfish: 10 },
-    minCm: 10, maxCm: 26, meanCm: 18, sdCm: 3, weightFactor: 0.02,
+    minCm: 10, maxCm: 26, meanCm: 18, sdCm: 3, lwrA: 0.0105, lwrB: 3.05, bodyForm: 'roundish',
     maleRatio: 0.3,
     sexRule: (len) => (len > 22 ? 0.85 : 0.3),
     sexNote: '암컷→수컷 성전환 — 우두머리가 화려한 녹색 수컷으로 변함',
@@ -188,7 +210,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     speciesId: 'grass_puffer', nameKo: '복섬', nameEn: 'Grass Puffer',
     habitat: ['sand', 'structure'], minDepthM: 1, maxDepthM: 20, preferredLayers: ['bottom'],
     baitPreference: { krill: 50, worm_blue: 45, shellfish: 5 },
-    minCm: 6, maxCm: 15, meanCm: 10, sdCm: 2, weightFactor: 0.024, maleRatio: 0.5,
+    minCm: 6, maxCm: 15, meanCm: 10, sdCm: 2, lwrA: 0.024, lwrB: 3, bodyForm: 'globular', maleRatio: 0.5,
     sexNote: '테트로도톡신 맹독 — 이빨로 바늘과 목줄을 갉아 끊는 미끼 도둑',
     // 복어류 — 주야 모두 먹는 잡식성 (강한 야행성 아님)
     nightBonus: 1.0, tideActivity: flatTide(0.8),
@@ -198,7 +220,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     speciesId: 'tiger_puffer', nameKo: '참복어(자주복)', nameEn: 'Tiger Puffer',
     habitat: ['mixed'], minDepthM: 10, maxDepthM: 50, preferredLayers: ['bottom'],
     baitPreference: { shellfish: 40, worm_king: 30, krill: 20, fishcut: 10 },
-    minCm: 18, maxCm: 75, meanCm: 40, sdCm: 9, weightFactor: 0.028, maleRatio: 0.5,
+    minCm: 18, maxCm: 75, meanCm: 40, sdCm: 9, lwrA: 0.0205, lwrB: 3.02, bodyForm: 'globular', maleRatio: 0.5,
     sexNote: '치명적 맹독 — 이빨 힘이 강해 와이어가 아니면 채비를 끊음',
     // 복어류는 주행성
     nightBonus: 0.4, tideActivity: flatTide(0.6),
@@ -208,7 +230,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     speciesId: 'conger_eel', nameKo: '붕장어', nameEn: 'Conger Eel',
     habitat: ['sand', 'mud'], minDepthM: 5, maxDepthM: 100, preferredLayers: ['bottom'],
     baitPreference: { fishcut: 60, worm_blue: 40 },
-    minCm: 25, maxCm: 100, meanCm: 55, sdCm: 15, weightFactor: 0.005, maleRatio: 0.4,
+    minCm: 25, maxCm: 100, meanCm: 55, sdCm: 15, lwrA: 0.0011, lwrB: 3.05, bodyForm: 'elongated', maleRatio: 0.4,
     sexRule: (len) => (len > 60 ? 0.01 : 0.5),
     sexNote: '60cm 이상 대물은 99% 암컷 — 원줄을 휘감아 꼬아버림',
     legalMinCm: 35, nightBonus: 2.2, tideActivity: flatTide(0.6),
@@ -218,7 +240,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     speciesId: 'yellowfin_goby', nameKo: '문절망둑', nameEn: 'Yellowfin Goby',
     habitat: ['mud', 'sand'], minDepthM: 0.5, maxDepthM: 5, preferredLayers: ['bottom'],
     baitPreference: { worm_blue: 70, krill: 20, lure: 10 },
-    minCm: 8, maxCm: 25, meanCm: 15, sdCm: 3, weightFactor: 0.021, maleRatio: 0.5,
+    minCm: 8, maxCm: 25, meanCm: 15, sdCm: 3, lwrA: 0.0095, lwrB: 3.05, bodyForm: 'roundish', maleRatio: 0.5,
     sexNote: '1년생 — 식탐이 강해 미끼를 넣자마자 삼킴',
     // 낮 생활낚시 대표 어종 — 밤엔 활성 저하
     nightBonus: 0.6, tideActivity: flatTide(0.9),
@@ -228,7 +250,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     speciesId: 'surfperch', nameKo: '망상어', nameEn: 'Ditrema temminckii',
     habitat: ['structure'], minDepthM: 2, maxDepthM: 10, preferredLayers: ['mid', 'bottom'],
     baitPreference: { krill: 60, worm_blue: 35, corn: 5 },
-    minCm: 12, maxCm: 30, meanCm: 21, sdCm: 3, weightFactor: 0.027, maleRatio: 0.5,
+    minCm: 12, maxCm: 30, meanCm: 21, sdCm: 3, lwrA: 0.015, lwrB: 3.05, bodyForm: 'deepBody', maleRatio: 0.5,
     sexNote: '태생 어종 — 봄에 완전히 자란 새끼를 직접 출산',
     // 주행성 — 봄철 낮 방파제 찌낚시 어종
     nightBonus: 0.4, tideActivity: flatTide(0.7),
@@ -238,7 +260,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     speciesId: 'scorpionfish', nameKo: '쏨뱅이', nameEn: 'False Kelpfish',
     habitat: ['reef', 'structure'], minDepthM: 5, maxDepthM: 40, preferredLayers: ['bottom'],
     baitPreference: { fishcut: 40, worm_blue: 40, krill: 20 },
-    minCm: 10, maxCm: 35, meanCm: 20, sdCm: 4, weightFactor: 0.031, maleRatio: 0.5,
+    minCm: 10, maxCm: 35, meanCm: 20, sdCm: 4, lwrA: 0.029, lwrB: 3, bodyForm: 'roundish', maleRatio: 0.5,
     sexNote: '난태생 — 미끼가 눈앞에 정렬될 때 물고 틈새로 파고듦',
     nightBonus: 1.5, tideActivity: flatTide(0.65),
     fight: { basePower: 0.35, patternWeights: { jump: 0.05, dive: 0.8, lateral: 0.15 }, intervalMult: 1.0, mouthFragility: 0.1 },
@@ -247,7 +269,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     speciesId: 'fat_greenling', nameKo: '쥐노래미', nameEn: 'Fat Greenling',
     habitat: ['reef'], minDepthM: 2, maxDepthM: 30, preferredLayers: ['bottom'],
     baitPreference: { worm_king: 45, krill: 35, crab: 20 },
-    minCm: 15, maxCm: 65, meanCm: 35, sdCm: 8, weightFactor: 0.016, maleRatio: 0.5,
+    minCm: 15, maxCm: 65, meanCm: 35, sdCm: 8, lwrA: 0.0145, lwrB: 3, bodyForm: 'roundish', maleRatio: 0.5,
     sexNote: '산란기 수컷은 황금색 혼인색으로 변해 알을 지킴',
     // 주행성 저서 어종 — 밤엔 활성 저하
     legalMinCm: 20, closedMonths: [11, 12], nightBonus: 0.6, tideActivity: flatTide(0.65),
@@ -257,7 +279,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     speciesId: 'greenling', nameKo: '노래미', nameEn: 'Hexagrammos otakii',
     habitat: ['reef', 'structure'], minDepthM: 1, maxDepthM: 15, preferredLayers: ['bottom'],
     baitPreference: { worm_blue: 60, krill: 30, shellfish: 10 },
-    minCm: 10, maxCm: 30, meanCm: 18, sdCm: 3, weightFactor: 0.02, maleRatio: 0.5,
+    minCm: 10, maxCm: 30, meanCm: 18, sdCm: 3, lwrA: 0.018, lwrB: 3, bodyForm: 'roundish', maleRatio: 0.5,
     sexNote: '측선 1개 (쥐노래미는 5개) — 꼬리 끝이 둥근 부채꼴',
     // 주행성 저서 어종
     nightBonus: 0.6, tideActivity: flatTide(0.75),
@@ -268,7 +290,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     speciesId: 'golden_rockfish', nameKo: '황볼락', nameEn: 'Owston\'s Rockfish',
     habitat: ['reef', 'structure'], minDepthM: 20, maxDepthM: 90, preferredLayers: ['bottom', 'mid'],
     baitPreference: { fishcut: 45, worm_king: 35, krill: 20 },
-    minCm: 12, maxCm: 35, meanCm: 21, sdCm: 4, weightFactor: 0.026, maleRatio: 0.5,
+    minCm: 12, maxCm: 35, meanCm: 21, sdCm: 4, lwrA: 0.024, lwrB: 3, bodyForm: 'roundish', maleRatio: 0.5,
     sexNote: '난태생 — 다소 깊은 암초대에서 밤에 활발히 먹이 활동',
     nightBonus: 1.3, tideActivity: flatTide(0.6),
     fight: { basePower: 0.3, patternWeights: { jump: 0.1, dive: 0.6, lateral: 0.3 }, intervalMult: 1.1, mouthFragility: 0.2 },
@@ -277,7 +299,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     speciesId: 'blue_rockfish', nameKo: '청볼락', nameEn: 'Blue Rockfish',
     habitat: ['reef'], minDepthM: 2, maxDepthM: 15, preferredLayers: ['mid'],
     baitPreference: { krill: 60, lure: 30, worm_blue: 10 },
-    minCm: 10, maxCm: 30, meanCm: 18, sdCm: 3, weightFactor: 0.024, maleRatio: 0.5,
+    minCm: 10, maxCm: 30, meanCm: 18, sdCm: 3, lwrA: 0.022, lwrB: 3, bodyForm: 'roundish', maleRatio: 0.5,
     sexNote: '중층에 무리 지어 조류를 타는 회유성 — 찌낚시 주 타겟',
     // 볼락류 공통 야행성 — 밤 중층 부상 피딩
     legalMinCm: 15, nightBonus: 1.8, tideActivity: sariPeak(0.5, 0.85),
@@ -287,7 +309,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     speciesId: 'black_rockfish', nameKo: '조피볼락(우럭)', nameEn: 'Jacopever',
     habitat: ['reef', 'structure'], minDepthM: 3, maxDepthM: 100, preferredLayers: ['bottom'],
     baitPreference: { livefish: 45, fishcut: 30, worm_king: 20, krill: 5 },
-    minCm: 15, maxCm: 60, meanCm: 35, sdCm: 8, weightFactor: 0.021, maleRatio: 0.5,
+    minCm: 15, maxCm: 60, meanCm: 35, sdCm: 8, lwrA: 0.0175, lwrB: 3.02, bodyForm: 'roundish', maleRatio: 0.5,
     sexNote: '탐식성 — 물면 돌 틈으로 단숨에 파고드는 여박기 대표 주자',
     // 텔레메트리상 볼락/열기만큼 강한 야행성은 아님 — 주야 매복형 (야간 보정 완화 1.4→1.2)
     legalMinCm: 23, nightBonus: 1.2, tideActivity: flatTide(0.6),
@@ -298,7 +320,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     // 모래 바닥 10~200m (실측 데이터 2026-07-16)
     habitat: ['sand'], minDepthM: 10, maxDepthM: 200, preferredLayers: ['bottom'],
     baitPreference: { livefish: 50, lure: 40, worm_king: 10 },
-    minCm: 20, maxCm: 120, meanCm: 50, sdCm: 13, weightFactor: 0.013,
+    minCm: 20, maxCm: 120, meanCm: 50, sdCm: 13, lwrA: 0.0098, lwrB: 3.06, bodyForm: 'flat',
     maleRatio: 0.5,
     sexRule: (len) => (len > 70 ? 0.2 : 0.5),
     sexNote: '두 눈이 왼쪽 — 암컷이 압도적으로 크게 자람',
@@ -311,7 +333,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     // 모래·뻘 10~100m, 대한민국 전 해역 (실측 데이터 2026-07-16)
     habitat: ['sand', 'mud'], minDepthM: 10, maxDepthM: 100, preferredLayers: ['bottom'],
     baitPreference: { worm_blue: 70, worm_king: 20, krill: 10 },
-    minCm: 15, maxCm: 50, meanCm: 30, sdCm: 6, weightFactor: 0.015, maleRatio: 0.5,
+    minCm: 15, maxCm: 50, meanCm: 30, sdCm: 6, lwrA: 0.0145, lwrB: 3, bodyForm: 'flat', maleRatio: 0.5,
     sexNote: '두 눈이 오른쪽 — 입이 작고 예민해 소형 바늘에 잘 잡힘. 시장에서 흔히 도다리로 유통',
     // 주행성 가자미류
     legalMinCm: 20, closedMonths: [12, 1], nightBonus: 0.7, tideActivity: flatTide(0.6),
@@ -323,7 +345,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     // 표준명 도다리 — 모래·뻘 50~100m, 군산/목포/여수/마산/진해/부산 분포
     habitat: ['sand', 'mud'], minDepthM: 50, maxDepthM: 100, preferredLayers: ['bottom'],
     baitPreference: { worm_blue: 70, worm_king: 20, krill: 10 },
-    minCm: 15, maxCm: 40, meanCm: 27, sdCm: 5, weightFactor: 0.015, maleRatio: 0.5,
+    minCm: 15, maxCm: 40, meanCm: 27, sdCm: 5, lwrA: 0.0145, lwrB: 3, bodyForm: 'flat', maleRatio: 0.5,
     sexNote: '눈 사이에 가시가 솟은 표준명 도다리 — 문치가자미와 달리 남해 서부에 국지 분포',
     // 주행성 가자미류
     legalMinCm: 20, nightBonus: 0.7, tideActivity: flatTide(0.6),
@@ -334,7 +356,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     // 모래·뻘 20~250m — 20~40cm급은 전 해역 기수역(주로 울산 강 하구)
     habitat: ['sand', 'mud'], minDepthM: 20, maxDepthM: 250, preferredLayers: ['bottom'],
     baitPreference: { worm_blue: 65, worm_king: 20, krill: 15 },
-    minCm: 18, maxCm: 70, meanCm: 30, sdCm: 7, weightFactor: 0.011, maleRatio: 0.5,
+    minCm: 18, maxCm: 70, meanCm: 30, sdCm: 7, lwrA: 0.0125, lwrB: 3.02, bodyForm: 'flat', maleRatio: 0.5,
     sexNote: '지느러미의 검은 줄무늬가 선명한 냉수성 가자미 — 금지체장 없음(14cm 미만 자율 방생 권장)',
     // 주행성 가자미류
     nightBonus: 0.7, tideActivity: flatTide(0.6),
@@ -345,7 +367,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     // 진흙·갯벌·모래 20~100m, 회유 4~6월 제주/서해 → 7~10월 서해/남해
     habitat: ['mud', 'sand'], minDepthM: 20, maxDepthM: 100, preferredLayers: ['bottom'],
     baitPreference: { worm_blue: 70, shellfish: 20, krill: 10 },
-    minCm: 18, maxCm: 60, meanCm: 32, sdCm: 6, weightFactor: 0.008, maleRatio: 0.5,
+    minCm: 18, maxCm: 60, meanCm: 32, sdCm: 6, lwrA: 0.0075, lwrB: 3, bodyForm: 'flat', maleRatio: 0.5,
     sexNote: '혓바닥처럼 길쭉한 서대류 — 입이 작아 미끼를 빨아들이듯 삼킨다',
     nightBonus: 1.8, tideActivity: flatTide(0.6),
     fight: { basePower: 0.25, patternWeights: { jump: 0.05, dive: 0.5, lateral: 0.45 }, intervalMult: 1.25, mouthFragility: 0.25 },
@@ -355,7 +377,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     // 모래·암초 20~50m, 회유 4~7월 제주>서해 / 10~12월 서해>제주. 남해·동해 소규모 분포
     habitat: ['sand', 'reef'], minDepthM: 20, maxDepthM: 50, preferredLayers: ['bottom'],
     baitPreference: { fishcut: 60, livefish: 30, worm_blue: 10 },
-    minCm: 40, maxCm: 200, meanCm: 70, sdCm: 18, weightFactor: 0.0005, maleRatio: 0.5,
+    minCm: 40, maxCm: 200, meanCm: 70, sdCm: 18, lwrA: 0.00042, lwrB: 3.2, bodyForm: 'elongated', maleRatio: 0.5,
     sexNote: '하모 — 단검 같은 이빨로 목줄을 단숨에 끊고 손까지 물어뜯는 난폭한 장어',
     legalMinCm: 40, nightBonus: 1.6, tideActivity: flatTide(0.6),
     fight: { basePower: 0.7, patternWeights: { jump: 0.1, dive: 0.55, lateral: 0.35 }, intervalMult: 0.95, mouthFragility: 0.1, lineCutter: true },
@@ -365,7 +387,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     // 표층·중층 0~50m, 회유 4~7월 제주>남해>동해>북한 / 9~12월 동해>남해>제주>일본
     habitat: ['open'], minDepthM: 0, maxDepthM: 50, preferredLayers: ['surface', 'mid'],
     baitPreference: { krill: 60, lure: 25, worm_blue: 15 },
-    minCm: 20, maxCm: 45, meanCm: 35, sdCm: 4, weightFactor: 0.0025, maleRatio: 0.5,
+    minCm: 20, maxCm: 45, meanCm: 35, sdCm: 4, lwrA: 0.0012, lwrB: 3.3, bodyForm: 'elongated', maleRatio: 0.5,
     sexNote: '표층을 빠르게 스치는 가늘고 긴 등푸른 회유어 — 집어등 불빛에 몰린다',
     nightBonus: 1.9, tideActivity: flatTide(0.65),
     fight: { basePower: 0.2, patternWeights: { jump: 0.35, dive: 0.05, lateral: 0.6 }, intervalMult: 1.0, mouthFragility: 0.5 },
@@ -375,7 +397,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     // 모래·진흙 저층 100~400m(수온 10~20°C) — 회유 7~8월 제주, 8~6월 제주>남해>일본
     habitat: ['sand', 'mud'], minDepthM: 100, maxDepthM: 400, preferredLayers: ['bottom'],
     baitPreference: { fishcut: 50, livefish: 30, lure: 20 },
-    minCm: 15, maxCm: 50, meanCm: 30, sdCm: 6, weightFactor: 0.011, maleRatio: 0.5,
+    minCm: 15, maxCm: 50, meanCm: 30, sdCm: 6, lwrA: 0.012, lwrB: 3, bodyForm: 'roundish', maleRatio: 0.5,
     sexNote: '아카무츠 — 목구멍이 검고 눈이 큰 심해 고급어. 기름기가 풍부해 최고급 횟감',
     nightBonus: 1.7, tideActivity: flatTide(0.55),
     fight: { basePower: 0.45, patternWeights: { jump: 0.05, dive: 0.7, lateral: 0.25 }, intervalMult: 1.05, mouthFragility: 0.3 },
@@ -385,7 +407,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     // 표층·중층 50~150m, 회유 12월 제주/남해 → 1~8월 일본>남해>제주
     habitat: ['open'], minDepthM: 50, maxDepthM: 150, preferredLayers: ['surface', 'mid'],
     baitPreference: { krill: 70, lure: 20, worm_blue: 10 },
-    minCm: 10, maxCm: 26, meanCm: 18, sdCm: 3, weightFactor: 0.009, maleRatio: 0.5,
+    minCm: 10, maxCm: 26, meanCm: 18, sdCm: 3, lwrA: 0.0068, lwrB: 3.05, bodyForm: 'fusiform', maleRatio: 0.5,
     sexNote: '눈이 유난히 큰 소형 청어류 — 대형어의 주 먹이(베이트피시)라 생미끼로도 쓰인다',
     nightBonus: 1.8, tideActivity: flatTide(0.65),
     fight: { basePower: 0.12, patternWeights: { jump: 0.25, dive: 0.1, lateral: 0.65 }, intervalMult: 1.3, mouthFragility: 0.55 },
@@ -395,7 +417,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     // 45~450m, 주로 남해 분포 — 회유 12월 제주/남해 → 1~8월 일본>남해>제주
     habitat: ['sand', 'mud', 'open'], minDepthM: 45, maxDepthM: 450, preferredLayers: ['bottom'],
     baitPreference: { livefish: 40, fishcut: 30, lure: 30 },
-    minCm: 30, maxCm: 120, meanCm: 55, sdCm: 12, weightFactor: 0.014, maleRatio: 0.5,
+    minCm: 30, maxCm: 120, meanCm: 55, sdCm: 12, lwrA: 0.0085, lwrB: 3.07, bodyForm: 'fusiform', maleRatio: 0.5,
     sexNote: '입이 머리만큼 큰 한류성 대형 저서어 — 겨울 거제·진해 대구탕의 주인공',
     legalMinCm: 35, closedMonths: [1, 2], tideActivity: flatTide(0.6),
     fight: { basePower: 0.75, patternWeights: { jump: 0.05, dive: 0.7, lateral: 0.25 }, intervalMult: 1.0, mouthFragility: 0.2 },
@@ -405,7 +427,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     // 모래·뻘 0~100m, 남해/서해 분포 (6~9월)
     habitat: ['sand', 'mud'], minDepthM: 0, maxDepthM: 100, preferredLayers: ['mid', 'bottom'],
     baitPreference: { krill: 50, worm_blue: 30, shellfish: 20 },
-    minCm: 12, maxCm: 28, meanCm: 17, sdCm: 3, weightFactor: 0.05, maleRatio: 0.5,
+    minCm: 12, maxCm: 28, meanCm: 17, sdCm: 3, lwrA: 0.022, lwrB: 3.05, bodyForm: 'deepBody', maleRatio: 0.5,
     sexNote: '병어와 쏙 닮은 소형종 — 입이 아주 작아 큰 바늘에는 걸리지 않는다. 14cm 미만 자율 방생 권장',
     // 주간 무리 지어 피딩
     nightBonus: 0.7, tideActivity: flatTide(0.6),
@@ -416,7 +438,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     // 모래·뻘 0~100m, 남해/서해 분포 및 회유 (6~9월)
     habitat: ['sand', 'mud'], minDepthM: 0, maxDepthM: 100, preferredLayers: ['mid', 'bottom'],
     baitPreference: { krill: 50, worm_blue: 30, shellfish: 20 },
-    minCm: 14, maxCm: 40, meanCm: 25, sdCm: 5, weightFactor: 0.026, maleRatio: 0.5,
+    minCm: 14, maxCm: 40, meanCm: 25, sdCm: 5, lwrA: 0.021, lwrB: 3, bodyForm: 'deepBody', maleRatio: 0.5,
     sexNote: '납작한 마름모꼴 은빛 몸통 — 뼈가 연해 통째로 썰어 먹는 여름 별미. 14.6cm 미만 자율 방생 권장',
     // 주간 무리 지어 피딩
     nightBonus: 0.7, tideActivity: flatTide(0.6),
@@ -427,7 +449,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     // 모래·진흙 140~150m — 동해. 10~12월 산란을 위해 2~10m 연안으로 몰려든다
     habitat: ['sand', 'mud'], minDepthM: 2, maxDepthM: 150, preferredLayers: ['bottom'],
     baitPreference: { krill: 40, worm_blue: 35, lure: 25 },
-    minCm: 10, maxCm: 30, meanCm: 18, sdCm: 3, weightFactor: 0.013, maleRatio: 0.5,
+    minCm: 10, maxCm: 30, meanCm: 18, sdCm: 3, lwrA: 0.0088, lwrB: 3.05, bodyForm: 'roundish', maleRatio: 0.5,
     sexNote: '늦가을 산란기에만 연안 해조류로 붙는 동해 어종 — 알이 가득 찬 암컷이 별미',
     legalMinCm: 11, nightBonus: 1.5, tideActivity: flatTide(0.6),
     fight: { basePower: 0.2, patternWeights: { jump: 0.15, dive: 0.4, lateral: 0.45 }, intervalMult: 1.25, mouthFragility: 0.35 },
@@ -437,7 +459,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     // 내만·암초·해조류 70~100m — 회유 1~3월 제주, 4~11월 남해>동해, 6~10월 제주>서해
     habitat: ['reef', 'structure'], minDepthM: 20, maxDepthM: 100, preferredLayers: ['mid', 'bottom'],
     baitPreference: { shellfish: 45, krill: 35, worm_blue: 20 },
-    minCm: 12, maxCm: 36, meanCm: 22, sdCm: 4, weightFactor: 0.017, maleRatio: 0.5,
+    minCm: 12, maxCm: 36, meanCm: 22, sdCm: 4, lwrA: 0.013, lwrB: 3.05, bodyForm: 'globular', maleRatio: 0.5,
     sexNote: '쥐치보다 크고 길쭉한 쥐포의 주 원료 — 작은 입으로 미끼만 갉아먹는 악명 높은 미끼 도둑',
     // 쥐치류는 주행성 — 밤엔 취면(수면) 상태
     legalMinCm: 18, closedMonths: [5, 6, 7], nightBonus: 0.3, tideActivity: flatTide(0.65),
@@ -449,7 +471,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     // 조류 완만한 내만성 갯바위/암초/테트라포드, 해조류 무성한 곳 (실측 데이터 2026-07-16)
     habitat: ['reef', 'structure'], minDepthM: 3, maxDepthM: 15, preferredLayers: ['mid'],
     baitPreference: { bread: 50, krill: 30, worm_blue: 20 },
-    minCm: 15, maxCm: 55, meanCm: 30, sdCm: 5, weightFactor: 0.033, maleRatio: 0.5,
+    minCm: 15, maxCm: 55, meanCm: 30, sdCm: 5, lwrA: 0.0205, lwrB: 3, bodyForm: 'deepBody', maleRatio: 0.5,
     sexNote: '수온·소음에 극도로 예민 — 이물감이 느껴지면 바로 뱉는 약은 입질. 금지체장 없음(20~23cm 미만 자율 방생 권장)',
     // 주행성 — 낮 찌낚시 대표 어종
     nightBonus: 0.5, tideActivity: sariPeak(0.4, 0.85),
@@ -460,7 +482,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     // 조류 소통 원활한 외양성 암초 — 10~30m에 머물다 밑밥 반응 시 표층 1~5m까지 부상
     habitat: ['reef', 'open'], minDepthM: 10, maxDepthM: 30, preferredLayers: ['mid', 'surface'],
     baitPreference: { krill: 70, bread: 15, worm_blue: 15 },
-    minCm: 20, maxCm: 60, meanCm: 38, sdCm: 7, weightFactor: 0.025, maleRatio: 0.5,
+    minCm: 20, maxCm: 60, meanCm: 38, sdCm: 7, lwrA: 0.0195, lwrB: 3, bodyForm: 'deepBody', maleRatio: 0.5,
     sexNote: '아가미 테두리 검은 띠 + 제비꼬리. 난류 선호(제주/남해 먼바다). 이빨이 날카로워 목줄을 잘 끊음. 22~25cm 미만 자율 방생',
     // 여름밤 제주 밤낚시 대물 실적 — 벵에돔과 달리 야간에도 활발
     nightBonus: 1.3, tideActivity: sariPeak(0.35, 0.95),
@@ -471,7 +493,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     // 진흙·모래 바닥 위를 회유 — 여름 50~100m, 겨울 70~120m (실측 데이터 2026-07-16)
     habitat: ['mud', 'sand', 'open'], minDepthM: 20, maxDepthM: 150, preferredLayers: ['mid', 'surface'],
     baitPreference: { fishcut: 60, krill: 20, lure: 20 },
-    minCm: 40, maxCm: 130, meanCm: 70, sdCm: 15, weightFactor: 0.002, maleRatio: 0.5,
+    minCm: 40, maxCm: 130, meanCm: 70, sdCm: 15, lwrA: 0.00032, lwrB: 3.17, bodyForm: 'elongated', maleRatio: 0.5,
     sexNote: '야간 집어등에 유집되는 은빛 회유어 — 이빨이 날카로워 목줄 주의. 법정 금지체장은 항문장 18cm(≈ 전장 47cm)',
     // 법정 기준은 항문장 18cm이나 게임은 전장(lengthCm)으로 판정 — 전장 환산값 47cm 사용
     legalMinCm: 47, closedMonths: [7],
@@ -482,7 +504,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     speciesId: 'yellowtail', nameKo: '방어', nameEn: 'Japanese Amberjack',
     habitat: ['open'], minDepthM: 5, maxDepthM: 40, preferredLayers: ['mid', 'surface'],
     baitPreference: { livefish: 50, lure: 35, krill: 15 },
-    minCm: 50, maxCm: 150, meanCm: 90, sdCm: 18, weightFactor: 0.012, maleRatio: 0.5,
+    minCm: 50, maxCm: 150, meanCm: 90, sdCm: 18, lwrA: 0.0105, lwrB: 3.02, bodyForm: 'fusiform', maleRatio: 0.5,
     sexNote: '겨울 대방어 — 부시리와 함께 드랙을 치고 나가는 대형 회유어',
     // 여명/황혼 피딩 회유어 — 한밤엔 활성 급감. 금지체장 30cm (2026-07 리서치)
     legalMinCm: 30, nightBonus: 0.5, tideActivity: sariPeak(0.3, 0.85),
@@ -492,7 +514,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     speciesId: 'dark_banded_rockfish', nameKo: '볼락', nameEn: 'Dark-banded Rockfish',
     habitat: ['reef', 'structure'], minDepthM: 3, maxDepthM: 30, preferredLayers: ['surface', 'mid'],
     baitPreference: { krill: 60, worm_blue: 25, lure: 15 },
-    minCm: 12, maxCm: 42, meanCm: 22, sdCm: 4, weightFactor: 0.018, maleRatio: 0.5,
+    minCm: 12, maxCm: 42, meanCm: 22, sdCm: 4, lwrA: 0.016, lwrB: 3.03, bodyForm: 'roundish', maleRatio: 0.5,
     sexNote: '야간 상층 피딩 보일링을 형성하는 대표 야행성 어종',
     legalMinCm: 15, nightBonus: 2.0, tideActivity: flatTide(0.7),
     fight: { basePower: 0.25, patternWeights: { jump: 0.2, dive: 0.4, lateral: 0.4 }, intervalMult: 1.1, mouthFragility: 0.3 },
@@ -501,7 +523,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     speciesId: 'red_snapper_rockfish', nameKo: '열기(불볼락)', nameEn: 'Goldeye Rockfish',
     habitat: ['reef'], minDepthM: 20, maxDepthM: 80, preferredLayers: ['bottom', 'mid'],
     baitPreference: { krill: 55, fishcut: 25, worm_king: 20 },
-    minCm: 14, maxCm: 35, meanCm: 22, sdCm: 4, weightFactor: 0.025, maleRatio: 0.5,
+    minCm: 14, maxCm: 35, meanCm: 22, sdCm: 4, lwrA: 0.019, lwrB: 3, bodyForm: 'roundish', maleRatio: 0.5,
     nightBonus: 1.6, tideActivity: flatTide(0.6),
     fight: { basePower: 0.3, patternWeights: { jump: 0.1, dive: 0.6, lateral: 0.3 }, intervalMult: 1.1, mouthFragility: 0.2 },
   },
@@ -509,7 +531,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     speciesId: 'sea_bass', nameKo: '농어', nameEn: 'Japanese Seabass',
     habitat: ['open', 'structure'], minDepthM: 1, maxDepthM: 30, preferredLayers: ['mid', 'surface'],
     baitPreference: { lure: 45, livefish: 35, krill: 10, worm_blue: 10 },
-    minCm: 30, maxCm: 110, meanCm: 60, sdCm: 14, weightFactor: 0.01, maleRatio: 0.5,
+    minCm: 30, maxCm: 110, meanCm: 60, sdCm: 14, lwrA: 0.0105, lwrB: 3, bodyForm: 'fusiform', maleRatio: 0.5,
     sexNote: '점프하며 아가미를 터는 에라 세척(바늘털이)의 대명사',
     legalMinCm: 30, nightBonus: 1.6, tideActivity: sariPeak(0.35, 0.9),
     fight: { basePower: 0.8, patternWeights: { jump: 0.45, dive: 0.2, lateral: 0.35 }, intervalMult: 0.85, mouthFragility: 0.25 },
@@ -519,7 +541,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     // 물 흐름 있는 연안 암초/내만, 표층 회유성 (실측 데이터 2026-07-16 — 방언: 개숭어/보리숭어)
     habitat: ['structure', 'open', 'mud'], minDepthM: 0.5, maxDepthM: 10, preferredLayers: ['surface', 'mid'],
     baitPreference: { worm_blue: 55, krill: 25, worm_king: 10, bread: 10 },
-    minCm: 25, maxCm: 80, meanCm: 50, sdCm: 9, weightFactor: 0.016, maleRatio: 0.5,
+    minCm: 25, maxCm: 80, meanCm: 50, sdCm: 9, lwrA: 0.0105, lwrB: 3.05, bodyForm: 'fusiform', maleRatio: 0.5,
     sexNote: '꼬리가 V자로 깊게 갈라짐. 겨울엔 눈에 기름눈꺼풀(백태). 보리 익을 무렵(3~5월)이 제철 보리숭어',
     // 낮 표층 회유 — 밤엔 활성 저하
     nightBonus: 0.6, tideActivity: flatTide(0.7),
@@ -530,7 +552,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     // 진흙/모래 연안·강 하구(기수역), 숭어류 중 가장 크게 성장 (실측 데이터 2026-07-16)
     habitat: ['mud', 'sand'], minDepthM: 1, maxDepthM: 15, preferredLayers: ['surface', 'mid'],
     baitPreference: { worm_blue: 50, krill: 30, bread: 20 },
-    minCm: 35, maxCm: 100, meanCm: 65, sdCm: 12, weightFactor: 0.013, maleRatio: 0.5,
+    minCm: 35, maxCm: 100, meanCm: 65, sdCm: 12, lwrA: 0.0105, lwrB: 3.05, bodyForm: 'fusiform', maleRatio: 0.5,
     sexNote: '눈 테두리가 선명한 노란색, 꼬리 끝이 일직선. 산란기 5~6월, 겨울(11~2월) 밀치회가 별미',
     // 낮 표층 회유 — 밤엔 활성 저하
     nightBonus: 0.6, tideActivity: flatTide(0.65),
@@ -541,7 +563,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     // 갯바위·방파제 수중여 주변 5~30m (실측 데이터 2026-07-16)
     habitat: ['reef', 'structure'], minDepthM: 5, maxDepthM: 30, preferredLayers: ['mid'],
     baitPreference: { shellfish: 40, krill: 40, worm_blue: 20 },
-    minCm: 10, maxCm: 30, meanCm: 18, sdCm: 4, weightFactor: 0.03, maleRatio: 0.5,
+    minCm: 10, maxCm: 30, meanCm: 18, sdCm: 4, lwrA: 0.021, lwrB: 3, bodyForm: 'globular', maleRatio: 0.5,
     sexNote: '작은 입으로 미끼를 갉아먹는 미끼 도둑 — 쥐포의 원료',
     // 쥐치류는 주행성 — 밤엔 취면(수면) 상태
     nightBonus: 0.25, tideActivity: flatTide(0.7),
@@ -551,7 +573,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     speciesId: 'black_seabream', nameKo: '감성돔', nameEn: 'Black Seabream',
     habitat: ['reef'], minDepthM: 10, maxDepthM: 40, preferredLayers: ['bottom'],
     baitPreference: { crab: 40, corn: 30, krill: 20, worm_blue: 10 },
-    minCm: 18, maxCm: 72, meanCm: 40, sdCm: 8, weightFactor: 0.023,
+    minCm: 18, maxCm: 72, meanCm: 40, sdCm: 8, lwrA: 0.0179, lwrB: 2.95, bodyForm: 'deepBody',
     maleRatio: 0.5,
     sexRule: (len) => (len < 30 ? 0.9 : len < 40 ? 0.6 : 0.25),
     sexNote: '모두 수컷으로 태어나 4~5년생에 70~80%가 암컷으로 성전환',
@@ -568,7 +590,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     //   2026-08-10 사용자 제공: 전장 30cm(몸통 10cm) = 400~500g / 전장 45cm(몸통 18cm) = 1.2~1.3kg).
     //   W = 0.015·L³ → 30cm 405g · 40cm 960g · 45cm 1,367g — 1kg 돌파는 전장 40.5cm부터.
     //   (구 wf 0.02는 45cm에서 1,823g로 캡처 대비 +46% 과체중이었음)
-    minCm: 15, maxCm: 45, meanCm: 26, sdCm: 6, weightFactor: 0.015, maleRatio: 0.5,
+    minCm: 15, maxCm: 45, meanCm: 26, sdCm: 6, lwrA: 0.015, lwrB: 3, bodyForm: 'cephalopod', maleRatio: 0.5,
     sexNote: '가을 무늬오징어 시즌이 에깅 최성기 — 먹물 주의',
     // 야행성 — 야간 에깅이 최성기
     nightBonus: 1.6, tideActivity: sariPeak(0.4, 0.9),
@@ -579,7 +601,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     // 남해·서해 따뜻한 연안 암초/방파제 바닥 — 대문어보다 소형(성체 최대 ~4kg 급)
     habitat: ['reef', 'structure'], minDepthM: 2, maxDepthM: 30, preferredLayers: ['bottom'],
     baitPreference: { lure: 80, crab: 30 }, egiOnly: true,
-    minCm: 20, maxCm: 65, meanCm: 38, sdCm: 9, weightFactor: 0.018, maleRatio: 0.5,
+    minCm: 20, maxCm: 65, meanCm: 38, sdCm: 9, lwrA: 0.06, lwrB: 2.6, bodyForm: 'cephalopod', maleRatio: 0.5,
     sexNote: '따뜻한 남해권 돌문어 — 바닥에 붙는 힘이 강해 초반에 띄우는 것이 관건',
     // 야행성 — 밤에 은신처를 벗어나 사냥
     nightBonus: 1.5, tideActivity: flatTide(0.6),
@@ -591,7 +613,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     // 초대형까지 편차가 매우 큼. 동해안 대표 대물 두족류.
     habitat: ['reef', 'structure'], minDepthM: 5, maxDepthM: 80, preferredLayers: ['bottom'],
     baitPreference: { lure: 80, crab: 40 }, egiOnly: true,
-    minCm: 30, maxCm: 200, meanCm: 80, sdCm: 40, weightFactor: 0.006, maleRatio: 0.5,
+    minCm: 30, maxCm: 200, meanCm: 80, sdCm: 40, lwrA: 0.115, lwrB: 2.32, bodyForm: 'cephalopod', maleRatio: 0.5,
     sexNote: '동해 대표 대물 문어 — 개체 편차가 커 작은 놈부터 수십 kg 대물까지 나온다',
     // 냉수성 야행성 — 동해 깊은 바닥
     nightBonus: 1.5, tideActivity: flatTide(0.6),
@@ -602,7 +624,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     // 연안 방파제·모래 바닥에서 20~50cm 단차로 붙는 에깅 대상 (2026-07 리서치)
     habitat: ['structure', 'sand'], minDepthM: 5, maxDepthM: 50, preferredLayers: ['bottom'],
     baitPreference: { lure: 85 }, egiOnly: true,
-    minCm: 10, maxCm: 30, meanCm: 17, sdCm: 4, weightFactor: 0.12, maleRatio: 0.5,
+    minCm: 10, maxCm: 30, meanCm: 17, sdCm: 4, lwrA: 0.055, lwrB: 2.9, bodyForm: 'cephalopod', maleRatio: 0.5,
     sexNote: '주야 무관하게 먹는 연안 에깅 입문 대상 — 바닥 단차에 에기를 붙여 노린다',
     nightBonus: 1.2, tideActivity: flatTide(0.65),
     fight: { basePower: 0.3, patternWeights: { jump: 0.0, dive: 0.6, lateral: 0.4 }, intervalMult: 1.2, mouthFragility: 0.3 },
@@ -614,7 +636,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     habitat: ['open', 'structure'], minDepthM: 15, maxDepthM: 120, preferredLayers: ['mid', 'surface'],
     baitPreference: { lure: 95 }, egiOnly: true,
     // 크기 = 외투장(몸통) 기준 — 두족류 공통 관례. 최대 외투장 35~40cm
-    minCm: 12, maxCm: 40, meanCm: 22, sdCm: 5, weightFactor: 0.016, maleRatio: 0.5,
+    minCm: 12, maxCm: 40, meanCm: 22, sdCm: 5, lwrA: 0.016, lwrB: 3, bodyForm: 'cephalopod', maleRatio: 0.5,
     sexNote: '몸통이 가늘고 길어 같은 길이 무늬오징어보다 가볍다 — 여름 제주 밤바다의 주인공',
     // 두족류 중 가장 강한 야행성 (집어등 조업이 기본) — 야간 표층~중층에서 압도적
     nightBonus: 1.9, tideActivity: flatTide(0.65),
@@ -626,7 +648,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     // '바다의 폭군' — 남해·제주 급심 심해 지깅 대물 (최대 2m/40kg)
     habitat: ['open'], minDepthM: 30, maxDepthM: 150, preferredLayers: ['mid'],
     baitPreference: { lure: 55, livefish: 45 },
-    minCm: 50, maxCm: 200, meanCm: 95, sdCm: 25, weightFactor: 0.013, maleRatio: 0.5,
+    minCm: 50, maxCm: 200, meanCm: 95, sdCm: 25, lwrA: 0.0125, lwrB: 3, bodyForm: 'fusiform', maleRatio: 0.5,
     sexNote: '이마가 각지고 눈을 가로지르는 사선 줄무늬로 방어와 구분 — 방어·부시리보다 힘이 강함',
     // 여명/황혼 피딩 회유어 — 한밤엔 활성 급감 (청물 주간 규칙)
     nightBonus: 0.45, tideActivity: sariPeak(0.3, 0.85),
@@ -637,7 +659,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     // 표층 고속 회유 이빨 포식자 — 메탈지그·스푼 고속 릴링, 해뜰녘·해질녘 집중
     habitat: ['open'], minDepthM: 0, maxDepthM: 50, preferredLayers: ['surface'],
     baitPreference: { lure: 70, livefish: 30, fishcut: 20 },
-    minCm: 40, maxCm: 100, meanCm: 62, sdCm: 10, weightFactor: 0.008, maleRatio: 0.5,
+    minCm: 40, maxCm: 100, meanCm: 62, sdCm: 10, lwrA: 0.0042, lwrB: 3.1, bodyForm: 'fusiform', maleRatio: 0.5,
     sexNote: '날카로운 이빨 — 목줄이 쓸리기 쉬워 굵은 쇼크리더가 유리. 가을(9~11월)이 시즌',
     // 주행성 — 여명/황혼 피딩, 한밤 억제. 5월 금어기
     closedMonths: [5], nightBonus: 0.4, tideActivity: flatTide(0.7),
@@ -648,7 +670,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     speciesId: 'yellowfin_puffer', nameKo: '까치복', nameEn: 'Yellowfin Puffer',
     habitat: ['reef', 'mixed', 'open'], minDepthM: 10, maxDepthM: 100, preferredLayers: ['bottom', 'mid'],
     baitPreference: { fishcut: 35, shellfish: 20, crab: 20, worm_blue: 15, krill: 10 },
-    minCm: 20, maxCm: 50, meanCm: 33, sdCm: 7, weightFactor: 0.02, maleRatio: 0.5,
+    minCm: 20, maxCm: 50, meanCm: 33, sdCm: 7, lwrA: 0.019, lwrB: 3, bodyForm: 'globular', maleRatio: 0.5,
     sexNote: '등에 흰 줄무늬·노란 지느러미의 대형 참복류. 테트로도톡신 보유, 이빨로 목줄을 끊는다',
     nightBonus: 1.0, tideActivity: flatTide(0.65),
     fight: { basePower: 0.35, patternWeights: { jump: 0.1, dive: 0.5, lateral: 0.4 }, intervalMult: 1.1, mouthFragility: 0.1, lineCutter: true },
@@ -657,7 +679,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     speciesId: 'bartail_flathead', nameKo: '양태', nameEn: 'Bartail Flathead',
     habitat: ['sand', 'mud'], minDepthM: 5, maxDepthM: 100, preferredLayers: ['bottom'],
     baitPreference: { livefish: 30, worm_king: 25, fishcut: 20, lure: 15, worm_blue: 10 },
-    minCm: 25, maxCm: 90, meanCm: 55, sdCm: 12, weightFactor: 0.007, maleRatio: 0.5,
+    minCm: 25, maxCm: 90, meanCm: 55, sdCm: 12, lwrA: 0.0042, lwrB: 3.12, bodyForm: 'flat', maleRatio: 0.5,
     sexNote: '모래·펄 바닥에 몸을 묻고 매복하는 여름 대표 어종. 넓적한 머리와 큰 입으로 소어를 삼킨다',
     // 여명/황혼·야간 매복 포식자
     nightBonus: 1.3, tideActivity: flatTide(0.6),
@@ -667,7 +689,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     speciesId: 'bluefin_searobin', nameKo: '성대', nameEn: 'Spiny Red Gurnard',
     habitat: ['sand', 'mud'], minDepthM: 20, maxDepthM: 150, preferredLayers: ['bottom'],
     baitPreference: { worm_blue: 30, fishcut: 25, krill: 20, lure: 15, shellfish: 10 },
-    minCm: 15, maxCm: 40, meanCm: 27, sdCm: 6, weightFactor: 0.011, maleRatio: 0.5,
+    minCm: 15, maxCm: 40, meanCm: 27, sdCm: 6, lwrA: 0.0088, lwrB: 3.05, bodyForm: 'flat', maleRatio: 0.5,
     sexNote: '큰 가슴지느러미 아래 발가락 모양 유리기조로 모래 바닥을 기어 먹이를 찾는다',
     nightBonus: 1.0, tideActivity: flatTide(0.55),
     fight: { basePower: 0.25, patternWeights: { jump: 0.1, dive: 0.45, lateral: 0.45 }, intervalMult: 1.1, mouthFragility: 0.25 },
@@ -676,7 +698,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     speciesId: 'hagfish', nameKo: '먹장어', nameEn: 'Inshore Hagfish',
     habitat: ['mud'], minDepthM: 10, maxDepthM: 100, preferredLayers: ['bottom'],
     baitPreference: { fishcut: 60, shellfish: 25, crab: 15 },
-    minCm: 25, maxCm: 60, meanCm: 40, sdCm: 8, weightFactor: 0.0015, maleRatio: 0.5,
+    minCm: 25, maxCm: 60, meanCm: 40, sdCm: 8, lwrA: 0.00075, lwrB: 3.1, bodyForm: 'elongated', maleRatio: 0.5,
     sexNote: '턱이 없는 원구류(곰장어). 펄 바닥에 숨어 밤에 죽은 물고기를 파고드는 청소부 — 위협 시 점액 분비',
     nightBonus: 2.0, tideActivity: flatTide(0.55),
     fight: { basePower: 0.15, patternWeights: { jump: 0.05, dive: 0.6, lateral: 0.35 }, intervalMult: 1.3, mouthFragility: 0.1 },
@@ -685,7 +707,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     speciesId: 'halfbeak', nameKo: '학꽁치', nameEn: 'Japanese Halfbeak',
     habitat: ['open', 'structure'], minDepthM: 0, maxDepthM: 30, preferredLayers: ['surface'],
     baitPreference: { krill: 70, bread: 20, worm_blue: 10 },
-    minCm: 18, maxCm: 40, meanCm: 28, sdCm: 5, weightFactor: 0.002, maleRatio: 0.5,
+    minCm: 18, maxCm: 40, meanCm: 28, sdCm: 5, lwrA: 0.0009, lwrB: 3.2, bodyForm: 'elongated', maleRatio: 0.5,
     sexNote: '아랫턱이 바늘처럼 길게 뻗은 표층 회유어. 무리 지어 수면을 스치며 크릴 밑밥에 잘 모인다',
     // 주행성 표층 무리 — 약한 입가로 과텐션 시 잘 떨어짐
     nightBonus: 0.9, tideActivity: flatTide(0.75),
@@ -695,7 +717,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     speciesId: 'northern_whiting', nameKo: '보리멸', nameEn: 'Japanese Whiting',
     habitat: ['sand'], minDepthM: 0, maxDepthM: 30, preferredLayers: ['bottom'],
     baitPreference: { worm_blue: 55, worm_king: 25, krill: 10, fishcut: 10 },
-    minCm: 12, maxCm: 30, meanCm: 20, sdCm: 4, weightFactor: 0.006, maleRatio: 0.5,
+    minCm: 12, maxCm: 30, meanCm: 20, sdCm: 4, lwrA: 0.0068, lwrB: 3.05, bodyForm: 'roundish', maleRatio: 0.5,
     sexNote: '여름 모래 해변 원투낚시의 대표 손맛. 갯지렁이 미끼에 잘 물며 은백색 몸이 파도밭을 훑는다',
     nightBonus: 0.9, tideActivity: flatTide(0.7),
     fight: { basePower: 0.2, patternWeights: { jump: 0.15, dive: 0.25, lateral: 0.6 }, intervalMult: 1.0, mouthFragility: 0.35 },
@@ -764,7 +786,55 @@ export interface SpawnedFish {
   fight: FightProfile;
   /** 목줄 절단 어종 (복어류) */
   lineCutter: boolean;
+  /** 체형 — 파이트 물리(형상 배수)가 소비 */
+  bodyForm: FishBodyForm;
+  /**
+   * 비만도(condition factor) — 1.0이 그 체장의 표준 무게. 계절·산란 상태·개체 편차로
+   * 같은 길이라도 무게가 달라진다(겨울 영양 상태·알 밴 개체 = 1 초과).
+   */
+  conditionFactor: number;
   sexNote?: string;
+}
+
+/**
+ * 체장 → 표준 체중(g) — **W = a·L^b** (비만도 미적용 기준값).
+ * 도감·시세·시뮬이 "그 길이의 표준 무게"를 물을 때 쓴다.
+ */
+export function standardWeightG(spec: Pick<FishMasterSpec, 'lwrA' | 'lwrB'>, lengthCm: number): number {
+  return spec.lwrA * Math.pow(Math.max(0.1, lengthCm), spec.lwrB ?? 3);
+}
+
+/**
+ * speciesId → 그 체장의 **표준 체중(g)**. 클라이언트(도감·상세보기·dev 지급)가 무게를
+ * 자체 근사식으로 다시 만들지 않도록 하는 단일 진입점 — 오라클 미등재는 범용 근사.
+ */
+export function speciesStandardWeightG(speciesId: string, lengthCm: number): number {
+  const spec = ORACLE_FISH_DB.find((f) => f.speciesId === speciesId);
+  return spec ? standardWeightG(spec, lengthCm) : 0.015 * Math.pow(Math.max(0.1, lengthCm), 3);
+}
+
+/**
+ * 비만도(condition factor) — 같은 체장이라도 무게가 달라지는 이유 3가지를 합성한다.
+ *  ① 저수온기(겨울) 영양 상태 — 지방을 축적해 살이 오른다
+ *  ② 산란 상태 — 산란기(금어기 = 산란 보호기로 간주)엔 알·정소로 무겁고, **직후 한 달은 홀쭉**
+ *  ③ 개체 편차 — 정규분포(sd = TUNING.lwr.varianceSd)
+ * @param month 1~12 (KST 기준 현재 월)
+ * @param roll  개체 편차 표준편차 배수 (표준정규 난수). 미지정 = 0(편차 없음)
+ */
+export function conditionFactorFor(
+  spec: Pick<FishMasterSpec, 'closedMonths'>, month: number, roll = 0,
+): number {
+  const L = TUNING.lwr;
+  let k = 1;
+  if (L.winterMonths.includes(month)) k += L.winterGain;
+  const spawn = spec.closedMonths;
+  if (spawn && spawn.length > 0) {
+    if (spawn.includes(month)) k += L.roeGain;
+    // 산란 직후 = 금어기 마지막 달의 다음 달
+    else if (month === (Math.max(...spawn) % 12) + 1) k -= L.postSpawnLoss;
+  }
+  k += roll * L.varianceSd;
+  return Math.max(L.minFactor, Math.min(L.maxFactor, k));
 }
 
 /** 정규 분포 난수 (Box-Muller) */
@@ -883,7 +953,9 @@ export function spawnFish(ctx: SpawnContext): SpawnedFish {
       ? tiered
       : Math.min(picked.maxCm, Math.max(picked.minCm, gaussian(picked.meanCm, picked.sdCm)))) * 10,
   ) / 10;
-  const weightG = Math.round(picked.weightFactor * Math.pow(lengthCm, 3));
+  // 133차 — 체형별 LWR(W = a·L^b) × 비만도(계절·산란·개체 편차)
+  const conditionFactor = conditionFactorFor(picked, ctx.month, gaussian(0, 1));
+  const weightG = Math.max(1, Math.round(standardWeightG(picked, lengthCm) * conditionFactor));
   const maleRatio = picked.sexRule ? picked.sexRule(lengthCm) : picked.maleRatio;
   const sex: 'M' | 'F' = Math.random() < maleRatio ? 'M' : 'F';
 
@@ -905,6 +977,8 @@ export function spawnFish(ctx: SpawnContext): SpawnedFish {
     powerFactor,
     fight: picked.fight,
     lineCutter: picked.fight.lineCutter ?? false,
+    bodyForm: picked.bodyForm,
+    conditionFactor,
     sexNote: picked.sexNote,
   };
 }

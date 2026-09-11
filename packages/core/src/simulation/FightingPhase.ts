@@ -31,10 +31,17 @@
  *  - `subdue`는 도주 속도를 깎고(호출부), 100이면 완전 제압 → 끌어오기.
  *  - `landProgress` 미지정 시 구 동작(제압도 100 = 랜딩)으로 폴백 — 레거시 호출 호환.
  *
+ * **133차 — 체형(bodyForm)별 힘·압력**:
+ *  같은 체중이라도 형태에 따라 거는 압력이 다르다(사용자 지시 — 갈치 등).
+ *  - 정적 하중은 **물살을 받는 면적**: 납작한 광어(×1.9) > 체고형 돔(×1.2) > 장어형 갈치(×0.55)
+ *  - 순간 가속은 **직선 추력**: 단면이 가는 장어형은 ×0.62
+ *  - 장어·리본형은 대신 **몸을 비틀며 요동(thrash)** 친다 — 요구 장력이 주기적으로 출렁여
+ *    게이지를 안전대에 묶어두기 어렵고, 바늘구멍이 넓어져 바늘 빠짐이 잦다(hookOff ×1.45).
+ *
  * 순수 TS — 렌더링/브라우저 API 없음.
  */
 
-import { TUNING } from '../config/tuning.js';
+import { TUNING, type BodyFormKey } from '../config/tuning.js';
 
 export type FightPattern = 'none' | 'jump' | 'dive' | 'lateral';
 
@@ -103,6 +110,8 @@ export interface FightingFishSpec {
   burstMult?: number;
   /** 라인 인장강도(kg) — 원줄·목줄 중 약한 쪽 (lineStrengthKg) */
   lineCapacityKg?: number;
+  /** 133차 — 체형 (fightBodyFormOf). 미지정 = 'roundish'(배수 전부 1) */
+  bodyForm?: BodyFormKey;
 }
 
 /** 안정 텐션 구간 */
@@ -141,6 +150,10 @@ export class FightingPhase {
   private readonly burst: number;
   private readonly lineCapKg: number;
   private readonly physical: boolean;
+  /** 체형 배수 (정적하중·추력·요동·바늘빠짐) */
+  private readonly form: typeof TUNING.fightPhys.form[BodyFormKey];
+  /** 요동 위상 (장어·리본형 텐션 출렁임) */
+  private thrashPhase = Math.random() * Math.PI * 2;
 
   constructor(fish: FightingFishSpec) {
     this.power = fish.powerFactor;
@@ -148,7 +161,8 @@ export class FightingPhase {
     this.baseEscape = fish.baseEscapePerSec ?? 0.05;
     this.weights = fish.patternWeights ?? { jump: 0.15, dive: 0.45, lateral: 0.4 };
     this.intervalMult = fish.intervalMult ?? 1.15;
-    this.fragility = fish.mouthFragility ?? 0.15;
+    this.form = TUNING.fightPhys.form[fish.bodyForm ?? 'roundish'] ?? TUNING.fightPhys.form.roundish;
+    this.fragility = (fish.mouthFragility ?? 0.15) * this.form.hookOff;
     this.weightKg = fish.weightKg ?? 0;
     this.burst = fish.burstMult ?? 2.2;
     this.lineCapKg = fish.lineCapacityKg ?? 0;
@@ -229,7 +243,7 @@ export class FightingPhase {
     //  "패턴/저항에 적절히 대처하면 제압 확률이 올라간다"(사용자 요구 3)를 이 누적이 담당.
     const P = TUNING.fightPhys;
     if (reeling) {
-      const inSafe = this.tension >= SAFE_MIN && this.tension <= SAFE_MAX;
+      const inSafe = this.tension >= this.safeMin() && this.tension <= SAFE_MAX;
       this.subdueBonus += (inSafe ? P.subdueReelRate : P.subdueReelRate * 0.28)
         * dtSec * (1.25 - this.power * 0.45);
     } else if (!holding) {
@@ -258,8 +272,7 @@ export class FightingPhase {
       //    않는다. 24g 복섬은 최대 요구 장력이 3kg 원줄의 2%라, 구 구현에서는 바늘털이(jump)에
       //    정대응(슬랙)하기만 하면 1.5초 뒤 **반드시** 바늘이 빠졌다(시뮬 실측 67%).
       //    "느슨하게 줬다"가 성립하려면 원래 걸 수 있는 장력이 임계보다 충분히 커야 한다.
-      const maxDemandPct = this.weightKg * (P.staticFrac + this.burst) / this.lineCapKg * 100;
-      if (maxDemandPct > P.slackHookOffBelow * 1.5) {
+      if (this.maxDemandPct() > P.slackHookOffBelow * 1.5) {
         if (this.tension < P.slackHookOffBelow) this.slackTimer += dtSec; else this.slackTimer = 0;
         if (this.slackTimer >= P.slackHookOffSec) return this.finish('hook_off');
       }
@@ -274,8 +287,10 @@ export class FightingPhase {
     }
 
     // ── 탈출 공식 ──
-    const tensionDeviation = this.tension < SAFE_MIN
-      ? (SAFE_MIN - this.tension) / SAFE_MIN
+    // 133차 — 안전대 하한은 **체급 보정**(safeMin). 못 거는 장력을 못 걸었다고 벌하지 않는다.
+    const safeMin = this.safeMin();
+    const tensionDeviation = this.tension < safeMin
+      ? (safeMin - this.tension) / Math.max(1, safeMin)
       : this.tension > SAFE_MAX ? (this.tension - SAFE_MAX) / (100 - SAFE_MAX) : 0;
     const mTension = 1 + tensionDeviation * 2.5;
     let mPattern = 1;
@@ -308,18 +323,50 @@ export class FightingPhase {
       : this.pattern === 'jump' ? P.pullJump
       : P.pullIdle;
     const respMult = response === 'good' ? P.goodResponseMult : response === 'bad' ? P.badResponseMult : 1;
-    let demand = this.weightKg * (P.staticFrac + this.burst * patternMult * gate * respMult);
+    // 133차 — 체형: 정적 하중 = 물살 받는 면적 / 순간 가속 = 직선 추력
+    let demand = this.weightKg * (P.staticFrac * this.form.staticMult
+      + this.burst * this.form.burst * patternMult * gate * respMult);
+    // 몸을 비트는 어종(장어·리본형)은 요구 장력이 주기적으로 출렁인다 — 지치면(gate↓) 잦아든다
+    if (this.form.thrashAmp > 0) {
+      this.thrashPhase += dtSec * this.form.thrashHz * Math.PI * 2;
+      demand *= 1 + Math.sin(this.thrashPhase) * this.form.thrashAmp * Math.min(1, gate);
+    }
     if (reeling) demand = demand * P.reelLoadMult + P.reelLoadKg;
     else if (!holding) demand *= P.slackMult;
     if (holding && this.pattern !== 'dive') demand *= P.holdStiffMult;
-    // 릴을 감지 않는 동안(무입력·버티기)은 드랙이 미끄러져 라인 강도의 일정 비율 위로는 안 올라간다 —
-    //   줄이 터지는 건 **러닝 중에 감을 때**. 가벼운 채비로 큰 고기를 걸었을 때 "달려 보내며
-    //   지치길 기다리는" 정석이 성립하고, 정대응(버티기)도 시뮬상 즉사하지 않는다.
-    if (!reeling) demand = Math.min(demand, this.lineCapKg * P.dragCapFrac);
+    // ── 드랙 (133차 재정의) ──
+    //  드랙은 **릴을 감는 중에도** 미끄러진다(스풀 역회전) — 구 모델은 릴링 중 상한이 아예
+    //  없어서 "감고 있으면 무조건 터지는" 상태였다(1.8kg 감성돔 + 1.5호 목줄 랜딩 0/300).
+    //  대신 요구 장력이 라인 강도의 shockBreakFrac 배를 넘는 **충격 하중**은 드랙이 풀리는
+    //  속도로 못 따라가 그대로 파단된다 — 라이트 채비 대물(116차 4.1)과 패턴 오대응이 여기서
+    //  터진다. 일상적인 파단은 이제 "한계 텐션에서 릴링 강행"(과부하)이 담당한다.
+    if (demand <= this.lineCapKg * P.shockBreakFrac) {
+      demand = Math.min(demand, this.lineCapKg * (reeling ? P.reelDragCapFrac : P.dragCapFrac));
+    }
     this.lastDemandKg = demand;
     const target = Math.max(0, Math.min(140, demand / this.lineCapKg * 100));
     const rate = target > this.tension ? P.tensionRiseRate : P.tensionFallRate;
     this.tension += (target - this.tension) * Math.min(1, dtSec * rate);
+  }
+
+  /**
+   * 이 체급이 이 라인에 **걸 수 있는 최대 요구 장력**(게이지 %). 체급 게이트의 단일 소스 —
+   * 슬랙 바늘 빠짐(132차)과 슬랙 탈출 가중(133차)이 함께 쓴다.
+   */
+  private maxDemandPct(): number {
+    if (!this.physical) return 100;
+    return this.weightKg
+      * (TUNING.fightPhys.staticFrac * this.form.staticMult + this.burst * this.form.burst)
+      / this.lineCapKg * 100;
+  }
+
+  /**
+   * 체급 보정 안전대 하한 — 이 체급이 걸 수 있는 최대 장력의 safeFloorFrac (상한 SAFE_MIN).
+   * 소형어가 영영 "느슨함" 판정을 받아 탈출·제압 지연을 겪던 것을 해소(133차).
+   */
+  private safeMin(): number {
+    if (!this.physical) return SAFE_MIN;
+    return Math.min(SAFE_MIN, this.maxDemandPct() * TUNING.fightPhys.safeFloorFrac);
   }
 
   /** 구 상수 모드 (레거시 호출 호환) */

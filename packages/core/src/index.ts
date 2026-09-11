@@ -377,15 +377,21 @@ export {
 } from './simulation/ChumPhysics.js';
 
 // 튜닝값 단일 소스 (feel=dev 패널 / balance=시뮬) — 매직넘버 중앙화
-export type { TuningConfig, TuningParamMeta, ChumTypeSpec, ChumTypeKey, SinkBodyType } from './config/tuning.js';
+export type {
+  TuningConfig, TuningParamMeta, ChumTypeSpec, ChumTypeKey, SinkBodyType,
+  BodyFormKey, BodyFormFight,
+} from './config/tuning.js';
 export { TUNING, TUNING_META, getTuning, setTuning } from './config/tuning.js';
 export type { BiteContext, BiteTickResult } from './simulation/BiteProbabilityEngine.js';
 export { BiteProbabilityEngine } from './simulation/BiteProbabilityEngine.js';
 export type {
-  SwimLayer, BaitKey, HabitatTerrain, FightProfile,
+  SwimLayer, BaitKey, HabitatTerrain, FightProfile, FishBodyForm,
   FishMasterSpec, SpawnContext, SpawnedFish,
 } from './simulation/FishSpawningOracle.js';
-export { ORACLE_FISH_DB, spawnFish, classifyLayer, getBaitAffinity } from './simulation/FishSpawningOracle.js';
+export {
+  ORACLE_FISH_DB, spawnFish, classifyLayer, getBaitAffinity,
+  standardWeightG, speciesStandardWeightG, conditionFactorFor,
+} from './simulation/FishSpawningOracle.js';
 
 // 크기 등급(소/중/대) + 루어 무게·주간·급심 게이트 (중대형 회유어)
 export type { SizeTier, TierRollContext } from './simulation/SizeTierRules.js';
@@ -416,7 +422,9 @@ export {
 export type { FightPattern, FightInput, FightEvent, FightStatus, FightingFishSpec } from './simulation/FightingPhase.js';
 export { FightingPhase } from './simulation/FightingPhase.js';
 export type { FightGroup, RarityTier, FishRarityInfo } from './simulation/FishRarity.js';
-export { fightGroupOf, fishReferenceLengthCm, fishRarity, RARITY_STYLE, lineStrengthKg } from './simulation/FishRarity.js';
+export {
+  fightGroupOf, fightBodyFormOf, fishReferenceLengthCm, fishRarity, RARITY_STYLE, lineStrengthKg,
+} from './simulation/FishRarity.js';
 
 // 실측 연안 수심 프로필 (연안정보도 SHP → 거리별 수심)
 export type { DepthAnchorProfile, RegionDepthProfile } from './types/DepthProfile.js';

@@ -17,6 +17,7 @@ import {
   SINKER_BASE_DRAG_CD, SINKER_BUNDLE_DRAG_CD, SINKER_HOLE_FEEDBACK_MULT,
   LURES_CATALOG_DB, JIGHEAD_WEIGHTS_G, getLureSpec, jigHeadWeightById,
   computeLureRigWeight, getLureCastCd, isKnifeItem, FISH_DATABASE, lineStrengthKg,
+  speciesStandardWeightG,
 } from '@tra/core';
 import type { ForageTool, StatusCure } from '@tra/core';
 import { ExternalDataStore } from './ExternalDataStore.js';
@@ -363,26 +364,27 @@ export interface InventorySaveState {
  * 로드 시에도 없으면 주입).
  */
 function createDevFishDefs(): Omit<InvItem, 'slot'>[] {
-  const devFish: { sp: string; nameKo: string; lo: number; hi: number; wf: number }[] = [
-    { sp: 'black_seabream', nameKo: '감성돔', lo: 30, hi: 50, wf: 0.0165 },
-    { sp: 'stone_beakperch', nameKo: '돌돔', lo: 30, hi: 55, wf: 0.023 },
-    { sp: 'largescale_blackfish', nameKo: '벵에돔', lo: 28, hi: 48, wf: 0.019 },
-    { sp: 'greater_amberjack', nameKo: '잿방어', lo: 60, hi: 120, wf: 0.014 },
-    { sp: 'yellowtail', nameKo: '방어', lo: 50, hi: 100, wf: 0.0135 },
-    { sp: 'amberjack', nameKo: '부시리', lo: 50, hi: 110, wf: 0.013 },
-    // 넙치류 — 다섯장뜨기 검증용 (75차. 오라클 wf 0.013·minFilletLengthCm 여유 밴드)
-    { sp: 'flatfish', nameKo: '광어', lo: 40, hi: 80, wf: 0.013 },
+  const devFish: { sp: string; nameKo: string; lo: number; hi: number }[] = [
+    { sp: 'black_seabream', nameKo: '감성돔', lo: 30, hi: 50 },
+    { sp: 'stone_beakperch', nameKo: '돌돔', lo: 30, hi: 55 },
+    { sp: 'largescale_blackfish', nameKo: '벵에돔', lo: 28, hi: 48 },
+    { sp: 'greater_amberjack', nameKo: '잿방어', lo: 60, hi: 120 },
+    { sp: 'yellowtail', nameKo: '방어', lo: 50, hi: 100 },
+    { sp: 'amberjack', nameKo: '부시리', lo: 50, hi: 110 },
+    // 넙치류 — 다섯장뜨기 검증용 (75차. minFilletLengthCm 여유 밴드)
+    { sp: 'flatfish', nameKo: '광어', lo: 40, hi: 80 },
     // 두족류 — 손질 트리 검증용 (87차 사용자 요청). **lengthCm = 외투장**(두족류 관례, 79차)
     //  예외 2종: 무늬오징어·문어는 **전장** 기준 밴드 (무늬오징어 = 실측 캡처 정합 2026-08-10 —
-    //  전장 30cm 400~500g / 45cm 1.2~1.3kg, 오라클 wf 0.015와 동일). 손질은 가이드/렌더 확인용.
-    { sp: 'squid', nameKo: '무늬오징어', lo: 22, hi: 42, wf: 0.015 },
-    { sp: 'swordtip_squid', nameKo: '한치', lo: 15, hi: 35, wf: 0.016 },
-    { sp: 'cuttlefish', nameKo: '갑오징어', lo: 12, hi: 25, wf: 0.045 },
-    { sp: 'octopus', nameKo: '참문어', lo: 30, hi: 60, wf: 0.018 },
+    //  전장 30cm 400~500g / 45cm 1.2~1.3kg, 오라클 lwrA 0.015와 동일). 손질은 가이드/렌더 확인용.
+    { sp: 'squid', nameKo: '무늬오징어', lo: 22, hi: 42 },
+    { sp: 'swordtip_squid', nameKo: '한치', lo: 15, hi: 35 },
+    { sp: 'cuttlefish', nameKo: '갑오징어', lo: 12, hi: 25 },
+    { sp: 'octopus', nameKo: '참문어', lo: 30, hi: 60 },
   ];
   return devFish.map((f) => {
     const lengthCm = Math.round(f.lo + Math.random() * (f.hi - f.lo));
-    const weightG = Math.round(f.wf * lengthCm ** 3);
+    // 133차 — 무게는 오라클 LWR(W = a·L^b) 단일 소스. 구 `wf × L³`은 체형을 못 담았다.
+    const weightG = Math.max(1, Math.round(speciesStandardWeightG(f.sp, lengthCm)));
     const sex: 'M' | 'F' = Math.random() < 0.5 ? 'M' : 'F';
     return {
       id: `inv_devfish_${f.sp}`, name: `${f.nameKo} (${lengthCm}cm)`, icon: '🐟',

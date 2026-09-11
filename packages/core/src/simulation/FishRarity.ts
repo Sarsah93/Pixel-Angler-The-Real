@@ -12,7 +12,7 @@
  * 순수 TS — 렌더링/브라우저 API 없음.
  */
 
-import { ORACLE_FISH_DB } from './FishSpawningOracle.js';
+import { ORACLE_FISH_DB, type FishBodyForm } from './FishSpawningOracle.js';
 import { FISH_DATABASE } from '../db-schema/FishDatabase.js';
 
 /** 어종군 — 파이팅 가속 배수·희귀도 하한·가이드 문구가 공유하는 분류 */
@@ -42,6 +42,14 @@ export function fightGroupOf(speciesId: string): FightGroup {
   if (speciesId === 'sea_bass') return 'seabass';
   if (/rockfish|snapper|scorpion|greenling/.test(speciesId)) return 'rockfish';
   return 'other';
+}
+
+/**
+ * 어종 체형 (133차) — 오라클 `bodyForm` → 미등재 어종은 'roundish'.
+ * 파이트 물리(TUNING.fightPhys.form)가 이 키로 배수를 고른다.
+ */
+export function fightBodyFormOf(speciesId: string): FishBodyForm {
+  return ORACLE_FISH_DB.find((f) => f.speciesId === speciesId)?.bodyForm ?? 'roundish';
 }
 
 /** 어종 "보통 길이"(cm) — 오라클 meanCm → 도감 avgSizeRangeCm 중앙 → 35cm 안전값 */

@@ -8,7 +8,7 @@
 
 import Phaser from 'phaser';
 import { ensurePixelIcon } from './PixelIcon.js';
-import { FISH_DATABASE, fishImageSizeScale, fishRarity } from '@tra/core';
+import { FISH_DATABASE, fishImageSizeScale, fishRarity, speciesStandardWeightG } from '@tra/core';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { DraggablePanel } from './DraggablePanel.js';
 import { createItemIcon } from './ItemIcon.js';
@@ -130,9 +130,10 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
       desc = '오래 보관할 수 있는 비상 식량입니다.';
       break;
     case '어획물': {
-      // ── 개체 실측치 — 무게 미저장 시 길이-체중식 W ≈ a·L³ 근사 (범용 계수) ──
+      // ── 개체 실측치 — 무게 미저장 시 **어종별 LWR**(W = a·L^b)로 추정 (133차) ──
       const lengthCm = item.lengthCm;
-      const weightG = item.weightG ?? (lengthCm ? Math.round(0.015 * Math.pow(lengthCm, 3)) : undefined);
+      const weightG = item.weightG
+        ?? (lengthCm ? Math.round(speciesStandardWeightG(item.speciesId ?? '', lengthCm)) : undefined);
       // 희귀도(116차 ⑤) — 평균 개체 대비 길이 비율 6단계, 등급 색으로 표기
       if (lengthCm && item.speciesId) {
         const rr = fishRarity(item.speciesId, lengthCm);
@@ -141,6 +142,20 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
       if (lengthCm) rows.push({ label: '길이', value: `${lengthCm} cm` });
       if (weightG) {
         rows.push({ label: '무게', value: weightG >= 1000 ? `${(weightG / 1000).toFixed(2)} kg` : `${weightG} g` });
+      }
+      // 비만도(133차) — 같은 길이의 표준 무게 대비. 계절(겨울 영양)·산란 상태·개체차로 갈린다
+      if (item.weightG && lengthCm && item.speciesId) {
+        const std = speciesStandardWeightG(item.speciesId, lengthCm);
+        const pct = std > 0 ? item.weightG / std : 1;
+        if (Math.abs(pct - 1) >= 0.04) {
+          const fat = pct >= 1.12 ? '아주 통통함' : pct >= 1.04 ? '통통함'
+            : pct <= 0.88 ? '많이 여윔' : '여윔';
+          rows.push({
+            label: '비만도',
+            value: `${Math.round(pct * 100)}% · ${fat}`,
+            color: pct >= 1.04 ? '#ffd93b' : '#8fa3b8',
+          });
+        }
       }
       // ── 어종 정보 (FISH_DATABASE 조회 — 학명/영문명/제철/서식) ──
       const sp = item.speciesId ? FISH_DATABASE.find((f) => f.id === item.speciesId) : undefined;

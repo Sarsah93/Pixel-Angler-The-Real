@@ -26,6 +26,29 @@ export interface ChumTypeSpec {
 /** 밑밥 종류 — powder(크릴/미세 파우더) / grain(압맥·보리) / ball(무거운 경단) */
 export type ChumTypeKey = 'powder' | 'grain' | 'ball';
 
+/**
+ * 어종 체형 키 — 도메인 설명은 `FishSpawningOracle.FishBodyForm`(같은 유니온을 alias).
+ * 여기(leaf 모듈)에 두는 이유: 오라클이 TUNING을 소비하므로 반대 방향 import는 순환이 된다.
+ */
+export type BodyFormKey =
+  | 'deepBody' | 'fusiform' | 'elongated' | 'flat' | 'globular' | 'cephalopod' | 'roundish';
+
+/** 체형별 파이트 물리 배수 (133차) — 같은 체중이라도 힘·압력이 다르다 */
+export interface BodyFormFight {
+  /** 순간 가속(burst) 배수 — 직선 추력. 장어·리본형은 단면이 작아 낮다 */
+  burst: number;
+  /** 정적 하중 배수 — 물살을 받는 면적. 납작한 광어가 옆으로 누우면 판자처럼 버틴다 */
+  staticMult: number;
+  /** 거리 저항 배수 — 줄을 끌고 나가는 힘(파이트 거리 물리) */
+  resist: number;
+  /** 요동(thrash) 주파수 Hz — 몸을 비트는 어종은 텐션이 주기적으로 출렁인다 */
+  thrashHz: number;
+  /** 요동 진폭 (요구 장력 대비 비율) */
+  thrashAmp: number;
+  /** 입 연약도 배수 — 몸을 비틀면 바늘구멍이 넓어진다 */
+  hookOff: number;
+}
+
 /** 침강 형상 바디 타입 — 드래그/종단속도 프로파일 (루어 kind·봉돌에서 매핑) */
 export type SinkBodyType = 'metalJig' | 'minnow' | 'egi' | 'softPlastic' | 'sinker';
 
@@ -152,6 +175,24 @@ export interface TuningConfig {
     recoverRatePerSec: number;
   };
   // ── 파이팅 텐션 물리 (116차 — 요구 장력 kgf ÷ 라인 인장강도 = 게이지 %) (balance) ──
+  /**
+   * 133차 — **체장-체중 관계(LWR) 비만도**. 표준 무게 W = a·L^b에 곱해지는 계수로,
+   * "같은 길이라도 계절·산란 상태·개체에 따라 무게가 다르다"(사용자 지적)를 담당한다.
+   */
+  lwr: {
+    /** 저수온기(비만도 최고) 월 */
+    winterMonths: number[];
+    /** 저수온기 가산 (영양 상태) */
+    winterGain: number;
+    /** 산란기(금어기 = 산란 보호기로 간주) 가산 — 알·정소 */
+    roeGain: number;
+    /** 산란 직후 한 달 감산 — 홀쭉해진다 */
+    postSpawnLoss: number;
+    /** 개체 편차 표준편차 (정규분포) */
+    varianceSd: number;
+    /** 비만도 하한·상한 */
+    minFactor: number; maxFactor: number;
+  };
   fightPhys: {
     /** 물속 정적 하중 = 체중 × 이 값 (부력 차감 — 25cm 감성돔 300g → ≈100g) */
     staticFrac: number;
@@ -163,8 +204,26 @@ export interface TuningConfig {
     goodResponseMult: number; badResponseMult: number;
     /** 릴링 부하 (배수 + 상수 kg) · 버티기(↑) 강성 배수 · 슬랙(무입력) 배수 */
     reelLoadMult: number; reelLoadKg: number; holdStiffMult: number; slackMult: number;
-    /** 무입력 시 드랙이 미끄러지는 상한 (라인 강도 대비 비율) — 가벼운 채비로도 즉사하지 않게 */
+    /** 무입력(버티기) 시 드랙이 미끄러지는 상한 (라인 강도 대비 비율) */
     dragCapFrac: number;
+    /**
+     * 133차 — **릴링 중 드랙 상한**. 구 모델은 릴을 감는 동안 상한이 아예 없어,
+     * 스풀이 역회전하며 미끄러지는 실제 드랙과 달랐다(= 표준 채비 + 표준 어종이 전멸).
+     * 100%를 살짝 밑도는 값 — 감는 것만으로는 안 터지고, 한계 텐션에서 **강행**해야 터진다.
+     */
+    reelDragCapFrac: number;
+    /**
+     * 133차 — **충격 하중 파단 임계**(라인 강도 대비 배수). 요구 장력이 이 배수를 넘으면
+     * 드랙이 풀리는 속도로도 못 따라가 그대로 터진다 — "라이트 채비로 대물"(116차 4.1)과
+     * "패턴 오대응 = 파단"이 여기서 성립한다.
+     */
+    shockBreakFrac: number;
+    /**
+     * 133차 — **체급 보정 안전대 하한**. 안전대(30~80)는 절대값이라, 3kg 원줄에 최대 2%를
+     * 거는 24g 복섬은 영영 "느슨함"으로 판정돼 탈출 배수가 2배였다. 그 체급이 걸 수 있는
+     * 최대 장력의 이 비율을 하한으로 삼아, **못 거는 장력을 못 걸었다고 벌하지 않는다.**
+     */
+    safeFloorFrac: number;
     /** 게이지 추종 속도 (1/s — 상승/하강) */
     tensionRiseRate: number; tensionFallRate: number;
     /** 이 게이지 아래가 이 시간(초) 이상 지속되면 바늘 빠짐 */
@@ -186,6 +245,8 @@ export interface TuningConfig {
     firstPatternSec: number;
     /** 탈출 확률의 피로 하한 배수 — 지친 고기(잔여 0)는 이 배수까지만 바늘을 턴다 */
     escapeFatigueFloor: number;
+    /** 133차 — 체형별 배수 (어종군 burst와 **직교**: 군 = 힘의 크기 / 체형 = 힘의 성질) */
+    form: Record<BodyFormKey, BodyFormFight>;
   };
   /**
    * 132차 — **파이트 거리 물리** (사용자 리포트: "발앞인데 진행도가 뒤쳐진다").
@@ -731,24 +792,47 @@ export const TUNING: TuningConfig = {
   },
   // ⚠ mockup 초기값 (116차) — 실플레이 조율 후 F8 스냅샷으로 확정. 근거: 25cm 감성돔(0.3kg)
   //   여 박기 순간 인장 0.8~1.5kg(체중 3~5배) · 1.2~1.5호 목줄(2.5~3kg)이면 여유 — 사용자 제공 문헌.
+  // 133차 — 비만도. 감성돔 40cm 표준 953g 기준: 한겨울 알 밴 개체 ≈ 1.10배(1.05kg)
+  lwr: {
+    winterMonths: [11, 12, 1, 2],
+    winterGain: 0.07, roeGain: 0.09, postSpawnLoss: 0.08,
+    varianceSd: 0.05, minFactor: 0.82, maxFactor: 1.22,
+  },
   fightPhys: {
     staticFrac: 0.35,
     burst: { seabream: 4.0, amberjack: 5.5, mackerel: 3.0, rockfish: 2.5, flatfish: 2.0, seabass: 3.5, cephalopod: 1.5, other: 2.2 },
-    pullIdle: 0.22, pullDive: 1.0, pullLateral: 0.8, pullJump: 0.35,   // idle 0.55는 45cm 감성돔을 1.5호로 못 감았다(시뮬) → 0.22
+    // 133차 — idle(유영) 부하 0.22 → 0.10. 구 값은 **감고만 있어도** 체중의 0.9배가 걸려
+    //   1.8kg 감성돔이 1.5호 목줄(2.7kg)에 124%를 띄웠다(시뮬 랜딩 0/300).
+    pullIdle: 0.10, pullDive: 1.0, pullLateral: 0.8, pullJump: 0.35,
     goodResponseMult: 0.6, badResponseMult: 1.35,
-    reelLoadMult: 1.15, reelLoadKg: 0.6, holdStiffMult: 1.1, slackMult: 0.7,   // reelLoadKg 0.6 = 낚시인 자체 당김 — 소형어가 안전대(30~) 아래로 처져 탈출하던 것 해소(시뮬)
-    dragCapFrac: 0.85,
+    // reelLoadKg = 낚시인 자체 당김. 구 0.6은 1.5호 목줄의 22%를 상수로 먹었다 —
+    //   소형어 슬랙 이탈은 132차 체급 게이트가 이미 막으므로 0.25로 낮춘다(133차).
+    reelLoadMult: 1.10, reelLoadKg: 0.25, holdStiffMult: 1.1, slackMult: 0.7,
+    dragCapFrac: 0.85, reelDragCapFrac: 0.97, shockBreakFrac: 2.8, safeFloorFrac: 0.45,
     tensionRiseRate: 3.2, tensionFallRate: 2.6,
     slackHookOffBelow: 6, slackHookOffSec: 1.5,
     dragInTimeScale: 0.70,
     subdueReelRate: 5, subdueGoodRate: 13, subdueBadRate: 9,
     subdueDecay: 3, subdueDiveLoss: 10, subdueFatigueWeight: 0.7,
     firstPatternSec: 1.4, escapeFatigueFloor: 0.35,
+    // 133차 — 체형 배수. burst는 어종군이 이미 크기를 담으므로 **체형이 군의 전제와 다를 때만**
+    //   1을 벗어난다(갈치·붕장어 = 'other' 2.2 × 0.62 ≈ 1.4 — 가늘어 직선으로는 못 당긴다).
+    form: {
+      deepBody:   { burst: 1.0,  staticMult: 1.20, resist: 1.05, thrashHz: 0,   thrashAmp: 0,    hookOff: 1.0 },
+      fusiform:   { burst: 1.0,  staticMult: 0.90, resist: 1.15, thrashHz: 0,   thrashAmp: 0,    hookOff: 1.0 },
+      elongated:  { burst: 0.62, staticMult: 0.55, resist: 0.85, thrashHz: 1.2, thrashAmp: 0.45, hookOff: 1.45 },
+      flat:       { burst: 0.80, staticMult: 1.90, resist: 1.10, thrashHz: 0,   thrashAmp: 0,    hookOff: 0.85 },
+      globular:   { burst: 0.70, staticMult: 1.30, resist: 0.80, thrashHz: 0.5, thrashAmp: 0.18, hookOff: 0.95 },
+      cephalopod: { burst: 0.90, staticMult: 1.00, resist: 0.75, thrashHz: 0.8, thrashAmp: 0.25, hookOff: 1.20 },
+      roundish:   { burst: 1.0,  staticMult: 1.00, resist: 1.00, thrashHz: 0,   thrashAmp: 0,    hookOff: 1.0 },
+    },
   },
-  // 132차 — 거리 정합. reelBaseMps 2.4 - 패턴 정체/도주분 ≈ 실효 2.0m/s (10m≈10s / 20m≈15s)
+  // 132차 — 거리 정합. 실효 회수 속도 ≈ 1.7m/s (실렌더 복섬 10m 10.0s / 20m 15.0s — 133차 재확인)
   fightDist: {
     landRangeM: 2.5,
-    reelBaseMps: 2.4, reelWeightK: 0.55, reelMinMps: 0.35, subduedReelMult: 1.35,
+    // 133차 — 2.4 → 2.05. 체급 보정 안전대(safeFloorFrac)로 소형어가 늘 '안전대 릴링'이 되어
+    //   제압이 빨라진 만큼 되돌린다(실렌더 복섬 10m 10.0s / 20m 15.0s = 사용자 시나리오 목표).
+    reelBaseMps: 2.05, reelWeightK: 0.55, reelMinMps: 0.35, subduedReelMult: 1.35,
     resistFrac: 2.0, fleePowerBase: 0.6, fleePowerGain: 0.6,
     fleeIdle: 1.0, fleeDive: 1.25, fleeLateral: 1.3, fleeJump: 0.5,
     patternHoldFrac: 0.92, reelHoldCap: 0.92, subdueFleeCut: 0.9,
@@ -959,6 +1043,11 @@ export const TUNING_META: TuningParamMeta[] = [
   { path: 'fightPhys.goodResponseMult', min: 0.3, max: 1.0, step: 0.05, category: 'balance', label: '패턴 정대응 감쇠' },
   { path: 'fightPhys.badResponseMult', min: 1.0, max: 2.0, step: 0.05, category: 'balance', label: '패턴 오대응 증폭' },
   { path: 'fightPhys.dragCapFrac', min: 0.6, max: 1.0, step: 0.05, category: 'balance', label: '드랙 미끄럼 상한' },
+  { path: 'fightPhys.reelDragCapFrac', min: 0.7, max: 1.2, step: 0.01, category: 'balance', label: '릴링 중 드랙 상한' },
+  { path: 'fightPhys.shockBreakFrac', min: 1.5, max: 5.0, step: 0.1, category: 'balance', label: '충격 파단 임계(배)' },
+  { path: 'fightPhys.safeFloorFrac', min: 0, max: 1.0, step: 0.05, category: 'balance', label: '체급 안전대 하한' },
+  { path: 'fightPhys.pullIdle', min: 0.05, max: 0.6, step: 0.01, category: 'balance', label: '유영 부하 배수' },
+  { path: 'fightPhys.reelLoadKg', min: 0, max: 1.2, step: 0.05, category: 'balance', label: '낚시인 당김(kg)' },
   { path: 'fightPhys.tensionRiseRate', min: 1.0, max: 8.0, step: 0.2, category: 'feel', label: '텐션 상승 속도' },
   { path: 'fightPhys.dragInTimeScale', min: 0.25, max: 1.0, step: 0.05, category: 'feel', label: '끌어오기 슬로우' },
   { path: 'fightPhys.subdueReelRate', min: 3, max: 20, step: 0.5, category: 'balance', label: '제압도 릴링 상승' },
@@ -972,6 +1061,16 @@ export const TUNING_META: TuningParamMeta[] = [
   { path: 'fightDist.reelHoldCap', min: 0.3, max: 1.3, step: 0.02, category: 'balance', label: '릴링 중 도주 상한' },
   { path: 'fightPhys.firstPatternSec', min: 0.4, max: 6.0, step: 0.2, category: 'feel', label: '첫 패턴까지(초)' },
   { path: 'fightPhys.escapeFatigueFloor', min: 0.1, max: 1.0, step: 0.05, category: 'balance', label: '탈출 피로 하한' },
+  // 133차 — 체형 물리 / 비만도
+  { path: 'fightPhys.form.elongated.staticMult', min: 0.3, max: 1.2, step: 0.05, category: 'balance', label: '장어형 정적하중' },
+  { path: 'fightPhys.form.elongated.thrashAmp', min: 0, max: 0.9, step: 0.05, category: 'feel', label: '장어형 요동 진폭' },
+  { path: 'fightPhys.form.elongated.thrashHz', min: 0.2, max: 3.0, step: 0.1, category: 'feel', label: '장어형 요동 Hz' },
+  { path: 'fightPhys.form.elongated.hookOff', min: 1.0, max: 2.5, step: 0.05, category: 'balance', label: '장어형 바늘빠짐' },
+  { path: 'fightPhys.form.flat.staticMult', min: 1.0, max: 3.0, step: 0.1, category: 'balance', label: '납작형 정적하중' },
+  { path: 'fightPhys.form.deepBody.staticMult', min: 0.8, max: 2.0, step: 0.05, category: 'balance', label: '체고형 정적하중' },
+  { path: 'lwr.winterGain', min: 0, max: 0.2, step: 0.01, category: 'balance', label: '겨울 비만도 가산' },
+  { path: 'lwr.roeGain', min: 0, max: 0.25, step: 0.01, category: 'balance', label: '산란기 비만도 가산' },
+  { path: 'lwr.varianceSd', min: 0, max: 0.12, step: 0.01, category: 'balance', label: '비만도 개체 편차' },
   { path: 'fightDist.landRangeM', min: 1.0, max: 5.0, step: 0.25, category: 'feel', label: '랜딩 판정 거리(m)' },
   { path: 'fightDist.runSpreadDeg', min: 0, max: 85, step: 5, category: 'feel', label: '도주 좌우 편향(도)' },
   { path: 'fightDist.depthRate', min: 0.3, max: 3.0, step: 0.1, category: 'feel', label: '수심 추종 속도' },
