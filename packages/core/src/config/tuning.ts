@@ -171,6 +171,86 @@ export interface TuningConfig {
     slackHookOffBelow: number; slackHookOffSec: number;
     /** 랜딩 후 끌어오기(dragIn) 시간 배율 — 연출을 따라올 수 있게 느리게 (피드백 1) */
     dragInTimeScale: number;
+    // ── 132차 제압도(subdue) — 랜딩(거리)과 분리된 "굴복" 축 ──
+    /** 안전대 릴링 시 제압도 상승 (초당) */
+    subdueReelRate: number;
+    /** 패턴 정대응 / 오대응 초당 가감 */
+    subdueGoodRate: number; subdueBadRate: number;
+    /** 무입력(슬랙) 시 초당 감소 — 쉬게 두면 고기가 되살아난다 */
+    subdueDecay: number;
+    /** 여 박기 중 버티지 않으면 초당 급락 */
+    subdueDiveLoss: number;
+    /** 피로 잔여 → 제압도 기저 가중 (1이면 지침만으로 100) */
+    subdueFatigueWeight: number;
+    /** 챔질 직후 첫 패턴까지 (초, ×0.6~1.4 난수) — 훅셋 버스트 */
+    firstPatternSec: number;
+    /** 탈출 확률의 피로 하한 배수 — 지친 고기(잔여 0)는 이 배수까지만 바늘을 턴다 */
+    escapeFatigueFloor: number;
+  };
+  /**
+   * 132차 — **파이트 거리 물리** (사용자 리포트: "발앞인데 진행도가 뒤쳐진다").
+   * 랜딩 진행도 = 거리 진행도이므로, 이 값들이 곧 **파이트 소요 시간**을 결정한다.
+   * 설계 목표: 소형어 기준 `총시간 ≈ 패턴 대응(2~5초) + 착수거리 ÷ 실효 회수속도(≈2.0m/s)`
+   * → 10m ≈ 10초 / 20m ≈ 15초 (사용자 시나리오).
+   */
+  fightDist: {
+    /** 랜딩 판정 거리 (m) — 이 안으로 들어오면 낚아올린다 */
+    landRangeM: number;
+    /** 무게 0 기준 릴링 회수 속도 (m/s) */
+    reelBaseMps: number;
+    /** 무게(kg)당 회수 감쇠 — reel = base / (1 + kg × k) */
+    reelWeightK: number;
+    /** 회수 속도 하한 (m/s) — 대물이라도 아주 조금씩은 감긴다 */
+    reelMinMps: number;
+    /** 완전 제압(subdue 100) 시 회수 속도 배수 */
+    subduedReelMult: number;
+    /**
+     * **저항 세기 = 회수 속도 대비 비율** (절대 m/s가 아니다).
+     * 물고기의 버팀은 "내가 감을 수 있는 속도"와 겨루는 힘이므로, 기준 회수 속도
+     * `reelCap`(무게 기반)에 이 비율과 체급·피로·패턴·제압도를 곱해 산출한다.
+     * 1.0이면 생생한 고기가 릴링과 정확히 비긴다(= 거리 정체). 이 정규화 덕분에
+     * 어떤 체급도 "영영 못 감기"거나 "저항 없이 끌려오기"가 되지 않는다.
+     */
+    resistFrac: number;
+    /**
+     * 도주 속도의 체급 스케일 — `base + power × gain`. 작은 고기도 **순간 속도는 빠르다**
+     * (작은 건 지구력이지 속도가 아니다). base를 너무 낮추면 소형어가 저항 없이 끌려온다.
+     */
+    fleePowerBase: number; fleePowerGain: number;
+    /**
+     * **패턴 중 줄 붙듦** — 패턴이 진행되는 동안 물고기가 줄을 버텨 릴링이 거리를 벌지 못한다
+     * (드랙이 밀린다). 회수 속도 대비 비율이며, 제압도·피로가 오르면 함께 무너진다.
+     * 파이트 시간의 "상호작용 몫"을 만드는 값 — 0이면 패턴이 거리에 아무 영향이 없다.
+     */
+    patternHoldFrac: number;
+    /**
+     * **릴링 중 도주 전진 상한** (회수 속도 대비). 릴을 감는 동안에는 드랙을 잠그고 당기므로
+     * 거리는 **언제나 조금씩이라도 좁혀진다**(사용자 요구: "릴링을 계속 하는 동안은 점점
+     * 가까워져야 함"). 저항이 셀수록 좁혀지는 폭이 줄 뿐이고, 손을 놓으면 상한이 사라져
+     * 물고기가 줄을 끌고 나간다. 1 이상이면 릴링 중에도 거리가 늘 수 있다.
+     */
+    reelHoldCap: number;
+    /** 패턴별 저항 배수 (none = 평상 러닝. 1 초과 = 릴링을 이기고 줄이 나간다) */
+    fleeIdle: number; fleeDive: number; fleeLateral: number; fleeJump: number;
+    /** 제압도(0~1)가 도주 속도를 깎는 비율 (0.9 = 완전 제압 시 10%만 남음) */
+    subdueFleeCut: number;
+    /**
+     * 수평면 도주각 (도, 0 = 플레이어 반대쪽 정면). 러닝은 이 범위 안에서 추첨되고,
+     * 횡이동 패턴은 `lateralAngDeg`로 거의 옆으로 쏜다. **음수 전진(플레이어 쪽)은 없다** —
+     * 저항은 언제나 유저 반대쪽(사용자 요구 2).
+     */
+    runSpreadDeg: number;
+    lateralAngDeg: number;
+    /** 러닝 방향 재추첨 주기 (초) */
+    runRepickSec: number;
+    /** 횡 오프셋 상한 (m) — 수평뷰 좌우 이탈 한계 */
+    latMaxM: number;
+    /** 횡 오프셋 복귀 속도 (1/s) — 제압·릴링 시 중앙으로 수렴 */
+    latRecenterRate: number;
+    /** 수심 추종 속도 (1/s) */
+    depthRate: number;
+    /** 패턴별 목표 수심 정규화 (0 = 수면 / 1 = 바닥) */
+    depthDive: number; depthJump: number; depthCruise: number; depthSubdued: number;
   };
   // ── 로드 벤딩 (feel/balance) ──
   rod: {
@@ -660,7 +740,22 @@ export const TUNING: TuningConfig = {
     dragCapFrac: 0.85,
     tensionRiseRate: 3.2, tensionFallRate: 2.6,
     slackHookOffBelow: 6, slackHookOffSec: 1.5,
-    dragInTimeScale: 0.55,
+    dragInTimeScale: 0.70,
+    subdueReelRate: 5, subdueGoodRate: 13, subdueBadRate: 9,
+    subdueDecay: 3, subdueDiveLoss: 10, subdueFatigueWeight: 0.7,
+    firstPatternSec: 1.4, escapeFatigueFloor: 0.35,
+  },
+  // 132차 — 거리 정합. reelBaseMps 2.4 - 패턴 정체/도주분 ≈ 실효 2.0m/s (10m≈10s / 20m≈15s)
+  fightDist: {
+    landRangeM: 2.5,
+    reelBaseMps: 2.4, reelWeightK: 0.55, reelMinMps: 0.35, subduedReelMult: 1.35,
+    resistFrac: 2.0, fleePowerBase: 0.6, fleePowerGain: 0.6,
+    fleeIdle: 1.0, fleeDive: 1.25, fleeLateral: 1.3, fleeJump: 0.5,
+    patternHoldFrac: 0.92, reelHoldCap: 0.92, subdueFleeCut: 0.9,
+    runSpreadDeg: 50, lateralAngDeg: 78, runRepickSec: 3.2,
+    latMaxM: 6, latRecenterRate: 0.9,
+    depthRate: 1.1,
+    depthDive: 0.92, depthJump: 0.05, depthCruise: 0.55, depthSubdued: 0.06,
   },
   rod: {
     maxBendRad: 1.15, sub: 6,
@@ -866,6 +961,20 @@ export const TUNING_META: TuningParamMeta[] = [
   { path: 'fightPhys.dragCapFrac', min: 0.6, max: 1.0, step: 0.05, category: 'balance', label: '드랙 미끄럼 상한' },
   { path: 'fightPhys.tensionRiseRate', min: 1.0, max: 8.0, step: 0.2, category: 'feel', label: '텐션 상승 속도' },
   { path: 'fightPhys.dragInTimeScale', min: 0.25, max: 1.0, step: 0.05, category: 'feel', label: '끌어오기 슬로우' },
+  { path: 'fightPhys.subdueReelRate', min: 3, max: 20, step: 0.5, category: 'balance', label: '제압도 릴링 상승' },
+  { path: 'fightPhys.subdueGoodRate', min: 4, max: 30, step: 1, category: 'balance', label: '제압도 정대응 보상' },
+  { path: 'fightPhys.subdueFatigueWeight', min: 0.3, max: 1.0, step: 0.05, category: 'balance', label: '제압도 피로 기저' },
+  { path: 'fightDist.reelBaseMps', min: 0.8, max: 5.0, step: 0.1, category: 'balance', label: '릴링 회수 속도(m/s)' },
+  { path: 'fightDist.reelWeightK', min: 0.1, max: 1.5, step: 0.05, category: 'balance', label: '무게 회수 감쇠' },
+  { path: 'fightDist.resistFrac', min: 0.4, max: 2.5, step: 0.05, category: 'balance', label: '저항 세기(회수 대비)' },
+  { path: 'fightDist.subdueFleeCut', min: 0.4, max: 1.0, step: 0.05, category: 'balance', label: '제압 도주 감쇠' },
+  { path: 'fightDist.patternHoldFrac', min: 0, max: 1.4, step: 0.05, category: 'balance', label: '패턴 중 줄 붙듦' },
+  { path: 'fightDist.reelHoldCap', min: 0.3, max: 1.3, step: 0.02, category: 'balance', label: '릴링 중 도주 상한' },
+  { path: 'fightPhys.firstPatternSec', min: 0.4, max: 6.0, step: 0.2, category: 'feel', label: '첫 패턴까지(초)' },
+  { path: 'fightPhys.escapeFatigueFloor', min: 0.1, max: 1.0, step: 0.05, category: 'balance', label: '탈출 피로 하한' },
+  { path: 'fightDist.landRangeM', min: 1.0, max: 5.0, step: 0.25, category: 'feel', label: '랜딩 판정 거리(m)' },
+  { path: 'fightDist.runSpreadDeg', min: 0, max: 85, step: 5, category: 'feel', label: '도주 좌우 편향(도)' },
+  { path: 'fightDist.depthRate', min: 0.3, max: 3.0, step: 0.1, category: 'feel', label: '수심 추종 속도' },
   { path: 'hold.liftM', min: 0, max: 0.3, step: 0.01, category: 'feel', label: '뒷줄견제 리프트(m)' },
   { path: 'foam.spreadPx', min: 10, max: 120, step: 2, category: 'feel', label: '포말 분산(px)' },
   { path: 'view.seaBands', min: 6, max: 20, step: 1, category: 'feel', label: '바다 밴드 수' },

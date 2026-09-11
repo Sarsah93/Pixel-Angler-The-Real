@@ -252,10 +252,26 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   /** 파이트 물고기 깊이 정규화(0=수면~1=깊음) — 찌 투명도/실루엣 알파 연동 */
   private fightDepthNorm = 0;
   /**
-   * 제압 후 끌어오기 모드 — 랜딩 판정(progress 100)이 나도 수면 거리가 발앞(3m)보다
-   * 멀면 즉시 랜딩하지 않고, 지친 고기를 릴링으로 질질 끌어와야 랜딩된다.
+   * 완전 제압(subdue 100 또는 피로 SPENT) 후 끌어오기 모드 — 저항이 멈추고 릴링만 남는다.
+   * 132차: 거리 물리는 파이트와 동일(같은 회수 속도 식)하고, 도주분만 사라진다.
    */
   private dragInMode = false;
+  // ── 132차 파이트 거리 물리 (수평뷰·수심뷰·진행도 게이지의 단일 소스) ──
+  /** 챔질 순간의 수면 거리 (m) — 랜딩 진행도 = 1 − distM/hookDistM */
+  private hookDistM = 0;
+  /** 물고기 횡 오프셋 (m, + = 우) — 수평뷰 좌우/정면뷰 무대 x의 정본 */
+  private fleeLatM = 0;
+  /**
+   * 수평면 도주각 (rad, 0 = **플레이어 반대쪽 정면**). 저항은 언제나 유저 반대쪽이므로
+   * 이 각은 ±90° 안에서만 움직인다 — 수평뷰의 "왼쪽 / 가운데 위 / 오른쪽"(사용자 요구 2).
+   */
+  private fleePlanAng = 0;
+  /** 도주각 재추첨 타이머 (초) */
+  private fleeRepickT = 0;
+  /** 직전 틱 제압도 (0~100) — 렌더/판정 공유 */
+  private fightSubdue = 0;
+  /** 파이트 경과 (게임 시간 초) — 챔질~랜딩. 결과 안내 표기 + 하네스 타이밍 측정 */
+  private fightElapsedSec = 0;
   /** 파이트 패턴 대응 판정 배지 (116차) */
   private responseText!: Phaser.GameObjects.Text;
   /** 끌어오기 방향 안내 화살표 (116차) */
@@ -887,6 +903,14 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.f2dRunTimer = 0;
     this.f2dPrevPattern = 'none';
 
+    // ── 132차 거리 물리 초기화 — 챔질 거리가 랜딩 진행도의 분모(= 파이트 길이) ──
+    this.hookDistM = Math.max(TUNING.fightDist.landRangeM + 0.5, this.distM);
+    this.fleeLatM = this.rig.baitX;
+    this.fleePlanAng = (Math.random() - 0.5) * Phaser.Math.DegToRad(TUNING.fightDist.runSpreadDeg * 2);
+    this.fleeRepickT = 0;
+    this.fightSubdue = 0;
+    this.fightElapsedSec = 0;
+
     // ── 피로 페이즈 모델 (어종 × 사이즈 — RUN/LULL/SURGE/SPENT, thrust 게이트) ──
     this.fatigue = new FishFatigueModel(f.speciesId, f.weightG / 1000, this.f2dProfile.runPower);
     this.lastFatigue = null;
@@ -1003,8 +1027,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       this.f2dHeading = pickRunHeading(this.f2dProfile, Math.atan2(this.f2dPos.y - anchorY, this.f2dPos.x), Math.random(), Math.random());
     }
 
-    // 제압 근접(진행 82+ 또는 피로 SPENT) — 머리를 앵커 쪽으로 돌리고 수면 부상(옆으로 롤)
-    const subdued = st.progress >= 82 || this.lastFatigue?.phase === 'SPENT';
+    // 제압 근접(제압도 82+ 또는 피로 SPENT) — 머리를 앵커 쪽으로 돌린다(끌려오는 자세)
+    const subdued = st.subdue >= 82 || this.lastFatigue?.phase === 'SPENT';
     if (subdued) {
       const toAnchor = Math.atan2(anchorY - this.f2dPos.y, anchorX - this.f2dPos.x);
       let d = toAnchor - this.f2dHeading;
@@ -1013,29 +1037,25 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       this.f2dHeading += d * 1.6 * dt;
     }
 
-    // 추진(패턴·파워·피로) − 줄이 앵커쪽으로 끄는 힘(릴링)
-    // 피로 페이즈가 thrust 상한을 게이팅: RUN 1.0 / LULL 0.62 / SURGE 0.5+버스트 / SPENT 0.22
-    const patternMult = st.pattern === 'dive' ? 1.6 : st.pattern === 'lateral' ? 1.5 : st.pattern === 'jump' ? 1.2 : 0.75;
-    const gate = this.lastFatigue?.thrustGate ?? Math.max(0.25, 1 - st.progress / 130);
-    const thrust = (26 + this.hookedFish.powerFactor * 85) * patternMult * gate * this.f2dProfile.runPower;
-    const pull = (reeling ? 62 : 14) + (subdued ? 40 : 0);
-    const len = Math.hypot(this.f2dPos.x - anchorX, this.f2dPos.y - anchorY) || 1;
-    this.f2dPos.x += (Math.cos(this.f2dHeading) * thrust - ((this.f2dPos.x - anchorX) / len) * pull) * dt;
-    this.f2dPos.y += (Math.sin(this.f2dHeading) * thrust - ((this.f2dPos.y - anchorY) / len) * pull) * dt;
-    // 수면(앵커) 아래 → 무대 원 내부 순서로 클램프 (역순이면 y 보정이 원 밖으로 밀어냄)
-    if (this.f2dPos.y < anchorY + 26) this.f2dPos.y = anchorY + 26;
+    // ── 132차: 무대 좌표는 **물리에서 파생**된다 (구 구현은 여기서 별도 추진/견인을
+    //   적분해 거리·수심과 따로 놀았다 — 세 뷰가 어긋난 근본 원인 중 하나).
+    //   x = 횡 오프셋(m→px), y = 수심 정규화 → 무대 세로. 클램프는 무대 원 안쪽.
+    void reeling;
+    this.f2dPos.x = Phaser.Math.Clamp(this.fleeLatM * 22, -(R - 18), R - 18);
+    this.f2dPos.y = anchorY + 26 + this.fightDepthNorm * (R * 1.5 - 26);
     const dC = Math.hypot(this.f2dPos.x, this.f2dPos.y);
     const maxR = R - 18;
     if (dC > maxR) { this.f2dPos.x *= maxR / dC; this.f2dPos.y *= maxR / dC; }
-
-    // 깊이 정규화 — 정면 뷰 찌 투명도/그림자 선명도/수직뷰가 공유 (얕음=선명)
-    this.fightDepthNorm = Phaser.Math.Clamp((this.f2dPos.y - anchorY) / (R * 1.5), 0, 1);
   }
 
   /** 파이트 상태 정리 (랜딩/실패/재캐스팅) — v2: 중앙 무대 렌더 제거, 시뮬 상태만 리셋 */
   private clearFight2DStage(): void {
     this.fightDepthNorm = 0;
     this.dragInMode = false;
+    this.fleeLatM = 0;
+    this.fleePlanAng = 0;
+    this.fleeRepickT = 0;
+    this.fightSubdue = 0;
     this.dragPromptText?.setVisible(false);
     this.responseText?.setVisible(false);
   }
@@ -1051,25 +1071,32 @@ export class FirstPersonFishingScene extends Phaser.Scene {
    * 방치하면 아주 천천히 풀려나가며, 발앞 3m 도달 시 정식 랜딩.
    */
   private updateDragIn(dt: number): void {
-    const reelMps = this.reeling ? 2.4 : -0.15;
-    this.distM = Phaser.Math.Clamp(this.distM - reelMps * dt, 1.2, this.cfg.castDistanceM * 1.6);
+    const D = TUNING.fightDist;
+    // 132차 — 파이트와 **같은 회수 식**을 쓴다(구 구현의 상수 2.4m/s는 거리·무게와 무관했다).
+    //   방치하면 지친 고기가 아주 천천히 되풀려 나간다.
+    const reelMps = this.reeling ? this.fightReelMps(true) : -0.15;
+    this.distM = Phaser.Math.Clamp(this.distM - reelMps * dt, D.landRangeM * 0.4, this.hookDistM * 1.6);
 
     // 지친 롤 — 수면 부상 + 횡 편차가 중앙으로 수렴 (질질 끌려오는 자세)
-    this.fightDepthNorm = Math.max(0.06, this.fightDepthNorm - dt * 0.5);
+    this.fightDepthNorm = Math.max(D.depthSubdued, this.fightDepthNorm - dt * 0.5);
     const bottom = this.getBottomDepthAt();
     const targetZ = Phaser.Math.Clamp(this.fightDepthNorm * bottom, 0.3, bottom);
     this.rig.baitZ += (targetZ - this.rig.baitZ) * Math.min(1, dt * 2.5);
-    this.f2dPos.x *= Math.max(0, 1 - dt * 0.8);
+    this.fleeLatM *= Math.max(0, 1 - dt * 0.8);
+    this.f2dPos.x = Phaser.Math.Clamp(this.fleeLatM * 22, -114, 114);
+    this.f2dPos.y = -118 + 26 + this.fightDepthNorm * (132 * 1.5 - 26);
     this.f2dHeading = this.lerpHeading(this.f2dHeading, Math.PI / 2, 0.05);
     this.rodBendDeg = 24 + Math.sin(this.time.now / 160) * 4;
 
     this.renderFightUi({
-      tension: 24, progress: 100, pattern: 'none', patternTimeLeft: 0,
+      tension: 24, progress: this.landProgress(), subdue: 100,
+      pattern: 'none', patternTimeLeft: 0,
       event: 'none', escapeProbPerSec: 0, lateralDir: 1,
       demandKg: 0, lineCapKg: 0, response: 'neutral',
     });
     this.patternText
-      .setText(`제압 완료! 릴링으로 끌어오세요 — 남은 ${Math.max(0, this.distM - 3).toFixed(1)}m`)
+      .setText('제압 완료! 릴링으로 끌어오세요 — 남은 '
+        + `${Math.max(0, this.distM - TUNING.fightDist.landRangeM).toFixed(1)}m`)
       .setVisible(true);
     // 물고기 머리가 치우친 쪽으로 ←/→ + 릴링 = 견인. 화살표를 물고기 바로 위에 크게 (슬로우 중)
     const off = this.f2dPos.x;
@@ -1078,13 +1105,13 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     const pulse = 0.85 + Math.sin(this.time.now / 140) * 0.15;
     if (Math.abs(off) > 6) {
       this.dragPromptText
-        .setText(off > 0 ? '◀  ← 키 + 릴링' : '→ 키 + 릴링  ▶')
+        .setText(off > 0 ? '◀ ←키 + 릴링' : '→키 + 릴링 ▶')
         .setPosition(px, py).setScale(pulse).setVisible(true);
     } else {
       this.dragPromptText.setText('▲ 릴링 유지').setPosition(px, py).setScale(pulse).setVisible(true);
     }
 
-    if (this.distM <= 3) {
+    if (this.distM <= TUNING.fightDist.landRangeM) {
       this.dragInMode = false;
       this.patternText.setVisible(false);
       this.dragPromptText.setVisible(false);
@@ -1403,8 +1430,9 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(105).setVisible(false);
     // 끌어오기 방향 안내 — 물고기 위에 큰 화살표 (좌하단 수평뷰가 안 보인다는 피드백 116차 ①)
     this.dragPromptText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2, '', {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '34px', color: '#ffe28a', fontStyle: 'bold',
-      stroke: '#0a1628', strokeThickness: 6,
+      // 132차 — 34px는 화면 한가운데를 덮어 채비·물고기를 가렸다(실캡처). 안내는 작게.
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '20px', color: '#ffe28a', fontStyle: 'bold',
+      stroke: '#0a1628', strokeThickness: 5,
     }).setOrigin(0.5).setDepth(112).setVisible(false);
     this.patternText = this.add.text(GAME_WIDTH / 2, 120, '', {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '17px', color: '#ff6a5a', fontStyle: 'bold',
@@ -1714,7 +1742,10 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     } else {
       // 반탄류(+Y)/횡류·본류(-Y)로 수면 거리가 변한다
       // 하한 0.3m — 1m로 막으면 릴링이 발앞(0.5m) 회수 지점에 도달할 수 없다
-      this.distM = Math.max(0.3, this.distM + influence.force.y * dt);
+      // 132차: 파이트 중에는 줄이 팽팽해 채비가 자유 표류하지 않는다 → 기여를 35%로 감쇠
+      //   (거리 = 랜딩 시계이므로 조류 노이즈가 진행도를 흔들면 정합이 무너진다)
+      const curK = this.fpState === 'fighting' ? 0.35 : 1;
+      this.distM = Math.max(0.3, this.distM + influence.force.y * curK * dt);
     }
 
     // 조류 벡터 (존별 X 유속 + 완만한 요동) — 결과 상태에서는 0 (채비 횡 드리프트 정지)
@@ -2230,8 +2261,101 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   }
 
   // ── 파이팅 상태 ──────────────────────────────────────
+  /**
+   * 랜딩 진행도(0~100) = **거리 진행도** (132차 정합의 핵심).
+   * 챔질 순간의 거리에서 발앞(`landRangeM`)까지 좁혀오면 100 — 상단 진행 바 · 수심 패널
+   * 거리축 · 수평뷰 마커가 전부 이 한 값에서 나오므로 서로 어긋날 수 없다.
+   */
+  private landProgress(): number {
+    const L = TUNING.fightDist.landRangeM;
+    const span = Math.max(0.5, this.hookDistM - L);
+    return Phaser.Math.Clamp((1 - (this.distM - L) / span) * 100, 0, 100);
+  }
+
+  /** 완전 제압 — 제압도 만렙 또는 피로 SPENT (저항 소멸 → 끌어오기) */
+  private isSubdued(st: FightStatus): boolean {
+    return st.subdue >= 100 || this.lastFatigue?.phase === 'SPENT';
+  }
+
+  /**
+   * 릴링 회수 속도 (m/s) — 무게가 클수록 느리게 감긴다.
+   * `reelBaseMps / (1 + kg × reelWeightK)`, 완전 제압 시 보너스.
+   */
+  private fightReelMps(subdued: boolean): number {
+    const D = TUNING.fightDist;
+    const kg = (this.hookedFish?.weightG ?? 300) / 1000;
+    const v = Math.max(D.reelMinMps, D.reelBaseMps / (1 + kg * D.reelWeightK));
+    return v * (subdued ? D.subduedReelMult : 1);
+  }
+
+  /**
+   * 파이트 3D 운동 — 횡(fleeLatM) · 거리(distM) · 수심(fightDepthNorm/baitZ).
+   *
+   * **저항은 언제나 플레이어 반대쪽**(사용자 요구 2): 수평면 도주각 `fleePlanAng`은
+   * 0(정면으로 멀어짐) 기준 ±`runSpreadDeg` 안에서만 움직이고, 전진 성분은 `max(0, cos)`라
+   * 도주가 플레이어 쪽으로 향하는 일이 없다. 수평뷰에서는 왼쪽/가운데 위/오른쪽으로,
+   * 수심 패널에서는 (오른쪽이 나이므로) 왼쪽으로 달아나는 것으로 동시에 보인다.
+   */
+  private stepFightKinematics(dt: number, st: FightStatus, reeling: boolean): void {
+    if (!this.hookedFish) return;
+    const D = TUNING.fightDist;
+    const f = this.hookedFish;
+    const subdued = this.isSubdued(st);
+
+    // ① 도주 방향 — 횡이동 패턴은 거의 옆, 그 외는 주기적으로 재추첨되는 러닝 방향
+    this.fleeRepickT -= dt;
+    if (st.pattern === 'lateral') {
+      this.fleePlanAng = Phaser.Math.DegToRad(D.lateralAngDeg) * st.lateralDir;
+    } else if (this.fleeRepickT <= 0) {
+      this.fleeRepickT = D.runRepickSec;
+      this.fleePlanAng = (Math.random() - 0.5) * 2 * Phaser.Math.DegToRad(D.runSpreadDeg);
+    }
+
+    // ② 도주 속도 — 체급 × 피로 게이트 × 패턴 × (1 − 제압도). 완전 제압/끌어오기면 0
+    const gate = this.lastFatigue?.thrustGate ?? 0.6;
+    const patMul = st.pattern === 'dive' ? D.fleeDive
+      : st.pattern === 'lateral' ? D.fleeLateral
+      : st.pattern === 'jump' ? D.fleeJump : D.fleeIdle;
+    const sub01 = Phaser.Math.Clamp(st.subdue / 100, 0, 1);
+    // 저항 세기는 **회수 속도 대비 비율** — 생생할수록(gate↑) 제압 전일수록(sub01↓) 크다.
+    //   reelCap은 릴링 여부와 무관한 기준값이라, 손을 놓아도 고기는 줄을 끌고 나간다.
+    const resist01 = (this.dragInMode || subdued) ? 0 : gate * (1 - sub01 * D.subdueFleeCut);
+    const reelCap = this.fightReelMps(false);
+    const resistMps = reelCap * D.resistFrac
+      * (D.fleePowerBase + f.powerFactor * D.fleePowerGain) * resist01 * patMul;
+
+    // ③ 거리 = 도주 전진분 − 릴링 회수분 (랜딩의 유일한 시계)
+    //    패턴이 진행되는 동안에는 물고기가 줄을 버텨(하한 holdMps) 릴링이 거의 거리를 못 번다 —
+    //    이 구간이 "패턴 대응으로 제압도를 쌓는" 상호작용 몫이고, 제압·피로가 오르면 무너진다.
+    const reelMps = reeling ? this.fightReelMps(subdued) : 0;
+    const holdMps = st.pattern !== 'none'
+      ? reelCap * D.patternHoldFrac * resist01 * (D.fleePowerBase + f.powerFactor * D.fleePowerGain)
+      : 0;
+    let fwd = Math.max(holdMps, Math.max(0, Math.cos(this.fleePlanAng)) * resistMps);
+    // 릴링 중에는 도주 전진을 회수 속도 아래로 묶는다 — **감는 동안은 항상 조금씩 가까워진다**.
+    //   손을 놓으면(reelMps 0) 상한이 사라져 물고기가 줄을 끌고 나간다.
+    if (reeling) fwd = Math.min(fwd, reelMps * D.reelHoldCap);
+    this.distM = Phaser.Math.Clamp(
+      this.distM + (fwd - reelMps) * dt, D.landRangeM * 0.4, this.hookDistM * 1.6);
+
+    // ④ 횡 — 도주 횡분 + 릴링/제압 시 중앙 수렴 (끌려오면 정면으로 정렬)
+    this.fleeLatM = Phaser.Math.Clamp(
+      this.fleeLatM + Math.sin(this.fleePlanAng) * resistMps * dt, -D.latMaxM, D.latMaxM);
+    if (reeling || subdued) this.fleeLatM *= Math.max(0, 1 - dt * D.latRecenterRate);
+
+    // ⑤ 수심 — 패턴 목표로 추종 후 **실수심(m)** 으로 투영 (수심 패널이 그대로 소비)
+    const depthTarget = subdued ? D.depthSubdued
+      : st.pattern === 'dive' ? D.depthDive
+      : st.pattern === 'jump' ? D.depthJump : D.depthCruise;
+    this.fightDepthNorm += (depthTarget - this.fightDepthNorm) * Math.min(1, dt * D.depthRate);
+    const bottomNow = this.getBottomDepthAt();
+    const targetZ = Phaser.Math.Clamp(this.fightDepthNorm * bottomNow, 0.3, bottomNow);
+    this.rig.baitZ += (targetZ - this.rig.baitZ) * Math.min(1, dt * 2.5);
+  }
+
   private updateFighting(dt: number): void {
     if (!this.fight || !this.hookedFish) return;
+    this.fightElapsedSec += dt;
     if (this.dragInMode) { this.updateDragIn(dt); return; }
 
     // ── 텐션 저항: 텐션이 높을수록 릴링이 미끄러진다 (게이지 끝에서 힘겹게 오름) ──
@@ -2254,19 +2378,22 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     const steerDir: -1 | 0 | 1 = this.steerLeftKey?.isDown ? -1 : this.steerRightKey?.isDown ? 1 : 0;
     // 버티기(홀드) = 방향키 ↑ (구 H → 파이트는 ↑로 통일)
     const fightHolding = this.upKey.isDown;
+    // 132차 — 랜딩 진행도 = **거리 진행도**. 화면 상단 진행 바와 수심 패널 거리축,
+    //   수평뷰 마커가 전부 이 한 값(distM)에서 나온다(사용자 요구 1·5).
+    const landProgress = this.landProgress();
     const st = this.fight.update({
       dtSec: dt, holding: fightHolding, reeling: effectiveReeling, steerDir,
       thrustGate: this.lastFatigue?.thrustGate,   // 직전 틱 피로 게이트 — 지칠수록 요구 장력↓
+      landProgress,
+      fatigueRatio: this.lastFatigue?.ratio,      // 피로 잔여 → 제압도 기저
     });
+    this.fightSubdue = st.subdue;
 
     // ── 피로 페이즈 갱신 — 장력·릴링·견제가 피로를 누적, 슬랙이면 회복(긴장 유지) ──
     this.lastFatigue = this.fatigue?.update({
       dtSec: dt, reeling: effectiveReeling, holding: fightHolding,
       tensionRatio: st.tension / 100, randomUnit: Math.random(),
     }) ?? null;
-
-    // 파이트 2D 시뮬 (물고기 좌표/heading/깊이 — 정면·수평·수직뷰가 소비) 갱신
-    this.updateFight2DSim(dt, st, effectiveReeling);
 
     // ── Task 7 §3: ←/→ + 릴링 = 물고기 횡 견인 (수평뷰·정면뷰 f2dPos.x 소비) ──
     // 물고기가 횡으로 달리며 힘을 줄 때(lateral) 반대쪽 견인은 힘의 상충으로 제자리 유지(조류처럼),
@@ -2275,25 +2402,24 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       const fishLatForce = st.pattern === 'lateral' ? st.lateralDir : 0;
       const opposing = fishLatForce !== 0 && Math.sign(fishLatForce) !== steerDir;
       if (!opposing) {
-        this.f2dPos.x = Phaser.Math.Clamp(
-          this.f2dPos.x + steerDir * TUNING.fightPull.lateralStagePerSec * dt, -114, 114);
+        // 견인은 미터 단위 횡 오프셋(fleeLatM)에 적용 — 무대 px(f2dPos.x)는 이 값에서 파생된다
+        const L = TUNING.fightDist.latMaxM;
+        this.fleeLatM = Phaser.Math.Clamp(
+          this.fleeLatM + steerDir * (TUNING.fightPull.lateralStagePerSec / 22) * dt, -L, L);
       }
     }
 
     this.rodBendDeg = 20 + (st.tension / 100) * 45;   // 파이팅 중 초릿대는 텐션 비례로 휨
 
-    // ── 파이트 실거리/실수심 반영 — 수직뷰(우측)·정면 원근이 실시간으로 따라온다 ──
-    // 줄 풀림: 물고기가 힘을 쓸수록(게이트) 거리가 늘고, 릴링하면 줄어든다
-    const gateNow = this.lastFatigue?.thrustGate ?? 0.6;
-    const takeLine = (st.pattern === 'dive' ? 0.35 : st.pattern === 'lateral' ? 0.6 : 0.85)
-      * (0.35 + this.hookedFish.powerFactor) * gateNow;
-    const reelIn = effectiveReeling ? 1.35 : 0;
-    this.distM = Phaser.Math.Clamp(
-      this.distM + (takeLine - reelIn) * dt, 1.2, this.cfg.castDistanceM * 1.6);
-    // 수심: f2d 깊이 정규화를 실수심으로 투영 — 다이브 시 바닥으로 박고, 제압되면 부상
-    const bottomNow = this.getBottomDepthAt();
-    const targetZ = Phaser.Math.Clamp(this.fightDepthNorm * bottomNow, 0.3, bottomNow);
-    this.rig.baitZ += (targetZ - this.rig.baitZ) * Math.min(1, dt * 2.5);
+    // ── 132차 파이트 3D 운동 (횡 · 거리 · 수심) — 세 뷰가 같은 물리를 소비 ──
+    this.stepFightKinematics(dt, st, effectiveReeling);
+    // 무대(정면뷰) 좌표는 위 물리에서 **파생**된다 — heading만 패턴/프로필로 갱신(이중 시뮬 금지)
+    this.updateFight2DSim(dt, st, effectiveReeling);
+
+    // 완전 제압 → 끌어오기 (저항 소멸, 릴링만 남음 — 사용자 요구 3)
+    if (!this.dragInMode && this.isSubdued(st) && this.distM > TUNING.fightDist.landRangeM) {
+      this.beginDragIn();
+    }
 
     this.renderFightUi(st);
 
@@ -2303,9 +2429,11 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     } else if (st.pattern === 'jump') {
       this.patternText.setText('바늘털이! 릴링 멈추고 ↑를 떼세요!').setVisible(true);
     } else if (st.pattern === 'dive') {
-      this.patternText.setText('여 박기! ↑를 꾹 눌러 버티세요!').setVisible(true);
+      this.patternText.setText('여 박기! 릴링을 멈추고 ↑를 꾹 눌러 버티세요!').setVisible(true);
     } else if (st.pattern === 'lateral') {
-      this.patternText.setText(`횡으로 쏩니다! ${st.lateralDir < 0 ? '←' : '→'} 같은쪽 스티어로 버티세요!`).setVisible(true);
+      this.patternText
+        .setText(`횡으로 쏩니다! 릴링을 멈추고 ${st.lateralDir < 0 ? '←' : '→'} 같은쪽 스티어로 버티세요!`)
+        .setVisible(true);
     } else {
       this.patternText.setVisible(false);
     }
@@ -2314,9 +2442,12 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       this.patternText.setVisible(false);
       switch (st.event) {
         case 'landed': {
-          // 물리 정합: 발앞(3m)보다 멀면 아직 낚아올릴 수 없다 — 제압 후 끌어오기
-          if (this.distM > 3) this.beginDragIn();
-          else this.onLanded();
+          // 132차 — 랜딩 진행도 = 거리 진행도라, 이 이벤트는 **발앞 도달** 그 자체다.
+          this.flashState(`랜딩! 파이팅 ${this.fightElapsedSec.toFixed(1)}초`);
+          this.dragInMode = false;
+          this.patternText.setVisible(false);
+          this.dragPromptText.setVisible(false);
+          this.onLanded();
           break;
         }
         case 'line_break': {
@@ -2745,6 +2876,11 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.floatSinkM = 0;
     this.floatSinkVisM = 0;
     this.distM = this.cfg.castDistanceM;
+    this.hookDistM = this.cfg.castDistanceM;
+    this.fleeLatM = 0;
+    this.fleePlanAng = 0;
+    this.fleeRepickT = 0;
+    this.fightSubdue = 0;
     this.overstrain = 0;
     this.rigPose = 'idle';
     this.sinkCameoStart = -1;   // 재캐스팅 = 새 착수 — 침강 카메오 재시작
@@ -3098,7 +3234,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
 
     // ── 채비/물고기 마커 (파이트 중엔 횡 러닝을 f2d 무대에서 투영) ──
     const fight = this.fpState === 'fighting' && !!this.hookedFish;
-    const latM = this.rig.baitX + (fight ? this.f2dPos.x / 22 : 0);
+    // 132차 — 파이트 중 횡 위치의 정본은 fleeLatM(m). 무대 px를 되돌리지 않는다.
+    const latM = fight ? this.fleeLatM : this.rig.baitX;
     const dM = this.distM;
     const rx = Phaser.Math.Clamp(mx + latM * s * 1.6, PX + 12, PX + PW - 12);
     const ry = Phaser.Math.Clamp(my - dM * s, PY + 14, my - 4);
@@ -3202,16 +3339,25 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     g.fillCircle(axR, axY - 6, 3.4);
     g.fillRect(axR - 2, axY - 3, 4, 9);
     // 현재 거리 마커
-    const maxD = Math.max(this.cfg.castDistanceM, this.distM, 1);
-    const dRatio = 1 - Phaser.Math.Clamp(this.distM / maxD, 0, 1);
+    // 132차 — 파이트 중에는 거리축이 **상단 랜딩 바와 완전히 같은 값**이 되도록 한다:
+    //   분모 = 챔질 거리, 원점 = 발앞(landRangeM). 그래야 "물고기 아이콘이 사람 아이콘에
+    //   닿는 순간 = 진행도 100% = 실제 랜딩"이 세 군데에서 동시에 성립한다.
+    const fighting = this.fpState === 'fighting';
+    const maxD = Math.max(fighting ? this.hookDistM : this.cfg.castDistanceM, this.distM, 1);
+    const dRatio = fighting
+      ? this.landProgress() / 100
+      : 1 - Phaser.Math.Clamp(this.distM / maxD, 0, 1);
     const mx = axL + 18 + (axR - axL - 36) * dRatio;
     // 머리는 '나'(우측)를 향하고 꼬리가 뒤(좌측)에 온다 (119차 ⑤-1).
     // 챔질 성공 후에는 1.2배 확대 + 희귀도 색으로 개체 급을 미리 가늠하게 한다 (119차 ⑤-2).
     const hooked = this.hookedFish;
     const ms = hooked ? 1.2 : 1;
+    // 132차 — 완전 제압되면 옆으로 누워(납작한 타원) 끌려온다 (사용자 요구 3 연출)
+    const rolled = this.dragInMode || this.fightSubdue >= 100;
     g.fillStyle(hooked ? depthFishTint(hooked.speciesId, hooked.lengthCm) : 0x4af2a1, 1);
-    g.fillEllipse(mx, axY, 10 * ms, 6 * ms);
-    g.fillTriangle(mx - 5 * ms, axY, mx - 9 * ms, axY - 3 * ms, mx - 9 * ms, axY + 3 * ms);
+    g.fillEllipse(mx, axY, 10 * ms, (rolled ? 3.6 : 6) * ms);
+    g.fillTriangle(mx - 5 * ms, axY, mx - 9 * ms, axY - (rolled ? 1.8 : 3) * ms,
+      mx - 9 * ms, axY + (rolled ? 1.8 : 3) * ms);
 
     const bottomM = this.cfg.zMaxM;
     const yOf = (z: number): number => gaugeTop + (Phaser.Math.Clamp(z, 0, bottomM) / bottomM) * gaugeH;
@@ -3425,13 +3571,20 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     g.lineStyle(1.5, 0x2a5a8a, 1);
     g.strokeRoundedRect(bx, by, bw, 18, 4);
 
-    // 랜딩 진행 바
+    // ── 랜딩 진행 바 = **거리 진행도** (132차) — 수심 패널 거리축·수평뷰와 같은 값 ──
     g.fillStyle(0x101820, 0.9);
     g.fillRoundedRect(bx, by + 26, bw, 10, 3);
-    g.fillStyle(0xffe28a, 0.95);
+    g.fillStyle(this.dragInMode ? 0x4af2a1 : 0xffe28a, 0.95);
     g.fillRoundedRect(bx, by + 26, bw * (st.progress / 100), 10, 3);
     g.lineStyle(1, 0x2a5a8a, 0.9);
     g.strokeRoundedRect(bx, by + 26, bw, 10, 3);
+    // 제압도 바 (얇게 — 랜딩 바 아래). 100 = 완전 제압 → 저항 소멸·끌어오기
+    g.fillStyle(0x101820, 0.9);
+    g.fillRoundedRect(bx, by + 39, bw, 6, 2);
+    g.fillStyle(st.subdue >= 100 ? 0x4af2a1 : 0xc08cff, 0.95);
+    g.fillRoundedRect(bx, by + 39, bw * (st.subdue / 100), 6, 2);
+    g.lineStyle(1, 0x2a5a8a, 0.8);
+    g.strokeRoundedRect(bx, by + 39, bw, 6, 2);
 
     const ft = this.lastFatigue;
     const load = st.lineCapKg > 0 ? `하중 ${st.demandKg.toFixed(1)}kg / 줄 ${st.lineCapKg.toFixed(1)}kg` : '';
@@ -3443,7 +3596,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     } else this.responseText.setVisible(false);
     this.probText.setText([
       `텐션 ${st.tension.toFixed(0)} / 100  (안전 30~80)${load ? '  ' + load : ''}`,
-      `랜딩 ${st.progress.toFixed(0)}%`,
+      `랜딩 ${st.progress.toFixed(0)}%  (남은 거리 ${Math.max(0, this.distM - TUNING.fightDist.landRangeM).toFixed(1)}m)`,
+      `제압 ${st.subdue.toFixed(0)}%${st.subdue >= 100 ? ' — 완전 제압!' : ''}`,
       this.hookedFish ? `상대: ??? (힘 ${(this.hookedFish.powerFactor * 100).toFixed(0)})` : '',
       ft
         ? `피로: ${FATIGUE_PHASE_LABEL[ft.phase]} (잔여 ${(ft.ratio * 100).toFixed(0)}%)`

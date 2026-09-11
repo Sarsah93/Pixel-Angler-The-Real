@@ -93,6 +93,16 @@ const { chromium } = resolvePlaywright();
   NEW GAME이 시작돼 `InventoryStore.resetAll()`이 중간 지급분을 지움). 마우스는 topOnly 게이트가 있지만
   **키보드에는 없다** — 패널 버튼류 확정은 `panel.onKey({ code: 'Enter', shiftKey: false })` 직접 호출로.
 - 헤드리스에서 `--virtual-time-budget` 방식은 Phaser 트윈/타이머가 진행되지 않는다 — 트윈 결과 검증은 실브라우저 + `waitForTimeout`.
+- ⚠ **헤드리스에서 "게임 시간"을 벽시계로 재지 말 것**(132차 실측) — 헤드리스 크롬의 rAF는 **초당 2회** 수준이고
+  `update()`의 `dt`는 `Math.min(0.05, …)`로 클램프되므로, 게임은 실시간의 **1/10 속도**로 흐른다
+  (10m 파이트가 벽시계 **110초**로 측정됐다). 지속 시간·속도를 재려면 **씬의 `update(now, 16.67)`를 수동 스텝**으로
+  돌리고(`for (…) fp.update(performance.now(), 16.67)`) 씬이 누적한 게임 시간 필드(예: `fightElapsedSec`)를 읽는다.
+  같은 이유로 `page.waitForTimeout` 기반의 "N초 뒤 상태" 어서션은 전부 실제보다 훨씬 적게 진행된 상태를 본다.
+- ⚠ **`pkill -f <스크립트명>`은 하네스가 아니라 자기 자신을 죽인다**(132차) — 호출한 bash의 커맨드라인에도 그 문자열이
+  들어 있어 셸이 먼저 종료된다(exit 144). `ps -eo pid,args | awk '$2 ~ /node$/ && /<이름>/ {print $1}' | xargs kill`처럼
+  **프로세스 실행 파일까지 좁혀서** 지정할 것.
+- ⚠ **하네스 실행 중에는 소스를 고치지 말 것**(132차) — vite HMR이 페이지를 리로드해
+  `page.evaluate: Execution context was destroyed`로 죽는다. 코드 수정 → 빌드 → dev 재시작 → 하네스 순으로.
 - ⚠ **실브라우저(playwright) 헤드리스에서도 `scene.time` 타이머 이벤트가 발화하지 않는다**(128차 실측 —
   씬 status 5·`time.paused` false·`time.now` 증가인데도 **새로 등록한 프로브 이벤트조차 0회**).
   1초 루프로 갱신되는 HUD(시계·상태 패널·스트립)는 **콜백을 직접 호출**해 검증할 것(`hud.updateStatus()`).

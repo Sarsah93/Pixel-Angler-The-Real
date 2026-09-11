@@ -21,6 +21,16 @@
  *  - 어종군 순간가속(돔류 4× · 방어류 5.5× · 광어 2× …)으로 어종 자체 난이도가 갈린다(피드백 4.2).
  *  구 상수 모드(weightKg 미지정)는 그대로 유지 — 레거시 호출 호환.
  *
+ * **132차 — 거리 정합 (랜딩 = 거리 / 제압 = 별도 축)**:
+ *  구 모델은 `progress`(랜딩 진행도)가 **거리와 무관한 자체 시계**였다(릴링 중 +11/s). 그래서
+ *  10m에서 건 고기는 거리가 발앞(하한 1.2m)에 닿아도 진행도가 80%대에 머물러 **발 앞에서
+ *  시간이 낭비**됐고, 30m에서는 반대로 진행도가 먼저 100이 되어 한참 먼 데서 제압이 끝났다.
+ *  이제 랜딩 진행도는 **호출부가 주입하는 거리 진행도(`landProgress`)** 이고, 이 클래스는
+ *  **제압도(`subdue`)** — 피로 잔여 + 패턴 대응 누적 — 만 관리한다.
+ *  - `landed`는 `landProgress >= 100`에서만 발생 (거리 = 랜딩의 유일한 시계).
+ *  - `subdue`는 도주 속도를 깎고(호출부), 100이면 완전 제압 → 끌어오기.
+ *  - `landProgress` 미지정 시 구 동작(제압도 100 = 랜딩)으로 폴백 — 레거시 호출 호환.
+ *
  * 순수 TS — 렌더링/브라우저 API 없음.
  */
 
@@ -42,6 +52,13 @@ export interface FightInput {
   steerDir?: -1 | 0 | 1;
   /** 피로 페이즈 추진 게이트 (FishFatigueModel.thrustGate — 0.2~1.5). 미지정 = 1 */
   thrustGate?: number;
+  /**
+   * 132차 — **거리 기반 랜딩 진행도(0~100)**. 호출부가 `(1 − distM/hookDistM) × 100`으로 주입한다.
+   * 지정하면 `landed`는 이 값이 100일 때만 발생(거리 = 랜딩의 유일한 시계). 미지정 = 레거시 폴백.
+   */
+  landProgress?: number;
+  /** 132차 — 피로 잔여 비율(0~1, FishFatigueModel.ratio). 제압도 기저가 된다. 미지정 = 1(생생함) */
+  fatigueRatio?: number;
 }
 
 export type FightEvent = 'none' | 'landed' | 'escaped' | 'line_break' | 'hook_off';
@@ -51,7 +68,10 @@ export type FightResponse = 'good' | 'bad' | 'neutral';
 
 export interface FightStatus {
   tension: number;
+  /** 랜딩 진행도 0~100 — 132차부터 **거리 진행도**(호출부 주입). 미주입 시 제압도와 동일 */
   progress: number;
+  /** 132차 — 제압도 0~100 (피로 잔여 + 패턴 대응 누적). 100 = 완전 제압 → 끌어오기 */
+  subdue: number;
   pattern: FightPattern;
   patternTimeLeft: number;
   event: FightEvent;
@@ -94,7 +114,12 @@ const PATTERN_BASE_SPAN = 4.6;
 
 export class FightingPhase {
   tension = 50;
+  /** 랜딩 진행도 0~100 — 132차부터 거리 진행도(호출부 주입) 미러 */
   progress = 0;
+  /** 제압도 0~100 — 피로 잔여 기저 + 대응 누적 */
+  subdue = 0;
+  /** 대응·릴링으로 쌓인 제압 보너스 (음수 가능 — 오대응 누적) */
+  private subdueBonus = 0;
   pattern: FightPattern = 'none';
   /** 횡이동 러닝 방향 — lateral 패턴 추첨 시 좌/우 결정 */
   private lateralDir: -1 | 1 = 1;
@@ -128,7 +153,9 @@ export class FightingPhase {
     this.burst = fish.burstMult ?? 2.2;
     this.lineCapKg = fish.lineCapacityKg ?? 0;
     this.physical = this.weightKg > 0 && this.lineCapKg > 0;
-    this.nextPatternIn = (PATTERN_BASE_MIN + Math.random() * PATTERN_BASE_SPAN) * this.intervalMult;
+    // 132차 — **첫 패턴은 챔질 직후**(훅셋 버스트). 구 구현은 첫 패턴까지 4.7~10.7초가 걸려
+    //   가까운 거리에서 건 고기는 패턴을 한 번도 못 보고 끌려왔다(= 상호작용 없는 파이트).
+    this.nextPatternIn = TUNING.fightPhys.firstPatternSec * (0.6 + Math.random() * 0.8);
   }
 
   /** 어종 가중치 기반 패턴 추첨 */
@@ -186,38 +213,56 @@ export class FightingPhase {
       this.updateTensionLegacy(input);
     }
 
-    // ── 로드 스티어 밀당 (횡이동 러닝 중) — 진행도 쪽만 (텐션은 위 모델이 담당) ──
+    // ── 로드 스티어 밀당 (횡이동 러닝 중) — 제압도 쪽만 (텐션은 위 모델이 담당) ──
     if (this.pattern === 'lateral' && steer !== 0) {
-      if (steer === this.lateralDir) this.progress += 4 * dtSec;       // 버티기 성공 — 하락분 상쇄
+      if (steer === this.lateralDir) this.subdueBonus += 4 * dtSec;    // 버티기 성공 — 하락분 상쇄
       else {
-        this.progress += 7 * dtSec;                                    // 제압 — 위험을 감수한 전진
+        this.subdueBonus += 7 * dtSec;                                 // 제압 — 위험을 감수한 전진
         if (!this.physical) this.tension += 19 * dtSec;
       }
     }
 
     this.tension = Math.max(0, Math.min(100, this.tension));
 
-    // ── 랜딩 진행 (기존 대비 1.2배 완화) ──
+    // ── 제압도(subdue) 누적 — 132차: 랜딩(거리)과 분리된 "얼마나 굴복시켰나" 축 ──
+    //  기저 = 피로 잔여의 역수(지칠수록 제압), 여기에 플레이어 대응 누적(보너스)을 더한다.
+    //  "패턴/저항에 적절히 대처하면 제압 확률이 올라간다"(사용자 요구 3)를 이 누적이 담당.
+    const P = TUNING.fightPhys;
     if (reeling) {
       const inSafe = this.tension >= SAFE_MIN && this.tension <= SAFE_MAX;
-      this.progress += (inSafe ? 11 : 3) * dtSec * (1.25 - this.power * 0.45);
-    } else {
-      this.progress = Math.max(0, this.progress - 1.2 * dtSec);
+      this.subdueBonus += (inSafe ? P.subdueReelRate : P.subdueReelRate * 0.28)
+        * dtSec * (1.25 - this.power * 0.45);
+    } else if (!holding) {
+      this.subdueBonus -= P.subdueDecay * dtSec;
     }
-    // 다이브 중 견제하지 않으면 여로 파고듦 (진행도 하락) · 횡이동 중 놓아주면 소폭 하락
-    if (this.pattern === 'dive' && !holding) this.progress = Math.max(0, this.progress - 10 * dtSec);
-    if (this.pattern === 'lateral' && !holding && steer !== this.lateralDir) {
-      this.progress = Math.max(0, this.progress - 4 * dtSec);
-    }
-    this.progress = Math.min(100, this.progress);
+    if (response === 'good') this.subdueBonus += P.subdueGoodRate * dtSec;
+    else if (response === 'bad') this.subdueBonus -= P.subdueBadRate * dtSec;
+    // 다이브 중 견제하지 않으면 여로 파고듦 (제압도 급락)
+    if (this.pattern === 'dive' && !holding) this.subdueBonus -= P.subdueDiveLoss * dtSec;
+    this.subdueBonus = Math.max(-40, Math.min(100, this.subdueBonus));
+
+    const fatigueRatio = input.fatigueRatio ?? 1;
+    this.subdue = Math.max(0, Math.min(100,
+      (1 - fatigueRatio) * 100 * P.subdueFatigueWeight + this.subdueBonus));
+
+    // 랜딩 진행도 = 거리 진행도(호출부 주입). 미주입 시 구 동작(제압도 = 랜딩)으로 폴백.
+    this.progress = input.landProgress !== undefined
+      ? Math.max(0, Math.min(100, input.landProgress))
+      : this.subdue;
 
     // ── 종료 판정: 텐션 한계 ──
     if (this.tension >= 100) return this.finish('line_break');
     if (this.physical) {
-      // 물리 모드 — 느슨함이 지속돼야 바늘이 빠진다 (순간 0 = 즉사 아님)
-      const P = TUNING.fightPhys;
-      if (this.tension < P.slackHookOffBelow) this.slackTimer += dtSec; else this.slackTimer = 0;
-      if (this.slackTimer >= P.slackHookOffSec) return this.finish('hook_off');
+      // 물리 모드 — 느슨함이 지속돼야 바늘이 빠진다 (순간 0 = 즉사 아님).
+      //  ⚠ 132차 수정: **게이지를 애초에 임계까지 올릴 수 없는 체급**에는 이 규칙이 성립하지
+      //    않는다. 24g 복섬은 최대 요구 장력이 3kg 원줄의 2%라, 구 구현에서는 바늘털이(jump)에
+      //    정대응(슬랙)하기만 하면 1.5초 뒤 **반드시** 바늘이 빠졌다(시뮬 실측 67%).
+      //    "느슨하게 줬다"가 성립하려면 원래 걸 수 있는 장력이 임계보다 충분히 커야 한다.
+      const maxDemandPct = this.weightKg * (P.staticFrac + this.burst) / this.lineCapKg * 100;
+      if (maxDemandPct > P.slackHookOffBelow * 1.5) {
+        if (this.tension < P.slackHookOffBelow) this.slackTimer += dtSec; else this.slackTimer = 0;
+        if (this.slackTimer >= P.slackHookOffSec) return this.finish('hook_off');
+      }
     } else if (this.tension <= 0) {
       return this.finish('hook_off');
     }
@@ -237,7 +282,11 @@ export class FightingPhase {
     if (this.pattern === 'jump' && response === 'bad') mPattern = 3.0;      // 바늘털이 대응 실패
     if (this.pattern === 'dive' && response === 'bad') mPattern = 2.2;      // 여 박기 대응 실패
     if (this.pattern === 'lateral' && response === 'bad') mPattern = 2.4;   // 횡이동 중 강제 제동 → 쓸림
-    const escapeProb = this.baseEscape * mTension * mPattern * (1 - this.tackleA);
+    // 132차 — 지친 고기는 바늘을 털지 못한다. 거리가 멀수록 파이트가 길어지는 만큼
+    //   초당 일정 확률을 그대로 두면 **먼 거리 = 탈출 폭증**이 된다(30m 실측 30%).
+    //   피로 잔여에 비례시켜 공방이 길어질수록 탈출 압력이 잦아들게 한다.
+    const mFatigue = P.escapeFatigueFloor + (1 - P.escapeFatigueFloor) * fatigueRatio;
+    const escapeProb = this.baseEscape * mTension * mPattern * mFatigue * (1 - this.tackleA);
 
     if (Math.random() < escapeProb * dtSec) {
       return this.finish('escaped');
@@ -297,6 +346,7 @@ export class FightingPhase {
     return {
       tension: this.tension,
       progress: this.progress,
+      subdue: this.subdue,
       pattern: this.pattern,
       patternTimeLeft: Math.max(0, this.patternTimer),
       event,
