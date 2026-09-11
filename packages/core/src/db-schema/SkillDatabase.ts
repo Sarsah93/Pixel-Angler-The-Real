@@ -31,8 +31,8 @@ export const SKILL_CATEGORIES: SkillCategoryDef[] = [
     locked: true, lockedNoteKo: '농장 경영(홈타운 텃밭) 착수 시 활성화됩니다 — 지금은 열람만', lockedNoteEn: 'Unlocks when farm management (home garden) arrives — view only for now',
   },
   {
+    // 129차 P7 — U 창 '제작' 탭 + 고급 제작대가 들어오면서 잠금 해제.
     id: 'crafting', nameKo: '제작', nameEn: 'Crafting', descKo: '채비·루어·통발·구급품·로드 빌딩', descEn: 'Rigs, lures, traps, first-aid supplies and rod building',
-    locked: true, lockedNoteKo: '제작 시스템(활용 창 제작 탭) 구현 시 활성화됩니다 — 지금은 열람만', lockedNoteEn: 'Unlocks when the crafting system (Utility window Crafting tab) arrives — view only for now',
   },
 ];
 
@@ -130,18 +130,18 @@ export const SKILL_DATABASE: SkillDef[] = [
   { id: 'farm_season', category: 'farming', nameKo: '절기 독해', nameEn: 'Almanac Reading', descKo: '파종 적기 캘린더 표시', descEn: 'Shows the sowing-season calendar', tier: 2, maxRank: 2, costPerRank: 1, requires: [{ id: 'farm_sprout', rank: 1 }], effect: add('farm_calendar', 1), wired: false },
 
   // ───────────── 제작 (124차 신설 — 카테고리 잠금: U '제작' 탭(P7) 구현 시 활성) ─────────────
-  { id: 'craft_knot', category: 'crafting', nameKo: '매듭 숙련', nameEn: 'Knot Mastery', descKo: '채비 제작 성공률 +6%/랭크 · 강도 +4%', descEn: 'Rig crafting success +6% per rank · strength +4%', tier: 0, maxRank: 3, costPerRank: 1, requires: [], effect: mult('craft_success', 0.06), wired: false },
-  { id: 'craft_tools', category: 'crafting', nameKo: '공구 관리', nameEn: 'Tool Care', descKo: '제작 재료 소모 -6%/랭크', descEn: 'Crafting material use -6% per rank', tier: 0, maxRank: 2, costPerRank: 1, requires: [], effect: mult('craft_material', -0.06), wired: false },
-  { id: 'craft_sinker', category: 'crafting', nameKo: '봉돌 주조', nameEn: 'Sinker Casting', descKo: '봉돌 재료 -10%', descEn: 'Sinker material cost -10%', tier: 1, maxRank: 1, costPerRank: 1, requires: [{ id: 'craft_knot', rank: 1 }], effect: mult('sinker_material', -0.10), wired: false },
+  { id: 'craft_knot', category: 'crafting', nameKo: '매듭 숙련', nameEn: 'Knot Mastery', descKo: '채비 제작 성공률 +6%/랭크 · 강도 +4%', descEn: 'Rig crafting success +6% per rank · strength +4%', tier: 0, maxRank: 3, costPerRank: 1, requires: [], effect: mult('craft_success', 0.06), wired: true },
+  { id: 'craft_tools', category: 'crafting', nameKo: '공구 관리', nameEn: 'Tool Care', descKo: '제작 재료 소모 -6%/랭크', descEn: 'Crafting material use -6% per rank', tier: 0, maxRank: 2, costPerRank: 1, requires: [], effect: mult('craft_material', -0.06), wired: true },
+  { id: 'craft_sinker', category: 'crafting', nameKo: '봉돌 주조', nameEn: 'Sinker Casting', descKo: '봉돌 재료 -10%', descEn: 'Sinker material cost -10%', tier: 1, maxRank: 1, costPerRank: 1, requires: [{ id: 'craft_knot', rank: 1 }], effect: mult('sinker_material', -0.10), wired: true },
   { id: 'craft_chum', category: 'crafting', nameKo: '밑밥 블렌딩', nameEn: 'Chum Blending', descKo: '배합 슬롯 +1/랭크 · 동조율 +4%', descEn: 'Chum mix slots +1 per rank · sync +4%', tier: 1, maxRank: 3, costPerRank: 1, requires: [{ id: 'craft_knot', rank: 1 }], effect: add('chum_slots', 1), wired: false },
-  { id: 'craft_paint', category: 'crafting', nameKo: '루어 도색', nameEn: 'Lure Painting', descKo: '커스텀 루어 성능 편차 축소', descEn: 'Narrows custom lure performance variance', tier: 1, maxRank: 2, costPerRank: 1, requires: [{ id: 'craft_tools', rank: 1 }], effect: add('lure_tuning', 1), wired: false },
-  { id: 'craft_medic', category: 'crafting', nameKo: '구급품 제작', nameEn: 'Field Medic', descKo: '붕대·부목·상비약 품질 +8%/랭크', descEn: 'Bandage/splint/medicine quality +8% per rank', tier: 1, maxRank: 3, costPerRank: 1, requires: [{ id: 'craft_tools', rank: 1 }], effect: mult('medic_quality', 0.08), wired: false },
-  { id: 'craft_egi', category: 'crafting', nameKo: '에기 튜닝', nameEn: 'Egi Tuning', descKo: '에기 침강 밸런스 조정폭 확장', descEn: 'Wider egi sink-balance tuning range', tier: 2, maxRank: 1, costPerRank: 1, requires: [{ id: 'craft_paint', rank: 1 }], effect: add('egi_tuning', 1), wired: false },
-  { id: 'craft_trap', category: 'crafting', nameKo: '통발 제작', nameEn: 'Trap Making', descKo: '통발 내구 +8%/랭크 · 최종 랭크 = 개량 통발 도면', descEn: 'Trap durability +8% per rank · final rank unlocks the improved trap blueprint', tier: 2, maxRank: 3, costPerRank: 1, requires: [{ id: 'craft_knot', rank: 2 }], effect: mult('trap_durability', 0.08), wired: false },
+  { id: 'craft_paint', category: 'crafting', nameKo: '루어 도색', nameEn: 'Lure Painting', descKo: '커스텀 루어 성능 편차 축소', descEn: 'Narrows custom lure performance variance', tier: 1, maxRank: 2, costPerRank: 1, requires: [{ id: 'craft_tools', rank: 1 }], effect: add('lure_tuning', 1), wired: true },
+  { id: 'craft_medic', category: 'crafting', nameKo: '구급품 제작', nameEn: 'Field Medic', descKo: '붕대·부목·상비약 품질 +8%/랭크', descEn: 'Bandage/splint/medicine quality +8% per rank', tier: 1, maxRank: 3, costPerRank: 1, requires: [{ id: 'craft_tools', rank: 1 }], effect: mult('medic_quality', 0.08), wired: true },
+  { id: 'craft_egi', category: 'crafting', nameKo: '에기 튜닝', nameEn: 'Egi Tuning', descKo: '에기 침강 밸런스 조정폭 확장', descEn: 'Wider egi sink-balance tuning range', tier: 2, maxRank: 1, costPerRank: 1, requires: [{ id: 'craft_paint', rank: 1 }], effect: add('egi_tuning', 1), wired: true },
+  { id: 'craft_trap', category: 'crafting', nameKo: '통발 제작', nameEn: 'Trap Making', descKo: '통발 내구 +8%/랭크 · 최종 랭크 = 개량 통발 도면', descEn: 'Trap durability +8% per rank · final rank unlocks the improved trap blueprint', tier: 2, maxRank: 3, costPerRank: 1, requires: [{ id: 'craft_knot', rank: 2 }], effect: mult('trap_durability', 0.08), wired: true },
   { id: 'craft_bp', category: 'crafting', nameKo: '도면 독해', nameEn: 'Blueprint Literacy', descKo: '희귀 도면 해독 등급 +1', descEn: 'Rare blueprint literacy grade +1', tier: 2, maxRank: 1, costPerRank: 1, requires: [{ id: 'craft_tools', rank: 2 }], effect: add('blueprint_grade', 1), wired: false },
   { id: 'craft_batch', category: 'crafting', nameKo: '인내심', nameEn: 'Patience', descKo: '연속 제작 배치 +2', descEn: 'Consecutive crafting batch +2', tier: 2, maxRank: 1, costPerRank: 1, requires: [{ id: 'craft_medic', rank: 1 }], effect: add('craft_batch', 2), wired: false },
-  { id: 'craft_rod', category: 'crafting', nameKo: '로드 빌딩', nameEn: 'Rod Building', descKo: '커스텀 로드 제작 해금 (경도·길이 선택)', descEn: 'Unlocks custom rod building (choose action and length)', tier: 3, maxRank: 1, costPerRank: 2, requires: [{ id: 'craft_bp', rank: 1 }], effect: add('rod_building', 1), wired: false },
-  { id: 'craft_reel', category: 'crafting', nameKo: '릴 커스텀', nameEn: 'Reel Custom', descKo: '릴 기어비 튜닝 해금폭 확장', descEn: 'Wider reel gear-ratio tuning range', tier: 3, maxRank: 2, costPerRank: 1, requires: [{ id: 'craft_bp', rank: 1 }], effect: add('reel_tuning', 1), wired: false },
+  { id: 'craft_rod', category: 'crafting', nameKo: '로드 빌딩', nameEn: 'Rod Building', descKo: '커스텀 로드 제작 해금 (경도·길이 선택)', descEn: 'Unlocks custom rod building (choose action and length)', tier: 3, maxRank: 1, costPerRank: 2, requires: [{ id: 'craft_bp', rank: 1 }], effect: add('rod_building', 1), wired: true },
+  { id: 'craft_reel', category: 'crafting', nameKo: '릴 커스텀', nameEn: 'Reel Custom', descKo: '릴 기어비 튜닝 해금폭 확장', descEn: 'Wider reel gear-ratio tuning range', tier: 3, maxRank: 2, costPerRank: 1, requires: [{ id: 'craft_bp', rank: 1 }], effect: add('reel_tuning', 1), wired: true },
 ];
 
 /** 스킬 트리 총 비용 정본 — MAX_LEVEL(200) × 레벨당 1SP = 200pt ("만렙 = 전 스킬 마스터" 등식) */

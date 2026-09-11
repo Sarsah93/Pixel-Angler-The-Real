@@ -23,12 +23,12 @@ import type { RegionTerrain } from './RegionMap.js';
 export type MapObjectType =
   | 'tree' | 'rock' | 'stump' | 'well' | 'tidalRock' | 'farmPlot' | 'pier'
   | 'fence' | 'furniture' | 'aquarium_live' | 'aquarium_display'
-  | 'door' | 'busStop';
+  | 'door' | 'busStop' | 'clinic' | 'workbench';
 
 /** 상호작용 종류 (구현 전 예약 포함 — chop=벌목, mine=채굴, gather=해루질/채집, till=개간) */
 export type MapObjectInteract =
   | 'none' | 'chop' | 'mine' | 'gather' | 'till' | 'board'
-  | 'save' | 'storage' | 'aquarium' | 'door' | 'bus' | 'cook';
+  | 'save' | 'storage' | 'aquarium' | 'door' | 'bus' | 'cook' | 'clinic' | 'craft';
 
 /** 맵 오브젝트 인스턴스 — 초기 배치/플레이어 설치 공통 */
 export interface MapObject {
@@ -169,6 +169,18 @@ export const PLACEMENT_DEFS: Record<string, PlacementDef> = {
     rule: { footprint: { w: 4, h: 3 }, allowedTerrain: ['grass'], scope: ['exterior'] },
     collides: false, interact: 'till',
   },
+  /**
+   * 고급 제작대 (129차 P7) — 설치 후 근접 [F] 로 고급 도면(루어·에기·통발·로드·릴)을 연다.
+   * 기본 제작(U 창 '제작' 탭)은 설치 없이 되고, **이 제작대는 고급 품목 전용**이다(§2-5).
+   * ⚠ scope 는 **exterior 만**이다 — 실내 배치 모드가 아직 없다(44차 잔여: 스키마만 완비).
+   *   실내 작업대가 자연스럽긴 하나, 놓을 수 없는 곳을 목록에 띄우지 않는다.
+   *   설치 자체는 홈타운에서만 된다(`startPlacement` 규칙).
+   */
+  workbench: {
+    key: 'workbench', label: '고급 제작대', objectType: 'workbench',
+    rule: { footprint: { w: 2, h: 1 }, allowedTerrain: ['grass', 'land', 'sidewalk'], scope: ['exterior'] },
+    collides: true, interact: 'craft',
+  },
   fence: {
     key: 'fence', label: '울타리', objectType: 'fence',
     rule: { footprint: { w: 1, h: 1 }, allowedTerrain: ['grass', 'land'], scope: ['exterior'] },
@@ -285,6 +297,11 @@ export const HOMETOWN_OBJECTS: MapObject[] = [
   { instanceId: 'bus_stop', type: 'busStop', tx: 42, ty: 27, collides: true, interact: 'bus', movable: false, removable: false },
   // 우물
   { instanceId: 'well_1', type: 'well', tx: 31, ty: 10, collides: true, movable: false, removable: false },
+  // 보건소 (129차 P7 — 병원 진료. 구급품으로 못 고치는 감기·독감·생물중독은 여기서 치료한다)
+  //  ⚠ 출조 지역(속초 등)의 병원은 OSM 태그(amenity=hospital|clinic)를 받아와야 하는데
+  //    파이프라인 질의에 빠져 있었다 → 질의·POI_TAGS는 추가했고, 이미 구운 지역은
+  //    `tools/backfill_hospital_poi.py` 로 채운다(네트워크 필요). 홈타운은 절차 배치라 즉시 사용 가능.
+  { instanceId: 'clinic_1', type: 'clinic', tx: 37, ty: 9, fw: 2, fh: 2, collides: true, interact: 'clinic', movable: false, removable: false },
   // 선착장 (바다 위 — 추후 개인 보트 출조)
   { instanceId: 'pier_1', type: 'pier', tx: 9, ty: 13, fw: 5, fh: 1, collides: false, interact: 'board', movable: false, removable: false },
   // 숲 — 상단 (추후 벌목)

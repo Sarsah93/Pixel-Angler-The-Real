@@ -93,6 +93,7 @@ import { CoolerPanel } from '../ui/CoolerPanel.js';
 import { BikeComposite, RiderDir } from '../ui/BikeComposite.js';
 import { ShopPanel } from '../ui/ShopPanel.js';
 import { ConfirmDialog, QuantityDialog } from '../ui/Dialogs.js';
+import { AdvancedCraftPanel } from '../ui/AdvancedCraftPanel.js';
 import { paintHudPanel, paintTitlePlate } from '../ui/HudPanelStyle.js';
 import { DraggablePanel, applyScreenFixed, restoreHandCursor } from '../ui/DraggablePanel.js';
 import { InventoryStore, InvItem } from '../store/InventoryStore.js';
@@ -997,6 +998,7 @@ export class RegionFieldScene extends Phaser.Scene {
       restaurant:  [0xc9a877, 0x7d4f2c, 0xb06a3b, 0xffcf6b],  // 목조 식당
       cafe:        [0xe3d5bd, 0x8a6a44, 0xc8a060, 0x6f523a],  // 베이지 카페
       pub:         [0x5c4a6e, 0x33263f, 0x7b5cd6, 0xffd24a],  // 어두운 주점 + 등불
+      pharmacy:    [0xeceff2, 0x2f7f5e, 0x4fc38a, 0xff6b6b],  // 흰 벽 + 초록 십자 간판 약국
     };
     const [wall, roof, sign, accent] = palette[kind];
     const W = 44, H = 42;
@@ -1066,12 +1068,14 @@ export class RegionFieldScene extends Phaser.Scene {
     if (poi.type === 'restaurant') return 'restaurant';
     if (poi.type === 'cafe') return 'cafe';
     if (poi.type === 'market') return 'market';
+    if (poi.type === 'pharmacy') return 'pharmacy';   // 129차 P7 — 구급품·제작 재료 판매
     if (poi.type === 'shop') {
       const k = poi.shopKind ?? '';
       if (k === 'convenience') return 'convenience';
       if (k === 'supermarket' || k === 'grocery' || k === 'greengrocer') return 'mart';
       if (k === 'seafood' || k === 'fishery' || k === 'fishing') return 'market';
       if (k === 'alcohol' || k === 'beverages' || k === 'pub') return 'pub';
+      if (k === 'chemist' || k === 'medical_supply' || k === 'herbalist') return 'pharmacy';
       return null;
     }
     return null;
@@ -1841,10 +1845,11 @@ export class RegionFieldScene extends Phaser.Scene {
     });
     // E = 장비창 전용 · F = 상호작용 (122차 — 사용자 지시: E가 장비창과 혼용되던 것을 분리)
     this.input.keyboard!.on('keydown-E', () => { if (!this.isPaused) this.toggleEquipment(); });
-    this.input.keyboard!.on('keydown-F', () => {
+    this.input.keyboard!.on('keydown-F', (ev: KeyboardEvent) => {
       if (this.isPaused || this.uiBlocked) return;
-      // 홈타운 오브젝트(문/버스/설치물 회수) > 건물 거래 > 채집 스팟 > 통발
-      if (this.nearObject) this.interactWithObject(this.nearObject);
+      // 홈타운 오브젝트(문/버스/설치물) > 건물 거래 > 채집 스팟 > 통발
+      //  Shift+F = 설치물 회수 (기능이 있는 설치물은 [F]가 기능을 연다 — 129차)
+      if (this.nearObject) this.interactWithObject(this.nearObject, ev.shiftKey);
       else if (this.nearBuilding) this.promptTrade(this.nearBuilding.kind);
       else if (this.forage?.onInteractKey()) { /* 채집 홀드 시작 */ }
       else if (this.trapField?.onInteractKey()) { /* 통발 수거 확인 */ }
@@ -2765,7 +2770,7 @@ export class RegionFieldScene extends Phaser.Scene {
     }
     const NEON: Record<BuildingKind, number> = {
       convenience: 0x35ff7a, mart: 0xffa040, market: 0xff5555,
-      restaurant: 0xffcf6b, cafe: 0xffe2a8, pub: 0xc27cff,
+      restaurant: 0xffcf6b, cafe: 0xffe2a8, pub: 0xc27cff, pharmacy: 0x4fffb0,
     };
     for (const b of this.buildings) {
       const facadeDepth = 16 + b.y * 0.001;
@@ -3181,6 +3186,30 @@ export class RegionFieldScene extends Phaser.Scene {
         g.lineStyle(1.5, 0x5cd0ff, 1); g.strokeRoundedRect(2, 2, 22, 12, 3);
         break;
       }
+      case 'workbench': {
+        // 고급 제작대 — 작업대 상판 + 다리 + 공구 실루엣(바이스·망치 머리). 글자 배지 없음.
+        w = fw * TR; h = 26;
+        g.fillStyle(0x6a4a2c, 1); g.fillRect(0, 8, w, 8);                  // 상판
+        g.fillStyle(0x8a6a44, 1); g.fillRect(0, 8, w, 3);                  // 상판 하이라이트
+        g.fillStyle(0x4a3420, 1);
+        g.fillRect(3, 16, 4, 10); g.fillRect(w - 7, 16, 4, 10);            // 다리
+        g.fillStyle(0x9aa3ac, 1); g.fillRect(8, 2, 5, 6);                  // 바이스
+        g.fillStyle(0xc0c7ce, 1); g.fillRect(w - 20, 3, 9, 4);             // 망치 머리
+        g.fillStyle(0x6a4a2c, 1); g.fillRect(w - 13, 3, 2, 6);             // 망치 자루
+        break;
+      }
+      case 'clinic': {
+        // 보건소 (129차 P7) — 흰 벽 + 초록 십자. 간판 글자 대신 **그림 기호**(AGENTS §4 픽셀 아이콘 원칙)
+        w = fw * TR; h = fh * TR + 10;
+        g.fillStyle(0xeceff2, 1); g.fillRect(2, 12, w - 4, h - 12);        // 벽체
+        g.fillStyle(0x2f7f5e, 1); g.fillRect(0, 6, w, 8);                  // 지붕 밴드
+        g.fillStyle(0xc9d4dc, 1); g.fillRect(5, 20, 9, 8); g.fillRect(w - 14, 20, 9, 8);  // 창
+        g.fillStyle(0x5a3a22, 1); g.fillRect(w / 2 - 5, h - 14, 10, 14);   // 문
+        // 초록 십자 (간판)
+        g.fillStyle(0x4fc38a, 1);
+        g.fillRect(w / 2 - 2, 1, 4, 10); g.fillRect(w / 2 - 5, 4, 10, 4);
+        break;
+      }
       case 'door': {
         w = 16; h = 22;
         g.fillStyle(0x5a3a22, 1); g.fillRect(0, 0, 16, 22);
@@ -3258,23 +3287,36 @@ export class RegionFieldScene extends Phaser.Scene {
     }
   }
 
+  /** 설치물이 **기능**을 가졌는가 (회수만 되는 울타리 등과 구분) */
+  private hasFunction(o: MapObject): boolean {
+    return !!o.interact && o.interact !== 'none';
+  }
+
   private objInteractLabel(o: MapObject): string {
-    if (o.placedByPlayer && o.removable) return '[F] 회수';
+    // ⚠ 129차 수정: 구 코드는 플레이어 설치물이면 **무조건 '[F] 회수'** 를 반환해
+    //   기능이 있는 설치물(고급 제작대·수조)을 영영 열 수 없었다. 기능이 있으면
+    //   [F] = 기능 · [Shift+F] = 회수로 나눈다.
+    if (o.placedByPlayer && o.removable && !this.hasFunction(o)) return '[F] 회수';
     switch (o.interact) {
       case 'door': return '[F] 집으로 들어가기';
       case 'bus': return '[F] 출조 버스 (전국 지도)';
-      case 'aquarium': return '[F] 수조 열기';
+      case 'aquarium': return o.placedByPlayer ? '[F] 수조 열기 · [Shift+F] 회수' : '[F] 수조 열기';
       case 'chop': return '[F] 벌목 (추후)';
       case 'mine': return '[F] 채굴 (추후)';
       case 'gather': return '[F] 채집 (추후)';
       case 'board': return '[F] 보트 (추후)';
+      case 'clinic': return '[F] 보건소 진료';
+      case 'craft': return o.placedByPlayer ? '[F] 고급 제작대 · [Shift+F] 회수' : '[F] 고급 제작대';
       default: return '[F]';
     }
   }
 
-  private interactWithObject(o: MapObject): void {
-    // 플레이어 설치물 회수 (설치의 역방향 — 아이템 반환 + 충돌 재베이크)
-    if (o.placedByPlayer && o.removable) { this.recoverPlacedObject(o); return; }
+  private interactWithObject(o: MapObject, recover = false): void {
+    // 플레이어 설치물 회수 (설치의 역방향 — 아이템 반환 + 충돌 재베이크).
+    // 기능이 있는 설치물은 **Shift+F 로만** 회수한다(그냥 [F]는 기능을 연다).
+    if (o.placedByPlayer && o.removable && (recover || !this.hasFunction(o))) {
+      this.recoverPlacedObject(o); return;
+    }
     switch (o.interact) {
       case 'door': this.enterHomeInterior(); break;
       case 'bus': this.exitToWorldMap(); break;
@@ -3285,8 +3327,62 @@ export class RegionFieldScene extends Phaser.Scene {
       case 'mine': this.floatingHint('채굴은 추후 — 곡괭이가 필요합니다'); break;
       case 'gather': this.floatingHint('갯바위 채집은 추후 개방됩니다'); break;
       case 'board': this.floatingHint('개인 보트 출조는 추후 개방됩니다'); break;
+      case 'clinic': this.openClinic(); break;
+      case 'craft': this.openAdvancedCraft(); break;
       default: break;
     }
+  }
+
+  /** 고급 제작대 [F] — 도면 목록은 U 창 '제작' 탭과 같은 보드를 station만 바꿔 쓴다 */
+  private openAdvancedCraft(): void {
+    this.openPopup((close) => new AdvancedCraftPanel(this, GAME_WIDTH / 2 - 430, 96, {
+      onClose: close,
+      onCrafted: () => this.events.emit('inventory-changed'),
+    }));
+  }
+
+  /**
+   * 보건소 진료 (129차 P7) — 구급품으로 못 고치는 `cure: 'hospital'` 계열(독감·이상고열 등)을
+   * 진료비를 내고 치료하고, 체력을 전량 회복한다. 감기·탈진처럼 휴식(`rest`)으로 낫는 것도
+   * 같이 봐준다 — 실제 의원의 동작이고, "병원까지 갔는데 하나만 고쳐준다"가 더 이상하다.
+   * ⚠ 수면(침대)과 달리 **저장하지 않는다**(126차 규칙 — 침대 저장 정책 불침범).
+   */
+  private openClinic(): void {
+    const fee = TUNING.craft.hospitalFee;
+    const treatable = GameState.statuses.filter((a) => {
+      const d = getStatusEffect(a.id);
+      return d?.cure === 'hospital' || d?.cure === 'rest';
+    });
+    const v = GameState.vitals;
+    const hurt = v.hp < v.maxHp;
+    if (treatable.length === 0 && !hurt) {
+      this.floatingHint('지금은 진료가 필요하지 않습니다');
+      return;
+    }
+    const what = treatable.length > 0
+      ? `${treatable.map((a) => getStatusEffect(a.id)?.nameKo ?? a.id).join(' · ')} 치료`
+      : '체력 회복';
+    this.openPopup((close) => new ConfirmDialog(
+      this,
+      `보건소 진료 — ${what}\n진료비 ${fee.toLocaleString()}원을 지불하시겠습니까?`,
+      () => {
+        close();
+        if (GameState.player.inventory.coins < fee) {
+          this.floatingHint(`진료비가 부족합니다 (${fee.toLocaleString()}원 필요)`);
+          return;
+        }
+        GameState.player.inventory.coins -= fee;
+        const cured = [
+          ...GameState.applyRemedy('hospital', 1.5).cured,
+          ...GameState.applyRemedy('rest', 1.5).cured,
+        ];
+        GameState.applyIntake(0, 0, v.maxHp);        // 체력 전량 회복
+        GameState.markDirty();
+        this.hud?.pushLog(`[보건소] 진료 완료 — ${cured.length > 0 ? `${cured.length}건 치료 · ` : ''}체력 회복 (−${fee.toLocaleString()}원)`);
+        this.floatingHint('진료를 받았습니다 — 몸이 한결 가볍다');
+      },
+      close,
+    ));
   }
 
   /** 집 문 → 실내 (pause + launch — 복귀는 stop + resume 규칙) */

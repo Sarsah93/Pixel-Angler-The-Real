@@ -40,8 +40,8 @@ QUERY_TMPL = """
   way["highway"]({bbox});
   way["man_made"~"^(breakwater|pier|groyne|quay)$"]({bbox});
   node["man_made"="lighthouse"]({bbox});
-  node["amenity"~"^(toilets|police|ferry_terminal|fuel|restaurant|cafe|fast_food|marketplace|bank|pharmacy)$"]({bbox});
-  way["amenity"~"^(toilets|police|ferry_terminal|marketplace)$"]({bbox});
+  node["amenity"~"^(toilets|police|ferry_terminal|fuel|restaurant|cafe|fast_food|marketplace|bank|pharmacy|hospital|clinic|doctors)$"]({bbox});
+  way["amenity"~"^(toilets|police|ferry_terminal|marketplace|hospital|clinic|doctors)$"]({bbox});
   node["shop"]({bbox});
   way["shop"]({bbox});
   node["tourism"~"^(information|viewpoint|hotel|guest_house)$"]({bbox});

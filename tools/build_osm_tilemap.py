@@ -49,6 +49,10 @@ POI_TAGS = [
     ('amenity', 'restaurant', 'restaurant'), ('amenity', 'cafe', 'cafe'),
     ('amenity', 'fast_food', 'restaurant'), ('amenity', 'marketplace', 'market'),
     ('amenity', 'bank', 'bank'), ('amenity', 'pharmacy', 'pharmacy'),
+    # 129차 P7 — 병원 진료(감기·독감·생물중독). 구 질의에 빠져 있어 이미 구운 지역은
+    # tools/backfill_hospital_poi.py 로 채운다(재빌드 불필요).
+    ('amenity', 'hospital', 'hospital'), ('amenity', 'clinic', 'hospital'),
+    ('amenity', 'doctors', 'hospital'),
     ('man_made', 'lighthouse', 'lighthouse'), ('tourism', 'information', 'info'),
     ('tourism', 'viewpoint', 'viewpoint'), ('tourism', 'hotel', 'lodging'),
     ('tourism', 'guest_house', 'lodging'), ('leisure', 'fishing', 'fishing_spot'),

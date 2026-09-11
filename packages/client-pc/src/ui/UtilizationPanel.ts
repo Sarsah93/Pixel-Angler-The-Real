@@ -48,6 +48,7 @@ import { ConfirmDialog } from './Dialogs.js';
 import { makeFishPreview } from './FishTemplateRenderer.js';
 import { butcherFamilyOf } from './PixelButcherFish.js';
 import { createItemIcon } from './ItemIcon.js';
+import { CraftBoard } from './CraftBoard.js';
 import { GameState } from '../store/GameState.js';
 
 /** 루어 세부 종류 → 라벨 (2단계 트리) */
@@ -69,7 +70,7 @@ const SINK_LABEL: Record<string, string> = {
   fast_sinking: '초고속 싱킹 (빠른 하강)',
 };
 
-export type UtilizationTab = 'cooking' | 'tackles' | 'chum';
+export type UtilizationTab = 'cooking' | 'tackles' | 'chum' | 'craft';
 
 const PANEL_W = 1080;
 const PANEL_H = 620;
@@ -106,6 +107,8 @@ export class UtilizationPanel extends DraggablePanel {
   private tabBgs = new Map<UtilizationTab, Phaser.GameObjects.Graphics>();
   private tabTexts = new Map<UtilizationTab, Phaser.GameObjects.Text>();
   private bodyContainer!: Phaser.GameObjects.Container;
+  /** 제작 보드 (129차 P7) — 씬 레벨 휠 핸들러를 잡으므로 탭 전환·파괴 시 반드시 destroy */
+  private craftBoard?: CraftBoard;
   private chooser?: Phaser.GameObjects.Container;
   /** 열린 선택 리스트의 휠 스크롤 핸들러 (닫을 때 해제) */
   private chooserWheel?: (p: Phaser.Input.Pointer, go: unknown, dx: number, dy: number) => void;
@@ -199,6 +202,7 @@ export class UtilizationPanel extends DraggablePanel {
       { id: 'cooking', label: '요리하기 (Cooking)' },
       { id: 'tackles', label: '채비하기 (Tackles)' },
       { id: 'chum',    label: '밑밥 품질 (Chum)' },
+      { id: 'craft',   label: '제작 (Crafting)' },
     ];
     const tabW = 180, tabH = 34;
     const ty = this.contentTop + 4;
@@ -214,6 +218,7 @@ export class UtilizationPanel extends DraggablePanel {
       const hit = this.scene.add.rectangle(tx + tabW / 2, ty + tabH / 2, tabW, tabH, 0xffffff, 0.001)
         .setInteractive({ useHandCursor: true });
       hit.on('pointerdown', () => {
+        if (def.id !== 'craft') { this.craftBoard?.destroy(); this.craftBoard = undefined; }
         this.currentTab = def.id;
         this.closeChooser();
         this.paintTabs();
@@ -227,7 +232,7 @@ export class UtilizationPanel extends DraggablePanel {
   private paintTabs(): void {
     const tabW = 180, tabH = 34;
     const ty = this.contentTop + 4;
-    (['cooking', 'tackles', 'chum'] as UtilizationTab[]).forEach((id, i) => {
+    (['cooking', 'tackles', 'chum', 'craft'] as UtilizationTab[]).forEach((id, i) => {
       const tx = 20 + i * (tabW + 8);
       const g = this.tabBgs.get(id)!;
       const selected = id === this.currentTab;
@@ -244,6 +249,7 @@ export class UtilizationPanel extends DraggablePanel {
     this.bodyContainer.removeAll(true);
     if (this.currentTab === 'tackles') this.renderTackles();
     else if (this.currentTab === 'chum') this.renderChumMixing();
+    else if (this.currentTab === 'craft') this.renderCrafting();
     else this.renderCooking();
     // 마지막 방어선 — 어떤 텍스트도 패널 우측 경계 밖으로 못 나간다 (117차 피드백 5)
     enforceTextBounds(this.bodyContainer, PANEL_W - 20, 'UtilizationPanel');
@@ -2097,6 +2103,21 @@ export class UtilizationPanel extends DraggablePanel {
   /** 밑밥 통 히트 영역 (패널 로컬 좌표) */
   private static readonly CHUM_BOX = { x: 40, y: 120, w: 460, h: 240 };
 
+  // ═══════════════════════════════════════════════════
+  // 제작 (Crafting) — 핸드크래프팅 보드 (129차 P7 · SPEC §2-5)
+  //  기본 제작은 **조건 없이** 여기서 한다. 고급 품목은 설치한 제작대에서 [F].
+  // ═══════════════════════════════════════════════════
+  private renderCrafting(): void {
+    this.craftBoard?.destroy();
+    const top = this.contentTop + 52;
+    this.craftBoard = new CraftBoard(this.scene, this.bodyContainer, {
+      station: 'hand',
+      x: 20, y: top, w: PANEL_W - 40, h: PANEL_H - top - 16,
+      onCrafted: () => this.scene.events.emit('inventory-changed'),
+    });
+    this.craftBoard.render();
+  }
+
   private renderChumMixing(): void {
     // 밑밥 통은 쿨러(기타 아이템)에 딸린 기능 — 쿨러 미보유 시 배합 비활성
     if (!InventoryStore.hasCooler()) {
@@ -2576,6 +2597,8 @@ export class UtilizationPanel extends DraggablePanel {
       for (const p of this.plateState.quads.flat()) InventoryStore.addItem({ ...p.tmpl }, 1);
       this.plateState = null;
     }
+    this.craftBoard?.destroy();
+    this.craftBoard = undefined;
     this.butcheryPanel?.destroy();
     this.butcheryPanel = undefined;
     this.sashimiPanel?.destroy();

@@ -95,6 +95,12 @@ export { SHORE_CREATURE_DATABASE, getCreatureById, getCreaturesByCategory, getCr
 export type { ShoreCreature } from './db-schema/ShoreCreatureDatabase.js';
 export { TRAP_DATABASE, getTrapById, getTrapsByType } from './db-schema/TrapDatabase.js';
 export { RECIPE_DATABASE, getRecipeById, getRecipesByLocation, getRecipesByIngredient } from './db-schema/RecipeDatabase.js';
+// 제작 도면 (P7 — 요리와 분리된 별도 DB)
+export type { CraftStation, CraftGroup, CraftMaterial, CraftBlueprint } from './db-schema/CraftingDatabase.js';
+export {
+  CRAFT_BLUEPRINTS, CRAFT_GROUP_LABEL, blueprintsFor, getBlueprint,
+  craftSuccessRate, materialSaveChance,
+} from './db-schema/CraftingDatabase.js';
 export { ANGLER_APP_REGIONS, TIDAL_CHARACTERISTICS, getRegionByCode, getRegionsByProvince, getRegionsByTidalCharacteristic, getAnglerAppRegions } from './db-schema/AnglerAppSpots.js';
 export type { AnglerAppRegion } from './db-schema/AnglerAppSpots.js';
 export { LICENSE_DATABASE, LICENSE_CATEGORY_LABEL, LICENSE_CATEGORY_ORDER, getLicenseByType, checkUnlockRequirements } from './types/License.js'; // Note: Defined directly inside types/License.ts

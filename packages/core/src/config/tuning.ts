@@ -515,6 +515,19 @@ export interface TuningConfig {
     sleepHydrationCost: number;
   };
   /** 상태이상 (125차 — SPEC §5. 시간은 활동 시간 기준 분) */
+  /** 제작·구급품 (129차 P7) */
+  craft: {
+    /** 제작 실패 시 소모되는 재료 비율 (0.5 = 절반만 날린다) */
+    failMaterialPct: number;
+    /** 상비약 1개가 앞당기는 자연치유 시간(활동 분) */
+    medicineShortenMin: number;
+    /** 붕대·부목 기본 재발 억제 — `life_firstaid`와 곱해진다 */
+    medicRelapseMult: number;
+    /** 고급 제작대 판매가(원) */
+    workbenchPrice: number;
+    /** 병원 진료비(원) — 이상고열·독감·생물중독 처치 */
+    hospitalFee: number;
+  };
   status: {
     /** 진행 체인(오한→감기→독감 등) 판정 주기(활동 분) */
     progressRollMin: number;
@@ -729,6 +742,10 @@ export const TUNING: TuningConfig = {
     hotC: 28, hotHydrationMult: 1.5, coldC: 5, coldHungerMult: 1.3, coldResistBufferC: 2,
     sleepFatigueTo: 0, sleepHpPct: 0.5, sleepHungerCost: 10, sleepHydrationCost: 10,
   },
+  craft: {
+    failMaterialPct: 0.5, medicineShortenMin: 60, medicRelapseMult: 1,
+    workbenchPrice: 180_000, hospitalFee: 45_000,
+  },
   status: {
     progressRollMin: 30, progressChance: 0.35, selfHealMin: 90,
     relapseBleed: 0.3, relapseFracture: 0.25, recoveryMin: 30, exhaustClearPct: 50,
@@ -775,6 +792,10 @@ export interface TuningParamMeta {
   category: 'feel' | 'balance'; label: string;
 }
 export const TUNING_META: TuningParamMeta[] = [
+  // ── 제작·구급품 (129차 P7) ──
+  { path: 'craft.failMaterialPct', min: 0, max: 1, step: 0.05, category: 'balance', label: '제작 실패 재료 소모율' },
+  { path: 'craft.medicineShortenMin', min: 0, max: 120, step: 5, category: 'balance', label: '상비약 치유 단축(분)' },
+  { path: 'craft.hospitalFee', min: 0, max: 200_000, step: 5000, category: 'balance', label: '병원 진료비(원)' },
   // ── 날씨 → 캐스팅·채비 (127차) ──
   { path: 'castWeather.calmMs', min: 0, max: 8, step: 0.5, category: 'balance', label: '바람 무시 임계(m/s)' },
   { path: 'castWeather.distPerMs', min: 0, max: 0.12, step: 0.005, category: 'balance', label: '맞바람 비거리 감소/ms' },

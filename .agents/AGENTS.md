@@ -394,7 +394,30 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류 (2026-08-09)
 > "지금 무엇이 어디까지 되어 있나"는 **`docs/wiki/README.md` 대시보드**와 `02-SYSTEMS/*.md`를 본다.
 > 80차 이하 원문은 아래에 **그대로 보존**(불변 원장) — 구조화 인덱스는 `03-WORKLOG/README.md` §3.1.
 
-**최근 변경 (2026-09-10 128차) — 상태이상·생존 지표 픽셀 아이콘화 + 앵커 호버 팝업** (사용자 피드백 2건 — 실렌더 20/20·pageerror 0, 빌드 3/3·typecheck 0):
+**최근 변경 (2026-09-11 129차) — 성장·생존 P7: 제작 시스템 + 구급품·보건소 + 피로 회복 음식** (사용자 지시 — core 32/32·실렌더 36/36·pageerror 0, 빌드 3/3·typecheck 0):
+
+- **제작 2단 구조**(스펙 §2-5) — core `CraftingDatabase` **도면 14종**(hand 8 / workbench 6 ·
+  성공률·재료 절약 수식) + client `CraftingStore`·`CraftOutputs` + **`CraftBoard` 공유**
+  (U 창 **'제작' 탭** ↔ **고급 제작대 [F] 팝업**). 제작 스킬 카테고리 **잠금 해제** · 실배선 24 → **33/83**.
+  ⚠ 스펙은 "도면 12종"이라 적혀 있으나 §2-5 품목을 다 만들면 14종 — **숫자에 맞추지 않고 14종으로** 구현.
+- **치료 수단 실물화** — **약국** 신설(멸균 붕대·의료용 부목·종합 상비약 + 재료 2) · 제작 구급품 3종 ·
+  `GameState.applyRemedy(kind, quality)`(cure 종류 매칭 치료 + 재발 롤 + 자연치유 단축) ·
+  **홈타운 보건소 [F] 진료**(`TUNING.craft.hospitalFee` 45,000원 → hospital·rest 계열 치료 + HP 전량).
+- **피로 회복 음식(사용자 결정 (b))** — 일반 음식 0 · 국물류/커피 8~20 · **보양식 30~40 + 드레인 감소 버프** ·
+  **카페인 리바운드**(즉시 −20 → 활동 2시간 뒤 +10). **수면(피로 0 전량)과 경쟁하지 않는다.**
+  수치는 **`data/ItemVitals.ts` 단일 테이블** — 상점·시드·**세이브 로드 백필**이 같은 테이블을 읽는다
+  (카탈로그 리터럴에만 적으면 구세이브 아이템에 영영 반영 안 됨 — 53차 회칼 함정).
+- ⚠ **실버그 3건**: ① `interactWithObject`가 `placedByPlayer && removable`이면 **무조건 회수**라
+  기능 있는 설치물(제작대·**수조**)을 열 수 없었다 → **[F] = 기능 · [Shift+F] = 회수**
+  ② 통발 도면 재료·산출 id가 `inv_trap_<specId>` 규칙과 불일치(3건) ③ `life_firstaid`는 **add 모드**인데
+  `skillMult`로 읽어 항상 1 → `skillBonus`로 교체.
+- 신규 아이템 26종은 **전부 픽셀 아이콘** — `tools/gen_pixel_icons.py` 아트 15종 신설(13 → 28) +
+  `iconTexture: 'px:<키>'` 경로(`ItemIcon`·`ItemDetailPanel`).
+- 병원 POI: OSM 질의·`POI_TAGS`에 `hospital|clinic|doctors` 추가 + `tools/backfill_hospital_poi.py` 신설.
+  ⚠ **원격 세션은 Overpass가 egress 정책으로 차단**(실측 403) — 네트워크 열린 곳에서 1회 실행 필요.
+- 상세: `docs/wiki/03-WORKLOG/2026-09-11-129-crafting-firstaid-fatigue-food.md`
+
+**이전 변경 (2026-09-10 128차) — 상태이상·생존 지표 픽셀 아이콘화 + 앵커 호버 팝업** (사용자 피드백 2건 — 실렌더 20/20·pageerror 0, 빌드 3/3·typecheck 0):
 
 - **규칙 정정(사용자)**: 이모지 금지의 본뜻은 **① 이모지 ② "[아이콘] [타이틀]"식 텍스트 장식**이고,
   **시각 아이콘 자체는 금지 대상이 아니다**. 126차의 텍스트 약어 배지(`식`/`FP`)는

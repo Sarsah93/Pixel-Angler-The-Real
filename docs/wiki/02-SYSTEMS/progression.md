@@ -1,8 +1,9 @@
 # S21 진행 — 면허 · 스킬 · 일지 (L / K / J)
 
-> 신설 2026-09-09 (122차) · 124차 P1 · 125차 P2 · **126차 P3·P4** 반영. 상태 🔶 —
+> 신설 2026-09-09 (122차) · 124 P1 · 125 P2 · 126 P3·P4 · 127 P5·P6 · **129차 P7** 반영. 상태 🔶 —
 > **레벨 200 곡선 + XP + 트리 83노드(Σ=200pt)** · **생존 지표 4종 · 상태이상 11종** ·
-> **상태 패널 노출 + 기절·사망 FSM** 가동. 스킬 효과 실배선은 13/83 · 치료 수단은 P5·P7 미착수.
+> **상태 패널 + 기절·사망 FSM** · **제작 14도면 + 구급품·보건소 치료** 가동.
+> 스킬 효과 실배선 **33/83** · 스펙 P1~P7 완료 (남은 것 = P8 퀘스트 XP · P9 도움말).
 
 ## 1. 목적·범위
 
@@ -21,6 +22,12 @@
 | core 계약 | `types/Vitals.ts` | `VitalsState`(HP·피로·허기·수분) · 활동 드레인 6종 · 행동 비용 8종 · 임계 20% · 온도 계수 · 수면 | ✅ 125 |
 | core 계약 | `types/StatusEffects.ts` | 11종 정의(Ko/En) · `aggregateStatus` · `tickStatuses`(진행 체인·자연치유) · `cureStatus`(재발) | ✅ 125 |
 | core 튜닝 | `config/tuning.ts` `vitals`·`status` | 드레인·비용·임계·온도·수면 / 진행 주기·확률·자연치유·재발·회복기 | ✅ 125 |
+| core 데이터 | `db-schema/CraftingDatabase.ts` | 도면 **14종**(hand 8 / workbench 6) · `CraftBlueprint{materials,outputId,baseSuccess,xp,requiresSkill}` · `craftSuccessRate`·`materialSaveChance` | ✅ 129 |
+| core 튜닝 | `config/tuning.ts` `craft` | 실패 재료 소모율 · 상비약 치유 단축 · 재발 배율 · 제작대 가격 · **진료비** + F8 3종 | ✅ 129 |
+| client 데이터 | `data/ItemVitals.ts` | 소모품 효과 **단일 테이블**(음식 회복치·보양식 버프·카페인 리바운드·구급품) — 상점·시드·**세이브 백필** 공유 | ✅ 129 |
+| client 데이터 | `data/CraftOutputs.ts` | 산출 id → 인벤토리 템플릿 (상점에 있는 물건은 카탈로그 재사용) | ✅ 129 |
+| client 상태 | `store/CraftingStore.ts` | 재료 판정(`itemId`/`speciesId`/`byproductKind`)·소비·성공 롤·XP·행동 비용 | ✅ 129 |
+| client UI | `ui/CraftBoard.ts` · `ui/AdvancedCraftPanel.ts` | 제작 보드(좌 도면 › 우 상세·수량·제작) — **U '제작' 탭과 고급 제작대 팝업이 공유** | ✅ 129 |
 | core 계약 | `types/License.ts` | `LicenseCategory` 6군(낚시·해루질·통발·토지/주거·선박/어업·사업) · 16종(122차 +7) · `nameEn/descriptionEn/plannedNote` | ✅ 122 |
 | client 상태 | `store/GameState.ts` | `skillTree` 세이브 · `canLearnSkill/learnSkill` · `skillMult/skillBonus` · **`grantXp`·`addActivityXp`·`addLawfulReleaseXp`** · **`vitals`/`maxHp`/`maxFatigue`·`tickVitals`·`applyVitalsAction`·`applyIntake`·`sleepRecover`·`statuses`·`moveSpeedMult`** | ✅ 122·124·125 |
 | client 배선 | `RegionFieldScene`·`FirstPersonFishingScene`·`ForageSystem`·`HomeInteriorScene`·`InventoryPanel` | 드레인 틱(활동 자동 판정) · 행동 비용 5곳 · 음식 회복치 · 침대 수면 · 채집 부상 → 상태이상 승격 | ✅ 125 |
@@ -61,13 +68,13 @@ learnSkill(id): ranks[id]++ · markDirty   (세이브 `skillTree`)
 | **레벨 200 곡선 + 어획/활동 XP (스펙 P1)** | ✅ | 124 — `Progression.ts`·`grantXp`·배선 4곳 |
 | **트리 83노드 Σ=200 + 제작 카테고리(잠금)** | ✅ | 124 — 기존 44노드 id·비용 보존(세이브 호환) |
 | 스킬 패널(트리·선행선·상세·배우기) | ✅ | 122 · 124(행 간격 동적 압축 — 티어 6노드) |
-| 스킬 효과 실배선 | 🔶 **24/83** | 122(13) · **127(+11 — 생활 6·채집 속도·정투·바람 읽기, 스펙 P5)** |
+| 스킬 효과 실배선 | 🔶 **33/83** | 122(13) · 127(+11) · **129(+9 — 제작 성공률·재료 절약·구급품 품질·도면 해금)** |
 | 면허 카테고리화 + 신규 7종 + 패널 재작성(스크롤) | ✅ | 122 |
 | 신규 면허 효과 배선 | 🔶 1/7 | 어촌계원만 · 나머지 '예정' |
 | 일지 패널 골격(스토리·메인/서브) | ✅ | 122 |
 | 스토리·퀘스트 본편 | ⬜ | S17 — 사용자 방침 "모든 컴포넌트 후" |
 | 농사 카테고리 해제 | ⬜ | 농장 경영(S8 E1~) 착수 시 `locked: false` |
-| 제작 카테고리 해제 | ⬜ | U 창 '제작' 탭(스펙 P7) 구현 시 `locked: false` |
+| **제작 카테고리 해제** | ✅ | 129 — `locked` 제거 + 제작 스킬 9종 `wired: true` |
 | **생존 지표 4종 + 상태이상 11종 (스펙 P2)** | ✅ | 125 — core 2종 + 세이브 + 배선 9곳 |
 | **상태 패널 '대' 개편(경험치·허기/수분 바·호버 팝업·상태이상 스트립)** | ✅ | 126 — `barRects` 단일 소스 · '중/소' 회귀 0 |
 | **기절·사망 FSM + 연출** | ✅ | 126 — `CollapseOverlay` · `TUNING.collapse` · 눕기 스프라이트는 플레이스홀더 |
@@ -75,16 +82,25 @@ learnSkill(id): ranks[id]++ · markDirty   (세이브 `skillTree`)
 | **스킬 포인트 환급(리스펙)** | ✅ | 127 — '조업 재교육 이수증'(직판장 20만원) → `GameState.resetSkills` |
 | 도움말 `cast-scatter` planned → ready | ✅ | 127 — P9의 부분 선반영(구현된 토픽만) |
 | **상태이상·생존 지표 픽셀 아이콘 + 앵커 호버 팝업** | ✅ | 128 — `PixelIconArt` 13종 · `StatusBadge.icon` · 텍스트 약어 제거 |
-| 상태이상 치료 아이템·병원 POI | ⬜ | P7 — 붕대/부목/상비약 + `amenity=hospital` |
+| **제작 시스템 (스펙 P7)** | ✅ | 129 — 도면 14종 · U '제작' 탭 · 고급 제작대 설치물 + [F] |
+| **구급품 3종 + 상태이상 치료 배선** | ✅ | 129 — 약국 판매 + 제작 · `GameState.applyRemedy` |
+| **병원(보건소) 진료** | 🔶 홈타운만 | 129 — 홈타운 보건소 ✅ / **출조 지역 POI는 OSM 백필 대기**(네트워크) |
+| **피로 회복 음식 + 보양식 버프 + 카페인 리바운드** | ✅ | 129 — 사용자 결정 (b) · 활동 시간 기준 |
+| 제작 재료 수급 (벌목·채굴·약초 채집) | ⬜ | 현재 전부 상점 구매 — 채집 시스템 확장 시 이관 |
+| 커스텀 로드·릴의 실제 성능치 | ⬜ | 템플릿만 — `GearSpecs` 물리값 연결 미착수 |
+| 스킬 트리 확장 (a)(c)(d)(e) | ⬜ | **사용자 결정 — P7 이후 별도 차수**(생활 스킬 상한↑·행동력 미소비·해제 조건 티어화·시너지 히든) |
 
 ## 5. 잔여·차기
 
-- **확장 정본 = `.agents/PROGRESSION_SURVIVAL_SPEC.md`(123차 v2 · 124차 제작 정정)** — P1~P6 완료.
-  **다음 = P7 제작(U '제작' 탭 핸드크래프팅 + 고급 제작대 [F]) → P8 퀘스트 XP → P9 도움말 ready 전환**.
+- **확장 정본 = `.agents/PROGRESSION_SURVIVAL_SPEC.md`(123차 v2 · 124차 제작 정정)** — **P1~P7 완료**.
+  **다음 = 스킬 트리 확장 차수(사용자 결정 (a)(c)(d)(e)) → P8 퀘스트 XP → P9 도움말 ready 전환**.
   이후 대과제(사용자 확정 2026-09-10): 통발 심화 → 불요리 → 농장.
+- **출조 지역 병원 POI 백필 1회 필요** — `py tools/backfill_hospital_poi.py sokcho_v2`
+  (Overpass 접근이 되는 환경에서. 129차 원격 세션은 egress 정책으로 차단됐다).
+- 미배선 제작 효과 3종(`trap_durability`·`lure_tuning`·`egi_tuning`) — 통발 내구·루어 편차 시스템 대기.
 - **눕기 전용 스프라이트 대기** — 눈 감은 2프레임(man/girl). 현재는 idle 90° 회전 + 호흡 스케일 플레이스홀더.
-- 스킬 59종 배선 대기(24/83) — 제작 12종은 P7, 농사는 농장 단계, 요리 계열은 불요리 단계에 `effect.key` 소비.
-- 음식 회복치는 대표 14종만 입력(전수 일괄은 P9) · 요리·제작 행동 비용은 P7 이후.
+- 스킬 50종 배선 대기(33/83) — 농사는 농장 단계, 요리 계열은 불요리 단계에 `effect.key` 소비.
+- 음식 회복치는 `data/ItemVitals.ts`에 상점 전 품목 입력(129차) — 요리 산출물(조리 음식)은 불요리 단계에 추가.
 - 요리(cook) 활동 XP — `activityXp('cook')` 산식만 존재, CookScene 실조리(불요리) 구현 시 배선.
 - 스킬 툴팁 실효과 수치 표기(현재 설명 문구만) · 리스펙 아이템의 퀘스트 보상 지급 경로(P8).
 - 퀘스트 진행 판정 + 일지 상태 실갱신(현재 `GameState.quests` 상태만 읽음) — 스펙 P8.
@@ -120,6 +136,22 @@ learnSkill(id): ranks[id]++ · markDirty   (세이브 `skillTree`)
    옆으로 밀림은 `crossWind`(비행 중 가속). `windForce`가 **횡 성분만** 넘기는 이유다.
 16. **풍향은 "불어오는 방향"**(기상청 관례 — 북동풍 = 45) — 진행 방향은 +180°.
    변환은 `windUnitFromBearing` 하나만 쓴다(화면 y는 아래로 증가: `{-sin, +cos}`).
-13. **상태이상 배지는 텍스트 약어가 아니라 픽셀 아이콘**(128차 사용자 지시) — `StatusBadge = { icon, color }`.
+17. **상태이상 배지는 텍스트 약어가 아니라 픽셀 아이콘**(128차 사용자 지시) — `StatusBadge = { icon, color }`.
     신규 상태이상을 추가하면 `tools/gen_pixel_icons.py`에 **같은 id로 아트를 그리고 재생성**해야 한다
     (아트가 없으면 칩만 그려지고 그림이 빠진다 — `addPixelIcon`이 null을 돌려준다).
+
+18. **설치형 오브젝트의 [F]는 기능이 우선이다**(129차 — 실버그 수정). 구 코드는 `placedByPlayer && removable`이면
+    **무조건 회수**라 기능이 있는 설치물(고급 제작대·수조)을 열 수 없었다. 규칙:
+    **기능 있음 → [F] = 기능 · [Shift+F] = 회수 / 기능 없음(울타리 등) → [F] = 회수.**
+    새 설치물에 `interact`를 주면 자동으로 이 규칙을 탄다 — 라벨에 회수 안내를 병기할 것.
+19. **소모품 효과 수치는 `data/ItemVitals.ts` 한 곳에만 쓴다**(129차). 상점 카탈로그 리터럴에만 적으면
+    **이미 세이브에 들어간 아이템에는 영원히 반영되지 않는다**(53차 회칼 버그와 같은 함정) —
+    상점 초기화·시드·`deserialize` 백필이 모두 이 테이블을 읽는다.
+20. **`fatigueRestore`는 양수 = 피로 감소**(허기·수분과 같은 "회복량" 방향). 리바운드는 음수가 아니라
+    **별도 필드**(`fatigueRebound` + `fatigueReboundMin`)로 예약하고, **활동 시간**으로 차감한다 —
+    실시각으로 재면 접속을 끊어 카페인 빚을 피할 수 있다(§4-1 오프라인 정지 규약).
+21. **효과 키의 mode를 확인하고 읽을 것**(129차에 실제로 밟음). `skillMult`는 `mult` 항목만,
+    `skillBonus`는 `add` 항목만 합산한다 — add 스킬을 `skillMult`로 읽으면 **항상 1**이 나와
+    스킬이 조용히 무시된다(`life_firstaid`가 그랬다).
+22. **제작 산출·재료 id는 인벤토리 실제 id와 같아야 한다** — 특히 통발은 `inv_trap_<specId>` 규칙이다.
+    어긋나면 재료를 들고 있어도 `0 / N`으로 보이는 도면이 된다(129차에 3건 정정).

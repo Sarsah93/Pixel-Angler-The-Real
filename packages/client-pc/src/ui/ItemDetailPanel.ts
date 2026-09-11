@@ -7,6 +7,7 @@
  */
 
 import Phaser from 'phaser';
+import { ensurePixelIcon } from './PixelIcon.js';
 import { FISH_DATABASE, fishImageSizeScale, fishRarity } from '@tra/core';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { DraggablePanel } from './DraggablePanel.js';
@@ -287,6 +288,10 @@ export class ItemDetailPanel extends DraggablePanel {
     //  어획물 실사 생선뿐 아니라 손질 부산물(trim_*)·필렛·가공식품 등 iconTexture 보유 전체).
     //  어획물은 iconTexture가 비어도(구세이브) speciesId로 텍스처를 폴백 해소.
     const fishTexKey: string | undefined = (() => {
+      // 129차 — `px:` 픽셀 아이콘은 상세 확대용으로 크게 구워 쓴다(스케일 5 = 80px).
+      if (item.iconTexture?.startsWith('px:')) {
+        return ensurePixelIcon(scene, item.iconTexture.slice(3), 5) ?? undefined;
+      }
       if (item.iconTexture && scene.textures.exists(item.iconTexture)) return item.iconTexture;
       if (item.subCategory === '어획물' && item.speciesId) {
         const r = resolveFishTexture(item.speciesId, item.lengthCm ?? 0, 'F');

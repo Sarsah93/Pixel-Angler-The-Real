@@ -10,9 +10,11 @@
 
 import type { InvCategory, InvItemTemplate } from '../store/InventoryStore.js';
 import { WEIGHT_SINKER_DB, TRAP_DATABASE } from '@tra/core';
+import { applyItemVitals } from './ItemVitals.js';
 
 /** 건물(상점) 종류 */
-export type BuildingKind = 'convenience' | 'mart' | 'market' | 'restaurant' | 'cafe' | 'pub';
+export type BuildingKind =
+  | 'convenience' | 'mart' | 'market' | 'restaurant' | 'cafe' | 'pub' | 'pharmacy';
 
 export const BUILDING_LABEL: Record<BuildingKind, string> = {
   convenience: '편의점',
@@ -21,6 +23,7 @@ export const BUILDING_LABEL: Record<BuildingKind, string> = {
   restaurant: '음식점',
   cafe: '카페',
   pub: '주점',
+  pharmacy: '약국',
 };
 
 /** 상점 판매 품목 (인벤토리 템플릿 + 가격/구매 한도) */
@@ -121,6 +124,11 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
       { id: 'inv_veges',    name: '식자재 묶음 (대파/양파)', icon: '🥬', category: 'food',       subCategory: '식자재',     basePrice: 5000, price: 6000, maxPerPurchase: 10, condition: 'fresh', equippable: false, desc: '요리 기본 재료 묶음.' },
       { id: 'shop_rice',    name: '쌀 1kg',                  icon: '🥬', category: 'food',       subCategory: '식자재',     basePrice: 4000, price: 4800, maxPerPurchase: 10, equippable: false, desc: '요리 주재료.' },
       { id: 'shop_sauce',   name: '양념 세트',               icon: '🥬', category: 'food',       subCategory: '식자재',     basePrice: 7000, price: 8500, maxPerPurchase: 5,  equippable: false, desc: '요리 풍미를 올려주는 양념.' },
+      // 제작 재료 (129차 P7) — 도면(CRAFT_BLUEPRINTS)이 소비한다. 채집·벌목·채굴이 붙기 전까지의 공급처.
+      { id: 'inv_mat_wood',  name: '목재',       icon: '', iconTexture: 'px:it_wood', category: 'etc', subCategory: '재료', basePrice: 800,   price: 1000,  maxPerPurchase: 30, equippable: false, craftMaterial: true, desc: '부목·통발 틀 재료.' },
+      { id: 'inv_mat_wire',  name: '철사',       icon: '', iconTexture: 'px:it_wire', category: 'etc', subCategory: '재료', basePrice: 1000,  price: 1300,  maxPerPurchase: 30, equippable: false, craftMaterial: true, desc: '통발 프레임·바늘 고정 재료.' },
+      { id: 'inv_mat_resin', name: '에폭시 수지', icon: '', iconTexture: 'px:it_paint', category: 'etc', subCategory: '재료', basePrice: 4000,  price: 5000,  maxPerPurchase: 20, equippable: false, craftMaterial: true, desc: '로드 도장·루어 코팅 재료.' },
+      { id: 'inv_mat_paint', name: '도료 세트',  icon: '', iconTexture: 'px:it_paint', category: 'etc', subCategory: '재료', basePrice: 5000,  price: 6000,  maxPerPurchase: 20, equippable: false, craftMaterial: true, desc: '루어 컬러링 재료.' },
       { id: 'inv_chum',     name: '집어제 (크릴 배합)',      icon: '🧂', category: 'consumable', subCategory: '집어제/밑밥', basePrice: 6000, price: 7000, maxPerPurchase: 10, equippable: false, desc: '어군 활성도 상승.' },
       { id: 'inv_breadbait', name: '빵가루 경단',            icon: '🍞', category: 'tackle',     subCategory: '반죽미끼',    basePrice: 3000, price: 3500, maxPerPurchase: 10, equippable: false, desc: '벵에돔·숭어용 반죽 미끼 — 잡어 성화를 피한다.' },
       { id: 'inv_can',      name: '참치 통조림 (묶음)',      icon: '🥫', category: 'food',       subCategory: '가공품',     basePrice: 2000, price: 2200, maxPerPurchase: 20, equippable: false, desc: '마트 대용량 특가.' },
@@ -150,6 +158,13 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
       { id: 'inv_krill',     name: '크릴 (냉동)',   icon: '🦐', category: 'tackle', subCategory: '냉동미끼', basePrice: 4000,  price: 4500,  maxPerPurchase: 10, condition: 'frozen', equippable: false, desc: '범용 냉동 미끼.' },
       { id: 'inv_fishcut',   name: '생선 조각 미끼', icon: '🦐', category: 'tackle', subCategory: '선어미끼', basePrice: 3000,  price: 3500,  maxPerPurchase: 10, condition: 'chilled', equippable: false, desc: '갈치/우럭용 절단 미끼.' },
       { id: 'inv_ragworm',   name: '갯지렁이',      icon: '🪱', category: 'tackle', subCategory: '생미끼',   basePrice: 6000,  price: 7000,  maxPerPurchase: 10, condition: 'live', equippable: false, desc: '원투·도다리용 생미끼.' },
+      // 제작 재료 (129차 P7) — 낚시 계열 재료는 직판장이 취급한다.
+      { id: 'inv_mat_tin',   name: '주석 잉곳',    icon: '', iconTexture: 'px:it_ingot', category: 'etc', subCategory: '재료', basePrice: 3000,  price: 3600,  maxPerPurchase: 30, equippable: false, craftMaterial: true, desc: '봉돌·에기 싱커 주조 재료.' },
+      { id: 'inv_mat_mesh',  name: '통발 그물망',  icon: '', iconTexture: 'px:it_mesh', category: 'etc', subCategory: '재료', basePrice: 6000,  price: 7200,  maxPerPurchase: 20, equippable: false, craftMaterial: true, desc: '통발 제작 재료.' },
+      { id: 'inv_mat_blank', name: '로드 블랭크',  icon: '', iconTexture: 'px:it_rod', category: 'etc', subCategory: '재료', basePrice: 55000, price: 66000, maxPerPurchase: 5,  equippable: false, craftMaterial: true, desc: '커스텀 로드의 뼈대 — 고급 제작대 전용.' },
+      { id: 'inv_mat_gear',  name: '정밀 기어 세트', icon: '', iconTexture: 'px:it_ingot', category: 'etc', subCategory: '재료', basePrice: 48000, price: 58000, maxPerPurchase: 5,  equippable: false, craftMaterial: true, desc: '릴 튜닝용 기어 — 고급 제작대 전용.' },
+      // 고급 제작대 (129차 P7) — 설치 후 근접 [F]로 고급 도면(루어·에기·통발·로드·릴)을 연다.
+      { id: 'inv_place_workbench', name: '고급 제작대', icon: '', iconTexture: 'px:it_workbench', category: 'etc', subCategory: '설치형', basePrice: 150000, price: 180000, maxPerPurchase: 1, equippable: false, placeKey: 'workbench', desc: '설치하면 고급 제작 도면이 열린다. 기본 제작은 설치 없이 U 창 제작 탭에서.' },
       // 채비 코너 — 무게추 봉돌(원투)/찌/좁쌀봉돌 (추천 마크 연동)
       ...TACKLE_CORNER,
       // 채집·통발 코너 (121차)
@@ -164,8 +179,11 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
     greeting: '갓 지은 밥이 있어요. 드시고 가세요.',
     buysCategories: ['food'],
     sells: [
-      { id: 'shop_meal_grilled', name: '생선구이 정식', icon: '🥫', category: 'food', subCategory: '가공품', basePrice: 9000,  price: 11000, maxPerPurchase: 3, equippable: false, desc: 'HP +30, 피로도 -20.' },
-      { id: 'shop_meal_soup',    name: '매운탕',        icon: '🥫', category: 'food', subCategory: '가공품', basePrice: 10000, price: 12000, maxPerPurchase: 3, equippable: false, desc: '체온 유지 버프 (야간 유용).' },
+      { id: 'shop_meal_grilled', name: '생선구이 정식', icon: '🥫', category: 'food', subCategory: '가공품', basePrice: 9000,  price: 11000, maxPerPurchase: 3, equippable: false, desc: '허기 +45 · HP +30 · 피로 -20.' },
+      { id: 'shop_meal_soup',    name: '매운탕',        icon: '🥫', category: 'food', subCategory: '가공품', basePrice: 10000, price: 12000, maxPerPurchase: 3, equippable: false, desc: '허기 +40 · 수분 +15 · HP +15 · 피로 -15. 국물류.' },
+      // 보양식 (129차 P7) — 피로 회복 + **드레인 감소 버프**. 수치는 data/ItemVitals.ts 가 단일 소스.
+      { id: 'shop_meal_abalone', name: '전복죽',        icon: '🥫', category: 'food', subCategory: '보양식', basePrice: 16000, price: 19000, maxPerPurchase: 2, equippable: false, desc: '허기 +50 · HP +35 · 피로 -30 · 40분간 체력 소모 -25%.' },
+      { id: 'shop_meal_eel',     name: '장어구이',      icon: '🥫', category: 'food', subCategory: '보양식', basePrice: 24000, price: 29000, maxPerPurchase: 2, equippable: false, desc: '허기 +60 · HP +45 · 피로 -40 · 60분간 체력 소모 -32%. 최고급 보양식.' },
       // 회(사시미) 카테고리 — 아이콘은 모듬회 픽셀 이미지로 통일 (추후 어종별 이미지 분리 예정)
       // 네이밍 규칙: {어종}_sashimi_{중량} / 한글: {어종} 회 ({소/중/대})
       { id: 'shop_assorted_sashimi_small', name: '모듬회 (소)', icon: '🐟', iconTexture: 'food_assorted_sashimi', category: 'food', subCategory: '회(사시미)', basePrice: 20000, price: 25000, maxPerPurchase: 2, equippable: false, desc: 'assorted sashimi (small) — 고신선도 회, 근력 1.2배 10분.' },
@@ -178,9 +196,24 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
     greeting: '따뜻한 커피 어떠세요?',
     buysCategories: [],
     sells: [
-      { id: 'shop_coffee',  name: '아메리카노',  icon: '🥫', category: 'food', subCategory: '가공품', basePrice: 3500, price: 4000, maxPerPurchase: 5, equippable: false, desc: '피로도 -15.' },
-      { id: 'shop_latte',   name: '카페라떼',    icon: '🥫', category: 'food', subCategory: '가공품', basePrice: 4200, price: 4800, maxPerPurchase: 5, equippable: false, desc: '피로도 -12, HP +5.' },
+      { id: 'shop_coffee',  name: '아메리카노',  icon: '🥫', category: 'food', subCategory: '가공품', basePrice: 3500, price: 4000, maxPerPurchase: 5, equippable: false, desc: '피로 -20 · 2시간 뒤 +10 되돌아옴(카페인 리바운드).' },
+      { id: 'shop_latte',   name: '카페라떼',    icon: '🥫', category: 'food', subCategory: '가공품', basePrice: 4200, price: 4800, maxPerPurchase: 5, equippable: false, desc: '피로 -12 · HP +5 · 2시간 뒤 +6 되돌아옴.' },
       { id: 'shop_dessert', name: '수제 디저트', icon: '🥫', category: 'food', subCategory: '가공품', basePrice: 5500, price: 6500, maxPerPurchase: 5, equippable: false, desc: '집중력 버프 (입질 표시 강화) 5분.' },
+    ],
+  },
+  pharmacy: {
+    kind: 'pharmacy',
+    name: '항구 약국',
+    greeting: '어디 편찮으세요? 바다에서 다치면 바로 오세요.',
+    buysCategories: [],
+    sells: [
+      // 구급품 — 제작(도면)보다 비싸지만 품질이 높다(재발 억제·자연치유 단축 강화).
+      { id: 'shop_bandage',  name: '멸균 붕대',   icon: '', iconTexture: 'px:it_bandage', category: 'consumable', subCategory: '구급품', basePrice: 5000,  price: 6000,  maxPerPurchase: 10, equippable: false, desc: '출혈을 멎게 한다. 재발 억제가 수제 붕대보다 낫다.' },
+      { id: 'shop_splint',   name: '의료용 부목', icon: '', iconTexture: 'px:it_splint', category: 'consumable', subCategory: '구급품', basePrice: 12000, price: 14000, maxPerPurchase: 5,  equippable: false, desc: '골절 고정. 손질·채집 부상 복귀가 빨라진다.' },
+      { id: 'shop_medicine', name: '종합 상비약', icon: '', iconTexture: 'px:it_medicine', category: 'consumable', subCategory: '구급품', basePrice: 9000,  price: 11000, maxPerPurchase: 10, equippable: false, desc: '감기·독감·식중독·생물중독을 치료하고 HP를 조금 회복한다.' },
+      // 제작 재료 (약초·천) — 나머지 재료는 마트·직판장에서 판다.
+      { id: 'inv_mat_cloth', name: '무명천',      icon: '', iconTexture: 'px:it_cloth', category: 'etc', subCategory: '재료', basePrice: 1200, price: 1500, maxPerPurchase: 20, equippable: false, craftMaterial: true, desc: '붕대·손잡이 그립 재료.' },
+      { id: 'inv_mat_herb',  name: '약초',        icon: '', iconTexture: 'px:it_herb', category: 'etc', subCategory: '재료', basePrice: 2500, price: 3000, maxPerPurchase: 20, equippable: false, craftMaterial: true, desc: '상비약 재료. 산과 들에서 채집할 수도 있다.' },
     ],
   },
   pub: {
@@ -189,14 +222,20 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
     greeting: '조황 얘기나 하면서 한잔 하시죠.',
     buysCategories: [],
     sells: [
-      { id: 'shop_makgeolli', name: '막걸리',      icon: '🥫', category: 'food', subCategory: '가공품', basePrice: 4000, price: 5000, maxPerPurchase: 5, equippable: false, desc: '피로도 -20, 단 조준 흔들림 +10% (5분).' },
+      { id: 'shop_makgeolli', name: '막걸리',      icon: '🥫', category: 'food', subCategory: '가공품', basePrice: 4000, price: 5000, maxPerPurchase: 5, equippable: false, desc: '피로 -20 · 수분 -8. 술은 갈증을 부른다.' },
       { id: 'shop_anju',      name: '해물 안주',   icon: '🥫', category: 'food', subCategory: '가공품', basePrice: 12000, price: 15000, maxPerPurchase: 3, equippable: false, desc: 'HP +20, 체온 유지.' },
-      { id: 'shop_soju',      name: '소주',        icon: '🥫', category: 'food', subCategory: '가공품', basePrice: 3000, price: 4000, maxPerPurchase: 5, equippable: false, desc: '추위 내성 +, 평형감각 - (5분).' },
+      { id: 'shop_soju',      name: '소주',        icon: '🥫', category: 'food', subCategory: '가공품', basePrice: 3000, price: 4000, maxPerPurchase: 5, equippable: false, desc: '피로 -10 · 수분 -12. 추위는 잊게 해주지만 탈수가 빠르다.' },
     ],
   },
 };
 
+// 소모품 효과(회복치·구급품)를 단일 테이블에서 주입 — 카탈로그 리터럴에 수치를 중복해 적지 않는다.
+// (같은 테이블을 시드 생성·세이브 로드 백필도 쓴다 → 값을 고치면 구세이브까지 자동 정합)
+for (const def of Object.values(SHOP_CATALOG)) {
+  for (const e of def.sells) applyItemVitals(e);
+}
+
 /** 건물 배치용 종류 순환 배열 (POI 인덱스 → 건물 종류) */
 export const BUILDING_KIND_CYCLE: BuildingKind[] = [
-  'restaurant', 'convenience', 'cafe', 'mart', 'market', 'pub',
+  'restaurant', 'convenience', 'cafe', 'mart', 'market', 'pub', 'pharmacy',
 ];

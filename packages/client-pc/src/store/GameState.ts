@@ -41,7 +41,8 @@ import {
   aggregateStatus, tickStatuses as coreTickStatuses, addStatus as coreAddStatus,
   cureStatus as coreCureStatus,
   type VitalsState, type VitalsActivity, type VitalsAction, type VitalsEnv,
-  type ActiveStatus, type StatusEffectId, type StatusModifiers,
+  getStatusEffect,
+  type ActiveStatus, type StatusEffectId, type StatusModifiers, type StatusCure,
 } from '@tra/core';
 import {
   getLicenseByType, getCurrentGameMinute, calculateTideInfo, getFishById,
@@ -213,6 +214,14 @@ export class GameStateManager {
   private _hydration = 100;
   /** 활성 상태이상 (125차) */
   private _statuses: ActiveStatus[] = [];
+  /** 카페인 리바운드 대기열 — 활동 시간으로만 줄어든다(129차 P7) */
+  private _rebounds: { leftMs: number; fatigue: number }[] = [];
+  /**
+   * 보양식 드레인 감소 버프 (129차 P7) — 남은 **활동 시간**(ms)과 배율.
+   * `tickVitals`의 `extraMult` 3요소 전부에 곱해 허기·수분·피로가 천천히 닳게 한다.
+   * 리바운드와 같은 이유로 **활동 시간**으로 잰다(오프라인 중 소진되지 않는다).
+   */
+  private _drainBuff: { leftMs: number; mult: number } | null = null;
   /** 1회성 안내 플래그 (세이브 대상) — 예: chumGuideSeen */
   private _flags: Record<string, boolean> = {};
   /** 맵별 오브젝트 월드 상태 (세이브 대상) — key = mapId */
@@ -564,13 +573,31 @@ export class GameStateManager {
       this.skillMult('thirst_drain'),
       restoring ? this.skillMult('fatigue_recovery') : 1,
     ];
+    // 카페인 리바운드 — 활동 시간 경과분만 차감하고, 만료분은 피로로 되돌린다
+    let reboundFatigue = 0;
+    if (this._rebounds.length > 0) {
+      for (const rb of this._rebounds) rb.leftMs -= dtMs;
+      const due = this._rebounds.filter((rb) => rb.leftMs <= 0);
+      if (due.length > 0) {
+        reboundFatigue = due.reduce((a, rb) => a + rb.fatigue, 0);
+        this._rebounds = this._rebounds.filter((rb) => rb.leftMs > 0);
+        v.fatigue = Math.min(v.maxFatigue, v.fatigue + reboundFatigue);
+      }
+    }
+    // 보양식 버프 — 남은 활동 시간만 차감(만료 시 해제). 드레인 3요소 전부에 곱한다.
+    let buff = 1;
+    if (this._drainBuff) {
+      buff = this._drainBuff.mult;
+      this._drainBuff.leftMs -= dtMs;
+      if (this._drainBuff.leftMs <= 0) this._drainBuff = null;
+    }
     const r = coreTickVitals(v, dtMs, activity, {
       ...env,
       coldResistRank: env.coldResistRank ?? this.skillRank('life_cold'),
       extraMult: [
-        mods.drainMult[0] * sk[0],
-        mods.drainMult[1] * sk[1],
-        mods.drainMult[2] * sk[2],
+        mods.drainMult[0] * sk[0] * buff,
+        mods.drainMult[1] * sk[1] * buff,
+        mods.drainMult[2] * sk[2] * buff,
       ],
     });
     this.commitVitals(v);
@@ -590,12 +617,49 @@ export class GameStateManager {
     this.markDirty();
   }
 
-  /** 섭취 회복 — 음수 허용(술 = 수분 −). 상한 클램프는 core가 처리 */
-  applyIntake(hunger = 0, hydration = 0, hp = 0): void {
+  /**
+   * 섭취 회복 — 음수 허용(술 = 수분 −). 상한 클램프는 core가 처리.
+   * `fatigue` 양수 = 피로 감소(129차 P7 — 보양식·카페인).
+   */
+  applyIntake(hunger = 0, hydration = 0, hp = 0, fatigue = 0): void {
     const v = this.vitals;
-    coreApplyIntake(v, hunger, hydration, hp);
+    coreApplyIntake(v, hunger, hydration, hp, fatigue);
     this.commitVitals(v);
     this.markDirty();
+  }
+
+  /**
+   * 카페인 리바운드 예약 (129차 P7) — `delayMs` **활동 시간** 뒤에 피로가 `fatigue`만큼 되돌아온다.
+   * 실시각이 아니라 활동 시간으로 재는 이유: 오프라인·일시정지 중에는 지표가 멈추는 규약(§4-1)을
+   * 리바운드만 예외로 두면 "접속을 끊어 부채를 피하는" 우회가 생긴다.
+   */
+  scheduleFatigueRebound(fatigue: number, delayMs: number): void {
+    if (!(fatigue > 0) || !(delayMs > 0)) return;
+    this._rebounds.push({ leftMs: delayMs, fatigue });
+    this.markDirty();
+  }
+
+  /** 대기 중인 리바운드 수 (검증·UI용) */
+  get pendingReboundCount(): number {
+    return this._rebounds.length;
+  }
+
+  /**
+   * 보양식 드레인 감소 버프 (129차 P7) — `mult`(0.75 = −25%)를 `durMs` **활동 시간** 동안 적용.
+   * 이미 버프가 있으면 **더 센 쪽을 남기고 지속시간은 긴 쪽**으로 — 중첩 곱으로 0에 수렴하는 것을 막는다.
+   */
+  applyDrainBuff(mult: number, durMs: number): void {
+    if (!(mult > 0) || mult >= 1 || !(durMs > 0)) return;
+    const cur = this._drainBuff;
+    this._drainBuff = cur
+      ? { mult: Math.min(cur.mult, mult), leftMs: Math.max(cur.leftMs, durMs) }
+      : { mult, leftMs: durMs };
+    this.markDirty();
+  }
+
+  /** 현재 드레인 감소 버프 (없으면 null — 검증·UI용) */
+  get drainBuff(): { leftMs: number; mult: number } | null {
+    return this._drainBuff ? { ...this._drainBuff } : null;
   }
 
   /** 수면(침대) — 피로 0 · HP +50% · 허기/수분 −10 */
@@ -623,6 +687,54 @@ export class GameStateManager {
   rollStatus(id: StatusEffectId, chance: number, rng: () => number = Math.random): boolean {
     const p = Math.max(0, Math.min(1, chance * this.skillMult('immunity')));
     return rng() < p && this.addStatus(id);
+  }
+
+  /**
+   * 구급품 사용 (129차 P7) — 치료 수단(`StatusCure`)이 일치하는 상태이상을 전부 해제한다.
+   * 붕대 = bandage(출혈) · 부목 = splint(골절) · 상비약 = medicine(생물중독).
+   *
+   * **상비약은 추가로** 자연치유 대상(식중독·감기)의 경과를 `TUNING.craft.medicineShortenMin`
+   * 만큼 앞당긴다 — 스펙 §5 "자연치유(활동 90분)·상비약 단축".
+   * 재발(출혈 30%·골절 25%)은 `life_firstaid`(응급처치)로 감소한다.
+   *
+   * @param quality 구급품 품질 배율 (craft_medic 제작품 = 1 초과)
+   * @returns 해제된 상태이상 id · 재발한 id
+   */
+  applyRemedy(
+    kind: StatusCure, quality = 1, rng: () => number = Math.random,
+  ): { cured: StatusEffectId[]; relapsed: StatusEffectId[] } {
+    const cured: StatusEffectId[] = [];
+    const relapsed: StatusEffectId[] = [];
+    // 재발 억제 — ⚠ `firstaid`는 **add 모드** 효과다(랭크당 −10%p). skillMult로 읽으면
+    // 등록된 mult 항목이 없어 항상 1이 나와 스킬이 조용히 무시된다. 반드시 skillBonus로 뺄 것.
+    // 구급품 제작 스킬은 **품질 배율**(mult 모드)로 곱해 들어간다 — 약을 잘 만들면 잘 듣는다.
+    const q = quality * this.skillMult('medic_quality');
+    const relapseMult = Math.max(0, Math.min(1,
+      TUNING.craft.medicRelapseMult - this.skillBonus('firstaid') - Math.max(0, q - 1)));
+
+    for (const a of [...this._statuses]) {
+      const def = getStatusEffect(a.id);
+      if (!def || def.cure !== kind) continue;
+      const r = coreCureStatus(this._statuses, a.id, rng);
+      if (!r.removed) continue;
+      cured.push(a.id);
+      // core가 굴린 재발을 품질·스킬로 한 번 더 완화한다(억제되면 그대로 치료 성공)
+      if (r.relapse && rng() < relapseMult) {
+        coreAddStatus(this._statuses, a.id);
+        relapsed.push(a.id);
+      }
+    }
+
+    if (kind === 'medicine') {
+      const shortenMs = TUNING.craft.medicineShortenMin * 60_000 * q;
+      for (const a of this._statuses) {
+        const def = getStatusEffect(a.id);
+        if (def?.selfHealMin) a.elapsedMs += shortenMs;   // 자연치유 앞당김
+      }
+    }
+
+    if (cured.length > 0) { this.commitVitals(this.vitals); this.markDirty(); }
+    return { cured, relapsed };
   }
 
   /** 상태이상 부여 — 중복이면 false. 최대치 변화가 있으면 현재값을 즉시 클램프 */

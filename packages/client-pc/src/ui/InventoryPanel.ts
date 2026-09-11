@@ -658,18 +658,49 @@ export class InventoryPanel extends DraggablePanel {
    * 섭취 효과 적용 (125차 — SPEC §4-3). 회복치가 없는 아이템은 종전처럼 소모만 하고 안내한다.
    * '나쁨' 상태 음식은 식중독 롤(§5) — 상한 음식이 상태이상의 실제 발생 소스다.
    */
+  /**
+   * 섭취·사용 효과 적용 (129차 P7 확장 — 피로 회복·보양식 버프·카페인 리바운드·구급품 치료).
+   * 수치는 `data/ItemVitals.ts` 한 곳에서 오고, 이 함수는 **적용과 안내 문구**만 맡는다.
+   * ⚠ `fatigueRestore` 는 **양수 = 피로 감소**(상점 설명의 '피로 −20').
+   */
   private applyIntakeOf(item: InvItem, verb = '섭취'): string {
     const h = item.hungerRestore ?? 0;
     const w = item.hydrationRestore ?? 0;
     const hp = item.hpRestore ?? 0;
-    if (!h && !w && !hp) {
-      return `${item.name}을(를) ${verb === '사용' ? '사용했습니다' : '맛있게 먹었습니다'}. (효과 적용은 추후 구현)`;
-    }
-    GameState.applyIntake(h, w, hp);
+    const fa = item.fatigueRestore ?? 0;
     const parts: string[] = [];
+
+    // 구급품 — 종류가 맞는 상태이상을 전부 치료. 걸린 게 없으면 소모하지 않았어야 하나,
+    // 소모는 호출측에서 이미 일어났으므로 여기서는 "치료할 게 없었다"고 정확히 알린다.
+    if (item.cureKind) {
+      const r = GameState.applyRemedy(item.cureKind, item.medicQuality ?? 1);
+      if (r.cured.length === 0) {
+        return `${item.name} — 지금 치료할 증상이 없습니다.`;
+      }
+      parts.push(`${r.cured.length}건 치료`);
+      if (r.relapsed.length > 0) parts.push('일부 재발');
+    }
+
+    if (h || w || hp || fa) GameState.applyIntake(h, w, hp, fa);
     if (h) parts.push(`허기 ${h > 0 ? '+' : ''}${h}`);
     if (w) parts.push(`수분 ${w > 0 ? '+' : ''}${w}`);
     if (hp) parts.push(`체력 ${hp > 0 ? '+' : ''}${hp}`);
+    if (fa) parts.push(`피로 ${fa > 0 ? '-' : '+'}${Math.abs(fa)}`);
+
+    // 보양식 — 드레인 감소 버프 (활동 시간 기준)
+    if (item.drainBuffMult && item.drainBuffMin) {
+      GameState.applyDrainBuff(item.drainBuffMult, item.drainBuffMin * 60_000);
+      parts.push(`${item.drainBuffMin}분간 소모 -${Math.round((1 - item.drainBuffMult) * 100)}%`);
+    }
+    // 카페인 리바운드 — 활동 시간 뒤 피로가 되돌아온다(오프라인으로 피할 수 없다)
+    if (item.fatigueRebound && item.fatigueReboundMin) {
+      GameState.scheduleFatigueRebound(item.fatigueRebound, item.fatigueReboundMin * 60_000);
+      parts.push(`${item.fatigueReboundMin}분 뒤 피로 +${item.fatigueRebound}`);
+    }
+
+    if (parts.length === 0) {
+      return `${item.name}을(를) ${verb === '사용' ? '사용했습니다' : '맛있게 먹었습니다'}. (효과 적용은 추후 구현)`;
+    }
     let msg = `${item.name} — ${parts.join(' · ')}`;
     if (item.category === 'food' && item.condition === 'bad'
       && GameState.rollStatus('food_poison', 0.3)) {

@@ -18,11 +18,12 @@ import {
   LURES_CATALOG_DB, JIGHEAD_WEIGHTS_G, getLureSpec, jigHeadWeightById,
   computeLureRigWeight, getLureCastCd, isKnifeItem, FISH_DATABASE, lineStrengthKg,
 } from '@tra/core';
-import type { ForageTool } from '@tra/core';
+import type { ForageTool, StatusCure } from '@tra/core';
 import { ExternalDataStore } from './ExternalDataStore.js';
 import { DiscoveryStore } from './DiscoveryStore.js';
 import { isGod } from '../dev/DevMode.js';
 import { resolveFishTexture } from '../data/FishTextures.js';
+import { applyItemVitals } from '../data/ItemVitals.js';
 
 /** 인벤토리 카테고리 탭 */
 export type InvCategory = 'gear' | 'consumable' | 'food' | 'tackle' | 'lure' | 'etc';
@@ -191,6 +192,33 @@ export interface InvItem {
   hydrationRestore?: number;
   /** 섭취 시 체력 회복 */
   hpRestore?: number;
+  /**
+   * 섭취 시 **피로 회복량** (129차 P7 — 사용자 결정 (b)).
+   * ⚠ 부호 주의: **양수 = 피로도가 그만큼 내려간다**(상점 설명의 '피로도 −20' = `fatigueRestore: 20`).
+   * 허기·수분과 같은 "회복량" 방향으로 통일했다 — 음수면 피로가 오른다.
+   * 수면(침대)은 여전히 피로 0 전량 회복이므로, 음식은 **부분 회복**만 담당한다(경쟁 금지).
+   */
+  fatigueRestore?: number;
+  /**
+   * 카페인 리바운드 — 섭취 후 `fatigueReboundMin` **활동 분** 뒤에 피로가 이만큼 되돌아온다.
+   * 오프라인·일시정지 중에는 시계가 멈추므로(§4-1 활동 시간 규칙) 로그아웃으로 빚을 피할 수 없다.
+   */
+  fatigueRebound?: number;
+  /** 리바운드까지의 활동 시간(분) */
+  fatigueReboundMin?: number;
+  /**
+   * 구급품 — 이 종류의 치료를 요구하는 상태이상을 전부 제거한다
+   * (`StatusEffectDef.cure` 와 매칭: bandage=출혈 / splint=골절 / medicine=감기·독감·식중독 등).
+   */
+  cureKind?: StatusCure;
+  /** 구급품 품질 배율 (1 = 기본. 높을수록 재발 억제·자연치유 단축 강화) */
+  medicQuality?: number;
+  /** 보양식 — 드레인(허기·수분·피로) 감소 배율 (0.75 = 소모 −25%) */
+  drainBuffMult?: number;
+  /** 보양식 버프 지속 활동 시간(분) */
+  drainBuffMin?: number;
+  /** 제작 재료 — 인벤 '기타 › 재료' 분류. 섭취·착용 불가, 도면에서만 소비된다 */
+  craftMaterial?: boolean;
   // ── 인-맵 채집·통발 (121차) ──
   /** 헤드랜턴 루멘 — 야간 채집 스팟 발견 반경 */
   lampLumens?: number;
@@ -853,12 +881,14 @@ class InventoryStoreManager {
         lampLumens: i.lampLumens ?? sd?.lampLumens,
         forageTool: i.forageTool ?? sd?.forageTool,
         trapSpecId: i.trapSpecId ?? sd?.trapSpecId ?? (i.id.startsWith('inv_trap_') ? i.id.slice('inv_trap_'.length) : undefined),
+        // 129차 P7 — 소모품 효과(음식 회복치·구급품)는 아래 applyItemVitals 가 id로 채운다.
+        //  상점 구매분은 시드에 없어 seedById 로는 복원되지 않는다 → 테이블이 유일한 경로.
         // 착용 장비는 그리드에서 빠진다 (2026-08-05 개편) — 구세이브는 소켓을 차지한 채
         // 저장돼 있으므로 로드 시 비워준다. 소켓만 반납하므로 손실 위험 없음.
         slot: i.equipped ? SLOT_EQUIPPED : i.slot,
         conditionSinceMs: i.conditionSinceMs !== undefined ? i.conditionSinceMs + offlineGap : undefined,
       };
-    });
+    }).map((i) => applyItemVitals(i));
     this._catchSeq = s.catchSeq ?? 0;
     const valid = new Set(this._items.map((i) => i.id));
     const ref = (id: string | null | undefined): string | null => (id && valid.has(id) ? id : null);
@@ -1074,6 +1104,7 @@ class InventoryStoreManager {
     inv_place_fence:   { id: 'inv_place_fence',   name: '울타리',            icon: '🪵', category: 'etc', subCategory: '설치형', basePrice: 1500,   equippable: false, placeKey: 'fence' },
     inv_place_aq_live: { id: 'inv_place_aq_live', name: '활어 수조 (업소용)', icon: '🐠', category: 'etc', subCategory: '설치형', basePrice: 120000, equippable: false, placeKey: 'aquarium_live' },
     inv_place_aq_disp: { id: 'inv_place_aq_disp', name: '관상용 수족관',      icon: '🐟', category: 'etc', subCategory: '설치형', basePrice: 60000,  equippable: false, placeKey: 'aquarium_display' },
+    inv_place_workbench: { id: 'inv_place_workbench', name: '고급 제작대', icon: '', iconTexture: 'px:it_workbench', category: 'etc', subCategory: '설치형', basePrice: 180000, equippable: false, placeKey: 'workbench' },
   };
 
   recoverPlaceable(itemId: string): boolean {

@@ -158,10 +158,15 @@ export function applyVitalsAction(v: VitalsState, action: VitalsAction, mult = 1
 }
 
 /** 섭취 회복 — 음수 허용(술 = 수분 −). 상한 100 클램프 */
-export function applyIntake(v: VitalsState, hunger = 0, hydration = 0, hp = 0): void {
+export function applyIntake(
+  v: VitalsState, hunger = 0, hydration = 0, hp = 0, fatigue = 0,
+): void {
   if (hunger) v.hunger = clamp(v.hunger + hunger, 0, 100);
   if (hydration) v.hydration = clamp(v.hydration + hydration, 0, 100);
   if (hp) v.hp = clamp(v.hp + hp, 0, v.maxHp);
+  // 피로 회복(129차 P7 — 사용자 결정): **양수 = 피로가 줄어든다**(허기·수분과 같은 "회복량" 방향).
+  // 음수면 피로가 오른다(카페인 리바운드).
+  if (fatigue) v.fatigue = clamp(v.fatigue - fatigue, 0, v.maxFatigue);
 }
 
 /** 수면(침대) — 즉시 회복: 피로 0 · HP +50% · 허기/수분 −10 (`life_sleep` 배율은 호출측이 곱) */

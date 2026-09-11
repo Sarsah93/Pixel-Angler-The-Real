@@ -2,18 +2,20 @@
  * @file ItemIcon.ts
  * @description 아이템 아이콘 렌더 헬퍼
  *
- * 아이템에 이미지 텍스처(iconTexture)가 지정되어 있고 로드되어 있으면
- * 픽셀 이미지 아이콘을, 아니면 임시 이모지 아이콘을 그린다.
+ * 우선순위: ① `iconTexture: 'px:<키>'` = **16x16 손그림 픽셀 아이콘**(PixelIconArt — 신규 아이템 표준)
+ *  ② 실사/절차 텍스처 키 ③ 어획물 speciesId 폴백 ④ 레거시 이모지 문자열.
+ * ⚠ ④는 구 아이템이 남겨둔 폴백일 뿐이다 — **새 아이템에는 이모지를 넣지 않는다**(AGENTS §4).
  * (인벤토리 소켓 / 상점 셀 / 퀵슬롯 / 상세보기 공용)
  */
 
 import Phaser from 'phaser';
+import { addPixelIcon } from './PixelIcon.js';
 import { resolveFishTexture } from '../data/FishTextures.js';
 
 export interface ItemIconLike {
-  /** 임시 이모지 아이콘 (폴백) */
+  /** 레거시 이모지 아이콘 (최후 폴백 — 신규 아이템은 쓰지 않는다) */
   icon: string;
-  /** 픽셀 이미지 텍스처 키 (예: 'food_assorted_sashimi') */
+  /** 텍스처 키. `px:` 접두사면 픽셀 아이콘 아트 키 (예: 'px:it_bandage') */
   iconTexture?: string;
   /** 어획물 어종 ID — iconTexture가 비었을 때 텍스처 폴백 해소용 */
   speciesId?: string;
@@ -35,6 +37,12 @@ export function createItemIcon(
   item: ItemIconLike,
   sizePx: number,
 ): Phaser.GameObjects.Image | Phaser.GameObjects.Text {
+  // 129차 — `px:<키>` 는 16x16 손그림 픽셀 아이콘(PixelIconArt). 신규 아이템은 이모지 대신 이걸 쓴다(§4).
+  if (item.iconTexture?.startsWith('px:')) {
+    const key = item.iconTexture.slice(3);
+    const img = addPixelIcon(scene, key, x, y, sizePx);
+    if (img) return img;
+  }
   let texKey = item.iconTexture && scene.textures.exists(item.iconTexture) ? item.iconTexture : undefined;
   if (!texKey && item.speciesId) {
     const resolved = resolveFishTexture(item.speciesId, item.lengthCm ?? 0, 'F');
