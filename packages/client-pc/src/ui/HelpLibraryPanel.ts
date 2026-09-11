@@ -15,7 +15,7 @@ import Phaser from 'phaser';
 import { DraggablePanel, applyScreenFixed } from './DraggablePanel.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { HELP_LIBRARY, findHelpTopic, HelpCategory, HelpSection, HelpTopic, HelpPage } from '../data/HelpContent.js';
-import { getLocale } from '../i18n/I18n.js';
+import { getLocale, t as tr } from '../i18n/I18n.js';
 
 export interface HelpLibraryConfig {
   onClose: () => void;
@@ -312,7 +312,9 @@ export class HelpLibraryPanel extends DraggablePanel {
       }
       if (pg.tips && pg.tips.length) {
         for (const tip of pg.tips) {
-          const t = this.scene.add.text(6, y, `Tip · ${tip}`, {
+          // ⚠ 팁 원문에 ' · '가 들어 있으면 `Tip · ${tip}` 통짜 문자열은 사전에 걸리지 않는다
+          // (setText 훅이 구분자로 쪼개면 조각이 사전 키와 어긋난다) — **먼저 번역해 붙인다**.
+          const t = this.scene.add.text(6, y, `Tip · ${tr(tip)}`, {
             fontFamily: BODY_FONT, fontSize: '12px', color: '#ffd98a', wordWrap: { width: CONTENT_W - 30 },
           });
           inner.add(t);

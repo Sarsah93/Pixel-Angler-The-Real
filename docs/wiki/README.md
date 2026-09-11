@@ -47,23 +47,40 @@
 | S7 | [월드맵·지역 타일맵](02-SYSTEMS/world-field.md) | 🔶 | `WorldMapScene` · **OSM 파이프라인 3종** · `build_region_maps.py` | 속초(심리스 v2)·부산·홈타운 개방 — OSM 16개 지역 확장 잔여 |
 | S8 | [홈베이스 (집)](02-SYSTEMS/home-base.md) | 🔶 | `HomeInteriorScene` · `types/HomeBase.ts` | 하우스 Tier 1~3, 수조 패널, 농사 |
 | S9 | [외부 실데이터](02-SYSTEMS/economy-data.md#외부-api) | 🟢⚠ | `core/api-client/*` | **배포 시 CORS 프록시 필수** |
-| S10 | [UI 프레임워크](02-SYSTEMS/ui-framework.md) | 🟢 | `DraggablePanel` · `TextFit` · `SceneFade` | 저순위 팝업 검수 잔여 · 122차 ✕ 통일·새 팝업 최상단·명패 로케일 재배치 |
+| S10 | [UI 프레임워크](02-SYSTEMS/ui-framework.md) | 🟢 | `DraggablePanel` · `TextFit` · `SceneFade` · `HelpLibraryPanel`(**11카테고리 44토픽**) · `i18n/*` | 저순위 팝업 검수 잔여 · **131차 도움말 현행화·제작 UI 영문화 완료** · 한국어 콜아웃 4장 대기 |
 | S11 | [가이드·온보딩](02-SYSTEMS/ui-framework.md#가이드-허브) | 🟢 | `GuidePanel` · `GuideContent` | 삽화 실게임 스크린샷 교체 |
 | S12 | [세이브·슬롯](02-SYSTEMS/inventory-equipment.md#세이브) | 🟢 | `GameState` | 저장은 집 침대 전용 |
 | S13 | [튜닝·dev 도구](02-SYSTEMS/ui-framework.md#dev-도구) | 🟢 | `config/tuning.ts` · `DevTuningPanel`(F8) | fight/rod/yield 테이블 소비 전환 |
 | S14 | [해루질·통발](02-SYSTEMS/night-hunting-trap.md) | 🟢 | `ForagingEngine` · `ForageSystem` · `TrapFieldSystem` · `extract_fishfarms.py` | **121차 인-맵 1차 완료**(채집 스팟·어장 실폴리곤·강원 조례·통발 아이템) — 야간 실검증·F8 조율·실사 스프라이트·wade/dive 잔여 · **122차 상호작용 F 키 + 스킬 배율 훅** |
 | S15 | 요리(불요리)·CookScene | ⬜ | `CookScene` · `RecipeDatabase` | 화구·용기 시스템부터 |
-| S16 | 제작 `CraftScene` | ⬜ | — | 예약(U 키) |
+| S16 | [제작](02-SYSTEMS/progression.md) | 🔶 | `CraftingDatabase`(도면 14) · `CraftingStore` · `CraftBoard` · `AdvancedCraftPanel` | 129차 구현 — 재료 수급(벌목·채굴)·커스텀 로드/릴 성능치 잔여 |
 | S17 | 퀘스트·스토리 | ⬜ | `QuestDatabase` · `JournalPanel`(J) | **모든 컴포넌트 구현 후 도입**(사용자 방침) — 122차 일지 골격만 |
 | S18 | 멀티플레이 | ⬜ | `packages/server` | Phase 8 |
 | S19 | Tauri 패키징 | ⬜ | `apps/tauri-wrapper` | Phase 9 (아이콘만 준비됨) |
 | S20 | [도감·발견·dev 도구](02-SYSTEMS/discovery-wiki.md) | 🟢 | `DiscoveryStore` · `AnglerLogScene` · F10 콘솔 | 위키 상세 팝업 · FP 토스트 |
-| S21 | [진행 — 레벨·스킬·생존·면허·일지](02-SYSTEMS/progression.md) | 🔶 | `Progression.ts` · `Vitals.ts`·`StatusEffects.ts` · `SkillDatabase`(83노드 Σ=200) · `License.ts` · 패널 3종 · `CollapseOverlay` | **스킬 효과 배선 24/83**(127차) · 신규 면허 효과 1/7 · 농사·제작 카테고리 잠김 · 치료 아이템·병원은 P7 · 눕기 스프라이트 대기 |
+| S21 | [진행 — 레벨·스킬·생존·면허·일지](02-SYSTEMS/progression.md) | 🔶 | `Progression.ts` · `Vitals.ts`·`StatusEffects.ts` · `SkillDatabase`(**92노드 Σ=215**) · `CraftingDatabase` · `License.ts` · 패널 3종 · `CollapseOverlay` | **스킬 효과 배선 43/92**(130차) · 신규 면허 효과 1/7 · 농사 카테고리 잠김 · **P1~P7 + 트리 확장 + P9 도움말 완료 → 다음 P8 퀘스트 XP** · 눕기 스프라이트 대기 |
 
 ---
 
-## 3. 지금 위치 (2026-09-10)
+## 3. 지금 위치 (2026-09-11)
 
+- **131차**: **도움말 라이브러리 현행화 + 제작 UI 영문화** — 게임 안 도움말이 123차에 멈춰 있어
+  125~129차에 **이미 구현된 생존 6토픽이 '준비 중'으로 남아 있던 것**을 전부 ready로 재작성 ·
+  **'제작' 카테고리 신설**(기본 = U 제작 탭 / 고급 = 설치 제작대 [F]) · 스킬 트리 토픽 3페이지
+  (**Σ 215 = 만렙 200 + 면허 15** · 해금 조건 · 시너지 히든 `???`) · 실캡처 8장(ko/en × 4) /
+  ⚠ **129차 제작 UI가 영문 사전에 전혀 없었다** → `buildRuntimeDict` 합류 + 사전 156·규칙 16.
+  도움말 문자열 **356개 미번역 0**. 실렌더 ko 10/10 · en 13/13.
+  [워크로그 131](03-WORKLOG/2026-09-11-131-help-library-craft-progression.md).
+- **130차**: **스킬 트리 확장 (a)(c)(d)(e)** — 생존 지표 최대치 3노드 · 행동력 확률적 면제 ·
+  해금 조건(레벨·면허·카테고리 숙련) · 시너지 히든 5종(비용 0·자동 습득) ·
+  **등식 재정의 Σ 200 → 215**(세이브가 랭크만 저장하므로 비용을 깎는 대신 **예산을 늘렸다**) ·
+  티어 수용 6 → 8. 실배선 43/92. core 43/43 · 실렌더 24/24.
+  [워크로그 130](03-WORKLOG/2026-09-11-130-skill-tree-expansion.md).
+- **129차**: **성장·생존 P7** — 제작 시스템(도면 14종 · U 탭 ↔ 고급 제작대 공유 보드) ·
+  약국·제작 구급품 3종 + `applyRemedy` · **홈타운 보건소 [F] 진료 45,000원** ·
+  피로 회복 음식(보양식 버프 · 카페인 리바운드) · 효과 수치 **단일 테이블 `ItemVitals`** ·
+  신규 아이템 26종 전부 픽셀 아이콘. core 32/32 · 실렌더 36/36.
+  [워크로그 129](03-WORKLOG/2026-09-11-129-crafting-firstaid-fatigue-food.md).
 - **127차**: **성장·생존 P5·P6** — core `CastWeather.ts` 신설: **바람 3m/s 초과부터** 맞바람 비거리 감소
   (9m/s ×0.73 — 실비행 466px → 332px) · 옆바람 산포 ×1.6 + 착수점 밀림 · **비 = 유속 ×1.27 · 밑걸림 ×1.33** /
   **스킬 실배선 13 → 24/83**(생활 6·채집 속도·정투·바람 읽기 — 바람 보정은 **손실의 20%만**, 사용자 "아주 미비") /

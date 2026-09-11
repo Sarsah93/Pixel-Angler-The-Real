@@ -452,6 +452,35 @@ const DOW_EN: Record<string, string> = {
 };
 /** 수치·이름이 끼어 있는 문장 — 정규식 규칙. 캡처 그룹은 그대로 옮긴다(이름은 사전을 다시 타지 않으므로 어종·아이템명은 한국어로 남을 수 있음). */
 export const EN_RULES: Rule[] = [
+  // ── 131차 제작 보드 (129차 P7 — 수치·이름 포함) ──
+  // 130차 (d)(e) 스킬 해금 조건·시너지
+  [/^배우기 \((\d+)pt\)$/, (m) => `Learn (${m[1]}pt)`],
+  [/^해금 조건: (.+)$/, (m, tr) => `Unlock: ${tr(m[1])}`],
+  [/^해금 조건 미충족 — (.+)$/, (m, tr) => `Unlock condition not met — ${tr(m[1])}`],
+  [/^Lv\.(\d+) 이상$/, (m) => `Lv.${m[1]} or higher`],
+  [/^면허 \[(.+)\] 보유$/, (m, tr) => `Licence [${tr(m[1])}] held`],
+  [/^(.+) 누적 랭크 (\d+) 이상$/, (m, tr) => `${tr(m[1])} total ranks ${m[2]}+`],
+  [/^선행 (.+) (\d+)랭크 필요$/, (m, tr) => `Requires ${tr(m[1])} rank ${m[2]}`],
+  // 130차 스킬 포인트 헤더 — 레벨 + 면허 (구 `Lv.N (누적 N)` 규칙은 형식이 바뀌어 더는 맞지 않는다)
+  [/^스킬 포인트 (\d+) 사용 가능 · 누적 (\d+) \(Lv\.(\d+) (\d+) \+ 면허 (\d+)\)$/,
+    (m) => `Skill points ${m[1]} available · ${m[2]} total (Lv.${m[3]} ${m[4]} + licences ${m[5]})`],
+  [/^\[보건소\] 진료 완료 — (\d+)건 치료 · 체력 회복 \(−([\d,]+)원\)$/,
+    (m) => `[Clinic] Treatment complete — ${m[1]} cured · HP restored (−${m[2]} won)`],
+  [/^\[보건소\] 진료 완료 — 체력 회복 \(−([\d,]+)원\)$/,
+    (m) => `[Clinic] Treatment complete — HP restored (−${m[1]} won)`],
+  [/^\[설치\] (.+) — 클릭 = 설치 · 우클릭\/ESC = 취소$/,
+    (m, tr) => `[Place] ${tr(m[1])} — click to place · right-click/ESC to cancel`],
+  [/^\[설치\] (.+) 설치 완료 \((\d+), (\d+)\)$/, (m, tr) => `[Place] ${tr(m[1])} placed (${m[2]}, ${m[3]})`],
+  [/^산출  (\d+)개 · 성공률 (\d+)% · 재료 절약 (\d+)%$/,
+    (m) => `Output ${m[1]} · Success ${m[2]}% · Material saving ${m[3]}%`],
+  [/^스킬 잠김 — \[(.+)\] (\d+)랭크 필요$/, (m, tr) => `Skill locked — [${tr(m[1])}] rank ${m[2]} required`],
+  [/^(.+)   (\d+) \/ (\d+)$/, (m, tr) => `${tr(m[1])}   ${m[2]} / ${m[3]}`],
+  [/^산출 아이템 정의 없음 \(데이터 오류\)$/, () => 'Output item is not defined (data error)'],
+  [/^재료 부족$/, () => 'Not enough materials'],
+  [/^(.+) (\d+)개 제작$/, (m, tr) => `Crafted ${m[2]} x ${tr(m[1])}`],
+  [/^실패 (\d+)회$/, (m) => `${m[1]} failed`],
+  [/^재료 (\d+)개 절약$/, (m) => `${m[1]} materials saved`],
+  [/^칸 부족으로 (\d+)개 유실$/, (m) => `${m[1]} lost — no inventory space`],
   // ── 127차 날씨 캐스팅 (수치 포함) ──
   [/^맞바람 — 비거리 (\d+)% 감소$/, (m) => `Headwind — distance ${m[1]}% shorter`],
   [/^\[낚시\] 캐스팅 — 파워 (\d+)%$/, (m) => `[Fishing] Cast — power ${m[1]}%`],

@@ -3,9 +3,9 @@
  * @description 플레이어 레벨·경험치 곡선 + 활동 XP 산식 (124차 — PROGRESSION_SURVIVAL_SPEC v2 §1)
  *
  * 저장 구조는 기존 `player.level / experience`(레벨 내 잔여 XP) 그대로 — 여기서는 **공식만** 제공한다.
- * 스킬 포인트는 레벨 파생(`skillPointsForLevel` = 레벨 × 1)이므로 MAX_LEVEL 200 = 200SP
- * = 스킬 트리 총 비용(SkillDatabase Σ=200 등식)이 성립한다. 곡선을 바꾸면 §1-2 마일스톤 표와
- * 이 등식을 함께 갱신할 것.
+ * 스킬 포인트는 레벨 파생(`skillPointsForLevel` = 레벨 × 1)이라 MAX_LEVEL 200 = 200SP이고,
+ * **130차부터 면허 보너스 15SP가 더해져 총 예산 215SP = 스킬 트리 총 비용(SkillDatabase Σ=215)** 이다.
+ * 곡선을 바꾸면 §1-2 마일스톤 표와 이 등식(`SKILL_TREE_TOTAL_PT`)을 함께 갱신할 것.
  *
  * 손질 숙련(`GameState.skills.filleting`)은 별개 축 — 여기의 활동 XP와 이중 지급이 맞다(§2-0-3).
  */
@@ -13,7 +13,7 @@
 import type { FishRarity } from '../db-schema/FishDatabase.js';
 import { TUNING } from '../config/tuning.js';
 
-/** 최대 레벨 — 도달 시 XP 누적 정지. 스킬 트리 총 비용(200pt)과 등식으로 묶여 있다 */
+/** 최대 레벨 — 도달 시 XP 누적 정지. 스킬 트리 총 비용(215pt = 레벨 200 + 면허 15)과 등식으로 묶여 있다 */
 export const MAX_LEVEL = 200;
 
 /**

@@ -21,6 +21,7 @@ import {
   LICENSE_DATABASE, SKILL_DATABASE, SKILL_CATEGORIES,
   REGION_DATABASE, WORLD_NODE_DATABASE, REGION_AREA_NODES, REGION_MAP_GRAPHS, SEAMLESS_REGIONS,
   DATA_ATTRIBUTIONS, LICENSE_LABEL, LICENSE_LABEL_EN,
+  CRAFT_BLUEPRINTS, CRAFT_GROUP_LABEL,
 } from '@tra/core';
 import { EN_PLACES } from './places.js';
 import { EN_POIS } from './en_pois.js';
@@ -62,6 +63,9 @@ function buildRuntimeDict(): void {
   for (const l of LICENSE_DATABASE) { put(l.nameKo, l.nameEn); put(l.description, l.descriptionEn); if (l.plannedNote) put(l.plannedNote, l.plannedNoteEn); }
   for (const sk of SKILL_DATABASE) { put(sk.nameKo, sk.nameEn); put(sk.descKo, sk.descEn); }
   for (const c of SKILL_CATEGORIES) { put(c.nameKo, c.nameEn); put(c.descKo, c.descEn); put(c.lockedNoteKo, c.lockedNoteEn); }
+  // 131차 — 제작 도면·그룹 라벨도 데이터(nameEn/descEn)가 정본
+  for (const bp of CRAFT_BLUEPRINTS) { put(bp.nameKo, bp.nameEn); put(bp.descKo, bp.descEn); }
+  for (const g of Object.values(CRAFT_GROUP_LABEL)) put(g.ko, g.en);
   for (const r of REGION_DATABASE) put(r.description, r.descriptionEn);
   // 122차 — 출처 화면(데이터 제공기관·서비스·사용처·라이선스 라벨)
   for (const a of DATA_ATTRIBUTIONS) { put(a.provider, a.providerEn); put(a.service, a.serviceEn); put(a.usage, a.usageEn); }

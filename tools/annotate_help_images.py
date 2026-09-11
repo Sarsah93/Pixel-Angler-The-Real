@@ -60,6 +60,35 @@ CALLOUTS: dict[str, list[tuple[int, int, int, int, str]]] = {
         (470, 620, 340, 68, '쿨러(어창) · 밑밥 C'),
         (1220, 340, 40, 110, '가이드 · 밑밥 버튼'),
     ],
+    # ── 131차 — 제작 탭 · 고급 제작대 · 스킬 트리 · 상태 패널 ──
+    'craft_tab': [
+        (684, 94, 180, 34, '제작 탭 — 조건 없이 어디서나'),
+        (121, 143, 338, 520, '도면 목록 — 그룹별 · 칩 색 = 가능/재료 부족/잠김'),
+        (488, 224, 300, 18, '산출 · 성공률 · 재료 절약'),
+        (485, 248, 400, 60, '필요 재료 — 보유 / 필요'),
+        (492, 318, 270, 30, '수량 −/+/최대 → [제작]'),
+        (488, 630, 380, 18, '고급 품목은 설치한 제작대에서 [F]'),
+    ],
+    'workbench': [
+        (215, 96, 220, 34, '고급 제작대 — 근접 [F] · 회수는 Shift+F'),
+        (228, 145, 280, 470, '고급 도면 6종 — 루어·에기 / 통발 / 로드·릴'),
+        (535, 250, 420, 78, '전용 자재 — 식자재마트에서 구매'),
+        (538, 378, 300, 20, '제작 스킬 랭크가 모자라면 잠김'),
+        (20, 612, 300, 62, '설치 로그'),
+    ],
+    'skill_tree': [
+        (108, 78, 252, 340, '카테고리 7 — 제작 포함'),
+        (856, 80, 324, 20, '포인트 = 레벨 + 면허 (합계 215)'),
+        (588, 166, 44, 16, '예정 배지 = 효과 배선 전'),
+        (978, 500, 176, 62, '??? = 시너지 히든 (조합 완성 시 자동)'),
+        (378, 558, 790, 72, '하단 상세 → [배우기]'),
+    ],
+    'vitals_panel': [
+        (18, 16, 322, 200, '상태 패널 대'),
+        (200, 92, 132, 40, '허기 · 수분 컴팩트 바'),
+        (334, 44, 132, 44, '호버 팝업이 뜨는 자리'),
+        (14, 216, 88, 28, '상태이상 스트립 (패널 바깥)'),
+    ],
     # 파이팅 (117차 실캡처 — devForceFight)
     'fp_fight': [
         (16, 40, 172, 122, '텐션·하중/줄·랜딩·피로'),
@@ -155,6 +184,27 @@ CALLOUTS: dict[str, list[tuple[int, int, int, int, str]]] = {
 # 콜아웃 라벨 영문판 (119차) — 영어 로케일용 주석 이미지(help_<key>_en.png)에 쓴다.
 # 새 콜아웃을 추가하면 여기에도 한 줄 추가할 것(없으면 한국어 그대로 그려진다).
 LABEL_EN: dict[str, str] = {
+    # ── 131차 ──
+    '제작 탭 — 조건 없이 어디서나': 'Crafting tab — anywhere, no requirements',
+    '도면 목록 — 그룹별 · 칩 색 = 가능/재료 부족/잠김': 'Blueprints by group · chip colour = ready / short on materials / locked',
+    '산출 · 성공률 · 재료 절약': 'Output · success rate · material saving',
+    '필요 재료 — 보유 / 필요': 'Materials — held / needed',
+    '수량 −/+/최대 → [제작]': 'Quantity −/+/Max → [Craft]',
+    '고급 품목은 설치한 제작대에서 [F]': 'Advanced items need a placed workbench ([F])',
+    '고급 제작대 — 근접 [F] · 회수는 Shift+F': 'Advanced workbench — [F] to use · Shift+F to pick up',
+    '고급 도면 6종 — 루어·에기 / 통발 / 로드·릴': 'Six advanced blueprints — lures & egi / traps / rod & reel',
+    '전용 자재 — 식자재마트에서 구매': 'Dedicated materials — sold at the grocery mart',
+    '제작 스킬 랭크가 모자라면 잠김': 'Locked until the crafting skill rank is met',
+    '설치 로그': 'Placement log',
+    '카테고리 7 — 제작 포함': 'Seven categories — Crafting included',
+    '포인트 = 레벨 + 면허 (합계 215)': 'Points = levels + licences (215 total)',
+    '예정 배지 = 효과 배선 전': 'Planned badge = effect not wired yet',
+    '??? = 시너지 히든 (조합 완성 시 자동)': '??? = hidden synergy (granted on completing the combo)',
+    '하단 상세 → [배우기]': 'Detail pane → [Learn]',
+    '상태 패널 대': 'Large status panel',
+    '허기 · 수분 컴팩트 바': 'Compact hunger / hydration bars',
+    '호버 팝업이 뜨는 자리': 'The hover popup appears here',
+    '상태이상 스트립 (패널 바깥)': 'Status effect strip (outside the panel)',
     '상태 — HP·피로·시계·날씨 (크기/투명 버튼)': 'Status — HP · fatigue · clock · weather (size / opacity buttons)',
     '미니맵 (M 크기)': 'Minimap (M = size)',
     '퀵슬롯 1~8': 'Quickslots 1–8',
@@ -239,14 +289,40 @@ LABEL_EN: dict[str, str] = {
 
 KEYS = ['hud', 'worldmap', 'inventory', 'equipment', 'shop', 'shop_trade', 'rig_bait', 'rig_lure', 'cast_aim',
         'fp_views', 'fp_fight', 'board', 'board_fish', 'butchery', 'cooler', 'home', 'chum_tab', 'codex',
-        'bite_s3', 'dragin_reel', 'catch_popup']
+        'bite_s3', 'dragin_reel', 'catch_popup',
+        'craft_tab', 'workbench', 'skill_tree', 'vitals_panel']
+
+
+FONT_CANDIDATES = (
+    'C:/Windows/Fonts/malgunbd.ttf', 'C:/Windows/Fonts/malgun.ttf', 'C:/Windows/Fonts/NanumGothicBold.ttf',
+    # Linux/CI — 한글 폰트가 있으면 쓴다. 없으면 라틴 폰트로 떨어지고 한국어 콜아웃은 건너뛴다.
+    '/usr/share/fonts/truetype/nanum/NanumGothicBold.ttf',
+    '/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc',
+    '/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf',
+)
 
 
 def font(size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
-    for cand in ('C:/Windows/Fonts/malgunbd.ttf', 'C:/Windows/Fonts/malgun.ttf', 'C:/Windows/Fonts/NanumGothicBold.ttf'):
+    for cand in FONT_CANDIDATES:
         if os.path.exists(cand):
             return ImageFont.truetype(cand, size)
     return ImageFont.load_default()
+
+
+def hangul_ok() -> bool:
+    """찾은 폰트가 한글을 **실제로** 그릴 수 있는가.
+
+    ⚠ `getmask('가')`가 비어 있지 않은 것만으로는 판정할 수 없다 — 글리프가 없으면
+    FreeType이 `.notdef`(두부 □)를 그려 주기 때문에 마스크가 항상 채워져 나온다.
+    그래서 **사용자 영역 문자(글리프가 있을 리 없는 것)와 비교**해 같으면 두부로 본다.
+    """
+    f = font(16)
+    try:
+        a = f.getmask('가').tobytes()
+        b = f.getmask('\ue000').tobytes()
+        return a != b
+    except Exception:
+        return False
 
 
 def downscale(im: Image.Image) -> Image.Image:
@@ -307,6 +383,9 @@ def main() -> None:
         if os.path.exists(src):
             im = downscale(Image.open(src))
             items = [c for c in CALLOUTS.get(key, []) if c[4]]
+            if items and a.lang == 'ko' and not hangul_ok():
+                print(f'  ! {key}: 한글 폰트가 없어 콜아웃을 건너뜁니다 (축소본만 저장)')
+                items = []
             if items:
                 draw_callouts(im, items, k, a.lang)
             im.save(out, optimize=True)
