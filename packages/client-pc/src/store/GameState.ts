@@ -31,6 +31,9 @@ import type {
 import type { WorldObjectState } from '@tra/core';
 import {
   skillPointsForLevel, skillPointsSpent, skillPrereqsMet, getSkillById, SKILL_CATEGORIES,
+  skillPointsFromLicenses as coreSkillPointsFromLicenses, skillUnlockMissing,
+  newlyUnlockedHiddenSkills, describeUnlockCond as coreDescribeUnlockCond,
+  type SkillDef, type SkillUnlockCtx,
   skillMult as coreSkillMult, skillBonus as coreSkillBonus, type SkillRanks, type SkillEffectKey,
   MAX_LEVEL, xpToNext, catchXp, activityXp, type XpActivity,
 } from '@tra/core';
@@ -40,6 +43,7 @@ import {
   vitalsSpeedMult as coreVitalsSpeed, isVitalsLow as coreVitalsLow,
   aggregateStatus, tickStatuses as coreTickStatuses, addStatus as coreAddStatus,
   cureStatus as coreCureStatus,
+  BASE_HUNGER_MAX, BASE_HYDRATION_MAX,
   type VitalsState, type VitalsActivity, type VitalsAction, type VitalsEnv,
   getStatusEffect,
   type ActiveStatus, type StatusEffectId, type StatusModifiers, type StatusCure,
@@ -222,6 +226,8 @@ export class GameStateManager {
    * 리바운드와 같은 이유로 **활동 시간**으로 잰다(오프라인 중 소진되지 않는다).
    */
   private _drainBuff: { leftMs: number; mult: number } | null = null;
+  /** 아직 안내하지 않은 히든 시너지 해금 (130차 (e)) — UI가 `takeRecentHiddenUnlocks`로 꺼낸다 */
+  private _recentHidden: SkillDef[] = [];
   /** 1회성 안내 플래그 (세이브 대상) — 예: chumGuideSeen */
   private _flags: Record<string, boolean> = {};
   /** 맵별 오브젝트 월드 상태 (세이브 대상) — key = mapId */
@@ -297,6 +303,9 @@ export class GameStateManager {
     this._hunger = saved.vitals?.hunger ?? 100;
     this._hydration = saved.vitals?.hydration ?? 100;
     this._statuses = saved.vitals?.statuses ?? [];
+    // 130차 (e) — 구세이브가 이미 조합을 갖췄을 수 있다(히든 노드는 세이브에 없던 시절 데이터).
+    //   포인트를 쓰지 않으므로 소급 지급해도 예산이 어긋나지 않는다.
+    this.refreshHiddenSkills();
     this.syncInventoryDiscoveries();
   }
 
@@ -479,6 +488,8 @@ export class GameStateManager {
     if ((p.level ?? 1) >= MAX_LEVEL) p.experience = 0;
     if (ups > 0) {
       console.log(`[GameState] Level Up! Lv.${(p.level ?? 1) - ups} -> Lv.${p.level} (스킬 포인트 +${ups})`);
+      this.commitVitals(this.vitals);   // maxHp가 레벨에 비례하므로 상한 재계산
+      this.refreshHiddenSkills();       // 130차 (d) — 레벨 조건 히든이 열릴 수 있다
       this.markDirty();
     }
     return ups;
@@ -510,9 +521,19 @@ export class GameStateManager {
     return Math.max(10, Math.round(base * (1 - m.maxHpPct) - m.maxHpDelta));
   }
 
-  /** 최대 피로도 — 상태이상(감기·골절 등)이 상한을 깎는다 = 더 빨리 기절 */
+  /** 최대 피로도 — 상태이상(감기·골절 등)이 상한을 깎고, '강단'(130차)이 올린다 */
   get maxFatigue(): number {
-    return Math.max(20, 100 - this.statusModifiers.maxFatigueDelta);
+    return Math.max(20, 100 + this.skillBonus('fatigue_max') - this.statusModifiers.maxFatigueDelta);
+  }
+
+  /** 최대 허기 — 기본 100 + '대식가'(130차 (a)) */
+  get maxHunger(): number {
+    return Math.max(10, BASE_HUNGER_MAX + this.skillBonus('hunger_max'));
+  }
+
+  /** 최대 수분 — 기본 100 + '큰 물통' */
+  get maxHydration(): number {
+    return Math.max(10, BASE_HYDRATION_MAX + this.skillBonus('thirst_max'));
   }
 
   /** 생존 지표 스냅샷 (HP·피로도는 player에서, 허기·수분은 자체 필드에서) */
@@ -521,7 +542,8 @@ export class GameStateManager {
     return {
       hp: p.stamina, maxHp: this.maxHp,
       fatigue: p.fatigue, maxFatigue: this.maxFatigue,
-      hunger: this._hunger, hydration: this._hydration,
+      hunger: this._hunger, maxHunger: this.maxHunger,
+      hydration: this._hydration, maxHydration: this.maxHydration,
     };
   }
 
@@ -544,8 +566,10 @@ export class GameStateManager {
     const p = this.player;
     p.stamina = Math.max(0, Math.min(v.hp, v.maxHp));
     p.fatigue = Math.max(0, Math.min(v.fatigue, v.maxFatigue));
-    this._hunger = Math.max(0, Math.min(100, v.hunger));
-    this._hydration = Math.max(0, Math.min(100, v.hydration));
+    // 상한은 **스킬에서 파생**하므로 v가 들고 온 값이 아니라 현재 계산값으로 다시 클램프한다
+    // (리스펙으로 '대식가'를 물리면 그릇이 줄어드는데, v의 옛 상한을 믿으면 넘친 채로 남는다).
+    this._hunger = Math.max(0, Math.min(this.maxHunger, v.hunger));
+    this._hydration = Math.max(0, Math.min(this.maxHydration, v.hydration));
   }
 
   /**
@@ -609,12 +633,22 @@ export class GameStateManager {
     };
   }
 
-  /** 1회성 행동 비용 (캐스팅·파이팅·손질·출조 등) */
-  applyVitalsAction(action: VitalsAction, mult = 1): void {
+  /**
+   * 1회성 행동 비용 (캐스팅·파이팅·손질·출조 등).
+   *
+   * 130차 (c): '요령'(`action_free`) 랭크만큼 **비용이 통째로 면제될 확률**이 있다.
+   * 비용을 깎는 게 아니라 **가끔 아예 안 드는** 형태라, 같은 기대값이어도 체감이 다르다
+   * (재료 절약(`materialSaveChance`)과 같은 모델 — 소수점 소모를 만들지 않는다).
+   * 반환 = 이번 호출이 면제됐는가(호출측이 토스트를 띄울 수 있다).
+   */
+  applyVitalsAction(action: VitalsAction, mult = 1, rng: () => number = Math.random): boolean {
+    const free = this.skillBonus('action_free');
+    if (free > 0 && rng() < Math.min(0.6, free)) return true;
     const v = this.vitals;
     coreVitalsAction(v, action, mult);
     this.commitVitals(v);
     this.markDirty();
+    return false;
   }
 
   /**
@@ -685,7 +719,9 @@ export class GameStateManager {
    * 명시적 롤(채집 부상·식중독 등)은 전부 이 함수를 거쳐야 스킬이 반영된다.
    */
   rollStatus(id: StatusEffectId, chance: number, rng: () => number = Math.random): boolean {
-    const p = Math.max(0, Math.min(1, chance * this.skillMult('immunity')));
+    // 면역력은 전 상태이상 공통, **위생 관념은 식중독 전용**(130차 배선 — 설명 문구가 그렇게 적혀 있었다).
+    const extra = id === 'food_poison' ? this.skillMult('hygiene') : 1;
+    const p = Math.max(0, Math.min(1, chance * this.skillMult('immunity') * extra));
     return rng() < p && this.addStatus(id);
   }
 
@@ -793,22 +829,89 @@ export class GameStateManager {
   // ─── 스킬 트리 (122차) — 포인트 = 레벨 파생 · 랭크만 영속 ───
   get skillRanks(): SkillRanks { return this._skillRanks; }
   skillRank(id: string): number { return this._skillRanks[id] ?? 0; }
-  skillPointsTotal(): number { return skillPointsForLevel(this._player?.level ?? 1); }
+
+  /** 유효 면허 타입 목록 (만료 제외) — 보너스 포인트·해금 조건의 단일 소스 */
+  get heldLicenseTypes(): string[] {
+    return this._licenses.filter((l) => !l.isExpired).map((l) => String(l.type));
+  }
+
+  /** 해금 조건 판정 컨텍스트 (130차 (d)) */
+  private get unlockCtx(): SkillUnlockCtx {
+    return { level: this._player?.level ?? 1, licenses: this.heldLicenseTypes, ranks: this._skillRanks };
+  }
+
+  /** 해금 조건 판정 컨텍스트 (패널이 남은 조건을 표시할 때 쓴다) */
+  get skillUnlockCtxPublic(): SkillUnlockCtx { return this.unlockCtx; }
+
+  /** 면허에서 온 보너스 포인트 (130차 — 등식 우변 둘째 항) */
+  skillPointsFromLicenses(): number {
+    return coreSkillPointsFromLicenses(this.heldLicenseTypes);
+  }
+
+  /**
+   * 총 스킬 포인트 = **레벨 파생 + 면허 보너스** (130차).
+   * 만렙(200) + 전 면허(15) = 215 = 유료 노드 총비용 — "만렙 + 전 면허 = 전 스킬 마스터".
+   */
+  skillPointsTotal(): number {
+    return skillPointsForLevel(this._player?.level ?? 1) + this.skillPointsFromLicenses();
+  }
   skillPointsAvailable(): number { return Math.max(0, this.skillPointsTotal() - skillPointsSpent(this._skillRanks)); }
+
   canLearnSkill(id: string): { ok: boolean; reason?: string } {
     const d = getSkillById(id);
     if (!d) return { ok: false, reason: '알 수 없는 스킬' };
     if (SKILL_CATEGORIES.find((c) => c.id === d.category)?.locked) return { ok: false, reason: '이 카테고리는 아직 잠겨 있습니다' };
+    // 130차 (e) — 히든 시너지는 **사는 것이 아니라 열리는 것**이다(조건 충족 시 자동 습득).
+    if (d.hidden) return { ok: false, reason: '조합을 완성하면 저절로 열립니다' };
     if ((this._skillRanks[id] ?? 0) >= d.maxRank) return { ok: false, reason: '이미 최대 랭크입니다' };
     if (!skillPrereqsMet(d, this._skillRanks)) return { ok: false, reason: '선행 스킬이 필요합니다' };
+    // 130차 (d) — 선행 랭크와 **직교하는** 추가 관문(레벨·면허·카테고리 숙련)
+    const missing = skillUnlockMissing(d, this.unlockCtx);
+    if (missing.length > 0) {
+      return { ok: false, reason: `해금 조건 미충족 — ${this.describeUnlock(missing[0])}` };
+    }
     if (this.skillPointsAvailable() < d.costPerRank) return { ok: false, reason: '스킬 포인트가 부족합니다' };
     return { ok: true };
   }
+
   learnSkill(id: string): boolean {
     if (!this.canLearnSkill(id).ok) return false;
     this._skillRanks[id] = (this._skillRanks[id] ?? 0) + 1;
+    this.commitVitals(this.vitals);      // 최대치 스킬(대식가·강단 등)은 즉시 상한 재계산
     this.markDirty();
+    this.refreshHiddenSkills();          // 이번 습득으로 시너지가 완성됐을 수 있다
     return true;
+  }
+
+  /** 해금 조건 문구 — 면허는 id 대신 사람이 읽는 이름으로 */
+  describeUnlock(cond: Parameters<typeof coreDescribeUnlockCond>[0]): string {
+    return coreDescribeUnlockCond(cond, (t) => getLicenseByType(t as never)?.nameKo);
+  }
+
+  /**
+   * 시너지 히든 스킬 자동 해금 (130차 (e)) — 조건을 채운 히든 노드에 랭크 1을 넣는다.
+   * **포인트를 쓰지 않는다**(costPerRank 0). 레벨업·면허 취득·스킬 습득 뒤에 호출한다.
+   * 반환 = 이번에 열린 노드(호출측이 안내를 띄운다).
+   */
+  refreshHiddenSkills(): SkillDef[] {
+    const opened = newlyUnlockedHiddenSkills(this.unlockCtx);
+    if (opened.length === 0) return [];
+    for (const d of opened) this._skillRanks[d.id] = 1;
+    this._recentHidden.push(...opened);
+    this.commitVitals(this.vitals);
+    this.markDirty();
+    return opened;
+  }
+
+  /**
+   * 최근 해금된 히든 시너지를 **한 번만** 꺼낸다 (안내용).
+   * 해금은 학습·레벨업·면허 취득·세이브 로드 등 여러 지점에서 일어나는데, 그 전부에
+   * 안내를 배선하는 대신 여기에 모아 두고 **UI가 편할 때 꺼내 쓴다**(HUD 로그·패널 배너).
+   */
+  takeRecentHiddenUnlocks(): SkillDef[] {
+    const out = this._recentHidden;
+    this._recentHidden = [];
+    return out;
   }
   /** 효과 배율 (1 + Σ) — 소비처는 매 호출 읽는다 */
   /**
@@ -817,7 +920,10 @@ export class GameStateManager {
    */
   resetSkills(): number {
     const spent = skillPointsSpent(this._skillRanks);
+    // 히든 시너지도 함께 지운다 — 조합이 무너졌는데 보상만 남으면 앞뒤가 안 맞는다.
+    // (조건이 아직 유효하면 아래 refreshHiddenSkills가 그 자리에서 다시 열어준다.)
     for (const k of Object.keys(this._skillRanks)) delete this._skillRanks[k];
+    this.refreshHiddenSkills();
     this.commitVitals(this.vitals);   // stamina_max 등 최대치 즉시 재클램프
     this.markDirty();
     return spent;
@@ -927,6 +1033,10 @@ export class GameStateManager {
       expiresAt,
       isExpired: false,
     });
+    // 130차 — 면허는 **스킬 포인트 +1**(등식 우변)이자 (d) 해금 조건이다.
+    //   취득 즉시 히든 시너지 조건이 채워질 수 있으므로 함께 갱신한다.
+    this.refreshHiddenSkills();
+    this.markDirty();
     return true;
   }
 

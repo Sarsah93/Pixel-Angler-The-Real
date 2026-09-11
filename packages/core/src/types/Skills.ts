@@ -36,6 +36,9 @@ export type SkillEffectKey =
   | 'stamina_max' | 'strength' | 'fatigue_recovery' | 'cold_resist' | 'cooking_quality' | 'fillet_yield'
   // 생활 — 124차 증설 (허기·수분·수면·면역·응급·위생 — 생존 지표 P2 소비 예정)
   | 'hunger_drain' | 'thirst_drain' | 'sleep_recovery' | 'immunity' | 'firstaid' | 'hygiene'
+  // 생활 — 130차 증설 (a) 생존 지표 **최대치** + (c) 행동력 미소비
+  //  ⚠ `*_drain`(소모 속도)과 `*_max`(그릇 크기)는 다른 축이다 — 섞지 말 것.
+  | 'hunger_max' | 'thirst_max' | 'fatigue_max' | 'action_free'
   // 농사
   | 'till_speed' | 'crop_yield' | 'water_efficiency' | 'seed_saver' | 'greenhouse' | 'fertilizer'
   // 농사 — 124차 증설 (발아·병충해·절기 캘린더)
@@ -43,6 +46,27 @@ export type SkillEffectKey =
   // 제작 — 124차 신설 카테고리 (P7 제작 시스템 소비 예정)
   | 'craft_success' | 'sinker_material' | 'lure_tuning' | 'egi_tuning' | 'trap_durability' | 'medic_quality'
   | 'chum_slots' | 'rod_building' | 'reel_tuning' | 'craft_material' | 'blueprint_grade' | 'craft_batch';
+
+/**
+ * 스킬 해금 조건 (130차 (d)) — `requires`(선행 랭크)와 **직교**하는 추가 관문.
+ * 선행 랭크만으로는 "낚시를 많이 했다"밖에 표현 못 해서, 레벨·면허·카테고리 숙련을 조건으로 쓴다.
+ * 전부 **AND** — 하나라도 미충족이면 잠김(패널이 사유를 그대로 보여준다).
+ */
+export type SkillUnlockCond =
+  /** 플레이어 레벨 n 이상 */
+  | { kind: 'level'; value: number }
+  /** 특정 면허 보유 (LicenseType 문자열 — core License.ts와 순환 참조를 피해 string으로 둔다) */
+  | { kind: 'license'; value: string }
+  /** 같은/지정 카테고리의 누적 랭크 n 이상 — "그 분야를 판 사람만" */
+  | { kind: 'categoryRanks'; category: SkillCategoryId; value: number };
+
+/** 해금 조건 판정에 필요한 바깥 상태 */
+export interface SkillUnlockCtx {
+  level: number;
+  /** 보유(유효) 면허 타입 목록 */
+  licenses: string[];
+  ranks: SkillRanks;
+}
 
 export interface SkillEffect {
   key: SkillEffectKey;
@@ -68,6 +92,14 @@ export interface SkillDef {
   effect: SkillEffect;
   /** 소비처 배선 여부 — false = 정의만(패널 '예정' 배지) */
   wired: boolean;
+  /** 추가 해금 조건 (130차 (d)) — 없으면 선행 랭크만 본다 */
+  unlock?: SkillUnlockCond[];
+  /**
+   * 시너지 히든 스킬 (130차 (e)) — 조합을 다 배우면 **자동으로 열리는 보상 노드**.
+   * 규칙: `costPerRank: 0`(포인트 예산 밖) · `requires` 2개 이상 · 조건 충족 시 랭크 1 자동 습득.
+   * 패널은 조건 미충족 동안 이름·효과를 숨기고 `???`로만 표시한다.
+   */
+  hidden?: boolean;
 }
 
 export interface SkillCategoryDef {
@@ -90,4 +122,25 @@ export const SKILL_POINTS_PER_LEVEL = 1;
 
 export function skillPointsForLevel(level: number): number {
   return Math.max(0, Math.floor(level)) * SKILL_POINTS_PER_LEVEL;
+}
+
+/**
+ * 면허 1종당 보너스 스킬 포인트 (130차) — **기본 제공 면허는 제외**한다.
+ *
+ * ⚖ 왜 도입했나: (a)(c) 신규 노드를 넣으면 트리 총비용이 200을 넘는데,
+ * 기존 노드 비용을 깎아 200에 맞추면 **이미 찍은 세이브의 사용 포인트가 어긋난다**.
+ * 그래서 총비용을 늘리고 **예산도 같이 늘렸다** — 그 증가분을 면허에 붙여
+ * "면허를 따면 스킬도 열린다"는 (d) 해금 조건과 같은 방향을 보게 했다.
+ *
+ * 등식: **Σ(유료 노드) = 레벨 만렙 포인트 + 면허 보너스 총량.**
+ */
+export const SKILL_POINTS_PER_LICENSE = 1;
+
+/** 기본 제공이라 보너스에서 빼는 면허 */
+export const SKILL_BONUS_EXCLUDED_LICENSES: readonly string[] = ['basic_angling'];
+
+/** 보유 면허 → 보너스 포인트 (만료 면허는 호출측이 걸러서 넘긴다) */
+export function skillPointsFromLicenses(heldTypes: readonly string[]): number {
+  const uniq = new Set(heldTypes.filter((t) => !SKILL_BONUS_EXCLUDED_LICENSES.includes(t)));
+  return uniq.size * SKILL_POINTS_PER_LICENSE;
 }

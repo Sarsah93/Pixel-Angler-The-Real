@@ -2343,7 +2343,8 @@ export class RegionFieldScene extends Phaser.Scene {
     const originX = this.playerBody.x;
     const originY = this.playerBody.y;
 
-    GameState.applyVitalsAction('cast');   // 125차 — 캐스팅 1회 행동 비용
+    // 125차 — 캐스팅 1회 행동 비용. 130차 (c) '요령'이 터지면 이번 캐스팅은 공짜다(로그로만 알린다).
+    if (GameState.applyVitalsAction('cast')) this.hud?.pushLog('[요령] 힘을 아껴 캐스팅했습니다');
 
     // 127차 — 날씨: 맞바람이면 비거리가 줄고, 옆바람이면 비행 중 횡으로 휜다.
     //   착수 무작위 산포는 착수 판정(finishCast) 시점에 적용한다.
@@ -3013,6 +3014,11 @@ export class RegionFieldScene extends Phaser.Scene {
     }
     for (const id of r.added) {
       this.hud?.pushLog(`[상태] ${getStatusEffect(id)?.nameKo ?? id} 증상이 나타났습니다`);
+    }
+    // 130차 (e) — 레벨업·면허 취득으로 열린 시너지를 여기서 한 번만 알린다
+    //   (스킬 패널 밖에서 열리는 경로가 있어서 큐를 씬이 비운다)
+    for (const d of GameState.takeRecentHiddenUnlocks()) {
+      this.hud?.pushLog(`[시너지] ${d.nameKo} 해금 — ${d.descKo}`);
     }
     for (const id of r.removed) {
       this.hud?.pushLog(`[상태] ${getStatusEffect(id)?.nameKo ?? id} 증상이 가라앉았습니다`);

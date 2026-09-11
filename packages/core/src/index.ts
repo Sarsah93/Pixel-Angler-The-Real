@@ -218,10 +218,21 @@ export {
 export type { ForageEnvContext, ForageSafety, RollForageOpts, ForageOutcome, ForageResult, EnforcementResult, ForageMods } from './simulation/ForagingEngine.js';
 
 // 스킬 트리 (122차) — 카테고리·노드·포인트·효과 배율
-export type { SkillCategoryId, SkillEffectKey, SkillEffect, SkillDef, SkillCategoryDef, SkillRanks } from './types/Skills.js';
-export { SKILL_POINTS_PER_LEVEL, skillPointsForLevel } from './types/Skills.js';
+export type {
+  SkillCategoryId, SkillEffectKey, SkillEffect, SkillDef, SkillCategoryDef, SkillRanks,
+  SkillUnlockCond, SkillUnlockCtx,
+} from './types/Skills.js';
+export {
+  SKILL_POINTS_PER_LEVEL, skillPointsForLevel,
+  // 130차 — 면허 보너스 포인트 (등식 우변 둘째 항)
+  SKILL_POINTS_PER_LICENSE, SKILL_BONUS_EXCLUDED_LICENSES, skillPointsFromLicenses,
+} from './types/Skills.js';
 export {
   SKILL_CATEGORIES, SKILL_DATABASE, SKILL_TREE_TOTAL_PT, getSkillById, skillsOfCategory, skillPointsSpent, skillPrereqsMet, skillMult, skillBonus,
+  // 130차 — 해금 조건 (d) · 시너지 히든 (e) · 티어 제약
+  SKILL_LICENSE_BONUS_TOTAL_PT, SKILL_TIER_MAX_NODES,
+  categoryRanks, categoryMaxRanks, skillUnlockMet, skillUnlockCondMet, skillUnlockMissing,
+  describeUnlockCond, newlyUnlockedHiddenSkills,
 } from './db-schema/SkillDatabase.js';
 export type { XpActivity } from './types/Progression.js';
 export {
@@ -232,6 +243,7 @@ export type { VitalsState, VitalsActivity, VitalsAction, VitalsEnv, VitalsTickRe
 export {
   createVitals, tickVitals, applyVitalsAction, applyIntake, applySleep, setVitalsCaps,
   isVitalsLow, vitalsSpeedMult, vitalsFatigueMult,
+  normalizeVitals, BASE_HUNGER_MAX, BASE_HYDRATION_MAX,
 } from './types/Vitals.js';
 export type {
   CastWeatherInput, CastWeatherEffect, Vec2 as CastVec2,

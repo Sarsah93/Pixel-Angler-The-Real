@@ -21,10 +21,18 @@ export interface VitalsState {
   /** 피로도 0~maxFatigue (상태이상이 최대치를 깎을 수 있다) */
   fatigue: number;
   maxFatigue: number;
-  /** 허기 0~100 (100 = 배부름) */
+  /** 허기 0~maxHunger (가득 = 배부름) */
   hunger: number;
-  /** 수분 0~100 (100 = 충분) */
+  /**
+   * 허기 최대치 (130차 (a) — 기본 100, `hunger_max` 스킬로 증가).
+   * ⚠ **소모 속도(`hunger_drain`)와 다른 축**이다 — 이건 그릇 크기고, 저건 새는 속도다.
+   * 구세이브에 필드가 없으면 `normalizeVitals`가 100으로 채운다.
+   */
+  maxHunger: number;
+  /** 수분 0~maxHydration */
   hydration: number;
+  /** 수분 최대치 (기본 100 · `thirst_max`) */
+  maxHydration: number;
 }
 
 /** 시간 드레인이 적용되는 활동 종류 */
@@ -63,17 +71,38 @@ function costOf(action: VitalsAction): Triple {
   }
 }
 
+/** 지표 기본 최대치 (허기·수분) — 스킬로 올린다 */
+export const BASE_HUNGER_MAX = 100;
+export const BASE_HYDRATION_MAX = 100;
+
 /** 지표 기본값 — 새 게임/구세이브 백필은 만복 상태로 시작한다(§4-1) */
-export function createVitals(maxHp = 100, maxFatigue = 100): VitalsState {
-  return { hp: maxHp, maxHp, fatigue: 0, maxFatigue, hunger: 100, hydration: 100 };
+export function createVitals(
+  maxHp = 100, maxFatigue = 100,
+  maxHunger = BASE_HUNGER_MAX, maxHydration = BASE_HYDRATION_MAX,
+): VitalsState {
+  return {
+    hp: maxHp, maxHp, fatigue: 0, maxFatigue,
+    hunger: maxHunger, maxHunger, hydration: maxHydration, maxHydration,
+  };
+}
+
+/**
+ * 구세이브 백필 (130차) — `maxHunger`/`maxHydration`이 없던 시절 저장분을 100으로 채운다.
+ * **현재값은 건드리지 않는다**(세이브 백필 규칙: 유저 상태 불침범).
+ */
+export function normalizeVitals(v: VitalsState): VitalsState {
+  if (!(v.maxHunger > 0)) v.maxHunger = BASE_HUNGER_MAX;
+  if (!(v.maxHydration > 0)) v.maxHydration = BASE_HYDRATION_MAX;
+  return v;
 }
 
 const clamp = (n: number, lo: number, hi: number): number => (n < lo ? lo : n > hi ? hi : n);
 
 /** 허기 또는 수분이 임계(기본 20%) 미만인가 — 이동 감속·피로 가중의 단일 판정 */
 export function isVitalsLow(v: VitalsState): boolean {
-  const t = TUNING.vitals.lowPct;
-  return v.hunger < t || v.hydration < t;
+  // 임계는 **비율**이다 — 최대치를 올리면 임계 절대값도 같이 올라간다(그릇이 커진 만큼 여유도 커진다).
+  const t = TUNING.vitals.lowPct / 100;
+  return v.hunger < v.maxHunger * t || v.hydration < v.maxHydration * t;
 }
 
 /** 이동 속도 배율 — 임계 미만이면 감속(기본 −20%) */
@@ -132,8 +161,8 @@ export function tickVitals(
   }
   const ex = env.extraMult ?? ([1, 1, 1] as const);
 
-  v.hunger = clamp(v.hunger - dh * hours * hungerMult * ex[0], 0, 100);
-  v.hydration = clamp(v.hydration - dw * hours * hydrationMult * ex[1], 0, 100);
+  v.hunger = clamp(v.hunger - dh * hours * hungerMult * ex[0], 0, v.maxHunger);
+  v.hydration = clamp(v.hydration - dw * hours * hydrationMult * ex[1], 0, v.maxHydration);
 
   // 피로: 음수 드레인(앉기)은 회복. 임계 미만이면 가중.
   const fatigueGain = df * hours * ex[2] * (df > 0 ? vitalsFatigueMult(v) : 1);
@@ -152,8 +181,8 @@ export function tickVitals(
 /** 1회성 행동 비용 적용 (캐스팅·파이팅·손질·이동 등). `mult`로 강도 조절 */
 export function applyVitalsAction(v: VitalsState, action: VitalsAction, mult = 1): void {
   const [dh, dw, df] = costOf(action);
-  v.hunger = clamp(v.hunger - dh * mult, 0, 100);
-  v.hydration = clamp(v.hydration - dw * mult, 0, 100);
+  v.hunger = clamp(v.hunger - dh * mult, 0, v.maxHunger);
+  v.hydration = clamp(v.hydration - dw * mult, 0, v.maxHydration);
   v.fatigue = clamp(v.fatigue + df * mult * vitalsFatigueMult(v), 0, v.maxFatigue);
 }
 
@@ -161,8 +190,8 @@ export function applyVitalsAction(v: VitalsState, action: VitalsAction, mult = 1
 export function applyIntake(
   v: VitalsState, hunger = 0, hydration = 0, hp = 0, fatigue = 0,
 ): void {
-  if (hunger) v.hunger = clamp(v.hunger + hunger, 0, 100);
-  if (hydration) v.hydration = clamp(v.hydration + hydration, 0, 100);
+  if (hunger) v.hunger = clamp(v.hunger + hunger, 0, v.maxHunger);
+  if (hydration) v.hydration = clamp(v.hydration + hydration, 0, v.maxHydration);
   if (hp) v.hp = clamp(v.hp + hp, 0, v.maxHp);
   // 피로 회복(129차 P7 — 사용자 결정): **양수 = 피로가 줄어든다**(허기·수분과 같은 "회복량" 방향).
   // 음수면 피로가 오른다(카페인 리바운드).
@@ -174,12 +203,19 @@ export function applySleep(v: VitalsState, mult = 1): void {
   const t = TUNING.vitals;
   v.fatigue = clamp(t.sleepFatigueTo, 0, v.maxFatigue);
   v.hp = clamp(v.hp + v.maxHp * t.sleepHpPct * mult, 0, v.maxHp);
-  v.hunger = clamp(v.hunger - t.sleepHungerCost, 0, 100);
-  v.hydration = clamp(v.hydration - t.sleepHydrationCost, 0, 100);
+  v.hunger = clamp(v.hunger - t.sleepHungerCost, 0, v.maxHunger);
+  v.hydration = clamp(v.hydration - t.sleepHydrationCost, 0, v.maxHydration);
 }
 
-/** 최대치 변경(레벨업·상태이상) — 현재값을 새 상한으로 클램프 */
-export function setVitalsCaps(v: VitalsState, maxHp?: number, maxFatigue?: number): void {
+/**
+ * 최대치 변경(레벨업·스킬·상태이상) — 현재값을 새 상한으로 클램프.
+ * ⚠ 상한이 **올라갈 때 현재값을 같이 올리지 않는다** — 그릇만 커지고 내용물은 그대로다
+ *   (스킬을 찍자마자 배가 부르면 '최대치'가 아니라 '회복'이 된다).
+ */
+export function setVitalsCaps(
+  v: VitalsState, maxHp?: number, maxFatigue?: number,
+  maxHunger?: number, maxHydration?: number,
+): void {
   if (maxHp !== undefined && maxHp > 0) {
     v.maxHp = maxHp;
     v.hp = clamp(v.hp, 0, maxHp);
@@ -187,5 +223,13 @@ export function setVitalsCaps(v: VitalsState, maxHp?: number, maxFatigue?: numbe
   if (maxFatigue !== undefined && maxFatigue > 0) {
     v.maxFatigue = maxFatigue;
     v.fatigue = clamp(v.fatigue, 0, maxFatigue);
+  }
+  if (maxHunger !== undefined && maxHunger > 0) {
+    v.maxHunger = maxHunger;
+    v.hunger = clamp(v.hunger, 0, maxHunger);
+  }
+  if (maxHydration !== undefined && maxHydration > 0) {
+    v.maxHydration = maxHydration;
+    v.hydration = clamp(v.hydration, 0, maxHydration);
   }
 }
