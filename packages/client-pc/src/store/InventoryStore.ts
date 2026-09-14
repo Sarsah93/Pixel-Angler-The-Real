@@ -19,7 +19,7 @@ import {
   computeLureRigWeight, getLureCastCd, isKnifeItem, FISH_DATABASE, lineStrengthKg,
   speciesStandardWeightG,
 } from '@tra/core';
-import type { ForageTool, StatusCure } from '@tra/core';
+import type { ForageTool, StatusCure, CatchMethod } from '@tra/core';
 import { ExternalDataStore } from './ExternalDataStore.js';
 import { DiscoveryStore } from './DiscoveryStore.js';
 import { isGod } from '../dev/DevMode.js';
@@ -162,6 +162,11 @@ export interface InvItem {
    * 없으면 'F'(무늬 유지) 취급 — 구세이브·성별 무관 어종의 기본값.
    */
   sex?: 'M' | 'F';
+  /**
+   * 어획 경로 (134차 — 법 규칙 §3 판매 판정). rod = 낚싯대(판매 불가 대상) / trap / gather / bought …
+   * 없는 구세이브 어획물은 판정 시 rod로 본다(가장 보수적).
+   */
+  catchMethod?: CatchMethod;
 
   // ── 원투 메인 싱커(무게추 봉돌) 전용 ──
   /** 봉돌 종류 (고리/구멍/묶음추) — 존재하면 무게추 봉돌 */

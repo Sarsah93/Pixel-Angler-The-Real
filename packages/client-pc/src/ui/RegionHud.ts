@@ -25,6 +25,7 @@ import { createItemIcon } from './ItemIcon.js';
 import { addPixelIcon } from './PixelIcon.js';
 import { paintHudPanel, paintHudSlot } from './HudPanelStyle.js';
 import { t, getLocale } from '../i18n/I18n.js';
+import { StoryStore } from '../store/StoryStore.js';
 
 export interface RegionHudConfig {
   /** 지역 ID — 기상/해양 데이터 조회 키 (KMA_GRID_BY_REGION / REGION_TO_MMSI) */
@@ -805,7 +806,9 @@ export class RegionHud extends Phaser.GameObjects.Container {
     // toLocaleString에 Asia/Seoul을 명시해 실제 KST를 표시한다.
     const now = new Date();
     const kst = kstParts(now);
-    this.dateText?.setText(`${kst.y}년 ${kst.mo}월 ${kst.d}일 (${kst.dow}) · KST`);
+    // 134차 — 실습생 기한 D-nn (STORY_SPEC §6 상태 패널 뱃지)
+    const dl = StoryStore.deadlineDaysLeft();
+    this.dateText?.setText(`${kst.y}년 ${kst.mo}월 ${kst.d}일 (${kst.dow}) · KST${dl == null ? '' : ` · D-${dl}`}`);
     this.clockText.setText(`${kst.hh}:${kst.mi}:${kst.ss}`);
 
     const night = isNightHour(Number(kst.hh));

@@ -737,6 +737,44 @@ export interface TuningConfig {
     /** 부활 시 허기·수분(%) */
     deathReviveVitalsPct: number;
   };
+  // ── 134차 스토리·퀘스트 (STORY_SPEC_v3 §14-5) ──
+  story: {
+    /** Ch1 실습생 기한(일) — D-180 */
+    ch1DeadlineDays: number;
+    /** 기한 초과 시 비용(원) — 실습 재신청·숙소 임대료 */
+    missCostKrw: number;
+    /** 1 = 숙련자용 상세 안내 생략 */
+    skipVerbose: number;
+  };
+  rep: {
+    harborMax: number;
+    seaMin: number;
+    seaMax: number;
+    /** 바다 평판 변동 */
+    seaReleaseUndersize: number;
+    seaRescue: number;
+    seaIllegalKeep: number;
+    seaRestrictedEntry: number;
+    seaVillageFisheryViolation: number;
+    /** 항구 신뢰 변동 */
+    harborCommunityWork: number;
+    harborFreeDelivery: number;
+    harborAbandonedRequest: number;
+  };
+  law: {
+    /**
+     * 1 = 낚싯대 어획물 판매 차단(스펙 §3 강제). **0 = 현행(판매 허용, 판정은 툴팁으로만)** —
+     * Ch1 품삯·통발 위판이 열리기 전에 켜면 테스터 빌드의 수입원이 사라진다(§0.5-6).
+     */
+    enforceRodSell: number;
+  };
+  inventory: {
+    /** dev 모드 탭당 슬롯 수 (= 현행 5×5) */
+    devSlotsPerTab: number;
+    /** 가방 미착용 주머니 */
+    baseCols: number;
+    baseRows: number;
+  };
   // ── 데이터 테이블 (balance, 슬라이더 대상 아님) ──
   /** 어종 id → 피로 스태미나 base */
   fatigueStaminaBase: Record<string, number>;
@@ -943,6 +981,14 @@ export const TUNING: TuningConfig = {
     deathCoinLossRate: 0.15, deathDropInventory: 0,
     deathReviveHpPct: 50, deathReviveVitalsPct: 50,
   },
+  story: { ch1DeadlineDays: 180, missCostKrw: 200_000, skipVerbose: 0 },
+  rep: {
+    harborMax: 100, seaMin: -10, seaMax: 10,
+    seaReleaseUndersize: 0.5, seaRescue: 1, seaIllegalKeep: -1, seaRestrictedEntry: -0.5, seaVillageFisheryViolation: -2,
+    harborCommunityWork: 3, harborFreeDelivery: 2, harborAbandonedRequest: -5,
+  },
+  law: { enforceRodSell: 0 },
+  inventory: { devSlotsPerTab: 25, baseCols: 2, baseRows: 5 },
   fatigueStaminaBase: {
     yellowtail: 1.6, amberjack: 1.7, greater_amberjack: 1.9, spanish_mackerel: 1.0,
     pacific_cod: 1.2, red_seabream: 1.1, sea_bass: 0.95, flatfish: 0.7,
@@ -1105,6 +1151,11 @@ export const TUNING_META: TuningParamMeta[] = [
   { path: 'forage.fineCapWon', min: 0, max: 2_000_000, step: 50_000, category: 'balance', label: '벌금 상한(원)' },
   { path: 'trap.lossRiskMult', min: 0, max: 3, step: 0.1, category: 'balance', label: '통발 분실 위험 배율' },
   { path: 'trap.minSoakHours', min: 0, max: 8, step: 0.5, category: 'balance', label: '통발 최소 침지(h)' },
+  // 134차 스토리
+  { path: 'story.ch1DeadlineDays', min: 30, max: 365, step: 5, category: 'balance', label: 'Ch1 실습생 기한(일)' },
+  { path: 'law.enforceRodSell', min: 0, max: 1, step: 1, category: 'balance', label: '낚싯대 어획물 판매 차단(1=스펙)' },
+  { path: 'rep.harborCommunityWork', min: 0, max: 10, step: 0.5, category: 'balance', label: '항구 신뢰 +/공동작업' },
+  { path: 'rep.seaReleaseUndersize', min: 0, max: 3, step: 0.1, category: 'balance', label: '바다 평판 +/준법 방생' },
 ];
 
 // ── path 유틸 (dev 패널 공용) ──

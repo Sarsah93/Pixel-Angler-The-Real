@@ -68,6 +68,10 @@ import { TrapDeployPanel } from '../ui/TrapDeployPanel.js';
 import { LicensePanel } from '../ui/LicensePanel.js';
 import { SkillTreePanel } from '../ui/SkillTreePanel.js';
 import { JournalPanel } from '../ui/JournalPanel.js';
+import { DialoguePanel } from '../ui/DialoguePanel.js';
+import { StoryStore } from '../store/StoryStore.js';
+import { STORY_NPC_PLACEMENTS, STORY_PLACES, type StoryNpcPlacement } from '../data/StoryNpcs.js';
+import { getStoryNpc, validateStoryQuests } from '@tra/core';
 import { playCollapse, type CollapseKind } from '../ui/CollapseOverlay.js';
 import { TUNING, getTrapById, type RegionFishFarms } from '@tra/core';
 import { tilesetPathOf } from '../data/TilesetManifest.js';
@@ -847,6 +851,12 @@ export class RegionFieldScene extends Phaser.Scene {
     const py = row * TR + TR / 2;
 
     this.playerBody = this.physics.add.image(px, py, '__DEFAULT') as Phaser.Types.Physics.Arcade.ImageWithDynamicBody;
+    // 134차 — 스토리: 지역 방문 이벤트 · NPC 배치 · 데이터 무결성(dev)
+    GameState.currentRegionId = this.region;
+    StoryStore.event({ kind: 'visit', placeKey: `region:${this.region}` });
+    StoryStore.onNotify = (m) => this.hud?.pushLog(m);
+    this.placeStoryNpcs();
+    if (import.meta.env.DEV) { const issues = validateStoryQuests(); if (issues.length) console.warn('[Story] 퀘스트 DB 무결성', issues); }
     this.playerBody.setVisible(false);
     this.playerBody.setCollideWorldBounds(true);
     this.playerBody.setSize(14, 14);
@@ -1847,6 +1857,8 @@ export class RegionFieldScene extends Phaser.Scene {
     this.input.keyboard!.on('keydown-E', () => { if (!this.isPaused) this.toggleEquipment(); });
     this.input.keyboard!.on('keydown-F', (ev: KeyboardEvent) => {
       if (this.isPaused || this.uiBlocked) return;
+      // 134차 — 스토리 NPC 대화가 최우선 (NPC 옆에 서 있으면 F = 대화)
+      if (this.nearNpc) { this.openDialogue(this.nearNpc.npcId); return; }
       // 홈타운 오브젝트(문/버스/설치물) > 건물 거래 > 채집 스팟 > 통발
       //  Shift+F = 설치물 회수 (기능이 있는 설치물은 [F]가 기능을 연다 — 129차)
       if (this.nearObject) this.interactWithObject(this.nearObject, ev.shiftKey);
@@ -2075,6 +2087,7 @@ export class RegionFieldScene extends Phaser.Scene {
       return;
     }
     GameState.isMounted = !GameState.isMounted;
+    if (GameState.isMounted) StoryStore.event({ kind: 'custom', key: 'bikeMount' });   // 134차 — M1-10 자전거 목표
     this.bike?.setVisible(GameState.isMounted);
     this.hud?.pushLog(GameState.isMounted
       ? '[이동] 자전거에 탔습니다 — 이동 속도 2배 (R: 내리기)'
@@ -2129,6 +2142,7 @@ export class RegionFieldScene extends Phaser.Scene {
   // 상점 (건물 근접 E → 거래 확인 → 상점+인벤토리 나란히)
   // ═══════════════════════════════════════════════════
   private promptTrade(kind: BuildingKind): void {
+    StoryStore.event({ kind: 'visit', placeKey: 'shop:any' });   // 134차 — M1-02 상점 UI 목표
     this.openPopup((close) => new ConfirmDialog(
       this,
       `${BUILDING_LABEL[kind]}에 들어갑니다.\n상품을 거래하시겠습니까?`,
@@ -2939,6 +2953,7 @@ export class RegionFieldScene extends Phaser.Scene {
   }
 
   update(_time: number, delta: number): void {
+    this.updateStoryProximity(delta);
     if (this.traffic) {
       const cam = this.cameras.main;
       const pl = this.playerBody ? { x: this.playerBody.x / TR, y: this.playerBody.y / TR } : null;
@@ -3296,6 +3311,75 @@ export class RegionFieldScene extends Phaser.Scene {
   /** 설치물이 **기능**을 가졌는가 (회수만 되는 울타리 등과 구분) */
   private hasFunction(o: MapObject): boolean {
     return !!o.interact && o.interact !== 'none';
+  }
+
+
+  // ═══════════════════════════════════════════════════════════════
+  // 134차 — 스토리 NPC (Ch1 발주자) · 방문 장소 · 대화
+  // ═══════════════════════════════════════════════════════════════
+  private storyNpcs: { def: StoryNpcPlacement; x: number; y: number }[] = [];
+  private nearNpc: StoryNpcPlacement | null = null;
+  private npcHintText?: Phaser.GameObjects.Text;
+  private storyProxAt = 0;
+  private firedPlaces = new Set<string>();
+
+  /** 지역에 배치된 스토리 NPC 스프라이트 — 기존 POI NPC 텍스처 재사용(플레이스홀더), 이름표가 인물을 식별 */
+  private placeStoryNpcs(): void {
+    this.storyNpcs = [];
+    for (const def of STORY_NPC_PLACEMENTS) {
+      if (def.regionId !== this.region) continue;
+      const { col, row } = this.nearestWalkable(def.tx, def.ty);
+      const x = col * TR + TR / 2, y = row * TR + TR;
+      const tex = this.textures.exists(def.tex) ? def.tex : null;
+      if (tex) this.add.image(x, y, tex).setOrigin(0.5, 1).setScale(0.5).setDepth(20 + y * 0.001 + 0.0006);
+      else this.add.rectangle(x, y - 12, 14, 24, 0xd4a017).setDepth(20 + y * 0.001 + 0.0006);
+      const npc = getStoryNpc(def.npcId);
+      this.add.text(x, y - 40, npc?.nameKo ?? def.npcId, {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#ffe9a0',
+        backgroundColor: '#0a1628cc', padding: { x: 3, y: 1 },
+      }).setOrigin(0.5, 1).setDepth(20 + y * 0.001 + 0.0007);
+      this.storyNpcs.push({ def, x, y });
+    }
+  }
+
+  /** NPC 근접 [F] 힌트 + 방문 장소(영금정 등) 자동 달성 — 150ms 스로틀 */
+  private updateStoryProximity(delta: number): void {
+    this.storyProxAt += delta;
+    if (this.storyProxAt < 150 || !this.playerBody) return;
+    this.storyProxAt = 0;
+    const px = this.playerBody.x, py = this.playerBody.y;
+    let nearest: StoryNpcPlacement | null = null, best = 48;
+    for (const n of this.storyNpcs) {
+      const d = Math.hypot(n.x - px, (n.y - 12) - py);
+      if (d < best) { best = d; nearest = n.def; }
+    }
+    this.nearNpc = nearest;
+    if (nearest && !this.uiBlocked && !this.placing) {
+      const npc = getStoryNpc(nearest.npcId);
+      const q = StoryStore.questsForNpc(nearest.npcId);
+      const tag = q.completable.length ? ' — 의뢰 완료' : q.offer.length ? ' — 새 의뢰' : q.active.length ? ' — 진행 중' : '';
+      if (!this.npcHintText) {
+        this.npcHintText = this.add.text(0, 0, '', {
+          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#ffe9a0',
+          backgroundColor: '#0a1628dd', padding: { x: 6, y: 3 },
+        }).setOrigin(0.5, 1).setDepth(60);
+      }
+      this.npcHintText.setText(`[F] ${npc?.nameKo ?? nearest.npcId}${tag}`).setPosition(px, py - 44).setVisible(true);
+    } else this.npcHintText?.setVisible(false);
+    // 방문 장소
+    for (const pl of STORY_PLACES) {
+      if (pl.regionId !== this.region || this.firedPlaces.has(pl.key)) continue;
+      const cx = pl.tx * TR + TR / 2, cy = pl.ty * TR + TR / 2;
+      if (Math.hypot(cx - px, cy - py) <= pl.radiusTiles * TR) {
+        this.firedPlaces.add(pl.key);
+        StoryStore.event({ kind: 'visit', placeKey: pl.key });
+        this.hud?.pushLog(`[장소] ${pl.labelKo}에 도착했습니다`);
+      }
+    }
+  }
+
+  private openDialogue(npcId: string): void {
+    this.openPopup((close) => new DialoguePanel(this, npcId, close));
   }
 
   private objInteractLabel(o: MapObject): string {

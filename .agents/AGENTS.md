@@ -394,7 +394,21 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류 (2026-08-09)
 > "지금 무엇이 어디까지 되어 있나"는 **`docs/wiki/README.md` 대시보드**와 `02-SYSTEMS/*.md`를 본다.
 > 80차 이하 원문은 아래에 **그대로 보존**(불변 원장) — 구조화 인덱스는 `03-WORKLOG/README.md` §3.1.
 
-**최근 변경 (2026-09-11 133차) — 어종별 체장-체중 관계(LWR) + 체형별 파이트 물리** (사용자 지시 "어종별 무게와 길이의 비중을 디테일하게 / 갈치같이 길쭉한 어종이 주는 힘과 압력이 다르게" — core 20/20 · 시뮬 · 실렌더 9판·pageerror 0, 빌드 3/3·typecheck 0):
+**최근 변경 (2026-09-14 134차) — 스토리 「조행록」 정립: 퀘스트 120 · 법 규칙 5조 · 일지·NPC 대화 · 플레이어 시나리오** (사용자 스펙 v3 업로드 + 지시 "플레이어 시나리오로 정립하고 인게임 요소를 최대한 반영" — 무결성 0건 · T1~T7 · 실렌더 12/12 · pageerror 0, 빌드 3/3·typecheck 0):
+
+- **스펙 배치 + §0.5 코드 정합**: `.agents/STORY_SPEC_v3.md`(원문 921줄)는 레포 접근 없이 작성돼 어종 id·지역·면허가 실제와 달랐다 →
+  §0.5(어종 17 대조·미등록 4종 대체 규칙·지역/면허/스키마·법·가방·미착수 표)가 **본문보다 우선**. 플레이어 요약 `.agents/PLAYER_SCENARIO.md`.
+- **core 신설**: `types/Story.ts` · `rules/FisheryLaw.ts`(5조 순수 함수 `canSell/canKeep/canUseGear/canGather` + 대안 ≥ 1 · T1~T7) ·
+  `StoryChapters`(7챕터·자격 사다리·§8-1 계약) · `StoryQuestDatabase`(**120퀘** + `validateStoryQuests`) · `JournalPages`(17장) · `StoryArcs`(17아크) · `Backpack`.
+  면허 `LicenseType` 4종 추가(**스킬 보너스 제외** — Σ 215 불변).
+- **client**: `StoryStore`(이벤트 매칭·`manual` 목표·보상·D-day·평판·조행록·세이브 `story`) · `DialoguePanel` · `JournalPanel` 전면 재작성 ·
+  속초 NPC 7 배치 + [F] 대화 · HUD `D-nn` · `ShopPanel` 법 판정 · `InvItem.catchMethod`(rod/trap · 없으면 rod) · 도움말 토픽 2 · 영문 사전 합류.
+- ⚠ **법 강제는 OFF**(`TUNING.law.enforceRodSell = 0`) — Ch1 품삯·통발 위판 UI가 없어 켜면 테스터 수입원이 사라진다(사용자 결정).
+  가방 사다리(2×5)·지급품·시작 재화는 core 모델만(테스터 세이브 보호). 레거시 `QUEST_DATABASE`는 면허 요구조건 참조로 보존.
+- 함정: `body`는 Container 예약(→ `bodyC`) · 헤드리스 NPC 근접 검증은 2.5초 대기 · 어획 이벤트 `month`는 실제 KST 월.
+- 상세: `docs/wiki/03-WORKLOG/2026-09-14-134-story-quests-law.md` · 시스템 페이지 **S22 `02-SYSTEMS/story-quests.md` 신설**.
+
+**이전 변경 (2026-09-11 133차) — 어종별 체장-체중 관계(LWR) + 체형별 파이트 물리** (사용자 지시 "어종별 무게와 길이의 비중을 디테일하게 / 갈치같이 길쭉한 어종이 주는 힘과 압력이 다르게" — core 20/20 · 시뮬 · 실렌더 9판·pageerror 0, 빌드 3/3·typecheck 0):
 
 - **무게 모델 교체**: `W = weightFactor × L³`(지수 3 고정) → **`W = lwrA × L^lwrB`**(FishBase 표준형) + `bodyForm`.
   지수 고정은 체형을 못 담아 **갈치 전장 1m가 10kg**(실제 ≈ 0.7kg)·붕장어 1m 5kg(≈1.4kg)·갯장어 2m는 반대로 과소(4kg ↔ 9.7kg)였다.

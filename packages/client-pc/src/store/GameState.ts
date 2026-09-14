@@ -28,7 +28,8 @@ import type {
   TrapCatchItem,
   CaughtFishRecord,
 } from '@tra/core';
-import type { WorldObjectState } from '@tra/core';
+import type { WorldObjectState, CatchMethod } from '@tra/core';
+import { StoryStore, type StorySaveState } from './StoryStore.js';
 import {
   skillPointsForLevel, skillPointsSpent, skillPrereqsMet, getSkillById, SKILL_CATEGORIES,
   skillPointsFromLicenses as coreSkillPointsFromLicenses, skillUnlockMissing,
@@ -181,6 +182,8 @@ interface SaveData {
   discoveries?: DiscoverySaveState;
   /** 생존 지표 — 허기·수분·상태이상 (125차). HP·피로도는 `player.stamina/fatigue`가 원본 */
   vitals?: VitalsSaveState;
+  /** 스토리·퀘스트 진행 (134차) — 없으면 새 게임과 같이 M1-01만 활성 */
+  story?: StorySaveState;
   version: number;
 }
 
@@ -238,6 +241,8 @@ export class GameStateManager {
   private _activeSlot: number | null = null;
   /** 자전거 탑승 여부 — 필드 씬(Field/RegionField) 간 유지되는 세션 상태 (저장 비대상) */
   isMounted = false;
+  /** 현재 지역 id (WorldMap RegionDef.id) — 필드 씬이 갱신, 퀘스트 어획 이벤트의 regionId (저장 비대상) */
+  currentRegionId = 'gangwon_sokcho';
   /**
    * 현재 위치 태그 (세션 — 씬 진입 시 설정).
    * 'menu' | 'hometown' | 'hometown_interior' | 'region_field' | 'fishing' …
@@ -303,6 +308,8 @@ export class GameStateManager {
     this._hunger = saved.vitals?.hunger ?? 100;
     this._hydration = saved.vitals?.hydration ?? 100;
     this._statuses = saved.vitals?.statuses ?? [];
+    // 134차 — 스토리 진행 (구세이브 = M1-01만 활성)
+    StoryStore.deserialize(saved.story);
     // 130차 (e) — 구세이브가 이미 조합을 갖췄을 수 있다(히든 노드는 세이브에 없던 시절 데이터).
     //   포인트를 쓰지 않으므로 소급 지급해도 예산이 어긋나지 않는다.
     this.refreshHiddenSkills();
@@ -411,11 +418,12 @@ export class GameStateManager {
     const newCoins = this._player.inventory.coins + amount;
     if (newCoins < 0) return false;
     this._player.inventory.coins = newCoins;
+    StoryStore.event({ kind: 'coins', coins: newCoins });   // 134차 — earn 목표
     return true;
   }
 
   /** 물고기 포획 성공 시 살림망에 추가 및 개인 최고기록 갱신 */
-  addCaughtFish(speciesId: string, _nameKo: string, lengthCm: number, weightGram: number): void {
+  addCaughtFish(speciesId: string, _nameKo: string, lengthCm: number, weightGram: number, method: CatchMethod = 'rod'): void {
     if (!this._player) return;
     const spotId = this._currentSpotId || 'geoje_gujora_breakwater';
     const tide = calculateTideInfo();
@@ -464,6 +472,8 @@ export class GameStateManager {
     let gained = catchXp(fish?.rarity ?? 'common', lengthCm, avgCm);
     if (firstDiscovery) gained = Math.round(gained * TUNING.xp.firstDiscoveryMult);
     this.grantXp(gained);
+    // 134차 — 퀘스트·조행록 어획 이벤트 (자가어획)
+    StoryStore.event({ kind: 'catch', speciesId, lengthCm, method, selfCaught: true, regionId: this.currentRegionId, month: new Date().getMonth() + 1 });
   }
 
   // ─── 플레이어 레벨 XP (124차 — core Progression 곡선 · MAX_LEVEL 200 캡) ───
@@ -490,6 +500,7 @@ export class GameStateManager {
       console.log(`[GameState] Level Up! Lv.${(p.level ?? 1) - ups} -> Lv.${p.level} (스킬 포인트 +${ups})`);
       this.commitVitals(this.vitals);   // maxHp가 레벨에 비례하므로 상한 재계산
       this.refreshHiddenSkills();       // 130차 (d) — 레벨 조건 히든이 열릴 수 있다
+      StoryStore.event({ kind: 'level', level: p.level ?? 1 });   // 134차 — reachLevel 목표·자동 시작 퀘
       this.markDirty();
     }
     return ups;
@@ -497,6 +508,7 @@ export class GameStateManager {
 
   /** 활동 XP — 손질/회뜨기/채집/제작/요리 완료 시 호출 (mult = 등급·품질 계수). 반환 = 레벨업 수 */
   addActivityXp(kind: XpActivity, mult = 1): number {
+    StoryStore.event({ kind: 'activity', activity: kind });
     return this.grantXp(activityXp(kind, mult));
   }
 
@@ -504,6 +516,7 @@ export class GameStateManager {
   addLawfulReleaseXp(speciesId: string, lengthCm: number): number {
     const fish = getFishById(speciesId);
     const avgCm = fish ? (fish.avgSizeRangeCm[0] + fish.avgSizeRangeCm[1]) / 2 : undefined;
+    StoryStore.event({ kind: 'release', speciesId, lengthCm });
     return this.grantXp(catchXp(fish?.rarity ?? 'common', lengthCm, avgCm) * TUNING.xp.lawfulReleaseMult);
   }
 
@@ -701,6 +714,7 @@ export class GameStateManager {
     const v = this.vitals;
     coreApplySleep(v, mult * this.skillMult('sleep_recovery'));   // 127차 — 쾌면(life_sleep)
     this.commitVitals(v);
+    StoryStore.advanceDay();   // 134차 — 스토리 하루는 침대 수면으로만 간다 (D-180)
     this.markDirty();
   }
 
@@ -1036,6 +1050,7 @@ export class GameStateManager {
     // 130차 — 면허는 **스킬 포인트 +1**(등식 우변)이자 (d) 해금 조건이다.
     //   취득 즉시 히든 시너지 조건이 채워질 수 있으므로 함께 갱신한다.
     this.refreshHiddenSkills();
+    StoryStore.event({ kind: 'license', licenseId: type });   // 134차 — 퀘스트 면허 목표
     this.markDirty();
     return true;
   }
@@ -1094,6 +1109,7 @@ export class GameStateManager {
       worldObjects: this._worldObjects,
       discoveries: DiscoveryStore.serialize(),
       vitals: { hunger: this._hunger, hydration: this._hydration, statuses: this._statuses },
+      story: StoryStore.serialize(),
       version: SAVE_VERSION,
     };
   }
@@ -1272,6 +1288,7 @@ export class GameStateManager {
     InventoryStore.resetAll();
     FridgeStore.resetAll();
     DiscoveryStore.resetAll();
+    StoryStore.resetAll();
     this.syncInventoryDiscoveries();
     this._currentSpotId = null;
     this._isInitialized = true;
@@ -1279,6 +1296,19 @@ export class GameStateManager {
 }
 
 export const GameState = new GameStateManager();
+
+// 134차 — 스토리 스토어에 XP·재화·면허·플래그 권한 위임 (순환 import 회피)
+StoryStore.bind({
+  grantXp: (n) => { GameState.grantXp(n); },
+  addCoins: (n) => { GameState.addCoins(n); },
+  acquireLicense: (t) => GameState.acquireLicense(t as never),
+  heldLicenses: () => GameState.licenses.filter((l) => !l.isExpired).map((l) => l.type as string),
+  level: () => GameState.player.level ?? 1,
+  coins: () => GameState.player.inventory.coins,
+  setFlag: (k, v) => GameState.setFlag(k, v),
+  markQuestDone: (id) => GameState.completeQuest(id),
+  markDirty: () => GameState.markDirty(),
+});
 
 // dev 검증용 전역 노출 — 하네스의 `import('/src/…')` 모듈은 게임 인스턴스와 다를 수
 // 있으므로(InventoryStore `__INV`와 동일한 함정) 실싱글턴을 노출한다. (프로덕션 미노출)

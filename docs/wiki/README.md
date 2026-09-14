@@ -54,16 +54,22 @@
 | S14 | [해루질·통발](02-SYSTEMS/night-hunting-trap.md) | 🟢 | `ForagingEngine` · `ForageSystem` · `TrapFieldSystem` · `extract_fishfarms.py` | **121차 인-맵 1차 완료**(채집 스팟·어장 실폴리곤·강원 조례·통발 아이템) — 야간 실검증·F8 조율·실사 스프라이트·wade/dive 잔여 · **122차 상호작용 F 키 + 스킬 배율 훅** |
 | S15 | 요리(불요리)·CookScene | ⬜ | `CookScene` · `RecipeDatabase` | 화구·용기 시스템부터 |
 | S16 | [제작](02-SYSTEMS/progression.md) | 🔶 | `CraftingDatabase`(도면 14) · `CraftingStore` · `CraftBoard` · `AdvancedCraftPanel` | 129차 구현 — 재료 수급(벌목·채굴)·커스텀 로드/릴 성능치 잔여 |
-| S17 | 퀘스트·스토리 | ⬜ | `QuestDatabase` · `JournalPanel`(J) | **모든 컴포넌트 구현 후 도입**(사용자 방침) — 122차 일지 골격만 |
+| S17 | 퀘스트·스토리(레거시) | ⬜ | `QuestDatabase` | 레거시 16퀘 — 면허 요구조건 참조로 보존. 본편은 **S22** |
 | S18 | 멀티플레이 | ⬜ | `packages/server` | Phase 8 |
 | S19 | Tauri 패키징 | ⬜ | `apps/tauri-wrapper` | Phase 9 (아이콘만 준비됨) |
 | S20 | [도감·발견·dev 도구](02-SYSTEMS/discovery-wiki.md) | 🟢 | `DiscoveryStore` · `AnglerLogScene` · F10 콘솔 | 위키 상세 팝업 · FP 토스트 |
-| S21 | [진행 — 레벨·스킬·생존·면허·일지](02-SYSTEMS/progression.md) | 🔶 | `Progression.ts` · `Vitals.ts`·`StatusEffects.ts` · `SkillDatabase`(**92노드 Σ=215**) · `CraftingDatabase` · `License.ts` · 패널 3종 · `CollapseOverlay` | **스킬 효과 배선 43/92**(130차) · 신규 면허 효과 1/7 · 농사 카테고리 잠김 · **P1~P7 + 트리 확장 + P9 도움말 완료 → 다음 P8 퀘스트 XP** · 눕기 스프라이트 대기 |
+| S21 | [진행 — 레벨·스킬·생존·면허·일지](02-SYSTEMS/progression.md) | 🔶 | `Progression.ts` · `Vitals.ts`·`StatusEffects.ts` · `SkillDatabase`(**92노드 Σ=215**) · `CraftingDatabase` · `License.ts` · 패널 3종 · `CollapseOverlay` | **스킬 효과 배선 43/92**(130차) · 신규 면허 효과 1/7 · 농사 카테고리 잠김 · **P1~P9 완료**(P8 = 134차 S22) · 스토리 면허 4종 추가(보너스 제외) · 눕기 스프라이트 대기 |
+| S22 | [스토리·퀘스트](02-SYSTEMS/story-quests.md) | 🔶 | `Story.ts` · `FisheryLaw.ts` · `StoryQuestDatabase`(**120퀘**) · `JournalPages` · `StoryArcs` · `StoryStore` · `DialoguePanel` · `JournalPanel` | **134차 데이터·엔진·일지·대화 완비** — 법 강제(`enforceRodSell`) 사용자 결정 · 가방 UI · 배 출조·구멍치기·좌판 등 계통 · Ch2+ 대사 · NPC 스프라이트 잔여 |
 
 ---
 
-## 3. 지금 위치 (2026-09-11)
+## 3. 지금 위치 (2026-09-14)
 
+- **134차**: **스토리 「조행록」 정립** — 사용자 스펙 v3 → `.agents/STORY_SPEC_v3.md`(+§0.5 코드 정합) ·
+  `.agents/PLAYER_SCENARIO.md` · core 계약/법 규칙 5조/퀘스트 **120**/조행록 17/아크 17 ·
+  `StoryStore` 진행 엔진 + 일지(J) 재작성 + NPC 대화([F]) + HUD `D-nn` + 판매 창 법 판정.
+  ⚠ **법 강제는 OFF**(`TUNING.law.enforceRodSell = 0` — 사용자 결정). 실렌더 12/12 · T1~T7 · 무결성 0건.
+  [워크로그 134](03-WORKLOG/2026-09-14-134-story-quests-law.md).
 - **131차**: **도움말 라이브러리 현행화 + 제작 UI 영문화** — 게임 안 도움말이 123차에 멈춰 있어
   125~129차에 **이미 구현된 생존 6토픽이 '준비 중'으로 남아 있던 것**을 전부 ready로 재작성 ·
   **'제작' 카테고리 신설**(기본 = U 제작 탭 / 고급 = 설치 제작대 [F]) · 스킬 트리 토픽 3페이지

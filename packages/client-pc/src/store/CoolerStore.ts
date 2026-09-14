@@ -22,7 +22,7 @@
 import {
   InvCondition, CONDITION_NEXT, CONDITION_DURATION_MIN,
 } from './InventoryStore.js';
-import type { ChumTypeKey } from '@tra/core';
+import type { ChumTypeKey, CatchMethod } from '@tra/core';
 
 /** 쿨러에 보관되는 어획 개체 (실측치 보존 — 인벤토리 이송 시 그대로 전달) */
 export interface CoolerFish {
@@ -33,6 +33,8 @@ export interface CoolerFish {
   sex: 'M' | 'F';
   /** 실사 픽셀 생선 텍스처 키 (있으면 아이콘으로 사용) */
   iconTexture?: string;
+  /** 어획 경로 (134차) — 인벤 이송 시 승계 */
+  catchMethod?: CatchMethod;
   /** 현재 신선도 상태 (매질 규칙에 따라 진행) */
   condition: InvCondition;
   /** 현재 상태에서 누적된 경과 시간 (ms) — 일시정지 구간은 누적되지 않음 */

@@ -469,3 +469,25 @@ export {
   TRANSPORT_PROFILES, computeTravelFare,
   HOMETOWN_SPAWN, HOMETOWN_OBJECTS,
 } from './types/HomeBase.js';
+
+// ── 134차 스토리·퀘스트 (STORY_SPEC_v3) — 법 규칙 5조 · 퀘스트 120 · 조행록 17장 · NPC 17아크 · 가방 사다리 ──
+export type {
+  CatchMethod, StoryLicenseId, LegalFlag, CatchProvenance, FisheryLawRuleId, LawVerdict,
+  Season, StoryPart, StoryChapter, StoryChapterDef, QualificationStep,
+  StoryQuestKind, StoryObjectiveKind, StoryObjective, QuestDeadline, QuestRewards, QuestTeaches, StoryQuestDef,
+  JournalPageDef, JournalPageState, StoryNpcDef, StoryArcDef, ReputationState,
+} from './types/Story.js';
+export { seasonOfMonth, SEASON_LABEL, createDefaultReputation, clampHarbor, clampSea } from './types/Story.js';
+export type { FisheryLawRule } from './rules/FisheryLaw.js';
+export {
+  FISHERY_LAW_RULES, getFisheryLawRule, NON_FISHER_GEAR_WHITELIST, VILLAGE_FISHERY_TARGETS,
+  canSell, canKeep, canUseGear, canGather, requiredLicenseFor, landingLegalFlags, rodProvenance, provenanceOf,
+} from './rules/FisheryLaw.js';
+export type { BackpackId, BackpackSpec } from './inventory/Backpack.js';
+export { BASE_SLOTS_PER_TAB, BACKPACK_SPECS, resolveSlotsPerTab, canUnequipBag } from './inventory/Backpack.js';
+export { STORY_CHAPTERS, getStoryChapter } from './db-schema/StoryChapters.js';
+export { JOURNAL_PAGES, getJournalPage, journalCatchMatches } from './db-schema/JournalPages.js';
+export { STORY_MAIN_NPCS, STORY_ARCS, getStoryArc, getStoryNpc, arcOfNpc } from './db-schema/StoryArcs.js';
+export {
+  STORY_QUESTS, getStoryQuest, storyQuestsOfChapter, lastMainQuestOfChapter, validateStoryQuests,
+} from './db-schema/StoryQuestDatabase.js';

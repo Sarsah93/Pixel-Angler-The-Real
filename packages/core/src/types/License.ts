@@ -28,6 +28,11 @@ export type LicenseType =
   // 선박·어업 (122차)
   | 'boat_operator'         // 소형 선박 조종 면허 (개인 보트 운항)
   | 'fishery_member'        // 수협 조합원증 (어업인 등록 — 어촌계 어장 채취 허용)
+  // 스토리 자격 사다리 (134차 — STORY_SPEC_v3 §6). 스킬 포인트 보너스 제외(Σ 215 불변)
+  | 'reported_fishery'      // 신고어업(맨손어업) 등록 — 통발·맨손 어획물 위판 개방
+  | 'coop_member'           // 어촌계원 — 총회 승낙 (Ch1)
+  | 'angling_boat_biz'      // 낚시어선업 신고 (Ch4)
+  | 'marine_tourism'        // 해양관광업 등록 (Ch5)
   | 'port_restricted_access'// 항만 제한구역 낚시 허가
   // 사업 운영
   | 'food_service'          // 식품위생법 영업허가 (식당 경영)
@@ -332,6 +337,47 @@ export const LICENSE_DATABASE: LicenseDef[] = [
     costCoins: 150000, prerequisites: ['shore_hunting_advanced', 'trap_advanced'],
     requirements: [{ type: 'min_angling_trips', value: 60 }, { type: 'min_coins', value: 200000 }],
     requiresRenewal: true, renewalIntervalDays: 365, unlocksFeatures: ['village_fishery_gathering'],
+  },
+  // ── 134차 스토리 자격 사다리 — 취득은 메인 퀘스트 완료가 조건(§6). 비용 0 = 신고/승낙, 사업 등록만 유상 ──
+  {
+    type: 'reported_fishery', category: 'vessel',
+    nameKo: '신고어업(맨손어업) 등록', nameEn: 'Reported Fishery (hand-gathering) Registration',
+    description: '비어업인 어구(통발·투망·맨손)로 잡은 것을 위판·판매할 수 있습니다. 낚싯대 어획물은 여전히 판매 불가.',
+    descriptionEn: 'Lets you auction catch taken with non-fisher gear (traps, nets, hands). Rod-caught fish still cannot be sold.',
+    costCoins: 0, prerequisites: ['basic_angling'], requirements: [{ type: 'quest_completed', questId: 'M1-11' }],
+    requiresRenewal: false, unlocksFeatures: [],
+    plannedNote: 'Ch1 「총회」(M1-11) 완료 시 자동 취득 — 위판 UI 게이트는 후속',
+    plannedNoteEn: 'Granted on completing Ch1 "General Meeting" (M1-11) — auction gate wiring is follow-up',
+  },
+  {
+    type: 'coop_member', category: 'vessel',
+    nameKo: '어촌계원', nameEn: 'Fishing Village Co-op Member',
+    description: '동명항 어촌계 총회 승낙. 공동작업·위판·어촌계 어장 동행 채집이 열립니다.',
+    descriptionEn: 'Accepted by the Dongmyeong co-op general meeting. Opens community work, auctions and escorted village-fishery gathering.',
+    costCoins: 0, prerequisites: ['basic_angling'], requirements: [{ type: 'quest_completed', questId: 'M1-11' }],
+    requiresRenewal: false, unlocksFeatures: ['village_fishery_gathering'],
+    plannedNote: '실습생 D-180 → 예비계원 → 총회 승낙(M1-11)',
+    plannedNoteEn: 'Trainee D-180 → candidate → accepted at the general meeting (M1-11)',
+  },
+  {
+    type: 'angling_boat_biz', category: 'business',
+    nameKo: '낚시어선업 신고', nameEn: 'Angling Boat Business Registration',
+    description: '자기 배에 손님을 태우고 유상 출조를 할 수 있습니다 (선박 등록·검사 필요).',
+    descriptionEn: 'Carry paying passengers on your own boat (vessel registration and inspection required).',
+    costCoins: 100000, prerequisites: ['boat_operator'], requirements: [{ type: 'quest_completed', questId: 'M4-06' }],
+    requiresRenewal: true, renewalIntervalDays: 365, unlocksFeatures: [],
+    plannedNote: '배 출조 계통(§11-1 ④) 도입 시 소비 — 현재는 게이트만',
+    plannedNoteEn: 'Consumed when the boat-trip system (§11-1 stage 4) lands — gate only for now',
+  },
+  {
+    type: 'marine_tourism', category: 'business',
+    nameKo: '해양관광업 등록', nameEn: 'Marine Tourism Business Registration',
+    description: '낚시 가이드 영업(포인트 선정·조황 책임·평점)을 할 수 있습니다.',
+    descriptionEn: 'Operate as a fishing guide (spot selection, catch responsibility, ratings).',
+    costCoins: 150000, prerequisites: ['angling_boat_biz'], requirements: [{ type: 'quest_completed', questId: 'M5-04' }],
+    requiresRenewal: true, renewalIntervalDays: 365, unlocksFeatures: [],
+    plannedNote: '가이드 영업 루프(§11-1 ⑤) 도입 시 소비 — 현재는 게이트만',
+    plannedNoteEn: 'Consumed when the guide business loop (§11-1 stage 5) lands — gate only for now',
   },
 ];
 

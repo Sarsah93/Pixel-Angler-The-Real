@@ -26,6 +26,10 @@ import {
 import { EN_PLACES } from './places.js';
 import { EN_POIS } from './en_pois.js';
 import { EN_DICT, EN_RULES } from './en.js';
+import {
+  STORY_QUESTS, STORY_CHAPTERS, JOURNAL_PAGES, STORY_ARCS, STORY_MAIN_NPCS, FISHERY_LAW_RULES, canSell, provenanceOf,
+} from '@tra/core';
+import { allDialogueLines } from '../data/StoryDialogue.js';
 
 export type Locale = 'ko' | 'en';
 
@@ -74,6 +78,19 @@ function buildRuntimeDict(): void {
     put(a.desc, a.descEn);
     (a.details ?? []).forEach((d, i) => put(d, a.detailsEn?.[i]));
   }
+  // 134차 — 스토리: 퀘스트·챕터·조행록·아크·NPC·법 규칙·대사 (데이터 Ko/En 쌍이 정본)
+  for (const q of STORY_QUESTS) { put(q.titleKo, q.titleEn); put(q.descKo, q.descEn); for (const o of q.objectives) put(o.labelKo, o.labelEn); }
+  for (const ch of STORY_CHAPTERS) {
+    put(ch.titleKo, ch.titleEn); put(ch.partTitleKo, ch.partTitleEn); put(ch.questionKo, ch.questionEn);
+    const q = ch.qualification;
+    if (q) { put(q.labelKo, q.labelEn); put(q.deadlineKo, q.deadlineEn); put(q.onMissKo, q.onMissEn); put(q.unlocksKo, q.unlocksEn); }
+  }
+  for (const p of JOURNAL_PAGES) { put(p.labelKo, p.labelEn); put(p.howKo, p.howEn); }
+  for (const a of STORY_ARCS) { put(a.titleKo, a.titleEn); put(a.relationKo, a.relationEn); put(a.angleKo, a.angleEn); for (const n of a.npcs) { put(n.nameKo, n.nameEn); put(n.roleKo, n.roleEn); } }
+  for (const n of STORY_MAIN_NPCS) { put(n.nameKo, n.nameEn); put(n.roleKo, n.roleEn); }
+  for (const r of FISHERY_LAW_RULES) { put(r.titleKo, r.titleEn); put(r.textKo, r.textEn); put(r.basisKo, r.basisEn); put(r.whenKo, r.whenEn); }
+  for (const m of ['rod', 'trap', 'gift', 'commercial'] as const) { const v = canSell(provenanceOf(m, ''), []); put(v.reasonKo, v.reasonEn); v.alternatives.forEach((a, i) => put(a, v.alternativesEn[i])); }
+  for (const [ko, en] of allDialogueLines()) put(ko, en);
   for (const [ko, en] of Object.entries(EN_PLACES)) put(ko, en);
   // 상호명 보정 사전 — OSM `name:en` 이 없거나(42건) 품질이 낮은 것(지구대 중복 등)을 덮는다.
   // registerNames(OSM)보다 **먼저** 들어가므로 큐레이션이 이긴다.

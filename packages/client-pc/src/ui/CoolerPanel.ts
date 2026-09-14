@@ -354,7 +354,7 @@ export class CoolerPanel extends DraggablePanel {
       category: 'food', subCategory: '어획물', slot: 0, qty: 1,
       basePrice: Math.max(2000, Math.round(f.weightG * 12)),
       condition: f.condition, equippable: false,
-      speciesId: f.speciesId, lengthCm: f.lengthCm, weightG: f.weightG, sex: f.sex,
+      speciesId: f.speciesId, lengthCm: f.lengthCm, weightG: f.weightG, sex: f.sex, catchMethod: f.catchMethod,
     };
   }
 
@@ -475,7 +475,7 @@ export class CoolerPanel extends DraggablePanel {
       category: 'food', subCategory: creature ? '채집물' : '어획물', ...(creature ? { forageCatch: true } : {}),
       basePrice: Math.max(2000, Math.round(f.weightG * 12)),
       condition: f.condition, equippable: false,
-      speciesId: f.speciesId, lengthCm: f.lengthCm, weightG: f.weightG, sex: f.sex,
+      speciesId: f.speciesId, lengthCm: f.lengthCm, weightG: f.weightG, sex: f.sex, catchMethod: f.catchMethod,
     }, 1);
     if (!ok) {
       this.setStatus('인벤토리(음식) 공간이 없습니다 — 자리를 비우고 다시 시도하세요');

@@ -137,7 +137,11 @@ export function skillPointsForLevel(level: number): number {
 export const SKILL_POINTS_PER_LICENSE = 1;
 
 /** 기본 제공이라 보너스에서 빼는 면허 */
-export const SKILL_BONUS_EXCLUDED_LICENSES: readonly string[] = ['basic_angling'];
+export const SKILL_BONUS_EXCLUDED_LICENSES: readonly string[] = [
+  'basic_angling',
+  // 134차 — 스토리 자격 사다리 4종은 서사 관문이지 스킬 예산이 아니다(Σ 215 = 만렙 200 + 면허 15 불변)
+  'reported_fishery', 'coop_member', 'angling_boat_biz', 'marine_tourism',
+];
 
 /** 보유 면허 → 보너스 포인트 (만료 면허는 호출측이 걸러서 넘긴다) */
 export function skillPointsFromLicenses(heldTypes: readonly string[]): number {

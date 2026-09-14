@@ -16,6 +16,7 @@ import Phaser from 'phaser';
 import { MapObject } from '@tra/core';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { GameState } from '../store/GameState.js';
+import { StoryStore } from '../store/StoryStore.js';
 import { FridgePanel } from '../ui/FridgePanel.js';
 import { fadeOutThen } from './SceneFade.js';
 
@@ -367,6 +368,7 @@ export class HomeInteriorScene extends Phaser.Scene {
       // 수면 회복이 먼저 — 저장 스냅샷에 회복 결과가 담기게 한다 (125차)
       const rec = this.restInBed();
       const ok = GameState.save();
+      if (ok) StoryStore.event({ kind: 'custom', key: 'bedSave' });   // 134차 — M1-03 침대 저장 목표
       this.closeBedMenu();
       this.flash(ok ? `슬롯 ${GameState.activeSlot ?? 1}에 저장했습니다. ${rec}` : '저장에 실패했습니다');
       // (추후) 날짜 진행 훅 — 로드맵 4·5에서 결합

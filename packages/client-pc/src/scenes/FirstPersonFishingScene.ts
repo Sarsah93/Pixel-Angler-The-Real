@@ -2601,7 +2601,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
             }
             CoolerStore.add({
               speciesId: f.speciesId, nameKo: f.nameKo, lengthCm: f.lengthCm,
-              weightG: f.weightG, sex: f.sex, iconTexture: fishTexture,
+              weightG: f.weightG, sex: f.sex, iconTexture: fishTexture, catchMethod: 'rod',
             });
             this.refreshCoolerUi();
             this.showPostDecisionPanel('쿨러에 보관하였습니다.', '#4af2a1', fishTexture, imgScale);
@@ -2617,7 +2617,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
               category: 'food', subCategory: '어획물',
               basePrice: Math.max(2000, Math.round(f.weightG * 12)),
               condition: 'live', equippable: false,
-              speciesId: f.speciesId, lengthCm: f.lengthCm, weightG: f.weightG, sex: f.sex,
+              speciesId: f.speciesId, lengthCm: f.lengthCm, weightG: f.weightG, sex: f.sex, catchMethod: 'rod',
             }, 1);
             if (!ok) {
               this.flashState('인벤토리(음식) 공간이 없습니다 — 방생하거나 자리를 비우세요');
@@ -2766,7 +2766,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
         if (InventoryStore.hasCooler()) {
           const slot = CoolerStore.add({
             speciesId: ef.speciesId, nameKo: ef.nameKo, lengthCm: ef.lengthCm,
-            weightG: ef.weightG, sex: ef.sex, iconTexture: efTexture,
+            weightG: ef.weightG, sex: ef.sex, iconTexture: efTexture, catchMethod: 'rod',
           });
           tag = slot < 0 ? ' (쿨러 가득 — 방생)' : ' (어창)';
         } else {
@@ -2777,7 +2777,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
             category: 'food', subCategory: '어획물',
             basePrice: Math.max(2000, Math.round(ef.weightG * 12)),
             condition: 'live', equippable: false,
-            speciesId: ef.speciesId, lengthCm: ef.lengthCm, weightG: ef.weightG, sex: ef.sex,
+            speciesId: ef.speciesId, lengthCm: ef.lengthCm, weightG: ef.weightG, sex: ef.sex, catchMethod: 'rod',
           }, 1);
           tag = ok ? ' (인벤토리)' : ' (인벤 가득 — 방생)';
         }
