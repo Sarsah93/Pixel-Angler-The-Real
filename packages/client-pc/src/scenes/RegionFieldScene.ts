@@ -68,6 +68,8 @@ import { TrapDeployPanel } from '../ui/TrapDeployPanel.js';
 import { LicensePanel } from '../ui/LicensePanel.js';
 import { SkillTreePanel } from '../ui/SkillTreePanel.js';
 import { JournalPanel } from '../ui/JournalPanel.js';
+import { addPixelIcon } from '../ui/PixelIcon.js';
+import type { MiniMarker } from '../ui/RegionHud.js';
 import { DialoguePanel } from '../ui/DialoguePanel.js';
 import { StoryStore } from '../store/StoryStore.js';
 import { STORY_NPC_PLACEMENTS, STORY_PLACES, type StoryNpcPlacement } from '../data/StoryNpcs.js';
@@ -1175,6 +1177,7 @@ export class RegionFieldScene extends Phaser.Scene {
   private prepareSeamlessPois(): void {
     this.buildings = [];
     this.poiDoors = [];
+    this.miniShopMarkers = [];
     this.poiByChunk.clear();
     const N = RegionFieldScene.SEAMLESS_CHUNK_TILES;
     const reserved = new Set<string>();
@@ -1187,7 +1190,15 @@ export class RegionFieldScene extends Phaser.Scene {
       else this.poiByChunk.set(key, [i]);
       // 거래 가능 POI = 기존 건물 근접([E] 거래) 흐름에 그대로 편입
       const kind = this.poiBuildingKind(poi);
-      if (kind) this.buildings.push({ x: door.x, y: door.y, kind });
+      if (kind) {
+        this.buildings.push({ x: door.x, y: door.y, kind });
+        // 물품 상점(1)이 음식점·카페·주점(0)보다 미니맵 셀을 먼저 차지한다
+        const goods = kind !== 'restaurant' && kind !== 'cafe' && kind !== 'pub';
+        this.miniShopMarkers.push({
+          wx: door.x, wy: door.y,
+          icon: RegionFieldScene.MINI_SHOP_ICON[kind], priority: goods ? 1 : 0,
+        });
+      }
       // 건물 프리팹이 붙는 POI의 건물 컴포넌트는 고층 자동 배치에서 제외
       if (this.poiVisualTex(poi)) {
         const bk = this.chunks?.buildingKeyAt(poi.tx, poi.ty);
@@ -3324,7 +3335,7 @@ export class RegionFieldScene extends Phaser.Scene {
   // ═══════════════════════════════════════════════════════════════
   // 134차 — 스토리 NPC (Ch1 발주자) · 방문 장소 · 대화
   // ═══════════════════════════════════════════════════════════════
-  private storyNpcs: { def: StoryNpcPlacement; x: number; y: number }[] = [];
+  private storyNpcs: { def: StoryNpcPlacement; x: number; y: number; mark?: Phaser.GameObjects.Image; markKey?: string }[] = [];
   private nearNpc: StoryNpcPlacement | null = null;
   private npcHintText?: Phaser.GameObjects.Text;
   private storyProxAt = 0;
@@ -3347,6 +3358,57 @@ export class RegionFieldScene extends Phaser.Scene {
       }).setOrigin(0.5, 1).setDepth(20 + y * 0.001 + 0.0007);
       this.storyNpcs.push({ def, x, y });
     }
+    this.refreshQuestMarkers(true);
+  }
+
+  // ── 136차 — NPC 퀘스트 마커 (필드 머리 위 + 미니맵) ──
+
+  /** 상점 카테고리 → 미니맵 아이콘 키 */
+  private static readonly MINI_SHOP_ICON: Record<BuildingKind, string> = {
+    convenience: 'mm_conv', mart: 'mm_mart', market: 'mm_market', restaurant: 'mm_food',
+    cafe: 'mm_cafe', pub: 'mm_pub', pharmacy: 'mm_pharm', daily: 'mm_daily',
+  };
+
+  /** 상점 POI 마커 (create 1회 — 위치·종류가 고정) */
+  private miniShopMarkers: MiniMarker[] = [];
+  private questMarkerAt = 0;
+
+  /**
+   * NPC 퀘스트 상태 → 마커 아이콘.
+   *  노란 물음표 = **말을 걸면 지금 해결/진행되는 것**(완료 가능 · manual 목표 대기)
+   *  빨간 느낌표 = 수락 가능한 새 의뢰 보유
+   * 메인/서브는 구분하지 않는다(사용자 결정 — 둘 다 가진 NPC에서 표기가 갈라지지 않게).
+   */
+  private npcMarkerIcon(npcId: string, mini: boolean): string | null {
+    const q = StoryStore.questsForNpc(npcId);
+    const manualReady = q.active.some((x) => x.objectives.some((o, i) => o.manual && !StoryStore.objectiveDone(x, i)));
+    if (q.completable.length > 0 || manualReady) return mini ? 'mm_ready' : 'mk_ready';
+    if (q.offer.length > 0) return mini ? 'mm_quest' : 'mk_quest';
+    return null;
+  }
+
+  /** 필드 NPC 머리 위 마커 + 미니맵 마커 갱신 (스토리 상태가 바뀔 때만 실제 교체) */
+  private refreshQuestMarkers(force = false): void {
+    const markers: MiniMarker[] = [...this.miniShopMarkers];
+    for (const n of this.storyNpcs) {
+      const key = this.npcMarkerIcon(n.def.npcId, false);
+      if (force || key !== n.markKey) {
+        n.mark?.destroy();
+        n.mark = undefined;
+        n.markKey = key ?? undefined;
+        if (key) {
+          // 몸통(높이 ≈24px) 우상단 — 이름표(머리 위 40px)와 겹치지 않는 자리.
+          // 오른쪽에 여유가 없으면(맵 끝·옆 NPC) 좌상단으로 (사용자 지시 "여유 공간에 따라")
+          const crowdedRight = n.x + 30 > this.cols * TR
+            || this.storyNpcs.some((o) => o !== n && Math.abs(o.y - n.y) < 24 && o.x > n.x && o.x - n.x < 40);
+          const img = addPixelIcon(this, key, n.x + (crowdedRight ? -14 : 14), n.y - 26, 16);
+          if (img) { img.setDepth(20 + n.y * 0.001 + 0.0008); n.mark = img; }
+        }
+      }
+      const mk = this.npcMarkerIcon(n.def.npcId, true);
+      if (mk) markers.push({ wx: n.x, wy: n.y - 12, icon: mk, priority: mk === 'mm_ready' ? 3 : 2 });
+    }
+    this.hud?.setMiniMarkers(markers);
   }
 
   /** NPC 근접 [F] 힌트 + 방문 장소(영금정 등) 자동 달성 — 150ms 스로틀 */
@@ -3361,6 +3423,9 @@ export class RegionFieldScene extends Phaser.Scene {
       if (d < best) { best = d; nearest = n.def; }
     }
     this.nearNpc = nearest;
+    // 퀘스트 마커는 600ms마다만 재평가 (상태가 안 바뀌면 교체도 없다)
+    this.questMarkerAt += 150;
+    if (this.questMarkerAt >= 600) { this.questMarkerAt = 0; this.refreshQuestMarkers(); }
     if (nearest && !this.uiBlocked && !this.placing) {
       const npc = getStoryNpc(nearest.npcId);
       const q = StoryStore.questsForNpc(nearest.npcId);

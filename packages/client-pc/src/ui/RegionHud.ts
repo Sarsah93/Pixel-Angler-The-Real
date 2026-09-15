@@ -27,6 +27,15 @@ import { paintHudPanel, paintHudSlot } from './HudPanelStyle.js';
 import { t, getLocale } from '../i18n/I18n.js';
 import { StoryStore } from '../store/StoryStore.js';
 
+/** 미니맵 마커 — priority: 0 상점 / 2 퀘스트 보유 / 3 완료 가능 (높을수록 셀 점유 우선) */
+export interface MiniMarker {
+  wx: number;
+  wy: number;
+  /** PixelIconArt 키 (mm_*) */
+  icon: string;
+  priority: number;
+}
+
 export interface RegionHudConfig {
   /** 지역 ID — 기상/해양 데이터 조회 키 (KMA_GRID_BY_REGION / REGION_TO_MMSI) */
   regionId: string;
@@ -267,6 +276,9 @@ export class RegionHud extends Phaser.GameObjects.Container {
   private miniMarker!: Phaser.GameObjects.Arc;
   private miniDispW = 0;
   private miniDispH = 0;
+  /** 미니맵 마커 (136차 — 상점 카테고리 · 퀘스트 느낌표/물음표) */
+  private miniMarkers: MiniMarker[] = [];
+  private miniMarkerC?: Phaser.GameObjects.Container;
 
   // 퀵슬롯
   private slotContainers: Phaser.GameObjects.Container[] = [];
@@ -929,11 +941,52 @@ export class RegionHud extends Phaser.GameObjects.Container {
     }).setOrigin(0.5, 0);
     this.miniContainer.add(hint);
 
+    this.miniMarkerC = this.scene.add.container(0, 0);
+    this.miniContainer.add(this.miniMarkerC);
+    this.drawMiniMarkers();
+
     this.miniMarker = this.scene.add.circle(0, 0, 3.5, 0xff4040).setStrokeStyle(1, 0xffffff, 0.9);
     this.miniContainer.add(this.miniMarker);
 
     // 재구성된 자식 히트 영역 보정
     applyScreenFixed(this.miniContainer);
+  }
+
+  /**
+   * 미니맵 마커 갱신 (136차) — 씬이 상점 POI·NPC 퀘스트 상태를 계산해 넘긴다.
+   * 좌표는 **월드 픽셀**. 같은 셀에 여럿이면 우선순위가 높은 하나만 그린다(아이콘 더미 방지).
+   */
+  setMiniMarkers(list: MiniMarker[]): void {
+    this.miniMarkers = list;
+    this.drawMiniMarkers();
+  }
+
+  private drawMiniMarkers(): void {
+    const c = this.miniMarkerC;
+    if (!c) return;
+    c.removeAll(true);
+    if (this.miniDispW <= 0) return;
+    // 표시 하한: 150 = 퀘스트만 / 250 = 물품 상점까지 / 350 = 음식점·카페까지
+    const size = MINI_SIZES[this.miniSizeIdx];
+    const minPri = size < 250 ? 2 : size < 350 ? 1 : 0;
+    const cell = size < 250 ? 14 : 12;
+    const taken = new Map<string, number>();
+    const picked: { x: number; y: number; m: MiniMarker }[] = [];
+    for (const m of [...this.miniMarkers].sort((a, b) => b.priority - a.priority)) {
+      if (m.priority < minPri) continue;
+      const x = (m.wx / this.cfg.worldW) * this.miniDispW;
+      const y = (m.wy / this.cfg.worldH) * this.miniDispH;
+      if (x < 0 || y < 0 || x > this.miniDispW || y > this.miniDispH) continue;
+      const key = `${Math.floor(x / cell)}:${Math.floor(y / cell)}`;
+      const best = taken.get(key) ?? -1;
+      if (best >= m.priority) continue;
+      taken.set(key, m.priority);
+      picked.push({ x, y, m });
+    }
+    for (const { x, y, m } of picked) {
+      const img = addPixelIcon(this.scene, m.icon, x, y, 10);
+      if (img) c.add(img);
+    }
   }
 
   toggleMiniMapSize(): void {
