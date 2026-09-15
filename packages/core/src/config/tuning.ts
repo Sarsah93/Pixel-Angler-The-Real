@@ -228,6 +228,8 @@ export interface TuningConfig {
     tensionRiseRate: number; tensionFallRate: number;
     /** 이 게이지 아래가 이 시간(초) 이상 지속되면 바늘 빠짐 */
     slackHookOffBelow: number; slackHookOffSec: number;
+    /** 줄 주기(R)로 의도적으로 내주는 동안 슬랙 타이머 누적 배수 (1 미만 = 유예) */
+    slackOpenGraceMult: number;
     /** 랜딩 후 끌어오기(dragIn) 시간 배율 — 연출을 따라올 수 있게 느리게 (피드백 1) */
     dragInTimeScale: number;
     // ── 132차 제압도(subdue) — 랜딩(거리)과 분리된 "굴복" 축 ──
@@ -901,7 +903,7 @@ export const TUNING: TuningConfig = {
     reelLoadMult: 1.10, reelLoadKg: 0.25, holdStiffMult: 1.1, slackMult: 0.7,
     dragCapFrac: 0.85, reelDragCapFrac: 0.97, shockBreakFrac: 2.8, safeFloorFrac: 0.45,
     tensionRiseRate: 3.2, tensionFallRate: 2.6,
-    slackHookOffBelow: 6, slackHookOffSec: 1.5,
+    slackHookOffBelow: 6, slackHookOffSec: 1.5, slackOpenGraceMult: 0.4,
     dragInTimeScale: 0.70,
     subdueReelRate: 5, subdueGoodRate: 13, subdueBadRate: 9,
     subdueDecay: 3, subdueDiveLoss: 10, subdueFatigueWeight: 0.7,

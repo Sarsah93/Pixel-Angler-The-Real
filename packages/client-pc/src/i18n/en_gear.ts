@@ -1,0 +1,88 @@
+/**
+ * @file en_gear.ts
+ * @description 136차 신규 UI 영어 사전 — 스풀·베일 · 밑걸림 · 장비 고장/수리 · 일지 라벨
+ *
+ * 키 = 코드에 적힌 한국어 원문 그대로. `en.ts`의 EN_DICT에 합쳐진다.
+ * ⚠ 합성 문자열(`` `${a} — ${b}` ``)은 사전을 비껴가므로 **조각 단위**로 등록한다(131차 교훈).
+ */
+export const EN_GEAR: Record<string, string> = {
+  // ── 스풀 · 베일 ──
+  '스풀 개방 — 원줄이 나갑니다(전유동·흘림). 떼면 다시 잠기고 회수할 수 있습니다': 'Bail open — line is paying out (free drift). Release to lock the spool and reel in again',
+  '스풀이 바닥났습니다 — R을 떼고 회수하세요': 'You are out of line — release R and reel in',
+  '스풀이 바닥났습니다 — R을 떼고 버티세요': 'You are out of line — release R and hold on',
+  '줄 주기 중 — 고기가 원하는 방향으로 달립니다. 텐션이 빠지면 R을 떼고 다시 감으세요': 'Giving line — the fish runs where it wants. Once the tension drops, release R and reel again',
+  '여유줄 과다 — 백래시 위험': 'Too much slack — backlash risk',
+  '줄이 느슨합니다 — 바늘 빠짐까지': 'Line is slack — hook pulls in',
+  '초': 's',
+  '원줄': 'Line out',
+  '줄': 'Line',
+  '여유': 'slack',
+  '백래시!': 'backlash!',
+  '여유줄': 'Slack',
+  '팽팽': 'Taut',
+  '방출': 'Payout',
+  '페더링': 'Feathering',
+  '채비 흘리는 중 — 우클릭 챔질 · R 줄 주기 · ←/→ 채비이동 · H 뒷줄견제 · C 밑밥 · ↑ 리프트': 'Drifting — right-click to set the hook · R to give line · ←/→ to move the rig · H to hold · C for chum · ↑ to lift',
+  '좌클릭 릴링 · ←/→ 로드 스티어 · ↑ 버티기 · R 줄 주기(텐션 급락·거리 손실) — 텐션 30~80': 'Left-click to reel · ←/→ rod steer · ↑ hold on · R gives line (tension drops, distance lost) — keep tension 30–80',
+
+  // ── 밑걸림 ──
+  '밑걸림': 'Snag',
+  '밑걸림이 발생한 것 같다. 어떻게 대처할까?\n\n[끌어당기기] 회수 10% · 미끼만 10% · 바늘+미끼 30% · 전량 50%\n[끊기] 채비 100% 손실 — 절반은 찌·수중찌·도래가 남는다': 'Looks like you are snagged. What now?\n\n[Pull up] saved 10% · bait only 10% · hook+bait 30% · all 50%\n[Break off] rig always lost — half the time the floats and swivel survive',
+  '밑걸림이 발생한 것 같다. 어떻게 대처할까?\n\n[끌어당기기] 완전 회수 10% · 미끼만 손실 10% · 바늘+미끼 손실 30% · 전량 손실 50%\n[끊기] 채비는 100% 잃는다 — 50%는 찌·수중찌·도래가 살아남고, 50%는 전부 잃는다': 'Looks like you are snagged. What now?\n\n[Pull up] rig saved 10% · bait only 10% · hook+bait 30% · everything 50%\n[Break off] the rig is always lost — 50% keeps the float, sub-float and swivel, 50% loses the lot',
+  '로드 위로 끌어당기기': 'Pull the rod up',
+  '로드 뒤로 당겨 끊기': 'Pull back and break off',
+  '채비를 건졌습니다': 'You saved the rig',
+  '채비가 통째로 빠져나왔다': 'The whole rig came free',
+  '미끼만 떨어져 나갔다': 'Only the bait was lost',
+  '바늘과 미끼를 잃었다': 'You lost the hook and bait',
+  '채비가 통째로 뜯겼다 — 처음부터 다시': 'The rig tore off completely — rebuild from scratch',
+  '도래 아래가 터졌다 — 찌·수중찌·도래는 남았다': 'It parted below the swivel — float, sub-float and swivel survived',
+  '손실 없음': 'Nothing lost',
+  '찌가 바위에 부딪혀 깨졌습니다': 'The float hit rock and cracked',
+
+  // ── 장비 고장 ──
+  '초릿대 부서짐': 'Broken rod tip',
+  '절지 파단': 'Snapped rod section',
+  '스풀 원줄 꼬임': 'Spool backlash',
+  '베일 휨': 'Bent bail arm',
+  '핸들 부러짐': 'Broken handle',
+  '부력 변성': 'Buoyancy drift',
+  '깨져 부서짐': 'Cracked float',
+  '부분 파손': 'Damaged lure',
+  '던지고 감는 과정에서 초릿대 끝이 부러졌다. 가이드가 빠져 원줄이 걸린다.': 'The rod tip snapped while casting and retrieving. A guide came off and the line keeps catching.',
+  '끝을 본드칠해 임시로 붙이거나(자가 · 성공률 65% · 비거리 5% 손실) 수리점에 맡긴다.': 'Glue it back yourself (65% success, 5% casting distance lost) or take it to a repair shop.',
+  '버틸 수 있는 한계를 넘는 힘이 걸려 중간단이 부러졌다. 카본이 갈라져 되살릴 수 없다.': 'A load beyond what it could take snapped a middle section. The carbon has split and cannot be brought back.',
+  '수리할 수 없다. 버리고 새 대를 마련해야 한다.': 'It cannot be repaired. Bin it and get a new rod.',
+  '스풀에서 줄이 뭉텅이로 튀어나와 엉켰다. 이대로는 캐스팅도 회수도 되지 않는다.': 'Line burst off the spool in loops and tangled. You can neither cast nor retrieve like this.',
+  '원줄 스풀 하나를 풀어 새로 감거나(자가) 수리점에 맡긴다.': 'Respool it yourself with a spool of line, or take it to a repair shop.',
+  '베일 암이 휘어 스풀을 제대로 잠그지 못한다. 닫아도 줄이 조금씩 밀려 나간다.': 'The bail arm is bent and no longer locks the spool. Line creeps out even when it is closed.',
+  '수리점에서 베일 암을 교정한다.': 'A repair shop can straighten the bail arm.',
+  '핸들 축이 부러져 감을 수가 없다.': 'The handle shaft has snapped; you cannot wind at all.',
+  '수리점에서 핸들을 교체한다.': 'A repair shop can replace the handle.',
+  '오래 물을 먹어 표면이 무거워졌다. 잔존 부력이 흔들려 예신이 뭉개진다.': 'It has soaked up water and gone heavy. The residual buoyancy wanders and smothers the first bites.',
+  '되돌릴 수 없다. 정밀한 조과가 필요하면 새 찌를 쓴다.': 'This cannot be undone. Use a new float when you need precision.',
+  '캐스팅이 뭍이나 바위를 때리면서 몸통이 깨졌다. 물이 들어차 서지 않는다.': 'The body cracked when a cast struck land or rock. It fills with water and will not stand up.',
+  '수리할 수 없다. 버리고 여유분으로 교체한다.': 'It cannot be repaired. Bin it and swap in a spare.',
+  '바위에 찍히고 이빨에 씹혀 아이가 휘고 훅이 무뎌졌다. 액션이 흐트러진다.': 'Rock strikes and teeth have bent the eye and dulled the hooks. The action is off.',
+  '수리점에서 훅과 스플릿링을 갈아 끼운다.': 'A repair shop will replace the hooks and split rings.',
+
+  // ── 수리 · 내구도 ──
+  '수리': 'Repair',
+  '수리하기': 'Repair',
+  '수리 불가': 'Cannot repair',
+  '불가 (폐기)': 'Impossible (scrap)',
+  '자가 수리': 'Repair it yourself',
+  '수리 실패': 'Repair failed',
+  '수리에 실패했습니다 — 다시 시도할 수 있습니다.': 'The repair failed — you can try again.',
+  '수리할 수 없는 파손입니다.': 'This damage cannot be repaired.',
+  '수리할 장비를 먼저 선택하세요.': 'Select the gear you want repaired first.',
+  '수리점에 맡겨야 합니다.': 'This has to go to a repair shop.',
+  '고장난 장비가 없습니다.': 'You have no broken gear.',
+  '고장난 장비가 아닙니다.': 'That item is not broken.',
+  '내구도': 'Durability',
+  '마모': 'Wear',
+  '한계 초과 — 고장이 잦아집니다': 'Past its limit — faults get frequent',
+  '사용불가': 'Unusable',
+  '입질 확률': 'Bite chance',
+  '상태': 'Condition',
+};

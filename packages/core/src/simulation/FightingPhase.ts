@@ -95,6 +95,11 @@ export interface FightStatus {
   demandKg: number;
   lineCapKg: number;
   response: FightResponse;
+  /**
+   * 슬랙 바늘빠짐 위험도 0~1 (136차). 1이 되는 순간 `hook_off`.
+   * 줄을 주는 동안 **경고를 눈으로 볼 수 있어야** 억울하지 않다 — HUD가 이 값을 그린다.
+   */
+  slackRisk: number;
 }
 
 export interface FightingFishSpec {
@@ -142,6 +147,7 @@ export class FightingPhase {
   private nextPatternIn: number;
   private done = false;
   private slackTimer = 0;
+  private slackRisk = 0;
   private lastDemandKg = 0;
   private lastResponse: FightResponse = 'neutral';
 
@@ -281,9 +287,15 @@ export class FightingPhase {
       //    정대응(슬랙)하기만 하면 1.5초 뒤 **반드시** 바늘이 빠졌다(시뮬 실측 67%).
       //    "느슨하게 줬다"가 성립하려면 원래 걸 수 있는 장력이 임계보다 충분히 커야 한다.
       if (this.maxDemandPct() > P.slackHookOffBelow * 1.5) {
-        if (this.tension < P.slackHookOffBelow) this.slackTimer += dtSec; else this.slackTimer = 0;
+        if (this.tension < P.slackHookOffBelow) {
+          // 136차 — **줄 주기(R)는 조작이지 실수가 아니다.** 의도적으로 내주는 동안에는
+          //   초릿대·드랙이 최소 장력을 붙들고 있다고 보고 타이머를 천천히 채운다
+          //   (1.5초 → 3.75초). 그래도 계속 주기만 하면 결국 바늘은 빠진다.
+          this.slackTimer += dtSec * (input.spoolOpen ? P.slackOpenGraceMult : 1);
+        } else this.slackTimer = 0;
+        this.slackRisk = Math.min(1, this.slackTimer / P.slackHookOffSec);
         if (this.slackTimer >= P.slackHookOffSec) return this.finish('hook_off');
-      }
+      } else { this.slackTimer = 0; this.slackRisk = 0; }
     } else if (this.tension <= 0) {
       return this.finish('hook_off');
     }
@@ -413,6 +425,7 @@ export class FightingPhase {
       demandKg: this.lastDemandKg,
       lineCapKg: this.lineCapKg,
       response: this.lastResponse,
+      slackRisk: this.slackRisk,
     };
   }
 }

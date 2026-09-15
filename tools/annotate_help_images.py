@@ -25,6 +25,28 @@ OUT_H = round(720 * OUT_W / 1280)   # 387
 
 # name → [(x, y, w, h, label)]  (1280×720 좌표)
 CALLOUTS: dict[str, list[tuple[int, int, int, int, str]]] = {
+    # ── 136차 — 스풀·베일 / 밑걸림 / 장비 고장 ──
+    'spool': [
+        (1148, 199, 122, 24, '스풀 행 — 줄 길이 · 여유/방출/팽팽'),
+        (16, 40, 190, 122, '입질 확률 · 미끼 수심'),
+        (310, 568, 660, 24, 'R 홀드 = 베일 개방 안내'),
+        (16, 408, 232, 212, '수평뷰 — 흘러간 채비 위치'),
+    ],
+    'spool_fight': [
+        (420, 52, 420, 20, '텐션바 — 안전 30~80'),
+        (508, 114, 268, 24, '슬랙 경고 — 바늘 빠짐까지 N초'),
+        (1148, 199, 122, 24, '줄 길이 · 팽팽/여유'),
+        (310, 568, 660, 24, 'R 줄 주기 중 안내'),
+    ],
+    'snag': [
+        (410, 210, 460, 252, '밑걸림 선택창'),
+        (452, 324, 418, 44, '두 선택지의 확률표'),
+        (452, 392, 384, 42, '끌어당기기 / 끊기'),
+    ],
+    'gear_fault': [
+        (678, 218, 144, 72, '고장 배지 — 슬롯 우하단 빨간 삼각형'),
+        (433, 104, 416, 40, '탭 — 장비 / 소모품 / 음식 / 낚시용품 / 기타'),
+    ],
     'hud': [
         (16, 16, 320, 176, '상태 — HP·피로·시계·날씨 (크기/투명 버튼)'),
         (1110, 10, 158, 100, '미니맵 (M 크기)'),
@@ -184,6 +206,20 @@ CALLOUTS: dict[str, list[tuple[int, int, int, int, str]]] = {
 # 콜아웃 라벨 영문판 (119차) — 영어 로케일용 주석 이미지(help_<key>_en.png)에 쓴다.
 # 새 콜아웃을 추가하면 여기에도 한 줄 추가할 것(없으면 한국어 그대로 그려진다).
 LABEL_EN: dict[str, str] = {
+    # 136차
+    '스풀 행 — 줄 길이 · 여유/방출/팽팽': 'Spool row — line out · slack / payout / taut',
+    '입질 확률 · 미끼 수심': 'Bite chance · bait depth',
+    'R 홀드 = 베일 개방 안내': 'Hold R = bail open',
+    '수평뷰 — 흘러간 채비 위치': 'Plan view — where the rig has drifted',
+    '텐션바 — 안전 30~80': 'Tension bar — safe 30-80',
+    '슬랙 경고 — 바늘 빠짐까지 N초': 'Slack warning — hook pulls in N s',
+    '줄 길이 · 팽팽/여유': 'Line out · taut / slack',
+    'R 줄 주기 중 안내': 'Giving line with R',
+    '밑걸림 선택창': 'Snag prompt',
+    '두 선택지의 확률표': 'Odds for each option',
+    '끌어당기기 / 끊기': 'Pull up / break off',
+    '고장 배지 — 슬롯 우하단 빨간 삼각형': 'Fault badge — red triangle, lower right of the slot',
+    '탭 — 장비 / 소모품 / 음식 / 낚시용품 / 기타': 'Tabs — Gear / Consumables / Food / Tackle / Misc',
     # ── 131차 ──
     '제작 탭 — 조건 없이 어디서나': 'Crafting tab — anywhere, no requirements',
     '도면 목록 — 그룹별 · 칩 색 = 가능/재료 부족/잠김': 'Blueprints by group · chip colour = ready / short on materials / locked',
@@ -290,7 +326,8 @@ LABEL_EN: dict[str, str] = {
 KEYS = ['hud', 'worldmap', 'inventory', 'equipment', 'shop', 'shop_trade', 'rig_bait', 'rig_lure', 'cast_aim',
         'fp_views', 'fp_fight', 'board', 'board_fish', 'butchery', 'cooler', 'home', 'chum_tab', 'codex',
         'bite_s3', 'dragin_reel', 'catch_popup',
-        'craft_tab', 'workbench', 'skill_tree', 'vitals_panel']
+        'craft_tab', 'workbench', 'skill_tree', 'vitals_panel',
+        'spool', 'spool_fight', 'snag', 'gear_fault']
 
 
 FONT_CANDIDATES = (
@@ -298,6 +335,9 @@ FONT_CANDIDATES = (
     # Linux/CI — 한글 폰트가 있으면 쓴다. 없으면 라틴 폰트로 떨어지고 한국어 콜아웃은 건너뛴다.
     '/usr/share/fonts/truetype/nanum/NanumGothicBold.ttf',
     '/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc',
+    # 136차 — 이 컨테이너엔 한글 전용 폰트가 없지만 WenQuanYi Zen Hei가 한글 글리프를 갖고 있다.
+    '/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc',
+    '/usr/share/fonts/opentype/unifont/unifont.otf',
     '/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf',
 )
 
@@ -318,8 +358,9 @@ def hangul_ok() -> bool:
     """
     f = font(16)
     try:
-        a = f.getmask('가').tobytes()
-        b = f.getmask('\ue000').tobytes()
+        # ⚠ Pillow 11부터 ImagingCore.tobytes()가 사라졌다 — bytes()로 감싼다(136차).
+        a = bytes(f.getmask('가'))
+        b = bytes(f.getmask('\ue000'))
         return a != b
     except Exception:
         return False

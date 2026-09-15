@@ -68,6 +68,7 @@ import { GuideCatKey } from '../data/GuideContent.js';
 import { resolveFishTexture } from '../data/FishTextures.js';
 import { loadSettings } from './SettingsScene.js';
 import { fadeOutThen } from './SceneFade.js';
+import { t } from '../i18n/I18n.js';
 
 export interface FirstPersonFishingInit {
   /** 착수 지점 바닥 수심 Z_max (m) */
@@ -278,6 +279,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   private fightElapsedSec = 0;
   /** 파이트 패턴 대응 판정 배지 (116차) */
   private responseText!: Phaser.GameObjects.Text;
+  /** 136차 — 줄 주기 슬랙 경고 (바늘 빠짐까지 남은 시간) */
+  private slackWarnText!: Phaser.GameObjects.Text;
   /** 끌어오기 방향 안내 화살표 (116차) */
   private dragPromptText!: Phaser.GameObjects.Text;
   /** 좌측 수평뷰(plan) 전용 그래픽스 */
@@ -1145,6 +1148,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.fightSubdue = 0;
     this.dragPromptText?.setVisible(false);
     this.responseText?.setVisible(false);
+    this.slackWarnText?.setVisible(false);
   }
 
   /** 제압 성공 → 끌어오기 시작 — 지친 고기가 세트에 편입되어 수면에 떠서 끌려온다 */
@@ -1178,7 +1182,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.renderFightUi({
       tension: 24, progress: this.landProgress(), subdue: 100,
       pattern: 'none', patternTimeLeft: 0,
-      event: 'none', escapeProbPerSec: 0, lateralDir: 1,
+      event: 'none', escapeProbPerSec: 0, lateralDir: 1, slackRisk: 0,
       demandKg: 0, lineCapKg: 0, response: 'neutral',
     });
     this.patternText
@@ -1515,6 +1519,10 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px', color: '#4af2a1', fontStyle: 'bold',
       backgroundColor: '#0a1628cc', padding: { x: 8, y: 3 },
     }).setOrigin(0.5).setDepth(105).setVisible(false);
+    this.slackWarnText = this.add.text(GAME_WIDTH / 2, 112, '', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#ffb26b', fontStyle: 'bold',
+      backgroundColor: '#0a1628cc', padding: { x: 8, y: 3 },
+    }).setOrigin(0.5, 0).setDepth(105).setVisible(false);
     // 끌어오기 방향 안내 — 물고기 위에 큰 화살표 (좌하단 수평뷰가 안 보인다는 피드백 116차 ①)
     this.dragPromptText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2, '', {
       // 132차 — 34px는 화면 한가운데를 덮어 채비·물고기를 가렸다(실캡처). 안내는 작게.
@@ -2373,7 +2381,10 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.snagChoice = true;
     this.reeling = false;
     this.buildDecisionPanel(
-      '밑걸림', '밑걸림이 발생한 것 같다. 어떻게 대처할까?', '#ffb26b', undefined,
+      '밑걸림',
+      // 확률을 감추면 "왜 잃었는지 모르는" 선택이 된다 — 표를 그대로 보여준다(136차)
+      '밑걸림이 발생한 것 같다. 어떻게 대처할까?\n\n[끌어당기기] 회수 10% · 미끼만 10% · 바늘+미끼 30% · 전량 50%\n[끊기] 채비 100% 손실 — 절반은 찌·수중찌·도래가 남는다',
+      '#ffb26b', undefined,
       [
         {
           label: '로드 위로 끌어당기기', fill: 0x1f4a6a, stroke: 0x5cd0ff, color: '#e8f4fd',
@@ -2804,6 +2815,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.fight = null;
     this.clearFight2DStage();
     this.patternText.setVisible(false);
+    this.slackWarnText.setVisible(false);
     this.uiG.clear();
 
     this.stateText.setText(title);
@@ -3768,9 +3780,15 @@ export class FirstPersonFishingScene extends Phaser.Scene {
           : `라인각 ${la.toFixed(0)}° ${la <= 45 ? '충분' : la <= 60 ? '적정' : '부족'}`)
       : null;
     // 136차 — 스풀: 방출 중 / 여유줄 / 팽팽(끌려옴). 전유동·흘림 운용의 핵심 지표다.
-    const spoolRow = this.spoolPayoutMps > 0.01
-      ? `스풀 방출 ${this.spoolPayoutMps.toFixed(1)}m/s`
-      : this.spoolTaut ? '원줄 팽팽 — 끌려옴' : `여유줄 ${this.spoolSlackM.toFixed(1)}m`;
+    //   ⚠ 우측 열은 110px뿐이라 한 줄로 압축한다 — 나간 줄 길이는 항상 같이 보여준다.
+    //   ⚠ 합성이라 사전을 비껴간다 — 조각마다 t()로 번역한다(131차 교훈).
+    const lineOut = `${t('줄')} ${this.spool.lineOutM.toFixed(1)}m`;
+    const spoolRow = this.spoolOverrunT > 0.05
+      ? `${lineOut} · ${t('백래시!')}`
+      : this.spoolPayoutMps > 0.01
+        ? `${lineOut} · ${t('방출')} ${this.spoolPayoutMps.toFixed(1)}`
+        : this.spoolTaut ? `${lineOut} · ${t('팽팽')}`
+          : `${lineOut} · ${t('여유')} ${this.spoolSlackM.toFixed(1)}m`;
     this.depthValsText?.setText([
       ...topRows,
       `채비  ${this.rig.baitZ.toFixed(1)}m`,
@@ -3879,6 +3897,25 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     g.fillRoundedRect(bx, by + 39, bw * (st.subdue / 100), 6, 2);
     g.lineStyle(1, 0x2a5a8a, 0.8);
     g.strokeRoundedRect(bx, by + 39, bw, 6, 2);
+
+    // ── 136차 슬랙 경고 — 줄을 주는 동안 바늘 빠짐이 얼마나 임박했는지 **보여준다** ──
+    //   (경고 없이 빠지면 "왜 놓쳤는지 모르는" 상태가 된다 — 튜토리얼 대체)
+    if (st.slackRisk > 0.02) {
+      const sw = 260, sx = GAME_WIDTH / 2 - sw / 2, sy = by + 50;
+      g.fillStyle(0x101820, 0.9);
+      g.fillRoundedRect(sx, sy, sw, 8, 3);
+      g.fillStyle(st.slackRisk > 0.6 ? 0xff5a4a : 0xffb26b, 0.95);
+      g.fillRoundedRect(sx, sy, sw * st.slackRisk, 8, 3);
+      g.lineStyle(1, 0x2a5a8a, 0.8);
+      g.strokeRoundedRect(sx, sy, sw, 8, 3);
+      // ⚠ 합성 문자열은 사전을 비껴간다 — 붙이기 전에 t()로 번역한다(131차 교훈)
+      const left = TUNING.fightPhys.slackHookOffSec * (1 - st.slackRisk)
+        / (this.spoolKey?.isDown ? TUNING.fightPhys.slackOpenGraceMult : 1);
+      this.slackWarnText
+        .setText(`${t('줄이 느슨합니다 — 바늘 빠짐까지')} ${left.toFixed(1)}${t('초')}`)
+        .setColor(st.slackRisk > 0.6 ? '#ff5a4a' : '#ffb26b')
+        .setPosition(GAME_WIDTH / 2, sy + 12).setVisible(true);
+    } else this.slackWarnText.setVisible(false);
 
     const ft = this.lastFatigue;
     const load = st.lineCapKg > 0 ? `하중 ${st.demandKg.toFixed(1)}kg / 줄 ${st.lineCapKg.toFixed(1)}kg` : '';

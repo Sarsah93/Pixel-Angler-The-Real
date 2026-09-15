@@ -11,6 +11,7 @@ import { EN_RIG_COOKING } from './en_rig_cooking.js';
 import { EN_HELP } from './en_help.js';
 import { EN_FORAGE } from './en_forage.js';
 import { EN_PANELS } from './en_panels.js';
+import { EN_GEAR } from './en_gear.js';
 import { EN_CONTENT } from './en_content.js';
 import { EN_FISH } from './en_fish.js';
 
@@ -436,7 +437,7 @@ const EN_EXTRA: Record<string, string> = {
 
 /** 최종 사전 — 분야별 사전을 먼저 깔고 기본 사전이 덮는다(충돌 시 기본 우선) */
 export const EN_DICT: Record<string, string> = {
-  ...EN_FISH, ...EN_CONTENT, ...EN_ITEMS, ...EN_RIG_COOKING, ...EN_HELP, ...EN_FORAGE, ...EN_PANELS, ...EN_EXTRA, ...EN_BASE,
+  ...EN_FISH, ...EN_CONTENT, ...EN_ITEMS, ...EN_RIG_COOKING, ...EN_HELP, ...EN_FORAGE, ...EN_PANELS, ...EN_GEAR, ...EN_EXTRA, ...EN_BASE,
 };
 
 /**

@@ -78,7 +78,9 @@
 | **파이팅 줄 주기**(R = 요구 장력 ×0.18 · 바늘털이 정대응 / 여박기 오대응) | ✅ | 136 — `FightInput.spoolOpen` |
 | **밑걸림 대처 선택창**(끌어당기기 10/10/30/50 ↔ 끊기 50:50) | ✅ | 136 — core `SNAG_PULL_UP`·`SNAG_BREAK_OFF` |
 | **장비 고장·파손 8종 + 내구도·수리** | ✅ | 136 — core `GearDurability.ts` · 수리점 탭 · 자가 수리 · 슬롯 우하단 배지 |
-| `TUNING.spool` 실플레이 조율(F8 9종 → 확정) | 🔶 | 136 — **mockup** |
+| `TUNING.spool` 9키 | ✅ | 136-b — **확정값**(F8 9종으로 재조율 가능) |
+| **줄 주기 슬랙 유예 + 경고 UI**(`slackOpenGraceMult 0.4` · `FightStatus.slackRisk`) | ✅ | 136-b — 1.5초 → 3.75초 · 텐션바 아래 경고 바 |
+| 도움말 — 스풀 · 밑걸림 · 장비 고장 3토픽(ko/en · 실캡처 8장) | ✅ | 136-b |
 | 스풀 시각화(방출 애니·슬랙 곡선) | ⬜ | 136 잔여 — 현재 수심 패널 텍스트 1행 |
 | `TUNING.fightPhys`·`TUNING.castWeather` 실플레이 조율(F8 → 확정) | 🔶 | 133에서 파이트는 시뮬+실렌더로 1차 확정(§5). `castWeather`는 여전히 mockup |
 | 어종군 `burst` 웹 리서치 재검(돔 4·방어 5.5·고등어 3 …) | ⬜ | 117 잔여 |
