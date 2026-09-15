@@ -66,6 +66,12 @@ export interface FightInput {
   landProgress?: number;
   /** 132차 — 피로 잔여 비율(0~1, FishFatigueModel.ratio). 제압도 기저가 된다. 미지정 = 1(생생함) */
   fatigueRatio?: number;
+  /**
+   * 136차 — **스풀 개방(줄 주기, R 홀드)**. 베일을 열어 물고기가 원하는 방향으로 달리게 둔다.
+   * 요구 장력이 `TUNING.spool.fightOpenLoadMult` 배로 떨어져 텐션이 급격히 빠지고,
+   * 바늘털이(jump) 정대응으로 인정된다. 대가는 **거리 손실 + 제압도 정체 + 슬랙 바늘빠짐 위험**.
+   */
+  spoolOpen?: boolean;
 }
 
 export type FightEvent = 'none' | 'landed' | 'escaped' | 'line_break' | 'hook_off';
@@ -185,10 +191,12 @@ export class FightingPhase {
   }
 
   /** 현재 패턴에 대한 대응 판정 — 텐션 감쇠/증폭과 탈출 배수가 공유 */
-  private judgeResponse(holding: boolean, reeling: boolean, steer: -1 | 0 | 1): FightResponse {
+  private judgeResponse(holding: boolean, reeling: boolean, steer: -1 | 0 | 1, spoolOpen = false): FightResponse {
+    // 줄 주기(스풀 개방)는 바늘털이 정대응 — 텐션을 빼 바늘 구멍이 벌어지지 않게 한다.
+    // 반대로 여 박기(dive)에서는 줄을 내주면 고기가 그대로 여로 파고든다(오대응).
     switch (this.pattern) {
-      case 'dive': return holding ? 'good' : 'bad';
-      case 'jump': return (!reeling && !holding) ? 'good' : 'bad';
+      case 'dive': return spoolOpen ? 'bad' : holding ? 'good' : 'bad';
+      case 'jump': return (spoolOpen || (!reeling && !holding)) ? 'good' : 'bad';
       case 'lateral':
         if (holding) return 'bad';
         if (steer === this.lateralDir) return 'good';
@@ -218,7 +226,7 @@ export class FightingPhase {
       }
     }
 
-    const response = this.judgeResponse(holding, reeling, steer);
+    const response = this.judgeResponse(holding, reeling, steer, !!input.spoolOpen);
     this.lastResponse = response;
 
     if (this.physical) {
@@ -333,6 +341,9 @@ export class FightingPhase {
     }
     if (reeling) demand = demand * P.reelLoadMult + P.reelLoadKg;
     else if (!holding) demand *= P.slackMult;
+    // 136차 — 스풀 개방: 줄이 나가는 동안에는 하중이 로드·라인에 실리지 않는다.
+    //   릴링/홀드보다 **뒤에** 곱해야 "감으면서 스풀을 열어도 안전"이 성립하지 않는다.
+    if (input.spoolOpen) demand *= TUNING.spool.fightOpenLoadMult;
     if (holding && this.pattern !== 'dive') demand *= P.holdStiffMult;
     // ── 드랙 (133차 재정의) ──
     //  드랙은 **릴을 감는 중에도** 미끄러진다(스풀 역회전) — 구 모델은 릴링 중 상한이 아예

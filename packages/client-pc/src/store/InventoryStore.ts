@@ -18,6 +18,7 @@ import {
   LURES_CATALOG_DB, JIGHEAD_WEIGHTS_G, getLureSpec, jigHeadWeightById,
   computeLureRigWeight, getLureCastCd, isKnifeItem, FISH_DATABASE, lineStrengthKg,
   speciesStandardWeightG, SASHIMI_PLATE_SPECS,
+  type GearFaultId, GEAR_FAULTS, gearUsable,
 } from '@tra/core';
 import type { SashimiSizeTier } from '@tra/core';
 import type { ForageTool, StatusCure, CatchMethod } from '@tra/core';
@@ -205,6 +206,13 @@ export interface InvItem {
    * 신선도(condition/conditionSinceMs)는 가장 먼저 상하는 조각을 계승한다.
    */
   plateWip?: PlateWipData;
+  /** 136차 — 장비 고장·파손 상태 (없으면 정상) */
+  fault?: GearFaultId;
+  /**
+   * 136차 — 누적 사용 횟수(던지고 감은 사이클). 로드·릴은 마모 계수의 입력,
+   * 찌는 부력 변성 판정 시점(300회)의 입력이다.
+   */
+  useCount?: number;
 
   // ── 원투 메인 싱커(무게추 봉돌) 전용 ──
   /** 봉돌 종류 (고리/구멍/묶음추) — 존재하면 무게추 봉돌 */
@@ -1663,6 +1671,83 @@ class InventoryStoreManager {
    * 각 소켓: 인벤토리 1개 소모 + 소켓 비움 (재장착은 U 채비하기에서 수동).
    * 잃은 부품 이름 목록 반환.
    */
+  // ═══════════════════════════════════════════════════
+  // 136차 — 장비 고장·파손 (내구도)
+  // ═══════════════════════════════════════════════════
+
+  /** 현재 손에 든 낚싯대 (고장 판정·마모 대상) */
+  get handRod(): InvItem | undefined {
+    return this._items.find((i) => i.equipped && i.tool === 'rod');
+  }
+
+  /** 장착 릴 */
+  get equippedReel(): InvItem | undefined {
+    return this._items.find((i) => i.equipped && i.subCategory === '릴');
+  }
+
+  /** 채비에 물린 찌 (부력 변성 대상) */
+  get rigFloat(): InvItem | undefined {
+    const id = this._rig.float;
+    return id ? this.find(id) : undefined;
+  }
+
+  /** 장착 루어 */
+  get rigLure(): InvItem | undefined {
+    return this._lure ? this.find(this._lure) : undefined;
+  }
+
+  /** 고장 부여 — 이미 고장난 장비는 덮어쓰지 않는다(먼저 고쳐야 한다) */
+  setFault(item: InvItem | undefined, fault: GearFaultId): boolean {
+    if (!item || item.fault) return false;
+    item.fault = fault;
+    // 사용불가 고장은 즉시 손에서 내린다 — 부러진 대를 든 채로 던질 수는 없다
+    if (!gearUsable(fault) && item.equipped) {
+      item.equipped = false;
+      item.equippedHand = undefined;
+    }
+    return true;
+  }
+
+  /** 고장 해제 (수리 완료) */
+  clearFault(item: InvItem | undefined): void {
+    if (!item) return;
+    item.fault = undefined;
+  }
+
+  /** 사용 횟수 1 증가 (던지고 감은 한 사이클) */
+  bumpUse(item: InvItem | undefined, n = 1): number {
+    if (!item) return 0;
+    item.useCount = (item.useCount ?? 0) + n;
+    return item.useCount;
+  }
+
+  /**
+   * 자가 수리 — 초릿대 본드칠(맨손·확률) / 스풀 원줄 되감기(원줄 스풀 1개 소모).
+   * 성공하면 고장이 풀린다. 실패해도 재시도할 수 있다(재료는 소모된다).
+   */
+  selfRepair(item: InvItem | undefined, rnd = Math.random()): { ok: boolean; reason?: string } {
+    if (!item?.fault) return { ok: false, reason: '고장난 장비가 아닙니다.' };
+    const def = GEAR_FAULTS[item.fault];
+    if (def.repair !== 'self_or_shop') {
+      return { ok: false, reason: def.repair === 'none' ? '수리할 수 없는 파손입니다.' : '수리점에 맡겨야 합니다.' };
+    }
+    if (def.selfConsumes) {
+      const mat = this._items.find((i) => i.subCategory === def.selfConsumes && i.qty > 0);
+      if (!mat) return { ok: false, reason: `${def.selfConsumes} 하나가 필요합니다.` };
+      this.removeQty(mat.id, 1);
+    }
+    if (rnd < (def.selfSuccess ?? 1)) {
+      item.fault = undefined;
+      return { ok: true };
+    }
+    return { ok: false, reason: '수리에 실패했습니다 — 다시 시도할 수 있습니다.' };
+  }
+
+  /** 고장난 장비 목록 (수리점 탭) */
+  faultyItems(): InvItem[] {
+    return this._items.filter((i) => !!i.fault);
+  }
+
   loseRigParts(steps: RigStepKey[]): string[] {
     if (isGod()) return [];   // dev 무적: 채비 손실 없음
     const lost: string[] = [];

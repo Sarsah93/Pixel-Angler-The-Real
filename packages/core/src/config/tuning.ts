@@ -774,6 +774,44 @@ export interface TuningConfig {
      */
     enforceRodSell: number;
   };
+  /**
+   * 스풀·베일 (136차) — 전유동/흘림 낚시와 "줄 주기"의 물리 상수.
+   * 방출 = (하중 − 스풀 저항) × gain. 베일 개방(R) 시 저항이 사라져 조류·무게만큼 나간다.
+   */
+  spool: {
+    /** 베일 개방 시 스풀 관성·마찰 (kg) — 이 이하 하중이면 자연 방출만 */
+    openFrictionKg: number;
+    /** 초과 하중 1kg당 방출 속도 (m/s) */
+    payoutGainMpsPerKg: number;
+    /** 방출 속도 상한 (m/s) */
+    maxPayoutMps: number;
+    /** 하중이 없어도 채비 무게로 흘러나가는 최소 방출 (m/s) */
+    idlePayoutMps: number;
+    /** 드랙 슬립(베일 닫힘) — 초과 하중 1kg당 방출 (m/s) */
+    dragSlipMpsPerKg: number;
+    /** 베일 휨 고장 — 닫아도 새어 나가는 속도 (m/s) */
+    bailLeakMps: number;
+    /** 조류 1m/s당 하중 (kg) */
+    curPullK: number;
+    /** 풍속 1m/s당 하중 (kg) — 수면 위 원줄 길이에 비례해 가중 */
+    windPullK: number;
+    /** 채비 무게 중 원줄에 걸리는 비율 */
+    weightPullFrac: number;
+    /** 스풀 원줄 총량 (m) */
+    maxLineM: number;
+    /** 회수 하한 (m) — 로드팁 코앞 */
+    minLineM: number;
+    /** 착수 직후 여유줄 (m) */
+    castSlackM: number;
+    /** 여유줄 상한 (m) — 넘겨 내주면 방출이 막히고 백래시(원줄 꼬임) 신호가 뜬다 */
+    maxSlackM: number;
+    /** 팽팽 → 호 투영 추종 속도 (1/s) — 클수록 즉각적으로 끌려온다 */
+    tautFollowRate: number;
+    /** 파이팅 중 스풀 개방 시 요구 장력 배수 (줄을 내주면 하중이 실리지 않는다) */
+    fightOpenLoadMult: number;
+    /** 파이팅 중 스풀 개방 시 도주 전진 배수 */
+    fightRunBonus: number;
+  };
   /** 일용직(품삯) — 135차 */
   job: {
     /** 품삯 배율 (경제 밸런스 조절용) */
@@ -1003,6 +1041,13 @@ export const TUNING: TuningConfig = {
     harborCommunityWork: 3, harborFreeDelivery: 2, harborAbandonedRequest: -5,
   },
   law: { enforceRodSell: 2 },   // 2 = 법(M1-06)을 배운 뒤부터 강제 (135차 — 구세이브·테스터 회귀 0)
+  spool: {
+    openFrictionKg: 0.06, payoutGainMpsPerKg: 2.2, maxPayoutMps: 3.5, idlePayoutMps: 0.25,
+    dragSlipMpsPerKg: 1.4, bailLeakMps: 0.06,
+    curPullK: 1.15, windPullK: 0.035, weightPullFrac: 0.55,
+    maxLineM: 150, minLineM: 0.8, castSlackM: 0.6, maxSlackM: 4, tautFollowRate: 3.2,
+    fightOpenLoadMult: 0.18, fightRunBonus: 1.35,
+  },
   job: { wageMult: 1, costMult: 1, fatigueLimit: 88 },
   inventory: { devSlotsPerTab: 25, baseCols: 2, baseRows: 5 },
   fatigueStaminaBase: {
@@ -1173,6 +1218,17 @@ export const TUNING_META: TuningParamMeta[] = [
   { path: 'job.wageMult', min: 0.2, max: 3, step: 0.1, category: 'balance', label: '품삯 배율' },
   { path: 'job.costMult', min: 0.2, max: 3, step: 0.1, category: 'balance', label: '품삯 행동력 소모 배율' },
   { path: 'job.fatigueLimit', min: 50, max: 100, step: 1, category: 'balance', label: '일하기 가능 피로 상한' },
+  // 136차 스풀·베일 (mockup — 실플레이 조율 대기)
+  { path: 'spool.payoutGainMpsPerKg', min: 0.5, max: 6, step: 0.1, category: 'feel', label: '스풀 방출 이득(m/s per kg)' },
+  { path: 'spool.maxPayoutMps', min: 1, max: 8, step: 0.1, category: 'feel', label: '스풀 최대 방출(m/s)' },
+  { path: 'spool.idlePayoutMps', min: 0, max: 1.5, step: 0.05, category: 'feel', label: '무하중 자연 방출(m/s)' },
+  { path: 'spool.curPullK', min: 0.2, max: 4, step: 0.05, category: 'balance', label: '조류 하중 계수(kg per m/s)' },
+  { path: 'spool.windPullK', min: 0, max: 0.2, step: 0.005, category: 'balance', label: '바람 하중 계수' },
+  { path: 'spool.maxSlackM', min: 1, max: 15, step: 0.5, category: 'feel', label: '여유줄 상한(m)' },
+  { path: 'spool.tautFollowRate', min: 0.5, max: 10, step: 0.1, category: 'feel', label: '팽팽 시 끌림 추종(1/s)' },
+  { path: 'spool.fightOpenLoadMult', min: 0.02, max: 0.6, step: 0.01, category: 'feel', label: '파이팅 줄 주기 하중 배수' },
+  { path: 'spool.fightRunBonus', min: 1, max: 2.5, step: 0.05, category: 'feel', label: '파이팅 줄 주기 도주 배수' },
+  { path: 'spool.bailLeakMps', min: 0, max: 0.4, step: 0.01, category: 'balance', label: '베일 휨 누출(m/s)' },
   { path: 'rep.harborCommunityWork', min: 0, max: 10, step: 0.5, category: 'balance', label: '항구 신뢰 +/공동작업' },
   { path: 'rep.seaReleaseUndersize', min: 0, max: 3, step: 0.1, category: 'balance', label: '바다 평판 +/준법 방생' },
 ];

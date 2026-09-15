@@ -25,6 +25,8 @@ import { CoolerStore } from '../store/CoolerStore.js';
 import { DraggablePanel } from './DraggablePanel.js';
 import { ConfirmDialog } from './Dialogs.js';
 import { createItemIcon } from './ItemIcon.js';
+import { addPixelIcon } from './PixelIcon.js';
+import { GEAR_FAULTS } from '@tra/core';
 import { playEatSfx } from '../audio/Sfx.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 
@@ -353,6 +355,12 @@ export class InventoryPanel extends DraggablePanel {
         this.gridContainer.add(prTxt);
       }
 
+      // 136차 — 고장·파손 배지: **우하단** 빨간 삼각형 안 느낌표 (좌하단 = 미완성 접시 %)
+      if (item.fault) {
+        const warn = addPixelIcon(this.scene, 'warn_broken', sx + SLOT - 11, sy + SLOT - 24, 12);
+        if (warn) this.gridContainer.add(warn);
+      }
+
       // (착용 배지 없음 — 착용 아이템은 그리드에서 빠져 장비창(E)에 표시된다. 2026-08-05)
       const nameTxt = this.scene.add.text(sx + SLOT / 2, sy + SLOT - 14, item.name, {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '7px', color: '#a8c4d8',
@@ -404,6 +412,22 @@ export class InventoryPanel extends DraggablePanel {
       label: '상세보기',
       run: () => this.cbs.onOpenDetail(item),
     });
+    // 136차 — 자가 수리 (초릿대 본드칠 / 스풀 원줄 되감기). 수리점 전용 고장은 안내만.
+    if (item.fault) {
+      const def = GEAR_FAULTS[item.fault];
+      if (def.repair === 'self_or_shop') {
+        actions.push({
+          label: def.selfConsumes ? `자가 수리 (${def.selfConsumes} 1개)` : '자가 수리',
+          color: '#ffd257', hoverColor: '#ffe9a0',
+          run: () => {
+            const r = InventoryStore.selfRepair(item);
+            this.setStatus(r.ok ? `${item.name} 수리 완료` : (r.reason ?? '수리 실패'));
+            this.renderGrid();
+            this.closeContextMenu();
+          },
+        });
+      }
+    }
     // 음식/소모품 — 사용하기 (녹색). 음식은 섭취 SFX와 함께 소모, 소모품은 소모만.
     // 손질되지 않은 활어(어획물)·손질 필렛·통마리·부산물은 날것이라 섭취 불가 —
     // 조리(요리) 후에만 먹을 수 있으므로 사용하기 자체를 제공하지 않는다.

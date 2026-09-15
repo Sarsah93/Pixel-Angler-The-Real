@@ -11,6 +11,7 @@
  */
 
 import Phaser from 'phaser';
+import { GEAR_FAULTS, gearRepairFee } from '@tra/core';
 import { GameState } from '../store/GameState.js';
 import { InventoryStore, InvItem, CONDITION_LABEL } from '../store/InventoryStore.js';
 import { RecommendationStore } from '../store/RecommendationStore.js';
@@ -19,7 +20,7 @@ import { DraggablePanel } from './DraggablePanel.js';
 import { createItemIcon } from './ItemIcon.js';
 import { StoryStore } from '../store/StoryStore.js';
 
-type ShopTab = 'buy' | 'sell';
+type ShopTab = 'buy' | 'sell' | 'repair';
 
 const PANEL_W = 460;
 const PANEL_H = 596;
@@ -58,6 +59,12 @@ export class ShopPanel extends DraggablePanel {
   private shop: ShopDef;
   private cbs: ShopPanelCallbacks;
   private currentTab: ShopTab = 'buy';
+  private tabDefs: { id: ShopTab; label: string }[] = [];
+  /** 수리 가능 상점 = 낚시 장비를 취급하는 곳 (직판장 · 생활용품점) */
+  private get canRepair(): boolean {
+    return this.shop.kind === 'market' || this.shop.kind === 'daily';
+  }
+  private selectedRepair: InvItem | null = null;
 
   private tabBgs = new Map<ShopTab, Phaser.GameObjects.Graphics>();
   private tabTexts = new Map<ShopTab, Phaser.GameObjects.Text>();
@@ -146,6 +153,9 @@ export class ShopPanel extends DraggablePanel {
       { id: 'buy', label: '구매하기' },
       { id: 'sell', label: '판매하기' },
     ];
+    // 136차 — 수리점: 낚시 장비를 다루는 상점(직판장·생활용품점)만 수리를 받는다
+    if (this.canRepair) defs.push({ id: 'repair', label: '수리하기' });
+    this.tabDefs = defs;
     const tabW = 120, tabH = 30;
     const ty = this.contentTop + 20;
 
@@ -175,7 +185,7 @@ export class ShopPanel extends DraggablePanel {
   private paintTabs(): void {
     const tabW = 120, tabH = 30;
     const ty = this.contentTop + 20;
-    (['buy', 'sell'] as ShopTab[]).forEach((id, i) => {
+    this.tabDefs.forEach(({ id }, i) => {
       const tx = 14 + i * (tabW + 6);
       const g = this.tabBgs.get(id)!;
       const selected = id === this.currentTab;
@@ -186,6 +196,7 @@ export class ShopPanel extends DraggablePanel {
       g.strokeRoundedRect(tx, ty, tabW, tabH, 4);
       this.tabTexts.get(id)!.setColor(selected ? '#aee8ff' : '#8faabf');
     });
+    this.footerRight?.setText(this.currentTab === 'repair' ? '수리' : '판매');
   }
 
   // ── 그리드 ────────────────────────────────────────
@@ -226,6 +237,23 @@ export class ShopPanel extends DraggablePanel {
         });
       });
       if (cells.length === 0) this.renderEmptyNote(gy0, '판매 품목이 없습니다.');
+    } else if (this.currentTab === 'repair') {
+      // 136차 — 고장난 장비 목록. 수리 불가(절지 파단·찌 파손)는 폐기 안내만 뜬다.
+      const faulty = InventoryStore.faultyItems();
+      faulty.forEach((item) => {
+        const def = GEAR_FAULTS[item.fault!];
+        const fee = gearRepairFee(item.fault!, item.basePrice ?? 0);
+        cells.push({
+          icon: item.icon, iconTexture: item.iconTexture, name: item.name,
+          priceLabel: def.repair === 'none' ? '수리 불가' : `${fee.toLocaleString()}원`,
+          qtyLabel: '',
+          selected: this.selectedRepair?.id === item.id,
+          tooltip: `${item.name}\n${def.labelKo} — ${def.fixKo}`,
+          onSelect: () => { this.selectedRepair = item; this.renderGrid(); },
+          onDetail: () => this.cbs.onOpenDetail(item),
+        });
+      });
+      if (faulty.length === 0) this.renderEmptyNote(gy0, '고장난 장비가 없습니다.');
     } else {
       // 착용 중 장비(slot < 0 = 그리드 이탈)는 판매 목록에서 제외 — 먼저 해제해야 한다 (2026-08-05 개편)
       // 채집물(forageCatch)은 조례상 판매·유통 금지 — 목록에서 제외 (121차)
@@ -443,14 +471,35 @@ export class ShopPanel extends DraggablePanel {
       if (!this.selectedBuy) { this.setStatus('구매할 상품을 먼저 선택하세요.'); return; }
       this.cbs.onBuy(this.selectedBuy);
     });
-    this.addFooterButton(PANEL_W / 2 + 105, btnY, '판매', () => {
+    this.footerRight = this.addFooterButton(PANEL_W / 2 + 105, btnY, '판매', () => {
+      if (this.currentTab === 'repair') { this.doRepair(); return; }
       if (this.currentTab !== 'sell') { this.setStatus('판매하기 탭에서 아이템을 선택하세요.'); return; }
       if (!this.selectedSell) { this.setStatus('판매할 아이템을 먼저 선택하세요.'); return; }
       this.cbs.onSell(this.selectedSell);
     });
   }
 
-  private addFooterButton(cx: number, cy: number, label: string, onClick: () => void): void {
+  /** 136차 — 수리 실행: 재화 차감 후 고장 해제 */
+  private doRepair(): void {
+    const item = this.selectedRepair;
+    if (!item?.fault) { this.setStatus('수리할 장비를 먼저 선택하세요.'); return; }
+    const def = GEAR_FAULTS[item.fault];
+    if (def.repair === 'none') { this.setStatus(`${def.labelKo} — ${def.fixKo}`); return; }
+    const fee = gearRepairFee(item.fault, item.basePrice ?? 0);
+    if (GameState.player.inventory.coins < fee) {
+      this.setStatus(`재화가 부족합니다 — ${fee.toLocaleString()}원 필요`);
+      return;
+    }
+    GameState.player.inventory.coins -= fee;
+    InventoryStore.clearFault(item);
+    this.selectedRepair = null;
+    this.setStatus(`${item.name} 수리 완료 — ${fee.toLocaleString()}원 지불`);
+    this.refresh();
+  }
+
+  private footerRight?: Phaser.GameObjects.Text;
+
+  private addFooterButton(cx: number, cy: number, label: string, onClick: () => void): Phaser.GameObjects.Text {
     const bg = this.scene.add.graphics();
     bg.fillStyle(0x0d4a2e, 0.95);
     bg.fillRoundedRect(cx - 95, cy - 20, 190, 40, 5);
@@ -465,6 +514,7 @@ export class ShopPanel extends DraggablePanel {
     hit.on('pointerout', () => txt.setColor('#4af2a1'));
     hit.on('pointerdown', onClick);
     this.add([bg, txt, hit]);
+    return txt;
   }
 
   override destroy(fromScene?: boolean): void {

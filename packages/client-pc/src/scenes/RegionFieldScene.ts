@@ -73,7 +73,7 @@ import type { MiniMarker } from '../ui/RegionHud.js';
 import { DialoguePanel } from '../ui/DialoguePanel.js';
 import { StoryStore } from '../store/StoryStore.js';
 import { STORY_NPC_PLACEMENTS, STORY_PLACES, type StoryNpcPlacement } from '../data/StoryNpcs.js';
-import { getStoryNpc, validateStoryQuests } from '@tra/core';
+import { getStoryNpc, validateStoryQuests, gearFaultChance, GEAR_REF_PRICE, gearUsable, GEAR_FAULTS } from '@tra/core';
 import { playCollapse, type CollapseKind } from '../ui/CollapseOverlay.js';
 import { TUNING, getTrapById, type RegionFishFarms } from '@tra/core';
 import { tilesetPathOf } from '../data/TilesetManifest.js';
@@ -2291,6 +2291,14 @@ export class RegionFieldScene extends Phaser.Scene {
       }
       return;
     }
+    // 136차 — 고장난 장비 게이트: 부러진 대·엉킨 스풀로는 던질 수 없다
+    const broken = [rod, InventoryStore.equippedReel, InventoryStore.rigFloat]
+      .find((it) => it?.fault && !gearUsable(it.fault));
+    if (broken?.fault) {
+      const def = GEAR_FAULTS[broken.fault];
+      this.floatingHint(`${broken.name} — ${def.labelKo}. ${def.fixKo}`);
+      return;
+    }
     if (!this.nearWater) {
       this.floatingHint('바다 가까이에서 캐스팅하세요');
       return;
@@ -2455,8 +2463,10 @@ export class RegionFieldScene extends Phaser.Scene {
     const row = Math.floor(proj.y / TR);
 
     if (this.terrainAt(col, row) !== 'water') {
-      // 육지 착지 — 회수
-      this.floatingHint('육지에 떨어졌습니다 — 바다를 조준하세요');
+      // 육지 착지 — 회수. 136차: 뭍·바위를 때린 찌는 절반 확률로 깨진다(사용자 지시)
+      const cracked = this.rollFloatImpact();
+      this.floatingHint(cracked ? '찌가 바위에 부딪혀 깨졌습니다' : '육지에 떨어졌습니다 — 바다를 조준하세요');
+      if (cracked) this.hud?.pushLog('[장비] 찌가 깨졌습니다 — 여유분으로 교체하세요.');
       this.retrieveCastToPlayer();
       return;
     }
@@ -2475,6 +2485,28 @@ export class RegionFieldScene extends Phaser.Scene {
     this.tweens.add({ targets: ripple, scale: 4, alpha: 0, duration: 700, onComplete: () => ripple.destroy() });
     this.hud?.pushLog('[낚시] 착수! 1인칭 낚시 모드 진입');
     this.time.delayedCall(420, () => this.enterFirstPersonFishing(proj.x, proj.y, col, row));
+  }
+
+  /**
+   * 136차 — 뭍·바위 충돌 시 찌 파손 판정 (기본 50%, 고급 찌일수록 낮다).
+   * 깨진 찌는 수리할 수 없다 — 버리고 여유분으로 교체한다.
+   */
+  private rollFloatImpact(): boolean {
+    // 루어 채비도 같은 충돌을 받는다 — 아이가 휘고 훅이 무뎌진다(사용 가능·입질 저하)
+    const lure = InventoryStore.rigLure;
+    if (lure && !lure.fault) {
+      const pl = gearFaultChance({
+        fault: 'lure_damaged', basePrice: lure.basePrice ?? GEAR_REF_PRICE.lure, refPrice: GEAR_REF_PRICE.lure,
+      });
+      if (Math.random() < pl) InventoryStore.setFault(lure, 'lure_damaged');
+    }
+    const fl = InventoryStore.rigFloat;
+    if (!fl || fl.fault) return false;
+    const p = gearFaultChance({
+      fault: 'float_cracked', basePrice: fl.basePrice ?? GEAR_REF_PRICE.float, refPrice: GEAR_REF_PRICE.float,
+    });
+    if (Math.random() >= p) return false;
+    return InventoryStore.setFault(fl, 'float_cracked');
   }
 
   /**

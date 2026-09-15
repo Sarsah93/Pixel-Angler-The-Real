@@ -47,6 +47,10 @@ import {
   TUNING,
   computeCastWeather,
   type CastWeatherEffect,
+  initSpool, stepSpool, driftPullKg, type SpoolState,
+  SNAG_PULL_UP, SNAG_BREAK_OFF, rollSnagOutcome, type SnagOutcome,
+  GEAR_FAULTS, GEAR_REF_PRICE, ROD_OVERLOAD_SNAP, FLOAT_BUOYANCY_AFTER_CASTS,
+  gearFaultChance, rodMaxCasts, wearFactor, gearBiteMult, type GearFaultId,
 } from '@tra/core';
 import { drawRigIcon, RigIconKind } from '../ui/RigIconRenderer.js';
 import { GameState } from '../store/GameState.js';
@@ -310,6 +314,25 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   /** 뒷줄견제 홀드 앵커 수심 (H 누른 순간 -0.2m 지점, 떼면 null) */
   private holdAnchorZ: number | null = null;
 
+  // ── 136차 스풀·베일 (전유동/흘림 · 줄 주기) ──
+  /** 스풀에서 풀려나간 원줄 길이 — 채비 위치를 구속하는 실제 상태 */
+  private spool: SpoolState = { lineOutM: 0 };
+  /** R 홀드 = 베일 개방 */
+  private spoolKey?: Phaser.Input.Keyboard.Key;
+  /** 직전 프레임 스풀 결과 (HUD·파이팅 공용) */
+  private spoolSlackM = 0;
+  private spoolTaut = false;
+  private spoolPayoutMps = 0;
+  private spoolWarnedAt = 0;
+  /** 베일 변형 고장 — 닫아도 줄이 샌다 (내구도 시스템 연동) */
+  private bailBent = false;
+  /** 과방출(백래시) 누적 시간 — 원줄 꼬임 고장 판정의 입력 */
+  private spoolOverrunT = 0;
+  /** 밑걸림 대처 선택창이 떠 있는 동안 낚시 진행 정지 */
+  private snagChoice = false;
+  /** 장비 마모·고장 판정은 출조 1사이클에 한 번만 */
+  private wearRolled = false;
+
   // ── 실시간 날씨 파티클 (하늘 배경 연동 — 2026-07-20) ──
   private fpRainDrops: { obj: Phaser.GameObjects.Rectangle; speed: number }[] = [];
   private fpSnowFlakes: { obj: Phaser.GameObjects.Arc; speed: number; sway: number }[] = [];
@@ -417,6 +440,11 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.floatSinkM = 0;
     this.floatSinkVisM = 0;
     this.distM = data.castDistanceM;
+    this.spool = initSpool(data.castDistanceM, 0.3);
+    // 136차 — 베일 휨 고장이면 닫아도 줄이 샌다 (유저가 이상을 눈치채는 단서)
+    this.bailBent = InventoryStore.equippedReel?.fault === 'reel_bail';
+    this.wearRolled = false;
+    this.spoolOverrunT = 0;
     this.lastTidal = null;
     this.foamParticles = [];
     this.rigPose = 'idle';
@@ -538,6 +566,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     // (구 드리프트 다트(keydown)는 폐기 — 홀드 기반 조류 연동 이동으로 대체. Task 7)
     this.steerLeftKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.LEFT);
     this.steerRightKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.RIGHT);
+    // 136차 — R 홀드 = 스풀(베일) 개방. 탑다운의 자전거 R과 씬이 다르므로 충돌 없음.
+    this.spoolKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.R);
     this.input.keyboard!.on('keydown-C', () => this.tossChum());
     this.input.keyboard!.on('keydown-I', () => this.toggleFpInventory());
     this.input.keyboard!.on('keydown-ESC', () => {
@@ -620,11 +650,15 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     if (!this.controlBarText) return;
     let text: string;
     if (this.fpState === 'fighting') {
-      text = '좌클릭 릴링 · ←/→ 로드 스티어(+릴링=물고기 견인) · ↑ 버티기(홀드) — 텐션 30~80';
+      text = this.spoolKey?.isDown
+        ? '줄 주기 중 — 고기가 원하는 방향으로 달립니다. 텐션이 빠지면 R을 떼고 다시 감으세요'
+        : '좌클릭 릴링 · ←/→ 로드 스티어 · ↑ 버티기 · R 줄 주기(텐션 급락·거리 손실) — 텐션 30~80';
     } else if (this.biteSeq.active || this.pendingFish) {
       text = '입질 중! 초릿대가 크게 휘는 3단계에 우클릭 챔질 (1단계 5% · 2단계 20% · 3단계 100%)';
     } else {
-      text = '우클릭 챔질 · 좌클릭 릴링 · ←/→ 채비 횡이동(조류 연동) · ↑ 리프트 · H 뒷줄견제 · C 밑밥 · I 인벤 · F1 도움말';
+      text = this.spoolKey?.isDown
+        ? '스풀 개방 — 원줄이 나갑니다(전유동·흘림). 떼면 다시 잠기고 회수할 수 있습니다'
+        : '우클릭 챔질 · 좌클릭 릴링 · R 줄 주기(흘림) · ←/→ 채비 횡이동 · ↑ 리프트 · H 뒷줄견제 · C 밑밥 · I 인벤 · F1 도움말';
     }
     if (this.controlBarText.text !== text) this.controlBarText.setText(text);
   }
@@ -719,6 +753,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
    */
   private openTutorial(cat: GuideCatKey): void {
     if (this.guideHub) return;
+    // 밑걸림 대처 선택 중 — 채비는 박혀 있다. 조류·침강·입질 전부 정지.
+    if (this.snagChoice) return;
     const panel = new GuidePanel(this, {
       initialCat: cat, tutorial: true,
       onTutorialDone: (dontShowAgain) => { if (dontShowAgain) GameState.setFlag(`guideSeen.${cat}`); },
@@ -1048,6 +1084,55 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     const dC = Math.hypot(this.f2dPos.x, this.f2dPos.y);
     const maxR = R - 18;
     if (dC > maxR) { this.f2dPos.x *= maxR / dC; this.f2dPos.y *= maxR / dC; }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // 136차 — 스풀·베일 (전유동/흘림 · 줄 주기)
+  // ═══════════════════════════════════════════════════════════════
+
+  /** 현재 드랙 설정 (kg) — 라인 강도 × 드랙 비율 (파이팅 드랙 조절과 같은 기준) */
+  private currentDragKg(): number {
+    const capKg = Math.max(0.8, InventoryStore.lineCapacityKg() ?? 3);
+    return capKg * 0.55;
+  }
+
+  /**
+   * 스풀 한 프레임 — 하중 산출 → 방출/회수 → 팽팽하면 채비를 호로 끌어온다.
+   * 하중은 **인게임 물리 그대로** 합성한다: 조류 속도(TidalCurrentEngine) + 채비 무게 +
+   * 수면 위 원줄이 받는 바람(기상청 실측 풍속).
+   */
+  private stepSpoolConstraint(dt: number, tide: TideVector, open: boolean, reelMps: number): void {
+    const required = Math.hypot(this.distM, this.rig.baitX, this.rig.baitZ);
+    const windMps = ExternalDataStore.getKmaWeather(this.cfg.region)?.windSpeedMs ?? 0;
+    const pullKg = driftPullKg({
+      currentMps: Math.hypot(tide.x, tide.y),
+      rigWeightG: this.rigParams.tackleWeightG,
+      windMps,
+      lineOutM: this.spool.lineOutM,
+    });
+    const sp = stepSpool(this.spool, {
+      dtSec: dt, open, reelMps, pullKg,
+      dragKg: this.currentDragKg(), requiredM: required, bailBent: this.bailBent,
+    });
+    this.spoolSlackM = sp.slackM;
+    this.spoolTaut = sp.taut;
+    this.spoolPayoutMps = sp.payoutMps;
+    this.spoolOverrunT = sp.overrun ? this.spoolOverrunT + dt : Math.max(0, this.spoolOverrunT - dt * 0.5);
+
+    if (sp.taut && required > 0.05) {
+      // 즉시 스냅하지 않고 추종 속도로 수렴 — 줄이 팽팽해지며 서서히 끌려오는 느낌
+      const k = Math.min(1, sp.lineOutM / required);
+      const kk = 1 + (k - 1) * Math.min(1, dt * TUNING.spool.tautFollowRate);
+      const dx = this.rig.baitX * (kk - 1);
+      this.distM = Math.max(0.3, this.distM * kk);
+      this.rig.baitX += dx;
+      this.rig.floatX += dx;     // 찌·속채비가 한 몸으로 호를 그린다
+      this.rig.baitZ = Math.max(0.15, this.rig.baitZ * kk);
+    }
+    if (sp.spooled && this.time.now - this.spoolWarnedAt > 4000) {
+      this.spoolWarnedAt = this.time.now;
+      this.flashState('스풀이 바닥났습니다 — R을 떼고 회수하세요');
+    }
   }
 
   /** 파이트 상태 정리 (랜딩/실패/재캐스팅) — v2: 중앙 무대 렌더 제거, 시뮬 상태만 리셋 */
@@ -1421,7 +1506,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#7a98ac', fontStyle: 'bold',
     }).setDepth(81);
 
-    this.stateText = this.add.text(GAME_WIDTH / 2, 16, '채비 흘리는 중 — 우클릭 챔질 · ←/→ 채비이동 · H 뒷줄견제 · C 밑밥 · ↑ 리프트', {
+    this.stateText = this.add.text(GAME_WIDTH / 2, 16, '채비 흘리는 중 — 우클릭 챔질 · R 줄 주기 · ←/→ 채비이동 · H 뒷줄견제 · C 밑밥 · ↑ 리프트', {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px', color: '#e8f4fd', fontStyle: 'bold',
       backgroundColor: '#0a1628cc', padding: { x: 12, y: 5 },
     }).setOrigin(0.5, 0).setDepth(90);
@@ -1757,7 +1842,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     };
 
     if (this.fpState === 'drift') this.updateDrift(dt, tide, influence);
-    else if (this.fpState === 'fighting') this.updateFighting(dt);
+    else if (this.fpState === 'fighting') this.updateFighting(dt, tide);
 
     // 타이머 감쇠
     this.twitchCooldown = Math.max(0, this.twitchCooldown - dt);
@@ -1821,9 +1906,14 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.floatSinkM = 0;
     this.reeling = false;
 
+    // 136차 — 한 사이클(던지고 감기)의 장비 마모·고장 판정
+    const faults = this.rollGearWear();
     const msg = this.lureMode ? '루어를 회수했습니다' : '채비를 회수했습니다';
+    const tail = faults.length > 0
+      ? `\n\n[장비] ${faults.join(' · ')}`
+      : '\n\n탑다운 뷰로 돌아갑니다 — 다시 조준해 캐스팅하세요.';
     this.stateText.setText(msg);
-    const banner = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 60, `${msg}\n\n탑다운 뷰로 돌아갑니다 — 다시 조준해 캐스팅하세요.`, {
+    const banner = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 60, `${msg}${tail}`, {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '14px', color: '#aee8ff', fontStyle: 'bold',
       align: 'center', lineSpacing: 6,
       backgroundColor: '#0a1628ee', padding: { x: 20, y: 14 },
@@ -1992,7 +2082,10 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     }
 
     // ── 릴링 (좌클릭 홀드 220ms+): 거리 좁힘 + 화면 좌/우측에 따른 방향 당김 ──
-    const retrieving = this.reeling && this.time.now - this.pointerDownAt > 220;
+    //   136차 — **베일이 열려 있으면 감을 수 없다**(스풀이 헛돈다). R을 떼야 회수가 시작된다.
+    const spoolOpen = !!this.spoolKey?.isDown;
+    const retrieving = this.reeling && !spoolOpen && this.time.now - this.pointerDownAt > 220;
+    let frameReelMps = 0;
     if (retrieving) {
       const p = this.input.activePointer;
       const side = p.x < GAME_WIDTH / 2 ? -1 : 1;   // 좌측 화면 릴링 = 좌로 당김
@@ -2000,6 +2093,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       // 조류 순방향 릴링은 빠르고, 역방향은 저항으로 느리다 (대신 입질 유도 리액션)
       const withCurrent = Math.sign(cross) === side;
       const reelMps = 1.7 * (withCurrent ? 1.4 : 0.65);
+      frameReelMps = reelMps;
       this.distM = Math.max(0, this.distM - reelMps * dt);
       this.rig.floatX += side * (withCurrent ? 0.9 : 0.45) * dt;
       this.rig.baitX += side * (withCurrent ? 0.9 : 0.45) * dt;
@@ -2048,6 +2142,13 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       }
     }
 
+    // ══ 136차 스풀 구속 — 채비 위치의 **마지막 심판** ══
+    //  풀려나간 원줄(lineOutM)보다 채비가 멀어질 수는 없다. 줄이 팽팽해지면 채비는
+    //  반지름 lineOutM 구면에 갇혀 **호를 그리며 끌려온다**(진자) — 조류에 밀릴수록 얕아지고,
+    //  가라앉을수록 가까워진다. 이것이 "스풀 없이는 릴링하면 유저 쪽으로 당겨져 온다"의 정체다.
+    //  R(베일 개방)을 누르면 줄이 계속 나가 채비가 조류를 타고 자유롭게 흘러간다(전유동·흘림).
+    this.stepSpoolConstraint(dt, tide, spoolOpen, frameReelMps);
+
     const hold = isHoldState(this.rig);
     const nearBottom = this.rig.baitZ >= Math.min(this.zLimitM, bedHereM) - 1.2;
     const inReef = nearBottom && this.seabed.isRockAt(this.distM);
@@ -2087,6 +2188,9 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       // 조경지대(Hit Zone) 1.6배 / 본대조류 0.35배 — 조류 존 입질 배율
       // × 피딩타임 활성도(계절/조류/날씨) × 필드 이벤트(보일링 링/스쿨 히트) 보너스
       baseProbPerSec: 0.035 * baitAffinity * indexModifier * influence.biteMult * this.lureActionMult
+        // 136차 — 고장난 채비는 입질을 깎는다 (찌 부력 변성 ×0.78 / 루어 부분 파손 ×0.72)
+        * gearBiteMult(InventoryStore.rigFloat?.fault)
+        * gearBiteMult(this.lureMode ? InventoryStore.rigLure?.fault : undefined)
         * this.feeding.activity * (this.cfg.fieldEvent?.biteMult ?? 1) * this.skillBiteMult(),
       inReefZone: inReef,
       isHold: hold,
@@ -2254,12 +2358,155 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     return ctx;
   }
 
-  /** 밑걸림 발생 — 찌 아래 채비 전체 손실(수중찌·루어 포함) + 즉시 필드 복귀 */
+  // ═══════════════════════════════════════════════════════════════
+  // 136차 — 밑걸림 대처 (즉시 손실 → 플레이어 선택)
+  // ═══════════════════════════════════════════════════════════════
+
+  /**
+   * 밑걸림 발생 — 구현 전에는 곧바로 원줄을 끊고 채비를 통째로 잃었다.
+   * 이제 **어떻게 대처할지 고르게 한다**(사용자 지시).
+   *  ① 로드 위로 끌어당기기 — 살살 들어 빼낸다. 10 / 10 / 30 / 50 (완전 회수 → 전량 손실)
+   *  ② 로드 뒤로 당겨 끊기 — 100% 채비 손실. 도래 위가 남느냐만 반반.
+   * 어느 쪽이든 로드에는 무리가 간다 — 라인이 로드 등급보다 과하게 강하면 절지 파단 위험.
+   */
   private onSnagged(): void {
-    const lost = [...InventoryStore.loseRigParts(['float', 'subFloat', 'swivel', 'leader', 'sinker', 'hook', 'bait'] as RigStepKey[]),
-      ...(this.lureMode ? InventoryStore.loseLureRig() : [])];
-    this.failAndExit('밑걸림! 채비를 통째로 잃었습니다',
-      `여 밭에 채비가 파묻혀 원줄을 끊었습니다.\n손실: ${lost.length > 0 ? lost.join(', ') : '없음'}\n\n뒷줄견제(H)로 미끼를 띄우면 밑걸림을 예방할 수 있습니다.`);
+    this.snagChoice = true;
+    this.reeling = false;
+    this.buildDecisionPanel(
+      '밑걸림', '밑걸림이 발생한 것 같다. 어떻게 대처할까?', '#ffb26b', undefined,
+      [
+        {
+          label: '로드 위로 끌어당기기', fill: 0x1f4a6a, stroke: 0x5cd0ff, color: '#e8f4fd',
+          onClick: () => this.resolveSnag('pull'),
+        },
+        {
+          label: '로드 뒤로 당겨 끊기', fill: 0x5a1f1f, stroke: 0xd06060, color: '#ffd8d8',
+          onClick: () => this.resolveSnag('break'),
+        },
+      ],
+    );
+  }
+
+  /** 밑걸림 대처 실행 — 확률표(core) → 손실 적용 → 로드 과부하 판정 → 종료 */
+  private resolveSnag(kind: 'pull' | 'break'): void {
+    this.snagChoice = false;
+    const table = kind === 'pull' ? SNAG_PULL_UP : SNAG_BREAK_OFF;
+    const row = rollSnagOutcome(table, Math.random());
+    const lost = this.applySnagLoss(row.outcome);
+
+    // 로드 과부하 — 라인이 로드 등급보다 **과하게** 강하면 줄이 아니라 대가 먼저 나간다.
+    //   (적정 채비를 쓰면 줄이 끊어지며 대를 지킨다 — 채비 매칭을 가르치는 지점)
+    const snapped = this.rollRodOverload(kind === 'break' ? 1 : 0.5);
+
+    // 루어는 바위에 찍힌다 — 회수됐어도 흠집이 남는다
+    if (this.lureMode && row.outcome !== 'all_lost' && row.outcome !== 'below_swivel') {
+      this.rollFault(InventoryStore.rigLure, 'lure_damaged', GEAR_REF_PRICE.lure);
+    }
+
+    const lostLine = lost.length > 0 ? `손실: ${lost.join(', ')}` : '손실 없음';
+    const rodLine = snapped ? '\n\n[경고] 무리한 힘에 낚싯대 절지가 부러졌습니다 — 수리할 수 없습니다.' : '';
+    if (row.outcome === 'all_saved') {
+      this.failAndExit('채비를 건졌습니다',
+        `${row.labelKo}\n${lostLine}${rodLine}\n\n뒷줄견제(H)로 미끼를 띄우면 밑걸림을 예방할 수 있습니다.`);
+    } else {
+      this.failAndExit('밑걸림', `${row.labelKo}\n${lostLine}${rodLine}`);
+    }
+  }
+
+  /** 대처 결과 → 실제 채비 손실 */
+  private applySnagLoss(outcome: SnagOutcome): string[] {
+    const L = (steps: RigStepKey[]): string[] => InventoryStore.loseRigParts(steps);
+    switch (outcome) {
+      case 'all_saved':
+        return [];
+      case 'bait_lost':
+        return L(['bait'] as RigStepKey[]);
+      case 'hook_bait_lost':
+        return [...L(['hook', 'bait'] as RigStepKey[]), ...(this.lureMode ? InventoryStore.loseLureRig() : [])];
+      case 'below_swivel':
+        return [...L(['leader', 'sinker', 'hook', 'bait'] as RigStepKey[]),
+          ...(this.lureMode ? InventoryStore.loseLureRig() : [])];
+      default:
+        return [...L(['float', 'subFloat', 'swivel', 'leader', 'sinker', 'hook', 'bait'] as RigStepKey[]),
+          ...(this.lureMode ? InventoryStore.loseLureRig() : [])];
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // 136차 — 장비 고장·파손 판정
+  // ═══════════════════════════════════════════════════════════════
+
+  /** 로드가 견딜 수 있는 하중 (kg) — 가격대에서 파생 (사이소 2.4kg ~ 고급 5kg대) */
+  private rodMaxLoadKg(): number {
+    const rod = InventoryStore.handRod;
+    return 2.2 + (rod?.basePrice ?? 12000) / 60000;
+  }
+
+  /**
+   * 절지 파단 판정 — **라인이 로드 등급의 1.5배를 넘게 강할 때만** 굴린다.
+   * 적정 채비에서는 줄이 먼저 끊어져 대를 지키므로, 이 판정은 "싸구려 대에 굵은 합사"를
+   * 쓰는 선택을 벌한다(무작위 징벌이 아니라 채비 매칭 학습).
+   */
+  private rollRodOverload(scale: number): boolean {
+    const rod = InventoryStore.handRod;
+    if (!rod || rod.fault) return false;
+    const lineKg = InventoryStore.lineCapacityKg() ?? 3;
+    if (lineKg <= this.rodMaxLoadKg() * 1.5) return false;
+    if (Math.random() >= ROD_OVERLOAD_SNAP * scale) return false;
+    return InventoryStore.setFault(rod, 'rod_section');
+  }
+
+  /** 확률 판정 후 고장 부여 — 성공 시 true */
+  private rollFault(
+    item: ReturnType<typeof InventoryStore.find>, fault: GearFaultId, refPrice: number, wear = 1,
+  ): boolean {
+    if (!item || item.fault) return false;
+    const p = gearFaultChance({ fault, basePrice: item.basePrice ?? refPrice, refPrice, wear });
+    if (Math.random() >= p) return false;
+    if (!InventoryStore.setFault(item, fault)) return false;
+    this.hudFaultLog.push(`${item.name} — ${GEAR_FAULTS[fault].labelKo}`);
+    return true;
+  }
+
+  private hudFaultLog: string[] = [];
+
+  /**
+   * 출조 1사이클(던지고 감기) 마모·고장 판정 — 종료 경로에서 **한 번만** 실행.
+   * 로드·릴은 누적 사용 횟수가 마모 계수가 되고(사이소 200회 기준), 찌는 300회를 넘긴
+   * 시점부터 부력 변성을 굴린다. 백래시(과방출)가 길었으면 원줄 꼬임이 크게 오른다.
+   */
+  private rollGearWear(): string[] {
+    if (this.wearRolled) return [];
+    this.wearRolled = true;
+    this.hudFaultLog = [];
+
+    const rod = InventoryStore.handRod;
+    if (rod) {
+      const used = InventoryStore.bumpUse(rod);
+      const w = wearFactor(used, rodMaxCasts(rod.basePrice ?? GEAR_REF_PRICE.rod));
+      if (!this.rollFault(rod, 'rod_tip', GEAR_REF_PRICE.rod, w)) {
+        this.rollFault(rod, 'rod_section', GEAR_REF_PRICE.rod, w);
+      }
+    }
+    const reel = InventoryStore.equippedReel;
+    if (reel) {
+      const used = InventoryStore.bumpUse(reel);
+      const w = wearFactor(used, rodMaxCasts(reel.basePrice ?? GEAR_REF_PRICE.reel));
+      // 백래시가 오래 이어졌으면 스풀 꼬임이 크게 오른다 (스풀 개방 운용의 대가)
+      const tangleW = w * (1 + Math.min(4, this.spoolOverrunT * 1.2));
+      if (!this.rollFault(reel, 'reel_tangle', GEAR_REF_PRICE.reel, tangleW)
+        && !this.rollFault(reel, 'reel_bail', GEAR_REF_PRICE.reel, w)) {
+        this.rollFault(reel, 'reel_handle', GEAR_REF_PRICE.reel, w);
+      }
+    }
+    const fl = InventoryStore.rigFloat;
+    if (fl) {
+      const used = InventoryStore.bumpUse(fl);
+      if (used > FLOAT_BUOYANCY_AFTER_CASTS) {
+        this.rollFault(fl, 'float_buoyancy', GEAR_REF_PRICE.float);
+      }
+    }
+    return this.hudFaultLog;
   }
 
   // ── 파이팅 상태 ──────────────────────────────────────
@@ -2298,7 +2545,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
    * 도주가 플레이어 쪽으로 향하는 일이 없다. 수평뷰에서는 왼쪽/가운데 위/오른쪽으로,
    * 수심 패널에서는 (오른쪽이 나이므로) 왼쪽으로 달아나는 것으로 동시에 보인다.
    */
-  private stepFightKinematics(dt: number, st: FightStatus, reeling: boolean): void {
+  private stepFightKinematics(dt: number, st: FightStatus, reeling: boolean, spoolOpen = false): void {
     if (!this.hookedFish) return;
     const D = TUNING.fightDist;
     const f = this.hookedFish;
@@ -2337,6 +2584,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
         * (D.fleePowerBase + f.powerFactor * D.fleePowerGain)
       : 0;
     let fwd = Math.max(holdMps, Math.max(0, Math.cos(this.fleePlanAng)) * resistMps);
+    // 136차 — 줄을 내주면 물고기는 제 방향으로 거침없이 달린다(거리 손실 = 줄 주기의 대가)
+    if (spoolOpen) fwd *= TUNING.spool.fightRunBonus;
     // 릴링 중에는 도주 전진을 회수 속도 아래로 묶는다 — **감는 동안은 항상 조금씩 가까워진다**.
     //   손을 놓으면(reelMps 0) 상한이 사라져 물고기가 줄을 끌고 나간다.
     if (reeling) fwd = Math.min(fwd, reelMps * D.reelHoldCap);
@@ -2346,7 +2595,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     // ④ 횡 — 도주 횡분 + 릴링/제압 시 중앙 수렴 (끌려오면 정면으로 정렬)
     this.fleeLatM = Phaser.Math.Clamp(
       this.fleeLatM + Math.sin(this.fleePlanAng) * resistMps * dt, -D.latMaxM, D.latMaxM);
-    if (reeling || subdued) this.fleeLatM *= Math.max(0, 1 - dt * D.latRecenterRate);
+    if ((reeling || subdued) && !spoolOpen) this.fleeLatM *= Math.max(0, 1 - dt * D.latRecenterRate);
 
     // ⑤ 수심 — 패턴 목표로 추종 후 **실수심(m)** 으로 투영 (수심 패널이 그대로 소비)
     const depthTarget = subdued ? D.depthSubdued
@@ -2358,18 +2607,22 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.rig.baitZ += (targetZ - this.rig.baitZ) * Math.min(1, dt * 2.5);
   }
 
-  private updateFighting(dt: number): void {
+  private updateFighting(dt: number, tide: TideVector = { x: 0, y: 0 }): void {
     if (!this.fight || !this.hookedFish) return;
     this.fightElapsedSec += dt;
     if (this.dragInMode) { this.updateDragIn(dt); return; }
 
+    // ── 136차 줄 주기(R) — 베일을 열면 감을 수 없고, 하중이 실리지 않아 텐션이 급락한다 ──
+    const spoolOpen = !!this.spoolKey?.isDown;
+
     // ── 텐션 저항: 텐션이 높을수록 릴링이 미끄러진다 (게이지 끝에서 힘겹게 오름) ──
     const tensionNow = this.fight.tension;
     const resist = tensionNow > 70 ? Math.min(0.9, (tensionNow - 70) / 30 * 0.9) : 0;
-    const effectiveReeling = this.reeling && Math.random() >= resist;
+    const effectiveReeling = this.reeling && !spoolOpen && Math.random() >= resist;
 
     // 저항을 이기려는 초과 입력: 한계 텐션(88+)에서 릴링을 계속 누르면 과부하 누적 → 줄터짐
-    if (this.reeling && tensionNow > 88) {
+    //  (줄을 내주는 중이면 하중 자체가 실리지 않으므로 과부하도 쌓이지 않는다)
+    if (this.reeling && !spoolOpen && tensionNow > 88) {
       this.overstrain += dt;
       if (this.overstrain > 0.55) {
         this.forceLineBreak();
@@ -2391,6 +2644,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       thrustGate: this.lastFatigue?.thrustGate,   // 직전 틱 피로 게이트 — 지칠수록 요구 장력↓
       landProgress,
       fatigueRatio: this.lastFatigue?.ratio,      // 피로 잔여 → 제압도 기저
+      spoolOpen,
     });
     this.fightSubdue = st.subdue;
 
@@ -2417,7 +2671,31 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.rodBendDeg = 20 + (st.tension / 100) * 45;   // 파이팅 중 초릿대는 텐션 비례로 휨
 
     // ── 132차 파이트 3D 운동 (횡 · 거리 · 수심) — 세 뷰가 같은 물리를 소비 ──
-    this.stepFightKinematics(dt, st, effectiveReeling);
+    this.stepFightKinematics(dt, st, effectiveReeling, spoolOpen);
+
+    // ── 줄 주기 중 스풀 방출 + 조류에 따른 횡 흐름 (실시간 연동) ──
+    //  물고기가 원하는 방향(수평뷰의 좌/좌상/상/우상/우)으로 달리는 동안 줄이 나가고,
+    //  느슨해진 원줄은 조류에 밀려 함께 흐른다.
+    {
+      const required = Math.hypot(this.distM, this.fleeLatM, this.rig.baitZ);
+      const sp = stepSpool(this.spool, {
+        dtSec: dt, open: spoolOpen, reelMps: effectiveReeling ? this.fightReelMps(false) : 0,
+        pullKg: st.demandKg, dragKg: this.currentDragKg(),
+        requiredM: required, bailBent: this.bailBent,
+      });
+      this.spoolSlackM = sp.slackM;
+      this.spoolTaut = sp.taut;
+      this.spoolPayoutMps = sp.payoutMps;
+      this.spoolOverrunT = sp.overrun ? this.spoolOverrunT + dt : Math.max(0, this.spoolOverrunT - dt * 0.5);
+      if (spoolOpen) {
+        this.fleeLatM = Phaser.Math.Clamp(
+          this.fleeLatM + tide.x * 0.35 * dt, -TUNING.fightDist.latMaxM, TUNING.fightDist.latMaxM);
+        if (sp.spooled && this.time.now - this.spoolWarnedAt > 4000) {
+          this.spoolWarnedAt = this.time.now;
+          this.flashState('스풀이 바닥났습니다 — R을 떼고 버티세요');
+        }
+      }
+    }
     // 무대(정면뷰) 좌표는 위 물리에서 **파생**된다 — heading만 패턴/프로필로 갱신(이중 시뮬 금지)
     this.updateFight2DSim(dt, st, effectiveReeling);
 
@@ -2519,6 +2797,9 @@ export class FirstPersonFishingScene extends Phaser.Scene {
    */
   private failAndExit(title: string, body: string): void {
     GameState.applyVitalsAction('fightLose');   // 125차 — 실패 파이팅 행동 비용
+    // 136차 — 한 사이클(던지고 감기)의 장비 마모·고장 판정
+    const faults = this.rollGearWear();
+    if (faults.length > 0) body += `\n\n[장비] ${faults.join(' · ')}`;
     this.fpState = 'result';
     this.fight = null;
     this.clearFight2DStage();
@@ -3486,10 +3767,15 @@ export class FirstPersonFishingScene extends Phaser.Scene {
           ? '라인각 ~80° 쓸림'
           : `라인각 ${la.toFixed(0)}° ${la <= 45 ? '충분' : la <= 60 ? '적정' : '부족'}`)
       : null;
+    // 136차 — 스풀: 방출 중 / 여유줄 / 팽팽(끌려옴). 전유동·흘림 운용의 핵심 지표다.
+    const spoolRow = this.spoolPayoutMps > 0.01
+      ? `스풀 방출 ${this.spoolPayoutMps.toFixed(1)}m/s`
+      : this.spoolTaut ? '원줄 팽팽 — 끌려옴' : `여유줄 ${this.spoolSlackM.toFixed(1)}m`;
     this.depthValsText?.setText([
       ...topRows,
       `채비  ${this.rig.baitZ.toFixed(1)}m`,
       `바닥  ${bedHere.toFixed(1)}m`,
+      spoolRow,
       ...(laRow ? [laRow] : []),
       inReefHere ? (kelpHere ? '여 밭 + 수초' : '여 밭 (암초)') : '모래/갯벌',
       hitZone ? `${zoneLabel} ★` : zoneLabel,

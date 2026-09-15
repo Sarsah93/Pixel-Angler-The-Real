@@ -8,7 +8,8 @@
 
 import Phaser from 'phaser';
 import { ensurePixelIcon } from './PixelIcon.js';
-import { FISH_DATABASE, fishImageSizeScale, fishRarity, speciesStandardWeightG } from '@tra/core';
+import { FISH_DATABASE, fishImageSizeScale, fishRarity, speciesStandardWeightG,
+  GEAR_FAULTS, gearRepairFee, rodMaxCasts } from '@tra/core';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { DraggablePanel } from './DraggablePanel.js';
 import { createItemIcon } from './ItemIcon.js';
@@ -38,9 +39,29 @@ export interface ItemDetailData {
 }
 
 /** 아이템 종류별 상세 스펙 추론 생성 (목업) — 어획물은 개체 실측치·어종 정보(FISH_DATABASE) 표시 */
-export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory' | 'category' | 'qty' | 'basePrice' | 'condition' | 'conditionSinceMs' | 'speciesId' | 'lengthCm' | 'weightG' | 'floatBuoyG' | 'plateWip'>): ItemDetailData {
+export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory' | 'category' | 'qty' | 'basePrice' | 'condition' | 'conditionSinceMs' | 'speciesId' | 'lengthCm' | 'weightG' | 'floatBuoyG' | 'plateWip' | 'fault' | 'useCount' | 'tool'>): ItemDetailData {
   const rows: ItemDetailRow[] = [];
   let desc = '';
+
+  // ── 136차 장비 상태 — 고장·파손과 내구도를 **최상단**에 (슬롯 우하단 경고 배지와 같은 사실) ──
+  if (item.fault) {
+    const def = GEAR_FAULTS[item.fault];
+    rows.push({ label: '상태', value: `${def.labelKo}${def.usable ? '' : ' — 사용불가'}` });
+    const fee = gearRepairFee(item.fault, item.basePrice ?? 0);
+    rows.push({
+      label: '수리',
+      value: def.repair === 'none' ? '불가 (폐기)'
+        : def.repair === 'self_or_shop' ? `자가 가능 · 수리점 ${fee.toLocaleString()}원`
+          : `수리점 ${fee.toLocaleString()}원`,
+    });
+    if (def.biteMult) rows.push({ label: '입질 확률', value: `×${def.biteMult.toFixed(2)} (성능 저하)` });
+  }
+  if (item.tool === 'rod' || item.subCategory === '릴') {
+    const mx = rodMaxCasts(item.basePrice ?? 12000);
+    const used = item.useCount ?? 0;
+    rows.push({ label: '내구도', value: `${Math.max(0, mx - used)} / ${mx} 회` });
+    if (used >= mx) rows.push({ label: '마모', value: '한계 초과 — 고장이 잦아집니다' });
+  }
 
   // 미완성 사시미 접시 — 진행률을 최상단에 (135차). 이어 담기/판매 불가 안내는 desc로.
   if (item.plateWip) {
@@ -293,6 +314,10 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
     desc = `${desc}\n[${CONDITION_LABEL[item.condition]}] ${CONDITION_DESC[item.condition]}`;
   }
 
+  if (item.fault) {
+    const def = GEAR_FAULTS[item.fault];
+    desc = `${def.descKo}\n${def.fixKo}${desc ? `\n\n${desc}` : ''}`;
+  }
   return { title: item.name, subtitle: item.subCategory, rows, desc };
 }
 

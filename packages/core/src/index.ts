@@ -369,6 +369,17 @@ export type { TideVector, RigPhysicsParams, UnderwaterRigState, UnderwaterStepIn
 export { createUnderwaterRig, computeSinkSpeed, stepUnderwater, isHoldState, computeSinkRate } from './simulation/UnderwaterSinkPhysics.js';
 export type { LineTensionInput, LineTensionOutput } from './simulation/LineTensionPhysics.js';
 export { LineTensionPhysics, HOLD_LIFT_M } from './simulation/LineTensionPhysics.js';
+export type { SpoolState, SpoolStepInput, SpoolStepResult } from './simulation/SpoolSystem.js';
+export { initSpool, stepSpool, driftPullKg } from './simulation/SpoolSystem.js';
+export type {
+  GearFaultId, GearRepairKind, GearFaultDef, SnagOutcome, SnagOutcomeRow,
+} from './db-schema/GearDurability.js';
+export {
+  GEAR_FAULTS, GEAR_FAULT_BASE, GEAR_REF_PRICE, ROD_OVERLOAD_SNAP, FLOAT_BUOYANCY_AFTER_CASTS,
+  SNAG_PULL_UP, SNAG_BREAK_OFF,
+  gearQualityMult, rodMaxCasts, wearFactor, gearFaultChance, gearRepairFee,
+  gearUsable, gearBiteMult, rollSnagOutcome,
+} from './db-schema/GearDurability.js';
 export type { ChumBall, ChumProbePos, ChumParcel, ChumDrift, ChumSyncTarget, ChumPathPrediction, ChumSyncOpts } from './simulation/ChumPhysics.js';
 export {
   ChumPhysics, CHUM_PARCEL_TTL_SEC,
