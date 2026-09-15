@@ -18,9 +18,9 @@
 | `core/src/types/Story.ts` | 계약 타입 — `StoryQuestDef`·`StoryObjective(manual)`·`JournalPageDef`·`StoryArcDef`·`CatchProvenance`·`LawVerdict`·`ReputationState` |
 | `core/src/rules/FisheryLaw.ts` (+`.test.ts`) | 법 규칙 5조 순수 함수 `canSell/canKeep/canUseGear/canGather/requiredLicenseFor` · 거부 시 대안 ≥ 1 |
 | `core/src/db-schema/StoryChapters.ts` | 5부 7챕터 · 자격 사다리 · **§8-1 수치 계약** |
-| `core/src/db-schema/StoryQuestDatabase.ts` | 120퀘 데이터 + `validateStoryQuests()` |
+| `core/src/db-schema/StoryQuestDatabase.ts` | **158퀘**(메인 68 · 서브 90) + `validateStoryQuests()` · 137차 증설분은 `SUB_EXTRA`(선행 조건 명시) |
 | `core/src/db-schema/JournalPages.ts` | 조행록 17장(어종 id 정합) + `journalCatchMatches` |
-| `core/src/db-schema/StoryArcs.ts` | 메인 3인 + 17아크 NPC |
+| `core/src/db-schema/StoryArcs.ts` | 메인 3인 + **19아크** NPC (137차 +N18 도현수 · N19 정옥선·탁만수) |
 | `core/src/inventory/Backpack.ts` | 가방 사다리 모델(§8-3) — UI 미배선 |
 | `core/src/config/tuning.ts` | `story`·`rep`·`law.enforceRodSell`·`inventory` |
 | `client/src/store/StoryStore.ts` | **진행 엔진** — 상태·이벤트 매칭·완료/보상·D-day·평판·조행록·판매 판정·세이브 |
@@ -77,6 +77,13 @@ STORY_ARCS ────┘     traineeDay (D-180)                └─ RegionHu
 | **사람들(17아크) 색인 + 아크 상세** | ✅ | 136 — 미조우 아크는 `???` |
 | **NPC 퀘스트 마커**(미니맵 + 필드 머리 위) | ✅ | 136 — 노랑 물음표 = 지금 해결 가능 / 빨강 느낌표 = 새 의뢰. 메인·서브 미구분(사용자 결정) |
 | **미니맵 상점 카테고리 아이콘 8종** | ✅ | 136 — 셀 중복 제거 + 크기 단계별 표시 하한 |
+| **퀘스트 증설 38편** — 메인 3(M2-11·M4-11·M6-09) + 서브 35(챕터당 5) | ✅ | 137 — 총 **158퀘** · 계약 7챕터 갱신 |
+| **회귀 고리 13편** — 새 자격을 들고 옛 항구로 돌아간다 | ✅ | 137 — 챕터 무대 밖 편 20 → **33** |
+| **신규 아크 N18 도현수 · N19 정옥선·탁만수** | ✅ | 137 — 라이벌 7챕터 전편 / 오십 년 심부름 6편 |
+| **인물 연결**(강두철↔고만석 · 배누리 진로 · 이수연 식당) | ✅ | 137 |
+| 일지 서브 트랙 **윈도우드 렌더 + 휠 스크롤** | ✅ | 137 — 12아크 15편 수용 |
+| 신규 퀘스트 전용 대사(`StoryDialogue`) | ⬜ | 137 잔여 — Ch1 대사만 존재 |
+
 
 ## 5. 잔여·차기
 

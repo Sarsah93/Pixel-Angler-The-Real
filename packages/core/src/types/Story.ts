@@ -215,7 +215,9 @@ export type QuestTeaches =
   | 'tideland' | 'tideTable' | 'lantern' | 'cold' | 'communityWork' | 'bicycle' | 'skills' | 'reputation'
   | 'licenseFlow' | 'auction' | 'lure' | 'trap' | 'boatTrip' | 'jigging' | 'egging' | 'surf'
   | 'seasickness' | 'weather' | 'oralHistory' | 'restocking' | 'boatOwnership' | 'guideBusiness'
-  | 'tournament' | 'villageFishery' | 'ferry' | 'stallOps' | 'voyagePlan' | 'journalComplete';
+  | 'tournament' | 'villageFishery' | 'ferry' | 'stallOps' | 'voyagePlan' | 'journalComplete'
+  // 137차 — 회귀 고리(이전 지역 재방문)와 손님 응대
+  | 'returnTrip' | 'grading' | 'guestTrip';
 
 export interface StoryQuestDef {
   /** 'M1-04' / 'N05-3' */

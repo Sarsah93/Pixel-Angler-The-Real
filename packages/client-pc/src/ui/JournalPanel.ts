@@ -69,6 +69,11 @@ export interface JournalConfig { onClose: () => void }
 
 export class JournalPanel extends DraggablePanel {
   private view: View;
+  /** 챕터 뷰 서브 트랙 스크롤 (137차 — 서브 15편·12아크 수용) */
+  private subScroll = 0;
+  private subScrollMax = 0;
+  private subScrollRect: Phaser.Geom.Rectangle | null = null;
+  private wheelHandler?: (p: Phaser.Input.Pointer, o: unknown[], dx: number, dy: number) => void;
   private railC?: Phaser.GameObjects.Container;
   private bodyC?: Phaser.GameObjects.Container;
 
@@ -87,8 +92,22 @@ export class JournalPanel extends DraggablePanel {
     g.lineStyle(1, 0x1c3d5a, 1); g.strokeRoundedRect(CONTENT_X - 8, top - 4, CONTENT_W + 16, PANEL_H - top - 8, 6);
     this.add(g);
 
+    // 137차 — 서브 트랙 휠 스크롤 (포인터가 그 열 위에 있을 때만)
+    this.wheelHandler = (p, _o, _dx, dy) => {
+      if (this.subScrollMax <= 0 || !this.subScrollRect) return;
+      if (!Phaser.Geom.Rectangle.Contains(this.subScrollRect, p.x - this.x, p.y - this.y)) return;
+      const next = Math.max(0, Math.min(this.subScrollMax, this.subScroll + (dy > 0 ? 48 : -48)));
+      if (next !== this.subScroll) { this.subScroll = next; this.render(); }
+    };
+    scene.input.on('wheel', this.wheelHandler);
+
     this.render();
     applyScreenFixed(this);
+  }
+
+  destroy(fromScene?: boolean): void {
+    if (this.wheelHandler) { this.scene?.input?.off('wheel', this.wheelHandler); this.wheelHandler = undefined; }
+    super.destroy(fromScene);
   }
 
   // ═══════════════════════════════════════════════════
@@ -152,7 +171,7 @@ export class JournalPanel extends DraggablePanel {
     return r;
   }
 
-  private go(v: View): void { this.view = v; this.render(); }
+  private go(v: View): void { this.view = v; this.subScroll = 0; this.render(); }
 
   private render(): void {
     this.renderRail();
@@ -327,40 +346,74 @@ export class JournalPanel extends DraggablePanel {
     c.add(spine);
 
     // 서브 = 아크 박스 (한 줄 헤더 — 세로 예산 확보)
-    let sy = trackTop + 30;
+    //  ⚠ 137차 — 서브가 챕터당 최대 15편 · 12아크로 늘어 간격 압축만으로는 못 담는다.
+    //    **윈도우드 렌더 + 휠 스크롤**로 바꾼다(마스크는 팬텀 히트 — ui-panel 규칙).
     const byArc = new Map<string, StoryQuestDef[]>();
     for (const q of subs) {
       const a = q.arcId ?? '?';
       if (!byArc.has(a)) byArc.set(a, []);
       byArc.get(a)!.push(q);
     }
-    // 세로 예산 초과 시 행 간격만 좁힌다 (글자 크기는 유지 — ui-panel 규칙)
-    const budget = PANEL_H - this.contentTop - 18 - (trackTop + 30);
-    const need = byArc.size * 22 + subs.length * rowH + byArc.size * 8;
-    const gap = need > budget ? Math.max(2, 8 - Math.ceil((need - budget) / Math.max(1, byArc.size))) : 8;
+    const listTop = trackTop + 30;
+    const budget = PANEL_H - this.contentTop - 18 - listTop;
+    const gap = 6;
+    // 아크 헤더/퀘스트 행을 한 줄짜리 항목으로 평탄화 — 스크롤 단위가 된다
+    type Item = { h: number; draw: (yy: number) => void };
+    const items: Item[] = [];
     for (const [arcId, list] of byArc) {
       const arc = getStoryArc(arcId);
-      const hr = this.scene.add.rectangle(rightX, sy, colW, 20, 0x102838, 0.85).setOrigin(0, 0);
-      hr.setStrokeStyle(1, 0x24485c, 1);
-      hr.setInteractive({ useHandCursor: true });
-      hr.on('pointerdown', () => { this.go({ kind: 'arc', id: arcId, from: { kind: 'chapter', ch: chNum } }); restoreHandCursor(this.scene); });
-      const pr = StoryStore.arcProgress(arcId);
-      const ht = this.scene.add.text(rightX + 7, sy + 4, `${arcId}  ${arc?.titleKo.split(' — ')[0] ?? arcId}`, {
-        fontFamily: FONT, fontSize: '11px', color: C_SUB,
-      });
-      clampTextWidth(ht, colW - 60);
-      const hp = this.scene.add.text(rightX + colW - 7, sy + 5, `${pr.done}/${pr.total}`, {
+      items.push({ h: 22, draw: (yy) => {
+        const hr = this.scene.add.rectangle(rightX, yy, colW, 20, 0x102838, 0.85).setOrigin(0, 0);
+        hr.setStrokeStyle(1, 0x24485c, 1);
+        hr.setInteractive({ useHandCursor: true });
+        hr.on('pointerdown', () => { this.go({ kind: 'arc', id: arcId, from: { kind: 'chapter', ch: chNum } }); restoreHandCursor(this.scene); });
+        const pr = StoryStore.arcProgress(arcId);
+        const ht = this.scene.add.text(rightX + 7, yy + 4, `${arcId}  ${arc?.titleKo.split(' — ')[0] ?? arcId}`, {
+          fontFamily: FONT, fontSize: '11px', color: C_SUB,
+        });
+        clampTextWidth(ht, colW - 60);
+        const hp = this.scene.add.text(rightX + colW - 7, yy + 5, `${pr.done}/${pr.total}`, {
+          fontFamily: FONT, fontSize: '9px', color: C_DIM,
+        }).setOrigin(1, 0);
+        c.add([hr, ht, hp]);
+      } });
+      for (const q of list) {
+        items.push({ h: rowH, draw: (yy) => {
+          this.questRow(c, rightX + 14, yy, colW - 14, q, chNum);
+          this.statusDot(c, rightX + 7, yy + 11, q);
+        } });
+      }
+      items.push({ h: gap, draw: () => { /* 아크 사이 여백 */ } });
+    }
+    const total = items.reduce((a, it) => a + it.h, 0);
+    const maxScroll = Math.max(0, total - budget);
+    this.subScroll = Math.max(0, Math.min(maxScroll, this.subScroll));
+    // 보이는 항목만 생성한다 (스크롤아웃 행의 팬텀 히트 방지)
+    let off = 0;
+    for (const it of items) {
+      const yy = listTop + off - this.subScroll;
+      // 아래로 삐져나가는 행은 그리지 않는다 (경계 밖 렌더 금지 — ui-panel 규칙)
+      if (yy >= listTop - 1 && yy + it.h <= listTop + budget + 1) it.draw(yy);
+      off += it.h;
+    }
+    if (maxScroll > 0) {
+      // 스크롤바 + 위치 표기
+      const sbX = rightX + colW + 4;
+      const bar = this.scene.add.graphics();
+      bar.fillStyle(0x0c1e30, 0.9); bar.fillRoundedRect(sbX, listTop, 5, budget, 2);
+      const th = Math.max(24, budget * (budget / total));
+      const ty = listTop + (budget - th) * (this.subScroll / maxScroll);
+      bar.fillStyle(0x2f6f86, 1); bar.fillRoundedRect(sbX, ty, 5, th, 2);
+      c.add(bar);
+      const hint = this.scene.add.text(rightX + colW - 7, trackTop + 1, '휠 스크롤', {
         fontFamily: FONT, fontSize: '9px', color: C_DIM,
       }).setOrigin(1, 0);
-      c.add([hr, ht, hp]);
-      sy += 22;
-      for (const q of list) {
-        this.questRow(c, rightX + 14, sy, colW - 14, q, chNum);
-        this.statusDot(c, rightX + 7, sy + 11, q);
-        sy += rowH;
-      }
-      sy += gap;
-    }
+      c.add(hint);
+      this.subScrollMax = maxScroll;
+      // 패널 로컬 좌표로 저장 — 드래그로 패널이 움직여도 유효하다
+      this.subScrollRect = new Phaser.Geom.Rectangle(
+        CONTENT_X + rightX, this.contentTop + listTop, colW + 10, budget);
+    } else { this.subScrollMax = 0; this.subScrollRect = null; }
   }
 
   private trackLabel(c: Phaser.GameObjects.Container, x: number, y: number, w: number, s: string, hex: string): void {
@@ -466,7 +519,7 @@ export class JournalPanel extends DraggablePanel {
 
   // ── 사람들(아크 색인) ──
   private renderPeople(c: Phaser.GameObjects.Container): void {
-    let y = this.text(c, 6, '사람들 — 17개 인물 아크', '16px', C_SUB, 6, CONTENT_W - 24, true);
+    let y = this.text(c, 6, `사람들 — ${STORY_ARCS.length}개 인물 아크`, '16px', C_SUB, 6, CONTENT_W - 24, true);
     y = this.text(c, y - 2, '서브 퀘스트 55편은 인물 아크에 묶여 챕터를 가로지른다. 클릭하면 그 사람의 이야기와 관련 퀘스트가 열린다.', '11px', C_DIM);
     const cols = 3;
     const cw = (CONTENT_W - 12 - (cols - 1) * 8) / cols;
