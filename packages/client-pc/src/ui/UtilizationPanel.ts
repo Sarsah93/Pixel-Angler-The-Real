@@ -29,6 +29,7 @@ import {
   isHookItem, isBaitItem, isLureItem, isWeightSinker, isSplitShot, isJigHeadItem,
   isBuoyFloatItem, isSubFloatItem,
   SpreaderKind, CardRigType, SPREADER_LABEL, CARD_RIG_INFO,
+  PlateWipData, plateWipProgress, worstCondition, refreshCondition,
 } from '../store/InventoryStore.js';
 import { RecommendationStore } from '../store/RecommendationStore.js';
 import { CoolerStore, ChumIngredientKind, CHUM_THROW_COST } from '../store/CoolerStore.js';
@@ -1291,7 +1292,7 @@ export class UtilizationPanel extends DraggablePanel {
     if (mode === 'add') {
       // 사시미 만들기 영역 — 접시 장착 / 회 조각 배치 (도마보다 우선 판정)
       if (this.overPlate(p)) {
-        if (this.isPlateItem(item)) { this.mountPlate(item); return; }
+        if (this.isPlateItem(item) || this.isWipPlate(item)) { this.mountPlate(item); return; }
         if (this.isSashimiPiece(item)) { this.placePiece(item); return; }
       }
       if (this.overBoard(p)) this.dropFishOnBoard(item);
@@ -1478,6 +1479,11 @@ export class UtilizationPanel extends DraggablePanel {
     return item.id.startsWith('inv_plate_') && item.subCategory === '식기';
   }
 
+  /** 미완성 접시 아이템 (135차) — 올리면 담던 자리에서 이어 담는다 */
+  private isWipPlate(item: InvItem): boolean {
+    return !!item.plateWip;
+  }
+
   private plateSizeOf(item: InvItem): SashimiSizeTier {
     if (item.id.endsWith('_xl')) return '특대';
     if (item.id.endsWith('_l')) return '대';
@@ -1568,7 +1574,8 @@ export class UtilizationPanel extends DraggablePanel {
 
     // ── 접힘 상태 — 2버튼 박스 ──
     const halfW = (bw - 8) / 2;
-    const hasPlate = !!this.plateState || InventoryStore.items.some((i) => this.isPlateItem(i));
+    const hasPlate = !!this.plateState
+      || InventoryStore.items.some((i) => this.isPlateItem(i) || this.isWipPlate(i));
     const mkBox = (x: number, w: number, label: string, sub: string, on: boolean, onClick: () => void): void => {
       const g = this.scene.add.graphics();
       g.fillStyle(on ? 0x0d2438 : 0x141c26, 0.95);
@@ -1661,8 +1668,11 @@ export class UtilizationPanel extends DraggablePanel {
       for (let dy = 0; dy < ph; dy += dash * 2) drop.lineBetween(px, pyTop + dy, px, pyTop + Math.min(dy + dash, ph));
       for (let dy = 0; dy < ph; dy += dash * 2) drop.lineBetween(px + pw, pyTop + dy, px + pw, pyTop + Math.min(dy + dash, ph));
       this.bodyContainer.add(drop);
+      const wipCnt = InventoryStore.items.filter((i) => this.isWipPlate(i)).length;
       const hint = this.scene.add.text(px + pw / 2, pyTop + ph / 2,
-        '사시미 접시를 이곳에 드래그\n(인벤토리 · 기타 탭)', {
+        wipCnt > 0
+          ? `사시미 접시를 이곳에 드래그\n(빈 접시 = 기타 탭 · 미완성 접시 ${wipCnt}개 = 음식 탭 — 이어 담기)`
+          : '사시미 접시를 이곳에 드래그\n(인벤토리 · 기타 탭)', {
           fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#5a7a98', align: 'center', lineSpacing: 6,
         }).setOrigin(0.5);
       this.bodyContainer.add(hint);
@@ -1726,8 +1736,9 @@ export class UtilizationPanel extends DraggablePanel {
     doneHit.on('pointerdown', () => this.finalizePlate());
     this.bodyContainer.add([doneBg, doneTxt, doneHit]);
 
-    // [접시 빼기] — 접시+조각 반환
-    const outTxt = this.scene.add.text(cx + 48, by + bh - 26, '[접시 빼기]', {
+    // [접시 빼기] — 빈 접시는 반환 / 담긴 조각이 있으면 **미완성 접시로 보관**(135차)
+    const outTxt = this.scene.add.text(cx + 48, by + bh - 26,
+      placed > 0 ? '[미완성으로 빼기]' : '[접시 빼기]', {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#8faabf',
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     outTxt.on('pointerdown', () => this.unmountPlate());
@@ -1804,9 +1815,28 @@ export class UtilizationPanel extends DraggablePanel {
     }
   }
 
-  /** 접시 장착 — 인벤토리에서 1개 소모(스냅샷 보관, 빼기/파괴 시 반환) */
+  /**
+   * 접시 장착 — 인벤토리에서 1개 소모(스냅샷 보관, 빼기/파괴 시 반환).
+   * **미완성 접시(plateWip)** 를 올리면 방위·조각 배치를 그대로 복원해 이어 담는다 (135차).
+   */
   private mountPlate(item: InvItem): void {
     if (this.plateState) { this.flashBoardToast('이미 접시가 놓여 있습니다 — [접시 빼기] 후 교체하세요'); return; }
+    if (item.plateWip) {
+      const wip = item.plateWip;
+      InventoryStore.removeQty(item.id, 1);
+      this.plateState = {
+        tmpl: { ...wip.plate, qty: 1 },
+        size: wip.size,
+        rotation: wip.rotation % 4,
+        // 참조 공유 금지 — 아이템이 사라져도 패널 상태가 독립적으로 살아 있어야 한다
+        quads: wip.quads.map((q) => q.map((pc) => ({ ...pc, tmpl: { ...pc.tmpl } }))),
+      };
+      this.renderBody();
+      this.scene.events.emit('inventory-changed');
+      const pr = plateWipProgress(wip);
+      this.flashBoardToast(`미완성 접시를 이어서 담습니다 — ${pr.placed}/${pr.total}점 (${pr.pct}%)`);
+      return;
+    }
     const tmpl = { ...item, qty: 1 };
     InventoryStore.removeQty(item.id, 1);
     this.plateState = { tmpl, size: this.plateSizeOf(item), rotation: 0, quads: [[], [], [], []] };
@@ -1823,6 +1853,16 @@ export class UtilizationPanel extends DraggablePanel {
     if (quad.length >= spec.perQuad) {
       this.flashBoardToast(`이 방위는 가득 찼습니다 (${spec.perQuad}점) — 접시를 돌리세요`);
       return;
+    }
+    // 부패 조각은 담을 수 없다 (135차) — 접시 신선도는 가장 나쁜 조각을 계승하므로
+    // 한 점만 썩어도 접시 전체가 판매 불가가 된다. 모르고 담는 사고를 여기서 막는다.
+    refreshCondition(item);
+    if (item.condition === 'spoiled') {
+      this.flashBoardToast('부패한 회 조각은 접시에 담을 수 없습니다');
+      return;
+    }
+    if (item.condition === 'bad') {
+      this.flashBoardToast('경고: 나쁨 상태 조각입니다 — 접시 가치가 크게 떨어집니다');
     }
     const adv = item.id.startsWith('inv_sashimi_cut_adv_');
     quad.push({ tmpl: { ...item, qty: 1 }, speciesId: item.speciesId ?? '', weightG: item.weightG ?? 20, adv });
@@ -1857,6 +1897,7 @@ export class UtilizationPanel extends DraggablePanel {
     const totalG = pieces.reduce((s, p) => s + p.weightG, 0);
     const species = [...new Set(pieces.map((p) => p.speciesId))];
     const adv = pieces.every((p) => p.adv);
+    const worst = worstCondition(pieces.map((p) => p.tmpl));
     const kind = adv ? 'advanced' : 'basic';
     let name: string;
     let price: number;
@@ -1885,7 +1926,10 @@ export class UtilizationPanel extends DraggablePanel {
       name, icon: '🍣', iconTexture: 'food_assorted_sashimi',
       category: 'food', subCategory: '회(사시미)',
       basePrice: price,
-      condition: 'fresh', conditionSinceMs: Date.now(),
+      // 신선도는 **가장 먼저 상하는 조각**을 계승한다 (135차) —
+      // 구 구현은 무조건 'fresh'라 나쁨(가치 10%) 조각을 접시로 세탁할 수 있었다.
+      condition: worst?.condition ?? 'fresh',
+      conditionSinceMs: worst?.conditionSinceMs ?? Date.now(),
       equippable: false,
       weightG: totalG,
       ...(species.length === 1 ? { speciesId: species[0] } : {}),
@@ -1896,15 +1940,61 @@ export class UtilizationPanel extends DraggablePanel {
     this.flashBoardToast(`${name} 완성! — 판매가 ${price.toLocaleString()}원`);
   }
 
-  /** 접시 빼기/중단 — 접시 + 배치 조각 전부 인벤토리 반환 */
-  private unmountPlate(): void {
+  /**
+   * 접시 빼기/중단 (135차 사용자 결정) —
+   *  - 조각이 담겨 있으면 **미완성 접시 1개**로 보관한다(조각을 흩뜨리지 않는다).
+   *    다시 올리면 담던 자리에서 이어진다. 조각만 되찾으려면 인벤 우클릭 [해체하기].
+   *  - 빈 접시면 접시 그대로 반환.
+   * @returns 미완성으로 보관했으면 true
+   */
+  private unmountPlate(silent = false): boolean {
     const st = this.plateState;
-    if (!st) return;
-    InventoryStore.addItem({ ...st.tmpl }, 1);
-    for (const p of st.quads.flat()) InventoryStore.addItem({ ...p.tmpl }, 1);
+    if (!st) return false;
+    const pieces = st.quads.flat();
+    if (pieces.length === 0) {
+      InventoryStore.addItem({ ...st.tmpl }, 1);
+      this.plateState = null;
+      if (!silent) { this.renderBody(); this.scene.events.emit('inventory-changed'); }
+      return false;
+    }
+    const wip: PlateWipData = {
+      plate: { ...st.tmpl },
+      size: st.size,
+      rotation: st.rotation % 4,
+      quads: st.quads.map((q) => q.map((pc) => ({ ...pc, tmpl: { ...pc.tmpl } }))),
+    };
+    const pr = plateWipProgress(wip);
+    const totalG = pieces.reduce((sum, pc) => sum + pc.weightG, 0);
+    const species = [...new Set(pieces.map((pc) => pc.speciesId).filter(Boolean))];
+    // 신선도는 **가장 먼저 상하는 조각**을 그대로 계승 — 접시로 옮겨 담아 시계를 리셋할 수 없다
+    const worst = worstCondition(pieces.map((pc) => pc.tmpl));
+    const adv = pieces.every((pc) => pc.adv);
+    const seq = InventoryStore.nextCatchSeq();
+    const ok = InventoryStore.addItem({
+      id: `inv_sashimi_wip_${seq}`,
+      name: `${adv ? '고급 ' : ''}사시미 접시 (${st.size} · 미완성 ${pr.placed}/${pr.total})`,
+      icon: '🍽', iconTexture: 'food_assorted_sashimi',
+      category: 'food', subCategory: '회(사시미)',
+      basePrice: 0,
+      condition: worst?.condition ?? 'fresh',
+      conditionSinceMs: worst?.conditionSinceMs ?? Date.now(),
+      equippable: false,
+      weightG: totalG,
+      plateWip: wip,
+      ...(species.length === 1 ? { speciesId: species[0] } : {}),
+    }, 1);
+    if (!ok) {
+      // 인벤 만석 — 아이템 유실 금지(61차 규칙). 접시는 도마에 그대로 두고 안내만 한다.
+      this.flashBoardToast('인벤토리 공간이 부족합니다 — 칸을 비우고 다시 빼세요');
+      return false;
+    }
     this.plateState = null;
-    this.renderBody();
-    this.scene.events.emit('inventory-changed');
+    if (!silent) {
+      this.renderBody();
+      this.scene.events.emit('inventory-changed');
+      this.flashBoardToast(`미완성 접시로 보관했습니다 — ${pr.placed}/${pr.total}점 (${pr.pct}%)`);
+    }
+    return true;
   }
 
   /**
@@ -2045,7 +2135,7 @@ export class UtilizationPanel extends DraggablePanel {
       const draggableFish = fam === 'finfish' || fam === 'cephalopod'
         || !!this.resumeSectionOf(item) || this.isPureFillet(item) || this.isPureEngawa(item)
         || !!this.cephSliceKind(item)
-        || this.isPlateItem(item) || this.isSashimiPiece(item);
+        || this.isPlateItem(item) || this.isWipPlate(item) || this.isSashimiPiece(item);
       const hit = this.scene.add.rectangle(cx + cell / 2, cy + cell / 2, cell, cell, 0xffffff, 0.001)
         .setInteractive({ useHandCursor: true });
       if (draggableFish) {
@@ -2076,6 +2166,7 @@ export class UtilizationPanel extends DraggablePanel {
         : selItem.id.startsWith('inv_ceph_octo_whole_') ? '생 문어는 도마에 올릴 수 없습니다 — 우클릭 [삶기]로 삶은 뒤 도마에 올리세요'
         : this.isPureEngawa(selItem) ? '도마로 드래그하면 엔가와 회썰기(총 2컷)를 진행합니다'
         : this.isPureFillet(selItem) ? '도마로 드래그하면 회썰기(사시미)를 진행합니다 — 야나기바 장착 시 고급 사시미'
+        : this.isWipPlate(selItem) ? '[사시미 만들기] 영역으로 드래그하면 담던 자리에서 이어 담습니다'
         : this.isPlateItem(selItem) ? '[사시미 만들기] 영역으로 드래그해 접시를 놓으세요'
         : this.isSashimiPiece(selItem) ? '접시로 드래그해 배치하세요 (활성 방위에 1점씩 — 접시 돌리기로 방위 전환)'
         : selItem && this.resumeSectionOf(selItem) ? (this.isRibFillet(selItem) ? '도마로 드래그하면 갈빗대 제거부터 이어서 진행합니다'
@@ -2591,11 +2682,16 @@ export class UtilizationPanel extends DraggablePanel {
   override destroy(fromScene?: boolean): void {
     this.closeChooser();
     this.closeCookHelp();   // 씬 레벨 팝업이라 U패널과 함께 정리해야 잔상이 남지 않는다
-    // 플레이팅 진행 중 파괴 = 접시 + 배치 조각 반환 (아이템 유실 방지 — 61차 destroy 안전망 규칙)
+    // 플레이팅 진행 중 파괴 = **미완성 접시로 보관**(조각 유지 — 135차), 빈 접시는 그대로 반환.
+    // 아이템 유실 방지 규칙(61차 destroy 안전망)은 그대로 — 인벤 만석이면 조각째 개별 반환한다.
     if (this.plateState) {
-      InventoryStore.addItem({ ...this.plateState.tmpl }, 1);
-      for (const p of this.plateState.quads.flat()) InventoryStore.addItem({ ...p.tmpl }, 1);
-      this.plateState = null;
+      const kept = this.unmountPlate(true);
+      if (!kept && this.plateState) {
+        const st = this.plateState as NonNullable<typeof this.plateState>;
+        InventoryStore.addItem({ ...st.tmpl }, 1);
+        for (const p of st.quads.flat()) InventoryStore.addItem({ ...p.tmpl }, 1);
+        this.plateState = null;
+      }
     }
     this.craftBoard?.destroy();
     this.craftBoard = undefined;

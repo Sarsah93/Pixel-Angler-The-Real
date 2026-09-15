@@ -61,6 +61,10 @@ const CRAFT_ONLY: Record<string, InvItemTemplate> = {
     category: 'gear', subCategory: '낚싯대', basePrice: 180000,
     equippable: true, tool: 'rod',
   },
+  craft_backpack_rough: {
+    id: 'craft_backpack_rough', name: '간이 백팩', icon: '', iconTexture: 'px:it_backpack',
+    category: 'gear', subCategory: '가방', basePrice: 24000, equippable: true, bagSlots: 5,
+  },
   craft_reel_custom: {
     id: 'craft_reel_custom', name: '튜닝 스피닝릴 (수제)', icon: '', iconTexture: 'px:it_reel',
     category: 'gear', subCategory: '릴', basePrice: 160000, equippable: true,

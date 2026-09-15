@@ -232,8 +232,11 @@ export class ShopPanel extends DraggablePanel {
       const hasForage = InventoryStore.items.some((i) => i.forageCatch && i.slot >= 0);
       // 134차 — 법 규칙 §3 (LAW_SELL_ROD 등). TUNING.law.enforceRodSell 이 꺼져 있으면 null = 현행 허용
       const lawBlocked = InventoryStore.items.filter((i) => i.slot >= 0 && !!StoryStore.sellVerdict(i));
+      // 미완성 사시미 접시(plateWip)도 제외 — 완성해야 값이 매겨진다 (135차)
+      const hasWipPlate = InventoryStore.items.some((i) => i.plateWip && i.slot >= 0);
       const sellable = InventoryStore.items.filter(
-        (i) => this.shop.buysCategories.includes(i.category) && i.slot >= 0 && !i.forageCatch && !StoryStore.sellVerdict(i),
+        (i) => this.shop.buysCategories.includes(i.category) && i.slot >= 0
+          && !i.forageCatch && !i.plateWip && !StoryStore.sellVerdict(i),
       );
       sellable.forEach((item) => {
         cells.push({
@@ -253,7 +256,9 @@ export class ShopPanel extends DraggablePanel {
       } else if (sellable.length === 0) {
         const v = lawBlocked.length ? StoryStore.sellVerdict(lawBlocked[0]) : null;
         this.renderEmptyNote(gy0, v ? `${v.reasonKo}\n대안: ${v.alternatives.slice(0, 2).join(' / ')}`
-          : hasForage ? '채집물은 판매·유통이 금지되어 있습니다 (강원 조례) — 요리·자가 소비만' : '판매할 수 있는 아이템이 없습니다.');
+          : hasForage ? '채집물은 판매·유통이 금지되어 있습니다 (강원 조례) — 요리·자가 소비만'
+            : hasWipPlate ? '미완성 사시미 접시는 팔 수 없습니다 — 요리(U) 도마에서 마저 담아 완성하세요'
+              : '판매할 수 있는 아이템이 없습니다.');
       }
     }
 

@@ -225,6 +225,19 @@ export const CRAFT_BLUEPRINTS: readonly CraftBlueprint[] = [
 
   // ── 고급(제작대) — 로드·릴 ──────────────────────────
   {
+    // 135차 — Ch1 M1-08 「간이 백팩」. 탁만수의 첫 교습: "짐부터 어떻게 좀 해라."
+    id: 'bp_backpack_rough', station: 'hand', group: 'gear',
+    nameKo: '간이 백팩', nameEn: 'Improvised Backpack',
+    descKo: '헌 그물망과 목재 살로 엮은 등짐. 볼품은 없지만 짐칸이 한 줄 늘어난다.',
+    descEn: 'Old netting lashed to wooden stays. Ugly, but it adds a row of carrying space.',
+    materials: [
+      { itemId: 'inv_mat_mesh', qty: 1, nameKo: '통발 그물망', nameEn: 'Trap Mesh' },
+      { itemId: 'inv_mat_wood', qty: 2, nameKo: '목재', nameEn: 'Wood' },
+      { itemId: 'inv_mat_wire', qty: 2, nameKo: '철사', nameEn: 'Wire' },
+    ],
+    outputId: 'craft_backpack_rough', outputQty: 1, baseSuccess: 0.95, xp: 30,
+  },
+  {
     id: 'bp_rod_custom', station: 'workbench', group: 'gear',
     nameKo: '커스텀 로드 빌딩', nameEn: 'Custom Rod Building',
     descKo: '블랭크에 가이드를 감고 에폭시로 마감한다. 손맛이 다른 나만의 대.',

@@ -807,8 +807,11 @@ export class RegionHud extends Phaser.GameObjects.Container {
     const now = new Date();
     const kst = kstParts(now);
     // 134차 — 실습생 기한 D-nn (STORY_SPEC §6 상태 패널 뱃지)
+    // ⚠ dl 은 음수가 될 수 있다(기한 초과) — 그대로 넣으면 `D--3` 이 된다(135차 실측).
     const dl = StoryStore.deadlineDaysLeft();
-    this.dateText?.setText(`${kst.y}년 ${kst.mo}월 ${kst.d}일 (${kst.dow}) · KST${dl == null ? '' : ` · D-${dl}`}`);
+    const ddayTxt = dl == null ? ''
+      : dl >= 0 ? ` · D-${dl}` : ` · D+${-dl} (기한 초과)`;
+    this.dateText?.setText(`${kst.y}년 ${kst.mo}월 ${kst.d}일 (${kst.dow}) · KST${ddayTxt}`);
     this.clockText.setText(`${kst.hh}:${kst.mi}:${kst.ss}`);
 
     const night = isNightHour(Number(kst.hh));

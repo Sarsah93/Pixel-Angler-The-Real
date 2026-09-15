@@ -15,7 +15,7 @@ import { createItemIcon } from './ItemIcon.js';
 import { resolveFishTexture } from '../data/FishTextures.js';
 import {
   InvItem, InventoryStore, CONDITION_LABEL, CONDITION_COLOR, CONDITION_DESC,
-  CONDITION_NEXT, refreshCondition, conditionRemainMs, formatDhms,
+  CONDITION_NEXT, refreshCondition, conditionRemainMs, formatDhms, plateWipProgress,
 } from '../store/InventoryStore.js';
 
 /** 서식 수층 표기 */
@@ -38,9 +38,27 @@ export interface ItemDetailData {
 }
 
 /** 아이템 종류별 상세 스펙 추론 생성 (목업) — 어획물은 개체 실측치·어종 정보(FISH_DATABASE) 표시 */
-export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory' | 'category' | 'qty' | 'basePrice' | 'condition' | 'conditionSinceMs' | 'speciesId' | 'lengthCm' | 'weightG' | 'floatBuoyG'>): ItemDetailData {
+export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory' | 'category' | 'qty' | 'basePrice' | 'condition' | 'conditionSinceMs' | 'speciesId' | 'lengthCm' | 'weightG' | 'floatBuoyG' | 'plateWip'>): ItemDetailData {
   const rows: ItemDetailRow[] = [];
   let desc = '';
+
+  // 미완성 사시미 접시 — 진행률을 최상단에 (135차). 이어 담기/판매 불가 안내는 desc로.
+  if (item.plateWip) {
+    const pr = plateWipProgress(item.plateWip);
+    const species = new Set(item.plateWip.quads.flat().map((q) => q.speciesId).filter(Boolean));
+    rows.push(
+      { label: '접시 크기', value: `${item.plateWip.size} (방위당 ${pr.total / 4}점)` },
+      { label: '플레이팅 진행', value: `${pr.placed} / ${pr.total}점 (${pr.pct}%)`, color: pr.pct >= 100 ? '#4af2a1' : '#ffd257' },
+      { label: '담긴 어종', value: species.size ? `${species.size}종` : '없음' },
+      { label: '판매', value: '불가 — 완성해야 값이 매겨집니다', color: '#ff9a5a' },
+    );
+    if (item.weightG) rows.push({ label: '담긴 중량', value: `${item.weightG} g` });
+    rows.push({ label: '보관 환경', value: '상온 · 쿨러(해수/얼음)는 규칙별 정지' });
+    rows.push({ label: '보유 수량', value: `${item.qty}개` });
+    desc = '담다 만 사시미 접시입니다. 요리(U) 창 도마의 [사시미 만들기] 영역에 다시 올리면\n담던 자리에서 이어서 채울 수 있습니다. 조각만 되찾으려면 우클릭 [해체하기].\n신선도는 담긴 조각 중 가장 먼저 상하는 것을 그대로 따라갑니다.';
+    if (item.condition) desc += `\n[${CONDITION_LABEL[item.condition]}] ${CONDITION_DESC[item.condition]}`;
+    return { title: item.name, subtitle: '미완성 접시', rows, desc };
+  }
 
   switch (item.subCategory) {
     case '손도구':

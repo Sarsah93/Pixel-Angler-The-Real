@@ -2,7 +2,7 @@
 
 > **이 위키의 목적**: 날짜·차수 순으로만 쌓이던 작업 기록을 **구조(시스템) 기준**으로 다시 배열해,
 > "지금 무엇이 어디까지 되어 있고 / 무엇이 남았고 / 어디가 위험한가"를 한 화면에서 판별한다.
-> 최종 업데이트: 2026-09-09 (122차 반영)
+> 최종 업데이트: 2026-09-15 (135차 반영)
 
 ---
 
@@ -41,7 +41,7 @@
 | S1 | [낚시 루프 (1인칭)](02-SYSTEMS/fishing-loop.md) | 🟢 | `FirstPersonFishingScene` · core 물리 9종 | 어탐 레이더, 가이드 삽화 실사화 |
 | S2 | [필드·캐스팅 (탑다운)](02-SYSTEMS/world-field.md) | 🟢 | `RegionFieldScene` · **`SeamlessChunks`** | 비주얼 4레이어 에셋, 사운드 |
 | S3 | [**손질 (회뜨기)**](02-SYSTEMS/butchery.md) | 🚧 | `ButcheryProcess` · `ButcheryPanel` · `CephalopodStages` | 두족류 **무늬오징어·한치·문어 개방**(97차) · 갑오징어 잔여 · 광어 F9 잔여 |
-| S4 | [회썰기·플레이팅](02-SYSTEMS/sashimi-cooking.md) | 🟢 | `SashimiPanel` · `UtilizationPanel` | 스시, 불요리(화구·용기) |
+| S4 | [회썰기·플레이팅](02-SYSTEMS/sashimi-cooking.md) | 🟢 | `SashimiPanel` · `UtilizationPanel` · **미완성 접시**(135) | 스시, 불요리(화구·용기) |
 | S5 | [인벤토리·장비·보관](02-SYSTEMS/inventory-equipment.md) | 🟢 | `InventoryStore` · `CoolerStore` · `FridgeStore` | 예약 슬롯 6종 아이템 대기 |
 | S6 | [경제·상점·시세](02-SYSTEMS/economy-data.md) | 🟢 | `MarketPriceEvaluator` · `ShopPanel` | 낚시점 전용 상점 |
 | S7 | [월드맵·지역 타일맵](02-SYSTEMS/world-field.md) | 🔶 | `WorldMapScene` · **OSM 파이프라인 3종** · `build_region_maps.py` | 속초(심리스 v2)·부산·홈타운 개방 — OSM 16개 지역 확장 잔여 |
@@ -59,12 +59,20 @@
 | S19 | Tauri 패키징 | ⬜ | `apps/tauri-wrapper` | Phase 9 (아이콘만 준비됨) |
 | S20 | [도감·발견·dev 도구](02-SYSTEMS/discovery-wiki.md) | 🟢 | `DiscoveryStore` · `AnglerLogScene` · F10 콘솔 | 위키 상세 팝업 · FP 토스트 |
 | S21 | [진행 — 레벨·스킬·생존·면허·일지](02-SYSTEMS/progression.md) | 🔶 | `Progression.ts` · `Vitals.ts`·`StatusEffects.ts` · `SkillDatabase`(**92노드 Σ=215**) · `CraftingDatabase` · `License.ts` · 패널 3종 · `CollapseOverlay` | **스킬 효과 배선 43/92**(130차) · 신규 면허 효과 1/7 · 농사 카테고리 잠김 · **P1~P9 완료**(P8 = 134차 S22) · 스토리 면허 4종 추가(보너스 제외) · 눕기 스프라이트 대기 |
-| S22 | [스토리·퀘스트](02-SYSTEMS/story-quests.md) | 🔶 | `Story.ts` · `FisheryLaw.ts` · `StoryQuestDatabase`(**120퀘**) · `JournalPages` · `StoryArcs` · `StoryStore` · `DialoguePanel` · `JournalPanel` | **134차 데이터·엔진·일지·대화 완비** — 법 강제(`enforceRodSell`) 사용자 결정 · 가방 UI · 배 출조·구멍치기·좌판 등 계통 · Ch2+ 대사 · NPC 스프라이트 잔여 |
+| S22 | [스토리·퀘스트](02-SYSTEMS/story-quests.md) | 🔶 | `Story.ts` · `FisheryLaw.ts` · `StoryQuestDatabase`(**120퀘**) · `DayJobs`(품삯 3) · `JournalPages` · `StoryArcs` · `StoryStore` · `DialoguePanel` · `JournalPanel` | **134차 데이터·엔진 + 135차 Ch1 실시스템**(품삯·사이소·가방 · 법 강제 3단계 기본 2) — 배 출조·구멍치기·좌판 등 계통 · Ch2+ 대사 · NPC 스프라이트 · `onMiss` 벌칙 잔여 |
 
 ---
 
-## 3. 지금 위치 (2026-09-14)
+## 3. 지금 위치 (2026-09-15)
 
+- **135차**: **미완성 접시 저장 + Ch1 실시스템(품삯·사이소·가방) + 법 강제 3단계** —
+  플레이팅 도중 접시를 내리면 **미완성 접시 아이템**으로 보관(상세 `6 / 16점 (38%)` · 슬롯 좌하단 % 배지 ·
+  이어담기·해체). **판매 0원**(가격표가 만석 전제 — 사용자 결정), 섭취는 가능 ·
+  신선도는 **가장 오래된 조각 계승**(구 구현은 항상 `fresh`라 '나쁨' 조각 세탁이 가능했다) /
+  **품삯 일용직 3종** + **생활용품점 사이소** + **가방 사다리 1단계**(인벤 25 → 30칸)로
+  Ch1 `manual` 목표 4건을 auto 배선 / **법 강제 = M1-06 완료 후**(기본 2 — 구세이브 회귀 0).
+  점검 실버그 6건 수정. 실렌더 22/22 + 35/35 · pageerror 0.
+  [워크로그 135](03-WORKLOG/2026-09-15-135-wip-plate-dayjobs-law.md).
 - **134차**: **스토리 「조행록」 정립** — 사용자 스펙 v3 → `.agents/STORY_SPEC_v3.md`(+§0.5 코드 정합) ·
   `.agents/PLAYER_SCENARIO.md` · core 계약/법 규칙 5조/퀘스트 **120**/조행록 17/아크 17 ·
   `StoryStore` 진행 엔진 + 일지(J) 재작성 + NPC 대화([F]) + HUD `D-nn` + 판매 창 법 판정.

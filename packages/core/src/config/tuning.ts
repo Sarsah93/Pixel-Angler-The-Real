@@ -763,10 +763,25 @@ export interface TuningConfig {
   };
   law: {
     /**
-     * 1 = 낚싯대 어획물 판매 차단(스펙 §3 강제). **0 = 현행(판매 허용, 판정은 툴팁으로만)** —
-     * Ch1 품삯·통발 위판이 열리기 전에 켜면 테스터 빌드의 수입원이 사라진다(§0.5-6).
+     * 낚싯대 어획물 판매 금지(§3-1 LAW_SELL_ROD) 강제 단계 — 135차에 3단계로 재정의.
+     *  - `0` 끔: 판정은 툴팁으로만, 판매는 허용(구 현행).
+     *  - `1` 항상: 게임 시작부터 차단.
+     *  - `2` **법을 배운 뒤부터**(기본): Ch1 M1-06 「팔 수 없는 물고기」를 끝낸 세이브에만 적용한다.
+     *
+     * ⚖ 왜 2가 기본인가 — ① 규칙을 **가르치기 전에 벌하지 않는다**(M1-06이 바로 그 교육 퀘스트)
+     *   ② 스토리를 진행하지 않은 구세이브·테스터 빌드는 현행 그대로라 회귀가 0이다
+     *   ③ M1-02에서 이미 품삯(DAY_JOBS)이 열려 있어 그 시점엔 대체 수입원이 존재한다.
      */
     enforceRodSell: number;
+  };
+  /** 일용직(품삯) — 135차 */
+  job: {
+    /** 품삯 배율 (경제 밸런스 조절용) */
+    wageMult: number;
+    /** 피로·허기·수분 소모 배율 */
+    costMult: number;
+    /** 일하기 최소 여력 — 피로가 이 값 이상이면 거절(탈진 방지) */
+    fatigueLimit: number;
   };
   inventory: {
     /** dev 모드 탭당 슬롯 수 (= 현행 5×5) */
@@ -987,7 +1002,8 @@ export const TUNING: TuningConfig = {
     seaReleaseUndersize: 0.5, seaRescue: 1, seaIllegalKeep: -1, seaRestrictedEntry: -0.5, seaVillageFisheryViolation: -2,
     harborCommunityWork: 3, harborFreeDelivery: 2, harborAbandonedRequest: -5,
   },
-  law: { enforceRodSell: 0 },
+  law: { enforceRodSell: 2 },   // 2 = 법(M1-06)을 배운 뒤부터 강제 (135차 — 구세이브·테스터 회귀 0)
+  job: { wageMult: 1, costMult: 1, fatigueLimit: 88 },
   inventory: { devSlotsPerTab: 25, baseCols: 2, baseRows: 5 },
   fatigueStaminaBase: {
     yellowtail: 1.6, amberjack: 1.7, greater_amberjack: 1.9, spanish_mackerel: 1.0,
@@ -1153,7 +1169,10 @@ export const TUNING_META: TuningParamMeta[] = [
   { path: 'trap.minSoakHours', min: 0, max: 8, step: 0.5, category: 'balance', label: '통발 최소 침지(h)' },
   // 134차 스토리
   { path: 'story.ch1DeadlineDays', min: 30, max: 365, step: 5, category: 'balance', label: 'Ch1 실습생 기한(일)' },
-  { path: 'law.enforceRodSell', min: 0, max: 1, step: 1, category: 'balance', label: '낚싯대 어획물 판매 차단(1=스펙)' },
+  { path: 'law.enforceRodSell', min: 0, max: 2, step: 1, category: 'balance', label: '낚싯대 판매 차단(0끔/1항상/2법학습후)' },
+  { path: 'job.wageMult', min: 0.2, max: 3, step: 0.1, category: 'balance', label: '품삯 배율' },
+  { path: 'job.costMult', min: 0.2, max: 3, step: 0.1, category: 'balance', label: '품삯 행동력 소모 배율' },
+  { path: 'job.fatigueLimit', min: 50, max: 100, step: 1, category: 'balance', label: '일하기 가능 피로 상한' },
   { path: 'rep.harborCommunityWork', min: 0, max: 10, step: 0.5, category: 'balance', label: '항구 신뢰 +/공동작업' },
   { path: 'rep.seaReleaseUndersize', min: 0, max: 3, step: 0.1, category: 'balance', label: '바다 평판 +/준법 방생' },
 ];

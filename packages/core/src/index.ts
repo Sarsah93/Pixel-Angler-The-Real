@@ -488,6 +488,8 @@ export { BASE_SLOTS_PER_TAB, BACKPACK_SPECS, resolveSlotsPerTab, canUnequipBag }
 export { STORY_CHAPTERS, getStoryChapter } from './db-schema/StoryChapters.js';
 export { JOURNAL_PAGES, getJournalPage, journalCatchMatches } from './db-schema/JournalPages.js';
 export { STORY_MAIN_NPCS, STORY_ARCS, getStoryArc, getStoryNpc, arcOfNpc } from './db-schema/StoryArcs.js';
+export type { DayJobDef } from './db-schema/DayJobs.js';
+export { DAY_JOBS, dayJobsOfNpc, getDayJob } from './db-schema/DayJobs.js';
 export {
   STORY_QUESTS, getStoryQuest, storyQuestsOfChapter, lastMainQuestOfChapter, validateStoryQuests,
 } from './db-schema/StoryQuestDatabase.js';

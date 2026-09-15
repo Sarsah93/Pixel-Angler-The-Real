@@ -665,6 +665,20 @@ export class GameStateManager {
   }
 
   /**
+   * 품삯 노동 비용 (135차) — 허기·수분 감소 / 피로 증가를 **임의 벡터**로 적용한다.
+   * `VitalsAction`은 고정 enum이라 일감마다 다른 비용을 담을 수 없어 별도 경로로 둔다.
+   * '요령'(action_free) 면제는 **적용하지 않는다** — 일은 대가를 치러야 품삯의 의미가 산다.
+   */
+  spendLabor(hunger: number, hydration: number, fatigue: number): void {
+    const v = this.vitals;
+    v.hunger = Math.max(0, Math.min(v.maxHunger, v.hunger - hunger));
+    v.hydration = Math.max(0, Math.min(v.maxHydration, v.hydration - hydration));
+    v.fatigue = Math.max(0, Math.min(v.maxFatigue, v.fatigue + fatigue));
+    this.commitVitals(v);
+    this.markDirty();
+  }
+
+  /**
    * 섭취 회복 — 음수 허용(술 = 수분 −). 상한 클램프는 core가 처리.
    * `fatigue` 양수 = 피로 감소(129차 P7 — 보양식·카페인).
    */
@@ -1308,6 +1322,8 @@ StoryStore.bind({
   setFlag: (k, v) => GameState.setFlag(k, v),
   markQuestDone: (id) => GameState.completeQuest(id),
   markDirty: () => GameState.markDirty(),
+  spendLabor: (h, w, f) => GameState.spendLabor(h, w, f),
+  fatigue: () => GameState.vitals.fatigue,
 });
 
 // dev 검증용 전역 노출 — 하네스의 `import('/src/…')` 모듈은 게임 인스턴스와 다를 수

@@ -17,14 +17,16 @@ import {
   SINKER_BASE_DRAG_CD, SINKER_BUNDLE_DRAG_CD, SINKER_HOLE_FEEDBACK_MULT,
   LURES_CATALOG_DB, JIGHEAD_WEIGHTS_G, getLureSpec, jigHeadWeightById,
   computeLureRigWeight, getLureCastCd, isKnifeItem, FISH_DATABASE, lineStrengthKg,
-  speciesStandardWeightG,
+  speciesStandardWeightG, SASHIMI_PLATE_SPECS,
 } from '@tra/core';
+import type { SashimiSizeTier } from '@tra/core';
 import type { ForageTool, StatusCure, CatchMethod } from '@tra/core';
 import { ExternalDataStore } from './ExternalDataStore.js';
 import { DiscoveryStore } from './DiscoveryStore.js';
 import { isGod } from '../dev/DevMode.js';
 import { resolveFishTexture } from '../data/FishTextures.js';
 import { applyItemVitals } from '../data/ItemVitals.js';
+import { StoryStore } from './StoryStore.js';
 
 /** 인벤토리 카테고리 탭 */
 export type InvCategory = 'gear' | 'consumable' | 'food' | 'tackle' | 'lure' | 'etc';
@@ -47,8 +49,10 @@ export type InvCondition =
   | 'bad'       // 나쁨 — 회/직접 섭취 불가 (2시간 → 부패)
   | 'spoiled';  // 부패 — 사용 금지, 종착 상태
 
-/** 카테고리별 소켓 수 (5x5) */
+/** 카테고리별 기본 소켓 수 (5x5) — 가방 미착용 기준선 */
 export const GRID_CAPACITY = 25;
+/** 가방 착용 시 상한 (6행 = 30칸. 인벤 패널 세로 여백 실측 한계 — 135차) */
+export const GRID_CAPACITY_MAX = 30;
 
 /**
  * 착용 중 아이템의 slot 값 — **그리드에서 빠진 상태** (사용자 지시 2026-08-05).
@@ -112,6 +116,34 @@ export type HandTool = 'rod' | 'net' | 'knife';
 /** 착용 손 (L = 왼손, R = 오른손) */
 export type EquipHand = 'L' | 'R';
 
+/**
+ * 미완성 사시미 접시 — 플레이팅 진행 상태 (135차, 사용자 지시).
+ *
+ * 조각이 남은 채 접시를 빼면 조각을 흩뜨리지 않고 **접시 통째로 아이템화**해 보관한다.
+ * 다시 도마(사시미 영역)에 올리면 방위·조각 배치가 그대로 복원돼 이어 담을 수 있다.
+ *
+ * ⚠ 완성 전에는 **판매 불가**(가격표가 조각 수 만석을 전제로 세워져 있다 — 66·68차).
+ *   섭취는 가능하고, 신선도는 **가장 먼저 상하는 조각**을 그대로 계승해 무한 보관을 막는다.
+ */
+export interface PlateWipPiece {
+  /** 조각 아이템 스냅샷 (해체 시 그대로 인벤토리로 돌아간다) */
+  tmpl: InvItem;
+  speciesId: string;
+  weightG: number;
+  /** 고급 사시미 조각 여부 (전 조각 고급이어야 완성품이 '고급') */
+  adv: boolean;
+}
+
+export interface PlateWipData {
+  /** 접시 아이템 스냅샷 (식기 — 완성 시 소모, 해체 시 반환) */
+  plate: InvItem;
+  size: SashimiSizeTier;
+  /** 활성 방위 (0~3) — 다시 올렸을 때 담던 자리에서 이어진다 */
+  rotation: number;
+  /** [우상, 좌상, 좌하, 우하] 방위별 조각 */
+  quads: PlateWipPiece[][];
+}
+
 /** 인벤토리 아이템 인스턴스 (클라이언트 뷰 모델) */
 export interface InvItem {
   id: string;
@@ -167,6 +199,12 @@ export interface InvItem {
    * 없는 구세이브 어획물은 판정 시 rod로 본다(가장 보수적).
    */
   catchMethod?: CatchMethod;
+
+  /**
+   * 미완성 사시미 접시 진행 상태 (135차). 존재하면 **판매 불가 · 도마에 올려 이어 담기 가능**.
+   * 신선도(condition/conditionSinceMs)는 가장 먼저 상하는 조각을 계승한다.
+   */
+  plateWip?: PlateWipData;
 
   // ── 원투 메인 싱커(무게추 봉돌) 전용 ──
   /** 봉돌 종류 (고리/구멍/묶음추) — 존재하면 무게추 봉돌 */
@@ -225,6 +263,11 @@ export interface InvItem {
   drainBuffMin?: number;
   /** 제작 재료 — 인벤 '기타 › 재료' 분류. 섭취·착용 불가, 도면에서만 소비된다 */
   craftMaterial?: boolean;
+  /**
+   * 가방(등 슬롯) — 착용 시 늘어나는 인벤토리 칸 수 (135차 가방 사다리 1단계).
+   * 기본 25칸 위에 얹히며, 패널 레이아웃 한계로 **총 30칸(6행)까지**만 반영된다.
+   */
+  bagSlots?: number;
   // ── 인-맵 채집·통발 (121차) ──
   /** 헤드랜턴 루멘 — 야간 채집 스팟 발견 반경 */
   lampLumens?: number;
@@ -535,11 +578,22 @@ function createSeedItems(): InvItem[] {
   // 카테고리별 소켓 순차 배정 + 신선도 시계 시작 (조건 보유 아이템).
   // **착용 상태로 시드되는 장비는 그리드에서 빠진다**(slot = SLOT_EQUIPPED) — 2026-08-05 개편.
   const counters: Record<InvCategory, number> = { gear: 0, consumable: 0, food: 0, tackle: 0, lure: 0, etc: 0 };
-  return defs.map((d) => ({
+  const seeded = defs.map((d) => ({
     ...d,
     slot: d.equipped ? SLOT_EQUIPPED : counters[d.category]++,
     conditionSinceMs: d.condition ? Date.now() : undefined,
   }));
+  // ⚠ 시드가 기본 용량(25칸)을 넘으면 그 아이템은 **그리드에 그려지지 않는다**(채비 선택창·상점
+  //   목록에는 나오므로 기능은 살아 있지만 유저에겐 사라진 것처럼 보인다 — 135차 실측: tackle 29개).
+  //   용량을 늘리는 것(가방)과 시드를 줄이는 것 중 무엇을 택할지는 데이터 결정이라 여기선 경고만 한다.
+  if (import.meta.env.DEV) {
+    const over = seeded.filter((i) => i.slot >= GRID_CAPACITY);
+    if (over.length > 0) {
+      console.warn(`[InventoryStore] 시드가 기본 용량(${GRID_CAPACITY})을 초과 — 그리드 미표시 ${over.length}건:`,
+        over.map((i) => `${i.category}:${i.slot} ${i.id}`).join(', '));
+    }
+  }
+  return seeded;
 }
 
 // ═══════════════════════════════════════════════════
@@ -659,6 +713,55 @@ export function conditionRemainMs(item: Pick<InvItem, 'condition' | 'conditionSi
   // 종착 직전 상태에서 다음 전이가 없으면(프로필 종착) Infinity
   if (!condNextOf(item.condition, item.condProfile)) return Number.POSITIVE_INFINITY;
   return Math.max(0, durMin * 60_000 - (Date.now() - item.conditionSinceMs));
+}
+
+/**
+ * 부패(종착)까지 남은 총 시간 (ms) — 현재 단계 잔여 + 이후 전이 단계들의 지속 시간 합.
+ * "어느 쪽이 먼저 상하나"를 상태 라벨이 아니라 **실제 남은 시간**으로 비교하기 위한 척도.
+ * (냉동 180 + 해동 90 + 나쁨 120 ↔ 신선 180 + 보통 300 + 나쁨 120 처럼 경로 길이가 다르다)
+ */
+export function msToSpoiled(item: Pick<InvItem, 'condition' | 'conditionSinceMs' | 'condProfile'>): number {
+  if (!item.condition || item.conditionSinceMs === undefined) return Number.POSITIVE_INFINITY;
+  let total = conditionRemainMs(item);
+  if (!Number.isFinite(total)) return total;
+  let cond = condNextOf(item.condition, item.condProfile);
+  // 그래프는 순환하지 않지만(부패 종착) 방어적으로 상한을 둔다
+  for (let i = 0; i < 8 && cond; i++) {
+    const durMin = condDurationOf(cond, item.condProfile);
+    if (!Number.isFinite(durMin)) break;
+    total += durMin * 60_000;
+    cond = condNextOf(cond, item.condProfile);
+  }
+  return total;
+}
+
+/**
+ * 여러 재료 중 **가장 먼저 상하는 것**의 신선도를 반환 (미완성/완성 접시가 계승할 값).
+ * 라벨 서열이 아니라 `msToSpoiled` 실측으로 고르므로 냉동/냉장 조각이 섞여도 정확하다.
+ * 재료가 없으면 undefined.
+ */
+export function worstCondition(
+  items: Pick<InvItem, 'condition' | 'conditionSinceMs' | 'condProfile'>[],
+): { condition: InvCondition; conditionSinceMs: number } | undefined {
+  let best: { condition: InvCondition; conditionSinceMs: number } | undefined;
+  let bestMs = Number.POSITIVE_INFINITY;
+  for (const it of items) {
+    refreshCondition(it);
+    if (!it.condition || it.conditionSinceMs === undefined) continue;
+    const ms = msToSpoiled(it);
+    if (best === undefined || ms < bestMs) {
+      best = { condition: it.condition, conditionSinceMs: it.conditionSinceMs };
+      bestMs = ms;
+    }
+  }
+  return best;
+}
+
+/** 미완성 접시 진행률 — { placed, total, pct } (조각 0개면 0%) */
+export function plateWipProgress(wip: PlateWipData): { placed: number; total: number; pct: number } {
+  const placed = wip.quads.reduce((n, q) => n + q.length, 0);
+  const total = Math.max(1, SASHIMI_PLATE_SPECS[wip.size].perQuad * 4);
+  return { placed, total, pct: Math.round((placed / total) * 100) };
 }
 
 /** 카운트다운 표기 — 00일 00시 00분 00초 (제로 패딩 고정 폭) */
@@ -816,6 +919,31 @@ class InventoryStoreManager {
    * 도마(다리 분리·숙회)는 **삶은 문어만** 올릴 수 있다 — 생 통마리는 도마 불가.
    * @returns 성공 시 지급 아이템 이름, 실패(부패/공간 부족) 시 null
    */
+  /**
+   * 미완성 접시 해체 (135차) — 접시(식기) + 담긴 조각을 전부 인벤토리로 되돌린다.
+   * 조각을 다른 접시에 쓰거나 낱개로 처분하고 싶을 때의 경로.
+   * 빈 칸이 모자라면 **아무것도 바꾸지 않고** 실패를 돌려준다(부분 반환으로 유실 금지).
+   */
+  dismantlePlateWip(itemId: string): { ok: boolean; reason?: string } {
+    const item = this.find(itemId);
+    if (!item?.plateWip) return { ok: false, reason: '미완성 접시가 아닙니다.' };
+    const pieces = item.plateWip.quads.flat();
+    // 필요 칸 수 — 같은 id끼리는 스택으로 합쳐지므로 서로 다른 id 개수만 센다(접시 포함)
+    const newIds = new Set<string>();
+    for (const pc of [item.plateWip.plate, ...pieces.map((q) => q.tmpl)]) {
+      if (!this._items.some((i) => i.id === pc.id)) newIds.add(pc.id);
+    }
+    // 해체하면 미완성 접시 1칸이 비므로 그만큼 여유가 생긴다
+    const free = this.freeSlotCount(item.category) + (item.qty <= 1 ? 1 : 0);
+    if (newIds.size > free) {
+      return { ok: false, reason: `인벤토리 칸이 부족합니다 (필요 ${newIds.size}칸 · 여유 ${free}칸)` };
+    }
+    this.removeQty(item.id, 1);
+    this.addItem({ ...item.plateWip.plate }, 1);
+    for (const pc of pieces) this.addItem({ ...pc.tmpl }, 1);
+    return { ok: true };
+  }
+
   boilOctopus(itemId: string): string | null {
     const item = this.find(itemId);
     if (!item || !item.id.startsWith('inv_ceph_octo_whole_')) return null;
@@ -978,6 +1106,9 @@ class InventoryStoreManager {
   getSellPrice(item: InvItem): number {
     // 채집물(해루질·통발 생물)은 판매·유통 금지 — 강원 조례 (121차). 요리·자가 소비 sink 전용
     if (item.forageCatch) return 0;
+    // 미완성 접시는 판매 불가 (135차 사용자 결정) — 가격표(모듬 고정가·단품 회중량)가
+    // 만석을 전제로 세워져 있어 부분 판매를 허용하면 표가 붕괴한다. 섭취·이어담기만 가능.
+    if (item.plateWip) return 0;
     if (item.subCategory === '어획물') {
       // 상태별 가치 배율 (부패 = 0, 나쁨 10%, 보통 50%, 그 외 시세 그대로)
       const stateMul = conditionSellMultiplier(item.condition);
@@ -1015,7 +1146,7 @@ class InventoryStoreManager {
   // ── 소켓 이동 (드래그 앤 드랍) ───────────────────────
   /** 같은 카테고리 그리드 내 소켓 이동 — 대상 소켓에 아이템이 있으면 서로 교환 */
   moveItem(cat: InvCategory, fromSlot: number, toSlot: number): void {
-    if (fromSlot === toSlot || toSlot < 0 || toSlot >= GRID_CAPACITY) return;
+    if (fromSlot === toSlot || toSlot < 0 || toSlot >= this.gridCapacity()) return;
     const src = this.itemAtSlot(cat, fromSlot);
     if (!src) return;
     const dst = this.itemAtSlot(cat, toSlot);
@@ -1023,8 +1154,29 @@ class InventoryStoreManager {
     if (dst) dst.slot = fromSlot;
   }
 
+  /**
+   * 현재 인벤토리 칸 수 (135차 가방 사다리) — 기본 `GRID_CAPACITY`(25) + 착용 가방의 `bagSlots`.
+   * 상한 `GRID_CAPACITY_MAX`(30 = 6행)는 인벤 패널 세로 여백의 실측 한계다
+   * (7행이면 하단 상태줄을 침범한다 — 더 늘리려면 패널 재설계가 먼저).
+   * 기존 세이브는 가방이 없어 25칸 그대로라 회귀가 없다.
+   */
+  gridCapacity(): number {
+    const bag = this._items.find((i) => i.bagSlots && i.equipped);
+    return Math.min(GRID_CAPACITY_MAX, GRID_CAPACITY + (bag?.bagSlots ?? 0));
+  }
+
+  /** 가방을 벗을 때 확장 칸(25~)에 아이템이 남아 있으면 벗을 수 없다 — 아이템 유실 금지 */
+  bagUnequipBlocked(bag: InvItem): string | null {
+    if (!bag.bagSlots) return null;
+    const after = Math.min(GRID_CAPACITY_MAX, GRID_CAPACITY);
+    const stuck = this._items.filter((i) => i.slot >= after);
+    if (stuck.length === 0) return null;
+    return `가방을 벗으면 ${stuck.length}칸이 사라집니다 — 확장 칸(${after + 1}번 이후)을 먼저 비우세요.`;
+  }
+
   private findFreeSlot(cat: InvCategory): number {
-    for (let s = 0; s < GRID_CAPACITY; s++) {
+    const cap = this.gridCapacity();
+    for (let s = 0; s < cap; s++) {
       if (!this.itemAtSlot(cat, s)) return s;
     }
     return -1;
@@ -1035,7 +1187,7 @@ class InventoryStoreManager {
    * 착용 중 아이템(slot < 0)은 그리드를 차지하지 않으므로 제외한다.
    */
   freeSlotCount(cat: InvCategory): number {
-    return GRID_CAPACITY - this._items.filter((i) => i.category === cat && i.slot >= 0).length;
+    return this.gridCapacity() - this._items.filter((i) => i.category === cat && i.slot >= 0).length;
   }
 
   /**
@@ -1158,6 +1310,9 @@ class InventoryStoreManager {
         return { ok: false, reason: InventoryStoreManager.NO_ROOM };
       }
     }
+    // 135차 — 가방 착용은 Ch1 M1-08 목표(`equip:bag`). UI 경로가 둘(인벤 우클릭·장비창 드랍)이라
+    // 스토어 한 곳에서 흘린다.
+    if (item.bagSlots) StoryStore.event({ kind: 'custom', key: 'equip:bag' });
     return { ok: true };
   }
 
@@ -1165,6 +1320,8 @@ class InventoryStoreManager {
   unequipItem(itemId: string): EquipResult {
     const item = this.find(itemId);
     if (!item || !item.equipped) return { ok: false, reason: '착용 중인 아이템이 아닙니다.' };
+    const bagBlock = this.bagUnequipBlocked(item);   // 135차 — 확장 칸 아이템 유실 금지
+    if (bagBlock) return { ok: false, reason: bagBlock };
     if (!this.returnToGrid(item)) return { ok: false, reason: InventoryStoreManager.NO_ROOM };
     item.equipped = false;
     item.equippedHand = undefined;

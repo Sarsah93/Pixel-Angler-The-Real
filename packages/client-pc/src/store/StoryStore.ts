@@ -16,7 +16,9 @@
 import {
   STORY_QUESTS, getStoryQuest, lastMainQuestOfChapter, JOURNAL_PAGES, journalCatchMatches, STORY_ARCS, getStoryArc,
   seasonOfMonth, createDefaultReputation, clampHarbor, clampSea, canSell, provenanceOf, TUNING,
+  dayJobsOfNpc, getDayJob,
   type StoryQuestDef, type StoryObjective, type ReputationState, type CatchMethod, type JournalPageState, type LawVerdict,
+  type DayJobDef,
 } from '@tra/core';
 
 export interface QuestProgress {
@@ -36,6 +38,8 @@ export interface StorySaveState {
   day: number;
   /** 실습생 증 수령 일차 (D-180 기준점) — null = 미수령 */
   traineeDay: number | null;
+  /** 일용직 일감 — 일감 id → { 마지막 근무 일차, 그날 횟수 } (135차) */
+  jobs?: Record<string, { day: number; count: number }>;
 }
 
 export interface StoryHost {
@@ -48,6 +52,10 @@ export interface StoryHost {
   setFlag(k: string, v?: boolean): void;
   markQuestDone(id: string): void;
   markDirty(): void;
+  /** 품삯 노동 비용 — 허기·수분 감소 / 피로 증가 (135차) */
+  spendLabor(hunger: number, hydration: number, fatigue: number): void;
+  /** 현재 피로 (0~100) — 일하기 가능 여부 판정 */
+  fatigue(): number;
 }
 
 export type StoryEvent =
@@ -75,6 +83,7 @@ class StoryStoreManager {
   private pageCatch: Record<string, number> = {};
   private day = 0;
   private traineeDay: number | null = null;
+  private jobs: Record<string, { day: number; count: number }> = {};
   /** UI 통지 훅 — 퀘 완료/수락/조행록 갱신 (필드 HUD 토스트) */
   onNotify: ((msg: string) => void) | null = null;
 
@@ -82,7 +91,7 @@ class StoryStoreManager {
 
   // ── 세이브 ──
   serialize(): StorySaveState {
-    return { quests: this.quests, rep: this.rep, pageCatch: this.pageCatch, day: this.day, traineeDay: this.traineeDay };
+    return { quests: this.quests, rep: this.rep, pageCatch: this.pageCatch, day: this.day, traineeDay: this.traineeDay, jobs: this.jobs };
   }
   deserialize(s?: StorySaveState): void {
     this.quests = s?.quests ?? {};
@@ -90,6 +99,7 @@ class StoryStoreManager {
     this.pageCatch = s?.pageCatch ?? {};
     this.day = s?.day ?? 0;
     this.traineeDay = s?.traineeDay ?? null;
+    this.jobs = s?.jobs ?? {};
     this.refreshAutoQuests();
   }
   resetAll(): void { this.deserialize(undefined); }
@@ -275,7 +285,11 @@ class StoryStoreManager {
       case 'trap': return o.kind === 'trap' ? 'inc' : null;
       case 'sell': return o.kind === 'sell' ? 'inc' : null;
       case 'visit': return o.kind === 'visit' && o.placeKey === ev.placeKey ? 'inc' : null;
-      case 'custom': return o.kind === 'custom' && o.placeKey === ev.key ? 'inc' : null;
+      case 'custom':
+        if (o.kind === 'custom' && o.placeKey === ev.key) return 'inc';
+        // 어촌계 공동작업 일감은 `communityWork` 목표도 닫는다 (135차 — 일감 = 실시스템)
+        if (o.kind === 'communityWork' && ev.key === 'job:coop_work') return 'inc';
+        return null;
       case 'talk': return o.kind === 'talk' && o.npcId === ev.npcId ? 'set' : null;
       case 'level': return o.kind === 'reachLevel' ? 'set' : null;
       case 'coins': return o.kind === 'earn' ? 'set' : null;
@@ -324,11 +338,85 @@ class StoryStoreManager {
    * catchMethod 없는 구세이브 어획물은 낚싯대로 본다(가장 보수적).
    */
   sellVerdict(item: SellableLike, regionId = ''): LawVerdict | null {
-    if (!TUNING.law.enforceRodSell) return null;
+    if (!this.lawEnforced()) return null;
     if (!item.speciesId || item.subCategory !== '어획물') return null;
     const method: CatchMethod = item.catchMethod ?? 'rod';
     const v = canSell(provenanceOf(method, regionId, item.lengthCm, this.day), this.host?.heldLicenses() ?? []);
     return v.allowed ? null : v;
+  }
+
+  // ── 일용직(품삯) — 135차 ─────────────────────────
+  /**
+   * NPC가 오늘 줄 수 있는 일감 목록.
+   * `remaining` 0이면 오늘 몫을 다 했다는 뜻(회색 표시 — 감추지 않는다. 내일 오면 된다는 안내가 된다).
+   */
+  jobsOfNpc(npcId: string, regionId: string): { job: DayJobDef; remaining: number; locked: string | null }[] {
+    return dayJobsOfNpc(npcId, regionId).map((job) => ({
+      job,
+      remaining: this.jobRemaining(job.id),
+      locked: this.jobLockReason(job),
+    }));
+  }
+
+  /** 오늘 남은 근무 횟수 */
+  jobRemaining(jobId: string): number {
+    const job = getDayJob(jobId);
+    if (!job) return 0;
+    const rec = this.jobs[jobId];
+    const usedToday = rec && rec.day === this.day ? rec.count : 0;
+    return Math.max(0, job.perDay - usedToday);
+  }
+
+  /** 자격·레벨 잠금 사유 (없으면 null) */
+  private jobLockReason(job: DayJobDef): string | null {
+    if ((this.host?.level() ?? 1) < job.minLevel) return `레벨 ${job.minLevel} 필요`;
+    if (job.needsTrainee && this.traineeDay == null) return '실습생 증을 먼저 받아야 합니다';
+    if (job.requires && !(this.host?.heldLicenses() ?? []).includes(job.requires)) return '자격이 필요합니다';
+    return null;
+  }
+
+  /**
+   * 일하기 — 행동력을 쓰고 품삯을 받는다.
+   * 실패는 전부 **사유를 돌려준다**(조용한 무시 금지 — 55차 먹통 방지 규칙과 같은 원칙).
+   */
+  work(jobId: string): { ok: boolean; reason?: string; wage?: number; flavorKo?: string } {
+    const job = getDayJob(jobId);
+    if (!job) return { ok: false, reason: '없는 일감입니다.' };
+    const locked = this.jobLockReason(job);
+    if (locked) return { ok: false, reason: locked };
+    if (this.jobRemaining(jobId) <= 0) return { ok: false, reason: '오늘 몫은 다 했습니다 — 자고 나서 다시 오세요.' };
+    const fat = this.host?.fatigue() ?? 0;
+    if (fat >= TUNING.job.fatigueLimit) {
+      return { ok: false, reason: `너무 지쳤습니다 (피로 ${Math.round(fat)}) — 쉬고 오세요.` };
+    }
+    const c = TUNING.job.costMult;
+    this.host?.spendLabor(job.hunger * c, job.hydration * c, job.fatigue * c);
+    const wage = Math.max(0, Math.round(job.wage * TUNING.job.wageMult));
+    this.host?.addCoins(wage);
+    if (job.rep) this.addHarborRep(job.regionId, job.rep);
+    const rec = this.jobs[jobId];
+    this.jobs[jobId] = rec && rec.day === this.day
+      ? { day: this.day, count: rec.count + 1 }
+      : { day: this.day, count: 1 };
+    // 퀘스트 목표 자동 충족 (custom placeKey / communityWork)
+    this.event({ kind: 'custom', key: job.questKey });
+    this.host?.markDirty();
+    this.onNotify?.(`${job.nameKo} — 품삯 ${wage.toLocaleString()}원`);
+    return { ok: true, wage, flavorKo: job.flavorKo };
+  }
+
+  /**
+   * 법 규칙 §3 강제 여부 (135차) — `TUNING.law.enforceRodSell`
+   *  0 = 끔 / 1 = 항상 / 2 = **M1-06 「팔 수 없는 물고기」를 끝낸 뒤부터**(기본).
+   *
+   * 2가 기본인 이유: 규칙을 가르치는 퀘스트를 치르기 전에 벌하지 않고,
+   * 스토리를 진행하지 않은 구세이브는 현행 그대로 유지된다(회귀 0).
+   */
+  lawEnforced(): boolean {
+    const mode = TUNING.law.enforceRodSell;
+    if (mode <= 0) return false;
+    if (mode === 1) return true;
+    return this.isDone('M1-06');
   }
 
   // ── 통계 (일지 헤더) ──

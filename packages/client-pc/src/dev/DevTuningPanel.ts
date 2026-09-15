@@ -11,7 +11,13 @@
  * initDevTuningPanel()이 즉시 반환하고 vite가 데드코드로 제거한다.
  */
 
-import { TUNING_META, getTuning, setTuning } from '@tra/core';
+import { TUNING, TUNING_META, getTuning, setTuning } from '@tra/core';
+
+// dev 검증 전역 — 하네스가 `import('@tra/core')` 로 얻는 인스턴스는 게임과 분화될 수 있어
+// (17차 `.ts`/`.js` URL 함정), 게임이 실제로 쓰는 TUNING 객체를 그대로 노출한다.
+if (import.meta.env.DEV) {
+  (globalThis as unknown as { __TUNING?: unknown }).__TUNING = TUNING;
+}
 
 let mounted = false;
 let root: HTMLDivElement | null = null;

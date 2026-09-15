@@ -82,7 +82,7 @@ const HEAD_SLOTS: EquipSlotDef[] = [
 ];
 
 const LEFT_SLOTS: EquipSlotDef[] = [
-  { key: 'shoulder_l', label: '어깨(좌)', ghost: '🎽', note: '어깨 보호대 (준비 중)' },
+  { key: 'bag',        label: '가방',     ghost: '🎒', part: '가방', note: '인벤토리 칸 확장 — 벗으려면 확장 칸을 먼저 비운다' },
   { key: 'top',        label: '상의',     ghost: '👕', part: '상의', note: '보온 / 피로도 완화' },
   { key: 'arm_l',      label: '팔(좌)',   ghost: '🩹', note: '팔토시 — 자외선/찰과 보호 (준비 중)' },
   { key: 'glove_l',    label: '장갑',     ghost: '🧤', part: '장갑', pair: true, note: '라인 컨트롤 / 보호' },

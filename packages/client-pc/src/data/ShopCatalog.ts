@@ -14,7 +14,7 @@ import { applyItemVitals } from './ItemVitals.js';
 
 /** 건물(상점) 종류 */
 export type BuildingKind =
-  | 'convenience' | 'mart' | 'market' | 'restaurant' | 'cafe' | 'pub' | 'pharmacy';
+  | 'convenience' | 'mart' | 'market' | 'restaurant' | 'cafe' | 'pub' | 'pharmacy' | 'daily';
 
 export const BUILDING_LABEL: Record<BuildingKind, string> = {
   convenience: '편의점',
@@ -24,6 +24,7 @@ export const BUILDING_LABEL: Record<BuildingKind, string> = {
   cafe: '카페',
   pub: '주점',
   pharmacy: '약국',
+  daily: '생활용품점',
 };
 
 /** 상점 판매 품목 (인벤토리 템플릿 + 가격/구매 한도) */
@@ -216,6 +217,34 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
       { id: 'inv_mat_herb',  name: '약초',        icon: '', iconTexture: 'px:it_herb', category: 'etc', subCategory: '재료', basePrice: 2500, price: 3000, maxPerPurchase: 20, equippable: false, craftMaterial: true, desc: '상비약 재료. 산과 들에서 채집할 수도 있다.' },
     ],
   },
+  /**
+   * 생활용품점(사이소) — 135차. Ch1 M1-04 「사이소 영수증」의 **저가 장비 한 벌**이 여기 있다.
+   * "그 대는 아까우니까 여기다 쓰지 마" — 테트라포드 구멍치기용 싸구려 세트(합 2만원).
+   * 비싼 아버지 릴대를 밑걸림 지옥에 넣지 않게 하는 것이 이 상점의 존재 이유다.
+   */
+  daily: {
+    kind: 'daily',
+    name: '생활용품점 사이소',
+    greeting: '없는 거 빼고 다 있습니다. 싼 걸로 찾으시면 이쪽.',
+    sells: [
+      { id: 'inv_rod_budget', name: '사이소 민물대 2.4m', icon: '🎣', category: 'gear', subCategory: '손도구',
+        basePrice: 12000, price: 12000, maxPerPurchase: 1, equippable: true, tool: 'rod',
+        desc: '싸구려 짧은 대. 테트라포드 구멍치기 전용 — 밑걸림으로 부러져도 아깝지 않다.' },
+      { id: 'inv_reel_budget', name: '사이소 소형 스피닝릴', icon: '⚙️', category: 'gear', subCategory: '릴',
+        basePrice: 8000, price: 8000, maxPerPurchase: 1, equippable: true,
+        desc: '드랙이 거칠다. 구멍치기처럼 짧게 감아 올리는 조법에는 충분하다.' },
+      { id: 'inv_line_nylon3', name: '나일론 원줄 3호 100m', icon: '🧵', category: 'tackle', subCategory: '원줄 스풀',
+        basePrice: 4000, price: 4000, maxPerPurchase: 5, equippable: false,
+        desc: '거친 구멍 바닥에 쓸려도 덜 아픈 값싼 원줄.' },
+      { id: 'inv_gloves_work', name: '목장갑', icon: '🧤', category: 'gear', subCategory: '장갑',
+        basePrice: 2000, price: 2000, maxPerPurchase: 3, equippable: true,
+        desc: '테트라포드·그물 작업 기본. 손을 베지 않는 것이 먼저다.' },
+      { id: 'inv_headlamp', name: '헤드랜턴 (800lm)', icon: '🔦', category: 'etc', subCategory: '해루질 도구',
+        basePrice: 25000, price: 26000, maxPerPurchase: 1, equippable: false, lampLumens: 800,
+        desc: '야간 채집 필수 — 루멘이 발견 반경. 100lm당 약 0.55타일.' },
+    ],
+    buysCategories: [],
+  },
   pub: {
     kind: 'pub',
     name: '포구 주점',
@@ -237,5 +266,5 @@ for (const def of Object.values(SHOP_CATALOG)) {
 
 /** 건물 배치용 종류 순환 배열 (POI 인덱스 → 건물 종류) */
 export const BUILDING_KIND_CYCLE: BuildingKind[] = [
-  'restaurant', 'convenience', 'cafe', 'mart', 'market', 'pub', 'pharmacy',
+  'restaurant', 'convenience', 'cafe', 'mart', 'market', 'pub', 'pharmacy', 'daily',
 ];

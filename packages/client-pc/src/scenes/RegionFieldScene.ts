@@ -1009,6 +1009,7 @@ export class RegionFieldScene extends Phaser.Scene {
       cafe:        [0xe3d5bd, 0x8a6a44, 0xc8a060, 0x6f523a],  // 베이지 카페
       pub:         [0x5c4a6e, 0x33263f, 0x7b5cd6, 0xffd24a],  // 어두운 주점 + 등불
       pharmacy:    [0xeceff2, 0x2f7f5e, 0x4fc38a, 0xff6b6b],  // 흰 벽 + 초록 십자 간판 약국
+      daily:       [0xdfe0d4, 0x2e5f9e, 0x3f86d8, 0xffd257],  // 파란 간판 생활용품점(사이소)
     };
     const [wall, roof, sign, accent] = palette[kind];
     const W = 44, H = 42;
@@ -1086,6 +1087,9 @@ export class RegionFieldScene extends Phaser.Scene {
       if (k === 'seafood' || k === 'fishery' || k === 'fishing') return 'market';
       if (k === 'alcohol' || k === 'beverages' || k === 'pub') return 'pub';
       if (k === 'chemist' || k === 'medical_supply' || k === 'herbalist') return 'pharmacy';
+      // 135차 — 생활용품점(사이소): Ch1 저가 장비 한 벌. 속초 실데이터 general 12 · variety_store 5
+      if (k === 'general' || k === 'variety_store' || k === 'houseware' || k === 'hardware'
+        || k === 'department_store' || k === 'kiosk') return 'daily';
       return null;
     }
     return null;
@@ -2193,6 +2197,8 @@ export class RegionFieldScene extends Phaser.Scene {
           this.shopPanel?.refresh();
           this.shopPanel?.setStatus(`${entry.name} x${qty} 구매 완료 (-${total.toLocaleString()}원)`);
           this.hud?.pushLog(`[구매] ${entry.name} x${qty} (-${total.toLocaleString()}원)`);
+          // 135차 — 구매를 스토리 목표로 쓸 수 있게 이벤트를 흘린다 (M1-04 사이소 저가 장비 등)
+          StoryStore.event({ kind: 'custom', key: `buy:${entry.id}` });
         },
         close,
       ));
@@ -2786,6 +2792,7 @@ export class RegionFieldScene extends Phaser.Scene {
     const NEON: Record<BuildingKind, number> = {
       convenience: 0x35ff7a, mart: 0xffa040, market: 0xff5555,
       restaurant: 0xffcf6b, cafe: 0xffe2a8, pub: 0xc27cff, pharmacy: 0x4fffb0,
+      daily: 0x6ab8ff,
     };
     for (const b of this.buildings) {
       const facadeDepth = 16 + b.y * 0.001;
@@ -3379,7 +3386,7 @@ export class RegionFieldScene extends Phaser.Scene {
   }
 
   private openDialogue(npcId: string): void {
-    this.openPopup((close) => new DialoguePanel(this, npcId, close));
+    this.openPopup((close) => new DialoguePanel(this, npcId, close, this.region));
   }
 
   private objInteractLabel(o: MapObject): string {

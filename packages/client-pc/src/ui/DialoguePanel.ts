@@ -12,7 +12,7 @@
  */
 
 import Phaser from 'phaser';
-import { getStoryNpc, type StoryQuestDef } from '@tra/core';
+import { getStoryNpc, TUNING, type StoryQuestDef } from '@tra/core';
 import { DraggablePanel } from './DraggablePanel.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { StoryStore } from '../store/StoryStore.js';
@@ -20,22 +20,40 @@ import { dialogueOf, NPC_IDLE, TONE_CHOICES } from '../data/StoryDialogue.js';
 import { enforceTextBounds, clampTextWidth } from './TextFit.js';
 
 const W = 640;
-const H = 420;
+/** 기본 높이 (대사 + 퀘스트 + [닫기]) */
+const H_BASE = 420;
+/** 일감 1건이 차지하는 세로 */
+const JOB_ROW_H = 46;
 const FONT = '"Noto Sans KR", sans-serif';
 
 export class DialoguePanel extends DraggablePanel {
   private bodyC?: Phaser.GameObjects.Container;   // ⚠ `body`는 Phaser Container 예약 프로퍼티(44차 함정)
   private readonly npcId: string;
   private readonly onClose: () => void;
+  /** 현재 지역 id — 일감은 지역별로 다르다 */
+  private readonly regionId: string;
+  /** 직전 근무 결과 (한 줄 안내 — 다음 render 까지 유지) */
+  private lastWorkMsg = '';
 
-  constructor(scene: Phaser.Scene, npcId: string, onClose: () => void) {
+  /**
+   * 패널 높이 — 일감이 있는 NPC만 그만큼 키운다.
+   * 고정 470으로 두면 일감 없는 NPC(대부분)에서 바닥에 빈 공간이 크게 남는다(135차 실렌더).
+   */
+  private static heightFor(npcId: string, regionId: string): number {
+    const n = StoryStore.jobsOfNpc(npcId, regionId).length;
+    return n === 0 ? H_BASE : Math.min(GAME_HEIGHT - 40, H_BASE + 30 + n * JOB_ROW_H);
+  }
+
+  constructor(scene: Phaser.Scene, npcId: string, onClose: () => void, regionId = '') {
     const npc = getStoryNpc(npcId);
+    const H = DialoguePanel.heightFor(npcId, regionId);
     super(scene, {
       x: (GAME_WIDTH - W) / 2, y: (GAME_HEIGHT - H) / 2,
       width: W, height: H, title: npc?.nameKo ?? npcId, onClose, dim: true, depth: 940,
     });
     this.npcId = npcId;
     this.onClose = onClose;
+    this.regionId = regionId;
     StoryStore.event({ kind: 'talk', npcId });
     this.render();
     this.applyFix();
@@ -49,7 +67,14 @@ export class DialoguePanel extends DraggablePanel {
     const npc = getStoryNpc(this.npcId);
     let y = 6;
     const role = this.scene.add.text(16, y, npc?.roleKo ?? '', { fontFamily: FONT, fontSize: '11px', color: '#7fb8d8' });
-    c.add(role); y += role.height + 10;
+    c.add(role); y += role.height + 6;
+    if (this.lastWorkMsg) {
+      const w = this.scene.add.text(16, y, this.lastWorkMsg, {
+        fontFamily: FONT, fontSize: '11px', color: '#ffd98a', wordWrap: { width: W - 32 },
+      });
+      c.add(w); y += w.height + 4;
+    }
+    y += 4;
 
     const { completable, active, offer } = StoryStore.questsForNpc(this.npcId);
     if (completable[0]) y = this.renderComplete(c, completable[0], y);
@@ -57,7 +82,9 @@ export class DialoguePanel extends DraggablePanel {
     else if (offer[0]) y = this.renderOffer(c, offer[0], y);
     else y = this.renderIdle(c, y);
 
-    this.addBtn(c, W - 16 - 60, H - this.contentTop - 30, 120, '닫기', 0x1f3045, 0x4a6a8a, '#8faabf', () => this.onClose());
+    this.renderJobs(c, y);
+
+    this.addBtn(c, W - 16 - 60, this.panelH - this.contentTop - 30, 120, '닫기', 0x1f3045, 0x4a6a8a, '#8faabf', () => this.onClose());
     enforceTextBounds(c, W - 8, 'DialoguePanel');
     this.applyFix();
   }
@@ -142,6 +169,55 @@ export class DialoguePanel extends DraggablePanel {
     const hint = this.scene.add.text(16, y, '지금 받을 수 있는 의뢰가 없습니다. 레벨을 올리거나 다른 의뢰를 먼저 끝내세요.', { fontFamily: FONT, fontSize: '11px', color: '#8a97a8', wordWrap: { width: W - 32 } });
     c.add(hint);
     return y + hint.height + 8;
+  }
+
+  /**
+   * 일감(품삯) 스트립 — 135차. NPC가 주는 일용직을 대화 하단에 상시 노출한다.
+   * 퀘스트와 독립된 **반복 수입원**이라, 낚싯대 어획물을 못 파는 구간에서도 생계가 돌아간다(§3-1).
+   * 공간이 모자라면(대사가 길면) 한 줄 안내로 줄여 겹침을 만들지 않는다 (§4 흐름 배치).
+   */
+  private renderJobs(c: Phaser.GameObjects.Container, yIn: number): void {
+    const rows = StoryStore.jobsOfNpc(this.npcId, this.regionId);
+    if (rows.length === 0) return;
+    const btnY = this.panelH - this.contentTop - 30;      // [닫기] 줄
+    let y = yIn + 12;                                     // 퀘스트 블록 바로 아래로 흐른다
+    const sep = this.scene.add.graphics();
+    sep.lineStyle(1, 0x2a4256, 0.9);
+    sep.lineBetween(16, y - 6, W - 16, y - 6);
+    c.add(sep);
+    const head = this.scene.add.text(16, y, '일감 (품삯)', { fontFamily: FONT, fontSize: '12px', color: '#ffd257', fontStyle: 'bold' });
+    c.add(head); y += head.height + 4;
+
+    for (const { job, remaining, locked } of rows) {
+      if (y + 40 > btnY - 6) {           // 자리 부족 — 요약 한 줄로 대체
+        const more = this.scene.add.text(16, y, `일감 ${rows.length}건 — 의뢰를 정리한 뒤 다시 말을 걸어 주세요.`,
+          { fontFamily: FONT, fontSize: '11px', color: '#8a97a8' });
+        c.add(more);
+        return;
+      }
+      const can = !locked && remaining > 0;
+      const wage = Math.round(job.wage * TUNING.job.wageMult).toLocaleString();
+      const info = this.scene.add.text(16, y,
+        `${job.nameKo} — ${wage}원 · 피로 +${Math.round(job.fatigue * TUNING.job.costMult)} · 오늘 ${remaining}/${job.perDay}회`,
+        { fontFamily: FONT, fontSize: '11px', color: can ? '#cfe3f2' : '#7a8794', wordWrap: { width: W - 180 } });
+      c.add(info);
+      const sub = this.scene.add.text(16, y + info.height + 2,
+        locked ?? (remaining > 0 ? job.descKo : '오늘 몫은 다 했습니다 — 자고 나서 다시 오세요.'),
+        { fontFamily: FONT, fontSize: '10px', color: locked ? '#ff9a5a' : '#8a97a8', wordWrap: { width: W - 180 } });
+      c.add(sub);
+      this.addBtn(c, W - 16 - 70, y + 16, 140, can ? '일하기' : '불가',
+        can ? 0x14425e : 0x1c2530, can ? 0x33b0e0 : 0x3a4a58, can ? '#aee8ff' : '#5a6a78',
+        () => { if (can) this.doWork(job.id); }, '12px');
+      y += Math.max(40, info.height + sub.height + 10);
+    }
+  }
+
+  private doWork(jobId: string): void {
+    const res = StoryStore.work(jobId);
+    this.lastWorkMsg = res.ok
+      ? `${res.flavorKo ?? ''} (품삯 ${(res.wage ?? 0).toLocaleString()}원)`
+      : `일할 수 없습니다 — ${res.reason ?? ''}`;
+    this.render();
   }
 
   private addBtn(c: Phaser.GameObjects.Container, cx: number, cy: number, w: number, label: string, fill: number, stroke: number, color: string, onClick: () => void, fontSize = '13px'): void {

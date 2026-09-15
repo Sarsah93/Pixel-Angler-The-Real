@@ -17,9 +17,9 @@ import Phaser from 'phaser';
 import { fishRarity } from '@tra/core';
 import { GameState } from '../store/GameState.js';
 import {
-  InventoryStore, InvCategory, InvItem, GRID_CAPACITY,
+  InventoryStore, InvCategory, InvItem, InvItemTemplate,
   CATEGORY_LABEL, CONDITION_LABEL, CONDITION_COLOR, refreshCondition,
-  CONDITION_NEXT, conditionRemainMs, formatDhms,
+  CONDITION_NEXT, conditionRemainMs, formatDhms, plateWipProgress,
 } from '../store/InventoryStore.js';
 import { CoolerStore } from '../store/CoolerStore.js';
 import { DraggablePanel } from './DraggablePanel.js';
@@ -53,6 +53,12 @@ export interface InventoryPanelCallbacks {
   onOpenDetail: (item: InvItem) => void;
   /** 낚싯대 '채비하기' 액션 → Utilization 창 채비 탭 */
   onOpenTackle: () => void;
+}
+
+/** 미완성 접시에 보관된 접시(식기)를 인벤토리 템플릿 형태로 되돌린다 (qty/slot 제거) */
+function plateTemplateOf(plate: InvItem): InvItemTemplate {
+  const { qty: _q, slot: _s, ...tpl } = plate;
+  return tpl;
 }
 
 export class InventoryPanel extends DraggablePanel {
@@ -190,7 +196,8 @@ export class InventoryPanel extends DraggablePanel {
   /** 현재 탭 아이템의 신선도 상태 시그니처 (변화 감지용) */
   private conditionSig(): string {
     let sig = '';
-    for (let idx = 0; idx < GRID_CAPACITY; idx++) {
+    const cap = InventoryStore.gridCapacity();   // 135차 — 가방 착용 시 6행(30칸)
+    for (let idx = 0; idx < cap; idx++) {
       const it = InventoryStore.itemAtSlot(this.currentTab, idx);
       if (it?.condition) sig += `${it.id}:${it.condition}|`;
     }
@@ -200,7 +207,8 @@ export class InventoryPanel extends DraggablePanel {
   /** 1초 주기 — 신선도 지연 갱신 후 상태가 바뀌었으면 그리드만 다시 그린다 */
   private tickFreshness(): void {
     if (!this.scene || this.itemDrag?.moved) return;   // 드래그 중엔 건드리지 않음
-    for (let idx = 0; idx < GRID_CAPACITY; idx++) {
+    const cap = InventoryStore.gridCapacity();
+    for (let idx = 0; idx < cap; idx++) {
       const it = InventoryStore.itemAtSlot(this.currentTab, idx);
       if (it) refreshCondition(it);
     }
@@ -219,16 +227,27 @@ export class InventoryPanel extends DraggablePanel {
     this.footerText?.setText(`보유 재화  ${GameState.player.inventory.coins.toLocaleString()} 원`);
   };
 
+  /**
+   * 행 간격 — 가방 착용(6행)이면 4px로 좁힌다.
+   * 패널 높이는 596 고정이라 7px 간격 6행(하단 519)은 선택 요약 2줄(상단 ≈517)을 침범한다.
+   * 4px면 하단 504 → 여유 13px. (135차 실측)
+   */
+  private gapY(): number {
+    return InventoryStore.gridCapacity() > GRID_COLS * 5 ? 4 : SLOT_GAP;
+  }
+
   /** 포인터 화면 좌표 → 현재 탭 그리드 소켓 인덱스 (-1: 그리드 밖) */
   private slotAtPointer(p: Phaser.Input.Pointer): number {
     const lx = p.x - this.x - this.gridX0;
     const ly = p.y - this.y - this.gridY0;
     if (lx < 0 || ly < 0) return -1;
+    const gy = this.gapY();
     const col = Math.floor(lx / (SLOT + SLOT_GAP));
-    const row = Math.floor(ly / (SLOT + SLOT_GAP));
-    if (col < 0 || col >= GRID_COLS || row < 0 || row >= GRID_COLS) return -1;
+    const row = Math.floor(ly / (SLOT + gy));
+    const rows = Math.ceil(InventoryStore.gridCapacity() / GRID_COLS);   // 135차 — 가방 착용 시 6행
+    if (col < 0 || col >= GRID_COLS || row < 0 || row >= rows) return -1;
     // 셀 간 간격 부분 클릭 방지
-    if (lx - col * (SLOT + SLOT_GAP) > SLOT || ly - row * (SLOT + SLOT_GAP) > SLOT) return -1;
+    if (lx - col * (SLOT + SLOT_GAP) > SLOT || ly - row * (SLOT + gy) > SLOT) return -1;
     return row * GRID_COLS + col;
   }
 
@@ -287,11 +306,13 @@ export class InventoryPanel extends DraggablePanel {
   private renderGrid(): void {
     this.gridContainer.removeAll(true);
 
-    for (let idx = 0; idx < GRID_CAPACITY; idx++) {
+    const cap = InventoryStore.gridCapacity();   // 135차 — 가방 착용 시 6행(30칸)
+    const gy = this.gapY();
+    for (let idx = 0; idx < cap; idx++) {
       const col = idx % GRID_COLS;
       const row = Math.floor(idx / GRID_COLS);
       const sx = this.gridX0 + col * (SLOT + SLOT_GAP);
-      const sy = this.gridY0 + row * (SLOT + SLOT_GAP);
+      const sy = this.gridY0 + row * (SLOT + gy);
       const item = InventoryStore.itemAtSlot(this.currentTab, idx);
 
       const box = this.scene.add.graphics();
@@ -318,6 +339,18 @@ export class InventoryPanel extends DraggablePanel {
           backgroundColor: '#050f1ecc', padding: { x: 2, y: 1 },
         });
         this.gridContainer.add(badge);
+      }
+
+      // 미완성 접시 진행률 — 좌하단 작은 % (우상단 = 수량 / 좌상단 = 신선도 배지라 자리가 겹치지 않는다. 135차)
+      // ⚠ y = SLOT-30 (실측): SLOT-24면 배지 하단 sy+55가 이름 라벨 상단 sy+52를 3px 침범한다.
+      if (item.plateWip) {
+        const pr = plateWipProgress(item.plateWip);
+        const prTxt = this.scene.add.text(sx + 4, sy + SLOT - 30, `${pr.pct}%`, {
+          fontFamily: 'monospace', fontSize: '9px',
+          color: pr.pct >= 100 ? '#4af2a1' : '#ffd257', fontStyle: 'bold',
+          backgroundColor: '#050f1ecc', padding: { x: 2, y: 1 },
+        });
+        this.gridContainer.add(prTxt);
       }
 
       // (착용 배지 없음 — 착용 아이템은 그리드에서 빠져 장비창(E)에 표시된다. 2026-08-05)
@@ -410,8 +443,16 @@ export class InventoryPanel extends DraggablePanel {
               return;
             }
             playEatSfx();
+            // 미완성 접시를 먹으면 담긴 회만 먹는 것이다 — 식기(접시)는 돌려준다.
+            // (칸이 없으면 접시가 사라지므로 먹기 자체를 막고 안내한다 — 135차)
+            const wipPlate = item.plateWip?.plate;
+            if (wipPlate && !InventoryStore.addItem(plateTemplateOf(wipPlate), 1)) {
+              this.setStatus('접시를 돌려받을 칸이 없습니다 — 한 칸 비우고 드세요.');
+              return;
+            }
             InventoryStore.removeItem(item.id, false);
-            this.setStatus(this.applyIntakeOf(item));
+            this.setStatus(this.applyIntakeOf(item)
+              + (wipPlate ? ` · ${wipPlate.name} 회수` : ''));
           } else {
             InventoryStore.removeItem(item.id, false);
             this.setStatus(this.applyIntakeOf(item, '사용'));
@@ -441,6 +482,22 @@ export class InventoryPanel extends DraggablePanel {
         run: () => {
           this.scene.events.emit('trap-place-request', item);
           this.cbs.onClose();
+        },
+      });
+    }
+    // 미완성 사시미 접시 — '해체하기' (135차): 접시 + 담긴 조각 전부 반환
+    if (item.plateWip) {
+      const pr = plateWipProgress(item.plateWip);
+      actions.push({
+        label: '해체하기',
+        color: '#ffb45a', hoverColor: '#ffd8a0',
+        run: () => {
+          const res = InventoryStore.dismantlePlateWip(item.id);
+          this.setStatus(res.ok
+            ? `접시와 회 조각 ${pr.placed}점을 되돌려 받았습니다.`
+            : `해체할 수 없습니다 — ${res.reason ?? ''}`);
+          this.renderGrid();
+          this.scene.events.emit('inventory-changed');
         },
       });
     }
