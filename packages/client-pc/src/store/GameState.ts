@@ -31,12 +31,15 @@ import type {
 import type { WorldObjectState, CatchMethod } from '@tra/core';
 import { type CharConfig, type CharSex, defaultAppearance, starterOutfit } from '@tra/core';
 import { StoryStore, type StorySaveState } from './StoryStore.js';
+import { buildItemWikiCatalog } from '../data/WikiCatalog.js';
 import {
   skillPointsForLevel, skillPointsSpent, skillPrereqsMet, getSkillById, SKILL_CATEGORIES,
   skillPointsFromLicenses as coreSkillPointsFromLicenses, skillUnlockMissing,
   newlyUnlockedHiddenSkills, describeUnlockCond as coreDescribeUnlockCond,
   type SkillDef, type SkillUnlockCtx,
   skillMult as coreSkillMult, skillBonus as coreSkillBonus, type SkillRanks, type SkillEffectKey,
+  profGain as coreProfGain, profLevel, PROF_LEVEL_XP, getSkillById as coreGetSkillById, skillsOfCategory,
+  type SkillProficiency, type ProfActionKey, type SkillCategoryId, type ProfGain,
   MAX_LEVEL, xpToNext, catchXp, activityXp, type XpActivity,
 } from '@tra/core';
 import {
@@ -187,6 +190,10 @@ interface SaveData {
   story?: StorySaveState;
   /** 플레이어 외형·복장 (138차) — 없으면 기본 남성 + 스타터 한 벌 */
   character?: CharConfig;
+  /** 숙련도 (140차) — skillId → 누적 XP. 없으면 0(배운 기술형 스킬은 다시 익혀야 한다) */
+  skillProf?: SkillProficiency;
+  /** 퀘스트 선택지로 받은 보너스 스킬 포인트 (140차) — 레벨·면허 파생분에 더한다 */
+  bonusSkillPoints?: number;
   version: number;
 }
 
@@ -219,6 +226,14 @@ export class GameStateManager {
   private _completedQuestIds: Set<string> = new Set();
   private _skills: SkillState = createDefaultSkills();
   private _skillRanks: SkillRanks = {};
+  /** 숙련도 (140차) — 기술형 스킬은 배운 뒤 행위로 채워야 효과가 난다 */
+  private _skillProf: SkillProficiency = {};
+  /** 선택지 보상 스킬 포인트 (140차) */
+  private _bonusSkillPoints = 0;
+  /** 최근 숙련도 레벨업 — UI가 한 번만 꺼내 안내 */
+  private _recentProfUps: ProfGain[] = [];
+  /** 자전거 숙련 적립용 누적 주행 시간(ms) */
+  private _rideAccMs = 0;
   /** 생존 지표 — 허기·수분 (HP/피로도는 player.stamina/fatigue가 원본, 125차) */
   private _hunger = 100;
   private _hydration = 100;
@@ -294,6 +309,8 @@ export class GameStateManager {
     this._completedQuestIds = new Set(saved.completedQuestIds ?? []);
     this._skills = saved.skills ?? createDefaultSkills();
     this._skillRanks = saved.skillTree ?? {};
+    this._skillProf = saved.skillProf ?? {};
+    this._bonusSkillPoints = saved.bonusSkillPoints ?? 0;
     this._flags = saved.flags ?? {};
     this._worldObjects = saved.worldObjects ?? {};
     // 쿨러 복원 — 저장~로드 사이 실경과 시간을 sync로 반영 (어획 신선도/매질 만료, 밑밥은 그대로)
@@ -477,6 +494,8 @@ export class GameStateManager {
     let gained = catchXp(fish?.rarity ?? 'common', lengthCm, avgCm);
     if (firstDiscovery) gained = Math.round(gained * TUNING.xp.firstDiscoveryMult);
     this.grantXp(gained);
+    this.addProficiency('landing');   // 140차 — 챔질·파이팅 숙련
+    this.addProficiency('fight');
     // 134차 — 퀘스트·조행록 어획 이벤트 (자가어획)
     StoryStore.event({ kind: 'catch', speciesId, lengthCm, method, selfCaught: true, regionId: this.currentRegionId, month: new Date().getMonth() + 1 });
   }
@@ -530,6 +549,10 @@ export class GameStateManager {
   /** 활동 XP — 손질/회뜨기/채집/제작/요리 완료 시 호출 (mult = 등급·품질 계수). 반환 = 레벨업 수 */
   addActivityXp(kind: XpActivity, mult = 1): number {
     StoryStore.event({ kind: 'activity', activity: kind });
+    // 140차 — 같은 행위가 숙련도도 채운다(손질·회뜨기·채집·제작·요리)
+    const profOf: Partial<Record<XpActivity, ProfActionKey>> = { butcher: 'butcher', sashimi: 'sashimi', forage: 'forage', craft: 'craft', cook: 'cook' };
+    const pa = profOf[kind];
+    if (pa) this.addProficiency(pa);
     return this.grantXp(activityXp(kind, mult));
   }
 
@@ -790,6 +813,7 @@ export class GameStateManager {
   ): { cured: StatusEffectId[]; relapsed: StatusEffectId[] } {
     const cured: StatusEffectId[] = [];
     const relapsed: StatusEffectId[] = [];
+    if (kind !== 'hospital' && kind !== 'rest') this.addProficiency('firstaid');   // 140차 — 스스로 처치한 것만 숙련
     // 재발 억제 — ⚠ `firstaid`는 **add 모드** 효과다(랭크당 −10%p). skillMult로 읽으면
     // 등록된 mult 항목이 없어 항상 1이 나와 스킬이 조용히 무시된다. 반드시 skillBonus로 뺄 것.
     // 구급품 제작 스킬은 **품질 배율**(mult 모드)로 곱해 들어간다 — 약을 잘 만들면 잘 듣는다.
@@ -902,7 +926,13 @@ export class GameStateManager {
    * 만렙(200) + 전 면허(15) = 215 = 유료 노드 총비용 — "만렙 + 전 면허 = 전 스킬 마스터".
    */
   skillPointsTotal(): number {
-    return skillPointsForLevel(this._player?.level ?? 1) + this.skillPointsFromLicenses();
+    return skillPointsForLevel(this._player?.level ?? 1) + this.skillPointsFromLicenses() + this._bonusSkillPoints;
+  }
+  /** 선택지 보상 스킬 포인트 (140차) — 예산 우변에 더한다(노드 비용 불변) */
+  get bonusSkillPoints(): number { return this._bonusSkillPoints; }
+  addBonusSkillPoints(n: number): void {
+    this._bonusSkillPoints = Math.max(0, this._bonusSkillPoints + Math.round(n));
+    this.markDirty();
   }
   skillPointsAvailable(): number { return Math.max(0, this.skillPointsTotal() - skillPointsSpent(this._skillRanks)); }
 
@@ -978,8 +1008,67 @@ export class GameStateManager {
     return spent;
   }
 
-  skillMult(key: SkillEffectKey): number { return coreSkillMult(this._skillRanks, key); }
-  skillBonus(key: SkillEffectKey): number { return coreSkillBonus(this._skillRanks, key); }
+  skillMult(key: SkillEffectKey): number { return coreSkillMult(this._skillRanks, key, this._skillProf); }
+  skillBonus(key: SkillEffectKey): number { return coreSkillBonus(this._skillRanks, key, this._skillProf); }
+
+  // ─── 숙련도 (140차) — 배운 기술형 스킬은 행위로 채워야 효과가 난다 ───
+  get skillProf(): SkillProficiency { return this._skillProf; }
+  profXp(skillId: string): number { return this._skillProf[skillId] ?? 0; }
+  profLevelOf(skillId: string): number { return profLevel(this.profXp(skillId)); }
+
+  /**
+   * 행위 1회 → 배운 숙련도 스킬 전부에 XP. 레벨이 오른 것은 `takeRecentProfUps()`로 UI가 꺼내 안내한다.
+   * (캐스팅·랜딩·손질·제작·채집·통발·밑밥·주행·응급처치 … 호출 지점은 각 시스템 훅)
+   */
+  addProficiency(action: ProfActionKey, mult = 1): ProfGain[] {
+    const gains = coreProfGain(this._skillRanks, this._skillProf, action, mult * TUNING.proficiency.xpMult);
+    if (gains.length === 0) return gains;
+    const ups = gains.filter((g) => g.leveled);
+    if (ups.length) this._recentProfUps.push(...ups);
+    this.markDirty();
+    return gains;
+  }
+
+  /** 퀘스트 선택지 '가르침' — skillId 또는 카테고리의 배운 숙련도 스킬 전부에 XP */
+  grantProfXp(target: { skillId?: string; category?: SkillCategoryId }, xp: number): string[] {
+    const ids: string[] = [];
+    if (target.skillId) ids.push(target.skillId);
+    else if (target.category) ids.push(...skillsOfCategory(target.category).filter((d) => d.proficiency).map((d) => d.id));
+    const applied: string[] = [];
+    for (const id of ids) {
+      const d = coreGetSkillById(id);
+      if (!d?.proficiency || (this._skillRanks[id] ?? 0) <= 0) continue;   // 안 배운 기술은 익혀지지 않는다
+      const before = this._skillProf[id] ?? 0;
+      this._skillProf[id] = before + Math.max(0, Math.round(xp));
+      const lv = profLevel(this._skillProf[id]);
+      if (lv > profLevel(before)) this._recentProfUps.push({ skillId: id, xp: this._skillProf[id], level: lv, leveled: true });
+      applied.push(id);
+    }
+    if (applied.length) this.markDirty();
+    return applied;
+  }
+
+  /** 선택지 '숙련도 1레벨' — 배운 경우에만. 다음 임계까지 채운다 */
+  grantProfLevelUp(skillId: string): boolean {
+    const d = coreGetSkillById(skillId);
+    if (!d?.proficiency || (this._skillRanks[skillId] ?? 0) <= 0) return false;
+    const cur = this._skillProf[skillId] ?? 0;
+    const lv = profLevel(cur);
+    if (lv >= PROF_LEVEL_XP.length) return false;
+    this._skillProf[skillId] = PROF_LEVEL_XP[lv];
+    this._recentProfUps.push({ skillId, xp: PROF_LEVEL_XP[lv], level: lv + 1, leveled: true });
+    this.markDirty();
+    return true;
+  }
+
+  /** 최근 숙련도 레벨업을 한 번만 꺼낸다 (HUD 로그용) */
+  takeRecentProfUps(): ProfGain[] { const o = this._recentProfUps; this._recentProfUps = []; return o; }
+
+  /** 자전거 주행 시간 적립 — 3초마다 'ride' 1회 (RegionFieldScene update가 dt를 넘긴다) */
+  noteRiding(dtMs: number): void {
+    this._rideAccMs += dtMs;
+    while (this._rideAccMs >= 3000) { this._rideAccMs -= 3000; this.addProficiency('ride'); }
+  }
 
   // ─── 통발 조작 ─────────────────────────────
 
@@ -1137,6 +1226,8 @@ export class GameStateManager {
       completedQuestIds: Array.from(this._completedQuestIds),
       skills: this._skills,
       skillTree: this._skillRanks,
+      skillProf: this._skillProf,
+      bonusSkillPoints: this._bonusSkillPoints,
       coolerBox: CoolerStore.serialize(),
       inventoryStore: InventoryStore.serialize(),
       fridge: FridgeStore.serialize(),
@@ -1330,6 +1421,8 @@ export class GameStateManager {
     this._skills = createDefaultSkills();
     this._skillRanks = {};
     this._flags = {};
+    this._skillProf = {};
+    this._bonusSkillPoints = 0;
     this._worldObjects = {};
     this._hunger = 100;
     this._hydration = 100;
@@ -1361,6 +1454,16 @@ StoryStore.bind({
   markDirty: () => GameState.markDirty(),
   spendLabor: (h, w, f) => GameState.spendLabor(h, w, f),
   fatigue: () => GameState.vitals.fatigue,
+  // 140차 — 선택지 결과 보상
+  hasFlag: (k) => GameState.getFlag(k),
+  giveItem: (id, qty) => {
+    const e = buildItemWikiCatalog().find((w) => w.id === id);
+    if (!e) { console.warn(`[Story] 보상 아이템 카탈로그 없음: ${id}`); return false; }
+    return InventoryStore.addItem(e.tpl, qty);
+  },
+  addSkillPoints: (n) => GameState.addBonusSkillPoints(n),
+  grantProfXp: (t, xp) => GameState.grantProfXp(t, xp),
+  grantProfLevelUp: (id) => GameState.grantProfLevelUp(id),
 });
 
 // dev 검증용 전역 노출 — 하네스의 `import('/src/…')` 모듈은 게임 인스턴스와 다를 수

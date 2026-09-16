@@ -75,6 +75,58 @@ export interface SkillEffect {
   mode: 'mult' | 'add';
 }
 
+// ─────────────────────────────────────────────
+// 숙련도 (140차) — 배워도 곧바로 효과가 나지 않는 '기술형' 스킬
+// ─────────────────────────────────────────────
+
+/**
+ * 숙련도를 채우는 행위. 스킬이 나열한 행위를 할 때마다 그 스킬의 숙련도 XP가 쌓인다
+ * (**배운 스킬만** — rank 0이면 아무것도 쌓이지 않는다).
+ */
+export type ProfActionKey =
+  | 'cast' | 'landing' | 'fight' | 'lureAction' | 'jig' | 'egi' | 'surf' | 'chum'
+  | 'forage' | 'trap' | 'butcher' | 'sashimi' | 'cook' | 'craft' | 'ride' | 'firstaid' | 'haggle';
+
+export interface SkillProficiencyDef {
+  actions: ProfActionKey[];
+  /** 행위 1회당 숙련도 XP */
+  xpPerAction: number;
+}
+
+/** skillId → 누적 숙련도 XP (세이브 영속) */
+export type SkillProficiency = Record<string, number>;
+
+/**
+ * 숙련도 레벨 임계(누적 XP) — 인덱스 i 이상이면 레벨 i+1. 최대 5레벨.
+ * 캐스팅(xp 1/회) 기준: 15회면 효과가 처음 나고, 360회면 만숙.
+ */
+export const PROF_LEVEL_XP: readonly number[] = [15, 45, 100, 200, 360];
+export const PROF_MAX_LEVEL = PROF_LEVEL_XP.length;
+
+/**
+ * 숙련도 레벨별 효과 배율 — 인덱스 = 레벨. **레벨 0 = 효과 0**(배우기만 한 상태) …
+ * 4 = 표기값 100%, 5(만숙) = 115%. 표기 수치가 곧 '숙련 4' 값이라 밸런스 표가 그대로 유효하다.
+ */
+export const PROF_EFFECT_SCALE: readonly number[] = [0, 0.35, 0.6, 0.85, 1.0, 1.15];
+
+export function profLevel(xp: number): number {
+  let lv = 0;
+  for (const t of PROF_LEVEL_XP) { if (xp >= t) lv++; else break; }
+  return lv;
+}
+export function profScale(level: number): number {
+  return PROF_EFFECT_SCALE[Math.max(0, Math.min(PROF_MAX_LEVEL, level))] ?? 1;
+}
+/** 다음 레벨까지 필요한 누적 XP (만숙이면 null) */
+export function profNextXp(xp: number): number | null {
+  const lv = profLevel(xp);
+  return lv >= PROF_MAX_LEVEL ? null : PROF_LEVEL_XP[lv];
+}
+/** 해당 레벨의 시작 XP (진행 바용) */
+export function profLevelStartXp(level: number): number {
+  return level <= 0 ? 0 : PROF_LEVEL_XP[Math.min(PROF_MAX_LEVEL, level) - 1];
+}
+
 export interface SkillDef {
   id: string;
   category: SkillCategoryId;
@@ -100,6 +152,11 @@ export interface SkillDef {
    * 패널은 조건 미충족 동안 이름·효과를 숨기고 `???`로만 표시한다.
    */
   hidden?: boolean;
+  /**
+   * 숙련도 (140차) — 있으면 배운 뒤에도 **행위로 숙련도를 채워야** 효과가 난다.
+   * 소비처는 `skillMult(ranks, key, prof)`처럼 숙련도를 함께 넘긴다. 없는 스킬은 즉시 효과.
+   */
+  proficiency?: SkillProficiencyDef;
 }
 
 export interface SkillCategoryDef {

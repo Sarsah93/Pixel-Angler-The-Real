@@ -22,6 +22,7 @@ import {
   REGION_DATABASE, WORLD_NODE_DATABASE, REGION_AREA_NODES, REGION_MAP_GRAPHS, SEAMLESS_REGIONS,
   DATA_ATTRIBUTIONS, LICENSE_LABEL, LICENSE_LABEL_EN,
   CRAFT_BLUEPRINTS, CRAFT_GROUP_LABEL,
+  allChoiceLines,
 } from '@tra/core';
 import { EN_PLACES } from './places.js';
 import { EN_POIS } from './en_pois.js';
@@ -91,6 +92,7 @@ function buildRuntimeDict(): void {
   for (const r of FISHERY_LAW_RULES) { put(r.titleKo, r.titleEn); put(r.textKo, r.textEn); put(r.basisKo, r.basisEn); put(r.whenKo, r.whenEn); }
   for (const m of ['rod', 'trap', 'gift', 'commercial'] as const) { const v = canSell(provenanceOf(m, ''), []); put(v.reasonKo, v.reasonEn); v.alternatives.forEach((a, i) => put(a, v.alternativesEn[i])); }
   for (const [ko, en] of allDialogueLines()) put(ko, en);
+  for (const [ko, en] of allChoiceLines()) put(ko, en);   // 140차 — 선택지·응답
   for (const [ko, en] of Object.entries(EN_PLACES)) put(ko, en);
   // 상호명 보정 사전 — OSM `name:en` 이 없거나(42건) 품질이 낮은 것(지구대 중복 등)을 덮는다.
   // registerNames(OSM)보다 **먼저** 들어가므로 큐레이션이 이긴다.

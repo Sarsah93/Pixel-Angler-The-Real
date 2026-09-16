@@ -342,6 +342,7 @@ export class TrapFieldSystem {
     GameState.updateTrap(t.instanceId, { durability: dur });
     GameState.removeTrap(t.instanceId);
     StoryStore.event({ kind: 'trap' });   // 134차 — 통발 수거 목표
+    GameState.addProficiency('trap');     // 140차 — 매듭법 숙련
     this.returnTrapItem(spec, { ...t, durability: dur });
     GameState.markDirty();
     this.renderAll();

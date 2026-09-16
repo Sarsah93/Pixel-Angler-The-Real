@@ -78,7 +78,7 @@ import type { MiniMarker } from '../ui/RegionHud.js';
 import { DialoguePanel } from '../ui/DialoguePanel.js';
 import { StoryStore } from '../store/StoryStore.js';
 import { STORY_NPC_PLACEMENTS, STORY_PLACES, type StoryNpcPlacement } from '../data/StoryNpcs.js';
-import { getStoryNpc, validateStoryQuests, gearFaultChance, GEAR_REF_PRICE, gearUsable, GEAR_FAULTS } from '@tra/core';
+import { getStoryNpc, validateStoryQuests, validateStoryChoices, getSkillById, profScale, gearFaultChance, GEAR_REF_PRICE, gearUsable, GEAR_FAULTS } from '@tra/core';
 import { playCollapse, type CollapseKind } from '../ui/CollapseOverlay.js';
 import { TUNING, getTrapById, type RegionFishFarms } from '@tra/core';
 import { tilesetPathOf } from '../data/TilesetManifest.js';
@@ -864,7 +864,10 @@ export class RegionFieldScene extends Phaser.Scene {
     StoryStore.event({ kind: 'visit', placeKey: `region:${this.region}` });
     StoryStore.onNotify = (m) => this.hud?.pushLog(m);
     this.placeStoryNpcs();
-    if (import.meta.env.DEV) { const issues = validateStoryQuests(); if (issues.length) console.warn('[Story] 퀘스트 DB 무결성', issues); }
+    if (import.meta.env.DEV) {
+      const issues = [...validateStoryQuests(), ...validateStoryChoices()];
+      if (issues.length) console.warn('[Story] 퀘스트·선택지 DB 무결성', issues);
+    }
     this.playerBody.setVisible(false);
     this.playerBody.setCollideWorldBounds(true);
     this.playerBody.setSize(14, 14);
@@ -2466,6 +2469,7 @@ export class RegionFieldScene extends Phaser.Scene {
     //   착수 무작위 산포는 착수 판정(finishCast) 시점에 적용한다.
     const eff = this.castWeather(dir);
     this.castWeatherEff = eff;
+    GameState.addProficiency('cast');   // 140차 — 롱캐스트·정투·원투·스풀 숙련은 던져야 는다
     this.castProj = launchCast({
       originX, originY,
       dirX: dir.x, dirY: dir.y,
@@ -3170,6 +3174,10 @@ export class RegionFieldScene extends Phaser.Scene {
     //   (스킬 패널 밖에서 열리는 경로가 있어서 큐를 씬이 비운다)
     for (const d of GameState.takeRecentHiddenUnlocks()) {
       this.hud?.pushLog(`[시너지] ${d.nameKo} 해금 — ${d.descKo}`);
+    }
+    // 140차 — 숙련도 레벨업(캐스팅·손질·제작 … 행위로 오른 것)도 같은 자리에서 알린다
+    for (const g of GameState.takeRecentProfUps()) {
+      this.hud?.pushLog(`[숙련] ${getSkillById(g.skillId)?.nameKo ?? g.skillId} 숙련도 Lv.${g.level} — 효과 ×${profScale(g.level).toFixed(2)}`);
     }
     for (const id of r.removed) {
       this.hud?.pushLog(`[상태] ${getStatusEffect(id)?.nameKo ?? id} 증상이 가라앉았습니다`);
@@ -3895,6 +3903,7 @@ export class RegionFieldScene extends Phaser.Scene {
     this.charSprite.setDir(this.playerFacing);
     // 탑승 중엔 걷기 프레임 대신 대기 고정 (다리는 페달링으로 자전거에 가린다)
     this.charSprite.update(this.game.loop.delta, moving && !GameState.isMounted);
+    if (moving && GameState.isMounted) GameState.noteRiding(this.game.loop.delta);   // 140차 — 자전거 숙련
   }
 
   private updateSpriteAndShadow(): void {

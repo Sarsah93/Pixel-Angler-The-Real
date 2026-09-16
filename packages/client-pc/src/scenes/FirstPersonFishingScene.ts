@@ -1713,6 +1713,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       return;
     }
     // 배합 밑밥 1회 25 소모 (U 밑밥 품질 탭에서 배합 — 추후 능력치로 소모량 감소 예정)
+    GameState.addProficiency('chum');   // 140차 — 밑밥 감각 숙련(던진 만큼)
     if (!CoolerStore.consumeChumThrow()) {
       this.flashState('밑밥이 비어 있습니다 — 탑다운 U 밑밥 품질에서 배합하세요');
       this.refreshCoolerUi();

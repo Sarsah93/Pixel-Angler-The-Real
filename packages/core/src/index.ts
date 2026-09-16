@@ -234,6 +234,11 @@ export {
   categoryRanks, categoryMaxRanks, skillUnlockMet, skillUnlockCondMet, skillUnlockMissing,
   describeUnlockCond, newlyUnlockedHiddenSkills,
 } from './db-schema/SkillDatabase.js';
+// 140차 — 숙련도
+export type { ProfActionKey, SkillProficiencyDef, SkillProficiency } from './types/Skills.js';
+export { PROF_LEVEL_XP, PROF_MAX_LEVEL, PROF_EFFECT_SCALE, profLevel, profScale, profNextXp, profLevelStartXp } from './types/Skills.js';
+export type { ProfGain } from './db-schema/SkillDatabase.js';
+export { proficiencySkills, skillEffectScale, profGain } from './db-schema/SkillDatabase.js';
 export type { XpActivity } from './types/Progression.js';
 export {
   MAX_LEVEL, xpToNext, cumulativeXp, rarityBaseXp, catchXp, activityXp, GRADE_XP_MULT,
@@ -489,6 +494,17 @@ export type {
   JournalPageDef, JournalPageState, StoryNpcDef, StoryArcDef, ReputationState,
 } from './types/Story.js';
 export { seasonOfMonth, SEASON_LABEL, createDefaultReputation, clampHarbor, clampSea } from './types/Story.js';
+// 140차 — 대화 선택지 · 우호도
+export type { ChoiceOutcome, ChoiceRequires, QuestChoiceDef, QuestChoiceSet, AffinityTier, AffinityState } from './types/Story.js';
+export {
+  AFFINITY_MIN, AFFINITY_MAX, clampAffinity, affinityTier, AFFINITY_TIER_LABEL, affinityRewardMult,
+  affinityJobWageMult, canOfferSubQuest, canOfferJobs, affinityPips,
+} from './rules/Affinity.js';
+export type { ChoiceCtx } from './db-schema/StoryChoices.js';
+export {
+  STORY_CHOICE_OVERRIDES, toneOfferChoices, lessonCategoryOf, payChoiceCoins, defaultCompleteChoices, choicesFor,
+  choiceVisible, describeOutcomeKo, allChoiceLines, validateStoryChoices,
+} from './db-schema/StoryChoices.js';
 export type { FisheryLawRule } from './rules/FisheryLaw.js';
 export {
   FISHERY_LAW_RULES, getFisheryLawRule, NON_FISHER_GEAR_WHITELIST, VILLAGE_FISHERY_TARGETS,

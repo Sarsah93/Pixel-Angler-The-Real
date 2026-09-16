@@ -1,107 +1,187 @@
 /**
  * @file DialoguePanel.ts
- * @description 스토리 NPC 대화 패널 (134차) — 발주/진행/완료를 한 패널로.
+ * @description 탑다운 필드 NPC 대화창 (134차 신설 · **140차 재작성** — 하단 대화 박스 + 선택지 분기 + 우호도).
  *
- * 우선순위: 완료 가능한 퀘 > 진행 중인 퀘 > 발주 가능한 퀘 > 잡담(idle).
- * - 발주: 대사 + **3톤 선택지**(무뚝뚝/솔직/너스레 — 결과 동일, §5-1) → 수락.
- * - 진행: 목표 목록(✓/·). `manual` 목표는 [다음 단계 진행]으로 한 단계씩, 자동 목표는 필드에서.
- * - 완료: 완료 대사 + [보상 받기].
- * 대화를 여는 순간 `talk` 이벤트를 흘려 talk 목표는 자동으로 닫힌다.
+ * 형태: 화면 하단에 걸치는 가로 박스. 열리는 순간 **주변이 어두워지고**(모달 딤) 왼쪽에 NPC 초상
+ * (실게임 시트 'down' 프레임을 5배로 — 별도 초상 아트 없음), 그 아래 **우호도 게이지**(−5~+5 눈금 + 티어).
+ * 오른쪽은 대사 + **선택지 목록**(↑↓ Enter · 마우스). 선택지는 core `choicesFor(q)`가 준다 —
+ *  - 발주: 톤(우호도 미세 차이) → 수락.
+ *  - 완료: **품삯 / 가르침 / 사양 / 청탁 …** — 고른 것에 따라 재화·숙련도·스킬 포인트·평판·우호도가 갈린다.
+ *    미리보기 한 줄(`describeOutcomeKo`)을 라벨 옆에 흐리게 붙여 "왜 잃었는지 모르는 선택"을 만들지 않는다.
+ * 우선순위는 종전대로 완료 가능 > 진행 중 > 발주 > 잡담. 우호도가 낮으면 서브 발주가 감춰지고
+ * 그 사실을 대사로 말한다(조용히 사라지지 않는다). 일감(품삯)은 선택지 [일감 보기]로 들어간다.
  *
  * 모달(dim) · depth 940 — ConfirmDialog(950) 아래, 일반 팝업(800대) 위. 텍스트는 wordWrap + 흐름 배치(§4).
  */
 
 import Phaser from 'phaser';
-import { getStoryNpc, TUNING, type StoryQuestDef } from '@tra/core';
+import {
+  getStoryNpc, characterOf, describeOutcomeKo, affinityTier, AFFINITY_TIER_LABEL, affinityPips,
+  type StoryQuestDef, type QuestChoiceDef,
+} from '@tra/core';
 import { DraggablePanel } from './DraggablePanel.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { StoryStore } from '../store/StoryStore.js';
-import { dialogueOf, NPC_IDLE, TONE_CHOICES } from '../data/StoryDialogue.js';
+import { dialogueOf, NPC_IDLE } from '../data/StoryDialogue.js';
 import { enforceTextBounds, clampTextWidth } from './TextFit.js';
+import { ensureCharSheet, charFrameName } from './CharacterSprite.js';
 
-const W = 640;
-/** 기본 높이 (대사 + 퀘스트 + [닫기]) */
-const H_BASE = 420;
-/** 일감 1건이 차지하는 세로 */
-const JOB_ROW_H = 46;
+const W = 1040;
+const H = 312;
 const FONT = '"Noto Sans KR", sans-serif';
+/** 초상 열 폭 — 시트 셀 32 × 5배 = 160 + 여백 */
+const PORTRAIT_W = 200;
+const PORTRAIT_SCALE = 5;
+const TEXT_X = PORTRAIT_W + 8;
+const TEXT_W = W - TEXT_X - 20;
+const CHOICE_H = 30;
+const COL = { text: '#e8f4fd', dim: '#8fa6bd', accent: '#ffe9a0', ok: '#7fe0b0', warn: '#ffb45a', hint: '#7f95aa' };
+
+interface ChoiceRow { label: string; hint?: string; action: () => void; disabled?: boolean }
+
+type View = 'main' | 'jobs' | 'reply';
 
 export class DialoguePanel extends DraggablePanel {
   private bodyC?: Phaser.GameObjects.Container;   // ⚠ `body`는 Phaser Container 예약 프로퍼티(44차 함정)
   private readonly npcId: string;
   private readonly onClose: () => void;
-  /** 현재 지역 id — 일감은 지역별로 다르다 */
   private readonly regionId: string;
-  /** 직전 근무 결과 (한 줄 안내 — 다음 render 까지 유지) */
+  private view: View = 'main';
+  /** 응답 화면(선택 직후) — 대사 + 결과 줄 */
+  private reply: { line: string; lines: string[] } | null = null;
+  private rows: ChoiceRow[] = [];
+  private cursor = 0;
+  private rowObjs: { g: Phaser.GameObjects.Graphics; t: Phaser.GameObjects.Text; h?: Phaser.GameObjects.Text; row: ChoiceRow; cy: number }[] = [];
   private lastWorkMsg = '';
-
-  /**
-   * 패널 높이 — 일감이 있는 NPC만 그만큼 키운다.
-   * 고정 470으로 두면 일감 없는 NPC(대부분)에서 바닥에 빈 공간이 크게 남는다(135차 실렌더).
-   */
-  private static heightFor(npcId: string, regionId: string): number {
-    const n = StoryStore.jobsOfNpc(npcId, regionId).length;
-    return n === 0 ? H_BASE : Math.min(GAME_HEIGHT - 40, H_BASE + 30 + n * JOB_ROW_H);
-  }
+  private readonly keyHandler: (ev: KeyboardEvent) => void;
 
   constructor(scene: Phaser.Scene, npcId: string, onClose: () => void, regionId = '') {
     const npc = getStoryNpc(npcId);
-    const H = DialoguePanel.heightFor(npcId, regionId);
     super(scene, {
-      x: (GAME_WIDTH - W) / 2, y: (GAME_HEIGHT - H) / 2,
-      width: W, height: H, title: npc?.nameKo ?? npcId, onClose, dim: true, depth: 940,
+      x: (GAME_WIDTH - W) / 2, y: GAME_HEIGHT - H - 22,
+      width: W, height: H, title: `${npc?.nameKo ?? npcId}  ·  ${npc?.roleKo ?? ''}`, onClose, dim: true, depth: 940,
     });
     this.npcId = npcId;
     this.onClose = onClose;
     this.regionId = regionId;
     StoryStore.event({ kind: 'talk', npcId });
+    this.keyHandler = (ev: KeyboardEvent) => this.onKey(ev);
+    scene.input.keyboard?.on('keydown', this.keyHandler);
     this.render();
     this.applyFix();
   }
 
+  override destroy(fromScene?: boolean): void {
+    this.scene?.input.keyboard?.off('keydown', this.keyHandler);
+    super.destroy(fromScene);
+  }
+
+  private onKey(ev: KeyboardEvent): void {
+    if (this.rows.length === 0) return;
+    if (ev.code === 'ArrowUp') { this.moveCursor(-1); ev.preventDefault(); }
+    else if (ev.code === 'ArrowDown') { this.moveCursor(1); ev.preventDefault(); }
+    else if (ev.code === 'Enter' || ev.code === 'Space') {
+      const r = this.rows[this.cursor];
+      if (r && !r.disabled) { ev.preventDefault(); r.action(); }
+    }
+  }
+  private moveCursor(d: number): void {
+    const n = this.rows.length;
+    for (let i = 0; i < n; i++) {
+      this.cursor = (this.cursor + d + n) % n;
+      if (!this.rows[this.cursor].disabled) break;
+    }
+    this.paintCursor();
+  }
+  private paintCursor(): void {
+    this.rowObjs.forEach((o, i) => {
+      const sel = i === this.cursor;
+      o.g.clear();
+      o.g.fillStyle(sel ? 0x1b3a52 : 0x0e1c2a, sel ? 0.95 : 0.7);
+      o.g.fillRect(TEXT_X, o.cy - CHOICE_H / 2, TEXT_W, CHOICE_H);
+      if (sel) { o.g.fillStyle(0xd8b25f, 1); o.g.fillRect(TEXT_X, o.cy - CHOICE_H / 2, 3, CHOICE_H); }
+      o.t.setColor(o.row.disabled ? '#5a6a78' : sel ? '#ffffff' : COL.text);
+    });
+  }
+
+  // ═══════════ 렌더 ═══════════
   private render(): void {
     this.bodyC?.destroy();
+    this.rows = []; this.rowObjs = [];
     const c = this.scene.add.container(0, this.contentTop);
     this.bodyC = c;
     this.add(c);
-    const npc = getStoryNpc(this.npcId);
-    let y = 6;
-    const role = this.scene.add.text(16, y, npc?.roleKo ?? '', { fontFamily: FONT, fontSize: '11px', color: '#7fb8d8' });
-    c.add(role); y += role.height + 6;
+    this.renderPortrait(c);
+
+    let y = 8;
     if (this.lastWorkMsg) {
-      const w = this.scene.add.text(16, y, this.lastWorkMsg, {
-        fontFamily: FONT, fontSize: '11px', color: '#ffd98a', wordWrap: { width: W - 32 },
-      });
-      c.add(w); y += w.height + 4;
+      const w = this.scene.add.text(TEXT_X, y, this.lastWorkMsg, { fontFamily: FONT, fontSize: '11px', color: COL.accent, wordWrap: { width: TEXT_W } });
+      c.add(w); y += w.height + 6;
     }
-    y += 4;
 
-    const { completable, active, offer } = StoryStore.questsForNpc(this.npcId);
-    if (completable[0]) y = this.renderComplete(c, completable[0], y);
-    else if (active[0]) y = this.renderActive(c, active[0], y);
-    else if (offer[0]) y = this.renderOffer(c, offer[0], y);
-    else y = this.renderIdle(c, y);
-
-    this.renderJobs(c, y);
-
-    this.addBtn(c, W - 16 - 60, this.panelH - this.contentTop - 30, 120, '닫기', 0x1f3045, 0x4a6a8a, '#8faabf', () => this.onClose());
+    if (this.view === 'reply' && this.reply) y = this.renderReply(c, y);
+    else if (this.view === 'jobs') y = this.renderJobs(c, y);
+    else {
+      const { completable, active, offer, refusedSub } = StoryStore.questsForNpc(this.npcId);
+      if (completable[0]) y = this.renderComplete(c, completable[0], y);
+      else if (active[0]) y = this.renderActive(c, active[0], y);
+      else if (offer[0]) y = this.renderOffer(c, offer[0], y);
+      else y = this.renderIdle(c, y, refusedSub.length > 0);
+    }
+    this.renderChoiceRows(c, y);
     enforceTextBounds(c, W - 8, 'DialoguePanel');
     this.applyFix();
   }
 
-  private lines(c: Phaser.GameObjects.Container, y: number, lines: readonly (readonly [string, string])[], color = '#e8f4fd'): number {
+  /** 초상 + 우호도 게이지 */
+  private renderPortrait(c: Phaser.GameObjects.Container): void {
+    const g = this.scene.add.graphics();
+    const stageH = this.panelH - this.contentTop - 12;
+    g.fillStyle(0x08121c, 0.9); g.fillRect(8, 4, PORTRAIT_W - 16, stageH);
+    g.lineStyle(1, 0x2c5878, 1); g.strokeRect(8, 4, PORTRAIT_W - 16, stageH);
+    // 발판 그림자
+    g.fillStyle(0x000000, 0.35); g.fillEllipse(PORTRAIT_W / 2, 4 + 32 * PORTRAIT_SCALE - 14, 90, 14);
+    c.add(g);
+    const key = ensureCharSheet(this.scene, characterOf(this.npcId), PORTRAIT_SCALE);
+    const img = this.scene.add.image(PORTRAIT_W / 2, 4 + 32 * PORTRAIT_SCALE - 16, key, charFrameName('down', 0)).setOrigin(0.5, 1);
+    c.add(img);
+
+    // 우호도 — 11눈금(−5~+5) 바 + 티어 라벨
+    const aff = StoryStore.affinityOf(this.npcId);
+    const tier = affinityTier(aff);
+    const lab = AFFINITY_TIER_LABEL[tier];
+    const pips = affinityPips(aff);
+    const barY = 4 + 32 * PORTRAIT_SCALE + 6;
+    const pipW = 12, gap = 2, x0 = PORTRAIT_W / 2 - (11 * pipW + 10 * gap) / 2;
+    const bar = this.scene.add.graphics();
+    for (let i = -5; i <= 5; i++) {
+      const x = x0 + (i + 5) * (pipW + gap);
+      const on = i === 0 ? true : i < 0 ? pips <= i : pips >= i;
+      const col = i === 0 ? 0x9fb4c8 : i < 0 ? 0xe0605a : 0xffd257;
+      bar.fillStyle(on ? col : 0x1b2a3a, on ? 1 : 0.9);
+      bar.fillRect(x, barY, pipW, 8);
+      bar.lineStyle(1, 0x06090f, 1); bar.strokeRect(x, barY, pipW, 8);
+    }
+    c.add(bar);
+    const t = this.scene.add.text(PORTRAIT_W / 2, barY + 14, `우호도 ${lab.ko}  (${aff >= 0 ? '+' : ''}${aff.toFixed(2)})`, {
+      fontFamily: FONT, fontSize: '11px', color: `#${lab.color.toString(16).padStart(6, '0')}`,
+    }).setOrigin(0.5, 0);
+    c.add(t);
+  }
+
+  private lines(c: Phaser.GameObjects.Container, y: number, lines: readonly (readonly [string, string])[], color = COL.text): number {
     for (const [ko] of lines) {
-      const t = this.scene.add.text(16, y, `"${ko}"`, { fontFamily: FONT, fontSize: '13px', color, lineSpacing: 5, wordWrap: { width: W - 32 } });
-      c.add(t); y += t.height + 8;
+      const t = this.scene.add.text(TEXT_X, y, `"${ko}"`, { fontFamily: FONT, fontSize: '13px', color, lineSpacing: 4, wordWrap: { width: TEXT_W } });
+      c.add(t); y += t.height + 6;
     }
     return y;
   }
 
   private questHeader(c: Phaser.GameObjects.Container, q: StoryQuestDef, y: number, chip: string, chipBg: string): number {
-    const h = this.scene.add.text(16, y, `${q.kind === 'main' ? '메인' : '서브'} ${q.id} · ${q.titleKo}`, { fontFamily: FONT, fontSize: '14px', color: '#7fe0b0', fontStyle: 'bold' });
-    const ch = this.scene.add.text(W - 16, y + 1, chip, { fontFamily: FONT, fontSize: '11px', color: '#0b1620', fontStyle: 'bold', backgroundColor: chipBg, padding: { x: 6, y: 2 } }).setOrigin(1, 0);
+    const h = this.scene.add.text(TEXT_X, y, `${q.kind === 'main' ? '메인' : '서브'} ${q.id} · ${q.titleKo}`, { fontFamily: FONT, fontSize: '13px', color: COL.ok, fontStyle: 'bold' });
+    const ch = this.scene.add.text(W - 20, y + 1, chip, { fontFamily: FONT, fontSize: '10px', color: '#0b1620', fontStyle: 'bold', backgroundColor: chipBg, padding: { x: 6, y: 2 } }).setOrigin(1, 0);
     c.add([h, ch]);
-    return y + h.height + 8;
+    return y + h.height + 6;
   }
 
   private objectives(c: Phaser.GameObjects.Container, q: StoryQuestDef, y: number): number {
@@ -110,27 +190,37 @@ export class DialoguePanel extends DraggablePanel {
       const cur = StoryStore.progress(q.id)?.obj[i] ?? 0;
       const tgt = StoryStore.objectiveTarget(o);
       const prog = tgt > 1 ? ` (${Math.min(cur, tgt).toLocaleString()}/${tgt.toLocaleString()})` : '';
-      const t = this.scene.add.text(24, y, `${done ? '✓' : '·'} ${o.labelKo}${prog}${o.manual && !done ? '  — 대화로 진행' : ''}`, {
-        fontFamily: FONT, fontSize: '12px', color: done ? '#7fe0b0' : '#d0e8f5', wordWrap: { width: W - 48 },
+      const t = this.scene.add.text(TEXT_X + 8, y, `${done ? '✓' : '·'} ${o.labelKo}${prog}${o.manual && !done ? '  — 대화로 진행' : ''}`, {
+        fontFamily: FONT, fontSize: '11px', color: done ? COL.ok : '#d0e8f5', wordWrap: { width: TEXT_W - 8 },
       });
-      c.add(t); y += t.height + 4;
+      c.add(t); y += t.height + 2;
     });
-    return y + 6;
+    return y + 4;
+  }
+
+  /** 선택지 → 행. 라벨 + 흐린 미리보기 */
+  private choiceRow(q: StoryQuestDef, ch: QuestChoiceDef, stage: 'offer' | 'complete'): ChoiceRow {
+    const hint = ch.hintKo ?? describeOutcomeKo(ch.outcome);
+    return {
+      label: ch.labelKo, hint: hint || undefined,
+      action: () => {
+        const ok = stage === 'offer' ? StoryStore.accept(q.id, ch.id) : StoryStore.complete(q.id, ch.id);
+        if (!ok) { this.lastWorkMsg = '지금은 진행할 수 없습니다.'; this.render(); return; }
+        this.reply = { line: ch.replyKo, lines: stage === 'complete' ? StoryStore.lastOutcomeLines : [] };
+        this.view = 'reply';
+        this.render();
+      },
+    };
   }
 
   private renderOffer(c: Phaser.GameObjects.Container, q: StoryQuestDef, y: number): number {
     y = this.questHeader(c, q, y, '새 의뢰', '#ffd257');
     y = this.lines(c, y, dialogueOf(q.id).offer);
-    const desc = this.scene.add.text(16, y, q.descKo, { fontFamily: FONT, fontSize: '11px', color: '#9fb8cc', wordWrap: { width: W - 32 } });
-    c.add(desc); y += desc.height + 10;
-    // 3톤 선택지 — 전부 수락 (호감도 미세 차이는 후속)
-    TONE_CHOICES.forEach(([ko], i) => {
-      this.addBtn(c, 16 + i * 204 + 98, y + 16, 196, ko, 0x0d4a2e, 0x4af2a1, '#4af2a1', () => {
-        StoryStore.accept(q.id);
-        this.render();
-      }, '12px');
-    });
-    return y + 40;
+    const desc = this.scene.add.text(TEXT_X, y, q.descKo, { fontFamily: FONT, fontSize: '11px', color: COL.dim, wordWrap: { width: TEXT_W } });
+    c.add(desc); y += desc.height + 6;
+    for (const ch of StoryStore.visibleChoices(q, 'offer')) this.rows.push(this.choiceRow(q, ch, 'offer'));
+    this.pushCommonRows();
+    return y;
   }
 
   private renderActive(c: Phaser.GameObjects.Container, q: StoryQuestDef, y: number): number {
@@ -139,12 +229,9 @@ export class DialoguePanel extends DraggablePanel {
     y = this.objectives(c, q, y);
     const idx = q.objectives.findIndex((o, i) => o.manual && !StoryStore.objectiveDone(q, i));
     if (idx >= 0) {
-      this.addBtn(c, 16 + 100, y + 16, 200, '다음 단계 진행', 0x14425e, 0x33b0e0, '#aee8ff', () => {
-        StoryStore.advanceManual(q.id, idx);
-        this.render();
-      });
-      y += 40;
+      this.rows.push({ label: `[다음 단계 진행] ${q.objectives[idx].labelKo}`, action: () => { StoryStore.advanceManual(q.id, idx); this.render(); } });
     }
+    this.pushCommonRows();
     return y;
   }
 
@@ -154,82 +241,99 @@ export class DialoguePanel extends DraggablePanel {
     const rw: string[] = [`경험치 +${q.xp.toLocaleString()}`];
     if (q.rewards?.coins) rw.push(`${q.rewards.coins.toLocaleString()}원`);
     if (q.rewards?.licenses?.length) rw.push(`자격 ${q.rewards.licenses.length}종`);
-    const r = this.scene.add.text(16, y, `보상: ${rw.join(' · ')}`, { fontFamily: FONT, fontSize: '12px', color: '#ffd98a', wordWrap: { width: W - 32 } });
-    c.add(r); y += r.height + 10;
-    this.addBtn(c, 16 + 100, y + 16, 200, '보상 받기', 0x0d4a2e, 0x4af2a1, '#4af2a1', () => {
-      StoryStore.complete(q.id);
-      this.render();
-    });
-    return y + 40;
+    if (q.rewards?.items?.length) rw.push(`아이템 ${q.rewards.items.length}종`);
+    const r = this.scene.add.text(TEXT_X, y, `기본 보상: ${rw.join(' · ')}   — 아래 답에 따라 덤이 갈립니다`, { fontFamily: FONT, fontSize: '11px', color: COL.accent, wordWrap: { width: TEXT_W } });
+    c.add(r); y += r.height + 6;
+    for (const ch of StoryStore.visibleChoices(q, 'complete')) this.rows.push(this.choiceRow(q, ch, 'complete'));
+    return y;
   }
 
-  private renderIdle(c: Phaser.GameObjects.Container, y: number): number {
+  private renderIdle(c: Phaser.GameObjects.Container, y: number, refused: boolean): number {
     const line = NPC_IDLE[this.npcId] ?? (['…', '…'] as const);
     y = this.lines(c, y, [line], '#c8d8e4');
-    const hint = this.scene.add.text(16, y, '지금 받을 수 있는 의뢰가 없습니다. 레벨을 올리거나 다른 의뢰를 먼저 끝내세요.', { fontFamily: FONT, fontSize: '11px', color: '#8a97a8', wordWrap: { width: W - 32 } });
-    c.add(hint);
-    return y + hint.height + 8;
+    const hintTxt = refused
+      ? '"…부탁할 일이 있긴 한데, 지금은 너한테 맡길 마음이 안 든다." — 우호도가 낮아 의뢰를 내주지 않습니다. 일감을 돕거나 다른 선택으로 마음을 돌리세요.'
+      : '지금 받을 수 있는 의뢰가 없습니다. 레벨을 올리거나 다른 의뢰를 먼저 끝내세요.';
+    const hint = this.scene.add.text(TEXT_X, y, hintTxt, { fontFamily: FONT, fontSize: '11px', color: refused ? COL.warn : COL.dim, wordWrap: { width: TEXT_W } });
+    c.add(hint); y += hint.height + 6;
+    this.pushCommonRows();
+    return y;
+  }
+
+  private renderReply(c: Phaser.GameObjects.Container, y: number): number {
+    const r = this.reply!;
+    y = this.lines(c, y, [[r.line, r.line]]);
+    if (r.lines.length) {
+      const t = this.scene.add.text(TEXT_X, y, `결과: ${r.lines.join(' · ')}`, { fontFamily: FONT, fontSize: '11px', color: COL.accent, wordWrap: { width: TEXT_W } });
+      c.add(t); y += t.height + 6;
+    }
+    this.rows.push({ label: '계속', action: () => { this.view = 'main'; this.reply = null; this.render(); } });
+    this.rows.push({ label: '대화 끝내기', action: () => this.onClose() });
+    return y;
+  }
+
+  /** 일감 보기 · 닫기 — 모든 기본 화면 공통 */
+  private pushCommonRows(): void {
+    const jobs = StoryStore.jobsOfNpc(this.npcId, this.regionId);
+    if (jobs.length) {
+      const can = jobs.filter((j) => !j.locked && j.remaining > 0).length;
+      this.rows.push({ label: `일감 보기 (${jobs.length}건${can ? ` · 지금 ${can}건 가능` : ''})`, action: () => { this.view = 'jobs'; this.render(); } });
+    }
+    this.rows.push({ label: '대화 끝내기', action: () => this.onClose() });
   }
 
   /**
-   * 일감(품삯) 스트립 — 135차. NPC가 주는 일용직을 대화 하단에 상시 노출한다.
-   * 퀘스트와 독립된 **반복 수입원**이라, 낚싯대 어획물을 못 파는 구간에서도 생계가 돌아간다(§3-1).
-   * 공간이 모자라면(대사가 길면) 한 줄 안내로 줄여 겹침을 만들지 않는다 (§4 흐름 배치).
+   * 일감(품삯) 화면 — 135차 스트립을 선택지 행으로 옮겼다. 품삯은 우호도 배율이 곱해진 **지급될 값** 그대로 표기.
    */
-  private renderJobs(c: Phaser.GameObjects.Container, yIn: number): void {
-    const rows = StoryStore.jobsOfNpc(this.npcId, this.regionId);
-    if (rows.length === 0) return;
-    const btnY = this.panelH - this.contentTop - 30;      // [닫기] 줄
-    let y = yIn + 12;                                     // 퀘스트 블록 바로 아래로 흐른다
-    const sep = this.scene.add.graphics();
-    sep.lineStyle(1, 0x2a4256, 0.9);
-    sep.lineBetween(16, y - 6, W - 16, y - 6);
-    c.add(sep);
-    const head = this.scene.add.text(16, y, '일감 (품삯)', { fontFamily: FONT, fontSize: '12px', color: '#ffd257', fontStyle: 'bold' });
-    c.add(head); y += head.height + 4;
-
-    for (const { job, remaining, locked } of rows) {
-      if (y + 40 > btnY - 6) {           // 자리 부족 — 요약 한 줄로 대체
-        const more = this.scene.add.text(16, y, `일감 ${rows.length}건 — 의뢰를 정리한 뒤 다시 말을 걸어 주세요.`,
-          { fontFamily: FONT, fontSize: '11px', color: '#8a97a8' });
-        c.add(more);
-        return;
-      }
+  private renderJobs(c: Phaser.GameObjects.Container, y: number): number {
+    const head = this.scene.add.text(TEXT_X, y, '일감 (품삯) — 퀘스트와 별개인 반복 수입. 우호도가 좋으면 품삯이 오르고, 적대하면 일을 주지 않습니다.', {
+      fontFamily: FONT, fontSize: '11px', color: COL.accent, wordWrap: { width: TEXT_W },
+    });
+    c.add(head); y += head.height + 6;
+    for (const { job, remaining, locked } of StoryStore.jobsOfNpc(this.npcId, this.regionId)) {
       const can = !locked && remaining > 0;
-      const wage = Math.round(job.wage * TUNING.job.wageMult).toLocaleString();
-      const info = this.scene.add.text(16, y,
-        `${job.nameKo} — ${wage}원 · 피로 +${Math.round(job.fatigue * TUNING.job.costMult)} · 오늘 ${remaining}/${job.perDay}회`,
-        { fontFamily: FONT, fontSize: '11px', color: can ? '#cfe3f2' : '#7a8794', wordWrap: { width: W - 180 } });
-      c.add(info);
-      const sub = this.scene.add.text(16, y + info.height + 2,
-        locked ?? (remaining > 0 ? job.descKo : '오늘 몫은 다 했습니다 — 자고 나서 다시 오세요.'),
-        { fontFamily: FONT, fontSize: '10px', color: locked ? '#ff9a5a' : '#8a97a8', wordWrap: { width: W - 180 } });
-      c.add(sub);
-      this.addBtn(c, W - 16 - 70, y + 16, 140, can ? '일하기' : '불가',
-        can ? 0x14425e : 0x1c2530, can ? 0x33b0e0 : 0x3a4a58, can ? '#aee8ff' : '#5a6a78',
-        () => { if (can) this.doWork(job.id); }, '12px');
-      y += Math.max(40, info.height + sub.height + 10);
+      const wage = StoryStore.jobWage(job).toLocaleString();
+      this.rows.push({
+        label: `${job.nameKo} — ${wage}원 · 오늘 ${remaining}/${job.perDay}회`,
+        hint: locked ?? (remaining > 0 ? job.descKo : '오늘 몫은 다 했습니다 — 자고 나서 다시 오세요.'),
+        disabled: !can,
+        action: () => {
+          const res = StoryStore.work(job.id);
+          this.lastWorkMsg = res.ok ? `${res.flavorKo ?? ''} (품삯 ${(res.wage ?? 0).toLocaleString()}원)` : `일할 수 없습니다 — ${res.reason ?? ''}`;
+          this.render();
+        },
+      });
     }
+    this.rows.push({ label: '돌아가기', action: () => { this.view = 'main'; this.render(); } });
+    return y;
   }
 
-  private doWork(jobId: string): void {
-    const res = StoryStore.work(jobId);
-    this.lastWorkMsg = res.ok
-      ? `${res.flavorKo ?? ''} (품삯 ${(res.wage ?? 0).toLocaleString()}원)`
-      : `일할 수 없습니다 — ${res.reason ?? ''}`;
-    this.render();
-  }
-
-  private addBtn(c: Phaser.GameObjects.Container, cx: number, cy: number, w: number, label: string, fill: number, stroke: number, color: string, onClick: () => void, fontSize = '13px'): void {
-    const g = this.scene.add.graphics();
-    g.fillStyle(fill, 0.95); g.fillRoundedRect(cx - w / 2, cy - 15, w, 30, 4);
-    g.lineStyle(1.5, stroke, 0.95); g.strokeRoundedRect(cx - w / 2, cy - 15, w, 30, 4);
-    const t = this.scene.add.text(cx, cy, label, { fontFamily: FONT, fontSize, color, fontStyle: 'bold' }).setOrigin(0.5);
-    clampTextWidth(t, w - 12);   // 3톤 선택지가 196px 버튼을 넘치던 것(실렌더) — 한 줄 고정 행은 말줄임
-    const hit = this.scene.add.rectangle(cx, cy, w, 30, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
-    hit.on('pointerover', () => t.setColor('#ffffff'));
-    hit.on('pointerout', () => t.setColor(color));
-    hit.on('pointerdown', onClick);
-    c.add([g, t, hit]);
+  /** 선택지 행 렌더 — 하단에서 위로 쌓지 않고 텍스트 아래에서 흐른다. 넘치면 행 간격을 줄인다 */
+  private renderChoiceRows(c: Phaser.GameObjects.Container, yIn: number): void {
+    const bottom = this.panelH - this.contentTop - 10;
+    const n = this.rows.length;
+    if (n === 0) return;
+    const avail = bottom - yIn;
+    const step = Math.max(22, Math.min(CHOICE_H + 4, Math.floor(avail / n)));
+    let y = Math.max(yIn, bottom - n * step) + step / 2;
+    if (this.cursor >= n) this.cursor = 0;
+    this.rows.forEach((row, i) => {
+      const g = this.scene.add.graphics();
+      const t = this.scene.add.text(TEXT_X + 12, y, row.label, { fontFamily: FONT, fontSize: '12px', color: COL.text }).setOrigin(0, 0.5);
+      const maxLabel = row.hint ? Math.floor(TEXT_W * 0.55) : TEXT_W - 24;
+      clampTextWidth(t, maxLabel);
+      let h: Phaser.GameObjects.Text | undefined;
+      if (row.hint) {
+        h = this.scene.add.text(TEXT_X + TEXT_W - 10, y, row.hint, { fontFamily: FONT, fontSize: '10px', color: COL.hint }).setOrigin(1, 0.5);
+        clampTextWidth(h, TEXT_W - maxLabel - 30);
+      }
+      const hit = this.scene.add.rectangle(TEXT_X + TEXT_W / 2, y, TEXT_W, step - 2, 0xffffff, 0.001).setInteractive({ useHandCursor: !row.disabled });
+      hit.on('pointerover', () => { if (!row.disabled) { this.cursor = i; this.paintCursor(); } });
+      hit.on('pointerdown', () => { if (!row.disabled) row.action(); });
+      c.add([g, t, hit]); if (h) c.add(h);
+      this.rowObjs.push({ g, t, h, row, cy: y });
+      y += step;
+    });
+    this.paintCursor();
   }
 }

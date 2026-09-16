@@ -25,9 +25,10 @@
 
 import { MAX_LEVEL } from '../types/Progression.js';
 import { SKILL_POINTS_PER_LEVEL } from '../types/Skills.js';
+import { profLevel, profScale } from '../types/Skills.js';
 import type {
   SkillCategoryDef, SkillCategoryId, SkillDef, SkillEffectKey, SkillRanks,
-  SkillUnlockCond, SkillUnlockCtx,
+  SkillUnlockCond, SkillUnlockCtx, SkillProficiency, SkillProficiencyDef, ProfActionKey,
 } from '../types/Skills.js';
 
 export const SKILL_CATEGORIES: SkillCategoryDef[] = [
@@ -361,22 +362,88 @@ export function skillPrereqsMet(def: SkillDef, ranks: SkillRanks): boolean {
   return def.requires.every((q) => (ranks[q.id] ?? 0) >= q.rank);
 }
 
-/** 효과 배율 — 1 + Σ(perRank × rank) (mode 'mult'만) */
-export function skillMult(ranks: SkillRanks, key: SkillEffectKey): number {
+// ─────────────────────────────────────────────
+// 숙련도 (140차) — '기술형' 스킬은 배운 뒤 행위로 채워야 효과가 난다
+// ─────────────────────────────────────────────
+
+/**
+ * 숙련도가 붙는 스킬 후보 — **몸으로 익히는 기술**만. 최대치·저항·확률 보정 같은
+ * 체질형(stamina_max·cold_resist·immunity·hunger_max …)은 배우는 즉시 적용된다.
+ * xpPerAction은 행위 빈도에 반비례 — 캐스팅은 수백 번, 손질은 수십 번이 자연스러운 세션 빈도.
+ */
+const PROFICIENCY_OF: Record<string, SkillProficiencyDef> = {
+  fish_cast:     { actions: ['cast'], xpPerAction: 1 },
+  fish_scatter:  { actions: ['cast'], xpPerAction: 1 },
+  fish_surf:     { actions: ['surf', 'cast'], xpPerAction: 1 },
+  fish_spool:    { actions: ['cast'], xpPerAction: 1 },
+  fish_lure:     { actions: ['lureAction'], xpPerAction: 1 },
+  fish_jig:      { actions: ['jig'], xpPerAction: 2 },
+  fish_egi:      { actions: ['egi'], xpPerAction: 2 },
+  fish_hook:     { actions: ['landing'], xpPerAction: 3 },
+  fish_drag:     { actions: ['fight'], xpPerAction: 2 },
+  fish_chum:     { actions: ['chum'], xpPerAction: 2 },
+  gath_hands:    { actions: ['forage'], xpPerAction: 3 },
+  gath_speed:    { actions: ['forage'], xpPerAction: 3 },
+  gath_knot:     { actions: ['trap'], xpPerAction: 4 },
+  life_fillet:   { actions: ['butcher', 'sashimi'], xpPerAction: 4 },
+  life_cook:     { actions: ['cook'], xpPerAction: 4 },
+  life_firstaid: { actions: ['firstaid'], xpPerAction: 6 },
+  drv_bike:      { actions: ['ride'], xpPerAction: 1 },
+  eco_haggle:    { actions: ['haggle'], xpPerAction: 2 },
+  craft_knot:    { actions: ['craft'], xpPerAction: 4 },
+  craft_tools:   { actions: ['craft'], xpPerAction: 4 },
+  craft_sinker:  { actions: ['craft'], xpPerAction: 4 },
+  craft_medic:   { actions: ['craft', 'firstaid'], xpPerAction: 4 },
+};
+for (const d of SKILL_DATABASE) { const pf = PROFICIENCY_OF[d.id]; if (pf) d.proficiency = pf; }
+
+/** 숙련도가 붙은 스킬 목록 */
+export function proficiencySkills(): SkillDef[] {
+  return SKILL_DATABASE.filter((d) => d.proficiency);
+}
+
+/** 스킬의 현재 효과 배율(0~1.15) — 숙련도 없는 스킬은 항상 1 */
+export function skillEffectScale(d: SkillDef, prof?: SkillProficiency): number {
+  if (!d.proficiency) return 1;
+  return profScale(profLevel(prof?.[d.id] ?? 0));
+}
+
+export interface ProfGain { skillId: string; xp: number; level: number; leveled: boolean }
+
+/**
+ * 행위 1회 → 배운 숙련도 스킬들의 XP 적립. **prof 객체를 제자리에서 갱신**하고 변동 목록을 돌려준다
+ * (호출측은 leveled만 골라 안내). rank 0 스킬은 건너뛴다 — 배우지 않은 기술은 익혀지지 않는다.
+ */
+export function profGain(ranks: SkillRanks, prof: SkillProficiency, action: ProfActionKey, mult = 1): ProfGain[] {
+  const out: ProfGain[] = [];
+  for (const d of SKILL_DATABASE) {
+    const pf = d.proficiency;
+    if (!pf || !pf.actions.includes(action) || (ranks[d.id] ?? 0) <= 0) continue;
+    const before = prof[d.id] ?? 0;
+    const after = before + Math.max(0, pf.xpPerAction * mult);
+    prof[d.id] = after;
+    const lv = profLevel(after);
+    out.push({ skillId: d.id, xp: after, level: lv, leveled: lv > profLevel(before) });
+  }
+  return out;
+}
+
+/** 효과 배율 — 1 + Σ(perRank × rank × 숙련 배율) (mode 'mult'만) */
+export function skillMult(ranks: SkillRanks, key: SkillEffectKey, prof?: SkillProficiency): number {
   let m = 1;
   for (const d of SKILL_DATABASE) {
     if (d.effect.key !== key || d.effect.mode !== 'mult') continue;
-    m += d.effect.perRank * (ranks[d.id] ?? 0);
+    m += d.effect.perRank * (ranks[d.id] ?? 0) * skillEffectScale(d, prof);
   }
   return Math.max(0, m);
 }
 
-/** 효과 가산 — Σ(perRank × rank) (mode 'add'만) */
-export function skillBonus(ranks: SkillRanks, key: SkillEffectKey): number {
+/** 효과 가산 — Σ(perRank × rank × 숙련 배율) (mode 'add'만) */
+export function skillBonus(ranks: SkillRanks, key: SkillEffectKey, prof?: SkillProficiency): number {
   let v = 0;
   for (const d of SKILL_DATABASE) {
     if (d.effect.key !== key || d.effect.mode !== 'add') continue;
-    v += d.effect.perRank * (ranks[d.id] ?? 0);
+    v += d.effect.perRank * (ranks[d.id] ?? 0) * skillEffectScale(d, prof);
   }
   return v;
 }

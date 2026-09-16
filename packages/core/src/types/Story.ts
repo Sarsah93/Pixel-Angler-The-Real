@@ -12,6 +12,8 @@
  *   [완료]로 닫는다. 추적기가 생기면 플래그만 빼면 된다.
  */
 
+import type { SkillCategoryId } from './Skills.js';
+
 // ─────────────────────────────────────────────
 // 어획 출처 · 법 규칙 (§3-2)
 // ─────────────────────────────────────────────
@@ -225,6 +227,76 @@ export type QuestTeaches =
   // 138차 — 과증식 대응 · 콘텐츠 제작 · 생활(제작/농사/광질/리빙)
   | 'bloom' | 'nuisance' | 'aquaculture' | 'streaming' | 'farming' | 'mining' | 'living';
 
+// ─────────────────────────────────────────────
+// 대화 선택지 (140차) — 선택에 따라 결과·보상이 갈린다
+// ─────────────────────────────────────────────
+
+/**
+ * 선택지 하나가 만드는 결과. 전부 **가산**이다 — 퀘스트 표의 xp·coins는 그대로 두고 여기 값을 더한다.
+ *  - 메인 퀘는 `validateStoryQuests`가 xpMult·items·skillPoints·proficiencyLevelUp을 **금지**한다
+ *    (메인 스트림을 해치지 않는 선 — 톤·우호도·소액 재화·평판만).
+ *  - 서브 퀘는 자유 — 장비·아이템·돈·XP·스킬 포인트·숙련도 XP·숙련도 레벨업 전부 가능.
+ */
+export interface ChoiceOutcome {
+  coins?: number;
+  /** XP 배율 (1 = 표 값). 서브만 · 0.8~1.3 */
+  xpMult?: number;
+  items?: { id: string; qty: number }[];
+  skillPoints?: number;
+  /** 숙련도 XP — skillId 지정 또는 카테고리의 **배운** 스킬 전부 */
+  proficiency?: { skillId?: string; category?: SkillCategoryId; xp: number };
+  /** 숙련도 즉시 1레벨 (그 스킬을 배운 경우에만 — 안 배웠으면 조용히 무시하지 않고 안내) */
+  proficiencyLevelUp?: string;
+  /** 발주 NPC 우호도 변동 (−1~1 축) */
+  affinity?: number;
+  /** 다른 NPC 우호도 (심부름꾼 구조 — N19 정옥선↔탁만수) */
+  affinityOther?: { npcId: string; delta: number }[];
+  harborRep?: number;
+  seaRep?: number;
+  /** 후속 분기 플래그 — 반드시 `choice.` 접두 (GameState.flags) */
+  flag?: string;
+}
+
+/** 선택지 노출 조건 — 전부 AND. 없으면 항상 보인다 */
+export interface ChoiceRequires {
+  affinityMin?: number;
+  affinityMax?: number;
+  level?: number;
+  license?: string;
+  flag?: string;
+  notFlag?: string;
+}
+
+export interface QuestChoiceDef {
+  /** 세트 안에서 유일 — 세이브에 기록된다 */
+  id: string;
+  labelKo: string;
+  labelEn: string;
+  /** NPC 응답 대사 (선택 직후 한 줄) */
+  replyKo: string;
+  replyEn: string;
+  outcome: ChoiceOutcome;
+  requires?: ChoiceRequires;
+  /** 결과 미리보기 한 줄 — 없으면 outcome에서 자동 생성 */
+  hintKo?: string;
+  hintEn?: string;
+}
+
+/** 발주(수락) 시점 선택지와 완료(보고) 시점 선택지 */
+export interface QuestChoiceSet {
+  offer?: QuestChoiceDef[];
+  complete?: QuestChoiceDef[];
+}
+
+// ─────────────────────────────────────────────
+// NPC 우호도 (140차) — −1(최저) ~ 0(기본) ~ +1(최고)
+// ─────────────────────────────────────────────
+
+export type AffinityTier = 'hostile' | 'cold' | 'neutral' | 'warm' | 'close';
+
+/** npcId → 우호도 */
+export type AffinityState = Record<string, number>;
+
 export interface StoryQuestDef {
   /** 'M1-04' / 'N05-3' */
   id: string;
@@ -256,6 +328,11 @@ export interface StoryQuestDef {
   /** 해금 키 (지역·시스템 — `GameState.flags` 'unlock.<key>') */
   unlocks?: string[];
   rewards?: QuestRewards;
+  /**
+   * 대화 선택지 (140차). 없으면 `defaultChoicesFor(q)`가 종류별 표준 세트를 만든다 —
+   * 메인 = 톤 2종(결과 동일 · 우호도만) / 서브 = 품삯·가르침·사양·(친밀 전용) 4종.
+   */
+  choices?: QuestChoiceSet;
 }
 
 // ─────────────────────────────────────────────

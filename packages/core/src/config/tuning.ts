@@ -823,6 +823,34 @@ export interface TuningConfig {
     /** 일하기 최소 여력 — 피로가 이 값 이상이면 거절(탈진 방지) */
     fatigueLimit: number;
   };
+  /**
+   * NPC 우호도 (140차) — −1 ~ 0(기본) ~ +1. 서브 퀘 발주·보상·품삯에만 걸고
+   * 메인은 재화 배율 ±band 안에서만 움직인다(메인 스트림 불침범).
+   */
+  affinity: {
+    /** 이 값 미만이면 서브 퀘 발주를 거절한다 */
+    subGateMin: number;
+    /** 서브 보상(재화·XP) 배율 — 티어별 */
+    rewardHostile: number;
+    rewardCold: number;
+    rewardWarm: number;
+    rewardClose: number;
+    /** 메인 재화 보상 배율 밴드 — 1 ± band */
+    mainCoinBand: number;
+    /** 품삯 배율 기울기 — ×(1 + slope × 우호도) */
+    jobWageSlope: number;
+    /** 퀘 완료 시 발주 NPC 우호도 상승 */
+    onSubComplete: number;
+    onMainComplete: number;
+    /** 발주 톤 3종 — 무뚝뚝 / 솔직 / 너스레 */
+    toneBlunt: number;
+    toneHonest: number;
+    toneJoke: number;
+  };
+  /** 숙련도 (140차) — 행위 XP 배율 */
+  proficiency: {
+    xpMult: number;
+  };
   inventory: {
     /** dev 모드 탭당 슬롯 수 (= 현행 5×5) */
     devSlotsPerTab: number;
@@ -1051,6 +1079,14 @@ export const TUNING: TuningConfig = {
     fightOpenLoadMult: 0.18, fightRunBonus: 1.35,
   },
   job: { wageMult: 1, costMult: 1, fatigueLimit: 88 },
+  affinity: {
+    subGateMin: -0.4,
+    rewardHostile: 0.7, rewardCold: 0.85, rewardWarm: 1.15, rewardClose: 1.3,
+    mainCoinBand: 0.1, jobWageSlope: 0.15,
+    onSubComplete: 0.08, onMainComplete: 0.04,
+    toneBlunt: 0, toneHonest: 0.03, toneJoke: 0.01,
+  },
+  proficiency: { xpMult: 1 },
   inventory: { devSlotsPerTab: 25, baseCols: 2, baseRows: 5 },
   fatigueStaminaBase: {
     yellowtail: 1.6, amberjack: 1.7, greater_amberjack: 1.9, spanish_mackerel: 1.0,
@@ -1220,6 +1256,12 @@ export const TUNING_META: TuningParamMeta[] = [
   { path: 'job.wageMult', min: 0.2, max: 3, step: 0.1, category: 'balance', label: '품삯 배율' },
   { path: 'job.costMult', min: 0.2, max: 3, step: 0.1, category: 'balance', label: '품삯 행동력 소모 배율' },
   { path: 'job.fatigueLimit', min: 50, max: 100, step: 1, category: 'balance', label: '일하기 가능 피로 상한' },
+  // ── 우호도·숙련도 (140차) ──
+  { path: 'affinity.subGateMin', min: -1, max: 0, step: 0.05, category: 'balance', label: '서브 발주 거절 우호도(미만)' },
+  { path: 'affinity.rewardClose', min: 1, max: 2, step: 0.05, category: 'balance', label: '친밀 서브 보상 배율' },
+  { path: 'affinity.rewardHostile', min: 0.2, max: 1, step: 0.05, category: 'balance', label: '적대 서브 보상 배율' },
+  { path: 'affinity.jobWageSlope', min: 0, max: 0.5, step: 0.01, category: 'balance', label: '품삯 우호도 기울기' },
+  { path: 'proficiency.xpMult', min: 0.2, max: 5, step: 0.1, category: 'balance', label: '숙련도 XP 배율' },
   // 136차 스풀·베일 (mockup — 실플레이 조율 대기)
   { path: 'spool.payoutGainMpsPerKg', min: 0.5, max: 6, step: 0.1, category: 'feel', label: '스풀 방출 이득(m/s per kg)' },
   { path: 'spool.maxPayoutMps', min: 1, max: 8, step: 0.1, category: 'feel', label: '스풀 최대 방출(m/s)' },

@@ -17,8 +17,9 @@ import {
   STORY_QUESTS, getStoryQuest, lastMainQuestOfChapter, JOURNAL_PAGES, journalCatchMatches, STORY_ARCS, getStoryArc,
   seasonOfMonth, createDefaultReputation, clampHarbor, clampSea, canSell, provenanceOf, TUNING,
   dayJobsOfNpc, getDayJob,
+  clampAffinity, affinityRewardMult, affinityJobWageMult, canOfferSubQuest, canOfferJobs, choicesFor, choiceVisible,
   type StoryQuestDef, type StoryObjective, type ReputationState, type CatchMethod, type JournalPageState, type LawVerdict,
-  type DayJobDef,
+  type DayJobDef, type AffinityState, type QuestChoiceDef, type ChoiceOutcome, type ChoiceCtx, type SkillCategoryId,
 } from '@tra/core';
 
 export interface QuestProgress {
@@ -40,6 +41,10 @@ export interface StorySaveState {
   traineeDay: number | null;
   /** 일용직 일감 — 일감 id → { 마지막 근무 일차, 그날 횟수 } (135차) */
   jobs?: Record<string, { day: number; count: number }>;
+  /** NPC 우호도 (140차) — npcId → −1~1. 없으면 0 */
+  affinity?: AffinityState;
+  /** 퀘스트별 고른 선택지 (140차) — questId → { offer, complete } */
+  choices?: Record<string, { offer?: string; complete?: string }>;
 }
 
 export interface StoryHost {
@@ -56,6 +61,13 @@ export interface StoryHost {
   spendLabor(hunger: number, hydration: number, fatigue: number): void;
   /** 현재 피로 (0~100) — 일하기 가능 여부 판정 */
   fatigue(): number;
+  // 140차 — 선택지 결과 보상
+  hasFlag(k: string): boolean;
+  /** 카탈로그 아이템 실지급 (없는 id는 false) */
+  giveItem(id: string, qty: number): boolean;
+  addSkillPoints(n: number): void;
+  grantProfXp(target: { skillId?: string; category?: SkillCategoryId }, xp: number): string[];
+  grantProfLevelUp(skillId: string): boolean;
 }
 
 export type StoryEvent =
@@ -86,6 +98,8 @@ class StoryStoreManager {
   private day = 0;
   private traineeDay: number | null = null;
   private jobs: Record<string, { day: number; count: number }> = {};
+  private affinity: AffinityState = {};
+  private choices: Record<string, { offer?: string; complete?: string }> = {};
   /** UI 통지 훅 — 퀘 완료/수락/조행록 갱신 (필드 HUD 토스트) */
   onNotify: ((msg: string) => void) | null = null;
 
@@ -93,7 +107,10 @@ class StoryStoreManager {
 
   // ── 세이브 ──
   serialize(): StorySaveState {
-    return { quests: this.quests, rep: this.rep, pageCatch: this.pageCatch, day: this.day, traineeDay: this.traineeDay, jobs: this.jobs };
+    return {
+      quests: this.quests, rep: this.rep, pageCatch: this.pageCatch, day: this.day, traineeDay: this.traineeDay, jobs: this.jobs,
+      affinity: this.affinity, choices: this.choices,
+    };
   }
   deserialize(s?: StorySaveState): void {
     this.quests = s?.quests ?? {};
@@ -102,6 +119,8 @@ class StoryStoreManager {
     this.day = s?.day ?? 0;
     this.traineeDay = s?.traineeDay ?? null;
     this.jobs = s?.jobs ?? {};
+    this.affinity = s?.affinity ?? {};
+    this.choices = s?.choices ?? {};
     this.refreshAutoQuests();
   }
   resetAll(): void { this.deserialize(undefined); }
@@ -151,21 +170,82 @@ class StoryStoreManager {
     return q.objectives.every((_o, i) => this.objectiveDone(q, i));
   }
 
-  /** NPC 대화용 — 이 NPC가 발주한 퀘스트 분류 */
-  questsForNpc(npcId: string): { completable: StoryQuestDef[]; active: StoryQuestDef[]; offer: StoryQuestDef[] } {
+  /**
+   * NPC 대화용 — 이 NPC가 발주한 퀘스트 분류.
+   * 140차: 우호도가 `subGateMin` 미만이면 **서브** 발주는 감춘다(`refusedSub`에 표시용으로 남긴다).
+   * 메인은 우호도와 무관하게 항상 발주한다 — 메인 스트림 불침범.
+   */
+  questsForNpc(npcId: string): { completable: StoryQuestDef[]; active: StoryQuestDef[]; offer: StoryQuestDef[]; refusedSub: StoryQuestDef[] } {
     const mine = STORY_QUESTS.filter((q) => q.giver === npcId);
+    const avail = mine.filter((q) => this.status(q) === 'available');
+    const open = canOfferSubQuest(this.affinityOf(npcId));
     return {
       completable: mine.filter((q) => this.isActive(q.id) && this.allObjectivesDone(q)),
       active: mine.filter((q) => this.isActive(q.id) && !this.allObjectivesDone(q)),
-      offer: mine.filter((q) => this.status(q) === 'available'),
+      offer: avail.filter((q) => q.kind === 'main' || open),
+      refusedSub: open ? [] : avail.filter((q) => q.kind === 'sub'),
     };
   }
 
+  // ── 우호도 · 선택지 (140차) ──
+  affinityOf(npcId: string): number { return this.affinity[npcId] ?? 0; }
+  addAffinity(npcId: string, d: number): number {
+    const v = clampAffinity(this.affinityOf(npcId) + d);
+    if (v !== 0) this.affinity[npcId] = v; else delete this.affinity[npcId];
+    this.host?.markDirty();
+    return v;
+  }
+  /** 선택지 노출 판정 컨텍스트 */
+  choiceCtx(npcId: string): ChoiceCtx {
+    return {
+      affinity: this.affinityOf(npcId), level: this.host?.level() ?? 1,
+      licenses: this.host?.heldLicenses() ?? [], hasFlag: (k) => this.host?.hasFlag(k) ?? false,
+    };
+  }
+  /** 지금 보이는 선택지 목록 (조건 미충족은 감춘다 — 조건이 무엇인지는 데이터가 안다) */
+  visibleChoices(q: StoryQuestDef, stage: 'offer' | 'complete'): QuestChoiceDef[] {
+    const ctx = this.choiceCtx(q.giver);
+    return choicesFor(q)[stage].filter((c) => choiceVisible(c, ctx));
+  }
+  /** 기록된 선택 (분기 확인·일지 표기) */
+  chosen(questId: string): { offer?: string; complete?: string } | undefined { return this.choices[questId]; }
+
+  /** 선택지 결과 적용 — 전부 가산. 반환 = 사용자에게 보여줄 한 줄 요약 */
+  private applyOutcome(q: StoryQuestDef, o: ChoiceOutcome): string[] {
+    const h = this.host; const out: string[] = [];
+    if (o.coins) { h?.addCoins(o.coins); out.push(`${o.coins > 0 ? '+' : ''}${o.coins.toLocaleString()}원`); }
+    for (const it of o.items ?? []) {
+      const ok = h?.giveItem(it.id, it.qty) ?? false;
+      out.push(ok ? `${it.id} ×${it.qty}` : `${it.id} (인벤토리 공간 부족 — 미지급)`);
+    }
+    if (o.skillPoints) { h?.addSkillPoints(o.skillPoints); out.push(`스킬 포인트 +${o.skillPoints}`); }
+    if (o.proficiency) {
+      const got = h?.grantProfXp({ skillId: o.proficiency.skillId, category: o.proficiency.category }, o.proficiency.xp) ?? [];
+      out.push(got.length ? `숙련도 +${o.proficiency.xp} (${got.length}개 기술)` : '숙련도 — 배운 기술이 없어 흘러갔습니다');
+    }
+    if (o.proficiencyLevelUp) {
+      const ok = h?.grantProfLevelUp(o.proficiencyLevelUp) ?? false;
+      out.push(ok ? '숙련도 1레벨 상승' : '숙련도 레벨업 — 그 기술을 배우지 않아 무효');
+    }
+    if (o.affinity) { const v = this.addAffinity(q.giver, o.affinity); out.push(`우호도 ${o.affinity > 0 ? '+' : ''}${o.affinity} (${v.toFixed(2)})`); }
+    for (const a of o.affinityOther ?? []) { this.addAffinity(a.npcId, a.delta); out.push(`${a.npcId} 우호도 ${a.delta > 0 ? '+' : ''}${a.delta}`); }
+    if (o.harborRep) { this.addHarborRep(q.region, o.harborRep); out.push(`항구 신뢰 +${o.harborRep}`); }
+    if (o.seaRep) { this.addSeaRep(o.seaRep); out.push(`바다 평판 +${o.seaRep}`); }
+    if (o.flag) h?.setFlag(o.flag, true);
+    return out;
+  }
+
   // ── 진행 ──
-  accept(id: string): boolean {
+  accept(id: string, choiceId?: string): boolean {
     const q = getStoryQuest(id);
     if (!q || this.status(q) !== 'available') return false;
+    if (q.kind === 'sub' && q.giver && !canOfferSubQuest(this.affinityOf(q.giver))) return false;   // 140차 — 우호도 게이트
     this.quests[id] = { status: 'active', obj: q.objectives.map(() => 0), day: this.day };
+    // 140차 — 발주 톤 선택지(우호도 미세 차이)
+    if (choiceId) {
+      const c = this.visibleChoices(q, 'offer').find((x) => x.id === choiceId);
+      if (c) { this.choices[id] = { ...this.choices[id], offer: c.id }; this.applyOutcome(q, c.outcome); }
+    }
     // 상태형 목표는 수락 즉시 평가 (레벨·재화·이미 보유한 면허)
     this.evaluateStateful(q);
     this.host?.markDirty();
@@ -184,16 +264,35 @@ class StoryStoreManager {
     return true;
   }
 
-  /** 완료 + 보상 지급. 목표 미달이면 false */
-  complete(id: string): boolean {
+  /** 직전 완료의 결과 요약 — 대화창이 한 번 읽고 지운다 */
+  lastOutcomeLines: string[] = [];
+
+  /**
+   * 완료 + 보상 지급. 목표 미달이면 false.
+   * 140차: 완료 선택지(`choiceId`)의 결과를 **가산**하고, 서브 퀘 재화·XP에 우호도 배율을 곱한다
+   * (메인 XP는 §8-1 계약 그대로 · 메인 재화는 1±0.1 밴드).
+   */
+  complete(id: string, choiceId?: string): boolean {
     const q = getStoryQuest(id); const p = this.quests[id];
     if (!q || !p || p.status !== 'active' || !this.allObjectivesDone(q)) return false;
     p.status = 'done'; p.day = this.day;
     const h = this.host;
-    h?.grantXp(q.xp);
-    if (q.rewards?.coins) h?.addCoins(q.rewards.coins);
+    const aff = this.affinityOf(q.giver);
+    const choice = choiceId ? this.visibleChoices(q, 'complete').find((c) => c.id === choiceId) : undefined;
+    const xpMult = affinityRewardMult(aff, q.kind, 'xp') * (q.kind === 'sub' ? (choice?.outcome.xpMult ?? 1) : 1);
+    const coinMult = affinityRewardMult(aff, q.kind, 'coins');
+    const xp = Math.round(q.xp * xpMult);
+    h?.grantXp(xp);
+    if (q.rewards?.coins) h?.addCoins(Math.round(q.rewards.coins * coinMult));
     for (const lic of q.rewards?.licenses ?? []) h?.acquireLicense(lic);
-    if (q.rewards?.items?.length) console.info(`[Story] ${id} 아이템 보상 보류(가방 사다리 UI 대기): ${q.rewards.items.map((i) => i.id).join(', ')}`);
+    // 140차 — 아이템 보상 실지급(구 '가방 사다리 UI 대기' 보류 해소). 공간 부족은 안내로 남긴다.
+    for (const it of q.rewards?.items ?? []) {
+      if (!h?.giveItem(it.id, it.qty)) this.onNotify?.(`[퀘스트] 보상 ${it.id} — 인벤토리 공간이 부족해 받지 못했습니다`);
+    }
+    const lines: string[] = [];
+    if (choice) { this.choices[id] = { ...this.choices[id], complete: choice.id }; lines.push(...this.applyOutcome(q, choice.outcome)); }
+    if (q.giver) this.addAffinity(q.giver, q.kind === 'sub' ? TUNING.affinity.onSubComplete : TUNING.affinity.onMainComplete);
+    this.lastOutcomeLines = lines;
     if (q.reputation?.sea) this.addSeaRep(q.reputation.sea);
     for (const [r, d] of Object.entries(q.reputation?.harbor ?? {})) this.addHarborRep(r, d);
     if (q.journalPage) this.pageCatch[String(q.journalPage)] = Math.max(this.pageCatch[String(q.journalPage)] ?? 0, 99);
@@ -203,7 +302,7 @@ class StoryStoreManager {
     }
     h?.markQuestDone(id);
     h?.markDirty();
-    this.onNotify?.(`[퀘스트] ${q.titleKo} 완료 — XP +${q.xp.toLocaleString()}`);
+    this.onNotify?.(`[퀘스트] ${q.titleKo} 완료 — XP +${xp.toLocaleString()}${xpMult !== 1 ? ` (×${xpMult.toFixed(2)})` : ''}`);
     this.refreshAutoQuests();
     return true;
   }
@@ -357,11 +456,16 @@ class StoryStoreManager {
    * `remaining` 0이면 오늘 몫을 다 했다는 뜻(회색 표시 — 감추지 않는다. 내일 오면 된다는 안내가 된다).
    */
   jobsOfNpc(npcId: string, regionId: string): { job: DayJobDef; remaining: number; locked: string | null }[] {
+    const hostile = !canOfferJobs(this.affinityOf(npcId));   // 140차 — 적대 NPC는 일을 안 준다
     return dayJobsOfNpc(npcId, regionId).map((job) => ({
       job,
       remaining: this.jobRemaining(job.id),
-      locked: this.jobLockReason(job),
+      locked: hostile ? '이 사람은 지금 당신에게 일을 주고 싶지 않습니다' : this.jobLockReason(job),
     }));
+  }
+  /** 품삯 배율 — 우호도 × TUNING.job.wageMult (대화창 표기와 지급이 같은 식을 쓴다) */
+  jobWage(job: DayJobDef): number {
+    return Math.max(0, Math.round(job.wage * TUNING.job.wageMult * affinityJobWageMult(this.affinityOf(job.npcId))));
   }
 
   /** 오늘 남은 근무 횟수 */
@@ -388,7 +492,7 @@ class StoryStoreManager {
   work(jobId: string): { ok: boolean; reason?: string; wage?: number; flavorKo?: string } {
     const job = getDayJob(jobId);
     if (!job) return { ok: false, reason: '없는 일감입니다.' };
-    const locked = this.jobLockReason(job);
+    const locked = canOfferJobs(this.affinityOf(job.npcId)) ? this.jobLockReason(job) : '이 사람은 지금 당신에게 일을 주고 싶지 않습니다';
     if (locked) return { ok: false, reason: locked };
     if (this.jobRemaining(jobId) <= 0) return { ok: false, reason: '오늘 몫은 다 했습니다 — 자고 나서 다시 오세요.' };
     const fat = this.host?.fatigue() ?? 0;
@@ -397,7 +501,7 @@ class StoryStoreManager {
     }
     const c = TUNING.job.costMult;
     this.host?.spendLabor(job.hunger * c, job.hydration * c, job.fatigue * c);
-    const wage = Math.max(0, Math.round(job.wage * TUNING.job.wageMult));
+    const wage = this.jobWage(job);
     this.host?.addCoins(wage);
     if (job.rep) this.addHarborRep(job.regionId, job.rep);
     const rec = this.jobs[jobId];

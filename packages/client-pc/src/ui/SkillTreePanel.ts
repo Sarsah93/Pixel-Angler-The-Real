@@ -12,6 +12,7 @@ import Phaser from 'phaser';
 import {
   SKILL_CATEGORIES, skillsOfCategory, getSkillById, skillPrereqsMet, skillUnlockMissing,
   type SkillCategoryId, type SkillDef,
+  PROF_MAX_LEVEL, profLevel, profNextXp, profScale, profLevelStartXp, type ProfActionKey,
 } from '@tra/core';
 import { DraggablePanel, applyScreenFixed } from './DraggablePanel.js';
 import { GameState } from '../store/GameState.js';
@@ -45,6 +46,13 @@ type NodeState = 'learned' | 'available' | 'locked' | 'catLocked' | 'maxed' | 'c
 export interface SkillTreeConfig {
   onClose: () => void;
 }
+
+/** 숙련도 행위 이름 (140차) */
+const PROF_ACTION_KO: Record<ProfActionKey, string> = {
+  cast: '캐스팅', landing: '랜딩', fight: '파이팅', lureAction: '루어 액션', jig: '지깅', egi: '에깅', surf: '원투', chum: '밑밥 투척',
+  forage: '채집', trap: '통발 수거', butcher: '손질', sashimi: '회뜨기', cook: '요리', craft: '제작', ride: '자전거 주행',
+  firstaid: '응급처치', haggle: '흥정',
+};
 
 export class SkillTreePanel extends DraggablePanel {
   private category: SkillCategoryId = 'fishing';
@@ -252,8 +260,12 @@ export class SkillTreePanel extends DraggablePanel {
         fontFamily: FONT, fontSize: '9px', color: d.hidden ? '#b49ae8' : '#ffd98a',
       }).setOrigin(1, 1);
       c.add(cost);
-      // 좌하단 배지 — 조건 잠김이 '예정'보다 급한 정보라 우선한다
-      const badge = st === 'condLocked' ? { t: '조건', bg: '#c88a5a' } : !d.wired ? { t: '예정', bg: '#7a6a55' } : null;
+      // 좌하단 배지 — 조건 잠김 > 예정 > 숙련도(140차: 배운 기술형 스킬은 숙련 레벨을 보여준다)
+      const pr = (ranks[d.id] ?? 0) > 0 && d.proficiency ? GameState.profLevelOf(d.id) : -1;
+      const badge = st === 'condLocked' ? { t: '조건', bg: '#c88a5a' }
+        : !d.wired ? { t: '예정', bg: '#7a6a55' }
+        : pr === 0 ? { t: '미숙', bg: '#a05a5a' }
+        : pr > 0 ? { t: `숙련 ${pr}`, bg: pr >= PROF_MAX_LEVEL ? '#d8b25f' : '#4a8a6a' } : null;
       if (badge) {
         const tag = this.scene.add.text(p.x + 8, p.y + p.nh - 5, badge.t, {
           fontFamily: FONT, fontSize: '9px', color: '#0b1620', backgroundColor: badge.bg, padding: { x: 3, y: 0 },
@@ -302,10 +314,35 @@ export class SkillTreePanel extends DraggablePanel {
     const costStr = d.hidden ? '시너지 보상 (포인트 소모 없음)' : `랭크당 ${d.costPerRank}pt`;
     const req = this.scene.add.text(CONTENT_X + 6, desc.y + desc.height + 4, `${reqStr}  ·  ${costStr}${d.wired ? '' : '  ·  효과 배선 예정'}`, { fontFamily: FONT, fontSize: '11px', color: '#8fb4cc', wordWrap: { width: CONTENT_W - 240 } });
     c.add([title, desc, req]);
+    let last: Phaser.GameObjects.Text = req;
+    // 140차 — 숙련도: 배워도 행위로 채워야 효과가 난다. 레벨·진행·현재 효과 배율·채우는 행위를 한 줄로.
+    if (d.proficiency && !secret) {
+      const xp = GameState.profXp(d.id), lv = profLevel(xp), next = profNextXp(xp);
+      const learned = r > 0;
+      const acts = d.proficiency.actions.map((a) => PROF_ACTION_KO[a] ?? a).join('·');
+      const txt = !learned
+        ? `숙련도 필요 — 배운 뒤 ${acts}(으)로 채워야 효과가 납니다 (레벨 0 = 효과 0 … 4 = 100% · 5 = 115%)`
+        : `숙련도 Lv.${lv}/${PROF_MAX_LEVEL} · ${xp}${next !== null ? ` / ${next}` : ' (만숙)'} · 현재 효과 ×${profScale(lv).toFixed(2)} · 채우기: ${acts}`;
+      const pt = this.scene.add.text(CONTENT_X + 6, req.y + req.height + 3, txt, {
+        fontFamily: FONT, fontSize: '11px', color: learned ? (lv === 0 ? '#e0a060' : '#8fd8a8') : '#a0b4c8', wordWrap: { width: CONTENT_W - 240 },
+      });
+      c.add(pt); last = pt;
+      if (learned && next !== null) {
+        const bx = CONTENT_X + 6, by = pt.y + pt.height + 3, bw = 220;
+        const start = profLevelStartXp(lv);
+        const frac = Math.max(0, Math.min(1, (xp - start) / Math.max(1, next - start)));
+        const bg = this.scene.add.graphics();
+        bg.fillStyle(0x0e1c2a, 1); bg.fillRect(bx, by, bw, 6);
+        bg.fillStyle(0x8fd8a8, 1); bg.fillRect(bx, by, Math.round(bw * frac), 6);
+        bg.lineStyle(1, 0x2c5878, 1); bg.strokeRect(bx, by, bw, 6);
+        c.add(bg);
+        const spacer = this.scene.add.text(bx, by, '', { fontSize: '1px' }); spacer.setSize(0, 8); c.add(spacer); last = spacer;
+      }
+    }
     // 130차 (d) — 남은 해금 조건을 **그대로** 보여준다(무엇을 하면 되는지가 보여야 한다)
     const missing = skillUnlockMissing(d, GameState.skillUnlockCtxPublic);
     if (missing.length > 0) {
-      const cond = this.scene.add.text(CONTENT_X + 6, req.y + req.height + 3,
+      const cond = this.scene.add.text(CONTENT_X + 6, last.y + last.height + 3,
         `해금 조건: ${missing.map((m) => GameState.describeUnlock(m)).join('  ·  ')}`, {
           fontFamily: FONT, fontSize: '11px', color: '#ffb45a', wordWrap: { width: CONTENT_W - 240 },
         });

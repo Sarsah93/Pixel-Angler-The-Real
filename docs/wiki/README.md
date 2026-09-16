@@ -59,13 +59,15 @@
 | S19 | Tauri 패키징 | ⬜ | `apps/tauri-wrapper` | Phase 9 (아이콘만 준비됨) |
 | S20 | [도감·발견·dev 도구](02-SYSTEMS/discovery-wiki.md) | 🟢 | `DiscoveryStore` · `AnglerLogScene` · F10 콘솔 | 위키 상세 팝업 · FP 토스트 |
 | S21 | [진행 — 레벨·스킬·생존·면허·일지](02-SYSTEMS/progression.md) | 🔶 | `Progression.ts` · `Vitals.ts`·`StatusEffects.ts` · `SkillDatabase`(**92노드 Σ=215**) · `CraftingDatabase` · `License.ts` · 패널 3종 · `CollapseOverlay` | **스킬 효과 배선 43/92**(130차) · 신규 면허 효과 1/7 · 농사 카테고리 잠김 · **P1~P9 완료**(P8 = 134차 S22) · 스토리 면허 4종 추가(보너스 제외) · 눕기 스프라이트 대기 |
-| S22 | [스토리·퀘스트](02-SYSTEMS/story-quests.md) | 🔶 | **정본 [`STORY_SPEC_v4`](../../.agents/STORY_SPEC_v4.md)** · `Story.ts` · `FisheryLaw.ts` · `StoryQuestDatabase`(**186퀘 · 아크 23**) · `DayJobs`(품삯 3) · `JournalPages` · `StoryArcs` · `StoryStore` · `DialoguePanel` · `JournalPanel` | **134차 데이터·엔진 + 135차 Ch1 실시스템**(품삯·사이소·가방 · 법 강제 3단계 기본 2) — 배 출조·구멍치기·좌판 등 계통 · Ch2+ 대사 · NPC 스프라이트 · `onMiss` 벌칙 잔여 |
-| S23 | [캐릭터 아트](02-SYSTEMS/character-art.md) | 🟢 | `art/CharacterArt.ts`(셀 32x32 · 레이어 14) · `art/CharacterCast.ts`(41인) · `ui/CharacterSprite.ts` · `CharacterCreateScene`(**139차 UI 재정비**) | **아트 비율·얼굴 재검토 사용자 진행 중**(머리 크기·눈·입) · 측면 프로파일 · 대화창 초상 · 눕기 프레임 |
+| S22 | [스토리·퀘스트](02-SYSTEMS/story-quests.md) | 🔶 | **정본 [`STORY_SPEC_v4`](../../.agents/STORY_SPEC_v4.md)** · `Story.ts` · `FisheryLaw.ts` · `StoryQuestDatabase`(**186퀘 · 아크 23**) · `DayJobs`(품삯 3) · `JournalPages` · `StoryArcs` · `StoryStore` · `DialoguePanel`(**140차 재작성 — 선택지·우호도**) · `JournalPanel` · `StoryChoices` · `Affinity.ts` | **134차 데이터·엔진 + 135차 Ch1 실시스템 + 140차 선택지 분기·우호도** — 배 출조·구멍치기·좌판 등 계통 · Ch2+ 대사 · NPC 스프라이트 · `onMiss` 벌칙 잔여 |
+| S23 | [캐릭터 아트](02-SYSTEMS/character-art.md) | 🟢 | `art/CharacterArt.ts`(셀 32x32 · 레이어 14) · `art/CharacterCast.ts`(41인) · `ui/CharacterSprite.ts` · `CharacterCreateScene`(139차 UI · **140차 얼굴형**) | **140차 머리 9×10·얼굴형 3종·측면 재작업 완료** · 사용자 GPT 스타일 실험 대기(`CHARACTER_SPRITE_PROMPT_SPEC`) · 대화창 초상 아트 · 눕기 프레임 |
 
 ---
 
 ## 3. 지금 위치 (2026-09-16)
 
+- **140차**: **얼굴형·머리 축소·측면 + NPC 대화창(선택지 분기) + 우호도 + 숙련도 + 아티팩트 v4** — 상세
+  [워크로그 140](03-WORKLOG/2026-09-16-140-face-shape-dialogue-choices-affinity-proficiency.md)
 - **139차**: **캐릭터 만들기 UI 재정비 + 스토리 아키텍처 v4** — 생성 씬을 HUD 패널 문법
   (`paintHudPanel` 3장) · **2열 5섹션** · **실제 색 견본 스트립**(숫자 `3 / 10` 폐기 — 픽셀 팔레트에는
   이름이 없다)으로 재작성 · 미리보기 스테이지 · 푸터 `paintHudSlot` 버튼.
