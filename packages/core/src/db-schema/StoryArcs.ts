@@ -1,6 +1,6 @@
 /**
  * @file StoryArcs.ts
- * @description NPC 19아크 + 메인 3인 (134차 17아크 → 137차 +N18·N19)
+ * @description NPC 23아크 + 메인 3인 (134차 17 → 137차 +N18·N19 → 138차 +N20~N23)
  *
  * 29편 원작에서 가져온 것은 관계 원형 한 줄뿐 — 인물명·고유 설정·장면은 옮기지 않는다(원칙 §1-5).
  * 아크 완주 = `questIds` 전부 완료. 조행록 장의 두 번째 조건이 이것이다.
@@ -133,6 +133,27 @@ export const STORY_ARCS: StoryArcDef[] = [
     relationEn: 'Two old people who never said it — and you are always the errand runner',
     angleKo: '속초를 계속 돌아오게 만드는 이유', angleEn: 'The reason you keep coming back to Sokcho',
     questIds: ['N19-1', 'N19-2', 'N19-3', 'N19-4', 'N19-5', 'N19-6'] },
+  // ── 138차 증설 4아크 — 과증식 대응 · 어종 관리 · 콘텐츠 제작 · 생활 기반 ──
+  { id: 'N20', titleKo: '유하랑 — 카메라를 든 사람', titleEn: 'Yu Ha-rang — the one with the camera', regionId: 'busan',
+    npcs: [{ id: 'yu_harang', nameKo: '유하랑', nameEn: 'Yu Ha-rang', roleKo: '27세 · 구독자 300명의 낚시 방송인', roleEn: '27 · a fishing streamer with 300 subscribers' }],
+    relationKo: '찍는 사람과 찍히는 사람', relationEn: 'The one filming and the one filmed',
+    angleKo: '보여 주려고 하는 낚시와 하려고 하는 낚시', angleEn: 'Fishing to be seen, and fishing to fish',
+    questIds: ['N20-1', 'N20-2', 'N20-3', 'N20-4', 'N20-5', 'N20-6', 'N20-7'] },
+  { id: 'N21', titleKo: '오세찬 — 바다가 넘칠 때', titleEn: 'Oh Se-chan — when the sea overflows', regionId: 'gangwon_sokcho',
+    npcs: [{ id: 'oh_sechan', nameKo: '오세찬', nameEn: 'Oh Se-chan', roleKo: '41세 · 해양환경 감시원 (해파리·불가사리 모니터링)', roleEn: '41 · marine monitor tracking jellyfish and seastar blooms' }],
+    relationKo: '치우는 사람 곁의 손', relationEn: 'A second pair of hands for the one who cleans up',
+    angleKo: '잡는 것 말고 치우는 것도 바다 일이다', angleEn: 'Clearing the sea is sea work too',
+    questIds: ['N21-1', 'N21-2', 'N21-3', 'N21-4', 'N21-5', 'N21-6', 'N21-7'], repeatableKo: '과증식 구역 수거', repeatableEn: 'Bloom-zone clearing' },
+  { id: 'N22', titleKo: '하늬 — 손으로 짓는 것', titleEn: 'Ha-nui — things made by hand', regionId: 'busan',
+    npcs: [{ id: 'ha_nui', nameKo: '하늬', nameEn: 'Ha-nui', roleKo: '35세 · 생활공방(목공·수리) 주인', roleEn: '35 · runs a maker workshop for woodwork and repairs' }],
+    relationKo: '사는 대신 만드는 법을 가르치는 사람', relationEn: 'Someone who teaches making instead of buying',
+    angleKo: '집이 잠만 자는 방에서 돌아올 곳이 되는 과정', angleEn: 'How a room you sleep in becomes somewhere you return to',
+    questIds: ['N22-1', 'N22-2', 'N22-3', 'N22-4', 'N22-5', 'N22-6', 'N22-7', 'N22-8'], repeatableKo: '공방 수리 의뢰', repeatableEn: 'Workshop repair jobs' },
+  { id: 'N23', titleKo: '채수림 — 세는 사람', titleEn: 'Chae Su-rim — the one who counts', regionId: 'busan',
+    npcs: [{ id: 'chae_surim', nameKo: '채수림', nameEn: 'Chae Su-rim', roleKo: '33세 · 수산질병·양식 관리사', roleEn: '33 · aquaculture health inspector' }],
+    relationKo: '몇 마리가 아니라 몇 종을 적는 사람', relationEn: 'Someone who records species, not numbers',
+    angleKo: '잡은 것을 세는 눈', angleEn: 'The eye that counts what was caught',
+    questIds: ['N23-1', 'N23-2', 'N23-3', 'N23-4', 'N23-5', 'N23-6'] },
 ];
 
 export function getStoryArc(id: string): StoryArcDef | undefined {

@@ -8,6 +8,7 @@
 
 import Phaser from 'phaser';
 import { ensurePixelIcon } from './PixelIcon.js';
+import { getNuisance } from '@tra/core';
 import { FISH_DATABASE, fishImageSizeScale, fishRarity, speciesStandardWeightG,
   GEAR_FAULTS, gearRepairFee, rodMaxCasts } from '@tra/core';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
@@ -168,6 +169,38 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
       rows.push({ label: '섭취 효과', value: 'HP +10' }, { label: '보존성', value: '부패 없음' });
       desc = '오래 보관할 수 있는 비상 식량입니다.';
       break;
+    case '해파리':
+    case '불가사리': {
+      // 138차 — 과증식 해양생물. 어종 DB가 아니라 `MARINE_NUISANCES`를 읽는다.
+      const nu = item.speciesId ? getNuisance(item.speciesId) : undefined;
+      if (item.lengthCm) {
+        rows.push({ label: nu?.kind === 'jellyfish' ? '우산 지름' : '크기', value: `${item.lengthCm} cm` });
+      }
+      if (item.weightG) {
+        rows.push({ label: '무게', value: item.weightG >= 1000 ? `${(item.weightG / 1000).toFixed(2)} kg` : `${item.weightG} g` });
+      }
+      if (nu) {
+        rows.push({ label: '학명', value: nu.scientificName });
+        rows.push({ label: '영문명', value: nu.nameEn });
+        rows.push({ label: '과증식', value: `${nu.bloomMonths.join('·')}월 (정점 ${nu.peakMonths.join('·')}월)` });
+        rows.push({
+          label: '독성',
+          value: ['없음', '경미 — 따끔함', '통증·부종', '위험 — 통증과 부종이 오래 간다'][nu.venom],
+          color: nu.venom >= 2 ? '#ff8a5a' : undefined,
+        });
+        rows.push({ label: '구별', value: nu.markKo });
+        rows.push({ label: '서식', value: nu.habitatKo });
+        rows.push({ label: '피해', value: nu.damageKo });
+        rows.push({
+          label: '구제 수매',
+          value: nu.cullPricePerKg > 0 ? `${nu.cullPricePerKg.toLocaleString()}원/kg` : '수매 대상 아님 — 방생 권장',
+          color: nu.cullPricePerKg > 0 ? '#ffd93b' : '#8fa3b8',
+        });
+        rows.push({ label: '식용', value: nu.edible ? '가능 (염장)' : '불가' });
+        desc = nu.descKo;
+      }
+      break;
+    }
     case '어획물': {
       // ── 개체 실측치 — 무게 미저장 시 **어종별 LWR**(W = a·L^b)로 추정 (133차) ──
       const lengthCm = item.lengthCm;

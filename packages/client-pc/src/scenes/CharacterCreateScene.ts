@@ -235,14 +235,15 @@ export class CharacterCreateScene extends Phaser.Scene {
       this.rowTexts.push({ label, value, arrowL, arrowR });
     });
 
-    this.nameText = this.add.text(530, y0 + this.rows.length * rowH + 16, '', {
+    // 마지막 행(572) 아래 · 패널 하단(656) 위 — 버튼은 패널 밖으로 내린다(겹침 방지)
+    this.nameText = this.add.text(530, y0 + this.rows.length * rowH + 10, '', {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#6f8399',
-      wordWrap: { width: 660 },
+      wordWrap: { width: 690 },
     });
 
     // 버튼
     const mk = (x: number, label: string, color: string, fn: () => void) => {
-      const t = this.add.text(x, 600, label, {
+      const t = this.add.text(x, 672, label, {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '18px', color,
         backgroundColor: '#16283a', padding: { x: 18, y: 10 },
       }).setInteractive({ useHandCursor: true });

@@ -69,7 +69,9 @@ export type StoryEvent =
   | { kind: 'custom'; key: string }
   | { kind: 'talk'; npcId: string }
   | { kind: 'level'; level: number }
-  | { kind: 'coins'; coins: number };
+  | { kind: 'coins'; coins: number }
+  /** 138차 — 과증식 생물 수거 (해파리·불가사리) */
+  | { kind: 'cull'; speciesId: string };
 
 export type QuestStatus = 'done' | 'active' | 'available' | 'locked';
 
@@ -293,6 +295,10 @@ class StoryStoreManager {
       case 'talk': return o.kind === 'talk' && o.npcId === ev.npcId ? 'set' : null;
       case 'level': return o.kind === 'reachLevel' ? 'set' : null;
       case 'coins': return o.kind === 'earn' ? 'set' : null;
+      case 'cull':
+        if (o.kind !== 'cull') return null;
+        if (o.speciesId && o.speciesId !== ev.speciesId) return null;
+        return 'inc';
       default: return null;
     }
   }

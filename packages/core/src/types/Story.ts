@@ -161,6 +161,10 @@ export type StoryObjectiveKind =
   | 'boatTrip'       // 배 출조 완주
   | 'survive'        // 생존 이벤트 통과 (밀물 고립·해무·오한)
   | 'communityWork'  // 공동작업 참여
+  | 'cull'           // 과증식 생물 수거 (138차 — 해파리·불가사리)
+  | 'farm'           // 농사 (138차 — 시스템 도착 전까지 manual)
+  | 'mine'           // 광질 (138차 — manual)
+  | 'furnish'        // 가구 배치·리빙 (138차 — manual)
   | 'reachLevel'     // 레벨 도달
   | 'earn'           // 재화 누적
   | 'custom';        // 그 외 (라벨로만 설명)
@@ -217,7 +221,9 @@ export type QuestTeaches =
   | 'seasickness' | 'weather' | 'oralHistory' | 'restocking' | 'boatOwnership' | 'guideBusiness'
   | 'tournament' | 'villageFishery' | 'ferry' | 'stallOps' | 'voyagePlan' | 'journalComplete'
   // 137차 — 회귀 고리(이전 지역 재방문)와 손님 응대
-  | 'returnTrip' | 'grading' | 'guestTrip';
+  | 'returnTrip' | 'grading' | 'guestTrip'
+  // 138차 — 과증식 대응 · 콘텐츠 제작 · 생활(제작/농사/광질/리빙)
+  | 'bloom' | 'nuisance' | 'aquaculture' | 'streaming' | 'farming' | 'mining' | 'living';
 
 export interface StoryQuestDef {
   /** 'M1-04' / 'N05-3' */

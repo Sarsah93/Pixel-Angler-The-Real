@@ -21,7 +21,7 @@ export const STORY_CHAPTERS: StoryChapterDef[] = [
       onMissKo: '실습 재신청 퀘 1개 추가 · 숙소 임대료 발생', onMissEn: 'One extra re-application quest · lodging rent starts',
       unlocksKo: '위판·경매, 부산 출조', unlocksEn: 'Auctions, Busan trips',
     },
-    contract: { mainCount: 11, mainXp: 4400, subCount: 10, subXp: 3500 },
+    contract: { mainCount: 11, mainXp: 4400, subCount: 11, subXp: 3850 },
   },
   {
     chapter: 2, part: 2, partTitleKo: '위판', partTitleEn: 'The Auction',
@@ -35,7 +35,7 @@ export const STORY_CHAPTERS: StoryChapterDef[] = [
       onMissKo: '다음 분기로 연기', onMissEn: 'Deferred to the next quarter',
       unlocksKo: '대량 납품, 상점 계약, 울산·포항', unlocksEn: 'Bulk delivery, shop contracts, Ulsan · Pohang',
     },
-    contract: { mainCount: 11, mainXp: 32450, subCount: 13, subXp: 18850 },
+    contract: { mainCount: 11, mainXp: 32450, subCount: 17, subXp: 24650 },
   },
   {
     chapter: 3, part: 3, partTitleKo: '겨울 배', partTitleEn: 'Winter Boat',
@@ -49,7 +49,7 @@ export const STORY_CHAPTERS: StoryChapterDef[] = [
       onMissKo: '재응시(응시료)', onMissEn: 'Re-sit (fee)',
       unlocksKo: '선상 낚시, 지깅, 거제·여수·태안', unlocksEn: 'Boat fishing, jigging, Geoje · Yeosu · Taean',
     },
-    contract: { mainCount: 9, mainXp: 67950, subCount: 13, subXp: 44200 },
+    contract: { mainCount: 9, mainXp: 67950, subCount: 18, subXp: 61200 },
   },
   {
     chapter: 4, part: 3, partTitleKo: '내 배', partTitleEn: 'My Boat',
@@ -63,7 +63,7 @@ export const STORY_CHAPTERS: StoryChapterDef[] = [
       onMissKo: '한 시즌 손해', onMissEn: 'One season lost',
       unlocksKo: '손님 승선, 제주 항로', unlocksEn: 'Passengers aboard, the Jeju route',
     },
-    contract: { mainCount: 11, mainXp: 161700, subCount: 15, subXp: 87750 },
+    contract: { mainCount: 11, mainXp: 161700, subCount: 18, subXp: 105300 },
   },
   {
     chapter: 5, part: 4, partTitleKo: '손님', partTitleEn: 'Guests',
@@ -77,7 +77,7 @@ export const STORY_CHAPTERS: StoryChapterDef[] = [
       onMissKo: '다음 해 대회', onMissEn: 'Next year\'s tournament',
       unlocksKo: '가이드 영업, 울릉·인천', unlocksEn: 'Guide business, Ulleung · Incheon',
     },
-    contract: { mainCount: 9, mainXp: 230850, subCount: 15, subXp: 138750 },
+    contract: { mainCount: 9, mainXp: 230850, subCount: 20, subXp: 185000 },
   },
   {
     chapter: 6, part: 5, partTitleKo: '먼 항로', partTitleEn: 'The Far Route',
@@ -91,7 +91,7 @@ export const STORY_CHAPTERS: StoryChapterDef[] = [
       onMissKo: '결항 누적', onMissEn: 'Cancellations pile up',
       unlocksKo: '독도 조사 동행', unlocksEn: 'Joining the Dokdo survey',
     },
-    contract: { mainCount: 9, mainXp: 367650, subCount: 13, subXp: 212550 },
+    contract: { mainCount: 9, mainXp: 367650, subCount: 17, subXp: 277950 },
   },
   {
     chapter: 7, part: 5, partTitleKo: '조행록', partTitleEn: 'The Fishing Log',
@@ -105,7 +105,7 @@ export const STORY_CHAPTERS: StoryChapterDef[] = [
       onMissKo: '—', onMissEn: '—',
       unlocksKo: '2층 공동작업장 재개관', unlocksEn: 'Reopening the second-floor workshop',
     },
-    contract: { mainCount: 8, mainXp: 602800, subCount: 11, subXp: 442200 },
+    contract: { mainCount: 8, mainXp: 602800, subCount: 17, subXp: 683400 },
   },
 ];
 

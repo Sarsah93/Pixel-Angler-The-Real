@@ -519,3 +519,10 @@ export {
 } from './art/CharacterArt.js';
 export type { CharAge, CharRole, CastTrait } from './art/CharacterCast.js';
 export { CAST_TRAITS, CAST_OVERRIDE, characterOf, castIds } from './art/CharacterCast.js';
+
+// ── 138차 과증식 해양생물 (해파리 2 · 불가사리 2) ──
+export type { NuisanceKind, NuisanceHarvest, MarineNuisance } from './db-schema/MarineNuisanceDatabase.js';
+export {
+  MARINE_NUISANCES, getNuisance, nuisanceBloomWeight, rollNuisance, nuisanceCullValue,
+} from './db-schema/MarineNuisanceDatabase.js';
+export { renderNuisanceArt, NUISANCE_ART_KEYS } from './art/NuisanceArt.js';

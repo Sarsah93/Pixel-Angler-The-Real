@@ -20,6 +20,9 @@
 import Phaser from 'phaser';
 import { CHAR_CELL, CHAR_FOOT_Y, CHAR_SCALE, characterOf, type CharRole } from '@tra/core';
 import { CharacterSprite, ensureCharSheet, charFrameName } from '../ui/CharacterSprite.js';
+import { NuisanceField } from '../ui/NuisanceField.js';
+import { ensureBuildingVariant } from '../ui/BuildingVariant.js';
+import type { MarineNuisance } from '@tra/core';
 import { RegionLight,
   REGION_MAP_GRAPHS,
   getRegionMapNode,
@@ -210,6 +213,8 @@ export class RegionFieldScene extends Phaser.Scene {
   private playerBody!: Phaser.Types.Physics.Arcade.ImageWithDynamicBody;
   private playerSprite!: Phaser.GameObjects.Image;
   private charSprite?: CharacterSprite;
+  /** 138차 — 과증식 해양생물(해파리·불가사리) 필드 */
+  private nuisance?: NuisanceField;
   private playerFacing: 'up' | 'down' | 'left' | 'right' = 'down';
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private readonly PLAYER_DISPLAY_H = 52;
@@ -600,6 +605,7 @@ export class RegionFieldScene extends Phaser.Scene {
       pushLog: (msg) => this.hud?.pushLog(msg),
     });
     this.events.once('shutdown', () => { this.fieldEvents?.destroy(); this.fieldEvents = undefined; });
+    this.events.once('shutdown', () => { this.nuisance?.destroy(); this.nuisance = undefined; });
 
     // 인벤토리 조작으로 퀵슬롯이 바뀌면 HUD 갱신 (restart 중복 등록 방지)
     this.events.off('inventory-changed');
@@ -878,6 +884,61 @@ export class RegionFieldScene extends Phaser.Scene {
     // 자전거 합성 레이어 (씬 재시작에도 GameState.isMounted 유지)
     this.bike = new BikeComposite(this);
     this.bike.setVisible(GameState.isMounted);
+
+    this.setupNuisanceField();
+  }
+
+  /** 과증식 해양생물 배치 — 계절(월) 기준으로 그 달에 나오는 종만 뜬다 */
+  private setupNuisanceField(): void {
+    this.nuisance?.destroy();
+    this.nuisance = new NuisanceField(this, {
+      tile: TR,
+      cols: this.cols,
+      rows: this.rows,
+      isWater: (c, r) => this.terrainAt(c, r) === 'water',
+      waterDist: (c, r) => this.chunks?.waterDistAt(c, r) ?? 0,
+      playerPos: () => ({ x: this.playerBody.x, y: this.playerBody.y }),
+      reeling: () => this.input.activePointer.leftButtonDown(),
+      log: (m) => this.hud?.pushLog(m),
+      hint: (m) => this.floatingHint(m),
+      collect: (nu, sizeCm, weightKg) => {
+        if (!this.collectNuisance(nu, sizeCm, weightKg)) return false;
+        this.onNuisanceCollected(nu);
+        return true;
+      },
+      month: () => new Date().getMonth() + 1,
+    });
+    // 맵마다 결정적 배치 — 같은 맵에 다시 오면 같은 자리에서 시작한다
+    this.nuisance.spawn(this.hashSeed(`${this.region}:${this.mapId}`));
+  }
+
+  private hashSeed(s: string): number {
+    let h = 2166136261 >>> 0;
+    for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+    return h >>> 0;
+  }
+
+  /** 수거한 개체를 인벤토리(식품)에 넣는다 */
+  private collectNuisance(nu: MarineNuisance, sizeCm: number, weightKg: number): boolean {
+    const cull = nu.cullPricePerKg > 0 ? Math.round((nu.cullPricePerKg * weightKg) / 10) * 10 : 0;
+    return InventoryStore.addItem({
+      id: `inv_nuisance_${nu.id}`,
+      name: nu.nameKo,
+      icon: '',
+      iconTexture: `nui_${nu.id}${nu.kind === 'starfish' ? '_dry' : ''}`,
+      category: 'food',
+      subCategory: nu.kind === 'jellyfish' ? '해파리' : '불가사리',
+      basePrice: cull,
+      equippable: false,
+      speciesId: nu.id,
+      lengthCm: sizeCm,
+      weightG: Math.round(weightKg * 1000),
+    }, 1);
+  }
+
+  /** 수거 성공 → 퀘스트 이벤트 + 발견 기록 */
+  private onNuisanceCollected(nu: MarineNuisance): void {
+    StoryStore.event({ kind: 'cull', speciesId: nu.id });
   }
 
   /** 셀 하단 여백 보정 — 발이 지면 타일에 닿게 한다 (구 PLAYER_FOOT_SINK 대체) */
@@ -1233,10 +1294,12 @@ export class RegionFieldScene extends Phaser.Scene {
       //  - 빌딩 파사드(building_N) = 건물 풋프린트 하단 중앙 (지붕 스프라이트 위 +0.0005)
       //  - 상점 오브젝트(팝업/횟집) = **건물 앞 문 위치에 별도 배치 + 자체 충돌**(하단 띠) —
       //    건물 풋프린트(지붕)와 겹치지 않고, 캐릭터가 오브젝트 앞을 지나면 앞에 보인다(y-sort)
-      const vis = this.poiVisualTex(poi);
+      // 138차 — 프리팹 11장이 도시 전체를 덮던 문제. POI마다 벽 색·차양·간판을 결정적으로 바꾼다.
+      const visBase = this.poiVisualTex(poi);
+      const vis = visBase ? ensureBuildingVariant(this, visBase, poi.osmId | 0) : null;
       let hasSprite = false;
       if (vis && this.textures.exists(vis)) {
-        const isShop = /popup|sashimi/.test(vis);
+        const isShop = /popup|sashimi/.test(visBase ?? '');
         const b = this.chunks?.buildingBoundsAt(poi.tx, poi.ty);
         let lit: Phaser.GameObjects.Image | null = null;
         if (isShop) {
@@ -1890,6 +1953,8 @@ export class RegionFieldScene extends Phaser.Scene {
       //  Shift+F = 설치물 회수 (기능이 있는 설치물은 [F]가 기능을 연다 — 129차)
       if (this.nearObject) this.interactWithObject(this.nearObject, ev.shiftKey);
       else if (this.nearBuilding) this.promptTrade(this.nearBuilding.kind);
+      // 138차 — 해안에 밀려온 불가사리는 채집 스팟보다 먼저 줍는다(발밑에 있는 게 우선)
+      else if (this.nuisance?.gatherNear(this.playerBody.x, this.playerBody.y, TR * 1.4)) { /* 채집됨 */ }
       else if (this.forage?.onInteractKey()) { /* 채집 홀드 시작 */ }
       else if (this.trapField?.onInteractKey()) { /* 통발 수거 확인 */ }
     });
@@ -2492,9 +2557,17 @@ export class RegionFieldScene extends Phaser.Scene {
       return;
     }
 
-    // 착수 파문 → 1인칭 낚시 뷰 진입
     const ripple = this.add.circle(proj.x, proj.y, 3, 0x000000, 0).setStrokeStyle(2, 0xdff0ff, 0.9).setDepth(21);
     this.tweens.add({ targets: ripple, scale: 4, alpha: 0, duration: 700, onComplete: () => ripple.destroy() });
+
+    // 138차 — 착수점에 해파리·불가사리가 걸리면 **씬 전환 없이** 훌치기로 끌어온다.
+    //   (사용자 지시: 1인칭 전환이 아니라 던져진 라인을 릴링해 수거하는 느낌)
+    if (this.nuisance?.tryHook(proj.x, proj.y)) {
+      this.clearCastFlight();
+      return;
+    }
+
+    // 착수 파문 → 1인칭 낚시 뷰 진입
     this.hud?.pushLog('[낚시] 착수! 1인칭 낚시 모드 진입');
     this.time.delayedCall(420, () => this.enterFirstPersonFishing(proj.x, proj.y, col, row));
   }
@@ -3016,6 +3089,7 @@ export class RegionFieldScene extends Phaser.Scene {
 
   update(_time: number, delta: number): void {
     this.updateStoryProximity(delta);
+    this.nuisance?.update(delta);
     if (this.traffic) {
       const cam = this.cameras.main;
       const pl = this.playerBody ? { x: this.playerBody.x / TR, y: this.playerBody.y / TR } : null;

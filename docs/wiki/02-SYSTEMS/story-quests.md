@@ -18,7 +18,7 @@
 | `core/src/types/Story.ts` | 계약 타입 — `StoryQuestDef`·`StoryObjective(manual)`·`JournalPageDef`·`StoryArcDef`·`CatchProvenance`·`LawVerdict`·`ReputationState` |
 | `core/src/rules/FisheryLaw.ts` (+`.test.ts`) | 법 규칙 5조 순수 함수 `canSell/canKeep/canUseGear/canGather/requiredLicenseFor` · 거부 시 대안 ≥ 1 |
 | `core/src/db-schema/StoryChapters.ts` | 5부 7챕터 · 자격 사다리 · **§8-1 수치 계약** |
-| `core/src/db-schema/StoryQuestDatabase.ts` | **158퀘**(메인 68 · 서브 90) + `validateStoryQuests()` · 137차 증설분은 `SUB_EXTRA`(선행 조건 명시) |
+| `core/src/db-schema/StoryQuestDatabase.ts` | **186퀘**(메인 68 · 서브 118) + `validateStoryQuests()` · 137차 증설분은 `SUB_EXTRA`(선행 조건 명시) |
 | `core/src/db-schema/JournalPages.ts` | 조행록 17장(어종 id 정합) + `journalCatchMatches` |
 | `core/src/db-schema/StoryArcs.ts` | 메인 3인 + **19아크** NPC (137차 +N18 도현수 · N19 정옥선·탁만수) |
 | `core/src/inventory/Backpack.ts` | 가방 사다리 모델(§8-3) — UI 미배선 |
@@ -77,7 +77,7 @@ STORY_ARCS ────┘     traineeDay (D-180)                └─ RegionHu
 | **사람들(17아크) 색인 + 아크 상세** | ✅ | 136 — 미조우 아크는 `???` |
 | **NPC 퀘스트 마커**(미니맵 + 필드 머리 위) | ✅ | 136 — 노랑 물음표 = 지금 해결 가능 / 빨강 느낌표 = 새 의뢰. 메인·서브 미구분(사용자 결정) |
 | **미니맵 상점 카테고리 아이콘 8종** | ✅ | 136 — 셀 중복 제거 + 크기 단계별 표시 하한 |
-| **퀘스트 증설 38편** — 메인 3(M2-11·M4-11·M6-09) + 서브 35(챕터당 5) | ✅ | 137 — 총 **158퀘** · 계약 7챕터 갱신 |
+| **퀘스트 증설 38편** — 메인 3(M2-11·M4-11·M6-09) + 서브 35(챕터당 5) | ✅ | 137 — 총 **186퀘** · 계약 7챕터 갱신 |
 | **회귀 고리 13편** — 새 자격을 들고 옛 항구로 돌아간다 | ✅ | 137 — 챕터 무대 밖 편 20 → **33** |
 | **신규 아크 N18 도현수 · N19 정옥선·탁만수** | ✅ | 137 — 라이벌 7챕터 전편 / 오십 년 심부름 6편 |
 | **인물 연결**(강두철↔고만석 · 배누리 진로 · 이수연 식당) | ✅ | 137 |
@@ -111,3 +111,19 @@ STORY_ARCS ────┘     traineeDay (D-180)                └─ RegionHu
    `communityWork` 목표는 `job:coop_work`로 매칭된다(135차). 새 일감을 추가하면 `questKey`를 함께 정한다.
 10. **`TUNING.law.enforceRodSell`은 3값이다** — 0/1/2. `>= 1` 같은 이진 비교로 읽지 말 것(2는 조건부).
 11. **무발주 퀘는 `event()` 끝에서 자동 완료** — 새 무발주 퀘를 추가하면 목표를 채우는 이벤트가 반드시 `event()`를 타야 한다.
+
+
+---
+
+## 138차 갱신 (2026-09-16)
+
+- **186퀘 (메인 68 · 서브 118) · 23아크.** 138차에 서브 28편 + 아크 4개 증설.
+- 신규 아크: **N20 유하랑**(낚시 버튜버 — 콘텐츠 제작 · 7편) · **N21 오세찬**(해양환경 감시원 — 과증식 대응 · 7편) ·
+  **N22 하늬**(생활공방 — 제작/농사/광질/리빙 · 8편) · **N23 채수림**(수산질병·양식 관리사 — 어종 관리 · 6편).
+- 신규 목표 종류: `cull`(과증식 수거 — 자동 추적) · `farm`·`mine`·`furnish`(시스템 도착 전까지 `manual`).
+- 설계 원칙 3가지(신규 퀘스트 작성 시 준수):
+  1. **기존 시스템에 의미를 얹는다** — 탈출 양식 광어는 133차 비만도를, 금어기 계측은 134차 법 규칙을 그대로 판정 근거로 쓴다.
+  2. **확률 드랍 목표 금지** — 알비노는 "잡아 와라"가 아니라 조건(스팟·물때)을 맞추는 퀘스트로. 아니면 영구 미완이 된다.
+  3. **`manual` 목표는 챕터당 2편까지** — 쌓이면 "대화만 하는 퀘스트"가 되어 체감이 빈다.
+- 누적 XP 2,415,600 → **2,809,150**(+16%). 기존 퀘스트 보상은 **한 건도 줄이지 않았다**.
+- ⚠ 챕터 계약(`StoryChapters.contract`)은 손으로 세지 말고 스크립트로 재산출할 것 — 28편을 넣으면 7챕터가 전부 바뀐다.

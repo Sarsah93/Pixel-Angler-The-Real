@@ -1,6 +1,6 @@
 /**
  * @file CharacterCast.ts
- * @description 스토리 인물 38인 외형 캐스팅 (138차)
+ * @description 스토리 인물 41인 외형 캐스팅 (138차)
  *
  * 구 배선은 **NPC 텍스처 5장으로 38인을 돌려막았다**(탁만수 = 강두철 = `npc_grandfather`,
  * 도현수 = 배누리 = `npc_tourist_f`). 한 화면에 같은 얼굴이 둘 서 있었다.
@@ -65,6 +65,11 @@ export const CAST_TRAITS: Record<string, CastTrait> = {
   seok_daeyang: { sex: 'm', age: 'elder', role: 'keeper' },
   dan_cheolho: { sex: 'm', age: 'mid', role: 'office' },
   ha_minji: { sex: 'f', age: 'young', role: 'musician' },
+  // 138차 증설 4인
+  yu_harang: { sex: 'f', age: 'young', role: 'streamer' },
+  oh_sechan: { sex: 'm', age: 'mid', role: 'official' },
+  ha_nui: { sex: 'f', age: 'mid', role: 'artisan' },
+  chae_surim: { sex: 'f', age: 'mid', role: 'expert' },
 };
 
 /** 손으로 굳힌 외형 (해시 결과를 덮어쓴다) */
@@ -77,6 +82,10 @@ export const CAST_OVERRIDE: Record<string, Partial<CharAppearance> & { outfit?: 
   bae_nuri: { hairStyle: 'pony', hair: 3 },
   seo_harin: { hairStyle: 'long', hair: 5, outfit: { hat: 'visor', hatColor: 0xd1a72f } },
   baram: { hairStyle: 'long', hair: 1, beard: 1, outfit: { hat: 'bandana', hatColor: 0x5b6637 } },
+  yu_harang: { hairStyle: 'pony', hair: 9, outfit: { hat: 'visor', hatColor: 0xc4553f, shirt: 'tee', shirtColor: 0x2f8377 } },
+  oh_sechan: { hair: 0, outfit: { hat: 'cap', hatColor: 0x2f8377, outer: 'vest', outerColor: 0xd1a72f } },
+  ha_nui: { hairStyle: 'braid', hair: 2, outfit: { outer: 'apron', outerColor: 0x8a6340 } },
+  chae_surim: { hairStyle: 'bob', hair: 0, outfit: { shirt: 'shirt', shirtColor: 0xe8e2d4, outer: 'jacket', outerColor: 0x9a9ea6 } },
 };
 
 // ── 결정적 해시 ─────────────────────────────────────────────
