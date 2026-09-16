@@ -69,8 +69,11 @@ export function ensureBuildingVariant(scene: Phaser.Scene, baseKey: string, seed
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(src as CanvasImageSource, 0, 0);
 
-  // ① 벽 색 회전 — 채도 있는 중간 명도만 돌린다(외곽선·유리·흰벽 보존)
-  const hueShift = ((variant * 0.17) + 0.06) % 1;
+  // ① 벽 색 회전 — 채도 있는 중간 명도만 돌린다(외곽선·유리·흰벽 보존).
+  //   회전 폭은 **좁게** 잡는다. 색상환을 크게 돌리면 횟집이 마젠타가 되는 식으로
+  //   건물 종류의 의미(사용자 규칙 "편의점에 팝업스토어/횟집 금지")가 색에서부터 깨진다.
+  const HUE_STEPS = [0, 0.045, 0.09, -0.05, 0.13, -0.095];
+  const hueShift = (HUE_STEPS[variant] + 1) % 1;
   const img = ctx.getImageData(0, 0, w, h);
   const d = img.data;
   for (let i = 0; i < d.length; i += 4) {
