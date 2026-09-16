@@ -14,9 +14,10 @@
  */
 import Phaser from 'phaser';
 import {
-  CLOTH_COLORS, EYE_COLORS, HAIR_COLORS, MOUTH_STYLES, SKIN_TONES,
+  CLOTH_COLORS, EYE_COLORS, FACE_SHAPES, HAIR_COLORS, MOUTH_STYLES, SKIN_TONES,
   bareOutfit, defaultAppearance, starterOutfit,
-  type CharAppearance, type CharConfig, type CharDir, type CharSex, type HairStyle, type MouthStyle,
+  type CharAppearance, type CharConfig, type CharDir, type CharSex,
+  type FaceShape, type HairStyle, type MouthStyle,
 } from '@tra/core';
 import { GameState } from '../store/GameState.js';
 import { ensureCharSheet, charFrameName } from '../ui/CharacterSprite.js';
@@ -47,6 +48,9 @@ const STYLES_F: HairStyle[] = ['bob', 'pony', 'long', 'braid', 'curly', 'short',
 
 const MOUTH_KO: Record<MouthStyle, string> = {
   smile: '미소', neutral: '담담', small: '작은 입', open: '활짝',
+};
+const FACE_KO: Record<FaceShape, string> = {
+  oval: '계란형', round: '둥근형', square: '사각형',
 };
 const STYLE_KO: Record<HairStyle, string> = {
   short: '단발 컷', bob: '보브', pony: '포니테일', long: '긴 머리',
@@ -264,7 +268,13 @@ export class CharacterCreateScene extends Phaser.Scene {
       },
       sw('skin', '피부', 0, SKIN_TONES, () => this.look.skin, (i) => { this.look.skin = i; }),
 
-      sw('eye', '눈동자', 0, EYE_COLORS, () => this.look.eye, (i) => { this.look.eye = i; }, '얼굴'),
+      {
+        key: 'faceShape', label: '얼굴형', kind: 'cycle', col: 0, section: '얼굴',
+        value: () => FACE_KO[this.look.faceShape],
+        prev: () => { this.look.faceShape = this.cycle(FACE_SHAPES, this.look.faceShape, -1); },
+        next: () => { this.look.faceShape = this.cycle(FACE_SHAPES, this.look.faceShape, 1); },
+      },
+      sw('eye', '눈동자', 0, EYE_COLORS, () => this.look.eye, (i) => { this.look.eye = i; }),
       {
         key: 'mouth', label: '입', kind: 'cycle', col: 0,
         value: () => MOUTH_KO[this.look.mouth],
@@ -477,6 +487,7 @@ export class CharacterCreateScene extends Phaser.Scene {
     this.look.skin = r(SKIN_TONES.length);
     this.look.hair = r(HAIR_COLORS.length);
     this.look.hairStyle = this.styles()[r(this.styles().length)];
+    this.look.faceShape = FACE_SHAPES[r(FACE_SHAPES.length)];
     this.look.eye = r(EYE_COLORS.length);
     this.look.mouth = MOUTH_STYLES[r(MOUTH_STYLES.length)];
     this.look.blush = Math.random() < 0.6;

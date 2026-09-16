@@ -14,6 +14,7 @@
  */
 
 import {
+  FACE_SHAPES,
   type CharAppearance, type CharConfig, type CharOutfit, type CharSex, type HairStyle,
   type MouthStyle, HAIR_COLORS, CLOTH_COLORS, bareOutfit,
 } from './CharacterArt.js';
@@ -152,6 +153,7 @@ export function characterOf(npcId: string, fallback?: Partial<CastTrait>): CharC
     skin: (h >>> 7) % 5,
     hair: hairPool[(h >>> 13) % hairPool.length],
     hairStyle: t.sex === 'f' ? pick(STYLE_F, h, 19) : pick(STYLE_M, h, 19),
+    faceShape: pick(FACE_SHAPES, h, 27),
     eye: (h >>> 23) % 6,
     mouth: pick(MOUTHS, h, 9),
     blush: t.age === 'child' || t.age === 'teen' || ((h >>> 3) & 1) === 1,
