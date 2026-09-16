@@ -541,7 +541,8 @@ export class MainMenuScene extends Phaser.Scene {
       return;
     }
     GameState.startNewGameInSlot(slot);
-    this.startAdventure();
+    // 138차 — 새 게임은 캐릭터 만들기를 거친다(이어하기는 곧장 필드로)
+    this.fadeOutThen(280, () => this.scene.start('CharacterCreateScene'));
   }
 
   /**

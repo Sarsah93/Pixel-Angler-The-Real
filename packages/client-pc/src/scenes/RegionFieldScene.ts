@@ -18,6 +18,8 @@
  */
 
 import Phaser from 'phaser';
+import { CHAR_CELL, CHAR_FOOT_Y, CHAR_SCALE, characterOf, type CharRole } from '@tra/core';
+import { CharacterSprite, ensureCharSheet, charFrameName } from '../ui/CharacterSprite.js';
 import { RegionLight,
   REGION_MAP_GRAPHS,
   getRegionMapNode,
@@ -207,6 +209,7 @@ export class RegionFieldScene extends Phaser.Scene {
   // 플레이어
   private playerBody!: Phaser.Types.Physics.Arcade.ImageWithDynamicBody;
   private playerSprite!: Phaser.GameObjects.Image;
+  private charSprite?: CharacterSprite;
   private playerFacing: 'up' | 'down' | 'left' | 'right' = 'down';
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private readonly PLAYER_DISPLAY_H = 52;
@@ -215,9 +218,6 @@ export class RegionFieldScene extends Phaser.Scene {
    * 접지 보정 — man 스프라이트 하단의 투명 여백 때문에 발이 그림자보다 위에 떠
    * 보이던 문제를 스프라이트만 아래로 내려 보정한다 (그림자/충돌 바디는 불변).
    */
-  private readonly PLAYER_FOOT_SINK = 4;
-  private _walkFrameTimer = 0;
-  private _walkFrame: 1 | 2 = 1;
 
   private isTransitioning = false;
   /** 맵 JSON 로드 실패로 안내 화면만 띄운 상태 — update()가 필드 오브젝트를 만지면 안 된다 */
@@ -864,8 +864,10 @@ export class RegionFieldScene extends Phaser.Scene {
     this.playerBody.setSize(14, 14);
 
     const feetY = py + this.PLAYER_FOOT_OFFSET;
-    this.playerSprite = this.add.image(px, feetY + this.PLAYER_FOOT_SINK, 'man-idle-front').setOrigin(0.5, 1).setDepth(20);
-    this.applyPlayerSpriteSize();
+    // 138차 — 구 외부 출력물(man-idle-*) 축소 배치 폐기. 바닐라 베이스 시트를 정수 x2로 굽는다.
+    this.charSprite = new CharacterSprite(this, px, feetY + this.charFootSink, GameState.character, CHAR_SCALE);
+    this.playerSprite = this.charSprite.image;
+    this.playerSprite.setDepth(20);
 
     const shadow = this.add.ellipse(px, feetY, this.PLAYER_DISPLAY_H * 0.42, this.PLAYER_DISPLAY_H * 0.12, 0x000000, 0.28)
       .setDepth(19);
@@ -878,11 +880,14 @@ export class RegionFieldScene extends Phaser.Scene {
     this.bike.setVisible(GameState.isMounted);
   }
 
-  private applyPlayerSpriteSize(): void {
-    const src = this.playerSprite.texture.getSourceImage() as HTMLImageElement;
-    if (!src || !src.height) return;
-    const h = this.PLAYER_DISPLAY_H;
-    this.playerSprite.setDisplaySize(h * (src.width / src.height), h);
+  /** 셀 하단 여백 보정 — 발이 지면 타일에 닿게 한다 (구 PLAYER_FOOT_SINK 대체) */
+  private get charFootSink(): number {
+    return (CHAR_CELL - 1 - CHAR_FOOT_Y) * CHAR_SCALE;
+  }
+
+  /** 장비·외형이 바뀌면 시트를 다시 굽는다 (장착 변경 → 즉시 반영) */
+  refreshCharacterLook(): void {
+    this.charSprite?.setConfig(GameState.character);
   }
 
   /** 진입 엣지/기본 진입에 따라 스폰 타일 계산 (걷기 가능 타일 보장) */
@@ -1158,18 +1163,22 @@ export class RegionFieldScene extends Phaser.Scene {
     return null;
   }
 
-  /** POI → 정적 NPC (L4 최소 구현 — 상호작용 없음, 후속 훅) */
-  private poiNpcTex(poi: RegionPoi): string | null {
+  /**
+   * POI → 배경 NPC 역할. 138차 — 구 gem NPC 텍스처 5장 돌려막기를 폐기하고
+   * **POI마다 고유 인물**을 `characterOf(id)`로 생성한다(같은 얼굴이 두 번 서지 않는다).
+   * 반환 null이면 그 POI엔 NPC가 없다.
+   */
+  private poiNpcRole(poi: RegionPoi): CharRole | null {
     const h = Math.abs(Math.imul((poi.osmId | 0) ^ 0x5bd1, 2246822519) >>> 0) / 4294967296;
-    if (poi.type === 'police') return 'ts_gem_npc_police';
+    if (poi.type === 'police') return 'official';
     if (poi.type === 'market' || (poi.type === 'shop' && (poi.shopKind === 'seafood' || poi.shopKind === 'fishing'))) {
-      return h < 0.6 ? 'ts_gem_npc_fish_vendor' : null;
+      return h < 0.6 ? 'vendor' : null;
     }
     if (poi.type === 'viewpoint' || poi.type === 'cafe' || poi.type === 'lodging' || poi.type === 'info') {
-      return h < 0.5 ? 'ts_gem_npc_tourist_f' : null;
+      return h < 0.5 ? 'office' : null;
     }
-    if (poi.type === 'restaurant') return h < 0.25 ? 'ts_gem_npc_grandfather' : h < 0.4 ? 'ts_gem_npc_father_kid' : null;
-    if (poi.type === 'ferry_terminal' || poi.type === 'toilet') return h < 0.5 ? 'ts_gem_npc_father_kid' : null;
+    if (poi.type === 'restaurant') return h < 0.25 ? 'cook' : h < 0.4 ? 'camper' : null;
+    if (poi.type === 'ferry_terminal' || poi.type === 'toilet') return h < 0.5 ? 'crew' : null;
     return null;
   }
 
@@ -1254,14 +1263,17 @@ export class RegionFieldScene extends Phaser.Scene {
         hasSprite = true;
       }
       // NPC (정적 — 문 옆에 선다, 충돌 있음)
-      const npc = this.poiNpcTex(poi);
-      if (npc && this.textures.exists(npc)) {
+      const role = this.poiNpcRole(poi);
+      if (role) {
         const side = (poi.osmId & 1) === 0 ? 1 : -1;
         const nx = door.x + side * 18, ny = door.y + 8;
         // 깊이 = max(자기 y, 소속 건물 하단 y) — 문이 건물 북쪽이면 지붕 RT 뒤로 숨던 것(리포트 6)
         const bb = this.chunks?.buildingBoundsAt(poi.tx, poi.ty);
         const depthY = Math.max(ny, bb ? (bb.r1 + 1) * TR + 1 : 0);
-        const img = this.add.image(nx, ny, npc).setOrigin(0.5, 1).setScale(0.5).setDepth(20 + depthY * 0.001 + 0.0006);
+        const sheet = ensureCharSheet(this, characterOf(`poi_${poi.osmId}`, { role }), CHAR_SCALE);
+        const pad = (CHAR_CELL - 1 - CHAR_FOOT_Y) * CHAR_SCALE;
+        const img = this.add.image(nx, ny + pad, sheet, charFrameName(side > 0 ? 'left' : 'right', 0))
+          .setOrigin(0.5, 1).setDepth(20 + depthY * 0.001 + 0.0006);
         objs.push(img);
         const body = this.add.rectangle(nx, ny - 6, Math.max(12, img.displayWidth * 0.7), 12, 0, 0).setVisible(false);
         this.poiWalls?.add(body);
@@ -3380,9 +3392,11 @@ export class RegionFieldScene extends Phaser.Scene {
       if (def.regionId !== this.region) continue;
       const { col, row } = this.nearestWalkable(def.tx, def.ty);
       const x = col * TR + TR / 2, y = row * TR + TR;
-      const tex = this.textures.exists(def.tex) ? def.tex : null;
-      if (tex) this.add.image(x, y, tex).setOrigin(0.5, 1).setScale(0.5).setDepth(20 + y * 0.001 + 0.0006);
-      else this.add.rectangle(x, y - 12, 14, 24, 0xd4a017).setDepth(20 + y * 0.001 + 0.0006);
+      // 138차 — 인물마다 고유 외형(`characterOf`)을 굽는다. 구 gem NPC 텍스처 5장 돌려막기 폐기.
+      const sheet = ensureCharSheet(this, characterOf(def.npcId), CHAR_SCALE);
+      const pad = (CHAR_CELL - 1 - CHAR_FOOT_Y) * CHAR_SCALE;
+      this.add.image(x, y + pad, sheet, charFrameName(def.facing ?? 'down', 0))
+        .setOrigin(0.5, 1).setDepth(20 + y * 0.001 + 0.0006);
       const npc = getStoryNpc(def.npcId);
       this.add.text(x, y - 40, npc?.nameKo ?? def.npcId, {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#ffe9a0',
@@ -3803,19 +3817,10 @@ export class RegionFieldScene extends Phaser.Scene {
   }
 
   private updateWalkTexture(moving: boolean): void {
-    const dir = this.playerFacing === 'up' ? 'back' : this.playerFacing === 'down' ? 'front' : this.playerFacing;
-    let key: string;
-    // 탑승 중엔 걷기 프레임 대신 idle 고정 (다리는 페달링으로 자전거에 가림)
-    if (!moving || GameState.isMounted) { key = `man-idle-${dir}`; this._walkFrameTimer = 0; this._walkFrame = 1; }
-    else {
-      this._walkFrameTimer += this.game.loop.delta;
-      if (this._walkFrameTimer >= 200) { this._walkFrameTimer = 0; this._walkFrame = this._walkFrame === 1 ? 2 : 1; }
-      key = `man-move-${dir}-${this._walkFrame}`;
-    }
-    if (this.playerSprite.texture.key !== key) {
-      this.playerSprite.setTexture(key);
-      this.applyPlayerSpriteSize();
-    }
+    if (!this.charSprite) return;
+    this.charSprite.setDir(this.playerFacing);
+    // 탑승 중엔 걷기 프레임 대신 대기 고정 (다리는 페달링으로 자전거에 가린다)
+    this.charSprite.update(this.game.loop.delta, moving && !GameState.isMounted);
   }
 
   private updateSpriteAndShadow(): void {
@@ -3833,7 +3838,7 @@ export class RegionFieldScene extends Phaser.Scene {
         this.playerBody.x, feetY, dir, v.x !== 0 || v.y !== 0, this.time.now, bikeDepth);
     }
 
-    this.playerSprite.setPosition(this.playerBody.x, feetY + this.PLAYER_FOOT_SINK + riderOffset);
+    this.playerSprite.setPosition(this.playerBody.x, feetY + this.charFootSink + riderOffset);
     this.playerSprite.setDepth(depth);
     const shadow = this.registry.get('_rfShadow') as Phaser.GameObjects.Ellipse | undefined;
     if (shadow) {

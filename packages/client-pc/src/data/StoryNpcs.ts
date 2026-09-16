@@ -5,8 +5,8 @@
  * 좌표는 `sokcho_v2` 타일(1179×642). 씬이 배치 시 `nearestWalkable`로 스냅하므로 대략값이면 된다.
  * 앵커: 동명활어센터(587,154)=만복상회 좌판 · 방파제 입구 스폰(527,128) · 속초등대(566,84) · 영금정(572,88).
  *
- * ⚠ 스프라이트는 **기존 POI NPC 텍스처 재사용(플레이스홀더)** — 전용 4종 에셋(CLAUDE.md 사용자 대기 ⑤)
- *   도착 시 `tex`만 교체한다. 이름표가 인물을 식별한다.
+ * ⚠ 138차 — 스프라이트는 **`characterOf(npcId)`로 인물마다 생성**한다(core `art/CharacterCast.ts`).
+ *   구 `tex`(gem NPC 5종 돌려막기)는 배선에서 제외했고 필드만 남아 있다.
  */
 
 export interface StoryNpcPlacement {
@@ -15,8 +15,13 @@ export interface StoryNpcPlacement {
   regionId: string;
   tx: number;
   ty: number;
-  /** 텍스처 키 (TilesetManifest npc_*) */
+  /**
+   * @deprecated 138차 — 인물 외형은 `characterOf(npcId)`가 만든다. 이 필드는 배선에서 제외됐고
+   * (gem NPC 텍스처 5장으로 38인을 돌려막던 잔재) 참조만 남긴다.
+   */
   tex: string;
+  /** 서 있는 방향 (기본 정면) */
+  facing?: 'down' | 'left' | 'right' | 'up';
 }
 
 export interface StoryPlace {

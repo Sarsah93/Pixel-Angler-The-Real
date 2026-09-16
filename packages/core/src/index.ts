@@ -504,3 +504,18 @@ export { DAY_JOBS, dayJobsOfNpc, getDayJob } from './db-schema/DayJobs.js';
 export {
   STORY_QUESTS, getStoryQuest, storyQuestsOfChapter, lastMainQuestOfChapter, validateStoryQuests,
 } from './db-schema/StoryQuestDatabase.js';
+
+// ── 138차 바닐라 베이스 캐릭터 아트 (순수 래스터라이저 — 굽기는 client `ui/CharacterSprite.ts`) ──
+export type {
+  CharDir, CharFrame, CharSex, HairStyle, MouthStyle,
+  CharAppearance, CharOutfit, CharConfig,
+  ShirtKind, PantsKind, ShoesKind, HatKind, OuterKind, HeldKind,
+} from './art/CharacterArt.js';
+export {
+  CHAR_CELL, CHAR_FOOT_Y, CHAR_HEAD_TOP, CHAR_SCALE, CHAR_DIRS, CHAR_FRAMES,
+  SKIN_TONES, HAIR_COLORS, EYE_COLORS, CLOTH_COLORS, HAIR_STYLES, MOUTH_STYLES,
+  ramp, defaultAppearance, bareOutfit, starterOutfit,
+  renderCharCell, renderCharSheet, charCfgKey, makeCharConfig, pose,
+} from './art/CharacterArt.js';
+export type { CharAge, CharRole, CastTrait } from './art/CharacterCast.js';
+export { CAST_TRAITS, CAST_OVERRIDE, characterOf, castIds } from './art/CharacterCast.js';

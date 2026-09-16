@@ -16,6 +16,7 @@ import Phaser from 'phaser';
 import { PHASER_CONFIG } from './PhaserConfig.js';
 import { BootScene } from './scenes/BootScene.js';
 import { MainMenuScene } from './scenes/MainMenuScene.js';
+import { CharacterCreateScene } from './scenes/CharacterCreateScene.js';
 import { WorldMapScene } from './scenes/WorldMapScene.js';
 import { RegionFieldScene } from './scenes/RegionFieldScene.js';
 import { HomeInteriorScene } from './scenes/HomeInteriorScene.js';
@@ -68,6 +69,7 @@ export function createGame(): Phaser.Game {
     scene: [
       BootScene,
       MainMenuScene,
+      CharacterCreateScene,
       WorldMapScene,
       RegionFieldScene,
       HomeInteriorScene,

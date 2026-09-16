@@ -523,7 +523,10 @@ export class RegionHud extends Phaser.GameObjects.Container {
       case 'hydration': return { cur: Math.round(v.hydration), max: 100, ratio: v.hydration / 100 };
       case 'xp': {
         const lv = p.level ?? 1;
-        if (lv >= MAX_LEVEL) return { cur: 0, max: 0, ratio: 1, extra: `Lv.${lv} MAX` };
+        // 138차 — 만렙에서도 XP는 쌓인다. 바는 채운 채로 두고 누적치를 숫자로 보여준다.
+        if (lv >= MAX_LEVEL) {
+          return { cur: Math.round(p.experience ?? 0), max: 0, ratio: 1, extra: `Lv.${lv} MAX` };
+        }
         const need = xpToNext(lv);
         return { cur: Math.round(p.experience ?? 0), max: need, ratio: need > 0 ? (p.experience ?? 0) / need : 0, extra: `Lv.${lv}` };
       }

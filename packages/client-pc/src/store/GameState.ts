@@ -29,6 +29,7 @@ import type {
   CaughtFishRecord,
 } from '@tra/core';
 import type { WorldObjectState, CatchMethod } from '@tra/core';
+import { type CharConfig, type CharSex, defaultAppearance, starterOutfit } from '@tra/core';
 import { StoryStore, type StorySaveState } from './StoryStore.js';
 import {
   skillPointsForLevel, skillPointsSpent, skillPrereqsMet, getSkillById, SKILL_CATEGORIES,
@@ -184,6 +185,8 @@ interface SaveData {
   vitals?: VitalsSaveState;
   /** 스토리·퀘스트 진행 (134차) — 없으면 새 게임과 같이 M1-01만 활성 */
   story?: StorySaveState;
+  /** 플레이어 외형·복장 (138차) — 없으면 기본 남성 + 스타터 한 벌 */
+  character?: CharConfig;
   version: number;
 }
 
@@ -310,6 +313,8 @@ export class GameStateManager {
     this._statuses = saved.vitals?.statuses ?? [];
     // 134차 — 스토리 진행 (구세이브 = M1-01만 활성)
     StoryStore.deserialize(saved.story);
+    // 138차 — 구세이브는 외형 필드가 없다(기본 남성 + 스타터 한 벌로 시작)
+    this._character = saved.character ?? GameStateManager.defaultCharacter('m');
     // 130차 (e) — 구세이브가 이미 조합을 갖췄을 수 있다(히든 노드는 세이브에 없던 시절 데이터).
     //   포인트를 쓰지 않으므로 소급 지급해도 예산이 어긋나지 않는다.
     this.refreshHiddenSkills();
@@ -487,15 +492,16 @@ export class GameStateManager {
     const add = Math.max(0, Math.round(amount));
     if (add <= 0) return 0;
     const p = this.player;
-    if ((p.level ?? 1) >= MAX_LEVEL) return 0;   // 만렙 — XP 누적 정지
+    // 138차 — 만렙(200)에서도 XP는 계속 쌓인다. 퀘스트가 계속 늘어나는데 만렙에서 보상이
+    // 통째로 증발하면 후반 퀘스트가 무보상이 된다. 레벨만 200에서 멈추고 경험치는 누적한다.
     p.experience = (p.experience ?? 0) + add;
+    if ((p.level ?? 1) >= MAX_LEVEL) return 0;
     let ups = 0;
     while ((p.level ?? 1) < MAX_LEVEL && p.experience >= xpToNext(p.level ?? 1)) {
       p.experience -= xpToNext(p.level ?? 1);
       p.level = (p.level ?? 1) + 1;
       ups++;
     }
-    if ((p.level ?? 1) >= MAX_LEVEL) p.experience = 0;
     if (ups > 0) {
       console.log(`[GameState] Level Up! Lv.${(p.level ?? 1) - ups} -> Lv.${p.level} (스킬 포인트 +${ups})`);
       this.commitVitals(this.vitals);   // maxHp가 레벨에 비례하므로 상한 재계산
@@ -504,6 +510,21 @@ export class GameStateManager {
       this.markDirty();
     }
     return ups;
+  }
+
+  /** 만렙 여부 — HUD·일지는 이 값으로 '누적' 표기로 전환한다 */
+  get isMaxLevel(): boolean { return (this.player.level ?? 1) >= MAX_LEVEL; }
+
+  /**
+   * 경험치 바 표시값. 만렙이면 `max`가 없고 `cur`는 **만렙 도달 후 누적 XP**다
+   * (레벨 내 잔여가 아니다 — 만렙에선 차감이 일어나지 않는다).
+   */
+  xpDisplay(): { cur: number; max: number | null; maxed: boolean } {
+    const p = this.player;
+    const lv = p.level ?? 1;
+    const cur = p.experience ?? 0;
+    if (lv >= MAX_LEVEL) return { cur, max: null, maxed: true };
+    return { cur, max: xpToNext(lv), maxed: false };
   }
 
   /** 활동 XP — 손질/회뜨기/채집/제작/요리 완료 시 호출 (mult = 등급·품질 계수). 반환 = 레벨업 수 */
@@ -1124,6 +1145,7 @@ export class GameStateManager {
       discoveries: DiscoveryStore.serialize(),
       vitals: { hunger: this._hunger, hydration: this._hydration, statuses: this._statuses },
       story: StoryStore.serialize(),
+      character: this._character,
       version: SAVE_VERSION,
     };
   }
@@ -1281,7 +1303,22 @@ export class GameStateManager {
   }
 
   /** 새 게임 시작 (상태 초기화 — 슬롯 파일은 건드리지 않음) */
+  /** 플레이어 외형·복장 (138차) — 바닐라는 나체+언더웨어, 생성 직후 스타터 한 벌 */
+  private _character: CharConfig = GameStateManager.defaultCharacter('m');
+
+  static defaultCharacter(sex: CharSex): CharConfig {
+    return { look: defaultAppearance(sex), outfit: starterOutfit(sex) };
+  }
+
+  get character(): CharConfig { return this._character; }
+
+  setCharacter(cfg: CharConfig): void {
+    this._character = cfg;
+    this.markDirty();
+  }
+
   newGame(): void {
+    this._character = GameStateManager.defaultCharacter('m');
     this._player = createDefaultPlayer();
     this._deployedTraps = [];
     this._coolerInventory = createDefaultCoolerInventory();
