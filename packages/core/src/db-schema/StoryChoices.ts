@@ -34,8 +34,8 @@ export function toneOfferChoices(kind: StoryQuestDef['kind']): QuestChoiceDef[] 
   const t = TUNING.affinity;
   const all = [
     ch('tone_blunt', '…알겠습니다.', '…Understood.', '그래.', 'Fine.', { affinity: t.toneBlunt }),
-    ch('tone_honest', '솔직히 자신은 없지만, 해 보겠습니다.', 'Honestly, I\'m not sure I can — but I\'ll try.',
-      '자신 없는 게 정상이다. 해 보는 게 일이야.', 'Not being sure is normal. Trying is the job.', { affinity: t.toneHonest }),
+    ch('tone_honest', '자신은 없는데, 해 보겠습니다.', 'Not sure I can, but I\'ll give it a go.',
+      '자신 있어서 하는 사람이 어디 있나. 해 보면 돼.', 'Nobody starts sure. You just start.', { affinity: t.toneHonest }),
     ch('tone_joke', '제가 또 그런 건 잘하죠.', 'That happens to be my speciality.',
       '말은 잘하네.', 'You talk well, at least.', { affinity: t.toneJoke }),
   ];
@@ -66,23 +66,23 @@ export function payChoiceCoins(q: StoryQuestDef): number {
 export function defaultCompleteChoices(q: StoryQuestDef): QuestChoiceDef[] {
   if (q.kind === 'main') {
     return [
-      ch('main_reflect', '끝났습니다. 그런데 이게 끝은 아닌 것 같습니다.', 'It\'s done. Though it doesn\'t feel like the end.',
-        '끝은 없다. 다음이 있을 뿐이야.', 'There is no end. Only the next thing.', { affinity: 0.03 }),
-      ch('main_look', '끝났습니다. 다음은 무엇을 봐야 합니까.', 'Done. What should I look at next?',
-        '네 눈이 가는 데. 그게 다음이다.', 'Wherever your eyes go. That is next.', { affinity: 0 }),
+      ch('main_reflect', '끝냈습니다. 근데 이걸로 끝난 것 같지가 않네요.', 'Finished. Though it doesn\'t feel finished.',
+        '원래 그래. 하나 끝나면 또 하나 생기고.', 'That\'s how it goes. One ends, another turns up.', { affinity: 0.03 }),
+      ch('main_look', '다 했습니다. 이제 뭘 하면 됩니까?', 'All done. What now?',
+        '급하기는. 발 닿는 데부터 보면 돼.', 'In a hurry, are you. Start with what\'s in front of you.', { affinity: 0 }),
     ];
   }
   const cat = lessonCategoryOf(q);
   const lessonXp = 12 + q.chapter * 6;
   return [
-    ch('sub_pay', '품삯은 받겠습니다.', 'I\'ll take the pay.',
-      '그래야지. 일은 일이다.', 'As you should. Work is work.', { coins: payChoiceCoins(q), affinity: -0.02 }),
-    ch('sub_lesson', '돈 대신 요령을 하나 배우고 싶습니다.', 'Instead of money, teach me one trick.',
-      '…눈이 있네. 잘 봐.', '…You have an eye. Watch closely.', { proficiency: { category: cat, xp: lessonXp }, affinity: 0.05 }),
-    ch('sub_decline', '사양하겠습니다. 이웃 일인데요.', 'No need. We\'re neighbours.',
-      '……. 그 말, 기억해 두지.', '……. I\'ll remember that.', { affinity: 0.12, harborRep: 3 }),
-    ch('sub_favor', '친한 척 좀 해도 되죠? 뭐 더 없나요.', 'We\'re close enough, right? Anything else for me?',
-      '뻔뻔한 것도 재주다. 이거 가져가.', 'Cheek is a talent too. Take this.', { skillPoints: 1, affinity: -0.03 },
+    ch('sub_pay', '품삯은 챙기겠습니다.', 'I\'ll take the pay.',
+      '그럼. 일했으면 받아야지.', 'Of course. You worked, you get paid.', { coins: payChoiceCoins(q), affinity: -0.02 }),
+    ch('sub_lesson', '돈 말고, 요령이나 하나 알려주세요.', 'Keep the money — show me a trick instead.',
+      '…눈썰미는 있네. 잘 봐라.', '…You\'ve got an eye. Watch close.', { proficiency: { category: cat, xp: lessonXp }, affinity: 0.05 }),
+    ch('sub_decline', '됐습니다. 이웃끼리 뭘요.', 'Forget it. We\'re neighbours.',
+      '……. 그 말은 안 잊는다.', '……. I won\'t forget you said that.', { affinity: 0.12, harborRep: 3 }),
+    ch('sub_favor', '우리 사이에 이거면 섭섭하죠. 더 없어요?', 'After all this? Come on, what else have you got?',
+      '뻔뻔한 것도 재주다. 가져가라.', 'Cheek is a talent too. Here, take it.', { skillPoints: 1, affinity: -0.03 },
       { affinityMin: 0.6 }),
   ];
 }
@@ -94,8 +94,8 @@ export function defaultCompleteChoices(q: StoryQuestDef): QuestChoiceDef[] {
 export const STORY_CHOICE_OVERRIDES: Record<string, QuestChoiceSet> = {};
 
 /** 표준 거절 답 — once/event 정책 퀘에 데이터가 거절 답을 안 실었을 때 붙는다 */
-export const DEFAULT_DECLINE: QuestChoiceDef = ch('decline', '지금은 맡기 어렵습니다.', 'I can\'t take this on right now.',
-  '…그래. 알겠다.', '…I see. Alright.', { decline: true, affinity: -0.03 });
+export const DEFAULT_DECLINE: QuestChoiceDef = ch('decline', '지금은 못 하겠습니다.', 'I can\'t do it right now.',
+  '…그래. 알았다.', '…Right. Fair enough.', { decline: true, affinity: -0.03 });
 
 /** payMult(표준 품삯 배율)를 coins로 환산한 사본 — 데이터는 배율만 알고 금액은 퀘스트 XP에서 온다 */
 function materialize(q: StoryQuestDef, c: QuestChoiceDef): QuestChoiceDef {

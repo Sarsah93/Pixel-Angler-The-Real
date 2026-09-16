@@ -166,7 +166,7 @@ export class CondoScene extends Phaser.Scene {
     const tabs = [
       { label: '📊 개요', view: 'overview' as const },
       { label: '📅 예약', view: 'reservations' as const },
-      { label: '🛠️ 시설', view: 'amenities' as const },
+      { label: '시설', view: 'amenities' as const },
       { label: '📦 패키지', view: 'packages' as const },
     ];
 
@@ -261,7 +261,7 @@ export class CondoScene extends Phaser.Scene {
     const { width, height } = this.scale;
     const container = this.add.container(width * 0.5, height * 0.5).setDepth(22).setName('condoContent');
     const bg = this.add.rectangle(0, 0, 400, 300, 0x001a33, 0.92);
-    const title = this.add.text(0, -130, '🛠️ 부대시설', {
+    const title = this.add.text(0, -130, '부대시설', {
       fontSize: '18px', color: '#aaddff', fontStyle: 'bold',
     }).setOrigin(0.5, 0.5);
 

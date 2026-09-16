@@ -15,10 +15,10 @@ export const EN_PANELS: Record<string, string> = {
   '지도의 핀 또는 아래 목록에서\n활동할 구역을 선택하세요.\n\n[ESC] 전국 지도로 돌아가기': 'Pick an area from the pins or the list below.\n\n[ESC] Back to national map',
   // ── 상호작용 키 F (122차 — E는 장비창 전용) ──
   '[F] 회수': '[F] Pick up', '[F] 집으로 들어가기': '[F] Enter home', '[F] 출조 버스 (전국 지도)': '[F] Trip bus (national map)',
-  '[F] 수조 열기': '[F] Open tank', '[F] 벌목 (추후)': '[F] Chop (later)', '[F] 채굴 (추후)': '[F] Mine (later)',
-  '[F] 채집 (추후)': '[F] Gather (later)', '[F] 보트 (추후)': '[F] Boat (later)', '[F]': '[F]',
+  '[F] 수조 열기': '[F] Open tank', '[F] 벌목': '[F] Chop', '[F] 채굴': '[F] Mine',
+  '[F] 채집': '[F] Gather', '[F] 보트': '[F] Boat', '[F]': '[F]',
   '[F] 침대 — 저장하고 쉬기': '[F] Bed — save and rest', '[F] 나가기': '[F] Leave', '[F] 주방 (요리 준비중)': '[F] Kitchen (cooking coming soon)',
-  '[F] 냉장고 열기': '[F] Open fridge', '[F] 수납 (추후)': '[F] Storage (later)',
+  '[F] 냉장고 열기': '[F] Open fridge', '[F] 수납': '[F] Storage',
   // ── 면허 패널 ──
   '면허 · 허가': 'Licences · Permits', '보유': 'held', '미보유': 'not held', '해금 요구사항': 'Requirements',
   '• 선행 조건 없음 (바로 발급 가능)': '• No prerequisites (available now)', '선행 면허가 필요합니다': 'Prerequisite licence required',

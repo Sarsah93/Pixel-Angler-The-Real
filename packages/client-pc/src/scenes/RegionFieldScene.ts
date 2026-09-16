@@ -77,6 +77,8 @@ import { addPixelIcon } from '../ui/PixelIcon.js';
 import type { MiniMarker } from '../ui/RegionHud.js';
 import { DialoguePanel } from '../ui/DialoguePanel.js';
 import { StoryStore } from '../store/StoryStore.js';
+import { loadSettings } from './SettingsScene.js';
+import { MultiplayerClient } from '../net/MultiplayerClient.js';
 import { STORY_NPC_PLACEMENTS, STORY_PLACES, type StoryNpcPlacement } from '../data/StoryNpcs.js';
 import { getStoryNpc, validateStoryQuests, validateStoryChoices, getSkillById, profScale, gearFaultChance, GEAR_REF_PRICE, gearUsable, GEAR_FAULTS } from '@tra/core';
 import { playCollapse, type CollapseKind } from '../ui/CollapseOverlay.js';
@@ -454,6 +456,10 @@ export class RegionFieldScene extends Phaser.Scene {
     this.traffic = undefined;
     this.poiWalls = undefined;
     this.poiObjects.clear();
+    this.showFieldLabels = loadSettings().showFieldLabels;
+    // 멀티 — 세션에 들어와 있으면 위치 알림을 켠다 (싱글이면 아무것도 하지 않는다)
+    MultiplayerClient.startPresence();
+    this.events.once('shutdown', () => this.clearPeers());
     // 지연 생성 Text — shutdown 때 디스플레이 리스트가 파괴해 캔버스 컨텍스트가 null이 된 채 참조만 남는다
     //   (홈타운 재진입 시 setText → Frame.updateUVs → drawImage null = 사용자 리포트의 실제 스택).
     this.objHintText = undefined;
@@ -1269,6 +1275,7 @@ export class RegionFieldScene extends Phaser.Scene {
     this.buildings = [];
     this.poiDoors = [];
     this.miniShopMarkers = [];
+    this.miniPlaceMarkers = [];
     this.poiByChunk.clear();
     const N = RegionFieldScene.SEAMLESS_CHUNK_TILES;
     const reserved = new Set<string>();
@@ -1289,6 +1296,10 @@ export class RegionFieldScene extends Phaser.Scene {
           wx: door.x, wy: door.y,
           icon: RegionFieldScene.MINI_SHOP_ICON[kind], priority: goods ? 1 : 0,
         });
+      }
+      else if ((poi.name ?? '') !== '' || RegionFieldScene.POI_LABEL[poi.type] !== undefined) {
+        // 거래는 안 되지만 이름이 있는 장소 — 바닥 이름표 대신 미니맵 핀으로만 (143차)
+        this.miniPlaceMarkers.push({ wx: door.x, wy: door.y, icon: 'mm_poi', priority: 0 });
       }
       // 건물 프리팹이 붙는 POI의 건물 컴포넌트는 고층 자동 배치에서 제외
       if (this.poiVisualTex(poi)) {
@@ -1363,13 +1374,17 @@ export class RegionFieldScene extends Phaser.Scene {
         this.poiWalls?.add(body);
         objs.push(body);
       }
+      // 143차 — 바닥 표시는 **상호작용 가능한 건물**만 남긴다.
+      //  스프라이트 없는 상점은 점 하나로 "여기서 거래된다"를 알리고,
+      //  그 밖의 장소(여객터미널·정류장 등)는 설정을 켜야 보인다(기본 끔).
+      const showDot = !hasSprite && (kind !== null || this.showFieldLabels);
       const dot = this.add.circle(door.x, door.y, 3.5, kind ? 0xffd24a : 0x9fc3d8, notable ? 0.95 : 0.55)
         .setStrokeStyle(1, 0x0a1628, 0.8)
         .setDepth(15 + door.y * 0.001)
-        .setVisible(!hasSprite);
+        .setVisible(showDot);
       objs.push(dot);
       const label = poi.name || RegionFieldScene.POI_LABEL[poi.type] || '';
-      if (label && notable) {
+      if (label && notable && this.showFieldLabels) {
         const t = this.add.text(door.x, door.y + 6, label, {
           fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px',
           color: kind ? '#ffe9b0' : '#cfe4f2',
@@ -3155,6 +3170,7 @@ export class RegionFieldScene extends Phaser.Scene {
       this.trapField.updatePreview(pw.x, pw.y);
     }
     this.handleMovement();
+    this.syncPeers(delta);
     this.tickVitals(delta);
     this.updateSpriteAndShadow();
     this.updateBuildingProximity();
@@ -3517,6 +3533,15 @@ export class RegionFieldScene extends Phaser.Scene {
 
   /** 상점 POI 마커 (create 1회 — 위치·종류가 고정) */
   private miniShopMarkers: MiniMarker[] = [];
+  /** 상호작용 없는 일반 장소 마커 — 바닥 이름표를 대신해 미니맵에만 남는다 (143차) */
+  private miniPlaceMarkers: MiniMarker[] = [];
+  /** 설정 '장소 이름표' — 끄면 바닥 이름표·점이 사라진다 (기본 끔) */
+  private showFieldLabels = false;
+
+  // ── 143차 멀티플레이 — 같은 지역의 다른 사람 ──
+  /** playerId → 스프라이트·이름표 */
+  private peerObjs = new Map<string, { img: Phaser.GameObjects.Image; tag: Phaser.GameObjects.Text }>();
+  private peerSyncAt = 0;
   private questMarkerAt = 0;
 
   /**
@@ -3535,7 +3560,10 @@ export class RegionFieldScene extends Phaser.Scene {
 
   /** 필드 NPC 머리 위 마커 + 미니맵 마커 갱신 (스토리 상태가 바뀔 때만 실제 교체) */
   private refreshQuestMarkers(force = false): void {
-    const markers: MiniMarker[] = [...this.miniShopMarkers];
+    // 일반 장소(정류장·터미널 등)는 설정을 켰을 때만 — 기본은 거래처·인물만 찍는다
+    const markers: MiniMarker[] = this.showFieldLabels
+      ? [...this.miniShopMarkers, ...this.miniPlaceMarkers]
+      : [...this.miniShopMarkers];
     for (const n of this.storyNpcs) {
       const key = this.npcMarkerIcon(n.def.npcId, false);
       if (force || key !== n.markKey) {
@@ -3552,9 +3580,67 @@ export class RegionFieldScene extends Phaser.Scene {
         }
       }
       const mk = this.npcMarkerIcon(n.def.npcId, true);
-      if (mk) markers.push({ wx: n.x, wy: n.y - 12, icon: mk, priority: mk === 'mm_ready' ? 3 : 2 });
+      // 의뢰가 없어도 인물은 미니맵에 남는다 (143차 — 바닥 이름표를 끈 대신)
+      markers.push(mk
+        ? { wx: n.x, wy: n.y - 12, icon: mk, priority: mk === 'mm_ready' ? 3 : 2 }
+        : { wx: n.x, wy: n.y - 12, icon: 'mm_npc', priority: 2 });
     }
     this.hud?.setMiniMarkers(markers);
+  }
+
+  // ── 143차 멀티플레이 — 같은 지역의 다른 사람 그리기 ──
+
+  /**
+   * 내 위치를 올리고, 같은 지역에 있는 사람들을 그린다 (200ms 스로틀).
+   *
+   * 외형은 서버가 보내지 않는다 — `characterOf(playerId)`가 id에서 결정적으로 뽑아내므로
+   * 모두의 화면에서 같은 사람이 같은 얼굴로 보인다(NPC 41인과 같은 규칙).
+   * 이름표 높이는 내 캐릭터와 같은 기준(`charTopFromFeet`)을 쓴다.
+   */
+  private syncPeers(delta: number): void {
+    if (!MultiplayerClient.isConnected) {
+      if (this.peerObjs.size > 0) this.clearPeers();
+      return;
+    }
+    MultiplayerClient.reportPosition(
+      this.region, this.playerBody.x, this.playerBody.y, this.playerFacing,
+      Math.hypot(this.playerBody.body.velocity.x, this.playerBody.body.velocity.y) > 4,
+    );
+    this.peerSyncAt += delta;
+    if (this.peerSyncAt < 200) return;
+    this.peerSyncAt = 0;
+
+    const peers = MultiplayerClient.peersInRegion(this.region);
+    const alive = new Set<string>();
+    for (const peer of peers) {
+      alive.add(peer.playerId);
+      const feetY = peer.y + this.PLAYER_FOOT_OFFSET;
+      const depth = 20 + peer.y * 0.001;
+      let o = this.peerObjs.get(peer.playerId);
+      if (!o) {
+        const sheet = ensureCharSheet(this, characterOf(`mp_${peer.playerId}`), CHAR_SCALE);
+        const img = this.add.image(peer.x, feetY, sheet, charFrameName(peer.facing, 0)).setOrigin(0.5, 1);
+        const tag = this.add.text(peer.x, feetY + this.charTopFromFeet - RegionFieldScene.LABEL_GAP, peer.name, {
+          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#9fe8ff',
+          backgroundColor: '#0a1628cc', padding: { x: 3, y: 1 },
+        }).setOrigin(0.5, 1);
+        o = { img, tag };
+        this.peerObjs.set(peer.playerId, o);
+      }
+      o.img.setPosition(peer.x, feetY).setFrame(charFrameName(peer.facing, peer.moving ? 1 : 0)).setDepth(depth);
+      o.tag.setPosition(peer.x, feetY + this.charTopFromFeet - RegionFieldScene.LABEL_GAP)
+        .setText(peer.name).setDepth(depth + 0.0007);
+    }
+    for (const [id, o] of this.peerObjs) {
+      if (alive.has(id)) continue;
+      o.img.destroy(); o.tag.destroy();
+      this.peerObjs.delete(id);
+    }
+  }
+
+  private clearPeers(): void {
+    for (const o of this.peerObjs.values()) { o.img.destroy(); o.tag.destroy(); }
+    this.peerObjs.clear();
   }
 
   /** NPC 근접 [F] 힌트 + 방문 장소(영금정 등) 자동 달성 — 150ms 스로틀 */
@@ -3610,10 +3696,10 @@ export class RegionFieldScene extends Phaser.Scene {
       case 'door': return '[F] 집으로 들어가기';
       case 'bus': return '[F] 출조 버스 (전국 지도)';
       case 'aquarium': return o.placedByPlayer ? '[F] 수조 열기 · [Shift+F] 회수' : '[F] 수조 열기';
-      case 'chop': return '[F] 벌목 (추후)';
-      case 'mine': return '[F] 채굴 (추후)';
-      case 'gather': return '[F] 채집 (추후)';
-      case 'board': return '[F] 보트 (추후)';
+      case 'chop': return '[F] 벌목';
+      case 'mine': return '[F] 채굴';
+      case 'gather': return '[F] 채집';
+      case 'board': return '[F] 보트';
       case 'clinic': return '[F] 보건소 진료';
       case 'craft': return o.placedByPlayer ? '[F] 고급 제작대 · [Shift+F] 회수' : '[F] 고급 제작대';
       default: return '[F]';
@@ -3630,7 +3716,7 @@ export class RegionFieldScene extends Phaser.Scene {
       case 'door': this.enterHomeInterior(); break;
       case 'bus': this.exitToWorldMap(); break;
       case 'aquarium':
-        this.floatingHint('수조 패널은 준비 중입니다 (활어 보관 — 후속)');
+        this.floatingHint('수조는 아직 쓸 수 없습니다.');
         break;
       case 'chop': this.floatingHint('벌목은 추후 — 도끼가 필요합니다'); break;
       case 'mine': this.floatingHint('채굴은 추후 — 곡괭이가 필요합니다'); break;
@@ -3710,7 +3796,7 @@ export class RegionFieldScene extends Phaser.Scene {
     const def = item.placeKey ? PLACEMENT_DEFS[item.placeKey] : undefined;
     if (!def) return;
     if (!def.rule.scope.includes('exterior')) {
-      this.floatingHint(`${def.label}은(는) 실내 전용입니다 (실내 배치는 추후)`);
+      this.floatingHint(`${def.label}은(는) 집 안에서만 놓을 수 있습니다.`);
       return;
     }
     this.placing = { def, itemId: item.id };

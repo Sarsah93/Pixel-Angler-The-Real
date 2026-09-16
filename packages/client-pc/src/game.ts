@@ -17,6 +17,7 @@ import { PHASER_CONFIG } from './PhaserConfig.js';
 import { BootScene } from './scenes/BootScene.js';
 import { MainMenuScene } from './scenes/MainMenuScene.js';
 import { CharacterCreateScene } from './scenes/CharacterCreateScene.js';
+import { MultiplayerLobbyScene } from './scenes/MultiplayerLobbyScene.js';
 import { WorldMapScene } from './scenes/WorldMapScene.js';
 import { RegionFieldScene } from './scenes/RegionFieldScene.js';
 import { HomeInteriorScene } from './scenes/HomeInteriorScene.js';
@@ -37,6 +38,7 @@ import { GameState } from './store/GameState.js';
 import { initDevTuningPanel } from './dev/DevTuningPanel.js';
 import { initDevConsolePanel } from './dev/DevConsolePanel.js';
 import { installI18n } from './i18n/I18n.js';
+import { installTextQuality } from './ui/TextQuality.js';
 import { loadSettings } from './scenes/SettingsScene.js';
 
 /** 싱글턴 보관 키 — HMR/재평가를 넘어 유지된다 */
@@ -56,6 +58,8 @@ export function createGame(): Phaser.Game {
   if (existing) return existing;
 
   GameState.initialize();
+  // 텍스트 렌더 품질 — Phaser.Game 생성 전에 프로토타입을 덮어야 모든 Text가 탄다 (143차)
+  installTextQuality();
   // 다국어 훅 — Phaser Text 생성 전에 설치해야 모든 텍스트가 사전을 탄다 (117차)
   installI18n(loadSettings().language === 'en' ? 'en' : 'ko');
   // dev 전용 튜닝 슬라이더 오버레이 (F8) — 프로덕션에서는 즉시 반환/데드코드 제거
@@ -69,6 +73,7 @@ export function createGame(): Phaser.Game {
     scene: [
       BootScene,
       MainMenuScene,
+      MultiplayerLobbyScene,
       CharacterCreateScene,
       WorldMapScene,
       RegionFieldScene,

@@ -16,6 +16,7 @@
 
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
+import { paintHudPanel } from './HudPanelStyle.js';
 
 /** 화면 고정 컨테이너 트리 전체에 scrollFactor 0 재귀 적용 (입력 판정 어긋남 방지) */
 export function applyScreenFixed(root: Phaser.GameObjects.Container): void {
@@ -104,12 +105,11 @@ export class DraggablePanel extends Phaser.GameObjects.Container {
         .setInteractive();
     }
 
-    // ── 패널 프레임 ──
+    // ── 패널 프레임 (143차 — HUD 공용 문법으로 통일) ──
+    //  구 구현은 팝업만 둥근 남색 사각형이라 HUD(상태/미니맵/퀵슬롯)와 문법이 달랐다.
+    //  paintHudPanel 하나로 그리면 모든 창이 같은 프레임·베벨·스터드를 쓴다.
     const bg = scene.add.graphics();
-    bg.fillStyle(0x0a1628, 0.97);
-    bg.fillRoundedRect(0, 0, this.panelW, this.panelH, 6);
-    bg.lineStyle(2, 0x2a5a8a, 0.95);
-    bg.strokeRoundedRect(0, 0, this.panelW, this.panelH, 6);
+    paintHudPanel(bg, 0, 0, this.panelW, this.panelH, { alpha: 0.95, headerH: HEADER_H - 3 });
     this.add(bg);
 
     // 패널 빈 공간 클릭 → 최상단으로 (자식 인터랙션 요소가 우선 처리됨)
@@ -118,13 +118,7 @@ export class DraggablePanel extends Phaser.GameObjects.Container {
     basePlate.on('pointerdown', () => this.bringSelfToTop());
     this.add(basePlate);
 
-    // ── 헤더 (드래그 존) ──
-    const headerBg = scene.add.graphics();
-    headerBg.fillStyle(0x0d2a40, 0.95);
-    headerBg.fillRoundedRect(0, 0, this.panelW, HEADER_H, 6);
-    headerBg.fillRect(0, HEADER_H - 8, this.panelW, 8);
-    this.add(headerBg);
-
+    // ── 헤더 (드래그 존) — 밴드는 paintHudPanel이 그렸다 ──
     this.titleText = scene.add.text(14, HEADER_H / 2, cfg.title, {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '14px', color: '#4af2a1', fontStyle: 'bold',
     }).setOrigin(0, 0.5);

@@ -16,10 +16,11 @@
 
 import Phaser from 'phaser';
 import { GameState, SAVE_SLOT_COUNT } from '../store/GameState.js';
+import { MultiplayerClient } from '../net/MultiplayerClient.js';
 import { ExternalDataStore } from '../store/ExternalDataStore.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 
-type MenuView = 'main' | 'start' | 'slots';
+type MenuView = 'main' | 'mode' | 'start' | 'slots';
 type SlotMode = 'new' | 'load';
 
 interface MenuEntry {
@@ -93,8 +94,15 @@ export class MainMenuScene extends Phaser.Scene {
   /** 씬 전환(페이드아웃) 진행 중 — 이중 클릭/키 입력으로 전환이 겹치는 것을 막는다 */
   private isTransitioning = false;
 
+  /** 로비에서 돌아올 때 슬롯 화면으로 바로 (143차 — 멀티는 세션 → 슬롯 → 캐릭터 순) */
+  private gotoSlots = false;
+
   constructor() {
     super({ key: 'MainMenuScene' });
+  }
+
+  init(data?: { gotoSlots?: boolean }): void {
+    this.gotoSlots = data?.gotoSlots === true;
   }
 
   create(): void {
@@ -105,6 +113,12 @@ export class MainMenuScene extends Phaser.Scene {
 
     this.drawBackground();
     this.drawTitle();
+
+    if (this.gotoSlots && MultiplayerClient.isMulti) {
+      // 세션까지 잡고 돌아왔다 — 슬롯 3칸부터 (멀티는 늘 새 캐릭터를 만든다)
+      this.view = 'slots';
+      this.slotMode = 'new';
+    }
 
     this.panelContainer = this.add.container(0, 0).setDepth(50);
     this.buildView();
@@ -322,6 +336,7 @@ export class MainMenuScene extends Phaser.Scene {
 
     switch (this.view) {
       case 'main': this.entries = this.buildMainEntries(); break;
+      case 'mode': this.entries = this.buildModeEntries(); break;
       case 'start': this.entries = this.buildStartEntries(); break;
       case 'slots': this.entries = this.buildSlotEntries(); break;
     }
@@ -342,11 +357,12 @@ export class MainMenuScene extends Phaser.Scene {
     this.panelContainer.add(frame);
 
     // 뷰 타이틀
-    const viewTitle = this.view === 'main' ? 'MAIN MENU'
-      : this.view === 'start' ? 'GAME START'
-      : this.slotMode === 'new' ? 'NEW GAME — 슬롯 선택' : 'LOAD GAME — 슬롯 선택';
+    const viewTitle = this.view === 'main' ? '메인 메뉴'
+      : this.view === 'mode' ? '플레이 방식'
+      : this.view === 'start' ? '게임 시작'
+      : this.slotMode === 'new' ? '새로 시작 — 슬롯 고르기' : '이어하기 — 슬롯 고르기';
     const titleText = this.add.text(PANEL_X + 20, PANEL_Y + 18, viewTitle, {
-      fontFamily: '"Press Start 2P", monospace', fontSize: '11px', color: '#7fb8d8',
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px', color: '#7fb8d8', fontStyle: 'bold',
     }).setOrigin(0, 0.5);
     this.panelContainer.add(titleText);
 
@@ -468,7 +484,7 @@ export class MainMenuScene extends Phaser.Scene {
   // ── 뷰별 항목 정의 ──────────────────────────────────
   private buildMainEntries(): MenuEntry[] {
     return [
-      { label: '게임 시작', action: () => { this.view = 'start'; this.buildView(); } },
+      { label: '게임 시작', action: () => { this.view = 'mode'; this.buildView(); } },
       { label: '도감', action: () => this.openAnglerLog() },
       { label: '설정', action: () => this.openSettings() },
       // 공공데이터 이용약관의 출처 표시 의무 이행 화면
@@ -477,17 +493,34 @@ export class MainMenuScene extends Phaser.Scene {
     ];
   }
 
+  /** 혼자 / 여럿이 (143차) — 멀티는 세션을 먼저 잡고 돌아온다 */
+  private buildModeEntries(): MenuEntry[] {
+    return [
+      {
+        label: '혼자 하기',
+        sub: '이 컴퓨터에만 저장되는 나만의 바다',
+        action: () => { MultiplayerClient.leave(); this.view = 'start'; this.buildView(); },
+      },
+      {
+        label: '여럿이 하기',
+        sub: '방을 열거나 코드로 참가해 같은 바다에서',
+        action: () => this.fadeOutThen(240, () => this.scene.start('MultiplayerLobbyScene')),
+      },
+      { label: '뒤로', action: () => { this.view = 'main'; this.buildView(); } },
+    ];
+  }
+
   private buildStartEntries(): MenuEntry[] {
     const anySave = this.anySlotExists();
     return [
-      { label: 'NEW GAME', sub: undefined, action: () => { this.slotMode = 'new'; this.view = 'slots'; this.buildView(); } },
+      { label: '새로 시작', sub: '처음부터 새 캐릭터로', action: () => { this.slotMode = 'new'; this.view = 'slots'; this.buildView(); } },
       {
-        label: 'LOAD GAME',
-        sub: anySave ? undefined : undefined,
+        label: '이어하기',
+        sub: anySave ? '저장해 둔 곳에서부터' : '아직 저장된 여정이 없습니다',
         disabled: !anySave,
         action: () => { this.slotMode = 'load'; this.view = 'slots'; this.buildView(); },
       },
-      { label: '뒤로', action: () => { this.view = 'main'; this.buildView(); } },
+      { label: '뒤로', action: () => { this.view = 'mode'; this.buildView(); } },
     ];
   }
 
@@ -513,7 +546,10 @@ export class MainMenuScene extends Phaser.Scene {
         });
       }
     }
-    entries.push({ label: '뒤로', action: () => { this.view = 'start'; this.buildView(); } });
+    entries.push({
+      label: '뒤로',
+      action: () => { this.view = MultiplayerClient.isMulti ? 'mode' : 'start'; this.buildView(); },
+    });
     return entries;
   }
 
@@ -844,8 +880,8 @@ export class MainMenuScene extends Phaser.Scene {
     this.input.keyboard?.on('keydown-SPACE', activate);
 
     this.input.keyboard?.on('keydown-ESC', () => {
-      if (this.view === 'slots') { this.view = 'start'; this.buildView(); }
-      else if (this.view === 'start') { this.view = 'main'; this.buildView(); }
+      if (this.view === 'slots') { this.view = MultiplayerClient.isMulti ? 'mode' : 'start'; this.buildView(); }
+      else if (this.view === 'start' || this.view === 'mode') { this.view = 'main'; this.buildView(); }
     });
   }
 }

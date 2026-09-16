@@ -92,7 +92,7 @@ const LEFT_SLOTS: EquipSlotDef[] = [
 
 const RIGHT_SLOTS: EquipSlotDef[] = [
   { key: 'shoulder_r', label: '어깨(우)', ghost: '🎽', note: '어깨 보호대 (준비 중)' },
-  { key: 'reel',       label: '릴',       ghost: '⚙️', part: '릴', note: '드랙 시스템 — 릴링 속도/최대 드랙 장력' },
+  { key: 'reel',       label: '릴',       ghost: '', part: '릴', note: '드랙 시스템 — 릴링 속도/최대 드랙 장력' },
   { key: 'watch',      label: '시계',     ghost: '⌚', part: '시계', note: '물때 사이클 표시' },
   { key: 'glove_r',    label: '장갑',     ghost: '🧤', part: '장갑', pair: true, note: '라인 컨트롤 / 보호' },
   { key: 'hand_r',     label: '손(우)',   ghost: '✋', hand: 'R', note: '낚싯대 / 뜰채 / 회칼' },

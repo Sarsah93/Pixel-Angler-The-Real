@@ -216,7 +216,7 @@ export class RestaurantScene extends Phaser.Scene {
     const panel = this.add.container(10, height * 0.15).setDepth(25);
 
     const bg = this.add.rectangle(0, 0, 200, 220, 0x001a11, 0.9).setOrigin(0, 0);
-    const title = this.add.text(10, 10, '📋 현재 메뉴', {
+    const title = this.add.text(10, 10, '현재 메뉴', {
       fontSize: '13px', color: '#aaffcc', fontStyle: 'bold',
     });
 

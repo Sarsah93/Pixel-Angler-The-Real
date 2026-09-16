@@ -32,6 +32,12 @@ export interface GameSettings {
   hudStatusAlpha: number;
   hudChatSize: number;
   hudChatAlpha: number;
+  /**
+   * 필드 바닥의 장소 이름표·점 표시 (143차 — 기본 끔).
+   * 켜면 지도 데이터의 모든 지점 이름이 땅 위에 뜬다. 끄면 상호작용 가능한 건물 표시만 남고,
+   * 장소는 미니맵 핀으로만 보인다.
+   */
+  showFieldLabels: boolean;
 }
 
 const SETTINGS_STORAGE_KEY = 'pixelAngler_settings';
@@ -40,6 +46,7 @@ const DEFAULT_SETTINGS: GameSettings = {
   sfxVolume: 0.7, bgmVolume: 0.5, language: 'ko',
   rodSide: 'right', reelHandle: 'left',
   hudStatusSize: 0, hudStatusAlpha: 0, hudChatSize: 0, hudChatAlpha: 0,
+  showFieldLabels: false,
 };
 
 export function loadSettings(): GameSettings {
@@ -115,7 +122,7 @@ const HOTKEY_SECTIONS: HotkeySection[] = [
 // ─────────────────────────────────────────────
 // 씬 클래스
 // ─────────────────────────────────────────────
-type SettingsTab = 'hotkey' | 'fishing' | 'audio' | 'language';
+type SettingsTab = 'hotkey' | 'display' | 'fishing' | 'audio' | 'language';
 
 export class SettingsScene extends Phaser.Scene {
   private currentTab: SettingsTab = 'hotkey';
@@ -155,7 +162,7 @@ export class SettingsScene extends Phaser.Scene {
     panelBg.strokeRoundedRect(panelX, panelY, panelW, panelH, 6);
 
     // 헤더
-    this.add.text(GAME_WIDTH / 2, panelY + 26, '⚙  설정 (Settings)', {
+    this.add.text(GAME_WIDTH / 2, panelY + 26, '설정', {
       fontFamily: '"Noto Sans KR", sans-serif',
       fontSize: '22px',
       color: '#4af2a1',
@@ -182,10 +189,11 @@ export class SettingsScene extends Phaser.Scene {
 
     // ── 탭 버튼 ────────────────────────────────────────
     const tabs: { id: SettingsTab; label: string }[] = [
-      { id: 'hotkey', label: '⌨ 단축키' },
+      { id: 'hotkey', label: '단축키' },
+      { id: 'display', label: '화면' },
       { id: 'fishing', label: '낚시' },
-      { id: 'audio', label: '🔊 음향' },
-      { id: 'language', label: '🌐 언어' },
+      { id: 'audio', label: '음향' },
+      { id: 'language', label: '언어' },
     ];
     const tabStartX = panelX + 20;
     const tabY = panelY + 56;
@@ -244,7 +252,7 @@ export class SettingsScene extends Phaser.Scene {
     const panelX = (GAME_WIDTH - 800) / 2;
     const tabStartX = panelX + 20;
     const tabY = (GAME_HEIGHT - 560) / 2 + 56;
-    const tabs: SettingsTab[] = ['hotkey', 'fishing', 'audio', 'language'];
+    const tabs: SettingsTab[] = ['hotkey', 'display', 'fishing', 'audio', 'language'];
 
     tabs.forEach((id, i) => {
       const bg = this.tabBgs[id];
@@ -260,10 +268,60 @@ export class SettingsScene extends Phaser.Scene {
   private renderTab(): void {
     switch (this.currentTab) {
       case 'hotkey':   this.renderHotkeyTab(); break;
+      case 'display':  this.renderDisplayTab(); break;
       case 'fishing':  this.renderFishingTab(); break;
       case 'audio':    this.renderAudioTab(); break;
       case 'language': this.renderLanguageTab(); break;
     }
+  }
+
+  // ── 화면 탭 (143차 — 필드 표시 옵션) ──────────────────
+  private renderDisplayTab(): void {
+    const panelX = (GAME_WIDTH - 800) / 2;
+    const panelY = (GAME_HEIGHT - 560) / 2;
+    const startX = panelX + 60;
+    const startY = panelY + 130;
+
+    const label = this.add.text(startX, startY, '장소 이름표', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '15px', color: '#d0e8f5', fontStyle: 'bold',
+    });
+    const desc = this.add.text(startX, startY + 22,
+      '지도에 기록된 장소 이름을 땅 위에 띄웁니다. 끄면 상호작용할 수 있는 건물 표시만 남고, 장소는 미니맵 핀으로 보입니다.', {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#607b8e',
+        wordWrap: { width: 640 },
+      });
+    this.contentContainer.add([label, desc]);
+
+    ([{ v: false, t: '끔' }, { v: true, t: '켬' }] as const).forEach((opt, j) => {
+      const bx = startX + j * 180;
+      const by = startY + 62;
+      const selected = this.settings.showFieldLabels === opt.v;
+      const bg = this.add.graphics();
+      bg.fillStyle(selected ? 0x162a40 : 0x0e1c2d, 0.9);
+      bg.fillRoundedRect(bx, by, 164, 40, 5);
+      bg.lineStyle(2, selected ? 0x4af2a1 : 0x2a5a8a, selected ? 1 : 0.5);
+      bg.strokeRoundedRect(bx, by, 164, 40, 5);
+      const txt = this.add.text(bx + 82, by + 20, opt.t, {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '14px',
+        color: selected ? '#4af2a1' : '#a0b8c8', fontStyle: 'bold',
+      }).setOrigin(0.5);
+      const hit = this.add.rectangle(bx + 82, by + 20, 164, 40, 0xffffff, 0)
+        .setInteractive({ useHandCursor: true });
+      hit.on('pointerdown', () => {
+        this.settings.showFieldLabels = opt.v;
+        saveSettings(this.settings);
+        this.game.events.emit('field-labels-changed', opt.v);
+        this.contentContainer.removeAll(true);
+        this.renderTab();
+      });
+      this.contentContainer.add([bg, txt, hit]);
+    });
+
+    const note = this.add.text(startX, startY + 124,
+      '캐릭터와 NPC의 이름표는 이 설정과 상관없이 늘 보입니다.', {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#4e6678',
+      });
+    this.contentContainer.add(note);
   }
 
   // ── 낚시 탭 (1인칭 로드/릴 위치) ──────────────────────
@@ -497,7 +555,7 @@ export class SettingsScene extends Phaser.Scene {
   ): void {
     const raw = Phaser.Math.Clamp((pointerX - startX) / trackW, 0, 1);
     const rounded = Math.round(raw * 10) / 10; // 0.1 단위
-    (this.settings as Record<keyof GameSettings, number | string>)[key] = rounded;
+    (this.settings as unknown as Record<keyof GameSettings, number | string | boolean>)[key] = rounded;
     this.drawSliderFill(fill, startX, handle.y - 4, trackW, rounded);
     handle.setX(startX + rounded * trackW);
     valText.setText(`${Math.round(rounded * 100)}%`);
@@ -510,7 +568,7 @@ export class SettingsScene extends Phaser.Scene {
     const startX = panelX + 60;
     const startY = panelY + 130;
 
-    const langTitle = this.add.text(startX, startY, '🌐 게임 언어 설정', {
+    const langTitle = this.add.text(startX, startY, '게임 언어', {
       fontFamily: '"Noto Sans KR", sans-serif',
       fontSize: '16px',
       color: '#d0e8f5',

@@ -1046,7 +1046,7 @@ export class SashimiPanel extends DraggablePanel {
       `평균 정확도 ${Math.round(avg * 100)}%  ·  조각당 ${pieceValue.toLocaleString()}원`,
       `손질 스킬 +${xp} XP${lv.leveledUp ? `  ★ 레벨업! Lv.${lv.level} ★` : ''}`,
       '요리 탭 [사시미 만들기]에서 접시에 담아 사시미를 완성하세요 (모듬/단품)',
-      this.mode === 'advanced' ? "고급 회 조각은 '스시' 요리 재료로도 쓸 수 있습니다 (추후)" : '',
+      this.mode === 'advanced' ? '고급 회 조각은 값이 더 나갑니다.' : '',
     ]);
   }
 

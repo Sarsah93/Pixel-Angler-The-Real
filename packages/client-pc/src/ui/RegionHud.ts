@@ -969,10 +969,12 @@ export class RegionHud extends Phaser.GameObjects.Container {
     if (!c) return;
     c.removeAll(true);
     if (this.miniDispW <= 0) return;
-    // 표시 하한: 150 = 퀘스트만 / 250 = 물품 상점까지 / 350 = 음식점·카페까지
+    // 표시 하한 (143차 — 바닥 이름표를 끈 대신 미니맵이 장소를 떠맡는다):
+    //  150 = 의뢰 · 인물 / 250 = 물품 상점까지 / 350 = 음식점·카페와 그 밖의 장소까지.
+    //  한 지역 상점이 200곳 가까이라, 작은 미니맵에 전부 찍으면 지형이 아이콘에 묻힌다.
     const size = MINI_SIZES[this.miniSizeIdx];
     const minPri = size < 250 ? 2 : size < 350 ? 1 : 0;
-    const cell = size < 250 ? 14 : 12;
+    const cell = size < 250 ? 16 : size < 350 ? 14 : 12;
     const taken = new Map<string, number>();
     const picked: { x: number; y: number; m: MiniMarker }[] = [];
     for (const m of [...this.miniMarkers].sort((a, b) => b.priority - a.priority)) {

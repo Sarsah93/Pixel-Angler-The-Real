@@ -25,7 +25,8 @@
 | [`ui-framework.md`](ui-framework.md) | DraggablePanel·z-order·텍스트 검수·가이드 허브·튜닝/검증 도구 |
 | [`progression.md`](progression.md) | 진행 — 면허(L)·스킬 트리(K)·일지(J) · 스킬 효과 배선 현황 |
 | [`story-quests.md`](story-quests.md) | 스토리·퀘스트 — 「조행록」 7챕터 **186퀘** · NPC **23아크** · 법 규칙 5조 · 대화·일지·D-day |
+| [`multiplayer.md`](multiplayer.md) | 싱글/멀티 — 로비·세션·이름 유일성·같은 지역 이름표 · **세계 상태는 아직 각자** |
 | [`character-art.md`](character-art.md) | 캐릭터 아트 — 바닐라 베이스(나체+언더웨어) · 페이퍼돌 장비 레이어 · NPC 41인 분화 · 캐릭터 만들기 |
 
-> 없는 시스템(요리·멀티)은 착수 시점에 페이지를 만든다.
+> 없는 시스템(요리)은 착수 시점에 페이지를 만든다.
 > 만들기 전까지는 [`../04-BACKLOG.md`](../04-BACKLOG.md)에 한 줄로만 존재한다.

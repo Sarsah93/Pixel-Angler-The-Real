@@ -531,7 +531,7 @@ export class InventoryPanel extends DraggablePanel {
         label: '요리하기',
         color: '#ffd257', hoverColor: '#ffe9a0',
         run: () => {
-          this.setStatus('스시 만들기 — 준비 중입니다 (고급 사시미는 추후 스시 재료로 사용)');
+          this.setStatus('스시는 아직 만들 수 없습니다.');
         },
       });
     }
@@ -557,7 +557,7 @@ export class InventoryPanel extends DraggablePanel {
         run: () => {
           const made = InventoryStore.makeChumFromViscera(item.id);
           this.setStatus(made
-            ? `${made} 1개를 만들었습니다 (소모성 밑밥 — 통발 미끼 활용은 추후)`
+            ? `${made} 1개를 만들었습니다.`
             : '부패한 내장은 사용할 수 없습니다 — 버리세요');
           this.renderGrid();
           this.scene.events.emit('inventory-changed');
@@ -780,7 +780,7 @@ export class InventoryPanel extends DraggablePanel {
     }
 
     if (parts.length === 0) {
-      return `${item.name}을(를) ${verb === '사용' ? '사용했습니다' : '맛있게 먹었습니다'}. (효과 적용은 추후 구현)`;
+      return `${item.name}을(를) ${verb === '사용' ? '사용했습니다' : '맛있게 먹었습니다'}.`;
     }
     let msg = `${item.name} — ${parts.join(' · ')}`;
     if (item.category === 'food' && item.condition === 'bad'

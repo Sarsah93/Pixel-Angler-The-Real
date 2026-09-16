@@ -12,6 +12,7 @@ import dotenv from 'dotenv';
 import { RoomManager } from './socket/RoomManager.js';
 import { setupPlayerSync } from './socket/PlayerSync.js';
 import { weatherProxyRouter } from './api/WeatherProxy.js';
+import { multiplayerRouter } from './multiplayer/routes.js';
 import type { ClientToServerEvents, ServerToClientEvents } from './types/SocketEvents.js';
 
 // .env 로드
@@ -29,6 +30,8 @@ app.use(express.json());
 
 // API 프록시 라우터 등록
 app.use('/api', weatherProxyRouter);
+// 멀티플레이 세션 라우터 (143차) — 로비·이름 중복 검사·위치 알림
+app.use('/mp', multiplayerRouter);
 
 // 헬스체크
 app.get('/health', (_req, res) => {

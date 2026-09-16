@@ -698,7 +698,7 @@ export class AnglerLogScene extends Phaser.Scene {
 
         // 장비, 미끼 정보 및 수온/물때 정보
         const dateStr = new Date(log.caughtAt).toLocaleDateString('ko-KR', { hour: '2-digit', minute: '2-digit' });
-        const subTxt = `📍 ${spot ? spot.name : '알 수 없는 낚시터'}  |  ⚙️ ${log.tackleUsed.rigType.replace('_flowing', '').replace('_sinker', '')} (${log.baitUsed})  |  🌡️ ${log.waterTempC}°C  |  🌊 ${log.tidePhase}물  |  📅 ${dateStr}`;
+        const subTxt = `${spot ? spot.name : '알 수 없는 낚시터'}  ·  ${log.tackleUsed.rigType.replace('_flowing', '').replace('_sinker', '')} (${log.baitUsed})  ·  수온 ${log.waterTempC}°C  ·  ${log.tidePhase}물  ·  ${dateStr}`;
         const subTextObj = clampTextWidth(this.add.text(60, itemY + 30, subTxt, {
           fontFamily: '"Noto Sans KR", sans-serif',
           fontSize: '11px',

@@ -201,8 +201,7 @@ export const EN_RIG_COOKING: Record<string, string> = {
     'Put a leg on the board to turn it into octopus sukhoe with [Sukhoe slicing (8 pieces)].',
   '요리 탭 [사시미 만들기]에서 접시에 담아 사시미를 완성하세요 (모듬/단품)':
     'Plate them in [Make Sashimi] on the Cooking tab to finish the dish (assorted or single species).',
-  "고급 회 조각은 '스시' 요리 재료로도 쓸 수 있습니다 (추후)":
-    'Fine sashimi slices can also be used as an ingredient for sushi (coming later).',
+  '고급 회 조각은 값이 더 나갑니다.': 'Fine sashimi slices fetch a higher price.',
   '사용 칼': 'Knife used',
   '평균 정확도': 'Average accuracy',
 

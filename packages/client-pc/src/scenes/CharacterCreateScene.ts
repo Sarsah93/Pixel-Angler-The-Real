@@ -18,8 +18,10 @@ import {
   bareOutfit, defaultAppearance, starterOutfit,
   type CharAppearance, type CharConfig, type CharDir, type CharSex,
   type FaceShape, type HairStyle, type MouthStyle,
+  MP_PROGRESS_KO, validateCharacterName,
 } from '@tra/core';
 import { GameState } from '../store/GameState.js';
+import { MultiplayerClient } from '../net/MultiplayerClient.js';
 import { ensureCharSheet, charFrameName } from '../ui/CharacterSprite.js';
 import { paintHudPanel, paintHudSlot } from '../ui/HudPanelStyle.js';
 import { clampTextWidth } from '../ui/TextFit.js';
@@ -36,6 +38,8 @@ const COL = {
   muted: '#6f8399',
   ok: '#a8e6b0',
   warn: '#e8a8a8',
+  /** 생성 실패 — 사용자 지정 '빨간 폰트' */
+  fail: '#ff5c4d',
 };
 
 /** 좌/우 열 지오메트리 — 라벨 104px + 조작 240px */
@@ -116,6 +120,8 @@ export class CharacterCreateScene extends Phaser.Scene {
   private previewDir: CharDir = 'down';
   private previewTimer = 0;
   private starting = false;
+  /** 생성 진행 상태 한 줄 (143차 — 중복 검사 → 통과 → 생성 → 접속) */
+  private progressText?: Phaser.GameObjects.Text;
 
   constructor() { super({ key: 'CharacterCreateScene' }); }
 
@@ -167,7 +173,7 @@ export class CharacterCreateScene extends Phaser.Scene {
     this.add.text(40, 42, '캐릭터 만들기', {
       fontFamily: FONT, fontSize: '26px', color: COL.accent,
     });
-    this.add.text(212, 52, '조행록의 첫 장 — 당신은 어떤 사람으로 속초에 도착합니까', {
+    this.add.text(212, 52, '당신은 어떤 사람인가요?', {
       fontFamily: FONT, fontSize: '13px', color: COL.muted,
     });
     this.add.text(255, 94, '미리보기', {
@@ -176,9 +182,6 @@ export class CharacterCreateScene extends Phaser.Scene {
     this.add.text(500, 94, '외형', {
       fontFamily: FONT, fontSize: '14px', color: COL.dim,
     });
-    this.add.text(1228, 94, '바닐라 = 나체 + 언더웨어 · 옷은 장착 아이템', {
-      fontFamily: FONT, fontSize: '12px', color: COL.muted,
-    }).setOrigin(1, 0);
   }
 
   /** 패널 안 얕은 홈 (스테이지·안내 박스) */
@@ -221,7 +224,7 @@ export class CharacterCreateScene extends Phaser.Scene {
   private drawFooter(): void {
     this.btnG = this.add.graphics();
     this.buttons = [
-      { cx: 180, cy: 672, w: 224, h: 38, label: '이 캐릭터로 시작', color: COL.ok, fn: () => this.confirm() },
+      { cx: 180, cy: 672, w: 224, h: 38, label: '이대로 생성하기', color: COL.ok, fn: () => void this.confirm() },
       { cx: 404, cy: 672, w: 160, h: 38, label: '무작위 외형', color: COL.text, fn: () => this.randomize() },
       { cx: 566, cy: 672, w: 140, h: 38, label: '처음으로', color: COL.warn, fn: () => this.back() },
     ];
@@ -235,7 +238,7 @@ export class CharacterCreateScene extends Phaser.Scene {
       z.on('pointerout', () => { if (this.hoverBtn === i) { this.hoverBtn = -1; this.paintButtons(); } });
       z.on('pointerdown', b.fn);
     });
-    this.add.text(1224, 672, '↑↓ 항목   ←→ 변경   Enter 시작   ESC 뒤로', {
+    this.add.text(1224, 672, '↑↓ 항목   ←→ 변경   Enter 생성   ESC 뒤로', {
       fontFamily: FONT, fontSize: '13px', color: COL.muted,
     }).setOrigin(1, 0.5);
     this.paintButtons();
@@ -438,11 +441,10 @@ export class CharacterCreateScene extends Phaser.Scene {
     });
 
     this.hintText?.setText(this.editingName
-      ? '이름 입력 중 — 글자를 입력하고 Enter로 확정합니다. Backspace로 지웁니다.\n'
-        + '이름은 8자까지 쓸 수 있고, 이후 조행록과 NPC 대사에 그대로 등장합니다.'
-      : '옷은 몸의 일부가 아니라 장착 아이템입니다. 여기서 고른 상의·하의·신발 한 벌을 입은 채로 시작하며,\n'
-        + '가방에서 벗거나 다른 옷으로 바꿀 수 있습니다. 벗으면 바닐라(나체 + 언더웨어)로 돌아갑니다.\n'
-        + '색 항목은 견본을 직접 눌러 고를 수 있습니다.');
+      ? '이름을 입력하고 Enter를 누르세요. 지울 때는 Backspace.\n'
+        + '여덟 글자까지 쓸 수 있습니다. 조행록과 마을 사람들의 말에 이 이름이 그대로 나옵니다.'
+      : '상의·하의·신발은 입고 시작할 옷입니다. 나중에 가방에서 갈아입을 수 있습니다.\n'
+        + '색은 견본을 눌러 고르세요.');
   }
 
   private paintSwatch(v: RowView, sel: boolean): void {
@@ -543,11 +545,60 @@ export class CharacterCreateScene extends Phaser.Scene {
     }
   }
 
-  private confirm(): void {
+  /**
+   * 진행 상태 한 줄 — 푸터 버튼 위에 뜬다 (143차).
+   * 멀티에서는 이름 중복 검사 결과가 여기에 그대로 나온다(빨간 글씨 = 실패).
+   */
+  private setProgress(msg: string, color: string = COL.accent): void {
+    if (!this.progressText) {
+      this.progressText = this.add.text(180, 640, '', {
+        fontFamily: FONT, fontSize: '13px', color, wordWrap: { width: 760 },
+      }).setOrigin(0.5, 1);
+    }
+    this.progressText.setText(msg).setColor(color);
+  }
+
+  /** 잠깐 멈춤 — 진행 문구가 눈에 보이도록 */
+  private wait(ms: number): Promise<void> {
+    return new Promise((r) => this.time.delayedCall(ms, r));
+  }
+
+  private async confirm(): Promise<void> {
     if (this.starting) return;
+    const name = this.nickname.trim();
+    const form = validateCharacterName(name);
+    if (!form.ok) { this.setProgress(form.reasonKo ?? '이름을 확인하세요.', COL.fail); return; }
+
     this.starting = true;
+    if (MultiplayerClient.isMulti) {
+      // 같은 방 안에서 이름이 겹치면 누가 누군지 알 수 없다 — 서버가 판정한다.
+      this.setProgress(MP_PROGRESS_KO.checking, COL.accent);
+      await this.wait(420);
+      const chk = await MultiplayerClient.checkName(name);
+      if (!chk.ok) {
+        this.starting = false;
+        this.setProgress(chk.duplicate ? MP_PROGRESS_KO.duplicate : (chk.reasonKo ?? '이름을 확인할 수 없습니다.'), COL.fail);
+        return;
+      }
+      this.setProgress(MP_PROGRESS_KO.passed, COL.ok);
+      await this.wait(420);
+      this.setProgress(MP_PROGRESS_KO.creating, COL.accent);
+      await this.wait(320);
+      const joined = await MultiplayerClient.claimName(name);
+      if (!joined.ok) {
+        this.starting = false;
+        this.setProgress(joined.duplicate ? MP_PROGRESS_KO.duplicate : (joined.reasonKo ?? '접속하지 못했습니다.'), COL.fail);
+        return;
+      }
+      this.setProgress(MP_PROGRESS_KO.connecting, COL.ok);
+      await this.wait(420);
+    } else {
+      this.setProgress(MP_PROGRESS_KO.creating, COL.accent);
+      await this.wait(260);
+    }
+
     GameState.setCharacter(this.cfg(true));
-    GameState.updatePlayer({ nickname: this.nickname.trim() || '한여름' });
+    GameState.updatePlayer({ nickname: name || '한여름' });
     this.cameras.main.fadeOut(280, 1, 8, 18);
     this.time.delayedCall(320, () => this.scene.start('RegionFieldScene', { region: 'hometown' }));
   }

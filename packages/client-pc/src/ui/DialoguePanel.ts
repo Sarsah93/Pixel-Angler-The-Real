@@ -137,17 +137,31 @@ export class DialoguePanel extends DraggablePanel {
     this.applyFix();
   }
 
-  /** 초상 + 우호도 게이지 */
+  /**
+   * 초상 + 우호도 게이지 (143차 — 세로 중앙 정렬).
+   *
+   * 구 구현은 초상·게이지·라벨을 전부 박스 **상단 기준**(y=4)으로 쌓아, 260px 박스에서
+   * 아래 70px가 늘 비어 있었다("위로 쏠린 느낌"). 이제 스택 총 높이를 먼저 재고
+   * 박스 안에서 중앙에 놓는다 — 패널 높이가 바뀌어도 따라온다.
+   */
   private renderPortrait(c: Phaser.GameObjects.Container): void {
     const g = this.scene.add.graphics();
-    const stageH = this.panelH - this.contentTop - 12;
-    g.fillStyle(0x08121c, 0.9); g.fillRect(8, 4, PORTRAIT_W - 16, stageH);
-    g.lineStyle(1, 0x2c5878, 1); g.strokeRect(8, 4, PORTRAIT_W - 16, stageH);
-    // 발판 그림자
-    g.fillStyle(0x000000, 0.35); g.fillEllipse(PORTRAIT_W / 2, 4 + 32 * PORTRAIT_SCALE - 14, 90, 14);
+    const boxX = 8, boxY = 4, boxW = PORTRAIT_W - 16;
+    const boxH = this.panelH - this.contentTop - 12;
+    g.fillStyle(0x08121c, 0.9); g.fillRect(boxX, boxY, boxW, boxH);
+    g.lineStyle(1, 0x2c5878, 1); g.strokeRect(boxX, boxY, boxW, boxH);
     c.add(g);
+
+    const SPRITE_H = 32 * PORTRAIT_SCALE;   // 시트 셀 높이 × 배율
+    const BAR_H = 8, BAR_GAP = 10, LABEL_H = 16;
+    const stackH = SPRITE_H + BAR_GAP + BAR_H + 4 + LABEL_H;
+    const top = boxY + Math.max(0, Math.floor((boxH - stackH) / 2));
+    const footY = top + SPRITE_H;           // 발밑 기준선
+
+    // 발판 그림자 → 캐릭터
+    g.fillStyle(0x000000, 0.35); g.fillEllipse(PORTRAIT_W / 2, footY - 10, 90, 14);
     const key = ensureCharSheet(this.scene, characterOf(this.npcId), PORTRAIT_SCALE);
-    const img = this.scene.add.image(PORTRAIT_W / 2, 4 + 32 * PORTRAIT_SCALE - 16, key, charFrameName('down', 0)).setOrigin(0.5, 1);
+    const img = this.scene.add.image(PORTRAIT_W / 2, footY - 12, key, charFrameName('down', 0)).setOrigin(0.5, 1);
     c.add(img);
 
     // 우호도 — 11눈금(−5~+5) 바 + 티어 라벨
@@ -155,7 +169,7 @@ export class DialoguePanel extends DraggablePanel {
     const tier = affinityTier(aff);
     const lab = AFFINITY_TIER_LABEL[tier];
     const pips = affinityPips(aff);
-    const barY = 4 + 32 * PORTRAIT_SCALE + 6;
+    const barY = footY + BAR_GAP;
     const pipW = 12, gap = 2, x0 = PORTRAIT_W / 2 - (11 * pipW + 10 * gap) / 2;
     const bar = this.scene.add.graphics();
     for (let i = -5; i <= 5; i++) {
@@ -163,11 +177,11 @@ export class DialoguePanel extends DraggablePanel {
       const on = i === 0 ? true : i < 0 ? pips <= i : pips >= i;
       const col = i === 0 ? 0x9fb4c8 : i < 0 ? 0xe0605a : 0xffd257;
       bar.fillStyle(on ? col : 0x1b2a3a, on ? 1 : 0.9);
-      bar.fillRect(x, barY, pipW, 8);
-      bar.lineStyle(1, 0x06090f, 1); bar.strokeRect(x, barY, pipW, 8);
+      bar.fillRect(x, barY, pipW, BAR_H);
+      bar.lineStyle(1, 0x06090f, 1); bar.strokeRect(x, barY, pipW, BAR_H);
     }
     c.add(bar);
-    const t = this.scene.add.text(PORTRAIT_W / 2, barY + 14, `우호도 ${lab.ko}  (${aff >= 0 ? '+' : ''}${aff.toFixed(2)})`, {
+    const t = this.scene.add.text(PORTRAIT_W / 2, barY + BAR_H + 4, `우호도 ${lab.ko}  (${aff >= 0 ? '+' : ''}${aff.toFixed(2)})`, {
       fontFamily: FONT, fontSize: '11px', color: `#${lab.color.toString(16).padStart(6, '0')}`,
     }).setOrigin(0.5, 0);
     c.add(t);
@@ -277,8 +291,8 @@ export class DialoguePanel extends DraggablePanel {
     const line = NPC_IDLE[this.npcId] ?? (['…', '…'] as const);
     y = this.lines(c, y, [line], '#c8d8e4');
     const hintTxt = refused
-      ? '"…부탁할 일이 있긴 한데, 지금은 너한테 맡길 마음이 안 든다." — 우호도가 낮아 의뢰를 내주지 않습니다. 일감을 돕거나 다른 선택으로 마음을 돌리세요.'
-      : '지금 받을 수 있는 의뢰가 없습니다. 레벨을 올리거나 다른 의뢰를 먼저 끝내세요.';
+      ? '"…부탁할 일이 있긴 한데, 지금은 너한테 맡길 마음이 안 든다." 사이가 틀어져 의뢰를 내주지 않습니다. 일감을 돕다 보면 마음이 풀립니다.'
+      : '지금 맡길 일은 없다고 합니다. 실력을 더 쌓거나 다른 의뢰를 마치고 다시 오세요.';
     const hint = this.scene.add.text(TEXT_X, y, hintTxt, { fontFamily: FONT, fontSize: '11px', color: refused ? COL.warn : COL.dim, wordWrap: { width: TEXT_W } });
     c.add(hint); y += hint.height + 6;
     this.pushCommonRows();
@@ -317,7 +331,7 @@ export class DialoguePanel extends DraggablePanel {
    * 일감(품삯) 화면 — 135차 스트립을 선택지 행으로 옮겼다. 품삯은 우호도 배율이 곱해진 **지급될 값** 그대로 표기.
    */
   private renderJobs(c: Phaser.GameObjects.Container, y: number): number {
-    const head = this.scene.add.text(TEXT_X, y, '일감 (품삯) — 퀘스트와 별개인 반복 수입. 우호도가 좋으면 품삯이 오르고, 적대하면 일을 주지 않습니다.', {
+    const head = this.scene.add.text(TEXT_X, y, '손이 모자랄 때 부르는 일입니다. 사이가 좋으면 품삯을 더 쳐주고, 틀어지면 일을 주지 않습니다.', {
       fontFamily: FONT, fontSize: '11px', color: COL.accent, wordWrap: { width: TEXT_W },
     });
     c.add(head); y += head.height + 6;

@@ -186,7 +186,7 @@ export class HUD extends Phaser.GameObjects.Container {
     const inputMockBg = this.scene.add.rectangle(10, commH - 22, commW - 20, 16, 0x050f1e)
       .setOrigin(0, 0)
       .setStrokeStyle(1, 0x1f3d5a);
-    const inputMockText = this.scene.add.text(14, commH - 20, '⌨ [ENTER] 키를 눌러 대화 (추후 개시 예정)', {
+    const inputMockText = this.scene.add.text(14, commH - 20, '[ENTER] 대화 입력', {
       fontFamily: '"Noto Sans KR", sans-serif',
       fontSize: '8px',
       color: '#607b8e',

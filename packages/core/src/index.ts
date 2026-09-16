@@ -544,3 +544,14 @@ export {
   MARINE_NUISANCES, getNuisance, nuisanceBloomWeight, rollNuisance, nuisanceCullValue,
 } from './db-schema/MarineNuisanceDatabase.js';
 export { renderNuisanceArt, NUISANCE_ART_KEYS } from './art/NuisanceArt.js';
+
+// ── 143차 싱글/멀티 플레이 계약 (클라이언트·서버 공용) ──
+export type {
+  GameMode, MpPeer, NameValidation,
+  MpCreateSessionRes, MpSessionInfoRes, MpNameCheckRes, MpJoinRes, MpPresenceRes,
+} from './types/Multiplayer.js';
+export {
+  SESSION_CODE_LEN, SESSION_CODE_ALPHABET, MP_DEFAULT_SERVER,
+  MP_PRESENCE_TIMEOUT_MS, MP_PRESENCE_INTERVAL_MS, CHAR_NAME_MAX, MP_PROGRESS_KO,
+  characterNameKey, validateCharacterName,
+} from './types/Multiplayer.js';

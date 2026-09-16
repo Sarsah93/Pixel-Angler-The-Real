@@ -307,7 +307,7 @@ export class HomeInteriorScene extends Phaser.Scene {
         : nearest.interact === 'door' ? '[F] 나가기'
         : nearest.interact === 'cook' ? '[F] 주방 (요리 준비중)'
         : nearest.instanceId === 'fridge' ? '[F] 냉장고 열기'
-        : '[F] 수납 (추후)';
+        : '[F] 수납';
       this.hintText.setText(label).setPosition(this.px, this.py - PLAYER_H - 6).setVisible(true);
     } else {
       this.hintText.setVisible(false);
@@ -319,10 +319,10 @@ export class HomeInteriorScene extends Phaser.Scene {
     switch (this.nearObj.interact) {
       case 'save': this.openBedMenu(); break;
       case 'door': this.exitToField(); break;
-      case 'cook': this.flash('주방 조리는 준비 중입니다 (요리는 U 창의 도마 — 추후 실내 연결)'); break;
+      case 'cook': this.flash('주방은 아직 쓸 수 없습니다. 손질은 U 창의 도마에서 합니다.'); break;
       case 'storage':
         if (this.nearObj.instanceId === 'fridge') this.openFridge();
-        else this.flash('수납은 추후 구현됩니다');
+        else this.flash('아직 쓸 수 없는 가구입니다.');
         break;
       default: break;
     }
