@@ -47,8 +47,15 @@ export type CharSex = 'm' | 'f';
 // 색 · 램프
 // ─────────────────────────────────────────────────────────────
 
-/** 전역 아웃라인 (순검정 금지 — 도트가 딱딱해진다) */
+/** 전역 아웃라인 기준색 (순검정 금지 — 도트가 딱딱해진다) */
 const OUTLINE = 0x2a2435;
+/**
+ * 아웃라인에 남기는 **부위 고유색 비율** (142차).
+ * 실루엣 전체를 같은 남보라로 두르면 머리카락도 피부도 옷도 같은 테두리라 도트가 납작해진다.
+ * 시안(스타듀 계열)은 머리카락 옆은 짙은 갈색, 피부 옆은 짙은 살구로 테두리가 물든다 —
+ * 그래서 이웃 픽셀 색을 섞은 **컬러드 아웃라인**을 쓴다.
+ */
+const OUTLINE_MIX = 0.68;
 
 type Rgb = number;
 /** [하이라이트, 기본, 음영] */
@@ -83,6 +90,11 @@ export const CLOTH_COLORS: Rgb[] = [
   0xe8e2d4, 0x3d5a80, 0xc4553f, 0x5b6637, 0x2f8377,
   0xd1a72f, 0x8a5a8f, 0x9a9ea6, 0x4a4550, 0xc47430,
 ];
+
+/** 이마를 덮는 머리카락 행 수 (머리 상단부터) — 시안 정합의 핵심 값 */
+const HAIR_CAP_ROWS = 4;
+/** 눈이 놓이는 행 (머리 상단 기준) — 머리카락 4행 + 앞머리 술 1행 아래 */
+const EYE_ROW = 5;
 
 export const HAIR_STYLES = ['short', 'bob', 'pony', 'long', 'buzz', 'curly', 'braid', 'topknot'] as const;
 export type HairStyle = (typeof HAIR_STYLES)[number];
@@ -226,17 +238,24 @@ class Grid {
     for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) this.put(x, y, c);
   }
 
-  /** 실루엣 바깥 1px 테두리 — 픽셀아트 가독성의 핵심 */
+  /** 실루엣 바깥 1px 테두리 — 픽셀아트 가독성의 핵심. 이웃 색을 섞어 부위마다 톤이 다르다. */
   outline(): void {
-    const add: number[] = [];
+    const add: { i: number; c: Rgb }[] = [];
     for (let y = 0; y < this.h; y++) {
       for (let x = 0; x < this.w; x++) {
         if (this.get(x, y) >= 0) continue;
-        if (this.get(x + 1, y) >= 0 || this.get(x - 1, y) >= 0
-          || this.get(x, y + 1) >= 0 || this.get(x, y - 1) >= 0) add.push(y * this.w + x);
+        let r = 0, g = 0, b = 0, n = 0;
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+          const c = this.get(x + dx, y + dy);
+          if (c < 0) continue;
+          r += (c >> 16) & 255; g += (c >> 8) & 255; b += c & 255; n++;
+        }
+        if (!n) continue;
+        const avg = ((r / n | 0) << 16) | ((g / n | 0) << 8) | (b / n | 0);
+        add.push({ i: y * this.w + x, c: mix(avg, OUTLINE, OUTLINE_MIX) });
       }
     }
-    for (const i of add) this.px[i] = OUTLINE;
+    for (const a of add) this.px[a.i] = a.c;
   }
 
   toRgba(): Uint8ClampedArray {
@@ -349,8 +368,8 @@ export function pose(dir: CharDir, frame: CharFrame, sex: CharSex): Pose {
     armB = null;
   } else {
     const sw = frame === 1 ? -1 : frame === 3 ? 1 : 0;
-    armA = [torso[0] - 3, aTop + sw, torso[0] - 1, aBot + sw];
-    armB = [torso[2] + 1, aTop - sw, torso[2] + 3, aBot - sw];
+    armA = [torso[0] - 2, aTop + sw, torso[0] - 1, aBot + sw];
+    armB = [torso[2] + 1, aTop - sw, torso[2] + 2, aBot - sw];
   }
 
   return {
@@ -377,6 +396,17 @@ function limb(
     const c = y === y0 && opt.top === true ? pal[0] : y === y1 ? pal[2] : pal[1];
     for (let x = x0 + dx; x <= x1 + dx; x++) g.put(x, y, c);
   }
+}
+
+/**
+ * 어깨 이음매 — 팔과 몸통이 같은 색이라 정면/후면에서 한 덩어리로 뭉친다.
+ * 몸통 바깥 열에 1px 그늘을 넣어 팔을 떼어 놓는다(142차 — 시안의 "가는 팔" 인상).
+ */
+function armSeam(g: Grid, p: Pose, pal: Ramp): void {
+  if (p.side || !p.armB) return;
+  const [tx0, , tx1] = p.torso;
+  const y0 = p.armA[1], y1 = p.armA[3];
+  for (let y = y0 + 1; y <= y1; y++) { g.put(tx0, y, pal[2]); g.put(tx1, y, pal[2]); }
 }
 
 /** 특정 행에서의 스큐 오프셋 (발끝·그늘 계산용) */
@@ -439,6 +469,7 @@ function L_skin(g: Grid, p: Pose, cfg: CharConfig): void {
   for (const l of legsOf(p)) limb(g, l.r, l.skew, pal);
   limb(g, p.armA, p.armSkewA, pal);
   if (p.armB) limb(g, p.armB, p.armSkewB, pal);
+  armSeam(g, p, pal);
 
   // 머리 모서리(얼굴형)는 `L_headShape`가 머리카락·모자까지 한꺼번에 깎는다.
   const [hx0, hy0, hx1] = p.head;
@@ -499,6 +530,7 @@ function L_shirt(g: Grid, p: Pose, cfg: CharConfig): void {
   const sleeve = k === 'tee' ? 2 : k === 'knit' ? 6 : 5;
   limb(g, p.armA, p.armSkewA, pal, { to: p.armA[1] + sleeve });
   if (p.armB) limb(g, p.armB, p.armSkewB, pal, { to: p.armB[1] + sleeve });
+  armSeam(g, p, pal);
   if (k === 'hoodie') {
     g.rect([x0, y0 - 1, x1, y0], pal, { top: false });     // 후드
     g.put(16, y0 + 3, pal[2]); g.put(15, y0 + 3, pal[2]);  // 주머니
@@ -570,87 +602,109 @@ function L_pack(g: Grid, p: Pose, cfg: CharConfig): void {
   }
 }
 
-/** 얼굴 — 큰 눈(2x3 + 하이라이트)·입·볼홍조. 캐릭터 인상이 사실상 여기서 결정된다. */
+/**
+ * 얼굴 — 큰 눈 · 작은 입 · 볼홍조. 캐릭터 인상이 사실상 여기서 결정된다.
+ *
+ * 142차(시안 정합): 머리카락이 이마를 덮으므로 **얼굴은 눈~턱 4행만 쓴다**.
+ *  r5~r6 = 눈(2px 폭 · 짙은 동공 + 하이라이트) · r7 = 볼홍조 + 입 · r8 = 턱.
+ * ⚠ 눈썹 행을 따로 두지 않는다 — 앞머리에 가리는 것이 정상이고, 9행 얼굴에 어두운 띠가
+ *   두 줄 쌓이면 곧바로 험상궂어진다(138~140차에 실제로 그랬다).
+ *   이마가 드러나는 스타일(`buzz`·`topknot`)에서만 눈 바깥에 1px 눈썹을 찍는다.
+ */
 function L_face(g: Grid, p: Pose, cfg: CharConfig): void {
   if (p.dir === 'up') return;
   const look = cfg.look;
   const [x0, y0, x1] = p.head;
   const iris = ramp(EYE_COLORS[Math.max(0, Math.min(EYE_COLORS.length - 1, look.eye))]);
-  const lid = 0x3a3145;
-  const ey = y0 + 4;
+  // 동공은 홍채보다 훨씬 어둡다 — 시안의 인상은 "검은 세로 바"에서 온다
+  const pupil = mix(iris[2], 0x1b1520, 0.55);
+  const ey = y0 + EYE_ROW;
+  const bareBrow = look.hairStyle === 'buzz' || look.hairStyle === 'topknot';
+  const browOn = bareBrow && look.brow > 0.3;
 
-  // 눈은 **2행**(눈꺼풀 + 홍채)이다. 눈썹 행을 따로 두면 9행 얼굴에 어두운 띠가 2줄 쌓여
-  // 험상궂어진다 — 눈썹은 눈꺼풀 줄을 바깥으로 1px 늘리는 것으로 표현한다.
-  const browOn = look.brow > 0.3;
-  const eye = (ax: number, outward: number) => {
-    g.put(ax, ey, lid); g.put(ax + 1, ey, lid);
-    if (browOn) g.put(ax + (outward > 0 ? 2 : -1), ey, hairRamp(look.hair)[2]);
-    g.put(ax, ey + 1, 0xfdfbff); g.put(ax + 1, ey + 1, iris[0]);
+  /**
+   * 눈 한 짝 — 2px 폭 x 2행. **위 행은 통째로 동공(검은 바), 아래 행이 홍채색**이다.
+   * 시안의 인상은 흰자가 아니라 이 검은 바에서 온다 — 하이라이트를 크게 넣으면
+   * 눈이 절반으로 쪼개져 멍한 얼굴이 된다(142차 1차 시도에서 실제로 그랬다).
+   */
+  const eye = (ax: number, outward: number): void => {
+    g.put(ax, ey, pupil); g.put(ax + 1, ey, pupil);
+    g.put(ax, ey + 1, iris[0]); g.put(ax + 1, ey + 1, iris[0]);
+    // 안쪽 아래 1px은 홍채 본색 — 위 검정 / 아래 밝음의 세로 대비가 눈을 크게 보이게 한다
+    g.put(outward > 0 ? ax : ax + 1, ey + 1, iris[1]);
+    if (browOn) g.put(ax + (outward > 0 ? 2 : -1), ey - 1, hairRamp(look.hair)[2]);
   };
 
   if (p.side) {
     const front = p.face > 0;
-    const ax = front ? x1 - 3 : x0 + 2;
-    g.put(ax, ey, lid); g.put(ax + 1, ey, lid);
-    if (browOn) g.put(front ? ax - 1 : ax + 2, ey, hairRamp(look.hair)[2]);
-    g.put(ax, ey + 1, front ? 0xfdfbff : iris[0]);
-    g.put(ax + 1, ey + 1, front ? iris[0] : 0xfdfbff);
+    const ax = front ? x1 - 3 : x0 + 2;           // 구레나룻(가장자리 열)에 안 걸리게 한 칸 안쪽
+    g.put(ax, ey, pupil); g.put(ax + 1, ey, pupil);
+    g.put(ax, ey + 1, iris[0]); g.put(ax + 1, ey + 1, iris[0]);
+    g.put(front ? ax : ax + 1, ey + 1, iris[1]);
+    if (browOn) g.put(front ? ax - 1 : ax + 2, ey - 1, hairRamp(look.hair)[2]);
   } else {
     eye(x0 + 2, -1); eye(x1 - 3, 1);
   }
   // 속눈썹 — 성별 식별의 1px (같은 도트 예산으로 가장 크게 읽히는 신호)
   if (look.sex === 'f') {
-    if (p.side) g.put(p.face > 0 ? x1 - 1 : x0, ey, lid);
-    else { g.put(x0 + 1, ey, lid); g.put(x1 - 1, ey, lid); }
+    const lash = mix(pupil, 0x000000, 0.2);
+    if (p.side) g.put(p.face > 0 ? x1 - 1 : x0 + 1, ey, lash);
+    else { g.put(x0 + 1, ey, lash); g.put(x1 - 1, ey, lash); }
   }
 
-  // 볼 홍조
+  const my = ey + 2;
+  // 볼 홍조 — 입과 같은 행이지만 얼굴 양 끝이라 겹치지 않는다
   if (look.blush) {
-    const bl = 0xf09a9a;
-    if (p.side) g.put(p.face > 0 ? x1 - 5 : x0 + 4, ey + 2, bl);
-    else { g.put(x0 + 1, ey + 2, bl); g.put(x1 - 1, ey + 2, bl); }
+    const bl = mix(skinRamp(look)[1], 0xf0787e, 0.32);
+    if (p.side) g.put(p.face > 0 ? x1 - 4 : x0 + 4, my, bl);
+    else { g.put(x0 + 1, my, bl); g.put(x1 - 1, my, bl); }
   }
 
-  // 입
-  const my = ey + 3;
-  const mc = 0x8a4a4a;
+  // 입 — 시안에서는 거의 보이지 않을 만큼 작다. 크게 그으면 어른 얼굴이 된다.
+  const mc = mix(0x8a4a4a, skinRamp(look)[2], 0.25);
   const drawMouth = (): void => {
     if (p.side) {
-      // 측면 입은 앞 가장자리에 붙는 1~2px — 정면처럼 4px를 그으면 볼을 가로지르는 상처가 된다
-      const m0 = p.face > 0 ? x1 - 3 : x0 + 2;
-      const m1 = p.face > 0 ? x1 - 2 : x0 + 3;
-      if (look.mouth === 'small') { g.put(m1, my, mc); return; }
-      g.put(m0, my, mc); g.put(m1, my, mc);
-      if (look.mouth === 'smile') g.put(p.face > 0 ? m0 - 1 : m1 + 1, my - 1, mc);
-      else if (look.mouth === 'open') g.put(m1, my - 1, 0x5e2f2f);
+      const m0 = p.face > 0 ? x1 - 2 : x0 + 2;
+      if (look.mouth === 'open') { g.put(m0, my, 0x5e2f2f); return; }
+      g.put(m0, my, mc);
+      if (look.mouth === 'smile') g.put(p.face > 0 ? m0 - 1 : m0 + 1, my, mix(mc, skinRamp(look)[0], 0.45));
       return;
     }
     const cx = x0 + Math.floor((x1 - x0) / 2);
     if (look.mouth === 'smile') {
-      const soft = mix(mc, skinRamp(look)[0], 0.4);   // 입꼬리까지 짙으면 붉은 사각형이 된다
+      // 2px + 입꼬리 1px. 4px로 그으면 콧수염처럼 얼굴을 가로지른다.
       g.put(cx, my, mc); g.put(cx + 1, my, mc);
-      g.put(cx - 1, my - 1, soft); g.put(cx + 2, my - 1, soft);
+      g.put(cx + 2, my - 1, mix(mc, skinRamp(look)[0], 0.5));
     } else if (look.mouth === 'neutral') {
       g.put(cx, my, mc); g.put(cx + 1, my, mc);
     } else if (look.mouth === 'small') {
       g.put(cx, my, mc);
     } else {
-      g.put(cx, my, mc); g.put(cx + 1, my, mc);
-      g.put(cx, my - 1, 0x5e2f2f); g.put(cx + 1, my - 1, 0x5e2f2f);
+      g.put(cx, my, 0x5e2f2f); g.put(cx + 1, my, 0x5e2f2f);
     }
   };
   drawMouth();
 
-  // 수염
+  // 수염 — **턱선 한 행 + 입 좌우**만. 얼굴 하단을 통째로 칠하면 복면이 된다(142차 1차 시도).
   if (look.beard >= 0) {
     const bp = hairRamp(look.beard);
     const [, , , hy1] = p.head;
-    g.rect([x0 + 1, my - 1, x1 - 1, hy1], bp, { top: false });
+    g.rect([x0 + 2, hy1, x1 - 2, hy1], bp, { top: false });
     drawMouth();
   }
 }
 
-/** 앞머리 — 얼굴 위에 얹힌다 */
+/**
+ * 앞머리 — 얼굴 위에 얹힌다.
+ *
+ * 142차(시안 정합): 머리카락이 **이마를 완전히 덮고 귀 옆까지 내려온다**.
+ * 구 구현은 정수리 2행만 덮어 이마가 훤히 드러났고, 그 때문에 아무리 눈·입을 다듬어도
+ * "이마 넓은 어른 얼굴"로 읽혔다. 시안의 인상은 **덮인 이마 + 둥근 머리 실루엣**에서 온다.
+ *
+ * 행 배치 (r = 머리 상단 기준):
+ *   r-1 = 정수리 볼륨(좌우 1px 인셋) · r0~r3 = 머리카락 본체 · r4 = 앞머리 술(이마 일부 노출)
+ *   좌우 1px 열 = 옆머리(스타일별로 내려오는 깊이가 다르다)
+ */
 function L_hairFront(g: Grid, p: Pose, cfg: CharConfig): void {
   const st = cfg.look.hairStyle;
   const pal = hairRamp(cfg.look.hair);
@@ -664,42 +718,59 @@ function L_hairFront(g: Grid, p: Pose, cfg: CharConfig): void {
   };
 
   if (st === 'buzz') {
-    g.rect([x0, y0, x1, y0 + 1], pal);
+    // 삭발만 예외 — 이마가 드러난다(눈썹도 이때만 보인다)
+    g.rect([x0, y0, x1, y0 + 2], pal);
     napeFill(y0 + 4);
     return;
   }
 
-  // 공통 윗머리 — 머리가 9행이라 138차(+2/+3)보다 한 줄 얕게 덮는다(이마·눈썹 확보)
-  const capBot = st === 'bob' || st === 'long' ? y0 + 2 : y0 + 1;
-  g.rect([x0, y0, x1, capBot], pal);
-  if (st === 'curly') {
-    for (let x = x0; x <= x1; x += 2) g.put(x, y0 - 1, pal[0]);
-  }
-  if (st === 'topknot') {
-    g.rect([x0 + 4, y0 - 3, x1 - 4, y0 - 1], pal);
+  // 후면은 뒤통수 통짜
+  if (p.dir === 'up') {
+    g.rect([x0, y0 - 1, x1, y0 - 1], pal);
+    g.clear(x0, y0 - 1); g.clear(x1, y0 - 1);
+    g.rect([x0, y0, x1, st === 'bob' || st === 'long' ? y1 : y1 - 2], pal);
+    return;
   }
 
-  // 옆머리 — 정면/후면은 좌우 대칭, 측면은 뒤통수를 깊게 덮고 앞은 구레나룻만
-  const sideBot = st === 'bob' ? y1 - 1 : st === 'long' ? y1 + 1 : st === 'braid' ? y0 + 4 : y0 + 3;
+  // 정수리 볼륨 — 머리 사각형보다 한 행 위로 부풀리되 **모서리를 2단으로 깎아** 둥글게.
+  // 인셋 없이 통짜로 얹으면 머리카락이 아니라 사각 모자로 읽힌다.
+  g.rect([x0 + 2, y0 - 1, x1 - 2, y0 - 1], pal);
+
+  // 본체 — 이마를 덮는 4행 (첫 행은 좌우 1px 인셋)
+  const capBot = y0 + HAIR_CAP_ROWS - 1;
+  g.rect([x0 + 1, y0, x1 - 1, y0], pal);
+  g.rect([x0, y0 + 1, x1, capBot], pal, { top: false });
+
+  // 옆머리(귀 옆) 깊이
+  const sideBot = st === 'bob' ? y1 - 1
+    : st === 'long' ? y1 + 1
+      : st === 'braid' || st === 'pony' ? y0 + 6
+        : y0 + 5;
+
   if (p.side) {
     napeFill(st === 'long' ? y1 + 2 : st === 'bob' || st === 'braid' ? y1 : y1 - 1);
-    const fx = p.face > 0 ? x1 : x0;
-    g.rect([fx, y0, fx, Math.min(sideBot, y0 + 2)], pal, { top: false });
+    const fx = p.face > 0 ? x1 : x0;               // 얼굴 쪽 = 구레나룻만 (눈높이까지 내려오면 눈을 덮는다)
+    g.rect([fx, y0 + 1, fx, Math.min(sideBot, y0 + 3)], pal, { top: false });
+    // 앞머리 술 한 가닥이 이마에서 눈 쪽으로 내려온다
+    g.put(p.face > 0 ? x1 - 1 : x0 + 1, capBot + 1, pal[1]);
   } else {
-    g.rect([x0, y0, x0, sideBot], pal, { top: false });
-    g.rect([x1, y0, x1, sideBot], pal, { top: false });
+    g.rect([x0, y0 + 1, x0, sideBot], pal, { top: false });
+    g.rect([x1, y0 + 1, x1, sideBot], pal, { top: false });
+    // 앞머리 술 — 눈 사이·바깥으로 내려오는 1px 2~3가닥(밑단이 일직선이면 가발이 된다)
+    g.put(x0 + 2, capBot + 1, pal[1]);
+    g.put(x1 - 2, capBot + 1, pal[1]);
+    if (st === 'bob' || st === 'long' || st === 'curly') {
+      g.put(x0 + Math.floor((x1 - x0) / 2), capBot + 1, pal[1]);
+    }
   }
 
-  // 앞머리 술 (정면·측면만 — 뒤통수는 통짜)
-  if (p.dir === 'up') {
-    g.rect([x0, y0, x1, y1 - 2], pal);
-    g.clear(x0, y0); g.clear(x1, y0);
-  } else {
-    const fringe = st === 'bob' || st === 'long';
-    if (fringe) {
-      g.rect([x0 + 1, capBot + 1, x0 + 2, capBot + 1], pal, { top: false });
-      g.rect([x1 - 2, capBot + 1, x1 - 1, capBot + 1], pal, { top: false });
-    }
+  // 스타일 장식
+  if (st === 'curly') {
+    g.rect([x0 + 1, y0 - 1, x1 - 1, y0 - 1], pal);      // 받침 행 (없으면 돌기가 공중에 뜬다)
+    for (let x = x0 + 1; x <= x1 - 1; x += 2) g.put(x, y0 - 2, pal[0]);
+  }
+  if (st === 'topknot') {
+    g.rect([x0 + 4, y0 - 4, x1 - 4, y0 - 2], pal);
   }
 }
 
@@ -708,8 +779,11 @@ function L_hat(g: Grid, p: Pose, cfg: CharConfig): void {
   if (k === 'none') return;
   const pal = ramp(cfg.outfit.hatColor);
   const [x0, y0, x1] = p.head;
+  // 142차 — 머리 실루엣이 둥글어졌다. 모자 꼭대기 행도 같은 인셋으로 깎지 않으면
+  // 머리보다 넓은 가로 막대가 공중에 뜬 것처럼 보인다.
+  const crown = (y: number): void => { g.rect([x0 + 1, y, x1 - 1, y], pal); };
   if (k === 'cap' || k === 'visor') {
-    if (k === 'cap') g.rect([x0, y0 - 1, x1, y0 + 2], pal);
+    if (k === 'cap') { crown(y0 - 1); g.rect([x0, y0, x1, y0 + 2], pal, { top: false }); }
     else g.rect([x0, y0 + 1, x1, y0 + 2], pal);
     if (p.dir === 'down') g.rect([x0, y0 + 3, x1, y0 + 3], pal, { top: false });
     else if (p.side) {
@@ -717,10 +791,12 @@ function L_hat(g: Grid, p: Pose, cfg: CharConfig): void {
       g.rect([bx, y0 + 2, bx + 2, y0 + 2], pal, { top: false });
     }
   } else if (k === 'beanie') {
-    g.rect([x0, y0 - 2, x1, y0 + 2], pal);
+    crown(y0 - 2); crown(y0 - 1);
+    g.rect([x0, y0, x1, y0 + 2], pal, { top: false });
     g.rect([x0, y0 + 2, x1, y0 + 3], ramp(mix(cfg.outfit.hatColor, 0xffffff, 0.2)), { top: false });
   } else if (k === 'sun') {
-    g.rect([x0, y0 - 1, x1, y0 + 1], pal);
+    crown(y0 - 1);
+    g.rect([x0, y0, x1, y0 + 1], pal, { top: false });
     g.rect([x0 - 3, y0 + 2, x1 + 3, y0 + 2], pal, { top: false });
   } else if (k === 'bandana') {
     g.rect([x0, y0 + 1, x1, y0 + 2], pal, { top: false });

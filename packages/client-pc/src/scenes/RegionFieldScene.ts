@@ -949,6 +949,24 @@ export class RegionFieldScene extends Phaser.Scene {
     return (CHAR_CELL - 1 - CHAR_FOOT_Y) * CHAR_SCALE;
   }
 
+  /** 머리 위 라벨(이름표·힌트)과 캐릭터 사이 여백 */
+  private static readonly LABEL_GAP = 6;
+
+  /**
+   * 발 기준선 → **셀 상단**까지의 오프셋(음수 = 위쪽).
+   * ⚠ 머리 꼭대기(`CHAR_HEAD_TOP` = 3행)가 아니라 **셀 상단**을 기준으로 잡는다 —
+   *   모자(비니 방울·챙)와 곱슬 머리는 머리 사각형보다 최대 3행 위로 튀어나오므로,
+   *   머리 기준으로 라벨을 붙이면 모자 쓴 인물에서 다시 글자가 파묻힌다.
+   */
+  private get charTopFromFeet(): number {
+    return this.charFootSink - CHAR_CELL * CHAR_SCALE;
+  }
+
+  /** 플레이어 머리 위 라벨의 하단 y (라벨은 `setOrigin(0.5, 1)` 전제) */
+  private get playerLabelY(): number {
+    return this.playerBody.y + this.PLAYER_FOOT_OFFSET + this.charTopFromFeet - RegionFieldScene.LABEL_GAP;
+  }
+
   /** 장비·외형이 바뀌면 시트를 다시 굽는다 (장착 변경 → 즉시 반영) */
   refreshCharacterLook(): void {
     this.charSprite?.setConfig(GameState.character);
@@ -2784,10 +2802,10 @@ export class RegionFieldScene extends Phaser.Scene {
   }
 
   private floatingHint(msg: string): void {
-    const t = this.add.text(this.playerBody.x, this.playerBody.y - 40, msg, {
+    const t = this.add.text(this.playerBody.x, this.playerLabelY, msg, {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#fff',
       backgroundColor: '#0a1628cc', padding: { x: 8, y: 4 },
-    }).setOrigin(0.5).setDepth(60);
+    }).setOrigin(0.5, 1).setDepth(60);
     this.tweens.add({ targets: t, y: t.y - 22, alpha: 0, duration: 1200, onComplete: () => t.destroy() });
   }
 
@@ -3446,7 +3464,7 @@ export class RegionFieldScene extends Phaser.Scene {
           backgroundColor: '#0a1628cc', padding: { x: 5, y: 2 },
         }).setOrigin(0.5, 1).setDepth(30);
       }
-      this.objHintText.setText(label).setPosition(px, py - 34).setVisible(true);
+      this.objHintText.setText(label).setPosition(px, this.playerLabelY - 20).setVisible(true);
     } else {
       this.objHintText?.setVisible(false);
     }
@@ -3480,7 +3498,7 @@ export class RegionFieldScene extends Phaser.Scene {
       this.add.image(x, y + pad, sheet, charFrameName(def.facing ?? 'down', 0))
         .setOrigin(0.5, 1).setDepth(20 + y * 0.001 + 0.0006);
       const npc = getStoryNpc(def.npcId);
-      this.add.text(x, y - 40, npc?.nameKo ?? def.npcId, {
+      this.add.text(x, y + this.charTopFromFeet - RegionFieldScene.LABEL_GAP, npc?.nameKo ?? def.npcId, {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#ffe9a0',
         backgroundColor: '#0a1628cc', padding: { x: 3, y: 1 },
       }).setOrigin(0.5, 1).setDepth(20 + y * 0.001 + 0.0007);
@@ -3525,7 +3543,7 @@ export class RegionFieldScene extends Phaser.Scene {
         n.mark = undefined;
         n.markKey = key ?? undefined;
         if (key) {
-          // 몸통(높이 ≈24px) 우상단 — 이름표(머리 위 40px)와 겹치지 않는 자리.
+          // 몸통(y-34 ~ y-20) 우상단 — 머리(y-52~y-34)와 그 위 이름표를 피한 자리.
           // 오른쪽에 여유가 없으면(맵 끝·옆 NPC) 좌상단으로 (사용자 지시 "여유 공간에 따라")
           const crowdedRight = n.x + 30 > this.cols * TR
             || this.storyNpcs.some((o) => o !== n && Math.abs(o.y - n.y) < 24 && o.x > n.x && o.x - n.x < 40);
@@ -3564,7 +3582,8 @@ export class RegionFieldScene extends Phaser.Scene {
           backgroundColor: '#0a1628dd', padding: { x: 6, y: 3 },
         }).setOrigin(0.5, 1).setDepth(60);
       }
-      this.npcHintText.setText(`[F] ${npc?.nameKo ?? nearest.npcId}${tag}`).setPosition(px, py - 44).setVisible(true);
+      this.npcHintText.setText(`[F] ${npc?.nameKo ?? nearest.npcId}${tag}`)
+        .setPosition(px, this.playerLabelY).setVisible(true);
     } else this.npcHintText?.setVisible(false);
     // 방문 장소
     for (const pl of STORY_PLACES) {
