@@ -30,6 +30,11 @@ export const BUILDING_LABEL: Record<BuildingKind, string> = {
 /** 상점 판매 품목 (인벤토리 템플릿 + 가격/구매 한도) */
 export interface ShopEntry extends InvItemTemplate {
   price: number;
+  /**
+   * 상점 해금 키 (141차) — 메인 퀘스트 `rewards.shopUnlocks`가 `unlock.shop.<key>` 플래그를 세우기 전엔
+   * 구매 목록에 나타나지 않는다. 이야기가 여는 "구매 해금".
+   */
+  unlockKey?: string;
   /** 1회 구매 최대 수량 (1이면 단건 확인만) */
   maxPerPurchase: number;
   desc: string;
@@ -122,6 +127,10 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
     greeting: '식자재는 저희가 제일 쌉니다.',
     buysCategories: ['food'],
     sells: [
+      // 141차 — 메인 해금 품목 (M1-07 부엌의 순서)
+      { id: 'knife_yanagiba_pro', name: '야나기바 (장인 단조)', icon: '', category: 'etc', subCategory: '조리도구',
+        basePrice: 260000, price: 260000, maxPerPurchase: 1, equippable: true, tool: 'knife', unlockKey: 'mart_pro_knife',
+        desc: '정옥선이 말해 둔 물건. 특급 회는 칼에서 시작한다.' },
       { id: 'inv_veges',    name: '식자재 묶음 (대파/양파)', icon: '🥬', category: 'food',       subCategory: '식자재',     basePrice: 5000, price: 6000, maxPerPurchase: 10, condition: 'fresh', equippable: false, desc: '요리 기본 재료 묶음.' },
       { id: 'shop_rice',    name: '쌀 1kg',                  icon: '🥬', category: 'food',       subCategory: '식자재',     basePrice: 4000, price: 4800, maxPerPurchase: 10, equippable: false, desc: '요리 주재료.' },
       { id: 'shop_sauce',   name: '양념 세트',               icon: '🥬', category: 'food',       subCategory: '식자재',     basePrice: 7000, price: 8500, maxPerPurchase: 5,  equippable: false, desc: '요리 풍미를 올려주는 양념.' },
@@ -154,6 +163,16 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
     greeting: '오늘 새벽에 들어온 물건입니다. 잡으신 고기도 매입해요.',
     buysCategories: ['food'],
     sells: [
+      // 141차 — 메인 해금 품목 (M2-01 첫 위판 · M2-05 품질관리 교육 · M4-09 갑오징어)
+      { id: 'crate_std_pro', name: '위판 규격 상자 (10입)', icon: '', category: 'etc', subCategory: '낚시도구',
+        basePrice: 30000, price: 30000, maxPerPurchase: 3, equippable: false, unlockKey: 'market_crate_pro',
+        desc: '위판 등록 계원에게만 판다. 규격이 곧 등급이다.' },
+      { id: 'lure_starter_set', name: '입문 루어 세트 (미노우·스푼·웜)', icon: '', category: 'tackle', subCategory: '루어',
+        basePrice: 48000, price: 48000, maxPerPurchase: 2, equippable: false, iconTexture: 'px:it_lure', unlockKey: 'market_lure_starter',
+        desc: '품질관리 교육 수료자용 입문 세트. 미끼 냄새 안 나는 낚시.' },
+      { id: 'egi_pro_set', name: '고급 에기 세트 (3.0·3.5호)', icon: '', category: 'tackle', subCategory: '루어',
+        basePrice: 64000, price: 64000, maxPerPurchase: 2, equippable: false, iconTexture: 'px:it_lure', unlockKey: 'market_egi_pro',
+        desc: '에깅 계열이 열린 사람에게만. 폴링이 다르다.' },
       { id: 'shop_flatfish', name: '광어 (활어)',   icon: '🐟', category: 'food',   subCategory: '어획물',   basePrice: 25000, price: 30000, maxPerPurchase: 3,  condition: 'live',   equippable: false, desc: '수조 직송 활어.' },
       { id: 'shop_squid',    name: '오징어 (선어)', icon: '🐟', category: 'food',   subCategory: '어획물',   basePrice: 8000,  price: 10000, maxPerPurchase: 5,  condition: 'chilled', equippable: false, desc: '당일 조업 선어.' },
       { id: 'inv_krill',     name: '크릴 (냉동)',   icon: '🦐', category: 'tackle', subCategory: '냉동미끼', basePrice: 4000,  price: 4500,  maxPerPurchase: 10, condition: 'frozen', equippable: false, desc: '범용 냉동 미끼.' },
@@ -227,6 +246,10 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
     name: '생활용품점 사이소',
     greeting: '없는 거 빼고 다 있습니다. 싼 걸로 찾으시면 이쪽.',
     sells: [
+      // 141차 — 메인 해금 품목 (M3-09 배를 보러 가자 — 로드 빌딩)
+      { id: 'workshop_pro_tools', name: '로드 빌딩 공구 세트', icon: '', category: 'etc', subCategory: '재료',
+        basePrice: 150000, price: 150000, maxPerPurchase: 1, equippable: false, craftMaterial: true, unlockKey: 'daily_workshop_pro',
+        desc: '탁만수가 말해 둔 물건. 대를 깎는 사람에게만.' },
       { id: 'inv_rod_budget', name: '사이소 민물대 2.4m', icon: '🎣', category: 'gear', subCategory: '손도구',
         basePrice: 12000, price: 12000, maxPerPurchase: 1, equippable: true, tool: 'rod',
         desc: '싸구려 짧은 대. 테트라포드 구멍치기 전용 — 밑걸림으로 부러져도 아깝지 않다.' },

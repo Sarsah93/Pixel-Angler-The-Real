@@ -222,6 +222,8 @@ export class ShopPanel extends DraggablePanel {
     if (this.currentTab === 'buy') {
       const reco = RecommendationStore.get();
       this.shop.sells.forEach((entry) => {
+        // 141차 — 메인 퀘스트가 열기 전엔 목록에 없다(잠금 표시도 없음: 이야기가 알려 준다)
+        if (entry.unlockKey && !GameState.getFlag(`unlock.shop.${entry.unlockKey}`)) return;
         const recommended = RecommendationStore.isItemRecommended(entry as unknown as InvItem, reco);
         cells.push({
           icon: entry.icon, iconTexture: entry.iconTexture, name: entry.name,
@@ -264,7 +266,7 @@ export class ShopPanel extends DraggablePanel {
       const hasWipPlate = InventoryStore.items.some((i) => i.plateWip && i.slot >= 0);
       const sellable = InventoryStore.items.filter(
         (i) => this.shop.buysCategories.includes(i.category) && i.slot >= 0
-          && !i.forageCatch && !i.plateWip && !StoryStore.sellVerdict(i),
+          && !i.forageCatch && !i.plateWip && !i.bound && !StoryStore.sellVerdict(i),   // 141차 — 귀속 제외
       );
       sellable.forEach((item) => {
         cells.push({

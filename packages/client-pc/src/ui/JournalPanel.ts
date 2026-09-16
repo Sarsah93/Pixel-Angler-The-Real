@@ -16,7 +16,7 @@
 import Phaser from 'phaser';
 import {
   STORY_CHAPTERS, STORY_QUESTS, STORY_ARCS, JOURNAL_PAGES, getStoryNpc, getStoryArc, SEASON_LABEL, getJournalPage,
-  FISH_DATABASE, getLicenseByType, type StoryQuestDef, type JournalPageDef, type StoryArcDef,
+  FISH_DATABASE, getLicenseByType, narrativeOf, choicesFor, getSkillById, type StoryQuestDef, type JournalPageDef, type StoryArcDef,
 } from '@tra/core';
 import { DraggablePanel, applyScreenFixed, restoreHandCursor } from './DraggablePanel.js';
 import { GameState } from '../store/GameState.js';
@@ -450,14 +450,14 @@ export class JournalPanel extends DraggablePanel {
     let y = this.backRow(c, `Ch${v.from} ${ch?.titleKo.split(' — ')[0] ?? ''}`, { kind: 'chapter', ch: v.from });
 
     const st = StoryStore.status(q);
-    const stLabel = st === 'done' ? '완료' : st === 'active' ? '진행 중' : st === 'available' ? '수락 가능' : '잠김';
+    const stLabel = st === 'done' ? '완료' : st === 'active' ? '진행 중' : st === 'available' ? '수락 가능' : st === 'declined' ? '거절함' : '잠김';
     const accent = q.kind === 'main' ? C_MAIN : C_SUB;
     const h = this.scene.add.text(6, y, q.titleKo, {
       fontFamily: FONT, fontSize: '18px', color: accent, fontStyle: 'bold', wordWrap: { width: CONTENT_W - 140 },
     });
     const chip = this.scene.add.text(CONTENT_W - 12, y + 4, stLabel, {
       fontFamily: FONT, fontSize: '11px', color: '#0b1620', fontStyle: 'bold',
-      backgroundColor: st === 'done' ? '#7fe0b0' : st === 'active' ? '#ffd257' : st === 'available' ? '#9fd5ff' : '#8a97a8',
+      backgroundColor: st === 'done' ? '#7fe0b0' : st === 'active' ? '#ffd257' : st === 'available' ? '#9fd5ff' : st === 'declined' ? '#e08a8a' : '#8a97a8',
       padding: { x: 7, y: 2 },
     }).setOrigin(1, 0);
     c.add([h, chip]);
@@ -467,7 +467,11 @@ export class JournalPanel extends DraggablePanel {
     const arc = q.arcId ? getStoryArc(q.arcId) : undefined;
     y = this.text(c, y, `${q.kind === 'main' ? '메인' : `서브 · ${arc?.titleKo ?? q.arcId}`}  ·  ${q.id}  ·  Lv${q.minLevel}+  ·  ${REGION_LABEL[q.region] ?? q.region}  ·  발주 ${giver}`,
       '11px', C_DIM);
-    y = this.text(c, y, q.descKo, '13px', C_TEXT);
+    // 141차 — 표(descKo) 대신 주인공 나레이션. 이야기로 읽힌다.
+    const n = narrativeOf(q.id);
+    y = this.text(c, y, n?.intro ?? q.descKo, '13px', n ? '#d6c9a8' : C_TEXT, 6, CONTENT_W - 24);
+    const note = StoryStore.offerNoteKo(q);
+    if (note && st !== 'done') y = this.text(c, y, note, '11px', '#ffb45a');
     if (q.deadline) {
       y = this.text(c, y, `기한 ${q.deadline.days}일 — 초과 시 ${q.deadline.onMiss === 'cost' ? '비용 발생' : '한 시즌 지연'} (실패 없음)`, '11px', C_GOLD);
     }
@@ -482,20 +486,42 @@ export class JournalPanel extends DraggablePanel {
       if (done) { g.fillStyle(0x7fe0b0, 1); g.fillCircle(12, y + 8, 3.5); }
       else { g.lineStyle(1.2, 0x9fb8cc, 0.9); g.strokeCircle(12, y + 8, 3.5); }
       c.add(g);
-      y = this.text(c, y, `${o.labelKo}${prog}${o.manual && !done && st !== 'done' ? '  — 발주 NPC 대화로 진행' : ''}`,
+      y = this.text(c, y, `${n?.objectives?.[i] ?? o.labelKo}${prog}${o.manual && !done && st !== 'done' ? '  — 발주 NPC 대화로 진행' : ''}`,
         '12px', done ? '#7fe0b0' : '#d0e8f5', 24, CONTENT_W - 44);
     });
 
-    // 보상 — 경험치는 여기에만 표기한다(사용자 지시)
-    const rw: string[] = [`경험치 ${q.xp.toLocaleString()} XP`];
-    if (q.rewards?.coins) rw.push(`${q.rewards.coins.toLocaleString()}원`);
-    for (const l of q.rewards?.licenses ?? []) rw.push(getLicenseByType(l as never)?.nameKo ?? l);
-    for (const it of q.rewards?.items ?? []) rw.push(`${it.id} ×${it.qty} (가방 — 준비 중)`);
-    if (q.reputation?.sea) rw.push(`바다 평판 ${q.reputation.sea > 0 ? '+' : ''}${q.reputation.sea}`);
-    for (const [r, d] of Object.entries(q.reputation?.harbor ?? {})) rw.push(`항구 신뢰(${r}) ${d > 0 ? '+' : ''}${d}`);
-    if (q.unlocks?.length) rw.push(`해금 ${q.unlocks.join(' · ')}`);
+    // 보상 — 경험치는 여기에만 표기한다(사용자 지시). 141차: 나머지는 **완료 후에만** 드러난다(재도전 동기).
     y = this.text(c, y + 4, '보상', '13px', C_GOLD, 6, CONTENT_W - 24, true);
-    y = this.text(c, y, rw.join('   ·   '), '12px', C_GOLD, 24, CONTENT_W - 44);
+    if (st === 'done') {
+      const rw: string[] = [`경험치 ${q.xp.toLocaleString()} XP`];
+      if (q.rewards?.coins) rw.push(`${q.rewards.coins.toLocaleString()}원`);
+      for (const l of q.rewards?.licenses ?? []) rw.push(getLicenseByType(l as never)?.nameKo ?? l);
+      for (const it of q.rewards?.items ?? []) rw.push(`${GameState.itemNameOf(it.id)}${it.qty > 1 ? ` ×${it.qty}` : ''}${it.bound ? ' (귀속)' : ''}`);
+      for (const sk of q.rewards?.skillUnlocks ?? []) rw.push(`기술 해금: ${getSkillById(sk)?.nameKo ?? sk}`);
+      if (q.rewards?.shopUnlocks?.length) rw.push('상점 품목 해금');
+      if (q.reputation?.sea) rw.push(`바다 평판 ${q.reputation.sea > 0 ? '+' : ''}${q.reputation.sea}`);
+      for (const [r, d] of Object.entries(q.reputation?.harbor ?? {})) rw.push(`항구 신뢰(${r}) ${d > 0 ? '+' : ''}${d}`);
+      if (q.unlocks?.length) rw.push(`해금 ${q.unlocks.join(' · ')}`);
+      y = this.text(c, y, rw.join('   ·   '), '12px', C_GOLD, 24, CONTENT_W - 44);
+      // 고른 답과 그 응답 · 고르지 않은 답은 ???
+      const chosen = StoryStore.chosen(q.id)?.complete;
+      const set = choicesFor(q).complete;
+      for (const ch of set) {
+        const mine = ch.id === chosen;
+        y = this.text(c, y, mine ? `▸ "${ch.labelKo}" — ${ch.replyKo}` : `· "${ch.labelKo}" → ???`, '11px', mine ? '#e8f4fd' : '#6f8fa8', 24, CONTENT_W - 44);
+      }
+      if (n?.epilogue) y = this.text(c, y + 2, n.epilogue, '12px', '#d6c9a8', 24, CONTENT_W - 44);
+    } else {
+      const kinds: string[] = [`경험치 ${q.xp.toLocaleString()} XP`];
+      if (q.rewards?.items?.some((i) => i.bound)) kinds.push('귀속 장비 ???');
+      else if (q.rewards?.items?.length) kinds.push('물건 ???');
+      if (q.rewards?.coins) kinds.push('재화 ???');
+      if (q.rewards?.licenses?.length) kinds.push('자격');
+      if (q.rewards?.skillUnlocks?.length) kinds.push('기술 해금 ???');
+      if (q.rewards?.shopUnlocks?.length) kinds.push('상점 해금 ???');
+      if (q.unlocks?.some((u) => u.startsWith('region:'))) kinds.push('지역 개방');
+      y = this.text(c, y, kinds.join('   ·   ') + '   — 답에 따라 덤이 갈립니다 (완료 후 공개)', '12px', C_GOLD, 24, CONTENT_W - 44);
+    }
 
     if (q.journalPage) {
       const pg = getJournalPage(q.journalPage);

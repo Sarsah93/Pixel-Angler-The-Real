@@ -206,11 +206,42 @@ export interface QuestDeadline {
   onMiss: 'cost' | 'delaySeason';
 }
 
+/**
+ * 보상 아이템 1건. `bound` = **귀속** — 판매·양도 불가(상점 매입 목록에서 제외). 메인 스트림이 주는
+ * 고급 장비는 전부 귀속이라 "메인을 깨서 돈을 버는" 우회가 생기지 않는다(141차).
+ */
+export interface QuestRewardItem { id: string; qty: number; bound?: boolean }
+
+/**
+ * 퀘스트 고정 보상. 141차부터 **메인 = 해금형**(귀속 장비 · 가방 · 재화 · 기술 해금 · 상점 해금 ·
+ * 장소/면허), **서브 = 진행 보조**(선택지로 갈리는 품삯·가르침·스킬 포인트)로 종류를 갈라 겹치지 않게 한다.
+ */
 export interface QuestRewards {
   coins?: number;
-  items?: { id: string; qty: number }[];
+  items?: QuestRewardItem[];
   /** 취득되는 면허 (자격 사다리) */
   licenses?: StoryLicenseId[];
+  /** 이 퀘스트가 열어 주는 스킬 id — 해당 스킬의 `unlock: [{ kind: 'quest', value: <이 id> }]`와 짝 */
+  skillUnlocks?: string[];
+  /** 상점 품목 해금 키 — `ShopEntry.unlockKey`와 짝. 완료 시 `unlock.shop.<key>` 플래그 */
+  shopUnlocks?: string[];
+}
+
+/**
+ * 발주 정책 (141차).
+ *  - `standard` — 언제든 다시 받을 수 있다(기본).
+ *  - `once` — **거절하면 영영 사라진다.** 발주 선택지에 `decline: true` 답이 있어야 한다.
+ *  - `event` — 시기 조건(`event`)이 맞을 때만 발주된다. 거절하면 `cooldownDays` 뒤에 다시 찾아온다.
+ */
+export type QuestOfferPolicy = 'standard' | 'once' | 'event';
+
+export interface QuestEventWindow {
+  /** 이 계절에만 (KST 실제 월 기준) */
+  seasons?: Season[];
+  /** 이 레벨 구간에만 [min, max] — 지나치면 더는 오지 않는다 */
+  levelBand?: [number, number];
+  /** 거절·미수락 후 재발주까지 스토리 일수 (기본 30) */
+  cooldownDays?: number;
 }
 
 export type QuestTeaches =
@@ -239,9 +270,11 @@ export type QuestTeaches =
  */
 export interface ChoiceOutcome {
   coins?: number;
+  /** 표준 품삯 배율 — `choicesFor`가 `payChoiceCoins(q) × payMult`를 coins로 환산한다(나레이션 데이터 전용) */
+  payMult?: number;
   /** XP 배율 (1 = 표 값). 서브만 · 0.8~1.3 */
   xpMult?: number;
-  items?: { id: string; qty: number }[];
+  items?: QuestRewardItem[];
   skillPoints?: number;
   /** 숙련도 XP — skillId 지정 또는 카테고리의 **배운** 스킬 전부 */
   proficiency?: { skillId?: string; category?: SkillCategoryId; xp: number };
@@ -255,6 +288,11 @@ export interface ChoiceOutcome {
   seaRep?: number;
   /** 후속 분기 플래그 — 반드시 `choice.` 접두 (GameState.flags) */
   flag?: string;
+  /**
+   * **발주 선택지 전용** — 이 답을 고르면 퀘스트를 받지 않는다. `once` 정책이면 영구 소멸,
+   * `event`면 쿨다운 뒤 재발주, `standard`면 다음 대화에서 다시 보인다.
+   */
+  decline?: boolean;
 }
 
 /** 선택지 노출 조건 — 전부 AND. 없으면 항상 보인다 */
@@ -333,6 +371,33 @@ export interface StoryQuestDef {
    * 메인 = 톤 2종(결과 동일 · 우호도만) / 서브 = 품삯·가르침·사양·(친밀 전용) 4종.
    */
   choices?: QuestChoiceSet;
+  /** 발주 정책 (141차) — 없으면 `standard` */
+  offerPolicy?: QuestOfferPolicy;
+  /** `event` 정책의 시기 조건 */
+  event?: QuestEventWindow;
+}
+
+// ─────────────────────────────────────────────
+// 나레이션 층 (141차) — 퀘스트를 "표"가 아니라 "이야기"로 읽게 하는 문장들
+// ─────────────────────────────────────────────
+
+/**
+ * 퀘스트 한 편의 서사 텍스트. 데이터는 `db-schema/StoryNarrative.ts`.
+ *  - `intro` — **주인공 시점 나레이션**(1인칭 현재형). 누가·어디서·왜·어떻게가 문장 안에 있어야 한다.
+ *    정의문("첫 품삯이 기본 재화다")은 금지 — 감각·판단·기대로 쓴다.
+ *  - `offer`/`progress`/`done` — 발주 NPC의 **말**(따옴표 없이 대사만). 없으면 `StoryDialogue` 폴백.
+ *  - `objectives` — 목표를 문장으로 바꾼 라벨(순서 = `StoryQuestDef.objectives`). 없으면 원 라벨.
+ *  - `epilogue` — 완료 후 주인공 한 줄(일지 하단·대화 응답 뒤).
+ * 영문은 선택 — 없으면 한국어가 그대로 노출된다(사전 미수록 규칙과 동일).
+ */
+export interface QuestNarrative {
+  intro: string;
+  introEn?: string;
+  offer?: string;
+  progress?: string;
+  done?: string;
+  objectives?: string[];
+  epilogue?: string;
 }
 
 // ─────────────────────────────────────────────

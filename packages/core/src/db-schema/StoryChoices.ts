@@ -6,10 +6,13 @@
  *  - 모든 퀘에는 선택지가 있다. 정의(`StoryQuestDef.choices`)가 없으면 `defaultChoicesFor(q)`가
  *    종류별 표준 세트를 만든다 — 메인은 톤 2종(결과 동일·우호도만), 서브는 **품삯 / 가르침 / 사양 /
  *    (친밀 전용) 청탁** 4종으로 보상 종류가 갈린다.
- *  - 손으로 쓴 세트는 `STORY_CHOICE_OVERRIDES` — Ch1 메인·라이벌(N18)·정옥선↔탁만수(N19)·
- *    입문 아크 첫 편들. 여기 없는 퀘는 표준 세트를 받는다(전 186퀘가 최소 3갈래).
- *  - 메인 제약(`validateStoryChoices`): xpMult·items·skillPoints·proficiencyLevelUp 금지, |affinity| ≤ 0.1.
- *    메인 스트림은 **톤·우호도·소액·평판**으로만 갈린다(사용자 지시).
+ *  - **141차**: 내용 기반 선택지는 전부 `StoryNarrative.ts`(186편)에 있다. 우선순위 = 나레이션 > 정의 > 표준.
+ *    구 `STORY_CHOICE_OVERRIDES`(13편)는 나레이션으로 이관돼 비어 있다(호환용 export만 유지).
+ *  - 보상은 **고르기 전에는 보이지 않는다**(대화창) — 응답 문장이 드러내고, 고르지 않은 답은 `???`.
+ *    `payMult`는 표준 품삯 배율이라 `choicesFor`가 coins로 환산해 돌려준다.
+ *  - 발주 정책(`once`/`event`)인 퀘는 발주 선택지에 `decline: true` 답이 하나 있어야 한다 — 없으면 표준 거절 답을 붙인다.
+ *  - 메인 제약(`validateStoryChoices`): xpMult·skillPoints·proficiencyLevelUp 금지 · items는 **귀속만** · |affinity| ≤ 0.1.
+ *    메인 스트림은 **톤·우호도·소액·평판·귀속 택1**로만 갈린다.
  *
  * 문자열은 `[ko, en]`이 아니라 필드 쌍(labelKo/labelEn …)이다 — client `I18n.buildRuntimeDict`가
  * `allChoiceLines()`로 사전에 합류시킨다.
@@ -19,6 +22,7 @@ import { TUNING } from '../config/tuning.js';
 import type { ChoiceOutcome, ChoiceRequires, QuestChoiceDef, QuestChoiceSet, StoryQuestDef } from '../types/Story.js';
 import type { SkillCategoryId } from '../types/Skills.js';
 import { STORY_QUESTS } from './StoryQuestDatabase.js';
+import { narrativeOf } from './StoryNarrative.js';
 
 // ── 헬퍼 ──
 const ch = (id: string, labelKo: string, labelEn: string, replyKo: string, replyEn: string,
@@ -62,9 +66,10 @@ export function payChoiceCoins(q: StoryQuestDef): number {
 export function defaultCompleteChoices(q: StoryQuestDef): QuestChoiceDef[] {
   if (q.kind === 'main') {
     return [
-      ch('main_dutiful', '맡겨 주셔서 고맙습니다.', 'Thank you for trusting me with it.',
-        '고맙긴. 다음 일이 있다.', 'Don\'t thank me. There\'s more work.', { affinity: 0.03 }),
-      ch('main_blunt', '끝냈습니다.', 'Done.', '봤다.', 'I saw.', { affinity: 0 }),
+      ch('main_reflect', '끝났습니다. 그런데 이게 끝은 아닌 것 같습니다.', 'It\'s done. Though it doesn\'t feel like the end.',
+        '끝은 없다. 다음이 있을 뿐이야.', 'There is no end. Only the next thing.', { affinity: 0.03 }),
+      ch('main_look', '끝났습니다. 다음은 무엇을 봐야 합니까.', 'Done. What should I look at next?',
+        '네 눈이 가는 데. 그게 다음이다.', 'Wherever your eyes go. That is next.', { affinity: 0 }),
     ];
   }
   const cat = lessonCategoryOf(q);
@@ -85,92 +90,39 @@ export function defaultCompleteChoices(q: StoryQuestDef): QuestChoiceDef[] {
 // ─────────────────────────────────────────────
 // 손으로 쓴 세트 — Ch1 메인 · 라이벌 · 정옥선↔탁만수 · 입문 아크
 // ─────────────────────────────────────────────
-export const STORY_CHOICE_OVERRIDES: Record<string, QuestChoiceSet> = {
-  'M1-02': { complete: [
-    ch('keep', '품삯, 고맙습니다.', 'The wages — thank you.', '네 돈이다. 아껴 써.', 'It\'s your money. Spend it carefully.', { affinity: 0.03 }),
-    ch('give_back', '얼음값은 빼고 주세요. 반은 좌판에 두겠습니다.', 'Take out the ice money. Half stays with the stall.',
-      '…쓸데없는 소리. 그래도 놓고 가라.', '…Nonsense. Leave it anyway.', { coins: -10000, affinity: 0.08, harborRep: 2 }),
-  ] },
-  'M1-04': { complete: [
-    ch('retort', '그 대가 아깝다는 건, 네 손 얘기겠지.', '"Wasted" — you mean in your hands.',
-      '…말은 잘한다. 낚아 봐라.', '…Big words. Catch something first.', { affinity: -0.06, flag: 'choice.rival_hot' }),
-    ch('swallow', '…충고 고맙다고 해 둘게.', '…I\'ll call it advice, and thank you.',
-      '충고 아니다. 그냥 사실이야.', 'Not advice. Just fact.', { affinity: 0.05, flag: 'choice.rival_cool' }),
-  ] },
-  'M1-06': { complete: [
-    ch('accept_law', '낚싯대로 잡은 건 팔지 않겠습니다.', 'I won\'t sell what I catch on a rod.',
-      '그게 시작이다. 잡는 법보다 먼저 배울 게 그거야.', 'That\'s the start. It comes before learning to catch.', { affinity: 0.05, seaRep: 0.5 }),
-    ch('grumble', '규칙이 너무 빡빡한 거 아닙니까.', 'Isn\'t the rule too strict?',
-      '빡빡해서 바다가 남은 거다.', 'Strict is why there\'s a sea left.', { affinity: -0.03 }),
-  ] },
-  'M1-08': { complete: [
-    ch('thanks', '손에 맞습니다. 고맙습니다.', 'It fits my hands. Thank you.', '대는 그래야 대다.', 'A rod should.', { affinity: 0.04 }),
-    ch('critic', '어깨끈이 좀 짧은데요.', 'The strap\'s a bit short.', '…길게 해 주지. 다음엔 네가 깎아.', '…I\'ll lengthen it. Next time you carve it.', { affinity: -0.02, flag: 'choice.pack_critic' }),
-  ] },
-  'M1-11': { complete: [
-    ch('humble', '아직 배울 게 많습니다.', 'I still have much to learn.', '그 말 하는 놈이 오래 간다.', 'The ones who say that last.', { affinity: 0.05, harborRep: 2 }),
-    ch('proud', '백팔십 일, 다 채웠습니다.', 'One hundred eighty days — done.', '채운 건 날짜지. 계원은 이제부터다.', 'You filled the days. Membership starts now.', { affinity: 0 }),
-  ] },
-  'N01-1': { complete: [
-    ch('blueprint', '도면 받겠습니다. 제가 만들어 쓰죠.', 'I\'ll take the blueprint and build it.',
-      '손재주는 손으로 배우는 거야.', 'Hands learn from hands.', { proficiency: { category: 'crafting', xp: 20 }, affinity: 0.05 }),
-    ch('cash', '도면 말고 품삯으로 주세요.', 'Wages instead of the blueprint, please.', '…그래, 그것도 답이지.', '…Sure, that\'s an answer too.', { coins: 8000, affinity: -0.02 }),
-    ch('gift_fish', '도다리는 그냥 드릴게요. 생일상이잖아요.', 'The flounder\'s a gift. It\'s a birthday table.',
-      '바람이 좋은 쪽으로 불었네.', 'The wind blew the right way.', { affinity: 0.12, harborRep: 3 }),
-  ] },
-  'N02-1': { complete: [
-    ch('lesson', '대 고치는 법을 알려 주세요.', 'Teach me how to mend a rod.',
-      '보는 눈부터다. 이리 와.', 'The eye comes first. Come here.', { proficiency: { skillId: 'fish_cast', xp: 30 }, affinity: 0.06 }),
-    ch('take_rod', '남는 대가 있으면 하나 주십시오.', 'If you have a spare rod, I\'ll take it.',
-      '싼 거다. 그래도 대는 대야.', 'It\'s a cheap one. Still a rod.', { items: [{ id: 'inv_rod_budget', qty: 1 }], affinity: -0.02 }),
-    ch('pay', '품삯으로 주세요.', 'Pay me in coin.', '그러지.', 'Alright.', { coins: 4000 }),
-  ] },
-  'N03-1': { complete: [
-    ch('knot_lesson', '그 매듭, 저도 배우고 싶습니다.', 'That knot — I want to learn it too.',
-      '선생님이 학생한테 배우는 날도 있는 거지.', 'Even a teacher learns from a student some days.', { proficiency: { skillId: 'gath_knot', xp: 25 }, affinity: 0.06 }),
-    ch('pay', '품삯으로 주세요.', 'Pay me in coin.', '그러세.', 'Very well.', { coins: 6000 }),
-    ch('point', '그동안 배운 걸 정리해 두셨죠? 저도 좀 보겨 주세요.', 'You kept notes of what you learned, right? Show me.',
-      '…허, 눈치도 배웠구나. 가져가.', '…Ha, you learned to notice too. Take it.', { skillPoints: 1, affinity: 0.02 }, { affinityMin: 0.2 }),
-  ] },
-  'N04-1': { complete: [
-    ch('join', '입부하겠습니다.', 'I\'ll join.', '낚으면 먹는다! 환영!', 'Catch it, eat it! Welcome!', { affinity: 0.1, xpMult: 1.1, flag: 'choice.club_joined' }),
-    ch('decline_join', '동아리는 좀…', 'A club is… not really me.', '그럼 밥만 같이 먹어요.', 'Then just eat with us.', { affinity: -0.05, coins: 4000 }),
-    ch('later', '생각해 볼게요.', 'Let me think about it.', '천천히요!', 'Take your time!', { affinity: 0.02 }),
-  ] },
-  'N18-1': { complete: [
-    ch('compete', '다음엔 내가 더 큰 걸 낚는다.', 'Next time I\'ll land the bigger one.',
-      '…그래. 그래야 재미지.', '…Good. That\'s what makes it fun.', { affinity: 0.06, xpMult: 1.1, flag: 'choice.rival_compete' }),
-    ch('concede', '네가 낫더라. 인정.', 'You were better. Admitted.', '술은 내가 산다.', 'Drinks are on me.', { affinity: -0.04, coins: 5000 }),
-    ch('ask_tip', '아까 그 챔질, 어떻게 한 거야.', 'That hook-set earlier — how did you do it?',
-      '…한 번만 보여 준다.', '…I\'ll show you once.', { proficiency: { category: 'fishing', xp: 25 }, affinity: 0.03 }, { flag: 'choice.rival_cool' }),
-  ] },
-  'N19-1': { complete: [
-    ch('relay_true', '할머니가 대나무 얘기를 하셨어요.', 'She talked about the bamboo.',
-      '……그랬어? 그랬구나.', '……Did she? I see.', { affinity: 0.05, affinityOther: [{ npcId: 'okseon', delta: 0.1 }], flag: 'choice.n19_relay' }),
-    ch('relay_soft', '별말씀 없으셨어요.', 'She didn\'t say much.', '…그렇지. 그 사람이 뭘.', '…Of course. What would she.', { affinity: -0.02, affinityOther: [{ npcId: 'okseon', delta: -0.05 }] }),
-    ch('lesson', '대 깎는 거, 옆에서 봐도 될까요.', 'May I watch you carve?', '조용히만 있으면.', 'If you stay quiet.', { proficiency: { category: 'crafting', xp: 20 }, affinity: 0.04 }),
-  ] },
-  'N19-2': { complete: [
-    ch('deliver', '편지, 그대로 전했습니다.', 'I delivered the letter as it was.', '…고맙다. 묻지 마라.', '…Thank you. Don\'t ask.', { affinity: 0.08, affinityOther: [{ npcId: 'tak_mansu', delta: 0.1 }], flag: 'choice.n19_letter' }),
-    ch('read_first', '…사실 먼저 읽었습니다.', '…I read it first, actually.', '너.', 'You.', { affinity: -0.1, xpMult: 0.9 }),
-    ch('refuse_read', '읽지 않았습니다. 그건 두 분 일이니까요.', 'I didn\'t read it. That\'s between you two.', '…똑똑한 애구나.', '…Smart kid.', { affinity: 0.1, harborRep: 2 }),
-  ] },
-  'N21-1': { complete: [
-    ch('bounty', '구제 수매가로 받겠습니다.', 'I\'ll take the cull bounty.', '규정대로. 자.', 'By the book. Here.', { coins: 6000 }),
-    ch('data', '개체 수 기록을 같이 보고 싶습니다.', 'I want to see the population records with you.',
-      '보는 눈이 있네. 이 표를 봐.', 'You have an eye for it. Look at this table.', { proficiency: { category: 'gathering', xp: 20 }, affinity: 0.06 }),
-    ch('volunteer', '수매가는 됐고, 다음에도 부르세요.', 'Keep the bounty. Call me next time.', '…그런 사람이 필요했어.', '…That\'s the kind of person we needed.', { affinity: 0.1, harborRep: 4 }),
-  ] },
-};
+/** @deprecated 141차 — 손글 세트는 전부 `StoryNarrative`로 이관됐다. 호환용으로 빈 객체만 남긴다 */
+export const STORY_CHOICE_OVERRIDES: Record<string, QuestChoiceSet> = {};
 
-/** 퀘스트의 최종 선택지 세트 — 손으로 쓴 것 > 정의 > 표준 */
+/** 표준 거절 답 — once/event 정책 퀘에 데이터가 거절 답을 안 실었을 때 붙는다 */
+export const DEFAULT_DECLINE: QuestChoiceDef = ch('decline', '지금은 맡기 어렵습니다.', 'I can\'t take this on right now.',
+  '…그래. 알겠다.', '…I see. Alright.', { decline: true, affinity: -0.03 });
+
+/** payMult(표준 품삯 배율)를 coins로 환산한 사본 — 데이터는 배율만 알고 금액은 퀘스트 XP에서 온다 */
+function materialize(q: StoryQuestDef, c: QuestChoiceDef): QuestChoiceDef {
+  const o = c.outcome;
+  if (o.payMult === undefined) return c;
+  const { payMult, ...rest } = o;
+  return { ...c, outcome: { ...rest, coins: (rest.coins ?? 0) + Math.round((payChoiceCoins(q) * payMult) / 100) * 100 } };
+}
+
+/**
+ * 퀘스트의 최종 선택지 세트 — **나레이션(141차) > 정의 > 표준**.
+ *  - 발주: once/event 정책이면 거절 답을 보장한다.
+ *  - 완료: `payMult`를 금액으로 환산한다.
+ */
 export function choicesFor(q: StoryQuestDef): { offer: QuestChoiceDef[]; complete: QuestChoiceDef[] } {
-  const ov = STORY_CHOICE_OVERRIDES[q.id];
+  const n = narrativeOf(q.id);
   const def = q.choices;
-  return {
-    offer: ov?.offer ?? def?.offer ?? toneOfferChoices(q.kind),
-    complete: ov?.complete ?? def?.complete ?? defaultCompleteChoices(q),
-  };
+  let offer = n?.offerChoices ?? def?.offer ?? toneOfferChoices(q.kind);
+  if ((q.offerPolicy === 'once' || q.offerPolicy === 'event') && !offer.some((c) => c.outcome.decline)) offer = [...offer, DEFAULT_DECLINE];
+  const complete = (n?.complete ?? def?.complete ?? defaultCompleteChoices(q)).map((c) => materialize(q, c));
+  return { offer: offer.map((c) => materialize(q, c)), complete };
+}
+
+/** 이 퀘스트의 선택지가 손으로 쓴(내용 기반) 것인가 — 아티팩트·일지 표기용 */
+export function hasCustomChoices(q: StoryQuestDef): boolean {
+  const n = narrativeOf(q.id);
+  return !!(n?.complete || n?.offerChoices || q.choices);
 }
 
 /** 선택지 노출 판정 컨텍스트 */
@@ -220,6 +172,9 @@ export function validateStoryChoices(): string[] {
   const issues: string[] = [];
   for (const q of STORY_QUESTS) {
     const s = choicesFor(q);
+    if ((q.offerPolicy === 'once' || q.offerPolicy === 'event') && !s.offer.some((c) => c.outcome.decline)) {
+      issues.push(`${q.id}: ${q.offerPolicy} 정책인데 거절 선택지가 없다`);
+    }
     for (const [stage, list] of [['offer', s.offer], ['complete', s.complete]] as const) {
       const ids = new Set<string>();
       if (list.length < 2) issues.push(`${q.id} ${stage}: 선택지 2개 미만`);
@@ -228,6 +183,9 @@ export function validateStoryChoices(): string[] {
         ids.add(c.id);
         const o = c.outcome;
         if (o.flag && !o.flag.startsWith('choice.')) issues.push(`${q.id}/${c.id}: flag는 choice. 접두 필수`);
+        if (o.decline && stage !== 'offer') issues.push(`${q.id}/${c.id}: decline은 발주 선택지에만`);
+        if (o.payMult !== undefined) issues.push(`${q.id}/${c.id}: payMult가 환산되지 않았다`);
+        for (const it of o.items ?? []) if (it.id.startsWith('qr_') && !it.bound) issues.push(`${q.id}/${c.id}: qr_ 장비는 귀속이어야 한다`);
         if (o.xpMult !== undefined && (o.xpMult < 0.8 || o.xpMult > 1.3)) issues.push(`${q.id}/${c.id}: xpMult 범위(0.8~1.3) 밖`);
         if (o.affinity !== undefined && Math.abs(o.affinity) > 0.2) issues.push(`${q.id}/${c.id}: 우호도 변동 ±0.2 초과`);
         if (o.skillPoints && !(c.requires?.affinityMin !== undefined && c.requires.affinityMin >= 0.2)) {
@@ -235,7 +193,7 @@ export function validateStoryChoices(): string[] {
         }
         if (q.kind === 'main') {
           if (o.xpMult !== undefined && o.xpMult !== 1) issues.push(`${q.id}/${c.id}: 메인 xpMult 금지`);
-          if (o.items?.length) issues.push(`${q.id}/${c.id}: 메인 아이템 보상 금지`);
+          if (o.items?.some((i) => !i.bound)) issues.push(`${q.id}/${c.id}: 메인 선택지 아이템은 귀속(택1)만`);
           if (o.skillPoints) issues.push(`${q.id}/${c.id}: 메인 스킬 포인트 금지`);
           if (o.proficiencyLevelUp) issues.push(`${q.id}/${c.id}: 메인 숙련도 레벨업 금지`);
           if (o.affinity !== undefined && Math.abs(o.affinity) > 0.1) issues.push(`${q.id}/${c.id}: 메인 우호도 ±0.1 초과`);

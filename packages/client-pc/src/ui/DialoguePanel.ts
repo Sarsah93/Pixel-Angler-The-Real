@@ -16,7 +16,7 @@
 
 import Phaser from 'phaser';
 import {
-  getStoryNpc, characterOf, describeOutcomeKo, affinityTier, AFFINITY_TIER_LABEL, affinityPips,
+  getStoryNpc, characterOf, affinityTier, AFFINITY_TIER_LABEL, affinityPips, narrativeOf,
   type StoryQuestDef, type QuestChoiceDef,
 } from '@tra/core';
 import { DraggablePanel } from './DraggablePanel.js';
@@ -48,7 +48,11 @@ export class DialoguePanel extends DraggablePanel {
   private readonly regionId: string;
   private view: View = 'main';
   /** 응답 화면(선택 직후) — 대사 + 결과 줄 */
-  private reply: { line: string; lines: string[] } | null = null;
+  /**
+   * 응답 화면 (141차) — 보상은 **고른 뒤에만** 드러난다: NPC 응답 → 받은 것(고정 보상) → 이 답으로(선택 몫) →
+   * 다른 답들은 `???` → 주인공 한 줄(epilogue).
+   */
+  private reply: { line: string; lines: string[]; rewards: string[]; others: string[]; epilogue?: string; declined?: boolean } | null = null;
   private rows: ChoiceRow[] = [];
   private cursor = 0;
   private rowObjs: { g: Phaser.GameObjects.Graphics; t: Phaser.GameObjects.Text; h?: Phaser.GameObjects.Text; row: ChoiceRow; cy: number }[] = [];
@@ -177,6 +181,13 @@ export class DialoguePanel extends DraggablePanel {
     return y;
   }
 
+  /** 주인공 시점 나레이션 — 대사(따옴표)와 구분되는 톤(흐린 모래색·들여쓰기) */
+  private narration(c: Phaser.GameObjects.Container, y: number, text: string): number {
+    const t = this.scene.add.text(TEXT_X + 10, y, text, { fontFamily: FONT, fontSize: '12px', color: '#d6c9a8', lineSpacing: 3, wordWrap: { width: TEXT_W - 10 } });
+    c.add(t);
+    return y + t.height + 8;
+  }
+
   private questHeader(c: Phaser.GameObjects.Container, q: StoryQuestDef, y: number, chip: string, chipBg: string): number {
     const h = this.scene.add.text(TEXT_X, y, `${q.kind === 'main' ? '메인' : '서브'} ${q.id} · ${q.titleKo}`, { fontFamily: FONT, fontSize: '13px', color: COL.ok, fontStyle: 'bold' });
     const ch = this.scene.add.text(W - 20, y + 1, chip, { fontFamily: FONT, fontSize: '10px', color: '#0b1620', fontStyle: 'bold', backgroundColor: chipBg, padding: { x: 6, y: 2 } }).setOrigin(1, 0);
@@ -190,7 +201,8 @@ export class DialoguePanel extends DraggablePanel {
       const cur = StoryStore.progress(q.id)?.obj[i] ?? 0;
       const tgt = StoryStore.objectiveTarget(o);
       const prog = tgt > 1 ? ` (${Math.min(cur, tgt).toLocaleString()}/${tgt.toLocaleString()})` : '';
-      const t = this.scene.add.text(TEXT_X + 8, y, `${done ? '✓' : '·'} ${o.labelKo}${prog}${o.manual && !done ? '  — 대화로 진행' : ''}`, {
+      const label = narrativeOf(q.id)?.objectives?.[i] ?? o.labelKo;
+      const t = this.scene.add.text(TEXT_X + 8, y, `${done ? '✓' : '·'} ${label}${prog}${o.manual && !done ? '  — 대화로 진행' : ''}`, {
         fontFamily: FONT, fontSize: '11px', color: done ? COL.ok : '#d0e8f5', wordWrap: { width: TEXT_W - 8 },
       });
       c.add(t); y += t.height + 2;
@@ -198,15 +210,25 @@ export class DialoguePanel extends DraggablePanel {
     return y + 4;
   }
 
-  /** 선택지 → 행. 라벨 + 흐린 미리보기 */
+  /**
+   * 선택지 → 행. **미리보기 없음**(141차 — 보상은 고른 뒤 응답 문장과 결과 목록으로 드러난다).
+   * 고르지 않은 답은 응답 화면에 `???`로 남는다.
+   */
   private choiceRow(q: StoryQuestDef, ch: QuestChoiceDef, stage: 'offer' | 'complete'): ChoiceRow {
-    const hint = ch.hintKo ?? describeOutcomeKo(ch.outcome);
     return {
-      label: ch.labelKo, hint: hint || undefined,
+      label: ch.labelKo,
       action: () => {
         const ok = stage === 'offer' ? StoryStore.accept(q.id, ch.id) : StoryStore.complete(q.id, ch.id);
         if (!ok) { this.lastWorkMsg = '지금은 진행할 수 없습니다.'; this.render(); return; }
-        this.reply = { line: ch.replyKo, lines: stage === 'complete' ? StoryStore.lastOutcomeLines : [] };
+        const done = stage === 'complete';
+        this.reply = {
+          line: ch.replyKo,
+          lines: done ? StoryStore.lastOutcomeLines : [],
+          rewards: done ? StoryStore.lastRewardLines : [],
+          others: done ? StoryStore.otherChoices(q, 'complete', ch.id).map((o) => o.label) : [],
+          epilogue: done ? narrativeOf(q.id)?.epilogue : undefined,
+          declined: StoryStore.lastAction === 'declined',
+        };
         this.view = 'reply';
         this.render();
       },
@@ -215,9 +237,15 @@ export class DialoguePanel extends DraggablePanel {
 
   private renderOffer(c: Phaser.GameObjects.Container, q: StoryQuestDef, y: number): number {
     y = this.questHeader(c, q, y, '새 의뢰', '#ffd257');
-    y = this.lines(c, y, dialogueOf(q.id).offer);
-    const desc = this.scene.add.text(TEXT_X, y, q.descKo, { fontFamily: FONT, fontSize: '11px', color: COL.dim, wordWrap: { width: TEXT_W } });
-    c.add(desc); y += desc.height + 6;
+    const n = narrativeOf(q.id);
+    // 141차 — 표(descKo) 대신 주인공 나레이션 → NPC의 말 순서. 보상 미리보기는 없다.
+    if (n) y = this.narration(c, y, n.intro);
+    y = this.lines(c, y, n?.offer ? [[n.offer, n.offer]] : dialogueOf(q.id).offer);
+    const note = StoryStore.offerNoteKo(q);
+    if (note) {
+      const t = this.scene.add.text(TEXT_X, y, note, { fontFamily: FONT, fontSize: '11px', color: COL.warn, wordWrap: { width: TEXT_W } });
+      c.add(t); y += t.height + 6;
+    }
     for (const ch of StoryStore.visibleChoices(q, 'offer')) this.rows.push(this.choiceRow(q, ch, 'offer'));
     this.pushCommonRows();
     return y;
@@ -225,7 +253,8 @@ export class DialoguePanel extends DraggablePanel {
 
   private renderActive(c: Phaser.GameObjects.Container, q: StoryQuestDef, y: number): number {
     y = this.questHeader(c, q, y, '진행 중', '#9fd5ff');
-    y = this.lines(c, y, [dialogueOf(q.id).progress]);
+    const np = narrativeOf(q.id)?.progress;
+    y = this.lines(c, y, [np ? [np, np] : dialogueOf(q.id).progress]);
     y = this.objectives(c, q, y);
     const idx = q.objectives.findIndex((o, i) => o.manual && !StoryStore.objectiveDone(q, i));
     if (idx >= 0) {
@@ -237,13 +266,9 @@ export class DialoguePanel extends DraggablePanel {
 
   private renderComplete(c: Phaser.GameObjects.Container, q: StoryQuestDef, y: number): number {
     y = this.questHeader(c, q, y, '완료 가능', '#7fe0b0');
-    y = this.lines(c, y, dialogueOf(q.id).done);
-    const rw: string[] = [`경험치 +${q.xp.toLocaleString()}`];
-    if (q.rewards?.coins) rw.push(`${q.rewards.coins.toLocaleString()}원`);
-    if (q.rewards?.licenses?.length) rw.push(`자격 ${q.rewards.licenses.length}종`);
-    if (q.rewards?.items?.length) rw.push(`아이템 ${q.rewards.items.length}종`);
-    const r = this.scene.add.text(TEXT_X, y, `기본 보상: ${rw.join(' · ')}   — 아래 답에 따라 덤이 갈립니다`, { fontFamily: FONT, fontSize: '11px', color: COL.accent, wordWrap: { width: TEXT_W } });
-    c.add(r); y += r.height + 6;
+    const nd = narrativeOf(q.id)?.done;
+    y = this.lines(c, y, nd ? [[nd, nd]] : dialogueOf(q.id).done);
+    // 141차 — 보상 미리보기 없음. 답을 고르면 응답 문장이 무엇을 내미는지 드러낸다.
     for (const ch of StoryStore.visibleChoices(q, 'complete')) this.rows.push(this.choiceRow(q, ch, 'complete'));
     return y;
   }
@@ -263,10 +288,16 @@ export class DialoguePanel extends DraggablePanel {
   private renderReply(c: Phaser.GameObjects.Container, y: number): number {
     const r = this.reply!;
     y = this.lines(c, y, [[r.line, r.line]]);
-    if (r.lines.length) {
-      const t = this.scene.add.text(TEXT_X, y, `결과: ${r.lines.join(' · ')}`, { fontFamily: FONT, fontSize: '11px', color: COL.accent, wordWrap: { width: TEXT_W } });
-      c.add(t); y += t.height + 6;
-    }
+    const small = (text: string, color: string): void => {
+      const t = this.scene.add.text(TEXT_X, y, text, { fontFamily: FONT, fontSize: '11px', color, wordWrap: { width: TEXT_W } });
+      c.add(t); y += t.height + 4;
+    };
+    if (r.declined) small('의뢰를 받지 않았습니다.', COL.warn);
+    // 141차 — 받은 것은 여기서 처음 드러난다. 다른 답의 보상은 ???
+    if (r.rewards.length) small(`받은 것: ${r.rewards.join(' · ')}`, COL.accent);
+    if (r.lines.length) small(`이 답으로: ${r.lines.join(' · ')}`, COL.ok);
+    if (r.others.length) small(`고르지 않은 답 — ${r.others.map((o) => `"${o}" → ???`).join('   ')}`, COL.hint);
+    if (r.epilogue) y = this.narration(c, y + 2, r.epilogue);
     this.rows.push({ label: '계속', action: () => { this.view = 'main'; this.reply = null; this.render(); } });
     this.rows.push({ label: '대화 끝내기', action: () => this.onClose() });
     return y;

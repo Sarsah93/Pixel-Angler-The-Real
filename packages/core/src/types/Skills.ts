@@ -58,7 +58,9 @@ export type SkillUnlockCond =
   /** 특정 면허 보유 (LicenseType 문자열 — core License.ts와 순환 참조를 피해 string으로 둔다) */
   | { kind: 'license'; value: string }
   /** 같은/지정 카테고리의 누적 랭크 n 이상 — "그 분야를 판 사람만" */
-  | { kind: 'categoryRanks'; category: SkillCategoryId; value: number };
+  | { kind: 'categoryRanks'; category: SkillCategoryId; value: number }
+  /** 스토리 퀘스트 완료 (141차 — 메인 해금형 보상 "기술 해금". value = 퀘스트 id) */
+  | { kind: 'quest'; value: string };
 
 /** 해금 조건 판정에 필요한 바깥 상태 */
 export interface SkillUnlockCtx {
@@ -66,6 +68,8 @@ export interface SkillUnlockCtx {
   /** 보유(유효) 면허 타입 목록 */
   licenses: string[];
   ranks: SkillRanks;
+  /** 완료한 스토리 퀘스트 id (141차). 없으면 quest 조건은 전부 미충족 */
+  questsDone?: readonly string[];
 }
 
 export interface SkillEffect {

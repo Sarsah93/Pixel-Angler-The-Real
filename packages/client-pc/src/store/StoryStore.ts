@@ -18,6 +18,7 @@ import {
   seasonOfMonth, createDefaultReputation, clampHarbor, clampSea, canSell, provenanceOf, TUNING,
   dayJobsOfNpc, getDayJob,
   clampAffinity, affinityRewardMult, affinityJobWageMult, canOfferSubQuest, canOfferJobs, choicesFor, choiceVisible,
+  getLicenseByType, getSkillById,
   type StoryQuestDef, type StoryObjective, type ReputationState, type CatchMethod, type JournalPageState, type LawVerdict,
   type DayJobDef, type AffinityState, type QuestChoiceDef, type ChoiceOutcome, type ChoiceCtx, type SkillCategoryId,
 } from '@tra/core';
@@ -45,6 +46,10 @@ export interface StorySaveState {
   affinity?: AffinityState;
   /** 퀘스트별 고른 선택지 (140차) — questId → { offer, complete } */
   choices?: Record<string, { offer?: string; complete?: string }>;
+  /** 거절해 영영 사라진 once 퀘스트 (141차) */
+  declined?: string[];
+  /** 거절·미수락 뒤 재발주 가능 일차 (141차 — event 정책) — questId → 스토리 일차 */
+  offerCooldown?: Record<string, number>;
 }
 
 export interface StoryHost {
@@ -63,8 +68,12 @@ export interface StoryHost {
   fatigue(): number;
   // 140차 — 선택지 결과 보상
   hasFlag(k: string): boolean;
-  /** 카탈로그 아이템 실지급 (없는 id는 false) */
-  giveItem(id: string, qty: number): boolean;
+  /** 카탈로그 아이템 실지급 (없는 id는 false). bound = 귀속(141차) */
+  giveItem(id: string, qty: number, bound?: boolean): boolean;
+  /** 카탈로그 아이템 이름 (보상 표기용) */
+  itemName(id: string): string;
+  /** 현재 KST 월 (1~12) — event 정책 계절 판정 */
+  month(): number;
   addSkillPoints(n: number): void;
   grantProfXp(target: { skillId?: string; category?: SkillCategoryId }, xp: number): string[];
   grantProfLevelUp(skillId: string): boolean;
@@ -85,7 +94,7 @@ export type StoryEvent =
   /** 138차 — 과증식 생물 수거 (해파리·불가사리) */
   | { kind: 'cull'; speciesId: string };
 
-export type QuestStatus = 'done' | 'active' | 'available' | 'locked';
+export type QuestStatus = 'done' | 'active' | 'available' | 'locked' | 'declined';
 
 /** 어획물 아이템의 판매 판정에 필요한 최소 형태 */
 interface SellableLike { speciesId?: string; subCategory?: string; catchMethod?: CatchMethod; lengthCm?: number }
@@ -98,6 +107,9 @@ class StoryStoreManager {
   private day = 0;
   private traineeDay: number | null = null;
   private jobs: Record<string, { day: number; count: number }> = {};
+  /** 141차 — 거절로 사라진 once 퀘 · event 재발주 쿨다운 */
+  private declined = new Set<string>();
+  private offerCooldown: Record<string, number> = {};
   private affinity: AffinityState = {};
   private choices: Record<string, { offer?: string; complete?: string }> = {};
   /** UI 통지 훅 — 퀘 완료/수락/조행록 갱신 (필드 HUD 토스트) */
@@ -110,6 +122,7 @@ class StoryStoreManager {
     return {
       quests: this.quests, rep: this.rep, pageCatch: this.pageCatch, day: this.day, traineeDay: this.traineeDay, jobs: this.jobs,
       affinity: this.affinity, choices: this.choices,
+      declined: [...this.declined], offerCooldown: this.offerCooldown,
     };
   }
   deserialize(s?: StorySaveState): void {
@@ -121,6 +134,8 @@ class StoryStoreManager {
     this.jobs = s?.jobs ?? {};
     this.affinity = s?.affinity ?? {};
     this.choices = s?.choices ?? {};
+    this.declined = new Set(s?.declined ?? []);
+    this.offerCooldown = s?.offerCooldown ?? {};
     this.refreshAutoQuests();
   }
   resetAll(): void { this.deserialize(undefined); }
@@ -151,13 +166,40 @@ class StoryStoreManager {
     const p = this.quests[q.id];
     if (p?.status === 'done') return 'done';
     if (p?.status === 'active') return 'active';
+    if (this.declined.has(q.id)) return 'declined';
     return this.isAvailable(q) ? 'available' : 'locked';
   }
   private isAvailable(q: StoryQuestDef): boolean {
     if (!this.chapterOpen(q.chapter)) return false;
     if (!q.prereq.every((p) => this.isDone(p))) return false;
     const lv = this.host?.level() ?? 1;
-    return lv >= q.minLevel;
+    if (lv < q.minLevel) return false;
+    // 141차 — 발주 정책: 거절 쿨다운 · event 시기 창
+    if ((this.offerCooldown[q.id] ?? -1) > this.day) return false;
+    if (q.offerPolicy === 'event' && !this.eventWindowOpen(q)) return false;
+    return true;
+  }
+  /** event 정책의 시기 창 — 계절(KST 실제 월)·레벨 구간. event 퀘가 아니면 항상 true */
+  eventWindowOpen(q: StoryQuestDef): boolean {
+    const e = q.event;
+    if (!e) return true;
+    if (e.seasons && !e.seasons.includes(seasonOfMonth(this.host?.month() ?? 1))) return false;
+    const lv = this.host?.level() ?? 1;
+    if (e.levelBand && (lv < e.levelBand[0] || lv > e.levelBand[1])) return false;
+    return true;
+  }
+  /** 왜 지금 못 받는지 한 줄 (일지·대화창) — event/once/쿨다운. 해당 없으면 null */
+  offerNoteKo(q: StoryQuestDef): string | null {
+    if (this.declined.has(q.id)) return '거절한 의뢰 — 다시 오지 않습니다.';
+    if ((this.offerCooldown[q.id] ?? -1) > this.day) return `미룬 의뢰 — ${this.offerCooldown[q.id] - this.day}일 뒤에 다시 찾아옵니다.`;
+    if (q.offerPolicy === 'once') return '한 번뿐인 의뢰 — 거절하면 다시 오지 않습니다.';
+    if (q.offerPolicy === 'event' && q.event) {
+      const parts: string[] = [];
+      if (q.event.seasons) parts.push(q.event.seasons.map((x) => ({ spring: '봄', summer: '여름', autumn: '가을', winter: '겨울' })[x]).join('·'));
+      if (q.event.levelBand) parts.push(`Lv${q.event.levelBand[0]}~${q.event.levelBand[1]}`);
+      return `시기 의뢰 — ${parts.join(' · ')}에만 찾아옵니다.`;
+    }
+    return null;
   }
 
   objectiveTarget(o: StoryObjective): number { return o.target ?? 1; }
@@ -240,12 +282,22 @@ class StoryStoreManager {
     const q = getStoryQuest(id);
     if (!q || this.status(q) !== 'available') return false;
     if (q.kind === 'sub' && q.giver && !canOfferSubQuest(this.affinityOf(q.giver))) return false;   // 140차 — 우호도 게이트
-    this.quests[id] = { status: 'active', obj: q.objectives.map(() => 0), day: this.day };
-    // 140차 — 발주 톤 선택지(우호도 미세 차이)
-    if (choiceId) {
-      const c = this.visibleChoices(q, 'offer').find((x) => x.id === choiceId);
-      if (c) { this.choices[id] = { ...this.choices[id], offer: c.id }; this.applyOutcome(q, c.outcome); }
+    const c = choiceId ? this.visibleChoices(q, 'offer').find((x) => x.id === choiceId) : undefined;
+    // 141차 — 거절 답: once = 영구 소멸 · event = 쿨다운 · standard = 다음 대화에 다시
+    if (c?.outcome.decline) {
+      this.choices[id] = { ...this.choices[id], offer: c.id };
+      this.applyOutcome(q, c.outcome);
+      if (q.offerPolicy === 'once') this.declined.add(id);
+      else if (q.offerPolicy === 'event') this.offerCooldown[id] = this.day + (q.event?.cooldownDays ?? 30);
+      this.lastAction = 'declined';
+      this.host?.markDirty();
+      this.onNotify?.(`[퀘스트] ${q.titleKo} — ${q.offerPolicy === 'once' ? '거절 (다시 오지 않습니다)' : '미룸'}`);
+      return true;
     }
+    this.quests[id] = { status: 'active', obj: q.objectives.map(() => 0), day: this.day };
+    this.lastAction = 'accepted';
+    // 140차 — 발주 톤 선택지(우호도 미세 차이)
+    if (c) { this.choices[id] = { ...this.choices[id], offer: c.id }; this.applyOutcome(q, c.outcome); }
     // 상태형 목표는 수락 즉시 평가 (레벨·재화·이미 보유한 면허)
     this.evaluateStateful(q);
     this.host?.markDirty();
@@ -264,8 +316,17 @@ class StoryStoreManager {
     return true;
   }
 
-  /** 직전 완료의 결과 요약 — 대화창이 한 번 읽고 지운다 */
+  /** 직전 완료의 결과 요약(선택지 몫) — 대화창이 한 번 읽고 지운다 */
   lastOutcomeLines: string[] = [];
+  /** 직전 완료의 고정 보상 요약(141차 — 경험치·재화·면허·귀속 장비·해금). 완료 뒤에만 보인다 */
+  lastRewardLines: string[] = [];
+  /** 직전 accept/complete가 무엇이었나 (대화창 응답 화면 분기) */
+  lastAction: 'accepted' | 'declined' | 'completed' | null = null;
+
+  /** 고르지 않은 답들 — 보상은 `???`로 감춘다(재도전 동기). 대화창 응답·일지 공용 */
+  otherChoices(q: StoryQuestDef, stage: 'offer' | 'complete', chosenId?: string): { label: string; reply?: string }[] {
+    return choicesFor(q)[stage].filter((c) => c.id !== chosenId).map((c) => ({ label: c.labelKo }));
+  }
 
   /**
    * 완료 + 보상 지급. 목표 미달이면 false.
@@ -283,12 +344,21 @@ class StoryStoreManager {
     const coinMult = affinityRewardMult(aff, q.kind, 'coins');
     const xp = Math.round(q.xp * xpMult);
     h?.grantXp(xp);
-    if (q.rewards?.coins) h?.addCoins(Math.round(q.rewards.coins * coinMult));
-    for (const lic of q.rewards?.licenses ?? []) h?.acquireLicense(lic);
-    // 140차 — 아이템 보상 실지급(구 '가방 사다리 UI 대기' 보류 해소). 공간 부족은 안내로 남긴다.
+    const rwl: string[] = [`경험치 +${xp.toLocaleString()}`];
+    if (q.rewards?.coins) { const c = Math.round(q.rewards.coins * coinMult); h?.addCoins(c); rwl.push(`${c.toLocaleString()}원`); }
+    for (const lic of q.rewards?.licenses ?? []) { h?.acquireLicense(lic); rwl.push(`자격: ${getLicenseByType(lic as never)?.nameKo ?? lic}`); }
+    // 140차 — 아이템 보상 실지급. 141차 — 귀속(bound) 플래그를 실어 준다. 공간 부족은 안내로 남긴다.
     for (const it of q.rewards?.items ?? []) {
-      if (!h?.giveItem(it.id, it.qty)) this.onNotify?.(`[퀘스트] 보상 ${it.id} — 인벤토리 공간이 부족해 받지 못했습니다`);
+      const name = h?.itemName(it.id) ?? it.id;
+      if (h?.giveItem(it.id, it.qty, it.bound)) rwl.push(`${name}${it.qty > 1 ? ` ×${it.qty}` : ''}${it.bound ? ' (귀속)' : ''}`);
+      else this.onNotify?.(`[퀘스트] 보상 ${name} — 인벤토리 공간이 부족해 받지 못했습니다`);
     }
+    // 141차 — 기술·상점 해금 (스킬 게이트는 questsDone으로, 상점은 플래그로)
+    for (const sk of q.rewards?.skillUnlocks ?? []) { h?.setFlag(`unlock.skill.${sk}`, true); rwl.push(`기술 해금: ${getSkillById(sk)?.nameKo ?? sk}`); }
+    for (const sh of q.rewards?.shopUnlocks ?? []) { h?.setFlag(`unlock.shop.${sh}`, true); rwl.push('상점 품목 해금'); }
+    if (q.unlocks?.length) rwl.push(...q.unlocks.filter((u) => u.startsWith('region:')).map((u) => `지역 개방: ${u.slice(7)}`));
+    this.lastRewardLines = rwl;
+    this.lastAction = 'completed';
     const lines: string[] = [];
     if (choice) { this.choices[id] = { ...this.choices[id], complete: choice.id }; lines.push(...this.applyOutcome(q, choice.outcome)); }
     if (q.giver) this.addAffinity(q.giver, q.kind === 'sub' ? TUNING.affinity.onSubComplete : TUNING.affinity.onMainComplete);

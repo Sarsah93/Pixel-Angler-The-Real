@@ -9,6 +9,7 @@
  */
 
 import type { InvCategory, InvItemTemplate } from '../store/InventoryStore.js';
+import { QUEST_REWARD_ITEMS } from './QuestRewardItems.js';
 import { InventoryStore } from '../store/InventoryStore.js';
 import { SHOP_CATALOG, BUILDING_LABEL } from './ShopCatalog.js';
 
@@ -71,6 +72,17 @@ export function buildItemWikiCatalog(): WikiItemEntry[] {
         });
       }
     }
+  }
+
+  // 4) 스토리 보상 아이템 (141차) — 상점에 없고 이야기만 준다. 도감에는 '이야기가 준 물건'으로 표기
+  for (const t of QUEST_REWARD_ITEMS) {
+    if (map.has(t.id)) continue;
+    map.set(t.id, {
+      id: t.id, name: t.name, icon: t.icon, iconTexture: t.iconTexture,
+      category: t.category, subCategory: t.subCategory, basePrice: t.basePrice,
+      desc: t.bound ? '귀속 — 스토리 보상. 판매·양도 불가.' : '스토리 보상.', soldAt: [], isSeed: false,
+      tpl: { ...t, equipped: false, equippedHand: undefined },
+    });
   }
 
   cache = [...map.values()];

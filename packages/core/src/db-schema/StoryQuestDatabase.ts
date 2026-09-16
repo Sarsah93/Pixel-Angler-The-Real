@@ -62,7 +62,7 @@ const MAIN: StoryQuestDef[] = mainRows([
     'The old co-op lodging behind the stall — dust and mildew. The moment you take the trainee card, D-180 begins.',
     [auto('visit', '홈타운(숙소)에 들어간다', 'Enter the hometown lodging', { placeKey: 'region:hometown' }),
       auto('custom', '침대에서 저장하고 쉰다', 'Save and rest in the bed', { placeKey: 'bedSave' })],
-    { teaches: ['homeBase', 'save', 'placement', 'deadline'], deadline: { days: 180, onMiss: 'cost' }, unlocks: ['trainee'] }],
+    { teaches: ['homeBase', 'save', 'placement', 'deadline'], deadline: { days: 180, onMiss: 'cost' }, unlocks: ['trainee'], rewards: { items: [{ id: 'qr_tackle_pouch', qty: 1, bound: true }] } }],
   ['M1-04', 1, 4, 330, 'hyeonsu', SOK, '사이소 영수증', 'The Saiso Receipt',
     '라이벌의 첫 시비 겸 첫 강습. "그 대는 아까우니까 여기다 쓰지 마." 저가 장비로 테트라포드 구멍치기.',
     'The rival\'s first jab and first lesson. "Don\'t waste that rod here." Budget gear, hole fishing in the tetrapods.',
@@ -73,7 +73,7 @@ const MAIN: StoryQuestDef[] = mainRows([
     '아버지의 릴대를 처음 편다. 캐스팅 · 찌 채비 · 입질 → 챔질 → 파이팅 → 랜딩 전 구간.',
     'You extend your father\'s rod for the first time. Casting, the float rig, bite → hookset → fight → landing.',
     [fish(undefined, '캐스팅으로 물고기 2마리 낚기', 'Catch two fish by casting', { target: 2 })],
-    { teaches: ['casting', 'floatRig', 'bite', 'fight'] }],
+    { teaches: ['casting', 'floatRig', 'bite', 'fight'], rewards: { items: [{ id: 'qr_rod_heirloom', qty: 1, bound: true }, { id: 'qr_reel_heirloom', qty: 1, bound: true }] } }],
   ['M1-06', 1, 7, 390, 'okseon', SOK, '팔 수 없는 물고기', 'The Fish You Cannot Sell',
     '"네가 잡은 건 네가 먹어라. 그게 법이다. 계원이 돼도 낚싯대로 잡은 건 못 판다." 법 규칙 5조 · 준법 방생.',
     '"What you catch, you eat. That is the law. Even as a member, rod-caught fish cannot be sold." The five rules · lawful release.',
@@ -85,7 +85,7 @@ const MAIN: StoryQuestDef[] = mainRows([
     'The first proper meal in two years. Butchery → sashimi → freshness → cooking.',
     [auto('butcher', '원물 1마리 손질', 'Butcher one whole fish'),
       auto('sashimi', '회뜨기 1회', 'Slice sashimi once')],
-    { teaches: ['butchery', 'sashimi', 'freshness', 'cooking'] }],
+    { teaches: ['butchery', 'sashimi', 'freshness', 'cooking'], rewards: { items: [{ id: 'qr_knife_okseon', qty: 1, bound: true }], shopUnlocks: ['mart_pro_knife'] } }],
   ['M1-08', 1, 11, 450, 'tak_mansu', SOK, '간이 백팩', 'The Improvised Backpack',
     '죽간 장인의 첫 교습. "짐부터 어떻게 좀 해라." 제작대 · 도면 · 핸드크래프팅.',
     'The bamboo-rod master\'s first lesson. "Sort your baggage out first." Workbench, blueprints, hand-crafting.',
@@ -97,7 +97,7 @@ const MAIN: StoryQuestDef[] = mainRows([
     '물때표를 처음 스스로 읽는다. 간조 · 허용 어구 · 마을어업권 · 헤드랜턴 · 오한 · 응급처치.',
     'You read the tide table yourself for the first time. Low tide, permitted gear, village fishery, headlamp, chill, first aid.',
     [auto('gather', '해루질로 2개체 채집', 'Gather two creatures on the tideland', { target: 2 })],
-    { teaches: ['tideland', 'tideTable', 'lantern', 'cold', 'firstAid', 'villageFishery'] }],
+    { teaches: ['tideland', 'tideTable', 'lantern', 'cold', 'firstAid', 'villageFishery'], rewards: { items: [{ id: 'qr_headlamp_trainee', qty: 1, bound: true }] } }],
   ['M1-10', 1, 16, 520, 'coop', SOK, '공동작업', 'Community Work',
     '이름이 아니라 "실습생"으로 불린다. 양망 보조 · 미역 정리 · 자전거 수리·탑승 · 스킬 포인트 첫 투자.',
     'They call you "trainee", not by name. Net hauling, seaweed sorting, fixing and riding the bicycle, your first skill point.',
@@ -118,7 +118,8 @@ const MAIN: StoryQuestDef[] = mainRows([
   ['M2-01', 2, 20, 1750, 'coop', BUS, '첫 위판', 'First Auction',
     '내 이름이 붙은 첫 상자. 위판 등록 · 상자 규격 · 등급 판정 — 통발 어획물로 §3 규칙 실전 적용.',
     'The first crate with your name on it. Auction registration, crate grades — the rules applied for real, with trap catch.',
-    [auto('trap', '통발 1회 수거', 'Harvest one trap'), man('sell', '통발 어획물 위판 (위판 UI — 준비 중)', 'Auction the trap catch (auction UI — coming soon)')]],
+    [auto('trap', '통발 1회 수거', 'Harvest one trap'), man('sell', '통발 어획물 위판 (위판 UI — 준비 중)', 'Auction the trap catch (auction UI — coming soon)')],
+    { rewards: { coins: 150000, skillUnlocks: ['eco_auction'], shopUnlocks: ['market_crate_pro'] } }],
   ['M2-02', 2, 22, 2000, 'coop', BUS, '유찰', 'Unsold',
     '얼음을 아낀 대가. 경매 유찰 · 선도 관리 복기.',
     'The price of saving on ice. An unsold lot, and a freshness post-mortem.',
@@ -127,7 +128,7 @@ const MAIN: StoryQuestDef[] = mainRows([
     '밑걸림 · 채비 유실 · 회수. 감성돔 40cm 이상.',
     'Snags, lost rigs, recovery. A black seabream over 40 cm.',
     [fish('black_seabream', '감성돔 40cm+ 자가어획 (겨울)', 'Catch a black seabream 40 cm+ (winter)', { minCm: 40, season: W })],
-    { journalPage: 2 }],
+    { journalPage: 2, rewards: { items: [{ id: 'qr_rod_gamcheon', qty: 1, bound: true }] } }],
   ['M2-04', 2, 27, 2500, 'na_gibeom', BUS, '남의 가게', 'Someone Else\'s Shop',
     '횟집 사장은 값이 아니라 꾸준함을 산다. 납품 계약 · 단가 · 신용.',
     'The restaurant owner buys consistency, not price. Contracts, unit prices, credit.',
@@ -136,13 +137,13 @@ const MAIN: StoryQuestDef[] = mainRows([
     '교실에서 도현수와 나란히. 위생 · 이력 표기 · 루어 개방.',
     'In the classroom, next to Hyeon-su. Hygiene, traceability, lures unlocked.',
     [man('custom', '수산물 품질관리 교육 이수 (대화로 완료)', 'Complete the seafood quality course (via dialogue)')],
-    { unlocks: ['lure'], teaches: ['lure'] }],
+    { unlocks: ['lure'], teaches: ['lure'], rewards: { skillUnlocks: ['fish_lure'], shopUnlocks: ['market_lure_starter'] } }],
   ['M2-06', 2, 33, 3000, 'seo_harin', BUS, '암남공원의 밤', 'Night at Amnam Park',
     '야간 루어 전갱이 · 통발 제작.',
     'Night lure for horse mackerel · trap crafting.',
     [fish('horse_mackerel', '전갱이 자가어획 (겨울 야간)', 'Catch a horse mackerel (winter night)', { season: W }),
       auto('craft', '통발 1개 제작', 'Craft one trap')],
-    { journalPage: 3 }],
+    { journalPage: 3, rewards: { items: [{ id: 'qr_bag_field', qty: 1, bound: true }] } }],
   ['M2-07', 2, 36, 3250, 'coop', BUS, '통제선', 'The Control Line',
     '방파제 출입통제 → 합법 우회 3종(어촌계 동행 · 낚시공원 입장 · 선상). 몰래 넘는 선택지는 없다.',
     'The breakwater is closed → three legal ways round (co-op escort, fishing park, boat). Sneaking over is not an option.',
@@ -157,7 +158,7 @@ const MAIN: StoryQuestDef[] = mainRows([
     '계원 지위 심사 · 항구 신뢰 반영. 도현수가 반대표를 던진다. 그래도 통과.',
     'Membership review, harbour trust counts. Hyeon-su votes against. You pass anyway.',
     [talk('coop', '분기 총회에 선다', 'Stand at the quarterly meeting')],
-    { reputation: { harbor: { busan: 5 } } }],
+    { reputation: { harbor: { busan: 5 } }, rewards: { coins: 400000 } }],
   // 137차 — 회귀 고리 ①. 부산에서 배운 것을 속초로 되돌린다(이전 맵 재활용).
   ['M2-11', 2, 43, 2950, 'okseon', SOK, '되돌아온 상자', 'The Box That Came Back',
     '부산에서 배운 상자 규격과 등급 판정을 속초 좌판에 되돌려준다. 정옥선의 손이 예전 같지 않다 — 얼음 다루는 속도가 눈에 띄게 느려졌다.',
@@ -169,7 +170,7 @@ const MAIN: StoryQuestDef[] = mainRows([
     '"배를 몰 줄 알아야 겨울 바다를 안다." 선박조종면허 필기 · 울산·포항 개방.',
     '"You don\'t know the winter sea until you can pilot a boat." Written exam · Ulsan and Pohang open.',
     [man('custom', '선박조종면허 필기 합격 (대화로 완료)', 'Pass the written vessel exam (via dialogue)')],
-    { unlocks: ['region:ulsan', 'region:gyeongbuk_pohang'] }],
+    { unlocks: ['region:ulsan', 'region:gyeongbuk_pohang'], rewards: { items: [{ id: 'qr_reel_winter', qty: 1, bound: true }] } }],
 
   // ─────────────────────────────────────────────
   // 제3부 「겨울 배」 — Ch3 울산·포항 · 9퀘 · 67,950
@@ -183,12 +184,12 @@ const MAIN: StoryQuestDef[] = mainRows([
     '저킹 · 폴링 · 고속 콤보. 방어 40cm 이상.',
     'Jerking, falling, fast combos. A yellowtail over 40 cm.',
     [fish('yellowtail', '방어 40cm+ 자가어획 (겨울)', 'Catch a yellowtail 40 cm+ (winter)', { minCm: 40, season: W })],
-    { journalPage: 5, teaches: ['jigging'] }],
+    { journalPage: 5, teaches: ['jigging'], rewards: { skillUnlocks: ['fish_jig'], items: [{ id: 'qr_rod_jig', qty: 1, bound: true }] } }],
   ['M3-03', 3, 52, 5900, 'coop', ULS, '실기 시험', 'The Practical',
     '계류 · 변침 · 인명구조. 한 번 떨어져도 된다.',
     'Mooring, course change, rescue. Failing once is allowed.',
     [man('license', '소형선박조종사 실기 합격 (대화로 완료)', 'Pass the small-vessel practical (via dialogue)', { licenseId: 'boat_operator' })],
-    { rewards: { licenses: ['boat_operator'] } }],
+    { rewards: { licenses: ['boat_operator'], coins: 600000 } }],
   ['M3-04', 3, 55, 6650, 'baram', POH, '덕장', 'The Drying Racks',
     '청어가 안 든다. 건조 · 숙성 제작.',
     'The herring aren\'t coming. Drying and curing.',
@@ -207,7 +208,7 @@ const MAIN: StoryQuestDef[] = mainRows([
     '자원 회복 이벤트 · 치어 보호. 바다 평판 대폭 상승.',
     'A restocking event, protecting fry. Sea reputation climbs.',
     [man('communityWork', '종묘방류 참여 (대화로 완료)', 'Join the restocking (via dialogue)')],
-    { reputation: { sea: 3 }, teaches: ['restocking'] }],
+    { reputation: { sea: 3 }, teaches: ['restocking'], rewards: { items: [{ id: 'qr_bag_expedition', qty: 1, bound: true }] } }],
   ['M3-08', 3, 67, 9600, 'go_manseok', POH, '겨울 참돔', 'Winter Red Seabream',
     '타이라바 · 대물 파이팅 · 장비 한계. 유품 릴대가 부러진다.',
     'Tai-rubber, a big fight, the limit of the gear. Your father\'s rod breaks.',
@@ -217,7 +218,7 @@ const MAIN: StoryQuestDef[] = mainRows([
     '중고 선박 시세 · 거제 개방. 탁 노인이 새 죽간을 건넨다.',
     'Used-boat prices, Geoje opens. Old Tak hands you a new bamboo rod.',
     [talk('tak_mansu', '탁만수에게 새 죽간을 받는다', 'Receive the new rod from Tak Man-su')],
-    { unlocks: ['region:gyeongnam_geoje', 'region:jeonnam_yeosu', 'region:chungnam_taean'] }],
+    { unlocks: ['region:gyeongnam_geoje', 'region:jeonnam_yeosu', 'region:chungnam_taean'], rewards: { items: [{ id: 'qr_rod_bamboo', qty: 1, bound: true }], skillUnlocks: ['craft_rod'], shopUnlocks: ['daily_workshop_pro'] } }],
 
   // ─────────────────────────────────────────────
   // 제3부 「내 배」 — Ch4 거제·여수·태안 · 10퀘 · 147,000
@@ -230,7 +231,7 @@ const MAIN: StoryQuestDef[] = mainRows([
     '이름을 직접 정한다. 보트 운항 개방.',
     'You name it yourself. Boat operation unlocked.',
     [man('boatTrip', '자기 배 첫 운항 (보트 운항 — 준비 중)', 'First run in your own boat (boat piloting — coming soon)')],
-    { teaches: ['boatOwnership'], unlocks: ['ownBoat'] }],
+    { teaches: ['boatOwnership'], unlocks: ['ownBoat'], rewards: { skillUnlocks: ['drv_boat'], coins: 1500000 } }],
   ['M4-03', 4, 76, 11200, 'chae_pado', GEO, '지세포의 밤', 'Night at Jisepo',
     '야간 루어 · 소형 등선. 광어(다운샷).',
     'Night lure from a small lit boat. Flatfish on a downshot.',
@@ -249,7 +250,7 @@ const MAIN: StoryQuestDef[] = mainRows([
     '낚시어선업 신고 완료 · 승선 명부 · 안전교육 · 멀미 대응. 손님이 드러눕는다.',
     'Angling-boat business registered. Passenger list, safety briefing, seasickness. The guest keels over.',
     [man('boatTrip', '첫 손님 승선 출조 (낚시어선업 — 준비 중)', 'First paid passenger trip (angling-boat business — coming soon)')],
-    { rewards: { licenses: ['angling_boat_biz'] } }],
+    { rewards: { licenses: ['angling_boat_biz'], items: [{ id: 'qr_reel_captain', qty: 1, bound: true }] } }],
   ['M4-07', 4, 90, 16300, 'song_gibaek', TAE, '서해로', 'To the West Sea',
     '동해와 정반대의 바다. 조수간만 대차 · 갯벌 보행.',
     'The opposite of the East Sea. Big tidal range, walking the mudflats.',
@@ -259,12 +260,12 @@ const MAIN: StoryQuestDef[] = mainRows([
     '서프 루어 · 포말대 야간 보너스. 농어.',
     'Surf lure, surf-zone night bonus. Sea bass.',
     [fish('sea_bass', '농어 자가어획 (봄~여름 포말대 야간)', 'Catch a sea bass (spring–summer surf-zone night)', { season: ['spring', 'summer'] })],
-    { journalPage: 11, teaches: ['surf'] }],
+    { journalPage: 11, teaches: ['surf'], rewards: { skillUnlocks: ['fish_surf'], items: [{ id: 'qr_rod_surf', qty: 1, bound: true }] } }],
   ['M4-09', 4, 96, 18850, 'ma_gamgi', TAE, '갑오징어', 'Cuttlefish',
     '에깅 계열 개방. 가을 주간 갑오징어.',
     'Egging unlocked. Autumn daytime cuttlefish.',
     [fish('cuttlefish', '갑오징어 자가어획 (가을 주간)', 'Catch a cuttlefish (autumn daytime)', { season: AU })],
-    { journalPage: 10, teaches: ['egging'] }],
+    { journalPage: 10, teaches: ['egging'], rewards: { skillUnlocks: ['fish_egi'], shopUnlocks: ['market_egi_pro'] } }],
   // 137차 — 회귀 고리 ②. Ch1의 두 노인이 Ch4에 손님으로 돌아온다.
   ['M4-11', 4, 97, 14700, 'kang_ducheol', SOK, '속초의 손님', 'Passengers from Sokcho',
     '낚시어선업 신고를 마치고 배를 속초까지 몰고 온다. 첫 정식 손님은 강두철 조합장과 탁만수 — 채비 못 묶는 척하던 노인과, 죽간을 깎아 준 노인이 나란히 앉는다.',
@@ -284,7 +285,8 @@ const MAIN: StoryQuestDef[] = mainRows([
   ['M5-01', 5, 100, 15050, 'coop', JEJ, '운진항', 'Unjin Port',
     '타지 입항 절차 · 항비. 제주 방언 · 지역 규칙.',
     'Entering a foreign port — fees, dialect, local rules.',
-    [auto('visit', '제주에 도착한다', 'Arrive in Jeju', { placeKey: 'region:jeju' })]],
+    [auto('visit', '제주에 도착한다', 'Arrive in Jeju', { placeKey: 'region:jeju' })],
+    { rewards: { coins: 3000000 } }],
   ['M5-02', 5, 103, 17550, 'baram', JEJ, '불턱', 'The Bulteok',
     '남의 바다에 들어갈 때의 예의. 마을어업권 실전 · 잠수 채집.',
     'Manners for entering someone else\'s sea. Village fishery for real, dive gathering.',
@@ -299,7 +301,7 @@ const MAIN: StoryQuestDef[] = mainRows([
     '손님을 받는 쪽이 된다. 가이드 영업 루프.',
     'Now you are the one taking guests. The guide loop.',
     [man('custom', '해양관광업 등록 + 안전교육 (대화로 완료)', 'Register and take the safety course (via dialogue)')],
-    { rewards: { licenses: ['marine_tourism'] }, teaches: ['guideBusiness'] }],
+    { teaches: ['guideBusiness'], rewards: { licenses: ['marine_tourism'], items: [{ id: 'qr_bag_guide', qty: 1, bound: true }] } }],
   ['M5-05', 5, 115, 25100, 'yu_ria', JEJ, '낚시공원 설명회', 'The Fishing Park Briefing',
     '찬반 양측 취재. 두 입장 모두 타당하게.',
     'Interview both sides. Both are right.',
@@ -318,7 +320,7 @@ const MAIN: StoryQuestDef[] = mainRows([
     '대회 결선 · 방어 대물 80cm 이상. 결선 중 정옥선이 쓰러졌다는 연락.',
     'The final — a yellowtail over 80 cm. Mid-final, the call: Ok-seon has collapsed.',
     [fish('yellowtail', '방어 80cm+ 자가어획 (겨울)', 'Catch a yellowtail 80 cm+ (winter)', { minCm: 80, season: W })],
-    { journalPage: 13 }],
+    { journalPage: 13, rewards: { items: [{ id: 'qr_rod_tournament', qty: 1, bound: true }, { id: 'qr_reel_tournament', qty: 1, bound: true }] } }],
   ['M5-09', 5, 129, 40200, 'coop', JEJ, '총회 표결', 'The Vote',
     '낚시공원 안건 표결 — 누적 평판 · 참여율 반영. 도현수가 처음 같은 편에 선다.',
     'The fishing-park vote — reputation and participation count. Hyeon-su takes your side for the first time.',
@@ -342,7 +344,8 @@ const MAIN: StoryQuestDef[] = mainRows([
   ['M6-03', 6, 138, 33000, 'seok_daeyang', ULL, '등대', 'The Lighthouse',
     '등대 근무자 교류 · 기상 관측. 석대양 노인이 고진태 선장을 기억한다.',
     'Keeping company with the lighthouse keeper, watching the weather. Old Seok remembers Captain Go.',
-    [talk('seok_daeyang', '등대지기와 대화', 'Talk with the lighthouse keeper')]],
+    [talk('seok_daeyang', '등대지기와 대화', 'Talk with the lighthouse keeper')],
+    { rewards: { items: [{ id: 'qr_headlamp_keeper', qty: 1, bound: true }], coins: 5000000 } }],
   ['M6-04', 6, 142, 37650, 'dan_cheolho', INC, '연안부두', 'Yeonan Pier',
     '인천 개방 · 유통 구조 · 원산지 표기. 우럭 30cm 이상.',
     'Incheon opens — distribution, origin labelling. A rockfish over 30 cm.',
@@ -374,7 +377,7 @@ const MAIN: StoryQuestDef[] = mainRows([
     '3중 게이트(Lv160 · 해양관광업 · Ch6 완료). 독도 학술조사단 동행 승인.',
     'Triple gate — Lv160, marine tourism, Ch6 done. Approved to join the Dokdo survey.',
     [auto('reachLevel', '레벨 160 도달', 'Reach level 160', { target: 160 })],
-    { unlocks: ['region:dokdo'] }],
+    { unlocks: ['region:dokdo'], rewards: { items: [{ id: 'qr_bag_voyage', qty: 1, bound: true }] } }],
 
   // ─────────────────────────────────────────────
   // 제5부 「조행록」 — Ch7 독도 · 8퀘 · 602,800
@@ -392,7 +395,7 @@ const MAIN: StoryQuestDef[] = mainRows([
     '조행록 완성 판정. 돌돔 계측 후 방류.',
     'The log is judged complete. Measure and release a striped beakperch.',
     [fish('stone_beakperch', '돌돔 자가어획 후 즉시 방류 (여름~가을)', 'Catch and release a striped beakperch (summer–autumn)', { season: ['summer', 'autumn'] })],
-    { journalPage: 17, teaches: ['journalComplete'] }],
+    { journalPage: 17, teaches: ['journalComplete'], rewards: { coins: 12000000 } }],
   ['M7-04', 7, 176, 69400, 'okseon', SOK, '사진 속 천막', 'The Tent in the Photo',
     '네 살 사진의 좌판이 만복상회였다. 회상 시퀀스.',
     'The stall in the photo from age four was Manbok Store. A memory.',
@@ -408,7 +411,8 @@ const MAIN: StoryQuestDef[] = mainRows([
   ['M7-07', 7, 194, 95000, 'tak_saebyeok', DOK, '마지막 캐스팅', 'The Last Cast',
     '전용 포인트(조사선 해역) 영구 해제. N02-4에서 되살린 유품 릴대를 던진다.',
     'The survey waters open for good. You cast the rod that Sae-byeok rebuilt.',
-    [fish(undefined, '독도 전용 포인트에서 1마리', 'One fish at the Dokdo point')]],
+    [fish(undefined, '독도 전용 포인트에서 1마리', 'One fish at the Dokdo point')],
+    { rewards: { items: [{ id: 'qr_rod_final', qty: 1, bound: true }, { id: 'qr_reel_final', qty: 1, bound: true }] } }],
   ['M7-08', 7, 199, 116900, '', SOK, '실습생', 'Trainee',
     '에필로그 · 수미상관. 배낭 하나 멘 스물두 살에게. "울 거면 얼음부터 나르고 울어."',
     'Epilogue, full circle. To a twenty-two-year-old with one backpack: "If you\'re going to cry, haul the ice first."',
@@ -1133,6 +1137,28 @@ const SUB_138: StoryQuestDef[] = subExtra([
     ['N22-7'], { teaches: ['living', 'homeBase'] }],
 ]);
 
+
+// ─────────────────────────────────────────────
+// 141차 — 발주 정책(once / event) 후처리. 행 형식이 3종이라 조립 뒤에 입힌다.
+// ─────────────────────────────────────────────
+const OFFER_POLICY: Record<string, Pick<StoryQuestDef, 'offerPolicy' | 'event'>> = {
+  'N12-1': { offerPolicy: 'once' },
+  'N20-1': { offerPolicy: 'once' },
+  'N15-1': { offerPolicy: 'once' },
+  'N05-1': { offerPolicy: 'once' },
+  'N13-1': { offerPolicy: 'once' },
+  'N04-2': { offerPolicy: 'event', event: { seasons: ['winter'], cooldownDays: 20 } },
+  'N21-2': { offerPolicy: 'event', event: { seasons: ['summer'], cooldownDays: 15 } },
+  'N21-4': { offerPolicy: 'event', event: { seasons: ['summer', 'autumn'], cooldownDays: 15 } },
+  'N21-5': { offerPolicy: 'event', event: { seasons: ['summer', 'autumn'], cooldownDays: 20 } },
+  'N21-6': { offerPolicy: 'event', event: { seasons: ['autumn'], cooldownDays: 20 } },
+  'N17-1': { offerPolicy: 'event', event: { levelBand: [138, 160], cooldownDays: 7 } },
+  'N06-3': { offerPolicy: 'event', event: { seasons: ['summer', 'autumn'], cooldownDays: 10 } },
+  'N16-1': { offerPolicy: 'event', event: { levelBand: [132, 150], cooldownDays: 10 } },
+  'N23-1': { offerPolicy: 'event', event: { seasons: ['summer', 'autumn'], cooldownDays: 30 } },
+};
+for (const q of [...MAIN, ...SUB, ...SUB_EXTRA, ...SUB_138]) { const p = OFFER_POLICY[q.id]; if (p) Object.assign(q, p); }
+
 export const STORY_QUESTS: StoryQuestDef[] = [...MAIN, ...SUB, ...SUB_EXTRA, ...SUB_138];
 
 const BY_ID = new Map(STORY_QUESTS.map((q) => [q.id, q]));
@@ -1166,6 +1192,18 @@ export function validateStoryQuests(): string[] {
     if (mx !== c.contract.mainXp) issues.push(`Ch${c.chapter} 메인 XP ${mx} ≠ ${c.contract.mainXp}`);
     if (s.length !== c.contract.subCount) issues.push(`Ch${c.chapter} 서브 수 ${s.length} ≠ ${c.contract.subCount}`);
     if (sx !== c.contract.subXp) issues.push(`Ch${c.chapter} 서브 XP ${sx} ≠ ${c.contract.subXp}`);
+  }
+  // 141차 — 보상 스키마: 귀속 장비는 메인 전용 · 기술 해금은 메인 전용 · 서브는 items를 귀속으로 주지 않는다(겹침 금지)
+  for (const q of STORY_QUESTS) {
+    const r = q.rewards;
+    if (!r) continue;
+    if (q.kind === 'sub' && (r.skillUnlocks?.length || r.shopUnlocks?.length)) issues.push(`${q.id}: 서브 퀘는 기술·상점 해금을 줄 수 없다(메인 전용)`);
+    if (q.kind === 'sub' && r.items?.some((i) => i.bound)) issues.push(`${q.id}: 서브 퀘는 귀속 장비를 줄 수 없다(메인 전용)`);
+    if (q.kind === 'main' && r.items?.some((i) => !i.bound && i.id.startsWith('qr_'))) issues.push(`${q.id}: 메인 보상 장비(qr_)는 귀속이어야 한다`);
+  }
+  for (const q of STORY_QUESTS) {
+    if (q.offerPolicy === 'event' && !q.event) issues.push(`${q.id}: event 정책인데 시기 조건이 없다`);
+    if (q.event?.levelBand && q.event.levelBand[0] > q.event.levelBand[1]) issues.push(`${q.id}: levelBand 역순`);
   }
   const pages = new Set(STORY_QUESTS.filter((q) => q.journalPage).map((q) => q.journalPage));
   for (let p = 1; p <= 17; p++) if (!pages.has(p)) issues.push(`조행록 ${p}장을 채우는 퀘스트 없음`);

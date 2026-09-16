@@ -41,6 +41,7 @@ import {
   profGain as coreProfGain, profLevel, PROF_LEVEL_XP, getSkillById as coreGetSkillById, skillsOfCategory,
   type SkillProficiency, type ProfActionKey, type SkillCategoryId, type ProfGain,
   MAX_LEVEL, xpToNext, catchXp, activityXp, type XpActivity,
+  getStoryQuest as coreGetStoryQuest,
 } from '@tra/core';
 import {
   tickVitals as coreTickVitals, applyVitalsAction as coreVitalsAction,
@@ -910,7 +911,7 @@ export class GameStateManager {
 
   /** 해금 조건 판정 컨텍스트 (130차 (d)) */
   private get unlockCtx(): SkillUnlockCtx {
-    return { level: this._player?.level ?? 1, licenses: this.heldLicenseTypes, ranks: this._skillRanks };
+    return { level: this._player?.level ?? 1, licenses: this.heldLicenseTypes, ranks: this._skillRanks, questsDone: [...this._completedQuestIds] };
   }
 
   /** 해금 조건 판정 컨텍스트 (패널이 남은 조건을 표시할 때 쓴다) */
@@ -964,6 +965,7 @@ export class GameStateManager {
 
   /** 해금 조건 문구 — 면허는 id 대신 사람이 읽는 이름으로 */
   describeUnlock(cond: Parameters<typeof coreDescribeUnlockCond>[0]): string {
+    if (cond.kind === 'quest') return `메인 퀘스트 「${coreGetStoryQuest(cond.value)?.titleKo ?? cond.value}」 완료`;
     return coreDescribeUnlockCond(cond, (t) => getLicenseByType(t as never)?.nameKo);
   }
 
@@ -1203,6 +1205,10 @@ export class GameStateManager {
 
   completeQuest(questId: string): void {
     this._completedQuestIds.add(questId);
+  }
+  /** 카탈로그 아이템 이름 (일지·대화창 보상 표기 — 141차) */
+  itemNameOf(id: string): string {
+    return buildItemWikiCatalog().find((w) => w.id === id)?.name ?? id;
   }
 
   // ─── 세이브/로드 ───────────────────────────
@@ -1456,11 +1462,13 @@ StoryStore.bind({
   fatigue: () => GameState.vitals.fatigue,
   // 140차 — 선택지 결과 보상
   hasFlag: (k) => GameState.getFlag(k),
-  giveItem: (id, qty) => {
+  giveItem: (id, qty, bound) => {
     const e = buildItemWikiCatalog().find((w) => w.id === id);
     if (!e) { console.warn(`[Story] 보상 아이템 카탈로그 없음: ${id}`); return false; }
-    return InventoryStore.addItem(e.tpl, qty);
+    return InventoryStore.addItem(bound ? { ...e.tpl, bound: true } : e.tpl, qty);
   },
+  itemName: (id) => buildItemWikiCatalog().find((w) => w.id === id)?.name ?? id,
+  month: () => new Date().getMonth() + 1,
   addSkillPoints: (n) => GameState.addBonusSkillPoints(n),
   grantProfXp: (t, xp) => GameState.grantProfXp(t, xp),
   grantProfLevelUp: (id) => GameState.grantProfLevelUp(id),

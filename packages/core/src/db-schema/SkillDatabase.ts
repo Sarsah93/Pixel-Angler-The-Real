@@ -60,17 +60,17 @@ export const SKILL_DATABASE: SkillDef[] = [
   { id: 'fish_fresh', category: 'fishing', nameKo: '보관 요령', nameEn: 'Keeping Fresh', descKo: '어획물 신선도 유지 시간 +10%/랭크', descEn: 'Catch freshness lasts +10% longer per rank', tier: 1, maxRank: 3, costPerRank: 1, requires: [{ id: 'fish_cast', rank: 1 }], effect: mult('freshness_time', 0.10), wired: false },
   { id: 'fish_drag', category: 'fishing', nameKo: '드랙 제어', nameEn: 'Drag Control', descKo: '파이팅 텐션 저항 +6%/랭크', descEn: 'Fight tension resistance +6% per rank', tier: 2, maxRank: 3, costPerRank: 1, requires: [{ id: 'fish_line', rank: 1 }], effect: mult('drag_control', 0.06), wired: false },
   { id: 'fish_chum', category: 'fishing', nameKo: '밑밥 감각', nameEn: 'Chum Sense', descKo: '밑밥 동조율 +5%/랭크', descEn: 'Chum sync +5% per rank', tier: 2, maxRank: 2, costPerRank: 1, requires: [{ id: 'fish_bite', rank: 1 }], effect: mult('chum_sync', 0.05), wired: false },
-  { id: 'fish_lure', category: 'fishing', nameKo: '루어 액션', nameEn: 'Lure Action', descKo: '루어 액션 입질 배율 +5%/랭크', descEn: 'Lure action bite multiplier +5% per rank', tier: 2, maxRank: 2, costPerRank: 1, requires: [{ id: 'fish_cast', rank: 2 }], effect: mult('lure_action', 0.05), wired: false },
+  { id: 'fish_lure', category: 'fishing', nameKo: '루어 액션', nameEn: 'Lure Action', descKo: '루어 액션 입질 배율 +5%/랭크', descEn: 'Lure action bite multiplier +5% per rank', tier: 2, maxRank: 2, costPerRank: 1, requires: [{ id: 'fish_cast', rank: 2 }], effect: mult('lure_action', 0.05), wired: false, unlock: [{ kind: 'quest', value: 'M2-05' }] },
   { id: 'fish_hook', category: 'fishing', nameKo: '챔질 타이밍', nameEn: 'Hook Set', descKo: '1·2단계 챔질 성공률 +3%p/랭크', descEn: 'Stage 1–2 hook-set success +3%p per rank', tier: 2, maxRank: 3, costPerRank: 1, requires: [{ id: 'fish_night', rank: 1 }], effect: add('hook_set', 0.03), wired: false },
   { id: 'fish_tide', category: 'fishing', nameKo: '조석 해석', nameEn: 'Tide Reading', descKo: '피딩타임 예보 표시가 정확해진다', descEn: 'More accurate feeding-time forecast', tier: 3, maxRank: 1, costPerRank: 2, requires: [{ id: 'fish_chum', rank: 1 }], effect: add('tide_reading', 1), wired: false },
   { id: 'fish_bigluck', category: 'fishing', nameKo: '대물 운', nameEn: "Big One's Luck", descKo: '대형·희귀 개체 확률 +2%p/랭크', descEn: 'Large/rare individual chance +2%p per rank', tier: 3, maxRank: 2, costPerRank: 2, requires: [{ id: 'fish_hook', rank: 2 }], effect: add('big_fish_luck', 0.02), wired: false, unlock: [{ kind: 'level', value: 40 }, { kind: 'categoryRanks', category: 'fishing', value: 20 }] },
   // ── 낚시 124차 증설 (+7노드 18pt — 캐스팅 산포·바람은 스펙 §3 배선 예정) ──
   { id: 'fish_scatter', category: 'fishing', nameKo: '정투', nameEn: 'Pinpoint Cast', descKo: '착수 산포 반경 -22%/랭크 · 1랭크부터 조준 홀드 가이드', descEn: 'Landing scatter radius -22% per rank · aim-hold guide from rank 1', tier: 1, maxRank: 3, costPerRank: 1, requires: [{ id: 'fish_cast', rank: 1 }], effect: mult('cast_scatter', -0.22), wired: true },
   { id: 'fish_spool', category: 'fishing', nameKo: '스풀 컨트롤', nameEn: 'Spool Control', descKo: '라인 트러블 확률 -25%/랭크', descEn: 'Line trouble chance -25% per rank', tier: 2, maxRank: 2, costPerRank: 1, requires: [{ id: 'fish_cast', rank: 2 }], effect: mult('spool_trouble', -0.25), wired: false },
-  { id: 'fish_surf', category: 'fishing', nameKo: '원투 숙련', nameEn: 'Surf Casting', descKo: '원투 비거리 +5%/랭크 · 바닥 감지 표시', descEn: 'Surf casting distance +5% per rank · bottom detection readout', tier: 2, maxRank: 3, costPerRank: 1, requires: [{ id: 'fish_cast', rank: 2 }], effect: mult('surf_distance', 0.05), wired: false },
+  { id: 'fish_surf', category: 'fishing', nameKo: '원투 숙련', nameEn: 'Surf Casting', descKo: '원투 비거리 +5%/랭크 · 바닥 감지 표시', descEn: 'Surf casting distance +5% per rank · bottom detection readout', tier: 2, maxRank: 3, costPerRank: 1, requires: [{ id: 'fish_cast', rank: 2 }], effect: mult('surf_distance', 0.05), wired: false, unlock: [{ kind: 'quest', value: 'M4-08' }] },
   { id: 'fish_wind', category: 'fishing', nameKo: '바람 읽기', nameEn: 'Wind Reading', descKo: '바람 영향 보정 +10%/랭크 · 편향 화살표 표시', descEn: 'Wind effect compensation +10% per rank · bias arrow display', tier: 3, maxRank: 2, costPerRank: 1, requires: [{ id: 'fish_scatter', rank: 1 }], effect: add('wind_comp', 0.10), wired: true },
-  { id: 'fish_jig', category: 'fishing', nameKo: '지깅 숙련', nameEn: 'Jigging', descKo: '저킹 효율 +6%/랭크 · 최종 랭크 = 고속 저킹 콤보', descEn: 'Jerking efficiency +6% per rank · final rank unlocks the fast-jerk combo', tier: 3, maxRank: 3, costPerRank: 1, requires: [{ id: 'fish_lure', rank: 1 }], effect: mult('jig_efficiency', 0.06), wired: false },
-  { id: 'fish_egi', category: 'fishing', nameKo: '에깅 숙련', nameEn: 'Eging', descKo: '에기 폴 자세 안정 +6%/랭크 · 최종 랭크 = 샤크리 2단', descEn: 'Egi fall stability +6% per rank · final rank unlocks the two-stage shakuri', tier: 3, maxRank: 3, costPerRank: 1, requires: [{ id: 'fish_lure', rank: 1 }], effect: mult('egi_stability', 0.06), wired: false },
+  { id: 'fish_jig', category: 'fishing', nameKo: '지깅 숙련', nameEn: 'Jigging', descKo: '저킹 효율 +6%/랭크 · 최종 랭크 = 고속 저킹 콤보', descEn: 'Jerking efficiency +6% per rank · final rank unlocks the fast-jerk combo', tier: 3, maxRank: 3, costPerRank: 1, requires: [{ id: 'fish_lure', rank: 1 }], effect: mult('jig_efficiency', 0.06), wired: false, unlock: [{ kind: 'quest', value: 'M3-02' }] },
+  { id: 'fish_egi', category: 'fishing', nameKo: '에깅 숙련', nameEn: 'Eging', descKo: '에기 폴 자세 안정 +6%/랭크 · 최종 랭크 = 샤크리 2단', descEn: 'Egi fall stability +6% per rank · final rank unlocks the two-stage shakuri', tier: 3, maxRank: 3, costPerRank: 1, requires: [{ id: 'fish_lure', rank: 1 }], effect: mult('egi_stability', 0.06), wired: false, unlock: [{ kind: 'quest', value: 'M4-09' }] },
   { id: 'fish_salvage', category: 'fishing', nameKo: '원줄 절약', nameEn: 'Rig Salvage', descKo: '채비 유실 시 회수 확률 +15%/랭크', descEn: 'Chance to recover lost rig parts +15% per rank', tier: 3, maxRank: 2, costPerRank: 1, requires: [{ id: 'fish_line', rank: 1 }], effect: add('rig_salvage', 0.15), wired: false },
 
   // ───────────── 채집 · 통발 ─────────────
@@ -96,7 +96,7 @@ export const SKILL_DATABASE: SkillDef[] = [
   { id: 'eco_restaurant', category: 'economy', nameKo: '식당 마진', nameEn: 'Restaurant Margin', descKo: '식당 판매 마진 +4%/랭크 (식당 경영 예정)', descEn: 'Restaurant margin +4% per rank (restaurant management planned)', tier: 3, maxRank: 2, costPerRank: 2, requires: [{ id: 'eco_regular', rank: 2 }], effect: mult('restaurant_margin', 0.04), wired: false },
   // ── 경제 124차 증설 (+3노드 6pt) ──
   { id: 'eco_ledger', category: 'economy', nameKo: '장부 정리', nameEn: 'Bookkeeping', descKo: '수수료·유지비 -8%/랭크', descEn: 'Fees and upkeep -8% per rank', tier: 1, maxRank: 2, costPerRank: 1, requires: [{ id: 'eco_haggle', rank: 2 }], effect: mult('ledger_fees', -0.08), wired: false },
-  { id: 'eco_auction', category: 'economy', nameKo: '경매 배짱', nameEn: 'Auction Nerve', descKo: '경매 낙찰 보너스 +4%/랭크', descEn: 'Auction settlement bonus +4% per rank', tier: 2, maxRank: 2, costPerRank: 1, requires: [{ id: 'eco_regular', rank: 1 }], effect: mult('auction_bonus', 0.04), wired: false },
+  { id: 'eco_auction', category: 'economy', nameKo: '경매 배짱', nameEn: 'Auction Nerve', descKo: '경매 낙찰 보너스 +4%/랭크', descEn: 'Auction settlement bonus +4% per rank', tier: 2, maxRank: 2, costPerRank: 1, requires: [{ id: 'eco_regular', rank: 1 }], effect: mult('auction_bonus', 0.04), wired: false, unlock: [{ kind: 'quest', value: 'M2-01' }] },
   { id: 'eco_storage', category: 'economy', nameKo: '창고 관리', nameEn: 'Storage Master', descKo: '보관 슬롯 +2/랭크', descEn: 'Storage slots +2 per rank', tier: 2, maxRank: 2, costPerRank: 1, requires: [{ id: 'eco_bulk', rank: 1 }], effect: add('storage_slots', 2), wired: false },
 
   // ───────────── 운전 · 이동 ─────────────
@@ -105,7 +105,7 @@ export const SKILL_DATABASE: SkillDef[] = [
   { id: 'drv_bike', category: 'driving', nameKo: '자전거 숙련', nameEn: 'Cyclist', descKo: '자전거 속도 +10%/랭크', descEn: 'Bicycle speed +10% per rank', tier: 1, maxRank: 3, costPerRank: 1, requires: [{ id: 'drv_run', rank: 1 }], effect: mult('bike_speed', 0.10), wired: true },
   { id: 'drv_bikefat', category: 'driving', nameKo: '자전거 지구력', nameEn: 'Bike Endurance', descKo: '자전거 피로 누적 -10%/랭크', descEn: 'Bicycle fatigue -10% per rank', tier: 1, maxRank: 2, costPerRank: 1, requires: [{ id: 'drv_run', rank: 1 }], effect: mult('bike_fatigue', -0.10), wired: false },
   { id: 'drv_car', category: 'driving', nameKo: '자동차 운전', nameEn: 'Driver', descKo: '자동차 해금 (상세 구현 예정)', descEn: 'Unlocks the car (detailed later)', tier: 2, maxRank: 1, costPerRank: 3, requires: [{ id: 'drv_bike', rank: 2 }], effect: add('car_unlock', 1), wired: false },
-  { id: 'drv_boat', category: 'driving', nameKo: '보트 조종', nameEn: 'Boat Handling', descKo: '개인 보트 출조 해금 (선박 면허 필요)', descEn: 'Unlocks personal boat trips (needs boat licence)', tier: 3, maxRank: 1, costPerRank: 3, requires: [{ id: 'drv_car', rank: 1 }], effect: add('boat_unlock', 1), wired: false, unlock: [{ kind: 'license', value: 'boat_operator' }] },
+  { id: 'drv_boat', category: 'driving', nameKo: '보트 조종', nameEn: 'Boat Handling', descKo: '개인 보트 출조 해금 (선박 면허 필요)', descEn: 'Unlocks personal boat trips (needs boat licence)', tier: 3, maxRank: 1, costPerRank: 3, requires: [{ id: 'drv_car', rank: 1 }], effect: add('boat_unlock', 1), wired: false, unlock: [{ kind: 'quest', value: 'M4-02' }, { kind: 'license', value: 'boat_operator' }] },
   // ── 운전·이동 124차 증설 (+4노드 7pt) ──
   { id: 'drv_nightride', category: 'driving', nameKo: '야간 주행', nameEn: 'Night Rider', descKo: '야간 이동 페널티 -25%/랭크', descEn: 'Night travel penalty -25% per rank', tier: 1, maxRank: 2, costPerRank: 1, requires: [{ id: 'drv_run', rank: 2 }], effect: mult('night_move', -0.25), wired: false },
   { id: 'drv_cargo', category: 'driving', nameKo: '짐받이 확장', nameEn: 'Cargo Rack', descKo: '자전거 적재 슬롯 +1/랭크', descEn: 'Bicycle cargo slots +1 per rank', tier: 2, maxRank: 2, costPerRank: 1, requires: [{ id: 'drv_bike', rank: 1 }], effect: add('cargo_slots', 1), wired: false },
@@ -157,7 +157,7 @@ export const SKILL_DATABASE: SkillDef[] = [
   { id: 'craft_trap', category: 'crafting', nameKo: '통발 제작', nameEn: 'Trap Making', descKo: '통발 내구 +8%/랭크 · 최종 랭크 = 개량 통발 도면', descEn: 'Trap durability +8% per rank · final rank unlocks the improved trap blueprint', tier: 2, maxRank: 3, costPerRank: 1, requires: [{ id: 'craft_knot', rank: 2 }], effect: mult('trap_durability', 0.08), wired: true },
   { id: 'craft_bp', category: 'crafting', nameKo: '도면 독해', nameEn: 'Blueprint Literacy', descKo: '희귀 도면 해독 등급 +1', descEn: 'Rare blueprint literacy grade +1', tier: 2, maxRank: 1, costPerRank: 1, requires: [{ id: 'craft_tools', rank: 2 }], effect: add('blueprint_grade', 1), wired: false },
   { id: 'craft_batch', category: 'crafting', nameKo: '인내심', nameEn: 'Patience', descKo: '연속 제작 배치 +2', descEn: 'Consecutive crafting batch +2', tier: 2, maxRank: 1, costPerRank: 1, requires: [{ id: 'craft_medic', rank: 1 }], effect: add('craft_batch', 2), wired: false },
-  { id: 'craft_rod', category: 'crafting', nameKo: '로드 빌딩', nameEn: 'Rod Building', descKo: '커스텀 로드 제작 해금 (경도·길이 선택)', descEn: 'Unlocks custom rod building (choose action and length)', tier: 3, maxRank: 1, costPerRank: 2, requires: [{ id: 'craft_bp', rank: 1 }], effect: add('rod_building', 1), wired: true, unlock: [{ kind: 'level', value: 60 }, { kind: 'categoryRanks', category: 'crafting', value: 12 }] },
+  { id: 'craft_rod', category: 'crafting', nameKo: '로드 빌딩', nameEn: 'Rod Building', descKo: '커스텀 로드 제작 해금 (경도·길이 선택)', descEn: 'Unlocks custom rod building (choose action and length)', tier: 3, maxRank: 1, costPerRank: 2, requires: [{ id: 'craft_bp', rank: 1 }], effect: add('rod_building', 1), wired: true, unlock: [{ kind: 'quest', value: 'M3-09' }, { kind: 'level', value: 60 }, { kind: 'categoryRanks', category: 'crafting', value: 12 }] },
   { id: 'craft_reel', category: 'crafting', nameKo: '릴 커스텀', nameEn: 'Reel Custom', descKo: '릴 기어비 튜닝 해금폭 확장', descEn: 'Wider reel gear-ratio tuning range', tier: 3, maxRank: 2, costPerRank: 1, requires: [{ id: 'craft_bp', rank: 1 }], effect: add('reel_tuning', 1), wired: true },
 
   // ═══════════════════════════════════════════════════════════
@@ -291,6 +291,7 @@ export function skillUnlockCondMet(cond: SkillUnlockCond, ctx: SkillUnlockCtx): 
     case 'level': return ctx.level >= cond.value;
     case 'license': return ctx.licenses.includes(cond.value);
     case 'categoryRanks': return categoryRanks(ctx.ranks, cond.category) >= cond.value;
+    case 'quest': return (ctx.questsDone ?? []).includes(cond.value);
     default: return true;
   }
 }
@@ -323,6 +324,7 @@ export function describeUnlockCond(
     case 'level': return `Lv.${cond.value} 이상`;
     case 'license': return `면허 [${licenseName?.(cond.value) ?? cond.value}] 보유`;
     case 'categoryRanks': return `${catName(cond.category)} 누적 랭크 ${cond.value} 이상`;
+    case 'quest': return `메인 퀘스트 ${cond.value} 완료`;
     default: return '';
   }
 }
