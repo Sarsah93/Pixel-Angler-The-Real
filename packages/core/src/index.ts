@@ -528,8 +528,13 @@ export {
 } from './rules/Affinity.js';
 export type { ChoiceCtx } from './db-schema/StoryChoices.js';
 // 141차 — 나레이션 층(주인공 서두·NPC 대사·내용 기반 선택지)
-export { STORY_NARRATIVE, narrativeOf, allNarrativeLines, narrativeEnCoverage, type NarrativeEntry } from './db-schema/StoryNarrative.js';
+export { STORY_NARRATIVE, narrativeOf, allNarrativeLines, narrativeEnCoverage, choiceEnCoverage, type NarrativeEntry } from './db-schema/StoryNarrative.js';
 export { STORY_NARRATIVE_EN, type NarrativeEnEntry } from './db-schema/StoryNarrativeEn.js';
+// 152차 — 퀘스트 클리어 난이도(수행 활동 기준)
+export {
+  questDifficulty, difficultyHistogram, DIFFICULTY_BANDS,
+  type QuestDifficultyTier, type QuestDifficultyInfo,
+} from './rules/QuestDifficulty.js';
 export {
   STORY_CHOICE_OVERRIDES, toneOfferChoices, lessonCategoryOf, payChoiceCoins, defaultCompleteChoices, choicesFor,
   choiceVisible, describeOutcomeKo, allChoiceLines, validateStoryChoices, hasCustomChoices, DEFAULT_DECLINE,
@@ -562,6 +567,8 @@ export {
   ramp, defaultAppearance, bareOutfit, starterOutfit,
   renderCharCell, renderCharSheet, charCfgKey, makeCharConfig, pose,
 } from './art/CharacterArt.js';
+// 152차 — 대화창 초상 전용 고밀도 얼굴 렌더러 (필드 스프라이트와 별도 격자)
+export { renderFacePortrait, PORTRAIT_CELL, type PortraitRaster } from './art/FacePortrait.js';
 export type { CharAge, CharRole, CastTrait } from './art/CharacterCast.js';
 export { CAST_TRAITS, CAST_OVERRIDE, characterOf, castIds } from './art/CharacterCast.js';
 

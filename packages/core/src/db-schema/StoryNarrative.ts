@@ -20,6 +20,7 @@
 
 import type { ChoiceOutcome, ChoiceRequires, QuestChoiceDef, QuestNarrative } from '../types/Story.js';
 import { STORY_NARRATIVE_EN } from './StoryNarrativeEn.js';
+import { STORY_CHOICES_EN } from './StoryChoicesEn.js';
 
 // ── 헬퍼 ──
 type C = QuestChoiceDef;
@@ -2012,10 +2013,19 @@ function mergedNarrative(): Record<string, NarrativeEntry> {
   const out: Record<string, NarrativeEntry> = {};
   for (const [id, n] of Object.entries(STORY_NARRATIVE)) {
     const en = STORY_NARRATIVE_EN[id];
-    out[id] = en
+    const base = en
       ? { ...n, introEn: n.introEn ?? en.intro, offerEn: en.offer, progressEn: en.progress,
           doneEn: en.done, objectivesEn: en.objectives, epilogueEn: en.epilogue }
-      : n;
+      : { ...n };
+    // 152차 — 선택지 영문도 같은 방식으로 얹는다. 없는 키는 한국어가 남는다(미수록 규칙).
+    // ⚠ 키에 세트('c' 완료 / 'o' 발주)를 넣는다 — 한 퀘스트에 같은 id의 발주·완료 선택지가 함께 있다(예: 'decline').
+    const dub = (arr: C[] | undefined, set: 'c' | 'o'): C[] | undefined => arr?.map((x) => {
+      const t = STORY_CHOICES_EN[`${id}/${set}/${x.id}`];
+      return t ? { ...x, labelEn: t[0], replyEn: t[1] } : x;
+    });
+    if (base.complete) base.complete = dub(base.complete, 'c');
+    if (base.offerChoices) base.offerChoices = dub(base.offerChoices, 'o');
+    out[id] = base;
   }
   merged = out;
   return out;
@@ -2043,6 +2053,20 @@ export function allNarrativeLines(): [string, string][] {
     (n.objectives ?? []).forEach((s, i) => put(s, n.objectivesEn?.[i]));
   }
   return out;
+}
+
+/** 선택지 영문 커버리지 점검(dev) — 152차 */
+export function choiceEnCoverage(): { total: number; translated: number; missing: string[] } {
+  const missing: string[] = [];
+  let total = 0; let translated = 0;
+  for (const [id, n] of Object.entries(mergedNarrative())) {
+    for (const x of [...(n.complete ?? []), ...(n.offerChoices ?? [])]) {
+      total += 2;
+      if (x.labelEn !== x.labelKo) translated++; else missing.push(`${id}/${x.id}.label`);
+      if (x.replyEn !== x.replyKo) translated++; else missing.push(`${id}/${x.id}.reply`);
+    }
+  }
+  return { total, translated, missing };
 }
 
 /** 영문 커버리지 점검(dev) — 한국어 줄 수 대비 영문이 실린 줄 수 */

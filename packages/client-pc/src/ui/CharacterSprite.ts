@@ -13,6 +13,7 @@
 import Phaser from 'phaser';
 import {
   CHAR_CELL, CHAR_DIRS, CHAR_FOOT_Y, CHAR_FRAMES, CHAR_SCALE, charCfgKey, renderCharSheet,
+  renderFacePortrait, PORTRAIT_CELL,
   type CharConfig, type CharDir, type CharFrame,
 } from '@tra/core';
 
@@ -75,43 +76,38 @@ export function ensureCharSheet(scene: Phaser.Scene, cfg: CharConfig, scale = CH
 }
 
 /**
- * 얼굴 초상 텍스처 (150차 — 사용자 지시 "전신 말고 얼굴만 확대해 증명사진처럼").
+ * 얼굴 초상 텍스처 — **초상 전용 격자로 다시 그린다** (152차 · 사용자 지시).
  *
- * 전신을 통째로 키우면 초상 칸의 대부분을 몸통·다리가 먹고 얼굴은 한 줌으로 남는다.
- * 여기서는 `down` 대기 프레임에서 **얼굴 창(16x16 아트 px)** 만 오려 정수 배율로 키운다.
- * 창은 머리(행 3~11)보다 위아래로 넉넉히 잡는다 — 모자 챙·비니 방울·곱슬은 머리 위로 나오고
- * 아래로는 어깨가 조금 걸려야 증명사진처럼 보인다.
+ * 150차는 게임 시트의 얼굴 창(16x16)을 잘라 NEAREST로 키웠다. 그 격자의 실제 얼굴은
+ * 가로 10 · 세로 9줄뿐이라 아무리 키워도 눈은 사각형 두 개고 코는 없었다 —
+ * 사용자 지적("단순 확대가 아니라 픽셀 단위와 그래픽 퀄리티를 높여야 함") 그대로다.
+ * 이제 core `renderFacePortrait`가 **같은 `CharConfig`로 32x32 초상을 새로 그린다**:
+ * 흰자·홍채·동공·하이라이트가 각자 화소를 갖고, 코·인중·입술·귀·턱 그늘·수염결·앞머리 술이 생긴다.
  *
- * ⚠ 배율은 정수(AGENTS §8) — 도트 격자가 무너지지 않는다.
+ * ⚠ 배율은 정수(AGENTS §8). `scale`은 **호출부가 원하는 표시 크기**(px)를 기준으로 받는다 —
+ *   구 시그니처(16px 창 기준 배율)를 그대로 쓰면 초상이 두 배로 커지므로 창 크기로 환산한다.
  */
 export function ensureFacePortrait(scene: Phaser.Scene, cfg: CharConfig, scale = 10): string {
-  const s = Math.max(1, Math.round(scale));
-  const key = `face_${shortHash(charCfgKey(cfg))}_${s}`;
+  // 구 호출부는 "16 아트 px x scale"을 기대했다 — 같은 표시 크기를 유지하도록 32 격자 배율로 환산
+  const s = Math.max(1, Math.round((16 * Math.max(1, scale)) / PORTRAIT_CELL));
+  const key = `face2_${shortHash(charCfgKey(cfg))}_${s}`;
   if (scene.textures.exists(key)) return key;
 
-  const FW = 16, FH = 16;         // 얼굴 창 (아트 px)
-  const FX = 8, FY = 0;           // 셀 안 좌상단 — 머리(11~20열, 3~11행)를 가운데 두고 위 3행 여유
-  const sheet = renderCharSheet(cfg);
-  const canvas = scene.textures.createCanvas(key, FW * s, FH * s);
+  const art = renderFacePortrait(cfg);
+  const canvas = scene.textures.createCanvas(key, art.w * s, art.h * s);
   if (!canvas) return key;
   const ctx = canvas.getContext();
-  ctx.clearRect(0, 0, FW * s, FH * s);
+  ctx.clearRect(0, 0, art.w * s, art.h * s);
 
-  // 시트에서 얼굴 창만 떠낸다 ('down' = 0행 · 대기 = 0열)
-  const face = new Uint8ClampedArray(FW * FH * 4);
-  for (let y = 0; y < FH; y++) {
-    const src = ((FY + y) * sheet.w + FX) * 4;
-    face.set(sheet.data.subarray(src, src + FW * 4), y * FW * 4);
-  }
-  const img = ctx.createImageData(FW, FH);
-  img.data.set(face);
+  const img = ctx.createImageData(art.w, art.h);
+  img.data.set(art.rgba);
   const tmp = document.createElement('canvas');
-  tmp.width = FW; tmp.height = FH;
+  tmp.width = art.w; tmp.height = art.h;
   const tctx = tmp.getContext('2d');
   if (tctx) {
     tctx.putImageData(img, 0, 0);
     ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(tmp, 0, 0, FW, FH, 0, 0, FW * s, FH * s);
+    ctx.drawImage(tmp, 0, 0, art.w, art.h, 0, 0, art.w * s, art.h * s);
   }
   canvas.refresh();
   return key;

@@ -80,10 +80,18 @@ a{color:var(--sea)}
 .index{position:sticky; top:74px; max-height:calc(100dvh - 96px); overflow:auto;
   border:1px solid var(--rule); border-radius:5px; background:var(--card); padding:6px}
 @media (max-width:900px){ .index{position:static; max-height:340px} }
-.chgrp{margin-bottom:4px}
-.chgrp>h3{font-size:12.5px; font-family:'IBM Plex Sans KR',sans-serif; font-weight:600; color:var(--muted);
-  letter-spacing:.02em; padding:9px 10px 5px}
-.chgrp>h3 em{font-style:normal; color:var(--buoy)}
+.chgrp{margin-bottom:2px}
+/* 152차 — 장별 접기. 7장 186편을 한 줄로 펼치면 5장을 보려고 끝없이 굴려야 한다. */
+.chtog{display:flex; width:100%; align-items:center; gap:7px; border:0; cursor:pointer; font:inherit;
+  background:var(--sea-soft); border-radius:4px; text-align:left;
+  font-size:12.5px; font-family:'IBM Plex Sans KR',sans-serif; font-weight:600; color:var(--ink2);
+  letter-spacing:.02em; padding:8px 10px}
+.chtog:hover{background:var(--rule-soft)}
+.chtog .caret{flex:0 0 auto; color:var(--muted); font-size:10px; transition:transform .14s ease}
+.chtog[aria-expanded=true] .caret{transform:rotate(90deg)}
+.chtog .ct{flex:1 1 auto; overflow-wrap:anywhere}
+.chtog em{font-style:normal; color:var(--buoy); flex:0 0 auto}
+.chbody{padding:2px 0 6px}
 .qrow{display:block; width:100%; text-align:left; border:0; background:transparent; cursor:pointer;
   font:inherit; font-size:13.5px; color:var(--ink2); padding:6px 10px; border-radius:4px;
   display:flex; gap:8px; align-items:baseline}
@@ -104,9 +112,12 @@ a{color:var(--sea)}
 .doc .leadline{margin-top:16px; color:var(--ink2)}
 
 /* 인포박스 */
-.infobox{float:right; width:310px; margin:4px 0 20px 26px; border:1px solid var(--rule);
+/* 152차 — 인포박스는 float가 아니라 머리 2열 그리드의 오른쪽 칸이다.
+   float면 본문(대화)이 박스 아래로 파고들어 겹친다 — 길어지면 아래가 밀려나야 한다. */
+.dochead{display:grid; grid-template-columns:minmax(0,1fr) 310px; gap:26px; align-items:start}
+@media (max-width:760px){ .dochead{grid-template-columns:minmax(0,1fr); gap:18px} }
+.infobox{width:100%; margin:4px 0 20px 0; border:1px solid var(--rule);
   background:var(--raised); border-radius:4px; overflow:hidden; box-shadow:var(--shadow)}
-@media (max-width:760px){ .infobox{float:none; width:100%; margin:18px 0} }
 .infobox h4{background:var(--sea); color:#fff; font-size:13.5px; padding:8px 12px; letter-spacing:.02em}
 .infobox h5{font-family:'IBM Plex Sans KR',sans-serif; font-size:11.5px; font-weight:600; margin:0;
   color:var(--muted); letter-spacing:.06em; padding:10px 12px 2px; text-transform:uppercase}
@@ -156,6 +167,8 @@ blockquote.talk+blockquote.talk{margin-top:10px}
 .rw .k{flex:0 0 96px; font-size:12px; color:var(--muted)}
 .rw .v{flex:1 1 auto; overflow-wrap:anywhere}
 .pill{display:inline-block; font-size:11.5px; padding:1px 7px; border-radius:999px; margin-right:4px;
+.dif{display:inline-block; padding:1px 7px; border-radius:3px; font-size:11px; font-weight:700; letter-spacing:.02em; color:#fff}
+.d-talk{background:#7c8ba0} .d-light{background:#4f8f63} .d-normal{background:#a8862f} .d-hard{background:#c3702a} .d-severe{background:#b4472f}
   border:1px solid currentColor}
 .pill.bound{color:var(--brass); background:var(--brass-soft)}
 .pill.main{color:var(--buoy); background:var(--buoy-soft)}
@@ -232,11 +245,23 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
   // 장 이동 선택기
   const jump = document.getElementById('jump');
   jump.innerHTML = '<option value="">장으로 이동…</option>' +
-    CH.map(c => '<option value="' + c.n + '">제' + c.n + '장 · ' + esc(c.title) + '</option>').join('');
+    CH.map(c => '<option value="' + c.n + '">' + esc(chLabel(c)) + '</option>').join('');
 
   let filter = 'all', term = '';
   let current = location.hash.replace('#', '') || Q[0].id;
   if (!byId[current]) current = Q[0].id;
+
+  /**
+   * 장 표기 — 데이터의 장 이름은 `지역 — 이름`(예: 「속초 — 첫 캐스팅」) 순서다.
+   * 화면에서는 **이름이 먼저**여야 무엇을 하는 장인지 먼저 읽힌다(152차 사용자 지시).
+   */
+  function chTitle(c){
+    if (!c || !c.title) return '';
+    const i = c.title.indexOf(' — ');
+    if (i < 0) return c.title;
+    return c.title.slice(i + 3) + ' — ' + c.title.slice(0, i);
+  }
+  function chLabel(c){ return c ? '제' + c.n + '장 · ' + chTitle(c) : ''; }
 
   function esc(s){ return String(s == null ? '' : s)
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -250,20 +275,32 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
       .toLowerCase().includes(t);
   }
 
+  /** 펼쳐 둔 장 — 기본은 지금 보고 있는 장 하나만. 검색 중에는 맞은 장을 전부 편다. */
+  const openCh = new Set();
   function renderIndex(){
     const idx = document.getElementById('index');
+    const cur = byId[current];
+    if (!openCh.size && cur) openCh.add(cur.chapter);
     let html = '', any = false;
     for (const c of CH){
       const list = Q.filter(q => q.chapter === c.n && matches(q));
       if (!list.length) continue;
       any = true;
-      html += '<section class="chgrp"><h3>제' + c.n + '장 · ' + esc(c.title) +
-        ' <em>' + list.length + '</em></h3>';
-      for (const q of list){
-        html += '<button class="qrow" data-id="' + q.id + '"' +
-          (q.id === current ? ' aria-current="true"' : '') + '>' +
-          '<span class="tag">' + (q.kind === 'main' ? '본' : '곁') + '</span>' +
-          '<span class="nm">' + esc(q.title) + '</span></button>';
+      // 검색어가 있으면 맞은 장은 전부 펴 준다 — 접힌 채로는 결과가 몇 건인지만 보인다.
+      const open = !!term || openCh.has(c.n);
+      html += '<section class="chgrp"><button class="chtog" data-ch="' + c.n + '"' +
+        ' aria-expanded="' + (open ? 'true' : 'false') + '">' +
+        '<span class="caret">&#9654;</span><span class="ct">' + esc(chLabel(c)) + '</span>' +
+        '<em>' + list.length + '</em></button>';
+      if (open){
+        html += '<div class="chbody">';
+        for (const q of list){
+          html += '<button class="qrow" data-id="' + q.id + '"' +
+            (q.id === current ? ' aria-current="true"' : '') + '>' +
+            '<span class="tag">' + (q.kind === 'main' ? '본' : '곁') + '</span>' +
+            '<span class="nm">' + esc(q.title) + '</span></button>';
+        }
+        html += '</div>';
       }
       html += '</section>';
     }
@@ -306,18 +343,24 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
     const solo = !q.giverName;
     let h = '';
 
-    h += '<div class="breadcrumb">제' + q.chapter + '장 · ' + esc(c ? c.title : '') + '</div>';
+    // 152차 — 머리(제목·리드·목차)와 개요 상자를 2열로 묶는다. float를 쓰면 상자가 길 때
+    //         아래 「대화」가 상자 밑으로 파고들어 글자가 겹친다.
+    h += '<div class="dochead"><div class="headtext">';
+    h += '<div class="breadcrumb">' + esc(chLabel(c)) + '</div>';
     h += '<h1 class="title">' + esc(q.title) + '</h1>';
     h += '<p class="sub">' + esc(q.titleEn || '') + '</p>';
 
     // 인포박스
-    h += '<aside class="infobox"><h4>임무 정보</h4><table><tbody>' +
+    const infobox = '<aside class="infobox"><h4>퀘스트 정보 개요</h4><table><tbody>' +
       '<tr><th>유형</th><td><span class="pill ' + (q.kind === 'main' ? 'main' : 'sub') + '">' +
         kindLabel + '</span>' + (q.arcTitle ? esc(q.arcTitle.split(' — ')[0]) : '') + '</td></tr>' +
       '<tr><th>위치</th><td>' + esc(q.regionName) + '</td></tr>' +
       '<tr><th>의뢰인</th><td>' + (solo ? '<span class="note">없음 — 스스로 정하는 임무</span>'
         : esc(q.giverName) + (q.giverRole ? '<br><span class="note">' + esc(q.giverRole) + '</span>' : '')) + '</td></tr>' +
       '<tr><th>요구 레벨</th><td class="mono">Lv. ' + q.lv + '</td></tr>' +
+      '<tr><th>클리어 난이도</th><td><span class="dif d-' + q.diff.tier + '">' + esc(q.diff.label) + '</span>' +
+        (q.diff.acts.length ? '<br><span class="note">' + esc(q.diff.acts.join(' · ')) + '</span>'
+          : '<br><span class="note">대화로 진행</span>') + '</td></tr>' +
       '</tbody></table>' +
       '<h5>연관 임무</h5>' +
       '<table><tbody><tr><th>이전</th><td class="rel">' + relLinks(q.prereq) + '</td></tr>' +
@@ -339,6 +382,7 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
     secs.push(['여담', 's-misc']);
     h += '<nav class="toc"><strong>목차</strong><ol>' +
       secs.map(s => '<li><a href="#' + s[1] + '">' + s[0] + '</a></li>').join('') + '</ol></nav>';
+    h += '</div>' + infobox + '</div>';
 
     // 1 대화
     if (q.nar && (q.nar.offer || q.offerChoices.length)){
@@ -457,12 +501,20 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
   function go(id){
     if (!byId[id]) return;
     current = id;
+    openCh.add(byId[id].chapter);
     history.replaceState(null, '', '#' + id);
     renderIndex();
     renderDoc(true);
   }
 
   document.getElementById('index').addEventListener('click', e => {
+    const t = e.target.closest('.chtog');
+    if (t){
+      const n = Number(t.dataset.ch);
+      if (openCh.has(n)) openCh.delete(n); else openCh.add(n);
+      renderIndex();
+      return;
+    }
     const b = e.target.closest('.qrow'); if (b) go(b.dataset.id);
   });
   document.getElementById('doc').addEventListener('click', e => {

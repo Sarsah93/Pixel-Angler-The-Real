@@ -23,6 +23,7 @@ import type { ChoiceOutcome, ChoiceRequires, QuestChoiceDef, QuestChoiceSet, Sto
 import type { SkillCategoryId } from '../types/Skills.js';
 import { STORY_QUESTS } from './StoryQuestDatabase.js';
 import { narrativeOf } from './StoryNarrative.js';
+import { questDifficulty, DIFFICULTY_PAY_MULT } from '../rules/QuestDifficulty.js';
 
 // ── 헬퍼 ──
 const ch = (id: string, labelKo: string, labelEn: string, replyKo: string, replyEn: string,
@@ -55,7 +56,9 @@ export function lessonCategoryOf(q: StoryQuestDef): SkillCategoryId {
 
 /** 서브 퀘 '품삯' 금액 — XP 표 값에 비례(Ch1 350xp → 4,200원 · Ch7 40,000xp → 480,000원) */
 export function payChoiceCoins(q: StoryQuestDef): number {
-  return Math.round((q.xp * 12) / 100) * 100;
+  // 152차 — 난이도 배율. 대화로 끝나는 임무가 조업 임무와 같은 품삯을 받지 않는다.
+  const mult = DIFFICULTY_PAY_MULT[questDifficulty(q).tier];
+  return Math.round((q.xp * 12 * mult) / 100) * 100;
 }
 
 /**

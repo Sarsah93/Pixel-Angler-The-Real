@@ -120,8 +120,12 @@ STORY_ARCS ────┘     traineeDay (D-180)                └─ RegionHu
   그때 `spotKind: 'boat'`가 처음 소비된다(149차에 계약만 열어 뒀다).
 - ~~가방 아이템 정의~~ ✅141(`QuestRewardItems.ts`) · ~~귀속 가방 8~12가 상한 30에 눌려 같은 효과~~ ✅148
   (상한 37 · 28/30/33/35/37 다섯 단계 분화 — [S5](inventory-equipment.md)).
-- ~~나레이션 영문~~ ✅**151차**(`StoryNarrativeEn.ts` 186편 · 829줄). 남은 것은 **선택지 영문** —
-  `complete`/`offerChoices` 510개 라벨·응답이 아직 `labelEn = labelKo` 폴백이다(분량이 나레이션과 맞먹어 별도 차수).
+- ~~나레이션 영문~~ ✅151 · ~~선택지 영문~~ ✅**152차**(`StoryChoicesEn.ts` 524엔트리 — **1048/1048 · 누락 0**).
+  스토리 계통의 영문화는 이것으로 끝났다.
+- **대화 전용 임무 70편(38%)** — 152차는 그것을 **난이도로 정직하게 표기**하고 **품삯을 0.25배로** 낮췄을 뿐,
+  전부 조업으로 바꾼 것이 아니다. 실시스템이 서는 순서대로(불요리 → 농장 → 좌판 운영) `manual` → auto로 옮긴다.
+  유지 사유가 확정된 것: M3-04 `craft`(불요리 미구현) · N23-6 `cook`(`addActivityXp('cook')` 호출처 0) ·
+  M3-07 `communityWork`(`coop_work` 일감이 속초 전용인데 무대는 포항).
 - `choice.*` 플래그 ~60종을 읽는 후속 조건(현재 N18-1 1곳) · 일지 '사람들'에 우호도 눈금.
 - event 정책 테스트용 **계절 강제(dev)** 없음 · `once` 거절 초기화 dev 명령 없음.
 - ~~`deadline.onMiss: 'cost'` 미구현~~ ✅147 — **평판 감점**으로 구현(`TUNING.story.missRepPerDay` 1/일).
@@ -130,6 +134,23 @@ STORY_ARCS ────┘     traineeDay (D-180)                └─ RegionHu
 - dev 콘솔(F10)에 퀘 점프/완료 명령(구세이브 고레벨 테스터용).
 
 ## 6. 함정·불변조건
+
+### 13. 난이도는 **강제되는 것만** 센다 (152차)
+
+`questDifficulty()`는 `manual` 목표를 **0점**으로 친다. `StoryStore.event()`가
+`if (o.manual && ev.kind !== 'talk') return;`으로 실제 행위 이벤트를 무시하므로,
+manual 목표를 점수에 넣으면 표기가 곧바로 거짓말이 된다.
+난이도 표기는 계약이다 — **「대화」로 표시된 임무는 대화만으로 끝나는 것이 정상**이다.
+
+요구 레벨·보상 크기는 점수에 넣지 않는다(레벨은 도달하면 사라지는 관문이고, 보상은 난이도의 결과지 원인이 아니다).
+품삯(`payChoiceCoins`)에 난이도 배율이 곱해지므로 **난이도를 바꾸면 보상 금액이 함께 움직인다**.
+
+### 14. auto `visit` 목표는 `placeKey`가 없으면 영원히 안 닫힌다 (152차)
+
+`match()`의 visit 케이스는 `o.placeKey === ev.placeKey`다. `placeKey`가 `undefined`면 어떤 이벤트와도 매칭되지 않는다.
+`manual`을 푸는 순간 그 목표는 **영구 미완료**가 되고 그 뒤 체인이 전부 막힌다.
+필드가 발행하는 키는 `region:{지역id}` · `shop:any` · POI 키다.
+
 
 ### 9. 미진행 정보는 그리지 않는다 (150차 · AGENTS §4 R2)
 

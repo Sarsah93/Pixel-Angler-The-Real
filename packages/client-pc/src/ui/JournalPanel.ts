@@ -21,7 +21,7 @@
 import Phaser from 'phaser';
 import {
   STORY_CHAPTERS, STORY_QUESTS, getStoryNpc, getLicenseByType, narrativeOf, getSkillById,
-  characterOf, type StoryQuestDef,
+  characterOf, questDifficulty, type StoryQuestDef, type QuestDifficultyTier,
 } from '@tra/core';
 import { DraggablePanel, applyScreenFixed, restoreHandCursor } from './DraggablePanel.js';
 import { StoryStore } from '../store/StoryStore.js';
@@ -51,6 +51,11 @@ const ROW_H = 40;
 
 const C_TEXT = '#e8f4fd';
 const C_DIM = '#8fa8bc';
+
+/** 152차 — 난이도 색. 대화는 조용한 회색, 손이 많이 갈수록 주황으로 간다. */
+const DIFF_COLOR: Record<QuestDifficultyTier, string> = {
+  talk: '#6f8ba1', light: '#7fb27f', normal: '#cbb26a', hard: '#e0913f', severe: '#df6a4a',
+};
 const C_GOLD = '#ffd98a';
 const C_OK = '#7fe0b0';
 const C_ACT = '#ffb26b';
@@ -616,7 +621,16 @@ export class JournalPanel extends DraggablePanel {
     // ── 목표 ──
     let y = py + nh + 14;
     const oh = this.scene.add.text(DET_X + 4, y, '목표', { fontFamily: FONT, fontSize: '12px', color: '#6f8ba1' });
-    c.add(oh); y += oh.height + 6;
+    c.add(oh);
+    // 152차 — 클리어 난이도. "무엇을 실제로 해야 하는가"를 목표 바로 위에서 알려 준다.
+    const diff = questDifficulty(q);
+    const dTxt = diff.actionsKo.length ? `${diff.labelKo} · ${diff.actionsKo.join(' · ')}` : diff.labelKo;
+    const dt = this.scene.add.text(DET_X + DET_W - 4, y + oh.height / 2, dTxt, {
+      fontFamily: FONT, fontSize: '11px', color: DIFF_COLOR[diff.tier],
+    }).setOrigin(1, 0.5);
+    clampTextWidth(dt, DET_W - 70);
+    c.add(dt);
+    y += oh.height + 6;
     q.objectives.forEach((o, i) => {
       const done = StoryStore.objectiveDone(q, i);
       const tgt = StoryStore.objectiveTarget(o);

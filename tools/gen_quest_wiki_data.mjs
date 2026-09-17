@@ -74,6 +74,7 @@ const quests = core.STORY_QUESTS.map((q) => {
       label: n?.objectives?.[i] ?? o.labelKo, kind: o.kind, manual: !!o.manual,
       minCm: o.minCm, target: o.target, spotKind: o.spotKind,
     })),
+    diff: (() => { const d = core.questDifficulty(q); return { tier: d.tier, label: d.labelKo, score: d.score, acts: d.actionsKo, reason: d.reasonKo }; })(),
     teaches: q.teaches ?? [],
     deadline: q.deadline ?? null,
     unlocks: q.unlocks ?? [],
