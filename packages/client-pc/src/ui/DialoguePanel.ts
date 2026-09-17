@@ -1,17 +1,21 @@
 /**
  * @file DialoguePanel.ts
- * @description 탑다운 필드 NPC 대화창 (134차 신설 · **140차 재작성** — 하단 대화 박스 + 선택지 분기 + 우호도).
+ * @description 탑다운 필드 NPC 대화창 (134차 신설 · 140차 선택지 · **150차 전면 재작성**).
  *
- * 형태: 화면 하단에 걸치는 가로 박스. 열리는 순간 **주변이 어두워지고**(모달 딤) 왼쪽에 NPC 초상
- * (실게임 시트 'down' 프레임을 5배로 — 별도 초상 아트 없음), 그 아래 **우호도 게이지**(−5~+5 눈금 + 티어).
- * 오른쪽은 대사 + **선택지 목록**(↑↓ Enter · 마우스). 선택지는 core `choicesFor(q)`가 준다 —
- *  - 발주: 톤(우호도 미세 차이) → 수락.
- *  - 완료: **품삯 / 가르침 / 사양 / 청탁 …** — 고른 것에 따라 재화·숙련도·스킬 포인트·평판·우호도가 갈린다.
- *    미리보기 한 줄(`describeOutcomeKo`)을 라벨 옆에 흐리게 붙여 "왜 잃었는지 모르는 선택"을 만들지 않는다.
- * 우선순위는 종전대로 완료 가능 > 진행 중 > 발주 > 잡담. 우호도가 낮으면 서브 발주가 감춰지고
- * 그 사실을 대사로 말한다(조용히 사라지지 않는다). 일감(품삯)은 선택지 [일감 보기]로 들어간다.
+ * 150차에 바뀐 것 — 사용자 지시:
+ *  1. **한 번에 다 띄우지 않는다.** 대사는 좌→우로 **타이핑**되고, 넘치면 앞 줄이 위로 밀리며
+ *     새 줄이 아래에 쓰인다(로그가 흐르는 느낌). 단락이 끝나면 우측 하단에 **흰 역삼각형(▼)**
+ *     으로 "더 있다"를 알린다. 클릭/Enter로 다음 단락.
+ *  2. **본문 20px** — 구 13px은 읽히지 않았다(사용자: "20pt 정도는 되어야").
+ *  3. **표준 선택지 3종** — `내가 도와줄 수 있는 게 있을까요?` / `물건을 볼 수 있을까요?`
+ *     (거래하는 사람만) / `나가기`. 퀘스트는 첫 선택지로 들어가야 나온다 — NPC를 누르자마자
+ *     의뢰서가 펼쳐지지 않는다.
+ *  4. **초상은 얼굴만 확대**(증명사진) — 전신을 키우면 초상 칸을 몸통이 다 먹는다.
  *
- * 모달(dim) · depth 940 — ConfirmDialog(950) 아래, 일반 팝업(800대) 위. 텍스트는 wordWrap + 흐름 배치(§4).
+ * 남는 규칙(140·141차): 우선순위 완료 가능 > 진행 중 > 발주 > 잡담 · 보상은 **고른 뒤에만** 드러난다 ·
+ * 우호도가 낮으면 서브 발주가 감춰지고 그 사실을 대사로 말한다.
+ *
+ * 모달(dim) · depth 940 — ConfirmDialog(950) 아래, 일반 팝업(800대) 위.
  */
 
 import Phaser from 'phaser';
@@ -23,64 +27,131 @@ import { DraggablePanel } from './DraggablePanel.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { StoryStore } from '../store/StoryStore.js';
 import { dialogueOf, NPC_IDLE } from '../data/StoryDialogue.js';
-import { enforceTextBounds, clampTextWidth } from './TextFit.js';
-import { ensureCharSheet, charFrameName } from './CharacterSprite.js';
+import { clampTextWidth } from './TextFit.js';
+import { ensureFacePortrait } from './CharacterSprite.js';
+import { applyScreenFixed } from './DraggablePanel.js';
 
 const W = 1040;
-const H = 312;
+const H = 372;
 const FONT = '"Noto Sans KR", sans-serif';
-/** 초상 열 폭 — 시트 셀 32 × 5배 = 160 + 여백 */
-const PORTRAIT_W = 200;
-const PORTRAIT_SCALE = 5;
-const TEXT_X = PORTRAIT_W + 8;
-const TEXT_W = W - TEXT_X - 20;
-const CHOICE_H = 30;
-const COL = { text: '#e8f4fd', dim: '#8fa6bd', accent: '#ffe9a0', ok: '#7fe0b0', warn: '#ffb45a', hint: '#7f95aa' };
+
+/** 초상 열 — 얼굴 창 16px 아트 × 11 = 176px */
+const FACE_SCALE = 11;
+const FACE_PX = 16 * FACE_SCALE;
+const PORTRAIT_W = FACE_PX + 40;
+
+const TEXT_X = PORTRAIT_W + 12;
+const TEXT_W = W - TEXT_X - 22;
+
+/** 본문 글자 크기 — 사용자 지시 "20pt 정도" */
+const BODY_PX = 20;
+/** 대사 로그 뷰포트 높이 (≈ 5줄) */
+const LOG_H = 152;
+const CHOICE_H = 32;
+
+/** 타이핑 속도 — ms마다 CHARS_PER_TICK자 */
+const TYPE_MS = 18;
+const CHARS_PER_TICK = 1;
+
+const COL = {
+  text: '#e8f4fd', dim: '#8fa6bd', accent: '#ffe9a0', ok: '#7fe0b0',
+  warn: '#ffb45a', hint: '#7f95aa', narr: '#d6c9a8',
+};
 
 interface ChoiceRow { label: string; hint?: string; action: () => void; disabled?: boolean }
 
-type View = 'main' | 'jobs' | 'reply';
+/** 화면 상태 — 인사 → 기본 선택 → 퀘스트 → 응답 → 일감 */
+type View = 'menu' | 'quest' | 'reply' | 'jobs';
 
 export class DialoguePanel extends DraggablePanel {
   private bodyC?: Phaser.GameObjects.Container;   // ⚠ `body`는 Phaser Container 예약 프로퍼티(44차 함정)
   private readonly npcId: string;
   private readonly onClose: () => void;
   private readonly regionId: string;
-  private view: View = 'main';
-  /** 응답 화면(선택 직후) — 대사 + 결과 줄 */
-  /**
-   * 응답 화면 (141차) — 보상은 **고른 뒤에만** 드러난다: NPC 응답 → 받은 것(고정 보상) → 이 답으로(선택 몫) →
-   * 다른 답들은 `???` → 주인공 한 줄(epilogue).
-   */
+  private readonly onTrade?: (shopId: string) => void;
+  private view: View = 'menu';
+
+  /** 지금 화면 — 검증 하네스가 읽는다 */
+  get currentView(): View { return this.view; }
+
+  /** 응답 화면 (141차) — 보상은 고른 뒤에만 드러난다 */
   private reply: { line: string; lines: string[]; rewards: string[]; others: string[]; epilogue?: string; declined?: boolean } | null = null;
+
+  // ── 타이핑 로그 ──────────────────────────────────
+  /** 이미 다 찍힌 글(단락 사이 빈 줄 포함) */
+  private logDone = '';
+  /** 지금 찍고 있는 단락 */
+  private typingPara = '';
+  /** 그 단락에서 찍은 글자 수 */
+  private typed = 0;
+  /** 아직 안 찍은 단락들 */
+  private queue: string[] = [];
+  private typeTimer?: Phaser.Time.TimerEvent;
+  private logText?: Phaser.GameObjects.Text;
+  private logInner?: Phaser.GameObjects.Container;
+  private logMask?: Phaser.GameObjects.Graphics;
+  private caret?: Phaser.GameObjects.Graphics;
+  private caretTween?: Phaser.Tweens.Tween;
+  private lastPanelX = NaN;
+  private lastPanelY = NaN;
+  private readonly postUpdate: () => void;
+
+  // ── 선택지 ───────────────────────────────────────
   private rows: ChoiceRow[] = [];
+  private pendingRows: ChoiceRow[] = [];
   private cursor = 0;
   private rowObjs: { g: Phaser.GameObjects.Graphics; t: Phaser.GameObjects.Text; h?: Phaser.GameObjects.Text; row: ChoiceRow; cy: number }[] = [];
+  private choiceC?: Phaser.GameObjects.Container;
   private lastWorkMsg = '';
   private readonly keyHandler: (ev: KeyboardEvent) => void;
+  private readonly clickHandler: () => void;
 
-  constructor(scene: Phaser.Scene, npcId: string, onClose: () => void, regionId = '') {
+  constructor(
+    scene: Phaser.Scene, npcId: string, onClose: () => void,
+    regionId = '', onTrade?: (shopId: string) => void,
+  ) {
     const npc = getStoryNpc(npcId);
     super(scene, {
-      x: (GAME_WIDTH - W) / 2, y: GAME_HEIGHT - H - 22,
+      x: (GAME_WIDTH - W) / 2, y: GAME_HEIGHT - H - 18,
       width: W, height: H, title: `${npc?.nameKo ?? npcId}  ·  ${npc?.roleKo ?? ''}`, onClose, dim: true, depth: 940,
     });
     this.npcId = npcId;
     this.onClose = onClose;
     this.regionId = regionId;
+    this.onTrade = onTrade;
     StoryStore.event({ kind: 'talk', npcId });
+
     this.keyHandler = (ev: KeyboardEvent) => this.onKey(ev);
     scene.input.keyboard?.on('keydown', this.keyHandler);
-    this.render();
-    this.applyFix();
+    // 대사 진행은 아무 데나 클릭해도 된다(선택지 행은 자기 핸들러가 먼저 먹는다)
+    this.clickHandler = () => { if (this.busy) this.advance(); };
+    this.postUpdate = () => { if (this.x !== this.lastPanelX || this.y !== this.lastPanelY) this.syncMask(); };
+    scene.events.on('postupdate', this.postUpdate);
+
+    this.buildFrame();
+    this.enterMenu(true);
   }
 
   override destroy(fromScene?: boolean): void {
-    this.scene?.input.keyboard?.off('keydown', this.keyHandler);
+    this.typeTimer?.remove();
+    this.caretTween?.stop();
+    this.scene?.input?.keyboard?.off('keydown', this.keyHandler);
+    this.scene?.events?.off('postupdate', this.postUpdate);
+    this.logMask?.destroy();
     super.destroy(fromScene);
   }
 
+  // ═══════════ 입력 ═══════════
+  /** 아직 찍는 중이거나 남은 단락이 있다 = 선택지를 내주지 않는다 */
+  private get busy(): boolean {
+    return this.typed < this.typingPara.length || this.queue.length > 0;
+  }
+
   private onKey(ev: KeyboardEvent): void {
+    if (this.busy) {
+      if (ev.code === 'Enter' || ev.code === 'Space') { ev.preventDefault(); this.advance(); }
+      return;
+    }
     if (this.rows.length === 0) return;
     if (ev.code === 'ArrowUp') { this.moveCursor(-1); ev.preventDefault(); }
     else if (ev.code === 'ArrowDown') { this.moveCursor(1); ev.preventDefault(); }
@@ -89,6 +160,13 @@ export class DialoguePanel extends DraggablePanel {
       if (r && !r.disabled) { ev.preventDefault(); r.action(); }
     }
   }
+
+  /** 한 번 더 누르면 = 지금 단락 즉시 완성 → 그다음은 다음 단락 */
+  private advance(): void {
+    if (this.typed < this.typingPara.length) { this.typed = this.typingPara.length; this.paintLog(); this.afterPara(); return; }
+    if (this.queue.length > 0) { this.commitPara(); this.startNextPara(); }
+  }
+
   private moveCursor(d: number): void {
     const n = this.rows.length;
     for (let i = 0; i < n; i++) {
@@ -97,71 +175,92 @@ export class DialoguePanel extends DraggablePanel {
     }
     this.paintCursor();
   }
-  private paintCursor(): void {
-    this.rowObjs.forEach((o, i) => {
-      const sel = i === this.cursor;
-      o.g.clear();
-      o.g.fillStyle(sel ? 0x1b3a52 : 0x0e1c2a, sel ? 0.95 : 0.7);
-      o.g.fillRect(TEXT_X, o.cy - CHOICE_H / 2, TEXT_W, CHOICE_H);
-      if (sel) { o.g.fillStyle(0xd8b25f, 1); o.g.fillRect(TEXT_X, o.cy - CHOICE_H / 2, 3, CHOICE_H); }
-      o.t.setColor(o.row.disabled ? '#5a6a78' : sel ? '#ffffff' : COL.text);
-    });
-  }
 
-  // ═══════════ 렌더 ═══════════
-  private render(): void {
+  // ═══════════ 프레임 (초상 + 로그 박스) ═══════════
+  private buildFrame(): void {
     this.bodyC?.destroy();
-    this.rows = []; this.rowObjs = [];
     const c = this.scene.add.container(0, this.contentTop);
     this.bodyC = c;
     this.add(c);
+
     this.renderPortrait(c);
 
-    let y = 8;
-    if (this.lastWorkMsg) {
-      const w = this.scene.add.text(TEXT_X, y, this.lastWorkMsg, { fontFamily: FONT, fontSize: '11px', color: COL.accent, wordWrap: { width: TEXT_W } });
-      c.add(w); y += w.height + 6;
-    }
+    // 대사 박스
+    const g = this.scene.add.graphics();
+    g.fillStyle(0x08121c, 0.82); g.fillRect(TEXT_X - 8, 4, TEXT_W + 16, LOG_H + 12);
+    g.lineStyle(1, 0x2c5878, 0.9); g.strokeRect(TEXT_X - 8, 4, TEXT_W + 16, LOG_H + 12);
+    c.add(g);
 
-    if (this.view === 'reply' && this.reply) y = this.renderReply(c, y);
-    else if (this.view === 'jobs') y = this.renderJobs(c, y);
-    else {
-      const { completable, active, offer, refusedSub } = StoryStore.questsForNpc(this.npcId);
-      if (completable[0]) y = this.renderComplete(c, completable[0], y);
-      else if (active[0]) y = this.renderActive(c, active[0], y);
-      else if (offer[0]) y = this.renderOffer(c, offer[0], y);
-      else y = this.renderIdle(c, y, refusedSub.length > 0);
-    }
-    this.renderChoiceRows(c, y);
-    enforceTextBounds(c, W - 8, 'DialoguePanel');
-    this.applyFix();
+    // 로그 — 마스크로 잘리는 컨테이너 안에서 위로 밀린다
+    const inner = this.scene.add.container(0, 0);
+    this.logInner = inner;
+    c.add(inner);
+    this.logText = this.scene.add.text(TEXT_X, 10, '', {
+      fontFamily: FONT, fontSize: `${BODY_PX}px`, color: COL.text,
+      // ⚠ 한국어는 `useAdvancedWrap` 없이는 **띄어쓰기에서만** 줄이 바뀐다 —
+      //   긴 어절이나 붙여 쓴 문장이 오면 가로로 삐져나간다.
+      lineSpacing: 7, wordWrap: { width: TEXT_W, useAdvancedWrap: true },
+    });
+    inner.add(this.logText);
+
+    const maskG = this.scene.make.graphics({}, false).setScrollFactor(0);
+    this.logMask = maskG;
+    inner.setMask(maskG.createGeometryMask());
+    this.lastPanelX = NaN;
+    this.syncMask();
+
+    // 더 있음 표시 — 흰 역삼각형(사용자 지정)
+    const car = this.scene.add.graphics();
+    car.fillStyle(0xffffff, 1);
+    car.fillTriangle(-7, -4, 7, -4, 0, 6);
+    car.setPosition(TEXT_X + TEXT_W - 6, LOG_H + 2).setVisible(false);
+    this.caret = car;
+    c.add(car);
+
+    this.choiceC = this.scene.add.container(0, 0);
+    c.add(this.choiceC);
+
+    // 클릭으로 대사 진행 — 패널 바닥판 위에 깔되 선택지보다 아래
+    const plate = this.scene.add.rectangle(TEXT_X + TEXT_W / 2, 10 + LOG_H / 2, TEXT_W + 16, LOG_H + 12, 0xffffff, 0.001)
+      .setInteractive();
+    plate.on('pointerdown', this.clickHandler);
+    c.add(plate);
+    applyScreenFixed(this);
+  }
+
+  private syncMask(): void {
+    const g = this.logMask;
+    if (!g) return;
+    this.lastPanelX = this.x; this.lastPanelY = this.y;
+    g.clear();
+    g.fillStyle(0xffffff, 1);
+    g.fillRect(this.x + TEXT_X - 6, this.y + this.contentTop + 6, TEXT_W + 12, LOG_H + 8);
   }
 
   /**
-   * 초상 + 우호도 게이지 (143차 — 세로 중앙 정렬).
-   *
-   * 구 구현은 초상·게이지·라벨을 전부 박스 **상단 기준**(y=4)으로 쌓아, 260px 박스에서
-   * 아래 70px가 늘 비어 있었다("위로 쏠린 느낌"). 이제 스택 총 높이를 먼저 재고
-   * 박스 안에서 중앙에 놓는다 — 패널 높이가 바뀌어도 따라온다.
+   * 얼굴 초상 + 우호도 (150차 — 전신 → 얼굴 확대).
+   * 전신을 5배로 키우던 구 구현은 초상 칸의 대부분을 몸통·다리가 차지해 표정이 안 보였다.
    */
   private renderPortrait(c: Phaser.GameObjects.Container): void {
     const g = this.scene.add.graphics();
-    const boxX = 8, boxY = 4, boxW = PORTRAIT_W - 16;
+    const boxX = 10, boxY = 4, boxW = PORTRAIT_W - 20;
     const boxH = this.panelH - this.contentTop - 12;
-    g.fillStyle(0x08121c, 0.9); g.fillRect(boxX, boxY, boxW, boxH);
+    g.fillStyle(0x08121c, 0.92); g.fillRect(boxX, boxY, boxW, boxH);
     g.lineStyle(1, 0x2c5878, 1); g.strokeRect(boxX, boxY, boxW, boxH);
     c.add(g);
 
-    const SPRITE_H = 32 * PORTRAIT_SCALE;   // 시트 셀 높이 × 배율
-    const BAR_H = 8, BAR_GAP = 10, LABEL_H = 16;
-    const stackH = SPRITE_H + BAR_GAP + BAR_H + 4 + LABEL_H;
-    const top = boxY + Math.max(0, Math.floor((boxH - stackH) / 2));
-    const footY = top + SPRITE_H;           // 발밑 기준선
+    const BAR_H = 8, BAR_GAP = 12, LABEL_H = 16;
+    const stackH = FACE_PX + BAR_GAP + BAR_H + 4 + LABEL_H;
+    const top = boxY + Math.max(6, Math.floor((boxH - stackH) / 2));
 
-    // 발판 그림자 → 캐릭터
-    g.fillStyle(0x000000, 0.35); g.fillEllipse(PORTRAIT_W / 2, footY - 10, 90, 14);
-    const key = ensureCharSheet(this.scene, characterOf(this.npcId), PORTRAIT_SCALE);
-    const img = this.scene.add.image(PORTRAIT_W / 2, footY - 12, key, charFrameName('down', 0)).setOrigin(0.5, 1);
+    // 얼굴 뒤 배경 — 증명사진 톤
+    g.fillStyle(0x12263a, 1);
+    g.fillRect(PORTRAIT_W / 2 - FACE_PX / 2, top, FACE_PX, FACE_PX);
+    g.lineStyle(1, 0x3c6f95, 1);
+    g.strokeRect(PORTRAIT_W / 2 - FACE_PX / 2, top, FACE_PX, FACE_PX);
+
+    const key = ensureFacePortrait(this.scene, characterOf(this.npcId), FACE_SCALE);
+    const img = this.scene.add.image(PORTRAIT_W / 2, top, key).setOrigin(0.5, 0);
     c.add(img);
 
     // 우호도 — 11눈금(−5~+5) 바 + 티어 라벨
@@ -169,7 +268,7 @@ export class DialoguePanel extends DraggablePanel {
     const tier = affinityTier(aff);
     const lab = AFFINITY_TIER_LABEL[tier];
     const pips = affinityPips(aff);
-    const barY = footY + BAR_GAP;
+    const barY = top + FACE_PX + BAR_GAP;
     const pipW = 12, gap = 2, x0 = PORTRAIT_W / 2 - (11 * pipW + 10 * gap) / 2;
     const bar = this.scene.add.graphics();
     for (let i = -5; i <= 5; i++) {
@@ -181,59 +280,200 @@ export class DialoguePanel extends DraggablePanel {
       bar.lineStyle(1, 0x06090f, 1); bar.strokeRect(x, barY, pipW, BAR_H);
     }
     c.add(bar);
-    const t = this.scene.add.text(PORTRAIT_W / 2, barY + BAR_H + 4, `우호도 ${lab.ko}  (${aff >= 0 ? '+' : ''}${aff.toFixed(2)})`, {
+    const t = this.scene.add.text(PORTRAIT_W / 2, barY + BAR_H + 4, `${lab.ko}  (${aff >= 0 ? '+' : ''}${aff.toFixed(2)})`, {
       fontFamily: FONT, fontSize: '11px', color: `#${lab.color.toString(16).padStart(6, '0')}`,
     }).setOrigin(0.5, 0);
     c.add(t);
   }
 
-  private lines(c: Phaser.GameObjects.Container, y: number, lines: readonly (readonly [string, string])[], color = COL.text): number {
-    for (const [ko] of lines) {
-      const t = this.scene.add.text(TEXT_X, y, `"${ko}"`, { fontFamily: FONT, fontSize: '13px', color, lineSpacing: 4, wordWrap: { width: TEXT_W } });
-      c.add(t); y += t.height + 6;
+  // ═══════════ 타이핑 ═══════════
+  /** 단락들을 차례로 찍고, 다 찍히면 선택지를 연다 */
+  private play(paras: string[], rows: ChoiceRow[], keepLog = false): void {
+    if (!keepLog) { this.logDone = ''; }
+    this.queue = paras.filter((p) => p.trim().length > 0);
+    this.pendingRows = rows;
+    this.rows = [];
+    this.cursor = 0;
+    this.clearChoices();
+    this.typingPara = ''; this.typed = 0;
+    this.startNextPara();
+  }
+
+  private startNextPara(): void {
+    this.typeTimer?.remove(); this.typeTimer = undefined;
+    const next = this.queue.shift();
+    if (next === undefined) { this.typingPara = ''; this.typed = 0; this.paintLog(); this.afterPara(); return; }
+    this.typingPara = next;
+    this.typed = 0;
+    this.paintLog();
+    this.typeTimer = this.scene.time.addEvent({
+      delay: TYPE_MS, loop: true,
+      callback: () => {
+        this.typed = Math.min(this.typingPara.length, this.typed + CHARS_PER_TICK);
+        this.paintLog();
+        if (this.typed >= this.typingPara.length) {
+          this.typeTimer?.remove(); this.typeTimer = undefined;
+          this.afterPara();
+        }
+      },
+    });
+  }
+
+  private commitPara(): void {
+    this.logDone += (this.logDone ? '\n\n' : '') + this.typingPara;
+    this.typingPara = ''; this.typed = 0;
+  }
+
+  /** 한 단락이 다 찍혔다 — 남았으면 ▼, 아니면 선택지 */
+  private afterPara(): void {
+    if (this.queue.length > 0) { this.showCaret(true); return; }
+    this.showCaret(false);
+    if (this.rows.length === 0 && this.pendingRows.length > 0) {
+      this.rows = this.pendingRows;
+      this.renderChoiceRows();
     }
-    return y;
   }
 
-  /** 주인공 시점 나레이션 — 대사(따옴표)와 구분되는 톤(흐린 모래색·들여쓰기) */
-  private narration(c: Phaser.GameObjects.Container, y: number, text: string): number {
-    const t = this.scene.add.text(TEXT_X + 10, y, text, { fontFamily: FONT, fontSize: '12px', color: '#d6c9a8', lineSpacing: 3, wordWrap: { width: TEXT_W - 10 } });
-    c.add(t);
-    return y + t.height + 8;
+  private paintLog(): void {
+    const t = this.logText;
+    if (!t) return;
+    const head = this.logDone ? `${this.logDone}\n\n` : '';
+    t.setText(head + this.typingPara.slice(0, this.typed));
+    // 넘치면 **위로 민다** — 새 줄이 늘 박스 아래에 쓰인다(사용자 지시)
+    const over = Math.max(0, t.height - LOG_H);
+    this.logInner?.setY(-over);
   }
 
-  private questHeader(c: Phaser.GameObjects.Container, q: StoryQuestDef, y: number, chip: string, chipBg: string): number {
-    const h = this.scene.add.text(TEXT_X, y, `${q.kind === 'main' ? '메인' : '서브'} ${q.id} · ${q.titleKo}`, { fontFamily: FONT, fontSize: '13px', color: COL.ok, fontStyle: 'bold' });
-    const ch = this.scene.add.text(W - 20, y + 1, chip, { fontFamily: FONT, fontSize: '10px', color: '#0b1620', fontStyle: 'bold', backgroundColor: chipBg, padding: { x: 6, y: 2 } }).setOrigin(1, 0);
-    c.add([h, ch]);
-    return y + h.height + 6;
+  private showCaret(on: boolean): void {
+    this.caretTween?.stop();
+    this.caretTween = undefined;
+    this.caret?.setVisible(on).setAlpha(1);
+    if (!on || !this.caret) return;
+    this.caretTween = this.scene.tweens.add({
+      targets: this.caret, alpha: 0.15, duration: 520, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+    });
   }
 
-  private objectives(c: Phaser.GameObjects.Container, q: StoryQuestDef, y: number): number {
-    q.objectives.forEach((o, i) => {
+  // ═══════════ 화면 ═══════════
+  /** 인사 + 기본 선택지 3종 */
+  private enterMenu(greet: boolean): void {
+    this.view = 'menu';
+    const paras: string[] = [];
+    if (this.lastWorkMsg) { paras.push(this.lastWorkMsg); this.lastWorkMsg = ''; }
+    if (greet) {
+      const [ko] = NPC_IDLE[this.npcId] ?? (['…', '…'] as const);
+      paras.push(`"${ko}"`);
+    }
+    const { completable, active, offer } = StoryStore.questsForNpc(this.npcId);
+    const mark = completable[0] ? '보고할 일이 있습니다'
+      : offer[0] ? '새 의뢰가 있습니다'
+      : active[0] ? '진행 중인 의뢰가 있습니다' : undefined;
+
+    const rows: ChoiceRow[] = [
+      { label: '내가 도와줄 수 있는 게 있을까요?', hint: mark, action: () => this.enterQuest() },
+    ];
+    const shopId = this.npcShopId();
+    if (shopId) rows.push({ label: '물건을 볼 수 있을까요?', action: () => this.onTrade?.(shopId) });
+    const jobs = StoryStore.jobsOfNpc(this.npcId, this.regionId);
+    if (jobs.length) {
+      const can = jobs.filter((j) => !j.locked && j.remaining > 0).length;
+      rows.push({ label: '일손이 필요하진 않으세요?', hint: can ? `지금 ${can}건` : '오늘은 없음', action: () => { this.view = 'jobs'; this.enterJobs(); } });
+    }
+    rows.push({ label: '나가기', action: () => this.onClose() });
+    this.play(paras, rows, !greet);
+  }
+
+  /** 거래하는 사람인지 — 데이터에 상점이 걸려 있을 때만 '물건 보기'가 뜬다 */
+  private npcShopId(): string | undefined {
+    return getStoryNpc(this.npcId)?.shopId;
+  }
+
+  private enterQuest(): void {
+    this.view = 'quest';
+    const { completable, active, offer, refusedSub } = StoryStore.questsForNpc(this.npcId);
+    if (completable[0]) this.playComplete(completable[0]);
+    else if (active[0]) this.playActive(active[0]);
+    else if (offer[0]) this.playOffer(offer[0]);
+    else this.playIdle(refusedSub.length > 0);
+  }
+
+  private backRow(): ChoiceRow {
+    return { label: '다른 얘기를 좀…', action: () => this.enterMenu(false) };
+  }
+  private exitRow(): ChoiceRow {
+    return { label: '나가기', action: () => this.onClose() };
+  }
+
+  private questHead(q: StoryQuestDef): string {
+    return `[${q.titleKo}]`;
+  }
+
+  private playOffer(q: StoryQuestDef): void {
+    const n = narrativeOf(q.id);
+    const paras = [this.questHead(q)];
+    if (n?.intro) paras.push(n.intro);
+    if (n?.offer) paras.push(`"${n.offer}"`);
+    else for (const [ko] of dialogueOf(q.id).offer) paras.push(`"${ko}"`);
+    const note = StoryStore.offerNoteKo(q);
+    if (note) paras.push(note);
+    const rows = StoryStore.visibleChoices(q, 'offer').map((ch) => this.choiceRow(q, ch, 'offer'));
+    rows.push(this.backRow(), this.exitRow());
+    this.play(paras, rows, true);
+  }
+
+  private playActive(q: StoryQuestDef): void {
+    const np = narrativeOf(q.id)?.progress;
+    const paras = [this.questHead(q)];
+    paras.push(`"${np ?? dialogueOf(q.id).progress[0]}"`);
+    paras.push(this.objectiveLines(q));
+    const rows: ChoiceRow[] = [];
+    const idx = q.objectives.findIndex((o, i) => o.manual && !StoryStore.objectiveDone(q, i));
+    if (idx >= 0) {
+      rows.push({
+        label: q.objectives[idx].labelKo,
+        hint: '이 자리에서 마무리',
+        action: () => { StoryStore.advanceManual(q.id, idx); this.enterQuest(); },
+      });
+    }
+    rows.push(this.backRow(), this.exitRow());
+    this.play(paras, rows, true);
+  }
+
+  private playComplete(q: StoryQuestDef): void {
+    const nd = narrativeOf(q.id)?.done;
+    const paras = [this.questHead(q)];
+    paras.push(`"${nd ?? dialogueOf(q.id).done[0]}"`);
+    const rows = StoryStore.visibleChoices(q, 'complete').map((ch) => this.choiceRow(q, ch, 'complete'));
+    this.play(paras, rows, true);
+  }
+
+  private playIdle(refused: boolean): void {
+    const paras = [refused
+      ? '"…부탁할 일이 있긴 한데, 지금은 너한테 맡길 마음이 안 든다."\n사이가 틀어져 의뢰를 내주지 않습니다. 일감을 돕다 보면 마음이 풀립니다.'
+      : '"지금은 딱히 맡길 일이 없다."\n실력을 더 쌓거나 다른 의뢰를 마치고 다시 오세요.'];
+    this.play(paras, [this.backRow(), this.exitRow()], true);
+  }
+
+  private objectiveLines(q: StoryQuestDef): string {
+    return q.objectives.map((o, i) => {
       const done = StoryStore.objectiveDone(q, i);
       const cur = StoryStore.progress(q.id)?.obj[i] ?? 0;
       const tgt = StoryStore.objectiveTarget(o);
       const prog = tgt > 1 ? ` (${Math.min(cur, tgt).toLocaleString()}/${tgt.toLocaleString()})` : '';
       const label = narrativeOf(q.id)?.objectives?.[i] ?? o.labelKo;
-      const t = this.scene.add.text(TEXT_X + 8, y, `${done ? '✓' : '·'} ${label}${prog}${o.manual && !done ? '  — 대화로 진행' : ''}`, {
-        fontFamily: FONT, fontSize: '11px', color: done ? COL.ok : '#d0e8f5', wordWrap: { width: TEXT_W - 8 },
-      });
-      c.add(t); y += t.height + 2;
-    });
-    return y + 4;
+      return `${done ? '✓' : '·'} ${label}${prog}`;
+    }).join('\n');
   }
 
   /**
    * 선택지 → 행. **미리보기 없음**(141차 — 보상은 고른 뒤 응답 문장과 결과 목록으로 드러난다).
-   * 고르지 않은 답은 응답 화면에 `???`로 남는다.
    */
   private choiceRow(q: StoryQuestDef, ch: QuestChoiceDef, stage: 'offer' | 'complete'): ChoiceRow {
     return {
       label: ch.labelKo,
       action: () => {
         const ok = stage === 'offer' ? StoryStore.accept(q.id, ch.id) : StoryStore.complete(q.id, ch.id);
-        if (!ok) { this.lastWorkMsg = '지금은 진행할 수 없습니다.'; this.render(); return; }
+        if (!ok) { this.lastWorkMsg = '지금은 진행할 수 없습니다.'; this.enterMenu(false); return; }
         const done = stage === 'complete';
         this.reply = {
           line: ch.replyKo,
@@ -243,136 +483,87 @@ export class DialoguePanel extends DraggablePanel {
           epilogue: done ? narrativeOf(q.id)?.epilogue : undefined,
           declined: StoryStore.lastAction === 'declined',
         };
-        this.view = 'reply';
-        this.render();
+        this.enterReply();
       },
     };
   }
 
-  private renderOffer(c: Phaser.GameObjects.Container, q: StoryQuestDef, y: number): number {
-    y = this.questHeader(c, q, y, '새 의뢰', '#ffd257');
-    const n = narrativeOf(q.id);
-    // 141차 — 표(descKo) 대신 주인공 나레이션 → NPC의 말 순서. 보상 미리보기는 없다.
-    if (n) y = this.narration(c, y, n.intro);
-    y = this.lines(c, y, n?.offer ? [[n.offer, n.offer]] : dialogueOf(q.id).offer);
-    const note = StoryStore.offerNoteKo(q);
-    if (note) {
-      const t = this.scene.add.text(TEXT_X, y, note, { fontFamily: FONT, fontSize: '11px', color: COL.warn, wordWrap: { width: TEXT_W } });
-      c.add(t); y += t.height + 6;
-    }
-    for (const ch of StoryStore.visibleChoices(q, 'offer')) this.rows.push(this.choiceRow(q, ch, 'offer'));
-    this.pushCommonRows();
-    return y;
-  }
-
-  private renderActive(c: Phaser.GameObjects.Container, q: StoryQuestDef, y: number): number {
-    y = this.questHeader(c, q, y, '진행 중', '#9fd5ff');
-    const np = narrativeOf(q.id)?.progress;
-    y = this.lines(c, y, [np ? [np, np] : dialogueOf(q.id).progress]);
-    y = this.objectives(c, q, y);
-    const idx = q.objectives.findIndex((o, i) => o.manual && !StoryStore.objectiveDone(q, i));
-    if (idx >= 0) {
-      this.rows.push({ label: `[다음 단계 진행] ${q.objectives[idx].labelKo}`, action: () => { StoryStore.advanceManual(q.id, idx); this.render(); } });
-    }
-    this.pushCommonRows();
-    return y;
-  }
-
-  private renderComplete(c: Phaser.GameObjects.Container, q: StoryQuestDef, y: number): number {
-    y = this.questHeader(c, q, y, '완료 가능', '#7fe0b0');
-    const nd = narrativeOf(q.id)?.done;
-    y = this.lines(c, y, nd ? [[nd, nd]] : dialogueOf(q.id).done);
-    // 141차 — 보상 미리보기 없음. 답을 고르면 응답 문장이 무엇을 내미는지 드러낸다.
-    for (const ch of StoryStore.visibleChoices(q, 'complete')) this.rows.push(this.choiceRow(q, ch, 'complete'));
-    return y;
-  }
-
-  private renderIdle(c: Phaser.GameObjects.Container, y: number, refused: boolean): number {
-    const line = NPC_IDLE[this.npcId] ?? (['…', '…'] as const);
-    y = this.lines(c, y, [line], '#c8d8e4');
-    const hintTxt = refused
-      ? '"…부탁할 일이 있긴 한데, 지금은 너한테 맡길 마음이 안 든다." 사이가 틀어져 의뢰를 내주지 않습니다. 일감을 돕다 보면 마음이 풀립니다.'
-      : '지금 맡길 일은 없다고 합니다. 실력을 더 쌓거나 다른 의뢰를 마치고 다시 오세요.';
-    const hint = this.scene.add.text(TEXT_X, y, hintTxt, { fontFamily: FONT, fontSize: '11px', color: refused ? COL.warn : COL.dim, wordWrap: { width: TEXT_W } });
-    c.add(hint); y += hint.height + 6;
-    this.pushCommonRows();
-    return y;
-  }
-
-  private renderReply(c: Phaser.GameObjects.Container, y: number): number {
+  private enterReply(): void {
+    this.view = 'reply';
     const r = this.reply!;
-    y = this.lines(c, y, [[r.line, r.line]]);
-    const small = (text: string, color: string): void => {
-      const t = this.scene.add.text(TEXT_X, y, text, { fontFamily: FONT, fontSize: '11px', color, wordWrap: { width: TEXT_W } });
-      c.add(t); y += t.height + 4;
-    };
-    if (r.declined) small('의뢰를 받지 않았습니다.', COL.warn);
-    // 141차 — 받은 것은 여기서 처음 드러난다. 다른 답의 보상은 ???
-    if (r.rewards.length) small(`받은 것: ${r.rewards.join(' · ')}`, COL.accent);
-    if (r.lines.length) small(`이 답으로: ${r.lines.join(' · ')}`, COL.ok);
-    if (r.others.length) small(`고르지 않은 답 — ${r.others.map((o) => `"${o}" → ???`).join('   ')}`, COL.hint);
-    if (r.epilogue) y = this.narration(c, y + 2, r.epilogue);
-    this.rows.push({ label: '계속', action: () => { this.view = 'main'; this.reply = null; this.render(); } });
-    this.rows.push({ label: '대화 끝내기', action: () => this.onClose() });
-    return y;
+    const paras = [`"${r.line}"`];
+    if (r.declined) paras.push('의뢰를 받지 않았습니다.');
+    if (r.rewards.length) paras.push(`받은 것 — ${r.rewards.join(' · ')}`);
+    if (r.lines.length) paras.push(`이 답으로 — ${r.lines.join(' · ')}`);
+    if (r.others.length) paras.push(`고르지 않은 답 — ${r.others.map((o) => `"${o}" → ???`).join('   ')}`);
+    if (r.epilogue) paras.push(r.epilogue);
+    this.play(paras, [
+      { label: '계속 이야기하기', action: () => { this.reply = null; this.enterMenu(false); } },
+      this.exitRow(),
+    ], true);
   }
 
-  /** 일감 보기 · 닫기 — 모든 기본 화면 공통 */
-  private pushCommonRows(): void {
-    const jobs = StoryStore.jobsOfNpc(this.npcId, this.regionId);
-    if (jobs.length) {
-      const can = jobs.filter((j) => !j.locked && j.remaining > 0).length;
-      this.rows.push({ label: `일감 보기 (${jobs.length}건${can ? ` · 지금 ${can}건 가능` : ''})`, action: () => { this.view = 'jobs'; this.render(); } });
-    }
-    this.rows.push({ label: '대화 끝내기', action: () => this.onClose() });
-  }
-
-  /**
-   * 일감(품삯) 화면 — 135차 스트립을 선택지 행으로 옮겼다. 품삯은 우호도 배율이 곱해진 **지급될 값** 그대로 표기.
-   */
-  private renderJobs(c: Phaser.GameObjects.Container, y: number): number {
-    const head = this.scene.add.text(TEXT_X, y, '손이 모자랄 때 부르는 일입니다. 사이가 좋으면 품삯을 더 쳐주고, 틀어지면 일을 주지 않습니다.', {
-      fontFamily: FONT, fontSize: '11px', color: COL.accent, wordWrap: { width: TEXT_W },
-    });
-    c.add(head); y += head.height + 6;
+  /** 일감(품삯) — 품삯은 우호도 배율이 곱해진 **지급될 값** 그대로 표기 */
+  private enterJobs(): void {
+    const paras = ['"손이 모자랄 때 부르는 일이다. 사이가 좋으면 품삯을 더 쳐주고, 틀어지면 일을 주지 않는다."'];
+    const rows: ChoiceRow[] = [];
     for (const { job, remaining, locked } of StoryStore.jobsOfNpc(this.npcId, this.regionId)) {
       const can = !locked && remaining > 0;
       const wage = StoryStore.jobWage(job).toLocaleString();
-      this.rows.push({
+      rows.push({
         label: `${job.nameKo} — ${wage}원 · 오늘 ${remaining}/${job.perDay}회`,
-        hint: locked ?? (remaining > 0 ? job.descKo : '오늘 몫은 다 했습니다 — 자고 나서 다시 오세요.'),
+        hint: locked ?? (remaining > 0 ? job.descKo : '오늘 몫은 다 했습니다'),
         disabled: !can,
         action: () => {
           const res = StoryStore.work(job.id);
-          this.lastWorkMsg = res.ok ? `${res.flavorKo ?? ''} (품삯 ${(res.wage ?? 0).toLocaleString()}원)` : `일할 수 없습니다 — ${res.reason ?? ''}`;
-          this.render();
+          this.lastWorkMsg = res.ok
+            ? `${res.flavorKo ?? ''} (품삯 ${(res.wage ?? 0).toLocaleString()}원)`
+            : `일할 수 없습니다 — ${res.reason ?? ''}`;
+          this.enterJobs();
         },
       });
     }
-    this.rows.push({ label: '돌아가기', action: () => { this.view = 'main'; this.render(); } });
-    return y;
+    rows.push(this.backRow(), this.exitRow());
+    const head: string[] = [];
+    if (this.lastWorkMsg) { head.push(this.lastWorkMsg); this.lastWorkMsg = ''; }
+    this.play([...head, ...paras], rows, true);
   }
 
-  /** 선택지 행 렌더 — 하단에서 위로 쌓지 않고 텍스트 아래에서 흐른다. 넘치면 행 간격을 줄인다 */
-  private renderChoiceRows(c: Phaser.GameObjects.Container, yIn: number): void {
-    const bottom = this.panelH - this.contentTop - 10;
+  // ═══════════ 선택지 렌더 ═══════════
+  private clearChoices(): void {
+    this.choiceC?.removeAll(true);
+    this.rowObjs = [];
+  }
+
+  private renderChoiceRows(): void {
+    const c = this.choiceC;
+    if (!c) return;
+    this.clearChoices();
     const n = this.rows.length;
     if (n === 0) return;
-    const avail = bottom - yIn;
-    const step = Math.max(22, Math.min(CHOICE_H + 4, Math.floor(avail / n)));
-    let y = Math.max(yIn, bottom - n * step) + step / 2;
+    const top = LOG_H + 26;
+    const bottom = this.panelH - this.contentTop - 10;
+    const step = Math.max(24, Math.min(CHOICE_H + 4, Math.floor((bottom - top) / n)));
+    let y = top + step / 2;
     if (this.cursor >= n) this.cursor = 0;
+    if (this.rows[this.cursor]?.disabled) this.moveCursorSilently();
+
     this.rows.forEach((row, i) => {
       const g = this.scene.add.graphics();
-      const t = this.scene.add.text(TEXT_X + 12, y, row.label, { fontFamily: FONT, fontSize: '12px', color: COL.text }).setOrigin(0, 0.5);
-      const maxLabel = row.hint ? Math.floor(TEXT_W * 0.55) : TEXT_W - 24;
+      const t = this.scene.add.text(TEXT_X + 14, y, row.label, {
+        fontFamily: FONT, fontSize: '15px', color: COL.text,
+      }).setOrigin(0, 0.5);
+      const maxLabel = row.hint ? Math.floor(TEXT_W * 0.62) : TEXT_W - 28;
       clampTextWidth(t, maxLabel);
       let h: Phaser.GameObjects.Text | undefined;
       if (row.hint) {
-        h = this.scene.add.text(TEXT_X + TEXT_W - 10, y, row.hint, { fontFamily: FONT, fontSize: '10px', color: COL.hint }).setOrigin(1, 0.5);
-        clampTextWidth(h, TEXT_W - maxLabel - 30);
+        h = this.scene.add.text(TEXT_X + TEXT_W - 12, y, row.hint, {
+          fontFamily: FONT, fontSize: '11px', color: COL.hint,
+        }).setOrigin(1, 0.5);
+        clampTextWidth(h, TEXT_W - maxLabel - 34);
       }
-      const hit = this.scene.add.rectangle(TEXT_X + TEXT_W / 2, y, TEXT_W, step - 2, 0xffffff, 0.001).setInteractive({ useHandCursor: !row.disabled });
+      const hit = this.scene.add.rectangle(TEXT_X + TEXT_W / 2, y, TEXT_W, step - 2, 0xffffff, 0.001)
+        .setInteractive({ useHandCursor: !row.disabled });
       hit.on('pointerover', () => { if (!row.disabled) { this.cursor = i; this.paintCursor(); } });
       hit.on('pointerdown', () => { if (!row.disabled) row.action(); });
       c.add([g, t, hit]); if (h) c.add(h);
@@ -380,5 +571,23 @@ export class DialoguePanel extends DraggablePanel {
       y += step;
     });
     this.paintCursor();
+    applyScreenFixed(this);
+  }
+
+  private moveCursorSilently(): void {
+    for (let i = 0; i < this.rows.length; i++) {
+      if (!this.rows[i].disabled) { this.cursor = i; return; }
+    }
+  }
+
+  private paintCursor(): void {
+    this.rowObjs.forEach((o, i) => {
+      const sel = i === this.cursor;
+      o.g.clear();
+      o.g.fillStyle(sel ? 0x1b3a52 : 0x0e1c2a, sel ? 0.95 : 0.7);
+      o.g.fillRect(TEXT_X, o.cy - CHOICE_H / 2, TEXT_W, CHOICE_H);
+      if (sel) { o.g.fillStyle(0xd8b25f, 1); o.g.fillRect(TEXT_X, o.cy - CHOICE_H / 2, 3, CHOICE_H); }
+      o.t.setColor(o.row.disabled ? '#5a6a78' : sel ? '#ffffff' : COL.text);
+    });
   }
 }

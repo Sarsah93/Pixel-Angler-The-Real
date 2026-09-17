@@ -475,6 +475,12 @@ export interface StoryNpcDef {
   /** 나이·직업 한 줄 */
   roleKo: string;
   roleEn: string;
+  /**
+   * 이 사람이 물건을 판다면 그 상점 id (150차).
+   * 있으면 대화창에 **"물건을 볼 수 있을까요?"** 선택지가 뜬다 — 없으면 뜨지 않는다
+   * (사용자 지시: 거래 가능한 NPC가 아닐 경우 그 선택지는 제외).
+   */
+  shopId?: string;
 }
 
 export interface StoryArcDef {

@@ -332,7 +332,7 @@ const EN_BASE: Record<string, string> = {
   '강한 러닝': 'Strong run', '소강': 'Lull', '파상 저항': 'Surge', '제압': 'Spent',
 
   // ── 활용 (채비·요리·밑밥) ──
-  '활용 (Utilization)': 'Utilization', '요리하기 (Cooking)': 'Cooking', '채비하기 (Tackles)': 'Tackles', '밑밥 품질 (Chum)': 'Chum', '미끼 채비': 'Bait Rig', '웜/그럽': 'Worm/Grub', '소프트 저크베이트': 'Soft Jerkbait',
+  '채비 · 요리': 'Tackle & Cooking', '요리하기 (Cooking)': 'Cooking', '채비하기 (Tackles)': 'Tackles', '밑밥 품질 (Chum)': 'Chum', '미끼 채비': 'Bait Rig', '웜/그럽': 'Worm/Grub', '소프트 저크베이트': 'Soft Jerkbait',
   '미노우': 'Minnow', '스푼': 'Spoon', '스피너': 'Spinner', '에기': 'Egi', '메탈지그': 'Metal Jig', '타이라바': 'Tairaba', '플로팅 (수면 유지·리트리브로 파고듦)': 'Floating (stays up, dives on retrieve)',
   '싱킹 (착수 후 하강)': 'Sinking', '초고속 싱킹 (빠른 하강)': 'Fast sinking', '소프트 베이트': 'Soft baits', '하드 베이트': 'Hard baits', '라인업': 'Lineup', '보유한 루어가 없습니다 (낚시점에서 구매).': 'No lures owned (buy at a tackle shop).',
   '지그헤드 (소프트 베이트 필수 — 무게가 침강 속도를 결정)': 'Jighead (required for soft baits — weight sets sink rate)', '루어 제원 (실시간)': 'Lure Specs (live)', '루어를 선택하세요.': 'Select a lure.',
@@ -381,7 +381,7 @@ const EN_BASE: Record<string, string> = {
   '📖 도감 & 조과첩 (Angler\'s Log)': "📖 Codex & Angler's Log", 'ESC 키 또는 상단 [나가기] 버튼을 누르면 월드로 귀환합니다.': 'Press ESC or [Exit] to return.',
 
   // ── 데이터 출처 / 스탯 ──
-  '데이터 출처 및 저작권': 'Data Sources & Credits', '뒤로 (ESC)': 'Back (ESC)', '스테이터스': 'Status', '스탯은 낚시 물리(캐스팅/파이팅)에 실시간 반영될 예정입니다.': 'Stats will feed into fishing physics (casting/fighting).',
+  '데이터 출처 및 저작권': 'Data Sources & Credits', '뒤로 (ESC)': 'Back (ESC)', '내 상태': 'Status', '스탯은 낚시 물리(캐스팅/파이팅)에 실시간 반영될 예정입니다.': 'Stats will feed into fishing physics (casting/fighting).',
   '이 게임은 대한민국 공공데이터를 활용합니다. 아래 데이터의 저작권은 각 제공기관에 있습니다.': 'This game uses Korean open data. Copyright belongs to each provider.',
   '공공데이터포털(data.go.kr) 제공 데이터 · 출처 표시 후 이용': 'Data from data.go.kr · used with attribution',
 
@@ -460,6 +460,11 @@ const DOW_EN: Record<string, string> = {
 };
 /** 수치·이름이 끼어 있는 문장 — 정규식 규칙. 캡처 그룹은 그대로 옮긴다(이름은 사전을 다시 타지 않으므로 어종·아이템명은 한국어로 남을 수 있음). */
 export const EN_RULES: Rule[] = [
+  // ── 150차 일지(임무/이야기) ──
+  //  ⚠ 캡처 안의 한국어(장 제목)는 `tr`로 다시 번역한다 — 131차 합성 문자열 함정.
+  [/^제(\d+)장 · (.+)$/, (m, tr) => `Chapter ${m[1]} · ${tr(m[2])}`],
+  [/^제 (\d+) 장$/, (m) => `Chapter ${m[1]}`],
+  [/^(\d+)–(\d+) \/ (\d+)$/, (m) => `${m[1]}–${m[2]} / ${m[3]}`],
   // ── 149차 구멍치기(테트라포드·사석) · 장소 조건 ──
   [/^(테트라포드|사석) — 좌클릭 짧게 = 구멍치기 \(수심 ([\d.]+)m\) · 길게 = 캐스팅$/,
     (m) => `${m[1] === '테트라포드' ? 'Tetrapods' : 'Riprap'} — short click = hole fishing (${m[2]}m deep) · hold = cast`],

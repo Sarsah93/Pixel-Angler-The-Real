@@ -177,7 +177,10 @@ export class LicensePanel extends DraggablePanel {
     }
 
     // 발급 버튼 (하단 고정 — 흐름이 길면 버튼 위에서 잘리지 않게 위치는 고정, 본문은 폭으로 방어)
-    const by = PANEL_H - this.contentTop - 52;
+    //  ⚠ 150차: 사유 줄('조건 미충족')을 버튼 **아래**(by+36)에 두면 상세 박스 하단(PANEL_H-8)과
+    //     패널 경계를 함께 파고든다(실측 484~497 vs 박스 492). 사유는 버튼 **위**로 올리고,
+    //     버튼 블록 전체를 박스 안쪽으로 들인다.
+    const by = PANEL_H - this.contentTop - 58;
     if (held) {
       const t = this.scene.add.text(DETAIL_W / 2, by + 16, '유효하게 소지하고 있는 면허입니다.', { fontFamily: FONT, fontSize: '11px', color: '#aaffcc' }).setOrigin(0.5);
       c.add(t);
@@ -187,7 +190,7 @@ export class LicensePanel extends DraggablePanel {
       const ok = met && preOk && coinsOk;
       const btn = this.scene.add.rectangle(DETAIL_W / 2 - 100, by, 200, 32, ok ? 0x1f5a3a : 0x2a3340, 1).setOrigin(0, 0).setStrokeStyle(1, ok ? 0x4af2a1 : 0x3a4a5a, 1);
       const bt = this.scene.add.text(DETAIL_W / 2, by + 16, `면허 발급 (₩${lic.costCoins.toLocaleString()})`, { fontFamily: FONT, fontSize: '12px', color: ok ? '#e8fff0' : '#6a7a8a', fontStyle: 'bold' }).setOrigin(0.5);
-      const why = this.scene.add.text(DETAIL_W / 2, by + 36, ok ? '' : !preOk ? '선행 면허가 필요합니다' : !met ? '조건 미충족' : '코인 부족', { fontFamily: FONT, fontSize: '10px', color: '#c88a5a' }).setOrigin(0.5, 0);
+      const why = this.scene.add.text(DETAIL_W / 2, by - 7, ok ? '' : !preOk ? '선행 면허가 필요합니다' : !met ? '조건 미충족' : '코인 부족', { fontFamily: FONT, fontSize: '10px', color: '#c88a5a' }).setOrigin(0.5, 1);
       if (ok) {
         btn.setInteractive({ useHandCursor: true });
         btn.on('pointerdown', () => {

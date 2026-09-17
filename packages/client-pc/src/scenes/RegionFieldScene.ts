@@ -76,7 +76,7 @@ import { RegionLight,
   type CastWeatherEffect,
   type VitalsActivity,
 } from '@tra/core';
-import { SeamlessChunks, PROP_DEFS, propFootprint, type PropDef } from './SeamlessChunks.js';
+import { SeamlessChunks, type OccluderObj, PROP_DEFS, propFootprint, type PropDef } from './SeamlessChunks.js';
 import { ForageSystem } from './field/ForageSystem.js';
 import { TrapFieldSystem } from './field/TrapFieldSystem.js';
 import { TrapDeployPanel } from '../ui/TrapDeployPanel.js';
@@ -85,6 +85,8 @@ import { SkillTreePanel } from '../ui/SkillTreePanel.js';
 import { JournalPanel } from '../ui/JournalPanel.js';
 import { addPixelIcon } from '../ui/PixelIcon.js';
 import type { MiniMarker } from '../ui/RegionHud.js';
+import { TextInput } from '../ui/TextInput.js';
+import { MonologuePanel, OPENING_MONOLOGUE } from '../ui/MonologuePanel.js';
 import { DialoguePanel } from '../ui/DialoguePanel.js';
 import { GeneralMeetingPanel } from '../ui/GeneralMeetingPanel.js';
 import { StoryStore } from '../store/StoryStore.js';
@@ -93,7 +95,7 @@ import { MultiplayerClient } from '../net/MultiplayerClient.js';
 import { STORY_NPC_PLACEMENTS, STORY_PLACES, type StoryNpcPlacement } from '../data/StoryNpcs.js';
 import { getStoryNpc, validateStoryQuests, validateStoryChoices, getSkillById, profScale, gearFaultChance, GEAR_REF_PRICE, gearUsable, GEAR_FAULTS } from '@tra/core';
 import { playCollapse, type CollapseKind } from '../ui/CollapseOverlay.js';
-import { TUNING, getTrapById, type RegionFishFarms } from '@tra/core';
+import { TUNING, getTrapById, MP_CHAT_MAX_LEN, type RegionFishFarms } from '@tra/core';
 // 147차 — 위판(경매 현장). 구매자 측 AuctionEngine과 방향이 반대다(ConsignmentAuction 헤더 참조).
 import { buildConsignmentLots, isConsignmentOpen, openConsignmentSession, type ConsignInput, type ConsignmentSettlement } from '@tra/core';
 import { AuctionHousePanel } from '../ui/AuctionHousePanel.js';
@@ -198,7 +200,7 @@ export class RegionFieldScene extends Phaser.Scene {
    */
   private occludersByChunk = new Map<string, Phaser.GameObjects.Image[]>();
   /** 지금 반투명 상태인 프리팹 — 이력(hysteresis)에 쓴다 */
-  private faded = new Set<Phaser.GameObjects.Image>();
+  private faded = new Set<OccluderObj>();
   private occludeAt = 0;
   /** 차도 중심선 벡터 (roads.json) — 차선·중앙선 마킹 */
   private regionRoads: RegionRoad[] = [];
@@ -701,6 +703,22 @@ export class RegionFieldScene extends Phaser.Scene {
     this.cameras.main.startFollow(this.playerBody, true, 0.14, 0.14);
     this.cameras.main.setBackgroundColor(0x2b3f4d);
     this.cameras.main.fadeIn(280, 0, 10, 20);
+    this.maybePlayOpening();
+  }
+
+  /**
+   * 오프닝 혼잣말 (150차 — 사용자 지시).
+   * 캐릭터를 만들고 홈타운에서 **처음** 눈을 뜨는 순간 한 번만. 세이브 플래그로 기억한다.
+   */
+  private maybePlayOpening(): void {
+    if (this.region !== 'hometown') return;
+    if (GameState.getFlag('intro.monologue')) return;
+    GameState.setFlag('intro.monologue');
+    GameState.markDirty();
+    // ⚠ `time.delayedCall`로 미루지 않는다 — 홈타운 create()는 재시작으로 다시 돌 수 있고,
+    //   그때 타이머가 죽어 **플래그만 켜지고 창은 안 뜬다**(실측). 바로 연다 —
+    //   페이드인(280ms)이 딤과 함께 밝아지므로 연출도 어색하지 않다.
+    this.openPopup((close) => new MonologuePanel(this, OPENING_MONOLOGUE, close));
   }
 
   // ═══════════════════════════════════════════════════
@@ -1254,6 +1272,17 @@ export class RegionFieldScene extends Phaser.Scene {
     return null;
   }
 
+  /** 도로 밖으로 민 POI 문 수 (dev 로그 — 전 맵 검수 계측) */
+  private poiNudged = 0;
+
+  /** 문 좌표를 도로 벡터 밴드 밖으로 (밀 필요·밀 곳이 없으면 그대로) */
+  private nudgePoiDoor(door: { x: number; y: number }): { x: number; y: number } {
+    const n = this.chunks?.nudgeOffRoad(door.x, door.y);
+    if (!n || !n.moved) return door;
+    this.poiNudged++;
+    return { x: n.x, y: n.y };
+  }
+
   /**
    * 출입구 배치 규칙 (스펙 §4): 손 지정 door 필드가 우선, 없고 앵커가 건물(#) 안이면
    * 앵커에서 가장 가까운 걷기 가능 타일(r/. 우선)을 문 위치로 삼는다.
@@ -1344,7 +1373,13 @@ export class RegionFieldScene extends Phaser.Scene {
     const N = RegionFieldScene.SEAMLESS_CHUNK_TILES;
     const reserved = new Set<string>();
     this.regionPois.forEach((poi, i) => {
-      const door = this.resolvePoiDoor(poi);
+      // 150차 — 문 좌표가 차도 벡터 밴드 안이면 땅으로 민다(사용자 리포트 "횟집이 도로 위에").
+      //  ⚠ 106차 `trimBuildingsOnRoads`는 **타일**만 걷어냈고, 화면의 아스팔트는 101차 이후
+      //     **도로 벡터 밴드**가 그린다 — 타일은 '.'인데 그림은 차도인 자리가 생긴다.
+      //     `resolvePoiDoor`의 차도 회피는 타일 문자만 봐서 이 경우를 못 걸렀다.
+      //  ⚠ 스프라이트가 아니라 **문**을 민다 — 거래 판정·NPC·미니맵 핀이 한 좌표를 공유하므로
+      //     그림만 옮기면 "보이는 곳과 [F] 되는 곳"이 어긋난다.
+      const door = this.nudgePoiDoor(this.resolvePoiDoor(poi));
       this.poiDoors.push(door);
       const key = `${Math.floor(poi.tx / N)},${Math.floor(poi.ty / N)}`;
       const list = this.poiByChunk.get(key);
@@ -1409,8 +1444,8 @@ export class RegionFieldScene extends Phaser.Scene {
           objs.push(body);
           lit = img;
         } else {
-          const bx = b ? ((b.c0 + b.c1 + 1) / 2) * TR : poi.tx * TR + TR / 2;
-          const by = b ? (b.r1 + 1) * TR : poi.ty * TR + TR;
+          const bx = b ? ((b.c0 + b.c1 + 1) / 2) * TR : door.x;
+          const by = b ? (b.r1 + 1) * TR : door.y + TR / 2;
           lit = this.add.image(bx, by, vis).setOrigin(0.5, 1).setDepth(20 + by * 0.001 + 0.0005);
           objs.push(lit);
         }
@@ -4110,21 +4145,35 @@ export class RegionFieldScene extends Phaser.Scene {
     this.occludeAt = 0;
     const px = this.playerBody.x;
     const py = this.playerBody.y + this.PLAYER_FOOT_OFFSET;
-    for (const list of this.occludersByChunk.values()) {
-      for (const img of list) {
-        const on = this.faded.has(img);
-        const pad = on ? RegionFieldScene.OCCLUDE_HYSTERESIS : 0;
-        const halfW = img.displayWidth / 2 + pad;
-        const top = img.y - img.displayHeight - pad;
-        const inside = py < img.y && py > top && Math.abs(px - img.x) < halfW;
-        if (inside === on) continue;
-        if (inside) this.faded.add(img); else this.faded.delete(img);
-        this.tweens.killTweensOf(img);
-        this.tweens.add({
-          targets: img, alpha: inside ? RegionFieldScene.OCCLUDE_ALPHA : 1,
-          duration: RegionFieldScene.OCCLUDE_MS, ease: 'Sine.easeOut',
-        });
-      }
+
+    // 대상 = POI 프리팹(145차) + **타일 건물 지붕·주택 오브젝트**(150차).
+    //  구 구현은 프리팹만 봐서 "상호작용 건물 뒤는 비치는데 타일 건물 뒤는 안 보인다"는
+    //  사용자 리포트가 났다.
+    const targets: OccluderObj[] = [];
+    for (const list of this.occludersByChunk.values()) targets.push(...list);
+    const fromChunks = this.chunks?.listOccluders();
+    if (fromChunks) targets.push(...fromChunks);
+
+    for (const img of targets) {
+      if (!img.active) continue;
+      const on = this.faded.has(img);
+      const pad = on ? RegionFieldScene.OCCLUDE_HYSTERESIS : 0;
+      // ⚠ 원점이 제각각이다(프리팹 0.5/1 · 지붕 RT 0/0) → **경계 상자**로 판정한다.
+      const b = img.getBounds();
+      const inside = py < b.bottom + pad && py > b.top - pad
+        && px > b.left - pad && px < b.right + pad;
+      if (inside === on) continue;
+      if (inside) this.faded.add(img); else this.faded.delete(img);
+      this.tweens.killTweensOf(img);
+      this.tweens.add({
+        targets: img, alpha: inside ? RegionFieldScene.OCCLUDE_ALPHA : 1,
+        duration: RegionFieldScene.OCCLUDE_MS, ease: 'Sine.easeOut',
+      });
+    }
+
+    // 청크가 내려가면 그 그림은 파괴된다 — 죽은 참조를 걷어낸다.
+    if (this.faded.size > 64) {
+      for (const img of [...this.faded]) if (!img.active) this.faded.delete(img);
     }
   }
 
@@ -4144,36 +4193,37 @@ export class RegionFieldScene extends Phaser.Scene {
    * 쿨러 창이 열렸다). 입력 중에는 window에서 직접 받아 HUD로 넘긴다.
    */
   private startCompose(): void {
-    if (this.composeKeyHandler) return;
+    if (this.chatInput) return;
     this.hud?.beginCompose();
-    this.input.keyboard!.enabled = false;
-    this.composeKeyHandler = (ev: KeyboardEvent) => {
-      ev.preventDefault();
-      if (ev.key === 'Enter') {
-        const text = this.hud?.commitCompose() ?? '';
+    // ⚠ 150차: 구 구현은 window keydown에서 `ev.key`를 한 자씩 받아 **한글이 입력되지 않았다**
+    //   (조합 중에는 key가 'Process'로 오고 완성 글자는 keydown으로 오지 않는다).
+    //   숨김 DOM 입력에 맡기고 값만 받아 온다. Phaser 키보드는 TextInput이 꺼 준다.
+    this.chatInput = new TextInput(this, {
+      maxLength: MP_CHAT_MAX_LEN,
+      filter: (v) => v.replace(/[\r\n\t]/g, ''),
+      onChange: (v) => this.hud?.setCompose(v),
+      onSubmit: (v) => {
+        const text = v.trim();
+        this.hud?.commitCompose();
         this.endCompose();
         if (!text) return;
         MultiplayerClient.say(text);
         // 혼자 하는 중이면 서버가 돌려줄 사람이 없다 — 내 화면에만 남긴다(혼잣말).
         if (!MultiplayerClient.isConnected) this.hud?.pushLog(`${GameState.player.nickname}: ${text}`);
-        return;
-      }
-      if (ev.key === 'Escape') { this.hud?.cancelCompose(); this.endCompose(); return; }
-      this.hud?.typeCompose(ev.key);
-    };
-    window.addEventListener('keydown', this.composeKeyHandler, true);
+      },
+      onCancel: () => { this.hud?.cancelCompose(); this.endCompose(); },
+    });
   }
 
   private endCompose(): void {
-    if (!this.composeKeyHandler) return;
-    window.removeEventListener('keydown', this.composeKeyHandler, true);
-    this.composeKeyHandler = undefined;
+    if (!this.chatInput) return;
+    this.chatInput.close();
+    this.chatInput = undefined;
     this.hud?.cancelCompose();
-    if (this.input.keyboard) this.input.keyboard.enabled = true;
   }
 
-  /** 채팅 입력 중 window 키 가로채기 (없으면 입력 중이 아니다) */
-  private composeKeyHandler?: (ev: KeyboardEvent) => void;
+  /** 채팅 입력 중인 숨김 DOM 입력 (없으면 입력 중이 아니다) */
+  private chatInput?: TextInput;
 
   private clearPeers(): void {
     for (const o of this.peerObjs.values()) { o.img.destroy(); o.tag.destroy(); o.badge?.destroy(); }

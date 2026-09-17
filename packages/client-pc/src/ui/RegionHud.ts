@@ -1359,14 +1359,14 @@ export class RegionHud extends Phaser.GameObjects.Container {
     return text;
   }
 
-  /** 글자 한 자 — 씬의 입력 가로채기가 넘겨준다 */
-  typeCompose(key: string): void {
+  /**
+   * 입력 중인 글을 통째로 교체 (150차) — 한글 IME는 글자 단위로 오지 않는다.
+   * 씬의 `TextInput`(숨김 DOM 입력)이 조합이 끝날 때마다 현재 값을 통째로 넘긴다.
+   */
+  setCompose(text: string): void {
     if (!this.composing) return;
-    if (key === 'Backspace') { this.draft = this.draft.slice(0, -1); this.refreshChatInput(); return; }
-    if (key.length === 1 && this.draft.length < MP_CHAT_MAX_LEN) {
-      this.draft += key;
-      this.refreshChatInput();
-    }
+    this.draft = [...text].slice(0, MP_CHAT_MAX_LEN).join('');
+    this.refreshChatInput();
   }
 
   private refreshChatInput(): void {

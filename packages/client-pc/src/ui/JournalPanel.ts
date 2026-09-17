@@ -1,682 +1,793 @@
 /**
  * @file JournalPanel.ts
- * @description 일지 패널 (J — 136차 재작성). 좌 레일 / 우 본문 3단 항법.
+ * @description 일지 패널 (J) — **150차 전면 재작성**. 좌 임무 목록(표) / 우 임무 상세.
  *
- * 구 구조(120퀘를 한 트리에 펼친 윈도우드 목록)는 폐기 — "지금 어느 챕터의 무엇을 하고 있나"가
- * 스크롤 안에 묻혔다. 대신 **레일 = 챕터 7 + 조행록 + 자격 + 사람들**, 본문 = 선택한 챕터의
- * **메인 라인(세로 스파인) / 서브 아크(인물 박스)** 2트랙. 퀘스트를 고르면 본문이 상세로 바뀐다.
+ * 136차 구조(레일 + 2트랙)는 폐기했다. 실검증에서 두 가지가 드러났다 —
+ *  ① **아직 만나지도 않은 퀘스트의 제목·목표·레벨이 전부 열려 있었다.** 조행록 17장의 지표 어종·
+ *     계절·크기 조건, 인물 23명의 이야기까지. "유저가 미리 전체 퀘스트를 보게 되는 매우 안 좋은
+ *     효과"(사용자). 재미를 먼저 깨는 구현이었다.
+ *  ② 표현형이 텍스트 나열이었다 — 무엇이 얼마나 진행됐는지 한눈에 안 들어왔다.
  *
- * - 목록에는 경험치를 쓰지 않는다(사용자 지시) — XP는 **상세 '보상'** 에서만 보인다.
- * - 챕터별 추적: 레일의 진행 막대 + 본문 헤더의 메인/서브 카운트가 같은 수치를 쓴다.
- * - 상태 표기는 글자가 아니라 **도형 + 색**(완료 채운 원 / 진행 링 / 가능 빈 원 / 잠김 점).
+ * 그래서 AGENTS §4 R2(스포일러 금지)·R4(나레이션) 아래 다시 만든다:
+ *  - **목록 = 표**: 의뢰인 초상 · 임무 · 지역 · 상태 · **진행률 N% + 진행 바**.
+ *  - **기본은 진행 중·받을 수 있는 것만.** `완료한 임무 표시` / `잠긴 임무 표시` 토글로 넓힌다
+ *    (둘 다 기본 꺼짐). 잠긴 임무는 이름만 — 목표·보상은 열지 않는다.
+ *  - **상세 = 초상 + 나레이션(그 박스만 스크롤) + 목표 바 + 보상 카드.**
+ *    나레이션은 `descKo`(설계 요약)가 아니라 `StoryNarrative`(NPC의 말 + 내 생각)를 쓴다.
  *
- * 정의는 core `STORY_QUESTS`·`STORY_ARCS`, 상태는 `StoryStore`.
+ * 정의는 core `STORY_QUESTS`, 상태는 `StoryStore`.
  */
 
 import Phaser from 'phaser';
 import {
-  STORY_CHAPTERS, STORY_QUESTS, STORY_ARCS, JOURNAL_PAGES, getStoryNpc, getStoryArc, SEASON_LABEL, getJournalPage,
-  FISH_DATABASE, getLicenseByType, narrativeOf, choicesFor, getSkillById, type StoryQuestDef, type JournalPageDef, type StoryArcDef,
+  STORY_CHAPTERS, STORY_QUESTS, getStoryNpc, getLicenseByType, narrativeOf, getSkillById,
+  characterOf, type StoryQuestDef,
 } from '@tra/core';
 import { DraggablePanel, applyScreenFixed, restoreHandCursor } from './DraggablePanel.js';
-import { GameState } from '../store/GameState.js';
 import { StoryStore } from '../store/StoryStore.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { clampTextWidth, enforceTextBounds } from './TextFit.js';
+import { ensureFacePortrait } from './CharacterSprite.js';
+import { addPixelIcon } from './PixelIcon.js';
+import { questRewardItemName } from '../data/QuestRewardItems.js';
 
 const PANEL_W = 1080;
 const PANEL_H = 656;
-const RAIL_W = 236;
-const CONTENT_X = RAIL_W + 20;
-const CONTENT_W = PANEL_W - CONTENT_X - 16;
 const FONT = '"Noto Sans KR", sans-serif';
 
-/** 트랙 색 — 메인 = 부표 주황 / 서브 = 조류 청록 (아티팩트 항로도와 동일 체계) */
-const C_MAIN = '#ffb26b';
-const C_SUB = '#6fd3e0';
-const C_GOLD = '#ffd98a';
+const LIST_X = 12;
+const LIST_W = 486;
+const DET_X = LIST_X + LIST_W + 14;
+const DET_W = PANEL_W - DET_X - 14;
+
+/** 표 컬럼 — 초상 / 임무 / 지역 / 상태 / 진행률 */
+const C_FACE = 34;
+const C_REGION = 74;
+const C_STATE = 66;
+const C_PROG = 72;
+const C_NAME = LIST_W - C_FACE - C_REGION - C_STATE - C_PROG - 28;
+
+const ROW_H = 40;
+
 const C_TEXT = '#e8f4fd';
 const C_DIM = '#8fa8bc';
-const C_LOCK = '#6a7a8a';
+const C_GOLD = '#ffd98a';
+const C_OK = '#7fe0b0';
+const C_ACT = '#ffb26b';
+const C_LOCK = '#63737f';
 
 const REGION_LABEL: Record<string, string> = {
-  gangwon_sokcho: '강원 속초', busan: '부산', ulsan: '울산', gyeongbuk_pohang: '경북 포항',
-  gyeongnam_geoje: '경남 거제', jeonnam_yeosu: '전남 여수', chungnam_taean: '충남 태안',
-  jeju: '제주', ulleungdo: '울릉도', dokdo: '독도', incheon: '인천',
+  gangwon_sokcho: '속초', busan: '부산', ulsan: '울산', gyeongbuk_pohang: '포항',
+  gyeongnam_geoje: '거제', jeonnam_yeosu: '여수', chungnam_taean: '태안',
+  jeju: '제주', ulleungdo: '울릉도', dokdo: '독도', incheon: '인천', hometown: '집',
 };
 
-/** teaches 키 → 표기 (STORY_SPEC §9 표의 '가르치는 것') */
-const TEACH_LABEL: Record<string, string> = {
-  movement: '이동·상호작용', inventory: '인벤토리', statusPanel: '상태 패널', worldMap: '월드맵', shop: '상점', wages: '품삯·재화',
-  homeBase: '홈타운', save: '침대 저장', placement: '설치', deadline: 'D-day', budgetGear: '저가 장비', holeFishing: '구멍치기', tetrapodSafety: '테트라포드 안전',
-  casting: '캐스팅', floatRig: '찌 채비', bite: '입질', fight: '파이팅', law: '법 규칙 5조', measure: '체장 계측', release: '준법 방생', codex: '도감',
-  butchery: '손질', sashimi: '회뜨기', freshness: '신선도', cooking: '요리', crafting: '제작', backpack: '가방', firstAid: '응급처치',
-  tideland: '해루질', tideTable: '물때표', lantern: '헤드랜턴', cold: '오한·감기', communityWork: '공동작업', bicycle: '자전거', skills: '스킬 포인트', reputation: '평판',
-  licenseFlow: '자격 절차', auction: '위판', lure: '루어', trap: '통발', boatTrip: '배 출조', jigging: '지깅', egging: '에깅', surf: '서프',
-  seasickness: '멀미', weather: '기상 판단', oralHistory: '구술 채록', restocking: '종묘방류', boatOwnership: '선주', guideBusiness: '가이드 영업',
-  tournament: '대회', villageFishery: '마을어업권', ferry: '여객선', stallOps: '좌판 운영', voyagePlan: '항해 계획', journalComplete: '조행록 완성',
-};
-
-type View =
-  | { kind: 'chapter'; ch: number }
-  | { kind: 'quest'; id: string; from: number }
-  | { kind: 'journal' }
-  | { kind: 'ladder' }
-  | { kind: 'people' }
-  | { kind: 'arc'; id: string; from: View };
+type Row = { q: StoryQuestDef; st: ReturnType<typeof StoryStore.status>; pct: number };
 
 export interface JournalConfig { onClose: () => void }
 
 export class JournalPanel extends DraggablePanel {
-  private view: View;
-  /** 챕터 뷰 서브 트랙 스크롤 (137차 — 서브 15편·12아크 수용) */
-  private subScroll = 0;
-  private subScrollMax = 0;
-  private subScrollRect: Phaser.Geom.Rectangle | null = null;
+  /** 완료한 임무도 보여준다 (기본 꺼짐 — 재미를 깨지 않는다) */
+  private showDone = false;
+  /** 아직 받을 수 없는 임무를 이름만 보여준다 (기본 꺼짐 — R2) */
+  private showLocked = false;
+
+  /** 임무 목록 / 이야기(챕터 체인) */
+  private tab: 'tasks' | 'chain' = 'tasks';
+  private selId: string | null = null;
+  private scroll = 0;
+  private rows: Row[] = [];
+
+  private listC?: Phaser.GameObjects.Container;
+  private detC?: Phaser.GameObjects.Container;
+  /** 나레이션 박스 — 자체 스크롤(사용자 지시) */
+  private narrC?: Phaser.GameObjects.Container;
+  private narrScroll = 0;
+  private narrMax = 0;
+  private narrMask?: Phaser.GameObjects.Graphics;
+  private narrRect: Phaser.Geom.Rectangle | null = null;
+  private listRect: Phaser.Geom.Rectangle | null = null;
   private wheelHandler?: (p: Phaser.Input.Pointer, o: unknown[], dx: number, dy: number) => void;
-  private railC?: Phaser.GameObjects.Container;
-  private bodyC?: Phaser.GameObjects.Container;
+  private readonly postUpdate: () => void;
+  private lastX = NaN; private lastY = NaN;
 
   constructor(scene: Phaser.Scene, cfg: JournalConfig) {
     super(scene, {
       x: (GAME_WIDTH - PANEL_W) / 2, y: Math.max(8, (GAME_HEIGHT - PANEL_H) / 2),
-      width: PANEL_W, height: PANEL_H, title: '일지 — 조행록', onClose: cfg.onClose, dim: false, depth: 891,
+      width: PANEL_W, height: PANEL_H, title: '일지 — 임무', onClose: cfg.onClose, dim: false, depth: 891,
     });
-    this.view = { kind: 'chapter', ch: StoryStore.currentChapter() };
 
-    const g = scene.add.graphics();
-    const top = this.contentTop;
-    g.fillStyle(0x0a1b2d, 0.6); g.fillRoundedRect(8, top - 4, RAIL_W, PANEL_H - top - 8, 6);
-    g.lineStyle(1, 0x1c3d5a, 1); g.strokeRoundedRect(8, top - 4, RAIL_W, PANEL_H - top - 8, 6);
-    g.fillStyle(0x0c1e30, 0.55); g.fillRoundedRect(CONTENT_X - 8, top - 4, CONTENT_W + 16, PANEL_H - top - 8, 6);
-    g.lineStyle(1, 0x1c3d5a, 1); g.strokeRoundedRect(CONTENT_X - 8, top - 4, CONTENT_W + 16, PANEL_H - top - 8, 6);
-    this.add(g);
+    this.frameG = scene.add.graphics();
+    this.add(this.frameG);
 
-    // 137차 — 서브 트랙 휠 스크롤 (포인터가 그 열 위에 있을 때만)
     this.wheelHandler = (p, _o, _dx, dy) => {
-      if (this.subScrollMax <= 0 || !this.subScrollRect) return;
-      if (!Phaser.Geom.Rectangle.Contains(this.subScrollRect, p.x - this.x, p.y - this.y)) return;
-      const next = Math.max(0, Math.min(this.subScrollMax, this.subScroll + (dy > 0 ? 48 : -48)));
-      if (next !== this.subScroll) { this.subScroll = next; this.render(); }
+      const lx = p.x - this.x, ly = p.y - this.y;
+      if (this.narrRect && Phaser.Geom.Rectangle.Contains(this.narrRect, lx, ly)) {
+        const next = Phaser.Math.Clamp(this.narrScroll + (dy > 0 ? 34 : -34), 0, this.narrMax);
+        if (next !== this.narrScroll) { this.narrScroll = next; this.applyNarrScroll(); }
+        return;
+      }
+      if (this.listRect && Phaser.Geom.Rectangle.Contains(this.listRect, lx, ly)) {
+        const max = Math.max(0, this.rows.length - this.visibleRows());
+        const next = Phaser.Math.Clamp(this.scroll + (dy > 0 ? 1 : -1), 0, max);
+        if (next !== this.scroll) { this.scroll = next; this.renderList(); }
+      }
     };
     scene.input.on('wheel', this.wheelHandler);
+    this.postUpdate = () => { if (this.x !== this.lastX || this.y !== this.lastY) this.syncNarrMask(); };
+    scene.events.on('postupdate', this.postUpdate);
 
-    this.render();
-    applyScreenFixed(this);
+    this.rebuild();
   }
 
-  destroy(fromScene?: boolean): void {
-    if (this.wheelHandler) { this.scene?.input?.off('wheel', this.wheelHandler); this.wheelHandler = undefined; }
+  override destroy(fromScene?: boolean): void {
+    if (this.wheelHandler) this.scene?.input?.off('wheel', this.wheelHandler);
+    this.scene?.events?.off('postupdate', this.postUpdate);
+    this.narrMask?.destroy();
     super.destroy(fromScene);
   }
 
-  // ═══════════════════════════════════════════════════
-  // 공용 부품
-  // ═══════════════════════════════════════════════════
-
-  /** 퀘스트 상태 → 색 */
-  private statusColor(q: StoryQuestDef): string {
-    const st = StoryStore.status(q);
-    return st === 'done' ? '#7fe0b0' : st === 'active' ? '#ffd257' : st === 'available' ? C_TEXT : C_LOCK;
-  }
-
+  // ═══════════ 데이터 ═══════════
   /**
-   * 상태 마커 — 글리프가 아니라 **도형 + 색**(ui-panel §5).
-   * 완료 = 채운 원 / 진행 중 = 두꺼운 링 / 가능 = 얇은 링 / 잠김 = 작은 점.
+   * 보여줄 임무 목록 (R2 — 스포일러 금지).
+   *  기본: 진행 중 + 지금 받을 수 있는 것.  토글로 완료분·잠긴 것을 더한다.
+   *  잠긴 임무는 **이름만** 내준다(상세에서 목표·보상을 열지 않는다).
    */
-  private statusDot(c: Phaser.GameObjects.Container, x: number, y: number, q: StoryQuestDef): void {
-    const st = StoryStore.status(q);
-    const col = Phaser.Display.Color.HexStringToColor(this.statusColor(q)).color;
-    const g = this.scene.add.graphics();
-    if (st === 'done') { g.fillStyle(col, 1); g.fillCircle(x, y, 4.5); }
-    else if (st === 'active') { g.lineStyle(2.5, col, 1); g.strokeCircle(x, y, 4); }
-    else if (st === 'available') { g.lineStyle(1.2, col, 0.95); g.strokeCircle(x, y, 4.5); }
-    else { g.fillStyle(col, 0.8); g.fillCircle(x, y, 2); }
-    c.add(g);
+  private buildRows(): Row[] {
+    const out: Row[] = [];
+    for (const q of STORY_QUESTS) {
+      const st = StoryStore.status(q);
+      if (st === 'done' && !this.showDone) continue;
+      if ((st === 'locked' || st === 'declined') && !this.showLocked) continue;
+      out.push({ q, st, pct: this.pctOf(q, st) });
+    }
+    // 진행 중 → 받을 수 있는 것 → 완료 → 잠김 순, 그 안에서는 챕터·발행 순
+    const rank = (s: string): number => (s === 'active' ? 0 : s === 'available' ? 1 : s === 'done' ? 2 : 3);
+    out.sort((a, b) => rank(a.st) - rank(b.st) || a.q.chapter - b.q.chapter || a.q.id.localeCompare(b.q.id));
+    return out;
   }
 
-  /** 진행 막대 (레일·헤더 공용) */
-  private progressBar(
-    c: Phaser.GameObjects.Container, x: number, y: number, w: number, done: number, total: number, hex: string,
-  ): void {
-    const g = this.scene.add.graphics();
-    const col = Phaser.Display.Color.HexStringToColor(hex).color;
-    g.fillStyle(0x16293e, 1); g.fillRect(x, y, w, 4);
-    if (total > 0 && done > 0) { g.fillStyle(col, 0.95); g.fillRect(x, y, Math.max(2, (w * done) / total), 4); }
-    g.lineStyle(1, 0x2a3a4a, 1); g.strokeRect(x, y, w, 4);
-    c.add(g);
-  }
-
-  private text(
-    c: Phaser.GameObjects.Container, y: number, s: string,
-    size = '13px', color = C_TEXT, x = 6, w = CONTENT_W - 24, bold = false,
-  ): number {
-    const t = this.scene.add.text(x, y, s, {
-      fontFamily: FONT, fontSize: size, color, lineSpacing: 5,
-      wordWrap: { width: w }, fontStyle: bold ? 'bold' : 'normal',
+  /** 진행률 — 목표 완료수 / 전체. 단일 목표 임무는 0% → 100% (사용자 지시) */
+  private pctOf(q: StoryQuestDef, st: string): number {
+    if (st === 'done') return 100;
+    if (st !== 'active') return 0;
+    const n = q.objectives.length || 1;
+    let acc = 0;
+    q.objectives.forEach((o, i) => {
+      const tgt = StoryStore.objectiveTarget(o);
+      const cur = Math.min(tgt, StoryStore.progress(q.id)?.obj[i] ?? 0);
+      acc += tgt > 0 ? cur / tgt : 0;
     });
-    c.add(t);
-    return y + t.height + 6;
+    return Math.round((acc / n) * 100);
   }
 
-  /** 클릭 가능한 행 배경 */
-  private hitRow(
-    c: Phaser.GameObjects.Container, x: number, y: number, w: number, h: number, sel: boolean, onClick: () => void,
-  ): Phaser.GameObjects.Rectangle {
-    const r = this.scene.add.rectangle(x, y, w, h, sel ? 0x1f4a6a : 0x122236, sel ? 0.95 : 0.55).setOrigin(0, 0);
-    r.setStrokeStyle(1, sel ? 0x5cd0ff : 0x24384c, 1);
-    r.setInteractive({ useHandCursor: true });
-    r.on('pointerdown', () => { onClick(); restoreHandCursor(this.scene); });
-    c.add(r);
-    return r;
+  private stateLabel(st: string): { ko: string; color: string } {
+    switch (st) {
+      case 'active': return { ko: '진행 중', color: C_ACT };
+      case 'available': return { ko: '새 임무', color: C_OK };
+      case 'done': return { ko: '완료함', color: C_DIM };
+      case 'declined': return { ko: '거절함', color: C_LOCK };
+      default: return { ko: '잠김', color: C_LOCK };
+    }
   }
 
-  private go(v: View): void { this.view = v; this.subScroll = 0; this.render(); }
+  private visibleRows(): number {
+    return Math.floor((PANEL_H - (this.contentTop + 26) - 42) / ROW_H);
+  }
 
-  private render(): void {
-    this.renderRail();
-    this.renderBody();
+  // ═══════════ 렌더 ═══════════
+  private rebuild(): void {
+    this.rows = this.buildRows();
+    if (!this.selId || !this.rows.some((r) => r.q.id === this.selId)) {
+      this.selId = this.rows[0]?.q.id ?? null;
+      this.narrScroll = 0;
+    }
+    const max = Math.max(0, this.rows.length - this.visibleRows());
+    this.scroll = Phaser.Math.Clamp(this.scroll, 0, max);
+    this.paintFrame();
+    this.renderHeader();
+    if (this.tab === 'chain') {
+      this.listC?.destroy(); this.listC = undefined;
+      this.detC?.destroy(); this.detC = undefined;
+      this.narrMask?.destroy(); this.narrMask = undefined; this.narrRect = null;
+      this.renderChain();
+    } else {
+      this.chainC?.destroy(); this.chainC = undefined;
+      this.renderList(); this.renderDetail();
+    }
+  }
+
+  private headerC?: Phaser.GameObjects.Container;
+  private frameG?: Phaser.GameObjects.Graphics;
+
+  /** 배경 틀 — 임무 탭은 2단(목록/상세), 이야기 탭은 한 장 */
+  private paintFrame(): void {
+    const g = this.frameG;
+    if (!g) return;
+    g.clear();
+    const top = this.contentTop + 26;
+    const h = PANEL_H - top - 10;
+    if (this.tab === 'chain') {
+      g.fillStyle(0x0a1b2d, 0.6); g.fillRoundedRect(LIST_X - 4, top, PANEL_W - LIST_X - 8, h, 6);
+      g.lineStyle(1, 0x1c3d5a, 1); g.strokeRoundedRect(LIST_X - 4, top, PANEL_W - LIST_X - 8, h, 6);
+      return;
+    }
+    g.fillStyle(0x0a1b2d, 0.6); g.fillRoundedRect(LIST_X - 4, top, LIST_W + 8, h, 6);
+    g.lineStyle(1, 0x1c3d5a, 1); g.strokeRoundedRect(LIST_X - 4, top, LIST_W + 8, h, 6);
+    g.fillStyle(0x0c1e30, 0.55); g.fillRoundedRect(DET_X - 6, top, DET_W + 12, h, 6);
+    g.lineStyle(1, 0x1c3d5a, 1); g.strokeRoundedRect(DET_X - 6, top, DET_W + 12, h, 6);
+  }
+
+  /** 토글 2종 — 기본은 둘 다 꺼져 있다 */
+  private renderHeader(): void {
+    this.headerC?.destroy();
+    const c = this.scene.add.container(0, 0);
+    this.headerC = c; this.add(c);
+    const y = this.contentTop + 10;
+
+    const toggle = (x: number, on: boolean, label: string, hit: () => void): number => {
+      const g = this.scene.add.graphics();
+      g.fillStyle(on ? 0x1f5a3a : 0x14243a, 1); g.fillRect(x, y - 7, 14, 14);
+      g.lineStyle(1, on ? 0x4af2a1 : 0x2c5878, 1); g.strokeRect(x, y - 7, 14, 14);
+      if (on) { g.lineStyle(2, 0xd8ffe8, 1); g.lineBetween(x + 3, y, x + 6, y + 4); g.lineBetween(x + 6, y + 4, x + 11, y - 4); }
+      const t = this.scene.add.text(x + 20, y, label, {
+        fontFamily: FONT, fontSize: '11px', color: on ? C_TEXT : C_DIM,
+      }).setOrigin(0, 0.5);
+      const w = 20 + t.width + 14;
+      const h = this.scene.add.rectangle(x + w / 2 - 7, y, w, 22, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
+      h.on('pointerdown', () => { hit(); restoreHandCursor(this.scene); });
+      c.add([g, t, h]);
+      return x + w;
+    };
+
+    // 탭 — 임무 목록 / 이야기(챕터 체인)
+    let tx = LIST_X + 2;
+    for (const [key, label] of [['tasks', '임무'], ['chain', '이야기']] as const) {
+      const on = this.tab === key;
+      const t = this.scene.add.text(tx + 26, y, label, {
+        fontFamily: FONT, fontSize: '12px', color: on ? C_GOLD : C_DIM, fontStyle: on ? 'bold' : 'normal',
+      }).setOrigin(0.5, 0.5);
+      const g = this.scene.add.graphics();
+      g.fillStyle(on ? 0x1b3a52 : 0x0e1c2a, on ? 0.95 : 0.5); g.fillRect(tx, y - 11, 52, 22);
+      if (on) { g.fillStyle(0xd8b25f, 1); g.fillRect(tx, y + 9, 52, 2); }
+      const h = this.scene.add.rectangle(tx + 26, y, 52, 22, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
+      h.on('pointerdown', () => { this.tab = key; this.rebuild(); restoreHandCursor(this.scene); });
+      c.add([g, t, h]);
+      tx += 56;
+    }
+
+    let x = tx + 12;
+    if (this.tab === 'tasks') {
+      x = toggle(x, this.showDone, '완료한 임무 표시', () => { this.showDone = !this.showDone; this.scroll = 0; this.rebuild(); });
+      toggle(x + 6, this.showLocked, '잠긴 임무 표시', () => { this.showLocked = !this.showLocked; this.scroll = 0; this.rebuild(); });
+    }
+
+    const ch = StoryStore.currentChapter();
+    const def = STORY_CHAPTERS.find((x2) => x2.chapter === ch);
+    const info = this.scene.add.text(PANEL_W - 16, y, `제${ch}장 · ${def?.titleKo ?? ''}`, {
+      fontFamily: FONT, fontSize: '12px', color: C_GOLD,
+    }).setOrigin(1, 0.5);
+    clampTextWidth(info, DET_W - 20);
+    c.add(info);
     applyScreenFixed(this);
   }
 
-  // ═══════════════════════════════════════════════════
-  // 좌 레일 — 챕터 추적
-  // ═══════════════════════════════════════════════════
-  private renderRail(): void {
-    this.railC?.destroy();
+  private renderList(): void {
+    this.listC?.destroy();
     const c = this.scene.add.container(0, 0);
-    this.railC = c;
-    this.add(c);
+    this.listC = c; this.add(c);
+    const top = this.contentTop + 26;
+    this.listRect = new Phaser.Geom.Rectangle(LIST_X - 4, top, LIST_W + 8, PANEL_H - top - 10);
 
-    const x = 14;
-    const w = RAIL_W - 12;
-    let y = this.contentTop + 4;
+    // 표 헤더
+    const hy = top + 14;
+    const head = (x: number, w: number, s: string, align: 0 | 0.5 | 1 = 0): void => {
+      const t = this.scene.add.text(x + (align === 1 ? w : align === 0.5 ? w / 2 : 0), hy, s, {
+        fontFamily: FONT, fontSize: '10px', color: '#6f8ba1',
+      }).setOrigin(align, 0.5);
+      c.add(t);
+    };
+    let cx = LIST_X + 6;
+    head(cx, C_FACE, '의뢰인'); cx += C_FACE + 8;
+    head(cx, C_NAME, '임무'); cx += C_NAME + 6;
+    head(cx, C_REGION, '지역', 0.5); cx += C_REGION + 6;
+    head(cx, C_STATE, '상태', 0.5); cx += C_STATE + 6;
+    head(cx, C_PROG, '진행률', 0.5);
 
-    const total = StoryStore.counts();
-    const allDone = total.mainDone + total.subDone;
-    const allTotal = total.mainTotal + total.subTotal;
-    const head = this.scene.add.text(x, y, `전체 진행  ${allDone} / ${allTotal}`, {
-      fontFamily: FONT, fontSize: '12px', color: C_GOLD, fontStyle: 'bold',
+    const line = this.scene.add.graphics();
+    line.lineStyle(1, 0x1c3d5a, 1); line.lineBetween(LIST_X, hy + 10, LIST_X + LIST_W, hy + 10);
+    c.add(line);
+
+    if (this.rows.length === 0) {
+      const t = this.scene.add.text(LIST_X + LIST_W / 2, top + 70, '지금 맡고 있는 임무가 없습니다.\n항구 사람들과 이야기해 보세요.', {
+        fontFamily: FONT, fontSize: '12px', color: C_DIM, align: 'center', lineSpacing: 5,
+      }).setOrigin(0.5, 0);
+      c.add(t);
+      applyScreenFixed(this);
+      return;
+    }
+
+    // 윈도우드 렌더 — 보이는 행만 만든다(마스크는 입력을 안 자른다, ui-panel 규칙)
+    const vis = this.visibleRows();
+    const start = this.scroll;
+    const end = Math.min(this.rows.length, start + vis);
+    let y = hy + 22;
+    for (let i = start; i < end; i++) {
+      this.drawRow(c, this.rows[i], y);
+      y += ROW_H;
+    }
+
+    // 스크롤바 + 위치 표기 (조용한 잘림 금지)
+    if (this.rows.length > vis) {
+      const trackY = hy + 22, trackH = vis * ROW_H;
+      const bx = LIST_X + LIST_W - 4;
+      const g = this.scene.add.graphics();
+      g.fillStyle(0x0d1c2c, 1); g.fillRect(bx, trackY, 5, trackH);
+      const th = Math.max(22, trackH * (vis / this.rows.length));
+      const ty = trackY + (trackH - th) * (start / Math.max(1, this.rows.length - vis));
+      g.fillStyle(0x3d6f96, 1); g.fillRect(bx, ty, 5, th);
+      c.add(g);
+      const pos = this.scene.add.text(LIST_X + LIST_W - 12, PANEL_H - 16,
+        `${start + 1}–${end} / ${this.rows.length}`, { fontFamily: FONT, fontSize: '9px', color: '#6a8aa0' })
+        .setOrigin(1, 1);
+      c.add(pos);
+    }
+    applyScreenFixed(this);
+  }
+
+  private drawRow(c: Phaser.GameObjects.Container, row: Row, y: number): void {
+    const { q, st, pct } = row;
+    const sel = q.id === this.selId;
+    const locked = st === 'locked' || st === 'declined';
+    const g = this.scene.add.graphics();
+    g.fillStyle(sel ? 0x1b3a52 : 0x0e1c2a, sel ? 0.95 : 0.55);
+    g.fillRect(LIST_X, y - ROW_H / 2, LIST_W - 8, ROW_H - 3);
+    if (sel) { g.fillStyle(0xd8b25f, 1); g.fillRect(LIST_X, y - ROW_H / 2, 3, ROW_H - 3); }
+    c.add(g);
+
+    let cx = LIST_X + 6;
+    // 의뢰인 얼굴 — 잠긴 임무는 누가 주는지도 알려주지 않는다
+    if (!locked && q.giver) {
+      const key = ensureFacePortrait(this.scene, characterOf(q.giver), 2);
+      const img = this.scene.add.image(cx + C_FACE / 2, y, key).setOrigin(0.5).setDisplaySize(28, 28);
+      c.add(img);
+    } else {
+      const dot = addPixelIcon(this.scene, locked ? 'mk_quest' : 'mm_npc', cx + C_FACE / 2, y, 16);
+      if (dot) { dot.setAlpha(locked ? 0.25 : 0.6); c.add(dot); }
+    }
+    cx += C_FACE + 8;
+
+    const name = this.scene.add.text(cx, y, locked ? '???' : q.titleKo, {
+      fontFamily: FONT, fontSize: '13px',
+      color: locked ? C_LOCK : sel ? '#ffffff' : C_TEXT,
+      fontStyle: st === 'available' ? 'bold' : 'normal',
+    }).setOrigin(0, 0.5);
+    clampTextWidth(name, C_NAME);
+    c.add(name);
+    cx += C_NAME + 6;
+
+    const reg = this.scene.add.text(cx + C_REGION / 2, y, locked ? '—' : (REGION_LABEL[q.region] ?? q.region), {
+      fontFamily: FONT, fontSize: '11px', color: locked ? C_LOCK : C_DIM,
+    }).setOrigin(0.5);
+    clampTextWidth(reg, C_REGION);
+    c.add(reg);
+    cx += C_REGION + 6;
+
+    const lab = this.stateLabel(st);
+    const stT = this.scene.add.text(cx + C_STATE / 2, y, lab.ko, {
+      fontFamily: FONT, fontSize: '11px', color: lab.color,
+    }).setOrigin(0.5);
+    c.add(stT);
+    cx += C_STATE + 6;
+
+    // 진행률 — 숫자 + 그 아래 바 (접힌 상태에서 한눈에)
+    const pT = this.scene.add.text(cx + C_PROG / 2, y - 7, locked ? '—' : `${pct}%`, {
+      fontFamily: FONT, fontSize: '12px', color: locked ? C_LOCK : pct >= 100 ? C_OK : C_TEXT, fontStyle: 'bold',
+    }).setOrigin(0.5);
+    c.add(pT);
+    if (!locked) {
+      const bg = this.scene.add.graphics();
+      const bw = C_PROG - 12, bx = cx + 6;
+      bg.fillStyle(0x0d1c2c, 1); bg.fillRect(bx, y + 5, bw, 5);
+      bg.fillStyle(pct >= 100 ? 0x4af2a1 : 0xffb26b, 1); bg.fillRect(bx, y + 5, (bw * pct) / 100, 5);
+      bg.lineStyle(1, 0x24455f, 1); bg.strokeRect(bx, y + 5, bw, 5);
+      c.add(bg);
+    }
+
+    const hit = this.scene.add.rectangle(LIST_X + (LIST_W - 8) / 2, y, LIST_W - 8, ROW_H - 3, 0xffffff, 0.001)
+      .setInteractive({ useHandCursor: true });
+    hit.on('pointerdown', () => {
+      this.selId = q.id; this.narrScroll = 0;
+      this.renderList(); this.renderDetail(); restoreHandCursor(this.scene);
     });
-    c.add(head);
-    this.progressBar(c, x, y + 19, w, allDone, allTotal, C_GOLD);
-    y += 30;
-
-    const cur = StoryStore.currentChapter();
-    for (const ch of STORY_CHAPTERS) {
-      const qs = STORY_QUESTS.filter((q) => q.chapter === ch.chapter);
-      const done = qs.filter((q) => StoryStore.isDone(q.id)).length;
-      const open = StoryStore.chapterOpen(ch.chapter);
-      const sel = this.view.kind === 'chapter' ? this.view.ch === ch.chapter
-        : this.view.kind === 'quest' ? this.view.from === ch.chapter : false;
-      const rowH = 44;
-      this.hitRow(c, x - 4, y, w + 6, rowH, sel, () => this.go({ kind: 'chapter', ch: ch.chapter }));
-
-      const lab = this.scene.add.text(x + 4, y + 5, `Ch${ch.chapter}  ${ch.titleKo.split(' — ')[0]}`, {
-        fontFamily: FONT, fontSize: '12px', color: open ? C_TEXT : C_LOCK, fontStyle: 'bold',
-      });
-      clampTextWidth(lab, w - 56);
-      const cnt = this.scene.add.text(x + w - 8, y + 6, `${done}/${qs.length}`, {
-        fontFamily: FONT, fontSize: '10px', color: open ? C_DIM : C_LOCK,
-      }).setOrigin(1, 0);
-      const sub = this.scene.add.text(x + 4, y + 22, `${ch.titleKo.includes(' — ') ? ch.titleKo.split(' — ')[1] : ''} · Lv${ch.levelBand[0]}–${ch.levelBand[1]}`, {
-        fontFamily: FONT, fontSize: '10px', color: open ? C_DIM : C_LOCK,
-      });
-      clampTextWidth(sub, w - 16);
-      c.add([lab, cnt, sub]);
-      this.progressBar(c, x + 4, y + 36, w - 16, done, qs.length, open ? C_MAIN : '#3a4a5a');
-
-      if (ch.chapter === cur) {
-        const now = this.scene.add.graphics();
-        now.fillStyle(0xffd257, 1); now.fillRect(x - 8, y + 4, 3, rowH - 8);
-        c.add(now);
-      }
-      y += rowH + 4;
-    }
-
-    y += 6;
-    const extras: { key: View['kind']; label: string; note: string; v: View }[] = [
-      { key: 'journal', label: '동명 조행록', note: `${StoryStore.journalFilledCount()} / 17장`, v: { kind: 'journal' } },
-      { key: 'ladder', label: '자격 사다리', note: (() => { const d = StoryStore.deadlineDaysLeft(); return d == null ? '기한 없음' : d >= 0 ? `D-${d}` : `D+${-d} 초과`; })(), v: { kind: 'ladder' } },
-      { key: 'people', label: '사람들', note: `${STORY_ARCS.length} 아크`, v: { kind: 'people' } },
-    ];
-    for (const e of extras) {
-      const sel = this.view.kind === e.key || (this.view.kind === 'arc' && e.key === 'people');
-      this.hitRow(c, x - 4, y, w + 6, 26, sel, () => this.go(e.v));
-      const t = this.scene.add.text(x + 4, y + 5, e.label, { fontFamily: FONT, fontSize: '12px', color: C_GOLD });
-      const n = this.scene.add.text(x + w - 8, y + 6, e.note, { fontFamily: FONT, fontSize: '10px', color: C_DIM }).setOrigin(1, 0);
-      c.add([t, n]);
-      y += 30;
-    }
+    c.add(hit);
   }
 
-  // ═══════════════════════════════════════════════════
-  // 우 본문
-  // ═══════════════════════════════════════════════════
-  private renderBody(): void {
-    this.bodyC?.destroy();
-    const c = this.scene.add.container(CONTENT_X, this.contentTop);
-    this.bodyC = c;
-    this.add(c);
-    const v = this.view;
-    if (v.kind === 'chapter') this.renderChapter(c, v.ch);
-    else if (v.kind === 'quest') this.renderQuest(c, v);
-    else if (v.kind === 'journal') this.renderJournal(c);
-    else if (v.kind === 'ladder') this.renderLadder(c);
-    else if (v.kind === 'people') this.renderPeople(c);
-    else this.renderArc(c, v);
-    enforceTextBounds(c, CONTENT_W - 4, 'JournalPanel');
-  }
+  // ═══════════ 이야기 (챕터 체인) ═══════════
+  private chainC?: Phaser.GameObjects.Container;
 
-  /** 되돌아가기 줄 */
-  private backRow(c: Phaser.GameObjects.Container, label: string, to: View): number {
-    const r = this.scene.add.rectangle(4, 4, 150, 20, 0x16293e, 0.9).setOrigin(0, 0);
-    r.setStrokeStyle(1, 0x2a3a4a, 1);
-    r.setInteractive({ useHandCursor: true });
-    r.on('pointerdown', () => { this.go(to); restoreHandCursor(this.scene); });
-    const t = this.scene.add.text(12, 7, `◀ ${label}`, { fontFamily: FONT, fontSize: '11px', color: '#9fd5ff' });
-    clampTextWidth(t, 134);
-    c.add([r, t]);
-    return 30;
-  }
+  /**
+   * 챕터 하나 = **세로 체인 하나** (사용자 지정 — 타르코프 챕터 화면).
+   *
+   * 붉은 점선 척추를 따라 체크박스 행이 내려오고, **지금 자리**에 ▼ 화살표가 선다.
+   * ⚠ R2 — 미래 목표는 그리지 않는다. 지나온 것과 **지금 하나**까지다.
+   */
+  private renderChain(): void {
+    this.chainC?.destroy();
+    const c = this.scene.add.container(0, 0);
+    this.chainC = c; this.add(c);
+    const top = this.contentTop + 26;
 
-  // ── 챕터 (2트랙) ──
-  private renderChapter(c: Phaser.GameObjects.Container, chNum: number): void {
-    const ch = STORY_CHAPTERS.find((x) => x.chapter === chNum);
-    if (!ch) return;
-    const mains = STORY_QUESTS.filter((q) => q.chapter === chNum && q.kind === 'main');
-    const subs = STORY_QUESTS.filter((q) => q.chapter === chNum && q.kind === 'sub');
-    const open = StoryStore.chapterOpen(chNum);
+    const ch = StoryStore.currentChapter();
+    const def = STORY_CHAPTERS.find((x) => x.chapter === ch);
+    const bx = LIST_X + 8;
+    const bw = PANEL_W - bx - 20;
 
-    // 헤더
-    const eyebrow = this.scene.add.text(6, 4, `제${ch.part}부 ${ch.partTitleKo}  ·  Chapter ${ch.chapter}`, {
-      fontFamily: FONT, fontSize: '10px', color: C_MAIN,
+    // 챕터 배너
+    const g = this.scene.add.graphics();
+    g.fillStyle(0x12263a, 0.95); g.fillRect(bx, top + 8, bw, 56);
+    g.lineStyle(1, 0x3c6f95, 1); g.strokeRect(bx, top + 8, bw, 56);
+    g.fillStyle(0xd8b25f, 1); g.fillRect(bx, top + 8, 4, 56);
+    c.add(g);
+    const eyebrow = this.scene.add.text(bx + 16, top + 22, '제 ' + ch + ' 장', {
+      fontFamily: FONT, fontSize: '10px', color: '#6f8ba1',
+    }).setOrigin(0, 0.5);
+    const title = this.scene.add.text(bx + 16, top + 42, def?.titleKo ?? '', {
+      fontFamily: FONT, fontSize: '18px', color: C_TEXT, fontStyle: 'bold',
+    }).setOrigin(0, 0.5);
+    clampTextWidth(title, bw - 140);
+    const badge = this.scene.add.text(bx + bw - 16, top + 32, '진행 중', {
+      fontFamily: FONT, fontSize: '11px', color: '#0b1620', fontStyle: 'bold',
+      backgroundColor: '#d8b25f', padding: { x: 8, y: 3 },
+    }).setOrigin(1, 0.5);
+    c.add([eyebrow, title, badge]);
+
+    // 1인칭 한 줄 — 지금 어디에 서 있는지
+    const chain = this.chainRows(ch);
+    const cur = chain.find((r) => !r.done);
+    const lead = cur ? (narrativeOf(cur.q.id)?.intro ?? cur.q.descKo) : '이 장에서 할 일은 다 했다.';
+    const quote = this.scene.add.text(bx + 4, top + 76, lead, {
+      fontFamily: FONT, fontSize: '12px', color: '#d6c9a8', fontStyle: 'italic',
+      lineSpacing: 4, wordWrap: { width: bw - 8, useAdvancedWrap: true },
     });
-    c.add(eyebrow);
-    let y = this.text(c, 20, ch.titleKo, '18px', open ? C_TEXT : C_LOCK, 6, CONTENT_W - 280, true);
-    y = this.text(c, y - 2, `Lv ${ch.levelBand[0]}–${ch.levelBand[1]}   ·   ${ch.regionIds.map((r) => REGION_LABEL[r] ?? r).join(' · ')}   ·   ${open ? '개방' : '잠김 — 이전 챕터 마지막 메인 완료 시'}`,
-      '11px', C_DIM, 6, CONTENT_W - 280);
-    y = this.text(c, y, `"${ch.questionKo}"`, '13px', '#cfe6f5', 6, CONTENT_W - 290);
+    c.add(quote);
 
-    // 우상단 자격 박스
-    if (ch.qualification) {
-      const qw = 258;
-      const qx = CONTENT_W - qw - 4;
-      const box = this.scene.add.graphics();
-      box.fillStyle(0x2a2411, 0.75); box.fillRoundedRect(qx, 4, qw, 84, 4);
-      box.lineStyle(1, 0x5a4a1e, 1); box.strokeRoundedRect(qx, 4, qw, 84, 4);
-      c.add(box);
-      const held = ch.qualification.licenseIds.length > 0
-        && ch.qualification.licenseIds.every((l) => GameState.hasLicense(l as never));
-      const k = this.scene.add.text(qx + 10, 10, '챕터 자격 조건', { fontFamily: FONT, fontSize: '9px', color: C_GOLD, fontStyle: 'bold' });
-      const vtx = this.scene.add.text(qx + 10, 24, ch.qualification.labelKo, {
-        fontFamily: FONT, fontSize: '12px', color: held ? '#7fe0b0' : C_TEXT, wordWrap: { width: qw - 20 },
-      });
-      const dtx = this.scene.add.text(qx + 10, 24 + vtx.height + 6, `기한 ${ch.qualification.deadlineKo}\n여는 것 ${ch.qualification.unlocksKo}`, {
-        fontFamily: FONT, fontSize: '10px', color: C_DIM, lineSpacing: 3, wordWrap: { width: qw - 20 },
-      });
-      c.add([k, vtx, dtx]);
-    }
+    let y = top + 76 + quote.height + 16;
+    const hd = this.scene.add.text(bx + 4, y, '목표', { fontFamily: FONT, fontSize: '12px', color: '#6f8ba1' });
+    c.add(hd); y += hd.height + 8;
 
-    // 트랙 2열
-    const colW = (CONTENT_W - 30) / 2;
-    const leftX = 6;
-    const rightX = 6 + colW + 24;
-    const trackTop = Math.max(y + 8, 104);
-
-    const mDone = mains.filter((q) => StoryStore.isDone(q.id)).length;
-    const sDone = subs.filter((q) => StoryStore.isDone(q.id)).length;
-    this.trackLabel(c, leftX, trackTop, colW, `메인 라인  ${mDone} / ${mains.length}`, C_MAIN);
-    this.trackLabel(c, rightX, trackTop, colW, `서브 아크  ${sDone} / ${subs.length}`, C_SUB);
-    this.progressBar(c, leftX, trackTop + 17, colW, mDone, mains.length, C_MAIN);
-    this.progressBar(c, rightX, trackTop + 17, colW, sDone, subs.length, C_SUB);
-
-    // 메인 = 세로 스파인
-    let my = trackTop + 30;
-    const spineTop = my + 8;
-    const rowH = 24;
-    for (const q of mains) {
-      this.questRow(c, leftX + 16, my, colW - 16, q, chNum);
-      this.statusDot(c, leftX + 5, my + 11, q);
-      my += rowH;
-    }
+    // 붉은 점선 척추
+    const spineX = bx + 12;
     const spine = this.scene.add.graphics();
-    spine.lineStyle(1, 0x2a4a62, 1);
-    spine.lineBetween(leftX + 5, spineTop, leftX + 5, my - rowH + 11);
+    const rowTop = y;
+
+    let drawn = 0;
+    for (const r of chain) {
+      if (y + 26 > PANEL_H - this.contentTop - 12) break;
+      // 체크박스
+      const box = this.scene.add.graphics();
+      box.fillStyle(r.done ? 0x14352c : 0x0e1c2a, 1); box.fillRect(spineX + 10, y + 2, 13, 13);
+      box.lineStyle(1, r.done ? 0x4af2a1 : 0x3c6f95, 1); box.strokeRect(spineX + 10, y + 2, 13, 13);
+      if (r.done) {
+        box.lineStyle(2, 0xd8ffe8, 1);
+        box.lineBetween(spineX + 13, y + 8, spineX + 16, y + 12);
+        box.lineBetween(spineX + 16, y + 12, spineX + 21, y + 4);
+      }
+      c.add(box);
+      const t = this.scene.add.text(spineX + 32, y + 9, r.label, {
+        fontFamily: FONT, fontSize: '13px',
+        color: r.done ? C_DIM : C_TEXT, fontStyle: r.done ? 'normal' : 'bold',
+      }).setOrigin(0, 0.5);
+      clampTextWidth(t, bw - 130);
+      c.add(t);
+      if (r.note) {
+        const n = this.scene.add.text(spineX + 32, y + 24, r.note, {
+          fontFamily: FONT, fontSize: '10px', color: '#6a7f92',
+        }).setOrigin(0, 0);
+        clampTextWidth(n, bw - 130);
+        c.add(n);
+      }
+      if (r.target > 1) {
+        const p2 = this.scene.add.text(bx + bw - 8, y + 9, `${r.cur}/${r.target}`, {
+          fontFamily: FONT, fontSize: '11px', color: C_DIM,
+        }).setOrigin(1, 0.5);
+        const bg = this.scene.add.graphics();
+        const pw = 54, px = bx + bw - 8 - 44 - pw;
+        bg.fillStyle(0x0d1c2c, 1); bg.fillRect(px, y + 6, pw, 6);
+        bg.fillStyle(0xffb26b, 1); bg.fillRect(px, y + 6, (pw * r.cur) / Math.max(1, r.target), 6);
+        c.add([bg, p2]);
+      }
+      // 지금 자리 화살표
+      if (!r.done && drawn === chain.filter((x) => x.done).length) {
+        const ar = this.scene.add.graphics();
+        ar.fillStyle(0xe0483a, 1);
+        ar.fillTriangle(spineX - 6, y + 4, spineX + 4, y + 4, spineX - 1, y + 14);
+        c.add(ar);
+      }
+      y += r.note ? 38 : 26;
+      drawn++;
+    }
+
+    // 척추 — 점선
+    spine.lineStyle(2, 0xe0483a, 0.85);
+    for (let sy = rowTop; sy < y - 8; sy += 7) spine.lineBetween(spineX, sy, spineX, sy + 4);
     c.add(spine);
 
-    // 서브 = 아크 박스 (한 줄 헤더 — 세로 예산 확보)
-    //  ⚠ 137차 — 서브가 챕터당 최대 15편 · 12아크로 늘어 간격 압축만으로는 못 담는다.
-    //    **윈도우드 렌더 + 휠 스크롤**로 바꾼다(마스크는 팬텀 히트 — ui-panel 규칙).
-    const byArc = new Map<string, StoryQuestDef[]>();
-    for (const q of subs) {
-      const a = q.arcId ?? '?';
-      if (!byArc.has(a)) byArc.set(a, []);
-      byArc.get(a)!.push(q);
-    }
-    const listTop = trackTop + 30;
-    const budget = PANEL_H - this.contentTop - 18 - listTop;
-    const gap = 6;
-    // 아크 헤더/퀘스트 행을 한 줄짜리 항목으로 평탄화 — 스크롤 단위가 된다
-    type Item = { h: number; draw: (yy: number) => void };
-    const items: Item[] = [];
-    for (const [arcId, list] of byArc) {
-      const arc = getStoryArc(arcId);
-      items.push({ h: 22, draw: (yy) => {
-        const hr = this.scene.add.rectangle(rightX, yy, colW, 20, 0x102838, 0.85).setOrigin(0, 0);
-        hr.setStrokeStyle(1, 0x24485c, 1);
-        hr.setInteractive({ useHandCursor: true });
-        hr.on('pointerdown', () => { this.go({ kind: 'arc', id: arcId, from: { kind: 'chapter', ch: chNum } }); restoreHandCursor(this.scene); });
-        const pr = StoryStore.arcProgress(arcId);
-        const ht = this.scene.add.text(rightX + 7, yy + 4, `${arcId}  ${arc?.titleKo.split(' — ')[0] ?? arcId}`, {
-          fontFamily: FONT, fontSize: '11px', color: C_SUB,
-        });
-        clampTextWidth(ht, colW - 60);
-        const hp = this.scene.add.text(rightX + colW - 7, yy + 5, `${pr.done}/${pr.total}`, {
-          fontFamily: FONT, fontSize: '9px', color: C_DIM,
-        }).setOrigin(1, 0);
-        c.add([hr, ht, hp]);
-      } });
-      for (const q of list) {
-        items.push({ h: rowH, draw: (yy) => {
-          this.questRow(c, rightX + 14, yy, colW - 14, q, chNum);
-          this.statusDot(c, rightX + 7, yy + 11, q);
-        } });
-      }
-      items.push({ h: gap, draw: () => { /* 아크 사이 여백 */ } });
-    }
-    const total = items.reduce((a, it) => a + it.h, 0);
-    const maxScroll = Math.max(0, total - budget);
-    this.subScroll = Math.max(0, Math.min(maxScroll, this.subScroll));
-    // 보이는 항목만 생성한다 (스크롤아웃 행의 팬텀 히트 방지)
-    let off = 0;
-    for (const it of items) {
-      const yy = listTop + off - this.subScroll;
-      // 아래로 삐져나가는 행은 그리지 않는다 (경계 밖 렌더 금지 — ui-panel 규칙)
-      if (yy >= listTop - 1 && yy + it.h <= listTop + budget + 1) it.draw(yy);
-      off += it.h;
-    }
-    if (maxScroll > 0) {
-      // 스크롤바 + 위치 표기
-      const sbX = rightX + colW + 4;
-      const bar = this.scene.add.graphics();
-      bar.fillStyle(0x0c1e30, 0.9); bar.fillRoundedRect(sbX, listTop, 5, budget, 2);
-      const th = Math.max(24, budget * (budget / total));
-      const ty = listTop + (budget - th) * (this.subScroll / maxScroll);
-      bar.fillStyle(0x2f6f86, 1); bar.fillRoundedRect(sbX, ty, 5, th, 2);
-      c.add(bar);
-      const hint = this.scene.add.text(rightX + colW - 7, trackTop + 1, '휠 스크롤', {
-        fontFamily: FONT, fontSize: '9px', color: C_DIM,
-      }).setOrigin(1, 0);
-      c.add(hint);
-      this.subScrollMax = maxScroll;
-      // 패널 로컬 좌표로 저장 — 드래그로 패널이 움직여도 유효하다
-      this.subScrollRect = new Phaser.Geom.Rectangle(
-        CONTENT_X + rightX, this.contentTop + listTop, colW + 10, budget);
-    } else { this.subScrollMax = 0; this.subScrollRect = null; }
+    const tail = this.scene.add.text(bx + 4, y + 10,
+      '다음 할 일은 그 사람과 이야기해야 열립니다.', {
+        fontFamily: FONT, fontSize: '11px', color: '#6a7f92',
+      });
+    c.add(tail);
+
+    enforceTextBounds(c, PANEL_W - 10, 'JournalPanel/chain');
+    applyScreenFixed(this);
   }
 
-  private trackLabel(c: Phaser.GameObjects.Container, x: number, y: number, w: number, s: string, hex: string): void {
-    const t = this.scene.add.text(x, y, s, { fontFamily: FONT, fontSize: '11px', color: hex, fontStyle: 'bold' });
-    clampTextWidth(t, w);
-    c.add(t);
+  /**
+   * 체인 행 — 이 챕터에서 **지나온 목표 + 지금 하나**.
+   * 완료한 임무의 목표는 모두, 진행 중 임무는 완료분 + 다음 하나, 그 뒤는 그리지 않는다.
+   */
+  private chainRows(ch: number): { q: StoryQuestDef; label: string; note?: string; done: boolean; cur: number; target: number }[] {
+    const out: { q: StoryQuestDef; label: string; note?: string; done: boolean; cur: number; target: number }[] = [];
+    const qs = STORY_QUESTS.filter((q) => q.chapter === ch);
+    for (const q of qs) {
+      const st = StoryStore.status(q);
+      if (st === 'locked' || st === 'declined') continue;
+      const n = narrativeOf(q.id);
+      let stop = false;
+      q.objectives.forEach((o, i) => {
+        if (stop) return;
+        const done = StoryStore.objectiveDone(q, i);
+        const tgt = StoryStore.objectiveTarget(o);
+        const cur = Math.min(tgt, StoryStore.progress(q.id)?.obj[i] ?? 0);
+        out.push({ q, label: n?.objectives?.[i] ?? o.labelKo, note: i === 0 ? q.titleKo : undefined, done, cur, target: tgt });
+        if (!done) stop = true;    // 미래 목표는 열지 않는다 (R2)
+      });
+      if (stop) break;
+      if (st !== 'done') break;
+    }
+    return out;
   }
 
-  /** 퀘스트 한 줄 — 제목만(경험치는 상세 '보상'에서만 — 사용자 지시) */
-  private questRow(
-    c: Phaser.GameObjects.Container, x: number, y: number, w: number, q: StoryQuestDef, from: number,
-  ): void {
-    const r = this.scene.add.rectangle(x, y, w, 22, 0x0e1c2b, 0.5).setOrigin(0, 0);
-    r.setStrokeStyle(1, 0x1a2c3e, 1);
-    r.setInteractive({ useHandCursor: true });
-    r.on('pointerover', () => r.setFillStyle(0x1a3247, 0.8));
-    r.on('pointerout', () => r.setFillStyle(0x0e1c2b, 0.5));
-    r.on('pointerdown', () => { this.go({ kind: 'quest', id: q.id, from }); restoreHandCursor(this.scene); });
-    const t = this.scene.add.text(x + 8, y + 4, q.titleKo, {
-      fontFamily: FONT, fontSize: '12px', color: this.statusColor(q),
-    });
-    clampTextWidth(t, w - 50);
-    const lv = this.scene.add.text(x + w - 7, y + 5, `Lv${q.minLevel}`, {
-      fontFamily: FONT, fontSize: '9px', color: C_LOCK,
-    }).setOrigin(1, 0);
-    c.add([r, t, lv]);
-  }
+  // ═══════════ 상세 ═══════════
+  private renderDetail(): void {
+    this.detC?.destroy();
+    this.narrMask?.destroy(); this.narrMask = undefined;
+    this.narrRect = null;
+    const c = this.scene.add.container(0, 0);
+    this.detC = c; this.add(c);
+    const top = this.contentTop + 26;
 
-  // ── 퀘스트 상세 ──
-  private renderQuest(c: Phaser.GameObjects.Container, v: { id: string; from: number }): void {
-    const q = STORY_QUESTS.find((x) => x.id === v.id);
-    if (!q) return;
-    const ch = STORY_CHAPTERS.find((x) => x.chapter === v.from);
-    let y = this.backRow(c, `Ch${v.from} ${ch?.titleKo.split(' — ')[0] ?? ''}`, { kind: 'chapter', ch: v.from });
+    const row = this.rows.find((r) => r.q.id === this.selId);
+    if (!row) { applyScreenFixed(this); return; }
+    const { q, st, pct } = row;
+    const locked = st === 'locked' || st === 'declined';
 
-    const st = StoryStore.status(q);
-    const stLabel = st === 'done' ? '완료' : st === 'active' ? '진행 중' : st === 'available' ? '수락 가능' : st === 'declined' ? '거절함' : '잠김';
-    const accent = q.kind === 'main' ? C_MAIN : C_SUB;
-    const h = this.scene.add.text(6, y, q.titleKo, {
-      fontFamily: FONT, fontSize: '18px', color: accent, fontStyle: 'bold', wordWrap: { width: CONTENT_W - 140 },
-    });
-    const chip = this.scene.add.text(CONTENT_W - 12, y + 4, stLabel, {
-      fontFamily: FONT, fontSize: '11px', color: '#0b1620', fontStyle: 'bold',
-      backgroundColor: st === 'done' ? '#7fe0b0' : st === 'active' ? '#ffd257' : st === 'available' ? '#9fd5ff' : st === 'declined' ? '#e08a8a' : '#8a97a8',
-      padding: { x: 7, y: 2 },
-    }).setOrigin(1, 0);
-    c.add([h, chip]);
-    y += h.height + 6;
+    // 상단 바 — 임무명 · 지역 · 상태
+    const title = this.scene.add.text(DET_X + 4, top + 16, locked ? '???' : `[${q.titleKo}]`, {
+      fontFamily: FONT, fontSize: '16px', color: locked ? C_LOCK : C_GOLD, fontStyle: 'bold',
+    }).setOrigin(0, 0.5);
+    clampTextWidth(title, DET_W - 190);
+    const lab = this.stateLabel(st);
+    const meta = this.scene.add.text(DET_X + DET_W - 4, top + 16,
+      locked ? lab.ko : `${REGION_LABEL[q.region] ?? q.region}  ·  ${lab.ko}  ·  ${pct}%`, {
+        fontFamily: FONT, fontSize: '12px', color: lab.color,
+      }).setOrigin(1, 0.5);
+    c.add([title, meta]);
+    const hr = this.scene.add.graphics();
+    hr.lineStyle(1, 0x1c3d5a, 1); hr.lineBetween(DET_X, top + 30, DET_X + DET_W, top + 30);
+    c.add(hr);
 
-    const giver = q.giver ? (getStoryNpc(q.giver)?.nameKo ?? q.giver) : '(자동 시작)';
-    const arc = q.arcId ? getStoryArc(q.arcId) : undefined;
-    y = this.text(c, y, `${q.kind === 'main' ? '메인' : `서브 · ${arc?.titleKo ?? q.arcId}`}  ·  ${q.id}  ·  Lv${q.minLevel}+  ·  ${REGION_LABEL[q.region] ?? q.region}  ·  발주 ${giver}`,
-      '11px', C_DIM);
-    // 141차 — 표(descKo) 대신 주인공 나레이션. 이야기로 읽힌다.
-    const n = narrativeOf(q.id);
-    y = this.text(c, y, n?.intro ?? q.descKo, '13px', n ? '#d6c9a8' : C_TEXT, 6, CONTENT_W - 24);
-    const note = StoryStore.offerNoteKo(q);
-    if (note && st !== 'done') y = this.text(c, y, note, '11px', '#ffb45a');
-    if (q.deadline) {
-      y = this.text(c, y, `기한 ${q.deadline.days}일 — 초과 시 ${q.deadline.onMiss === 'cost' ? '비용 발생' : '한 시즌 지연'} (실패 없음)`, '11px', C_GOLD);
+    if (locked) {
+      const t = this.scene.add.text(DET_X + DET_W / 2, top + 110,
+        '아직 받지 않은 의뢰입니다.\n조건이 갖춰지면 그 사람이 먼저 말을 걸어 옵니다.', {
+          fontFamily: FONT, fontSize: '12px', color: C_DIM, align: 'center', lineSpacing: 6,
+        }).setOrigin(0.5, 0);
+      c.add(t);
+      enforceTextBounds(c, PANEL_W - 10, 'JournalPanel');
+      applyScreenFixed(this);
+      return;
     }
 
-    y = this.text(c, y + 4, '목표', '13px', accent, 6, CONTENT_W - 24, true);
+    // ── 초상 + 나레이션 ──
+    const py = top + 44;
+    const FACE = 6;                     // 16px 아트 × 6 = 96
+    const faceW = 16 * FACE;
+    const npc = q.giver ? getStoryNpc(q.giver) : undefined;
+    if (q.giver) {
+      const g = this.scene.add.graphics();
+      g.fillStyle(0x12263a, 1); g.fillRect(DET_X + 4, py, faceW, faceW);
+      g.lineStyle(1, 0x3c6f95, 1); g.strokeRect(DET_X + 4, py, faceW, faceW);
+      c.add(g);
+      const key = ensureFacePortrait(this.scene, characterOf(q.giver), FACE);
+      c.add(this.scene.add.image(DET_X + 4, py, key).setOrigin(0, 0));
+      const nm = this.scene.add.text(DET_X + 4 + faceW / 2, py + faceW + 4, npc?.nameKo ?? '', {
+        fontFamily: FONT, fontSize: '11px', color: C_TEXT,
+      }).setOrigin(0.5, 0);
+      clampTextWidth(nm, faceW);
+      c.add(nm);
+    }
+
+    const nx = q.giver ? DET_X + 4 + faceW + 12 : DET_X + 4;
+    const nw = DET_X + DET_W - 4 - nx;
+    const nh = faceW + 22;
+    this.buildNarration(c, q, nx, py, nw, nh);
+
+    // ── 목표 ──
+    let y = py + nh + 14;
+    const oh = this.scene.add.text(DET_X + 4, y, '목표', { fontFamily: FONT, fontSize: '12px', color: '#6f8ba1' });
+    c.add(oh); y += oh.height + 6;
     q.objectives.forEach((o, i) => {
       const done = StoryStore.objectiveDone(q, i);
-      const cur = StoryStore.progress(q.id)?.obj[i] ?? 0;
       const tgt = StoryStore.objectiveTarget(o);
-      const prog = tgt > 1 ? ` (${Math.min(cur, tgt).toLocaleString()}/${tgt.toLocaleString()})` : '';
+      const cur = Math.min(tgt, StoryStore.progress(q.id)?.obj[i] ?? 0);
       const g = this.scene.add.graphics();
-      if (done) { g.fillStyle(0x7fe0b0, 1); g.fillCircle(12, y + 8, 3.5); }
-      else { g.lineStyle(1.2, 0x9fb8cc, 0.9); g.strokeCircle(12, y + 8, 3.5); }
+      g.fillStyle(done ? 0x14352c : 0x14243a, 0.92);
+      g.fillRect(DET_X + 4, y, DET_W - 8, 30);
+      g.lineStyle(1, done ? 0x2f7a5c : 0x24455f, 1);
+      g.strokeRect(DET_X + 4, y, DET_W - 8, 30);
       c.add(g);
-      y = this.text(c, y, `${n?.objectives?.[i] ?? o.labelKo}${prog}${o.manual && !done && st !== 'done' ? '  — 발주 NPC 대화로 진행' : ''}`,
-        '12px', done ? '#7fe0b0' : '#d0e8f5', 24, CONTENT_W - 44);
+      const label = narrativeOf(q.id)?.objectives?.[i] ?? o.labelKo;
+      const t = this.scene.add.text(DET_X + 16, y + 15, label, {
+        fontFamily: FONT, fontSize: '12px', color: done ? C_OK : C_TEXT,
+      }).setOrigin(0, 0.5);
+      clampTextWidth(t, DET_W - 110);
+      c.add(t);
+      if (tgt > 1) {
+        const p2 = this.scene.add.text(DET_X + DET_W - 34, y + 15, `${cur}/${tgt}`, {
+          fontFamily: FONT, fontSize: '11px', color: C_DIM,
+        }).setOrigin(1, 0.5);
+        c.add(p2);
+      }
+      if (done) {
+        const ck = this.scene.add.graphics();
+        ck.lineStyle(2, 0x7fe0b0, 1);
+        ck.lineBetween(DET_X + DET_W - 24, y + 15, DET_X + DET_W - 19, y + 20);
+        ck.lineBetween(DET_X + DET_W - 19, y + 20, DET_X + DET_W - 12, y + 9);
+        c.add(ck);
+      }
+      y += 34;
     });
 
-    // 보상 — 경험치는 여기에만 표기한다(사용자 지시). 141차: 나머지는 **완료 후에만** 드러난다(재도전 동기).
-    y = this.text(c, y + 4, '보상', '13px', C_GOLD, 6, CONTENT_W - 24, true);
-    if (st === 'done') {
-      const rw: string[] = [`경험치 ${q.xp.toLocaleString()} XP`];
-      if (q.rewards?.coins) rw.push(`${q.rewards.coins.toLocaleString()}원`);
-      for (const l of q.rewards?.licenses ?? []) rw.push(getLicenseByType(l as never)?.nameKo ?? l);
-      for (const it of q.rewards?.items ?? []) rw.push(`${GameState.itemNameOf(it.id)}${it.qty > 1 ? ` ×${it.qty}` : ''}${it.bound ? ' (귀속)' : ''}`);
-      for (const sk of q.rewards?.skillUnlocks ?? []) rw.push(`기술 해금: ${getSkillById(sk)?.nameKo ?? sk}`);
-      if (q.rewards?.shopUnlocks?.length) rw.push('상점 품목 해금');
-      if (q.reputation?.sea) rw.push(`바다 평판 ${q.reputation.sea > 0 ? '+' : ''}${q.reputation.sea}`);
-      for (const [r, d] of Object.entries(q.reputation?.harbor ?? {})) rw.push(`항구 신뢰(${r}) ${d > 0 ? '+' : ''}${d}`);
-      if (q.unlocks?.length) rw.push(`해금 ${q.unlocks.join(' · ')}`);
-      y = this.text(c, y, rw.join('   ·   '), '12px', C_GOLD, 24, CONTENT_W - 44);
-      // 고른 답과 그 응답 · 고르지 않은 답은 ???
-      const chosen = StoryStore.chosen(q.id)?.complete;
-      const set = choicesFor(q).complete;
-      for (const ch of set) {
-        const mine = ch.id === chosen;
-        y = this.text(c, y, mine ? `▸ "${ch.labelKo}" — ${ch.replyKo}` : `· "${ch.labelKo}" → ???`, '11px', mine ? '#e8f4fd' : '#6f8fa8', 24, CONTENT_W - 44);
-      }
-      if (n?.epilogue) y = this.text(c, y + 2, n.epilogue, '12px', '#d6c9a8', 24, CONTENT_W - 44);
-    } else {
-      const kinds: string[] = [`경험치 ${q.xp.toLocaleString()} XP`];
-      if (q.rewards?.items?.some((i) => i.bound)) kinds.push('귀속 장비 ???');
-      else if (q.rewards?.items?.length) kinds.push('물건 ???');
-      if (q.rewards?.coins) kinds.push('재화 ???');
-      if (q.rewards?.licenses?.length) kinds.push('자격');
-      if (q.rewards?.skillUnlocks?.length) kinds.push('기술 해금 ???');
-      if (q.rewards?.shopUnlocks?.length) kinds.push('상점 해금 ???');
-      if (q.unlocks?.some((u) => u.startsWith('region:'))) kinds.push('지역 개방');
-      y = this.text(c, y, kinds.join('   ·   ') + '   — 답에 따라 덤이 갈립니다 (완료 후 공개)', '12px', C_GOLD, 24, CONTENT_W - 44);
-    }
+    // ── 보상 (완료 후에만 전부 드러난다 — 141차 규칙) ──
+    y += 6;
+    const rh = this.scene.add.text(DET_X + 4, y, '보상', { fontFamily: FONT, fontSize: '12px', color: '#6f8ba1' });
+    c.add(rh); y += rh.height + 6;
+    this.drawRewards(c, q, st, y);
 
-    if (q.journalPage) {
-      const pg = getJournalPage(q.journalPage);
-      y = this.text(c, y, `→ 조행록 ${q.journalPage}장 (${pg?.labelKo ?? ''})`, '12px', C_GOLD, 24, CONTENT_W - 44);
-    }
-    if (q.teaches?.length) {
-      y = this.text(c, y + 2, `배우는 것 — ${q.teaches.map((k) => TEACH_LABEL[k] ?? k).join(' · ')}`, '10px', '#6f8fa8');
-    }
-    if (q.prereq.length) {
-      y = this.text(c, y, `선행 — ${q.prereq.map((id) => STORY_QUESTS.find((x) => x.id === id)?.titleKo ?? id).join(', ')}`, '11px', '#8fb4cc');
-    }
-    if (st === 'available' && q.giver) this.text(c, y, `${giver}에게 [F]로 말을 걸어 수락하세요.`, '11px', '#ffd257');
-    if (st === 'locked') {
-      const why: string[] = [];
-      if (!StoryStore.chapterOpen(q.chapter)) why.push(`Ch${q.chapter} 미개방`);
-      if ((GameState.player.level ?? 1) < q.minLevel) why.push(`레벨 ${q.minLevel} 필요`);
-      if (!q.prereq.every((p) => StoryStore.isDone(p))) why.push('선행 퀘스트 미완료');
-      this.text(c, y, `잠김 — ${why.join(' · ') || '조건 미충족'}`, '11px', '#8a97a8');
+    enforceTextBounds(c, PANEL_W - 10, 'JournalPanel');
+    applyScreenFixed(this);
+  }
+
+  /**
+   * 브리핑 나레이션 — **박스 자체 스크롤**(사용자 지시).
+   * R4: 정의문 요약(descKo)이 아니라 NPC의 말 + 내가 받아들인 것.
+   */
+  private buildNarration(
+    c: Phaser.GameObjects.Container, q: StoryQuestDef, x: number, y: number, w: number, h: number,
+  ): void {
+    const g = this.scene.add.graphics();
+    g.fillStyle(0x08121c, 0.8); g.fillRect(x, y, w, h);
+    g.lineStyle(1, 0x24455f, 1); g.strokeRect(x, y, w, h);
+    c.add(g);
+
+    const n = narrativeOf(q.id);
+    const st = StoryStore.status(q);
+    const parts: string[] = [];
+    if (n?.intro) parts.push(n.intro);
+    const line = st === 'done' ? n?.epilogue ?? n?.done : st === 'active' ? n?.progress ?? n?.offer : n?.offer;
+    if (line) parts.push(`"${line}"`);
+    if (parts.length === 0) parts.push(q.descKo);
+    const note = StoryStore.offerNoteKo(q);
+    if (note) parts.push(note);
+
+    const inner = this.scene.add.container(0, 0);
+    this.narrC = inner;
+    c.add(inner);
+    const t = this.scene.add.text(x + 10, y + 8, parts.join('\n\n'), {
+      fontFamily: FONT, fontSize: '13px', color: '#d6c9a8', lineSpacing: 5,
+      wordWrap: { width: w - 28, useAdvancedWrap: true },
+    });
+    inner.add(t);
+
+    const maskG = this.scene.make.graphics({}, false).setScrollFactor(0);
+    this.narrMask = maskG;
+    inner.setMask(maskG.createGeometryMask());
+    this.narrRect = new Phaser.Geom.Rectangle(x, y, w, h);
+    this.narrMax = Math.max(0, t.height + 16 - h);
+    this.lastX = NaN;
+    this.syncNarrMask();
+    this.applyNarrScroll();
+
+    // 스크롤바 — 넘칠 때만
+    if (this.narrMax > 0) {
+      const bar = this.scene.add.graphics();
+      this.narrBar = bar;
+      c.add(bar);
+      this.paintNarrBar();
+      const hit = this.scene.add.rectangle(x + w - 7, y + h / 2, 12, h, 0xffffff, 0.001)
+        .setInteractive({ useHandCursor: true });
+      hit.on('pointerdown', (p: Phaser.Input.Pointer) => {
+        const rel = Phaser.Math.Clamp((p.y - this.y - y) / h, 0, 1);
+        this.narrScroll = Math.round(rel * this.narrMax);
+        this.applyNarrScroll();
+      });
+      c.add(hit);
     }
   }
 
-  // ── 사람들(아크 색인) ──
-  private renderPeople(c: Phaser.GameObjects.Container): void {
-    let y = this.text(c, 6, `사람들 — ${STORY_ARCS.length}개 인물 아크`, '16px', C_SUB, 6, CONTENT_W - 24, true);
-    y = this.text(c, y - 2, '서브 퀘스트 55편은 인물 아크에 묶여 챕터를 가로지른다. 클릭하면 그 사람의 이야기와 관련 퀘스트가 열린다.', '11px', C_DIM);
-    const cols = 3;
-    const cw = (CONTENT_W - 12 - (cols - 1) * 8) / cols;
-    const chGap = 6;
+  private narrBar?: Phaser.GameObjects.Graphics;
+
+  private paintNarrBar(): void {
+    const g = this.narrBar; const r = this.narrRect;
+    if (!g || !r || this.narrMax <= 0) return;
+    g.clear();
+    const bx = r.x + r.width - 8;
+    g.fillStyle(0x0d1c2c, 1); g.fillRect(bx, r.y + 2, 5, r.height - 4);
+    const th = Math.max(20, (r.height - 4) * (r.height / (r.height + this.narrMax)));
+    const ty = r.y + 2 + (r.height - 4 - th) * (this.narrScroll / this.narrMax);
+    g.fillStyle(0x3d6f96, 1); g.fillRect(bx, ty, 5, th);
+  }
+
+  private applyNarrScroll(): void {
+    this.narrC?.setY(-this.narrScroll);
+    this.paintNarrBar();
+  }
+
+  private syncNarrMask(): void {
+    const g = this.narrMask; const r = this.narrRect;
+    if (!g || !r) return;
+    this.lastX = this.x; this.lastY = this.y;
+    g.clear(); g.fillStyle(0xffffff, 1);
+    g.fillRect(this.x + r.x + 1, this.y + r.y + 1, r.width - 2, r.height - 2);
+  }
+
+  /** 보상 카드 — 아이콘 + 라벨 + 값. 줄바꿈으로 흐른다 */
+  private drawRewards(c: Phaser.GameObjects.Container, q: StoryQuestDef, st: string, y0: number): void {
+    const cards: { icon: string; label: string; value: string }[] = [];
+    cards.push({ icon: 'rw_xp', label: '경험치', value: `+${q.xp.toLocaleString()}` });
+    const r = q.rewards;
+    if (r?.coins) cards.push({ icon: 'rw_coin', label: '재화', value: `${r.coins.toLocaleString()}원` });
+    for (const it of r?.items ?? []) {
+      cards.push({ icon: 'it_backpack', label: questRewardItemName(it.id) ?? it.id, value: it.qty > 1 ? `x${it.qty}` : (it.bound ? '귀속' : '') });
+    }
+    for (const lic of r?.licenses ?? []) {
+      cards.push({ icon: 'rw_license', label: getLicenseByType(lic)?.nameKo ?? String(lic), value: '자격' });
+    }
+    for (const sk of r?.skillUnlocks ?? []) {
+      cards.push({ icon: 'rw_skill', label: getSkillById(sk)?.nameKo ?? sk, value: '기술' });
+    }
+    if (r?.shopUnlocks?.length) {
+      cards.push({ icon: 'rw_shop', label: '상점 품목', value: `${r.shopUnlocks.length}종` });
+    }
+    if (q.reputation?.sea) cards.push({ icon: 'rw_rep', label: '바다 평판', value: `${q.reputation.sea > 0 ? '+' : ''}${q.reputation.sea}` });
+
+    // 완료 전에는 해금형 보상을 감춘다(141차 — 보상은 고른 뒤에만 드러난다)
+    const hide = st !== 'done';
+    const CW = (DET_W - 8 - 8) / 3, CH = 42;
     let i = 0;
-    for (const a of STORY_ARCS) {
-      const col = i % cols;
-      const row = Math.floor(i / cols);
-      const x = 6 + col * (cw + 8);
-      const cy = y + row * (54 + chGap);
-      const pr = StoryStore.arcProgress(a.id);
-      const met = a.questIds.some((id) => StoryStore.isDone(id) || StoryStore.isActive(id));
-      this.hitRow(c, x, cy, cw, 54, false, () => this.go({ kind: 'arc', id: a.id, from: { kind: 'people' } }));
-      const t1 = this.scene.add.text(x + 8, cy + 5, `${a.id}  ${met ? a.titleKo.split(' — ')[0] : '???'}`, {
-        fontFamily: FONT, fontSize: '11px', color: met ? C_SUB : C_LOCK, fontStyle: 'bold',
-      });
-      clampTextWidth(t1, cw - 52);
-      const t2 = this.scene.add.text(x + cw - 8, cy + 6, `${pr.done}/${pr.total}`, {
-        fontFamily: FONT, fontSize: '9px', color: C_DIM,
-      }).setOrigin(1, 0);
-      const t3 = this.scene.add.text(x + 8, cy + 21, met ? a.angleKo : '아직 만나지 않은 사람', {
-        fontFamily: FONT, fontSize: '10px', color: met ? '#b8ccdc' : C_LOCK, wordWrap: { width: cw - 16 },
-      });
-      const t4 = this.scene.add.text(x + 8, cy + 38, `${REGION_LABEL[a.regionId] ?? a.regionId} · ${a.questIds.length}편`, {
-        fontFamily: FONT, fontSize: '9px', color: '#6f8fa8',
-      });
-      clampTextWidth(t3, cw - 16);
-      clampTextWidth(t4, cw - 16);
-      c.add([t1, t2, t3, t4]);
+    for (const card of cards) {
+      const col = i % 3, rowI = Math.floor(i / 3);
+      if (y0 + rowI * (CH + 6) + CH > PANEL_H - this.contentTop - 4) break;
+      const x = DET_X + 4 + col * (CW + 4);
+      const y = y0 + rowI * (CH + 6);
+      const g = this.scene.add.graphics();
+      g.fillStyle(0x14243a, 0.92); g.fillRect(x, y, CW, CH);
+      g.lineStyle(1, 0x24455f, 1); g.strokeRect(x, y, CW, CH);
+      c.add(g);
+      const secret = hide && card.label !== '경험치' && card.label !== '재화';
+      const ic = addPixelIcon(this.scene, card.icon, x + 18, y + CH / 2, 18);
+      if (ic) { ic.setAlpha(secret ? 0.3 : 1); c.add(ic); }
+      const lt = this.scene.add.text(x + 34, y + 13, secret ? '???' : card.label, {
+        fontFamily: FONT, fontSize: '11px', color: secret ? C_LOCK : C_TEXT,
+      }).setOrigin(0, 0.5);
+      clampTextWidth(lt, CW - 42);
+      const vt = this.scene.add.text(x + 34, y + 29, secret ? '' : card.value, {
+        fontFamily: FONT, fontSize: '11px', color: C_GOLD,
+      }).setOrigin(0, 0.5);
+      clampTextWidth(vt, CW - 42);
+      c.add([lt, vt]);
       i++;
     }
   }
-
-  // ── 아크 상세 ──
-  private renderArc(c: Phaser.GameObjects.Container, v: { id: string; from: View }): void {
-    const a: StoryArcDef | undefined = getStoryArc(v.id);
-    if (!a) return;
-    let y = this.backRow(c, v.from.kind === 'people' ? '사람들' : '챕터로', v.from);
-    const met = a.questIds.some((id) => StoryStore.isDone(id) || StoryStore.isActive(id));
-    y = this.text(c, y, `${a.id}  ${met ? a.titleKo : '???'}`, '17px', C_SUB, 6, CONTENT_W - 24, true);
-    const pr = StoryStore.arcProgress(a.id);
-    y = this.text(c, y - 2, `${REGION_LABEL[a.regionId] ?? a.regionId}  ·  ${pr.done} / ${pr.total}편 완료${a.repeatableKo ? `  ·  반복 의뢰 ${a.repeatableKo}` : ''}`, '11px', C_DIM);
-    if (met) {
-      y = this.text(c, y, a.relationKo, '13px', C_TEXT);
-      y = this.text(c, y, `이 아크가 보여주는 것 — ${a.angleKo}`, '11px', C_GOLD);
-      y = this.text(c, y + 2, '인물', '12px', C_SUB, 6, CONTENT_W - 24, true);
-      for (const n of a.npcs) y = this.text(c, y, `${n.nameKo}  —  ${n.roleKo}`, '12px', '#cfe6f5', 18, CONTENT_W - 36);
-    } else {
-      y = this.text(c, y, '아직 만나지 않은 사람입니다. 해당 지역에서 첫 편을 수락하면 내용이 열립니다.', '12px', C_LOCK);
-    }
-    y = this.text(c, y + 4, '연관 퀘스트', '12px', C_SUB, 6, CONTENT_W - 24, true);
-    for (const id of a.questIds) {
-      const q = STORY_QUESTS.find((x) => x.id === id);
-      if (!q) continue;
-      this.statusDot(c, 13, y + 11, q);
-      const r = this.scene.add.rectangle(24, y, CONTENT_W - 40, 22, 0x0e1c2b, 0.5).setOrigin(0, 0);
-      r.setStrokeStyle(1, 0x1a2c3e, 1);
-      r.setInteractive({ useHandCursor: true });
-      r.on('pointerdown', () => { this.go({ kind: 'quest', id: q.id, from: q.chapter }); restoreHandCursor(this.scene); });
-      const t = this.scene.add.text(32, y + 4, `Ch${q.chapter}  ${q.titleKo}`, {
-        fontFamily: FONT, fontSize: '12px', color: this.statusColor(q),
-      });
-      clampTextWidth(t, CONTENT_W - 130);
-      const lv = this.scene.add.text(CONTENT_W - 22, y + 5, `Lv${q.minLevel}`, {
-        fontFamily: FONT, fontSize: '9px', color: C_LOCK,
-      }).setOrigin(1, 0);
-      c.add([r, t, lv]);
-      y += 26;
-    }
-  }
-
-  // ── 조행록 ──
-  private renderJournal(c: Phaser.GameObjects.Container): void {
-    let y = this.text(c, 6, `동명 조행록 — ${StoryStore.journalFilledCount()} / 17장`, '16px', C_GOLD, 6, CONTENT_W - 24, true);
-    y = this.text(c, y - 2, '고진태 선장의 세 번째 권. 한 장 = 지역 하나. 지표 어종을 제철에 직접 잡고(계측 후 방생 가능), 그 지역 사람들의 이야기(서브 아크)를 끝내야 채워진다. 어획만으로도, 대화만으로도 안 된다.', '11px', C_DIM);
-    const states = StoryStore.journalPageStates();
-    const lineH = 26;
-    for (const p of JOURNAL_PAGES) {
-      const st = states[p.page - 1];
-      const filled = st.caught && st.arcDone;
-      const sp = FISH_DATABASE.find((f) => f.id === p.speciesId)?.nameKo ?? p.speciesId;
-      const cond = p.minCm ? `${p.minCm}cm+` : p.count ? `${p.count}마리` : p.releaseAfter ? '계측 후 방류' : '계측만';
-      const seasons = p.seasons.map((s) => SEASON_LABEL[s].ko).join('·');
-      const col = filled ? '#7fe0b0' : (st.caught || st.arcDone) ? '#ffd257' : '#9fb8cc';
-      const g = this.scene.add.graphics();
-      if (filled) { g.fillStyle(0x7fe0b0, 1); g.fillRect(8, y + 5, 8, 8); }
-      else { g.lineStyle(1, 0x9fb8cc, 0.8); g.strokeRect(8.5, y + 5.5, 7, 7); }
-      c.add(g);
-      const row = this.scene.add.text(24, y, `${String(p.page).padStart(2, ' ')}장  ${p.labelKo}`, {
-        fontFamily: FONT, fontSize: '12px', color: col, fontStyle: filled ? 'bold' : 'normal',
-      });
-      clampTextWidth(row, 216);
-      const det = this.scene.add.text(250, y + 1, `${sp} · ${seasons} · ${cond}`, {
-        fontFamily: FONT, fontSize: '11px', color: '#9fb8cc',
-      });
-      clampTextWidth(det, 260);
-      const mk = this.scene.add.text(CONTENT_W - 12, y + 1, `어획 ${st.caught ? '완료' : '미완'}  ·  아크 ${p.arcId} ${st.arcDone ? '완료' : '미완'}`, {
-        fontFamily: FONT, fontSize: '10px', color: '#8fa8bc',
-      }).setOrigin(1, 0);
-      c.add([row, det, mk]);
-      y += lineH;
-    }
-    this.text(c, y + 2, '※ 채운 장은 해당 지역 물때·어종 정보 열람이 영구 개방됩니다(홈타운 액자 벽은 후속).', '10px', '#6f8fa8');
-  }
-
-  // ── 자격 사다리 ──
-  private renderLadder(c: Phaser.GameObjects.Container): void {
-    let y = this.text(c, 6, '자격 사다리 — 챕터마다 기한 걸린 자격 하나', '16px', C_GOLD, 6, CONTENT_W - 24, true);
-    const dl = StoryStore.deadlineDaysLeft();
-    y = this.text(c, y - 2, `스토리 ${StoryStore.storyDay}일차  ·  ${dl == null ? '기한 없음' : dl >= 0 ? `실습생 D-${dl}` : `실습생 D+${-dl} 초과`}  ·  항구 신뢰(속초) ${StoryStore.harborRep('gangwon_sokcho')}  ·  바다 평판 ${StoryStore.seaRep >= 0 ? '+' : ''}${StoryStore.seaRep}`, '11px', C_DIM);
-    for (const ch of STORY_CHAPTERS) {
-      const q = ch.qualification;
-      if (!q) continue;
-      const held = q.licenseIds.length > 0 && q.licenseIds.every((l) => GameState.hasLicense(l as never));
-      const open = StoryStore.chapterOpen(ch.chapter);
-      const names = q.licenseIds.map((l) => getLicenseByType(l as never)?.nameKo ?? l).join(' + ') || q.labelKo;
-      const g = this.scene.add.graphics();
-      if (held) { g.fillStyle(0x7fe0b0, 1); g.fillCircle(12, y + 9, 4.5); }
-      else if (open) { g.lineStyle(1.2, 0xe8f4fd, 0.9); g.strokeCircle(12, y + 9, 4.5); }
-      else { g.fillStyle(0x6a7a8a, 0.8); g.fillCircle(12, y + 9, 2); }
-      c.add(g);
-      y = this.text(c, y, `Ch${ch.chapter}  ${names}`, '13px', held ? '#7fe0b0' : open ? C_TEXT : C_LOCK, 24, CONTENT_W - 44, true);
-      y = this.text(c, y - 2, `기한 ${q.deadlineKo}  ·  초과 시 ${q.onMissKo}  ·  여는 것 ${q.unlocksKo}`, '10px', '#9fb8cc', 24, CONTENT_W - 44);
-    }
-    y = this.text(c, y + 2, '실패 엔딩은 없습니다 — 기한을 놓쳐도 비용과 한 시즌 지연만 생깁니다.', '10px', '#6f8fa8');
-    this.text(c, y, '※ 본 게임의 \'6개월 실습기간\'은 게임 진행을 위한 설정입니다. 실제 어촌계의 가입 자격·거주기간·가입 절차는 각 어촌계의 정관 및 관련 법령에 따라 다를 수 있습니다.', '10px', '#6f8fa8');
-  }
-}
-
-/** 조행록 페이지 상세 (도움말·툴팁 공용) */
-export function journalPageSummary(p: JournalPageDef): string {
-  const sp = FISH_DATABASE.find((f) => f.id === p.speciesId)?.nameKo ?? p.speciesId;
-  return `${p.page}장 ${p.labelKo} — ${sp} · ${p.seasons.map((s) => SEASON_LABEL[s].ko).join('·')} · ${p.howKo}`;
 }

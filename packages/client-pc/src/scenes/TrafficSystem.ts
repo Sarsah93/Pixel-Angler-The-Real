@@ -24,6 +24,9 @@ import Phaser from 'phaser';
 import { mpRng, type RegionRoad } from '@tra/core';
 import { CAR_TOPDOWN_KEYS } from '../data/TilesetManifest.js';
 
+/** 주행 차량 배율 (150차) — 원본 22×29px */
+const CAR_SCALE = 1.82;
+
 interface Car {
   road: number;
   dir: 1 | -1;
@@ -84,7 +87,9 @@ export class TrafficSystem {
     for (let n = 0; n < count; n++) {
       const tex = CAR_TOPDOWN_KEYS[Math.floor(this.rnd() * CAR_TOPDOWN_KEYS.length)];
       if (!scene.textures.exists(tex)) continue;
-      const sprite = scene.add.image(0, 0, tex).setOrigin(0.5, 0.5).setScale(1.3).setVisible(false);
+      // 크기(150차) — 구 1.3은 차 길이 29×1.3 = 37.7px로 **캐릭터(52px)보다 작아** 이질감이 났다.
+      //   ×1.4 = 1.82 → 52.8px로 가장 작은 차가 캐릭터 세로를 넘어선다(사용자 지정 1.2~1.4배 밴드 상단).
+      const sprite = scene.add.image(0, 0, tex).setOrigin(0.5, 0.5).setScale(CAR_SCALE).setVisible(false);
       const car: Car = { road: 0, dir: 1, seg: 0, t: 0, speed: 3 + this.rnd() * 2.5, sprite, px: 0, py: 0, ux: 0, uy: -1, fade: 0, waiting: false, halt: 0, lat: 0, latTarget: 0 };
       this.respawn(car);
       this.cars.push(car);

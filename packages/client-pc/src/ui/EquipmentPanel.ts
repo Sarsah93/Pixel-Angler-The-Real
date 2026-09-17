@@ -24,7 +24,11 @@ import type { InvDropResult } from './InventoryPanel.js';
 import { DraggablePanel } from './DraggablePanel.js';
 import { buildItemDetail } from './ItemDetailPanel.js';
 import { createItemIcon } from './ItemIcon.js';
+import { addPixelIcon } from './PixelIcon.js';
 import { clampTextWidth } from './TextFit.js';
+import { ensureCharSheet, charFrameName } from './CharacterSprite.js';
+import { GameState } from '../store/GameState.js';
+import { CHAR_CELL, CHAR_FOOT_Y } from '@tra/core';
 
 // ── 지오메트리 ──────────────────────────────────────
 const S = 52;              // 소켓 한 변 (퀵슬롯과 동급)
@@ -37,6 +41,9 @@ const CENTER_X = COL_L_X + S + 10;                       // 캐릭터 박스 x
 const CENTER_W = HEAD_COLS * S + (HEAD_COLS - 1) * GAP;  // 226
 const COL_R_X = CENTER_X + CENTER_W + 10;
 const PANEL_W = COL_R_X + S + PAD_X;                     // 382
+
+/** 장비창 캐릭터 미리보기 배율 — 정수만(셀 32px × 6 = 192px, 몸통 26행 = 156px) */
+const EQUIP_CHAR_SCALE = 6;
 
 const HEAD_Y = 46;
 const BODY_Y = HEAD_Y + S + 10;                          // 캐릭터/좌우 열 시작
@@ -66,6 +73,7 @@ interface EquipSlotDef {
   key: string;
   label: string;
   /** 빈 슬롯 실루엣 (아이콘 대신 흐린 이모지) */
+  /** 빈 슬롯에 그릴 픽셀 아이콘 키 (`PixelIconArt`) */
   ghost: string;
   part?: string;
   hand?: 'L' | 'R';
@@ -75,35 +83,35 @@ interface EquipSlotDef {
 }
 
 const HEAD_SLOTS: EquipSlotDef[] = [
-  { key: 'hat',    label: '모자',   ghost: '🧢', part: '모자', note: '일사 차단 / 보온' },
-  { key: 'eye',    label: '안경',   ghost: '🕶️', part: '안경', note: '편광 — 수심 경계선/여밭 투영' },
-  { key: 'mask',   label: '마스크', ghost: '😷', note: '방한 / 자외선 차단 (준비 중)' },
-  { key: 'neck',   label: '넥워머', ghost: '🧣', note: '목 보온 (준비 중)' },
+  { key: 'hat',    label: '모자',   ghost: 'eq_hat', part: '모자', note: '일사 차단 / 보온' },
+  { key: 'eye',    label: '안경',   ghost: 'eq_glasses', part: '안경', note: '편광 — 수심 경계선/여밭 투영' },
+  { key: 'mask',   label: '마스크', ghost: 'eq_mask', note: '방한 / 자외선 차단 (준비 중)' },
+  { key: 'neck',   label: '넥워머', ghost: 'eq_neck', note: '목 보온 (준비 중)' },
 ];
 
 const LEFT_SLOTS: EquipSlotDef[] = [
-  { key: 'bag',        label: '가방',     ghost: '🎒', part: '가방', note: '인벤토리 칸 확장 — 벗으려면 확장 칸을 먼저 비운다' },
-  { key: 'top',        label: '상의',     ghost: '👕', part: '상의', note: '보온 / 피로도 완화' },
-  { key: 'arm_l',      label: '팔(좌)',   ghost: '🩹', note: '팔토시 — 자외선/찰과 보호 (준비 중)' },
-  { key: 'glove_l',    label: '장갑',     ghost: '🧤', part: '장갑', pair: true, note: '라인 컨트롤 / 보호' },
-  { key: 'hand_l',     label: '손(좌)',   ghost: '🤚', hand: 'L', note: '낚싯대 / 뜰채 / 회칼' },
-  { key: 'ring_l',     label: '반지(좌)', ghost: '💍', note: '장신구 (준비 중)' },
+  { key: 'bag',        label: '가방',     ghost: 'it_backpack', part: '가방', note: '인벤토리 칸 확장 — 벗으려면 확장 칸을 먼저 비운다' },
+  { key: 'top',        label: '상의',     ghost: 'eq_shirt', part: '상의', note: '보온 / 피로도 완화' },
+  { key: 'arm_l',      label: '팔(좌)',   ghost: 'eq_sleeve', note: '팔토시 — 자외선/찰과 보호 (준비 중)' },
+  { key: 'glove_l',    label: '장갑',     ghost: 'eq_glove', part: '장갑', pair: true, note: '라인 컨트롤 / 보호' },
+  { key: 'hand_l',     label: '손(좌)',   ghost: 'eq_hand', hand: 'L', note: '낚싯대 / 뜰채 / 회칼' },
+  { key: 'ring_l',     label: '반지(좌)', ghost: 'eq_ring', note: '장신구 (준비 중)' },
 ];
 
 const RIGHT_SLOTS: EquipSlotDef[] = [
-  { key: 'shoulder_r', label: '어깨(우)', ghost: '🎽', note: '어깨 보호대 (준비 중)' },
-  { key: 'reel',       label: '릴',       ghost: '', part: '릴', note: '드랙 시스템 — 릴링 속도/최대 드랙 장력' },
-  { key: 'watch',      label: '시계',     ghost: '⌚', part: '시계', note: '물때 사이클 표시' },
-  { key: 'glove_r',    label: '장갑',     ghost: '🧤', part: '장갑', pair: true, note: '라인 컨트롤 / 보호' },
-  { key: 'hand_r',     label: '손(우)',   ghost: '✋', hand: 'R', note: '낚싯대 / 뜰채 / 회칼' },
-  { key: 'ring_r',     label: '반지(우)', ghost: '💍', note: '장신구 (준비 중)' },
+  { key: 'shoulder_r', label: '어깨(우)', ghost: 'eq_shoulder', note: '어깨 보호대 (준비 중)' },
+  { key: 'reel',       label: '릴',       ghost: 'it_reel', part: '릴', note: '드랙 시스템 — 릴링 속도/최대 드랙 장력' },
+  { key: 'watch',      label: '시계',     ghost: 'eq_watch', part: '시계', note: '물때 사이클 표시' },
+  { key: 'glove_r',    label: '장갑',     ghost: 'eq_glove', part: '장갑', pair: true, note: '라인 컨트롤 / 보호' },
+  { key: 'hand_r',     label: '손(우)',   ghost: 'eq_hand', hand: 'R', note: '낚싯대 / 뜰채 / 회칼' },
+  { key: 'ring_r',     label: '반지(우)', ghost: 'eq_ring', note: '장신구 (준비 중)' },
 ];
 
 /** 다리 — 3행 × 좌/우 2열 (한 쌍 장비라 같은 아이템이 양쪽에 표시된다) */
 const LEG_SLOTS: EquipSlotDef[] = [
-  { key: 'pants', label: '하의', ghost: '👖', part: '하의', pair: true, note: '방수 / 보온' },
-  { key: 'socks', label: '양말', ghost: '🧦', pair: true, note: '보온 / 물집 방지 (준비 중)' },
-  { key: 'shoes', label: '신발', ghost: '👟', part: '신발', pair: true, note: '접지 마찰 계수 — 미끄러짐 방지' },
+  { key: 'pants', label: '하의', ghost: 'eq_pants', part: '하의', pair: true, note: '방수 / 보온' },
+  { key: 'socks', label: '양말', ghost: 'eq_socks', pair: true, note: '보온 / 물집 방지 (준비 중)' },
+  { key: 'shoes', label: '신발', ghost: 'eq_shoes', part: '신발', pair: true, note: '접지 마찰 계수 — 미끄러짐 방지' },
 ];
 
 /** 렌더된 슬롯 히트 정보 (드랍 라우팅용 — 패널 로컬 좌표) */
@@ -184,14 +192,14 @@ export class EquipmentPanel extends DraggablePanel {
     const shadow = this.scene.add.ellipse(cx, groundY + 8, 74, 18, 0x000000, 0.45);
     this.bodyC.add([glow, shadow]);
 
-    const texKey = 'man-idle-front';
+    // 캐릭터 렌더 (150차) — 구 `man-idle-front`(외부 실사 축소본)는 138차에 폐기된 옛 캐릭터다.
+    //  현행 페이퍼돌 시트를 그대로 쓴다: 장비를 갈아입으면 여기에도 그대로 나타난다.
+    //  ⚠ 배율은 **정수**(AGENTS §8 — 비정수 배율은 도트 격자를 무너뜨린다). 셀 32px × 6 = 192px.
+    const texKey = ensureCharSheet(this.scene, GameState.character, EQUIP_CHAR_SCALE);
     if (this.scene.textures.exists(texKey)) {
-      const src = this.scene.textures.get(texKey).getSourceImage() as { width: number; height: number };
-      const targetH = COL_H - 150;
-      const k = targetH / src.height;
-      const spr = this.scene.add.image(cx, groundY, texKey)
-        .setOrigin(0.5, 1)
-        .setDisplaySize(Math.round(src.width * k), Math.round(src.height * k));
+      const footPad = (CHAR_CELL - 1 - CHAR_FOOT_Y) * EQUIP_CHAR_SCALE;
+      const spr = this.scene.add.image(cx, groundY + footPad, texKey, charFrameName('down', 0))
+        .setOrigin(0.5, 1);
       this.bodyC.add(spr);
     }
 
@@ -227,8 +235,10 @@ export class EquipmentPanel extends DraggablePanel {
       }).setOrigin(0.5, 0), S - 6);
       this.bodyC.add(lbl);
     } else {
-      const ghost = this.scene.add.text(sx + S / 2, sy + S / 2 - 6, def.ghost, { fontSize: '20px' })
-        .setOrigin(0.5).setAlpha(def.part || def.hand ? 0.3 : 0.16);
+      // 빈 슬롯 고스트 — 16x16 픽셀 아이콘(150차. 구 이모지는 §8-8 위반이었다)
+      const ghost = addPixelIcon(this.scene, def.ghost, sx + S / 2, sy + S / 2 - 6, 24)
+        ?? this.scene.add.text(sx + S / 2, sy + S / 2 - 6, '', { fontSize: '20px' }).setOrigin(0.5);
+      ghost.setAlpha(def.part || def.hand ? 0.34 : 0.17);
       const lbl = clampTextWidth(this.scene.add.text(sx + S / 2, sy + S - 13, def.label, {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '8px',
         color: def.part || def.hand ? '#4a6a80' : '#33475a',

@@ -17,7 +17,7 @@ const PANEL_H = 520;
 
 export class StatusPanel extends DraggablePanel {
   constructor(scene: Phaser.Scene, x: number, y: number, onClose: () => void) {
-    super(scene, { x, y, width: PANEL_W, height: PANEL_H, title: '스테이터스', onClose, depth: 810 });
+    super(scene, { x, y, width: PANEL_W, height: PANEL_H, title: '내 상태', onClose, depth: 810 });
 
     const p = GameState.player;
     let cy = this.contentTop + 10;

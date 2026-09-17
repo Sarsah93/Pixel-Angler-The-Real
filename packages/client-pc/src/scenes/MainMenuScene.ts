@@ -341,9 +341,32 @@ export class MainMenuScene extends Phaser.Scene {
       case 'slots': this.entries = this.buildSlotEntries(); break;
     }
 
-    const rowH = this.view === 'slots' ? SLOT_ROW_H : ROW_H;
     const titleH = 54;
-    const panelH = titleH + this.entries.length * (rowH + 8) + 18;
+    const isSlot = this.view === 'slots';
+
+    // 행 높이는 **내용으로 정한다** — 부제를 고정 오프셋(ry+38)에 박고 rowH를 46으로 두면
+    // 라벨+부제 스택(≈38px)이 상자보다 커져 아래로 밀려 나온다(실측 위반 · 사용자 리포트).
+    // 부제 텍스트를 먼저 만들어 실제 높이를 재고, 그 합으로 상자를 키운 뒤 스택을 세로 중앙에 놓는다.
+    const SUB_GAP = 5;
+    const ROW_PAD = 11;
+    const LABEL_H = 20;
+    const subTexts: (Phaser.GameObjects.Text | undefined)[] = this.entries.map((entry) => {
+      if (!entry.sub) return undefined;
+      return this.add.text(0, 0, entry.sub, {
+        fontFamily: '\"Noto Sans KR\", sans-serif', fontSize: '10px',
+        color: entry.disabled ? '#3a4652' : '#7f9ab0', lineSpacing: 3,
+        wordWrap: { width: PANEL_W - 68 },
+      }).setOrigin(0, 0);
+    });
+    const rowHs = this.entries.map((_entry, i) => {
+      const subH = subTexts[i]?.height ?? 0;
+      const stack = LABEL_H + (subH ? SUB_GAP + subH : 0);
+      return Math.max(isSlot ? SLOT_ROW_H : ROW_H, Math.ceil(stack + ROW_PAD * 2));
+    });
+    const rowTops: number[] = [];
+    let flowY = PANEL_Y + titleH;
+    rowHs.forEach((h) => { rowTops.push(flowY); flowY += h + 8; });
+    const panelH = (flowY - 8) - PANEL_Y + 18;
 
     // 패널 프레임
     const frame = this.add.graphics();
@@ -368,20 +391,20 @@ export class MainMenuScene extends Phaser.Scene {
 
     // 항목 행
     this.entries.forEach((entry, i) => {
-      const ry = PANEL_Y + titleH + i * (rowH + 8);
+      const rowH = rowHs[i];
+      const ry = rowTops[i];
       const bg = this.add.graphics();
-      const label = this.add.text(PANEL_X + 34, ry + (this.view === 'slots' ? 14 : rowH / 2), entry.label, {
+
+      const sub = subTexts[i];
+      const subH = sub?.height ?? 0;
+      const stackH = LABEL_H + (subH ? SUB_GAP + subH : 0);
+      const stackTop = isSlot ? ry + 4 : ry + (rowH - stackH) / 2;
+
+      const label = this.add.text(PANEL_X + 34, stackTop + LABEL_H / 2, entry.label, {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '16px', fontStyle: 'bold',
         color: entry.disabled ? '#4a5a68' : '#d0e8f5',
       }).setOrigin(0, 0.5);
-
-      let sub: Phaser.GameObjects.Text | undefined;
-      if (entry.sub) {
-        sub = this.add.text(PANEL_X + 34, ry + 38, entry.sub, {
-          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px',
-          color: entry.disabled ? '#3a4652' : '#7f9ab0', lineSpacing: 3,
-        }).setOrigin(0, 0);
-      }
+      sub?.setPosition(PANEL_X + 34, stackTop + LABEL_H + SUB_GAP);
 
       const hit = this.add.rectangle(PANEL_X + PANEL_W / 2, ry + rowH / 2, PANEL_W - 16, rowH, 0xffffff, 0.001)
         .setInteractive({ useHandCursor: !entry.disabled });

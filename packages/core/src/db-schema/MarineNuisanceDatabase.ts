@@ -117,7 +117,7 @@ export const MARINE_NUISANCES: MarineNuisance[] = [
     kind: 'starfish',
     sizeRangeCm: [6, 14], weightRangeKg: [0.03, 0.2],
     bloomMonths: [3, 4, 5, 6, 9, 10], peakMonths: [4, 5],
-    abundance: 1.2,
+    abundance: 0.84,   // 150차 — 필드에 너무 많이 보여 30% 감산(사용자 리포트)
     venom: 0,
     harvest: 'both',
     cullPricePerKg: 0,

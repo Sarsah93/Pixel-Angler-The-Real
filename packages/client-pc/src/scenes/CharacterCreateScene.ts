@@ -20,6 +20,7 @@ import {
   type FaceShape, type HairStyle, type MouthStyle,
   MP_PROGRESS_KO, validateCharacterName,
 } from '@tra/core';
+import { TextInput } from '../ui/TextInput.js';
 import { GameState } from '../store/GameState.js';
 import { TUNING } from '@tra/core';
 import { MultiplayerClient } from '../net/MultiplayerClient.js';
@@ -132,6 +133,8 @@ export class CharacterCreateScene extends Phaser.Scene {
   private hoverBtn = -1;
 
   private editingName = false;
+  /** 한글(IME) 입력용 숨김 DOM 입력 (150차) — 열려 있으면 이름 편집 중 */
+  private nameInput?: TextInput;
   private previewDir: CharDir = 'down';
   /** 프리뷰 동작 상태 (144차 — 정지/걷기/달리기) */
   private previewMotion: PreviewMotion = 'idle';
@@ -171,7 +174,11 @@ export class CharacterCreateScene extends Phaser.Scene {
     this.refresh();
 
     this.input.keyboard?.on('keydown', this.onKey, this);
-    this.events.once('shutdown', () => this.input.keyboard?.off('keydown', this.onKey, this));
+    this.events.once('shutdown', () => {
+      this.input.keyboard?.off('keydown', this.onKey, this);
+      this.nameInput?.close();
+      this.nameInput = undefined;
+    });
   }
 
   // ── 배경 · 패널 ─────────────────────────────────────
@@ -399,8 +406,8 @@ export class CharacterCreateScene extends Phaser.Scene {
       {
         key: 'name', label: '이름', kind: 'cycle', col: 1, section: '이름',
         value: () => (this.editingName ? `${this.nickname}_` : this.nickname),
-        prev: () => { this.editingName = !this.editingName; },
-        next: () => { this.editingName = !this.editingName; },
+        prev: () => { this.setEditingName(!this.editingName); },
+        next: () => { this.setEditingName(!this.editingName); },
       },
     ];
   }
@@ -448,7 +455,7 @@ export class CharacterCreateScene extends Phaser.Scene {
         this.hit(ctrlX + CTRL_W - 22, y - 6, 34, 30, () => { this.cursor = idx; row.next?.(); this.refresh(); });
         this.hit(ctrlX + 30, y - 6, CTRL_W - 60, 30, () => {
           this.cursor = idx;
-          if (row.key === 'name') this.editingName = true;
+          if (row.key === 'name') this.setEditingName(true);
           this.refresh();
         });
       } else {
@@ -524,7 +531,7 @@ export class CharacterCreateScene extends Phaser.Scene {
     });
 
     this.hintText?.setText(this.editingName
-      ? '이름을 입력하고 Enter를 누르세요. 지울 때는 Backspace.\n'
+      ? '이름을 입력하고 Enter를 누르세요. 지울 때는 Backspace. 한글·영문 모두 됩니다.\n'
         + '여덟 글자까지 쓸 수 있습니다. 조행록과 마을 사람들의 말에 이 이름이 그대로 나옵니다.'
       : '상의·하의·신발은 입고 시작할 옷입니다. 나중에 가방에서 갈아입을 수 있습니다.\n'
         + '색은 견본을 눌러 고르세요.');
@@ -595,21 +602,43 @@ export class CharacterCreateScene extends Phaser.Scene {
     row.set?.(next);
   }
 
+  /**
+   * 이름 편집 토글 (150차).
+   *
+   * ⚠ 한글은 Phaser `keydown`으로 받을 수 없다 — 조합(IME)을 거치므로 완성 글자가
+   * `input`/`compositionend`로만 온다. 화면 밖 `<input>`에 입력을 맡기고 값만 받아 온다.
+   */
+  private setEditingName(on: boolean): void {
+    if (on === this.editingName) { if (!on) this.refresh(); return; }
+    this.editingName = on;
+    if (on) {
+      this.nameInput = new TextInput(this, {
+        value: this.nickname,
+        maxLength: 8,
+        // 공백만으로 된 이름·줄바꿈은 받지 않는다
+        filter: (v) => v.replace(/[\r\n\t]/g, ''),
+        onChange: (v) => { this.nickname = v; this.refresh(); },
+        onSubmit: () => this.setEditingName(false),
+        onCancel: () => this.setEditingName(false),
+      });
+    } else {
+      this.nameInput?.close();
+      this.nameInput = undefined;
+    }
+    this.refresh();
+  }
+
   private onKey(ev: KeyboardEvent): void {
     if (this.starting) return;
-    if (this.editingName) {
-      if (ev.key === 'Enter' || ev.key === 'Escape') { this.editingName = false; this.refresh(); return; }
-      if (ev.key === 'Backspace') { this.nickname = this.nickname.slice(0, -1); this.refresh(); return; }
-      if (ev.key.length === 1 && this.nickname.length < 8) { this.nickname += ev.key; this.refresh(); }
-      return;
-    }
+    // 이름 편집 중에는 Phaser 키보드가 꺼져 있다(TextInput이 DOM 입력으로 전담 — 한글 IME).
+    if (this.editingName) return;
     switch (ev.key) {
       case 'ArrowUp': this.cursor = (this.cursor - 1 + this.rows.length) % this.rows.length; this.refresh(); break;
       case 'ArrowDown': this.cursor = (this.cursor + 1) % this.rows.length; this.refresh(); break;
       case 'ArrowLeft': this.step(-1); this.refresh(); break;
       case 'ArrowRight': this.step(1); this.refresh(); break;
       case 'Enter':
-        if (this.rows[this.cursor].key === 'name') { this.editingName = true; this.refresh(); }
+        if (this.rows[this.cursor].key === 'name') { this.setEditingName(true); }
         else this.confirm();
         break;
       case 'Escape': this.back(); break;

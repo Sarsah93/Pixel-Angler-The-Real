@@ -69,6 +69,12 @@ export function propFootprint(scene: Phaser.Scene, def: PropDef, tr: number): { 
  *  절차 베이크(smx_*)는 타일셋에 대응물이 없는 것만 남긴다(바위·화단·기념탑·어선).
  * 전부 y-sort 스프라이트(플레이어와 같은 depth 식). 텍스처 미로드 시 렌더 생략.
  */
+/**
+ * 주차 차량 배율 (150차) — 원본 25×44px. 구 1.25는 길이 55px로 캐릭터(52px)와 거의 같아
+ * 차가 작아 보였다. ×1.2 = 1.5 → 66px(사용자 지정 1.2~1.4배 밴드).
+ */
+const PARKED_CAR_SCALE = 1.5;
+
 export const PROP_DEFS: PropDef[] = [
   // 자연
   { id: 'tree', label: '활엽수', tex: 'ts_td_tree_big', cat: '자연' },
@@ -127,14 +133,14 @@ export const PROP_DEFS: PropDef[] = [
   { id: 'car_g', label: '승용차(세로) 초록', tex: 'ts_kn_car_g', cat: '차량', scale: 2 },
   { id: 'car_i', label: '승용차(세로) 회색', tex: 'ts_kn_car_i', cat: '차량', scale: 2 },
   { id: 'car_k', label: '승용차(세로) 주황', tex: 'ts_kn_car_k', cat: '차량', scale: 2 },
-  // TopDown 주차용 차량/픽업 — 3/4 시점 4방향 프레임 (회전 금지 — 벽 방향에 맞는 프레임을 고른다), ×1.25
-  { id: 'pickup_blue', label: '픽업트럭 파랑', tex: 'ts_td_pickup_blue_up', cat: '차량', scale: 1.25 },
-  { id: 'pickup_green', label: '픽업트럭 초록', tex: 'ts_td_pickup_green_up', cat: '차량', scale: 1.25 },
-  { id: 'pickup_red', label: '픽업트럭 빨강', tex: 'ts_td_pickup_red_up', cat: '차량', scale: 1.25 },
-  { id: 'pickup_blue_side', label: '픽업트럭 파랑(옆)', tex: 'ts_td_pickup_blue_right', cat: '차량', scale: 1.25 },
-  { id: 'pickup_red_side', label: '픽업트럭 빨강(옆)', tex: 'ts_td_pickup_red_left', cat: '차량', scale: 1.25 },
-  { id: 'tdcar_blue', label: '승용차(3/4) 파랑', tex: 'ts_td_car_blue_up', cat: '차량', scale: 1.25 },
-  { id: 'tdcar_red_side', label: '승용차(3/4) 빨강(옆)', tex: 'ts_td_car_red_right', cat: '차량', scale: 1.25 },
+  // TopDown 주차용 차량/픽업 — 3/4 시점 4방향 프레임 (회전 금지 — 벽 방향에 맞는 프레임을 고른다)
+  { id: 'pickup_blue', label: '픽업트럭 파랑', tex: 'ts_td_pickup_blue_up', cat: '차량', scale: PARKED_CAR_SCALE },
+  { id: 'pickup_green', label: '픽업트럭 초록', tex: 'ts_td_pickup_green_up', cat: '차량', scale: PARKED_CAR_SCALE },
+  { id: 'pickup_red', label: '픽업트럭 빨강', tex: 'ts_td_pickup_red_up', cat: '차량', scale: PARKED_CAR_SCALE },
+  { id: 'pickup_blue_side', label: '픽업트럭 파랑(옆)', tex: 'ts_td_pickup_blue_right', cat: '차량', scale: PARKED_CAR_SCALE },
+  { id: 'pickup_red_side', label: '픽업트럭 빨강(옆)', tex: 'ts_td_pickup_red_left', cat: '차량', scale: PARKED_CAR_SCALE },
+  { id: 'tdcar_blue', label: '승용차(3/4) 파랑', tex: 'ts_td_car_blue_up', cat: '차량', scale: PARKED_CAR_SCALE },
+  { id: 'tdcar_red_side', label: '승용차(3/4) 빨강(옆)', tex: 'ts_td_car_red_right', cat: '차량', scale: PARKED_CAR_SCALE },
   // 어선 — 승용차(≈44px)의 2배 (사용자 지시). 오픈소스 두 팩에는 배 스프라이트가 없어 절차 베이크 유지
   { id: 'boat', label: '어선', tex: 'smx_boat', cat: '차량', water: true, scale: 2 },
   // 하역 크레인(112차 항만 디테일) — 절차 베이크. 안벽 위 자동 산포 + 편집기 수동 배치
@@ -201,7 +207,15 @@ interface ChunkSlot {
   deco: Phaser.GameObjects.GameObject[];
   /** 이 청크가 베이크한 지붕 텍스처 키 (언로드 시 제거) */
   roofKeys: string[];
+  /**
+   * 캐릭터를 가릴 수 있는 그림 (150차) — 타일 건물 지붕·주택 오브젝트.
+   * 씬이 뒤로 들어간 플레이어를 보고 반투명하게 만든다(`deco`의 부분집합, 파괴는 deco가 담당).
+   */
+  occluders: OccluderObj[];
 }
+
+/** 반투명 대상이 될 수 있는 그림 — 알파와 경계 상자를 갖는다 */
+export type OccluderObj = Phaser.GameObjects.Image | Phaser.GameObjects.RenderTexture;
 
 /** 지형 팔레트 (101차 — mock_styled 톤) */
 const COL = {
@@ -989,6 +1003,58 @@ export class SeamlessChunks {
     return best;
   }
 
+  /**
+   * 도로 위에 얹힌 그림을 **도로 밖(땅)으로 조금 밀어낸다** (150차 — 사용자 리포트
+   * "횟집이 뜬금없이 도로 위에 배치되어 있다").
+   *
+   * 106차 `trimBuildingsOnRoads`는 **건물 타일**을 아스팔트에서 걷어냈지만, POI 프리팹
+   * 스프라이트는 건물이 통째로 깎인 자리에서 `poi.tx` 폴백을 쓰므로 차도 한복판에 설 수 있다.
+   * 여기서는 가장 가까운 도로 중심선의 **법선 방향**으로 반폭 + 여유만큼 밀고,
+   * 밀어낸 자리가 물·건물이면 반대 방향을 시도한다. 둘 다 안 되면 원래 자리를 지킨다
+   * (지도를 억지로 흩트리지 않는다).
+   *
+   * @param px,py 월드 픽셀 · @param clearance 도로 반폭 바깥으로 확보할 타일 수
+   */
+  nudgeOffRoad(px: number, py: number, clearance = 1.1): { x: number; y: number; moved: boolean } {
+    const tr = this.cfg.tr;
+    const x = px / tr, y = py / tr;
+    const N = this.cfg.chunkTiles;
+    const idx = Math.floor(y / N) * this.chunkCols + Math.floor(x / N);
+    const list = this.roadsByChunk.get(idx);
+    if (!list || !this.cfg.roads) return { x: px, y: py, moved: false };
+
+    let best: { d: number; halfW: number; nx: number; ny: number } | null = null;
+    for (const ri of list) {
+      const rd = this.cfg.roads[ri];
+      for (let i = 0; i < rd.pts.length - 1; i++) {
+        const [ax, ay] = rd.pts[i], [bx, by] = rd.pts[i + 1];
+        const vx = bx - ax, vy = by - ay;
+        const len2 = vx * vx + vy * vy || 1;
+        const t = Math.max(0, Math.min(1, ((x - ax) * vx + (y - ay) * vy) / len2));
+        const cx = ax + vx * t, cy = ay + vy * t;
+        const d = Math.hypot(cx - x, cy - y);
+        if (!best || d < best.d) best = { d, halfW: rd.w / 2, nx: x - cx, ny: y - cy };
+      }
+    }
+    if (!best) return { x: px, y: py, moved: false };
+    const need = best.halfW + clearance - best.d;
+    if (need <= 0) return { x: px, y: py, moved: false };
+
+    let ux = best.nx, uy = best.ny;
+    const l = Math.hypot(ux, uy);
+    if (l < 1e-4) { ux = 0; uy = -1; } else { ux /= l; uy /= l; }
+
+    const landable = (tx: number, ty: number): boolean => {
+      const ch = this.tileAt(Math.floor(tx), Math.floor(ty));
+      return ch === '.' || ch === ',' || ch === 's' || ch === 'w' || ch === 'r';
+    };
+    for (const sgn of [1, -1]) {
+      const nx = x + ux * need * sgn, ny = y + uy * need * sgn;
+      if (landable(nx, ny)) return { x: nx * tr, y: ny * tr, moved: true };
+    }
+    return { x: px, y: py, moved: false };
+  }
+
   /** 지붕 오버라이드 교체 (편집기) */
   setRoofOverrides(roofs: Record<string, number>): void {
     this.cfg.roofOverrides = roofs;
@@ -1088,6 +1154,7 @@ export class SeamlessChunks {
       slot.bodies = [];
       for (const d of slot.deco) d.destroy();
       slot.deco = [];
+      slot.occluders = [];
       for (const k of slot.roofKeys) this.scene.textures.remove(k);
       slot.roofKeys = [];
       this.buildChunkCollision(cc, cr, slot);
@@ -1781,12 +1848,22 @@ export class SeamlessChunks {
     const rt = this.acquireRt();
     rt.setPosition(cc * this.chunkPx, cr * this.chunkPx);
     rt.setVisible(true);
-    const slot: ChunkSlot = { rt, baked: false, bodies: [], deco: [], roofKeys: [] };
+    const slot: ChunkSlot = { rt, baked: false, bodies: [], deco: [], roofKeys: [], occluders: [] };
     this.buildChunkCollision(cc, cr, slot);
     this.buildChunkDeco(cc, cr, slot);
     this.resident.set(idx, slot);
     this.bakeQueue.push(idx);
     this.cfg.onChunkLoad?.(cc, cr);
+  }
+
+  /**
+   * 지금 상주 중인 청크의 가림 그림 전부 (150차) — 씬의 반투명 판정이 매 프레임 쓴다.
+   * POI 프리팹(145차)만으로는 **타일 건물 지붕 뒤에 들어간 캐릭터가 통째로 가려졌다**.
+   */
+  listOccluders(): OccluderObj[] {
+    const out: OccluderObj[] = [];
+    for (const slot of this.resident.values()) out.push(...slot.occluders);
+    return out;
   }
 
   private unloadChunk(idx: number, slot: ChunkSlot): void {
@@ -1798,6 +1875,8 @@ export class SeamlessChunks {
     const wallsAlive = !!this.walls.children;
     for (const b of slot.bodies) { if (wallsAlive) this.walls.remove(b); b.destroy(); }
     for (const d of slot.deco) d.destroy();
+    slot.deco = [];
+    slot.occluders = [];
     for (const k of slot.roofKeys) this.scene.textures.remove(k);
     slot.roofKeys = [];
     slot.rt.setVisible(false);
@@ -2033,11 +2112,14 @@ export class SeamlessChunks {
       if (Math.floor(comp.c0 / N) !== cc || Math.floor(comp.r0 / N) !== cr) continue;
       const bottomY = (comp.r1 + 1) * tr;
       const depth = 20 + bottomY * 0.001;   // 플레이어(20 + y·0.001)와 y-sort — 위쪽 줄 진입 시 가림
+      // 150차 — 지붕은 캐릭터를 덮는다. 뒤로 들어가면 반투명해지도록 occluder로 등록한다.
       if (this.kitReady) {
-        slot.deco.push(this.buildKitRoof(id).setDepth(depth));
+        const roof = this.buildKitRoof(id).setDepth(depth);
+        slot.deco.push(roof); slot.occluders.push(roof);
       } else {
         const key = this.bakeRoofTexture(id);
-        slot.deco.push(this.scene.add.image(comp.c0 * tr, comp.r0 * tr, key).setOrigin(0, 0).setDepth(depth));
+        const roof = this.scene.add.image(comp.c0 * tr, comp.r0 * tr, key).setOrigin(0, 0).setDepth(depth);
+        slot.deco.push(roof); slot.occluders.push(roof);
         slot.roofKeys.push(key);
       }
       // 소형 주거 풋프린트(4~6 × 5~8) = TopDown 주택 오브젝트(×2 = 140×168) 얹기 — POI 예약 제외
@@ -2049,7 +2131,8 @@ export class SeamlessChunks {
           const tex = hv < 0.3 ? 'ts_td_house_red' : 'ts_td_house_blue';
           if (this.scene.textures.exists(tex)) {
             const x = ((comp.c0 + comp.c1 + 1) / 2) * tr;
-            slot.deco.push(this.scene.add.image(x, bottomY, tex).setOrigin(0.5, 1).setScale(2).setDepth(depth + 0.0003));
+            const house = this.scene.add.image(x, bottomY, tex).setOrigin(0.5, 1).setScale(2).setDepth(depth + 0.0003);
+            slot.deco.push(house); slot.occluders.push(house);
           }
         }
       }
@@ -2160,7 +2243,7 @@ export class SeamlessChunks {
           const dir = bN ? 'up' : bS ? 'down' : bW ? 'right' : 'left';
           const tex = `ts_td_${kind}_${color}_${dir}`;
           if (!this.scene.textures.exists(tex)) continue;
-          this.spawnProp({ id: `park_${kind}`, label: '주차 차량', tex, cat: '차량', scale: 1.25 }, c, vertical ? r + (bN ? 1 : 0) : r, slot);
+          this.spawnProp({ id: `park_${kind}`, label: '주차 차량', tex, cat: '차량', scale: PARKED_CAR_SCALE }, c, vertical ? r + (bN ? 1 : 0) : r, slot);
         }
       }
     }
@@ -2203,7 +2286,7 @@ export class SeamlessChunks {
           const dir = vertical ? (hv < 0.5 ? 'left' : 'right') : (hv < 0.5 ? 'up' : 'down');
           const tex = `ts_td_${kind}_${color}_${dir}`;
           if (!this.scene.textures.exists(tex)) continue;
-          this.spawnProp({ id: 'park_lot', label: '주차 차량', tex, cat: '차량', scale: 1.25 }, c, r, slot);
+          this.spawnProp({ id: 'park_lot', label: '주차 차량', tex, cat: '차량', scale: PARKED_CAR_SCALE }, c, r, slot);
         }
       }
     }

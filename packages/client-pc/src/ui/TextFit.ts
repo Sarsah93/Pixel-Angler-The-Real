@@ -88,3 +88,34 @@ export function enforceTextBounds(root: Phaser.GameObjects.Container, maxRight: 
   walk(root, 0);
   return fixed;
 }
+
+/**
+ * 세로 경계 감사 (150차 — 사용자 리포트 "텍스트가 팝업창 밑 경계선에 걸려있다").
+ *
+ * 가로(`enforceTextBounds`)는 말줄임으로 **고칠 수 있지만**, 세로로 넘친 텍스트는 잘라 낼 수 없다
+ * (내용이 사라진다). 그래서 이 함수는 고치지 않고 **찾아서 돌려준다** — 배치를 사람이 고치라는 뜻이다.
+ * dev 하네스가 패널을 하나씩 열어 전수 조사하는 데 쓴다.
+ *
+ * @returns 경계를 넘은 텍스트 목록(패널 로컬 좌표 기준 bottom 포함)
+ */
+export function auditTextBottom(
+  root: Phaser.GameObjects.Container, maxBottom: number, tag = '',
+): { text: string; bottom: number; over: number }[] {
+  const bad: { text: string; bottom: number; over: number }[] = [];
+  const walk = (c: Phaser.GameObjects.Container, oy: number): void => {
+    for (const child of c.list) {
+      if (child instanceof Phaser.GameObjects.Container) { walk(child, oy + child.y); continue; }
+      if (!(child instanceof Phaser.GameObjects.Text)) continue;
+      const t = child;
+      const top = oy + t.y - t.height * t.originY;
+      const bottom = top + t.height;
+      if (bottom <= maxBottom + 0.5) continue;
+      bad.push({ text: t.text.slice(0, 48), bottom: Math.round(bottom), over: Math.round(bottom - maxBottom) });
+    }
+  };
+  walk(root, 0);
+  if (bad.length && import.meta.env.DEV) {
+    console.warn(`[TextBottom] ${tag} maxBottom=${maxBottom}`, bad);
+  }
+  return bad;
+}

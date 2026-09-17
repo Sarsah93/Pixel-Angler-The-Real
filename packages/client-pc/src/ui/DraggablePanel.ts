@@ -17,6 +17,7 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { paintHudPanel } from './HudPanelStyle.js';
+import { auditTextBottom } from './TextFit.js';
 
 /** 화면 고정 컨테이너 트리 전체에 scrollFactor 0 재귀 적용 (입력 판정 어긋남 방지) */
 export function applyScreenFixed(root: Phaser.GameObjects.Container): void {
@@ -72,6 +73,12 @@ const HEADER_H = 32;
 const MODAL_BAND_MIN = 900;
 
 export class DraggablePanel extends Phaser.GameObjects.Container {
+  /**
+   * 열려 있는 팝업 레지스트리 (150차) — 텍스트가 창 아래 경계에 걸리는지 **전수 조사**하는 데 쓴다.
+   * 가로 넘침은 `enforceTextBounds`가 자동으로 고치지만 세로는 잘라 낼 수 없어 배치를 고쳐야 한다.
+   */
+  static readonly open = new Set<DraggablePanel>();
+
   protected panelW: number;
   protected panelH: number;
   protected requestClose: () => void;
@@ -94,6 +101,7 @@ export class DraggablePanel extends Phaser.GameObjects.Container {
     this.panelH = cfg.height;
     this.requestClose = cfg.onClose;
     this.zBase = cfg.depth ?? 800;
+    DraggablePanel.open.add(this);
     this.setDepth(this.zBase);
     this.setScrollFactor(0);
 
@@ -220,7 +228,13 @@ export class DraggablePanel extends Phaser.GameObjects.Container {
     applyScreenFixed(this);
   }
 
+  /** 이 패널 안에서 하단 경계(패널 높이 − 6px)를 넘는 텍스트 목록 — dev 감사용 */
+  auditBottom(): { text: string; bottom: number; over: number }[] {
+    return auditTextBottom(this, this.panelH - 6, this.titleText?.text ?? 'panel');
+  }
+
   override destroy(fromScene?: boolean): void {
+    DraggablePanel.open.delete(this);
     this.scene?.input?.off('pointermove', this.moveHandler);
     this.scene?.input?.off('pointerup', this.upHandler);
     this.scene?.input?.off('pointerdown', this.focusDownHandler);

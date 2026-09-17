@@ -180,7 +180,7 @@ export class UtilizationPanel extends DraggablePanel {
       x: (GAME_WIDTH - PANEL_W) / 2,
       y: (GAME_HEIGHT - PANEL_H) / 2,
       width: PANEL_W, height: PANEL_H,
-      title: '활용 (Utilization)',
+      title: '채비 · 요리',
       onClose, dim: true, depth: 840,
     });
     this.currentTab = initialTab;
