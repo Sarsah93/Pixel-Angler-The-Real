@@ -435,13 +435,17 @@ export class GameStateManager {
     this.updatePlayer({ currentTackle: tackle });
   }
 
-  /** 코인 추가/차감 */
-  addCoins(amount: number): boolean {
+  /**
+   * 코인 추가/차감.
+   * `quiet` = 스토리 이벤트를 쏘지 않는다 (146차 — **거래로 받은 재화는 `earn` 목표에 안 센다**.
+   * 인벤토리를 읽는 목표가 없는 이 게임에서 유저 간 거래가 새는 유일한 구멍이 이 이벤트였다).
+   */
+  addCoins(amount: number, quiet = false): boolean {
     if (!this._player) return false;
     const newCoins = this._player.inventory.coins + amount;
     if (newCoins < 0) return false;
     this._player.inventory.coins = newCoins;
-    StoryStore.event({ kind: 'coins', coins: newCoins });   // 134차 — earn 목표
+    if (!quiet) StoryStore.event({ kind: 'coins', coins: newCoins });   // 134차 — earn 목표
     return true;
   }
 

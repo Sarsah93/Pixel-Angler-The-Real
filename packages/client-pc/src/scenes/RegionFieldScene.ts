@@ -21,7 +21,11 @@ import Phaser from 'phaser';
 import {
   CHAR_CELL, CHAR_FOOT_Y, CHAR_SCALE, characterOf, type CharRole,
   isFieldActive, type MpActivity, mpTimeSlot, mpWorldSeed,
+  MP_TRADE_RANGE_PX, MP_TRADE_REASON_KO, type MpTradeState, type MpProfile, type MpPeer,
 } from '@tra/core';
+import { openContextMenu } from '../ui/ContextMenu.js';
+import { PeerInfoPanel } from '../ui/PeerInfoPanel.js';
+import { TradePanel } from '../ui/TradePanel.js';
 import { CharacterSprite, ensureCharSheet, charFrameName } from '../ui/CharacterSprite.js';
 import { NuisanceField } from '../ui/NuisanceField.js';
 import { ensureBuildingVariant } from '../ui/BuildingVariant.js';
@@ -3228,6 +3232,12 @@ export class RegionFieldScene extends Phaser.Scene {
     this.fieldEvents?.update(delta, this.fieldFeeding);
     // 캐스팅 비행은 UI 상태와 무관하게 진행 (착수까지 물리 유지)
     if (this.castProj) this.stepCastFlight(delta);
+    // 146차 — 멀티 동기화는 **팝업이 열려 있어도** 돈다. 거래창·인벤 열고 있는 동안 남이 얼어붙거나
+    //   확정된 거래가 영영 적용되지 않던 결함(실측). 밀어내기만 uiBlocked를 스스로 본다.
+    this.syncPeers(delta);
+    this.applyPeerPush(delta);
+    this.updateOccluders(delta);
+    for (const line of MultiplayerClient.drainChat()) this.hud?.pushLog(`${line.name}: ${line.text}`);
     if (this.isTransitioning || this.uiBlocked) { this.playerBody.setVelocity(0, 0); return; }
     if (this.placing) {
       // 설치 모드 — 이동은 허용, 프리뷰는 커서 추적 (클릭=설치 / 우클릭·ESC=취소)
@@ -3238,10 +3248,6 @@ export class RegionFieldScene extends Phaser.Scene {
       this.trapField.updatePreview(pw.x, pw.y);
     }
     this.handleMovement();
-    this.syncPeers(delta);
-    this.applyPeerPush(delta);
-    this.updateOccluders(delta);
-    for (const line of MultiplayerClient.drainChat()) this.hud?.pushLog(`${line.name}: ${line.text}`);
     this.tickVitals(delta);
     this.updateSpriteAndShadow();
     this.updateBuildingProximity();
@@ -3696,6 +3702,8 @@ export class RegionFieldScene extends Phaser.Scene {
     if (this.peerSyncAt < 200) return;
     this.peerSyncAt = 0;
 
+    MultiplayerClient.setProfile(this.buildProfile());   // 146차 — 내용이 같으면 안 올라간다
+    this.syncTrade();
     const peers = MultiplayerClient.peersInRegion(this.region);
     const alive = new Set<string>();
     this.peerFeet = [];
@@ -3710,7 +3718,10 @@ export class RegionFieldScene extends Phaser.Scene {
       let o = this.peerObjs.get(peer.playerId);
       if (!o) {
         const sheet = ensureCharSheet(this, peer.look ?? characterOf(`mp_${peer.playerId}`), CHAR_SCALE);
-        const img = this.add.image(peer.x, feetY, sheet, charFrameName(peer.facing, 0)).setOrigin(0.5, 1);
+        const img = this.add.image(peer.x, feetY, sheet, charFrameName(peer.facing, 0)).setOrigin(0.5, 1)
+          .setInteractive();
+        const pid = peer.playerId;
+        img.on('pointerdown', (p: Phaser.Input.Pointer) => { if (p.rightButtonDown()) this.onPeerRightClick(pid, p); });
         const tag = this.add.text(peer.x, tagY, peer.name, {
           fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#9fe8ff',
           backgroundColor: '#0a1628cc', padding: { x: 3, y: 1 },
@@ -3749,6 +3760,129 @@ export class RegionFieldScene extends Phaser.Scene {
     field: null, fishing: 'act_fish', shop: 'act_shop', indoor: 'act_home', menu: 'act_away',
   };
 
+  // ── 146차 유저 간 거래 · 정보 보기 ──────────────────────────
+
+  private tradePanel: TradePanel | null = null;
+  /** 이미 응답 창을 띄운 제안 id (같은 제안에 두 번 묻지 않게) */
+  private askedTradeId = '';
+  /** 취소 사유를 한 번만 띄우기 위한 기록 */
+  private notedTradeId = '';
+
+  /** 남에게 보이는 프로필 — 계약 §MpProfile의 공개 항목만 */
+  private buildProfile(): MpProfile {
+    const gear = InventoryStore.items
+      .filter((i) => i.equipped || i.equippedHand)
+      .map((i) => ({ slot: i.equippedHand ? `손(${i.equippedHand})` : i.subCategory, name: i.name }));
+    const rec = Object.entries(GameState.player.personalRecords ?? {})
+      .sort((a, b) => b[1] - a[1]).slice(0, 3)
+      .map(([speciesId, cm]) => ({ speciesId, cm: Math.round(cm) }));
+    return {
+      level: GameState.player.level, gear,
+      licenses: GameState.licenses.filter((l) => !l.isExpired).map((l) => l.type as string),
+      records: rec, trips: GameState.player.totalTrips,
+    };
+  }
+
+  /** 피어 우클릭 — **한 칸 안**에서만 메뉴가 열린다(사용자 지시) */
+  private onPeerRightClick(playerId: string, p: Phaser.Input.Pointer): void {
+    if (this.uiBlocked) return;
+    const peer = MultiplayerClient.peers.find((x) => x.playerId === playerId);
+    if (!peer) return;
+    const d = Math.hypot(peer.x - this.playerBody.x, peer.y - this.playerBody.y);
+    if (d > MP_TRADE_RANGE_PX) { this.floatingHint('한 칸 안으로 다가가세요'); return; }
+    this.suppressClickUntil = this.time.now + 250;
+    openContextMenu(this, p.x, p.y, [
+      { label: '정보 보기', run: () => this.openPeerInfo(peer) },
+      { label: '거래하기', run: () => void this.requestTrade(peer) },
+      { label: '취소', run: () => {/* 닫기만 */} },
+    ]);
+  }
+
+  private openPeerInfo(peer: MpPeer): void {
+    this.openPopup((close) => new PeerInfoPanel(this, GAME_WIDTH - 400, 60, peer, close));
+  }
+
+  /** 거래 요청 — 거절 사유는 채팅 로그에 그대로 (사용자 지시 "대상자가 바쁩니다") */
+  private async requestTrade(peer: MpPeer): Promise<void> {
+    if (!isFieldActive(peer.activity)) { this.hud?.pushLog(`[거래] ${MP_TRADE_REASON_KO.busy}`); return; }
+    if (peer.trading) { this.hud?.pushLog(`[거래] ${MP_TRADE_REASON_KO.trading}`); return; }
+    if (MultiplayerClient.trade && MultiplayerClient.trade.phase !== 'cancelled') { this.hud?.pushLog(`[거래] ${MP_TRADE_REASON_KO.meTrading}`); return; }
+    const r = await MultiplayerClient.proposeTrade(peer.playerId);
+    this.hud?.pushLog(r.ok ? `[거래] ${peer.name} 님에게 거래를 요청했습니다 — 응답을 기다립니다` : `[거래] ${r.reasonKo ?? '요청하지 못했습니다.'}`);
+  }
+
+  /**
+   * 서버가 돌려준 거래 상태를 화면에 맞춘다 (200ms).
+   *  proposed(내게 온 것) → 수락/거절 창 · open → 거래 창 · committed → 적용 · cancelled → 사유 한 번.
+   */
+  private syncTrade(): void {
+    const t = MultiplayerClient.trade;
+    if (!t) { if (this.tradePanel) this.closeTradePanel(); return; }
+    const { me, other } = MultiplayerClient.tradeSides(t);
+    switch (t.phase) {
+      case 'proposed':
+        if (t.to.userId === MultiplayerClient.userId && this.askedTradeId !== t.tradeId && !this.uiBlocked) {
+          this.askedTradeId = t.tradeId;
+          this.openPopup((close) => new ConfirmDialog(
+            this, `${other.name} 님이 거래를 요청했습니다.\n수락하시겠습니까?`,
+            () => { close(); void MultiplayerClient.respondTrade(t.tradeId, true); },
+            () => { close(); void MultiplayerClient.respondTrade(t.tradeId, false); },
+          ));
+        }
+        return;
+      case 'open':
+        if (!this.tradePanel) {
+          this.tradePanel = this.openPopup(
+            (close) => new TradePanel(this, () => { void MultiplayerClient.cancelTrade(t.tradeId); close(); }, {
+              openQuantity: (cfg) => { this.openPopup((c2) => new QuantityDialog(this, { ...cfg, onConfirm: (q) => { c2(); cfg.onConfirm(q); }, onCancel: () => { c2(); cfg.onCancel(); } })); },
+              pushLog: (m) => this.hud?.pushLog(m),
+            }),
+            () => { this.tradePanel = null; },
+          );
+        } else this.tradePanel.sync();
+        return;
+      case 'committed':
+        this.closeTradePanel();
+        if (!me.offer.applied && !MultiplayerClient.hasAppliedTrade(t.tradeId)) this.applyTrade(t, me, other);
+        return;
+      case 'cancelled':
+        this.closeTradePanel();
+        if (this.notedTradeId !== t.tradeId) {
+          this.notedTradeId = t.tradeId;
+          this.hud?.pushLog(`[거래] ${t.reasonKo ?? MP_TRADE_REASON_KO.cancelled}`);
+        }
+        return;
+    }
+  }
+
+  private closeTradePanel(): void {
+    const p = this.tradePanel;
+    if (!p) return;
+    this.tradePanel = null;
+    const e = this.popupStack.find((x) => x.panel === p);
+    if (e) e.close(); else p.destroy();
+  }
+
+  /**
+   * 도장 찍힌 거래를 내 인벤토리에 적용한다 — **한 번만**(localStorage 기억).
+   * 내가 준 것을 빼고 상대가 준 것을 넣는다. 재화는 `quiet`로 — earn 목표에 세지 않는다.
+   */
+  private applyTrade(t: MpTradeState, me: MpTradeState['from'], other: MpTradeState['from']): void {
+    MultiplayerClient.markTradeApplied(t.tradeId);
+    for (const it of me.offer.items) InventoryStore.removeQty(it.srcId, it.qty);
+    if (me.offer.coins > 0) GameState.addCoins(-me.offer.coins, true);
+    let lost = 0;
+    for (const it of other.offer.items) if (!InventoryStore.importTradeItem(it)) lost += it.qty;
+    if (other.offer.coins > 0) GameState.addCoins(other.offer.coins, true);
+    GameState.markDirty();
+    this.events.emit('inventory-changed');
+    this.hud?.refreshQuickslots();
+    const gave = [...me.offer.items.map((i) => `${i.name} x${i.qty}`), ...(me.offer.coins ? [`${me.offer.coins.toLocaleString()}원`] : [])].join(', ') || '없음';
+    const got = [...other.offer.items.map((i) => `${i.name} x${i.qty}`), ...(other.offer.coins ? [`${other.offer.coins.toLocaleString()}원`] : [])].join(', ') || '없음';
+    this.hud?.pushLog(`[거래] ${MP_TRADE_REASON_KO.done} 준 것: ${gave} / 받은 것: ${got}`);
+    if (lost) this.hud?.pushLog(`[경고] 가방이 가득 차 ${lost}개를 받지 못했습니다`);
+  }
+
   /**
    * 피어 소프트 푸시 (145차 — 스타듀 방식). 겹침을 허용하되 서서히 벌린다.
    *
@@ -3758,7 +3892,7 @@ export class RegionFieldScene extends Phaser.Scene {
    * 또 **밀려 들어갈 칸이 막혀 있으면 그 축으로는 밀지 않는다**(벽·바다로 밀려나는 것 방지).
    */
   private applyPeerPush(delta: number): void {
-    if (!this.peerFeet.length || !this.playerBody || this.playerActionLocked) return;
+    if (!this.peerFeet.length || !this.playerBody || this.playerActionLocked || this.uiBlocked) return;
     const R = RegionFieldScene.PEER_PUSH_RADIUS;
     let ax = 0, ay = 0;
     for (const f of this.peerFeet) {

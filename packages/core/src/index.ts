@@ -565,3 +565,11 @@ export {
   MP_ACTIVITY_KO, MP_SHARED_RNG_KINDS, MP_CHAT_KEEP, MP_CHAT_MAX_LEN,
   isFieldActive, mpWorldSeed, mpTimeSlot, mpRng,
 } from './types/Multiplayer.js';
+
+// ── 146차 유저 간 거래(공증) · 정보 보기 · 플리마켓 계약 ──
+export type {
+  MpTradeItem, MpTradeOffer, MpTradePhase, MpTradeState, MpProfile, MarketListing,
+} from './types/Multiplayer.js';
+export {
+  MP_TRADE_PROPOSE_TIMEOUT_MS, MP_TRADE_RANGE_PX, MP_TRADE_MAX_ITEMS, MP_TRADE_REASON_KO,
+} from './types/Multiplayer.js';

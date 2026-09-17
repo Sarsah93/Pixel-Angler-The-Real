@@ -14,13 +14,14 @@
 import {
   MP_DEFAULT_SERVER, MP_PRESENCE_INTERVAL_MS,
   type GameMode, type MpPeer, type MpActivity, type MpPlacedTrap, type MpChatLine, type MpResume,
+  type MpProfile, type MpTradeState, type MpTradeItem,
   type MpCreateSessionRes, type MpSessionInfoRes, type MpNameCheckRes, type MpJoinRes, type MpPresenceRes,
 } from '@tra/core';
 
 /** 로비 설정은 브라우저에 남긴다 — 다음에 켤 때 서버 주소를 다시 치지 않게 */
 const STORAGE_KEY = 'pixelAngler_mp';
 
-interface StoredMp { server: string; lastCode: string; userId?: string }
+interface StoredMp { server: string; lastCode: string; userId?: string; applied?: string[] }
 
 /** 재접속 열쇠 — 이 브라우저(=이 사람)를 가리키는 고정 id. 한 번 만들면 바뀌지 않는다 */
 function makeUserId(): string {
@@ -54,6 +55,14 @@ class MultiplayerClientImpl {
   chatInbox: MpChatLine[] = [];
   /** 이어하기로 받은 이전 자리 — 필드 씬이 한 번 쓰고 비운다 */
   resume: MpResume | null = null;
+  /** 내가 얽힌 거래 (146차) — 서버가 돌려준 진실. 없으면 거래 중이 아니다 */
+  trade: MpTradeState | null = null;
+  /** 이미 내 인벤토리에 적용한 확정 거래 id (146차 — 이중 적용 방지, localStorage 영속) */
+  private appliedTrades = new Set<string>();
+  /** 남에게 보이는 프로필 — 바뀔 때만 다시 올린다 */
+  private profile?: MpProfile;
+  private profileKey = '';
+  private profileSent = true;
 
   private timer: number | null = null;
   private pos = {
@@ -75,6 +84,7 @@ class MultiplayerClientImpl {
         const v = JSON.parse(raw) as Partial<StoredMp>;
         if (v.server) this.server = v.server;
         if (v.userId) this.userId = v.userId;
+        if (v.applied) this.appliedTrades = new Set(v.applied);
       }
     } catch (_e) {/* 저장본이 깨졌으면 기본값 */}
     if (!this.userId) { this.userId = makeUserId(); this.persist(); }
@@ -93,6 +103,7 @@ class MultiplayerClientImpl {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
         server: this.server, lastCode: this.code, userId: this.userId,
+        applied: [...this.appliedTrades].slice(-50),
       } satisfies StoredMp));
     } catch (_e) {/* 저장 실패는 무시 */}
   }
@@ -171,6 +182,15 @@ class MultiplayerClientImpl {
     this.lookSent = false;
   }
 
+  /** 남에게 보이는 프로필 — 내용이 같으면 다시 올리지 않는다 (146차) */
+  setProfile(p: MpProfile): void {
+    const key = JSON.stringify(p);
+    if (key === this.profileKey) return;
+    this.profileKey = key;
+    this.profile = p;
+    this.profileSent = false;
+  }
+
   // ── 위치 알림 ─────────────────────────────────────
   /** 필드 씬이 매 프레임 넣어주는 내 위치 (실제 전송은 주기 타이머가 한다) */
   reportPosition(
@@ -189,16 +209,24 @@ class MultiplayerClientImpl {
     if (!this.isConnected || this.timer !== null) return;
     const tick = async (): Promise<void> => {
       const say = this.pendingSay; this.pendingSay = '';
+      // ⚠ "보냈다"는 **이 요청에 실은 객체**로 판정한다. 플래그만 보면 요청이 날아가는 사이에
+      //   setLook/setProfile이 불려도 응답 시점에 "보냈다"로 찍혀 **영영 안 올라간다**(실측 — 씬 생성 중
+      //   첫 틱의 응답이 늦게 처리되는 동안 setProfile이 먼저 돌았다).
+      const sentLook = this.lookSent ? undefined : this.look;
+      const sentProfile = this.profileSent ? undefined : this.profile;
       const res = await this.post<MpPresenceRes>('/mp/presence', {
         code: this.code, playerId: this.playerId, ...this.pos,
-        ...(this.lookSent ? {} : { look: this.look }),
+        ...(sentLook ? { look: sentLook } : {}),
+        ...(sentProfile ? { profile: sentProfile } : {}),
         ...(say ? { say } : {}),
         chatSince: this.chatSeq,
       });
       if (!res?.ok) { this.peers = []; return; }
-      if (!this.lookSent && this.look) this.lookSent = true;
+      if (sentLook && sentLook === this.look) this.lookSent = true;
+      if (sentProfile && sentProfile === this.profile) this.profileSent = true;
       this.peers = res.peers ?? [];
       this.traps = res.traps ?? [];
+      this.trade = res.trade ?? null;
       for (const line of res.chat ?? []) {
         if (line.seq <= this.chatSeq) continue;
         this.chatSeq = line.seq;
@@ -229,6 +257,39 @@ class MultiplayerClientImpl {
     const out = this.chatInbox;
     this.chatInbox = [];
     return out;
+  }
+
+  // ── 유저 간 거래 (146차) ─────────────────────────────
+  private tradePost(path: string, body: Record<string, unknown>): Promise<{ ok: boolean; reasonKo?: string }> {
+    if (!this.isConnected) return Promise.resolve({ ok: false, reasonKo: '멀티플레이 중이 아닙니다.' });
+    return this.post<{ ok: boolean; reasonKo?: string }>(path, { code: this.code, playerId: this.playerId, ...body })
+      .then((r) => r ?? { ok: false, reasonKo: '서버에 연결할 수 없습니다.' });
+  }
+  proposeTrade(targetPlayerId: string): Promise<{ ok: boolean; reasonKo?: string }> {
+    return this.tradePost('/mp/trade/propose', { targetPlayerId });
+  }
+  respondTrade(tradeId: string, accept: boolean): Promise<{ ok: boolean; reasonKo?: string }> {
+    return this.tradePost('/mp/trade/respond', { tradeId, accept });
+  }
+  setTradeOffer(tradeId: string, items: MpTradeItem[], coins: number): Promise<{ ok: boolean; reasonKo?: string }> {
+    return this.tradePost('/mp/trade/offer', { tradeId, items, coins });
+  }
+  lockTrade(tradeId: string, confirm: boolean): Promise<{ ok: boolean; reasonKo?: string }> {
+    return this.tradePost('/mp/trade/lock', { tradeId, confirm });
+  }
+  cancelTrade(tradeId: string): Promise<{ ok: boolean; reasonKo?: string }> {
+    return this.tradePost('/mp/trade/cancel', { tradeId });
+  }
+  /** 확정 거래를 적용했다 — 같은 id를 두 번 적용하지 않도록 기억한다 */
+  markTradeApplied(tradeId: string): void {
+    this.appliedTrades.add(tradeId);
+    this.persist();
+    void this.tradePost('/mp/trade/applied', { tradeId });
+  }
+  hasAppliedTrade(tradeId: string): boolean { return this.appliedTrades.has(tradeId); }
+  /** 이 거래에서 내 쪽 / 상대 쪽 */
+  tradeSides(t: MpTradeState): { me: MpTradeState['from']; other: MpTradeState['from'] } {
+    return t.from.userId === this.userId ? { me: t.from, other: t.to } : { me: t.to, other: t.from };
   }
 
   // ── 설치물 (통발) ─────────────────────────────────
@@ -264,7 +325,7 @@ class MultiplayerClientImpl {
     this.mode = 'single';
     this.code = ''; this.playerId = ''; this.name = '';
     this.worldSeed = 0; this.chatSeq = 0; this.chatInbox = []; this.resume = null;
-    this.lookSent = false;
+    this.lookSent = false; this.trade = null; this.profileKey = ''; this.profileSent = true;
   }
 }
 

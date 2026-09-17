@@ -72,6 +72,10 @@ export interface MpPeer {
   look?: CharConfig;
   /** 지금 무엇을 하는가 (145차) — 없으면 필드로 본다 */
   activity?: MpActivity;
+  /** 남에게 보이는 프로필 (146차 — 정보 보기) */
+  profile?: MpProfile;
+  /** 거래 중인가 (146차 — 거래 요청 거절 사유·배지) */
+  trading?: boolean;
 }
 
 export interface MpCreateSessionRes {
@@ -117,6 +121,8 @@ export interface MpPresenceRes {
   traps?: MpPlacedTrap[];
   /** 내가 마지막으로 받은 줄 이후의 채팅 (145차) */
   chat?: MpChatLine[];
+  /** 내가 얽힌 거래 (146차) — 없으면 거래 중이 아니다. committed는 양쪽이 applied할 때까지 남는다 */
+  trade?: MpTradeState;
   reasonKo?: string;
 }
 
@@ -281,6 +287,8 @@ export interface MpSavedSession {
   savedMs: number;
   players: MpSavedPlayer[];
   traps: MpPlacedTrap[];
+  /** 미적용 확정 거래 (146차 — 한쪽이 적용 전에 튕겨도 이어하기에서 마저 적용한다) */
+  trades?: MpTradeState[];
 }
 
 /** 이어하기 결과 — 서버가 이전 자리를 알고 있으면 돌려준다 */
@@ -288,4 +296,126 @@ export interface MpResume {
   regionId: string;
   x: number;
   y: number;
+}
+
+// ═══════════════════════════════════════════════════════
+// 유저 간 거래 (146차) — 서버는 은행이 아니라 공증인이다
+// ═══════════════════════════════════════════════════════
+
+/**
+ * 거래 한 줄. **아이템 실체는 `payload`에 통째로** 실린다(서버는 열어보지 않는다 — 인벤토리 스키마는
+ * 클라이언트의 것). 나머지 필드는 상대 화면에 "무엇인지" 보여 주기 위한 표시용이다.
+ *
+ * 이 모양은 나중의 메인 서버 플리마켓(`MarketListing`)도 그대로 쓴다 — 계약을 한 번만 정한다.
+ */
+export interface MpTradeItem {
+  /** 보내는 쪽 인벤토리 id (보내는 쪽에서만 의미 있다 — 받는 쪽은 새 id를 만든다) */
+  srcId: string;
+  name: string;
+  qty: number;
+  /** 아이콘 텍스처 키 (없으면 카테고리 기본) */
+  iconTexture?: string;
+  /** 신선도 라벨 등 한 줄 부연 */
+  noteKo?: string;
+  /** 인벤토리 아이템 원본(JSON) — 받는 쪽이 그대로 복원한다 */
+  payload: Record<string, unknown>;
+}
+
+export interface MpTradeOffer {
+  items: MpTradeItem[];
+  coins: number;
+  /** 제안을 고쳤다 — 상대가 잠금을 풀어야 한다 */
+  locked: boolean;
+  /** 잠금 뒤 최종 동의 */
+  confirmed: boolean;
+  /** 확정된 거래를 내 인벤토리에 적용했다 (복구 판단용) */
+  applied: boolean;
+}
+
+/**
+ * 거래 상태.
+ *  proposed  — 한쪽이 제안, 상대 응답 대기 (거절·시간 초과 = cancelled)
+ *  open      — 양쪽 제안 편집 중. 어느 쪽이든 고치면 양쪽 잠금이 풀린다
+ *  committed — 양쪽 확정. 서버가 도장을 찍은 뒤라 **되돌릴 수 없다**. 각자 적용 후 applied
+ *  cancelled — 취소·거절·시간 초과·상대 이탈
+ */
+export type MpTradePhase = 'proposed' | 'open' | 'committed' | 'cancelled';
+
+export interface MpTradeState {
+  tradeId: string;
+  phase: MpTradePhase;
+  /** 제안한 쪽 */
+  from: { userId: string; playerId: string; name: string; offer: MpTradeOffer };
+  /** 받은 쪽 */
+  to: { userId: string; playerId: string; name: string; offer: MpTradeOffer };
+  createdMs: number;
+  updatedMs: number;
+  /** 취소 사유 (cancelled일 때) */
+  reasonKo?: string;
+}
+
+/** 거래 제안에 응답이 없으면 이 시간 뒤 자동 취소 */
+export const MP_TRADE_PROPOSE_TIMEOUT_MS = 30_000;
+/** 거래 시작 가능 거리 (px) — "1타일 이내"(32px) + 몸통 폭 여유 */
+export const MP_TRADE_RANGE_PX = 48;
+/** 거래 한 번에 실을 수 있는 아이템 줄 수 */
+export const MP_TRADE_MAX_ITEMS = 8;
+
+/** 거래 시작 거절 사유 — 채팅 로그에 그대로 띄운다 */
+export const MP_TRADE_REASON_KO = {
+  busy: '대상자가 바쁩니다.',
+  trading: '대상자가 이미 거래 중입니다.',
+  meTrading: '이미 거래 중입니다.',
+  far: '너무 멀리 있습니다 — 한 칸 안으로 다가가세요.',
+  gone: '상대가 자리를 떠났습니다.',
+  declined: '상대가 거래를 거절했습니다.',
+  timeout: '응답이 없어 거래 요청이 취소되었습니다.',
+  cancelled: '거래가 취소되었습니다.',
+  done: '거래가 성사되었습니다.',
+} as const;
+
+// ── 정보 보기 ────────────────────────────────────────
+
+/**
+ * 남에게 보이는 프로필 (146차). 입장 때 한 번 올리고 바뀔 때만 다시 올린다.
+ *
+ * ⚖ **공개 = 이름·레벨·착용 장비·면허·최대어·출조 횟수.**
+ * ⚖ **비공개 = 재화·인벤토리·퀘스트 진행·생존 지표·스킬 배분·우호도** —
+ *    재화와 인벤은 거래 협상력이고, 퀘스트·우호도는 각자의 서사라 남이 볼 이유가 없다.
+ */
+export interface MpProfile {
+  level: number;
+  /** 착용 장비 — 슬롯 라벨 + 이름 (수치는 안 보낸다) */
+  gear: { slot: string; name: string }[];
+  /** 보유 면허 id */
+  licenses: string[];
+  /** 최대어 상위 3종 */
+  records: { speciesId: string; cm: number }[];
+  trips: number;
+}
+
+// ── 메인 서버 플리마켓 (계약만 — 원장은 나중) ─────────
+
+/**
+ * 플리마켓 등록 한 건 (146차 — **계약만 정해 둔다**, 구현은 메인 서버 단계).
+ *
+ * 설계 원칙 — 등록 = **서버 소유로 이전**(에스크로). 등록한 아이템은 로컬 세이브에서 빠지고
+ * 서버가 보관한다. 구매도 서버 안에서 소유권만 바뀌고, 구매자가 "수령"으로 로컬에 가져온다.
+ * 이래야 원장이 P2P 세계(각자 로컬 인벤)와 완전히 분리된다.
+ *
+ * ⚠ 로컬 세이브는 수정 가능하다. 위조 아이템이 마켓에 쏟아지는 것을 막으려면 **서버가 아이템에
+ * 서명**하거나 생성을 승인해야 한다 — 그것이 "서버 권위"가 필요해지는 정확한 시점이고,
+ * 그 전에는 마켓을 열지 않는다.
+ */
+export interface MarketListing {
+  listingId: string;
+  sellerUserId: string;
+  item: MpTradeItem;
+  /** 즉시 구매가 (경매면 시작가) */
+  priceWon: number;
+  /** 경매면 마감 시각·현재 입찰 */
+  auction?: { endsMs: number; bidWon: number; bidderUserId?: string };
+  listedMs: number;
+  /** 카테고리 트리 경로 (타르코프식 좌측 트리 — `장비/낚싯대/루어대` 등) */
+  categoryPath: string[];
 }

@@ -19,6 +19,7 @@ import {
   computeLureRigWeight, getLureCastCd, isKnifeItem, FISH_DATABASE, lineStrengthKg,
   speciesStandardWeightG, SASHIMI_PLATE_SPECS,
   type GearFaultId, GEAR_FAULTS, gearUsable,
+  type MpTradeItem,
 } from '@tra/core';
 import type { SashimiSizeTier } from '@tra/core';
 import type { ForageTool, StatusCure, CatchMethod } from '@tra/core';
@@ -276,6 +277,11 @@ export interface InvItem {
    * 이야기가 주는 고급 장비를 현금화하는 우회를 막는다. 착용·수리·버리기는 가능.
    */
   bound?: boolean;
+  /**
+   * 거래로 받은 것 (146차). 지금은 표식뿐이지만, 인벤토리를 읽어 닫는 퀘스트 목표가 생기면
+   * 이 표식으로 "남이 준 것"을 걸러야 한다(자가 어획 규칙 §3-4와 같은 취지).
+   */
+  traded?: boolean;
   /**
    * 가방(등 슬롯) — 착용 시 늘어나는 인벤토리 칸 수 (135차 가방 사다리 1단계).
    * 기본 25칸 위에 얹히며, 패널 레이아웃 한계로 **총 30칸(6행)까지**만 반영된다.
@@ -1154,6 +1160,65 @@ class InventoryStoreManager {
    */
   nextCatchSeq(): number {
     return ++this._catchSeq;
+  }
+
+  // ═══════════════════════════════════════════════════
+  // 유저 간 거래 (146차) — 스냅샷 내보내기 / 받기
+  // ═══════════════════════════════════════════════════
+
+  /**
+   * 거래에 실을 수 있는가. **귀속·착용 중·미완성 접시**는 안 된다.
+   * 귀속은 141차 JSDoc대로 "판매·양도 불가"를 이제야 양도까지 강제한다.
+   */
+  tradeBlockReason(item: InvItem): string | null {
+    if (item.bound) return '귀속 아이템은 양도할 수 없습니다';
+    if (item.equipped || item.equippedHand) return '착용 중인 장비는 먼저 벗어야 합니다';
+    if (item.plateWip) return '미완성 접시는 양도할 수 없습니다';
+    if (item.qty <= 0) return '수량이 없습니다';
+    return null;
+  }
+
+  /** 내 아이템 → 거래 스냅샷 (서버는 payload를 열어보지 않는다) */
+  exportTradeItem(item: InvItem, qty: number): MpTradeItem {
+    const payload: Record<string, unknown> = { ...item };
+    delete payload['slot']; delete payload['qty']; delete payload['equipped']; delete payload['equippedHand'];
+    return {
+      srcId: item.id, name: item.name, qty: Math.max(1, Math.min(qty, item.qty)),
+      iconTexture: item.iconTexture,
+      noteKo: item.condition ? (CONDITION_LABEL[item.condition] ?? item.condition) : undefined,
+      payload,
+    };
+  }
+
+  /**
+   * 거래 스냅샷 → 내 인벤토리. **개체형(어획·채집·필렛 등 `speciesId` 보유)은 새 id를 만든다** —
+   * 보내는 쪽의 순번 id가 내 것과 겹치면 `addItem`이 다른 물고기를 한 스택으로 합쳐 버린다.
+   * 카탈로그형(같은 id = 같은 물건)은 그대로 합쳐지는 것이 맞다.
+   */
+  importTradeItem(t: MpTradeItem): boolean {
+    const tpl = { ...(t.payload as InvItemTemplate) };
+    tpl.traded = true;
+    if (tpl.speciesId || tpl.forageCatch) {
+      // ⚠ 내 순번(`nextCatchSeq`)만 붙이면 **내 dev 시드 `inv_fish_1`과 충돌해 한 스택으로 합쳐졌다**(실측).
+      //   시각 + 순번을 함께 붙이고, 그래도 겹치면 순번을 올린다.
+      const base = t.srcId.replace(/_\d+$/, '');
+      let id = `${base}_t${Date.now().toString(36)}${this.nextCatchSeq()}`;
+      while (this.find(id)) id = `${base}_t${Date.now().toString(36)}${this.nextCatchSeq()}`;
+      tpl.id = id;
+    }
+    return this.addItem(tpl, t.qty);
+  }
+
+  /** 받을 아이템에 필요한 빈 칸 수 (같은 id가 이미 있어 합쳐지는 것은 0) */
+  slotsNeededFor(items: MpTradeItem[]): Partial<Record<InvCategory, number>> {
+    const need: Partial<Record<InvCategory, number>> = {};
+    for (const t of items) {
+      const tpl = t.payload as InvItemTemplate;
+      const individual = !!(tpl.speciesId || tpl.forageCatch);
+      if (!individual && this.find(t.srcId)) continue;
+      need[tpl.category] = (need[tpl.category] ?? 0) + 1;
+    }
+    return need;
   }
 
   // ── 소켓 이동 (드래그 앤 드랍) ───────────────────────

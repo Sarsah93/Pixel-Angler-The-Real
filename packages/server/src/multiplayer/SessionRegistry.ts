@@ -24,9 +24,11 @@ import { join } from 'node:path';
 import {
   SESSION_CODE_LEN, SESSION_CODE_ALPHABET, MP_PRESENCE_TIMEOUT_MS,
   MP_CHAT_KEEP, MP_CHAT_MAX_LEN,
-  characterNameKey, validateCharacterName,
+  MP_TRADE_PROPOSE_TIMEOUT_MS, MP_TRADE_RANGE_PX, MP_TRADE_MAX_ITEMS, MP_TRADE_REASON_KO,
+  characterNameKey, validateCharacterName, isFieldActive,
   type MpPeer, type MpActivity, type MpPlacedTrap, type MpChatLine,
   type MpSavedSession, type MpResume,
+  type MpTradeState, type MpTradeOffer, type MpTradeItem, type MpProfile,
 } from '@tra/core';
 
 interface SessionPlayer extends MpPeer {
@@ -36,6 +38,8 @@ interface SessionPlayer extends MpPeer {
   lastSeenMs: number;
   /** 접속이 끊긴 뒤에도 자리를 기억해 두는가 (이어하기용 껍데기) */
   offline: boolean;
+  /** 남에게 보이는 프로필 (146차) */
+  profile?: MpProfile;
 }
 
 interface Session {
@@ -46,6 +50,11 @@ interface Session {
   traps: MpPlacedTrap[];
   chat: MpChatLine[];
   chatSeq: number;
+  /**
+   * 거래 (146차). committed는 **양쪽이 applied할 때까지** 남는다 — 한쪽이 적용 전에 튕겨도
+   * 이어하기로 돌아오면 서버가 다시 내려주므로 "준 것만 사라지는" 일이 없다.
+   */
+  trades: MpTradeState[];
   /** 마지막으로 디스크에 쓴 시각 — 잦은 쓰기를 막는다 */
   savedMs: number;
   dirty: boolean;
@@ -89,7 +98,7 @@ export class SessionRegistry {
     const code = this.newCode();
     this.sessions.set(code, {
       code, seed: (Math.random() * 0xffffffff) >>> 0, createdMs: Date.now(),
-      players: new Map(), traps: [], chat: [], chatSeq: 0, savedMs: 0, dirty: true,
+      players: new Map(), traps: [], chat: [], chatSeq: 0, trades: [], savedMs: 0, dirty: true,
     });
     this.save(code);
     return code;
@@ -166,10 +175,13 @@ export class SessionRegistry {
     code: string, playerId: string,
     pos: {
       regionId: string; x: number; y: number; facing: MpPeer['facing'];
-      moving: boolean; activity?: MpActivity; look?: MpPeer['look'];
+      moving: boolean; activity?: MpActivity; look?: MpPeer['look']; profile?: MpProfile;
     },
     opts?: { say?: string; chatSince?: number },
-  ): { ok: boolean; peers?: MpPeer[]; traps?: MpPlacedTrap[]; chat?: MpChatLine[]; reasonKo?: string } {
+  ): {
+    ok: boolean; peers?: MpPeer[]; traps?: MpPlacedTrap[]; chat?: MpChatLine[];
+    trade?: MpTradeState; reasonKo?: string;
+  } {
     const s = this.get(code);
     if (!s) return { ok: false, reasonKo: '세션을 찾을 수 없습니다.' };
     const me = s.players.get(playerId);
@@ -179,10 +191,12 @@ export class SessionRegistry {
     me.facing = pos.facing; me.moving = pos.moving;
     me.activity = pos.activity ?? 'field';
     if (pos.look) me.look = pos.look;
+    if (pos.profile) me.profile = pos.profile;
     me.lastSeenMs = Date.now();
     me.offline = false;
 
     if (opts?.say) this.say(s, me, opts.say);
+    this.sweepTrades(s);
 
     const peers: MpPeer[] = [];
     for (const p of s.players.values()) {
@@ -190,14 +204,15 @@ export class SessionRegistry {
       peers.push({
         playerId: p.playerId, name: p.name, regionId: p.regionId,
         x: p.x, y: p.y, facing: p.facing, moving: p.moving,
-        activity: p.activity, look: p.look,
+        activity: p.activity, look: p.look, profile: p.profile,
+        trading: this.activeTradeOf(s, p.userId) !== undefined,
       });
     }
     const since = opts?.chatSince ?? -1;
     const chat = since < 0 ? [] : s.chat.filter((l) => l.seq > since);
     s.dirty = true;
     this.save(code);
-    return { ok: true, peers, traps: s.traps, chat };
+    return { ok: true, peers, traps: s.traps, chat, trade: this.tradeFor(s, me.userId) };
   }
 
   private say(s: Session, me: SessionPlayer, textRaw: string): void {
@@ -216,6 +231,179 @@ export class SessionRegistry {
     p.lastSeenMs = Date.now();
     s.dirty = true;
     this.save(code, true);
+  }
+
+  // ═══════════════════════════════════════════════════
+  // 유저 간 거래 (146차) — 공증 상태 머신
+  //   제안 → (수락) 편집 → 양쪽 잠금 → 양쪽 확정 → committed(도장) → 각자 적용 → applied
+  //   서버는 인벤토리를 모른다(각자 로컬). 도장 찍힌 기록을 양쪽이 적용할 때까지 들고 있는 것이 전부다.
+  // ═══════════════════════════════════════════════════
+
+  private emptyOffer(): MpTradeOffer {
+    return { items: [], coins: 0, locked: false, confirmed: false, applied: false };
+  }
+
+  /** 아직 살아 있는(제안·편집·미적용 확정) 거래 */
+  private activeTradeOf(s: Session, userId: string): MpTradeState | undefined {
+    return s.trades.find((t) =>
+      (t.from.userId === userId || t.to.userId === userId)
+      && (t.phase === 'proposed' || t.phase === 'open'
+        || (t.phase === 'committed' && !this.sideOf(t, userId)!.offer.applied)));
+  }
+
+  /** 내 화면에 보여 줄 거래 — 살아 있는 것, 없으면 방금 끝난 것(취소 사유 전달용) */
+  private tradeFor(s: Session, userId: string): MpTradeState | undefined {
+    const live = this.activeTradeOf(s, userId);
+    if (live) return live;
+    // 취소된 지 10초 안이면 한 번 더 보여 준다 — 클라이언트가 사유를 띄우고 닫게
+    return s.trades.find((t) =>
+      (t.from.userId === userId || t.to.userId === userId)
+      && t.phase === 'cancelled' && Date.now() - t.updatedMs < 10_000);
+  }
+
+  private sideOf(t: MpTradeState, userId: string): MpTradeState['from'] | undefined {
+    return t.from.userId === userId ? t.from : t.to.userId === userId ? t.to : undefined;
+  }
+  private otherOf(t: MpTradeState, userId: string): MpTradeState['from'] | undefined {
+    return t.from.userId === userId ? t.to : t.to.userId === userId ? t.from : undefined;
+  }
+
+  private cancelTrade(t: MpTradeState, reasonKo: string): void {
+    t.phase = 'cancelled';
+    t.reasonKo = reasonKo;
+    t.updatedMs = Date.now();
+  }
+
+  /** 시간 초과·이탈 정리 + 끝난 기록 버리기 */
+  private sweepTrades(s: Session): void {
+    const now = Date.now();
+    for (const t of s.trades) {
+      if (t.phase === 'proposed' && now - t.createdMs > MP_TRADE_PROPOSE_TIMEOUT_MS) {
+        this.cancelTrade(t, MP_TRADE_REASON_KO.timeout);
+      } else if (t.phase === 'open') {
+        const a = this.playerByUser(s, t.from.userId), b = this.playerByUser(s, t.to.userId);
+        if (!a || !b || a.offline || b.offline) this.cancelTrade(t, MP_TRADE_REASON_KO.gone);
+      }
+    }
+    s.trades = s.trades.filter((t) => {
+      if (t.phase === 'cancelled') return now - t.updatedMs < 60_000;
+      if (t.phase === 'committed' && t.from.offer.applied && t.to.offer.applied) return false;
+      if (t.phase === 'committed') return now - t.updatedMs < 7 * 24 * 3_600_000;
+      return true;
+    });
+  }
+
+  private playerByUser(s: Session, userId: string): SessionPlayer | undefined {
+    return [...s.players.values()].find((p) => p.userId === userId);
+  }
+
+  private tradeCtx(code: string, playerId: string):
+  { ok: true; s: Session; me: SessionPlayer } | { ok: false; reasonKo: string } {
+    const s = this.get(code);
+    if (!s) return { ok: false, reasonKo: '세션을 찾을 수 없습니다.' };
+    const me = s.players.get(playerId);
+    if (!me) return { ok: false, reasonKo: '세션에서 나간 상태입니다.' };
+    this.sweepTrades(s);
+    return { ok: true, s, me };
+  }
+
+  /** 거래 제안 — 둘 다 필드에 있고, 둘 다 거래 중이 아니고, 한 칸 안일 때만 */
+  proposeTrade(code: string, playerId: string, targetPlayerId: string): { ok: boolean; reasonKo?: string } {
+    const c = this.tradeCtx(code, playerId);
+    if (!c.ok) return c;
+    const { s, me } = c;
+    const target = s.players.get(targetPlayerId);
+    if (!target || target.offline) return { ok: false, reasonKo: MP_TRADE_REASON_KO.gone };
+    if (this.activeTradeOf(s, me.userId)) return { ok: false, reasonKo: MP_TRADE_REASON_KO.meTrading };
+    if (this.activeTradeOf(s, target.userId)) return { ok: false, reasonKo: MP_TRADE_REASON_KO.trading };
+    if (!isFieldActive(target.activity) || !isFieldActive(me.activity)) return { ok: false, reasonKo: MP_TRADE_REASON_KO.busy };
+    if (target.regionId !== me.regionId
+      || Math.hypot(target.x - me.x, target.y - me.y) > MP_TRADE_RANGE_PX) {
+      return { ok: false, reasonKo: MP_TRADE_REASON_KO.far };
+    }
+    const now = Date.now();
+    s.trades.push({
+      tradeId: `t${now.toString(36)}${(this.seq++).toString(36)}`, phase: 'proposed',
+      from: { userId: me.userId, playerId: me.playerId, name: me.name, offer: this.emptyOffer() },
+      to: { userId: target.userId, playerId: target.playerId, name: target.name, offer: this.emptyOffer() },
+      createdMs: now, updatedMs: now,
+    });
+    s.dirty = true; this.save(code, true);
+    return { ok: true };
+  }
+
+  /** 받은 쪽의 응답 */
+  respondTrade(code: string, playerId: string, tradeId: string, accept: boolean): { ok: boolean; reasonKo?: string } {
+    const c = this.tradeCtx(code, playerId);
+    if (!c.ok) return c;
+    const t = c.s.trades.find((x) => x.tradeId === tradeId);
+    if (!t || t.phase !== 'proposed') return { ok: false, reasonKo: MP_TRADE_REASON_KO.cancelled };
+    if (t.to.userId !== c.me.userId) return { ok: false, reasonKo: '내게 온 요청이 아닙니다.' };
+    if (accept) { t.phase = 'open'; t.updatedMs = Date.now(); }
+    else this.cancelTrade(t, MP_TRADE_REASON_KO.declined);
+    c.s.dirty = true; this.save(code, true);
+    return { ok: true };
+  }
+
+  /** 내 제안 갱신 — 고치면 **양쪽 잠금이 풀린다**(상대가 본 것과 다른 것에 동의하는 일이 없게) */
+  setTradeOffer(
+    code: string, playerId: string, tradeId: string, items: MpTradeItem[], coins: number,
+  ): { ok: boolean; reasonKo?: string } {
+    const c = this.tradeCtx(code, playerId);
+    if (!c.ok) return c;
+    const t = c.s.trades.find((x) => x.tradeId === tradeId);
+    if (!t || t.phase !== 'open') return { ok: false, reasonKo: MP_TRADE_REASON_KO.cancelled };
+    const mine = this.sideOf(t, c.me.userId);
+    if (!mine) return { ok: false, reasonKo: '내 거래가 아닙니다.' };
+    if (items.length > MP_TRADE_MAX_ITEMS) return { ok: false, reasonKo: `아이템은 ${MP_TRADE_MAX_ITEMS}줄까지입니다.` };
+    mine.offer.items = items;
+    mine.offer.coins = Math.max(0, Math.floor(coins));
+    t.from.offer.locked = t.to.offer.locked = false;
+    t.from.offer.confirmed = t.to.offer.confirmed = false;
+    t.updatedMs = Date.now();
+    c.s.dirty = true; this.save(code, true);
+    return { ok: true };
+  }
+
+  /** 잠금(1단계) → 양쪽 잠금 뒤 확정(2단계) → 양쪽 확정이면 committed */
+  lockTrade(code: string, playerId: string, tradeId: string, confirm: boolean): { ok: boolean; reasonKo?: string } {
+    const c = this.tradeCtx(code, playerId);
+    if (!c.ok) return c;
+    const t = c.s.trades.find((x) => x.tradeId === tradeId);
+    if (!t || t.phase !== 'open') return { ok: false, reasonKo: MP_TRADE_REASON_KO.cancelled };
+    const mine = this.sideOf(t, c.me.userId);
+    const other = this.otherOf(t, c.me.userId);
+    if (!mine || !other) return { ok: false, reasonKo: '내 거래가 아닙니다.' };
+    if (!confirm) mine.offer.locked = true;
+    else {
+      if (!mine.offer.locked || !other.offer.locked) return { ok: false, reasonKo: '양쪽이 먼저 잠가야 합니다.' };
+      mine.offer.confirmed = true;
+      if (other.offer.confirmed) t.phase = 'committed';
+    }
+    t.updatedMs = Date.now();
+    c.s.dirty = true; this.save(code, true);
+    return { ok: true };
+  }
+
+  cancelTradeReq(code: string, playerId: string, tradeId: string): { ok: boolean; reasonKo?: string } {
+    const c = this.tradeCtx(code, playerId);
+    if (!c.ok) return c;
+    const t = c.s.trades.find((x) => x.tradeId === tradeId);
+    if (!t) return { ok: true };
+    if (t.phase === 'committed') return { ok: false, reasonKo: '이미 성사된 거래는 취소할 수 없습니다.' };
+    if (t.phase !== 'cancelled') this.cancelTrade(t, MP_TRADE_REASON_KO.cancelled);
+    c.s.dirty = true; this.save(code, true);
+    return { ok: true };
+  }
+
+  /** 확정 거래를 내 인벤토리에 적용했다 — 양쪽 다 적용하면 기록이 사라진다 */
+  tradeApplied(code: string, playerId: string, tradeId: string): { ok: boolean } {
+    const c = this.tradeCtx(code, playerId);
+    if (!c.ok) return { ok: false };
+    const t = c.s.trades.find((x) => x.tradeId === tradeId);
+    const mine = t && t.phase === 'committed' ? this.sideOf(t, c.me.userId) : undefined;
+    if (mine) { mine.offer.applied = true; t!.updatedMs = Date.now(); this.sweepTrades(c.s); c.s.dirty = true; this.save(code, true); }
+    return { ok: true };
   }
 
   // ═══════════════════════════════════════════════════
@@ -302,6 +490,8 @@ export class SessionRegistry {
         regionId: p.regionId, x: p.x, y: p.y, lastSeenMs: p.lastSeenMs,
       })),
       traps: s.traps,
+      // 146차 — 미적용 확정 거래는 이어하기 복구용으로 남긴다
+      trades: s.trades.filter((t) => t.phase === 'committed'),
     };
     try {
       mkdirSync(SESSION_DIR, { recursive: true });
@@ -338,7 +528,7 @@ export class SessionRegistry {
         }
         this.sessions.set(d.code, {
           code: d.code, seed: d.seed >>> 0, createdMs: d.createdMs,
-          players, traps: d.traps ?? [], chat: [], chatSeq: 0,
+          players, traps: d.traps ?? [], chat: [], chatSeq: 0, trades: d.trades ?? [],
           savedMs: d.savedMs, dirty: false,
         });
       } catch (e) {

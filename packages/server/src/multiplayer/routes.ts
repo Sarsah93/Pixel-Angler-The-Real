@@ -10,7 +10,7 @@
 
 import { Router } from 'express';
 import { SessionRegistry } from './SessionRegistry.js';
-import type { MpPeer, MpActivity, MpPlacedTrap } from '@tra/core';
+import type { MpPeer, MpActivity, MpPlacedTrap, MpProfile, MpTradeItem } from '@tra/core';
 
 export const sessionRegistry = new SessionRegistry();
 
@@ -40,15 +40,50 @@ multiplayerRouter.post('/presence', (req, res) => {
   const b = req.body as {
     code?: string; playerId?: string; regionId?: string;
     x?: number; y?: number; facing?: MpPeer['facing']; moving?: boolean;
-    activity?: MpActivity; look?: MpPeer['look'];
+    activity?: MpActivity; look?: MpPeer['look']; profile?: MpProfile;
     say?: string; chatSince?: number;
   };
   if (!b.code || !b.playerId) { res.json({ ok: false, reasonKo: '세션 정보가 없습니다.' }); return; }
   res.json(sessionRegistry.presence(b.code, b.playerId, {
     regionId: b.regionId ?? '', x: b.x ?? 0, y: b.y ?? 0,
     facing: b.facing ?? 'down', moving: b.moving ?? false,
-    activity: b.activity, look: b.look,
+    activity: b.activity, look: b.look, profile: b.profile,
   }, { say: b.say, chatSince: b.chatSince }));
+});
+
+// ── 146차 유저 간 거래 — 서버는 공증인(인벤토리는 각자 로컬) ──
+type TradeBody = { code?: string; playerId?: string; tradeId?: string };
+const need = <T extends TradeBody>(b: T): b is T & Required<TradeBody> => !!(b.code && b.playerId && b.tradeId);
+
+multiplayerRouter.post('/trade/propose', (req, res) => {
+  const b = req.body as { code?: string; playerId?: string; targetPlayerId?: string };
+  if (!b.code || !b.playerId || !b.targetPlayerId) { res.json({ ok: false, reasonKo: '요청이 올바르지 않습니다.' }); return; }
+  res.json(sessionRegistry.proposeTrade(b.code, b.playerId, b.targetPlayerId));
+});
+multiplayerRouter.post('/trade/respond', (req, res) => {
+  const b = req.body as TradeBody & { accept?: boolean };
+  if (!need(b)) { res.json({ ok: false, reasonKo: '요청이 올바르지 않습니다.' }); return; }
+  res.json(sessionRegistry.respondTrade(b.code, b.playerId, b.tradeId, !!b.accept));
+});
+multiplayerRouter.post('/trade/offer', (req, res) => {
+  const b = req.body as TradeBody & { items?: MpTradeItem[]; coins?: number };
+  if (!need(b)) { res.json({ ok: false, reasonKo: '요청이 올바르지 않습니다.' }); return; }
+  res.json(sessionRegistry.setTradeOffer(b.code, b.playerId, b.tradeId, b.items ?? [], b.coins ?? 0));
+});
+multiplayerRouter.post('/trade/lock', (req, res) => {
+  const b = req.body as TradeBody & { confirm?: boolean };
+  if (!need(b)) { res.json({ ok: false, reasonKo: '요청이 올바르지 않습니다.' }); return; }
+  res.json(sessionRegistry.lockTrade(b.code, b.playerId, b.tradeId, !!b.confirm));
+});
+multiplayerRouter.post('/trade/cancel', (req, res) => {
+  const b = req.body as TradeBody;
+  if (!need(b)) { res.json({ ok: false, reasonKo: '요청이 올바르지 않습니다.' }); return; }
+  res.json(sessionRegistry.cancelTradeReq(b.code, b.playerId, b.tradeId));
+});
+multiplayerRouter.post('/trade/applied', (req, res) => {
+  const b = req.body as TradeBody;
+  if (!need(b)) { res.json({ ok: false }); return; }
+  res.json(sessionRegistry.tradeApplied(b.code, b.playerId, b.tradeId));
 });
 
 // ── 145차 설치물 공유 — 통발은 놓는 순간 남에게도 보인다 ──
