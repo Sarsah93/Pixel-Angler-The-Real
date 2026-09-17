@@ -81,6 +81,17 @@ export const EN_PANELS: Record<string, string> = {
   '산출': 'Output',
   '성공률': 'Success',
   '재료 절약': 'Material saving',
+  // ── 149차 — 구멍치기 ──
+  '블록을 헛디뎠습니다 — 발밑을 확인하세요': 'You lost your footing on the blocks — watch your step',
+  '[구멍치기] 구멍치기는 채비를 자주 잃습니다 — 저가 릴대를 쓰는 편이 낫습니다':
+    '[Hole fishing] Hole fishing eats tackle — a budget rod is the wiser choice',
+  '다시 내리기 (SPACE)': 'Lower again (SPACE)',
+  '우클릭 챔질 · ↑ 들어올리기(고패질) · 좌클릭 릴링 · R 줄 주기(밑걸림) · I 인벤 · F1 도움말':
+    'Right-click hookset · ↑ lift · left-click reel · R gives line (snag) · I inventory · F1 help',
+  '구멍치기': 'Hole fishing',
+  '테트라포드': 'Tetrapods',
+  '사석': 'Riprap',
+
   // ── 148차 — 인벤토리 윈도우드 스크롤 · 가방 용량 ──
   '용량 밖 칸에는 넣을 수 없습니다 — 가방을 착용하면 열립니다.':
     'Cannot place items in locked slots — equip a bag to unlock them.',

@@ -52,17 +52,26 @@ export class SeabedProfile {
   readonly maxDistM: number;
   /** 암초 판정 노이즈 임계 (rockRatio가 높을수록 낮아져 암초 지대가 넓어짐) */
   private readonly rockThreshold: number;
+  /** 거리 0(발앞)의 기반 수심 비율 — 구멍치기는 발앞이 곧 바닥이라 1에 가깝다 */
+  private readonly floorRatio: number;
+  /** 전 구간 암초 — 구멍치기(콘크리트 블록 틈) */
+  private readonly alwaysRock: boolean;
 
   /**
    * @param seed 캐스팅 착수 시드 (reefSeed)
    * @param maxDepthM 최대 수심 (지역 Z_max)
    * @param maxDistM 프로필 범위 (캐스팅 최대 거리 + 여유)
    * @param rockRatio 암초 비율 0~1 (낚시터 snagRisk 연동 — low≈0.2 / mid≈0.35 / high≈0.55)
+   * @param opts 149차 — 구멍치기처럼 **발앞이 곧 바닥**인 지형용
+   *   (`floorRatio` = 거리 0의 기반 수심 비율 · `alwaysRock` = 전 구간 암초 = 콘크리트 블록)
    */
-  constructor(seed: number, maxDepthM: number, maxDistM: number, rockRatio = 0.35) {
+  constructor(seed: number, maxDepthM: number, maxDistM: number, rockRatio = 0.35,
+    opts: { floorRatio?: number; alwaysRock?: boolean } = {}) {
     this.seed = seed >>> 0;
     this.maxDepthM = Math.max(2, maxDepthM);
     this.maxDistM = Math.max(8, maxDistM);
+    this.floorRatio = Math.max(0, Math.min(1, opts.floorRatio ?? 0.16));
+    this.alwaysRock = opts.alwaysRock ?? false;
     const r = Math.max(0, Math.min(1, rockRatio));
     // r=0.2 → 0.74, r=0.35 → 0.66, r=0.55 → 0.55 (노이즈 초과분이 암초)
     // 코사인 보간 노이즈는 중앙 몰림 분포라 임계 매핑을 강하게 잡는다
@@ -72,7 +81,8 @@ export class SeabedProfile {
   /** 기반 수심 — 발앞 얕고 멀수록 깊다 (암초 융기 미반영) */
   private baseDepth(d: number): number {
     const t = Math.min(1, Math.max(0, d / this.maxDistM));
-    return this.maxDepthM * (0.16 + 0.84 * Math.pow(t, 0.8));
+    const f = this.floorRatio;
+    return this.maxDepthM * (f + (1 - f) * Math.pow(t, 0.8));
   }
 
   /** 암초 강도 0~1 (연속 노이즈 — 6m 셀) */
@@ -82,6 +92,7 @@ export class SeabedProfile {
 
   /** 암초 지대 여부 (여밭 — 밑걸림/입질 지형 판정) */
   isRockAt(d: number): boolean {
+    if (this.alwaysRock) return true;
     return this.rockiness(Math.max(0, d)) > this.rockThreshold;
   }
 

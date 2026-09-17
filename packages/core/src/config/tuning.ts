@@ -598,6 +598,37 @@ export interface TuningConfig {
     /** 설치 가능 물 타일의 최대 육지 거리(타일) — 던져 넣는 범위 */
     maxWaterDistTiles: number;
   };
+  /** 구멍치기(테트라포드·사석 틈) — 149차. 캐스팅이 아니라 발밑 구멍에 수직으로 내리는 조법 */
+  hole: {
+    /** 연안 수심 대비 구멍 깊이 배율 — 테트라포드(블록이 겹쳐 수직 굴이 생긴다) */
+    depthMultTetrapod: number;
+    /** 사석(완만한 사면) */
+    depthMultRiprap: number;
+    /** 구멍별 깊이 편차 (±m) */
+    depthVarianceM: number;
+    /** 만조(조위 1)일 때 더해지는 깊이(m) */
+    tideDepthM: number;
+    /** 구멍 깊이 하한/상한(m) */
+    minDepthM: number;
+    maxDepthM: number;
+    /** 수면 거리(m) — 발밑 */
+    distanceM: number;
+    distanceVarianceM: number;
+    /** 밑걸림 배율 — 블록 틈이라 기본이 높다 */
+    snagMultTetrapod: number;
+    snagMultRiprap: number;
+    /** 잔잔할 때 발 디딤 미끄러짐 확률 */
+    slipChanceTetrapod: number;
+    slipChanceRiprap: number;
+    /** 이 파고(m)를 넘으면 블록이 젖어 미끄러짐이 오른다 */
+    slipWaveM: number;
+    /** 초과 파고 1m당 미끄러짐 가산 */
+    slipWaveSlope: number;
+    /** 이 가격(원)을 넘는 낚싯대면 "저가 장비를 쓰라"고 안내한다 */
+    budgetRodPriceWon: number;
+    /** 구멍 위 좌클릭 — 이보다 짧게 떼면 구멍치기, 길면 캐스팅 차지 (ms) */
+    tapMs: number;
+  };
   /** 플레이어 레벨 경험치 소스 (124차 — PROGRESSION_SURVIVAL_SPEC §1-3. 손질 숙련 XP와 별개) */
   xp: {
     /** 어획 기본 XP — 어종 희귀도(FishRarity)별 */
@@ -1076,6 +1107,13 @@ export const TUNING: TuningConfig = {
     enforcementChance: 0.25, fineRatio: 0.3, fineCapWon: 300_000,
   },
   trap: { lossRiskMult: 1.0, minSoakHours: 1, maxRangeTiles: 4, maxWaterDistTiles: 3 },
+  hole: {
+    depthMultTetrapod: 1.15, depthMultRiprap: 0.85, depthVarianceM: 0.9, tideDepthM: 0.8,
+    minDepthM: 1.5, maxDepthM: 9, distanceM: 1.2, distanceVarianceM: 0.8,
+    snagMultTetrapod: 2.2, snagMultRiprap: 1.7,
+    slipChanceTetrapod: 0.06, slipChanceRiprap: 0.03, slipWaveM: 1.0, slipWaveSlope: 0.28,
+    budgetRodPriceWon: 60_000, tapMs: 320,
+  },
   xp: {
     rarityCommon: 10, rarityUncommon: 25, rarityRare: 60, rarityEpic: 150, rarityLegendary: 400,
     sizeFactorMin: 0.5, sizeFactorMax: 3.0, firstDiscoveryMult: 5,
@@ -1176,6 +1214,12 @@ export interface TuningParamMeta {
   category: 'feel' | 'balance'; label: string;
 }
 export const TUNING_META: TuningParamMeta[] = [
+  // ── 구멍치기 (149차 — mockup, 실플레이 조율 대기) ──
+  { path: 'hole.depthMultTetrapod', min: 0.5, max: 2, step: 0.05, category: 'balance', label: '테트라포드 구멍 깊이 배율' },
+  { path: 'hole.snagMultTetrapod', min: 1, max: 4, step: 0.1, category: 'balance', label: '테트라포드 밑걸림 배율' },
+  { path: 'hole.slipChanceTetrapod', min: 0, max: 0.3, step: 0.01, category: 'balance', label: '테트라포드 미끄러짐 확률' },
+  { path: 'hole.distanceM', min: 0.5, max: 4, step: 0.1, category: 'feel', label: '구멍치기 수면 거리(m)' },
+  { path: 'hole.tapMs', min: 120, max: 800, step: 10, category: 'feel', label: '구멍치기 탭/홀드 경계(ms)' },
   // ── 스토리 기한·총회 (147차) ──
   { path: 'story.missRepPerDay', min: 0, max: 5, step: 0.5, category: 'balance', label: '기한 초과 1일당 평판 감점' },
   { path: 'story.meetingBaseYes', min: 0.2, max: 1, step: 0.05, category: 'balance', label: '총회 기본 찬성률' },

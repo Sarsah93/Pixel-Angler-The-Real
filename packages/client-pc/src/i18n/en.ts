@@ -460,6 +460,25 @@ const DOW_EN: Record<string, string> = {
 };
 /** 수치·이름이 끼어 있는 문장 — 정규식 규칙. 캡처 그룹은 그대로 옮긴다(이름은 사전을 다시 타지 않으므로 어종·아이템명은 한국어로 남을 수 있음). */
 export const EN_RULES: Rule[] = [
+  // ── 149차 구멍치기(테트라포드·사석) · 장소 조건 ──
+  [/^(테트라포드|사석) — 좌클릭 짧게 = 구멍치기 \(수심 ([\d.]+)m\) · 길게 = 캐스팅$/,
+    (m) => `${m[1] === '테트라포드' ? 'Tetrapods' : 'Riprap'} — short click = hole fishing (${m[2]}m deep) · hold = cast`],
+  [/^\[구멍치기\] (테트라포드|사석) 틈에 채비를 내립니다 — 구멍 수심 ([\d.]+)m$/,
+    (m) => `[Hole fishing] Lowering the rig into the ${m[1] === '테트라포드' ? 'tetrapod' : 'riprap'} gap — hole depth ${m[2]}m`],
+  [/^구멍치기 \((테트라포드|사석)\) — 우클릭 챔질 · ↑ 들어올리기 · 좌클릭 릴링 · 블록에 걸리면 R 줄 주기$/,
+    (m) => `Hole fishing (${m[1] === '테트라포드' ? 'tetrapods' : 'riprap'}) — right-click hookset · ↑ lift · left-click reel · R gives line when snagged`],
+  [/^구멍치기 \((테트라포드|사석)\) — ↑ 들어올리기$/,
+    (m) => `Hole fishing (${m[1] === '테트라포드' ? 'tetrapods' : 'riprap'}) — ↑ lift`],
+  [/^\[안전\] 테트라포드에서 미끄러졌습니다 \(체력 -(\d+)\)\. 파고가 높으면 올라서지 마세요\.$/,
+    (m) => `[Safety] You slipped on the tetrapods (HP -${m[1]}). Do not climb on when the swell is up.`],
+  [/^\[퀘스트\] (.+) — (방파제|구멍치기|뭍\(갯바위·해변\)|배 위)에서 낚아야 인정됩니다$/,
+    // ⚠ 131차 함정 — 캡처 안 한국어(퀘스트 제목)는 `tr`로 다시 번역해야 한다
+    (m, tr) => {
+      const spot: Record<string, string> = {
+        '방파제': 'the breakwater', '구멍치기': 'a hole', '뭍(갯바위·해변)': 'the shore', '배 위': 'a boat',
+      };
+      return `[Quest] ${tr(m[1])} — the catch only counts from ${spot[m[2]] ?? m[2]}`;
+    }],
   // ── 148차 인벤토리·상점 윈도우드 스크롤 (행 위치 표기 · 잠긴 칸 · 가방 해제 차단) ──
   [/^(\d+)–(\d+) \/ (\d+)행$/, (m) => `${m[1]}–${m[2]} / ${m[3]} rows`],
   [/^잠긴 칸 (\d+)행 — 가방을 착용하면 열립니다$/, (m) => `${m[1]} locked row(s) — equip a bag to unlock`],

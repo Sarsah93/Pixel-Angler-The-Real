@@ -51,6 +51,7 @@ import {
   SNAG_PULL_UP, SNAG_BREAK_OFF, rollSnagOutcome, type SnagOutcome,
   GEAR_FAULTS, GEAR_REF_PRICE, ROD_OVERLOAD_SNAP, FLOAT_BUOYANCY_AFTER_CASTS,
   gearFaultChance, rodMaxCasts, wearFactor, gearBiteMult, type GearFaultId,
+  type HoleSpotInfo, type StorySpotKind,
 } from '@tra/core';
 import { drawRigIcon, RigIconKind } from '../ui/RigIconRenderer.js';
 import { GameState } from '../store/GameState.js';
@@ -96,6 +97,16 @@ export interface FirstPersonFishingInit {
     /** HUD 안내 라벨 */
     label: string;
   };
+  /**
+   * 149차 — 구멍치기(테트라포드·사석 틈). 값이 있으면 **캐스팅이 아니라 발밑 수직 낚시**다:
+   * 수면 거리 1~2m 고정 · 구멍 수심이 Z_max · 밑걸림 배율 상승 · 구멍 어종 가중.
+   */
+  hole?: HoleSpotInfo;
+  /**
+   * 149차 — 어획 장소 종류. 퀘스트 목표의 "방파제에서 낚기" 조건을 실제로 판정하는 값이다
+   * (탑다운이 플레이어가 선 지형에서 산출해 넘긴다). 구멍치기는 `hole`.
+   */
+  spotKind?: StorySpotKind;
 }
 
 type FpState = 'drift' | 'fighting' | 'result';
@@ -501,13 +512,20 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     // 해저 지형 프로필 — 지형 지도 연동:
     //  시드 = 착수 타일 해시 / 원거리 수심 = 실측 Z_max / 암초 비율 = 낚시터 snagRisk
     //  (snagRiskMult low 0.6 → 암초 21% / mid 1.0 → 35% / high 1.6 → 56%)
-    const snagMult = getAreaSnagRiskMult(GameState.currentSpotId) * this.castWx.snagMult;
-    const rockRatio = Phaser.Math.Clamp(0.35 + (snagMult - 1) * 0.35, 0.15, 0.6);
+    const snagMult = getAreaSnagRiskMult(GameState.currentSpotId) * this.castWx.snagMult
+      * (this.cfg.hole?.snagRiskMult ?? 1);
+    // 구멍치기는 바닥 전체가 블록이다 — 암초 비율 하한을 크게 올린다
+    const rockRatio = this.cfg.hole
+      ? Phaser.Math.Clamp(0.7 + (snagMult - 2) * 0.1, 0.6, 0.9)
+      : Phaser.Math.Clamp(0.35 + (snagMult - 1) * 0.35, 0.15, 0.6);
     this.seabed = new SeabedProfile(
       this.cfg.reefSeed,
       this.cfg.zMaxM,
       Math.max(12, this.cfg.castDistanceM * 1.15 + 20),
       rockRatio,
+      // 149차 — 구멍치기는 발앞이 곧 바닥이고 사방이 콘크리트 블록이다.
+      //  (기본 프로필은 발앞을 얕게 깎아 2.2m 구멍이 0.8m로 그려졌다 — 실측으로 발견)
+      this.cfg.hole ? { floorRatio: 0.94, alwaysRock: true } : {},
     );
 
     // 물리 초기화 (밑밥은 3D 파슬 배열 — init에서 리셋됨)
@@ -661,7 +679,10 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     } else {
       text = this.spoolKey?.isDown
         ? '스풀 개방 — 원줄이 나갑니다(전유동·흘림). 떼면 다시 잠기고 회수할 수 있습니다'
-        : '우클릭 챔질 · 좌클릭 릴링 · R 줄 주기(흘림) · ←/→ 채비 횡이동 · ↑ 리프트 · H 뒷줄견제 · C 밑밥 · I 인벤 · F1 도움말';
+        // 149차 구멍치기 — 흘릴 거리가 없다. 횡이동·뒷줄견제·밑밥 리드는 안내하지 않는다.
+        : this.cfg.hole
+          ? '우클릭 챔질 · ↑ 들어올리기(고패질) · 좌클릭 릴링 · R 줄 주기(밑걸림) · I 인벤 · F1 도움말'
+          : '우클릭 챔질 · 좌클릭 릴링 · R 줄 주기(흘림) · ←/→ 채비 횡이동 · ↑ 리프트 · H 뒷줄견제 · C 밑밥 · I 인벤 · F1 도움말';
     }
     if (this.controlBarText.text !== text) this.controlBarText.setText(text);
   }
@@ -1510,7 +1531,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#7a98ac', fontStyle: 'bold',
     }).setDepth(81);
 
-    this.stateText = this.add.text(GAME_WIDTH / 2, 16, '채비 흘리는 중 — 우클릭 챔질 · R 줄 주기 · ←/→ 채비이동 · H 뒷줄견제 · C 밑밥 · ↑ 리프트', {
+    this.stateText = this.add.text(GAME_WIDTH / 2, 16, this.driftHintText(), {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px', color: '#e8f4fd', fontStyle: 'bold',
       backgroundColor: '#0a1628cc', padding: { x: 12, y: 5 },
     }).setOrigin(0.5, 0).setDepth(90);
@@ -2210,7 +2231,9 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       // 낚시터 특성(RegionAreaNode.snagRisk) × 루어 밑걸림 배율(에기 바닥 드래깅 -30%)
       // 127차 — 강수 시 밑걸림·채비 손실 확률 상승
       snagRiskMult: getAreaSnagRiskMult(GameState.currentSpotId)
-        * (this.lureSpec?.snagRiskMult ?? 1) * (this.castWx?.snagMult ?? 1),
+        * (this.lureSpec?.snagRiskMult ?? 1) * (this.castWx?.snagMult ?? 1)
+        // 149차 — 콘크리트 블록 틈은 밑걸림이 기본값이다(그래서 저가 장비로 한다)
+        * (this.cfg.hole?.snagRiskMult ?? 1),
     });
 
     // ── 입질 시퀀스 진행 (초릿대 굽힘/찌 잠김 구동) ──
@@ -2353,6 +2376,12 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       if (lure.targetHabitatBias?.length) ctx.habitatBias = lure.targetHabitatBias;
       // 루어 총중량 → 크기 등급(tier) 가중 (큰 지그일수록 대물, 소형은 항상 가능)
       ctx.lureWeightG = InventoryStore.getLureRigWeightG();
+    }
+    // 149차 구멍치기 — 구멍에 숨은 것들이 나온다(가중이지 필터가 아니다). 블록 틈 = 구조물·암초.
+    const hole = this.cfg.hole;
+    if (hole) {
+      ctx.speciesWeightBias = { ...hole.speciesBias, ...ctx.speciesWeightBias };
+      ctx.habitatBias = ['reef', 'structure'];
     }
     // 홈타운(집 앞 바다) 어획 규제 — 볼락류 + 보리멸만 (초보 구역. 루어 바인딩보다 우선)
     if (this.cfg.region === 'hometown') ctx.speciesFilter = HOMETOWN_SPECIES;
@@ -2847,7 +2876,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     } else {
       // 도감/기록 등록은 어획 시점 (쿨러 보관/방생 선택과 무관)
       this.sessionCatch.push(`${f.nameKo} ${f.lengthCm}cm (${sexLabel})`);
-      GameState.addCaughtFish(f.speciesId, f.nameKo, f.lengthCm, f.weightG);
+      GameState.addCaughtFish(f.speciesId, f.nameKo, f.lengthCm, f.weightG, 'rod', this.spotKind());
 
       // ── 다관점 히트 (Multi-Hit): 카드 채비의 다른 바늘에도 개별 입질 판정 ──
       const extra = this.rollMultiHit();
@@ -3076,7 +3105,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
           tag = ok ? ' (인벤토리)' : ' (인벤 가득 — 방생)';
         }
         this.sessionCatch.push(`${ef.nameKo} ${ef.lengthCm}cm`);
-        GameState.addCaughtFish(ef.speciesId, ef.nameKo, ef.lengthCm, ef.weightG);
+        GameState.addCaughtFish(ef.speciesId, ef.nameKo, ef.lengthCm, ef.weightG, 'rod', this.spotKind());
         InventoryStore.setSpreaderBait(i, null);   // 해당 단 미끼 소모
         extra.push(`${ef.nameKo} ${ef.lengthCm}cm${tag}`);
       }
@@ -3141,7 +3170,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     // 채비가 온전할 때만 재캐스팅 가능 (미끼 소진 등으로 불완전하면 필드 복귀 유도)
     const missing = InventoryStore.getMissingRigParts();
     if (missing.length === 0) {
-      mkBtn(-100, '다시 캐스팅 (SPACE)', 0x0d4a2e, 0x4af2a1, '#4af2a1', () => this.recast());
+      mkBtn(-100, this.cfg.hole ? '다시 내리기 (SPACE)' : '다시 캐스팅 (SPACE)', 0x0d4a2e, 0x4af2a1, '#4af2a1', () => this.recast());
     } else {
       const note = this.add.text(-100, btnY, `채비 보충 필요: ${missing.join(', ')}`, {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#ff9a6a', fontStyle: 'bold',
@@ -3188,7 +3217,22 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.sinkCameoStart = -1;   // 재캐스팅 = 새 착수 — 침강 카메오 재시작
     this.floatSubmerged = false;
     this.refreshCoolerUi();
-    this.stateText.setText('채비 흘리는 중 — 우클릭 챔질 · ←/→ 채비이동 · H 뒷줄견제 · C 밑밥 · ↑ 리프트');
+    this.stateText.setText(this.driftHintText());
+  }
+
+  /** 149차 — 이 세션의 어획 장소 종류 (구멍치기 우선) */
+  private spotKind(): StorySpotKind {
+    return this.cfg.hole ? 'hole' : (this.cfg.spotKind ?? 'shore');
+  }
+
+  /**
+   * 드리프트 상태 조작 안내. 149차 — 구멍치기는 **흘리는 낚시가 아니다**:
+   * 발밑 수직이라 횡이동·뒷줄견제·밑밥 리드가 의미 없고, 대신 들었다 내리는 고패질이 전부다.
+   */
+  private driftHintText(): string {
+    const hole = this.cfg.hole;
+    if (hole) return `구멍치기 (${hole.labelKo}) — 우클릭 챔질 · ↑ 들어올리기 · 좌클릭 릴링 · 블록에 걸리면 R 줄 주기`;
+    return '채비 흘리는 중 — 우클릭 챔질 · R 줄 주기 · ←/→ 채비이동 · H 뒷줄견제 · C 밑밥 · ↑ 리프트';
   }
 
   // ═══════════════════════════════════════════════════
@@ -4354,7 +4398,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   private flashState(msg: string): void {
     this.stateText.setText(msg);
     this.time.delayedCall(2200, () => {
-      if (this.fpState === 'drift') this.stateText.setText('채비 흘리는 중 — H 뒷줄견제 · C 밑밥');
+      if (this.fpState === 'drift') this.stateText.setText(this.cfg.hole ? `구멍치기 (${this.cfg.hole.labelKo}) — ↑ 들어올리기` : '채비 흘리는 중 — H 뒷줄견제 · C 밑밥');
     });
   }
 

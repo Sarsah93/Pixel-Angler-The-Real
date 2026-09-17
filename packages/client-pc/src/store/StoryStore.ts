@@ -16,10 +16,11 @@
 import {
   STORY_QUESTS, getStoryQuest, lastMainQuestOfChapter, JOURNAL_PAGES, journalCatchMatches, STORY_ARCS, getStoryArc,
   seasonOfMonth, createDefaultReputation, clampHarbor, clampSea, canSell, canConsign, provenanceOf, TUNING,
+  spotKindSatisfies, SPOT_KIND_LABEL,
   dayJobsOfNpc, getDayJob,
   clampAffinity, affinityRewardMult, affinityJobWageMult, canOfferSubQuest, canOfferJobs, choicesFor, choiceVisible,
   getLicenseByType, getSkillById,
-  type StoryQuestDef, type StoryObjective, type ReputationState, type CatchMethod, type JournalPageState, type LawVerdict,
+  type StoryQuestDef, type StoryObjective, type ReputationState, type CatchMethod, type StorySpotKind, type JournalPageState, type LawVerdict,
   type DayJobDef, type AffinityState, type QuestChoiceDef, type ChoiceOutcome, type ChoiceCtx, type SkillCategoryId,
 } from '@tra/core';
 
@@ -80,7 +81,7 @@ export interface StoryHost {
 }
 
 export type StoryEvent =
-  | { kind: 'catch'; speciesId: string; lengthCm: number; method: CatchMethod; selfCaught: boolean; regionId: string; month: number }
+  | { kind: 'catch'; speciesId: string; lengthCm: number; method: CatchMethod; selfCaught: boolean; regionId: string; month: number; spotKind?: StorySpotKind }
   | { kind: 'release'; speciesId: string; lengthCm: number }
   | { kind: 'activity'; activity: 'butcher' | 'sashimi' | 'forage' | 'craft' | 'cook'; itemId?: string }
   | { kind: 'license'; licenseId: string }
@@ -406,7 +407,16 @@ class StoryStoreManager {
         if (this.objectiveDone(q, i)) return;
         if (o.manual && ev.kind !== 'talk') return;
         const hit = this.match(o, ev);
-        if (hit === null) return;
+        if (hit === null) {
+          // 149차 — **장소 조건만** 어긋난 어획은 조용히 버리지 않고 이유를 알린다.
+          //  (조건 라벨이 "방파제에서"인데 아무 데서나 낚고 목표가 안 차면 버그로 읽힌다)
+          if (ev.kind === 'catch' && o.kind === 'catch' && o.spotKind
+            && !spotKindSatisfies(o.spotKind, ev.spotKind)
+            && this.match({ ...o, spotKind: undefined }, ev) !== null) {
+            this.onNotify?.(`[퀘스트] ${q.titleKo} — ${SPOT_KIND_LABEL[o.spotKind].ko}에서 낚아야 인정됩니다`);
+          }
+          return;
+        }
         p.obj[i] = hit === 'set' ? this.setValue(o, ev) : (p.obj[i] ?? 0) + 1;
         changed = true;
         if (this.objectiveDone(q, i)) this.onNotify?.(`[퀘스트] ${q.titleKo} — ${o.labelKo} 달성`);
@@ -441,6 +451,8 @@ class StoryStoreManager {
         if (o.season && !o.season.includes(seasonOfMonth(ev.month))) return null;
         if (o.method && o.method !== ev.method) return null;
         if (o.selfCaught && !ev.selfCaught) return null;
+        // 149차 — 장소 조건("방파제에서 낚기")을 실제로 강제한다. 구멍치기는 방파제도 만족.
+        if (o.spotKind && !spotKindSatisfies(o.spotKind, ev.spotKind)) return null;
         return 'inc';
       case 'release':
         if (o.kind !== 'release') return null;

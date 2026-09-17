@@ -38,7 +38,7 @@
 
 | # | 시스템 | 상태 | 핵심 소스 | 잔여 요약 |
 |---|---|---|---|---|
-| S1 | [낚시 루프 (1인칭)](02-SYSTEMS/fishing-loop.md) | 🟢 | `FirstPersonFishingScene` · core 물리 9종 | 어탐 레이더, 가이드 삽화 실사화 |
+| S1 | [낚시 루프 (1인칭)](02-SYSTEMS/fishing-loop.md) | 🟢 | `FirstPersonFishingScene` · core 물리 9종 · **`HoleFishing`(149차 구멍치기)** | 어탐 레이더, 가이드 삽화 실사화, `TUNING.hole` F8 확정 |
 | S2 | [필드·캐스팅 (탑다운)](02-SYSTEMS/world-field.md) | 🟢 | `RegionFieldScene` · **`SeamlessChunks`** | 비주얼 4레이어 에셋, 사운드 |
 | S3 | [**손질 (회뜨기)**](02-SYSTEMS/butchery.md) | 🚧 | `ButcheryProcess` · `ButcheryPanel` · `CephalopodStages` | 두족류 **무늬오징어·한치·문어 개방**(97차) · 갑오징어 잔여 · 광어 F9 잔여 |
 | S4 | [회썰기·플레이팅](02-SYSTEMS/sashimi-cooking.md) | 🟢 | `SashimiPanel` · `UtilizationPanel` · **미완성 접시**(135) | 스시, 불요리(화구·용기) |
@@ -59,7 +59,7 @@
 | S19 | Tauri 패키징 | ⬜ | `apps/tauri-wrapper` | Phase 9 (아이콘만 준비됨) |
 | S20 | [도감·발견·dev 도구](02-SYSTEMS/discovery-wiki.md) | 🟢 | `DiscoveryStore` · `AnglerLogScene` · F10 콘솔 | 위키 상세 팝업 · FP 토스트 |
 | S21 | [진행 — 레벨·스킬·생존·면허·일지](02-SYSTEMS/progression.md) | 🔶 | `Progression.ts` · `Vitals.ts`·`StatusEffects.ts` · `SkillDatabase`(**92노드 Σ=215**) · `CraftingDatabase` · `License.ts` · 패널 3종 · `CollapseOverlay` | **스킬 효과 배선 43/92**(130차) · 신규 면허 효과 1/7 · 농사 카테고리 잠김 · **P1~P9 완료**(P8 = 134차 S22) · 스토리 면허 4종 추가(보너스 제외) · 눕기 스프라이트 대기 |
-| S22 | [스토리·퀘스트](02-SYSTEMS/story-quests.md) | 🔶 | **정본 [`STORY_SPEC_v4`](../../.agents/STORY_SPEC_v4.md)** · `Story.ts` · `FisheryLaw.ts` · `StoryQuestDatabase`(**186퀘 · 아크 23**) · `DayJobs`(품삯 3) · `JournalPages` · `StoryArcs` · `StoryStore` · `DialoguePanel`(**140차 재작성 — 선택지·우호도**) · `JournalPanel` · `StoryChoices` · `Affinity.ts` | **134차 데이터·엔진 + 135차 Ch1 실시스템 + 140차 선택지 분기·우호도** — 배 출조·좌판 등 계통 · Ch2+ 대사 · NPC 스프라이트 잔여 · **147차 위판 UI(M2-01)·총회 연출(M1-11)·`onMiss` 평판 감점 완료** · 남은 manual = **구멍치기(1-4)** · **148차 가방 2~5단계 실효화 완료** |
+| S22 | [스토리·퀘스트](02-SYSTEMS/story-quests.md) | 🔶 | **정본 [`STORY_SPEC_v4`](../../.agents/STORY_SPEC_v4.md)** · `Story.ts` · `FisheryLaw.ts` · `StoryQuestDatabase`(**186퀘 · 아크 23**) · `DayJobs`(품삯 3) · `JournalPages` · `StoryArcs` · `StoryStore` · `DialoguePanel`(**140차 재작성 — 선택지·우호도**) · `JournalPanel` · `StoryChoices` · `Affinity.ts` | **134차 데이터·엔진 + 135차 Ch1 실시스템 + 140차 선택지 분기·우호도** — 배 출조·좌판 등 계통 · Ch2+ 대사 · NPC 스프라이트 잔여 · **147차 위판 UI(M2-01)·총회 연출(M1-11)·`onMiss` 평판 감점 완료** · ~~남은 manual = 구멍치기(1-4)~~ **✅149차 — 조법 구현 + `spotKind` 장소 게이트** · **148차 가방 2~5단계 실효화 완료** |
 | S23 | [캐릭터 아트](02-SYSTEMS/character-art.md) | 🟢 | `art/CharacterArt.ts`(셀 32x32 · 레이어 14) · `art/CharacterCast.ts`(41인) · `ui/CharacterSprite.ts`(**144차 `paceMult`**) · `CharacterCreateScene`(139차 UI · 140차 얼굴형 · **144차 회전·동작 버튼**) | **140차 머리 9×10·얼굴형 3종·측면 재작업 완료** · 사용자 GPT 스타일 실험 대기(`CHARACTER_SPRITE_PROMPT_SPEC`) · 대화창 초상 아트 · 눕기 프레임 · **달리기 전용 프레임**(현재는 걷기 가속) |
 | S24 | [싱글/멀티플레이](02-SYSTEMS/multiplayer.md) | 🔶 | `types/Multiplayer.ts`(공용 계약) · `server/multiplayer/`(`/mp/*` REST · 세션 · 디스크 영속) · `net/MultiplayerClient.ts` · `MultiplayerLobbyScene` · `FieldEventManager` | **143차 신설 · 145차 세션 세계** — 통발 공유 · 공용 시드 · 외형/활동 · 밀어내기 · 건물 반투명 · 채팅 · 이어하기 · **유저 간 거래(공증)·정보 보기(146차)**. 진행도는 **설계상 각자**. 남은 것은 NAT 통과·서버 권위·마켓 원장 |
 
@@ -67,6 +67,15 @@
 
 ## 3. 지금 위치 (2026-09-17)
 
+- **149차**: **구멍치기(테트라포드·사석) + M1-04 장소 게이트** — 조법 자체가 없었다
+  (학습 태그·사이소 저가 세트·도현수 대사만 있었다). 반대로 **지형 판정은 114차부터 있었다**
+  (`breakwaterClassAt` 2 = 피복 / 3 = 사석) — 그 위에 조법 하나와 조건 한 줄을 올린 차수다.
+  ⚖ **새 단축키를 만들지 않았다** — `F` 체인은 이미 꽉 찼고(채집 스팟이 테트라포드 발밑에도
+  생겨 서로 잡아먹는다) 낚시는 마우스에 둔다: 블록 위에서 **짧게 = 구멍치기 / 꾹 = 캐스팅**.
+  ⚖ **장소 게이트는 라벨이 약속한 만큼만** — `spotKind: 'breakwater'`를 걸고 구멍치기가 이를
+  만족하게 했다(더 요구하면 진행 중 세이브가 막힌다). ⚠ 기본 `SeabedProfile`이 발앞을 깎아
+  **2.2m 구멍이 0.8m**로 그려지던 것을 실측으로 잡았다. 상세
+  [워크로그 149](03-WORKLOG/2026-09-17-149-hole-fishing-spot-gate.md)
 - **148차**: **인벤토리 윈도우드 스크롤 + 가방 사다리 2~5단계 실효화** — 가방 아이템은 141차에
   이미 다 있었고(`bagSlots` 3·5·8·10·12), 막고 있던 것은 **`GRID_CAPACITY_MAX = 30` 한 줄**이라
   **8·10·12가 전부 클램프**되어 세 가방이 같은 효과였다(**죽은 보상**). 그 30도 밸런스가 아니라

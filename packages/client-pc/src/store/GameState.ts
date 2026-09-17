@@ -28,7 +28,7 @@ import type {
   TrapCatchItem,
   CaughtFishRecord,
 } from '@tra/core';
-import type { WorldObjectState, CatchMethod } from '@tra/core';
+import type { WorldObjectState, CatchMethod, StorySpotKind } from '@tra/core';
 import { type CharConfig, type CharSex, defaultAppearance, starterOutfit } from '@tra/core';
 import { StoryStore, type StorySaveState } from './StoryStore.js';
 import { buildItemWikiCatalog } from '../data/WikiCatalog.js';
@@ -450,7 +450,7 @@ export class GameStateManager {
   }
 
   /** 물고기 포획 성공 시 살림망에 추가 및 개인 최고기록 갱신 */
-  addCaughtFish(speciesId: string, _nameKo: string, lengthCm: number, weightGram: number, method: CatchMethod = 'rod'): void {
+  addCaughtFish(speciesId: string, _nameKo: string, lengthCm: number, weightGram: number, method: CatchMethod = 'rod', spotKind?: StorySpotKind): void {
     if (!this._player) return;
     const spotId = this._currentSpotId || 'geoje_gujora_breakwater';
     const tide = calculateTideInfo();
@@ -502,7 +502,7 @@ export class GameStateManager {
     this.addProficiency('landing');   // 140차 — 챔질·파이팅 숙련
     this.addProficiency('fight');
     // 134차 — 퀘스트·조행록 어획 이벤트 (자가어획)
-    StoryStore.event({ kind: 'catch', speciesId, lengthCm, method, selfCaught: true, regionId: this.currentRegionId, month: new Date().getMonth() + 1 });
+    StoryStore.event({ kind: 'catch', speciesId, lengthCm, method, selfCaught: true, regionId: this.currentRegionId, month: new Date().getMonth() + 1, spotKind });
   }
 
   // ─── 플레이어 레벨 XP (124차 — core Progression 곡선 · MAX_LEVEL 200 캡) ───

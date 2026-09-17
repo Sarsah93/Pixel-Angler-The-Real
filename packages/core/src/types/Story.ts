@@ -29,6 +29,30 @@ export type CatchMethod =
   | 'bought'     // 상점·경매 구매
   | 'gift';      // 무상 수령
 
+/**
+ * 어획 장소 종류 (149차) — 목표의 "○○에서 낚기" 조건을 실제로 강제하는 축.
+ * 어획 경로(`CatchMethod`)와 **직교**한다: 같은 낚싯대라도 어디에 서 있었는지는 별개다.
+ *  - `breakwater` — 방파제(상판·피복·사석 전부). `hole`도 여기에 포함된다.
+ *  - `hole`       — 테트라포드·사석 틈 구멍치기 (방파제의 부분집합)
+ *  - `shore`      — 갯바위·해변·안벽 등 뭍
+ *  - `boat`       — 배 위
+ */
+export type StorySpotKind = 'breakwater' | 'hole' | 'shore' | 'boat';
+
+/** `spotKind` 목표 조건 충족 판정 — 구멍치기는 방파제 조건도 함께 만족한다 */
+export function spotKindSatisfies(required: StorySpotKind, actual: StorySpotKind | undefined): boolean {
+  if (!actual) return false;
+  if (required === actual) return true;
+  return required === 'breakwater' && actual === 'hole';
+}
+
+export const SPOT_KIND_LABEL: Record<StorySpotKind, { ko: string; en: string }> = {
+  breakwater: { ko: '방파제', en: 'breakwater' },
+  hole: { ko: '구멍치기', en: 'hole fishing' },
+  shore: { ko: '뭍(갯바위·해변)', en: 'shore' },
+  boat: { ko: '배 위', en: 'boat' },
+};
+
 /** 스토리 자격 사다리에서 쓰는 면허 id — `LicenseType`의 부분집합 */
 export type StoryLicenseId =
   | 'reported_fishery'   // 신고어업(맨손어업)
@@ -184,6 +208,11 @@ export interface StoryObjective {
   method?: CatchMethod;
   /** 자가어획 필수 — 구매/선물로 대체 불가 (§3-4) */
   selfCaught?: boolean;
+  /**
+   * catch 전용 장소 조건 (149차) — "방파제에서 낚기" 같은 라벨을 **실제로 강제**한다.
+   * 구멍치기(`hole`)는 `breakwater` 조건도 함께 만족한다(`spotKindSatisfies`).
+   */
+  spotKind?: StorySpotKind;
   /** talk/deliverFree 전용 — StoryArc npc id */
   npcId?: string;
   /** craft/deliverFree/cook 전용 */

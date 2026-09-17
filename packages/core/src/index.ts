@@ -394,6 +394,12 @@ export type { TideVector, RigPhysicsParams, UnderwaterRigState, UnderwaterStepIn
 export { createUnderwaterRig, computeSinkSpeed, stepUnderwater, isHoldState, computeSinkRate } from './simulation/UnderwaterSinkPhysics.js';
 export type { LineTensionInput, LineTensionOutput } from './simulation/LineTensionPhysics.js';
 export { LineTensionPhysics, HOLD_LIFT_M } from './simulation/LineTensionPhysics.js';
+// ── 구멍치기 (149차) ──
+export type { HoleSpotKind, HoleSpotInput, HoleSpotInfo } from './simulation/HoleFishing.js';
+export {
+  holeKindOfBreakwaterClass, HOLE_KIND_LABEL, HOLE_SPECIES_BIAS,
+  evaluateHoleSpot, holeSlipChance, holeGearWarning,
+} from './simulation/HoleFishing.js';
 export type { SpoolState, SpoolStepInput, SpoolStepResult } from './simulation/SpoolSystem.js';
 export { initSpool, stepSpool, driftPullKg } from './simulation/SpoolSystem.js';
 export type {
@@ -508,12 +514,12 @@ export {
 
 // ── 134차 스토리·퀘스트 (STORY_SPEC_v3) — 법 규칙 5조 · 퀘스트 120 · 조행록 17장 · NPC 17아크 · 가방 사다리 ──
 export type {
-  CatchMethod, StoryLicenseId, LegalFlag, CatchProvenance, FisheryLawRuleId, LawVerdict,
+  CatchMethod, StorySpotKind, StoryLicenseId, LegalFlag, CatchProvenance, FisheryLawRuleId, LawVerdict,
   Season, StoryPart, StoryChapter, StoryChapterDef, QualificationStep,
   StoryQuestKind, StoryObjectiveKind, StoryObjective, QuestDeadline, QuestRewards, QuestTeaches, StoryQuestDef,
   JournalPageDef, JournalPageState, StoryNpcDef, StoryArcDef, ReputationState,
 } from './types/Story.js';
-export { seasonOfMonth, SEASON_LABEL, createDefaultReputation, clampHarbor, clampSea } from './types/Story.js';
+export { seasonOfMonth, SEASON_LABEL, createDefaultReputation, clampHarbor, clampSea, spotKindSatisfies, SPOT_KIND_LABEL } from './types/Story.js';
 // 140차 — 대화 선택지 · 우호도
 export type { ChoiceOutcome, ChoiceRequires, QuestChoiceDef, QuestChoiceSet, AffinityTier, AffinityState } from './types/Story.js';
 export {

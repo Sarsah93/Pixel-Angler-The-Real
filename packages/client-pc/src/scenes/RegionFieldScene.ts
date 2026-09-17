@@ -22,6 +22,9 @@ import {
   CHAR_CELL, CHAR_FOOT_Y, CHAR_SCALE, characterOf, type CharRole,
   isFieldActive, type MpActivity, mpTimeSlot, mpWorldSeed,
   MP_TRADE_RANGE_PX, MP_TRADE_REASON_KO, type MpTradeState, type MpProfile, type MpPeer,
+  // 149차 — 구멍치기(테트라포드·사석 틈)
+  type HoleSpotInfo, type StorySpotKind,
+  holeKindOfBreakwaterClass, evaluateHoleSpot, holeSlipChance, holeGearWarning,
 } from '@tra/core';
 import { openContextMenu } from '../ui/ContextMenu.js';
 import { PeerInfoPanel } from '../ui/PeerInfoPanel.js';
@@ -341,7 +344,16 @@ export class RegionFieldScene extends Phaser.Scene {
 
   // 낚시 캐스팅
   private nearWater = false;
+  /**
+   * 149차 — 발밑 구멍치기 자리. 테트라포드 피복(단면 2)·사석(3) 위에 서 있을 때만 값이 있다.
+   * 좌클릭을 **짧게 탭**하면 구멍치기, 꾹 누르면 종전대로 캐스팅 차지다.
+   */
+  private holeSpot: HoleSpotInfo | null = null;
+  /** 현재 구멍 타일 (시드·로그용) */
+  private holeTile: { c: number; r: number } | null = null;
   private charging = false;
+  /** 좌클릭을 누른 시각 — 구멍 위에서 탭/홀드를 가르는 기준 */
+  private chargeDownAt = 0;
   private chargePower = 0;
   private chargeBar?: Phaser.GameObjects.Graphics;
   private castBusy = false;
@@ -2533,7 +2545,9 @@ export class RegionFieldScene extends Phaser.Scene {
       this.floatingHint(`${broken.name} — ${def.labelKo}. ${def.fixKo}`);
       return;
     }
-    if (!this.nearWater) {
+    // 구멍치기는 발밑 블록 틈에 그대로 내리는 조법이라 "바다 인접" 판정과 무관하다
+    //  (테트라포드 안쪽 상판에 서 있어도 발밑에 구멍이 있다).
+    if (!this.nearWater && !this.holeSpot) {
       this.floatingHint('바다 가까이에서 캐스팅하세요');
       return;
     }
@@ -2544,9 +2558,85 @@ export class RegionFieldScene extends Phaser.Scene {
       return;
     }
     this.charging = true;
+    this.chargeDownAt = this.time.now;
     this.chargePower = 0;
     if (!this.chargeBar) this.chargeBar = this.add.graphics().setDepth(30);
     if (!this.aimG) this.aimG = this.add.graphics().setDepth(29);
+  }
+
+  /**
+   * 149차 — 플레이어가 선 자리의 어획 장소 종류 (퀘스트 장소 조건 판정용).
+   * 방파제 단면 분류(0 안벽·1 상판·2 피복·3 사석)가 있거나 부두 타일이면 방파제로 본다.
+   */
+  private standingSpotKind(): StorySpotKind {
+    const c = Math.floor(this.playerBody.x / TR);
+    const r = Math.floor(this.playerBody.y / TR);
+    const k = this.chunks?.breakwaterClassAt(c, r) ?? 0;
+    if (k > 0 || this.terrainAt(c, r) === 'pier') return 'breakwater';
+    return 'shore';
+  }
+
+  /**
+   * 149차 — 발밑 구멍치기 판정. 플레이어가 선 타일(또는 인접 타일)이 방파제 **피복(2)·사석(3)**이면
+   * 그 자리가 곧 구멍이다. 단면 분류는 114차부터 있던 `breakwaterClassAt`을 그대로 쓴다.
+   */
+  private updateHoleSpot(): void {
+    if (!this.chunks) { this.holeSpot = null; this.holeTile = null; return; }
+    const c = Math.floor(this.playerBody.x / TR);
+    const r = Math.floor(this.playerBody.y / TR);
+    // 선 타일 우선 — 없으면 4방 인접(상판 가장자리에 서서 옆 블록 틈에 내리는 경우)
+    const cells: Array<[number, number]> = [[c, r], [c + 1, r], [c - 1, r], [c, r + 1], [c, r - 1]];
+    for (const [cc, rr] of cells) {
+      const kind = holeKindOfBreakwaterClass(this.chunks.breakwaterClassAt(cc, rr));
+      if (!kind) continue;
+      // 같은 구멍이면 다시 계산하지 않는다 — 매 프레임 도는 판정이다
+      if (this.holeSpot && this.holeTile?.c === cc && this.holeTile.r === rr) return;
+      const seed = ((cc * 73856093) ^ (rr * 19349663)) >>> 0;
+      const shoreDepthM = this.resolveCastDepth(TUNING.hole.distanceM + 2, true);
+      this.holeSpot = evaluateHoleSpot({
+        kind, seed, shoreDepthM,
+        tideLevel01: Math.min(1, Math.max(0, calculateTideInfo().currentStrength)),
+      });
+      this.holeTile = { c: cc, r: rr };
+      return;
+    }
+    this.holeSpot = null;
+    this.holeTile = null;
+  }
+
+  /**
+   * 구멍치기 진입 — 캐스팅 비행이 없다. 채비를 그대로 내리고 1인칭으로 넘어간다.
+   * 블록 위는 젖으면 미끄럽다 — 파고가 높으면 발을 헛디뎌 진입이 무산되고 체력을 잃는다.
+   */
+  private enterHoleFishing(): void {
+    const hole = this.holeSpot;
+    if (!hole || this.castBusy || this.isTransitioning) return;
+    // 미끄러짐 — 파고 반영 (테트라포드 안전, M1-04 학습 태그)
+    const waveM = ExternalDataStore.getWaveHeightM(this.region) ?? 0.5;
+    if (Math.random() < holeSlipChance(hole, waveM)) {
+      const lost = Math.max(4, Math.round(GameState.player.stamina * 0.12));
+      GameState.player.stamina = Math.max(1, GameState.player.stamina - lost);
+      this.floatingHint('블록을 헛디뎠습니다 — 발밑을 확인하세요');
+      this.hud?.pushLog(`[안전] 테트라포드에서 미끄러졌습니다 (체력 -${lost}). 파고가 높으면 올라서지 마세요.`);
+      return;
+    }
+    const warn = holeGearWarning(InventoryStore.getEquippedRod()?.basePrice);
+    if (warn) this.hud?.pushLog(`[구멍치기] ${warn.ko}`);
+    this.castBusy = true;
+    this.hud?.pushLog(`[구멍치기] ${hole.labelKo} 틈에 채비를 내립니다 — 구멍 수심 ${hole.depthM.toFixed(1)}m`);
+    this.fadeOutThen(() => {
+      this.dismountBike();
+      MultiplayerClient.setActivity('fishing');
+      this.scene.pause();
+      this.scene.launch('FirstPersonFishingScene', {
+        zMaxM: hole.depthM,
+        castDistanceM: hole.distanceM,
+        reefSeed: ((this.holeTile?.c ?? 0) * 73856093) ^ ((this.holeTile?.r ?? 0) * 19349663),
+        region: this.region,
+        shoreKind: 'gravel' as const,
+        hole,
+      });
+    }, 260, false);
   }
 
   /**
@@ -2581,8 +2671,12 @@ export class RegionFieldScene extends Phaser.Scene {
     if (!this.charging) return;
     this.charging = false;
     const power = this.chargePower;
+    const heldMs = this.time.now - this.chargeDownAt;
     this.chargeBar?.clear();
     this.aimG?.clear();
+    // 149차 — 발밑에 구멍이 있으면 **짧은 탭 = 구멍치기 / 꾹 누르기 = 캐스팅**.
+    //  (탭/홀드 문법은 1인칭 호핑·릴링과 동일 — 새 단축키를 만들지 않는다)
+    if (this.holeSpot && heldMs < TUNING.hole.tapMs) { this.enterHoleFishing(); return; }
     this.startCastFlight(this.lastAimDir, power);
   }
 
@@ -2862,6 +2956,7 @@ export class RegionFieldScene extends Phaser.Scene {
       this.scene.pause();
       this.scene.launch('FirstPersonFishingScene', {
         zMaxM, castDistanceM, reefSeed, region: this.region, shoreKind, fieldEvent,
+        spotKind: this.standingSpotKind(),
       });
     }, 260, false);
   }
@@ -2872,7 +2967,7 @@ export class RegionFieldScene extends Phaser.Scene {
    * 프로필이 없으면 기존 Land-to-Sea 그라디언트(computeZoneMaxDepth)로 폴백.
    * 프로필 범위를 넘는 거리는 depthAtDistance가 거리 비례로 외삽한다.
    */
-  private resolveCastDepth(castDistanceM: number): number {
+  private resolveCastDepth(castDistanceM: number, quiet = false): number {
     const profile = this.cache.json.get(`depth_${this.region}`) as RegionDepthProfile | undefined;
     if (profile && Array.isArray(profile.anchors) && profile.anchors.length > 0) {
       // 현재 맵 ID(sokcho_dongmyeonghang_1 등)로 앵커 매칭.
@@ -2884,7 +2979,7 @@ export class RegionFieldScene extends Phaser.Scene {
       const anchor = findDepthAnchor(profile, anchorKey);
       if (anchor) {
         const depth = depthAtDistance(anchor, castDistanceM);
-        this.hud?.pushLog(`[수심] ${anchor.name} 기준 실측 ${depth.toFixed(1)}m (거리 ${castDistanceM.toFixed(0)}m)`);
+        if (!quiet) this.hud?.pushLog(`[수심] ${anchor.name} 기준 실측 ${depth.toFixed(1)}m (거리 ${castDistanceM.toFixed(0)}m)`);
         return Math.max(2, Math.round(depth * 10) / 10);
       }
     }
@@ -4538,10 +4633,17 @@ export class RegionFieldScene extends Phaser.Scene {
       }
     }
     this.nearWater = !!found;
+    this.updateHoleSpot();
     if (this.castBusy) { this.promptText.setVisible(false); return; }
     // 건물 근접 힌트가 캐스팅 힌트보다 우선
     if (this.nearBuilding) {
       this.promptText.setText(`[F] ${BUILDING_LABEL[this.nearBuilding.kind]} — 거래하기`);
+      this.promptText.setVisible(true);
+    } else if (this.holeSpot && InventoryStore.getEquippedRod()) {
+      // 149차 — 블록 위에 서면 캐스팅보다 구멍치기가 먼저 안내된다(여기서 할 조법이다)
+      this.promptText.setText(
+        `${this.holeSpot.labelKo} — 좌클릭 짧게 = 구멍치기 (수심 ${this.holeSpot.depthM.toFixed(1)}m) · 길게 = 캐스팅`,
+      );
       this.promptText.setVisible(true);
     } else if (this.nearWater) {
       // 캐스팅 가능 조건 = **손에 낚싯대 착용** (퀵슬롯 선택은 무관 — 2026-08-05 개편)
@@ -4561,6 +4663,13 @@ export class RegionFieldScene extends Phaser.Scene {
 
   private updateCharge(): void {
     if (!this.charging || !this.chargeBar) return;
+    // 구멍 위에서는 탭 유예(`TUNING.hole.tapMs`) 동안 아무것도 그리지 않는다 —
+    // 짧은 클릭 한 번에 차지 바가 번쩍이면 "던진 건가?" 하고 헷갈린다.
+    if (this.holeSpot && this.time.now - this.chargeDownAt < TUNING.hole.tapMs) {
+      this.chargeBar.clear();
+      this.aimG?.clear();
+      return;
+    }
     // 사인파로 0~1 왕복
     this.chargePower = (Math.sin(this.time.now / 320) + 1) / 2;
     const bx = this.playerBody.x - 40;

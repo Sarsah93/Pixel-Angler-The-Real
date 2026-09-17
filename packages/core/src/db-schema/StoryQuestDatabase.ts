@@ -67,7 +67,7 @@ const MAIN: StoryQuestDef[] = mainRows([
     '라이벌의 첫 시비 겸 첫 강습. "그 대는 아까우니까 여기다 쓰지 마." 저가 장비로 테트라포드 구멍치기.',
     'The rival\'s first jab and first lesson. "Don\'t waste that rod here." Budget gear, hole fishing in the tetrapods.',
     [auto('custom', '생활용품점 사이소에서 저가 릴대 구입', 'Buy a budget rod at the Saiso daily-goods store', { placeKey: 'buy:inv_rod_budget' }),
-      fish(undefined, '방파제에서 물고기 1마리 낚기', 'Catch one fish at the breakwater')],
+      fish(undefined, '방파제에서 물고기 1마리 낚기', 'Catch one fish at the breakwater', { spotKind: 'breakwater' })],
     { teaches: ['budgetGear', 'holeFishing', 'tetrapodSafety'] }],
   ['M1-05', 1, 5, 360, 'hyeonsu', SOK, '첫 캐스팅', 'First Cast',
     '아버지의 릴대를 처음 편다. 캐스팅 · 찌 채비 · 입질 → 챔질 → 파이팅 → 랜딩 전 구간.',
