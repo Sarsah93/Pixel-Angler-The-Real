@@ -565,7 +565,10 @@ export class MainMenuScene extends Phaser.Scene {
     if (this.isTransitioning) return;   // 이중 시작 방지 (startNewGameInSlot 재실행 차단)
     if (this.slotMode === 'load') {
       if (!exists) return;
-      if (GameState.loadFromSlot(slot)) this.startAdventure();
+      if (!GameState.loadFromSlot(slot)) return;
+      // 145차 이어하기 — 멀티면 저장된 캐릭터 그대로 세션에 다시 붙는다(새로 만들지 않는다).
+      if (MultiplayerClient.isMulti) { void this.rejoinSession(); return; }
+      this.startAdventure();
       return;
     }
     // NEW GAME: 기존 데이터가 있으면 2단계 확인 (덮어쓰기)
@@ -607,6 +610,33 @@ export class MainMenuScene extends Phaser.Scene {
       this.isTransitioning = false;
       this.cameras.main.fadeIn(220, 1, 8, 18);
     });
+  }
+
+  /**
+   * 저장된 캐릭터로 세션에 재접속한다 (145차).
+   * 서버는 이름이 아니라 `userId`로 사람을 알아보므로, 같은 기기에서 같은 슬롯을 열면
+   * **마지막에 서 있던 자리**(`MultiplayerClient.resume`)까지 돌려받는다.
+   */
+  private async rejoinSession(): Promise<void> {
+    const name = GameState.player.nickname;
+    const res = await MultiplayerClient.claimName(name, GameState.character);
+    if (!res.ok) {
+      this.setSlotNotice(res.duplicate
+        ? '같은 이름이 이미 접속해 있습니다.'
+        : (res.reasonKo ?? '세션에 접속하지 못했습니다.'));
+      return;
+    }
+    const r = MultiplayerClient.resume;
+    this.fadeOutThen(320, () => this.scene.start('RegionFieldScene', {
+      region: r?.regionId || 'hometown',
+    }));
+  }
+
+  /** 슬롯 화면 하단 안내 — 실패 사유를 그 자리에 보여준다 */
+  private setSlotNotice(msg: string): void {
+    const row = this.rowObjs[0];
+    row?.label.setText(msg);
+    row?.label.setColor('#ff8a5a');
   }
 
   private startAdventure(): void {

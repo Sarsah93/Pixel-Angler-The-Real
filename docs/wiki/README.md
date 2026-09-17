@@ -61,7 +61,7 @@
 | S21 | [진행 — 레벨·스킬·생존·면허·일지](02-SYSTEMS/progression.md) | 🔶 | `Progression.ts` · `Vitals.ts`·`StatusEffects.ts` · `SkillDatabase`(**92노드 Σ=215**) · `CraftingDatabase` · `License.ts` · 패널 3종 · `CollapseOverlay` | **스킬 효과 배선 43/92**(130차) · 신규 면허 효과 1/7 · 농사 카테고리 잠김 · **P1~P9 완료**(P8 = 134차 S22) · 스토리 면허 4종 추가(보너스 제외) · 눕기 스프라이트 대기 |
 | S22 | [스토리·퀘스트](02-SYSTEMS/story-quests.md) | 🔶 | **정본 [`STORY_SPEC_v4`](../../.agents/STORY_SPEC_v4.md)** · `Story.ts` · `FisheryLaw.ts` · `StoryQuestDatabase`(**186퀘 · 아크 23**) · `DayJobs`(품삯 3) · `JournalPages` · `StoryArcs` · `StoryStore` · `DialoguePanel`(**140차 재작성 — 선택지·우호도**) · `JournalPanel` · `StoryChoices` · `Affinity.ts` | **134차 데이터·엔진 + 135차 Ch1 실시스템 + 140차 선택지 분기·우호도** — 배 출조·구멍치기·좌판 등 계통 · Ch2+ 대사 · NPC 스프라이트 · `onMiss` 벌칙 잔여 |
 | S23 | [캐릭터 아트](02-SYSTEMS/character-art.md) | 🟢 | `art/CharacterArt.ts`(셀 32x32 · 레이어 14) · `art/CharacterCast.ts`(41인) · `ui/CharacterSprite.ts`(**144차 `paceMult`**) · `CharacterCreateScene`(139차 UI · 140차 얼굴형 · **144차 회전·동작 버튼**) | **140차 머리 9×10·얼굴형 3종·측면 재작업 완료** · 사용자 GPT 스타일 실험 대기(`CHARACTER_SPRITE_PROMPT_SPEC`) · 대화창 초상 아트 · 눕기 프레임 · **달리기 전용 프레임**(현재는 걷기 가속) |
-| S24 | [싱글/멀티플레이](02-SYSTEMS/multiplayer.md) | 🔶 | `types/Multiplayer.ts`(공용 계약) · `server/multiplayer/`(`/mp/*` REST · 인메모리 세션) · `net/MultiplayerClient.ts` · `MultiplayerLobbyScene` | **143차 신설** — 로비·세션·이름 유일성·같은 지역 이름표까지. 세계 상태(퀘스트·인벤·설치물·어획)는 **아직 각자** |
+| S24 | [싱글/멀티플레이](02-SYSTEMS/multiplayer.md) | 🔶 | `types/Multiplayer.ts`(공용 계약) · `server/multiplayer/`(`/mp/*` REST · 세션 · 디스크 영속) · `net/MultiplayerClient.ts` · `MultiplayerLobbyScene` · `FieldEventManager` | **143차 신설 · 145차 세션 세계** — 통발 공유 · 공용 시드 · 외형/활동 · 밀어내기 · 건물 반투명 · 채팅 · 이어하기. 진행도(퀘스트·인벤·어획)는 **설계상 각자**. 남은 것은 NAT 통과·서버 권위 |
 
 ---
 

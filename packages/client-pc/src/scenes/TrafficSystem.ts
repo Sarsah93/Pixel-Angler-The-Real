@@ -13,11 +13,15 @@
  *    (진입 차량은 링 위 차가 노드 3타일 안이면 대기 — 규범도의 양보선) · 링 위 차량은 양보하지 않는다.
  *  - **플레이어**: 1.6타일 안 전방(또는 1타일 안 어디든)이면 정지해 지나갈 때까지 대기 · 캐릭터가 차에 부딪히면
  *    hit 반환(씬이 넉백·HP 처리) + 차량은 **180초 정지**.
- * 전부 결정적이지 않다(Math.random — 교통은 재현성 불필요).
+ * **난수 (145차)**: 시드를 받으면 초기 편성(차종·속도·배치 도로·분기 선택 순서)이 결정적이다 —
+ * 같은 세션의 두 사람이 같은 차들로 시작한다. 다만 **시간이 지나면 위치는 갈린다**:
+ * 차의 걸음은 프레임 dt가 밀어 올리는데 두 PC의 프레임 타이밍이 다르기 때문이다.
+ * 완전히 맞추려면 차량 좌표를 계속 주고받아야 하는데, **배경 차량에 그만한 대역폭을 쓸 이유가 없다**
+ * (게임플레이에 영향이 없다 — 부딪히면 넉백이 나지만 그건 각자 자기 화면의 차와만 일어난다).
  */
 
 import Phaser from 'phaser';
-import type { RegionRoad } from '@tra/core';
+import { mpRng, type RegionRoad } from '@tra/core';
 import { CAR_TOPDOWN_KEYS } from '../data/TilesetManifest.js';
 
 interface Car {
@@ -54,7 +58,14 @@ export class TrafficSystem {
     return `${Math.round(p[0] * 10)},${Math.round(p[1] * 10)}`;
   }
 
-  constructor(scene: Phaser.Scene, roads: RegionRoad[], tr: number, count: number, cols: number, rows: number) {
+  /** 시드 난수 (145차) — 주지 않으면 종전대로 `Math.random` */
+  private rnd: () => number = Math.random;
+
+  constructor(
+    scene: Phaser.Scene, roads: RegionRoad[], tr: number, count: number,
+    cols: number, rows: number, seed?: number,
+  ) {
+    if (seed !== undefined) this.rnd = mpRng(seed);
     this.roads = roads;
     this.tr = tr;
     this.drivable = roads.map((rd) =>
@@ -71,10 +82,10 @@ export class TrafficSystem {
     this.drivableList = roads.map((_r, i) => (this.drivable[i] ? i : -1)).filter((i) => i >= 0);
     if (this.drivableList.length === 0) return;
     for (let n = 0; n < count; n++) {
-      const tex = CAR_TOPDOWN_KEYS[Math.floor(Math.random() * CAR_TOPDOWN_KEYS.length)];
+      const tex = CAR_TOPDOWN_KEYS[Math.floor(this.rnd() * CAR_TOPDOWN_KEYS.length)];
       if (!scene.textures.exists(tex)) continue;
       const sprite = scene.add.image(0, 0, tex).setOrigin(0.5, 0.5).setScale(1.3).setVisible(false);
-      const car: Car = { road: 0, dir: 1, seg: 0, t: 0, speed: 3 + Math.random() * 2.5, sprite, px: 0, py: 0, ux: 0, uy: -1, fade: 0, waiting: false, halt: 0, lat: 0, latTarget: 0 };
+      const car: Car = { road: 0, dir: 1, seg: 0, t: 0, speed: 3 + this.rnd() * 2.5, sprite, px: 0, py: 0, ux: 0, uy: -1, fade: 0, waiting: false, halt: 0, lat: 0, latTarget: 0 };
       this.respawn(car);
       this.cars.push(car);
     }
@@ -86,12 +97,12 @@ export class TrafficSystem {
   }
 
   private respawn(car: Car): void {
-    const road = this.drivableList[Math.floor(Math.random() * this.drivableList.length)];
+    const road = this.drivableList[Math.floor(this.rnd() * this.drivableList.length)];
     const rd = this.roads[road];
     car.road = road;
-    car.seg = Math.floor(Math.random() * (rd.pts.length - 1));
-    car.dir = this.isOneway(road) ? 1 : (Math.random() < 0.5 ? 1 : -1);
-    car.t = Math.random() * this.segLen(road, car.seg);
+    car.seg = Math.floor(this.rnd() * (rd.pts.length - 1));
+    car.dir = this.isOneway(road) ? 1 : (this.rnd() < 0.5 ? 1 : -1);
+    car.t = this.rnd() * this.segLen(road, car.seg);
     car.fade = 0;
     car.halt = 0;
     car.lat = 0;
@@ -154,14 +165,14 @@ export class TrafficSystem {
       return true;
     });
     // 회전교차로 링 위에서는 링을 계속 도는 쪽을 선호(직진 55%) — 출구 분기는 나머지
-    if (canStraight && (branches.length === 0 || Math.random() < (rd.roundabout ? 0.55 : 0.6))) { car.seg = nextSeg; return; }
+    if (canStraight && (branches.length === 0 || this.rnd() < (rd.roundabout ? 0.55 : 0.6))) { car.seg = nextSeg; return; }
     if (branches.length > 0) {
-      const pick = branches[Math.floor(Math.random() * branches.length)];
+      const pick = branches[Math.floor(this.rnd() * branches.length)];
       const last = this.roads[pick.road].pts.length - 1;
       let dir: 1 | -1;
       if (this.isOneway(pick.road) || pick.idx === 0) dir = 1;
       else if (pick.idx === last) dir = -1;
-      else dir = Math.random() < 0.5 ? 1 : -1;
+      else dir = this.rnd() < 0.5 ? 1 : -1;
       car.road = pick.road;
       car.dir = dir;
       car.seg = dir === 1 ? Math.min(pick.idx, last - 1) : pick.idx - 1;

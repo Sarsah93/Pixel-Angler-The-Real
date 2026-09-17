@@ -23,6 +23,7 @@ import {
   KmaVilageFcstApiClient, KmaWeatherInfo, KMA_GRID_BY_REGION, WeatherKind,
   ORACLE_FISH_DB, calculateTideInfo,
   WORLD_NODE_DATABASE, REGION_AREA_NODES,
+  mpRng,
 } from '@tra/core';
 
 /**
@@ -173,10 +174,17 @@ class ExternalDataStoreManager {
   /** 홈타운 랜덤 날씨 캐시 — 실데이터가 없는 홈타운은 방문마다 무작위(방문 중 안정) */
   private _hometownWeather?: WeatherKind;
 
-  /** 홈타운 날씨 재추첨 — RegionFieldScene(hometown) 진입 시 1회 호출 */
-  rerollHometownWeather(): void {
+  /**
+   * 홈타운 날씨 재추첨 — RegionFieldScene(hometown) 진입 시 1회 호출.
+   *
+   * 145차: **시드를 받는다.** 구 구현은 방문마다 `Math.random()`이라 같은 세션의 두 사람이
+   * 같은 시각에 서로 다른 하늘을 봤고, 날씨가 피딩 활성도에 들어가므로 보일링 스케줄까지 갈렸다.
+   * 시드를 주지 않으면(싱글) 종전대로 무작위.
+   */
+  rerollHometownWeather(seed?: number): void {
     const opts: WeatherKind[] = ['clear', 'partly', 'cloudy', 'rain', 'shower', 'fog'];
-    this._hometownWeather = opts[Math.floor(Math.random() * opts.length)];
+    const r = seed === undefined ? Math.random() : mpRng(seed)();
+    this._hometownWeather = opts[Math.floor(r * opts.length)];
   }
 
   get snapshot(): ExternalDataSnapshot | null {

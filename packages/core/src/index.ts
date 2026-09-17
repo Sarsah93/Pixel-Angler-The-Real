@@ -555,3 +555,13 @@ export {
   MP_PRESENCE_TIMEOUT_MS, MP_PRESENCE_INTERVAL_MS, CHAR_NAME_MAX, MP_PROGRESS_KO,
   characterNameKey, validateCharacterName,
 } from './types/Multiplayer.js';
+
+// ── 145차 세션 세계 (설치물 공유 · 공용 시드 · 활동 · 채팅 · 이어하기) ──
+export type {
+  MpWorldState, MpPlacedTrap, MpActivity, MpSharedRngKind, MpChatLine,
+  MpIdentity, MpSavedPlayer, MpSavedSession, MpResume,
+} from './types/Multiplayer.js';
+export {
+  MP_ACTIVITY_KO, MP_SHARED_RNG_KINDS, MP_CHAT_KEEP, MP_CHAT_MAX_LEN,
+  isFieldActive, mpWorldSeed, mpTimeSlot, mpRng,
+} from './types/Multiplayer.js';

@@ -11,6 +11,13 @@
  *
  * 불가사리는 바닥 생물이라 표류하지 않는다. 물속 개체는 훌치기로, 해안에 밀려온 개체는
  * [F] 채집으로 줍는다(사용자 지시 — 해파리와 다른 경로).
+ *
+ * ## 145차 — 공용 시드
+ * 배치는 원래도 맵 해시라 모두 같았지만, **표류가 씬 시계(`scene.time.now`)** 기준이라
+ * 먼저 들어와 있던 사람과 방금 들어온 사람의 해파리 위치가 달랐다.
+ * 이제 표류는 **벽시계**를 따른다 — 배치 기준 시각(`epochMs`)부터 지금까지의 걸음을
+ * 스폰 때 되감아 재생하므로, 언제 접속하든 같은 자리에서 시작한다.
+ * 배치 시드에는 세션 시드가 섞여 세션마다 다른 대발생이 된다.
  */
 import Phaser from 'phaser';
 import {
@@ -46,6 +53,7 @@ interface Entity {
   y: number;
   img: Phaser.GameObjects.Image;
   /** 다음 표류 시각(ms) */
+  /** 다음 표류 시각 (벽시계 ms — 145차: 씬 시계에서 교체) */
   nextMove: number;
   /** 표류 방향 */
   dx: number;
@@ -102,8 +110,11 @@ export class NuisanceField {
   }
 
   // ── 배치 ────────────────────────────────────────────
-  /** 이 달에 나오는 종을 가중 추첨해 필드에 흩뿌린다 */
-  spawn(seed = Date.now()): void {
+  /**
+   * 이 달에 나오는 종을 가중 추첨해 필드에 흩뿌린다.
+   * `epochMs` = 이 배치가 시작된 벽시계 시각 — 지금까지의 표류를 되감아 재생한다(145차).
+   */
+  spawn(seed = Date.now(), epochMs = Date.now()): void {
     this.clear();
     const month = this.deps.month();
     const pool = MARINE_NUISANCES
@@ -131,7 +142,47 @@ export class NuisanceField {
       const r = Math.floor(next() * this.deps.rows);
       const spot = this.validSpot(nu, c, r);
       if (!spot) continue;
-      this.add(nu, spot.c, spot.r, spot.washedUp, next);
+      this.add(nu, spot.c, spot.r, spot.washedUp, next, epochMs);
+    }
+    this.catchUpDrift(epochMs);
+  }
+
+  /**
+   * 배치 시각부터 지금까지의 표류를 되감아 재생한다.
+   * 걸음 수는 종별 `moveSec`로 정해지므로(해파리 5분/칸) 6시간 주기 배치에서 최대 72걸음 —
+   * 비용은 무시할 수 있고, 그 대신 **접속 시점과 무관하게 같은 자리**가 보장된다.
+   */
+  private catchUpDrift(epochMs: number): void {
+    const now = Date.now();
+    for (const e of this.entities) {
+      if (!e.nu.drift) continue;
+      const step = e.nu.drift.moveSec * 1000;
+      let t = e.nextMove;
+      for (let guard = 0; t <= now && guard < 2_000; guard++) {
+        this.driftOnce(e);
+        t += step;
+      }
+      e.nextMove = t;
+    }
+    void epochMs;
+  }
+
+  /** 표류 한 걸음 — 현재 방향 우선, 막히면 이웃 중 조건을 만족하는 칸으로 */
+  private driftOnce(e: Entity): void {
+    if (!e.nu.drift) return;
+    const T = this.deps.tile;
+    const c = Math.floor(e.x / T), r = Math.floor(e.y / T);
+    const cands: [number, number][] = [
+      [Math.sign(e.dx), 0], [0, Math.sign(e.dy)], [1, 0], [-1, 0], [0, 1], [0, -1],
+    ];
+    for (const [dc, dr] of cands) {
+      if (!dc && !dr) continue;
+      const nc = c + dc, nr = r + dr;
+      if (!this.deps.isWater(nc, nr)) continue;
+      if (this.deps.waterDist(nc, nr) < e.nu.drift.minShoreTiles) continue;
+      e.x = nc * T + T / 2; e.y = nr * T + T / 2;
+      e.dx = dc; e.dy = dr;
+      return;
     }
   }
 
@@ -153,7 +204,9 @@ export class NuisanceField {
     return null;
   }
 
-  private add(nu: MarineNuisance, c: number, r: number, washedUp: boolean, rnd: () => number): void {
+  private add(
+    nu: MarineNuisance, c: number, r: number, washedUp: boolean, rnd: () => number, epochMs: number,
+  ): void {
     const T = this.deps.tile;
     const roll = rollNuisance(nu, rnd);
     const x = c * T + T / 2;
@@ -163,7 +216,7 @@ export class NuisanceField {
     const ang = rnd() * Math.PI * 2;
     this.entities.push({
       nu, sizeCm: roll.sizeCm, weightKg: roll.weightKg, x, y, img, washedUp,
-      nextMove: this.scene.time.now + (nu.drift ? nu.drift.moveSec * 1000 * rnd() : 0),
+      nextMove: epochMs + (nu.drift ? nu.drift.moveSec * 1000 * rnd() : 0),
       dx: Math.cos(ang), dy: Math.sin(ang),
     });
   }
@@ -176,28 +229,13 @@ export class NuisanceField {
 
   // ── 매 프레임 ───────────────────────────────────────
   update(dtMs: number): void {
-    const now = this.scene.time.now;
-    const T = this.deps.tile;
-
-    // 표류 — 5분에 한 칸(종별 moveSec)
+    // 표류 — 5분에 한 칸(종별 moveSec). 145차부터 **벽시계** 기준이라 클라이언트끼리 같다.
+    const now = Date.now();
     for (const e of this.entities) {
       if (!e.nu.drift || e === this.snag) continue;
       if (now < e.nextMove) continue;
-      e.nextMove = now + e.nu.drift.moveSec * 1000;
-      const c = Math.floor(e.x / T), r = Math.floor(e.y / T);
-      // 현재 방향 우선, 막히면 이웃 중 조건을 만족하는 칸으로
-      const cands: [number, number][] = [
-        [Math.sign(e.dx), 0], [0, Math.sign(e.dy)], [1, 0], [-1, 0], [0, 1], [0, -1],
-      ];
-      for (const [dc, dr] of cands) {
-        if (!dc && !dr) continue;
-        const nc = c + dc, nr = r + dr;
-        if (!this.deps.isWater(nc, nr)) continue;
-        if (this.deps.waterDist(nc, nr) < e.nu.drift.minShoreTiles) continue;
-        e.x = nc * T + T / 2; e.y = nr * T + T / 2;
-        e.dx = dc; e.dy = dr;
-        break;
-      }
+      e.nextMove += e.nu.drift.moveSec * 1000;
+      this.driftOnce(e);
     }
 
     // 훌치기 견인

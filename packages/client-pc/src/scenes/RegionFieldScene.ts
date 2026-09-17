@@ -18,7 +18,10 @@
  */
 
 import Phaser from 'phaser';
-import { CHAR_CELL, CHAR_FOOT_Y, CHAR_SCALE, characterOf, type CharRole } from '@tra/core';
+import {
+  CHAR_CELL, CHAR_FOOT_Y, CHAR_SCALE, characterOf, type CharRole,
+  isFieldActive, type MpActivity, mpTimeSlot, mpWorldSeed,
+} from '@tra/core';
 import { CharacterSprite, ensureCharSheet, charFrameName } from '../ui/CharacterSprite.js';
 import { NuisanceField } from '../ui/NuisanceField.js';
 import { ensureBuildingVariant } from '../ui/BuildingVariant.js';
@@ -123,6 +126,9 @@ interface RegionFieldInit {
   entryT?: number;
 }
 
+/** 과증식 대발생 주기 (145차) — 이 시간마다 배치가 새로 굴러간다(표류 되감기 상한도 여기서 나온다) */
+const NUISANCE_SLOT_MS = 6 * 3_600_000;
+
 // ── 렌더/전환 상수 ──────────────────────────────────
 /**
  * 타일 렌더 크기(px). legacy(손그림) 맵 = 20. **심리스 = 32**(101차 후속 — Kenney 16px 지면
@@ -175,6 +181,14 @@ export class RegionFieldScene extends Phaser.Scene {
   private poiByChunk = new Map<string, number[]>();
   /** 상주 청크의 POI 마커 오브젝트 (청크 키 → 오브젝트들) */
   private poiObjects = new Map<string, Phaser.GameObjects.GameObject[]>();
+  /**
+   * 캐릭터를 가릴 수 있는 건물 프리팹 (145차 — 건물 뒤로 들어가면 반투명).
+   * 청크 수명과 같이 간다(상주 해제 시 함께 버린다).
+   */
+  private occludersByChunk = new Map<string, Phaser.GameObjects.Image[]>();
+  /** 지금 반투명 상태인 프리팹 — 이력(hysteresis)에 쓴다 */
+  private faded = new Set<Phaser.GameObjects.Image>();
+  private occludeAt = 0;
   /** 차도 중심선 벡터 (roads.json) — 차선·중앙선 마킹 */
   private regionRoads: RegionRoad[] = [];
   /** dev 편집 패치 (patch.json — 타일/프롭/지붕 오버라이드). 편집기가 수정·저장 */
@@ -307,7 +321,8 @@ export class RegionFieldScene extends Phaser.Scene {
 
   /** 이동/캐스팅을 차단해야 하는 UI 상태 (일시정지 or 팝업 열림 or 쓰러짐 연출) */
   private get uiBlocked(): boolean {
-    return this.isPaused || this.collapsing || this.popupStack.length > 0;
+    // 145차 — 채팅 입력 중에는 이동·상호작용을 멈춘다(글자를 치다 캐릭터가 걸어가면 안 된다)
+    return this.isPaused || this.collapsing || this.popupStack.length > 0 || !!this.hud?.isComposing;
   }
 
   /**
@@ -366,6 +381,8 @@ export class RegionFieldScene extends Phaser.Scene {
     this.poiDoors = [];
     this.poiByChunk = new Map();
     this.poiObjects = new Map();
+    this.occludersByChunk = new Map();
+    this.faded = new Set();
     // 상태 초기화 (scene.restart 대비)
     this.isTransitioning = false;
     // 쓰러짐 연출은 씬을 넘어가지 않는다 — 재진입 시 남아 있으면 조작이 영구히 잠긴다
@@ -461,6 +478,8 @@ export class RegionFieldScene extends Phaser.Scene {
     this.traffic = undefined;
     this.poiWalls = undefined;
     this.poiObjects.clear();
+    this.occludersByChunk.clear();
+    this.faded.clear();
     this.showFieldLabels = loadSettings().showFieldLabels;
     // 멀티 — 세션에 들어와 있으면 위치 알림을 켠다 (싱글이면 아무것도 하지 않는다)
     MultiplayerClient.startPresence();
@@ -498,7 +517,12 @@ export class RegionFieldScene extends Phaser.Scene {
     // 위치 태그 — 저장 정책(집 침대에서만)의 기준 (HOMETOWN_HOME_SPEC)
     GameState.locationTag = this.region === 'hometown' ? 'hometown' : 'region_field';
     // 홈타운은 실데이터 지역이 아니므로 날씨를 방문마다 랜덤 추첨 (HUD/조명/날씨효과 공유)
-    if (this.region === 'hometown') ExternalDataStore.rerollHometownWeather();
+    // 145차 — 홈타운 날씨도 세션 공용(1시간 슬롯). 날씨는 피딩 활성도를 통해 이벤트 스케줄까지 좌우한다.
+    if (this.region === 'hometown') {
+      ExternalDataStore.rerollHometownWeather(mpWorldSeed(
+        MultiplayerClient.worldSeed, 'weather', 'hometown', mpTimeSlot(Date.now(), 3_600_000),
+      ));
+    }
 
     if (this.seamlessDef) {
       const dr = this.seamlessDef.dataRegion;
@@ -567,7 +591,7 @@ export class RegionFieldScene extends Phaser.Scene {
       // 스폰 지점 주변 상주 즉시 확보 (충돌 바디는 로드 즉시 생성 — 낙하/관통 방지)
       this.chunks.update(this.playerBody.x, this.playerBody.y);
       // 주행 차량 — 도로 그래프 우측통행 (101차 후속)
-      this.traffic = new TrafficSystem(this, this.regionRoads, TR, 70, this.cols, this.rows);
+      this.traffic = new TrafficSystem(this, this.regionRoads, TR, 70, this.cols, this.rows, this.trafficSeed());
       this.events.once('shutdown', () => {
         this.traffic?.destroy(); this.traffic = undefined;
         this.chunks?.destroy(); this.chunks = undefined; closeMapEditor();
@@ -614,6 +638,10 @@ export class RegionFieldScene extends Phaser.Scene {
       tileSize: TR,
       playerPos: () => ({ x: this.playerBody.x, y: this.playerBody.y }),
       pushLog: (msg) => this.hud?.pushLog(msg),
+      // 145차 공용 시드 — 같은 세션이면 같은 자리에 같은 보일링이 뜬다
+      mapKey: `${this.region}:${this.mapId}`,
+      worldSeed: () => MultiplayerClient.worldSeed,
+      feedingAt: (atMs) => this.feedingAt(atMs),
     });
     this.events.once('shutdown', () => { this.fieldEvents?.destroy(); this.fieldEvents = undefined; });
     this.events.once('shutdown', () => { this.nuisance?.destroy(); this.nuisance = undefined; });
@@ -627,6 +655,7 @@ export class RegionFieldScene extends Phaser.Scene {
     this.events.on('resume', () => {
       // 안전망 — 하위 씬(낚시/실내)에서 복귀 시 전환 플래그가 남아 이동이 막히는 일 방지
       this.isTransitioning = false;
+      MultiplayerClient.setActivity('field');   // 145차 — 하위 씬에서 돌아오면 다시 필드
       this.cameras.main.fadeIn(300, 0, 10, 20);
       this.restoreCamFollow();   // 127차 — 1인칭에서 돌아오면 카메라를 플레이어로
       this.clearCastFlight();
@@ -672,6 +701,11 @@ export class RegionFieldScene extends Phaser.Scene {
       this.terrain.push(trow);
       this.blocked.push(brow);
     }
+  }
+
+  /** 교통 초기 편성 시드 (145차 — 같은 세션이면 같은 차들로 시작한다) */
+  private trafficSeed(): number {
+    return mpWorldSeed(MultiplayerClient.worldSeed, 'traffic', `${this.region}:${this.mapId}`, 0);
   }
 
   private terrainAt(c: number, r: number): RegionTerrain | undefined {
@@ -923,13 +957,12 @@ export class RegionFieldScene extends Phaser.Scene {
       month: () => new Date().getMonth() + 1,
     });
     // 맵마다 결정적 배치 — 같은 맵에 다시 오면 같은 자리에서 시작한다
-    this.nuisance.spawn(this.hashSeed(`${this.region}:${this.mapId}`));
-  }
-
-  private hashSeed(s: string): number {
-    let h = 2166136261 >>> 0;
-    for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
-    return h >>> 0;
+    // 145차 — 세션 공용 시드 + 6시간 주기 대발생 슬롯. 표류는 슬롯 시작부터 되감아 재생한다.
+    const slot = mpTimeSlot(Date.now(), NUISANCE_SLOT_MS);
+    this.nuisance.spawn(
+      mpWorldSeed(MultiplayerClient.worldSeed, 'nuisance', `${this.region}:${this.mapId}`, slot),
+      slot * NUISANCE_SLOT_MS,
+    );
   }
 
   /** 수거한 개체를 인벤토리(식품)에 넣는다 */
@@ -985,6 +1018,12 @@ export class RegionFieldScene extends Phaser.Scene {
 
   /** 진입 엣지/기본 진입에 따라 스폰 타일 계산 (걷기 가능 타일 보장) */
   private computeSpawnTile(): { col: number; row: number } {
+    // 145차 이어하기 — 서버가 기억한 마지막 자리. 한 번만 쓰고 비운다(맵 이동까지 따라오면 안 된다).
+    const rs = MultiplayerClient.resume;
+    if (rs && rs.regionId === this.region) {
+      MultiplayerClient.resume = null;
+      return this.nearestWalkable(Math.floor(rs.x / TR), Math.floor(rs.y / TR));
+    }
     // 심리스 = meta.spawn (build_osm_tilemap이 최근접 이동가능 타일로 스냅한 값)
     if (this.seamlessDef) {
       const sp = this.regionMeta?.spawn;
@@ -1322,6 +1361,7 @@ export class RegionFieldScene extends Phaser.Scene {
     const list = this.poiByChunk.get(key);
     if (!list) return;
     const objs: Phaser.GameObjects.GameObject[] = [];
+    const occluders: Phaser.GameObjects.Image[] = [];
     for (const i of list) {
       const poi = this.regionPois[i];
       const door = this.poiDoors[i];
@@ -1360,6 +1400,7 @@ export class RegionFieldScene extends Phaser.Scene {
             .setDepth(lit.depth + 0.0002).setBlendMode(Phaser.BlendModes.ADD);
           objs.push(glow);
         }
+        if (lit) occluders.push(lit);   // 145차 — 캐릭터를 덮을 수 있는 그림
         hasSprite = true;
       }
       // NPC (정적 — 문 옆에 선다, 충돌 있음)
@@ -1399,11 +1440,14 @@ export class RegionFieldScene extends Phaser.Scene {
       }
     }
     this.poiObjects.set(key, objs);
+    if (occluders.length) this.occludersByChunk.set(key, occluders);
   }
 
   /** 청크 상주 해제 — 마커 파괴 (프리팹·프롭도 같은 수명 규칙을 따른다 — §11) */
   private unloadChunkPois(cc: number, cr: number): void {
     const key = `${cc},${cr}`;
+    for (const img of this.occludersByChunk.get(key) ?? []) this.faded.delete(img);
+    this.occludersByChunk.delete(key);
     const objs = this.poiObjects.get(key);
     if (!objs) return;
     this.poiObjects.delete(key);
@@ -1750,7 +1794,7 @@ export class RegionFieldScene extends Phaser.Scene {
     this.regionPatch.roads = this.regionRoads;
     this.chunks?.setRoads(this.regionRoads);
     this.traffic?.destroy();
-    this.traffic = new TrafficSystem(this, this.regionRoads, TR, 70, this.cols, this.rows);
+    this.traffic = new TrafficSystem(this, this.regionRoads, TR, 70, this.cols, this.rows, this.trafficSeed());
     setMapEditorStatus(`${msg} · 저장하면 patch.json roads 오버라이드 (타일 r/w는 판정용 — 필요하면 지형 탭에서 함께 칠하세요)`);
   }
 
@@ -1964,6 +2008,7 @@ export class RegionFieldScene extends Phaser.Scene {
     // 일시정지 메뉴 네비게이션 (열려 있을 때만 처리)
     this.input.keyboard!.on('keydown-UP', () => { if (this.isPaused) this.movePauseSel(-1); });
     this.input.keyboard!.on('keydown-DOWN', () => { if (this.isPaused) this.movePauseSel(1); });
+    // ⚠ 채팅 Enter는 `isPaused`·팝업일 때 열리지 않으므로 이 핸들러와 겹치지 않는다 (145차)
     this.input.keyboard!.on('keydown-ENTER', () => { if (this.isPaused) this.activatePauseSel(); });
 
     // M: 미니맵 / I: 인벤토리 / S: 스테이터스 / U: 활용 / E: 상호작용·장비
@@ -2003,6 +2048,13 @@ export class RegionFieldScene extends Phaser.Scene {
     this.input.keyboard!.on('keydown-L', () => { if (!this.isPaused) this.togglePanel('license'); });
     this.input.keyboard!.on('keydown-K', () => { if (!this.isPaused) this.togglePanel('skill'); });
     this.input.keyboard!.on('keydown-J', () => { if (!this.isPaused) this.togglePanel('journal'); });
+
+    // ── 145차 지역 채널 채팅 — Enter로 열고 Enter로 보낸다 ──
+    this.input.keyboard!.on('keydown-ENTER', () => {
+      if (this.isPaused || this.popupStack.length > 0 || this.hud?.isComposing) return;
+      this.startCompose();
+    });
+    this.events.once('shutdown', () => this.endCompose());
     // T: 통발 놓기 (121차 — 보유 통발 + 미끼 선택 → 물 위 클릭 설치)
     this.input.keyboard!.on('keydown-T', () => {
       if (this.isPaused || this.uiBlocked) return;
@@ -2671,10 +2723,20 @@ export class RegionFieldScene extends Phaser.Scene {
 
   /** 피딩타임 활성도 갱신 (계절 시간창 × 물때 × 날씨 — 필드 이벤트 발생 확률 입력) */
   private refreshFieldFeeding(): void {
-    const tide = calculateTideInfo();
-    this.fieldFeeding = computeFeedingActivity({
-      hour: kstHour() + new Date().getMinutes() / 60,
-      month: new Date().getMonth() + 1,
+    this.fieldFeeding = this.feedingAt(Date.now());
+  }
+
+  /**
+   * 그 시각의 피딩 활성도. **인자로 시각을 받는 이유**(145차):
+   * 필드 이벤트 스케줄이 "슬롯 시작 시각"의 값을 물어야, 중간에 접속한 사람도
+   * 먼저 와 있던 사람과 같은 이벤트를 계산한다(프레임마다 갈리는 "지금" 값은 못 쓴다).
+   */
+  private feedingAt(atMs: number): number {
+    const d = new Date(atMs);
+    const tide = calculateTideInfo(d);
+    return computeFeedingActivity({
+      hour: kstHour(d) + d.getMinutes() / 60,
+      month: d.getMonth() + 1,
       tidePhase: tide.tidePhase,
       minutesToNextTide: tide.minutesToNextTide,
       nextTideType: tide.nextTideType,
@@ -2732,6 +2794,7 @@ export class RegionFieldScene extends Phaser.Scene {
         this.hud?.pushLog(`[이벤트] ${fieldEvent.label} — 입질 x${fieldEvent.biteMult.toFixed(1)}`);
       }
       this.dismountBike();   // 낚시 진입 시 자동 하차
+      MultiplayerClient.setActivity('fishing');   // 145차 — 이름표 옆 배지 + 밀어내기 제외
       this.scene.pause();
       this.scene.launch('FirstPersonFishingScene', {
         zMaxM, castDistanceM, reefSeed, region: this.region, shoreKind, fieldEvent,
@@ -3176,6 +3239,9 @@ export class RegionFieldScene extends Phaser.Scene {
     }
     this.handleMovement();
     this.syncPeers(delta);
+    this.applyPeerPush(delta);
+    this.updateOccluders(delta);
+    for (const line of MultiplayerClient.drainChat()) this.hud?.pushLog(`${line.name}: ${line.text}`);
     this.tickVitals(delta);
     this.updateSpriteAndShadow();
     this.updateBuildingProximity();
@@ -3543,9 +3609,14 @@ export class RegionFieldScene extends Phaser.Scene {
   /** 설정 '장소 이름표' — 끄면 바닥 이름표·점이 사라진다 (기본 끔) */
   private showFieldLabels = false;
 
-  // ── 143차 멀티플레이 — 같은 지역의 다른 사람 ──
-  /** playerId → 스프라이트·이름표 */
-  private peerObjs = new Map<string, { img: Phaser.GameObjects.Image; tag: Phaser.GameObjects.Text }>();
+  // ── 143차 멀티플레이 — 같은 지역의 다른 사람 (145차 외형·활동·밀어내기) ──
+  /** playerId → 스프라이트·이름표·활동 배지 */
+  private peerObjs = new Map<string, {
+    img: Phaser.GameObjects.Image; tag: Phaser.GameObjects.Text;
+    badge?: Phaser.GameObjects.Image; badgeKey?: string;
+  }>();
+  /** 밀어내기 대상 — 필드에서 실제로 걸어다니는 피어의 발 위치만 (145차) */
+  private peerFeet: { x: number; y: number; id: string }[] = [];
   private peerSyncAt = 0;
   private questMarkerAt = 0;
 
@@ -3598,8 +3669,15 @@ export class RegionFieldScene extends Phaser.Scene {
   /**
    * 내 위치를 올리고, 같은 지역에 있는 사람들을 그린다 (200ms 스로틀).
    *
-   * 외형은 서버가 보내지 않는다 — `characterOf(playerId)`가 id에서 결정적으로 뽑아내므로
-   * 모두의 화면에서 같은 사람이 같은 얼굴로 보인다(NPC 41인과 같은 규칙).
+   * **외형(145차)**: 서버가 각자 만든 `CharConfig`를 들고 있다가 그대로 돌려준다.
+   * 구 구현은 `characterOf('mp_' + playerId)`로 id에서 얼굴을 지어냈다 — 모두의 화면에서
+   * 일관되긴 했지만 **본인이 캐릭터 만들기에서 고른 얼굴과는 무관**했다. 외형이 없으면
+   * (구 클라이언트) 예전 방식으로 폴백한다.
+   *
+   * **활동(145차)**: 1인칭·상점·실내에 들어간 사람은 마지막 자리에 서 있는 껍데기다.
+   * 이름표 옆에 무엇을 하는지 배지를 달고 스프라이트를 흐리게 해서 "멈춰 있는 사람"과
+   * "자리만 남은 사람"을 구분한다. 밀어내기 대상에서도 빠진다(보이지 않는 볼라드 방지).
+   *
    * 이름표 높이는 내 캐릭터와 같은 기준(`charTopFromFeet`)을 쓴다.
    */
   private syncPeers(delta: number): void {
@@ -3607,9 +3685,12 @@ export class RegionFieldScene extends Phaser.Scene {
       if (this.peerObjs.size > 0) this.clearPeers();
       return;
     }
+    // ⚠ 상점은 씬을 멈추지 않는다(팝업) — 매 프레임 여기서 덮어쓰므로 활동을 파생시킨다.
+    //   1인칭·실내는 씬이 pause라 이 함수가 아예 안 돌고, 그쪽에서 건 setActivity가 그대로 남는다.
     MultiplayerClient.reportPosition(
       this.region, this.playerBody.x, this.playerBody.y, this.playerFacing,
       Math.hypot(this.playerBody.body.velocity.x, this.playerBody.body.velocity.y) > 4,
+      this.shopPanel ? 'shop' : 'field',
     );
     this.peerSyncAt += delta;
     if (this.peerSyncAt < 200) return;
@@ -3617,35 +3698,198 @@ export class RegionFieldScene extends Phaser.Scene {
 
     const peers = MultiplayerClient.peersInRegion(this.region);
     const alive = new Set<string>();
+    this.peerFeet = [];
     for (const peer of peers) {
       alive.add(peer.playerId);
       const feetY = peer.y + this.PLAYER_FOOT_OFFSET;
       const depth = 20 + peer.y * 0.001;
+      const tagY = feetY + this.charTopFromFeet - RegionFieldScene.LABEL_GAP;
+      const onField = isFieldActive(peer.activity);
+      if (onField) this.peerFeet.push({ x: peer.x, y: peer.y, id: peer.playerId });
+
       let o = this.peerObjs.get(peer.playerId);
       if (!o) {
-        const sheet = ensureCharSheet(this, characterOf(`mp_${peer.playerId}`), CHAR_SCALE);
+        const sheet = ensureCharSheet(this, peer.look ?? characterOf(`mp_${peer.playerId}`), CHAR_SCALE);
         const img = this.add.image(peer.x, feetY, sheet, charFrameName(peer.facing, 0)).setOrigin(0.5, 1);
-        const tag = this.add.text(peer.x, feetY + this.charTopFromFeet - RegionFieldScene.LABEL_GAP, peer.name, {
+        const tag = this.add.text(peer.x, tagY, peer.name, {
           fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#9fe8ff',
           backgroundColor: '#0a1628cc', padding: { x: 3, y: 1 },
         }).setOrigin(0.5, 1);
         o = { img, tag };
         this.peerObjs.set(peer.playerId, o);
       }
-      o.img.setPosition(peer.x, feetY).setFrame(charFrameName(peer.facing, peer.moving ? 1 : 0)).setDepth(depth);
-      o.tag.setPosition(peer.x, feetY + this.charTopFromFeet - RegionFieldScene.LABEL_GAP)
-        .setText(peer.name).setDepth(depth + 0.0007);
+      o.img.setPosition(peer.x, feetY)
+        .setFrame(charFrameName(peer.facing, peer.moving ? 1 : 0))
+        .setDepth(depth)
+        .setAlpha(onField ? 1 : 0.55);
+      o.tag.setPosition(peer.x, tagY).setText(peer.name).setDepth(depth + 0.0007);
+
+      // 활동 배지 — 이름표 오른쪽에 붙인다(이름 길이에 따라 자리가 따라간다)
+      const key = RegionFieldScene.ACTIVITY_ICON[peer.activity ?? 'field'];
+      if (!key) {
+        o.badge?.destroy(); o.badge = undefined; o.badgeKey = undefined;
+      } else {
+        if (o.badgeKey !== key) {
+          o.badge?.destroy();
+          o.badge = addPixelIcon(this, key, peer.x, tagY, 10) ?? undefined;
+          o.badgeKey = key;
+        }
+        o.badge?.setPosition(peer.x + o.tag.width / 2 + 7, tagY - 5).setDepth(depth + 0.0008);
+      }
     }
     for (const [id, o] of this.peerObjs) {
       if (alive.has(id)) continue;
-      o.img.destroy(); o.tag.destroy();
+      o.img.destroy(); o.tag.destroy(); o.badge?.destroy();
       this.peerObjs.delete(id);
     }
   }
 
+  /** 활동 → 이름표 옆 배지 (필드는 배지 없음 — 늘 붙어 있으면 소음이다) */
+  private static readonly ACTIVITY_ICON: Record<MpActivity, string | null> = {
+    field: null, fishing: 'act_fish', shop: 'act_shop', indoor: 'act_home', menu: 'act_away',
+  };
+
+  /**
+   * 피어 소프트 푸시 (145차 — 스타듀 방식). 겹침을 허용하되 서서히 벌린다.
+   *
+   * ⚠ **피어에게 물리 바디를 달지 않는다** — 피어 좌표는 1초 폴링이라 스냅샷이 튄다.
+   * 정지 바디를 달면 순간이동한 유령에 내가 끼인다. 대신 **내 바디만** 분리 속도를 받는다.
+   * 양쪽 클라이언트가 각자 자기를 밀어내므로 결과는 대칭이고, 지터에 면역이며, 이동이 막히지 않는다.
+   * 또 **밀려 들어갈 칸이 막혀 있으면 그 축으로는 밀지 않는다**(벽·바다로 밀려나는 것 방지).
+   */
+  private applyPeerPush(delta: number): void {
+    if (!this.peerFeet.length || !this.playerBody || this.playerActionLocked) return;
+    const R = RegionFieldScene.PEER_PUSH_RADIUS;
+    let ax = 0, ay = 0;
+    for (const f of this.peerFeet) {
+      let dx = this.playerBody.x - f.x;
+      let dy = this.playerBody.y - f.y;
+      let d = Math.hypot(dx, dy);
+      if (d >= R * 2) continue;
+      if (d < 0.001) {
+        // ⚠ 정확히 겹치면 분리 방향이 0벡터라 영영 안 벌어진다(실측으로 잡음).
+        //   id 비교로 서로 **반대 방향**을 고른다 — 양쪽이 자기를 밀므로 결과가 대칭이다.
+        dx = MultiplayerClient.playerId < f.id ? -1 : 1;
+        dy = 0;
+        d = 1;
+      }
+      const push = (1 - d / (R * 2));
+      ax += (dx / d) * push;
+      ay += (dy / d) * push;
+    }
+    if (ax === 0 && ay === 0) return;
+    const mag = Math.hypot(ax, ay);
+    const sp = RegionFieldScene.PEER_PUSH_SPEED * Math.min(1, mag);
+    const vx = (ax / mag) * sp;
+    const vy = (ay / mag) * sp;
+    const step = delta / 1000;
+    const nx = this.playerBody.x + vx * step;
+    const ny = this.playerBody.y + vy * step;
+    if (this.walkableAtWorld(nx, this.playerBody.y)) this.playerBody.x = nx;
+    if (this.walkableAtWorld(this.playerBody.x, ny)) this.playerBody.y = ny;
+  }
+
+  /** 발밑 반경 (px) — 32px 타일의 약 1/4. 몸통이 아니라 발만 본다 */
+  private static readonly PEER_PUSH_RADIUS = 7;
+  /** 분리 속도 (px/s) — 걷기(210)의 절반 아래라 "밀려난다"기보다 "비켜진다" */
+  private static readonly PEER_PUSH_SPEED = 90;
+
+  /** 월드 좌표가 걸어갈 수 있는 칸인가 (밀어내기 안전판) */
+  private walkableAtWorld(x: number, y: number): boolean {
+    const c = Math.floor(x / TR), r = Math.floor(y / TR);
+    const t = this.terrainAt(c, r);
+    return t !== undefined && t !== 'water' && t !== 'building';
+  }
+
+  /**
+   * 건물 뒤로 들어가면 지붕·벽을 반투명하게 (145차 — 사용자 지시).
+   *
+   * ⚠ **트리거 콜라이더를 새로 달지 않는다.** 이 게임의 건물 몸통은 청크 텍스처에 구워져 있고,
+   * 그 위에 얹히는 것은 POI 프리팹 이미지다. POI 187곳에 트리거를 다는 대신 **이미 있는
+   * 프리팹 사각형**에 발끝을 넣어 본다(새 물리 바디 0개).
+   *
+   * 판정은 두 가지를 모두 만족할 때다 —
+   *  ① 발끝이 프리팹 그림 안에 있고 ② 내 깊이가 그 그림보다 뒤(= 내 y가 더 작다).
+   * ②가 없으면 건물 **앞**을 지날 때도 투명해진다(그때는 내가 이미 앞에 그려진다).
+   *
+   * 나가는 판정은 사각형을 `OCCLUDE_HYSTERESIS`만큼 넓혀서 본다 — 가장자리를 따라 걸을 때
+   * 켜졌다 꺼졌다 깜빡이지 않게.
+   */
+  private updateOccluders(delta: number): void {
+    this.occludeAt += delta;
+    if (this.occludeAt < 120 || !this.playerBody) return;
+    this.occludeAt = 0;
+    const px = this.playerBody.x;
+    const py = this.playerBody.y + this.PLAYER_FOOT_OFFSET;
+    for (const list of this.occludersByChunk.values()) {
+      for (const img of list) {
+        const on = this.faded.has(img);
+        const pad = on ? RegionFieldScene.OCCLUDE_HYSTERESIS : 0;
+        const halfW = img.displayWidth / 2 + pad;
+        const top = img.y - img.displayHeight - pad;
+        const inside = py < img.y && py > top && Math.abs(px - img.x) < halfW;
+        if (inside === on) continue;
+        if (inside) this.faded.add(img); else this.faded.delete(img);
+        this.tweens.killTweensOf(img);
+        this.tweens.add({
+          targets: img, alpha: inside ? RegionFieldScene.OCCLUDE_ALPHA : 1,
+          duration: RegionFieldScene.OCCLUDE_MS, ease: 'Sine.easeOut',
+        });
+      }
+    }
+  }
+
+  /** 건물 뒤에 섰을 때 지붕 알파 */
+  private static readonly OCCLUDE_ALPHA = 0.38;
+  /** 페이드 시간 (ms) — 딱 끊기면 튀어 보인다 */
+  private static readonly OCCLUDE_MS = 200;
+  /** 나가는 판정 여유 (px) — 경계를 따라 걸을 때 깜빡임 방지 */
+  private static readonly OCCLUDE_HYSTERESIS = 6;
+
+  /**
+   * 채팅 입력 시작 (145차).
+   *
+   * ⚠ **Phaser 키보드 플러그인을 통째로 끈다.** 일반 `keydown` 리스너에서 삼키고
+   * `stopPropagation()`을 불러도 소용이 없다 — Phaser는 같은 DOM 이벤트로 `keydown-B`,
+   * `keydown-ESC` 같은 조합 이벤트를 **따로 emit**하기 때문이다(실측: 채팅에 `b`를 치면
+   * 쿨러 창이 열렸다). 입력 중에는 window에서 직접 받아 HUD로 넘긴다.
+   */
+  private startCompose(): void {
+    if (this.composeKeyHandler) return;
+    this.hud?.beginCompose();
+    this.input.keyboard!.enabled = false;
+    this.composeKeyHandler = (ev: KeyboardEvent) => {
+      ev.preventDefault();
+      if (ev.key === 'Enter') {
+        const text = this.hud?.commitCompose() ?? '';
+        this.endCompose();
+        if (!text) return;
+        MultiplayerClient.say(text);
+        // 혼자 하는 중이면 서버가 돌려줄 사람이 없다 — 내 화면에만 남긴다(혼잣말).
+        if (!MultiplayerClient.isConnected) this.hud?.pushLog(`${GameState.player.nickname}: ${text}`);
+        return;
+      }
+      if (ev.key === 'Escape') { this.hud?.cancelCompose(); this.endCompose(); return; }
+      this.hud?.typeCompose(ev.key);
+    };
+    window.addEventListener('keydown', this.composeKeyHandler, true);
+  }
+
+  private endCompose(): void {
+    if (!this.composeKeyHandler) return;
+    window.removeEventListener('keydown', this.composeKeyHandler, true);
+    this.composeKeyHandler = undefined;
+    this.hud?.cancelCompose();
+    if (this.input.keyboard) this.input.keyboard.enabled = true;
+  }
+
+  /** 채팅 입력 중 window 키 가로채기 (없으면 입력 중이 아니다) */
+  private composeKeyHandler?: (ev: KeyboardEvent) => void;
+
   private clearPeers(): void {
-    for (const o of this.peerObjs.values()) { o.img.destroy(); o.tag.destroy(); }
+    for (const o of this.peerObjs.values()) { o.img.destroy(); o.tag.destroy(); o.badge?.destroy(); }
     this.peerObjs.clear();
+    this.peerFeet = [];
   }
 
   /** NPC 근접 [F] 힌트 + 방문 장소(영금정 등) 자동 달성 — 150ms 스로틀 */
@@ -3789,6 +4033,7 @@ export class RegionFieldScene extends Phaser.Scene {
   private enterHomeInterior(): void {
     // keepTransitioning=false — 씬이 살아있는(paused) 전환이라 액션 직전 플래그 해제
     this.fadeOutThen(() => {
+      MultiplayerClient.setActivity('indoor');   // 145차
       this.scene.pause('RegionFieldScene');
       this.scene.launch('HomeInteriorScene');
     }, 250, false);

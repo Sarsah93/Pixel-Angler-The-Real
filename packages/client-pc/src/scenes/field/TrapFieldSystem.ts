@@ -18,6 +18,7 @@ import {
   calculateTideInfo, TUNING,
 } from '@tra/core';
 import { GameState } from '../../store/GameState.js';
+import { MultiplayerClient } from '../../net/MultiplayerClient.js';
 import { StoryStore } from '../../store/StoryStore.js';
 import { InventoryStore, type InvItem } from '../../store/InventoryStore.js';
 import { CoolerStore } from '../../store/CoolerStore.js';
@@ -56,6 +57,13 @@ const HINT_STYLE = {
 export class TrapFieldSystem {
   private host: TrapHost;
   private buoys = new Map<string, { c: Phaser.GameObjects.Container; label: Phaser.GameObjects.Text }>();
+  /**
+   * 남이 놓은 통발 (145차 — 사용자 지시 "설치하는 순간 다른 유저에게도 보이도록").
+   * 같은 물 타일을 두 사람이 쓰기 때문에, 안 보이면 같은 자리에 겹쳐 놓으려다 충돌한다.
+   * 보이기만 하고 **건드릴 수는 없다** — 포획물·분실 롤·조례 적발은 놓은 사람의 몫이다.
+   */
+  private peerBuoys = new Map<string, { c: Phaser.GameObjects.Container }>();
+  private peerSyncAt = 0;
   private hintText?: Phaser.GameObjects.Text;
   private previewG?: Phaser.GameObjects.Graphics;
   private labelAcc = 0;
@@ -166,6 +174,9 @@ export class TrapFieldSystem {
     const wd = this.host.waterDistAt?.(tx, ty) ?? 1;
     if (wd > TUNING.trap.maxWaterDistTiles) return { ok: false, reason: '뭍에서 너무 먼 물입니다' };
     if (this.mine().some((t) => t.tileX === tx && t.tileY === ty)) return { ok: false, reason: '이미 통발이 있습니다' };
+    // 145차 — 남의 통발도 자리를 차지한다(서버가 거절하기 전에 여기서 막아 아이템 소모를 피한다)
+    const peer = MultiplayerClient.peerTraps(this.host.mapKey).find((t) => t.tileX === tx && t.tileY === ty);
+    if (peer) return { ok: false, reason: `${peer.ownerName} 님의 통발이 있습니다` };
     return { ok: true };
   }
 
@@ -229,6 +240,11 @@ export class TrapFieldSystem {
     };
     GameState.deployTrap(trap);
     GameState.markDirty();
+    // 145차 — 세션에 알린다. 실패해도(싱글·서버 없음) 내 통발은 그대로다.
+    void MultiplayerClient.placeTrap({
+      instanceId: trap.instanceId, mapKey: this.host.mapKey,
+      tileX: tx, tileY: ty, trapSpecId: spec.id, deployedAtMs: now.getTime(),
+    }).then((r) => { if (!r.ok && r.reasonKo) this.host.floatingHint(r.reasonKo); });
     this.host.pushLog(`[통발] ${spec.nameKo} 설치 — 수심 ${depthM.toFixed(1)}m · 미끼 ${baitItem.name} · 최적 수거 ${getNextOptimalHarvestTime(trap).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`);
     this.host.floatingHint(`${spec.nameKo}을(를) 놓았습니다`);
     this.renderAll();
@@ -250,6 +266,8 @@ export class TrapFieldSystem {
   update(deltaMs: number): void {
     this.labelAcc += deltaMs;
     if (this.labelAcc > 20_000) { this.labelAcc = 0; this.refreshLabels(); }
+    this.peerSyncAt += deltaMs;
+    if (this.peerSyncAt > 1_000) { this.peerSyncAt = 0; this.renderPeerTraps(); }
     const p = this.host.player();
     const tr = this.host.tr;
     let best: DeployedTrap | null = null;
@@ -278,14 +296,14 @@ export class TrapFieldSystem {
     const soakH = (Date.now() - t.deployedAt.getTime()) / 3_600_000;
     if (t.isLostOrDamaged) {
       this.host.confirm(`${spec?.nameKo ?? '통발'}이(가) 분실/파손되었습니다.\n부표를 정리하시겠습니까? (통발은 되돌아오지 않습니다)`, () => {
-        GameState.removeTrap(t.instanceId); GameState.markDirty(); this.renderAll();
+        this.dropTrap(t.instanceId); GameState.markDirty(); this.renderAll();
         this.host.pushLog('[통발] 분실된 통발을 정리했습니다');
       });
       return true;
     }
     if (!s.canHarvest) {
       this.host.confirm(`${spec?.nameKo ?? '통발'} — ${s.label}\n최소 침지(${TUNING.trap.minSoakHours}h) 전입니다. 그냥 회수하시겠습니까? (포획물 없음 · 미끼 소모)`, () => {
-        GameState.removeTrap(t.instanceId); GameState.markDirty();
+        this.dropTrap(t.instanceId); GameState.markDirty();
         this.returnTrapItem(spec, t);
         this.renderAll();
         this.host.pushLog(`[통발] ${spec?.nameKo ?? '통발'} 회수 (침지 ${soakH.toFixed(1)}h — 포획 없음)`);
@@ -294,6 +312,35 @@ export class TrapFieldSystem {
     }
     this.host.confirm(`${spec?.nameKo ?? '통발'} — ${s.label}\n수거하시겠습니까?`, () => this.harvest(t));
     return true;
+  }
+
+  /** 통발을 세계에서 지운다 — 로컬 + 세션 (145차) */
+  private dropTrap(instanceId: string): void {
+    GameState.removeTrap(instanceId);
+    void MultiplayerClient.removeTrap(instanceId);
+  }
+
+  /** 남이 놓은 통발 부표 — 이름만 띄우고 상호작용은 없다 (145차) */
+  private renderPeerTraps(): void {
+    const list = MultiplayerClient.peerTraps(this.host.mapKey);
+    const tr = this.host.tr;
+    const alive = new Set<string>();
+    for (const t of list) {
+      alive.add(t.instanceId);
+      if (this.peerBuoys.has(t.instanceId)) continue;
+      const c = this.host.scene.add.container(t.tileX * tr + tr / 2, t.tileY * tr + tr / 2).setDepth(6.7);
+      const rope = this.host.scene.add.graphics();
+      rope.lineStyle(1, 0xe8e0c8, 0.4); rope.lineBetween(0, 0, 0, 10);
+      const img = this.host.scene.add.image(0, 0, 'trap_buoy').setOrigin(0.5, 0.5).setAlpha(0.72).setTint(0x9fd8ff);
+      const label = this.host.scene.add.text(0, -10, t.ownerName, {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#9fe8ff',
+        backgroundColor: '#0a162899', padding: { x: 3, y: 1 },
+      }).setOrigin(0.5, 1);
+      c.add([rope, img, label]);
+      this.host.scene.tweens.add({ targets: img, y: { from: -1, to: 1 }, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+      this.peerBuoys.set(t.instanceId, { c });
+    }
+    for (const [id, b] of this.peerBuoys) if (!alive.has(id)) { b.c.destroy(); this.peerBuoys.delete(id); }
   }
 
   private returnTrapItem(spec: TrapSpec | undefined, t: DeployedTrap): void {
@@ -317,7 +364,7 @@ export class TrapFieldSystem {
       const lost = rollTrapLoss(t, tide.currentStrength, soakH, Math.random, GameState.skillMult('trap_loss'));   // 스킬 매듭법(122차)
       GameState.updateTrap(t.instanceId, { lossRolled: true, isLostOrDamaged: lost });
       if (lost) {
-        GameState.removeTrap(t.instanceId); GameState.markDirty(); this.renderAll();
+        this.dropTrap(t.instanceId); GameState.markDirty(); this.renderAll();
         this.host.scene.cameras.main.shake(180, 0.005);
         this.host.floatingHint('통발이 조류에 쓸려 사라졌다…');
         this.host.pushLog(`[통발] ${spec?.nameKo ?? '통발'} 분실 — 조류 ${Math.round(tide.currentStrength * 100)}% · 침지 ${soakH.toFixed(1)}h`);
@@ -340,7 +387,7 @@ export class TrapFieldSystem {
     // 내구도 · 반환
     const dur = Math.max(0, (t.durability ?? spec?.durability ?? 0) - result.durabilityLost);
     GameState.updateTrap(t.instanceId, { durability: dur });
-    GameState.removeTrap(t.instanceId);
+    this.dropTrap(t.instanceId);
     StoryStore.event({ kind: 'trap' });   // 134차 — 통발 수거 목표
     GameState.addProficiency('trap');     // 140차 — 매듭법 숙련
     this.returnTrapItem(spec, { ...t, durability: dur });
@@ -414,6 +461,8 @@ export class TrapFieldSystem {
   destroy(): void {
     for (const b of this.buoys.values()) b.c.destroy();
     this.buoys.clear();
+    for (const b of this.peerBuoys.values()) b.c.destroy();
+    this.peerBuoys.clear();
     this.hintText?.destroy();
     this.previewG?.destroy();
   }

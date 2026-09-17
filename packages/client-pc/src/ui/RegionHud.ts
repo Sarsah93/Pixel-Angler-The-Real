@@ -10,7 +10,7 @@
  */
 
 import Phaser from 'phaser';
-import type { RegionTerrain, WeatherKind, StatusEffectId } from '@tra/core';
+import { MP_CHAT_MAX_LEN, type RegionTerrain, type WeatherKind, type StatusEffectId } from '@tra/core';
 import {
   WEATHER_LABEL, kstParts, isNightHour,
   getStatusEffect, statusRemainMs, STATUS_CURE_LABEL, xpToNext, MAX_LEVEL,
@@ -20,6 +20,7 @@ import { loadSettings, saveSettings } from '../scenes/SettingsScene.js';
 import { InventoryStore } from '../store/InventoryStore.js';
 import { ExternalDataStore } from '../store/ExternalDataStore.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
+import { MultiplayerClient } from '../net/MultiplayerClient.js';
 import { applyScreenFixed, restoreHandCursor } from './DraggablePanel.js';
 import { createItemIcon } from './ItemIcon.js';
 import { addPixelIcon } from './PixelIcon.js';
@@ -1164,19 +1165,20 @@ export class RegionHud extends Phaser.GameObjects.Container {
     };
     this.scene.input.on('wheel', this.logWheelHandler);
 
-    // ── 채팅 입력 목업 (하단 고정 — 로그 마스크 밖 + 나중에 add = 로그 위 레이어) ──
+    // ── 채팅 입력 (145차 — 목업에서 실채팅으로) ──
     const inputBg = this.scene.add.rectangle(px + 10, py + h - Math.round(24 * k), w - 20, Math.round(17 * k), 0x050f1e)
       .setOrigin(0, 0).setStrokeStyle(1, 0x1f3d5a);
-    const inputText = this.scene.add.text(px + 14, py + h - Math.round(21 * k), '[ENTER] 대화 입력 (멀티플레이 준비중)', {
+    const inputText = this.scene.add.text(px + 14, py + h - Math.round(21 * k), '', {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: fs(8), color: '#607b8e',
     });
+    this.chatInputBg = inputBg;
+    this.chatInputText = inputText;
+    this.refreshChatInput();
     this.addLogPart([inputBg, inputText]);
 
-    // 초기 커뮤니티 목업 라인 (최초 1회) — 재생성 시엔 보존된 로그를 다시 채운다
+    // 초기 안내 (최초 1회) — 재생성 시엔 보존된 로그를 다시 채운다
     if (this.logLines.length === 0) {
       this.pushLog('[시스템] 지역 채널에 접속했습니다.');
-      this.pushLog('안개낀바다: 속초항 갈치 입질 좋네요');
-      this.pushLog('강릉조사: 오늘 파도가 좀 있는 편입니다');
     } else {
       this.renderLogText();
       this.setLogScroll(Number.MAX_SAFE_INTEGER);
@@ -1317,6 +1319,68 @@ export class RegionHud extends Phaser.GameObjects.Container {
     const thumbY = this.logRect.y + (this.logRect.h - thumbH) * (this.logScrollY / max);
     g.fillStyle(0x7fb8d8, 0.6);
     g.fillRoundedRect(trackX, thumbY, 5, thumbH, 2);
+  }
+
+  // ═══════════════════════════════════════════════════
+  // 지역 채널 채팅 (145차)
+  // ═══════════════════════════════════════════════════
+
+  private chatInputBg?: Phaser.GameObjects.Rectangle;
+  private chatInputText?: Phaser.GameObjects.Text;
+  /** 입력 중인가 — 씬은 이 동안 이동·단축키를 막는다 */
+  private composing = false;
+  private draft = '';
+
+  get isComposing(): boolean { return this.composing; }
+  get chatDraft(): string { return this.draft; }
+
+  /** 입력 시작 */
+  beginCompose(): void {
+    this.composing = true;
+    this.draft = '';
+    this.refreshChatInput();
+  }
+
+  /** 입력 중이면 취소하고 true */
+  cancelCompose(): boolean {
+    if (!this.composing) return false;
+    this.composing = false;
+    this.draft = '';
+    this.refreshChatInput();
+    return true;
+  }
+
+  /** 입력을 끝내고 친 글을 돌려준다 (빈 문자열이면 보내지 않는다) */
+  commitCompose(): string {
+    const text = this.draft.trim();
+    this.composing = false;
+    this.draft = '';
+    this.refreshChatInput();
+    return text;
+  }
+
+  /** 글자 한 자 — 씬의 입력 가로채기가 넘겨준다 */
+  typeCompose(key: string): void {
+    if (!this.composing) return;
+    if (key === 'Backspace') { this.draft = this.draft.slice(0, -1); this.refreshChatInput(); return; }
+    if (key.length === 1 && this.draft.length < MP_CHAT_MAX_LEN) {
+      this.draft += key;
+      this.refreshChatInput();
+    }
+  }
+
+  private refreshChatInput(): void {
+    if (!this.chatInputText) return;
+    if (this.composing) {
+      this.chatInputText.setText(`> ${this.draft}_`).setColor('#d8ecff');
+      this.chatInputBg?.setStrokeStyle(1, 0x4a9fd8);
+    } else {
+      const ready = MultiplayerClient.isConnected;
+      this.chatInputText
+        .setText(ready ? '[ENTER] 대화 입력' : '[ENTER] 대화 입력 (혼자 하는 중)')
+        .setColor(ready ? '#8fa9bd' : '#607b8e');
+      this.chatInputBg?.setStrokeStyle(1, 0x1f3d5a);
+    }
   }
 
   /** 이벤트/채팅 메시지 추가 (최근 200줄 보존 — 과거는 스크롤백으로 열람) */

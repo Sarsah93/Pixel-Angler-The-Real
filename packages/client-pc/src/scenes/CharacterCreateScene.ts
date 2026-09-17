@@ -669,7 +669,8 @@ export class CharacterCreateScene extends Phaser.Scene {
       await this.wait(420);
       this.setProgress(MP_PROGRESS_KO.creating, COL.accent);
       await this.wait(320);
-      const joined = await MultiplayerClient.claimName(name);
+      // 145차 — 외형을 함께 올린다. 서버가 들고 있다가 다른 사람 화면에 그대로 내려준다.
+      const joined = await MultiplayerClient.claimName(name, this.cfg(true));
       if (!joined.ok) {
         this.starting = false;
         this.setProgress(joined.duplicate ? MP_PROGRESS_KO.duplicate : (joined.reasonKo ?? '접속하지 못했습니다.'), COL.fail);

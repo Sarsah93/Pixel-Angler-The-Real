@@ -13,14 +13,19 @@
 
 import {
   MP_DEFAULT_SERVER, MP_PRESENCE_INTERVAL_MS,
-  type GameMode, type MpPeer,
+  type GameMode, type MpPeer, type MpActivity, type MpPlacedTrap, type MpChatLine, type MpResume,
   type MpCreateSessionRes, type MpSessionInfoRes, type MpNameCheckRes, type MpJoinRes, type MpPresenceRes,
 } from '@tra/core';
 
 /** 로비 설정은 브라우저에 남긴다 — 다음에 켤 때 서버 주소를 다시 치지 않게 */
 const STORAGE_KEY = 'pixelAngler_mp';
 
-interface StoredMp { server: string; lastCode: string }
+interface StoredMp { server: string; lastCode: string; userId?: string }
+
+/** 재접속 열쇠 — 이 브라우저(=이 사람)를 가리키는 고정 id. 한 번 만들면 바뀌지 않는다 */
+function makeUserId(): string {
+  return `u${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+}
 
 class MultiplayerClientImpl {
   mode: GameMode = 'single';
@@ -36,8 +41,32 @@ class MultiplayerClientImpl {
   /** 마지막 통신이 실패했는가 (HUD 표시용) */
   offline = false;
 
+  /** 재접속 열쇠 (145차) — 이어하기는 이름이 아니라 이 id로 알아본다 */
+  userId = '';
+  /**
+   * 세션 공용 난수 시드 (145차). 싱글이면 0 — 그래도 맵·시간으로 결정적이라
+   * 호출측은 분기 없이 `mpWorldSeed(MultiplayerClient.worldSeed, ...)`로 쓰면 된다.
+   */
+  worldSeed = 0;
+  /** 세션에 깔려 있는 통발 전부 (내 것 포함 — 필드가 남의 것만 걸러 그린다) */
+  traps: MpPlacedTrap[] = [];
+  /** 아직 화면이 가져가지 않은 채팅 줄 */
+  chatInbox: MpChatLine[] = [];
+  /** 이어하기로 받은 이전 자리 — 필드 씬이 한 번 쓰고 비운다 */
+  resume: MpResume | null = null;
+
   private timer: number | null = null;
-  private pos = { regionId: '', x: 0, y: 0, facing: 'down' as MpPeer['facing'], moving: false };
+  private pos = {
+    regionId: '', x: 0, y: 0, facing: 'down' as MpPeer['facing'], moving: false,
+    activity: 'field' as MpActivity,
+  };
+  /** 내 외형 — 한 번 보내고 나면 서버가 들고 있으므로 다시 보내지 않는다 */
+  private look: MpPeer['look'];
+  private lookSent = false;
+  /** 마지막으로 받은 채팅 줄 번호 */
+  private chatSeq = 0;
+  /** 다음 폴링에 실어 보낼 말 */
+  private pendingSay = '';
 
   constructor() {
     try {
@@ -45,8 +74,10 @@ class MultiplayerClientImpl {
       if (raw) {
         const v = JSON.parse(raw) as Partial<StoredMp>;
         if (v.server) this.server = v.server;
+        if (v.userId) this.userId = v.userId;
       }
     } catch (_e) {/* 저장본이 깨졌으면 기본값 */}
+    if (!this.userId) { this.userId = makeUserId(); this.persist(); }
   }
 
   get isMulti(): boolean { return this.mode === 'multi'; }
@@ -60,7 +91,9 @@ class MultiplayerClientImpl {
 
   private persist(): void {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ server: this.server, lastCode: this.code } satisfies StoredMp));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        server: this.server, lastCode: this.code, userId: this.userId,
+      } satisfies StoredMp));
     } catch (_e) {/* 저장 실패는 무시 */}
   }
 
@@ -109,31 +142,68 @@ class MultiplayerClientImpl {
   }
 
   async checkName(name: string): Promise<MpNameCheckRes> {
-    const res = await this.post<MpNameCheckRes>(`/mp/session/${encodeURIComponent(this.code)}/name-check`, { name });
+    const res = await this.post<MpNameCheckRes>(
+      `/mp/session/${encodeURIComponent(this.code)}/name-check`, { name, userId: this.userId });
     return res ?? { ok: false, reasonKo: '서버에 연결할 수 없습니다.' };
   }
 
-  /** 이름 선점 + 입장 */
-  async claimName(name: string): Promise<MpJoinRes> {
-    const res = await this.post<MpJoinRes>(`/mp/session/${encodeURIComponent(this.code)}/join`, { name });
+  /**
+   * 이름 선점 + 입장. 같은 `userId`로 전에 들어왔던 세션이면 **이어하기** —
+   * 서버가 마지막 자리(`resume`)를 돌려주고 필드 씬이 거기서 시작한다.
+   */
+  async claimName(name: string, look?: MpPeer['look']): Promise<MpJoinRes> {
+    const res = await this.post<MpJoinRes>(`/mp/session/${encodeURIComponent(this.code)}/join`, {
+      name, userId: this.userId, look,
+    });
     if (res?.ok && res.playerId) {
       this.playerId = res.playerId;
       this.name = name.trim();
+      this.worldSeed = res.seed ?? 0;
+      this.resume = res.resume ?? null;
+      if (look) { this.look = look; this.lookSent = true; }
     }
     return res ?? { ok: false, reasonKo: '서버에 연결할 수 없습니다.' };
   }
 
+  /** 내 외형을 갱신한다 (캐릭터 만들기 직후·장비 변경 시) — 다음 폴링에 한 번 실린다 */
+  setLook(look: MpPeer['look']): void {
+    this.look = look;
+    this.lookSent = false;
+  }
+
   // ── 위치 알림 ─────────────────────────────────────
   /** 필드 씬이 매 프레임 넣어주는 내 위치 (실제 전송은 주기 타이머가 한다) */
-  reportPosition(regionId: string, x: number, y: number, facing: MpPeer['facing'], moving: boolean): void {
-    this.pos = { regionId, x, y, facing, moving };
+  reportPosition(
+    regionId: string, x: number, y: number, facing: MpPeer['facing'], moving: boolean,
+    activity: MpActivity = 'field',
+  ): void {
+    this.pos = { regionId, x, y, facing, moving, activity };
+  }
+
+  /** 씬을 떠날 때(1인칭·상점·실내) 활동만 갱신 — 좌표는 마지막 자리에 남는다 */
+  setActivity(activity: MpActivity): void {
+    this.pos.activity = activity;
   }
 
   startPresence(): void {
     if (!this.isConnected || this.timer !== null) return;
     const tick = async (): Promise<void> => {
-      const res = await this.post<MpPresenceRes>('/mp/presence', { code: this.code, playerId: this.playerId, ...this.pos });
-      this.peers = res?.ok ? (res.peers ?? []) : [];
+      const say = this.pendingSay; this.pendingSay = '';
+      const res = await this.post<MpPresenceRes>('/mp/presence', {
+        code: this.code, playerId: this.playerId, ...this.pos,
+        ...(this.lookSent ? {} : { look: this.look }),
+        ...(say ? { say } : {}),
+        chatSince: this.chatSeq,
+      });
+      if (!res?.ok) { this.peers = []; return; }
+      if (!this.lookSent && this.look) this.lookSent = true;
+      this.peers = res.peers ?? [];
+      this.traps = res.traps ?? [];
+      for (const line of res.chat ?? []) {
+        if (line.seq <= this.chatSeq) continue;
+        this.chatSeq = line.seq;
+        this.chatInbox.push(line);
+      }
     };
     void tick();
     this.timer = window.setInterval(() => void tick(), MP_PRESENCE_INTERVAL_MS);
@@ -142,6 +212,44 @@ class MultiplayerClientImpl {
   stopPresence(): void {
     if (this.timer !== null) { window.clearInterval(this.timer); this.timer = null; }
     this.peers = [];
+    this.traps = [];
+  }
+
+  // ── 채팅 ──────────────────────────────────────────
+  /** 다음 폴링에 실어 보낸다 (별도 왕복 없음) */
+  say(text: string): void {
+    const t = text.trim();
+    if (!t || !this.isConnected) return;
+    this.pendingSay = t;
+  }
+
+  /** 받아둔 줄을 가져가고 비운다 — HUD가 매 프레임 훑는다 */
+  drainChat(): MpChatLine[] {
+    if (!this.chatInbox.length) return [];
+    const out = this.chatInbox;
+    this.chatInbox = [];
+    return out;
+  }
+
+  // ── 설치물 (통발) ─────────────────────────────────
+  /** 통발을 놓았다고 알린다 — 실패해도 내 통발은 로컬에 남는다(싱글과 같은 상태) */
+  async placeTrap(trap: Omit<MpPlacedTrap, 'ownerId' | 'ownerName'>): Promise<{ ok: boolean; reasonKo?: string }> {
+    if (!this.isConnected) return { ok: true };
+    const res = await this.post<{ ok: boolean; reasonKo?: string }>('/mp/trap/place', {
+      code: this.code, playerId: this.playerId, trap,
+    });
+    return res ?? { ok: true };
+  }
+
+  /** 통발을 거뒀다고 알린다 */
+  async removeTrap(instanceId: string): Promise<void> {
+    if (!this.isConnected) return;
+    await this.post('/mp/trap/remove', { code: this.code, playerId: this.playerId, instanceId });
+  }
+
+  /** 남이 놓은 통발만 (내 것은 내 세이브가 그린다) */
+  peerTraps(mapKey: string): MpPlacedTrap[] {
+    return this.traps.filter((t) => t.mapKey === mapKey && t.ownerId !== this.userId);
   }
 
   /** 같은 지역에 있는 사람만 (이름표를 띄울 대상) */
@@ -155,6 +263,8 @@ class MultiplayerClientImpl {
     this.stopPresence();
     this.mode = 'single';
     this.code = ''; this.playerId = ''; this.name = '';
+    this.worldSeed = 0; this.chatSeq = 0; this.chatInbox = []; this.resume = null;
+    this.lookSent = false;
   }
 }
 
