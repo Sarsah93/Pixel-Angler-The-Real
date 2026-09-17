@@ -27,7 +27,7 @@ import { createItemIcon } from './ItemIcon.js';
 import { addPixelIcon } from './PixelIcon.js';
 import { clampTextWidth } from './TextFit.js';
 import { ensureCharSheet, charFrameName } from './CharacterSprite.js';
-import { GameState } from '../store/GameState.js';
+import { characterLook } from '../data/EquipOutfit.js';
 import { CHAR_CELL, CHAR_FOOT_Y } from '@tra/core';
 
 // ── 지오메트리 ──────────────────────────────────────
@@ -195,7 +195,7 @@ export class EquipmentPanel extends DraggablePanel {
     // 캐릭터 렌더 (150차) — 구 `man-idle-front`(외부 실사 축소본)는 138차에 폐기된 옛 캐릭터다.
     //  현행 페이퍼돌 시트를 그대로 쓴다: 장비를 갈아입으면 여기에도 그대로 나타난다.
     //  ⚠ 배율은 **정수**(AGENTS §8 — 비정수 배율은 도트 격자를 무너뜨린다). 셀 32px × 6 = 192px.
-    const texKey = ensureCharSheet(this.scene, GameState.character, EQUIP_CHAR_SCALE);
+    const texKey = ensureCharSheet(this.scene, characterLook(), EQUIP_CHAR_SCALE);
     if (this.scene.textures.exists(texKey)) {
       const footPad = (CHAR_CELL - 1 - CHAR_FOOT_Y) * EQUIP_CHAR_SCALE;
       const spr = this.scene.add.image(cx, groundY + footPad, texKey, charFrameName('down', 0))

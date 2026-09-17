@@ -96,6 +96,7 @@ STORY_ARCS ────┘     traineeDay (D-180)                └─ RegionHu
 | **선택지 보상 비공개**(고른 뒤 응답·받은 것·다른 답 `???`) — 대화창·일지 | ✅ | 141 |
 | **발주 정책** `once`(거절 = 영구 소멸) 5 · `event`(계절·레벨 구간·쿨다운) 9 | ✅ | 141 — 세이브 `declined`·`offerCooldown` |
 | 서브 가방 3종(`inv_bag_*`) 실물화 + `InvItem.bound` | ✅ | 141 — `QuestRewardItems.ts` |
+| **나레이션 영문 186편**(`StoryNarrativeEn.ts` 짝 파일 — intro·offer·progress·done·objectives·epilogue) | ✅ | 151 — 829/829줄 · 누락 0 |
 
 
 ## 4-b. 일지·대화 표현형 (150차 재작성)
@@ -119,7 +120,9 @@ STORY_ARCS ────┘     traineeDay (D-180)                └─ RegionHu
   그때 `spotKind: 'boat'`가 처음 소비된다(149차에 계약만 열어 뒀다).
 - ~~가방 아이템 정의~~ ✅141(`QuestRewardItems.ts`) · ~~귀속 가방 8~12가 상한 30에 눌려 같은 효과~~ ✅148
   (상한 37 · 28/30/33/35/37 다섯 단계 분화 — [S5](inventory-equipment.md)).
-- **나레이션·선택지 영문**(186편 한국어만 — `labelEn = labelKo`) · `choice.*` 플래그 ~60종을 읽는 후속 조건(현재 N18-1 1곳) · 일지 '사람들'에 우호도 눈금.
+- ~~나레이션 영문~~ ✅**151차**(`StoryNarrativeEn.ts` 186편 · 829줄). 남은 것은 **선택지 영문** —
+  `complete`/`offerChoices` 510개 라벨·응답이 아직 `labelEn = labelKo` 폴백이다(분량이 나레이션과 맞먹어 별도 차수).
+- `choice.*` 플래그 ~60종을 읽는 후속 조건(현재 N18-1 1곳) · 일지 '사람들'에 우호도 눈금.
 - event 정책 테스트용 **계절 강제(dev)** 없음 · `once` 거절 초기화 dev 명령 없음.
 - ~~`deadline.onMiss: 'cost'` 미구현~~ ✅147 — **평판 감점**으로 구현(`TUNING.story.missRepPerDay` 1/일).
   재화 벌칙(`missCostKrw`)은 배선하지 않는다: M1-06~M1-11 구간은 현금이 품삯뿐이라 회복 불가 상태가 된다.
@@ -137,6 +140,17 @@ STORY_ARCS ────┘     traineeDay (D-180)                └─ RegionHu
 
 `descKo`는 설계 요약이다. 화면에는 `StoryNarrative`(1인칭 서두 · NPC 대사 · 내 생각)를 쓴다.
 `descKo`는 나레이션이 없을 때의 폴백으로만.
+
+### 12. 영문 나레이션은 짝 파일에 둔다 (151차)
+
+한국어 원고(`StoryNarrative.ts`)와 영문(`StoryNarrativeEn.ts`)은 **같은 키를 쓰는 별도 파일**이다.
+한 파일에 ko/en을 섞으면 한국어 원고를 손볼 때마다 영문이 끼어들어 읽을 수 없게 된다.
+
+- 합치는 곳은 `narrativeOf()` 하나 — `mergedNarrative()`가 캐시한다(대화창·일지가 프레임마다 부른다).
+- 화면에 닿는 경로는 **i18n 사전**(`allNarrativeLines()` → `buildRuntimeDict`)이다. 원문이 곧 키라
+  **UI 호출부를 한 줄도 고치지 않는다.** 새 나레이션을 쓰면 영문을 같은 키로 넣기만 하면 된다.
+- 목표 라벨은 **배열 인덱스로 짝**을 맞춘다 — 한국어와 영문의 개수가 다르면 없는 쪽은 싣지 않는다.
+- 커버리지는 `narrativeEnCoverage()`로 센다(총 줄 수 / 번역된 줄 수 / 누락 키).
 
 ### 11. 일지 구조를 바꾸면 i18n 키가 깨진다 (150차)
 

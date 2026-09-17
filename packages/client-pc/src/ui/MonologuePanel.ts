@@ -14,6 +14,7 @@ import { DraggablePanel, applyScreenFixed } from './DraggablePanel.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { GameState } from '../store/GameState.js';
 import { ensureFacePortrait } from './CharacterSprite.js';
+import { characterLook } from '../data/EquipOutfit.js';
 
 const W = 1040;
 const H = 300;
@@ -101,7 +102,7 @@ export class MonologuePanel extends DraggablePanel {
     g.fillStyle(0x12263a, 1); g.fillRect(PORTRAIT_W / 2 - FACE_PX / 2, fy, FACE_PX, FACE_PX);
     g.lineStyle(1, 0x3c6f95, 1); g.strokeRect(PORTRAIT_W / 2 - FACE_PX / 2, fy, FACE_PX, FACE_PX);
     c.add(g);
-    const key = ensureFacePortrait(this.scene, GameState.character, FACE_SCALE);
+    const key = ensureFacePortrait(this.scene, characterLook(), FACE_SCALE);
     c.add(this.scene.add.image(PORTRAIT_W / 2, fy, key).setOrigin(0.5, 0));
     const nm = this.scene.add.text(PORTRAIT_W / 2, fy + FACE_PX + 5, GameState.player.nickname || '나', {
       fontFamily: FONT, fontSize: '11px', color: '#9fc3d8',

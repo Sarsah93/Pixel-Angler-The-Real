@@ -107,6 +107,7 @@ import {
   rotateEditorPlacement, flipEditorPlacement, toggleEditorOverlap,
 } from '../dev/MapEditorPanel.js';
 import { GameState } from '../store/GameState.js';
+import { characterLook } from '../data/EquipOutfit.js';
 import { registerNames } from '../i18n/I18n.js';
 import { ExternalDataStore } from '../store/ExternalDataStore.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
@@ -670,7 +671,11 @@ export class RegionFieldScene extends Phaser.Scene {
 
     // 인벤토리 조작으로 퀵슬롯이 바뀌면 HUD 갱신 (restart 중복 등록 방지)
     this.events.off('inventory-changed');
-    this.events.on('inventory-changed', () => this.hud?.refreshQuickslots());
+    this.events.on('inventory-changed', () => {
+      this.hud?.refreshQuickslots();
+      // 151차 — 착용이 바뀌면 페이퍼돌도 바뀐다(모자·조끼·가방·손에 든 대).
+      this.refreshCharacterLook();
+    });
 
     // 1인칭 낚시 뷰(pause+launch)에서 복귀 시: 페이드인 + 캐스팅 상태 정리
     this.events.off('resume');
@@ -957,7 +962,7 @@ export class RegionFieldScene extends Phaser.Scene {
 
     const feetY = py + this.PLAYER_FOOT_OFFSET;
     // 138차 — 구 외부 출력물(man-idle-*) 축소 배치 폐기. 바닐라 베이스 시트를 정수 x2로 굽는다.
-    this.charSprite = new CharacterSprite(this, px, feetY + this.charFootSink, GameState.character, CHAR_SCALE);
+    this.charSprite = new CharacterSprite(this, px, feetY + this.charFootSink, characterLook(), CHAR_SCALE);
     this.playerSprite = this.charSprite.image;
     this.playerSprite.setDepth(20);
 
@@ -1051,7 +1056,7 @@ export class RegionFieldScene extends Phaser.Scene {
 
   /** 장비·외형이 바뀌면 시트를 다시 굽는다 (장착 변경 → 즉시 반영) */
   refreshCharacterLook(): void {
-    this.charSprite?.setConfig(GameState.character);
+    this.charSprite?.setConfig(characterLook());
   }
 
   /** 진입 엣지/기본 진입에 따라 스폰 타일 계산 (걷기 가능 타일 보장) */
@@ -2299,7 +2304,8 @@ export class RegionFieldScene extends Phaser.Scene {
     }
     // 인체 배치형 장비창(382×674) — 세로가 길어 상단 22에 배치 (하단 696 ≤ 720)
     this.equipPanel = this.openPopup(
-      (close) => new EquipmentPanel(this, GAME_WIDTH - 420, 22, close, () => this.hud?.refreshQuickslots()),
+      (close) => new EquipmentPanel(this, GAME_WIDTH - 420, 22, close,
+        () => { this.hud?.refreshQuickslots(); this.refreshCharacterLook(); }),
       () => { this.equipPanel = null; },
     );
   }

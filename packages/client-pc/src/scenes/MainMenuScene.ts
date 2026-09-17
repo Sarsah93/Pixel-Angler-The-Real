@@ -16,6 +16,7 @@
 
 import Phaser from 'phaser';
 import { GameState, SAVE_SLOT_COUNT } from '../store/GameState.js';
+import { characterLook } from '../data/EquipOutfit.js';
 import { MultiplayerClient } from '../net/MultiplayerClient.js';
 import { ExternalDataStore } from '../store/ExternalDataStore.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
@@ -642,7 +643,7 @@ export class MainMenuScene extends Phaser.Scene {
    */
   private async rejoinSession(): Promise<void> {
     const name = GameState.player.nickname;
-    const res = await MultiplayerClient.claimName(name, GameState.character);
+    const res = await MultiplayerClient.claimName(name, characterLook());
     if (!res.ok) {
       this.setSlotNotice(res.duplicate
         ? '같은 이름이 이미 접속해 있습니다.'

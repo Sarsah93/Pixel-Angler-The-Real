@@ -423,10 +423,15 @@ export interface QuestNarrative {
   intro: string;
   introEn?: string;
   offer?: string;
+  offerEn?: string;
   progress?: string;
+  progressEn?: string;
   done?: string;
+  doneEn?: string;
   objectives?: string[];
+  objectivesEn?: string[];
   epilogue?: string;
+  epilogueEn?: string;
 }
 
 // ─────────────────────────────────────────────

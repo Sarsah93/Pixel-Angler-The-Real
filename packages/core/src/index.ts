@@ -528,7 +528,8 @@ export {
 } from './rules/Affinity.js';
 export type { ChoiceCtx } from './db-schema/StoryChoices.js';
 // 141차 — 나레이션 층(주인공 서두·NPC 대사·내용 기반 선택지)
-export { STORY_NARRATIVE, narrativeOf, allNarrativeLines, type NarrativeEntry } from './db-schema/StoryNarrative.js';
+export { STORY_NARRATIVE, narrativeOf, allNarrativeLines, narrativeEnCoverage, type NarrativeEntry } from './db-schema/StoryNarrative.js';
+export { STORY_NARRATIVE_EN, type NarrativeEnEntry } from './db-schema/StoryNarrativeEn.js';
 export {
   STORY_CHOICE_OVERRIDES, toneOfferChoices, lessonCategoryOf, payChoiceCoins, defaultCompleteChoices, choicesFor,
   choiceVisible, describeOutcomeKo, allChoiceLines, validateStoryChoices, hasCustomChoices, DEFAULT_DECLINE,

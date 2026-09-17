@@ -13,10 +13,13 @@
  *  - `complete` = 완료 선택지. **보상은 미리 보이지 않는다** — 응답(`reply`)이 보상을 자연스럽게 드러내고,
  *    고르지 않은 답은 `???`로 남는다(재도전 동기). `payMult`는 표준 품삯 배율(`choicesFor`가 환산).
  *  - `offerChoices` = 발주 선택지. `once`/`event` 정책 퀘는 `decline: true` 답이 반드시 하나 있다.
- *  - 영문은 비워 둔다 — 대화창은 한국어를 그대로 보여 주고(미수록 규칙), 영문 사전 편입은 후속.
+ *  - **영문은 짝 파일 `StoryNarrativeEn.ts`에 둔다**(151차). 여기서 합쳐 `introEn`·`offerEn`… 으로 얹고,
+ *    클라이언트 i18n 사전이 `allNarrativeLines()`로 ko→en 쌍을 받아 간다(원문이 곧 키).
+ *    선택지(`complete`/`offerChoices`) 영문은 아직 없다 — `labelEn = labelKo` 폴백이 유지된다.
  */
 
 import type { ChoiceOutcome, ChoiceRequires, QuestChoiceDef, QuestNarrative } from '../types/Story.js';
+import { STORY_NARRATIVE_EN } from './StoryNarrativeEn.js';
 
 // ── 헬퍼 ──
 type C = QuestChoiceDef;
@@ -1999,18 +2002,64 @@ export const STORY_NARRATIVE: Record<string, NarrativeEntry> = {
     ]),
 };
 
-/** 나레이션 조회 — 없으면 undefined(대화창·일지는 원 라벨/폴백 대사로 떨어진다) */
-export function narrativeOf(questId: string): NarrativeEntry | undefined {
-  return STORY_NARRATIVE[questId];
+/**
+ * ko + en 합본 (151차). 한국어 원고는 그대로 두고 짝 파일의 영문을 `*En` 필드로 얹는다.
+ * 한 번만 만들어 캐시한다 — 대화창·일지가 프레임마다 부른다.
+ */
+let merged: Record<string, NarrativeEntry> | undefined;
+function mergedNarrative(): Record<string, NarrativeEntry> {
+  if (merged) return merged;
+  const out: Record<string, NarrativeEntry> = {};
+  for (const [id, n] of Object.entries(STORY_NARRATIVE)) {
+    const en = STORY_NARRATIVE_EN[id];
+    out[id] = en
+      ? { ...n, introEn: n.introEn ?? en.intro, offerEn: en.offer, progressEn: en.progress,
+          doneEn: en.done, objectivesEn: en.objectives, epilogueEn: en.epilogue }
+      : n;
+  }
+  merged = out;
+  return out;
 }
 
-/** 사전 합류용 — 나레이션·NPC 대사 원문(ko). 영문이 없으면 [ko, ko]로 실어 미수록 규칙을 따른다 */
+/** 나레이션 조회 — 없으면 undefined(대화창·일지는 원 라벨/폴백 대사로 떨어진다) */
+export function narrativeOf(questId: string): NarrativeEntry | undefined {
+  return mergedNarrative()[questId];
+}
+
+/**
+ * 사전 합류용 — 나레이션·NPC 대사 ko→en 쌍.
+ * 영문이 없으면 [ko, ko]로 실어 **미수록 규칙**(사전에 없으면 원문 그대로)을 따른다.
+ * ⚠ 목표 라벨은 배열 인덱스로 짝을 맞춘다 — 한국어와 영문의 개수가 다르면 없는 쪽은 싣지 않는다.
+ */
 export function allNarrativeLines(): [string, string][] {
   const out: [string, string][] = [];
-  for (const n of Object.values(STORY_NARRATIVE)) {
-    out.push([n.intro, n.introEn ?? n.intro]);
-    for (const s of [n.offer, n.progress, n.done, n.epilogue]) if (s) out.push([s, s]);
-    for (const s of n.objectives ?? []) out.push([s, s]);
+  const put = (ko?: string, en?: string): void => { if (ko) out.push([ko, en ?? ko]); };
+  for (const n of Object.values(mergedNarrative())) {
+    put(n.intro, n.introEn);
+    put(n.offer, n.offerEn);
+    put(n.progress, n.progressEn);
+    put(n.done, n.doneEn);
+    put(n.epilogue, n.epilogueEn);
+    (n.objectives ?? []).forEach((s, i) => put(s, n.objectivesEn?.[i]));
   }
   return out;
+}
+
+/** 영문 커버리지 점검(dev) — 한국어 줄 수 대비 영문이 실린 줄 수 */
+export function narrativeEnCoverage(): { total: number; translated: number; missing: string[] } {
+  const missing: string[] = [];
+  let total = 0; let translated = 0;
+  for (const [id, n] of Object.entries(mergedNarrative())) {
+    const pairs: [string | undefined, string | undefined][] = [
+      [n.intro, n.introEn], [n.offer, n.offerEn], [n.progress, n.progressEn],
+      [n.done, n.doneEn], [n.epilogue, n.epilogueEn],
+      ...(n.objectives ?? []).map((s, i) => [s, n.objectivesEn?.[i]] as [string, string | undefined]),
+    ];
+    for (const [ko, en] of pairs) {
+      if (!ko) continue;
+      total++;
+      if (en && en !== ko) translated++; else missing.push(`${id}:${ko.slice(0, 12)}`);
+    }
+  }
+  return { total, translated, missing };
 }
