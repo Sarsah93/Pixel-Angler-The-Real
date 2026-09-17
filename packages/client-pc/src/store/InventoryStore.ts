@@ -53,8 +53,17 @@ export type InvCondition =
 
 /** 카테고리별 기본 소켓 수 (5x5) — 가방 미착용 기준선 */
 export const GRID_CAPACITY = 25;
-/** 가방 착용 시 상한 (6행 = 30칸. 인벤 패널 세로 여백 실측 한계 — 135차) */
-export const GRID_CAPACITY_MAX = 30;
+/**
+ * 가방 착용 시 상한 (148차 — 30 → **37**).
+ *
+ * 135차의 30은 "패널에 6행까지만 그릴 수 있다"는 **렌더 한계**였고, 그 탓에
+ * `bagSlots` 8·10·12 가방(원정 가방·가이드 가방·항해 가방)이 전부 30으로 클램프되어
+ * **서로 같은 효과**가 되어 있었다(미구현이 아니라 죽은 보상).
+ * 148차에서 `InventoryPanel`을 윈도우드 스크롤로 바꿔 행 수 제약이 사라졌으므로
+ * 상한을 **최대 `bagSlots`(12) 기준 25 + 12 = 37**로 올린다.
+ * → 3/5/8/10/12 = 28/30/33/35/37칸으로 사다리 5단계가 전부 분화된다.
+ */
+export const GRID_CAPACITY_MAX = 37;
 
 /**
  * 착용 중 아이템의 slot 값 — **그리드에서 빠진 상태** (사용자 지시 2026-08-05).
@@ -602,9 +611,9 @@ function createSeedItems(): InvItem[] {
     slot: d.equipped ? SLOT_EQUIPPED : counters[d.category]++,
     conditionSinceMs: d.condition ? Date.now() : undefined,
   }));
-  // ⚠ 시드가 기본 용량(25칸)을 넘으면 그 아이템은 **그리드에 그려지지 않는다**(채비 선택창·상점
-  //   목록에는 나오므로 기능은 살아 있지만 유저에겐 사라진 것처럼 보인다 — 135차 실측: tackle 29개).
-  //   용량을 늘리는 것(가방)과 시드를 줄이는 것 중 무엇을 택할지는 데이터 결정이라 여기선 경고만 한다.
+  // ⚠ 시드가 기본 용량(25칸)을 넘으면 그 아이템은 용량 밖 칸에 앉는다(135차 실측: tackle 29개).
+  //   148차부터 패널이 그 칸을 **'잠긴 칸'으로 그려 꺼낼 수 있게** 하므로 더는 사라지지 않지만,
+  //   시드를 줄일지 가방을 전제할지는 여전히 데이터 결정이라 여기선 경고만 한다.
   if (import.meta.env.DEV) {
     const over = seeded.filter((i) => i.slot >= GRID_CAPACITY);
     if (over.length > 0) {
@@ -1234,22 +1243,43 @@ class InventoryStoreManager {
 
   /**
    * 현재 인벤토리 칸 수 (135차 가방 사다리) — 기본 `GRID_CAPACITY`(25) + 착용 가방의 `bagSlots`.
-   * 상한 `GRID_CAPACITY_MAX`(30 = 6행)는 인벤 패널 세로 여백의 실측 한계다
-   * (7행이면 하단 상태줄을 침범한다 — 더 늘리려면 패널 재설계가 먼저).
+   * 상한은 `GRID_CAPACITY_MAX`(148차 37 = 25 + 최대 가방 12).
+   * 가방을 **두 개 이상** 착용할 수는 없지만(등 슬롯 1개), 방어적으로 가장 큰 것을 쓴다.
    * 기존 세이브는 가방이 없어 25칸 그대로라 회귀가 없다.
    */
   gridCapacity(): number {
-    const bag = this._items.find((i) => i.bagSlots && i.equipped);
-    return Math.min(GRID_CAPACITY_MAX, GRID_CAPACITY + (bag?.bagSlots ?? 0));
+    let best = 0;
+    for (const i of this._items) {
+      if (i.bagSlots && i.equipped && i.bagSlots > best) best = i.bagSlots;
+    }
+    return Math.min(GRID_CAPACITY_MAX, GRID_CAPACITY + best);
   }
 
-  /** 가방을 벗을 때 확장 칸(25~)에 아이템이 남아 있으면 벗을 수 없다 — 아이템 유실 금지 */
-  bagUnequipBlocked(bag: InvItem): string | null {
+  /**
+   * 용량을 벗어난(= `slot >= gridCapacity()`) 칸에 남아 있는 아이템 수 — 148차.
+   * 가방을 벗었거나 구세이브·시드가 용량보다 많이 들고 있는 경우에 생긴다.
+   * 패널은 이 칸들을 **'잠긴 칸'으로 그려 꺼낼 수 있게** 한다(조용한 소실 금지).
+   */
+  strandedCount(cat?: InvCategory): number {
+    const cap = this.gridCapacity();
+    return this._items.filter((i) => i.slot >= cap && (!cat || i.category === cat)).length;
+  }
+
+  /**
+   * **칸이 줄어드는 가방 조작**을 막는다 — 벗기(135차) + **더 작은 가방으로 갈아타기**(148차).
+   * 148차에 사다리가 5단계로 분화되면서 12칸 가방 → 3칸 가방 교체가 가능해졌고,
+   * 그러면 확장 칸 아이템이 '잠긴 칸'에 갇힌다(사라지지는 않지만 쓰려면 다시 비워야 한다).
+   * @param targetBagSlots 조작 후 착용하게 될 가방의 `bagSlots` (0 = 벗기)
+   */
+  bagShrinkBlocked(bag: InvItem, targetBagSlots = 0): string | null {
     if (!bag.bagSlots) return null;
-    const after = Math.min(GRID_CAPACITY_MAX, GRID_CAPACITY);
+    const after = Math.min(GRID_CAPACITY_MAX, GRID_CAPACITY + targetBagSlots);
+    if (after >= this.gridCapacity()) return null;   // 같거나 늘어나면 막을 이유가 없다
     const stuck = this._items.filter((i) => i.slot >= after);
     if (stuck.length === 0) return null;
-    return `가방을 벗으면 ${stuck.length}칸이 사라집니다 — 확장 칸(${after + 1}번 이후)을 먼저 비우세요.`;
+    return targetBagSlots > 0
+      ? `이 가방은 ${stuck.length}칸이 모자랍니다 — 확장 칸(${after + 1}번 이후)을 먼저 비우세요.`
+      : `가방을 벗으면 ${stuck.length}칸이 사라집니다 — 확장 칸(${after + 1}번 이후)을 먼저 비우세요.`;
   }
 
   private findFreeSlot(cat: InvCategory): number {
@@ -1376,6 +1406,11 @@ class InventoryStoreManager {
     if (item.tool) return { ok: false, reason: '손 도구는 왼손/오른손을 지정해 착용합니다.' };
     if (item.equipped) return { ok: true };
     const prev = this._items.find((i) => i.equipped && !i.tool && i.subCategory === item.subCategory);
+    // 148차 — 더 작은 가방으로 갈아타면 확장 칸이 잠긴다. 벗기와 같은 가드를 건다.
+    if (prev?.bagSlots) {
+      const shrink = this.bagShrinkBlocked(prev, item.bagSlots ?? 0);
+      if (shrink) return { ok: false, reason: shrink };
+    }
     // 새로 착용할 아이템이 소켓을 비우므로, 교체 대상은 그 자리로 들어갈 수 있다
     item.slot = SLOT_EQUIPPED;
     item.equipped = true;
@@ -1398,7 +1433,7 @@ class InventoryStoreManager {
   unequipItem(itemId: string): EquipResult {
     const item = this.find(itemId);
     if (!item || !item.equipped) return { ok: false, reason: '착용 중인 아이템이 아닙니다.' };
-    const bagBlock = this.bagUnequipBlocked(item);   // 135차 — 확장 칸 아이템 유실 금지
+    const bagBlock = this.bagShrinkBlocked(item);   // 135차 — 확장 칸 아이템 유실 금지
     if (bagBlock) return { ok: false, reason: bagBlock };
     if (!this.returnToGrid(item)) return { ok: false, reason: InventoryStoreManager.NO_ROOM };
     item.equipped = false;

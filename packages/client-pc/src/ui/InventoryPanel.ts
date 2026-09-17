@@ -3,7 +3,10 @@
  * @description 인벤토리 팝업 패널 (I 키 토글, 드래그 이동 가능)
  *
  * 구성:
- *  - 상단 카테고리 탭: 장비 / 소모품 / 음식 / 낚시용품 / 기타 (탭별 독립 5x5 소켓 공간)
+ *  - 상단 카테고리 탭: 장비 / 소모품 / 음식 / 낚시용품 / 기타 (탭별 독립 소켓 공간)
+ *  - 그리드는 **윈도우드 스크롤**(148차) — 보이는 행만 생성 + 휠 + 스크롤바 + `n–m / N행` 표기.
+ *    Phaser 마스크는 입력을 클립하지 않아 스크롤아웃된 셀의 팬텀 히트가 남는다(54차 ShopPanel 전례).
+ *  - 용량(가방)을 벗어난 칸에 아이템이 남아 있으면 **'잠긴 칸'으로 그려 꺼낼 수 있게** 한다.
  *  - 아이템 드래그 앤 드랍으로 소켓 간 위치 이동 (대상 소켓 점유 시 교환)
  *  - 아이템 우클릭 → 액션 메뉴 (상세보기 / 사용하기(음식·소모품, 녹색) /
  *    착용·해제 / 채비하기(낚싯대) / 퀵슬롯 등록(1~8 키 지정) / 전환하기 /
@@ -38,6 +41,17 @@ const GRID_COLS = 5;
 const SLOT = 66;
 const SLOT_GAP = 7;
 const DRAG_THRESHOLD = 6;
+/**
+ * 그리드 뷰포트 하단 (148차) — 135차에 6행이 들어가던 그 자리(패널 상단 기준 504px)를 그대로 쓴다.
+ * 이 아래로는 **한 칸도 그리지 않고** 스크롤로 접근한다(AGENTS §4 오버플로/스크롤).
+ * 아래 13px은 선택 요약(statusText, 최대 2줄 → 상단 517)과의 여백이다.
+ */
+const GRID_VP_BOTTOM = PANEL_H - 92;
+/** 스크롤바 트랙 x — 그리드 우측 끝(399) 바깥 */
+const BAR_X = PANEL_W - 20;
+/** 드래그 중 뷰포트 가장자리 자동 스크롤 — 판정 띠 높이 / 최소 간격 */
+const AUTOSCROLL_BAND = 26;
+const AUTOSCROLL_MS = 220;
 
 /**
  * 그리드 밖 드랍 라우팅 결과 — `inventory-drop` 이벤트로 전달된다.
@@ -94,6 +108,20 @@ export class InventoryPanel extends DraggablePanel {
   private gridX0 = 0;
   private gridY0 = 0;
 
+  // ── 윈도우드 스크롤 (148차) ──
+  /** 최상단에 보이는 행 인덱스 */
+  private scrollRow = 0;
+  private maxScrollRow = 0;
+  private rowsVisible = 1;
+  /** 스크롤바 트랙 기하 (썸 드래그 판정용) */
+  private barGeom: { top: number; h: number } | null = null;
+  private thumbDrag = false;
+  private wheelHandler: (p: Phaser.Input.Pointer, go: unknown, dx: number, dy: number) => void;
+  private barMoveHandler: (p: Phaser.Input.Pointer) => void;
+  private barUpHandler: () => void;
+  /** 드래그 중 가장자리 자동 스크롤 — 마지막 스크롤 시각 */
+  private lastAutoScrollMs = 0;
+
   /** 신선도 실시간 갱신 타이머 + 마지막 상태 시그니처 (변화 시에만 리랜더) */
   private freshnessTimer?: Phaser.Time.TimerEvent;
   private condSig = '';
@@ -148,6 +176,7 @@ export class InventoryPanel extends DraggablePanel {
           .setOrigin(0.5).setAlpha(0.85).setDepth(this.depth + 50).setScrollFactor(0);
       }
       this.itemDrag.ghost.setPosition(p.x, p.y);
+      this.autoScrollWhileDragging(p);
     };
     this.itemDragUp = (p: Phaser.Input.Pointer) => {
       const drag = this.itemDrag;
@@ -163,6 +192,11 @@ export class InventoryPanel extends DraggablePanel {
       }
       const toSlot = this.slotAtPointer(p);
       if (toSlot >= 0) {
+        if (toSlot >= InventoryStore.gridCapacity()) {
+          // 용량 밖 '잠긴 칸'에는 넣을 수 없다 — 꺼내는 방향만 허용 (148차)
+          this.setStatus('용량 밖 칸에는 넣을 수 없습니다 — 가방을 착용하면 열립니다.');
+          return;
+        }
         if (toSlot !== drag.fromSlot) {
           InventoryStore.moveItem(this.currentTab, drag.fromSlot, toSlot);
           this.renderGrid();
@@ -183,6 +217,23 @@ export class InventoryPanel extends DraggablePanel {
     scene.input.on('pointermove', this.itemDragMove);
     scene.input.on('pointerup', this.itemDragUp);
 
+    // 휠 스크롤 — 포인터가 이 패널 위에 있을 때만 (동시에 열리는 상점·장비창 휠을 가로채지 않음)
+    this.wheelHandler = (p, _go, _dx, dy): void => {
+      if (this.maxScrollRow <= 0 || !this.containsPointer(p)) return;
+      this.scrollTo(this.scrollRow + Math.sign(dy));
+    };
+    scene.input.on('wheel', this.wheelHandler);
+
+    // 스크롤바 썸 드래그 (트랙 클릭 = 그 위치로 점프)
+    this.barMoveHandler = (p: Phaser.Input.Pointer): void => {
+      if (!this.thumbDrag || !this.barGeom || this.maxScrollRow <= 0) return;
+      const prog = Phaser.Math.Clamp((p.y - this.y - this.barGeom.top) / Math.max(1, this.barGeom.h), 0, 1);
+      this.scrollTo(Math.round(prog * this.maxScrollRow));
+    };
+    this.barUpHandler = (): void => { this.thumbDrag = false; };
+    scene.input.on('pointermove', this.barMoveHandler);
+    scene.input.on('pointerup', this.barUpHandler);
+
     // 외부(상점 구매 등) 인벤토리 변경 반영
     scene.events.on('inventory-changed', this.onExternalChange, this);
 
@@ -198,8 +249,8 @@ export class InventoryPanel extends DraggablePanel {
   /** 현재 탭 아이템의 신선도 상태 시그니처 (변화 감지용) */
   private conditionSig(): string {
     let sig = '';
-    const cap = InventoryStore.gridCapacity();   // 135차 — 가방 착용 시 6행(30칸)
-    for (let idx = 0; idx < cap; idx++) {
+    const total = this.totalSlots();   // 용량 밖 '잠긴 칸'의 어획물도 계속 상해간다
+    for (let idx = 0; idx < total; idx++) {
       const it = InventoryStore.itemAtSlot(this.currentTab, idx);
       if (it?.condition) sig += `${it.id}:${it.condition}|`;
     }
@@ -209,8 +260,8 @@ export class InventoryPanel extends DraggablePanel {
   /** 1초 주기 — 신선도 지연 갱신 후 상태가 바뀌었으면 그리드만 다시 그린다 */
   private tickFreshness(): void {
     if (!this.scene || this.itemDrag?.moved) return;   // 드래그 중엔 건드리지 않음
-    const cap = InventoryStore.gridCapacity();
-    for (let idx = 0; idx < cap; idx++) {
+    const total = this.totalSlots();
+    for (let idx = 0; idx < total; idx++) {
       const it = InventoryStore.itemAtSlot(this.currentTab, idx);
       if (it) refreshCondition(it);
     }
@@ -230,12 +281,58 @@ export class InventoryPanel extends DraggablePanel {
   };
 
   /**
-   * 행 간격 — 가방 착용(6행)이면 4px로 좁힌다.
-   * 패널 높이는 596 고정이라 7px 간격 6행(하단 519)은 선택 요약 2줄(상단 ≈517)을 침범한다.
-   * 4px면 하단 504 → 여유 13px. (135차 실측)
+   * 행 간격 — 가방 착용이면 4px로 좁혀 뷰포트(416px)에 **6행**이 들어가게 한다.
+   * 7px 간격이면 5행(135차 기본)이고, 가방 없는 25칸은 그것으로 정확히 맞는다.
+   * 넘치는 행은 148차부터 스크롤이 맡으므로 이 값은 "한 화면에 몇 행"만 정한다.
    */
   private gapY(): number {
     return InventoryStore.gridCapacity() > GRID_COLS * 5 ? 4 : SLOT_GAP;
+  }
+
+  /**
+   * 현재 탭에서 그려야 하는 칸 수 — 용량 + **용량 밖에 남은 아이템 칸**(148차).
+   * 용량 밖 칸은 '잠김'으로 그리되 아이템을 꺼낼 수는 있다(조용한 소실 금지).
+   */
+  private totalSlots(): number {
+    const cap = InventoryStore.gridCapacity();
+    let highest = cap - 1;
+    for (const it of InventoryStore.items) {
+      if (it.category === this.currentTab && it.slot > highest) highest = it.slot;
+    }
+    return Math.max(cap, highest + 1);
+  }
+
+  /** 스크롤 위치 변경 (범위 클램프 + 변경 시에만 리랜더) */
+  private scrollTo(row: number): void {
+    const next = Phaser.Math.Clamp(row, 0, this.maxScrollRow);
+    if (next === this.scrollRow) return;
+    this.scrollRow = next;
+    this.renderGrid();
+  }
+
+  /**
+   * 드래그 중 뷰포트 가장자리 자동 스크롤 (148차).
+   * 8행짜리 그리드에서 1행 → 8행으로 옮기려면 두 칸이 한 화면에 없다 —
+   * 고스트를 위/아래 끝으로 가져가면 `AUTOSCROLL_MS` 간격으로 한 행씩 흐른다.
+   */
+  private autoScrollWhileDragging(p: Phaser.Input.Pointer): void {
+    if (this.maxScrollRow <= 0) return;
+    const lx = p.x - this.x;
+    if (lx < this.gridX0 - 20 || lx > BAR_X + 10) return;
+    const ly = p.y - this.y;
+    let dir = 0;
+    if (ly >= this.gridY0 - AUTOSCROLL_BAND && ly < this.gridY0 + AUTOSCROLL_BAND) dir = -1;
+    else if (ly > GRID_VP_BOTTOM - AUTOSCROLL_BAND && ly <= GRID_VP_BOTTOM + AUTOSCROLL_BAND) dir = 1;
+    if (dir === 0) return;
+    const now = Date.now();
+    if (now - this.lastAutoScrollMs < AUTOSCROLL_MS) return;
+    this.lastAutoScrollMs = now;
+    this.scrollTo(this.scrollRow + dir);
+  }
+
+  /** 화면 고정 패널이라 포인터 화면좌표와 직접 비교 가능 */
+  private containsPointer(p: Phaser.Input.Pointer): boolean {
+    return p.x >= this.x && p.x <= this.x + PANEL_W && p.y >= this.y && p.y <= this.y + PANEL_H;
   }
 
   /** 포인터 화면 좌표 → 현재 탭 그리드 소켓 인덱스 (-1: 그리드 밖) */
@@ -245,12 +342,13 @@ export class InventoryPanel extends DraggablePanel {
     if (lx < 0 || ly < 0) return -1;
     const gy = this.gapY();
     const col = Math.floor(lx / (SLOT + SLOT_GAP));
-    const row = Math.floor(ly / (SLOT + gy));
-    const rows = Math.ceil(InventoryStore.gridCapacity() / GRID_COLS);   // 135차 — 가방 착용 시 6행
-    if (col < 0 || col >= GRID_COLS || row < 0 || row >= rows) return -1;
+    const vrow = Math.floor(ly / (SLOT + gy));
+    // 보이는 행 안에서만 판정한다 — 스크롤아웃된 칸은 화면에 없으므로 히트도 없다
+    if (col < 0 || col >= GRID_COLS || vrow < 0 || vrow >= this.rowsVisible) return -1;
     // 셀 간 간격 부분 클릭 방지
-    if (lx - col * (SLOT + SLOT_GAP) > SLOT || ly - row * (SLOT + gy) > SLOT) return -1;
-    return row * GRID_COLS + col;
+    if (lx - col * (SLOT + SLOT_GAP) > SLOT || ly - vrow * (SLOT + gy) > SLOT) return -1;
+    const idx = (this.scrollRow + vrow) * GRID_COLS + col;
+    return idx < this.totalSlots() ? idx : -1;
   }
 
   // ═══════════════════════════════════════════════════
@@ -275,6 +373,7 @@ export class InventoryPanel extends DraggablePanel {
         .setInteractive({ useHandCursor: true });
       hit.on('pointerdown', () => {
         this.currentTab = tab;
+        this.scrollRow = 0;   // 탭마다 행 수가 달라 스크롤 위치를 넘기지 않는다
         this.closeContextMenu();
         this.paintTabs();
         this.renderGrid();
@@ -308,17 +407,32 @@ export class InventoryPanel extends DraggablePanel {
   private renderGrid(): void {
     this.gridContainer.removeAll(true);
 
-    const cap = InventoryStore.gridCapacity();   // 135차 — 가방 착용 시 6행(30칸)
+    const cap = InventoryStore.gridCapacity();
+    const total = this.totalSlots();
     const gy = this.gapY();
-    for (let idx = 0; idx < cap; idx++) {
+
+    // ── 윈도우드 렌더 — 보이는 행만 생성 ──
+    //  마스크로 가리면 스크롤아웃된 셀의 입력 히트가 그대로 남아(Phaser는 마스크로 입력을 클립하지
+    //  않는다) 패널 밖 오클릭이 생긴다. 54차 ShopPanel과 같은 방식을 쓴다.
+    const vpH = GRID_VP_BOTTOM - this.gridY0;
+    this.rowsVisible = Math.max(1, Math.floor((vpH + gy) / (SLOT + gy)));
+    const totalRows = Math.ceil(total / GRID_COLS);
+    this.maxScrollRow = Math.max(0, totalRows - this.rowsVisible);
+    this.scrollRow = Phaser.Math.Clamp(this.scrollRow, 0, this.maxScrollRow);
+
+    const first = this.scrollRow * GRID_COLS;
+    const last = Math.min(total, first + this.rowsVisible * GRID_COLS);
+
+    for (let idx = first; idx < last; idx++) {
       const col = idx % GRID_COLS;
-      const row = Math.floor(idx / GRID_COLS);
+      const vrow = Math.floor(idx / GRID_COLS) - this.scrollRow;
       const sx = this.gridX0 + col * (SLOT + SLOT_GAP);
-      const sy = this.gridY0 + row * (SLOT + gy);
+      const sy = this.gridY0 + vrow * (SLOT + gy);
       const item = InventoryStore.itemAtSlot(this.currentTab, idx);
+      const locked = idx >= cap;   // 용량 밖 칸 — 꺼낼 수는 있고 넣을 수는 없다 (148차)
 
       const box = this.scene.add.graphics();
-      this.paintSlotBox(box, sx, sy, item, false);
+      this.paintSlotBox(box, sx, sy, item, false, locked);
       this.gridContainer.add(box);
 
       if (!item) continue;
@@ -371,8 +485,8 @@ export class InventoryPanel extends DraggablePanel {
       // 인터랙션: 좌버튼 = 드래그 시작(이동)/클릭, 우버튼 = 액션 메뉴
       const hit = this.scene.add.rectangle(sx + SLOT / 2, sy + SLOT / 2, SLOT, SLOT, 0xffffff, 0.001)
         .setInteractive({ useHandCursor: true });
-      hit.on('pointerover', () => this.paintSlotBox(box, sx, sy, item, true));
-      hit.on('pointerout', () => this.paintSlotBox(box, sx, sy, item, false));
+      hit.on('pointerover', () => this.paintSlotBox(box, sx, sy, item, true, locked));
+      hit.on('pointerout', () => this.paintSlotBox(box, sx, sy, item, false, locked));
       hit.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
         if (pointer.rightButtonDown()) {
           this.openContextMenu(item, pointer.x, pointer.y);
@@ -387,12 +501,69 @@ export class InventoryPanel extends DraggablePanel {
       this.gridContainer.add(hit);
     }
 
+    this.drawScrollBar(vpH, totalRows);
+    this.drawStrandedNote(total - cap);
+
     this.condSig = this.conditionSig();
     this.applyFix();
   }
 
-  private paintSlotBox(box: Phaser.GameObjects.Graphics, sx: number, sy: number, _item: InvItem | undefined, hover: boolean): void {
+  /** 우측 스크롤바 (트랙 + 행 비례 썸) + 위치 표기 — 스크롤이 필요한 경우에만 */
+  private drawScrollBar(vpH: number, totalRows: number): void {
+    if (this.maxScrollRow <= 0) { this.barGeom = null; return; }
+    const gy0 = this.gridY0;
+
+    const g = this.scene.add.graphics();
+    g.fillStyle(0x14324a, 0.9);
+    g.fillRoundedRect(BAR_X, gy0, 5, vpH, 2);
+    const thumbH = Math.max(26, (vpH * this.rowsVisible) / totalRows);
+    const prog = this.scrollRow / this.maxScrollRow;
+    g.fillStyle(0x5cd0ff, 0.95);
+    g.fillRoundedRect(BAR_X, gy0 + (vpH - thumbH) * prog, 5, thumbH, 2);
+    this.gridContainer.add(g);
+
+    const hit = this.scene.add.rectangle(BAR_X + 2.5, gy0 + vpH / 2, 18, vpH, 0xffffff, 0.001)
+      .setInteractive({ useHandCursor: true });
+    hit.on('pointerdown', (p: Phaser.Input.Pointer) => {
+      this.thumbDrag = true;
+      this.barMoveHandler(p);
+    });
+    this.gridContainer.add(hit);
+    this.barGeom = { top: gy0, h: vpH };
+
+    // 현재 위치 표기 (숨겨진 칸이 있다는 신호 — 조용한 잘림 금지).
+    // 뷰포트 **아래** 13px 띠에 우측 정렬 — 중앙 정렬 선택 요약(최대 2줄·상단 517)과 세로로 겹치지 않는다.
+    const info = this.scene.add.text(BAR_X + 5, GRID_VP_BOTTOM + 1,
+      `${this.scrollRow + 1}–${Math.min(totalRows, this.scrollRow + this.rowsVisible)} / ${totalRows}행`, {
+        fontFamily: 'monospace', fontSize: '8px', color: '#5f8ba6',
+      }).setOrigin(1, 0);
+    this.gridContainer.add(info);
+  }
+
+  /** 용량 밖 칸 안내 — 잠긴 칸이 있을 때만 (좌측 정렬, 위치 표기와 같은 띠) */
+  private drawStrandedNote(strandedSlots: number): void {
+    if (strandedSlots <= 0) return;
+    const rows = Math.ceil(strandedSlots / GRID_COLS);
+    const note = this.scene.add.text(this.gridX0, GRID_VP_BOTTOM + 1,
+      `잠긴 칸 ${rows}행 — 가방을 착용하면 열립니다`, {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '8px', color: '#ff9a6b',
+      }).setOrigin(0, 0);
+    this.gridContainer.add(note);
+  }
+
+  private paintSlotBox(
+    box: Phaser.GameObjects.Graphics, sx: number, sy: number,
+    _item: InvItem | undefined, hover: boolean, locked = false,
+  ): void {
     box.clear();
+    if (locked) {
+      // 용량 밖 칸 — 어둡게 깔고 주황 점선 테두리(넣을 수 없음), 꺼내기는 가능
+      box.fillStyle(0x140d0a, hover ? 0.95 : 0.9);
+      box.fillRoundedRect(sx, sy, SLOT, SLOT, 4);
+      box.lineStyle(1.2, hover ? 0xffb45a : 0x6b432a, hover ? 1 : 0.85);
+      box.strokeRoundedRect(sx, sy, SLOT, SLOT, 4);
+      return;
+    }
     box.fillStyle(hover ? 0x162a40 : 0x0e1c2d, hover ? 0.95 : 0.92);
     box.fillRoundedRect(sx, sy, SLOT, SLOT, 4);
     const strokeColor = hover ? 0x4af2a1 : 0x1f3d5a;
@@ -837,6 +1008,9 @@ export class InventoryPanel extends DraggablePanel {
     }
     this.scene?.input?.off('pointermove', this.itemDragMove);
     this.scene?.input?.off('pointerup', this.itemDragUp);
+    this.scene?.input?.off('wheel', this.wheelHandler);
+    this.scene?.input?.off('pointermove', this.barMoveHandler);
+    this.scene?.input?.off('pointerup', this.barUpHandler);
     this.scene?.events?.off('inventory-changed', this.onExternalChange, this);
     this.itemDrag?.ghost?.destroy();
     super.destroy(fromScene);

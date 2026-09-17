@@ -460,6 +460,13 @@ const DOW_EN: Record<string, string> = {
 };
 /** 수치·이름이 끼어 있는 문장 — 정규식 규칙. 캡처 그룹은 그대로 옮긴다(이름은 사전을 다시 타지 않으므로 어종·아이템명은 한국어로 남을 수 있음). */
 export const EN_RULES: Rule[] = [
+  // ── 148차 인벤토리·상점 윈도우드 스크롤 (행 위치 표기 · 잠긴 칸 · 가방 해제 차단) ──
+  [/^(\d+)–(\d+) \/ (\d+)행$/, (m) => `${m[1]}–${m[2]} / ${m[3]} rows`],
+  [/^잠긴 칸 (\d+)행 — 가방을 착용하면 열립니다$/, (m) => `${m[1]} locked row(s) — equip a bag to unlock`],
+  [/^이 가방은 (\d+)칸이 모자랍니다 — 확장 칸\((\d+)번 이후\)을 먼저 비우세요\.$/,
+    (m) => `This bag is ${m[1]} slot(s) short — empty the extra slots (from #${m[2]}) first.`],
+  [/^가방을 벗으면 (\d+)칸이 사라집니다 — 확장 칸\((\d+)번 이후\)을 먼저 비우세요\.$/,
+    (m) => `Removing the bag would drop ${m[1]} slot(s) — empty the extra slots (from #${m[2]}) first.`],
   // ── 131차 제작 보드 (129차 P7 — 수치·이름 포함) ──
   // 130차 (d)(e) 스킬 해금 조건·시너지
   [/^배우기 \((\d+)pt\)$/, (m) => `Learn (${m[1]}pt)`],

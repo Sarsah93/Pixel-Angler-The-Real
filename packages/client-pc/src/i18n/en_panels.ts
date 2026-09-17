@@ -81,6 +81,11 @@ export const EN_PANELS: Record<string, string> = {
   '산출': 'Output',
   '성공률': 'Success',
   '재료 절약': 'Material saving',
+  // ── 148차 — 인벤토리 윈도우드 스크롤 · 가방 용량 ──
+  '용량 밖 칸에는 넣을 수 없습니다 — 가방을 착용하면 열립니다.':
+    'Cannot place items in locked slots — equip a bag to unlock them.',
+  '우클릭: 아이템 액션 · 드래그: 위치 이동':
+    'Right-click: item actions · Drag: move',
   // ── 131차 — 스킬 트리 확장(130차) 라벨 ──
   '시너지': 'Synergy',
   '조건': 'Cond.',
