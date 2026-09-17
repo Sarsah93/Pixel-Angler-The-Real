@@ -15,7 +15,7 @@
 
 import {
   STORY_QUESTS, getStoryQuest, lastMainQuestOfChapter, JOURNAL_PAGES, journalCatchMatches, STORY_ARCS, getStoryArc,
-  seasonOfMonth, createDefaultReputation, clampHarbor, clampSea, canSell, provenanceOf, TUNING,
+  seasonOfMonth, createDefaultReputation, clampHarbor, clampSea, canSell, canConsign, provenanceOf, TUNING,
   dayJobsOfNpc, getDayJob,
   clampAffinity, affinityRewardMult, affinityJobWageMult, canOfferSubQuest, canOfferJobs, choicesFor, choiceVisible,
   getLicenseByType, getSkillById,
@@ -478,7 +478,62 @@ class StoryStoreManager {
   }
 
   // ── 날짜 · 기한 ──
-  advanceDay(): number { this.day++; this.host?.markDirty(); return this.day; }
+  advanceDay(): number {
+    this.day++;
+    this.applyDeadlinePenalty();
+    this.host?.markDirty();
+    return this.day;
+  }
+
+  /**
+   * 기한 초과 벌칙 (147차 — `deadline.onMiss: 'cost'`의 실구현).
+   *
+   * ⚖ **재화가 아니라 항구 평판을 깎는다**(사용자 결정). M1-06을 끝내면 어획물 판매가
+   *   전면 막히고 `reported_fishery`는 M1-11 총회에서야 나오므로, 그 구간에서 재화를
+   *   빼앗으면 회복 불가능한 상태가 만들어진다. 평판은 일을 더 해서 되돌릴 수 있다.
+   *   `TUNING.story.missCostKrw`는 하드코어 프리셋용으로 남겨 두고 배선하지 않는다.
+   *
+   * 하루 넘길 때마다 한 번씩 깎이고, 평판 하한(0)에서 자연히 멈춘다.
+   */
+  private applyDeadlinePenalty(): void {
+    const left = this.deadlineDaysLeft();
+    if (left === null || left >= 0) return;
+    const d = TUNING.story.missRepPerDay;
+    if (d <= 0) return;
+    this.addHarborRep(this.homeRegionId, -d);
+  }
+
+  /**
+   * 총회 연출을 열 때인가 (147차) — M1-11이 진행 중이고 레벨 목표는 채웠는데
+   * 아직 총회에 서지 않았다. 계장(`coop`)과 대화를 여는 순간 이 장면이 먼저 나온다.
+   */
+  meetingReady(): boolean {
+    const p = this.quests['M1-11'];
+    if (!p || p.status !== 'active') return false;
+    const q = getStoryQuest('M1-11');
+    if (!q) return false;
+    return this.objectiveDone(q, 0) && !this.objectiveDone(q, 1);
+  }
+
+  /** 기한·총회 기준 항구 (Ch1 무대) */
+  private get homeRegionId(): string { return 'gangwon_sokcho'; }
+
+  /**
+   * 총회 표결 (147차 — 평판 소비처 ②).
+   *
+   * ⚠ **부결은 없다.** 진행이 막히는 무작위를 만들지 않는다는 설계 원칙(138차 §3)에 따라
+   *   가결은 보장하고 **찬성률만** 평판에 따라 달라진다. 찬성률이 높으면 그만큼 항구 평판이
+   *   더 붙어, "이미 신뢰를 쌓아 둔 사람은 시작부터 유리하다"가 위판 수수료로 이어진다.
+   */
+  meetingVote(): { yes: number; total: number; ratio: number; repGain: number } {
+    const total = 24;
+    const rep = this.harborRep(this.homeRegionId);
+    const ratio = Math.max(0.3, Math.min(1, TUNING.story.meetingBaseYes + rep * TUNING.story.meetingRepSlope));
+    const yes = Math.max(1, Math.round(total * ratio));
+    // 과반 초과분이 곧 신뢰 보너스 (0~6)
+    const repGain = Math.max(0, Math.round((yes - total / 2) / 2));
+    return { yes, total, ratio, repGain };
+  }
   /** Ch1 D-day 잔여 (실습생 증 전·총회 후엔 null) */
   deadlineDaysLeft(): number | null {
     if (this.traineeDay == null || this.isDone('M1-11')) return null;
@@ -512,6 +567,28 @@ class StoryStoreManager {
    * 어획물 판매 판정 — `TUNING.law.enforceRodSell`이 꺼져 있으면 null(현행 허용).
    * catchMethod 없는 구세이브 어획물은 낚싯대로 본다(가장 보수적).
    */
+  /** 보유 면허 — 위판 자격 판정 등에서 쓴다 */
+  heldLicenses(): string[] { return this.host?.heldLicenses() ?? []; }
+
+  /**
+   * 위판 자격 판정 (147차).
+   *
+   * ⚠ 일반 판매(`sellVerdict`)는 `TUNING.law.enforceRodSell` 토글 뒤에 있지만
+   *   **위판은 토글과 무관하게 항상 자격을 본다** — 위판장은 벌칙 장치가 아니라 계원 창구이고,
+   *   낚싯대 어획을 배제하는 것이 위판이 일반 판매와 갈리는 이유 그 자체다.
+   */
+  consignVerdict(item: SellableLike, regionId = ''): LawVerdict | null {
+    if (item.subCategory !== '어획물' || !item.speciesId) {
+      return {
+        allowed: false, reasonKo: '위판장은 어획물만 받습니다.', reasonEn: 'Only catch can be consigned.',
+        alternatives: ['상점에 판매'], alternativesEn: ['Sell at a shop'],
+      };
+    }
+    const method: CatchMethod = item.catchMethod ?? 'rod';
+    const v = canConsign(provenanceOf(method, regionId, item.lengthCm, this.day), this.heldLicenses());
+    return v.allowed ? null : v;
+  }
+
   sellVerdict(item: SellableLike, regionId = ''): LawVerdict | null {
     if (!this.lawEnforced()) return null;
     if (!item.speciesId || item.subCategory !== '어획물') return null;

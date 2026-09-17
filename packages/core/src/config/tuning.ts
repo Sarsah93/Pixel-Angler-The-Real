@@ -752,8 +752,19 @@ export interface TuningConfig {
   story: {
     /** Ch1 실습생 기한(일) — D-180 */
     ch1DeadlineDays: number;
-    /** 기한 초과 시 비용(원) — 실습 재신청·숙소 임대료 */
+    /**
+     * 기한 초과 시 비용(원) — 실습 재신청·숙소 임대료.
+     * ⚠ **현재 배선되지 않는다.** 147차에 기한 초과 벌칙을 **평판 감점**으로 정했다(사용자 결정) —
+     * M1-06~M1-11 구간은 현금이 품삯뿐이라 재화를 빼앗으면 회복 불가능한 상태가 만들어진다.
+     * 하드코어 프리셋을 만들 때 쓸 자리로 남겨 둔다.
+     */
     missCostKrw: number;
+    /** 기한을 넘긴 하루마다 깎이는 항구 평판 (147차 — 재화 대신 이걸로 벌한다) */
+    missRepPerDay: number;
+    /** 총회 기본 찬성률 (평판 0일 때) — 부결은 없다(진행 보장). 찬성률만 달라진다 */
+    meetingBaseYes: number;
+    /** 항구 평판 1점당 찬성률 가산 */
+    meetingRepSlope: number;
     /** 1 = 숙련자용 상세 안내 생략 */
     skipVerbose: number;
   };
@@ -822,6 +833,36 @@ export interface TuningConfig {
     fightOpenLoadMult: number;
     /** 파이팅 중 스풀 개방 시 도주 전진 배수 */
     fightRunBonus: number;
+  };
+  /**
+   * 위판(경매) — 147차. 플레이어는 **파는 쪽**이다(구매자 측 `placeBid` 계통과 별개).
+   * 수수료율만 평판이 정하고, **낙찰가에는 평판을 걸지 않는다** —
+   * 상점·낚시 같은 자유 콘텐츠에 평판을 거는 것은 금지(S22 §13 자유 플레이 보장).
+   * 초기값은 mockup — F8 실플레이 조율 대기.
+   */
+  auction: {
+    /** 위판 수수료 기본율 (평판 0 기준) */
+    feeRateBase: number;
+    /** 수수료 하한 — 평판이 아무리 높아도 이 아래로는 안 내려간다 */
+    feeRateMin: number;
+    /** 항구 평판 1점당 수수료 감소폭 — 평판은 **0~100 스케일**(`ReputationState.harbor`) */
+    feeRepSlope: number;
+    /** 로트 하나에 배정되는 호가 시간 (초) */
+    callSecPerLot: number;
+    /** 응찰 판정 간격 (초) */
+    bidTickSec: number;
+    /** 응찰 1회당 호가 상승폭 (원/kg) */
+    bidStepWon: number;
+    /** 시작가 = 기준가 × 등급배수 × 이 값 */
+    startFrac: number;
+    /** 중매인 응찰 한도 하한 배수 (기준가 × 등급배수 대비) */
+    npcMaxLow: number;
+    /** 중매인 응찰 한도 상한 배수 */
+    npcMaxHigh: number;
+    /** 위판 규격 상자에 담았을 때 응찰 한도 보정 */
+    crateBonus: number;
+    /** 낙찰 확정 후 다음 로트까지의 연출 유예 (초) */
+    hammerHoldSec: number;
   };
   /** 일용직(품삯) — 135차 */
   job: {
@@ -1074,7 +1115,10 @@ export const TUNING: TuningConfig = {
     deathCoinLossRate: 0.15, deathDropInventory: 0,
     deathReviveHpPct: 50, deathReviveVitalsPct: 50,
   },
-  story: { ch1DeadlineDays: 180, missCostKrw: 200_000, skipVerbose: 0 },
+  story: {
+    ch1DeadlineDays: 180, missCostKrw: 200_000, missRepPerDay: 1,
+    meetingBaseYes: 0.55, meetingRepSlope: 0.004, skipVerbose: 0,
+  },
   rep: {
     harborMax: 100, seaMin: -10, seaMax: 10,
     seaReleaseUndersize: 0.5, seaRescue: 1, seaIllegalKeep: -1, seaRestrictedEntry: -0.5, seaVillageFisheryViolation: -2,
@@ -1087,6 +1131,12 @@ export const TUNING: TuningConfig = {
     curPullK: 1.15, windPullK: 0.035, weightPullFrac: 0.55,
     maxLineM: 150, minLineM: 0.8, castSlackM: 0.6, maxSlackM: 4, tautFollowRate: 3.2,
     fightOpenLoadMult: 0.18, fightRunBonus: 1.35,
+  },
+  auction: {
+    feeRateBase: 0.06, feeRateMin: 0.03, feeRepSlope: 0.0003,
+    callSecPerLot: 6, bidTickSec: 0.45, bidStepWon: 300,
+    startFrac: 0.7, npcMaxLow: 0.8, npcMaxHigh: 1.4,
+    crateBonus: 1.08, hammerHoldSec: 1.1,
   },
   job: { wageMult: 1, costMult: 1, fatigueLimit: 88 },
   affinity: {
@@ -1126,6 +1176,19 @@ export interface TuningParamMeta {
   category: 'feel' | 'balance'; label: string;
 }
 export const TUNING_META: TuningParamMeta[] = [
+  // ── 스토리 기한·총회 (147차) ──
+  { path: 'story.missRepPerDay', min: 0, max: 5, step: 0.5, category: 'balance', label: '기한 초과 1일당 평판 감점' },
+  { path: 'story.meetingBaseYes', min: 0.2, max: 1, step: 0.05, category: 'balance', label: '총회 기본 찬성률' },
+  { path: 'story.meetingRepSlope', min: 0, max: 0.01, step: 0.0005, category: 'balance', label: '평판1점당 찬성률 가산' },
+  // ── 위판(경매) (147차 — mockup, 실플레이 조율 대기) ──
+  { path: 'auction.feeRateBase', min: 0, max: 0.2, step: 0.005, category: 'balance', label: '위판 수수료 기본율' },
+  { path: 'auction.feeRepSlope', min: 0, max: 0.001, step: 0.00005, category: 'balance', label: '평판1점당 수수료 감소' },
+  { path: 'auction.callSecPerLot', min: 2, max: 20, step: 0.5, category: 'feel', label: '로트당 호가 시간(초)' },
+  { path: 'auction.bidTickSec', min: 0.1, max: 1.5, step: 0.05, category: 'feel', label: '응찰 판정 간격(초)' },
+  { path: 'auction.bidStepWon', min: 50, max: 2000, step: 50, category: 'balance', label: '응찰 호가 상승폭(원/kg)' },
+  { path: 'auction.npcMaxHigh', min: 1, max: 2.2, step: 0.05, category: 'balance', label: '중매인 한도 상한 배수' },
+  { path: 'auction.crateBonus', min: 1, max: 1.3, step: 0.01, category: 'balance', label: '규격 상자 보정' },
+  { path: 'auction.hammerHoldSec', min: 0.2, max: 3, step: 0.1, category: 'feel', label: '낙찰 연출 유예(초)' },
   // ── 제작·구급품 (129차 P7) ──
   { path: 'craft.failMaterialPct', min: 0, max: 1, step: 0.05, category: 'balance', label: '제작 실패 재료 소모율' },
   { path: 'craft.medicineShortenMin', min: 0, max: 120, step: 5, category: 'balance', label: '상비약 치유 단축(분)' },

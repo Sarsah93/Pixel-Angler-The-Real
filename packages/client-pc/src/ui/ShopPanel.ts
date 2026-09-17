@@ -3,7 +3,7 @@
  * @description 상점 거래 팝업 (화면 좌측 — 우측에는 인벤토리가 함께 열림)
  *
  * 구성:
- *  - 상단 탭: 구매하기 / 판매하기
+ *  - 상단 탭: 구매하기 / 판매하기 / (수리하기) / (위판하기)
  *  - 구매 탭: 상점 판매 품목 그리드 (아이콘 클릭 = 선택, 호버 = 요약 툴팁,
  *    우클릭 = 상세 정보창). 상점 아이템은 재화 결제 없이는 인벤토리로 이동 불가.
  *  - 판매 탭: 플레이어 인벤토리 중 이 상점이 매입하는 카테고리 아이템 목록
@@ -19,8 +19,14 @@ import { ShopDef, ShopEntry } from '../data/ShopCatalog.js';
 import { DraggablePanel } from './DraggablePanel.js';
 import { createItemIcon } from './ItemIcon.js';
 import { StoryStore } from '../store/StoryStore.js';
+import {
+  consignableItems, consignGradeOf, consignInputOf, hasCrate,
+  ReserveMode, RESERVE_LABEL,
+} from '../data/Consignment.js';
+import { isConsignmentOpen, minutesUntilConsignment, consignmentFeeRate, REGION_DATABASE } from '@tra/core';
+import { t, getLocale } from '../i18n/I18n.js';
 
-type ShopTab = 'buy' | 'sell' | 'repair';
+type ShopTab = 'buy' | 'sell' | 'repair' | 'consign';
 
 const PANEL_W = 460;
 const PANEL_H = 596;
@@ -53,6 +59,8 @@ export interface ShopPanelCallbacks {
   onSell: (item: InvItem) => void;
   /** 아이템 상세보기 (우클릭) */
   onOpenDetail: (item: InvItem | ShopEntry) => void;
+  /** 위판 출품 요청 (147차) — 세션 생성·경매 진행·정산은 씬이 담당 */
+  onConsign?: (inputs: ReturnType<typeof consignInputOf>[], items: InvItem[]) => void;
 }
 
 export class ShopPanel extends DraggablePanel {
@@ -65,6 +73,11 @@ export class ShopPanel extends DraggablePanel {
     return this.shop.kind === 'market' || this.shop.kind === 'daily';
   }
   private selectedRepair: InvItem | null = null;
+  /** 위판 창구를 겸하는 상점인가 (147차 — 건물 종류가 아니라 데이터가 정한다) */
+  private get canConsignHere(): boolean { return !!this.shop.auctionWindow; }
+  /** 위판 출품으로 고른 아이템 id (다중 선택) */
+  private consignSel = new Set<string>();
+  private reserveMode: ReserveMode = 'none';
 
   private tabBgs = new Map<ShopTab, Phaser.GameObjects.Graphics>();
   private tabTexts = new Map<ShopTab, Phaser.GameObjects.Text>();
@@ -134,6 +147,8 @@ export class ShopPanel extends DraggablePanel {
     if (this.currentTab === 'sell') {
       this.selectedSell = null;
       this.renderGrid();
+    } else if (this.currentTab === 'consign') {
+      this.renderGrid();   // 147차 — 위판으로 빠진 어획물이 목록에서 사라져야 한다
     }
   };
 
@@ -155,8 +170,10 @@ export class ShopPanel extends DraggablePanel {
     ];
     // 136차 — 수리점: 낚시 장비를 다루는 상점(직판장·생활용품점)만 수리를 받는다
     if (this.canRepair) defs.push({ id: 'repair', label: '수리하기' });
+    // 147차 — 위판 창구를 겸하는 곳(속초는 직판장)
+    if (this.canConsignHere) defs.push({ id: 'consign', label: '위판하기' });
     this.tabDefs = defs;
-    const tabW = 120, tabH = 30;
+    const tabW = this.tabWidth(), tabH = 30;
     const ty = this.contentTop + 20;
 
     defs.forEach((def, i) => {
@@ -182,8 +199,14 @@ export class ShopPanel extends DraggablePanel {
     this.paintTabs();
   }
 
+  /** 탭이 4개까지 늘 수 있어 패널 폭(460)에 맞춰 줄인다 — 고정 120이면 4탭에서 52px 넘친다 */
+  private tabWidth(): number {
+    const n = Math.max(1, this.tabDefs.length || 2);
+    return Math.min(120, Math.floor((PANEL_W - 28 - (n - 1) * 6) / n));
+  }
+
   private paintTabs(): void {
-    const tabW = 120, tabH = 30;
+    const tabW = this.tabWidth(), tabH = 30;
     const ty = this.contentTop + 20;
     this.tabDefs.forEach(({ id }, i) => {
       const tx = 14 + i * (tabW + 6);
@@ -196,7 +219,8 @@ export class ShopPanel extends DraggablePanel {
       g.strokeRoundedRect(tx, ty, tabW, tabH, 4);
       this.tabTexts.get(id)!.setColor(selected ? '#aee8ff' : '#8faabf');
     });
-    this.footerRight?.setText(this.currentTab === 'repair' ? '수리' : '판매');
+    this.footerRight?.setText(
+      this.currentTab === 'repair' ? '수리' : this.currentTab === 'consign' ? '출품하기' : '판매');
   }
 
   // ── 그리드 ────────────────────────────────────────
@@ -215,7 +239,7 @@ export class ShopPanel extends DraggablePanel {
 
     const gridW = GRID_COLS * SLOT + (GRID_COLS - 1) * SLOT_GAP;
     const gx0 = (PANEL_W - gridW) / 2;
-    const gy0 = this.contentTop + 60;
+    const gy0 = this.contentTop + (this.currentTab === 'consign' ? 96 : 60);
 
     // ── 1) 셀 스펙 수집 ──
     const cells: ShopCell[] = [];
@@ -256,6 +280,39 @@ export class ShopPanel extends DraggablePanel {
         });
       });
       if (faulty.length === 0) this.renderEmptyNote(gy0, '고장난 장비가 없습니다.');
+    } else if (this.currentTab === 'consign') {
+      // 147차 — 위판 출품 목록. 낚싯대 어획은 법이 영원히 막고(§3), 통발·채집물은
+      // 어업인 자격(reported_fishery)이 있어야 올라간다. 판정은 core canConsign이 한다.
+      const licenses = StoryStore.heldLicenses();
+      const region = GameState.currentRegionId;
+      const items = consignableItems(licenses, region, StoryStore.storyDay);
+      const crated = hasCrate();
+      items.forEach((item) => {
+        const picked = this.consignSel.has(item.id);
+        const kg = ((item.weightG ?? 0) / 1000).toFixed(1);
+        cells.push({
+          icon: item.icon, iconTexture: item.iconTexture, name: item.name,
+          speciesId: item.speciesId, lengthCm: item.lengthCm,
+          priceLabel: t(`${consignGradeOf(item)}급`),
+          qtyLabel: `${kg}kg`,
+          condition: item.condition,
+          selected: picked,
+          tooltip: `${item.name}\n${kg}kg · ${t(`${consignGradeOf(item)}급`)} · ${t('클릭하면 출품 목록에 담깁니다')}`,
+          onSelect: () => {
+            if (picked) this.consignSel.delete(item.id); else this.consignSel.add(item.id);
+            this.renderGrid();
+          },
+          onDetail: () => this.cbs.onOpenDetail(item),
+        });
+      });
+      this.renderConsignHeader(items.length, crated);
+      if (items.length === 0) {
+        const blocked = InventoryStore.items.find((i) => i.slot >= 0 && i.subCategory === '어획물' && !!i.speciesId);
+        const v = blocked ? StoryStore.consignVerdict(blocked, region) : null;
+        this.renderEmptyNote(gy0 + 22, v
+          ? `${v.reasonKo}\n대안: ${v.alternatives.slice(0, 2).join(' / ')}`
+          : '위판할 어획물이 없습니다.');
+      }
     } else {
       // 착용 중 장비(slot < 0 = 그리드 이탈)는 판매 목록에서 제외 — 먼저 해제해야 한다 (2026-08-05 개편)
       // 채집물(forageCatch)은 조례상 판매·유통 금지 — 목록에서 제외 (121차)
@@ -308,6 +365,81 @@ export class ShopPanel extends DraggablePanel {
 
     this.drawScrollBar(gy0, vpH, totalRows, rowsVisible);
     this.applyFix();
+  }
+
+  /**
+   * 위판 탭 상단 — 개장 여부·다음 개장까지·수수료(평판 반영)·최저 희망가 토글.
+   * 개장 시간은 구매자 측 경매와 같은 스케줄을 쓴다(선어 01~03시 / 활어 03~07시 · 일요일 미개장).
+   */
+  private renderConsignHeader(count: number, crated: boolean): void {
+    const now = new Date();
+    const kst = new Date(now.getTime() + (9 * 60 + now.getTimezoneOffset()) * 60_000);
+    const h = kst.getHours(), m = kst.getMinutes(), wd = kst.getDay();
+    const liveOpen = isConsignmentOpen('fish_live', h, m, wd);
+    const freshOpen = isConsignmentOpen('fish_fresh', h, m, wd);
+    const fee = consignmentFeeRate(StoryStore.harborRep(GameState.currentRegionId));
+
+    // ⚠ 합성 문자열은 정확 일치 사전을 비껴간다(131차) — **붙이기 전에** 조각을 t()로 번역한다
+    const openLabel = liveOpen ? t('활어 경매 진행 중')
+      : freshOpen ? t('선어 경매 진행 중')
+        : (() => {
+          const mins = minutesUntilConsignment(h, m, wd);
+          if (mins < 0) return t('다음 개장 시간을 알 수 없습니다');
+          const hh = Math.floor(mins / 60), mm = mins % 60;
+          // 단위어('시간'·'분')는 전역 사전에 넣지 않는다 — 게임 전체의 다른 Text까지 오염시킨다.
+          // 이런 조각만 로케일 분기로 처리한다.
+          const dur = getLocale() === 'en'
+            ? `${hh > 0 ? hh + 'h ' : ''}${mm}m`
+            : `${hh > 0 ? hh + '시간 ' : ''}${mm}분`;
+          return `${t('지금은 파장입니다 — 다음 개장까지')} ${dur}`;
+        })();
+
+    const y0 = this.contentTop + 58;
+    const info = this.scene.add.text(16, y0,
+      `${openLabel}   ·   ${t('위판 수수료')} ${(fee * 100).toFixed(1)}%${crated ? '   ·   ' + t('규격 상자 보유') : ''}`, {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px',
+        color: (liveOpen || freshOpen) ? '#4af2a1' : '#ffb27a',
+        wordWrap: { width: PANEL_W - 32 },
+      });
+    this.gridContainer.add(info);
+
+    const picked = count > 0 ? this.consignSel.size : 0;
+    const sel = this.scene.add.text(16, y0 + 17,
+      `${t('출품 선택')} ${picked} / ${count}${getLocale() === 'en' ? '' : '건'}`, {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#9fd0e4',
+      });
+    this.gridContainer.add(sel);
+
+    // 최저 희망가 — 클릭하면 없음 → 70% → 90% 순환
+    const rLabel = this.scene.add.text(PANEL_W - 16, y0 + 17,
+      `${t('최저 희망가')}: ${t(RESERVE_LABEL[this.reserveMode])}`, {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#ffe28a',
+    }).setOrigin(1, 0);
+    const rHit = this.scene.add.rectangle(
+      PANEL_W - 16 - rLabel.width / 2, y0 + 17 + rLabel.height / 2,
+      rLabel.width + 10, rLabel.height + 8, 0xffffff, 0.001,
+    ).setInteractive({ useHandCursor: true });
+    rHit.on('pointerdown', () => {
+      this.reserveMode = this.reserveMode === 'none' ? 'p70' : this.reserveMode === 'p70' ? 'p90' : 'none';
+      this.renderGrid();
+    });
+    this.gridContainer.add([rLabel, rHit]);
+  }
+
+  /** [출품하기] — 고른 어획물을 로트 입력으로 바꿔 씬에 넘긴다 */
+  private doConsign(): void {
+    if (!this.cbs.onConsign) return;
+    const licenses = StoryStore.heldLicenses();
+    const region = GameState.currentRegionId;
+    const pool = consignableItems(licenses, region, StoryStore.storyDay);
+    const items = pool.filter((i) => this.consignSel.has(i.id));
+    if (items.length === 0) { this.setStatus('출품할 어획물을 먼저 고르세요.'); return; }
+
+    const crated = hasCrate();
+    const origin = REGION_DATABASE.find((r) => r.id === region)?.shortNameKo ?? '속초';
+    const inputs = items.map((i) => consignInputOf(i, this.reserveMode, origin, crated));
+    this.consignSel.clear();
+    this.cbs.onConsign(inputs, items);
   }
 
   /** 우측 스크롤바 (트랙 + 행 비례 썸) — 스크롤이 필요한 경우에만 표시 */
@@ -475,6 +607,7 @@ export class ShopPanel extends DraggablePanel {
     });
     this.footerRight = this.addFooterButton(PANEL_W / 2 + 105, btnY, '판매', () => {
       if (this.currentTab === 'repair') { this.doRepair(); return; }
+      if (this.currentTab === 'consign') { this.doConsign(); return; }
       if (this.currentTab !== 'sell') { this.setStatus('판매하기 탭에서 아이템을 선택하세요.'); return; }
       if (!this.selectedSell) { this.setStatus('판매할 아이템을 먼저 선택하세요.'); return; }
       this.cbs.onSell(this.selectedSell);

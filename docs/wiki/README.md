@@ -43,7 +43,7 @@
 | S3 | [**손질 (회뜨기)**](02-SYSTEMS/butchery.md) | 🚧 | `ButcheryProcess` · `ButcheryPanel` · `CephalopodStages` | 두족류 **무늬오징어·한치·문어 개방**(97차) · 갑오징어 잔여 · 광어 F9 잔여 |
 | S4 | [회썰기·플레이팅](02-SYSTEMS/sashimi-cooking.md) | 🟢 | `SashimiPanel` · `UtilizationPanel` · **미완성 접시**(135) | 스시, 불요리(화구·용기) |
 | S5 | [인벤토리·장비·보관](02-SYSTEMS/inventory-equipment.md) | 🟢 | `InventoryStore` · `CoolerStore` · `FridgeStore` | 예약 슬롯 6종 아이템 대기 |
-| S6 | [경제·상점·시세](02-SYSTEMS/economy-data.md) | 🟢 | `MarketPriceEvaluator` · `ShopPanel` | 낚시점 전용 상점 |
+| S6 | [경제·상점·시세](02-SYSTEMS/economy-data.md) | 🟢 | `MarketPriceEvaluator` · `ShopPanel` · **`ConsignmentAuction`(147차 위판)** · `AuctionHousePanel` | **147차 위판 개통**(직판장 창구 겸용 · 평판 = 수수료) — `TUNING.auction` F8 조율 · 경매 **구매자 측** 미개방 · 낚시점 전용 상점 |
 | S7 | [월드맵·지역 타일맵](02-SYSTEMS/world-field.md) | 🔶 | `WorldMapScene` · **OSM 파이프라인 3종** · `build_region_maps.py` | 속초(심리스 v2)·부산·홈타운 개방 — OSM 16개 지역 확장 잔여 |
 | S8 | [홈베이스 (집)](02-SYSTEMS/home-base.md) | 🔶 | `HomeInteriorScene` · `types/HomeBase.ts` | 하우스 Tier 1~3, 수조 패널, 농사 |
 | S9 | [외부 실데이터](02-SYSTEMS/economy-data.md#외부-api) | 🟢⚠ | `core/api-client/*` | **배포 시 CORS 프록시 필수** |
@@ -51,7 +51,7 @@
 | S11 | [가이드·온보딩](02-SYSTEMS/ui-framework.md#가이드-허브) | 🟢 | `GuidePanel` · `GuideContent` | 삽화 실게임 스크린샷 교체 |
 | S12 | [세이브·슬롯](02-SYSTEMS/inventory-equipment.md#세이브) | 🟢 | `GameState` | 저장은 집 침대 전용 |
 | S13 | [튜닝·dev 도구](02-SYSTEMS/ui-framework.md#dev-도구) | 🟢 | `config/tuning.ts` · `DevTuningPanel`(F8) | fight/rod/yield 테이블 소비 전환 |
-| S14 | [해루질·통발](02-SYSTEMS/night-hunting-trap.md) | 🟢 | `ForagingEngine` · `ForageSystem` · `TrapFieldSystem` · `extract_fishfarms.py` | **121차 인-맵 1차 완료**(채집 스팟·어장 실폴리곤·강원 조례·통발 아이템) — 야간 실검증·F8 조율·실사 스프라이트·wade/dive 잔여 · **122차 상호작용 F 키 + 스킬 배율 훅** |
+| S14 | [해루질·통발](02-SYSTEMS/night-hunting-trap.md) | 🟢 | `ForagingEngine` · `ForageSystem` · `TrapFieldSystem` · `extract_fishfarms.py` | **121차 인-맵 1차 완료**(채집 스팟·어장 실폴리곤·강원 조례·통발 아이템) — 야간 실검증·F8 조율·실사 스프라이트·wade/dive 잔여 · **122차 상호작용 F 키 + 스킬 배율 훅** · ⚠ **"D2"는 이미 끝난 라벨**(147차 확인) · 어획물 sink는 **147차 위판**으로 해소 |
 | S15 | 요리(불요리)·CookScene | ⬜ | `CookScene` · `RecipeDatabase` | 화구·용기 시스템부터 |
 | S16 | [제작](02-SYSTEMS/progression.md) | 🔶 | `CraftingDatabase`(도면 14) · `CraftingStore` · `CraftBoard` · `AdvancedCraftPanel` | 129차 구현 — 재료 수급(벌목·채굴)·커스텀 로드/릴 성능치 잔여 |
 | S17 | 퀘스트·스토리(레거시) | ⬜ | `QuestDatabase` | 레거시 16퀘 — 면허 요구조건 참조로 보존. 본편은 **S22** |
@@ -59,7 +59,7 @@
 | S19 | Tauri 패키징 | ⬜ | `apps/tauri-wrapper` | Phase 9 (아이콘만 준비됨) |
 | S20 | [도감·발견·dev 도구](02-SYSTEMS/discovery-wiki.md) | 🟢 | `DiscoveryStore` · `AnglerLogScene` · F10 콘솔 | 위키 상세 팝업 · FP 토스트 |
 | S21 | [진행 — 레벨·스킬·생존·면허·일지](02-SYSTEMS/progression.md) | 🔶 | `Progression.ts` · `Vitals.ts`·`StatusEffects.ts` · `SkillDatabase`(**92노드 Σ=215**) · `CraftingDatabase` · `License.ts` · 패널 3종 · `CollapseOverlay` | **스킬 효과 배선 43/92**(130차) · 신규 면허 효과 1/7 · 농사 카테고리 잠김 · **P1~P9 완료**(P8 = 134차 S22) · 스토리 면허 4종 추가(보너스 제외) · 눕기 스프라이트 대기 |
-| S22 | [스토리·퀘스트](02-SYSTEMS/story-quests.md) | 🔶 | **정본 [`STORY_SPEC_v4`](../../.agents/STORY_SPEC_v4.md)** · `Story.ts` · `FisheryLaw.ts` · `StoryQuestDatabase`(**186퀘 · 아크 23**) · `DayJobs`(품삯 3) · `JournalPages` · `StoryArcs` · `StoryStore` · `DialoguePanel`(**140차 재작성 — 선택지·우호도**) · `JournalPanel` · `StoryChoices` · `Affinity.ts` | **134차 데이터·엔진 + 135차 Ch1 실시스템 + 140차 선택지 분기·우호도** — 배 출조·구멍치기·좌판 등 계통 · Ch2+ 대사 · NPC 스프라이트 · `onMiss` 벌칙 잔여 |
+| S22 | [스토리·퀘스트](02-SYSTEMS/story-quests.md) | 🔶 | **정본 [`STORY_SPEC_v4`](../../.agents/STORY_SPEC_v4.md)** · `Story.ts` · `FisheryLaw.ts` · `StoryQuestDatabase`(**186퀘 · 아크 23**) · `DayJobs`(품삯 3) · `JournalPages` · `StoryArcs` · `StoryStore` · `DialoguePanel`(**140차 재작성 — 선택지·우호도**) · `JournalPanel` · `StoryChoices` · `Affinity.ts` | **134차 데이터·엔진 + 135차 Ch1 실시스템 + 140차 선택지 분기·우호도** — 배 출조·좌판 등 계통 · Ch2+ 대사 · NPC 스프라이트 잔여 · **147차 위판 UI(M2-01)·총회 연출(M1-11)·`onMiss` 평판 감점 완료** · 남은 manual = **구멍치기(1-4)** · 가방 2~4단계는 인벤 패널 재설계 선행 |
 | S23 | [캐릭터 아트](02-SYSTEMS/character-art.md) | 🟢 | `art/CharacterArt.ts`(셀 32x32 · 레이어 14) · `art/CharacterCast.ts`(41인) · `ui/CharacterSprite.ts`(**144차 `paceMult`**) · `CharacterCreateScene`(139차 UI · 140차 얼굴형 · **144차 회전·동작 버튼**) | **140차 머리 9×10·얼굴형 3종·측면 재작업 완료** · 사용자 GPT 스타일 실험 대기(`CHARACTER_SPRITE_PROMPT_SPEC`) · 대화창 초상 아트 · 눕기 프레임 · **달리기 전용 프레임**(현재는 걷기 가속) |
 | S24 | [싱글/멀티플레이](02-SYSTEMS/multiplayer.md) | 🔶 | `types/Multiplayer.ts`(공용 계약) · `server/multiplayer/`(`/mp/*` REST · 세션 · 디스크 영속) · `net/MultiplayerClient.ts` · `MultiplayerLobbyScene` · `FieldEventManager` | **143차 신설 · 145차 세션 세계** — 통발 공유 · 공용 시드 · 외형/활동 · 밀어내기 · 건물 반투명 · 채팅 · 이어하기 · **유저 간 거래(공증)·정보 보기(146차)**. 진행도는 **설계상 각자**. 남은 것은 NAT 통과·서버 권위·마켓 원장 |
 
@@ -67,6 +67,15 @@
 
 ## 3. 지금 위치 (2026-09-17)
 
+- **147차**: **위판(경매 현장) + 어촌계 총회 연출 + 기한 초과 평판 감점** — 착수 조사에서
+  **"통발 D2"가 이미 121차에 끝난 라벨**이고 **`AuctionEngine` 332줄이 사문**임을 확인했다.
+  사문의 기전은 "안 쓰임"이 아니라 **쓸 수 없는 방향**(플레이어를 *사는 쪽*으로 모델링) —
+  구매자 측을 보존한 채 `ConsignmentAuction`(파는 쪽)을 신설했다. 위판 창구는 건물 종류가 아니라
+  **능력**(직판장 겸용). ⚖ 평판은 **수수료율에만**(낙찰가 불침범 실측) · 총회는 **부결 없음** ·
+  기한 초과는 **재화가 아니라 평판**. M2-01 `sell` 목표 auto. 상세
+  [워크로그 147](03-WORKLOG/2026-09-17-147-consignment-auction-general-meeting.md)
+- **146차**: **유저 간 거래(공증) + 정보 보기 + 플리마켓 계약** — 상세
+  [워크로그 146](03-WORKLOG/2026-09-17-146-p2p-trade-profile.md)
 - **144차**: **달리기(Shift) + 캐릭터 만들기 프리뷰 회전·동작 버튼** — `VitalsActivity`의 `'run'`은
   125차부터 있었으나 **아무도 넘긴 적이 없어** 사문이었고, 그 빈 분기를 채웠다. Shift 홀드 = ×1.55
   (걷기 210 < 달리기 326 < 자전거 420 px/s) · 피로 85%·허기·수분 임계에서 걷기로 강등.

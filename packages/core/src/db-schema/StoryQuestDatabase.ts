@@ -118,7 +118,7 @@ const MAIN: StoryQuestDef[] = mainRows([
   ['M2-01', 2, 20, 1750, 'coop', BUS, '첫 위판', 'First Auction',
     '내 이름이 붙은 첫 상자. 위판 등록 · 상자 규격 · 등급 판정 — 통발 어획물로 §3 규칙 실전 적용.',
     'The first crate with your name on it. Auction registration, crate grades — the rules applied for real, with trap catch.',
-    [auto('trap', '통발 1회 수거', 'Harvest one trap'), man('sell', '통발 어획물 위판 (위판 UI — 준비 중)', 'Auction the trap catch (auction UI — coming soon)')],
+    [auto('trap', '통발 1회 수거', 'Harvest one trap'), auto('sell', '통발 어획물 위판', 'Auction the trap catch')],
     { rewards: { coins: 150000, skillUnlocks: ['eco_auction'], shopUnlocks: ['market_crate_pro'] } }],
   ['M2-02', 2, 22, 2000, 'coop', BUS, '유찰', 'Unsold',
     '얼음을 아낀 대가. 경매 유찰 · 선도 관리 복기.',

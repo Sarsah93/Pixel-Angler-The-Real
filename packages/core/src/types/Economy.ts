@@ -3,6 +3,8 @@
  * @description 게임 경제 및 실시간 경락 시세 관련 타입 정의
  */
 
+import type { CatchMethod } from './Story.js';
+
 /**
  * 수산물 도매시장 경락 실거래가 정보
  * 농림수산식품교육문화정보원(농정원) API의 실시간 응답에 대응하는 규격입니다.
@@ -565,4 +567,94 @@ export interface AuctionBidResult {
   failReason?: 'auction_closed' | 'bid_too_low' | 'already_won' | 'insufficient_funds';
   /** 플레이어가 현재 최고 입찰자인지 여부 */
   isLeading: boolean;
+}
+
+// ─────────────────────────────────────────────────────────────
+// 위판 (147차) — 판매자 측 계약
+//
+// ⚠ 위쪽 `AuctionSession`/`placeBid`/`calcPlayerAuctionTotal` 계통은
+//   플레이어를 **중매인(사는 쪽)** 으로 모델링한 구매자 측 계약이다
+//   (`calcPlayerAuctionTotal` = 낙찰받은 lot의 총 *비용*).
+//   위판은 플레이어가 **생산자(파는 쪽)** 이므로 정산 방향이 반대라
+//   구매자 측 계약을 고치지 않고 아래 계약을 따로 둔다.
+//   가격 형성(`AuctionLot`·NPC 응찰 한도)은 그대로 공유한다.
+// ─────────────────────────────────────────────────────────────
+
+/** 위판 로트 — `AuctionLot`(가격 형성)에 출품자 측 메타를 얹는다 */
+export interface ConsignmentLot {
+  /** 가격 형성 단위 — 구매자 측과 같은 구조를 쓴다 */
+  lot: AuctionLot;
+  /** 출품 근거가 된 인벤토리 아이템 id (정산 시 소모) */
+  sourceItemId: string;
+  /** 어획 방법 — 법 판정(`canSell`) 근거 */
+  method: CatchMethod;
+  /**
+   * 출품자가 건 최저 희망가 (원/kg). 낙찰 호가가 이보다 낮으면 **유찰**되어 회수한다.
+   * 0이면 제한 없음(부르는 대로 넘긴다).
+   */
+  reservePerKg: number;
+  /** 위판 규격 상자에 담았는지 — 중매인 응찰 한도 보정 */
+  crated: boolean;
+}
+
+/** 위판 진행 단계 */
+export type ConsignmentPhase =
+  | 'idle'      // 아직 시작 전
+  | 'calling'   // 경매사 호가 진행 중
+  | 'hammer'    // 낙찰/유찰 확정 직후 (연출 유예)
+  | 'settled';  // 전 로트 종료
+
+/** 위판 회차 — 로트를 순서대로 올려 호가를 붙인다 */
+export interface ConsignmentSession {
+  sessionId: string;
+  category: AuctionCategory;
+  lots: ConsignmentLot[];
+  /** 현재 호가 중인 로트 인덱스 */
+  index: number;
+  phase: ConsignmentPhase;
+  /** 현재 로트의 호가 경과 (초) */
+  callElapsedSec: number;
+  /** 다음 응찰 판정까지 남은 시간 (초) */
+  tickCooldownSec: number;
+  /** 현재 로트에 붙은 응찰 횟수 — 연출·로그용 */
+  bidCount: number;
+  /** 위판 수수료율 (0~1) — 평판이 정한다 */
+  feeRate: number;
+}
+
+/** 위판 진행 중 발생한 사건 — 클라이언트가 로그·연출로 소비한다 */
+export type ConsignmentEvent =
+  | { kind: 'lotOpen'; lotId: string; nameKo: string; startPerKg: number }
+  | { kind: 'bid'; lotId: string; perKg: number; bidder: string }
+  | { kind: 'sold'; lotId: string; nameKo: string; perKg: number; grossWon: number }
+  | { kind: 'unsold'; lotId: string; nameKo: string; reservePerKg: number; bestPerKg: number }
+  | { kind: 'sessionEnd' };
+
+/** 로트별 정산 행 */
+export interface ConsignmentLotResult {
+  lotId: string;
+  /** 출품 근거가 된 인벤토리 아이템 id — 낙찰이면 소모, 유찰이면 그대로 둔다 */
+  sourceItemId: string;
+  nameKo: string;
+  weightKg: number;
+  /** 낙찰 단가 (원/kg) — 유찰이면 마지막 호가 */
+  hammerPerKg: number;
+  /** 낙찰 총액 (원) — 유찰이면 0 */
+  grossWon: number;
+  status: AuctionLotStatus;
+  /** 유찰되어 되돌려받을 아이템 id */
+  returnedItemId?: string;
+}
+
+/** 위판 정산 결과 */
+export interface ConsignmentSettlement {
+  /** 낙찰 총액 합계 (수수료 전) */
+  grossWon: number;
+  /** 위판 수수료 */
+  feeWon: number;
+  /** 실수령액 */
+  netWon: number;
+  soldLots: number;
+  unsoldLots: number;
+  perLot: ConsignmentLotResult[];
 }

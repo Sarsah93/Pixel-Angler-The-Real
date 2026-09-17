@@ -83,6 +83,7 @@ import { JournalPanel } from '../ui/JournalPanel.js';
 import { addPixelIcon } from '../ui/PixelIcon.js';
 import type { MiniMarker } from '../ui/RegionHud.js';
 import { DialoguePanel } from '../ui/DialoguePanel.js';
+import { GeneralMeetingPanel } from '../ui/GeneralMeetingPanel.js';
 import { StoryStore } from '../store/StoryStore.js';
 import { loadSettings } from './SettingsScene.js';
 import { MultiplayerClient } from '../net/MultiplayerClient.js';
@@ -90,6 +91,9 @@ import { STORY_NPC_PLACEMENTS, STORY_PLACES, type StoryNpcPlacement } from '../d
 import { getStoryNpc, validateStoryQuests, validateStoryChoices, getSkillById, profScale, gearFaultChance, GEAR_REF_PRICE, gearUsable, GEAR_FAULTS } from '@tra/core';
 import { playCollapse, type CollapseKind } from '../ui/CollapseOverlay.js';
 import { TUNING, getTrapById, type RegionFishFarms } from '@tra/core';
+// 147차 — 위판(경매 현장). 구매자 측 AuctionEngine과 방향이 반대다(ConsignmentAuction 헤더 참조).
+import { buildConsignmentLots, isConsignmentOpen, openConsignmentSession, type ConsignInput, type ConsignmentSettlement } from '@tra/core';
+import { AuctionHousePanel } from '../ui/AuctionHousePanel.js';
 import { tilesetPathOf } from '../data/TilesetManifest.js';
 import { TrafficSystem } from './TrafficSystem.js';
 import { TILESET_MANIFEST } from '../data/TilesetManifest.js';
@@ -2352,11 +2356,67 @@ export class RegionFieldScene extends Phaser.Scene {
         onBuy: (entry) => this.handleBuy(entry),
         onSell: (item) => this.handleSell(item),
         onOpenDetail: (itemLike) => this.openItemDetail({ slot: 0, qty: 1, ...itemLike } as InvItem),
+        onConsign: (inputs) => this.openConsignment(inputs),
       }),
       () => { this.shopPanel = null; },
     );
     if (!this.invPanel) this.toggleInventory(GAME_WIDTH - 470);
     this.hud?.pushLog(`[상점] ${shop.name} 이용 시작`);
+  }
+
+  // ── 위판 (147차) ───────────────────────────────────
+  /**
+   * 출품 → 경매 회차 개설 → 현장 패널. 정산은 패널이 `onSettle`로 돌려준다.
+   *
+   * 한 회차는 카테고리 하나(활어 / 선어)만 다룬다 — 실제 위판장의 개장 시간이
+   * 그렇게 갈린다(선어 01~03시 · 활어 03~07시). 지금 열려 있지 않은 쪽을 골랐으면
+   * 남겨 두고 열린 쪽만 올린다.
+   */
+  private openConsignment(inputs: ConsignInput[]): void {
+    if (inputs.length === 0) return;
+    const now = new Date();
+    const kst = new Date(now.getTime() + (9 * 60 + now.getTimezoneOffset()) * 60_000);
+    const h = kst.getHours(), m = kst.getMinutes(), wd = kst.getDay();
+
+    const openCat = (['fish_live', 'fish_fresh'] as const).find((c) => isConsignmentOpen(c, h, m, wd));
+    if (!openCat) {
+      this.shopPanel?.setStatus('지금은 파장입니다 — 선어는 01~03시, 활어는 03~07시에 경매가 섭니다.');
+      return;
+    }
+    const going = inputs.filter((i) => i.category === openCat);
+    const left = inputs.length - going.length;
+    if (going.length === 0) {
+      this.shopPanel?.setStatus(`지금은 ${openCat === 'fish_live' ? '활어' : '선어'} 경매 시간입니다 — 고른 물건은 다음 회차에 올리세요.`);
+      return;
+    }
+
+    const rep = StoryStore.harborRep(GameState.currentRegionId);
+    const session = openConsignmentSession(openCat, buildConsignmentLots(going), h, m, wd, rep);
+    if (!session) { this.shopPanel?.setStatus('경매를 열 수 없습니다.'); return; }
+
+    if (left > 0) this.shopPanel?.setStatus(`${left}건은 경매 시간이 달라 남겨 두었습니다.`);
+    this.openPopup((close) => new AuctionHousePanel(this, session, {
+      onClose: close,
+      onSettle: (result) => this.settleConsignment(result),
+    }));
+  }
+
+  /** 정산 — 낙찰분만 인벤에서 빠지고 실수령액이 들어온다. 유찰분은 그대로 남는다(회수) */
+  private settleConsignment(result: ConsignmentSettlement): void {
+    let sold = 0;
+    for (const row of result.perLot) {
+      if (row.status !== 'sold') continue;
+      sold++;
+      InventoryStore.removeItem(row.sourceItemId, false);
+      // 위판은 정당한 수입이라 조용히 넣지 않는다 — `earn` 목표에 그대로 잡힌다(146차 quiet는 거래 전용)
+      StoryStore.event({ kind: 'sell' });
+    }
+    if (result.netWon > 0) GameState.addCoins(result.netWon);
+    this.events.emit('inventory-changed');
+    this.shopPanel?.refresh();
+    this.hud?.pushLog(`[위판] 낙찰 ${result.soldLots}건 · 유찰 ${result.unsoldLots}건 — 실수령 ${result.netWon.toLocaleString()}원 (수수료 ${result.feeWon.toLocaleString()}원)`);
+    if (sold > 0) this.shopPanel?.setStatus(`위판 완료 — ${result.netWon.toLocaleString()}원이 입금되었습니다.`);
+    else this.shopPanel?.setStatus('전부 유찰되었습니다 — 물건은 그대로 돌려받았습니다.');
   }
 
   /** 구매 플로우: (수량 지정) → 확인 → 재화 차감 + 인벤토리 추가 */
@@ -4067,6 +4127,21 @@ export class RegionFieldScene extends Phaser.Scene {
   }
 
   private openDialogue(npcId: string): void {
+    // 147차 — M1-11 「총회」는 대화 이전에 표결 장면이 먼저다.
+    //  계장(coop)과 마주 선 순간, 레벨 목표를 채웠고 아직 총회에 서지 않았다면
+    //  총회장이 열리고 그 결과(찬성률 → 항구 신뢰)를 들고 대화로 넘어간다.
+    if (npcId === 'coop' && StoryStore.meetingReady()) {
+      this.openPopup((close) => new GeneralMeetingPanel(this, {
+        onClose: close,
+        onDone: (repGain) => {
+          if (repGain > 0) StoryStore.addHarborRep(GameState.currentRegionId, repGain);
+          this.hud?.pushLog(`[총회] 정계원 승격 가결${repGain > 0 ? ` — 항구 신뢰 +${repGain}` : ''}`);
+          // 표결이 끝나면 계장이 이름을 부른다 — 이어서 대화창(talk 목표가 여기서 닫힌다)
+          this.openPopup((c2) => new DialoguePanel(this, npcId, c2, this.region));
+        },
+      }));
+      return;
+    }
     this.openPopup((close) => new DialoguePanel(this, npcId, close, this.region));
   }
 

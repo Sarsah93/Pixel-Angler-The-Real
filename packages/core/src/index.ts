@@ -64,6 +64,12 @@ export type {
   AuctionLot,
   AuctionSession,
   AuctionBidResult,
+  ConsignmentLot,
+  ConsignmentPhase,
+  ConsignmentSession,
+  ConsignmentEvent,
+  ConsignmentLotResult,
+  ConsignmentSettlement,
 } from './types/Economy.js';
 export { SEAFOOD_AUCTION_MAPPING, MART_RETAIL_DATABASE, DEFAULT_AUCTION_SCHEDULE } from './types/Economy.js';
 export type {
@@ -284,6 +290,20 @@ export {
   calcPlayerAuctionTotal,
 } from './simulation/AuctionEngine.js';
 export type { LotGenerationParams } from './simulation/AuctionEngine.js';
+
+// 위판(판매자 측) — 147차. 구매자 측 AuctionEngine과 방향이 반대다(파일 헤더 참조).
+export {
+  canConsign,
+  consignmentFeeRate,
+  buildConsignmentLots,
+  isConsignmentOpen,
+  minutesUntilConsignment,
+  openConsignmentSession,
+  stepConsignment,
+  runConsignmentToEnd,
+  settleConsignment,
+} from './simulation/ConsignmentAuction.js';
+export type { ConsignInput } from './simulation/ConsignmentAuction.js';
 
 // HydroDynamics & TacklePhysics
 export type { WaterType, TileWaterState, HydroGrid, FightIncident } from './types/Hydrodynamics.js';

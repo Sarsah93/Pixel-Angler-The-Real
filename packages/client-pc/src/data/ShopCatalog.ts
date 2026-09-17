@@ -47,6 +47,14 @@ export interface ShopDef {
   sells: ShopEntry[];
   /** 매입 대상 카테고리 (비어 있으면 매입 안 함) */
   buysCategories: InvCategory[];
+  /**
+   * 위판 창구를 겸하는가 (147차).
+   *
+   * 건물 종류에 하드코딩하지 않고 **능력(capability)** 으로 둔다 — 속초는 실제 위판장을
+   * 따로 찍을 POI가 없어 직판장이 창구를 겸하지만, 전용 위판장이 있는 지역이 생기면
+   * 그 POI에 이 플래그만 주면 된다(코드 수정 없음).
+   */
+  auctionWindow?: boolean;
 }
 
 /** 무게추 봉돌 id → 상점 판매 항목 (채비 코너) */
@@ -162,6 +170,8 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
     name: '수산물 직판장',
     greeting: '오늘 새벽에 들어온 물건입니다. 잡으신 고기도 매입해요.',
     buysCategories: ['food'],
+    // 147차 — 속초는 위판장 POI가 따로 없어 직판장이 위판 창구를 겸한다(사용자 결정)
+    auctionWindow: true,
     sells: [
       // 141차 — 메인 해금 품목 (M2-01 첫 위판 · M2-05 품질관리 교육 · M4-09 갑오징어)
       { id: 'crate_std_pro', name: '위판 규격 상자 (10입)', icon: '', category: 'etc', subCategory: '낚시도구',
