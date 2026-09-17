@@ -656,6 +656,15 @@ export interface TuningConfig {
     sleepHpPct: number;
     sleepHungerCost: number;
     sleepHydrationCost: number;
+    /**
+     * 달리기 (144차) — Shift 홀드 이동 배율. 걷기 대비이며 자전거(×2)보다 낮게 둔다
+     * (탈것의 우위를 지키기 위함 — 달리기가 자전거를 대체하면 자전거 스킬 계통이 죽는다).
+     */
+    runSpeedMult: number;
+    /** 피로도가 이 % 이상이면 달릴 수 없다(숨이 차서 걷기로 강등) */
+    runFatigueGatePct: number;
+    /** 허기·수분 임계(lowPct) 미만이면 달리기 금지 */
+    runBlockWhenLow: boolean;
   };
   /** 상태이상 (125차 — SPEC §5. 시간은 활동 시간 기준 분) */
   /** 제작·구급품 (129차 P7) */
@@ -1034,13 +1043,14 @@ export const TUNING: TuningConfig = {
   },
   vitals: {
     drainIdle: [4.8, 6.0, 0], drainSit: [4.8, 6.0, -16], drainWalk: [10, 14, 12],
-    drainRun: [16, 26, 32], drainBike: [14, 24, 20], drainForage: [14, 22, 32],
+    drainRun: [22, 34, 44], drainBike: [14, 24, 20], drainForage: [14, 22, 32],
     costCast: [0.2, 0.3, 0.4], costFightWin: [1.2, 1.8, 3.0], costFightLose: [0.7, 1.0, 2.0],
     costButcher: [0.8, 0.6, 2.0], costSashimi: [1.2, 0.8, 3.0], costTravel: [5.0, 6.0, 10],
     costCraft: [0.4, 0.3, 0.8], costCook: [0.3, 0.4, 0.6],
     lowPct: 20, lowMovePenalty: 0.2, lowFatigueMult: 1.3, zeroHpPerMin: 2,
     hotC: 28, hotHydrationMult: 1.5, coldC: 5, coldHungerMult: 1.3, coldResistBufferC: 2,
     sleepFatigueTo: 0, sleepHpPct: 0.5, sleepHungerCost: 10, sleepHydrationCost: 10,
+    runSpeedMult: 1.55, runFatigueGatePct: 85, runBlockWhenLow: true,
   },
   craft: {
     failMaterialPct: 0.5, medicineShortenMin: 60, medicRelapseMult: 1,
@@ -1275,6 +1285,9 @@ export const TUNING_META: TuningParamMeta[] = [
   { path: 'spool.bailLeakMps', min: 0, max: 0.4, step: 0.01, category: 'balance', label: '베일 휨 누출(m/s)' },
   { path: 'rep.harborCommunityWork', min: 0, max: 10, step: 0.5, category: 'balance', label: '항구 신뢰 +/공동작업' },
   { path: 'rep.seaReleaseUndersize', min: 0, max: 3, step: 0.1, category: 'balance', label: '바다 평판 +/준법 방생' },
+  // 144차 — 달리기
+  { path: 'vitals.runSpeedMult', min: 1.1, max: 2.0, step: 0.05, category: 'feel', label: '달리기 속도 배율' },
+  { path: 'vitals.runFatigueGatePct', min: 50, max: 100, step: 1, category: 'balance', label: '달리기 차단 피로도(%)' },
 ];
 
 // ── path 유틸 (dev 패널 공용) ──

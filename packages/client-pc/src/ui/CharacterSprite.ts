@@ -16,8 +16,8 @@ import {
   type CharConfig, type CharDir, type CharFrame,
 } from '@tra/core';
 
-/** 걷기 프레임 순서 — 접지 → 통과 → 접지(반대) → 통과 */
-const WALK_SEQ: CharFrame[] = [1, 2, 3, 4];
+/** 걷기 프레임 순서 — 접지 → 통과 → 접지(반대) → 통과 (144차 — 캐릭터 만들기 프리뷰가 공유) */
+export const WALK_SEQ: CharFrame[] = [1, 2, 3, 4];
 /** 프레임 간격(ms) */
 export const CHAR_WALK_MS = 150;
 
@@ -116,8 +116,11 @@ export class CharacterSprite {
     this.applyFrame();
   }
 
-  /** `dtMs` = 경과 ms · `moving` = 이동 중 여부 */
-  update(dtMs: number, moving: boolean): void {
+  /**
+   * `dtMs` = 경과 ms · `moving` = 이동 중 여부 ·
+   * `paceMult` = 프레임 속도 배율(144차 — 달리기는 같은 4프레임을 더 빨리 돌린다. 1 = 걷기)
+   */
+  update(dtMs: number, moving: boolean, paceMult = 1): void {
     if (this.walking !== moving) {
       this.walking = moving;
       this.phase = 0;
@@ -126,9 +129,10 @@ export class CharacterSprite {
       if (!moving) return;
     }
     if (!moving) return;
+    const step = CHAR_WALK_MS / Math.max(0.2, paceMult);
     this.timer += dtMs;
-    while (this.timer >= CHAR_WALK_MS) {
-      this.timer -= CHAR_WALK_MS;
+    while (this.timer >= step) {
+      this.timer -= step;
       this.phase = (this.phase + 1) % WALK_SEQ.length;
       this.applyFrame();
     }

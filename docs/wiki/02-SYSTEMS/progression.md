@@ -74,6 +74,7 @@ learnSkill(id): ranks[id]++ · markDirty   (세이브 `skillTree`)
 | 스킬 패널(트리·선행선·상세·배우기) | ✅ | 122 · 124(행 간격 동적 압축 — 티어 6노드) |
 | **숙련도**(140차 — 기술형 22스킬은 배운 뒤 행위로 채워야 효과 · 임계 15/45/100/200/360 · 배율 0/.35/.6/.85/1/1.15 · 훅 9종 · 패널 배지·바) | ✅ | 140 — `lureAction`·`jig`·`egi`·`surf`·`haggle` 훅 미배선 |
 | 선택지 보상 스킬 포인트(`bonusSkillPoints` — 예산 우변 가산) | ✅ | 140 |
+| **달리기 활동 드레인**(144차 — Shift 홀드 이동 = `VitalsActivity 'run'` · `drainRun` [22,34,44] · 피로 85% / 허기·수분 임계 게이트) | ✅ | 144 — 125차부터 있던 `'run'` 분기를 처음으로 채웠다 |
 | 스킬 효과 실배선 | 🔶 **43/92** | 122(13) · 127(+11) · 129(+9) · **130(+10 — 생존 최대치 3·행동력 면제·위생·응급처치 정정·시너지 5)** |
 | **(a) 생존 지표 최대치 노드** | ✅ | 130 — 대식가·큰 물통·강단 (그릇 확장 — 소모 속도와 별개 축) |
 | **(c) 행동력 확률적 미소비** | ✅ | 130 — 요령 4%p/랭크 · `applyVitalsAction`이 면제 여부 반환 |
@@ -109,6 +110,10 @@ learnSkill(id): ranks[id]++ · markDirty   (세이브 `skillTree`)
 - **확장 정본 = `.agents/PROGRESSION_SURVIVAL_SPEC.md`(123차 v2 · 124차 제작 정정)** — **P1~P7 + 트리 확장 완료**.
   **P9 도움말 ready 전환은 131차에 완료** — 남은 `planned` 3토픽(농사·광질 / 불요리·스시 / 배 출조·멀티)은 실제 미구현분이다.
   **P8 퀘스트 XP·Ch1은 134차에 S22로 착수**(일지 토픽 재작성 포함). 이후 대과제: 통발 심화 → 불요리 → 농장.
+- **달리기 전용 스프라이트 대기** — 현재는 걷기 4프레임을 1.55배로 돌린다(`CharacterSprite.update(dt, moving, paceMult)`).
+  팔 흔들기·상체 기울기를 가진 달리기 포즈는 `CharacterArt.ts`에 프레임 4장을 추가해야 한다.
+- **달리기 전용 스킬 노드 없음** — `drv_run`(도보 속도 +8%/랭크)이 걷기·달리기에 공통으로 곱한다.
+  '달리기 지속 +' 류 전용 노드는 스킬 예산(Σ 215) 재배분이 필요해 보류.
 - **숙련도 훅 잔여** — `lureAction`·`jig`·`egi`·`surf`(1인칭 조작 → 행위 매핑 확정 후) · `haggle`(상점). **구세이브의 기술형 22스킬은 숙련도 0 = 효과 0**으로 시작한다(설계) — 테스터 안내.
 - **출조 지역 병원 POI 백필 1회 필요** — `py tools/backfill_hospital_poi.py sokcho_v2`
   (Overpass 접근이 되는 환경에서. 129차 원격 세션은 egress 정책으로 차단됐다).
@@ -132,7 +137,9 @@ learnSkill(id): ranks[id]++ · markDirty   (세이브 `skillTree`)
 2. **`wired: false` 스킬은 배우기가 막히지 않는다**(포인트만 소모) — 실배선 전에 툴팁 '예정'을 지우지 말 것.
 3. `skillPointsForLevel`을 바꾸면 기존 세이브의 사용 포인트가 총량을 넘을 수 있다 — `skillPointsAvailable`은 0 하한이지만 환급 로직은 없음.
 4. 면허 `category`는 필수 — 빠지면 패널 그룹에서 조용히 사라진다(`LICENSE_CATEGORY_ORDER` 순회).
-5. 패널 3종은 `openPopup` 경유 → **새 팝업이 밴드 최상단**(122차 `raiseToTop`) · ESC LIFO. 직접 `add.existing`으로 띄우지 말 것.
+5. **달리기 판정은 `handleMovement`가 먼저, `tickVitals`가 나중**이어야 한다(144차) — `RegionFieldScene.update()`의
+   `handleMovement → syncPeers → tickVitals` 순서를 바꾸면 활동 종류가 한 프레임 어긋난다.
+6. 패널 3종은 `openPopup` 경유 → **새 팝업이 밴드 최상단**(122차 `raiseToTop`) · ESC LIFO. 직접 `add.existing`으로 띄우지 말 것.
 6. **게이지 rect는 `RegionHud.barRects()` 하나만 본다**(126차) — 렌더와 호버 히트가 같은 소스를 써야
    레이아웃 수정 시 툴팁 판정이 어긋나지 않는다. 새 게이지는 이 함수에 행을 추가하는 방식으로만 늘린다.
    허기·수분은 라벨 Text 대신 **픽셀 아이콘**을 쓴다(`VITAL_LABEL[key].icon`) — `vitalLabels` 맵에

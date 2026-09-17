@@ -73,6 +73,7 @@ const HOTKEY_SECTIONS: HotkeySection[] = [
     title: '필드 (탑다운)',
     items: [
       { key: '방향키', desc: '캐릭터 이동' },
+      { key: 'Shift+방향키', desc: '달리기 (1.55배 — 피로 소모 증가)' },
       { key: '좌클릭(유지)', desc: '캐스팅 차지 → 착수 시 낚시 진입' },
       { key: '좌클릭', desc: '클릭 위치로 이동' },
       { key: 'F', desc: '상호작용 (건물·오브젝트·채집·통발)' },

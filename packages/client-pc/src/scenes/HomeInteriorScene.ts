@@ -13,7 +13,7 @@
  */
 
 import Phaser from 'phaser';
-import { MapObject } from '@tra/core';
+import { MapObject, TUNING } from '@tra/core';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { GameState } from '../store/GameState.js';
 import { StoryStore } from '../store/StoryStore.js';
@@ -239,7 +239,8 @@ export class HomeInteriorScene extends Phaser.Scene {
 
   update(_t: number, delta: number): void {
     if (this.bedMenu || this.fridgePanel) { this.updateWalkTexture(false); return; }   // 메뉴/패널 열림 중 이동 정지
-    const spd = 0.18 * delta;
+    // 144차 — Shift 홀드 달리기(실내는 12x10칸이라 피로 드레인 없이 조작감만 통일)
+    const spd = 0.18 * delta * (this.cursors.shift?.isDown ? TUNING.vitals.runSpeedMult : 1);
     let dx = 0, dy = 0;
     if (this.cursors.left.isDown) { dx = -spd; this.facing = 'left'; }
     else if (this.cursors.right.isDown) { dx = spd; this.facing = 'right'; }

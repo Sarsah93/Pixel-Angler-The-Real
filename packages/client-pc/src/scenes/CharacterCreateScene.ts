@@ -21,14 +21,24 @@ import {
   MP_PROGRESS_KO, validateCharacterName,
 } from '@tra/core';
 import { GameState } from '../store/GameState.js';
+import { TUNING } from '@tra/core';
 import { MultiplayerClient } from '../net/MultiplayerClient.js';
-import { ensureCharSheet, charFrameName } from '../ui/CharacterSprite.js';
+import { ensureCharSheet, charFrameName, CHAR_WALK_MS, WALK_SEQ } from '../ui/CharacterSprite.js';
 import { paintHudPanel, paintHudSlot } from '../ui/HudPanelStyle.js';
 import { clampTextWidth } from '../ui/TextFit.js';
 
 const W = 1280, H = 720;
 const PREVIEW_SCALE = 10;
-const DIR_SCALE = 3;
+
+/** 프리뷰 회전 순서 — ◀ = 이 순서로 +1(화면상 왼쪽으로 돌아감) · ▶ = −1 */
+const TURN_ORDER: CharDir[] = ['down', 'left', 'up', 'right'];
+const DIR_KO: Record<CharDir, string> = {
+  down: '정면', left: '왼쪽', up: '뒷면', right: '오른쪽',
+};
+
+/** 프리뷰 동작 — 구현된 모션이 대기/걷기뿐이라 달리기는 같은 걷기 프레임을 빠르게 돌린다 */
+type PreviewMotion = 'idle' | 'walk' | 'run';
+const MOTION_KO: Record<PreviewMotion, string> = { idle: '정지', walk: '걷기', run: '달리기' };
 
 const FONT = '"Noto Sans KR", sans-serif';
 const COL = {
@@ -109,8 +119,13 @@ export class CharacterCreateScene extends Phaser.Scene {
   private btnG!: Phaser.GameObjects.Graphics;
 
   private previewImg?: Phaser.GameObjects.Image;
-  private dirImgs: Phaser.GameObjects.Image[] = [];
   private captionText?: Phaser.GameObjects.Text;
+  /** 프리뷰 방향 라벨 (◀ ▶ 사이) */
+  private dirLabel?: Phaser.GameObjects.Text;
+  /** 스테이지 버튼(회전 2 + 동작 3) — 푸터 버튼과 별도 페인터 */
+  private stageBtns: { cx: number; cy: number; w: number; h: number; label: string; motion?: PreviewMotion; fn: () => void }[] = [];
+  private stageG!: Phaser.GameObjects.Graphics;
+  private stageHover = -1;
   private hintText?: Phaser.GameObjects.Text;
 
   private buttons: { cx: number; cy: number; w: number; h: number; label: string; color: string; fn: () => void }[] = [];
@@ -118,6 +133,9 @@ export class CharacterCreateScene extends Phaser.Scene {
 
   private editingName = false;
   private previewDir: CharDir = 'down';
+  /** 프리뷰 동작 상태 (144차 — 정지/걷기/달리기) */
+  private previewMotion: PreviewMotion = 'idle';
+  private previewPhase = 0;
   private previewTimer = 0;
   private starting = false;
   /** 생성 진행 상태 한 줄 (143차 — 중복 검사 → 통과 → 생성 → 접속) */
@@ -131,7 +149,12 @@ export class CharacterCreateScene extends Phaser.Scene {
     this.cursor = 0;
     this.hoverBtn = -1;
     this.views = [];
-    this.dirImgs = [];
+    this.stageBtns = [];
+    this.stageHover = -1;
+    this.previewDir = 'down';
+    this.previewMotion = 'idle';
+    this.previewPhase = 0;
+    this.previewTimer = 0;
     this.buttons = [];
     this.look = defaultAppearance('m');
     this.starterShirt = 0;
@@ -198,7 +221,7 @@ export class CharacterCreateScene extends Phaser.Scene {
   private drawPreviewStage(): void {
     const g = this.chromeG;
     this.inset(g, 56, 126, 398, 336);
-    this.inset(g, 56, 470, 398, 104);
+    this.inset(g, 56, 470, 398, 146);
 
     // 바닥 그림자 + 발판 라인
     g.fillStyle(0x000000, 0.35);
@@ -211,14 +234,76 @@ export class CharacterCreateScene extends Phaser.Scene {
       fontFamily: FONT, fontSize: '14px', color: COL.accent,
     }).setOrigin(0.5, 0);
 
-    const dirs: CharDir[] = ['down', 'left', 'right', 'up'];
-    dirs.forEach((_, i) => {
-      this.dirImgs.push(this.add.image(
-        129 + i * 84, 556 + (32 - 1 - 28) * DIR_SCALE, '__DEFAULT').setOrigin(0.5, 1));
+    this.drawStageControls();
+  }
+
+  /**
+   * 프리뷰 조작대 (144차) — 위 행 = 회전(◀ 방향명 ▶) · 아래 행 = 동작(정지/걷기/달리기).
+   *
+   * 구 미니어처 4종(정면·좌·우·후면)을 대체한다. 네 장을 한꺼번에 작게 보여주는 것보다
+   * 큰 프리뷰 하나를 돌려 보는 편이 실제로 보이는 크기와 같아 판단에 쓸모가 있다.
+   * `◀ ▶`는 UI 예외 글리프(AGENTS §4)라 그대로 쓴다.
+   */
+  private drawStageControls(): void {
+    this.stageG = this.add.graphics();
+
+    this.dirLabel = this.add.text(255, 515, '', {
+      fontFamily: FONT, fontSize: '14px', color: COL.accent,
+    }).setOrigin(0.5);
+
+    const motions: PreviewMotion[] = ['idle', 'walk', 'run'];
+    this.stageBtns = [
+      { cx: 167, cy: 515, w: 48, h: 30, label: '◀', fn: () => this.turn(1) },
+      { cx: 343, cy: 515, w: 48, h: 30, label: '▶', fn: () => this.turn(-1) },
+      ...motions.map((m, i) => ({
+        cx: 131 + i * 124, cy: 571, w: 116, h: 32,
+        label: MOTION_KO[m], motion: m, fn: () => this.setMotion(m),
+      })),
+    ];
+
+    this.stageBtns.forEach((b, i) => {
+      this.add.text(b.cx, b.cy, b.label, {
+        fontFamily: FONT, fontSize: b.motion ? '14px' : '18px', color: COL.text,
+      }).setOrigin(0.5);
+      const z = this.add.zone(b.cx - b.w / 2, b.cy - b.h / 2, b.w, b.h)
+        .setOrigin(0, 0).setInteractive({ useHandCursor: true });
+      z.on('pointerover', () => { this.stageHover = i; this.paintStage(); });
+      z.on('pointerout', () => { if (this.stageHover === i) { this.stageHover = -1; this.paintStage(); } });
+      z.on('pointerdown', b.fn);
     });
-    this.add.text(255, 578, '정면 · 좌 · 우 · 후면', {
-      fontFamily: FONT, fontSize: '12px', color: COL.muted,
-    }).setOrigin(0.5, 0);
+    this.paintStage();
+  }
+
+  /** 회전 — `d`만큼 `TURN_ORDER`를 돈다(◀ = +1) */
+  private turn(d: number): void {
+    const i = TURN_ORDER.indexOf(this.previewDir);
+    this.previewDir = TURN_ORDER[(i + d + TURN_ORDER.length) % TURN_ORDER.length];
+    this.applyPreviewFrame();
+    this.paintStage();
+  }
+
+  private setMotion(m: PreviewMotion): void {
+    this.previewMotion = m;
+    this.previewPhase = 0;
+    this.previewTimer = 0;
+    this.applyPreviewFrame();
+    this.paintStage();
+  }
+
+  /** 현재 방향·동작에 맞는 프레임 1장 반영 */
+  private applyPreviewFrame(): void {
+    const frame = this.previewMotion === 'idle' ? 0 : WALK_SEQ[this.previewPhase];
+    this.previewImg?.setFrame(charFrameName(this.previewDir, frame));
+    this.dirLabel?.setText(DIR_KO[this.previewDir]);
+  }
+
+  /** 스테이지 버튼 프레임 — 선택된 동작은 활성 슬롯으로 그린다 */
+  private paintStage(): void {
+    this.stageG.clear();
+    this.stageBtns.forEach((b, i) => {
+      const on = b.motion ? b.motion === this.previewMotion : this.stageHover === i;
+      paintHudSlot(this.stageG, b.cx, b.cy, b.w, b.h, on);
+    });
   }
 
   private drawFooter(): void {
@@ -411,9 +496,7 @@ export class CharacterCreateScene extends Phaser.Scene {
     const cfg = this.cfg(true);
     const big = ensureCharSheet(this, cfg, PREVIEW_SCALE);
     this.previewImg?.setTexture(big, charFrameName(this.previewDir, 0));
-    const small = ensureCharSheet(this, cfg, DIR_SCALE);
-    const dirs: CharDir[] = ['down', 'left', 'right', 'up'];
-    this.dirImgs.forEach((img, i) => img.setTexture(small, charFrameName(dirs[i], 0)));
+    this.applyPreviewFrame();
 
     this.captionText?.setText(`${this.nickname || '한여름'} · ${this.look.sex === 'm' ? '남성' : '여성'}`);
 
@@ -535,13 +618,15 @@ export class CharacterCreateScene extends Phaser.Scene {
   }
 
   update(_t: number, dt: number): void {
-    // 미리보기는 2.4초마다 방향을 돌려 4면을 전부 보여준다
+    // 144차 — 자동 회전 폐기(방향은 ◀ ▶ 버튼이 전담). 선택한 동작만 프레임을 돌린다.
+    if (this.previewMotion === 'idle') return;
+    const pace = this.previewMotion === 'run' ? TUNING.vitals.runSpeedMult : 1;
+    const step = CHAR_WALK_MS / pace;
     this.previewTimer += dt;
-    if (this.previewTimer >= 2400) {
-      this.previewTimer = 0;
-      const dirs: CharDir[] = ['down', 'left', 'up', 'right'];
-      this.previewDir = dirs[(dirs.indexOf(this.previewDir) + 1) % dirs.length];
-      this.previewImg?.setFrame(charFrameName(this.previewDir, 0));
+    while (this.previewTimer >= step) {
+      this.previewTimer -= step;
+      this.previewPhase = (this.previewPhase + 1) % WALK_SEQ.length;
+      this.applyPreviewFrame();
     }
   }
 

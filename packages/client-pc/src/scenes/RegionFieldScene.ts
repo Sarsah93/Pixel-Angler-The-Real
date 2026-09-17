@@ -286,6 +286,11 @@ export class RegionFieldScene extends Phaser.Scene {
   // ── 자전거 (R 승·하차 — 이동 속도 2배, GameState.isMounted로 씬 간 유지) ──
   private bike?: BikeComposite;
 
+  /** 달리기 중인가 (144차 — Shift 홀드 + 방향키). `tickVitals`가 활동 종류로 소비한다 */
+  private running = false;
+  /** 숨참 안내 스로틀 — 피로도 게이트에 걸렸을 때 로그를 도배하지 않게 */
+  private runGateWarnAt = 0;
+
   // ── 대기/조명/날씨 (2026-07-20) ──
   /** 화면 고정 빗줄기 풀 */
   private rainDrops: { obj: Phaser.GameObjects.Rectangle; speed: number }[] = [];
@@ -3190,7 +3195,7 @@ export class RegionFieldScene extends Phaser.Scene {
     const body = this.playerBody.body as Phaser.Physics.Arcade.Body | undefined;
     const moving = !!body && Math.hypot(body.velocity.x, body.velocity.y) > 4;
     const activity: VitalsActivity = this.forage?.isHolding ? 'forage'
-      : moving ? (GameState.isMounted ? 'bike' : 'walk')
+      : moving ? (GameState.isMounted ? 'bike' : this.running ? 'run' : 'walk')
       : 'idle';
     const feelsLikeC = ExternalDataStore.getRegionMarineWeather(this.region)?.airTempC;
     const r = GameState.tickVitals(delta, activity, { feelsLikeC });
@@ -3980,6 +3985,7 @@ export class RegionFieldScene extends Phaser.Scene {
     // 125차: 허기·수분 임계(−20%)와 상태이상(골절 등) 배율을 곱한다
     const speed = (this.seamless ? 210 : 150) * GameState.skillMult('run_speed')
       * (GameState.isMounted ? 2 * GameState.skillMult('bike_speed') : 1)
+      * this.runSpeedFactor()
       * GameState.moveSpeedMult;
     let vx = 0, vy = 0;
     if (this.time.now < this.knockUntil) {
@@ -4000,14 +4006,44 @@ export class RegionFieldScene extends Phaser.Scene {
     else if (this.cursors.down.isDown) { vy = speed; this.playerFacing = 'down'; }
     if (vx !== 0 && vy !== 0) { vx *= 0.707; vy *= 0.707; }
     this.playerBody.setVelocity(vx, vy);
-    this.updateWalkTexture(vx !== 0 || vy !== 0);
+    const moving = vx !== 0 || vy !== 0;
+    this.running = this.running && moving;
+    this.updateWalkTexture(moving);
+  }
+
+  /**
+   * 달리기 판정 (144차) — Shift 홀드 + 방향키. 걷기 대비 `TUNING.vitals.runSpeedMult` 배.
+   *
+   * 자전거 탑승 중에는 걸리지 않는다(페달을 밟으며 뛸 수 없다 — 배율 중첩 방지).
+   * 피로도가 `runFatigueGatePct` 이상이거나 허기·수분이 임계 미만이면 **숨이 차서 걷기로 강등**한다:
+   * 소모값만으로 벌하지 않고 "못 뛰는 상태"를 만드는 쪽이 회복 행동(식사·수면)의 동기가 된다.
+   */
+  private runSpeedFactor(): number {
+    this.running = false;
+    if (GameState.isMounted) return 1;
+    if (!this.cursors.shift?.isDown) return 1;
+    const v = TUNING.vitals;
+    const vit = GameState.vitals;
+    const gate = vit.maxFatigue * (v.runFatigueGatePct / 100);
+    if (vit.fatigue >= gate || (v.runBlockWhenLow && GameState.isVitalsLow)) {
+      if (this.time.now > this.runGateWarnAt) {
+        this.runGateWarnAt = this.time.now + 12_000;
+        this.hud?.pushLog(vit.fatigue >= gate
+          ? '[경고] 숨이 차서 더 달릴 수 없습니다 — 쉬었다 가세요'
+          : '[경고] 허기·수분이 부족해 달릴 수 없습니다');
+      }
+      return 1;
+    }
+    this.running = true;
+    return v.runSpeedMult;
   }
 
   private updateWalkTexture(moving: boolean): void {
     if (!this.charSprite) return;
     this.charSprite.setDir(this.playerFacing);
     // 탑승 중엔 걷기 프레임 대신 대기 고정 (다리는 페달링으로 자전거에 가린다)
-    this.charSprite.update(this.game.loop.delta, moving && !GameState.isMounted);
+    this.charSprite.update(this.game.loop.delta, moving && !GameState.isMounted,
+      this.running ? TUNING.vitals.runSpeedMult : 1);
     if (moving && GameState.isMounted) GameState.noteRiding(this.game.loop.delta);   // 140차 — 자전거 숙련
   }
 

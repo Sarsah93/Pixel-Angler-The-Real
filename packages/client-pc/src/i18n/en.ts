@@ -159,7 +159,9 @@ const EN_BASE: Record<string, string> = {
   '※ 이번 업데이트까지의 조작을 반영했습니다. 단축키 변경(리맵)은 추후 지원 예정입니다.': '※ Reflects controls as of this update. Key remapping is planned.',
   '효과음 볼륨 (SFX)': 'SFX Volume', '버튼 클릭, 낚시 입질, 캐스팅 등 효과음 음량': 'Clicks, bites, casting and other effects', '배경음 볼륨 (BGM)': 'BGM Volume',
   '배경 ASMR 파도소리, 갈매기 소리, 인게임 BGM 음량': 'Ambient waves, gulls and in-game music', '✅ 슬라이더 조절 후 자동 저장됩니다.': '✅ Saved automatically after adjusting.',
-  '필드 (탑다운)': 'Field (top-down)', '방향키': 'Arrow keys', '캐릭터 이동': 'Move character', '좌클릭(유지)': 'LMB (hold)', '캐스팅 차지 → 착수 시 낚시 진입': 'Charge cast → fishing on splashdown',
+  '필드 (탑다운)': 'Field (top-down)', '방향키': 'Arrow keys', '캐릭터 이동': 'Move character',
+  'Shift+방향키': 'Shift + arrow keys', '달리기 (1.55배 — 피로 소모 증가)': 'Run (1.55× — higher fatigue drain)',
+  '달리기 (걷기 1.55배 — 피로·허기·수분이 빨리 준다)': 'Run (1.55× walking — drains fatigue, hunger and hydration faster)', '좌클릭(유지)': 'LMB (hold)', '캐스팅 차지 → 착수 시 낚시 진입': 'Charge cast → fishing on splashdown',
   '좌클릭': 'LMB', '클릭 위치로 이동': 'Move to click', '장비 패널 (건물 근접 시 상호작용 우선)': 'Equipment (interact first near buildings)', '자전거 승·하차 (탑승 시 이동 2배)': 'Mount/dismount bicycle (2× speed)',
   '쿨러(어창) 열기': 'Open cooler', '능력치(스탯) 패널': 'Stats panel', '활용 (요리·채비 조립)': 'Utilization (cooking · rigging)', '인벤토리 토글': 'Toggle inventory', '면허 패널 토글': 'Toggle licenses',
   '퀘스트 저널 토글': 'Toggle quest journal', '미니맵 크기 순환': 'Cycle minimap size', '조류/수심 오버레이 토글': 'Toggle current/depth overlay', '퀵슬롯 선택': 'Select quickslot',
@@ -277,6 +279,8 @@ const EN_BASE: Record<string, string> = {
   '좌상단 상태 패널과 좌하단 지역 채널은 우측 상단 모서리의 작은 버튼으로 크기 3단계(◱)와 투명도 4단계(◐)를 바꿀 수 있습니다. 투명도를 끝까지 내려도 버튼은 남아 있어 언제든 되돌립니다.': 'The status panel (top-left) and local channel (bottom-left) have small corner buttons for 3 sizes (◱) and 4 opacity levels (◐). Even at minimum opacity the buttons stay, so you can always restore them.',
   '우하단 둥근 사각 버튼(단축키)은 이 라이브러리의 단축키 탭을 엽니다.': 'The rounded square button at bottom right (Keys) opens the keys tab of this library.',
   '방향키로 걷고, R로 자전거를 타면 2배 속도입니다(탑승 중엔 캐스팅 불가 — 내려서 던지세요).': "Walk with the arrow keys; R mounts the bicycle for 2× speed (you can't cast while riding — dismount first).",
+  '방향키로 걷고, Shift를 누른 채 움직이면 달립니다(걷기의 1.55배). R로 자전거를 타면 2배 속도입니다(탑승 중엔 캐스팅 불가 — 내려서 던지세요).': "Walk with the arrow keys; hold Shift while moving to run (1.55× walking). R mounts the bicycle for 2× speed (you can't cast while riding — dismount first).",
+  '달리는 동안은 피로·허기·수분이 훨씬 빨리 줍니다. 피로도가 85%를 넘거나 허기·수분이 바닥나면 숨이 차서 다시 걷게 됩니다 — 먼 길은 자전거가 낫습니다.': 'Running burns fatigue, hunger and hydration much faster. Above 85% fatigue — or when hunger or hydration runs low — you lose your breath and drop back to walking. For long trips, take the bicycle.',
   '집 앞 버스 정류장(E)에서 전국 지도로 나가 지역 핀을 고르면 출조 요금이 차감됩니다. 집으로 돌아오는 건 무료(전국 지도 좌상단).': 'The bus stop by your home (E) opens the national map; picking a region pin deducts the fare. Returning home is free (top-left of the national map).',
   '속초는 이음새 없는 실지형 맵(OSM) — 항구·방파제·해수욕장·조도까지 걸어서 이어집니다.': 'Sokcho is one seamless real-terrain map (OSM) — harbor, breakwaters, beach and Jodo island are all connected on foot.',
   '디스크 저장은 집 실내의 침대(E → 저장하고 쉬기)에서만 됩니다. 필드의 일시정지 메뉴 "저장하기"는 집이 아니면 안내만 띄웁니다.': 'Saving to disk only happens at the bed inside your home (E → save & rest). The pause-menu "Save" only shows a notice elsewhere.',
@@ -423,6 +427,8 @@ const EN_EXTRA: Record<string, string> = {
   '잠시 정신을 잃었습니다. 일어나도 피로가 완전히 풀리지는 않습니다 — 침대에서 자야 회복됩니다.':
     'You passed out for a moment. Getting up will not clear your fatigue — sleep in a bed to recover.',
   '[경고] 피로도가 한계에 도달해 쓰러졌습니다': '[Warning] Fatigue hit its limit and you collapsed',
+  '[경고] 숨이 차서 더 달릴 수 없습니다 — 쉬었다 가세요': '[Warning] Too winded to keep running — take a rest',
+  '[경고] 허기·수분이 부족해 달릴 수 없습니다': '[Warning] Too hungry or thirsty to run',
   '[치명] 의식을 잃고 쓰러졌습니다': '[Critical] You lost consciousness and collapsed',
   '[상태] 정신을 차렸습니다 — 탈진 상태입니다': '[Status] You came to — you are exhausted',
   '[경고] 허기·수분이 바닥났습니다 — 체력이 줄고 있습니다':

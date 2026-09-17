@@ -60,13 +60,18 @@
 | S20 | [도감·발견·dev 도구](02-SYSTEMS/discovery-wiki.md) | 🟢 | `DiscoveryStore` · `AnglerLogScene` · F10 콘솔 | 위키 상세 팝업 · FP 토스트 |
 | S21 | [진행 — 레벨·스킬·생존·면허·일지](02-SYSTEMS/progression.md) | 🔶 | `Progression.ts` · `Vitals.ts`·`StatusEffects.ts` · `SkillDatabase`(**92노드 Σ=215**) · `CraftingDatabase` · `License.ts` · 패널 3종 · `CollapseOverlay` | **스킬 효과 배선 43/92**(130차) · 신규 면허 효과 1/7 · 농사 카테고리 잠김 · **P1~P9 완료**(P8 = 134차 S22) · 스토리 면허 4종 추가(보너스 제외) · 눕기 스프라이트 대기 |
 | S22 | [스토리·퀘스트](02-SYSTEMS/story-quests.md) | 🔶 | **정본 [`STORY_SPEC_v4`](../../.agents/STORY_SPEC_v4.md)** · `Story.ts` · `FisheryLaw.ts` · `StoryQuestDatabase`(**186퀘 · 아크 23**) · `DayJobs`(품삯 3) · `JournalPages` · `StoryArcs` · `StoryStore` · `DialoguePanel`(**140차 재작성 — 선택지·우호도**) · `JournalPanel` · `StoryChoices` · `Affinity.ts` | **134차 데이터·엔진 + 135차 Ch1 실시스템 + 140차 선택지 분기·우호도** — 배 출조·구멍치기·좌판 등 계통 · Ch2+ 대사 · NPC 스프라이트 · `onMiss` 벌칙 잔여 |
-| S23 | [캐릭터 아트](02-SYSTEMS/character-art.md) | 🟢 | `art/CharacterArt.ts`(셀 32x32 · 레이어 14) · `art/CharacterCast.ts`(41인) · `ui/CharacterSprite.ts` · `CharacterCreateScene`(139차 UI · **140차 얼굴형**) | **140차 머리 9×10·얼굴형 3종·측면 재작업 완료** · 사용자 GPT 스타일 실험 대기(`CHARACTER_SPRITE_PROMPT_SPEC`) · 대화창 초상 아트 · 눕기 프레임 |
+| S23 | [캐릭터 아트](02-SYSTEMS/character-art.md) | 🟢 | `art/CharacterArt.ts`(셀 32x32 · 레이어 14) · `art/CharacterCast.ts`(41인) · `ui/CharacterSprite.ts`(**144차 `paceMult`**) · `CharacterCreateScene`(139차 UI · 140차 얼굴형 · **144차 회전·동작 버튼**) | **140차 머리 9×10·얼굴형 3종·측면 재작업 완료** · 사용자 GPT 스타일 실험 대기(`CHARACTER_SPRITE_PROMPT_SPEC`) · 대화창 초상 아트 · 눕기 프레임 · **달리기 전용 프레임**(현재는 걷기 가속) |
 | S24 | [싱글/멀티플레이](02-SYSTEMS/multiplayer.md) | 🔶 | `types/Multiplayer.ts`(공용 계약) · `server/multiplayer/`(`/mp/*` REST · 인메모리 세션) · `net/MultiplayerClient.ts` · `MultiplayerLobbyScene` | **143차 신설** — 로비·세션·이름 유일성·같은 지역 이름표까지. 세계 상태(퀘스트·인벤·설치물·어획)는 **아직 각자** |
 
 ---
 
-## 3. 지금 위치 (2026-09-16)
+## 3. 지금 위치 (2026-09-17)
 
+- **144차**: **달리기(Shift) + 캐릭터 만들기 프리뷰 회전·동작 버튼** — `VitalsActivity`의 `'run'`은
+  125차부터 있었으나 **아무도 넘긴 적이 없어** 사문이었고, 그 빈 분기를 채웠다. Shift 홀드 = ×1.55
+  (걷기 210 < 달리기 326 < 자전거 420 px/s) · 피로 85%·허기·수분 임계에서 걷기로 강등.
+  캐릭터 만들기는 미니어처 4종 → **◀ ▶ 회전 + 정지/걷기/달리기 동작 버튼**. 상세
+  [워크로그 144](03-WORKLOG/2026-09-17-144-run-sprint-charcreate-preview.md)
 - **143차**: **싱글/멀티 진입 + 대화창·팝업 통일 + 필드 라벨 정리 + 문구 다듬기** — 상세
   [워크로그 143](03-WORKLOG/2026-09-16-143-multiplayer-ui-tone-labels.md)
 - **140차**: **얼굴형·머리 축소·측면 + NPC 대화창(선택지 분기) + 우호도 + 숙련도 + 아티팩트 v4** — 상세
