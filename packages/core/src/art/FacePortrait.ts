@@ -15,6 +15,12 @@
  *   이 파일은 **초상 전용 별도 격자**이고, 소비처는 대화창·일지·혼잣말 초상뿐이다.
  * ⚠ 얼굴형·머리 모양·눈/입/눈썹/수염/홍조는 전부 같은 `CharAppearance`에서 읽는다 —
  *   생성 화면에서 고른 것이 초상에도 그대로 나와야 한다(따로 만들면 "여기선 예쁜데 인게임은 다른" 상태가 된다).
+ *
+ * 155차 — **필드 캐릭터와 같은 인상**으로 재조정(사용자: "초상화와 캐릭터가 안 맞음").
+ *   152차 초상은 해상도만 높였지 문법이 달랐다: 이마가 훤히 드러나고 눈썹이 항상 그려져(필드는
+ *   앞머리가 이마를 덮고 눈썹은 삭발·상투에서만 보인다) 인상이 험해졌고, 눈은 흰자 위주의 작은 눈이라
+ *   필드의 "검은 눈 바" 인상과 달랐으며, 수염은 콧수염까지 붙어 필드(턱선 한 줄)보다 훨씬 짙었다.
+ *   같은 캐릭터로 읽히려면 **부위의 비율·덮임·명암 문법**이 같아야 한다. 해상도는 그대로 두고 문법을 맞췄다.
  */
 
 import {
@@ -154,8 +160,14 @@ function drawEars(g: PGrid, shape: FaceShape, skin: Ramp): void {
   g.put(CX + halfW(shape, EYE_Y + 1) + 1, EYE_Y + 1, skin[2]);
 }
 
-/** 눈썹 — 굵기와 각도가 인상을 가장 크게 바꾼다 */
+/**
+ * 눈썹 — 굵기와 각도가 인상을 가장 크게 바꾼다.
+ * 155차: 필드 스프라이트처럼 **이마가 드러나는 머리(삭발·상투)에서 굵기 0.3 초과일 때만** 그린다.
+ * 다른 머리는 앞머리가 눈썹 자리를 덮는다(항상 그리면 앞머리 아래로 검은 선이 비쳐 인상이 험해진다).
+ */
 function drawBrows(g: PGrid, look: CharAppearance): void {
+  const bare = look.hairStyle === 'buzz' || look.hairStyle === 'topknot';
+  if (!bare || look.brow <= 0.3) return;
   const hp = ramp(pick(HAIR_COLORS, look.hair));
   const c = mix(hp[2], 0x201820, 0.25);
   const thick = look.brow > 0.66 ? 2 : 1;
@@ -170,31 +182,29 @@ function drawBrows(g: PGrid, look: CharAppearance): void {
   }
 }
 
-/** 눈 — 흰자 · 홍채 · 동공 · 하이라이트 · 눈꺼풀선 · 속눈썹 */
+/**
+ * 눈 — 155차: 필드 스프라이트의 문법(**윗줄 = 검은 동공 바 · 아랫줄 = 밝은 홍채**)을 3행으로 옮긴 것.
+ * 152차의 흰자 위주 작은 눈은 화소는 많았지만 필드의 큰 검은 눈과 다른 사람으로 읽혔다.
+ *  행 0 = 동공/속눈썹 바(검정) · 행 1 = 홍채 밝은 톤 + 하이라이트 1px · 행 2 = 홍채 본색 + 아랫꺼풀 그늘.
+ */
 function drawEyes(g: PGrid, look: CharAppearance): void {
   const iris = ramp(pick(EYE_COLORS, look.eye));
-  const pupil = mix(iris[2], 0x14101a, 0.6);
-  const lid = mix(pupil, 0x000000, 0.15);
-  const white = 0xf4f2ee;
+  const pupil = mix(iris[2], 0x1b1520, 0.6);
+  const under = mix(iris[2], 0x2a1c2a, 0.35);
   for (const s of [-1, 1] as const) {
     // 눈 한 짝 = 가로 5 x 세로 3
     const x0 = s < 0 ? CX - 7 : CX + 3;
     const x1 = x0 + 4;
-    g.row(EYE_Y, x0, x1, lid);                      // 윗꺼풀 — 눈을 또렷하게 만드는 선
-    g.row(EYE_Y + 1, x0, x1, white);
-    g.row(EYE_Y + 2, x0 + 1, x1 - 1, mix(white, 0xc0b6ae, 0.45));   // 아랫꺼풀 그늘
-    // 홍채 — 안쪽으로 한 칸 치우쳐 시선이 가운데를 본다
-    const ix = s < 0 ? x0 + 2 : x0 + 1;
-    g.put(ix, EYE_Y + 1, iris[1]); g.put(ix + 1, EYE_Y + 1, iris[1]);
-    g.put(ix, EYE_Y + 2, iris[2]); g.put(ix + 1, EYE_Y + 2, iris[2]);
-    g.put(s < 0 ? ix + 1 : ix, EYE_Y + 1, pupil);   // 동공 1px
-    g.put(s < 0 ? ix : ix + 1, EYE_Y + 1, mix(iris[0], white, 0.35));  // 하이라이트
-    // 눈초리 — 바깥쪽 한 칸이 내려가면 눈매가 생긴다
-    g.put(s < 0 ? x0 : x1, EYE_Y + 2, lid);
+    g.row(EYE_Y, x0, x1, pupil);                                  // 검은 바 — 필드의 인상은 여기서 온다
+    g.row(EYE_Y + 1, x0, x1, iris[0]);
+    g.put(s < 0 ? x0 + 1 : x1 - 1, EYE_Y + 1, mix(iris[0], 0xffffff, 0.55));   // 하이라이트 1px(바깥쪽)
+    g.put(s < 0 ? x1 - 1 : x0 + 1, EYE_Y + 1, iris[1]);          // 안쪽 한 칸은 본색 — 시선이 가운데를 본다
+    g.row(EYE_Y + 2, x0 + 1, x1 - 1, iris[1]);
+    g.put(x0, EYE_Y + 2, under); g.put(x1, EYE_Y + 2, under);    // 아랫꺼풀 그늘
     if (look.sex === 'f') {
-      // 속눈썹 — 바깥 위로 1px (같은 예산에서 성별이 가장 크게 읽히는 신호)
-      g.put(s < 0 ? x0 - 1 : x1 + 1, EYE_Y - 1, lid);
-      g.put(s < 0 ? x0 : x1, EYE_Y - 1, mix(lid, 0x000000, 0.1));
+      // 속눈썹 — 바깥 위로 1px(필드와 같은 신호)
+      g.put(s < 0 ? x0 - 1 : x1 + 1, EYE_Y, mix(pupil, 0x000000, 0.2));
+      g.put(s < 0 ? x0 - 1 : x1 + 1, EYE_Y - 1, mix(pupil, 0x000000, 0.1));
     }
   }
 }
@@ -253,23 +263,23 @@ function drawBlush(g: PGrid, look: CharAppearance): void {
   }
 }
 
-/** 수염 — 턱선을 따라가는 결 + 콧수염. 통째로 칠하면 복면이 된다(142차 전례). */
+/**
+ * 수염 — 155차: 필드와 같은 **턱선 수염**만. 152차는 콧수염과 볼 전체 결까지 넣어 필드(턱 아래 한 줄)보다
+ * 훨씬 짙은 얼굴이 됐다. 턱 끝 3행 + 그 위 4행은 가장자리 두 칸만 성글게.
+ */
 function drawBeard(g: PGrid, look: CharAppearance, shape: FaceShape): void {
   if (look.beard < 0) return;
   const bp = ramp(pick(HAIR_COLORS, look.beard));
   const c = bp[2];
-  for (let y = MOUTH_Y - 1; y <= CHIN; y++) {
+  for (let y = CHIN - 6; y <= CHIN; y++) {
     const r = halfW(shape, y);
     if (r < 0) continue;
-    // 턱선 가장자리 두 칸만 — 안쪽은 성글게(체크 무늬로 수염결을 만든다)
     for (let x = CX - r + 1; x <= CX + r; x++) {
       const edge = x <= CX - r + 2 || x >= CX + r - 1;
-      if (y >= CHIN - 3 || edge) g.shade(x, y, c, edge ? 0.85 : 0.5);
-      else if ((x + y) % 2 === 0) g.shade(x, y, c, 0.35);
+      if (y >= CHIN - 2) g.shade(x, y, c, 0.85);
+      else if (edge) g.shade(x, y, c, (x + y) % 2 === 0 ? 0.7 : 0.4);
     }
   }
-  // 콧수염 — 입 위 한 행
-  for (let x = CX - 3; x <= CX + 4; x++) g.shade(x, MOUTH_Y - 1, c, 0.8);
 }
 
 /** 머리카락 — 정수리 볼륨 · 앞머리 술 · 스타일별 옆/뒷머리 */
@@ -277,7 +287,9 @@ function drawHair(g: PGrid, look: CharAppearance, shape: FaceShape): void {
   const hp = ramp(pick(HAIR_COLORS, look.hair));
   const st = look.hairStyle;
   const bare = st === 'buzz';
-  const fringeBot = bare ? TOP + 3 : BROW_Y - 2;   // 앞머리가 내려오는 바닥 행
+  // 앞머리가 내려오는 바닥 행 — 155차: 필드처럼 **이마를 덮고 눈 바로 위**까지(HAIR_CAP_ROWS 4 = 눈 윗줄 직전).
+  // 상투는 머리를 당겨 묶어 이마가 반쯤 드러난다(눈썹이 보이는 유일한 긴 머리 — 필드 `bareBrow`와 동일).
+  const fringeBot = bare ? TOP + 3 : st === 'topknot' ? BROW_Y - 2 : EYE_Y - 2;
 
   // 정수리 볼륨 — 얼굴보다 한 칸 크게 덮어 머리가 납작해 보이지 않게
   for (let y = TOP - 2; y <= fringeBot; y++) {
@@ -292,8 +304,8 @@ function drawHair(g: PGrid, look: CharAppearance, shape: FaceShape): void {
   g.row(TOP, CX - 5, CX + 1, mix(hp[0], hp[1], 0.5));
 
   if (!bare) {
-    // 앞머리 술 — 이마 위에 들쭉날쭉한 끝단. 일자로 자르면 가발처럼 보인다.
-    const tips = [0, 1, 0, 2, 1, 0, 1, 2, 1, 0, 2, 1, 0, 1];
+    // 앞머리 술 — 이마 위에 들쭉날쭉한 끝단(1행 — 눈 윗줄을 덮지 않는다). 일자로 자르면 가발처럼 보인다.
+    const tips = st === 'topknot' ? [0, 1, 0, 1, 1, 0, 1, 0, 1, 1, 0, 1, 0, 1] : [1, 0, 1, 1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 1];
     for (let i = 0; i < tips.length; i++) {
       const x = CX - 7 + i;
       for (let d = 0; d < tips[i]; d++) g.put(x, fringeBot + 1 + d, d === tips[i] - 1 ? hp[2] : hp[1]);
@@ -313,49 +325,72 @@ function drawHair(g: PGrid, look: CharAppearance, shape: FaceShape): void {
       }
     }
   };
-  if (st === 'bob') side(TOP, EYE_Y + 6, 2);
+  // 옆머리 깊이 — 필드 `L_hairFront`의 sideBot(short y0+5 · braid/pony y0+6 · bob y1-1 · long y1+1)을
+  // 초상 행 비율(머리 9행 → 25행)로 옮긴 값. 여기가 다르면 "긴 머리인데 초상은 단발"이 된다.
+  if (st === 'bob') side(TOP, CHIN - 3, 2);
   else if (st === 'long') side(TOP, 31, 2);
-  else if (st === 'braid') { side(TOP, EYE_Y + 3, 2); side(EYE_Y + 4, 31, 1); }
+  else if (st === 'braid') { side(TOP, EYE_Y + 5, 2); side(EYE_Y + 6, 31, 1); }
   else if (st === 'curly') {
-    side(TOP, EYE_Y + 2, 2);
-    for (let y = TOP - 2; y <= EYE_Y + 2; y += 2) { g.put(CX - 12, y, hp[1]); g.put(CX + 13, y, hp[1]); }
+    side(TOP, EYE_Y + 3, 2);
+    for (let y = TOP - 2; y <= EYE_Y + 3; y += 2) { g.put(CX - 12, y, hp[1]); g.put(CX + 13, y, hp[1]); }
+    for (let x = CX - 8; x <= CX + 9; x += 2) g.put(x, TOP - 3, hp[0]);   // 정수리 곱슬 돌기(필드 y0-2 행)
   } else if (st === 'pony') {
-    side(TOP, EYE_Y, 1);
+    side(TOP, CHIN - 2, 1);
     for (let y = EYE_Y; y <= 28; y++) { g.row(y, CX + 12, CX + 13, hp[1]); g.put(CX + 13, y, hp[2]); }
   } else if (st === 'topknot') {
-    for (let y = TOP - 3; y <= TOP - 1; y++) g.row(y, CX - 2, CX + 3, y === TOP - 3 ? hp[0] : hp[1]);
-  } else if (st === 'short') side(TOP + 2, EYE_Y + 1, 1);
+    side(TOP + 2, EYE_Y + 1, 1);
+    for (let y = TOP - 5; y <= TOP - 1; y++) g.row(y, CX - 2, CX + 3, y === TOP - 5 ? hp[0] : hp[1]);
+  } else if (st === 'short') side(TOP + 2, EYE_Y + 3, 1);
 }
 
-/** 모자 — 머리 위에 얹는다. 왕관 폭은 머리카락보다 한 칸 넓다. */
+/**
+ * 모자 — 머리 위에 얹는다. 155차: 필드 `L_hat`의 덮임 비율을 그대로 옮겼다
+ * (캡 = 머리 9행 중 위 3행 + 챙 1행 → 초상 정수리~10행 + 챙 2행 · 비니 = 위 4행 + 밝은 밴드 ·
+ *  벙거지 = 위 2행 + 넓은 챙 · 두건 = 2~3행 띠). 앞머리 술(13행)은 챙 아래로 한 줄 보인다.
+ */
 function drawHat(g: PGrid, kind: HatKind, color: Rgb, shape: FaceShape): void {
   if (kind === 'none') return;
   const hp = ramp(color);
-  // 왕관 바닥을 눈썹에서 충분히 띄운다 — 붙이면 모자를 눌러쓴 것처럼 보이고 앞머리가 사라진다
-  const crownBot = kind === 'beanie' ? BROW_Y - 2 : TOP + 2;
+  const crown = (bot: number): void => {
+    for (let y = TOP - 2; y <= bot; y++) {
+      const r = halfW(shape, Math.max(TOP, y));
+      const grow = (r < 0 ? 10 : r) + (y < TOP ? -(TOP - y) + 2 : 2);
+      g.row(y, CX - grow + 1, CX + grow, hp[1]);
+      g.put(CX - grow + 1, y, hp[2]); g.put(CX + grow, y, hp[2]);
+      if (y === TOP - 2) g.row(y, CX - grow + 2, CX + grow - 1, hp[0]);
+    }
+  };
   if (kind === 'visor') {
     g.row(TOP + 3, CX - 11, CX + 12, hp[1]);
     g.row(TOP + 4, CX - 11, CX + 12, hp[2]);
     for (let x = CX - 12; x <= CX + 13; x++) { g.put(x, TOP + 5, hp[1]); g.put(x, TOP + 6, hp[2]); }
     return;
   }
-  for (let y = TOP - 2; y <= crownBot; y++) {
-    const r = halfW(shape, Math.max(TOP, y));
-    const grow = (r < 0 ? 10 : r) + (y < TOP ? -(TOP - y) + 2 : 2);
-    g.row(y, CX - grow + 1, CX + grow, hp[1]);
-    g.put(CX - grow + 1, y, hp[2]); g.put(CX + grow, y, hp[2]);
-    if (y === TOP - 2) g.row(y, CX - grow + 2, CX + grow - 1, hp[0]);
+  if (kind === 'bandana') {
+    for (let y = TOP + 3; y <= TOP + 6; y++) {
+      const r = halfW(shape, y) + 1;
+      g.row(y, CX - r + 1, CX + r, y === TOP + 6 ? hp[2] : hp[1]);
+    }
+    for (let i = 0; i < 4; i++) g.put(CX + 11 + (i % 2), TOP + 5 + i, hp[i % 2 ? 2 : 1]);   // 매듭 꼬리
+    return;
   }
   if (kind === 'cap') {
-    for (let x = CX - 10; x <= CX + 13; x++) { g.put(x, crownBot + 1, hp[1]); g.put(x, crownBot + 2, hp[2]); }
-  } else if (kind === 'sun') {
-    for (let x = 1; x < PORTRAIT_CELL - 1; x++) { g.put(x, crownBot + 1, hp[1]); g.put(x, crownBot + 2, hp[2]); }
-  } else if (kind === 'beanie') {
-    g.row(crownBot - 1, CX - 11, CX + 12, mix(hp[2], 0x000000, 0.15));
-    g.row(crownBot, CX - 11, CX + 12, hp[1]);
-  } else if (kind === 'bandana') {
-    for (let i = 0; i < 4; i++) g.put(CX + 11 + (i % 2), crownBot + 1 + i, hp[i % 2 ? 2 : 1]);
+    crown(BROW_Y - 1);
+    for (let x = CX - 10; x <= CX + 13; x++) { g.put(x, BROW_Y, hp[1]); g.put(x, BROW_Y + 1, hp[2]); }   // 챙 2행
+    return;
   }
+  if (kind === 'beanie') {
+    crown(BROW_Y);
+    const band = ramp(mix(color, 0xffffff, 0.2));
+    for (let y = BROW_Y - 1; y <= BROW_Y + 1; y++) {
+      const r = halfW(shape, y) + 2;
+      g.row(y, CX - r + 1, CX + r, y === BROW_Y + 1 ? band[2] : band[1]);
+    }
+    return;
+  }
+  // sun — 벙거지: 낮은 왕관 + 넓은 챙
+  crown(TOP + 5);
+  for (let x = 1; x < PORTRAIT_CELL - 1; x++) { g.put(x, TOP + 6, hp[1]); g.put(x, TOP + 7, hp[2]); }
 }
 
 /** 실루엣 바깥 1px 테두리 — 어두운 대화창 위에서 얼굴이 뜨게 한다 */

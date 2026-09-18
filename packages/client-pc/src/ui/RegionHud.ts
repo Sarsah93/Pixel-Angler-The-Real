@@ -23,6 +23,7 @@ import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { MultiplayerClient } from '../net/MultiplayerClient.js';
 import { applyScreenFixed, restoreHandCursor } from './DraggablePanel.js';
 import { createItemIcon } from './ItemIcon.js';
+import { clampTextWidth } from './TextFit.js';
 import { addPixelIcon } from './PixelIcon.js';
 import { paintHudPanel, paintHudSlot } from './HudPanelStyle.js';
 import { t, getLocale } from '../i18n/I18n.js';
@@ -35,6 +36,28 @@ export interface MiniMarker {
   /** PixelIconArt 키 (mm_*) */
   icon: string;
   priority: number;
+  /** 155차 — 아이콘 대신 그리는 도형 (핀) */
+  shape?: 'pin';
+}
+
+/** 155차 — 추적기 데이터 */
+export interface QuestTrackerData {
+  title: string;
+  objective: string;
+  howTo?: string;
+  distance?: string;
+}
+
+/** 155차 — 획득 토스트 */
+export interface ItemToastData {
+  kind: 'item' | 'quest' | 'coin';
+  name: string;
+  qty: number;
+  bound?: boolean;
+  /** 아이템 아이콘(createItemIcon) — 있으면 우선 */
+  item?: Parameters<typeof createItemIcon>[3];
+  /** 픽셀 아이콘 키 폴백 */
+  iconKey?: string;
 }
 
 export interface RegionHudConfig {
@@ -273,6 +296,13 @@ export class RegionHud extends Phaser.GameObjects.Container {
 
   // 미니맵
   private miniContainer!: Phaser.GameObjects.Container;
+  /** 155차 — 미니맵 아래 「지금 할 일」 추적기 */
+  private trackerC?: Phaser.GameObjects.Container;
+  private trackerData: QuestTrackerData | null = null;
+  /** 155차 — 우측 획득 토스트(아이템 아이콘 + 수량, 페이드 인/아웃) */
+  private toasts: { c: Phaser.GameObjects.Container; h: number }[] = [];
+  /** 미니맵 타이틀 밴드 높이 (155차 — +/− 버튼이 들어간다) */
+  private static readonly MINI_HDR = 18;
   private miniSizeIdx = 0;
   private miniMarker!: Phaser.GameObjects.Arc;
   private miniDispW = 0;
@@ -918,13 +948,34 @@ export class RegionHud extends Phaser.GameObjects.Container {
     this.miniDispW = this.cfg.cols * scale;
     this.miniDispH = this.cfg.rows * scale;
 
+    const HDR = RegionHud.MINI_HDR;
     const ox = GAME_WIDTH - this.miniDispW - 16;
-    const oy = 16;
+    const oy = 16 + HDR;
     this.miniContainer.setPosition(ox, oy);
 
+    // 타이틀 밴드(155차) — 제목 + [−][+] 크기 버튼. 컨텐츠(지도)는 밴드 아래에서 시작한다(119차 규칙).
     const frame = this.scene.add.graphics();
-    paintHudPanel(frame, -5, -5, this.miniDispW + 10, this.miniDispH + 10, { alpha: 0.95 });
+    paintHudPanel(frame, -5, -5 - HDR, this.miniDispW + 10, this.miniDispH + 10 + HDR, { alpha: 0.95, headerH: HDR });
     this.miniContainer.add(frame);
+    const mtitle = this.scene.add.text(0, -5 - HDR + 3, '지도', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#9fc0d4', fontStyle: 'bold',
+    });
+    this.miniContainer.add(mtitle);
+    const mkBtn = (x: number, glyph: string, onClick: () => void): void => {
+      const top = -5 - HDR + 2;
+      const g = this.scene.add.graphics();
+      g.fillStyle(0x0a1628, 0.92); g.fillRoundedRect(x, top, 14, 14, 3);
+      g.lineStyle(1, 0x2a5a8a, 1); g.strokeRoundedRect(x, top, 14, 14, 3);
+      const t = this.scene.add.text(x + 7, top + 7, glyph, { fontFamily: 'sans-serif', fontSize: '11px', color: '#9fc0d4', fontStyle: 'bold' }).setOrigin(0.5);
+      const hit = this.scene.add.rectangle(x + 7, top + 7, 16, 16, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
+      hit.on('pointerover', () => t.setColor('#ffffff'));
+      hit.on('pointerout', () => t.setColor('#9fc0d4'));
+      // 클릭 핸들러 안에서 미니맵을 재생성하면 입력 디스패치 중 오브젝트가 사라진다 — 다음 틱으로
+      hit.on('pointerdown', () => { this.scene.time.delayedCall(0, () => { onClick(); restoreHandCursor(this.scene); }); });
+      this.miniContainer.add([g, t, hit]);
+    };
+    mkBtn(this.miniDispW + 5 - 34, '−', () => this.stepMiniMapSize(-1));
+    mkBtn(this.miniDispW + 5 - 16, '+', () => this.stepMiniMapSize(1));
 
     const img = this.scene.add.image(0, 0, `rhud_mini_${this.cfg.mapId}`)
       .setOrigin(0, 0)
@@ -940,7 +991,7 @@ export class RegionHud extends Phaser.GameObjects.Container {
     });
     this.miniContainer.add(img);
 
-    const hint = this.scene.add.text(this.miniDispW / 2, this.miniDispH + 6, 'M 크기 전환', {
+    const hint = this.scene.add.text(this.miniDispW / 2, this.miniDispH + 6, 'M 전체 지도', {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#7a98ac',
     }).setOrigin(0.5, 0);
     this.miniContainer.add(hint);
@@ -954,6 +1005,117 @@ export class RegionHud extends Phaser.GameObjects.Container {
 
     // 재구성된 자식 히트 영역 보정
     applyScreenFixed(this.miniContainer);
+    this.layoutTracker();
+  }
+
+  /** 155차 — 타이틀바 [−]/[+]: 크기 단계 이동 (150 ↔ 250 ↔ 350, 양 끝에서 멈춘다) */
+  stepMiniMapSize(dir: 1 | -1): void {
+    const next = Phaser.Math.Clamp(this.miniSizeIdx + dir, 0, MINI_SIZES.length - 1);
+    if (next === this.miniSizeIdx) return;
+    this.miniSizeIdx = next;
+    this.buildMiniMap();
+  }
+
+  /** 미니맵 하단 y (화면 좌표) — 추적기·토스트가 그 아래에 선다 */
+  private miniBottomY(): number { return 16 + RegionHud.MINI_HDR + this.miniDispH + 22; }
+
+  // ═══════════════════════════════════════════════════
+  // 155차 — 「지금 할 일」 추적기 (미니맵 아래)
+  // ═══════════════════════════════════════════════════
+  setQuestTracker(data: QuestTrackerData | null): void {
+    const same = JSON.stringify(data) === JSON.stringify(this.trackerData);
+    this.trackerData = data;
+    if (!same) this.layoutTracker();
+  }
+
+  private layoutTracker(): void {
+    this.trackerC?.destroy();
+    this.trackerC = undefined;
+    const d = this.trackerData;
+    if (!d) return;
+    const W = Math.max(236, this.miniDispW + 10);
+    const x = GAME_WIDTH - 16 - W + 5, y = this.miniBottomY();
+    const c = this.scene.add.container(x, y);
+    const HDR = 18, PADX = 8;
+    const parts: Phaser.GameObjects.GameObject[] = [];
+    let cy = HDR + 6;
+    const mk = (txt: string, size: number, color: string, bold = false): Phaser.GameObjects.Text => {
+      const t = this.scene.add.text(PADX, cy, txt, {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: `${size}px`, color, fontStyle: bold ? 'bold' : 'normal',
+        wordWrap: { width: W - PADX * 2 }, lineSpacing: 2,
+      });
+      cy += t.height + 4;
+      parts.push(t);
+      return t;
+    };
+    mk(d.title, 12, '#ffe9a0', true);
+    mk(d.objective, 11, '#e8f4fd');
+    if (d.howTo) mk(d.howTo, 10, '#9fc0d4');
+    if (d.distance) mk(d.distance, 10, '#7fe0b0', true);
+    const H = cy + 4;
+    const bg = this.scene.add.graphics();
+    paintHudPanel(bg, 0, 0, W, H, { alpha: 0.92, headerH: HDR });
+    const head = this.scene.add.text(PADX, 3, '지금 할 일', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#4af2a1', fontStyle: 'bold',
+    });
+    const badge = this.scene.add.text(W - PADX, 3, 'J 일지', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#7a98ac',
+    }).setOrigin(1, 0);
+    c.add([bg, head, badge, ...parts]);
+    this.add(c);
+    this.trackerC = c;
+    applyScreenFixed(this);
+  }
+
+  // ═══════════════════════════════════════════════════
+  // 155차 — 획득 토스트 (우측 · 아이콘 + 이름 × 수량 · 페이드 인/아웃)
+  // ═══════════════════════════════════════════════════
+  showItemToast(t: ItemToastData): void {
+    const W = 250, H = 46;
+    const c = this.scene.add.container(GAME_WIDTH - 16 - W + 30, 0);
+    const bg = this.scene.add.graphics();
+    const gold = t.kind === 'quest' || t.bound;
+    paintHudPanel(bg, 0, 0, W, H, { alpha: 0.94 });
+    if (gold) { bg.lineStyle(1.5, 0xffd257, 0.95); bg.strokeRect(0.5, 0.5, W - 1, H - 1); }
+    c.add(bg);
+    if (t.item) {
+      const icon = createItemIcon(this.scene, 24, H / 2, t.item, 26);
+      c.add(icon);
+    } else if (t.iconKey) {
+      const ic = addPixelIcon(this.scene, t.iconKey, 24, H / 2, 16);
+      if (ic) c.add(ic);
+    }
+    const head = this.scene.add.text(46, 7, t.kind === 'quest' ? '할 일 보상' : t.kind === 'coin' ? '재화' : t.bound ? '이야기가 준 물건' : '획득', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: gold ? '#ffd257' : '#7a98ac', fontStyle: 'bold',
+    });
+    const name = this.scene.add.text(46, 21, t.qty > 1 ? `${t.name}  ×${t.qty}` : t.name, {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#e8f4fd', fontStyle: 'bold',
+    });
+    clampTextWidth(name, W - 46 - 8);
+    c.add([head, name]);
+    c.setAlpha(0);
+    this.add(c);
+    applyScreenFixed(this);
+    this.toasts.push({ c, h: H });
+    if (this.toasts.length > 4) { const old = this.toasts.shift(); old?.c.destroy(); }
+    this.relayoutToasts();
+    this.scene.tweens.add({ targets: c, alpha: 1, x: GAME_WIDTH - 16 - W, duration: 220, ease: 'Sine.easeOut' });
+    this.scene.time.delayedCall(2600, () => {
+      this.scene.tweens.add({
+        targets: c, alpha: 0, x: GAME_WIDTH - 16 - W + 30, duration: 320, ease: 'Sine.easeIn',
+        onComplete: () => { this.toasts = this.toasts.filter((e) => e.c !== c); c.destroy(); this.relayoutToasts(); },
+      });
+    });
+  }
+
+  private relayoutToasts(): void {
+    // 추적기 아래에서 시작해 아래로 쌓인다 — 퀵슬롯 바(하단 74px)를 침범하지 않는 범위
+    let y = this.miniBottomY() + (this.trackerC ? (this.trackerC.getBounds().height + 10) : 0);
+    for (const e of this.toasts) {
+      this.scene.tweens.add({ targets: e.c, y, duration: 160, ease: 'Sine.easeOut' });
+      y += e.h + 6;
+      if (y > GAME_HEIGHT - 90) break;
+    }
   }
 
   /**
@@ -990,6 +1152,13 @@ export class RegionHud extends Phaser.GameObjects.Container {
       picked.push({ x, y, m });
     }
     for (const { x, y, m } of picked) {
+      if (m.shape === 'pin') {
+        const g = this.scene.add.graphics();
+        g.fillStyle(0x0a1628, 0.9); g.fillTriangle(x - 5, y - 6, x + 5, y - 6, x, y + 2); g.fillCircle(x, y - 7, 5);
+        g.fillStyle(0x5cd0ff, 1); g.fillTriangle(x - 3.5, y - 6, x + 3.5, y - 6, x, y); g.fillCircle(x, y - 7, 3.5);
+        c.add(g);
+        continue;
+      }
       const img = addPixelIcon(this.scene, m.icon, x, y, 10);
       if (img) c.add(img);
     }

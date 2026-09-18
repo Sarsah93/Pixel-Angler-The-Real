@@ -23,6 +23,7 @@ import type { ChoiceOutcome, ChoiceRequires, QuestChoiceDef, QuestChoiceSet, Sto
 import type { SkillCategoryId } from '../types/Skills.js';
 import { STORY_QUESTS } from './StoryQuestDatabase.js';
 import { narrativeOf } from './StoryNarrative.js';
+import { getStoryNpc } from './StoryArcs.js';
 import { questDifficulty, DIFFICULTY_PAY_MULT } from '../rules/QuestDifficulty.js';
 
 // ── 헬퍼 ──
@@ -41,6 +42,29 @@ export function toneOfferChoices(kind: StoryQuestDef['kind']): QuestChoiceDef[] 
       '말은 잘하네.', 'You talk well, at least.', { affinity: t.toneJoke }),
   ];
   return kind === 'main' ? all.slice(0, 2) : all;
+}
+
+/**
+ * **무발주(혼자 하는) 할 일**의 발주 선택지 — 155차.
+ * `giver`가 비어 있는 퀘스트(M1-01 막차·M7-08 실습생)는 누가 맡기는 일이 아니라 스스로 정하는 자리다.
+ * 그런데 152차까지는 여기에도 발주 **톤** 세트(`toneOfferChoices`)가 붙어 "자신은 없는데, 해 보겠습니다"가
+ * **빈 npc id('')에 우호도 +0.03**을 적용했다(사용자 지적: "혼자 하는 일인데 왜 우호도가 붙나").
+ * 혼잣말에는 상대가 없으므로 **우호도·신뢰·거절 효과를 싣지 않는다**(`validateStoryChoices`가 강제).
+ */
+export function selfOfferChoices(): QuestChoiceDef[] {
+  return [
+    ch('self_go', '…가자.', '…Let\'s go.', '(발이 먼저 움직인다.)', '(My feet move first.)', {}),
+    ch('self_wait', '조금만 더 서 있다가.', 'Just a moment longer.',
+      '(바람이 등을 민다. 어차피 갈 길이다.)', '(The wind pushes at my back. It\'s the way I was going anyway.)', {}),
+  ];
+}
+
+/** 무발주 할 일의 완료 선택지 — 혼잣말. 보상·우호도 없음(표의 xp·해금은 그대로 지급된다) */
+export function selfCompleteChoices(): QuestChoiceDef[] {
+  return [
+    ch('self_done', '여기까지 왔다.', 'Made it this far.', '(숨을 고른다. 다음은 다음에.)', '(I catch my breath. Next comes next.)', {}),
+    ch('self_next', '다음으로.', 'On to the next.', '(뒤돌아보지 않는다.)', '(I don\'t look back.)', {}),
+  ];
 }
 
 /** 목표 종류에서 '이 사람이 가르쳐 줄 기술'의 카테고리를 고른다 */
@@ -116,9 +140,11 @@ function materialize(q: StoryQuestDef, c: QuestChoiceDef): QuestChoiceDef {
 export function choicesFor(q: StoryQuestDef): { offer: QuestChoiceDef[]; complete: QuestChoiceDef[] } {
   const n = narrativeOf(q.id);
   const def = q.choices;
-  let offer = n?.offerChoices ?? def?.offer ?? toneOfferChoices(q.kind);
-  if ((q.offerPolicy === 'once' || q.offerPolicy === 'event') && !offer.some((c) => c.outcome.decline)) offer = [...offer, DEFAULT_DECLINE];
-  const complete = (n?.complete ?? def?.complete ?? defaultCompleteChoices(q)).map((c) => materialize(q, c));
+  // 155차 — 무발주 할 일은 톤·품삯 세트가 아니라 혼잣말 세트가 폴백이다(상대가 없으니 우호도도 없다)
+  const solo = !q.giver;
+  let offer = n?.offerChoices ?? def?.offer ?? (solo ? selfOfferChoices() : toneOfferChoices(q.kind));
+  if (!solo && (q.offerPolicy === 'once' || q.offerPolicy === 'event') && !offer.some((c) => c.outcome.decline)) offer = [...offer, DEFAULT_DECLINE];
+  const complete = (n?.complete ?? def?.complete ?? (solo ? selfCompleteChoices() : defaultCompleteChoices(q))).map((c) => materialize(q, c));
   return { offer: offer.map((c) => materialize(q, c)), complete };
 }
 
@@ -178,6 +204,8 @@ export function validateStoryChoices(): string[] {
     if ((q.offerPolicy === 'once' || q.offerPolicy === 'event') && !s.offer.some((c) => c.outcome.decline)) {
       issues.push(`${q.id}: ${q.offerPolicy} 정책인데 거절 선택지가 없다`);
     }
+    // 155차 — 발주자 명부 대조 · 무발주 할 일의 사회적 효과 금지(우호도가 빈 npc id에 쌓이던 이질)
+    if (q.giver && !getStoryNpc(q.giver)) issues.push(`${q.id}: 발주자 ${q.giver}가 인물 명부에 없다`);
     for (const [stage, list] of [['offer', s.offer], ['complete', s.complete]] as const) {
       const ids = new Set<string>();
       if (list.length < 2) issues.push(`${q.id} ${stage}: 선택지 2개 미만`);
@@ -186,6 +214,15 @@ export function validateStoryChoices(): string[] {
         ids.add(c.id);
         const o = c.outcome;
         if (o.flag && !o.flag.startsWith('choice.')) issues.push(`${q.id}/${c.id}: flag는 choice. 접두 필수`);
+        if (!q.giver) {
+          if (o.affinity || o.affinityOther?.length || o.harborRep) issues.push(`${q.id}/${c.id}: 무발주(혼자 하는) 할 일에 우호도·신뢰 효과가 실려 있다`);
+          if (o.decline) issues.push(`${q.id}/${c.id}: 무발주 할 일은 거절 답을 가질 수 없다`);
+          if (o.coins || o.items?.length || o.proficiency || o.skillPoints) issues.push(`${q.id}/${c.id}: 무발주 할 일의 혼잣말이 보상을 준다`);
+        }
+        for (const a of o.affinityOther ?? []) {
+          if (!getStoryNpc(a.npcId)) issues.push(`${q.id}/${c.id}: affinityOther 대상 ${a.npcId}가 인물 명부에 없다`);
+          if (a.npcId === q.giver) issues.push(`${q.id}/${c.id}: affinityOther가 발주자 본인을 가리킨다(affinity로 써야 한다)`);
+        }
         if (o.decline && stage !== 'offer') issues.push(`${q.id}/${c.id}: decline은 발주 선택지에만`);
         if (o.payMult !== undefined) issues.push(`${q.id}/${c.id}: payMult가 환산되지 않았다`);
         for (const it of o.items ?? []) if (it.id.startsWith('qr_') && !it.bound) issues.push(`${q.id}/${c.id}: qr_ 장비는 귀속이어야 한다`);

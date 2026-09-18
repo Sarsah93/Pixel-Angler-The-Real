@@ -124,9 +124,9 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
       { id: 'inv_potion',   name: 'HP 회복 드링크', icon: '💊', category: 'consumable', subCategory: '의약품',   basePrice: 5000, price: 6000, maxPerPurchase: 5,  equippable: false, desc: 'HP를 40 회복한다.' },
       { id: 'inv_mosquito', name: '모기향',         icon: '🌀', category: 'consumable', subCategory: '야간 대비', basePrice: 2500, price: 3000, maxPerPurchase: 10, equippable: false, desc: '야간 낚시 모기 디버프 방지.' },
       { id: 'inv_seasick',  name: '멀미약',         icon: '💊', category: 'consumable', subCategory: '의약품',   basePrice: 4000, price: 5000, maxPerPurchase: 5,  equippable: false, desc: '선상 낚시 멀미 내성 10분.' },
-      { id: 'shop_snackbar', name: '초코바',        icon: '🥫', category: 'food',       subCategory: '가공품',   basePrice: 1200, price: 1500, maxPerPurchase: 10, equippable: false, hungerRestore: 12, hydrationRestore: -2, desc: '간단한 요기. 허기 +12.' },
-      { id: 'shop_water',    name: '생수 500ml',    icon: '🥫', category: 'food',       subCategory: '가공품',   basePrice: 900,  price: 1200, maxPerPurchase: 10, equippable: false, hungerRestore: 0, hydrationRestore: 30, desc: '수분 +30. 갈증 해소의 기본.' },
-      { id: 'shop_riceball', name: '주먹밥',        icon: '🥫', category: 'food',       subCategory: '가공품',   basePrice: 1800, price: 2200, maxPerPurchase: 10, equippable: false, hungerRestore: 22, hydrationRestore: 2, desc: '허기 +22 · 수분 +2. 출조 전 간편식.' },
+      { id: 'shop_snackbar', name: '초코바',        icon: '🥫', category: 'food',       subCategory: '가공품',   basePrice: 1200, price: 1500, maxPerPurchase: 10, equippable: false, hungerRestore: 12, hydrationRestore: -2, desc: '간단한 요기.' },
+      { id: 'shop_water',    name: '생수 500ml',    icon: '🥫', category: 'food',       subCategory: '가공품',   basePrice: 900,  price: 1200, maxPerPurchase: 10, equippable: false, hungerRestore: 0, hydrationRestore: 30, desc: '갈증 해소의 기본.' },
+      { id: 'shop_riceball', name: '주먹밥',        icon: '🥫', category: 'food',       subCategory: '가공품',   basePrice: 1800, price: 2200, maxPerPurchase: 10, equippable: false, hungerRestore: 22, hydrationRestore: 2, desc: '출조 전 간편식.' },
       { id: 'inv_ice_bulk',  name: '대용량 각얼음', icon: '🧊', category: 'consumable', subCategory: '보냉',     basePrice: 4000, price: 5000, maxPerPurchase: 5,  equippable: false, desc: '쿨러 얼음 넣기 재료 — 1개로 2시간 보냉.' },
     ],
   },
@@ -212,11 +212,11 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
     greeting: '갓 지은 밥이 있어요. 드시고 가세요.',
     buysCategories: ['food'],
     sells: [
-      { id: 'shop_meal_grilled', name: '생선구이 정식', icon: '🥫', category: 'food', subCategory: '가공품', basePrice: 9000,  price: 11000, maxPerPurchase: 3, equippable: false, desc: '허기 +45 · HP +30 · 피로 -20.' },
-      { id: 'shop_meal_soup',    name: '매운탕',        icon: '🥫', category: 'food', subCategory: '가공품', basePrice: 10000, price: 12000, maxPerPurchase: 3, equippable: false, desc: '허기 +40 · 수분 +15 · HP +15 · 피로 -15. 국물류.' },
+      { id: 'shop_meal_grilled', name: '생선구이 정식', icon: '🥫', category: 'food', subCategory: '가공품', basePrice: 9000,  price: 11000, maxPerPurchase: 3, equippable: false, desc: '한 끼 정식 — HP +30 · 피로 -20.' },
+      { id: 'shop_meal_soup',    name: '매운탕',        icon: '🥫', category: 'food', subCategory: '가공품', basePrice: 10000, price: 12000, maxPerPurchase: 3, equippable: false, desc: '국물 한 그릇 — HP +15 · 피로 -15.' },
       // 보양식 (129차 P7) — 피로 회복 + **드레인 감소 버프**. 수치는 data/ItemVitals.ts 가 단일 소스.
-      { id: 'shop_meal_abalone', name: '전복죽',        icon: '🥫', category: 'food', subCategory: '보양식', basePrice: 16000, price: 19000, maxPerPurchase: 2, equippable: false, desc: '허기 +50 · HP +35 · 피로 -30 · 40분간 체력 소모 -25%.' },
-      { id: 'shop_meal_eel',     name: '장어구이',      icon: '🥫', category: 'food', subCategory: '보양식', basePrice: 24000, price: 29000, maxPerPurchase: 2, equippable: false, desc: '허기 +60 · HP +45 · 피로 -40 · 60분간 체력 소모 -32%. 최고급 보양식.' },
+      { id: 'shop_meal_abalone', name: '전복죽',        icon: '🥫', category: 'food', subCategory: '보양식', basePrice: 16000, price: 19000, maxPerPurchase: 2, equippable: false, desc: '보양식 — HP +35 · 피로 -30 · 40분간 체력 소모 -25%.' },
+      { id: 'shop_meal_eel',     name: '장어구이',      icon: '🥫', category: 'food', subCategory: '보양식', basePrice: 24000, price: 29000, maxPerPurchase: 2, equippable: false, desc: '최고급 보양식 — HP +45 · 피로 -40 · 60분간 체력 소모 -32%.' },
       // 회(사시미) 카테고리 — 아이콘은 모듬회 픽셀 이미지로 통일 (추후 어종별 이미지 분리 예정)
       // 네이밍 규칙: {어종}_sashimi_{중량} / 한글: {어종} 회 ({소/중/대})
       { id: 'shop_assorted_sashimi_small', name: '모듬회 (소)', icon: '🐟', iconTexture: 'food_assorted_sashimi', category: 'food', subCategory: '회(사시미)', basePrice: 20000, price: 25000, maxPerPurchase: 2, equippable: false, desc: 'assorted sashimi (small) — 고신선도 회, 근력 1.2배 10분.' },
@@ -287,9 +287,9 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
     greeting: '조황 얘기나 하면서 한잔 하시죠.',
     buysCategories: [],
     sells: [
-      { id: 'shop_makgeolli', name: '막걸리',      icon: '🥫', category: 'food', subCategory: '가공품', basePrice: 4000, price: 5000, maxPerPurchase: 5, equippable: false, desc: '피로 -20 · 수분 -8. 술은 갈증을 부른다.' },
+      { id: 'shop_makgeolli', name: '막걸리',      icon: '🥫', category: 'food', subCategory: '가공품', basePrice: 4000, price: 5000, maxPerPurchase: 5, equippable: false, desc: '피로 -20. 술은 갈증을 부른다.' },
       { id: 'shop_anju',      name: '해물 안주',   icon: '🥫', category: 'food', subCategory: '가공품', basePrice: 12000, price: 15000, maxPerPurchase: 3, equippable: false, desc: 'HP +20, 체온 유지.' },
-      { id: 'shop_soju',      name: '소주',        icon: '🥫', category: 'food', subCategory: '가공품', basePrice: 3000, price: 4000, maxPerPurchase: 5, equippable: false, desc: '피로 -10 · 수분 -12. 추위는 잊게 해주지만 탈수가 빠르다.' },
+      { id: 'shop_soju',      name: '소주',        icon: '🥫', category: 'food', subCategory: '가공품', basePrice: 3000, price: 4000, maxPerPurchase: 5, equippable: false, desc: '피로 -10. 추위는 잊게 해주지만 탈수가 빠르다.' },
     ],
   },
 };

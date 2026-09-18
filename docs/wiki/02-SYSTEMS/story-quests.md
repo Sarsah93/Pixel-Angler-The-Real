@@ -97,6 +97,10 @@ STORY_ARCS ────┘     traineeDay (D-180)                └─ RegionHu
 | **발주 정책** `once`(거절 = 영구 소멸) 5 · `event`(계절·레벨 구간·쿨다운) 9 | ✅ | 141 — 세이브 `declined`·`offerCooldown` |
 | 서브 가방 3종(`inv_bag_*`) 실물화 + `InvItem.bound` | ✅ | 141 — `QuestRewardItems.ts` |
 | **나레이션 영문 186편**(`StoryNarrativeEn.ts` 짝 파일 — intro·offer·progress·done·objectives·epilogue) | ✅ | 151 — 829/829줄 · 누락 0 |
+| **혼잣말 퀘(무발주 M1-01·M7-08) 전용 선택지**(`selfOfferChoices`/`selfCompleteChoices` — 우호도·신뢰·거절 없음) + 검증기 확장(발주자 존재 · 무발주 = 우호도 금지 · `affinityOther` ≠ 발주자) | ✅ | **155** — 데이터 오류 3건 적발·수정(N13-3·N05-5 이중 가산 · N09-2 발주자 → 한봄) |
+| **목표 「방법」 힌트**(core `rules/QuestGuide.ts` — `objectiveHowToKo` 종류별 조작 문장 · 대화창·일지·필드 추적기 공통) | ✅ | 155 — 내부 id는 `GUIDE_NAMES`로 이름 치환 |
+| **필드 추적기 + 점멸 화살표**(`RegionHud.setQuestTracker` · `RegionFieldScene.updateQuestGuide` — npc/place/shop/region/bed 목표) + 일지 「이 할 일 추적하기」(`StoryStore.trackedId` · 세이브 `story.tracked`) | ✅ | 155 — 위치를 모르는 종류(catch·craft…)는 방법 문구만 |
+| **획득 인지** — 우측 토스트(`InventoryStore.onGained` · `StoryStore.onCoins` — 품삯·선택지 재화·완료 보상) · 인벤 NEW 점·귀속 금테 | ✅ | 155 — [S5](inventory-equipment.md) |
 
 
 ## 4-b. 일지·대화 표현형 (150차 재작성)
@@ -131,6 +135,8 @@ STORY_ARCS ────┘     traineeDay (D-180)                └─ RegionHu
 - **`spotKind: 'boat'` 미발화** — `standingSpotKind()`는 `breakwater|shore`만, 1인칭은 `hole|shore`만 낸다.
   선상 낚시가 서면 여기에 편입하고 그때 M3-01·M4-02·M4-06·N08-1/3·N11-4에 선상 조건을 얹는다.
 - `choice.*` 플래그 ~60종을 읽는 후속 조건(현재 N18-1 1곳) · 일지 '사람들'에 우호도 눈금.
+- ~~혼잣말 퀘에 우호도 +0.03~~ ✅**155차** — 무발주 퀘는 전용 선택지(효과 없음)로 갈라졌고 검증기가 재발을 막는다.
+  잔여 = **핀은 세션 메모리**(세이브 미포함) · 화살표는 위치를 아는 목표만(장소 추정 안 함).
 - event 정책 테스트용 **계절 강제(dev)** 없음 · `once` 거절 초기화 dev 명령 없음.
 - ~~`deadline.onMiss: 'cost'` 미구현~~ ✅147 — **평판 감점**으로 구현(`TUNING.story.missRepPerDay` 1/일).
   재화 벌칙(`missCostKrw`)은 배선하지 않는다: M1-06~M1-11 구간은 현금이 품삯뿐이라 회복 불가 상태가 된다.
@@ -138,6 +144,18 @@ STORY_ARCS ────┘     traineeDay (D-180)                └─ RegionHu
 - dev 콘솔(F10)에 퀘 점프/완료 명령(구세이브 고레벨 테스터용).
 
 ## 6. 함정·불변조건
+
+### 17. 상대가 없는 퀘스트에 상대 효과를 싣지 않는다 (155차)
+
+발주자가 빈 퀘(M1-01·M7-08)는 **혼잣말**이다. `choicesFor`가 톤 세트로 폴백하면 그 안의 `affinity`가
+`affinity['']`에 쌓인다(실측 +0.03). 무발주면 `selfOfferChoices`/`selfCompleteChoices`만 쓰고,
+`validateStoryChoices`가 우호도·신뢰·거절·재화를 금지한다. `applyOutcome`도 발주자 없으면 우호도를 버린다.
+
+### 18. `affinityOther`는 발주자를 가리키면 안 된다 (155차)
+
+발주자 본인을 `affinityOther`로 적으면 `affinity`와 **두 번 더해진다**(N13-3·N05-5·N09-2 실측).
+발주자 효과는 `affinity`, 다른 인물은 `affinityOther`. 발주 대사가 다른 인물의 말이면 **발주자 필드가 틀린 것**이다
+(N09-2 — 대사는 한봄인데 행은 이수연이었다). 검증기가 둘 다 잡는다.
 
 ### 13. 난이도는 **강제되는 것만** 센다 (152차)
 

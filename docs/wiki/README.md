@@ -2,7 +2,7 @@
 
 > **이 위키의 목적**: 날짜·차수 순으로만 쌓이던 작업 기록을 **구조(시스템) 기준**으로 다시 배열해,
 > "지금 무엇이 어디까지 되어 있고 / 무엇이 남았고 / 어디가 위험한가"를 한 화면에서 판별한다.
-> 최종 업데이트: 2026-09-15 (135차 반영)
+> 최종 업데이트: 2026-09-18 (155차 반영)
 
 ---
 
@@ -38,11 +38,11 @@
 
 | # | 시스템 | 상태 | 핵심 소스 | 잔여 요약 |
 |---|---|---|---|---|
-| S1 | [낚시 루프 (1인칭)](02-SYSTEMS/fishing-loop.md) | 🟢 | `FirstPersonFishingScene` · core 물리 9종 · **`HoleFishing`(149차 구멍치기)** | 어탐 레이더, 가이드 삽화 실사화, `TUNING.hole` F8 확정 |
-| S2 | [필드·캐스팅 (탑다운)](02-SYSTEMS/world-field.md) | 🟢 | `RegionFieldScene` · **`SeamlessChunks`** | 비주얼 4레이어 에셋, 사운드 |
+| S1 | [낚시 루프 (1인칭)](02-SYSTEMS/fishing-loop.md) | 🟢 | `FirstPersonFishingScene` · core 물리 9종 · **`HoleFishing`(149차 구멍치기)** · **채비 고정(155 — U 탭 우측 하단)** | 어탐 레이더, 가이드 삽화 실사화, `TUNING.hole` F8 확정 · 155: 결과 후 항상 탑다운 복귀 |
+| S2 | [필드·캐스팅 (탑다운)](02-SYSTEMS/world-field.md) | 🟢 | `RegionFieldScene` · **`SeamlessChunks`** · **`FullMapPanel`(155 전체 지도 M·핀)** · 퀘스트 화살표·추적기 | 비주얼 4레이어 에셋, 사운드 · 핀은 세션 메모리 |
 | S3 | [**손질 (회뜨기)**](02-SYSTEMS/butchery.md) | 🚧 | `ButcheryProcess` · `ButcheryPanel` · `CephalopodStages` | 두족류 **무늬오징어·한치·문어 개방**(97차) · 갑오징어 잔여 · 광어 F9 잔여 |
-| S4 | [회썰기·플레이팅·불요리](02-SYSTEMS/sashimi-cooking.md) | 🟢 | `SashimiPanel` · `UtilizationPanel` · **미완성 접시**(135) · **불요리**(154 — `CookingStore`·`CookingPanel`·`StoveFieldSystem`) | 스시, 요리 후보 확장, 화구 실사 에셋 |
-| S5 | [인벤토리·장비·보관](02-SYSTEMS/inventory-equipment.md) | 🟢 | `InventoryStore` · `CoolerStore` · `FridgeStore` · **`InventoryPanel` 윈도우드 스크롤(148차)** | **148차 가방 사다리 5단계 실효화**(25 → 28/30/33/35/37 · 용량 밖 '잠긴 칸') — 예약 슬롯 6종 아이템 대기 · 탭별 용량 차등(core `Backpack.ts`) 미배선 |
+| S4 | [회썰기·플레이팅·불요리](02-SYSTEMS/sashimi-cooking.md) | 🟢 | `SashimiPanel` · `UtilizationPanel` · **미완성 접시**(135) · **불요리**(154 — `CookingStore`·`CookingPanel`·`StoveFieldSystem`) · **사시미 별 5개**(155 — `SashimiQuality`) | 스시, 요리 후보 확장, 화구 실사 에셋 · 사시미 두께 균일성 |
+| S5 | [인벤토리·장비·보관](02-SYSTEMS/inventory-equipment.md) | 🟢 | `InventoryStore` · `CoolerStore` · `FridgeStore` · **`InventoryPanel` 윈도우드 스크롤(148차)** | **148차 가방 사다리 5단계 실효화**(25 → 28/30/33/35/37 · 용량 밖 '잠긴 칸') — 예약 슬롯 6종 아이템 대기 · 탭별 용량 차등(core `Backpack.ts`) 미배선 · **155 획득 토스트·NEW 점·채비 잠금 세이브** |
 | S6 | [경제·상점·시세](02-SYSTEMS/economy-data.md) | 🟢 | `MarketPriceEvaluator` · `ShopPanel` · **`ConsignmentAuction`(147차 위판)** · `AuctionHousePanel` | **147차 위판 개통**(직판장 창구 겸용 · 평판 = 수수료) — `TUNING.auction` F8 조율 · 경매 **구매자 측** 미개방 · 낚시점 전용 상점 |
 | S7 | [월드맵·지역 타일맵](02-SYSTEMS/world-field.md) | 🔶 | `WorldMapScene` · **OSM 파이프라인 3종** · `build_region_maps.py` | 속초(심리스 v2)·부산·홈타운 개방 — OSM 16개 지역 확장 잔여 |
 | S8 | [홈베이스 (집)](02-SYSTEMS/home-base.md) | 🔶 | `HomeInteriorScene` · `types/HomeBase.ts` | 하우스 Tier 1~3, 수조 패널, 농사 |
@@ -58,9 +58,9 @@
 | S18 | 멀티플레이(구 항목) | — | | **S24로 이관**(143차) |
 | S19 | Tauri 패키징 | ⬜ | `apps/tauri-wrapper` | Phase 9 (아이콘만 준비됨) |
 | S20 | [도감·발견·dev 도구](02-SYSTEMS/discovery-wiki.md) | 🟢 | `DiscoveryStore` · `AnglerLogScene` · F10 콘솔 | 위키 상세 팝업 · FP 토스트 |
-| S21 | [진행 — 레벨·스킬·생존·면허·일지](02-SYSTEMS/progression.md) | 🔶 | `Progression.ts` · `Vitals.ts`·`StatusEffects.ts` · `SkillDatabase`(**92노드 Σ=215**) · `CraftingDatabase` · `License.ts` · 패널 3종 · `CollapseOverlay` | **스킬 효과 배선 43/92**(130차) · 신규 면허 효과 1/7 · 농사 카테고리 잠김 · **P1~P9 완료**(P8 = 134차 S22) · 스토리 면허 4종 추가(보너스 제외) · 눕기 스프라이트 대기 |
-| S22 | [스토리·퀘스트](02-SYSTEMS/story-quests.md) | 🔶 | **정본 [`STORY_SPEC_v4`](../../.agents/STORY_SPEC_v4.md)** · `Story.ts` · `FisheryLaw.ts` · `StoryQuestDatabase`(**186퀘 · 아크 23**) · `DayJobs`(품삯 3) · `JournalPages` · `StoryArcs` · `StoryStore` · `DialoguePanel`(**140차 재작성 — 선택지·우호도**) · `JournalPanel` · `StoryChoices` · `Affinity.ts` | **134차 데이터·엔진 + 135차 Ch1 실시스템 + 140차 선택지 분기·우호도** — 배 출조·좌판 등 계통 · Ch2+ 대사 · NPC 스프라이트 잔여 · **147차 위판 UI(M2-01)·총회 연출(M1-11)·`onMiss` 평판 감점 완료** · ~~남은 manual = 구멍치기(1-4)~~ **✅149차 — 조법 구현 + `spotKind` 장소 게이트** · **148차 가방 2~5단계 실효화 완료** |
-| S23 | [캐릭터 아트](02-SYSTEMS/character-art.md) | 🟢 | `art/CharacterArt.ts`(셀 32x32 · 레이어 14) · `art/CharacterCast.ts`(41인) · `ui/CharacterSprite.ts`(**144차 `paceMult`**) · `CharacterCreateScene`(139차 UI · 140차 얼굴형 · **144차 회전·동작 버튼**) | **140차 머리 9×10·얼굴형 3종·측면 재작업 완료** · 사용자 GPT 스타일 실험 대기(`CHARACTER_SPRITE_PROMPT_SPEC`) · 대화창 초상 아트 · 눕기 프레임 · **달리기 전용 프레임**(현재는 걷기 가속) |
+| S21 | [진행 — 레벨·스킬·생존·면허·일지](02-SYSTEMS/progression.md) | 🔶 | `Progression.ts` · `Vitals.ts`·`StatusEffects.ts` · `SkillDatabase`(**92노드 Σ=215**) · `CraftingDatabase` · `License.ts` · 패널 3종 · `CollapseOverlay` | **스킬 효과 배선 43/92**(130차) · 신규 면허 효과 1/7 · 농사 카테고리 잠김 · **P1~P9 완료**(P8 = 134차 S22) · 스토리 면허 4종 추가(보너스 제외) · 눕기 스프라이트 대기 · **155 드레인 하루 3끼 기준 + `FoodNutrition` 테이블** |
+| S22 | [스토리·퀘스트](02-SYSTEMS/story-quests.md) | 🔶 | **정본 [`STORY_SPEC_v4`](../../.agents/STORY_SPEC_v4.md)** · `Story.ts` · `FisheryLaw.ts` · `StoryQuestDatabase`(**186퀘 · 아크 23**) · `DayJobs`(품삯 3) · `JournalPages` · `StoryArcs` · `StoryStore` · `DialoguePanel`(**140차 재작성 — 선택지·우호도**) · `JournalPanel` · `StoryChoices` · `Affinity.ts` | **134차 데이터·엔진 + 135차 Ch1 실시스템 + 140차 선택지 분기·우호도** — 배 출조·좌판 등 계통 · Ch2+ 대사 · NPC 스프라이트 잔여 · **147차 위판 UI(M2-01)·총회 연출(M1-11)·`onMiss` 평판 감점 완료** · ~~남은 manual = 구멍치기(1-4)~~ **✅149차 — 조법 구현 + `spotKind` 장소 게이트** · **148차 가방 2~5단계 실효화 완료** · **155 혼잣말 퀘 선택지·검증기(데이터 오류 3건) · 목표 「방법」 힌트 · 추적기·점멸 화살표** |
+| S23 | [캐릭터 아트](02-SYSTEMS/character-art.md) | 🟢 | `art/CharacterArt.ts`(셀 32x32 · 레이어 14) · `art/CharacterCast.ts`(41인) · `ui/CharacterSprite.ts`(**144차 `paceMult`**) · `CharacterCreateScene`(139차 UI · 140차 얼굴형 · **144차 회전·동작 버튼**) | **140차 머리 9×10·얼굴형 3종·측면 재작업 완료** · 사용자 GPT 스타일 실험 대기(`CHARACTER_SPRITE_PROMPT_SPEC`) · ~~대화창 초상 아트~~ 152 → **155 초상↔필드 문법 정합** · 눕기 프레임 · **달리기 전용 프레임**(현재는 걷기 가속) |
 | S24 | [싱글/멀티플레이](02-SYSTEMS/multiplayer.md) | 🔶 | `types/Multiplayer.ts`(공용 계약) · `server/multiplayer/`(`/mp/*` REST · 세션 · 디스크 영속) · `net/MultiplayerClient.ts` · `MultiplayerLobbyScene` · `FieldEventManager` | **143차 신설 · 145차 세션 세계** — 통발 공유 · 공용 시드 · 외형/활동 · 밀어내기 · 건물 반투명 · 채팅 · 이어하기 · **유저 간 거래(공증)·정보 보기(146차)**. 진행도는 **설계상 각자**. 남은 것은 NAT 통과·서버 권위·마켓 원장 |
 
 ---

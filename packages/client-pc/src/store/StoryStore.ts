@@ -43,6 +43,8 @@ export interface StorySaveState {
   traineeDay: number | null;
   /** 일용직 일감 — 일감 id → { 마지막 근무 일차, 그날 횟수 } (135차) */
   jobs?: Record<string, { day: number; count: number }>;
+  /** 155차 — 일지에서 「추적하기」를 켠 할 일 */
+  tracked?: string | null;
   /** NPC 우호도 (140차) — npcId → −1~1. 없으면 0 */
   affinity?: AffinityState;
   /** 퀘스트별 고른 선택지 (140차) — questId → { offer, complete } */
@@ -113,8 +115,12 @@ class StoryStoreManager {
   private offerCooldown: Record<string, number> = {};
   private affinity: AffinityState = {};
   private choices: Record<string, { offer?: string; complete?: string }> = {};
+  /** 155차 — 추적 중인 할 일 id (필드 화살표·추적기가 최우선으로 가리킨다) */
+  trackedId: string | null = null;
   /** UI 통지 훅 — 퀘 완료/수락/조행록 갱신 (필드 HUD 토스트) */
   onNotify: ((msg: string) => void) | null = null;
+  /** 155차 — 재화 지급 훅(토스트). 로그 한 줄로만 오가던 보상을 눈에 보이게 */
+  onCoins: ((amount: number, whyKo: string) => void) | null = null;
 
   bind(host: StoryHost): void { this.host = host; }
 
@@ -122,7 +128,7 @@ class StoryStoreManager {
   serialize(): StorySaveState {
     return {
       quests: this.quests, rep: this.rep, pageCatch: this.pageCatch, day: this.day, traineeDay: this.traineeDay, jobs: this.jobs,
-      affinity: this.affinity, choices: this.choices,
+      affinity: this.affinity, choices: this.choices, tracked: this.trackedId,
       declined: [...this.declined], offerCooldown: this.offerCooldown,
     };
   }
@@ -134,7 +140,9 @@ class StoryStoreManager {
     this.traineeDay = s?.traineeDay ?? null;
     this.jobs = s?.jobs ?? {};
     this.affinity = s?.affinity ?? {};
+    delete this.affinity[''];   // 155차 — 구세이브에 빈 npc id로 쌓인 우호도(M1-01 톤 선택지) 정리
     this.choices = s?.choices ?? {};
+    this.trackedId = s?.tracked ?? null;
     this.declined = new Set(s?.declined ?? []);
     this.offerCooldown = s?.offerCooldown ?? {};
     this.refreshAutoQuests();
@@ -250,13 +258,20 @@ class StoryStoreManager {
     const ctx = this.choiceCtx(q.giver);
     return choicesFor(q)[stage].filter((c) => choiceVisible(c, ctx));
   }
+  /** 155차 — 추적 토글. 완료·미수락 할 일은 추적할 수 없다 */
+  setTracked(id: string | null): void {
+    if (id && this.quests[id]?.status !== 'active') return;
+    this.trackedId = id;
+    this.host?.markDirty();
+  }
+
   /** 기록된 선택 (분기 확인·일지 표기) */
   chosen(questId: string): { offer?: string; complete?: string } | undefined { return this.choices[questId]; }
 
   /** 선택지 결과 적용 — 전부 가산. 반환 = 사용자에게 보여줄 한 줄 요약 */
   private applyOutcome(q: StoryQuestDef, o: ChoiceOutcome): string[] {
     const h = this.host; const out: string[] = [];
-    if (o.coins) { h?.addCoins(o.coins); out.push(`${o.coins > 0 ? '+' : ''}${o.coins.toLocaleString()}원`); }
+    if (o.coins) { h?.addCoins(o.coins); out.push(`${o.coins > 0 ? '+' : ''}${o.coins.toLocaleString()}원`); this.onCoins?.(o.coins, q.titleKo); }
     for (const it of o.items ?? []) {
       const ok = h?.giveItem(it.id, it.qty) ?? false;
       out.push(ok ? `${it.id} ×${it.qty}` : `${it.id} (인벤토리 공간 부족 — 미지급)`);
@@ -270,7 +285,8 @@ class StoryStoreManager {
       const ok = h?.grantProfLevelUp(o.proficiencyLevelUp) ?? false;
       out.push(ok ? '숙련도 1레벨 상승' : '숙련도 레벨업 — 그 기술을 배우지 않아 무효');
     }
-    if (o.affinity) { const v = this.addAffinity(q.giver, o.affinity); out.push(`우호도 ${o.affinity > 0 ? '+' : ''}${o.affinity} (${v.toFixed(2)})`); }
+    // 155차 — 무발주(혼자 하는) 할 일은 우호도를 받을 상대가 없다. 구 코드는 빈 npc id('')에 쌓았다.
+    if (o.affinity && q.giver) { const v = this.addAffinity(q.giver, o.affinity); out.push(`우호도 ${o.affinity > 0 ? '+' : ''}${o.affinity} (${v.toFixed(2)})`); }
     for (const a of o.affinityOther ?? []) { this.addAffinity(a.npcId, a.delta); out.push(`${a.npcId} 우호도 ${a.delta > 0 ? '+' : ''}${a.delta}`); }
     if (o.harborRep) { this.addHarborRep(q.region, o.harborRep); out.push(`항구 신뢰 +${o.harborRep}`); }
     if (o.seaRep) { this.addSeaRep(o.seaRep); out.push(`바다 평판 +${o.seaRep}`); }
@@ -346,7 +362,7 @@ class StoryStoreManager {
     const xp = Math.round(q.xp * xpMult);
     h?.grantXp(xp);
     const rwl: string[] = [`경험치 +${xp.toLocaleString()}`];
-    if (q.rewards?.coins) { const c = Math.round(q.rewards.coins * coinMult); h?.addCoins(c); rwl.push(`${c.toLocaleString()}원`); }
+    if (q.rewards?.coins) { const c = Math.round(q.rewards.coins * coinMult); h?.addCoins(c); rwl.push(`${c.toLocaleString()}원`); this.onCoins?.(c, q.titleKo); }
     for (const lic of q.rewards?.licenses ?? []) { h?.acquireLicense(lic); rwl.push(`자격: ${getLicenseByType(lic as never)?.nameKo ?? lic}`); }
     // 140차 — 아이템 보상 실지급. 141차 — 귀속(bound) 플래그를 실어 준다. 공간 부족은 안내로 남긴다.
     for (const it of q.rewards?.items ?? []) {
@@ -360,6 +376,7 @@ class StoryStoreManager {
     if (q.unlocks?.length) rwl.push(...q.unlocks.filter((u) => u.startsWith('region:')).map((u) => `지역 개방: ${u.slice(7)}`));
     this.lastRewardLines = rwl;
     this.lastAction = 'completed';
+    if (this.trackedId === id) this.trackedId = null;
     const lines: string[] = [];
     if (choice) { this.choices[id] = { ...this.choices[id], complete: choice.id }; lines.push(...this.applyOutcome(q, choice.outcome)); }
     if (q.giver) this.addAffinity(q.giver, q.kind === 'sub' ? TUNING.affinity.onSubComplete : TUNING.affinity.onMainComplete);
@@ -662,6 +679,7 @@ class StoryStoreManager {
     this.host?.spendLabor(job.hunger * c, job.hydration * c, job.fatigue * c);
     const wage = this.jobWage(job);
     this.host?.addCoins(wage);
+    this.onCoins?.(wage, `품삯 · ${job.nameKo}`);
     if (job.rep) this.addHarborRep(job.regionId, job.rep);
     const rec = this.jobs[jobId];
     this.jobs[jobId] = rec && rec.day === this.day

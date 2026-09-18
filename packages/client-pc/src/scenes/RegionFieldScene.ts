@@ -97,7 +97,12 @@ import { StoryStore } from '../store/StoryStore.js';
 import { loadSettings } from './SettingsScene.js';
 import { MultiplayerClient } from '../net/MultiplayerClient.js';
 import { STORY_NPC_PLACEMENTS, STORY_PLACES, type StoryNpcPlacement } from '../data/StoryNpcs.js';
-import { getStoryNpc, validateStoryQuests, validateStoryChoices, getSkillById, profScale, gearFaultChance, GEAR_REF_PRICE, gearUsable, GEAR_FAULTS } from '@tra/core';
+import { getStoryNpc, validateStoryQuests, validateStoryChoices, getSkillById, profScale, gearFaultChance, GEAR_REF_PRICE, gearUsable, GEAR_FAULTS,
+  STORY_QUESTS, narrativeOf, nextObjectiveIndex, objectiveTarget, objectiveHowToKo, getDayJob, getRegionById, WORLD_NODE_DATABASE,
+  type StoryQuestDef, type QuestGuideTarget, type GuideNames } from '@tra/core';
+import { FullMapPanel } from '../ui/FullMapPanel.js';
+import { MapPinStore } from '../store/MapPinStore.js';
+import { buildItemWikiCatalog } from '../data/WikiCatalog.js';
 import { playCollapse, type CollapseKind } from '../ui/CollapseOverlay.js';
 import { TUNING, getTrapById, MP_CHAT_MAX_LEN, type RegionFishFarms } from '@tra/core';
 // 147차 — 위판(경매 현장). 구매자 측 AuctionEngine과 방향이 반대다(ConsignmentAuction 헤더 참조).
@@ -278,6 +283,17 @@ export class RegionFieldScene extends Phaser.Scene {
 
   // ── 팝업 스택 (ESC는 최상단부터 닫음) ──
   private popupStack: { panel: Phaser.GameObjects.Container; close: () => void }[] = [];
+  // ── 155차 — 퀘스트 목표 화살표 가이드 + 「지금 할 일」 추적기 + 전체 지도 ──
+  private questGuideG?: Phaser.GameObjects.Graphics;
+  private questGuideLbl?: Phaser.GameObjects.Text;
+  private questGuideAt = 0;
+  private questTargetPos: { x: number; y: number; label: string } | null = null;
+  private guideItemNames = new Map<string, string>();
+  private fullMapClose?: () => void;
+  private lastMiniMarkers: MiniMarker[] = [];
+  /** 155차 — 전체 지도 핀 화살표(청록) */
+  private pinArrowG?: Phaser.GameObjects.Graphics;
+  private pinArrowLbl?: Phaser.GameObjects.Text;
   // 단축키 토글용 패널 참조
   private invPanel: InventoryPanel | null = null;
   private statusPanel: StatusPanel | null = null;
@@ -956,7 +972,19 @@ export class RegionFieldScene extends Phaser.Scene {
     // 134차 — 스토리: 지역 방문 이벤트 · NPC 배치 · 데이터 무결성(dev)
     GameState.currentRegionId = this.region;
     StoryStore.event({ kind: 'visit', placeKey: `region:${this.region}` });
-    StoryStore.onNotify = (m) => this.hud?.pushLog(m);
+    MapPinStore.onChange = () => this.refreshQuestMarkers(true);
+    this.events.once('shutdown', () => { MapPinStore.onChange = null; });
+    StoryStore.onNotify = (m) => {
+      this.hud?.pushLog(m);
+      // 155차 — 수락·완료·거절은 로그 한 줄로 끝내지 않는다(테스터: "코드-내적 로그로만 주고받는다")
+      if (m.startsWith('[할 일]')) this.floatingHint(m.replace(/^\[할 일\]\s*/, ''));
+    };
+    // 155차 — 획득 토스트(아이콘 + 수량, 우측 페이드). 퀘스트 보상·상점 구매·손질 산출 전부 같은 경로다.
+    InventoryStore.onGained = (item, qty) => this.hud?.showItemToast({
+      kind: item.bound ? 'quest' : 'item', name: item.name, qty, bound: item.bound, item,
+    });
+    StoryStore.onCoins = (n, why) => this.hud?.showItemToast({ kind: 'coin', name: `${n > 0 ? '+' : ''}${n.toLocaleString()}원 — ${why}`, qty: 1, iconKey: 'rw_coin' });
+    this.events.once('shutdown', () => { InventoryStore.onGained = null; StoryStore.onCoins = null; });
     this.placeStoryNpcs();
     if (import.meta.env.DEV) {
       const issues = [...validateStoryQuests(), ...validateStoryChoices()];
@@ -2079,7 +2107,8 @@ export class RegionFieldScene extends Phaser.Scene {
     this.input.keyboard!.on('keydown-ENTER', () => { if (this.isPaused) this.activatePauseSel(); });
 
     // M: 미니맵 / I: 인벤토리 / S: 스테이터스 / U: 활용 / E: 상호작용·장비
-    this.input.keyboard!.on('keydown-M', () => { if (!this.uiBlocked) this.hud?.toggleMiniMapSize(); });
+    // 155차 — M = 전체 지도 오버레이(휠 줌). 미니맵 크기는 타이틀바 [−][+]가 맡는다.
+    this.input.keyboard!.on('keydown-M', () => { if (!this.isPaused) this.toggleFullMap(); });
     this.input.keyboard!.on('keydown-I', () => { if (!this.isPaused) this.toggleInventory(); });
     this.input.keyboard!.on('keydown-F1', (e: KeyboardEvent) => { e.preventDefault?.(); if (!this.isPaused) this.openHelpLibrary(); });
     this.input.keyboard!.on('keydown-S', () => { if (!this.isPaused) this.toggleStatus(); });
@@ -3437,6 +3466,7 @@ export class RegionFieldScene extends Phaser.Scene {
     }
     if (this.bootFailed) return;   // 맵 로드 실패 안내 화면 — 필드 오브젝트가 없다
     this.hud?.updatePlayerMarker(this.playerBody.x, this.playerBody.y);
+    this.updateQuestGuide(delta);
     this.updateWeatherFx(delta);
     // 심리스 청크 스트리밍 — 상주 갱신 + 프레임당 1청크 베이킹
     // (UI 열림/전환 중에도 대기 베이킹은 계속 소화한다 — 시각 공백 방지)
@@ -3885,6 +3915,10 @@ export class RegionFieldScene extends Phaser.Scene {
         ? { wx: n.x, wy: n.y - 12, icon: mk, priority: mk === 'mm_ready' ? 3 : 2 }
         : { wx: n.x, wy: n.y - 12, icon: 'mm_npc', priority: 2 });
     }
+    // 155차 — 전체 지도에서 찍은 핀은 미니맵에도 (청록 다이아)
+    const pin = MapPinStore.get(this.region);
+    if (pin) markers.push({ wx: pin.x, wy: pin.y, icon: 'mm_pin', priority: 4, shape: 'pin' });
+    this.lastMiniMarkers = markers;
     this.hud?.setMiniMarkers(markers);
   }
 
@@ -4260,6 +4294,204 @@ export class RegionFieldScene extends Phaser.Scene {
   }
 
   /** NPC 근접 [F] 힌트 + 방문 장소(영금정 등) 자동 달성 — 150ms 스로틀 */
+  // ═══════════════════════════════════════════════════
+  // 155차 — 퀘스트 목표 화살표 가이드 + 추적기 + 전체 지도
+  // ═══════════════════════════════════════════════════
+
+  /** 이름 조회 — core `objectiveHowToKo`가 클라 데이터 이름을 쓰게 한다 */
+  private guideNames(): GuideNames {
+    return {
+      npcName: (id) => getStoryNpc(id)?.nameKo ?? id,
+      itemName: (id) => {
+        const hit = this.guideItemNames.get(id);
+        if (hit) return hit;
+        const n = buildItemWikiCatalog().find((w) => w.id === id)?.name ?? id;
+        this.guideItemNames.set(id, n);
+        return n;
+      },
+      regionName: (id) => this.regionNameKo(id),
+      jobName: (id) => getDayJob(id)?.nameKo ?? id,
+      placeName: (key) => STORY_PLACES.find((p) => p.key === key)?.labelKo ?? key.replace(/^poi:/, ''),
+    };
+  }
+
+  private regionNameKo(id: string): string {
+    if (id === 'hometown') return '숙소(집)';
+    return getRegionById(id)?.nameKo ?? WORLD_NODE_DATABASE.find((n) => n.id === id)?.name ?? id;
+  }
+
+  /**
+   * 지금 안내할 할 일 — 활성(메인 우선) → 전부 끝났으면 발주자에게 보고 → 활성이 없으면 받을 수 있는 메인.
+   * 화살표는 **하나만** 가리킨다(여럿을 동시에 가리키면 어느 것도 못 가리킨 셈이다).
+   */
+  private pickGuideQuest(): { q: StoryQuestDef; idx: number | null; kind: 'active' | 'offer' } | null {
+    // 일지에서 「추적하기」를 켠 할 일이 최우선(사용자 지시) — 없으면 활성 메인 → 서브 → 받을 수 있는 메인
+    const tracked = StoryStore.trackedId ? STORY_QUESTS.find((q) => q.id === StoryStore.trackedId) : undefined;
+    if (tracked && StoryStore.status(tracked) === 'active') {
+      return { q: tracked, idx: nextObjectiveIndex(tracked, (i) => StoryStore.objectiveDone(tracked, i)), kind: 'active' };
+    }
+    const act = STORY_QUESTS.filter((q) => StoryStore.status(q) === 'active')
+      .sort((a, b) => (a.kind === b.kind ? 0 : a.kind === 'main' ? -1 : 1));
+    for (const q of act) return { q, idx: nextObjectiveIndex(q, (i) => StoryStore.objectiveDone(q, i)), kind: 'active' };
+    const off = STORY_QUESTS.find((q) => q.kind === 'main' && !!q.giver && StoryStore.status(q) === 'available');
+    return off ? { q: off, idx: null, kind: 'offer' } : null;
+  }
+
+  /** 목표 → 이 지역의 월드 좌표(있으면) / 다른 지역이면 `away` */
+  private resolveGuideTarget(t: QuestGuideTarget): { x: number; y: number; label: string } | { away: string } | null {
+    const names = this.guideNames();
+    switch (t.kind) {
+      case 'npc': {
+        if (!t.npcId) return null;
+        const n = this.storyNpcs.find((s) => s.def.npcId === t.npcId);
+        if (n) return { x: n.x, y: n.y - 12, label: names.npcName(t.npcId) };
+        const pl = STORY_NPC_PLACEMENTS.find((p) => p.npcId === t.npcId);
+        return pl ? { away: this.regionNameKo(pl.regionId) } : null;
+      }
+      case 'place': {
+        const pl = STORY_PLACES.find((p) => p.key === t.placeKey);
+        if (!pl) return null;
+        if (pl.regionId !== this.region) return { away: this.regionNameKo(pl.regionId) };
+        return { x: pl.tx * TR + TR / 2, y: pl.ty * TR + TR / 2, label: pl.labelKo };
+      }
+      case 'shop': {
+        const want = t.shopHint === 'daily' ? 'mm_daily' : t.shopHint === 'market' ? 'mm_market' : t.shopHint === 'mart' ? 'mm_mart' : null;
+        const px = this.playerBody.x, py = this.playerBody.y;
+        const pool = want ? this.miniShopMarkers.filter((m) => m.icon === want) : this.miniShopMarkers;
+        const list = pool.length ? pool : this.miniShopMarkers;
+        let best: MiniMarker | null = null, bd = Infinity;
+        for (const m of list) { const d = Math.hypot(m.wx - px, m.wy - py); if (d < bd) { bd = d; best = m; } }
+        if (!best) return this.region === 'hometown' ? { away: '속초 시장' } : null;
+        const kind = (Object.entries(RegionFieldScene.MINI_SHOP_ICON).find(([, ic]) => ic === best!.icon)?.[0] ?? 'market') as BuildingKind;
+        return { x: best.wx, y: best.wy, label: pool.length ? BUILDING_LABEL[kind] : '가까운 상점' };
+      }
+      case 'region': {
+        if (!t.regionId || t.regionId === this.region) return null;
+        if (this.region === 'hometown') {
+          const bus = this.homeObjects.find((o) => o.interact === 'bus');
+          if (bus) return { x: bus.tx * TR + TR / 2, y: bus.ty * TR + TR / 2, label: '출조 버스' };
+        }
+        return { away: this.regionNameKo(t.regionId) };
+      }
+      case 'bed': {
+        if (this.region === 'hometown') {
+          const door = this.homeObjects.find((o) => o.interact === 'door');
+          if (door) return { x: door.tx * TR + TR / 2, y: door.ty * TR + TR / 2, label: '집 (침대)' };
+        }
+        return { away: '숙소(집)' };
+      }
+      default: return null;
+    }
+  }
+
+  /** 400ms마다 목표를 다시 고르고, 매 프레임 화살표를 그린다 */
+  private updateQuestGuide(delta: number): void {
+    this.questGuideAt += delta;
+    if (this.questGuideAt >= 400) {
+      this.questGuideAt = 0;
+      const pick = this.pickGuideQuest();
+      if (!pick) { this.questTargetPos = null; this.hud?.setQuestTracker(null); }
+      else {
+        const names = this.guideNames();
+        const { q, idx, kind } = pick;
+        let target: QuestGuideTarget; let objective: string; let howTo: string;
+        if (kind === 'offer') {
+          target = { kind: 'npc', npcId: q.giver };
+          objective = `새 할 일 — ${names.npcName(q.giver)}에게 말을 건다`;
+          howTo = `${names.npcName(q.giver)}에게 다가가 [F] → 「내가 도와줄 수 있는 게 있을까요?」`;
+        } else if (idx === null) {
+          target = q.giver ? { kind: 'npc', npcId: q.giver } : { kind: 'none' };
+          objective = q.giver ? `${names.npcName(q.giver)}에게 돌아가 보고한다` : '할 일을 마쳤다 — 일지(J)에서 확인';
+          howTo = q.giver ? `${names.npcName(q.giver)}에게 [F]` : '';
+        } else {
+          const o = q.objectives[idx];
+          target = objectiveTarget(q, o);
+          const tgt = StoryStore.objectiveTarget(o);
+          const cur = Math.min(tgt, StoryStore.progress(q.id)?.obj[idx] ?? 0);
+          objective = (narrativeOf(q.id)?.objectives?.[idx] ?? o.labelKo) + (tgt > 1 ? ` (${cur}/${tgt})` : '');
+          howTo = objectiveHowToKo(q, o, names);
+        }
+        const res = this.resolveGuideTarget(target);
+        let distance: string | undefined;
+        if (res && 'away' in res) {
+          this.questTargetPos = null;
+          distance = `다른 지역 — ${res.away}`;
+          if (!howTo || target.kind === 'npc') howTo = `${res.away}(으)로 이동 — 버스 정류장 [F] → 전국 지도`;
+        } else if (res) {
+          this.questTargetPos = res;
+        } else this.questTargetPos = null;
+        this.hud?.setQuestTracker({ title: (StoryStore.trackedId === q.id ? '[추적 중] ' : '') + q.titleKo, objective, howTo, distance });
+      }
+    }
+    this.drawQuestArrow();
+  }
+
+  /** 캐릭터 기준 화살표 — 목표 방향, 반지름 46px. 가까우면(56px) 감춘다. 점멸(사용자 지시 "빤짝이는 화살표"). */
+  private drawQuestArrow(): void {
+    const blocked = !this.playerBody || this.uiBlocked || this.isTransitioning;
+    const t = this.questTargetPos;
+    if (!this.questGuideG) {
+      this.questGuideG = this.add.graphics().setDepth(62);
+      this.questGuideLbl = this.add.text(0, 0, '', {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#ffe9a0',
+        backgroundColor: '#0a1628cc', padding: { x: 4, y: 2 },
+      }).setOrigin(0.5, 0.5).setDepth(62);
+      this.pinArrowG = this.add.graphics().setDepth(62);
+      this.pinArrowLbl = this.add.text(0, 0, '', {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#9fe8ff',
+        backgroundColor: '#0a1628cc', padding: { x: 4, y: 2 },
+      }).setOrigin(0.5, 0.5).setDepth(62);
+    }
+    const blink = 0.55 + 0.45 * Math.abs(Math.sin(this.time.now / 260));
+    this.drawGuideArrow(this.questGuideG, this.questGuideLbl!, blocked ? null : t, 46, 0xffd257, blink);
+    const pin = MapPinStore.get(this.region);
+    this.drawGuideArrow(this.pinArrowG!, this.pinArrowLbl!, blocked || !pin ? null : { x: pin.x, y: pin.y, label: '핀' }, 60, 0x5cd0ff, blink);
+  }
+
+  private drawGuideArrow(
+    g: Phaser.GameObjects.Graphics, lbl: Phaser.GameObjects.Text,
+    t: { x: number; y: number; label: string } | null, radius: number, color: number, alpha: number,
+  ): void {
+    if (!t) { g.setVisible(false); lbl.setVisible(false); return; }
+    const px = this.playerBody.x, py = this.playerBody.y - 18;
+    const dx = t.x - px, dy = t.y - py;
+    const d = Math.hypot(dx, dy);
+    if (d < 56) { g.setVisible(false); lbl.setVisible(false); return; }
+    const ux = dx / d, uy = dy / d;
+    const ax = px + ux * radius, ay = py + uy * radius;
+    g.clear(); g.setVisible(true); g.setAlpha(alpha);
+    // 삼각형 — 진행 방향으로 뾰족, 뒤에 두 날개
+    const tipX = ax + ux * 8, tipY = ay + uy * 8;
+    const bx = ax - ux * 6, by = ay - uy * 6;
+    const nx = -uy, ny = ux;
+    g.fillStyle(0x0a1628, 0.9); g.fillTriangle(tipX + ux, tipY + uy, bx + nx * 7, by + ny * 7, bx - nx * 7, by - ny * 7);
+    g.fillStyle(color, 1); g.fillTriangle(tipX, tipY, bx + nx * 5.5, by + ny * 5.5, bx - nx * 5.5, by - ny * 5.5);
+    const mPerTile = this.chunks ? 5 : 2;
+    const meters = Math.round((d / TR) * mPerTile);
+    lbl.setText(`${t.label} · ${meters}m`).setPosition(px + ux * (radius + 24), py + uy * (radius + 24)).setVisible(true);
+  }
+
+  /** M — 전체 지도 오버레이 토글 */
+  private toggleFullMap(): void {
+    if (this.fullMapClose) { this.fullMapClose(); return; }
+    if (this.uiBlocked || !this.hud) return;
+    const mapTex = `rhud_mini_${this.mapId}`;
+    if (!this.textures.exists(mapTex)) return;
+    this.openPopup((close) => {
+      this.fullMapClose = close;
+      return new FullMapPanel(this, {
+        mapTex, cols: this.cols, rows: this.rows, worldW: this.worldW, worldH: this.worldH,
+        titleKo: this.node.name,
+        regionId: this.region,
+        markers: () => (this.showFieldLabels ? this.lastMiniMarkers : [...this.lastMiniMarkers, ...this.miniPlaceMarkers]),
+        player: () => ({ x: this.playerBody.x, y: this.playerBody.y }),
+        peers: () => [...this.peerObjs.values()].map((o) => ({ x: o.img.x, y: o.img.y, name: o.tag.text })),
+        target: () => this.questTargetPos,
+        onClose: close,
+      });
+    }, () => { this.fullMapClose = undefined; });
+  }
+
   private updateStoryProximity(delta: number): void {
     this.storyProxAt += delta;
     if (this.storyProxAt < 150 || !this.playerBody) return;

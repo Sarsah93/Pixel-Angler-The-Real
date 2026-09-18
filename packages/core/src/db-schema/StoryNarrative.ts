@@ -47,6 +47,11 @@ export const STORY_NARRATIVE: Record<string, NarrativeEntry> = {
     [
       c('stand', '한참을 서 있다가, 사진을 다시 주머니에 넣는다.', '(바람이 사진을 넘기려 든다. 나는 그것을 꼭 쥔다.)', { affinity: 0 }),
       c('look', '무엇이든 해 봐야 한다. 항구 쪽 불빛을 향해 걷는다.', '(멀리 좌판 불빛이 하나 남아 있다. 발이 먼저 그쪽으로 간다.)', { flag: 'choice.m1_walk_first' }),
+    ],
+    // 155차 — 누가 맡기는 일이 아니다. 종점 벤치에서 나 혼자 정하는 자리라 우호도가 붙을 상대가 없다.
+    [
+      c('go_now', '…가 보자. 사진 속 자리부터.', '(배낭끈을 고쳐 멘다. 바다 냄새가 나는 쪽으로 걷는다.)', {}),
+      c('breathe', '조금만. 숨부터 고르고.', '(정류장 벤치에 앉았다 일어난다. 어차피 갈 길은 하나다.)', { flag: 'choice.m1_breathe_first' }),
     ]),
   'M1-02': N(
     '좌판 앞에서 나도 모르게 눈물이 났다. 할머니는 위로 대신 얼음 상자를 가리켰다. 배낭에 든 돈으로는 이틀도 못 버틴다는 걸 나도 알고 있다. 상자는 무겁고 손은 금방 얼얼해진다. 그래도 이 돈이라도 있어야 무엇이든 시작할 수 있을 것 같다. 우선 나르자. 우는 건 그다음이다.',
@@ -1399,7 +1404,8 @@ export const STORY_NARRATIVE: Record<string, NarrativeEntry> = {
     [
       c('lesson', '난로 고치는 법, 마감기 씨가 어깨너머로 배운 거죠. 저도 배우겠습니다.', '배 위에서 뭐든 고쳐요, 저는. 원고 빼고. (기계 수리가 손에 붙는다.)', { proficiency: { category: 'crafting', xp: 32 }, affinity: 0.06 }),
       c('pay', '부품값과 품삯 받겠습니다.', '네. 원고료 들어왔어요, 드디어. (이번엔 봉투가 봉투답다.)', { payMult: 1 }),
-      c('decline', '자리 하나 만들어 줬으면 됐습니다.', '…그 자리, 저도 있어요. 옆에. (노인의 사진 앞에 셋의 자리가 있다.)', { affinity: 0.12, affinityOther: [{ npcId: 'song_gibaek', delta: 0.1 }], harborRep: 2 }),
+      // 155차 — 발주자 본인에게 affinityOther까지 얹어 이중 가산되던 것을 affinity 하나로(0.12+0.1 → 0.18)
+      c('decline', '자리 하나 만들어 줬으면 됐습니다.', '…그 자리, 저도 있어요. 옆에. (노인의 사진 앞에 셋의 자리가 있다.)', { affinity: 0.18, harborRep: 2 }),
     ]),
   'N12-3': N(
     '정우미의 캠핑카가 호텔 주차장에 반년째 서 있다. 오가윤은 퇴근하면 그 차 앞에 앉아 있다. 여수로 돌아가 두 사람과 밤 낚시를 나갔다. 셋이 방파제에 앉았다. 갈치는 안 물었다. 우미가 말했다. 이 차, 이제 안 움직여도 될 것 같아. 가윤은 아무 말도 안 했다. 웃었다.',
@@ -1828,6 +1834,11 @@ export const STORY_NARRATIVE: Record<string, NarrativeEntry> = {
     [
       c('say_it', '울 거면 얼음부터 나르고 울어.', '(그 애가 상자를 든다. 허리로. 다리로 들라고 말해 줘야겠다.)', { flag: 'choice.m7_epilogue_said' }),
       c('sit', '앉아. 얘기가 길다.', '(그 애가 앉는다. 나는 조행록 첫 장을 편다. 22년 전 사진이 끼워져 있다.)', { flag: 'choice.m7_epilogue_sat' }),
+    ],
+    // 155차 — 이제 내가 좌판 뒤에 선 사람이다. 맡길 사람이 없으니 발주도 혼잣말이다.
+    [
+      c('take_over', '이번엔 내가 말할 차례다.', '(좌판 뒤 얼음 상자에 손을 얹는다. 차갑다. 22년 전과 같은 온도다.)', {}),
+      c('hesitate', '…나도 저 얼굴이었나.', '(그 애가 고개를 든다. 무슨 말이든 해야 한다.)', { flag: 'choice.m7_saw_self' }),
     ]),
 
   // ── Ch7 서브 ──
@@ -1867,7 +1878,7 @@ export const STORY_NARRATIVE: Record<string, NarrativeEntry> = {
       progress: '아직 안 나갔어요? 예약 시간이에요.',
       done: '정가 냈어요. 친구니까요. 오빠가 회 떴고요. 이제 진짜 선장이네요.' },
     [
-      c('full', '정가로 받았다. 친구니까.', '그게 맞아요. (두 사람이 후기 첫 줄을 쓴다. 별 다섯.)', { affinity: 0.12, affinityOther: [{ npcId: 'na_gibeom', delta: 0.1 }], harborRep: 3 }),
+      c('full', '정가로 받았다. 친구니까.', '그게 맞아요. (두 사람이 후기 첫 줄을 쓴다. 별 다섯.)', { affinity: 0.12, affinityOther: [{ npcId: 'seo_harin', delta: 0.1 }], harborRep: 3 }),
       c('lesson', '기범 씨가 배 위에서 회 뜨는 걸 봤다. 흔들리는 데서 그 각도.', '배 위 회는 각도가 달라요. 파도에 맞춰요. (선상 손질이 몸에 붙는다.)', { proficiency: { skillId: 'life_fillet', xp: 40 }, affinity: 0.08 }),
       c('pay', '정가에 팁까지 받겠다.', '팁! 당연하죠! (하린이 봉투에 팁을 더 넣는다. 첫 손님이니까.)', { payMult: 1.5 }),
     ]),

@@ -397,6 +397,11 @@ export class InventoryPanel extends DraggablePanel {
       g.fillRoundedRect(tx, ty, tabW, tabH, 4);
       g.lineStyle(1.5, selected ? 0x5cd0ff : 0x1f3d5a, 0.95);
       g.strokeRoundedRect(tx, ty, tabW, tabH, 4);
+      // 155차 — 아직 살펴보지 않은 새 아이템이 있는 탭은 우상단에 금색 점(보상을 못 알아채는 일이 없게)
+      if (InventoryStore.hasNewIn(tab)) {
+        g.fillStyle(0x2a1c00, 1); g.fillCircle(tx + tabW - 7, ty + 7, 4.5);
+        g.fillStyle(0xffd257, 1); g.fillCircle(tx + tabW - 7, ty + 7, 3);
+      }
       this.tabTexts.get(tab)!.setColor(selected ? '#aee8ff' : '#8faabf');
     });
   }
@@ -482,10 +487,28 @@ export class InventoryPanel extends DraggablePanel {
       if (nameTxt.width > SLOT - 6) nameTxt.setScale((SLOT - 6) / nameTxt.width);
       this.gridContainer.add(nameTxt);
 
+      // 155차 — 이야기가 준 물건(귀속)은 금색 테두리, 새로 받은 물건은 우상단 금색 점 + 잠깐 반짝임
+      if (item.bound) {
+        const bf = this.scene.add.graphics();
+        bf.lineStyle(1.5, 0xffd257, 0.95); bf.strokeRoundedRect(sx + 1, sy + 1, SLOT - 2, SLOT - 2, 4);
+        this.gridContainer.add(bf);
+      }
+      let newDot: Phaser.GameObjects.Graphics | undefined;
+      if (InventoryStore.newIds.has(item.id)) {
+        newDot = this.scene.add.graphics();
+        newDot.fillStyle(0x2a1c00, 1); newDot.fillCircle(sx + SLOT - 8, sy + SLOT - 8, 5);
+        newDot.fillStyle(0xffd257, 1); newDot.fillCircle(sx + SLOT - 8, sy + SLOT - 8, 3.5);
+        this.gridContainer.add(newDot);
+        this.scene.tweens.add({ targets: newDot, alpha: 0.35, duration: 520, yoyo: true, repeat: -1 });
+      }
+
       // 인터랙션: 좌버튼 = 드래그 시작(이동)/클릭, 우버튼 = 액션 메뉴
       const hit = this.scene.add.rectangle(sx + SLOT / 2, sy + SLOT / 2, SLOT, SLOT, 0xffffff, 0.001)
         .setInteractive({ useHandCursor: true });
-      hit.on('pointerover', () => this.paintSlotBox(box, sx, sy, item, true, locked));
+      hit.on('pointerover', () => {
+        this.paintSlotBox(box, sx, sy, item, true, locked);
+        if (newDot) { InventoryStore.markSeen(item.id); newDot.destroy(); newDot = undefined; this.paintTabs(); }
+      });
       hit.on('pointerout', () => this.paintSlotBox(box, sx, sy, item, false, locked));
       hit.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
         if (pointer.rightButtonDown()) {

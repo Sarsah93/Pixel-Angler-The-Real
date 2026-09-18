@@ -8,7 +8,7 @@
 
 import Phaser from 'phaser';
 import { ensurePixelIcon } from './PixelIcon.js';
-import { getNuisance } from '@tra/core';
+import { getNuisance, sashimiStarsAt, sashimiNutrition, foodNutritionOf, nutritionLineKo, restoreFromNutrition } from '@tra/core';
 import { FISH_DATABASE, fishImageSizeScale, fishRarity, speciesStandardWeightG,
   GEAR_FAULTS, gearRepairFee, rodMaxCasts,
   getFireRecipe, getCookIngredient, dishStarsAt, dishVitalsMult, fmtUnits, SALT_LABEL_KO, SUGAR_LABEL_KO, STAR_NAME_KO } from '@tra/core';
@@ -43,9 +43,44 @@ export interface ItemDetailData {
 }
 
 /** 아이템 종류별 상세 스펙 추론 생성 (목업) — 어획물은 개체 실측치·어종 정보(FISH_DATABASE) 표시 */
-export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory' | 'category' | 'qty' | 'basePrice' | 'condition' | 'conditionSinceMs' | 'speciesId' | 'lengthCm' | 'weightG' | 'floatBuoyG' | 'plateWip' | 'fault' | 'useCount' | 'tool' | 'bound' | 'dish'>): ItemDetailData {
+export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory' | 'category' | 'qty' | 'basePrice' | 'condition' | 'conditionSinceMs' | 'speciesId' | 'lengthCm' | 'weightG' | 'floatBuoyG' | 'plateWip' | 'fault' | 'useCount' | 'tool' | 'bound' | 'dish' | 'sashimi' | 'cutQuality' | 'hungerRestore' | 'hydrationRestore' | 'hpRestore' | 'fatigueRestore'>): ItemDetailData {
   const rows: ItemDetailRow[] = [];
   let desc = '';
+  // 155차 — 완성 사시미 접시: 맛 별 5개(지금 / 담은 직후) — 불요리와 같은 문법
+  if (item.sashimi) {
+    const m = item.sashimi;
+    const now = sashimiStarsAt(m, item.condition, Date.now());
+    const base = sashimiStarsAt(m, 'fresh', m.madeAtMs);
+    const ageMin = Math.max(0, Math.round((Date.now() - m.madeAtMs) / 60_000));
+    const col = (n: number): string => (n >= 5 ? '#ffd257' : n >= 3 ? '#8affb0' : '#ff9a5a');
+    rows.push({ label: '별점 (지금)', value: `${now.stars} / 5 · ${now.total}점`, color: col(now.stars) });
+    rows.push({ label: '별점 (담은 직후)', value: `${base.stars} / 5 · ${base.total}점` });
+    for (const pp of now.parts) rows.push({ label: pp.labelKo, value: `${Math.round(pp.score * 100)}%`, color: pp.earned ? '#8affb0' : '#ff9a5a' });
+    rows.push({ label: '구성', value: `${m.mode === 'advanced' ? '고급' : '일반'} · ${m.species.length >= 2 ? '모듬' : '단품'} · ${m.pieces}점 · ${m.totalG}g` });
+    rows.push({ label: '칼', value: m.knifeTier === 'yanagiba' ? '야나기바' : m.knifeTier === 'sashimi' ? '회칼' : '막칼' });
+    rows.push({ label: '담은 뒤 경과', value: ageMin < 60 ? `${ageMin}분` : `${Math.floor(ageMin / 60)}시간 ${ageMin % 60}분` });
+    const nut = sashimiNutrition(m.totalG);
+    rows.push({ label: '영양', value: nutritionLineKo(nut) });
+    const rs = restoreFromNutrition(nut);
+    rows.push({ label: '섭취 효과', value: `허기 +${rs.hungerRestore} · 수분 +${rs.hydrationRestore}` });
+    rows.push({ label: '판매가', value: `${InventoryStore.getSellPrice({ ...item, qty: 1 } as InvItem).toLocaleString()}원` });
+    rows.push({ label: '보유 수량', value: `${item.qty}개` });
+    desc = '신선도·식감은 담은 뒤 시간이 갈수록 떨어집니다. 다섯 항목 중 하나라도 모자라면 다섯째 별(완성도)은 켜지지 않습니다. 회는 바로 먹거나 파는 게 가장 좋습니다.';
+    if (item.condition) desc += `\n[${CONDITION_LABEL[item.condition]}] ${CONDITION_DESC[item.condition]}`;
+    return { title: item.name, subtitle: '회(사시미) 접시', rows, desc };
+  }
+  // 155차 — 음식의 실질량·열량·수분 → 허기·수분 회복은 하루 필요량 대비 비율(2,400 kcal · 2,000 ml)
+  const nutrition = foodNutritionOf(item.id);
+  if (nutrition && item.category === 'food') {
+    rows.push({ label: '영양', value: nutritionLineKo(nutrition) });
+    const eff: string[] = [];
+    if (item.hungerRestore) eff.push(`허기 ${item.hungerRestore > 0 ? '+' : ''}${item.hungerRestore}`);
+    if (item.hydrationRestore) eff.push(`수분 ${item.hydrationRestore > 0 ? '+' : ''}${item.hydrationRestore}`);
+    if (item.hpRestore) eff.push(`체력 +${item.hpRestore}`);
+    if (item.fatigueRestore) eff.push(`피로 -${item.fatigueRestore}`);
+    if (eff.length) rows.push({ label: '섭취 효과', value: eff.join(' · ') });
+    rows.push({ label: '열량당 가격', value: `${Math.round(item.basePrice / Math.max(1, nutrition.kcal) * 100).toLocaleString()}원 / 100 kcal` });
+  }
   // 141차 — 귀속 장비: 이야기가 준 물건. 판매·양도 불가를 맨 위에
   if (item.bound) rows.push({ label: '귀속', value: '이야기가 준 물건 — 판매·양도 불가' });
 
@@ -211,8 +246,9 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
       desc = '야간 낚시 시 집중력 저하 디버프를 차단합니다.';
       break;
     case '가공품':
-      rows.push({ label: '섭취 효과', value: 'HP +10' }, { label: '보존성', value: '부패 없음' });
-      desc = '오래 보관할 수 있는 비상 식량입니다.';
+      if (!nutrition) rows.push({ label: '섭취 효과', value: '허기·수분 회복' });
+      rows.push({ label: '보존성', value: '부패 없음' });
+      desc = nutrition ? '한 끼는 하루 필요 열량의 3분의 1(≈800 kcal)입니다. 간식은 그보다 훨씬 적습니다.' : '오래 보관할 수 있는 비상 식량입니다.';
       break;
     case '해파리':
     case '불가사리': {

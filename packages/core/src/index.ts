@@ -536,7 +536,7 @@ export {
   type QuestDifficultyTier, type QuestDifficultyInfo,
 } from './rules/QuestDifficulty.js';
 export {
-  STORY_CHOICE_OVERRIDES, toneOfferChoices, lessonCategoryOf, payChoiceCoins, defaultCompleteChoices, choicesFor,
+  STORY_CHOICE_OVERRIDES, toneOfferChoices, selfOfferChoices, selfCompleteChoices, lessonCategoryOf, payChoiceCoins, defaultCompleteChoices, choicesFor,
   choiceVisible, describeOutcomeKo, allChoiceLines, validateStoryChoices, hasCustomChoices, DEFAULT_DECLINE,
 } from './db-schema/StoryChoices.js';
 export type { FisheryLawRule } from './rules/FisheryLaw.js';
@@ -629,3 +629,10 @@ export {
   evaluateSession, finishCook, dishStarsAt, dishValueKrw, dishVitalsMult, dishItemName,
   SALT_LABEL_KO, SALT_LABEL_EN, SUGAR_LABEL_KO, SUGAR_LABEL_EN, STAR_NAME_KO, STAR_NAME_EN,
 } from './simulation/CookingSim.js';
+export { sashimiStarsAt, sashimiStarPriceMult, sashimiPlateName, sashimiFreshScore, quadBalanceOf,
+  SASHIMI_STAR_LABEL_KO, SASHIMI_STAR_LABEL_EN,
+  type SashimiPlateMeta, type SashimiStars, type SashimiStarPart, type SashimiStarKey, type SashimiKnifeTier } from './simulation/SashimiQuality.js';
+export { FOOD_NUTRITION, DAILY_KCAL, DAILY_WATER_ML, restoreFromNutrition, foodNutritionOf, sashimiNutrition, nutritionLineKo,
+  type FoodNutrition } from './db-schema/FoodNutrition.js';
+export { objectiveTarget, objectiveHowToKo, nextObjectiveIndex,
+  type QuestGuideTarget, type QuestGuideTargetKind, type GuideNames } from './rules/QuestGuide.js';

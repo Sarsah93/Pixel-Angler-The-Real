@@ -72,6 +72,9 @@
 | **자가 수리**(초릿대 본드칠 65% · 원줄 되감기 = 스풀 1개 소모) | ✅ | 136 — 인벤 우클릭 |
 | **수리점 탭**(직판장·생활용품점) | ✅ | 136 — ShopPanel 3번째 탭 · 재화 차감 후 고장 해제 |
 | 상세보기 고장·수리비·내구도 행 | ✅ | 136 |
+| **획득 훅 + NEW 표시**(`onGained` → HUD 토스트 · `newIds`/`markSeen`/`hasNewIn` → 탭 금점·셀 NEW 점(호버 해제)·귀속 금테) | ✅ | **155** |
+| **채비 고정**(`rigLocked` · `lockRig`(부품 누락이면 거부)/`unlockRig` · 세이브 · `setRigPart`·`setLure`·`setJigHead`·`setRigMode` 가드 — `consumeRigItem`·`loseRigParts`는 `_rig` 직접 갱신이라 영향 없음) | ✅ | 155 — [S1](fishing-loop.md) |
+| **사시미 접시 메타**(`InvItem.sashimi`·`cutQuality`·`knifeTier`) + 음식 영양 상세(`FoodNutrition` 파생) | ✅ | 155 — [S4](sashimi-cooking.md) |
 
 ## 5. 잔여·차기
 

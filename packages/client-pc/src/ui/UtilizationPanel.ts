@@ -38,6 +38,7 @@ import {
   getButcheryFamily, BUTCHERY_FAMILY_NOTICE, ButcheryFamily, canButcherSpecies,
   getBestKnife, SashimiMode, SASHIMI_MODES,
   SASHIMI_PLATE_SPECS, MIXED_SASHIMI_PRICING, singleSashimiPlatePrice, SashimiSizeTier,
+  sashimiStarsAt, sashimiStarPriceMult, sashimiPlateName, quadBalanceOf, type SashimiPlateMeta,
   evaluateFishSellPrice, FISH_DATABASE,
 } from '@tra/core';
 import { ExternalDataStore } from '../store/ExternalDataStore.js';
@@ -429,7 +430,7 @@ export class UtilizationPanel extends DraggablePanel {
 
       const hit = this.scene.add.rectangle(bx + boxW / 2, chainY + boxH / 2, boxW, boxH, 0xffffff, 0.001)
         .setInteractive({ useHandCursor: true });
-      hit.on('pointerdown', () => this.openChooser(step.key, label, matcher!, bx, chainY + boxH + 8, recoPredicate));
+      hit.on('pointerdown', () => { if (this.rigLockedGuard()) return; this.openChooser(step.key, label, matcher!, bx, chainY + boxH + 8, recoPredicate); });
       this.bodyContainer.add(hit);
     });
 
@@ -446,6 +447,7 @@ export class UtilizationPanel extends DraggablePanel {
     sumBg.lineStyle(1.5, 0xc8a060, 0.9);
     sumBg.strokeRoundedRect(24, sumY, PANEL_W - 48, 150, 5);
     this.bodyContainer.add(sumBg);
+    this.renderRigLockButtons(sumY + 150 - 44);   // 155차 — 제원 상자 안 우측 하단
 
     const sumTitle = this.scene.add.text(40, sumY + 12, '채비 물리 스펙 (실시간 합산)', {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#ffe28a', fontStyle: 'bold',
@@ -473,6 +475,56 @@ export class UtilizationPanel extends DraggablePanel {
     this.bodyContainer.add(advice);
   }
 
+  /**
+   * 155차 — 채비 고정 / 고정 해제 (사용자 지시 · 캡처: 채비하기(U) 창 **우측 하단**).
+   *  [채비 고정] = 셋팅을 픽스한다(이후 던질 때 미끼 같은 소모품만 줄어들고 소켓은 바뀌지 않는다).
+   *  [고정 해제] = 잠금을 푼다. 두 버튼은 항상 같이 보이고, 지금 상태에서 뜻이 없는 쪽은 흐리게 그린다.
+   *  캐스팅은 고정 여부와 무관하게 된다 — 고정은 "실수로 바꾸지 않게" 하는 장치지 관문이 아니다.
+   *  y = 제원 상자 안쪽 아래 줄(상자 하단 − 44). 왼쪽 열의 안내문(advice)과 겹치지 않도록 배지는 버튼 위에 둔다.
+   */
+  private renderRigLockButtons(y: number): void {
+    const locked = InventoryStore.rigLocked;
+    const mk = (cx: number, label: string, on: boolean, fill: number, stroke: number, color: string, onClick: () => void): void => {
+      const w = 120, h = 36;
+      const bg = this.scene.add.graphics();
+      bg.fillStyle(fill, on ? 0.95 : 0.35); bg.fillRoundedRect(cx - w / 2, y, w, h, 5);
+      bg.lineStyle(1.5, stroke, on ? 0.95 : 0.35); bg.strokeRoundedRect(cx - w / 2, y, w, h, 5);
+      const t = this.scene.add.text(cx, y + h / 2, label, { fontFamily: '"Noto Sans KR", sans-serif', fontSize: '14px', color, fontStyle: 'bold' })
+        .setOrigin(0.5).setAlpha(on ? 1 : 0.45);
+      const hit = this.scene.add.rectangle(cx, y + h / 2, w, h, 0xffffff, 0.001).setInteractive({ useHandCursor: on });
+      if (on) {
+        hit.on('pointerover', () => t.setColor('#ffffff'));
+        hit.on('pointerout', () => t.setColor(color));
+      }
+      hit.on('pointerdown', () => { onClick(); this.renderBody(); });
+      this.bodyContainer.add([bg, t, hit]);
+    };
+    const right = PANEL_W - 24 - 12;
+    const badge = this.scene.add.text(right, y - 10, locked
+      ? '채비 고정됨 — 던질 때 소모품(미끼 등)만 줄어듭니다'
+      : '채비 고정 안 됨 — 고정하면 던질 때 소모품만 줄어듭니다', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: locked ? '#7fe0b0' : '#8faabf',
+    }).setOrigin(1, 1);
+    this.bodyContainer.add(badge);
+    mk(right - 60 - 128, '채비 고정', !locked, 0x0d4a2e, 0x4af2a1, '#4af2a1', () => {
+      if (locked) { this.flashBoardToast('이미 고정되어 있습니다'); return; }
+      const r = InventoryStore.lockRig();
+      this.flashBoardToast(r.ok ? '채비를 고정했습니다 — 이제 이 채비로 바로 던집니다' : `고정할 수 없습니다 — ${r.reason}`);
+    });
+    mk(right - 60, '고정 해제', locked, 0x2b2a48, 0x8a86d0, '#d0ccff', () => {
+      if (!locked) { this.flashBoardToast('고정된 채비가 없습니다'); return; }
+      InventoryStore.unlockRig();
+      this.flashBoardToast('채비 고정을 풀었습니다 — 소켓을 바꿀 수 있습니다');
+    });
+  }
+
+  /** 고정된 채비를 만지려 할 때 — 안내만 (true = 막았다) */
+  private rigLockedGuard(): boolean {
+    if (!InventoryStore.rigLocked) return false;
+    this.flashBoardToast('채비가 고정되어 있습니다 — [고정 해제]로 푼 뒤 바꾸세요');
+    return true;
+  }
+
   // ── 채비 모드 토글 (미끼 채비 / 루어 채비) ─────────────
   private renderRigModeToggle(y: number): void {
     const modes: { id: 'bait' | 'lure'; label: string }[] = [
@@ -495,6 +547,7 @@ export class UtilizationPanel extends DraggablePanel {
       const hit = this.scene.add.rectangle(x + w / 2, y + 13, w, 26, 0xffffff, 0.001)
         .setInteractive({ useHandCursor: true });
       hit.on('pointerdown', () => {
+        if (this.rigLockedGuard()) return;
         InventoryStore.setRigMode(m.id);
         this.closeChooser();
         this.renderBody();
@@ -616,7 +669,7 @@ export class UtilizationPanel extends DraggablePanel {
       }).setOrigin(1, 0);
       const hit = this.scene.add.rectangle(lx + w / 2, cardY + h / 2, w, h, 0xffffff, 0.001)
         .setInteractive({ useHandCursor: true });
-      hit.on('pointerdown', () => { InventoryStore.setLure(item.id); this.renderBody(); });
+      hit.on('pointerdown', () => { if (this.rigLockedGuard()) return; InventoryStore.setLure(item.id); this.renderBody(); });
       this.bodyContainer.add([g, nm, sub, qty, hit]);
       lx += w + 8;
     });
@@ -639,6 +692,7 @@ export class UtilizationPanel extends DraggablePanel {
         const sel = InventoryStore.jigHeadId === jh.id;
         const w = 84;
         this.mkPill(jx, jy, w, 24, `${jigHeadWeightById(jh.id)}g (x${jh.qty})`, sel, () => {
+          if (this.rigLockedGuard()) return;
           InventoryStore.setJigHead(jh.id); this.renderBody();
         });
         jx += w + 8;
@@ -654,6 +708,7 @@ export class UtilizationPanel extends DraggablePanel {
     sbg.lineStyle(1.5, 0xc8a060, 0.9);
     sbg.strokeRoundedRect(24, specY, sbW, sbH, 5);
     this.bodyContainer.add(sbg);
+    this.renderRigLockButtons(specY + sbH - 44);   // 155차 — 제원 상자 안 우측 하단
     this.bodyContainer.add(this.scene.add.text(40, specY + 12, '루어 제원 (실시간)', {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#ffe28a', fontStyle: 'bold',
     }));
@@ -757,7 +812,7 @@ export class UtilizationPanel extends DraggablePanel {
       }).setOrigin(0.5);
       const hit = this.scene.add.rectangle(bx + bw / 2, y + 40, bw, 24, 0xffffff, 0.001)
         .setInteractive({ useHandCursor: true });
-      hit.on('pointerdown', () => { InventoryStore.setSpreader(kind, sp.cardType); this.renderBody(); });
+      hit.on('pointerdown', () => { if (this.rigLockedGuard()) return; InventoryStore.setSpreader(kind, sp.cardType); this.renderBody(); });
       this.bodyContainer.add([g, t, hit]);
       bx += bw + 8;
     });
@@ -779,7 +834,7 @@ export class UtilizationPanel extends DraggablePanel {
         }).setOrigin(0.5);
         const hit = this.scene.add.rectangle(cx + bw / 2, y + 66, bw, 20, 0xffffff, 0.001)
           .setInteractive({ useHandCursor: true });
-        hit.on('pointerdown', () => { InventoryStore.setSpreader('CARD_RIG', ct); this.renderBody(); });
+        hit.on('pointerdown', () => { if (this.rigLockedGuard()) return; InventoryStore.setSpreader('CARD_RIG', ct); this.renderBody(); });
         this.bodyContainer.add([g, t, hit]);
         cx += bw + 6;
       });
@@ -812,7 +867,7 @@ export class UtilizationPanel extends DraggablePanel {
         const hookIdx = i;
         const hit = this.scene.add.rectangle(hx + cell / 2, hy + cell / 2, cell, cell, 0xffffff, 0.001)
           .setInteractive({ useHandCursor: true });
-        hit.on('pointerdown', () => this.openSpreaderBaitChooser(hookIdx, hx, hy + cell + 4));
+        hit.on('pointerdown', () => { if (this.rigLockedGuard()) return; this.openSpreaderBaitChooser(hookIdx, hx, hy + cell + 4); });
         this.bodyContainer.add([g, icon, num, hit]);
         hx += cell + 6;
       }
@@ -1922,12 +1977,28 @@ export class UtilizationPanel extends DraggablePanel {
       price = singleSashimiPlatePrice(kgPrice, kind, st.size);
       name = `${def?.nameKo ?? '생선'} ${adv ? '고급 ' : ''}사시미 (${st.size}) ${totalG}g`;
     }
+    // 155차 — 맛 별 5개(신선도·칼질·식감·구성·완성도). 담을 때 별점으로 판매가를 확정한다.
+    const cutQs = pieces.map((p) => p.tmpl.cutQuality ?? 0.7);
+    const tiers = pieces.map((p) => p.tmpl.knifeTier ?? 'sashimi');
+    const knifeTier = tiers.includes('utility') ? 'utility' : tiers.every((t) => t === 'yanagiba') ? 'yanagiba' : 'sashimi';
+    const meta: SashimiPlateMeta = {
+      madeAtMs: Date.now(), mode: kind, size: st.size, species, totalG, pieces: pieces.length,
+      cutQ: cutQs.reduce((a, b) => a + b, 0) / Math.max(1, cutQs.length),
+      knifeTier,
+      quadBalance: quadBalanceOf(st.quads.map((qd) => qd.reduce((a, p) => a + p.weightG, 0))),
+      starsAtMake: 0,
+    };
+    const starsNow = sashimiStarsAt(meta, worst?.condition ?? 'fresh', meta.madeAtMs);
+    meta.starsAtMake = starsNow.stars;
+    price = Math.round(price * sashimiStarPriceMult(starsNow.stars) / 100) * 100;
+    name = sashimiPlateName(name, starsNow.stars);
     const seq = InventoryStore.nextCatchSeq();
     InventoryStore.addItem({
       id: `inv_sashimi_plate_${adv ? 'adv' : 'std'}_${seq}`,
       name, icon: '🍣', iconTexture: 'food_assorted_sashimi',
       category: 'food', subCategory: '회(사시미)',
       basePrice: price,
+      sashimi: meta,
       // 신선도는 **가장 먼저 상하는 조각**을 계승한다 (135차) —
       // 구 구현은 무조건 'fresh'라 나쁨(가치 10%) 조각을 접시로 세탁할 수 있었다.
       condition: worst?.condition ?? 'fresh',
@@ -1939,7 +2010,7 @@ export class UtilizationPanel extends DraggablePanel {
     this.plateState = null;   // 접시는 요리에 소모 (완성 접시째 판매)
     this.renderBody();
     this.scene.events.emit('inventory-changed');
-    this.flashBoardToast(`${name} 완성! — 판매가 ${price.toLocaleString()}원`);
+    this.flashBoardToast(`${name} 완성! — 판매가 ${price.toLocaleString()}원 · ${starsNow.parts.filter((pp) => !pp.earned).map((pp) => pp.labelKo).join('·') || '다섯 항목 전부 충족'}`);
   }
 
   /**

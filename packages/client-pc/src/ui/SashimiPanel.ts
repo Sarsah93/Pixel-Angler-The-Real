@@ -1033,6 +1033,8 @@ export class SashimiPanel extends DraggablePanel {
       condition: 'fresh', conditionSinceMs: Date.now(),
       equippable: false,
       speciesId, weightG: perPieceG,
+      // 155차 — 접시 별점(칼질·식감)의 재료. 컷 정확도 평균 + 실제로 쓴 칼 등급.
+      cutQuality: Math.round(avg * 100) / 100, knifeTier: knife?.tier ?? 'sashimi',
     }, pieceCount);
     this.grantedPieceId = grantedId;
     // 날개살·삶은 문어 다리는 공유 스택 — 1개만 소모 (몸통살/필렛은 개체 아이템 통째)

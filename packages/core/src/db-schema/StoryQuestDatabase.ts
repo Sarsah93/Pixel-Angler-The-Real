@@ -631,7 +631,7 @@ const SUB: StoryQuestDef[] = [
       'You catch Bom before she slips on the rocks — first meeting.',
       [fish(undefined, '봄과 함께 갯바위에서 1마리', 'One fish from the rocks with Bom', { spotKind: 'shore' }),
         talk('han_bom', '봄을 붙잡는다', 'Catch Bom')]],
-    ['N09-2', 3, 59, 3250, 'lee_suyeon', POH, '칼을 쥐면', 'Holding the Knife',
+    ['N09-2', 3, 59, 3250, 'han_bom', POH, '칼을 쥐면', 'Holding the Knife',
       '수연이 잡고 봄이 즉석 조리. 요리 품질 판정 심화.',
       'Su-yeon catches, Bom cooks. Cooking quality, deeper.',
       [fish(undefined, '2마리 낚아 손질', 'Catch and butcher two fish', { target: 2 }), auto('butcher', '손질 2회', 'Butcher twice', { target: 2 })]],

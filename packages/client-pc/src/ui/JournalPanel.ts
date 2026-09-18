@@ -21,8 +21,9 @@
 import Phaser from 'phaser';
 import {
   STORY_CHAPTERS, STORY_QUESTS, getStoryNpc, getLicenseByType, narrativeOf, getSkillById,
-  characterOf, questDifficulty, type StoryQuestDef, type QuestDifficultyTier,
+  characterOf, questDifficulty, objectiveHowToKo, type StoryQuestDef, type QuestDifficultyTier,
 } from '@tra/core';
+import { GUIDE_NAMES as JOURNAL_GUIDE_NAMES } from '../data/QuestGuideNames.js';
 import { DraggablePanel, applyScreenFixed, restoreHandCursor } from './DraggablePanel.js';
 import { StoryStore } from '../store/StoryStore.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
@@ -582,6 +583,21 @@ export class JournalPanel extends DraggablePanel {
     const hr = this.scene.add.graphics();
     hr.lineStyle(1, 0x1c3d5a, 1); hr.lineBetween(DET_X, top + 30, DET_X + DET_W, top + 30);
     c.add(hr);
+    // 155차 — 「추적하기」 체크박스: 켜면 필드 화살표·추적기가 이 할 일을 최우선으로 가리킨다(사용자 지시)
+    if (st === 'active') {
+      const on = StoryStore.trackedId === q.id;
+      const bx = DET_X + DET_W - 4 - 14, by = top + 30 + 6;
+      const cb = this.scene.add.graphics();
+      cb.fillStyle(on ? 0x2a4a12 : 0x0e1c2d, 1); cb.fillRoundedRect(bx, by, 14, 14, 3);
+      cb.lineStyle(1.5, on ? 0x7fe0b0 : 0x3c6f95, 1); cb.strokeRoundedRect(bx, by, 14, 14, 3);
+      if (on) { cb.lineStyle(2, 0x7fe0b0, 1); cb.lineBetween(bx + 3, by + 7, bx + 6, by + 10); cb.lineBetween(bx + 6, by + 10, bx + 11, by + 4); }
+      const lbl = this.scene.add.text(bx - 6, by + 7, on ? '추적 중 — 필드에 화살표' : '이 할 일 추적하기', {
+        fontFamily: FONT, fontSize: '11px', color: on ? '#7fe0b0' : C_DIM,
+      }).setOrigin(1, 0.5);
+      const hit = this.scene.add.rectangle(bx - lbl.width / 2 + 4, by + 7, lbl.width + 24, 18, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
+      hit.on('pointerdown', () => { StoryStore.setTracked(on ? null : q.id); this.renderDetail(); restoreHandCursor(this.scene); });
+      c.add([cb, lbl, hit]);
+    }
 
     if (locked) {
       const t = this.scene.add.text(DET_X + DET_W / 2, top + 110,
@@ -642,11 +658,22 @@ export class JournalPanel extends DraggablePanel {
       g.strokeRect(DET_X + 4, y, DET_W - 8, 30);
       c.add(g);
       const label = narrativeOf(q.id)?.objectives?.[i] ?? o.labelKo;
+      // 155차 — 진행 중인 첫 목표에는 **조작법 한 줄**을 붙인다(테스터: "얼음을 어떻게 운반해야 하는지 모르겠다")
+      const showHow = !done && StoryStore.status(q) === 'active' && q.objectives.findIndex((_x, k) => !StoryStore.objectiveDone(q, k)) === i;
+      const rowH = showHow ? 46 : 30;
+      if (showHow) { g.clear(); g.fillStyle(0x14243a, 0.92); g.fillRect(DET_X + 4, y, DET_W - 8, rowH); g.lineStyle(1, 0x3c6f95, 1); g.strokeRect(DET_X + 4, y, DET_W - 8, rowH); }
       const t = this.scene.add.text(DET_X + 16, y + 15, label, {
         fontFamily: FONT, fontSize: '12px', color: done ? C_OK : C_TEXT,
       }).setOrigin(0, 0.5);
       clampTextWidth(t, DET_W - 110);
       c.add(t);
+      if (showHow) {
+        const how = this.scene.add.text(DET_X + 16, y + 30, `방법 · ${objectiveHowToKo(q, o, JOURNAL_GUIDE_NAMES)}`, {
+          fontFamily: FONT, fontSize: '10px', color: '#9fc0d4',
+        }).setOrigin(0, 0);
+        clampTextWidth(how, DET_W - 30);
+        c.add(how);
+      }
       if (tgt > 1) {
         const p2 = this.scene.add.text(DET_X + DET_W - 34, y + 15, `${cur}/${tgt}`, {
           fontFamily: FONT, fontSize: '11px', color: C_DIM,
@@ -660,7 +687,7 @@ export class JournalPanel extends DraggablePanel {
         ck.lineBetween(DET_X + DET_W - 19, y + 20, DET_X + DET_W - 12, y + 9);
         c.add(ck);
       }
-      y += 34;
+      y += rowH + 4;
     });
 
     // ── 보상 (완료 후에만 전부 드러난다 — 141차 규칙) ──

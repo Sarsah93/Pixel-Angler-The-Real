@@ -17,7 +17,7 @@ import {
   SINKER_BASE_DRAG_CD, SINKER_BUNDLE_DRAG_CD, SINKER_HOLE_FEEDBACK_MULT,
   LURES_CATALOG_DB, JIGHEAD_WEIGHTS_G, getLureSpec, jigHeadWeightById,
   computeLureRigWeight, getLureCastCd, isKnifeItem, FISH_DATABASE, lineStrengthKg,
-  speciesStandardWeightG, SASHIMI_PLATE_SPECS,
+  speciesStandardWeightG, SASHIMI_PLATE_SPECS, type SashimiPlateMeta, type SashimiKnifeTier,
   type GearFaultId, GEAR_FAULTS, gearUsable,
   type MpTradeItem,
 } from '@tra/core';
@@ -252,6 +252,14 @@ export interface InvItem {
   /** 섭취 시 허기 회복 % (음수 허용) */
   /** 사용 시 스킬 포인트를 전부 환급한다 (127차 P5 — 리스펙 아이템) */
   skillReset?: boolean;
+  /**
+   * 155차 — 회 조각의 컷 정확도(0~1)와 썰 때 쓴 칼 등급. 접시에 담을 때 별점(칼질·식감)의 재료가 된다.
+   * 구 조각(필드 없음)은 0.7·'sashimi'로 본다.
+   */
+  cutQuality?: number;
+  knifeTier?: SashimiKnifeTier;
+  /** 155차 — 완성 사시미 접시의 별점 메타(담을 때 확정되는 사실). 상세보기가 「지금」 별점을 다시 센다 */
+  sashimi?: SashimiPlateMeta;
   hungerRestore?: number;
   /** 섭취 시 수분 회복 % (음수 허용 — 술은 −8) */
   hydrationRestore?: number;
@@ -436,6 +444,8 @@ export interface InventorySaveState {
   items: InvItem[];
   catchSeq: number;
   quickslots: (string | null)[];
+  /** 155차 — 채비 고정(잠금) 여부 */
+  rigLocked?: boolean;
   rig: Record<RigStepKey, string | null>;
   rigDepthLimitM: number;
   hasFloatStop: boolean;
@@ -867,6 +877,19 @@ function defaultRig(): Record<RigStepKey, string | null> {
 
 class InventoryStoreManager {
   private _items: InvItem[] = createSeedItems();
+  /**
+   * 155차 — **채비 고정(잠금)**. 사용자 지시: 채비창 우하단 [채비 고정] = 셋팅을 픽스하고 그 셋팅에서
+   * 소모값으로 처리되는 미끼 등만 소모 / [고정 해제] = 잠금 해제.
+   * 잠긴 동안 소켓 편집(`setRigPart`·`setLure`·`setJigHead`·편대)은 거부되고, 캐스팅은 잠긴 채비만 허용한다.
+   */
+  rigLocked = false;
+  /**
+   * 155차 — 획득 훅. 씬이 등록해 HUD 토스트(아이콘 + 수량)를 띄운다. 테스터 리포트("얼음 운반 퀘스트 …
+   * 뭘 받았는지 모르겠다")의 핵심은 지급이 **로그 한 줄**로만 오갔다는 것이다 — 받은 물건은 눈에 보여야 한다.
+   */
+  onGained: ((item: InvItem, qty: number) => void) | null = null;
+  /** 155차 — 아직 살펴보지 않은(새로 받은) 아이템 id. 세션 메모리(세이브 무관). 인벤 칸·탭에 표식을 단다 */
+  readonly newIds = new Set<string>();
 
   /** 어획물 인스턴스 고유 번호 시퀀스 (nextCatchSeq) */
   private _catchSeq = 0;
@@ -1034,6 +1057,7 @@ class InventoryStoreManager {
       jigHead: this._jigHead,
       lureLine: this._lureLine,
       lureLeader: this._lureLeader,
+      rigLocked: this.rigLocked,
       savedAtMs: Date.now(),
     };
   }
@@ -1100,6 +1124,7 @@ class InventoryStoreManager {
       ? { kind: s.spreader.kind ?? 'NONE', cardType: s.spreader.cardType, hookBaits: (s.spreader.hookBaits ?? []).map(ref) }
       : { kind: 'NONE', hookBaits: [] };
     this.rigMode = s.rigMode ?? 'bait';
+    this.rigLocked = !!s.rigLocked;
     this._lure = ref(s.lure);
     this._jigHead = ref(s.jigHead);
     this._lureLine = ref(s.lureLine);
@@ -1133,6 +1158,7 @@ class InventoryStoreManager {
 
   /** 전체 초기화 (새 게임/세이브 없음 — 시드 아이템·기본 채비 재지급) */
   resetAll(): void {
+    this.rigLocked = false;
     this._items = createSeedItems().map((i) => applyCookItemFields(i));   // 154차 — 조리 필드 테이블
     this._catchSeq = 0;
     this._quickslots = defaultQuickslots();
@@ -1371,22 +1397,32 @@ class InventoryStoreManager {
 
   // ── 획득/구매 ───────────────────────────────────────
   /** 아이템 추가 — 동일 id 존재 시 수량 병합, 없으면 빈 소켓에 배치. 실패 시 false */
-  addItem(template: InvItemTemplate, qty: number): boolean {
+  addItem(template: InvItemTemplate, qty: number, opts: { silent?: boolean } = {}): boolean {
     const existing = this.find(template.id);
     if (existing) {
       existing.qty += qty;
+      if (!opts.silent) { this.newIds.add(existing.id); this.onGained?.(existing, qty); }
       return true;
     }
     const slot = this.findFreeSlot(template.category);
     if (slot < 0) return false;
-    this._items.push({
+    const item: InvItem = {
       ...template, slot, qty,
       // 신선도 시계 시작 — 획득(어창 이송 포함) 시점부터 상온 감쇄
       conditionSinceMs: template.condition ? template.conditionSinceMs ?? Date.now() : undefined,
-    });
+    };
+    this._items.push(item);
     // 위키 발견 기록 (최초 취득 1회 — 개체형 id는 위키 카탈로그에 없어 자연 무시됨)
     DiscoveryStore.record('item', template.id, 'inventory');
+    if (!opts.silent) { this.newIds.add(item.id); this.onGained?.(item, qty); }
     return true;
+  }
+
+  /** 155차 — 새 아이템 표식 해제(칸을 살펴보면 사라진다) */
+  markSeen(itemId: string): void { this.newIds.delete(itemId); }
+  hasNewIn(cat: InvCategory): boolean {
+    for (const it of this._items) if (it.category === cat && this.newIds.has(it.id)) return true;
+    return false;
   }
 
   /** 수량 차감 (판매/사용) — 0 이하가 되면 인스턴스 제거. 성공 여부 반환 */
@@ -1547,6 +1583,7 @@ class InventoryStoreManager {
   }
 
   private deleteInstance(itemId: string): void {
+    this.newIds.delete(itemId);
     const idx = this._items.findIndex((i) => i.id === itemId);
     if (idx < 0) return;
     this._items.splice(idx, 1);
@@ -1580,6 +1617,7 @@ class InventoryStoreManager {
 
   // ── 채비(리그) ──────────────────────────────────────
   setRigPart(step: RigStepKey, itemId: string | null): void {
+    if (this.rigLocked) return;   // 155차 — 고정된 채비는 [고정 해제]로 풀어야 편집된다
     // 부력찌/수중찌 소켓 교차 장착 방지 (선택 리스트가 걸러주지만 방어적으로)
     if (itemId) {
       const it = this.find(itemId);
@@ -1612,6 +1650,15 @@ class InventoryStoreManager {
    * 소모성 미끼가 없으므로 입질/실패 시 미끼 소모·손실 로직이 건너뛰어진다.
    * 바늘이 비어 있으면 true(일반 바늘 전제).
    */
+  /** 155차 — [채비 고정]. 필수 부품이 빠져 있으면 고정할 수 없다 */
+  lockRig(): { ok: boolean; reason?: string } {
+    const missing = this.getMissingRigParts();
+    if (missing.length > 0) return { ok: false, reason: `${missing.join(', ')} 장착이 필요합니다` };
+    this.rigLocked = true;
+    return { ok: true };
+  }
+  /** 155차 — [고정 해제] */
+  unlockRig(): void { this.rigLocked = false; }
   hookNeedsBait(): boolean {
     if (this.rigMode === 'lure') return false;
     const id = this._rig.hook;
@@ -1622,6 +1669,7 @@ class InventoryStoreManager {
 
   // ── 루어 채비 (rigMode === 'lure') ───────────────────
   setRigMode(mode: 'bait' | 'lure'): void {
+    if (this.rigLocked) return;   // 155차
     this.rigMode = mode;
     // 루어 소켓이 비어 있으면 미끼 채비의 원줄/목줄을 시드 — 같은 스풀을 참조할 뿐 소모는 없다.
     //   이후 두 모드는 서로 독립(피드백 7 — "미끼 채비에서 목줄을 못 골라 루어를 못 던진다" 해소)
@@ -1646,12 +1694,14 @@ class InventoryStoreManager {
 
   /** 루어 소켓 설정 — 하드 베이트 장착 시 지그헤드 소켓은 자동 비움 */
   setLure(lureId: string | null): void {
+    if (this.rigLocked) return;
     this._lure = lureId;
     const spec = lureId ? getLureSpec(lureId) : undefined;
     if (!spec?.requiresJigHead) this._jigHead = null;
   }
 
   setJigHead(id: string | null): void {
+    if (this.rigLocked) return;
     this._jigHead = id;
   }
 

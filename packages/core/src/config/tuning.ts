@@ -1183,8 +1183,11 @@ export const TUNING: TuningConfig = {
     lawfulReleaseMult: 0.5,
   },
   vitals: {
-    drainIdle: [4.8, 6.0, 0], drainSit: [4.8, 6.0, -16], drainWalk: [10, 14, 12],
-    drainRun: [22, 34, 44], drainBike: [14, 24, 20], drainForage: [14, 22, 32],
+    // 155차 — 하루 세 끼 기준 재보정(사용자 지시). 전형적 하루(수면 8h·대기 6h·걷기 8h·달리기 2h)의 소모가
+    //  허기 ≈105 · 수분 ≈134가 되게 — 정식 한 끼(≈800 kcal)가 33%이니 세 끼 + 물 두세 병이 하루다.
+    //  (구 값은 허기 163 · 수분 226 = 다섯 끼·물 일곱 병 — 먹기만 하는 게임이 됐다)
+    drainIdle: [3.2, 4.0, 0], drainSit: [3.2, 4.0, -16], drainWalk: [6, 8, 12],
+    drainRun: [14, 18, 44], drainBike: [9, 12, 20], drainForage: [9, 12, 32],
     costCast: [0.2, 0.3, 0.4], costFightWin: [1.2, 1.8, 3.0], costFightLose: [0.7, 1.0, 2.0],
     costButcher: [0.8, 0.6, 2.0], costSashimi: [1.2, 0.8, 3.0], costTravel: [5.0, 6.0, 10],
     costCraft: [0.4, 0.3, 0.8], costCook: [0.3, 0.4, 0.6],

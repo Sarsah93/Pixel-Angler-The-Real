@@ -3,6 +3,7 @@
  * @description 불요리 레시피 8종 (154차 — 스펙 §2)
  *
  * ⚖ 레시피는 **필수 요소 + 부가 고급화**로 적는다 — 창작 요리는 없다. 특정 요리명을 표방하려면
+ *   (155차) `vitals`의 허기·수분은 `FoodNutrition.ts` 1인분 영양(kcal ÷ 2,400 · ml ÷ 2,000)에서 파생한 값이다.
  *   `required`가 전부 들어가야 하고, `optional`은 NORMAL 기준 고급화(완성도 +), 종류 상한 초과·택1 위반은 감점.
  * ⚖ 투입 단계는 **보편적인 순서**(사용자 지시): 탕 = 물·무·주재료 → 끓으면 양념·채소 → 주재료 익으면 간 → 마무리 향채.
  * ⚖ 주재료 g 범위는 2인분 기준 — 상한을 넘기면 투입 거부(냄비 용량과 별개).
@@ -69,7 +70,7 @@ export const FIRE_RECIPES: FireRecipeDef[] = [
     maxExtraKinds: 4, targetSaltPct: 1.0, targetSugarSpoons: 0,
     stages: STEW_STAGES, doneWhen: 'mainCooked', tempBand: [85, 100], servingC: 70, coolTauMin: 35, textureDecayPerHour: 0.12,
     cookMin: 25, servings: 2, baseValueKrw: 24000,
-    vitals: { hungerRestore: 55, hydrationRestore: 18, hpRestore: 25, fatigueRestore: 18, drainBuffMult: 0.85, drainBuffMin: 30 },
+    vitals: { hungerRestore: 22, hydrationRestore: 19, hpRestore: 25, fatigueRestore: 18, drainBuffMult: 0.85, drainBuffMin: 30 },
   },
   {
     id: 'stew_clear', nameKo: '지리 (맑은탕)', nameEn: 'Clear fish soup (Jiri)', family: 'stew_clear',
@@ -92,7 +93,7 @@ export const FIRE_RECIPES: FireRecipeDef[] = [
     maxExtraKinds: 4, targetSaltPct: 0.9, targetSugarSpoons: 0,
     stages: STEW_STAGES, doneWhen: 'mainCooked', tempBand: [85, 100], servingC: 70, coolTauMin: 35, textureDecayPerHour: 0.12,
     cookMin: 22, servings: 2, baseValueKrw: 22000,
-    vitals: { hungerRestore: 50, hydrationRestore: 22, hpRestore: 30, fatigueRestore: 20, drainBuffMult: 0.85, drainBuffMin: 30 },
+    vitals: { hungerRestore: 18, hydrationRestore: 21, hpRestore: 30, fatigueRestore: 20, drainBuffMult: 0.85, drainBuffMin: 30 },
   },
   {
     id: 'grill_fish', nameKo: '생선구이', nameEn: 'Grilled fish', family: 'grill',
@@ -108,7 +109,7 @@ export const FIRE_RECIPES: FireRecipeDef[] = [
     maxExtraKinds: 2, targetSaltPct: 1.0, targetSugarSpoons: 0,
     stages: GRILL_STAGES, doneWhen: 'mainCooked', tempBand: [160, 210], servingC: 60, coolTauMin: 15, textureDecayPerHour: 0.30,
     flipEverySec: 240, cookMin: 12, servings: 1, baseValueKrw: 16000,
-    vitals: { hungerRestore: 45, hydrationRestore: 2, hpRestore: 25, fatigueRestore: 12 },
+    vitals: { hungerRestore: 18, hydrationRestore: 2, hpRestore: 25, fatigueRestore: 12 },
   },
   {
     id: 'braise_fish', nameKo: '생선조림', nameEn: 'Braised fish (Jorim)', family: 'braise',
@@ -131,7 +132,7 @@ export const FIRE_RECIPES: FireRecipeDef[] = [
     maxExtraKinds: 3, targetSaltPct: 0.8, targetSugarSpoons: 1.5,
     stages: STEW_STAGES, doneWhen: 'reduced', tempBand: [85, 100], servingC: 65, coolTauMin: 30, textureDecayPerHour: 0.10,
     cookMin: 28, servings: 2, baseValueKrw: 26000,
-    vitals: { hungerRestore: 60, hydrationRestore: 8, hpRestore: 30, fatigueRestore: 15 },
+    vitals: { hungerRestore: 23, hydrationRestore: 6, hpRestore: 30, fatigueRestore: 15 },
   },
   {
     id: 'stirfry_squid', nameKo: '오징어볶음', nameEn: 'Stir-fried squid', family: 'stirfry',
@@ -155,7 +156,7 @@ export const FIRE_RECIPES: FireRecipeDef[] = [
     maxExtraKinds: 3, targetSaltPct: 0.75, targetSugarSpoons: 1.5,
     stages: STIRFRY_STAGES, doneWhen: 'mainCooked', tempBand: [175, 260], servingC: 60, coolTauMin: 18, textureDecayPerHour: 0.25,
     flipEverySec: 45, cookMin: 8, servings: 2, baseValueKrw: 20000,
-    vitals: { hungerRestore: 50, hydrationRestore: 4, hpRestore: 20, fatigueRestore: 10 },
+    vitals: { hungerRestore: 20, hydrationRestore: 3, hpRestore: 20, fatigueRestore: 10 },
   },
   {
     id: 'soup_clam', nameKo: '조개탕', nameEn: 'Clam soup', family: 'stew_clear',
@@ -173,7 +174,7 @@ export const FIRE_RECIPES: FireRecipeDef[] = [
     maxExtraKinds: 3, targetSaltPct: 0.8, targetSugarSpoons: 0,
     stages: STEW_STAGES, doneWhen: 'mainCooked', tempBand: [85, 100], servingC: 70, coolTauMin: 30, textureDecayPerHour: 0.15,
     cookMin: 14, servings: 2, baseValueKrw: 18000,
-    vitals: { hungerRestore: 40, hydrationRestore: 25, hpRestore: 25, fatigueRestore: 18, drainBuffMult: 0.9, drainBuffMin: 20 },
+    vitals: { hungerRestore: 13, hydrationRestore: 22, hpRestore: 25, fatigueRestore: 18, drainBuffMult: 0.9, drainBuffMin: 20 },
   },
   {
     id: 'porridge_abalone', nameKo: '전복죽', nameEn: 'Abalone porridge', family: 'porridge',
@@ -191,7 +192,7 @@ export const FIRE_RECIPES: FireRecipeDef[] = [
     maxExtraKinds: 2, targetSaltPct: 0.7, targetSugarSpoons: 0,
     stages: PORRIDGE_STAGES, doneWhen: 'allCooked', tempBand: [85, 100], servingC: 65, coolTauMin: 40, textureDecayPerHour: 0.08,
     flipEverySec: 180, cookMin: 30, servings: 2, baseValueKrw: 32000,
-    vitals: { hungerRestore: 55, hydrationRestore: 20, hpRestore: 40, fatigueRestore: 32, drainBuffMult: 0.75, drainBuffMin: 45 },
+    vitals: { hungerRestore: 19, hydrationRestore: 15, hpRestore: 40, fatigueRestore: 32, drainBuffMult: 0.75, drainBuffMin: 45 },
   },
   {
     id: 'grill_eel', nameKo: '장어구이', nameEn: 'Grilled eel', family: 'grill',
@@ -209,7 +210,7 @@ export const FIRE_RECIPES: FireRecipeDef[] = [
     maxExtraKinds: 2, targetSaltPct: 0.7, targetSugarSpoons: 1.5,
     stages: GRILL_STAGES, doneWhen: 'mainCooked', tempBand: [160, 210], servingC: 60, coolTauMin: 15, textureDecayPerHour: 0.28,
     flipEverySec: 200, cookMin: 15, servings: 1, baseValueKrw: 38000,
-    vitals: { hungerRestore: 60, hydrationRestore: 6, hpRestore: 45, fatigueRestore: 38, drainBuffMult: 0.7, drainBuffMin: 60 },
+    vitals: { hungerRestore: 32, hydrationRestore: 2, hpRestore: 45, fatigueRestore: 38, drainBuffMult: 0.7, drainBuffMin: 60 },
   },
 ];
 

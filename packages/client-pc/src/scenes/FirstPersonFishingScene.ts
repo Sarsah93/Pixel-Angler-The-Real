@@ -21,8 +21,11 @@
  *  컨테이너 밖에서 매 프레임 재드로우. 파이트 제압(dragIn) 물고기는 세트에 편입.
  *
  * 조작: H = 뒷줄견제 · C/밑밥칸 클릭 = 밑밥 투척(투척점 커서 스냅) ·
- *        좌클릭 유지 = (파이팅) 릴링 · SPACE = 다시 캐스팅(결과 후) ·
+ *        좌클릭 유지 = (파이팅) 릴링 · SPACE = 결과 확인 후 필드 복귀 ·
  *        ESC/그만하기 = 필드 복귀 (stop + resume)
+ *  155차 — **결과가 나오면 성공·실패를 가리지 않고 탑다운으로 돌아간다.** 같은 자리에서 곧바로
+ *        다시 캐스팅되어 있는 상태(구 SPACE 재캐스팅)는 "던진 적이 없는 것처럼" 느껴져 폐기했다.
+ *        다음 캐스팅은 탑다운에서 조준해 다시 시작한다(채비 고정은 U 창 우측 하단).
  */
 
 import Phaser from 'phaser';
@@ -603,7 +606,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     });
     this.input.keyboard!.on('keydown-SPACE', () => {
       if (this.coolerPanel || this.invPanel || this.guideHub) return;
-      if (this.fpState === 'result') this.recast();
+      // 155차 — 결과 화면에서 SPACE = 필드 복귀(재캐스팅 폐기)
+      if (this.fpState === 'result' && this.resultContainer) this.exitToField();
     });
     // 우클릭 = 챔질 (입질 시퀀스 판정) / 좌클릭 = 릴링(홀드)·루어 액션(탭/더블탭)
     this.input.mouse?.disableContextMenu();
@@ -2958,23 +2962,18 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     );
   }
 
-  /** 보관/방생 후 안내 — [계속하기] / [그만하기] */
+  /** 보관/방생 후 안내 — [필드로 돌아가기] (155차 — 성공해도 같은 자리 재캐스팅은 없다) */
   private showPostDecisionPanel(message: string, color: string, fishTexture?: string, imgScale = 1): void {
     const missing = InventoryStore.getMissingRigParts();
-    const buttons: DecisionButton[] = [];
-    if (missing.length === 0) {
-      buttons.push({
-        label: '계속하기 (SPACE)', fill: 0x0d4a2e, stroke: 0x4af2a1, color: '#4af2a1',
-        onClick: () => this.recast(),
-      });
-    }
-    buttons.push({
-      label: '그만하기 (ESC)', fill: 0x3a2020, stroke: 0x8a4a4a, color: '#ffb0a0',
+    const buttons: DecisionButton[] = [{
+      label: '필드로 돌아가기 (SPACE)', fill: 0x0d4a2e, stroke: 0x4af2a1, color: '#4af2a1',
       onClick: () => this.exitToField(),
-    });
+    }];
     this.buildDecisionPanel(
       message,
-      missing.length > 0 ? `채비 보충 필요: ${missing.join(', ')}\n(U 채비하기에서 재장착 후 다시 캐스팅)` : '계속 낚시하거나 필드로 복귀하세요.',
+      missing.length > 0
+        ? `채비 보충 필요: ${missing.join(', ')}\n(U 채비하기에서 재장착 후 다시 캐스팅하세요)`
+        : '탑다운으로 돌아갑니다 — 다시 조준해 캐스팅하세요.',
       color, fishTexture, buttons, imgScale,
     );
   }
@@ -3167,58 +3166,21 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       hit.on('pointerdown', onClick);
       c.add([g, txt, hit]);
     };
-    // 채비가 온전할 때만 재캐스팅 가능 (미끼 소진 등으로 불완전하면 필드 복귀 유도)
+    // 155차 — 결과 뒤에는 언제나 필드로 돌아간다. 채비가 모자라면 그 사실만 알려 둔다.
     const missing = InventoryStore.getMissingRigParts();
-    if (missing.length === 0) {
-      mkBtn(-100, this.cfg.hole ? '다시 내리기 (SPACE)' : '다시 캐스팅 (SPACE)', 0x0d4a2e, 0x4af2a1, '#4af2a1', () => this.recast());
-    } else {
+    if (missing.length > 0) {
       const note = this.add.text(-100, btnY, `채비 보충 필요: ${missing.join(', ')}`, {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#ff9a6a', fontStyle: 'bold',
         align: 'center', wordWrap: { width: 190 },
       }).setOrigin(0.5);
       c.add(note);
     }
-    mkBtn(100, '그만하기 (ESC)', 0x3a2020, 0x8a4a4a, '#ffb0a0', () => this.exitToField());
+    mkBtn(missing.length > 0 ? 100 : 0, '필드로 돌아가기 (SPACE)', 0x0d4a2e, 0x4af2a1, '#4af2a1', () => this.exitToField());
 
     applyScreenFixed(c);
     this.resultContainer = c;
   }
 
-  /** 같은 포인트에 다시 흘리기 (드리프트 상태 리셋) — 채비 완성 상태에서만 */
-  private recast(): void {
-    if (InventoryStore.getMissingRigParts().length > 0) {
-      this.registry.set('fp_exit_msg', '채비 보충이 필요합니다 (U 채비하기)');
-      this.exitToField();
-      return;
-    }
-    this.resultContainer?.destroy();
-    this.resultContainer = undefined;
-    this.fpState = 'drift';
-    this.clearFight2DStage();
-    this.rig = createUnderwaterRig(0);
-    this.viewCenterX = 0;
-    this.lineTension.resetAlignment();
-    this.biteEngine.reset();
-    this.biteSeq.reset();
-    this.holdAnchorZ = null;
-    this.hookedFish = null;
-    this.pendingFish = null;
-    this.rodBendDeg = 0;
-    this.floatSinkM = 0;
-    this.floatSinkVisM = 0;
-    this.distM = this.cfg.castDistanceM;
-    this.hookDistM = this.cfg.castDistanceM;
-    this.fleeLatM = 0;
-    this.fleePlanAng = 0;
-    this.fleeRepickT = 0;
-    this.fightSubdue = 0;
-    this.overstrain = 0;
-    this.rigPose = 'idle';
-    this.sinkCameoStart = -1;   // 재캐스팅 = 새 착수 — 침강 카메오 재시작
-    this.floatSubmerged = false;
-    this.refreshCoolerUi();
-    this.stateText.setText(this.driftHintText());
-  }
 
   /** 149차 — 이 세션의 어획 장소 종류 (구멍치기 우선) */
   private spotKind(): StorySpotKind {

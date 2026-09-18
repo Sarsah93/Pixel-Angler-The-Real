@@ -7,6 +7,9 @@
  * 그래서 id → 효과를 이 한 곳에만 두고, ① 상점 카탈로그 ② 시드 아이템 ③ **세이브 로드 백필**
  * 세 경로가 전부 여기서 읽어간다. 값을 고치면 구세이브도 다음 로드에 자동 정합된다.
  *
+ * ⚖ 155차 — **허기·수분은 `FoodNutrition.ts`(실질량·열량·수분)에서 파생**한다: kcal ÷ 2,400 · ml ÷ 2,000.
+ *   정식 한 끼 ≈ 30% = 하루 세 끼. 간식·통조림은 8~10%. 술·카페인은 유효 수분이 음수거나 절반.
+ *
  * ⚖ 피로 회복 설계(사용자 결정 2026-09-11 (b)):
  *  - **일반 음식(간식·통조림·주먹밥)은 피로 회복 0** — 허기·수분 전담.
  *  - **중간(국물류·커피·술)은 소량**(8~20).
@@ -15,7 +18,10 @@
  *  - **카페인은 즉시 회복 + 리바운드 부채**(`fatigueRebound` 만큼 `fatigueReboundMin` 활동 분 뒤 복귀).
  */
 
-import type { StatusCure } from '@tra/core';
+import { restoreFromNutrition, FOOD_NUTRITION, type StatusCure } from '@tra/core';
+
+/** 155차 — 허기·수분은 영양표(질량·kcal·ml)에서 파생한다. 손으로 적은 숫자를 남기지 않는다 */
+const nut = (id: string): { hungerRestore: number; hydrationRestore: number } => restoreFromNutrition(FOOD_NUTRITION[id]);
 
 /** 소모품 1회 사용 효과 — 전부 선택 필드(없으면 해당 효과 없음) */
 export interface ItemVitalsDef {
@@ -47,43 +53,43 @@ export interface ItemVitalsDef {
  */
 export const ITEM_VITALS: Record<string, ItemVitalsDef> = {
   // ── 편의점·마트 가공품 (일반 — 피로 회복 없음) ──
-  inv_can:        { hungerRestore: 18, hydrationRestore: -2 },
-  shop_snackbar:  { hungerRestore: 12, hydrationRestore: -2 },
-  shop_water:     { hydrationRestore: 30 },
-  shop_riceball:  { hungerRestore: 22, hydrationRestore: 2 },
+  inv_can:        { ...nut('inv_can') },
+  shop_snackbar:  { ...nut('shop_snackbar') },
+  shop_water:     { ...nut('shop_water') },
+  shop_riceball:  { ...nut('shop_riceball') },
 
   // ── 식당 (중간 — 국물류) ──
-  shop_meal_grilled: { hungerRestore: 45, hydrationRestore: 5, hpRestore: 30, fatigueRestore: 20 },
-  shop_meal_soup:    { hungerRestore: 40, hydrationRestore: 15, hpRestore: 15, fatigueRestore: 15 },
+  shop_meal_grilled: { ...nut('shop_meal_grilled'), hpRestore: 30, fatigueRestore: 20 },
+  shop_meal_soup:    { ...nut('shop_meal_soup'), hpRestore: 15, fatigueRestore: 15 },
 
   // ── 식당 보양식 (129차 신설 — 피로 25~40 + 드레인 감소 버프) ──
   shop_meal_abalone: {
-    hungerRestore: 50, hydrationRestore: 20, hpRestore: 35, fatigueRestore: 30,
+    ...nut('shop_meal_abalone'), hpRestore: 35, fatigueRestore: 30,
     drainBuffMult: 0.75, drainBuffMin: 40,
   },
   shop_meal_eel: {
-    hungerRestore: 60, hydrationRestore: 10, hpRestore: 45, fatigueRestore: 40,
+    ...nut('shop_meal_eel'), hpRestore: 45, fatigueRestore: 40,
     drainBuffMult: 0.68, drainBuffMin: 60,
   },
 
   // ── 카페 (카페인 = 즉시 회복 + 리바운드 부채) ──
   shop_coffee:  {
-    hydrationRestore: 8, fatigueRestore: 20, fatigueRebound: 10, fatigueReboundMin: 120,
+    ...nut('shop_coffee'), fatigueRestore: 20, fatigueRebound: 10, fatigueReboundMin: 120,
   },
   shop_latte:   {
-    hungerRestore: 8, hydrationRestore: 10, hpRestore: 5,
+    ...nut('shop_latte'), hpRestore: 5,
     fatigueRestore: 12, fatigueRebound: 6, fatigueReboundMin: 120,
   },
-  shop_dessert: { hungerRestore: 15, fatigueRestore: 8 },
+  shop_dessert: { ...nut('shop_dessert'), fatigueRestore: 8 },
 
   // ── 주점 (술 = 수분 −) ──
-  shop_makgeolli: { hungerRestore: 10, hydrationRestore: -8, fatigueRestore: 20 },
-  shop_anju:      { hungerRestore: 30, hpRestore: 20, fatigueRestore: 5 },
-  shop_soju:      { hydrationRestore: -12, fatigueRestore: 10 },
+  shop_makgeolli: { ...nut('shop_makgeolli'), fatigueRestore: 20 },
+  shop_anju:      { ...nut('shop_anju'), hpRestore: 20, fatigueRestore: 5 },
+  shop_soju:      { ...nut('shop_soju'), fatigueRestore: 10 },
 
   // ── 회(사시미) ──
-  shop_assorted_sashimi_small:        { hungerRestore: 25, hpRestore: 10, fatigueRestore: 5 },
-  shop_black_sea_bream_sashimi_small: { hungerRestore: 30, hpRestore: 12, fatigueRestore: 8 },
+  shop_assorted_sashimi_small:        { ...nut('shop_assorted_sashimi_small'), hpRestore: 10, fatigueRestore: 5 },
+  shop_black_sea_bream_sashimi_small: { ...nut('shop_black_sea_bream_sashimi_small'), hpRestore: 12, fatigueRestore: 8 },
 
   // ── 구급품 (제작 P7 · 약국 판매) ──
   //  붕대 = 출혈 / 부목 = 골절 / 상비약 = 감기·독감·식중독·생물중독 등 medicine 계열.
