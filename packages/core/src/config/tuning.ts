@@ -651,6 +651,14 @@ export interface TuningConfig {
     idleWarnMin: number;
     /** 조리 1회 XP 배율 기준 총점 (총점/이 값 × cookBase) */
     xpTotalRef: number;
+    /** 156차 — 재료 특성 가중 (DishFactory): 지방감 → 허기 · 국물 기여 → 수분 · 신선도 → 둘 다 */
+    ingredientQuality: { freshnessWeight: number; fatnessWeight: number; brothWeight: number };
+    /** 156차 — 회복치·효과 산출: 중량 배율 (중량/기준)^지수 상하한 · 최종 상하한 · 효과가 붙는 최소 총점 */
+    dishEffect: { refWeightG: number; weightExp: number; weightMultMin: number; weightMultMax: number; minMultiplier: number; maxMultiplier: number; effectMinOverall: number };
+    /** 156차 — 이름 수식어 임계 (품질 0~100 · 지방감 0~1) */
+    naming: { freshThreshold: number; premiumThreshold: number; fattyThreshold: number };
+    /** 156차 — 완성 요리 판매가 계수 (사시미와 별개) */
+    pricing: { ingredientMultiplier: number; qualityMultiplier: number; freshnessMultiplier: number };
   };
   /** 구멍치기(테트라포드·사석 틈) — 149차. 캐스팅이 아니라 발밑 구멍에 수직으로 내리는 조법 */
   hole: {
@@ -1168,6 +1176,10 @@ export const TUNING: TuningConfig = {
     saltSigmaPct: 0.28, sugarSigmaSpoons: 1.0, starThreshold: 0.72,
     finishGateMin: 0.6, finishCap: 0.55, skillPerRank: 0.05,
     windCalmMps: 3, windSpanMps: 9, placeRangeTiles: 3, solidVolumeFrac: 0.6, idleWarnMin: 3, xpTotalRef: 70,
+    ingredientQuality: { freshnessWeight: 0.2, fatnessWeight: 0.3, brothWeight: 0.3 },
+    dishEffect: { refWeightG: 800, weightExp: 0.5, weightMultMin: 0.7, weightMultMax: 1.4, minMultiplier: 0.35, maxMultiplier: 1.7, effectMinOverall: 60 },
+    naming: { freshThreshold: 90, premiumThreshold: 95, fattyThreshold: 0.8 },
+    pricing: { ingredientMultiplier: 0.2, qualityMultiplier: 0.9, freshnessMultiplier: 0.3 },
   },
   hole: {
     depthMultTetrapod: 1.15, depthMultRiprap: 0.85, depthVarianceM: 0.9, tideDepthM: 0.8,
@@ -1286,6 +1298,10 @@ export const TUNING_META: TuningParamMeta[] = [
   { path: 'cook.dryBurnSec', min: 30, max: 600, step: 10, category: 'balance', label: '졸아붙은 뒤 타기까지 (시뮬 초)' },
   { path: 'cook.saltSigmaPct', min: 0.1, max: 0.6, step: 0.02, category: 'balance', label: '간 판정 관대함 (σ %)' },
   { path: 'cook.starThreshold', min: 0.5, max: 0.9, step: 0.02, category: 'balance', label: '별 획득 임계' },
+  // ── 불요리 확장 (156차 — mockup) ──
+  { path: 'cook.dishEffect.weightExp', min: 0, max: 1, step: 0.05, category: 'balance', label: '요리 중량 배율 지수' },
+  { path: 'cook.pricing.qualityMultiplier', min: 0.3, max: 1.5, step: 0.05, category: 'balance', label: '요리 판매가 품질 계수' },
+  { path: 'cook.naming.freshThreshold', min: 70, max: 100, step: 1, category: 'balance', label: '「싱싱한」 신선도 임계' },
   // ── 구멍치기 (149차 — mockup, 실플레이 조율 대기) ──
   { path: 'hole.depthMultTetrapod', min: 0.5, max: 2, step: 0.05, category: 'balance', label: '테트라포드 구멍 깊이 배율' },
   { path: 'hole.snagMultTetrapod', min: 1, max: 4, step: 0.1, category: 'balance', label: '테트라포드 밑걸림 배율' },

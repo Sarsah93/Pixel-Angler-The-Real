@@ -15,7 +15,8 @@ import {
   TUNING, getHeatSource, getCookware, getFuel, getFireRecipe, getCookIngredient, ingredientOfItem,
   createCookSession, canAddIngredient, addIngredient as coreAddIngredient, setHeat as coreSetHeat, flip as coreFlip,
   stepCook, finishCook, dishStarsAt, dishValueKrw, dishVitalsMult, dishItemName, checkComposition,
-  type DeployedStove, type HeatLevel, type DishData, type CookEnv, type FireRecipeDef, type CookwareDef,
+  isVariantRecipe, createDishInstance, FISH_DATABASE, dishDiscoveryId,
+  type DeployedStove, type HeatLevel, type DishData, type DishInstance, type CookContent, type CookEnv, type FireRecipeDef, type CookwareDef, type PrimaryIngredientInfo,
 } from '@tra/core';
 import { GameState } from './GameState.js';
 import { InventoryStore, type InvItem, type InvItemTemplate } from './InventoryStore.js';
@@ -165,7 +166,8 @@ class CookingStoreClass {
     if (item.condition === 'frozen') return { ok: false, message: `${item.name} — 해동한 뒤 쓰세요` };
     const fresh01 = item.condition ? ({ live: 1, fresh: 0.92, chilled: 0.9, normal: 0.65, thawed: 0.55 } as Record<string, number>)[item.condition] ?? 0.9 : 0.95;
     if (def.unit === 'g') {
-      const r = this.addIngredientRaw(st, m.ing, m.units, fresh01, item.id, m.weightG);
+      // 156차 — 주재료 어종은 아이템이 사라진 뒤에도 요리 개체(매운탕 3종 등)가 알아야 한다
+      const r = this.addIngredientRaw(st, m.ing, m.units, fresh01, item.id, m.weightG, item.speciesId);
       if (r.ok) InventoryStore.removeItem(item.id, false);
       return r;
     }
@@ -177,13 +179,13 @@ class CookingStoreClass {
     return r;
   }
 
-  private addIngredientRaw(st: DeployedStove, ing: string, units: number, fresh01: number, srcItemId?: string, weightG?: number): CookActionResult {
+  private addIngredientRaw(st: DeployedStove, ing: string, units: number, fresh01: number, srcItemId?: string, weightG?: number, speciesId?: string): CookActionResult {
     const s = st.session; const r = s ? getFireRecipe(s.recipeId) : undefined; const cw = st.cookwareId ? getCookware(st.cookwareId) : undefined;
     if (!s || !r || !cw) return { ok: false, message: '먼저 요리를 고르세요' };
     this.syncOne(st, Date.now());
     const chk = canAddIngredient(s, r, cw, ing, units);
     if (!chk.ok) return { ok: false, message: chk.reasonKo ?? '넣을 수 없습니다' };
-    coreAddIngredient(s, ing, units, fresh01, srcItemId, weightG);
+    coreAddIngredient(s, ing, units, fresh01, srcItemId, weightG, speciesId);
     GameState.markDirty();
     const def = getCookIngredient(ing);
     return { ok: true, message: `${def?.nameKo ?? ing} 투입` };
@@ -228,7 +230,10 @@ class CookingStoreClass {
     this.syncOne(st, Date.now());
     const rank = GameState.skillRanks['life_cook'] ?? 0;
     const dish = finishCook(s, r, cw, { nowMs: Date.now(), skillRank: rank, stoveKind: this.isHome(st) ? 'home' : 'field' });
-    const tpl = this.dishTemplate(dish, r);
+    // 156차 — 변형 레시피(매운탕 …)는 주재료 어종으로 요리 개체를 만든다. 나머지 레시피는 154차 경로 그대로
+    const seq = InventoryStore.nextCatchSeq();
+    const inst = isVariantRecipe(r.id) ? createDishInstance(r, dish, this.primaryIngredientOf(s.contents, r), seq) : null;
+    const tpl = this.dishTemplate(dish, r, seq, inst);
     if (!InventoryStore.addItem(tpl, 1)) return { ok: false, message: '인벤토리 칸이 없습니다 — 한 칸 비우고 내리세요' };
     const item = InventoryStore.find(tpl.id)!;
     st.session = null;
@@ -237,7 +242,9 @@ class CookingStoreClass {
     const mult = dish.burnt ? 0.3 : Math.max(0.3, stars.total / TUNING.cook.xpTotalRef);
     GameState.addActivityXp('cook', mult);
     GameState.applyVitalsAction('cook');
-    DiscoveryStore.record('item', tpl.id.replace(/_\d+$/, ''), 'inventory');
+    // 요리 도감 — 변형 레시피는 (레시피 × 주재료) 1건, 나머지는 레시피 1건(generic). 전부 kind 'dish'로 통일
+    // (⚠ 아이템 kind로 기록하면 카탈로그 밖 id라 HUD 토스트가 내부 id를 그대로 노출한다 — §8-9)
+    DiscoveryStore.record('dish', inst ? inst.discoveryId : dishDiscoveryId(r.id, null), 'cook');
     GameState.markDirty();
     return { ok: true, message: `${item.name} 완성`, item };
   }
@@ -250,14 +257,31 @@ class CookingStoreClass {
     return { ok: true, message: '내용물을 버렸습니다' };
   }
 
-  /** 요리 아이템 템플릿 — 이름·아이콘·회복치(별점 반영)·판매 기준가 */
-  private dishTemplate(dish: DishData, r: FireRecipeDef): InvItemTemplate {
+  /**
+   * 주재료 — 가장 무거운 main 역할 재료(어종이 남아 있는 것). 없으면 generic(어종 null).
+   * 신선도는 그 재료의 투입 당시 값이다(§10 — 완성 시점 신선도의 근거).
+   */
+  private primaryIngredientOf(contents: CookContent[], r: FireRecipeDef): PrimaryIngredientInfo {
+    const mainIngs = new Set<string>();
+    for (const q of r.required) if (q.role === 'main') { if (Array.isArray(q.ing)) q.ing.forEach((i) => mainIngs.add(i)); else mainIngs.add(q.ing); }
+    const mains = contents.filter((c) => mainIngs.has(c.ing));
+    let best = mains[0];
+    for (const c of mains) if ((c.weightG ?? 0) > (best?.weightG ?? 0) || (!best?.speciesId && c.speciesId)) best = c;
+    const sp = best?.speciesId ? FISH_DATABASE.find((f) => f.id === best!.speciesId) : undefined;
+    const weightG = mains.reduce((a, c) => a + (c.weightG ?? 0), 0) || (best?.weightG ?? 0);
+    return {
+      speciesId: sp?.id ?? null, nameKo: sp?.nameKo ?? null, nameEn: sp?.nameEn ?? null,
+      weightG, freshness01: best?.freshness01 ?? 0.9,
+    };
+  }
+
+  /** 요리 아이템 템플릿 — 이름·아이콘·회복치(별점 반영)·판매 기준가. `inst`가 있으면(변형 레시피) 이름·회복치·효과를 개체에서 읽는다 */
+  private dishTemplate(dish: DishData, r: FireRecipeDef, seq: number, inst: DishInstance | null): InvItemTemplate {
     const now = Date.now();
     const stars = dishStarsAt(dish, r, now);
     const mult = dishVitalsMult(dish, stars);
     const v = r.vitals;
-    const seq = InventoryStore.nextCatchSeq();
-    return {
+    const base: InvItemTemplate = {
       id: `inv_dish_${r.id}_${seq}`,
       name: dishItemName(r, dish, stars),
       icon: '', iconTexture: `px:it_dish_${r.family}`,
@@ -267,6 +291,18 @@ class CookingStoreClass {
       hungerRestore: Math.round(v.hungerRestore * mult), hydrationRestore: Math.round(v.hydrationRestore * mult),
       hpRestore: Math.round(v.hpRestore * mult), fatigueRestore: Math.round(v.fatigueRestore * mult),
       ...(v.drainBuffMult && v.drainBuffMin && !dish.burnt && stars.stars >= 3 ? { drainBuffMult: v.drainBuffMult, drainBuffMin: v.drainBuffMin } : {}),
+    };
+    if (!inst) return base;
+    // 156차 — 개체 결과가 이름·회복치·판매가를 대체한다. 효과는 포만감(드레인 버프)만 실기전(§0.5)
+    const sat = inst.result.effects.find((e) => e.kind === 'satiety');
+    const { drainBuffMult: _m, drainBuffMin: _n, ...rest } = base;
+    return {
+      ...rest,
+      name: inst.result.nameKo,
+      basePrice: inst.result.sellPrice,
+      dishInstance: inst,
+      hungerRestore: inst.result.hungerRestore, hydrationRestore: inst.result.hydrationRestore,
+      ...(sat ? { drainBuffMult: Math.max(0.5, 1 - sat.magnitude), drainBuffMin: sat.durationMin } : {}),
     };
   }
 

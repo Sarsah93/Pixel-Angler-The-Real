@@ -98,7 +98,7 @@ export function fmtUnits(unit: CookIngredientUnit, n: number): string {
 type CookIngredientUnit = 'g' | 'ea' | 'spoon' | 'cup';
 
 export function addIngredient(
-  s: CookSessionState, ing: string, units: number, freshness01: number, srcItemId?: string, weightG?: number,
+  s: CookSessionState, ing: string, units: number, freshness01: number, srcItemId?: string, weightG?: number, speciesId?: string,
 ): void {
   const def = getCookIngredient(ing);
   if (!def) return;
@@ -107,7 +107,7 @@ export function addIngredient(
   const same = s.contents.find((c) => c.ing === ing && c.addedStage === s.stageNow && Math.abs(c.addedAtSec - s.elapsedSec) < 20);
   if (same && def.unit !== 'g') { same.units += units; same.freshness01 = Math.min(same.freshness01, freshness01); }
   else {
-    s.contents.push({ ing, units, addedAtSec: s.elapsedSec, addedStage: s.stageNow, doneness: 0, burnt: 0, freshness01, srcItemId, weightG });
+    s.contents.push({ ing, units, addedAtSec: s.elapsedSec, addedStage: s.stageNow, doneness: 0, burnt: 0, freshness01, srcItemId, weightG, ...(speciesId ? { speciesId } : {}) });
   }
   if (s.status === 'idle') s.status = 'cooking';
   pushEvent(s, `${def.nameKo} ${fmtUnits(def.unit, units)} 투입`);

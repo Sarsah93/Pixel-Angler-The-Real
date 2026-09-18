@@ -11,7 +11,8 @@
 export type DiscoveryKind =
   | 'fish'      // 어종 (FishDatabase speciesId)
   | 'creature'  // 해루질/통발 해양생물 (ShoreCreatureDatabase id)
-  | 'item';     // 아이템 (InvItem/상점 카탈로그 id)
+  | 'item'      // 아이템 (InvItem/상점 카탈로그 id)
+  | 'dish';     // 요리 종류 (156차 — `discovery_<recipe>_<species>`, DishDiscovery.ts)
 
 /** 발견 경로 — 도감/위키에 "어떻게 처음 만났나"로 표기 */
 export type DiscoverySource =
@@ -19,6 +20,7 @@ export type DiscoverySource =
   | 'trap'          // 통발 포획
   | 'night_hunting' // 해루질 채집
   | 'inventory'     // 인벤토리 취득 (구매·지급·손질 산출 등)
+  | 'cook'          // 직접 조리 (156차 — 요리 도감)
   | 'legacy'        // 구세이브 어획 기록 백필
   | 'dev';          // dev 모드 해금
 
@@ -39,6 +41,7 @@ export const DISCOVERY_SOURCE_LABEL: Record<DiscoverySource, string> = {
   trap: '통발로 포획',
   night_hunting: '해루질로 채집',
   inventory: '아이템 취득',
+  cook: '직접 조리',
   legacy: '과거 조과 기록',
   dev: 'dev 해금',
 };

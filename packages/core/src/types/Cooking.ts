@@ -181,6 +181,8 @@ export interface CookContent {
   srcItemId?: string;
   /** 실중량 (g 단위 재료) */
   weightG?: number;
+  /** 주재료 어종 (156차 — 아이템은 투입 때 사라지므로 여기 남긴다) */
+  speciesId?: string;
 }
 
 export type CookStatus = 'idle' | 'cooking' | 'done' | 'burnt';
@@ -276,4 +278,112 @@ export interface DishStars {
   /** 현재 온도 (°C) */
   tempC: number;
   tempLabel: 'hot' | 'warm' | 'cold';
+}
+
+// ─────────────────────────────────────────────
+// 156차 — 재료 프로필 · 완성 요리 개체 (Recipe ≠ Dish · `.agents/FIRE_COOKING_EXPANSION_SPEC.md`)
+// ─────────────────────────────────────────────
+
+/** 해산물 공통 요리 특성 (0~1) — 어류·두족류·조개류가 상속한다 */
+export interface SeafoodCookingProfile {
+  moistureRetention: number;
+  texture: number;
+  flavorStrength: number;
+  sweetness: number;
+  fishiness: number;
+}
+
+/** 어류 요리 프로필 (§2.1) — 수치는 UI에 그대로 노출하지 않는다 */
+export interface FishCookingProfile extends SeafoodCookingProfile {
+  fatness: number;
+  brothContribution: number;
+  grillSuitability: number;
+  stewSuitability: number;
+  soupSuitability: number;
+  fryingSuitability: number;
+  fleshYield: number;
+}
+export type CephalopodCookingProfile = SeafoodCookingProfile;
+export interface ShellfishCookingProfile extends SeafoodCookingProfile {
+  brothContribution: number;
+  salinityContribution: number;
+  shellYield: number;
+}
+
+/** 음식 효과 종류 (§26 — 닫힌 유니온) */
+export type FoodEffectKind =
+  | 'satiety' | 'hydration' | 'fatigue_recovery' | 'fishing_focus'
+  | 'fishing_endurance' | 'movement_endurance' | 'cold_resistance' | 'heat_resistance';
+
+export interface FoodEffect {
+  kind: FoodEffectKind;
+  /** 크기 (비율 — 0.08 = 8%) */
+  magnitude: number;
+  durationMin: number;
+}
+export interface FoodEffectDef extends FoodEffect {
+  id: string;
+  nameKo: string;
+  nameEn: string;
+  descKo: string;
+  descEn: string;
+}
+
+/** 완성 시 품질 (0~100) — 154차 원점수 ×100. 현재 품질은 `dishStarsAt(dish)`가 시간 감쇠로 낸다 */
+export interface DishQuality {
+  seasoning: number;
+  temperature: number;
+  texture: number;
+  freshness: number;
+  completion: number;
+  overall: number;
+}
+
+/** 주재료가 요리에 남긴 것 */
+export interface DishIngredientProfile {
+  primarySpecies: string | null;
+  primaryNameKo: string | null;
+  primaryNameEn: string | null;
+  weightG: number;
+  freshness01: number;
+  fatness: number;
+  texture: number;
+  fishiness: number;
+  flavorStrength: number;
+  brothContribution: number;
+}
+
+export type DishNameModifier = 'burnt' | 'prime' | 'fresh' | 'fatty';
+
+export interface DishResult {
+  nameKo: string;
+  nameEn: string;
+  descriptionKo: string;
+  descriptionEn: string;
+  hungerRestore: number;
+  hydrationRestore: number;
+  effects: FoodEffectDef[];
+  sellPrice: number;
+}
+
+/** 이번에 실제로 만들어진 요리 (§12) — 아이템에 실려 세이브된다 */
+export interface DishInstance {
+  instanceId: string;
+  recipeId: string;
+  /** 도감 항목 id (`discovery_<recipe>_<species>`) — 인스턴스마다 새로 만들지 않는다(§36) */
+  discoveryId: string;
+  ingredientProfile: DishIngredientProfile;
+  quality: DishQuality;
+  modifier: DishNameModifier | null;
+  result: DishResult;
+  createdAt: number;
+  freshnessAtCompletion: number;
+}
+
+/** 요리 도감 기록 (§35) */
+export interface DishDiscoveryRecord {
+  discoveryId: string;
+  recipeId: string;
+  primarySpeciesId: string | null;
+  firstAtMs: number;
 }

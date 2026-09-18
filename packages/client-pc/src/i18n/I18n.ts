@@ -24,6 +24,8 @@ import {
   CRAFT_BLUEPRINTS, CRAFT_GROUP_LABEL,
   allChoiceLines, allNarrativeLines,
   FIRE_RECIPES, COOK_INGREDIENTS, HEAT_SOURCES, COOKWARES, FUELS,
+  RECIPE_LORE, DISH_VARIANT_LORE, RECIPE_EFFECTS, FOOD_EFFECT_KIND_KO, DISH_MODIFIER_KO, DISH_MODIFIER_EN,
+  fatnessLabel, textureLabel, fishinessLabel, flavorLabel,
 } from '@tra/core';
 import { EN_PLACES } from './places.js';
 import { EN_POIS } from './en_pois.js';
@@ -39,6 +41,11 @@ let locale: Locale = 'ko';
 const HANGUL = /[가-힣]/;
 const cache = new Map<string, string>();
 const runtimeDict = new Map<string, string>();
+/**
+ * 런타임 규칙 — 수치가 실행 중에 정해지는 문장(효과 지속 분 등).
+ * 데이터(Ko/En 쌍)에서 숫자 자리만 캡처로 바꿔 만든다 → 효과 DB가 바뀌어도 따라온다.
+ */
+const runtimeRules: [RegExp, string][] = [];
 let installed = false;
 
 /**
@@ -78,6 +85,28 @@ function buildRuntimeDict(): void {
   for (const h of HEAT_SOURCES) put(h.nameKo, h.nameEn);
   for (const c of COOKWARES) put(c.nameKo, c.nameEn);
   for (const f of FUELS) put(f.nameKo, f.nameEn);
+  // 156차 — 요리 도감·개체: 설명·효과·프로필 라벨도 데이터(Ko/En 쌍)가 정본
+  for (const l of Object.values(RECIPE_LORE)) {
+    put(l.shortDescriptionKo, l.shortDescriptionEn);
+    if (l.cookingTipKo && l.cookingTipEn) put(l.cookingTipKo, l.cookingTipEn);
+    if (l.ingredientTipKo && l.ingredientTipEn) put(l.ingredientTipKo, l.ingredientTipEn);
+  }
+  for (const bySp of Object.values(DISH_VARIANT_LORE)) for (const v of Object.values(bySp)) put(v.descKo, v.descEn);
+  runtimeRules.length = 0;
+  for (const e of Object.values(RECIPE_EFFECTS)) {
+    put(e.nameKo, e.nameEn); put(e.descKo, e.descEn);
+    // ⚠ 실제 표시 문장은 지속 시간이 개체마다 다르다(`32분 동안 …`) — 정확 일치로는 안 잡힌다
+    const koRe = e.descKo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/^\d+분/, '(\\d+)분');
+    runtimeRules.push([new RegExp(`^${koRe}$`), e.descEn.replace(/for \d+ min/, 'for $1 min')]);
+  }
+  const EFFECT_KIND_EN: Record<string, string> = {
+    satiety: 'hunger drain', hydration: 'hydration', fatigue_recovery: 'fatigue recovery', fishing_focus: 'fishing focus',
+    fishing_endurance: 'fishing endurance', movement_endurance: 'movement endurance', cold_resistance: 'cold resistance', heat_resistance: 'heat resistance',
+  };
+  for (const [k, ko] of Object.entries(FOOD_EFFECT_KIND_KO)) put(ko, EFFECT_KIND_EN[k] ?? k);
+  for (const k of Object.keys(DISH_MODIFIER_KO) as (keyof typeof DISH_MODIFIER_KO)[]) put(DISH_MODIFIER_KO[k], DISH_MODIFIER_EN[k]);
+  // 밴드 경계가 라벨마다 달라 대표값을 넉넉히 훑는다(비린 향은 4단계 — 0.1/0.5/0.9만으론 '약함'이 빠진다)
+  for (const v of [0.05, 0.25, 0.45, 0.5, 0.8, 0.95]) { put(fatnessLabel(v), fatnessLabel(v, true)); put(textureLabel(v), textureLabel(v, true)); put(fishinessLabel(v), fishinessLabel(v, true)); put(flavorLabel(v), flavorLabel(v, true)); }
   for (const r of REGION_DATABASE) put(r.description, r.descriptionEn);
   // 122차 — 출처 화면(데이터 제공기관·서비스·사용처·라이선스 라벨)
   for (const a of DATA_ATTRIBUTIONS) { put(a.provider, a.providerEn); put(a.service, a.serviceEn); put(a.usage, a.usageEn); }
@@ -164,6 +193,10 @@ function translateOnce(s: string, depth: number): string | null {
   // 캡처 재번역기 — 캡처가 원문 전체와 같으면(무한 재귀) 그대로 둔다
   // 캡처가 원문 전체와 같거나(무한 재귀) 너무 깊으면 그대로 둔다
   const tr: Translator = (x) => (x === s || depth > 6 ? x : translateDeep(x, depth + 1));
+  for (const [re, rep] of runtimeRules) {
+    const m = re.exec(s);
+    if (m) return applyTemplate(rep, m, tr);
+  }
   for (const [re, rep] of EN_RULES) {
     const m = re.exec(s);
     if (m) return typeof rep === 'function' ? rep(m, tr) : applyTemplate(rep, m, tr);

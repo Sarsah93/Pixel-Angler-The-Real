@@ -11,7 +11,7 @@
  */
 
 import type { DiscoveryKind, DiscoverySource, DiscoveryEntry } from '@tra/core';
-import { discoveryKey, FISH_DATABASE } from '@tra/core';
+import { discoveryKey, FISH_DATABASE, dishDiscoveryName } from '@tra/core';
 import { SHORE_CREATURE_DATABASE } from '@tra/core';
 
 /** 세이브 직렬화 형태 */
@@ -62,6 +62,7 @@ class DiscoveryStoreClass {
     if (kind === 'creature') {
       return SHORE_CREATURE_DATABASE.find((c) => c.id === id)?.nameKo ?? id;
     }
+    if (kind === 'dish') return dishDiscoveryName(id);
     return id;
   }
 

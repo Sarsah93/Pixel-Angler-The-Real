@@ -89,6 +89,13 @@ const FORAGE_TO_ING: Record<string, string> = {
   clam_varicosa: 'clam', mytilus_coruscus: 'mussel', oyster_gigas: 'oyster', haliotis_discus: 'abalone',
 };
 
+/** 어종이 어떤 주재료가 되는가 (156차 — 요리 도감 변형 후보 산출용) */
+export function speciesMainIngredient(speciesId: string): 'fish' | 'eel' | 'squid' {
+  if (EEL_SPECIES.has(speciesId)) return 'eel';
+  if (SQUID_SPECIES.has(speciesId)) return 'squid';
+  return 'fish';
+}
+
 export interface IngredientMatch {
   ing: string;
   /** 투입 단위 수 (g 재료 = 중량) */

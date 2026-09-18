@@ -11,7 +11,8 @@ import { ensurePixelIcon } from './PixelIcon.js';
 import { getNuisance, sashimiStarsAt, sashimiNutrition, foodNutritionOf, nutritionLineKo, restoreFromNutrition } from '@tra/core';
 import { FISH_DATABASE, fishImageSizeScale, fishRarity, speciesStandardWeightG,
   GEAR_FAULTS, gearRepairFee, rodMaxCasts,
-  getFireRecipe, getCookIngredient, dishStarsAt, dishVitalsMult, fmtUnits, SALT_LABEL_KO, SUGAR_LABEL_KO, STAR_NAME_KO } from '@tra/core';
+  getFireRecipe, getCookIngredient, dishStarsAt, dishVitalsMult, fmtUnits, SALT_LABEL_KO, SUGAR_LABEL_KO, STAR_NAME_KO,
+  fatnessLabel, textureLabel, fishinessLabel, flavorLabel, FOOD_EFFECT_KIND_KO } from '@tra/core';
 import { CookingStore } from '../store/CookingStore.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { DraggablePanel } from './DraggablePanel.js';
@@ -43,7 +44,7 @@ export interface ItemDetailData {
 }
 
 /** 아이템 종류별 상세 스펙 추론 생성 (목업) — 어획물은 개체 실측치·어종 정보(FISH_DATABASE) 표시 */
-export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory' | 'category' | 'qty' | 'basePrice' | 'condition' | 'conditionSinceMs' | 'speciesId' | 'lengthCm' | 'weightG' | 'floatBuoyG' | 'plateWip' | 'fault' | 'useCount' | 'tool' | 'bound' | 'dish' | 'sashimi' | 'cutQuality' | 'hungerRestore' | 'hydrationRestore' | 'hpRestore' | 'fatigueRestore'>): ItemDetailData {
+export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory' | 'category' | 'qty' | 'basePrice' | 'condition' | 'conditionSinceMs' | 'speciesId' | 'lengthCm' | 'weightG' | 'floatBuoyG' | 'plateWip' | 'fault' | 'useCount' | 'tool' | 'bound' | 'dish' | 'dishInstance' | 'sashimi' | 'cutQuality' | 'hungerRestore' | 'hydrationRestore' | 'hpRestore' | 'fatigueRestore'>): ItemDetailData {
   const rows: ItemDetailRow[] = [];
   let desc = '';
   // 155차 — 완성 사시미 접시: 맛 별 5개(지금 / 담은 직후) — 불요리와 같은 문법
@@ -102,6 +103,44 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
     const used = item.useCount ?? 0;
     rows.push({ label: '내구도', value: `${Math.max(0, mx - used)} / ${mx} 회` });
     if (used >= mx) rows.push({ label: '마모', value: '한계 초과 — 고장이 잦아집니다' });
+  }
+
+  // 156차 — 요리 개체(변형 레시피): 주재료·프로필 라벨·영양·효과·조리 품질 (§29 템플릿 — 원 수치 노출 금지)
+  if (item.dish && item.dishInstance) {
+    const inst = item.dishInstance;
+    const recipe = getFireRecipe(inst.recipeId);
+    const stars = CookingStore.starsOfItem(item);
+    if (recipe && stars) {
+      const ip = inst.ingredientProfile;
+      const q = inst.quality;
+      const starsOf = (v: number): number => Math.max(1, Math.min(5, Math.round(v / 20)));
+      const baseStars = dishStarsAt(item.dish, recipe, item.dish.cookedAtMs);
+      const qColor = (v: number): string => v >= 80 ? '#8affb0' : v >= 50 ? '#ffd257' : '#ff9a5a';
+      if (inst.modifier === 'burnt') rows.push({ label: '상태', value: '탔다 — 가치 없음', color: '#ff5a4a' });
+      rows.push({ label: '주재료', value: ip.primaryNameKo ? `${ip.primaryNameKo} · ${ip.weightG}g` : `${ip.weightG}g` });
+      rows.push({ label: '재료 신선도', value: `별 ${starsOf(q.freshness)} / 5`, color: qColor(q.freshness) });
+      rows.push({ label: '지방감', value: fatnessLabel(ip.fatness) });
+      rows.push({ label: '식감', value: textureLabel(ip.texture) });
+      rows.push({ label: '비린 향', value: fishinessLabel(ip.fishiness) });
+      rows.push({ label: '풍미', value: flavorLabel(ip.flavorStrength) });
+      rows.push({ label: '영양', value: `허기 +${inst.result.hungerRestore} · 수분 +${inst.result.hydrationRestore}` });
+      if (inst.result.effects.length) {
+        for (const e of inst.result.effects) rows.push({ label: `효과 · ${e.nameKo}`, value: e.descKo, color: '#8fd4ff' });
+      } else {
+        rows.push({ label: '효과', value: inst.modifier === 'burnt' ? '없음 — 탄 요리' : '없음 — 품질이 낮습니다' });
+      }
+      rows.push({ label: '조리 품질', value: `간 ${q.seasoning} · 온도 ${q.temperature} · 식감 ${q.texture} · 완성도 ${q.completion}` });
+      rows.push({ label: '종합 품질', value: `${q.overall} / 100`, color: qColor(q.overall) });
+      rows.push({ label: '별점 (지금)', value: `${stars.stars} / 5 · ${Math.round(stars.total)}점`, color: stars.stars >= 5 ? '#ffd257' : stars.stars >= 3 ? '#8affb0' : '#ff9a5a' });
+      rows.push({ label: '별점 (완성 직후)', value: `${baseStars.stars} / 5 · ${Math.round(baseStars.total)}점` });
+      rows.push({ label: '판매가', value: inst.modifier === 'burnt' ? '0원' : `${InventoryStore.getSellPrice({ ...item, qty: 1 } as InvItem).toLocaleString()}원` });
+      rows.push({ label: '보유 수량', value: `${item.qty}개` });
+      const effKinds = inst.result.effects.map((e) => FOOD_EFFECT_KIND_KO[e.kind]).join(' · ');
+      desc = inst.result.descriptionKo + (effKinds ? `\n먹으면 ${effKinds} 효과가 얼마간 이어집니다.` : '')
+        + '\n온도·식감·신선도는 완성 직후부터 시간이 지날수록 떨어지고, 완성도와 판매가도 함께 내려갑니다.';
+      if (item.condition) desc += `\n[${CONDITION_LABEL[item.condition]}] ${CONDITION_DESC[item.condition]}`;
+      return { title: item.name, subtitle: '요리', rows, desc };
+    }
   }
 
   // 154차 — 완성 요리: 맛 별 5개(간·온도·식감·신선도·완성도)와 시간 감쇠를 그대로 보여준다

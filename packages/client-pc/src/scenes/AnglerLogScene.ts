@@ -11,8 +11,9 @@ import { GameState } from '../store/GameState.js';
 import {
   FISH_DATABASE, getSpotById, SHORE_CREATURE_DATABASE,
   DISCOVERY_SOURCE_LABEL,
+  FIRE_RECIPES, RECIPE_LORE, isVariantRecipe, dishVariantCandidates, dishDiscoveryId, dishDiscoveryName, dishBaseName,
 } from '@tra/core';
-import type { ShoreCreatureCategory } from '@tra/core';
+import type { ShoreCreatureCategory, DiscoveryKind } from '@tra/core';
 import { DiscoveryStore } from '../store/DiscoveryStore.js';
 import { FISH_TEXTURE } from '../data/FishTextures.js';
 import { itemWikiByCategory } from '../data/WikiCatalog.js';
@@ -22,7 +23,7 @@ import type { InvCategory } from '../store/InventoryStore.js';
 import { clampTextWidth } from '../ui/TextFit.js';
 import { fadeOutThen } from './SceneFade.js';
 
-type LogTab = 'encyclopedia' | 'creatures' | 'items' | 'history';
+type LogTab = 'encyclopedia' | 'creatures' | 'items' | 'dishes' | 'history';
 
 /** 해양생물 카테고리 라벨/이모지 (위키 카드용) */
 const CREATURE_CAT_LABEL: Record<ShoreCreatureCategory, string> = {
@@ -46,6 +47,8 @@ export class AnglerLogScene extends Phaser.Scene {
   private readonly ITEMS_PER_PAGE = 7;
   /** 아이템 위키 카테고리 필터 */
   private itemCatFilter: InvCategory = 'gear';
+  /** 요리 도감 — 선택한 레시피 (156차) */
+  private dishRecipeSel: string = 'stew_red';
 
   // 탭 버튼 배경 참조 (활성 하이라이트)
   private tabBtnBgs: Partial<Record<LogTab, Phaser.GameObjects.Rectangle>> = {};
@@ -104,6 +107,7 @@ export class AnglerLogScene extends Phaser.Scene {
       { key: 'encyclopedia', label: '어종 도감',     w: 140 },
       { key: 'creatures',    label: '해양생물',      w: 130 },
       { key: 'items',        label: '아이템 위키',   w: 140 },
+      { key: 'dishes',       label: '요리',          w: 100 },
       { key: 'history',      label: '나의 조과 기록', w: 160 },
     ];
     let tabX = 60;
@@ -166,12 +170,13 @@ export class AnglerLogScene extends Phaser.Scene {
       case 'encyclopedia': this.renderEncyclopedia(); break;
       case 'creatures':    this.renderCreatures();    break;
       case 'items':        this.renderItems();        break;
+      case 'dishes':       this.renderDishes();       break;
       case 'history':      this.renderHistory();      break;
     }
   }
 
   /** 발견 정보 한 줄 ("낚시로 어획 · 8/14") — 발견 카드 하단 공통 표기 */
-  private discoveryLine(kind: 'fish' | 'creature' | 'item', id: string): string | null {
+  private discoveryLine(kind: DiscoveryKind, id: string): string | null {
     const e = DiscoveryStore.get(kind, id);
     if (!e) return null;
     const d = new Date(e.firstAtMs);
@@ -524,6 +529,122 @@ export class AnglerLogScene extends Phaser.Scene {
     }
 
     this.renderPageNav(maxPage, width, height);
+  }
+
+  // ─────────────────────────────────────────────
+  // 1c. 요리 도감 탭 (156차) — 레시피 × 주재료 변형. 발견한 변형만 이름을 보이고 나머지는 ???
+  // ─────────────────────────────────────────────
+  /** 레시피별 (발견 수 / 후보 수) — 변형 레시피는 어종 후보, 나머지는 아이템 위키 1건 */
+  private dishProgressOf(recipeId: string): { found: number; total: number } {
+    if (isVariantRecipe(recipeId)) {
+      const cands = dishVariantCandidates(recipeId);
+      const found = cands.filter((sp) => DiscoveryStore.isDiscovered('dish', dishDiscoveryId(recipeId, sp))).length;
+      return { found, total: cands.length };
+    }
+    return { found: DiscoveryStore.isDiscovered('dish', dishDiscoveryId(recipeId, null)) ? 1 : 0, total: 1 };
+  }
+
+  private renderDishes(): void {
+    const { width, height } = this.scale;
+    const listX = 40, listY = 160, listW = 260, rowH = 44;
+    const paneX = listX + listW + 20, paneW = width - paneX - 40, paneY = listY;
+    const paneH = height - 45 - paneY - 10;
+    const font = '"Noto Sans KR", sans-serif';
+
+    // 요약 — 전 레시피 합산
+    let foundAll = 0, totalAll = 0;
+    for (const r of FIRE_RECIPES) { const p = this.dishProgressOf(r.id); foundAll += p.found; totalAll += p.total; }
+    const summary = this.add.text(width - 40, listY - 28, `발견 ${foundAll} / ${totalAll} — 직접 조리하면 등록`, {
+      fontFamily: font, fontSize: '12px', color: '#8faabf',
+    }).setOrigin(1, 0);
+    this.tabContainer?.add(summary);
+
+    // 좌: 레시피 목록
+    FIRE_RECIPES.forEach((r, i) => {
+      const y = listY + i * (rowH + 6);
+      const sel = this.dishRecipeSel === r.id;
+      const p = this.dishProgressOf(r.id);
+      const btn = this.add.container(listX + listW / 2, y + rowH / 2).setInteractive(
+        new Phaser.Geom.Rectangle(-listW / 2, -rowH / 2, listW, rowH), Phaser.Geom.Rectangle.Contains,
+      );
+      const bg = this.add.rectangle(0, 0, listW, rowH, sel ? 0x2a5a8a : 0x0e1c2d).setStrokeStyle(1, sel ? 0x4af2a1 : 0x1f3d5a);
+      const name = clampTextWidth(this.add.text(-listW / 2 + 12, -8, r.nameKo, {
+        fontFamily: font, fontSize: '13px', color: sel ? '#e8f4fd' : '#c8d8e8', fontStyle: 'bold',
+      }).setOrigin(0, 0.5), listW - 90);
+      const cnt = this.add.text(listW / 2 - 12, -8, `${p.found} / ${p.total}`, {
+        fontFamily: font, fontSize: '11px', color: p.found > 0 ? '#4af2a1' : '#607b8e',
+      }).setOrigin(1, 0.5);
+      const sub = clampTextWidth(this.add.text(-listW / 2 + 12, 10, isVariantRecipe(r.id) ? '주재료 어종별 변형' : (r.family === 'stew_clear' ? '탕 · 국' : ''), {
+        fontFamily: font, fontSize: '10px', color: '#8faabf',
+      }).setOrigin(0, 0.5), listW - 24);
+      btn.add([bg, name, cnt, sub]);
+      btn.on('pointerdown', () => { this.dishRecipeSel = r.id; this.renderCurrentTab(); });
+      this.tabContainer?.add(btn);
+    });
+
+    // 우: 상세
+    const r = FIRE_RECIPES.find((x) => x.id === this.dishRecipeSel) ?? FIRE_RECIPES[0];
+    const pane = this.add.graphics();
+    pane.fillStyle(0x0e1c2d); pane.fillRoundedRect(paneX, paneY, paneW, paneH, 4);
+    pane.lineStyle(1, 0x1f3d5a, 0.9); pane.strokeRoundedRect(paneX, paneY, paneW, paneH, 4);
+    this.tabContainer?.add(pane);
+    const lore = RECIPE_LORE[r.id];
+    const title = this.add.text(paneX + 16, paneY + 14, r.nameKo, { fontFamily: font, fontSize: '18px', color: '#e8f4fd', fontStyle: 'bold' });
+    const descT = this.add.text(paneX + 16, title.y + title.height + 8, lore?.shortDescriptionKo ?? r.descKo, {
+      fontFamily: font, fontSize: '12px', color: '#a0b8c8', wordWrap: { width: paneW - 32 },
+    });
+    this.tabContainer?.add([title, descT]);
+    let cy = descT.y + descT.height + 10;
+    const tipLines: string[] = [];
+    if (lore?.cookingTipKo) tipLines.push(`조리 요령 · ${lore.cookingTipKo}`);
+    if (lore?.ingredientTipKo) tipLines.push(`재료 요령 · ${lore.ingredientTipKo}`);
+    for (const line of tipLines) {
+      const t = this.add.text(paneX + 16, cy, line, { fontFamily: font, fontSize: '11px', color: '#8fd4b8', wordWrap: { width: paneW - 32 } });
+      this.tabContainer?.add(t);
+      cy = t.y + t.height + 4;
+    }
+    cy += 8;
+    const hdr = this.add.text(paneX + 16, cy, isVariantRecipe(r.id) ? '발견한 변형' : '발견 기록', { fontFamily: font, fontSize: '13px', color: '#e8f4fd', fontStyle: 'bold' });
+    this.tabContainer?.add(hdr);
+    cy = hdr.y + hdr.height + 6;
+
+    // 변형 목록 — 발견한 것은 이름·발견 정보, 나머지는 ??? + 힌트 (§8-10 — 어종 이름을 주지 않는다)
+    const entries: { name: string; foot: string | null; found: boolean }[] = [];
+    if (isVariantRecipe(r.id)) {
+      const base = dishBaseName(r.id, r.nameKo, r.nameEn, '???', '???');
+      for (const sp of dishVariantCandidates(r.id)) {
+        const id = dishDiscoveryId(r.id, sp);
+        if (DiscoveryStore.isDiscovered('dish', id)) entries.push({ name: dishDiscoveryName(id), foot: this.discoveryLine('dish', id), found: true });
+        else entries.push({ name: base.ko, foot: null, found: false });
+      }
+      entries.sort((a, b) => Number(b.found) - Number(a.found));
+    } else {
+      const id = `inv_dish_${r.id}`;
+      const found = DiscoveryStore.isDiscovered('item', id);
+      entries.push({ name: found ? r.nameKo : '???', foot: found ? this.discoveryLine('item', id) : null, found });
+    }
+    const colW = Math.floor((paneW - 32 - 12) / 2), eh = 40;
+    const maxRows = Math.max(1, Math.floor((paneY + paneH - 12 - cy) / (eh + 6)));
+    const shown = entries.slice(0, maxRows * 2);
+    shown.forEach((e, i) => {
+      const col = i % 2, row = Math.floor(i / 2);
+      const x = paneX + 16 + col * (colW + 12), y = cy + row * (eh + 6);
+      const g = this.add.graphics();
+      g.fillStyle(e.found ? 0x142a40 : 0x0a1522); g.fillRoundedRect(x, y, colW, eh, 3);
+      g.lineStyle(1, e.found ? 0x2a5a8a : 0x1a2f45, 0.9); g.strokeRoundedRect(x, y, colW, eh, 3);
+      const nm = clampTextWidth(this.add.text(x + 10, y + 8, e.name, {
+        fontFamily: e.found ? font : '"Press Start 2P", monospace', fontSize: e.found ? '13px' : '10px',
+        color: e.found ? '#e8f4fd' : '#2a5a8a', fontStyle: e.found ? 'bold' : 'normal',
+      }), colW - 20);
+      const ft = clampTextWidth(this.add.text(x + 10, y + 25, e.found ? (e.foot ?? '직접 조리') : '다른 어종을 사용해 보세요', {
+        fontFamily: font, fontSize: '10px', color: e.found ? '#8fd4b8' : '#3a5a78',
+      }), colW - 20);
+      this.tabContainer?.add([g, nm, ft]);
+    });
+    if (entries.length > shown.length) {
+      const more = this.add.text(paneX + paneW - 16, paneY + paneH - 22, `외 ${entries.length - shown.length}종`, { fontFamily: font, fontSize: '10px', color: '#607b8e' }).setOrigin(1, 0);
+      this.tabContainer?.add(more);
+    }
   }
 
   // ─────────────────────────────────────────────

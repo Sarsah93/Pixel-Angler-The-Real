@@ -21,8 +21,8 @@ import {
   type GearFaultId, GEAR_FAULTS, gearUsable,
   type MpTradeItem,
 } from '@tra/core';
-import type { DishData } from '@tra/core';
-import { getFireRecipe, dishStarsAt, dishValueKrw } from '@tra/core';
+import type { DishData, DishInstance } from '@tra/core';
+import { getFireRecipe, dishStarsAt, dishValueKrw, dishInstanceValueKrw } from '@tra/core';
 import type { SashimiSizeTier } from '@tra/core';
 import type { ForageTool, StatusCure, CatchMethod } from '@tra/core';
 import { ExternalDataStore } from './ExternalDataStore.js';
@@ -343,6 +343,8 @@ export interface InvItem {
   fuelId?: string;
   /** 완성 요리 — 맛 별 5개의 완성 시 기준값. 조회 시 시간 감쇠(`CookingStore.starsOfItem`) */
   dish?: DishData;
+  /** 완성 요리 개체 (156차 — 주재료 어종·프로필·품질·효과·이름. `dish`와 나란히, 변형 레시피만) */
+  dishInstance?: DishInstance;
 }
 
 /** 상점 카탈로그/구매용 아이템 템플릿 (slot/qty 없이 정의) */
@@ -1207,6 +1209,15 @@ class InventoryStoreManager {
     }
     // 154차 — 완성 요리: 별점 총점 비례 책정가(`dishValueKrw`)가 basePrice. 시간 감쇠·신선도는 조회 시 다시 계산한다.
     //  탄 것은 0. 0.6 매입 할인 미적용(사시미 접시와 같은 원칙 — 노력 가치 보전).
+    // 156차 — 요리 개체(변형 레시피): 레시피 기본값 × 재료(중량·풍미) × 현재 품질 × 신선도(`dishInstanceValueKrw`)
+    if (item.dish && item.dishInstance) {
+      const r = getFireRecipe(item.dish.recipeId);
+      if (!r || item.dish.burnt) return 0;
+      const stMul = conditionSellMultiplier(item.condition);
+      if (stMul <= 0) return 0;
+      const st = dishStarsAt(item.dish, r, Date.now(), stMul >= 1 ? 1 : stMul);
+      return Math.max(0, dishInstanceValueKrw(item.dishInstance, r, st.total));
+    }
     if (item.dish) {
       const r = getFireRecipe(item.dish.recipeId);
       if (!r || item.dish.burnt) return 0;

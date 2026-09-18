@@ -1,7 +1,7 @@
 # S20. 도감 · 발견 · dev 도구
 
 > 상태 **🟢 운영** — 발견 게이트 도감(어종/해양생물/아이템 위키) + dev 크리에이티브 콘솔(F10).
-> 신설 099 (2026-08-14)
+> 신설 099 (2026-08-14) · 관련 차수 **156**(요리 도감)
 
 ---
 
@@ -9,17 +9,18 @@
 
 "**한 번이라도 조우한 것만 공개**"의 단일 기준(DiscoveryStore)과 그 소비자들:
 
-- **도감 & 조과첩**(AnglerLogScene 4탭) — 어종·해양생물·아이템 위키 + 조과 기록.
+- **도감 & 조과첩**(AnglerLogScene **5탭**) — 어종·해양생물·아이템 위키·**요리**(156차) + 조과 기록.
 - **dev 크리에이티브 콘솔**(F10) — 아이템/어종 지급·무적·도감 해금 (localhost 전용).
 
 ## 2. 구성
 
 | 계층 | 파일 | 역할 |
 |---|---|---|
-| core | `types/Discovery.ts` | `DiscoveryKind`(fish/creature/item) · `DiscoverySource`(catch/trap/night_hunting/inventory/legacy/dev) · 라벨 |
+| core | `types/Discovery.ts` | `DiscoveryKind`(fish/creature/item/**dish**) · `DiscoverySource`(catch/trap/night_hunting/inventory/legacy/dev) · 라벨 |
 | client | `store/DiscoveryStore.ts` | 발견 기록 싱글톤 — record(최초 1회)·isDiscovered·세이브·`onNew` 훅·dev 해금. `__DISC` 노출 |
 | client | `data/WikiCatalog.ts` | 아이템 위키 정적 카탈로그 — 시드+상점 dedup·판매처 힌트·`tpl`(실지급용) |
-| client | `scenes/AnglerLogScene.ts` | 4탭 도감 — 미발견 실루엣/???/힌트 · 발견 카드(경로·일시) |
+| client | `core/db-schema/DishDiscovery.ts` | 요리 도감 id·이름·변형 후보(`discovery_<레시피>_<어종>`) |
+| client | `scenes/AnglerLogScene.ts` | 5탭 도감 — 미발견 실루엣/???/힌트 · 발견 카드(경로·일시) |
 | client | `dev/DevMode.ts` · `dev/DevConsolePanel.ts` | god 상태 + F10 콘솔 |
 
 ## 3. 동작 구조
@@ -50,13 +51,15 @@ god 가드 소비처 = `refreshCondition`·`loseRigParts`·`loseLureRig`·`consu
 | 아이템 위키 카탈로그(시드+상점) | ✅ | 099 |
 | HUD 신규 발견 토스트 + N 키 진입 | ✅ | 099 |
 | dev 콘솔(F10) + god 모드 | ✅ | 099 |
+| **요리 도감 탭** — 레시피 목록 + (레시피 × 주재료) 변형 카드 · 미발견 `??? 매운탕` | ✅ | **156** — 매운탕 3/50 · 전체 3/57 |
 | 위키 카드 상세 팝업(클릭 확대) | ⬜ | — |
 | FP 씬 발견 토스트 (현재 RegionField HUD만) | ⬜ | — |
 | 해양생물 전용 스프라이트 (현재 이모지 — S14 D4와 공유) | ⬜ | 에셋 대기 |
 
 ## 5. 잔여·차기
 
-- 위키 확장 후보: 통발/장비 스펙 페이지 · 지역/스팟 도감 · 요리 레시피 도감(불요리 도입 시).
+- ~~요리 레시피 도감~~ ✅156. 잔여 = 나머지 7개 레시피가 변형을 갖게 되면 후보 수(현재 57)가 늘어난다.
+- 위키 확장 후보: 통발/장비 스펙 페이지 · 지역/스팟 도감.
 - 발견 통계(전체 진행률 %)를 메인 메뉴/저장 슬롯에 표기.
 
 ## 6. 함정·불변조건
@@ -71,3 +74,11 @@ god 가드 소비처 = `refreshCondition`·`loseRigParts`·`loseLureRig`·`consu
    initialize 말미의 멱등 동기를 지우면 신규 프로필의 아이템 위키가 전부 잠긴다(099 실측 FAIL 2건).
 5. `isGod()`은 `import.meta.env.DEV` 게이트 — 프로덕션에서 상수 false로 데드코드 제거된다.
    god 소비처를 추가할 때 이 함수만 쓰고 `DevMode.god`을 직접 읽지 말 것.
+
+6. **카탈로그에 없는 아이템 발견은 알리지 않는다**(156차 — §8-9). 개체형 id(`inv_dish_*`·`inv_catch_*`)는
+   위키 카탈로그에 없어 `displayNameOf`가 **id를 그대로 돌려주고**, 그대로 HUD에 찍히면 내부 id 노출이다
+   (실측 `[도감] 새로운 아이템 발견 — inv_dish_stew_red_1`). `onNew`에서 카탈로그 교집합으로 거른다.
+7. **요리는 전부 `kind: 'dish'`** — 변형이 없는 레시피도 `discovery_<레시피>_generic` 1건을 갖는다.
+   아이템 kind로 기록하면 위 ⑥에 걸려 조용히 사라지거나 내부 id가 새어 나온다.
+8. **도감 기록은 (레시피 × 주재료) 1건** — 개체(`instanceId`)마다 등록하면 도감이 로그가 된다.
+

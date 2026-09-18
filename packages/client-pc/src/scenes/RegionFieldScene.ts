@@ -669,8 +669,22 @@ export class RegionFieldScene extends Phaser.Scene {
 
     // ── 신규 발견 토스트 — 도감/위키에 처음 등록되는 순간 HUD 로그로 알림 ──
     DiscoveryStore.onNew = (entry, name) => {
+      if (entry.kind === 'dish') {
+        // 156차 — 요리 도감(레시피 × 주재료) 최초 발견: 로그 + 화면 힌트
+        this.hud?.pushLog(`[도감] 새로운 요리를 발견했습니다 — 「${name}」 (N 키 요리 도감)`);
+        this.floatingHint(`새로운 요리를 발견했습니다 — 「${name}」`);
+        return;
+      }
+      // 아이템은 위키 카탈로그에 있는 것만 알린다 — 개체형 id(어획물·완성 요리 `inv_catch_*`/`inv_dish_*`)는
+      // 카탈로그 밖이라 이름이 없고, 내부 id를 화면에 내면 §8-9 위반이다(156차 실측 — 이 가드 전엔 그대로 찍혔다)
+      let shown = name;
+      if (entry.kind === 'item') {
+        const w = buildItemWikiCatalog().find((x) => x.id === entry.id);
+        if (!w) return;
+        shown = w.name;
+      }
       const kindLabel = entry.kind === 'fish' ? '어종' : entry.kind === 'creature' ? '해양생물' : '아이템';
-      this.hud?.pushLog(`[도감] 새로운 ${kindLabel} 발견 — ${name} (N 키로 확인)`);
+      this.hud?.pushLog(`[도감] 새로운 ${kindLabel} 발견 — ${shown} (N 키로 확인)`);
     };
     this.events.once('shutdown', () => { DiscoveryStore.onNew = null; });
     this.events.once('shutdown', () => { this.collapseCleanup?.(); this.collapseCleanup = undefined; this.collapsing = false; });
