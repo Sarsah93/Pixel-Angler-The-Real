@@ -80,6 +80,10 @@ import { SeamlessChunks, type OccluderObj, PROP_DEFS, propFootprint, type PropDe
 import { ForageSystem } from './field/ForageSystem.js';
 import { TrapFieldSystem } from './field/TrapFieldSystem.js';
 import { TrapDeployPanel } from '../ui/TrapDeployPanel.js';
+import { StoveFieldSystem } from './field/StoveFieldSystem.js';
+import { StoveDeployPanel } from '../ui/StoveDeployPanel.js';
+import { CookingPanel } from '../ui/CookingPanel.js';
+import { CookingStore } from '../store/CookingStore.js';
 import { LicensePanel } from '../ui/LicensePanel.js';
 import { SkillTreePanel } from '../ui/SkillTreePanel.js';
 import { JournalPanel } from '../ui/JournalPanel.js';
@@ -297,6 +301,8 @@ export class RegionFieldScene extends Phaser.Scene {
   /** 인-맵 채집(해루질)·어장·통발 필드 시스템 (121차) */
   private forage?: ForageSystem;
   private trapField?: TrapFieldSystem;
+  /** 154차 불요리 — 화구 조합 설치물(탑다운 [F] 조리) */
+  private stoveField?: StoveFieldSystem;
   /** 면허(L) · 스킬(K) · 일지(J) 팝업 (122차) */
   private licensePanel: LicensePanel | null = null;
   private skillPanel: SkillTreePanel | null = null;
@@ -2061,6 +2067,7 @@ export class RegionFieldScene extends Phaser.Scene {
     this.input.keyboard!.on('keydown-ESC', () => {
       if (this.placing) { this.cancelPlacement(); return; }
       if (this.trapField?.placing) { this.trapField.cancelPlacement(); return; }
+      if (this.stoveField?.placing) { this.stoveField.cancelPlacement(); return; }
       if (this.closeTopPopup()) return;
       this.togglePauseMenu();
     });
@@ -2102,6 +2109,8 @@ export class RegionFieldScene extends Phaser.Scene {
       // 138차 — 해안에 밀려온 불가사리는 채집 스팟보다 먼저 줍는다(발밑에 있는 게 우선)
       else if (this.nuisance?.gatherNear(this.playerBody.x, this.playerBody.y, TR * 1.4)) { /* 채집됨 */ }
       else if (this.forage?.onInteractKey()) { /* 채집 홀드 시작 */ }
+      // 154차 — 화구는 [F] 요리 / [Shift+F] 회수 (129차 설치물 규칙과 동일)
+      else if (this.stoveField?.onInteractKey(ev.shiftKey)) { /* 요리 패널 · 회수 확인 */ }
       else if (this.trapField?.onInteractKey()) { /* 통발 수거 확인 */ }
     });
     // L 면허 · K 스킬 · J 일지 (122차 복원)
@@ -2179,6 +2188,11 @@ export class RegionFieldScene extends Phaser.Scene {
         else if (p.leftButtonDown()) { const pw = this.pointerWorld(p); this.trapField.confirmAt(pw.x, pw.y); }
         return;
       }
+      if (this.stoveField?.placing) {
+        if (p.rightButtonDown()) this.stoveField.cancelPlacement();
+        else if (p.leftButtonDown()) { const pw = this.pointerWorld(p); this.stoveField.confirmAt(pw.x, pw.y); }
+        return;
+      }
       if (this.placing) {
         if (p.rightButtonDown()) this.cancelPlacement();
         else if (p.leftButtonDown()) this.confirmPlacement(p);
@@ -2195,6 +2209,9 @@ export class RegionFieldScene extends Phaser.Scene {
     // 인벤토리 '통발 놓기' (121차)
     this.events.off('trap-place-request');
     this.events.on('trap-place-request', (item: InvItem) => this.trapField?.openDeploy(item));
+    // 인벤토리 '화구 설치' (154차)
+    this.events.off('stove-place-request');
+    this.events.on('stove-place-request', (item: InvItem) => this.stoveField?.openDeploy(item));
   }
 
   // ═══════════════════════════════════════════════════
@@ -3443,6 +3460,10 @@ export class RegionFieldScene extends Phaser.Scene {
       const pw = this.pointerWorld(this.input.activePointer);
       this.trapField.updatePreview(pw.x, pw.y);
     }
+    if (this.stoveField?.placing) {
+      const pw = this.pointerWorld(this.input.activePointer);
+      this.stoveField.updatePreview(pw.x, pw.y);
+    }
     this.handleMovement();
     this.tickVitals(delta);
     this.updateSpriteAndShadow();
@@ -3451,6 +3472,7 @@ export class RegionFieldScene extends Phaser.Scene {
     this.updateWaterProximity();
     this.forage?.update(delta);
     this.trapField?.update(delta);
+    this.stoveField?.update(delta);
     this.updateCharge();
     this.checkEdgeTransition();
   }
@@ -4553,15 +4575,37 @@ export class RegionFieldScene extends Phaser.Scene {
         this.openPopup((close) => new TrapDeployPanel(this, GAME_WIDTH / 2 - 210, 110, { onClose: close, onPick }));
       },
     });
+    // 154차 불요리 — 화구 설치물. 뭍 위(막힌 칸 제외) · 놓는 순간 남에게도 보인다(통발 채널 kind:'stove').
+    CookingStore.windProvider = () => {
+      const kma = ExternalDataStore.getKmaWeather(this.region);
+      const marine = ExternalDataStore.getRegionMarineWeather(this.region);
+      return kma?.windSpeedMs ?? marine?.windSpeedMs ?? GameState.environment.environment?.weather.windSpeedMs ?? 0;
+    };
+    this.stoveField = new StoveFieldSystem({
+      ...common,
+      occupiedAt: (c: number, r: number) => !!this.blocked[r]?.[c],
+      confirm: (message: string, onYes: () => void) => {
+        this.openPopup((close) => new ConfirmDialog(this, message, () => { close(); onYes(); }, close));
+      },
+      openDeployPanel: (onPick) => {
+        this.openPopup((close) => new StoveDeployPanel(this, GAME_WIDTH / 2 - 320, 110, { onClose: close, onPick }));
+      },
+      openCookPanel: (stove) => {
+        this.openPopup((close) => new CookingPanel(this, GAME_WIDTH / 2 - 450, 60, stove, {
+          onClose: close, onChanged: () => this.events.emit('inventory-changed'),
+        }));
+      },
+    });
     if (import.meta.env.DEV) {
       const st = this.forage.candidateStats();
       this.hud?.pushLog(`[dev] 채집 후보 갯바위 ${st.rock_shore} · 사석/TTP ${st.armor_foot} · 웅덩이 ${st.tidepool} · 안벽 ${st.harbor_wall} · 스팟 ${this.forage.allSpots().length} · 어장 ${farms.length}`);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (globalThis as any).__FIELD = { forage: this.forage, trapField: this.trapField, scene: this, cooler: CoolerStore, tuning: TUNING, getTrapById };
+      (globalThis as any).__FIELD = { forage: this.forage, trapField: this.trapField, stoveField: this.stoveField, scene: this, cooler: CoolerStore, tuning: TUNING, getTrapById };
     }
     this.events.once('shutdown', () => {
       this.forage?.destroy(); this.forage = undefined;
       this.trapField?.destroy(); this.trapField = undefined;
+      this.stoveField?.destroy(); this.stoveField = undefined;
     });
   }
 

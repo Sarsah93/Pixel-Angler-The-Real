@@ -1600,8 +1600,10 @@ export class UtilizationPanel extends DraggablePanel {
         if (!hasPlate) { this.flashBoardToast('사시미 접시가 필요합니다 — 식자재마트에서 판매합니다'); return; }
         this.animateSashimiExpand(bx, by, bw, bh, halfW);
       });
-    mkBox(bx + halfW + 8, halfW, '불을 이용한 요리 만들기', '(화구, 담을 용기 등 필요 — 준비 중)', false,
-      () => this.flashBoardToast('불을 쓰는 요리는 아직 할 수 없습니다. 화구와 담을 그릇이 필요합니다.'));
+    // 154차 — 불요리는 화구 앞에서 한다(설치한 화구 [F] · 집 주방 [F]). 이 박스는 안내만.
+    const hasStove = InventoryStore.items.some((i) => i.stoveHeatId && i.qty > 0);
+    mkBox(bx + halfW + 8, halfW, '불을 이용한 요리 만들기', hasStove ? '(인벤토리에서 [화구 설치] 후 화구 앞 [F])' : '(휴대용 가스스토브 — 식자재마트 · 집 주방 [F])', false,
+      () => this.flashBoardToast(hasStove ? '화구를 설치하고 그 앞에서 [F]를 누르세요. 집 가스레인지도 됩니다.' : '불요리는 화구 앞에서 합니다 — 휴대용 가스스토브(식자재마트) 또는 집 주방 가스레인지.'));
   }
 
   /** 확장 연출 — 좌측 박스가 커지며 우측 박스를 밀어냄 (완료 후 확장 레이아웃 렌더) */

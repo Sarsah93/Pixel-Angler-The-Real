@@ -598,6 +598,60 @@ export interface TuningConfig {
     /** 설치 가능 물 타일의 최대 육지 거리(타일) — 던져 넣는 범위 */
     maxWaterDistTiles: number;
   };
+  /**
+   * 불요리 (154차 — mockup, 실플레이 조율 대기). 열 모델·익음·탐·판정 임계.
+   * ⚠ `timeScale`은 시뮬 분 ÷ 실시간 — 6 = 실시간 10초가 시뮬 1분. 걸어두기 밸런스의 핵심 손잡이.
+   */
+  cook: {
+    /** 시뮬 시간 배율 (실시간 1초 → 시뮬 timeScale초) */
+    timeScale: number;
+    /** 열 손실 계수 (W/K) — 클수록 빨리 식고 약불 평형이 낮아진다 */
+    lossWPerK: number;
+    /** 냄비 끓음 판정 (°C) */
+    boilC: number;
+    /** 팬·석쇠 달궈짐 판정 (°C) */
+    panHotC: number;
+    /** 익음 속도 상한 (100°C 기준 배율 — 팬 고온에서 무한 가속 방지) */
+    rateCap: number;
+    /** 익음 속도 지수 — 크면 익는 온도 근처에서 거의 안 익는다(잔열 과조리 억제 · 80°C = 0.22) */
+    rateExp: number;
+    /** 타는 온도 초과 시 완전히 타기까지 (시뮬 초) */
+    burnSec: number;
+    /** 뒤집기 지연 시 아래면이 타기 시작하는 온도 (°C) */
+    flipBurnC: number;
+    /** 물이 졸아붙은 뒤 완전히 타기까지 (시뮬 초) */
+    dryBurnSec: number;
+    /** 주재료 burnt가 이 값을 넘으면 '탐' */
+    burntThreshold: number;
+    /** 마무리 단계 진입 — 주재료 익은 뒤 (시뮬 초) */
+    finalStageAfterSec: number;
+    /** 완성 뒤 불을 안 끄고 이만큼 지나면 '너무 오래' 경고 (시뮬 초) */
+    overcookWarnSec: number;
+    /** 조림 완성 = 물이 처음의 이 비율 이하 */
+    reduceRatio: number;
+    /** 염도 가우시안 σ (%) */
+    saltSigmaPct: number;
+    /** 당분 가우시안 σ (큰술) */
+    sugarSigmaSpoons: number;
+    /** 별 획득 임계 (요소 점수) */
+    starThreshold: number;
+    /** 완성도 게이트 — 다른 요소 중 하나라도 이 아래면 완성도 캡 */
+    finishGateMin: number;
+    finishCap: number;
+    /** `life_cook` 랭크당 완성도 배율 */
+    skillPerRank: number;
+    /** 바람 임계 (m/s — 이 이하는 무풍) · 감쇠 폭 */
+    windCalmMps: number;
+    windSpanMps: number;
+    /** 화구 설치 거리 (타일) */
+    placeRangeTiles: number;
+    /** 고형물이 용기 부피에서 차지하는 비율 — 잠긴 만큼만 (물은 1.0) */
+    solidVolumeFrac: number;
+    /** 걸어두기 — 완성 뒤 방치 경고 색 전환 (실시간 분) */
+    idleWarnMin: number;
+    /** 조리 1회 XP 배율 기준 총점 (총점/이 값 × cookBase) */
+    xpTotalRef: number;
+  };
   /** 구멍치기(테트라포드·사석 틈) — 149차. 캐스팅이 아니라 발밑 구멍에 수직으로 내리는 조법 */
   hole: {
     /** 연안 수심 대비 구멍 깊이 배율 — 테트라포드(블록이 겹쳐 수직 굴이 생긴다) */
@@ -1107,6 +1161,14 @@ export const TUNING: TuningConfig = {
     enforcementChance: 0.25, fineRatio: 0.3, fineCapWon: 300_000,
   },
   trap: { lossRiskMult: 1.0, minSoakHours: 1, maxRangeTiles: 4, maxWaterDistTiles: 3 },
+  cook: {
+    timeScale: 6, lossWPerK: 9, boilC: 95, panHotC: 150, rateCap: 1.6, rateExp: 2.2,
+    burnSec: 120, flipBurnC: 140, dryBurnSec: 180, burntThreshold: 0.6,
+    finalStageAfterSec: 90, overcookWarnSec: 240, reduceRatio: 0.55,
+    saltSigmaPct: 0.28, sugarSigmaSpoons: 1.0, starThreshold: 0.72,
+    finishGateMin: 0.6, finishCap: 0.55, skillPerRank: 0.05,
+    windCalmMps: 3, windSpanMps: 9, placeRangeTiles: 3, solidVolumeFrac: 0.6, idleWarnMin: 3, xpTotalRef: 70,
+  },
   hole: {
     depthMultTetrapod: 1.15, depthMultRiprap: 0.85, depthVarianceM: 0.9, tideDepthM: 0.8,
     minDepthM: 1.5, maxDepthM: 9, distanceM: 1.2, distanceVarianceM: 0.8,
@@ -1214,6 +1276,13 @@ export interface TuningParamMeta {
   category: 'feel' | 'balance'; label: string;
 }
 export const TUNING_META: TuningParamMeta[] = [
+  // ── 불요리 (154차 — mockup, 실플레이 조율 대기) ──
+  { path: 'cook.timeScale', min: 1, max: 12, step: 0.5, category: 'feel', label: '요리 시뮬 시간 배율' },
+  { path: 'cook.lossWPerK', min: 3, max: 20, step: 0.5, category: 'balance', label: '요리 열 손실 (W/K)' },
+  { path: 'cook.burnSec', min: 30, max: 400, step: 10, category: 'balance', label: '타기까지 (시뮬 초)' },
+  { path: 'cook.dryBurnSec', min: 30, max: 600, step: 10, category: 'balance', label: '졸아붙은 뒤 타기까지 (시뮬 초)' },
+  { path: 'cook.saltSigmaPct', min: 0.1, max: 0.6, step: 0.02, category: 'balance', label: '간 판정 관대함 (σ %)' },
+  { path: 'cook.starThreshold', min: 0.5, max: 0.9, step: 0.02, category: 'balance', label: '별 획득 임계' },
   // ── 구멍치기 (149차 — mockup, 실플레이 조율 대기) ──
   { path: 'hole.depthMultTetrapod', min: 0.5, max: 2, step: 0.05, category: 'balance', label: '테트라포드 구멍 깊이 배율' },
   { path: 'hole.snagMultTetrapod', min: 1, max: 4, step: 0.1, category: 'balance', label: '테트라포드 밑걸림 배율' },

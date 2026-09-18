@@ -9,6 +9,7 @@
  */
 
 import type { InvCategory, InvItemTemplate } from '../store/InventoryStore.js';
+import { COOK_CORNER } from './CookItems.js';
 import { WEIGHT_SINKER_DB, TRAP_DATABASE } from '@tra/core';
 import { applyItemVitals } from './ItemVitals.js';
 
@@ -163,6 +164,8 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
       { id: 'inv_plate_m',  name: '사시미 접시 (중)',   icon: '🍽️', category: 'etc', subCategory: '식기', basePrice: 4500, price: 5500, maxPerPurchase: 3, equippable: false, desc: '방위당 5점 × 4방위 = 20점. 모듬 550g~ / 고급 500g~.' },
       { id: 'inv_plate_l',  name: '사시미 접시 (대)',   icon: '🍽️', category: 'etc', subCategory: '식기', basePrice: 7000, price: 8500, maxPerPurchase: 3, equippable: false, desc: '방위당 6점 × 4방위 = 24점. 모듬 750g~ / 고급 700g~.' },
       { id: 'inv_plate_xl', name: '사시미 접시 (특대)', icon: '🍽️', category: 'etc', subCategory: '식기', basePrice: 12000, price: 14000, maxPerPurchase: 3, equippable: false, desc: '방위당 7점 × 4방위 = 28점. 모듬 1.2kg~ / 고급 1.0kg~.' },
+      // 요리 코너 (154차 불요리) — 채소·양념·용기·화구·연료. 조리 필드는 CookItems 테이블이 정본
+      ...COOK_CORNER,
     ],
   },
   market: {

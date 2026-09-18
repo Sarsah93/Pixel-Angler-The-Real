@@ -322,7 +322,8 @@ export class TrapFieldSystem {
 
   /** 남이 놓은 통발 부표 — 이름만 띄우고 상호작용은 없다 (145차) */
   private renderPeerTraps(): void {
-    const list = MultiplayerClient.peerTraps(this.host.mapKey);
+    // 154차 — 화구도 같은 채널을 탄다(kind 'stove'). 통발 부표로 그리지 않는다.
+    const list = MultiplayerClient.peerTraps(this.host.mapKey).filter((t) => (t.kind ?? 'trap') === 'trap');
     const tr = this.host.tr;
     const alive = new Set<string>();
     for (const t of list) {

@@ -10,9 +10,12 @@ import Phaser from 'phaser';
 import { ensurePixelIcon } from './PixelIcon.js';
 import { getNuisance } from '@tra/core';
 import { FISH_DATABASE, fishImageSizeScale, fishRarity, speciesStandardWeightG,
-  GEAR_FAULTS, gearRepairFee, rodMaxCasts } from '@tra/core';
+  GEAR_FAULTS, gearRepairFee, rodMaxCasts,
+  getFireRecipe, getCookIngredient, dishStarsAt, dishVitalsMult, fmtUnits, SALT_LABEL_KO, SUGAR_LABEL_KO, STAR_NAME_KO } from '@tra/core';
+import { CookingStore } from '../store/CookingStore.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { DraggablePanel } from './DraggablePanel.js';
+import { clampTextWidth } from './TextFit.js';
 import { createItemIcon } from './ItemIcon.js';
 import { resolveFishTexture } from '../data/FishTextures.js';
 import {
@@ -40,7 +43,7 @@ export interface ItemDetailData {
 }
 
 /** 아이템 종류별 상세 스펙 추론 생성 (목업) — 어획물은 개체 실측치·어종 정보(FISH_DATABASE) 표시 */
-export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory' | 'category' | 'qty' | 'basePrice' | 'condition' | 'conditionSinceMs' | 'speciesId' | 'lengthCm' | 'weightG' | 'floatBuoyG' | 'plateWip' | 'fault' | 'useCount' | 'tool' | 'bound'>): ItemDetailData {
+export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory' | 'category' | 'qty' | 'basePrice' | 'condition' | 'conditionSinceMs' | 'speciesId' | 'lengthCm' | 'weightG' | 'floatBuoyG' | 'plateWip' | 'fault' | 'useCount' | 'tool' | 'bound' | 'dish'>): ItemDetailData {
   const rows: ItemDetailRow[] = [];
   let desc = '';
   // 141차 — 귀속 장비: 이야기가 준 물건. 판매·양도 불가를 맨 위에
@@ -64,6 +67,46 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
     const used = item.useCount ?? 0;
     rows.push({ label: '내구도', value: `${Math.max(0, mx - used)} / ${mx} 회` });
     if (used >= mx) rows.push({ label: '마모', value: '한계 초과 — 고장이 잦아집니다' });
+  }
+
+  // 154차 — 완성 요리: 맛 별 5개(간·온도·식감·신선도·완성도)와 시간 감쇠를 그대로 보여준다
+  if (item.dish) {
+    const dish = item.dish;
+    const recipe = getFireRecipe(dish.recipeId);
+    const stars = CookingStore.starsOfItem(item);
+    if (recipe && stars) {
+      const pct = (v: number): string => `${Math.round(v * 100)}%`;
+      const tempKo = stars.tempLabel === 'hot' ? '뜨겁다' : stars.tempLabel === 'warm' ? '미지근하다' : '식었다';
+      const ageMin = Math.max(0, Math.round((Date.now() - dish.cookedAtMs) / 60_000));
+      const baseStars = dishStarsAt(dish, recipe, dish.cookedAtMs);
+      const ok = (i: number): string => stars.earned[i] ? '#8affb0' : '#ff9a5a';
+      rows.push({ label: '요리', value: `${recipe.nameKo} · ${dish.servings}인분` });
+      if (dish.burnt) rows.push({ label: '상태', value: '탔다 — 가치 없음', color: '#ff5a4a' });
+      rows.push({ label: '별점 (지금)', value: `${stars.stars} / 5 · ${Math.round(stars.total)}점`, color: stars.stars >= 5 ? '#ffd257' : stars.stars >= 3 ? '#8affb0' : '#ff9a5a' });
+      rows.push({ label: '별점 (완성 직후)', value: `${baseStars.stars} / 5 · ${Math.round(baseStars.total)}점` });
+      const salt = SALT_LABEL_KO[dish.saltLabel];
+      const sugar = SUGAR_LABEL_KO[dish.sugarLabel];
+      rows.push({ label: STAR_NAME_KO[0], value: `${pct(stars.scores.season)} — ${salt}${sugar ? ` · ${sugar}` : ''}`, color: ok(0) });
+      rows.push({ label: STAR_NAME_KO[1], value: `${pct(stars.scores.temp)} — ${tempKo} (${Math.round(stars.tempC)}°C)`, color: ok(1) });
+      rows.push({ label: STAR_NAME_KO[2], value: pct(stars.scores.texture), color: ok(2) });
+      rows.push({ label: STAR_NAME_KO[3], value: pct(stars.scores.fresh), color: ok(3) });
+      rows.push({ label: STAR_NAME_KO[4], value: pct(stars.scores.finish), color: ok(4) });
+      const ingNames = dish.contents.map((c) => {
+        const d = getCookIngredient(c.ing);
+        return d ? `${d.nameKo} ${fmtUnits(d.unit, c.units)}` : c.ing;
+      });
+      // 재료가 많으면 한 행에 못 담는다 — 3개씩 끊어 이어지는 행으로(라벨은 첫 행만)
+      if (ingNames.length === 0) rows.push({ label: '재료 구성', value: '없음' });
+      for (let i = 0; i < ingNames.length; i += 3) rows.push({ label: i === 0 ? '재료 구성' : '', value: ingNames.slice(i, i + 3).join(', ') });
+      rows.push({ label: '조리한 곳', value: dish.stoveKind === 'home' ? '집 주방' : '현장 화구' });
+      rows.push({ label: '조리 후 경과', value: ageMin < 60 ? `${ageMin}분` : `${Math.floor(ageMin / 60)}시간 ${ageMin % 60}분` });
+      rows.push({ label: '섭취 효과', value: `허기·수분 회복 ×${dishVitalsMult(dish, stars).toFixed(2)}` });
+      rows.push({ label: '판매가', value: dish.burnt ? '0원' : `${InventoryStore.getSellPrice({ ...item, qty: 1 } as InvItem).toLocaleString()}원` });
+      rows.push({ label: '보유 수량', value: `${item.qty}개` });
+      desc = recipe.descKo + '\n온도·식감·신선도는 완성 직후부터 시간이 지날수록 떨어지고, 완성도와 판매가도 함께 내려갑니다. 뜨거울 때 먹거나 파는 게 가장 좋습니다.';
+      if (item.condition) desc += `\n[${CONDITION_LABEL[item.condition]}] ${CONDITION_DESC[item.condition]}`;
+      return { title: item.name, subtitle: '요리', rows, desc };
+    }
   }
 
   // 미완성 사시미 접시 — 진행률을 최상단에 (135차). 이어 담기/판매 불가 안내는 desc로.
@@ -467,6 +510,8 @@ export class ItemDetailPanel extends DraggablePanel {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: row.color ?? '#e8f4fd',
         fontStyle: row.color ? 'bold' : 'normal',
       }).setOrigin(1, 0);
+      // 값이 라벨을 넘어 왼쪽 밖으로 나가지 않게 (154차 실측 — 요리 재료 구성 행이 패널 왼쪽으로 삐져나갔다)
+      clampTextWidth(val, W - 22 - (22 + lbl.width + 8));
       body.add([lbl, val]);
     });
 

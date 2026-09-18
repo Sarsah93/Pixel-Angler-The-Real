@@ -21,6 +21,8 @@ import {
   type GearFaultId, GEAR_FAULTS, gearUsable,
   type MpTradeItem,
 } from '@tra/core';
+import type { DishData } from '@tra/core';
+import { getFireRecipe, dishStarsAt, dishValueKrw } from '@tra/core';
 import type { SashimiSizeTier } from '@tra/core';
 import type { ForageTool, StatusCure, CatchMethod } from '@tra/core';
 import { ExternalDataStore } from './ExternalDataStore.js';
@@ -28,6 +30,7 @@ import { DiscoveryStore } from './DiscoveryStore.js';
 import { isGod } from '../dev/DevMode.js';
 import { resolveFishTexture } from '../data/FishTextures.js';
 import { applyItemVitals } from '../data/ItemVitals.js';
+import { applyCookItemFields, COOK_CORNER } from '../data/CookItems.js';
 import { StoryStore } from './StoryStore.js';
 
 /** 인벤토리 카테고리 탭 */
@@ -318,6 +321,20 @@ export interface InvItem {
    * 활어 10분 → 곧바로 나쁨 → 1시간 후 부패. 사용자 지정 2026-07-29)
    */
   condProfile?: 'viscera';
+
+  // ── 불요리 (154차 — `data/CookItems.ts` 테이블이 정본 · 세이브 백필 공유) ──
+  /** 조리 재료 id (core COOK_INGREDIENTS) — 식자재·양념 아이템 */
+  cookIngredient?: string;
+  /** 1 qty가 몇 단위인가 (생수 1병 = 2.5컵 · 쌀 1kg = 6컵) */
+  cookUnitsPerQty?: number;
+  /** 용기 (core COOKWARES id) — 화구에 올린다 */
+  cookwareId?: string;
+  /** 화구 (core HEAT_SOURCES id) — 인벤토리 [화구 설치] */
+  stoveHeatId?: string;
+  /** 연료 (core FUELS id) — 화구에 끼운다 */
+  fuelId?: string;
+  /** 완성 요리 — 맛 별 5개의 완성 시 기준값. 조회 시 시간 감쇠(`CookingStore.starsOfItem`) */
+  dish?: DishData;
 }
 
 /** 상점 카탈로그/구매용 아이템 템플릿 (slot/qty 없이 정의) */
@@ -566,6 +583,15 @@ function createSeedItems(): InvItem[] {
     { id: 'inv_place_fence',   name: '울타리',              icon: '🪵', category: 'etc', subCategory: '설치형', qty: 6, basePrice: 1500,  equippable: false, placeKey: 'fence' },
     { id: 'inv_place_aq_live', name: '활어 수조 (업소용)',   icon: '🐠', category: 'etc', subCategory: '설치형', qty: 1, basePrice: 120000, equippable: false, placeKey: 'aquarium_live' },
     { id: 'inv_place_aq_disp', name: '관상용 수족관',        icon: '🐟', category: 'etc', subCategory: '설치형', qty: 1, basePrice: 60000, equippable: false, placeKey: 'aquarium_display' },
+    // ── 불요리 (154차) — 코펠 1 + 스토브 1 + 캐니스터 2 + 양념·채소 한 벌 (조리 필드는 CookItems 테이블이 채운다) ──
+    { id: 'cook_pot_camp', name: '코펠 냄비 (1.8L)', icon: '', iconTexture: 'px:it_pot', category: 'etc', subCategory: '조리도구', qty: 1, basePrice: 18000, equippable: false },
+    { id: 'cook_stove_portable', name: '휴대용 가스스토브', icon: '', iconTexture: 'px:it_stove', category: 'etc', subCategory: '화구', qty: 1, basePrice: 32000, equippable: false },
+    { id: 'cook_butane_can', name: '부탄 캐니스터', icon: '', iconTexture: 'px:it_gascan', category: 'consumable', subCategory: '연료', qty: 2, basePrice: 1500, equippable: false },
+    { id: 'cook_salt', name: '소금', icon: '', iconTexture: 'px:it_spice', category: 'consumable', subCategory: '양념', qty: 6, basePrice: 100, equippable: false },
+    { id: 'cook_gochugaru', name: '고춧가루', icon: '', iconTexture: 'px:it_spice', category: 'consumable', subCategory: '양념', qty: 4, basePrice: 400, equippable: false },
+    { id: 'cook_garlic', name: '다진마늘', icon: '', iconTexture: 'px:it_spice', category: 'consumable', subCategory: '양념', qty: 3, basePrice: 300, equippable: false },
+    { id: 'cook_radish', name: '무', icon: '', iconTexture: 'px:it_veg', category: 'food', subCategory: '식자재', qty: 2, basePrice: 1200, condition: 'fresh', equippable: false },
+    { id: 'cook_leek', name: '대파', icon: '', iconTexture: 'px:it_veg', category: 'food', subCategory: '식자재', qty: 3, basePrice: 500, condition: 'fresh', equippable: false },
   ];
 
   // ── 원투 메인 싱커(무게추 봉돌) — SinkerDatabase(core)에서 생성 ──
@@ -1051,7 +1077,7 @@ class InventoryStoreManager {
         slot: i.equipped ? SLOT_EQUIPPED : i.slot,
         conditionSinceMs: i.conditionSinceMs !== undefined ? i.conditionSinceMs + offlineGap : undefined,
       };
-    }).map((i) => applyItemVitals(i));
+    }).map((i) => applyCookItemFields(applyItemVitals(i)));   // 154차 — 조리 필드도 테이블 백필
     this._catchSeq = s.catchSeq ?? 0;
     const valid = new Set(this._items.map((i) => i.id));
     const ref = (id: string | null | undefined): string | null => (id && valid.has(id) ? id : null);
@@ -1107,7 +1133,7 @@ class InventoryStoreManager {
 
   /** 전체 초기화 (새 게임/세이브 없음 — 시드 아이템·기본 채비 재지급) */
   resetAll(): void {
-    this._items = createSeedItems();
+    this._items = createSeedItems().map((i) => applyCookItemFields(i));   // 154차 — 조리 필드 테이블
     this._catchSeq = 0;
     this._quickslots = defaultQuickslots();
     this._rig = defaultRig();
@@ -1152,6 +1178,16 @@ class InventoryStoreManager {
       // 레거시 폴백 — 실측치가 없으면 기존 방식(기준가 × 시세 배율) × 상태 배율
       const factor = speciesId ? ExternalDataStore.getMarketPriceFactor(speciesId) : 1;
       return Math.max(0, Math.floor(item.basePrice * 0.6 * factor * stateMul));
+    }
+    // 154차 — 완성 요리: 별점 총점 비례 책정가(`dishValueKrw`)가 basePrice. 시간 감쇠·신선도는 조회 시 다시 계산한다.
+    //  탄 것은 0. 0.6 매입 할인 미적용(사시미 접시와 같은 원칙 — 노력 가치 보전).
+    if (item.dish) {
+      const r = getFireRecipe(item.dish.recipeId);
+      if (!r || item.dish.burnt) return 0;
+      const stMul = conditionSellMultiplier(item.condition);
+      if (stMul <= 0) return 0;
+      const st = dishStarsAt(item.dish, r, Date.now(), stMul >= 1 ? 1 : stMul);
+      return Math.max(0, dishValueKrw(item.dish, r, st));
     }
     // 완성 사시미 접시 — **책정가(가격표) 그대로 판매** (사용자 가격 개편 2026-08-03:
     //  모듬 = 고정표 / 단품 = 원물 kg 시세 계수. 0.6 매입 할인 미적용 — 노력 가치 보전)
@@ -1377,9 +1413,10 @@ class InventoryStoreManager {
   recoverPlaceable(itemId: string): boolean {
     const existing = this.find(itemId);
     if (existing) { existing.qty += 1; return true; }
-    const tpl = InventoryStoreManager.PLACEABLE_TPL[itemId];
+    // 154차 — 화구·용기(COOK_CORNER)는 설치 시 통째로 빠지므로 카탈로그에서 되살린다(안 그러면 회수 시 증발 — 실측)
+    const tpl = InventoryStoreManager.PLACEABLE_TPL[itemId] ?? COOK_CORNER.find((c) => c.id === itemId);
     if (!tpl) return false;
-    return this.addItem(tpl, 1);
+    return this.addItem(tpl as InvItemTemplate, 1);
   }
 
   // ── 착용 ────────────────────────────────────────────

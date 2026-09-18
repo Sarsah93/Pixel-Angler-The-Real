@@ -607,3 +607,25 @@ export type {
 export {
   MP_TRADE_PROPOSE_TIMEOUT_MS, MP_TRADE_RANGE_PX, MP_TRADE_MAX_ITEMS, MP_TRADE_REASON_KO,
 } from './types/Multiplayer.js';
+
+// ── 154차 불요리 (화구·용기·연료 · 재료 · 레시피 · 조리 시뮬 · 맛 별 5개) ──
+export type {
+  CookwareKind, HeatSourceDef, CookwareDef, FuelDef, IngredientKind, IngredientUnit, CookIngredientDef,
+  RecipeFamily, RecipeRole, StageTrigger, RecipeIngredientReq, RecipeStageDef, DishVitals, FireRecipeDef,
+  HeatLevel, CookContent, CookStatus, CookSessionState, DeployedStove, DishScores, SaltLabel, SugarLabel,
+  DishData, DishStars,
+} from './types/Cooking.js';
+export {
+  HEAT_SOURCES, COOKWARES, FUELS, getHeatSource, getCookware, getFuel,
+  HEAT_FRAC, HEAT_LABEL_KO, HEAT_LABEL_EN, COOKWARE_KIND_KO,
+} from './db-schema/CookwareDatabase.js';
+export type { CookableItemLike, IngredientMatch } from './db-schema/CookIngredientDatabase.js';
+export { COOK_INGREDIENTS, getCookIngredient, ingredientOfItem } from './db-schema/CookIngredientDatabase.js';
+export { FIRE_RECIPES, getFireRecipe, recipesForCookware, RECIPE_FAMILY_KO } from './db-schema/FireRecipeDatabase.js';
+export type { AddCheck, CookEnv, CookStepResult, CompositionCheck, SeasonEval, FinishEval } from './simulation/CookingSim.js';
+export {
+  createCookSession, reqFor, unitsOf, canAddIngredient, fmtUnits, addIngredient, setHeat, flip,
+  effectiveHeatW, stepCook, isReady, checkComposition, evalSeason, evalTexture, evalFresh, evalTempAt, evalFinish,
+  evaluateSession, finishCook, dishStarsAt, dishValueKrw, dishVitalsMult, dishItemName,
+  SALT_LABEL_KO, SALT_LABEL_EN, SUGAR_LABEL_KO, SUGAR_LABEL_EN, STAR_NAME_KO, STAR_NAME_EN,
+} from './simulation/CookingSim.js';

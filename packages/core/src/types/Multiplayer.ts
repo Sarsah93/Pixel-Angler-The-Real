@@ -168,6 +168,8 @@ export interface MpPlacedTrap {
   tileY: number;
   trapSpecId: string;
   deployedAtMs: number;
+  /** 154차 — 설치물 종류. 없으면 통발. 화구는 같은 채널을 타되(서버 무수정) 각자의 필드 시스템이 그린다 */
+  kind?: 'trap' | 'stove';
 }
 
 /** 지금 무엇을 하고 있는가 — 이름표 옆 아이콘 + 밀어내기 대상 판정에 쓴다 */

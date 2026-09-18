@@ -18,6 +18,8 @@ import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { GameState } from '../store/GameState.js';
 import { StoryStore } from '../store/StoryStore.js';
 import { FridgePanel } from '../ui/FridgePanel.js';
+import { CookingPanel } from '../ui/CookingPanel.js';
+import { CookingStore } from '../store/CookingStore.js';
 import { fadeOutThen } from './SceneFade.js';
 
 /** 실내 타일 렌더 크기 (px) — 외부(20px)보다 큼직하게 */
@@ -65,6 +67,9 @@ export class HomeInteriorScene extends Phaser.Scene {
   private hintText!: Phaser.GameObjects.Text;
   private bedMenu?: Phaser.GameObjects.Container;
   private fridgePanel?: FridgePanel;
+  /** 154차 — 집 주방 조리 패널 (가스레인지 [F]) */
+  private cookPanel?: CookingPanel;
+  private cookSyncAcc = 0;
   private nearObj: MapObject | null = null;
 
   constructor() {
@@ -77,6 +82,7 @@ export class HomeInteriorScene extends Phaser.Scene {
     this.cameras.main.fadeIn(300, 0, 10, 20);
     this.bedMenu = undefined;
     this.fridgePanel = undefined;
+    this.cookPanel = undefined;
     this.nearObj = null;
 
     this.drawRoom();
@@ -91,6 +97,7 @@ export class HomeInteriorScene extends Phaser.Scene {
     this.cursors = this.input.keyboard!.createCursorKeys();
     this.input.keyboard!.on('keydown-F', () => this.tryInteract());   // 122차: 상호작용 키 E → F
     this.input.keyboard!.on('keydown-ESC', () => {
+      if (this.cookPanel) { this.closeCook(); return; }
       if (this.fridgePanel) { this.closeFridge(); return; }
       if (this.bedMenu) { this.closeBedMenu(); return; }
       this.exitToField();
@@ -238,7 +245,10 @@ export class HomeInteriorScene extends Phaser.Scene {
   // ── 이동/충돌 (간이 AABB — 물리 미사용) ──────────────
 
   update(_t: number, delta: number): void {
-    if (this.bedMenu || this.fridgePanel) { this.updateWalkTexture(false); return; }   // 메뉴/패널 열림 중 이동 정지
+    // 154차 — 집 주방 화구는 wall-clock으로 계속 끓는다(패널이 닫혀 있어도). 1초마다 동기화.
+    this.cookSyncAcc += delta;
+    if (this.cookSyncAcc >= 1000) { this.cookSyncAcc = 0; CookingStore.syncAll(); }
+    if (this.bedMenu || this.fridgePanel || this.cookPanel) { this.updateWalkTexture(false); return; }   // 메뉴/패널 열림 중 이동 정지
     // 144차 — Shift 홀드 달리기(실내는 12x10칸이라 피로 드레인 없이 조작감만 통일)
     const spd = 0.18 * delta * (this.cursors.shift?.isDown ? TUNING.vitals.runSpeedMult : 1);
     let dx = 0, dy = 0;
@@ -306,7 +316,7 @@ export class HomeInteriorScene extends Phaser.Scene {
     if (nearest) {
       const label = nearest.interact === 'save' ? '[F] 침대 — 저장하고 쉬기'
         : nearest.interact === 'door' ? '[F] 나가기'
-        : nearest.interact === 'cook' ? '[F] 주방 (요리 준비중)'
+        : nearest.interact === 'cook' ? '[F] 주방 — 요리'
         : nearest.instanceId === 'fridge' ? '[F] 냉장고 열기'
         : '[F] 수납';
       this.hintText.setText(label).setPosition(this.px, this.py - PLAYER_H - 6).setVisible(true);
@@ -316,11 +326,11 @@ export class HomeInteriorScene extends Phaser.Scene {
   }
 
   private tryInteract(): void {
-    if (this.bedMenu || this.fridgePanel || !this.nearObj) return;
+    if (this.bedMenu || this.fridgePanel || this.cookPanel || !this.nearObj) return;
     switch (this.nearObj.interact) {
       case 'save': this.openBedMenu(); break;
       case 'door': this.exitToField(); break;
-      case 'cook': this.flash('주방은 아직 쓸 수 없습니다. 손질은 U 창의 도마에서 합니다.'); break;
+      case 'cook': this.openCook(); break;
       case 'storage':
         if (this.nearObj.instanceId === 'fridge') this.openFridge();
         else this.flash('아직 쓸 수 없는 가구입니다.');
@@ -340,6 +350,23 @@ export class HomeInteriorScene extends Phaser.Scene {
   private closeFridge(): void {
     this.fridgePanel?.destroy();
     this.fridgePanel = undefined;
+  }
+
+  // ── 주방 — 가스레인지 (154차 불요리 · 연료 무한 · 수돗물) ─────────────────
+  private openCook(): void {
+    if (this.cookPanel) return;
+    const stove = CookingStore.ensureHomeStove();
+    const panel = new CookingPanel(this, GAME_WIDTH / 2 - 450, 60, stove, {
+      onClose: () => this.closeCook(),
+      onChanged: () => this.events.emit('inventory-changed'),
+    });
+    this.add.existing(panel);
+    this.cookPanel = panel;
+  }
+
+  private closeCook(): void {
+    this.cookPanel?.destroy();
+    this.cookPanel = undefined;
   }
 
   // ── 침대 — 저장하고 쉬기 / 그냥 쉬기 ─────────────────

@@ -1101,7 +1101,7 @@ const SUB_138: StoryQuestDef[] = subExtra([
     '조사표는 다음 사람에게 간다. 마지막 장은 비워 두라고 한다 — "당신이 본 걸 적으라고."',
     'The survey sheet goes to whoever comes next. She leaves the last page blank — "for what you saw."',
     [auto('sashimi', '기록에 남길 한 접시를 뜬다', 'Slice the one plate for the record'),
-      man('cook', '기록에 남길 한 접시를 만든다', 'Cook the one dish for the record'),
+      auto('cook', '기록에 남길 한 접시를 만든다', 'Cook the one dish for the record'),   // 154차 — 불요리가 서서 auto 승격
       talk('chae_surim', '마지막 장을 받는다', 'Receive the last page')],
     ['N23-5'], { teaches: ['journalComplete'] }],
 

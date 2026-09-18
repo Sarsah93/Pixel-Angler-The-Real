@@ -14,6 +14,7 @@
  * - 선상콘도 상태 (FloatingCondoState | null)
  */
 
+import type { DeployedStove } from '@tra/core';
 import type {
   PlayerState,
   TackleSetup,
@@ -164,6 +165,8 @@ export interface VitalsSaveState {
 interface SaveData {
   player: PlayerState;
   deployedTraps: DeployedTrap[];
+  /** 설치된 화구 + 위에 걸린 조리 세션 (154차 불요리) — 시각은 전부 ms 숫자라 Date 복원 불요 */
+  deployedStoves?: DeployedStove[];
   coolerInventory: CoolerInventory;
   licenses: HeldLicense[];
   restaurant: RestaurantState | null;
@@ -219,6 +222,7 @@ export interface SaveSlotMeta {
 export class GameStateManager {
   private _player: PlayerState | null = null;
   private _deployedTraps: DeployedTrap[] = [];
+  private _deployedStoves: DeployedStove[] = [];
   private _coolerInventory: CoolerInventory = createDefaultCoolerInventory();
   private _licenses: HeldLicense[] = [];
   private _restaurant: RestaurantState | null = null;
@@ -302,6 +306,13 @@ export class GameStateManager {
   private applySaveData(saved: SaveData): void {
     this._player = saved.player;
     this._deployedTraps = saved.deployedTraps ?? [];
+    // 154차 — 화구 위 조리는 오프라인(게임 종료) 중 정지한다(신선도·통발과 같은 규칙):
+    //  저장~로드 실경과만큼 lastTickMs를 밀어 "그 사이 익지 않은 것"으로 만든다.
+    {
+      const savedAt = saved.player?.lastSavedAt ? new Date(saved.player.lastSavedAt).getTime() : Date.now();
+      const gap = Math.max(0, Date.now() - savedAt);
+      this._deployedStoves = (saved.deployedStoves ?? []).map((st) => ({ ...st, lastTickMs: st.lastTickMs + gap }));
+    }
     this._coolerInventory = saved.coolerInventory ?? createDefaultCoolerInventory();
     this._licenses = saved.licenses ?? [];
     this._restaurant = saved.restaurant ?? null;
@@ -365,6 +376,11 @@ export class GameStateManager {
 
   get deployedTraps(): DeployedTrap[] {
     return this._deployedTraps;
+  }
+
+  /** 설치된 화구 (154차) — CookingStore가 소유·갱신한다 */
+  get deployedStoves(): DeployedStove[] {
+    return this._deployedStoves;
   }
 
   get coolerInventory(): CoolerInventory {
@@ -1228,6 +1244,7 @@ export class GameStateManager {
     return {
       player: this._player,
       deployedTraps: this._deployedTraps,
+      deployedStoves: this._deployedStoves,
       coolerInventory: this._coolerInventory,
       licenses: this._licenses,
       restaurant: this._restaurant,
@@ -1422,6 +1439,7 @@ export class GameStateManager {
     this._character = GameStateManager.defaultCharacter('m');
     this._player = createDefaultPlayer();
     this._deployedTraps = [];
+    this._deployedStoves = [];
     this._coolerInventory = createDefaultCoolerInventory();
     this._licenses = [{ type: 'basic_angling', acquiredAt: new Date(), isExpired: false }];
     this._restaurant = null;

@@ -23,6 +23,7 @@ import {
   DATA_ATTRIBUTIONS, LICENSE_LABEL, LICENSE_LABEL_EN,
   CRAFT_BLUEPRINTS, CRAFT_GROUP_LABEL,
   allChoiceLines, allNarrativeLines,
+  FIRE_RECIPES, COOK_INGREDIENTS, HEAT_SOURCES, COOKWARES, FUELS,
 } from '@tra/core';
 import { EN_PLACES } from './places.js';
 import { EN_POIS } from './en_pois.js';
@@ -71,6 +72,12 @@ function buildRuntimeDict(): void {
   // 131차 — 제작 도면·그룹 라벨도 데이터(nameEn/descEn)가 정본
   for (const bp of CRAFT_BLUEPRINTS) { put(bp.nameKo, bp.nameEn); put(bp.descKo, bp.descEn); }
   for (const g of Object.values(CRAFT_GROUP_LABEL)) put(g.ko, g.en);
+  // 154차 — 불요리: 레시피·단계·재료·화구·용기·연료는 데이터(nameEn/labelEn/descEn)가 정본
+  for (const r of FIRE_RECIPES) { put(r.nameKo, r.nameEn); put(r.descKo, r.descEn); for (const st of r.stages) put(st.labelKo, st.labelEn); }
+  for (const i of COOK_INGREDIENTS) put(i.nameKo, i.nameEn);
+  for (const h of HEAT_SOURCES) put(h.nameKo, h.nameEn);
+  for (const c of COOKWARES) put(c.nameKo, c.nameEn);
+  for (const f of FUELS) put(f.nameKo, f.nameEn);
   for (const r of REGION_DATABASE) put(r.description, r.descriptionEn);
   // 122차 — 출처 화면(데이터 제공기관·서비스·사용처·라이선스 라벨)
   for (const a of DATA_ATTRIBUTIONS) { put(a.provider, a.providerEn); put(a.service, a.serviceEn); put(a.usage, a.usageEn); }

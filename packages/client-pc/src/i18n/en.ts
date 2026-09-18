@@ -15,6 +15,7 @@ import { EN_GEAR } from './en_gear.js';
 import { EN_AUCTION } from './en_auction.js';
 import { EN_CONTENT } from './en_content.js';
 import { EN_FISH } from './en_fish.js';
+import { EN_COOK } from './en_cook.js';
 
 /** 기본 사전 — 분야별 사전(EN_ITEMS/EN_RIG_COOKING/EN_HELP)보다 우선한다 */
 const EN_BASE: Record<string, string> = {
@@ -444,7 +445,7 @@ const EN_EXTRA: Record<string, string> = {
 
 /** 최종 사전 — 분야별 사전을 먼저 깔고 기본 사전이 덮는다(충돌 시 기본 우선) */
 export const EN_DICT: Record<string, string> = {
-  ...EN_FISH, ...EN_CONTENT, ...EN_ITEMS, ...EN_RIG_COOKING, ...EN_HELP, ...EN_FORAGE, ...EN_PANELS, ...EN_GEAR, ...EN_AUCTION, ...EN_EXTRA, ...EN_BASE,
+  ...EN_FISH, ...EN_CONTENT, ...EN_ITEMS, ...EN_RIG_COOKING, ...EN_HELP, ...EN_FORAGE, ...EN_PANELS, ...EN_GEAR, ...EN_AUCTION, ...EN_COOK, ...EN_EXTRA, ...EN_BASE,
 };
 
 /**
@@ -460,6 +461,48 @@ const DOW_EN: Record<string, string> = {
 };
 /** 수치·이름이 끼어 있는 문장 — 정규식 규칙. 캡처 그룹은 그대로 옮긴다(이름은 사전을 다시 타지 않으므로 어종·아이템명은 한국어로 남을 수 있음). */
 export const EN_RULES: Rule[] = [
+  // ── 154차 불요리 ──
+  [/^(.+) \(별 (\d+)개\)$/, (m, tr) => `${tr(m[1])} (${m[2]} star${m[2] === '1' ? '' : 's'})`],
+  [/^탄 (.+)$/, (m, tr) => `Burnt ${tr(m[1])}`],
+  [/^연료 (\d+)분(?: \(강불 기준\))?$/, (m) => `Fuel ${m[1]} min${m[0].includes('강불') ? ' (on high)' : ''}`],
+  [/^\[F\] 요리 — (.+) · \[Shift\+F\] 회수$/, (m, tr) => `[F] Cook — ${tr(m[1])} · [Shift+F] pack up`],
+  [/^\[요리\] 화구 (.+)$/, (m, tr) => `[Cooking] Stove ${tr(m[1])}`],
+  [/^\[요리\] 화구 설치 모드 — 뭍 위\(플레이어 (\d+)타일 이내\) 클릭 = 설치 · 우클릭\/ESC = 취소$/,
+    (m) => `[Cooking] Stove placement — click on land (within ${m[1]} tiles) to place · right-click/ESC to cancel`],
+  [/^(.+) 끼우기 \(x(\d+)\)$/, (m, tr) => `Fit ${tr(m[1])} (x${m[2]})`],
+  [/^(.+) 올리기$/, (m, tr) => `Put on ${tr(m[1])}`],
+  [/^(.+)\(으\)로 만들 수 있는 요리$/, (m, tr) => `Recipes for ${tr(m[1])}`],
+  [/^용기: (.+)$/, (m, tr) => `Cookware: ${tr(m[1])}`],
+  [/^재료 넣기 — (.+)$/, (m, tr) => `Add ingredients — ${tr(m[1])}`],
+  [/^적정 (\d+)~(\d+)°C$/, (m) => `Target ${m[1]}–${m[2]}°C`],
+  [/^필수: (.+)$/, (m, tr) => `Required: ${tr(m[1])}`],
+  [/^약 (\d+)분$/, (m) => `about ${m[1]} min`],
+  [/^(.+)이\(가\) 너무 큽니다 \(한도 (\d+)g\) — 손질해서 필렛·서더리로 넣으세요$/, (m, tr) => `${tr(m[1])} is too big (limit ${m[2]}g) — butcher it and add fillets or the frame`],
+  [/^(.+)은\(는\) 이미 충분합니다 \(한도 (.+)\)$/, (m, tr) => `Enough ${tr(m[1])} already (limit ${tr(m[2])})`],
+  [/^(.+)에는 넣지 않는 재료입니다$/, (m, tr) => `Not used in ${tr(m[1])}`],
+  [/^용기 용량을 넘습니다$/, () => 'Exceeds the pot capacity'],
+  [/^더 넣으면 좋은 것 \((\d+)종까지\):$/, (m) => `Nice to add (up to ${m[1]} kinds):`],
+  [/^더 넣으면 좋은 것 \((\d+)종까지\): (.+)$/, (m, tr) => `Nice to add (up to ${m[1]} kinds): ${tr(m[2])}`],
+  [/^화력 (\d+)W(.*)$/, (m, tr) => `Power ${m[1]}W${tr(m[2])}`],
+  [/^ · 바람 ([\d.]+)m\/s$/, (m) => ` · wind ${m[1]}m/s`],
+  [/^(.+) (끓는 중|데우는 중) (\d+)%$/, (m, tr) => `${tr(m[1])} ${m[2] === '끓는 중' ? 'boiling' : 'heating'} ${m[3]}%`],
+  [/^(.+) — 탔다!$/, (m, tr) => `${tr(m[1])} — burnt!`],
+  [/^(.+) 완성( · 불 켜짐)?$/, (m, tr) => `${tr(m[1])} done${m[2] ? ' · heat on' : ''}`],
+  [/^(.+) — (재료 대기|불 꺼짐)$/, (m, tr) => `${tr(m[1])} — ${m[2] === '재료 대기' ? 'waiting for ingredients' : 'heat off'}`],
+  [/^(.+) — 재료를 넣고 불을 켜세요$/, (m, tr) => `${tr(m[1])} — add ingredients and turn on the heat`],
+  [/^(.+)에는 (.+)이\(가\) 꼭 들어갑니다$/, (m, tr) => `${tr(m[1])} needs ${tr(m[2])}`],
+  [/^(.+)은\(는\) (.+)\(으\)로 만들 수 없습니다$/, (m, tr) => `${tr(m[1])} cannot be made in ${tr(m[2])}`],
+  [/^(.+)이\(가\) 부족합니다 \((\d+)개 필요\)$/, (m, tr) => `Not enough ${tr(m[1])} (${m[2]} needed)`],
+  [/^(.+) — (상해서 넣을 수 없습니다|해동한 뒤 쓰세요)$/, (m, tr) => `${tr(m[1])} — ${tr(m[2])}`],
+  [/^(.+) (투입|장착|완성|회수)$/, (m, tr) => `${tr(m[1])} ${tr(m[2])}`],
+  [/^(\d+)–(\d+) \/ (\d+)행 · 휠$/, (m) => `${m[1]}–${m[2]} / ${m[3]} rows · wheel`],
+  [/^(.+) · (\d+)인분$/, (m, tr) => `${tr(m[1])} · ${m[2]} servings`],
+  [/^(\d+) \/ 5 · (\d+)점$/, (m) => `${m[1]} / 5 · ${m[2]} pts`],
+  [/^(\d+)% — (.+) \((-?\d+)°C\)$/, (m, tr) => `${m[1]}% — ${tr(m[2])} (${m[3]}°C)`],
+  [/^(\d+)% — (.+)$/, (m, tr) => `${m[1]}% — ${tr(m[2])}`],
+  [/^(\d+)시간 (\d+)분$/, (m) => `${m[1]} h ${m[2]} min`],
+  [/^허기·수분 회복 ×([\d.]+)$/, (m) => `Hunger/thirst recovery ×${m[1]}`],
+  [/^([\d.]+)(큰술|컵|개)$/, (m) => `${m[1]} ${m[2] === '큰술' ? 'tbsp' : m[2] === '컵' ? 'cup' : 'pc'}`],
   // ── 150차 일지(임무/이야기) ──
   //  ⚠ 캡처 안의 한국어(장 제목)는 `tr`로 다시 번역한다 — 131차 합성 문자열 함정.
   [/^제(\d+)장 · (.+)$/, (m, tr) => `Chapter ${m[1]} · ${tr(m[2])}`],

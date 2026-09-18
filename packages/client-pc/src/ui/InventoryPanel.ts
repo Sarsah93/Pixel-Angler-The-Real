@@ -680,6 +680,17 @@ export class InventoryPanel extends DraggablePanel {
         },
       });
     }
+    // 화구 아이템 (stoveHeatId) — 뭍 위 조합 설치 (154차 불요리)
+    if (item.stoveHeatId) {
+      actions.push({
+        label: '화구 설치',
+        color: '#ffd257', hoverColor: '#ffe9a0',
+        run: () => {
+          this.scene.events.emit('stove-place-request', item);
+          this.cbs.onClose();
+        },
+      });
+    }
     // 미완성 사시미 접시 — '해체하기' (135차): 접시 + 담긴 조각 전부 반환
     if (item.plateWip) {
       const pr = plateWipProgress(item.plateWip);
