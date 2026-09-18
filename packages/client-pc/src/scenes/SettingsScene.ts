@@ -85,7 +85,7 @@ const HOTKEY_SECTIONS: HotkeySection[] = [
       { key: 'I', desc: '인벤토리 토글' },
       { key: 'L', desc: '면허 · 허가' },
       { key: 'K', desc: '스킬 트리' },
-      { key: 'J', desc: '일지 (스토리 · 퀘스트)' },
+      { key: 'J', desc: '일지 (이야기 · 할 일)' },
       { key: 'T', desc: '통발 놓기' },
       { key: 'M', desc: '미니맵 크기 순환' },
       { key: 'V', desc: '조류/수심 오버레이 토글' },

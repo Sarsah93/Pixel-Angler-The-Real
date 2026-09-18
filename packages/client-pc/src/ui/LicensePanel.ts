@@ -11,6 +11,7 @@
 import Phaser from 'phaser';
 import {
   LICENSE_DATABASE, LICENSE_CATEGORY_LABEL, LICENSE_CATEGORY_ORDER, getLicenseByType, checkUnlockRequirements,
+  getStoryQuest, getSpotById, getFishById, QUEST_DATABASE,
   type LicenseType, type LicenseDef,
 } from '@tra/core';
 import { DraggablePanel, applyScreenFixed, restoreHandCursor } from './DraggablePanel.js';
@@ -26,6 +27,14 @@ const DETAIL_W = PANEL_W - DETAIL_X - 18;
 const FONT = '"Noto Sans KR", sans-serif';
 
 type Row = { kind: 'head'; label: string } | { kind: 'lic'; def: LicenseDef };
+
+/**
+ * 요구사항 줄에 쓸 임무 이름 (153차). 내부 id를 화면에 흘리지 않는다(§8-9 R1) —
+ * 스토리 임무 → 구 퀘스트 DB 순으로 찾고, 둘 다 없으면 이름 대신 사실만 적는다.
+ */
+function questTitleOf(id: string): string {
+  return getStoryQuest(id)?.titleKo ?? QUEST_DATABASE.find((q) => q.id === id)?.nameKo ?? '선행 임무';
+}
 
 export class LicensePanel extends DraggablePanel {
   private selected: LicenseType | null = null;
@@ -158,10 +167,11 @@ export class LicensePanel extends DraggablePanel {
       else if (req.type === 'min_fish_caught') s = `• 어획 누계: ${req.value}마리 이상 (현재 ${ctx.totalFishCaught})`;
       else if (req.type === 'min_coins') s = `• 코인 보유: ₩${req.value.toLocaleString()} 이상`;
       else if (req.type === 'license_held') s = `• 선행 면허: ${getLicenseByType(req.licenseType)?.nameKo ?? req.licenseType}`;
-      else if (req.type === 'spot_visited') s = `• 특정 장소 방문: ${req.spotId}`;
-      else if (req.type === 'quest_completed') s = `• 퀘스트 완료: ${req.questId}`;
+      else if (req.type === 'spot_visited') s = `• 특정 장소 방문: ${getSpotById(req.spotId)?.name ?? req.spotId}`;
+      // 153차 — 내부 id를 화면에 흘리지 않는다(§8-9 R1). 스토리 임무 → 구 퀘스트 DB 순으로 이름을 찾는다.
+      else if (req.type === 'quest_completed') s = `• 할 일 완료: ${questTitleOf(req.questId)}`;
       else if (req.type === 'min_reputation') s = `• 평판 ${req.value} 이상`;
-      else if (req.type === 'specific_fish_caught') s = `• 특정 어종 포획: ${req.fishId}`;
+      else if (req.type === 'specific_fish_caught') s = `• 특정 어종 포획: ${getFishById(req.fishId)?.nameKo ?? req.fishId}`;
       const t = this.scene.add.text(0, y, s, { fontFamily: FONT, fontSize: '11px', color: '#ffaa66', wordWrap: { width: DETAIL_W }, lineSpacing: 2 });
       y += Math.max(16, t.height + 3); c.add(t);
     }

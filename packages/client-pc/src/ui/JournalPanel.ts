@@ -99,7 +99,7 @@ export class JournalPanel extends DraggablePanel {
   constructor(scene: Phaser.Scene, cfg: JournalConfig) {
     super(scene, {
       x: (GAME_WIDTH - PANEL_W) / 2, y: Math.max(8, (GAME_HEIGHT - PANEL_H) / 2),
-      width: PANEL_W, height: PANEL_H, title: '일지 — 임무', onClose: cfg.onClose, dim: false, depth: 891,
+      width: PANEL_W, height: PANEL_H, title: '일지 — 할 일', onClose: cfg.onClose, dim: false, depth: 891,
     });
 
     this.frameG = scene.add.graphics();
@@ -169,7 +169,7 @@ export class JournalPanel extends DraggablePanel {
   private stateLabel(st: string): { ko: string; color: string } {
     switch (st) {
       case 'active': return { ko: '진행 중', color: C_ACT };
-      case 'available': return { ko: '새 임무', color: C_OK };
+      case 'available': return { ko: '새 할 일', color: C_OK };
       case 'done': return { ko: '완료함', color: C_DIM };
       case 'declined': return { ko: '거절함', color: C_LOCK };
       default: return { ko: '잠김', color: C_LOCK };
@@ -245,9 +245,9 @@ export class JournalPanel extends DraggablePanel {
       return x + w;
     };
 
-    // 탭 — 임무 목록 / 이야기(챕터 체인)
+    // 탭 — 할 일 목록 / 이야기(챕터 체인)
     let tx = LIST_X + 2;
-    for (const [key, label] of [['tasks', '임무'], ['chain', '이야기']] as const) {
+    for (const [key, label] of [['tasks', '할 일'], ['chain', '이야기']] as const) {
       const on = this.tab === key;
       const t = this.scene.add.text(tx + 26, y, label, {
         fontFamily: FONT, fontSize: '12px', color: on ? C_GOLD : C_DIM, fontStyle: on ? 'bold' : 'normal',
@@ -263,8 +263,8 @@ export class JournalPanel extends DraggablePanel {
 
     let x = tx + 12;
     if (this.tab === 'tasks') {
-      x = toggle(x, this.showDone, '완료한 임무 표시', () => { this.showDone = !this.showDone; this.scroll = 0; this.rebuild(); });
-      toggle(x + 6, this.showLocked, '잠긴 임무 표시', () => { this.showLocked = !this.showLocked; this.scroll = 0; this.rebuild(); });
+      x = toggle(x, this.showDone, '완료한 할 일 표시', () => { this.showDone = !this.showDone; this.scroll = 0; this.rebuild(); });
+      toggle(x + 6, this.showLocked, '잠긴 할 일 표시', () => { this.showLocked = !this.showLocked; this.scroll = 0; this.rebuild(); });
     }
 
     const ch = StoryStore.currentChapter();
@@ -294,7 +294,7 @@ export class JournalPanel extends DraggablePanel {
     };
     let cx = LIST_X + 6;
     head(cx, C_FACE, '의뢰인'); cx += C_FACE + 8;
-    head(cx, C_NAME, '임무'); cx += C_NAME + 6;
+    head(cx, C_NAME, '할 일'); cx += C_NAME + 6;
     head(cx, C_REGION, '지역', 0.5); cx += C_REGION + 6;
     head(cx, C_STATE, '상태', 0.5); cx += C_STATE + 6;
     head(cx, C_PROG, '진행률', 0.5);
@@ -304,7 +304,7 @@ export class JournalPanel extends DraggablePanel {
     c.add(line);
 
     if (this.rows.length === 0) {
-      const t = this.scene.add.text(LIST_X + LIST_W / 2, top + 70, '지금 맡고 있는 임무가 없습니다.\n항구 사람들과 이야기해 보세요.', {
+      const t = this.scene.add.text(LIST_X + LIST_W / 2, top + 70, '지금 맡고 있는 할 일이 없습니다.\n항구 사람들과 이야기해 보세요.', {
         fontFamily: FONT, fontSize: '12px', color: C_DIM, align: 'center', lineSpacing: 5,
       }).setOrigin(0.5, 0);
       c.add(t);

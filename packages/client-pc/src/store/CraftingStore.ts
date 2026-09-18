@@ -10,7 +10,7 @@
  */
 
 import {
-  CRAFT_BLUEPRINTS, craftSuccessRate, materialSaveChance, TUNING, activityXp, getSkillById,
+  CRAFT_BLUEPRINTS, craftSuccessRate, materialSaveChance, TUNING, getSkillById,
   type CraftBlueprint, type CraftMaterial, type CraftStation,
 } from '@tra/core';
 import { InventoryStore, type InvItem } from './InventoryStore.js';
@@ -158,7 +158,10 @@ class CraftingStoreManager {
         else out.dropped++;
         // XP는 반드시 activityXp → grantXp 경유 (124차 규칙). 도면의 xp는 **난이도 가중**이라
         // craftBase(15) 기준으로 환산한다 — F8 슬라이더 하나로 제작 XP 전체가 같이 움직인다.
-        GameState.grantXp(activityXp('craft', bp.xp / TUNING.xp.craftBase));
+        // ⚠ 153차 — 여기서 `grantXp`를 직접 부르고 있었다. 그래서 제작은 XP만 들어오고
+        //   **`activity` 이벤트도, 제작 숙련도도 한 번도 오르지 않았다**(호출측 0건 · 실측).
+        //   `addActivityXp`가 둘을 함께 처리하므로 그쪽으로 되돌린다 — XP 산식은 동일하다.
+        GameState.addActivityXp('craft', bp.xp / TUNING.xp.craftBase);
       } else {
         out.failed++;
       }

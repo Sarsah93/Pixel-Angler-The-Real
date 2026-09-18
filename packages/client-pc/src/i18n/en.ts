@@ -476,7 +476,16 @@ export const EN_RULES: Rule[] = [
     (m) => `Hole fishing (${m[1] === '테트라포드' ? 'tetrapods' : 'riprap'}) — ↑ lift`],
   [/^\[안전\] 테트라포드에서 미끄러졌습니다 \(체력 -(\d+)\)\. 파고가 높으면 올라서지 마세요\.$/,
     (m) => `[Safety] You slipped on the tetrapods (HP -${m[1]}). Do not climb on when the swell is up.`],
-  [/^\[퀘스트\] (.+) — (방파제|구멍치기|뭍\(갯바위·해변\)|배 위)에서 낚아야 인정됩니다$/,
+  // 153차 — 할 일 진행 로그. 구 `[퀘스트] …` 줄은 규칙이 없어 영어 화면에 한국어로 남아 있었다.
+  [/^\[할 일\] (.+) 수락$/, (m, tr) => `[Task] Took on ${tr(m[1])}`],
+  [/^\[할 일\] (.+) — 거절 \(다시 오지 않습니다\)$/, (m, tr) => `[Task] Declined ${tr(m[1])} — it will not be offered again`],
+  [/^\[할 일\] (.+) — 미룸$/, (m, tr) => `[Task] Put off ${tr(m[1])}`],
+  [/^\[할 일\] (.+) 완료 — XP \+([\d,]+)( \(×([\d.]+)\))?$/,
+    (m, tr) => `[Task] ${tr(m[1])} complete — XP +${m[2]}${m[3] ? ` (x${m[4]})` : ''}`],
+  [/^\[할 일\] (.+) — (.+) 달성$/, (m, tr) => `[Task] ${tr(m[1])} — ${tr(m[2])} done`],
+  [/^\[할 일\] 보상 (.+) — 인벤토리 공간이 부족해 받지 못했습니다$/,
+    (m, tr) => `[Task] Reward ${tr(m[1])} — no room in your bag, so you could not take it`],
+  [/^\[할 일\] (.+) — (방파제|구멍치기|뭍\(갯바위·해변\)|배 위)에서 낚아야 인정됩니다$/,
     // ⚠ 131차 함정 — 캡처 안 한국어(퀘스트 제목)는 `tr`로 다시 번역해야 한다
     (m, tr) => {
       const spot: Record<string, string> = {
@@ -551,7 +560,7 @@ export const EN_RULES: Rule[] = [
   [/^• 어획 누계: (\d+)마리 이상 \(현재 (\d+)\)$/, (m) => `• Total catches: ${m[1]}+ (now ${m[2]})`],
   [/^• 코인 보유: ₩([\d,]+) 이상$/, (m) => `• Coins: ₩${m[1]}+`],
   [/^• 특정 장소 방문: (.+)$/, (m, tr) => `• Visit: ${tr(m[1])}`],
-  [/^• 퀘스트 완료: (.+)$/, (m, tr) => `• Quest: ${tr(m[1])}`],
+  [/^• 할 일 완료: (.+)$/, (m, tr) => `• Task: ${tr(m[1])}`],
   [/^• 평판 (\d+) 이상$/, (m) => `• Reputation ${m[1]}+`],
   [/^• 특정 어종 포획: (.+)$/, (m, tr) => `• Catch: ${tr(m[1])}`],
   [/^해금: (.+)$/, (m) => `Unlocks: ${m[1]}`],

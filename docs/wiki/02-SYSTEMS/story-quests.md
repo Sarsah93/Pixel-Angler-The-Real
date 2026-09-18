@@ -122,10 +122,14 @@ STORY_ARCS ────┘     traineeDay (D-180)                └─ RegionHu
   (상한 37 · 28/30/33/35/37 다섯 단계 분화 — [S5](inventory-equipment.md)).
 - ~~나레이션 영문~~ ✅151 · ~~선택지 영문~~ ✅**152차**(`StoryChoicesEn.ts` 524엔트리 — **1048/1048 · 누락 0**).
   스토리 계통의 영문화는 이것으로 끝났다.
-- **대화 전용 임무 70편(38%)** — 152차는 그것을 **난이도로 정직하게 표기**하고 **품삯을 0.25배로** 낮췄을 뿐,
-  전부 조업으로 바꾼 것이 아니다. 실시스템이 서는 순서대로(불요리 → 농장 → 좌판 운영) `manual` → auto로 옮긴다.
-  유지 사유가 확정된 것: M3-04 `craft`(불요리 미구현) · N23-6 `cook`(`addActivityXp('cook')` 호출처 0) ·
-  M3-07 `communityWork`(`coop_work` 일감이 속초 전용인데 무대는 포항).
+- ~~대화 전용 임무 70편(38%)~~ ✅**153차** — 70편 전부에 **추적기가 실재하는 목표**를 심었다.
+  분포 대화 **70 → 0**(수월 26 · 보통 112 · 까다로움 44 · 고난도 4).
+  추적기가 아직 없는 종류(`cook`·`boatTrip`·`holdPosition`·`survive`·`furnish`·`farm`·`mine`)의
+  `manual` 줄은 **이야기 표시로 남겨 두고** 그 옆에 실목표를 붙였다 — 해당 시스템이 서면 auto로 승격한다.
+- **추적기 없는 목표 7종 승격 대기** — `cook`(불요리) · `furnish`/`farm`(농장·집) ·
+  `mine`(채광) · `boatTrip`/`holdPosition`/`survive`(배 출조·기상). 시스템이 서는 차수에 `manual` → auto.
+- **`spotKind: 'boat'` 미발화** — `standingSpotKind()`는 `breakwater|shore`만, 1인칭은 `hole|shore`만 낸다.
+  선상 낚시가 서면 여기에 편입하고 그때 M3-01·M4-02·M4-06·N08-1/3·N11-4에 선상 조건을 얹는다.
 - `choice.*` 플래그 ~60종을 읽는 후속 조건(현재 N18-1 1곳) · 일지 '사람들'에 우호도 눈금.
 - event 정책 테스트용 **계절 강제(dev)** 없음 · `once` 거절 초기화 dev 명령 없음.
 - ~~`deadline.onMiss: 'cost'` 미구현~~ ✅147 — **평판 감점**으로 구현(`TUNING.story.missRepPerDay` 1/일).
@@ -151,6 +155,27 @@ manual 목표를 점수에 넣으면 표기가 곧바로 거짓말이 된다.
 `manual`을 푸는 순간 그 목표는 **영구 미완료**가 되고 그 뒤 체인이 전부 막힌다.
 필드가 발행하는 키는 `region:{지역id}` · `shop:any` · POI 키다.
 
+
+### 15. 목표를 심기 전에 **그 이벤트가 실제로 발화하는지** 본다 (153차)
+
+라벨은 계약이고, **닫히지 않는 목표는 진행 중 세이브를 막는다**. `StoryObjective['kind']`에 있다는 것과
+그 이벤트가 게임에서 발화한다는 것은 별개다. 153차 실측 기준:
+
+- 발화함 — `catch` `release` `butcher` `sashimi` `gather` `craft` `sell`(위판 전용) `trap` `cull`
+  `license` `reachLevel` `earn` `talk`(npcId 필수) `visit`(placeKey 필수) `custom`(placeKey 필수)
+- 발화 안 함 — `cook` `boatTrip` `holdPosition` `survive` `furnish` `farm` `mine` `deliverFree` ·
+  `communityWork`는 **속초 `job:coop_work` 하나뿐**(타 지역 무대에 걸면 영구 미완료 — M3-07이 그랬다)
+- ⚠ **`spotKind: 'boat'`는 어디서도 발화하지 않는다**(`standingSpotKind()` 참조)
+
+`sell`은 **위판(경매)에서만** 발화한다 — 일반 상점 판매는 이벤트를 내지 않고,
+법 §3에 따라 **낚싯대 어획물은 위판할 수 없다**(통발·맨손 + `reported_fishery`).
+
+### 16. 목표 배열을 고치면 나레이션 `obj`도 같은 인덱스로 고친다 (153차)
+
+화면에 뜨는 라벨은 `narrativeOf(q.id)?.objectives?.[i] ?? o.labelKo`다.
+목표를 **앞에 끼워 넣으면** 기존 `obj[0]`이 새 목표의 라벨이 되어 조용히 어긋난다.
+한국어(`StoryNarrative.ts`)와 영문(`StoryNarrativeEn.ts`) **둘 다** 같은 자리에 넣는다.
+검사: `narrativeOf(id).objectives.length === q.objectives.length`(영문도 동일).
 
 ### 9. 미진행 정보는 그리지 않는다 (150차 · AGENTS §4 R2)
 

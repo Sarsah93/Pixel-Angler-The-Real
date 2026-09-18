@@ -969,7 +969,7 @@ export class GameStateManager {
 
   /** 해금 조건 문구 — 면허는 id 대신 사람이 읽는 이름으로 */
   describeUnlock(cond: Parameters<typeof coreDescribeUnlockCond>[0]): string {
-    if (cond.kind === 'quest') return `메인 퀘스트 「${coreGetStoryQuest(cond.value)?.titleKo ?? cond.value}」 완료`;
+    if (cond.kind === 'quest') return `할 일 「${coreGetStoryQuest(cond.value)?.titleKo ?? cond.value}」 완료`;
     return coreDescribeUnlockCond(cond, (t) => getLicenseByType(t as never)?.nameKo);
   }
 

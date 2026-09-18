@@ -292,7 +292,7 @@ class StoryStoreManager {
       else if (q.offerPolicy === 'event') this.offerCooldown[id] = this.day + (q.event?.cooldownDays ?? 30);
       this.lastAction = 'declined';
       this.host?.markDirty();
-      this.onNotify?.(`[퀘스트] ${q.titleKo} — ${q.offerPolicy === 'once' ? '거절 (다시 오지 않습니다)' : '미룸'}`);
+      this.onNotify?.(`[할 일] ${q.titleKo} — ${q.offerPolicy === 'once' ? '거절 (다시 오지 않습니다)' : '미룸'}`);
       return true;
     }
     this.quests[id] = { status: 'active', obj: q.objectives.map(() => 0), day: this.day };
@@ -302,7 +302,7 @@ class StoryStoreManager {
     // 상태형 목표는 수락 즉시 평가 (레벨·재화·이미 보유한 면허)
     this.evaluateStateful(q);
     this.host?.markDirty();
-    this.onNotify?.(`[퀘스트] ${q.titleKo} 수락`);
+    this.onNotify?.(`[할 일] ${q.titleKo} 수락`);
     return true;
   }
 
@@ -352,7 +352,7 @@ class StoryStoreManager {
     for (const it of q.rewards?.items ?? []) {
       const name = h?.itemName(it.id) ?? it.id;
       if (h?.giveItem(it.id, it.qty, it.bound)) rwl.push(`${name}${it.qty > 1 ? ` ×${it.qty}` : ''}${it.bound ? ' (귀속)' : ''}`);
-      else this.onNotify?.(`[퀘스트] 보상 ${name} — 인벤토리 공간이 부족해 받지 못했습니다`);
+      else this.onNotify?.(`[할 일] 보상 ${name} — 인벤토리 공간이 부족해 받지 못했습니다`);
     }
     // 141차 — 기술·상점 해금 (스킬 게이트는 questsDone으로, 상점은 플래그로)
     for (const sk of q.rewards?.skillUnlocks ?? []) { h?.setFlag(`unlock.skill.${sk}`, true); rwl.push(`기술 해금: ${getSkillById(sk)?.nameKo ?? sk}`); }
@@ -373,7 +373,7 @@ class StoryStoreManager {
     }
     h?.markQuestDone(id);
     h?.markDirty();
-    this.onNotify?.(`[퀘스트] ${q.titleKo} 완료 — XP +${xp.toLocaleString()}${xpMult !== 1 ? ` (×${xpMult.toFixed(2)})` : ''}`);
+    this.onNotify?.(`[할 일] ${q.titleKo} 완료 — XP +${xp.toLocaleString()}${xpMult !== 1 ? ` (×${xpMult.toFixed(2)})` : ''}`);
     this.refreshAutoQuests();
     return true;
   }
@@ -413,13 +413,13 @@ class StoryStoreManager {
           if (ev.kind === 'catch' && o.kind === 'catch' && o.spotKind
             && !spotKindSatisfies(o.spotKind, ev.spotKind)
             && this.match({ ...o, spotKind: undefined }, ev) !== null) {
-            this.onNotify?.(`[퀘스트] ${q.titleKo} — ${SPOT_KIND_LABEL[o.spotKind].ko}에서 낚아야 인정됩니다`);
+            this.onNotify?.(`[할 일] ${q.titleKo} — ${SPOT_KIND_LABEL[o.spotKind].ko}에서 낚아야 인정됩니다`);
           }
           return;
         }
         p.obj[i] = hit === 'set' ? this.setValue(o, ev) : (p.obj[i] ?? 0) + 1;
         changed = true;
-        if (this.objectiveDone(q, i)) this.onNotify?.(`[퀘스트] ${q.titleKo} — ${o.labelKo} 달성`);
+        if (this.objectiveDone(q, i)) this.onNotify?.(`[할 일] ${q.titleKo} — ${o.labelKo} 달성`);
       });
     }
     // 조행록 — 제철 자가어획 누적 (퀘스트와 무관하게 언제나)

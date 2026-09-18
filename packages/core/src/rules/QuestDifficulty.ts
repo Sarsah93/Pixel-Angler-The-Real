@@ -39,7 +39,13 @@ export interface QuestDifficultyInfo {
 /** 목표 종류별 기본 행위 비중 — "한 번 하는 데 드는 손" */
 const ACTION_WEIGHT: Record<StoryObjective['kind'], number> = {
   // 대화 계통 — 손이 들지 않는다
-  talk: 0, custom: 0, deliverFree: 0, furnish: 0,
+  talk: 0, deliverFree: 0, furnish: 0,
+  /**
+   * 153차 — `custom` 0 → 1. 이 종류는 두 얼굴이다: `manual`이면 대화로 닫히는 서사 표시이고,
+   * 자동이면 **실제로 발화하는 사건**(품삯 일감 `job:*` · 지정 물건 구입 `buy:*` · 침대 저장)이다.
+   * `questDifficulty()`가 manual을 이미 건너뛰므로, 여기 남는 것은 후자뿐이다 — 이동(`visit`)과 같은 무게.
+   */
+  custom: 1,
   // 이동 — 가야 하는 곳이 있으면 작지만 실제 행위다(`placeKey`가 있어야 추적된다)
   visit: 1,
   // 누적 계통 — 시간이 들지만 별도 조작이 없다
@@ -75,12 +81,20 @@ export const DIFFICULTY_PAY_MULT: Record<QuestDifficultyTier, number> = {
   talk: 0.25, light: 0.6, normal: 1, hard: 1.3, severe: 1.6,
 };
 
+/**
+ * 구간 경계. 153차에 **대화 전용 70편이 전부 실목표를 갖게 되면서** 점수 분포가 통째로 올라갔다
+ * (구 0~10 → 신 1~10 · 중앙값 3 → 5). 구 경계(1/4/8/13)를 그대로 두면 「고난도」가 영영 비고
+ * 「보통」이 3분의 2를 먹는다 — 다섯 단이 다섯 단 노릇을 못 한다. 실분포로 다시 그었다.
+ *
+ * ⚖ **「대화」 구간은 비어도 남겨 둔다.** 지금 해당 퀘스트는 0편이지만, 표기는 계약이라
+ * 앞으로 대화만으로 끝나는 임무가 생기면 그때도 정직하게 그렇게 적혀야 한다.
+ */
 export const DIFFICULTY_BANDS: { tier: QuestDifficultyTier; min: number; ko: string; en: string }[] = [
   { tier: 'talk', min: 0, ko: '대화', en: 'Talk only' },
   { tier: 'light', min: 1, ko: '수월', en: 'Light' },
-  { tier: 'normal', min: 4, ko: '보통', en: 'Moderate' },
-  { tier: 'hard', min: 8, ko: '까다로움', en: 'Demanding' },
-  { tier: 'severe', min: 13, ko: '고난도', en: 'Severe' },
+  { tier: 'normal', min: 3, ko: '보통', en: 'Moderate' },
+  { tier: 'hard', min: 6, ko: '까다로움', en: 'Demanding' },
+  { tier: 'severe', min: 8, ko: '고난도', en: 'Severe' },
 ];
 
 /** 조건 한 겹 = +1 (어종·크기·계절·조법·장소·자가어획·지정 물건·지정 인물) */

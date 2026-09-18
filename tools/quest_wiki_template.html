@@ -81,6 +81,13 @@ a{color:var(--sea)}
   border:1px solid var(--rule); border-radius:5px; background:var(--card); padding:6px}
 @media (max-width:900px){ .index{position:static; max-height:340px} }
 .chgrp{margin-bottom:2px}
+/* 153차 — 색인 도구줄. 평시에 "장이 모두 몇 개인가"를 한눈에 보려면 전부 접을 수 있어야 한다. */
+.idxbar{position:sticky; top:0; z-index:2; display:flex; align-items:center; gap:8px;
+  background:var(--card); border-bottom:1px solid var(--rule-soft); margin:-6px -6px 4px; padding:7px 10px}
+.idxbar button{border:1px solid var(--rule); background:var(--raised); border-radius:4px; cursor:pointer;
+  font:inherit; font-size:11.5px; color:var(--ink2); padding:3px 9px}
+.idxbar button:hover{background:var(--sea-soft)}
+.idxbar .idxnote{margin-left:auto; font-size:11px; color:var(--muted)}
 /* 152차 — 장별 접기. 7장 186편을 한 줄로 펼치면 5장을 보려고 끝없이 굴려야 한다. */
 .chtog{display:flex; width:100%; align-items:center; gap:7px; border:0; cursor:pointer; font:inherit;
   background:var(--sea-soft); border-radius:4px; text-align:left;
@@ -91,6 +98,9 @@ a{color:var(--sea)}
 .chtog[aria-expanded=true] .caret{transform:rotate(90deg)}
 .chtog .ct{flex:1 1 auto; overflow-wrap:anywhere}
 .chtog em{font-style:normal; color:var(--buoy); flex:0 0 auto}
+/* 153차 — 접어도 "지금 이 장을 보고 있다"는 흔적은 남긴다 */
+.chtog.cur{box-shadow:inset 3px 0 0 var(--buoy)}
+.chtog .dot{flex:0 0 auto; width:6px; height:6px; border-radius:50%; background:var(--buoy)}
 .chbody{padding:2px 0 6px}
 .qrow{display:block; width:100%; text-align:left; border:0; background:transparent; cursor:pointer;
   font:inherit; font-size:13.5px; color:var(--ink2); padding:6px 10px; border-radius:4px;
@@ -192,14 +202,14 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
   <header class="mast">
     <div class="kicker">Pixel Angler The Real · 조행록</div>
     <h1>조행록 퀘스트 항로도</h1>
-    <p class="lead">속초의 좌판 앞에서 시작해 독도의 조사선까지 이어지는 임무 문서고입니다.
-      임무 하나를 고르면 의뢰인이 한 말, 요구 조건, 목표, 받는 것, 그리고 그 뒤의 이야기가
+    <p class="lead">속초의 좌판 앞에서 시작해 독도의 조사선까지 이어지는 할 일 문서고입니다.
+      할 일 하나를 고르면 의뢰인이 한 말, 요구 조건, 목표, 받는 것, 그리고 그 뒤의 이야기가
       한 장으로 펼쳐집니다.</p>
     <div class="tally" id="tally"></div>
   </header>
 
   <nav class="bar">
-    <input type="search" id="q" placeholder="임무·의뢰인·지역으로 찾기" aria-label="임무 검색">
+    <input type="search" id="q" placeholder="할 일·의뢰인·지역으로 찾기" aria-label="할 일 검색">
     <div class="seg" role="group" aria-label="갈래">
       <button id="fAll" aria-pressed="true">전체</button>
       <button id="fMain" aria-pressed="false">본 줄기</button>
@@ -209,13 +219,13 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
   </nav>
 
   <div class="cols">
-    <aside class="index" id="index" aria-label="임무 색인"></aside>
+    <aside class="index" id="index" aria-label="할 일 색인"></aside>
     <main class="doc" id="doc"></main>
   </div>
 
   <footer class="page">
     수치·문장은 전부 <code>@tra/core</code>에서 그대로 구워 낸 것입니다 —
-    임무 <span id="fq"></span>편 · 본 줄기 <span id="fm"></span> · 곁가지 <span id="fs"></span> ·
+    할 일 <span id="fq"></span>편 · 본 줄기 <span id="fm"></span> · 곁가지 <span id="fs"></span> ·
     이야기 <span id="fa"></span>갈래 · 누적 경험치 <span id="fx"></span>.
     생성기 <code>tools/gen_quest_wiki_data.mjs</code>.
   </footer>
@@ -231,7 +241,7 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
 
   // 제호 집계
   const tally = [
-    [D.counts.quests, '임무'], [D.counts.main, '본 줄기'], [D.counts.sub, '곁가지'],
+    [D.counts.quests, '할 일'], [D.counts.main, '본 줄기'], [D.counts.sub, '곁가지'],
     [D.counts.arcs, '이야기 갈래'], [CH.length, '장'], [D.counts.pages, '조행록 장면'],
   ];
   document.getElementById('tally').innerHTML = tally
@@ -275,22 +285,46 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
       .toLowerCase().includes(t);
   }
 
-  /** 펼쳐 둔 장 — 기본은 지금 보고 있는 장 하나만. 검색 중에는 맞은 장을 전부 편다. */
-  const openCh = new Set();
+  /**
+   * 펼쳐 둔 장 (153차 재작성).
+   *  - **열람 중인 장도 접힌다.** 구 구현은 `if (!openCh.size) openCh.add(cur.chapter)` 때문에
+   *    마지막 하나를 접는 순간 그 자리에서 되펴져 "지금 보고 있는 장은 접을 수 없었다".
+   *    장이 몇 개인지 눈으로 세는 것 자체가 색인의 일이므로, 접는 쪽을 항상 이긴다.
+   *  - 대신 **접어도 어디를 보고 있었는지는 남긴다** — 그 장 버튼에 점과 좌측 띠, 그리고
+   *    다시 펴면 열려 있는 편이 그대로 강조된다(aria-current).
+   */
+  const openCh = new Set(byId[current] ? [byId[current].chapter] : []);
+  /** 색인 세로 스크롤은 색인 안에서만 움직인다 — 문서를 건드리면 첫 화면에서 제호가 밀린다(151차). */
+  function keepCurrentVisible(){
+    const idx = document.getElementById('index');
+    const row = idx.querySelector('.qrow[aria-current=true]');
+    if (!row || idx.scrollHeight <= idx.clientHeight) return;
+    /* ⚠ `offsetTop`은 배치 조상 기준이라 색인이 sticky·행이 section 안에 있으면 어긋난다
+       (실측: 마지막 할 일로 이동했을 때 선택 행이 55px 밖에 남았다). 사각형으로 실측한다. */
+    const ir = idx.getBoundingClientRect(), rr = row.getBoundingClientRect();
+    const top = rr.top - ir.top + idx.scrollTop, bot = top + rr.height;
+    if (top < idx.scrollTop + 34) idx.scrollTop = Math.max(0, top - 44);
+    else if (bot > idx.scrollTop + idx.clientHeight) idx.scrollTop = bot - idx.clientHeight + 10;
+  }
   function renderIndex(){
     const idx = document.getElementById('index');
     const cur = byId[current];
-    if (!openCh.size && cur) openCh.add(cur.chapter);
-    let html = '', any = false;
-    for (const c of CH){
-      const list = Q.filter(q => q.chapter === c.n && matches(q));
-      if (!list.length) continue;
-      any = true;
+    const shown = CH.map(c => [c, Q.filter(q => q.chapter === c.n && matches(q))]).filter(([, l]) => l.length);
+    const anyOpen = !term && shown.some(([c]) => openCh.has(c.n));
+    let html = '<div class="idxbar">' +
+      '<button data-all="' + (anyOpen ? 'close' : 'open') + '">' +
+      (anyOpen ? '모두 접기' : '모두 펼치기') + '</button>' +
+      '<span class="idxnote">' + shown.length + '장 · ' +
+      shown.reduce((s2, [, l]) => s2 + l.length, 0) + '편</span></div>';
+    for (const [c, list] of shown){
       // 검색어가 있으면 맞은 장은 전부 펴 준다 — 접힌 채로는 결과가 몇 건인지만 보인다.
       const open = !!term || openCh.has(c.n);
-      html += '<section class="chgrp"><button class="chtog" data-ch="' + c.n + '"' +
-        ' aria-expanded="' + (open ? 'true' : 'false') + '">' +
+      const isCur = !!cur && cur.chapter === c.n;
+      html += '<section class="chgrp"><button class="chtog' + (isCur ? ' cur' : '') + '" data-ch="' + c.n + '"' +
+        ' aria-expanded="' + (open ? 'true' : 'false') + '"' +
+        (isCur ? ' title="' + esc('열람 중 — ' + cur.title) + '"' : '') + '>' +
         '<span class="caret">&#9654;</span><span class="ct">' + esc(chLabel(c)) + '</span>' +
+        (isCur && !open ? '<span class="dot" aria-hidden="true"></span>' : '') +
         '<em>' + list.length + '</em></button>';
       if (open){
         html += '<div class="chbody">';
@@ -304,7 +338,7 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
       }
       html += '</section>';
     }
-    idx.innerHTML = any ? html : '<p class="empty">찾는 임무가 없습니다.</p>';
+    idx.innerHTML = shown.length ? html : '<p class="empty">찾는 할 일이 없습니다.</p>';
   }
 
   function relLinks(ids){
@@ -339,7 +373,7 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
     const q = byId[current];
     const c = CH.find(x => x.n === q.chapter);
     const kindLabel = q.kind === 'main' ? '본 줄기' : '곁가지';
-    // 여는 편·닫는 편은 누가 맡기는 임무가 아니다 — 의뢰인 칸을 빈칸으로 두지 않는다.
+    // 여는 편·닫는 편은 누가 맡기는 할 일이 아니다 — 의뢰인 칸을 빈칸으로 두지 않는다.
     const solo = !q.giverName;
     let h = '';
 
@@ -355,14 +389,14 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
       '<tr><th>유형</th><td><span class="pill ' + (q.kind === 'main' ? 'main' : 'sub') + '">' +
         kindLabel + '</span>' + (q.arcTitle ? esc(q.arcTitle.split(' — ')[0]) : '') + '</td></tr>' +
       '<tr><th>위치</th><td>' + esc(q.regionName) + '</td></tr>' +
-      '<tr><th>의뢰인</th><td>' + (solo ? '<span class="note">없음 — 스스로 정하는 임무</span>'
+      '<tr><th>의뢰인</th><td>' + (solo ? '<span class="note">없음 — 스스로 정하는 할 일</span>'
         : esc(q.giverName) + (q.giverRole ? '<br><span class="note">' + esc(q.giverRole) + '</span>' : '')) + '</td></tr>' +
       '<tr><th>요구 레벨</th><td class="mono">Lv. ' + q.lv + '</td></tr>' +
       '<tr><th>클리어 난이도</th><td><span class="dif d-' + q.diff.tier + '">' + esc(q.diff.label) + '</span>' +
         (q.diff.acts.length ? '<br><span class="note">' + esc(q.diff.acts.join(' · ')) + '</span>'
           : '<br><span class="note">대화로 진행</span>') + '</td></tr>' +
       '</tbody></table>' +
-      '<h5>연관 임무</h5>' +
+      '<h5>연관 할 일</h5>' +
       '<table><tbody><tr><th>이전</th><td class="rel">' + relLinks(q.prereq) + '</td></tr>' +
       '<tr><th>이후</th><td class="rel">' + relLinks(q.next) + '</td></tr></tbody></table>' +
       (solo ? '' : '<h5>같은 사람의 다른 의뢰</h5><div class="rel">' +
@@ -370,7 +404,7 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
       '</div>') + '</aside>';
 
     h += '<p class="leadline">「' + esc(q.title) + '」은(는) 조행록 제' + q.chapter + '장에 나오는 ' +
-      kindLabel + ' 임무입니다. ' + (solo
+      kindLabel + ' 할 일입니다. ' + (solo
         ? esc(q.regionName) + '에서, 맡기는 사람 없이 스스로 시작합니다.'
         : esc(q.regionName) + '에서 ' + esc(q.giverName) + '이(가) 맡깁니다.') + '</p>';
 
@@ -390,7 +424,7 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
       h += talk(q.nar.offer, q.giverName);
       if (q.offerChoices.length){
         h += '<p class="note" style="margin-top:' + (q.nar.offer ? '14px' : '0') + '">' +
-          (solo ? '누가 맡기는 임무가 아닙니다. 스스로 정하는 자리에서 고를 수 있는 답'
+          (solo ? '누가 맡기는 할 일이 아닙니다. 스스로 정하는 자리에서 고를 수 있는 답'
                 : '받는 자리에서 고를 수 있는 답') + '</p>';
         for (const ch of q.offerChoices){
           h += '<div class="choice' + (ch.decline ? ' decl' : '') + '">' +
@@ -405,9 +439,9 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
     // 2 요구사항
     h += '<section class="sec" id="s-req"><h2>요구사항</h2><ul>';
     h += '<li>요구 레벨 <span class="mono">' + q.lv + '</span></li>';
-    if (q.prereq.length) h += '<li>선행 임무 — ' + q.prereq.map(id =>
+    if (q.prereq.length) h += '<li>선행 할 일 — ' + q.prereq.map(id =>
       byId[id] ? '「' + esc(byId[id].title) + '」' : '').join(' · ') + '</li>';
-    else h += '<li>선행 임무 없음</li>';
+    else h += '<li>선행 할 일 없음</li>';
     if (q.policy === 'once') h += '<li>한 번만 받을 수 있는 의뢰입니다. 거절하면 다시 열리지 않습니다.</li>';
     if (q.policy === 'event') h += '<li>철·조건이 맞을 때만 열리는 의뢰입니다. 거절해도 다음 기회가 옵니다.</li>';
     if (q.deadline) h += '<li>기한 <span class="mono">' + q.deadline.days + '일</span>' +
@@ -484,9 +518,9 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
 
     // 7 여담
     h += '<section class="sec" id="s-misc"><h2>여담</h2><ul>';
-    if (q.arcTitle) h += '<li>이 임무는 「' + esc(q.arcTitle) + '」 이야기의 한 편입니다.</li>';
-    if (q.unlocks && q.unlocks.length) h += '<li>이 임무를 끝내면 열리는 것 — ' + q.unlocks.map(esc).join(' · ') + '</li>';
-    if (q.next.length) h += '<li>이 임무 뒤에 ' + q.next.map(id =>
+    if (q.arcTitle) h += '<li>이 할 일은 「' + esc(q.arcTitle) + '」 이야기의 한 편입니다.</li>';
+    if (q.unlocks && q.unlocks.length) h += '<li>이 할 일을 끝내면 열리는 것 — ' + q.unlocks.map(esc).join(' · ') + '</li>';
+    if (q.next.length) h += '<li>이 할 일 뒤에 ' + q.next.map(id =>
       byId[id] ? '「' + esc(byId[id].title) + '」' : '').join(' · ') + '(이)가 이어집니다.</li>';
     if (c && c.qual) h += '<li>제' + q.chapter + '장을 닫는 자격 — ' + esc(c.qual.l) +
       (c.qual.d ? ' <span class="note">(' + esc(c.qual.d) + ')</span>' : '') + '</li>';
@@ -501,17 +535,25 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
   function go(id){
     if (!byId[id]) return;
     current = id;
-    openCh.add(byId[id].chapter);
+    openCh.add(byId[id].chapter);   // 고른 편은 색인에서도 보여야 한다(이동은 접기보다 우선)
     history.replaceState(null, '', '#' + id);
     renderIndex();
+    keepCurrentVisible();
     renderDoc(true);
   }
 
   document.getElementById('index').addEventListener('click', e => {
+    const all = e.target.closest('[data-all]');
+    if (all){
+      openCh.clear();
+      if (all.dataset.all === 'open') for (const c of CH) openCh.add(c.n);
+      renderIndex();
+      return;
+    }
     const t = e.target.closest('.chtog');
     if (t){
       const n = Number(t.dataset.ch);
-      if (openCh.has(n)) openCh.delete(n); else openCh.add(n);
+      if (openCh.has(n)) openCh.delete(n); else openCh.add(n);   // 열람 중인 장도 예외 없이 접힌다
       renderIndex();
       return;
     }

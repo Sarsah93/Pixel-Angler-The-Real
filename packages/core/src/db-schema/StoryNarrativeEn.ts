@@ -169,7 +169,7 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
     { offer: "Failed to sell, did it. Open the cooler. See how much ice is left. That's what going back over it means.",
       progress: "Haven't gone over it yet? Start by telling me why the ice melted.",
       done: "Save on ice and you lose the box. Now you know. Learn it once and you don't do it twice.",
-      obj: ["Review your cooler ice handling and tell the chief why the box failed to sell"] }),
+      obj: ["Pack the ice properly again and get three lots sold", "Review your cooler ice handling and tell the chief why the box failed to sell"] }),
   'M2-03': E(
     "The winter wind at Gamcheon blows differently from Sokcho. Snags are constant. I lost two rigs and barely recovered the third. Do Hyeonsu says beside me that a black seabream has to clear forty centimetres to count. The float sinks slowly and my wrist goes heavy. What came up was forty-two. In front of the measuring board, Do Hyeonsu said nothing for the first time.",
     { offer: "Gamcheon is nothing but snags. Learn how to lose a rig first. Land a black seabream over forty and I'll give it to you.",
@@ -181,13 +181,13 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
     { offer: "Trap catch. Bring it three times. Price comes later. I want to see if you're consistent.",
       progress: "That's not three yet. Miss once and it starts over.",
       done: "Three. That chair by the tank, sit in it. You're a regular now. We'll set the rate later.",
-      obj: ["Deliver trap catch to the sashimi restaurant three times"] }),
+      obj: ["Haul the traps three times to build a supply", "Butcher three before handing them over"] }),
   'M2-05': E(
     "The seafood quality control course. Do Hyeonsu is in the next seat. Hygiene, traceability labels, the cold chain. When the instructor started on lure fishing, Do Hyeonsu opened his notebook for the first time. So did I. Finish the course and I can use lures. Sitting side by side in a classroom writing down the same thing was strangely comfortable.",
     { offer: "Quality control training, mandatory for members. Finish it and lure rigs open up for you. Do Hyeonsu is going too. Don't fight.",
       progress: "Is the course done? Bring the certificate when it is.",
       done: "Certified. Lures are yours now. You can buy starter lures at the direct market too. Try fishing without the smell of bait on your hands.",
-      obj: ["Sit through the quality control course and receive the certificate"] }),
+      obj: ["Butcher two by the hygiene procedure you were taught", "Slice one plate and write its trail", "Sit through the quality control course and receive the certificate"] }),
   'M2-06': E(
     "Night at Amnam Park. Seo Harin sets up a camera and throws night lures. A school of horse mackerel came in. I cast too. I change the retrieve speed and the rod tip knocks. During the day I built one trap. A trap made by hand and a lure thrown by hand. Harin said she wants to film both of those. I am still awkward in front of a camera.",
     { offer: "Horse mackerel come up on night lures! Cast with me. I'd like to film you building a trap in the daytime too, is that all right?",
@@ -199,7 +199,7 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
     { offer: "You saw the control line. Don't cross it. Three legal ways: with the cooperative, the fishing park, or a boat. Pick one.",
       progress: "Have you picked? I know the name of everyone who sneaks across.",
       done: "That route will do. A control line protects people, not anglers. Your name is still clean.",
-      obj: ["Choose one of the three legal routes and tell the chief"] }),
+      obj: ["Catch two from the rocks without crossing the line", "Choose one of the three legal routes and tell the chief"] }),
   'M2-08': E(
     "At Baegunpo a man called Jim Kang switches on a fish light. Small night species gather under it. Three rockfish. He does not cast his own lure, he watches mine. He says he is looking for a posthumous rod. I do not yet know what that means, but I know his eyes stayed on my reel rod for a long time while the rockfish came up.",
     { offer: "I'll put the light on. Rockfish hold at the edge of it. Bring up three. I won't cast. I'll just watch.",
@@ -211,7 +211,7 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
     { offer: "Quarterly assembly. Standing review. What you did in Busan becomes votes. I'll say nothing.",
       progress: "Stand in the hall. Standing and listening is part of the review.",
       done: "Passed. Do Hyeonsu voted against. Ask him for the reason yourself. This is an allowance from the cooperative. You know where it goes.",
-      obj: ["Stand at the quarterly assembly and hear the review result"] }),
+      obj: ["Build a record of five consigned lots for the review", "Stand at the quarterly assembly and hear the review result"] }),
   'M2-11': E(
     "I came back to Sokcho with the box regulation I learned in Busan. The Manbok Store stall still has boxes of every size. The old woman's hands are not what they were. She handles ice noticeably slower now. While I fixed the display she sat beside me and only watched, instead of nagging. That bothers me more.",
     { offer: "...you're back? How was Busan. Look at the stall. My hands don't listen these days.",
@@ -223,7 +223,7 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
     { offer: "You only know the winter sea if you can run a boat. Start with the written exam. Pass it and I'll open the road to Ulsan and Pohang.",
       progress: "Have you sat the exam? Failing is fine. Sit it again.",
       done: "Passed. There's a skipper called Ko Manseok at Bangeojin in Ulsan. Get on his boat. This reel is for a winter sea. It turns even when the drag freezes.",
-      obj: ["Pass the written exam for the small-craft operator licence"] }),
+      obj: ["Pay for the course with four consigned lots", "Pass the written exam for the small-craft operator licence"] }),
   'N01-2': E(
     "A runaway middle schooler is sitting under a Busan bridge. Baram spotted him first and brought me along. His father is out on a deep-sea boat and he says he cannot press the call button. We just fished for horse mackerel beside him. When one came up the boy smiled for the first time. Then he took out his phone. I did not listen to what he said.",
     { offer: "There's a kid under the bridge. Ran away. I think one horse mackerel would do it. Come with me.",
@@ -316,7 +316,7 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
     { offer: "If you're coming, write your name on the list. Vest on. Run on my boat and you get off. That's all of it.",
       progress: "One trip out is what counts as boarding. Watching from the pier isn't boarding.",
       done: "...came back alive. I saw you throw up. Everyone does. Jigging next. Bring a rod.",
-      obj: ["Board the Goraemaru and complete one trip out"] }),
+      obj: ["Land one yellowtail where the Goraemaru puts you", "Board the Goraemaru and complete one trip out"] }),
   'M3-02': E(
     "Jigging. Drop the metal jig to the bottom and work it up with jerks. My arms tire before anything else. Ko Manseok watched my jerking rhythm without a word and took my hand once. Do it at that rhythm. Something knocked during the fall. A forty-three centimetre yellowtail. My first real fish from a boat. The skipper did not smile, but he threw me another jig.",
     { offer: "Jigging. Drop it to the bottom and jerk. They take it on the fall. Get a yellowtail over forty.",
@@ -334,25 +334,25 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
     { offer: "The racks are empty. No herring. Want to learn drying and curing? If the sea changes, people have to change.",
       progress: "Still drying, right. Waiting is work too.",
       done: "You dried it. That's gwamegi now. Even if it isn't herring. You've become someone who can wait.",
-      obj: ["Carry one drying and curing craft through to the end"] }),
+      obj: ["Catch three fish to hang on the racks", "Carry one drying and curing craft through to the end"] }),
   'M3-05': E(
     "Sea fog rolls in. I cannot see ten metres ahead. Ko Manseok throttles down and looks at me. What will you do. I had heard before that turning back without pushing is also skill. Return to port. No catch. But the moment I stepped onto the pier, news from another boat told me the call had been right.",
     { offer: "Sea fog. Can't see ahead. You decide. Push on, or turn back.",
       progress: "Haven't decided? Fog doesn't wait for you.",
       done: "You came back. Coming back with no catch is skill. You heard about the other boat. That's your answer.",
-      obj: ["Decide to turn back in the sea fog and return to the pier"] }),
+      obj: ["Land two before the fog closes in", "Decide to turn back in the sea fog and return to the pier"] }),
   'M3-06': E(
     "Jeong Okseon came all the way to Pohang. She asks old people whether they ever saw pollock and writes down what they say. In the field guide pollock is listed as prohibited. I write down three people's stories. The sea pollock used to come into, the winter the nets tore, the year that sea disappeared. For the first time I understand what the log is for. It is not a record of catching, it is a record of keeping.",
     { offer: "Ask the old ones. Whether they ever saw pollock. Write it down. Three people. That's what the log does.",
       progress: "Still short of three? Old people don't say it twice. Listen properly.",
       done: "...you wrote it. This is the log. Not catching, keeping. I wonder if your father knew this too.",
-      obj: ["Hear and write down three old people's stories about pollock"] }),
+      obj: ["Meet the fish they spoke of, and let it go", "Hear and write down three old people's stories about pollock"] }),
   'M3-07': E(
     "Fry release. Tens of thousands of juveniles go into buckets and down into the sea. I stand in a line with the cooperative and watch the water splash. Things smaller than my palm vanish into the sea. How many will come back. The chief said not to count. Sea reputation rises. Something that does not show as a number went into the sea today.",
     { offer: "Fry release. Take a bucket. Don't count. The moment you count you can't let go.",
       progress: "Not all released? One bucket at a time. Slowly.",
       done: "Good work. Nobody knows how many come back. But you let them go. That bag is for expeditions. Use it when you go far.",
-      obj: ["Join the cooperative fry release and send juveniles into the sea"] }),
+      obj: ["Return five buckets of fry to the sea"] }),
   'M3-08': E(
     "Winter red seabream. I drop the tairaba to the bottom and reel slowly. Knock, knock, and then a heavy resistance. A big one. The drag sings and the rod tip touches the water. That was when the sound came. A joint broke. My father's reel rod is in my hands in two pieces. The seabream came into the net. I looked at the broken rod for a long time. I still do not know what to do with it.",
     { offer: "Winter seabream is tairaba. Reel slowly. If a big one hits, trust the drag. The rod... a rod has limits.",
@@ -364,7 +364,7 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
     { offer: "Let me see. ...it broke. Leave it here. Take this blank. Go and look at a boat. Geoje.",
       progress: "Did you take the blank? Then go. A boat doesn't wait.",
       done: "Fish with this one for a while. Saebyeok and I will look at yours. Rod building — it's your turn to learn it. I've arranged for you to buy workshop tools too.",
-      obj: ["Receive a new bamboo blank from Tak Mansu at the workshop"] }),
+      obj: ["Build eight consigned lots as seed money for a boat", "Receive a new bamboo blank from Tak Mansu at the workshop"] }),
   'N01-3': E(
     "The rack owner said the gwamegi line looks like it will end with him. No herring comes in. Baram smokes beside him. If the sea changes, people have to change. I talked with the owner for a long time. What can be dried, what still comes in. There was no answer. But he said he would not leave the rails empty.",
     { offer: "The rack owner's struggling. Listen to him a while. There's no answer, but it's different when someone listens.",
@@ -468,7 +468,7 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
     { offer: "Decided the name? Write it on the bow. First run is one lap of the harbour. Don't go far.",
       progress: "Haven't gone out yet? Start her and go. A named boat has to float.",
       done: "You're back. First run. Boat handling, learn it as a skill now. And this is a congratulations payment for your first boat. Fuel money.",
-      obj: ["Complete your first run on your own named boat"] }),
+      obj: ["Land the first three fish from your own boat", "Complete your first run on your own named boat"] }),
   'M4-03': E(
     "Night at Jisepo. Chae Pado brought out a small light boat. They call her scatterbrained, but on a boat she is precise. Flounder on a down-shot. Tap the bottom and wait. Something took it. A flounder's white belly turns over in the dark. Pado nearly missed with the net. We both laughed. It has been a while since I laughed on a night sea.",
     { offer: "Let's go out at night! I'll run the light boat! Flounder is down-shot. Tap the bottom. I'll work the net! Probably.",
@@ -480,7 +480,7 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
     { offer: "Safety inspection. Thirty items. One failure and you re-sit it. Start with the vest expiry.",
       progress: "Re-inspection, I hear. Did you change the vest? Change it and come back.",
       done: "Passed. One day for one vest. That's what the sea charges. Don't forget it.",
-      obj: ["Pass all thirty items of the vessel safety inspection"] }),
+      obj: ["Make the two items the checklist is short of", "Pass all thirty items of the vessel safety inspection"] }),
   'M4-05': E(
     "Yeosu. Oh Gayun came down to the pier after her hotel shift. A night trip, fish lights, hairtail. A silver ribbon rises into the light. The teeth are sharp. I watched a hairtail cut the leader twice and used wire on the third. Gayun looked like she was crying at the hairtail, but I did not ask. The nights in Yeosu are long.",
     { offer: "Let's go night fishing for hairtail. I'll run the lights. Mind the teeth. They cut your leader.",
@@ -492,7 +492,7 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
     { offer: "Charter registration's done. First customers. List, briefing, tablets. Even if a customer goes flat, the boat comes back.",
       progress: "Haven't gone out yet? Customers don't wait.",
       done: "You're back. He's coming again? That's the business. This reel is a skipper's. It has to wind before the customers' do.",
-      obj: ["Take your first customers out on a trip"] }),
+      obj: ["Land two in front of the guest", "Slice one plate on deck", "Take your first customers out on a trip"] }),
   'M4-07': E(
     "The West Sea. The opposite of the East. The water travels hundreds of metres twice a day. Old Song Gibaek taught me how to walk the tidal flat from his home in a scrapped boat. How to pull a foot free, when the tide turns back. I dug three specimens out of the flat. One shoe stuck in the mud and I lost it. The old man laughed. Everyone loses a shoe their first time.",
     { offer: "First time on the West Sea. A tidal flat isn't walked, it's sunk into. Watch the tide. Dig three and come out.",
@@ -522,7 +522,7 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
     { offer: "You're going to Jeju, I hear. I'm coming. I'll do the fuel. You read the weather. That's better.",
       progress: "Not ready? The fuel's done. Have you read the weather?",
       done: "...done. We sail. See you in Jeju. No — we're going together.",
-      obj: ["Finish preparations for the Jeju passage with Do Hyeonsu"] }),
+      obj: ["Make three items of long-voyage stores", "Finish preparations for the Jeju passage with Do Hyeonsu"] }),
   'N01-4': E(
     "There is a man who quit fishing after an accident on the rocks. Baram suggested we take him to Haegeumgang. The man did not pick up a rod. I went after the largescale blackfish alone. Early summer rocks. When one came up the man looked toward the sea for the first time. He looked at the foot of the cliff for a long while. Then he took the net. He still has not held a rod.",
     { offer: "There's a man who quit after an accident on the rocks. Come to Haegeumgang with us. He won't cast. You cast.",
@@ -638,13 +638,13 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
     { offer: "Register for marine tourism. Eight hours of safety training. Now you're the one taking customers. From booking to review.",
       progress: "Is the training done? Bring the certificate.",
       done: "Registered. Here's a guide bag. Spare customer vests, seasickness tablets, a measuring rule. All in there. It isn't yours, it's the customers'.",
-      obj: ["Complete marine tourism registration and safety training"] }),
+      obj: ["Check the spot you will show guests — two swordtip squid", "Complete marine tourism registration and safety training"] }),
   'M5-05': E(
     "A briefing on the fishing park. Yu Ria asked me to cover both sides. A cable presenter past her prime, but the knack for drawing words out of people is still there. The supporters talk about jobs and the opponents talk about the sea. Both positions have to be written as sound. That is the hard part. I have not decided which side I am on.",
     { offer: "Cover the briefing for me. Both for and against. Don't take a side. That's the hardest part.",
       progress: "You only did one side. The other too. Soundly.",
       done: "You wrote both as sound. That's reporting. The vote makes the conclusion.",
-      obj: ["Hear the supporters' case all the way through", "Hear the opponents' case all the way through"] }),
+      obj: ["Work the proposed park tideline yourself, three times", "Hear the supporters' case all the way through", "Hear the opponents' case all the way through"] }),
   'M5-06': E(
     "The competition qualifier. I pay the entry fee and read the measurement rules. Namgung Hyeon is at the judges' table. Not the night warehouse keeper, a judge. I put three fish on the measuring board. He measures and records. He said nothing. By the rules. That was his way.",
     { offer: "The qualifier. Entry fee. Read the measurement rules. Three fish. I'm the judge. No favours.",
@@ -668,7 +668,7 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
     { offer: "The vote. The fishing park. Your reputation becomes votes. Raise your own hand. Don't read anyone's face.",
       progress: "Stand in the hall. You vote standing.",
       done: "Vote's done. Do Hyeonsu was on your side. Did you see that. Ulleung and Incheon are open. And go to the hospital first.",
-      obj: ["Attend the assembly vote and raise your hand"] }),
+      obj: ["Leave a record of participation — five consigned lots before the vote", "Attend the assembly vote and raise your hand"] }),
   'N01-5': E(
     "A daughter who wants to stop diving and a mother who wants to stop her. Baram stood me between the two of them. The border between shore gathering and diving. I gathered three specimens on the Jeju rocks. The mother underwater, me at the edge. The daughter watched both. The decision is hers. Baram only parked his cart and smoked.",
     { offer: "The haenyeo's daughter wants to quit diving. Her mother's against it. Gather with them. At the edge. So the daughter sees.",
@@ -788,7 +788,7 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
     { offer: "...what did you say your name was. Are you Skipper Ko Jintae's son. Sit down. Help me with the weather log, and let's talk.",
       progress: "You haven't heard all of it. We'll talk when the log is done.",
       done: "...that boat, twenty-two years back, it passed right out there. I saw it. This lantern belongs to the lighthouse. Your father saw this light too.",
-      obj: ["Help lighthouse keeper Seok Daeyang with the weather log and hear his story"] }),
+      obj: ["Land one amberjack below the lighthouse", "Help lighthouse keeper Seok Daeyang with the weather log and hear his story"] }),
   'M6-04': E(
     "Incheon coastal pier. Manager Dan Cheolho explained the distribution chain. Origin labelling, wholesale, retail. The road by which something caught in the East Sea is sold in a West Sea market. Black rockfish over thirty centimetres. An autumn night. The manager said he was just dropping by on his way home and stayed two hours. Incheon opened up.",
     { offer: "First time in Incheon. The coastal pier. It's all distribution here. Black rockfish over thirty. At night. I'll just look in on my way home.",
@@ -800,13 +800,13 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
     { offer: "...you came. Sit. It's under the pillow. The log. The last volume. It was your father's. You write the rest.",
       progress: "Haven't taken it? Under the pillow, I said.",
       done: "You took it. It's yours now. I should sleep a while. The ice... you carry it.",
-      obj: ["Visit Jeong Okseon in hospital and receive the last volume of the log"] }),
+      obj: ["Haul Manbok Store ice three times for the hospital bills", "Visit Jeong Okseon in hospital and receive the last volume of the log"] }),
   'M6-06': E(
     "I sit at the Manbok Store stall for the first time. In her place. Stock, customers, prices. Three days. On the first day a customer recognised me and asked where the old woman was. On the second I quoted a price wrong. On the third I watched the stall while carrying ice. The trainee is minding the stall. That line went round the harbour.",
     { offer: "The stall, you mind it. Just three days. Stock, customers, prices. Get a price wrong and the customers will teach you.",
       progress: "That's not three days. Got a price wrong, I hear. It's fine.",
       done: "Three days. You saw what a stall is. Now you know why carrying ice came first.",
-      obj: ["Run the Manbok Store stall for three days"] }),
+      obj: ["Build three consigned lots as goods for the stall", "Run the Manbok Store stall for three days"] }),
   'M6-09': E(
     "Ko Manseok decided to put the boat up. He called me as the customer for the last trip. Do you remember where you sat the first time you came aboard. The bow. I sat there. Ko Haena stood in the wheelhouse. The skipper sat on deck and looked at the sea like a customer. The Goraemaru's last trip. I did not record the catch.",
     { offer: "I'm putting the boat up. It's the last trip. Come as a customer. Do you remember where you sat the first time.",
@@ -818,7 +818,7 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
     { offer: "File a long passage plan. Weather, maintenance, contingency. On paper. Dokdo is a sea you reach on paper.",
       progress: "The fuel reserve in the contingency plan. Recalculate it. It's short.",
       done: "Approved. The last qualification. All that's left is the survey escort permit.",
-      obj: ["Get the long passage plan documents approved"] }),
+      obj: ["Put together three items of emergency stores", "Get the long passage plan documents approved"] }),
   'M6-08': E(
     "The survey escort permit. Three gates. Level 160, marine tourism registration, Part 6 complete. Escorting the Dokdo academic survey team. The last gate opened. The chief handed me a voyage bag. This is the last thing the cooperative gives you. From now on you are the one giving to the cooperative.",
     { offer: "Survey escort permit. Three gates. Level, marine tourism, Part 6 complete. Fill all three and it's Dokdo.",
@@ -935,7 +935,7 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
     { offer: "Bring the photo. That one. ...that awning is mine. Twenty-two years ago. You were standing right there.",
       progress: "You've seen the photo. Sit. It's a long story.",
       done: "...that's why I told you to carry the ice first. I thought that child from twenty-two years ago had come back.",
-      obj: ["Look at the photo from when you were four together with Jeong Okseon in the hospital room"] }),
+      obj: ["Land one flounder from the same spot as when you were four", "Look at the photo from when you were four together with Jeong Okseon in the hospital room"] }),
   'M7-05': E(
     "The second floor. The cooperative's communal workshop has been in ruins for a long time. Restoration. Materials, labour, donations. Thirty million won. Looking at the balance I worked out what to sell, what to burn and what to accept. The members each put in a little. Do Hyeonsu first. When thirty million was gathered the chief said, now you are the one giving.",
     { offer: "Restoring the second floor. Materials, labour, donations. Thirty million. You gather it. The members will help. As much as you gave.",
@@ -947,7 +947,7 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
     { offer: "The reopening. I cut the ribbon. A wheelchair is fine. Put the scissors in my hand. My hand shakes but it cuts.",
       progress: "Ceremony not started? Everyone's here.",
       done: "...I cut it. You saw. This room is yours now. No — everyone's. I'm going back to the stall.",
-      obj: ["Attend the reopening and watch Jeong Okseon cut the ribbon"] }),
+      obj: ["Slice three plates for the opening table", "Attend the reopening and watch Jeong Okseon cut the ribbon"] }),
   'M7-07': E(
     "The last cast. The Dokdo survey waters have been permanently opened. I hold my father's reel rod, brought back by Tak Saebyeok. New bamboo has been joined onto the broken section. The boy cut it. I cast. Into the sea my father passed twenty-two years ago. One fish came up. I do not write down the species. This is not a survey, it is fishing.",
     { offer: "Mister. The rod. Grandpa let go and I finished it. Cast with this. At Dokdo. The last one.",

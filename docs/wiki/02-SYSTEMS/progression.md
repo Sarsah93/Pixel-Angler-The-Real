@@ -133,6 +133,10 @@ learnSkill(id): ranks[id]++ · markDirty   (세이브 `skillTree`)
 
 ## 6. 함정·불변조건
 
+0. **활동 XP는 반드시 `GameState.addActivityXp()` 경유**(153차 실측). `grantXp(activityXp(…))`를 직접 부르면
+   XP만 들어오고 **`StoryStore`의 `activity` 이벤트와 숙련도가 둘 다 누락**된다 —
+   `CraftingStore`가 그랬고, 그래서 **제작 목표는 영영 안 닫히고 제작 숙련도는 0에서 움직이지 않았다**.
+   ⚠ `cook`은 아직 어떤 호출처도 없다(불요리 미구현).
 1. **효과 소비처는 `GameState.skillMult/skillBonus`만** — 랭크를 직접 읽어 계산하지 말 것(배선 여부·mode를 한 곳에서 관리).
 2. **`wired: false` 스킬은 배우기가 막히지 않는다**(포인트만 소모) — 실배선 전에 툴팁 '예정'을 지우지 말 것.
 3. `skillPointsForLevel`을 바꾸면 기존 세이브의 사용 포인트가 총량을 넘을 수 있다 — `skillPointsAvailable`은 0 하한이지만 환급 로직은 없음.

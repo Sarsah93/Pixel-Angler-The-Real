@@ -46,6 +46,6 @@ export class PeerInfoPanel extends DraggablePanel {
       line(`  ${f?.nameKo ?? r.speciesId} ${r.cm}cm`);
     }
     cy += 2;
-    line('재화·가방·퀘스트는 본인만 볼 수 있습니다', '#607b8e', 10);
+    line('재화·가방·할 일은 본인만 볼 수 있습니다', '#607b8e', 10);
   }
 }
