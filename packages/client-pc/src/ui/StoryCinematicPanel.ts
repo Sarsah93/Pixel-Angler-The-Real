@@ -21,6 +21,8 @@ export interface StoryCinematicConfig {
   title: string;
   place: string;
   lines: readonly StoryCinematicLine[];
+  /** 실제 RegionFieldScene에 이미 배치된 배우. 없을 때만 개발용 폴백 무대를 사용한다. */
+  fieldActors?: Partial<Record<'player' | 'watcher' | 'courier', Phaser.GameObjects.GameObject>>;
   onComplete: () => void;
 }
 
@@ -34,6 +36,8 @@ export class StoryCinematicPanel extends Phaser.GameObjects.Container {
   private readonly dialogueSpeaker: Phaser.GameObjects.Text;
   private readonly dialogueText: Phaser.GameObjects.Text;
   private readonly stage: Phaser.GameObjects.Container;
+  private readonly fieldProps: Phaser.GameObjects.GameObject[] = [];
+  private readonly fieldOrigins = new Map<Phaser.GameObjects.GameObject, { x: number; y: number; alpha: number }>();
   private index = -1;
   private finished = false;
   private timer?: Phaser.Time.TimerEvent;
@@ -41,15 +45,30 @@ export class StoryCinematicPanel extends Phaser.GameObjects.Container {
   constructor(scene: Phaser.Scene, cfg: StoryCinematicConfig) {
     super(scene, 0, 0);
     this.cfg = cfg;
+    for (const actor of Object.values(cfg.fieldActors ?? {})) {
+      if (!actor || !('x' in actor) || !('y' in actor)) continue;
+      const a = actor as Phaser.GameObjects.GameObject & { x: number; y: number; alpha: number };
+      this.fieldOrigins.set(actor, { x: a.x, y: a.y, alpha: a.alpha });
+    }
     this.setDepth(20_000).setScrollFactor(0);
 
-    const veil = scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x050b12, 0.98)
+    const inField = !!cfg.fieldActors;
+    // 실제 필드 연출은 맵과 NPC가 보여야 한다. 검은 무대는 배우를 준비하지 못한
+    // 개발용 폴백에서만 사용하고, 정상 경로는 얇은 색 보정막만 씌운다.
+    const veil = scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x050b12, inField ? 0.12 : 0.98)
       .setInteractive();
     this.add(veil);
 
     this.stage = scene.add.container(0, 0);
     this.add(this.stage);
-    this.drawStage();
+    if (!inField) this.drawStage();
+    else {
+      // 상·하 레터박스만 얹어 필드와 대사창의 경계를 만든다. 맵 자체는 가리지 않는다.
+      this.add([
+        scene.add.rectangle(GAME_WIDTH / 2, 18, GAME_WIDTH, 36, 0x050b12, 0.72),
+        scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT - 146, GAME_WIDTH, 28, 0x050b12, 0.72),
+      ]);
+    }
 
     const heading = scene.add.text(34, 28, cfg.title, {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '17px', color: '#eef7ff', fontStyle: 'bold',
@@ -123,6 +142,29 @@ export class StoryCinematicPanel extends Phaser.GameObjects.Container {
   private playIntro(): void {
     this.dialogueSpeaker.setText('기록');
     this.dialogueText.setText('잠깐 멈춰 선다. 시장 뒤편에서 종이 넘기는 소리가 들린다.');
+    const fieldCourier = this.cfg.fieldActors?.courier;
+    const fieldWatcher = this.cfg.fieldActors?.watcher;
+    if (fieldCourier && fieldWatcher && 'x' in fieldCourier && 'x' in fieldWatcher) {
+      const courier = fieldCourier as Phaser.GameObjects.GameObject & { x: number; y: number };
+      const watcher = fieldWatcher as Phaser.GameObjects.GameObject & { x: number; y: number };
+      this.timer = this.scene.time.delayedCall(450, () => {
+        const watcherX = watcher.x;
+        const watcherY = watcher.y;
+        this.scene.tweens.add({
+          targets: courier,
+          x: watcherX + 42,
+          y: watcherY,
+          duration: 1050,
+          ease: 'Sine.easeInOut',
+          onComplete: () => this.nextLine(),
+        });
+      });
+      return;
+    }
+    if (this.cfg.fieldActors) {
+      this.timer = this.scene.time.delayedCall(450, () => this.nextLine());
+      return;
+    }
     this.timer = this.scene.time.delayedCall(900, () => {
       const player = this.actors.get('player');
       if (!player) return;
@@ -136,12 +178,16 @@ export class StoryCinematicPanel extends Phaser.GameObjects.Container {
     this.index++;
     const line = this.cfg.lines[this.index];
     if (!line) { this.finish(); return; }
-    const actor = line.actor === 'thought' ? this.actors.get('player') : this.actors.get(line.actor);
+    const fieldActor = line.actor === 'thought'
+      ? this.cfg.fieldActors?.player
+      : this.cfg.fieldActors?.[line.actor];
+    const actor = fieldActor ?? (line.actor === 'thought' ? this.actors.get('player') : this.actors.get(line.actor));
     if (line.actor === 'thought') {
       this.speech.setVisible(false); this.speechBg.setVisible(false);
     } else if (actor) {
-      const x = Phaser.Math.Clamp(actor.x, 170, GAME_WIDTH - 170);
-      const y = Phaser.Math.Clamp(actor.y - 128, 90, 330);
+      const point = fieldActor ? this.fieldScreenPoint(fieldActor) : this.actorPoint(actor);
+      const x = Phaser.Math.Clamp(point.x, 170, GAME_WIDTH - 170);
+      const y = Phaser.Math.Clamp(point.y - (fieldActor ? 72 : 128), 90, 330);
       this.speech.setText(line.text).setPosition(x, y).setVisible(true);
       this.speechBg.setSize(Math.min(340, Math.max(110, this.speech.width + 14)), this.speech.height + 8)
         .setPosition(x, y).setVisible(true);
@@ -164,7 +210,8 @@ export class StoryCinematicPanel extends Phaser.GameObjects.Container {
     if (!courier || !watcher) return;
     const ledger = this.scene.add.rectangle(courier.x - 25, courier.y - 54, 18, 25, 0xd4c18c, 1)
       .setAngle(-8).setStrokeStyle(1, 0x342d20, 1);
-    this.stage.add(ledger);
+    if (this.cfg.fieldActors) this.fieldProps.push(ledger);
+    else this.stage.add(ledger);
     this.scene.tweens.add({ targets: ledger, x: watcher.x + 10, duration: 800, ease: 'Sine.easeInOut',
       onComplete: () => { this.scene.tweens.add({ targets: ledger, alpha: 0, duration: 380, onComplete: () => ledger.destroy() }); },
     });
@@ -175,17 +222,38 @@ export class StoryCinematicPanel extends Phaser.GameObjects.Container {
     this.finished = true;
     this.timer?.remove(false);
     this.speech.setVisible(false); this.speechBg.setVisible(false);
-    this.dialogueSpeaker.setText('혼잣말').setColor('#f0bf6c');
-    this.dialogueText.setText('이건 아무래도 큰일인데…? 어서 알려야 해. 그 장소는 어디지?');
-    this.scene.time.delayedCall(2200, () => {
+    this.scene.time.delayedCall(this.cfg.fieldActors ? 650 : 2200, () => {
       if (!this.active) return;
       this.cfg.onComplete();
       this.destroy();
     });
   }
 
+  /** 월드 배우를 화면 고정 UI 좌표로 변환한다. 카메라가 움직여도 말풍선은 배우를 따라간다. */
+  private fieldScreenPoint(actor: Phaser.GameObjects.GameObject): { x: number; y: number } {
+    const a = actor as unknown as { x: number; y: number };
+    const cam = this.scene.cameras.main;
+    return {
+      x: (a.x - cam.scrollX) * cam.zoom,
+      y: (a.y - cam.scrollY) * cam.zoom,
+    };
+  }
+
+  private actorPoint(actor: Phaser.GameObjects.GameObject): { x: number; y: number } {
+    const a = actor as unknown as { x: number; y: number };
+    return { x: a.x, y: a.y };
+  }
+
   override destroy(fromScene?: boolean): void {
     this.timer?.remove(false);
+    for (const prop of this.fieldProps) prop.destroy();
+    this.fieldProps.length = 0;
+    // 연출용 이동은 개인 화면에서만 유효하다. 종료하면 배우를 원래 필드 위치로 되돌린다.
+    for (const [actor, origin] of this.fieldOrigins) {
+      if (!actor.active) continue;
+      const a = actor as Phaser.GameObjects.GameObject & { x: number; y: number; alpha: number };
+      a.x = origin.x; a.y = origin.y; a.alpha = origin.alpha;
+    }
     super.destroy(fromScene);
   }
 }

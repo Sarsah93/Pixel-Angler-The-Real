@@ -27,7 +27,6 @@ import { DraggablePanel } from './DraggablePanel.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { StoryStore } from '../store/StoryStore.js';
 import { storyActionSpec } from '../store/StoryActionRegistry.js';
-import { InventoryStore } from '../store/InventoryStore.js';
 import { dialogueOf, NPC_IDLE } from '../data/StoryDialogue.js';
 import { clampTextWidth } from './TextFit.js';
 import { ensureFacePortrait } from './CharacterSprite.js';
@@ -578,15 +577,8 @@ export class DialoguePanel extends DraggablePanel {
     return {
       label: ch.labelKo,
       action: () => {
-        let deliveredIce = false;
-        if (stage === 'complete' && q.id === 'M1-02') {
-          const ice = InventoryStore.find('quest_ice_crate');
-          deliveredIce = !!ice;
-        }
         const ok = stage === 'offer' ? StoryStore.accept(q.id, ch.id) : StoryStore.complete(q.id, ch.id);
         if (!ok) { this.lastWorkMsg = '지금은 진행할 수 없습니다.'; this.enterMenu(false); return; }
-        if (deliveredIce) InventoryStore.removeQty('quest_ice_crate', 1);
-        if (deliveredIce) StoryStore.emitActionSource('delivery', 'ice-delivery');
         if (stage === 'offer') StoryStore.emitActionSource('selection', `choice:${ch.id}`);
         const done = stage === 'complete';
         this.reply = {

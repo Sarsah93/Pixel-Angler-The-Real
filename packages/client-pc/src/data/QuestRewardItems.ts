@@ -16,7 +16,7 @@ const gear = (id: string, name: string, sub: string, basePrice: number, extra: P
   ({ id, name, icon: '', category: 'gear', subCategory: sub, basePrice, equippable: true, bound: true, ...extra });
 
 export const QUEST_REWARD_ITEMS: InvItemTemplate[] = [
-  { id: 'quest_ice_crate', name: '심부름용 얼음', icon: '🧊', category: 'quest', subCategory: '심부름',
+  { id: 'quest_ice_crate', name: '정옥선의 심부름용 얼음 상자', icon: '🧊', category: 'quest', subCategory: '심부름',
     basePrice: 0, equippable: false, bound: true },
   // ── Ch1 — 실습생 ──
   { id: 'qr_tackle_pouch', name: '옛 계원의 채비 주머니', icon: '', category: 'gear', subCategory: '가방', basePrice: 15000,

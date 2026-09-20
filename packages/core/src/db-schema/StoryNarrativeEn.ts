@@ -41,7 +41,7 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
     { offer: "You came looking for the memory in that photo. Cry if you need to. But could you carry one ice box from behind the stall to the auction hall? Start with something you can do.",
       progress: "There are still boxes left. Come back when they're all moved.",
       done: "Your wages. At least this much is your own money. The shop inside the market sells ice and bait. Prices move every day, so learn them with your eyes.",
-      obj: ["Carry Ok-seon's errand ice box to the auction hall", "Step into the shop inside the market and look at the prices once"],
+      obj: ["Check Ok-seon's errand ice crate in the inventory", "Carry the ice crate to the marked place near the auction hall", "Place the ice crate at the marked location", "Report the ice crate delivery to Ok-seon"],
       epi: "The envelope was thin. Still, it is the first money with my name on it." }),
   'M1-03': E(
     "They said there was an old fishery cooperative dormitory behind the stall. When I opened the door, dust and mildew came out first. One bed, one refrigerator, one window. The old woman held out a trainee card. Nobody here becomes a member on their first day, she said. One hundred and eighty days. The moment I took that number I understood I no longer had a place to go back to, I had a place to stay.",

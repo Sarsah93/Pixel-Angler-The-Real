@@ -148,6 +148,8 @@ export class BootScene extends Phaser.Scene {
       item_bait_reel: 'item-icons/it_bait_reel.png',
       item_jighead: 'item-icons/it_jighead.png',
       item_worm: 'item-icons/it_worm.png',
+      item_soft_worm: 'item-icons/it_soft_worm.png',
+      item_treble: 'item-icons/it_treble_hook.png',
       item_minnow: 'item-icons/it_minnow.png',
       item_metal_jig: 'item-icons/it_metal_jig.png',
       line_spool_saiso: 'item-icons/line_spool_saiso.png',

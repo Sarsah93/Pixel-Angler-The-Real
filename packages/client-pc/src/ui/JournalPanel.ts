@@ -41,12 +41,13 @@ const LIST_W = 486;
 const DET_X = LIST_X + LIST_W + 14;
 const DET_W = PANEL_W - DET_X - 14;
 
-/** 표 컬럼 — 초상 / 임무 / 지역 / 상태 / 진행률 */
+/** 표 컬럼 — 고정 / 초상 / 임무 / 지역 / 상태 / 진행률 */
 const C_FACE = 34;
+const C_TRACK = 34;
 const C_REGION = 74;
 const C_STATE = 66;
 const C_PROG = 72;
-const C_NAME = LIST_W - C_FACE - C_REGION - C_STATE - C_PROG - 28;
+const C_NAME = LIST_W - C_TRACK - C_FACE - C_REGION - C_STATE - C_PROG - 34;
 
 const ROW_H = 40;
 
@@ -296,6 +297,7 @@ export class JournalPanel extends DraggablePanel {
       c.add(t);
     };
     let cx = LIST_X + 6;
+    head(cx, C_TRACK, '고정', 0.5); cx += C_TRACK + 4;
     head(cx, C_FACE, '의뢰인'); cx += C_FACE + 8;
     head(cx, C_NAME, '할 일'); cx += C_NAME + 6;
     head(cx, C_REGION, '지역', 0.5); cx += C_REGION + 6;
@@ -409,6 +411,27 @@ export class JournalPanel extends DraggablePanel {
       this.renderList(); this.renderDetail(); restoreHandCursor(this.scene);
     });
     c.add(hit);
+
+    // 일지에서 J로 고정할 수 있는 체크박스. 완료·잠긴 항목은 고정하지 않는다.
+    const trackBox = this.scene.add.graphics();
+    const trackX = LIST_X + 6 + C_TRACK / 2;
+    trackBox.lineStyle(1, q.id === StoryStore.trackedId ? 0x6ee7c8 : 0x49657a, 1);
+    trackBox.strokeRect(trackX - 7, y - 7, 14, 14);
+    if (q.id === StoryStore.trackedId) {
+      trackBox.lineStyle(2, 0x6ee7c8, 1);
+      trackBox.lineBetween(trackX - 4, y, trackX - 1, y + 4);
+      trackBox.lineBetween(trackX - 1, y + 4, trackX + 5, y - 4);
+    }
+    c.add(trackBox);
+    if (st === 'active') {
+      const trackHit = this.scene.add.rectangle(trackX, y, 24, ROW_H - 4, 0xffffff, 0.001)
+        .setInteractive({ useHandCursor: true });
+      trackHit.on('pointerdown', () => {
+        StoryStore.setTracked(StoryStore.trackedId === q.id ? null : q.id);
+        this.renderList(); this.renderDetail(); restoreHandCursor(this.scene);
+      });
+      c.add(trackHit);
+    }
   }
 
   // ═══════════ 이야기 (챕터 체인) ═══════════

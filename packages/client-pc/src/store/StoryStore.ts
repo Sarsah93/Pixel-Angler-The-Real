@@ -331,6 +331,17 @@ class StoryStoreManager {
       return true;
     }
     this.quests[id] = { status: 'active', obj: q.objectives.map(() => 0), day: this.day };
+    // M1-02는 별도 일감 클릭이 아니라 의뢰를 수락하는 순간 실제 퀘스트
+    // 오브젝트를 받는다. 이후 확인→운반→하역→보고 순서를 밟아야 한다.
+    if (id === 'M1-02') {
+      const received = this.host?.giveItem('quest_ice_crate', 1, true) ?? false;
+      if (!received) {
+        delete this.quests[id];
+        this.onNotify?.('[할 일] 얼음 상자를 받을 인벤토리 공간이 없습니다');
+        return false;
+      }
+      this.event({ kind: 'custom', key: 'quest:ice-crate-check' });
+    }
     this.lastAction = 'accepted';
     // 140차 — 발주 톤 선택지(우호도 미세 차이)
     if (c) { this.choices[id] = { ...this.choices[id], offer: c.id }; this.applyOutcome(q, c.outcome); }
@@ -849,11 +860,6 @@ class StoryStoreManager {
     const fat = this.host?.fatigue() ?? 0;
     if (fat >= TUNING.job.fatigueLimit) {
       return { ok: false, reason: `너무 지쳤습니다 (피로 ${Math.round(fat)}) — 쉬고 오세요.` };
-    }
-    const m102 = this.quests['M1-02'];
-    const needsIce = jobId === 'ice_haul' && m102?.status === 'active' && (m102.obj[0] ?? 0) === 0;
-    if (needsIce && !this.host?.giveItem('quest_ice_crate', 1, true)) {
-      return { ok: false, reason: '퀘스트 탭에 얼음을 받을 공간이 없습니다.' };
     }
     const c = TUNING.job.costMult;
     this.host?.spendLabor(job.hunger * c, job.hydration * c, job.fatigue * c);

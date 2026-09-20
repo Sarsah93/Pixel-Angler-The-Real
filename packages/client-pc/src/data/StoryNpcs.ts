@@ -61,6 +61,8 @@ export const STORY_NPC_PLACEMENTS: StoryNpcPlacement[] = [
 
 export const STORY_PLACES: StoryPlace[] = [
   { key: 'poi:yeonggeumjeong', regionId: 'gangwon_sokcho', tx: 572, ty: 88, radiusTiles: 6, labelKo: '영금정' },
+  { key: 'poi:okseon-stall', regionId: 'gangwon_sokcho', tx: 584, ty: 158, radiusTiles: 3, labelKo: '정옥선 좌판 근처' },
+  { key: 'poi:auction-ice-drop', regionId: 'gangwon_sokcho', tx: 605, ty: 154, radiusTiles: 2, labelKo: '경매장 얼음 하역 위치' },
 ];
 
 /**

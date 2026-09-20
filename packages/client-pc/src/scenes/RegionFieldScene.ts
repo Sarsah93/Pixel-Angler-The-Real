@@ -2204,6 +2204,7 @@ export class RegionFieldScene extends Phaser.Scene {
     this.input.keyboard!.on('keydown-E', () => { if (!this.isPaused) this.toggleEquipment(); });
     this.input.keyboard!.on('keydown-F', (ev: KeyboardEvent) => {
       if (this.isPaused || this.uiBlocked) return;
+      if (this.tryPlaceQuestIceCrate()) return;
       // 160차 — 스토리 현장 지점은 NPC 대화보다 먼저 소비한다. 같은 장소에서
       // 도현수와 마주쳐도 증거 연출/기록/보고의 순서를 건너뛸 수 없다.
       if (this.nearStoryTrigger) { this.startStoryTrigger(this.nearStoryTrigger); return; }
@@ -3906,13 +3907,22 @@ export class RegionFieldScene extends Phaser.Scene {
   // ═══════════════════════════════════════════════════════════════
   // 134차 — 스토리 NPC (Ch1 발주자) · 방문 장소 · 대화
   // ═══════════════════════════════════════════════════════════════
-  private storyNpcs: { def: StoryNpcPlacement; x: number; y: number; mark?: Phaser.GameObjects.Image; markKey?: string }[] = [];
+  private storyNpcs: {
+    def: StoryNpcPlacement;
+    x: number;
+    y: number;
+    actor: Phaser.GameObjects.Image;
+    mark?: Phaser.GameObjects.Image;
+    markKey?: string;
+  }[] = [];
   private nearNpc: StoryNpcPlacement | null = null;
   private npcHintText?: Phaser.GameObjects.Text;
   private storyTriggers: { def: StoryFieldTrigger; x: number; y: number; mark: Phaser.GameObjects.Graphics; label: Phaser.GameObjects.Text }[] = [];
   private nearStoryTrigger: StoryFieldTrigger | null = null;
   private storyProxAt = 0;
   private firedPlaces = new Set<string>();
+  private nearIceDrop = false;
+  private iceDropMarker?: Phaser.GameObjects.Container;
 
   private placeStoryTriggers(): void {
     this.storyTriggers = [];
@@ -3930,10 +3940,60 @@ export class RegionFieldScene extends Phaser.Scene {
       this.storyTriggers.push({ def, x, y, mark, label });
       mark.setVisible(false); label.setVisible(false);
     }
+    const ice = STORY_PLACES.find((p) => p.key === 'poi:auction-ice-drop' && p.regionId === this.region);
+    if (ice) {
+      const { col, row } = this.nearestWalkable(ice.tx, ice.ty);
+      const x = col * TR + TR / 2, y = row * TR + TR / 2;
+      const ring = this.add.graphics().setDepth(19 + y * 0.001);
+      ring.lineStyle(2, 0x79d7e8, 0.9).strokeRect(x - 22, y - 16, 44, 32);
+      ring.lineStyle(1, 0x79d7e8, 0.35).strokeRect(x - 28, y - 22, 56, 44);
+      const label = this.add.text(x, y - 28, '얼음 하역 위치', {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '8px', color: '#b9f2ff',
+        backgroundColor: '#07131dcc', padding: { x: 3, y: 2 },
+      }).setOrigin(0.5, 1).setDepth(19 + y * 0.001 + 0.001);
+      this.iceDropMarker = this.add.container(0, 0, [ring, label]);
+      this.iceDropMarker.setVisible(false);
+    }
   }
 
   private storyTriggerAvailable(t: StoryFieldTrigger): boolean {
     return StoryStore.canPerformAction(t.questId, t.objectiveIndex, t.phase);
+  }
+
+  /** M1-01 — 장소에 도착한 뒤 실제 속초 필드에서만 재생되는 개인 독백 연출. */
+  private startSokchoArrivalCinematic(placeKey: string): void {
+    if (this.cinematicActive || this.cinematic || !StoryStore.isActive('M1-01')) return;
+    const okseon = this.storyNpcs.find((n) => n.def.npcId === 'okseon')?.actor;
+    const lines: StoryCinematicLine[] = placeKey === 'poi:yeonggeumjeong'
+      ? [
+        { speaker: '혼잣말', actor: 'thought', text: '예전에 부모님과 수산시장 같은 곳이 주차장 근처에 있었던 것 같은데…', durationMs: 1700 },
+        { speaker: '혼잣말', actor: 'thought', text: '영금정에서 보이는 방파제 쪽이었던 것 같아. 동명항 방파제 쪽으로 이동해볼까?', durationMs: 1900 },
+      ]
+      : [
+        { speaker: '혼잣말', actor: 'thought', text: '아, 여기였지 참. 많이 바뀌긴 했구나.', durationMs: 1300 },
+        { speaker: '혼잣말', actor: 'thought', text: '기억이 새록새록 나네… 눈물이 나올 것만 같다.', durationMs: 1500 },
+        { speaker: '혼잣말', actor: 'thought', text: '앞으로 어떻게 해야 할까…?', durationMs: 1200 },
+        { speaker: '혼잣말', actor: 'thought', text: '…음? 할머니가 날 계속 쳐다보고 계셨네…', durationMs: 1400 },
+        { speaker: '혼잣말', actor: 'thought', text: '할머니께 고민 상담을 해볼까?', durationMs: 1300 },
+      ];
+    this.cinematicActive = true;
+    this.hud?.setVisible(false);
+    this.npcHintText?.setVisible(false);
+    this.playerBody.setVelocity(0, 0);
+    MultiplayerClient.setActivity('cinematic');
+    this.cinematic = new StoryCinematicPanel(this, {
+      title: '막차 · 기억의 장소',
+      place: placeKey === 'poi:yeonggeumjeong' ? '속초 영금정 / 개인 시점' : '동명항 방파제 · 정옥선 좌판 / 개인 시점',
+      lines,
+      fieldActors: { player: this.playerSprite, watcher: okseon },
+      onComplete: () => {
+        this.cinematicActive = false;
+        this.cinematic = undefined;
+        MultiplayerClient.setActivity('field');
+        this.hud?.setVisible(true);
+        this.hud?.pushLog('[연출] 기억의 장소를 확인했습니다');
+      },
+    });
   }
 
   private startStoryTrigger(t: StoryFieldTrigger): void {
@@ -3976,6 +4036,11 @@ export class RegionFieldScene extends Phaser.Scene {
       title: t.phase === 0 ? '위반 증거 · 목격' : t.phase === 1 ? '위반 증거 · 기록 대조' : '위반 증거 · 보고',
       place: t.phase === 0 ? '인천 도매시장 후문 / 개인 시점' : '도매시장 기록대 / 개인 시점',
       lines,
+      fieldActors: {
+        player: this.playerSprite,
+        watcher: this.storyNpcs.find((n) => n.def.npcId === 'hyeonsu')?.actor,
+        courier: this.storyNpcs.find((n) => n.def.npcId === 'kang_ducheol')?.actor,
+      },
       onComplete: finish,
     });
   }
@@ -3994,6 +4059,14 @@ export class RegionFieldScene extends Phaser.Scene {
         { speaker: '현장 기록', actor: 'thought', text: scene.linesKo[0], durationMs: 1300 },
         { speaker: '현장 기록', actor: 'watcher', text: scene.linesKo[1], durationMs: 1700 },
       ],
+      // actionKey를 올린 퀘스트의 발주 NPC를 배우로 선택한다. 등록된 NPC가
+      // 아직 없는 지역에서도 현재 필드의 실제 스토리 NPC를 대체 배우로 사용해
+      // 추상 도형 무대로 되돌아가지 않게 한다.
+      fieldActors: {
+        player: this.playerSprite,
+        watcher: this.actionActorFor(key),
+        courier: this.actionActorFor(key, true),
+      },
       onComplete: () => {
         this.cinematicActive = false;
         this.cinematic = undefined;
@@ -4002,6 +4075,16 @@ export class RegionFieldScene extends Phaser.Scene {
         this.hud?.pushLog(`[연출] ${scene.titleKo} — ${step}/3`);
       },
     });
+  }
+
+  /** 현재 actionKey의 발주 NPC를 실제 필드 배우로 찾는다. */
+  private actionActorFor(key: import('@tra/core').StoryActionKey, secondary = false): Phaser.GameObjects.Image | undefined {
+    const quest = STORY_QUESTS.find((q) => StoryStore.isActive(q.id) && q.objectives.some((o) => o.actionKey === key));
+    const giver = quest?.giver;
+    const preferred = giver ? this.storyNpcs.find((n) => n.def.npcId === giver) : undefined;
+    if (!secondary && preferred) return preferred.actor;
+    const fallback = this.storyNpcs.filter((n) => n.def.npcId !== giver);
+    return (secondary ? fallback[1] ?? fallback[0] : fallback[0])?.actor;
   }
 
   /** 지역에 배치된 스토리 NPC 스프라이트 — 기존 POI NPC 텍스처 재사용(플레이스홀더), 이름표가 인물을 식별 */
@@ -4014,14 +4097,14 @@ export class RegionFieldScene extends Phaser.Scene {
       // 138차 — 인물마다 고유 외형(`characterOf`)을 굽는다. 구 gem NPC 텍스처 5장 돌려막기 폐기.
       const sheet = ensureCharSheet(this, characterOf(def.npcId), CHAR_SCALE);
       const pad = (CHAR_CELL - 1 - CHAR_FOOT_Y) * CHAR_SCALE;
-      this.add.image(x, y + pad, sheet, charFrameName(def.facing ?? 'down', 0))
+      const actor = this.add.image(x, y + pad, sheet, charFrameName(def.facing ?? 'down', 0))
         .setOrigin(0.5, 1).setDepth(20 + y * 0.001 + 0.0006);
       const npc = getStoryNpc(def.npcId);
       this.add.text(x, y + this.charTopFromFeet - RegionFieldScene.LABEL_GAP, npc?.nameKo ?? def.npcId, {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#ffe9a0',
         backgroundColor: '#0a1628cc', padding: { x: 3, y: 1 },
       }).setOrigin(0.5, 1).setDepth(20 + y * 0.001 + 0.0007);
-      this.storyNpcs.push({ def, x, y });
+      this.storyNpcs.push({ def, x, y, actor });
     }
     this.refreshQuestMarkers(true);
   }
@@ -4601,7 +4684,14 @@ export class RegionFieldScene extends Phaser.Scene {
         } else if (res) {
           this.questTargetPos = res;
         } else this.questTargetPos = null;
-        this.hud?.setQuestTracker({ title: (StoryStore.trackedId === q.id ? '[추적 중] ' : '') + q.titleKo, objective, howTo, distance });
+        const prefix = q.kind === 'main' ? 'Ⓜ' : 'Ⓢ';
+        const iceDelivered = q.id === 'M1-02' && (StoryStore.progress(q.id)?.obj[2] ?? 0) >= 1;
+        const deliveryDoneTitle = iceDelivered ? `${prefix} ${q.titleKo} (완료!)` : `${prefix} ${q.titleKo}`;
+        if (iceDelivered && q.id === 'M1-02' && idx !== null) {
+          objective = '정옥선의 심부름용 얼음 상자를 경매장 근처에 운반했다. 이제 정옥선을 찾아가보자.';
+          howTo = '정옥선에게 다가가 [F]';
+        }
+        this.hud?.setQuestTracker({ title: (StoryStore.trackedId === q.id ? '[추적 중] ' : '') + deliveryDoneTitle, objective, howTo, distance });
       }
     }
     this.drawQuestArrow();
@@ -4728,13 +4818,81 @@ export class RegionFieldScene extends Phaser.Scene {
       if (pl.regionId !== this.region || this.firedPlaces.has(pl.key)) continue;
       const cx = pl.tx * TR + TR / 2, cy = pl.ty * TR + TR / 2;
       if (Math.hypot(cx - px, cy - py) <= pl.radiusTiles * TR) {
+        const m101 = StoryStore.progress('M1-01');
+        const arrivalScene = pl.key === 'poi:yeonggeumjeong' ? (m101?.obj[0] ?? 0) === 0
+          : pl.key === 'poi:okseon-stall' ? (m101?.obj[1] ?? 0) === 0 : false;
         this.firedPlaces.add(pl.key);
         StoryStore.event({ kind: 'visit', placeKey: pl.key });
         // 장소 도착 뒤 이어지는 수동 목표의 현장 행동을 실제 이동/도착 이벤트에 연결한다.
         StoryStore.emitActionSource('field', `place:${pl.key}`);
         this.hud?.pushLog(`[장소] ${pl.labelKo}에 도착했습니다`);
+        if (arrivalScene && (pl.key === 'poi:yeonggeumjeong' || pl.key === 'poi:okseon-stall')) {
+          this.startSokchoArrivalCinematic(pl.key);
+        }
       }
     }
+    const icePlace = STORY_PLACES.find((p) => p.key === 'poi:auction-ice-drop' && p.regionId === this.region);
+    const iceProgress = StoryStore.progress('M1-02');
+    const carryingIce = !!InventoryStore.find('quest_ice_crate');
+    this.nearIceDrop = !!icePlace && StoryStore.isActive('M1-02') && carryingIce
+      && (iceProgress?.obj[1] ?? 0) >= 1 && (iceProgress?.obj[2] ?? 0) === 0
+      && Math.hypot(icePlace.tx * TR + TR / 2 - px, icePlace.ty * TR + TR / 2 - py) <= 48;
+    this.iceDropMarker?.setVisible(StoryStore.isActive('M1-02') && (iceProgress?.obj[1] ?? 0) < 1);
+    if (this.nearIceDrop && !this.uiBlocked && !this.placing) {
+      if (!this.npcHintText) {
+        this.npcHintText = this.add.text(0, 0, '', {
+          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#b9f2ff',
+          backgroundColor: '#0a1628dd', padding: { x: 6, y: 3 },
+        }).setOrigin(0.5, 1).setDepth(60);
+      }
+      this.npcHintText.setText('[F] 얼음 상자 내려놓기').setPosition(px, this.playerLabelY).setVisible(true);
+    }
+  }
+
+  /** M1-02의 하역은 인벤토리 아이템을 실제 필드 지정 위치에 내려놓는 행동이다. */
+  private tryPlaceQuestIceCrate(): boolean {
+    if (!this.nearIceDrop || this.uiBlocked) return false;
+    if (!InventoryStore.find('quest_ice_crate')) {
+      this.floatingHint('정옥선의 심부름용 얼음 상자가 없습니다');
+      return true;
+    }
+    InventoryStore.removeQty('quest_ice_crate', 1);
+    StoryStore.event({ kind: 'custom', key: 'ice:auction-drop' });
+    StoryStore.emitActionSource('delivery', 'ice:auction-drop');
+    this.nearIceDrop = false;
+    this.iceDropMarker?.setVisible(false);
+    this.npcHintText?.setVisible(false);
+    this.hud?.pushLog('[할 일] Ⓜ 얼음 나르기 (완료!) — 정옥선의 심부름용 얼음 상자를 경매장 근처에 운반했다. 이제 정옥선을 찾아가보자.');
+    this.floatingHint('얼음 상자를 내려놓았습니다 — 정옥선에게 돌아가세요');
+    this.startIceDropCinematic();
+    return true;
+  }
+
+  /** M1-02 — 하역 직후, 실제 경매장 근처 배우가 물건을 확인하는 짧은 연출. */
+  private startIceDropCinematic(): void {
+    if (this.cinematicActive || this.cinematic) return;
+    const clerk = this.storyNpcs.find((n) => n.def.npcId === 'coop')?.actor;
+    this.cinematicActive = true;
+    this.hud?.setVisible(false);
+    this.npcHintText?.setVisible(false);
+    this.playerBody.setVelocity(0, 0);
+    MultiplayerClient.setActivity('cinematic');
+    this.cinematic = new StoryCinematicPanel(this, {
+      title: '얼음 나르기 · 하역 확인',
+      place: '속초 경매장 옆 하역 위치 / 개인 시점',
+      lines: [
+        { speaker: '혼잣말', actor: 'thought', text: '상자를 지정된 자리에 내려놓았다. 녹기 전에 도착해서 다행이다.', durationMs: 1500 },
+        { speaker: '경매장 담당자', actor: 'watcher', text: '정옥선 좌판 물건이면 이 자리에 두면 됩니다. 곧 확인하겠습니다.', durationMs: 1700 },
+        { speaker: '혼잣말', actor: 'thought', text: '이제 정옥선 할머니에게 돌아가서 도착했다고 말하자.', durationMs: 1500 },
+      ],
+      fieldActors: { player: this.playerSprite, watcher: clerk },
+      onComplete: () => {
+        this.cinematicActive = false;
+        this.cinematic = undefined;
+        MultiplayerClient.setActivity('field');
+        this.hud?.setVisible(true);
+      },
+    });
   }
 
   private openDialogue(npcId: string): void {

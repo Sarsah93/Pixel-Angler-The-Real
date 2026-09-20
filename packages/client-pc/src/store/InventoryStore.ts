@@ -562,7 +562,7 @@ function createSeedItems(): InvItem[] {
     { id: 'inv_carbon15', name: 'AMSTRONG 카본 목줄 3호 · 150m', icon: '', iconTexture: 'line_spool_saiso', category: 'tackle', subCategory: '목줄 스풀', qty: 1,  basePrice: 9000,  equippable: false, lineMaterial: 'fluorocarbon', lineForm: 'suspend', lineLengthM: 150, lineNo: 3, lineDiameterMm: 0.285, lineStrengthLb: 10.5 },
     { id: 'inv_nylon2',   name: 'AMSTRONG 나일론 목줄 2호 · 200m', icon: '', iconTexture: 'line_spool_saiso', category: 'tackle', subCategory: '목줄 스풀', qty: 1,  basePrice: 6000,  equippable: false, lineMaterial: 'nylon', lineForm: 'float', lineLengthM: 200, lineNo: 2, lineDiameterMm: 0.235, lineStrengthLb: 8 },
     { id: 'inv_chinu3',   name: '감성돔 바늘 3호',          icon: '🪝', category: 'tackle', subCategory: '바늘/훅',   qty: 12, basePrice: 3000,  equippable: false },
-    { id: 'inv_treble',   name: '루어용 트레블 훅',         icon: '🪝', category: 'tackle', subCategory: '바늘/훅',   qty: 6,  basePrice: 4000,  equippable: false },
+    { id: 'inv_treble',   name: '루어용 트레블 훅',         icon: '', iconTexture: 'item_treble', category: 'tackle', subCategory: '바늘/훅',   qty: 6,  basePrice: 4000,  equippable: false },
     { id: 'inv_jighead',  name: '지그헤드 3g',              icon: '', iconTexture: 'item_jighead', category: 'tackle', subCategory: '바늘/훅',   qty: 8,  basePrice: 3500,  equippable: false },
     // 루어 — 바늘 일체형 가짜미끼. 바늘 소켓에 장착하며 미끼 소켓이 비활성화된다.
     { id: 'inv_minnow',   name: '미노우 90F (플로팅)',      icon: '', iconTexture: 'item_minnow', category: 'tackle', subCategory: '루어',      qty: 2,  basePrice: 14000, equippable: false },
@@ -626,7 +626,7 @@ function createSeedItems(): InvItem[] {
   for (const s of WEIGHT_SINKER_DB) {
     if (!seedSinkerIds.has(s.id)) continue;
     defs.push({
-      id: s.id, name: `${s.nameKo} (${s.weightG}g)`, icon: '', iconTexture: s.kind === 'ring' ? 'sinker_ring' : s.kind === 'hole' ? 'sinker_pillar' : undefined,
+      id: s.id, name: `${s.nameKo} (${s.weightG}g)`, icon: '', iconTexture: s.kind === 'ring' ? 'sinker_ring' : s.kind === 'hole' ? 'sinker_pillar' : s.kind === 'bundle' ? 'sinker_bundle' : undefined,
       category: 'tackle', subCategory: '채비 부속', qty: 3, basePrice: s.price, equippable: false,
       sinkerKind: s.kind, sinkerWeightG: s.weightG, sinkerHo: s.ho,
     });
@@ -638,7 +638,7 @@ function createSeedItems(): InvItem[] {
     spoon: '🥄', spinner: '🌀', egi: '🦑', metal_jig: '🔩', tairaba: '🔴',
   };
   const lureTexture: Record<string, string> = {
-    worm_grub: 'item_worm', soft_jerkbait: 'item_worm', plug_minnow: 'item_minnow', metal_jig: 'item_metal_jig',
+    worm_grub: 'item_soft_worm', soft_jerkbait: 'item_soft_worm', plug_minnow: 'item_minnow', metal_jig: 'item_metal_jig',
   };
   for (const lure of LURES_CATALOG_DB) {
     defs.push({

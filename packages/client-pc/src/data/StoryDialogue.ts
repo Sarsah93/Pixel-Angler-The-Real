@@ -38,9 +38,9 @@ export const STORY_DIALOGUE: Record<string, QuestDialogue> = {
   'M1-02': {
     offer: [
       ['울 거면 얼음부터 나르고 울어.', 'If you\'re going to cry, haul the ice first.'],
-      ['좌판 뒤 얼음 상자, 경매장까지. 한 번에 두 개씩. 허리로 들지 말고.', 'Ice crates behind the stall, to the auction house. Two at a time. Lift with your legs.'],
+      ['좌판 뒤에서 네 몫의 얼음 상자를 받아. 인벤토리에서 확인하고, 경매장 옆 지정 자리에 내려놓은 뒤 다시 와.', 'Take your ice crate from behind the stall. Check it in your inventory, place it at the marked spot by the auction hall, then come back.'],
     ],
-    progress: ['아직 상자가 남았다. 다 나르면 와.', 'Crates are still there. Come back when they\'re done.'],
+    progress: ['상자를 인벤토리에서 확인했으면 경매장 옆 파란 표시까지 옮겨. 내려놓고 나서 다시 와.', 'Once you have checked the crate in your inventory, carry it to the blue mark by the auction hall. Come back after placing it.'],
     done: [
       ['품삯이다. 적어도 이건 네 돈이야.', 'Your wages. At least this is your money.'],
       ['시장 안쪽 상점은 얼음이랑 미끼를 판다. 값은 매일 바뀐다.', 'The shop inside sells ice and bait. Prices change daily.'],
