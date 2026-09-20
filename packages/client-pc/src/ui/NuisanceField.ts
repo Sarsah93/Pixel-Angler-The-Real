@@ -24,6 +24,7 @@ import {
   MARINE_NUISANCES, nuisanceBloomWeight, renderNuisanceArt, rollNuisance,
   type MarineNuisance,
 } from '@tra/core';
+import { canvasContextOf, destroyCanvasTexture, refreshCanvasTexture } from './CanvasTextureGuard.js';
 
 export interface NuisanceDeps {
   /** 타일 픽셀 크기 */
@@ -89,18 +90,23 @@ export class NuisanceField {
       const s = 2;
       const cv = this.scene.textures.createCanvas(texKey, art.w * s, art.h * s);
       if (!cv) continue;
-      const ctx = cv.getContext();
-      const img = ctx.createImageData(art.w, art.h);
-      img.data.set(art.data);
-      const tmp = document.createElement('canvas');
-      tmp.width = art.w; tmp.height = art.h;
-      const tctx = tmp.getContext('2d');
-      if (tctx) {
+      const ctx = canvasContextOf(cv);
+      if (!ctx) { destroyCanvasTexture(cv); continue; }
+      try {
+        const img = ctx.createImageData(art.w, art.h);
+        img.data.set(art.data);
+        const tmp = document.createElement('canvas');
+        tmp.width = art.w; tmp.height = art.h;
+        const tctx = tmp.getContext('2d');
+        if (!tctx) { destroyCanvasTexture(cv); continue; }
         tctx.putImageData(img, 0, 0);
         ctx.imageSmoothingEnabled = false;
         ctx.drawImage(tmp, 0, 0, art.w, art.h, 0, 0, art.w * s, art.h * s);
+      } catch {
+        destroyCanvasTexture(cv);
+        continue;
       }
-      cv.refresh();
+      if (!refreshCanvasTexture(cv, `해양생물 ${texKey}`)) destroyCanvasTexture(cv);
     }
   }
 

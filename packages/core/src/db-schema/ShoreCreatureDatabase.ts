@@ -167,6 +167,7 @@ export const SHORE_CREATURE_DATABASE: ShoreCreature[] = [
     canBeUsedAsBait: false,
     description: '야간 해루질의 대표 수확물. 통발에도 잘 걸리며 꽃게탕, 꽃게찜으로 최고.',
     requiredLicense: 'shore_hunting_basic',
+    tools: ['net', 'tongs', 'hand'], spotKinds: ['tidepool', 'harbor_wall'],
   },
   {
     id: 'charybdis_japonica',
@@ -358,6 +359,43 @@ export const SHORE_CREATURE_DATABASE: ShoreCreature[] = [
     description: '눌러 붙으면 안 떨어진다 — 집게로 한 번에. 배말국·배말밥.',
     requiredLicense: 'shore_hunting_basic',
     tools: ['tongs', 'hand'], spotKinds: ['rock_shore', 'harbor_wall'],
+  },
+  // ────────── 추가 조간대 종 — 사용자 요청 2026-09-20 ──────────
+  {
+    id: 'haliotis_diversicolor', nameKo: '오분자기', nameEn: 'Small Abalone',
+    scientificName: 'Haliotis diversicolor', spriteKey: 'creature_abalone_small', category: 'gastropod',
+    habitatSpotTypes: ['rocky_shore', 'breakwater'], habitatDesc: '제주와 남해의 얕은 암반·조수웅덩이 바닥.',
+    minLegalSizeCm: 0, dailyLimitG: 0, closedSeasonMonths: [7, 8], discoveryTime: 'night', minLampLumens: 800,
+    marketValuePerKg: 45000, isRestaurantIngredient: true, canBeUsedAsBait: false,
+    description: '전복보다 작은 암반성 소형 전복류. 바위에 단단히 붙어 집게나 갈고리가 필요하다.',
+    requiredLicense: 'shore_hunting_advanced', tools: ['gaff', 'tongs'], spotKinds: ['rock_shore', 'tidepool'], ordinanceProtected: true,
+  },
+  {
+    id: 'heliocidaris_crassispina', nameKo: '말똥성게', nameEn: 'Black-spined Urchin',
+    scientificName: 'Heliocidaris crassispina', spriteKey: 'creature_urchin_black', category: 'echinoderm',
+    habitatSpotTypes: ['rocky_shore', 'breakwater'], habitatDesc: '남해·제주 암반 조간대의 바위 틈과 얕은 웅덩이.',
+    minLegalSizeCm: 0, dailyLimitG: 2000, closedSeasonMonths: [], discoveryTime: 'both', minLampLumens: 200,
+    marketValuePerKg: 28000, isRestaurantIngredient: true, canBeUsedAsBait: false,
+    description: '가시가 굵고 검은 성게. 맨손 채집 시 부상 위험이 있어 집게를 사용한다.',
+    requiredLicense: 'shore_hunting_basic', tools: ['tongs'], handInjury: true, spotKinds: ['rock_shore', 'tidepool'], ordinanceProtected: true,
+  },
+  {
+    id: 'aplysia_kurodai', nameKo: '참군소', nameEn: 'Sea Hare',
+    scientificName: 'Aplysia kurodai', spriteKey: 'creature_sea_hare', category: 'gastropod',
+    habitatSpotTypes: ['rocky_shore'], habitatDesc: '해조류가 자라는 얕은 암반과 조수웅덩이.',
+    minLegalSizeCm: 0, dailyLimitG: 1500, closedSeasonMonths: [], discoveryTime: 'both', minLampLumens: 0,
+    marketValuePerKg: 9000, isRestaurantIngredient: false, canBeUsedAsBait: false,
+    description: '해조류 사이를 느리게 이동하는 군소. 관찰·도감 기록 중심의 해루질 발견물.',
+    requiredLicense: 'shore_hunting_basic', tools: ['hand', 'tongs'], spotKinds: ['rock_shore', 'tidepool'],
+  },
+  {
+    id: 'hemigrapsus_sanguineus', nameKo: '쫄장게', nameEn: 'Asian Shore Crab',
+    scientificName: 'Hemigrapsus sanguineus', spriteKey: 'creature_shore_crab', category: 'crustacean',
+    habitatSpotTypes: ['rocky_shore', 'breakwater'], habitatDesc: '국내 전 연안의 방파제·갯바위 돌 틈과 해조류 가장자리.',
+    minLegalSizeCm: 0, dailyLimitG: 1000, closedSeasonMonths: [], discoveryTime: 'both', minLampLumens: 0,
+    marketValuePerKg: 12000, isRestaurantIngredient: true, canBeUsedAsBait: true,
+    description: '돌 틈으로 빠르게 숨는 작은 연안 게. 낮은 조위의 바위 틈에서 맨손 또는 집게로 찾는다.',
+    requiredLicense: 'shore_hunting_basic', tools: ['tongs', 'hand'], spotKinds: ['rock_shore', 'armor_foot'],
   },
 ];
 

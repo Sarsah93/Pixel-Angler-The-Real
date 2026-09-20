@@ -6,7 +6,7 @@
  * Fishing Simulator 급의 제원 반영이 목표입니다.
  */
 
-import type { RodSpec, ReelSpec, LineSpec, FloatSpec, HookSpec } from '../types/Gear.js';
+import type { RodSpec, ReelSpec, LineSpec, FloatSpec, HookSpec, LineForm } from '../types/Gear.js';
 
 // ─────────────────────────────────────────────
 // 낚싯대 데이터베이스
@@ -123,43 +123,67 @@ export const REEL_DATABASE: ReelSpec[] = [
 ];
 
 // ─────────────────────────────────────────────
-// 줄 데이터베이스
+// 줄 데이터베이스 — SAISO AMSTRONG 라인업
 // ─────────────────────────────────────────────
-export const LINE_DATABASE: LineSpec[] = [
+const SAISO_LINE_LENGTHS_M = [150, 200, 250, 300, 350, 400] as const;
+const SAISO_LINE_FORMS: Array<{
+  material: LineSpec['material'];
+  label: string;
+  lineNos: number[];
+  forms: LineForm[];
+  diameters: Record<string, number>;
+  strengthFactor: number;
+  color: string;
+}> = [
   {
-    id: 'line_sunline_1p5no',
-    brand: '솔라인(SOLLINE)',
-    modelName: 'SUPER FC Sniper 1.5호',
-    lineNo: 1.5,
-    strengthLb: 6,
-    diameterMm: 0.205,
-    material: 'fluorocarbon',
-    color: '투명',
-    priceKRW: 18000,
+    material: 'nylon', label: '나일론 모노라인', lineNos: [2, 2.5, 3, 5], forms: ['float', 'semi-float'],
+    diameters: { '2': 0.235, '2.5': 0.26, '3': 0.285, '5': 0.37 }, strengthFactor: 4, color: '투명',
   },
   {
-    id: 'line_nylon_2no',
-    brand: '동양라인',
-    modelName: 'Dynacast 2호',
-    lineNo: 2.0,
-    strengthLb: 8,
-    diameterMm: 0.235,
-    material: 'nylon',
-    color: '핑크',
-    priceKRW: 8000,
+    material: 'fluorocarbon', label: '카본라인', lineNos: [3, 4, 5], forms: ['suspend', 'sinking'],
+    diameters: { '3': 0.285, '4': 0.325, '5': 0.37 }, strengthFactor: 3.5, color: '투명',
   },
   {
-    id: 'line_pe_1no',
-    brand: '요즈미(YO-ZUMI)',
-    modelName: 'Super Braid PE 1.0호',
-    lineNo: 1.0,
-    strengthLb: 18,
-    diameterMm: 0.165,
-    material: 'pe_braid',
-    color: '멀티컬러',
-    priceKRW: 32000,
+    material: 'pe_braid', label: '합사 PE', lineNos: [0.8, 1, 1.5, 2], forms: ['sinking'],
+    diameters: { '0.8': 0.148, '1': 0.165, '1.5': 0.205, '2': 0.24 }, strengthFactor: 17.5, color: '그린 멀티',
   },
 ];
+
+const LINE_FORM_LABEL: Record<LineForm, string> = {
+  float: 'Float', 'semi-float': 'Semi-Float', suspend: 'Suspend', sinking: 'Sinking',
+};
+
+function buildSaisoLineDatabase(): LineSpec[] {
+  const out: LineSpec[] = [];
+  for (const family of SAISO_LINE_FORMS) {
+    for (const lineNo of family.lineNos) {
+      for (const form of family.forms) {
+        for (const spoolLengthM of SAISO_LINE_LENGTHS_M) {
+          const diameterMm = family.diameters[String(lineNo)]!;
+          const strengthLb = Math.round(lineNo * family.strengthFactor * 10) / 10;
+          out.push({
+            id: `line_saiso_${family.material}_${String(lineNo).replace('.', 'p')}_${form}_${spoolLengthM}`,
+            brand: 'SAISO',
+            modelName: `AMSTRONG ${family.label} ${lineNo}호 · ${LINE_FORM_LABEL[form]} · ${spoolLengthM}m`,
+            lineNo,
+            strengthLb,
+            diameterMm,
+            material: family.material,
+            color: family.color,
+            priceKRW: Math.round((family.material === 'pe_braid' ? 26000 : family.material === 'fluorocarbon' ? 21000 : 9000) * spoolLengthM / 200),
+            spoolLengthM,
+            lineForm: form,
+            iconTexture: 'line_spool_saiso',
+          });
+        }
+      }
+    }
+  }
+  return out;
+}
+
+/** 108종: 나일론 4호수×2형태×6길이 + 카본 3호수×2형태×6길이 + 합사 4호수×1형태×6길이 */
+export const LINE_DATABASE: LineSpec[] = buildSaisoLineDatabase();
 
 // ─────────────────────────────────────────────
 // 찌 데이터베이스

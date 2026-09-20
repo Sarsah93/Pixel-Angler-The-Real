@@ -11,6 +11,7 @@
 | 파일 | 역할 |
 |---|---|
 | `ui/DraggablePanel.ts` | 공통 베이스 — 헤더 드래그 · ✕ · **depth 기반 동적 최상단** · 모달 dim · `applyScreenFixed` |
+| `ui/PortraitMask.ts` · `ui/PortraitLayout.ts` | 혼잣말/NPC 대화 공통 초상 마스크·프레임·호감도 예약 슬롯·이름 슬롯 레이아웃 |
 | `ui/TextFit.ts` | `clampTextWidth`(한 줄 말줄임) · `fitTextHeight`(블록 축소) |
 | `ui/Dialogs.ts` | 확인/수량 다이얼로그 |
 | `scenes/SceneFade.ts` | `fadeOutThen` — 폴백 타이머 + WeakSet 이중 실행 가드 |
@@ -71,6 +72,7 @@ ESC: depth 최고(시각적 최상단)부터 닫는다 (동률이면 LIFO)
 | 지명·상호명 `nameEn` 데이터화 | ✅ | 120 — `RegionDef`/`FishingSpotNode`/`RegionAreaNode`/`RegionMapNode`/`SeamlessRegionDef`/`RegionPoi`. `places.ts` 는 폴백으로 축소 |
 | 튜토리얼 삽화 영문판 18장 | ⬜ | 목업 HTML 영어 재렌더 필요(BACKLOG) |
 | `enforceTextBounds` 패널 방어선 | ✅ | 118 — UtilizationPanel 적용, 타 패널은 필요 시 |
+| **대화창 공통 초상 카드·마스크** | ✅ | **160** — 혼잣말/NPC 공통 프레임·이름 슬롯·호감도 예약 영역·화면 좌표 마스크 |
 | **저순위 팝업 전수 검수** | 🔶 | 잔여 목록은 BACKLOG |
 | `LicensePanel` 목록 스크롤 | ✅ | 122 — DraggablePanel 재작성 · 카테고리 그룹 윈도우드 목록 22행 + 휠·스크롤바 |
 | `InventoryPanel` 그리드 스크롤 | ✅ | 148 — 윈도우드 렌더 + 휠 + 스크롤바 + `n–m / N행` + **드래그 중 가장자리 자동 스크롤** |
@@ -96,6 +98,33 @@ dev 전용 문자열(순간이동 로그·맵 편집기·손질 dev 버튼)은 *
 
 전체 지도(895)는 dim을 깔지만 **모달 밴드(900~)에 넣지 않는다** — 확인창(950)이 위에 와야 하고,
 ESC LIFO는 팝업 스택 그대로 탄다. 마커 아이콘은 줌과 무관하게 **화면 12px 고정**(줌하면 지도만 커진다).
+
+### [160차] 대화 초상 GeometryMask는 대상 컨테이너 밖에서 화면 좌표로 동기화한다
+
+초상 이미지와 마스크 Graphics를 같은 중첩 Container에 넣고 마스크를 숨기면 WebGL 스텐실이
+대상 이미지를 통째로 잘라 빈 프레임이 될 수 있다. `PortraitMask.ts`는 `scene.make.graphics({}, false)`로
+화면 고정 마스크를 만들고 `parent.getWorldTransformMatrix()`로 mother 패널의 이동을 반영한다.
+대화창을 드래그하거나 destroy할 때 각각 `sync()`와 `destroy()`를 호출해야 한다.
+초상 카드의 순서는 **프레임 → 호감도 슬롯(주인공은 빈 예약) → 이름 슬롯**으로 고정하고,
+프레임 폭과 mother 좌우 여백은 `PortraitLayout.ts`에서 함께 바꾼다.
+
+### [161차] live Frame을 TextureManager에서 즉시 제거하지 않는다
+
+`TextureManager.exists(key)`와 source image가 살아 있다는 사실만으로는 텍스처가 렌더 가능한 상태라는
+뜻이 아니다. Phaser의 `Frame.destroy()` 뒤에도 키가 남을 수 있고, 그 상태에서 늦은 `setTexture`·UV 갱신이
+`Frame.updateUVs()`의 `data.drawImage`에서 터진다. 따라서 `hasUsableTexture()`는 **지정한 frame name의
+실제 존재 여부 + `Frame.data.drawImage` + `Frame.source.image`**를 모두 검사한다.
+
+심리스 청크·캐릭터·초상 텍스처는 언로드 시 `scene.textures.remove()`하지 않는다. display object를 먼저
+해제하고, 재생성이 필요하면 씬/생성 세대가 포함된 새 키를 발급한다. 같은 Scene 인스턴스의 `init()`과
+`create()` 사이에는 `update()`를 잠가 이전 지역의 폐기된 참조가 새 지역 렌더를 만지지 않게 한다.
+또한 지연 생성되는 Text/Graphics 참조(`questGuideLbl` 같은 화살표·힌트 UI)는 display list가
+shutdown에서 파괴한 뒤에도 클래스 필드에 남을 수 있다. Scene을 `restart`할 때는 객체를 새로 만들기
+전에 이 참조와 관련 상태를 `init()`에서 끊어야 한다. 그렇지 않으면 새 지역의 첫 `setText()`가
+파괴된 CanvasTexture Frame을 갱신해 같은 `data.drawImage` 오류를 다시 만든다. shutdown 콜백은
+항상 생성 시점의 owned 객체를 캡처하고, 현재 필드 참조를 통해 다음 세대 객체를 정리하지 않는다.
+이 회귀를 검증할 때는 **core build → client typecheck → root build → dev 새 게임/대화 → 지역 전환** 순서를
+지키고, 마지막 단계에서 브라우저 오류 배너와 `pageerror`를 함께 확인한다.
 
 ### [150차] 세로 경계는 자동으로 고쳐지지 않는다
 

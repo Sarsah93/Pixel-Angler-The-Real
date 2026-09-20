@@ -2,7 +2,7 @@
 
 > **이 위키의 목적**: 날짜·차수 순으로만 쌓이던 작업 기록을 **구조(시스템) 기준**으로 다시 배열해,
 > "지금 무엇이 어디까지 되어 있고 / 무엇이 남았고 / 어디가 위험한가"를 한 화면에서 판별한다.
-> 최종 업데이트: 2026-09-18 (155차 반영)
+> 최종 업데이트: 2026-09-19 (157차 반영)
 
 ---
 
@@ -41,7 +41,7 @@
 | S1 | [낚시 루프 (1인칭)](02-SYSTEMS/fishing-loop.md) | 🟢 | `FirstPersonFishingScene` · core 물리 9종 · **`HoleFishing`(149차 구멍치기)** · **채비 고정(155 — U 탭 우측 하단)** | 어탐 레이더, 가이드 삽화 실사화, `TUNING.hole` F8 확정 · 155: 결과 후 항상 탑다운 복귀 |
 | S2 | [필드·캐스팅 (탑다운)](02-SYSTEMS/world-field.md) | 🟢 | `RegionFieldScene` · **`SeamlessChunks`** · **`FullMapPanel`(155 전체 지도 M·핀)** · 퀘스트 화살표·추적기 | 비주얼 4레이어 에셋, 사운드 · 핀은 세션 메모리 |
 | S3 | [**손질 (회뜨기)**](02-SYSTEMS/butchery.md) | 🚧 | `ButcheryProcess` · `ButcheryPanel` · `CephalopodStages` | 두족류 **무늬오징어·한치·문어 개방**(97차) · 갑오징어 잔여 · 광어 F9 잔여 |
-| S4 | [회썰기·플레이팅·불요리](02-SYSTEMS/sashimi-cooking.md) | 🟢 | `SashimiPanel` · `UtilizationPanel` · **미완성 접시**(135) · **불요리**(154 — `CookingStore`·`CookingPanel`·`StoveFieldSystem`) · **사시미 별 5개**(155 — `SashimiQuality`) | 스시, 요리 후보 확장, 화구 실사 에셋 · 사시미 두께 균일성 |
+| S4 | [회썰기·플레이팅·불요리](02-SYSTEMS/sashimi-cooking.md) | 🟢 | `SashimiPanel` · `UtilizationPanel` · **미완성 접시**(135) · **불요리**(154~157) · **사시미 별 5개**(155) · **요리(회) 분류**(157) | 스시, 요리 후보 확장, 화구 실사 에셋 · 사시미 두께 균일성 |
 | S5 | [인벤토리·장비·보관](02-SYSTEMS/inventory-equipment.md) | 🟢 | `InventoryStore` · `CoolerStore` · `FridgeStore` · **`InventoryPanel` 윈도우드 스크롤(148차)** | **148차 가방 사다리 5단계 실효화**(25 → 28/30/33/35/37 · 용량 밖 '잠긴 칸') — 예약 슬롯 6종 아이템 대기 · 탭별 용량 차등(core `Backpack.ts`) 미배선 · **155 획득 토스트·NEW 점·채비 잠금 세이브** |
 | S6 | [경제·상점·시세](02-SYSTEMS/economy-data.md) | 🟢 | `MarketPriceEvaluator` · `ShopPanel` · **`ConsignmentAuction`(147차 위판)** · `AuctionHousePanel` | **147차 위판 개통**(직판장 창구 겸용 · 평판 = 수수료) — `TUNING.auction` F8 조율 · 경매 **구매자 측** 미개방 · 낚시점 전용 상점 |
 | S7 | [월드맵·지역 타일맵](02-SYSTEMS/world-field.md) | 🔶 | `WorldMapScene` · **OSM 파이프라인 3종** · `build_region_maps.py` | 속초(심리스 v2)·부산·홈타운 개방 — OSM 16개 지역 확장 잔여 |

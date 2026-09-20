@@ -129,6 +129,7 @@ export const GANGWON_FORAGE_ORDINANCE = {
     'haliotis_discus',            // 전복
     'stichopus_japonicus',        // 해삼
     'strongylocentrotus_nudus',   // 성게
+    'heliocidaris_crassispina',    // 말똥성게
     'mytilus_coruscus',           // 홍합(섭)
     'octopus_vulgaris',           // 문어
   ] as readonly string[],

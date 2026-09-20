@@ -40,6 +40,7 @@ import {
   cephHasDragFrames,
 } from './CephalopodFish.js';
 import type { PixelFishSprite } from '../data/PixelFishSprites.js';
+import { canvasContextOf, destroyCanvasTexture, refreshCanvasTexture, sourceImageOf } from './CanvasTextureGuard.js';
 
 /**
  * 어류 트리 전용 뷰 좁히기 — 이 패널의 어류 경로는 항상 어류 5종 뷰(OrientationState)만 낸다.
@@ -4012,24 +4013,28 @@ export class ButcheryPanel extends DraggablePanel {
     const tm = this.scene.textures;
     if (tm.exists(outKey)) return;
     if (!tm.exists(baseKey)) return;
-    const src = tm.get(baseKey).getSourceImage() as HTMLImageElement | HTMLCanvasElement;
+    const src = sourceImageOf(this.scene, baseKey) as HTMLImageElement | HTMLCanvasElement | null;
+    if (!src) return;
     const sw = src.width, sh = src.height;
     if (!sw || !sh) return;
     const scale = 200 / Math.max(sw, sh);                    // 아이콘용 축소 (메모리 절약)
     const w = Math.max(1, Math.round(sw * scale)), h = Math.max(1, Math.round(sh * scale));
     const cv = tm.createCanvas(outKey, w, h);
     if (!cv) return;
-    const ctx = cv.context;
+    const ctx = canvasContextOf(cv);
+    if (!ctx) { destroyCanvasTexture(cv); return; }
     const css = (c: number): string => `#${(c & 0xffffff).toString(16).padStart(6, '0')}`;
     ctx.clearRect(0, 0, w, h);
     ctx.globalCompositeOperation = 'source-over';
-    ctx.drawImage(src, 0, 0, w, h);
+    try { ctx.drawImage(src, 0, 0, w, h); }
+    catch { destroyCanvasTexture(cv); return; }
     if ((mult & 0xffffff) !== 0xffffff) {
       ctx.globalCompositeOperation = 'multiply';
       ctx.fillStyle = css(mult);
       ctx.fillRect(0, 0, w, h);
       ctx.globalCompositeOperation = 'destination-in';       // 원본 알파로 클립 (배경 투명 유지)
-      ctx.drawImage(src, 0, 0, w, h);
+      try { ctx.drawImage(src, 0, 0, w, h); }
+      catch { destroyCanvasTexture(cv); return; }
     }
     if (stripes) {
       // 아가미쪽 세로 줄무늬 (머리는 좌향 — 아가미/뺨은 중앙~우중앙)
@@ -4039,7 +4044,7 @@ export class ButcheryPanel extends DraggablePanel {
       for (const bx of [0.46, 0.58, 0.70]) ctx.fillRect(w * bx, 0, bw, h);
     }
     ctx.globalCompositeOperation = 'source-over';
-    cv.refresh();
+    if (!refreshCanvasTexture(cv, `손질 아이콘 ${outKey}`)) destroyCanvasTexture(cv);
   }
 
   /** 색 블렌드 (a에 b를 t 비율로 섞음) */

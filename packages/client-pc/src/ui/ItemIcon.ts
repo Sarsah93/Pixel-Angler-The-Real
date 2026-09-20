@@ -12,6 +12,20 @@ import Phaser from 'phaser';
 import { addPixelIcon } from './PixelIcon.js';
 import { resolveFishTexture } from '../data/FishTextures.js';
 
+/**
+ * 구세이브·기존 카탈로그가 가진 픽셀 아이콘 키를 실제 투명 PNG 자산으로
+ * 단계적으로 치환한다. 키를 여기서 해석하므로 모든 인벤토리/상점/상세보기
+ * 렌더러가 같은 자산을 공유하고, 구세이브의 `px:it_*` 값도 깨지지 않는다.
+ */
+const RASTER_ICON_ALIASES: Record<string, string> = {
+  'px:it_rod': 'item_spinning_rod',
+  'px:it_reel': 'item_spinning_reel',
+  'px:it_jighead': 'item_jighead',
+  'px:it_worm': 'item_worm',
+  'px:it_minnow': 'item_minnow',
+  'px:it_metal_jig': 'item_metal_jig',
+};
+
 export interface ItemIconLike {
   /** 레거시 이모지 아이콘 (최후 폴백 — 신규 아이템은 쓰지 않는다) */
   icon: string;
@@ -21,6 +35,8 @@ export interface ItemIconLike {
   speciesId?: string;
   /** 개체 체장 (돌돔 암수 분기 등 텍스처 해소용) */
   lengthCm?: number;
+  /** 채비 아이콘 내부에 표시할 호수/부력 라벨용 이름 */
+  name?: string;
 }
 
 /**
@@ -36,7 +52,29 @@ export function createItemIcon(
   y: number,
   item: ItemIconLike,
   sizePx: number,
-): Phaser.GameObjects.Image | Phaser.GameObjects.Text {
+): Phaser.GameObjects.Image | Phaser.GameObjects.Text | Phaser.GameObjects.Container {
+  const rasterKey = item.iconTexture ? RASTER_ICON_ALIASES[item.iconTexture] ?? item.iconTexture : undefined;
+  if (rasterKey && scene.textures.exists(rasterKey)) {
+    const img = scene.add.image(0, 0, rasterKey).setOrigin(0.5);
+    const src = scene.textures.get(rasterKey).getSourceImage() as HTMLImageElement;
+    const scale = sizePx / Math.max(src.width, src.height);
+    img.setDisplaySize(src.width * scale, src.height * scale);
+    const labelKeys = new Set(['float_zero', 'float_hole', 'float_tilt', 'subfloat_light', 'subfloat_heavy']);
+    if (item.iconTexture && labelKeys.has(item.iconTexture) && item.name) {
+      const label = item.name.match(/0{1,3}|G\d+|[-+]?\d+(?:\.\d+)?B?|[-+]?\d+(?:\.\d+)?호/)?.[0]?.replace('호', '');
+      if (label) {
+        const c = scene.add.container(x, y);
+        c.add(img);
+        c.add(scene.add.text(0, 1, label, {
+          fontFamily: 'monospace', fontSize: `${Math.max(7, Math.round(sizePx * 0.28))}px`,
+          color: '#17202a', fontStyle: 'bold', stroke: '#f6e8ba', strokeThickness: 1,
+        }).setOrigin(0.5));
+        return c;
+      }
+    }
+    img.setPosition(x, y);
+    return img;
+  }
   // 129차 — `px:<키>` 는 16x16 손그림 픽셀 아이콘(PixelIconArt). 신규 아이템은 이모지 대신 이걸 쓴다(§4).
   if (item.iconTexture?.startsWith('px:')) {
     const key = item.iconTexture.slice(3);

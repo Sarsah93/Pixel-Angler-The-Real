@@ -16,6 +16,12 @@ import {
   renderFacePortrait, PORTRAIT_CELL,
   type CharConfig, type CharDir, type CharFrame,
 } from '@tra/core';
+import {
+  canvasContextOf,
+  destroyCanvasTexture,
+  hasUsableTexture,
+  refreshCanvasTexture,
+} from './CanvasTextureGuard.js';
 
 /** 걷기 프레임 순서 — 접지 → 통과 → 접지(반대) → 통과 (144차 — 캐릭터 만들기 프리뷰가 공유) */
 export const WALK_SEQ: CharFrame[] = [1, 2, 3, 4];
@@ -28,6 +34,31 @@ function shortHash(s: string): string {
   return (h >>> 0).toString(36);
 }
 
+/**
+ * 생성 텍스처는 게임 전역 TextureManager에 등록된다. 씬 전환 중 같은 키를
+ * remove → recreate하면 이전 씬의 Image가 폐기된 Frame을 계속 참조할 수 있으므로,
+ * 이미 망가진 키는 삭제하지 않고 필요할 때만 새 세대 키를 발급한다.
+ */
+let generatedKeySerial = 0;
+const generatedKeys = new Map<string, string>();
+
+function textureKeyFor(scene: Phaser.Scene, baseKey: string, frameName: string): string | null {
+  const cached = generatedKeys.get(baseKey);
+  if (cached && hasUsableTexture(scene, cached, frameName)) return cached;
+  if (hasUsableTexture(scene, baseKey, frameName)) {
+    generatedKeys.set(baseKey, baseKey);
+    return baseKey;
+  }
+  return null;
+}
+
+function freshTextureKey(scene: Phaser.Scene, baseKey: string): string {
+  if (!scene.textures.exists(baseKey)) return baseKey;
+  let key = `${baseKey}_g${++generatedKeySerial}`;
+  while (scene.textures.exists(key)) key = `${baseKey}_g${++generatedKeySerial}`;
+  return key;
+}
+
 export function charFrameName(dir: CharDir, frame: CharFrame): string {
   return `${dir}${frame}`;
 }
@@ -38,40 +69,57 @@ export function charFrameName(dir: CharDir, frame: CharFrame): string {
  */
 export function ensureCharSheet(scene: Phaser.Scene, cfg: CharConfig, scale = CHAR_SCALE): string {
   const s = Math.max(1, Math.round(scale));
-  const key = `chr_${shortHash(charCfgKey(cfg))}_${s}`;
-  if (scene.textures.exists(key)) return key;
+  const baseKey = `chr_${shortHash(charCfgKey(cfg))}_${s}`;
+  const reusable = textureKeyFor(scene, baseKey, charFrameName('down', 0));
+  if (reusable) return reusable;
+  const key = freshTextureKey(scene, baseKey);
 
   const sheet = renderCharSheet(cfg);
   const w = sheet.w * s;
   const h = sheet.h * s;
-  const canvas = scene.textures.createCanvas(key, w, h);
-  if (!canvas) return key;
-  const ctx = canvas.getContext();
-  ctx.clearRect(0, 0, w, h);
+  let canvas: Phaser.Textures.CanvasTexture | null = null;
+  try { canvas = scene.textures.createCanvas(key, w, h); } catch { return '__DEFAULT'; }
+  if (!canvas) return '__DEFAULT';
+  const ctx = canvasContextOf(canvas);
+  if (!ctx) { destroyCanvasTexture(canvas); return '__DEFAULT'; }
+  try { ctx.clearRect(0, 0, w, h); } catch { destroyCanvasTexture(canvas); return '__DEFAULT'; }
 
   // 정수 배율 확대 — 보간 없이 블록으로 찍는다
-  const img = ctx.createImageData(sheet.w, sheet.h);
-  img.data.set(sheet.data);
-  if (s === 1) {
-    ctx.putImageData(img, 0, 0);
-  } else {
-    const tmp = document.createElement('canvas');
-    tmp.width = sheet.w; tmp.height = sheet.h;
-    const tctx = tmp.getContext('2d');
-    if (tctx) {
+  try {
+    const img = ctx.createImageData(sheet.w, sheet.h);
+    img.data.set(sheet.data);
+    if (s === 1) {
+      ctx.putImageData(img, 0, 0);
+    } else {
+      const tmp = document.createElement('canvas');
+      tmp.width = sheet.w; tmp.height = sheet.h;
+      const tctx = tmp.getContext('2d');
+      if (!tctx) { destroyCanvasTexture(canvas); return '__DEFAULT'; }
       tctx.putImageData(img, 0, 0);
       ctx.imageSmoothingEnabled = false;
       ctx.drawImage(tmp, 0, 0, sheet.w, sheet.h, 0, 0, w, h);
     }
+  } catch {
+    destroyCanvasTexture(canvas);
+    return '__DEFAULT';
   }
 
   const cell = CHAR_CELL * s;
-  CHAR_DIRS.forEach((d, r) => {
-    CHAR_FRAMES.forEach((f, c) => {
-      canvas.add(charFrameName(d, f), 0, c * cell, r * cell, cell, cell);
+  try {
+    CHAR_DIRS.forEach((d, r) => {
+      CHAR_FRAMES.forEach((f, c) => {
+        canvas!.add(charFrameName(d, f), 0, c * cell, r * cell, cell, cell);
+      });
     });
-  });
-  canvas.refresh();
+  } catch {
+    destroyCanvasTexture(canvas);
+    return '__DEFAULT';
+  }
+  if (!refreshCanvasTexture(canvas, `캐릭터 시트 ${key}`)) {
+    destroyCanvasTexture(canvas);
+    return '__DEFAULT';
+  }
+  generatedKeys.set(baseKey, key);
   return key;
 }
 
@@ -90,26 +138,38 @@ export function ensureCharSheet(scene: Phaser.Scene, cfg: CharConfig, scale = CH
 export function ensureFacePortrait(scene: Phaser.Scene, cfg: CharConfig, scale = 10): string {
   // 구 호출부는 "16 아트 px x scale"을 기대했다 — 같은 표시 크기를 유지하도록 32 격자 배율로 환산
   const s = Math.max(1, Math.round((16 * Math.max(1, scale)) / PORTRAIT_CELL));
-  const key = `face2_${shortHash(charCfgKey(cfg))}_${s}`;
-  if (scene.textures.exists(key)) return key;
+  const baseKey = `face2_${shortHash(charCfgKey(cfg))}_${s}`;
+  const reusable = textureKeyFor(scene, baseKey, '__BASE');
+  if (reusable) return reusable;
+  const key = freshTextureKey(scene, baseKey);
 
   const art = renderFacePortrait(cfg);
-  const canvas = scene.textures.createCanvas(key, art.w * s, art.h * s);
-  if (!canvas) return key;
-  const ctx = canvas.getContext();
-  ctx.clearRect(0, 0, art.w * s, art.h * s);
+  let canvas: Phaser.Textures.CanvasTexture | null = null;
+  try { canvas = scene.textures.createCanvas(key, art.w * s, art.h * s); } catch { return '__DEFAULT'; }
+  if (!canvas) return '__DEFAULT';
+  const ctx = canvasContextOf(canvas);
+  if (!ctx) { destroyCanvasTexture(canvas); return '__DEFAULT'; }
+  try { ctx.clearRect(0, 0, art.w * s, art.h * s); } catch { destroyCanvasTexture(canvas); return '__DEFAULT'; }
 
-  const img = ctx.createImageData(art.w, art.h);
-  img.data.set(art.rgba);
-  const tmp = document.createElement('canvas');
-  tmp.width = art.w; tmp.height = art.h;
-  const tctx = tmp.getContext('2d');
-  if (tctx) {
+  try {
+    const img = ctx.createImageData(art.w, art.h);
+    img.data.set(art.rgba);
+    const tmp = document.createElement('canvas');
+    tmp.width = art.w; tmp.height = art.h;
+    const tctx = tmp.getContext('2d');
+    if (!tctx) { destroyCanvasTexture(canvas); return '__DEFAULT'; }
     tctx.putImageData(img, 0, 0);
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(tmp, 0, 0, art.w, art.h, 0, 0, art.w * s, art.h * s);
+  } catch {
+    destroyCanvasTexture(canvas);
+    return '__DEFAULT';
   }
-  canvas.refresh();
+  if (!refreshCanvasTexture(canvas, `초상 텍스처 ${key}`)) {
+    destroyCanvasTexture(canvas);
+    return '__DEFAULT';
+  }
+  generatedKeys.set(baseKey, key);
   return key;
 }
 

@@ -1,6 +1,13 @@
 # The Real Angler — 구현 계획서 (IMPLEMENTATION_PLAN)
 
-> **최종 업데이트**: 2026-09-18 — **155차: 인지 UX 전면(퀘스트 화살표·추적 · 전체 지도·핀 · 채비 고정 · 획득 토스트) + 사시미 별 5개 + 3끼 생존 + 초상 정합 + 혼잣말 퀘 우호도 정정**.
+> **최종 업데이트**: 2026-09-19 — **162차: 속초 씬 전환 Phaser Frame 오류 근본 수정 · stale 퀘스트 UI 참조 세대 초기화**.
+> 상세 [워크로그 162](../docs/wiki/03-WORKLOG/2026-09-19-162-sokcho-scene-transition-frame-fix.md).
+> 직전: 161차 Phaser Frame 수명주기 회귀 수정([워크로그 161](../docs/wiki/03-WORKLOG/2026-09-19-161-phaser-frame-lifecycle.md)).
+> 상세 [워크로그 161](../docs/wiki/03-WORKLOG/2026-09-19-161-phaser-frame-lifecycle.md).
+> 직전: 160차 대화 초상 마스크 회귀 수정·공통 카드 레이아웃([워크로그 160](../docs/wiki/03-WORKLOG/2026-09-19-160-dialogue-portrait-mask-regression.md)).
+> 직전: 158차 대화 초상 클리핑·퀵 퀘스트 독립 크기·심리스 렌더 가드([워크로그 158](../docs/wiki/03-WORKLOG/2026-09-19-158-dialogue-hud-render-guards.md)).
+> 직전: 157차 전체 위키 확장·요리 분류·대화창 리디자인([워크로그 157](../docs/wiki/03-WORKLOG/2026-09-19-157-wiki-cooking-dialogue.md)).
+> 이전: 155차 인지 UX 전면([워크로그 155](../docs/wiki/03-WORKLOG/2026-09-18-155-quest-guide-fullmap-rig-lock.md)).
 > 상세 [워크로그 155](../docs/wiki/03-WORKLOG/2026-09-18-155-quest-guide-fullmap-rig-lock.md).
 > 직전: 154차 불요리([워크로그 154](../docs/wiki/03-WORKLOG/2026-09-18-154-fire-cooking.md)) · 153차 실목표 70편([워크로그 153](../docs/wiki/03-WORKLOG/2026-09-18-153-real-objectives-chapter-collapse.md)).
 >
@@ -723,10 +730,12 @@
    (조합 설치 · 집 주방 · 레시피 8 · 실시간 시뮬 · 맛 별 5개 · 감쇠 · 걸어두기 · 도움말 · EN — `CookScene`은 쓰지 않고 패널로)
 5. ~~요리 개체화 1단계~~ ✅**156차**
    (「레시피 ≠ 요리」 — 매운탕 어종별 변형 · `DishInstance` · 상세보기 · 요리 도감 탭)
-6. **요리 개체화 2단계 — 나머지 7개 레시피 변형** ← **사용자 확인 대기**
+6. **전체 위키 아티팩트 반영 + 요리 분류 회귀 검증** ← **157차 후속**
+   (`tools/gen_game_wiki_data.mjs --html` 결과를 Claude 아티팩트에 반영하고 `회(사시미)` exact filter를 전수 점검)
+7. **요리 개체화 2단계 — 나머지 7개 레시피 변형** ← **사용자 확인 대기**
    (사용자 지시: *"매운탕 3종 … 정상 작동을 확인한 뒤 나머지 7개를 확장"*.
    `VARIANT_RECIPES`에 id 추가 + 어종 프로필 확장 + Stage 8 아이템 라이브러리 + Stage 9 `TUNING.cook` 밸런싱)
-7. **농장** ← 그 다음(농사 스킬 배선·타입 정의 포함 — [S8](../docs/wiki/02-SYSTEMS/home-base.md) §5 E1~E5).
+8. **농장** ← 그 다음(농사 스킬 배선·타입 정의 포함 — [S8](../docs/wiki/02-SYSTEMS/home-base.md) §5 E1~E5).
    요리 후보 확장·화구 실사 에셋·F8 조율은 백로그(154·156차 잔여).
 
 ### 🚧 (구) 다음 착수 메모 — 통발 D2 → 불요리 → 농장

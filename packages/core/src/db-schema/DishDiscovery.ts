@@ -4,7 +4,7 @@
  *
  * ⚖ 도감 = **종류**(레시피 × 주재료 어종), 인벤 음식 = 개체(`DishInstance`). 인스턴스마다 항목을 만들지 않는다.
  * ⚖ 발견 id = `discovery_<recipeId>_<speciesId>` · 주재료 어종이 없으면 `generic`.
- * ⚖ 156차에 어종별로 갈라지는 레시피는 `VARIANT_RECIPES`(매운탕)뿐 — 나머지는 Stage 7에서 편입한다.
+ * ⚖ 156차에 어종별로 갈라지는 레시피는 두 종류의 매운탕이다 — 서더리와 통생선을 별도 항목으로 센다.
  */
 
 import { FISH_DATABASE } from './FishDatabase.js';
@@ -13,7 +13,7 @@ import { speciesMainIngredient } from './CookIngredientDatabase.js';
 import { dishBaseName } from './RecipeLore.js';
 
 /** 주재료 어종에 따라 결과가 갈라지는 레시피 (Stage 3 = 매운탕만) */
-export const VARIANT_RECIPES: ReadonlySet<string> = new Set(['stew_red']);
+export const VARIANT_RECIPES: ReadonlySet<string> = new Set(['stew_red', 'stew_red_whole']);
 
 export function isVariantRecipe(recipeId: string): boolean {
   return VARIANT_RECIPES.has(recipeId);
@@ -26,7 +26,9 @@ export function dishDiscoveryId(recipeId: string, speciesId: string | null): str
 export function parseDishDiscoveryId(id: string): { recipeId: string; speciesId: string | null } | null {
   if (!id.startsWith('discovery_')) return null;
   const rest = id.slice('discovery_'.length);
-  const r = FIRE_RECIPES.find((x) => rest === `${x.id}_generic` || rest.startsWith(`${x.id}_`));
+  // `stew_red_whole`도 `stew_red_`로 시작하므로 긴 id부터 비교해야 한다.
+  const r = [...FIRE_RECIPES].sort((a, b) => b.id.length - a.id.length)
+    .find((x) => rest === `${x.id}_generic` || rest.startsWith(`${x.id}_`));
   if (!r) return null;
   const sp = rest.slice(r.id.length + 1);
   return { recipeId: r.id, speciesId: sp === 'generic' ? null : sp };
@@ -49,7 +51,7 @@ export function dishVariantCandidates(recipeId: string): string[] {
   if (!r) return [];
   const mainReq = r.required.find((q) => q.role === 'main');
   const mains = mainReq ? (Array.isArray(mainReq.ing) ? mainReq.ing : [mainReq.ing]) : [];
-  const wantsFish = mains.includes('fish') || mains.includes('fish_dressed');
+  const wantsFish = mains.includes('fish') || mains.includes('fish_dressed') || mains.includes('seodeori');
   const wantsEel = mains.includes('eel');
   const wantsSquid = mains.includes('squid');
   if (!wantsFish && !wantsEel && !wantsSquid) return [];

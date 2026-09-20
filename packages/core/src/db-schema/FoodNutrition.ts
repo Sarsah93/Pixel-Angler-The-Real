@@ -49,8 +49,9 @@ export const FOOD_NUTRITION: Record<string, FoodNutrition> = {
   shop_black_sea_bream_sashimi_small: { g: 300, kcal: 330, ml: 130 },
   // ── 삶은 문어 (098차) ──
   boiled_octopus: { g: 300, kcal: 250, ml: 120 },
-  // ── 불요리 8종 (1인분) ──
+  // ── 불요리 9종 (1인분) ──
   stew_red:         { g: 650, kcal: 520, ml: 380 },
+  stew_red_whole:   { g: 700, kcal: 560, ml: 380 },
   stew_clear:       { g: 650, kcal: 430, ml: 420 },
   grill_fish:       { g: 300, kcal: 420, ml: 40 },
   braise_fish:      { g: 400, kcal: 560, ml: 120 },

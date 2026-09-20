@@ -35,13 +35,13 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
   'M1-01': E(
     "I locked the mountain house and dropped the key in the mailbox. I didn't look back, because looking back would have taken me inside again. There is one last bus and it goes to Sokcho. One backpack, one of my father's reel rods, and that is everything I own. I get off at the end of the line and smell the sea. Twenty-two years old, standing alone in front of it for the first time. Two words penciled on the back of the family photo: Yeonggeumjeong. That is where I will start.",
     { obj: ["Walk to Yeonggeumjeong, the place written on the back of the photo"],
-      epi: "I am standing in front of the same rock as the photo. Nothing greets me but the sound of the waves. Still, I came." }),
+      epi: "I am standing in front of the same rock as the photo. I remember visiting a fish market with my parents — somewhere near the breakwater I can see from here. Should I walk toward Dongmyeonghang?" }),
   'M1-02': E(
-    "I started crying in front of the stall without meaning to. Instead of comfort, the old woman pointed at the ice boxes. I know the money in my backpack will not last two days. The boxes are heavy and my hands go numb fast. But I need even this much to start anything at all. Carry first. Cry after.",
-    { offer: "If you're going to cry, carry the ice first and cry after. Boxes behind the stall, take them to the auction hall. Lift with your legs, not your back.",
+    "I followed the breakwater toward Dongmyeonghang. The old woman at the stall kept watching me. This was the place. It has changed, but the memories are coming back — enough to make my eyes sting. What should I do? Maybe I should ask her for advice.",
+    { offer: "You came looking for the memory in that photo. Cry if you need to. But could you carry one ice box from behind the stall to the auction hall? Start with something you can do.",
       progress: "There are still boxes left. Come back when they're all moved.",
       done: "Your wages. At least this much is your own money. The shop inside the market sells ice and bait. Prices move every day, so learn them with your eyes.",
-      obj: ["Carry Manbok Store's ice boxes to the auction hall", "Step into the shop inside the market and look at the prices once"],
+      obj: ["Carry Ok-seon's errand ice box to the auction hall", "Step into the shop inside the market and look at the prices once"],
       epi: "The envelope was thin. Still, it is the first money with my name on it." }),
   'M1-03': E(
     "They said there was an old fishery cooperative dormitory behind the stall. When I opened the door, dust and mildew came out first. One bed, one refrigerator, one window. The old woman held out a trainee card. Nobody here becomes a member on their first day, she said. One hundred and eighty days. The moment I took that number I understood I no longer had a place to go back to, I had a place to stay.",

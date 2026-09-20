@@ -88,7 +88,15 @@ export interface LineSpec {
   color: string;
   /** 가격 (원/100m) */
   priceKRW: number;
+  /** 스풀 길이 — SAISO AMSTRONG 라인업은 150~400m를 50m 간격으로 제공 */
+  spoolLengthM?: number;
+  /** 라인 형태 — float / semi-float / suspend / sinking */
+  lineForm?: LineForm;
+  /** 공용 인벤토리·상세보기 아이콘 텍스처 키 */
+  iconTexture?: string;
 }
+
+export type LineForm = 'float' | 'semi-float' | 'suspend' | 'sinking';
 
 // ─────────────────────────────────────────────
 // 찌 (Float) 스펙

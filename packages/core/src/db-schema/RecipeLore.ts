@@ -19,12 +19,20 @@ export interface RecipeLore {
 
 export const RECIPE_LORE: Record<string, RecipeLore> = {
   stew_red: {
-    shortDescriptionKo: '다양한 생선과 채소를 넣고 끓이는 얼큰한 국물 요리.',
-    shortDescriptionEn: 'A spicy stew of fish and vegetables — any fish with a good frame will do.',
-    cookingTipKo: '생선의 종류와 신선도에 따라 국물의 풍미가 달라집니다.',
-    cookingTipEn: 'The broth changes with the kind and freshness of the fish.',
-    ingredientTipKo: '살이 탄탄한 생선은 오래 끓여도 형태가 잘 유지됩니다.',
-    ingredientTipEn: 'Firm-fleshed fish hold their shape through a long simmer.',
+    shortDescriptionKo: '생선의 머리와 뼈인 서더리로 국물을 낸 얼큰한 매운탕.',
+    shortDescriptionEn: 'A spicy maeuntang made from a fish head and frame.',
+    cookingTipKo: '서더리가 많을수록 국물이 깊어지고, 살점은 마지막에 건져 먹기 좋습니다.',
+    cookingTipEn: 'More frame makes a deeper broth; save the meat for the end.',
+    ingredientTipKo: '손질 부산물인 머리·등뼈·갈비뼈를 모아 넣습니다.',
+    ingredientTipEn: 'Use the head, spine and ribs left from fish preparation.',
+  },
+  stew_red_whole: {
+    shortDescriptionKo: '어종 하나를 통째로 넣어 살과 국물을 함께 즐기는 얼큰한 매운탕.',
+    shortDescriptionEn: 'A spicy maeuntang made with one whole fish.',
+    cookingTipKo: '통생선은 살이 풀어지기 전에 한 번만 뒤집어 형태를 지켜 주세요.',
+    cookingTipEn: 'Turn the whole fish only once before its flesh begins to fall apart.',
+    ingredientTipKo: '서더리가 아니라 손질하지 않은 한 마리 생선을 사용합니다.',
+    ingredientTipEn: 'Use one whole fish rather than a frame or dressed fillet.',
   },
   stew_clear: {
     shortDescriptionKo: '무와 대파로 시원하게 끓인 맑은 탕. 생선 맛이 그대로 난다.',
@@ -77,11 +85,17 @@ export const DISH_VARIANT_LORE: Record<string, Record<string, { descKo: string; 
     flatfish: { descKo: '담백하고 부드러운 광어 살이 들어간 깔끔한 매운탕.', descEn: 'A clean maeuntang with the mild, soft flesh of flounder.' },
     black_seabream: { descKo: '탄탄한 감성돔 살과 진한 생선 풍미가 어우러진 매운탕.', descEn: 'A maeuntang where firm seabream flesh meets a deep fish flavour.' },
   },
+  stew_red_whole: {
+    black_rockfish: { descKo: '우럭 한 마리를 통째로 넣어 살이 넉넉하고 국물이 시원한 매운탕.', descEn: 'A whole black rockfish maeuntang with generous flesh and a clean broth.' },
+    flatfish: { descKo: '광어 한 마리를 통째로 넣어 담백한 살과 칼칼한 국물을 살린 매운탕.', descEn: 'A whole flounder maeuntang with mild flesh and a spicy broth.' },
+    black_seabream: { descKo: '감성돔 한 마리를 통째로 넣어 탄탄한 살과 깊은 풍미를 낸 매운탕.', descEn: 'A whole black seabream maeuntang with firm flesh and deep flavour.' },
+  },
 };
 
 /** 어종 이름이 앞에 붙는 레시피의 이름 틀 — `ko(어종)` / `en(Species)` */
 export const RECIPE_BASE_NAME: Record<string, { ko: (sp: string) => string; en: (sp: string) => string }> = {
-  stew_red: { ko: (sp) => `${sp} 매운탕`, en: (sp) => `${sp} Maeuntang` },
+  stew_red: { ko: (sp) => `${sp} 서더리 매운탕`, en: (sp) => `${sp} Fish-frame Maeuntang` },
+  stew_red_whole: { ko: (sp) => `${sp} 매운탕`, en: (sp) => `${sp} Maeuntang` },
   stew_clear: { ko: (sp) => `${sp} 지리`, en: (sp) => `${sp} Jiri` },
   grill_fish: { ko: (sp) => `${sp}구이`, en: (sp) => `Grilled ${sp}` },
   braise_fish: { ko: (sp) => `${sp}조림`, en: (sp) => `Braised ${sp}` },

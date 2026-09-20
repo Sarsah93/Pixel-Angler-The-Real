@@ -15,13 +15,18 @@ import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { GameState } from '../store/GameState.js';
 import { ensureFacePortrait } from './CharacterSprite.js';
 import { characterLook } from '../data/EquipOutfit.js';
+import { applyPortraitMask, type PortraitMaskHandle } from './PortraitMask.js';
+import { PORTRAIT_LAYOUT } from './PortraitLayout.js';
 
 const W = 1040;
 const H = 300;
 const FONT = '"Noto Sans KR", sans-serif';
-const FACE_SCALE = 9;
-const FACE_PX = 16 * FACE_SCALE;
-const PORTRAIT_W = FACE_PX + 40;
+/** 혼잣말 전용 32×32 초상을 5배 nearest로 표시한다. */
+const FACE_SCALE = 10;
+const FACE_PX = 32 * Math.round((16 * FACE_SCALE) / 32);
+const PORTRAIT_W = FACE_PX + 48;
+const PORTRAIT_FRAME_W = PORTRAIT_W - PORTRAIT_LAYOUT.frameSideInset;
+const PORTRAIT_FRAME_H = FACE_PX + 20;
 const TEXT_X = PORTRAIT_W + 12;
 const TEXT_W = W - TEXT_X - 22;
 const BODY_PX = 20;
@@ -41,6 +46,7 @@ export class MonologuePanel extends DraggablePanel {
   private logText?: Phaser.GameObjects.Text;
   private logInner?: Phaser.GameObjects.Container;
   private logMask?: Phaser.GameObjects.Graphics;
+  private portraitMask?: PortraitMaskHandle;
   private caret?: Phaser.GameObjects.Graphics;
   private caretTween?: Phaser.Tweens.Tween;
   private hintText?: Phaser.GameObjects.Text;
@@ -60,7 +66,12 @@ export class MonologuePanel extends DraggablePanel {
       if (ev.code === 'Enter' || ev.code === 'Space' || ev.code === 'Escape') { ev.preventDefault(); this.advance(); }
     };
     scene.input.keyboard?.on('keydown', this.keyHandler);
-    this.postUpdate = () => { if (this.x !== this.lastX || this.y !== this.lastY) this.syncMask(); };
+    this.postUpdate = () => {
+      if (this.x !== this.lastX || this.y !== this.lastY) {
+        this.syncMask();
+        this.portraitMask?.sync();
+      }
+    };
     scene.events.on('postupdate', this.postUpdate);
 
     this.buildFrame();
@@ -73,6 +84,7 @@ export class MonologuePanel extends DraggablePanel {
     this.scene?.input?.keyboard?.off('keydown', this.keyHandler);
     this.scene?.events?.off('postupdate', this.postUpdate);
     this.logMask?.destroy();
+    this.portraitMask?.destroy();
     super.destroy(fromScene);
   }
 
@@ -94,19 +106,48 @@ export class MonologuePanel extends DraggablePanel {
 
     // 주인공 얼굴
     const g = this.scene.add.graphics();
-    const boxX = 10, boxY = 4, boxW = PORTRAIT_W - 20;
+    const boxX = PORTRAIT_LAYOUT.outerInset, boxY = 4;
+    const boxW = PORTRAIT_W - PORTRAIT_LAYOUT.outerInset * 2;
     const boxH = this.panelH - this.contentTop - 12;
-    g.fillStyle(0x08121c, 0.92); g.fillRect(boxX, boxY, boxW, boxH);
-    g.lineStyle(1, 0x2c5878, 1); g.strokeRect(boxX, boxY, boxW, boxH);
-    const fy = boxY + Math.max(6, Math.floor((boxH - FACE_PX - 22) / 2));
-    g.fillStyle(0x12263a, 1); g.fillRect(PORTRAIT_W / 2 - FACE_PX / 2, fy, FACE_PX, FACE_PX);
-    g.lineStyle(1, 0x3c6f95, 1); g.strokeRect(PORTRAIT_W / 2 - FACE_PX / 2, fy, FACE_PX, FACE_PX);
+    g.fillStyle(0x08121c, 0.96); g.fillRoundedRect(boxX, boxY, boxW, boxH, 12);
+    g.lineStyle(2, 0x356b8f, 0.9); g.strokeRoundedRect(boxX, boxY, boxW, boxH, 12);
+    g.lineStyle(1, 0x18344c, 1); g.strokeRoundedRect(boxX + 5, boxY + 5, boxW - 10, boxH - 10, 9);
+    // 구성 순서: 초상화 프레임 → 호감도 예약 슬롯 → 이름 슬롯.
+    // 혼잣말은 상대가 없으므로 호감도 텍스트는 비워 두되, NPC 대화와
+    // 동일한 기본 구조를 유지해 두 화면의 이름 위치가 달라지지 않게 한다.
+    const nameGap = PORTRAIT_LAYOUT.nameGap;
+    const nameH = PORTRAIT_LAYOUT.nameHeight;
+    const affinitySlotH = PORTRAIT_LAYOUT.affinityReservedHeight;
+    const stackH = PORTRAIT_FRAME_H + affinitySlotH + nameGap + nameH;
+    const top = boxY + Math.max(6, Math.floor((boxH - stackH) / 2));
+    const frameX = PORTRAIT_W / 2 - PORTRAIT_FRAME_W / 2;
+    g.fillStyle(0x12263a, 1); g.fillRoundedRect(frameX, top, PORTRAIT_FRAME_W, PORTRAIT_FRAME_H, PORTRAIT_LAYOUT.frameRadius);
+    g.lineStyle(2, 0x6b9fbc, 0.95); g.strokeRoundedRect(frameX, top, PORTRAIT_FRAME_W, PORTRAIT_FRAME_H, PORTRAIT_LAYOUT.frameRadius);
     c.add(g);
     const key = ensureFacePortrait(this.scene, characterLook(), FACE_SCALE);
-    c.add(this.scene.add.image(PORTRAIT_W / 2, fy, key).setOrigin(0.5, 0));
-    const nm = this.scene.add.text(PORTRAIT_W / 2, fy + FACE_PX + 5, GameState.player.nickname || '나', {
-      fontFamily: FONT, fontSize: '11px', color: '#9fc3d8',
-    }).setOrigin(0.5, 0);
+    // 32×32 초상 전체(얼굴·목·어깨)를 프레임 안에 넣고 상하 여백을 확보한다.
+    const imageSize = Math.min(FACE_PX, PORTRAIT_FRAME_H - 16);
+    const imageTop = top + Math.floor((PORTRAIT_FRAME_H - imageSize) / 2);
+    const portrait = this.scene.add.image(PORTRAIT_W / 2, imageTop, key)
+      .setOrigin(0.5, 0).setDisplaySize(imageSize, imageSize);
+    this.portraitMask = applyPortraitMask(this.scene, c, portrait, {
+      x: frameX + 3,
+      y: top + 3,
+      width: PORTRAIT_FRAME_W - 6,
+      height: PORTRAIT_FRAME_H - 6,
+      radius: 6,
+    });
+    c.add(portrait);
+
+    // 사용자 캐릭터 이름은 기존 호감도 텍스트와 분리된 독립 슬롯에 표시한다.
+    const nameY = top + PORTRAIT_FRAME_H + affinitySlotH + nameGap;
+    const nameX = PORTRAIT_W / 2 - (PORTRAIT_FRAME_W - 8) / 2;
+    const nameW = PORTRAIT_FRAME_W - 8;
+    g.fillStyle(0x08121c, 0.96); g.fillRoundedRect(nameX, nameY, nameW, nameH, 5);
+    g.lineStyle(1, 0x356b8f, 0.9); g.strokeRoundedRect(nameX, nameY, nameW, nameH, 5);
+    const nm = this.scene.add.text(PORTRAIT_W / 2, nameY + nameH / 2, GameState.player.nickname || '나', {
+      fontFamily: FONT, fontSize: '12px', color: '#ffe9a0', fontStyle: 'bold',
+    }).setOrigin(0.5);
     c.add(nm);
 
     // 대사 박스

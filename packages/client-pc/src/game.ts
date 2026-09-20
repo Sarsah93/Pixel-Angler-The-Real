@@ -101,6 +101,26 @@ export function createGame(): Phaser.Game {
 }
 
 /**
+ * Vite HMR용 게임 인스턴스 정리.
+ *
+ * Phaser 씬은 모듈이 갱신되어도 기존 Game 인스턴스 안에 남아 있으므로,
+ * UI 모듈만 바뀐 상태에서 싱글턴을 재사용하면 구 패널 클래스가 계속 그려질
+ * 수 있다. 엔트리의 HMR dispose에서 호출해 다음 평가 때 최신 씬 클래스로
+ * 게임을 다시 만들 수 있게 한다.
+ */
+export function disposeGame(): void {
+  const holder = globalThis as GameHolder;
+  const existing = holder[GAME_KEY];
+  if (!existing) return;
+
+  try {
+    existing.destroy(true);
+  } finally {
+    delete holder[GAME_KEY];
+  }
+}
+
+/**
  * "에러 표시 없는 검은 화면" 방어 2종 (2026-08-10 전수검사).
  *
  * 1) WebGL 컨텍스트 유실 — GPU 부하·드라이버 리셋 시 캔버스가 JS 에러 0으로 검게 멈춘다
@@ -145,6 +165,20 @@ function installCrashGuards(game: Phaser.Game): void {
 
   // ── 2) 전역 런타임 에러 배너 (1회) ──
   let errorBannerShown = false;
+  const reportRuntimeError = (error: unknown, source: string, location = ''): void => {
+    const err = error instanceof Error ? error : undefined;
+    const message = String(err?.message ?? error ?? '알 수 없는 오류');
+    const stack = err?.stack ?? '';
+    const scenes = game.scene.getScenes(true).map((s) => s.scene.key).join(',') || '(없음)';
+    // 배너는 짧게 유지하되, 다음 재현에서 원인을 잃지 않도록 전체 진단을 남긴다.
+    console.error('[PixelAngler] 런타임 오류', {
+      source, message, location, scenes, stack,
+    });
+    (globalThis as Record<string, unknown>).__PIXEL_ANGLER_LAST_ERROR = {
+      source, message, location, scenes, stack, at: new Date().toISOString(),
+    };
+    showErrorBanner(`${message}${location ? ` (${location})` : ''}`);
+  };
   const showErrorBanner = (summary: string): void => {
     if (errorBannerShown) return;
     errorBannerShown = true;
@@ -160,9 +194,10 @@ function installCrashGuards(game: Phaser.Game): void {
   };
   window.addEventListener('error', (ev) => {
     if (!ev.error) return;   // 리소스 로드 실패(img 등)는 제외 — 스크립트 예외만
-    showErrorBanner(String(ev.error?.message ?? ev.message));
+    const location = ev.filename ? `${ev.filename}:${ev.lineno}:${ev.colno}` : '';
+    reportRuntimeError(ev.error, 'window.error', location);
   });
   window.addEventListener('unhandledrejection', (ev) => {
-    showErrorBanner(String((ev.reason as Error | undefined)?.message ?? ev.reason));
+    reportRuntimeError(ev.reason, 'unhandledrejection');
   });
 }

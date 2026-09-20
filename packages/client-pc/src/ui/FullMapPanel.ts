@@ -43,10 +43,9 @@ const FONT = '"Noto Sans KR", sans-serif';
 const PAD = 24;
 const HDR = 28;
 /**
- * 155차 사용자 지시 — 왼쪽 버튼을 누른 채 좌→우로 끌면 **지도가 왼쪽으로 밀린다**(카메라를 끄는 문법).
- * 지도를 손으로 잡아 끄는 문법(좌→우 = 지도가 오른쪽으로)이 필요해지면 +1 로 바꾼다 — 이 한 곳만.
+ * 지도를 잡아 옮긴다. 위로 드래그하면 지도는 위로 움직이고 남쪽(아래쪽) 지형이 드러난다.
  */
-const DRAG_DIR = -1;
+const DRAG_DIR = 1;
 
 export class FullMapPanel extends Phaser.GameObjects.Container {
   private readonly cfg: FullMapConfig;

@@ -66,7 +66,7 @@ export class CoolerPanel extends DraggablePanel {
   private dragIdx: number | null = null;
   private dragStart = { x: 0, y: 0 };
   private dragging = false;
-  private dragGhost?: Phaser.GameObjects.Image | Phaser.GameObjects.Text;
+  private dragGhost?: Phaser.GameObjects.Image | Phaser.GameObjects.Text | Phaser.GameObjects.Container;
   private dragMoveHandler: (p: Phaser.Input.Pointer) => void;
   private dragUpHandler: (p: Phaser.Input.Pointer) => void;
 

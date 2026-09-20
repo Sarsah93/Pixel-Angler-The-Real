@@ -409,6 +409,11 @@ export class RegionFieldScene extends Phaser.Scene {
   }
 
   init(dataIn: RegionFieldInit): void {
+    // 같은 Scene 인스턴스의 restart/start에서는 Phaser가 init과 create 사이에
+    // 이전 display list를 정리한다. 이 짧은 구간에 update가 한 번 들어오면
+    // 이전 Text/RenderTexture를 새 지역 데이터로 갱신하려다 폐기된 Frame을
+    // 참조할 수 있으므로, 새 create가 준비될 때까지 필드 루프를 잠근다.
+    this.bootFailed = true;
     this.region = dataIn.region;
     this.graph = REGION_MAP_GRAPHS[this.region];
     // 심리스 모드 판정 — 등록 지역이면 맵 그래프(엣지 전환)를 무시하고 단일 맵으로 연다.
@@ -420,7 +425,10 @@ export class RegionFieldScene extends Phaser.Scene {
       : (dataIn.mapId ?? this.graph!.entryMapId);
     this.entryEdge = dataIn.entryEdge ?? null;
     this.entryT = dataIn.entryT ?? 0.5;
-    this.chunks = undefined;
+    // 이전 create의 자원은 해당 create가 등록한 shutdown 콜백이 소유한다.
+    // 여기서 `this.chunks`를 즉시 파괴하면 아직 이전 display list가 한 프레임 렌더 중일 수 있고,
+    // 더 나쁘게는 이전 shutdown 콜백이 새 create의 `this.chunks`를 잡아 속초 청크를 파괴할 수 있다.
+    // 따라서 init에서는 참조를 갈아끼우지 않고, 세대별 로컬 참조를 shutdown에서 정리한다.
     this.regionMeta = undefined;
     this.regionPois = [];
     this.poiDoors = [];
@@ -444,6 +452,27 @@ export class RegionFieldScene extends Phaser.Scene {
     this.pauseItems = [];
     this.pauseRowBgs = [];
     this.hud = undefined;
+    // 씬 재시작 때 이전 디스플레이 리스트는 Phaser가 파괴하지만, 필드 씬의
+    // 지연 생성 UI 참조는 클래스 필드에 남는다. 특히 퀘스트 화살표 라벨은
+    // 다음 update()에서 setText()를 호출하므로, 파괴된 CanvasTexture의 Frame을
+    // 다시 갱신해 `drawImage` 예외를 만들 수 있다. 새 create 세대는 항상 새 UI를
+    // 만들도록 참조와 관련 상태를 함께 초기화한다.
+    this.questGuideG = undefined;
+    this.questGuideLbl = undefined;
+    this.pinArrowG = undefined;
+    this.pinArrowLbl = undefined;
+    this.questGuideAt = 0;
+    this.questTargetPos = null;
+    this.guideItemNames.clear();
+    this.fullMapClose = undefined;
+    this.lastMiniMarkers = [];
+    this.titleTxt = undefined;
+    this.titlePlateG = undefined;
+    this.chargeBar = undefined;
+    this.castLineG = undefined;
+    this.placeG = undefined;
+    this.editGhost = undefined;
+    this.editPreviewG = undefined;
     this.popupStack = [];
     this.invPanel = null;
     this.statusPanel = null;
@@ -519,9 +548,6 @@ export class RegionFieldScene extends Phaser.Scene {
     //    shutdown 정리 도중 예외로 남으면, legacy 지역(홈타운)에서도 update()가 죽은 RenderTexture에
     //    베이킹을 시도해 "Cannot read properties of null (reading 'drawImage')"가 난다(2026-08-29 리포트).
     //    지역 무관하게 create 시작 시 반드시 비운다.
-    this.chunks = undefined;
-    this.traffic = undefined;
-    this.poiWalls = undefined;
     this.poiObjects.clear();
     this.occludersByChunk.clear();
     this.faded.clear();
@@ -532,6 +558,9 @@ export class RegionFieldScene extends Phaser.Scene {
     // 지연 생성 Text — shutdown 때 디스플레이 리스트가 파괴해 캔버스 컨텍스트가 null이 된 채 참조만 남는다
     //   (홈타운 재진입 시 setText → Frame.updateUVs → drawImage null = 사용자 리포트의 실제 스택).
     this.objHintText = undefined;
+    // NPC 근접 힌트도 같은 수명 문제를 가진다. 홈타운에서 만든 Text를 속초 씬이
+    // 재사용하면 첫 updateNpcHint()의 setText가 파괴된 CanvasTexture를 갱신한다.
+    this.npcHintText = undefined;
     // 맵 JSON 로드 실패(서버 순단·404 등) 시 mapData가 캐시에 없다 — 그대로 진행하면
     // 아래 필드 접근에서 TypeError로 create가 중단돼 **에러 표시 없는 검은 화면**이 된다
     // (2026-08-10 전수검사). 안내를 띄우고 메인 메뉴로 안전 복귀한다.
@@ -636,10 +665,22 @@ export class RegionFieldScene extends Phaser.Scene {
       // 스폰 지점 주변 상주 즉시 확보 (충돌 바디는 로드 즉시 생성 — 낙하/관통 방지)
       this.chunks.update(this.playerBody.x, this.playerBody.y);
       // 주행 차량 — 도로 그래프 우측통행 (101차 후속)
-      this.traffic = new TrafficSystem(this, this.regionRoads, TR, 70, this.cols, this.rows, this.trafficSeed());
+      // 배경 차량은 교차로 판정 오류가 누적될 때 화면을 막지 않도록 과밀을 피한다.
+      // 도로 그래프가 커져도 기본 36대 안에서 흐름을 유지한다.
+      this.traffic = new TrafficSystem(this, this.regionRoads, TR, 36, this.cols, this.rows, this.trafficSeed());
+      // 중요: `this.chunks`를 캡처하지 않으면 다음 restart의 init/create가 먼저 실행된 경우
+      // 이전 세대 shutdown 콜백이 새 속초 청크를 파괴한다. 반드시 생성 세대의 객체만 정리한다.
+      const ownedChunks = this.chunks;
+      const ownedTraffic = this.traffic;
+      const ownedPoiWalls = this.poiWalls;
       this.events.once('shutdown', () => {
-        this.traffic?.destroy(); this.traffic = undefined;
-        this.chunks?.destroy(); this.chunks = undefined; closeMapEditor();
+        ownedTraffic?.destroy();
+        ownedChunks?.destroy();
+        ownedPoiWalls?.destroy(true);
+        if (this.chunks === ownedChunks) this.chunks = undefined;
+        if (this.traffic === ownedTraffic) this.traffic = undefined;
+        if (this.poiWalls === ownedPoiWalls) this.poiWalls = undefined;
+        closeMapEditor();
       });
     } else {
       this.renderTerrain();
@@ -702,8 +743,17 @@ export class RegionFieldScene extends Phaser.Scene {
       worldSeed: () => MultiplayerClient.worldSeed,
       feedingAt: (atMs) => this.feedingAt(atMs),
     });
-    this.events.once('shutdown', () => { this.fieldEvents?.destroy(); this.fieldEvents = undefined; });
-    this.events.once('shutdown', () => { this.nuisance?.destroy(); this.nuisance = undefined; });
+    // shutdown 콜백은 다음 restart의 create보다 늦게 실행될 수 있다. 현재 필드를
+    // 참조하면 이전 세대의 정리 코드가 새 세대 시스템을 파괴할 수 있으므로,
+    // 생성 시점의 객체만 소유·정리한다.
+    const ownedFieldEvents = this.fieldEvents;
+    const ownedNuisance = this.nuisance;
+    this.events.once('shutdown', () => {
+      ownedFieldEvents?.destroy();
+      ownedNuisance?.destroy();
+      if (this.fieldEvents === ownedFieldEvents) this.fieldEvents = undefined;
+      if (this.nuisance === ownedNuisance) this.nuisance = undefined;
+    });
 
     // 인벤토리 조작으로 퀵슬롯이 바뀌면 HUD 갱신 (restart 중복 등록 방지)
     this.events.off('inventory-changed');
@@ -1902,7 +1952,7 @@ export class RegionFieldScene extends Phaser.Scene {
     this.regionPatch.roads = this.regionRoads;
     this.chunks?.setRoads(this.regionRoads);
     this.traffic?.destroy();
-    this.traffic = new TrafficSystem(this, this.regionRoads, TR, 70, this.cols, this.rows, this.trafficSeed());
+    this.traffic = new TrafficSystem(this, this.regionRoads, TR, 36, this.cols, this.rows, this.trafficSeed());
     setMapEditorStatus(`${msg} · 저장하면 patch.json roads 오버라이드 (타일 r/w는 판정용 — 필요하면 지형 탭에서 함께 칠하세요)`);
   }
 
@@ -2634,7 +2684,6 @@ export class RegionFieldScene extends Phaser.Scene {
       const activeId = InventoryStore.quickslots[GameState.player.activeQuickslotIndex];
       const activeItem = activeId ? InventoryStore.find(activeId) : undefined;
       if (activeItem?.tool === 'rod') {
-        this.floatingHint('낚싯대를 손에 착용하세요 (E 장비창 — 인벤토리에서 손 슬롯으로 드래그)');
       }
       return;
     }
@@ -3453,6 +3502,8 @@ export class RegionFieldScene extends Phaser.Scene {
   }
 
   update(_time: number, delta: number): void {
+    // init → create 사이 또는 shutdown 직전의 stale update 차단.
+    if (this.bootFailed || !this.playerBody?.active) return;
     this.updateStoryProximity(delta);
     this.nuisance?.update(delta);
     if (this.traffic) {
@@ -3478,7 +3529,6 @@ export class RegionFieldScene extends Phaser.Scene {
         }
       }
     }
-    if (this.bootFailed) return;   // 맵 로드 실패 안내 화면 — 필드 오브젝트가 없다
     this.hud?.updatePlayerMarker(this.playerBody.x, this.playerBody.y);
     this.updateQuestGuide(delta);
     this.updateWeatherFx(delta);
@@ -3819,7 +3869,15 @@ export class RegionFieldScene extends Phaser.Scene {
           backgroundColor: '#0a1628cc', padding: { x: 5, y: 2 },
         }).setOrigin(0.5, 1).setDepth(30);
       }
-      this.objHintText.setText(label).setPosition(px, this.playerLabelY - 20).setVisible(true);
+      try {
+        this.objHintText.setText(label).setPosition(px, this.playerLabelY - 20).setVisible(true);
+      } catch (e) {
+        // Scene shutdown can destroy Phaser Text's backing canvas before a
+        // final proximity tick returns. Drop the stale reference and let the
+        // next active tick recreate it instead of propagating drawImage null.
+        console.warn('[RegionFieldScene] 오래된 오브젝트 힌트 텍스트 폐기', e);
+        this.objHintText = undefined;
+      }
     } else {
       this.objHintText?.setVisible(false);
     }
@@ -4530,8 +4588,13 @@ export class RegionFieldScene extends Phaser.Scene {
           backgroundColor: '#0a1628dd', padding: { x: 6, y: 3 },
         }).setOrigin(0.5, 1).setDepth(60);
       }
-      this.npcHintText.setText(`[F] ${npc?.nameKo ?? nearest.npcId}${tag}`)
-        .setPosition(px, this.playerLabelY).setVisible(true);
+      try {
+        this.npcHintText.setText(`[F] ${npc?.nameKo ?? nearest.npcId}${tag}`)
+          .setPosition(px, this.playerLabelY).setVisible(true);
+      } catch (e) {
+        console.warn('[RegionFieldScene] 오래된 NPC 힌트 텍스트 폐기', e);
+        this.npcHintText = undefined;
+      }
     } else this.npcHintText?.setVisible(false);
     // 방문 장소
     for (const pl of STORY_PLACES) {
@@ -4848,10 +4911,16 @@ export class RegionFieldScene extends Phaser.Scene {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (globalThis as any).__FIELD = { forage: this.forage, trapField: this.trapField, stoveField: this.stoveField, scene: this, cooler: CoolerStore, tuning: TUNING, getTrapById };
     }
+    const ownedForage = this.forage;
+    const ownedTrapField = this.trapField;
+    const ownedStoveField = this.stoveField;
     this.events.once('shutdown', () => {
-      this.forage?.destroy(); this.forage = undefined;
-      this.trapField?.destroy(); this.trapField = undefined;
-      this.stoveField?.destroy(); this.stoveField = undefined;
+      ownedForage?.destroy();
+      ownedTrapField?.destroy();
+      ownedStoveField?.destroy();
+      if (this.forage === ownedForage) this.forage = undefined;
+      if (this.trapField === ownedTrapField) this.trapField = undefined;
+      if (this.stoveField === ownedStoveField) this.stoveField = undefined;
     });
   }
 
@@ -4994,14 +5063,8 @@ export class RegionFieldScene extends Phaser.Scene {
     } else if (this.nearWater) {
       // 캐스팅 가능 조건 = **손에 낚싯대 착용** (퀵슬롯 선택은 무관 — 2026-08-05 개편)
       const rodEquipped = !!InventoryStore.getEquippedRod();
-      const activeId = InventoryStore.quickslots[GameState.player.activeQuickslotIndex];
-      const rodInQuickslot = activeId ? InventoryStore.find(activeId)?.tool === 'rod' : false;
-      this.promptText.setText(
-        rodEquipped ? '좌클릭 유지 = 조준·차지 → 놓으면 캐스팅 (마우스로 각도 조절)'
-        : rodInQuickslot ? '낚싯대를 손에 착용하세요 (E 장비창)'
-        : '낚싯대를 손에 착용하면 캐스팅할 수 있습니다 (E 장비창)',
-      );
-      this.promptText.setVisible(true);
+      this.promptText.setText(rodEquipped ? '좌클릭 유지 = 조준·차지 → 놓으면 캐스팅 (마우스로 각도 조절)' : '');
+      this.promptText.setVisible(rodEquipped);
     } else {
       this.promptText.setVisible(false);
     }

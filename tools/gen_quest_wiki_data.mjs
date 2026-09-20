@@ -12,10 +12,11 @@
  */
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const core = await import(path.join(ROOT, 'packages/core/dist/index.js'));
+// Windows Node는 C:\ 절대 경로를 ESM specifier로 받지 않으므로 file:// URL로 변환한다.
+const core = await import(pathToFileURL(path.join(ROOT, 'packages/core/dist/index.js')).href);
 
 /** 보상 아이템 이름 — 클라 데이터(QuestRewardItems.ts)에서 id → name 만 긁는다 */
 function rewardItemNames() {

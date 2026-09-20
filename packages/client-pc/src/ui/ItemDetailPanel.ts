@@ -43,8 +43,23 @@ export interface ItemDetailData {
   desc: string;
 }
 
+/** 상세 정보에서 수치를 빠르게 읽을 수 있는 5칸 별 표시. */
+const qualityStars = (value: number): string => {
+  const n = Math.max(0, Math.min(5, Math.round(value)));
+  return `${'★'.repeat(n)}${'☆'.repeat(5 - n)}`;
+};
+
+const scoreStars = (value: number): number => Math.max(0, Math.min(5, Math.round(value / 20)));
+
+const LINE_MATERIAL_LABEL: Record<NonNullable<InvItem['lineMaterial']>, string> = {
+  nylon: '나일론 모노', fluorocarbon: '카본(플루오로카본)', pe_braid: '합사(PE)', monofilament: '모노라인',
+};
+const LINE_FORM_LABEL: Record<NonNullable<InvItem['lineForm']>, string> = {
+  float: 'Float (부유)', 'semi-float': 'Semi-Float (반부유)', suspend: 'Suspend (중층 유지)', sinking: 'Sinking (침강)',
+};
+
 /** 아이템 종류별 상세 스펙 추론 생성 (목업) — 어획물은 개체 실측치·어종 정보(FISH_DATABASE) 표시 */
-export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory' | 'category' | 'qty' | 'basePrice' | 'condition' | 'conditionSinceMs' | 'speciesId' | 'lengthCm' | 'weightG' | 'floatBuoyG' | 'plateWip' | 'fault' | 'useCount' | 'tool' | 'bound' | 'dish' | 'dishInstance' | 'sashimi' | 'cutQuality' | 'hungerRestore' | 'hydrationRestore' | 'hpRestore' | 'fatigueRestore'>): ItemDetailData {
+export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory' | 'category' | 'qty' | 'basePrice' | 'condition' | 'conditionSinceMs' | 'speciesId' | 'lengthCm' | 'weightG' | 'floatBuoyG' | 'plateWip' | 'fault' | 'useCount' | 'tool' | 'bound' | 'dish' | 'dishInstance' | 'sashimi' | 'cutQuality' | 'hungerRestore' | 'hydrationRestore' | 'hpRestore' | 'fatigueRestore' | 'lineMaterial' | 'lineForm' | 'lineLengthM' | 'lineNo' | 'lineDiameterMm' | 'lineStrengthLb' | 'sinkerKind' | 'sinkerWeightG' | 'sinkerHo'>): ItemDetailData {
   const rows: ItemDetailRow[] = [];
   let desc = '';
   // 155차 — 완성 사시미 접시: 맛 별 5개(지금 / 담은 직후) — 불요리와 같은 문법
@@ -54,9 +69,9 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
     const base = sashimiStarsAt(m, 'fresh', m.madeAtMs);
     const ageMin = Math.max(0, Math.round((Date.now() - m.madeAtMs) / 60_000));
     const col = (n: number): string => (n >= 5 ? '#ffd257' : n >= 3 ? '#8affb0' : '#ff9a5a');
-    rows.push({ label: '별점 (지금)', value: `${now.stars} / 5 · ${now.total}점`, color: col(now.stars) });
-    rows.push({ label: '별점 (담은 직후)', value: `${base.stars} / 5 · ${base.total}점` });
-    for (const pp of now.parts) rows.push({ label: pp.labelKo, value: `${Math.round(pp.score * 100)}%`, color: pp.earned ? '#8affb0' : '#ff9a5a' });
+    rows.push({ label: '완성도 (지금)', value: `${qualityStars(now.stars)} · ${now.total}점`, color: col(now.stars) });
+    rows.push({ label: '완성도 (담은 직후)', value: `${qualityStars(base.stars)} · ${base.total}점` });
+    for (const pp of now.parts) rows.push({ label: pp.labelKo, value: qualityStars(scoreStars(pp.score * 100)), color: pp.earned ? '#8affb0' : '#ff9a5a' });
     rows.push({ label: '구성', value: `${m.mode === 'advanced' ? '고급' : '일반'} · ${m.species.length >= 2 ? '모듬' : '단품'} · ${m.pieces}점 · ${m.totalG}g` });
     rows.push({ label: '칼', value: m.knifeTier === 'yanagiba' ? '야나기바' : m.knifeTier === 'sashimi' ? '회칼' : '막칼' });
     rows.push({ label: '담은 뒤 경과', value: ageMin < 60 ? `${ageMin}분` : `${Math.floor(ageMin / 60)}시간 ${ageMin % 60}분` });
@@ -68,7 +83,7 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
     rows.push({ label: '보유 수량', value: `${item.qty}개` });
     desc = '신선도·식감은 담은 뒤 시간이 갈수록 떨어집니다. 다섯 항목 중 하나라도 모자라면 다섯째 별(완성도)은 켜지지 않습니다. 회는 바로 먹거나 파는 게 가장 좋습니다.';
     if (item.condition) desc += `\n[${CONDITION_LABEL[item.condition]}] ${CONDITION_DESC[item.condition]}`;
-    return { title: item.name, subtitle: '회(사시미) 접시', rows, desc };
+    return { title: item.name, subtitle: '요리(회) 접시', rows, desc };
   }
   // 155차 — 음식의 실질량·열량·수분 → 허기·수분 회복은 하루 필요량 대비 비율(2,400 kcal · 2,000 ml)
   const nutrition = foodNutritionOf(item.id);
@@ -118,7 +133,7 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
       const qColor = (v: number): string => v >= 80 ? '#8affb0' : v >= 50 ? '#ffd257' : '#ff9a5a';
       if (inst.modifier === 'burnt') rows.push({ label: '상태', value: '탔다 — 가치 없음', color: '#ff5a4a' });
       rows.push({ label: '주재료', value: ip.primaryNameKo ? `${ip.primaryNameKo} · ${ip.weightG}g` : `${ip.weightG}g` });
-      rows.push({ label: '재료 신선도', value: `별 ${starsOf(q.freshness)} / 5`, color: qColor(q.freshness) });
+      rows.push({ label: '재료 신선도', value: qualityStars(starsOf(q.freshness)), color: qColor(q.freshness) });
       rows.push({ label: '지방감', value: fatnessLabel(ip.fatness) });
       rows.push({ label: '식감', value: textureLabel(ip.texture) });
       rows.push({ label: '비린 향', value: fishinessLabel(ip.fishiness) });
@@ -129,10 +144,12 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
       } else {
         rows.push({ label: '효과', value: inst.modifier === 'burnt' ? '없음 — 탄 요리' : '없음 — 품질이 낮습니다' });
       }
-      rows.push({ label: '조리 품질', value: `간 ${q.seasoning} · 온도 ${q.temperature} · 식감 ${q.texture} · 완성도 ${q.completion}` });
-      rows.push({ label: '종합 품질', value: `${q.overall} / 100`, color: qColor(q.overall) });
-      rows.push({ label: '별점 (지금)', value: `${stars.stars} / 5 · ${Math.round(stars.total)}점`, color: stars.stars >= 5 ? '#ffd257' : stars.stars >= 3 ? '#8affb0' : '#ff9a5a' });
-      rows.push({ label: '별점 (완성 직후)', value: `${baseStars.stars} / 5 · ${Math.round(baseStars.total)}점` });
+      rows.push({ label: '간', value: `${qualityStars(scoreStars(q.seasoning))} · ${q.seasoning}점` });
+      rows.push({ label: '온도', value: `${qualityStars(scoreStars(q.temperature))} · ${q.temperature}점` });
+      rows.push({ label: '식감', value: `${qualityStars(scoreStars(q.texture))} · ${q.texture}점` });
+      rows.push({ label: '완성도', value: `${qualityStars(scoreStars(q.completion))} · ${q.completion}점`, color: qColor(q.completion) });
+      rows.push({ label: '종합 완성도', value: `${qualityStars(stars.stars)} · ${Math.round(stars.total)}점`, color: qColor(q.overall) });
+      rows.push({ label: '완성도 (완성 직후)', value: `${qualityStars(baseStars.stars)} · ${Math.round(baseStars.total)}점` });
       rows.push({ label: '판매가', value: inst.modifier === 'burnt' ? '0원' : `${InventoryStore.getSellPrice({ ...item, qty: 1 } as InvItem).toLocaleString()}원` });
       rows.push({ label: '보유 수량', value: `${item.qty}개` });
       const effKinds = inst.result.effects.map((e) => FOOD_EFFECT_KIND_KO[e.kind]).join(' · ');
@@ -149,22 +166,21 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
     const recipe = getFireRecipe(dish.recipeId);
     const stars = CookingStore.starsOfItem(item);
     if (recipe && stars) {
-      const pct = (v: number): string => `${Math.round(v * 100)}%`;
       const tempKo = stars.tempLabel === 'hot' ? '뜨겁다' : stars.tempLabel === 'warm' ? '미지근하다' : '식었다';
       const ageMin = Math.max(0, Math.round((Date.now() - dish.cookedAtMs) / 60_000));
       const baseStars = dishStarsAt(dish, recipe, dish.cookedAtMs);
       const ok = (i: number): string => stars.earned[i] ? '#8affb0' : '#ff9a5a';
       rows.push({ label: '요리', value: `${recipe.nameKo} · ${dish.servings}인분` });
       if (dish.burnt) rows.push({ label: '상태', value: '탔다 — 가치 없음', color: '#ff5a4a' });
-      rows.push({ label: '별점 (지금)', value: `${stars.stars} / 5 · ${Math.round(stars.total)}점`, color: stars.stars >= 5 ? '#ffd257' : stars.stars >= 3 ? '#8affb0' : '#ff9a5a' });
-      rows.push({ label: '별점 (완성 직후)', value: `${baseStars.stars} / 5 · ${Math.round(baseStars.total)}점` });
+      rows.push({ label: '완성도 (지금)', value: `${qualityStars(stars.stars)} · ${Math.round(stars.total)}점`, color: stars.stars >= 5 ? '#ffd257' : stars.stars >= 3 ? '#8affb0' : '#ff9a5a' });
+      rows.push({ label: '완성도 (완성 직후)', value: `${qualityStars(baseStars.stars)} · ${Math.round(baseStars.total)}점` });
       const salt = SALT_LABEL_KO[dish.saltLabel];
       const sugar = SUGAR_LABEL_KO[dish.sugarLabel];
-      rows.push({ label: STAR_NAME_KO[0], value: `${pct(stars.scores.season)} — ${salt}${sugar ? ` · ${sugar}` : ''}`, color: ok(0) });
-      rows.push({ label: STAR_NAME_KO[1], value: `${pct(stars.scores.temp)} — ${tempKo} (${Math.round(stars.tempC)}°C)`, color: ok(1) });
-      rows.push({ label: STAR_NAME_KO[2], value: pct(stars.scores.texture), color: ok(2) });
-      rows.push({ label: STAR_NAME_KO[3], value: pct(stars.scores.fresh), color: ok(3) });
-      rows.push({ label: STAR_NAME_KO[4], value: pct(stars.scores.finish), color: ok(4) });
+      rows.push({ label: STAR_NAME_KO[0], value: `${qualityStars(scoreStars(stars.scores.season * 100))} — ${salt}${sugar ? ` · ${sugar}` : ''}`, color: ok(0) });
+      rows.push({ label: STAR_NAME_KO[1], value: `${qualityStars(scoreStars(stars.scores.temp * 100))} — ${tempKo} (${Math.round(stars.tempC)}°C)`, color: ok(1) });
+      rows.push({ label: STAR_NAME_KO[2], value: qualityStars(scoreStars(stars.scores.texture * 100)), color: ok(2) });
+      rows.push({ label: STAR_NAME_KO[3], value: qualityStars(scoreStars(stars.scores.fresh * 100)), color: ok(3) });
+      rows.push({ label: STAR_NAME_KO[4], value: qualityStars(scoreStars(stars.scores.finish * 100)), color: ok(4) });
       const ingNames = dish.contents.map((c) => {
         const d = getCookIngredient(c.ing);
         return d ? `${d.nameKo} ${fmtUnits(d.unit, c.units)}` : c.ing;
@@ -395,19 +411,27 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
       break;
     case '원줄 스풀':
       rows.push(
-        { label: '재질', value: 'PE 합사' },
-        { label: '호수', value: '1호' },
-        { label: '인장 강도 (T_line)', value: '8.2 kg' },
+        { label: '재질', value: item.lineMaterial ? LINE_MATERIAL_LABEL[item.lineMaterial] : 'PE 합사' },
+        { label: '라인 형태', value: item.lineForm ? LINE_FORM_LABEL[item.lineForm] : 'Sinking (침강)' },
+        { label: '호수', value: item.lineNo !== undefined ? `${item.lineNo}호` : '1호' },
+        { label: '스풀 길이', value: item.lineLengthM !== undefined ? `${item.lineLengthM}m` : '-' },
+        { label: '직경', value: item.lineDiameterMm !== undefined ? `${item.lineDiameterMm.toFixed(3)}mm` : '-' },
+        { label: '인장 강도', value: item.lineStrengthLb !== undefined ? `${item.lineStrengthLb}lb` : '-' },
       );
-      desc = '드랙 장력을 이 한계보다 낮게 설정해야 줄 터짐 전에 릴이 풀려나갑니다.';
+      desc = item.lineMaterial === 'pe_braid'
+        ? '늘어남이 적어 입질 전달과 바닥 감도가 좋지만, 쓸림과 매듭에 약하므로 카본 또는 나일론 쇼크리더와 함께 사용하세요.'
+        : '라인의 신축성과 쓸림 내성을 고려해 낚시 장르에 맞는 형태를 선택하세요.';
       break;
     case '목줄 스풀':
       rows.push(
-        { label: '재질', value: item.id.includes('carbon') ? '카본 (내마모)' : '나일론 (신축)' },
-        { label: '호수', value: item.id.includes('carbon') ? '1.5호' : '2호' },
-        { label: '인장 강도', value: item.id.includes('carbon') ? '5.4 kg' : '6.1 kg' },
+        { label: '재질', value: item.lineMaterial ? LINE_MATERIAL_LABEL[item.lineMaterial] : item.id.includes('carbon') ? '카본 (내마모)' : '나일론 (신축)' },
+        { label: '라인 형태', value: item.lineForm ? LINE_FORM_LABEL[item.lineForm] : 'Suspend (중층 유지)' },
+        { label: '호수', value: item.lineNo !== undefined ? `${item.lineNo}호` : item.id.includes('carbon') ? '1.5호' : '2호' },
+        { label: '스풀 길이', value: item.lineLengthM !== undefined ? `${item.lineLengthM}m` : '-' },
+        { label: '직경', value: item.lineDiameterMm !== undefined ? `${item.lineDiameterMm.toFixed(3)}mm` : '-' },
+        { label: '인장 강도', value: item.lineStrengthLb !== undefined ? `${item.lineStrengthLb}lb` : '-' },
       );
-      desc = '바닥 여밭 지형에서의 쓸림에 대비하는 목줄입니다.';
+      desc = '원줄의 감도와 대상어의 이빨·여밭 쓸림 사이를 조정하는 쇼크리더입니다.';
       break;
     case '바늘/훅':
       rows.push(
@@ -433,6 +457,18 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
           : item.name.includes('제로찌')
             ? '잔존 부력 0 — 수중찌 없이 상층을 천천히 공략하는 찌입니다.'
             : '면사매듭 위치까지 채비를 지탱하는 부력체입니다.';
+      } else if (item.sinkerKind) {
+        rows.push(
+          { label: '형태', value: item.sinkerKind === 'ring' ? '원형 고리봉돌' : item.sinkerKind === 'hole' ? '기둥형 구멍봉돌' : '묶음추 봉돌' },
+          { label: '호수', value: item.sinkerHo !== undefined ? `${item.sinkerHo}호` : '-' },
+          { label: '무게', value: item.sinkerWeightG !== undefined ? `${item.sinkerWeightG}g` : '-' },
+          { label: '침강 기여', value: '하강 벡터 V_z 증가' },
+        );
+        desc = item.sinkerKind === 'ring'
+          ? '원투 채비의 표준 고리형 메인 싱커입니다. 무게별로 비거리와 바닥 안착감이 달라집니다.'
+          : item.sinkerKind === 'hole'
+            ? '원줄이 내부를 통과하는 기둥형 구멍 봉돌입니다. 물고기가 느끼는 이물감을 줄입니다.'
+            : '여러 편납을 묶은 형태의 메인 싱커입니다.';
       } else if (item.name.includes('봉돌')) {
         rows.push({ label: '무게 (g)', value: 'G2 (약 0.31 g)' }, { label: '침강 기여', value: '하강 벡터 V_z 증가' });
         desc = '채비의 침강 속도와 목줄 정렬을 조정합니다.';

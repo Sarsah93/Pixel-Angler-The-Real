@@ -20,6 +20,9 @@ import Phaser from 'phaser';
 import type { RegionRoad, RegionProp, RegionTileTex, RegionLight } from '@tra/core';
 import { COAST_OBJECTS } from '../data/TileCatalog.js';
 import { GRASS_EDGE_SUFFIXES, PAVED_EDGE_SUFFIXES, KENNEY_ROOF_COLORS, KENNEY_ROOF_PARTS, TTP_EDGE_TILES, TTP_UNITS, COAST_DECKS, COAST_RUBBLE, COAST_EDGE_SRC, COAST_ROCK_COUNT } from '../data/TilesetManifest.js';
+import { hasUsableTexture } from '../ui/CanvasTextureGuard.js';
+
+let seamlessTextureSerial = 0;
 
 export interface PropDef {
   id: string;
@@ -205,7 +208,7 @@ interface ChunkSlot {
   bodies: Phaser.GameObjects.Rectangle[];
   /** 이 청크의 프롭 스프라이트(나무·지붕·차량 — y-sort) */
   deco: Phaser.GameObjects.GameObject[];
-  /** 이 청크가 베이크한 지붕 텍스처 키 (언로드 시 제거) */
+  /** 이 청크가 베이크한 지붕 텍스처 키 (씬 수명 동안 보존, 언로드 때 display만 해제) */
   roofKeys: string[];
   /**
    * 캐릭터를 가릴 수 있는 그림 (150차) — 타일 건물 지붕·주택 오브젝트.
@@ -303,6 +306,10 @@ export class SeamlessChunks {
   private rtPool: Phaser.GameObjects.RenderTexture[] = [];
   private rtCreated = 0;
   private bakeQueue: number[] = [];
+  /** 씬 shutdown 뒤 늦게 들어온 update/rebake 호출이 파괴된 CanvasTexture를 만지지 않게 한다. */
+  private disposed = false;
+  /** 씬 인스턴스별 생성 텍스처 namespace — 전환 중 키 재사용/폐기 Frame 충돌 방지 */
+  private readonly textureNamespace = ++seamlessTextureSerial;
 
   /** 충돌 그룹 — 씬이 playerBody와 collider를 1회 등록한다 */
   readonly walls: Phaser.Physics.Arcade.StaticGroup;
@@ -365,8 +372,43 @@ export class SeamlessChunks {
     this.setLights(cfg.lights ?? []);               // bwClass 뒤 (상판 타일로 스냅)
     this.setProps(cfg.props ?? []);
     this.setTileTex(cfg.tileTex ?? []);
-    this.ensureDecoTextures();
-    this.ensureGroundTextures();
+    // 지역 전환 직후 Phaser가 backing canvas를 해제한 텍스처 키를 잠시 남길 수 있다.
+    // 텍스처 보강 실패가 Sokcho 씬 전체 생성을 중단시키지 않도록 절차 렌더로 폴백한다.
+    try { this.ensureDecoTextures(); }
+    catch (e) { console.warn('[SeamlessChunks] 장식 텍스처 준비 건너뜀', e); }
+    try { this.ensureGroundTextures(); }
+    catch (e) { console.warn('[SeamlessChunks] 지형 텍스처 준비 건너뜀', e); }
+  }
+
+  /** Phaser TextureManager에 키만 남고 실제 HTMLImage/Canvas가 해제된 경우를 흡수한다. */
+  private sourceImage(key: string): (CanvasImageSource & { width: number; height: number }) | null {
+    const tm = this.scene.textures;
+    if (!tm.exists(key)) return null;
+    try {
+      const src = tm.get(key).getSourceImage() as (CanvasImageSource & { width?: number; height?: number }) | null;
+      if (!src || typeof src.width !== 'number' || typeof src.height !== 'number' || src.width <= 0 || src.height <= 0) return null;
+      return src as CanvasImageSource & { width: number; height: number };
+    } catch {
+      return null;
+    }
+  }
+
+  /** 파괴 직후 CanvasTexture.getContext()가 null을 반환하는 브라우저/Phaser 조합 방어. */
+  private canvasContext(cv: Phaser.Textures.CanvasTexture): CanvasRenderingContext2D | null {
+    try { return cv.getContext?.() ?? null; } catch { return null; }
+  }
+
+  /** CanvasTexture.refresh 내부의 null canvas 예외가 씬 전체로 전파되지 않게 한다. */
+  private safeRefresh(cv: Phaser.Textures.CanvasTexture): boolean {
+    if (this.disposed) return false;
+    try {
+      cv.refresh();
+      return true;
+    } catch (e) {
+      try { cv.destroy(); } catch { /* 이미 파괴된 텍스처 */ }
+      console.warn('[SeamlessChunks] CanvasTexture 갱신 건너뜀', e);
+      return false;
+    }
   }
 
   /**
@@ -396,10 +438,12 @@ export class SeamlessChunks {
     const bake = (src: string, dst: string, w: number, h: number, clip?: 'ne' | 'nw' | 'se' | 'sw', sx = 0, sy = 0, tint?: string, hypLine?: string): boolean => {
       if (tm.exists(dst)) return true;
       if (!tm.exists(src)) return false;
-      const img = tm.get(src).getSourceImage() as HTMLImageElement | HTMLCanvasElement;
+      const img = this.sourceImage(src);
+      if (!img) return false;
       const cv = tm.createCanvas(dst, w, h);
       if (!cv) return false;
-      const ctx = cv.getContext();
+      const ctx = this.canvasContext(cv);
+      if (!ctx) { cv.destroy(); return false; }
       ctx.imageSmoothingEnabled = false;
       if (clip) {
         // 90° 꼭짓점이 clip 방위에 있는 직각삼각형만 남긴다 (가로=세로=tr, 빗변이 45° 경계)
@@ -410,7 +454,12 @@ export class SeamlessChunks {
         else { ctx.moveTo(0, 0); ctx.lineTo(w, h); ctx.lineTo(0, h); }
         ctx.closePath(); ctx.clip();
       }
-      ctx.drawImage(img, sx, sy, w / scale, h / scale, 0, 0, w, h);
+      try {
+        ctx.drawImage(img, sx, sy, w / scale, h / scale, 0, 0, w, h);
+      } catch {
+        cv.destroy();
+        return false;
+      }
       if (tint) {
         ctx.globalCompositeOperation = 'multiply';
         ctx.fillStyle = tint;
@@ -425,8 +474,7 @@ export class SeamlessChunks {
         else { ctx.moveTo(w, 0); ctx.lineTo(0, h); }
         ctx.stroke();
       }
-      cv.refresh();
-      return true;
+      return this.safeRefresh(cv);
     };
     // 삼각 빗변 경계선 색 — Kenney 테두리 실측(tan #ac9d83 · pier #8b9ea6). 잔디는 삼각 미사용
     const HYP_LINE: Record<string, string> = { '.': '#ac9d83', r: '#ac9d83', w: '#ac9d83', s: '#ac9d83', b: '#8b9ea6' };
@@ -501,7 +549,8 @@ export class SeamlessChunks {
         if (!tm.exists(key)) {
           const cv = tm.createCanvas(key, tr, tr);
           if (!cv) continue;
-          const ctx = cv.getContext();
+          const ctx = this.canvasContext(cv);
+          if (!ctx) { cv.destroy(); continue; }
           const [t0, t1] = DEPTH_RAMP[b];
           const deep = DEPTH_RAMP[Math.min(DEPTH_RAMP.length - 1, b + 1)][1];
           const lite = DEPTH_RAMP[Math.max(0, b - 1)][0];
@@ -517,7 +566,7 @@ export class SeamlessChunks {
               ctx.fillRect(x, y, px, px);
             }
           }
-          cv.refresh();
+          this.safeRefresh(cv);
         }
         if (tm.exists(key)) keys.push(key);
       }
@@ -527,13 +576,14 @@ export class SeamlessChunks {
     // (구 경로 보존 — legacy 지역/에셋 미배포 빌드용)
     const tw = Math.round(tr * 1.75);
     if (!tm.exists('smx_tetra_s') && !tm.exists('ts_ttp_ttp_l') && tm.exists('ts_gem_tetra')) {
-      const img = tm.get('ts_gem_tetra').getSourceImage() as HTMLImageElement;
+      const img = this.sourceImage('ts_gem_tetra');
       const cv = tm.createCanvas('smx_tetra_s', tw, tw);
-      if (cv) {
-        const ctx = cv.getContext();
+      if (cv && img) {
+        const ctx = this.canvasContext(cv);
+        if (!ctx) { cv.destroy(); return; }
         ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(img, 0, 0, img.width, img.height, 0, 0, tw, tw);
-        cv.refresh();
+        try { ctx.drawImage(img, 0, 0, img.width, img.height, 0, 0, tw, tw); } catch { cv.destroy(); return; }
+        this.safeRefresh(cv);
       }
     }
     this.ensurePlazaTextures();
@@ -553,7 +603,8 @@ export class SeamlessChunks {
       if (!tm.exists(key)) {
         const cv = tm.createCanvas(key, tr, tr);
         if (!cv) continue;
-        const ctx = cv.getContext();
+        const ctx = this.canvasContext(cv);
+        if (!ctx) { cv.destroy(); continue; }
         const hex = (n: number): string => `#${n.toString(16).padStart(6, '0')}`;
         for (let y = 0; y < tr; y += 2) {
           for (let x = 0; x < tr; x += 2) {
@@ -570,7 +621,7 @@ export class SeamlessChunks {
         ctx.fillRect(0, 0, tr, 2);
         ctx.fillRect(0, 0, 2, tr);
         ctx.globalAlpha = 1;
-        cv.refresh();
+        this.safeRefresh(cv);
       }
       if (tm.exists(key)) this.plazaTex.push(key);
     }
@@ -608,14 +659,16 @@ export class SeamlessChunks {
           if (!tm.exists(key)) {
             const cv = tm.createCanvas(key, tr, tr);
             if (!cv) continue;
-            const ctx = cv.getContext();
+            const ctx = this.canvasContext(cv);
+            const source = this.sourceImage(src);
+            if (!ctx || !source) { cv.destroy(); continue; }
             ctx.imageSmoothingEnabled = false;
             ctx.translate(tr / 2, tr / 2);
             ctx.rotate((d % 4) * Math.PI / 2);
             if (m) ctx.scale(-1, 1);              // 접경과 평행한 축으로 뒤집기
             ctx.translate(-tr / 2, -tr / 2);
-            ctx.drawImage(tm.get(src).getSourceImage() as CanvasImageSource, 0, 0);
-            cv.refresh();
+            try { ctx.drawImage(source, 0, 0); } catch { cv.destroy(); continue; }
+            this.safeRefresh(cv);
           }
           if (tm.exists(key)) this.ttpEdge[d].push(key);
         }
@@ -647,13 +700,15 @@ export class SeamlessChunks {
         if (!tm.exists(key)) {
           const cv = tm.createCanvas(key, tr, tr);
           if (!cv) continue;
-          const ctx = cv.getContext();
+          const ctx = this.canvasContext(cv);
+          const source = this.sourceImage(src);
+          if (!ctx || !source) { cv.destroy(); continue; }
           ctx.imageSmoothingEnabled = false;
           ctx.translate(tr / 2, tr / 2);
           ctx.rotate((((d - landDir) % 4 + 4) % 4) * Math.PI / 2);
           ctx.translate(-tr / 2, -tr / 2);
-          ctx.drawImage(tm.get(src).getSourceImage() as CanvasImageSource, 0, 0);
-          cv.refresh();
+          try { ctx.drawImage(source, 0, 0); } catch { cv.destroy(); continue; }
+          this.safeRefresh(cv);
         }
         if (tm.exists(key)) this.coastEdge[d].push(key);
       }
@@ -927,13 +982,16 @@ export class SeamlessChunks {
     const sheetKey = `ts_${m[1]}_sheet`;
     if (!tm.exists(sheetKey)) return;
     const tr = this.cfg.tr;
-    const src = tm.get(sheetKey).getSourceImage() as HTMLImageElement | HTMLCanvasElement;
+    const src = this.sourceImage(sheetKey);
+    if (!src) return;
     const r = Number(m[2]), c = Number(m[3]);
     if ((c + 1) * tr > src.width || (r + 1) * tr > src.height) return;
     const cv = tm.createCanvas(tex, tr, tr);
     if (!cv) return;
-    cv.getContext().drawImage(src, c * tr, r * tr, tr, tr, 0, 0, tr, tr);
-    cv.refresh();
+    const ctx = this.canvasContext(cv);
+    if (!ctx) { cv.destroy(); return; }
+    try { ctx.drawImage(src, c * tr, r * tr, tr, tr, 0, 0, tr, tr); } catch { cv.destroy(); return; }
+    this.safeRefresh(cv);
   }
 
   /**
@@ -946,18 +1004,20 @@ export class SeamlessChunks {
     const key = `${tex}__r${rot}${fx ? 'x' : ''}${fy ? 'y' : ''}`;
     if (tm.exists(key)) return key;
     if (!tm.exists(tex)) return tex;
-    const src = tm.get(tex).getSourceImage() as HTMLImageElement | HTMLCanvasElement;
+    const src = this.sourceImage(tex);
+    if (!src) return tex;
     const swap = rot % 2 === 1;
     const w = swap ? src.height : src.width, h = swap ? src.width : src.height;
     const cv = tm.createCanvas(key, w, h);
     if (!cv) return tex;
-    const ctx = cv.getContext();
+    const ctx = this.canvasContext(cv);
+    if (!ctx) { cv.destroy(); return tex; }
     ctx.imageSmoothingEnabled = false;
     ctx.translate(w / 2, h / 2);
     ctx.rotate((rot % 4) * Math.PI / 2);
     ctx.scale(fx ? -1 : 1, fy ? -1 : 1);
-    ctx.drawImage(src, -src.width / 2, -src.height / 2);
-    cv.refresh();
+    try { ctx.drawImage(src, -src.width / 2, -src.height / 2); } catch { cv.destroy(); return tex; }
+    this.safeRefresh(cv);
     return key;
   }
 
@@ -1155,7 +1215,9 @@ export class SeamlessChunks {
       for (const d of slot.deco) d.destroy();
       slot.deco = [];
       slot.occluders = [];
-      for (const k of slot.roofKeys) this.scene.textures.remove(k);
+      // roofKeys는 인스턴스별 고유 키다. 이전 구현은 여기서 즉시
+      // TextureManager.remove()했는데, 전환 중 한 프레임 남은 Image가
+      // 폐기된 Frame을 참조하면서 Frame.updateUVs 예외를 만들었다.
       slot.roofKeys = [];
       this.buildChunkCollision(cc, cr, slot);
       this.buildChunkDeco(cc, cr, slot);
@@ -1810,6 +1872,7 @@ export class SeamlessChunks {
   // ═══════════════════════════════════════════════════
 
   update(centerX: number, centerY: number): void {
+    if (this.disposed) return;
     const cc = Phaser.Math.Clamp(Math.floor(centerX / this.chunkPx), 0, this.chunkCols - 1);
     const cr = Phaser.Math.Clamp(Math.floor(centerY / this.chunkPx), 0, this.chunkRows - 1);
 
@@ -1877,7 +1940,8 @@ export class SeamlessChunks {
     for (const d of slot.deco) d.destroy();
     slot.deco = [];
     slot.occluders = [];
-    for (const k of slot.roofKeys) this.scene.textures.remove(k);
+    // 인스턴스별 namespace를 사용하므로 삭제하지 않는다. display list와
+    // WebGL 배치가 완전히 비워진 뒤에도 stale Frame을 참조하지 않게 한다.
     slot.roofKeys = [];
     slot.rt.setVisible(false);
     this.rtPool.push(slot.rt);
@@ -1925,11 +1989,11 @@ export class SeamlessChunks {
   // ═══════════════════════════════════════════════════
   // 지붕 — 건물 컴포넌트 단위 스프라이트 (y-sort — 캐릭터가 위쪽 줄로 들어가면 가려진다)
   // ═══════════════════════════════════════════════════
-  /** 컴포넌트 지붕 텍스처 베이크 (청크 상주 중에만 존재 — 언로드 시 제거) */
+  /** 컴포넌트 지붕 텍스처 베이크 (세대별 고유 키 — 씬 전환 중 삭제하지 않음) */
   private bakeRoofTexture(compId: number): string {
     const comp = this.comps[compId];
-    const key = `roof_${comp.c0}_${comp.r0}`;
-    if (this.scene.textures.exists(key)) return key;
+    const key = `roof_${this.textureNamespace}_${comp.c0}_${comp.r0}`;
+    if (hasUsableTexture(this.scene, key)) return key;
     const tr = this.cfg.tr;
     const cols = this.cfg.cols;
     const W = (comp.c1 - comp.c0 + 1) * tr, H = (comp.r1 - comp.r0 + 1) * tr;
@@ -3185,7 +3249,22 @@ export class SeamlessChunks {
     }
   }
 
+  /**
+   * 청크 한 개의 베이킹은 Phaser 내부(RenderTexture.clear/batchDraw 포함)에서
+   * null canvas 예외가 날 수 있다. 이 예외가 update() 밖으로 전파되면 브라우저
+   * 전역 오류 배너 뒤로 게임이 멈추므로, 문제가 난 청크만 비운 상태로 완료한다.
+   */
   private bakeChunk(idx: number, slot: ChunkSlot): void {
+    try {
+      this.bakeChunkUnsafe(idx, slot);
+    } catch (e) {
+      if (!this.disposed && this.resident.get(idx) === slot) slot.baked = true;
+      console.warn('[SeamlessChunks] 청크 베이킹 예외 격리', idx, e);
+    }
+  }
+
+  private bakeChunkUnsafe(idx: number, slot: ChunkSlot): void {
+    if (this.disposed || this.resident.get(idx) !== slot) return;
     const cc = idx % this.chunkCols;
     const cr = Math.floor(idx / this.chunkCols);
     const N = this.cfg.chunkTiles;
@@ -3730,8 +3809,15 @@ export class SeamlessChunks {
     // 차도 마킹 (벡터) — 타일 위에 얹는다
     this.drawRoadMarkings(g, idx, c0, r0);
 
-    slot.rt.draw(g, 0, 0);
-    g.destroy();
+    try {
+      // 씬 전환 직전의 늦은 베이크 콜백이 이미 반환된 RenderTexture를 잡고 있을 수 있다.
+      if (!this.disposed && this.resident.get(idx) === slot) slot.rt.draw(g, 0, 0);
+    } catch (e) {
+      // 해당 청크만 비워 두고 프레임 루프 전체는 살린다. 다음 씬 진입을 막는 전역 예외가 되면 안 된다.
+      console.warn('[SeamlessChunks] 청크 베이크 건너뜀', idx, e);
+    } finally {
+      g.destroy();
+    }
     slot.baked = true;
   }
 
@@ -3761,6 +3847,8 @@ export class SeamlessChunks {
   }
 
   destroy(): void {
+    if (this.disposed) return;
+    this.disposed = true;
     // 한 슬롯 정리가 실패해도 나머지(RT 풀·텍스처)는 반드시 정리 — 부분 실패가 다음 씬을 오염시키지 않게
     for (const [idx, slot] of [...this.resident]) {
       try { this.unloadChunk(idx, slot); } catch (e) { console.warn('[SeamlessChunks] unload 실패', e); }

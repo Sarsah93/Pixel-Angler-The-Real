@@ -247,6 +247,25 @@ export class ForageSystem {
           g.fillStyle(0x8aa07a, 1); g.fillEllipse(6, 7, 6, 4);
           g.fillStyle(0xffffff, 0.8); for (let k = 0; k < 4; k++) g.fillCircle(4 + k * 3, 5, 0.8);
           break;
+        case 'haliotis_diversicolor': // 오분자기 — 작은 청록 전복
+          g.fillStyle(0x3c6b62, 1); g.fillEllipse(8, 8, 12, 8);
+          g.fillStyle(0x8db39a, 1); g.fillEllipse(6, 7, 5, 3);
+          g.lineStyle(1, 0x1c3939, 1); g.strokeEllipse(8, 8, 12, 8);
+          break;
+        case 'heliocidaris_crassispina': // 말똥성게 — 굵은 갈색 가시
+          g.fillStyle(0x3f251d, 1); g.fillCircle(8, 8, 4);
+          g.lineStyle(1, 0x8d5c3c, 1);
+          for (let k = 0; k < 10; k++) { const a = (k / 10) * Math.PI * 2; g.lineBetween(8, 8, 8 + Math.cos(a) * 8, 8 + Math.sin(a) * 8); }
+          break;
+        case 'aplysia_kurodai': // 참군소 — 낮은 갈색 몸
+          g.fillStyle(0x6b5940, 1); g.fillEllipse(8, 9, 14, 7);
+          g.fillStyle(0xa38a5e, 1); g.fillCircle(5, 7, 2); g.fillCircle(11, 7, 2);
+          break;
+        case 'hemigrapsus_sanguineus': // 쫄장게 — 작은 붉은 게
+          g.fillStyle(0xb45a45, 1); g.fillEllipse(8, 8, 9, 6);
+          g.lineStyle(1, 0xe08464, 1);
+          for (let k = 0; k < 2; k++) { g.lineBetween(4, 7 + k * 3, 1, 5 + k * 4); g.lineBetween(12, 7 + k * 3, 15, 5 + k * 4); }
+          break;
         case 'charybdis_japonica': case 'portunus_trituberculatus': // 게
           g.fillStyle(0x8a4a2c, 1); g.fillEllipse(8, 8, 11, 7);
           g.lineStyle(1.5, 0x8a4a2c, 1);

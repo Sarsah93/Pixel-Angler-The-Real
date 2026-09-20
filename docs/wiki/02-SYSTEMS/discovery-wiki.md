@@ -21,6 +21,7 @@
 | client | `data/WikiCatalog.ts` | 아이템 위키 정적 카탈로그 — 시드+상점 dedup·판매처 힌트·`tpl`(실지급용) |
 | client | `core/db-schema/DishDiscovery.ts` | 요리 도감 id·이름·변형 후보(`discovery_<레시피>_<어종>`) |
 | client | `scenes/AnglerLogScene.ts` | 5탭 도감 — 미발견 실루엣/???/힌트 · 발견 카드(경로·일시) |
+| tools | `gen_game_wiki_data.mjs` · `game_wiki_template.html` | 퀘스트·요리·어종·제작·아이템·시스템 문서를 합친 `Pixel Angler The Real Wiki` 발행본 |
 | client | `dev/DevMode.ts` · `dev/DevConsolePanel.ts` | god 상태 + F10 콘솔 |
 
 ## 3. 동작 구조
@@ -51,7 +52,7 @@ god 가드 소비처 = `refreshCondition`·`loseRigParts`·`loseLureRig`·`consu
 | 아이템 위키 카탈로그(시드+상점) | ✅ | 099 |
 | HUD 신규 발견 토스트 + N 키 진입 | ✅ | 099 |
 | dev 콘솔(F10) + god 모드 | ✅ | 099 |
-| **요리 도감 탭** — 레시피 목록 + (레시피 × 주재료) 변형 카드 · 미발견 `??? 매운탕` | ✅ | **156** — 매운탕 3/50 · 전체 3/57 |
+| **요리 도감 탭** — 레시피 목록 + (레시피 × 주재료) 변형 카드 · 미발견 `??? 매운탕` | ✅ | **156~157** — 서더리/통생선 매운탕 분리 · 전체 위키 생성기 |
 | 위키 카드 상세 팝업(클릭 확대) | ⬜ | — |
 | FP 씬 발견 토스트 (현재 RegionField HUD만) | ⬜ | — |
 | 해양생물 전용 스프라이트 (현재 이모지 — S14 D4와 공유) | ⬜ | 에셋 대기 |

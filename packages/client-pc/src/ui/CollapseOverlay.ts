@@ -16,6 +16,7 @@ import Phaser from 'phaser';
 import { TUNING } from '@tra/core';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { applyScreenFixed } from './DraggablePanel.js';
+import { canvasContextOf, destroyCanvasTexture, refreshCanvasTexture } from './CanvasTextureGuard.js';
 
 /** 쓰러짐 종류 — 기절(회복 가능) / 사망(페널티 + 집 부활) */
 export type CollapseKind = 'faint' | 'death';
@@ -53,7 +54,7 @@ function ensureVignetteTexture(scene: Phaser.Scene): string {
   if (scene.textures.exists(key)) return key;
   const size = VIGNETTE_PX;
   const canvas = scene.textures.createCanvas(key, size, size);
-  const ctx = canvas?.getContext();
+  const ctx = canvas ? canvasContextOf(canvas) : null;
   if (!ctx || !canvas) return key;
   const r = size / 2;
   const grad = ctx.createRadialGradient(r, r, 0, r, r, r);
@@ -63,7 +64,7 @@ function ensureVignetteTexture(scene: Phaser.Scene): string {
   grad.addColorStop(1, 'rgba(0,0,0,1)');
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, size, size);
-  canvas.refresh();
+  if (!refreshCanvasTexture(canvas, '기절 오버레이')) destroyCanvasTexture(canvas);
   return key;
 }
 

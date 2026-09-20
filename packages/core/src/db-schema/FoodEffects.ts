@@ -19,6 +19,8 @@ export const FOOD_EFFECT_KIND_KO: Record<FoodEffectKind, string> = {
 export const RECIPE_EFFECTS: Record<string, FoodEffectDef> = {
   stew_red: { id: 'satiety_stew', kind: 'satiety', magnitude: 0.08, durationMin: 30,
     nameKo: '포만감', nameEn: 'Satiety', descKo: '30분 동안 허기 감소 속도 -8%', descEn: 'Hunger drains 8% slower for 30 min' },
+  stew_red_whole: { id: 'satiety_stew_whole', kind: 'satiety', magnitude: 0.09, durationMin: 32,
+    nameKo: '든든한 국물', nameEn: 'Hearty broth', descKo: '32분 동안 허기 감소 속도 -9%', descEn: 'Hunger drains 9% slower for 32 min' },
   stew_clear: { id: 'clear_belly', kind: 'fatigue_recovery', magnitude: 0.08, durationMin: 30,
     nameKo: '맑은 속', nameEn: 'Clear stomach', descKo: '30분 동안 피로 증가량 -8%', descEn: 'Fatigue builds 8% slower for 30 min' },
   grill_fish: { id: 'savory_meal', kind: 'fatigue_recovery', magnitude: 0.08, durationMin: 30,

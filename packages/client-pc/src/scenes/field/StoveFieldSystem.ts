@@ -137,7 +137,7 @@ export class StoveFieldSystem {
           v.ware.fillStyle(0xa8b2ba, 1); v.ware.fillRect(-9, -12, 18, 8);
           v.ware.fillStyle(0x2a2e33, 1); v.ware.fillRect(-14, -12, 3, 2); v.ware.fillRect(11, -12, 3, 2);
           if (s && s.contents.length > 0) {
-            const red = s.recipeId === 'stew_red' || s.recipeId === 'braise_fish';
+            const red = s.recipeId === 'stew_red' || s.recipeId === 'stew_red_whole' || s.recipeId === 'braise_fish';
             v.ware.fillStyle(red ? 0xd23a2a : s.recipeId === 'porridge_abalone' ? 0xf6ecc4 : 0xe8d8a8, 1);
             v.ware.fillRect(-8, -11, 16, 4);
           }

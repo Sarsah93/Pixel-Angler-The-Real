@@ -1996,7 +1996,7 @@ export class UtilizationPanel extends DraggablePanel {
     InventoryStore.addItem({
       id: `inv_sashimi_plate_${adv ? 'adv' : 'std'}_${seq}`,
       name, icon: '🍣', iconTexture: 'food_assorted_sashimi',
-      category: 'food', subCategory: '회(사시미)',
+      category: 'food', subCategory: '요리(회)',
       basePrice: price,
       sashimi: meta,
       // 신선도는 **가장 먼저 상하는 조각**을 계승한다 (135차) —
@@ -2047,7 +2047,7 @@ export class UtilizationPanel extends DraggablePanel {
       id: `inv_sashimi_wip_${seq}`,
       name: `${adv ? '고급 ' : ''}사시미 접시 (${st.size} · 미완성 ${pr.placed}/${pr.total})`,
       icon: '🍽', iconTexture: 'food_assorted_sashimi',
-      category: 'food', subCategory: '회(사시미)',
+      category: 'food', subCategory: '요리(회)',
       basePrice: 0,
       condition: worst?.condition ?? 'fresh',
       conditionSinceMs: worst?.conditionSinceMs ?? Date.now(),

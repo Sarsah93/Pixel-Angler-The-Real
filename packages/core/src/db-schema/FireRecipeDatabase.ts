@@ -1,6 +1,6 @@
 /**
  * @file FireRecipeDatabase.ts
- * @description 불요리 레시피 8종 (154차 — 스펙 §2)
+ * @description 불요리 레시피 9종 (154차 — 스펙 §2)
  *
  * ⚖ 레시피는 **필수 요소 + 부가 고급화**로 적는다 — 창작 요리는 없다. 특정 요리명을 표방하려면
  *   (155차) `vitals`의 허기·수분은 `FoodNutrition.ts` 1인분 영양(kcal ÷ 2,400 · ml ÷ 2,000)에서 파생한 값이다.
@@ -48,12 +48,12 @@ const PORRIDGE_STAGES: RecipeStageDef[] = [
 
 export const FIRE_RECIPES: FireRecipeDef[] = [
   {
-    id: 'stew_red', nameKo: '매운탕', nameEn: 'Spicy fish stew (Maeuntang)', family: 'stew_red',
-    descKo: '고춧가루와 마늘로 칼칼하게 끓인 붉은 탕. 서더리로도 국물이 난다.',
-    descEn: 'A red, spicy stew of fish or fish frame with chili flakes and garlic.',
+    id: 'stew_red', nameKo: '서더리 매운탕', nameEn: 'Fish-frame maeuntang', family: 'stew_red',
+    descKo: '감성돔·우럭 등 생선의 머리와 뼈인 서더리로 국물을 낸 얼큰한 탕.',
+    descEn: 'A spicy maeuntang made from a fish head and frame with chili flakes and garlic.',
     cookware: ['pot'],
     required: [
-      R(['fish', 'fish_dressed', 'seodeori'], 'main', 300, 1400, 0),
+      R('seodeori', 'main', 300, 1400, 0),
       R('water', 'liquid', 3, 7, 0, { ideal: 4 }),
       R('radish', 'base', 1, 3, 0),
       R('gochugaru', 'season', 1, 4, 1, { ideal: 2 }),
@@ -71,6 +71,31 @@ export const FIRE_RECIPES: FireRecipeDef[] = [
     stages: STEW_STAGES, doneWhen: 'mainCooked', tempBand: [85, 100], servingC: 70, coolTauMin: 35, textureDecayPerHour: 0.12,
     cookMin: 25, servings: 2, baseValueKrw: 24000,
     vitals: { hungerRestore: 22, hydrationRestore: 19, hpRestore: 25, fatigueRestore: 18, drainBuffMult: 0.85, drainBuffMin: 30 },
+  },
+  {
+    id: 'stew_red_whole', nameKo: '통생선 매운탕', nameEn: 'Whole-fish maeuntang', family: 'stew_red',
+    descKo: '어종 하나를 통째로 넣어 살과 국물을 함께 즐기는 얼큰한 탕.',
+    descEn: 'A spicy maeuntang made with one whole fish, keeping its flesh and broth together.',
+    cookware: ['pot'],
+    required: [
+      R('fish', 'main', 300, 1400, 0),
+      R('water', 'liquid', 3, 7, 0, { ideal: 4 }),
+      R('radish', 'base', 1, 3, 0),
+      R('gochugaru', 'season', 1, 4, 1, { ideal: 2 }),
+      R('garlic', 'season', 0.5, 2, 1, { ideal: 1 }),
+      R('salt', 'season', 0.5, 3, 2, { ideal: 1 }),
+      R('leek', 'finish', 1, 3, 3),
+    ],
+    optional: [
+      R('onion', 'veg', 1, 2, 1), R('bean_sprout', 'veg', 1, 2, 1),
+      R(['soy', 'fish_sauce'], 'season', 0.5, 1.5, 2, { ideal: 1 }),
+      R(['crown_daisy', 'water_parsley'], 'finish', 1, 2, 3),
+      R(['chili_green', 'chili_red'], 'finish', 1, 2, 3),
+    ],
+    maxExtraKinds: 4, targetSaltPct: 1.0, targetSugarSpoons: 0,
+    stages: STEW_STAGES, doneWhen: 'mainCooked', tempBand: [85, 100], servingC: 70, coolTauMin: 35, textureDecayPerHour: 0.12,
+    cookMin: 25, servings: 2, baseValueKrw: 26000,
+    vitals: { hungerRestore: 24, hydrationRestore: 19, hpRestore: 28, fatigueRestore: 18, drainBuffMult: 0.85, drainBuffMin: 30 },
   },
   {
     id: 'stew_clear', nameKo: '지리 (맑은탕)', nameEn: 'Clear fish soup (Jiri)', family: 'stew_clear',

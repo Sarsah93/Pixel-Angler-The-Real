@@ -450,6 +450,35 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류 (2026-08-09)
 > "지금 무엇이 어디까지 되어 있나"는 **`docs/wiki/README.md` 대시보드**와 `02-SYSTEMS/*.md`를 본다.
 > 80차 이하 원문은 아래에 **그대로 보존**(불변 원장) — 구조화 인덱스는 `03-WORKLOG/README.md` §3.1.
 
+**최근 변경 (2026-09-19 157차) — 전체 위키 확장·요리 분류·대화창 리디자인**
+
+- 서더리 전용 `stew_red`와 통생선 전용 `stew_red_whole`을 분리하고 도감 id 파서를 긴 recipe id 우선으로 정정했다.
+- 완성 회·모듬회·숙회를 `요리(회)`·`요리(숙회)`로 묶고 요리 상세 별점을 `★/☆` 5칸으로 표시한다.
+- `gen_game_wiki_data.mjs`·`game_wiki_template.html`·Claude 전달 컨텍스트를 추가했다. 상세 기록은 [157차 워크로그](../docs/wiki/03-WORKLOG/2026-09-19-157-wiki-cooking-dialogue.md).
+
+**최근 변경 (2026-09-19 160차) — 대화 초상 마스크 회귀 수정·공통 카드 레이아웃**
+
+- 실제 혼잣말 진입에서 재현한 빈 초상화의 원인을 GeometryMask 좌표/수명 문제로 확정하고 `PortraitMask` 공통 유틸리티로 수정했다.
+- 혼잣말/NPC 대화가 mother 내부 여백·초상 프레임·호감도 슬롯·이름 슬롯 순서를 `PortraitLayout`으로 공유한다. NPC 호감도 표시는 유지하고 주인공은 슬롯만 예약한다.
+- typecheck 0 오류, diff 검사 통과, 새 게임→캐릭터 생성→혼잣말 렌더 및 필드 복귀 실검증을 완료했다. 상세 기록은 [160차 워크로그](../docs/wiki/03-WORKLOG/2026-09-19-160-dialogue-portrait-mask-regression.md).
+
+**최근 변경 (2026-09-19 161차) — Phaser Frame 수명주기 회귀 수정**
+
+- 속초 전환에서 발생한 `Frame.updateUVs() → data.drawImage` 오류를 Frame 수명주기 문제로 확정했다. 키/source가 남아 있어도 Frame은 이미 파괴될 수 있다.
+- 심리스 청크·캐릭터·초상 텍스처의 live `TextureManager.remove()`를 제거하고, stale 키는 삭제 대신 세대 키로 재생성한다. 지정 Frame의 내부 데이터까지 검사한다.
+- `RegionFieldScene`의 `init → create` 사이 stale update를 잠가 씬 전환 중 폐기된 참조 접근을 차단했다. 상세 기록은 [161차 워크로그](../docs/wiki/03-WORKLOG/2026-09-19-161-phaser-frame-lifecycle.md).
+
+**최근 변경 (2026-09-19 162차) — 속초 씬 전환 Phaser 오류 근본 수정**
+
+- 실제 `홈타운 → 버스 → 전국 지도 → 강원 속초 → 속초항` 경로에서 반복 재현하고, 원인이 `RegionFieldScene` 재사용 후 파괴된 퀘스트 화살표 Text를 속초 첫 update가 재사용한 것임을 확정했다.
+- `questGuide*`·`pinArrow*` 등 지연 생성 UI 참조와 상태를 `init()`에서 세대 초기화하고, 필드 시스템 shutdown은 owned 객체만 정리하도록 보강했다.
+- 속초 진입 후 추가 이동까지 오류 배너 없이 통과했으며 client typecheck·core build·root build 3/3·diff 검사를 모두 통과했다. 상세 기록은 [162차 워크로그](../docs/wiki/03-WORKLOG/2026-09-19-162-sokcho-scene-transition-frame-fix.md).
+
+**최근 변경 (2026-09-19 158차) — 초상화 클리핑·퀵 퀘스트 독립 크기·심리스 렌더 가드**
+
+- 대화 초상에 프레임 전용 클리핑을 적용해 우호도·이름 영역 침범을 막고, 퀵 퀘스트 패널에 독립 `−`/`+` 폭 조절을 추가했다.
+- 심리스 CanvasTexture·RenderTexture null 접근과 씬 재진입 잔여 청크를 방어했다. 상세 기록은 [158차 워크로그](../docs/wiki/03-WORKLOG/2026-09-19-158-dialogue-hud-render-guards.md).
+
 **최근 변경 (2026-09-18 156차) — 요리 개체화(DishInstance) 1단계: 매운탕 어종별 변형 + 상세보기 + 요리 도감** (사용자 기획서 「불요리 확장 v1.0」 — core 20항목 ALL PASS · 실렌더 전 항목 · EN 잔존 0 · overflow 0 · pageerror 0, 빌드 3/3·typecheck 0):
 
 - 사용자가 준 명제는 **「레시피 ≠ 요리」** 였다. 154차는 **레시피 1개 = 아이템 1개**라 우럭을 넣든 광어를 넣든

@@ -675,6 +675,11 @@ class StoryStoreManager {
     if (fat >= TUNING.job.fatigueLimit) {
       return { ok: false, reason: `너무 지쳤습니다 (피로 ${Math.round(fat)}) — 쉬고 오세요.` };
     }
+    const m102 = this.quests['M1-02'];
+    const needsIce = jobId === 'ice_haul' && m102?.status === 'active' && (m102.obj[0] ?? 0) === 0;
+    if (needsIce && !this.host?.giveItem('quest_ice_crate', 1, true)) {
+      return { ok: false, reason: '퀘스트 탭에 얼음을 받을 공간이 없습니다.' };
+    }
     const c = TUNING.job.costMult;
     this.host?.spendLabor(job.hunger * c, job.hydration * c, job.fatigue * c);
     const wage = this.jobWage(job);

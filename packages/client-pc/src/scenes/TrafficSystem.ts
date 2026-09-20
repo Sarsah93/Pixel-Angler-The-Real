@@ -137,6 +137,19 @@ export class TrafficSystem {
     return car.dir === 1 ? [dx, dy] : [-dx, -dy];
   }
 
+  /** 차량이 향하고 있는 다음 정점의 노드 키. 교차로 대기 판정은 이 키가 같은 차만 비교한다. */
+  private nextNodeKey(car: Car): string | null {
+    const rd = this.roads[car.road];
+    const idx = car.dir === 1 ? car.seg + 1 : car.seg;
+    return idx >= 0 && idx < rd.pts.length ? this.nodeKey(rd.pts[idx]) : null;
+  }
+
+  /** 다음 정점까지 남은 거리(타일). */
+  private distanceToNextNode(car: Car): number {
+    const len = this.segLen(car.road, car.seg);
+    return car.dir === 1 ? len - car.t : car.t;
+  }
+
   private place(car: Car): void {
     const rd = this.roads[car.road];
     const p = rd.pts;
@@ -235,23 +248,30 @@ export class TrafficSystem {
       const fx = accident ? bx : car.px, fy = accident ? by : car.py;
       const dx = o.px - fx, dy = o.py - fy;
       const d = Math.hypot(dx, dy);
-      if (d < FOLLOW + (accident ? 0.8 : 0)) {
+      const sameRoad = o.road === car.road;
+      const sameLane = sameRoad && Math.abs(dx * nx + dy * ny) < laneW * 0.8;
+      if (sameRoad && d < FOLLOW + (accident ? 0.8 : 0)) {
         const dot = (dx * car.ux + dy * car.uy) / (d || 1);
         if (accident) {
           // 우리 차로 위의 사고 차만 추월 대상 (대향 차로 사고에 뛰어들지 않는다)
           const latD = Math.abs(dx * nx + dy * ny);
           if (dot > 0.45 && latD < laneW * 0.55) wantOvertake = true;
-        } else if (dot > CONE && (o.ux * car.ux + o.uy * car.uy) > -0.2) {
+        } else if (sameLane && dot > CONE && (o.ux * car.ux + o.uy * car.uy) > 0.35) {
           return true;
         }
       }
       // 회전교차로 진입 — 링 위 차량이 노드 3타일 안이면 양보 (링 위 차량은 우선)
       if (enteringRoundabout && this.roads[o.road].roundabout) {
-        if (Math.hypot(o.px - vp[0], o.py - vp[1]) < 3.0) return true;
+        if (this.nextNodeKey(o) === this.nodeKey(vp) && this.distanceToNextNode(o) < 3.0) return true;
       }
-      if (junction && !rd.roundabout && !o.waiting) {
-        const jd = Math.hypot(o.px - vp[0], o.py - vp[1]);
-        if (jd < 2.2 && Math.hypot(car.px - vp[0], car.py - vp[1]) > jd) return true;
+      if (junction && !rd.roundabout && !o.waiting
+        && this.nextNodeKey(o) === this.nodeKey(vp)
+        && this.distanceToNextNode(o) < 2.2) {
+        // 같은 교차로로 진입하는 차량끼리만 선진입 우선. 서로 다른 교차로의
+        // 근접 차량을 비교하지 않아 화면 전체가 연쇄 정지하지 않는다.
+        const carDist = this.distanceToNextNode(car);
+        const otherDist = this.distanceToNextNode(o);
+        if (carDist > otherDist + 0.15) return true;
       }
     }
     if (wantOvertake) {

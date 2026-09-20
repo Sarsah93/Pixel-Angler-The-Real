@@ -12,6 +12,7 @@
  */
 import Phaser from 'phaser';
 import { PIXEL_ICON_ART } from '../data/PixelIconArt.js';
+import { canvasContextOf, destroyCanvasTexture, refreshCanvasTexture } from './CanvasTextureGuard.js';
 
 /** 아이콘 텍스처를 (없으면) 굽고 키를 돌려준다. 알 수 없는 키면 null. */
 export function ensurePixelIcon(
@@ -29,8 +30,9 @@ export function ensurePixelIcon(
   const h = art.h * s;
   const canvas = scene.textures.createCanvas(texKey, w, h);
   if (!canvas) return null;
-  const ctx = canvas.getContext();
-  ctx.clearRect(0, 0, w, h);
+  const ctx = canvasContextOf(canvas);
+  if (!ctx) { destroyCanvasTexture(canvas); return null; }
+  try { ctx.clearRect(0, 0, w, h); } catch { destroyCanvasTexture(canvas); return null; }
   for (let y = 0; y < art.h; y++) {
     const row = art.rows[y] ?? '';
     for (let x = 0; x < art.w; x++) {
@@ -42,7 +44,7 @@ export function ensurePixelIcon(
       ctx.fillRect(x * s, y * s, s, s);
     }
   }
-  canvas.refresh();
+  if (!refreshCanvasTexture(canvas, `픽셀 아이콘 ${texKey}`)) { destroyCanvasTexture(canvas); return null; }
   return texKey;
 }
 

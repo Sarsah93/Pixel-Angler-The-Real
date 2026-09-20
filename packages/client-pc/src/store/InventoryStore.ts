@@ -24,7 +24,7 @@ import {
 import type { DishData, DishInstance } from '@tra/core';
 import { getFireRecipe, dishStarsAt, dishValueKrw, dishInstanceValueKrw } from '@tra/core';
 import type { SashimiSizeTier } from '@tra/core';
-import type { ForageTool, StatusCure, CatchMethod } from '@tra/core';
+import type { ForageTool, StatusCure, CatchMethod, LineForm } from '@tra/core';
 import { ExternalDataStore } from './ExternalDataStore.js';
 import { DiscoveryStore } from './DiscoveryStore.js';
 import { isGod } from '../dev/DevMode.js';
@@ -34,7 +34,7 @@ import { applyCookItemFields, COOK_CORNER } from '../data/CookItems.js';
 import { StoryStore } from './StoryStore.js';
 
 /** 인벤토리 카테고리 탭 */
-export type InvCategory = 'gear' | 'consumable' | 'food' | 'tackle' | 'lure' | 'etc';
+export type InvCategory = 'gear' | 'consumable' | 'food' | 'tackle' | 'lure' | 'quest' | 'etc';
 
 /**
  * 신선도 상태.
@@ -87,6 +87,7 @@ export const CATEGORY_LABEL: Record<InvCategory, string> = {
   food: '음식',
   tackle: '낚시용품',
   lure: '루어',
+  quest: '퀘스트',
   etc: '기타',
 };
 
@@ -185,6 +186,14 @@ export interface InvItem {
   tool?: HandTool;
   /** 착용 중인 손 (손 도구만) */
   equippedHand?: EquipHand;
+
+  // ── 낚싯줄 스풀 제원 ──
+  lineMaterial?: 'nylon' | 'fluorocarbon' | 'pe_braid' | 'monofilament';
+  lineForm?: LineForm;
+  lineLengthM?: number;
+  lineNo?: number;
+  lineDiameterMm?: number;
+  lineStrengthLb?: number;
 
   /**
    * 밑밥 재료 종류 (U 밑밥 품질 탭 드래그 앤 드랍 대상) —
@@ -505,8 +514,8 @@ function createDevFishDefs(): Omit<InvItem, 'slot'>[] {
 function createSeedItems(): InvItem[] {
   const defs: Omit<InvItem, 'slot'>[] = [
     // ── 장비 (손/의류) ──
-    { id: 'inv_rod',      name: '용상 파조기 1.5호 5.3m',   icon: '🎣', category: 'gear', subCategory: '손도구', qty: 1, basePrice: 185000, equippable: true, equipped: true, tool: 'rod', equippedHand: 'R' },
-    { id: 'inv_reel',     name: '다이오 2500L 스피닝릴',    icon: '⚙️', category: 'gear', subCategory: '릴',     qty: 1, basePrice: 95000,  equippable: true, equipped: true },
+    { id: 'inv_rod',      name: '용상 파조기 1.5호 5.3m',   icon: '', iconTexture: 'item_spinning_rod', category: 'gear', subCategory: '손도구', qty: 1, basePrice: 185000, equippable: true, equipped: true, tool: 'rod', equippedHand: 'R' },
+    { id: 'inv_reel',     name: '다이오 2500L 스피닝릴',    icon: '', iconTexture: 'item_spinning_reel', category: 'gear', subCategory: '릴',     qty: 1, basePrice: 95000,  equippable: true, equipped: true },
     { id: 'inv_net',      name: '뜰채 5m',                  icon: '🥅', category: 'gear', subCategory: '손도구', qty: 1, basePrice: 30000, equippable: true, tool: 'net' },
     { id: 'inv_cap',      name: '낚시 모자',                icon: '🧢', category: 'gear', subCategory: '모자',   qty: 1, basePrice: 12000, equippable: true },
     { id: 'inv_glasses',  name: '편광 안경',                icon: '🕶️', category: 'gear', subCategory: '안경',   qty: 1, basePrice: 45000, equippable: true },
@@ -543,35 +552,40 @@ function createSeedItems(): InvItem[] {
     { id: 'inv_veges',    name: '식자재 묶음 (대파/양파)',  icon: '🥬', category: 'food', subCategory: '식자재', qty: 2, basePrice: 5000,  condition: 'fresh', equippable: false },
 
     // ── 낚시용품 ──
-    { id: 'inv_worm',     name: '지렁이',                   icon: '🪱', category: 'tackle', subCategory: '생미끼',    qty: 20, basePrice: 5000,  condition: 'live',    equippable: false },
+    { id: 'inv_worm',     name: '지렁이',                   icon: '', iconTexture: 'item_worm', category: 'tackle', subCategory: '생미끼',    qty: 20, basePrice: 5000,  condition: 'live',    equippable: false },
     { id: 'inv_ragworm',  name: '갯지렁이',                 icon: '🪱', category: 'tackle', subCategory: '생미끼',    qty: 15, basePrice: 6000,  condition: 'live',    equippable: false },
     { id: 'inv_honmushi', name: '혼무시',                   icon: '🪱', category: 'tackle', subCategory: '생미끼',    qty: 8,  basePrice: 12000, condition: 'live',    equippable: false },
     { id: 'inv_krill',    name: '크릴 (냉동)',              icon: '🦐', category: 'tackle', subCategory: '냉동미끼',  qty: 30, basePrice: 4000,  condition: 'frozen',  equippable: false },
     { id: 'inv_breadbait', name: '빵가루 경단',             icon: '🍞', category: 'tackle', subCategory: '반죽미끼',  qty: 15, basePrice: 3000,  equippable: false },
     { id: 'inv_fishcut',  name: '생선 조각 미끼',           icon: '🦐', category: 'tackle', subCategory: '선어미끼',  qty: 6,  basePrice: 3000,  condition: 'chilled', equippable: false },
-    { id: 'inv_pe1',      name: 'PE 합사 원줄 1호',         icon: '🧵', category: 'tackle', subCategory: '원줄 스풀', qty: 1,  basePrice: 18000, equippable: false },
-    { id: 'inv_carbon15', name: '카본 목줄 1.5호',          icon: '🧵', category: 'tackle', subCategory: '목줄 스풀', qty: 1,  basePrice: 9000,  equippable: false },
-    { id: 'inv_nylon2',   name: '나일론 목줄 2호',          icon: '🧵', category: 'tackle', subCategory: '목줄 스풀', qty: 1,  basePrice: 6000,  equippable: false },
+    { id: 'inv_pe1',      name: 'AMSTRONG 합사 원줄 1호 · 150m', icon: '', iconTexture: 'line_spool_saiso', category: 'tackle', subCategory: '원줄 스풀', qty: 1,  basePrice: 18000, equippable: false, lineMaterial: 'pe_braid', lineForm: 'sinking', lineLengthM: 150, lineNo: 1, lineDiameterMm: 0.165, lineStrengthLb: 18 },
+    { id: 'inv_carbon15', name: 'AMSTRONG 카본 목줄 3호 · 150m', icon: '', iconTexture: 'line_spool_saiso', category: 'tackle', subCategory: '목줄 스풀', qty: 1,  basePrice: 9000,  equippable: false, lineMaterial: 'fluorocarbon', lineForm: 'suspend', lineLengthM: 150, lineNo: 3, lineDiameterMm: 0.285, lineStrengthLb: 10.5 },
+    { id: 'inv_nylon2',   name: 'AMSTRONG 나일론 목줄 2호 · 200m', icon: '', iconTexture: 'line_spool_saiso', category: 'tackle', subCategory: '목줄 스풀', qty: 1,  basePrice: 6000,  equippable: false, lineMaterial: 'nylon', lineForm: 'float', lineLengthM: 200, lineNo: 2, lineDiameterMm: 0.235, lineStrengthLb: 8 },
     { id: 'inv_chinu3',   name: '감성돔 바늘 3호',          icon: '🪝', category: 'tackle', subCategory: '바늘/훅',   qty: 12, basePrice: 3000,  equippable: false },
     { id: 'inv_treble',   name: '루어용 트레블 훅',         icon: '🪝', category: 'tackle', subCategory: '바늘/훅',   qty: 6,  basePrice: 4000,  equippable: false },
-    { id: 'inv_jighead',  name: '지그헤드 3g',              icon: '🪝', category: 'tackle', subCategory: '바늘/훅',   qty: 8,  basePrice: 3500,  equippable: false },
+    { id: 'inv_jighead',  name: '지그헤드 3g',              icon: '', iconTexture: 'item_jighead', category: 'tackle', subCategory: '바늘/훅',   qty: 8,  basePrice: 3500,  equippable: false },
     // 루어 — 바늘 일체형 가짜미끼. 바늘 소켓에 장착하며 미끼 소켓이 비활성화된다.
-    { id: 'inv_minnow',   name: '미노우 90F (플로팅)',      icon: '🐟', category: 'tackle', subCategory: '루어',      qty: 2,  basePrice: 14000, equippable: false },
-    { id: 'inv_metaljig', name: '메탈지그 20g',             icon: '🐟', category: 'tackle', subCategory: '루어',      qty: 3,  basePrice: 8000,  equippable: false },
+    { id: 'inv_minnow',   name: '미노우 90F (플로팅)',      icon: '', iconTexture: 'item_minnow', category: 'tackle', subCategory: '루어',      qty: 2,  basePrice: 14000, equippable: false },
+    { id: 'inv_metaljig', name: '메탈지그 20g',             icon: '', iconTexture: 'item_metal_jig', category: 'tackle', subCategory: '루어',      qty: 3,  basePrice: 8000,  equippable: false },
     // 부력찌 (float 소켓 — 필수) : floatBuoyG 양수 = 부력. 호수·형태별 운용이 다르다.
-    { id: 'inv_float_zero', name: '제로찌 (0호)',           icon: '⚪', category: 'tackle', subCategory: '채비 부속', qty: 2,  basePrice: 9000,  equippable: false, floatBuoyG: 0.4 },
-    { id: 'inv_float05',  name: '구멍찌 0.5호',             icon: '🟠', category: 'tackle', subCategory: '채비 부속', qty: 2,  basePrice: 7500,  equippable: false, floatBuoyG: 5 },
-    { id: 'inv_float08',  name: '구멍찌 0.8호',             icon: '🟠', category: 'tackle', subCategory: '채비 부속', qty: 3,  basePrice: 8000,  equippable: false, floatBuoyG: 8 },
-    { id: 'inv_float10',  name: '구멍찌 1.0호',             icon: '🟠', category: 'tackle', subCategory: '채비 부속', qty: 2,  basePrice: 8500,  equippable: false, floatBuoyG: 10 },
-    { id: 'inv_float_tilt', name: '기울찌 0.5호',           icon: '🟡', category: 'tackle', subCategory: '채비 부속', qty: 2,  basePrice: 9500,  equippable: false, floatBuoyG: 5 },
-    { id: 'inv_float_sink', name: '잠길찌 (-0.5호)',        icon: '🔵', category: 'tackle', subCategory: '채비 부속', qty: 2,  basePrice: 9000,  equippable: false, floatBuoyG: -1.5 },
+    { id: 'inv_float_zero', name: '제로찌 (00)',            icon: '', iconTexture: 'float_zero', category: 'tackle', subCategory: '채비 부속', qty: 2,  basePrice: 9000,  equippable: false, floatBuoyG: 0.4 },
+    { id: 'inv_float05',  name: '구멍찌 0.5호',             icon: '', iconTexture: 'float_hole', category: 'tackle', subCategory: '채비 부속', qty: 2,  basePrice: 7500,  equippable: false, floatBuoyG: 5 },
+    { id: 'inv_float08',  name: '구멍찌 0.8호',             icon: '', iconTexture: 'float_hole', category: 'tackle', subCategory: '채비 부속', qty: 3,  basePrice: 8000,  equippable: false, floatBuoyG: 8 },
+    { id: 'inv_float10',  name: '구멍찌 1.0호',             icon: '', iconTexture: 'float_hole', category: 'tackle', subCategory: '채비 부속', qty: 2,  basePrice: 8500,  equippable: false, floatBuoyG: 10 },
+    { id: 'inv_float_tilt', name: '기울찌 G2',              icon: '', iconTexture: 'float_tilt', category: 'tackle', subCategory: '채비 부속', qty: 2,  basePrice: 9500,  equippable: false, floatBuoyG: 5 },
+    { id: 'inv_float_sink', name: '잠길찌 (-0.5호)',        icon: '', iconTexture: 'subfloat_heavy', category: 'tackle', subCategory: '채비 부속', qty: 2,  basePrice: 9000,  equippable: false, floatBuoyG: -1.5 },
     // 수중찌 (subFloat 소켓 — 선택) : floatBuoyG 음수 = 침력. 찌는 수면에 세우고 채비만 내린다.
-    { id: 'inv_subfloat05', name: '수중찌 -0.5호',          icon: '🟤', category: 'tackle', subCategory: '채비 부속', qty: 2,  basePrice: 5500,  equippable: false, floatBuoyG: -5 },
-    { id: 'inv_subfloat', name: '수중찌 -0.8호',            icon: '🟤', category: 'tackle', subCategory: '채비 부속', qty: 3,  basePrice: 6000,  equippable: false, floatBuoyG: -8 },
-    { id: 'inv_subfloat10', name: '수중찌 -1.0호',          icon: '🟤', category: 'tackle', subCategory: '채비 부속', qty: 2,  basePrice: 6500,  equippable: false, floatBuoyG: -10 },
-    { id: 'inv_sinkerG2', name: '좁쌀봉돌 G2',              icon: '⚙️', category: 'tackle', subCategory: '채비 부속', qty: 20, basePrice: 2000,  equippable: false },
-    { id: 'inv_swivel',   name: '맨도래',                   icon: '⚙️', category: 'tackle', subCategory: '채비 부속', qty: 10, basePrice: 2500,  equippable: false },
-    { id: 'inv_cushion',  name: '쿠션고무 / 반달구슬',      icon: '⚙️', category: 'tackle', subCategory: '채비 부속', qty: 12, basePrice: 2000,  equippable: false },
+    { id: 'inv_subfloat05', name: '수중찌 -0.5호',          icon: '', iconTexture: 'subfloat_light', category: 'tackle', subCategory: '채비 부속', qty: 2,  basePrice: 5500,  equippable: false, floatBuoyG: -5 },
+    { id: 'inv_subfloat', name: '수중찌 -0.8호',            icon: '', iconTexture: 'subfloat_heavy', category: 'tackle', subCategory: '채비 부속', qty: 3,  basePrice: 6000,  equippable: false, floatBuoyG: -8 },
+    { id: 'inv_subfloat10', name: '수중찌 -1.0호',          icon: '', iconTexture: 'subfloat_heavy', category: 'tackle', subCategory: '채비 부속', qty: 2,  basePrice: 6500,  equippable: false, floatBuoyG: -10 },
+    { id: 'inv_subfloat_2b', name: '수중찌 -2B',             icon: '', iconTexture: 'subfloat_light', category: 'tackle', subCategory: '채비 부속', qty: 2,  basePrice: 5200,  equippable: false, floatBuoyG: -2 },
+    { id: 'inv_subfloat_20', name: '수중찌 -2.0',            icon: '', iconTexture: 'subfloat_heavy', category: 'tackle', subCategory: '채비 부속', qty: 2,  basePrice: 6800,  equippable: false, floatBuoyG: -20 },
+    { id: 'inv_sinkerG2', name: '좁쌀봉돌 G2',              icon: '', iconTexture: 'splitshot', category: 'tackle', subCategory: '채비 부속', qty: 20, basePrice: 2000,  equippable: false },
+    { id: 'inv_swivel',   name: '면도래 8호',               icon: '', iconTexture: 'swivel', category: 'tackle', subCategory: '채비 부속', qty: 10, basePrice: 2500,  equippable: false },
+    { id: 'inv_cushion',  name: '쿠션고무 / 반달구슬',      icon: '', iconTexture: 'cushion_round', category: 'tackle', subCategory: '채비 부속', qty: 12, basePrice: 2000,  equippable: false },
+    { id: 'inv_cushion_bell', name: '종형 쿠션고무 2호',    icon: '', iconTexture: 'cushion_bell', category: 'tackle', subCategory: '채비 부속', qty: 6, basePrice: 1200, equippable: false },
+    { id: 'inv_cushion_round', name: '원형 쿠션고무 2호',   icon: '', iconTexture: 'cushion_round', category: 'tackle', subCategory: '채비 부속', qty: 6, basePrice: 1200, equippable: false },
+    { id: 'inv_bead_halfmoon', name: '반달구슬 3호',         icon: '', iconTexture: 'bead_halfmoon', category: 'tackle', subCategory: '채비 부속', qty: 6, basePrice: 1500, equippable: false },
 
     // ── 기타 ──
     { id: 'inv_junk',     name: '낡은 릴 부품',             icon: '📦', category: 'etc', subCategory: '잡동사니', qty: 1, basePrice: 500, equippable: false },
@@ -612,7 +626,7 @@ function createSeedItems(): InvItem[] {
   for (const s of WEIGHT_SINKER_DB) {
     if (!seedSinkerIds.has(s.id)) continue;
     defs.push({
-      id: s.id, name: `${s.nameKo} (${s.weightG}g)`, icon: '🔩',
+      id: s.id, name: `${s.nameKo} (${s.weightG}g)`, icon: '', iconTexture: s.kind === 'ring' ? 'sinker_ring' : s.kind === 'hole' ? 'sinker_pillar' : undefined,
       category: 'tackle', subCategory: '채비 부속', qty: 3, basePrice: s.price, equippable: false,
       sinkerKind: s.kind, sinkerWeightG: s.weightG, sinkerHo: s.ho,
     });
@@ -623,16 +637,19 @@ function createSeedItems(): InvItem[] {
     worm_grub: '🪱', soft_jerkbait: '🐟', plug_minnow: '🐟',
     spoon: '🥄', spinner: '🌀', egi: '🦑', metal_jig: '🔩', tairaba: '🔴',
   };
+  const lureTexture: Record<string, string> = {
+    worm_grub: 'item_worm', soft_jerkbait: 'item_worm', plug_minnow: 'item_minnow', metal_jig: 'item_metal_jig',
+  };
   for (const lure of LURES_CATALOG_DB) {
     defs.push({
-      id: lure.id, name: `${lure.nameKo} (${lure.weightG}g)`, icon: lureIcon[lure.kind] ?? '🎣',
+      id: lure.id, name: `${lure.nameKo} (${lure.weightG}g)`, icon: lureIcon[lure.kind] ?? '🎣', iconTexture: lureTexture[lure.kind],
       category: 'lure', subCategory: '루어', qty: lure.family === 'soft' ? 8 : 3,
       basePrice: Math.round(400 + lure.weightG * 220), equippable: false,
     });
   }
   for (const w of JIGHEAD_WEIGHTS_G) {
     defs.push({
-      id: `lure_jighead_${w}`, name: `지그헤드 ${w}g`, icon: '🪝',
+      id: `lure_jighead_${w}`, name: `지그헤드 ${w}g`, icon: '', iconTexture: 'item_jighead',
       category: 'lure', subCategory: '지그헤드', qty: 10,
       basePrice: 1500 + w * 200, equippable: false,
     });
@@ -643,7 +660,7 @@ function createSeedItems(): InvItem[] {
 
   // 카테고리별 소켓 순차 배정 + 신선도 시계 시작 (조건 보유 아이템).
   // **착용 상태로 시드되는 장비는 그리드에서 빠진다**(slot = SLOT_EQUIPPED) — 2026-08-05 개편.
-  const counters: Record<InvCategory, number> = { gear: 0, consumable: 0, food: 0, tackle: 0, lure: 0, etc: 0 };
+  const counters: Record<InvCategory, number> = { gear: 0, consumable: 0, food: 0, tackle: 0, lure: 0, quest: 0, etc: 0 };
   const seeded = defs.map((d) => ({
     ...d,
     slot: d.equipped ? SLOT_EQUIPPED : counters[d.category]++,
@@ -1033,7 +1050,7 @@ class InventoryStoreManager {
     const ok = this.addItem({
       id: `inv_octo_boiled_${item.speciesId ?? 'octopus'}_${seq}`,
       name: `삶은 문어 ${g}g`, icon: '🐙', iconTexture: 'trim_octo_boiled',
-      category: 'food', subCategory: '요리(삶음)',
+      category: 'food', subCategory: '요리(숙회)',
       basePrice: Math.max(1000, Math.round((item.basePrice || 2000) * 1.15)),
       condition: 'fresh', conditionSinceMs: Date.now(),
       equippable: false, speciesId: item.speciesId, weightG: g,

@@ -127,7 +127,7 @@
 | S5 인벤 | 예약 슬롯 6종 · 냉장고 드래그 이송 · **탭별 용량 차등**(`BACKPACK_SPECS.slotsPerTabRatio` — core 모델 소비처 0) |
 | S6 경제 | 낚시점 전용 상점(루어) · 경영 |
 | S8 홈 | 하우스 Tier 1~3 · 수조 패널 · 농사/벌목/채굴/보트 · 실내 배치 모드 |
-| S10 UI | 저순위 팝업 검수 · `LicensePanel` 목록 스크롤 · fight/rod/yield TUNING 소비 전환 |
+| S10 UI | 저순위 팝업 검수 · `LicensePanel` 목록 스크롤 · fight/rod/yield TUNING 소비 전환 · ~~대화창 공통 초상 카드/마스크~~ ✅160 · ~~Phaser live Frame 수명주기 회귀~~ ✅161 |
 
 ---
 
@@ -204,6 +204,12 @@
 | `octopus` 학명(*O. vulgaris* vs *O. sinensis*) | 현행 유지 | 도감 정정 건으로 분리 |
 
 ---
+
+## 157차 후속 (2026-09-19)
+
+- **Claude 위키 아티팩트 반영** — `tools/gen_game_wiki_data.mjs --html` 결과와 `docs/wiki/PIXEL-ANGLER-THE-REAL-WIKI-ARTIFACT-CONTEXT.md`를 기존 퀘스트 아티팩트에 반영한다. 퀘스트는 `조행록` 탭으로 유지한다.
+- **NPC 초상 후속** — 32px 절차 초상과 새 프레임을 실렌더한 뒤에도 표정이 귀엽지 않으면 ImageGen으로 얼굴 에셋을 교체한다. 현재는 외부 MCP/API 없이 동일 `CharConfig` 정합을 우선했다.
+- **요리 분류 회귀 점검** — 외부 `회(사시미)` exact filter를 `요리(회)`로 이관하고, 필렛·회 조각은 재료로 남긴다.
 
 ## 156차 잔여 (2026-09-18)
 

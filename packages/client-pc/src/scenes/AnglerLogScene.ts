@@ -428,7 +428,7 @@ export class AnglerLogScene extends Phaser.Scene {
     const GAP = 16;
 
     // 카테고리 필터 바
-    const cats: InvCategory[] = ['gear', 'consumable', 'food', 'tackle', 'lure', 'etc'];
+    const cats: InvCategory[] = ['gear', 'consumable', 'food', 'tackle', 'lure', 'quest', 'etc'];
     let fx = startX;
     for (const cat of cats) {
       const selected = this.itemCatFilter === cat;

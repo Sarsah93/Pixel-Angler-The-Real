@@ -19,6 +19,9 @@ import type { TackleSetup } from '@tra/core';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { fadeOutThen } from './SceneFade.js';
 
+const LINE_FORM_LABEL = { float: 'Float', 'semi-float': 'Semi-Float', suspend: 'Suspend', sinking: 'Sinking' } as const;
+const LINE_MATERIAL_LABEL = { nylon: '나일론', fluorocarbon: '카본', pe_braid: '합사', monofilament: '모노' } as const;
+
 export class TackleRoomScene extends Phaser.Scene {
   // 선택된 장비 인덱스
   private selectedRodIdx = 0;
@@ -200,7 +203,7 @@ export class TackleRoomScene extends Phaser.Scene {
           fontStyle: isSelected ? 'bold' : 'normal',
         });
 
-        const specText = this.add.text(20, index * 80 + 25, `호수: ${line.lineNo}호 | 강도: ${line.strengthLb}lb | 굵기: ${line.diameterMm}mm | 재질: ${line.material}`, {
+        const specText = this.add.text(20, index * 80 + 25, `호수: ${line.lineNo}호 | ${line.spoolLengthM ?? '-'}m | ${line.lineForm ? LINE_FORM_LABEL[line.lineForm] : '-'} | ${line.strengthLb}lb | Ø${line.diameterMm}mm | ${LINE_MATERIAL_LABEL[line.material]}`, {
           fontFamily: '"Noto Sans KR", sans-serif',
           fontSize: '12px',
           color: '#5a8fab',

@@ -9,6 +9,7 @@
  */
 
 import type { InvCategory, InvItemTemplate } from '../store/InventoryStore.js';
+import { LINE_DATABASE } from '@tra/core';
 import { QUEST_REWARD_ITEMS } from './QuestRewardItems.js';
 import { InventoryStore } from '../store/InventoryStore.js';
 import { SHOP_CATALOG, BUILDING_LABEL } from './ShopCatalog.js';
@@ -82,6 +83,44 @@ export function buildItemWikiCatalog(): WikiItemEntry[] {
       category: t.category, subCategory: t.subCategory, basePrice: t.basePrice,
       desc: t.bound ? '귀속 — 스토리 보상. 판매·양도 불가.' : '스토리 보상.', soldAt: [], isSeed: false,
       tpl: { ...t, equipped: false, equippedHand: undefined },
+    });
+  }
+
+  // 5) SAISO AMSTRONG 라인 사양 — 실제 상점 품목과 별개로, dev F10에서
+  // 108개 사양(호수·형태·스풀 길이)을 하나씩 지급해 실검증할 수 있도록 한다.
+  // LINE_DATABASE는 장비실 전용 스펙 DB이므로 인벤토리 템플릿으로 변환해
+  // WikiCatalog에 합류시킨다. id는 고유한 line_saiso_*라 기존 시드/상점과 충돌하지 않는다.
+  for (const line of LINE_DATABASE) {
+    if (map.has(line.id)) continue;
+    const subCategory = line.material === 'fluorocarbon' ? '목줄 스풀' : '원줄 스풀';
+    const tpl: InvItemTemplate = {
+      id: line.id,
+      name: line.modelName,
+      icon: '줄',
+      iconTexture: line.iconTexture,
+      category: 'tackle',
+      subCategory,
+      basePrice: line.priceKRW,
+      equippable: false,
+      lineMaterial: line.material,
+      lineForm: line.lineForm,
+      lineLengthM: line.spoolLengthM,
+      lineNo: line.lineNo,
+      lineDiameterMm: line.diameterMm,
+      lineStrengthLb: line.strengthLb,
+    };
+    map.set(line.id, {
+      id: line.id,
+      name: line.modelName,
+      icon: '줄',
+      iconTexture: line.iconTexture,
+      category: 'tackle',
+      subCategory,
+      basePrice: line.priceKRW,
+      desc: `${line.brand} ${line.modelName} · 직경 ${line.diameterMm.toFixed(3)}mm · 인장 ${line.strengthLb}lb`,
+      soldAt: ['채비 검증 카탈로그'],
+      isSeed: false,
+      tpl,
     });
   }
 

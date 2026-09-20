@@ -12,6 +12,7 @@
  *   해상도가 달라 보인다(구 캐릭터가 맵과 어긋나 보이던 것과 같은 원인).
  */
 import Phaser from 'phaser';
+import { canvasContextOf, destroyCanvasTexture, refreshCanvasTexture, sourceImageOf } from './CanvasTextureGuard.js';
 
 /** 2px 그레인 — 아트 격자 1칸 */
 const G = 2;
@@ -58,16 +59,18 @@ export function ensureBuildingVariant(scene: Phaser.Scene, baseKey: string, seed
   if (scene.textures.exists(key)) return key;
   if (!scene.textures.exists(baseKey)) return baseKey;
 
-  const src = scene.textures.get(baseKey).getSourceImage() as HTMLImageElement | HTMLCanvasElement;
-  const w = (src as HTMLImageElement).width, h = (src as HTMLImageElement).height;
+  const src = sourceImageOf(scene, baseKey) as (HTMLImageElement | HTMLCanvasElement | null);
+  if (!src) return baseKey;
+  const w = src.width, h = src.height;
   if (!w || !h) return baseKey;
 
   const cv = scene.textures.createCanvas(key, w, h);
   if (!cv) return baseKey;
-  const ctx = cv.getContext();
-  ctx.clearRect(0, 0, w, h);
+  const ctx = canvasContextOf(cv);
+  if (!ctx) { destroyCanvasTexture(cv); return baseKey; }
+  try { ctx.clearRect(0, 0, w, h); } catch { destroyCanvasTexture(cv); return baseKey; }
   ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(src as CanvasImageSource, 0, 0);
+  try { ctx.drawImage(src as CanvasImageSource, 0, 0); } catch { destroyCanvasTexture(cv); return baseKey; }
 
   // ① 벽 색 회전 — 채도 있는 중간 명도만 돌린다(외곽선·유리·흰벽 보존).
   //   회전 폭은 **좁게** 잡는다. 색상환을 크게 돌리면 횟집이 마젠타가 되는 식으로
@@ -108,6 +111,6 @@ export function ensureBuildingVariant(scene: Phaser.Scene, baseKey: string, seed
   ctx.fillStyle = 'rgba(245,238,220,0.85)';
   ctx.fillRect(signX + G, bandY - G * 4 + (G >> 1), signW - G * 2, G);
 
-  cv.refresh();
+  if (!refreshCanvasTexture(cv, `건물 변형 ${key}`)) { destroyCanvasTexture(cv); return baseKey; }
   return key;
 }

@@ -137,6 +137,41 @@ export class BootScene extends Phaser.Scene {
     // food/: 아이템 아이콘 (인벤토리/상점 소켓용, 64x64 도트)
     // fish/: 어획 연출용 실사 픽셀화 생선 이미지 (낚시 성공 팝업/상세보기)
     this.load.image('food_assorted_sashimi', 'food/assorted_sashimi.png');
+
+    // ─── 어종 외 아이템·해루질 자원 투명 도트 아이콘 ───
+    // 인벤토리 슬롯과 상세보기에서 같은 키를 공유한다. 누락 시 기존 px/절차 아이콘으로 폴백.
+    const ITEM_ICON_ASSETS: Record<string, string> = {
+      // v2: 베이트로드와 같은 방향·해상도, 릴이 제거된 순수 스피닝로드
+      item_spinning_rod: 'item-icons/it_spinning_rod_v2.png',
+      item_bait_rod: 'item-icons/it_bait_rod.png',
+      item_spinning_reel: 'item-icons/it_spinning_reel.png',
+      item_bait_reel: 'item-icons/it_bait_reel.png',
+      item_jighead: 'item-icons/it_jighead.png',
+      item_worm: 'item-icons/it_worm.png',
+      item_minnow: 'item-icons/it_minnow.png',
+      item_metal_jig: 'item-icons/it_metal_jig.png',
+      line_spool_saiso: 'item-icons/line_spool_saiso.png',
+      sinker_ring: 'item-icons/sinker_ring.png',
+      sinker_pillar: 'item-icons/sinker_pillar.png',
+      sinker_bundle: 'item-icons/it_sinker_bundle_v2.png',
+      // 제로찌는 구멍찌와 동일한 바디를 공유하고, 호수/부력 표기만 런타임에서 바꾼다.
+      float_zero: 'item-icons/it_float_hole_v2.png',
+      float_hole: 'item-icons/it_float_hole_v2.png',
+      float_tilt: 'item-icons/it_float_tilt_v2.png',
+      subfloat_light: 'item-icons/it_subfloat_light_v2.png',
+      subfloat_heavy: 'item-icons/it_subfloat_heavy_v2.png',
+      splitshot: 'item-icons/it_splitshot_v2.png',
+      swivel: 'item-icons/it_swivel_v2.png',
+      cushion_bell: 'item-icons/it_cushion_bell_v2.png',
+      cushion_round: 'item-icons/it_cushion_round_v2.png',
+      bead_halfmoon: 'item-icons/it_bead_halfmoon_v2.png',
+      forage_haliotis_diversicolor: 'item-icons/forage_haliotis_diversicolor.png',
+      forage_heliocidaris_crassispina: 'item-icons/forage_heliocidaris_crassispina.png',
+      forage_aplysia_kurodai: 'item-icons/forage_aplysia_kurodai.png',
+      forage_hemigrapsus_sanguineus: 'item-icons/forage_hemigrapsus_sanguineus.png',
+      forage_portunus_trituberculatus: 'item-icons/forage_portunus_trituberculatus.png',
+    };
+    for (const [key, path] of Object.entries(ITEM_ICON_ASSETS)) this.load.image(key, path);
     // 회썰기(사시미) 미니게임 — 필렛 2뷰 (tools/gen_sashimi_fillet.cjs 생성, 원본 실사 리매핑)
     //  탑뷰 = 일반 회뜨기(위에서 본 필렛) / 측면 = 고급 회뜨기(완만한 슬랩)
     this.load.image('sashimi_fillet_top_bream', 'sashimi/fillet_top_bream.png');

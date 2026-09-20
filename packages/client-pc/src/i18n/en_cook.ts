@@ -112,7 +112,7 @@ export const EN_COOK: Record<string, string> = {
   '화구를 설치하고 그 앞에서 [F]를 누르세요. 집 가스레인지도 됩니다.': 'Set up a stove and press [F] in front of it. The home range works too.',
   '불요리는 화구 앞에서 합니다 — 휴대용 가스스토브(식자재마트) 또는 집 주방 가스레인지.': 'Fire cooking happens at a stove — a portable gas stove (grocery mart) or the home kitchen range.',
   // ── 요리 상세 ──
-  '별점 (지금)': 'Stars (now)', '별점 (완성 직후)': 'Stars (when finished)',
+  '별점 (지금)': 'Stars (now)', '별점 (완성 직후)': 'Stars (when finished)', '완성도 (지금)': 'Finish (now)', '완성도 (완성 직후)': 'Finish (when finished)', '종합 완성도': 'Overall finish',
   '탔다 — 가치 없음': 'Burnt — worthless',
   '미지근하다': 'Lukewarm',
   '재료 구성': 'Ingredients', '조리한 곳': 'Cooked at', '조리 후 경과': 'Time since cooking', '섭취 효과': 'Eating effect',

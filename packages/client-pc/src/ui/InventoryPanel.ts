@@ -33,7 +33,7 @@ import { GEAR_FAULTS } from '@tra/core';
 import { playEatSfx } from '../audio/Sfx.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 
-const TABS: InvCategory[] = ['gear', 'consumable', 'food', 'tackle', 'etc'];
+const TABS: InvCategory[] = ['gear', 'consumable', 'food', 'tackle', 'quest', 'etc'];
 
 const PANEL_W = 440;
 const PANEL_H = 596;
@@ -355,7 +355,8 @@ export class InventoryPanel extends DraggablePanel {
   // 카테고리 탭
   // ═══════════════════════════════════════════════════
   private buildTabs(): void {
-    const tabW = 78, tabH = 30, gap = 5;
+    const gap = 5, tabH = 30;
+    const tabW = (PANEL_W - 28 - gap * (TABS.length - 1)) / TABS.length;
     const startX = 14;
     const ty = this.contentTop + 8;
 
@@ -385,7 +386,8 @@ export class InventoryPanel extends DraggablePanel {
   }
 
   private paintTabs(): void {
-    const tabW = 78, tabH = 30, gap = 5;
+    const gap = 5, tabH = 30;
+    const tabW = (PANEL_W - 28 - gap * (TABS.length - 1)) / TABS.length;
     const startX = 14;
     const ty = this.contentTop + 8;
     TABS.forEach((tab, i) => {

@@ -62,7 +62,7 @@ export interface ShopDef {
 function sinkerShopEntry(id: string): ShopEntry {
   const s = WEIGHT_SINKER_DB.find((x) => x.id === id)!;
   return {
-    id: s.id, name: `${s.nameKo} (${s.weightG}g)`, icon: '🔩',
+    id: s.id, name: `${s.nameKo} (${s.weightG}g)`, icon: '', iconTexture: s.kind === 'ring' ? 'sinker_ring' : s.kind === 'hole' ? 'sinker_pillar' : s.kind === 'bundle' ? 'sinker_bundle' : undefined,
     category: 'tackle', subCategory: '채비 부속', basePrice: s.price,
     price: Math.round(s.price * 1.2), maxPerPurchase: 10, equippable: false,
     desc: `${s.brand} ${s.ho}호 원투 메인 싱커.${s.kind === 'hole' ? ' 이물감↓(예신 피드백 +15%).' : s.kind === 'bundle' ? ' 비거리 페널티(C_d 0.58).' : ''}`,
@@ -87,18 +87,24 @@ const GUILD_CORNER: ShopEntry[] = [
 const TACKLE_CORNER: ShopEntry[] = [
   // 줄·바늘은 줄터짐/밑걸림으로 잃는 소모품인데 어디서도 다시 살 수 없었다(외부 테스터 — 목줄을 잃고
   //   채비를 못 채움). 호수 → 인장강도는 core lineStrengthKg 규칙(카본 1.8kg/호 · PE 9kg/호).
-  { id: 'inv_pe1',      name: 'PE 합사 원줄 1호',  icon: '🧵', category: 'tackle', subCategory: '원줄 스풀', basePrice: 18000, price: 21000, maxPerPurchase: 3, equippable: false, desc: '원줄 스풀. PE 1호 ≈ 인장 9kg — 목줄보다 항상 강하게.' },
-  { id: 'inv_carbon15', name: '카본 목줄 1.5호',   icon: '🧵', category: 'tackle', subCategory: '목줄 스풀', basePrice: 9000,  price: 10500, maxPerPurchase: 5, equippable: false, desc: '≈ 인장 2.7kg. 25~35cm 감성돔·볼락·광어용 표준.' },
-  { id: 'inv_nylon2',   name: '나일론 목줄 2호',   icon: '🧵', category: 'tackle', subCategory: '목줄 스풀', basePrice: 6000,  price: 7000,  maxPerPurchase: 5, equippable: false, desc: '≈ 인장 3.6kg. 중형 돔·농어까지.' },
-  { id: 'shop_carbon3', name: '카본 목줄 3호',     icon: '🧵', category: 'tackle', subCategory: '목줄 스풀', basePrice: 12000, price: 14000, maxPerPurchase: 5, equippable: false, desc: '≈ 인장 5.4kg. 방어·부시리·대물 돔 — 라이트 채비로는 못 버티는 어종용.' },
+  { id: 'inv_pe1',      name: 'AMSTRONG 합사 원줄 1호 · 150m', icon: '', iconTexture: 'line_spool_saiso', category: 'tackle', subCategory: '원줄 스풀', basePrice: 18000, price: 21000, maxPerPurchase: 3, equippable: false, lineMaterial: 'pe_braid', lineForm: 'sinking', lineLengthM: 150, lineNo: 1, lineDiameterMm: 0.165, lineStrengthLb: 18, desc: 'SAISO AMSTRONG 합사 원줄. 직경 0.165mm · 인장 18lb.' },
+  { id: 'inv_carbon15', name: 'AMSTRONG 카본 목줄 3호 · 150m', icon: '', iconTexture: 'line_spool_saiso', category: 'tackle', subCategory: '목줄 스풀', basePrice: 9000, price: 10500, maxPerPurchase: 5, equippable: false, lineMaterial: 'fluorocarbon', lineForm: 'suspend', lineLengthM: 150, lineNo: 3, lineDiameterMm: 0.285, lineStrengthLb: 10.5, desc: '카본 쇼크리더. 직경 0.285mm · 인장 10.5lb · 나일론보다 강하고 합사보다 쓸림에 유리한 목줄.' },
+  { id: 'inv_nylon2',   name: 'AMSTRONG 나일론 목줄 2호 · 200m', icon: '', iconTexture: 'line_spool_saiso', category: 'tackle', subCategory: '목줄 스풀', basePrice: 6000, price: 7000, maxPerPurchase: 5, equippable: false, lineMaterial: 'nylon', lineForm: 'float', lineLengthM: 200, lineNo: 2, lineDiameterMm: 0.235, lineStrengthLb: 8, desc: '나일론 모노라인. 신축성과 쓸림 내성이 있어 찌낚시에 적합.' },
+  { id: 'shop_carbon3', name: 'AMSTRONG 카본 목줄 3호 · 150m', icon: '', iconTexture: 'line_spool_saiso', category: 'tackle', subCategory: '목줄 스풀', basePrice: 12000, price: 14000, maxPerPurchase: 5, equippable: false, lineMaterial: 'fluorocarbon', lineForm: 'suspend', lineLengthM: 150, lineNo: 3, lineDiameterMm: 0.285, lineStrengthLb: 10.5, desc: '카본 쇼크리더. 직경 0.285mm · 인장 10.5lb.' },
   { id: 'inv_chinu3',   name: '감성돔 바늘 3호',   icon: '🪝', category: 'tackle', subCategory: '바늘/훅',   basePrice: 3000,  price: 3500,  maxPerPurchase: 20, equippable: false, desc: '범용 바늘 (미끼 채비).' },
   ...['inv_sinker_ring_20', 'inv_sinker_ring_25', 'inv_sinker_hole_15', 'inv_sinker_hole_20',
     'inv_sinker_hole_25', 'inv_sinker_bundle_25'].map(sinkerShopEntry),
-  { id: 'inv_float08', name: '구멍찌 0.8호', icon: '🟠', category: 'tackle', subCategory: '채비 부속', basePrice: 8000, price: 9000, maxPerPurchase: 10, equippable: false, desc: '얕은 수심·약한 조류용 저부력 구멍찌.', floatBuoyG: 8 },
-  { id: 'shop_float10', name: '구멍찌 1.0호', icon: '🟠', category: 'tackle', subCategory: '채비 부속', basePrice: 8500, price: 9500, maxPerPurchase: 10, equippable: false, desc: '중간 수심·조류용 구멍찌.', floatBuoyG: 10 },
-  { id: 'shop_float15', name: '구멍찌 1.5호', icon: '🟠', category: 'tackle', subCategory: '채비 부속', basePrice: 9000, price: 10000, maxPerPurchase: 10, equippable: false, desc: '깊은 수심·센 조류용 고부력 구멍찌.', floatBuoyG: 15 },
-  { id: 'inv_subfloat', name: '수중찌 -0.8호', icon: '🟤', category: 'tackle', subCategory: '채비 부속', basePrice: 6000, price: 7000, maxPerPurchase: 10, equippable: false, desc: '부력찌 아래에 다는 침력체 — 찌는 수면에 세우고 채비만 조류에 태워 내린다 (선택 부품).', floatBuoyG: -8 },
-  { id: 'inv_sinkerG2', name: '좁쌀봉돌 G2', icon: '⚙️', category: 'tackle', subCategory: '채비 부속', basePrice: 2000, price: 2500, maxPerPurchase: 20, equippable: false, desc: '찌낚시 목줄 미세 조정용 좁쌀 봉돌.' },
+  { id: 'inv_float08', name: '구멍찌 0.8호', icon: '', iconTexture: 'float_hole', category: 'tackle', subCategory: '채비 부속', basePrice: 8000, price: 9000, maxPerPurchase: 10, equippable: false, desc: '얕은 수심·약한 조류용 저부력 구멍찌.', floatBuoyG: 8 },
+  { id: 'shop_float10', name: '구멍찌 1.0호', icon: '', iconTexture: 'float_hole', category: 'tackle', subCategory: '채비 부속', basePrice: 8500, price: 9500, maxPerPurchase: 10, equippable: false, desc: '중간 수심·조류용 구멍찌.', floatBuoyG: 10 },
+  { id: 'shop_float15', name: '구멍찌 1.5호', icon: '', iconTexture: 'float_hole', category: 'tackle', subCategory: '채비 부속', basePrice: 9000, price: 10000, maxPerPurchase: 10, equippable: false, desc: '깊은 수심·센 조류용 고부력 구멍찌.', floatBuoyG: 15 },
+  { id: 'inv_subfloat_2b', name: '수중찌 -2B', icon: '', iconTexture: 'subfloat_light', category: 'tackle', subCategory: '채비 부속', basePrice: 5200, price: 6200, maxPerPurchase: 10, equippable: false, desc: '작은 부력 보정용 고무 수중찌.', floatBuoyG: -2 },
+  { id: 'inv_subfloat_20', name: '수중찌 -2.0', icon: '', iconTexture: 'subfloat_heavy', category: 'tackle', subCategory: '채비 부속', basePrice: 6800, price: 7800, maxPerPurchase: 10, equippable: false, desc: '2.0호 구멍찌에 맞춘 금속 수중찌.', floatBuoyG: -20 },
+  { id: 'inv_subfloat', name: '수중찌 -0.8호', icon: '', iconTexture: 'subfloat_heavy', category: 'tackle', subCategory: '채비 부속', basePrice: 6000, price: 7000, maxPerPurchase: 10, equippable: false, desc: '부력찌 아래에 다는 침력체.', floatBuoyG: -8 },
+  { id: 'inv_sinkerG2', name: '좁쌀봉돌 G2', icon: '', iconTexture: 'splitshot', category: 'tackle', subCategory: '채비 부속', basePrice: 2000, price: 2500, maxPerPurchase: 20, equippable: false, desc: '찌낚시 목줄 미세 조정용 좁쌀 봉돌.' },
+  { id: 'inv_swivel', name: '면도래 8호', icon: '', iconTexture: 'swivel', category: 'tackle', subCategory: '채비 부속', basePrice: 2500, price: 3000, maxPerPurchase: 20, equippable: false, desc: '원줄과 목줄의 꼬임을 줄이는 면도래.' },
+  { id: 'inv_cushion_bell', name: '종형 쿠션고무 2호', icon: '', iconTexture: 'cushion_bell', category: 'tackle', subCategory: '채비 부속', basePrice: 1200, price: 1500, maxPerPurchase: 20, equippable: false, desc: '찌·채비 충격을 흡수하는 종형 쿠션고무.' },
+  { id: 'inv_cushion_round', name: '원형 쿠션고무 2호', icon: '', iconTexture: 'cushion_round', category: 'tackle', subCategory: '채비 부속', basePrice: 1200, price: 1500, maxPerPurchase: 20, equippable: false, desc: '찌·채비 충격을 흡수하는 원형 쿠션고무.' },
+  { id: 'inv_bead_halfmoon', name: '반달구슬 3호', icon: '', iconTexture: 'bead_halfmoon', category: 'tackle', subCategory: '채비 부속', basePrice: 1500, price: 1800, maxPerPurchase: 20, equippable: false, desc: '채비 위치를 고정하는 반달구슬.' },
 ];
 
 /** 직판장 채집·통발 코너 (121차) — 시행령 허용 도구(집게·갈고리·통발) + 헤드랜턴. 통발은 아이템 소유·설치 소모·수거 반환 */
@@ -219,8 +225,8 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
       { id: 'shop_meal_eel',     name: '장어구이',      icon: '🥫', category: 'food', subCategory: '보양식', basePrice: 24000, price: 29000, maxPerPurchase: 2, equippable: false, desc: '최고급 보양식 — HP +45 · 피로 -40 · 60분간 체력 소모 -32%.' },
       // 회(사시미) 카테고리 — 아이콘은 모듬회 픽셀 이미지로 통일 (추후 어종별 이미지 분리 예정)
       // 네이밍 규칙: {어종}_sashimi_{중량} / 한글: {어종} 회 ({소/중/대})
-      { id: 'shop_assorted_sashimi_small', name: '모듬회 (소)', icon: '🐟', iconTexture: 'food_assorted_sashimi', category: 'food', subCategory: '회(사시미)', basePrice: 20000, price: 25000, maxPerPurchase: 2, equippable: false, desc: 'assorted sashimi (small) — 고신선도 회, 근력 1.2배 10분.' },
-      { id: 'shop_black_sea_bream_sashimi_small', name: '감성돔 회 (소)', icon: '🐟', iconTexture: 'food_assorted_sashimi', category: 'food', subCategory: '회(사시미)', basePrice: 28000, price: 34000, maxPerPurchase: 2, equippable: false, desc: 'black sea bream sashimi (small) — 쫄깃한 단일 어종 회, 근력 1.3배 10분.' },
+      { id: 'shop_assorted_sashimi_small', name: '모듬회 (소)', icon: '🐟', iconTexture: 'food_assorted_sashimi', category: 'food', subCategory: '요리(회)', basePrice: 20000, price: 25000, maxPerPurchase: 2, equippable: false, desc: 'assorted sashimi (small) — 고신선도 회, 근력 1.2배 10분.' },
+      { id: 'shop_black_sea_bream_sashimi_small', name: '감성돔 회 (소)', icon: '🐟', iconTexture: 'food_assorted_sashimi', category: 'food', subCategory: '요리(회)', basePrice: 28000, price: 34000, maxPerPurchase: 2, equippable: false, desc: 'black sea bream sashimi (small) — 쫄깃한 단일 어종 회, 근력 1.3배 10분.' },
     ],
   },
   cafe: {
@@ -263,10 +269,10 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
       { id: 'workshop_pro_tools', name: '로드 빌딩 공구 세트', icon: '', category: 'etc', subCategory: '재료',
         basePrice: 150000, price: 150000, maxPerPurchase: 1, equippable: false, craftMaterial: true, unlockKey: 'daily_workshop_pro',
         desc: '탁만수가 말해 둔 물건. 대를 깎는 사람에게만.' },
-      { id: 'inv_rod_budget', name: '사이소 민물대 2.4m', icon: '🎣', category: 'gear', subCategory: '손도구',
+      { id: 'inv_rod_budget', name: '사이소 민물대 2.4m', icon: '', iconTexture: 'item_bait_rod', category: 'gear', subCategory: '손도구',
         basePrice: 12000, price: 12000, maxPerPurchase: 1, equippable: true, tool: 'rod',
         desc: '싸구려 짧은 대. 테트라포드 구멍치기 전용 — 밑걸림으로 부러져도 아깝지 않다.' },
-      { id: 'inv_reel_budget', name: '사이소 소형 스피닝릴', icon: '⚙️', category: 'gear', subCategory: '릴',
+      { id: 'inv_reel_budget', name: '사이소 소형 스피닝릴', icon: '', iconTexture: 'item_spinning_reel', category: 'gear', subCategory: '릴',
         basePrice: 8000, price: 8000, maxPerPurchase: 1, equippable: true,
         desc: '드랙이 거칠다. 구멍치기처럼 짧게 감아 올리는 조법에는 충분하다.' },
       { id: 'inv_line_nylon3', name: '나일론 원줄 3호 100m', icon: '🧵', category: 'tackle', subCategory: '원줄 스풀',

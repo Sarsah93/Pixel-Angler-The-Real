@@ -26,19 +26,29 @@ import {
 import { DraggablePanel } from './DraggablePanel.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { StoryStore } from '../store/StoryStore.js';
+import { InventoryStore } from '../store/InventoryStore.js';
 import { dialogueOf, NPC_IDLE } from '../data/StoryDialogue.js';
 import { clampTextWidth } from './TextFit.js';
 import { ensureFacePortrait } from './CharacterSprite.js';
 import { applyScreenFixed } from './DraggablePanel.js';
+import { applyPortraitMask, type PortraitMaskHandle } from './PortraitMask.js';
+import { PORTRAIT_LAYOUT } from './PortraitLayout.js';
 
 const W = 1040;
 const H = 372;
 const FONT = '"Noto Sans KR", sans-serif';
 
-/** 초상 열 — 얼굴 창 16px 아트 × 11 = 176px */
-const FACE_SCALE = 11;
-const FACE_PX = 16 * FACE_SCALE;
-const PORTRAIT_W = FACE_PX + 40;
+/** 초상 열 — 32px 전용 얼굴 격자를 6배 nearest로 표시한다. */
+const FACE_SCALE = 12;
+const FACE_PX = 32 * Math.round((16 * FACE_SCALE) / 32);
+const PORTRAIT_W = FACE_PX + 48;
+/**
+ * 캡처의 빨간 가이드가 가리킨 실제 파란 초상 칸.
+ * 프레임을 세로로 충분히 확보하고 이미지는 그 안에 수직 중앙 배치한다.
+ * 이전 값은 프레임 하단과 어깨가 같은 높이에 걸려 이름/호감도 라벨을 침범했다.
+ */
+const PORTRAIT_FRAME_W = PORTRAIT_W - PORTRAIT_LAYOUT.frameSideInset;
+const PORTRAIT_FRAME_H = FACE_PX + 40;
 
 const TEXT_X = PORTRAIT_W + 12;
 const TEXT_W = W - TEXT_X - 22;
@@ -90,6 +100,7 @@ export class DialoguePanel extends DraggablePanel {
   private logText?: Phaser.GameObjects.Text;
   private logInner?: Phaser.GameObjects.Container;
   private logMask?: Phaser.GameObjects.Graphics;
+  private portraitMask?: PortraitMaskHandle;
   private caret?: Phaser.GameObjects.Graphics;
   private caretTween?: Phaser.Tweens.Tween;
   private lastPanelX = NaN;
@@ -125,7 +136,12 @@ export class DialoguePanel extends DraggablePanel {
     scene.input.keyboard?.on('keydown', this.keyHandler);
     // 대사 진행은 아무 데나 클릭해도 된다(선택지 행은 자기 핸들러가 먼저 먹는다)
     this.clickHandler = () => { if (this.busy) this.advance(); };
-    this.postUpdate = () => { if (this.x !== this.lastPanelX || this.y !== this.lastPanelY) this.syncMask(); };
+    this.postUpdate = () => {
+      if (this.x !== this.lastPanelX || this.y !== this.lastPanelY) {
+        this.syncMask();
+        this.portraitMask?.sync();
+      }
+    };
     scene.events.on('postupdate', this.postUpdate);
 
     this.buildFrame();
@@ -138,6 +154,7 @@ export class DialoguePanel extends DraggablePanel {
     this.scene?.input?.keyboard?.off('keydown', this.keyHandler);
     this.scene?.events?.off('postupdate', this.postUpdate);
     this.logMask?.destroy();
+    this.portraitMask?.destroy();
     super.destroy(fromScene);
   }
 
@@ -243,46 +260,93 @@ export class DialoguePanel extends DraggablePanel {
    */
   private renderPortrait(c: Phaser.GameObjects.Container): void {
     const g = this.scene.add.graphics();
-    const boxX = 10, boxY = 4, boxW = PORTRAIT_W - 20;
+    const boxX = PORTRAIT_LAYOUT.outerInset, boxY = 4;
+    const boxW = PORTRAIT_W - PORTRAIT_LAYOUT.outerInset * 2;
     const boxH = this.panelH - this.contentTop - 12;
-    g.fillStyle(0x08121c, 0.92); g.fillRect(boxX, boxY, boxW, boxH);
-    g.lineStyle(1, 0x2c5878, 1); g.strokeRect(boxX, boxY, boxW, boxH);
+    g.fillStyle(0x08121c, 0.96); g.fillRoundedRect(boxX, boxY, boxW, boxH, 12);
+    g.lineStyle(2, 0x356b8f, 0.9); g.strokeRoundedRect(boxX, boxY, boxW, boxH, 12);
+    g.lineStyle(1, 0x18344c, 1); g.strokeRoundedRect(boxX + 5, boxY + 5, boxW - 10, boxH - 10, 9);
     c.add(g);
 
-    const BAR_H = 8, BAR_GAP = 12, LABEL_H = 16;
-    const stackH = FACE_PX + BAR_GAP + BAR_H + 4 + LABEL_H;
+    // 구성 순서: 초상화 → 호감도 막대/상태 → 이름 슬롯.
+    // 이름 슬롯이 호감도 텍스트와 겹치지 않도록 각 영역을 독립 높이로 예약한다.
+    const BAR_H = 8, BAR_GAP = 18, AFFINITY_GAP = 6, AFFINITY_H = 16;
+    const NAME_GAP = PORTRAIT_LAYOUT.nameGap, NAME_H = PORTRAIT_LAYOUT.nameHeight;
+    const npc = getStoryNpc(this.npcId);
+    const showAffinity = !!npc;
+    const affinityBlockH = showAffinity
+      ? BAR_GAP + BAR_H + AFFINITY_GAP + AFFINITY_H + NAME_GAP
+      : NAME_GAP;
+    const stackH = PORTRAIT_FRAME_H + affinityBlockH + NAME_H;
     const top = boxY + Math.max(6, Math.floor((boxH - stackH) / 2));
+    const frameX = PORTRAIT_W / 2 - PORTRAIT_FRAME_W / 2;
 
     // 얼굴 뒤 배경 — 증명사진 톤
     g.fillStyle(0x12263a, 1);
-    g.fillRect(PORTRAIT_W / 2 - FACE_PX / 2, top, FACE_PX, FACE_PX);
-    g.lineStyle(1, 0x3c6f95, 1);
-    g.strokeRect(PORTRAIT_W / 2 - FACE_PX / 2, top, FACE_PX, FACE_PX);
+    g.fillRoundedRect(frameX, top, PORTRAIT_FRAME_W, PORTRAIT_FRAME_H, PORTRAIT_LAYOUT.frameRadius);
+    g.lineStyle(2, 0x6b9fbc, 0.95);
+    g.strokeRoundedRect(frameX, top, PORTRAIT_FRAME_W, PORTRAIT_FRAME_H, PORTRAIT_LAYOUT.frameRadius);
 
     const key = ensureFacePortrait(this.scene, characterOf(this.npcId), FACE_SCALE);
-    const img = this.scene.add.image(PORTRAIT_W / 2, top, key).setOrigin(0.5, 0);
+    // 32×32 전체 래스터를 유지하되 프레임 안에서 중앙 정렬한다. 특히 y=30~31의
+    // 어깨 행이 칸 밖으로 밀려나지 않도록 위·아래 여백을 동일하게 둔다.
+    const imageSize = Math.min(FACE_PX, PORTRAIT_FRAME_H - 16);
+    const imageTop = top + Math.floor((PORTRAIT_FRAME_H - imageSize) / 2);
+    const img = this.scene.add.image(PORTRAIT_W / 2, imageTop, key)
+      .setOrigin(0.5, 0).setDisplaySize(imageSize, imageSize);
+    // 초상은 투명 여백·어깨까지 포함한 32×32 전용 래스터다. 프레임 밖으로 한 화소라도
+    // 새면 아래 우호도 바와 헤더 이름 영역을 침범하므로, 프레임 내부에서만 보이게 자른다.
+    this.portraitMask = applyPortraitMask(this.scene, c, img, {
+      x: frameX + 3,
+      y: top + 3,
+      width: PORTRAIT_FRAME_W - 6,
+      height: PORTRAIT_FRAME_H - 6,
+      radius: 6,
+    });
     c.add(img);
 
-    // 우호도 — 11눈금(−5~+5) 바 + 티어 라벨
-    const aff = StoryStore.affinityOf(this.npcId);
-    const tier = affinityTier(aff);
-    const lab = AFFINITY_TIER_LABEL[tier];
-    const pips = affinityPips(aff);
-    const barY = top + FACE_PX + BAR_GAP;
-    const pipW = 12, gap = 2, x0 = PORTRAIT_W / 2 - (11 * pipW + 10 * gap) / 2;
-    const bar = this.scene.add.graphics();
-    for (let i = -5; i <= 5; i++) {
-      const x = x0 + (i + 5) * (pipW + gap);
-      const on = i === 0 ? true : i < 0 ? pips <= i : pips >= i;
-      const col = i === 0 ? 0x9fb4c8 : i < 0 ? 0xe0605a : 0xffd257;
-      bar.fillStyle(on ? col : 0x1b2a3a, on ? 1 : 0.9);
-      bar.fillRect(x, barY, pipW, BAR_H);
-      bar.lineStyle(1, 0x06090f, 1); bar.strokeRect(x, barY, pipW, BAR_H);
+    // NPC 대화에서는 호감도 막대와 상태 텍스트를 이름 바로 위에 유지한다.
+    // 자기 캐릭터 표시처럼 NPC 데이터가 없는 경우에만 이 블록을 생략한다.
+    let nameY = top + PORTRAIT_FRAME_H + NAME_GAP;
+    if (showAffinity) {
+      const aff = StoryStore.affinityOf(this.npcId);
+      const tier = affinityTier(aff);
+      const lab = AFFINITY_TIER_LABEL[tier];
+      const pips = affinityPips(aff);
+      const barY = top + PORTRAIT_FRAME_H + BAR_GAP;
+      g.lineStyle(1, 0x284b68, 0.9);
+      g.lineBetween(boxX + 12, barY - 6, boxX + boxW - 12, barY - 6);
+      const pipW = 12, gap = 2, x0 = PORTRAIT_W / 2 - (11 * pipW + 10 * gap) / 2;
+      const bar = this.scene.add.graphics();
+      for (let i = -5; i <= 5; i++) {
+        const x = x0 + (i + 5) * (pipW + gap);
+        const on = i === 0 ? true : i < 0 ? pips <= i : pips >= i;
+        const col = i === 0 ? 0x9fb4c8 : i < 0 ? 0xe0605a : 0xffd257;
+        bar.fillStyle(on ? col : 0x1b2a3a, on ? 1 : 0.9);
+        bar.fillRoundedRect(x, barY, pipW, BAR_H, 2);
+        bar.lineStyle(1, 0x06090f, 1); bar.strokeRoundedRect(x, barY, pipW, BAR_H, 2);
+      }
+      c.add(bar);
+      const affinityText = this.scene.add.text(
+        PORTRAIT_W / 2, barY + BAR_H + AFFINITY_GAP,
+        `${lab.ko}  (${aff >= 0 ? '+' : ''}${aff.toFixed(2)})`,
+        { fontFamily: FONT, fontSize: '11px', color: `#${lab.color.toString(16).padStart(6, '0')}` },
+      ).setOrigin(0.5, 0);
+      c.add(affinityText);
+      nameY = barY + BAR_H + AFFINITY_GAP + AFFINITY_H + NAME_GAP;
     }
-    c.add(bar);
-    const t = this.scene.add.text(PORTRAIT_W / 2, barY + BAR_H + 4, `${lab.ko}  (${aff >= 0 ? '+' : ''}${aff.toFixed(2)})`, {
-      fontFamily: FONT, fontSize: '11px', color: `#${lab.color.toString(16).padStart(6, '0')}`,
-    }).setOrigin(0.5, 0);
+
+    // 초상화와 이름을 분리한다. 캡처의 작은 빨간 영역을 독립적인 이름
+    // 플레이트로 사용하고, 초상화/호감도 텍스트와 겹치지 않게 배치한다.
+    const nameX = PORTRAIT_W / 2 - (PORTRAIT_FRAME_W - 8) / 2;
+    const nameW = PORTRAIT_FRAME_W - 8;
+    g.fillStyle(0x08121c, 0.96);
+    g.fillRoundedRect(nameX, nameY, nameW, NAME_H, 5);
+    g.lineStyle(1, 0x356b8f, 0.9);
+    g.strokeRoundedRect(nameX, nameY, nameW, NAME_H, 5);
+    const t = this.scene.add.text(PORTRAIT_W / 2, nameY + NAME_H / 2, npc?.nameKo ?? this.npcId, {
+      fontFamily: FONT, fontSize: '12px', color: COL.accent, fontStyle: 'bold',
+    }).setOrigin(0.5);
     c.add(t);
   }
 
@@ -472,8 +536,14 @@ export class DialoguePanel extends DraggablePanel {
     return {
       label: ch.labelKo,
       action: () => {
+        let deliveredIce = false;
+        if (stage === 'complete' && q.id === 'M1-02') {
+          const ice = InventoryStore.find('quest_ice_crate');
+          deliveredIce = !!ice;
+        }
         const ok = stage === 'offer' ? StoryStore.accept(q.id, ch.id) : StoryStore.complete(q.id, ch.id);
         if (!ok) { this.lastWorkMsg = '지금은 진행할 수 없습니다.'; this.enterMenu(false); return; }
+        if (deliveredIce) InventoryStore.removeQty('quest_ice_crate', 1);
         const done = stage === 'complete';
         this.reply = {
           line: ch.replyKo,

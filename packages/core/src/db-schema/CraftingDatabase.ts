@@ -81,7 +81,7 @@ export const CRAFT_BLUEPRINTS: readonly CraftBlueprint[] = [
     descKo: '카본 목줄에 감성돔 바늘을 직접 묶어 만든 완성 채비. 시판품보다 저렴하다.',
     descEn: 'A snelled chinu hook tied onto carbon leader. Cheaper than store-bought.',
     materials: [
-      { itemId: 'inv_carbon15', qty: 1, nameKo: '카본 목줄 1.5호', nameEn: 'Carbon Leader #1.5' },
+      { itemId: 'inv_carbon15', qty: 1, nameKo: '카본 목줄 3호', nameEn: 'Carbon Leader #3' },
       { itemId: 'inv_chinu3', qty: 2, nameKo: '감성돔 바늘 3호', nameEn: 'Chinu Hook #3' },
     ],
     outputId: 'craft_rig_chinu', outputQty: 2, baseSuccess: 0.92, xp: 12,

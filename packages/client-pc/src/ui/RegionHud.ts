@@ -10,6 +10,7 @@
  */
 
 import Phaser from 'phaser';
+import { canvasContextOf, destroyCanvasTexture, refreshCanvasTexture } from './CanvasTextureGuard.js';
 import { MP_CHAT_MAX_LEN, type RegionTerrain, type WeatherKind, type StatusEffectId } from '@tra/core';
 import {
   WEATHER_LABEL, kstParts, isNightHour,
@@ -85,6 +86,11 @@ const MINI_COL: Record<RegionTerrain, number> = {
 };
 
 const MINI_SIZES = [150, 250, 350] as const;
+/** 미니맵과 독립적으로 조절되는 「지금 할 일」 패널 폭 */
+const QUEST_TRACKER_WIDTHS = [236, 300, 380] as const;
+const QUEST_TRACKER_HEIGHTS = [124, 172, 224] as const;
+type HudWindow = 'status' | 'chat' | 'map' | 'quest';
+type HudRect = { x: number; y: number; w: number; h: number };
 
 // ── 상태 패널 레이아웃 ────────────────────────────────
 // 텍스트가 패널 밖으로 밀려나지 않도록 모든 요소를 이 상수 기준으로 배치한다.
@@ -299,6 +305,21 @@ export class RegionHud extends Phaser.GameObjects.Container {
   /** 155차 — 미니맵 아래 「지금 할 일」 추적기 */
   private trackerC?: Phaser.GameObjects.Container;
   private trackerData: QuestTrackerData | null = null;
+  private trackerSizeIdx = 0;
+  private statusOffset = { x: 0, y: 0 };
+  private chatPosition?: { x: number; y: number };
+  private mapPosition?: { right: number; top: number };
+  private trackerPosition?: { right: number; top: number };
+  private trackerHeight = 0;
+  private hudDrag?: { key: HudWindow; sx: number; sy: number; rect: HudRect };
+  private readonly hudMove = (p: Phaser.Input.Pointer): void => {
+    const d = this.hudDrag;
+    if (!d || !p.isDown) return;
+    this.moveHud(d.key,
+      Phaser.Math.Clamp(d.rect.x + p.x - d.sx, 6, Math.max(6, GAME_WIDTH - d.rect.w - 6)),
+      Phaser.Math.Clamp(d.rect.y + p.y - d.sy, 6, Math.max(6, GAME_HEIGHT - d.rect.h - 6)));
+  };
+  private readonly hudUp = (): void => { this.hudDrag = undefined; };
   /** 155차 — 우측 획득 토스트(아이템 아이콘 + 수량, 페이드 인/아웃) */
   private toasts: { c: Phaser.GameObjects.Container; h: number }[] = [];
   /** 미니맵 타이틀 밴드 높이 (155차 — +/− 버튼이 들어간다) */
@@ -348,6 +369,9 @@ export class RegionHud extends Phaser.GameObjects.Container {
     this.createQuickslots();
     this.applyStatusView();
     this.applyChatView();   // createLogPanel 포함 (크기 단계 반영)
+    scene.input.on('pointermove', this.hudMove);
+    scene.input.on('pointerup', this.hudUp);
+    scene.input.on('gameout', this.hudUp);
 
     // 화면 고정 히트 영역 보정 (카메라 스크롤 시 퀵슬롯 클릭 어긋남 방지)
     applyScreenFixed(this);
@@ -625,6 +649,7 @@ export class RegionHud extends Phaser.GameObjects.Container {
    * 좌우는 남는 폭이 큰 쪽, 상하는 남는 높이가 큰 쪽으로 확장하고 화면 안으로 클램프한다.
    */
   private anchorTip(c: Phaser.GameObjects.Container, a: TipAnchor): void {
+    a = { ...a, x: a.x + this.statusOffset.x, y: a.y + this.statusOffset.y };
     const gap = 6;
     const w = c.width, h = c.height;
     const roomR = GAME_WIDTH - (a.x + a.w) - gap * 2;
@@ -681,6 +706,7 @@ export class RegionHud extends Phaser.GameObjects.Container {
       c.add(icon ? [g, icon, hit] : [g, hit]);
     });
     this.stripC = c;
+    c.setPosition(this.statusOffset.x, this.statusOffset.y);
     this.add(c);
     applyScreenFixed(this);
   }
@@ -907,8 +933,9 @@ export class RegionHud extends Phaser.GameObjects.Container {
       if (total > 60_000) {
         // 대형(심리스) 맵 — Graphics 커맨드 수십만 개는 generateTexture가 느리다.
         // CanvasTexture에 ImageData로 직접 픽셀을 쓰는 경로 (한 번에 O(N) 바이트 쓰기).
-        const tex = this.scene.textures.createCanvas(texKey, this.cfg.cols, this.cfg.rows)!;
-        const ctx = tex.getContext();
+        const tex = this.scene.textures.createCanvas(texKey, this.cfg.cols, this.cfg.rows);
+        const ctx = tex ? canvasContextOf(tex) : null;
+        if (!tex || !ctx) { if (tex) destroyCanvasTexture(tex); return; }
         const img = ctx.createImageData(this.cfg.cols, this.cfg.rows);
         const d = img.data;
         let i = 0;
@@ -920,8 +947,9 @@ export class RegionHud extends Phaser.GameObjects.Container {
             i += 4;
           }
         }
-        ctx.putImageData(img, 0, 0);
-        tex.refresh();
+        try { ctx.putImageData(img, 0, 0); }
+        catch { destroyCanvasTexture(tex); return; }
+        if (!refreshCanvasTexture(tex, `미니맵 ${texKey}`)) { destroyCanvasTexture(tex); return; }
       } else {
         const g = this.scene.add.graphics();
         for (let r = 0; r < this.cfg.rows; r++) {
@@ -949,8 +977,8 @@ export class RegionHud extends Phaser.GameObjects.Container {
     this.miniDispH = this.cfg.rows * scale;
 
     const HDR = RegionHud.MINI_HDR;
-    const ox = GAME_WIDTH - this.miniDispW - 16;
-    const oy = 16 + HDR;
+    const ox = (this.mapPosition?.right ?? GAME_WIDTH - 11) - this.miniDispW - 5;
+    const oy = (this.mapPosition?.top ?? 11) + 5 + HDR;
     this.miniContainer.setPosition(ox, oy);
 
     // 타이틀 밴드(155차) — 제목 + [−][+] 크기 버튼. 컨텐츠(지도)는 밴드 아래에서 시작한다(119차 규칙).
@@ -961,6 +989,7 @@ export class RegionHud extends Phaser.GameObjects.Container {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#9fc0d4', fontStyle: 'bold',
     });
     this.miniContainer.add(mtitle);
+    this.miniContainer.add(this.dragHeader('map', -5, -5 - HDR, this.miniDispW - 32, HDR));
     const mkBtn = (x: number, glyph: string, onClick: () => void): void => {
       const top = -5 - HDR + 2;
       const g = this.scene.add.graphics();
@@ -985,8 +1014,8 @@ export class RegionHud extends Phaser.GameObjects.Container {
     // 미니맵 클릭 → 정규화 좌표 이벤트 (dev: Ctrl+클릭 순간이동 — RegionFieldScene가 소비)
     img.on('pointerdown', (p: Phaser.Input.Pointer) => {
       const ev = p.event as MouseEvent | undefined;
-      const nx = Phaser.Math.Clamp((p.x - ox) / this.miniDispW, 0, 1);
-      const ny = Phaser.Math.Clamp((p.y - oy) / this.miniDispH, 0, 1);
+      const nx = Phaser.Math.Clamp((p.x - this.miniContainer.x) / this.miniDispW, 0, 1);
+      const ny = Phaser.Math.Clamp((p.y - this.miniContainer.y) / this.miniDispH, 0, 1);
       this.scene.events.emit('minimap-click', nx, ny, !!ev?.ctrlKey);
     });
     this.miniContainer.add(img);
@@ -1005,7 +1034,7 @@ export class RegionHud extends Phaser.GameObjects.Container {
 
     // 재구성된 자식 히트 영역 보정
     applyScreenFixed(this.miniContainer);
-    this.layoutTracker();
+    this.clampHud('map');
   }
 
   /** 155차 — 타이틀바 [−]/[+]: 크기 단계 이동 (150 ↔ 250 ↔ 350, 양 끝에서 멈춘다) */
@@ -1017,7 +1046,7 @@ export class RegionHud extends Phaser.GameObjects.Container {
   }
 
   /** 미니맵 하단 y (화면 좌표) — 추적기·토스트가 그 아래에 선다 */
-  private miniBottomY(): number { return 16 + RegionHud.MINI_HDR + this.miniDispH + 22; }
+  private miniBottomY(): number { return this.miniContainer.y + this.miniDispH + 22; }
 
   // ═══════════════════════════════════════════════════
   // 155차 — 「지금 할 일」 추적기 (미니맵 아래)
@@ -1033,8 +1062,11 @@ export class RegionHud extends Phaser.GameObjects.Container {
     this.trackerC = undefined;
     const d = this.trackerData;
     if (!d) return;
-    const W = Math.max(236, this.miniDispW + 10);
-    const x = GAME_WIDTH - 16 - W + 5, y = this.miniBottomY();
+    // 미니맵의 폭을 그대로 따라가던 구 구현은 맵을 키울 때 퀵 퀘스트도
+    // 함께 비대해졌다. 추적기는 별도 컨테이너·별도 폭 단계로 관리한다.
+    const W = QUEST_TRACKER_WIDTHS[this.trackerSizeIdx];
+    this.trackerPosition ??= { right: GAME_WIDTH - 11, top: this.miniBottomY() };
+    const x = this.trackerPosition.right - W, y = this.trackerPosition.top;
     const c = this.scene.add.container(x, y);
     const HDR = 18, PADX = 8;
     const parts: Phaser.GameObjects.GameObject[] = [];
@@ -1052,19 +1084,51 @@ export class RegionHud extends Phaser.GameObjects.Container {
     mk(d.objective, 11, '#e8f4fd');
     if (d.howTo) mk(d.howTo, 10, '#9fc0d4');
     if (d.distance) mk(d.distance, 10, '#7fe0b0', true);
-    const H = cy + 4;
+    const H = Math.max(cy + 10, QUEST_TRACKER_HEIGHTS[this.trackerSizeIdx]);
+    this.trackerHeight = H;
     const bg = this.scene.add.graphics();
     paintHudPanel(bg, 0, 0, W, H, { alpha: 0.92, headerH: HDR });
     const head = this.scene.add.text(PADX, 3, '지금 할 일', {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#4af2a1', fontStyle: 'bold',
     });
-    const badge = this.scene.add.text(W - PADX, 3, 'J 일지', {
+    const badge = this.scene.add.text(W - PADX - 48, 3, 'J 일지', {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#7a98ac',
     }).setOrigin(1, 0);
-    c.add([bg, head, badge, ...parts]);
+    c.add(bg);
+    c.add(this.dragHeader('quest', 0, 0, W - 52, HDR));
+    const mkBtn = (bx: number, glyph: string, onClick: () => void): void => {
+      const top = 2;
+      const g = this.scene.add.graphics();
+      g.fillStyle(0x0a1628, 0.92); g.fillRoundedRect(bx, top, 14, 14, 3);
+      g.lineStyle(1, 0x2a5a8a, 1); g.strokeRoundedRect(bx, top, 14, 14, 3);
+      const t = this.scene.add.text(bx + 7, top + 7, glyph, {
+        fontFamily: 'sans-serif', fontSize: '11px', color: '#9fc0d4', fontStyle: 'bold',
+      }).setOrigin(0.5);
+      const hit = this.scene.add.rectangle(bx + 7, top + 7, 16, 16, 0xffffff, 0.001)
+        .setInteractive({ useHandCursor: true });
+      hit.on('pointerover', () => t.setColor('#ffffff'));
+      hit.on('pointerout', () => t.setColor('#9fc0d4'));
+      // 입력 디스패치 중 현재 컨테이너를 파괴하지 않도록 다음 틱에서 재구성한다.
+      hit.on('pointerdown', () => {
+        this.scene.time.delayedCall(0, () => { onClick(); restoreHandCursor(this.scene); });
+      });
+      c.add([g, t, hit]);
+    };
+    mkBtn(W - PADX - 32, '−', () => this.stepQuestTrackerSize(-1));
+    mkBtn(W - PADX - 16, '+', () => this.stepQuestTrackerSize(1));
+    c.add([head, badge, ...parts]);
     this.add(c);
     this.trackerC = c;
+    this.clampHud('quest');
     applyScreenFixed(this);
+  }
+
+  /** 우상단을 고정하고 좌하단으로 3단계 확장한다. */
+  private stepQuestTrackerSize(dir: 1 | -1): void {
+    const next = Phaser.Math.Clamp(this.trackerSizeIdx + dir, 0, QUEST_TRACKER_WIDTHS.length - 1);
+    if (next === this.trackerSizeIdx) return;
+    this.trackerSizeIdx = next;
+    this.layoutTracker();
   }
 
   // ═══════════════════════════════════════════════════
@@ -1280,7 +1344,7 @@ export class RegionHud extends Phaser.GameObjects.Container {
     const w = Math.round(300 * k);
     // 타이틀바 최소 높이 때문에 로그 뷰포트가 사라지지 않도록 패널 높이에 하한을 둔다
     const h = Math.max(headerH + inputH + 36, Math.round(148 * k));
-    const px = 16, py = GAME_HEIGHT - h - 20;
+    const px = this.chatPosition?.x ?? 16, py = this.chatPosition?.y ?? GAME_HEIGHT - h - 20;
     this.logRect = { x: px + 10, y: py + headerH, w: w - 20, h: h - headerH - inputH };
     this.logAreaRect = { x: px, y: py, w, h };
 
@@ -1292,6 +1356,7 @@ export class RegionHud extends Phaser.GameObjects.Container {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: fs(11), color: '#4af2a1', fontStyle: 'bold',
     });
     this.addLogPart(title);
+    this.addLogPart(this.dragHeader('chat', px, py, w - 40, HUD_HEADER_H));
 
     // ── 로그 텍스트 — 마스크된 컨테이너 안에서 y = −scrollY로 이동 (워드랩 = 가로 삐짐 방지) ──
     const logContainer = this.scene.add.container(this.logRect.x, this.logRect.y);
@@ -1374,13 +1439,16 @@ export class RegionHud extends Phaser.GameObjects.Container {
   private applyStatusView(): void {
     this.createStatusPanel();
     this.statusC.setAlpha(HUD_ALPHAS[this.statusAlpha]);
+    this.statusC.setPosition(this.statusOffset.x, this.statusOffset.y);
+    this.statusC.add(this.dragHeader('status', SP.x, SP.y, this.statusLayout.w - 40, HUD_HEADER_H));
     this.updateStatus();
-    const right = SP.x + this.statusLayout.w;
-    this.rebuildCtrl(this.statusCtrl, right, SP.y + HUD_CTRL_INSET, () => {
+    const right = SP.x + this.statusLayout.w + this.statusOffset.x;
+    this.rebuildCtrl(this.statusCtrl, right, SP.y + HUD_CTRL_INSET + this.statusOffset.y, () => {
       this.statusSize = (this.statusSize + 1) % SP_LAYOUTS.length; this.applyStatusView(); this.persistHud();
     }, () => {
       this.statusAlpha = (this.statusAlpha + 1) % HUD_ALPHAS.length; this.applyStatusView(); this.persistHud();
     }, this.statusAlpha === HUD_ALPHAS.length - 1);
+    this.clampHud('status');
   }
 
   /** 지역 채널 — 크기 단계에 맞춰 패널을 재생성(좌하단 고정) + 투명도 */
@@ -1392,6 +1460,60 @@ export class RegionHud extends Phaser.GameObjects.Container {
     }, () => {
       this.chatAlpha = (this.chatAlpha + 1) % HUD_ALPHAS.length; this.applyChatView(); this.persistHud();
     }, this.chatAlpha === HUD_ALPHAS.length - 1);
+    this.clampHud('chat');
+  }
+
+  /** 제목 밴드만 드래그한다. 마스크를 중첩시키지 않고 기존 표시 객체를 함께 옮긴다. */
+  private dragHeader(key: HudWindow, x: number, y: number, w: number, h: number): Phaser.GameObjects.Rectangle {
+    const hit = this.scene.add.rectangle(x, y, w, h, 0xffffff, 0.001).setOrigin(0).setInteractive({ cursor: 'move' });
+    hit.on('pointerdown', (p: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
+      if (!p.leftButtonDown()) return;
+      event.stopPropagation();
+      this.hideValueTip(); this.hideWeatherTip();
+      this.hudDrag = { key, sx: p.x, sy: p.y, rect: this.hudRect(key) };
+    });
+    return hit;
+  }
+
+  private hudRect(key: HudWindow): HudRect {
+    if (key === 'status') return { x: SP.x + this.statusOffset.x, y: SP.y + this.statusOffset.y, w: this.statusLayout.w, h: this.statusLayout.h };
+    if (key === 'chat') return { ...this.logAreaRect };
+    if (key === 'map') return { x: this.miniContainer.x - 5, y: this.miniContainer.y - 5 - RegionHud.MINI_HDR, w: this.miniDispW + 10, h: this.miniDispH + RegionHud.MINI_HDR + 26 };
+    return { x: this.trackerC?.x ?? 0, y: this.trackerC?.y ?? 0, w: QUEST_TRACKER_WIDTHS[this.trackerSizeIdx], h: this.trackerHeight };
+  }
+
+  private clampHud(key: HudWindow): void {
+    const r = this.hudRect(key);
+    this.moveHud(key, Phaser.Math.Clamp(r.x, 6, Math.max(6, GAME_WIDTH - r.w - 6)), Phaser.Math.Clamp(r.y, 6, Math.max(6, GAME_HEIGHT - r.h - 6)));
+  }
+
+  private moveHud(key: HudWindow, x: number, y: number): void {
+    const r = this.hudRect(key), dx = x - r.x, dy = y - r.y;
+    const shift = (objects: Phaser.GameObjects.GameObject[]): void => {
+      for (const object of objects) {
+        const o = object as Phaser.GameObjects.GameObject & Phaser.GameObjects.Components.Transform;
+        o.setPosition(o.x + dx, o.y + dy);
+      }
+    };
+    if (key === 'status') {
+      this.statusOffset = { x: x - SP.x, y: y - SP.y };
+      this.statusC.setPosition(this.statusOffset.x, this.statusOffset.y);
+      this.stripC?.setPosition(this.statusOffset.x, this.statusOffset.y);
+      shift(this.statusCtrl);
+    } else if (key === 'chat') {
+      shift([...this.logParts.filter((o) => o !== this.logBarG), ...this.chatCtrl]);
+      this.chatPosition = { x, y };
+      this.logAreaRect.x = x; this.logAreaRect.y = y;
+      this.logRect.x += dx; this.logRect.y += dy;
+      this.logMaskShape?.clear().fillStyle(0xffffff).fillRect(this.logRect.x, this.logRect.y, this.logRect.w, this.logRect.h);
+      this.drawLogBar();
+    } else if (key === 'map') {
+      this.miniContainer.setPosition(x + 5, y + 5 + RegionHud.MINI_HDR);
+      this.mapPosition = { right: x + r.w, top: y };
+    } else {
+      this.trackerC?.setPosition(x, y);
+      this.trackerPosition = { right: x + r.w, top: y };
+    }
   }
 
   /**
@@ -1584,6 +1706,9 @@ export class RegionHud extends Phaser.GameObjects.Container {
   }
 
   override destroy(fromScene?: boolean): void {
+    this.scene?.input?.off('pointermove', this.hudMove);
+    this.scene?.input?.off('pointerup', this.hudUp);
+    this.scene?.input?.off('gameout', this.hudUp);
     this.hideWeatherTip();
     if (this.scene?.input) this.destroyLogPanel();
     super.destroy(fromScene);

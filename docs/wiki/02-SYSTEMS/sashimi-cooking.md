@@ -9,7 +9,7 @@
 손질 산출물(순수 필렛·엔가와)을 **회 조각 → 접시 완성품**으로 만들고 값을 매긴다.
 **불요리(154차)** = 화구(조합 설치·집 주방)에서 어획물·부산물·채집물·식자재를 실시간 시뮬로 조리해 **맛 별 5개** 요리 아이템을 만든다.
 **요리 개체화(156차)** = 같은 레시피라도 **주재료 어종**이 이름·회복치·효과·판매가에 남는다(`DishInstance`).
-정본 스펙 `.agents/FIRE_COOKING_SPEC.md` · 확장 `.agents/FIRE_COOKING_EXPANSION_SPEC.md`.
+정본 스펙 `.agents/FIRE_COOKING_SPEC.md` · 확장 `.agents/FIRE_COOKING_EXPANSION_SPEC.md`. 완성 사시미·모듬회·숙회 산출물은 인벤 `food` 안의 `요리(회)`·`요리(숙회)`로 표시한다.
 
 ## 2. 구성
 | 계층 | 파일 | 역할 |
@@ -18,7 +18,7 @@
 | core | `MIXED_SASHIMI_PRICING` / `SINGLE_SASHIMI_PRICING` (`types/Economy.ts` 계열) | 모듬 고정표 / 단품 = kg시세 × 필요원물 ÷ 실수율 × 인분마진 |
 | client | `ui/SashimiPanel.ts` | 썰기 모달 — 뷰 분기(탑/측면/엔가와 스트립) · 컷 분리 팬아웃 |
 | client | `ui/UtilizationPanel.ts` | 도마 스테이징 · 접시 플레이팅 · [사시미 만들기]/[불요리 안내] |
-| core | `types/Cooking.ts` · `db-schema/CookwareDatabase.ts` · `CookIngredientDatabase.ts` · `FireRecipeDatabase.ts` | 불요리 계약 · 화구 2/용기 4/연료 1 · 재료 34 + `ingredientOfItem` · 레시피 8 |
+| core | `types/Cooking.ts` · `db-schema/CookwareDatabase.ts` · `CookIngredientDatabase.ts` · `FireRecipeDatabase.ts` | 불요리 계약 · 화구 2/용기 4/연료 1 · 재료 34 + `ingredientOfItem` · 레시피 9(서더리/통생선 매운탕 분리) |
 | core | `simulation/CookingSim.ts` · `TUNING.cook` | 열·익음·탐·단계·구성 검사·별 5개·감쇠 (`stepCook`/`evaluateSession`/`finishCook`/`dishStarsAt`) |
 | client | `store/CookingStore.ts` | 화구 상태(설치·용기·연료·세션) · wall-clock 동기화 · 내리기 → `inv_dish_*` · `starsOfItem` · 세이브 `deployedStoves` |
 | client | `scenes/field/StoveFieldSystem.ts` · `ui/StoveDeployPanel.ts` · `ui/CookingPanel.ts` | 탑다운 설치/뷰/`[F]` · 조합 선택 · 조리 패널(재료 스테퍼·단면·온도·불·별) |
@@ -59,8 +59,8 @@
 | 광어 3뷰 실사 + 엔가와 회썰기(2컷 3조각) | ✅ | 74·75 |
 | **유도선 dev 편집기(F9)** — 핸들 드래그·[복사]·오버라이드 소비 (엔가와·전 필렛·고급 공통) | ✅ | 86 |
 | **스시**(고급 조각 '요리하기') | ⬜ | 스텁만 존재 |
-| **불요리** — 조합 설치 · 집 주방 · 레시피 8 · 실시간 시뮬 · 별 5개 · 감쇠 · 걸어두기 · 도움말 · EN | ✅ | **154** |
-| **요리 개체화** — 어종 조리 프로필 · `DishInstance`(이름·회복치·효과·가격) · 상세보기 · **요리 도감 탭(N)** | ✅ | **156** — 매운탕 3종(우럭·광어·감성돔) |
+| **불요리** — 조합 설치 · 집 주방 · 레시피 9 · 실시간 시뮬 · 별 5개 · 감쇠 · 걸어두기 · 도움말 · EN | ✅ | **154·157** |
+| **요리 개체화** — 어종 조리 프로필 · `DishInstance`(이름·회복치·효과·가격) · 상세보기 · **요리 도감 탭(N)** | ✅ | **156·157** — 서더리/통생선 매운탕 분리 |
 | 요리 개체화 — 나머지 7개 레시피 변형 · 아이템 라이브러리 · `TUNING.cook` 밸런싱 | ⬜ | 156 잔여(사용자 확인 후) |
 | 불요리 — 요리 후보 확장 · 실사 화구 에셋 · F8 조율 | ⬜ | 154 잔여 |
 | **사시미 별 5개**(core `SashimiQuality.ts` — 신선도·컷 정확도·식감(칼 등급)·구성(4방위 균형)·완성도(넷 다 + 평균 ≥ 0.85) + 시간 감쇠 · 접시 이름 `(별 N개)` · 별 판매 배율 0.45~1.2 · 상세보기 지금/담은 직후) | ✅ | **155** — 정석 5/92 → 5h '보통' 2/51 |
@@ -74,7 +74,7 @@
   미완성 접시는 **1칸**만 필요해 위험은 크게 줄었지만 0은 아니다.
 - ~~불요리 시스템~~ ✅154. 잔여 = 요리 후보 확장(데이터 1건) · 탑다운 화구 실사 에셋 · `TUNING.cook` F8 조율 · 요리 계열 스킬 추가 배선.
 - ~~사시미 완성도 모델~~ ✅155(별 5개). 잔여 = 식감 축이 칼·컷에서만 오고 **두께 균일성**은 여전히 판정 없음(65차 잔여).
-- ~~요리가 재료를 반영하지 않는 문제~~ ✅156(매운탕 3종). 잔여 = **나머지 7개 레시피 변형**(`VARIANT_RECIPES`에 id 추가 + 어종 프로필 확장) ·
+- ~~요리가 재료를 반영하지 않는 문제~~ ✅156~157(서더리/통생선 매운탕). 잔여 = **나머지 7개 레시피 변형**(`VARIANT_RECIPES`에 id 추가 + 어종 프로필 확장) ·
   아이템 라이브러리 · `TUNING.cook.{ingredientQuality, dishEffect, naming, pricing}` 실플레이 조율(mockup 값) ·
   포만감 외 효과 7종은 **표시만**(실기전 없음 — 기획서 §0.5 결정).
 - 스시는 여전히 스텁(`p-sushi` planned). 레거시 `CookScene`은 불요리와 무관하게 남아 있다(폐기 후보).

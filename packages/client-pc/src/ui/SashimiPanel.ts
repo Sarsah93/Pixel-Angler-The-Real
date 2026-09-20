@@ -24,6 +24,7 @@ import { GameState } from '../store/GameState.js';
 import { DraggablePanel, applyScreenFixed } from './DraggablePanel.js';
 import { SASHIMI_FILLET_PROFILES, SASHIMI_FILLET_TEX, SashimiFilletFamily } from '../data/SashimiFilletProfiles.js';
 import { butcherFamilyOf } from './PixelButcherFish.js';
+import { canvasContextOf, refreshCanvasTexture, sourceImageOf } from './CanvasTextureGuard.js';
 
 const PANEL_W = 1080;
 const PANEL_H = 620;
@@ -697,16 +698,18 @@ export class SashimiPanel extends DraggablePanel {
   /** 캔버스 텍스처에 "원본을 그리고 poly만 남기기" — 몸통살 위/아래 덩어리 재굽기 공용 */
   private repaintCanvasRegion(key: string, poly: [number, number][], texW: number, texH: number): void {
     const cv = this.scene.textures.get(key) as Phaser.Textures.CanvasTexture;
-    const ctx = cv.getContext();
+    const ctx = canvasContextOf(cv);
+    const src = sourceImageOf(this.scene, this.texKey);
+    if (!ctx || !src) return;
     ctx.clearRect(0, 0, texW, texH);
-    ctx.drawImage(this.scene.textures.get(this.texKey).getSourceImage() as CanvasImageSource, 0, 0);
+    try { ctx.drawImage(src, 0, 0); } catch { return; }
     ctx.globalCompositeOperation = 'destination-in';
     ctx.beginPath();
     poly.forEach(([px, py], i) => (i ? ctx.lineTo(px, py) : ctx.moveTo(px, py)));
     ctx.closePath();
     ctx.fill();
     ctx.globalCompositeOperation = 'source-over';
-    cv.refresh();
+    refreshCanvasTexture(cv, `사시미 몸통 영역 ${key}`);
   }
 
   /**
@@ -861,16 +864,18 @@ export class SashimiPanel extends DraggablePanel {
     if (w < 1) return null;
     const cv = this.scene.textures.createCanvas(key, w, texH);
     if (!cv) return null;
-    const ctx = cv.getContext();
+    const ctx = canvasContextOf(cv);
+    const src = sourceImageOf(this.scene, this.texKey);
+    if (!ctx || !src) return null;
     ctx.clearRect(0, 0, w, texH);
-    ctx.drawImage(this.scene.textures.get(this.texKey).getSourceImage() as CanvasImageSource, -minX, 0);
+    try { ctx.drawImage(src, -minX, 0); } catch { return null; }
     ctx.globalCompositeOperation = 'destination-in';
     ctx.beginPath();
     poly.forEach(([px, py], i) => (i ? ctx.lineTo(px - minX, py) : ctx.moveTo(px - minX, py)));
     ctx.closePath();
     ctx.fill();
     ctx.globalCompositeOperation = 'source-over';
-    cv.refresh();
+    if (!refreshCanvasTexture(cv, `사시미 조각 ${key}`)) return null;
     this.bakedKeys.push(key);
     return { key, minX, maxX };
   }
@@ -884,16 +889,18 @@ export class SashimiPanel extends DraggablePanel {
       this.bakedKeys.push(key);
     }
     const cv = this.scene.textures.get(this.bodyBakeKey) as Phaser.Textures.CanvasTexture;
-    const ctx = cv.getContext();
+    const ctx = canvasContextOf(cv);
+    const src = sourceImageOf(this.scene, this.texKey);
+    if (!ctx || !src) return;
     ctx.clearRect(0, 0, texW, texH);
-    ctx.drawImage(this.scene.textures.get(this.texKey).getSourceImage() as CanvasImageSource, 0, 0);
+    try { ctx.drawImage(src, 0, 0); } catch { return; }
     ctx.globalCompositeOperation = 'destination-in';
     ctx.beginPath();
     poly.forEach(([px, py], i) => (i ? ctx.lineTo(px, py) : ctx.moveTo(px, py)));
     ctx.closePath();
     ctx.fill();
     ctx.globalCompositeOperation = 'source-over';
-    cv.refresh();
+    if (!refreshCanvasTexture(cv, `사시미 몸통 ${this.bodyBakeKey}`)) return;
     if (this.filletImg.texture.key !== this.bodyBakeKey) {
       const { w, h } = this.fr;
       this.filletImg.setTexture(this.bodyBakeKey);
@@ -970,14 +977,14 @@ export class SashimiPanel extends DraggablePanel {
       InventoryStore.addItem({
         id: 'inv_octo_boiled_head', name: '삶은 문어 머리', icon: '🐙',
         iconTexture: 'trim_octo_boiled_head',
-        category: 'food', subCategory: '요리(삶음)',
+        category: 'food', subCategory: '요리(숙회)',
         basePrice: Math.max(500, Math.round(basePrice * 0.2)),
         condition: 'fresh', conditionSinceMs: Date.now(), equippable: false, weightG: headG,
       }, 1);
       InventoryStore.addItem({
         id: 'inv_octo_boiled_leg', name: '삶은 문어 다리', icon: '🐙',
         iconTexture: 'trim_octo_boiled_leg',
-        category: 'food', subCategory: '요리(삶음)',
+        category: 'food', subCategory: '요리(숙회)',
         basePrice: Math.max(400, Math.round(basePrice * 0.8 / 8)),
         condition: 'fresh', conditionSinceMs: Date.now(), equippable: false,
         speciesId, weightG: legG,
@@ -1028,7 +1035,7 @@ export class SashimiPanel extends DraggablePanel {
       icon: '🍣',
       iconTexture: octoLeg ? 'sashimi_piece_octopus'
         : this.ceph ? this.texKey : this.engawa ? 'trim_engawa' : `sashimi_piece_${this.fam}`,
-      category: 'food', subCategory: '회(사시미)',
+      category: 'food', subCategory: '요리(회)',
       basePrice: pieceValue,
       condition: 'fresh', conditionSinceMs: Date.now(),
       equippable: false,
@@ -1094,8 +1101,10 @@ export class SashimiPanel extends DraggablePanel {
     this.scene?.input?.off('pointerup', this.sashimiUpHandler);
     this.scene?.input?.off('pointerdown', this.sashimiDownHandler);
     if (this.f9Handler) this.scene?.input?.keyboard?.off('keydown-F9', this.f9Handler);
-    // 대각 절단면 캔버스 텍스처 해제 — 안 지우면 세션마다 누적된다 (조각당 1장 + 몸통 1장)
-    this.bakedKeys.forEach((k) => this.scene?.textures?.remove(k));
+    // 베이크 키는 생성 세대가 붙은 일회성 키다. 이전 구현처럼 destroy 직전에
+    // TextureManager.remove()하면 Phaser가 다음 렌더 배치에서 폐기된 Frame을
+    // 참조할 수 있으므로, display object만 먼저 파괴하고 텍스처는 보존한다.
+    // (안전한 GPU/TextureManager GC 큐는 별도 수명주기 작업으로 다룬다.)
     this.bakedKeys.length = 0;
     super.destroy(fromScene);
   }
