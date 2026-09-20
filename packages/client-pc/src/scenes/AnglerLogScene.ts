@@ -15,6 +15,7 @@ import {
 } from '@tra/core';
 import type { ShoreCreatureCategory, DiscoveryKind } from '@tra/core';
 import { DiscoveryStore } from '../store/DiscoveryStore.js';
+import { StoryStore } from '../store/StoryStore.js';
 import { FISH_TEXTURE } from '../data/FishTextures.js';
 import { itemWikiByCategory } from '../data/WikiCatalog.js';
 import { createItemIcon } from '../ui/ItemIcon.js';
@@ -66,6 +67,7 @@ export class AnglerLogScene extends Phaser.Scene {
 
   create(): void {
     const { width, height } = this.scale;
+    StoryStore.emitActionSource('inspection', 'codex-open');
 
     // 전체 다크 배경
     this.add.rectangle(0, 0, width, height, 0x050b14).setOrigin(0, 0);

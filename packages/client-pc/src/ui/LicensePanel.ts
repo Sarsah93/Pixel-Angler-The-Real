@@ -16,6 +16,7 @@ import {
 } from '@tra/core';
 import { DraggablePanel, applyScreenFixed, restoreHandCursor } from './DraggablePanel.js';
 import { GameState } from '../store/GameState.js';
+import { StoryStore } from '../store/StoryStore.js';
 import { clampTextWidth, enforceTextBounds } from './TextFit.js';
 
 const PANEL_W = 720;
@@ -206,6 +207,7 @@ export class LicensePanel extends DraggablePanel {
         btn.on('pointerdown', () => {
           GameState.addCoins(-lic.costCoins);
           GameState.acquireLicense(lic.type);
+          StoryStore.emitActionSource('selection', `license:${lic.type}`);
           GameState.markDirty();
           this.scene.cameras.main.flash(200, 0, 150, 80);
           this.renderList(); this.renderDetail(); restoreHandCursor(this.scene);

@@ -16,6 +16,7 @@ import Phaser from 'phaser';
 import type { ConsignmentEvent, ConsignmentSession, ConsignmentSettlement } from '@tra/core';
 import { runConsignmentToEnd, settleConsignment, stepConsignment } from '@tra/core';
 import { DraggablePanel } from './DraggablePanel.js';
+import { StoryStore } from '../store/StoryStore.js';
 
 const PANEL_W = 560;
 const PANEL_H = 440;
@@ -51,6 +52,7 @@ export class AuctionHousePanel extends DraggablePanel {
     });
     this.session = session;
     this.cbs = cbs;
+    StoryStore.emitActionSource('inspection', 'auction-open');
 
     const t = this.contentTop;
 

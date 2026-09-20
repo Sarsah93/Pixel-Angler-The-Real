@@ -5,7 +5,8 @@
  * - 정의는 core(`STORY_QUESTS`·`JOURNAL_PAGES`·`STORY_ARCS`), **상태만** 여기 있다.
  * - GameState가 `bind(host)`로 XP·재화·면허·플래그 조작 권한을 넘긴다(순환 import 회피).
  * - 이벤트 한 종류(`event()`)로 모든 자동 추적 목표를 채운다 — 어획/방생/활동/면허/통발/방문/커스텀/레벨/재화.
- *   `manual` 목표는 대화 패널의 [다음 단계]가 `advanceManual`로 닫는다. `talk`는 대화를 열면 자동.
+ *   `manual` 목표는 일반 목표와 분리된다. `actionKey`가 붙은 목표는 실제 행동 계통이
+ *   `emitActionSource()`를 발행할 때만 단계가 오르고, `talk` 목표만 해당 NPC 대화에서 닫힌다.
  * - 스토리 날짜(`day`)는 **침대 수면**으로만 간다 — 활동 시간 규칙(125차)과 같은 원리로 오프라인엔 멈춘다.
  * - 조행록 17장: `pageCatch[page]`(제철 자가어획 누적) + 아크 완주 = 채움.
  *
@@ -20,9 +21,10 @@ import {
   dayJobsOfNpc, getDayJob,
   clampAffinity, affinityRewardMult, affinityJobWageMult, canOfferSubQuest, canOfferJobs, choicesFor, choiceVisible,
   getLicenseByType, getSkillById,
-  type StoryQuestDef, type StoryObjective, type ReputationState, type CatchMethod, type StorySpotKind, type JournalPageState, type LawVerdict,
+  type StoryQuestDef, type StoryObjective, type StoryActionKey, type ReputationState, type CatchMethod, type StorySpotKind, type JournalPageState, type LawVerdict,
   type DayJobDef, type AffinityState, type QuestChoiceDef, type ChoiceOutcome, type ChoiceCtx, type SkillCategoryId,
 } from '@tra/core';
+import { storyActionSpec, type StoryActionChoice, type StoryActionSource } from './StoryActionRegistry.js';
 
 export interface QuestProgress {
   status: 'active' | 'done';
@@ -30,6 +32,10 @@ export interface QuestProgress {
   obj: number[];
   /** 수락/완료 스토리 일차 */
   day: number;
+  /** 행동 목표별 현재 단계 — 세이브 후에도 절차를 이어 간다 */
+  actionSteps?: Record<string, number>;
+  /** 대화·선택 행동에서 단계별로 고른 분기 — 세이브 후에도 결과 맥락을 유지한다 */
+  actionChoices?: Record<string, string>;
 }
 
 export interface StorySaveState {
@@ -91,6 +97,7 @@ export type StoryEvent =
   | { kind: 'sell' }
   | { kind: 'visit'; placeKey: string }
   | { kind: 'custom'; key: string }
+  | { kind: 'action'; key: StoryActionKey; source?: string }
   | { kind: 'talk'; npcId: string }
   | { kind: 'level'; level: number }
   | { kind: 'coins'; coins: number }
@@ -121,6 +128,7 @@ class StoryStoreManager {
   onNotify: ((msg: string) => void) | null = null;
   /** 155차 — 재화 지급 훅(토스트). 로그 한 줄로만 오가던 보상을 눈에 보이게 */
   onCoins: ((amount: number, whyKo: string) => void) | null = null;
+  onActionProgress: ((key: StoryActionKey, step: number, source?: string) => void) | null = null;
 
   bind(host: StoryHost): void { this.host = host; }
 
@@ -211,11 +219,22 @@ class StoryStoreManager {
     return null;
   }
 
-  objectiveTarget(o: StoryObjective): number { return o.target ?? 1; }
+  objectiveTarget(o: StoryObjective): number {
+    return o.actionKey ? storyActionSpec(o.actionKey).stepsKo.length : (o.target ?? 1);
+  }
   objectiveDone(q: StoryQuestDef, i: number): boolean {
     const p = this.quests[q.id];
     if (!p) return false;
-    return (p.obj[i] ?? 0) >= this.objectiveTarget(q.objectives[i]);
+    const o = q.objectives[i];
+    if (o.actionKey) {
+      const savedSteps = p.actionSteps?.[String(i)];
+      // action 목표는 절차 전체를 마친 경우에만 완료다. 예전 세이브의
+      // `obj: 1`은 첫 행동 진행값으로 읽어야 하며, 완료로 승격하지 않는다.
+      return savedSteps !== undefined
+        ? savedSteps >= this.objectiveTarget(o)
+        : (p.obj[i] ?? 0) >= this.objectiveTarget(o);
+    }
+    return (p.obj[i] ?? 0) >= this.objectiveTarget(o);
   }
   allObjectivesDone(q: StoryQuestDef): boolean {
     return q.objectives.every((_o, i) => this.objectiveDone(q, i));
@@ -327,10 +346,144 @@ class StoryStoreManager {
     const q = getStoryQuest(id); const p = this.quests[id];
     if (!q || !p || p.status !== 'active') return false;
     const o = q.objectives[objIdx];
-    if (!o || !o.manual || this.objectiveDone(q, objIdx)) return false;
+    if (!o || !o.manual || o.actionKey || this.objectiveDone(q, objIdx)) return false;
     p.obj[objIdx] = (p.obj[objIdx] ?? 0) + 1;
     this.host?.markDirty();
     return true;
+  }
+
+  /** 행동 목표의 현재 단계 번호(0부터) */
+  actionStep(id: string, objIdx: number): number {
+    const q = getStoryQuest(id); const o = q?.objectives[objIdx];
+    const total = o?.actionKey ? storyActionSpec(o.actionKey).stepsKo.length : 0;
+    const p = this.quests[id];
+    const saved = p?.actionSteps?.[String(objIdx)];
+    if (saved !== undefined) return Math.min(saved, total);
+    return o?.actionKey ? Math.min(p?.obj[objIdx] ?? 0, total) : 0;
+  }
+
+  /** 특정 행동 목표가 지금 필드 연출/상호작용을 받을 차례인지 확인한다. */
+  canStartAction(id: string, objIdx: number): boolean {
+    const q = getStoryQuest(id); const p = this.quests[id]; const o = q?.objectives[objIdx];
+    if (!q || !p || p.status !== 'active' || !o?.actionKey || this.objectiveDone(q, objIdx)) return false;
+    if (objIdx > 0 && !this.objectiveDone(q, objIdx - 1)) return false;
+    return this.actionStep(id, objIdx) === 0;
+  }
+
+  /** 시작 이후의 다음 실제 행동도 같은 방식으로 게이트한다. */
+  canPerformAction(id: string, objIdx: number, phase: number): boolean {
+    const q = getStoryQuest(id); const p = this.quests[id]; const o = q?.objectives[objIdx];
+    if (!q || !p || p.status !== 'active' || !o?.actionKey || this.objectiveDone(q, objIdx)) return false;
+    if (objIdx > 0 && !this.objectiveDone(q, objIdx - 1)) return false;
+    return this.actionStep(id, objIdx) === phase;
+  }
+
+  /** 현재 단계가 요구하는 origin을 공개한다. 일반 목표는 null이다. */
+  actionExpectedOrigin(id: string, objIdx: number): string | null {
+    const q = getStoryQuest(id); const o = q?.objectives[objIdx];
+    if (!o?.actionKey) return null;
+    const spec = storyActionSpec(o.actionKey);
+    return spec.eventOrigins?.[this.actionStep(id, objIdx)] ?? null;
+  }
+
+  /** DEV 전용: 선행 퀘스트를 건너뛰고 actionKey 시나리오만 검증한다. */
+  devActivateAction(id: string): boolean {
+    const q = getStoryQuest(id);
+    if (!q || !q.objectives.some((o) => o.actionKey)) return false;
+    const first = q.objectives.findIndex((o) => !!o.actionKey);
+    this.quests[id] = {
+      status: 'active', day: this.day,
+      obj: q.objectives.map((o, i) => i < first ? this.objectiveTarget(o) : 0),
+      actionSteps: {}, actionChoices: {},
+    };
+    this.host?.markDirty();
+    this.onNotify?.(`[dev] ${q.titleKo} actionKey 시나리오 활성화`);
+    return true;
+  }
+
+  /** DEV 전용: 특정 actionKey를 원하는 단계로 되돌려 반복 검증한다. */
+  devSetActionStep(id: string, step: number): boolean {
+    const q = getStoryQuest(id); const p = this.quests[id];
+    const idx = q?.objectives.findIndex((o) => !!o.actionKey) ?? -1;
+    if (!q || !p || idx < 0) return false;
+    const o = q.objectives[idx]; const total = this.objectiveTarget(o);
+    const next = Math.max(0, Math.min(total, Math.floor(step)));
+    p.status = 'active'; p.actionSteps = { ...(p.actionSteps ?? {}), [String(idx)]: next }; p.obj[idx] = next;
+    this.host?.markDirty();
+    return true;
+  }
+
+  /** 행동 목표의 한 단계를 수행하고, 마지막 단계에서 action 이벤트를 발행한다 */
+  advanceAction(id: string, objIdx: number): boolean {
+    const q = getStoryQuest(id); const p = this.quests[id];
+    if (!q || !p || p.status !== 'active') return false;
+    const o = q.objectives[objIdx];
+    if (!o?.actionKey || this.objectiveDone(q, objIdx)) return false;
+    if (objIdx > 0 && !this.objectiveDone(q, objIdx - 1)) return false;
+    // 레거시/dev 호출도 동일한 실제 행동 이벤트 경로를 사용한다.
+    this.emitAction(o.actionKey, 'dialogue-action');
+    return true;
+  }
+
+  /** 실제 행동 시스템이 발행하는 퀘스트 행동 이벤트 진입점 */
+  emitAction(key: StoryActionKey, source?: string): void {
+    this.event({ kind: 'action', key, source });
+  }
+
+  /** 대화 교차검증·선택형 행동의 분기 선택. 빈 클릭이나 대사 넘김과 분리된 실제 행동이다. */
+  chooseAction(id: string, objIdx: number, choiceId: string): StoryActionChoice | null {
+    const q = getStoryQuest(id); const p = this.quests[id];
+    if (!q || !p || p.status !== 'active') return null;
+    const o = q.objectives[objIdx];
+    if (!o?.actionKey || this.objectiveDone(q, objIdx)) return null;
+    if (objIdx > 0 && !this.objectiveDone(q, objIdx - 1)) return null;
+    const spec = storyActionSpec(o.actionKey);
+    if (spec.choices.length === 0) return null;
+    const choice = spec.choices.find((x) => x.id === choiceId);
+    if (!choice) return null;
+    const step = this.actionStep(id, objIdx);
+    const choiceKey = `${objIdx}:${step}`;
+    if (p.actionChoices?.[choiceKey]) return null;
+    p.actionChoices = { ...(p.actionChoices ?? {}), [choiceKey]: choice.id };
+    // 후속 대사·결말이 선택 이력을 읽을 수 있도록 분기 플래그도 남긴다.
+    this.host?.setFlag(`choice.action.${o.actionKey}.${choice.id}`, true);
+    if (q.giver && choice.affinityDelta) this.addAffinity(q.giver, choice.affinityDelta);
+    // 대화·선택은 선택 자체가 해당 행동의 성공 이벤트다. 제작·운반·검사·현장은
+    // 선택을 기록한 뒤 실제 시스템 성공 이벤트가 별도로 들어와야 단계가 오른다.
+    if (spec.source === 'dialogue' || spec.source === 'selection') {
+      this.emitAction(o.actionKey, `action-choice:${choice.id}`);
+    }
+    this.onNotify?.(`[할 일] ${q.titleKo} — ${choice.labelKo}`);
+    this.host?.markDirty();
+    return choice;
+  }
+
+  /** 현재 action 단계에서 이미 전략/대화 선택을 기록했는지 */
+  actionChoiceTaken(id: string, objIdx: number): boolean {
+    const p = this.quests[id];
+    return !!p?.actionChoices?.[`${objIdx}:${this.actionStep(id, objIdx)}`];
+  }
+
+  /**
+   * 제작·운반·검사·선택·현장·대화 시스템의 성공 지점에서 호출한다.
+   * 현재 활성 목표 중 같은 계통의 actionKey만 수집한 뒤 발행하므로,
+   * 비활성 퀘스트나 다른 계통의 수동 목표가 함께 진행되지 않는다.
+   */
+  emitActionSource(source: StoryActionSource, origin?: string): void {
+    const keys = new Set<StoryActionKey>();
+    const talkNpc = source === 'dialogue' && origin?.startsWith('talk-action:')
+      ? origin.slice('talk-action:'.length) : undefined;
+    for (const q of STORY_QUESTS) {
+      const p = this.quests[q.id];
+      if (!p || p.status !== 'active') continue;
+      // 대화 행동은 현재 대화 중인 의뢰 NPC의 목표만 진행한다. 다른 NPC의
+      // 대화창을 열어 둔 상태에서 엉뚱한 퀘스트가 오르는 것을 막는다.
+      if (talkNpc && q.giver !== talkNpc) continue;
+      q.objectives.forEach((o, i) => {
+        if (o.actionKey && !this.objectiveDone(q, i) && storyActionSpec(o.actionKey).source === source) keys.add(o.actionKey);
+      });
+    }
+    for (const key of keys) this.emitAction(key, origin ?? source);
   }
 
   /** 직전 완료의 결과 요약(선택지 몫) — 대화창이 한 번 읽고 지운다 */
@@ -422,7 +575,28 @@ class StoryStoreManager {
       if (!p || p.status !== 'active') continue;
       q.objectives.forEach((o, i) => {
         if (this.objectiveDone(q, i)) return;
-        if (o.manual && ev.kind !== 'talk') return;
+        if (o.manual && ev.kind !== 'talk' && !(ev.kind === 'action' && o.actionKey === ev.key)) return;
+        if (ev.kind === 'action' && o.actionKey === ev.key) {
+          // actionKey 목표는 한 번의 이벤트로 즉시 완료하지 않는다. 같은 계통의
+          // 실제 성공 이벤트가 절차의 각 단계를 순서대로 통과시켜야 한다.
+          if (i > 0 && !this.objectiveDone(q, i - 1)) return;
+          const spec = storyActionSpec(o.actionKey);
+          const expectedOrigin = spec.eventOrigins?.[p.actionSteps?.[String(i)] ?? p.obj[i] ?? 0];
+          if (expectedOrigin && ev.source !== expectedOrigin) return;
+          const stepKey = String(i);
+          const step = p.actionSteps?.[stepKey] ?? 0;
+          const nextStep = Math.min(step + 1, spec.stepsKo.length);
+          p.actionSteps = { ...(p.actionSteps ?? {}), [stepKey]: nextStep };
+          // 기존 obj 배열도 같은 완료 횟수를 반영해 구 세이브/일지와
+          // 신규 actionSteps 세이브가 항상 같은 진행률을 보게 한다.
+          p.obj[i] = nextStep;
+          changed = true;
+          this.onNotify?.(nextStep >= spec.stepsKo.length
+            ? `[할 일] ${q.titleKo} — ${spec.stepsKo.length}/${spec.stepsKo.length} (준비 완료!)`
+            : `[할 일] ${q.titleKo} — 행동 ${nextStep}/${spec.stepsKo.length}`);
+          this.onActionProgress?.(o.actionKey, nextStep, ev.source);
+          return;
+        }
         const hit = this.match(o, ev);
         if (hit === null) {
           // 149차 — **장소 조건만** 어긋난 어획은 조용히 버리지 않고 이유를 알린다.
@@ -490,6 +664,7 @@ class StoryStoreManager {
         // 어촌계 공동작업 일감은 `communityWork` 목표도 닫는다 (135차 — 일감 = 실시스템)
         if (o.kind === 'communityWork' && ev.key === 'job:coop_work') return 'inc';
         return null;
+      case 'action': return o.actionKey === ev.key ? 'inc' : null;
       case 'talk': return o.kind === 'talk' && o.npcId === ev.npcId ? 'set' : null;
       case 'level': return o.kind === 'reachLevel' ? 'set' : null;
       case 'coins': return o.kind === 'earn' ? 'set' : null;
@@ -692,6 +867,10 @@ class StoryStoreManager {
       : { day: this.day, count: 1 };
     // 퀘스트 목표 자동 충족 (custom placeKey / communityWork)
     this.event({ kind: 'custom', key: job.questKey });
+    // 일감 성공은 실제 운반/현장 운영 행동이다. 수동 목표를 클릭으로 닫지 않고
+    // 이 성공 지점에서만 다음 행동 단계가 진행되게 한다.
+    this.emitActionSource('delivery', `job:${job.id}`);
+    this.emitActionSource('field', `job:${job.id}`);
     this.host?.markDirty();
     this.onNotify?.(`${job.nameKo} — 품삯 ${wage.toLocaleString()}원`);
     return { ok: true, wage, flavorKo: job.flavorKo };

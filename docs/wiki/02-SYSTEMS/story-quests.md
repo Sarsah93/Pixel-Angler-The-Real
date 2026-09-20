@@ -1,6 +1,6 @@
 # S22 스토리·퀘스트 — 「조행록」 7챕터 · NPC 17아크 · 법 규칙 5조
 
-> 상태: 🔶 **데이터·엔진·일지·대화 완비 / 계통(배 출조·구멍치기·좌판…)과 강제(법·가방) 미착수** — 134차.
+> 상태: 🔶 **데이터·엔진·일지·대화 완비 / 27개 수동 custom 행동 계약·계통 이벤트 배선 진행 중** — 164차.
 > 정본 스펙: [`.agents/STORY_SPEC_v4.md`](../../.agents/STORY_SPEC_v4.md) (v3는 [원안 산문 보관본](../../.agents/STORY_SPEC_v3.md)) ·
 > 플레이어 요약: [`.agents/PLAYER_SCENARIO.md`](../../.agents/PLAYER_SCENARIO.md).
 
@@ -15,7 +15,7 @@
 
 | 파일 | 역할 |
 |---|---|
-| `core/src/types/Story.ts` | 계약 타입 — `StoryQuestDef`·`StoryObjective(manual)`·`JournalPageDef`·`StoryArcDef`·`CatchProvenance`·`LawVerdict`·`ReputationState` |
+| `core/src/types/Story.ts` | 계약 타입 — `StoryQuestDef`·`StoryObjective(manual/actionKey)`·`JournalPageDef`·`StoryArcDef`·`CatchProvenance`·`LawVerdict`·`ReputationState` |
 | `core/src/rules/FisheryLaw.ts` (+`.test.ts`) | 법 규칙 5조 순수 함수 `canSell/canKeep/canUseGear/canGather/requiredLicenseFor` · 거부 시 대안 ≥ 1 |
 | `core/src/db-schema/StoryChapters.ts` | 5부 7챕터 · 자격 사다리 · **§8-1 수치 계약** |
 | `core/src/db-schema/StoryQuestDatabase.ts` | **186퀘**(메인 68 · 서브 118) + `validateStoryQuests()` · 137차 증설분은 `SUB_EXTRA`(선행 조건 명시) |
@@ -23,7 +23,7 @@
 | `core/src/db-schema/StoryArcs.ts` | 메인 3인 + **19아크** NPC (137차 +N18 도현수 · N19 정옥선·탁만수) |
 | `core/src/inventory/Backpack.ts` | 가방 사다리 모델(§8-3) — UI 미배선 |
 | `core/src/config/tuning.ts` | `story`·`rep`·`law.enforceRodSell`·`inventory` |
-| `client/src/store/StoryStore.ts` | **진행 엔진** — 상태·이벤트 매칭·완료/보상·D-day·평판·조행록·판매 판정·세이브 |
+| `client/src/store/StoryStore.ts` | **진행 엔진** — 상태·이벤트 매칭·행동 단계·완료/보상·D-day·평판·조행록·판매 판정·세이브 |
 | `client/src/data/StoryNpcs.ts` · `StoryDialogue.ts` | NPC 배치(타일)·방문 장소 · Ch1 대사 `[ko,en]` |
 | `client/src/ui/DialoguePanel.ts` | 발주/진행/완료 대화(3톤 선택지) |
 | `client/src/ui/JournalPanel.ts` | 일지 — 조행록·자격 사다리·부/챕터/퀘 트리(윈도우드 + 휠) |
@@ -37,13 +37,18 @@ STORY_QUESTS ──┐     quests{id: active|done, obj[]}    ┌─ JournalPanel
 JOURNAL_PAGES ─┼──►  pageCatch{page: n} · rep · day ───┼─ DialoguePanel([F])
 STORY_ARCS ────┘     traineeDay (D-180)                └─ RegionHud D-nn
         ▲                    ▲
-        │ validate           │ event({catch|release|activity|license|trap|visit|custom|talk|level|coins})
+        │ validate           │ event({catch|release|activity|license|trap|visit|custom|action|talk|level|coins})
    dev 부팅 경고        GameState·씬·시스템 훅
 ```
 
 - **가용 → 활성 → 완료**: `status(q)` = done / active / available(챕터 개방 ∧ prereq ∧ minLevel) / locked.
   챕터 개방 = 이전 챕터 **마지막 메인** 완료. 무발주 퀘(M1-01·M7-08)는 자동 활성·자동 완료.
-- **목표 추적**: 이벤트 1종으로 활성 퀘 전체의 미완 목표와 대조. `manual` 목표는 대화 [다음 단계 진행]. `talk`는 대화 열면 자동.
+- **목표 추적**: 이벤트 1종으로 활성 퀘 전체의 미완 목표와 대조. `actionKey`가 붙은 `manual` 목표는
+  `dialogue`·`craft`·`delivery`·`inspection`·`selection`·`field` 계통의 실제 이벤트를 3단계 순서로 요구한다.
+  모든 계통에는 세 가지 행동 전략 선택지가 있으며 선택 이력(`actionChoices`)과 발주 NPC 우호도,
+  `choice.action.<actionKey>.<choiceId>` 분기 플래그를 남긴다. 대화·선택 계통은 선택 자체가 단계 성공이고,
+  검사·현장·제작·운반 계통은 선택이 실제 행동을 대체하지 않으며 해당 시스템 성공 이벤트가 별도로 필요하다.
+  일반 `manual`만 대화창의 [다음 단계]를 사용하며, `talk`는 대화를 열면 자동이다.
   상태형 목표(레벨·재화·보유 면허)는 수락 즉시 평가 + `set` 갱신.
 - **완료 보상**: XP(`grantXp`) · 재화 · 면허(`acquireLicense`) · 평판(클램프) · `journalPage` 채움 · `unlock.<key>` 플래그(`trainee` → D-day 시작).
 - **조행록**: 어획 이벤트마다 17장 전부와 대조(`selfCaught` ∧ 어종 ∧ 계절 ∧ minCm) 누적. 채움 = 어획 ∧ 아크 완주.
@@ -74,6 +79,7 @@ STORY_ARCS ────┘     traineeDay (D-180)                └─ RegionHu
 | **위판 UI(M2-01)** — 직판장 위판 창구 · 경매 현장 · 정산 · `sell` 목표 auto | ✅ | 147 — [S6](economy-data.md) |
 | **M1-11 총회 연출** — 좌석 24석 거수 표결 · 평판이 찬성률로 · 부결 없음 | ✅ | 147 |
 | **M1-04 구멍치기 + 장소 게이트**(`StoryObjective.spotKind` — "방파제에서"를 실제로 강제) | ✅ | 149 — [S3](fishing-loop.md) |
+| **27개 수동 custom 목표 행동화**(`StoryActionKey`·3단계 `actionSteps`·6계통 발행기) | 🔶 | 164 — 실제 세부 조건·미구현 시스템 진입점은 후속 |
 | **기한 초과 벌칙**(`deadline.onMiss`) — 재화가 아니라 **평판 감점** | ✅ | 147 — 사용자 결정 |
 | 가방 2~4단계(중형·대형) + 지급품 9종 + 시작 ₩312,000 | ⬜ | **148차** — 인벤 윈도우드 스크롤 선행(`GRID_CAPACITY_MAX` 30이 8/10/12를 전부 클램프) |
 | 1-4 구멍치기 (조법 + M1-04 장소 게이트) | ⬜ | **149차** — 지형 판정(`breakwaterClassAt` 2/3)은 이미 있다 |
@@ -130,6 +136,9 @@ STORY_ARCS ────┘     traineeDay (D-180)                └─ RegionHu
   분포 대화 **70 → 0**(수월 26 · 보통 112 · 까다로움 44 · 고난도 4).
   추적기가 아직 없는 종류(`cook`·`boatTrip`·`holdPosition`·`survive`·`furnish`·`farm`·`mine`)의
   `manual` 줄은 **이야기 표시로 남겨 두고** 그 옆에 실목표를 붙였다 — 해당 시스템이 서면 auto로 승격한다.
+- **수동 custom 행동 계약** — 27개 줄에 `actionKey`를 부여했다. 클릭 한 번으로 완료하지 않고,
+  계통별 성공 이벤트가 `StoryStore.emitActionSource()`를 통해 세 단계 절차를 진행한다.
+  세부 위치·NPC·아이템 조건과 아직 없는 선박·미디어 진입점은 후속 배선 대상이다.
 - **추적기 없는 목표 7종 승격 대기** — `cook`(불요리) · `furnish`/`farm`(농장·집) ·
   `mine`(채광) · `boatTrip`/`holdPosition`/`survive`(배 출조·기상). 시스템이 서는 차수에 `manual` → auto.
 - **`spotKind: 'boat'` 미발화** — `standingSpotKind()`는 `breakwater|shore`만, 1인칭은 `hole|shore`만 낸다.
@@ -187,6 +196,13 @@ manual 목표를 점수에 넣으면 표기가 곧바로 거짓말이 된다.
 
 `sell`은 **위판(경매)에서만** 발화한다 — 일반 상점 판매는 이벤트를 내지 않고,
 법 §3에 따라 **낚싯대 어획물은 위판할 수 없다**(통발·맨손 + `reported_fishery`).
+
+### 19. `actionKey` 목표는 클릭이 아니라 계통 이벤트로 닫는다 (164차)
+
+`manual`이라고 해서 모두 대화창 버튼으로 진행시키면 실제 행동과 목표가 분리된다. 행동 목표는
+`StoryActionRegistry`의 계통을 기준으로 실제 성공 지점이 `emitActionSource()`를 발행한다.
+동일 계통 이벤트 세 번으로 단계가 끝나며, `DialoguePanel`은 현재 단계 안내만 표시한다.
+세부 위치·NPC·아이템 조건이 필요한 목표는 계통 이벤트에 조건을 추가한 뒤에만 확정한다.
 
 ### 16. 목표 배열을 고치면 나레이션 `obj`도 같은 인덱스로 고친다 (153차)
 

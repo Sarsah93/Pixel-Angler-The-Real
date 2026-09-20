@@ -15,6 +15,7 @@ import {
 } from '@tra/core';
 import { InventoryStore, type InvItem } from './InventoryStore.js';
 import { GameState } from './GameState.js';
+import { StoryStore } from './StoryStore.js';
 import { craftOutputTemplate } from '../data/CraftOutputs.js';
 
 /** 재료 1항목의 보유/필요 현황 */
@@ -168,6 +169,7 @@ class CraftingStoreManager {
     }
     // 제작은 몸을 쓴다 — 행동 비용(§4-2 costCraft)은 시도 횟수에 비례
     if (out.attempted > 0) GameState.applyVitalsAction('craft', out.attempted);
+    if (out.succeeded > 0) StoryStore.emitActionSource('craft', 'craft-complete');
     return out;
   }
 }

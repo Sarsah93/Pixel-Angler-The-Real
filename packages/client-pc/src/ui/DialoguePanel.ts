@@ -26,6 +26,7 @@ import {
 import { DraggablePanel } from './DraggablePanel.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { StoryStore } from '../store/StoryStore.js';
+import { storyActionSpec } from '../store/StoryActionRegistry.js';
 import { InventoryStore } from '../store/InventoryStore.js';
 import { dialogueOf, NPC_IDLE } from '../data/StoryDialogue.js';
 import { clampTextWidth } from './TextFit.js';
@@ -114,6 +115,7 @@ export class DialoguePanel extends DraggablePanel {
   private rowObjs: { g: Phaser.GameObjects.Graphics; t: Phaser.GameObjects.Text; h?: Phaser.GameObjects.Text; row: ChoiceRow; cy: number }[] = [];
   private choiceC?: Phaser.GameObjects.Container;
   private lastWorkMsg = '';
+  private actionReply = '';
   private readonly keyHandler: (ev: KeyboardEvent) => void;
   private readonly clickHandler: () => void;
 
@@ -489,15 +491,50 @@ export class DialoguePanel extends DraggablePanel {
     const np = narrativeOf(q.id)?.progress;
     const paras = [this.questHead(q)];
     paras.push(`"${np ?? dialogueOf(q.id).progress[0]}"`);
+    if (this.actionReply) { paras.push(`"${this.actionReply}"`); this.actionReply = ''; }
     paras.push(this.objectiveLines(q));
     const rows: ChoiceRow[] = [];
     const idx = q.objectives.findIndex((o, i) => o.manual && !StoryStore.objectiveDone(q, i));
+    if (idx < 0) paras.push('준비 완료! 대화를 닫고 다시 말을 걸면 제출할 수 있습니다.');
     if (idx >= 0) {
-      rows.push({
-        label: q.objectives[idx].labelKo,
-        hint: '이 자리에서 마무리',
-        action: () => { StoryStore.advanceManual(q.id, idx); this.enterQuest(); },
-      });
+      const objective = q.objectives[idx];
+      if (objective.actionKey) {
+        const spec = storyActionSpec(objective.actionKey);
+        const completed = StoryStore.actionStep(q.id, idx);
+        const taken = StoryStore.actionChoiceTaken(q.id, idx);
+        const flowLabel: Record<string, string> = {
+          'dialogue-crosscheck': '교차 검증 대화',
+          'evidence-report': '증거 확인 방식',
+          'field-gate': '현장 행동 방식',
+          'branching-choice': '분기 선택',
+          production: '제작 방식',
+          delivery: '전달 방식',
+        };
+        // 모든 actionKey 계통에 세 가지 태도/전략을 제공한다. 단, 검사·현장·
+        // 제작·운반은 이 선택만으로 행동 단계가 오르지 않고 실제 시스템 이벤트가
+        // 별도로 필요하다. 대화·선택 계통만 선택 자체가 해당 단계의 성공이다.
+        for (const ch of spec.choices) rows.push({
+          label: ch.labelKo,
+          hint: taken
+            ? `${flowLabel[spec.flow] ?? '행동'} 선택 완료 · ${completed}/${spec.stepsKo.length} — 실제 행동을 진행하세요`
+            : `${flowLabel[spec.flow] ?? '행동'} ${completed}/${spec.stepsKo.length} · ${objective.labelKo}`,
+          action: () => {
+            const selected = StoryStore.chooseAction(q.id, idx, ch.id);
+            if (!selected) return;
+            this.actionReply = selected.replyKo;
+            // 마지막 행동 직후 같은 대화창에서 제출하지 않는다. 준비 완료를
+            // 확인한 뒤 닫고, NPC에게 다시 말을 걸어야 완료 선택지가 열린다.
+            this.playActive(q);
+          },
+          disabled: taken,
+        });
+      } else {
+        rows.push({
+          label: objective.labelKo,
+          hint: '이 자리에서 마무리',
+          action: () => { StoryStore.advanceManual(q.id, idx); this.enterQuest(); },
+        });
+      }
     }
     rows.push(this.backRow(), this.exitRow());
     this.play(paras, rows, true);
@@ -506,6 +543,7 @@ export class DialoguePanel extends DraggablePanel {
   private playComplete(q: StoryQuestDef): void {
     const nd = narrativeOf(q.id)?.done;
     const paras = [this.questHead(q)];
+    paras.push(this.objectiveLines(q));
     paras.push(`"${nd ?? dialogueOf(q.id).done[0]}"`);
     const rows = StoryStore.visibleChoices(q, 'complete').map((ch) => this.choiceRow(q, ch, 'complete'));
     this.play(paras, rows, true);
@@ -521,9 +559,13 @@ export class DialoguePanel extends DraggablePanel {
   private objectiveLines(q: StoryQuestDef): string {
     return q.objectives.map((o, i) => {
       const done = StoryStore.objectiveDone(q, i);
-      const cur = StoryStore.progress(q.id)?.obj[i] ?? 0;
       const tgt = StoryStore.objectiveTarget(o);
-      const prog = tgt > 1 ? ` (${Math.min(cur, tgt).toLocaleString()}/${tgt.toLocaleString()})` : '';
+      const cur = o.actionKey
+        ? StoryStore.actionStep(q.id, i)
+        : (StoryStore.progress(q.id)?.obj[i] ?? 0);
+      const prog = o.actionKey || tgt > 1
+        ? ` (${Math.min(cur, tgt).toLocaleString()}/${tgt.toLocaleString()}${o.actionKey && done ? ' · 준비 완료!' : ''})`
+        : '';
       const label = narrativeOf(q.id)?.objectives?.[i] ?? o.labelKo;
       return `${done ? '✓' : '·'} ${label}${prog}`;
     }).join('\n');
@@ -544,6 +586,8 @@ export class DialoguePanel extends DraggablePanel {
         const ok = stage === 'offer' ? StoryStore.accept(q.id, ch.id) : StoryStore.complete(q.id, ch.id);
         if (!ok) { this.lastWorkMsg = '지금은 진행할 수 없습니다.'; this.enterMenu(false); return; }
         if (deliveredIce) InventoryStore.removeQty('quest_ice_crate', 1);
+        if (deliveredIce) StoryStore.emitActionSource('delivery', 'ice-delivery');
+        if (stage === 'offer') StoryStore.emitActionSource('selection', `choice:${ch.id}`);
         const done = stage === 'complete';
         this.reply = {
           line: ch.replyKo,

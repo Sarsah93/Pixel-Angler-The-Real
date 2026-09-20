@@ -1,6 +1,7 @@
 # The Real Angler — 구현 계획서 (IMPLEMENTATION_PLAN)
 
-> **최종 업데이트**: 2026-09-19 — **162차: 속초 씬 전환 Phaser Frame 오류 근본 수정 · stale 퀘스트 UI 참조 세대 초기화**.
+> **최종 업데이트**: 2026-09-20 — **164차: 수동 custom 목표 27개 행동화 · 6계통 이벤트 배선**.
+> 상세 [워크로그 164](../docs/wiki/03-WORKLOG/2026-09-20-164-quest-action-events.md).
 > 상세 [워크로그 162](../docs/wiki/03-WORKLOG/2026-09-19-162-sokcho-scene-transition-frame-fix.md).
 > 직전: 161차 Phaser Frame 수명주기 회귀 수정([워크로그 161](../docs/wiki/03-WORKLOG/2026-09-19-161-phaser-frame-lifecycle.md)).
 > 상세 [워크로그 161](../docs/wiki/03-WORKLOG/2026-09-19-161-phaser-frame-lifecycle.md).
@@ -25,6 +26,14 @@
 
 > **전체 위치**: 지금은 **Phase 6(게임플레이 심화 — 낚시·손질) 안의 "회뜨기(손질) 시스템"을 구현 중.**
 > 회뜨기는 낚시 루프에 붙는 **서브시스템 하나**다 — 완결되면 퀘스트/경영/제작 등 대과제로 넘어간다(아래 §차기 대과제).
+
+### ✅ 직전 완료 (164차, 2026-09-20) — 수동 custom 목표 27개 행동화·6계통 이벤트 배선·계통별 선택/우호도 분기
+
+- `StoryActionKey`·`StoryActionRegistry`로 27개 목표의 행동 계통과 3단계 절차를 계약화했다.
+- `StoryStore.actionSteps`를 세이브하고 대화·제작·운반·검사·선택·현장 성공 이벤트에서만 진행한다.
+- 대화창의 action 목표 클릭 완료 경로를 제거했다. 세부 위치·NPC·아이템 조건은 후속 과제다.
+- 검증: core build · client typecheck · diff check 통과 · 실검증 생략.
+- 상세: [워크로그 164](../docs/wiki/03-WORKLOG/2026-09-20-164-quest-action-events.md)
 
 ### ✅ 직전 완료 (156차, 2026-09-18) — 요리 개체화 1단계: 매운탕 어종별 변형 + 상세보기 + 요리 도감
 

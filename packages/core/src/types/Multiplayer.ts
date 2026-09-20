@@ -173,7 +173,7 @@ export interface MpPlacedTrap {
 }
 
 /** 지금 무엇을 하고 있는가 — 이름표 옆 아이콘 + 밀어내기 대상 판정에 쓴다 */
-export type MpActivity = 'field' | 'fishing' | 'shop' | 'indoor' | 'menu';
+export type MpActivity = 'field' | 'fishing' | 'shop' | 'indoor' | 'menu' | 'cinematic';
 
 /** 활동 표시 문구 (툴팁·로그용 — 화면 아이콘은 클라이언트가 고른다) */
 export const MP_ACTIVITY_KO: Record<MpActivity, string> = {
@@ -182,6 +182,7 @@ export const MP_ACTIVITY_KO: Record<MpActivity, string> = {
   shop: '거래 중',
   indoor: '실내',
   menu: '자리 비움',
+  cinematic: '바쁨',
 };
 
 /** 필드에서 실제로 걸어다니는 상태인가 — 아니면 마지막 자리에 서 있는 껍데기다 */

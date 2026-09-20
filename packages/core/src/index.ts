@@ -516,7 +516,7 @@ export {
 export type {
   CatchMethod, StorySpotKind, StoryLicenseId, LegalFlag, CatchProvenance, FisheryLawRuleId, LawVerdict,
   Season, StoryPart, StoryChapter, StoryChapterDef, QualificationStep,
-  StoryQuestKind, StoryObjectiveKind, StoryObjective, QuestDeadline, QuestRewards, QuestTeaches, StoryQuestDef,
+  StoryQuestKind, StoryObjectiveKind, StoryActionKey, StoryObjective, QuestDeadline, QuestRewards, QuestTeaches, StoryQuestDef,
   JournalPageDef, JournalPageState, StoryNpcDef, StoryArcDef, ReputationState,
 } from './types/Story.js';
 export { seasonOfMonth, SEASON_LABEL, createDefaultReputation, clampHarbor, clampSea, spotKindSatisfies, SPOT_KIND_LABEL } from './types/Story.js';

@@ -161,7 +161,9 @@ export class JournalPanel extends DraggablePanel {
     let acc = 0;
     q.objectives.forEach((o, i) => {
       const tgt = StoryStore.objectiveTarget(o);
-      const cur = Math.min(tgt, StoryStore.progress(q.id)?.obj[i] ?? 0);
+      const cur = Math.min(tgt, o.actionKey
+        ? StoryStore.actionStep(q.id, i)
+        : (StoryStore.progress(q.id)?.obj[i] ?? 0));
       acc += tgt > 0 ? cur / tgt : 0;
     });
     return Math.round((acc / n) * 100);
@@ -545,7 +547,9 @@ export class JournalPanel extends DraggablePanel {
         if (stop) return;
         const done = StoryStore.objectiveDone(q, i);
         const tgt = StoryStore.objectiveTarget(o);
-        const cur = Math.min(tgt, StoryStore.progress(q.id)?.obj[i] ?? 0);
+        const cur = Math.min(tgt, o.actionKey
+          ? StoryStore.actionStep(q.id, i)
+          : (StoryStore.progress(q.id)?.obj[i] ?? 0));
         out.push({ q, label: n?.objectives?.[i] ?? o.labelKo, note: i === 0 ? q.titleKo : undefined, done, cur, target: tgt });
         if (!done) stop = true;    // 미래 목표는 열지 않는다 (R2)
       });
@@ -650,7 +654,9 @@ export class JournalPanel extends DraggablePanel {
     q.objectives.forEach((o, i) => {
       const done = StoryStore.objectiveDone(q, i);
       const tgt = StoryStore.objectiveTarget(o);
-      const cur = Math.min(tgt, StoryStore.progress(q.id)?.obj[i] ?? 0);
+      const cur = Math.min(tgt, o.actionKey
+        ? StoryStore.actionStep(q.id, i)
+        : (StoryStore.progress(q.id)?.obj[i] ?? 0));
       const g = this.scene.add.graphics();
       g.fillStyle(done ? 0x14352c : 0x14243a, 0.92);
       g.fillRect(DET_X + 4, y, DET_W - 8, 30);
@@ -674,8 +680,9 @@ export class JournalPanel extends DraggablePanel {
         clampTextWidth(how, DET_W - 30);
         c.add(how);
       }
-      if (tgt > 1) {
-        const p2 = this.scene.add.text(DET_X + DET_W - 34, y + 15, `${cur}/${tgt}`, {
+      if (o.actionKey || tgt > 1) {
+        const p2 = this.scene.add.text(DET_X + DET_W - 34, y + 15,
+          `${cur}/${tgt}${o.actionKey && done ? ' (준비 완료!)' : ''}`, {
           fontFamily: FONT, fontSize: '11px', color: C_DIM,
         }).setOrigin(1, 0.5);
         c.add(p2);

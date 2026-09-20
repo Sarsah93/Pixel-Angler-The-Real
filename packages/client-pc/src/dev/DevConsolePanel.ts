@@ -13,13 +13,14 @@
  * 프로덕션 빌드에서는 initDevConsolePanel()이 즉시 반환하고 vite가 데드코드 제거.
  */
 
-import { FISH_DATABASE, SHORE_CREATURE_DATABASE } from '@tra/core';
+import { FISH_DATABASE, SHORE_CREATURE_DATABASE, STORY_QUESTS } from '@tra/core';
 import { getLicenseByType, type LicenseType } from '@tra/core';
 import { GameState } from '../store/GameState.js';
 import { InventoryStore } from '../store/InventoryStore.js';
 import { DiscoveryStore } from '../store/DiscoveryStore.js';
 import { DevMode } from './DevMode.js';
 import { buildItemWikiCatalog } from '../data/WikiCatalog.js';
+import { StoryStore } from '../store/StoryStore.js';
 
 let mounted = false;
 let root: HTMLDivElement | null = null;
@@ -95,6 +96,7 @@ function buildPanel(): HTMLDivElement {
   buildFishSection(box);
   buildDiscoverySection(box);
   buildLicenseSection(box);
+  buildStoryActionSection(box);
 
   return box;
 }
@@ -335,4 +337,31 @@ function buildDiscoverySection(box: HTMLElement): void {
     flash(reset, '✓ 초기화됨');
   };
   body.appendChild(reset);
+}
+
+/** ⑦ actionKey 시나리오 검증 — DEV 전용. 선행 퀘스트를 건너뛰되 실제 필드 이벤트는 그대로 탄다. */
+function buildStoryActionSection(box: HTMLElement): void {
+  const body = section(box, '⑦ 스토리 actionKey 테스트');
+  const note = document.createElement('div');
+  note.textContent = '활성화 후 콘솔을 닫고 필드에서 실제 장소·제작·검사·선택을 수행하세요.';
+  Object.assign(note.style, { fontSize: '10px', color: '#8faabf', marginBottom: '5px' });
+  body.appendChild(note);
+  const quests = STORY_QUESTS.filter((q) => q.objectives.some((o) => !!o.actionKey));
+  for (const q of quests) {
+    const row = document.createElement('div');
+    Object.assign(row.style, { display: 'flex', alignItems: 'center', gap: '3px', marginBottom: '3px' });
+    const objIdx = q.objectives.findIndex((o) => !!o.actionKey);
+    const status = document.createElement('span');
+    Object.assign(status.style, { flex: '1', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' });
+    const refresh = (): void => { status.textContent = `${q.id} ${q.titleKo} · ${StoryStore.actionStep(q.id, objIdx)}/3`; };
+    refresh();
+    row.appendChild(status);
+    const activate = document.createElement('button'); activate.textContent = '활성'; styleBtn(activate, true); activate.style.padding = '1px 5px';
+    activate.onclick = () => { StoryStore.devActivateAction(q.id); refresh(); flash(activate, '✓'); };
+    const reset = document.createElement('button'); reset.textContent = '0'; styleBtn(reset); reset.style.padding = '1px 5px';
+    reset.onclick = () => { StoryStore.devSetActionStep(q.id, 0); refresh(); };
+    const next = document.createElement('button'); next.textContent = '+1'; styleBtn(next); next.style.padding = '1px 5px';
+    next.onclick = () => { StoryStore.devSetActionStep(q.id, StoryStore.actionStep(q.id, objIdx) + 1); refresh(); };
+    row.append(activate, reset, next); body.appendChild(row);
+  }
 }

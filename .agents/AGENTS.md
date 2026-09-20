@@ -450,6 +450,14 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류 (2026-08-09)
 > "지금 무엇이 어디까지 되어 있나"는 **`docs/wiki/README.md` 대시보드**와 `02-SYSTEMS/*.md`를 본다.
 > 80차 이하 원문은 아래에 **그대로 보존**(불변 원장) — 구조화 인덱스는 `03-WORKLOG/README.md` §3.1.
 
+**최근 변경 (2026-09-20 164차) — 수동 custom 목표 27개 행동화·6계통 이벤트 배선·계통별 선택/우호도 분기**
+
+- `StoryActionKey`와 `StoryActionRegistry`를 신설해 27개 수동 custom 목표를 대화·제작·운반·검사·선택·현장 계통으로 분류했다.
+- 모든 계통에 3개 전략 선택지·우호도 변화·`actionChoices` 세이브·`choice.action.*` 분기 플래그를 연결했다. 비대화 계통의 선택은 실제 제작·운반·검사·현장 이벤트를 대체하지 않는다.
+- `StoryStore`는 `actionSteps`를 세이브하고 계통 이벤트 세 번을 순서대로 요구한다. `advanceManual()`은 action 목표를 거부한다.
+- 대화창·제작·일감·쿨러·경매·면허·도감·장소 도착을 성공 발행 지점으로 연결했다. 실검증은 사용자 지시로 생략했다.
+- 검증: core build · client typecheck · diff check 통과. 상세: [164차 워크로그](../docs/wiki/03-WORKLOG/2026-09-20-164-quest-action-events.md).
+
 **최근 변경 (2026-09-19 157차) — 전체 위키 확장·요리 분류·대화창 리디자인**
 
 - 서더리 전용 `stew_red`와 통생선 전용 `stew_red_whole`을 분리하고 도감 id 파서를 긴 recipe id 우선으로 정정했다.

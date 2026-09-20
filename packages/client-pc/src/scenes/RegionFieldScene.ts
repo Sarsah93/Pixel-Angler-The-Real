@@ -94,9 +94,10 @@ import { MonologuePanel, OPENING_MONOLOGUE } from '../ui/MonologuePanel.js';
 import { DialoguePanel } from '../ui/DialoguePanel.js';
 import { GeneralMeetingPanel } from '../ui/GeneralMeetingPanel.js';
 import { StoryStore } from '../store/StoryStore.js';
+import { storyActionScene } from '../store/StoryActionRegistry.js';
 import { loadSettings } from './SettingsScene.js';
 import { MultiplayerClient } from '../net/MultiplayerClient.js';
-import { STORY_NPC_PLACEMENTS, STORY_PLACES, type StoryNpcPlacement } from '../data/StoryNpcs.js';
+import { STORY_NPC_PLACEMENTS, STORY_PLACES, STORY_FIELD_TRIGGERS, type StoryNpcPlacement, type StoryFieldTrigger } from '../data/StoryNpcs.js';
 import { getStoryNpc, validateStoryQuests, validateStoryChoices, getSkillById, profScale, gearFaultChance, GEAR_REF_PRICE, gearUsable, GEAR_FAULTS,
   STORY_QUESTS, narrativeOf, nextObjectiveIndex, objectiveTarget, objectiveHowToKo, getDayJob, getRegionById, WORLD_NODE_DATABASE,
   type StoryQuestDef, type QuestGuideTarget, type GuideNames } from '@tra/core';
@@ -121,6 +122,7 @@ import { registerNames } from '../i18n/I18n.js';
 import { ExternalDataStore } from '../store/ExternalDataStore.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { RegionHud } from '../ui/RegionHud.js';
+import { StoryCinematicPanel, type StoryCinematicLine } from '../ui/StoryCinematicPanel.js';
 import { FieldEventManager } from '../ui/FieldEventManager.js';
 import { InventoryPanel } from '../ui/InventoryPanel.js';
 import { ItemDetailPanel } from '../ui/ItemDetailPanel.js';
@@ -276,6 +278,9 @@ export class RegionFieldScene extends Phaser.Scene {
 
   // HUD
   private hud?: RegionHud;
+  /** 개인 전용 컷씬 재생 중 — HUD/필드 입력을 숨기고 presence에는 바쁨을 보낸다. */
+  private cinematicActive = false;
+  private cinematic?: StoryCinematicPanel;
   /** 보일링/스쿨링 필드 이벤트 매니저 */
   private fieldEvents?: FieldEventManager;
   /** 피딩타임 활성도 (이벤트 발생 확률 입력 — 60초 주기 갱신) */
@@ -358,7 +363,7 @@ export class RegionFieldScene extends Phaser.Scene {
   /** 이동/캐스팅을 차단해야 하는 UI 상태 (일시정지 or 팝업 열림 or 쓰러짐 연출) */
   private get uiBlocked(): boolean {
     // 145차 — 채팅 입력 중에는 이동·상호작용을 멈춘다(글자를 치다 캐릭터가 걸어가면 안 된다)
-    return this.isPaused || this.collapsing || this.popupStack.length > 0 || !!this.hud?.isComposing;
+    return this.isPaused || this.collapsing || this.popupStack.length > 0 || !!this.hud?.isComposing || this.cinematicActive;
   }
 
   /**
@@ -1043,13 +1048,19 @@ export class RegionFieldScene extends Phaser.Scene {
       // 155차 — 수락·완료·거절은 로그 한 줄로 끝내지 않는다(테스터: "코드-내적 로그로만 주고받는다")
       if (m.startsWith('[할 일]')) this.floatingHint(m.replace(/^\[할 일\]\s*/, ''));
     };
+    StoryStore.onActionProgress = (key, step) => this.showActionProgressScene(key, step);
     // 155차 — 획득 토스트(아이콘 + 수량, 우측 페이드). 퀘스트 보상·상점 구매·손질 산출 전부 같은 경로다.
     InventoryStore.onGained = (item, qty) => this.hud?.showItemToast({
       kind: item.bound ? 'quest' : 'item', name: item.name, qty, bound: item.bound, item,
     });
     StoryStore.onCoins = (n, why) => this.hud?.showItemToast({ kind: 'coin', name: `${n > 0 ? '+' : ''}${n.toLocaleString()}원 — ${why}`, qty: 1, iconKey: 'rw_coin' });
-    this.events.once('shutdown', () => { InventoryStore.onGained = null; StoryStore.onCoins = null; });
+    this.events.once('shutdown', () => {
+      InventoryStore.onGained = null; StoryStore.onCoins = null; StoryStore.onActionProgress = null;
+      this.cinematic?.destroy(); this.cinematic = undefined; this.cinematicActive = false;
+      MultiplayerClient.setActivity('field');
+    });
     this.placeStoryNpcs();
+    this.placeStoryTriggers();
     if (import.meta.env.DEV) {
       const issues = [...validateStoryQuests(), ...validateStoryChoices()];
       if (issues.length) console.warn('[Story] 퀘스트·선택지 DB 무결성', issues);
@@ -2193,6 +2204,9 @@ export class RegionFieldScene extends Phaser.Scene {
     this.input.keyboard!.on('keydown-E', () => { if (!this.isPaused) this.toggleEquipment(); });
     this.input.keyboard!.on('keydown-F', (ev: KeyboardEvent) => {
       if (this.isPaused || this.uiBlocked) return;
+      // 160차 — 스토리 현장 지점은 NPC 대화보다 먼저 소비한다. 같은 장소에서
+      // 도현수와 마주쳐도 증거 연출/기록/보고의 순서를 건너뛸 수 없다.
+      if (this.nearStoryTrigger) { this.startStoryTrigger(this.nearStoryTrigger); return; }
       // 134차 — 스토리 NPC 대화가 최우선 (NPC 옆에 서 있으면 F = 대화)
       if (this.nearNpc) { this.openDialogue(this.nearNpc.npcId); return; }
       // 홈타운 오브젝트(문/버스/설치물) > 건물 거래 > 채집 스팟 > 통발
@@ -3895,8 +3909,100 @@ export class RegionFieldScene extends Phaser.Scene {
   private storyNpcs: { def: StoryNpcPlacement; x: number; y: number; mark?: Phaser.GameObjects.Image; markKey?: string }[] = [];
   private nearNpc: StoryNpcPlacement | null = null;
   private npcHintText?: Phaser.GameObjects.Text;
+  private storyTriggers: { def: StoryFieldTrigger; x: number; y: number; mark: Phaser.GameObjects.Graphics; label: Phaser.GameObjects.Text }[] = [];
+  private nearStoryTrigger: StoryFieldTrigger | null = null;
   private storyProxAt = 0;
   private firedPlaces = new Set<string>();
+
+  private placeStoryTriggers(): void {
+    this.storyTriggers = [];
+    for (const def of STORY_FIELD_TRIGGERS) {
+      if (def.regionId !== this.region) continue;
+      const { col, row } = this.nearestWalkable(def.tx, def.ty);
+      const x = col * TR + TR / 2, y = row * TR + TR;
+      const mark = this.add.graphics().setDepth(20 + y * 0.001 + 0.001);
+      mark.fillStyle(0xb89b55, 0.92).fillCircle(x, y - 28, 5);
+      mark.lineStyle(1, 0xf5e3a3, 0.8).strokeCircle(x, y - 28, 9);
+      const label = this.add.text(x, y - 43, def.labelKo, {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '8px', color: '#f5e3a3',
+        backgroundColor: '#07131dcc', padding: { x: 3, y: 2 },
+      }).setOrigin(0.5, 1).setDepth(20 + y * 0.001 + 0.002);
+      this.storyTriggers.push({ def, x, y, mark, label });
+      mark.setVisible(false); label.setVisible(false);
+    }
+  }
+
+  private storyTriggerAvailable(t: StoryFieldTrigger): boolean {
+    return StoryStore.canPerformAction(t.questId, t.objectiveIndex, t.phase);
+  }
+
+  private startStoryTrigger(t: StoryFieldTrigger): void {
+    if (!this.storyTriggerAvailable(t) || this.cinematicActive || this.cinematic) return;
+    const finish = (): void => {
+      this.cinematicActive = false;
+      this.cinematic = undefined;
+      MultiplayerClient.setActivity('field');
+      this.hud?.setVisible(true);
+      StoryStore.emitAction(t.actionKey as import('@tra/core').StoryActionKey, `n18-6:${t.id.replace('n18-6-', '') === 'origin-watch' ? 'watch-cinematic' : t.id.replace('n18-6-', '')}`);
+      this.hud?.pushLog(`[연출] ${t.labelKo} — 행동 ${StoryStore.actionStep(t.questId, t.objectiveIndex)}/3`);
+      this.refreshQuestMarkers(true);
+    };
+    this.cinematicActive = true;
+    this.nearStoryTrigger = null;
+    this.nearNpc = null;
+    this.npcHintText?.setVisible(false);
+    this.hud?.setVisible(false);
+    this.playerBody.setVelocity(0, 0);
+    MultiplayerClient.setActivity('cinematic');
+    const lines: StoryCinematicLine[] = t.phase === 0 ? [
+      { speaker: '혼잣말', actor: 'thought', text: '시장 뒤편에서 잠깐만 보고 가자. 괜히 눈에 띄면 곤란해.', durationMs: 1500 },
+      { speaker: '수상한 사람 1', actor: 'watcher', text: '...! 왔구만 그래.' },
+      { speaker: '수상한 사람 2', actor: 'courier', text: '아무도 없는 게 맞겠지?' },
+      { speaker: '수상한 사람 1', actor: 'watcher', text: '우리가 하루 이틀 해온 것도 아니고, 돈은 어디 있어? 저번부터 많이 까먹던데. 오늘은 확실하지?' },
+      { speaker: '수상한 사람 2', actor: 'courier', text: '처리된 것까지 확인하고 그 장소에서 전달한다. 저번과 같은 금액이야. 서두르지 마.' },
+      { speaker: '수상한 사람 2', actor: 'courier', text: '수정한 명부다. 곧 그 장소에서 만나지. 마무리 잘 하시게.' },
+      { speaker: '수상한 사람 1', actor: 'watcher', text: '...' },
+      { speaker: '혼잣말', actor: 'thought', text: '이건 아무래도 큰일인데…? 어서 알려야 해. 그 장소는 어디지?' },
+    ] : t.phase === 1 ? [
+      { speaker: '기록', actor: 'thought', text: '잉크가 마른 지 얼마 안 됐다. 원래 글씨와 덧쓴 글씨의 결이 다르다.' },
+      { speaker: '나', actor: 'player', text: '수량, 어종, 원산지 순서가 서로 맞지 않아. 이대로 두면 위판 기록이 바뀐다.' },
+      { speaker: '기록', actor: 'thought', text: '명부의 페이지와 흔적을 남겨 둔다. 말로만 전하면 증거가 사라질 수 있다.' },
+    ] : [
+      { speaker: '도현수', actor: 'watcher', text: '그 명부… 어디서 봤어? 섣불리 이름부터 말하지는 마.' },
+      { speaker: '나', actor: 'player', text: '후문에서 인계 장면을 봤어. 수정 전후의 순서와 시간을 적어 왔어.' },
+      { speaker: '도현수', actor: 'watcher', text: '알겠어. 이번엔 내가 신고서에 붙일게. 같이 확인한 걸로 남기자.' },
+    ];
+    this.cinematic = new StoryCinematicPanel(this, {
+      title: t.phase === 0 ? '위반 증거 · 목격' : t.phase === 1 ? '위반 증거 · 기록 대조' : '위반 증거 · 보고',
+      place: t.phase === 0 ? '인천 도매시장 후문 / 개인 시점' : '도매시장 기록대 / 개인 시점',
+      lines,
+      onComplete: finish,
+    });
+  }
+
+  /** N18-6 전용 3부작 외의 actionKey도 실제 성공 직후 결과를 짧게 보여준다. */
+  private showActionProgressScene(key: import('@tra/core').StoryActionKey, step: number): void {
+    if (key === 'label_violation_review' || !this.scene.isActive() || this.cinematicActive || this.cinematic) return;
+    const scene = storyActionScene(key);
+    if (!scene || step < 1 || step > 3) return;
+    this.cinematicActive = true;
+    this.hud?.setVisible(false);
+    MultiplayerClient.setActivity('cinematic');
+    this.cinematic = new StoryCinematicPanel(this, {
+      title: `${scene.titleKo} · ${step}/3`, place: `${scene.placeKo} / 개인 시점`,
+      lines: [
+        { speaker: '현장 기록', actor: 'thought', text: scene.linesKo[0], durationMs: 1300 },
+        { speaker: '현장 기록', actor: 'watcher', text: scene.linesKo[1], durationMs: 1700 },
+      ],
+      onComplete: () => {
+        this.cinematicActive = false;
+        this.cinematic = undefined;
+        MultiplayerClient.setActivity('field');
+        this.hud?.setVisible(true);
+        this.hud?.pushLog(`[연출] ${scene.titleKo} — ${step}/3`);
+      },
+    });
+  }
 
   /** 지역에 배치된 스토리 NPC 스프라이트 — 기존 POI NPC 텍스처 재사용(플레이스홀더), 이름표가 인물을 식별 */
   private placeStoryNpcs(): void {
@@ -4020,7 +4126,7 @@ export class RegionFieldScene extends Phaser.Scene {
     MultiplayerClient.reportPosition(
       this.region, this.playerBody.x, this.playerBody.y, this.playerFacing,
       Math.hypot(this.playerBody.body.velocity.x, this.playerBody.body.velocity.y) > 4,
-      this.shopPanel ? 'shop' : 'field',
+      this.cinematicActive ? 'cinematic' : this.shopPanel ? 'shop' : 'field',
     );
     this.peerSyncAt += delta;
     if (this.peerSyncAt < 200) return;
@@ -4057,7 +4163,7 @@ export class RegionFieldScene extends Phaser.Scene {
         .setFrame(charFrameName(peer.facing, peer.moving ? 1 : 0))
         .setDepth(depth)
         .setAlpha(onField ? 1 : 0.55);
-      o.tag.setPosition(peer.x, tagY).setText(peer.name).setDepth(depth + 0.0007);
+      o.tag.setPosition(peer.x, tagY).setText(peer.activity === 'cinematic' ? `${peer.name} · 바쁨` : peer.name).setDepth(depth + 0.0007);
 
       // 활동 배지 — 이름표 오른쪽에 붙인다(이름 길이에 따라 자리가 따라간다)
       const key = RegionFieldScene.ACTIVITY_ICON[peer.activity ?? 'field'];
@@ -4081,7 +4187,7 @@ export class RegionFieldScene extends Phaser.Scene {
 
   /** 활동 → 이름표 옆 배지 (필드는 배지 없음 — 늘 붙어 있으면 소음이다) */
   private static readonly ACTIVITY_ICON: Record<MpActivity, string | null> = {
-    field: null, fishing: 'act_fish', shop: 'act_shop', indoor: 'act_home', menu: 'act_away',
+    field: null, fishing: 'act_fish', shop: 'act_shop', indoor: 'act_home', menu: 'act_away', cinematic: null,
   };
 
   // ── 146차 유저 간 거래 · 정보 보기 ──────────────────────────
@@ -4479,8 +4585,11 @@ export class RegionFieldScene extends Phaser.Scene {
           const o = q.objectives[idx];
           target = objectiveTarget(q, o);
           const tgt = StoryStore.objectiveTarget(o);
-          const cur = Math.min(tgt, StoryStore.progress(q.id)?.obj[idx] ?? 0);
-          objective = (narrativeOf(q.id)?.objectives?.[idx] ?? o.labelKo) + (tgt > 1 ? ` (${cur}/${tgt})` : '');
+          const cur = Math.min(tgt, o.actionKey
+            ? StoryStore.actionStep(q.id, idx)
+            : (StoryStore.progress(q.id)?.obj[idx] ?? 0));
+          objective = (narrativeOf(q.id)?.objectives?.[idx] ?? o.labelKo)
+            + (o.actionKey || tgt > 1 ? ` (${cur}/${tgt}${o.actionKey && cur >= tgt ? ' · 준비 완료!' : ''})` : '');
           howTo = objectiveHowToKo(q, o, names);
         }
         const res = this.resolveGuideTarget(target);
@@ -4569,16 +4678,34 @@ export class RegionFieldScene extends Phaser.Scene {
     if (this.storyProxAt < 150 || !this.playerBody) return;
     this.storyProxAt = 0;
     const px = this.playerBody.x, py = this.playerBody.y;
+    let trigger: StoryFieldTrigger | null = null;
+    let triggerDist = 58;
+    for (const t of this.storyTriggers) {
+      const available = this.storyTriggerAvailable(t.def);
+      t.mark.setVisible(available); t.label.setVisible(available);
+      if (!available) continue;
+      const d = Math.hypot(t.x - px, t.y - py);
+      if (d < triggerDist) { triggerDist = d; trigger = t.def; }
+    }
+    this.nearStoryTrigger = trigger;
     let nearest: StoryNpcPlacement | null = null, best = 48;
     for (const n of this.storyNpcs) {
       const d = Math.hypot(n.x - px, (n.y - 12) - py);
       if (d < best) { best = d; nearest = n.def; }
     }
-    this.nearNpc = nearest;
+    this.nearNpc = trigger ? null : nearest;
     // 퀘스트 마커는 600ms마다만 재평가 (상태가 안 바뀌면 교체도 없다)
     this.questMarkerAt += 150;
     if (this.questMarkerAt >= 600) { this.questMarkerAt = 0; this.refreshQuestMarkers(); }
-    if (nearest && !this.uiBlocked && !this.placing) {
+    if (trigger && !this.uiBlocked && !this.placing) {
+      if (!this.npcHintText) {
+        this.npcHintText = this.add.text(0, 0, '', {
+          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#ffe9a0',
+          backgroundColor: '#0a1628dd', padding: { x: 6, y: 3 },
+        }).setOrigin(0.5, 1).setDepth(60);
+      }
+      this.npcHintText.setText(`[F] ${trigger.labelKo}`).setPosition(px, this.playerLabelY).setVisible(true);
+    } else if (nearest && !this.uiBlocked && !this.placing) {
       const npc = getStoryNpc(nearest.npcId);
       const q = StoryStore.questsForNpc(nearest.npcId);
       const tag = q.completable.length ? ' — 의뢰 완료' : q.offer.length ? ' — 새 의뢰' : q.active.length ? ' — 진행 중' : '';
@@ -4603,6 +4730,8 @@ export class RegionFieldScene extends Phaser.Scene {
       if (Math.hypot(cx - px, cy - py) <= pl.radiusTiles * TR) {
         this.firedPlaces.add(pl.key);
         StoryStore.event({ kind: 'visit', placeKey: pl.key });
+        // 장소 도착 뒤 이어지는 수동 목표의 현장 행동을 실제 이동/도착 이벤트에 연결한다.
+        StoryStore.emitActionSource('field', `place:${pl.key}`);
         this.hud?.pushLog(`[장소] ${pl.labelKo}에 도착했습니다`);
       }
     }

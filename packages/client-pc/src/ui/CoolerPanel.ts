@@ -24,6 +24,7 @@ import {
 import {
   InvItem, InventoryStore, CONDITION_LABEL, CONDITION_COLOR, CONDITION_NEXT,
 } from '../store/InventoryStore.js';
+import { StoryStore } from '../store/StoryStore.js';
 
 const CELL = 96;
 const GAP = 10;
@@ -88,6 +89,7 @@ export class CoolerPanel extends DraggablePanel {
       hideClose: cfg.force,
     });
     this.cfg = cfg;
+    StoryStore.emitActionSource('inspection', 'cooler-open');
     this.content = scene.add.container(0, 0);
     this.add(this.content);
 

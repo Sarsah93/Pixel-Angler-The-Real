@@ -34,6 +34,21 @@ export interface StoryPlace {
   labelKo: string;
 }
 
+/** 퀘스트가 활성일 때만 보이는 필드 상호작용 지점. 좌표는 월드 타일 기준이다. */
+export interface StoryFieldTrigger {
+  id: string;
+  regionId: string;
+  tx: number;
+  ty: number;
+  labelKo: string;
+  /** 현재 actionKey의 몇 번째 목표와 연결되는가 */
+  actionKey: string;
+  questId: string;
+  objectiveIndex: number;
+  /** actionKey 3단계 중 어느 단계인가 */
+  phase: number;
+}
+
 export const STORY_NPC_PLACEMENTS: StoryNpcPlacement[] = [
   { npcId: 'okseon', regionId: 'gangwon_sokcho', tx: 584, ty: 158, tex: 'ts_gem_npc_fish_vendor' },
   { npcId: 'coop', regionId: 'gangwon_sokcho', tx: 591, ty: 160, tex: 'ts_gem_npc_police' },
@@ -46,4 +61,24 @@ export const STORY_NPC_PLACEMENTS: StoryNpcPlacement[] = [
 
 export const STORY_PLACES: StoryPlace[] = [
   { key: 'poi:yeonggeumjeong', regionId: 'gangwon_sokcho', tx: 572, ty: 88, radiusTiles: 6, labelKo: '영금정' },
+];
+
+/**
+ * N18-6의 첫 단계. 인천 필드맵이 아직 준비 중인 개발 버전에서도 실제로
+ * 검증할 수 있도록 현재 열려 있는 상업항 맵의 도매시장 후문에 배치한다.
+ * 추후 인천 맵이 열리면 좌표만 옮기고 연출·세이브 계약은 유지한다.
+ */
+export const STORY_FIELD_TRIGGERS: StoryFieldTrigger[] = [
+  {
+    id: 'n18-6-origin-watch', regionId: 'gangwon_sokcho', tx: 536, ty: 132,
+    labelKo: '도매시장 후문 · 수상한 사람', actionKey: 'label_violation_review', questId: 'N18-6', objectiveIndex: 1, phase: 0,
+  },
+  {
+    id: 'n18-6-ledger-inspect', regionId: 'gangwon_sokcho', tx: 554, ty: 136,
+    labelKo: '수정된 원산지 명부', actionKey: 'label_violation_review', questId: 'N18-6', objectiveIndex: 1, phase: 1,
+  },
+  {
+    id: 'n18-6-report', regionId: 'gangwon_sokcho', tx: 534, ty: 126,
+    labelKo: '도현수에게 증거 보고', actionKey: 'label_violation_review', questId: 'N18-6', objectiveIndex: 1, phase: 2,
+  },
 ];

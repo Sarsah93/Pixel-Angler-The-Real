@@ -195,6 +195,39 @@ export type StoryObjectiveKind =
   | 'earn'           // 재화 누적
   | 'custom';        // 그 외 (라벨로만 설명)
 
+/**
+ * 실제 행동으로 닫혀야 하는 기존 custom 목표의 식별자.
+ * 목표 라벨을 파싱해 행동을 추측하지 않고, 각 시스템이 명시적으로 이벤트를 발행한다.
+ */
+export type StoryActionKey =
+  | 'cooler_ice_review'
+  | 'quality_course'
+  | 'legal_route_choice'
+  | 'stall_display_rebuild'
+  | 'vessel_exam'
+  | 'oral_history'
+  | 'vessel_safety_inspection'
+  | 'marine_tourism_registration'
+  | 'stall_operation_day'
+  | 'long_voyage_plan'
+  | 'tray_delivery'
+  | 'rig_tying'
+  | 'bamboo_selection'
+  | 'auction_price_review'
+  | 'food_container_delivery'
+  | 'oral_history_entry'
+  | 'second_tray_delivery'
+  | 'hull_inspection'
+  | 'reconcile_okseon_tak'
+  | 'sort_arguments'
+  | 'stove_repair'
+  | 'label_violation_review'
+  | 'hospital_assistance'
+  | 'distribution_route_explain'
+  | 'reopening_preparation'
+  | 'codex_species_review'
+  | 'video_frame_selection';
+
 export interface StoryObjective {
   kind: StoryObjectiveKind;
   labelKo: string;
@@ -221,6 +254,8 @@ export interface StoryObjective {
   licenseId?: string;
   /** visit 전용 — 지역 id 또는 장소 키(`poi:영금정`) */
   placeKey?: string;
+  /** custom 목표를 실제 행동 이벤트에 연결하는 키 */
+  actionKey?: StoryActionKey;
   /**
    * **자동 추적기 없음** — 대화 패널 [완료]로 닫는다(현행). 시스템이 생기면 false로.
    * 일지에는 '대화로 완료' 표기가 붙는다.

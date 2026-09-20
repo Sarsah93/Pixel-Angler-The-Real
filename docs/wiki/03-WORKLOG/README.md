@@ -16,6 +16,7 @@
 
 | 차수 | 날짜 | 시스템 | 제목 |
 |---|---|---|---|
+| [164](2026-09-20-164-quest-action-events.md) | 09-20 | 스토리 · 데이터 · 제작 · 필드 · UI | **수동 custom 목표 27개 행동화 — 6계통 이벤트·3단계 진행·계통별 선택/우호도 분기·클릭 완료 차단** — core/client 타입체크 통과, 실검증 생략 |
 | [163](2026-09-20-163-map-quest-shore-scope.md) | 09-20 | 지도 · HUD · 스토리 · 인벤 · 해루질 | **지도 드래그 방향·HUD 독립 조절·M1-01→M1-02 연결·심부름용 얼음·해루질 종 확장** — 실검증 생략, core build/typecheck 통과 |
 | [162](2026-09-19-162-sokcho-scene-transition-frame-fix.md) | 09-19 | 필드 · UI · 씬 전환 · 인프라 | **속초 씬 전환 Phaser Frame 오류 근본 수정 · stale 퀘스트 UI 참조 세대 초기화 · 실제 버스 출조 검증** |
 | [161](2026-09-19-161-phaser-frame-lifecycle.md) | 09-19 | 필드 · UI · 씬 전환 · 인프라 | **Phaser Frame 수명주기 회귀 수정 · 동적 텍스처 삭제 제거 · init→create stale update 차단** |
