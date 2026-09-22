@@ -24,9 +24,12 @@ export interface StoryActionSpec {
 
 export interface StoryActionScene {
   titleKo: string;
+  titleEn: string;
   placeKo: string;
+  placeEn: string;
   /** 실제 단계 성공 직후 보여 줄 개인 시점의 짧은 장면 */
   linesKo: readonly [string, string];
+  linesEn: readonly [string, string];
 }
 
 /** 실제 게임 시스템이 행동 목표를 발행하는 여섯 가지 사건 계통 */
@@ -143,33 +146,33 @@ export const STORY_ACTIONS: Record<StoryActionKey, StoryActionSpec> = {
  * 몰아넣지 않고, 실제 플레이 행동이 끝난 직후 “무슨 변화가 있었는가”만 보여준다.
  */
 export const STORY_ACTION_SCENES: Record<StoryActionKey, StoryActionScene> = {
-  cooler_ice_review: { titleKo: '얼음 상자 점검', placeKo: '항구 냉장창고', linesKo: ['얼음이 녹은 자리를 손끝으로 짚어 본다.', '기록과 맞지 않는 온도 흔적을 남겼다.'] },
-  quality_course: { titleKo: '품질 교육', placeKo: '수산물 위생 교육실', linesKo: ['선도표의 사진과 실제 비늘을 번갈아 본다.', '다음 위판에서는 이 순서를 잊지 않기로 했다.'] },
-  legal_route_choice: { titleKo: '합법 경로 선택', placeKo: '항만 관리실 복도', linesKo: ['세 갈래 서류를 책상 위에 펼쳐 놓는다.', '선택한 경로에는 책임자의 도장이 남는다.'] },
-  stall_display_rebuild: { titleKo: '좌판 재배치', placeKo: '만복상회 좌판', linesKo: ['상자의 젖은 면을 아래로 돌려 놓는다.', '손님이 집기 편한 방향으로 진열이 바뀌었다.'] },
-  vessel_exam: { titleKo: '선장 시험', placeKo: '선박안전 시험장', linesKo: ['답안지 가장자리의 파도 자국을 눌러 편다.', '아는 문제와 모르는 문제를 구분해 표시했다.'] },
-  oral_history: { titleKo: '바다의 증언', placeKo: '방파제 끝 벤치', linesKo: ['녹음기를 켜자 오래된 이름 하나가 먼저 나왔다.', '말을 끊지 않고 그 사람의 속도로 받아 적었다.'] },
-  vessel_safety_inspection: { titleKo: '선박 안전 점검', placeKo: '어선 계류장', linesKo: ['구명환 안쪽의 마모를 손전등으로 비춘다.', '출항 전에 고칠 항목이 한 줄 늘었다.'] },
-  marine_tourism_registration: { titleKo: '관광선 등록', placeKo: '해양관광 창구', linesKo: ['보험 증서의 선박번호를 다시 대조한다.', '접수창구 직원이 다음 절차를 표시해 주었다.'] },
-  stall_operation_day: { titleKo: '좌판 하루 장사', placeKo: '아침 어시장', linesKo: ['첫 손님이 고른 생선을 저울에 올린다.', '가격을 흥정한 목소리가 골목 안쪽까지 번졌다.'] },
-  long_voyage_plan: { titleKo: '장거리 항해 계획', placeKo: '선장실 해도 테이블', linesKo: ['예보가 바뀐 구간에 연필로 우회선을 긋는다.', '돌아가는 길이 오늘은 가장 빠른 길이다.'] },
-  tray_delivery: { titleKo: '대나무 받침 전달', placeKo: '동명항 좌판 뒤편', linesKo: ['받침을 내려놓자 젖은 생선 상자가 수평을 찾는다.', '받는 사람이 물건의 모서리를 한 번 더 확인했다.'] },
-  rig_tying: { titleKo: '채비 매듭', placeKo: '손 제작대', linesKo: ['매듭을 당길 때 손끝의 장력이 일정해졌다.', '이번에는 줄을 자르기 전에 고리 방향부터 확인했다.'] },
-  bamboo_selection: { titleKo: '대나무 선별', placeKo: '방파제 옆 자재장', linesKo: ['마디 사이를 손가락으로 재며 휘어진 대를 밀어낸다.', '고른 이유를 적어 두니 재료가 다르게 보였다.'] },
-  auction_price_review: { titleKo: '낙찰가 대조', placeKo: '위판 경매장 전광판 아래', linesKo: ['어제와 오늘의 숫자가 나란히 멈춘다.', '가격의 차이는 생선보다 들어온 시간에 가까웠다.'] },
-  food_container_delivery: { titleKo: '반찬통 전달', placeKo: '죽간 공방 뒷문', linesKo: ['뚜껑을 열지 않은 채 손잡이만 건넨다.', '공방 안쪽에서 젓가락 놓는 소리가 났다.'] },
-  oral_history_entry: { titleKo: '구술 기록 정리', placeKo: '마을회관 기록장', linesKo: ['같은 사건의 날짜가 두 사람의 기억에서 다르다.', '틀린 쪽을 고르지 않고 둘 다 주석으로 남겼다.'] },
-  second_tray_delivery: { titleKo: '두 번째 전달', placeKo: '만복상회 수조 옆', linesKo: ['지난번보다 물기가 덜 묻도록 천을 한 겹 둘렀다.', '이번에는 전달받은 사람이 바로 서명했다.'] },
-  hull_inspection: { titleKo: '중고 선체 검수', placeKo: '상가 수리장', linesKo: ['도장 아래로 번진 녹이 망치 소리에 따라 울린다.', '겉면보다 안쪽 보강재가 더 오래된 것을 확인했다.'] },
-  reconcile_okseon_tak: { titleKo: '두 사람의 자리', placeKo: '항구 식당 창가', linesKo: ['서로 마주 보지 않아도 되는 자리를 먼저 잡는다.', '말이 끊긴 뒤에도 자리를 뜨지 않고 기다렸다.'] },
-  sort_arguments: { titleKo: '자료 분류', placeKo: '항구 사무실 서류장', linesKo: ['찬성 자료와 반대 자료의 모서리를 맞춘다.', '주장이 아니라 근거부터 보이도록 순서를 바꿨다.'] },
-  stove_repair: { titleKo: '난로 수리', placeKo: '선실 구석', linesKo: ['막힌 연통에서 그을음이 한 줌 떨어진다.', '불꽃이 다시 붙자 방 안의 손들이 움직이기 시작했다.'] },
-  label_violation_review: { titleKo: '원산지 위반 확인', placeKo: '인천 도매시장 후문', linesKo: ['바뀐 글씨와 원래 인쇄선의 높이가 맞지 않는다.', '명부를 접지 않고 그대로 보관하기로 했다.'] },
-  hospital_assistance: { titleKo: '병실 동행', placeKo: '항구 보건소 복도', linesKo: ['걸음이 멈출 때마다 난간 쪽으로 반 발 먼저 간다.', '문 앞에 도착한 뒤에야 손을 놓았다.'] },
-  distribution_route_explain: { titleKo: '유통 경로 설명', placeKo: '수산물 중개 사무실', linesKo: ['상자 하나가 배에서 식당까지 가는 길을 짚는다.', '누가 책임지는지가 단계마다 달라진다는 것을 알았다.'] },
-  reopening_preparation: { titleKo: '재개관 준비', placeKo: '닫힌 전시관 입구', linesKo: ['먼지 쌓인 안내판의 나사를 다시 조인다.', '문을 열기 전에도 보여 줄 것은 이미 많았다.'] },
-  codex_species_review: { titleKo: '미등록 종 검토', placeKo: '조행록 열람실', linesKo: ['비슷한 지느러미를 한 장씩 겹쳐 본다.', '아직 이름 없는 칸을 비워 둔 채 관찰 메모를 붙였다.'] },
-  video_frame_selection: { titleKo: '기록 장면 선택', placeKo: '항구 영상 편집실', linesKo: ['파도에 가려진 프레임과 사람의 손이 보이는 프레임을 나눈다.', '가장 예쁜 장면 대신 증거가 남는 한 컷을 골랐다.'] },
+  cooler_ice_review: { titleEn: 'Ice crate check', placeEn: 'Harbour cold store', linesEn: ['I trace the melted patch with a fingertip.', 'I noted a temperature trace that does not match the log.'], titleKo: '얼음 상자 점검', placeKo: '항구 냉장창고', linesKo: ['얼음이 녹은 자리를 손끝으로 짚어 본다.', '기록과 맞지 않는 온도 흔적을 남겼다.'] },
+  quality_course: { titleEn: 'Quality course', placeEn: 'Seafood hygiene classroom', linesEn: ['I glance between the freshness chart and the real scales.', 'I resolved not to forget this order at the next auction.'], titleKo: '품질 교육', placeKo: '수산물 위생 교육실', linesKo: ['선도표의 사진과 실제 비늘을 번갈아 본다.', '다음 위판에서는 이 순서를 잊지 않기로 했다.'] },
+  legal_route_choice: { titleEn: 'Choosing a legal route', placeEn: 'Port office corridor', linesEn: ['I spread the three sets of papers across the desk.', 'The chosen route now carries the officer stamp.'], titleKo: '합법 경로 선택', placeKo: '항만 관리실 복도', linesKo: ['세 갈래 서류를 책상 위에 펼쳐 놓는다.', '선택한 경로에는 책임자의 도장이 남는다.'] },
+  stall_display_rebuild: { titleEn: 'Rebuilding the stall', placeEn: 'Manbok Store stall', linesEn: ['I turn the wet side of the crate face down.', 'The display now faces the way customers reach for it.'], titleKo: '좌판 재배치', placeKo: '만복상회 좌판', linesKo: ['상자의 젖은 면을 아래로 돌려 놓는다.', '손님이 집기 편한 방향으로 진열이 바뀌었다.'] },
+  vessel_exam: { titleEn: 'Captain exam', placeEn: 'Vessel safety exam hall', linesEn: ['I press flat the wave stain on the edge of the answer sheet.', 'I marked which questions I knew and which I did not.'], titleKo: '선장 시험', placeKo: '선박안전 시험장', linesKo: ['답안지 가장자리의 파도 자국을 눌러 편다.', '아는 문제와 모르는 문제를 구분해 표시했다.'] },
+  oral_history: { titleEn: 'Testimony of the sea', placeEn: 'Bench at the breakwater end', linesEn: ['The recorder clicked on and an old name came out first.', 'I wrote at their pace without cutting in.'], titleKo: '바다의 증언', placeKo: '방파제 끝 벤치', linesKo: ['녹음기를 켜자 오래된 이름 하나가 먼저 나왔다.', '말을 끊지 않고 그 사람의 속도로 받아 적었다.'] },
+  vessel_safety_inspection: { titleEn: 'Vessel safety inspection', placeEn: 'Fishing boat moorings', linesEn: ['I shine a torch on the wear inside the life ring.', 'One more item to fix before departure.'], titleKo: '선박 안전 점검', placeKo: '어선 계류장', linesKo: ['구명환 안쪽의 마모를 손전등으로 비춘다.', '출항 전에 고칠 항목이 한 줄 늘었다.'] },
+  marine_tourism_registration: { titleEn: 'Tour boat registration', placeEn: 'Marine tourism counter', linesEn: ['I double-check the hull number on the insurance certificate.', 'The clerk marked the next step for me.'], titleKo: '관광선 등록', placeKo: '해양관광 창구', linesKo: ['보험 증서의 선박번호를 다시 대조한다.', '접수창구 직원이 다음 절차를 표시해 주었다.'] },
+  stall_operation_day: { titleEn: 'A day at the stall', placeEn: 'Morning fish market', linesEn: ['The pick of the first customer goes onto the scale.', 'The haggling carried all the way down the alley.'], titleKo: '좌판 하루 장사', placeKo: '아침 어시장', linesKo: ['첫 손님이 고른 생선을 저울에 올린다.', '가격을 흥정한 목소리가 골목 안쪽까지 번졌다.'] },
+  long_voyage_plan: { titleEn: 'Long voyage plan', placeEn: 'Chart table in the wheelhouse', linesEn: ['I pencil a detour where the forecast changed.', 'Today the way around is the fastest way.'], titleKo: '장거리 항해 계획', placeKo: '선장실 해도 테이블', linesKo: ['예보가 바뀐 구간에 연필로 우회선을 긋는다.', '돌아가는 길이 오늘은 가장 빠른 길이다.'] },
+  tray_delivery: { titleEn: 'Bamboo tray delivery', placeEn: 'Behind the Dongmyeong stalls', linesEn: ['The wet fish crate finds level as the tray goes down.', 'The receiver checked the corners once more.'], titleKo: '대나무 받침 전달', placeKo: '동명항 좌판 뒤편', linesKo: ['받침을 내려놓자 젖은 생선 상자가 수평을 찾는다.', '받는 사람이 물건의 모서리를 한 번 더 확인했다.'] },
+  rig_tying: { titleEn: 'Rig knots', placeEn: 'Hand workbench', linesEn: ['The tension in my fingertips evened out on the pull.', 'This time I checked the loop direction before cutting.'], titleKo: '채비 매듭', placeKo: '손 제작대', linesKo: ['매듭을 당길 때 손끝의 장력이 일정해졌다.', '이번에는 줄을 자르기 전에 고리 방향부터 확인했다.'] },
+  bamboo_selection: { titleEn: 'Bamboo selection', placeEn: 'Materials yard by the breakwater', linesEn: ['I measure node spacing by hand and push aside the warped poles.', 'Writing down why I chose one made the material look different.'], titleKo: '대나무 선별', placeKo: '방파제 옆 자재장', linesKo: ['마디 사이를 손가락으로 재며 휘어진 대를 밀어낸다.', '고른 이유를 적어 두니 재료가 다르게 보였다.'] },
+  auction_price_review: { titleEn: 'Hammer price check', placeEn: 'Under the auction hall board', linesEn: ['Yesterday and today stop side by side in numbers.', 'The gap had more to do with arrival time than the fish.'], titleKo: '낙찰가 대조', placeKo: '위판 경매장 전광판 아래', linesKo: ['어제와 오늘의 숫자가 나란히 멈춘다.', '가격의 차이는 생선보다 들어온 시간에 가까웠다.'] },
+  food_container_delivery: { titleEn: 'Side-dish container delivery', placeEn: 'Back door of the bamboo workshop', linesEn: ['I hand over the handle without opening the lid.', 'Chopsticks clinked somewhere inside the workshop.'], titleKo: '반찬통 전달', placeKo: '죽간 공방 뒷문', linesKo: ['뚜껑을 열지 않은 채 손잡이만 건넨다.', '공방 안쪽에서 젓가락 놓는 소리가 났다.'] },
+  oral_history_entry: { titleEn: 'Sorting the oral record', placeEn: 'Village hall archive', linesEn: ['The same event has two dates in two memories.', 'I kept both as notes instead of picking the wrong one.'], titleKo: '구술 기록 정리', placeKo: '마을회관 기록장', linesKo: ['같은 사건의 날짜가 두 사람의 기억에서 다르다.', '틀린 쪽을 고르지 않고 둘 다 주석으로 남겼다.'] },
+  second_tray_delivery: { titleEn: 'Second delivery', placeEn: 'Beside the Manbok Store tank', linesEn: ['I wrapped an extra cloth so less water soaks through.', 'This time the receiver signed on the spot.'], titleKo: '두 번째 전달', placeKo: '만복상회 수조 옆', linesKo: ['지난번보다 물기가 덜 묻도록 천을 한 겹 둘렀다.', '이번에는 전달받은 사람이 바로 서명했다.'] },
+  hull_inspection: { titleEn: 'Used hull survey', placeEn: 'Boatyard repair bay', linesEn: ['Rust bleeding under the paint rings with each hammer tap.', 'The inner bracing turned out older than the skin.'], titleKo: '중고 선체 검수', placeKo: '상가 수리장', linesKo: ['도장 아래로 번진 녹이 망치 소리에 따라 울린다.', '겉면보다 안쪽 보강재가 더 오래된 것을 확인했다.'] },
+  reconcile_okseon_tak: { titleEn: 'Seats for two', placeEn: 'Window table at the harbour diner', linesEn: ['I pick seats where they need not face each other.', 'I stayed after the talk stopped.'], titleKo: '두 사람의 자리', placeKo: '항구 식당 창가', linesKo: ['서로 마주 보지 않아도 되는 자리를 먼저 잡는다.', '말이 끊긴 뒤에도 자리를 뜨지 않고 기다렸다.'] },
+  sort_arguments: { titleEn: 'Sorting the papers', placeEn: 'Port office filing shelf', linesEn: ['I square the edges of the for and against papers.', 'I reordered them so the evidence shows before the claim.'], titleKo: '자료 분류', placeKo: '항구 사무실 서류장', linesKo: ['찬성 자료와 반대 자료의 모서리를 맞춘다.', '주장이 아니라 근거부터 보이도록 순서를 바꿨다.'] },
+  stove_repair: { titleEn: 'Stove repair', placeEn: 'Cabin corner', linesEn: ['A handful of soot drops from the blocked flue.', 'When the flame caught, hands in the room started moving.'], titleKo: '난로 수리', placeKo: '선실 구석', linesKo: ['막힌 연통에서 그을음이 한 줌 떨어진다.', '불꽃이 다시 붙자 방 안의 손들이 움직이기 시작했다.'] },
+  label_violation_review: { titleEn: 'Origin label violation', placeEn: 'Incheon wholesale market back gate', linesEn: ['The altered letters sit off the printed line.', 'I decided to keep the ledger unfolded, as it is.'], titleKo: '원산지 위반 확인', placeKo: '인천 도매시장 후문', linesKo: ['바뀐 글씨와 원래 인쇄선의 높이가 맞지 않는다.', '명부를 접지 않고 그대로 보관하기로 했다.'] },
+  hospital_assistance: { titleEn: 'Walking to the ward', placeEn: 'Harbour clinic corridor', linesEn: ['Half a step toward the rail each time the walk stops.', 'I let go only at the door.'], titleKo: '병실 동행', placeKo: '항구 보건소 복도', linesKo: ['걸음이 멈출 때마다 난간 쪽으로 반 발 먼저 간다.', '문 앞에 도착한 뒤에야 손을 놓았다.'] },
+  distribution_route_explain: { titleEn: 'Explaining the route', placeEn: 'Seafood brokerage office', linesEn: ['I trace one crate from boat to restaurant.', 'Who is responsible changes at every step, I learned.'], titleKo: '유통 경로 설명', placeKo: '수산물 중개 사무실', linesKo: ['상자 하나가 배에서 식당까지 가는 길을 짚는다.', '누가 책임지는지가 단계마다 달라진다는 것을 알았다.'] },
+  reopening_preparation: { titleEn: 'Reopening prep', placeEn: 'Closed exhibition hall entrance', linesEn: ['I retighten the screws on the dusty sign.', 'Even before the doors open, there is plenty to show.'], titleKo: '재개관 준비', placeKo: '닫힌 전시관 입구', linesKo: ['먼지 쌓인 안내판의 나사를 다시 조인다.', '문을 열기 전에도 보여 줄 것은 이미 많았다.'] },
+  codex_species_review: { titleEn: 'Reviewing unlisted species', placeEn: 'Log reading room', linesEn: ['I overlay similar fins one sheet at a time.', 'I left the unnamed box empty and pinned an observation note.'], titleKo: '미등록 종 검토', placeKo: '조행록 열람실', linesKo: ['비슷한 지느러미를 한 장씩 겹쳐 본다.', '아직 이름 없는 칸을 비워 둔 채 관찰 메모를 붙였다.'] },
+  video_frame_selection: { titleEn: 'Choosing the frame', placeEn: 'Harbour video editing room', linesEn: ['I split frames hidden by waves from frames showing hands.', 'I chose the one shot that holds evidence, not the prettiest one.'], titleKo: '기록 장면 선택', placeKo: '항구 영상 편집실', linesKo: ['파도에 가려진 프레임과 사람의 손이 보이는 프레임을 나눈다.', '가장 예쁜 장면 대신 증거가 남는 한 컷을 골랐다.'] },
 };
 
 export function storyActionSpec(key: StoryActionKey): StoryActionSpec {

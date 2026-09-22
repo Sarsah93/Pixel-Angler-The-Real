@@ -1,43 +1,90 @@
 /**
- * 개인 전용 스토리 연출.
+ * @file StoryCinematicPanel.ts
+ * @description 인게임 컷씬 런타임 (165차 재작성)
  *
- * 필드 씬을 멈추고 같은 화면 위에 얹는 작은 연출 런타임이다. 대화 패널의
- * 선택지처럼 플레이어가 다음 버튼을 눌러야 하는 UI가 아니라, 짧은 장면을
- * 타임라인으로 재생한다. 서버에는 연출 내용이 아니라 `cinematic` 활동만
- * 공개하므로 다른 플레이어의 화면에는 원래 필드와 머리 위 `바쁨`만 남는다.
+ * 컷씬은 별도의 무대를 그리지 않는다. **지금 서 있는 실제 필드 위에서**
+ * 플레이어·NPC가 스크립트대로 걸어 다니고, 머리 위 말풍선과 하단 대사창이
+ * 순서대로 흐른다. 재생 중에는 플레이어 조작이 완전히 막히고(씬 `uiBlocked`),
+ * 종료하면 카메라 추적·HUD가 그대로 돌아온다.
+ *
+ * ⚠ 164차까지 쓰던 「검은 배경 + 사각형 배우」 폴백 무대는 폐기했다.
+ *   배우를 준비하지 못한 대사는 조용히 대사창만 쓰고, 도형을 그리지 않는다.
+ *
+ * 원격지(다른 지역) 컷씬은 이 런타임이 아니라 씬이 담당한다 — 씬이 페이드 후
+ * 해당 지역으로 전환해 같은 스크립트를 그곳에서 재생하고, 끝나면 원래 자리로
+ * 돌아온다(`RegionFieldScene.playRemoteCinematic`). 이 파일은 "한 무대에서의
+ * 재생"만 책임진다.
  */
 
 import Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH } from '../PhaserConfig.js';
+import { paintHudPanel } from './HudPanelStyle.js';
 
-export interface StoryCinematicLine {
-  speaker: string;
-  text: string;
-  actor: 'player' | 'watcher' | 'courier' | 'thought';
-  durationMs?: number;
+export type CineDir = 'up' | 'down' | 'left' | 'right';
+export type CineEmote = 'surprise' | 'think' | 'sad' | 'joy';
+
+/** 컷씬이 움직일 수 있는 배우 하나. 필드에 이미 존재하는 오브젝트를 빌려 쓴다. */
+export interface CineActor {
+  /** 본체 — 원점 (0.5, 1) 기준 이미지/컨테이너 */
+  obj: Phaser.GameObjects.GameObject & { x: number; y: number; alpha: number };
+  /** 본체와 함께 움직여야 하는 부속 (이름표·마커 등) */
+  followers?: (Phaser.GameObjects.GameObject & { x: number; y: number })[];
+  nameKo: string;
+  /** 말풍선 꼬리가 닿는 머리 위 오프셋 (월드 px, 음수) */
+  headY?: number;
+  /** 방향 프레임 교체 (스프라이트 시트 배우만) */
+  setFacing?: (dir: CineDir) => void;
+}
+
+export type CineStep =
+  /** 대사 — `thought`면 말풍선 없이 독백으로만 흐른다 */
+  | { kind: 'say'; who: string; text: string; textEn?: string; ms?: number; thought?: boolean }
+  /** 배우 이동 — 타일 단위 상대 이동 */
+  | { kind: 'move'; who: string; dxTiles?: number; dyTiles?: number; ms?: number; face?: CineDir }
+  | { kind: 'face'; who: string; dir: CineDir }
+  | { kind: 'emote'; who: string; emote: CineEmote; ms?: number }
+  /** 카메라를 배우에게 맞춘다 */
+  | { kind: 'focus'; who: string; ms?: number }
+  | { kind: 'wait'; ms: number };
+
+export interface CineScript {
+  id: string;
+  /** 레터박스 좌상단 장면 자막 — 플레이어가 읽는 장소 이름 */
+  placeKo: string;
+  placeEn?: string;
+  steps: readonly CineStep[];
 }
 
 export interface StoryCinematicConfig {
-  title: string;
-  place: string;
-  lines: readonly StoryCinematicLine[];
-  /** 실제 RegionFieldScene에 이미 배치된 배우. 없을 때만 개발용 폴백 무대를 사용한다. */
-  fieldActors?: Partial<Record<'player' | 'watcher' | 'courier', Phaser.GameObjects.GameObject>>;
+  script: CineScript;
+  actors: Record<string, CineActor>;
+  /** 타일 한 칸 크기 (이동 스텝 환산) */
+  tileSize: number;
+  camera: Phaser.Cameras.Scene2D.Camera;
   onComplete: () => void;
 }
 
-type ActorKey = 'player' | 'watcher' | 'courier';
+const BAR_TOP = 56;
+const BAR_BOTTOM = 132;
+const BUBBLE_MAX_W = 250;
 
 export class StoryCinematicPanel extends Phaser.GameObjects.Container {
   private readonly cfg: StoryCinematicConfig;
-  private readonly actors = new Map<ActorKey, Phaser.GameObjects.Container>();
-  private readonly speechBg: Phaser.GameObjects.Rectangle;
-  private readonly speech: Phaser.GameObjects.Text;
-  private readonly dialogueSpeaker: Phaser.GameObjects.Text;
-  private readonly dialogueText: Phaser.GameObjects.Text;
-  private readonly stage: Phaser.GameObjects.Container;
-  private readonly fieldProps: Phaser.GameObjects.GameObject[] = [];
-  private readonly fieldOrigins = new Map<Phaser.GameObjects.GameObject, { x: number; y: number; alpha: number }>();
+  private readonly barTop: Phaser.GameObjects.Rectangle;
+  private readonly barBottom: Phaser.GameObjects.Rectangle;
+  private readonly placeText: Phaser.GameObjects.Text;
+  private readonly boxG: Phaser.GameObjects.Graphics;
+  private readonly speakerText: Phaser.GameObjects.Text;
+  private readonly bodyText: Phaser.GameObjects.Text;
+  private readonly skipHint: Phaser.GameObjects.Text;
+  /** 말풍선 — 화면 고정 좌표에서 배우를 매 프레임 따라간다 */
+  private readonly bubbleC: Phaser.GameObjects.Container;
+  private readonly bubbleG: Phaser.GameObjects.Graphics;
+  private readonly bubbleText: Phaser.GameObjects.Text;
+  private bubbleActor?: CineActor;
+  /** 연출이 끝나면 되돌릴 배우 원위치 */
+  private readonly origins = new Map<Phaser.GameObjects.GameObject, { x: number; y: number }>();
+  private readonly emotes: Phaser.GameObjects.Text[] = [];
   private index = -1;
   private finished = false;
   private timer?: Phaser.Time.TimerEvent;
@@ -45,214 +92,208 @@ export class StoryCinematicPanel extends Phaser.GameObjects.Container {
   constructor(scene: Phaser.Scene, cfg: StoryCinematicConfig) {
     super(scene, 0, 0);
     this.cfg = cfg;
-    for (const actor of Object.values(cfg.fieldActors ?? {})) {
-      if (!actor || !('x' in actor) || !('y' in actor)) continue;
-      const a = actor as Phaser.GameObjects.GameObject & { x: number; y: number; alpha: number };
-      this.fieldOrigins.set(actor, { x: a.x, y: a.y, alpha: a.alpha });
-    }
     this.setDepth(20_000).setScrollFactor(0);
 
-    const inField = !!cfg.fieldActors;
-    // 실제 필드 연출은 맵과 NPC가 보여야 한다. 검은 무대는 배우를 준비하지 못한
-    // 개발용 폴백에서만 사용하고, 정상 경로는 얇은 색 보정막만 씌운다.
-    const veil = scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x050b12, inField ? 0.12 : 0.98)
+    // 필드를 가리지 않는 얇은 색 보정막 + 포인터 흡수 (조작 봉쇄)
+    const veil = scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x050b12, 0.10)
       .setInteractive();
     this.add(veil);
 
-    this.stage = scene.add.container(0, 0);
-    this.add(this.stage);
-    if (!inField) this.drawStage();
-    else {
-      // 상·하 레터박스만 얹어 필드와 대사창의 경계를 만든다. 맵 자체는 가리지 않는다.
-      this.add([
-        scene.add.rectangle(GAME_WIDTH / 2, 18, GAME_WIDTH, 36, 0x050b12, 0.72),
-        scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT - 146, GAME_WIDTH, 28, 0x050b12, 0.72),
-      ]);
+    // 레터박스 — 위/아래에서 밀려 들어온다
+    this.barTop = scene.add.rectangle(GAME_WIDTH / 2, -BAR_TOP / 2, GAME_WIDTH, BAR_TOP, 0x04080d, 0.95).setOrigin(0.5);
+    this.barBottom = scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT + BAR_BOTTOM / 2, GAME_WIDTH, BAR_BOTTOM, 0x04080d, 0.95).setOrigin(0.5);
+    this.add([this.barTop, this.barBottom]);
+    scene.tweens.add({ targets: this.barTop, y: BAR_TOP / 2, duration: 320, ease: 'Sine.easeOut' });
+    scene.tweens.add({ targets: this.barBottom, y: GAME_HEIGHT - BAR_BOTTOM / 2, duration: 320, ease: 'Sine.easeOut' });
+
+    this.placeText = scene.add.text(24, 20, cfg.script.placeKo, {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px', color: '#cfe4f2',
+    }).setAlpha(0);
+    this.add(this.placeText);
+    scene.tweens.add({ targets: this.placeText, alpha: 1, duration: 420, delay: 240 });
+
+    // 대사창 — 게임의 모든 창과 같은 HUD 패널 문법
+    const boxY = GAME_HEIGHT - BAR_BOTTOM + 8, boxH = BAR_BOTTOM - 20;
+    this.boxG = scene.add.graphics();
+    paintHudPanel(this.boxG, 26, boxY, GAME_WIDTH - 52, boxH, { alpha: 0.95, headerH: 22 });
+    this.speakerText = scene.add.text(40, boxY + 4, '', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#ffe9a0', fontStyle: 'bold',
+    });
+    this.bodyText = scene.add.text(40, boxY + 32, '', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '20px', color: '#f2f8fd',
+      wordWrap: { width: GAME_WIDTH - 108 }, lineSpacing: 4,
+    });
+    this.skipHint = scene.add.text(GAME_WIDTH - 40, boxY + 5, '[ESC] 건너뛰기', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#7fa0b8',
+    }).setOrigin(1, 0);
+    this.add([this.boxG, this.speakerText, this.bodyText, this.skipHint]);
+
+    // 말풍선 (배우 머리 위)
+    this.bubbleG = scene.add.graphics();
+    this.bubbleText = scene.add.text(0, 0, '', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px', color: '#12202c',
+      align: 'center', wordWrap: { width: BUBBLE_MAX_W },
+    }).setOrigin(0.5, 0.5);
+    this.bubbleC = scene.add.container(0, 0, [this.bubbleG, this.bubbleText]).setVisible(false);
+    this.add(this.bubbleC);
+
+    for (const a of Object.values(cfg.actors)) {
+      this.origins.set(a.obj, { x: a.obj.x, y: a.obj.y });
+      for (const f of a.followers ?? []) this.origins.set(f, { x: f.x, y: f.y });
     }
 
-    const heading = scene.add.text(34, 28, cfg.title, {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '17px', color: '#eef7ff', fontStyle: 'bold',
-    });
-    const place = scene.add.text(36, 54, cfg.place, {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#8fa8bf',
-    });
-    this.add([heading, place]);
-
-    this.speechBg = scene.add.rectangle(0, 0, 10, 10, 0x071522, 0.96)
-      .setStrokeStyle(1, 0x8db8ce, 0.8).setVisible(false);
-    this.speech = scene.add.text(0, 0, '', {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#ffffff',
-      align: 'center', wordWrap: { width: 290 }, padding: { x: 10, y: 7 },
-    }).setOrigin(0.5).setVisible(false);
-    this.add([this.speechBg, this.speech]);
-
-    const dialogueBg = scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT - 86, GAME_WIDTH - 72, 94, 0x081723, 0.98)
-      .setStrokeStyle(1, 0x2f6680, 0.95);
-    this.dialogueSpeaker = scene.add.text(58, GAME_HEIGHT - 127, '', {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#6ee7c8', fontStyle: 'bold',
-    });
-    this.dialogueText = scene.add.text(58, GAME_HEIGHT - 105, '', {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '14px', color: '#f4f8fb',
-      wordWrap: { width: GAME_WIDTH - 116 }, lineSpacing: 5,
-    });
-    this.add([dialogueBg, this.dialogueSpeaker, this.dialogueText]);
-
+    cfg.camera.stopFollow();
     scene.add.existing(this);
-    this.playIntro();
+    scene.events.on(Phaser.Scenes.Events.UPDATE, this.trackBubble, this);
+    this.timer = scene.time.delayedCall(380, () => this.step());
   }
 
-  private drawStage(): void {
-    const s = this.scene;
-    const back = s.add.rectangle(GAME_WIDTH / 2, 310, GAME_WIDTH - 84, 420, 0x17232c, 1)
-      .setStrokeStyle(1, 0x344c57, 1);
-    const market = s.add.rectangle(790, 236, 430, 112, 0x314650, 1)
-      .setStrokeStyle(2, 0x536d77, 1);
-    const roof = s.add.triangle(790, 156, 550, 224, 1030, 224, 0x1c2e38, 1);
-    const sign = s.add.text(790, 250, '인천 도매시장 · 후문', {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '15px', color: '#d0e2e7',
-    }).setOrigin(0.5);
-    const wall = s.add.rectangle(295, 324, 118, 190, 0x25343c, 1)
-      .setStrokeStyle(2, 0x53626a, 1);
-    const wallLine = s.add.line(295, 324, -45, 0, 45, 0, 0x71858b, 0.5).setLineWidth(2);
-    const ledgerTable = s.add.rectangle(840, 406, 210, 16, 0x4f3327, 1);
-    this.stage.add([back, market, roof, sign, wall, wallLine, ledgerTable]);
-
-    this.actors.set('player', this.makeActor(250, 500, 0x4b83a5, '나'));
-    this.actors.set('watcher', this.makeActor(505, 450, 0x4c4d55, '1'));
-    this.actors.set('courier', this.makeActor(1020, 450, 0x78624d, '2'));
-    for (const actor of this.actors.values()) this.stage.add(actor);
-    this.actors.get('player')!.setAlpha(0.25);
-    this.actors.get('courier')!.setX(1110);
+  /** ESC — 남은 스텝을 버리고 즉시 종료한다. 플레이어 조작은 여전히 막혀 있다. */
+  skip(): void {
+    if (this.finished) return;
+    this.timer?.remove(false);
+    this.scene.tweens.killTweensOf(Object.values(this.cfg.actors).map((a) => a.obj));
+    this.finish();
   }
 
-  private makeActor(x: number, y: number, colour: number, label: string): Phaser.GameObjects.Container {
-    const c = this.scene.add.container(x, y);
-    const shadow = this.scene.add.ellipse(0, 3, 36, 10, 0x000000, 0.35);
-    const body = this.scene.add.rectangle(0, -28, 24, 50, colour, 1)
-      .setStrokeStyle(1, 0xb9d0d8, 0.35);
-    const head = this.scene.add.circle(0, -66, 14, colour, 1)
-      .setStrokeStyle(1, 0xddebf0, 0.45);
-    const tag = this.scene.add.text(0, -94, label, {
-      fontFamily: 'monospace', fontSize: '10px', color: '#e7f0f2', backgroundColor: '#07131dcc', padding: { x: 4, y: 2 },
-    }).setOrigin(0.5);
-    c.add([shadow, body, head, tag]);
-    return c;
-  }
+  private actorOf(who: string): CineActor | undefined { return this.cfg.actors[who]; }
 
-  private playIntro(): void {
-    this.dialogueSpeaker.setText('기록');
-    this.dialogueText.setText('잠깐 멈춰 선다. 시장 뒤편에서 종이 넘기는 소리가 들린다.');
-    const fieldCourier = this.cfg.fieldActors?.courier;
-    const fieldWatcher = this.cfg.fieldActors?.watcher;
-    if (fieldCourier && fieldWatcher && 'x' in fieldCourier && 'x' in fieldWatcher) {
-      const courier = fieldCourier as Phaser.GameObjects.GameObject & { x: number; y: number };
-      const watcher = fieldWatcher as Phaser.GameObjects.GameObject & { x: number; y: number };
-      this.timer = this.scene.time.delayedCall(450, () => {
-        const watcherX = watcher.x;
-        const watcherY = watcher.y;
-        this.scene.tweens.add({
-          targets: courier,
-          x: watcherX + 42,
-          y: watcherY,
-          duration: 1050,
-          ease: 'Sine.easeInOut',
-          onComplete: () => this.nextLine(),
-        });
-      });
-      return;
-    }
-    if (this.cfg.fieldActors) {
-      this.timer = this.scene.time.delayedCall(450, () => this.nextLine());
-      return;
-    }
-    this.timer = this.scene.time.delayedCall(900, () => {
-      const player = this.actors.get('player');
-      if (!player) return;
-      this.scene.tweens.add({ targets: player, x: 350, alpha: 1, duration: 1100, ease: 'Sine.easeInOut',
-        onComplete: () => this.nextLine() });
-    });
-  }
-
-  private nextLine(): void {
+  private step(): void {
     if (this.finished) return;
     this.index++;
-    const line = this.cfg.lines[this.index];
-    if (!line) { this.finish(); return; }
-    const fieldActor = line.actor === 'thought'
-      ? this.cfg.fieldActors?.player
-      : this.cfg.fieldActors?.[line.actor];
-    const actor = fieldActor ?? (line.actor === 'thought' ? this.actors.get('player') : this.actors.get(line.actor));
-    if (line.actor === 'thought') {
-      this.speech.setVisible(false); this.speechBg.setVisible(false);
-    } else if (actor) {
-      const point = fieldActor ? this.fieldScreenPoint(fieldActor) : this.actorPoint(actor);
-      const x = Phaser.Math.Clamp(point.x, 170, GAME_WIDTH - 170);
-      const y = Phaser.Math.Clamp(point.y - (fieldActor ? 72 : 128), 90, 330);
-      this.speech.setText(line.text).setPosition(x, y).setVisible(true);
-      this.speechBg.setSize(Math.min(340, Math.max(110, this.speech.width + 14)), this.speech.height + 8)
-        .setPosition(x, y).setVisible(true);
+    const step = this.cfg.script.steps[this.index];
+    if (!step) { this.finish(); return; }
+    switch (step.kind) {
+      case 'say': this.runSay(step); return;
+      case 'move': this.runMove(step); return;
+      case 'face': this.actorOf(step.who)?.setFacing?.(step.dir); this.after(120); return;
+      case 'emote': this.runEmote(step); return;
+      case 'focus': this.runFocus(step); return;
+      case 'wait': this.after(step.ms); return;
     }
-    this.dialogueSpeaker.setText(line.speaker);
-    this.dialogueText.setText(line.text);
-    if (line.actor === 'courier' && line.text.includes('명부')) this.showLedgerHandoff();
-    if (line.actor === 'thought') {
-      this.dialogueSpeaker.setColor('#f0bf6c');
-    } else {
-      this.dialogueSpeaker.setColor('#6ee7c8');
-    }
-    const duration = line.durationMs ?? Math.max(1200, Math.min(3600, 850 + line.text.length * 52));
-    this.timer = this.scene.time.delayedCall(duration, () => this.nextLine());
   }
 
-  private showLedgerHandoff(): void {
-    const courier = this.actors.get('courier');
-    const watcher = this.actors.get('watcher');
-    if (!courier || !watcher) return;
-    const ledger = this.scene.add.rectangle(courier.x - 25, courier.y - 54, 18, 25, 0xd4c18c, 1)
-      .setAngle(-8).setStrokeStyle(1, 0x342d20, 1);
-    if (this.cfg.fieldActors) this.fieldProps.push(ledger);
-    else this.stage.add(ledger);
-    this.scene.tweens.add({ targets: ledger, x: watcher.x + 10, duration: 800, ease: 'Sine.easeInOut',
-      onComplete: () => { this.scene.tweens.add({ targets: ledger, alpha: 0, duration: 380, onComplete: () => ledger.destroy() }); },
+  private after(ms: number): void {
+    this.timer = this.scene.time.delayedCall(Math.max(1, ms), () => this.step());
+  }
+
+  private runSay(step: Extract<CineStep, { kind: 'say' }>): void {
+    const actor = this.actorOf(step.who);
+    this.speakerText.setText(step.thought ? '혼잣말' : (actor?.nameKo ?? step.who));
+    this.speakerText.setColor(step.thought ? '#f0bf6c' : '#ffe9a0');
+    this.bodyText.setText(step.text);
+    if (step.thought || !actor) {
+      this.bubbleActor = undefined;
+      this.bubbleC.setVisible(false);
+    } else {
+      this.bubbleActor = actor;
+      this.paintBubble(step.text);
+      this.bubbleC.setVisible(true);
+      this.trackBubble();
+    }
+    // 읽는 속도 — 한 글자당 약 62ms, 최소 1.2초
+    this.after(step.ms ?? Phaser.Math.Clamp(700 + step.text.length * 62, 1200, 4200));
+  }
+
+  private paintBubble(text: string): void {
+    this.bubbleText.setText(text);
+    const w = Math.min(BUBBLE_MAX_W + 24, this.bubbleText.width + 20);
+    const h = this.bubbleText.height + 14;
+    this.bubbleG.clear();
+    this.bubbleG.fillStyle(0xf3f8fb, 0.97);
+    this.bubbleG.fillRoundedRect(-w / 2, -h / 2, w, h, 7);
+    this.bubbleG.lineStyle(2, 0x1d3b52, 0.9);
+    this.bubbleG.strokeRoundedRect(-w / 2, -h / 2, w, h, 7);
+    // 꼬리 — 아래 중앙
+    this.bubbleG.fillStyle(0xf3f8fb, 0.97);
+    this.bubbleG.fillTriangle(-6, h / 2 - 1, 6, h / 2 - 1, 0, h / 2 + 9);
+    this.bubbleG.lineStyle(2, 0x1d3b52, 0.9);
+    this.bubbleG.lineBetween(-6, h / 2, 0, h / 2 + 9);
+    this.bubbleG.lineBetween(6, h / 2, 0, h / 2 + 9);
+    (this.bubbleC as Phaser.GameObjects.Container).setData('h', h);
+  }
+
+  /** 말풍선을 배우 머리 위에 매 프레임 고정한다 (카메라가 움직여도 따라간다). */
+  private trackBubble(): void {
+    const a = this.bubbleActor;
+    if (!a || !this.bubbleC.visible || !a.obj.active) return;
+    const cam = this.cfg.camera;
+    const h = (this.bubbleC.getData('h') as number) ?? 30;
+    const sx = (a.obj.x - cam.scrollX) * cam.zoom;
+    const sy = (a.obj.y + (a.headY ?? -52) - cam.scrollY) * cam.zoom;
+    this.bubbleC.setPosition(
+      Phaser.Math.Clamp(sx, 150, GAME_WIDTH - 150),
+      Phaser.Math.Clamp(sy - h / 2 - 12, BAR_TOP + h / 2 + 6, GAME_HEIGHT - BAR_BOTTOM - h / 2 - 8),
+    );
+  }
+
+  private runMove(step: Extract<CineStep, { kind: 'move' }>): void {
+    const a = this.actorOf(step.who);
+    if (!a) { this.after(60); return; }
+    const T = this.cfg.tileSize;
+    const dx = (step.dxTiles ?? 0) * T, dy = (step.dyTiles ?? 0) * T;
+    const dir: CineDir = step.face ?? (Math.abs(dx) >= Math.abs(dy) ? (dx >= 0 ? 'right' : 'left') : (dy >= 0 ? 'down' : 'up'));
+    a.setFacing?.(dir);
+    const ms = step.ms ?? Math.max(340, Math.hypot(dx, dy) * 9);
+    const targets: (Phaser.GameObjects.GameObject & { x: number; y: number })[] = [a.obj, ...(a.followers ?? [])];
+    this.scene.tweens.add({
+      targets, x: `+=${dx}`, y: `+=${dy}`, duration: ms, ease: 'Sine.easeInOut',
+      onComplete: () => this.step(),
     });
+  }
+
+  private runFocus(step: Extract<CineStep, { kind: 'focus' }>): void {
+    const a = this.actorOf(step.who);
+    if (!a) { this.after(60); return; }
+    const ms = step.ms ?? 620;
+    this.cfg.camera.pan(a.obj.x, a.obj.y - 24, ms, 'Sine.easeInOut');
+    this.after(ms + 80);
+  }
+
+  private runEmote(step: Extract<CineStep, { kind: 'emote' }>): void {
+    const a = this.actorOf(step.who);
+    if (!a) { this.after(60); return; }
+    const glyph = step.emote === 'surprise' ? '!' : step.emote === 'think' ? '?' : step.emote === 'sad' ? '...' : '♪';
+    const cam = this.cfg.camera;
+    const t = this.scene.add.text(
+      (a.obj.x - cam.scrollX) * cam.zoom,
+      (a.obj.y + (a.headY ?? -52) - cam.scrollY) * cam.zoom - 14,
+      glyph,
+      { fontFamily: '"Noto Sans KR", sans-serif', fontSize: '20px', color: '#ffe9a0', fontStyle: 'bold' },
+    ).setOrigin(0.5, 1);
+    this.add(t);
+    this.emotes.push(t);
+    this.scene.tweens.add({ targets: t, y: t.y - 10, alpha: 0, duration: step.ms ?? 900, ease: 'Sine.easeOut' });
+    this.after(step.ms ?? 900);
   }
 
   private finish(): void {
     if (this.finished) return;
     this.finished = true;
     this.timer?.remove(false);
-    this.speech.setVisible(false); this.speechBg.setVisible(false);
-    this.scene.time.delayedCall(this.cfg.fieldActors ? 650 : 2200, () => {
-      if (!this.active) return;
-      this.cfg.onComplete();
-      this.destroy();
+    this.bubbleC.setVisible(false);
+    this.scene.tweens.add({ targets: this.barTop, y: -BAR_TOP / 2, duration: 280, ease: 'Sine.easeIn' });
+    this.scene.tweens.add({
+      targets: this.barBottom, y: GAME_HEIGHT + BAR_BOTTOM / 2, duration: 280, ease: 'Sine.easeIn',
+      onComplete: () => {
+        if (!this.active) return;
+        const done = this.cfg.onComplete;
+        this.destroy();
+        done();
+      },
     });
-  }
-
-  /** 월드 배우를 화면 고정 UI 좌표로 변환한다. 카메라가 움직여도 말풍선은 배우를 따라간다. */
-  private fieldScreenPoint(actor: Phaser.GameObjects.GameObject): { x: number; y: number } {
-    const a = actor as unknown as { x: number; y: number };
-    const cam = this.scene.cameras.main;
-    return {
-      x: (a.x - cam.scrollX) * cam.zoom,
-      y: (a.y - cam.scrollY) * cam.zoom,
-    };
-  }
-
-  private actorPoint(actor: Phaser.GameObjects.GameObject): { x: number; y: number } {
-    const a = actor as unknown as { x: number; y: number };
-    return { x: a.x, y: a.y };
   }
 
   override destroy(fromScene?: boolean): void {
     this.timer?.remove(false);
-    for (const prop of this.fieldProps) prop.destroy();
-    this.fieldProps.length = 0;
-    // 연출용 이동은 개인 화면에서만 유효하다. 종료하면 배우를 원래 필드 위치로 되돌린다.
-    for (const [actor, origin] of this.fieldOrigins) {
-      if (!actor.active) continue;
-      const a = actor as Phaser.GameObjects.GameObject & { x: number; y: number; alpha: number };
-      a.x = origin.x; a.y = origin.y; a.alpha = origin.alpha;
+    this.scene?.events?.off(Phaser.Scenes.Events.UPDATE, this.trackBubble, this);
+    for (const e of this.emotes) e.destroy();
+    this.emotes.length = 0;
+    // 연출 이동은 개인 화면에서만 유효하다 — 배우와 이름표를 원래 자리로 되돌린다.
+    for (const [obj, o] of this.origins) {
+      if (!obj.active) continue;
+      const g = obj as Phaser.GameObjects.GameObject & { x: number; y: number };
+      g.x = o.x; g.y = o.y;
     }
     super.destroy(fromScene);
   }

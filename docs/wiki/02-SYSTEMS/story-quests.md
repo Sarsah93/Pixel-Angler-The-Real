@@ -107,6 +107,10 @@ STORY_ARCS ────┘     traineeDay (D-180)                └─ RegionHu
 | **목표 「방법」 힌트**(core `rules/QuestGuide.ts` — `objectiveHowToKo` 종류별 조작 문장 · 대화창·일지·필드 추적기 공통) | ✅ | 155 — 내부 id는 `GUIDE_NAMES`로 이름 치환 |
 | **필드 추적기 + 점멸 화살표**(`RegionHud.setQuestTracker` · `RegionFieldScene.updateQuestGuide` — npc/place/shop/region/bed 목표) + 일지 「이 할 일 추적하기」(`StoryStore.trackedId` · 세이브 `story.tracked`) | ✅ | 155 — 위치를 모르는 종류(catch·craft…)는 방법 문구만 |
 | **획득 인지** — 우측 토스트(`InventoryStore.onGained` · `StoryStore.onCoins` — 품삯·선택지 재화·완료 보상) · 인벤 NEW 점·귀속 금테 | ✅ | 155 — [S5](inventory-equipment.md) |
+| **수동 custom 27개 → actionKey 6계통·3단계**(`StoryActionRegistry`) | ✅ | 164(Codex) → **165 중복 매칭 가드**(출처 지정 목표는 출처 일치 · 일반 목표는 앞선 1건) |
+| **컷씬 런타임**(`StoryCinematicPanel` — 실제 필드 위 스텝 타임라인 · 말풍선 · 배우/이름표 이동 · 카메라 팬 · 레터박스 · HUD 대사창 20px · ESC = 건너뛰기) + 각본 `data/StoryCinematics.ts` 6종 | ✅ | **165** — Codex 검은 폴백 무대 폐기 · 원격지 전환은 인천 맵 대기(§5) |
+| **M1-01 컷씬 2종**(영금정 혼잣말 2줄 · 좌판 5줄 — 정옥선이 먼저 돌아본다) · **M1-02 실플레이**(수락 = 얼음 상자 지급 · 하역 표시 [F] · `afterKo` 완료 안내) | ✅ | 165 — 목표 `howToKo`·`afterKo`·`guidePlaceKey` 계약 신설 |
+| **「지금 할 일」 메인/서브 2블록**(Ⓜ/Ⓢ · 메인 → 서브 · `· 고정`) + **일지 고정 첫 컬럼**(메인 1 · 서브 1 — `StoryStore.pinned`) | ✅ | 165 — 구 `tracked` 단일 추적 승계 |
 
 
 ## 4-b. 일지·대화 표현형 (150차 재작성)
@@ -120,6 +124,11 @@ STORY_ARCS ────┘     traineeDay (D-180)                └─ RegionHu
 - **오프닝 혼잣말** — 홈타운 첫 진입 1회(`GameState.flags['intro.monologue']`), 6단락.
 
 ## 5. 잔여·차기
+
+- **원격지 컷씬 실발화**(165차 잔여) — 런타임은 각본·배우를 분리해 어느 필드 씬에서도 재생되지만,
+  사용자 예시 무대(인천)의 **필드 맵 데이터가 없다**. 인천 맵이 서면 `RegionFieldScene`에
+  `playRemoteCinematic`(페이드 → 다른 지역 restart → 재생 → 복귀)을 얹고 N18-6 3부작 좌표를 옮긴다.
+- 말풍선(NPC 대사 프레임) 실플레이 육안 확인 — 정옥선 `...` · N18-6 watcher/courier.
 
 - **M1-06 → M1-11 구간의 수입 설계 확인**(135차 결과) — 법 강제 기본 2에서는 M1-06을 끝내는 순간
   어획물 판매가 전면 막히고(낚싯대 영구 · 통발은 비어업인 자가소비), `reported_fishery`는 M1-11 총회에서 나온다.
@@ -196,6 +205,17 @@ manual 목표를 점수에 넣으면 표기가 곧바로 거짓말이 된다.
 
 `sell`은 **위판(경매)에서만** 발화한다 — 일반 상점 판매는 이벤트를 내지 않고,
 법 §3에 따라 **낚싯대 어획물은 위판할 수 없다**(통발·맨손 + `reported_fishery`).
+
+### 20. 컷씬은 무대를 그리지 않는다 — 배우를 빌린다 (165차)
+
+컷씬 각본(`CineScript`)은 배우 **키**와 스텝만 갖고, 실제 오브젝트는 씬이 `roles`로 연결한다.
+그 지역에 없는 배우의 대사는 말풍선 없이 대사창으로만 흐르며, **어떤 경우에도 도형 배우를 그리지 않는다**.
+재생 중 ESC는 `skipCinematic()`이 먹고, 일시정지 메뉴로 새지 않는다. 종료 시 배우·이름표 원위치 + 카메라 follow 복귀.
+
+### 21. 같은 계통의 활성 행동 목표는 한 사건에 하나만 오른다 (165차)
+
+`emitActionSource`는 출처(`eventOrigins`)가 지정된 목표는 출처가 맞을 때만, 일반 목표는 **가장 앞선 활성 할 일 하나**만
+발행한다. 두 할 일이 같은 사건으로 함께 올라야 한다면 각각 `eventOrigins`로 출처를 구분해 둔다.
 
 ### 19. `actionKey` 목표는 클릭이 아니라 계통 이벤트로 닫는다 (164차)
 

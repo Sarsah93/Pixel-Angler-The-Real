@@ -261,6 +261,21 @@ export interface StoryObjective {
    * 일지에는 '대화로 완료' 표기가 붙는다.
    */
   manual?: boolean;
+  /**
+   * 165차 — 이 목표를 막 끝냈을 때 「지금 할 일」 창이 대신 보여 줄 한 줄.
+   * "무엇을 했고 이제 무엇을 할 차례인지"를 한 문장으로 잇는다.
+   * 이 줄이 걸려 있는 동안 제목 뒤에 `(완료!)`가 붙는다.
+   */
+  afterKo?: string;
+  afterEn?: string;
+  /**
+   * 165차 — 「방법」 한 줄을 이 목표만 따로 적을 때. 없으면 종류별 기본 문장을 쓴다.
+   * (`custom`처럼 종류만으로는 무엇을 눌러야 하는지 알 수 없는 목표에 쓴다.)
+   */
+  howToKo?: string;
+  howToEn?: string;
+  /** 165차 — 화살표가 가리킬 장소. 목표 종류와 무관하게 우선한다 */
+  guidePlaceKey?: string;
 }
 
 export interface QuestDeadline {

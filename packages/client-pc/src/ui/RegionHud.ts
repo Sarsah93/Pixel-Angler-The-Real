@@ -39,14 +39,25 @@ export interface MiniMarker {
   priority: number;
   /** 155차 — 아이콘 대신 그리는 도형 (핀) */
   shape?: 'pin';
+  /** 165차 — 전체 지도에서 마우스를 올렸을 때 보여 줄 이름 */
+  label?: string;
 }
 
-/** 155차 — 추적기 데이터 */
-export interface QuestTrackerData {
+/** 165차 — 「지금 할 일」 한 줄(할 일 하나) */
+export interface QuestTrackerEntry {
+  /** 메인/서브 구분 — 창에서 카테고리 바로 나뉜다 */
+  kind: 'main' | 'sub';
   title: string;
   objective: string;
   howTo?: string;
   distance?: string;
+  /** 일지에서 고정한 할 일인가 */
+  pinned?: boolean;
+}
+
+/** 155차 추적기 → 165차 메인·서브 2블록 */
+export interface QuestTrackerData {
+  entries: QuestTrackerEntry[];
 }
 
 /** 155차 — 획득 토스트 */
@@ -1061,7 +1072,7 @@ export class RegionHud extends Phaser.GameObjects.Container {
     this.trackerC?.destroy();
     this.trackerC = undefined;
     const d = this.trackerData;
-    if (!d) return;
+    if (!d || !d.entries.length) return;
     // 미니맵의 폭을 그대로 따라가던 구 구현은 맵을 키울 때 퀵 퀘스트도
     // 함께 비대해졌다. 추적기는 별도 컨테이너·별도 폭 단계로 관리한다.
     const W = QUEST_TRACKER_WIDTHS[this.trackerSizeIdx];
@@ -1071,19 +1082,29 @@ export class RegionHud extends Phaser.GameObjects.Container {
     const HDR = 18, PADX = 8;
     const parts: Phaser.GameObjects.GameObject[] = [];
     let cy = HDR + 6;
-    const mk = (txt: string, size: number, color: string, bold = false): Phaser.GameObjects.Text => {
-      const t = this.scene.add.text(PADX, cy, txt, {
+    const mk = (txt: string, size: number, color: string, bold = false, indent = 0): void => {
+      const t = this.scene.add.text(PADX + indent, cy, txt, {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: `${size}px`, color, fontStyle: bold ? 'bold' : 'normal',
-        wordWrap: { width: W - PADX * 2 }, lineSpacing: 2,
+        wordWrap: { width: W - PADX * 2 - indent }, lineSpacing: 2,
       });
       cy += t.height + 4;
       parts.push(t);
-      return t;
     };
-    mk(d.title, 12, '#ffe9a0', true);
-    mk(d.objective, 11, '#e8f4fd');
-    if (d.howTo) mk(d.howTo, 10, '#9fc0d4');
-    if (d.distance) mk(d.distance, 10, '#7fe0b0', true);
+    // 메인 → 서브 순으로 카테고리 바를 나눠 싣는다 (165차 사용자 지시)
+    const ordered = [...d.entries].sort((a, b) => (a.kind === b.kind ? 0 : a.kind === 'main' ? -1 : 1));
+    ordered.forEach((e, i) => {
+      if (i > 0) {
+        const sep = this.scene.add.graphics();
+        sep.lineStyle(1, 0x2a5a8a, 0.7).lineBetween(PADX, cy, W - PADX, cy);
+        parts.push(sep);
+        cy += 7;
+      }
+      const badge = e.kind === 'main' ? 'Ⓜ' : 'Ⓢ';
+      mk(`${badge} ${e.title}${e.pinned ? ' · 고정' : ''}`, 12, e.kind === 'main' ? '#ffe9a0' : '#c9e3f5', true);
+      mk(e.objective, 11, '#e8f4fd', false, 4);
+      if (e.howTo) mk(e.howTo, 10, '#9fc0d4', false, 4);
+      if (e.distance) mk(e.distance, 10, '#7fe0b0', true, 4);
+    });
     const H = Math.max(cy + 10, QUEST_TRACKER_HEIGHTS[this.trackerSizeIdx]);
     this.trackerHeight = H;
     const bg = this.scene.add.graphics();

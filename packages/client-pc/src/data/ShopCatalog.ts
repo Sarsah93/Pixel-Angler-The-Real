@@ -196,7 +196,7 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
       { id: 'shop_squid',    name: '오징어 (선어)', icon: '🐟', category: 'food',   subCategory: '어획물',   basePrice: 8000,  price: 10000, maxPerPurchase: 5,  condition: 'chilled', equippable: false, desc: '당일 조업 선어.' },
       { id: 'inv_krill',     name: '크릴 (냉동)',   icon: '🦐', category: 'tackle', subCategory: '냉동미끼', basePrice: 4000,  price: 4500,  maxPerPurchase: 10, condition: 'frozen', equippable: false, desc: '범용 냉동 미끼.' },
       { id: 'inv_fishcut',   name: '생선 조각 미끼', icon: '🦐', category: 'tackle', subCategory: '선어미끼', basePrice: 3000,  price: 3500,  maxPerPurchase: 10, condition: 'chilled', equippable: false, desc: '갈치/우럭용 절단 미끼.' },
-      { id: 'inv_ragworm',   name: '갯지렁이',      icon: '🪱', category: 'tackle', subCategory: '생미끼',   basePrice: 6000,  price: 7000,  maxPerPurchase: 10, condition: 'live', equippable: false, desc: '원투·도다리용 생미끼.' },
+      { id: 'inv_ragworm',   name: '갯지렁이',      icon: '', iconTexture: 'item_worm', category: 'tackle', subCategory: '생미끼',   basePrice: 6000,  price: 7000,  maxPerPurchase: 10, condition: 'live', equippable: false, desc: '원투·도다리용 생미끼.' },
       // 제작 재료 (129차 P7) — 낚시 계열 재료는 직판장이 취급한다.
       { id: 'inv_mat_tin',   name: '주석 잉곳',    icon: '', iconTexture: 'px:it_ingot', category: 'etc', subCategory: '재료', basePrice: 3000,  price: 3600,  maxPerPurchase: 30, equippable: false, craftMaterial: true, desc: '봉돌·에기 싱커 주조 재료.' },
       { id: 'inv_mat_mesh',  name: '통발 그물망',  icon: '', iconTexture: 'px:it_mesh', category: 'etc', subCategory: '재료', basePrice: 6000,  price: 7200,  maxPerPurchase: 20, equippable: false, craftMaterial: true, desc: '통발 제작 재료.' },

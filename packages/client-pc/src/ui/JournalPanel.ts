@@ -181,7 +181,7 @@ export class JournalPanel extends DraggablePanel {
   }
 
   private visibleRows(): number {
-    return Math.floor((PANEL_H - (this.contentTop + 26) - 42) / ROW_H);
+    return Math.floor((PANEL_H - (this.contentTop + 26) - 56) / ROW_H);
   }
 
   // ═══════════ 렌더 ═══════════
@@ -292,7 +292,7 @@ export class JournalPanel extends DraggablePanel {
     const hy = top + 14;
     const head = (x: number, w: number, s: string, align: 0 | 0.5 | 1 = 0): void => {
       const t = this.scene.add.text(x + (align === 1 ? w : align === 0.5 ? w / 2 : 0), hy, s, {
-        fontFamily: FONT, fontSize: '10px', color: '#6f8ba1',
+        fontFamily: FONT, fontSize: '11px', color: '#8aa7bd',
       }).setOrigin(align, 0.5);
       c.add(t);
     };
@@ -321,7 +321,7 @@ export class JournalPanel extends DraggablePanel {
     const vis = this.visibleRows();
     const start = this.scroll;
     const end = Math.min(this.rows.length, start + vis);
-    let y = hy + 22;
+    let y = hy + 34;   // 구분선(hy+10) 아래로 행 밴드를 내린다 — 머리글 침범 해소
     for (let i = start; i < end; i++) {
       this.drawRow(c, this.rows[i], y);
       y += ROW_H;
@@ -329,7 +329,7 @@ export class JournalPanel extends DraggablePanel {
 
     // 스크롤바 + 위치 표기 (조용한 잘림 금지)
     if (this.rows.length > vis) {
-      const trackY = hy + 22, trackH = vis * ROW_H;
+      const trackY = hy + 14, trackH = vis * ROW_H;
       const bx = LIST_X + LIST_W - 4;
       const g = this.scene.add.graphics();
       g.fillStyle(0x0d1c2c, 1); g.fillRect(bx, trackY, 5, trackH);
@@ -356,6 +356,31 @@ export class JournalPanel extends DraggablePanel {
     c.add(g);
 
     let cx = LIST_X + 6;
+    // ① 고정 — 메인·서브 각 1건만. 진행 중인 할 일에만 체크가 선다.
+    const canPin = st === 'active';
+    const pinned = StoryStore.isPinned(q.id);
+    const box = this.scene.add.graphics();
+    const bxp = cx + C_TRACK / 2 - 7, byp = y - 7;
+    box.fillStyle(pinned ? 0x2c6f52 : 0x0d1c2c, 1); box.fillRect(bxp, byp, 14, 14);
+    box.lineStyle(1, canPin ? 0x3d6f96 : 0x27384a, 1); box.strokeRect(bxp, byp, 14, 14);
+    if (pinned) {
+      box.lineStyle(2, 0x7fe0b0, 1);
+      box.lineBetween(bxp + 3, byp + 7, bxp + 6, byp + 11);
+      box.lineBetween(bxp + 6, byp + 11, bxp + 11, byp + 3);
+    }
+    c.add(box);
+    if (canPin) {
+      const ph = this.scene.add.rectangle(cx + C_TRACK / 2, y, 22, 22, 0xffffff, 0.001)
+        .setInteractive({ useHandCursor: true });
+      // 행 선택과 겹치지 않게 체크칸 클릭은 여기서 끝낸다
+      ph.on('pointerdown', (_p: Phaser.Input.Pointer, _x: number, _y: number, ev?: Phaser.Types.Input.EventData) => {
+        ev?.stopPropagation();
+        StoryStore.setTracked(q.id);
+        this.scene.time.delayedCall(0, () => { this.renderList(); restoreHandCursor(this.scene); });
+      });
+      c.add(ph);
+    }
+    cx += C_TRACK + 4;
     // 의뢰인 얼굴 — 잠긴 임무는 누가 주는지도 알려주지 않는다
     if (!locked && q.giver) {
       const key = ensureFacePortrait(this.scene, characterOf(q.giver), 2);
@@ -368,7 +393,7 @@ export class JournalPanel extends DraggablePanel {
     cx += C_FACE + 8;
 
     const name = this.scene.add.text(cx, y, locked ? '???' : q.titleKo, {
-      fontFamily: FONT, fontSize: '13px',
+      fontFamily: FONT, fontSize: '14px',
       color: locked ? C_LOCK : sel ? '#ffffff' : C_TEXT,
       fontStyle: st === 'available' ? 'bold' : 'normal',
     }).setOrigin(0, 0.5);
@@ -377,7 +402,7 @@ export class JournalPanel extends DraggablePanel {
     cx += C_NAME + 6;
 
     const reg = this.scene.add.text(cx + C_REGION / 2, y, locked ? '—' : (REGION_LABEL[q.region] ?? q.region), {
-      fontFamily: FONT, fontSize: '11px', color: locked ? C_LOCK : C_DIM,
+      fontFamily: FONT, fontSize: '12px', color: locked ? C_LOCK : C_DIM,
     }).setOrigin(0.5);
     clampTextWidth(reg, C_REGION);
     c.add(reg);
@@ -385,7 +410,7 @@ export class JournalPanel extends DraggablePanel {
 
     const lab = this.stateLabel(st);
     const stT = this.scene.add.text(cx + C_STATE / 2, y, lab.ko, {
-      fontFamily: FONT, fontSize: '11px', color: lab.color,
+      fontFamily: FONT, fontSize: '12px', color: lab.color,
     }).setOrigin(0.5);
     c.add(stT);
     cx += C_STATE + 6;
@@ -610,20 +635,14 @@ export class JournalPanel extends DraggablePanel {
     const hr = this.scene.add.graphics();
     hr.lineStyle(1, 0x1c3d5a, 1); hr.lineBetween(DET_X, top + 30, DET_X + DET_W, top + 30);
     c.add(hr);
-    // 155차 — 「추적하기」 체크박스: 켜면 필드 화살표·추적기가 이 할 일을 최우선으로 가리킨다(사용자 지시)
-    if (st === 'active') {
-      const on = StoryStore.trackedId === q.id;
-      const bx = DET_X + DET_W - 4 - 14, by = top + 30 + 6;
-      const cb = this.scene.add.graphics();
-      cb.fillStyle(on ? 0x2a4a12 : 0x0e1c2d, 1); cb.fillRoundedRect(bx, by, 14, 14, 3);
-      cb.lineStyle(1.5, on ? 0x7fe0b0 : 0x3c6f95, 1); cb.strokeRoundedRect(bx, by, 14, 14, 3);
-      if (on) { cb.lineStyle(2, 0x7fe0b0, 1); cb.lineBetween(bx + 3, by + 7, bx + 6, by + 10); cb.lineBetween(bx + 6, by + 10, bx + 11, by + 4); }
-      const lbl = this.scene.add.text(bx - 6, by + 7, on ? '추적 중 — 필드에 화살표' : '이 할 일 추적하기', {
-        fontFamily: FONT, fontSize: '11px', color: on ? '#7fe0b0' : C_DIM,
+    // 165차 — 고정 조작은 목록 첫 칸(고정 체크)이 전담한다. 여기서는 상태만 알린다.
+    const pinChip = st === 'active' && StoryStore.isPinned(q.id);
+    if (pinChip) {
+      const chip = this.scene.add.text(DET_X + DET_W - 4, top + 42, '고정됨 — 「지금 할 일」에 표시', {
+        fontFamily: FONT, fontSize: '11px', color: '#7fe0b0',
       }).setOrigin(1, 0.5);
-      const hit = this.scene.add.rectangle(bx - lbl.width / 2 + 4, by + 7, lbl.width + 24, 18, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
-      hit.on('pointerdown', () => { StoryStore.setTracked(on ? null : q.id); this.renderDetail(); restoreHandCursor(this.scene); });
-      c.add([cb, lbl, hit]);
+      clampTextWidth(chip, DET_W - 20);
+      c.add(chip);
     }
 
     if (locked) {
@@ -638,7 +657,8 @@ export class JournalPanel extends DraggablePanel {
     }
 
     // ── 초상 + 나레이션 ──
-    const py = top + 44;
+    // 고정 칩이 붙으면 그만큼 아래로 흐른다(고정 y 금지 — ui-panel 규칙)
+    const py = top + (pinChip ? 58 : 44);
     const FACE = 6;                     // 16px 아트 × 6 = 96
     const faceW = 16 * FACE;
     const npc = q.giver ? getStoryNpc(q.giver) : undefined;

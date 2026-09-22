@@ -553,7 +553,7 @@ function createSeedItems(): InvItem[] {
 
     // ── 낚시용품 ──
     { id: 'inv_worm',     name: '지렁이',                   icon: '', iconTexture: 'item_worm', category: 'tackle', subCategory: '생미끼',    qty: 20, basePrice: 5000,  condition: 'live',    equippable: false },
-    { id: 'inv_ragworm',  name: '갯지렁이',                 icon: '🪱', category: 'tackle', subCategory: '생미끼',    qty: 15, basePrice: 6000,  condition: 'live',    equippable: false },
+    { id: 'inv_ragworm',  name: '갯지렁이',                 icon: '', iconTexture: 'item_worm', category: 'tackle', subCategory: '생미끼',    qty: 15, basePrice: 6000,  condition: 'live',    equippable: false },
     { id: 'inv_honmushi', name: '혼무시',                   icon: '🪱', category: 'tackle', subCategory: '생미끼',    qty: 8,  basePrice: 12000, condition: 'live',    equippable: false },
     { id: 'inv_krill',    name: '크릴 (냉동)',              icon: '🦐', category: 'tackle', subCategory: '냉동미끼',  qty: 30, basePrice: 4000,  condition: 'frozen',  equippable: false },
     { id: 'inv_breadbait', name: '빵가루 경단',             icon: '🍞', category: 'tackle', subCategory: '반죽미끼',  qty: 15, basePrice: 3000,  equippable: false },

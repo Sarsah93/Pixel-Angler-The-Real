@@ -34,6 +34,8 @@ import {
   STORY_QUESTS, STORY_CHAPTERS, JOURNAL_PAGES, STORY_ARCS, STORY_MAIN_NPCS, FISHERY_LAW_RULES, canSell, provenanceOf,
 } from '@tra/core';
 import { allDialogueLines } from '../data/StoryDialogue.js';
+import { allCinematicLines } from '../data/StoryCinematics.js';
+import { STORY_ACTIONS, STORY_ACTION_SCENES } from '../store/StoryActionRegistry.js';
 
 export type Locale = 'ko' | 'en';
 
@@ -116,7 +118,11 @@ function buildRuntimeDict(): void {
     (a.details ?? []).forEach((d, i) => put(d, a.detailsEn?.[i]));
   }
   // 134차 — 스토리: 퀘스트·챕터·조행록·아크·NPC·법 규칙·대사 (데이터 Ko/En 쌍이 정본)
-  for (const q of STORY_QUESTS) { put(q.titleKo, q.titleEn); put(q.descKo, q.descEn); for (const o of q.objectives) put(o.labelKo, o.labelEn); }
+  for (const q of STORY_QUESTS) {
+    put(q.titleKo, q.titleEn); put(q.descKo, q.descEn);
+    // 165차 — 목표별 「방법」·「완료 직후 안내」 짝도 같이 (추적기가 그대로 띄운다)
+    for (const o of q.objectives) { put(o.labelKo, o.labelEn); put(o.howToKo, o.howToEn); put(o.afterKo, o.afterEn); }
+  }
   for (const ch of STORY_CHAPTERS) {
     put(ch.titleKo, ch.titleEn); put(ch.partTitleKo, ch.partTitleEn); put(ch.questionKo, ch.questionEn);
     const q = ch.qualification;
@@ -130,6 +136,16 @@ function buildRuntimeDict(): void {
   for (const [ko, en] of allDialogueLines()) put(ko, en);
   for (const [ko, en] of allChoiceLines()) put(ko, en);   // 140차 — 선택지·응답
   for (const [ko, en] of allNarrativeLines()) put(ko, en);   // 151차 — 퀘스트 나레이션 186편
+  for (const [ko, en] of allCinematicLines()) put(ko, en);   // 165차 — 컷씬 각본
+  // 164차 행동 절차·전략 선택지 · 165차 행동 장면 — 데이터 Ko/En 쌍이 정본
+  for (const a of Object.values(STORY_ACTIONS)) {
+    a.stepsKo.forEach((k, i) => put(k, a.stepsEn[i]));
+    for (const c of a.choices) { put(c.labelKo, c.labelEn); put(c.replyKo, c.replyEn); }
+  }
+  for (const sc of Object.values(STORY_ACTION_SCENES)) {
+    put(sc.titleKo, sc.titleEn); put(sc.placeKo, sc.placeEn);
+    sc.linesKo.forEach((k, i) => put(k, sc.linesEn[i]));
+  }
   for (const [ko, en] of Object.entries(EN_PLACES)) put(ko, en);
   // 상호명 보정 사전 — OSM `name:en` 이 없거나(42건) 품질이 낮은 것(지구대 중복 등)을 덮는다.
   // registerNames(OSM)보다 **먼저** 들어가므로 큐레이션이 이긴다.

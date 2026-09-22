@@ -49,8 +49,10 @@ export interface StorySaveState {
   traineeDay: number | null;
   /** 일용직 일감 — 일감 id → { 마지막 근무 일차, 그날 횟수 } (135차) */
   jobs?: Record<string, { day: number; count: number }>;
-  /** 155차 — 일지에서 「추적하기」를 켠 할 일 */
+  /** 155차 — 일지에서 「추적하기」를 켠 할 일 (구 단일 고정 — 165차 이후 메인 칸으로 승계) */
   tracked?: string | null;
+  /** 165차 — 일지에서 고정한 할 일. 메인·서브 각 1건 */
+  pinned?: { main?: string | null; sub?: string | null };
   /** NPC 우호도 (140차) — npcId → −1~1. 없으면 0 */
   affinity?: AffinityState;
   /** 퀘스트별 고른 선택지 (140차) — questId → { offer, complete } */
@@ -122,8 +124,13 @@ class StoryStoreManager {
   private offerCooldown: Record<string, number> = {};
   private affinity: AffinityState = {};
   private choices: Record<string, { offer?: string; complete?: string }> = {};
-  /** 155차 — 추적 중인 할 일 id (필드 화살표·추적기가 최우선으로 가리킨다) */
-  trackedId: string | null = null;
+  /**
+   * 165차 — 일지에서 고정한 할 일. **메인 1건 · 서브 1건**만 동시에 고정되고,
+   * 「지금 할 일」 창과 필드 화살표가 이 둘을 최우선으로 가리킨다.
+   */
+  pinned: { main: string | null; sub: string | null } = { main: null, sub: null };
+  /** 구 단일 추적 호환 — 메인 고정을 가리킨다 */
+  get trackedId(): string | null { return this.pinned.main ?? this.pinned.sub; }
   /** UI 통지 훅 — 퀘 완료/수락/조행록 갱신 (필드 HUD 토스트) */
   onNotify: ((msg: string) => void) | null = null;
   /** 155차 — 재화 지급 훅(토스트). 로그 한 줄로만 오가던 보상을 눈에 보이게 */
@@ -136,7 +143,7 @@ class StoryStoreManager {
   serialize(): StorySaveState {
     return {
       quests: this.quests, rep: this.rep, pageCatch: this.pageCatch, day: this.day, traineeDay: this.traineeDay, jobs: this.jobs,
-      affinity: this.affinity, choices: this.choices, tracked: this.trackedId,
+      affinity: this.affinity, choices: this.choices, tracked: this.pinned.main, pinned: { ...this.pinned },
       declined: [...this.declined], offerCooldown: this.offerCooldown,
     };
   }
@@ -150,7 +157,12 @@ class StoryStoreManager {
     this.affinity = s?.affinity ?? {};
     delete this.affinity[''];   // 155차 — 구세이브에 빈 npc id로 쌓인 우호도(M1-01 톤 선택지) 정리
     this.choices = s?.choices ?? {};
-    this.trackedId = s?.tracked ?? null;
+    // 구세이브의 단일 추적 값은 해당 할 일의 종류(메인/서브) 칸으로 승계한다.
+    this.pinned = { main: s?.pinned?.main ?? null, sub: s?.pinned?.sub ?? null };
+    if (!s?.pinned && s?.tracked) {
+      const k = getStoryQuest(s.tracked)?.kind;
+      if (k === 'sub') this.pinned.sub = s.tracked; else this.pinned.main = s.tracked;
+    }
     this.declined = new Set(s?.declined ?? []);
     this.offerCooldown = s?.offerCooldown ?? {};
     this.refreshAutoQuests();
@@ -277,12 +289,20 @@ class StoryStoreManager {
     const ctx = this.choiceCtx(q.giver);
     return choicesFor(q)[stage].filter((c) => choiceVisible(c, ctx));
   }
-  /** 155차 — 추적 토글. 완료·미수락 할 일은 추적할 수 없다 */
+  /**
+   * 165차 — 고정 토글. 완료·미수락 할 일은 고정할 수 없고,
+   * **메인·서브 칸마다 1건**이라 같은 종류를 새로 고정하면 앞의 것이 풀린다.
+   */
   setTracked(id: string | null): void {
-    if (id && this.quests[id]?.status !== 'active') return;
-    this.trackedId = id;
+    if (id === null) { this.pinned = { main: null, sub: null }; this.host?.markDirty(); return; }
+    if (this.quests[id]?.status !== 'active') return;
+    const slot: 'main' | 'sub' = getStoryQuest(id)?.kind === 'sub' ? 'sub' : 'main';
+    this.pinned[slot] = this.pinned[slot] === id ? null : id;
     this.host?.markDirty();
   }
+
+  /** 이 할 일이 고정되어 있는가 */
+  isPinned(id: string): boolean { return this.pinned.main === id || this.pinned.sub === id; }
 
   /** 기록된 선택 (분기 확인·일지 표기) */
   chosen(questId: string): { offer?: string; complete?: string } | undefined { return this.choices[questId]; }
@@ -484,16 +504,27 @@ class StoryStoreManager {
     const keys = new Set<StoryActionKey>();
     const talkNpc = source === 'dialogue' && origin?.startsWith('talk-action:')
       ? origin.slice('talk-action:'.length) : undefined;
-    for (const q of STORY_QUESTS) {
+    // 165차 — 같은 계통의 활성 목표가 여럿이면 한 사건에 전부 오르던 중복 매칭을 막는다.
+    //  · 사건 출처(`eventOrigins`)를 지정한 목표는 그 출처와 맞을 때만 후보가 된다.
+    //  · 출처를 지정하지 않은 일반 목표는 **가장 앞선 활성 할 일 하나**만 오른다(메인 → 서브 순).
+    const generic: StoryActionKey[] = [];
+    for (const q of [...STORY_QUESTS].sort((a, b) => (a.kind === b.kind ? 0 : a.kind === 'main' ? -1 : 1))) {
       const p = this.quests[q.id];
       if (!p || p.status !== 'active') continue;
       // 대화 행동은 현재 대화 중인 의뢰 NPC의 목표만 진행한다. 다른 NPC의
       // 대화창을 열어 둔 상태에서 엉뚱한 퀘스트가 오르는 것을 막는다.
       if (talkNpc && q.giver !== talkNpc) continue;
       q.objectives.forEach((o, i) => {
-        if (o.actionKey && !this.objectiveDone(q, i) && storyActionSpec(o.actionKey).source === source) keys.add(o.actionKey);
+        if (!o.actionKey || this.objectiveDone(q, i)) return;
+        if (i > 0 && !this.objectiveDone(q, i - 1)) return;   // 앞 목표가 남았으면 아직 이 행동의 차례가 아니다
+        const spec = storyActionSpec(o.actionKey);
+        if (spec.source !== source) return;
+        if (spec.eventOrigins?.length) {
+          if (origin && spec.eventOrigins.includes(origin)) keys.add(o.actionKey);
+        } else generic.push(o.actionKey);
       });
     }
+    if (generic.length) keys.add(generic[0]);
     for (const key of keys) this.emitAction(key, origin ?? source);
   }
 
@@ -540,7 +571,8 @@ class StoryStoreManager {
     if (q.unlocks?.length) rwl.push(...q.unlocks.filter((u) => u.startsWith('region:')).map((u) => `지역 개방: ${u.slice(7)}`));
     this.lastRewardLines = rwl;
     this.lastAction = 'completed';
-    if (this.trackedId === id) this.trackedId = null;
+    if (this.pinned.main === id) this.pinned.main = null;
+    if (this.pinned.sub === id) this.pinned.sub = null;
     const lines: string[] = [];
     if (choice) { this.choices[id] = { ...this.choices[id], complete: choice.id }; lines.push(...this.applyOutcome(q, choice.outcome)); }
     if (q.giver) this.addAffinity(q.giver, q.kind === 'sub' ? TUNING.affinity.onSubComplete : TUNING.affinity.onMainComplete);

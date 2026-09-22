@@ -88,7 +88,7 @@ import { LicensePanel } from '../ui/LicensePanel.js';
 import { SkillTreePanel } from '../ui/SkillTreePanel.js';
 import { JournalPanel } from '../ui/JournalPanel.js';
 import { addPixelIcon } from '../ui/PixelIcon.js';
-import type { MiniMarker } from '../ui/RegionHud.js';
+import type { MiniMarker, QuestTrackerEntry } from '../ui/RegionHud.js';
 import { TextInput } from '../ui/TextInput.js';
 import { MonologuePanel, OPENING_MONOLOGUE } from '../ui/MonologuePanel.js';
 import { DialoguePanel } from '../ui/DialoguePanel.js';
@@ -99,7 +99,7 @@ import { loadSettings } from './SettingsScene.js';
 import { MultiplayerClient } from '../net/MultiplayerClient.js';
 import { STORY_NPC_PLACEMENTS, STORY_PLACES, STORY_FIELD_TRIGGERS, type StoryNpcPlacement, type StoryFieldTrigger } from '../data/StoryNpcs.js';
 import { getStoryNpc, validateStoryQuests, validateStoryChoices, getSkillById, profScale, gearFaultChance, GEAR_REF_PRICE, gearUsable, GEAR_FAULTS,
-  STORY_QUESTS, narrativeOf, nextObjectiveIndex, objectiveTarget, objectiveHowToKo, getDayJob, getRegionById, WORLD_NODE_DATABASE,
+  STORY_QUESTS, getStoryQuest, narrativeOf, nextObjectiveIndex, objectiveTarget, objectiveHowToKo, getDayJob, getRegionById, WORLD_NODE_DATABASE,
   type StoryQuestDef, type QuestGuideTarget, type GuideNames } from '@tra/core';
 import { FullMapPanel } from '../ui/FullMapPanel.js';
 import { MapPinStore } from '../store/MapPinStore.js';
@@ -122,7 +122,8 @@ import { registerNames } from '../i18n/I18n.js';
 import { ExternalDataStore } from '../store/ExternalDataStore.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { RegionHud } from '../ui/RegionHud.js';
-import { StoryCinematicPanel, type StoryCinematicLine } from '../ui/StoryCinematicPanel.js';
+import { StoryCinematicPanel, type CineActor, type CineDir, type CineScript } from '../ui/StoryCinematicPanel.js';
+import { CINE_M1_ICE_DROP, CINE_M1_OKSEON_STALL, CINE_M1_YEONGGEUMJEONG, CINE_N186_LEDGER, CINE_N186_REPORT, CINE_N186_WATCH } from '../data/StoryCinematics.js';
 import { FieldEventManager } from '../ui/FieldEventManager.js';
 import { InventoryPanel } from '../ui/InventoryPanel.js';
 import { ItemDetailPanel } from '../ui/ItemDetailPanel.js';
@@ -1508,11 +1509,15 @@ export class RegionFieldScene extends Phaser.Scene {
         this.miniShopMarkers.push({
           wx: door.x, wy: door.y,
           icon: RegionFieldScene.MINI_SHOP_ICON[kind], priority: goods ? 1 : 0,
+          label: poi.name || BUILDING_LABEL[kind],
         });
       }
       else if ((poi.name ?? '') !== '' || RegionFieldScene.POI_LABEL[poi.type] !== undefined) {
         // 거래는 안 되지만 이름이 있는 장소 — 바닥 이름표 대신 미니맵 핀으로만 (143차)
-        this.miniPlaceMarkers.push({ wx: door.x, wy: door.y, icon: 'mm_poi', priority: 0 });
+        this.miniPlaceMarkers.push({
+          wx: door.x, wy: door.y, icon: 'mm_poi', priority: 0,
+          label: poi.name || RegionFieldScene.POI_LABEL[poi.type],
+        });
       }
       // 건물 프리팹이 붙는 POI의 건물 컴포넌트는 고층 자동 배치에서 제외
       if (this.poiVisualTex(poi)) {
@@ -2168,6 +2173,8 @@ export class RegionFieldScene extends Phaser.Scene {
 
     // ESC: 설치 모드 취소 → 최상단 팝업 닫기 → 일시정지 메뉴 토글
     this.input.keyboard!.on('keydown-ESC', () => {
+      // 컷씬 재생 중에는 일시정지 메뉴로 새지 않는다 — ESC = 컷씬 건너뛰기
+      if (this.skipCinematic()) return;
       if (this.placing) { this.cancelPlacement(); return; }
       if (this.trapField?.placing) { this.trapField.cancelPlacement(); return; }
       if (this.stoveField?.placing) { this.stoveField.cancelPlacement(); return; }
@@ -3912,6 +3919,8 @@ export class RegionFieldScene extends Phaser.Scene {
     x: number;
     y: number;
     actor: Phaser.GameObjects.Image;
+    /** 머리 위 이름표 — 컷씬 이동 시 본체와 함께 따라간다 */
+    label: Phaser.GameObjects.Text;
     mark?: Phaser.GameObjects.Image;
     markKey?: string;
   }[] = [];
@@ -3960,53 +3969,46 @@ export class RegionFieldScene extends Phaser.Scene {
     return StoryStore.canPerformAction(t.questId, t.objectiveIndex, t.phase);
   }
 
-  /** M1-01 — 장소에 도착한 뒤 실제 속초 필드에서만 재생되는 개인 독백 연출. */
-  private startSokchoArrivalCinematic(placeKey: string): void {
-    if (this.cinematicActive || this.cinematic || !StoryStore.isActive('M1-01')) return;
-    const okseon = this.storyNpcs.find((n) => n.def.npcId === 'okseon')?.actor;
-    const lines: StoryCinematicLine[] = placeKey === 'poi:yeonggeumjeong'
-      ? [
-        { speaker: '혼잣말', actor: 'thought', text: '예전에 부모님과 수산시장 같은 곳이 주차장 근처에 있었던 것 같은데…', durationMs: 1700 },
-        { speaker: '혼잣말', actor: 'thought', text: '영금정에서 보이는 방파제 쪽이었던 것 같아. 동명항 방파제 쪽으로 이동해볼까?', durationMs: 1900 },
-      ]
-      : [
-        { speaker: '혼잣말', actor: 'thought', text: '아, 여기였지 참. 많이 바뀌긴 했구나.', durationMs: 1300 },
-        { speaker: '혼잣말', actor: 'thought', text: '기억이 새록새록 나네… 눈물이 나올 것만 같다.', durationMs: 1500 },
-        { speaker: '혼잣말', actor: 'thought', text: '앞으로 어떻게 해야 할까…?', durationMs: 1200 },
-        { speaker: '혼잣말', actor: 'thought', text: '…음? 할머니가 날 계속 쳐다보고 계셨네…', durationMs: 1400 },
-        { speaker: '혼잣말', actor: 'thought', text: '할머니께 고민 상담을 해볼까?', durationMs: 1300 },
-      ];
-    this.cinematicActive = true;
-    this.hud?.setVisible(false);
-    this.npcHintText?.setVisible(false);
-    this.playerBody.setVelocity(0, 0);
-    MultiplayerClient.setActivity('cinematic');
-    this.cinematic = new StoryCinematicPanel(this, {
-      title: '막차 · 기억의 장소',
-      place: placeKey === 'poi:yeonggeumjeong' ? '속초 영금정 / 개인 시점' : '동명항 방파제 · 정옥선 좌판 / 개인 시점',
-      lines,
-      fieldActors: { player: this.playerSprite, watcher: okseon },
-      onComplete: () => {
-        this.cinematicActive = false;
-        this.cinematic = undefined;
-        MultiplayerClient.setActivity('field');
-        this.hud?.setVisible(true);
-        this.hud?.pushLog('[연출] 기억의 장소를 확인했습니다');
+  // ═══════════════════════════════════════════════════════════════
+  // 165차 — 컷씬 재생 (실제 필드 무대 · 말풍선 · 배우 이동 · 조작 봉쇄)
+  // ═══════════════════════════════════════════════════════════════
+
+  /** 각본이 부르는 배우 키를 현재 필드의 실제 오브젝트에 연결한다. */
+  private cineActor(who: string): CineActor | undefined {
+    if (who === 'player') {
+      return {
+        obj: this.playerSprite,
+        nameKo: GameState.player.nickname || '나',
+        headY: this.charTopFromFeet - 6,
+        setFacing: (d: CineDir) => this.charSprite?.setDir(d),
+      };
+    }
+    const n = this.storyNpcs.find((s) => s.def.npcId === who);
+    if (!n) return undefined;
+    return {
+      obj: n.actor,
+      followers: [n.label],
+      nameKo: getStoryNpc(n.def.npcId)?.nameKo ?? n.def.npcId,
+      headY: this.charTopFromFeet - 6,
+      setFacing: (d: CineDir) => {
+        const sheet = ensureCharSheet(this, characterOf(n.def.npcId), CHAR_SCALE);
+        n.actor.setTexture(sheet, charFrameName(d, 0));
       },
-    });
+    };
   }
 
-  private startStoryTrigger(t: StoryFieldTrigger): void {
-    if (!this.storyTriggerAvailable(t) || this.cinematicActive || this.cinematic) return;
-    const finish = (): void => {
-      this.cinematicActive = false;
-      this.cinematic = undefined;
-      MultiplayerClient.setActivity('field');
-      this.hud?.setVisible(true);
-      StoryStore.emitAction(t.actionKey as import('@tra/core').StoryActionKey, `n18-6:${t.id.replace('n18-6-', '') === 'origin-watch' ? 'watch-cinematic' : t.id.replace('n18-6-', '')}`);
-      this.hud?.pushLog(`[연출] ${t.labelKo} — 행동 ${StoryStore.actionStep(t.questId, t.objectiveIndex)}/3`);
-      this.refreshQuestMarkers(true);
-    };
+  /**
+   * 각본을 지금 서 있는 필드에서 재생한다.
+   * `roles`는 각본의 배우 키 → 실제 NPC id 치환표(예: `watcher` → `hyeonsu`).
+   * 치환 대상이 이 지역에 없으면 그 배우의 대사는 말풍선 없이 대사창으로만 흐른다.
+   */
+  private playCinematic(script: CineScript, roles: Record<string, string>, onDone?: () => void): boolean {
+    if (this.cinematicActive || this.cinematic || !this.scene.isActive()) return false;
+    const actors: Record<string, CineActor> = {};
+    for (const [key, npcId] of Object.entries(roles)) {
+      const a = this.cineActor(npcId);
+      if (a) actors[key] = a;
+    }
     this.cinematicActive = true;
     this.nearStoryTrigger = null;
     this.nearNpc = null;
@@ -4014,77 +4016,79 @@ export class RegionFieldScene extends Phaser.Scene {
     this.hud?.setVisible(false);
     this.playerBody.setVelocity(0, 0);
     MultiplayerClient.setActivity('cinematic');
-    const lines: StoryCinematicLine[] = t.phase === 0 ? [
-      { speaker: '혼잣말', actor: 'thought', text: '시장 뒤편에서 잠깐만 보고 가자. 괜히 눈에 띄면 곤란해.', durationMs: 1500 },
-      { speaker: '수상한 사람 1', actor: 'watcher', text: '...! 왔구만 그래.' },
-      { speaker: '수상한 사람 2', actor: 'courier', text: '아무도 없는 게 맞겠지?' },
-      { speaker: '수상한 사람 1', actor: 'watcher', text: '우리가 하루 이틀 해온 것도 아니고, 돈은 어디 있어? 저번부터 많이 까먹던데. 오늘은 확실하지?' },
-      { speaker: '수상한 사람 2', actor: 'courier', text: '처리된 것까지 확인하고 그 장소에서 전달한다. 저번과 같은 금액이야. 서두르지 마.' },
-      { speaker: '수상한 사람 2', actor: 'courier', text: '수정한 명부다. 곧 그 장소에서 만나지. 마무리 잘 하시게.' },
-      { speaker: '수상한 사람 1', actor: 'watcher', text: '...' },
-      { speaker: '혼잣말', actor: 'thought', text: '이건 아무래도 큰일인데…? 어서 알려야 해. 그 장소는 어디지?' },
-    ] : t.phase === 1 ? [
-      { speaker: '기록', actor: 'thought', text: '잉크가 마른 지 얼마 안 됐다. 원래 글씨와 덧쓴 글씨의 결이 다르다.' },
-      { speaker: '나', actor: 'player', text: '수량, 어종, 원산지 순서가 서로 맞지 않아. 이대로 두면 위판 기록이 바뀐다.' },
-      { speaker: '기록', actor: 'thought', text: '명부의 페이지와 흔적을 남겨 둔다. 말로만 전하면 증거가 사라질 수 있다.' },
-    ] : [
-      { speaker: '도현수', actor: 'watcher', text: '그 명부… 어디서 봤어? 섣불리 이름부터 말하지는 마.' },
-      { speaker: '나', actor: 'player', text: '후문에서 인계 장면을 봤어. 수정 전후의 순서와 시간을 적어 왔어.' },
-      { speaker: '도현수', actor: 'watcher', text: '알겠어. 이번엔 내가 신고서에 붙일게. 같이 확인한 걸로 남기자.' },
-    ];
     this.cinematic = new StoryCinematicPanel(this, {
-      title: t.phase === 0 ? '위반 증거 · 목격' : t.phase === 1 ? '위반 증거 · 기록 대조' : '위반 증거 · 보고',
-      place: t.phase === 0 ? '인천 도매시장 후문 / 개인 시점' : '도매시장 기록대 / 개인 시점',
-      lines,
-      fieldActors: {
-        player: this.playerSprite,
-        watcher: this.storyNpcs.find((n) => n.def.npcId === 'hyeonsu')?.actor,
-        courier: this.storyNpcs.find((n) => n.def.npcId === 'kang_ducheol')?.actor,
-      },
-      onComplete: finish,
-    });
-  }
-
-  /** N18-6 전용 3부작 외의 actionKey도 실제 성공 직후 결과를 짧게 보여준다. */
-  private showActionProgressScene(key: import('@tra/core').StoryActionKey, step: number): void {
-    if (key === 'label_violation_review' || !this.scene.isActive() || this.cinematicActive || this.cinematic) return;
-    const scene = storyActionScene(key);
-    if (!scene || step < 1 || step > 3) return;
-    this.cinematicActive = true;
-    this.hud?.setVisible(false);
-    MultiplayerClient.setActivity('cinematic');
-    this.cinematic = new StoryCinematicPanel(this, {
-      title: `${scene.titleKo} · ${step}/3`, place: `${scene.placeKo} / 개인 시점`,
-      lines: [
-        { speaker: '현장 기록', actor: 'thought', text: scene.linesKo[0], durationMs: 1300 },
-        { speaker: '현장 기록', actor: 'watcher', text: scene.linesKo[1], durationMs: 1700 },
-      ],
-      // actionKey를 올린 퀘스트의 발주 NPC를 배우로 선택한다. 등록된 NPC가
-      // 아직 없는 지역에서도 현재 필드의 실제 스토리 NPC를 대체 배우로 사용해
-      // 추상 도형 무대로 되돌아가지 않게 한다.
-      fieldActors: {
-        player: this.playerSprite,
-        watcher: this.actionActorFor(key),
-        courier: this.actionActorFor(key, true),
-      },
+      script, actors, tileSize: TR, camera: this.cameras.main,
       onComplete: () => {
-        this.cinematicActive = false;
         this.cinematic = undefined;
+        this.cinematicActive = false;
+        this.cameras.main.startFollow(this.playerBody, true, 0.14, 0.14);
         MultiplayerClient.setActivity('field');
         this.hud?.setVisible(true);
-        this.hud?.pushLog(`[연출] ${scene.titleKo} — ${step}/3`);
+        onDone?.();
       },
+    });
+    return true;
+  }
+
+  /** ESC — 재생 중인 컷씬을 끝까지 건너뛴다(일시정지 메뉴로 새지 않는다). */
+  private skipCinematic(): boolean {
+    if (!this.cinematic) return false;
+    this.cinematic.skip();
+    return true;
+  }
+
+  /** M1-01 — 장소에 도착한 뒤 실제 속초 필드에서 재생되는 개인 독백 연출. */
+  private startSokchoArrivalCinematic(placeKey: string): void {
+    if (!StoryStore.isActive('M1-01')) return;
+    const script = placeKey === 'poi:yeonggeumjeong' ? CINE_M1_YEONGGEUMJEONG : CINE_M1_OKSEON_STALL;
+    this.playCinematic(script, { player: 'player', okseon: 'okseon' }, () => {
+      this.hud?.pushLog(placeKey === 'poi:yeonggeumjeong'
+        ? '[할 일] 동명항 방파제 쪽 좌판 거리로 이동한다'
+        : '[할 일] 정옥선 할머니에게 말을 건다');
     });
   }
 
-  /** 현재 actionKey의 발주 NPC를 실제 필드 배우로 찾는다. */
-  private actionActorFor(key: import('@tra/core').StoryActionKey, secondary = false): Phaser.GameObjects.Image | undefined {
+  private startStoryTrigger(t: StoryFieldTrigger): void {
+    if (!this.storyTriggerAvailable(t)) return;
+    const script = t.phase === 0 ? CINE_N186_WATCH : t.phase === 1 ? CINE_N186_LEDGER : CINE_N186_REPORT;
+    const suffix = t.id.replace('n18-6-', '');
+    const source = `n18-6:${suffix === 'origin-watch' ? 'watch-cinematic' : suffix}`;
+    this.playCinematic(script, { player: 'player', watcher: 'hyeonsu', courier: 'kang_ducheol' }, () => {
+      StoryStore.emitAction(t.actionKey as import('@tra/core').StoryActionKey, source);
+      this.hud?.pushLog(`[할 일] ${t.labelKo} — 진행 ${StoryStore.actionStep(t.questId, t.objectiveIndex)}/3`);
+      this.refreshQuestMarkers(true);
+    });
+  }
+
+  /** N18-6 전용 3부작 외의 행동도 성공 직후 결과를 짧게 보여준다. */
+  private showActionProgressScene(key: import('@tra/core').StoryActionKey, step: number): void {
+    if (key === 'label_violation_review' || !this.scene.isActive()) return;
+    const sc = storyActionScene(key);
+    if (!sc || step < 1 || step > 3) return;
+    const partner = this.actionActorNpcId(key);
+    const script: CineScript = {
+      id: `action-${key}-${step}`,
+      placeKo: sc.placeKo,
+      steps: [
+        { kind: 'focus', who: 'player', ms: 440 },
+        { kind: 'say', who: 'player', thought: true, text: sc.linesKo[0] },
+        ...(partner ? [{ kind: 'say' as const, who: 'partner', text: sc.linesKo[1] }]
+          : [{ kind: 'say' as const, who: 'player', thought: true, text: sc.linesKo[1] }]),
+      ],
+    };
+    const roles: Record<string, string> = { player: 'player' };
+    if (partner) roles.partner = partner;
+    this.playCinematic(script, roles, () => {
+      this.hud?.pushLog(`[할 일] ${sc.titleKo} — 진행 ${step}/3`);
+    });
+  }
+
+  /** 현재 행동의 발주 인물을 이 지역의 실제 배우로 찾는다. */
+  private actionActorNpcId(key: import('@tra/core').StoryActionKey): string | undefined {
     const quest = STORY_QUESTS.find((q) => StoryStore.isActive(q.id) && q.objectives.some((o) => o.actionKey === key));
     const giver = quest?.giver;
-    const preferred = giver ? this.storyNpcs.find((n) => n.def.npcId === giver) : undefined;
-    if (!secondary && preferred) return preferred.actor;
-    const fallback = this.storyNpcs.filter((n) => n.def.npcId !== giver);
-    return (secondary ? fallback[1] ?? fallback[0] : fallback[0])?.actor;
+    if (giver && this.storyNpcs.some((n) => n.def.npcId === giver)) return giver;
+    return this.storyNpcs.find((n) => n.def.npcId !== giver)?.def.npcId;
   }
 
   /** 지역에 배치된 스토리 NPC 스프라이트 — 기존 POI NPC 텍스처 재사용(플레이스홀더), 이름표가 인물을 식별 */
@@ -4100,11 +4104,11 @@ export class RegionFieldScene extends Phaser.Scene {
       const actor = this.add.image(x, y + pad, sheet, charFrameName(def.facing ?? 'down', 0))
         .setOrigin(0.5, 1).setDepth(20 + y * 0.001 + 0.0006);
       const npc = getStoryNpc(def.npcId);
-      this.add.text(x, y + this.charTopFromFeet - RegionFieldScene.LABEL_GAP, npc?.nameKo ?? def.npcId, {
+      const label = this.add.text(x, y + this.charTopFromFeet - RegionFieldScene.LABEL_GAP, npc?.nameKo ?? def.npcId, {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#ffe9a0',
         backgroundColor: '#0a1628cc', padding: { x: 3, y: 1 },
       }).setOrigin(0.5, 1).setDepth(20 + y * 0.001 + 0.0007);
-      this.storyNpcs.push({ def, x, y, actor });
+      this.storyNpcs.push({ def, x, y, actor, label });
     }
     this.refreshQuestMarkers(true);
   }
@@ -4172,9 +4176,10 @@ export class RegionFieldScene extends Phaser.Scene {
       }
       const mk = this.npcMarkerIcon(n.def.npcId, true);
       // 의뢰가 없어도 인물은 미니맵에 남는다 (143차 — 바닥 이름표를 끈 대신)
+      const npcName = getStoryNpc(n.def.npcId)?.nameKo ?? n.def.npcId;
       markers.push(mk
-        ? { wx: n.x, wy: n.y - 12, icon: mk, priority: mk === 'mm_ready' ? 3 : 2 }
-        : { wx: n.x, wy: n.y - 12, icon: 'mm_npc', priority: 2 });
+        ? { wx: n.x, wy: n.y - 12, icon: mk, priority: mk === 'mm_ready' ? 3 : 2, label: npcName }
+        : { wx: n.x, wy: n.y - 12, icon: 'mm_npc', priority: 2, label: npcName });
     }
     // 155차 — 전체 지도에서 찍은 핀은 미니맵에도 (청록 다이아)
     const pin = MapPinStore.get(this.region);
@@ -4585,15 +4590,18 @@ export class RegionFieldScene extends Phaser.Scene {
    * 지금 안내할 할 일 — 활성(메인 우선) → 전부 끝났으면 발주자에게 보고 → 활성이 없으면 받을 수 있는 메인.
    * 화살표는 **하나만** 가리킨다(여럿을 동시에 가리키면 어느 것도 못 가리킨 셈이다).
    */
-  private pickGuideQuest(): { q: StoryQuestDef; idx: number | null; kind: 'active' | 'offer' } | null {
-    // 일지에서 「추적하기」를 켠 할 일이 최우선(사용자 지시) — 없으면 활성 메인 → 서브 → 받을 수 있는 메인
-    const tracked = StoryStore.trackedId ? STORY_QUESTS.find((q) => q.id === StoryStore.trackedId) : undefined;
-    if (tracked && StoryStore.status(tracked) === 'active') {
-      return { q: tracked, idx: nextObjectiveIndex(tracked, (i) => StoryStore.objectiveDone(tracked, i)), kind: 'active' };
-    }
-    const act = STORY_QUESTS.filter((q) => StoryStore.status(q) === 'active')
-      .sort((a, b) => (a.kind === b.kind ? 0 : a.kind === 'main' ? -1 : 1));
-    for (const q of act) return { q, idx: nextObjectiveIndex(q, (i) => StoryStore.objectiveDone(q, i)), kind: 'active' };
+  private pickGuideQuest(kindWanted?: 'main' | 'sub'): { q: StoryQuestDef; idx: number | null; kind: 'active' | 'offer' } | null {
+    const entry = (q: StoryQuestDef): { q: StoryQuestDef; idx: number | null; kind: 'active' } =>
+      ({ q, idx: nextObjectiveIndex(q, (i) => StoryStore.objectiveDone(q, i)), kind: 'active' });
+    // 일지에서 고정한 할 일이 최우선(사용자 지시) — 없으면 활성 할 일, 그다음 받을 수 있는 메인
+    const pinnedId = kindWanted === 'sub' ? StoryStore.pinned.sub : StoryStore.pinned.main;
+    const pinned = pinnedId ? STORY_QUESTS.find((q) => q.id === pinnedId) : undefined;
+    if (pinned && StoryStore.status(pinned) === 'active') return entry(pinned);
+    const act = STORY_QUESTS.filter((q) => StoryStore.status(q) === 'active'
+      && (!kindWanted || q.kind === kindWanted))
+      .sort((a2, b2) => (a2.kind === b2.kind ? 0 : a2.kind === 'main' ? -1 : 1));
+    if (act.length) return entry(act[0]);
+    if (kindWanted === 'sub') return null;
     const off = STORY_QUESTS.find((q) => q.kind === 'main' && !!q.giver && StoryStore.status(q) === 'available');
     return off ? { q: off, idx: null, kind: 'offer' } : null;
   }
@@ -4650,51 +4658,80 @@ export class RegionFieldScene extends Phaser.Scene {
     this.questGuideAt += delta;
     if (this.questGuideAt >= 400) {
       this.questGuideAt = 0;
-      const pick = this.pickGuideQuest();
-      if (!pick) { this.questTargetPos = null; this.hud?.setQuestTracker(null); }
-      else {
-        const names = this.guideNames();
-        const { q, idx, kind } = pick;
-        let target: QuestGuideTarget; let objective: string; let howTo: string;
-        if (kind === 'offer') {
-          target = { kind: 'npc', npcId: q.giver };
-          objective = `새 할 일 — ${names.npcName(q.giver)}에게 말을 건다`;
-          howTo = `${names.npcName(q.giver)}에게 다가가 [F] → 「내가 도와줄 수 있는 게 있을까요?」`;
-        } else if (idx === null) {
-          target = q.giver ? { kind: 'npc', npcId: q.giver } : { kind: 'none' };
-          objective = q.giver ? `${names.npcName(q.giver)}에게 돌아가 보고한다` : '할 일을 마쳤다 — 일지(J)에서 확인';
-          howTo = q.giver ? `${names.npcName(q.giver)}에게 [F]` : '';
-        } else {
-          const o = q.objectives[idx];
-          target = objectiveTarget(q, o);
-          const tgt = StoryStore.objectiveTarget(o);
-          const cur = Math.min(tgt, o.actionKey
-            ? StoryStore.actionStep(q.id, idx)
-            : (StoryStore.progress(q.id)?.obj[idx] ?? 0));
-          objective = (narrativeOf(q.id)?.objectives?.[idx] ?? o.labelKo)
-            + (o.actionKey || tgt > 1 ? ` (${cur}/${tgt}${o.actionKey && cur >= tgt ? ' · 준비 완료!' : ''})` : '');
-          howTo = objectiveHowToKo(q, o, names);
-        }
-        const res = this.resolveGuideTarget(target);
-        let distance: string | undefined;
-        if (res && 'away' in res) {
-          this.questTargetPos = null;
-          distance = `다른 지역 — ${res.away}`;
-          if (!howTo || target.kind === 'npc') howTo = `${res.away}(으)로 이동 — 버스 정류장 [F] → 전국 지도`;
-        } else if (res) {
-          this.questTargetPos = res;
-        } else this.questTargetPos = null;
-        const prefix = q.kind === 'main' ? 'Ⓜ' : 'Ⓢ';
-        const iceDelivered = q.id === 'M1-02' && (StoryStore.progress(q.id)?.obj[2] ?? 0) >= 1;
-        const deliveryDoneTitle = iceDelivered ? `${prefix} ${q.titleKo} (완료!)` : `${prefix} ${q.titleKo}`;
-        if (iceDelivered && q.id === 'M1-02' && idx !== null) {
-          objective = '정옥선의 심부름용 얼음 상자를 경매장 근처에 운반했다. 이제 정옥선을 찾아가보자.';
-          howTo = '정옥선에게 다가가 [F]';
-        }
-        this.hud?.setQuestTracker({ title: (StoryStore.trackedId === q.id ? '[추적 중] ' : '') + deliveryDoneTitle, objective, howTo, distance });
+      const main = this.pickGuideQuest('main');
+      const sub = this.pickGuideQuest('sub');
+      // 화살표는 메인을 먼저 가리킨다 — 메인이 없을 때만 서브로 내려간다
+      this.questTargetPos = null;
+      const entries: QuestTrackerEntry[] = [];
+      let arrowSet = false;
+      for (const pick of [main, sub]) {
+        if (!pick) continue;
+        const built = this.buildTrackerEntry(pick, !arrowSet);
+        if (built.tookArrow) arrowSet = true;
+        entries.push(built.entry);
       }
+      this.hud?.setQuestTracker(entries.length ? { entries } : null);
     }
     this.drawQuestArrow();
+  }
+
+  /** 할 일 하나 → 「지금 할 일」 한 줄. `claimArrow`면 필드 화살표 목표도 이 할 일이 가져간다. */
+  private buildTrackerEntry(
+    pick: { q: StoryQuestDef; idx: number | null; kind: 'active' | 'offer' },
+    claimArrow: boolean,
+  ): { entry: QuestTrackerEntry; tookArrow: boolean } {
+    const names = this.guideNames();
+    const { q, idx, kind } = pick;
+    let target: QuestGuideTarget; let objective: string; let howTo: string;
+    if (kind === 'offer') {
+      target = { kind: 'npc', npcId: q.giver };
+      objective = `새 할 일 — ${names.npcName(q.giver)}에게 말을 건다`;
+      howTo = `${names.npcName(q.giver)}에게 다가가 [F] → 「내가 도와줄 수 있는 게 있을까요?」`;
+    } else if (idx === null) {
+      target = q.giver ? { kind: 'npc', npcId: q.giver } : { kind: 'none' };
+      objective = q.giver ? `${names.npcName(q.giver)}에게 돌아가 보고한다` : '할 일을 마쳤다 — 일지(J)에서 확인';
+      howTo = q.giver ? `${names.npcName(q.giver)}에게 [F]` : '';
+    } else {
+      const o = q.objectives[idx];
+      target = objectiveTarget(q, o);
+      const tgt = StoryStore.objectiveTarget(o);
+      const cur = Math.min(tgt, o.actionKey
+        ? StoryStore.actionStep(q.id, idx)
+        : (StoryStore.progress(q.id)?.obj[idx] ?? 0));
+      objective = (narrativeOf(q.id)?.objectives?.[idx] ?? o.labelKo)
+        + (o.actionKey || tgt > 1 ? ` (${cur}/${tgt}${o.actionKey && cur >= tgt ? ' · 준비 완료!' : ''})` : '');
+      howTo = objectiveHowToKo(q, o, names);
+    }
+    const res = this.resolveGuideTarget(target);
+    let distance: string | undefined;
+    let tookArrow = false;
+    if (res && 'away' in res) {
+      distance = `다른 지역 — ${res.away}`;
+      if (!howTo || target.kind === 'npc') howTo = `${res.away}(으)로 이동 — 버스 정류장 [F] → 전국 지도`;
+    } else if (res && claimArrow) {
+      this.questTargetPos = res;
+      tookArrow = true;
+    }
+    // 직전 목표가 「완료 직후 안내」를 갖고 있고 이번 목표를 아직 시작하지 않았다면,
+    // 방금 무엇을 끝냈고 이제 무엇을 할 차례인지 한 줄로 잇는다 (165차).
+    let settled = idx !== null && !!q.objectives[idx] && StoryStore.objectiveDone(q, idx);
+    if (idx !== null && idx > 0) {
+      const prev = q.objectives[idx - 1];
+      const started = (StoryStore.progress(q.id)?.obj[idx] ?? 0) > 0;
+      if (prev?.afterKo && StoryStore.objectiveDone(q, idx - 1) && !started) {
+        objective = prev.afterKo;
+        settled = true;
+      }
+    }
+    const title = `${q.titleKo}${settled ? ' (완료!)' : ''}`;
+    return {
+      entry: {
+        kind: q.kind === 'sub' ? 'sub' : 'main',
+        title, objective, howTo: howTo || undefined, distance,
+        pinned: StoryStore.isPinned(q.id),
+      },
+      tookArrow,
+    };
   }
 
   /** 캐릭터 기준 화살표 — 목표 방향, 반지름 46px. 가까우면(56px) 감춘다. 점멸(사용자 지시 "빤짝이는 화살표"). */
@@ -4862,7 +4899,10 @@ export class RegionFieldScene extends Phaser.Scene {
     this.nearIceDrop = false;
     this.iceDropMarker?.setVisible(false);
     this.npcHintText?.setVisible(false);
-    this.hud?.pushLog('[할 일] Ⓜ 얼음 나르기 (완료!) — 정옥선의 심부름용 얼음 상자를 경매장 근처에 운반했다. 이제 정옥선을 찾아가보자.');
+    // 안내 문구는 목표 데이터(`afterKo`)가 갖는다 — 여기서 문장을 다시 적지 않는다.
+    const done = getStoryQuest('M1-02');
+    const after = done?.objectives.find((o) => o.placeKey === 'ice:auction-drop')?.afterKo;
+    this.hud?.pushLog(`[할 일] ${done?.titleKo ?? '얼음 나르기'} (완료!)${after ? ` — ${after}` : ''}`);
     this.floatingHint('얼음 상자를 내려놓았습니다 — 정옥선에게 돌아가세요');
     this.startIceDropCinematic();
     return true;
@@ -4870,29 +4910,7 @@ export class RegionFieldScene extends Phaser.Scene {
 
   /** M1-02 — 하역 직후, 실제 경매장 근처 배우가 물건을 확인하는 짧은 연출. */
   private startIceDropCinematic(): void {
-    if (this.cinematicActive || this.cinematic) return;
-    const clerk = this.storyNpcs.find((n) => n.def.npcId === 'coop')?.actor;
-    this.cinematicActive = true;
-    this.hud?.setVisible(false);
-    this.npcHintText?.setVisible(false);
-    this.playerBody.setVelocity(0, 0);
-    MultiplayerClient.setActivity('cinematic');
-    this.cinematic = new StoryCinematicPanel(this, {
-      title: '얼음 나르기 · 하역 확인',
-      place: '속초 경매장 옆 하역 위치 / 개인 시점',
-      lines: [
-        { speaker: '혼잣말', actor: 'thought', text: '상자를 지정된 자리에 내려놓았다. 녹기 전에 도착해서 다행이다.', durationMs: 1500 },
-        { speaker: '경매장 담당자', actor: 'watcher', text: '정옥선 좌판 물건이면 이 자리에 두면 됩니다. 곧 확인하겠습니다.', durationMs: 1700 },
-        { speaker: '혼잣말', actor: 'thought', text: '이제 정옥선 할머니에게 돌아가서 도착했다고 말하자.', durationMs: 1500 },
-      ],
-      fieldActors: { player: this.playerSprite, watcher: clerk },
-      onComplete: () => {
-        this.cinematicActive = false;
-        this.cinematic = undefined;
-        MultiplayerClient.setActivity('field');
-        this.hud?.setVisible(true);
-      },
-    });
+    this.playCinematic(CINE_M1_ICE_DROP, { player: 'player', coop: 'coop' });
   }
 
   private openDialogue(npcId: string): void {

@@ -34,6 +34,8 @@ export interface GuideNames {
 /** 화살표 대상 */
 export function objectiveTarget(q: StoryQuestDef, o: StoryObjective): QuestGuideTarget {
   const key = o.placeKey ?? '';
+  // 165차 — 목표가 가리킬 장소를 직접 적었으면 종류보다 우선한다
+  if (o.guidePlaceKey) return { kind: 'place', placeKey: o.guidePlaceKey };
   switch (o.kind) {
     case 'talk':
     case 'deliverFree':
@@ -61,6 +63,7 @@ export function objectiveTarget(q: StoryQuestDef, o: StoryObjective): QuestGuide
 export function objectiveHowToKo(q: StoryQuestDef, o: StoryObjective, n: GuideNames): string {
   const giver = q.giver ? n.npcName(q.giver) : '';
   const key = o.placeKey ?? '';
+  if (o.howToKo) return o.howToKo;
   if (o.manual && o.kind !== 'talk') return `${giver ? `${giver}에게` : '상대에게'} 말을 걸어 [다음 단계]로 진행 (이야기 장면)`;
   switch (o.kind) {
     case 'talk': return `${n.npcName(o.npcId ?? q.giver)}에게 다가가 [F]`;

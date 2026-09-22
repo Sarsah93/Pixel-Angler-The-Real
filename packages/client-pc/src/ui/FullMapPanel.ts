@@ -54,6 +54,7 @@ export class FullMapPanel extends Phaser.GameObjects.Container {
   private mapImg!: Phaser.GameObjects.Image;
   private mapC!: Phaser.GameObjects.Container;
   private markerC!: Phaser.GameObjects.Container;
+  private markerTip?: Phaser.GameObjects.Text;
   private maskG!: Phaser.GameObjects.Graphics;
   private zoom = 1;
   private minZoom = 1;
@@ -246,7 +247,28 @@ export class FullMapPanel extends Phaser.GameObjects.Container {
     g.fillStyle(0x0a1628, 1); g.fillCircle(x, y - 9, 2);
   }
 
+  /** 마커 호버 툴팁 — 지도 영역 안쪽으로 붙여 잘리지 않게 한다 */
+  private showMarkerTip(vx: number, vy: number, label: string): void {
+    this.hideMarkerTip();
+    const t = this.scene.add.text(0, 0, label, {
+      fontFamily: FONT, fontSize: '11px', color: '#eef7ff',
+      backgroundColor: '#0a1628f2', padding: { x: 5, y: 3 },
+    }).setOrigin(0.5, 1).setDepth(10);
+    const x = Phaser.Math.Clamp(this.view.x + vx, this.view.x + t.width / 2 + 2, this.view.x + this.view.w - t.width / 2 - 2);
+    const y = Math.max(this.view.y + t.height + 2, this.view.y + vy - 10);
+    t.setPosition(x, y);
+    this.markerTip = t;
+    this.add(t);
+    applyScreenFixed(this);
+  }
+
+  private hideMarkerTip(): void {
+    this.markerTip?.destroy();
+    this.markerTip = undefined;
+  }
+
   private drawMarkers(): void {
+    this.hideMarkerTip();
     const c = this.markerC;
     c.removeAll(true);
     const toX = (wx: number): number => this.toVX(wx);
@@ -264,7 +286,15 @@ export class FullMapPanel extends Phaser.GameObjects.Container {
         taken.add(k);
       }
       const img = addPixelIcon(this.scene, m.icon, x, y, 12);
-      if (img) c.add(img);
+      if (!img) continue;
+      c.add(img);
+      // 165차 — 마커에 마우스를 올리면 이름을 보여 준다(지도 범례만으로는 누가 누구인지 모른다)
+      if (m.label) {
+        const hit = this.scene.add.rectangle(x, y, 16, 16, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
+        hit.on('pointerover', () => this.showMarkerTip(x, y, m.label!));
+        hit.on('pointerout', () => this.hideMarkerTip());
+        c.add(hit);
+      }
     }
     // 목표 — 금색 링 + 라벨
     const t = this.cfg.target();

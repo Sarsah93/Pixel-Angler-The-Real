@@ -8,7 +8,7 @@
 
 import Phaser from 'phaser';
 import { ensurePixelIcon } from './PixelIcon.js';
-import { getNuisance, sashimiStarsAt, sashimiNutrition, foodNutritionOf, nutritionLineKo, restoreFromNutrition } from '@tra/core';
+import { getLureSpec, getNuisance, sashimiStarsAt, sashimiNutrition, foodNutritionOf, nutritionLineKo, restoreFromNutrition } from '@tra/core';
 import { FISH_DATABASE, fishImageSizeScale, fishRarity, speciesStandardWeightG,
   GEAR_FAULTS, gearRepairFee, rodMaxCasts,
   getFireRecipe, getCookIngredient, dishStarsAt, dishVitalsMult, fmtUnits, SALT_LABEL_KO, SUGAR_LABEL_KO, STAR_NAME_KO,
@@ -218,6 +218,25 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
   }
 
   switch (item.subCategory) {
+    case '루어': {
+      // 165차 — 가짜 웜(소프트 루어)은 고무 재질이라 신선도가 없고, 지그헤드에 끼워 던진다.
+      const spec = getLureSpec(item.id);
+      if (spec?.family === 'soft') {
+        rows.push(
+          { label: '분류', value: '가짜 웜 (소프트 루어)' },
+          { label: '재질', value: '고무·실리콘 — 신선도 영향 없음' },
+          { label: '장착', value: '지그헤드에 끼워 바늘 소켓에' },
+        );
+        desc = '생미끼가 아닌 인조 웜입니다. 상하지 않고, 지그헤드 무게로 침강을 조절합니다.';
+      } else if (spec) {
+        rows.push(
+          { label: '분류', value: '하드 루어 (바늘 일체형)' },
+          { label: '재질', value: '금속·플라스틱 — 신선도 영향 없음' },
+        );
+        desc = '바늘이 달린 가짜미끼입니다. 미끼 소켓 없이 바늘 소켓에 바로 장착합니다.';
+      }
+      break;
+    }
     case '손도구':
       if (item.id === 'inv_net' || item.name.includes('뜰채')) {
         rows.push(

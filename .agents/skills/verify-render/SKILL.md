@@ -80,6 +80,11 @@ const { chromium } = resolvePlaywright();
   HMR 분화로 **게임과 다른 인스턴스**(locale 기본 `ko`)를 잡아 `t()`가 전부 원문을 돌려준다.
   "고쳤는데 전 항목 미번역"으로 보인다(120차에 두 번). **i18n 수정 → dev 서버 재시작 → 스캔.**
   게임의 Text 객체를 직접 훑는 방식(`__i18nSrc` vs `text` 비교)은 이 함정이 없다 — 그쪽을 우선한다.
+- **헤드리스 rAF는 프레임 간격이 300ms를 넘는다**(149·155차) — 시간 누적으로 도는 갱신(퀘스트 화살표 `updateQuestGuide` 400ms 등)은
+  `waitForTimeout`으로 기다리지 말고 **씬 메서드를 직접 호출**(`s.updateQuestGuide(500)`). 2.5초를 기다려도 null이 나온다.
+- **`update()`가 매 프레임 `nearWater`를 다시 계산한다**(155차) — 캐스팅 게이트를 하네스로 두드릴 때는 `s.nearWater = true`를
+  **호출 직전마다** 다시 넣는다(한 번 넣고 두 번째 `tryStartCharge`를 부르면 `charging false`).
+- 필드 화살표·추적기 검증은 `__STORY.setTracked(id)` → `s.updateQuestGuide(500)` → `s.hud.trackerC.list`(Text)·`s.questArrowG.visible`.
 - **모듈 데이터 객체의 동일성(===) 비교 금지** (98차 실측) — 하네스가 import한 레지스트리와 게임/모듈이
   든 레지스트리는 인스턴스가 갈라질 수 있다(서버 재시작 직후에도 재현). 스프라이트 비교는
   **값 시그니처**(`w x h : rows[0]` 등)로 할 것.
