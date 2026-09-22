@@ -542,6 +542,13 @@ export {
   STORY_CHOICE_OVERRIDES, toneOfferChoices, selfOfferChoices, selfCompleteChoices, lessonCategoryOf, payChoiceCoins, defaultCompleteChoices, choicesFor,
   choiceVisible, describeOutcomeKo, allChoiceLines, validateStoryChoices, hasCustomChoices, DEFAULT_DECLINE,
 } from './db-schema/StoryChoices.js';
+// ── 정기 지출(유지비) — 171차 ──
+export type { UpkeepKind, UpkeepItem, UpkeepLedger, UpkeepContext, UpkeepPenalty } from './rules/Upkeep.js';
+export {
+  licenseRenewalFee, licenseRenewalDays, listUpkeep, upkeepAlerts,
+  upkeepPenalty, fisheryGroundFee, coopDuesFeeCut,
+} from './rules/Upkeep.js';
+
 export type { FisheryLawRule } from './rules/FisheryLaw.js';
 export {
   FISHERY_LAW_RULES, getFisheryLawRule, NON_FISHER_GEAR_WHITELIST, VILLAGE_FISHERY_TARGETS,

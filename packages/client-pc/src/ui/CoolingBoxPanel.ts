@@ -34,8 +34,8 @@ export class CoolingBoxPanel extends Phaser.GameObjects.Container {
       {
         instanceId: 'demo_cooler_2',
         type: 'fish',
-        speciesId: 'dark_banded_rockfish',
-        nameKo: '볼락',
+        speciesId: 'blue_rockfish',
+        nameKo: '청볼락',
         weightGrams: 300,
         condition: 'fresh',
         storedAtGameMinute: 0,

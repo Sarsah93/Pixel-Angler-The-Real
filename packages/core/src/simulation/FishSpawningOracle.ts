@@ -297,12 +297,13 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
   },
   {
     speciesId: 'blue_rockfish', nameKo: '청볼락', nameEn: 'Blue Rockfish',
-    habitat: ['reef'], minDepthM: 2, maxDepthM: 15, preferredLayers: ['mid'],
-    baitPreference: { krill: 60, lure: 30, worm_blue: 10 },
-    minCm: 10, maxCm: 30, meanCm: 18, sdCm: 3, lwrA: 0.022, lwrB: 3, bodyForm: 'roundish', maleRatio: 0.5,
-    sexNote: '중층에 무리 지어 조류를 타는 회유성 — 찌낚시 주 타겟',
-    // 볼락류 공통 야행성 — 밤 중층 부상 피딩
-    legalMinCm: 15, nightBonus: 1.8, tideActivity: sariPeak(0.5, 0.85),
+    // 171차: '볼락'은 청볼락·황볼락을 아우르는 상위 이름이라 별도 종으로 두지 않는다(사용자 지시).
+    //   구 dark_banded_rockfish('볼락')의 야간 상층 보일링 형질을 여기로 흡수했다.
+    habitat: ['reef', 'structure'], minDepthM: 2, maxDepthM: 25, preferredLayers: ['surface', 'mid'],
+    baitPreference: { krill: 60, lure: 25, worm_blue: 15 },
+    minCm: 10, maxCm: 35, meanCm: 19, sdCm: 3.5, lwrA: 0.022, lwrB: 3, bodyForm: 'roundish', maleRatio: 0.5,
+    sexNote: '중층에 무리 지어 조류를 타는 회유성 — 야간 상층 피딩 보일링을 형성한다',
+    legalMinCm: 15, nightBonus: 2.0, tideActivity: sariPeak(0.5, 0.85),
     fight: { basePower: 0.3, patternWeights: { jump: 0.2, dive: 0.3, lateral: 0.5 }, intervalMult: 1.1, mouthFragility: 0.25 },
   },
   {
@@ -509,15 +510,6 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     // 여명/황혼 피딩 회유어 — 한밤엔 활성 급감. 금지체장 30cm (2026-07 리서치)
     legalMinCm: 30, nightBonus: 0.5, tideActivity: sariPeak(0.3, 0.85),
     fight: { basePower: 0.95, patternWeights: { jump: 0.2, dive: 0.25, lateral: 0.55 }, intervalMult: 0.75, mouthFragility: 0.05 },
-  },
-  {
-    speciesId: 'dark_banded_rockfish', nameKo: '볼락', nameEn: 'Dark-banded Rockfish',
-    habitat: ['reef', 'structure'], minDepthM: 3, maxDepthM: 30, preferredLayers: ['surface', 'mid'],
-    baitPreference: { krill: 60, worm_blue: 25, lure: 15 },
-    minCm: 12, maxCm: 42, meanCm: 22, sdCm: 4, lwrA: 0.016, lwrB: 3.03, bodyForm: 'roundish', maleRatio: 0.5,
-    sexNote: '야간 상층 피딩 보일링을 형성하는 대표 야행성 어종',
-    legalMinCm: 15, nightBonus: 2.0, tideActivity: flatTide(0.7),
-    fight: { basePower: 0.25, patternWeights: { jump: 0.2, dive: 0.4, lateral: 0.4 }, intervalMult: 1.1, mouthFragility: 0.3 },
   },
   {
     speciesId: 'red_snapper_rockfish', nameKo: '열기(불볼락)', nameEn: 'Goldeye Rockfish',

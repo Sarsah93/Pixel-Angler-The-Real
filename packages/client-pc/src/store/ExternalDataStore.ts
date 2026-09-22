@@ -89,7 +89,7 @@ const KOSIS_SPECIES_MATCH: { keywords: string[]; speciesIds: string[] }[] = [
   { keywords: ['고등어'], speciesIds: ['chub_mackerel'] },
   { keywords: ['전갱이'], speciesIds: ['horse_mackerel'] },
   { keywords: ['조피볼락', '우럭'], speciesIds: ['black_rockfish'] },
-  { keywords: ['볼락'], speciesIds: ['dark_banded_rockfish', 'golden_rockfish', 'blue_rockfish', 'red_snapper_rockfish'] },
+  { keywords: ['볼락'], speciesIds: ['blue_rockfish', 'golden_rockfish', 'red_snapper_rockfish'] },
   { keywords: ['방어'], speciesIds: ['yellowtail', 'amberjack', 'greater_amberjack'] },
   { keywords: ['농어'], speciesIds: ['sea_bass'] },
   { keywords: ['숭어'], speciesIds: ['striped_mullet', 'redlip_mullet'] },

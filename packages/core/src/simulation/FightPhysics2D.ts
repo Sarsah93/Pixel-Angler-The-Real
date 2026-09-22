@@ -343,7 +343,7 @@ export const MOVEMENT_PROFILES: Record<string, MovementProfile> = {
   cuttlefish:        { lateralBias: 0.35, diveBias: 0.30, jumpBias: 0.00, jetBias: 0.70, runPower: 0.60, runDurationSec: 0.8, turnResist: 0.30, staminaScale: 0.50 }, // 갑오징어
 
   // 락피시 — 구조물로 파고듦(하방), 순함
-  dark_banded_rockfish: { lateralBias: 0.40, diveBias: 0.60, jumpBias: 0.05, jetBias: 0.00, runPower: 0.80, runDurationSec: 1.0, turnResist: 0.50, staminaScale: 0.60 }, // 볼락
+  blue_rockfish: { lateralBias: 0.40, diveBias: 0.60, jumpBias: 0.05, jetBias: 0.00, runPower: 0.80, runDurationSec: 1.0, turnResist: 0.50, staminaScale: 0.60 }, // 청볼락
 };
 
 /** 미등록 어종 폴백 */

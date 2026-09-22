@@ -588,9 +588,18 @@ export class ForageSystem {
 
     // ── 강원 조례 — 어촌계 어장 안 보호 5종 → 적발 롤 ──
     const farm = farmAt(this.farms, h.spot.tx + 0.5, h.spot.ty + 0.5);
+    // ── 171차 · 어장 행사료 ── 어촌계 어장은 남의 앞마당이다. 그 안에서 거둬 가면
+    //   계원이든 아니든 행사료를 낸다(계원은 싸다). 막지는 않는다 — 위반 판정은 아래 조례가 한다.
+    if (farm) {
+      const fee = GameState.fisheryGroundFeeKrw();
+      if (fee > 0 && GameState.addCoins(-fee)) {
+        this.host.pushLog(`[어장] ${farm.name} 행사료 ${fee.toLocaleString()}원 납부`);
+      }
+    }
     // 수협 조합원증(어업인 등록)은 조례 면제 (122차 면허)
     if (farm && !GameState.hasLicense('fishery_member') && isOrdinanceViolation(res.creatureId, farm)) {
-      const enf = rollEnforcement(GameState.player.inventory.coins, Math.random);
+      // 171차 — 자격 갱신 연체 중이면 단속이 더 붙는다
+      const enf = rollEnforcement(GameState.player.inventory.coins, Math.random, GameState.upkeepPenalty().enforceMult);
       if (enf.caught) {
         if (where === 'cooler') CoolerStore.removeAt(coolerIdx);
         else InventoryStore.removeQty(invId, 1);

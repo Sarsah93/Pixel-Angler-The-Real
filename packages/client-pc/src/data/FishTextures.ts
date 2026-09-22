@@ -19,7 +19,7 @@ export const FISH_TEXTURE: Record<string, string> = {
   squid: 'fish_squid',                     // 무늬오징어
   hairtail: 'fish_hairtail',               // 갈치
   cuttlefish: 'fish_cuttlefish',           // 갑오징어
-  // blue_rockfish(청볼락) — 구 매핑은 **일반 볼락** 사진이라 170차에 회수. 전용 실사 대기.
+  blue_rockfish: 'fish_blue_rockfish',     // 청볼락 — dark-banded_rockfish.png (171차)
   filefish: 'fish_filefish',               // 쥐치
   golden_rockfish: 'fish_golden_rockfish', // 황볼락
   sea_bass: 'fish_sea_bass',               // 농어
@@ -33,8 +33,8 @@ export const FISH_TEXTURE: Record<string, string> = {
   horse_mackerel: 'fish_horse_mackerel',   // 전갱이
   chub_mackerel: 'fish_chub_mackerel',     // 고등어
   // 2026-07-22 2차 추가
-  // greenling(놀래미) — 구 매핑은 **쏨뱅이** 사진이라 170차에 회수. 전용 실사 대기.
-  scorpionfish: 'fish_scorpionfish',       // 쏨뱅이 — spotbelly_rockfish.png (170차)
+  greenling: 'fish_greenling',             // 놀래미 — spotbelly_rockfish.png (171차)
+  scorpionfish: 'fish_scorpionfish',       // 쏨뱅이 — spotbelly_greenling.png (171차)
   fat_greenling: 'fish_fat_greenling',     // 쥐노래미
   surfperch: 'fish_surfperch',             // 망상어
   // 2026-07-25 추가 (기존 4종 텍스처 + 복섬 개명 + 신규 6종)

@@ -131,9 +131,9 @@ const WATERLINE = 268;
 const PX_PER_M_X = 24;
 /** 뒷줄견제(H) 시 속채비(목줄·미끼)가 조류 방향(하류)으로 펴지는 최대 거리 계수 (m per m/s, 정렬도 가중) */
 const SUBRIG_EXTEND_K = 7;
-/** 홈타운(집 앞 바다) 어획 규제 어종 — 볼락류 5종 + 보리멸 (초보 구역) */
+/** 홈타운(집 앞 바다) 어획 규제 어종 — 볼락류 4종 + 보리멸 (초보 구역) */
 const HOMETOWN_SPECIES = [
-  'dark_banded_rockfish', 'black_rockfish', 'golden_rockfish',
+  'black_rockfish', 'golden_rockfish',
   'blue_rockfish', 'red_snapper_rockfish', 'northern_whiting',
 ];
 /** 정면뷰 뷰 중심이 찌를 따라가지 않고 캐스터를 기준으로 유지할 화면 여백(px) — 이보다 밖으로 나가면 그만큼만 팬 */

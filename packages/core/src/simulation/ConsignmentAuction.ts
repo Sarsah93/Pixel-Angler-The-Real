@@ -81,9 +81,10 @@ export function canConsign(provenance: CatchProvenance, licenses: readonly strin
  *
  * @param harborRep 해당 항구 평판 — **0~100 스케일**(`ReputationState.harbor`). 0 = 신참
  */
-export function consignmentFeeRate(harborRep: number): number {
+export function consignmentFeeRate(harborRep: number, duesCut = 0): number {
   const t = TUNING.auction;
-  const rate = t.feeRateBase - harborRep * t.feeRepSlope;
+  // 171차 — 수협 조합비를 성실히 내고 있으면 요율을 더 깎아 준다(정기 지출의 대가).
+  const rate = t.feeRateBase - harborRep * t.feeRepSlope - Math.max(0, duesCut);
   return Math.max(t.feeRateMin, Math.min(0.5, rate));
 }
 
@@ -182,6 +183,8 @@ export function openConsignmentSession(
   gameWeekday: number,
   harborRep: number,
   schedule: AuctionScheduleRule = DEFAULT_AUCTION_SCHEDULE,
+  /** 조합비 납부 중일 때의 수수료 할인폭 (171차 — `coopDuesFeeCut`) */
+  duesCut = 0,
 ): ConsignmentSession | null {
   if (lots.length === 0) return null;
   if (!isConsignmentOpen(category, gameHour, gameMinute, gameWeekday, schedule)) return null;
@@ -194,7 +197,7 @@ export function openConsignmentSession(
     callElapsedSec: 0,
     tickCooldownSec: 0,
     bidCount: 0,
-    feeRate: consignmentFeeRate(harborRep),
+    feeRate: consignmentFeeRate(harborRep, duesCut),
   };
 }
 

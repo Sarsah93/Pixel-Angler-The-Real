@@ -47,7 +47,7 @@ export interface BiteFactors {
 const BAIT_SPECIES_AFFINITY: Record<string, BaitCategory[]> = {
   black_seabream: ['crab', 'mussel', 'barnacle', 'sandworm', 'earthworm'],
   largescale_blackfish: ['bread', 'sandworm', 'mussel', 'barnacle'],
-  dark_banded_rockfish: ['sandworm', 'prawn', 'artificial_worm'],
+  blue_rockfish: ['sandworm', 'prawn', 'artificial_worm'],
   hairtail: ['sandworm', 'squid', 'fish_strip', 'artificial_lure'],
   yellowtail: ['artificial_lure', 'squid', 'fish_strip'],
   amberjack: ['artificial_lure', 'fish_strip'],
@@ -80,7 +80,7 @@ function getSeasonScore(profile: FishBehaviorProfile, currentTime: Date): number
   // 영등철 저수온 극복 보정 (2~3월)
   if (month === 2 || month === 3) {
     if (
-      profile.speciesId === 'dark_banded_rockfish' ||
+      profile.speciesId === 'blue_rockfish' ||
       profile.speciesId === 'black_rockfish' ||
       profile.speciesId === 'golden_rockfish' ||
       profile.speciesId === 'red_snapper_rockfish'

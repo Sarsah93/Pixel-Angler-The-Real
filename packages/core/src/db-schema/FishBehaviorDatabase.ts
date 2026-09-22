@@ -187,7 +187,7 @@ export const FISH_BEHAVIOR_DB: FishBehaviorProfile[] = [
   // 전국 방파제 야간 가족 낚시 대표 어종
   // ─────────────────────────────────
   {
-    speciesId: 'dark_banded_rockfish',
+    speciesId: 'blue_rockfish',
     seasonActivity: {
       spring: 0.80,  // 3~5월 산란기 입질 활발
       summer: 0.60,

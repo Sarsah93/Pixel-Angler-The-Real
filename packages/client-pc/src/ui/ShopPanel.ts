@@ -23,7 +23,7 @@ import {
   consignableItems, consignGradeOf, consignInputOf, hasCrate,
   ReserveMode, RESERVE_LABEL,
 } from '../data/Consignment.js';
-import { isConsignmentOpen, minutesUntilConsignment, consignmentFeeRate, REGION_DATABASE } from '@tra/core';
+import { isConsignmentOpen, minutesUntilConsignment, consignmentFeeRate, coopDuesFeeCut, REGION_DATABASE } from '@tra/core';
 import { t, getLocale } from '../i18n/I18n.js';
 
 type ShopTab = 'buy' | 'sell' | 'repair' | 'consign';
@@ -283,6 +283,12 @@ export class ShopPanel extends DraggablePanel {
     } else if (this.currentTab === 'consign') {
       // 147차 — 위판 출품 목록. 낚싯대 어획은 법이 영원히 막고(§3), 통발·채집물은
       // 어업인 자격(reported_fishery)이 있어야 올라간다. 판정은 core canConsign이 한다.
+      // 171차 — 자격 갱신을 연체하면 위판 창구가 닫힌다(자격 자체를 잃지는 않는다).
+      const up = GameState.upkeepPenalty();
+      if (up.blockConsign) {
+        this.renderEmptyNote(gy0, `${up.overdueNames[0]} 납부가 밀려 위판을 받지 않습니다.`);
+        return;
+      }
       const licenses = StoryStore.heldLicenses();
       const region = GameState.currentRegionId;
       const items = consignableItems(licenses, region, StoryStore.storyDay);
@@ -377,7 +383,7 @@ export class ShopPanel extends DraggablePanel {
     const h = kst.getHours(), m = kst.getMinutes(), wd = kst.getDay();
     const liveOpen = isConsignmentOpen('fish_live', h, m, wd);
     const freshOpen = isConsignmentOpen('fish_fresh', h, m, wd);
-    const fee = consignmentFeeRate(StoryStore.harborRep(GameState.currentRegionId));
+    const fee = consignmentFeeRate(StoryStore.harborRep(GameState.currentRegionId), coopDuesFeeCut(GameState.coopDuesPaid()));
 
     // ⚠ 합성 문자열은 정확 일치 사전을 비껴간다(131차) — **붙이기 전에** 조각을 t()로 번역한다
     const openLabel = liveOpen ? t('활어 경매 진행 중')

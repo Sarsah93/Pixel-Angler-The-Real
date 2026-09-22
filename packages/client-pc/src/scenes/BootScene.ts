@@ -280,8 +280,7 @@ export class BootScene extends Phaser.Scene {
     this.load.image('fish_squid', 'fish/bigfin_reef_squid.png');            // 무늬오징어
     this.load.image('fish_hairtail', 'fish/Cutlassfish.png');               // 갈치 (파일명 대문자 C — gh-pages 대소문자 구분)
     this.load.image('fish_cuttlefish', 'fish/cuttlefish.png');              // 갑오징어
-    // ⚠ 청볼락에 쓰이던 'dark-banded_rockfish.png'는 **일반 볼락** 사진이라 170차에 회수했다.
-    //   청볼락 전용 실사가 들어오면 여기에 fish_blue_rockfish로 다시 건다.
+    this.load.image('fish_blue_rockfish', 'fish/dark-banded_rockfish.png');  // 청볼락 (171차 사용자 확인)
     this.load.image('fish_filefish', 'fish/filefish.png');                  // 쥐치
     this.load.image('fish_golden_rockfish', 'fish/owstons_rockfish.png');   // 황볼락
     this.load.image('fish_sea_bass', 'fish/sea_bass.png');                  // 농어
@@ -297,13 +296,13 @@ export class BootScene extends Phaser.Scene {
     this.load.image('fish_stone_beakperch_female', 'fish/barred_knifejaw_female.png');
     this.load.image('fish_stone_beakperch_male', 'fish/barred_knifejaw_male.png');
     // DB 미등록 어종 — 어종 추가 시 FISH_TEXTURE에 매핑만 연결하면 됨 (에셋은 선(先)로드)
-    // ⚠ spotbelly_rockfish.png ↔ spotbelly_greenling.png는 **바이트 동일한 중복 파일**이고,
-    //   내용은 둘 다 쏨뱅이(무늬 있는 볼락류)다 — 170차 사용자 지적으로 확인.
-    //   그래서 이 사진은 쏨뱅이에 걸고, 놀래미(greenling)는 전용 실사가 올 때까지 비워 둔다.
-    this.load.image('fish_scorpionfish', 'fish/spotbelly_rockfish.png');       // 쏨뱅이
+    // ⚠ 170차에 "두 파일이 바이트 동일한 중복"이라고 적었던 것은 **public 사본이 덮어써져 있었기**
+    //   때문이다(171차 정정). `food assets/` 원본은 서로 다른 사진이고, 사용자 확인대로
+    //   spotbelly_greenling = 쏨뱅이 · spotbelly_rockfish = 놀래미다.
+    this.load.image('fish_scorpionfish', 'fish/spotbelly_greenling.png');      // 쏨뱅이
     this.load.image('fish_swordtip_squid', 'fish/swordtip_squid.png');         // 한치(창꼴뚜기) — 2026-08-05 DB 등록 완료 (FISH_TEXTURE 배선됨)
     // 2026-07-22 2차 추가 (놀래미/쥐노래미/망상어 + 용치놀래기 암/수)
-    // 놀래미(greenling) — 전용 실사 대기(구 spotbelly_greenling.png는 쏨뱅이 사진이었다 · 170차 회수)
+    this.load.image('fish_greenling', 'fish/spotbelly_rockfish.png');          // 놀래미(노래미)
     this.load.image('fish_fat_greenling', 'fish/fat_greenling.png');           // 쥐노래미
     this.load.image('fish_surfperch', 'fish/surf_perch.png');                  // 망상어
     // 용치놀래기 — 암컷→수컷 성전환 어종 (수컷 = 화려한 녹색 혼인색) — 성별별 이미지 분기

@@ -178,7 +178,7 @@ export const REGION_DATABASE: RegionDef[] = [
     subSpotIds: [
       'ulsan_seuldo',
     ],
-    representativeSpeciesIds: ['dark_banded_rockfish', 'black_seabream'],
+    representativeSpeciesIds: ['blue_rockfish', 'black_seabream'],
   },
   // ── 부산 ───────────────────────────────────
   {
@@ -210,7 +210,7 @@ export const REGION_DATABASE: RegionDef[] = [
     subSpotIds: [
       'ulleungdo_jeodong',
     ],
-    representativeSpeciesIds: ['dark_banded_rockfish', 'red_seabream'],
+    representativeSpeciesIds: ['blue_rockfish', 'red_seabream'],
   },
   // ── 독도 ───────────────────────────────────
   {
@@ -226,7 +226,7 @@ export const REGION_DATABASE: RegionDef[] = [
     subSpotIds: [
       'dokdo_coast',
     ],
-    representativeSpeciesIds: ['dark_banded_rockfish', 'amberjack'],
+    representativeSpeciesIds: ['blue_rockfish', 'amberjack'],
   },
 ];
 

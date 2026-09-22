@@ -109,7 +109,7 @@ import { buildItemWikiCatalog } from '../data/WikiCatalog.js';
 import { playCollapse, type CollapseKind } from '../ui/CollapseOverlay.js';
 import { TUNING, getTrapById, MP_CHAT_MAX_LEN, type RegionFishFarms } from '@tra/core';
 // 147차 — 위판(경매 현장). 구매자 측 AuctionEngine과 방향이 반대다(ConsignmentAuction 헤더 참조).
-import { buildConsignmentLots, isConsignmentOpen, openConsignmentSession, type ConsignInput, type ConsignmentSettlement } from '@tra/core';
+import { buildConsignmentLots, isConsignmentOpen, openConsignmentSession, coopDuesFeeCut, type ConsignInput, type ConsignmentSettlement } from '@tra/core';
 import { AuctionHousePanel } from '../ui/AuctionHousePanel.js';
 import { tilesetPathOf } from '../data/TilesetManifest.js';
 import { TrafficSystem } from './TrafficSystem.js';
@@ -2581,7 +2581,11 @@ export class RegionFieldScene extends Phaser.Scene {
     }
 
     const rep = StoryStore.harborRep(GameState.currentRegionId);
-    const session = openConsignmentSession(openCat, buildConsignmentLots(going), h, m, wd, rep);
+    // 171차 — 조합비를 내고 있으면 위판 수수료가 더 싸다
+    const session = openConsignmentSession(
+      openCat, buildConsignmentLots(going), h, m, wd, rep,
+      undefined, coopDuesFeeCut(GameState.coopDuesPaid()),
+    );
     if (!session) { this.shopPanel?.setStatus('경매를 열 수 없습니다.'); return; }
 
     if (left > 0) this.shopPanel?.setStatus(`${left}건은 경매 시간이 달라 남겨 두었습니다.`);

@@ -23,7 +23,7 @@ export const LURES_CATALOG_DB: LureSpec[] = [
     weightG: 2.5, sinkType: 'sinking', sinkRateMps: 0.15, dragCoefficient: 0.45,
     requiresJigHead: true,
     // 웜+지그헤드 = 광어 다운샷 + 락피시 (2026-07 리서치 매핑)
-    speciesWeightBias: { black_rockfish: 0.20, dark_banded_rockfish: 0.15, flatfish: 0.18, scorpionfish: 0.10 },
+    speciesWeightBias: { black_rockfish: 0.20, blue_rockfish: 0.15, flatfish: 0.18, scorpionfish: 0.10 },
     actionFlags: ['wobble'],
   },
   {
@@ -31,7 +31,7 @@ export const LURES_CATALOG_DB: LureSpec[] = [
     brand: 'Nature Tail', family: 'soft', kind: 'worm_grub', sizeLabel: '3인치',
     weightG: 4.0, sinkType: 'sinking', sinkRateMps: 0.18, dragCoefficient: 0.45,
     requiresJigHead: true,
-    speciesWeightBias: { black_rockfish: 0.20, dark_banded_rockfish: 0.15, flatfish: 0.18, scorpionfish: 0.10 },
+    speciesWeightBias: { black_rockfish: 0.20, blue_rockfish: 0.15, flatfish: 0.18, scorpionfish: 0.10 },
     actionFlags: ['wobble'],
   },
   // 소프트 저크베이트 · Fluid · Shad Minnow Worm (다트 액션 — 농어/연안 광어)
@@ -89,14 +89,14 @@ export const LURES_CATALOG_DB: LureSpec[] = [
     weightG: 5.5, sinkType: 'sinking', sinkRateMps: 0.20, dragCoefficient: 0.55,
     targetHabitatBias: ['structure', 'reef'], actionFlags: ['rolling'],
     // 계류/구조물성 소형 어종 (볼락·노래미류)
-    speciesWeightBias: { greenling: 0.12, fat_greenling: 0.10, dark_banded_rockfish: 0.12 },
+    speciesWeightBias: { greenling: 0.12, fat_greenling: 0.10, blue_rockfish: 0.12 },
   },
   {
     id: 'lure_spinner_8', nameKo: '로터리 윙 8g', nameEn: 'Rotary Wing 8g',
     brand: 'Blade Studio', family: 'hard', kind: 'spinner', sizeLabel: '8g',
     weightG: 8.0, sinkType: 'sinking', sinkRateMps: 0.26, dragCoefficient: 0.55,
     targetHabitatBias: ['structure', 'reef'], actionFlags: ['rolling'],
-    speciesWeightBias: { greenling: 0.12, fat_greenling: 0.10, dark_banded_rockfish: 0.12 },
+    speciesWeightBias: { greenling: 0.12, fat_greenling: 0.10, blue_rockfish: 0.12 },
   },
   // 에기 · Kraken · Dart Master Egi (두족류 전용 — 무늬오징어/문어/갑오징어/한치, 바닥 걸림 -30%)
   // ⚠ egiOnly 두족류는 이 spawnBinding에 있을 때만 스폰 후보에 오른다 — 신규 두족류 추가 시 필수 배선

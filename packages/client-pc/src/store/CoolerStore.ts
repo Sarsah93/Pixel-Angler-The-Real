@@ -23,6 +23,7 @@ import {
   InvCondition, CONDITION_NEXT, CONDITION_DURATION_MIN,
 } from './InventoryStore.js';
 import type { ChumTypeKey, CatchMethod } from '@tra/core';
+import { migrateSpeciesId } from '../data/SpeciesMigration.js';
 
 /** 쿨러에 보관되는 어획 개체 (실측치 보존 — 인벤토리 이송 시 그대로 전달) */
 export interface CoolerFish {
@@ -335,7 +336,8 @@ class CoolerStoreImpl {
       const f = s.slots?.[i];
       if (!f) return null;
       // 구버전/결손 필드 방어 — 신선도 필드 기본값 병합
-      return { ...f, condition: f.condition ?? 'live', stateElapsedMs: f.stateElapsedMs ?? 0 };
+      // 171차 — 통폐합된 어종 id는 현행 id로 옮긴다(구세이브 호환).
+      return { ...f, speciesId: migrateSpeciesId(f.speciesId) ?? f.speciesId, condition: f.condition ?? 'live', stateElapsedMs: f.stateElapsedMs ?? 0 };
     });
     this.medium = s.medium ?? 'none';
     this.mediumExpiredApplied = s.mediumExpiredApplied ?? false;

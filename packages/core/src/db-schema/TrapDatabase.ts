@@ -111,9 +111,9 @@ export const TRAP_DATABASE: TrapSpec[] = [
     durability: 180,
     maxDurability: 180,
     targetCategories: ['crustacean', 'cephalopod'],
-    // 그물 통발에 실제로 드는 저서 어종 — 볼락·우럭·노래미류·문절망둑·붕장어
+    // 그물 통발에 실제로 드는 저서 어종 — 청볼락·우럭·노래미류·문절망둑·붕장어
     targetFishSpecies: [
-      'dark_banded_rockfish', 'black_rockfish', 'fat_greenling', 'greenling',
+      'blue_rockfish', 'black_rockfish', 'fat_greenling', 'greenling',
       'yellowfin_goby', 'conger_eel',
       // 도루묵 — 겨울 동해 산란 접안. 10~12월 산란기 통발 포획은 강원 조례 위반(단속 이벤트)
       'sandfish',

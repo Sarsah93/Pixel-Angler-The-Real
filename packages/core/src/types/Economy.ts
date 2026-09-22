@@ -74,7 +74,7 @@ export const SEAFOOD_AUCTION_MAPPING: Record<string, AuctionMappingDef> = {
     defaultPricePerKg: 15000,
     sizeFactorMultiplier: 1.0,
   },
-  dark_banded_rockfish: {
+  blue_rockfish: {
     itemCode: '100502', // 볼락
     defaultPricePerKg: 12000,
     sizeFactorMultiplier: 1.1,

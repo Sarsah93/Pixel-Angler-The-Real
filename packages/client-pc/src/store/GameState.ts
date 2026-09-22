@@ -64,6 +64,10 @@ import { CoolerStore, CoolerSaveState } from './CoolerStore.js';
 import { InventoryStore, InventorySaveState } from './InventoryStore.js';
 import { FridgeStore, FridgeSaveState } from './FridgeStore.js';
 import { DiscoveryStore, DiscoverySaveState } from './DiscoveryStore.js';
+import {
+  listUpkeep, upkeepAlerts, upkeepPenalty, licenseRenewalFee, fisheryGroundFee,
+  type UpkeepItem, type UpkeepLedger, type UpkeepPenalty,
+} from '@tra/core';
 
 // ─────────────────────────────────────────────
 // 기본 쿨러 상태
@@ -198,6 +202,8 @@ interface SaveData {
   skillProf?: SkillProficiency;
   /** 퀘스트 선택지로 받은 보너스 스킬 포인트 (140차) — 레벨·면허 파생분에 더한다 */
   bonusSkillPoints?: number;
+  /** 정기 지출 납부 이력 (171차) — key → 마지막 납부한 **게임 일자** */
+  upkeepLedger?: UpkeepLedger;
   version: number;
 }
 
@@ -323,6 +329,15 @@ export class GameStateManager {
     this._skillRanks = saved.skillTree ?? {};
     this._skillProf = saved.skillProf ?? {};
     this._bonusSkillPoints = saved.bonusSkillPoints ?? 0;
+    // 171차 — 정기 지출 이력. 구세이브는 비어 있으므로, 이미 가진 자격의 기산점을
+    //   **지금 일자로 백필**한다. 안 하면 납부 예정일이 매번 '오늘 + 한 주기'로 다시 계산돼
+    //   영영 도래하지 않는다(= 갱신이 또 사문이 된다).
+    this._upkeepLedger = { ...(saved.upkeepLedger ?? {}) };
+    for (const l of this._licenses) {
+      if (this._upkeepLedger[l.type] !== undefined) continue;
+      const d = getLicenseByType(l.type);
+      if (d?.requiresRenewal && licenseRenewalFee(d) > 0) this._upkeepLedger[l.type] = StoryStore.storyDay;
+    }
     this._flags = saved.flags ?? {};
     this._worldObjects = saved.worldObjects ?? {};
     // 쿨러 복원 — 저장~로드 사이 실경과 시간을 sync로 반영 (어획 신선도/매질 만료, 밑밥은 그대로)
@@ -794,6 +809,7 @@ export class GameStateManager {
     coreApplySleep(v, mult * this.skillMult('sleep_recovery'));   // 127차 — 쾌면(life_sleep)
     this.commitVitals(v);
     StoryStore.advanceDay();   // 134차 — 스토리 하루는 침대 수면으로만 간다 (D-180)
+    this.applyUpkeepOverdue();  // 171차 — 연체 중인 정기 지출은 하루마다 평판을 깎는다
     this.markDirty();
   }
 
@@ -1172,27 +1188,31 @@ export class GameStateManager {
 
   // ─── 라이선스 조작 ─────────────────────────
 
-  /** 라이선스 보유 여부 확인 */
+  /**
+   * 라이선스 보유 여부.
+   * ⚖ **미갱신(연체)이어도 보유는 보유다** — 171차. 만료를 "자격 상실"로 만들면 진행 중
+   *   세이브가 막힌다(선행 자격을 요구하는 퀘스트가 영영 안 열린다). 연체의 불이익은
+   *   `upkeepPenalty`(위판 거부·평판 감점·단속 강화)로만 준다.
+   */
   hasLicense(type: LicenseType): boolean {
-    return this._licenses.some((l) => l.type === type && !l.isExpired);
+    return this._licenses.some((l) => l.type === type);
   }
 
-  /** 라이선스 취득 */
+  /** 라이선스 취득 — 취득일은 **게임 일자**로 기록되고, 그때부터 갱신 주기가 돈다 */
   acquireLicense(type: LicenseType): boolean {
     if (this.hasLicense(type)) return false;
     const def = getLicenseByType(type);
     if (!def) return false;
 
-    const expiresAt = def.requiresRenewal && def.renewalIntervalDays
-      ? new Date(Date.now() + def.renewalIntervalDays * 24 * 3600000)
-      : undefined;
-
     this._licenses.push({
       type,
       acquiredAt: new Date(),
-      expiresAt,
       isExpired: false,
     });
+    // 171차 — 갱신 주기의 기산점은 취득한 **게임 일자**다(실제 벽시계가 아니다).
+    if (def.requiresRenewal && licenseRenewalFee(def) > 0) {
+      this._upkeepLedger[type] = StoryStore.storyDay;
+    }
     // 130차 — 면허는 **스킬 포인트 +1**(등식 우변)이자 (d) 해금 조건이다.
     //   취득 즉시 히든 시너지 조건이 채워질 수 있으므로 함께 갱신한다.
     this.refreshHiddenSkills();
@@ -1201,14 +1221,84 @@ export class GameStateManager {
     return true;
   }
 
-  /** 라이선스 만료 여부 체크 & 업데이트 */
-  checkLicenseExpiry(): void {
-    const now = Date.now();
-    for (const lic of this._licenses) {
-      if (lic.expiresAt && lic.expiresAt.getTime() < now) {
-        lic.isExpired = true;
+  // ─── 정기 지출(유지비) — 171차 ───────────────
+
+  /** 납부 이력 (key → 마지막 납부한 게임 일자) */
+  private _upkeepLedger: UpkeepLedger = {};
+
+  /** 지금 걸려 있는 정기 지출 전체 (납부 예정일 순) */
+  upkeepItems(): UpkeepItem[] {
+    return listUpkeep({
+      day: StoryStore.storyDay,
+      heldLicenses: this._licenses.map((l) => l.type),
+      licenseDef: (t) => getLicenseByType(t),
+      ledger: this._upkeepLedger,
+    });
+  }
+
+  /** 곧 다가오거나 이미 지난 것만 (알림용) */
+  upkeepAlerts(): UpkeepItem[] { return upkeepAlerts(this.upkeepItems()); }
+
+  /** 연체 중일 때의 불이익 — 위판 거부 · 평판 감점 · 단속 강화 */
+  upkeepPenalty(): UpkeepPenalty { return upkeepPenalty(this.upkeepItems()); }
+
+  /** 조합비를 성실히 내고 있는가 (위판 수수료 할인 조건) */
+  coopDuesPaid(): boolean {
+    if (!this.hasLicense('fishery_member')) return false;
+    return !this.upkeepItems().some((i) => i.kind === 'coop_dues' && i.overdue);
+  }
+
+  /**
+   * 정기 지출 1건 납부.
+   * 연체분은 **한 회차만** 정산한다 — 오래 미룬 사람에게 누적 청구서를 던지면
+   * 회복 불가능해진다(147차 「기한 초과는 재화가 아니라 평판」과 같은 원칙).
+   */
+  payUpkeep(key: string): { ok: boolean; reason?: string; paidKrw?: number; note?: string } {
+    const item = this.upkeepItems().find((i) => i.key === key);
+    if (!item) return { ok: false, reason: '해당 납부 항목이 없습니다.' };
+    if (item.daysLeft > TUNING.upkeep.warnDays) {
+      return { ok: false, reason: '아직 납부일이 되지 않았습니다.' };
+    }
+    if ((this._player?.inventory.coins ?? 0) < item.costKrw) {
+      return { ok: false, reason: '재화가 부족합니다.' };
+    }
+    this.addCoins(-item.costKrw);
+    // 기산점은 "원래 납부일" — 늦게 냈다고 주기가 통째로 밀리지 않는다.
+    this._upkeepLedger[key] = item.overdue ? StoryStore.storyDay : item.dueDay;
+
+    // ── 위생 점검은 돈만 내면 끝나는 절차가 아니다 ──
+    //  항구 평판(= 그동안 어떻게 일했는가)이 합격률을 정한다. 불합격이면 재검사료를 내고
+    //  짧은 기한 안에 다시 받아야 한다 — 식당 운영자에게 붙는 되풀이 압박.
+    let note: string | undefined;
+    if (item.kind === 'hygiene_inspection') {
+      const rep = StoryStore.harborRep(this.currentRegionId);
+      const passRate = Math.min(0.95, 0.55 + rep * 0.004);
+      if (Math.random() >= passRate) {
+        const retest = TUNING.upkeep.hygieneRetestKrw;
+        this.addCoins(-retest);
+        // 다음 점검을 곧(=경고 구간 안)으로 당긴다 — 재검사
+        this._upkeepLedger[key] = StoryStore.storyDay - item.intervalDays + TUNING.upkeep.warnDays;
+        note = `점검 불합격 — 재검사료 ${retest.toLocaleString()}원, 곧 재점검을 받아야 합니다.`;
+      } else {
+        note = '점검 합격.';
       }
     }
+    this.markDirty();
+    return { ok: true, paidKrw: item.costKrw, note };
+  }
+
+  /** 어장 행사료 (채취 1회당) — 계원이면 싸다 */
+  fisheryGroundFeeKrw(): number { return fisheryGroundFee(this.hasLicense('fishery_member')); }
+
+  /**
+   * 하루가 지날 때 연체 중인 정기 지출만큼 항구 평판을 깎는다.
+   * ⚖ **재화를 압류하지 않는다**(147차 기한 초과 규칙과 같은 원칙) — 돈이 없어 못 낸 사람에게서
+   *   또 돈을 빼앗으면 회복할 방법이 사라진다. 평판은 일을 더 해서 되돌릴 수 있다.
+   */
+  private applyUpkeepOverdue(): void {
+    const pen = this.upkeepPenalty();
+    if (pen.repPerDay <= 0) return;
+    StoryStore.addHarborRep(this.currentRegionId, -pen.repPerDay);
   }
 
   // ─── 식당/콘도 조작 ─────────────────────────
@@ -1255,6 +1345,7 @@ export class GameStateManager {
       skillTree: this._skillRanks,
       skillProf: this._skillProf,
       bonusSkillPoints: this._bonusSkillPoints,
+      upkeepLedger: this._upkeepLedger,
       coolerBox: CoolerStore.serialize(),
       inventoryStore: InventoryStore.serialize(),
       fridge: FridgeStore.serialize(),
@@ -1451,6 +1542,7 @@ export class GameStateManager {
     this._flags = {};
     this._skillProf = {};
     this._bonusSkillPoints = 0;
+    this._upkeepLedger = {};
     this._worldObjects = {};
     this._hunger = 100;
     this._hydration = 100;

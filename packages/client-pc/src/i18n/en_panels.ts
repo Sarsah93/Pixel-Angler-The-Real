@@ -265,4 +265,18 @@ export const EN_PANELS: Record<string, string> = {
   '채비 검증 카탈로그': 'Rig check catalogue',
   '[할 일] 동명항 방파제 쪽 좌판 거리로 이동한다': '[Task] Head to the stall row by the Dongmyeong breakwater',
   '[할 일] 정옥선 할머니에게 말을 건다': '[Task] Speak to Grandma Ok-seon',
+  // ── 171차 · 정기 지출(유지비) ──
+  '정기 지출': 'Recurring costs',
+  '수협 조합비': 'Cooperative dues',
+  '선박 보험 · 정기검사 · 계류비': 'Vessel insurance, inspection and mooring',
+  '식품위생 정기 점검': 'Food hygiene inspection',
+  '연체': 'Overdue',
+  '정상': 'Current',
+  '아직 납부일이 아닙니다': 'Not due yet',
+  '아직 갱신일이 아닙니다': 'Not due for renewal yet',
+  '재화가 부족합니다': 'Not enough money',
+  '점검 합격.': 'Inspection passed.',
+  '어촌계에 내는 몫입니다. 밀리지 않으면 위판 수수료를 조금 깎아 줍니다.': 'Your share to the fishing cooperative. Keep it current and the consignment fee drops a little.',
+  '보험과 정기검사, 계류비를 한 번에 치릅니다. 배를 가진 사람의 고정비입니다.': 'Insurance, periodic inspection and mooring, settled together. The fixed cost of owning a boat.',
+  '영업장 위생 점검입니다. 그동안 항구에서 쌓은 신뢰가 합격률을 좌우하고, 불합격하면 재검사료를 물고 다시 받아야 합니다.': 'A hygiene inspection of your premises. The trust you have built at the harbour decides the odds, and failing means paying a re-inspection fee and going through it again.',
 };

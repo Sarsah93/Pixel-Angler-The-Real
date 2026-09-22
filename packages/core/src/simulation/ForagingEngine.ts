@@ -268,10 +268,13 @@ export interface EnforcementResult {
   fineWon: number;
 }
 
-/** 위반 회차마다 적발 롤 — 적발 시 압수 + 벌금(보유 재화 비율·상한) */
-export function rollEnforcement(coins: number, rng: () => number): EnforcementResult {
+/**
+ * 위반 회차마다 적발 롤 — 적발 시 압수 + 벌금(보유 재화 비율·상한).
+ * @param mult 적발 확률 배수 (171차 — 자격 갱신을 연체 중이면 더 자주 걸린다)
+ */
+export function rollEnforcement(coins: number, rng: () => number, mult = 1): EnforcementResult {
   const t = TUNING.forage;
-  if (rng() >= t.enforcementChance) return { caught: false, fineWon: 0 };
+  if (rng() >= Math.min(1, t.enforcementChance * Math.max(0, mult))) return { caught: false, fineWon: 0 };
   const fine = Math.min(t.fineCapWon, Math.round(coins * t.fineRatio));
   return { caught: true, fineWon: Math.max(0, fine) };
 }

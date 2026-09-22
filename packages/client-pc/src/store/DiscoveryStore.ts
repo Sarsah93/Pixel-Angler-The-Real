@@ -13,6 +13,7 @@
 import type { DiscoveryKind, DiscoverySource, DiscoveryEntry } from '@tra/core';
 import { discoveryKey, FISH_DATABASE, dishDiscoveryName } from '@tra/core';
 import { SHORE_CREATURE_DATABASE } from '@tra/core';
+import { migrateSpeciesId } from '../data/SpeciesMigration.js';
 
 /** 세이브 직렬화 형태 */
 export interface DiscoverySaveState {
@@ -100,16 +101,19 @@ class DiscoveryStoreClass {
     if (saved?.entries?.length) {
       for (const e of saved.entries) {
         if (!e?.kind || !e?.id) continue;
-        this.entries.set(discoveryKey(e.kind, e.id), e);
+        // 171차 — 통폐합된 어종은 현행 id로 옮긴다(없는 어종이 도감에 남지 않게).
+        const id = e.kind === 'fish' ? (migrateSpeciesId(e.id) ?? e.id) : e.id;
+        this.entries.set(discoveryKey(e.kind, id), { ...e, id });
       }
       return;
     }
     // 구세이브 백필 — 어획 기록이 있는 어종은 발견 처리
     if (legacyFishIds?.length) {
       for (const id of legacyFishIds) {
-        const key = discoveryKey('fish', id);
+        const mid = migrateSpeciesId(id) ?? id;
+        const key = discoveryKey('fish', mid);
         if (this.entries.has(key)) continue;
-        this.entries.set(key, { kind: 'fish', id, firstAtMs: Date.now(), source: 'legacy' });
+        this.entries.set(key, { kind: 'fish', id: mid, firstAtMs: Date.now(), source: 'legacy' });
       }
     }
   }

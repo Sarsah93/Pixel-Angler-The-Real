@@ -105,7 +105,7 @@ export class FishingScene extends Phaser.Scene {
       tileY: 10,
       label: '방파제 수중여',
       depthM: 8,
-      possibleSpeciesIds: ['black_seabream', 'largescale_blackfish', 'dark_banded_rockfish'],
+      possibleSpeciesIds: ['black_seabream', 'largescale_blackfish', 'blue_rockfish'],
       biteBonusMultiplier: 1.2,
     };
 
@@ -491,7 +491,7 @@ export class FishingScene extends Phaser.Scene {
       tileY: 10,
       label: '방파제 수중여',
       depthM: 8,
-      possibleSpeciesIds: ['black_seabream', 'largescale_blackfish', 'dark_banded_rockfish'],
+      possibleSpeciesIds: ['black_seabream', 'largescale_blackfish', 'blue_rockfish'],
       biteBonusMultiplier: 1.2,
     };
 
@@ -818,7 +818,7 @@ export class FishingScene extends Phaser.Scene {
   }
 
   private getCurrentPointSpecies(): FishSpecies[] {
-    const pointIds = this.currentPoint?.possibleSpeciesIds || ['black_seabream', 'largescale_blackfish', 'dark_banded_rockfish'];
+    const pointIds = this.currentPoint?.possibleSpeciesIds || ['black_seabream', 'largescale_blackfish', 'blue_rockfish'];
     return pointIds
       .map((id) => FISH_DATABASE.find((f) => f.id === id))
       .filter((f): f is FishSpecies => !!f);

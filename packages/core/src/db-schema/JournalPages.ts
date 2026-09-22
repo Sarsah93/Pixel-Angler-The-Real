@@ -22,7 +22,7 @@ export const JOURNAL_PAGES: JournalPageDef[] = [
   { page: 3, regionId: 'busan', areaKey: 'busan_area_amnam', labelKo: '부산 암남공원', labelEn: 'Busan — Amnam Park',
     speciesId: 'horse_mackerel', seasons: ['winter'], howKo: '겨울 야간 루어', howEn: 'Winter night lure', arcId: 'N05' },
   { page: 4, regionId: 'busan', areaKey: 'busan_area_baekunpo', labelKo: '부산 백운포', labelEn: 'Busan — Baegunpo',
-    speciesId: 'dark_banded_rockfish', seasons: ['winter'], howKo: '겨울 야간 · 볼락 루어', howEn: 'Winter night · rockfish lure',
+    speciesId: 'blue_rockfish', seasons: ['winter'], howKo: '겨울 야간 · 청볼락 루어', howEn: 'Winter night · rockfish lure',
     count: 3, arcId: 'N07', substitutedFrom: '호래기' },
   { page: 5, regionId: 'ulsan', labelKo: '울산 방어진', labelEn: 'Ulsan — Bangeojin',
     speciesId: 'yellowtail', seasons: ['winter'], howKo: '겨울 11~1월 · 선상 지깅', howEn: 'Winter Nov–Jan · boat jigging', minCm: 40, arcId: 'N08' },

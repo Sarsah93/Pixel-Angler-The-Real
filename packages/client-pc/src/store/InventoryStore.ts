@@ -32,6 +32,7 @@ import { resolveFishTexture } from '../data/FishTextures.js';
 import { applyItemVitals } from '../data/ItemVitals.js';
 import { applyCookItemFields, COOK_CORNER } from '../data/CookItems.js';
 import { StoryStore } from './StoryStore.js';
+import { migrateCatchItemId, migrateSpeciesId } from '../data/SpeciesMigration.js';
 
 /** 인벤토리 카테고리 탭 */
 export type InvCategory = 'gear' | 'consumable' | 'food' | 'tackle' | 'lure' | 'quest' | 'etc';
@@ -1096,7 +1097,15 @@ class InventoryStoreManager {
     // 52차 회칼 손 장착 개편 이전 세이브는 knife_sashimi에 tool/equippable이 없어 왼손/오른손
     // 장착이 안 됐다 (기타 아이템으로만 취급). id가 시드와 같으면 누락된 정적 속성만 채워준다.
     const seedById = new Map(createSeedItems().map((sd) => [sd.id, sd]));
-    this._items = s.items.map((i) => {
+    // 171차 — 통폐합된 어종 id는 현행 id로 옮긴다(어획물은 아이템 id에도 어종이 박혀 있다).
+    //  퀵슬롯 참조가 옛 id를 가리킬 수 있으므로 옛 id → 새 id 표를 만들어 아래에서 재지정한다.
+    const idRemap = new Map<string, string>();
+    this._items = s.items.map((i0) => {
+      const newId = migrateCatchItemId(i0.id);
+      if (newId !== i0.id) idRemap.set(i0.id, newId);
+      const i = (newId !== i0.id || i0.speciesId !== migrateSpeciesId(i0.speciesId))
+        ? { ...i0, id: newId, speciesId: migrateSpeciesId(i0.speciesId) }
+        : i0;
       const sd = seedById.get(i.id);
       // 정적 기능 게이트 필드 — 구세이브에 누락됐으면 복원.
       //  tool/equippable = 손 도구(회칼/낚싯대/뜰채) 착용 게이트 · placeKey = 설치형 배치 게이트.
@@ -1131,7 +1140,10 @@ class InventoryStoreManager {
     }).map((i) => applyCookItemFields(applyItemVitals(i)));   // 154차 — 조리 필드도 테이블 백필
     this._catchSeq = s.catchSeq ?? 0;
     const valid = new Set(this._items.map((i) => i.id));
-    const ref = (id: string | null | undefined): string | null => (id && valid.has(id) ? id : null);
+    const ref = (id: string | null | undefined): string | null => {
+      const m = id ? (idRemap.get(id) ?? id) : id;
+      return m && valid.has(m) ? m : null;
+    };
     this._quickslots = Array.from({ length: 8 }, (_, k) => ref(s.quickslots?.[k]));
     const base = defaultRig();
     (Object.keys(base) as RigStepKey[]).forEach((k) => { base[k] = ref(s.rig?.[k]); });

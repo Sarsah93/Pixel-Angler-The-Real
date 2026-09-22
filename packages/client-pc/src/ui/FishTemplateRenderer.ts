@@ -32,7 +32,6 @@ export const FISH_COLORS: Record<string, { body: number; belly: number; fin: num
   horse_mackerel: { body: 0x6a7c82, belly: 0xd2dade, fin: 0x4a5c62 },
   stone_beakperch: { body: 0x8a8a7a, belly: 0xd8d6c4, fin: 0x3a3a30 },
   spotted_knifejaw: { body: 0x6a6a60, belly: 0xcaccbe, fin: 0x2e2e28 },
-  dark_banded_rockfish: { body: 0x6a4a4a, belly: 0xc8b4ac, fin: 0x442e2e },
   blue_rockfish: { body: 0x3a4a68, belly: 0xb4c0d0, fin: 0x263048 },
   golden_rockfish: { body: 0x8a6a3a, belly: 0xd8c49a, fin: 0x5e4622 },
   black_rockfish: { body: 0x40484e, belly: 0xb8c0c4, fin: 0x282e32 },

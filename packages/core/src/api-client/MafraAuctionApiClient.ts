@@ -107,7 +107,7 @@ export const MAFRA_ITEM_TO_SPECIES: { item: string; variety?: string; speciesId:
   { item: '쥐노래미', speciesId: 'fat_greenling' },
   { item: '우럭', speciesId: 'black_rockfish' },
   { item: '조피볼락', speciesId: 'black_rockfish' },
-  { item: '볼락', speciesId: 'dark_banded_rockfish' },
+  { item: '볼락', speciesId: 'blue_rockfish' },   // 시장 품목명은 '볼락' 통칭 — 게임 어종은 청볼락
   { item: '붕장어', speciesId: 'conger_eel' },
   { item: '장어', variety: '붕장어', speciesId: 'conger_eel' },
   { item: '복어', speciesId: 'tiger_puffer' },

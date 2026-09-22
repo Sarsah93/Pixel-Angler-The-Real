@@ -861,6 +861,42 @@ export interface TuningConfig {
     /** 1 = 숙련자용 상세 안내 생략 */
     skipVerbose: number;
   };
+  /**
+   * 정기 지출(유지비) — 171차. 시계는 **인게임 일자**(StoryStore.day)다.
+   * 자격 비용이 1회성이라 취득 이후 돈 쓸 일이 사라지던 구조를 되풀이 지출로 바꾼다.
+   */
+  upkeep: {
+    /** 자격 갱신료 = 취득가 × 이 비율 (500원 단위 반올림) */
+    renewFeeRate: number;
+    /** 갱신료 하한(원) — 싸게 딴 자격도 유지에는 값이 든다 */
+    renewFeeFloorKrw: number;
+    /** 기본 갱신 주기(게임 일수) */
+    renewIntervalDays: number;
+    /** 납부 알림을 띄우기 시작하는 잔여 일수 */
+    warnDays: number;
+    /** 연체 1건당 하루에 깎이는 항구 평판 */
+    overdueRepPerDay: number;
+    /** 하루 감점 상한 — 여러 건이 밀려도 여기서 멈춘다 */
+    overdueRepCap: number;
+    /** 자격 갱신 연체 중 단속 적발 확률 배수 */
+    overdueEnforceMult: number;
+    /** 수협 조합비(원) / 주기(일) */
+    coopDuesKrw: number;
+    coopDuesDays: number;
+    /** 조합비 납부 중일 때 위판 수수료 할인폭(비율 — 0.005 = 0.5%p) */
+    coopDuesFeeCut: number;
+    /** 선박 보험·정기검사·계류비(원) / 주기(일) */
+    vesselUpkeepKrw: number;
+    vesselUpkeepDays: number;
+    /** 식품위생 정기 점검료(원) / 주기(일) */
+    hygieneFeeKrw: number;
+    hygieneDays: number;
+    /** 점검 불합격 시 재검사료(원) */
+    hygieneRetestKrw: number;
+    /** 어장 행사료(원) — 계원 / 외부인 (채취 1회당) */
+    groundFeeMemberKrw: number;
+    groundFeeOutsiderKrw: number;
+  };
   rep: {
     harborMax: number;
     seaMin: number;
@@ -1234,6 +1270,14 @@ export const TUNING: TuningConfig = {
     ch1DeadlineDays: 180, missCostKrw: 200_000, missRepPerDay: 1,
     meetingBaseYes: 0.55, meetingRepSlope: 0.004, skipVerbose: 0,
   },
+  upkeep: {
+    renewFeeRate: 0.25, renewFeeFloorKrw: 2_000, renewIntervalDays: 180, warnDays: 14,
+    overdueRepPerDay: 1, overdueRepCap: 3, overdueEnforceMult: 1.6,
+    coopDuesKrw: 12_000, coopDuesDays: 30, coopDuesFeeCut: 0.005,
+    vesselUpkeepKrw: 180_000, vesselUpkeepDays: 90,
+    hygieneFeeKrw: 45_000, hygieneDays: 120, hygieneRetestKrw: 30_000,
+    groundFeeMemberKrw: 1_000, groundFeeOutsiderKrw: 5_000,
+  },
   rep: {
     harborMax: 100, seaMin: -10, seaMax: 10,
     seaReleaseUndersize: 0.5, seaRescue: 1, seaIllegalKeep: -1, seaRestrictedEntry: -0.5, seaVillageFisheryViolation: -2,
@@ -1266,17 +1310,17 @@ export const TUNING: TuningConfig = {
   fatigueStaminaBase: {
     yellowtail: 1.6, amberjack: 1.7, greater_amberjack: 1.9, spanish_mackerel: 1.0,
     pacific_cod: 1.2, red_seabream: 1.1, sea_bass: 0.95, flatfish: 0.7,
-    squid: 0.55, cuttlefish: 0.55, dark_banded_rockfish: 0.6,
+    squid: 0.55, cuttlefish: 0.55, blue_rockfish: 0.6,
   },
   yieldBaseRate: {
     flatfish: 0.48, yellowtail: 0.52, amberjack: 0.52, greater_amberjack: 0.53,
     red_seabream: 0.42, sea_bass: 0.45, spanish_mackerel: 0.50,
-    dark_banded_rockfish: 0.38, pacific_cod: 0.32,
+    blue_rockfish: 0.38, pacific_cod: 0.32,
   },
   yieldSliceGram: {
     flatfish: 9, yellowtail: 14, amberjack: 14, greater_amberjack: 15,
     red_seabream: 11, sea_bass: 11, spanish_mackerel: 13,
-    dark_banded_rockfish: 10, pacific_cod: 12,
+    blue_rockfish: 10, pacific_cod: 12,
   },
   knifeToolFactor: { utility: 0.85, sashimi: 1.0, yanagiba: 1.10 },
   yieldSkill: { base: 0.80, perLevel: 0.03, accuracyWeight: 0.15 },

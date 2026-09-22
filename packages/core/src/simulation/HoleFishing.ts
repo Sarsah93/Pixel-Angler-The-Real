@@ -35,10 +35,9 @@ export const HOLE_KIND_LABEL: Record<HoleSpotKind, { ko: string; en: string }> =
  * 필터가 아니라 **가중**이다 — 구멍에도 가끔 다른 것이 들어온다.
  */
 export const HOLE_SPECIES_BIAS: Readonly<Record<string, number>> = Object.freeze({
-  dark_banded_rockfish: 2.6,   // 볼락
+  blue_rockfish: 2.6,          // 청볼락 — 구멍 대표 어종
   black_rockfish: 2.4,         // 조피볼락(우럭) — 물면 틈으로 파고든다
   red_snapper_rockfish: 1.8,   // 열기(불볼락)
-  blue_rockfish: 1.6,          // 청볼락
   golden_rockfish: 1.4,        // 황볼락
   scorpionfish: 2.2,           // 쏨뱅이
   greenling: 2.0,              // 노래미

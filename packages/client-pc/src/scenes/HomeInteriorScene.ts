@@ -417,7 +417,14 @@ export class HomeInteriorScene extends Phaser.Scene {
   private restInBed(): string {
     GameState.sleepRecover();
     const v = GameState.vitals;
-    return `푹 쉬었습니다 — 피로 0 · 체력 ${Math.round(v.hp)}/${v.maxHp} · 허기 ${Math.round(v.hunger)}% · 수분 ${Math.round(v.hydration)}%`;
+    const base = `푹 쉬었습니다 — 피로 0 · 체력 ${Math.round(v.hp)}/${v.maxHp} · 허기 ${Math.round(v.hunger)}% · 수분 ${Math.round(v.hydration)}%`;
+    // 171차 — 하루가 지나면 정기 지출 알림을 함께 준다(모르고 연체하는 상태를 만들지 않는다).
+    const due = GameState.upkeepAlerts();
+    if (!due.length) return base;
+    const over = due.filter((d) => d.overdue);
+    const head = over.length ? over[0]! : due[0]!;
+    const tail = due.length > 1 ? ` 외 ${due.length - 1}건` : '';
+    return `${base}\n${over.length ? '연체' : '납부일'}: ${head.nameKo}${tail} — 면허·허가 창(L)에서 납부`;
   }
 
   private closeBedMenu(): void {

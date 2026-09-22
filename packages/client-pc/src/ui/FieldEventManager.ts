@@ -96,7 +96,7 @@ const BOILING_SPECIES_BIAS: Record<string, number> = {
 /** 연안 스쿨링 (육지 10~20m) — 숭어 떼·연안 소형 무리 위주 */
 const SCHOOLING_COASTAL_BIAS: Record<string, number> = {
   striped_mullet: 0.5, redlip_mullet: 0.4,
-  chub_mackerel: 0.35, horse_mackerel: 0.35, dark_banded_rockfish: 0.25,
+  chub_mackerel: 0.35, horse_mackerel: 0.35, blue_rockfish: 0.25,
 };
 
 /** 외양 스쿨링 (육지 20m+) — 회유 무리 (삼치·고등어·전갱이·꽁치) */

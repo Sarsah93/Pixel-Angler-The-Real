@@ -90,11 +90,6 @@ export const BUTCHERY_PROFILES: Record<string, ButcheryProfile> = {
   },
 
   // ── 볼락류·소형 (작고 머리 큼 = 저수율) ──
-  dark_banded_rockfish: {
-    speciesId: 'dark_banded_rockfish', bodyShape: 'round', hasScales: true,
-    scaleToughness: 0.5, anusRatio: 0.5, skinToughness: 0.5, bloodAmount: 0.45, filletCount: 2,
-    baseYieldRate: 0.38, sliceGramBase: 10, minFilletLengthCm: 20, bodyRatio: 0.40, filletShape: 'small',
-  },
   blue_rockfish: {
     speciesId: 'blue_rockfish', bodyShape: 'round', hasScales: true,
     scaleToughness: 0.5, anusRatio: 0.5, skinToughness: 0.5, bloodAmount: 0.45, filletCount: 2,

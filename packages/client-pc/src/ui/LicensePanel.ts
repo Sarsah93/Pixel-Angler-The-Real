@@ -16,6 +16,7 @@ import {
   type LicenseType, type LicenseDef, type UnlockRequirement,
 } from '@tra/core';
 import { DraggablePanel, applyScreenFixed, restoreHandCursor } from './DraggablePanel.js';
+import type { UpkeepItem } from '@tra/core';
 import { GameState } from '../store/GameState.js';
 import { StoryStore } from '../store/StoryStore.js';
 import { clampTextWidth, enforceTextBounds } from './TextFit.js';
@@ -28,7 +29,11 @@ const DETAIL_X = LIST_W + 24;
 const DETAIL_W = PANEL_W - DETAIL_X - 18;
 const FONT = '"Noto Sans KR", sans-serif';
 
-type Row = { kind: 'head'; label: string } | { kind: 'lic'; def: LicenseDef };
+type Row =
+  | { kind: 'head'; label: string }
+  | { kind: 'lic'; def: LicenseDef }
+  /** 171차 — 자격이 아닌 정기 지출(조합비·선박 유지비·위생 점검) */
+  | { kind: 'fee'; item: UpkeepItem };
 
 /**
  * 요구사항 줄에 쓸 임무 이름 (153차). 내부 id를 화면에 흘리지 않는다(§8-9 R1) —
@@ -40,6 +45,10 @@ function questTitleOf(id: string): string {
 
 export class LicensePanel extends DraggablePanel {
   private selected: LicenseType | null = null;
+  /** 171차 — 자격이 아닌 정기 지출을 고른 상태 (선택 시 selected는 비운다) */
+  private selectedFee: string | null = null;
+  /** 직전 납부 결과 안내 (위생 점검 합격/불합격 등) */
+  private feeNote: string | null = null;
   private scroll = 0;
   private listC?: Phaser.GameObjects.Container;
   private detailC?: Phaser.GameObjects.Container;
@@ -77,6 +86,12 @@ export class LicensePanel extends DraggablePanel {
       out.push({ kind: 'head', label: LICENSE_CATEGORY_LABEL[cat] });
       for (const def of list) out.push({ kind: 'lic', def });
     }
+    // 171차 — 자격이 아닌 정기 지출(조합비·선박 유지비·위생 점검). 자격 갱신은 각 자격 상세에서 낸다.
+    const fees = GameState.upkeepItems().filter((i) => i.kind !== 'license_renewal');
+    if (fees.length) {
+      out.push({ kind: 'head', label: '정기 지출' });
+      for (const item of fees) out.push({ kind: 'fee', item });
+    }
     return out;
   }
 
@@ -107,12 +122,27 @@ export class LicensePanel extends DraggablePanel {
         c.add(t);
         return;
       }
+      if (row.kind === 'fee') {
+        const f = row.item;
+        const selF = this.selectedFee === f.key;
+        const bgF = this.scene.add.rectangle(14, y + 1, rowW, ROW_H - 3, selF ? 0x1f4a6a : f.overdue ? 0x3a1a1a : 0x122236, 0.95).setOrigin(0, 0);
+        bgF.setStrokeStyle(1, selF ? 0x5cd0ff : f.overdue ? 0xc05050 : 0x2a3a4a, 1);
+        bgF.setInteractive({ useHandCursor: true });
+        bgF.on('pointerdown', () => { this.selectedFee = f.key; this.selected = null; this.renderList(); this.renderDetail(); restoreHandCursor(this.scene); });
+        const nm = this.scene.add.text(24, y + 6, f.nameKo, { fontFamily: FONT, fontSize: '11px', color: f.overdue ? '#ff9a9a' : '#e8f4fd' });
+        clampTextWidth(nm, rowW - 100);
+        const due = this.scene.add.text(14 + rowW - 8, y + 6,
+          f.overdue ? `${f.overdueDays}일 연체` : `D-${f.daysLeft}`,
+          { fontFamily: 'monospace', fontSize: '10px', color: f.overdue ? '#ff8a8a' : f.daysLeft <= 14 ? '#ffd93b' : '#8aa8bd' }).setOrigin(1, 0);
+        c.add([bgF, nm, due]);
+        return;
+      }
       const held = GameState.hasLicense(row.def.type);
       const sel = this.selected === row.def.type;
       const bg = this.scene.add.rectangle(14, y + 1, rowW, ROW_H - 3, sel ? 0x1f4a6a : held ? 0x0f3326 : 0x122236, 0.95).setOrigin(0, 0);
       bg.setStrokeStyle(1, sel ? 0x5cd0ff : held ? 0x2f8a5a : 0x2a3a4a, 1);
       bg.setInteractive({ useHandCursor: true });
-      bg.on('pointerdown', () => { this.selected = row.def.type; this.renderList(); this.renderDetail(); restoreHandCursor(this.scene); });
+      bg.on('pointerdown', () => { this.selected = row.def.type; this.selectedFee = null; this.renderList(); this.renderDetail(); restoreHandCursor(this.scene); });
       const name = this.scene.add.text(24, y + 6, `${held ? '✓ ' : ''}${row.def.nameKo}`, { fontFamily: FONT, fontSize: '11px', color: held ? '#aaffcc' : '#e8f4fd' });
       clampTextWidth(name, rowW - 90);
       const rowTerms = this.storyTerms(row.def);
@@ -139,6 +169,12 @@ export class LicensePanel extends DraggablePanel {
     const c = this.scene.add.container(DETAIL_X, this.contentTop);
     this.detailC = c;
     this.add(c);
+    // 171차 — 정기 지출을 고른 상태면 납부 화면을 그린다
+    if (this.selectedFee) {
+      const item = GameState.upkeepItems().find((i) => i.key === this.selectedFee);
+      if (item) { this.renderFeeDetail(c, item); return; }
+      this.selectedFee = null;
+    }
     const lic = this.selected ? getLicenseByType(this.selected) : undefined;
     if (!lic) { applyScreenFixed(this); return; }
     const held = GameState.hasLicense(lic.type);
@@ -206,8 +242,33 @@ export class LicensePanel extends DraggablePanel {
     //     버튼 블록 전체를 박스 안쪽으로 들인다.
     const by = PANEL_H - this.contentTop - 58;
     if (held) {
-      const t = this.scene.add.text(DETAIL_W / 2, by + 16, '유효하게 소지하고 있는 면허입니다.', { fontFamily: FONT, fontSize: '11px', color: '#aaffcc' }).setOrigin(0.5);
-      c.add(t);
+      // 171차 — 갱신이 필요한 자격이면 납부 상태와 버튼을 함께 보인다.
+      const ren = GameState.upkeepItems().find((i) => i.kind === 'license_renewal' && i.key === lic.type);
+      if (!ren) {
+        const t = this.scene.add.text(DETAIL_W / 2, by + 16, '유효하게 소지하고 있는 면허입니다.', { fontFamily: FONT, fontSize: '11px', color: '#aaffcc' }).setOrigin(0.5);
+        c.add(t);
+      } else {
+        const payable = ren.daysLeft <= 14;
+        const afford = GameState.player.inventory.coins >= ren.costKrw;
+        const ok = payable && afford;
+        const info = this.scene.add.text(DETAIL_W / 2, by - 22,
+          ren.overdue
+            ? `갱신이 ${ren.overdueDays}일 밀렸습니다 — 위판을 받지 않습니다`
+            : `다음 갱신까지 ${ren.daysLeft}일 · ${ren.intervalDays}일마다`,
+          { fontFamily: FONT, fontSize: '11px', color: ren.overdue ? '#ff9a9a' : '#aaccdd', wordWrap: { width: DETAIL_W } }).setOrigin(0.5, 0);
+        const btn = this.scene.add.rectangle(DETAIL_W / 2 - 100, by, 200, 32, ok ? 0x1f5a3a : 0x2a3340, 1).setOrigin(0, 0).setStrokeStyle(1, ok ? 0x4af2a1 : 0x3a4a5a, 1);
+        const bt = this.scene.add.text(DETAIL_W / 2, by + 16, `갱신하기 (₩${ren.costKrw.toLocaleString()})`, { fontFamily: FONT, fontSize: '12px', color: ok ? '#e8fff0' : '#6a7a8a', fontStyle: 'bold' }).setOrigin(0.5);
+        const why = this.scene.add.text(DETAIL_W / 2, by - 7, ok ? '' : !payable ? '아직 갱신일이 아닙니다' : '재화가 부족합니다', { fontFamily: FONT, fontSize: '10px', color: '#c88a5a' }).setOrigin(0.5, 1);
+        if (ok) {
+          btn.setInteractive({ useHandCursor: true });
+          btn.on('pointerdown', () => {
+            GameState.payUpkeep(ren.key);
+            this.scene.cameras.main.flash(180, 0, 140, 90);
+            this.renderList(); this.renderDetail(); restoreHandCursor(this.scene);
+          });
+        }
+        c.add([info, btn, bt, why]);
+      }
     } else {
       const preOk = lic.prerequisites.every((p) => GameState.hasLicense(p));
       const coinsOk = GameState.player.inventory.coins >= terms.cost;
@@ -228,6 +289,55 @@ export class LicensePanel extends DraggablePanel {
       }
       c.add([btn, bt, why]);
     }
+    enforceTextBounds(c, DETAIL_W + 4, 'LicensePanel');
+    applyScreenFixed(this);
+  }
+
+  /**
+   * 정기 지출 상세 (171차) — 조합비·선박 유지비·위생 점검.
+   * 자격 갱신은 자격 상세 안에서 내므로 여기 오지 않는다.
+   */
+  private renderFeeDetail(c: Phaser.GameObjects.Container, item: UpkeepItem): void {
+    let y = 4;
+    const name = this.scene.add.text(0, y, item.nameKo, { fontFamily: FONT, fontSize: '15px', color: '#ffeeaa', fontStyle: 'bold', wordWrap: { width: DETAIL_W - 70 } });
+    const chip = this.scene.add.text(DETAIL_W - 4, y + 2, item.overdue ? '연체' : '정상', { fontFamily: FONT, fontSize: '10px', color: '#0b1620', fontStyle: 'bold', backgroundColor: item.overdue ? '#e08a8a' : '#7fe0b0', padding: { x: 5, y: 1 } }).setOrigin(1, 0);
+    y += name.height + 8;
+    const NOTE: Record<string, string> = {
+      coop_dues: '어촌계에 내는 몫입니다. 밀리지 않으면 위판 수수료를 조금 깎아 줍니다.',
+      vessel_upkeep: '보험과 정기검사, 계류비를 한 번에 치릅니다. 배를 가진 사람의 고정비입니다.',
+      hygiene_inspection: '영업장 위생 점검입니다. 그동안 항구에서 쌓은 신뢰가 합격률을 좌우하고, 불합격하면 재검사료를 물고 다시 받아야 합니다.',
+    };
+    const rows = [
+      `납부액  ₩${item.costKrw.toLocaleString()}`,
+      `주기    ${item.intervalDays}일마다`,
+      item.overdue ? `상태    ${item.overdueDays}일 연체 중 — 하루마다 항구 신뢰가 깎입니다` : `상태    다음 납부까지 ${item.daysLeft}일`,
+    ];
+    for (const r of rows) {
+      const t = this.scene.add.text(0, y, r, { fontFamily: 'monospace', fontSize: '11px', color: '#ccddee' });
+      y += t.height + 4; c.add(t);
+    }
+    y += 4;
+    const note = this.scene.add.text(0, y, NOTE[item.key] ?? '', { fontFamily: FONT, fontSize: '11px', color: '#9fc4dd', wordWrap: { width: DETAIL_W }, lineSpacing: 3 });
+    y += note.height + 6;
+    c.add([name, chip, note]);
+
+    const by = PANEL_H - this.contentTop - 58;
+    const payable = item.daysLeft <= 14;
+    const afford = GameState.player.inventory.coins >= item.costKrw;
+    const ok = payable && afford;
+    const btn = this.scene.add.rectangle(DETAIL_W / 2 - 100, by, 200, 32, ok ? 0x1f5a3a : 0x2a3340, 1).setOrigin(0, 0).setStrokeStyle(1, ok ? 0x4af2a1 : 0x3a4a5a, 1);
+    const bt = this.scene.add.text(DETAIL_W / 2, by + 16, `납부하기 (₩${item.costKrw.toLocaleString()})`, { fontFamily: FONT, fontSize: '12px', color: ok ? '#e8fff0' : '#6a7a8a', fontStyle: 'bold' }).setOrigin(0.5);
+    const why = this.scene.add.text(DETAIL_W / 2, by - 7, this.feeNote ?? (ok ? '' : !payable ? '아직 납부일이 아닙니다' : '재화가 부족합니다'), { fontFamily: FONT, fontSize: '10px', color: this.feeNote ? '#ffd93b' : '#c88a5a', wordWrap: { width: DETAIL_W } }).setOrigin(0.5, 1);
+    if (ok) {
+      btn.setInteractive({ useHandCursor: true });
+      btn.on('pointerdown', () => {
+        const r = GameState.payUpkeep(item.key);
+        this.feeNote = r.note ?? null;
+        this.scene.cameras.main.flash(180, 0, 140, 90);
+        this.renderList(); this.renderDetail(); restoreHandCursor(this.scene);
+      });
+    }
+    c.add([btn, bt, why]);
     enforceTextBounds(c, DETAIL_W + 4, 'LicensePanel');
     applyScreenFixed(this);
   }

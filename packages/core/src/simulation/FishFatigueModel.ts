@@ -36,7 +36,7 @@ export const STAMINA_BASE: Record<string, number> = {
   flatfish: 0.7,            // 광어
   squid: 0.55,              // 무늬오징어
   cuttlefish: 0.55,         // 갑오징어
-  dark_banded_rockfish: 0.6, // 볼락
+  blue_rockfish: 0.6, // 청볼락
 };
 export const DEFAULT_STAMINA_BASE = 0.9;
 
