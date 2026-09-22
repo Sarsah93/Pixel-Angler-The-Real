@@ -156,8 +156,8 @@ export class BootScene extends Phaser.Scene {
       sinker_ring: 'item-icons/sinker_ring.png',
       sinker_pillar: 'item-icons/sinker_pillar.png',
       sinker_bundle: 'item-icons/it_sinker_bundle_v2.png',
-      // 제로찌는 구멍찌와 동일한 바디를 공유하고, 호수/부력 표기만 런타임에서 바꾼다.
-      float_zero: 'item-icons/it_float_hole_v2.png',
+      // 166차 — 제로찌 전용 도트(몸통에 '00' 각인). 런타임 호수 라벨은 붙이지 않는다(ItemIcon labelKeys 제외).
+      float_zero: 'item-icons/it_float_zero_v2.png',
       float_hole: 'item-icons/it_float_hole_v2.png',
       float_tilt: 'item-icons/it_float_tilt_v2.png',
       subfloat_light: 'item-icons/it_subfloat_light_v2.png',

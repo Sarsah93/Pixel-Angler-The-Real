@@ -26,7 +26,8 @@ const gem = [
   'building_1', 'building_2', 'building_3', 'building_4', 'building_5',
   'popup_1', 'popup_2', 'popup_3', 'popup_4', 'sashimi_1', 'sashimi_2',
   'jungja', 'tetra', 'boundary_port',
-  'npc_fish_vendor', 'npc_grandfather', 'npc_police', 'npc_father_kid', 'npc_tourist_f',
+  // 166차 — gem NPC 5종(생선 장수·할아버지·경찰관·아빠와 아이·관광객) 로드 폐기.
+  //   마을 사람은 전부 `characterOf`가 굽는다(`scenes/field/FieldNpcSystem.ts`).
 ];
 const td = [
   'tree_big', 'palm', 'tree_small', 'lamp_arm', 'lamp_arm2', 'pole', 'pole2',

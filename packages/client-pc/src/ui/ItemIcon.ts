@@ -59,7 +59,8 @@ export function createItemIcon(
     const src = scene.textures.get(rasterKey).getSourceImage() as HTMLImageElement;
     const scale = sizePx / Math.max(src.width, src.height);
     img.setDisplaySize(src.width * scale, src.height * scale);
-    const labelKeys = new Set(['float_zero', 'float_hole', 'float_tilt', 'subfloat_light', 'subfloat_heavy']);
+    // 166차 — 제로찌(`float_zero`)는 도트에 '00'이 각인돼 있어 라벨을 겹치지 않는다
+    const labelKeys = new Set(['float_hole', 'float_tilt', 'subfloat_light', 'subfloat_heavy']);
     if (item.iconTexture && labelKeys.has(item.iconTexture) && item.name) {
       const label = item.name.match(/0{1,3}|G\d+|[-+]?\d+(?:\.\d+)?B?|[-+]?\d+(?:\.\d+)?호/)?.[0]?.replace('호', '');
       if (label) {

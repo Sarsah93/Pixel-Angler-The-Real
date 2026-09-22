@@ -24,7 +24,8 @@
 | `core/src/inventory/Backpack.ts` | 가방 사다리 모델(§8-3) — UI 미배선 |
 | `core/src/config/tuning.ts` | `story`·`rep`·`law.enforceRodSell`·`inventory` |
 | `client/src/store/StoryStore.ts` | **진행 엔진** — 상태·이벤트 매칭·행동 단계·완료/보상·D-day·평판·조행록·판매 판정·세이브 |
-| `client/src/data/StoryNpcs.ts` · `StoryDialogue.ts` | NPC 배치(타일)·방문 장소 · Ch1 대사 `[ko,en]` |
+| `client/src/data/StoryNpcs.ts` · `StoryDialogue.ts` | NPC 배치(타일)·**행동 `behavior`(166차 — fishing/stall/patrol/wander)**·방문 장소 · Ch1 대사 `[ko,en]` |
+| `client/src/scenes/field/FieldNpcSystem.ts` | **166차** — 스토리 NPC 3x3 자유 행동(`StoryNpcActor`) + 마을 사람(`AmbientNpcSystem`) |
 | `client/src/ui/DialoguePanel.ts` | 발주/진행/완료 대화(3톤 선택지) |
 | `client/src/ui/JournalPanel.ts` | 일지 — 조행록·자격 사다리·부/챕터/퀘 트리(윈도우드 + 휠) |
 | 훅 | `GameState.addCaughtFish/addLawfulReleaseXp/addActivityXp/acquireLicense/grantXp/addCoins/sleepRecover` · `RegionFieldScene`(방문·NPC·자전거) · `TrapFieldSystem`(통발) · `HomeInteriorScene`(침대 저장) · `ShopPanel`(판매 판정) · `RegionHud`(D-day) |
@@ -125,6 +126,8 @@ STORY_ARCS ────┘     traineeDay (D-180)                └─ RegionHu
 
 ## 5. 잔여·차기
 
+- **낚시 NPC 대화 시 얼굴 방향**(166차 잔여) — 캐스팅·대기 중엔 물을 본 채 대화한다(바쁨 미적용 설계).
+  대화 시작 순간 회수 후 돌아보게 하려면 `DialoguePanel` 열림 훅에서 `StoryNpcActor`에 신호를 줘야 한다.
 - **원격지 컷씬 실발화**(165차 잔여) — 런타임은 각본·배우를 분리해 어느 필드 씬에서도 재생되지만,
   사용자 예시 무대(인천)의 **필드 맵 데이터가 없다**. 인천 맵이 서면 `RegionFieldScene`에
   `playRemoteCinematic`(페이드 → 다른 지역 restart → 재생 → 복귀)을 얹고 N18-6 3부작 좌표를 옮긴다.
@@ -162,6 +165,13 @@ STORY_ARCS ────┘     traineeDay (D-180)                └─ RegionHu
 - dev 콘솔(F10)에 퀘 점프/완료 명령(구세이브 고레벨 테스터용).
 
 ## 6. 함정·불변조건
+
+### 22. 낚시 행동은 앵커 3x3 안에 물가가 있어야 한다 (166차)
+
+`behavior: 'fishing'`은 앵커 반경 1(→2)타일 안에서 **4방 이웃이 바다이고 그 방향으로 물이 2칸 이상 이어지는** 걸을 수 있는 칸을 찾는다.
+없으면 런타임이 `wander`로 내리고 dev 콘솔에 경고한다. 도현수(534,126)·강두철(541,118)은 주차장 한복판이라 반경 26·33타일 안에
+물이 없었다(실측) → 앵커를 (534,151)·(567,138)로 옮겼다. **낚시와 관계없는 인물(좌판 상인·장인)에게 `fishing`을 주지 않는다**(사용자 지시).
+NPC 위치는 저장하지 않으므로 앵커 이동은 세이브를 깨지 않는다.
 
 ### 17. 상대가 없는 퀘스트에 상대 효과를 싣지 않는다 (155차)
 

@@ -30,7 +30,7 @@ export interface PropDef {
   /** 텍스처 키 — `ts_*`(타일셋 PNG 직접 로드) 또는 `smx_*`(절차 베이크) */
   tex: string;
   /** 편집기 팔레트 카테고리 */
-  cat: '자연' | '시설물' | '건물' | '건물요소' | '차량' | 'NPC' | '해안' | '돌 & 바위' | '해안 구조물';
+  cat: '자연' | '시설물' | '건물' | '건물요소' | '차량' | '해안' | '돌 & 바위' | '해안 구조물';
   /** 표시 배율 (정수 배율 우선 — 픽셀아트 보존. NPC는 0.5 = 2:1 다운샘플) */
   scale?: number;
   /** 바다 타일 전용 */
@@ -148,12 +148,7 @@ export const PROP_DEFS: PropDef[] = [
   { id: 'boat', label: '어선', tex: 'smx_boat', cat: '차량', water: true, scale: 2 },
   // 하역 크레인(112차 항만 디테일) — 절차 베이크. 안벽 위 자동 산포 + 편집기 수동 배치
   { id: 'crane', label: '하역 크레인', tex: 'smx_crane', cat: '시설물' },
-  // NPC (정적 — L4 스폰 규칙은 씬이 POI 기준으로 자동 배치, 여기는 수동 오버라이드)
-  { id: 'npc_fish_vendor', label: '생선 장수', tex: 'ts_gem_npc_fish_vendor', cat: 'NPC', scale: 0.5 },
-  { id: 'npc_grandfather', label: '할아버지', tex: 'ts_gem_npc_grandfather', cat: 'NPC', scale: 0.5 },
-  { id: 'npc_police', label: '경찰관', tex: 'ts_gem_npc_police', cat: 'NPC', scale: 0.5 },
-  { id: 'npc_father_kid', label: '아빠와 아이', tex: 'ts_gem_npc_father_kid', cat: 'NPC', scale: 0.5 },
-  { id: 'npc_tourist_f', label: '관광객', tex: 'ts_gem_npc_tourist_f', cat: 'NPC', scale: 0.5 },
+  // (166차) 구 gem NPC 프롭 5종 삭제 — 마을 사람은 `FieldNpcSystem`(characterOf)이 만들고 스스로 걷는다.
   // 해안 (지형 패치 — 타일 중앙 앵커, 부두↔바다 경계에 놓는다)
   { id: 'tetra', label: '테트라포드 석축', tex: 'ts_ttp_ttp_l', cat: '해안', anchor: 'center' },
   // 항로표지(114차) — lights.json이 자동 배치하고, 편집기 팔레트에서도 수동 배치 가능
@@ -2261,24 +2256,7 @@ export class SeamlessChunks {
       }
     }
 
-    // ── 보행자 NPC — **보도 밴드 거리 판정**(도로 반폭+0.25 ~ 반폭+0.95타일) 위 결정적 산포
-    //    (상인 제외 4종 · 충돌 있음). `w` 타일 기준은 곡선 밴드 안에 서는 경우가 있었다(리포트 ④) ──
-    if (hasTs) {
-      const kinds = ['npc_police', 'npc_grandfather', 'npc_father_kid', 'npc_tourist_f'];
-      const chunkIdx = cr * this.chunkCols + cc;
-      for (let r = r0; r < r1; r++) {
-        for (let c = c0; c < c1; c++) {
-          const ch = this.tileAt(c, r);
-          if (ch !== 'w' && ch !== '.') continue;
-          const hv = hash2(seed ^ 0x9c, c, r);
-          if (hv < 0.985) continue;
-          const band = this.roadBand(c + 0.5, r + 0.9, chunkIdx);
-          if (!band || band.d < band.halfW + 0.25 || band.d > band.halfW + 0.95) continue;
-          const d = def(kinds[Math.floor(hash2(seed ^ 0x9d, c, r) * kinds.length) % kinds.length]);
-          if (d) this.spawnProp(d, c, r, slot);
-        }
-      }
-    }
+    // (166차) 구 보행자 NPC 정지 프롭 산포 삭제 — 보도 위 사람은 `AmbientNpcSystem`이 배치하고 걷게 한다.
 
     // ── 주차 차량 — 도로가 아니라 **건물 옆 맨땅**("가게 옆에 주차"). 건물에 붙은 '.' 타일 중 도로 밴드 밖,
     //    건물 벽과 나란히(북/남 벽 = 세로 주차, 동/서 벽 = 가로 주차). 픽업트럭 포함, 충돌 있음 ──

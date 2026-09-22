@@ -78,6 +78,7 @@ import { RegionLight,
 } from '@tra/core';
 import { SeamlessChunks, type OccluderObj, PROP_DEFS, propFootprint, type PropDef } from './SeamlessChunks.js';
 import { ForageSystem } from './field/ForageSystem.js';
+import { AmbientNpcSystem, StoryNpcActor, type NpcFieldHost } from './field/FieldNpcSystem.js';
 import { TrapFieldSystem } from './field/TrapFieldSystem.js';
 import { TrapDeployPanel } from '../ui/TrapDeployPanel.js';
 import { StoveFieldSystem } from './field/StoveFieldSystem.js';
@@ -322,6 +323,8 @@ export class RegionFieldScene extends Phaser.Scene {
   private nearObject: MapObject | null = null;
   /** 인-맵 채집(해루질)·어장·통발 필드 시스템 (121차) */
   private forage?: ForageSystem;
+  /** 166차 — 퀘스트 없는 마을 사람(결정적 배치·자율 배회) */
+  private ambientNpcs?: AmbientNpcSystem;
   private trapField?: TrapFieldSystem;
   /** 154차 불요리 — 화구 조합 설치물(탑다운 [F] 조리) */
   private stoveField?: StoveFieldSystem;
@@ -3527,6 +3530,7 @@ export class RegionFieldScene extends Phaser.Scene {
     // init → create 사이 또는 shutdown 직전의 stale update 차단.
     if (this.bootFailed || !this.playerBody?.active) return;
     this.updateStoryProximity(delta);
+    this.updateFieldNpcs(delta);
     this.nuisance?.update(delta);
     if (this.traffic) {
       const cam = this.cameras.main;
@@ -3923,6 +3927,10 @@ export class RegionFieldScene extends Phaser.Scene {
     label: Phaser.GameObjects.Text;
     mark?: Phaser.GameObjects.Image;
     markKey?: string;
+    /** 마커의 x 오프셋(좌/우) — 인물이 걸으면 마커도 따라가야 한다(166차) */
+    markDx?: number;
+    /** 166차 — 자유 행동(3x3 배회·낚시·좌판·순찰). 이미지는 `ai.image === actor` */
+    ai?: StoryNpcActor;
   }[] = [];
   private nearNpc: StoryNpcPlacement | null = null;
   private npcHintText?: Phaser.GameObjects.Text;
@@ -3991,6 +3999,7 @@ export class RegionFieldScene extends Phaser.Scene {
       nameKo: getStoryNpc(n.def.npcId)?.nameKo ?? n.def.npcId,
       headY: this.charTopFromFeet - 6,
       setFacing: (d: CineDir) => {
+        if (n.ai) { n.ai.face(d); return; }
         const sheet = ensureCharSheet(this, characterOf(n.def.npcId), CHAR_SCALE);
         n.actor.setTexture(sheet, charFrameName(d, 0));
       },
@@ -4091,26 +4100,67 @@ export class RegionFieldScene extends Phaser.Scene {
     return this.storyNpcs.find((n) => n.def.npcId !== giver)?.def.npcId;
   }
 
-  /** 지역에 배치된 스토리 NPC 스프라이트 — 기존 POI NPC 텍스처 재사용(플레이스홀더), 이름표가 인물을 식별 */
+  /** 166차 — NPC 시스템이 쓰는 지형 접근자 (씬 내부를 넘기지 않는다) */
+  private get npcHost(): NpcFieldHost {
+    return {
+      cols: this.cols, rows: this.rows, tr: TR,
+      terrainAt: (c, r) => this.terrainAt(c, r),
+      isWalkable: (c, r) => this.isWalkable(c, r),
+    };
+  }
+
+  /**
+   * 지역에 배치된 스토리 NPC — 인물마다 고유 외형(`characterOf`, 138차) + 자유 행동(`StoryNpcActor`, 166차).
+   * 이름표는 씬이 들고 매 프레임 본체를 따라간다(`updateFieldNpcs`).
+   */
   private placeStoryNpcs(): void {
     this.storyNpcs = [];
     for (const def of STORY_NPC_PLACEMENTS) {
       if (def.regionId !== this.region) continue;
       const { col, row } = this.nearestWalkable(def.tx, def.ty);
-      const x = col * TR + TR / 2, y = row * TR + TR;
-      // 138차 — 인물마다 고유 외형(`characterOf`)을 굽는다. 구 gem NPC 텍스처 5장 돌려막기 폐기.
-      const sheet = ensureCharSheet(this, characterOf(def.npcId), CHAR_SCALE);
-      const pad = (CHAR_CELL - 1 - CHAR_FOOT_Y) * CHAR_SCALE;
-      const actor = this.add.image(x, y + pad, sheet, charFrameName(def.facing ?? 'down', 0))
-        .setOrigin(0.5, 1).setDepth(20 + y * 0.001 + 0.0006);
+      const ai = new StoryNpcActor(this, this.npcHost, characterOf(def.npcId), col, row, def.behavior, def.facing ?? 'down');
+      const x = ai.x, y = ai.y;
+      const actor = ai.image;
       const npc = getStoryNpc(def.npcId);
       const label = this.add.text(x, y + this.charTopFromFeet - RegionFieldScene.LABEL_GAP, npc?.nameKo ?? def.npcId, {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#ffe9a0',
         backgroundColor: '#0a1628cc', padding: { x: 3, y: 1 },
       }).setOrigin(0.5, 1).setDepth(20 + y * 0.001 + 0.0007);
-      this.storyNpcs.push({ def, x, y, actor, label });
+      if (import.meta.env.DEV && def.behavior === 'fishing' && !ai.fishingSpotFound) {
+        console.warn(`[FieldNpc] ${def.npcId}: 앵커 5x5 안에 물가가 없어 낚시 대신 배회한다 (${col},${row})`);
+      }
+      this.storyNpcs.push({ def, x, y, actor, label, ai });
     }
     this.refreshQuestMarkers(true);
+    // 166차 — 마을 사람: 스토리 NPC 앵커를 피해 결정적으로 흩어 놓는다
+    this.ambientNpcs?.destroy();
+    this.ambientNpcs = new AmbientNpcSystem(this, this.npcHost);
+    this.ambientNpcs.spawn(`${this.region}:${this.mapId}`, this.storyNpcs.map((n) => ({ c: Math.floor(n.x / TR), r: Math.floor((n.y - 1) / TR) })));
+    this.events.once('shutdown', () => {
+      this.ambientNpcs?.destroy(); this.ambientNpcs = undefined;
+      for (const n of this.storyNpcs) n.ai?.destroy();
+    });
+  }
+
+  /**
+   * 166차 — NPC 자율 행동 1프레임. `updateStoryProximity` 뒤·`uiBlocked` 가드 **앞**에서 돈다
+   * (인벤토리를 열어도 마을은 계속 산다). 컷씬 중엔 스토리 NPC는 손을 떼고(`paused`) 이미지 좌표만 되읽는다.
+   * 이름표·마커·[F] 판정·가이드 화살표는 전부 `n.x/n.y`를 보므로 여기서 되받아 적는다.
+   */
+  private updateFieldNpcs(delta: number): void {
+    const cam = this.cameras.main;
+    if (!this.cinematicActive) this.ambientNpcs?.update(delta, cam.midPoint.x, cam.midPoint.y);
+    const px = this.playerBody.x, py = this.playerBody.y;
+    for (const n of this.storyNpcs) {
+      if (!n.ai) continue;
+      const hold = !this.cinematicActive && (this.nearNpc === n.def || (this.popupStack.length > 0 && Math.hypot(n.x - px, n.y - 12 - py) < 64));
+      n.ai.update(delta, { paused: this.cinematicActive, hold, playerX: px, playerY: py });
+      if (this.cinematicActive) continue;   // 컷씬이 이미지·이름표를 직접 옮긴다
+      if (n.x === n.ai.x && n.y === n.ai.y) continue;
+      n.x = n.ai.x; n.y = n.ai.y;
+      n.label.setPosition(n.x, n.y + this.charTopFromFeet - RegionFieldScene.LABEL_GAP).setDepth(20 + n.y * 0.001 + 0.0007);
+      n.mark?.setPosition(n.x + (n.markDx ?? 14), n.y - 26).setDepth(20 + n.y * 0.001 + 0.0008);
+    }
   }
 
   // ── 136차 — NPC 퀘스트 마커 (필드 머리 위 + 미니맵) ──
@@ -4170,7 +4220,8 @@ export class RegionFieldScene extends Phaser.Scene {
           // 오른쪽에 여유가 없으면(맵 끝·옆 NPC) 좌상단으로 (사용자 지시 "여유 공간에 따라")
           const crowdedRight = n.x + 30 > this.cols * TR
             || this.storyNpcs.some((o) => o !== n && Math.abs(o.y - n.y) < 24 && o.x > n.x && o.x - n.x < 40);
-          const img = addPixelIcon(this, key, n.x + (crowdedRight ? -14 : 14), n.y - 26, 16);
+          n.markDx = crowdedRight ? -14 : 14;
+          const img = addPixelIcon(this, key, n.x + n.markDx, n.y - 26, 16);
           if (img) { img.setDepth(20 + n.y * 0.001 + 0.0008); n.mark = img; }
         }
       }
