@@ -16,10 +16,25 @@
  *  'w' = 보도/인도   (이동 가능 — 차도와 분리. 차도 양옆 프린지 자동 생성)
  *  's' = 모래사장    (이동 가능, 원투 낚시 가능)
  *  'b' = 방파제·부두 (이동 가능, 낚시 캐스팅의 핵심 발판)
+ *
+ * 172차 어휘 확장 — 경계 이음을 표현하려면 사이에 끼는 재료가 어휘에 있어야 한다:
+ *  'p' = 포장 광장·주차장 (구 '.'·'r')
+ *  'd' = 흙바닥·공터     (구 '.')
+ *  't' = 갯벌·습지       (구 ','·'s')
+ *  'c' = 농경지          (구 ',')
+ *  'f' = 숲·관목         (구 ',')
  */
 
-/** 타일 지형 종류 (road/sidewalk/sand/pier = OSM 심리스 v2 신규) */
-export type RegionTerrain = 'land' | 'water' | 'building' | 'grass' | 'road' | 'sidewalk' | 'sand' | 'pier';
+/**
+ * 타일 지형 종류.
+ *  - road/sidewalk/sand/pier = OSM 심리스 v2 (2026-08-27)
+ *  - paved/dirt/tidal/farm/wood = 172차 — 구 어휘는 8글자뿐이라 주차장·공터·갯벌·농경지·숲이
+ *    전부 `'.'`(맨땅) 하나로 뭉개졌고, 그래서 포장 옆에 모래가 곧바로 붙었다(사용자 리포트).
+ *    전부 OSM 태그에서 직접 나오므로 래스터 없이도 결정적으로 나뉜다.
+ */
+export type RegionTerrain =
+  | 'land' | 'water' | 'building' | 'grass' | 'road' | 'sidewalk' | 'sand' | 'pier'
+  | 'paved' | 'dirt' | 'tidal' | 'farm' | 'wood';
 
 /** 지형 문자 → 지형 종류 매핑 */
 export const TERRAIN_BY_CHAR: Record<string, RegionTerrain> = {
@@ -31,12 +46,20 @@ export const TERRAIN_BY_CHAR: Record<string, RegionTerrain> = {
   'w': 'sidewalk',
   's': 'sand',
   'b': 'pier',
+  // 172차 신설
+  'p': 'paved',
+  'd': 'dirt',
+  't': 'tidal',
+  'c': 'farm',
+  'f': 'wood',
 };
 
-/** 이동 가능 지형 판정 (심리스 v2 — walkable = . , r w s b) */
+/** 이동 불가 지형 (그 외는 전부 걸을 수 있다) */
+const BLOCKED: ReadonlySet<RegionTerrain> = new Set<RegionTerrain>(['water', 'building']);
+
+/** 이동 가능 지형 판정 (심리스 v2 + 172차 확장 — 물·건물만 막는다) */
 export function isWalkableTerrain(t: RegionTerrain | undefined): boolean {
-  return t === 'land' || t === 'grass' || t === 'road' || t === 'sidewalk'
-    || t === 'sand' || t === 'pier';
+  return t !== undefined && !BLOCKED.has(t);
 }
 
 /**
@@ -45,7 +68,7 @@ export function isWalkableTerrain(t: RegionTerrain | undefined): boolean {
  * 인접 검사는 그리드를 가진 호출측(씬)이 수행하고, 여기는 발판 지형 여부만 답한다.
  */
 export function isFishableStandTerrain(t: RegionTerrain | undefined): boolean {
-  return t === 'pier' || t === 'sand';
+  return t === 'pier' || t === 'sand' || t === 'tidal';
 }
 
 // ═══════════════════════════════════════════════════════════════════

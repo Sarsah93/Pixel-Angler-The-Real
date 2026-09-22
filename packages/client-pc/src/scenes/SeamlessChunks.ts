@@ -19,6 +19,7 @@
 import Phaser from 'phaser';
 import type { RegionRoad, RegionProp, RegionTileTex, RegionLight } from '@tra/core';
 import { COAST_OBJECTS } from '../data/TileCatalog.js';
+import { seamBetween, terrainClass, terrainPaint, terrainGroup } from '@tra/core';
 import { GRASS_EDGE_SUFFIXES, PAVED_EDGE_SUFFIXES, KENNEY_ROOF_COLORS, KENNEY_ROOF_PARTS, TTP_EDGE_TILES, TTP_UNITS, COAST_DECKS, COAST_RUBBLE, COAST_EDGE_SRC, COAST_ROCK_COUNT } from '../data/TilesetManifest.js';
 import { hasUsableTexture } from '../ui/CanvasTextureGuard.js';
 
@@ -235,6 +236,27 @@ const COL = {
   boatHull: 0x2e4a66, boatDeck: 0xe8eef2,
 };
 
+/**
+ * 접경 알갱이 팔레트 (172차) — **화면에 실제로 보이는 색**이어야 한다.
+ * Kenney 셀에 틴트가 곱해진 뒤의 실측값이라야 띠가 지면과 이어져 보인다(원본 셀 색을 쓰면 뜬다).
+ */
+const SEAM_GRAIN: Record<string, readonly number[]> = {
+  s: [COL.beachLite, COL.beach, COL.beach, COL.beachAlt],          // 모래 (106차 실측 유지)
+  t: [0x9c8f70, 0x8f8366, 0x86795c],                               // 갯벌 — 젖은 회갈
+  d: [0xa8916b, 0x9c8661, 0x8f7a58],                               // 흙 — 포장·모래 사이에 끼는 재료
+  '.': [COL.land, COL.landAlt, COL.landSpeck],
+  // 유기 지형이 흘려보내는 것 = 흙 + 그 식생의 잎색 (밭·숲 가장자리의 부스러기)
+  ',': [0x9a8558, 0x6e9a50, 0x5c8a45],
+  c: [0x9a8558, 0x8a8f52, 0x7e9447],
+  f: [0x7e6a46, 0x2f5a30, 0x376a36],
+};
+
+/** 접경 띠 폭 — [고형 프론트 최대 px, 바깥 흩뿌림 px]. 알갱이 지형은 넓게, 유기 지형은 좁게. */
+const SEAM_SPAN: Record<string, readonly [number, number]> = {
+  s: [8, 10], t: [7, 9], d: [4, 6],
+  ',': [3, 5], c: [5, 7], f: [6, 8],
+};
+
 /** 수심 그라데이션 (거리 램프) — legacy DEPTH_RAMP 계승 */
 const DEPTH_RAMP: [number, number][] = [
   [0x74add0, 0x6da6c9],
@@ -425,6 +447,14 @@ export class SeamlessChunks {
       ['w', ['tan_0', 'tan_1']],
       ['s', ['sand_0', 'sand_1'], '#f6d47c'],
       ['b', ['pier_0', 'pier_1']],
+      // ── 172차 어휘 확장 — 구 8글자에서는 전부 '.'이나 ','로 뭉개지던 것들 ──
+      //  ⚠ dirt·pave 베이스 셀은 101차 후속 2에 추출해 놓고 **한 번도 쓰이지 않았다**.
+      //     경계에 끼일 중간 재료가 없어서 "포장 → 모래" 직결이 생긴 것도 이것 때문이다.
+      ['p', ['pave_0']],                            // 포장 광장·주차장 (회색 — 보도보다 중성)
+      ['d', ['dirt_0', 'dirt_1']],                  // 흙바닥·공터 — 포장과 모래 사이에 끼는 재료
+      ['t', ['sand_0', 'sand_1'], '#b9a98c'],       // 갯벌 — 젖은 회갈색
+      ['c', ['dirt_0', 'dirt_1'], '#e0d4ae'],       // 농경지 — 갈린 흙(밝게 — 이랑이 위에 얹힌다)
+      ['f', ['grass_0', 'grass_1'], '#8aa888'],     // 숲·관목 — 잔디보다 어둡고 푸르다
     ];
     const tm = this.scene.textures;
     /** 16px 원본 → tr 배율 재베이크. clip = 직각삼각형(빗변 대각선) · tint = multiply 웜 톤 ·
@@ -472,7 +502,10 @@ export class SeamlessChunks {
       return this.safeRefresh(cv);
     };
     // 삼각 빗변 경계선 색 — Kenney 테두리 실측(tan #ac9d83 · pier #8b9ea6). 잔디는 삼각 미사용
-    const HYP_LINE: Record<string, string> = { '.': '#ac9d83', r: '#ac9d83', w: '#ac9d83', s: '#ac9d83', b: '#8b9ea6' };
+    const HYP_LINE: Record<string, string> = {
+      '.': '#ac9d83', r: '#ac9d83', w: '#ac9d83', s: '#ac9d83', b: '#8b9ea6',
+      p: '#9a9790', d: '#8d7a5c', t: '#8d8270',   // 172차 — 유기 지형(c·f)은 블롭 전담이라 삼각 미사용
+    };
     for (const [ch, names, tint] of groups) {
       const keys: string[] = [];
       for (const n of names) {
@@ -494,17 +527,25 @@ export class SeamlessChunks {
     // ── 지면 오토타일 엣지/코너 (101차 잔여) — 지형군('.'=tan · ','=grass · 'b'=pier)별 접경 셀 ──
     //  잔디 = 블롭 완전 세트(16조합 + 이너코너 노치) / 포장 = 8방위 어두운 테두리. bakeChunk L1이
     //  접경 마스크(EDGE_SUFFIX)로 선택한다. pave 세트는 예비(현재 보도 베이스 = tan).
-    const edgeSets: [string, string, readonly string[]][] = [
+    //  172차 — 유기 지형 3종(잔디·농경지·숲)은 같은 블롭 세트를 **각자의 틴트**로 다시 굽는다.
+    //  포장 광장('p')은 드디어 `pave` 엣지 세트를 쓴다(추출만 해 두고 쓰이지 않던 예비 세트).
+    const edgeSets: [string, string, readonly string[], string?][] = [
       [',', 'grass', GRASS_EDGE_SUFFIXES],
+      // ⚠ 숲('f')·농경지('c')는 **블롭 엣지 셀을 쓰지 않는다**(실렌더 확인).
+      //   잔디 엣지 셀은 갈색 흙 림을 가지고 있어, 경계마다 갈색 테두리가 들어간 초록 사각형이
+      //   찍혔다. 숲 가장자리는 수관이 타일 밖으로 넘치며 만들고(아래 drawing), 농경지는
+      //   경계 흔들기 + 이랑이 만든다.
       ['.', 'tan', PAVED_EDGE_SUFFIXES],
+      ['d', 'tan', PAVED_EDGE_SUFFIXES, '#c8b08a'],
+      ['p', 'pave', PAVED_EDGE_SUFFIXES],
       ['b', 'pier', PAVED_EDGE_SUFFIXES],
     ];
-    for (const [ch, name, sufs] of edgeSets) {
+    for (const [ch, name, sufs, tint] of edgeSets) {
       const map = new Map<string, string>();
       for (const suf of sufs) {
         const src = `ts_kn_ground_${name}_edge_${suf}`;
-        const dst = `${src}_x${scale}`;
-        if (bake(src, dst, tr, tr)) map.set(suf, dst);
+        const dst = tint ? `${src}_x${scale}_${ch}` : `${src}_x${scale}`;
+        if (bake(src, dst, tr, tr, undefined, 0, 0, tint)) map.set(suf, dst);
       }
       if (map.size > 0) this.edgeTex.set(ch, map);
     }
@@ -738,41 +779,82 @@ export class SeamlessChunks {
    * 입자는 지면과 같은 **2px 그레인**, 밀도는 접경에서 멀어질수록 제곱으로 급감하고 대각 접경도 센다.
    * 색은 화면 모래색(COL.beach*) — Kenney sand에 웜 틴트가 곱해진 뒤의 실측값이라야 이어져 보인다.
    */
-  private drawSandSpill(g: Phaser.GameObjects.Graphics, lx: number, ly: number, c: number, r: number): void {
+  /**
+   * 접경 알갱이 띠 (172차 — 구 `drawSandSpill`의 일반화).
+   *
+   * 구 구현은 **모래 하나**를 하드코딩했다(`at(...) === 's'`). 그래서 갯벌·자갈·흙처럼
+   * 똑같이 흘러나와야 하는 재료가 전부 자로 그은 계단으로 끝났다. 이제는 어느 재료가
+   * 어느 재료 위로 흘러나오는지를 core 표(`seamBetween`)가 정하고, 여기서는 그 답을
+   * 알갱이로 옮기기만 한다.
+   *
+   * 입자는 지면과 같은 **2px 그레인**, 밀도는 접경에서 멀어질수록 제곱으로 급감하고
+   * 대각 접경도 센다. 색은 **화면에 실제로 보이는 색**(틴트가 곱해진 뒤의 실측값)이라야
+   * 이어져 보인다 — 원본 셀 색을 쓰면 띠만 떠 보인다.
+   */
+  private drawSeamGrains(g: Phaser.GameObjects.Graphics, lx: number, ly: number, c: number, r: number, ch: string): void {
     const tr = this.cfg.tr;
     const at = (cc: number, rr: number): string => this.tileAt(cc, rr);
-    const sN = at(c, r - 1) === 's', sS = at(c, r + 1) === 's';
-    const sW = at(c - 1, r) === 's', sE = at(c + 1, r) === 's';
-    const dNW = at(c - 1, r - 1) === 's', dNE = at(c + 1, r - 1) === 's';
-    const dSW = at(c - 1, r + 1) === 's', dSE = at(c + 1, r + 1) === 's';
-    if (!(sN || sS || sW || sE || dNW || dNE || dSW || dSE)) return;
+    // 이 타일이 알갱이를 **받는** 이웃 재료를 모은다 (같은 재료는 한 번만).
+    const donors = new Map<string, { n: boolean; s: boolean; w: boolean; e: boolean; nw: boolean; ne: boolean; sw: boolean; se: boolean; seam?: string; strength: number }>();
+    const NB: [number, number, keyof { n: 1; s: 1; w: 1; e: 1; nw: 1; ne: 1; sw: 1; se: 1 }][] = [
+      [0, -1, 'n'], [0, 1, 's'], [-1, 0, 'w'], [1, 0, 'e'],
+      [-1, -1, 'nw'], [1, -1, 'ne'], [-1, 1, 'sw'], [1, 1, 'se'],
+    ];
+    for (const [dc, dr, key] of NB) {
+      const t = at(c + dc, r + dr);
+      if (t === ch) continue;
+      const rule = seamBetween(ch, t);
+      if (rule.kind !== 'spill') continue;
+      let e = donors.get(t);
+      if (!e) { e = { n: false, s: false, w: false, e: false, nw: false, ne: false, sw: false, se: false, seam: rule.seamCh, strength: rule.strength }; donors.set(t, e); }
+      e[key] = true;
+    }
+    if (donors.size === 0) return;
     const sd = this.cfg.seed ^ 0x5a4d;
     const last = tr - 2;
-    const FRINGE = 10;                      // 고형 프론트 바깥의 알갱이 폭(px)
+    for (const [donor, d8] of donors) {
+      // 중간 재료(흙)를 먼저 깐다 — 포장과 모래는 서로 붙을 일이 없는 재료라
+      //  실제로는 사이에 닳아 드러난 흙이 한 줄 있다. 알갱이는 그 위로 흘러나온다.
+      if (d8.seam) this.grainPass(g, lx, ly, c, r, sd ^ 0x2b11, d8, SEAM_GRAIN[d8.seam] ?? SEAM_GRAIN['d']!, 3, 5);
+      const [front, fringe] = SEAM_SPAN[donor] ?? [8, 10];
+      this.grainPass(g, lx, ly, c, r, sd, d8, SEAM_GRAIN[donor] ?? SEAM_GRAIN['s']!, front * d8.strength, fringe * d8.strength);
+      void last;
+    }
+  }
+
+  /** 알갱이 한 겹 — `front`(고형 프론트 최대 폭) + `fringe`(바깥 흩뿌림 폭) */
+  private grainPass(
+    g: Phaser.GameObjects.Graphics, lx: number, ly: number, c: number, r: number, sd: number,
+    d8: { n: boolean; s: boolean; w: boolean; e: boolean; nw: boolean; ne: boolean; sw: boolean; se: boolean },
+    pal: readonly number[], frontMax: number, fringe: number,
+  ): void {
+    const tr = this.cfg.tr;
+    const last = tr - 2;
     for (let y = 0; y < tr; y += 2) {
       for (let x = 0; x < tr; x += 2) {
         let d = 99;
-        if (sN) d = Math.min(d, y);
-        if (sS) d = Math.min(d, last - y);
-        if (sW) d = Math.min(d, x);
-        if (sE) d = Math.min(d, last - x);
-        if (dNW) d = Math.min(d, Math.max(x, y));
-        if (dNE) d = Math.min(d, Math.max(last - x, y));
-        if (dSW) d = Math.min(d, Math.max(x, last - y));
-        if (dSE) d = Math.min(d, Math.max(last - x, last - y));
-        // 노이즈 프론트 — 모래가 밀려 나온 앞자락. 타일 경계와 무관한 곡선이라 계단이 지워진다
+        if (d8.n) d = Math.min(d, y);
+        if (d8.s) d = Math.min(d, last - y);
+        if (d8.w) d = Math.min(d, x);
+        if (d8.e) d = Math.min(d, last - x);
+        if (d8.nw) d = Math.min(d, Math.max(x, y));
+        if (d8.ne) d = Math.min(d, Math.max(last - x, y));
+        if (d8.sw) d = Math.min(d, Math.max(x, last - y));
+        if (d8.se) d = Math.min(d, Math.max(last - x, last - y));
+        if (d === 99) continue;
+        // 노이즈 프론트 — 밀려 나온 앞자락. 타일 경계와 무관한 곡선이라 계단이 지워진다
         const n = noise2(sd, (c * tr + x) / 11, (r * tr + y) / 11);
-        const front = 2 + 8 * n * n;          // 최대 ≈1/3타일 — 포장이 덮이면 산책로가 사라진다
+        const front = 2 + frontMax * n * n;
         const h = hash2(sd, c * 40 + x, r * 40 + y);
         if (d <= front) {
-          g.fillStyle(h < 0.18 ? COL.beachLite : h < 0.72 ? COL.beach : COL.beachAlt, 1);
+          g.fillStyle(pal[Math.floor(h * pal.length) % pal.length]!, 1);
           g.fillRect(lx + x, ly + y, 2, 2);
           continue;
         }
-        if (d > front + FRINGE) continue;
-        const t = 1 - (d - front) / FRINGE;
+        if (d > front + fringe) continue;
+        const t = 1 - (d - front) / fringe;
         if (h > t * t * 0.85) continue;
-        g.fillStyle(h < 0.2 ? COL.beachLite : h < 0.65 ? COL.beach : COL.beachAlt, 1);
+        g.fillStyle(pal[Math.floor(h * pal.length) % pal.length]!, 1);
         g.fillRect(lx + x, ly + y, 2, 2);
       }
     }
@@ -3263,7 +3345,7 @@ export class SeamlessChunks {
     const triAt = new Map<number, ['ne' | 'nw' | 'se' | 'sw', string]>();
     if (useGround) {
       slot.rt.beginDraw();
-      const grp = (t: string): string => (t === 'r' || t === 'w' ? '.' : t);
+      const grp = terrainGroup;   // 172차 — core 표로 이관(차도·보도·광장은 벡터 밴드가 잇는다)
       for (let r = r0; r < r1; r++) {
         for (let c = c0; c < c1; c++) {
           const ch = at(c, r);
@@ -3339,10 +3421,15 @@ export class SeamlessChunks {
           const em = this.edgeTex.get(myG);
           let mask = 0;
           if (em) {
-            //   ⚠ 모래('s')는 **바깥으로 치지 않는다**(106차) — 해변 접경에 어두운 테두리 셀이 깔리면
-            //   계단 경계가 검은 윤곽선으로 강조된다. 모래 쪽은 스필 디더(sandSpill)가 풀어준다.
-            const outside = (t: string): boolean =>
-              myG === ',' ? t !== myG : (t === ',' || t === '~');
+            // ── 172차 — 접경 판정을 core 표(`seamBetween`)로 옮겼다 ──
+            //  구 구현은 "내 바깥 테두리" 하나로 모델링돼 있어서(잔디 = 나 아닌 전부 /
+            //  나머지 = 잔디거나 물일 때만) 포장↔모래·흙↔잔디를 구분할 수 없었고,
+            //  그래서 106차에 모래를 규칙에서 통째로 빼야 했다(검은 계단 윤곽).
+            //  이제는 쌍마다 답이 다르고, 테두리 셀은 `blob`/`curb`일 때만 깔린다.
+            const outside = (t: string): boolean => {
+              const k = seamBetween(myG, t).kind;
+              return k === 'blob' || k === 'curb';
+            };
             if (outside(nN)) mask |= 1;
             if (outside(nE)) mask |= 2;
             if (outside(nS)) mask |= 4;
@@ -3352,7 +3439,7 @@ export class SeamlessChunks {
           //   ⚠ 이너코너 노치 셀(notch_*)은 쓰지 않는다 — 흙 블롭 모서리 셀이라 반타일 흙 사각형이
           //   계단 경계 안쪽마다 "갈색 블롭"으로 찍혔다(실렌더 확인). 대각 케이스는 인접 타일의
           //   림이 이미 곡선을 만들므로 내부 평타일로 충분하다. ──
-          if (em && myG === ',' && mask > 0) {
+          if (em && terrainClass(myG) === 'organic' && mask > 0) {
             const tk = em.get(EDGE_SUFFIX[mask]);
             if (tk) { slot.rt.batchDraw(tk, dx, dy); continue; }
           }
@@ -3367,15 +3454,18 @@ export class SeamlessChunks {
           //  차도·보도는 벡터 밴드가 곡선으로 그리므로 여기서는 맨땅과 같은 군으로 취급)
           const tri = (a: string, b: string, d0: string, q: 'ne' | 'nw' | 'se' | 'sw'): boolean => {
             const d = grp(d0);
-            if (a === ',') return false;               // 잔디 경계는 블롭 셀 전담 — 삼각 겹치면 파편
+            // 유기 지형(잔디·농경지·숲) 경계는 블롭 셀 전담 — 삼각이 겹치면 파편이 된다
+            if (terrainClass(a) === 'organic') return false;
             if (a !== b || a === myG || d !== a) return false;
-            // 모래 타일 위에는 포장 삼각형을 얹지 않는다(106차) — 금색 해변에 베이지 톱니가 박힌다.
-            //   반대 방향(포장 타일 위 모래 삼각형)만 허용하고, 그 가장자리는 스필이 녹인다.
-            if (myG === 's' && a !== 's') return false;
+            // ── 172차 · 칠하기 순서 ── 낮은 지형 위에 높은 지형의 삼각형을 얹지 않는다.
+            //   "금색 해변에 베이지 톱니가 박힌다"(106차)는 모래만의 문제가 아니라
+            //   **자연 위에 인공을 덮는 방향** 전체의 문제였다. 순서로 한 번에 막는다.
+            if (terrainPaint(a) > terrainPaint(myG)) return false;
             const bk = this.groundTex.get(a);
             if (!bk) return false;
-            // 모래가 낀 접경(해변 ↔ 포장)은 무선 셀 — 어두운 빗변선이 톱니를 강조한다(106차)
-            const tk = `${bk[0]}_tri_${q}${a === 's' || myG === 's' ? '_nl' : ''}`;
+            // 알갱이 지형이 낀 접경은 무선 셀 — 어두운 빗변선이 톱니를 강조한다(106차)
+            const organicSeam = terrainClass(a) === 'granular' || terrainClass(myG) === 'granular';
+            const tk = `${bk[0]}_tri_${q}${organicSeam ? '_nl' : ''}`;
             if (!this.scene.textures.exists(tk)) return false;
             slot.rt.batchDraw(tk, dx, dy);
             triAt.set(r * cols + c, [q, a]);
@@ -3595,10 +3685,11 @@ export class SeamlessChunks {
 
         // ── 육상 기본색 (Kenney 베이스가 깔린 타일은 접경 처리만) ──
         if (based) {
-          // 해변 접경 포장 = 모래 스필(106차). 차도('r')는 벡터 밴드가 위에 깔리므로 제외.
-          if (ch === '.' || ch === 'w') this.drawSandSpill(g, lx, ly, c, r);
+          // 접경 알갱이 띠(172차) — 어느 재료가 어느 재료 위로 흘러나오는지는 core 표가 정한다.
+          //  차도('r')는 벡터 밴드가 위에 깔리므로 제외한다.
+          if (ch !== 'r') this.drawSeamGrains(g, lx, ly, c, r, ch);
           // 안벽 계선주(112차) — 'b'뿐 아니라 항만 수역에 면한 '.'/'w' 안벽에도 4타일 간격
-          if ((ch === '.' || ch === 'w' || ch === 'r') && (c + r) % 4 === 0 && this.bwClass[r * cols + c] !== 3) {
+          if ((ch === '.' || ch === 'w' || ch === 'r' || ch === 'p') && (c + r) % 4 === 0 && this.bwClass[r * cols + c] !== 3) {
             const hb = (nc: number, nr: number): boolean =>
               nc >= 0 && nr >= 0 && nc < cols && nr < this.cfg.rows && at(nc, nr) === '~' && this.harbor[nr * cols + nc] === 1;
             const wN = hb(c, r - 1), wS = hb(c, r + 1), wW = hb(c - 1, r), wE = hb(c + 1, r);
@@ -3609,7 +3700,44 @@ export class SeamlessChunks {
               g.fillStyle(COL.bollardTop, 1); g.fillRect(bx + 1, by + 1, 3, 2);
             }
           }
-          if (ch === 's') {
+          if (ch === 'f') {
+            // ── 숲 캐노피 (172차) ── `'f'`를 색만 어둡게 두면 "짙은 잔디밭"으로 읽힌다.
+            //  잎갈이 진 나무 덩어리를 결정적으로 흩뿌려 **수관(canopy)** 을 만든다.
+            //  ⚠ 프롭(스프라이트)이 아니라 청크 베이킹에 굽는다 — 숲은 넓어서 오브젝트로 깔면
+            //    수천 개가 된다. 걸어 들어갈 수 있는 지형이므로 충돌도 없다.
+            const crowns = 2 + Math.floor(hash2(seed ^ 0x3f17, c, r) * 2);
+            for (let i = 0; i < crowns; i++) {
+              const hx = hash2(seed ^ (0x51a1 + i * 7), c, r);
+              const hy = hash2(seed ^ (0x77c3 + i * 11), c, r);
+              const rad = 5 + Math.floor(hx * 4);
+              // ⚠ 타일 안쪽으로만 그리면 수관이 타일 변에서 잘려 **초록 사각형**이 된다.
+              //   경계를 넘겨 그려야 숲 가장자리가 들쭉날쭉해진다(같은 청크 안에서만 넘친다).
+              const px = lx - 4 + Math.floor(hx * (tr + 8));
+              const py = ly - 4 + Math.floor(hy * (tr + 8));
+              g.fillStyle(0x1f3a22, 0.55);                       // 수관 그림자
+              g.fillCircle(px + 2, py + 3, rad);
+              g.fillStyle(hy > 0.5 ? 0x2f5a30 : 0x376a36, 1);    // 잎
+              g.fillCircle(px, py, rad);
+              g.fillStyle(0x47804a, 0.85);                       // 해 드는 면
+              g.fillCircle(px - 1, py - 2, Math.max(2, rad - 3));
+            }
+          } else if (ch === 'c') {
+            // ── 농경지 이랑 (172차) ── 밭은 평면이 아니라 줄이 있다. 이랑 방향은 필지마다
+            //  다르므로 타일 좌표 해시로 가로/세로를 고르고, 같은 필지 안에서는 같게 유지한다.
+            const fx = Math.floor(c / 8), fy = Math.floor(r / 8);           // 필지 단위(8타일)
+            const vert = hash2(seed ^ 0x2c6d, fx, fy) > 0.5;
+            const crop = hash2(seed ^ 0x9d41, fx, fy);                       // 필지마다 작물 색
+            const leaf = crop > 0.62 ? 0x6d8a3e : crop > 0.3 ? 0x7e9447 : 0x8a8f52;
+            // 이랑 = 흙 고랑(어둡게) + 작물 줄(초록). 위상은 **전역 좌표**라 타일 경계에서 끊기지 않는다.
+            for (let k = 0; k < tr; k += 4) {
+              const gy = (vert ? c * tr + lx : r * tr + ly) * 0;             // (위상 고정용 — 아래 abs 좌표 사용)
+              void gy;
+              const abs = vert ? (c * tr + k) : (r * tr + k);
+              if (abs % 8 < 4) { g.fillStyle(0x9a8558, 0.45); } else { g.fillStyle(leaf, 0.55); }
+              if (vert) g.fillRect(lx + k, ly, 4, tr);
+              else g.fillRect(lx, ly + k, tr, 4);
+            }
+          } else if (ch === 's') {
             // 젖은 모래 띠 — ⚠ TTP 접경 셀이 깔리는 물가에는 **그리지 않는다**(106차). 접경 셀이
             //   이미 젖은 모래+포말을 갖고 있어, 여기에 6px 띠를 더하면 물가에 자로 그은
             //   **연석 같은 밝은 세로줄**이 생긴다(사용자 리포트 — 실측색 (202,183,126) 스트립).
@@ -3754,7 +3882,7 @@ export class SeamlessChunks {
           const same = (t: string): string => (t === 'r' || t === 'w' ? '.' : t);
           // 해변 ↔ 포장은 **선을 긋지 않는다**(106차) — 모래는 포장 위로 흘러나오는 유기 경계라
           //   검은 윤곽선이 들어가면 타일 계단이 "그려 넣은 톱니"로 읽힌다(사용자 리포트).
-          //   대신 drawSandSpill 알갱이가 경계를 녹인다.
+          //   대신 drawSeamGrains 알갱이가 경계를 녹인다(172차 — 구 drawSandSpill).
           const organic = (t: string): boolean =>
             (same(t) === 's' && same(ch) === '.') || (same(t) === '.' && same(ch) === 's');
           const diff = (t: string): boolean => same(t) !== same(ch) && t !== '~' && t !== '#' && !organic(t);

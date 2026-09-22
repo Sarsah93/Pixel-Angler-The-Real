@@ -542,6 +542,13 @@ export {
   STORY_CHOICE_OVERRIDES, toneOfferChoices, selfOfferChoices, selfCompleteChoices, lessonCategoryOf, payChoiceCoins, defaultCompleteChoices, choicesFor,
   choiceVisible, describeOutcomeKo, allChoiceLines, validateStoryChoices, hasCustomChoices, DEFAULT_DECLINE,
 } from './db-schema/StoryChoices.js';
+// ── 지형 전이 규칙 — 172차 ──
+export type { TerrainClass, TerrainDef, SeamKind, SeamRule } from './rules/TerrainTransition.js';
+export {
+  TERRAIN_DEFS, TERRAIN_CHARS_V2, terrainDef, terrainClass, terrainPaint,
+  seamBetween, needsInterstitial, terrainGroup,
+} from './rules/TerrainTransition.js';
+
 // ── 정기 지출(유지비) — 171차 ──
 export type { UpkeepKind, UpkeepItem, UpkeepLedger, UpkeepContext, UpkeepPenalty } from './rules/Upkeep.js';
 export {

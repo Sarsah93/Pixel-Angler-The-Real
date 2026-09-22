@@ -94,6 +94,12 @@ const MINI_COL: Record<RegionTerrain, number> = {
   sidewalk: 0xb3b8bf,
   sand: 0xe2d2a2,
   pier: 0x9aa5b0,
+  // 172차 어휘 확장
+  paved: 0xb9b6af,
+  dirt: 0xa8916b,
+  tidal: 0x9c8f70,
+  farm: 0x9aa855,
+  wood: 0x4e7a3c,
 };
 
 const MINI_SIZES = [150, 250, 350] as const;

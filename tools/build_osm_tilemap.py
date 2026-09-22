@@ -26,6 +26,14 @@ PALETTE = {
     's': (232, 217, 160), 'r': (138, 138, 138), 'b': (122, 136, 148),
     'w': (184, 188, 196),   # 보도/인도 (차도 'r'과 분리 — 연석·차선 렌더의 기준)
     '#': (74, 74, 82),
+    # 172차 어휘 확장 — 미리보기/정본 PNG 색. **서로 충분히 떨어뜨렸다**:
+    #  build_region_maps.build_seamless가 PNG를 최근접 색 매칭으로 되읽기 때문에
+    #  기존 색과 가까우면 손수정 한 픽셀이 엉뚱한 지형으로 넘어간다(전 쌍 거리² ≥ 1,668).
+    'p': (168, 164, 156),   # 포장 광장·주차장·항만 에이프런
+    'd': (146, 112, 70),    # 흙바닥·공터 — 포장과 모래 사이에 끼는 재료
+    't': (108, 118, 104),   # 갯벌·습지
+    'c': (150, 176, 88),    # 농경지
+    'f': (54, 96, 54),      # 숲·관목
 }
 # 도로 폭은 **미터 기준** — TILE_M을 바꿔도 실폭이 유지된다 (구 타일 수 기준 폐기).
 #  차도(r)는 실제보다 다소 관대하게(게임 체감 — 캐릭터 대비 폭 확보), 보행로(w)는 실측 수준.
@@ -334,13 +342,46 @@ def build(region):
             rg = stitch_rings(rl.get('members', []), ways, nodes, proj)
             for outer in rg['outer']:
                 fill_poly(grid, outer, '~', holes=rg['inner'])
+    # ── 172차 · 지형 어휘 확장 ──
+    #  구 규칙은 숲·농경지·습지·잔디를 전부 ','(잔디) 하나로, 주차장·공터·산업 마당을
+    #  '.'(맨땅) 하나로 뭉갰다. 사이에 끼어야 할 재료가 어휘에 없으니 포장 옆에 모래가
+    #  곧바로 붙었다(사용자 리포트 — "뜬금없이 벽돌 지형에서 모래 지형으로 바뀐다").
+    #  아래는 전부 OSM 태그에서 직접 나온다 — 래스터 없이 결정적으로 나뉜다.
+    #  칠하는 순서 = 넓은 것 → 좁은 것 (뒤에 칠한 것이 위에 얹힌다).
     for wy in ways.values():
         t = wy.get('tags', {})
-        if t.get('landuse') in ('grass', 'forest', 'meadow', 'recreation_ground',
-                                'cemetery', 'farmland', 'orchard') \
-           or t.get('leisure') in ('park', 'garden', 'pitch', 'playground') \
-           or t.get('natural') == 'wetland':
+        if t.get('landuse') in ('grass', 'meadow', 'recreation_ground', 'cemetery',
+                                'village_green') \
+           or t.get('leisure') in ('park', 'garden', 'pitch', 'playground'):
             fill_poly(grid, way_pts(wy, nodes, proj), ',')
+    for wy in ways.values():                                   # 숲·관목 'f'
+        t = wy.get('tags', {})
+        if t.get('landuse') == 'forest' or t.get('natural') in ('wood', 'scrub'):
+            fill_poly(grid, way_pts(wy, nodes, proj), 'f')
+    for wy in ways.values():                                   # 농경지 'c'
+        t = wy.get('tags', {})
+        if t.get('landuse') in ('farmland', 'orchard', 'allotments', 'vineyard',
+                                'greenhouse_horticulture', 'plant_nursery'):
+            fill_poly(grid, way_pts(wy, nodes, proj), 'c')
+    for wy in ways.values():                                   # 흙바닥·공터 'd'
+        t = wy.get('tags', {})
+        if t.get('landuse') in ('brownfield', 'greenfield', 'construction', 'landfill',
+                                'quarry') \
+           or t.get('natural') in ('bare_rock', 'shingle', 'scree'):
+            fill_poly(grid, way_pts(wy, nodes, proj), 'd')
+    for wy in ways.values():                                   # 포장 광장·주차장·산업 마당 'p'
+        t = wy.get('tags', {})
+        if t.get('amenity') == 'parking' \
+           or t.get('landuse') in ('industrial', 'retail', 'commercial', 'port', 'harbour') \
+           or t.get('place') == 'square' \
+           or (t.get('highway') == 'pedestrian' and t.get('area') == 'yes') \
+           or t.get('man_made') == 'storage_tank':
+            fill_poly(grid, way_pts(wy, nodes, proj), 'p')
+    for wy in ways.values():                                   # 갯벌·습지 't'
+        t = wy.get('tags', {})
+        if t.get('natural') == 'wetland' or t.get('natural') == 'mud' \
+           or t.get('tidal') == 'yes':
+            fill_poly(grid, way_pts(wy, nodes, proj), 't')
     for wy in ways.values():
         if tagged(wy, 'natural', 'beach'):
             fill_poly(grid, way_pts(wy, nodes, proj), 's')
@@ -441,7 +482,9 @@ def build(region):
     #     점 안 잔디)이 오토타일 엣지 셀을 발동시켜 "내부 경계선·파편"으로 보인다(사용자 리포트
     #     103차 후속 — 팜트리 인렛 주변 `..,`/`.,,` 실측). ',','s','.' 상호 간 다수결 필터:
     #     직교 이웃 3개 이상이 같은 다른 지면이면 동화 (2패스 — 도로/보도/방파제/건물은 불변).
-    GROUNDS = (ord(','), ord('s'), DOT)
+    # 172차 — 신설 지형도 디노이즈 대상에 넣는다(소금-후추 1타일이 그대로 남으면
+    #  접경 규칙이 그 한 칸마다 띠를 그려 오히려 더 지저분해진다).
+    GROUNDS = (ord(','), ord('s'), DOT, ord('f'), ord('c'), ord('d'), ord('p'), ord('t'))
     for _ in range(2):
         changes = []
         for y in range(1, H - 1):
@@ -533,6 +576,105 @@ def build(region):
             if thin[y][x] and row[x] in (DOT, WW) and comp_sizes[comp_id[y][x]] >= 12 and comp_infra[comp_id[y][x]]:
                 row[x] = B_; n_b += 1
     print(f'[post] 방파제 추론 {n_b:,}타일 → b (가는 육지 조각 재분류)')
+
+    # 3c-2) 항만 에이프런 추론 (172차) — OSM에 `amenity=parking`·`landuse=industrial`이
+    #   거의 없는 지역(속초 실측: 주차장 0·산업 0)에서도 **항만 앞마당은 콘크리트**다.
+    #   물·방파제에 가깝고(≤3타일) 도로도 가까운(≤6타일) 맨땅을 포장 광장('p')으로 본다.
+    #   태그가 풍부한 지역에서는 위 태그 패스가 이미 칠해 놨으므로 여기서 건드릴 것이 없다.
+    from collections import deque as _dq
+    def _dist_from(seed_chars, limit):
+        INF = 255
+        dm = [[INF] * W for _ in range(H)]
+        q = _dq()
+        for yy in range(H):
+            rw = grid.g[yy]
+            for xx in range(W):
+                if rw[xx] in seed_chars:
+                    dm[yy][xx] = 0
+                    q.append((xx, yy))
+        while q:
+            xx, yy = q.popleft()
+            d0 = dm[yy][xx]
+            if d0 >= limit:
+                continue
+            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                nx, ny = xx + dx, yy + dy
+                if 0 <= nx < W and 0 <= ny < H and dm[ny][nx] > d0 + 1:
+                    dm[ny][nx] = d0 + 1
+                    q.append((nx, ny))
+        return dm
+    d_water = _dist_from((ord('~'), ord('b')), 3)
+    d_road = _dist_from((ord('r'), ord('w')), 6)
+    apron = 0
+    for y in range(H):
+        row = grid.g[y]
+        for x in range(W):
+            if row[x] != DOT:
+                continue
+            if d_water[y][x] <= 3 and d_road[y][x] <= 6:
+                row[x] = ord('p')
+                apron += 1
+    if apron:
+        print(f'[post] 항만 에이프런 {apron:,}타일 → p (물·도로에 붙은 맨땅 = 콘크리트 앞마당)')
+
+    # 3c-2b) 유기 지형 경계 흔들기 (172차) — OSM 폴리곤은 **자로 그은 직선**이다.
+    #   숲·농경지·잔디가 포장과 만나는 자리가 완벽한 수직선이면, 접경 셀을 아무리 잘 그려도
+    #   실루엣이 인공물로 읽힌다(실렌더 — 숲 ↔ 포장 경계가 픽셀 하나 어긋남 없는 세로선).
+    #   실제 식생 경계는 들쭉날쭉하다 → **±1타일 진폭**으로 결정적 노이즈를 먹인다.
+    #   ⚖ 물·건물·도로는 건드리지 않는다 — 통행성과 실측 해안선이 정본이다.
+    ORGANIC = (ord(','), ord('f'), ord('c'))
+    SOFT = (DOT, ord('d'), ord('p'))          # 흔들려도 되는 상대 (도로·보도·모래는 제외)
+    def _jit(x, y):
+        h = (x * 374761393 + y * 668265263) & 0xFFFFFFFF
+        h = (h ^ (h >> 13)) * 1274126177 & 0xFFFFFFFF
+        return ((h ^ (h >> 16)) & 0xFFFF) / 65535.0
+    jit = 0
+    snapshot = [bytes(r) for r in grid.g]
+    for y in range(1, H - 1):
+        row = grid.g[y]
+        for x in range(1, W - 1):
+            cur = snapshot[y][x]
+            nb = (snapshot[y - 1][x], snapshot[y + 1][x], snapshot[y][x - 1], snapshot[y][x + 1])
+            if cur in ORGANIC:
+                cand = [n for n in nb if n in SOFT]
+                if cand and _jit(x, y) < 0.34:
+                    row[x] = cand[0]; jit += 1
+            elif cur in SOFT:
+                cand = [n for n in nb if n in ORGANIC]
+                if cand and _jit(x ^ 0x5bd1, y ^ 0x2f3c) < 0.34:
+                    row[x] = cand[0]; jit += 1
+    if jit:
+        print(f'[post] 유기 지형 경계 흔들기 {jit:,}타일 — 자로 그은 폴리곤 변을 들쭉날쭉하게')
+        # 흔든 뒤에는 반드시 다시 디노이즈한다 — 흔들기가 만든 **외딴 한 칸**은 접경 규칙이
+        # 사방에 띠를 둘러 오히려 더 눈에 띈다(실렌더 — 밭 한가운데 밝은 포장 사각형).
+        for _ in range(2):
+            fix = []
+            for y in range(1, H - 1):
+                row = grid.g[y]
+                for x in range(1, W - 1):
+                    ch = row[x]
+                    if ch not in GROUNDS:
+                        continue
+                    cnt = {}
+                    for nch in (grid.g[y - 1][x], grid.g[y + 1][x], row[x - 1], row[x + 1]):
+                        if nch in GROUNDS and nch != ch:
+                            cnt[nch] = cnt.get(nch, 0) + 1
+                    for nch, n in cnt.items():
+                        if n >= 3:
+                            fix.append((x, y, nch))
+                            break
+            for x, y, nch in fix:
+                grid.g[y][x] = nch
+            if not fix:
+                break
+            print(f'[post] 흔들기 후 디노이즈 {len(fix):,}타일')
+
+    # 3c-3) 중간 지형은 **타일이 아니라 접경 띠로** 넣는다 (172차 — 실렌더 확인 후 결정).
+    #   포장과 모래 사이에 흙 타일을 한 줄 끼워 봤더니, 32px 타일 한 줄이 통째로 갈색이라
+    #   "닳아 드러난 가장자리"가 아니라 **일부러 낸 흙길**로 읽혔다(실렌더 — 대각으로 뻗은
+    #   갈색 리본). 전이는 타일보다 작아야 한다 → 클라이언트 `drawSeamGrains`가
+    #   `seamBetween(...).seamCh`를 보고 **타일 안쪽 몇 px 띠**로 그린다.
+    #   여기서는 실측 경계를 그대로 두고 아무것도 끼우지 않는다.
 
     # 3d) 래스터 병합 패스 (RASTER_UPLIFT_SPEC §6 + 개정안 §2 — --no-raster 로 끔)
     #     우선순위: 래스터 추론 < OSM 벡터 < patch.json(build_region_maps 에서 최후 적용).
