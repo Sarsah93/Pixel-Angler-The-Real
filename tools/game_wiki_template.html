@@ -215,6 +215,71 @@ table.wk td.c{text-align:center; font-family:'IBM Plex Mono',monospace}
 footer.page{margin-top:40px; padding-top:16px; border-top:1px solid var(--rule); font-size:12px;
   color:var(--muted)}
 footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
+/* ── 도감 (169차 — 분류 버튼 · 썸네일 카드 · 상세) ───────────── */
+.chips{display:flex; flex-wrap:wrap; gap:6px; margin-top:12px}
+.chip{font:inherit; font-size:13px; padding:6px 13px; border:1px solid var(--rule); border-radius:999px;
+  background:var(--raised); color:var(--ink2); cursor:pointer; display:inline-flex; gap:6px; align-items:baseline}
+.chip:hover{background:var(--sea-soft)}
+.chip b{font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:500; color:var(--muted)}
+.chip[aria-pressed=true]{background:var(--sea); color:#fff; border-color:var(--sea)}
+.chip[aria-pressed=true] b{color:rgba(255,255,255,.75)}
+.chips.sub .chip{font-size:12px; padding:4px 10px; border-radius:4px}
+.gnote{margin:10px 0 0; color:var(--muted); font-size:13px}
+.count{margin:14px 0 0; font-size:12px; color:var(--muted); font-family:'IBM Plex Mono',monospace}
+
+.grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(178px,1fr)); gap:12px; margin-top:12px}
+.icard{display:flex; flex-direction:column; gap:0; text-align:left; font:inherit; cursor:pointer;
+  background:var(--card); border:1px solid var(--rule); border-radius:6px; overflow:hidden; padding:0}
+.icard:hover{border-color:var(--sea); box-shadow:var(--shadow)}
+.icard:focus-visible{outline:2px solid var(--sea); outline-offset:1px}
+.thumb{display:flex; align-items:center; justify-content:center; height:104px; background:var(--raised);
+  border-bottom:1px solid var(--rule-soft); padding:8px}
+.thumb img{max-width:100%; max-height:88px; object-fit:contain; image-rendering:pixelated}
+.thumb .ph{font-family:'Hahmlet',serif; font-size:24px; color:var(--rule)}
+.icard .body{padding:10px 12px 12px}
+.icard .nm{font-size:14px; font-weight:600; color:var(--ink); line-height:1.4; overflow-wrap:anywhere}
+.icard .mt{font-size:11.5px; color:var(--muted); margin-top:3px; overflow-wrap:anywhere}
+.icard .pr{font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--brass); margin-top:5px}
+
+/* 상세 시트 */
+.sheet{position:fixed; inset:0; z-index:60; background:rgba(12,14,18,.55); display:flex;
+  align-items:flex-start; justify-content:center; padding:24px 16px; overflow:auto}
+.sheet[hidden]{display:none}
+.sheetbox{width:100%; max-width:860px; background:var(--card); border:1px solid var(--rule);
+  border-radius:8px; box-shadow:var(--shadow); padding:22px 24px 30px; position:relative}
+@media (max-width:560px){ .sheetbox{padding:18px 16px 26px} }
+.sheetbox .x{position:absolute; top:12px; right:12px; width:32px; height:32px; border-radius:6px;
+  border:1px solid var(--rule); background:var(--raised); color:var(--ink2); font:inherit; font-size:15px; cursor:pointer}
+.sheetbox .x:hover{background:var(--buoy); color:#fff; border-color:var(--buoy)}
+.shead{display:grid; grid-template-columns:172px minmax(0,1fr); gap:20px; align-items:start}
+@media (max-width:560px){ .shead{grid-template-columns:minmax(0,1fr)} }
+.shead .pic{display:flex; align-items:center; justify-content:center; background:var(--raised);
+  border:1px solid var(--rule-soft); border-radius:6px; padding:10px; min-height:132px}
+.shead .pic img{max-width:100%; max-height:150px; object-fit:contain; image-rendering:pixelated}
+.shead h2{font-size:24px; padding-right:38px}
+.shead .sci{font-size:12.5px; color:var(--muted); font-style:italic; margin-top:3px}
+.shead .lede{margin-top:10px; color:var(--ink2); font-size:14px}
+.tags{display:flex; flex-wrap:wrap; gap:5px; margin-top:8px}
+.tags span{font-size:11.5px; padding:2px 9px; border-radius:999px; background:var(--sea-soft); color:var(--sea)}
+.tags span.gold{background:var(--brass-soft); color:var(--brass)}
+.ssec{margin-top:22px}
+.ssec>h3{font-size:16px; border-bottom:1px solid var(--rule); padding-bottom:5px; margin-bottom:9px}
+.kv{width:100%; border-collapse:collapse; font-size:13.5px}
+.kv th{text-align:left; color:var(--muted); font-weight:500; width:116px; padding:6px 10px 6px 0; vertical-align:top}
+.kv td{padding:6px 0; color:var(--ink); vertical-align:top; overflow-wrap:anywhere}
+.kv tr+tr th,.kv tr+tr td{border-top:1px solid var(--rule-soft)}
+.steps{margin:0; padding-left:22px; font-size:14px}
+.steps li{margin:4px 0}
+.vgrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(212px,1fr)); gap:10px}
+.vcard{border:1px solid var(--rule-soft); border-radius:6px; background:var(--raised); padding:11px 13px}
+.vcard .vh{display:flex; gap:9px; align-items:center}
+.vcard .vh img{width:52px; height:36px; object-fit:contain; image-rendering:pixelated}
+.vcard .vn{font-size:13.5px; font-weight:600}
+.vcard p{margin:7px 0 0; font-size:13px; color:var(--ink2)}
+.vcard .vm{margin-top:6px; font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--brass)}
+.star{color:var(--brass); letter-spacing:.06em}
+.dim{color:var(--muted)}
+
 .hidden{display:none}
 </style>
 
@@ -222,16 +287,16 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
   <header class="mast">
     <div class="kicker">Pixel Angler The Real · Wiki</div>
     <h1>Pixel Angler The Real Wiki</h1>
-    <p class="lead">조행록(할 일 186편)에서 시작해 요리·어종·제작·아이템·시스템까지 묶은 게임 전체 안내서입니다.
-      조행록 탭에서 할 일 하나를 고르면 의뢰인의 말, 목표, <b>실제로 재생되는 장면</b>, 받는 것이 한 장으로 펼쳐집니다.</p>
+    <p class="lead">조행록(할 일 186편)에서 시작해 요리·어종·아이템·시스템까지 묶은 게임 전체 안내서입니다.
+      조행록 탭에서 할 일 하나를 고르면 의뢰인의 말, 목표, <b>실제로 재생되는 장면</b>, 받는 것이 한 장으로 펼쳐지고,
+      나머지 탭은 <b>분류 버튼</b>으로 모아 본 뒤 카드를 눌러 그림과 상세를 엽니다.</p>
     <div class="tally" id="tally"></div>
   </header>
 
   <nav class="tabs" id="tabs" aria-label="분류">
     <button data-tab="quests" aria-pressed="true">조행록</button>
     <button data-tab="cooking" aria-pressed="false">요리</button>
-    <button data-tab="fishing" aria-pressed="false">어종</button>
-    <button data-tab="crafting" aria-pressed="false">제작</button>
+    <button data-tab="species" aria-pressed="false">어종·수산생물</button>
     <button data-tab="items" aria-pressed="false">아이템</button>
     <button data-tab="systems" aria-pressed="false">시스템</button>
   </nav>
@@ -251,16 +316,26 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
     <main class="doc" id="doc"></main>
   </div>
   </div>
-  <div id="tab-cards" class="hidden">
+  <div id="tab-cat" class="hidden">
     <div class="bar"><input type="search" id="cq" placeholder="이름·설명으로 찾기" aria-label="검색"></div>
-    <div class="cards" id="cards"></div>
+    <div class="chips" id="groups" role="group" aria-label="분류"></div>
+    <div class="chips sub" id="subs" role="group" aria-label="세부 분류"></div>
+    <p class="gnote" id="gnote"></p>
+    <p class="count" id="ccount"></p>
+    <div class="grid" id="grid"></div>
+  </div>
+
+  <div class="sheet" id="sheet" hidden role="dialog" aria-modal="true" aria-label="상세">
+    <div class="sheetbox" id="sheetbox"></div>
   </div>
 
   <footer class="page">
     수치·문장은 전부 <code>@tra/core</code>에서 그대로 구워 낸 것입니다 —
     할 일 <span id="fq"></span>편 · 본 줄기 <span id="fm"></span> · 곁가지 <span id="fs"></span> ·
     이야기 <span id="fa"></span>갈래 · 누적 경험치 <span id="fx"></span>.
-    생성기 <code>tools/gen_game_wiki_data.mjs</code> · 장면 <code>tools/dump_quest_scenes.cjs</code>.
+    요리 <span id="fr"></span>가지 · 수산생물 <span id="fsp"></span>종 · 아이템 <span id="fi"></span>종 · 그림 <span id="fim"></span>장.
+    <br>생성기 <code>tools/gen_game_wiki_data.mjs</code> · 아이템 <code>tools/dump_wiki_items.mjs</code> ·
+    그림 <code>tools/gen_wiki_images.py</code> · 장면 <code>tools/dump_quest_scenes.cjs</code>.
   </footer>
 </div>
 
@@ -285,6 +360,10 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
   document.getElementById('fs').textContent = nf(D.counts.sub);
   document.getElementById('fa').textContent = nf(D.counts.arcs);
   document.getElementById('fx').textContent = nf(D.counts.xp);
+  document.getElementById('fr').textContent = nf(G.counts.recipes);
+  document.getElementById('fsp').textContent = nf(G.counts.species);
+  document.getElementById('fi').textContent = nf(G.counts.items);
+  document.getElementById('fim').textContent = nf(G.counts.images);
 
   // 장 이동 선택기
   const jump = document.getElementById('jump');
@@ -641,32 +720,267 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
   renderIndex();
   renderDoc(false);
 
-  // ── 전체 위키 탭 (168차) ─────────────────────────────
-  let tab = 'quests', cterm = '';
-  const card = (title, body, tag) => '<article class="card">' + (tag ? '<span class="tag">' + esc(tag) + '</span>' : '') +
-    '<h3>' + esc(title) + '</h3>' + body + '</article>';
-  const hit = x => !cterm || JSON.stringify(x).toLowerCase().includes(cterm.toLowerCase());
-  function renderCards(){
-    let items = [];
-    if (tab === 'cooking') items = G.recipes.filter(hit).map(r => card(r.name,
-      '<p>' + esc(r.desc) + '</p><div class="muted">주재료 ' + esc(Array.isArray(r.main) ? r.main.join(', ') : r.main) +
-      ' · 화구 ' + esc((r.cookware || []).join(', ')) + '</div>', r.family));
-    if (tab === 'fishing') items = G.fish.filter(hit).map(f => card(f.name,
-      '<div class="muted">' + esc(f.scientific) + '</div>' + (f.habitat ? '<p>' + esc(f.habitat) + '</p>' : ''), '어종'));
-    if (tab === 'crafting') items = G.blueprints.filter(hit).map(b => card(b.name,
-      '<p>' + esc(b.desc) + '</p><div class="muted">' + esc(b.group) + ' · ' + (b.station === 'hand' ? '손 제작' : '고급 제작대') + '</div>', '제작'));
-    if (tab === 'items') items = G.items.filter(hit).map(i => card(i.name, '', '아이템'));
-    if (tab === 'systems') items = G.systems.filter(hit).map(s => card(s.title, '<p>' + esc(s.summary) + '</p>', '시스템'));
-    document.getElementById('cards').innerHTML = items.length ? items.join('') : '<p class="empty">찾는 항목이 없습니다.</p>';
+  // ── 도감 탭 (169차 — 분류 버튼 · 썸네일 · 상세) ─────────────
+  let tab = 'quests', cterm = '', group = '', sub = '';
+  const nfw = n => nf(Math.round(n)) + '원';
+  const img = (file, cls) => file
+    ? '<img src="img/' + esc(file) + '" alt="" loading="lazy"' + (cls ? ' class="' + cls + '"' : '') + '>'
+    : '';
+  const thumb = (file, ph) => '<div class="thumb">' + (file ? img(file) : '<span class="ph">' + esc(ph) + '</span>') + '</div>';
+  const kvRows = pairs => '<table class="kv"><tbody>' + pairs
+    .filter(([, v]) => v !== null && v !== undefined && v !== '')
+    .map(([k, v]) => '<tr><th>' + esc(k) + '</th><td>' + v + '</td></tr>').join('') + '</tbody></table>';
+  const stars = n => '<span class="star">' + '★'.repeat(n) + '<span class="dim">' + '☆'.repeat(5 - n) + '</span></span>';
+
+  /** 탭 정의 — 목록·분류·카드·상세를 한 곳에서 (새 탭 = 여기에 한 항목) */
+  const TABS = {
+    cooking: {
+      note: '불로 만드는 요리입니다. 계열 버튼으로 모아 보고, 카드를 누르면 조리법과 완성도별 실지급이 펼쳐집니다.',
+      groups: () => [{ id: '', label: '전체', count: G.cooking.recipes.length }]
+        .concat(G.cooking.groups.map(g => ({ id: g.id, label: g.label, count: g.count })))
+        .concat([{ id: '_ing', label: '재료', count: G.ingredients.length }]),
+      list: () => group === '_ing' ? G.ingredients.map(toIngCard)
+        : G.cooking.recipes.filter(r => !group || r.family === group).map(toDishCard),
+    },
+    species: {
+      note: '낚시·채집·구제로 만나는 수산생물입니다. 기타 수산동물류는 앞으로 극피동물·피낭동물·자포동물로 더 나눕니다.',
+      groups: () => [{ id: '', label: '전체', count: G.species.list.length }]
+        .concat(G.species.groups.map(g => ({ id: g.id, label: g.label, count: g.count }))),
+      subs: () => group ? uniqSubs(G.species.list.filter(s => s.group === group).map(s => s.subgroup)) : [],
+      list: () => G.species.list
+        .filter(s => !group || s.group === group)
+        .filter(s => !sub || s.subgroup === sub)
+        .map(toSpeciesCard),
+    },
+    items: {
+      note: '상점에서 사거나 처음부터 가진 물건입니다. 대분류를 고르면 소분류 버튼이 함께 나옵니다.',
+      groups: () => [{ id: '', label: '전체', count: G.items.list.length }]
+        .concat(G.items.groups.map(g => ({ id: g.id, label: g.label, count: g.count }))),
+      subs: () => group ? uniqSubs(G.items.list.filter(i => i.group === group).map(i => i.sub)) : [],
+      list: () => G.items.list
+        .filter(i => !group || i.group === group)
+        .filter(i => !sub || i.sub === sub)
+        .map(toItemCard),
+    },
+    systems: {
+      note: '게임을 이루는 계통별 현황 요약입니다.',
+      groups: () => [],
+      list: () => G.systems.map((x, i) => ({
+        key: 'sys' + i, name: x.title, meta: '시스템', img: null, price: '',
+        search: x.title + ' ' + x.summary,
+        detail: () => ({ title: x.title, sub: '', lede: x.summary, tags: [], img: null, body: '' }),
+      })),
+    },
+  };
+  const uniqSubs = arr => {
+    const m = new Map();
+    for (const v of arr) m.set(v, (m.get(v) ?? 0) + 1);
+    return [{ id: '', label: '전부', count: arr.length }]
+      .concat([...m.entries()].sort((a, b) => b[1] - a[1]).map(([id, count]) => ({ id, label: id, count })));
+  };
+
+  // ── 카드 → 상세 ─────────────────────────────
+  function toDishCard(r){
+    return {
+      key: r.id, name: r.name, meta: r.familyLabel + ' · ' + r.cookware.join('·'),
+      img: r.img, price: nfw(r.baseValue) + ' 기준',
+      search: [r.name, r.nameEn, r.desc, r.shortDesc, r.familyLabel].join(' '),
+      detail: () => dishDetail(r),
+    };
   }
+  function toIngCard(i){
+    return {
+      key: i.id, name: i.name, meta: i.kindLabel + ' · ' + i.unit, img: null,
+      price: i.usedIn.length ? i.usedIn.length + '개 요리에 쓰임' : '',
+      search: [i.name, i.kindLabel, i.usedIn.join(' ')].join(' '),
+      detail: () => ({
+        title: i.name, sub: i.kindLabel, lede: '', img: null,
+        tags: [i.kindLabel, '단위 ' + i.unit],
+        body: '<div class="ssec"><h3>제원</h3>' + kvRows([
+          ['투입 단위', esc(i.unit)],
+          ['1단위 질량', i.massG + ' g'],
+          ['1단위 염분', i.saltG + ' g'],
+          ['1단위 당분', i.sugarG + ' g'],
+          ['익기 시작', i.cookMinC + ' ℃'],
+          ['타는 온도', i.burnC ? i.burnC + ' ℃' : null],
+        ]) + '</div>' +
+        '<div class="ssec"><h3>쓰이는 요리</h3><p>' +
+        (i.usedIn.length ? esc(i.usedIn.join(' · ')) : '<span class="dim">아직 없습니다.</span>') + '</p></div>',
+      }),
+    };
+  }
+  function toSpeciesCard(s){
+    return {
+      key: s.id, name: s.name, meta: s.subgroup + ' · ' + s.source, img: s.img,
+      price: s.valuePerKg ? nfw(s.valuePerKg) + '/kg' : '',
+      search: [s.name, s.nameEn, s.scientific, s.desc, s.subgroup, s.source].join(' '),
+      detail: () => ({
+        title: s.name, sub: s.scientific + (s.nameEn ? ' · ' + s.nameEn : ''),
+        lede: s.desc, img: s.img,
+        tags: [groupLabel(s.group), s.subgroup, s.source]
+          .concat(s.rarity && s.rarity !== '—' ? [s.rarity] : []),
+        body: '<div class="ssec"><h3>가치</h3>' + kvRows([
+          ['kg당 값', s.valuePerKg ? '<b>' + nfw(s.valuePerKg) + '</b> <span class="dim">(1x 기준 · 등급·체장 배율 전)</span>' : '판매 대상 아님'],
+        ]) + '</div>' +
+        '<div class="ssec"><h3>특징</h3>' + kvRows(s.traits.map(([k, v]) => [k, esc(v)])) + '</div>',
+      }),
+    };
+  }
+  function toItemCard(i){
+    return {
+      key: i.id, name: i.name, meta: i.groupLabel + ' · ' + i.sub, img: i.img,
+      price: i.price ? nfw(i.price) : '',
+      search: [i.name, i.desc, i.groupLabel, i.sub, i.soldAt.join(' ')].join(' '),
+      detail: () => ({
+        title: i.name, sub: i.groupLabel + ' · ' + i.sub, lede: i.desc, img: i.img,
+        tags: [i.groupLabel, i.sub].concat(i.seed ? ['처음부터 보유'] : []),
+        body: '<div class="ssec"><h3>거래</h3>' + kvRows([
+          ['기준가', i.price ? '<b>' + nfw(i.price) + '</b>' : '판매하지 않음'],
+          ['파는 곳', i.soldAt.length ? esc(i.soldAt.join(' · ')) : '<span class="dim">상점에서 팔지 않습니다.</span>'],
+        ]) + '</div>' +
+        (i.spec.length
+          ? '<div class="ssec"><h3>제원</h3>' + kvRows(i.spec.map(([k, v]) => [k, esc(v)])) + '</div>' : ''),
+      }),
+    };
+  }
+  const groupLabel = id => (G.species.groups.find(g => g.id === id) || {}).label || id;
+
+  /** 요리 상세 — 설명 · 기준 정보 · 가치 · 조리법 · 완성도별 실지급 · 어종 변형 */
+  function dishDetail(r){
+    const ingTable = rows => '<div class="tablewrap"><table class="wk"><thead><tr>' +
+      '<th>재료</th><th>쓰임</th><th>양</th><th>투입 시점</th></tr></thead><tbody>' +
+      rows.map(q => '<tr><td>' + esc(q.name) + (q.choice ? ' <span class="dim">(택1)</span>' : '') + '</td>' +
+        '<td>' + esc(q.roleLabel) + '</td>' +
+        '<td class="c">' + q.min + '~' + q.max + ' ' + esc(q.unit) +
+        (q.ideal !== null ? ' <span class="dim">(권장 ' + q.ideal + ')</span>' : '') + '</td>' +
+        '<td>' + esc((r.stages[q.stage] || {}).label || ('' + (q.stage + 1) + '단계')) + '</td></tr>').join('') +
+      '</tbody></table></div>';
+
+    const starTable = '<div class="tablewrap"><table class="wk"><thead><tr>' +
+      '<th>완성도</th><th>총점</th><th>판매가</th><th>허기</th><th>수분</th><th>버프</th></tr></thead><tbody>' +
+      r.stars.map(x => '<tr><td>' + (x.burnt ? '<span class="dim">탄 요리</span>' : stars(x.stars)) + '</td>' +
+        '<td class="c">' + (x.burnt ? '—' : x.total) + '</td>' +
+        '<td class="c">' + (x.value ? nf(x.value) : '0') + '</td>' +
+        '<td class="c">+' + x.hunger + '</td><td class="c">+' + x.hydration + '</td>' +
+        '<td>' + (x.effect ? esc(x.effect) : '<span class="dim">없음</span>') + '</td></tr>').join('') +
+      '</tbody></table></div><p class="note">주재료 ' + nf(r.refWeightG) +
+      'g · 신선도 100% · 평균 어종 기준입니다. 중량과 어종이 달라지면 값도 함께 움직입니다.</p>';
+
+    const variants = r.variants.length
+      ? '<div class="ssec"><h3>주재료에 따른 변형</h3><div class="vgrid">' +
+        r.variants.map(v => '<div class="vcard"><div class="vh">' +
+          (v.img ? img(v.img) : '') + '<span class="vn">' + esc(v.name) + '</span></div>' +
+          '<p>' + esc(v.desc) + '</p>' +
+          '<div class="vm">' + nf(v.value) + '원 · 허기 +' + v.hunger + ' · 수분 +' + v.hydration + '</div></div>').join('') +
+        '</div><p class="note">전용 설명이 붙은 ' + r.variants.length + '종입니다. 주재료로 쓸 수 있는 어종은 모두 ' +
+        r.variantCandidates + '종이고, 나머지는 평균 프로필로 계산합니다.</p></div>'
+      : '';
+
+    return {
+      title: r.name, sub: r.nameEn, lede: r.shortDesc || r.desc, img: r.img,
+      tags: [r.familyLabel].concat(r.cookware).concat(['약 ' + r.cookMin + '분', r.servings + '인분']),
+      body:
+        (r.desc && r.desc !== r.shortDesc ? '<div class="ssec"><h3>설명</h3><p>' + esc(r.desc) + '</p></div>' : '') +
+        '<div class="ssec"><h3>가치 (1x 기준)</h3>' + kvRows([
+          ['기준 판매가', '<b>' + nfw(r.baseValue) + '</b> <span class="dim">— 완성도·중량·신선도 배율 전</span>'],
+          ['기본 회복', '허기 +' + r.vitals.hunger + ' · 수분 +' + r.vitals.hydration],
+          ['버프', r.effect ? esc(r.effect.name) + ' — ' + esc(r.effect.desc) + ' <span class="dim">(' + esc(r.effect.kind) + ')</span>' : '없음'],
+          ['기준 중량', nf(r.refWeightG) + ' g'],
+        ]) + '</div>' +
+        '<div class="ssec"><h3>조리법</h3><ol class="steps">' +
+        r.stages.map(st => '<li>' + esc(st.label) + '</li>').join('') + '</ol>' +
+        '<h4 style="margin:14px 0 6px">필수 재료</h4>' + ingTable(r.required) +
+        (r.optional.length ? '<h4 style="margin:14px 0 6px">부가 재료 <span class="dim">(최대 ' + r.maxExtraKinds + '종)</span></h4>' + ingTable(r.optional) : '') +
+        '</div>' +
+        '<div class="ssec"><h3>조리 기준</h3>' + kvRows([
+          ['완성 판정', esc(r.doneWhen)],
+          ['적정 온도', r.tempBand[0] + '~' + r.tempBand[1] + ' ℃'],
+          ['서빙 온도', r.servingC + ' ℃ 이상이면 온도 별 만점'],
+          ['식는 속도', '약 ' + r.coolTauMin + '분마다 식는다'],
+          ['목표 간', r.targetSaltPct + ' %'],
+          ['목표 당도', r.targetSugarSpoons ? r.targetSugarSpoons + ' 큰술 상당' : '없음'],
+        ]) + '</div>' +
+        '<div class="ssec"><h3>완성도에 따른 실지급</h3>' + starTable + '</div>' +
+        variants +
+        ((r.cookingTip || r.ingredientTip) ? '<div class="ssec"><h3>요령</h3>' +
+          (r.cookingTip ? '<p>' + esc(r.cookingTip) + '</p>' : '') +
+          (r.ingredientTip ? '<p>' + esc(r.ingredientTip) + '</p>' : '') + '</div>' : ''),
+    };
+  }
+
+  // ── 목록 렌더 ────────────────────────────────
+  let cards = [];
+  function renderCat(){
+    const def = TABS[tab]; if (!def) return;
+    const gs = def.groups();
+    document.getElementById('groups').innerHTML = gs.map(g =>
+      '<button class="chip" data-g="' + esc(g.id) + '" aria-pressed="' + (group === g.id) + '">' +
+      esc(g.label) + '<b>' + g.count + '</b></button>').join('');
+    const subs = def.subs ? def.subs() : [];
+    const subEl = document.getElementById('subs');
+    subEl.innerHTML = subs.length > 2 ? subs.map(x =>
+      '<button class="chip" data-s="' + esc(x.id) + '" aria-pressed="' + (sub === x.id) + '">' +
+      esc(x.label) + '<b>' + x.count + '</b></button>').join('') : '';
+    document.getElementById('gnote').textContent = def.note;
+
+    cards = def.list();
+    const t = cterm.toLowerCase();
+    const shown = t ? cards.filter(c => (c.search || c.name).toLowerCase().includes(t)) : cards;
+    document.getElementById('ccount').textContent = shown.length + ' / ' + cards.length + '건';
+    document.getElementById('grid').innerHTML = shown.length ? shown.map((c, i) =>
+      '<button class="icard" data-i="' + cards.indexOf(c) + '">' + thumb(c.img, c.name.slice(0, 1)) +
+      '<div class="body"><div class="nm">' + esc(c.name) + '</div>' +
+      '<div class="mt">' + esc(c.meta) + '</div>' +
+      (c.price ? '<div class="pr">' + esc(c.price) + '</div>' : '') + '</div></button>').join('')
+      : '<p class="empty">찾는 항목이 없습니다.</p>';
+  }
+
+  function openSheet(i){
+    const c = cards[i]; if (!c) return;
+    const d = c.detail();
+    document.getElementById('sheetbox').innerHTML =
+      '<button class="x" id="sheetx" aria-label="닫기">✕</button>' +
+      '<div class="shead">' +
+      (d.img ? '<div class="pic">' + img(d.img) + '</div>' : '<div class="pic"><span class="ph">' + esc(d.title.slice(0, 1)) + '</span></div>') +
+      '<div><h2>' + esc(d.title) + '</h2>' +
+      (d.sub ? '<div class="sci">' + esc(d.sub) + '</div>' : '') +
+      (d.tags.length ? '<div class="tags">' + d.tags.map(x => '<span>' + esc(x) + '</span>').join('') + '</div>' : '') +
+      (d.lede ? '<p class="lede">' + esc(d.lede) + '</p>' : '') +
+      '</div></div>' + d.body;
+    const sh = document.getElementById('sheet');
+    sh.hidden = false;
+    document.body.style.overflow = 'hidden';
+    document.getElementById('sheetx').focus();
+  }
+  function closeSheet(){
+    document.getElementById('sheet').hidden = true;
+    document.body.style.overflow = '';
+  }
+  document.getElementById('sheet').addEventListener('click', e => {
+    if (e.target.id === 'sheet' || e.target.closest('#sheetx')) closeSheet();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !document.getElementById('sheet').hidden) closeSheet();
+  });
+  document.getElementById('grid').addEventListener('click', e => {
+    const b = e.target.closest('.icard'); if (b) openSheet(Number(b.dataset.i));
+  });
+  document.getElementById('groups').addEventListener('click', e => {
+    const b = e.target.closest('[data-g]'); if (!b) return;
+    group = b.dataset.g; sub = ''; renderCat();
+  });
+  document.getElementById('subs').addEventListener('click', e => {
+    const b = e.target.closest('[data-s]'); if (!b) return;
+    sub = b.dataset.s; renderCat();
+  });
   document.getElementById('tabs').addEventListener('click', e => {
     const b = e.target.closest('[data-tab]'); if (!b) return;
-    tab = b.dataset.tab;
+    tab = b.dataset.tab; group = ''; sub = '';
     for (const x of document.querySelectorAll('#tabs button')) x.setAttribute('aria-pressed', String(x === b));
     document.getElementById('tab-quests').classList.toggle('hidden', tab !== 'quests');
-    document.getElementById('tab-cards').classList.toggle('hidden', tab === 'quests');
-    if (tab !== 'quests') renderCards();
+    document.getElementById('tab-cat').classList.toggle('hidden', tab === 'quests');
+    if (tab !== 'quests') renderCat();
   });
-  document.getElementById('cq').addEventListener('input', e => { cterm = e.target.value.trim(); renderCards(); });
+  document.getElementById('cq').addEventListener('input', e => { cterm = e.target.value.trim(); renderCat(); });
 })();
 </script>

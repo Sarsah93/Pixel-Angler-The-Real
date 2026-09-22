@@ -65,3 +65,6 @@ docs/reference/gis/*/*.dbf
 
 # 멀티플레이 세션 저장본 (145차 — 호스트 PC의 "세계 파일". 레포에 올리지 않는다)
 .mp-sessions/
+
+# 전체 위키 아티팩트 파생물 (tools/gen_wiki_images.py · tools/dump_wiki_items.mjs 재생성)
+tools/wiki_img/
