@@ -334,6 +334,15 @@ export class BootScene extends Phaser.Scene {
     this.load.image('fish_red_snapper_rockfish', 'fish/red_snapper_rockfish.png');    // 열기(불볼락)
     this.load.image('fish_black_rockfish', 'fish/black_rockfish.png');                // 조피볼락(우럭)
 
+    // 2026-09-22 추가 (174차) — 사용자 제공 실사 7종
+    this.load.image('fish_blackthroat_seaperch', 'fish/blackthroat_seaperch.png');    // 눈볼대(금태)
+    this.load.image('fish_yellowfin_goby', 'fish/yellowfin_goby.png');                // 문절망둑
+    this.load.image('fish_flounder', 'fish/flounder.png');                            // 문치가자미(참도다리)
+    this.load.image('fish_starry_flounder', 'fish/starry_flounder.png');              // 강도다리
+    this.load.image('fish_frog_flounder', 'fish/frog_flounder.png');                  // 도다리
+    this.load.image('fish_silver_pomfret', 'fish/silver_pomfret.png');                // 병어 — 체커 배경 제거본
+    this.load.image('fish_korean_pomfret', 'fish/korean_pomfret.png');                // 덕대 — 체커 배경 제거본
+
     // ─── 남자 캐릭터 스프라이트 (12장) ───
     // 정지 4방향
     this.load.image('man-idle-front', 'characters/man/man-idle-front.png');

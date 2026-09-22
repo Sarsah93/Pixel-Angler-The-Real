@@ -59,6 +59,14 @@ export const FISH_TEXTURE: Record<string, string> = {
   // 2026-09-22 추가 (170차) — 볼락류 어종별 실사
   red_snapper_rockfish: 'fish_red_snapper_rockfish', // 열기(불볼락)
   black_rockfish: 'fish_black_rockfish',             // 조피볼락(우럭)
+  // 2026-09-22 추가 (174차) — 사용자 제공 실사 7종
+  blackthroat_seaperch: 'fish_blackthroat_seaperch', // 눈볼대(금태)
+  yellowfin_goby: 'fish_yellowfin_goby',             // 문절망둑
+  flounder: 'fish_flounder',                         // 문치가자미(참도다리)
+  starry_flounder: 'fish_starry_flounder',           // 강도다리
+  frog_flounder: 'fish_frog_flounder',               // 도다리
+  silver_pomfret: 'fish_silver_pomfret',             // 병어
+  korean_pomfret: 'fish_korean_pomfret',             // 덕대
 };
 
 /**
