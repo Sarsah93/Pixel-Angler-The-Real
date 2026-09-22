@@ -62,7 +62,7 @@ export const FISH_TEXTURE: Record<string, string> = {
   // 2026-09-22 추가 (174차) — 사용자 제공 실사 7종
   blackthroat_seaperch: 'fish_blackthroat_seaperch', // 눈볼대(금태)
   yellowfin_goby: 'fish_yellowfin_goby',             // 문절망둑
-  flounder: 'fish_flounder',                         // 문치가자미(참도다리)
+  flounder: 'fish_flounder',                         // 문치가자미
   starry_flounder: 'fish_starry_flounder',           // 강도다리
   frog_flounder: 'fish_frog_flounder',               // 도다리
   silver_pomfret: 'fish_silver_pomfret',             // 병어

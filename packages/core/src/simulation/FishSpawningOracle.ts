@@ -330,7 +330,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     fight: { basePower: 0.7, patternWeights: { jump: 0.1, dive: 0.5, lateral: 0.4 }, intervalMult: 1.0, mouthFragility: 0.1 },
   },
   {
-    speciesId: 'flounder', nameKo: '참도다리(문치가자미)', nameEn: 'Marbled Flounder',
+    speciesId: 'flounder', nameKo: '문치가자미', nameEn: 'Marbled Flounder',
     // 모래·뻘 10~100m, 대한민국 전 해역 (실측 데이터 2026-07-16)
     habitat: ['sand', 'mud'], minDepthM: 10, maxDepthM: 100, preferredLayers: ['bottom'],
     baitPreference: { worm_blue: 70, worm_king: 20, krill: 10 },

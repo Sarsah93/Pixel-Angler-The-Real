@@ -665,7 +665,7 @@ export const FISH_DATABASE: FishSpecies[] = [
   },
   {
     id: 'flounder',
-    nameKo: '참도다리(문치가자미)',
+    nameKo: '문치가자미',
     nameEn: 'Marbled Flounder',
     scientificName: 'Pseudopleuronectes yokohamae',
     spriteKey: 'fish_flounder',

@@ -278,7 +278,7 @@ export class BootScene extends Phaser.Scene {
     // 텍스처 키는 어종 ID(오라클/FISH_DATABASE 표준) 기준 — 파일명(영문 통칭)과 분리해
     // 매핑은 FISH_TEXTURE(FirstPersonFishingScene)에서 일원화한다.
     this.load.image('fish_squid', 'fish/bigfin_reef_squid.png');            // 무늬오징어
-    this.load.image('fish_hairtail', 'fish/Cutlassfish.png');               // 갈치 (파일명 대문자 C — gh-pages 대소문자 구분)
+    this.load.image('fish_hairtail', 'fish/cutlassfish.png');               // 갈치 — 2026-09-23 픽셀아트 교체(구 대문자 파일명 폐기)
     this.load.image('fish_cuttlefish', 'fish/cuttlefish.png');              // 갑오징어
     this.load.image('fish_blue_rockfish', 'fish/dark-banded_rockfish.png');  // 청볼락 (171차 사용자 확인)
     this.load.image('fish_filefish', 'fish/filefish.png');                  // 쥐치
@@ -337,7 +337,7 @@ export class BootScene extends Phaser.Scene {
     // 2026-09-22 추가 (174차) — 사용자 제공 실사 7종
     this.load.image('fish_blackthroat_seaperch', 'fish/blackthroat_seaperch.png');    // 눈볼대(금태)
     this.load.image('fish_yellowfin_goby', 'fish/yellowfin_goby.png');                // 문절망둑
-    this.load.image('fish_flounder', 'fish/flounder.png');                            // 문치가자미(참도다리)
+    this.load.image('fish_flounder', 'fish/flounder.png');                            // 문치가자미
     this.load.image('fish_starry_flounder', 'fish/starry_flounder.png');              // 강도다리
     this.load.image('fish_frog_flounder', 'fish/frog_flounder.png');                  // 도다리
     this.load.image('fish_silver_pomfret', 'fish/silver_pomfret.png');                // 병어 — 체커 배경 제거본
