@@ -92,10 +92,11 @@ import { addPixelIcon } from '../ui/PixelIcon.js';
 import type { MiniMarker, QuestTrackerEntry } from '../ui/RegionHud.js';
 import { TextInput } from '../ui/TextInput.js';
 import { MonologuePanel, OPENING_MONOLOGUE } from '../ui/MonologuePanel.js';
-import { DialoguePanel } from '../ui/DialoguePanel.js';
+import { DialoguePanel, type DialogueSceneRequest } from '../ui/DialoguePanel.js';
 import { GeneralMeetingPanel } from '../ui/GeneralMeetingPanel.js';
 import { StoryStore } from '../store/StoryStore.js';
-import { storyActionScene } from '../store/StoryActionRegistry.js';
+import { storyActionScene, storyActionSpec } from '../store/StoryActionRegistry.js';
+import { questSceneFor, type SceneExtra } from '../data/QuestScenes.js';
 import { loadSettings } from './SettingsScene.js';
 import { MultiplayerClient } from '../net/MultiplayerClient.js';
 import { STORY_NPC_PLACEMENTS, STORY_PLACES, STORY_FIELD_TRIGGERS, type StoryNpcPlacement, type StoryFieldTrigger } from '../data/StoryNpcs.js';
@@ -3934,7 +3935,17 @@ export class RegionFieldScene extends Phaser.Scene {
   }[] = [];
   private nearNpc: StoryNpcPlacement | null = null;
   private npcHintText?: Phaser.GameObjects.Text;
-  private storyTriggers: { def: StoryFieldTrigger; x: number; y: number; mark: Phaser.GameObjects.Graphics; label: Phaser.GameObjects.Text }[] = [];
+  private storyTriggers: {
+    def: StoryFieldTrigger; x: number; y: number; mark: Phaser.GameObjects.Graphics; label: Phaser.GameObjects.Text;
+    /** 167차 — 사람이 서 있는 트리거(수상한 사람). 걷기 프레임은 컷씬이 `walking`으로 켠다 */
+    actor?: { spr: CharacterSprite; walking: boolean };
+  }[] = [];
+  /** 167차 — 장면이 세운 임시 배우. 장면이 끝나면 전부 치운다 */
+  private sceneExtras: { key: string; spr: CharacterSprite; label: Phaser.GameObjects.Text; walking: boolean }[] = [];
+  /** 컷씬이 플레이어를 걷게 하는 동안 true */
+  private playerCineWalking = false;
+  /** 대화·선택 계통의 장면이 끝난 직후 `finishActionChoice`가 올리는 단계에는 후속 장면을 또 틀지 않는다 */
+  private suppressActionScene = false;
   private nearStoryTrigger: StoryFieldTrigger | null = null;
   private storyProxAt = 0;
   private firedPlaces = new Set<string>();
@@ -3944,18 +3955,28 @@ export class RegionFieldScene extends Phaser.Scene {
   private placeStoryTriggers(): void {
     this.storyTriggers = [];
     for (const def of STORY_FIELD_TRIGGERS) {
-      if (def.regionId !== this.region) continue;
+      if (def.regionId !== this.region || def.viaNpc) continue;   // viaNpc = 대화창 행으로만 닿는다
       const { col, row } = this.nearestWalkable(def.tx, def.ty);
       const x = col * TR + TR / 2, y = row * TR + TR;
       const mark = this.add.graphics().setDepth(20 + y * 0.001 + 0.001);
       mark.fillStyle(0xb89b55, 0.92).fillCircle(x, y - 28, 5);
       mark.lineStyle(1, 0xf5e3a3, 0.8).strokeCircle(x, y - 28, 9);
-      const label = this.add.text(x, y - 43, def.labelKo, {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '8px', color: '#f5e3a3',
-        backgroundColor: '#07131dcc', padding: { x: 3, y: 2 },
-      }).setOrigin(0.5, 1).setDepth(20 + y * 0.001 + 0.002);
-      this.storyTriggers.push({ def, x, y, mark, label });
-      mark.setVisible(false); label.setVisible(false);
+      // 167차 — 사람이 서 있는 트리거: 금색 점 대신 얼굴이 있는 인물 + 이름표
+      let actor: { spr: CharacterSprite; walking: boolean } | undefined;
+      if (def.actor) {
+        const cfg = characterOf(`trigger:${def.id}`, { role: def.actor.role, sex: def.actor.sex, age: def.actor.age });
+        const spr = new CharacterSprite(this, x, y, cfg, CHAR_SCALE);
+        spr.image.setPosition(x, y + spr.footPad).setDepth(20 + y * 0.001 + 0.0006);
+        spr.setDir(def.actor.facing ?? 'down');
+        actor = { spr, walking: false };
+      }
+      const label = this.add.text(x, actor ? y + this.charTopFromFeet - RegionFieldScene.LABEL_GAP : y - 43,
+        def.actor ? def.actor.nameKo : def.labelKo, {
+          fontFamily: '"Noto Sans KR", sans-serif', fontSize: def.actor ? '9px' : '8px', color: def.actor ? '#ffe9a0' : '#f5e3a3',
+          backgroundColor: def.actor ? '#0a1628cc' : '#07131dcc', padding: { x: 3, y: def.actor ? 1 : 2 },
+        }).setOrigin(0.5, 1).setDepth(20 + y * 0.001 + 0.002);
+      this.storyTriggers.push({ def, x, y, mark, label, actor });
+      mark.setVisible(false); label.setVisible(false); actor?.spr.image.setVisible(false);
     }
     const ice = STORY_PLACES.find((p) => p.key === 'poi:auction-ice-drop' && p.regionId === this.region);
     if (ice) {
@@ -3989,6 +4010,7 @@ export class RegionFieldScene extends Phaser.Scene {
         nameKo: GameState.player.nickname || '나',
         headY: this.charTopFromFeet - 6,
         setFacing: (d: CineDir) => this.charSprite?.setDir(d),
+        setWalking: (on: boolean) => { this.playerCineWalking = on; },
       };
     }
     const n = this.storyNpcs.find((s) => s.def.npcId === who);
@@ -4003,6 +4025,7 @@ export class RegionFieldScene extends Phaser.Scene {
         const sheet = ensureCharSheet(this, characterOf(n.def.npcId), CHAR_SCALE);
         n.actor.setTexture(sheet, charFrameName(d, 0));
       },
+      setWalking: (on: boolean) => { if (n.ai) n.ai.cineWalking = on; },
     };
   }
 
@@ -4011,10 +4034,11 @@ export class RegionFieldScene extends Phaser.Scene {
    * `roles`는 각본의 배우 키 → 실제 NPC id 치환표(예: `watcher` → `hyeonsu`).
    * 치환 대상이 이 지역에 없으면 그 배우의 대사는 말풍선 없이 대사창으로만 흐른다.
    */
-  private playCinematic(script: CineScript, roles: Record<string, string>, onDone?: () => void): boolean {
+  private playCinematic(script: CineScript, roles: Record<string, string>, onDone?: () => void, extraActors?: Record<string, CineActor>): boolean {
     if (this.cinematicActive || this.cinematic || !this.scene.isActive()) return false;
-    const actors: Record<string, CineActor> = {};
+    const actors: Record<string, CineActor> = { ...(extraActors ?? {}) };
     for (const [key, npcId] of Object.entries(roles)) {
+      if (actors[key]) continue;
       const a = this.cineActor(npcId);
       if (a) actors[key] = a;
     }
@@ -4030,6 +4054,8 @@ export class RegionFieldScene extends Phaser.Scene {
       onComplete: () => {
         this.cinematic = undefined;
         this.cinematicActive = false;
+        this.playerCineWalking = false;
+        this.charSprite?.update(0, false);
         this.cameras.main.startFollow(this.playerBody, true, 0.14, 0.14);
         MultiplayerClient.setActivity('field');
         this.hud?.setVisible(true);
@@ -4059,19 +4085,148 @@ export class RegionFieldScene extends Phaser.Scene {
 
   private startStoryTrigger(t: StoryFieldTrigger): void {
     if (!this.storyTriggerAvailable(t)) return;
-    const script = t.phase === 0 ? CINE_N186_WATCH : t.phase === 1 ? CINE_N186_LEDGER : CINE_N186_REPORT;
     const suffix = t.id.replace('n18-6-', '');
     const source = `n18-6:${suffix === 'origin-watch' ? 'watch-cinematic' : suffix}`;
-    this.playCinematic(script, { player: 'player', watcher: 'hyeonsu', courier: 'kang_ducheol' }, () => {
+    const done = (): void => {
+      this.clearSceneExtras();
       StoryStore.emitAction(t.actionKey as import('@tra/core').StoryActionKey, source);
       this.hud?.pushLog(`[할 일] ${t.labelKo} — 진행 ${StoryStore.actionStep(t.questId, t.objectiveIndex)}/3`);
+      this.refreshQuestMarkers(true);
+    };
+    if (t.phase === 0) {
+      // 167차 — 사용자 각본: 숨은 수상한 사람 1(트리거 배우) + 동쪽에서 오는 수상한 사람 2(임시 배우)
+      const tr = this.storyTriggers.find((x) => x.def.id === t.id);
+      const extras: Record<string, CineActor> = {};
+      if (tr?.actor && t.actor) {
+        extras[t.actor.actorKey] = {
+          obj: tr.actor.spr.image, followers: [tr.label], nameKo: t.actor.nameKo, headY: this.charTopFromFeet - 6,
+          setFacing: (d: CineDir) => tr.actor!.spr.setDir(d),
+          setWalking: (on: boolean) => { tr.actor!.walking = on; },
+          keepPosition: true,
+        };
+      }
+      const s2 = this.spawnSceneExtra({
+        key: 's2', nameKo: '수상해 보이는 사람 2', nameEn: 'Suspicious person 2', role: 'office', sex: 'm', age: 'mid',
+        tx: 601, ty: 154, facing: 'left', alpha: 0,
+      });
+      if (s2) extras.s2 = s2;
+      if (!this.playCinematic(CINE_N186_WATCH, { player: 'player' }, () => {
+        // 1은 장면 끝에 퇴장했다 — 단계가 올라 트리거가 닫히면 그대로 사라진다
+        if (tr?.actor) { tr.actor.walking = false; tr.actor.spr.image.setAlpha(1); }
+        done();
+      }, extras)) this.clearSceneExtras();
+      return;
+    }
+    const script = t.phase === 1 ? CINE_N186_LEDGER : CINE_N186_REPORT;
+    this.playCinematic(script, { player: 'player', watcher: 'hyeonsu' }, done);
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // 167차 — 퀘스트 장면: talk·수동 목표는 컷씬이 끝나야 닫힌다
+  // ═══════════════════════════════════════════════════════════════
+
+  /** 대화창이 넘긴 장면 요청 — 대화창은 이미 닫혔다 */
+  private runSceneRequest(req: DialogueSceneRequest): void {
+    if (req.kind === 'objective') { this.playQuestScene(req.questId, req.objectiveIndex); return; }
+    if (req.kind === 'trigger') {
+      const def = STORY_FIELD_TRIGGERS.find((t) => t.id === req.triggerId);
+      if (def) this.startStoryTrigger(def);
+      return;
+    }
+    this.playActionChoiceScene(req.questId, req.objectiveIndex, req.choiceId);
+  }
+
+  /** 임시 배우 하나를 무대에 세운다 — 같은 얼굴 규칙(`characterOf`)·이름표·발 위치 */
+  private spawnSceneExtra(extra: SceneExtra): CineActor | undefined {
+    const pc = Math.floor(this.playerBody.x / TR), pr = Math.floor((this.playerBody.y + this.PLAYER_FOOT_OFFSET - 1) / TR);
+    const want = extra.tx !== undefined && extra.ty !== undefined
+      ? { c: extra.tx, r: extra.ty } : { c: pc + (extra.dx ?? 2), r: pr + (extra.dy ?? 0) };
+    const { col, row } = this.nearestWalkable(want.c, want.r);
+    const x = col * TR + TR / 2, y = row * TR + TR;
+    const cfg = extra.npcId ? characterOf(extra.npcId)
+      : characterOf(`extra:${extra.key}:${extra.nameKo}`, { role: extra.role, sex: extra.sex, age: extra.age });
+    const spr = new CharacterSprite(this, x, y, cfg, CHAR_SCALE);
+    spr.image.setPosition(x, y + spr.footPad).setDepth(20 + y * 0.001 + 0.0006).setAlpha(extra.alpha ?? 1);
+    spr.setDir(extra.facing ?? 'down');
+    const label = this.add.text(x, y + this.charTopFromFeet - RegionFieldScene.LABEL_GAP, extra.nameKo, {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#ffe9a0',
+      backgroundColor: '#0a1628cc', padding: { x: 3, y: 1 },
+    }).setOrigin(0.5, 1).setDepth(20 + y * 0.001 + 0.0007).setAlpha(extra.alpha ?? 1);
+    const rec = { key: extra.key, spr, label, walking: false };
+    this.sceneExtras.push(rec);
+    return {
+      obj: spr.image, followers: [label], nameKo: extra.nameKo, headY: this.charTopFromFeet - 6,
+      setFacing: (d: CineDir) => spr.setDir(d),
+      setWalking: (on: boolean) => { rec.walking = on; },
+      keepPosition: true,
+    };
+  }
+
+  private clearSceneExtras(): void {
+    for (const e of this.sceneExtras) { e.spr.destroy(); e.label.destroy(); }
+    this.sceneExtras = [];
+  }
+
+  /**
+   * 목표 장면 재생 → 끝나면 그 목표만 닫힌다(`scene` 이벤트). 상대가 이 필드에 없으면 임시 배우가 걸어와 만난다.
+   * 이 함수가 167차의 핵심 계약이다 — **대화창 클릭이 목표를 닫는 경로는 더 이상 없다.**
+   */
+  private playQuestScene(questId: string, objectiveIndex: number): void {
+    const def = questSceneFor(questId, objectiveIndex, {
+      regionId: this.region, fieldNpcIds: this.storyNpcs.map((n) => n.def.npcId),
+    });
+    if (!def) return;
+    this.clearSceneExtras();
+    const extras: Record<string, CineActor> = {};
+    for (const ex of def.extras) { const a = this.spawnSceneExtra(ex); if (a) extras[ex.key] = a; }
+    const roles: Record<string, string> = {};
+    for (const [k, v] of Object.entries(def.roles)) if (!extras[k]) roles[k] = v;
+    const ok = this.playCinematic(def.script, roles, () => {
+      this.clearSceneExtras();
+      StoryStore.event({ kind: 'scene', questId, objectiveIndex });
+      this.refreshQuestMarkers(true);
+    }, extras);
+    if (!ok) this.clearSceneExtras();
+  }
+
+  /** 대화·선택 계통 행동 — 고른 태도가 장면으로 흐르고, 장면이 끝나야 단계가 오른다 */
+  private playActionChoiceScene(questId: string, objectiveIndex: number, choiceId: string): void {
+    const q = STORY_QUESTS.find((x) => x.id === questId);
+    const o = q?.objectives[objectiveIndex];
+    if (!q || !o?.actionKey) return;
+    const spec = storyActionSpec(o.actionKey);
+    const choice = spec.choices.find((c) => c.id === choiceId);
+    const sc = storyActionScene(o.actionKey);
+    const step = StoryStore.actionStep(questId, objectiveIndex);
+    const partner = this.actionActorNpcId(o.actionKey);
+    const stepLine = spec.stepsKo[Math.min(step, spec.stepsKo.length - 1)];
+    const script: CineScript = {
+      id: `action-choice-${o.actionKey}-${step}`,
+      placeKo: sc.placeKo,
+      steps: [
+        { kind: 'focus', who: partner ? 'partner' : 'player', ms: 440 },
+        ...(partner ? [{ kind: 'faceTo' as const, who: 'partner', target: 'player' }, { kind: 'faceTo' as const, who: 'player', target: 'partner' }] : []),
+        { kind: 'say', who: 'player', thought: true, text: stepLine },
+        ...(choice ? [{ kind: 'say' as const, who: 'player', text: choice.replyKo, bubble: '...' }] : []),
+        ...(partner ? [{ kind: 'say' as const, who: 'partner', text: sc.linesKo[1], bubble: '...' }]
+          : [{ kind: 'say' as const, who: 'player', thought: true, text: sc.linesKo[1] }]),
+        { kind: 'say', who: 'player', thought: true, text: sc.linesKo[0] },
+      ],
+    };
+    const roles: Record<string, string> = { player: 'player' };
+    if (partner) roles.partner = partner;
+    this.playCinematic(script, roles, () => {
+      this.suppressActionScene = true;
+      StoryStore.finishActionChoice(questId, objectiveIndex, choiceId);
+      this.suppressActionScene = false;
+      this.hud?.pushLog(`[할 일] ${sc.titleKo} — 진행 ${StoryStore.actionStep(questId, objectiveIndex)}/${spec.stepsKo.length}`);
       this.refreshQuestMarkers(true);
     });
   }
 
   /** N18-6 전용 3부작 외의 행동도 성공 직후 결과를 짧게 보여준다. */
   private showActionProgressScene(key: import('@tra/core').StoryActionKey, step: number): void {
-    if (key === 'label_violation_review' || !this.scene.isActive()) return;
+    if (key === 'label_violation_review' || this.suppressActionScene || !this.scene.isActive()) return;
     const sc = storyActionScene(key);
     if (!sc || step < 1 || step > 3) return;
     const partner = this.actionActorNpcId(key);
@@ -4131,12 +4286,14 @@ export class RegionFieldScene extends Phaser.Scene {
       }
       this.storyNpcs.push({ def, x, y, actor, label, ai });
     }
+    StoryStore.setFieldNpcs(this.storyNpcs.map((n) => n.def.npcId));   // 167차 — 장면 입구 판정
     this.refreshQuestMarkers(true);
     // 166차 — 마을 사람: 스토리 NPC 앵커를 피해 결정적으로 흩어 놓는다
     this.ambientNpcs?.destroy();
     this.ambientNpcs = new AmbientNpcSystem(this, this.npcHost);
     this.ambientNpcs.spawn(`${this.region}:${this.mapId}`, this.storyNpcs.map((n) => ({ c: Math.floor(n.x / TR), r: Math.floor((n.y - 1) / TR) })));
     this.events.once('shutdown', () => {
+      this.sceneExtras = [];   // 씬이 내려가며 오브젝트는 같이 파괴된다
       this.ambientNpcs?.destroy(); this.ambientNpcs = undefined;
       for (const n of this.storyNpcs) n.ai?.destroy();
     });
@@ -4151,6 +4308,12 @@ export class RegionFieldScene extends Phaser.Scene {
     const cam = this.cameras.main;
     if (!this.cinematicActive) this.ambientNpcs?.update(delta, cam.midPoint.x, cam.midPoint.y);
     const px = this.playerBody.x, py = this.playerBody.y;
+    if (this.cinematicActive) {
+      // 167차 — 컷씬 배우들의 걷기 프레임(임시 배우·트리거 인물·플레이어)
+      for (const e of this.sceneExtras) { e.spr.update(delta, e.walking); e.spr.image.setDepth(20 + (e.spr.image.y - e.spr.footPad) * 0.001 + 0.0006); }
+      for (const t of this.storyTriggers) if (t.actor) t.actor.spr.update(delta, t.actor.walking);
+      this.charSprite?.update(delta, this.playerCineWalking);
+    }
     for (const n of this.storyNpcs) {
       if (!n.ai) continue;
       const hold = !this.cinematicActive && (this.nearNpc === n.def || (this.popupStack.length > 0 && Math.hypot(n.x - px, n.y - 12 - py) < 64));
@@ -4860,7 +5023,8 @@ export class RegionFieldScene extends Phaser.Scene {
     let triggerDist = 58;
     for (const t of this.storyTriggers) {
       const available = this.storyTriggerAvailable(t.def);
-      t.mark.setVisible(available); t.label.setVisible(available);
+      t.mark.setVisible(available && !t.actor); t.label.setVisible(available);
+      t.actor?.spr.image.setVisible(available);
       if (!available) continue;
       const d = Math.hypot(t.x - px, t.y - py);
       if (d < triggerDist) { triggerDist = d; trigger = t.def; }
@@ -4974,14 +5138,25 @@ export class RegionFieldScene extends Phaser.Scene {
         onDone: (repGain) => {
           if (repGain > 0) StoryStore.addHarborRep(GameState.currentRegionId, repGain);
           this.hud?.pushLog(`[총회] 정계원 승격 가결${repGain > 0 ? ` — 항구 신뢰 +${repGain}` : ''}`);
-          // 표결이 끝나면 계장이 이름을 부른다 — 이어서 대화창(talk 목표가 여기서 닫힌다)
-          this.openPopup((c2) => new DialoguePanel(this, npcId, c2, this.region));
+          // 167차 — 표결 장면이 곧 「총회에 선다」 목표다(대화창을 여는 것이 아니라).
+          const mq = STORY_QUESTS.find((q) => StoryStore.isActive(q.id) && q.objectives.some((o) => o.kind === 'talk' && o.npcId === 'coop' && o.labelKo.includes('총회')));
+          if (mq) {
+            const idx = mq.objectives.findIndex((o) => o.kind === 'talk' && o.npcId === 'coop' && o.labelKo.includes('총회'));
+            StoryStore.event({ kind: 'scene', questId: mq.id, objectiveIndex: idx });
+          }
+          // 표결이 끝나면 계장이 이름을 부른다 — 이어서 대화창
+          this.openPopup((c2) => new DialoguePanel(this, npcId, c2, this.region, undefined, this.onDialogueScene));
         },
       }));
       return;
     }
-    this.openPopup((close) => new DialoguePanel(this, npcId, close, this.region));
+    this.openPopup((close) => new DialoguePanel(this, npcId, close, this.region, undefined, this.onDialogueScene));
   }
+
+  /** 대화창 → 장면 요청. 창이 닫히고 dim이 걷힌 다음 프레임에 컷씬을 튼다 */
+  private readonly onDialogueScene = (req: DialogueSceneRequest): void => {
+    this.time.delayedCall(90, () => this.runSceneRequest(req));
+  };
 
   private objInteractLabel(o: MapObject): string {
     // ⚠ 129차 수정: 구 코드는 플레이어 설치물이면 **무조건 '[F] 회수'** 를 반환해

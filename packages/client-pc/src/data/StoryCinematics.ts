@@ -64,25 +64,46 @@ export const CINE_M1_ICE_DROP: CineScript = {
   ],
 };
 
-/** N18-6 ① 도매시장 후문 — 인계 장면 목격 */
+/**
+ * N18-6 ① 도매시장 후문 — 인계 장면 목격 (167차 — 사용자 각본 그대로)
+ *
+ * 무대(속초 동명항 경매장 뒤): 수상한 사람 1은 경매장 동쪽 벽(592,154)에 숨어 있다가 [F]로 말을 걸면
+ * 곧바로 이 장면이 시작된다. 플레이어는 경매장 북쪽 벽(588,152)에 붙어 숨고, 2는 동쪽(601,154)에서 걸어온다.
+ * 두 사람은 마주 서서 말풍선 `...`을 좌우로 교차하며(아래 대사창 순서대로) 말하고, 2가 수정한 명부를
+ * 건넨 뒤 오른쪽으로 사라진다. 1은 플레이어 쪽으로 걸어오다 숨은 나를 못 보고 지나간다.
+ */
 export const CINE_N186_WATCH: CineScript = {
   id: 'n18-6-watch',
   placeKo: '도매시장 후문',
   placeEn: 'Wholesale market back gate',
   steps: [
     { kind: 'focus', who: 'player', ms: 480 },
-    { kind: 'say', who: 'player', thought: true, text: '시장 뒤편에서 잠깐만 보고 가자. 괜히 눈에 띄면 곤란해.', textEn: 'Just a quick look from behind the market. Best not to be noticed.' },
-    { kind: 'focus', who: 'watcher', ms: 620 },
-    { kind: 'move', who: 'courier', dxTiles: -2, ms: 900 },
-    { kind: 'say', who: 'watcher', text: '…! 왔구만 그래.', textEn: '…! So you came.' },
-    { kind: 'say', who: 'courier', text: '아무도 없는 게 맞겠지?', textEn: 'Nobody around, right?' },
-    { kind: 'say', who: 'watcher', text: '우리가 하루 이틀 해온 것도 아니고. 돈은 어디 있어? 저번부터 많이 까먹던데.', textEn: 'We have done this plenty of times. Where is the money? You have been coming up short lately.' },
-    { kind: 'say', who: 'courier', text: '처리된 것까지 확인하고 그 장소에서 전달한다. 저번과 같은 금액이야.', textEn: 'I confirm it is handled, then hand it over at the place. Same amount as last time.' },
-    { kind: 'say', who: 'courier', text: '수정한 명부다. 곧 그 장소에서 만나지.', textEn: 'Here is the amended ledger. See you at the place soon.' },
-    { kind: 'move', who: 'courier', dxTiles: 3, ms: 950 },
+    { kind: 'say', who: 'player', thought: true, text: '(시장 뒤에 누가 서 있다. 저 사람… 뭘 기다리는 거지? 벽에 붙어서 좀 보자.)', textEn: '(Someone is standing behind the market. What is he waiting for? Let me get behind the wall and watch.)' },
+    { kind: 'moveTo', who: 'player', tx: 588, ty: 152, face: 'right' },
+    { kind: 'fade', who: 'player', alpha: 0.55, ms: 280 },
+    { kind: 'focus', who: 's1', ms: 560 },
+    { kind: 'face', who: 's1', dir: 'right' },
+    { kind: 'fade', who: 's2', alpha: 1, ms: 320 },
+    { kind: 'moveTo', who: 's2', tx: 594, ty: 154, face: 'left' },
+    { kind: 'moveTo', who: 's1', tx: 593, ty: 154, face: 'right' },
+    { kind: 'say', who: 's1', bubble: '...', text: '...! 왔구만 그래.', textEn: '...! So you came.' },
+    { kind: 'say', who: 's2', bubble: '...', text: '아무도 없는 게 맞겠지?', textEn: 'Nobody around, right?' },
+    { kind: 'say', who: 's1', bubble: '...', text: '우리가 하루 이틀 해온 것도 아니고, 돈은 어디있어? 저번부터 많이 까먹던데? 오늘은 확실하지?', textEn: 'We have done this plenty of times. Where is the money? You have been coming up short lately. It is certain today?' },
+    { kind: 'say', who: 's2', bubble: '...', text: '돈은 처리된 것까지 확인하고 그 장소에서 전달한다. 저번과 같은 금액이야. 서두르지마.', textEn: 'The money comes once I confirm it is handled, at the place. Same amount as last time. Do not rush.' },
+    { kind: 'give', from: 's2', to: 's1', item: 'book', ms: 1000 },
+    { kind: 'say', who: 's2', bubble: '...', text: '곧 그 장소에서 만나지. 마무리 잘 하시게.', textEn: 'See you at the place soon. Finish it cleanly.' },
+    { kind: 'say', who: 's1', bubble: '...', text: '...', textEn: '...', ms: 1200 },
+    { kind: 'moveTo', who: 's2', tx: 601, ty: 154, face: 'right' },
+    { kind: 'fade', who: 's2', alpha: 0, ms: 360 },
+    { kind: 'remove', who: 's2' },
+    { kind: 'moveTo', who: 's1', tx: 592, ty: 151, face: 'up' },
+    { kind: 'moveTo', who: 's1', tx: 583, ty: 151, face: 'left' },
+    { kind: 'fade', who: 's1', alpha: 0, ms: 360 },
+    { kind: 'remove', who: 's1' },
     { kind: 'focus', who: 'player', ms: 520 },
+    { kind: 'fade', who: 'player', alpha: 1, ms: 240 },
     { kind: 'emote', who: 'player', emote: 'surprise', ms: 800 },
-    { kind: 'say', who: 'player', thought: true, text: '이건 아무래도 큰일인데…? 어서 알려야 해. 그 장소는 어디지?', textEn: 'This is serious… I have to tell someone. Where is the place?' },
+    { kind: 'say', who: 'player', thought: true, text: '(이건 아무래도 큰일인데...? 어서 빨리 알려야겠어. 그 장소는 어디일까? 고민할 시간이 없어...!)', textEn: '(This is bad... I have to tell someone, fast. Where is that place? No time to think it over...!)' },
   ],
 };
 

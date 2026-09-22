@@ -20,7 +20,7 @@
 
 import Phaser from 'phaser';
 import {
-  getStoryNpc, characterOf, affinityTier, AFFINITY_TIER_LABEL, affinityPips, narrativeOf,
+  getStoryNpc, getStoryQuest, characterOf, affinityTier, AFFINITY_TIER_LABEL, affinityPips, narrativeOf,
   type StoryQuestDef, type QuestChoiceDef,
 } from '@tra/core';
 import { DraggablePanel } from './DraggablePanel.js';
@@ -28,6 +28,7 @@ import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { StoryStore } from '../store/StoryStore.js';
 import { storyActionSpec } from '../store/StoryActionRegistry.js';
 import { dialogueOf, NPC_IDLE } from '../data/StoryDialogue.js';
+import { STORY_FIELD_TRIGGERS } from '../data/StoryNpcs.js';
 import { clampTextWidth } from './TextFit.js';
 import { ensureFacePortrait } from './CharacterSprite.js';
 import { applyScreenFixed } from './DraggablePanel.js';
@@ -70,6 +71,16 @@ const COL = {
 
 interface ChoiceRow { label: string; hint?: string; action: () => void; disabled?: boolean }
 
+/**
+ * 167차 — 대화창이 씬에 넘기는 장면 요청. 대화창은 닫히고, 씬이 실제 필드 위에서 컷씬을 재생한 뒤
+ * 목표를 닫는다. **클릭이 목표를 닫는 경로는 더 이상 없다.**
+ */
+export type DialogueSceneRequest =
+  | { kind: 'objective'; questId: string; objectiveIndex: number }
+  | { kind: 'action'; questId: string; objectiveIndex: number; choiceId: string }
+  /** 현장 트리거 중 `viaNpc`로 이 사람에게 말을 걸어 진행하는 단계 */
+  | { kind: 'trigger'; triggerId: string };
+
 /** 화면 상태 — 인사 → 기본 선택 → 퀘스트 → 응답 → 일감 */
 type View = 'menu' | 'quest' | 'reply' | 'jobs';
 
@@ -79,6 +90,7 @@ export class DialoguePanel extends DraggablePanel {
   private readonly onClose: () => void;
   private readonly regionId: string;
   private readonly onTrade?: (shopId: string) => void;
+  private readonly onScene?: (req: DialogueSceneRequest) => void;
   private view: View = 'menu';
 
   /** 지금 화면 — 검증 하네스가 읽는다 */
@@ -120,7 +132,7 @@ export class DialoguePanel extends DraggablePanel {
 
   constructor(
     scene: Phaser.Scene, npcId: string, onClose: () => void,
-    regionId = '', onTrade?: (shopId: string) => void,
+    regionId = '', onTrade?: (shopId: string) => void, onScene?: (req: DialogueSceneRequest) => void,
   ) {
     const npc = getStoryNpc(npcId);
     super(scene, {
@@ -131,7 +143,9 @@ export class DialoguePanel extends DraggablePanel {
     this.onClose = onClose;
     this.regionId = regionId;
     this.onTrade = onTrade;
-    StoryStore.event({ kind: 'talk', npcId });
+    this.onScene = onScene;
+    // 167차 — 구 `StoryStore.event({ kind: 'talk' })`를 여기서 지웠다. 대화창을 여는 것만으로
+    //  `talk` 목표가 닫히던 것이 "클릭만 해도 클리어"의 정체였다(사용자 지시).
 
     this.keyHandler = (ev: KeyboardEvent) => this.onKey(ev);
     scene.input.keyboard?.on('keydown', this.keyHandler);
@@ -437,6 +451,12 @@ export class DialoguePanel extends DraggablePanel {
     const rows: ChoiceRow[] = [
       { label: '내가 도와줄 수 있는 게 있을까요?', hint: mark, action: () => this.enterQuest() },
     ];
+    // 167차 — 이 사람과 이어지는 장면(발주자가 아니어도 — 정옥선 앞의 첫 고민 상담 등)
+    for (const sc of StoryStore.sceneObjectivesFor(this.npcId)) rows.push(this.sceneRow(sc.questId, sc.objectiveIndex));
+    for (const t of STORY_FIELD_TRIGGERS) {
+      if (t.viaNpc !== this.npcId || t.regionId !== this.regionId || !StoryStore.canPerformAction(t.questId, t.objectiveIndex, t.phase)) continue;
+      rows.push({ label: t.labelKo, hint: '이야기가 이어집니다', disabled: !this.onScene, action: () => this.requestScene({ kind: 'trigger', triggerId: t.id }) });
+    }
     const shopId = this.npcShopId();
     if (shopId) rows.push({ label: '물건을 볼 수 있을까요?', action: () => this.onTrade?.(shopId) });
     const jobs = StoryStore.jobsOfNpc(this.npcId, this.regionId);
@@ -460,6 +480,25 @@ export class DialoguePanel extends DraggablePanel {
     else if (active[0]) this.playActive(active[0]);
     else if (offer[0]) this.playOffer(offer[0]);
     else this.playIdle(refusedSub.length > 0);
+  }
+
+  /** 167차 — 장면으로 이어지는 행. 대화창은 닫히고 씬이 실제 필드에서 컷씬을 튼다 */
+  private sceneRow(questId: string, objectiveIndex: number): ChoiceRow {
+    const q = getStoryQuest(questId);
+    const label = narrativeOf(questId)?.objectives?.[objectiveIndex] ?? q?.objectives[objectiveIndex]?.labelKo ?? '';
+    return {
+      label,
+      hint: this.onScene ? '이야기가 이어집니다' : '지금은 진행할 수 없습니다',
+      disabled: !this.onScene,
+      action: () => this.requestScene({ kind: 'objective', questId, objectiveIndex }),
+    };
+  }
+
+  private requestScene(req: DialogueSceneRequest): void {
+    const run = this.onScene;
+    if (!run) return;
+    this.onClose();
+    run(req);
   }
 
   private backRow(): ChoiceRow {
@@ -518,8 +557,11 @@ export class DialoguePanel extends DraggablePanel {
             ? `${flowLabel[spec.flow] ?? '행동'} 선택 완료 · ${completed}/${spec.stepsKo.length} — 실제 행동을 진행하세요`
             : `${flowLabel[spec.flow] ?? '행동'} ${completed}/${spec.stepsKo.length} · ${objective.labelKo}`,
           action: () => {
-            const selected = StoryStore.chooseAction(q.id, idx, ch.id);
+            const sceneRun = !!this.onScene && (spec.source === 'dialogue' || spec.source === 'selection');
+            const selected = StoryStore.chooseAction(q.id, idx, ch.id, sceneRun);
             if (!selected) return;
+            // 167차 — 대화·선택 계통은 선택 직후 **장면이 재생되고 그 끝에서** 단계가 오른다.
+            if (sceneRun) { this.requestScene({ kind: 'action', questId: q.id, objectiveIndex: idx, choiceId: ch.id }); return; }
             this.actionReply = selected.replyKo;
             // 마지막 행동 직후 같은 대화창에서 제출하지 않는다. 준비 완료를
             // 확인한 뒤 닫고, NPC에게 다시 말을 걸어야 완료 선택지가 열린다.
@@ -527,12 +569,12 @@ export class DialoguePanel extends DraggablePanel {
           },
           disabled: taken,
         });
-      } else {
-        rows.push({
-          label: objective.labelKo,
-          hint: '이 자리에서 마무리',
-          action: () => { StoryStore.advanceManual(q.id, idx); this.enterQuest(); },
-        });
+      } else if (StoryStore.isSceneObjective(objective)) {
+        // 167차 — 구 `[이 자리에서 마무리]`(advanceManual 클릭) 폐기. 장면의 상대가 이 사람이면 장면 행,
+        //  다른 사람이면 그 사람을 찾아가라고만 말한다.
+        const entry = StoryStore.sceneEntryNpc(q, objective);
+        if (entry === this.npcId) rows.push(this.sceneRow(q.id, idx));
+        else paras.push(`${getStoryNpc(StoryStore.sceneNpcOf(q, objective))?.nameKo ?? '그 사람'}을(를) 직접 찾아가야 한다.`);
       }
     }
     rows.push(this.backRow(), this.exitRow());

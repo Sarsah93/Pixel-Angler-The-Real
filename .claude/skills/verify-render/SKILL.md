@@ -80,6 +80,9 @@ const { chromium } = resolvePlaywright();
   HMR 분화로 **게임과 다른 인스턴스**(locale 기본 `ko`)를 잡아 `t()`가 전부 원문을 돌려준다.
   "고쳤는데 전 항목 미번역"으로 보인다(120차에 두 번). **i18n 수정 → dev 서버 재시작 → 스캔.**
   게임의 Text 객체를 직접 훑는 방식(`__i18nSrc` vs `text` 비교)은 이 함정이 없다 — 그쪽을 우선한다.
+- **대화창은 단락이 여럿이면 `▼`에서 멈춘다**(167차) — 선택지 행(`panel.rows`)이 뜰 때까지 `panel.advance()`를 반복 호출한다.
+  컷씬은 `cinematicActive`가 풀릴 때까지 폴링하되, 헤드리스는 fps 13·delta 16.7 고정이라 **벽시계로 약 4배** 걸린다(43초 각본 = 실 3분).
+  퀘스트 상태는 `globalThis.__STORY`(dev 전용 — `devActivateQuest`·`devActivateAction`·`devSetActionStep`).
 - **헤드리스 rAF는 프레임 간격이 300ms를 넘는다**(149·155차) — 시간 누적으로 도는 갱신(퀘스트 화살표 `updateQuestGuide` 400ms 등)은
   `waitForTimeout`으로 기다리지 말고 **씬 메서드를 직접 호출**(`s.updateQuestGuide(500)`). 2.5초를 기다려도 null이 나온다.
 - **`update()`가 매 프레임 `nearWater`를 다시 계산한다**(155차) — 캐스팅 게이트를 하네스로 두드릴 때는 `s.nearWater = true`를

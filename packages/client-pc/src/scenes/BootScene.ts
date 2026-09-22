@@ -150,6 +150,9 @@ export class BootScene extends Phaser.Scene {
       item_worm: 'item-icons/it_worm.png',
       item_soft_worm: 'item-icons/it_soft_worm.png',
       item_treble: 'item-icons/it_treble_hook.png',
+      // 167차 — 사용자 제공 도트: 혼무시(생미끼) · 감성돔 바늘(단일 바늘).
+      item_honmushi: 'item-icons/it_honmushi.png',
+      item_hook_chinu: 'item-icons/it_hook_chinu.png',
       item_minnow: 'item-icons/it_minnow.png',
       item_metal_jig: 'item-icons/it_metal_jig.png',
       line_spool_saiso: 'item-icons/line_spool_saiso.png',

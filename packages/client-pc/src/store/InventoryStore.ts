@@ -554,14 +554,14 @@ function createSeedItems(): InvItem[] {
     // ── 낚시용품 ──
     { id: 'inv_worm',     name: '지렁이',                   icon: '', iconTexture: 'item_worm', category: 'tackle', subCategory: '생미끼',    qty: 20, basePrice: 5000,  condition: 'live',    equippable: false },
     { id: 'inv_ragworm',  name: '갯지렁이',                 icon: '', iconTexture: 'item_worm', category: 'tackle', subCategory: '생미끼',    qty: 15, basePrice: 6000,  condition: 'live',    equippable: false },
-    { id: 'inv_honmushi', name: '혼무시',                   icon: '🪱', category: 'tackle', subCategory: '생미끼',    qty: 8,  basePrice: 12000, condition: 'live',    equippable: false },
+    { id: 'inv_honmushi', name: '혼무시',                   icon: '', iconTexture: 'item_honmushi', category: 'tackle', subCategory: '생미끼',    qty: 8,  basePrice: 12000, condition: 'live',    equippable: false },
     { id: 'inv_krill',    name: '크릴 (냉동)',              icon: '🦐', category: 'tackle', subCategory: '냉동미끼',  qty: 30, basePrice: 4000,  condition: 'frozen',  equippable: false },
     { id: 'inv_breadbait', name: '빵가루 경단',             icon: '🍞', category: 'tackle', subCategory: '반죽미끼',  qty: 15, basePrice: 3000,  equippable: false },
     { id: 'inv_fishcut',  name: '생선 조각 미끼',           icon: '🦐', category: 'tackle', subCategory: '선어미끼',  qty: 6,  basePrice: 3000,  condition: 'chilled', equippable: false },
     { id: 'inv_pe1',      name: 'AMSTRONG 합사 원줄 1호 · 150m', icon: '', iconTexture: 'line_spool_saiso', category: 'tackle', subCategory: '원줄 스풀', qty: 1,  basePrice: 18000, equippable: false, lineMaterial: 'pe_braid', lineForm: 'sinking', lineLengthM: 150, lineNo: 1, lineDiameterMm: 0.165, lineStrengthLb: 18 },
     { id: 'inv_carbon15', name: 'AMSTRONG 카본 목줄 3호 · 150m', icon: '', iconTexture: 'line_spool_saiso', category: 'tackle', subCategory: '목줄 스풀', qty: 1,  basePrice: 9000,  equippable: false, lineMaterial: 'fluorocarbon', lineForm: 'suspend', lineLengthM: 150, lineNo: 3, lineDiameterMm: 0.285, lineStrengthLb: 10.5 },
     { id: 'inv_nylon2',   name: 'AMSTRONG 나일론 목줄 2호 · 200m', icon: '', iconTexture: 'line_spool_saiso', category: 'tackle', subCategory: '목줄 스풀', qty: 1,  basePrice: 6000,  equippable: false, lineMaterial: 'nylon', lineForm: 'float', lineLengthM: 200, lineNo: 2, lineDiameterMm: 0.235, lineStrengthLb: 8 },
-    { id: 'inv_chinu3',   name: '감성돔 바늘 3호',          icon: '🪝', category: 'tackle', subCategory: '바늘/훅',   qty: 12, basePrice: 3000,  equippable: false },
+    { id: 'inv_chinu3',   name: '감성돔 바늘 3호',          icon: '', iconTexture: 'item_hook_chinu', category: 'tackle', subCategory: '바늘/훅',   qty: 12, basePrice: 3000,  equippable: false },
     { id: 'inv_treble',   name: '루어용 트레블 훅',         icon: '', iconTexture: 'item_treble', category: 'tackle', subCategory: '바늘/훅',   qty: 6,  basePrice: 4000,  equippable: false },
     { id: 'inv_jighead',  name: '지그헤드 3g',              icon: '', iconTexture: 'item_jighead', category: 'tackle', subCategory: '바늘/훅',   qty: 8,  basePrice: 3500,  equippable: false },
     // 루어 — 바늘 일체형 가짜미끼. 바늘 소켓에 장착하며 미끼 소켓이 비활성화된다.
@@ -1109,6 +1109,10 @@ class InventoryStoreManager {
         tool: i.tool ?? sd?.tool ?? (knife ? ('knife' as const) : undefined),
         equippable: i.equippable ?? sd?.equippable ?? (knife ? true : undefined),
         placeKey: i.placeKey ?? sd?.placeKey,
+        // 167차 — 도트 아이콘이 나중에 생긴 시드(혼무시·감성돔 바늘)는 구세이브가 이모지만 들고 있다.
+        //  iconTexture가 비었고 시드에 있으면 채우고, 그때는 이모지도 지운다(아이콘 이중 표시 방지).
+        iconTexture: i.iconTexture ?? sd?.iconTexture,
+        icon: (!i.iconTexture && sd?.iconTexture) ? '' : i.icon,
         // 121차 채집·통발 정적 필드 — 시드 백필 + id 규칙 폴백(상점 구매분: inv_trap_<specId>)
         lampLumens: i.lampLumens ?? sd?.lampLumens,
         forageTool: i.forageTool ?? sd?.forageTool,

@@ -100,7 +100,12 @@ export type StoryEvent =
   | { kind: 'visit'; placeKey: string }
   | { kind: 'custom'; key: string }
   | { kind: 'action'; key: StoryActionKey; source?: string }
+  /**
+   * 167차 — 대화창을 여는 것만으로는 아무 목표도 닫히지 않는다. `talk`·수동 목표는 그 목표의
+   * **장면(컷씬)** 이 끝났을 때만 `scene` 이벤트로 닫힌다. `talk` 이벤트는 호환용으로 남겨 두되 무시한다.
+   */
   | { kind: 'talk'; npcId: string }
+  | { kind: 'scene'; questId: string; objectiveIndex: number }
   | { kind: 'level'; level: number }
   | { kind: 'coins'; coins: number }
   /** 138차 — 과증식 생물 수거 (해파리·불가사리) */
@@ -269,6 +274,52 @@ class StoryStoreManager {
     };
   }
 
+  /**
+   * 167차 — 장면으로만 닫히는 목표인가. `talk` 전부 + 자동 추적기·행동 키가 없는 수동 목표
+   * (boatTrip·survive·holdPosition·deliverFree·furnish·mine·farm — 시스템이 도착하기 전까지).
+   * 대화창 클릭 한 번으로 닫히던 자리가 전부 여기로 온다.
+   */
+  isSceneObjective(o: StoryObjective): boolean {
+    return o.kind === 'talk' || (!!o.manual && !o.actionKey);
+  }
+
+  /** 장면의 상대 인물 — `talk`는 그 사람, 나머지 수동 목표는 발주자. 발주자가 없으면 혼자(`''`). */
+  sceneNpcOf(q: StoryQuestDef, o: StoryObjective): string {
+    return o.npcId ?? q.giver ?? '';
+  }
+
+  /** 지금 필드에 서 있는 스토리 인물 — 씬이 배치할 때 알려 준다(장면 입구 판정용) */
+  private fieldNpcIds: string[] = [];
+  setFieldNpcs(ids: readonly string[]): void { this.fieldNpcIds = [...ids]; }
+
+  /**
+   * 장면의 **입구**가 되는 인물 — 상대가 이 필드에 있으면 그 사람, 없으면 발주자(그 사람은 임시 배우로 걸어온다).
+   * 둘 다 없으면 `''`(이 지역에서는 열 수 없다).
+   */
+  sceneEntryNpc(q: StoryQuestDef, o: StoryObjective): string {
+    const who = this.sceneNpcOf(q, o);
+    if (who && this.fieldNpcIds.includes(who)) return who;
+    if (q.giver && this.fieldNpcIds.includes(q.giver)) return q.giver;
+    return this.fieldNpcIds.length ? '' : who;
+  }
+
+  /**
+   * 이 사람에게 말을 걸면 이어지는 장면들 — 활성 퀘스트 중 앞 목표가 다 끝나 **지금 차례인** 장면 목표만.
+   * 발주자가 아닌 인물(예: 정옥선 앞 M1-01)도 여기서 잡힌다.
+   */
+  sceneObjectivesFor(npcId: string): { questId: string; objectiveIndex: number; labelKo: string; main: boolean }[] {
+    const out: { questId: string; objectiveIndex: number; labelKo: string; main: boolean }[] = [];
+    for (const q of STORY_QUESTS) {
+      if (!this.isActive(q.id)) continue;
+      const i = q.objectives.findIndex((_o, k) => !this.objectiveDone(q, k));
+      if (i < 0) continue;
+      const o = q.objectives[i];
+      if (!this.isSceneObjective(o) || this.sceneEntryNpc(q, o) !== npcId) continue;
+      out.push({ questId: q.id, objectiveIndex: i, labelKo: o.labelKo, main: q.kind === 'main' });
+    }
+    return out.sort((a, b) => Number(b.main) - Number(a.main));
+  }
+
   // ── 우호도 · 선택지 (140차) ──
   affinityOf(npcId: string): number { return this.affinity[npcId] ?? 0; }
   addAffinity(npcId: string, d: number): number {
@@ -432,6 +483,19 @@ class StoryStoreManager {
     return true;
   }
 
+  /** DEV 전용(167차): 아무 퀘스트나 활성화하고 `objIdx` 앞 목표를 채운 상태로 둔다 — 장면 검증용 */
+  devActivateQuest(id: string, objIdx = 0): boolean {
+    const q = getStoryQuest(id);
+    if (!q) return false;
+    this.quests[id] = {
+      status: 'active', day: this.day,
+      obj: q.objectives.map((o, i) => i < objIdx ? this.objectiveTarget(o) : 0),
+      actionSteps: {}, actionChoices: {},
+    };
+    this.host?.markDirty();
+    return true;
+  }
+
   /** DEV 전용: 특정 actionKey를 원하는 단계로 되돌려 반복 검증한다. */
   devSetActionStep(id: string, step: number): boolean {
     const q = getStoryQuest(id); const p = this.quests[id];
@@ -462,7 +526,7 @@ class StoryStoreManager {
   }
 
   /** 대화 교차검증·선택형 행동의 분기 선택. 빈 클릭이나 대사 넘김과 분리된 실제 행동이다. */
-  chooseAction(id: string, objIdx: number, choiceId: string): StoryActionChoice | null {
+  chooseAction(id: string, objIdx: number, choiceId: string, deferEmit = false): StoryActionChoice | null {
     const q = getStoryQuest(id); const p = this.quests[id];
     if (!q || !p || p.status !== 'active') return null;
     const o = q.objectives[objIdx];
@@ -481,12 +545,21 @@ class StoryStoreManager {
     if (q.giver && choice.affinityDelta) this.addAffinity(q.giver, choice.affinityDelta);
     // 대화·선택은 선택 자체가 해당 행동의 성공 이벤트다. 제작·운반·검사·현장은
     // 선택을 기록한 뒤 실제 시스템 성공 이벤트가 별도로 들어와야 단계가 오른다.
-    if (spec.source === 'dialogue' || spec.source === 'selection') {
+    // 167차 — 대화·선택 계통도 **선택 클릭이 아니라 장면이 끝난 뒤**에 오른다(`deferEmit` — 씬이 장면을
+    //  재생하고 `finishActionChoice`를 부른다). 장면을 재생할 수 없는 호출측만 즉시 올린다.
+    if (!deferEmit && (spec.source === 'dialogue' || spec.source === 'selection')) {
       this.emitAction(o.actionKey, `action-choice:${choice.id}`);
     }
     this.onNotify?.(`[할 일] ${q.titleKo} — ${choice.labelKo}`);
     this.host?.markDirty();
     return choice;
+  }
+
+  /** 167차 — 대화·선택 계통의 장면이 끝난 뒤 실제 단계를 올린다 */
+  finishActionChoice(id: string, objIdx: number, choiceId: string): void {
+    const q = getStoryQuest(id); const o = q?.objectives[objIdx];
+    if (!o?.actionKey || this.objectiveDone(q!, objIdx)) return;
+    this.emitAction(o.actionKey, `action-choice:${choiceId}`);
   }
 
   /** 현재 action 단계에서 이미 전략/대화 선택을 기록했는지 */
@@ -613,6 +686,17 @@ class StoryStoreManager {
   /** 자동 추적 이벤트 — 활성 퀘 전체의 미완 목표와 대조 */
   event(ev: StoryEvent): void {
     let changed = false;
+    // 167차 — 장면 종료 = 그 목표 하나만 닫는다. 다른 퀘스트·다른 목표로 새지 않는다.
+    if (ev.kind === 'scene') {
+      const q = getStoryQuest(ev.questId); const p = this.quests[ev.questId];
+      const o = q?.objectives[ev.objectiveIndex];
+      if (!q || !p || p.status !== 'active' || !o || !this.isSceneObjective(o) || this.objectiveDone(q, ev.objectiveIndex)) return;
+      p.obj[ev.objectiveIndex] = this.objectiveTarget(o);
+      this.onNotify?.(`[할 일] ${q.titleKo} — ${o.labelKo} 달성`);
+      if (q.giver === '' && this.allObjectivesDone(q)) this.complete(q.id);
+      this.host?.markDirty();
+      return;
+    }
     for (const q of STORY_QUESTS) {
       const p = this.quests[q.id];
       if (!p || p.status !== 'active') continue;
@@ -708,7 +792,8 @@ class StoryStoreManager {
         if (o.kind === 'communityWork' && ev.key === 'job:coop_work') return 'inc';
         return null;
       case 'action': return o.actionKey === ev.key ? 'inc' : null;
-      case 'talk': return o.kind === 'talk' && o.npcId === ev.npcId ? 'set' : null;
+      case 'talk': return null;   // 167차 — 대화를 여는 것은 행동이 아니다. talk 목표는 `scene`으로만 닫힌다
+      case 'scene': return null;  // event() 상단에서 전용 처리
       case 'level': return o.kind === 'reachLevel' ? 'set' : null;
       case 'coins': return o.kind === 'earn' ? 'set' : null;
       case 'cull':
@@ -936,6 +1021,8 @@ class StoryStoreManager {
 }
 
 export const StoryStore = new StoryStoreManager();
+// dev 하네스 전용 — 프로덕션 미노출(72차 `__GS`·60차 `__INV`와 같은 규칙)
+if (import.meta.env.DEV) (globalThis as unknown as { __STORY?: unknown }).__STORY = StoryStore;
 
 // dev 검증용 전역 노출 — `__INV`/`__GS`와 같은 이유(하네스의 import 인스턴스 분화 회피)
 if (import.meta.env.DEV) {

@@ -26,6 +26,7 @@
 | `client/src/store/StoryStore.ts` | **진행 엔진** — 상태·이벤트 매칭·행동 단계·완료/보상·D-day·평판·조행록·판매 판정·세이브 |
 | `client/src/data/StoryNpcs.ts` · `StoryDialogue.ts` | NPC 배치(타일)·**행동 `behavior`(166차 — fishing/stall/patrol/wander)**·방문 장소 · Ch1 대사 `[ko,en]` |
 | `client/src/scenes/field/FieldNpcSystem.ts` | **166차** — 스토리 NPC 3x3 자유 행동(`StoryNpcActor`) + 마을 사람(`AmbientNpcSystem`) |
+| `client/src/data/QuestScenes.ts` · `StoryCinematics.ts` | **167차** — 목표 장면 생성기(나레이션 → 각본) + 손글 각본 표. `talk`·수동 목표는 장면이 끝나야 닫힌다 |
 | `client/src/ui/DialoguePanel.ts` | 발주/진행/완료 대화(3톤 선택지) |
 | `client/src/ui/JournalPanel.ts` | 일지 — 조행록·자격 사다리·부/챕터/퀘 트리(윈도우드 + 휠) |
 | 훅 | `GameState.addCaughtFish/addLawfulReleaseXp/addActivityXp/acquireLicense/grantXp/addCoins/sleepRecover` · `RegionFieldScene`(방문·NPC·자전거) · `TrapFieldSystem`(통발) · `HomeInteriorScene`(침대 저장) · `ShopPanel`(판매 판정) · `RegionHud`(D-day) |
@@ -60,6 +61,7 @@ STORY_ARCS ────┘     traineeDay (D-180)                └─ RegionHu
 
 | 과제 | 상태 | 차수 |
 |---|---|---|
+| **장면 게이트** — talk 79 + 수동 21 목표를 클릭 대신 컷씬으로 · 대화/선택 행동 키는 장면 뒤 진행 · N18-6 ① 사용자 각본 · 임시 배우 | ✅ | 167 |
 | 스펙 v3 레포 배치 + §0.5 코드 정합(어종·지역·면허·SAISO·인벤 상수) | ✅ | 134 |
 | core 타입·법 규칙 5함수·테스트 T1~T7 | ✅ | 134 |
 | 퀘스트 120 · 챕터 7 · 조행록 17 · 아크 17 · 무결성 검사(§8-1 계약) | ✅ | 134 |
@@ -126,6 +128,9 @@ STORY_ARCS ────┘     traineeDay (D-180)                └─ RegionHu
 
 ## 5. 잔여·차기
 
+- **생성 장면 글 품질**(167차 잔여) — 100편이 나레이션 재배치라 밀도가 고르지 않다. 어색한 편은 `QUEST_SCENE_OVERRIDES`에 손글로 덮는다.
+- **다른 지역 퀘스트의 입구 NPC 부재**(167차) — 장면 규칙은 지역 무관이나 인천·부산 등은 필드·NPC가 없어 열 수 없다. N18-6 무대는 속초 경매장 임시.
+- 배 출조·농사·광질·가구·생존 수동 목표는 장면만 있다 — 실시스템 차수에서 `manual` 해제.
 - **낚시 NPC 대화 시 얼굴 방향**(166차 잔여) — 캐스팅·대기 중엔 물을 본 채 대화한다(바쁨 미적용 설계).
   대화 시작 순간 회수 후 돌아보게 하려면 `DialoguePanel` 열림 훅에서 `StoryNpcActor`에 신호를 줘야 한다.
 - **원격지 컷씬 실발화**(165차 잔여) — 런타임은 각본·배우를 분리해 어느 필드 씬에서도 재생되지만,
@@ -165,6 +170,15 @@ STORY_ARCS ────┘     traineeDay (D-180)                └─ RegionHu
 - dev 콘솔(F10)에 퀘 점프/완료 명령(구세이브 고레벨 테스터용).
 
 ## 6. 함정·불변조건
+
+### 23. 클릭은 목표를 닫지 않는다 — talk·수동 목표는 `scene` 이벤트로만 (167차)
+
+`DialoguePanel`을 여는 것도, `[이 자리에서 마무리]`를 누르는 것도 목표를 닫지 않는다.
+`StoryStore.isSceneObjective`(talk 전부 + 행동 키 없는 수동)에 해당하면 `RegionFieldScene.playQuestScene`이 컷씬을 끝낸 뒤
+`StoryStore.event({ kind: 'scene', questId, objectiveIndex })`로 **그 목표 하나만** 닫는다. 대화·선택 계통 행동 키도
+`chooseAction(…, deferEmit=true)` → 장면 → `finishActionChoice` 순서다. 새 `talk` 목표를 만들면 나레이션(`progress`)만 있으면
+생성기가 장면을 만든다 — 상대가 필드에 없으면 발주자가 입구가 되고 상대는 임시 배우로 걸어온다(`sceneEntryNpc`).
+⚠ `StoryStore.event({ kind: 'talk' })`를 다시 발행하지 말 것 — 무시되지만, 다시 매칭시키면 "클릭 클리어"가 되살아난다.
 
 ### 22. 낚시 행동은 앵커 3x3 안에 물가가 있어야 한다 (166차)
 

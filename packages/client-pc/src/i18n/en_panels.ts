@@ -213,6 +213,12 @@ export const EN_PANELS: Record<string, string> = {
   '도매시장 후문 · 수상한 사람': 'Market back gate · suspicious people',
   '수정된 원산지 명부': 'Amended origin ledger',
   '도현수에게 증거 보고': 'Report the evidence to Hyeon-su',
+  // 167차 — 장면 게이트(대화창 행·트리거 배우)
+  '이야기가 이어집니다': 'The story continues',
+  '지금은 진행할 수 없습니다': 'Cannot proceed right now',
+  '수상한 사람에게 말을 건다': 'Speak to the suspicious person',
+  '수상해 보이는 사람 1': 'Suspicious person 1',
+  '수상해 보이는 사람 2': 'Suspicious person 2',
   '좌판 뒤에서 네 몫의 얼음 상자를 받아. 인벤토리에서 확인하고, 경매장 옆 지정 자리에 내려놓은 뒤 다시 와.': 'Take your ice crate from behind the stall. Check it in your inventory, set it down at the marked spot by the auction hall, then come back.',
   '상자를 인벤토리에서 확인했으면 경매장 옆 파란 표시까지 옮겨. 내려놓고 나서 다시 와.': 'Once you have checked the crate in your inventory, carry it to the blue mark by the auction hall. Set it down, then come back.',
   '교차 검증 대화': 'Cross-check conversation',

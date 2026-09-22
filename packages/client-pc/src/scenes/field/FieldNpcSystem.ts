@@ -95,6 +95,16 @@ export class NpcWalker {
     this.spr.update(0, false);
   }
 
+  /** 167차 — 컷씬 중: 좌표만 되읽고 걷기 프레임은 컷씬이 시키는 대로 돌린다 */
+  syncFromImageWalking(dtMs: number, walking: boolean): void {
+    this.x = this.spr.image.x;
+    this.y = this.spr.image.y - this.spr.footPad;
+    this.path = [];
+    this.moving = false;
+    this.spr.image.setDepth(actorDepth(this.y));
+    this.spr.update(dtMs, walking);
+  }
+
   face(dir: CharDir): void {
     this.dir = dir;
     this.spr.setDir(dir);
@@ -328,6 +338,8 @@ export class StoryNpcActor {
   get fishingSpotFound(): boolean { return !!this.fishSpot; }
 
   face(dir: CharDir): void { this.walker.face(dir); }
+  /** 167차 — 컷씬이 이 인물을 걷게 하는 동안 true(걷기 프레임 재생) */
+  cineWalking = false;
 
   /** 3x3(없으면 5x5) 안에서 4방 이웃에 바다가 닿는 걸을 수 있는 칸 — 가장 앵커에 가까운 것 */
   private findFishingSpot(): { c: number; r: number; dir: CharDir } | null {
@@ -355,10 +367,11 @@ export class StoryNpcActor {
   update(dtMs: number, ctx: StoryNpcUpdateCtx): void {
     const dt = Math.min(dtMs, 100);
     if (ctx.paused) {
-      this.walker.syncFromImage();
+      this.walker.syncFromImageWalking(dt, this.cineWalking);
       this.clearFishing();
       return;
     }
+    this.cineWalking = false;
     if (this.behavior === 'fishing') { this.updateFishing(dt, ctx); return; }
     if (ctx.hold) {
       this.walker.stop();

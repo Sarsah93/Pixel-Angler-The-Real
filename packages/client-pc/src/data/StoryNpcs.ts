@@ -13,6 +13,7 @@
  *   도현수 = 방파제 입구 앞 해안(534,151) · 강두철 = 동명항 안벽 모서리(567,138). N18-6 보고 트리거도 도현수를 따라간다.
  */
 import type { StoryNpcBehavior } from '../scenes/field/FieldNpcSystem.js';
+import type { CharAge, CharRole, CharSex } from '@tra/core';
 
 export interface StoryNpcPlacement {
   npcId: string;
@@ -52,6 +53,13 @@ export interface StoryFieldTrigger {
   objectiveIndex: number;
   /** actionKey 3단계 중 어느 단계인가 */
   phase: number;
+  /**
+   * 167차 — 금색 점 대신 **사람이 서 있는** 트리거. 익명 인물은 role/sex/age로 얼굴을 만든다.
+   * [F]로 말을 걸면 곧바로 장면이 시작되고, 장면 안에서는 각본의 `actorKey` 배우가 된다.
+   */
+  actor?: { actorKey: string; nameKo: string; nameEn?: string; role: CharRole; sex?: CharSex; age?: CharAge; facing?: 'down' | 'left' | 'right' | 'up' };
+  /** 167차 — 이 사람에게 말을 걸면(대화창 행) 진행되는 단계. 점·배우 없이 대화로만 닿는다 */
+  viaNpc?: string;
 }
 
 export const STORY_NPC_PLACEMENTS: StoryNpcPlacement[] = [
@@ -83,16 +91,21 @@ export const STORY_PLACES: StoryPlace[] = [
  * 추후 인천 맵이 열리면 좌표만 옮기고 연출·세이브 계약은 유지한다.
  */
 export const STORY_FIELD_TRIGGERS: StoryFieldTrigger[] = [
+  // 167차 — 「위반 증거」 3단계. ① 경매장 동쪽 벽에 숨은 수상한 사람에게 말을 건다(→ 목격 컷씬) ·
+  //  ② 경매장 앞 기록대의 수정된 명부를 살핀다 · ③ 도현수에게 말을 걸어 보고한다(대화창 행).
+  //  ⚠ 무대는 속초 동명항 경매장(605,154 하역 위치 서쪽 건물). 인천 필드가 생기면 좌표만 옮긴다.
   {
-    id: 'n18-6-origin-watch', regionId: 'gangwon_sokcho', tx: 536, ty: 132,
-    labelKo: '도매시장 후문 · 수상한 사람', actionKey: 'label_violation_review', questId: 'N18-6', objectiveIndex: 1, phase: 0,
+    id: 'n18-6-origin-watch', regionId: 'gangwon_sokcho', tx: 592, ty: 154,
+    labelKo: '수상한 사람에게 말을 건다', actionKey: 'label_violation_review', questId: 'N18-6', objectiveIndex: 1, phase: 0,
+    actor: { actorKey: 's1', nameKo: '수상해 보이는 사람 1', nameEn: 'Suspicious person 1', role: 'drifter', sex: 'm', age: 'mid', facing: 'left' },
   },
   {
-    id: 'n18-6-ledger-inspect', regionId: 'gangwon_sokcho', tx: 554, ty: 136,
+    id: 'n18-6-ledger-inspect', regionId: 'gangwon_sokcho', tx: 597, ty: 151,
     labelKo: '수정된 원산지 명부', actionKey: 'label_violation_review', questId: 'N18-6', objectiveIndex: 1, phase: 1,
   },
   {
-    id: 'n18-6-report', regionId: 'gangwon_sokcho', tx: 533, ty: 150,
+    id: 'n18-6-report', regionId: 'gangwon_sokcho', tx: 534, ty: 151,
     labelKo: '도현수에게 증거 보고', actionKey: 'label_violation_review', questId: 'N18-6', objectiveIndex: 1, phase: 2,
+    viaNpc: 'hyeonsu',
   },
 ];

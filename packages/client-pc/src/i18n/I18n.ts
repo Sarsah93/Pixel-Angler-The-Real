@@ -35,6 +35,8 @@ import {
 } from '@tra/core';
 import { allDialogueLines } from '../data/StoryDialogue.js';
 import { allCinematicLines } from '../data/StoryCinematics.js';
+import { allQuestSceneLines } from '../data/QuestScenes.js';
+import { STORY_FIELD_TRIGGERS } from '../data/StoryNpcs.js';
 import { STORY_ACTIONS, STORY_ACTION_SCENES } from '../store/StoryActionRegistry.js';
 
 export type Locale = 'ko' | 'en';
@@ -137,6 +139,8 @@ function buildRuntimeDict(): void {
   for (const [ko, en] of allChoiceLines()) put(ko, en);   // 140차 — 선택지·응답
   for (const [ko, en] of allNarrativeLines()) put(ko, en);   // 151차 — 퀘스트 나레이션 186편
   for (const [ko, en] of allCinematicLines()) put(ko, en);   // 165차 — 컷씬 각본
+  for (const [ko, en] of allQuestSceneLines()) put(ko, en);   // 167차 — 퀘스트 장면 손글 각본
+  for (const t of STORY_FIELD_TRIGGERS) if (t.actor?.nameEn) put(t.actor.nameKo, t.actor.nameEn);
   // 164차 행동 절차·전략 선택지 · 165차 행동 장면 — 데이터 Ko/En 쌍이 정본
   for (const a of Object.values(STORY_ACTIONS)) {
     a.stepsKo.forEach((k, i) => put(k, a.stepsEn[i]));

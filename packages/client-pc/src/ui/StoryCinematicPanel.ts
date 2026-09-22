@@ -34,15 +34,37 @@ export interface CineActor {
   headY?: number;
   /** 방향 프레임 교체 (스프라이트 시트 배우만) */
   setFacing?: (dir: CineDir) => void;
+  /** 167차 — 걷기 프레임 재생 on/off (임시 배우·NPC). 없으면 정지 프레임으로 미끄러진다 */
+  setWalking?: (on: boolean) => void;
+  /**
+   * 167차 — 이 배우를 컷씬이 끝나도 원위치로 되돌리지 않는다(임시 배우 · 퇴장한 인물).
+   * 원위치 복귀는 "연출 이동은 개인 화면에서만 유효"라는 165차 규칙 때문인데, 사라져야 할 사람이
+   * 되살아나면 그 규칙이 오히려 틀린 그림을 만든다.
+   */
+  keepPosition?: boolean;
 }
 
 export type CineStep =
-  /** 대사 — `thought`면 말풍선 없이 독백으로만 흐른다 */
-  | { kind: 'say'; who: string; text: string; textEn?: string; ms?: number; thought?: boolean }
+  /**
+   * 대사 — `thought`면 말풍선 없이 독백으로만 흐른다.
+   * 167차 — `bubble`을 주면 머리 위 말풍선에는 그 글(보통 `...`)만 뜨고 본문은 아래 대사창이 맡는다.
+   *   두 사람이 마주 서서 주고받는 장면은 말풍선이 화자 순서대로 좌우로 교차한다(사용자 각본).
+   */
+  | { kind: 'say'; who: string; text: string; textEn?: string; ms?: number; thought?: boolean; bubble?: string }
   /** 배우 이동 — 타일 단위 상대 이동 */
   | { kind: 'move'; who: string; dxTiles?: number; dyTiles?: number; ms?: number; face?: CineDir }
+  /** 167차 — 배우를 **절대 타일**로 걷게 한다(각본이 무대 좌표를 알 때). 가로 먼저, 세로 다음 */
+  | { kind: 'moveTo'; who: string; tx: number; ty: number; ms?: number; face?: CineDir }
   | { kind: 'face'; who: string; dir: CineDir }
+  /** 167차 — 다른 배우 쪽을 본다 */
+  | { kind: 'faceTo'; who: string; target: string }
   | { kind: 'emote'; who: string; emote: CineEmote; ms?: number }
+  /** 167차 — 투명도(숨기·나타나기·멀어져 사라지기) */
+  | { kind: 'fade'; who: string; alpha: number; ms?: number }
+  /** 167차 — 무대에서 빠진다(안 보임). 임시 배우는 종료 시 정리된다 */
+  | { kind: 'remove'; who: string }
+  /** 167차 — 물건을 건넨다(작은 아이콘이 손에서 손으로 — 명부·상자·봉투) */
+  | { kind: 'give'; from: string; to: string; item?: 'book' | 'box' | 'envelope'; ms?: number }
   /** 카메라를 배우에게 맞춘다 */
   | { kind: 'focus'; who: string; ms?: number }
   | { kind: 'wait'; ms: number };
@@ -85,6 +107,8 @@ export class StoryCinematicPanel extends Phaser.GameObjects.Container {
   /** 연출이 끝나면 되돌릴 배우 원위치 */
   private readonly origins = new Map<Phaser.GameObjects.GameObject, { x: number; y: number }>();
   private readonly emotes: Phaser.GameObjects.Text[] = [];
+  /** `remove` 스텝으로 무대에서 뺀 배우 — 종료 시 원위치 복구에서도 안 보이게 둔다 */
+  private readonly removed = new Set<CineActor>();
   private index = -1;
   private finished = false;
   private timer?: Phaser.Time.TimerEvent;
@@ -138,6 +162,7 @@ export class StoryCinematicPanel extends Phaser.GameObjects.Container {
     this.add(this.bubbleC);
 
     for (const a of Object.values(cfg.actors)) {
+      if (a.keepPosition) continue;
       this.origins.set(a.obj, { x: a.obj.x, y: a.obj.y });
       for (const f of a.followers ?? []) this.origins.set(f, { x: f.x, y: f.y });
     }
@@ -152,7 +177,10 @@ export class StoryCinematicPanel extends Phaser.GameObjects.Container {
   skip(): void {
     if (this.finished) return;
     this.timer?.remove(false);
-    this.scene.tweens.killTweensOf(Object.values(this.cfg.actors).map((a) => a.obj));
+    for (const a of Object.values(this.cfg.actors)) {
+      this.scene.tweens.killTweensOf([a.obj, ...(a.followers ?? [])]);
+      a.setWalking?.(false);
+    }
     this.finish();
   }
 
@@ -166,7 +194,12 @@ export class StoryCinematicPanel extends Phaser.GameObjects.Container {
     switch (step.kind) {
       case 'say': this.runSay(step); return;
       case 'move': this.runMove(step); return;
+      case 'moveTo': this.runMoveTo(step); return;
       case 'face': this.actorOf(step.who)?.setFacing?.(step.dir); this.after(120); return;
+      case 'faceTo': this.runFaceTo(step); return;
+      case 'fade': this.runFade(step); return;
+      case 'remove': this.runRemove(step); return;
+      case 'give': this.runGive(step); return;
       case 'emote': this.runEmote(step); return;
       case 'focus': this.runFocus(step); return;
       case 'wait': this.after(step.ms); return;
@@ -187,7 +220,7 @@ export class StoryCinematicPanel extends Phaser.GameObjects.Container {
       this.bubbleC.setVisible(false);
     } else {
       this.bubbleActor = actor;
-      this.paintBubble(step.text);
+      this.paintBubble(step.bubble ?? step.text);
       this.bubbleC.setVisible(true);
       this.trackBubble();
     }
@@ -234,12 +267,102 @@ export class StoryCinematicPanel extends Phaser.GameObjects.Container {
     const dx = (step.dxTiles ?? 0) * T, dy = (step.dyTiles ?? 0) * T;
     const dir: CineDir = step.face ?? (Math.abs(dx) >= Math.abs(dy) ? (dx >= 0 ? 'right' : 'left') : (dy >= 0 ? 'down' : 'up'));
     a.setFacing?.(dir);
+    a.setWalking?.(true);
     const ms = step.ms ?? Math.max(340, Math.hypot(dx, dy) * 9);
     const targets: (Phaser.GameObjects.GameObject & { x: number; y: number })[] = [a.obj, ...(a.followers ?? [])];
     this.scene.tweens.add({
       targets, x: `+=${dx}`, y: `+=${dy}`, duration: ms, ease: 'Sine.easeInOut',
-      onComplete: () => this.step(),
+      onComplete: () => { a.setWalking?.(false); this.step(); },
     });
+  }
+
+  /** 절대 타일 이동 — 가로 먼저 걷고 세로를 걷는다(타일 통로를 따라가는 그림) */
+  private runMoveTo(step: Extract<CineStep, { kind: 'moveTo' }>): void {
+    const a = this.actorOf(step.who);
+    if (!a) { this.after(60); return; }
+    const T = this.cfg.tileSize;
+    const tx = step.tx * T + T / 2, ty = step.ty * T + T;
+    const dx = tx - a.obj.x, dy = ty - a.obj.y;
+    const legs: { dx: number; dy: number }[] = [];
+    if (Math.abs(dx) >= 1) legs.push({ dx, dy: 0 });
+    if (Math.abs(dy) >= 1) legs.push({ dx: 0, dy });
+    if (!legs.length) { if (step.face) a.setFacing?.(step.face); this.after(80); return; }
+    const total = Math.abs(dx) + Math.abs(dy);
+    const msAll = step.ms ?? Math.max(340, total * 9);
+    const targets: (Phaser.GameObjects.GameObject & { x: number; y: number })[] = [a.obj, ...(a.followers ?? [])];
+    const run = (i: number): void => {
+      if (i >= legs.length) { if (step.face) a.setFacing?.(step.face); this.step(); return; }
+      const leg = legs[i];
+      const dir: CineDir = leg.dx !== 0 ? (leg.dx > 0 ? 'right' : 'left') : (leg.dy > 0 ? 'down' : 'up');
+      a.setFacing?.(dir);
+      a.setWalking?.(true);
+      this.scene.tweens.add({
+        targets, x: `+=${leg.dx}`, y: `+=${leg.dy}`,
+        duration: Math.max(120, msAll * (Math.abs(leg.dx) + Math.abs(leg.dy)) / total), ease: 'Linear',
+        onComplete: () => { a.setWalking?.(false); run(i + 1); },
+      });
+    };
+    run(0);
+  }
+
+  private runFaceTo(step: Extract<CineStep, { kind: 'faceTo' }>): void {
+    const a = this.actorOf(step.who), b = this.actorOf(step.target);
+    if (a && b) {
+      const dx = b.obj.x - a.obj.x, dy = b.obj.y - a.obj.y;
+      a.setFacing?.(Math.abs(dx) >= Math.abs(dy) ? (dx >= 0 ? 'right' : 'left') : (dy >= 0 ? 'down' : 'up'));
+    }
+    this.after(120);
+  }
+
+  private runFade(step: Extract<CineStep, { kind: 'fade' }>): void {
+    const a = this.actorOf(step.who);
+    if (!a) { this.after(60); return; }
+    const ms = step.ms ?? 420;
+    const targets = [a.obj, ...(a.followers ?? [])];
+    this.scene.tweens.add({ targets, alpha: step.alpha, duration: ms, ease: 'Sine.easeInOut' });
+    this.after(ms + 40);
+  }
+
+  private runRemove(step: Extract<CineStep, { kind: 'remove' }>): void {
+    const a = this.actorOf(step.who);
+    if (a) {
+      (a.obj as unknown as { setVisible?: (v: boolean) => void }).setVisible?.(false);
+      for (const f of a.followers ?? []) (f as unknown as { setVisible?: (v: boolean) => void }).setVisible?.(false);
+      if (this.bubbleActor === a) { this.bubbleActor = undefined; this.bubbleC.setVisible(false); }
+      this.removed.add(a);
+    }
+    this.after(80);
+  }
+
+  /** 물건 건네기 — 손 높이에서 작은 도트 아이콘이 상대에게 날아간다 */
+  private runGive(step: Extract<CineStep, { kind: 'give' }>): void {
+    const from = this.actorOf(step.from), to = this.actorOf(step.to);
+    if (!from || !to) { this.after(60); return; }
+    const ms = step.ms ?? 900;
+    const cam = this.cfg.camera;
+    const sx = (from.obj.x - cam.scrollX) * cam.zoom, sy = (from.obj.y - 26 - cam.scrollY) * cam.zoom;
+    const ex = (to.obj.x - cam.scrollX) * cam.zoom, ey = (to.obj.y - 26 - cam.scrollY) * cam.zoom;
+    const g = this.scene.add.graphics();
+    const kind = step.item ?? 'book';
+    if (kind === 'book') {
+      g.fillStyle(0x6b3a1e, 1).fillRect(-6, -4, 12, 9);
+      g.fillStyle(0xf1e6c8, 1).fillRect(-4, -3, 9, 7);
+      g.fillStyle(0x6b3a1e, 1).fillRect(-6, -4, 2, 9);
+    } else if (kind === 'box') {
+      g.fillStyle(0xb98a4a, 1).fillRect(-7, -5, 14, 10);
+      g.lineStyle(1, 0x5a3b1a, 1).strokeRect(-7, -5, 14, 10);
+    } else {
+      g.fillStyle(0xf4f1e6, 1).fillRect(-7, -4, 14, 9);
+      g.lineStyle(1, 0x8b7d5a, 1).strokeRect(-7, -4, 14, 9).lineBetween(-7, -4, 0, 1).lineBetween(0, 1, 7, -4);
+    }
+    g.setPosition(sx, sy);
+    this.add(g);
+    this.emotes.push(g as unknown as Phaser.GameObjects.Text);
+    from.setFacing?.(ex >= sx ? 'right' : 'left');
+    to.setFacing?.(ex >= sx ? 'left' : 'right');
+    this.scene.tweens.add({ targets: g, x: ex, y: ey, duration: ms * 0.7, ease: 'Sine.easeInOut',
+      onComplete: () => this.scene.tweens.add({ targets: g, alpha: 0, duration: ms * 0.3 }) });
+    this.after(ms + 60);
   }
 
   private runFocus(step: Extract<CineStep, { kind: 'focus' }>): void {
@@ -292,9 +415,11 @@ export class StoryCinematicPanel extends Phaser.GameObjects.Container {
     // 연출 이동은 개인 화면에서만 유효하다 — 배우와 이름표를 원래 자리로 되돌린다.
     for (const [obj, o] of this.origins) {
       if (!obj.active) continue;
-      const g = obj as Phaser.GameObjects.GameObject & { x: number; y: number };
+      const g = obj as Phaser.GameObjects.GameObject & { x: number; y: number; alpha?: number };
       g.x = o.x; g.y = o.y;
+      if (g.alpha !== undefined) g.alpha = 1;
     }
+    this.removed.clear();
     super.destroy(fromScene);
   }
 }
