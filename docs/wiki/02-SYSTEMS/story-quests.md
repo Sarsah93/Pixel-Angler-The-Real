@@ -171,6 +171,13 @@ STORY_ARCS ────┘     traineeDay (D-180)                └─ RegionHu
 
 ## 6. 함정·불변조건
 
+### 24. 생성 장면 — 플레이어는 나레이션을 말하지 않는다 (168차)
+
+`generatedScene` 규칙: 혼잣말 = 나레이션 문장(직접화법 `speechLike` 제외) · NPC = 발주자의 `offer`(여는 자리)/`done`(마친 자리)만,
+없으면 침묵 `…` · 플레이어 = `ACK_TASK`/`ACK_DONE` 짧은 응답 · 자막 = `ctx.placeKo`(지금 서 있는 곳).
+⚠ `progress`(재촉문)와 `NPC_IDLE`(잡담)을 장면에 쓰지 않는다 — 눈앞에 서 있는데 "아직 안 왔나"가 된다.
+비발주자 상대의 말은 데이터에 없다 — 필요하면 `QUEST_SCENE_OVERRIDES` 손글(N19-1#2 전례). 대사 덤프 `tools/dump_quest_scenes.cjs`.
+
 ### 23. 클릭은 목표를 닫지 않는다 — talk·수동 목표는 `scene` 이벤트로만 (167차)
 
 `DialoguePanel`을 여는 것도, `[이 자리에서 마무리]`를 누르는 것도 목표를 닫지 않는다.

@@ -170,6 +170,14 @@ blockquote.talk+blockquote.talk{margin-top:10px}
 .choice .ot{font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--brass); margin-top:5px}
 .choice.decl{border-left:3px solid var(--buoy)}
 
+/* 장면 (168차) */
+.scene{border-left:3px solid var(--rule); padding:2px 0 2px 14px}
+.sl{display:grid; grid-template-columns:72px minmax(0,1fr); gap:10px; padding:5px 0; border-bottom:1px dashed var(--rule-soft)}
+.sl:last-child{border-bottom:0}
+.sl .sw{font-size:12px; color:var(--sea); font-weight:600; padding-top:2px}
+.sl.th .sw{color:var(--brass)}
+.sl.th .st{color:var(--ink2); font-style:italic}
+
 /* 보상 */
 .rw{list-style:none; margin:0; padding:0}
 .rw li{display:flex; gap:10px; align-items:baseline; padding:6px 0; border-bottom:1px dashed var(--rule-soft)}
@@ -411,7 +419,9 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
     // 목차
     const secs = [];
     if (q.nar && (q.nar.offer || q.offerChoices.length)) secs.push(['대화', 's-talk']);
-    secs.push(['요구사항', 's-req'], ['목표', 's-obj'], ['보상', 's-rw'], ['안내', 's-guide']);
+    secs.push(['요구사항', 's-req'], ['목표', 's-obj']);
+    if (q.obj.some((o, i) => D.scenes && D.scenes[q.id + '#' + i])) secs.push(['장면', 's-scene']);
+    secs.push(['보상', 's-rw'], ['안내', 's-guide']);
     if (q.nar && (q.nar.intro || q.nar.epi)) secs.push(['참고', 's-note']);
     secs.push(['여담', 's-misc']);
     h += '<nav class="toc"><strong>목차</strong><ol>' +
@@ -458,6 +468,25 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
         '</li>';
     }
     h += '</ul></section>';
+
+    // 3b 장면 (168차) — 이 목표를 닫는 컷씬이 실제로 무엇을 말하는가
+    const sceneKeys = q.obj.map((o, i) => q.id + '#' + i).filter(k => D.scenes && D.scenes[k]);
+    if (sceneKeys.length){
+      h += '<section class="sec" id="s-scene"><h2>장면</h2>' +
+        '<p class="note">대화창에서 이 목표를 고르면 재생되는 컷씬입니다. 컷씬이 끝나야 목표가 닫힙니다.</p>';
+      for (const k of sceneKeys){
+        const sc = D.scenes[k]; const oi = Number(k.split('#')[1]);
+        h += '<h3 style="font-size:15px;margin:14px 0 6px">' + esc(q.obj[oi].label) +
+          ' <span class="pill ' + (sc.hand ? 'main' : 'sub') + '">' + (sc.hand ? '손글 각본' : '생성 장면') + '</span></h3>';
+        h += '<div class="scene">';
+        for (const l of sc.lines){
+          const th = l.who === '혼잣말';
+          h += '<div class="sl' + (th ? ' th' : '') + '"><span class="sw">' + esc(l.who) + '</span><span class="st">' + esc(l.text) + '</span></div>';
+        }
+        h += '</div>';
+      }
+      h += '</section>';
+    }
 
     // 4 보상
     h += '<section class="sec" id="s-rw"><h2>보상</h2><ul class="rw">';

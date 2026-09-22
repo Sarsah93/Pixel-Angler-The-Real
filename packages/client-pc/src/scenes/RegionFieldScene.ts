@@ -4174,6 +4174,8 @@ export class RegionFieldScene extends Phaser.Scene {
   private playQuestScene(questId: string, objectiveIndex: number): void {
     const def = questSceneFor(questId, objectiveIndex, {
       regionId: this.region, fieldNpcIds: this.storyNpcs.map((n) => n.def.npcId),
+      // 장소 자막은 지금 서 있는 곳 — 퀘스트가 적어 둔 무대(병실·부산)를 쓰면 화면과 어긋난다(168차)
+      placeKo: this.node.name, placeEn: this.node.nameEn,
     });
     if (!def) return;
     this.clearSceneExtras();

@@ -49,10 +49,25 @@ export interface ForageHost {
   knockback: (dx: number, dy: number) => void;
 }
 
-/** 채집 생물 카테고리별 도트 아이콘 텍스처 키 */
+/**
+ * 채집물 **아이템 아이콘** 텍스처 키 — 인벤토리·쿨러·상세보기가 쓴다.
+ * 사용자 실사 도트가 있으면 BootScene이 같은 키로 먼저 싣는다(166차).
+ */
 export function forageTexKey(c: ShoreCreature): string {
   return `forage_${c.id}`;
 }
+
+/**
+ * 필드 **스팟 표시용** 도트 텍스처 키 — 아이템 아이콘과 반드시 분리한다.
+ * ⚠ 둘을 한 키로 쓰면 아이템 아이콘으로 실린 원본 해상도 사진(1254px)이
+ *   필드에 그대로 그려진다(167차 실측 — 1881px 게 사진이 화면을 덮었다).
+ */
+export function forageSpotTexKey(c: ShoreCreature): string {
+  return `forage_dot_${c.id}`;
+}
+
+/** 필드 스팟 도트의 표시 크기 상한 (px) — 키가 어긋나도 화면을 덮지 못하게 하는 안전망 */
+const SPOT_MAX_PX = 28;
 
 const HINT_STYLE = {
   fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#c8f5d8', fontStyle: 'bold',
@@ -203,8 +218,11 @@ export class ForageSystem {
       if (this.spotSprites.has(s.id)) continue;
       const c = getCreatureById(s.creatureId);
       if (!c) continue;
-      const img = this.host.scene.add.image(s.tx * tr + tr / 2, s.ty * tr + tr * 0.72, forageTexKey(c))
+      const img = this.host.scene.add.image(s.tx * tr + tr / 2, s.ty * tr + tr * 0.72, forageSpotTexKey(c))
         .setOrigin(0.5, 1).setDepth(6.5).setScale(1.5).setVisible(false);
+      // 안전망 — 어떤 이유로든 큰 텍스처가 들어오면 스팟 크기로 줄인다(화면 덮기 방지)
+      const raw = Math.max(img.width, img.height);
+      if (raw > SPOT_MAX_PX) img.setScale(SPOT_MAX_PX / raw);
       this.spotSprites.set(s.id, img);
     }
   }
@@ -213,7 +231,7 @@ export class ForageSystem {
   private ensureTextures(): void {
     const tex = this.host.scene.textures;
     for (const c of SHORE_CREATURE_DATABASE) {
-      const key = forageTexKey(c);
+      const key = forageSpotTexKey(c);
       if (tex.exists(key)) continue;
       const g = this.host.scene.add.graphics();
       const w = 16, h = 14;
@@ -603,7 +621,7 @@ export class ForageSystem {
     if (!s || !c) return;
     s.creatureId = c.id; s.minLampLumens = c.minLampLumens;
     const img = this.spotSprites.get(s.id);
-    if (img) img.setTexture(forageTexKey(c));
+    if (img) img.setTexture(forageSpotTexKey(c));
   }
   /** dev: 홀드를 즉시 완료 */
   devResolveNow(): void { if (this.hold) { this.hold.startedAt = 0; this.resolveHold(); } }

@@ -80,6 +80,8 @@
 
 ## 6. 함정·불변조건
 
+0. **필드 스팟 텍스처 키와 아이템 아이콘 키를 겹치지 않는다**(168차) — 166차가 사진 5장을 `forage_<id>`로 싣자 `ensureTextures`가
+   같은 키의 절차 도트를 건너뛰고 `setScale(1.5)`가 1254px 사진을 **1881px**로 필드에 그렸다. 스팟은 `forage_dot_<id>` + `SPOT_MAX_PX` 안전망.
 1. **`targetCategories`와 생물 DB 카테고리는 같은 유니온이어도 매칭은 데이터가 결정한다**(099) — 새 통발·생물 추가 시 실존 확인.
 2. **통발 침지는 wall-clock**(`Date.now() - deployedAt`) — 오프라인 정지 규칙(쿨러류)과 반대. 마이그레이션 시 밀지 말 것.
 3. `TrapCatchItem.isFishSpecies`가 쿨러 type 분기(099). 어종인데 빠뜨리면 판매가·도감이 끊긴다.

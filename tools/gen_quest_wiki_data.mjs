@@ -28,6 +28,16 @@ function rewardItemNames() {
 }
 const ITEM_NAME = rewardItemNames();
 
+/** 168차 — 퀘스트 장면(컷씬) 대사. `tools/dump_quest_scenes.cjs`가 굽는다(없으면 빈 표). */
+function loadScenes() {
+  const f = path.join(ROOT, 'tools/quest_scenes.json');
+  if (!fs.existsSync(f)) return {};
+  const out = {};
+  for (const s of JSON.parse(fs.readFileSync(f, 'utf8'))) out[`${s.id}#${s.idx}`] = { lines: s.lines, hand: !!s.hand, place: s.place };
+  return out;
+}
+const SCENES = loadScenes();
+
 const SHOP_UNLOCK_LABEL = {
   mart_pro_knife: '식자재마트 — 전문가용 회칼 진열',
   market_crate_pro: '직판장 — 규격 상자(위판용) 진열',
@@ -108,6 +118,7 @@ const chapters = core.STORY_CHAPTERS.map((c) => ({
 }));
 
 const out = {
+  scenes: SCENES,
   generatedFrom: '@tra/core dist',
   counts: {
     quests: quests.length,

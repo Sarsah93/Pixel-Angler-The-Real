@@ -1,29 +1,672 @@
 <title>Pixel Angler The Real Wiki</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hahmlet:wght@500;600;700&family=IBM+Plex+Sans+KR:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
-:root{--paper:#f4efe4;--card:#fffaf1;--ink:#18212a;--muted:#68737b;--sea:#155b68;--sea2:#d9edf0;--orange:#b54e25;--line:#d8cdbb;--shadow:0 8px 24px #17232a14}
-*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.65 system-ui,-apple-system,"Malgun Gothic",sans-serif}.wrap{max-width:1240px;margin:auto;padding:28px 18px 64px}.mast{display:flex;justify-content:space-between;gap:24px;align-items:end;border-bottom:3px double var(--line);padding:18px 0 22px}.kicker{color:var(--orange);font:700 11px/1.2 ui-monospace,monospace;letter-spacing:.16em}.mast h1{font:700 clamp(30px,5vw,54px)/1.08 Georgia,serif;margin:8px 0 0}.mast p{color:var(--muted);max-width:660px;margin:12px 0 0}.count{color:var(--sea);font:700 22px ui-monospace,monospace;white-space:nowrap}.toolbar{position:sticky;top:0;z-index:5;background:#f4efe4ee;padding:14px 0;display:flex;gap:10px;flex-wrap:wrap}.toolbar input{flex:1;min-width:220px;border:1px solid var(--line);border-radius:9px;padding:10px 12px;background:var(--card);color:var(--ink);font-size:15px}.toolbar button{border:1px solid var(--line);border-radius:9px;background:var(--card);color:var(--ink);padding:9px 13px;cursor:pointer}.toolbar button.on{background:var(--sea);border-color:var(--sea);color:white}.layout{display:grid;grid-template-columns:180px 1fr;gap:22px}.nav{display:grid;align-content:start;gap:7px}.nav button{text-align:left;border:0;background:transparent;padding:9px 11px;border-radius:8px;color:var(--muted);cursor:pointer}.nav button.on{background:var(--sea2);color:var(--sea);font-weight:700}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:13px}.card{background:var(--card);border:1px solid var(--line);border-radius:11px;padding:15px;box-shadow:var(--shadow)}.card h3{font:700 19px/1.25 Georgia,serif;margin:0 0 4px}.tag{display:inline-block;background:var(--sea2);color:var(--sea);border-radius:999px;padding:1px 8px;font-size:12px;margin:0 3px 5px 0}.muted{color:var(--muted);font-size:13px}.empty{padding:40px;color:var(--muted);text-align:center;border:1px dashed var(--line);border-radius:10px}@media(max-width:760px){.mast{display:block}.layout{grid-template-columns:1fr}.nav{display:flex;overflow:auto}.nav button{white-space:nowrap}}
+:root{
+  --paper:#f3efe4; --card:#fbf8f1; --raised:#ffffff;
+  --rule:#cdc4b0; --rule-soft:#e2dbcb;
+  --ink:#171a20; --ink2:#3f4650; --muted:#6d7480;
+  --buoy:#a83c17; --buoy-soft:rgba(168,60,23,.10);
+  --sea:#15555e; --sea-soft:rgba(21,85,94,.10);
+  --brass:#7d6118; --brass-soft:rgba(125,97,24,.12);
+  --quote:#e9e2d2;
+  --shadow:0 1px 0 rgba(23,26,32,.05), 0 8px 22px rgba(23,26,32,.07);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#12151a; --card:#191d24; --raised:#1f242c;
+    --rule:#343b46; --rule-soft:#272d36;
+    --ink:#e8e6e0; --ink2:#bcc2cb; --muted:#8a939f;
+    --buoy:#e8794c; --buoy-soft:rgba(232,121,76,.13);
+    --sea:#5cb3bd; --sea-soft:rgba(92,179,189,.13);
+    --brass:#cfa94f; --brass-soft:rgba(207,169,79,.14);
+    --quote:#222833;
+    --shadow:0 1px 0 rgba(0,0,0,.45), 0 12px 28px rgba(0,0,0,.4);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#12151a; --card:#191d24; --raised:#1f242c;
+  --rule:#343b46; --rule-soft:#272d36;
+  --ink:#e8e6e0; --ink2:#bcc2cb; --muted:#8a939f;
+  --buoy:#e8794c; --buoy-soft:rgba(232,121,76,.13);
+  --sea:#5cb3bd; --sea-soft:rgba(92,179,189,.13);
+  --brass:#cfa94f; --brass-soft:rgba(207,169,79,.14);
+  --quote:#222833;
+  --shadow:0 1px 0 rgba(0,0,0,.45), 0 12px 28px rgba(0,0,0,.4);
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:'IBM Plex Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif;
+  font-size:15px; line-height:1.68; -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,h4{font-family:'Hahmlet','Nanum Myeongjo',serif; margin:0; text-wrap:balance; font-weight:600}
+.mono{font-family:'IBM Plex Mono',ui-monospace,monospace; font-variant-numeric:tabular-nums}
+a{color:var(--sea)}
+.wrap{max-width:1220px; margin:0 auto; padding-inline:16px; padding-block:0 64px}
+
+/* ── 제호 ─────────────────────────────── */
+.mast{padding-block:40px 20px; border-bottom:3px double var(--rule)}
+.kicker{font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.2em;
+  text-transform:uppercase; color:var(--muted)}
+.mast h1{font-size:clamp(30px,5.4vw,50px); line-height:1.12; margin-top:8px}
+.lead{margin-top:12px; color:var(--ink2); max-width:62ch}
+.tally{display:flex; flex-wrap:wrap; gap:10px 22px; margin-top:18px}
+.tally div{display:flex; align-items:baseline; gap:7px}
+.tally b{font-family:'IBM Plex Mono',monospace; font-size:19px; font-weight:500; color:var(--buoy)}
+.tally span{font-size:12px; color:var(--muted)}
+
+/* ── 분류 탭 (168차 전체 위키) ───────────── */
+.tabs{display:flex; flex-wrap:wrap; gap:6px; padding-block:14px 4px}
+.tabs button{font:inherit; font-size:14px; padding:8px 16px; border:1px solid var(--rule); border-radius:4px;
+  background:var(--raised); color:var(--ink2); cursor:pointer}
+.tabs button[aria-pressed=true]{background:var(--sea); color:#fff; border-color:var(--sea)}
+.cards{display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:12px; margin-top:16px}
+.card{background:var(--card); border:1px solid var(--rule); border-radius:5px; padding:14px 16px}
+.card h3{font-size:16px; margin-bottom:6px}
+.card .tag{display:inline-block; font-size:11px; color:var(--sea); background:var(--sea-soft); border-radius:999px; padding:1px 8px; margin-bottom:6px}
+.card p{margin:4px 0; color:var(--ink2); font-size:14px}
+.card .muted{color:var(--muted); font-size:12.5px}
+
+/* ── 상단 조작 바 ─────────────────────── */
+.bar{position:sticky; top:env(safe-area-inset-top,0px); z-index:20; background:var(--paper);
+  border-bottom:1px solid var(--rule); padding-block:10px; display:flex; flex-wrap:wrap;
+  gap:8px; align-items:center}
+.bar input[type=search]{flex:1 1 220px; min-width:0; padding:8px 11px; font:inherit; font-size:14px;
+  background:var(--raised); color:var(--ink); border:1px solid var(--rule); border-radius:4px}
+.bar input[type=search]:focus-visible{outline:2px solid var(--sea); outline-offset:1px}
+.seg{display:flex; border:1px solid var(--rule); border-radius:4px; overflow:hidden; background:var(--raised)}
+.seg button{font:inherit; font-size:13px; padding:7px 12px; border:0; background:transparent;
+  color:var(--ink2); cursor:pointer}
+.seg button+button{border-left:1px solid var(--rule-soft)}
+.seg button[aria-pressed=true]{background:var(--buoy); color:#fff}
+.bar select{font:inherit; font-size:13px; padding:7px 9px; background:var(--raised); color:var(--ink);
+  border:1px solid var(--rule); border-radius:4px; max-width:46vw}
+
+/* ── 2단 ─────────────────────────────── */
+.cols{display:grid; grid-template-columns:302px minmax(0,1fr); gap:30px; margin-top:24px; align-items:start}
+@media (max-width:900px){ .cols{grid-template-columns:minmax(0,1fr); gap:20px} }
+
+/* 색인 */
+.index{position:sticky; top:74px; max-height:calc(100dvh - 96px); overflow:auto;
+  border:1px solid var(--rule); border-radius:5px; background:var(--card); padding:6px}
+@media (max-width:900px){ .index{position:static; max-height:340px} }
+.chgrp{margin-bottom:2px}
+/* 153차 — 색인 도구줄. 평시에 "장이 모두 몇 개인가"를 한눈에 보려면 전부 접을 수 있어야 한다. */
+.idxbar{position:sticky; top:0; z-index:2; display:flex; align-items:center; gap:8px;
+  background:var(--card); border-bottom:1px solid var(--rule-soft); margin:-6px -6px 4px; padding:7px 10px}
+.idxbar button{border:1px solid var(--rule); background:var(--raised); border-radius:4px; cursor:pointer;
+  font:inherit; font-size:11.5px; color:var(--ink2); padding:3px 9px}
+.idxbar button:hover{background:var(--sea-soft)}
+.idxbar .idxnote{margin-left:auto; font-size:11px; color:var(--muted)}
+/* 152차 — 장별 접기. 7장 186편을 한 줄로 펼치면 5장을 보려고 끝없이 굴려야 한다. */
+.chtog{display:flex; width:100%; align-items:center; gap:7px; border:0; cursor:pointer; font:inherit;
+  background:var(--sea-soft); border-radius:4px; text-align:left;
+  font-size:12.5px; font-family:'IBM Plex Sans KR',sans-serif; font-weight:600; color:var(--ink2);
+  letter-spacing:.02em; padding:8px 10px}
+.chtog:hover{background:var(--rule-soft)}
+.chtog .caret{flex:0 0 auto; color:var(--muted); font-size:10px; transition:transform .14s ease}
+.chtog[aria-expanded=true] .caret{transform:rotate(90deg)}
+.chtog .ct{flex:1 1 auto; overflow-wrap:anywhere}
+.chtog em{font-style:normal; color:var(--buoy); flex:0 0 auto}
+/* 153차 — 접어도 "지금 이 장을 보고 있다"는 흔적은 남긴다 */
+.chtog.cur{box-shadow:inset 3px 0 0 var(--buoy)}
+.chtog .dot{flex:0 0 auto; width:6px; height:6px; border-radius:50%; background:var(--buoy)}
+.chbody{padding:2px 0 6px}
+.qrow{display:block; width:100%; text-align:left; border:0; background:transparent; cursor:pointer;
+  font:inherit; font-size:13.5px; color:var(--ink2); padding:6px 10px; border-radius:4px;
+  display:flex; gap:8px; align-items:baseline}
+.qrow:hover{background:var(--sea-soft)}
+.qrow[aria-current=true]{background:var(--buoy); color:#fff}
+.qrow[aria-current=true] .tag{color:rgba(255,255,255,.82)}
+.qrow .tag{font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--muted); flex:0 0 auto}
+.qrow .nm{flex:1 1 auto; overflow-wrap:anywhere}
+.empty{padding:14px 10px; color:var(--muted); font-size:13px}
+
+/* ── 문서 ─────────────────────────────── */
+.doc{background:var(--card); border:1px solid var(--rule); border-radius:5px; padding:26px 26px 34px}
+@media (max-width:560px){ .doc{padding:20px 16px 28px} }
+.breadcrumb{font-size:12px; color:var(--muted); font-family:'IBM Plex Mono',monospace}
+.doc h1.title{font-size:clamp(26px,4.4vw,38px); margin-top:6px; padding-bottom:10px;
+  border-bottom:1px solid var(--rule)}
+.doc .sub{font-size:13px; color:var(--muted); margin-top:6px}
+.doc .leadline{margin-top:16px; color:var(--ink2)}
+
+/* 인포박스 */
+/* 152차 — 인포박스는 float가 아니라 머리 2열 그리드의 오른쪽 칸이다.
+   float면 본문(대화)이 박스 아래로 파고들어 겹친다 — 길어지면 아래가 밀려나야 한다. */
+.dochead{display:grid; grid-template-columns:minmax(0,1fr) 310px; gap:26px; align-items:start}
+@media (max-width:760px){ .dochead{grid-template-columns:minmax(0,1fr); gap:18px} }
+.infobox{width:100%; margin:4px 0 20px 0; border:1px solid var(--rule);
+  background:var(--raised); border-radius:4px; overflow:hidden; box-shadow:var(--shadow)}
+.infobox h4{background:var(--sea); color:#fff; font-size:13.5px; padding:8px 12px; letter-spacing:.02em}
+.infobox h5{font-family:'IBM Plex Sans KR',sans-serif; font-size:11.5px; font-weight:600; margin:0;
+  color:var(--muted); letter-spacing:.06em; padding:10px 12px 2px; text-transform:uppercase}
+.infobox table{width:100%; border-collapse:collapse; font-size:13px}
+.infobox th{text-align:left; color:var(--muted); font-weight:500; width:74px; padding:6px 0 6px 12px;
+  vertical-align:top}
+.infobox td{padding:6px 12px 6px 6px; color:var(--ink); vertical-align:top; overflow-wrap:anywhere}
+.infobox tr+tr th, .infobox tr+tr td{border-top:1px solid var(--rule-soft)}
+.infobox .rel{padding:2px 12px 12px}
+.rel a{display:block; font-size:13px; padding:3px 0; overflow-wrap:anywhere}
+.rel .none{color:var(--muted); font-size:13px; padding:3px 0}
+
+/* 목차 */
+.toc{display:inline-block; min-width:210px; border:1px solid var(--rule); background:var(--raised);
+  border-radius:4px; padding:10px 18px 12px; margin:20px 0 6px}
+.toc strong{display:block; text-align:center; font-size:13px; margin-bottom:6px}
+.toc ol{margin:0; padding-left:20px; font-size:13.5px}
+.toc li{margin:2px 0}
+
+/* 절 */
+.sec{clear:none; margin-top:30px}
+.sec>h2{font-size:21px; border-bottom:1px solid var(--rule); padding-bottom:6px; margin-bottom:12px}
+.sec ul{margin:0; padding-left:20px}
+.sec li{margin:4px 0}
+.note{color:var(--muted); font-size:13px}
+
+/* 인용 대화 */
+blockquote.talk{margin:0; padding:16px 20px 16px 46px; background:var(--quote); border-radius:4px;
+  position:relative; color:var(--ink); line-height:1.75}
+blockquote.talk::before{content:'\201C'; position:absolute; left:14px; top:8px; font-size:34px;
+  font-family:'Hahmlet',serif; color:var(--buoy); line-height:1}
+blockquote.talk .who{display:block; margin-top:10px; font-size:12.5px; color:var(--muted)}
+blockquote.talk+blockquote.talk{margin-top:10px}
+
+/* 선택지 */
+.choice{border:1px solid var(--rule-soft); border-radius:4px; background:var(--raised); padding:10px 13px;
+  margin-top:8px}
+.choice .lb{font-weight:500}
+.choice .rp{color:var(--ink2); font-size:14px; margin-top:4px}
+.choice .ot{font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--brass); margin-top:5px}
+.choice.decl{border-left:3px solid var(--buoy)}
+
+/* 장면 (168차) */
+.scene{border-left:3px solid var(--rule); padding:2px 0 2px 14px}
+.sl{display:grid; grid-template-columns:72px minmax(0,1fr); gap:10px; padding:5px 0; border-bottom:1px dashed var(--rule-soft)}
+.sl:last-child{border-bottom:0}
+.sl .sw{font-size:12px; color:var(--sea); font-weight:600; padding-top:2px}
+.sl.th .sw{color:var(--brass)}
+.sl.th .st{color:var(--ink2); font-style:italic}
+
+/* 보상 */
+.rw{list-style:none; margin:0; padding:0}
+.rw li{display:flex; gap:10px; align-items:baseline; padding:6px 0; border-bottom:1px dashed var(--rule-soft)}
+.rw li:last-child{border-bottom:0}
+.rw .k{flex:0 0 96px; font-size:12px; color:var(--muted)}
+.rw .v{flex:1 1 auto; overflow-wrap:anywhere}
+.pill{display:inline-block; font-size:11.5px; padding:1px 7px; border-radius:999px; margin-right:4px;
+.dif{display:inline-block; padding:1px 7px; border-radius:3px; font-size:11px; font-weight:700; letter-spacing:.02em; color:#fff}
+.d-talk{background:#7c8ba0} .d-light{background:#4f8f63} .d-normal{background:#a8862f} .d-hard{background:#c3702a} .d-severe{background:#b4472f}
+  border:1px solid currentColor}
+.pill.bound{color:var(--brass); background:var(--brass-soft)}
+.pill.main{color:var(--buoy); background:var(--buoy-soft)}
+.pill.sub{color:var(--sea); background:var(--sea-soft)}
+
+/* 표 */
+.tablewrap{overflow-x:auto}
+table.wk{width:100%; border-collapse:collapse; font-size:13.5px; min-width:460px}
+table.wk th,table.wk td{border:1px solid var(--rule-soft); padding:7px 10px; text-align:left;
+  vertical-align:top}
+table.wk thead th{background:var(--sea-soft); color:var(--ink); font-weight:600; font-size:12.5px}
+table.wk td.c{text-align:center; font-family:'IBM Plex Mono',monospace}
+
+footer.page{margin-top:40px; padding-top:16px; border-top:1px solid var(--rule); font-size:12px;
+  color:var(--muted)}
+footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
+.hidden{display:none}
 </style>
+
 <div class="wrap">
-  <header class="mast"><div><div class="kicker">FIELD NOTES · COOKING · CRAFT · STORY</div><h1>Pixel Angler The Real Wiki</h1><p>조행록에서 시작한 기록을 요리, 손질, 제작, 농사, 아이템, 바다와 인물까지 확장한 게임 전체 안내서.</p></div><div class="count" id="count"></div></header>
-  <div class="toolbar"><input id="search" placeholder="요리, 어종, 퀘스트, 아이템 검색"><button data-section="overview" class="on">개요</button><button data-section="quests">조행록</button><button data-section="cooking">요리</button><button data-section="fishing">어종</button><button data-section="crafting">제작</button><button data-section="items">아이템</button><button data-section="systems">시스템</button><button data-section="farming">농사</button><button data-section="world">월드</button><button data-section="survival">생존</button><button data-section="characters">캐릭터·대화</button></div>
-  <main class="layout"><nav class="nav" id="nav"></nav><section id="content"></section></main>
+  <header class="mast">
+    <div class="kicker">Pixel Angler The Real · Wiki</div>
+    <h1>Pixel Angler The Real Wiki</h1>
+    <p class="lead">조행록(할 일 186편)에서 시작해 요리·어종·제작·아이템·시스템까지 묶은 게임 전체 안내서입니다.
+      조행록 탭에서 할 일 하나를 고르면 의뢰인의 말, 목표, <b>실제로 재생되는 장면</b>, 받는 것이 한 장으로 펼쳐집니다.</p>
+    <div class="tally" id="tally"></div>
+  </header>
+
+  <nav class="tabs" id="tabs" aria-label="분류">
+    <button data-tab="quests" aria-pressed="true">조행록</button>
+    <button data-tab="cooking" aria-pressed="false">요리</button>
+    <button data-tab="fishing" aria-pressed="false">어종</button>
+    <button data-tab="crafting" aria-pressed="false">제작</button>
+    <button data-tab="items" aria-pressed="false">아이템</button>
+    <button data-tab="systems" aria-pressed="false">시스템</button>
+  </nav>
+  <div id="tab-quests">
+  <nav class="bar">
+    <input type="search" id="q" placeholder="할 일·의뢰인·지역으로 찾기" aria-label="할 일 검색">
+    <div class="seg" role="group" aria-label="갈래">
+      <button id="fAll" aria-pressed="true">전체</button>
+      <button id="fMain" aria-pressed="false">본 줄기</button>
+      <button id="fSub" aria-pressed="false">곁가지</button>
+    </div>
+    <select id="jump" aria-label="장으로 이동"></select>
+  </nav>
+
+  <div class="cols">
+    <aside class="index" id="index" aria-label="할 일 색인"></aside>
+    <main class="doc" id="doc"></main>
+  </div>
+  </div>
+  <div id="tab-cards" class="hidden">
+    <div class="bar"><input type="search" id="cq" placeholder="이름·설명으로 찾기" aria-label="검색"></div>
+    <div class="cards" id="cards"></div>
+  </div>
+
+  <footer class="page">
+    수치·문장은 전부 <code>@tra/core</code>에서 그대로 구워 낸 것입니다 —
+    할 일 <span id="fq"></span>편 · 본 줄기 <span id="fm"></span> · 곁가지 <span id="fs"></span> ·
+    이야기 <span id="fa"></span>갈래 · 누적 경험치 <span id="fx"></span>.
+    생성기 <code>tools/gen_game_wiki_data.mjs</code> · 장면 <code>tools/dump_quest_scenes.cjs</code>.
+  </footer>
 </div>
-<script>const DATA=__DATA__;
-const esc=(v)=>String(v??'').replace(/[&<>"']/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let section='overview';let query='';
-const labels={overview:'개요',quests:'조행록',cooking:'요리',fishing:'어종',crafting:'제작',items:'아이템',systems:'시스템',farming:'농사',world:'월드',survival:'생존',characters:'캐릭터·대화'};
-const hay=(x)=>JSON.stringify(x).toLowerCase().includes(query.toLowerCase());
-const card=(title,body,tag='')=>`<article class="card"><h3>${esc(title)}</h3>${tag?`<span class="tag">${esc(tag)}</span>`:''}<div>${body}</div></article>`;
-function render(){document.querySelectorAll('[data-section]').forEach((b)=>b.classList.toggle('on',b.dataset.section===section));document.getElementById('count').textContent=`${DATA.counts.quests} 퀘스트 · ${DATA.counts.recipes} 레시피`;
- const c=document.getElementById('content');let html='';
- if(section==='overview') html=`<div class="cards">${card('이 위키의 원칙','레시피와 완성 요리는 분리해 기록합니다. 요리 결과는 주재료와 품질을 가진 개체이며, 도감은 종류 단위로 누적됩니다.','설계')}${card('매운탕 두 갈래','서더리(머리·뼈) 매운탕과 어종 하나를 통째로 넣는 매운탕은 같은 빨간탕 계열이지만 서로 다른 레시피입니다.','핵심 변경')}${card('표시 규칙','요리 상세의 완성도는 숫자만 보여주지 않고 `★★★★☆`처럼 5칸 별로 표시합니다.','사용성')}</div>`;
- if(section==='cooking') html=`<div class="cards">${DATA.recipes.filter(hay).map((r)=>card(r.name,`<p>${esc(r.desc)}</p><div class="muted">주재료: ${esc(Array.isArray(r.main)?r.main.join(', '):r.main)} · 화구: ${esc(r.cookware.join(', '))}</div>`,r.family)).join('')}</div>`;
- if(section==='fishing') html=`<div class="cards">${DATA.fish.filter(hay).map((f)=>card(f.name,`<div class="muted">${esc(f.scientific)}</div><p>${esc(f.habitat)}</p>`,'어종')).join('')}</div>`;
- if(section==='crafting') html=`<div class="cards">${DATA.blueprints.filter(hay).map((b)=>card(b.name,`<p>${esc(b.desc)}</p><div class="muted">${esc(b.group)} · ${esc(b.station)}</div>`,'제작')).join('')}</div>`;
- if(section==='items') html=`<div class="cards">${DATA.items.filter(hay).map((i)=>card(i.name,`<div class="muted">${esc(i.id)}</div>`,'아이템')).join('')}</div>`;
- if(section==='systems') html=`<div class="cards">${DATA.systems.filter(hay).map((s)=>card(s.title,`<p>${esc(s.summary)}</p><div class="muted">docs/wiki/02-SYSTEMS/${esc(s.id)}.md</div>`,'시스템')).join('')}</div>`;
- if(section==='quests'){const qs=DATA.quests.quests.filter(hay);html=`<div class="cards">${qs.map((q)=>card(q.title,`<p>${esc(q.desc)}</p><div class="muted">${esc(q.giverName)} · ${esc(q.regionName)} · ${esc(q.diff.label)}</div>`,'퀘스트')).join('')}</div>`}
- if(['farming','world','survival','characters'].includes(section)){const words={farming:['farm','home','농사','텃밭','작물'],world:['world','region','field','지도','지역'],survival:['survival','food','생존','수분','허기'],characters:['character','dialogue','story','인물','대화']}[section];const ss=DATA.systems.filter((s)=>words.some((w)=>JSON.stringify(s).toLowerCase().includes(w.toLowerCase()))&&hay(s));html=`<div class="cards">${ss.map((s)=>card(s.title,`<p>${esc(s.summary)}</p><div class="muted">docs/wiki/02-SYSTEMS/${esc(s.id)}.md</div>`,labels[section])).join('')}</div>`}
- c.innerHTML=html||'<div class="empty">검색 결과가 없습니다.</div>';}
- document.getElementById('nav').innerHTML=Object.entries(labels).map(([id,label])=>`<button data-section="${id}">${label}</button>`).join('');document.querySelectorAll('[data-section]').forEach((b)=>b.addEventListener('click',()=>{section=b.dataset.section;render()}));document.getElementById('search').addEventListener('input',(e)=>{query=e.target.value;render()});render();</script>
+
+<script id="qdata" type="application/json">__DATA__</script>
+<script>
+(function(){
+  const G = JSON.parse(document.getElementById('qdata').textContent);
+  const D = G.quests;
+  const Q = D.quests, CH = D.chapters;
+  const byId = Object.fromEntries(Q.map(q => [q.id, q]));
+  const nf = n => n.toLocaleString('ko-KR');
+
+  // 제호 집계
+  const tally = [
+    [D.counts.quests, '할 일'], [D.counts.main, '본 줄기'], [D.counts.sub, '곁가지'],
+    [D.counts.arcs, '이야기 갈래'], [CH.length, '장'], [D.counts.pages, '조행록 장면'],
+  ];
+  document.getElementById('tally').innerHTML = tally
+    .map(([v, k]) => '<div><b>' + nf(v) + '</b><span>' + k + '</span></div>').join('');
+  document.getElementById('fq').textContent = nf(D.counts.quests);
+  document.getElementById('fm').textContent = nf(D.counts.main);
+  document.getElementById('fs').textContent = nf(D.counts.sub);
+  document.getElementById('fa').textContent = nf(D.counts.arcs);
+  document.getElementById('fx').textContent = nf(D.counts.xp);
+
+  // 장 이동 선택기
+  const jump = document.getElementById('jump');
+  jump.innerHTML = '<option value="">장으로 이동…</option>' +
+    CH.map(c => '<option value="' + c.n + '">' + esc(chLabel(c)) + '</option>').join('');
+
+  let filter = 'all', term = '';
+  let current = location.hash.replace('#', '') || Q[0].id;
+  if (!byId[current]) current = Q[0].id;
+
+  /**
+   * 장 표기 — 데이터의 장 이름은 `지역 — 이름`(예: 「속초 — 첫 캐스팅」) 순서다.
+   * 화면에서는 **이름이 먼저**여야 무엇을 하는 장인지 먼저 읽힌다(152차 사용자 지시).
+   */
+  function chTitle(c){
+    if (!c || !c.title) return '';
+    const i = c.title.indexOf(' — ');
+    if (i < 0) return c.title;
+    return c.title.slice(i + 3) + ' — ' + c.title.slice(0, i);
+  }
+  function chLabel(c){ return c ? '제' + c.n + '장 · ' + chTitle(c) : ''; }
+
+  function esc(s){ return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+  function matches(q){
+    if (filter === 'main' && q.kind !== 'main') return false;
+    if (filter === 'sub' && q.kind === 'main') return false;
+    if (!term) return true;
+    const t = term.toLowerCase();
+    return (q.title + ' ' + q.giverName + ' ' + q.regionName + ' ' + (q.arcTitle || '') + ' ' + q.desc)
+      .toLowerCase().includes(t);
+  }
+
+  /**
+   * 펼쳐 둔 장 (153차 재작성).
+   *  - **열람 중인 장도 접힌다.** 구 구현은 `if (!openCh.size) openCh.add(cur.chapter)` 때문에
+   *    마지막 하나를 접는 순간 그 자리에서 되펴져 "지금 보고 있는 장은 접을 수 없었다".
+   *    장이 몇 개인지 눈으로 세는 것 자체가 색인의 일이므로, 접는 쪽을 항상 이긴다.
+   *  - 대신 **접어도 어디를 보고 있었는지는 남긴다** — 그 장 버튼에 점과 좌측 띠, 그리고
+   *    다시 펴면 열려 있는 편이 그대로 강조된다(aria-current).
+   */
+  const openCh = new Set(byId[current] ? [byId[current].chapter] : []);
+  /** 색인 세로 스크롤은 색인 안에서만 움직인다 — 문서를 건드리면 첫 화면에서 제호가 밀린다(151차). */
+  function keepCurrentVisible(){
+    const idx = document.getElementById('index');
+    const row = idx.querySelector('.qrow[aria-current=true]');
+    if (!row || idx.scrollHeight <= idx.clientHeight) return;
+    /* ⚠ `offsetTop`은 배치 조상 기준이라 색인이 sticky·행이 section 안에 있으면 어긋난다
+       (실측: 마지막 할 일로 이동했을 때 선택 행이 55px 밖에 남았다). 사각형으로 실측한다. */
+    const ir = idx.getBoundingClientRect(), rr = row.getBoundingClientRect();
+    const top = rr.top - ir.top + idx.scrollTop, bot = top + rr.height;
+    if (top < idx.scrollTop + 34) idx.scrollTop = Math.max(0, top - 44);
+    else if (bot > idx.scrollTop + idx.clientHeight) idx.scrollTop = bot - idx.clientHeight + 10;
+  }
+  function renderIndex(){
+    const idx = document.getElementById('index');
+    const cur = byId[current];
+    const shown = CH.map(c => [c, Q.filter(q => q.chapter === c.n && matches(q))]).filter(([, l]) => l.length);
+    const anyOpen = !term && shown.some(([c]) => openCh.has(c.n));
+    let html = '<div class="idxbar">' +
+      '<button data-all="' + (anyOpen ? 'close' : 'open') + '">' +
+      (anyOpen ? '모두 접기' : '모두 펼치기') + '</button>' +
+      '<span class="idxnote">' + shown.length + '장 · ' +
+      shown.reduce((s2, [, l]) => s2 + l.length, 0) + '편</span></div>';
+    for (const [c, list] of shown){
+      // 검색어가 있으면 맞은 장은 전부 펴 준다 — 접힌 채로는 결과가 몇 건인지만 보인다.
+      const open = !!term || openCh.has(c.n);
+      const isCur = !!cur && cur.chapter === c.n;
+      html += '<section class="chgrp"><button class="chtog' + (isCur ? ' cur' : '') + '" data-ch="' + c.n + '"' +
+        ' aria-expanded="' + (open ? 'true' : 'false') + '"' +
+        (isCur ? ' title="' + esc('열람 중 — ' + cur.title) + '"' : '') + '>' +
+        '<span class="caret">&#9654;</span><span class="ct">' + esc(chLabel(c)) + '</span>' +
+        (isCur && !open ? '<span class="dot" aria-hidden="true"></span>' : '') +
+        '<em>' + list.length + '</em></button>';
+      if (open){
+        html += '<div class="chbody">';
+        for (const q of list){
+          html += '<button class="qrow" data-id="' + q.id + '"' +
+            (q.id === current ? ' aria-current="true"' : '') + '>' +
+            '<span class="tag">' + (q.kind === 'main' ? '본' : '곁') + '</span>' +
+            '<span class="nm">' + esc(q.title) + '</span></button>';
+        }
+        html += '</div>';
+      }
+      html += '</section>';
+    }
+    idx.innerHTML = shown.length ? html : '<p class="empty">찾는 할 일이 없습니다.</p>';
+  }
+
+  function relLinks(ids){
+    if (!ids || !ids.length) return '<span class="none">—</span>';
+    return ids.map(id => byId[id]
+      ? '<a href="#' + id + '" data-id="' + id + '">' + esc(byId[id].title) + '</a>'
+      : '').join('');
+  }
+
+  function talk(text, who){
+    if (!text) return '';
+    return '<blockquote class="talk">' + esc(text) +
+      (who ? '<span class="who">— ' + esc(who) + '</span>' : '') + '</blockquote>';
+  }
+
+  const OBJ_NOTE = {
+    catch: '어획으로 자동 판정', release: '계측 후 방생으로 자동 판정',
+    talk: '대화로 자동 판정', visit: '해당 장소 진입으로 자동 판정',
+    butcher: '손질 완료로 자동 판정', sashimi: '회썰기 완료로 자동 판정',
+    craft: '제작 완료로 자동 판정', gather: '채집으로 자동 판정',
+    trap: '통발 수거로 자동 판정', sell: '판매·위판으로 자동 판정',
+    cull: '구제 수거로 자동 판정', cook: '조리 완료로 자동 판정',
+    license: '자격 취득으로 자동 판정', reachLevel: '레벨 도달로 자동 판정',
+    earn: '재화 누적으로 자동 판정', boatTrip: '출항 완주로 자동 판정',
+    communityWork: '공동작업 참여로 자동 판정', survive: '생존 조건으로 자동 판정',
+    holdPosition: '자리 유지로 자동 판정', deliverFree: '무상 전달 — 대화에서 진행',
+    custom: '대화에서 진행을 알린다', furnish: '집 꾸미기 — 대화에서 진행',
+    mine: '채광 — 대화에서 진행', farm: '농사 — 대화에서 진행',
+  };
+
+  function renderDoc(scroll){
+    const q = byId[current];
+    const c = CH.find(x => x.n === q.chapter);
+    const kindLabel = q.kind === 'main' ? '본 줄기' : '곁가지';
+    // 여는 편·닫는 편은 누가 맡기는 할 일이 아니다 — 의뢰인 칸을 빈칸으로 두지 않는다.
+    const solo = !q.giverName;
+    let h = '';
+
+    // 152차 — 머리(제목·리드·목차)와 개요 상자를 2열로 묶는다. float를 쓰면 상자가 길 때
+    //         아래 「대화」가 상자 밑으로 파고들어 글자가 겹친다.
+    h += '<div class="dochead"><div class="headtext">';
+    h += '<div class="breadcrumb">' + esc(chLabel(c)) + '</div>';
+    h += '<h1 class="title">' + esc(q.title) + '</h1>';
+    h += '<p class="sub">' + esc(q.titleEn || '') + '</p>';
+
+    // 인포박스
+    const infobox = '<aside class="infobox"><h4>퀘스트 정보 개요</h4><table><tbody>' +
+      '<tr><th>유형</th><td><span class="pill ' + (q.kind === 'main' ? 'main' : 'sub') + '">' +
+        kindLabel + '</span>' + (q.arcTitle ? esc(q.arcTitle.split(' — ')[0]) : '') + '</td></tr>' +
+      '<tr><th>위치</th><td>' + esc(q.regionName) + '</td></tr>' +
+      '<tr><th>의뢰인</th><td>' + (solo ? '<span class="note">없음 — 스스로 정하는 할 일</span>'
+        : esc(q.giverName) + (q.giverRole ? '<br><span class="note">' + esc(q.giverRole) + '</span>' : '')) + '</td></tr>' +
+      '<tr><th>요구 레벨</th><td class="mono">Lv. ' + q.lv + '</td></tr>' +
+      '<tr><th>클리어 난이도</th><td><span class="dif d-' + q.diff.tier + '">' + esc(q.diff.label) + '</span>' +
+        (q.diff.acts.length ? '<br><span class="note">' + esc(q.diff.acts.join(' · ')) + '</span>'
+          : '<br><span class="note">대화로 진행</span>') + '</td></tr>' +
+      '</tbody></table>' +
+      '<h5>연관 할 일</h5>' +
+      '<table><tbody><tr><th>이전</th><td class="rel">' + relLinks(q.prereq) + '</td></tr>' +
+      '<tr><th>이후</th><td class="rel">' + relLinks(q.next) + '</td></tr></tbody></table>' +
+      (solo ? '' : '<h5>같은 사람의 다른 의뢰</h5><div class="rel">' +
+        (q.siblings.length ? relLinks(q.siblings.slice(0, 6)) : '<span class="none">—</span>') +
+      '</div>') + '</aside>';
+
+    h += '<p class="leadline">「' + esc(q.title) + '」은(는) 조행록 제' + q.chapter + '장에 나오는 ' +
+      kindLabel + ' 할 일입니다. ' + (solo
+        ? esc(q.regionName) + '에서, 맡기는 사람 없이 스스로 시작합니다.'
+        : esc(q.regionName) + '에서 ' + esc(q.giverName) + '이(가) 맡깁니다.') + '</p>';
+
+    // 목차
+    const secs = [];
+    if (q.nar && (q.nar.offer || q.offerChoices.length)) secs.push(['대화', 's-talk']);
+    secs.push(['요구사항', 's-req'], ['목표', 's-obj']);
+    if (q.obj.some((o, i) => D.scenes && D.scenes[q.id + '#' + i])) secs.push(['장면', 's-scene']);
+    secs.push(['보상', 's-rw'], ['안내', 's-guide']);
+    if (q.nar && (q.nar.intro || q.nar.epi)) secs.push(['참고', 's-note']);
+    secs.push(['여담', 's-misc']);
+    h += '<nav class="toc"><strong>목차</strong><ol>' +
+      secs.map(s => '<li><a href="#' + s[1] + '">' + s[0] + '</a></li>').join('') + '</ol></nav>';
+    h += '</div>' + infobox + '</div>';
+
+    // 1 대화
+    if (q.nar && (q.nar.offer || q.offerChoices.length)){
+      h += '<section class="sec" id="s-talk"><h2>대화</h2>';
+      h += talk(q.nar.offer, q.giverName);
+      if (q.offerChoices.length){
+        h += '<p class="note" style="margin-top:' + (q.nar.offer ? '14px' : '0') + '">' +
+          (solo ? '누가 맡기는 할 일이 아닙니다. 스스로 정하는 자리에서 고를 수 있는 답'
+                : '받는 자리에서 고를 수 있는 답') + '</p>';
+        for (const ch of q.offerChoices){
+          h += '<div class="choice' + (ch.decline ? ' decl' : '') + '">' +
+            '<div class="lb">' + esc(ch.label) + (ch.decline ? ' <span class="pill main">거절</span>' : '') + '</div>' +
+            '<div class="rp">' + esc(ch.reply) + '</div>' +
+            (ch.out ? '<div class="ot">' + esc(ch.out) + '</div>' : '') + '</div>';
+        }
+      }
+      h += '</section>';
+    }
+
+    // 2 요구사항
+    h += '<section class="sec" id="s-req"><h2>요구사항</h2><ul>';
+    h += '<li>요구 레벨 <span class="mono">' + q.lv + '</span></li>';
+    if (q.prereq.length) h += '<li>선행 할 일 — ' + q.prereq.map(id =>
+      byId[id] ? '「' + esc(byId[id].title) + '」' : '').join(' · ') + '</li>';
+    else h += '<li>선행 할 일 없음</li>';
+    if (q.policy === 'once') h += '<li>한 번만 받을 수 있는 의뢰입니다. 거절하면 다시 열리지 않습니다.</li>';
+    if (q.policy === 'event') h += '<li>철·조건이 맞을 때만 열리는 의뢰입니다. 거절해도 다음 기회가 옵니다.</li>';
+    if (q.deadline) h += '<li>기한 <span class="mono">' + q.deadline.days + '일</span>' +
+      (q.deadline.onMiss === 'rep' ? ' — 넘기면 항구 신뢰가 깎입니다.'
+        : q.deadline.onMiss === 'cost' ? ' — 넘기면 대가를 치릅니다.' : '') + '</li>';
+    h += '</ul></section>';
+
+    // 3 목표
+    h += '<section class="sec" id="s-obj"><h2>목표</h2><ul>';
+    for (const o of q.obj){
+      h += '<li>' + esc(o.label) +
+        (o.minCm ? ' <span class="note mono">' + o.minCm + 'cm 이상</span>' : '') +
+        (o.target && o.target > 1 ? ' <span class="note mono">×' + o.target + '</span>' : '') +
+        '</li>';
+    }
+    h += '</ul></section>';
+
+    // 3b 장면 (168차) — 이 목표를 닫는 컷씬이 실제로 무엇을 말하는가
+    const sceneKeys = q.obj.map((o, i) => q.id + '#' + i).filter(k => D.scenes && D.scenes[k]);
+    if (sceneKeys.length){
+      h += '<section class="sec" id="s-scene"><h2>장면</h2>' +
+        '<p class="note">대화창에서 이 목표를 고르면 재생되는 컷씬입니다. 컷씬이 끝나야 목표가 닫힙니다.</p>';
+      for (const k of sceneKeys){
+        const sc = D.scenes[k]; const oi = Number(k.split('#')[1]);
+        h += '<h3 style="font-size:15px;margin:14px 0 6px">' + esc(q.obj[oi].label) +
+          ' <span class="pill ' + (sc.hand ? 'main' : 'sub') + '">' + (sc.hand ? '손글 각본' : '생성 장면') + '</span></h3>';
+        h += '<div class="scene">';
+        for (const l of sc.lines){
+          const th = l.who === '혼잣말';
+          h += '<div class="sl' + (th ? ' th' : '') + '"><span class="sw">' + esc(l.who) + '</span><span class="st">' + esc(l.text) + '</span></div>';
+        }
+        h += '</div>';
+      }
+      h += '</section>';
+    }
+
+    // 4 보상
+    h += '<section class="sec" id="s-rw"><h2>보상</h2><ul class="rw">';
+    h += '<li><span class="k">경험치</span><span class="v mono">+' + nf(q.rw.xp) + '</span></li>';
+    if (q.rw.coins) h += '<li><span class="k">재화</span><span class="v mono">' + nf(q.rw.coins) + '원</span></li>';
+    if (q.rw.items.length) h += '<li><span class="k">물품</span><span class="v">' +
+      q.rw.items.map(it => esc(it.name) + (it.qty > 1 ? ' ×' + it.qty : '') +
+        (it.bound ? ' <span class="pill bound">양도 불가</span>' : '')).join('<br>') + '</span></li>';
+    if (q.rw.licenses.length) h += '<li><span class="k">자격</span><span class="v">' +
+      q.rw.licenses.map(esc).join(' · ') + '</span></li>';
+    if (q.rw.skills.length) h += '<li><span class="k">기술 해금</span><span class="v">' +
+      q.rw.skills.map(esc).join(' · ') + '</span></li>';
+    if (q.rw.shops.length) h += '<li><span class="k">상점 진열</span><span class="v">' +
+      q.rw.shops.map(esc).join('<br>') + '</span></li>';
+    if (q.rw.rep && q.rw.rep.harbor) h += '<li><span class="k">항구 신뢰</span><span class="v mono">' +
+      Object.entries(q.rw.rep.harbor).map(([k, v]) => (v > 0 ? '+' : '') + v).join(' · ') + '</span></li>';
+    h += '</ul>';
+    if (q.nar && q.nar.done){
+      h += '<p class="note" style="margin-top:16px">끝내고 돌아갔을 때</p>' +
+        talk(q.nar.done, solo ? '' : q.giverName);
+    }
+    if (q.complete.length){
+      h += '<p class="note" style="margin-top:14px">끝내는 자리에서 고를 수 있는 답 — 고른 답만 열리고, 고르지 않은 답은 다시 올 때까지 덮여 있습니다.</p>';
+      for (const ch of q.complete){
+        h += '<div class="choice"><div class="lb">' + esc(ch.label) + '</div>' +
+          '<div class="rp">' + esc(ch.reply) + '</div>' +
+          (ch.out ? '<div class="ot">' + esc(ch.out) + '</div>' : '') + '</div>';
+      }
+    }
+    h += '</section>';
+
+    // 5 안내
+    h += '<section class="sec" id="s-guide"><h2>안내</h2>';
+    h += '<div class="tablewrap"><table class="wk"><thead><tr>' +
+      '<th style="width:38%">해야 할 일</th><th style="width:16%">판정</th><th>참고</th>' +
+      '</tr></thead><tbody>';
+    for (const o of q.obj){
+      h += '<tr><td>' + esc(o.label) + '</td>' +
+        '<td class="c">' + (o.manual || o.kind === 'custom' ? '대화' : '자동') + '</td>' +
+        '<td>' + esc(OBJ_NOTE[o.kind] || '진행하면 자동으로 채워집니다') +
+        (o.spotKind ? ' · 정해진 자리에서만 인정됩니다' : '') + '</td></tr>';
+    }
+    h += '</tbody></table></div>';
+    if (q.nar && q.nar.progress){
+      h += '<p class="note" style="margin-top:14px">아직 끝나지 않았을 때</p>' +
+        talk(q.nar.progress, solo ? '' : q.giverName);
+    }
+    h += '<p style="margin-top:14px">' + esc(q.desc) + '</p>';
+    h += '</section>';
+
+    // 6 참고
+    if (q.nar && (q.nar.intro || q.nar.epi)){
+      h += '<section class="sec" id="s-note"><h2>참고</h2>';
+      if (q.nar.intro) h += '<p>' + esc(q.nar.intro) + '</p>';
+      if (q.nar.epi) h += '<p class="note" style="margin-top:12px">끝나고 나서</p><p>' + esc(q.nar.epi) + '</p>';
+      h += '</section>';
+    }
+
+    // 7 여담
+    h += '<section class="sec" id="s-misc"><h2>여담</h2><ul>';
+    if (q.arcTitle) h += '<li>이 할 일은 「' + esc(q.arcTitle) + '」 이야기의 한 편입니다.</li>';
+    if (q.unlocks && q.unlocks.length) h += '<li>이 할 일을 끝내면 열리는 것 — ' + q.unlocks.map(esc).join(' · ') + '</li>';
+    if (q.next.length) h += '<li>이 할 일 뒤에 ' + q.next.map(id =>
+      byId[id] ? '「' + esc(byId[id].title) + '」' : '').join(' · ') + '(이)가 이어집니다.</li>';
+    if (c && c.qual) h += '<li>제' + q.chapter + '장을 닫는 자격 — ' + esc(c.qual.l) +
+      (c.qual.d ? ' <span class="note">(' + esc(c.qual.d) + ')</span>' : '') + '</li>';
+    h += '<li class="note">문서 번호 <span class="mono">' + esc(q.id) + '</span> · 이 번호는 자료 정리용이며 게임 안에는 나오지 않습니다.</li>';
+    h += '</ul></section>';
+
+    document.getElementById('doc').innerHTML = h;
+    // 첫 그림에는 제호가 보여야 하므로 **넘어갈 때만** 문서 머리로 옮긴다.
+    if (scroll) document.getElementById('doc').scrollIntoView({ block: 'start', behavior: 'instant' });
+  }
+
+  function go(id){
+    if (!byId[id]) return;
+    current = id;
+    openCh.add(byId[id].chapter);   // 고른 편은 색인에서도 보여야 한다(이동은 접기보다 우선)
+    history.replaceState(null, '', '#' + id);
+    renderIndex();
+    keepCurrentVisible();
+    renderDoc(true);
+  }
+
+  document.getElementById('index').addEventListener('click', e => {
+    const all = e.target.closest('[data-all]');
+    if (all){
+      openCh.clear();
+      if (all.dataset.all === 'open') for (const c of CH) openCh.add(c.n);
+      renderIndex();
+      return;
+    }
+    const t = e.target.closest('.chtog');
+    if (t){
+      const n = Number(t.dataset.ch);
+      if (openCh.has(n)) openCh.delete(n); else openCh.add(n);   // 열람 중인 장도 예외 없이 접힌다
+      renderIndex();
+      return;
+    }
+    const b = e.target.closest('.qrow'); if (b) go(b.dataset.id);
+  });
+  document.getElementById('doc').addEventListener('click', e => {
+    const a = e.target.closest('a[data-id]');
+    if (a){ e.preventDefault(); go(a.dataset.id); }
+  });
+  document.getElementById('q').addEventListener('input', e => { term = e.target.value.trim(); renderIndex(); });
+  jump.addEventListener('change', e => {
+    const n = Number(e.target.value); if (!n) return;
+    const first = Q.find(x => x.chapter === n && matches(x));
+    if (first) go(first.id);
+    e.target.value = '';
+  });
+  const segs = { fAll: 'all', fMain: 'main', fSub: 'sub' };
+  for (const [bid, val] of Object.entries(segs)){
+    document.getElementById(bid).addEventListener('click', () => {
+      filter = val;
+      for (const k of Object.keys(segs)) document.getElementById(k).setAttribute('aria-pressed', String(k === bid));
+      renderIndex();
+    });
+  }
+  window.addEventListener('hashchange', () => {
+    const id = location.hash.replace('#', '');
+    if (byId[id] && id !== current) go(id);
+  });
+
+  renderIndex();
+  renderDoc(false);
+
+  // ── 전체 위키 탭 (168차) ─────────────────────────────
+  let tab = 'quests', cterm = '';
+  const card = (title, body, tag) => '<article class="card">' + (tag ? '<span class="tag">' + esc(tag) + '</span>' : '') +
+    '<h3>' + esc(title) + '</h3>' + body + '</article>';
+  const hit = x => !cterm || JSON.stringify(x).toLowerCase().includes(cterm.toLowerCase());
+  function renderCards(){
+    let items = [];
+    if (tab === 'cooking') items = G.recipes.filter(hit).map(r => card(r.name,
+      '<p>' + esc(r.desc) + '</p><div class="muted">주재료 ' + esc(Array.isArray(r.main) ? r.main.join(', ') : r.main) +
+      ' · 화구 ' + esc((r.cookware || []).join(', ')) + '</div>', r.family));
+    if (tab === 'fishing') items = G.fish.filter(hit).map(f => card(f.name,
+      '<div class="muted">' + esc(f.scientific) + '</div>' + (f.habitat ? '<p>' + esc(f.habitat) + '</p>' : ''), '어종'));
+    if (tab === 'crafting') items = G.blueprints.filter(hit).map(b => card(b.name,
+      '<p>' + esc(b.desc) + '</p><div class="muted">' + esc(b.group) + ' · ' + (b.station === 'hand' ? '손 제작' : '고급 제작대') + '</div>', '제작'));
+    if (tab === 'items') items = G.items.filter(hit).map(i => card(i.name, '', '아이템'));
+    if (tab === 'systems') items = G.systems.filter(hit).map(s => card(s.title, '<p>' + esc(s.summary) + '</p>', '시스템'));
+    document.getElementById('cards').innerHTML = items.length ? items.join('') : '<p class="empty">찾는 항목이 없습니다.</p>';
+  }
+  document.getElementById('tabs').addEventListener('click', e => {
+    const b = e.target.closest('[data-tab]'); if (!b) return;
+    tab = b.dataset.tab;
+    for (const x of document.querySelectorAll('#tabs button')) x.setAttribute('aria-pressed', String(x === b));
+    document.getElementById('tab-quests').classList.toggle('hidden', tab !== 'quests');
+    document.getElementById('tab-cards').classList.toggle('hidden', tab === 'quests');
+    if (tab !== 'quests') renderCards();
+  });
+  document.getElementById('cq').addEventListener('input', e => { cterm = e.target.value.trim(); renderCards(); });
+})();
+</script>
