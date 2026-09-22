@@ -196,7 +196,15 @@ export class CookingPanel extends DraggablePanel {
       for (const r of list) {
         const isSel = this.pickRecipe === r.id;
         const bg = sc.add.rectangle(C_X, cy, C_W - 4, 44, isSel ? 0x1f4a6a : 0x122236, 0.95).setOrigin(0, 0).setStrokeStyle(1, isSel ? 0x5cd0ff : 0x2a3a4a, 1);
-        const icon = addPixelIcon(sc, `it_dish_${r.family}`, C_X + 18, cy + 22, 24);
+        // 170차 — 실사 사진이 있는 레시피는 그 그림을 쓴다(같은 family라도 그림이 다르다).
+        const icon: Phaser.GameObjects.GameObject | null = r.photoKey && sc.textures.exists(r.photoKey)
+          ? (() => {
+              const im = sc.add.image(C_X + 18, cy + 22, r.photoKey!);
+              const src = sc.textures.get(r.photoKey!).getSourceImage() as HTMLImageElement;
+              im.setDisplaySize(24, Math.max(1, Math.round((24 * src.height) / src.width)));
+              return im;
+            })()
+          : addPixelIcon(sc, `it_dish_${r.family}`, C_X + 18, cy + 22, 24);
         // ⚠ 합성 문자열은 사전을 비껴간다(131차) — 조각을 먼저 번역하고 붙인다
         const name = sc.add.text(C_X + 36, cy + 5, `${t(r.nameKo)}  ·  ${t(RECIPE_FAMILY_KO[r.family])} · ${t(`약 ${r.cookMin}분`)}`, { fontFamily: FONT, fontSize: '12px', color: '#e8f4fd', fontStyle: 'bold' });
         clampTextWidth(name, C_W - 46);

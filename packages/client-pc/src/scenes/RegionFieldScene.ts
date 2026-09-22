@@ -100,7 +100,7 @@ import { questSceneFor, type SceneExtra } from '../data/QuestScenes.js';
 import { loadSettings } from './SettingsScene.js';
 import { MultiplayerClient } from '../net/MultiplayerClient.js';
 import { STORY_NPC_PLACEMENTS, STORY_PLACES, STORY_FIELD_TRIGGERS, type StoryNpcPlacement, type StoryFieldTrigger } from '../data/StoryNpcs.js';
-import { getStoryNpc, validateStoryQuests, validateStoryChoices, getSkillById, profScale, gearFaultChance, GEAR_REF_PRICE, gearUsable, GEAR_FAULTS,
+import { getStoryNpc, validateStoryQuests, validateStoryChoices, validateLicenseStoryRoutes, getSkillById, profScale, gearFaultChance, GEAR_REF_PRICE, gearUsable, GEAR_FAULTS,
   STORY_QUESTS, getStoryQuest, narrativeOf, nextObjectiveIndex, objectiveTarget, objectiveHowToKo, getDayJob, getRegionById, WORLD_NODE_DATABASE,
   type StoryQuestDef, type QuestGuideTarget, type GuideNames } from '@tra/core';
 import { FullMapPanel } from '../ui/FullMapPanel.js';
@@ -1067,8 +1067,8 @@ export class RegionFieldScene extends Phaser.Scene {
     this.placeStoryNpcs();
     this.placeStoryTriggers();
     if (import.meta.env.DEV) {
-      const issues = [...validateStoryQuests(), ...validateStoryChoices()];
-      if (issues.length) console.warn('[Story] 퀘스트·선택지 DB 무결성', issues);
+      const issues = [...validateStoryQuests(), ...validateStoryChoices(), ...validateLicenseStoryRoutes(STORY_QUESTS)];
+      if (issues.length) console.warn('[Story] 퀘스트·선택지·자격 경로 DB 무결성', issues);
     }
     this.playerBody.setVisible(false);
     this.playerBody.setCollideWorldBounds(true);
@@ -1129,7 +1129,8 @@ export class RegionFieldScene extends Phaser.Scene {
       id: `inv_nuisance_${nu.id}`,
       name: nu.nameKo,
       icon: '',
-      iconTexture: `nui_${nu.id}${nu.kind === 'starfish' ? '_dry' : ''}`,
+      // 170차 — 슬롯·상세는 실사 사진, 필드 렌더는 여전히 core 절차 도트(`nui_*`)다.
+      iconTexture: `nuisance_${nu.id}`,
       category: 'food',
       subCategory: nu.kind === 'jellyfish' ? '해파리' : '불가사리',
       basePrice: cull,

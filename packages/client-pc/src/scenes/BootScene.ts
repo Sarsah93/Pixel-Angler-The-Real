@@ -137,6 +137,16 @@ export class BootScene extends Phaser.Scene {
     // food/: 아이템 아이콘 (인벤토리/상점 소켓용, 64x64 도트)
     // fish/: 어획 연출용 실사 픽셀화 생선 이미지 (낚시 성공 팝업/상세보기)
     this.load.image('food_assorted_sashimi', 'food/assorted_sashimi.png');
+    // 불요리 완성 요리 실사 — 서더리(stew_red)와 통생선(stew_red_whole)은 재료 구성이 달라 그림도 다르다(170차)
+    this.load.image('food_stew_red', 'food/stew_red.png');                   // 서더리 매운탕
+    this.load.image('food_stew_red_whole', 'food/stew_red_whole.png');       // 통생선 매운탕
+
+    // ─── 과증식 해양생물 실사 4종 (170차) ───
+    // 필드 렌더는 core `NuisanceArt` 절차 도트가 담당하고, 이 실사는 상세보기·도감용이다.
+    this.load.image('nuisance_moon_jelly', 'nuisance/moon_jelly.png');       // 보름달물해파리
+    this.load.image('nuisance_nomura_jelly', 'nuisance/nomura_jelly.png');   // 노무라입깃해파리
+    this.load.image('nuisance_blue_bat_star', 'nuisance/blue_bat_star.png'); // 별불가사리
+    this.load.image('nuisance_amur_star', 'nuisance/amur_star.png');         // 아무르불가사리
 
     // ─── 어종 외 아이템·해루질 자원 투명 도트 아이콘 ───
     // 인벤토리 슬롯과 상세보기에서 같은 키를 공유한다. 누락 시 기존 px/절차 아이콘으로 폴백.
@@ -270,7 +280,8 @@ export class BootScene extends Phaser.Scene {
     this.load.image('fish_squid', 'fish/bigfin_reef_squid.png');            // 무늬오징어
     this.load.image('fish_hairtail', 'fish/Cutlassfish.png');               // 갈치 (파일명 대문자 C — gh-pages 대소문자 구분)
     this.load.image('fish_cuttlefish', 'fish/cuttlefish.png');              // 갑오징어
-    this.load.image('fish_blue_rockfish', 'fish/dark-banded_rockfish.png'); // 청볼락 (파일명은 dark-banded지만 사용자 지정 어종은 청볼락)
+    // ⚠ 청볼락에 쓰이던 'dark-banded_rockfish.png'는 **일반 볼락** 사진이라 170차에 회수했다.
+    //   청볼락 전용 실사가 들어오면 여기에 fish_blue_rockfish로 다시 건다.
     this.load.image('fish_filefish', 'fish/filefish.png');                  // 쥐치
     this.load.image('fish_golden_rockfish', 'fish/owstons_rockfish.png');   // 황볼락
     this.load.image('fish_sea_bass', 'fish/sea_bass.png');                  // 농어
@@ -282,14 +293,17 @@ export class BootScene extends Phaser.Scene {
     this.load.image('fish_red_seabream', 'fish/red_sea_bream.png');         // 참돔 (야간 참돔 night_seabream 공용)
     this.load.image('fish_horse_mackerel', 'fish/jack_mackerel.png');       // 전갱이
     this.load.image('fish_chub_mackerel', 'fish/mackerel.png');             // 고등어
-    // 돌돔 — 40cm↑ 수컷은 무늬 소실(수컷 이미지), 그 외(40cm↓ 전부 + 40cm↑ 암컷)는 무늬 유지(암컷 이미지)
+    // 돌돔 — 30cm↑ 수컷은 무늬 소실(수컷 이미지), 그 외(30cm↓ 전부 + 30cm↑ 암컷)는 무늬 유지(암컷 이미지)
     this.load.image('fish_stone_beakperch_female', 'fish/barred_knifejaw_female.png');
     this.load.image('fish_stone_beakperch_male', 'fish/barred_knifejaw_male.png');
     // DB 미등록 어종 — 어종 추가 시 FISH_TEXTURE에 매핑만 연결하면 됨 (에셋은 선(先)로드)
-    this.load.image('fish_spotbelly_rockfish', 'fish/spotbelly_rockfish.png'); // 개볼락 (FISH_DATABASE 미등록)
+    // ⚠ spotbelly_rockfish.png ↔ spotbelly_greenling.png는 **바이트 동일한 중복 파일**이고,
+    //   내용은 둘 다 쏨뱅이(무늬 있는 볼락류)다 — 170차 사용자 지적으로 확인.
+    //   그래서 이 사진은 쏨뱅이에 걸고, 놀래미(greenling)는 전용 실사가 올 때까지 비워 둔다.
+    this.load.image('fish_scorpionfish', 'fish/spotbelly_rockfish.png');       // 쏨뱅이
     this.load.image('fish_swordtip_squid', 'fish/swordtip_squid.png');         // 한치(창꼴뚜기) — 2026-08-05 DB 등록 완료 (FISH_TEXTURE 배선됨)
     // 2026-07-22 2차 추가 (놀래미/쥐노래미/망상어 + 용치놀래기 암/수)
-    this.load.image('fish_greenling', 'fish/spotbelly_greenling.png');         // 놀래미
+    // 놀래미(greenling) — 전용 실사 대기(구 spotbelly_greenling.png는 쏨뱅이 사진이었다 · 170차 회수)
     this.load.image('fish_fat_greenling', 'fish/fat_greenling.png');           // 쥐노래미
     this.load.image('fish_surfperch', 'fish/surf_perch.png');                  // 망상어
     // 용치놀래기 — 암컷→수컷 성전환 어종 (수컷 = 화려한 녹색 혼인색) — 성별별 이미지 분기
@@ -316,6 +330,10 @@ export class BootScene extends Phaser.Scene {
     //   설명("대문어=동해·대형", "참문어=소형")과 이미지 내용이 일치하는 쪽으로 연결)
     this.load.image('fish_octopus', 'fish/common_octopus.png');                       // 참문어(돌문어) — 얼룩덜룩 소형
     this.load.image('fish_giant_octopus', 'fish/giant_pacific_octopus.png');          // 대문어(피문어) — 적갈색 대형
+
+    // 2026-09-22 추가 (170차) — 볼락류 어종별 실사
+    this.load.image('fish_red_snapper_rockfish', 'fish/red_snapper_rockfish.png');    // 열기(불볼락)
+    this.load.image('fish_black_rockfish', 'fish/black_rockfish.png');                // 조피볼락(우럭)
 
     // ─── 남자 캐릭터 스프라이트 (12장) ───
     // 정지 4방향

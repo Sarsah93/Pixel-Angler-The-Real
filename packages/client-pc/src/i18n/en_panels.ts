@@ -46,6 +46,11 @@ export const EN_PANELS: Record<string, string> = {
   '• 선행 조건 없음 (바로 발급 가능)': '• No prerequisites (available now)',
   '선행 면허가 필요합니다': 'Prerequisite licence required',
   '조건 미충족': 'Requirements not met',
+  // 170차 — 자격 이야기 경로
+  '면제': 'Waived',
+  '추천을 받았습니다': 'You have a recommendation',
+  '추천을 받을 수 있습니다': 'A recommendation is within reach',
+  '면허 발급 (수수료 면제)': 'Issue licence (fee waived)',
   '코인 부족': 'Not enough coins',
   '유효하게 소지하고 있는 면허입니다.': 'You hold this licence.',
   '낚시': 'Fishing',

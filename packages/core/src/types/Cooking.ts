@@ -158,6 +158,11 @@ export interface FireRecipeDef {
   servings: number;
   baseValueKrw: number;
   vitals: DishVitals;
+  /**
+   * 완성 요리 실사 텍스처 키 (170차) — 없으면 `family` 기준 픽셀 아이콘으로 폴백한다.
+   * 같은 family라도 재료 구성이 다르면 그림이 달라진다(서더리 ↔ 통생선 매운탕).
+   */
+  photoKey?: string;
 }
 
 // ─────────────────────────────────────────────

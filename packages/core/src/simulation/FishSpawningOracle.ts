@@ -597,7 +597,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     fight: { basePower: 0.4, patternWeights: { jump: 0.1, dive: 0.3, lateral: 0.6 }, intervalMult: 1.1, mouthFragility: 0.4 },
   },
   {
-    speciesId: 'octopus', nameKo: '참문어(돌문어)', nameEn: 'Common Octopus',
+    speciesId: 'octopus', nameKo: '돌문어', nameEn: 'Common Octopus',
     // 남해·서해 따뜻한 연안 암초/방파제 바닥 — 대문어보다 소형(성체 최대 ~4kg 급)
     habitat: ['reef', 'structure'], minDepthM: 2, maxDepthM: 30, preferredLayers: ['bottom'],
     baitPreference: { lure: 80, crab: 30 }, egiOnly: true,

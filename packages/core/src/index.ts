@@ -110,6 +110,9 @@ export {
 export { ANGLER_APP_REGIONS, TIDAL_CHARACTERISTICS, getRegionByCode, getRegionsByProvince, getRegionsByTidalCharacteristic, getAnglerAppRegions } from './db-schema/AnglerAppSpots.js';
 export type { AnglerAppRegion } from './db-schema/AnglerAppSpots.js';
 export { LICENSE_DATABASE, LICENSE_CATEGORY_LABEL, LICENSE_CATEGORY_ORDER, getLicenseByType, checkUnlockRequirements } from './types/License.js'; // Note: Defined directly inside types/License.ts
+// 자격 이야기 경로 (170차) — 면허사무소 경로는 그대로 두고 퀘스트로 수수료·실적 요건만 면제한다
+export type { LicenseStoryRoute, LicenseIssueTerms } from './db-schema/LicenseStoryRoutes.js';
+export { LICENSE_STORY_ROUTES, licenseStoryRoute, applyLicenseWaiver, validateLicenseStoryRoutes } from './db-schema/LicenseStoryRoutes.js';
 export { QUEST_DATABASE, getQuestById, getQuestsByCategory, getAvailableQuests } from './db-schema/QuestDatabase.js';
 export { FISH_BEHAVIOR_DB, getBehaviorProfile, interpolateTempActivity, isClosedSeason } from './db-schema/FishBehaviorDatabase.js';
 export type { FishBehaviorProfile, TempActivityPoint } from './db-schema/FishBehaviorDatabase.js';

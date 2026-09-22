@@ -48,7 +48,7 @@ const PORRIDGE_STAGES: RecipeStageDef[] = [
 
 export const FIRE_RECIPES: FireRecipeDef[] = [
   {
-    id: 'stew_red', nameKo: '서더리 매운탕', nameEn: 'Fish-frame maeuntang', family: 'stew_red',
+    id: 'stew_red', nameKo: '서더리 매운탕', nameEn: 'Fish-frame maeuntang', family: 'stew_red', photoKey: 'food_stew_red',
     descKo: '감성돔·우럭 등 생선의 머리와 뼈인 서더리로 국물을 낸 얼큰한 탕.',
     descEn: 'A spicy maeuntang made from a fish head and frame with chili flakes and garlic.',
     cookware: ['pot'],
@@ -73,7 +73,7 @@ export const FIRE_RECIPES: FireRecipeDef[] = [
     vitals: { hungerRestore: 22, hydrationRestore: 19, hpRestore: 25, fatigueRestore: 18, drainBuffMult: 0.85, drainBuffMin: 30 },
   },
   {
-    id: 'stew_red_whole', nameKo: '통생선 매운탕', nameEn: 'Whole-fish maeuntang', family: 'stew_red',
+    id: 'stew_red_whole', nameKo: '통생선 매운탕', nameEn: 'Whole-fish maeuntang', family: 'stew_red', photoKey: 'food_stew_red_whole',
     descKo: '어종 하나를 통째로 넣어 살과 국물을 함께 즐기는 얼큰한 탕.',
     descEn: 'A spicy maeuntang made with one whole fish, keeping its flesh and broth together.',
     cookware: ['pot'],

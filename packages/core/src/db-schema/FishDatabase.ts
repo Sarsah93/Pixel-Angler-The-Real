@@ -382,7 +382,7 @@ export const FISH_DATABASE: FishSpecies[] = [
     difficulty: 5,
     sashimiValuePerKg: 90000,
     swimmingLayer: 'bottom',
-    description: '거친 여 밭의 제왕. 단단한 이빨로 성게 껍질째 깨부수는 갯바위 최고급 대상어. 수컷 성어는 주둥이가 검게 변한다(강구).',
+    description: '거친 여 밭의 제왕. 단단한 이빨로 성게 껍질째 깨부수는 갯바위 최고급 대상어. 30cm를 넘기면 암수가 갈리는데, 수컷은 줄무늬를 잃고 주둥이가 검게 변한다(강구).',
   },
   {
     id: 'spotted_knifejaw',
@@ -1222,7 +1222,7 @@ export const FISH_DATABASE: FishSpecies[] = [
   },
   {
     id: 'octopus',
-    nameKo: '참문어(돌문어)',
+    nameKo: '돌문어',
     nameEn: 'Common Octopus',
     scientificName: 'Octopus vulgaris',
     spriteKey: 'fish_octopus',

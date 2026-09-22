@@ -284,7 +284,7 @@ class CookingStoreClass {
     const base: InvItemTemplate = {
       id: `inv_dish_${r.id}_${seq}`,
       name: dishItemName(r, dish, stars),
-      icon: '', iconTexture: `px:it_dish_${r.family}`,
+      icon: '', iconTexture: r.photoKey ?? `px:it_dish_${r.family}`,
       category: 'food', subCategory: '요리', basePrice: dishValueKrw(dish, r, stars),
       condition: 'fresh', conditionSinceMs: now, equippable: false,
       dish,

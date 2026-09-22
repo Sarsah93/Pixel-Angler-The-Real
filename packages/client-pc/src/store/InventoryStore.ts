@@ -493,7 +493,7 @@ function createDevFishDefs(): Omit<InvItem, 'slot'>[] {
     { sp: 'squid', nameKo: '무늬오징어', lo: 22, hi: 42 },
     { sp: 'swordtip_squid', nameKo: '한치', lo: 15, hi: 35 },
     { sp: 'cuttlefish', nameKo: '갑오징어', lo: 12, hi: 25 },
-    { sp: 'octopus', nameKo: '참문어', lo: 30, hi: 60 },
+    { sp: 'octopus', nameKo: '돌문어', lo: 30, hi: 60 },
   ];
   return devFish.map((f) => {
     const lengthCm = Math.round(f.lo + Math.random() * (f.hi - f.lo));
@@ -1111,7 +1111,11 @@ class InventoryStoreManager {
         placeKey: i.placeKey ?? sd?.placeKey,
         // 167차 — 도트 아이콘이 나중에 생긴 시드(혼무시·감성돔 바늘)는 구세이브가 이모지만 들고 있다.
         //  iconTexture가 비었고 시드에 있으면 채우고, 그때는 이모지도 지운다(아이콘 이중 표시 방지).
-        iconTexture: i.iconTexture ?? sd?.iconTexture,
+        // 170차 — 과증식 해양생물은 필드 도트(`nui_*`)를 슬롯에 그대로 쓰고 있었다.
+        //  실사 사진이 들어왔으므로 구세이브분도 강제로 갈아끼운다(내용은 같은 개체).
+        iconTexture: i.id.startsWith('inv_nuisance_')
+          ? `nuisance_${i.id.slice('inv_nuisance_'.length)}`
+          : (i.iconTexture ?? sd?.iconTexture),
         icon: (!i.iconTexture && sd?.iconTexture) ? '' : i.icon,
         // 121차 채집·통발 정적 필드 — 시드 백필 + id 규칙 폴백(상점 구매분: inv_trap_<specId>)
         lampLumens: i.lampLumens ?? sd?.lampLumens,

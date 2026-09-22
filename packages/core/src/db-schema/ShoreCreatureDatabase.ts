@@ -213,7 +213,7 @@ export const SHORE_CREATURE_DATABASE: ShoreCreature[] = [
   },
   {
     id: 'octopus_vulgaris',
-    nameKo: '문어',
+    nameKo: '돌문어',
     nameEn: 'Common Octopus',
     scientificName: 'Octopus vulgaris',
     spriteKey: 'creature_octopus',

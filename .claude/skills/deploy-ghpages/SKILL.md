@@ -6,6 +6,9 @@ description: Pixel Angler 테스트 빌드 gh-pages 배포 절차. GitHub Pages 
 # gh-pages 테스트 배포
 
 **라이브 URL**: https://sarsah93.github.io/Pixel-Angler-The-Real/
+⚠ **원격 컨테이너에서는 이 배포가 유일한 실플레이 경로다**(170차) — dev 서버는 `host: true`여도
+사용자 PC의 `localhost:5173`에 닿지 않는다(포트 포워딩 없음). "테스트해보게 서버 열어줘" 요청은 재배포로 답한다.
+
 **배포 worktree**: `../pixel-angler-gh-pages` (orphan `gh-pages` 브랜치 — Pages 소스는 브랜치 루트, `.nojekyll` 포함)
 
 ## 절차
@@ -15,7 +18,9 @@ npx pnpm run build                                  # 4/4 성공 확인
 git -C ../pixel-angler-gh-pages fetch origin        # ⚠ 로컬 worktree가 origin/gh-pages보다
 git -C ../pixel-angler-gh-pages status              #    뒤처져 있을 수 있음 — 먼저 동기화 (73차 노트)
 # dist → worktree 루트로 복사 (소스맵 제외!)
-#   packages/client-pc/dist/* 를 복사하되 *.map 파일은 제외한다
+#   ⚠ rsync는 이 컨테이너에 없다 — tar 파이프를 쓴다(170차)
+#   (cd packages/client-pc/dist && tar cf - --exclude='*.map' .) | (cd ../pixel-angler-gh-pages && tar xf -)
+#   구 파일 정리가 필요하면 .git/.nojekyll만 남기고 먼저 비운다
 git -C ../pixel-angler-gh-pages add -A
 git -C ../pixel-angler-gh-pages commit -m "Deploy: N차 테스트 빌드 (YYYY-MM-DD) — 요약"
 git -C ../pixel-angler-gh-pages push origin gh-pages

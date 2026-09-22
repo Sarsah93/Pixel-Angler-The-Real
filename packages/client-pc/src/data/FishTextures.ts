@@ -19,7 +19,7 @@ export const FISH_TEXTURE: Record<string, string> = {
   squid: 'fish_squid',                     // 무늬오징어
   hairtail: 'fish_hairtail',               // 갈치
   cuttlefish: 'fish_cuttlefish',           // 갑오징어
-  blue_rockfish: 'fish_blue_rockfish',     // 청볼락
+  // blue_rockfish(청볼락) — 구 매핑은 **일반 볼락** 사진이라 170차에 회수. 전용 실사 대기.
   filefish: 'fish_filefish',               // 쥐치
   golden_rockfish: 'fish_golden_rockfish', // 황볼락
   sea_bass: 'fish_sea_bass',               // 농어
@@ -33,7 +33,8 @@ export const FISH_TEXTURE: Record<string, string> = {
   horse_mackerel: 'fish_horse_mackerel',   // 전갱이
   chub_mackerel: 'fish_chub_mackerel',     // 고등어
   // 2026-07-22 2차 추가
-  greenling: 'fish_greenling',             // 놀래미
+  // greenling(놀래미) — 구 매핑은 **쏨뱅이** 사진이라 170차에 회수. 전용 실사 대기.
+  scorpionfish: 'fish_scorpionfish',       // 쏨뱅이 — spotbelly_rockfish.png (170차)
   fat_greenling: 'fish_fat_greenling',     // 쥐노래미
   surfperch: 'fish_surfperch',             // 망상어
   // 2026-07-25 추가 (기존 4종 텍스처 + 복섬 개명 + 신규 6종)
@@ -55,22 +56,26 @@ export const FISH_TEXTURE: Record<string, string> = {
   giant_octopus: 'fish_giant_octopus',     // 대문어(피문어) — giant_pacific_octopus.png
   // 2026-08-05 추가 — 한치 어종 DB 등록에 따른 배선 (에셋은 20차부터 선로드 상태였음)
   swordtip_squid: 'fish_swordtip_squid',   // 한치(창꼴뚜기) — swordtip_squid.png
+  // 2026-09-22 추가 (170차) — 볼락류 어종별 실사
+  red_snapper_rockfish: 'fish_red_snapper_rockfish', // 열기(불볼락)
+  black_rockfish: 'fish_black_rockfish',             // 조피볼락(우럭)
 };
 
 /**
  * 어획 개체 → 텍스처 해소.
- *  - 돌돔(stone_beakperch): 40cm를 넘어야 암수 구별 — 수컷만 줄무늬 소실.
- *    40cm 미만은 개체 성별과 무관하게 암컷(무늬 유지) 이미지를 쓴다.
+ *  - 돌돔(stone_beakperch): 30cm를 넘어야 암수 구별 — 수컷만 줄무늬 소실.
+ *    30cm 미만은 개체 성별과 무관하게 암컷(무늬 유지) 이미지를 쓴다.
  *  - 용치놀래기(rainbow_wrasse): 암컷→수컷 성전환 — 성별에 따라 체색이 완전히 달라
  *    암/수 이미지를 분기한다 (수컷 = 화려한 녹색 혼인색).
  * sex 정보가 없을 때는 'F'를 기본값으로 넘긴다(대부분 어종은 성별 무관).
  */
 /**
- * 돌돔 **줄무늬 없는 수컷** 판정 — 40cm를 넘겨야 암수 구별이 되고, 그때 수컷만 줄무늬를 잃는다.
+ * 돌돔 **줄무늬 없는 수컷** 판정 — 30cm를 넘겨야 암수 구별이 되고, 그때 수컷만 줄무늬를 잃는다.
+ * (170차 사용자 지정으로 40 → 30cm. 어획 팝업·인벤 텍스처와 손질 도마가 이 한 줄을 공유한다.)
  * 어획 팝업/인벤 텍스처와 손질 도마 스프라이트가 같은 기준을 쓰도록 여기서 단일 정의한다.
  */
 export function isStripelessMale(speciesId: string, lengthCm: number, sex: 'M' | 'F'): boolean {
-  return speciesId === 'stone_beakperch' && lengthCm >= 40 && sex === 'M';
+  return speciesId === 'stone_beakperch' && lengthCm >= 30 && sex === 'M';
 }
 
 export function resolveFishTexture(speciesId: string, lengthCm: number, sex: 'M' | 'F'): string | undefined {

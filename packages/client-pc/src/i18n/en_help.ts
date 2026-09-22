@@ -239,6 +239,14 @@ export const EN_HELP: Record<string, string> = {
   '카테고리 → 트리 → 배우기': 'Category → tree → learn',
   '면허 · 단속 · 준법 방생': 'Licences · Enforcement · Lawful Release',
   '허가가 콘텐츠를 연다': 'Permits open content',
+  // 170차 — 자격 이야기 경로
+  '추천을 받으면 지름길이 열린다': 'A recommendation opens a shortcut',
+  '어떤 자격은 사람을 통해서도 딸 수 있습니다. 관련된 할 일을 끝내면 그 사람이 추천을 써 주고, 면허사무소가 발급 수수료와 실적 요건(출조 횟수 · 어획 누계 · 보유 재화 · 평판)을 면제해 줍니다. 면허 목록의 비용 칸이 「면제」로 바뀌고, 상세 화면에 누가 무엇을 써 줬는지 적힙니다.':
+    'Some qualifications can also be earned through people. Finish the related task and that person writes you a recommendation; the licence office then waives the issuing fee and the record requirements (trips, total catch, coins, reputation). The cost column in the licence list reads "Waived", and the detail view says who vouched for you and why.',
+  '추천은 어디까지나 지름길입니다. 조건을 직접 채우고 돈을 내는 원래 경로는 그대로 열려 있으니, 이야기를 따라가지 않아도 같은 자격을 딸 수 있습니다.':
+    'A recommendation is only a shortcut. The original route — meet the requirements yourself and pay the fee — stays open, so you can earn the same qualification without following the story at all.',
+  '다만 선행 면허와 선행 할 일은 면제되지 않습니다. 자격의 단계 자체는 추천으로 건너뛸 수 없습니다.':
+    'Prerequisite licences and prerequisite tasks are never waived, though. A recommendation cannot skip a rung of the ladder itself.',
   '일지 (J)': 'Journal (J)',
   '스토리 · 퀘스트 열람': 'Story · quest browser',
   '생존 지표 4종': 'The Four Vitals',

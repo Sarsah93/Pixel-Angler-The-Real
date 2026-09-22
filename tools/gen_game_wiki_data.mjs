@@ -157,8 +157,23 @@ const FISH_TEX = (() => {
   for (const m of body.matchAll(/^\s{2}([a-z_]+):\s*'([a-z_]+)'/gm)) map[m[1]] = m[2];
   return map;
 })();
-/** 암수 분화 어종은 대표 1장(암컷)으로 */
-const fishImg = (id) => imgOf(FISH_TEX[id]) ?? imgOf(`fish_${id}_female`) ?? imgOf(`fish_${id}`);
+/**
+ * 어종 그림 — 암수가 눈에 띄게 다른 어종은 **두 장 다** 싣는다(170차 사용자 지적).
+ *  돌돔은 30cm를 넘겨야 암수가 갈리고(수컷만 줄무늬 소실), 용치놀래기는 성전환으로 체색이 통째로 바뀐다.
+ */
+const SEX_VARIANTS = {
+  stone_beakperch: [['female', '30cm 미만 · 암컷'], ['male', '30cm 이상 수컷 (줄무늬 소실)']],
+  rainbow_wrasse: [['female', '암컷'], ['male', '수컷 (혼인색)']],
+};
+const fishImgs = (id) => {
+  const vs = SEX_VARIANTS[id];
+  if (vs) {
+    const out = vs.map(([sfx, label]) => ({ src: imgOf(`fish_${id}_${sfx}`), label })).filter((v) => v.src);
+    if (out.length) return out;
+  }
+  const one = imgOf(FISH_TEX[id]) ?? imgOf(`fish_${id}`);
+  return one ? [{ src: one, label: '' }] : [];
+};
 
 const recipes = core.FIRE_RECIPES.map((r) => {
   const lore = core.RECIPE_LORE?.[r.id] ?? {};
@@ -170,7 +185,7 @@ const recipes = core.FIRE_RECIPES.map((r) => {
     desc: r.descKo,
     shortDesc: lore.shortDescriptionKo ?? '',
     cookingTip: lore.cookingTipKo ?? '', ingredientTip: lore.ingredientTipKo ?? '',
-    img: imgOf(`px:it_dish_${r.family}`),
+    img: (r.photoKey ? imgOf(r.photoKey) : null) ?? imgOf(`px:it_dish_${r.family}`),
     cookware: r.cookware.map((k) => COOKWARE_KO[k] ?? k),
     cookMin: r.cookMin, servings: r.servings,
     doneWhen: DONE_KO[r.doneWhen] ?? r.doneWhen,
@@ -222,13 +237,16 @@ const SPOT_KO = {
 };
 const MONTHS = (arr) => (arr?.length ? arr.slice().sort((a, b) => a - b).map((m) => `${m}월`).join('·') : '연중');
 
+/** 카드 계약 — `img`는 대표 1장(목록 썸네일), `imgs`는 상세 시트에 나란히 싣는 전부 */
+const pickImgs = (list) => ({ img: list[0]?.src ?? null, imgs: list });
+
 const speciesList = [];
 for (const f of core.FISH_DATABASE) {
   const group = CEPH_FISH.has(f.id) ? 'cephalopod' : 'fish';
   speciesList.push({
     id: f.id, group, subgroup: group === 'cephalopod' ? '팔완·십완류' : '경골어류',
     name: f.nameKo, nameEn: f.nameEn, scientific: f.scientificName,
-    img: fishImg(f.id),
+    ...pickImgs(fishImgs(f.id)),
     desc: f.description ?? '',
     source: '낚시',
     valuePerKg: f.sashimiValuePerKg ?? 0,
@@ -250,10 +268,22 @@ for (const f of core.FISH_DATABASE) {
 }
 for (const s of core.SHORE_CREATURE_DATABASE) {
   const [group, subgroup] = SHORE_GROUP[s.category] ?? ['other', s.category];
+  // 170차 — 같은 생물이 어종 DB와 채집 DB에 둘 다 있으면(돌문어) **카드를 두 장 만들지 않는다**.
+  //   학명으로 붙여 잡는 방법만 한 줄 덧붙인다 — 사용자 지적 "두족류 분류에서 '문어'는 없애고,
+  //   해루질 가능한 문어는 돌문어야".
+  const dup = speciesList.find((x) => x.scientific && x.scientific === s.scientificName);
+  if (dup) {
+    dup.source = `${dup.source} · 채집 (해루질)`;
+    for (const t of [['채집 시간대', s.discoveryTime === 'night' ? '야간' : s.discoveryTime === 'day' ? '주간' : '주·야간'],
+                     ['채집 허가', s.requiredLicense ?? '없음']]) {
+      if (!dup.traits.some((x) => x[0] === t[0])) dup.traits.push(t);
+    }
+    continue;
+  }
   speciesList.push({
     id: s.id, group, subgroup,
     name: s.nameKo, nameEn: s.nameEn, scientific: s.scientificName,
-    img: imgOf(`forage_${s.id}`),
+    ...pickImgs(imgOf(`forage_${s.id}`) ? [{ src: imgOf(`forage_${s.id}`), label: '' }] : []),
     desc: s.description ?? '',
     source: '채집 (해루질)',
     valuePerKg: s.marketValuePerKg ?? 0,
@@ -275,7 +305,8 @@ for (const n of core.MARINE_NUISANCES) {
   speciesList.push({
     id: n.id, group: 'other', subgroup: n.kind === 'jellyfish' ? '자포동물' : '극피동물',
     name: n.nameKo, nameEn: n.nameEn, scientific: n.scientificName,
-    img: null, desc: n.descKo ?? '',
+    ...pickImgs(imgOf(`nuisance_${n.id}`) ? [{ src: imgOf(`nuisance_${n.id}`), label: '' }] : []),
+    desc: n.descKo ?? '',
     source: '과증식 구제',
     valuePerKg: n.cullPricePerKg ?? 0, rarity: '—',
     traits: [
@@ -374,7 +405,7 @@ const out = {
 // 발행용 — 카드·상세가 실제로 참조하는 그림만 추려 둔다(아티팩트 파일 수 절약)
 const used = new Set();
 for (const r of recipes) { if (r.img) used.add(r.img); for (const v of r.variants) if (v.img) used.add(v.img); }
-for (const s of speciesList) if (s.img) used.add(s.img);
+for (const s of speciesList) { if (s.img) used.add(s.img); for (const v of s.imgs ?? []) if (v.src) used.add(v.src); }
 for (const i of items) if (i.img) used.add(i.img);
 if (Object.keys(manifest).length) {
   fs.writeFileSync(path.join(IMG_DIR, 'used.txt'), [...used].sort().join('\n') + '\n');

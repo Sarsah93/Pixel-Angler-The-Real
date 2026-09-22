@@ -11,8 +11,9 @@
 import Phaser from 'phaser';
 import {
   LICENSE_DATABASE, LICENSE_CATEGORY_LABEL, LICENSE_CATEGORY_ORDER, getLicenseByType, checkUnlockRequirements,
+  licenseStoryRoute, applyLicenseWaiver,
   getStoryQuest, getSpotById, getFishById, QUEST_DATABASE,
-  type LicenseType, type LicenseDef,
+  type LicenseType, type LicenseDef, type UnlockRequirement,
 } from '@tra/core';
 import { DraggablePanel, applyScreenFixed, restoreHandCursor } from './DraggablePanel.js';
 import { GameState } from '../store/GameState.js';
@@ -114,7 +115,9 @@ export class LicensePanel extends DraggablePanel {
       bg.on('pointerdown', () => { this.selected = row.def.type; this.renderList(); this.renderDetail(); restoreHandCursor(this.scene); });
       const name = this.scene.add.text(24, y + 6, `${held ? '✓ ' : ''}${row.def.nameKo}`, { fontFamily: FONT, fontSize: '11px', color: held ? '#aaffcc' : '#e8f4fd' });
       clampTextWidth(name, rowW - 90);
-      const cost = this.scene.add.text(14 + rowW - 8, y + 6, held ? '보유' : `₩${row.def.costCoins.toLocaleString()}`, { fontFamily: 'monospace', fontSize: '10px', color: held ? '#88ffaa' : '#ffddaa' }).setOrigin(1, 0);
+      const rowTerms = this.storyTerms(row.def);
+      const costLabel = held ? '보유' : rowTerms.done && rowTerms.cost === 0 ? '면제' : `₩${rowTerms.cost.toLocaleString()}`;
+      const cost = this.scene.add.text(14 + rowW - 8, y + 6, costLabel, { fontFamily: 'monospace', fontSize: '10px', color: held ? '#88ffaa' : rowTerms.done ? '#ffd93b' : '#ffddaa' }).setOrigin(1, 0);
       c.add([bg, name, cost]);
     });
     // 스크롤바 + 위치 표기
@@ -153,16 +156,17 @@ export class LicensePanel extends DraggablePanel {
     const reqTitle = this.scene.add.text(0, y, '해금 요구사항', { fontFamily: FONT, fontSize: '12px', color: '#88aacc', fontStyle: 'bold' });
     y += reqTitle.height + 4; c.add(reqTitle);
     const ctx = this.reqContext();
-    const { met } = checkUnlockRequirements(lic.requirements, ctx);
+    const terms = this.storyTerms(lic);
+    const { met } = checkUnlockRequirements(terms.reqs, ctx);
     if (lic.prerequisites.length) {
       const pre = this.scene.add.text(0, y, `• 선행 면허: ${lic.prerequisites.map((p) => getLicenseByType(p)?.nameKo ?? p).join(', ')}`, { fontFamily: FONT, fontSize: '11px', color: lic.prerequisites.every((p) => GameState.hasLicense(p)) ? '#7fe0b0' : '#ffaa66', wordWrap: { width: DETAIL_W } });
       y += pre.height + 3; c.add(pre);
     }
-    if (lic.requirements.length === 0) {
+    if (terms.reqs.length === 0) {
       const t = this.scene.add.text(0, y, '• 선행 조건 없음 (바로 발급 가능)', { fontFamily: FONT, fontSize: '11px', color: '#66aa88' });
       y += t.height + 3; c.add(t);
     }
-    for (const req of lic.requirements) {
+    for (const req of terms.reqs) {
       let s = '';
       if (req.type === 'min_angling_trips') s = `• 출조 횟수: ${req.value}회 이상 (현재 ${ctx.totalTrips})`;
       else if (req.type === 'min_fish_caught') s = `• 어획 누계: ${req.value}마리 이상 (현재 ${ctx.totalFishCaught})`;
@@ -176,6 +180,15 @@ export class LicensePanel extends DraggablePanel {
       const t = this.scene.add.text(0, y, s, { fontFamily: FONT, fontSize: '11px', color: '#ffaa66', wordWrap: { width: DETAIL_W }, lineSpacing: 2 });
       y += Math.max(16, t.height + 3); c.add(t);
     }
+    // 이야기 경로 안내 (170차) — 아는 할 일일 때만. 끝났으면 면제가 이미 적용된 상태다.
+    if (terms.noteKo) {
+      y += 4;
+      const head = this.scene.add.text(0, y, terms.done ? '추천을 받았습니다' : '추천을 받을 수 있습니다', { fontFamily: FONT, fontSize: '11px', color: terms.done ? '#7fe0b0' : '#ffd93b', fontStyle: 'bold' });
+      y += head.height + 3; c.add(head);
+      const note = this.scene.add.text(0, y, terms.noteKo, { fontFamily: FONT, fontSize: '11px', color: '#ccddee', wordWrap: { width: DETAIL_W }, lineSpacing: 2 });
+      y += note.height + 6; c.add(note);
+    }
+
     // 해금 기능
     if (lic.unlocksFeatures.length) {
       y += 6;
@@ -197,15 +210,15 @@ export class LicensePanel extends DraggablePanel {
       c.add(t);
     } else {
       const preOk = lic.prerequisites.every((p) => GameState.hasLicense(p));
-      const coinsOk = GameState.player.inventory.coins >= lic.costCoins;
+      const coinsOk = GameState.player.inventory.coins >= terms.cost;
       const ok = met && preOk && coinsOk;
       const btn = this.scene.add.rectangle(DETAIL_W / 2 - 100, by, 200, 32, ok ? 0x1f5a3a : 0x2a3340, 1).setOrigin(0, 0).setStrokeStyle(1, ok ? 0x4af2a1 : 0x3a4a5a, 1);
-      const bt = this.scene.add.text(DETAIL_W / 2, by + 16, `면허 발급 (₩${lic.costCoins.toLocaleString()})`, { fontFamily: FONT, fontSize: '12px', color: ok ? '#e8fff0' : '#6a7a8a', fontStyle: 'bold' }).setOrigin(0.5);
+      const bt = this.scene.add.text(DETAIL_W / 2, by + 16, terms.cost === 0 ? '면허 발급 (수수료 면제)' : `면허 발급 (₩${terms.cost.toLocaleString()})`, { fontFamily: FONT, fontSize: '12px', color: ok ? '#e8fff0' : '#6a7a8a', fontStyle: 'bold' }).setOrigin(0.5);
       const why = this.scene.add.text(DETAIL_W / 2, by - 7, ok ? '' : !preOk ? '선행 면허가 필요합니다' : !met ? '조건 미충족' : '코인 부족', { fontFamily: FONT, fontSize: '10px', color: '#c88a5a' }).setOrigin(0.5, 1);
       if (ok) {
         btn.setInteractive({ useHandCursor: true });
         btn.on('pointerdown', () => {
-          GameState.addCoins(-lic.costCoins);
+          if (terms.cost > 0) GameState.addCoins(-terms.cost);
           GameState.acquireLicense(lic.type);
           StoryStore.emitActionSource('selection', `license:${lic.type}`);
           GameState.markDirty();
@@ -217,6 +230,24 @@ export class LicensePanel extends DraggablePanel {
     }
     enforceTextBounds(c, DETAIL_W + 4, 'LicensePanel');
     applyScreenFixed(this);
+  }
+
+  /**
+   * 자격 이야기 경로 (170차) — 면허사무소 경로는 그대로 두고 수수료·실적 요건만 면제한다.
+   * ⚠ 스포일러 규칙(§8-10 R2) — **모르는 할 일은 이름도 내지 않는다**.
+   *   `known` = 진행 중이거나 이미 끝낸 할 일일 때만 안내 줄을 띄운다.
+   */
+  private storyTerms(lic: LicenseDef): { cost: number; reqs: UnlockRequirement[]; noteKo: string | null; done: boolean } {
+    const route = licenseStoryRoute(lic.type);
+    const done = !!route && StoryStore.isDone(route.questId);
+    const known = !!route && (done || StoryStore.isActive(route.questId));
+    const terms = applyLicenseWaiver(lic, done);
+    return {
+      cost: terms.costCoins,
+      reqs: terms.requirements,
+      noteKo: route && known ? route.noteKo : null,
+      done,
+    };
   }
 
   /** 레거시 FieldScene 호환 — 외부에서 닫기 요청 */

@@ -245,6 +245,10 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
 .sheet{position:fixed; inset:0; z-index:60; background:rgba(12,14,18,.55); display:flex;
   align-items:flex-start; justify-content:center; padding:24px 16px; overflow:auto}
 .sheet[hidden]{display:none}
+.vshots{display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:12px; margin-top:6px}
+.vshots figure{margin:0; background:var(--raised); border:1px solid var(--rule); border-radius:8px; padding:10px; text-align:center}
+.vshots img{max-width:100%; max-height:96px; object-fit:contain; image-rendering:pixelated}
+.vshots figcaption{margin-top:6px; font-size:12px; color:var(--ink-dim)}
 .sheetbox{width:100%; max-width:860px; background:var(--card); border:1px solid var(--rule);
   border-radius:8px; box-shadow:var(--shadow); padding:22px 24px 30px; position:relative}
 @media (max-width:560px){ .sheetbox{padding:18px 16px 26px} }
@@ -819,7 +823,12 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
         lede: s.desc, img: s.img,
         tags: [groupLabel(s.group), s.subgroup, s.source]
           .concat(s.rarity && s.rarity !== '—' ? [s.rarity] : []),
-        body: '<div class="ssec"><h3>가치</h3>' + kvRows([
+        body: (s.imgs && s.imgs.length > 1
+          ? '<div class="ssec"><h3>같은 종, 다른 모습</h3><div class="vshots">' + s.imgs
+              .map(v => '<figure>' + img(v.src) + '<figcaption>' + esc(v.label || '') + '</figcaption></figure>').join('')
+            + '</div></div>'
+          : '') +
+        '<div class="ssec"><h3>가치</h3>' + kvRows([
           ['kg당 값', s.valuePerKg ? '<b>' + nfw(s.valuePerKg) + '</b> <span class="dim">(1x 기준 · 등급·체장 배율 전)</span>' : '판매 대상 아님'],
         ]) + '</div>' +
         '<div class="ssec"><h3>특징</h3>' + kvRows(s.traits.map(([k, v]) => [k, esc(v)])) + '</div>',

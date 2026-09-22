@@ -18,7 +18,7 @@
 import Phaser from 'phaser';
 import {
   FISH_DATABASE, SHORE_CREATURE_DATABASE, LURES_CATALOG_DB, ORACLE_FISH_DB,
-  LICENSE_DATABASE, SKILL_DATABASE, SKILL_CATEGORIES,
+  LICENSE_DATABASE, LICENSE_STORY_ROUTES, SKILL_DATABASE, SKILL_CATEGORIES,
   REGION_DATABASE, WORLD_NODE_DATABASE, REGION_AREA_NODES, REGION_MAP_GRAPHS, SEAMLESS_REGIONS,
   DATA_ATTRIBUTIONS, LICENSE_LABEL, LICENSE_LABEL_EN,
   CRAFT_BLUEPRINTS, CRAFT_GROUP_LABEL,
@@ -78,6 +78,8 @@ function buildRuntimeDict(): void {
   for (const r of Object.values(SEAMLESS_REGIONS)) put(r.name, r.nameEn);
   // 122차 — 면허·스킬·지역 설명·구역 상세: 데이터 필드(nameEn/descriptionEn/descEn/detailsEn)가 정본
   for (const l of LICENSE_DATABASE) { put(l.nameKo, l.nameEn); put(l.description, l.descriptionEn); if (l.plannedNote) put(l.plannedNote, l.plannedNoteEn); }
+  // 170차 — 자격 이야기 경로 안내문도 데이터(noteEn)가 정본
+  for (const r of LICENSE_STORY_ROUTES) put(r.noteKo, r.noteEn);
   for (const sk of SKILL_DATABASE) { put(sk.nameKo, sk.nameEn); put(sk.descKo, sk.descEn); }
   for (const c of SKILL_CATEGORIES) { put(c.nameKo, c.nameEn); put(c.descKo, c.descEn); put(c.lockedNoteKo, c.lockedNoteEn); }
   // 131차 — 제작 도면·그룹 라벨도 데이터(nameEn/descEn)가 정본
