@@ -71,6 +71,7 @@ import { RegionLight,
   RegionPatch,
   SeamlessRegionDef,
   seamlessRegionOf,
+  seamBetween,
   getStatusEffect,
   computeCastWeather, castScatterRadius, applyCastScatter, castWeatherLabelKo,
   type CastWeatherEffect,
@@ -172,6 +173,40 @@ const COL = {
   land: 0xbfae82, landAlt: 0xb7a578, beach: 0xd9c99b,
   grass: 0x7ba352, grassAlt: 0x729950,
   buildFill: 0xa6805c, buildTop: 0xba9268, buildEdge: 0x6f523a,
+};
+
+/**
+ * 173차 — 레거시(비심리스) 지면 그레인·접경 팔레트.
+ * 심리스 맵은 Kenney 타일 + `SeamlessChunks`가 처리하지만, 홈타운·부산은 단색 fillRect라
+ * 나란히 놓으면 그쪽만 평면으로 보였다. 같은 **2px 그레인**과 같은 core 접경 표를 쓴다.
+ */
+const LEGACY_CH: Partial<Record<RegionTerrain, string>> = {
+  land: '.', water: '~', building: '#', grass: ',', road: 'r', sidewalk: 'w',
+  sand: 's', pier: 'b', paved: 'p', dirt: 'd', tidal: 't', farm: 'c', wood: 'f',
+};
+/** 지형별 그레인 점 색 (베이스 위에 α 0.55로 얹는다) */
+const LEGACY_GRAIN: Partial<Record<RegionTerrain, readonly number[]>> = {
+  land: [0xbfae82, 0xd2c39a, 0xb2a077],
+  grass: [0x5c8a45, 0x7fb35f, 0x578b3e],
+  sand: [0xdfd0a0, 0xefe2b6, 0xcdbd85],
+  road: [0x4a4a4a, 0x3c3c3c, 0x555555],
+  sidewalk: [0x9daaab, 0x94a1a2, 0xaeb9ba],
+  pier: [0x9aa5b0, 0x8794a0, 0xaab5bf],
+  paved: [0xb9b6af, 0xa8a59e, 0xc6c3bc],
+  dirt: [0xa8916b, 0x93805e, 0xbba07a],
+  tidal: [0x9c8f70, 0x8f8366, 0xaa9c7c],
+  farm: [0x8a8f52, 0x9a8558, 0x7e9447],
+  wood: [0x2f5a30, 0x376a36, 0x244824],
+};
+/** 접경에서 **흘러나오는** 쪽의 알갱이 색 (심리스 SEAM_GRAIN과 같은 사고) */
+const LEGACY_GRAIN_SEAM: Record<string, readonly number[]> = {
+  s: [0xefe2b6, 0xdfd0a0, 0xcdbd85],
+  t: [0x9c8f70, 0x8f8366, 0x86795c],
+  d: [0xa8916b, 0x9c8661, 0x8f7a58],
+  ',': [0x9a8558, 0x6e9a50, 0x5c8a45],
+  c: [0x9a8558, 0x8a8f52, 0x7e9447],
+  f: [0x7e6a46, 0x2f5a30, 0x376a36],
+  '.': [0xbfae82, 0xd2c39a, 0xb2a077],
 };
 
 export class RegionFieldScene extends Phaser.Scene {
@@ -886,6 +921,13 @@ export class RegionFieldScene extends Phaser.Scene {
     return dist;
   }
 
+  /** 결정적 해시 0~1 (173차 — 지면 그레인·접경 띠) */
+  private static hash2(seed: number, x: number, y: number): number {
+    let n = (seed ^ Math.imul(x, 374761393) ^ Math.imul(y, 668265263)) >>> 0;
+    n = Math.imul(n ^ (n >>> 13), 1274126177) >>> 0;
+    return ((n ^ (n >>> 16)) >>> 0) / 4294967296;
+  }
+
   /** 결정적 2D 값 노이즈 (암초 지대 배치용 — mapId 시드) */
   private static noise2(seed: number, x: number, y: number): number {
     const h = (ix: number, iy: number): number => {
@@ -941,6 +983,13 @@ export class RegionFieldScene extends Phaser.Scene {
             color = checker ? ramp[0] : ramp[1];
             g.fillStyle(color, 1);
             g.fillRect(c * TR, r * TR, TR, TR);
+            // 173차 — 물도 2px 그레인(잔물결). 단색 체커는 비닐처럼 보인다.
+            for (let y = 0; y < TR; y += 2) for (let x = 0; x < TR; x += 2) {
+              const hw = RegionFieldScene.hash2(mapSeed ^ 0x77aa, c * 32 + x, r * 32 + y);
+              if (hw > 0.3) continue;
+              g.fillStyle(hw < 0.08 ? 0xffffff : color, hw < 0.08 ? 0.12 : 0.5);
+              g.fillRect(c * TR + x, r * TR + y, 2, 2);
+            }
             if (isReef) {
               // 수중 바위 점묘 (탑다운에서 비쳐 보이는 여)
               g.fillStyle(0x3d5a52, 0.55);
@@ -969,22 +1018,100 @@ export class RegionFieldScene extends Phaser.Scene {
           }
           g.fillStyle(color, 1);
           g.fillRect(c * TR, r * TR, TR, TR);
+          // ── 173차 · 지면 그레인 ── 구 구현은 타일 하나가 **단색 사각형 + 체커**라
+          //   32px 심리스 맵과 나란히 놓으면 홈타운만 평면으로 보였다("올드한 에셋").
+          //   심리스와 같은 **2px 그레인**을 얹어 입자를 맞춘다.
+          if (t !== 'building') {
+            const gr = LEGACY_GRAIN[t] ?? LEGACY_GRAIN.land!;
+            for (let y = 0; y < TR; y += 2) for (let x = 0; x < TR; x += 2) {
+              const hs = RegionFieldScene.hash2(mapSeed ^ 0x51a7, c * 32 + x, r * 32 + y);
+              if (hs > 0.42) continue;
+              g.fillStyle(gr[Math.floor(hs * 3 / 0.42) % gr.length]!, 0.55);
+              g.fillRect(c * TR + x, r * TR + y, 2, 2);
+            }
+          }
         }
       }
-      // 건물 외곽선 + 지붕 하이라이트
-      g.lineStyle(2, COL.buildEdge, 1);
+      // ── 173차 · 접경 띠 ── 심리스와 같은 core 표(`seamBetween`)로 알갱이가 흘러나온다.
+      //   구 홈타운은 잔디 ↔ 모래 ↔ 흙이 **자로 그은 사각 경계**로 끊겼다.
+      for (let r = 0; r < this.rows; r++) {
+        for (let c = 0; c < this.cols; c++) {
+          const t = this.terrain[r][c];
+          if (t === 'water' || t === 'building') continue;
+          const meCh = LEGACY_CH[t] ?? '.';
+          const NB: [number, number, string][] = [
+            [0, -1, 'n'], [0, 1, 's'], [-1, 0, 'w'], [1, 0, 'e'],
+            [-1, -1, 'nw'], [1, -1, 'ne'], [-1, 1, 'sw'], [1, 1, 'se'],
+          ];
+          const donors = new Map<string, Set<string>>();
+          for (const [dc, dr, k] of NB) {
+            const nt = this.terrainAt(c + dc, r + dr);
+            if (!nt || nt === t) continue;
+            const nch = LEGACY_CH[nt] ?? '.';
+            if (seamBetween(meCh, nch).kind !== 'spill') continue;
+            let set = donors.get(nch);
+            if (!set) { set = new Set(); donors.set(nch, set); }
+            set.add(k);
+          }
+          if (donors.size === 0) continue;
+          const last = TR - 2;
+          for (const [donor, dirs] of donors) {
+            const pal = LEGACY_GRAIN_SEAM[donor] ?? LEGACY_GRAIN_SEAM['s']!;
+            for (let y = 0; y < TR; y += 2) for (let x = 0; x < TR; x += 2) {
+              let d = 99;
+              if (dirs.has('n')) d = Math.min(d, y);
+              if (dirs.has('s')) d = Math.min(d, last - y);
+              if (dirs.has('w')) d = Math.min(d, x);
+              if (dirs.has('e')) d = Math.min(d, last - x);
+              if (dirs.has('nw')) d = Math.min(d, Math.max(x, y));
+              if (dirs.has('ne')) d = Math.min(d, Math.max(last - x, y));
+              if (dirs.has('sw')) d = Math.min(d, Math.max(x, last - y));
+              if (dirs.has('se')) d = Math.min(d, Math.max(last - x, last - y));
+              if (d === 99) continue;
+              const n = RegionFieldScene.noise2(mapSeed ^ 0x2b11, (c * TR + x) / 9, (r * TR + y) / 9);
+              const front = 1 + 5 * n * n;
+              const hs = RegionFieldScene.hash2(mapSeed ^ 0x2b12, c * 40 + x, r * 40 + y);
+              if (d > front) {
+                const fringe = 6;
+                if (d > front + fringe) continue;
+                const tt = 1 - (d - front) / fringe;
+                if (hs > tt * tt * 0.8) continue;
+              }
+              g.fillStyle(pal[Math.floor(hs * pal.length) % pal.length]!, 1);
+              g.fillRect(c * TR + x, r * TR + y, 2, 2);
+            }
+          }
+        }
+      }
+      // ── 173차 · 건물 ── 구 구현은 **단색 갈색 사각형 + 2px 외곽선**이라 지붕인지 바닥인지
+      //   읽히지 않았다(사용자: "올드한 에셋"). 이제 지붕은 **기와 결**을 갖고, 덩어리 남쪽에는
+      //   벽면과 처마 그늘이 생기며, 땅에는 건물 그림자가 떨어진다.
       for (let r = 0; r < this.rows; r++) {
         for (let c = 0; c < this.cols; c++) {
           if (this.terrain[r][c] !== 'building') continue;
-          if (this.terrainAt(c, r - 1) !== 'building') {
-            g.fillStyle(COL.buildTop, 1);
-            g.fillRect(c * TR, r * TR, TR, Math.floor(TR * 0.4));
+          const nN = this.terrainAt(c, r - 1) === 'building';
+          const nS = this.terrainAt(c, r + 1) === 'building';
+          const nW = this.terrainAt(c - 1, r) === 'building';
+          const nE = this.terrainAt(c + 1, r) === 'building';
+          const bx = c * TR, by = r * TR;
+          // 지붕면 — 가로 기와 결 (2행 주기)
+          for (let y = 0; y < TR; y += 2) for (let x = 0; x < TR; x += 2) {
+            const tile = (y % 6 === 0) ? 0x6d4530 : ((x + y) % 4 === 0 ? 0x8a5a3e : 0x7c5238);
+            g.fillStyle(tile, 1); g.fillRect(bx + x, by + y, 2, 2);
           }
-          // 건물 덩어리 경계선
-          if (this.terrainAt(c - 1, r) !== 'building') g.lineBetween(c * TR, r * TR, c * TR, r * TR + TR);
-          if (this.terrainAt(c + 1, r) !== 'building') g.lineBetween(c * TR + TR, r * TR, c * TR + TR, r * TR + TR);
-          if (this.terrainAt(c, r - 1) !== 'building') g.lineBetween(c * TR, r * TR, c * TR + TR, r * TR);
-          if (this.terrainAt(c, r + 1) !== 'building') g.lineBetween(c * TR, r * TR + TR, c * TR + TR, r * TR + TR);
+          // 용마루 — 덩어리 북단
+          if (!nN) { for (let x = 0; x < TR; x += 2) { g.fillStyle(0xa4724d, 1); g.fillRect(bx + x, by, 2, 2); g.fillStyle(0x9a6845, 1); g.fillRect(bx + x, by + 2, 2, 2); } }
+          // 처마 그늘 — 덩어리 남단(벽면이 보이는 쪽)
+          if (!nS) {
+            for (let x = 0; x < TR; x += 2) for (let y = TR - 6; y < TR; y += 2) {
+              g.fillStyle(y < TR - 2 ? 0x5a3a26 : 0x3f2a1b, 1); g.fillRect(bx + x, by + y, 2, 2);
+            }
+            // 땅에 떨어지는 그림자 (한 칸 아래)
+            for (let x = 0; x < TR; x += 2) { g.fillStyle(0x1a2430, 0.3); g.fillRect(bx + x, by + TR, 2, 4); }
+          }
+          // 측면 모서리 — 선이 아니라 그늘 도트
+          if (!nW) for (let y = 0; y < TR; y += 2) { g.fillStyle(0x5a3a26, 1); g.fillRect(bx, by + y, 2, 2); }
+          if (!nE) for (let y = 0; y < TR; y += 2) { g.fillStyle(0x4c3020, 1); g.fillRect(bx + TR - 2, by + y, 2, 2); }
         }
       }
       g.generateTexture(texKey, this.worldW, this.worldH);
@@ -3749,126 +3876,195 @@ export class RegionFieldScene extends Phaser.Scene {
     return `hobj_${type}_${o.fw ?? 1}x${o.fh ?? 1}`;
   }
 
-  /** 타입별 파라메트릭 오브젝트 텍스처 (도트 톤 — 추후 실사 에셋 교체 자리) */
+  /**
+   * 타입별 오브젝트 텍스처 (173차 재작성).
+   *
+   * 구 구현은 `fillCircle`·`fillEllipse` 두어 개로 그린 도형 조합이라 **지면과 입자가 달랐다**
+   * (지면은 2px 그레인인데 오브젝트만 매끈한 벡터 원). 화면에서 "올드한 에셋"으로 읽힌 이유다.
+   * 이제 전부 **2px 그리드에 맞춘 도트**로 그린다 — 덩어리 + 그늘 + 해 드는 면 3층,
+   * 접지 그림자, 재질별 질감(나뭇결·돌 결·널빤지 이음).
+   *
+   * ⚠ 좌표·크기는 2의 배수로 맞춘다. 홀수로 놓으면 지면 그레인과 위상이 어긋나 흐릿해 보인다(106차).
+   */
   private ensureObjTexture(type: MapObject['type'], o: MapObject): void {
     const key = this.objTexKey(type, o);
     if (this.textures.exists(key)) return;
     const fw = o.fw ?? 1, fh = o.fh ?? 1;
     const g = this.add.graphics();
     let w = TR, h = TR;
+    /** 2px 그레인 점 — 지면과 같은 격자에 얹는다 */
+    const dot = (x: number, y: number, col: number, a = 1): void => {
+      g.fillStyle(col, a); g.fillRect(x, y, 2, 2);
+    };
+    /** 결정적 얼룩 — 같은 오브젝트는 언제 구워도 같은 그림 */
+    const spec = (x0: number, y0: number, ww: number, hh: number, col: number, dens: number, seed: number): void => {
+      for (let y = 0; y < hh; y += 2) for (let x = 0; x < ww; x += 2) {
+        const hsh = ((x * 73856093) ^ (y * 19349663) ^ (seed * 83492791)) >>> 0;
+        if ((hsh % 1000) / 1000 < dens) dot(x0 + x, y0 + y, col);
+      }
+    };
+    /** 접지 그림자 — 발밑 타원 대신 납작한 도트 밴드 */
+    const groundShadow = (cx: number, by: number, ww: number): void => {
+      for (let x = -ww; x <= ww; x += 2) {
+        const t = 1 - Math.abs(x) / (ww + 2);
+        if (t > 0.25) dot(cx + x, by, 0x1a2430, 0.28 * t + 0.1);
+      }
+    };
     switch (type) {
       case 'tree': {
-        w = 30; h = 40;
-        g.fillStyle(0x6a4a2c, 1); g.fillRect(13, 26, 5, 14);              // 줄기
-        g.fillStyle(0x2e6b34, 1); g.fillCircle(15, 16, 13);               // 수관
-        g.fillStyle(0x3b8a42, 1); g.fillCircle(10, 12, 8); g.fillCircle(21, 13, 8);
+        w = 32; h = 44;
+        groundShadow(16, 40, 10);
+        // 줄기 — 나뭇결 두 톤
+        for (let y = 26; y < 42; y += 2) { dot(14, y, 0x5a3c22); dot(16, y, 0x74512e); }
+        dot(12, 36, 0x5a3c22); dot(18, 34, 0x5a3c22);            // 뿌리목
+        // 수관 — 그늘 → 본색 → 해 드는 면 3층 (덩어리 3개가 겹쳐 실루엣이 둥글지 않다)
+        const crown = (cx: number, cy: number, rr: number, dark: number, mid: number, lit: number): void => {
+          for (let y = -rr; y <= rr; y += 2) for (let x = -rr; x <= rr; x += 2) {
+            const d = Math.hypot(x, y * 1.15);
+            if (d > rr) continue;
+            const c = d > rr - 3 ? dark : (x + y < -rr * 0.3 ? lit : mid);
+            dot(cx + x, cy + y, c);
+          }
+        };
+        crown(10, 20, 9, 0x1f4a26, 0x2e6b34, 0x3f8a45);
+        crown(22, 18, 9, 0x1f4a26, 0x2e6b34, 0x3f8a45);
+        crown(16, 12, 10, 0x24562b, 0x347a3b, 0x4d9b52);
+        spec(6, 6, 22, 20, 0x56a85c, 0.16, 7);                    // 잎 반짝임
         break;
       }
       case 'rock': {
-        w = 26; h = 18;
-        g.fillStyle(0x8a8f96, 1); g.fillEllipse(13, 11, 24, 13);
-        g.fillStyle(0xa8adb4, 1); g.fillEllipse(9, 8, 11, 7);
+        w = 28; h = 20;
+        groundShadow(14, 17, 10);
+        // 각진 덩어리 — 원이 아니라 면(facet) 3개
+        for (let y = 4; y < 16; y += 2) {
+          const half = 11 - Math.abs(y - 10) * 0.7;
+          for (let x = -half; x <= half; x += 2) dot(14 + Math.round(x / 2) * 2, y, y < 9 ? 0x9aa0a8 : 0x767c84);
+        }
+        for (let x = 6; x < 16; x += 2) dot(x, 6, 0xb4bac2);       // 해 드는 면
+        dot(8, 8, 0xb4bac2); dot(10, 8, 0xb4bac2);
+        spec(4, 4, 20, 12, 0x5f666e, 0.14, 3);                    // 돌 결
+        dot(18, 12, 0x4a7a44); dot(20, 12, 0x4a7a44);             // 이끼
         break;
       }
       case 'stump': {
-        w = 18; h = 12;
-        g.fillStyle(0x7a5a38, 1); g.fillEllipse(9, 6, 16, 9);
-        g.fillStyle(0xa8845a, 1); g.fillEllipse(9, 5, 10, 5);
+        w = 20; h = 14;
+        groundShadow(10, 12, 7);
+        for (let y = 4; y < 12; y += 2) for (let x = 2; x < 18; x += 2) dot(x, y, y < 6 ? 0x8a6540 : 0x6a4a2c);
+        for (let x = 6; x < 14; x += 2) dot(x, 4, 0xb08a5c);       // 절단면
+        dot(9, 6, 0x8a6540); dot(11, 6, 0x8a6540);                // 나이테
         break;
       }
       case 'well': {
-        w = 24; h = 26;
-        g.fillStyle(0x7d8288, 1); g.fillEllipse(12, 18, 22, 12);          // 돌 테
-        g.fillStyle(0x1c2a36, 1); g.fillEllipse(12, 17, 13, 7);           // 구멍
-        g.fillStyle(0x6a4a2c, 1); g.fillRect(3, 4, 3, 14); g.fillRect(18, 4, 3, 14);
-        g.fillStyle(0x8a3a34, 1); g.fillTriangle(0, 6, 12, 0, 24, 6);     // 지붕
+        w = 26; h = 30;
+        groundShadow(13, 27, 9);
+        for (let y = 16; y < 26; y += 2) for (let x = 2; x < 24; x += 2) dot(x, y, (x + y) % 4 === 0 ? 0x8b9097 : 0x74797f);
+        for (let y = 16; y < 22; y += 2) for (let x = 8; x < 18; x += 2) dot(x, y, 0x16222c);   // 물 그림자
+        dot(10, 18, 0x2a4a5e); dot(14, 20, 0x2a4a5e);              // 물빛
+        for (let y = 2; y < 16; y += 2) { dot(4, y, 0x5a3c22); dot(20, y, 0x5a3c22); }          // 기둥
+        for (let x = 2; x < 24; x += 2) { dot(x, 2, 0x8a3a34); dot(x, 4, 0x6f2e29); }           // 지붕
+        for (let x = 6; x < 20; x += 2) dot(x, 0, 0x9c453e);
+        dot(12, 8, 0x3a2a1a); dot(12, 10, 0x3a2a1a);               // 두레박 줄
         break;
       }
       case 'tidalRock': {
-        w = 24; h = 14;
-        g.fillStyle(0x5a6068, 1); g.fillEllipse(9, 9, 15, 9);
-        g.fillStyle(0x6d737b, 1); g.fillEllipse(18, 10, 10, 6);
+        w = 26; h = 16;
+        for (let y = 4; y < 14; y += 2) {
+          const half = 9 - Math.abs(y - 9) * 0.8;
+          for (let x = -half; x <= half; x += 2) dot(13 + Math.round(x / 2) * 2, y, y < 8 ? 0x676d75 : 0x4e545c);
+        }
+        spec(4, 4, 18, 10, 0x3d4f3a, 0.2, 11);                     // 물이끼
+        for (let x = 4; x < 22; x += 2) dot(x, 14, 0xdfeef6, 0.5); // 물에 닿는 자리 포말
         break;
       }
       case 'pier': {
-        w = fw * TR; h = 16;
-        g.fillStyle(0x8a6a44, 1); g.fillRect(0, 4, w, 9);                 // 상판
-        g.lineStyle(1, 0x5a4028, 1);
-        for (let x = 8; x < w; x += 12) g.lineBetween(x, 4, x, 13);       // 널빤지
-        g.fillStyle(0x5a4028, 1);
-        for (let x = 4; x < w; x += 24) g.fillRect(x, 12, 3, 4);          // 말뚝
+        w = fw * TR; h = 18;
+        for (let x = 0; x < w; x += 2) {
+          for (let y = 4; y < 14; y += 2) dot(x, y, (Math.floor(x / 12) % 2 === 0) ? 0x8a6a44 : 0x7d5f3c);
+          dot(x, 4, 0xa07f52);                                      // 위 모서리 하이라이트
+        }
+        for (let x = 10; x < w; x += 12) for (let y = 4; y < 14; y += 2) dot(x, y, 0x5a4028);  // 널빤지 이음
+        for (let x = 4; x < w; x += 24) for (let y = 12; y < 18; y += 2) { dot(x, y, 0x4a3420); dot(x + 2, y, 0x3c2a19); }
         break;
       }
       case 'busStop': {
-        w = 26; h = 36;
-        g.fillStyle(0x8a8f96, 1); g.fillRect(12, 8, 3, 26);               // 기둥
-        g.fillStyle(0x155a7c, 1); g.fillRoundedRect(2, 2, 22, 12, 3);     // 표지판
-        g.lineStyle(1.5, 0x5cd0ff, 1); g.strokeRoundedRect(2, 2, 22, 12, 3);
+        w = 30; h = 40;
+        groundShadow(15, 37, 9);
+        for (let y = 10; y < 38; y += 2) dot(14, y, 0x7d838b);      // 기둥
+        for (let x = 2; x < 28; x += 2) { dot(x, 6, 0x2a3f52); dot(x, 8, 0x1d2f3e); }   // 차양
+        for (let y = 10; y < 22; y += 2) for (let x = 4; x < 26; x += 2) dot(x, y, 0x155a7c);   // 표지판
+        for (let x = 8; x < 22; x += 2) dot(x, 14, 0x9fd8f2);       // 노선 띠
+        for (let x = 8; x < 22; x += 2) dot(x, 18, 0x9fd8f2, 0.6);
+        for (let x = 4; x < 26; x += 2) dot(x, 30, 0x6a4a2c);       // 벤치 좌판
+        dot(6, 32, 0x4a3420); dot(24, 32, 0x4a3420);
         break;
       }
       case 'workbench': {
-        // 고급 제작대 — 작업대 상판 + 다리 + 공구 실루엣(바이스·망치 머리). 글자 배지 없음.
-        w = fw * TR; h = 26;
-        g.fillStyle(0x6a4a2c, 1); g.fillRect(0, 8, w, 8);                  // 상판
-        g.fillStyle(0x8a6a44, 1); g.fillRect(0, 8, w, 3);                  // 상판 하이라이트
-        g.fillStyle(0x4a3420, 1);
-        g.fillRect(3, 16, 4, 10); g.fillRect(w - 7, 16, 4, 10);            // 다리
-        g.fillStyle(0x9aa3ac, 1); g.fillRect(8, 2, 5, 6);                  // 바이스
-        g.fillStyle(0xc0c7ce, 1); g.fillRect(w - 20, 3, 9, 4);             // 망치 머리
-        g.fillStyle(0x6a4a2c, 1); g.fillRect(w - 13, 3, 2, 6);             // 망치 자루
+        w = fw * TR; h = 28;
+        groundShadow(w / 2, 26, w / 2 - 2);
+        for (let x = 0; x < w; x += 2) { dot(x, 8, 0x8a6a44); for (let y = 10; y < 18; y += 2) dot(x, y, 0x6a4a2c); }
+        for (let x = 6; x < w; x += 14) for (let y = 10; y < 18; y += 2) dot(x, y, 0x55391f);  // 상판 이음
+        for (let y = 18; y < 28; y += 2) { dot(4, y, 0x4a3420); dot(w - 6, y, 0x4a3420); }
+        for (let y = 2; y < 8; y += 2) for (let x = 8; x < 14; x += 2) dot(x, y, 0x9aa3ac);    // 바이스
+        for (let x = w - 20; x < w - 10; x += 2) dot(x, 4, 0xc0c7ce);                           // 망치 머리
+        for (let y = 4; y < 10; y += 2) dot(w - 12, y, 0x6a4a2c);
         break;
       }
       case 'clinic': {
-        // 보건소 (129차 P7) — 흰 벽 + 초록 십자. 간판 글자 대신 **그림 기호**(AGENTS §4 픽셀 아이콘 원칙)
-        w = fw * TR; h = fh * TR + 10;
-        g.fillStyle(0xeceff2, 1); g.fillRect(2, 12, w - 4, h - 12);        // 벽체
-        g.fillStyle(0x2f7f5e, 1); g.fillRect(0, 6, w, 8);                  // 지붕 밴드
-        g.fillStyle(0xc9d4dc, 1); g.fillRect(5, 20, 9, 8); g.fillRect(w - 14, 20, 9, 8);  // 창
-        g.fillStyle(0x5a3a22, 1); g.fillRect(w / 2 - 5, h - 14, 10, 14);   // 문
-        // 초록 십자 (간판)
-        g.fillStyle(0x4fc38a, 1);
-        g.fillRect(w / 2 - 2, 1, 4, 10); g.fillRect(w / 2 - 5, 4, 10, 4);
+        w = fw * TR; h = fh * TR + 12;
+        for (let y = 14; y < h; y += 2) for (let x = 2; x < w - 2; x += 2) dot(x, y, (x + y) % 6 === 0 ? 0xe2e7ec : 0xeceff2);
+        for (let x = 0; x < w; x += 2) { dot(x, 6, 0x3a9a72); dot(x, 8, 0x2f7f5e); dot(x, 10, 0x266a4e); }
+        for (let y = 20; y < 30; y += 2) for (let x = 6; x < 16; x += 2) dot(x, y, 0xa9c4d6);
+        for (let y = 20; y < 30; y += 2) for (let x = w - 16; x < w - 6; x += 2) dot(x, y, 0xa9c4d6);
+        for (let y = h - 16; y < h; y += 2) for (let x = w / 2 - 6; x < w / 2 + 6; x += 2) dot(x, y, 0x5a3a22);
+        for (let y = 0; y < 12; y += 2) dot(w / 2 - 2, y, 0x4fc38a);
+        for (let x = w / 2 - 6; x < w / 2 + 6; x += 2) dot(x, 4, 0x4fc38a);
         break;
       }
       case 'door': {
-        w = 16; h = 22;
-        g.fillStyle(0x5a3a22, 1); g.fillRect(0, 0, 16, 22);
-        g.fillStyle(0x7a5232, 1); g.fillRect(2, 2, 12, 20);
-        g.fillStyle(0xffd257, 1); g.fillCircle(12, 12, 1.6);              // 손잡이
+        w = 18; h = 24;
+        for (let y = 0; y < 24; y += 2) for (let x = 0; x < 18; x += 2) dot(x, y, 0x4a2f1c);
+        for (let y = 2; y < 22; y += 2) for (let x = 2; x < 16; x += 2) dot(x, y, (y % 8 < 4) ? 0x7a5232 : 0x6d4a2d);
+        for (let x = 2; x < 16; x += 2) { dot(x, 2, 0x8f6440); dot(x, 20, 0x5a3a22); }
+        dot(12, 12, 0xffd257); dot(12, 14, 0xd6a93d);               // 손잡이
         break;
       }
       case 'fence': {
         w = TR; h = TR;
-        g.fillStyle(0x8a6a44, 1);
-        g.fillRect(2, 6, 3, 12); g.fillRect(15, 6, 3, 12);                // 말뚝 2
-        g.fillRect(0, 8, TR, 3); g.fillRect(0, 13, TR, 3);                // 가로대 2
+        for (let y = 4; y < 20; y += 2) { dot(2, y, 0x8a6a44); dot(4, y, 0x6f5233); dot(16, y, 0x8a6a44); dot(18, y, 0x6f5233); }
+        for (let x = 0; x < TR; x += 2) { dot(x, 8, 0x8a6a44); dot(x, 10, 0x6f5233); dot(x, 14, 0x8a6a44); dot(x, 16, 0x6f5233); }
+        groundShadow(TR / 2, 20, 8);
         break;
       }
       case 'farmPlot': {
         w = fw * TR; h = fh * TR;
-        g.fillStyle(0x6a4a2c, 0.95); g.fillRoundedRect(0, 0, w, h, 4);    // 개간 흙
-        g.lineStyle(1, 0x54381f, 0.9);
-        for (let r2 = 1; r2 < fh; r2++) g.lineBetween(2, r2 * TR, w - 2, r2 * TR);
-        for (let c2 = 1; c2 < fw; c2++) g.lineBetween(c2 * TR, 2, c2 * TR, h - 2);
+        for (let y = 0; y < h; y += 2) for (let x = 0; x < w; x += 2) {
+          dot(x, y, (y % 8 < 4) ? 0x6a4a2c : 0x5c3f24);             // 이랑/고랑
+        }
+        spec(0, 0, w, h, 0x7d5a35, 0.18, 5);                        // 갈린 흙 알갱이
+        for (let y = 2; y < h; y += 8) for (let x = 4; x < w; x += 8) { dot(x, y, 0x4e8a46); dot(x + 2, y, 0x3f7539); }
         break;
       }
       case 'aquarium_live': {
-        w = fw * TR; h = fh * TR + 8;
-        g.fillStyle(0x2a3846, 1); g.fillRect(0, h - 6, w, 6);             // 받침
-        g.fillStyle(0x9ac8e0, 0.85); g.fillRect(2, 4, w - 4, h - 12);     // 수조 물
-        g.lineStyle(2, 0xd8dde2, 1); g.strokeRect(1, 2, w - 2, h - 8);    // 프레임
+        w = fw * TR; h = fh * TR + 10;
+        for (let y = h - 8; y < h; y += 2) for (let x = 0; x < w; x += 2) dot(x, y, 0x2a3846);
+        for (let y = 4; y < h - 8; y += 2) for (let x = 2; x < w - 2; x += 2) dot(x, y, (y % 6 === 0) ? 0x8dbfd8 : 0x9ac8e0);
+        spec(2, 4, w - 4, h - 12, 0xc4e4f2, 0.1, 13);               // 물결·기포
+        for (let x = 0; x < w; x += 2) { dot(x, 2, 0xd8dde2); dot(x, h - 10, 0xb9c1c8); }
+        for (let y = 2; y < h - 8; y += 2) { dot(0, y, 0xd8dde2); dot(w - 2, y, 0xd8dde2); }
         break;
       }
       case 'aquarium_display': {
-        w = fw * TR; h = fh * TR + 6;
-        g.fillStyle(0x2a3846, 1); g.fillRect(0, h - 4, w, 4);
-        g.fillStyle(0xaed4ea, 0.85); g.fillRect(2, 2, w - 4, h - 8);
-        g.lineStyle(1.5, 0xd8dde2, 1); g.strokeRect(1, 1, w - 2, h - 6);
+        w = fw * TR; h = fh * TR + 8;
+        for (let y = h - 6; y < h; y += 2) for (let x = 0; x < w; x += 2) dot(x, y, 0x2a3846);
+        for (let y = 2; y < h - 6; y += 2) for (let x = 2; x < w - 2; x += 2) dot(x, y, 0xaed4ea);
+        spec(2, 2, w - 4, h - 8, 0x7fb4d4, 0.12, 17);
+        for (let x = 0; x < w; x += 2) dot(x, 0, 0xd8dde2);
+        for (let y = 0; y < h - 6; y += 2) { dot(0, y, 0xd8dde2); dot(w - 2, y, 0xd8dde2); }
         break;
       }
       default: {
         w = TR; h = TR;
-        g.fillStyle(0x8a6a44, 1); g.fillRoundedRect(2, 2, TR - 4, TR - 4, 3);
+        for (let y = 2; y < TR - 2; y += 2) for (let x = 2; x < TR - 2; x += 2) dot(x, y, 0x8a6a44);
       }
     }
     g.generateTexture(key, w, h);

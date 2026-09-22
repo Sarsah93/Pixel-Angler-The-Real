@@ -115,131 +115,214 @@ export class HomeInteriorScene extends Phaser.Scene {
 
   // ── 렌더 ─────────────────────────────────────────────
 
+  /**
+   * 방 — 173차 재작성.
+   *
+   * 구 구현은 **단색 바닥 + 격자선 + 색 사각형 가구**였고, 그 위에 `주방`·`저장★ 침대`·
+   * `지하실 (확장 예약)`·`평수 확장` 같은 **개발 메모가 글자로 박혀** 있었다(§8-9 위반 —
+   * 확장 계획은 플레이어의 말이 아니다). 이제 재질을 도트로 그리고, 안내는 [F] 힌트가 맡는다.
+   */
   private drawRoom(): void {
     const g = this.add.graphics().setDepth(1);
-    // 외벽 프레임
-    g.fillStyle(0x4a3222, 1);
-    g.fillRoundedRect(OX - 18, OY - 18, ROOM_W * IT + 36, ROOM_H * IT + 36, 8);
-    // 바닥 (나무 플랭크)
-    g.fillStyle(0xc9963f, 1);
-    g.fillRect(OX, OY, ROOM_W * IT, ROOM_H * IT);
-    g.lineStyle(1, 0xa87b2e, 0.7);
-    for (let r = 1; r < ROOM_H; r++) g.lineBetween(OX, OY + r * IT, OX + ROOM_W * IT, OY + r * IT);
-    for (let c = 1; c < ROOM_W; c++) g.lineBetween(OX + c * IT, OY, OX + c * IT, OY + ROOM_H * IT);
-    // 상단 벽 밴드 (시계·선반)
-    g.fillStyle(0x8a5a32, 1);
-    g.fillRect(OX, OY, ROOM_W * IT, IT * 1.4);
-    // 시계
-    g.fillStyle(0xf2e2b8, 1); g.fillCircle(OX + IT * 1.4, OY + IT * 0.7, 14);
-    g.lineStyle(2, 0x4a3222, 1); g.strokeCircle(OX + IT * 1.4, OY + IT * 0.7, 14);
-    g.lineBetween(OX + IT * 1.4, OY + IT * 0.7, OX + IT * 1.4, OY + IT * 0.45);
-    g.lineBetween(OX + IT * 1.4, OY + IT * 0.7, OX + IT * 1.62, OY + IT * 0.7);
-    // 벽 선반 + 책
-    g.fillStyle(0x6a4a2c, 1); g.fillRect(OX + IT * 4, OY + IT * 0.55, IT * 2.4, 8);
-    const bookCols = [0xb04a3a, 0x3a6ea5, 0x3f9e63];
-    bookCols.forEach((col, i) => {
-      g.fillStyle(col, 1); g.fillRect(OX + IT * (4.2 + i * 0.5), OY + IT * 0.2, 14, IT * 0.35);
+    const W = ROOM_W * IT, H = ROOM_H * IT;
+    /** 2px 그레인 — 필드와 같은 격자 */
+    const dot = (x: number, y: number, col: number, a = 1): void => { g.fillStyle(col, a); g.fillRect(x, y, 2, 2); };
+    const hash = (x: number, y: number): number => {
+      let n = (0x9e37 ^ Math.imul(x, 374761393) ^ Math.imul(y, 668265263)) >>> 0;
+      n = Math.imul(n ^ (n >>> 13), 1274126177) >>> 0;
+      return ((n ^ (n >>> 16)) >>> 0) / 4294967296;
+    };
+    // 외벽(문틀) 프레임
+    g.fillStyle(0x3a2718, 1); g.fillRoundedRect(OX - 20, OY - 20, W + 40, H + 40, 8);
+    g.fillStyle(0x4f3622, 1); g.fillRoundedRect(OX - 14, OY - 14, W + 28, H + 28, 6);
+    // ── 마루 ── 긴 널빤지(세로 6칸 주기) + 나뭇결 + 이음매
+    for (let y = 0; y < H; y += 2) {
+      for (let x = 0; x < W; x += 2) {
+        const plank = Math.floor(x / (IT * 0.75));
+        const base = plank % 2 === 0 ? 0xb88a45 : 0xb08240;
+        const grain = hash(x + plank * 97, y);
+        const col = grain < 0.12 ? 0xa0742f : grain > 0.9 ? 0xc79a52 : (typeof base === 'number' ? base : 0xb08240);
+        dot(OX + x, OY + y, col);
+      }
+    }
+    for (let x = 0; x < W; x += IT * 0.75) for (let y = 0; y < H; y += 2) dot(OX + x, OY + y, 0x8f6628, 0.8);
+    for (let y = 0; y < H; y += IT * 2) for (let x = 0; x < W; x += 2) if (hash(x, y) > 0.5) dot(OX + x, OY + y, 0x8f6628, 0.5);
+    // ── 벽 ── 상단 밴드: 아래는 징두리(판벽), 위는 회벽
+    const wallH = Math.round(IT * 1.4);
+    for (let y = 0; y < wallH; y += 2) for (let x = 0; x < W; x += 2) {
+      const wain = y > wallH - 16;
+      const col = wain ? ((x / 2) % 8 < 2 ? 0x6a4728 : 0x7a5330) : (hash(x, y + 999) > 0.94 ? 0xdcc9a8 : 0xd2bd9a);
+      dot(OX + x, OY + y, col);
+    }
+    for (let x = 0; x < W; x += 2) { dot(OX + x, OY + wallH - 18, 0x8a6138); dot(OX + x, OY + wallH - 16, 0x5a3c22); }  // 몰딩
+    for (let x = 0; x < W; x += 2) dot(OX + x, OY + wallH, 0x3a2718, 0.5);                                              // 벽 그림자
+    // ── 창 ── 벽 오른쪽. 햇살이 마루에 떨어진다
+    const wx = OX + W - IT * 3.4, wy = OY + 10, ww = IT * 2.2, wh = wallH - 30;
+    for (let y = 0; y < wh; y += 2) for (let x = 0; x < ww; x += 2) dot(wx + x, wy + y, hash(x, y) > 0.8 ? 0xcfe8f5 : 0xaed4ea);
+    for (let x = 0; x < ww; x += 2) { dot(wx + x, wy - 2, 0x5a3c22); dot(wx + x, wy + wh, 0x5a3c22); }
+    for (let y = -2; y < wh + 2; y += 2) { dot(wx - 2, wy + y, 0x5a3c22); dot(wx + ww, wy + y, 0x5a3c22); }
+    for (let y = 0; y < wh; y += 2) dot(wx + ww / 2, wy + y, 0x5a3c22);
+    g.fillStyle(0xfff3c4, 0.10); g.fillRect(wx - 8, OY + wallH, ww + 16, IT * 2.2);                                      // 햇살
+    // ── 벽시계 ──
+    const cx = OX + IT * 1.4, cy = OY + Math.round(IT * 0.62);
+    g.fillStyle(0x3a2718, 1); g.fillCircle(cx, cy, 16);
+    g.fillStyle(0xf2e2b8, 1); g.fillCircle(cx, cy, 13);
+    g.fillStyle(0x3a2718, 1);
+    for (let a = 0; a < 12; a++) g.fillRect(cx + Math.round(Math.cos(a * Math.PI / 6) * 10) - 1, cy + Math.round(Math.sin(a * Math.PI / 6) * 10) - 1, 2, 2);
+    g.fillRect(cx - 1, cy - 8, 2, 9); g.fillRect(cx - 1, cy - 1, 8, 2);
+    // ── 벽 선반 + 책 ──
+    const sx = OX + IT * 4.2, sy = OY + Math.round(IT * 0.72);
+    for (let x = 0; x < IT * 2.4; x += 2) { dot(sx + x, sy, 0x8a6138); dot(sx + x, sy + 2, 0x5a3c22); }
+    const books = [0xb04a3a, 0x3a6ea5, 0x3f9e63, 0xc2913a, 0x8a5aa8];
+    books.forEach((col, i) => {
+      const bx = sx + 6 + i * 16, bh = 22 + (i % 3) * 5;
+      for (let y = 0; y < bh; y += 2) for (let x = 0; x < 10; x += 2) dot(bx + x, sy - bh + y, y < 3 ? 0xffffff : col);
     });
-    // 지하실 계단 자리 예약 (Tier 2 — 좌하단 점선)
-    g.lineStyle(1.5, 0x2a5a8a, 0.8);
-    this.dashedRect(g, OX + IT * 0.15, OY + IT * 8.15, IT * 1.7, IT * 1.7);
-    this.add.text(OX + IT, OY + IT * 9, '지하실 (확장 예약)', {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#5a7d9a',
-    }).setOrigin(0.5).setDepth(2);
-    // 평수 확장 방향 (Tier 1 — 우측 벽 화살표)
-    this.add.text(OX + ROOM_W * IT + 4, OY + ROOM_H * IT / 2, '▶\n평수\n확장', {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#5a7d9a', align: 'center',
-    }).setOrigin(0, 0.5).setDepth(2);
   }
 
-  private dashedRect(g: Phaser.GameObjects.Graphics, x: number, y: number, w: number, h: number): void {
-    const seg = 6;
-    for (let dx = 0; dx < w; dx += seg * 2) { g.lineBetween(x + dx, y, x + Math.min(dx + seg, w), y); g.lineBetween(x + dx, y + h, x + Math.min(dx + seg, w), y + h); }
-    for (let dy = 0; dy < h; dy += seg * 2) { g.lineBetween(x, y + dy, x, y + Math.min(dy + seg, h)); g.lineBetween(x + w, y + dy, x + w, y + Math.min(dy + seg, h)); }
-  }
-
+  /**
+   * 가구 — 173차 재작성. 색 사각형 대신 **재질 + 그늘 + 하이라이트**.
+   * 라벨 글자는 전부 걷어냈다 — 무엇인지는 그림이 말하고, 무엇을 할 수 있는지는 [F] 힌트가 말한다.
+   */
   private drawFurniture(): void {
     const g = this.add.graphics().setDepth(10);
+    const dot = (x: number, y: number, col: number, a = 1): void => { g.fillStyle(col, a); g.fillRect(x, y, 2, 2); };
+    /** 사각 면 — 위 하이라이트 + 아래 그늘 */
+    const slab = (x: number, y: number, w: number, h: number, mid: number, lit: number, dark: number): void => {
+      for (let yy = 0; yy < h; yy += 2) for (let xx = 0; xx < w; xx += 2) {
+        dot(x + xx, y + yy, yy < 3 ? lit : yy > h - 5 ? dark : mid);
+      }
+    };
+    /** 접지 그림자 */
+    const shade = (x: number, y: number, w: number): void => {
+      for (let xx = 0; xx < w; xx += 2) dot(x + xx, y, 0x2a1a0e, 0.28);
+    };
     for (const o of INTERIOR_OBJECTS) {
       const x = OX + o.tx * IT, y = OY + o.ty * IT;
       const w = (o.fw ?? 1) * IT, h = (o.fh ?? 1) * IT;
       switch (o.instanceId) {
         case 'bed': {
-          g.fillStyle(0x8a3a34, 1); g.fillRoundedRect(x + 4, y + 4, w - 8, h - 8, 6);      // 매트리스
-          g.fillStyle(0xf2e2c8, 1); g.fillRoundedRect(x + 8, y + 8, w - 16, IT * 0.6, 4);  // 베개
-          g.fillStyle(0x3a6ea5, 1); g.fillRect(x + 4, y + h - 18, w - 8, 12);              // 이불단
-          this.add.text(x + w / 2, y - 6, '저장★ 침대', {
-            fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#4af2a1', fontStyle: 'bold',
-            backgroundColor: '#0d2a1acc', padding: { x: 4, y: 1 },
-          }).setOrigin(0.5, 1).setDepth(11);
+          shade(x + 4, y + h - 4, w - 8);
+          slab(x + 4, y + 6, w - 8, h - 12, 0x6a4a2c, 0x8a6440, 0x4a3420);          // 프레임
+          slab(x + 8, y + 10, w - 16, h - 22, 0x8a3a34, 0xa64a42, 0x6e2a26);        // 매트리스·이불
+          for (let yy = 0; yy < h - 26; yy += 8) for (let xx = 0; xx < w - 20; xx += 2) dot(x + 10 + xx, y + 16 + yy, 0x9b4139, 0.7);
+          slab(x + 12, y + 14, w - 24, 22, 0xf2e2c8, 0xfff6e2, 0xd8c4a4);           // 베개
+          slab(x + 8, y + h - 24, w - 16, 12, 0x3a6ea5, 0x4d86c0, 0x2a5280);        // 발치 이불단
           break;
         }
         case 'fridge':
-          g.fillStyle(0xe8e8e4, 1); g.fillRoundedRect(x + 6, y + 4, w - 12, h - 8, 4);
-          g.fillStyle(0xb8b8b0, 1); g.fillRect(x + 8, y + h * 0.42, w - 16, 3);
-          g.fillStyle(0x9aa6b0, 1); g.fillRect(x + w - 14, y + 12, 3, 10);         // 손잡이
+          shade(x + 8, y + h - 6, w - 16);
+          slab(x + 8, y + 6, w - 16, h - 12, 0xe4e6e2, 0xf5f7f3, 0xc2c6c0);
+          for (let xx = 0; xx < w - 16; xx += 2) dot(x + 8 + xx, y + Math.round(h * 0.42), 0xaeb2ac);
+          for (let yy = 0; yy < 14; yy += 2) dot(x + w - 18, y + 14 + yy, 0x8d979f);
+          for (let yy = 0; yy < 14; yy += 2) dot(x + w - 18, y + Math.round(h * 0.5) + yy, 0x8d979f);
           break;
         case 'sink':
-          g.fillStyle(0xcfd4d8, 1); g.fillRoundedRect(x + 4, y + 6, w - 8, h - 10, 4);   // 상판
-          g.fillStyle(0x6a7580, 1); g.fillRoundedRect(x + 10, y + 12, w - 20, h - 22, 3); // 개수대
-          g.fillStyle(0x9aa6b0, 1); g.fillRect(x + w / 2 - 1, y + 6, 2, 8);              // 수도꼭지 목
-          g.fillCircle(x + w / 2, y + 6, 3);
+          shade(x + 6, y + h - 6, w - 12);
+          slab(x + 4, y + 8, w - 8, h - 14, 0xcfd4d8, 0xe6eaed, 0xa9aeb2);
+          slab(x + 12, y + 16, w - 24, h - 30, 0x5f6a74, 0x76828d, 0x454e57);
+          for (let yy = 0; yy < 12; yy += 2) dot(x + w / 2, y + 6 + yy, 0x9aa6b0);
+          dot(x + w / 2 - 2, y + 6, 0xb6c2cc); dot(x + w / 2 + 2, y + 6, 0xb6c2cc);
           break;
         case 'stove': {
-          g.fillStyle(0x3a3f45, 1); g.fillRoundedRect(x + 4, y + 6, w - 8, h - 10, 4);   // 상판(레인지)
-          g.fillStyle(0x2a2e33, 1);                                                       // 버너 2구
-          g.fillCircle(x + w * 0.3, y + h * 0.5, 9); g.fillCircle(x + w * 0.7, y + h * 0.5, 9);
-          g.fillStyle(0xff7a3a, 0.9);                                                      // 불꽃 포인트
-          g.fillCircle(x + w * 0.3, y + h * 0.5, 3); g.fillCircle(x + w * 0.7, y + h * 0.5, 3);
+          shade(x + 6, y + h - 6, w - 12);
+          slab(x + 4, y + 8, w - 8, h - 14, 0x3a3f45, 0x4e545b, 0x24282d);
+          for (const bx of [x + w * 0.3, x + w * 0.7]) {
+            for (let a = 0; a < 360; a += 20) {
+              const rx = Math.round(Math.cos(a * Math.PI / 180) * 8 / 2) * 2, ry = Math.round(Math.sin(a * Math.PI / 180) * 8 / 2) * 2;
+              dot(bx + rx, y + h * 0.52 + ry, 0x22262a);
+            }
+            dot(bx - 2, y + h * 0.52, 0xff7a3a); dot(bx, y + h * 0.52 - 2, 0xffa35a);
+            dot(bx, y + h * 0.52 + 2, 0xff7a3a); dot(bx + 2, y + h * 0.52, 0xffa35a);
+          }
+          for (let xx = 0; xx < w - 20; xx += 10) dot(x + 10 + xx, y + h - 10, 0xb0b6bc);   // 손잡이 열
           break;
         }
         case 'island':
-          g.fillStyle(0xd8b98a, 1); g.fillRoundedRect(x + 4, y + 8, w - 8, h - 16, 8);
-          g.fillStyle(0x8a6a44, 1);                                                        // 의자 2
-          g.fillCircle(x + w * 0.3, y + h + 10, 9); g.fillCircle(x + w * 0.7, y + h + 10, 9);
+          shade(x + 6, y + h - 2, w - 12);
+          slab(x + 4, y + 10, w - 8, h - 20, 0xd8b98a, 0xeed6ae, 0xb4966a);
+          for (let xx = 0; xx < w - 8; xx += 2) dot(x + 4 + xx, y + 10, 0xf4e4c4);
+          for (const cxp of [x + w * 0.3, x + w * 0.7]) {
+            for (let a = 0; a < 360; a += 24) {
+              const rx = Math.round(Math.cos(a * Math.PI / 180) * 9 / 2) * 2, ry = Math.round(Math.sin(a * Math.PI / 180) * 9 / 2) * 2;
+              dot(cxp + rx, y + h + 10 + ry, 0x7a5734);
+            }
+            slab(cxp - 8, y + h + 4, 16, 8, 0x8a6a44, 0xa8835a, 0x66492b);
+          }
           break;
         case 'sofa':
-          g.fillStyle(0x7a4a8a, 1); g.fillRoundedRect(x + 4, y + 4, w - 8, h - 8, 8);
-          g.fillStyle(0x9a6aaa, 1); g.fillRoundedRect(x + 8, y + 10, w - 16, h * 0.32, 6);
+          shade(x + 6, y + h - 4, w - 12);
+          slab(x + 4, y + 6, w - 8, h - 12, 0x6d4079, 0x855196, 0x522f5c);          // 몸체
+          slab(x + 10, y + 12, (w - 24) / 2, h * 0.42, 0x9a6aaa, 0xb182bf, 0x7c5089); // 쿠션 2
+          slab(x + 14 + (w - 24) / 2, y + 12, (w - 24) / 2, h * 0.42, 0x9a6aaa, 0xb182bf, 0x7c5089);
+          slab(x + 4, y + 6, 10, h - 12, 0x7c4c88, 0x9660a4, 0x5d3a68);             // 팔걸이
+          slab(x + w - 14, y + 6, 10, h - 12, 0x7c4c88, 0x9660a4, 0x5d3a68);
           break;
         case 'rug': {
-          g.fillStyle(0x3f7d54, 1); g.fillRoundedRect(x + 2, y + 2, w - 4, h - 4, 10);
-          g.lineStyle(2, 0x2e5e3e, 1); g.strokeRoundedRect(x + 8, y + 8, w - 16, h - 16, 8);
-          // 고양이
-          g.fillStyle(0xd88a3a, 1); g.fillEllipse(x + w / 2, y + h / 2, 26, 14);
-          g.fillCircle(x + w / 2 + 14, y + h / 2 - 4, 7);
+          for (let yy = 0; yy < h - 4; yy += 2) for (let xx = 0; xx < w - 4; xx += 2) {
+            const edge = xx < 8 || yy < 8 || xx > w - 14 || yy > h - 14;
+            dot(x + 2 + xx, y + 2 + yy, edge ? 0x2e5e3e : ((xx + yy) % 8 < 4 ? 0x3f7d54 : 0x38704b));
+          }
+          for (let xx = 0; xx < w - 4; xx += 4) { dot(x + 2 + xx, y + 2, 0xe8e0c8); dot(x + 2 + xx, y + h - 4, 0xe8e0c8); }  // 술
+          // 고양이 — 웅크린 자세
+          const kx = x + w / 2 - 14, ky = y + h / 2 - 6;
+          for (let yy = 0; yy < 14; yy += 2) for (let xx = 0; xx < 26; xx += 2) {
+            if (yy < 4 && (xx < 4 || xx > 20)) continue;
+            dot(kx + xx, ky + yy, yy < 5 ? 0xe09a46 : 0xd88a3a);
+          }
+          for (let yy = 0; yy < 12; yy += 2) for (let xx = 0; xx < 12; xx += 2) dot(kx + 22 + xx, ky - 4 + yy, yy < 4 ? 0xe09a46 : 0xd88a3a);
+          dot(kx + 24, ky - 6, 0xd88a3a); dot(kx + 30, ky - 6, 0xd88a3a);           // 귀
+          dot(kx + 26, ky + 2, 0x2a1a0e); dot(kx + 30, ky + 2, 0x2a1a0e);           // 눈
+          for (let xx = 0; xx < 10; xx += 2) dot(kx - 2 - xx, ky + 10, 0xd88a3a);   // 꼬리
           break;
         }
         case 'drawer':
-          g.fillStyle(0x6a4a2c, 1); g.fillRoundedRect(x + 6, y + 4, w - 12, h - 8, 4);
-          g.fillStyle(0x8a6a44, 1); g.fillRect(x + 10, y + h * 0.3, w - 20, 4); g.fillRect(x + 10, y + h * 0.62, w - 20, 4);
-          g.fillStyle(0xffe28a, 0.9); g.fillCircle(x + w / 2, y + 2, 6);                    // 램프
+          shade(x + 8, y + h - 4, w - 16);
+          slab(x + 6, y + 6, w - 12, h - 12, 0x6a4a2c, 0x8a6440, 0x4a3420);
+          for (const fy of [0.3, 0.62]) {
+            slab(x + 10, y + h * fy, w - 20, 14, 0x7d5934, 0x9a7046, 0x5c4022);
+            for (let xx = 0; xx < 10; xx += 2) dot(x + w / 2 - 4 + xx, y + h * fy + 6, 0xc9a66a);
+          }
+          for (let yy = 0; yy < 10; yy += 2) for (let xx = 0; xx < 14; xx += 2) dot(x + w / 2 - 6 + xx, y - 6 + yy, 0xffe28a, 0.9);  // 램프갓
+          dot(x + w / 2, y + 4, 0xfff3c4);
           break;
         case 'shelf':
-          g.fillStyle(0x5a3a22, 1); g.fillRoundedRect(x + 4, y + 6, w - 8, h - 12, 4);
-          g.fillStyle(0x7a5232, 1); g.fillRect(x + 8, y + h * 0.45, w - 16, 4);
+          shade(x + 6, y + h - 4, w - 12);
+          slab(x + 4, y + 6, w - 8, h - 12, 0x5a3a22, 0x7a5232, 0x3f2718);
+          for (const fy of [0.32, 0.64]) for (let xx = 0; xx < w - 16; xx += 2) dot(x + 8 + xx, y + h * fy, 0x8a6138);
+          [0x3a6ea5, 0xb04a3a, 0x3f9e63].forEach((col, i) => {
+            for (let yy = 0; yy < 16; yy += 2) for (let xx = 0; xx < 8; xx += 2) dot(x + 12 + i * 12 + xx, y + h * 0.32 - 16 + yy, col);
+          });
           break;
-        case 'plant':
-          g.fillStyle(0xb06a3b, 1); g.fillRect(x + IT * 0.32, y + IT * 0.55, IT * 0.36, IT * 0.3);
-          g.fillStyle(0x3b8a42, 1); g.fillCircle(x + IT * 0.5, y + IT * 0.38, 12);
+        case 'plant': {
+          const px = x + IT * 0.5;
+          shade(x + IT * 0.28, y + IT * 0.86, IT * 0.44);
+          slab(x + IT * 0.3, y + IT * 0.56, IT * 0.4, IT * 0.3, 0xb06a3b, 0xcb8450, 0x8d5029);
+          for (let a = 0; a < 5; a++) {
+            const ang = -90 + (a - 2) * 26, len = 16 + (a % 2) * 5;
+            for (let t = 0; t < len; t += 2) {
+              dot(px + Math.round(Math.cos(ang * Math.PI / 180) * t / 2) * 2,
+                  y + IT * 0.56 + Math.round(Math.sin(ang * Math.PI / 180) * t / 2) * 2,
+                  t > len - 8 ? 0x4fae56 : 0x3b8a42);
+            }
+          }
           break;
+        }
         case 'stand':
-          g.fillStyle(0x6a4a2c, 1); g.fillRoundedRect(x + 8, y + 10, w - 16, h - 20, 4);
+          shade(x + 10, y + h - 6, w - 20);
+          slab(x + 8, y + 12, w - 16, h - 22, 0x6a4a2c, 0x8a6440, 0x4a3420);
+          for (let xx = 0; xx < w - 20; xx += 2) dot(x + 10 + xx, y + 12, 0x9a7046);
           break;
         case 'door_out': {
-          g.fillStyle(0x5a3a22, 1); g.fillRect(x + 8, y + IT * 0.3, w - 16, IT * 0.7);
-          this.add.text(x + w / 2, y + h + 4, '문 → 홈타운 외부', {
-            fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#ffce9a',
-          }).setOrigin(0.5, 0).setDepth(11);
+          slab(x + 6, y + IT * 0.22, w - 12, IT * 0.82, 0x4a2f1c, 0x6d4a2d, 0x33200f);
+          for (let yy = 0; yy < IT * 0.66; yy += 2) for (let xx = 0; xx < w - 24; xx += 2) {
+            dot(x + 12 + xx, y + IT * 0.3 + yy, (yy % 10 < 5) ? 0x7a5232 : 0x6d4a2d);
+          }
+          dot(x + w - 20, y + IT * 0.6, 0xffd257); dot(x + w - 20, y + IT * 0.62, 0xd6a93d);
           break;
         }
       }
     }
-    // 주방 라벨 (냉장고~조리대 상단)
-    this.add.text(OX + IT * 2, OY + IT * 1.85, '주방', {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#ffd9a0', fontStyle: 'bold',
-      backgroundColor: '#2a1a0acc', padding: { x: 4, y: 1 },
-    }).setOrigin(0.5, 1).setDepth(11);
   }
 
   // ── 이동/충돌 (간이 AABB — 물리 미사용) ──────────────

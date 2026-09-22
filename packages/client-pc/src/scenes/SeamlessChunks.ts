@@ -728,6 +728,8 @@ export class SeamlessChunks {
     const tm = this.scene.textures;
     if (tr !== 32 || !tm.exists('ts_coast_deck_0')) return;
     this.coastEdge = [[], [], [], []];
+    this.coastToe = [[], [], [], []];
+    this.coastQuay = [[], [], [], []];
     for (const { name, landDir } of COAST_EDGE_SRC) {
       const src = `ts_coast_${name}`;
       if (!tm.exists(src)) continue;
@@ -746,7 +748,10 @@ export class SeamlessChunks {
           try { ctx.drawImage(source, 0, 0); } catch { cv.destroy(); continue; }
           this.safeRefresh(cv);
         }
-        if (tm.exists(key)) this.coastEdge[d].push(key);
+        if (!tm.exists(key)) continue;
+        this.coastEdge[d].push(key);
+        // 173차 — 발치(사석)와 안벽(부두)은 쓰이는 자리가 다르다. 풀을 나눠 둔다.
+        (name.startsWith('rubble_toe') ? this.coastToe : this.coastQuay)[d].push(key);
       }
     }
     this.coastRocks = [];
@@ -762,6 +767,10 @@ export class SeamlessChunks {
 
   /** 방파제 접경 오버레이 — 방위별(0=N 1=E 2=S 3=W = 방파제가 있는 쪽) 회전 셀 */
   private coastEdge: string[][] = [];
+  /** 외해측 사석 발치 오버레이 (물 타일 위) — 방위별 */
+  private coastToe: string[][] = [];
+  /** 항내측 안벽 오버레이 (물 타일 위) — 방위별 */
+  private coastQuay: string[][] = [];
   /** 갯바위 산포 스프라이트 (알파 트림) */
   private coastRocks: string[] = [];
   /** 해안 세트 사용 가능 여부 — false면 Kenney pier 베이스 + 절차 렌더(구 경로) */
@@ -771,13 +780,6 @@ export class SeamlessChunks {
    * `'b'`(방파제) 타일 텍스처 선택 — 실사 항공사진 기반 어휘.
    *  물에 안 닿으면 **상판**, 외해측 물에 닿거나 3면이 물이면 **사석 사면**, 항내측은 상판 유지
    *  (항내 접경은 물 타일 쪽 `pier_edge` 오버레이가 안벽을 그린다).
-   */
-  /**
-   * 모래 스필(106차) — 해변과 맞닿은 **포장 타일 쪽으로** 모래 알갱이를 뿌려 타일 계단 경계를 녹인다.
-   *
-   * 실제 해변은 포장 위로 모래가 흘러나오지 자로 그은 선으로 끊기지 않는다(사용자 리포트 — 45° 톱니).
-   * 입자는 지면과 같은 **2px 그레인**, 밀도는 접경에서 멀어질수록 제곱으로 급감하고 대각 접경도 센다.
-   * 색은 화면 모래색(COL.beach*) — Kenney sand에 웜 틴트가 곱해진 뒤의 실측값이라야 이어져 보인다.
    */
   /**
    * 접경 알갱이 띠 (172차 — 구 `drawSandSpill`의 일반화).
@@ -2507,6 +2509,59 @@ export class SeamlessChunks {
       }
     }
 
+    // ── 가로 시설물 정렬 (173차 — 사용자 지적 "지형과의 조화·연결성") ──
+    //    해시 산포는 "왜 거기 있는지"를 설명하지 못한다. 실제 거리의 가로등·가로수·벤치는
+    //    차도 연석 **바깥 보도 위**에, 도로 중심선을 따라 **등간격**으로 선다.
+    //    도로 폴리라인을 시작점부터 누적 호길이(s)로 걸으며 스냅하므로 청크 경계에서도 간격이 이어진다.
+    //    ⚖ 배치 소유권 = 스냅 지점이 속한 청크(중복 생성 방지) · 전부 free(바디 없음) —
+    //      1타일 보도에 바디를 세우면 그 길이 통째로 막힌다(106차 테트라포드 전례).
+    if (hasTs && this.cfg.roads) {
+      const chunkIdx = cr * this.chunkCols + cc;
+      const rlist = this.roadsByChunk.get(chunkIdx);
+      const dLamp = def('lamp2') ?? def('lamp');
+      const dTree = def('pine'), dBush = def('bush'), dBench = def('bench');
+      if (rlist) for (const ri of rlist) {
+        const rd = this.cfg.roads[ri];
+        // 회전교차로 링(중앙섬 침범)·서비스 골목(w < 2)은 가로 시설물을 두지 않는다
+        if (rd.roundabout || rd.w < 2 || rd.pts.length < 2) continue;
+        const step = rd.w >= 4 ? 10 : 16;        // 가로등 간격(타일) — 간선일수록 촘촘
+        const half = step / 2;                    // half-step 격자 = 가로등 ↔ 가로수 교대
+        let s = 0;
+        for (let i = 0; i < rd.pts.length - 1; i++) {
+          const [ax, ay] = rd.pts[i], [bx, by] = rd.pts[i + 1];
+          const dx = bx - ax, dy = by - ay;
+          const len = Math.hypot(dx, dy);
+          if (len < 0.01) continue;
+          const ux = dx / len, uy = dy / len;
+          for (let k = Math.ceil(s / half) * half; k < s + len; k += half) {
+            const slotIdx = Math.round(k / half);
+            const isLamp = slotIdx % 2 === 0;
+            // 좌·우 보도 교대 — 한쪽에만 몰리면 "한 줄로 심은 화단"이 된다
+            const sign = Math.floor(slotIdx / 2) % 2 === 0 ? 1 : -1;
+            const off = rd.w / 2 + (isLamp ? 0.9 : 1.6);
+            const t = k - s;
+            const qx = ax + ux * t - uy * off * sign;
+            const qy = ay + uy * t + ux * off * sign;
+            const tc = Math.floor(qx), trw = Math.floor(qy);
+            if (Math.floor(tc / N) !== cc || Math.floor(trw / N) !== cr) continue;
+            if (tc < 0 || trw < 0 || tc >= this.cfg.cols || trw >= this.cfg.rows) continue;
+            const tt = this.tileAt(tc, trw);
+            if (tt !== 'w' && tt !== ',' && tt !== '.' && tt !== 'p') continue;
+            if (this.islet[trw * this.cfg.cols + tc]) continue;
+            // 교차로·다른 도로의 차도 위는 비운다
+            const band = this.roadBand(qx, qy, chunkIdx);
+            if (band && band.d < band.halfW + 0.6) continue;
+            if (isLamp) { if (dLamp) this.spawnProp(dLamp, tc, trw, slot, { free: true }); continue; }
+            // 가로수 — 잔디면 나무, 포장 보도면 관목(화분)이 기본이고 가끔 벤치
+            const hv = hash2(seed ^ 0x57ee, tc, trw);
+            const d2 = tt === ',' ? (hv < 0.65 ? dTree : dBush) : (hv < 0.22 ? dBench : hv < 0.78 ? dBush : dTree);
+            if (d2) this.spawnProp(d2, tc, trw, slot, { free: true });
+          }
+          s += len;
+        }
+      }
+    }
+
     // ── 항로표지 등대·등주(114차 — lights.json · setLights가 뭍으로 스냅해 청크에 배정) ──
     const lights = this.lightsByChunk.get(cr * this.chunkCols + cc);
     if (lights) {
@@ -3366,6 +3421,24 @@ export class SeamlessChunks {
                 if (!sd[d]) continue;
                 const pool = this.ttpEdge[d];
                 slot.rt.batchDraw(pool[Math.floor(hash2(seed ^ (0x5ea1 + d), c, r) * pool.length) % pool.length], dx, dy);
+              }
+            }
+            // ── 173차 · 방파제 접경 ── 105차에 **추출해 놓고 한 번도 쓰이지 않던** 발치·안벽 셀.
+            //   물 타일은 지금껏 접경 로직 도달 전에 continue 했고, 그래서 질감이 가장 센 재료
+            //   (테트라포드·사석·상판)가 가장 딱딱한 경계를 갖고 있었다(사용자 리포트의 핵심).
+            //   외해측(사석·피복)에는 **발치**가, 항내측(상판·안벽)에는 **안벽**이 깔린다.
+            if (this.coastReady) {
+              const nb: [number, number][] = [[0, -1], [1, 0], [0, 1], [-1, 0]];
+              for (let d = 0; d < 4; d++) {
+                const [ddc, ddr] = nb[d]!;
+                const nc = c + ddc, nr = r + ddr;
+                if (nc < 0 || nr < 0 || nc >= cols || nr >= this.cfg.rows) continue;
+                const nch = at(nc, nr);
+                if (nch !== 'b' && !(nch === '.' && this.bwClass[nr * cols + nc] > 0)) continue;
+                const outer = this.bwClass[nr * cols + nc] >= 2;   // 2=사석 3=피복 = 외해측
+                const pool = outer ? this.coastToe[d] : this.coastQuay[d];
+                if (!pool || pool.length === 0) continue;
+                slot.rt.batchDraw(pool[Math.floor(hash2(seed ^ (0x6c10 + d), c, r) * pool.length) % pool.length], dx, dy);
               }
             }
             // ── 섬 주변 여(스커리) — 실사 갯바위 스프라이트 산포(105차). 절차 사각형 대체.
