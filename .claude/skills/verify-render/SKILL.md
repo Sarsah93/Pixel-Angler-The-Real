@@ -143,3 +143,4 @@ const { chromium } = resolvePlaywright();
 - 백그라운드로 띄운 하네스는 **끝나기 전에 같은 출력 파일명으로 새 하네스를 돌리지 말 것**(116차 — 재캡처로 복구).
 - "Target crashed"가 **포인터 이동만으로** 나면 코드 문제(중첩 컨테이너 + GeometryMask + 인터랙티브 자식 — ui-panel 스킬)다.
   `git stash`로 이등분해 원인 파일을 좁힌다.
+- **순간이동 뒤 같은 프레임에 대화창을 열지 말 것**(167차) — `update()`가 `uiBlocked`면 스프라이트 동기화 전에 반환해 플레이어 그림이 옛 자리에 남는다. `s.updateSpriteAndShadow()` 직접 호출 + 수백 ms 대기 후 `openDialogue`.
