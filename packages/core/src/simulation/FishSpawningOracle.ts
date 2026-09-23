@@ -414,7 +414,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     fight: { basePower: 0.12, patternWeights: { jump: 0.25, dive: 0.1, lateral: 0.65 }, intervalMult: 1.3, mouthFragility: 0.55 },
   },
   {
-    speciesId: 'pacific_cod', nameKo: '대구', nameEn: 'Pacific Cod',
+    speciesId: 'pacific_cod', nameKo: '태평양 대구', nameEn: 'Pacific Cod',
     // 45~450m, 주로 남해 분포 — 회유 12월 제주/남해 → 1~8월 일본>남해>제주
     habitat: ['sand', 'mud', 'open'], minDepthM: 45, maxDepthM: 450, preferredLayers: ['bottom'],
     baitPreference: { livefish: 40, fishcut: 30, lure: 30 },

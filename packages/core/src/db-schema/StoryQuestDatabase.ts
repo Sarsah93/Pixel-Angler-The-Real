@@ -529,7 +529,7 @@ const SUB: StoryQuestDef[] = [
     ['N02-3', 5, 120, 11650, 'tak_saebyeok', JEJ, '돌무덤의 주인', 'Master of the Stone Mound',
       '서귀포 심해 대물 도전. 드랙 제어 한계 시험. (돗돔 미등록 — 대구로 대체)',
       'A deep-water giant off Seogwipo. The limit of drag control. (Substitute: Pacific cod.)',
-      [fish('pacific_cod', '대구 80cm+ 자가어획', 'Catch a Pacific cod 80 cm+', { minCm: 80 })]],
+      [fish('pacific_cod', '태평양 대구 80cm+ 자가어획', 'Catch a Pacific cod 80 cm+', { minCm: 80 })]],
     ['N02-4', 7, 175, 40200, 'tak_saebyeok', SOK, '마지막 죽간', 'The Last Bamboo Rod',
       '노인이 손을 놓고 새벽이 마무리한다. 유품 릴대 부활 → 7-7에서 사용.',
       'The old man lets go; Sae-byeok finishes. The heirloom rod lives again — for 7-7.',

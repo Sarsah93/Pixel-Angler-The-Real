@@ -4492,9 +4492,13 @@ export class RegionFieldScene extends Phaser.Scene {
     StoryStore.setFieldNpcs(this.storyNpcs.map((n) => n.def.npcId));   // 167차 — 장면 입구 판정
     this.refreshQuestMarkers(true);
     // 166차 — 마을 사람: 스토리 NPC 앵커를 피해 결정적으로 흩어 놓는다
+    // ⚠ 홈타운(집)은 시골 외곽이라 지나다니는 사람을 만들지 않는다 (177차 사용자 지시)
     this.ambientNpcs?.destroy();
-    this.ambientNpcs = new AmbientNpcSystem(this, this.npcHost);
-    this.ambientNpcs.spawn(`${this.region}:${this.mapId}`, this.storyNpcs.map((n) => ({ c: Math.floor(n.x / TR), r: Math.floor((n.y - 1) / TR) })));
+    this.ambientNpcs = undefined;
+    if (this.region !== 'hometown') {
+      this.ambientNpcs = new AmbientNpcSystem(this, this.npcHost);
+      this.ambientNpcs.spawn(`${this.region}:${this.mapId}`, this.storyNpcs.map((n) => ({ c: Math.floor(n.x / TR), r: Math.floor((n.y - 1) / TR) })));
+    }
     this.events.once('shutdown', () => {
       this.sceneExtras = [];   // 씬이 내려가며 오브젝트는 같이 파괴된다
       this.ambientNpcs?.destroy(); this.ambientNpcs = undefined;
@@ -5013,7 +5017,12 @@ export class RegionFieldScene extends Phaser.Scene {
     // 일지에서 고정한 할 일이 최우선(사용자 지시) — 없으면 활성 할 일, 그다음 받을 수 있는 메인
     const pinnedId = kindWanted === 'sub' ? StoryStore.pinned.sub : StoryStore.pinned.main;
     const pinned = pinnedId ? STORY_QUESTS.find((q) => q.id === pinnedId) : undefined;
-    if (pinned && StoryStore.status(pinned) === 'active') return entry(pinned);
+    if (pinned) {
+      const pst = StoryStore.status(pinned);
+      if (pst === 'active') return entry(pinned);
+      // 177차 — 아직 받지 않은 할 일을 고정했다면 발주자에게 가는 길을 가리킨다
+      if (pst === 'available' && pinned.giver) return { q: pinned, idx: null, kind: 'offer' };
+    }
     const act = STORY_QUESTS.filter((q) => StoryStore.status(q) === 'active'
       && (!kindWanted || q.kind === kindWanted))
       .sort((a2, b2) => (a2.kind === b2.kind ? 0 : a2.kind === 'main' ? -1 : 1));

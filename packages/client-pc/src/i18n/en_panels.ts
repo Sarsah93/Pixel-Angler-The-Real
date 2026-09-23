@@ -202,6 +202,7 @@ export const EN_PANELS: Record<string, string> = {
   // ── 165차 — 컷씬 · 「지금 할 일」 · 일지 고정 · 얼음 나르기 · 가짜 웜 ──
   '혼잣말': 'To myself',
   '[ESC] 건너뛰기': '[ESC] Skip',
+  '클릭 = 다음 · [ESC] 건너뛰기': 'Click = next · [ESC] skip',
   '고정': 'Pin',
   '· 고정': '· Pinned',
   '(완료!)': '(Done!)',

@@ -89,6 +89,10 @@ export interface StoryCinematicConfig {
 const BAR_TOP = 56;
 const BAR_BOTTOM = 132;
 const BUBBLE_MAX_W = 250;
+/** 대사 타이핑 속도 — 대화창(DialoguePanel)과 같은 18ms/자 */
+const TYPE_MS = 18;
+/** 다 찍힌 뒤 최소한으로 머무는 시간 */
+const SAY_MIN_HOLD_MS = 450;
 
 export class StoryCinematicPanel extends Phaser.GameObjects.Container {
   private readonly cfg: StoryCinematicConfig;
@@ -112,6 +116,12 @@ export class StoryCinematicPanel extends Phaser.GameObjects.Container {
   private index = -1;
   private finished = false;
   private timer?: Phaser.Time.TimerEvent;
+  /** 177차 — 대사 타이핑. 클릭하면 지금 줄을 즉시 다 보여주고, 다 나왔으면 다음 줄로 넘긴다 */
+  private sayFull = '';
+  private sayTyped = 0;
+  private sayHoldMs = 0;
+  private typeTimer?: Phaser.Time.TimerEvent;
+  private caret?: Phaser.GameObjects.Text;
 
   constructor(scene: Phaser.Scene, cfg: StoryCinematicConfig) {
     super(scene, 0, 0);
@@ -119,8 +129,12 @@ export class StoryCinematicPanel extends Phaser.GameObjects.Container {
     this.setDepth(20_000).setScrollFactor(0);
 
     // 필드를 가리지 않는 얇은 색 보정막 + 포인터 흡수 (조작 봉쇄)
+    // ⚠ 컨테이너의 scrollFactor 0 은 렌더에만 적용된다 — 히트 판정은 자식 자신의 scrollFactor 를 쓰므로
+    //   여기서 0 을 걸지 않으면 스크롤된 필드에서 클릭 판정이 카메라 이동량만큼 어긋난다(177차).
     const veil = scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x050b12, 0.10)
+      .setScrollFactor(0)
       .setInteractive();
+    veil.on('pointerdown', () => this.advanceSay());
     this.add(veil);
 
     // 레터박스 — 위/아래에서 밀려 들어온다
@@ -147,10 +161,14 @@ export class StoryCinematicPanel extends Phaser.GameObjects.Container {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '20px', color: '#f2f8fd',
       wordWrap: { width: GAME_WIDTH - 108 }, lineSpacing: 4,
     });
-    this.skipHint = scene.add.text(GAME_WIDTH - 40, boxY + 5, '[ESC] 건너뛰기', {
+    this.skipHint = scene.add.text(GAME_WIDTH - 40, boxY + 5, '클릭 = 다음 · [ESC] 건너뛰기', {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#7fa0b8',
     }).setOrigin(1, 0);
-    this.add([this.boxG, this.speakerText, this.bodyText, this.skipHint]);
+    // 단락이 끝났음을 알리는 흰 역삼각형 (§4 R3)
+    this.caret = scene.add.text(GAME_WIDTH - 44, boxY + boxH - 22, '▼', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '14px', color: '#ffffff',
+    }).setOrigin(1, 0).setVisible(false);
+    this.add([this.boxG, this.speakerText, this.bodyText, this.skipHint, this.caret]);
 
     // 말풍선 (배우 머리 위)
     this.bubbleG = scene.add.graphics();
@@ -177,6 +195,7 @@ export class StoryCinematicPanel extends Phaser.GameObjects.Container {
   skip(): void {
     if (this.finished) return;
     this.timer?.remove(false);
+    this.typeTimer?.remove(); this.typeTimer = undefined;
     for (const a of Object.values(this.cfg.actors)) {
       this.scene.tweens.killTweensOf([a.obj, ...(a.followers ?? [])]);
       a.setWalking?.(false);
@@ -191,6 +210,7 @@ export class StoryCinematicPanel extends Phaser.GameObjects.Container {
     this.index++;
     const step = this.cfg.script.steps[this.index];
     if (!step) { this.finish(); return; }
+    if (step.kind !== 'say') { this.sayFull = ''; this.sayTyped = 0; this.caret?.setVisible(false); }
     switch (step.kind) {
       case 'say': this.runSay(step); return;
       case 'move': this.runMove(step); return;
@@ -214,7 +234,7 @@ export class StoryCinematicPanel extends Phaser.GameObjects.Container {
     const actor = this.actorOf(step.who);
     this.speakerText.setText(step.thought ? '혼잣말' : (actor?.nameKo ?? step.who));
     this.speakerText.setColor(step.thought ? '#f0bf6c' : '#ffe9a0');
-    this.bodyText.setText(step.text);
+    this.startTyping(step.text, step.ms ?? Phaser.Math.Clamp(700 + step.text.length * 62, 1200, 4200));
     if (step.thought || !actor) {
       this.bubbleActor = undefined;
       this.bubbleC.setVisible(false);
@@ -224,8 +244,46 @@ export class StoryCinematicPanel extends Phaser.GameObjects.Container {
       this.bubbleC.setVisible(true);
       this.trackBubble();
     }
-    // 읽는 속도 — 한 글자당 약 62ms, 최소 1.2초
-    this.after(step.ms ?? Phaser.Math.Clamp(700 + step.text.length * 62, 1200, 4200));
+  }
+
+  /**
+   * 한 글자씩 찍는다. 다 찍히면 읽는 시간(`holdMs`)만큼 기다렸다가 다음 스텝으로 간다.
+   * 찍는 도중 클릭하면 즉시 전부, 다 찍힌 뒤 클릭하면 기다림 없이 다음 스텝으로.
+   */
+  private startTyping(text: string, holdMs: number): void {
+    this.typeTimer?.remove(); this.typeTimer = undefined;
+    this.sayFull = text; this.sayTyped = 0; this.sayHoldMs = holdMs;
+    this.caret?.setVisible(false);
+    this.bodyText.setText('');
+    this.typeTimer = this.scene.time.addEvent({
+      delay: TYPE_MS, loop: true,
+      callback: () => {
+        this.sayTyped = Math.min(this.sayFull.length, this.sayTyped + 1);
+        this.bodyText.setText(this.sayFull.slice(0, this.sayTyped));
+        if (this.sayTyped >= this.sayFull.length) this.finishTyping();
+      },
+    });
+  }
+
+  /** 타이핑 종료 — 읽는 시간만큼만 기다린다(타이핑에 쓴 시간은 뺀다) */
+  private finishTyping(): void {
+    this.typeTimer?.remove(); this.typeTimer = undefined;
+    this.bodyText.setText(this.sayFull);
+    this.sayTyped = this.sayFull.length;
+    this.caret?.setVisible(true);
+    const typedMs = this.sayFull.length * TYPE_MS;
+    this.after(Math.max(SAY_MIN_HOLD_MS, this.sayHoldMs - typedMs));
+  }
+
+  /** 클릭 — 찍는 중이면 즉시 완성, 다 찍혔으면 바로 다음 스텝 */
+  private advanceSay(): void {
+    if (this.finished) return;
+    if (this.typeTimer) { this.finishTyping(); return; }
+    if (!this.sayFull) return;   // 이동·페이드 같은 연출 중에는 클릭이 아무것도 하지 않는다
+    this.sayFull = '';
+    this.caret?.setVisible(false);
+    this.timer?.remove(false); this.timer = undefined;
+    this.step();
   }
 
   private paintBubble(text: string): void {
@@ -394,6 +452,7 @@ export class StoryCinematicPanel extends Phaser.GameObjects.Container {
     if (this.finished) return;
     this.finished = true;
     this.timer?.remove(false);
+    this.typeTimer?.remove(); this.typeTimer = undefined;
     this.bubbleC.setVisible(false);
     this.scene.tweens.add({ targets: this.barTop, y: -BAR_TOP / 2, duration: 280, ease: 'Sine.easeIn' });
     this.scene.tweens.add({

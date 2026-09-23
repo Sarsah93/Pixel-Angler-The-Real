@@ -29,6 +29,8 @@ import { StoryStore } from '../store/StoryStore.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { clampTextWidth, enforceTextBounds } from './TextFit.js';
 import { ensureFacePortrait } from './CharacterSprite.js';
+import { characterLook } from '../data/EquipOutfit.js';
+import { GameState } from '../store/GameState.js';
 import { addPixelIcon } from './PixelIcon.js';
 import { questRewardItemName } from '../data/QuestRewardItems.js';
 
@@ -47,7 +49,12 @@ const C_TRACK = 34;
 const C_REGION = 74;
 const C_STATE = 66;
 const C_PROG = 72;
-const C_NAME = LIST_W - C_TRACK - C_FACE - C_REGION - C_STATE - C_PROG - 34;
+/**
+ * 177차 — 열 합이 **행 배경 폭**(LIST_W - 8)에 맞아야 한다.
+ * 구 식(-34)은 합이 500으로 행 배경(478)을 22px 넘어, 마지막 진행률 바가 창 밖으로 삐져나왔다.
+ * 좌우 안여백 6+6 · 열 사이 간격 4+8+6+6+6 = 30 을 빼고 남은 폭이 할 일 이름 칸이다.
+ */
+const C_NAME = (LIST_W - 8) - 12 - 30 - C_TRACK - C_FACE - C_REGION - C_STATE - C_PROG;
 
 const ROW_H = 40;
 
@@ -356,11 +363,12 @@ export class JournalPanel extends DraggablePanel {
     c.add(g);
 
     let cx = LIST_X + 6;
-    // ① 고정 — 메인·서브 각 1건만. 진행 중인 할 일에만 체크가 선다.
-    const canPin = st === 'active';
+    // ① 고정 — 메인·서브 각 1건만. 진행 중·받을 수 있는 할 일에 체크가 선다(177차).
+    const canPin = st === 'active' || st === 'available';
     const pinned = StoryStore.isPinned(q.id);
     const box = this.scene.add.graphics();
     const bxp = cx + C_TRACK / 2 - 7, byp = y - 7;
+    box.setAlpha(canPin ? 1 : 0.35);
     box.fillStyle(pinned ? 0x2c6f52 : 0x0d1c2c, 1); box.fillRect(bxp, byp, 14, 14);
     box.lineStyle(1, canPin ? 0x3d6f96 : 0x27384a, 1); box.strokeRect(bxp, byp, 14, 14);
     if (pinned) {
@@ -369,26 +377,23 @@ export class JournalPanel extends DraggablePanel {
       box.lineBetween(bxp + 6, byp + 11, bxp + 11, byp + 3);
     }
     c.add(box);
-    if (canPin) {
-      const ph = this.scene.add.rectangle(cx + C_TRACK / 2, y, 22, 22, 0xffffff, 0.001)
-        .setInteractive({ useHandCursor: true });
-      // 행 선택과 겹치지 않게 체크칸 클릭은 여기서 끝낸다
-      ph.on('pointerdown', (_p: Phaser.Input.Pointer, _x: number, _y: number, ev?: Phaser.Types.Input.EventData) => {
-        ev?.stopPropagation();
-        StoryStore.setTracked(q.id);
-        this.scene.time.delayedCall(0, () => { this.renderList(); restoreHandCursor(this.scene); });
-      });
-      c.add(ph);
-    }
+    const pinHitX = cx + C_TRACK / 2;
     cx += C_TRACK + 4;
-    // 의뢰인 얼굴 — 잠긴 임무는 누가 주는지도 알려주지 않는다
-    if (!locked && q.giver) {
-      const key = ensureFacePortrait(this.scene, characterOf(q.giver), 2);
-      const img = this.scene.add.image(cx + C_FACE / 2, y, key).setOrigin(0.5).setDisplaySize(28, 28);
+    // 의뢰인 얼굴 — 잠긴 임무는 누가 주는지도 알려주지 않는다.
+    // 177차 — 발주자가 없는(스스로 정한) 할 일은 주인공 얼굴을 세운다. 회색 점은 잠긴 것에만 남긴다.
+    if (!locked) {
+      const cfg = q.giver ? characterOf(q.giver) : characterLook();
+      const key = ensureFacePortrait(this.scene, cfg, 2);
+      const fx = cx + C_FACE / 2;
+      const plate = this.scene.add.graphics();
+      plate.fillStyle(0x0b1a28, 1); plate.fillRect(fx - 15, y - 15, 30, 30);
+      plate.lineStyle(1, sel ? 0x4d7ea6 : 0x24455f, 1); plate.strokeRect(fx - 15, y - 15, 30, 30);
+      c.add(plate);
+      const img = this.scene.add.image(fx, y, key).setOrigin(0.5).setDisplaySize(28, 28);
       c.add(img);
     } else {
-      const dot = addPixelIcon(this.scene, locked ? 'mk_quest' : 'mm_npc', cx + C_FACE / 2, y, 16);
-      if (dot) { dot.setAlpha(locked ? 0.25 : 0.6); c.add(dot); }
+      const dot = addPixelIcon(this.scene, 'mk_quest', cx + C_FACE / 2, y, 16);
+      if (dot) { dot.setAlpha(0.25); c.add(dot); }
     }
     cx += C_FACE + 8;
 
@@ -422,7 +427,8 @@ export class JournalPanel extends DraggablePanel {
     c.add(pT);
     if (!locked) {
       const bg = this.scene.add.graphics();
-      const bw = C_PROG - 12, bx = cx + 6;
+      // 행 배경 오른쪽 끝(LIST_X + LIST_W - 8) 안으로 가둔다 — 넘치면 패널 밖으로 삐져나온다
+      const bx = cx + 6, bw = Math.max(20, Math.min(C_PROG - 12, LIST_X + LIST_W - 8 - 6 - bx));
       bg.fillStyle(0x0d1c2c, 1); bg.fillRect(bx, y + 5, bw, 5);
       bg.fillStyle(pct >= 100 ? 0x4af2a1 : 0xffb26b, 1); bg.fillRect(bx, y + 5, (bw * pct) / 100, 5);
       bg.lineStyle(1, 0x24455f, 1); bg.strokeRect(bx, y + 5, bw, 5);
@@ -437,26 +443,18 @@ export class JournalPanel extends DraggablePanel {
     });
     c.add(hit);
 
-    // 일지에서 J로 고정할 수 있는 체크박스. 완료·잠긴 항목은 고정하지 않는다.
-    const trackBox = this.scene.add.graphics();
-    const trackX = LIST_X + 6 + C_TRACK / 2;
-    trackBox.lineStyle(1, q.id === StoryStore.trackedId ? 0x6ee7c8 : 0x49657a, 1);
-    trackBox.strokeRect(trackX - 7, y - 7, 14, 14);
-    if (q.id === StoryStore.trackedId) {
-      trackBox.lineStyle(2, 0x6ee7c8, 1);
-      trackBox.lineBetween(trackX - 4, y, trackX - 1, y + 4);
-      trackBox.lineBetween(trackX - 1, y + 4, trackX + 5, y - 4);
-    }
-    c.add(trackBox);
-    if (st === 'active') {
-      const trackHit = this.scene.add.rectangle(trackX, y, 24, ROW_H - 4, 0xffffff, 0.001)
+    // 고정 체크칸의 히트는 **행 선택보다 뒤에** 올린다 — 앞에 두면 행 전체 히트가 클릭을 삼킨다(177차)
+    if (canPin) {
+      const ph = this.scene.add.rectangle(pinHitX, y, 24, ROW_H - 4, 0xffffff, 0.001)
         .setInteractive({ useHandCursor: true });
-      trackHit.on('pointerdown', () => {
-        StoryStore.setTracked(StoryStore.trackedId === q.id ? null : q.id);
-        this.renderList(); this.renderDetail(); restoreHandCursor(this.scene);
+      ph.on('pointerdown', (_p: Phaser.Input.Pointer, _x: number, _y: number, ev?: Phaser.Types.Input.EventData) => {
+        ev?.stopPropagation();
+        StoryStore.setTracked(q.id);
+        this.scene.time.delayedCall(0, () => { this.renderList(); this.renderDetail(); restoreHandCursor(this.scene); });
       });
-      c.add(trackHit);
+      c.add(ph);
     }
+
   }
 
   // ═══════════ 이야기 (챕터 체인) ═══════════
@@ -662,21 +660,23 @@ export class JournalPanel extends DraggablePanel {
     const FACE = 6;                     // 16px 아트 × 6 = 96
     const faceW = 16 * FACE;
     const npc = q.giver ? getStoryNpc(q.giver) : undefined;
-    if (q.giver) {
+    {
+      // 177차 — 발주자가 없으면 주인공 얼굴. 초상 칸을 비워 두지 않는다.
       const g = this.scene.add.graphics();
       g.fillStyle(0x12263a, 1); g.fillRect(DET_X + 4, py, faceW, faceW);
       g.lineStyle(1, 0x3c6f95, 1); g.strokeRect(DET_X + 4, py, faceW, faceW);
       c.add(g);
-      const key = ensureFacePortrait(this.scene, characterOf(q.giver), FACE);
+      const key = ensureFacePortrait(this.scene, q.giver ? characterOf(q.giver) : characterLook(), FACE);
       c.add(this.scene.add.image(DET_X + 4, py, key).setOrigin(0, 0));
-      const nm = this.scene.add.text(DET_X + 4 + faceW / 2, py + faceW + 4, npc?.nameKo ?? '', {
+      const nm = this.scene.add.text(DET_X + 4 + faceW / 2, py + faceW + 4,
+        q.giver ? (npc?.nameKo ?? '') : (GameState.player.nickname || '나'), {
         fontFamily: FONT, fontSize: '11px', color: C_TEXT,
       }).setOrigin(0.5, 0);
       clampTextWidth(nm, faceW);
       c.add(nm);
     }
 
-    const nx = q.giver ? DET_X + 4 + faceW + 12 : DET_X + 4;
+    const nx = DET_X + 4 + faceW + 12;
     const nw = DET_X + DET_W - 4 - nx;
     const nh = faceW + 22;
     this.buildNarration(c, q, nx, py, nw, nh);

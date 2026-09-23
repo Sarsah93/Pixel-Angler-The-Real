@@ -341,13 +341,18 @@ class StoryStoreManager {
     return choicesFor(q)[stage].filter((c) => choiceVisible(c, ctx));
   }
   /**
-   * 165차 — 고정 토글. 완료·미수락 할 일은 고정할 수 없고,
-   * **메인·서브 칸마다 1건**이라 같은 종류를 새로 고정하면 앞의 것이 풀린다.
+   * 165차 — 고정 토글. **메인·서브 칸마다 1건**이라 같은 종류를 새로 고정하면 앞의 것이 풀린다.
+   *
+   * 177차 — 아직 받지 않은(받을 수 있는) 할 일도 고정된다. 구 구현은 수락한 것만 허용해
+   * 체크는 그려지는데 아무 일도 일어나지 않았다(사용자 리포트). 완료·잠긴 것은 여전히 못 고정한다.
    */
   setTracked(id: string | null): void {
     if (id === null) { this.pinned = { main: null, sub: null }; this.host?.markDirty(); return; }
-    if (this.quests[id]?.status !== 'active') return;
-    const slot: 'main' | 'sub' = getStoryQuest(id)?.kind === 'sub' ? 'sub' : 'main';
+    const q = getStoryQuest(id);
+    if (!q) return;
+    const st = this.status(q);
+    if (st !== 'active' && st !== 'available') return;
+    const slot: 'main' | 'sub' = q.kind === 'sub' ? 'sub' : 'main';
     this.pinned[slot] = this.pinned[slot] === id ? null : id;
     this.host?.markDirty();
   }

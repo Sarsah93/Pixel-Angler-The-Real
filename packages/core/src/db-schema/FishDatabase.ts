@@ -929,7 +929,7 @@ export const FISH_DATABASE: FishSpecies[] = [
   },
   {
     id: 'pacific_cod',
-    nameKo: '대구',
+    nameKo: '태평양 대구',
     nameEn: 'Pacific Cod',
     scientificName: 'Gadus macrocephalus',
     spriteKey: 'fish_pacific_cod',
