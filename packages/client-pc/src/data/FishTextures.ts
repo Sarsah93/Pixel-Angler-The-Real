@@ -44,6 +44,7 @@ export const FISH_TEXTURE: Record<string, string> = {
   pacific_saury: 'fish_pacific_saury',     // 꽁치
   grass_puffer: 'fish_grass_puffer',       // 복섬
   yellowfin_puffer: 'fish_yellowfin_puffer', // 까치복
+  tiger_puffer: 'fish_tiger_puffer',       // 참복어(자주복)
   bartail_flathead: 'fish_bartail_flathead', // 양태
   bluefin_searobin: 'fish_bluefin_searobin', // 성대
   hagfish: 'fish_hagfish',                 // 먹장어

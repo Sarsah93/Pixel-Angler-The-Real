@@ -283,7 +283,7 @@ export class BootScene extends Phaser.Scene {
     this.load.image('fish_blue_rockfish', 'fish/dark-banded_rockfish.png');  // 청볼락 (171차 사용자 확인)
     this.load.image('fish_filefish', 'fish/filefish.png');                  // 쥐치
     this.load.image('fish_golden_rockfish', 'fish/owstons_rockfish.png');   // 황볼락
-    this.load.image('fish_sea_bass', 'fish/sea_bass.png');                  // 농어
+    this.load.image('fish_sea_bass', 'fish/sea_bass.png');                  // 농어 — 2026-09-23 픽셀아트 교체
     this.load.image('fish_amberjack', 'fish/yellowtail_amberjack.png');     // 부시리
     this.load.image('fish_yellowtail', 'fish/yellowtail_fish.png');         // 방어
     this.load.image('fish_striped_mullet', 'fish/flathead_grey_mullet.png');// 숭어
@@ -316,6 +316,7 @@ export class BootScene extends Phaser.Scene {
     this.load.image('fish_pacific_saury', 'fish/saury.png');                          // 꽁치
     this.load.image('fish_grass_puffer', 'fish/grass_puffer.png');                    // 복섬 (구 졸복)
     this.load.image('fish_yellowfin_puffer', 'fish/yellowfin_puffer.png');            // 까치복
+    this.load.image('fish_tiger_puffer', 'fish/tiger_puffer.png');                    // 참복어(자주복) — 2026-09-23 신규
     this.load.image('fish_bartail_flathead', 'fish/bartail_flathead.png');            // 양태
     this.load.image('fish_bluefin_searobin', 'fish/bluefin_searobin.png');            // 성대
     this.load.image('fish_hagfish', 'fish/hagfish.png');                              // 먹장어(곰장어)
@@ -323,12 +324,12 @@ export class BootScene extends Phaser.Scene {
     this.load.image('fish_northern_whiting', 'fish/northern_whiting.png');            // 보리멸
 
     // 2026-07-28 추가 — 대구·잿방어 텍스처 + 문어 2종 분화(대문어/참문어)
-    this.load.image('fish_pacific_cod', 'fish/pacific_cod.png');                      // 태평양 대구
+    this.load.image('fish_pacific_cod', 'fish/pacific_cod.png');                      // 태평양 대구 — 2026-09-23 픽셀아트 교체
     this.load.image('fish_greater_amberjack', 'fish/greater_amberjack.png');          // 잿방어
     // ⚠ 문어 파일명↔어종: 이미지 내용 기준 매칭 (사용자 메시지의 영문 파일명은 뒤바뀜 —
     //   설명("대문어=동해·대형", "참문어=소형")과 이미지 내용이 일치하는 쪽으로 연결)
     this.load.image('fish_octopus', 'fish/common_octopus.png');                       // 참문어(돌문어) — 얼룩덜룩 소형
-    this.load.image('fish_giant_octopus', 'fish/giant_pacific_octopus.png');          // 대문어(피문어) — 적갈색 대형
+    this.load.image('fish_giant_octopus', 'fish/giant_pacific_octopus.png');          // 대문어(피문어) — 흰 매트 제거(2026-09-23)
 
     // 2026-09-22 추가 (170차) — 볼락류 어종별 실사
     this.load.image('fish_red_snapper_rockfish', 'fish/red_snapper_rockfish.png');    // 열기(불볼락)
@@ -340,8 +341,8 @@ export class BootScene extends Phaser.Scene {
     this.load.image('fish_flounder', 'fish/flounder.png');                            // 문치가자미
     this.load.image('fish_starry_flounder', 'fish/starry_flounder.png');              // 강도다리
     this.load.image('fish_frog_flounder', 'fish/frog_flounder.png');                  // 도다리
-    this.load.image('fish_silver_pomfret', 'fish/silver_pomfret.png');                // 병어 — 체커 배경 제거본
-    this.load.image('fish_korean_pomfret', 'fish/korean_pomfret.png');                // 덕대 — 체커 배경 제거본
+    this.load.image('fish_silver_pomfret', 'fish/silver_pomfret.png');                // 병어 — 2026-09-23 픽셀아트 교체
+    this.load.image('fish_korean_pomfret', 'fish/korean_pomfret.png');                // 덕대 — 2026-09-23 픽셀아트 교체
 
     // ─── 남자 캐릭터 스프라이트 (12장) ───
     // 정지 4방향
