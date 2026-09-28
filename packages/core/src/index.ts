@@ -545,9 +545,14 @@ export {
 // ── 지형 전이 규칙 — 172차 ──
 export type { TerrainClass, TerrainDef, SeamKind, SeamRule, BreakwaterClass } from './rules/TerrainTransition.js';
 export {
-  TERRAIN_DEFS, TERRAIN_CHARS_V2, terrainDef, terrainClass, terrainPaint,
+  TERRAIN_DEFS, TERRAIN_CHARS_V2, TERRAIN_CHARS_V3, isRockTerrain, terrainDef, terrainClass, terrainPaint,
   seamBetween, needsInterstitial, terrainGroup, reliefHeight, castsReliefShadow,
 } from './rules/TerrainTransition.js';
+// ── 고도 레이어·계단 규칙 — 183차 ──
+export type { TileEdge, StairDir, RegionStair, RegionArmor, LevelCell, LevelSeam, StepOptions } from './rules/Elevation.js';
+export {
+  STAIR_DIRS, STAIR_DIR_LABEL, oppositeEdge, stairHighEdges, stairLowEdges, levelAtEdge, canStep, levelSeam,
+} from './rules/Elevation.js';
 
 // ── 정기 지출(유지비) — 171차 ──
 export type { UpkeepKind, UpkeepItem, UpkeepLedger, UpkeepContext, UpkeepPenalty } from './rules/Upkeep.js';

@@ -47,6 +47,8 @@ export interface ForageHost {
   floatingHint: (msg: string) => void;
   /** 미끄러짐 넉백 (방향 단위벡터) */
   knockback: (dx: number, dy: number) => void;
+  /** 183차 — 어장 경계 오버레이를 그릴지(dev 참고용). 없으면 그리지 않는다 */
+  devFarmOverlay?: () => boolean;
 }
 
 /**
@@ -319,6 +321,10 @@ export class ForageSystem {
   // ═══════════════════════════════════════════════════
 
   private drawFarms(): void {
+    // 183차 — 어장 경계(주황 점선·반투명 면·라벨)는 필드에 그리지 않는다(사용자: "노란색 점선 경계선이
+    //   뭔지 모르겠음 — 삭제"). 판정(조례 적발·채집 금지)은 그대로이고, 구역 진입은 채널 로그가 알린다.
+    //   dev 편집기(F7)가 열려 있을 때만 참고용으로 그린다.
+    if (!(import.meta.env.DEV && this.host.devFarmOverlay?.())) return;
     const tr = this.host.tr;
     const g = this.host.scene.add.graphics().setDepth(5.6);
     this.farmG = g;

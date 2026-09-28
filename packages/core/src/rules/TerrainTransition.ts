@@ -45,8 +45,9 @@
  *  - `built`     포장·차도·보도·광장 — 경계가 연석처럼 날카롭다
  *  - `structure` 방파제·부두 — 물과 만나면 발치(사석)가 생긴다
  *  - `blocked`   건물
+ *  - `rock`      갯바위·암반(183차) — 물과 만나면 젖은 띠, 다른 재료와는 날카로운 경계
  */
-export type TerrainClass = 'water' | 'organic' | 'granular' | 'bare' | 'built' | 'structure' | 'blocked';
+export type TerrainClass = 'water' | 'organic' | 'granular' | 'bare' | 'built' | 'structure' | 'blocked' | 'rock';
 
 export interface TerrainDef {
   ch: string;
@@ -80,6 +81,12 @@ export const TERRAIN_DEFS: readonly TerrainDef[] = Object.freeze([
   { ch: ',', nameKo: '잔디', nameEn: 'Grass', cls: 'organic', paint: 20, walkable: true },
   { ch: 'c', nameKo: '농경지', nameEn: 'Farmland', cls: 'organic', paint: 18, walkable: true },
   { ch: 'f', nameKo: '숲', nameEn: 'Woodland', cls: 'organic', paint: 16, walkable: true },
+  // 183차 — 갯바위 어휘 + 물 위 데크. OSM에는 없는 재료라 사진·위성 캡처에서 손으로 칠한다(patch).
+  //  k = 걷는 갯바위(해루질·갯바위 낚시 발판) · K = 오를 수 없는 암반·절벽(고지 — 층 경계와 함께 쓴다)
+  //  D = 물 위 데크·잔교(동명해교) — 걷기 가능, 물 위에 기둥으로 선다
+  { ch: 'k', nameKo: '갯바위', nameEn: 'Tidal rock', cls: 'rock', paint: 44, walkable: true },
+  { ch: 'K', nameKo: '암반 절벽', nameEn: 'Cliff rock', cls: 'rock', paint: 46, walkable: false },
+  { ch: 'D', nameKo: '데크', nameEn: 'Deck', cls: 'structure', paint: 68, walkable: true },
 ]);
 
 const BY_CH = new Map<string, TerrainDef>(TERRAIN_DEFS.map((d) => [d.ch, d]));
@@ -90,6 +97,10 @@ export function terrainPaint(ch: string): number { return BY_CH.get(ch)?.paint ?
 
 /** 172차 신설 문자 (구 8글자 맵에는 없다 — 파이프라인 재생성 후 나타난다) */
 export const TERRAIN_CHARS_V2 = ['p', 'd', 't', 'c', 'f'] as const;
+/** 183차 신설 문자 — 갯바위·절벽·데크 (patch 수동 지정 또는 빌더 태그 확장으로만 생긴다) */
+export const TERRAIN_CHARS_V3 = ['k', 'K', 'D'] as const;
+/** 암반 계열인가(갯바위 렌더 공유) */
+export function isRockTerrain(ch: string): boolean { return ch === 'k' || ch === 'K'; }
 
 // ─────────────────────────────────────────────
 // 2. 전이 종류
@@ -134,13 +145,19 @@ export function seamBetween(self: string, other: string): SeamRule {
 
   // ── 물가 ──
   if (b.cls === 'water') {
+    if (a.ch === 'D') return NONE;                    // 데크는 기둥 위에 떠 있다 — 물가 처리 없음
     if (a.cls === 'structure') return { kind: 'revet', strength: 1 };
     if (a.cls === 'granular') return { kind: 'foam', strength: 1 };
+    if (a.cls === 'rock') return { kind: 'foam', strength: 0.8 };      // 젖은 갯바위 띠 + 포말
     if (a.cls === 'organic' || a.cls === 'bare') return { kind: 'foam', strength: 0.65 };
     return { kind: 'curb', strength: 0.8 };          // 안벽
   }
   if (a.cls === 'water') return NONE;                 // 물 타일은 사진 셀이 전담한다
   if (a.cls === 'blocked' || b.cls === 'blocked') return NONE;
+  // ── 암반(183차) — 바위는 번지지 않고, 이웃도 바위 위로 흘러나오지 않는다(날카로운 경계) ──
+  if (a.cls === 'rock') return NONE;
+  if (b.cls === 'rock') return a.cls === 'built' ? { kind: 'curb', strength: 0.5 } : NONE;
+  if (a.ch === 'D' || b.ch === 'D') return NONE;      // 데크 가장자리는 렌더가 난간·기둥으로 그린다
 
   // ── 유기 지형은 스스로 번진다 (블롭이 곡선 경계를 만든다) ──
   if (a.cls === 'organic') return { kind: 'blob', strength: 1 };
@@ -226,6 +243,8 @@ export function reliefHeight(ch: string, breakwaterClass: number = 0): number {
   if (breakwaterClass === 1) return 3;
   if (breakwaterClass === 2) return 2;
   if (breakwaterClass === 3) return 1;
+  // 183차 — 갯바위는 물가로 완만히 내려가는 낮은 바위(2), 절벽·데크는 뭍과 같은 높이
+  if (ch === 'k') return 2;
   return terrainClass(ch) === 'granular' ? 1 : 3;
 }
 
@@ -237,7 +256,8 @@ export function reliefHeight(ch: string, breakwaterClass: number = 0): number {
  */
 export function castsReliefShadow(casterCh: string, casterBw: number, receiverCh: string): boolean {
   if (casterBw > 0 || casterCh === 'b') return true;
-  if (receiverCh !== '~') return false;                 // 뭍끼리는 방파제 단면만
+  if (casterCh === 'D') return true;                    // 데크는 물·갯바위 위에 그림자를 떨군다
+  if (receiverCh !== '~' && receiverCh !== 'k') return false;   // 뭍끼리는 방파제 단면만(갯바위는 물처럼 받는다)
   const cls = terrainClass(casterCh);
-  return cls === 'built' || cls === 'bare' || cls === 'structure';
+  return cls === 'built' || cls === 'bare' || cls === 'structure' || casterCh === 'K';
 }

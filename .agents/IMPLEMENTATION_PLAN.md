@@ -1,7 +1,8 @@
 # The Real Angler — 구현 계획서 (IMPLEMENTATION_PLAN)
 
-> **최종 업데이트**: 2026-09-28 — **178차: 상호작용 겹침 선택 + 바닥의 물건 + 인벤 드래그 표시 + 획득 알림 + 할 일 안내 토글**.
-> 상세 [워크로그 178](../docs/wiki/03-WORKLOG/2026-09-28-178-interact-overlap-ground-items.md).
+> **최종 업데이트**: 2026-09-28 — **183차: 고도 층·계단 + 어휘 k/K/D + 영금정 GIS 파일럿 + 방파제 피복 방위 + 도로 정리**.
+> 상세 [워크로그 183](../docs/wiki/03-WORKLOG/2026-09-28-183-elevation-yeonggeumjeong-gis-pilot.md).
+> 직전: 178차 상호작용 겹침 선택([워크로그 178](../docs/wiki/03-WORKLOG/2026-09-28-178-interact-overlap-ground-items.md)).
 > 직전: 177차 홈타운 NPC·일지 고정·컷씬 타이핑([워크로그 177](../docs/wiki/03-WORKLOG/2026-09-23-177-hometown-npc-journal-pin-cutscene-typing.md)).
 > 직전: 176차 어종 픽셀아트 6종([워크로그 176](../docs/wiki/03-WORKLOG/2026-09-23-176-fish-pixelart-6.md)).
 > 직전: 173차 사진 셀 전이·가로 시설물·집 내부([워크로그 173](../docs/wiki/03-WORKLOG/2026-09-23-173-photo-seam-street-furniture-home.md)) ·
@@ -34,6 +35,15 @@
 
 > **전체 위치**: 지금은 **Phase 6(게임플레이 심화 — 낚시·손질) 안의 "회뜨기(손질) 시스템"을 구현 중.**
 > 회뜨기는 낚시 루프에 붙는 **서브시스템 하나**다 — 완결되면 퀘스트/경영/제작 등 대과제로 넘어간다(아래 §차기 대과제).
+
+### ✅ 직전 완료 (183차, 2026-09-28) — 고도 층·계단 + 어휘 k/K/D + 영금정 GIS 파일럿 + 방파제 피복 방위 + 도로 정리
+
+- core `Elevation.ts`(정수 층 · 8방위 계단 · `canStep` · 장비 게이트 자리) + 어휘 `k`/`K`/`D` + `patch.levels/stairs/armor` · 층 경계 6px 벽.
+- ⚠ 테트라포드 전 해안 = 103차 추론 `'b'`가 영금정 갯바위까지 동명항 방파제와 한 성분(3,003타일) → `k` 재태깅 분리 + 피복 방위(동명항 동쪽만).
+- 영금정 = 작성기(`tools/author_yeonggeumjeong.py`) · 편집기 층/계단/피복 브러시 · [F] 힌트 중복 제거 · 어장 점선 미표시 · 시설물 줄기 바디 · 도로 마킹 3패스.
+- 검증: 실렌더 BFS 도달성 · 프롭 바디 정지 · 빌드 3/3 · typecheck 0 · pageerror 0. **미커밋 · 미배포**.
+  상세: [워크로그 183](../docs/wiki/03-WORKLOG/2026-09-28-183-elevation-yeonggeumjeong-gis-pilot.md).
+- **다음**: ① 방파제 피복 표(사용자 위성 캡처 대조) ② 184차 조도 재설계 ③ 속초 전역 GIS 스윕 ④ 건물 타일 키트.
 
 ### ✅ 직전 완료 (182차, 2026-09-28) — 조도 사진 셀 복구 · 소형 섬 암반 · 테트라포드 도안 배치 · 청크 선행 로드
 

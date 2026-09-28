@@ -34,6 +34,10 @@ PALETTE = {
     't': (108, 118, 104),   # 갯벌·습지
     'c': (150, 176, 88),    # 농경지
     'f': (54, 96, 54),      # 숲·관목
+    # 183차 어휘 — 갯바위(걷기 가능) · 암반 절벽(불가) · 데크/다리(물 위 보행)
+    'k': (96, 88, 80),
+    'K': (60, 50, 44),
+    'D': (176, 132, 84),
 }
 # 도로 폭은 **미터 기준** — TILE_M을 바꿔도 실폭이 유지된다 (구 타일 수 기준 폐기).
 #  차도(r)는 실제보다 다소 관대하게(게임 체감 — 캐릭터 대비 폭 확보), 보행로(w)는 실측 수준.
@@ -64,8 +68,10 @@ POI_TAGS = [
     ('man_made', 'lighthouse', 'lighthouse'), ('tourism', 'information', 'info'),
     ('tourism', 'viewpoint', 'viewpoint'), ('tourism', 'hotel', 'lodging'),
     ('tourism', 'guest_house', 'lodging'), ('leisure', 'fishing', 'fishing_spot'),
+    # 183차 — 정자·전망대 쉼터(영금정 정자 전망대·해돋이 전망대). 건물('#')로 채우지 않고 프롭으로 세운다
+    ('amenity', 'shelter', 'pavilion'),
 ]
-WALKABLE = b'.,rsbw'
+WALKABLE = b'.,rsbwkD'
 
 
 class Grid:
@@ -427,10 +433,22 @@ def build(region):
             pts = way_pts(wy, nodes, proj)
             if len(pts) >= 3 and pts[0] == pts[-1]:
                 fill_poly(grid, pts, 'b')
+            elif mm == 'pier':
+                stroke(grid, pts, 'D', 2)     # 183차 — 선형 pier = 잔교(데크)
             else:
                 stroke(grid, pts, 'b', 2)
+    # 183차 — 다리(bridge=yes 보행로·man_made=pier 선형)는 물 위 데크 'D'. 구 'b' 스트로크는 방파제 피복으로
+    #   렌더돼 동명해교가 소파블록 방파제처럼 보였다(사용자 캡처).
+    for wy in ways.values():
+        t = wy.get('tags', {})
+        if t.get('bridge') in ('yes', 'boardwalk') and t.get('highway') in SIDEWALK_M:
+            stroke(grid, way_pts(wy, nodes, proj), 'D', road_tiles(SIDEWALK_M[t['highway']]))
     for wy in ways.values():
         if tagged(wy, 'building'):
+            # 183차 — 정자(amenity=shelter/shelter_type=pavilion·정자)는 건물이 아니라 프롭 자리
+            t = wy.get('tags', {})
+            if t.get('amenity') == 'shelter' or t.get('building') in ('pavilion', 'gazebo'):
+                continue
             fill_poly(grid, way_pts(wy, nodes, proj), '#')
     for rl in rels:
         if tagged(rl, 'building'):

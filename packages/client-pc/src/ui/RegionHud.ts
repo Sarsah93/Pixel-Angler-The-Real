@@ -100,6 +100,10 @@ const MINI_COL: Record<RegionTerrain, number> = {
   tidal: 0x9c8f70,
   farm: 0x9aa855,
   wood: 0x4e7a3c,
+  // 183차 어휘 — 갯바위 · 암반 절벽 · 데크
+  rock: 0x7d7a74,
+  cliff: 0x5e5a55,
+  deck: 0xa78a5e,
 };
 
 const MINI_SIZES = [150, 250, 350] as const;

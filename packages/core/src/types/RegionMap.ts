@@ -34,7 +34,9 @@
  */
 export type RegionTerrain =
   | 'land' | 'water' | 'building' | 'grass' | 'road' | 'sidewalk' | 'sand' | 'pier'
-  | 'paved' | 'dirt' | 'tidal' | 'farm' | 'wood';
+  | 'paved' | 'dirt' | 'tidal' | 'farm' | 'wood'
+  // 183차 — 갯바위(걷기) · 암반 절벽(불가) · 물 위 데크(걷기)
+  | 'rock' | 'cliff' | 'deck';
 
 /** 지형 문자 → 지형 종류 매핑 */
 export const TERRAIN_BY_CHAR: Record<string, RegionTerrain> = {
@@ -52,10 +54,14 @@ export const TERRAIN_BY_CHAR: Record<string, RegionTerrain> = {
   't': 'tidal',
   'c': 'farm',
   'f': 'wood',
+  // 183차 신설
+  'k': 'rock',
+  'K': 'cliff',
+  'D': 'deck',
 };
 
-/** 이동 불가 지형 (그 외는 전부 걸을 수 있다) */
-const BLOCKED: ReadonlySet<RegionTerrain> = new Set<RegionTerrain>(['water', 'building']);
+/** 이동 불가 지형 (그 외는 전부 걸을 수 있다) — 183차: 절벽 추가 */
+const BLOCKED: ReadonlySet<RegionTerrain> = new Set<RegionTerrain>(['water', 'building', 'cliff']);
 
 /** 이동 가능 지형 판정 (심리스 v2 + 172차 확장 — 물·건물만 막는다) */
 export function isWalkableTerrain(t: RegionTerrain | undefined): boolean {
@@ -68,7 +74,7 @@ export function isWalkableTerrain(t: RegionTerrain | undefined): boolean {
  * 인접 검사는 그리드를 가진 호출측(씬)이 수행하고, 여기는 발판 지형 여부만 답한다.
  */
 export function isFishableStandTerrain(t: RegionTerrain | undefined): boolean {
-  return t === 'pier' || t === 'sand' || t === 'tidal';
+  return t === 'pier' || t === 'sand' || t === 'tidal' || t === 'rock' || t === 'deck';
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -95,7 +101,9 @@ export interface RegionMeta {
 export type PoiType =
   | 'shop' | 'toilet' | 'police' | 'ferry_terminal' | 'fuel' | 'restaurant'
   | 'cafe' | 'market' | 'bank' | 'pharmacy' | 'lighthouse' | 'info'
-  | 'viewpoint' | 'lodging' | 'fishing_spot';
+  | 'viewpoint' | 'lodging' | 'fishing_spot'
+  // 183차 — 정자·쉼터(amenity=shelter · shelter_type=gazebo). 건물 블록이 아니라 지물 프롭으로 선다
+  | 'pavilion';
 
 /** OSM 심리스 POI — 타일과 분리된 `pois.json` 항목 */
 export interface RegionPoi {
@@ -180,7 +188,20 @@ export interface RegionPatch {
   roads?: RegionRoad[];
   /** 개별 타일 그림 오버라이드 (106차 — 그림만, 걷기는 tiles가 결정) */
   tileTex?: RegionTileTex[];
+  /**
+   * 고도 층(183차) — `[col, row, level]`. 없는 타일은 0층. 이동은 같은 층끼리 또는 계단을 통해서만
+   * (`rules/Elevation.ts`). 층 경계는 절벽(옆면·그림자)으로 그려지고 벽으로 막힌다.
+   */
+  levels?: [number, number, number][];
+  /** 계단(183차) — 층 사이 1타일 전이 */
+  stairs?: RegionStair[];
+  /** 방파제 피복 지정(183차) — 성분별 테트라포드/사석 + 물 쪽 방위 */
+  armor?: RegionArmor[];
 }
+
+// 183차 — 계단·피복 계약은 규칙 모듈이 정본이다(판정 함수와 한 파일)
+import type { RegionStair, RegionArmor } from '../rules/Elevation.js';
+export type { RegionStair, RegionArmor };
 
 /**
  * 지역 렌더 모드 — 'seamless'면 SEAMLESS_REGIONS에 등록된 지역은

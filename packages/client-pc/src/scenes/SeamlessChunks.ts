@@ -17,9 +17,12 @@
  */
 
 import Phaser from 'phaser';
-import type { RegionRoad, RegionProp, RegionTileTex, RegionLight } from '@tra/core';
+import type { RegionRoad, RegionProp, RegionTileTex, RegionLight, RegionStair, RegionArmor, TileEdge, LevelCell } from '@tra/core';
 import { COAST_OBJECTS } from '../data/TileCatalog.js';
-import { seamBetween, terrainClass, terrainPaint, terrainGroup, reliefHeight, castsReliefShadow } from '@tra/core';
+import {
+  seamBetween, terrainClass, terrainPaint, terrainGroup, reliefHeight, castsReliefShadow, terrainDef, isRockTerrain,
+  canStep, stairHighEdges,
+} from '@tra/core';
 import { GRASS_EDGE_SUFFIXES, PAVED_EDGE_SUFFIXES, KENNEY_ROOF_COLORS, KENNEY_ROOF_PARTS, TTP_EDGE_TILES, TTP_UNITS, COAST_DECKS, COAST_RUBBLE, COAST_EDGE_SRC, COAST_ROCK_COUNT } from '../data/TilesetManifest.js';
 import { hasUsableTexture } from '../ui/CanvasTextureGuard.js';
 import { SURFACES, paintSurfaceAtlas, paintRockAtlas, paintTetrapod, paintStone, stoneCanvasSize, TETRA_ART, type SurfaceName, type TetraTone, type StoneTone } from './SurfaceArt.js';
@@ -150,6 +153,8 @@ export const PROP_DEFS: PropDef[] = [
   { id: 'boat', label: '어선', tex: 'smx_boat', cat: '차량', water: true, scale: 2 },
   // 하역 크레인(112차 항만 디테일) — 절차 베이크. 안벽 위 자동 산포 + 편집기 수동 배치
   { id: 'crane', label: '하역 크레인', tex: 'smx_crane', cat: '시설물' },
+  // 정자·전망대(183차 영금정) — 절차 베이크. OSM `amenity=shelter`(pavilion)은 '#' 건물이 아니라 이 프롭으로 세운다
+  { id: 'pavilion', label: '정자(전망대)', tex: 'smx_pavilion', cat: '시설물' },
   // (166차) 구 gem NPC 프롭 5종 삭제 — 마을 사람은 `FieldNpcSystem`(characterOf)이 만들고 스스로 걷는다.
   // 해안 (지형 패치 — 타일 중앙 앵커, 부두↔바다 경계에 놓는다)
   { id: 'tetra', label: '테트라포드 석축', tex: 'ts_ttp_ttp_l', cat: '해안', anchor: 'center' },
@@ -178,6 +183,10 @@ export interface SeamlessChunksConfig {
   tileTex?: RegionTileTex[];
   /** 항로표지 등대·등주 (lights.json — 114차). 방파제 두부 등에 프롭으로 선다 */
   lights?: RegionLight[];
+  /** 고도 층(183차 — patch.levels) · 계단 · 방파제 피복 지정 */
+  levels?: [number, number, number][];
+  stairs?: RegionStair[];
+  armor?: RegionArmor[];
   /** 건물 지붕 팔레트 오버라이드 — 컴포넌트 좌상단 "c,r" → 인덱스 */
   roofOverrides?: Record<string, number>;
   /** 고층 프리팹 자동 배치에서 제외할 건물 컴포넌트 키(씬이 POI 건물 스프라이트를 붙인 곳) */
@@ -463,6 +472,11 @@ export class SeamlessChunks {
   private surfAtlas = new Map<string, string>();
   /** 181차 — 방파제 스프라이트(테트라포드·돌) 준비 완료 */
   private armorReady = false;
+  /** 183차 — 고도 층(타일마다 0~) · 계단(키 = r*cols+c) · 피복 지정 · 성분 셀의 피복 여부(0 = 안벽 쪽) */
+  private levelGrid: Uint8Array = new Uint8Array(0);
+  private stairMap = new Map<number, RegionStair>();
+  private armorSpec: RegionArmor[] = [];
+  private bwArm: Uint8Array = new Uint8Array(0);
   /** 오토타일 엣지 셀 — 지형군('.', ',', 'b') → (접미 → 텍스처 키) */
   private edgeTex = new Map<string, Map<string, string>>();
   /** 물 타일 — [수심 버킷][변형] 텍스처 키 (절차 베이크) */
@@ -475,6 +489,9 @@ export class SeamlessChunks {
     this.chunkCols = Math.ceil(cfg.cols / this.cfg.chunkTiles);
     this.chunkRows = Math.ceil(cfg.rows / this.cfg.chunkTiles);
     this.walls = scene.physics.add.staticGroup();
+    this.armorSpec = cfg.armor ?? [];
+    this.levelGrid = new Uint8Array(cfg.cols * cfg.rows);
+    this.setLevels(cfg.levels ?? [], cfg.stairs ?? [], false);
     this.waterDist = this.computeWaterDistance();
     this.islet = this.computeIslets();
     this.isletDepth = this.computeIsletDepth();
@@ -1906,6 +1923,14 @@ export class SeamlessChunks {
       this.scene.physics.add.existing(body, true);
       this.walls.add(body);
       slot.bodies.push(body);
+    } else if (slot && !def.passable && tf?.free && !center && (def.cat === '자연' || def.cat === '시설물')) {
+      // 183차 — 자유 배치라도 나무·가로등·벤치·표지는 **몸통(줄기) 크기의 작은 바디**를 둔다.
+      //   사용자: "오브젝트 통과하는 것 방지". 173차가 전부 free로 둔 이유(1타일 보도가 통째로 막힘)는
+      //   10×8px(플레이어 바디 14px)라 보도 한 칸은 막혀도 옆 차도·맨땅으로 돌아간다.
+      const body = this.scene.add.rectangle(x, y - 4, 10, 8, 0x000000, 0);
+      this.scene.physics.add.existing(body, true);
+      this.walls.add(body);
+      slot.bodies.push(body);
     }
     return img;
   }
@@ -1975,9 +2000,103 @@ export class SeamlessChunks {
    */
   private isBlockedAt(c: number, r: number): boolean {
     const ch = this.tileAt(c, r);
-    if (ch === '~') return true;
+    if (ch === '~' || ch === 'K') return true;      // 183차 — 암반 절벽은 통째로 막는다
     if (ch !== '#') return false;
     return this.tileAt(c, r + 1) !== '#' || this.tileAt(c, r + 2) !== '#';
+  }
+
+  // ── 183차 · 고도 층 · 계단 ─────────────────────────────
+
+  /**
+   * 층·계단 목록 교체 (patch.levels / patch.stairs). 편집기가 부르면 상주 청크를 다시 굽는다 —
+   * 층 경계 벽은 충돌 바디라 재베이킹(buildChunkCollision)까지 가야 반영된다.
+   */
+  setLevels(levels: [number, number, number][], stairs: RegionStair[], rebake = true): void {
+    const { cols, rows } = this.cfg;
+    this.cfg.levels = levels;
+    this.cfg.stairs = stairs;
+    this.levelGrid.fill(0);
+    for (const [c, r, l] of levels) {
+      if (c < 0 || r < 0 || c >= cols || r >= rows) continue;
+      this.levelGrid[r * cols + c] = Math.max(0, Math.min(255, l | 0));
+    }
+    this.stairMap.clear();
+    for (const s of stairs) {
+      if (s.tx < 0 || s.ty < 0 || s.tx >= cols || s.ty >= rows) continue;
+      this.stairMap.set(s.ty * cols + s.tx, s);
+    }
+    if (rebake) this.rebakeResident();
+  }
+
+  /** 피복 지정 교체(편집기) — 방파제 분류를 다시 계산하고 상주 청크를 다시 굽는다 */
+  setArmor(armor: RegionArmor[]): void {
+    this.armorSpec = armor;
+    this.cfg.armor = armor;
+    this.bwClass = this.computeBreakwaters();
+    this.rebakeResident();
+  }
+
+  /** 방파제 성분 id (편집기 피복 지정) — 성분 밖 −1 */
+  breakwaterCompAt(c: number, r: number): number {
+    if (c < 0 || r < 0 || c >= this.cfg.cols || r >= this.cfg.rows) return -1;
+    return this.bwComp[r * this.cfg.cols + c];
+  }
+
+  levelAt(c: number, r: number): number {
+    if (c < 0 || r < 0 || c >= this.cfg.cols || r >= this.cfg.rows) return 0;
+    return this.levelGrid[r * this.cfg.cols + c]!;
+  }
+
+  stairAt(c: number, r: number): RegionStair | undefined {
+    return this.stairMap.get(r * this.cfg.cols + c);
+  }
+
+  /** 층 판정용 셀 — 걷기 여부는 지형 문자(core TERRAIN_DEFS) + 건물 하단 2줄 규칙 */
+  private levelCell(c: number, r: number): LevelCell {
+    const ch = this.tileAt(c, r);
+    const walkable = !(terrainDef(ch)?.walkable === false) && !this.isBlockedAt(c, r);
+    return { walkable, level: this.levelAt(c, r), stair: this.stairAt(c, r) };
+  }
+
+  /** (c, r)에서 `edge` 방향 이웃으로 한 칸 옮길 수 있는가 — 층·계단 규칙(core canStep) */
+  stepOk(c: number, r: number, edge: TileEdge): boolean {
+    const nc = c + (edge === 'e' ? 1 : edge === 'w' ? -1 : 0);
+    const nr = r + (edge === 's' ? 1 : edge === 'n' ? -1 : 0);
+    if (nc < 0 || nr < 0 || nc >= this.cfg.cols || nr >= this.cfg.rows) return false;
+    return canStep(this.levelCell(c, r), this.levelCell(nc, nr), edge);
+  }
+
+  /**
+   * 층 경계 벽(183차) — 같은 청크 안의 타일 변 중 **양쪽이 걸을 수 있는데 층 규칙이 막는 변**에
+   * 얇은 정적 바디를 세운다(동·남 변만 보면 모든 변을 한 번씩 본다 — 청크 경계 변은 서쪽/북쪽 청크가 소유).
+   * 계단 옆벽도 같은 규칙에서 나온다. 물·건물·절벽 자체는 타일 바디(buildChunkCollision 상단)가 맡는다.
+   */
+  private buildLevelWalls(c0: number, r0: number, c1: number, r1: number, slot: ChunkSlot): void {
+    if (this.stairMap.size === 0 && (this.cfg.levels?.length ?? 0) === 0) return;
+    const tr = this.cfg.tr;
+    const T = 6;                                       // 벽 두께(px) — 캐릭터 바디(≈20px)보다 훨씬 얇다
+    const add = (x: number, y: number, w: number, h: number): void => {
+      const rect = this.scene.add.rectangle(x + w / 2, y + h / 2, w, h, 0x000000, 0);
+      this.scene.physics.add.existing(rect, true);
+      this.walls.add(rect);
+      slot.bodies.push(rect);
+    };
+    for (let r = r0; r < r1; r++) {
+      for (let c = c0; c < c1; c++) {
+        const me = this.levelCell(c, r);
+        if (!me.walkable) continue;
+        // 동쪽 변
+        if (c + 1 < this.cfg.cols) {
+          const e = this.levelCell(c + 1, r);
+          if (e.walkable && !canStep(me, e, 'e')) add((c + 1) * tr - T / 2, r * tr, T, tr);
+        }
+        // 남쪽 변
+        if (r + 1 < this.cfg.rows) {
+          const s = this.levelCell(c, r + 1);
+          if (s.walkable && !canStep(me, s, 's')) add(c * tr, (r + 1) * tr - T / 2, tr, T);
+        }
+      }
+    }
   }
 
   /** 멀티소스 BFS — 비바다 타일에서 바다로 거리 전파 */
@@ -2212,6 +2331,7 @@ export class SeamlessChunks {
     const cls = new Uint8Array(n);
     this.bwComp = new Int32Array(n).fill(-1);
     this.bwInfo = [];
+    this.bwArm = new Uint8Array(n);
     const CAP = 7;
     // 1) dw — 물까지 거리, b/'.' 위로만 전파
     const dw = new Uint8Array(n).fill(CAP);
@@ -2305,16 +2425,38 @@ export class SeamlessChunks {
       //   더 많은 방파제는 **사석**(돌덩이)이다(사용자 지시 — "테트라포트가 없는 일반 돌덩이 방파제").
       //   OSM은 피복 재료를 알려주지 않으므로 규모·외해 노출로 추정한다.
       const seaRatio = sea / Math.max(1, sea + har);
-      const armor: 1 | 2 = cells.length >= 60 && seaRatio >= 0.5 ? 1 : 2;
+      let armor: 1 | 2 = cells.length >= 60 && seaRatio >= 0.5 ? 1 : 2;
+      // 183차 — 수동 피복 지정(patch.armor)이 규모 추정을 덮는다. 사용자: "테트라포드 방파제인 경우에만
+      //   한정해서 좌/우로 배치 … 한쪽에만 배치되는 경우도 있다(동명항 = 우측만)". 위성이 정답이라
+      //   OSM 추정은 지정이 없는 성분에만 남긴다.
+      const spec = this.armorSpec.find((a) => a.tx >= 0 && a.ty >= 0 && a.tx < cols && a.ty < rows && inComp[a.ty * cols + a.tx] === 1);
+      if (spec) armor = spec.kind === 'tetrapod' ? 1 : 2;
+      const sides = spec?.sides && spec.sides.length > 0 ? spec.sides : null;
       const info: BwArmorInfo = armor === 1
         ? { armor, dwMax, rubbleFrom: 2.5, deckFrom: dwMax >= 5 ? 3.5 : 2.5 }
         : { armor, dwMax, rubbleFrom: 0.5, deckFrom: dwMax <= 1 ? 0.97 : dwMax === 2 ? 1.5 : 1.75 };
       const id = this.bwInfo.length;
       this.bwInfo.push(info);
+      const DIRS4: [number, number, TileEdge][] = [[0, -1, 'n'], [1, 0, 'e'], [0, 1, 's'], [-1, 0, 'w']];
       for (const i of cells) {
         const d = dw[i];
         this.bwComp[i] = id;
-        cls[i] = armor === 1
+        // 피복이 깔리는 쪽인가 — 가장 가까운 물이 있는 방위(dw가 가장 작은 4-이웃)가 지정 방위에 들면 피복,
+        //   아니면 안벽(콘크리트 직벽 — 상판이 물가까지 이어진다)
+        let armed = 1;
+        if (sides) {
+          const c = i % cols, r = Math.floor(i / cols);
+          let best = d, bestE: TileEdge | null = null;
+          for (const [dc, dr, e] of DIRS4) {
+            const nc = c + dc, nr = r + dr;
+            if (nc < 0 || nr < 0 || nc >= cols || nr >= rows) continue;
+            const j = nr * cols + nc;
+            if (dw[j] < best) { best = dw[j]; bestE = e; }
+          }
+          armed = bestE === null ? 1 : sides.includes(bestE) ? 1 : 0;
+        }
+        this.bwArm[i] = armed;
+        cls[i] = !armed ? 1 : armor === 1
           ? (d <= 2 ? 3 : (d === 3 && dwMax >= 5 ? 2 : 1))
           : (d <= 1 ? 2 : 1);
       }
@@ -2386,6 +2528,32 @@ export class SeamlessChunks {
   }
 
   /**
+   * 이 타일에 피복(테트라포드·사석)이 깔리는가(183차). 성분 셀은 `bwArm`, 가장자리 물 타일은
+   * 8이웃 성분 셀 중 하나라도 피복이면 피복(그쪽으로 발치가 잠긴다) — 전부 안벽이면 0.
+   */
+  private bwArmAt(c: number, r: number): boolean {
+    const { cols, rows } = this.cfg;
+    if (c < 0 || r < 0 || c >= cols || r >= rows) return true;
+    const i = r * cols + c;
+    if (this.bwComp[i] >= 0) return this.bwArm[i] === 1;
+    let sawComp = false;
+    for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+      const cc = c + dc, rr = r + dr;
+      if (cc < 0 || rr < 0 || cc >= cols || rr >= rows) continue;
+      const j = rr * cols + cc;
+      if (this.bwComp[j] < 0) continue;
+      sawComp = true;
+      if (this.bwArm[j] === 1) return true;
+    }
+    return !sawComp;
+  }
+
+  private bwArmAtPx(wx: number, wy: number): boolean {
+    const tr = this.cfg.tr;
+    return this.bwArmAt(Math.floor(wx / tr), Math.floor(wy / tr));
+  }
+
+  /**
    * 방파제 단면을 2px 셀로 칠한다(181차) — 성분 타일과 그 가장자리 물 타일에서 호출.
    *  물 < 물가선(노이즈로 흔들린다) ≤ 피복 틈(아주 어둡게) / 사석 틈(어두운 갈색) < 돌길 옆면 < 돌길.
    *  물 쪽 띠에는 포말이 부서진다. 셀이 같은 색으로 이어지면 한 번에 칠한다(런 병합).
@@ -2397,7 +2565,9 @@ export class SeamlessChunks {
     const tr = this.cfg.tr;
     const seed = this.cfg.seed ^ 0x6b21;
     const wx0 = c * tr, wy0 = r * tr;
-    const wob = info.armor === 1 ? 0.26 : 0.18;
+    // 183차 — 피복이 없는 쪽(안벽)은 물가선이 곧고, 물가선 안쪽이 바로 돌길(콘크리트)이다
+    const quay = !this.bwArmAt(c, r);
+    const wob = quay ? 0.06 : info.armor === 1 ? 0.26 : 0.18;
     // 주조색 가중 — 셀마다 팔레트를 고르게 뽑으면 런이 끊겨 fillRect가 셀 수만큼 늘었다(굽기 +40%).
     //   바탕색 한 번 + 다른 셀만 덧칠하도록 대부분을 첫 색으로 모은다.
     const pick = (pal: readonly number[], h: number, main: number): number =>
@@ -2418,13 +2588,16 @@ export class SeamlessChunks {
         const ds = sp ? SeamlessChunks.segDist(wx / tr, wy / tr, sp) : 0;
         // 테트라포드는 바깥 한 겹이 **물에 발을 담근다** — 물가선 안쪽 0.3칸까지는 어두운 틈 대신
         //   물과 포말이 비친다(레퍼런스 ③: 바깥 블록 사이로 흰 포말이 부서진다)
-        const wlFill = info.armor === 1 ? wl + 0.3 : wl;
+        const wlFill = quay ? wl : info.armor === 1 ? wl + 0.3 : wl;
         if (f < wl) {
           // 물 — 구조물에 부딪혀 부서지는 포말(물가선에 가까울수록 짙다). 테트라포드는 더 거칠게 부순다
-          const band = info.armor === 1 ? 0.34 : 0.26;
+          const band = quay ? 0.16 : info.armor === 1 ? 0.34 : 0.26;
           const t = (f - (wl - band)) / band;
-          const dens = info.armor === 1 ? 0.85 : 0.62;
+          const dens = quay ? 0.4 : info.armor === 1 ? 0.85 : 0.62;
           if (t > 0 && h < t * t * dens) col = h < t * t * dens * 0.45 ? FOAM_A : FOAM_B;
+        } else if (quay) {
+          // 안벽 — 물가선에서 곧장 돌길. 가장자리 캡(밝은 모서리) + 캡 아래 그늘 한 줄
+          col = f < wl + 0.1 ? SLAB_EDGE : f < wl + 0.2 ? SLAB_FACE : h < 0.035 ? SLAB_SPECK : pick(SLAB, h, 0.8);
         } else if (f < wlFill) {
           const t = (f - wl) / 0.3;                              // 0 = 물가선 · 1 = 틈 시작
           col = h < 0.5 - t * 0.2 ? (h < 0.22 ? FOAM_A : FOAM_B) : t > 0.75 && h > 0.8 ? TTP_UNDER[0]! : -1;
@@ -2505,6 +2678,7 @@ export class SeamlessChunks {
           const x = x0 + (hj - 0.5) * 3, y = y0 + (hash2(seed ^ (0x21 + kind), Math.round(x0), Math.round(y0)) - 0.5) * 3;
           const info = this.bwInfoAt(x, y);
           if (!info || info.armor !== 1) continue;
+          if (!this.bwArmAtPx(x, y)) continue;               // 183차 — 안벽 쪽에는 테트라포드가 없다
           const f = this.bwField(x, y);
           const v = (isInv ? 0 : 3) + Math.floor(hj * 3) % 3;
           const at = { x: snap(x - half) - px0, y: snap(y - half) - py0 };
@@ -2532,6 +2706,7 @@ export class SeamlessChunks {
         const x = gx * S + hash2(seed ^ 0x3b, gx, gy) * 8 - 4, y = gy * S + hash2(seed ^ 0x3c, gx, gy) * 8 - 4;
         const info = this.bwInfoAt(x, y);
         if (!info) continue;
+        if (!this.bwArmAtPx(x, y)) continue;                 // 183차 — 안벽 쪽에는 돌도 없다
         const f = this.bwField(x, y);
         const v = Math.floor(h * 997) % SeamlessChunks.STONE_DIMS.length;
         const [w, hh] = SeamlessChunks.STONE_DIMS[v]!;
@@ -2781,6 +2956,178 @@ export class SeamlessChunks {
    * 초록 네모 격자로 보였다. 이제 월드 좌표 연속장 m(x, y) = 깊이(쌍선형) + 저주파 노이즈로
    * 2px 도트를 칠해 덩어리가 타일 변과 무관한 곡선으로 번진다(행 단위 런 병합으로 명령 수 절약).
    */
+  // ── 183차 · 갯바위·절벽·데크·층 단차·계단 렌더 ─────────────────────────
+
+  /** 절벽 'K' 윗면 — 마른 화강암의 밝은 점·균열 강조(아틀라스 판 위에 얹는다) */
+  private drawCliffTop(g: Phaser.GameObjects.Graphics, lx: number, ly: number, c: number, r: number): void {
+    const tr = this.cfg.tr, seed = this.cfg.seed ^ 0x4c1f;
+    for (let y = 0; y < tr; y += 2) {
+      for (let x = 0; x < tr; x += 2) {
+        const h = hash2(seed, c * tr + x, r * tr + y);
+        if (h > 0.9) { g.fillStyle(0xe4dccc, 0.35); g.fillRect(lx + x, ly + y, 2, 2); }
+        else if (h < 0.05) { g.fillStyle(0x3e3831, 0.35); g.fillRect(lx + x, ly + y, 2, 2); }
+      }
+    }
+  }
+
+  /** 데크 'D' — 세로 방향 판자(4px) + 줄눈, 물과 닿은 변에 난간 기둥·가장자리 */
+  private drawDeck(g: Phaser.GameObjects.Graphics, lx: number, ly: number, c: number, r: number): void {
+    const tr = this.cfg.tr, seed = this.cfg.seed ^ 0xdec0;
+    const PLANK = [0xa88c66, 0xa2865f, 0xae9270, 0x9c8059];
+    // 판자는 다리 진행 방향(긴 축)과 나란하다 — 좌우 물이면 가로 판자, 상하 물이면 세로 판자
+    const wN = this.tileAt(c, r - 1) === '~', wS = this.tileAt(c, r + 1) === '~';
+    const wW = this.tileAt(c - 1, r) === '~', wE = this.tileAt(c + 1, r) === '~';
+    const horiz = (wN || wS) && !(wW || wE) ? true : (wW || wE) && !(wN || wS) ? false : true;
+    for (let k = 0; k < tr; k += 4) {
+      const abs = horiz ? r * tr + k : c * tr + k;
+      const h = hash2(seed, horiz ? Math.floor(abs / 4) : c, horiz ? r : Math.floor(abs / 4));
+      g.fillStyle(PLANK[Math.floor(h * PLANK.length) % PLANK.length]!, 1);
+      if (horiz) g.fillRect(lx, ly + k, tr, 4); else g.fillRect(lx + k, ly, 4, tr);
+      g.fillStyle(0x5e4a34, 0.9);
+      if (horiz) g.fillRect(lx, ly + k + 3, tr, 1); else g.fillRect(lx + k + 3, ly, 1, tr);
+    }
+    // 판자 끝 이음(2타일마다 어긋남)
+    g.fillStyle(0x5e4a34, 0.7);
+    if (horiz) { const jx = ((c + r) % 2) * (tr / 2); g.fillRect(lx + jx, ly, 1, tr); }
+    else { const jy = ((c + r) % 2) * (tr / 2); g.fillRect(lx, ly + jy, tr, 1); }
+    // 물과 닿은 변 — 가장자리 보(어두운 2px) + 난간 기둥(6px 간격)
+    g.fillStyle(0x3f3225, 1);
+    if (wN) g.fillRect(lx, ly, tr, 2);
+    if (wS) g.fillRect(lx, ly + tr - 2, tr, 2);
+    if (wW) g.fillRect(lx, ly, 2, tr);
+    if (wE) g.fillRect(lx + tr - 2, ly, 2, tr);
+    g.fillStyle(0x6b7a86, 1);
+    for (let k = 2; k < tr; k += 8) {
+      if (wN) g.fillRect(lx + k, ly, 2, 4);
+      if (wS) g.fillRect(lx + k, ly + tr - 4, 2, 4);
+      if (wW) g.fillRect(lx, ly + k, 4, 2);
+      if (wE) g.fillRect(lx + tr - 4, ly + k, 4, 2);
+    }
+  }
+
+  /**
+   * 층 단차·계단·데크 기둥 — 청크의 모든 뭍 타일을 다시 훑는다(지형 그림 위).
+   *  - 남·동 변에 낮은 이웃 = 옆면(높이차 × 6px) · 북·서 변에 높은 이웃 = 내 타일에 그림자
+   *  - 계단으로 이어진 변은 단차를 그리지 않고 계단 그림이 잇는다
+   *  - 데크 남쪽이 물이면 물 위에 기둥·그림자
+   */
+  private drawLevelLayer(g: Phaser.GameObjects.Graphics, c0: number, r0: number, c1: number, r1: number): void {
+    const hasLevels = (this.cfg.levels?.length ?? 0) > 0 || this.stairMap.size > 0;
+    const tr = this.cfg.tr;
+    for (let r = r0; r < r1; r++) {
+      for (let c = c0; c < c1; c++) {
+        const ch = this.tileAt(c, r);
+        const lx = (c - c0) * tr, ly = (r - r0) * tr;
+        if (ch === 'D') {
+          // 물 위 기둥·그림자 — 남쪽 물 타일에 (같은 청크 안에서만)
+          if (this.tileAt(c, r + 1) === '~' && r + 1 < r1) {
+            g.fillStyle(0x0e1c26, 0.35); g.fillRect(lx, ly + tr, tr, 5);
+            g.fillStyle(0x3a3f47, 1);
+            for (let k = 4; k < tr; k += 12) g.fillRect(lx + k, ly + tr, 4, 7);
+          }
+        }
+        if (!hasLevels || ch === '~') continue;
+        const st = this.stairAt(c, r);
+        if (st) { this.drawStair(g, lx, ly, c, r, st); continue; }
+        this.drawLevelRelief(g, lx, ly, c, r);
+      }
+    }
+  }
+
+  private drawLevelRelief(g: Phaser.GameObjects.Graphics, lx: number, ly: number, c: number, r: number): void {
+    const tr = this.cfg.tr, cols = this.cfg.cols, rows = this.cfg.rows;
+    const me = this.levelCell(c, r);
+    const hMe = me.level;
+    const ch = this.tileAt(c, r);
+    const rock = isRockTerrain(ch) || this.islet[r * cols + c] === 1;
+    const FACE = rock ? 0x7a6f61 : 0x8c7350, FACE_LO = rock ? 0x574f45 : 0x6a5538, TOP = rock ? 0xd9d0bf : 0xcbb98d;
+    const sd = this.cfg.seed ^ 0x1e7e;
+    const DIRS: [number, number, TileEdge][] = [[0, -1, 'n'], [1, 0, 'e'], [0, 1, 's'], [-1, 0, 'w']];
+    for (const [dc, dr, edge] of DIRS) {
+      const nc = c + dc, nr = r + dr;
+      if (nc < 0 || nr < 0 || nc >= cols || nr >= rows) continue;
+      const nch = this.tileAt(nc, nr);
+      if (nch === '~' && !isRockTerrain(ch)) continue;          // 물가는 물가 규칙(포말·안벽)이 맡는다
+      const nb = this.levelCell(nc, nr);
+      const hN = nb.level;
+      if (hN === hMe) continue;
+      // 계단이 잇는 변은 계단 그림이 담당
+      if ((me.stair || nb.stair) && canStep(me, nb, edge)) continue;
+      const dh = Math.abs(hN - hMe);
+      if (hN < hMe) {
+        if (edge === 's') {
+          const face = Math.min(14, 6 * dh);
+          g.fillStyle(FACE, 1); g.fillRect(lx, ly + tr - face, tr, face);
+          g.fillStyle(FACE_LO, 1); g.fillRect(lx, ly + tr - 3, tr, 3);
+          // 옆면 결(2px 세로 균열)
+          for (let x = 0; x < tr; x += 2) {
+            if (hash2(sd, c * tr + x, r) > 0.8) { g.fillStyle(FACE_LO, 0.8); g.fillRect(lx + x, ly + tr - face + 2, 2, face - 4); }
+          }
+          g.fillStyle(TOP, 0.7); g.fillRect(lx, ly + tr - face - 2, tr, 2);
+        } else if (edge === 'e') {
+          g.fillStyle(FACE_LO, 0.9); g.fillRect(lx + tr - 3, ly, 3, tr);
+        } else {
+          g.fillStyle(TOP, 0.65);
+          if (edge === 'n') g.fillRect(lx, ly, tr, 2); else g.fillRect(lx, ly, 2, tr);
+        }
+      } else if (edge === 'n' || edge === 'w') {
+        // 높은 이웃이 북·서 — 내 타일에 그림자(높이차만큼 넓게)
+        const w = Math.min(14, 5 * dh);
+        for (let a = 0; a < tr; a += 2) {
+          for (let b = 0; b < w; b += 2) {
+            const px = edge === 'w' ? b : a, py = edge === 'n' ? b : a;
+            const t = 1 - b / w;
+            if (b >= 2 && hash2(sd ^ 3, c * tr + px, r * tr + py) > t * 0.95) continue;
+            g.fillStyle(0x0e0c0a, 0.45 * t + 0.1);
+            g.fillRect(lx + px, ly + py, 2, 2);
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * 계단 1타일 — 오르는 방향 `dir`을 따라 6px 단(디딤판 + 어두운 챌면). 대각 계단은 단이 45°로 눕는다.
+   * 직교 계단은 양옆에 난간(2px). 위층 쪽 끝에 밝은 모서리, 아래층 쪽 끝에 그림자.
+   */
+  private drawStair(g: Phaser.GameObjects.Graphics, lx: number, ly: number, c: number, r: number, st: RegionStair): void {
+    const tr = this.cfg.tr;
+    const rock = isRockTerrain(this.tileAt(c, r));
+    const TREAD = rock ? [0xc9c0ae, 0xbfb5a2] : [0xb9b2a6, 0xafa89b];
+    const RISER = rock ? 0x5f574c : 0x5a5650;
+    const d = st.dir;
+    const u = (x: number, y: number): number => {
+      const yn = tr - y;
+      switch (d) {
+        case 'n': return yn; case 's': return y; case 'e': return x; case 'w': return tr - x;
+        case 'ne': return (x + yn) / 2; case 'nw': return ((tr - x) + yn) / 2;
+        case 'se': return (x + y) / 2; default: return ((tr - x) + y) / 2;
+      }
+    };
+    const STEP = 6;
+    for (let y = 0; y < tr; y += 2) {
+      for (let x = 0; x < tr; x += 2) {
+        const uu = u(x + 1, y + 1);
+        const k = Math.floor(uu / STEP);
+        const riser = uu - k * STEP < 2;
+        g.fillStyle(riser ? RISER : TREAD[k % 2]!, 1);
+        g.fillRect(lx + x, ly + y, 2, 2);
+      }
+    }
+    // 난간 — 직교 계단만(대각은 네 변이 전부 통로)
+    g.fillStyle(0x4a4239, 1);
+    if (d === 'n' || d === 's') { g.fillRect(lx, ly, 2, tr); g.fillRect(lx + tr - 2, ly, 2, tr); }
+    else if (d === 'e' || d === 'w') { g.fillRect(lx, ly, tr, 2); g.fillRect(lx, ly + tr - 2, tr, 2); }
+    // 위층 쪽 밝은 테두리(높은 변) — 위층 바닥과 이어져 보이게
+    g.fillStyle(0xe6dcc8, 0.7);
+    for (const e of stairHighEdges(d)) {
+      if (e === 'n') g.fillRect(lx, ly, tr, 2);
+      else if (e === 's') g.fillRect(lx, ly + tr - 2, tr, 2);
+      else if (e === 'w') g.fillRect(lx, ly, 2, tr);
+      else g.fillRect(lx + tr - 2, ly, 2, tr);
+    }
+  }
+
   private drawIsletMoss(g: Phaser.GameObjects.Graphics, lx: number, ly: number, c: number, r: number): void {
     const tr = this.cfg.tr, cols = this.cfg.cols, rows = this.cfg.rows;
     const seed = this.cfg.seed;
@@ -2935,6 +3282,25 @@ export class SeamlessChunks {
       g.fillStyle(0x2a2f36, 1); g.fillRect(35, 28, 8, 4);              // 후크 블록
       g.fillStyle(COL.crane, 1); g.fillRect(8, 10, 12, 6);             // 운전실
       g.fillStyle(0x4a7aa8, 1); g.fillRect(10, 11, 6, 3);
+    });
+    // 정자(183차) — 팔각 기와지붕 + 기둥 4 + 난간 마루. 영금정·해돋이 전망대(사용자 캡처: 팔각 정자 2채)
+    bake('smx_pavilion', 52, 56, (g) => {
+      g.fillStyle(0x000000, 0.22); g.fillEllipse(26, 53, 44, 8);
+      g.fillStyle(0x9a9088, 1); g.fillRect(6, 44, 40, 8);              // 기단(석축)
+      g.fillStyle(0x6f6862, 1); g.fillRect(6, 50, 40, 2);
+      g.fillStyle(0x7a4f2e, 1);                                          // 기둥 4
+      for (const x of [10, 21, 30, 39]) g.fillRect(x, 26, 3, 20);
+      g.fillStyle(0x4f3220, 1); for (const x of [12, 23, 32, 41]) g.fillRect(x, 26, 1, 20);
+      g.fillStyle(0xb8865a, 1); g.fillRect(8, 38, 36, 3);                // 난간 마루
+      g.fillStyle(0x8a5f3a, 1); g.fillRect(8, 41, 36, 1);
+      g.fillStyle(0x3d4a5a, 1);                                          // 기와지붕(팔각 — 아랫단 넓게)
+      g.fillPoints([{ x: 26, y: 4 }, { x: 50, y: 24 }, { x: 46, y: 28 }, { x: 6, y: 28 }, { x: 2, y: 24 }], true);
+      g.fillStyle(0x56657a, 1);                                          // 지붕 면 하이라이트(좌)
+      g.fillPoints([{ x: 26, y: 6 }, { x: 14, y: 24 }, { x: 6, y: 24 }], true);
+      g.fillStyle(0x2c3642, 1); g.fillRect(2, 24, 48, 2);                // 처마선
+      for (let x = 4; x < 50; x += 6) { g.fillStyle(0x2c3642, 1); g.fillRect(x, 26, 2, 3); } // 처마 기와 끝
+      g.fillStyle(0x2c3642, 1); g.fillRect(24, 0, 4, 6);                 // 절병통
+      g.fillStyle(0x8a94a0, 1); g.fillRect(25, 1, 2, 3);
     });
     // 등대(114차) — 받침 + 테이퍼 탑 + 회랑 + 등롱 + 색 돔. 홍색 = 우현 · 백색+녹돔 = 좌현 · 백색
     const bakeLight = (key: string, W: number, H: number, tower: number, towerShade: number, cap: number, capShade: number) => {
@@ -3298,6 +3664,8 @@ export class SeamlessChunks {
         }
       }
     }
+    // 183차 — 층 경계·계단 옆벽 (청크 경계의 서·북 변은 이웃 청크가 세우므로 c0−1·r0−1 열/행도 본다)
+    this.buildLevelWalls(Math.max(0, c0 - 1), Math.max(0, r0 - 1), c1, r1, slot);
   }
 
   // ═══════════════════════════════════════════════════
@@ -4127,8 +4495,21 @@ export class SeamlessChunks {
   }
 
   /** 마킹 폴리라인을 회랑 밖 구간만 남기고 쪼갠다 (109차-b — 0.5타일 샘플링). */
-  private clipMarking(pl: [number, number][], selfRi: number): [number, number][][] {
-    if (!this.markSegs.length) return [pl];
+  private clipMarking(pl: [number, number][], selfRi: number, quads: readonly [number, number][][] = [], minLen = 2.5): [number, number][][] {
+    if (!this.markSegs.length && quads.length === 0) return [pl];
+    const inQuad = (x: number, y: number): boolean => {
+      for (const q of quads) {
+        let sign = 0, ok = true;
+        for (let i = 0; i < q.length; i++) {
+          const a = q[i], b = q[(i + 1) % q.length];
+          const cr = (b[0] - a[0]) * (y - a[1]) - (b[1] - a[1]) * (x - a[0]);
+          if (Math.abs(cr) < 1e-9) continue;
+          if (sign === 0) sign = Math.sign(cr); else if (Math.sign(cr) !== sign) { ok = false; break; }
+        }
+        if (ok) return true;
+      }
+      return false;
+    };
     const out: [number, number][][] = [];
     let cur: [number, number][] = [];
     const flush = (): void => { if (cur.length >= 2) out.push(cur); cur = []; };
@@ -4140,7 +4521,8 @@ export class SeamlessChunks {
       const n = Math.max(1, Math.ceil(len / 0.5));
       for (let k = 0; k < n; k++) {
         const t0 = (k / n) * len, t1 = ((k + 1) / n) * len;
-        if (this.markSuppressedAt(ax + ux * (t0 + t1) / 2, ay + uy * (t0 + t1) / 2, ux, uy, selfRi)) {
+        const mx = ax + ux * (t0 + t1) / 2, my = ay + uy * (t0 + t1) / 2;
+        if (this.markSuppressedAt(mx, my, ux, uy, selfRi) || inQuad(mx, my)) {
           flush();
         } else {
           if (cur.length === 0) cur.push([ax + ux * t0, ay + uy * t0]);
@@ -4149,10 +4531,10 @@ export class SeamlessChunks {
       }
     }
     flush();
-    return out.filter((sub) => {                    // 0.8타일 미만 부스러기 제거
+    return out.filter((sub) => {                    // 짧은 부스러기 제거 (183차 — 구 0.8타일은 교차부 색종이. 실선 2.5 · 점선 3.0)
       let l = 0;
       for (let i = 0; i < sub.length - 1; i++) l += Math.hypot(sub[i + 1][0] - sub[i][0], sub[i + 1][1] - sub[i][1]);
-      return l >= 0.8;
+      return l >= minLen;
     });
   }
 
@@ -4202,7 +4584,7 @@ export class SeamlessChunks {
     return pieces.filter((pc) => {
       let len = 0;
       for (let i = 0; i < pc.pts.length - 1; i++) len += Math.hypot(pc.pts[i + 1][0] - pc.pts[i][0], pc.pts[i + 1][1] - pc.pts[i][1]);
-      return len >= 1.2;
+      return len >= 2.0;                            // 183차 — 2타일 미만 조각은 마킹 색종이가 된다
     });
   }
 
@@ -4214,7 +4596,7 @@ export class SeamlessChunks {
   private drawCrosswalk(
     g: Phaser.GameObjects.Graphics, base: [number, number], u: [number, number], halfW: number,
     c0: number, r0: number, drawn: [number, number][][], mode: 'stop' | 'yield' | 'yield_only',
-    roadList: readonly number[],
+    roadList: readonly number[], dryRun = false,
   ): void {
     const tr = this.cfg.tr;
     const nx = -u[1], ny = u[0];
@@ -4224,6 +4606,7 @@ export class SeamlessChunks {
     // 회전교차로 진입부 — 양보선(흰 점선)을 정점 쪽에, 횡단보도는 1타일 뒤로 물린다 (규범도).
     // yield_only = 복합부 안(반경+2.5) — 양보선만
     if (mode === 'yield_only') {
+      if (dryRun) return;
       g.lineStyle(3, COL.roadLine, 0.9);
       for (let s = 0.05; s < inner; s += 0.36) {
         const ax = base[0] + nx * s, ay = base[1] + ny * s, bx = base[0] + nx * Math.min(inner, s + 0.2), by = base[1] + ny * Math.min(inner, s + 0.2);
@@ -4259,7 +4642,10 @@ export class SeamlessChunks {
       for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) if (segX(q[i], q[(i + 1) % 4], d[j], d[(j + 1) % 4])) return true;
       return false;
     };
+    const stripes: [number, number][][] = [];
+    let total = 0;
     for (let s = -inner; s + stripe <= inner + 0.01; s += stripe + gapS) {
+      total++;
       const q = quad(s, stripe);
       // 실제 도로에서 횡단보도는 겹치지 않는다 — 앞서 그린 횡단보도와 겹치는 줄무늬만 생략 (사용자 규칙)
       const mid: [number, number] = [(q[0][0] + q[2][0]) / 2, (q[0][1] + q[2][1]) / 2];
@@ -4268,9 +4654,14 @@ export class SeamlessChunks {
       const e0: [number, number] = [(q[0][0] + q[3][0]) / 2, (q[0][1] + q[3][1]) / 2];
       const e1: [number, number] = [(q[1][0] + q[2][0]) / 2, (q[1][1] + q[2][1]) / 2];
       if (!this.onAsphalt(mid[0], mid[1], roadList) || !this.onAsphalt(e0[0], e0[1], roadList) || !this.onAsphalt(e1[0], e1[1], roadList)) continue;
-      g.fillPoints(q.map(([x, y]) => ({ x: (x - c0) * tr, y: (y - r0) * tr })), true);
+      stripes.push(q);
     }
+    // 183차 — 줄무늬가 60% 미만만 남는 횡단보도는 통째로 생략한다(사선 교차·복합부에서 잘린 조각이
+    //   "교차로 한복판의 줄무늬 색종이"였다 — 사용자: "도로가 미적으로 지저분").
+    if (stripes.length < Math.max(3, Math.ceil(total * 0.6))) return;
+    if (!dryRun) for (const q of stripes) g.fillPoints(q.map(([x, y]) => ({ x: (x - c0) * tr, y: (y - r0) * tr })), true);
     drawn.push(quad(-inner, inner * 2));
+    if (dryRun) return;
     if (mode === 'stop') {
       // 정지선 — 우측통행이라 진입 차로(진행 방향 오른쪽 절반)에만, 횡단보도 앞.
       //   끝점이 차도 밖이면 안쪽으로 줄인다(106차-b — 도로 밖 침범 금지)
@@ -4343,6 +4734,14 @@ export class SeamlessChunks {
       }
     };
     const drawnCw: [number, number][][] = [];       // 이 청크에 그린 횡단보도 사각형 (겹침 생략용)
+    // 183차 — 횡단보도는 **선 마킹 뒤에** 그린다(다른 도로의 중앙선·차선이 줄무늬를 가로지르던 문제).
+    //   1패스: 자리만 정한다(dryRun — 사각형 수집) · 2패스: 선 마킹을 그 사각형에서 클립 · 3패스: 줄무늬.
+    type CwJob = { base: [number, number]; u: [number, number]; halfW: number; mode: 'stop' | 'yield' | 'yield_only' };
+    const cwJobs: CwJob[] = [];
+    const cwQueue = (base: [number, number], u: [number, number], halfW: number, mode: CwJob['mode']): void => {
+      cwJobs.push({ base, u, halfW, mode });
+      this.drawCrosswalk(g, base, u, halfW, c0, r0, drawnCw, mode, list, true);
+    };
     const nodeIsRoundabout = (p: [number, number] | undefined, self: number): boolean =>
       !!p && (this.nodeRoads.get(this.nodeKey(p)) ?? []).some((o) => o !== self && !!this.cfg.roads![o].roundabout);
     // 회전교차로 반경+2.5타일 안의 교차 정점 = 진입부 — 양보선만(횡단보도는 복잡부 밖에서)
@@ -4352,17 +4751,12 @@ export class SeamlessChunks {
       let l = 0; for (let i = 0; i < pts.length - 1; i++) l += Math.hypot(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1]); return l;
     };
     const roadLen = new Map<number, number>();
+    const linePieces: { ri: number; pts: [number, number][] }[] = [];
+    // 1패스 — 조각 나누기 + 횡단보도 자리 결정
     for (const ri of list) {
       const road = this.cfg.roads[ri];
       if (road.pts.length < 2) continue;
       const halfW = road.w / 2;
-      const lanesPerDir = Math.max(1, road.lanes ?? 1);
-      // 차선 기하 — 가장자리 여유 0.35타일 안쪽에 차로를 균등 배치 (차도 밴드 안에 들어온다)
-      const edgeM = 0.35;
-      // 일방통행·회전교차로 링 = 중앙선 없음, 전 폭을 한 방향 차로로
-      const oneway = !!road.oneway || !!road.roundabout;
-      const laneW = oneway ? Math.max(0.5, (road.w - edgeM * 2) / lanesPerDir) : Math.max(0.5, (halfW - edgeM) / lanesPerDir);
-      const dash = tr / 2, gap = tr / 2;             // 타일당 대시 1개 (격자 정합)
       // 교차 정점에서 조각으로 나눠 교차로 박스 안은 비운다 (리포트 4 — 마킹 관통 금지)
       for (const piece of this.markingPieces(road, ri)) {
         const pts = piece.pts;
@@ -4385,24 +4779,34 @@ export class SeamlessChunks {
           if (piece.cutEnd && mEnd) {
             const u = dirAt(pts[pts.length - 2], pts[pts.length - 1]);
             const b = pts[pts.length - 1];
-            if (!this.markSuppressedAt(b[0], b[1], u[0], u[1], ri)) {
-              this.drawCrosswalk(g, b, u, halfW, c0, r0, drawnCw, mEnd, list);
-            }
+            if (!this.markSuppressedAt(b[0], b[1], u[0], u[1], ri)) cwQueue(b, u, halfW, mEnd);
           }
           if (piece.cutStart && mStart) {
             const u = dirAt(pts[1], pts[0]);
-            if (!this.markSuppressedAt(pts[0][0], pts[0][1], u[0], u[1], ri)) {
-              this.drawCrosswalk(g, pts[0], u, halfW, c0, r0, drawnCw, mStart, list);
-            }
+            if (!this.markSuppressedAt(pts[0][0], pts[0][1], u[0], u[1], ri)) cwQueue(pts[0], u, halfW, mStart);
           }
         }
+        linePieces.push({ ri, pts });
+      }
+    }
+    // 2패스 — 선 마킹 (횡단보도 사각형 안은 비운다)
+    for (const { ri, pts } of linePieces) {
+      {
+        const road = this.cfg.roads[ri];
+        const halfW = road.w / 2;
+        const lanesPerDir = Math.max(1, road.lanes ?? 1);
+        const edgeM = 0.35;
+        const oneway = !!road.oneway || !!road.roundabout;
+        const laneW = oneway ? Math.max(0.5, (road.w - edgeM * 2) / lanesPerDir) : Math.max(0.5, (halfW - edgeM) / lanesPerDir);
+        const dash = tr / 2, gap = tr / 2;
         // 마킹 회랑 클리핑 (109차-b) — 정점 없는 기하 교차(이중도로 상대·회전교차로 링·중간
         //   관통)에서 마킹이 교차로 안을 지나가지 않게, 모든 선형 마킹을 클리핑 경유로 그린다.
         const solidC = (pl: [number, number][]): void => {
-          for (const sub of this.clipMarking(pl, ri)) solid(sub);
+          for (const sub of this.clipMarking(pl, ri, drawnCw)) solid(sub);
         };
         const dashedC = (pl: [number, number][]): void => {
-          for (const sub of this.clipMarking(pl, ri)) dashed(sub, dash, gap);
+          if (pieceLen(pl) < 2.0) return;            // 183차 — 대시 한두 개짜리 조각은 그리지 않는다
+          for (const sub of this.clipMarking(pl, ri, drawnCw, 3.0)) dashed(sub, dash, gap);
         };
         // 중앙선은 이면도로(w<2.5 — 골목·주차장 통로)에는 긋지 않는다(106차-b) — 실도로에서
         //   서비스 도로엔 중앙선이 없다. 구 규칙(w>=2 전부)은 주차장 통로에 노란 고리를 그렸다.
@@ -4449,6 +4853,9 @@ export class SeamlessChunks {
         }
       }
     }
+    // 3패스 — 횡단보도·정지선을 선 위에 (같은 순서로 다시 돌리면 겹침 판정도 1패스와 같다)
+    drawnCw.length = 0;
+    for (const j of cwJobs) this.drawCrosswalk(g, j.base, j.u, j.halfW, c0, r0, drawnCw, j.mode, list);
     // 신호 교차로 — 대각선 횡단보도 (스크램블 X자, 신호 교차로 전용 — 후속 7 보류분 해소)
     this.drawScrambleCrosswalks(g, c0, r0, list, drawnCw);
     // 마킹 위에 얹는 시설 — 분리섬이 중앙선 끝·횡단보도 가운데를 덮는다 (보행 대피섬)
@@ -4632,7 +5039,7 @@ export class SeamlessChunks {
           if (!p0 || !pm || !p1) continue;
           const ul = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]) || 1;
           const nx = -(p1[1] - p0[1]) / ul, ny = (p1[0] - p0[0]) / ul;
-          const w0 = Math.min(ap.w * 0.3, 1.0);
+          const w0 = Math.min(ap.w * 0.22, 0.7);      // 183차 — 가늘게(구 0.3·1.0은 도로 폭의 1/3을 먹는 덩어리)
           const tear = (a: [number, number], t: [number, number], wa: number): { x: number; y: number }[] => [
             { x: L(a[0] + nx * wa / 2), y: T(a[1] + ny * wa / 2) },
             { x: L(pm[0] + nx * wa * 0.35), y: T(pm[1] + ny * wa * 0.35) },
@@ -4681,8 +5088,16 @@ export class SeamlessChunks {
             break;                                    // 이미 그리던 중이면 여기서 마감
           }
           const ux = sx / dist, uy = sy / dist;
-          left.push([PA[0] + ux * inA, PA[1] + uy * inA]);
-          right.push([PB[0] - ux * inB, PB[1] - uy * inB]);
+          // 183차 — 두 밴드 사이를 통째로 채우지 않는다. 사이 폭이 넓어질수록 섬이 큰 회색 쐐기로
+          //   보였다(사용자: "도로가 미적으로 지저분"). 실제 분리섬은 **가는 물방울꼴** — 반폭을
+          //   0.55타일로 캡하고 링 쪽 코는 0.12타일로 좁힌다.
+          const mx = (PA[0] + PB[0]) / 2, my = (PA[1] + PB[1]) / 2;
+          const avail = (dist - inA - inB) / 2 - 0.06;
+          const taper = 0.12 + 0.43 * Math.min(1, si / Math.max(1, STEPS * 0.55));
+          const hw = Math.min(avail, taper);
+          if (hw < 0.1) { if (left.length === 0) continue; break; }
+          left.push([mx - ux * hw, my - uy * hw]);
+          right.push([mx + ux * hw, my + uy * hw]);
         }
         if (left.length < 2) continue;
         const poly = [...left, ...right.slice().reverse()];
@@ -4839,7 +5254,14 @@ export class SeamlessChunks {
           }
           // 섬/암초('.') — 밑에 얕은 물 셀을 깔아둔다 (절차 패스가 모서리를 45°로 깎아
           // 암반을 그릴 때 깎인 부분이 물로 보이게). 포장 베이스는 생략
-          if (this.islet[r * cols + c] && ch === '.') {
+          // 183차 — 데크('D')는 물 위에 떠 있다: 물 셀을 깔고 판자는 절차 패스가 그린다
+          if (ch === 'D') {
+            if (this.waterTex.length > 0 && this.waterTex[0].length > 0) {
+              slot.rt.batchDraw(this.waterTex[0][Math.floor(hash2(seed ^ 0x77aa, c, r) * this.waterTex[0].length) % this.waterTex[0].length], dx, dy);
+            }
+            continue;
+          }
+          if ((this.islet[r * cols + c] && ch === '.') || isRockTerrain(ch)) {
             if (this.waterTex.length > 0 && this.waterTex[0].length > 0) {
               slot.rt.batchDraw(this.waterTex[0][Math.floor(hash2(seed ^ 0x77aa, c, r) * this.waterTex[0].length) % this.waterTex[0].length], dx, dy);
             }
@@ -5143,11 +5565,14 @@ export class SeamlessChunks {
         //    (위성 실사 정합: 밝은 암반 + 물가 젖은 바위 림 + 안쪽 초지 이끼).
         //    사각 도장 방지: 볼록 모서리(두 직교 + 대각이 물)는 45° 삼각 암반 — 밑에 깔린
         //    얕은 물(L1)이 깎인 부분에 드러난다 ──
-        if (ch === '.' && this.islet[r * cols + c]) {
+        if ((ch === '.' && this.islet[r * cols + c]) || isRockTerrain(ch)) {
           const wN = at(c, r - 1) === '~', wS = at(c, r + 1) === '~';
           const wW = at(c - 1, r) === '~', wE = at(c + 1, r) === '~';
           const tri = this.isletCutAt(c, r);
           const RIM = 0x6e6355;
+          // 183차 — 갯바위 'k'는 물가 젖은 톤(어둡고 푸르스름) · 절벽 'K'는 마른 화강암(밝은 점)
+          if (ch === 'k' && this.waterDist[r * cols + c] <= 1) { g.fillStyle(0x24343e, 0.2); g.fillRect(lx, ly, tr, tr); }
+          if (ch === 'K') this.drawCliffTop(g, lx, ly, c, r);
           if (this.surfAtlas.has('islet')) {
             // 182차 — 암반은 L1 아틀라스가 깔았다. 여기서는 물가 젖은 림 + 연속 이끼만
             if (tri) {
@@ -5165,7 +5590,7 @@ export class SeamlessChunks {
               if (wS) g.fillRect(lx, ly + tr - 3, tr, 3);
               if (wW) g.fillRect(lx, ly, 3, tr);
               if (wE) g.fillRect(lx + tr - 3, ly, 3, tr);
-              this.drawIsletMoss(g, lx, ly, c, r);
+              if (ch === '.') this.drawIsletMoss(g, lx, ly, c, r);
             }
             continue;
           }
@@ -5188,10 +5613,12 @@ export class SeamlessChunks {
             if (wS) g.fillRect(lx, ly + tr - 3, tr, 3);
             if (wW) g.fillRect(lx, ly, 3, tr);
             if (wE) g.fillRect(lx + tr - 3, ly, 3, tr);
-            this.drawIsletMoss(g, lx, ly, c, r);
+            if (ch === '.') this.drawIsletMoss(g, lx, ly, c, r);
           }
           continue;
         }
+        // ── 데크 'D'(183차) — 물 위 판자. 절차 패스 여기서 끝(단차·기둥은 drawLevelLayer) ──
+        if (ch === 'D') { this.drawDeck(g, lx, ly, c, r); continue; }
 
         // ── 육상 기본색 (Kenney 베이스가 깔린 타일은 접경 처리만) ──
         if (based) {
@@ -5406,6 +5833,9 @@ export class SeamlessChunks {
         }
       }
     }
+
+    // 183차 — 고도 층 단차(옆면·그림자)·계단·데크 기둥 — 모든 지형 그림 위에 얹는다
+    this.drawLevelLayer(g, c0, r0, c1, r1);
 
     // 차도 마킹 (벡터) — 타일 위에 얹는다
     this.drawRoadMarkings(g, idx, c0, r0);

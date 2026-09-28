@@ -25,6 +25,7 @@ import {
   // 149차 — 구멍치기(테트라포드·사석 틈)
   type HoleSpotInfo, type StorySpotKind,
   holeKindOfBreakwaterClass, evaluateHoleSpot, holeSlipChance, holeGearWarning,
+  STAIR_DIR_LABEL,
 } from '@tra/core';
 import { openContextMenu } from '../ui/ContextMenu.js';
 import { PeerInfoPanel } from '../ui/PeerInfoPanel.js';
@@ -264,7 +265,7 @@ export class RegionFieldScene extends Phaser.Scene {
   /** 현재 스트로크의 변경 타일 (재베이킹 대상) */
   private editDirty = new Map<number, { c: number; r: number }>();
   /** 되돌리기 스택 — 스트로크 단위 [타일 idx → 이전 문자] (+ 프롭 스냅샷) */
-  private editUndo: { tiles: Map<number, string>; props?: RegionPatch['props']; roofs?: RegionPatch['roofs']; roads?: RegionRoad[]; tileTex?: RegionPatch['tileTex'] }[] = [];
+  private editUndo: { tiles: Map<number, string>; props?: RegionPatch['props']; roofs?: RegionPatch['roofs']; roads?: RegionRoad[]; tileTex?: RegionPatch['tileTex']; levels?: RegionPatch['levels']; stairs?: RegionPatch['stairs']; armor?: RegionPatch['armor'] }[] = [];
   /** 스트로크 시작 시점의 타일 그림 오버라이드 스냅샷 (되돌리기용 — 106차) */
   private editTexPrev: RegionPatch['tileTex'] | null = null;
   /** 도로 툴 — 드래그 중인 정점 [도로, 정점] */
@@ -625,7 +626,6 @@ export class RegionFieldScene extends Phaser.Scene {
     this.events.once('shutdown', () => this.clearPeers());
     // 지연 생성 Text — shutdown 때 디스플레이 리스트가 파괴해 캔버스 컨텍스트가 null이 된 채 참조만 남는다
     //   (홈타운 재진입 시 setText → Frame.updateUVs → drawImage null = 사용자 리포트의 실제 스택).
-    this.objHintText = undefined;
     // NPC 근접 힌트도 같은 수명 문제를 가진다. 홈타운에서 만든 Text를 속초 씬이
     // 재사용하면 첫 updateNpcHint()의 setText가 파괴된 CanvasTexture를 갱신한다.
     this.npcHintText = undefined;
@@ -685,6 +685,8 @@ export class RegionFieldScene extends Phaser.Scene {
         tiles: patch?.tiles ?? [], props: patch?.props ?? [], roofs: patch?.roofs ?? {},
         ...(patch?.roads ? { roads: patch.roads } : {}),
         tileTex: patch?.tileTex ?? [],
+        // 183차 — 고도 층·계단·방파제 피복(영금정 파일럿). 없으면 빈 배열 = 전부 평지·181차 크기 기반 피복
+        levels: patch?.levels ?? [], stairs: patch?.stairs ?? [], armor: patch?.armor ?? [],
       };
       // 패치 타일 오버라이드를 런타임 지형에 반영 (재빌드 없이 F5 반영)
       const rows = this.mapData.terrain.slice();
@@ -719,6 +721,7 @@ export class RegionFieldScene extends Phaser.Scene {
           ? ((this.cache.json.get(`rlights_${this.seamlessDef.dataRegion}`) as RegionLight[] | undefined) ?? [])
           : [],
         roofOverrides: this.regionPatch.roofs,
+        levels: this.regionPatch.levels ?? [], stairs: this.regionPatch.stairs ?? [], armor: this.regionPatch.armor ?? [],
         cols: this.cols, rows: this.rows, tr: TR, seed: mapSeed >>> 0,
         chunkTiles: RegionFieldScene.SEAMLESS_CHUNK_TILES,
         onChunkLoad: (cc, cr) => this.loadChunkPois(cc, cr),
@@ -900,7 +903,7 @@ export class RegionFieldScene extends Phaser.Scene {
       for (let c = 0; c < this.cols; c++) {
         const t = TERRAIN_BY_CHAR[line[c]] ?? 'land';
         trow.push(t);
-        brow.push(t === 'water' || t === 'building');
+        brow.push(t === 'water' || t === 'building' || t === 'cliff');
       }
       this.terrain.push(trow);
       this.blocked.push(brow);
@@ -1067,7 +1070,7 @@ export class RegionFieldScene extends Phaser.Scene {
       for (let r = 0; r < this.rows; r++) {
         for (let c = 0; c < this.cols; c++) {
           const t = this.terrain[r][c];
-          if (t === 'water' || t === 'building') continue;
+          if (t === 'water' || t === 'building' || t === 'cliff') continue;
           const meCh = LEGACY_CH[t] ?? '.';
           const NB: [number, number, string][] = [
             [0, -1, 'n'], [0, 1, 's'], [-1, 0, 'w'], [1, 0, 'e'],
@@ -1893,7 +1896,7 @@ export class RegionFieldScene extends Phaser.Scene {
             this.mapData.terrain[r] = row.slice(0, c) + st.tileChar + row.slice(c + 1);
             const t = TERRAIN_BY_CHAR[st.tileChar] ?? 'land';
             this.terrain[r][c] = t;
-            this.blocked[r][c] = t === 'water' || t === 'building';
+            this.blocked[r][c] = t === 'water' || t === 'building' || t === 'cliff';
           }
           const at = texList.findIndex((t) => t.tx === c && t.ty === r);
           if (st.tileTex) {
@@ -1938,9 +1941,62 @@ export class RegionFieldScene extends Phaser.Scene {
       this.editRoadNewAddPoint(w.x / TR, w.y / TR);
       return;
     }
-    // 프롭/지붕은 스트로크당 1회 (드래그 반복 방지)
+    // 183차 — 층 브러시(드래그 가능 · 한 스트로크에 같은 칸은 한 번만)
+    if (st.mode === 'level') {
+      const key = trw * this.cols + tc;
+      if (this.editDirty.has(key)) return;
+      if (!this.editDirty.has(-2)) {
+        this.editUndo.push({ tiles: new Map(), levels: (this.regionPatch.levels ?? []).map((l) => [l[0], l[1], l[2]] as [number, number, number]) });
+        this.editDirty.set(-2, { c: -1, r: -1 });
+      }
+      const levels = this.regionPatch.levels ?? (this.regionPatch.levels = []);
+      const half = Math.floor(st.brush / 2);
+      for (let dr = -half; dr <= half; dr++) for (let dc = -half; dc <= half; dc++) {
+        const c = tc + dc, r = trw + dr;
+        if (c < 0 || c >= this.cols || r < 0 || r >= this.rows) continue;
+        const at = levels.findIndex((l) => l[0] === c && l[1] === r);
+        const cur = at >= 0 ? levels[at][2] : 0;
+        const next = Math.max(0, cur + st.levelDelta);
+        if (at >= 0) { if (next === 0) levels.splice(at, 1); else levels[at][2] = next; }
+        else if (next > 0) levels.push([c, r, next]);
+        this.editDirty.set(r * this.cols + c, { c: -1, r: -1 });
+      }
+      this.editDirty.set(key, { c: -1, r: -1 });
+      this.chunks?.setLevels(levels, this.regionPatch.stairs ?? []);
+      const lv = levels.find((l) => l[0] === tc && l[1] === trw)?.[2] ?? 0;
+      setMapEditorStatus(`층 ${st.levelDelta > 0 ? '+1' : '−1'} → (${tc}, ${trw}) = ${lv}층 · 층 지정 ${levels.length}칸`);
+      return;
+    }
+    // 프롭/지붕/계단/피복은 스트로크당 1회 (드래그 반복 방지)
     if (this.editDirty.has(-1)) return;
     this.editDirty.set(-1, { c: tc, r: trw });
+    if (st.mode === 'stair') {
+      // 계단 = 1타일 전이. from = 낮은 변 이웃의 층, to = from + 1 (없으면 이 칸의 층 기준)
+      const stairs = this.regionPatch.stairs ?? (this.regionPatch.stairs = []);
+      this.editUndo.push({ tiles: new Map(), stairs: stairs.map((q) => ({ ...q })) });
+      const lvAt = (c: number, r: number): number => (this.regionPatch.levels ?? []).find((l) => l[0] === c && l[1] === r)?.[2] ?? 0;
+      const lowDir = { n: [0, 1], s: [0, -1], e: [-1, 0], w: [1, 0], ne: [-1, 1], nw: [1, 1], se: [-1, -1], sw: [1, -1] }[st.stairDir];
+      const from = lvAt(tc + lowDir[0], trw + lowDir[1]);
+      const at = stairs.findIndex((q) => q.tx === tc && q.ty === trw);
+      const entry = { tx: tc, ty: trw, dir: st.stairDir, from, to: from + 1 };
+      if (at >= 0) stairs[at] = entry; else stairs.push(entry);
+      this.chunks?.setLevels(this.regionPatch.levels ?? [], stairs);
+      setMapEditorStatus(`계단 ${STAIR_DIR_LABEL[st.stairDir]} → (${tc}, ${trw}) ${from}층 → ${from + 1}층 · 계단 ${stairs.length}개`);
+      return;
+    }
+    if (st.mode === 'armor') {
+      const armor = this.regionPatch.armor ?? (this.regionPatch.armor = []);
+      this.editUndo.push({ tiles: new Map(), armor: armor.map((q) => ({ ...q, sides: q.sides ? [...q.sides] : undefined })) });
+      const comp = this.chunks?.breakwaterCompAt(tc, trw) ?? -1;
+      if (comp < 0) { setMapEditorStatus('방파제 성분 타일(b)을 클릭하세요'); this.editUndo.pop(); return; }
+      // 같은 성분의 기존 지정은 지운다(성분당 1건)
+      for (let i = armor.length - 1; i >= 0; i--) if (this.chunks?.breakwaterCompAt(armor[i].tx, armor[i].ty) === comp) armor.splice(i, 1);
+      const sides = st.armorSides.length ? [...st.armorSides] : undefined;
+      armor.push({ tx: tc, ty: trw, kind: st.armorKind, ...(sides ? { sides } : {}) });
+      this.chunks?.setArmor(armor);
+      setMapEditorStatus(`피복 ${st.armorKind === 'tetrapod' ? '테트라포드' : '사석'}${sides ? ` (${sides.join('/')})` : ' (전 방위)'} → 성분 #${comp} (${tc}, ${trw}) · 지정 ${armor.length}건`);
+      return;
+    }
     if (st.mode === 'prop') {
       const def = PROP_DEFS.find((d) => d.id === st.propId);
       if (!def) return;
@@ -2238,6 +2294,30 @@ export class RegionFieldScene extends Phaser.Scene {
     }
   }
 
+  /** 183차 — 우클릭: 계단 제거 / 방파제 피복 지정 해제 */
+  private editRemoveLevelSpec(p: Phaser.Input.Pointer): void {
+    const w = this.pointerWorld(p);
+    const tc = Math.floor(w.x / TR), trw = Math.floor(w.y / TR);
+    if (mapEditorState.mode === 'stair') {
+      const stairs = this.regionPatch.stairs ?? [];
+      const at = stairs.findIndex((q) => q.tx === tc && q.ty === trw);
+      if (at < 0) { setMapEditorStatus('제거할 계단이 없습니다'); return; }
+      this.editUndo.push({ tiles: new Map(), stairs: stairs.map((q) => ({ ...q })) });
+      stairs.splice(at, 1);
+      this.chunks?.setLevels(this.regionPatch.levels ?? [], stairs);
+      setMapEditorStatus(`계단 제거 (${tc}, ${trw}) · 계단 ${stairs.length}개`);
+    } else {
+      const armor = this.regionPatch.armor ?? [];
+      const comp = this.chunks?.breakwaterCompAt(tc, trw) ?? -1;
+      const before = armor.length;
+      this.editUndo.push({ tiles: new Map(), armor: armor.map((q) => ({ ...q, sides: q.sides ? [...q.sides] : undefined })) });
+      for (let i = armor.length - 1; i >= 0; i--) if (comp >= 0 && this.chunks?.breakwaterCompAt(armor[i].tx, armor[i].ty) === comp) armor.splice(i, 1);
+      if (armor.length === before) { this.editUndo.pop(); setMapEditorStatus('이 성분에 피복 지정이 없습니다'); return; }
+      this.chunks?.setArmor(armor);
+      setMapEditorStatus(`피복 지정 해제 — 성분 #${comp} · 지정 ${armor.length}건 (규모 추정으로 복귀)`);
+    }
+  }
+
   /** 스트로크 확정 — 변경 타일을 패치에 기록하고 영향 청크 재베이킹 */
   private editFinishStroke(): void {
     this.editPainting = false;
@@ -2300,6 +2380,16 @@ export class RegionFieldScene extends Phaser.Scene {
       this.chunks?.setTileTex(last.tileTex);
       this.chunks?.rebakeResident();
     }
+    // 183차 — 층·계단·피복
+    if (last.levels || last.stairs) {
+      if (last.levels) this.regionPatch.levels = last.levels;
+      if (last.stairs) this.regionPatch.stairs = last.stairs;
+      this.chunks?.setLevels(this.regionPatch.levels ?? [], this.regionPatch.stairs ?? []);
+    }
+    if (last.armor) {
+      this.regionPatch.armor = last.armor;
+      this.chunks?.setArmor(last.armor);
+    }
     const dirty: { c: number; r: number }[] = [];
     for (const [key, ch] of last.tiles) {
       const c = key % this.cols, r = Math.floor(key / this.cols);
@@ -2307,7 +2397,7 @@ export class RegionFieldScene extends Phaser.Scene {
       this.mapData.terrain[r] = row.slice(0, c) + ch + row.slice(c + 1);
       const t = TERRAIN_BY_CHAR[ch] ?? 'land';
       this.terrain[r][c] = t;
-      this.blocked[r][c] = t === 'water' || t === 'building';
+      this.blocked[r][c] = t === 'water' || t === 'building' || t === 'cliff';
       dirty.push({ c, r });
     }
     if (dirty.length > 0) { this.editSyncTilePatch(); this.chunks?.invalidateTiles(dirty); }
@@ -2323,8 +2413,9 @@ export class RegionFieldScene extends Phaser.Scene {
     });
     if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
     const t = this.regionPatch;
-    this.hud?.pushLog(`[dev] patch.json 저장 — 타일 ${t.tiles.length} · 프롭 ${t.props.length} · 지붕 ${Object.keys(t.roofs).length}`);
-    return `저장됨 — 타일 ${t.tiles.length} · 프롭 ${t.props.length} · 지붕 ${Object.keys(t.roofs).length}\n(재빌드 시 build_region_maps가 굽는다)`;
+    const extra = ` · 층 ${t.levels?.length ?? 0} · 계단 ${t.stairs?.length ?? 0} · 피복 ${t.armor?.length ?? 0}`;
+    this.hud?.pushLog(`[dev] patch.json 저장 — 타일 ${t.tiles.length} · 프롭 ${t.props.length} · 지붕 ${Object.keys(t.roofs).length}${extra}`);
+    return `저장됨 — 타일 ${t.tiles.length} · 프롭 ${t.props.length} · 지붕 ${Object.keys(t.roofs).length}${extra}\n(재빌드 시 build_region_maps가 굽는다)`;
   }
 
   // ═══════════════════════════════════════════════════
@@ -2463,6 +2554,11 @@ export class RegionFieldScene extends Phaser.Scene {
       }
       if (import.meta.env.DEV && this.seamless && isMapEditorOpen() && p.rightButtonDown() && mapEditorState.mode === 'roadNew') {
         this.editRoadNewUndoPoint();
+        return;
+      }
+      if (import.meta.env.DEV && this.seamless && isMapEditorOpen() && p.rightButtonDown()
+        && (mapEditorState.mode === 'stair' || mapEditorState.mode === 'armor')) {
+        this.editRemoveLevelSpec(p);
         return;
       }
       if (import.meta.env.DEV && this.seamless && p.leftButtonDown()) {
@@ -4115,8 +4211,7 @@ export class RegionFieldScene extends Phaser.Scene {
     g.destroy();
   }
 
-  /** 상호작용 가능한 오브젝트 근접 감지 → [E] 힌트 */
-  private objHintText?: Phaser.GameObjects.Text;
+  /** 상호작용 가능한 오브젝트 근접 감지 → `nearObject` (안내는 178차 머리 위 [F] 힌트가 맡는다) */
   private updateObjectProximity(): void {
     if (this.region !== 'hometown') return;
     const px = this.playerBody.x, py = this.playerBody.y;
@@ -4132,27 +4227,8 @@ export class RegionFieldScene extends Phaser.Scene {
     }
     this.nearObject = nearest;
 
-    // [E] 힌트 (플레이어 머리 위)
-    if (nearest && !this.uiBlocked && !this.placing) {
-      const label = this.objInteractLabel(nearest);
-      if (!this.objHintText) {
-        this.objHintText = this.add.text(0, 0, '', {
-          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#ffe9b0', fontStyle: 'bold',
-          backgroundColor: '#0a1628cc', padding: { x: 5, y: 2 },
-        }).setOrigin(0.5, 1).setDepth(30);
-      }
-      try {
-        this.objHintText.setText(label).setPosition(px, this.playerLabelY - 20).setVisible(true);
-      } catch (e) {
-        // Scene shutdown can destroy Phaser Text's backing canvas before a
-        // final proximity tick returns. Drop the stale reference and let the
-        // next active tick recreate it instead of propagating drawImage null.
-        console.warn('[RegionFieldScene] 오래된 오브젝트 힌트 텍스트 폐기', e);
-        this.objHintText = undefined;
-      }
-    } else {
-      this.objHintText?.setVisible(false);
-    }
+    // 183차 — 구 근접 힌트(44차 `objHintText`)는 지웠다. 178차 머리 위 `[F]` 안내(`updateStoryProximity`)가
+    // 같은 오브젝트를 이미 알리므로 두 개가 겹쳐 떴다(사용자 캡처: 출조 버스). `nearObject`만 남긴다.
   }
 
   /** 설치물이 **기능**을 가졌는가 (회수만 되는 울타리 등과 구분) */
@@ -6035,10 +6111,9 @@ export class RegionFieldScene extends Phaser.Scene {
     this.nearWater = !!found;
     this.updateHoleSpot();
     if (this.castBusy) { this.promptText.setVisible(false); return; }
-    // 건물 근접 힌트가 캐스팅 힌트보다 우선
+    // 건물 근접은 178차 머리 위 [F] 안내가 알린다(183차 — 하단 중복 문구 제거). 건물 앞에서는 캐스팅 힌트를 내지 않는다.
     if (this.nearBuilding) {
-      this.promptText.setText(`[F] ${BUILDING_LABEL[this.nearBuilding.kind]} — 거래하기`);
-      this.promptText.setVisible(true);
+      this.promptText.setVisible(false);
     } else if (this.holeSpot && InventoryStore.getEquippedRod()) {
       // 149차 — 블록 위에 서면 캐스팅보다 구멍치기가 먼저 안내된다(여기서 할 조법이다)
       this.promptText.setText(

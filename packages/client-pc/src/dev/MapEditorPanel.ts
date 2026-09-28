@@ -13,10 +13,11 @@
  * 프로덕션 빌드에서는 import.meta.env.DEV 가드로 데드코드 제거.
  */
 
+import { STAIR_DIRS, STAIR_DIR_LABEL, type StairDir, type TileEdge } from '@tra/core';
 import { PLACEABLE_TILES } from '../data/TileCatalog.js';
 import { tilesetPathOf } from '../data/TilesetManifest.js';
 
-export type MapEditMode = 'tile' | 'prop' | 'erase' | 'roof' | 'road' | 'roadNew';
+export type MapEditMode = 'tile' | 'prop' | 'erase' | 'roof' | 'road' | 'roadNew' | 'level' | 'stair' | 'armor';
 
 export interface MapEditorState {
   mode: MapEditMode;
@@ -38,6 +39,11 @@ export interface MapEditorState {
   roadCls: string;
   roadW: number;
   roadLanes: number;
+  /** 183차 — 층 브러시(+1/−1) · 계단 방향 · 피복 종류/방위 */
+  levelDelta: 1 | -1;
+  stairDir: StairDir;
+  armorKind: 'tetrapod' | 'rubble';
+  armorSides: TileEdge[];
 }
 
 /** 새 도로 프리셋 — [라벨, cls, w, lanes] */
@@ -75,6 +81,16 @@ export const TILE_PALETTE: [string, string, string, string | null][] = [
   ['s', '모래', '#e8d9a0', 'tileset/kn/ground_sand_0.png'],
   ['b', '방파제', '#7a8894', 'tileset/kn/ground_pier_0.png'],
   ['#', '건물', '#4a4a52', 'tileset/kn/roof_gray_in.png'],
+  // 172차 어휘
+  ['p', '포장 광장', '#a8a49c', null],
+  ['d', '흙바닥', '#92704a', null],
+  ['t', '갯벌', '#6c7668', null],
+  ['c', '농경지', '#96b058', null],
+  ['f', '숲', '#366036', null],
+  // 183차 어휘 — 갯바위(걷기 가능) · 암반 절벽(불가) · 데크(물 위 보행)
+  ['k', '갯바위', '#605850', null],
+  ['K', '암반 절벽', '#3c322c', null],
+  ['D', '데크/다리', '#b08454', null],
 ];
 
 let root: HTMLDivElement | null = null;
@@ -84,6 +100,7 @@ export const mapEditorState: MapEditorState = {
   mode: 'tile', tileChar: '.', propId: 'tree', brush: 1,
   tileTex: null, rot: 0, fx: false, fy: false, overlap: false,
   roadCls: 'residential', roadW: 3, roadLanes: 1,
+  levelDelta: 1, stairDir: 'n', armorKind: 'tetrapod', armorSides: [],
 };
 
 /** 회전/반전/겹침 토글 — 씬의 키 핸들러(R/X/Y/O)도 이걸 호출한다 */
@@ -288,7 +305,30 @@ export function openMapEditor(region: string, propDefs: MapEditorPropEntry[], ho
   const eraseSec = sec(pages.objects, '');
   eraseSec.appendChild(btn('🗑 오브젝트 제거 (3×3)', () => { mapEditorState.mode = 'erase'; }, () => mapEditorState.mode === 'erase'));
 
-  // ── 도구 탭 ──
+  // ── 도구 탭 — 183차 고도 층·계단·피복 ──
+  const lvSec = sec(pages.tools, '고도 층 (patch.levels — 같은 층끼리만 걷고, 단차는 계단으로만)');
+  lvSec.appendChild(btn('▲ 층 +1 (클릭·드래그)', () => { mapEditorState.mode = 'level'; mapEditorState.levelDelta = 1; },
+    () => mapEditorState.mode === 'level' && mapEditorState.levelDelta === 1));
+  lvSec.appendChild(btn('▼ 층 −1', () => { mapEditorState.mode = 'level'; mapEditorState.levelDelta = -1; },
+    () => mapEditorState.mode === 'level' && mapEditorState.levelDelta === -1));
+  const stSec = sec(pages.tools, '계단 (오르는 방향 — 클릭 = 놓기 · 우클릭 = 제거)');
+  for (const d of STAIR_DIRS) {
+    stSec.appendChild(btn(STAIR_DIR_LABEL[d], () => { mapEditorState.mode = 'stair'; mapEditorState.stairDir = d; },
+      () => mapEditorState.mode === 'stair' && mapEditorState.stairDir === d));
+  }
+  const arSec = sec(pages.tools, '방파제 피복 (성분 클릭 — 위성 실측대로 · 우클릭 = 지정 해제)');
+  arSec.appendChild(btn('테트라포드', () => { mapEditorState.mode = 'armor'; mapEditorState.armorKind = 'tetrapod'; },
+    () => mapEditorState.mode === 'armor' && mapEditorState.armorKind === 'tetrapod'));
+  arSec.appendChild(btn('사석(돌덩이)', () => { mapEditorState.mode = 'armor'; mapEditorState.armorKind = 'rubble'; },
+    () => mapEditorState.mode === 'armor' && mapEditorState.armorKind === 'rubble'));
+  const sideRow = sec(pages.tools, '피복 방위 (비우면 전 방위)');
+  for (const [e, label] of [['n', '북'], ['e', '동(우)'], ['s', '남'], ['w', '서(좌)']] as [TileEdge, string][]) {
+    sideRow.appendChild(btn(label, () => {
+      const i = mapEditorState.armorSides.indexOf(e);
+      if (i >= 0) mapEditorState.armorSides.splice(i, 1); else mapEditorState.armorSides.push(e);
+    }, () => mapEditorState.armorSides.includes(e)));
+  }
+
   const roadSec = sec(pages.tools, '도로 벡터 (roads.json 오버라이드)');
   roadSec.appendChild(btn('🛣 도로 정점 편집', () => { mapEditorState.mode = 'road'; }, () => mapEditorState.mode === 'road'));
   roadSec.appendChild(btn('➕ 새 도로 그리기', () => { mapEditorState.mode = 'roadNew'; }, () => mapEditorState.mode === 'roadNew'));
