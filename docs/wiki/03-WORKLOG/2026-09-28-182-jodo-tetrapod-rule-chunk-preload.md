@@ -134,6 +134,6 @@
 - [x] `02-SYSTEMS/world-field.md` §4 행 · §5 잔여 · §6 함정 3건
 - [x] `04-BACKLOG.md` AE ① 해소 · 성능 행 갱신
 - [x] `.agents/AGENTS.md` §9 · `.agents/IMPLEMENTATION_PLAN.md` · `CLAUDE.md` 직전 작업
-- [x] gh-pages 18차 배포
+- [x] gh-pages 19차 배포(18차 = 174~179차)
 
 ![182 전/후](182-jodo-tetrapod-preload.png)
