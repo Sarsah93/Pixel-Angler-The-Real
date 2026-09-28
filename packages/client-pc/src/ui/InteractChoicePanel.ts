@@ -51,6 +51,11 @@ export class InteractChoicePanel extends DraggablePanel {
   private subPanel?: InteractChoicePanel;
   private cursor = 0;
   private keyHandler?: (ev: KeyboardEvent) => void;
+  /**
+   * 키 입력을 받아도 되는지 묻는 문(門) — 씬이 배선한다.
+   * 위에 다른 창이 겹친 동안 ↑↓/←→/Enter가 **아래의 선택지를 조작하는** 것을 막는다.
+   */
+  keyGate?: () => boolean;
   private readonly onFinish: () => void;
   /** 하위 패널이면 true — ESC가 자기만 닫는다 */
   private readonly isSub: boolean;
@@ -174,6 +179,7 @@ export class InteractChoicePanel extends DraggablePanel {
   }
 
   private onKey(ev: KeyboardEvent): void {
+    if (this.keyGate && !this.keyGate()) return;
     const active = this.subPanel ?? this;
     switch (ev.key) {
       case 'ArrowUp':
@@ -183,6 +189,16 @@ export class InteractChoicePanel extends DraggablePanel {
       case 'ArrowDown':
         active.cursor = (active.cursor + 1) % Math.min(active.opts.length, MAX_ROWS);
         active.renderRows();
+        break;
+      // 창이 떠 있는 동안 캐릭터는 어차피 멈춰 있다(`uiBlocked`) — 좌우는 펼침/접기에 쓴다
+      case 'ArrowRight': {
+        const o = active.opts[active.cursor];
+        if (o?.sub) active.openSub(o);   // ▶ 표시가 있는 행은 우측으로 펼친다
+        break;
+      }
+      case 'ArrowLeft':
+        // 펼친 하위 목록을 접어 본 목록으로 돌아온다 (ESC 1단계와 같다)
+        if (this.subPanel) { this.subPanel.destroy(); this.subPanel = undefined; }
         break;
       case 'Enter':
         active.choose();

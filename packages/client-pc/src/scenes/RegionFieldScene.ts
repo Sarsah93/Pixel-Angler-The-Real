@@ -410,6 +410,20 @@ export class RegionFieldScene extends Phaser.Scene {
   }
 
   /**
+   * 패널 단축키(E·I·U·S·B·L·K·J·M·F1)를 받지 않아야 하는 상태 (178차).
+   *
+   * 「상호작용」 선택 창은 "지금 이 자리에서 무엇을 할까"를 묻는 **순간 선택**이다.
+   * 그 위에 다른 창이 겹치면 ↑↓/Enter가 어느 창의 것인지 알 수 없다 —
+   * 실측: 선택 창을 띄운 채 `E`로 장비창을 열고 Enter를 누르면 **아래의 선택지가 실행**됐다.
+   * 답하거나 ESC로 닫은 뒤에 열도록 한다.
+   *
+   * ⚠ `uiBlocked`로 막지 않는다 — 인벤토리 ↔ 장비창 **동시 열기**는 72차 드래그 장착의 전제다.
+   */
+  private get panelHotkeyBlocked(): boolean {
+    return this.isPaused || !!this.interactPanel;
+  }
+
+  /**
    * 팝업 버튼 클릭이 같은 프레임에 씬 pointerdown으로 흘러
    * 캐스팅 시도("물가에서 던지세요" 힌트)로 새는 것을 방지하는 유예 시각.
    */
@@ -2337,12 +2351,12 @@ export class RegionFieldScene extends Phaser.Scene {
 
     // M: 미니맵 / I: 인벤토리 / S: 스테이터스 / U: 활용 / E: 상호작용·장비
     // 155차 — M = 전체 지도 오버레이(휠 줌). 미니맵 크기는 타이틀바 [−][+]가 맡는다.
-    this.input.keyboard!.on('keydown-M', () => { if (!this.isPaused) this.toggleFullMap(); });
-    this.input.keyboard!.on('keydown-I', () => { if (!this.isPaused) this.toggleInventory(); });
-    this.input.keyboard!.on('keydown-F1', (e: KeyboardEvent) => { e.preventDefault?.(); if (!this.isPaused) this.openHelpLibrary(); });
-    this.input.keyboard!.on('keydown-S', () => { if (!this.isPaused) this.toggleStatus(); });
-    this.input.keyboard!.on('keydown-U', () => { if (!this.isPaused) this.toggleUtilization('tackles'); });
-    this.input.keyboard!.on('keydown-B', () => { if (!this.isPaused) this.toggleCooler(); });
+    this.input.keyboard!.on('keydown-M', () => { if (!this.panelHotkeyBlocked) this.toggleFullMap(); });
+    this.input.keyboard!.on('keydown-I', () => { if (!this.panelHotkeyBlocked) this.toggleInventory(); });
+    this.input.keyboard!.on('keydown-F1', (e: KeyboardEvent) => { e.preventDefault?.(); if (!this.panelHotkeyBlocked) this.openHelpLibrary(); });
+    this.input.keyboard!.on('keydown-S', () => { if (!this.panelHotkeyBlocked) this.toggleStatus(); });
+    this.input.keyboard!.on('keydown-U', () => { if (!this.panelHotkeyBlocked) this.toggleUtilization('tackles'); });
+    this.input.keyboard!.on('keydown-B', () => { if (!this.panelHotkeyBlocked) this.toggleCooler(); });
     this.input.keyboard!.on('keydown-R', (e: KeyboardEvent) => {
       // 편집기가 열려 있으면 R = 배치 회전(자전거 승·하차보다 우선 — 106차)
       if (isMapEditorOpen()) { rotateEditorPlacement(e.shiftKey ? -1 : 1); return; }
@@ -2355,7 +2369,7 @@ export class RegionFieldScene extends Phaser.Scene {
       this.scene.launch('AnglerLogScene', { returnScene: 'RegionFieldScene' });
     });
     // E = 장비창 전용 · F = 상호작용 (122차 — 사용자 지시: E가 장비창과 혼용되던 것을 분리)
-    this.input.keyboard!.on('keydown-E', () => { if (!this.isPaused) this.toggleEquipment(); });
+    this.input.keyboard!.on('keydown-E', () => { if (!this.panelHotkeyBlocked) this.toggleEquipment(); });
     this.input.keyboard!.on('keydown-F', (ev: KeyboardEvent) => {
       if (this.isPaused || this.uiBlocked) return;
       // 160차 — 스토리 현장 지점은 무엇보다 먼저 소비한다. 같은 장소에서 도현수와
@@ -2372,13 +2386,20 @@ export class RegionFieldScene extends Phaser.Scene {
       // 178차 — 상호작용이 겹치면 무엇을 할지 고른다 (하나면 바로 실행)
       const opts = this.collectInteractOptions();
       if (!opts.length) return;
-      if (opts.length === 1) { opts[0].run?.(); return; }
+      if (opts.length === 1) {
+        const only = opts[0];
+        // 후보가 하나인데 그 하나가 「펼쳐지는 것」이면(= 바닥에 물건만 여러 개) 그 목록을 바로 연다.
+        // ⚠ 여기서 `run?.()`만 부르면 `run`이 없어 **[F]가 조용히 아무것도 하지 않는다**(실측).
+        if (only.sub) { this.openInteractChoice(only.sub(), only.label); return; }
+        only.run?.();
+        return;
+      }
       this.openInteractChoice(opts);
     });
     // L 면허 · K 스킬 · J 일지 (122차 복원)
-    this.input.keyboard!.on('keydown-L', () => { if (!this.isPaused) this.togglePanel('license'); });
-    this.input.keyboard!.on('keydown-K', () => { if (!this.isPaused) this.togglePanel('skill'); });
-    this.input.keyboard!.on('keydown-J', () => { if (!this.isPaused) this.togglePanel('journal'); });
+    this.input.keyboard!.on('keydown-L', () => { if (!this.panelHotkeyBlocked) this.togglePanel('license'); });
+    this.input.keyboard!.on('keydown-K', () => { if (!this.panelHotkeyBlocked) this.togglePanel('skill'); });
+    this.input.keyboard!.on('keydown-J', () => { if (!this.panelHotkeyBlocked) this.togglePanel('journal'); });
 
     // ── 145차 지역 채널 채팅 — Enter로 열고 Enter로 보낸다 ──
     this.input.keyboard!.on('keydown-ENTER', () => {
@@ -5446,16 +5467,22 @@ export class RegionFieldScene extends Phaser.Scene {
   }
 
   /** 겹침 선택 창 — 캐릭터 아래가 기본 위치, 드래그로 옮길 수 있다 */
-  private openInteractChoice(opts: InteractOption[]): void {
+  private openInteractChoice(opts: InteractOption[], title = '상호작용'): void {
     this.closeInteractChoice();
     const cam = this.cameras.main;
     const sx = (this.playerBody.x - cam.worldView.x) * cam.zoom;
     const sy = (this.playerBody.y - cam.worldView.y) * cam.zoom;
     const pos = InteractChoicePanel.placeNear(sx, sy, opts.length);
     this.interactPanel = this.openPopup(
-      (close) => new InteractChoicePanel(this, pos.x, pos.y, opts, close),
+      (close) => new InteractChoicePanel(this, pos.x, pos.y, opts, close, title),
       () => { this.interactPanel = undefined; },
     );
+    // 위에 다른 창이 겹치면 ↑↓/←→/Enter를 넘기지 않는다 (단축키로 겹칠 길은 막았지만 안전망 —
+    //  클릭 포커스로 다른 패널이 위로 올라온 경우도 같이 걸린다)
+    this.interactPanel.keyGate = () => {
+      const p = this.interactPanel;
+      return !!p && !this.popupStack.some((e) => e.panel !== p && e.panel.depth >= p.depth);
+    };
   }
 
   private closeInteractChoice(): void {
