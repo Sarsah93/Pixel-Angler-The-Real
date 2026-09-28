@@ -358,7 +358,9 @@ def build_seamless(root, region):
     if os.path.exists(patch_path):
         with open(patch_path, encoding='utf-8') as f:
             loaded = json.load(f)
-        patch.update({k: loaded.get(k, v) for k, v in patch.items()})
+        # ⚠ 모든 키를 보존한다(182차). 구: 3키 화이트리스트라 172차 재빌드 때 `tileTex`
+        #   (115·116차 조도 사진 셀 1,074개)가 런타임 patch.json에서 조용히 사라졌다.
+        patch.update(loaded)
         applied = 0
         for c, r, tch in patch['tiles']:
             if 0 <= c < w and 0 <= r < h and tch in OSM_PALETTE:

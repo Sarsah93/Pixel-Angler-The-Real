@@ -98,6 +98,61 @@ export function paintSurfaceAtlas(ctx: CanvasRenderingContext2D, size: number, s
   }
 }
 
+/**
+ * 주기 보로노이 — 격자 `n`×`n`(주기 `size`) 안의 특징점까지 가장 가까운 거리 F1·두 번째 F2와
+ * 가장 가까운 칸 번호. F2 − F1이 작은 곳이 **판 경계**(각진 균열)다. 주기라 아틀라스 이음이 없다.
+ */
+function worley(seed: number, x: number, y: number, n: number, size: number): { f1: number; f2: number; id: number; dx: number; dy: number } {
+  const cs = size / n;
+  const ci = Math.floor(x / cs), cj = Math.floor(y / cs);
+  let f1 = 1e9, f2 = 1e9, id = 0, bdx = 0, bdy = 0;
+  for (let dj = -1; dj <= 1; dj++) {
+    for (let di = -1; di <= 1; di++) {
+      const i = ci + di, j = cj + dj;
+      const wi = ((i % n) + n) % n, wj = ((j % n) + n) % n;
+      const px = (i + 0.15 + 0.7 * sHash(seed, wi, wj)) * cs;
+      const py = (j + 0.15 + 0.7 * sHash(seed ^ 0x5a, wi, wj)) * cs;
+      const ddx = x - px, ddy = y - py;
+      const d = Math.sqrt(ddx * ddx + ddy * ddy);
+      if (d < f1) { f2 = f1; f1 = d; id = wj * n + wi; bdx = ddx / cs; bdy = ddy / cs; }
+      else if (d < f2) f2 = d;
+    }
+  }
+  return { f1, f2, id, dx: bdx, dy: bdy };
+}
+
+/**
+ * 갯바위 암반 주기 아틀라스(182차) — 소형 섬(조도 사진 시트가 없는 섬)의 바탕.
+ *
+ * 구 절차 패스는 **타일마다** 두 톤 중 하나로 칠하고 크랙·하이라이트를 타일 안 사각형으로 찍어
+ * 섬 전체가 체커판으로 보였다. 여기서는 암반을 **보로노이 판**으로 쪼개 판마다 명도·기울기(빛 받는 면)를
+ * 주고, 판 경계를 각진 균열로 긋는다 — 판 크기(≈1.7타일)가 타일과 어긋나 격자가 드러나지 않는다.
+ */
+export function paintRockAtlas(ctx: CanvasRenderingContext2D, size: number, seed: number): void {
+  const base: RGB = [176, 167, 152];
+  for (let y = 0; y < size; y += 2) {
+    for (let x = 0; x < size; x += 2) {
+      const cx = x + 1, cy = y + 1;
+      const big = worley(seed ^ 0x61, cx, cy, 7, size);
+      const fine = worley(seed ^ 0x62, cx, cy, 17, size);
+      // 판마다 다른 명도 + 판 안 기울기(북서에서 빛) — 사진 속 층층이 쪼개진 바위 면
+      let v = (sHash(seed ^ 0x31, big.id, 0) - 0.5) * 22 + (-big.dx - big.dy) * 9;
+      v += (pNoise(seed ^ 0x19, x, y, size / 8, size) - 0.5) * 10 + (pNoise(seed ^ 0x2b, x, y, size / 24, size) - 0.5) * 6;
+      v += (sHash(seed ^ 0x51, x >> 1, y >> 1) - 0.5) * 7;
+      const e1 = big.f2 - big.f1, e2 = fine.f2 - fine.f1;
+      if (e1 < 2.5) v -= 46;                                           // 판 경계 균열
+      else if (e1 < 5 && big.dx + big.dy > 0) v -= 14;                 // 균열 그늘(빛 반대편)
+      else if (e1 < 6 && big.dx + big.dy < 0) v += 10;                 // 빛 받는 판 모서리
+      else if (e2 < 1.6 && pNoise(seed ^ 0x62, x, y, size / 6, size) > 0.45) v -= 20;   // 잔균열(일부만)
+      const h2 = sHash(seed ^ 0x77, x >> 1, y >> 1);
+      if (h2 < 0.03) v -= 16;                                          // 따개비·물웅덩이 자국
+      else if (h2 > 0.978) v += 12;
+      ctx.fillStyle = hex(base[0] + v + 2, base[1] + v, base[2] + v - 2);
+      ctx.fillRect(x, y, 2, 2);
+    }
+  }
+}
+
 // ─────────────────────────────────────────────
 // 2. 테트라포드 스프라이트 (레퍼런스 ③)
 // ─────────────────────────────────────────────
@@ -113,26 +168,37 @@ const TETRA_RAMP: Record<TetraTone, readonly string[]> = {
 const TETRA_OUTLINE: Record<TetraTone, string> = { top: '#2b3139', low: '#161b21', wet: '#23506a' };
 
 /** 한 변 아트 픽셀 수(×2 = 실픽셀). 다리 8.5 + 반폭 2.2 + 여유 */
-export const TETRA_ART = 22;
+export const TETRA_ART = 26;
 
 /** 테트라포드 형태(아트 픽셀) — 다리 길이·중심 굵기·다리 뿌리/끝 반폭 */
-export interface TetraShape { reach: number; hub: number; w0: number; w1: number }
-export const TETRA_SHAPE: TetraShape = { reach: 8.5, hub: 3.0, w0: 3.2, w1: 2.2 };
+export interface TetraShape {
+  reach: number; hub: number; w0: number; w1: number;
+  /** 곁다리 두 개가 기둥의 수직선과 이루는 각(도) — 30 = 정확히 120° 삼지(기본) */
+  side?: number;
+  /** 캔버스 한 변 아트 픽셀(기본 TETRA_ART) */
+  art?: number;
+}
+/**
+ * 182차 — 사용자 레퍼런스(맞물린 Y·⅄ 도안)에 맞춘 비율: 팔 길이(허브→끝) ≈ 12.6 · 팔 폭 ≈ 0.4배 ·
+ * 곁다리는 수평에서 26°(120°보다 살짝 벌어진 부채꼴 — 도안 실측 25~27°).
+ */
+export const TETRA_SHAPE: TetraShape = { reach: 10.2, hub: 2.8, w0: 2.8, w1: 2.4, side: 26, art: 26 };
 
 /**
  * 위에서 본 테트라포드 — 세 다리가 Y로 퍼지고, 하늘을 향한 넷째 다리가 가운데 둥근 머리로 보인다.
  * `angleDeg` = 첫 다리 방위(0 = 오른쪽, 시계 방향 증가). 빛은 좌상단.
  */
 export function paintTetrapod(ctx: CanvasRenderingContext2D, ox: number, oy: number, angleDeg: number, tone: TetraTone, shape: TetraShape = TETRA_SHAPE): void {
-  const G = TETRA_ART;
+  const G = shape.art ?? TETRA_ART;
   const c = G / 2;
   const R = shape.reach, HUB = shape.hub;
+  const spread = 90 - (shape.side ?? 30);                    // 기둥 반대 방향에서 곁다리까지의 각
   const ramp = TETRA_RAMP[tone];
   const L = [-0.55, -0.65, 0.75];
   const ll = Math.hypot(L[0]!, L[1]!, L[2]!);
   const lx = L[0]! / ll, ly = L[1]! / ll, lz = L[2]! / ll;
-  const dirs = [0, 1, 2].map((k) => {
-    const a = (angleDeg + k * 120) * Math.PI / 180;
+  const dirs = [angleDeg, angleDeg + 180 - spread, angleDeg + 180 + spread].map((deg) => {
+    const a = deg * Math.PI / 180;
     return [Math.cos(a), Math.sin(a)] as const;
   });
   const inside = (px: number, py: number): { n: [number, number, number]; face: boolean } | null => {

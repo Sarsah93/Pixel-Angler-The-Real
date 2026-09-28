@@ -731,7 +731,8 @@ export class RegionFieldScene extends Phaser.Scene {
       this.spawnPlayer();
       this.physics.add.collider(this.playerBody, this.poiWalls);
       // 스폰 지점 주변 상주 즉시 확보 (충돌 바디는 로드 즉시 생성 — 낙하/관통 방지)
-      this.chunks.update(this.playerBody.x, this.playerBody.y);
+      // 182차 — 3×3을 페이드인 동안 모두 굽는다(첫 화면에 빈 청크가 보이지 않게)
+      this.chunks.preloadAround(this.playerBody.x, this.playerBody.y);
       // 주행 차량 — 도로 그래프 우측통행 (101차 후속)
       // 배경 차량은 교차로 판정 오류가 누적될 때 화면을 막지 않도록 과밀을 피한다.
       // 도로 그래프가 커져도 기본 36대 안에서 흐름을 유지한다.
@@ -1845,7 +1846,7 @@ export class RegionFieldScene extends Phaser.Scene {
     this.clearCastFlight();
     this.playerBody.setPosition(cx, cy);
     this.playerBody.setVelocity(0, 0);
-    this.chunks?.update(cx, cy);
+    this.chunks?.preloadAround(cx, cy);
     this.cameras.main.centerOn(cx, cy);
     this.hud?.pushLog(`[dev] 순간이동 → 타일 (${Math.floor(cx / TR)}, ${Math.floor(cy / TR)})`);
   }

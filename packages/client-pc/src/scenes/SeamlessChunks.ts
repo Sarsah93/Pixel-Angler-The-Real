@@ -22,7 +22,7 @@ import { COAST_OBJECTS } from '../data/TileCatalog.js';
 import { seamBetween, terrainClass, terrainPaint, terrainGroup, reliefHeight, castsReliefShadow } from '@tra/core';
 import { GRASS_EDGE_SUFFIXES, PAVED_EDGE_SUFFIXES, KENNEY_ROOF_COLORS, KENNEY_ROOF_PARTS, TTP_EDGE_TILES, TTP_UNITS, COAST_DECKS, COAST_RUBBLE, COAST_EDGE_SRC, COAST_ROCK_COUNT } from '../data/TilesetManifest.js';
 import { hasUsableTexture } from '../ui/CanvasTextureGuard.js';
-import { SURFACES, paintSurfaceAtlas, paintTetrapod, paintStone, stoneCanvasSize, TETRA_ART, type SurfaceName, type TetraTone, type StoneTone } from './SurfaceArt.js';
+import { SURFACES, paintSurfaceAtlas, paintRockAtlas, paintTetrapod, paintStone, stoneCanvasSize, TETRA_ART, type SurfaceName, type TetraTone, type StoneTone } from './SurfaceArt.js';
 
 let seamlessTextureSerial = 0;
 
@@ -201,6 +201,10 @@ export interface SeamlessChunksConfig {
 interface ChunkSlot {
   rt: Phaser.GameObjects.RenderTexture;
   baked: boolean;
+  /** 충돌·장식(지붕·프롭)을 만들었는가 — 선행 굽기 슬롯은 굽기만 하고 장식은 다음 기회에(182차) */
+  decoBuilt: boolean;
+  /** 이 청크가 소유한 건물 지붕을 모두 담은 아틀라스(182차 — 표시 목록 밖). 지붕 이미지가 프레임으로 쓴다 */
+  roofAtlas?: Phaser.GameObjects.RenderTexture;
   /** 이 청크의 충돌 바디(투명 사각형) 목록 — 언로드 시 파괴 */
   bodies: Phaser.GameObjects.Rectangle[];
   /** 이 청크의 프롭 스프라이트(나무·지붕·차량 — y-sort) */
@@ -291,7 +295,15 @@ const FOAM_A = 0xeef6f5, FOAM_B = 0xc2e0e4;
  * ⚠ 1차 구현은 벌집 격자(Y 위에 ⅄를 세로로 쌓기)라 **육각형 빈 공간**이 생겼다 — 틈은 좁아야 한다.
  *   DX = 열 안 간격(px) · DY = 열 간격 · INV_OY = ⅄가 Y보다 내려앉는 깊이
  */
-const TTP_DX = 24, TTP_DY = 28, TTP_INV_OY = 10;   // 181-b — 30/32/12에서 좁힘(사용자 지시 "간격을 더 줄여야")
+/**
+ * 테트라포드 격자(182차 — 사용자 레퍼런스 도안): **세로 열마다 ⅄ · Y 교대 · 행 높이는 거의 같다**.
+ *  가로 피치 = 팔 길이 × 1.29 · 세로 피치 = × 1.5(도안 실측 187/145 · 218/145) · ⅄는 3px만 내려앉는다(도안 ~7%).
+ *  이 비율에서 Y의 윗팔과 옆 열 ⅄의 아랫팔이 평행하게 어긋나 쐐기처럼 맞물린다.
+ *  ⚠ 181-b는 ⅄를 피치의 36%(10/28)나 내려 행이 엇갈렸고 피치/팔 비가 작아(1.12·1.31) 서로 겹쳤다.
+ */
+const TTP_DX = 32, TTP_DY = 36, TTP_INV_OY = 3;
+/** 아래 층(틈으로만 비치는 어두운 테트라포드) — 열 사이 반 칸 · 반 행, 왼쪽 열과 같은 방위 */
+const TTP_LOW_OX = 16, TTP_LOW_OY = 18;
 
 /** 수심 그라데이션 (거리 램프) — legacy DEPTH_RAMP 계승 */
 const DEPTH_RAMP: [number, number][] = [
@@ -379,6 +391,23 @@ export class SeamlessChunks {
   private rtPool: Phaser.GameObjects.RenderTexture[] = [];
   private rtCreated = 0;
   private bakeQueue: number[] = [];
+  /**
+   * 예열 캐시(182차) — 3×3 밖으로 나간 청크의 **구운 RT**를 버리지 않고 숨겨 둔다(충돌·장식·POI는 내린다).
+   * 되돌아오면 굽지 않고 그대로 켠다(구: 왕복 경로 굽기의 42%가 재굽기였다). 진행 방향 앞 청크도
+   * 한가한 프레임에 여기로 미리 굽는다(선행 로드). Map 삽입 순서 = LRU.
+   */
+  private warm = new Map<number, ChunkSlot>();
+  /** 16장 = 1024² RGBA 약 64MB. 한 방향으로 5청크 가면 창이 15장을 내려놓으므로 왕복을 덮는 최소 크기 */
+  private static readonly WARM_MAX = 16;
+  /** 로드를 미룬 필요 청크(화면에서 먼 쪽) — 경계를 넘는 프레임에 3장이 몰리지 않게 프레임당 1장 */
+  private loadQueue: number[] = [];
+  private prevCX = NaN;
+  private prevCY = NaN;
+  /** 이동 속도(px/프레임, 지수 평활) — 선행 굽기 방향 */
+  private velX = 0;
+  private velY = 0;
+  private frameNo = 0;
+  private lastHeavy = -99;
   /** 씬 shutdown 뒤 늦게 들어온 update/rebake 호출이 파괴된 CanvasTexture를 만지지 않게 한다. */
   private disposed = false;
   /** 씬 인스턴스별 생성 텍스처 namespace — 전환 중 키 재사용/폐기 Frame 충돌 방지 */
@@ -411,6 +440,8 @@ export class SeamlessChunks {
   private harbor: Uint8Array;
   /** 섬/암초 플래그 (computeIslets — 조도 등 소형 야생 육지 = 갯바위 렌더) */
   private islet: Uint8Array;
+  /** 섬 암반('.') 안쪽 깊이(물가 = 1 · 한 칸 들어갈 때마다 +1) — 이끼 연속장의 뼈대(182차) */
+  private isletDepth: Uint8Array = new Uint8Array(0);
   /** 외해(열린 바다) 마스크 — 맵 경계 물에서 '넉넉히 넓은 수역'만 타고 퍼진 영역.
    *  방파제 피복(테트라포드) 판정에 쓴다. 석호(청초호)·좁은 수로·항 내측은 여기 안 든다. */
   /** 건물 타일 → 컴포넌트 id (-1 = 비건물) — 지붕 렌더의 기준 */
@@ -446,6 +477,7 @@ export class SeamlessChunks {
     this.walls = scene.physics.add.staticGroup();
     this.waterDist = this.computeWaterDistance();
     this.islet = this.computeIslets();
+    this.isletDepth = this.computeIsletDepth();
     this.lotAxis = this.computeLotAxis();
     this.harbor = this.computeHarbor();
     this.bwClass = this.computeBreakwaters();       // harbor 뒤 (항 내측/외해 구분에 쓴다)
@@ -1115,6 +1147,8 @@ export class SeamlessChunks {
       // 이웃의 삼각형이 공유 변을 덮었으면 그 변은 이미 내 재질로 이어진다 — 그림자·턱 생략
       const nTri = this.bwTriAt.get(nr * cols + nc);
       if (nTri && nTri[0].includes(OPP[dir])) continue;
+      // 182차 — 섬 암반의 깎인 모서리 변도 물이다(빗변이 림·포말을 맡는다) — 변 따라 그림자 금지
+      if (this.isletEdgeOpen(nc, nr, OPP[dir] as 'n' | 'e' | 's' | 'w')) continue;
       const nch = this.tileAt(nc, nr);
       if (nch === '#') continue;
       const nBw = bw(nc, nr);
@@ -1409,21 +1443,33 @@ export class SeamlessChunks {
     if (plaza) { this.surfAtlas.set('r', plaza); this.groundTex.set('r', [plaza]); }
     if (pave) { this.surfAtlas.set('p', pave); this.groundTex.set('p', [pave]); }
     if (quay) this.surfAtlas.set('quay', quay);
+    // 182차 — 소형 섬 갯바위 암반(구: 타일마다 두 톤 + 사각 크랙 = 체커판)
+    const rockKey = 'srf_rock_v2';
+    if (!tm.exists(rockKey)) {
+      const cv = tm.createCanvas(rockKey, size, size);
+      const ctx = cv ? this.canvasContext(cv) : null;
+      if (cv && ctx) {
+        paintRockAtlas(ctx, size, 0x5c11);
+        for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) cv.add(`${i}_${j}`, 0, i * tr, j * tr, tr, tr);
+        if (!this.safeRefresh(cv)) cv.destroy();
+      } else cv?.destroy();
+    }
+    if (tm.exists(rockKey)) this.surfAtlas.set('islet', rockKey);
 
     // ── 방파제 스프라이트 — 테트라포드 (두 방위 × 회전 3) × 톤 3 · 돌 12 × 마름/젖음 ──
     let ok = true;
     const tones: TetraTone[] = ['top', 'low', 'wet'];
     for (const tone of tones) {
       for (let v = 0; v < 6; v++) {
-        const key = `srf_ttp3_${tone}_${v}`;
+        const key = `srf_ttp4_${tone}_${v}`;
         if (tm.exists(key)) continue;
         const cv = tm.createCanvas(key, TETRA_ART * 2, TETRA_ART * 2);
         const ctx = cv ? this.canvasContext(cv) : null;
         if (!cv || !ctx) { ok = false; continue; }
         // v 0~2 = 뒤집힌 Y(기둥 위·다리 둘 아래) · 3~5 = Y(팔 둘 위·기둥 아래). 기울기는 ±6°만 —
-        //  크게 돌리면 열 안에서 V와 기둥이 맞물리지 않는다(사용자 스케치).
+        //  크게 돌리면 옆 열과의 쐐기 맞물림이 깨진다(182차 ±6 → ±3 — 사용자 레퍼런스 도안).
         const base = v < 3 ? -90 : 90;
-        paintTetrapod(ctx, 0, 0, base + [0, -6, 6][v % 3]!, tone);
+        paintTetrapod(ctx, 0, 0, base + [0, -3, 3][v % 3]!, tone);
         if (!this.safeRefresh(cv)) ok = false;
       }
     }
@@ -1873,6 +1919,7 @@ export class SeamlessChunks {
     if (tiles.length === 0) return;
     this.waterDist = this.computeWaterDistance();
     this.islet = this.computeIslets();
+    this.isletDepth = this.computeIsletDepth();
     this.lotAxis = this.computeLotAxis();
     const lots2 = this.computeParkingLots();
     this.parkLot = lots2.id;
@@ -1896,25 +1943,22 @@ export class SeamlessChunks {
 
   /** 상주 청크 전체 재베이킹 (프롭/지붕 오버라이드 변경 후) */
   rebakeResident(): void {
+    for (const k of [...this.warm.keys()]) this.dropWarm(k);   // 예열본은 옛 그림이다
     this.rebakeChunks(new Set(this.resident.keys()));
   }
 
   private rebakeChunks(idxs: Set<number>): void {
     for (const idx of idxs) {
+      this.dropWarm(idx);
       const slot = this.resident.get(idx);
       if (!slot) continue;
       const cc = idx % this.chunkCols, cr = Math.floor(idx / this.chunkCols);
-      for (const b of slot.bodies) { this.walls.remove(b); b.destroy(); }
-      slot.bodies = [];
-      for (const d of slot.deco) d.destroy();
-      slot.deco = [];
-      slot.occluders = [];
-      // roofKeys는 인스턴스별 고유 키다. 이전 구현은 여기서 즉시
-      // TextureManager.remove()했는데, 전환 중 한 프레임 남은 Image가
-      // 폐기된 Frame을 참조하면서 Frame.updateUVs 예외를 만들었다.
-      slot.roofKeys = [];
+      // roofKeys는 인스턴스별 고유 키다(즉시 TextureManager.remove() 금지 — Frame.updateUVs 예외 전례).
+      //  182차 — 지붕 아틀라스도 이미지 파괴 뒤에 버린다(clearSlotContents)
+      this.clearSlotContents(slot);
       this.buildChunkCollision(cc, cr, slot);
       this.buildChunkDeco(cc, cr, slot);
+      slot.decoBuilt = true;
       slot.baked = false;
       if (!this.bakeQueue.includes(idx)) this.bakeQueue.unshift(idx);
     }
@@ -2440,18 +2484,19 @@ export class SeamlessChunks {
     const snap = (v: number): number => Math.round(v / 2) * 2;
     type Spr = { key: string; x: number; y: number };
     const out: Spr[] = [];
-    // ── 테트라포드 교차 열 — 열마다 Y · ⅄ 번갈아(⅄는 살짝 내려앉는다) + 반 칸 어긋난 아래 층 ──
-    const half = TETRA_ART;                                 // 캔버스 40px의 절반
+    // ── 테트라포드 교차 열 — 열마다 ⅄ · Y 번갈아(행 높이 거의 같음) + 열 사이 반 칸의 아래 층 ──
+    const half = TETRA_ART;                                 // 캔버스(아트 ×2)의 절반
     const jA = Math.floor((py0 - M) / TTP_DY) - 1, jB = Math.ceil((py1 + M) / TTP_DY) + 1;
     const kA = Math.floor((px0 - M) / TTP_DX) - 1, kB = Math.ceil((px1 + M) / TTP_DX) + 1;
     const lows: Spr[] = [];
     for (let j = jA; j <= jB; j++) {
       for (let k = kA; k <= kB; k++) {
-        const inv = (k & 1) === 1;                          // 홀수 칸 = 뒤집힌 Y
+        const inv = (k & 1) === 0;                          // 짝수 열 = ⅄(기둥 위) · 홀수 열 = Y
+        const oy = inv ? TTP_INV_OY : 0;
         const pts: [number, number, boolean, boolean][] = [
-          [k * TTP_DX, j * TTP_DY + (inv ? TTP_INV_OY : 0), inv, false],
-          // 아래 층 — 반 칸 어긋나 위층의 좁은 틈으로만 비친다(음영)
-          [k * TTP_DX + TTP_DX / 2, j * TTP_DY + TTP_DY / 2 + (inv ? 0 : TTP_INV_OY), !inv, true],
+          [k * TTP_DX, j * TTP_DY + oy, inv, false],
+          // 아래 층 — 열 사이 반 칸 · 반 행, 왼쪽 열과 같은 방위. 위층의 쐐기 틈으로만 비친다(음영)
+          [k * TTP_DX + TTP_LOW_OX, j * TTP_DY + TTP_LOW_OY + oy, inv, true],
         ];
         for (const [x0, y0, isInv, low] of pts) {
           if (x0 < px0 - M || x0 > px1 + M || y0 < py0 - M || y0 > py1 + M) continue;
@@ -2464,14 +2509,14 @@ export class SeamlessChunks {
           const v = (isInv ? 0 : 3) + Math.floor(hj * 3) % 3;
           const at = { x: snap(x - half) - px0, y: snap(y - half) - py0 };
           if (low) {
-            if (stage === 'top' && f >= 0.8 && f < info.rubbleFrom && f < info.deckFrom - 0.55) lows.push({ key: `srf_ttp3_low_${v}`, ...at });
+            if (stage === 'top' && f >= 0.8 && f < info.rubbleFrom && f < info.deckFrom - 0.55) lows.push({ key: `srf_ttp4_low_${v}`, ...at });
             continue;
           }
           if (stage === 'sub') {
             // 물가 발치 — 절반 넘게 잠긴 테트라포드 (포말이 그 위를 덮는다)
-            if (f >= 0.2 && f < 0.56 && hj < 0.55) out.push({ key: `srf_ttp3_wet_${v}`, ...at });
+            if (f >= 0.2 && f < 0.56 && hj < 0.55) out.push({ key: `srf_ttp4_wet_${v}`, ...at });
           } else if (f >= 0.56 && f < info.rubbleFrom + 0.15 && f < info.deckFrom - 0.5) {
-            out.push({ key: `srf_ttp3_top_${v}`, ...at });
+            out.push({ key: `srf_ttp4_top_${v}`, ...at });
           }
         }
       }
@@ -2676,6 +2721,97 @@ export class SeamlessChunks {
       }
     }
     return flag;
+  }
+
+  /**
+   * 섬 암반 깊이(182차) — 섬 '.' 타일마다 **섬 밖(물·다른 지형)까지 4-이웃 거리**.
+   * 물가 타일 = 1, 한 칸 안쪽 = 2 … 이끼 연속장이 이 값을 타일 중심에서 쌍선형 보간해 쓴다.
+   */
+  private computeIsletDepth(): Uint8Array {
+    const { cols, rows } = this.cfg;
+    const d = new Uint8Array(cols * rows);
+    const q = new Int32Array(cols * rows);
+    let head = 0, tail = 0;
+    const rock = (i: number): boolean => this.islet[i] === 1 && this.cfg.terrainRows[(i / cols) | 0][i % cols] === '.';
+    for (let i = 0; i < cols * rows; i++) {
+      if (!rock(i)) continue;
+      const c = i % cols, r = (i / cols) | 0;
+      let edge = false;
+      for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+        const nc = c + dc, nr = r + dr;
+        if (nc < 0 || nr < 0 || nc >= cols || nr >= rows || !rock(nr * cols + nc)) { edge = true; break; }
+      }
+      if (edge) { d[i] = 1; q[tail++] = i; }
+    }
+    while (head < tail) {
+      const i = q[head++]; const c = i % cols, r = (i / cols) | 0;
+      for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+        const nc = c + dc, nr = r + dr;
+        if (nc < 0 || nr < 0 || nc >= cols || nr >= rows) continue;
+        const j = nr * cols + nc;
+        if (d[j] || !rock(j)) continue;
+        d[j] = Math.min(255, d[i] + 1); q[tail++] = j;
+      }
+    }
+    return d;
+  }
+
+  /** 섬 암반 타일의 깎이는 볼록 모서리(두 직교 변 + 대각이 물) — L1 삼각 프레임과 절차 림이 공유 */
+  private isletCutAt(c: number, r: number): 'ne' | 'nw' | 'se' | 'sw' | null {
+    const w = (cc: number, rr: number): boolean => this.tileAt(cc, rr) === '~';
+    const wN = w(c, r - 1), wS = w(c, r + 1), wW = w(c - 1, r), wE = w(c + 1, r);
+    if (wN && wE && w(c + 1, r - 1)) return 'ne';
+    if (wN && wW && w(c - 1, r - 1)) return 'nw';
+    if (wS && wE && w(c + 1, r + 1)) return 'se';
+    if (wS && wW && w(c - 1, r + 1)) return 'sw';
+    return null;
+  }
+
+  /** 섬 암반 타일의 `edge` 변이 45°로 깎여 물인가 — 그 변을 공유하는 물 타일은 포말·그림자를 긋지 않는다(182차) */
+  private isletEdgeOpen(c: number, r: number, edge: 'n' | 'e' | 's' | 'w'): boolean {
+    if (c < 0 || r < 0 || c >= this.cfg.cols || r >= this.cfg.rows) return false;
+    if (!this.islet[r * this.cfg.cols + c] || this.tileAt(c, r) !== '.') return false;
+    if (this.tileTexMap.has(r * this.cfg.cols + c)) return false;
+    const cut = this.isletCutAt(c, r);
+    return !!cut && cut.includes(edge);
+  }
+
+  /**
+   * 섬 안쪽 이끼·초지(182차) — 구 절차 패스는 안쪽 타일마다 **사각형 한 장**을 찍어 섬 전체가
+   * 초록 네모 격자로 보였다. 이제 월드 좌표 연속장 m(x, y) = 깊이(쌍선형) + 저주파 노이즈로
+   * 2px 도트를 칠해 덩어리가 타일 변과 무관한 곡선으로 번진다(행 단위 런 병합으로 명령 수 절약).
+   */
+  private drawIsletMoss(g: Phaser.GameObjects.Graphics, lx: number, ly: number, c: number, r: number): void {
+    const tr = this.cfg.tr, cols = this.cfg.cols, rows = this.cfg.rows;
+    const seed = this.cfg.seed;
+    const dAt = (cc: number, rr: number): number =>
+      cc < 0 || rr < 0 || cc >= cols || rr >= rows ? 0 : this.isletDepth[rr * cols + cc];
+    // 이 타일에 이끼가 닿을 수 없으면(주변 깊이가 모두 얕으면) 건너뛴다
+    let maxD = 0;
+    for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) maxD = Math.max(maxD, dAt(c + dc, r + dr));
+    if (maxD < 2) return;
+    const MOSS = [0, 0x4a6a3c, 0x5d7a4a, 0x527043] as const;
+    for (let y = 0; y < tr; y += 2) {
+      let runX = 0, runC = 0;
+      const flush = (xEnd: number): void => {
+        if (runC > 0 && xEnd > runX) { g.fillStyle(MOSS[runC]!, runC === 1 ? 0.75 : 0.92); g.fillRect(lx + runX, ly + y, xEnd - runX, 2); }
+      };
+      for (let x = 0; x <= tr; x += 2) {
+        let col = 0;
+        if (x < tr) {
+          const wx = c * tr + x + 1, wy = r * tr + y + 1;
+          const u = wx / tr - 0.5, v = wy / tr - 0.5;
+          const iu = Math.floor(u), iv = Math.floor(v);
+          const fu = u - iu, fv = v - iv;
+          const dd = (dAt(iu, iv) * (1 - fu) + dAt(iu + 1, iv) * fu) * (1 - fv)
+            + (dAt(iu, iv + 1) * (1 - fu) + dAt(iu + 1, iv + 1) * fu) * fv;
+          const m = dd + (noise2(seed ^ 0x6d05, wx / 44, wy / 44) - 0.5) * 2.2 + (noise2(seed ^ 0x6d06, wx / 12, wy / 12) - 0.5) * 0.7;
+          if (m > 2.55) col = noise2(seed ^ 0x6d07, wx / 26, wy / 26) > 0.5 ? 2 : 3;
+          else if (m > 2.3) col = 1;
+        }
+        if (col !== runC) { flush(x); runX = x; runC = col; }
+      }
+    }
   }
 
   /** 건물(#) 연결요소 라벨링 — 컴포넌트 bbox·지붕 팔레트 배정 (전맵 1회) */
@@ -2886,6 +3022,14 @@ export class SeamlessChunks {
 
   update(centerX: number, centerY: number): void {
     if (this.disposed) return;
+    this.frameNo++;
+    // 이동 속도 — 한 프레임 200px 넘게 뛰면 순간이동이라 속도로 치지 않는다
+    if (Number.isFinite(this.prevCX)) {
+      const vx = centerX - this.prevCX, vy = centerY - this.prevCY;
+      if (Math.abs(vx) + Math.abs(vy) > 200) { this.velX = 0; this.velY = 0; }
+      else { this.velX = this.velX * 0.85 + vx * 0.15; this.velY = this.velY * 0.85 + vy * 0.15; }
+    }
+    this.prevCX = centerX; this.prevCY = centerY;
     const cc = Phaser.Math.Clamp(Math.floor(centerX / this.chunkPx), 0, this.chunkCols - 1);
     const cr = Phaser.Math.Clamp(Math.floor(centerY / this.chunkPx), 0, this.chunkRows - 1);
 
@@ -2903,32 +3047,167 @@ export class SeamlessChunks {
       if (needed.has(idx)) continue;
       this.unloadChunk(idx, slot);
     }
+    // 182차 — 화면 근처(카메라 반폭 640 + 여유)만 즉시 로드하고, 먼 쪽은 프레임당 1장씩 미룬다.
+    //  이동 속도(최대 ≈ 7px/프레임)로는 미룬 청크에 닿기까지 수십 프레임이 남는다(충돌도 안전).
+    this.loadQueue = this.loadQueue.filter((i) => needed.has(i) && !this.resident.has(i));
     for (const idx of needed) {
-      if (this.resident.has(idx)) continue;
-      this.loadChunk(idx);
+      if (this.resident.has(idx) || this.loadQueue.includes(idx)) continue;
+      if (this.chunkDist(idx, centerX, centerY) <= 760) this.loadChunk(idx);
+      else this.loadQueue.push(idx);
+    }
+    let deferredLoad = false;
+    if (this.loadQueue.length > 0) {
+      this.loadQueue.sort((a, b) => this.chunkDist(a, centerX, centerY) - this.chunkDist(b, centerX, centerY));
+      this.loadChunk(this.loadQueue.shift()!);
+      deferredLoad = true;
     }
 
     if (this.bakeQueue.length > 0) {
-      const centerIdx = cr * this.chunkCols + cc;
-      let pick = this.bakeQueue.indexOf(centerIdx);
-      if (pick < 0) pick = 0;
-      const idx = this.bakeQueue.splice(pick, 1)[0];
+      // 가장 가까운 것부터. 미룬 로드를 이미 한 프레임에는 화면 근처 것만 굽는다(한 프레임에 몰지 않게)
+      let pick = 0, best = Infinity;
+      for (let q = 0; q < this.bakeQueue.length; q++) {
+        const d = this.chunkDist(this.bakeQueue[q]!, centerX, centerY);
+        if (d < best) { best = d; pick = q; }
+      }
+      if (!deferredLoad || best <= 760) {
+        const idx = this.bakeQueue.splice(pick, 1)[0]!;
+        const slot = this.resident.get(idx);
+        if (slot && !slot.baked) { this.bakeChunk(idx, slot); this.lastHeavy = this.frameNo; }
+      }
+    } else if (!deferredLoad) {
+      // 선행 굽기 — 움직이는 중 4프레임, 서 있을 때 12프레임 간격(가만히 있을 때 끊김을 줄인다)
+      const moving = Math.hypot(this.velX, this.velY) > 0.6;
+      if (this.frameNo - this.lastHeavy >= (moving ? 4 : 12) && this.prefetchOne(cc, cr, moving)) this.lastHeavy = this.frameNo;
+    }
+  }
+
+  /**
+   * 선행 로드(182차) — 진입·순간이동 직후 3×3을 **그 자리에서 모두 굽는다**(카메라 페이드인 동안).
+   * 구: 한 프레임에 한 장씩 구워 첫 몇 프레임은 빈 청크(배경색)가 보였다.
+   */
+  preloadAround(x: number, y: number): void {
+    if (this.disposed) return;
+    this.prevCX = NaN;
+    this.update(x, y);
+    while (this.loadQueue.length > 0) this.loadChunk(this.loadQueue.shift()!);
+    let guard = 16;
+    while (this.bakeQueue.length > 0 && guard-- > 0) {
+      const idx = this.bakeQueue.shift()!;
       const slot = this.resident.get(idx);
       if (slot && !slot.baked) this.bakeChunk(idx, slot);
     }
+    this.lastHeavy = this.frameNo;
+  }
+
+  /** 점(px)에서 청크 사각형까지의 거리(px) — 안에 있으면 0 */
+  private chunkDist(idx: number, x: number, y: number): number {
+    const x0 = (idx % this.chunkCols) * this.chunkPx, y0 = Math.floor(idx / this.chunkCols) * this.chunkPx;
+    const dx = x < x0 ? x0 - x : x > x0 + this.chunkPx ? x - x0 - this.chunkPx : 0;
+    const dy = y < y0 ? y0 - y : y > y0 + this.chunkPx ? y - y0 - this.chunkPx : 0;
+    return Math.hypot(dx, dy);
+  }
+
+  /** 굽기 대상 슬롯이 아직 유효한가 — 상주 또는 예열 캐시 */
+  private isLiveSlot(idx: number, slot: ChunkSlot): boolean {
+    return this.resident.get(idx) === slot || this.warm.get(idx) === slot;
+  }
+
+  /**
+   * 예열 캐시에 청크 하나를 미리 굽는다. 움직이는 중에는 **다음에 들어갈 중심 청크의 3×3 가운데
+   * 지금 3×3 밖인 칸**만(직진 3장 · 대각 5장 — 곧 필요해질 것만), 서 있을 때는 바깥 한 겹을
+   * 가까운 것부터. 캐시가 차면 지금 자리에서 체비셰프 3 이상 떨어진 것만 비운다.
+   */
+  private prefetchOne(cc: number, cr: number, moving: boolean): boolean {
+    const sp = Math.hypot(this.velX, this.velY);
+    const sx = moving ? (this.velX / sp > 0.38 ? 1 : this.velX / sp < -0.38 ? -1 : 0) : 0;
+    const sy = moving ? (this.velY / sp > 0.38 ? 1 : this.velY / sp < -0.38 ? -1 : 0) : 0;
+    const nx = cc + sx, ny = cr + sy;
+    let best = -1, bestScore = Infinity;
+    for (let dr = -2; dr <= 2; dr++) {
+      for (let dc = -2; dc <= 2; dc++) {
+        if (Math.max(Math.abs(dc), Math.abs(dr)) !== 2) continue;
+        const nc = cc + dc, nr = cr + dr;
+        if (nc < 0 || nr < 0 || nc >= this.chunkCols || nr >= this.chunkRows) continue;
+        if (moving && Math.max(Math.abs(nc - nx), Math.abs(nr - ny)) > 1) continue;
+        const idx = nr * this.chunkCols + nc;
+        if (this.resident.has(idx) || this.warm.has(idx)) continue;
+        const score = Math.hypot(dc, dr);
+        if (score < bestScore) { bestScore = score; best = idx; }
+      }
+    }
+    // 먼저 — 이미 구워 둔 선행 청크 중 장식을 아직 안 만든 것(한 프레임에 굽기+장식이 몰리지 않게 나눈다)
+    for (const [k, ws] of this.warm) {
+      if (!ws.baked || ws.decoBuilt) continue;
+      const kc = k % this.chunkCols, kr = Math.floor(k / this.chunkCols);
+      if (Math.max(Math.abs(kc - cc), Math.abs(kr - cr)) > 2) continue;
+      this.buildChunkCollision(kc, kr, ws);
+      this.buildChunkDeco(kc, kr, ws);
+      ws.decoBuilt = true;
+      this.setDecoVisible(ws, false);
+      return true;
+    }
+    if (best < 0) return false;
+    if (this.warm.size >= SeamlessChunks.WARM_MAX) {
+      let far = -1, farD = 2;
+      for (const k of this.warm.keys()) {
+        const d = Math.max(Math.abs(k % this.chunkCols - cc), Math.abs(Math.floor(k / this.chunkCols) - cr));
+        if (d > farD) { farD = d; far = k; }
+      }
+      if (far < 0) return false;
+      this.dropWarm(far);
+    }
+    const rt = this.acquireRt();
+    rt.setPosition((best % this.chunkCols) * this.chunkPx, Math.floor(best / this.chunkCols) * this.chunkPx);
+    rt.setVisible(false);
+    const slot: ChunkSlot = { rt, baked: false, decoBuilt: false, bodies: [], deco: [], roofKeys: [], occluders: [] };
+    this.warm.set(best, slot);
+    this.bakeChunk(best, slot);
+    return true;
+  }
+
+  /** 예열 캐시에 넣는다(LRU 갱신) — 넘치면 가장 오래된 것부터 RT 풀로 */
+  private putWarm(idx: number, slot: ChunkSlot): void {
+    slot.rt.setVisible(false);
+    this.warm.delete(idx);
+    this.warm.set(idx, slot);
+    while (this.warm.size > SeamlessChunks.WARM_MAX) {
+      const oldest = this.warm.keys().next().value as number;
+      this.dropWarm(oldest);
+    }
+  }
+
+  private dropWarm(idx: number): void {
+    const slot = this.warm.get(idx);
+    if (!slot) return;
+    this.warm.delete(idx);
+    this.clearSlotContents(slot);
+    slot.rt.setVisible(false);
+    this.rtPool.push(slot.rt);
   }
 
   private loadChunk(idx: number): void {
     const cc = idx % this.chunkCols;
     const cr = Math.floor(idx / this.chunkCols);
-    const rt = this.acquireRt();
-    rt.setPosition(cc * this.chunkPx, cr * this.chunkPx);
-    rt.setVisible(true);
-    const slot: ChunkSlot = { rt, baked: false, bodies: [], deco: [], roofKeys: [], occluders: [] };
-    this.buildChunkCollision(cc, cr, slot);
-    this.buildChunkDeco(cc, cr, slot);
+    // 182차 — 예열 캐시에 있으면 그대로 켠다(굽기·지붕 RT·프롭·충돌 재생성 생략)
+    const w = this.warm.get(idx);
+    let slot: ChunkSlot;
+    if (w) {
+      this.warm.delete(idx);
+      slot = w;
+      slot.rt.setPosition(cc * this.chunkPx, cr * this.chunkPx);
+      slot.rt.setVisible(true);
+      if (slot.decoBuilt) this.setDecoVisible(slot, true);
+      else { this.buildChunkCollision(cc, cr, slot); this.buildChunkDeco(cc, cr, slot); slot.decoBuilt = true; }
+    } else {
+      const rt = this.acquireRt();
+      rt.setPosition(cc * this.chunkPx, cr * this.chunkPx);
+      rt.setVisible(true);
+      slot = { rt, baked: false, decoBuilt: true, bodies: [], deco: [], roofKeys: [], occluders: [] };
+      this.buildChunkCollision(cc, cr, slot);
+      this.buildChunkDeco(cc, cr, slot);
+    }
     this.resident.set(idx, slot);
-    this.bakeQueue.push(idx);
+    if (!slot.baked) this.bakeQueue.push(idx);
     this.cfg.onChunkLoad?.(cc, cr);
   }
 
@@ -2946,19 +3225,41 @@ export class SeamlessChunks {
     this.resident.delete(idx);
     const qi = this.bakeQueue.indexOf(idx);
     if (qi >= 0) this.bakeQueue.splice(qi, 1);
+    slot.rt.setVisible(false);
+    if (slot.baked && !this.disposed) {
+      // 182차 — 구운 그림·지붕·프롭·충돌을 통째로 예열 캐시에 숨겨 둔다(되돌아오면 켜기만 한다).
+      //  구: 로드마다 건물 하나당 지붕 RenderTexture를 새로 만들어 청크 한 장 로드가 최대 ~1초(헤드리스 실측).
+      //  충돌 바디는 남겨도 된다 — 3×3 밖이라 플레이어가 닿을 수 없다.
+      this.setDecoVisible(slot, false);
+      this.putWarm(idx, slot);
+    } else {
+      this.clearSlotContents(slot);
+      this.rtPool.push(slot.rt);
+    }
+    this.cfg.onChunkUnload?.(idx % this.chunkCols, Math.floor(idx / this.chunkCols));
+  }
+
+  /** 슬롯의 충돌·장식을 파괴한다(RT는 호출측이 처리) */
+  private clearSlotContents(slot: ChunkSlot): void {
     // ⚠ 씬 shutdown 중에는 물리 그룹이 먼저 파괴돼 `walls.children`이 없다 — remove 호출 시 크래시
     //   (101차 후속 3 실측: 속초→홈타운 전환에서 "reading 'contains'"). 그룹이 살아 있을 때만 remove.
     const wallsAlive = !!this.walls.children;
     for (const b of slot.bodies) { if (wallsAlive) this.walls.remove(b); b.destroy(); }
+    slot.bodies = [];
     for (const d of slot.deco) d.destroy();
     slot.deco = [];
     slot.occluders = [];
+    // 지붕 이미지를 모두 파괴한 **뒤에** 아틀라스를 버린다(프레임을 쥔 이미지가 남지 않게)
+    slot.roofAtlas?.destroy();
+    slot.roofAtlas = undefined;
     // 인스턴스별 namespace를 사용하므로 삭제하지 않는다. display list와
     // WebGL 배치가 완전히 비워진 뒤에도 stale Frame을 참조하지 않게 한다.
     slot.roofKeys = [];
-    slot.rt.setVisible(false);
-    this.rtPool.push(slot.rt);
-    this.cfg.onChunkUnload?.(idx % this.chunkCols, Math.floor(idx / this.chunkCols));
+    slot.decoBuilt = false;
+  }
+
+  private setDecoVisible(slot: ChunkSlot, on: boolean): void {
+    for (const d of slot.deco) (d as unknown as Phaser.GameObjects.Components.Visible).setVisible?.(on);
   }
 
   private acquireRt(): Phaser.GameObjects.RenderTexture {
@@ -3068,7 +3369,11 @@ export class SeamlessChunks {
    *  하단 2줄(= 충돌 줄) = 벽 모듈(창문 포함, 4칸 반복) + 중앙 하단 문
    *  색 = palIdx % 4 → red/gray/light/tan, 벽은 지붕색 정합. 대형(big)은 light 지붕 + 유리벽.
    */
-  private buildKitRoof(compId: number): Phaser.GameObjects.RenderTexture {
+  /**
+   * 건물 하나의 지붕·벽 모듈을 `rt`의 (ox, oy)에 그린다. ⚠ 호출측이 `beginDraw`/`endDraw`로 감싼다(182차 —
+   * 청크의 모든 지붕을 한 번의 배치로). 문·대각 처마선은 호출측 Graphics `g`에 얹고 끝에 한 번 그린다.
+   */
+  private buildKitRoof(compId: number, rt: Phaser.GameObjects.RenderTexture, ox: number, oy: number, g: Phaser.GameObjects.Graphics): void {
     const comp = this.comps[compId];
     const tr = this.cfg.tr, cols = this.cfg.cols;
     const W = (comp.c1 - comp.c0 + 1) * tr, H = (comp.r1 - comp.r0 + 1) * tr;
@@ -3078,8 +3383,7 @@ export class SeamlessChunks {
     const wall = comp.big ? 'glass' : ['brick_red', 'brick_gray', 'white', 'brick_tan'][colorIdx];
     const isMine = (c: number, r: number): boolean =>
       c >= 0 && c < cols && r >= 0 && r < this.cfg.rows && this.compOf[r * cols + c] === compId;
-    const rt = this.scene.add.renderTexture(comp.c0 * tr, comp.r0 * tr, W, H).setOrigin(0, 0);
-    rt.beginDraw();
+    void W; void H;
     let doorCol = -1;
     // 소형 컴포넌트(높이 ≤ 2줄 또는 ≤ 3타일) = 창고/헛간 — 벽 모듈·문 없이 지붕만 (리포트 5.2 "깨진 건물")
     const tiny = (comp.r1 - comp.r0 + 1) <= 2 || comp.n <= 3;
@@ -3116,7 +3420,7 @@ export class SeamlessChunks {
     for (let r = comp.r0; r <= comp.r1; r++) {
       for (let c = comp.c0; c <= comp.c1; c++) {
         if (!isMine(c, r)) continue;
-        const lx = (c - comp.c0) * tr, ly = (r - comp.r0) * tr;
+        const lx = ox + (c - comp.c0) * tr, ly = oy + (r - comp.r0) * tr;
         const below1 = isMine(c, r + 1) && !tiny, below2 = isMine(c, r + 2) && !tiny;
         if (tiny) {
           const n = !isMine(c, r - 1), w = !isMine(c - 1, r), e = !isMine(c + 1, r), s = !isMine(c, r + 1);
@@ -3165,33 +3469,60 @@ export class SeamlessChunks {
         if (!diagCut(part, c, r, lx, ly, false)) rt.batchDraw(`kit_roof_${color}_${part}`, lx, ly);
       }
     }
-    rt.endDraw();
-    // 문(중앙 하단) + 대각 컷 처마선 — Graphics 1회 드로우
-    const g = this.scene.make.graphics({ x: 0, y: 0 }, false);
+    // 문(중앙 하단) + 대각 컷 처마선 — 호출측 Graphics에 모았다가 한 번에 그린다
     if (doorCol >= 0 && !tiny) {
-      const lx = (doorCol - comp.c0) * tr, ly = (comp.r1 - comp.r0) * tr;
+      const lx = ox + (doorCol - comp.c0) * tr, ly = oy + (comp.r1 - comp.r0) * tr;
       g.fillStyle(0x2a2f36, 1); g.fillRect(lx + 9, ly + 10, 14, tr - 10);
       g.fillStyle(0x6b4a30, 1); g.fillRect(lx + 10, ly + 11, 12, tr - 12);
       g.fillStyle(0xe8c86a, 1); g.fillRect(lx + 19, ly + 22, 2, 2);
     }
     g.lineStyle(2, COL.buildEdge, 1);
     for (const [x1, y1, x2, y2] of cutLines) g.lineBetween(x1, y1, x2, y2);
-    rt.draw(g, 0, 0);
-    g.destroy();
-    return rt;
   }
 
   /** 청크가 소유하는(좌상단 포함) 컴포넌트의 지붕 스프라이트 생성 */
   private buildChunkRoofs(cc: number, cr: number, slot: ChunkSlot): void {
     const N = this.cfg.chunkTiles, tr = this.cfg.tr;
+    const owned: number[] = [];
     for (let id = 0; id < this.comps.length; id++) {
       const comp = this.comps[id];
-      if (Math.floor(comp.c0 / N) !== cc || Math.floor(comp.r0 / N) !== cr) continue;
+      if (Math.floor(comp.c0 / N) === cc && Math.floor(comp.r0 / N) === cr) owned.push(id);
+    }
+    // 182차 — 지붕 아틀라스: 건물마다 RenderTexture를 새로 만들던 것(청크 한 장에 수십 개 — 로드 끊김의 99%)을
+    //  청크당 **한 장**으로. 선반 패킹(높이순)으로 자리를 잡고, 건물 지붕은 그 프레임을 쓰는 이미지다.
+    //  건물마다 따로 y-정렬·반투명(occluder)되는 성질은 그대로다.
+    const place = new Map<number, [number, number]>();
+    let atlas: Phaser.GameObjects.RenderTexture | undefined;
+    if (this.kitReady && owned.length > 0) {
+      const dims = owned.map((id) => {
+        const c = this.comps[id];
+        return { id, w: (c.c1 - c.c0 + 1) * tr, h: (c.r1 - c.r0 + 1) * tr };
+      }).sort((a, b) => b.h - a.h);
+      const AW = Math.max(this.chunkPx, ...dims.map((d) => d.w));
+      let x = 0, y = 0, rowH = 0;
+      for (const d of dims) {
+        if (x + d.w > AW) { x = 0; y += rowH + 2; rowH = 0; }
+        place.set(d.id, [x, y]);
+        x += d.w + 2; rowH = Math.max(rowH, d.h);
+      }
+      const AH = y + rowH;
+      atlas = this.scene.make.renderTexture({ x: 0, y: 0, width: AW, height: AH }, false);
+      slot.roofAtlas = atlas;
+    }
+    const roofG = atlas ? this.scene.make.graphics({ x: 0, y: 0 }, false) : null;
+    atlas?.beginDraw();
+    for (const id of owned) {
+      const comp = this.comps[id];
       const bottomY = (comp.r1 + 1) * tr;
       const depth = 20 + bottomY * 0.001;   // 플레이어(20 + y·0.001)와 y-sort — 위쪽 줄 진입 시 가림
       // 150차 — 지붕은 캐릭터를 덮는다. 뒤로 들어가면 반투명해지도록 occluder로 등록한다.
-      if (this.kitReady) {
-        const roof = this.buildKitRoof(id).setDepth(depth);
+      if (atlas) {
+        const [ox, oy] = place.get(id)!;
+        const w = (comp.c1 - comp.c0 + 1) * tr, h = (comp.r1 - comp.r0 + 1) * tr;
+        this.buildKitRoof(id, atlas, ox, oy, roofG!);
+        const fname = `r${id}`;
+        atlas.texture.add(fname, 0, ox, oy, w, h);
+        const roof = this.scene.add.image(comp.c0 * tr, comp.r0 * tr, atlas.texture, fname).setOrigin(0, 0).setDepth(depth);
         slot.deco.push(roof); slot.occluders.push(roof);
       } else {
         const key = this.bakeRoofTexture(id);
@@ -3213,6 +3544,11 @@ export class SeamlessChunks {
           }
         }
       }
+    }
+    if (atlas && roofG) {
+      atlas.endDraw();
+      atlas.draw(roofG, 0, 0);
+      roofG.destroy();
     }
   }
 
@@ -4379,13 +4715,13 @@ export class SeamlessChunks {
     try {
       this.bakeChunkUnsafe(idx, slot);
     } catch (e) {
-      if (!this.disposed && this.resident.get(idx) === slot) slot.baked = true;
+      if (!this.disposed && this.isLiveSlot(idx, slot)) slot.baked = true;
       console.warn('[SeamlessChunks] 청크 베이킹 예외 격리', idx, e);
     }
   }
 
   private bakeChunkUnsafe(idx: number, slot: ChunkSlot): void {
-    if (this.disposed || this.resident.get(idx) !== slot) return;
+    if (this.disposed || !this.isLiveSlot(idx, slot)) return;
     const cc = idx % this.chunkCols;
     const cr = Math.floor(idx / this.chunkCols);
     const N = this.cfg.chunkTiles;
@@ -4506,6 +4842,20 @@ export class SeamlessChunks {
           if (this.islet[r * cols + c] && ch === '.') {
             if (this.waterTex.length > 0 && this.waterTex[0].length > 0) {
               slot.rt.batchDraw(this.waterTex[0][Math.floor(hash2(seed ^ 0x77aa, c, r) * this.waterTex[0].length) % this.waterTex[0].length], dx, dy);
+            }
+            // 182차 — 암반 = 주기 아틀라스의 월드 위상 프레임(체커판 제거). 볼록 모서리는 45° 삼각 프레임.
+            //   사진 시트 셀(조도)은 위에 사진이 얹히므로 건너뛴다(투명 물 부분에 암반이 비치면 안 된다)
+            const rockAtl = this.surfAtlas.get('islet');
+            if (rockAtl && !this.tileTexMap.has(r * cols + c)) {
+              const N = SeamlessChunks.SURF_N;
+              const fk = `${rockAtl}#${((c % N) + N) % N}_${((r % N) + N) % N}`;
+              const cut = this.isletCutAt(c, r);
+              if (!cut) SeamlessChunks.put(slot.rt, fk, dx, dy);
+              else {
+                const keep = cut === 'ne' ? 'sw' : cut === 'nw' ? 'se' : cut === 'se' ? 'nw' : 'ne';
+                const tk = this.triKey(fk, keep);
+                if (tk) slot.rt.batchDraw(tk, dx, dy);
+              }
             }
             continue;
           }
@@ -4708,18 +5058,19 @@ export class SeamlessChunks {
           // (그 셀이 이미 포말을 그리고 있어 2px 선을 더하면 모래 위에 흰 테두리가 얹힌다)
           //   사진 시트 셀(115차 — 섬 갯바위)과 맞닿은 변도 생략: 사진 속 해안선은 셀 안쪽에 있어
           //   타일 변을 따라 포말을 그으면 섬 둘레에 **격자 이음선**이 생긴다(실렌더 확인).
-          const noRim = (nc: number, nr: number): boolean => {
+          const noRim = (nc: number, nr: number, edge: 'n' | 'e' | 's' | 'w'): boolean => {
             const t = at(nc, nr);
             return t !== '~' && !(this.ttpReady && t === 's') && !this.tileTexMap.has(nr * cols + nc)
+              && !this.isletEdgeOpen(nc, nr, edge)
               && !(this.armorReady && nc >= 0 && nr >= 0 && nc < cols && nr < this.cfg.rows && this.bwComp[nr * cols + nc] >= 0);
           };
           const wq = waterTriAt.get(r * cols + c);
           if (wq) this.drawChamferRim(g, lx, ly, c, r, wq);
           g.fillStyle(COL.foam, 0.4);
-          if (noRim(c, r - 1) && wq !== 'ne' && wq !== 'nw') g.fillRect(lx, ly, tr, 2);
-          if (noRim(c, r + 1) && wq !== 'se' && wq !== 'sw') g.fillRect(lx, ly + tr - 2, tr, 2);
-          if (noRim(c - 1, r) && wq !== 'nw' && wq !== 'sw') g.fillRect(lx, ly, 2, tr);
-          if (noRim(c + 1, r) && wq !== 'ne' && wq !== 'se') g.fillRect(lx + tr - 2, ly, 2, tr);
+          if (noRim(c, r - 1, 's') && wq !== 'ne' && wq !== 'nw') g.fillRect(lx, ly, tr, 2);
+          if (noRim(c, r + 1, 'n') && wq !== 'se' && wq !== 'sw') g.fillRect(lx, ly + tr - 2, tr, 2);
+          if (noRim(c - 1, r, 'e') && wq !== 'nw' && wq !== 'sw') g.fillRect(lx, ly, 2, tr);
+          if (noRim(c + 1, r, 'w') && wq !== 'ne' && wq !== 'se') g.fillRect(lx + tr - 2, ly, 2, tr);
           // 해수욕장 서프 — 모래와 맞닿은 물가는 두꺼운 러프 포말 밴드 + 1타일 물속 부서진 거품 줄
           // (드론 실사 정합 — 사용자 리포트 5번 캡처: 모래 → 포말 파도 → 바다 연결부)
           {
@@ -4795,44 +5146,49 @@ export class SeamlessChunks {
         if (ch === '.' && this.islet[r * cols + c]) {
           const wN = at(c, r - 1) === '~', wS = at(c, r + 1) === '~';
           const wW = at(c - 1, r) === '~', wE = at(c + 1, r) === '~';
+          const tri = this.isletCutAt(c, r);
+          const RIM = 0x6e6355;
+          if (this.surfAtlas.has('islet')) {
+            // 182차 — 암반은 L1 아틀라스가 깔았다. 여기서는 물가 젖은 림 + 연속 이끼만
+            if (tri) {
+              // 빗변 포말(물 쪽으로 3px) → 젖은 림 — 직선 물가의 '물 타일 포말 + 림'과 같은 두 겹
+              const ox = tri.includes('e') ? 3 : -3, oy = tri.includes('n') ? -3 : 3;
+              g.lineStyle(2, COL.foam, 0.4);
+              if (tri === 'ne' || tri === 'sw') g.lineBetween(lx + ox, ly + oy, lx + tr + ox, ly + tr + oy);
+              else g.lineBetween(lx + tr + ox, ly + oy, lx + ox, ly + tr + oy);
+              g.lineStyle(3, RIM, 1);
+              if (tri === 'ne' || tri === 'sw') g.lineBetween(lx, ly, lx + tr, ly + tr);
+              else g.lineBetween(lx + tr, ly, lx, ly + tr);
+            } else {
+              g.fillStyle(RIM, 1);
+              if (wN) g.fillRect(lx, ly, tr, 3);
+              if (wS) g.fillRect(lx, ly + tr - 3, tr, 3);
+              if (wW) g.fillRect(lx, ly, 3, tr);
+              if (wE) g.fillRect(lx + tr - 3, ly, 3, tr);
+              this.drawIsletMoss(g, lx, ly, c, r);
+            }
+            continue;
+          }
+          // 아틀라스 없음(tr ≠ 32) — 구 절차 폴백
           const rockCol = h1 > 0.5 ? 0xb7ab9b : 0xaba08f;
-          let tri: 'ne' | 'nw' | 'se' | 'sw' | null = null;
-          if (wN && wE && at(c + 1, r - 1) === '~') tri = 'ne';
-          else if (wN && wW && at(c - 1, r - 1) === '~') tri = 'nw';
-          else if (wS && wE && at(c + 1, r + 1) === '~') tri = 'se';
-          else if (wS && wW && at(c - 1, r + 1) === '~') tri = 'sw';
           g.fillStyle(rockCol, 1);
           if (tri) {
-            // 물 쪽 모서리를 깎은 직각삼각형 (빗변 45°) + 빗변 젖은 림
             const pts = tri === 'ne' ? [[lx, ly], [lx + tr, ly + tr], [lx, ly + tr]]
               : tri === 'nw' ? [[lx + tr, ly], [lx + tr, ly + tr], [lx, ly + tr]]
               : tri === 'se' ? [[lx, ly], [lx + tr, ly], [lx, ly + tr]]
               : [[lx, ly], [lx + tr, ly], [lx + tr, ly + tr]];
             g.fillPoints(pts.map(([x, y]) => ({ x, y })), true);
-            g.lineStyle(3, 0x6e6355, 1);
+            g.lineStyle(3, RIM, 1);
             if (tri === 'ne' || tri === 'sw') g.lineBetween(lx, ly, lx + tr, ly + tr);
             else g.lineBetween(lx + tr, ly, lx, ly + tr);
           } else {
             g.fillRect(lx, ly, tr, tr);
-            if (h2 > 0.45) {                           // 크랙·바위 결
-              g.fillStyle(0x7d7263, 0.7);
-              g.fillRect(lx + 3 + Math.floor(h1 * 16), ly + 4 + Math.floor(h2 * 18), 8, 3);
-              g.fillRect(lx + 12 + Math.floor(h2 * 10), ly + 14 + Math.floor(h1 * 8), 3, 7);
-            }
-            if (h1 > 0.8) {                            // 하이라이트 면
-              g.fillStyle(0xd6cdbd, 0.8);
-              g.fillRect(lx + 2 + Math.floor(h2 * 14), ly + 2 + Math.floor(h1 * 10), 9, 5);
-            }
-            g.fillStyle(0x6e6355, 1);                  // 젖은 바위 림 (물가)
+            g.fillStyle(RIM, 1);
             if (wN) g.fillRect(lx, ly, tr, 3);
             if (wS) g.fillRect(lx, ly + tr - 3, tr, 3);
             if (wW) g.fillRect(lx, ly, 3, tr);
             if (wE) g.fillRect(lx + tr - 3, ly, 3, tr);
-            // 안쪽(사방이 물이 아닌) 타일 = 초지/이끼 패치 (조도 위성: 암반 가운데 짙은 초록)
-            if (!wN && !wS && !wW && !wE && h2 > 0.42) {
-              g.fillStyle(h1 > 0.5 ? 0x5d7a4a : 0x527043, 0.9);
-              g.fillRect(lx + 2 + Math.floor(h1 * 8), ly + 2 + Math.floor(h2 * 8), 14 + Math.floor(h1 * 10), 12 + Math.floor(h2 * 10));
-            }
+            this.drawIsletMoss(g, lx, ly, c, r);
           }
           continue;
         }
@@ -5056,7 +5412,7 @@ export class SeamlessChunks {
 
     try {
       // 씬 전환 직전의 늦은 베이크 콜백이 이미 반환된 RenderTexture를 잡고 있을 수 있다.
-      if (!this.disposed && this.resident.get(idx) === slot) {
+      if (!this.disposed && this.isLiveSlot(idx, slot)) {
         slot.rt.draw(g, 0, 0);
         // 181차 — 3단째: 절차 패스(틈·돌길·포말) **위에** 피복 스프라이트를 얹는다
         if (this.armorReady && this.chunkArmor[idx]) {
@@ -5077,12 +5433,13 @@ export class SeamlessChunks {
   // ═══════════════════════════════════════════════════
 
   /** 상주/풀 통계 (검증·dev 표기용) */
-  stats(): { resident: number; pooled: number; created: number; pendingBakes: number } {
+  stats(): { resident: number; pooled: number; created: number; pendingBakes: number; warm: number } {
     return {
       resident: this.resident.size,
       pooled: this.rtPool.length,
       created: this.rtCreated,
       pendingBakes: this.bakeQueue.length,
+      warm: this.warm.size,
     };
   }
 
@@ -5107,6 +5464,12 @@ export class SeamlessChunks {
       try { this.unloadChunk(idx, slot); } catch (e) { console.warn('[SeamlessChunks] unload 실패', e); }
     }
     this.resident.clear();
+    for (const slot of this.warm.values()) {
+      try { this.clearSlotContents(slot); } catch (e) { console.warn('[SeamlessChunks] 예열 정리 실패', e); }
+      this.rtPool.push(slot.rt);
+    }
+    this.warm.clear();
+    this.loadQueue = [];
     for (const rt of this.rtPool) rt.destroy();
     this.rtPool = [];
     this.bakeQueue = [];
