@@ -19,7 +19,7 @@
 import Phaser from 'phaser';
 import type { RegionRoad, RegionProp, RegionTileTex, RegionLight } from '@tra/core';
 import { COAST_OBJECTS } from '../data/TileCatalog.js';
-import { seamBetween, terrainClass, terrainPaint, terrainGroup } from '@tra/core';
+import { seamBetween, terrainClass, terrainPaint, terrainGroup, reliefHeight, castsReliefShadow } from '@tra/core';
 import { GRASS_EDGE_SUFFIXES, PAVED_EDGE_SUFFIXES, KENNEY_ROOF_COLORS, KENNEY_ROOF_PARTS, TTP_EDGE_TILES, TTP_UNITS, COAST_DECKS, COAST_RUBBLE, COAST_EDGE_SRC, COAST_ROCK_COUNT } from '../data/TilesetManifest.js';
 import { hasUsableTexture } from '../ui/CanvasTextureGuard.js';
 
@@ -250,6 +250,20 @@ const SEAM_GRAIN: Record<string, readonly number[]> = {
   c: [0x9a8558, 0x8a8f52, 0x7e9447],
   f: [0x7e6a46, 0x2f5a30, 0x376a36],
 };
+
+/**
+ * 180차 — 곡선 해안선·단차 표현 켜기. `false`면 105~106차 경로(TTP 시트 접경 셀)로 돌아간다.
+ * 접경 셀은 **직선 셀을 방위별로 회전해 붙이는 방식**이라 대각선 해안이 계단으로 끊겼다.
+ */
+const SHORE_BLEND = true;
+/** 젖은 모래 — 물가에 가까울수록 짙다 (실측 모래 `beach` 0xd1a852 기준으로 명도만 내린 톤) */
+const WET_SAND: readonly number[] = [0xb8913f, 0xae893c, 0xa47f37];
+/** 모래 위 얕은 물 — 수심 0 버킷(0x74add0)보다 밝고 초록기가 도는 톤 */
+const SHALLOW_WATER: readonly number[] = [0x8fc6d4, 0x88c0cf, 0x93cad6];
+/** 사석 부스러기 — 테트라포드 틈으로 흘러든 돌 (105차 사석 셀 실측) */
+const RUBBLE_BITS: readonly number[] = [0x6b5a4a, 0x7d6b58, 0x5a4b3e, 0x8a7a66];
+/** 콘크리트 부스러기 — 사석 사면에 굴러 내려온 테트라포드 파편 */
+const CONCRETE_BITS: readonly number[] = [0x9aa0a4, 0x8a9095, 0xa7acae];
 
 /** 접경 띠 폭 — [고형 프론트 최대 px, 바깥 흩뿌림 px]. 알갱이 지형은 넓게, 유기 지형은 좁게. */
 const SEAM_SPAN: Record<string, readonly [number, number]> = {
@@ -661,6 +675,27 @@ export class SeamlessChunks {
       }
       if (tm.exists(key)) this.plazaTex.push(key);
     }
+    // 180차 — 45° 호안 삼각형 변형 (콘크리트 광장이 물과 맞닿는 계단을 빗변으로 잇는다)
+    if (this.plazaTex.length > 0) {
+      const src = tm.get(this.plazaTex[0]).getSourceImage() as CanvasImageSource;
+      for (const q of ['ne', 'nw', 'se', 'sw'] as const) {
+        const tk = `${this.plazaTex[0]}_tri_${q}`;
+        if (tm.exists(tk)) continue;
+        const cv = tm.createCanvas(tk, tr, tr);
+        if (!cv) continue;
+        const ctx = this.canvasContext(cv);
+        if (!ctx) { cv.destroy(); continue; }
+        ctx.imageSmoothingEnabled = false;
+        ctx.beginPath();
+        if (q === 'ne') { ctx.moveTo(0, 0); ctx.lineTo(tr, 0); ctx.lineTo(tr, tr); }
+        else if (q === 'nw') { ctx.moveTo(0, 0); ctx.lineTo(tr, 0); ctx.lineTo(0, tr); }
+        else if (q === 'se') { ctx.moveTo(tr, 0); ctx.lineTo(tr, tr); ctx.lineTo(0, tr); }
+        else { ctx.moveTo(0, 0); ctx.lineTo(tr, tr); ctx.lineTo(0, tr); }
+        ctx.closePath(); ctx.clip();
+        ctx.drawImage(src, 0, 0);
+        this.safeRefresh(cv);
+      }
+    }
   }
 
   /**
@@ -821,6 +856,405 @@ export class SeamlessChunks {
       const [front, fringe] = SEAM_SPAN[donor] ?? [8, 10];
       this.grainPass(g, lx, ly, c, r, sd, d8, SEAM_GRAIN[donor] ?? SEAM_GRAIN['s']!, front * d8.strength, fringe * d8.strength);
       void last;
+    }
+  }
+
+  /**
+   * 8방위 접경까지의 거리(px) — `grainPass`와 같은 식. 접경이 없으면 99.
+   * 대각 이웃은 "그 모서리에서 멀어지는 거리"(체비쇼프)라 코너가 둥글게 이어진다.
+   */
+  private edgeDist(x: number, y: number, d8: { n: boolean; s: boolean; w: boolean; e: boolean; nw: boolean; ne: boolean; sw: boolean; se: boolean }): number {
+    const last = this.cfg.tr - 2;
+    let d = 99;
+    if (d8.n) d = Math.min(d, y);
+    if (d8.s) d = Math.min(d, last - y);
+    if (d8.w) d = Math.min(d, x);
+    if (d8.e) d = Math.min(d, last - x);
+    if (d8.nw) d = Math.min(d, Math.max(x, y));
+    if (d8.ne) d = Math.min(d, Math.max(last - x, y));
+    if (d8.sw) d = Math.min(d, Math.max(x, last - y));
+    if (d8.se) d = Math.min(d, Math.max(last - x, last - y));
+    return d;
+  }
+
+  /** 8방위 이웃 중 조건을 만족하는 방위 */
+  private neighbors8(c: number, r: number, pred: (t: string, nc: number, nr: number) => boolean) {
+    const at = (cc: number, rr: number): string => this.tileAt(cc, rr);
+    return {
+      n: pred(at(c, r - 1), c, r - 1), s: pred(at(c, r + 1), c, r + 1),
+      w: pred(at(c - 1, r), c - 1, r), e: pred(at(c + 1, r), c + 1, r),
+      nw: pred(at(c - 1, r - 1), c - 1, r - 1), ne: pred(at(c + 1, r - 1), c + 1, r - 1),
+      sw: pred(at(c - 1, r + 1), c - 1, r + 1), se: pred(at(c + 1, r + 1), c + 1, r + 1),
+    };
+  }
+
+  /**
+   * 곡선 해안선 (180차 — 사용자 지적 "도로-모래-바다의 경계가 명확히 보인다 … 중간 타일이 없다").
+   *
+   * 구 방식은 **직선 접경 셀을 방위별로 회전해** 물 타일에 붙였다. 셀 하나하나는 예쁘지만
+   * 대각선·곡선 해안에서는 셀이 계단으로 이어져 **타일 격자가 그대로 드러났다**.
+   *
+   * 이제는 경계 양쪽 타일(모래·물)이 **같은 곡선 함수**를 평가한다.
+   *   s = 경계로부터의 부호 거리(물 쪽 +, 모래 쪽 −) · o = 전역 좌표 노이즈 오프셋(±10px)
+   *   v = s − o  →  v < 0 모래 · 0 ≤ v < 2 포말 · 2~16 얕은 물(모래가 비친다)
+   * 노이즈가 **전역 좌표**라 타일·청크 경계를 넘어 그대로 이어지고, 해안선은 격자와 무관한 곡선이 된다.
+   * 그 사이에 **젖은 모래 → 포말 → 얕은 물**의 중간 띠가 생긴다(레퍼런스의 "이음").
+   */
+  private drawShoreBlend(g: Phaser.GameObjects.Graphics, lx: number, ly: number, c: number, r: number, ch: string): void {
+    if (!SHORE_BLEND) return;
+    const shore = (t: string): boolean => t === 's' || t === 't';
+    const water = ch === '~';
+    if (!water && !shore(ch)) return;
+    const d8 = this.neighbors8(c, r, water ? (t) => shore(t) : (t) => t === '~');
+    if (!d8.n && !d8.s && !d8.w && !d8.e && !d8.nw && !d8.ne && !d8.sw && !d8.se) return;
+    const tr = this.cfg.tr;
+    const sd = this.cfg.seed ^ 0x51e0;
+    const sand = SEAM_GRAIN[water ? 's' : ch] ?? SEAM_GRAIN['s']!;
+    // 경계 모양 = 타일 중심값의 **쌍선형 보간장**(마칭 스퀘어). 1타일 계단이 45° 선으로 펴진다.
+    //  물 쪽은 "모래·갯벌 = 뭍", 뭍 쪽은 "물이 아니면 뭍" — 모래↔물 경계에서는 두 정의가 같아
+    //  양쪽 타일이 같은 선을 본다(모래↔포장 경계에 젖은 모래가 번지지 않게 정의를 나눴다).
+    const ind = (cc: number, rr: number): number => {
+      const t = this.tileAt(cc, rr);
+      return water ? (shore(t) ? 1 : 0) : (t === '~' ? 0 : 1);
+    };
+    const I = new Float32Array(9);
+    for (let j = 0; j < 3; j++) for (let i = 0; i < 3; i++) I[j * 3 + i] = ind(c - 1 + i, r - 1 + j);
+    for (let y = 0; y < tr; y += 2) {
+      for (let x = 0; x < tr; x += 2) {
+        const d = this.edgeDist(x, y, d8);
+        if (d > 30) continue;
+        const gx = c * tr + x, gy = r * tr + y;
+        // 이 2px 칸 중심에서 본 보간장 F (1 = 뭍 중심 · 0 = 물 중심)
+        const u = (x + 1) / tr - 0.5, w = (y + 1) / tr - 0.5;
+        const i0 = u < 0 ? 0 : 1, j0 = w < 0 ? 0 : 1;
+        const fx = u < 0 ? u + 1 : u, fy = w < 0 ? w + 1 : w;
+        const a00 = I[j0 * 3 + i0]!, a10 = I[j0 * 3 + i0 + 1]!, a01 = I[(j0 + 1) * 3 + i0]!, a11 = I[(j0 + 1) * 3 + i0 + 1]!;
+        const F = (a00 * (1 - fx) + a10 * fx) * (1 - fy) + (a01 * (1 - fx) + a11 * fx) * fy;
+        // 보간장이 포화(0/1)되는 곳 — 경계에서 반 타일 이상 — 은 구 거리식으로 잇는다(연속)
+        const s = F > 0.001 && F < 0.999 ? (0.5 - F) * tr : (water ? d + 1 : -(d + 1));
+        // 큰 굽이(±12) + 잔물결(±2) — 전역 좌표라 이웃 타일과 같은 곡선을 본다.
+        //  굽이 파장(≈37px)이 타일(32px)보다 길어야 해안선이 **격자를 가로질러** 흐른다.
+        const o = (noise2(sd, gx / 37, gy / 37) - 0.5) * 24 + (noise2(sd ^ 0x33, gx / 7, gy / 7) - 0.5) * 4;
+        const v = s - o;
+        const h = hash2(sd, gx, gy);
+        if (v < 0) {
+          if (water) {
+            // 물 타일 안으로 파고든 모래 — 반드시 채운다(밑의 물을 가린다)
+            g.fillStyle(v > -5 ? WET_SAND[Math.floor(h * WET_SAND.length) % WET_SAND.length]! : sand[Math.floor(h * sand.length) % sand.length]!, 1);
+            g.fillRect(lx + x, ly + y, 2, 2);
+          } else if (v > -22) {
+            // 모래 쪽 — 물가로 갈수록 젖는다 (디더로 번짐). 파도가 닿는 폭 ≈ 20px
+            const t = (v + 22) / 22;                         // 0(마른) → 1(물가)
+            if (v > -7 || h < t * t * 0.95) {
+              g.fillStyle(WET_SAND[Math.floor(h * WET_SAND.length) % WET_SAND.length]!, 1);
+              g.fillRect(lx + x, ly + y, 2, 2);
+            }
+          }
+          continue;
+        }
+        if (v < 2) {                                          // 포말 선
+          g.fillStyle(COL.foam, 0.92);
+          g.fillRect(lx + x, ly + y, 2, 2);
+          continue;
+        }
+        if (v < 5) {                                          // 부서지는 거품
+          g.fillStyle(h > 0.55 ? COL.foam : SHALLOW_WATER[Math.floor(h * 3) % 3]!, h > 0.55 ? 0.7 : 1);
+          g.fillRect(lx + x, ly + y, 2, 2);
+          continue;
+        }
+        if (v < 16) {                                         // 얕은 물 — 모래가 비친다
+          const t = (16 - v) / 11;                            // 1(물가) → 0(깊은 쪽)
+          if (!water || h < t * 0.85) {                       // 모래 타일 위라면 반드시 채운다
+            g.fillStyle(SHALLOW_WATER[Math.floor(h * SHALLOW_WATER.length) % SHALLOW_WATER.length]!, 1);
+            g.fillRect(lx + x, ly + y, 2, 2);
+          }
+          // 두 번째 물결선 — 끊긴 흰 줄
+          if (v >= 9 && v < 11 && noise2(sd ^ 0x77, gx / 9, gy / 9) > 0.58) {
+            g.fillStyle(COL.foam, 0.5);
+            g.fillRect(lx + x, ly + y, 2, 2);
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * 방파제 단면 전이 (180차 — 사용자 지적 "돌바닥-테트라포드 사이에 자연스러운 타일이 없다").
+   *
+   * ① **테트라포드 ↔ 사석**: 두 재료가 자로 그은 선으로 붙어 있었다. 실제로는 사석이
+   *    블록 틈으로 흘러들고, 블록 파편이 사석 위로 굴러 내려온다 → 서로의 재료를 노이즈
+   *    프론트로 흘려 넣는다(`grainPass`와 같은 문법 — 지면과 같은 2px 그레인).
+   * ② 높이는 `drawReliefShadow`가 따로 맡는다.
+   */
+  private drawBreakwaterSeam(g: Phaser.GameObjects.Graphics, lx: number, ly: number, c: number, r: number): void {
+    const cols = this.cfg.cols;
+    const k = this.bwClass[r * cols + c];
+    if (k !== 2 && k !== 3) return;
+    const want = k === 3 ? 2 : 3;
+    const d8 = this.neighbors8(c, r, (_t, nc, nr) =>
+      nc >= 0 && nr >= 0 && nc < cols && nr < this.cfg.rows && this.bwClass[nr * cols + nc] === want);
+    if (!d8.n && !d8.s && !d8.w && !d8.e && !d8.nw && !d8.ne && !d8.sw && !d8.se) return;
+    const sd = this.cfg.seed ^ 0x7b3c;
+    // 피복 타일엔 사석이 넓게(블록 틈을 메운다) · 사석 타일엔 블록 파편이 드문드문.
+    //  ⚠ 2px 알갱이만으로는 두 셀의 **직선 테두리**가 그대로 보였다(실렌더) — 돌 하나를
+    //    4~6px 덩어리 + 아래 그늘 1px로 그려야 경계를 덮는다.
+    const pal = k === 3 ? RUBBLE_BITS : CONCRETE_BITS;
+    const tr = this.cfg.tr;
+    const reach = k === 3 ? 16 : 10;
+    for (let y = 0; y < tr; y += 4) {
+      for (let x = 0; x < tr; x += 4) {
+        const jx = x + Math.floor(hash2(sd ^ 1, c * tr + x, r * tr + y) * 3) - 1;
+        const jy = y + Math.floor(hash2(sd ^ 2, c * tr + x, r * tr + y) * 3) - 1;
+        const d = this.edgeDist(Math.max(0, Math.min(tr - 2, jx)), Math.max(0, Math.min(tr - 2, jy)), d8);
+        if (d > reach) continue;
+        const front = reach * (0.45 + 0.55 * noise2(sd, (c * tr + x) / 13, (r * tr + y) / 13));
+        const h = hash2(sd, c * tr + x, r * tr + y);
+        if (d > front && h > 0.25) continue;
+        if (k === 2 && h > 0.45) continue;                         // 파편은 드문드문
+        const w = 3 + Math.floor(h * 3), hgt = 3 + Math.floor(hash2(sd ^ 3, c, r * 97 + x) * 2);
+        g.fillStyle(0x2a241f, 0.55);                                // 돌 밑 그늘
+        g.fillRect(lx + jx + 1, ly + jy + hgt - 1, w, 2);
+        g.fillStyle(pal[Math.floor(h * pal.length) % pal.length]!, 1);
+        g.fillRect(lx + jx, ly + jy, w, hgt);
+        g.fillStyle(0xffffff, 0.14);                                // 윗면 빛
+        g.fillRect(lx + jx, ly + jy, w - 1, 1);
+      }
+    }
+    // 가장 가까운 한 줄은 알갱이로 틈을 메운다 — 돌 사이로 셀 테두리가 비치지 않게.
+    //  ⚠ 사석 쪽(k=2)에는 깔지 않는다 — 콘크리트 알갱이가 사석 셀 둘레를 **회색 액자**처럼
+    //    감쌌다(180차 실렌더). 파편은 위의 덩어리만으로 충분하다.
+    if (k === 3) this.grainPass(g, lx, ly, c, r, sd ^ 0x9, d8, pal, 3, 4);
+  }
+
+  /**
+   * 단차 — 턱과 그림자 (180차 — 사용자 지적 "높낮이 타일이 없다").
+   *
+   * 높이(`reliefHeight`)는 core가 정한다: 물 0 · 사석 1 · 피복 2 · 상판·안벽 3.
+   * 빛은 **북서쪽**에서 온다고 두고 —
+   *  - 내가 **낮고** 높은 이웃이 **북·서**에 있으면 그 변을 따라 그림자가 진다(높이차에 비례한 폭).
+   *  - 내가 **높고** 낮은 이웃이 **남**에 있으면 탑다운 3/4 시점에서 보이는 **옆면(턱)** 을 그린다.
+   *    (동쪽 변은 1px 밝은 모서리만 — 옆면을 둘 다 그리면 상자가 떠 보인다)
+   * 그림자는 2px 그레인 디더로 번져 사각 띠처럼 보이지 않게 한다.
+   */
+  private drawReliefShadow(g: Phaser.GameObjects.Graphics, lx: number, ly: number, c: number, r: number, ch: string): void {
+    const cols = this.cfg.cols, rows = this.cfg.rows;
+    const tr = this.cfg.tr;
+    const bw = (cc: number, rr: number): number =>
+      cc >= 0 && rr >= 0 && cc < cols && rr < rows ? this.bwClass[rr * cols + cc] : 0;
+    const myBw = bw(c, r);
+    const hMe = reliefHeight(ch, myBw);
+    const sd = this.cfg.seed ^ 0x3d17;
+    const DIRS: [number, number, 'n' | 'e' | 's' | 'w'][] = [[0, -1, 'n'], [1, 0, 'e'], [0, 1, 's'], [-1, 0, 'w']];
+    // 180차 — 방파제 45° 모서리: 내 삼각형이 덮은 두 변은 직선 턱 대신 **빗변**에 턱·그림자를 긋는다
+    const myTri = this.bwTriAt.get(r * cols + c);
+    if (myTri) this.drawChamferRelief(g, lx, ly, c, r, myTri[0], hMe, reliefHeight('b', myTri[1]), myBw === 1 || (ch === 'b' && myBw === 0));
+    const OPP: Record<'n' | 'e' | 's' | 'w', string> = { n: 's', s: 'n', e: 'w', w: 'e' };
+    for (const [dc, dr, dir] of DIRS) {
+      const nc = c + dc, nr = r + dr;
+      if (nc < 0 || nr < 0 || nc >= cols || nr >= rows) continue;
+      if (myTri && myTri[0].includes(dir)) continue;
+      // 이웃의 삼각형이 공유 변을 덮었으면 그 변은 이미 내 재질로 이어진다 — 그림자·턱 생략
+      const nTri = this.bwTriAt.get(nr * cols + nc);
+      if (nTri && nTri[0].includes(OPP[dir])) continue;
+      const nch = this.tileAt(nc, nr);
+      if (nch === '#') continue;
+      const nBw = bw(nc, nr);
+      const hN = reliefHeight(nch, nBw);
+      if (hN > hMe && castsReliefShadow(nch, nBw, ch) && (dir === 'n' || dir === 'w')) {
+        // ── 그림자: 높은 이웃이 북·서 ──
+        const w = Math.min(12, 4 * (hN - hMe));
+        for (let a = 0; a < tr; a += 2) {
+          for (let b = 0; b < w; b += 2) {
+            const px = dir === 'w' ? b : a;
+            const py = dir === 'n' ? b : a;
+            const t = 1 - b / w;
+            const hh = hash2(sd ^ (dir === 'n' ? 1 : 2), c * tr + px, r * tr + py);
+            if (b >= 2 && hh > t * 0.95) continue;
+            g.fillStyle(0x0e0c0a, 0.5 * t + 0.12);
+            g.fillRect(lx + px, ly + py, 2, 2);
+          }
+        }
+      } else if (hN < hMe && myBw === 1 && dir === 's') {
+        // ── 상판 남쪽 옆면(턱) — 높이차만큼 ──
+        const face = Math.min(8, 3 * (hMe - hN));
+        g.fillStyle(0x857a69, 1);
+        g.fillRect(lx, ly + tr - face, tr, face);
+        g.fillStyle(0x6a6154, 1);
+        g.fillRect(lx, ly + tr - 2, tr, 2);
+        g.fillStyle(0xd9cfbc, 0.65);                       // 상판 모서리 하이라이트
+        g.fillRect(lx, ly + tr - face - 2, tr, 2);
+      } else if (hN < hMe && myBw === 1 && dir === 'e') {
+        g.fillStyle(0x6a6154, 0.85);                       // 동쪽 옆면 — 해를 등진 면
+        g.fillRect(lx + tr - 3, ly, 3, tr);
+      } else if (hN < hMe && myBw === 1 && (dir === 'n' || dir === 'w')) {
+        g.fillStyle(0xe6dcc8, 0.7);                        // 북·서 모서리 — 빛 받는 턱
+        if (dir === 'n') g.fillRect(lx, ly, tr, 2);
+        else g.fillRect(lx, ly, 2, tr);
+      }
+    }
+  }
+
+  /** 현재 굽는 청크의 방파제 45° 모서리 (drawReliefShadow가 턱을 빗변으로 옮길 때 본다) */
+  private bwTriAt = new Map<number, ['ne' | 'nw' | 'se' | 'sw', number]>();
+
+  /**
+   * 방파제 단면 띠의 바깥 모서리 (180차). 내 분류 `k`보다 **바다 쪽**(숫자가 큰) 재료가
+   * 직교 두 변과 그 사이 대각을 모두 차지하고, 반대쪽 두 변은 나와 같거나 뭍 쪽이면
+   * 그 모서리 방위와 바다 쪽 재료를 돌려준다.
+   */
+  private bwChamferAt(c: number, r: number, k: number): ['ne' | 'nw' | 'se' | 'sw', number] | null {
+    const cols = this.cfg.cols, rows = this.cfg.rows;
+    const cls = (cc: number, rr: number): number => {
+      if (cc < 0 || rr < 0 || cc >= cols || rr >= rows) return -1;
+      const t = this.tileAt(cc, rr);
+      if (t !== 'b' && t !== '.') return -1;
+      const v = this.bwClass[rr * cols + cc];
+      return v === 0 && t === 'b' ? 1 : v;
+    };
+    const inl = (v: number): boolean => v >= 1 && v <= k;
+    const nN = cls(c, r - 1), nS = cls(c, r + 1), nW = cls(c - 1, r), nE = cls(c + 1, r);
+    const cand: ['ne' | 'nw' | 'se' | 'sw', number, number, number, number, number][] = [
+      ['ne', nN, nE, cls(c + 1, r - 1), nS, nW],
+      ['nw', nN, nW, cls(c - 1, r - 1), nS, nE],
+      ['se', nS, nE, cls(c + 1, r + 1), nN, nW],
+      ['sw', nS, nW, cls(c - 1, r + 1), nN, nE],
+    ];
+    for (const [q, a, b, d, o1, o2] of cand) {
+      // 대각은 같은 재료거나 **더 바다 쪽**(사석 모서리 너머가 피복·물)이어도 된다 — 띠가 1타일 두께라
+      //   대각이 한 단계 더 나가 있는 경우가 대부분이다(실측)
+      if (a > k && a === b && (d >= a || d === -1) && inl(o1) && inl(o2)) return [q, a];
+    }
+    return null;
+  }
+
+  /** 타일 텍스처의 45° 직각삼각형 변형을 필요할 때 굽는다 (90° 꼭짓점이 `q` 방위) */
+  private triOf(src: string, q: 'ne' | 'nw' | 'se' | 'sw'): string | null {
+    const tm = this.scene.textures;
+    const key = `${src}_tri_${q}`;
+    if (tm.exists(key)) return key;
+    if (!tm.exists(src)) return null;
+    const tr = this.cfg.tr;
+    const img = tm.get(src).getSourceImage() as CanvasImageSource & { width: number; height: number };
+    const cv = tm.createCanvas(key, tr, tr);
+    if (!cv) return null;
+    const ctx = this.canvasContext(cv);
+    if (!ctx) { cv.destroy(); return null; }
+    ctx.imageSmoothingEnabled = false;
+    ctx.beginPath();
+    if (q === 'ne') { ctx.moveTo(0, 0); ctx.lineTo(tr, 0); ctx.lineTo(tr, tr); }
+    else if (q === 'nw') { ctx.moveTo(0, 0); ctx.lineTo(tr, 0); ctx.lineTo(0, tr); }
+    else if (q === 'se') { ctx.moveTo(tr, 0); ctx.lineTo(tr, tr); ctx.lineTo(0, tr); }
+    else { ctx.moveTo(0, 0); ctx.lineTo(tr, tr); ctx.lineTo(0, tr); }
+    ctx.closePath(); ctx.clip();
+    ctx.drawImage(img, 0, 0, img.width, img.height, 0, 0, tr, tr);
+    this.safeRefresh(cv);
+    return tm.exists(key) ? key : null;
+  }
+
+  /**
+   * 물 타일의 45° 호안 모서리 판정 (180차).
+   * 직교 두 변과 그 사이 대각이 **같은 단단한 뭍**(포장·맨땅·구조물)이고 반대쪽 두 변은 물이면
+   * 그 모서리 방위와 뭍 문자를 돌려준다. 모래·갯벌은 곡선 해안선이, 잔디류는 블롭이,
+   * 방파제는 단면 분류가 맡으므로 제외한다.
+   */
+  private waterChamferAt(c: number, r: number): ['ne' | 'nw' | 'se' | 'sw', string] | null {
+    const cols = this.cfg.cols, rows = this.cfg.rows;
+    if (this.tileTexMap.has(r * cols + c)) return null;
+    const land = (cc: number, rr: number): string | null => {
+      if (cc < 0 || rr < 0 || cc >= cols || rr >= rows) return null;
+      const t = this.tileAt(cc, rr);
+      if (t === '~' || t === '#' || t === 'b') return null;
+      if (this.bwClass[rr * cols + cc] > 0 || this.islet[rr * cols + cc]) return null;
+      const cls = terrainClass(t);
+      return cls === 'built' || cls === 'bare' || cls === 'structure' ? t : null;
+    };
+    const water = (cc: number, rr: number): boolean => this.tileAt(cc, rr) === '~';
+    // 같은 **문자**끼리만 — 그룹으로 묶으면 광장(p)과 맨땅(.)이 섞인 모서리에 엉뚱한 재질이 얹힌다
+    const same = (a: string | null, b: string | null): boolean => !!a && a === b;
+    const nN = land(c, r - 1), nS = land(c, r + 1), nW = land(c - 1, r), nE = land(c + 1, r);
+    const cand: ['ne' | 'nw' | 'se' | 'sw', string | null, string | null, string | null, boolean][] = [
+      ['ne', nN, nE, land(c + 1, r - 1), water(c, r + 1) && water(c - 1, r)],
+      ['nw', nN, nW, land(c - 1, r - 1), water(c, r + 1) && water(c + 1, r)],
+      ['se', nS, nE, land(c + 1, r + 1), water(c, r - 1) && water(c - 1, r)],
+      ['sw', nS, nW, land(c - 1, r + 1), water(c, r - 1) && water(c + 1, r)],
+    ];
+    for (const [q, a, b, d, open] of cand) {
+      if (!open || !a || !b || !d) continue;
+      if (same(a, b)) return [q, a];                  // 대각이 다른 단단한 재질이어도 두 변의 재질로 잇는다
+      // 두 변의 재질이 다르면(광장 + 맨땅) 대각 재질을 따른다 — 호안선이 두 재질 사이에서 끊기지 않게
+      if (same(d, a) || same(d, b)) return [q, d];
+    }
+    return null;
+  }
+
+  /** 45° 호안 빗변 — 물 쪽으로 턱 그림자(뭍이 북·서일 때) + 포말 한 줄 */
+  private drawChamferRim(g: Phaser.GameObjects.Graphics, lx: number, ly: number, c: number, r: number, q: 'ne' | 'nw' | 'se' | 'sw'): void {
+    const tr = this.cfg.tr;
+    const sd = this.cfg.seed ^ 0x2c4f;
+    const lit = q === 'se';                              // 뭍이 남동 = 빛을 등진 물 쪽엔 그림자가 없다
+    for (let y = 0; y < tr; y += 2) {
+      for (let x = 0; x < tr; x += 2) {
+        // 빗변에서 물 쪽으로의 거리(px) — 삼각형 안(뭍)은 음수
+        const d = q === 'ne' ? y - x : q === 'sw' ? x - y
+          : q === 'nw' ? x + y - (tr - 2) : (tr - 2) - x - y;
+        if (d < 0 || d > 10) continue;
+        const h = hash2(sd, c * tr + x, r * tr + y);
+        if (!lit && d < 6) {
+          const t = 1 - d / 6;
+          if (d < 2 || h < t * 0.9) { g.fillStyle(0x0e1a24, 0.35 * t + 0.1); g.fillRect(lx + x, ly + y, 2, 2); }
+          continue;
+        }
+        if (d >= (lit ? 0 : 6) && d < (lit ? 3 : 9) && h < 0.7) {
+          g.fillStyle(COL.foam, 0.55);
+          g.fillRect(lx + x, ly + y, 2, 2);
+        }
+      }
+    }
+  }
+
+  /**
+   * 방파제 45° 모서리의 턱·그림자 (180차). `q` 쪽 삼각형이 더 낮은 바다 쪽 재료다.
+   * 빛은 북서 — 남쪽을 향한 빗변(se·sw)은 옆면(턱)이 보이고, 남동 빗변은 낮은 쪽에 그림자가 진다.
+   */
+  private drawChamferRelief(
+    g: Phaser.GameObjects.Graphics, lx: number, ly: number, c: number, r: number,
+    q: 'ne' | 'nw' | 'se' | 'sw', hMe: number, hLow: number, deck: boolean,
+  ): void {
+    const tr = this.cfg.tr;
+    const dh = hMe - hLow;
+    if (dh <= 0) return;
+    const sd = this.cfg.seed ^ 0x3d19;
+    const face = deck && (q === 'se' || q === 'sw') ? Math.min(8, 3 * dh) : 0;
+    const shadowW = q === 'se' || q === 'sw' || q === 'ne' ? Math.min(12, 4 * dh) : 0;
+    for (let y = 0; y < tr; y += 2) {
+      for (let x = 0; x < tr; x += 2) {
+        // 빗변으로부터의 부호 거리 — 삼각형(낮은 재료) 안이 양수
+        const d = q === 'ne' ? x - y : q === 'sw' ? y - x : q === 'nw' ? (tr - 2) - x - y : x + y - (tr - 2);
+        if (d < 0) {
+          if (!deck) continue;
+          if (face > 0 && d >= -face) {                   // 남향 빗변 — 옆면(턱)
+            g.fillStyle(d >= -2 ? 0x6a6154 : 0x857a69, 1);
+            g.fillRect(lx + x, ly + y, 2, 2);
+          } else if (face > 0 && d >= -face - 2) {        // 턱 위 모서리 하이라이트
+            g.fillStyle(0xd9cfbc, 0.65);
+            g.fillRect(lx + x, ly + y, 2, 2);
+          } else if (q === 'nw' && d >= -2) {             // 빛 받는 북서 턱
+            g.fillStyle(0xe6dcc8, 0.7);
+            g.fillRect(lx + x, ly + y, 2, 2);
+          } else if (q === 'ne' && d >= -3) {             // 해를 등진 동향 옆면
+            g.fillStyle(0x6a6154, 0.85);
+            g.fillRect(lx + x, ly + y, 2, 2);
+          }
+          continue;
+        }
+        if (shadowW > 0 && d < shadowW) {                 // 낮은 재료 위로 드리운 그림자
+          const t = 1 - d / shadowW;
+          const hh = hash2(sd, c * tr + x, r * tr + y);
+          if (d >= 2 && hh > t * 0.95) continue;
+          g.fillStyle(0x0e0c0a, (0.5 * t + 0.12) * (q === 'ne' ? 0.6 : 1));
+          g.fillRect(lx + x, ly + y, 2, 2);
+        }
+      }
     }
   }
 
@@ -3398,6 +3832,11 @@ export class SeamlessChunks {
     const useGround = this.groundTex.size > 0;
     /** 대각 엣지 타일 — 이 타일의 볼록 모서리(두 직교 이웃 + 대각 이웃이 같은 다른 지형)에 그린 삼각형 방위 */
     const triAt = new Map<number, ['ne' | 'nw' | 'se' | 'sw', string]>();
+    /** 180차 — 방파제 단면 띠의 바깥 모서리에 더 바다 쪽 재료 삼각형을 얹은 타일 */
+    const bwTriAt = this.bwTriAt;
+    bwTriAt.clear();
+    /** 180차 — 45° 호안 삼각형을 얹은 물 타일 (절차 패스가 포말을 빗변을 따라 긋는다) */
+    const waterTriAt = new Map<number, 'ne' | 'nw' | 'se' | 'sw'>();
     if (useGround) {
       slot.rt.beginDraw();
       const grp = terrainGroup;   // 172차 — core 표로 이관(차도·보도·광장은 벡터 밴드가 잇는다)
@@ -3415,7 +3854,8 @@ export class SeamlessChunks {
             // ── 해변 접경 — 모래와 맞닿은 물 타일에 TTP 시트 접경 셀(방위 회전)을 얹는다.
             //   모래가 접경 방향으로 번지고 그 앞에 포말이 깔린다(103차 절차 서프 밴드를 대체).
             //   두 방위가 동시에 모래면 둘 다 그린다 = 모래 부분이 합집합(코너에서 기하학적으로 옳다)
-            if (this.ttpReady) {
+            // 180차 — 곡선 해안선(`drawShoreBlend`)이 켜져 있으면 직선 접경 셀은 깔지 않는다
+            if (this.ttpReady && !SHORE_BLEND) {
               const sd = [at(c, r - 1) === 's', at(c + 1, r) === 's', at(c, r + 1) === 's', at(c - 1, r) === 's'];
               for (let d = 0; d < 4; d++) {
                 if (!sd[d]) continue;
@@ -3439,6 +3879,23 @@ export class SeamlessChunks {
                 const pool = outer ? this.coastToe[d] : this.coastQuay[d];
                 if (!pool || pool.length === 0) continue;
                 slot.rt.batchDraw(pool[Math.floor(hash2(seed ^ (0x6c10 + d), c, r) * pool.length) % pool.length], dx, dy);
+              }
+            }
+            // ── 180차 · 안벽 계단 45° — 대각선 안벽·호안이 타일 계단으로 끊겨 보였다(사용자 리포트).
+            //   물 타일의 **안쪽 모서리**(직교 두 변 + 대각이 같은 단단한 뭍)에 그 뭍의 삼각형을 얹는다.
+            //   계단 한 칸마다 이 삼각형이 이어져 빗변이 한 줄의 45° 호안선이 된다(충돌은 불변).
+            {
+              const q = this.waterChamferAt(c, r);
+              if (q) {
+                // 'r'(콘크리트 광장)은 지면 베이스 위에 광장 톤을 덧칠하므로 삼각형도 광장 톤으로
+                //  'p'(포장 광장)는 terrainGroup으로는 '.'에 묶이지만 **자기 베이스 셀**(pave)을 따로 갖는다
+                const bk = q[1] === 'r' && this.plazaTex.length > 0 ? [this.plazaTex[0]]
+                  : this.groundTex.get(q[1]) ?? this.groundTex.get(terrainGroup(q[1]));
+                const tk = bk ? `${bk[0]}_tri_${q[0]}` : '';
+                if (tk && this.scene.textures.exists(tk)) {
+                  slot.rt.batchDraw(tk, dx, dy);
+                  waterTriAt.set(r * cols + c, q[0]);
+                }
               }
             }
             // ── 섬 주변 여(스커리) — 실사 갯바위 스프라이트 산포(105차). 절차 사각형 대체.
@@ -3472,16 +3929,21 @@ export class SeamlessChunks {
           // ── 방파제 'b'/상판 '.' — 단면 분류(114차 computeBreakwaters): 피복(TTP) / 사석 / 상판 ──
           if ((ch === 'b' || ch === '.') && this.coastReady) {
             const k = this.bwClass[r * cols + c];
-            if (k === 3 && this.ttpReady) {
-              slot.rt.batchDraw(`ts_ttp_tile_ttp_${hash2(seed ^ 0x77b1, c, r) < 0.5 ? 'a' : 'b'}`, dx, dy);
-              continue;
-            }
-            if (k === 2) {
-              slot.rt.batchDraw(`ts_coast_${COAST_RUBBLE[Math.floor(hash2(seed ^ 0x77b2, c, r) * 991) % COAST_RUBBLE.length]}`, dx, dy);
-              continue;
-            }
-            if (k === 1 || ch === 'b') {
-              slot.rt.batchDraw(this.coastPierKey(c, r), dx, dy);
+            const bwKey = (kk: number, cc: number, rr: number): string | null =>
+              kk === 3 ? (this.ttpReady ? `ts_ttp_tile_ttp_${hash2(seed ^ 0x77b1, cc, rr) < 0.5 ? 'a' : 'b'}` : null)
+                : kk === 2 ? `ts_coast_${COAST_RUBBLE[Math.floor(hash2(seed ^ 0x77b2, cc, rr) * 991) % COAST_RUBBLE.length]}`
+                  : null;
+            const base = k === 3 || k === 2 ? bwKey(k, c, r) : (k === 1 || ch === 'b') ? this.coastPierKey(c, r) : null;
+            if (base) {
+              slot.rt.batchDraw(base, dx, dy);
+              // 180차 — 단면 띠(상판 → 사석 → 피복)가 대각선 방파제에서 **타일 상자 계단**으로 끊겼다.
+              //   바깥 모서리(직교 두 변 + 대각이 더 바다 쪽 재료)를 그 재료의 45° 삼각형으로 덮는다.
+              const q = this.bwChamferAt(c, r, k === 0 ? 1 : k);
+              if (q) {
+                const src = bwKey(q[1], c + (q[0].endsWith('e') ? 1 : -1), r + (q[0].startsWith('s') ? 1 : -1));
+                const tk = src ? this.triOf(src, q[0]) : null;
+                if (tk) { slot.rt.batchDraw(tk, dx, dy); bwTriAt.set(r * cols + c, q); }
+              }
               continue;
             }
           }
@@ -3545,8 +4007,27 @@ export class SeamlessChunks {
             return true;
           };
           // 차도가 잘리는 쪽이 아니라 **차도가 보도를 파고드는** 대각도 같은 규칙으로 처리된다
-          const triDrew = tri(nN, nE, at(c + 1, r - 1), 'ne') || tri(nN, nW, at(c - 1, r - 1), 'nw')
+          let triDrew = tri(nN, nE, at(c + 1, r - 1), 'ne') || tri(nN, nW, at(c - 1, r - 1), 'nw')
             || tri(nS, nE, at(c + 1, r + 1), 'se') || tri(nS, nW, at(c - 1, r + 1), 'sw');
+          // 180차 — 포장 광장(p)은 terrainGroup으로 맨땅(.)과 한 군이라 위 규칙이 **계단을 그대로 뒀다**
+          //   (호안 옆 회색 광장 ↔ 베이지 맨땅의 톱니). 칠하기 순서대로 낮은 맨땅이 광장 모서리를 45°로 덮는다.
+          if (!triDrew && ch === 'p') {
+            const bare = (cc: number, rr: number): boolean =>
+              at(cc, rr) === '.' && this.bwClass[rr * cols + cc] === 0 && !this.islet[rr * cols + cc];
+            const bk = this.groundTex.get('.');
+            const pt = (ok: boolean, q: 'ne' | 'nw' | 'se' | 'sw'): boolean => {
+              if (!ok || !bk) return false;
+              const tk = `${bk[0]}_tri_${q}`;
+              if (!this.scene.textures.exists(tk)) return false;
+              slot.rt.batchDraw(tk, dx, dy);
+              triAt.set(r * cols + c, [q, '.']);
+              return true;
+            };
+            triDrew = pt(bare(c, r - 1) && bare(c + 1, r) && bare(c + 1, r - 1), 'ne')
+              || pt(bare(c, r - 1) && bare(c - 1, r) && bare(c - 1, r - 1), 'nw')
+              || pt(bare(c, r + 1) && bare(c + 1, r) && bare(c + 1, r + 1), 'se')
+              || pt(bare(c, r + 1) && bare(c - 1, r) && bare(c - 1, r + 1), 'sw');
+          }
           // ── 포장(tan/pier) 접경 = 삼각 스무딩이 없을 때만 어두운 테두리 엣지 셀 (불투명 덮어쓰기) ──
           if (!triDrew && em && mask > 0) {
             const tk = em.get(EDGE_SUFFIX[mask]);
@@ -3627,6 +4108,9 @@ export class SeamlessChunks {
               }
             }
           }
+          // 180차 — 곡선 해안선 + 구조물이 물에 드리우는 그림자 (45° 호안 타일은 그림자도 빗변이 맡는다)
+          this.drawShoreBlend(g, lx, ly, c, r, ch);
+          if (!waterTriAt.has(r * cols + c)) this.drawReliefShadow(g, lx, ly, c, r, ch);
           // 파도 대시 — 얕은~중간 수심에 성긴 밝은 물결
           if (bucket <= 3 && h1 > 0.90) {
             g.fillStyle(COL.wave, 0.55);
@@ -3640,11 +4124,13 @@ export class SeamlessChunks {
             const t = at(nc, nr);
             return t !== '~' && !(this.ttpReady && t === 's') && !this.tileTexMap.has(nr * cols + nc);
           };
+          const wq = waterTriAt.get(r * cols + c);
+          if (wq) this.drawChamferRim(g, lx, ly, c, r, wq);
           g.fillStyle(COL.foam, 0.4);
-          if (noRim(c, r - 1)) g.fillRect(lx, ly, tr, 2);
-          if (noRim(c, r + 1)) g.fillRect(lx, ly + tr - 2, tr, 2);
-          if (noRim(c - 1, r)) g.fillRect(lx, ly, 2, tr);
-          if (noRim(c + 1, r)) g.fillRect(lx + tr - 2, ly, 2, tr);
+          if (noRim(c, r - 1) && wq !== 'ne' && wq !== 'nw') g.fillRect(lx, ly, tr, 2);
+          if (noRim(c, r + 1) && wq !== 'se' && wq !== 'sw') g.fillRect(lx, ly + tr - 2, tr, 2);
+          if (noRim(c - 1, r) && wq !== 'nw' && wq !== 'sw') g.fillRect(lx, ly, 2, tr);
+          if (noRim(c + 1, r) && wq !== 'ne' && wq !== 'se') g.fillRect(lx + tr - 2, ly, 2, tr);
           // 해수욕장 서프 — 모래와 맞닿은 물가는 두꺼운 러프 포말 밴드 + 1타일 물속 부서진 거품 줄
           // (드론 실사 정합 — 사용자 리포트 5번 캡처: 모래 → 포말 파도 → 바다 연결부)
           {
@@ -3761,6 +4247,10 @@ export class SeamlessChunks {
           // 접경 알갱이 띠(172차) — 어느 재료가 어느 재료 위로 흘러나오는지는 core 표가 정한다.
           //  차도('r')는 벡터 밴드가 위에 깔리므로 제외한다.
           if (ch !== 'r') this.drawSeamGrains(g, lx, ly, c, r, ch);
+          // 180차 — 해안선 · 방파제 단면 전이 · 단차(턱·그림자)
+          this.drawShoreBlend(g, lx, ly, c, r, ch);
+          this.drawBreakwaterSeam(g, lx, ly, c, r);
+          this.drawReliefShadow(g, lx, ly, c, r, ch);
           // 안벽 계선주(112차) — 'b'뿐 아니라 항만 수역에 면한 '.'/'w' 안벽에도 4타일 간격
           if ((ch === '.' || ch === 'w' || ch === 'r' || ch === 'p') && (c + r) % 4 === 0 && this.bwClass[r * cols + c] !== 3) {
             const hb = (nc: number, nr: number): boolean =>
@@ -3966,10 +4456,13 @@ export class SeamlessChunks {
             if (tq === 'ne' || tq === 'sw') g.lineBetween(lx, ly, lx + tr, ly + tr);
             else g.lineBetween(lx + tr, ly, lx, ly + tr);
           }
-          if (diff(at(c, r - 1)) && tq !== 'ne' && tq !== 'nw') g.fillRect(lx, ly, tr, 2);
-          if (diff(at(c, r + 1)) && tq !== 'se' && tq !== 'sw') g.fillRect(lx, ly + tr - 2, tr, 2);
-          if (diff(at(c - 1, r)) && tq !== 'nw' && tq !== 'sw') g.fillRect(lx, ly, 2, tr);
-          if (diff(at(c + 1, r)) && tq !== 'ne' && tq !== 'se') g.fillRect(lx + tr - 2, ly, 2, tr);
+          // 180차 — 이웃 타일의 삼각형이 공유 변을 덮었으면(그 변이 내 재질로 이어진다) 선을 긋지 않는다.
+          //   안 그러면 45° 빗변 옆에 옛 계단 윤곽이 가는 선으로 남는다(실렌더).
+          const nq = (cc: number, rr: number): string => triAt.get(rr * cols + cc)?.[0] ?? '';
+          if (diff(at(c, r - 1)) && tq !== 'ne' && tq !== 'nw' && !nq(c, r - 1).startsWith('s')) g.fillRect(lx, ly, tr, 2);
+          if (diff(at(c, r + 1)) && tq !== 'se' && tq !== 'sw' && !nq(c, r + 1).startsWith('n')) g.fillRect(lx, ly + tr - 2, tr, 2);
+          if (diff(at(c - 1, r)) && tq !== 'nw' && tq !== 'sw' && !nq(c - 1, r).endsWith('e')) g.fillRect(lx, ly, 2, tr);
+          if (diff(at(c + 1, r)) && tq !== 'ne' && tq !== 'se' && !nq(c + 1, r).endsWith('w')) g.fillRect(lx + tr - 2, ly, 2, tr);
         }
 
         // ── 건물 그림자 — 남·동측 지면에 드리움 (해가 북서) ──

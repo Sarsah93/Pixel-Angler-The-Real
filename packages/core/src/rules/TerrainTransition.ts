@@ -191,3 +191,53 @@ export function needsInterstitial(a: string, b: string): string | null {
 export function terrainGroup(ch: string): string {
   return ch === 'r' || ch === 'w' || ch === 'p' ? '.' : ch;
 }
+
+// ─────────────────────────────────────────────
+// 4. 의사 높이 — 단차(턱·그림자) 표현 (180차)
+// ─────────────────────────────────────────────
+
+/**
+ * 방파제 단면 분류(`computeBreakwaters` — client) 값.
+ * 0 = 방파제 아님/안벽 · 1 = 상판(콘크리트) · 2 = 사석 · 3 = 테트라포드 피복.
+ */
+export type BreakwaterClass = 0 | 1 | 2 | 3;
+
+/**
+ * 지형의 **의사 높이**(0~3). 실측 고도(DEM)가 아니라 "누가 누구보다 높아 보여야 하는가"다.
+ *
+ * ## 왜 필요했나 (사용자 지적, 180차)
+ *
+ * "높낮이 타일이 없다 … 방파제 쪽에서는 돌바닥-테트라포드 사이에 자연스러운 타일이 없다."
+ * 실제 방파제는 **상판이 가장 높고**, 그 옆으로 테트라포드가 사면을 이루며 내려가고,
+ * 물가 발치에 사석이 깔린다. 지금까지는 세 재료가 같은 평면에 붙어 있어서 단면이 읽히지 않았다.
+ *
+ * ⚖ 실제 DEM은 여전히 후순위다(2026-09-03 사용자 결정 — `RASTER_UPLIFT_AMENDMENT.md` §4).
+ *   이 값은 **렌더 전용**이고, 이동·충돌·낚시 판정에는 쓰지 않는다.
+ *
+ * - 물 0 · 모래·갯벌 1(해변은 물가로 완만히 내려간다)
+ * - 방파제는 **바다 쪽으로 한 단씩 내려간다**: 상판 3 → 사석 2 → 테트라포드 피복 1 → 물 0
+ *   (단면 분류는 물까지 거리로 나뉜다 — 물가 2칸 = 피복 · 3칸 = 사석 · 안쪽 = 상판.
+ *    그래서 사석은 상판과 피복 **사이의 어깨**다. 처음에 사석을 가장 낮게 뒀더니
+ *    상판과 피복 사이에 **골짜기**가 생겨 단면이 거꾸로 읽혔다 — 실렌더로 잡았다.)
+ * - 그 밖의 뭍 3(안벽·포장·맨땅)
+ */
+export function reliefHeight(ch: string, breakwaterClass: number = 0): number {
+  if (ch === '~') return 0;
+  if (breakwaterClass === 1) return 3;
+  if (breakwaterClass === 2) return 2;
+  if (breakwaterClass === 3) return 1;
+  return terrainClass(ch) === 'granular' ? 1 : 3;
+}
+
+/**
+ * 높은 이웃이 **그림자를 드리우는가**.
+ *
+ * 해변(알갱이 지형)은 물가로 완만히 내려가는 사면이라 절벽처럼 그림자를 떨구지 않는다.
+ * 그림자를 떨구는 것은 **구조물**(방파제 단면)과 **안벽**(물에 면한 인공·맨땅)뿐이다.
+ */
+export function castsReliefShadow(casterCh: string, casterBw: number, receiverCh: string): boolean {
+  if (casterBw > 0 || casterCh === 'b') return true;
+  if (receiverCh !== '~') return false;                 // 뭍끼리는 방파제 단면만
+  const cls = terrainClass(casterCh);
+  return cls === 'built' || cls === 'bare' || cls === 'structure';
+}
