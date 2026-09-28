@@ -291,7 +291,7 @@ const FOAM_A = 0xeef6f5, FOAM_B = 0xc2e0e4;
  * ⚠ 1차 구현은 벌집 격자(Y 위에 ⅄를 세로로 쌓기)라 **육각형 빈 공간**이 생겼다 — 틈은 좁아야 한다.
  *   DX = 열 안 간격(px) · DY = 열 간격 · INV_OY = ⅄가 Y보다 내려앉는 깊이
  */
-const TTP_DX = 30, TTP_DY = 32, TTP_INV_OY = 12;
+const TTP_DX = 24, TTP_DY = 28, TTP_INV_OY = 10;   // 181-b — 30/32/12에서 좁힘(사용자 지시 "간격을 더 줄여야")
 
 /** 수심 그라데이션 (거리 램프) — legacy DEPTH_RAMP 계승 */
 const DEPTH_RAMP: [number, number][] = [
