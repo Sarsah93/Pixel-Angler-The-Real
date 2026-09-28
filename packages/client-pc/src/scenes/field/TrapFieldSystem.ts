@@ -288,6 +288,9 @@ export class TrapFieldSystem {
   }
 
   /** 씬 keydown-F — 소비했으면 true (122차) */
+  /** 178차 — 상호작용 겹침 판정용 프로브 */
+  get hasNearTrap(): boolean { return this.nearTrap !== null; }
+
   onInteractKey(): boolean {
     const t = this.nearTrap;
     if (!t) return false;

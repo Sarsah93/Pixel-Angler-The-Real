@@ -292,6 +292,9 @@ export class StoveFieldSystem {
   }
 
   /** 씬 keydown-F — 소비했으면 true. shift = 회수 */
+  /** 178차 — 상호작용 겹침 판정용 프로브 */
+  get hasNearStove(): boolean { return this.nearStove !== null; }
+
   onInteractKey(shift = false): boolean {
     const st = this.nearStove;
     if (!st) return false;

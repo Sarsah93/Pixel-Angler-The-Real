@@ -105,6 +105,10 @@ const MINI_COL: Record<RegionTerrain, number> = {
 const MINI_SIZES = [150, 250, 350] as const;
 /** 미니맵과 독립적으로 조절되는 「지금 할 일」 패널 폭 */
 const QUEST_TRACKER_WIDTHS = [236, 300, 380] as const;
+/** 178차 — 획득 알림 유지 시간(사용자 지시 "최소 30초") · 동시 표시 장수 · 추적기와의 간격 */
+const TOAST_HOLD_MS = 30000;
+const TOAST_MAX = 4;
+const TOAST_GAP_FROM_TRACKER = 12;
 const QUEST_TRACKER_HEIGHTS = [124, 172, 224] as const;
 type HudWindow = 'status' | 'chat' | 'map' | 'quest';
 type HudRect = { x: number; y: number; w: number; h: number };
@@ -339,6 +343,8 @@ export class RegionHud extends Phaser.GameObjects.Container {
   private readonly hudUp = (): void => { this.hudDrag = undefined; };
   /** 155차 — 우측 획득 토스트(아이템 아이콘 + 수량, 페이드 인/아웃) */
   private toasts: { c: Phaser.GameObjects.Container; h: number }[] = [];
+  /** 알림 스택 아래 [모두 닫기] 줄 (2장 이상일 때만) */
+  private toastClearC?: Phaser.GameObjects.Container;
   /** 미니맵 타이틀 밴드 높이 (155차 — +/− 버튼이 들어간다) */
   private static readonly MINI_HDR = 18;
   private miniSizeIdx = 0;
@@ -1148,6 +1154,8 @@ export class RegionHud extends Phaser.GameObjects.Container {
     this.trackerC = c;
     this.clampHud('quest');
     applyScreenFixed(this);
+    // 178차 — 추적기 높이가 바뀌면 그 아래 알림 줄도 다시 내려 잡는다(겹침 방지)
+    this.relayoutToasts();
   }
 
   /** 우상단을 고정하고 좌하단으로 3단계 확장한다. */
@@ -1182,31 +1190,83 @@ export class RegionHud extends Phaser.GameObjects.Container {
     const name = this.scene.add.text(46, 21, t.qty > 1 ? `${t.name}  ×${t.qty}` : t.name, {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#e8f4fd', fontStyle: 'bold',
     });
-    clampTextWidth(name, W - 46 - 8);
+    clampTextWidth(name, W - 46 - 24);   // ✕ 버튼 자리를 비워 둔다
     c.add([head, name]);
+    // 178차 — 30초를 유지하므로 **유저가 직접 닫을 수 있어야** 한다.
+    //  ✕ 버튼 + 본문 아무 곳이나 클릭 = 확인(닫기). 알림이 쌓여 있으면 아래에 [모두 닫기].
+    const body = this.scene.add.rectangle(W / 2, H / 2, W, H, 0xffffff, 0.001)
+      .setInteractive({ useHandCursor: true });
+    body.on('pointerdown', () => this.dismissToast(c));
+    const x = this.scene.add.text(W - 11, 10, '✕', {
+      fontFamily: 'sans-serif', fontSize: '11px', color: '#7a98ac', fontStyle: 'bold',
+    }).setOrigin(0.5);
+    const xHit = this.scene.add.rectangle(W - 11, 10, 18, 18, 0xffffff, 0.001)
+      .setInteractive({ useHandCursor: true });
+    xHit.on('pointerover', () => x.setColor('#ffffff'));
+    xHit.on('pointerout', () => x.setColor('#7a98ac'));
+    xHit.on('pointerdown', () => this.dismissToast(c));
+    c.add([body, x, xHit]);
     c.setAlpha(0);
     this.add(c);
     applyScreenFixed(this);
     this.toasts.push({ c, h: H });
-    if (this.toasts.length > 4) { const old = this.toasts.shift(); old?.c.destroy(); }
+    if (this.toasts.length > TOAST_MAX) { const old = this.toasts.shift(); old?.c.destroy(); }
     this.relayoutToasts();
     this.scene.tweens.add({ targets: c, alpha: 1, x: GAME_WIDTH - 16 - W, duration: 220, ease: 'Sine.easeOut' });
-    this.scene.time.delayedCall(2600, () => {
-      this.scene.tweens.add({
-        targets: c, alpha: 0, x: GAME_WIDTH - 16 - W + 30, duration: 320, ease: 'Sine.easeIn',
-        onComplete: () => { this.toasts = this.toasts.filter((e) => e.c !== c); c.destroy(); this.relayoutToasts(); },
-      });
+    this.scene.time.delayedCall(TOAST_HOLD_MS, () => this.dismissToast(c));
+  }
+
+  /** 토스트 한 장 닫기 (자동 만료·✕·본문 클릭·[모두 닫기] 공용) */
+  private dismissToast(c: Phaser.GameObjects.Container): void {
+    if (!this.toasts.some((e) => e.c === c)) return;   // 이미 닫혔다
+    this.toasts = this.toasts.filter((e) => e.c !== c);
+    this.scene.tweens.add({
+      targets: c, alpha: 0, x: c.x + 30, duration: 240, ease: 'Sine.easeIn',
+      onComplete: () => { c.destroy(); restoreHandCursor(this.scene); },
     });
+    this.relayoutToasts();
   }
 
   private relayoutToasts(): void {
-    // 추적기 아래에서 시작해 아래로 쌓인다 — 퀵슬롯 바(하단 74px)를 침범하지 않는 범위
-    let y = this.miniBottomY() + (this.trackerC ? (this.trackerC.getBounds().height + 10) : 0);
+    // 178차 — 「지금 할 일」 창이 **드래그로 옮겨지고 내용에 따라 높이가 변하므로**,
+    //  미니맵 기준으로 계산하던 구 코드는 추적기와 겹쳤다. 추적기의 실제 위치·높이를 쓴다.
+    const trackerBottom = this.trackerC ? this.trackerC.y + this.trackerHeight : this.miniBottomY();
+    let y = Math.max(this.miniBottomY(), trackerBottom) + TOAST_GAP_FROM_TRACKER;
     for (const e of this.toasts) {
       this.scene.tweens.add({ targets: e.c, y, duration: 160, ease: 'Sine.easeOut' });
       y += e.h + 6;
       if (y > GAME_HEIGHT - 90) break;
     }
+    this.layoutToastClearAll(y);
+  }
+
+  /** 알림이 2장 이상이면 스택 아래에 [모두 닫기] 한 줄 */
+  private layoutToastClearAll(y: number): void {
+    this.toastClearC?.destroy();
+    this.toastClearC = undefined;
+    if (this.toasts.length < 2 || y > GAME_HEIGHT - 104) return;
+    const W = 250, H = 20;
+    const c = this.scene.add.container(GAME_WIDTH - 16 - W, y);
+    const bg = this.scene.add.graphics();
+    paintHudPanel(bg, 0, 0, W, H, { alpha: 0.9 });
+    const t = this.scene.add.text(W / 2, H / 2, `모두 닫기 (${this.toasts.length})`, {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#9fc0d4', fontStyle: 'bold',
+    }).setOrigin(0.5);
+    const hit = this.scene.add.rectangle(W / 2, H / 2, W, H, 0xffffff, 0.001)
+      .setInteractive({ useHandCursor: true });
+    hit.on('pointerover', () => t.setColor('#ffffff'));
+    hit.on('pointerout', () => t.setColor('#9fc0d4'));
+    hit.on('pointerdown', () => {
+      // 입력 디스패치 중 자기 자신을 파괴하지 않도록 다음 틱에서 정리한다.
+      this.scene.time.delayedCall(0, () => {
+        for (const e of [...this.toasts]) this.dismissToast(e.c);
+        restoreHandCursor(this.scene);
+      });
+    });
+    c.add([bg, t, hit]);
+    this.add(c);
+    applyScreenFixed(this);
+    this.toastClearC = c;
   }
 
   /**
@@ -1540,6 +1600,7 @@ export class RegionHud extends Phaser.GameObjects.Container {
     } else {
       this.trackerC?.setPosition(x, y);
       this.trackerPosition = { right: x + r.w, top: y };
+      this.relayoutToasts();   // 178차 — 추적기를 옮기면 알림 줄도 따라 내려간다
     }
   }
 

@@ -101,6 +101,9 @@ import { questSceneFor, type SceneExtra } from '../data/QuestScenes.js';
 import { loadSettings } from './SettingsScene.js';
 import { MultiplayerClient } from '../net/MultiplayerClient.js';
 import { STORY_NPC_PLACEMENTS, STORY_PLACES, STORY_FIELD_TRIGGERS, type StoryNpcPlacement, type StoryFieldTrigger } from '../data/StoryNpcs.js';
+import { GroundItemStore, type GroundItem } from '../store/GroundItemStore.js';
+import { InteractChoicePanel, type InteractOption } from '../ui/InteractChoicePanel.js';
+import { createItemIcon } from '../ui/ItemIcon.js';
 import { getStoryNpc, validateStoryQuests, validateStoryChoices, validateLicenseStoryRoutes, getSkillById, profScale, gearFaultChance, GEAR_REF_PRICE, gearUsable, GEAR_FAULTS,
   STORY_QUESTS, getStoryQuest, narrativeOf, nextObjectiveIndex, objectiveTarget, objectiveHowToKo, getDayJob, getRegionById, WORLD_NODE_DATABASE,
   type StoryQuestDef, type QuestGuideTarget, type GuideNames } from '@tra/core';
@@ -596,7 +599,13 @@ export class RegionFieldScene extends Phaser.Scene {
     this.poiObjects.clear();
     this.occludersByChunk.clear();
     this.faded.clear();
-    this.showFieldLabels = loadSettings().showFieldLabels;
+    const st0 = loadSettings();
+    this.showFieldLabels = st0.showFieldLabels;
+    // 178차 — 할 일 위치 안내(화살표) 켜고 끄기. 설정 창에서 바꾸면 즉시 반영된다.
+    this.showQuestGuide = st0.showQuestGuide;
+    const onGuideToggle = (v: boolean): void => { this.showQuestGuide = v; };
+    this.game.events.on('quest-guide-changed', onGuideToggle);
+    this.events.once('shutdown', () => this.game.events.off('quest-guide-changed', onGuideToggle));
     // 멀티 — 세션에 들어와 있으면 위치 알림을 켠다 (싱글이면 아무것도 하지 않는다)
     MultiplayerClient.startPresence();
     this.events.once('shutdown', () => this.clearPeers());
@@ -734,6 +743,12 @@ export class RegionFieldScene extends Phaser.Scene {
       this.drawPois();
     }
     if (this.region === 'hometown') this.renderHomeObjects();
+    // 178차 — 바닥에 놓아둔 물건은 지역과 무관하게 그린다(세이브에서 복원)
+    this.renderGroundItems();
+    this.events.once('shutdown', () => {
+      this.groundSprites.forEach((objs) => objs.forEach((o) => o.destroy()));
+      this.groundSprites.clear();
+    });
     this.setupInput();
     this.createHud();
     // 낮/밤 명암 + 건물 조명·네온·가로등 + 날씨(비/안개) 효과
@@ -2343,22 +2358,22 @@ export class RegionFieldScene extends Phaser.Scene {
     this.input.keyboard!.on('keydown-E', () => { if (!this.isPaused) this.toggleEquipment(); });
     this.input.keyboard!.on('keydown-F', (ev: KeyboardEvent) => {
       if (this.isPaused || this.uiBlocked) return;
-      if (this.tryPlaceQuestIceCrate()) return;
-      // 160차 — 스토리 현장 지점은 NPC 대화보다 먼저 소비한다. 같은 장소에서
-      // 도현수와 마주쳐도 증거 연출/기록/보고의 순서를 건너뛸 수 없다.
+      // 160차 — 스토리 현장 지점은 무엇보다 먼저 소비한다. 같은 장소에서 도현수와
+      // 마주쳐도 증거 연출/기록/보고의 순서를 건너뛸 수 없다(각본 게이트라 선택지로 내리지 않는다).
       if (this.nearStoryTrigger) { this.startStoryTrigger(this.nearStoryTrigger); return; }
-      // 134차 — 스토리 NPC 대화가 최우선 (NPC 옆에 서 있으면 F = 대화)
-      if (this.nearNpc) { this.openDialogue(this.nearNpc.npcId); return; }
-      // 홈타운 오브젝트(문/버스/설치물) > 건물 거래 > 채집 스팟 > 통발
-      //  Shift+F = 설치물 회수 (기능이 있는 설치물은 [F]가 기능을 연다 — 129차)
-      if (this.nearObject) this.interactWithObject(this.nearObject, ev.shiftKey);
-      else if (this.nearBuilding) this.promptTrade(this.nearBuilding.kind);
-      // 138차 — 해안에 밀려온 불가사리는 채집 스팟보다 먼저 줍는다(발밑에 있는 게 우선)
-      else if (this.nuisance?.gatherNear(this.playerBody.x, this.playerBody.y, TR * 1.4)) { /* 채집됨 */ }
-      else if (this.forage?.onInteractKey()) { /* 채집 홀드 시작 */ }
-      // 154차 — 화구는 [F] 요리 / [Shift+F] 회수 (129차 설치물 규칙과 동일)
-      else if (this.stoveField?.onInteractKey(ev.shiftKey)) { /* 요리 패널 · 회수 확인 */ }
-      else if (this.trapField?.onInteractKey()) { /* 통발 수거 확인 */ }
+      // 178차 — 선택 창에서 「채집」을 고른 직후엔 이 [F]를 채집에 넘긴다(홀드 동작)
+      if (this.interactPrefer && this.time.now < this.interactPrefer.until) {
+        this.interactPrefer = null;
+        if (this.forage?.onInteractKey()) return;
+      }
+      this.interactPrefer = null;
+      // Shift+F = 회수 의도가 분명하므로 선택 창을 띄우지 않고 구 순서대로 처리한다
+      if (ev.shiftKey) { this.runLegacyInteract(true); return; }
+      // 178차 — 상호작용이 겹치면 무엇을 할지 고른다 (하나면 바로 실행)
+      const opts = this.collectInteractOptions();
+      if (!opts.length) return;
+      if (opts.length === 1) { opts[0].run?.(); return; }
+      this.openInteractChoice(opts);
     });
     // L 면허 · K 스킬 · J 일지 (122차 복원)
     this.input.keyboard!.on('keydown-L', () => { if (!this.isPaused) this.togglePanel('license'); });
@@ -2371,6 +2386,13 @@ export class RegionFieldScene extends Phaser.Scene {
       this.startCompose();
     });
     this.events.once('shutdown', () => this.endCompose());
+    // 178차 — 인벤토리 우클릭 '내려놓기' → 캐릭터가 서 있는 자리에 둔다
+    const onPlace = (item: InvItem, res: { ok: boolean; message: string }): void => {
+      const r = this.placeItemFromInventory(item);
+      res.ok = r.ok; res.message = r.message;
+    };
+    this.events.on('inventory-place', onPlace);
+    this.events.once('shutdown', () => this.events.off('inventory-place', onPlace));
     // T: 통발 놓기 (121차 — 보유 통발 + 미끼 선택 → 물 위 클릭 설치)
     this.input.keyboard!.on('keydown-T', () => {
       if (this.isPaused || this.uiBlocked) return;
@@ -4475,8 +4497,10 @@ export class RegionFieldScene extends Phaser.Scene {
     this.storyNpcs = [];
     for (const def of STORY_NPC_PLACEMENTS) {
       if (def.regionId !== this.region) continue;
+      // 178차 — 좌표 없는 등록은 **지역 안내 전용**이다(무대가 아직 없는 인물). 세우지 않는다.
+      if (def.tx === undefined || def.ty === undefined) continue;
       const { col, row } = this.nearestWalkable(def.tx, def.ty);
-      const ai = new StoryNpcActor(this, this.npcHost, characterOf(def.npcId), col, row, def.behavior, def.facing ?? 'down');
+      const ai = new StoryNpcActor(this, this.npcHost, characterOf(def.npcId), col, row, def.behavior ?? 'wander', def.facing ?? 'down');
       const x = ai.x, y = ai.y;
       const actor = ai.image;
       const npc = getStoryNpc(def.npcId);
@@ -4547,6 +4571,19 @@ export class RegionFieldScene extends Phaser.Scene {
   private miniPlaceMarkers: MiniMarker[] = [];
   /** 설정 '장소 이름표' — 끄면 바닥 이름표·점이 사라진다 (기본 끔) */
   private showFieldLabels = false;
+  /** 할 일 위치 안내(점멸 화살표) 표시 — 설정 '화면' 탭 (178차) */
+  private showQuestGuide = true;
+  // ── 178차 — 바닥의 물건(내려놓기/줍기) + 상호작용 겹침 선택 ──
+  /** 바닥 아이템 스프라이트 (uid → 표시 객체들) */
+  private groundSprites = new Map<string, Phaser.GameObjects.GameObject[]>();
+  /** 겹침 선택 패널 (열려 있으면 하나) */
+  private interactPanel?: InteractChoicePanel;
+  /**
+   * 다음 [F]에서 겹침 선택을 건너뛰고 곧바로 실행할 행동.
+   * 채집은 **키를 누르고 있는 동안** 진행되는 홀드 동작이라 마우스 클릭으로는 시작할 수 없다 —
+   * 선택 창에서 「채집」을 고르면 이 값을 세우고 안내만 띄운 뒤, 바로 다음 [F]를 채집에 넘긴다.
+   */
+  private interactPrefer: { kind: 'forage'; until: number } | null = null;
 
   // ── 143차 멀티플레이 — 같은 지역의 다른 사람 (145차 외형·활동·밀어내기) ──
   /** playerId → 스프라이트·이름표·활동 배지 */
@@ -5040,8 +5077,11 @@ export class RegionFieldScene extends Phaser.Scene {
         if (!t.npcId) return null;
         const n = this.storyNpcs.find((s) => s.def.npcId === t.npcId);
         if (n) return { x: n.x, y: n.y - 12, label: names.npcName(t.npcId) };
-        const pl = STORY_NPC_PLACEMENTS.find((p) => p.npcId === t.npcId);
-        return pl ? { away: this.regionNameKo(pl.regionId) } : null;
+        // 178차 — 이 지역에 서 있지 않으면 어느 지역으로 가야 하는지 알려준다.
+        //  지역은 **추적 중인 할 일의 지역**이 우선(같은 인물도 장마다 무대가 다르다) · 없으면 배치표.
+        const away = t.regionId ?? STORY_NPC_PLACEMENTS.find((p) => p.npcId === t.npcId)?.regionId;
+        if (!away || away === this.region) return null;   // 같은 지역인데 안 서 있으면 조용히 안내 없음
+        return { away: this.regionNameKo(away) };
       }
       case 'place': {
         const pl = STORY_PLACES.find((p) => p.key === t.placeKey);
@@ -5110,11 +5150,11 @@ export class RegionFieldScene extends Phaser.Scene {
     const { q, idx, kind } = pick;
     let target: QuestGuideTarget; let objective: string; let howTo: string;
     if (kind === 'offer') {
-      target = { kind: 'npc', npcId: q.giver };
+      target = { kind: 'npc', npcId: q.giver, regionId: q.region };
       objective = `새 할 일 — ${names.npcName(q.giver)}에게 말을 건다`;
       howTo = `${names.npcName(q.giver)}에게 다가가 [F] → 「내가 도와줄 수 있는 게 있을까요?」`;
     } else if (idx === null) {
-      target = q.giver ? { kind: 'npc', npcId: q.giver } : { kind: 'none' };
+      target = q.giver ? { kind: 'npc', npcId: q.giver, regionId: q.region } : { kind: 'none' };
       objective = q.giver ? `${names.npcName(q.giver)}에게 돌아가 보고한다` : '할 일을 마쳤다 — 일지(J)에서 확인';
       howTo = q.giver ? `${names.npcName(q.giver)}에게 [F]` : '';
     } else {
@@ -5177,7 +5217,8 @@ export class RegionFieldScene extends Phaser.Scene {
       }).setOrigin(0.5, 0.5).setDepth(62);
     }
     const blink = 0.55 + 0.45 * Math.abs(Math.sin(this.time.now / 260));
-    this.drawGuideArrow(this.questGuideG, this.questGuideLbl!, blocked ? null : t, 46, 0xffd257, blink);
+    // 178차 — 설정에서 끄면 할 일 화살표만 사라진다(직접 찍은 지도 핀 화살표는 그대로).
+    this.drawGuideArrow(this.questGuideG, this.questGuideLbl!, blocked || !this.showQuestGuide ? null : t, 46, 0xffd257, blink);
     const pin = MapPinStore.get(this.region);
     this.drawGuideArrow(this.pinArrowG!, this.pinArrowLbl!, blocked || !pin ? null : { x: pin.x, y: pin.y, label: '핀' }, 60, 0x5cd0ff, blink);
   }
@@ -5251,32 +5292,34 @@ export class RegionFieldScene extends Phaser.Scene {
     // 퀘스트 마커는 600ms마다만 재평가 (상태가 안 바뀌면 교체도 없다)
     this.questMarkerAt += 150;
     if (this.questMarkerAt >= 600) { this.questMarkerAt = 0; this.refreshQuestMarkers(); }
-    if (trigger && !this.uiBlocked && !this.placing) {
+    // ── 머리 위 [F] 안내 ──
+    //  178차 — 상호작용이 겹치면 낱개로 나열하지 않고 「상호작용 — N가지」로 묶어 안내한다.
+    //  각본 게이트(스토리 현장 지점)는 선택지로 내리지 않으므로 그것만 따로 먼저 알린다.
+    const hintFor = (text: string, color: string): void => {
       if (!this.npcHintText) {
         this.npcHintText = this.add.text(0, 0, '', {
-          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#ffe9a0',
-          backgroundColor: '#0a1628dd', padding: { x: 6, y: 3 },
-        }).setOrigin(0.5, 1).setDepth(60);
-      }
-      this.npcHintText.setText(`[F] ${trigger.labelKo}`).setPosition(px, this.playerLabelY).setVisible(true);
-    } else if (nearest && !this.uiBlocked && !this.placing) {
-      const npc = getStoryNpc(nearest.npcId);
-      const q = StoryStore.questsForNpc(nearest.npcId);
-      const tag = q.completable.length ? ' — 의뢰 완료' : q.offer.length ? ' — 새 의뢰' : q.active.length ? ' — 진행 중' : '';
-      if (!this.npcHintText) {
-        this.npcHintText = this.add.text(0, 0, '', {
-          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#ffe9a0',
+          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color,
           backgroundColor: '#0a1628dd', padding: { x: 6, y: 3 },
         }).setOrigin(0.5, 1).setDepth(60);
       }
       try {
-        this.npcHintText.setText(`[F] ${npc?.nameKo ?? nearest.npcId}${tag}`)
-          .setPosition(px, this.playerLabelY).setVisible(true);
+        this.npcHintText.setColor(color);
+        this.npcHintText.setText(text).setPosition(px, this.playerLabelY).setVisible(true);
       } catch (e) {
-        console.warn('[RegionFieldScene] 오래된 NPC 힌트 텍스트 폐기', e);
+        console.warn('[RegionFieldScene] 오래된 상호작용 힌트 텍스트 폐기', e);
         this.npcHintText = undefined;
       }
-    } else this.npcHintText?.setVisible(false);
+    };
+    if (this.uiBlocked || this.placing) {
+      this.npcHintText?.setVisible(false);
+    } else if (trigger) {
+      hintFor(`[F] ${trigger.labelKo}`, '#ffe9a0');
+    } else {
+      const opts = this.collectInteractOptions();
+      if (!opts.length) this.npcHintText?.setVisible(false);
+      else if (opts.length === 1) hintFor(`[F] ${opts[0].label}`, '#ffe9a0');
+      else hintFor(`[F] 상호작용 — ${opts.length}가지`, '#b9f2ff');
+    }
     // 방문 장소
     for (const pl of STORY_PLACES) {
       if (pl.regionId !== this.region || this.firedPlaces.has(pl.key)) continue;
@@ -5302,15 +5345,186 @@ export class RegionFieldScene extends Phaser.Scene {
       && (iceProgress?.obj[1] ?? 0) >= 1 && (iceProgress?.obj[2] ?? 0) === 0
       && Math.hypot(icePlace.tx * TR + TR / 2 - px, icePlace.ty * TR + TR / 2 - py) <= 48;
     this.iceDropMarker?.setVisible(StoryStore.isActive('M1-02') && (iceProgress?.obj[1] ?? 0) < 1);
-    if (this.nearIceDrop && !this.uiBlocked && !this.placing) {
-      if (!this.npcHintText) {
-        this.npcHintText = this.add.text(0, 0, '', {
-          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#b9f2ff',
-          backgroundColor: '#0a1628dd', padding: { x: 6, y: 3 },
-        }).setOrigin(0.5, 1).setDepth(60);
-      }
-      this.npcHintText.setText('[F] 얼음 상자 내려놓기').setPosition(px, this.playerLabelY).setVisible(true);
+  }
+
+  // ═══════════════════════════════════════════════════
+  // 178차 — 상호작용 겹침 선택 · 바닥의 물건(내려놓기 / 줍기 / 회수)
+  // ═══════════════════════════════════════════════════
+
+  /** 구 [F] 순서 그대로 (Shift+F 회수 · 선택지 실행의 공용 경로) */
+  private runLegacyInteract(shift: boolean): void {
+    if (this.nearObject) this.interactWithObject(this.nearObject, shift);
+    else if (this.stoveField?.onInteractKey(shift)) { /* 요리 패널 · 회수 확인 */ }
+    else if (this.trapField?.onInteractKey()) { /* 통발 수거 확인 */ }
+  }
+
+  /** 캐릭터가 서 있는 타일 */
+  private playerTile(): { c: number; r: number } {
+    return { c: Math.floor(this.playerBody.x / TR), r: Math.floor(this.playerBody.y / TR) };
+  }
+
+  /**
+   * 지금 [F]로 할 수 있는 것 전부 (178차).
+   * 하나면 곧바로 실행되고, 둘 이상이면 선택 창이 뜬다 — 우선순위는 목록 순서다.
+   */
+  private collectInteractOptions(): InteractOption[] {
+    const opts: InteractOption[] = [];
+    // ① 퀘스트 하역 (지정 위치에서 얼음 상자 내려놓기)
+    if (this.nearIceDrop) {
+      opts.push({ label: '얼음 상자 내려놓기', note: '경매장 하역 표시', run: () => { this.tryPlaceQuestIceCrate(); } });
     }
+    // ② 인물과 대화
+    if (this.nearNpc) {
+      const id = this.nearNpc.npcId;
+      const npc = getStoryNpc(id);
+      const q = StoryStore.questsForNpc(id);
+      const note = q.completable.length ? '의뢰 완료' : q.offer.length ? '새 의뢰' : q.active.length ? '진행 중' : undefined;
+      opts.push({ label: `${npc?.nameKo ?? id}과 대화하기`, note, run: () => this.openDialogue(id) });
+    }
+    // ③ 오브젝트(문·버스·설치물)
+    if (this.nearObject) {
+      const o = this.nearObject;
+      opts.push({ label: this.objInteractLabel(o).replace(/^\[F\]\s*/, '').split(' · ')[0], run: () => this.interactWithObject(o, false) });
+    }
+    // ④ 건물 거래
+    if (this.nearBuilding) {
+      const kind = this.nearBuilding.kind;
+      opts.push({ label: `${BUILDING_LABEL[kind]} — 거래하기`, run: () => this.promptTrade(kind) });
+    }
+    // ⑤ 밀려온 불가사리 (자격·크기 제한 없음)
+    const washed = this.nuisance?.gatherableNear(this.playerBody.x, this.playerBody.y, TR * 1.4);
+    if (washed) {
+      opts.push({
+        label: `${washed.nameKo} 줍기`,
+        run: () => { this.nuisance?.gatherNear(this.playerBody.x, this.playerBody.y, TR * 1.4); },
+      });
+    }
+    // ⑥ 바닥의 물건 — 여러 개면 우측으로 한 겹 더 펼친다 (사용자 지시)
+    const tile = this.playerTile();
+    const ground = GroundItemStore.at(this.region, tile.c, tile.r, 1);
+    if (ground.length) {
+      const allPlaced = ground.every((g) => g.placed);
+      const label = allPlaced ? '놓아둔 물건 회수하기' : '아이템 줍기';
+      if (ground.length === 1) {
+        const g = ground[0];
+        opts.push({
+          label, note: `${g.tpl.name}${g.qty > 1 ? ` ×${g.qty}` : ''}`, icon: g.tpl,
+          run: () => this.takeGroundItem(g.uid),
+        });
+      } else {
+        opts.push({
+          label, note: `${ground.length}가지`,
+          sub: () => GroundItemStore.at(this.region, tile.c, tile.r, 1).map((g) => ({
+            label: `${g.tpl.name}${g.qty > 1 ? ` ×${g.qty}` : ''}`,
+            note: g.placed ? '내가 놓아둔 물건' : undefined,
+            icon: g.tpl,
+            run: () => this.takeGroundItem(g.uid),
+          })),
+        });
+      }
+    }
+    // ⑦ 채집 스팟 — **홀드 동작**이라 선택 창에서 고르면 다음 [F]로 넘긴다
+    const forageName = this.forage?.nearSpotNameKo;
+    if (forageName) {
+      opts.push({
+        label: `${forageName} 채집하기`, note: '[F]를 길게 누른다',
+        run: () => {
+          if (this.forage?.onInteractKey()) return;   // 키를 누른 채 골랐다면 바로 시작된다
+          this.interactPrefer = { kind: 'forage', until: this.time.now + 6000 };
+          this.floatingHint('[F]를 길게 눌러 채집합니다');
+        },
+      });
+    }
+    // ⑧ 화구 · 통발
+    if (this.stoveField?.hasNearStove) {
+      opts.push({ label: '화구에서 요리하기', run: () => { this.stoveField?.onInteractKey(false); } });
+    }
+    if (this.trapField?.hasNearTrap) {
+      opts.push({ label: '통발 수거하기', run: () => { this.trapField?.onInteractKey(); } });
+    }
+    return opts;
+  }
+
+  /** 겹침 선택 창 — 캐릭터 아래가 기본 위치, 드래그로 옮길 수 있다 */
+  private openInteractChoice(opts: InteractOption[]): void {
+    this.closeInteractChoice();
+    const cam = this.cameras.main;
+    const sx = (this.playerBody.x - cam.worldView.x) * cam.zoom;
+    const sy = (this.playerBody.y - cam.worldView.y) * cam.zoom;
+    const pos = InteractChoicePanel.placeNear(sx, sy, opts.length);
+    this.interactPanel = this.openPopup(
+      (close) => new InteractChoicePanel(this, pos.x, pos.y, opts, close),
+      () => { this.interactPanel = undefined; },
+    );
+  }
+
+  private closeInteractChoice(): void {
+    const panel = this.interactPanel;
+    if (!panel) return;
+    this.interactPanel = undefined;
+    this.popupStack.find((e) => e.panel === panel)?.close();
+  }
+
+  /** 바닥의 물건을 집어 인벤토리로 (가득 차면 그대로 남는다) */
+  private takeGroundItem(uid: string): void {
+    const g = GroundItemStore.all.find((x) => x.uid === uid);
+    if (!g) return;
+    // 신선도 시계는 집는 순간부터 다시 흐른다 (놓여 있던 동안은 정지 — 쿨러와 같은 규칙)
+    const tpl = { ...g.tpl, conditionSinceMs: g.tpl.condition ? Date.now() : undefined };
+    if (!InventoryStore.addItem(tpl, g.qty)) {
+      this.floatingHint('인벤토리 공간이 부족합니다');
+      return;
+    }
+    GroundItemStore.take(uid);
+    GameState.markDirty();
+    this.renderGroundItems();
+    this.events.emit('inventory-changed');
+    this.hud?.pushLog(`[획득] ${g.tpl.name}${g.qty > 1 ? ` ×${g.qty}` : ''}을(를) 집었습니다.`);
+  }
+
+  /**
+   * 인벤토리 '내려놓기' → 캐릭터가 서 있는 자리에 놓는다 (178차 사용자 지시).
+   * 지정 하역 위치에 서 있고 그 물건이 얼음 상자면 곧바로 하역으로 넘긴다.
+   */
+  private placeItemFromInventory(item: InvItem): { ok: boolean; message: string } {
+    if (this.nearIceDrop && item.id === 'quest_ice_crate') {
+      this.tryPlaceQuestIceCrate();
+      return { ok: true, message: '얼음 상자를 하역 위치에 내려놓았습니다.' };
+    }
+    const { c, r } = this.playerTile();
+    if (this.blocked[r]?.[c]) return { ok: false, message: '여기에는 내려놓을 수 없습니다.' };
+    if (GroundItemStore.countAt(this.region, c, r) >= 8) {
+      return { ok: false, message: '이 자리에 물건이 너무 많습니다 — 한 칸 옮겨서 놓으세요.' };
+    }
+    if (!InventoryStore.removeQty(item.id, 1)) return { ok: false, message: '아이템이 없습니다.' };
+    GroundItemStore.drop(this.region, c, r, item, 1, true);
+    GameState.markDirty();
+    this.renderGroundItems();
+    this.events.emit('inventory-changed');
+    this.hud?.pushLog(`[내려놓기] ${item.name}을(를) 바닥에 놓았습니다. [F]로 다시 회수할 수 있습니다.`);
+    return { ok: true, message: `${item.name}을(를) 발밑에 내려놓았습니다 — [F]로 회수` };
+  }
+
+  /** 바닥 아이템 스프라이트 재구성 (지역 진입·놓기·집기 때) */
+  private renderGroundItems(): void {
+    this.groundSprites.forEach((objs) => objs.forEach((o) => o.destroy()));
+    this.groundSprites.clear();
+    for (const g of GroundItemStore.inRegion(this.region)) this.renderGroundItem(g);
+  }
+
+  private renderGroundItem(g: GroundItem): void {
+    const cx = g.tx * TR + TR / 2, cy = g.ty * TR + TR / 2;
+    const shadow = this.add.ellipse(cx, cy + 7, 18, 7, 0x000000, 0.34).setDepth(13 + cy * 0.001);
+    const icon = createItemIcon(this, cx, cy, g.tpl, 22);
+    icon.setDepth(14 + cy * 0.001);
+    const objs: Phaser.GameObjects.GameObject[] = [shadow, icon];
+    // 내가 놓아둔 물건은 금색 점으로 표시한다(잊고 지나치지 않게)
+    if (g.placed) {
+      const dot = this.add.graphics().setDepth(14 + cy * 0.001 + 0.0002);
+      dot.fillStyle(0xffd257, 0.95); dot.fillCircle(cx + 9, cy - 9, 2.5);
+      objs.push(dot);
+    }
+    this.groundSprites.set(g.uid, objs);
   }
 
   /** M1-02의 하역은 인벤토리 아이템을 실제 필드 지정 위치에 내려놓는 행동이다. */

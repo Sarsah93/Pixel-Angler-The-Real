@@ -61,6 +61,7 @@ import {
 } from '@tra/core';
 import { EnvironmentStore } from './EnvironmentStore.js';
 import { CoolerStore, CoolerSaveState } from './CoolerStore.js';
+import { GroundItemStore, type GroundItemSaveState } from './GroundItemStore.js';
 import { InventoryStore, InventorySaveState } from './InventoryStore.js';
 import { FridgeStore, FridgeSaveState } from './FridgeStore.js';
 import { DiscoveryStore, DiscoverySaveState } from './DiscoveryStore.js';
@@ -190,6 +191,8 @@ interface SaveData {
   flags?: Record<string, boolean>;
   /** 맵별 오브젝트 월드 상태 — 초기 배치 − removed + moved + placed (HOMETOWN_HOME_SPEC) */
   worldObjects?: Record<string, WorldObjectState>;
+  /** 178차 — 바닥에 놓인 아이템(내려놓기/줍기). 구세이브에는 없다 */
+  groundItems?: GroundItemSaveState;
   /** 발견(도감/위키) 기록 — 어종·해양생물·아이템. 구세이브는 어획 기록에서 백필 */
   discoveries?: DiscoverySaveState;
   /** 생존 지표 — 허기·수분·상태이상 (125차). HP·피로도는 `player.stamina/fatigue`가 원본 */
@@ -342,6 +345,7 @@ export class GameStateManager {
     this._worldObjects = saved.worldObjects ?? {};
     // 쿨러 복원 — 저장~로드 사이 실경과 시간을 sync로 반영 (어획 신선도/매질 만료, 밑밥은 그대로)
     CoolerStore.deserialize(saved.coolerBox);
+    GroundItemStore.deserialize(saved.groundItems);
     // 인벤토리 복원 — 구버전 세이브(필드 없음)는 시드로 리셋
     InventoryStore.deserialize(saved.inventoryStore);
     // 집 냉장고 복원 (냉동고/냉장고 보관물)
@@ -1347,6 +1351,7 @@ export class GameStateManager {
       bonusSkillPoints: this._bonusSkillPoints,
       upkeepLedger: this._upkeepLedger,
       coolerBox: CoolerStore.serialize(),
+      groundItems: GroundItemStore.serialize(),
       inventoryStore: InventoryStore.serialize(),
       fridge: FridgeStore.serialize(),
       flags: this._flags,
@@ -1550,6 +1555,7 @@ export class GameStateManager {
     this._dirty = false;
     CoolerStore.resetAll();
     InventoryStore.resetAll();
+    GroundItemStore.resetAll();
     FridgeStore.resetAll();
     DiscoveryStore.resetAll();
     StoryStore.resetAll();

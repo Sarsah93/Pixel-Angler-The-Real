@@ -19,13 +19,21 @@ export interface StoryNpcPlacement {
   npcId: string;
   /** WorldMap 지역 id */
   regionId: string;
-  tx: number;
-  ty: number;
+  /**
+   * 필드 배치 좌표(월드 타일).
+   *
+   * ⚠ 178차 — **없으면 그 인물은 필드에 세우지 않는다.** 아직 무대(필드맵)가 없는 지역의 인물은
+   *   좌표를 지어낼 수 없으므로 `regionId`만 등록해 두고, 할 일 안내가 「다른 지역 — ○○」로
+   *   길을 알려주는 데만 쓴다. 해당 지역 필드맵이 열릴 때 실측 좌표를 채우면 그때부터 선다.
+   */
+  tx?: number;
+  ty?: number;
   /**
    * 자유 행동(166차). `fishing`은 **낚시와 관계있는 인물에게만** — 좌판 상인이 낚시를 하고 있으면 틀린 그림이다.
    * 앵커 3x3(→5x5) 안에 물가가 없으면 런타임이 `wander`로 내린다.
+   * 좌표가 없는 등록에는 의미가 없다(기본 `wander`).
    */
-  behavior: StoryNpcBehavior;
+  behavior?: StoryNpcBehavior;
   /** 서 있는 방향 (기본 정면) */
   facing?: 'down' | 'left' | 'right' | 'up';
 }
@@ -76,13 +84,54 @@ export const STORY_NPC_PLACEMENTS: StoryNpcPlacement[] = [
   // 배누리 — 영금정 구경 중
   { npcId: 'bae_nuri', regionId: 'gangwon_sokcho', tx: 562, ty: 92, behavior: 'wander' },
   // 바람 — 떠돌이. 뭔가를 찾듯 주변을 돈다
-  { npcId: 'baram', regionId: 'gangwon_sokcho', tx: 520, ty: 134, behavior: 'wander' },
+  //  ⚠ 178차 좌표 교정 — 구 (520,134)는 건물 블록 안이라 런타임 `nearestWalkable`이 매번 밀어냈다
+  { npcId: 'baram', regionId: 'gangwon_sokcho', tx: 520, ty: 131, behavior: 'wander' },
+  // 오세찬 — 해양환경 감시원. 밀려온 불가사리를 세는 사람이라 물가 안벽을 오간다 (178차 신규)
+  { npcId: 'oh_sechan', regionId: 'gangwon_sokcho', tx: 594, ty: 159, behavior: 'patrol' },
+  // 탁새벽 — 탁만수의 손녀. 할아버지 좌판 근처 보도에서 서성인다 (178차 신규)
+  { npcId: 'tak_saebyeok', regionId: 'gangwon_sokcho', tx: 556, ty: 148, behavior: 'wander' },
+
+  // ── 178차 — 지역만 등록한 인물들 (좌표 없음 = 필드에 세우지 않는다) ──
+  //  이 표에 없으면 할 일을 고정해도 화살표도, 「다른 지역 — ○○」 안내도 나오지 않았다(백로그 AA ①).
+  //  무대가 열리는 차수에 좌표를 채운다. 지역은 **그 인물이 처음 등장하는 장(章)** 기준이고,
+  //  여러 지역을 오가는 인물은 실제 안내가 추적 중인 할 일의 지역을 따른다(`objectiveTarget`).
+  { npcId: 'na_gibeom', regionId: 'busan' },
+  { npcId: 'seo_harin', regionId: 'busan' },
+  { npcId: 'jim_kang', regionId: 'busan' },
+  { npcId: 'go_hosu', regionId: 'busan' },
+  { npcId: 'mo_taejo', regionId: 'busan' },
+  { npcId: 'yeo_gangsan', regionId: 'busan' },
+  { npcId: 'chae_surim', regionId: 'busan' },
+  { npcId: 'yu_harang', regionId: 'busan' },
+  { npcId: 'ha_nui', regionId: 'busan' },
+  { npcId: 'namgung_hyeon', regionId: 'gyeongbuk_pohang' },
+  { npcId: 'han_bom', regionId: 'gyeongbuk_pohang' },
+  { npcId: 'lee_suyeon', regionId: 'gyeongbuk_pohang' },
+  { npcId: 'go_manseok', regionId: 'ulsan' },
+  { npcId: 'go_haena', regionId: 'ulsan' },
+  { npcId: 'chae_geumja', regionId: 'gyeongnam_geoje' },
+  { npcId: 'chae_pado', regionId: 'gyeongnam_geoje' },
+  { npcId: 'song_gibaek', regionId: 'chungnam_taean' },
+  { npcId: 'ma_gamgi', regionId: 'chungnam_taean' },
+  { npcId: 'oh_gayun', regionId: 'jeonnam_yeosu' },
+  { npcId: 'jeong_umi', regionId: 'jeonnam_yeosu' },
+  { npcId: 'oh_serin', regionId: 'jeju' },
+  { npcId: 'yu_ria', regionId: 'jeju' },
+  { npcId: 'mara', regionId: 'jeju' },
+  { npcId: 'oh_sera', regionId: 'ulleungdo' },
+  { npcId: 'yeon_taeo', regionId: 'ulleungdo' },
+  { npcId: 'seok_daeyang', regionId: 'ulleungdo' },
+  { npcId: 'seok_dokgu', regionId: 'ulleungdo' },
+  { npcId: 'dan_cheolho', regionId: 'incheon' },
+  { npcId: 'ha_minji', regionId: 'incheon' },
 ];
 
 export const STORY_PLACES: StoryPlace[] = [
   { key: 'poi:yeonggeumjeong', regionId: 'gangwon_sokcho', tx: 572, ty: 88, radiusTiles: 6, labelKo: '영금정' },
   { key: 'poi:okseon-stall', regionId: 'gangwon_sokcho', tx: 584, ty: 158, radiusTiles: 3, labelKo: '정옥선 좌판 근처' },
-  { key: 'poi:auction-ice-drop', regionId: 'gangwon_sokcho', tx: 605, ty: 154, radiusTiles: 2, labelKo: '경매장 얼음 하역 위치' },
+  // ⚠ 178차 좌표 교정 — 구 (605,154)는 **바다 타일**이고 반경 2타일 안에 걷기 가능한 칸이 0개라
+  //   얼음 상자를 들고도 영영 닿을 수 없었다(가장 가까운 뭍이 4타일 서쪽). 활어센터 동쪽 안벽 위로 옮긴다.
+  { key: 'poi:auction-ice-drop', regionId: 'gangwon_sokcho', tx: 600, ty: 156, radiusTiles: 2, labelKo: '경매장 얼음 하역 위치' },
 ];
 
 /**

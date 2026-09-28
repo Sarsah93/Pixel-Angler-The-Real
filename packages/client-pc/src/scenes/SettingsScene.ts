@@ -38,6 +38,12 @@ export interface GameSettings {
    * 장소는 미니맵 핀으로만 보인다.
    */
   showFieldLabels: boolean;
+  /**
+   * 할 일 위치 안내(178차 — 기본 켬).
+   * 켜면 목표 방향을 가리키는 점멸 화살표가 캐릭터 주변에 뜬다. 끄면 화살표만 사라지고
+   * 일지(J)·「지금 할 일」의 안내 문구는 그대로 남는다.
+   */
+  showQuestGuide: boolean;
 }
 
 const SETTINGS_STORAGE_KEY = 'pixelAngler_settings';
@@ -47,6 +53,7 @@ const DEFAULT_SETTINGS: GameSettings = {
   rodSide: 'right', reelHandle: 'left',
   hudStatusSize: 0, hudStatusAlpha: 0, hudChatSize: 0, hudChatAlpha: 0,
   showFieldLabels: false,
+  showQuestGuide: true,
 };
 
 export function loadSettings(): GameSettings {
@@ -318,11 +325,48 @@ export class SettingsScene extends Phaser.Scene {
       this.contentContainer.add([bg, txt, hit]);
     });
 
-    const note = this.add.text(startX, startY + 124,
+    const note = this.add.text(startX, startY + 112,
       '캐릭터와 NPC의 이름표는 이 설정과 상관없이 늘 보입니다.', {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#4e6678',
       });
     this.contentContainer.add(note);
+
+    // ── 할 일 위치 안내 (178차) ──
+    const gy = startY + 152;
+    const gLabel = this.add.text(startX, gy, '할 일 위치 안내', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '15px', color: '#d0e8f5', fontStyle: 'bold',
+    });
+    const gDesc = this.add.text(startX, gy + 22,
+      '지금 할 일의 목표 방향을 가리키는 화살표를 캐릭터 주변에 띄웁니다. 끄면 화살표만 사라지고, 일지(J)와 「지금 할 일」의 안내 문구는 그대로 남습니다.', {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#607b8e',
+        wordWrap: { width: 640 },
+      });
+    this.contentContainer.add([gLabel, gDesc]);
+
+    ([{ v: true, t: '켬' }, { v: false, t: '끔' }] as const).forEach((opt, j) => {
+      const bx = startX + j * 180;
+      const by = gy + 62;
+      const selected = this.settings.showQuestGuide === opt.v;
+      const bg = this.add.graphics();
+      bg.fillStyle(selected ? 0x162a40 : 0x0e1c2d, 0.9);
+      bg.fillRoundedRect(bx, by, 164, 40, 5);
+      bg.lineStyle(2, selected ? 0x4af2a1 : 0x2a5a8a, selected ? 1 : 0.5);
+      bg.strokeRoundedRect(bx, by, 164, 40, 5);
+      const txt = this.add.text(bx + 82, by + 20, opt.t, {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '14px',
+        color: selected ? '#4af2a1' : '#a0b8c8', fontStyle: 'bold',
+      }).setOrigin(0.5);
+      const hit = this.add.rectangle(bx + 82, by + 20, 164, 40, 0xffffff, 0)
+        .setInteractive({ useHandCursor: true });
+      hit.on('pointerdown', () => {
+        this.settings.showQuestGuide = opt.v;
+        saveSettings(this.settings);
+        this.game.events.emit('quest-guide-changed', opt.v);
+        this.contentContainer.removeAll(true);
+        this.renderTab();
+      });
+      this.contentContainer.add([bg, txt, hit]);
+    });
   }
 
   // ── 낚시 탭 (1인칭 로드/릴 위치) ──────────────────────

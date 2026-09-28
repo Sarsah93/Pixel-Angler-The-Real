@@ -452,6 +452,12 @@ export class ForageSystem {
   // ═══════════════════════════════════════════════════
 
   /** 씬 keydown-F — 소비했으면 true (122차: 상호작용 키 E → F) */
+  /** 178차 — 상호작용 겹침 판정용 프로브. 근처 채집 스팟의 생물 이름(없으면 null) */
+  get nearSpotNameKo(): string | null {
+    if (!this.nearSpot) return null;
+    return getCreatureById(this.nearSpot.creatureId)?.nameKo ?? null;
+  }
+
   onInteractKey(): boolean {
     if (this.hold) return true;
     const s = this.nearSpot;

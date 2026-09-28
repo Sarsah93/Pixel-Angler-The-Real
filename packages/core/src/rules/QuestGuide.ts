@@ -39,19 +39,21 @@ export function objectiveTarget(q: StoryQuestDef, o: StoryObjective): QuestGuide
   switch (o.kind) {
     case 'talk':
     case 'deliverFree':
-      return { kind: 'npc', npcId: o.npcId ?? q.giver };
+      // 178차 — 인물이 이 지역에 서 있지 않을 때 「다른 지역 — ○○」을 낼 수 있게 할 일의 지역을 함께 싣는다.
+      //  같은 인물이 장(章)마다 다른 지역에 있으므로, 배치표보다 추적 중인 할 일의 지역이 정확하다.
+      return { kind: 'npc', npcId: o.npcId ?? q.giver, regionId: q.region };
     case 'visit':
       if (key.startsWith('poi:')) return { kind: 'place', placeKey: key };
       if (key.startsWith('region:')) return { kind: 'region', regionId: key.slice(7) };
       if (key.startsWith('shop:')) return { kind: 'shop', shopHint: 'any' };
       return { kind: 'none' };
     case 'custom':
-      if (key.startsWith('job:')) return { kind: 'npc', npcId: q.giver };
+      if (key.startsWith('job:')) return { kind: 'npc', npcId: q.giver, regionId: q.region };
       if (key.startsWith('buy:')) return { kind: 'shop', shopHint: 'daily', itemId: key.slice(4) };
       if (key === 'bedSave') return { kind: 'bed' };
       return { kind: 'none' };
     case 'communityWork':
-      return { kind: 'npc', npcId: q.giver };
+      return { kind: 'npc', npcId: q.giver, regionId: q.region };
     case 'sell':
       return { kind: 'shop', shopHint: 'market' };
     default:

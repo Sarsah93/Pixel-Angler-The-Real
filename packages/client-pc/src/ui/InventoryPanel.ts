@@ -25,7 +25,7 @@ import {
   CONDITION_NEXT, conditionRemainMs, formatDhms, plateWipProgress,
 } from '../store/InventoryStore.js';
 import { CoolerStore } from '../store/CoolerStore.js';
-import { DraggablePanel } from './DraggablePanel.js';
+import { DraggablePanel, applyScreenFixed } from './DraggablePanel.js';
 import { ConfirmDialog } from './Dialogs.js';
 import { createItemIcon } from './ItemIcon.js';
 import { addPixelIcon } from './PixelIcon.js';
@@ -98,9 +98,14 @@ export class InventoryPanel extends DraggablePanel {
   private itemDrag: {
     item: InvItem; fromSlot: number;
     startX: number; startY: number;
-    ghost?: Phaser.GameObjects.Text;
+    /** 178차 — 이모지 텍스트가 아니라 **실제 아이템 아이콘**을 반투명하게 끌고 다닌다 */
+    ghost?: Phaser.GameObjects.Image | Phaser.GameObjects.Text | Phaser.GameObjects.Container;
     moved: boolean;
+    /** 현재 하이라이트된 목표 소켓 (없으면 -1) */
+    hoverSlot: number;
   } | null = null;
+  /** 드래그 중 목표 소켓 하이라이트 (그리드 위에 겹쳐 그린다 — 178차) */
+  private dropHiG?: Phaser.GameObjects.Graphics;
   private itemDragMove: (p: Phaser.Input.Pointer) => void;
   private itemDragUp: (p: Phaser.Input.Pointer) => void;
 
@@ -172,10 +177,12 @@ export class InventoryPanel extends DraggablePanel {
       if (!this.itemDrag.moved && Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
       this.itemDrag.moved = true;
       if (!this.itemDrag.ghost) {
-        this.itemDrag.ghost = scene.add.text(0, 0, this.itemDrag.item.icon, { fontSize: '26px' })
-          .setOrigin(0.5).setAlpha(0.85).setDepth(this.depth + 50).setScrollFactor(0);
+        // 실제 아이콘을 살짝 투명하게 — "무엇을 들고 있는지"가 보이게 (178차 사용자 지시)
+        this.itemDrag.ghost = createItemIcon(scene, 0, 0, this.itemDrag.item, 34);
+        this.itemDrag.ghost.setAlpha(0.62).setDepth(this.depth + 50).setScrollFactor(0);
       }
       this.itemDrag.ghost.setPosition(p.x, p.y);
+      this.updateDropHighlight(p);
       this.autoScrollWhileDragging(p);
     };
     this.itemDragUp = (p: Phaser.Input.Pointer) => {
@@ -183,6 +190,7 @@ export class InventoryPanel extends DraggablePanel {
       if (!drag) return;
       this.itemDrag = null;
       drag.ghost?.destroy();
+      this.clearDropHighlight();
       if (!drag.moved) {
         // 클릭으로 간주 — 정보 라인 표시 (소모성 재료는 다음 상태까지 남은 시간 병기·실시간)
         this.statusText.setText(this.itemSummaryLine(drag.item));
@@ -351,6 +359,60 @@ export class InventoryPanel extends DraggablePanel {
     return idx < this.totalSlots() ? idx : -1;
   }
 
+  /** 보이는 소켓의 패널 로컬 rect (스크롤아웃이면 null) */
+  private slotRect(idx: number): { x: number; y: number } | null {
+    const vrow = Math.floor(idx / GRID_COLS) - this.scrollRow;
+    if (vrow < 0 || vrow >= this.rowsVisible) return null;
+    const col = idx % GRID_COLS;
+    return { x: this.gridX0 + col * (SLOT + SLOT_GAP), y: this.gridY0 + vrow * (SLOT + this.gapY()) };
+  }
+
+  /**
+   * 드래그 중 목표 소켓 표시 (178차 사용자 지시).
+   * 고스트가 소켓 경계 안에 들어오면 그 소켓을 "선택된 것처럼" 강조한다 —
+   * 빈 칸 = 청록(여기에 놓는다) · 다른 아이템 = 금색(자리 교환) · 용량 밖 잠긴 칸 = 주황(놓을 수 없음).
+   */
+  private updateDropHighlight(p: Phaser.Input.Pointer): void {
+    const drag = this.itemDrag;
+    if (!drag) return;
+    const idx = this.slotAtPointer(p);
+    if (idx === drag.hoverSlot) return;   // 같은 칸이면 다시 그리지 않는다
+    drag.hoverSlot = idx;
+    if (!this.dropHiG) {
+      this.dropHiG = this.scene.add.graphics();
+      this.add(this.dropHiG);           // 그리드 위에 겹친다(나중에 추가 = 위)
+      applyScreenFixed(this);
+    }
+    const g = this.dropHiG;
+    g.clear();
+    if (idx < 0) return;
+    const r = this.slotRect(idx);
+    if (!r) return;
+    const locked = idx >= InventoryStore.gridCapacity();
+    const occupied = !!InventoryStore.itemAtSlot(this.currentTab, idx);
+    const color = locked ? 0xffb45a : occupied && idx !== drag.fromSlot ? 0xffd257 : 0x4af2a1;
+    g.fillStyle(color, locked ? 0.10 : 0.16);
+    g.fillRoundedRect(r.x, r.y, SLOT, SLOT, 4);
+    g.lineStyle(2.5, color, 0.95);
+    g.strokeRoundedRect(r.x - 1, r.y - 1, SLOT + 2, SLOT + 2, 5);
+    // 네 귀 브래킷 — 프레임만으로는 호버 테두리와 구별이 안 된다
+    const L = 11;
+    g.lineStyle(3, color, 1);
+    const corners: [number, number, number, number][] = [
+      [r.x, r.y, 1, 1], [r.x + SLOT, r.y, -1, 1],
+      [r.x, r.y + SLOT, 1, -1], [r.x + SLOT, r.y + SLOT, -1, -1],
+    ];
+    for (const [cx, cy, sx, sy] of corners) {
+      g.beginPath();
+      g.moveTo(cx + sx * L, cy); g.lineTo(cx, cy); g.lineTo(cx, cy + sy * L);
+      g.strokePath();
+    }
+  }
+
+  private clearDropHighlight(): void {
+    this.dropHiG?.clear();
+  }
+
   // ═══════════════════════════════════════════════════
   // 카테고리 탭
   // ═══════════════════════════════════════════════════
@@ -517,7 +579,7 @@ export class InventoryPanel extends DraggablePanel {
           this.openContextMenu(item, pointer.x, pointer.y);
         } else if (pointer.leftButtonDown()) {
           this.itemDrag = {
-            item, fromSlot: idx,
+            item, fromSlot: idx, hoverSlot: -1,
             startX: pointer.x, startY: pointer.y,
             moved: false,
           };
@@ -814,6 +876,20 @@ export class InventoryPanel extends DraggablePanel {
       label: '전환하기',
       run: () => this.setStatus('전환 기능은 준비중입니다 (예: 어획물 → 미끼 전환).'),
     });
+    // 178차 — 「내려놓기」: 할 일이 물건을 **어딘가에 두라고** 할 때 쓰는 행동.
+    //  버리기(소멸)와 달리 바닥에 남고 [F]로 회수할 수 있다. 심부름 칸 물건과
+    //  이야기가 준 물건에만 붙인다 — 일반 아이템까지 열면 '버리기'와 뜻이 겹친다.
+    if (item.category === 'quest' || item.bound) {
+      actions.push({
+        label: '내려놓기',
+        run: () => {
+          const res = { ok: false, message: '여기서는 내려놓을 수 없습니다.' };
+          this.scene.events.emit('inventory-place', item, res);
+          this.setStatus(res.message);
+          if (res.ok) { this.renderGrid(); this.scene.events.emit('inventory-changed'); }
+        },
+      });
+    }
     // 버리기/완전제거 — 빨간색 + "정말 버리시겠습니까?" 확인창
     actions.push({
       label: '버리기',
