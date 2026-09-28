@@ -34,7 +34,7 @@ export class TackleSetupPanel extends Phaser.GameObjects.Container {
     }).setOrigin(0.5);
     this.add(this.infoText);
 
-    const helpPrompt = this.scene.add.text(0, 40, '장비 변경은 메인메뉴의 장비실[TackleRoom]을 이용하세요.', {
+    const helpPrompt = this.scene.add.text(0, 40, '장비 변경은 메인 메뉴의 장비실에서 할 수 있습니다.', {
       fontFamily: '"Noto Sans KR", sans-serif',
       fontSize: '9px',
       color: '#8faabf',

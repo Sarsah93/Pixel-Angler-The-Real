@@ -49,7 +49,7 @@ export class BootScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     this.add
-      .text(width / 2, height / 2 - 28, '더 리얼 앵글러', {
+      .text(width / 2, height / 2 - 28, 'Pixel Angler The Real', {
         fontFamily: 'monospace',
         fontSize: '14px',
         color: '#5a8fab',

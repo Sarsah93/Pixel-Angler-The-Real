@@ -810,7 +810,7 @@ export class AnglerLogScene extends Phaser.Scene {
 
         // 왕관 표시 (최대어일 때)
         if (log.isBestRecord) {
-          const crownText = this.add.text(60 + nameTextObj.width + 10, itemY + 12, '👑 최대어', {
+          const crownText = this.add.text(60 + nameTextObj.width + 10, itemY + 12, '최대어', {
             fontFamily: '"Noto Sans KR", sans-serif',
             fontSize: '10px',
             color: '#ffdd44',

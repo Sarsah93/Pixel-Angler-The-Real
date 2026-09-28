@@ -109,11 +109,11 @@ export class ConfirmTripModal extends Phaser.GameObjects.Container {
     const windSpeed = 3.5 + Math.random() * 4.0;
 
     const leftLines = [
-      { label: '🌊 물때',   value: tide.tidePhaseLabel },
-      { label: '🌡️ 기온',   value: `${mockTempC.toFixed(1)} °C` },
-      { label: '💧 수온',   value: `${(mockTempC - 1.2).toFixed(1)} °C` },
-      { label: '🌬️ 풍속',   value: `${windSpeed.toFixed(1)} m/s` },
-      { label: '⚓ 스팟 종류', value: this.getSpotTypeLabel(spot.spotType) },
+      { label: '물때',   value: tide.tidePhaseLabel },
+      { label: '기온',   value: `${mockTempC.toFixed(1)} °C` },
+      { label: '수온',   value: `${(mockTempC - 1.2).toFixed(1)} °C` },
+      { label: '풍속',   value: `${windSpeed.toFixed(1)} m/s` },
+      { label: '스팟 종류', value: this.getSpotTypeLabel(spot.spotType) },
     ];
 
     leftLines.forEach((item, i) => {
@@ -140,7 +140,7 @@ export class ConfirmTripModal extends Phaser.GameObjects.Container {
     const licDef = LICENSE_DATABASE.find((l) => l.type === reqLicense);
     const licName = licDef?.nameKo ?? reqLicense;
 
-    const licenseLabel = this.scene.add.text(colRightX, infoY, '🪪 요구 면허', {
+    const licenseLabel = this.scene.add.text(colRightX, infoY, '요구 면허', {
       fontFamily: '"Noto Sans KR", sans-serif',
       fontSize: '12px',
       color: '#c8a060',
@@ -164,7 +164,7 @@ export class ConfirmTripModal extends Phaser.GameObjects.Container {
     this.add(licStatusText);
 
     // 제철 어종 목록
-    const speciesLabel = this.scene.add.text(colRightX, infoY + 68, '🐟 주요 어종', {
+    const speciesLabel = this.scene.add.text(colRightX, infoY + 68, '주요 어종', {
       fontFamily: '"Noto Sans KR", sans-serif',
       fontSize: '12px',
       color: '#c8a060',

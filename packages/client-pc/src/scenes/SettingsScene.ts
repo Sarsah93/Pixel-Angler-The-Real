@@ -568,7 +568,7 @@ export class SettingsScene extends Phaser.Scene {
     });
 
     // 저장 안내
-    const saveNote = this.add.text(startX, startY + 250, '✅ 슬라이더 조절 후 자동 저장됩니다.', {
+    const saveNote = this.add.text(startX, startY + 250, '슬라이더 조절 후 자동 저장됩니다.', {
       fontFamily: '"Noto Sans KR", sans-serif',
       fontSize: '11px',
       color: '#4af2a1',

@@ -611,10 +611,9 @@ export class WorldMapScene extends Phaser.Scene {
 
     btn.add([bg, nameText, subText]);
 
-    // 잠금 지역: 우측 자물쇠 아이콘
+    // 잠금 지역: 우측 자물쇠 (§8-8 — 이모지 금지, 절차 픽셀 그래픽)
     if (!unlocked) {
-      const lock = this.add.text(342, itemY + 14, '🔒', { fontSize: '15px' }).setAlpha(0.75);
-      btn.add(lock);
+      btn.add(this.makeLockGlyph(338, itemY + 14, 0x8a99a6));
     }
 
     const hit = this.add.rectangle(186, itemY + 22, 340, 44, 0xffffff, 0)
@@ -922,14 +921,17 @@ export class WorldMapScene extends Phaser.Scene {
       this.spotContainer.add(aBtn);
     });
 
-    // (임시) 위경도 기반 낚시터 목록 진입 — 세부 스팟/조과 테스트용 보조 경로
+    // 위경도 기반 낚시터 목록 — **구 낚시 루프(FieldScene) 회귀 확인용 보조 경로**.
+    // ⚠ 179차: 플레이어에게 `낚시터 목록 (임시)`라는 개발 용어를 그대로 보여 주고 있었고(§8-9),
+    //   그 버튼이 심리스 필드가 아니라 **레거시 씬 스택**으로 들어갔다 → dev 빌드 전용으로 내린다.
+    if (!import.meta.env.DEV) return;
     const tbY = GAME_HEIGHT - 52;
     const tempBg = this.add.graphics();
     tempBg.fillStyle(0x11202c, 0.9);
     tempBg.fillRoundedRect(16, tbY, 330, 36, 5);
     tempBg.lineStyle(1, 0x2f5a6d, 0.8);
     tempBg.strokeRoundedRect(16, tbY, 330, 36, 5);
-    const tempText = this.add.text(181, tbY + 18, '낚시터 목록 (임시)', {
+    const tempText = this.add.text(181, tbY + 18, '[dev] 낚시터 목록 (구 필드)', {
       fontFamily: '"Noto Sans KR", sans-serif',
       fontSize: '12px', color: '#6fa2b8',
     }).setOrigin(0.5);
@@ -1291,8 +1293,7 @@ export class WorldMapScene extends Phaser.Scene {
       });
 
       if (!hasLicense) {
-        const lockIcon = this.add.text(334, itemY + 14, '🔒', { fontSize: '13px' });
-        this.spotContainer.add(lockIcon);
+        this.spotContainer.add(this.makeLockGlyph(334, itemY + 14, 0x6b7680));
       }
 
       const hit = this.add.rectangle(186, itemY + 23, 340, 46, 0xffffff, 0)
@@ -1356,6 +1357,22 @@ export class WorldMapScene extends Phaser.Scene {
     });
 
     this.pinContainer.add([dot, ring, label]);
+  }
+
+  /**
+   * 잠금 표시 자물쇠 — 2px 격자 절차 픽셀(§8-8: 이모지 금지 / 절차 픽셀 그래픽은 허용).
+   * 고리(위 아치) + 몸통 + 열쇠구멍.
+   */
+  private makeLockGlyph(x: number, y: number, color: number): Phaser.GameObjects.Graphics {
+    const g = this.add.graphics({ x, y });
+    g.fillStyle(color, 0.9);
+    g.fillRect(2, 0, 2, 2); g.fillRect(8, 0, 2, 2);          // 고리 어깨
+    g.fillRect(4, -2, 4, 2);                                   // 고리 윗변
+    g.fillRect(2, 2, 2, 2); g.fillRect(8, 2, 2, 2);
+    g.fillRect(0, 4, 12, 9);                                   // 몸통
+    g.fillStyle(0x0d1620, 1);
+    g.fillRect(5, 7, 2, 3);                                    // 열쇠구멍
+    return g;
   }
 
   // ═══════════════════════════════════════════════════════
