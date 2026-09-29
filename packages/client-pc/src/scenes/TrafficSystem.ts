@@ -29,6 +29,8 @@ const CAR_SCALE = 1.82;
 
 interface Car {
   road: number;
+  /** 184차 — 고가 상판 위를 달리는 중 (깊이·플레이어 충돌 층) */
+  deck?: boolean;
   dir: 1 | -1;
   seg: number;
   t: number;
@@ -168,7 +170,10 @@ export class TrafficSystem {
     const x = from[0] + ux * car.t + nx * off;
     const y = from[1] + uy * car.t + ny * off;
     car.px = x; car.py = y; car.ux = ux; car.uy = uy;
-    car.sprite.setPosition(x * this.tr, y * this.tr).setRotation(Math.atan2(uy, ux) + Math.PI / 2).setDepth(20 + y * this.tr * 0.001);
+    // 184차 — 고가 위 차량은 상판(30) 위에, 밑을 지나는 차량은 지면 깊이에 그린다
+    car.deck = this.elevatedAt?.(x, y) ?? false;
+    car.sprite.setPosition(x * this.tr, y * this.tr).setRotation(Math.atan2(uy, ux) + Math.PI / 2)
+      .setDepth(car.deck ? this.deckDepth + 0.3 + y * this.tr * 0.00001 : 20 + y * this.tr * 0.001);
   }
 
   private atVertex(car: Car, vertexIdx: number): void {
@@ -231,7 +236,8 @@ export class TrafficSystem {
     const junction = toVertex < 1.5 && nodeList.some((o) => o.road !== car.road);
     const enteringRoundabout = !rd.roundabout && toVertex < 2.0 && nodeList.some((o) => o.road !== car.road && !!this.roads[o.road].roundabout);
     // 플레이어 — 전방 1.6타일 원뿔 안 또는 1타일 안 어디든 → 지나갈 때까지 대기
-    if (player) {
+    //  184차 — 층이 다르면(상판 위 ↔ 밑) 서로 모른다
+    if (player && (car.deck ?? false) === this.playerOnDeck) {
       const dx = player.x - car.px, dy = player.y - car.py;
       const d = Math.hypot(dx, dy);
       if (d < 1.0) return true;
@@ -294,10 +300,18 @@ export class TrafficSystem {
    * 플레이어 상호작용 — 매 틱 호출. 차량 0.75타일 안에 들어오면(캐릭터가 차에 부딪힘) hit 반환 +
    * 그 차량 180초 정지. 접근 대기는 mustWait가 처리.
    */
+  /** 184차 — 타일 좌표가 고가 상판 위인가 (씬이 OverpassSystem으로 주입) */
+  elevatedAt?: (x: number, y: number) => boolean;
+  /** 184차 — 상판 깊이 (씬이 OverpassSystem에서 주입) */
+  deckDepth = 30;
+  /** 184차 — 플레이어가 상판 위에 있다 (씬이 매 프레임 갱신) */
+  playerOnDeck = false;
+
   playerInteract(px: number, py: number): TrafficHit | null {
     let hit: TrafficHit | null = null;
     for (const car of this.cars) {
       if (car.fade > 0 || car.halt > 0) continue;
+      if ((car.deck ?? false) !== this.playerOnDeck) continue;   // 184차 — 다른 층
       const dx = px - car.px, dy = py - car.py;
       const d = Math.hypot(dx, dy);
       if (d < 0.75) {

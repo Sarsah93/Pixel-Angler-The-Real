@@ -117,6 +117,7 @@ import { TUNING, getTrapById, MP_CHAT_MAX_LEN, type RegionFishFarms } from '@tra
 import { buildConsignmentLots, isConsignmentOpen, openConsignmentSession, coopDuesFeeCut, type ConsignInput, type ConsignmentSettlement } from '@tra/core';
 import { AuctionHousePanel } from '../ui/AuctionHousePanel.js';
 import { tilesetPathOf } from '../data/TilesetManifest.js';
+import { OverpassSystem, clipRoadsUnderOverpasses } from './field/OverpassSystem.js';
 import { TrafficSystem } from './TrafficSystem.js';
 import { TILESET_MANIFEST } from '../data/TilesetManifest.js';
 import {
@@ -231,6 +232,12 @@ export class RegionFieldScene extends Phaser.Scene {
   private chunks?: SeamlessChunks;
   /** 주행 차량 (심리스 전용) */
   private traffic?: TrafficSystem;
+  /** 184차 — 고가·대교 상판 (지면 위 두 번째 층) */
+  private overpass?: OverpassSystem;
+  /** 지면 충돌 — 상판 위에 올라서 있는 동안 끈다 */
+  private wallCollider?: Phaser.Physics.Arcade.Collider;
+  private poiCollider?: Phaser.Physics.Arcade.Collider;
+  private overpassCollider?: Phaser.Physics.Arcade.Collider;
   /** POI 상점 프리팹 충돌 바디 (심리스 전용 — 청크 walls와 별도) */
   private poiWalls?: Phaser.Physics.Arcade.StaticGroup;
   /** 현재 야간 여부 (setupAtmosphere가 갱신 — POI 발광 판단) */
@@ -687,6 +694,8 @@ export class RegionFieldScene extends Phaser.Scene {
         tileTex: patch?.tileTex ?? [],
         // 183차 — 고도 층·계단·방파제 피복(영금정 파일럿). 없으면 빈 배열 = 전부 평지·181차 크기 기반 피복
         levels: patch?.levels ?? [], stairs: patch?.stairs ?? [], armor: patch?.armor ?? [],
+        // 184차 — 고가·대교 상판. ⚠ 편집기 저장은 regionPatch 통째로 쓰므로 여기서 빠지면 지워진다
+        overpasses: patch?.overpasses ?? [],
       };
       // 패치 타일 오버라이드를 런타임 지형에 반영 (재빌드 없이 F5 반영)
       const rows = this.mapData.terrain.slice();
@@ -714,7 +723,8 @@ export class RegionFieldScene extends Phaser.Scene {
       }
       this.chunks = new SeamlessChunks(this, {
         terrainRows: this.mapData.terrain,
-        roads: this.regionRoads,
+        // 184차 — 고가와 나란한 지면 도로 구간은 굽지 않는다(물 위 아스팔트 방지 — 상판이 대신 그린다)
+        roads: clipRoadsUnderOverpasses(this.regionRoads, this.regionPatch.overpasses ?? []),
         props: this.regionPatch.props,
         tileTex: this.regionPatch.tileTex ?? [],
         lights: this.seamlessDef.hasLights
@@ -730,9 +740,11 @@ export class RegionFieldScene extends Phaser.Scene {
       this._walls = this.chunks.walls;
       // POI 상점 프리팹(팝업/횟집) 전용 충돌 — 청크 walls와 별도 그룹 (POI 로드/언로드가 관리)
       this.poiWalls = this.physics.add.staticGroup();
+      this.overpass = new OverpassSystem(this, this.regionPatch.overpasses ?? [], TR);
       this.prepareSeamlessPois();
       this.spawnPlayer();
-      this.physics.add.collider(this.playerBody, this.poiWalls);
+      this.poiCollider = this.physics.add.collider(this.playerBody, this.poiWalls);
+      this.overpassCollider = this.physics.add.collider(this.playerBody, this.overpass.groundWalls);
       // 스폰 지점 주변 상주 즉시 확보 (충돌 바디는 로드 즉시 생성 — 낙하/관통 방지)
       // 182차 — 3×3을 페이드인 동안 모두 굽는다(첫 화면에 빈 청크가 보이지 않게)
       this.chunks.preloadAround(this.playerBody.x, this.playerBody.y);
@@ -740,12 +752,16 @@ export class RegionFieldScene extends Phaser.Scene {
       // 배경 차량은 교차로 판정 오류가 누적될 때 화면을 막지 않도록 과밀을 피한다.
       // 도로 그래프가 커져도 기본 36대 안에서 흐름을 유지한다.
       this.traffic = new TrafficSystem(this, this.regionRoads, TR, 36, this.cols, this.rows, this.trafficSeed());
+      this.wireTrafficLayers();
       // 중요: `this.chunks`를 캡처하지 않으면 다음 restart의 init/create가 먼저 실행된 경우
       // 이전 세대 shutdown 콜백이 새 속초 청크를 파괴한다. 반드시 생성 세대의 객체만 정리한다.
       const ownedChunks = this.chunks;
       const ownedTraffic = this.traffic;
       const ownedPoiWalls = this.poiWalls;
+      const ownedOverpass = this.overpass;
       this.events.once('shutdown', () => {
+        ownedOverpass?.destroy();
+        if (this.overpass === ownedOverpass) this.overpass = undefined;
         ownedTraffic?.destroy();
         ownedChunks?.destroy();
         ownedPoiWalls?.destroy(true);
@@ -1244,7 +1260,7 @@ export class RegionFieldScene extends Phaser.Scene {
       .setDepth(19);
     this.registry.set('_rfShadow', shadow);
 
-    this.physics.add.collider(this.playerBody, this._walls);
+    this.wallCollider = this.physics.add.collider(this.playerBody, this._walls);
 
     // 자전거 합성 레이어 (씬 재시작에도 GameState.isMounted 유지)
     this.bike = new BikeComposite(this);
@@ -1994,7 +2010,7 @@ export class RegionFieldScene extends Phaser.Scene {
       const sides = st.armorSides.length ? [...st.armorSides] : undefined;
       armor.push({ tx: tc, ty: trw, kind: st.armorKind, ...(sides ? { sides } : {}) });
       this.chunks?.setArmor(armor);
-      setMapEditorStatus(`피복 ${st.armorKind === 'tetrapod' ? '테트라포드' : '사석'}${sides ? ` (${sides.join('/')})` : ' (전 방위)'} → 성분 #${comp} (${tc}, ${trw}) · 지정 ${armor.length}건`);
+      setMapEditorStatus(`피복 ${st.armorKind === 'tetrapod' ? '테트라포드' : st.armorKind === 'quay' ? '연석 직벽' : '사석'}${sides ? ` (${sides.join('/')})` : ' (전 방위)'} → 성분 #${comp} (${tc}, ${trw}) · 지정 ${armor.length}건`);
       return;
     }
     if (st.mode === 'prop') {
@@ -2184,9 +2200,10 @@ export class RegionFieldScene extends Phaser.Scene {
   /** 도로 벡터 변경 확정 — 청크 재색인·재베이킹 + 교통 재구성 + 패치 오버라이드 기록 */
   private editCommitRoads(msg: string): void {
     this.regionPatch.roads = this.regionRoads;
-    this.chunks?.setRoads(this.regionRoads);
+    this.chunks?.setRoads(clipRoadsUnderOverpasses(this.regionRoads, this.regionPatch.overpasses ?? []));
     this.traffic?.destroy();
     this.traffic = new TrafficSystem(this, this.regionRoads, TR, 36, this.cols, this.rows, this.trafficSeed());
+    this.wireTrafficLayers();
     setMapEditorStatus(`${msg} · 저장하면 patch.json roads 오버라이드 (타일 r/w는 판정용 — 필요하면 지형 탭에서 함께 칠하세요)`);
   }
 
@@ -2972,6 +2989,8 @@ export class RegionFieldScene extends Phaser.Scene {
     if (this.castBusy || this.isTransitioning || this.uiBlocked) return;
     // 자전거 탑승 중엔 낚시 액션 자체가 발동하지 않는다 (안내 없이 무시 — 내려야 가능)
     if (GameState.isMounted) return;
+    // 184차 — 고가 상판 위에서는 던지지 않는다(차도 한가운데다)
+    if (this.overpass?.onDeck) return;
     // ── 장비 게이팅이 **최우선** (사용자 지시 2026-08-05) ──
     //  손에 낚싯대가 없으면 애초에 캐스팅 시도가 아니다 → 안내 없이 무시.
     //  (구 구현은 물가 판정을 먼저 해서, 낚싯대가 없어도 아무 데나 클릭하면
@@ -3858,6 +3877,7 @@ export class RegionFieldScene extends Phaser.Scene {
       this.stoveField.updatePreview(pw.x, pw.y);
     }
     this.handleMovement();
+    this.stepOverpass();
     this.tickVitals(delta);
     this.updateSpriteAndShadow();
     this.updateBuildingProximity();
@@ -5467,6 +5487,8 @@ export class RegionFieldScene extends Phaser.Scene {
    */
   private collectInteractOptions(): InteractOption[] {
     const opts: InteractOption[] = [];
+    // 184차 — 고가 상판 위에서는 밑의 건물·사람과 상호작용하지 않는다
+    if (this.overpass?.onDeck) return opts;
     // ① 퀘스트 하역 (지정 위치에서 얼음 상자 내려놓기)
     if (this.nearIceDrop) {
       opts.push({ label: '얼음 상자 내려놓기', note: '경매장 하역 표시', run: () => { this.tryPlaceQuestIceCrate(); } });
@@ -6074,7 +6096,10 @@ export class RegionFieldScene extends Phaser.Scene {
 
   private updateSpriteAndShadow(): void {
     const feetY = this.playerBody.y + this.PLAYER_FOOT_OFFSET;
-    const depth = 20 + this.playerBody.y * 0.001;
+    // 184차 — 고가 상판 위에서는 상판(30)보다 위에 그린다
+    const depth = this.overpass?.onDeck
+      ? this.overpass.riderDepth(this.playerBody.y)
+      : 20 + this.playerBody.y * 0.001;
 
     // 자전거 합성 — 측면은 캐릭터 뒤(프레임이 다리에 가림), 정면/후면은 캐릭터 앞
     // (물리적으로 정면 핸들바·바퀴/후면 뒷바퀴는 카메라 기준 캐릭터보다 앞에 있다)
@@ -6091,13 +6116,48 @@ export class RegionFieldScene extends Phaser.Scene {
     this.playerSprite.setDepth(depth);
     const shadow = this.registry.get('_rfShadow') as Phaser.GameObjects.Ellipse | undefined;
     if (shadow) {
+      shadow.setDepth(this.overpass?.onDeck ? depth - 0.0001 : 19);
       shadow.setPosition(this.playerBody.x, feetY);
       // 자전거 풋프린트에 맞춰 그림자 확장
       shadow.setScale(GameState.isMounted ? 1.6 : 1, 1);
     }
   }
 
+  /**
+   * 184차 — 고가 층 갱신. 끝단에서 오르내리고, 상판 위에서는 난간에 막히며 지면 충돌을 끈다.
+   * 물리 스텝(update 이벤트)이 이미 끝난 뒤라 여기서 옮긴 위치는 다음 스텝의 출발점이 된다.
+   */
+  private stepOverpass(): void {
+    const ov = this.overpass;
+    if (!ov || !this.playerBody) return;
+    const r = ov.step(this.playerBody.x, this.playerBody.y + this.PLAYER_FOOT_OFFSET);
+    if (r.clamp) this.playerBody.setPosition(r.clamp.x, r.clamp.y - this.PLAYER_FOOT_OFFSET);
+    if (r.changed) {
+      const ground = !ov.onDeck;
+      if (this.wallCollider) this.wallCollider.active = ground;
+      if (this.poiCollider) this.poiCollider.active = ground;
+      if (this.overpassCollider) this.overpassCollider.active = ground;
+    }
+    if (this.traffic) this.traffic.playerOnDeck = ov.onDeck;
+  }
+
+  /** 184차 — 차량이 고가 위/밑을 구분하게 한다 */
+  private wireTrafficLayers(): void {
+    const ov = this.overpass;
+    if (this.traffic && ov) {
+      this.traffic.elevatedAt = (x, y) => ov.elevatedAtTile(x, y);
+      this.traffic.deckDepth = ov.deckDepth;
+    }
+  }
+
   private updateWaterProximity(): void {
+    // 184차 — 고가 상판 위: 밑이 물이어도 낚시·구멍치기 자리가 아니다
+    if (this.overpass?.onDeck) {
+      this.nearWater = false;
+      this.holeSpot = null;
+      this.promptText.setVisible(false);
+      return;
+    }
     const c = Math.floor(this.playerBody.x / TR);
     const r = Math.floor(this.playerBody.y / TR);
     let found: { x: number; y: number } | undefined;

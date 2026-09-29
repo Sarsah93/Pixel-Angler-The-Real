@@ -2388,7 +2388,11 @@ export class SeamlessChunks {
           if (t === 'b' || (t === '.' && eligibleDot(nc, nr))) { seen[j] = 1; stack.push(j); }
         }
       }
-      if (touchIslet || cells.length < 12 || sea < 8 || sea / (sea + har) < 0.35) continue;
+      // 184차 — 수동 피복 지정이 있는 성분은 규모·외해 문턱을 건너뛴다(위성 대조가 정답이다).
+      //   호숫가 한 줄 테트라포드(청초호 조양동)는 폭 1타일에 수역이 '항만'으로 잡혀 문턱에서 조용히 빠졌다.
+      const cellSet = new Set(cells);
+      const preSpec = this.armorSpec.find((a) => a.tx >= 0 && a.ty >= 0 && a.tx < cols && a.ty < rows && cellSet.has(a.ty * cols + a.tx));
+      if (!preSpec && (touchIslet || cells.length < 12 || sea < 8 || sea / (sea + har) < 0.35)) continue;
       // 안쪽 구멍 메우기 — 폭 넓은 상판(예: 청호동 두부 8타일)의 가운데는 물에서 5타일 이상 떨어져
       //   자격(dw ≤ 4)에서 빠진다. 편입 셀과 4-이웃 2개 이상 맞닿은 '.'을 수렴할 때까지 흡수한다
       //   (8이웃 b/./물 조건은 유지 — 뭍 쪽으로는 새지 않는다).
@@ -2431,6 +2435,9 @@ export class SeamlessChunks {
       //   OSM 추정은 지정이 없는 성분에만 남긴다.
       const spec = this.armorSpec.find((a) => a.tx >= 0 && a.ty >= 0 && a.tx < cols && a.ty < rows && inComp[a.ty * cols + a.tx] === 1);
       if (spec) armor = spec.kind === 'tetrapod' ? 1 : 2;
+      // 184차 — 'quay' = 피복 없는 연석 직벽. 사석 성분의 돌 상판을 쓰되 전 방위를 안벽으로 둔다
+      //   (동명항 내측·청초호 수로 — "주변 자갈·테트라포드 없이 딱 연석만 쌓은 느낌")
+      const quayAll = spec?.kind === 'quay';
       const sides = spec?.sides && spec.sides.length > 0 ? spec.sides : null;
       const info: BwArmorInfo = armor === 1
         ? { armor, dwMax, rubbleFrom: 2.5, deckFrom: dwMax >= 5 ? 3.5 : 2.5 }
@@ -2443,8 +2450,8 @@ export class SeamlessChunks {
         this.bwComp[i] = id;
         // 피복이 깔리는 쪽인가 — 가장 가까운 물이 있는 방위(dw가 가장 작은 4-이웃)가 지정 방위에 들면 피복,
         //   아니면 안벽(콘크리트 직벽 — 상판이 물가까지 이어진다)
-        let armed = 1;
-        if (sides) {
+        let armed = quayAll ? 0 : 1;
+        if (sides && !quayAll) {
           const c = i % cols, r = Math.floor(i / cols);
           let best = d, bestE: TileEdge | null = null;
           for (const [dc, dr, e] of DIRS4) {

@@ -54,8 +54,11 @@ export interface RegionStair {
 export interface RegionArmor {
   tx: number;
   ty: number;
-  /** 테트라포드 / 사석(돌덩이) */
-  kind: 'tetrapod' | 'rubble';
+  /**
+   * 테트라포드 / 사석(돌덩이) / **연석 직벽**(184차 — 피복 없이 돌 상판이 물로 바로 떨어진다.
+   * 사용자 위성 대조: "주변 자갈·테트라포드·바위 덩어리 없이 딱 연석만 바다 위에 쌓은 느낌")
+   */
+  kind: 'tetrapod' | 'rubble' | 'quay';
   /**
    * 피복이 깔리는 **물 쪽 방위**(성분 셀에서 가장 가까운 물이 있는 방향). 비우면 전 방위.
    * 동명항 방파제 = `['e']`(우측만 — 사용자 실측). 지정되지 않은 방위의 물가는 안벽(콘크리트 직벽)이다.

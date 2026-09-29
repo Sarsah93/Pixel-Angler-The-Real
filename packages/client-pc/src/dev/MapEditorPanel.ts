@@ -42,7 +42,7 @@ export interface MapEditorState {
   /** 183차 — 층 브러시(+1/−1) · 계단 방향 · 피복 종류/방위 */
   levelDelta: 1 | -1;
   stairDir: StairDir;
-  armorKind: 'tetrapod' | 'rubble';
+  armorKind: 'tetrapod' | 'rubble' | 'quay';
   armorSides: TileEdge[];
 }
 
@@ -321,6 +321,8 @@ export function openMapEditor(region: string, propDefs: MapEditorPropEntry[], ho
     () => mapEditorState.mode === 'armor' && mapEditorState.armorKind === 'tetrapod'));
   arSec.appendChild(btn('사석(돌덩이)', () => { mapEditorState.mode = 'armor'; mapEditorState.armorKind = 'rubble'; },
     () => mapEditorState.mode === 'armor' && mapEditorState.armorKind === 'rubble'));
+  arSec.appendChild(btn('연석 직벽', () => { mapEditorState.mode = 'armor'; mapEditorState.armorKind = 'quay'; },
+    () => mapEditorState.mode === 'armor' && mapEditorState.armorKind === 'quay'));
   const sideRow = sec(pages.tools, '피복 방위 (비우면 전 방위)');
   for (const [e, label] of [['n', '북'], ['e', '동(우)'], ['s', '남'], ['w', '서(좌)']] as [TileEdge, string][]) {
     sideRow.appendChild(btn(label, () => {

@@ -550,6 +550,12 @@ export {
 } from './rules/TerrainTransition.js';
 // ── 고도 레이어·계단 규칙 — 183차 ──
 export type { TileEdge, StairDir, RegionStair, RegionArmor, LevelCell, LevelSeam, StepOptions } from './rules/Elevation.js';
+// 184차 — 고가도로·대교 상판 (지면 위 두 번째 층)
+export type { RegionOverpass, OverpassProjection } from './rules/Overpass.js';
+export {
+  overpassLength, projectOnOverpass, overpassHeightAt, onOverpassBand, inOverpassEndZone,
+  overpassBlocksGround, OVERPASS_END_TILES, OVERPASS_CLEARANCE,
+} from './rules/Overpass.js';
 export {
   STAIR_DIRS, STAIR_DIR_LABEL, oppositeEdge, stairHighEdges, stairLowEdges, levelAtEdge, canStep, levelSeam,
 } from './rules/Elevation.js';

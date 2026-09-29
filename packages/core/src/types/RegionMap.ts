@@ -197,7 +197,13 @@ export interface RegionPatch {
   stairs?: RegionStair[];
   /** 방파제 피복 지정(183차) — 성분별 테트라포드/사석 + 물 쪽 방위 */
   armor?: RegionArmor[];
+  /** 고가도로·대교 상판(184차) — 지면 위 두 번째 층 (`rules/Overpass.ts`) */
+  overpasses?: RegionOverpass[];
 }
+
+// 184차 — 고가 계약도 규칙 모듈이 정본이다
+import type { RegionOverpass } from '../rules/Overpass.js';
+export type { RegionOverpass };
 
 // 183차 — 계단·피복 계약은 규칙 모듈이 정본이다(판정 함수와 한 파일)
 import type { RegionStair, RegionArmor } from '../rules/Elevation.js';
