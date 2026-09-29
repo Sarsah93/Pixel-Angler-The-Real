@@ -117,7 +117,7 @@ import { TUNING, getTrapById, MP_CHAT_MAX_LEN, type RegionFishFarms } from '@tra
 import { buildConsignmentLots, isConsignmentOpen, openConsignmentSession, coopDuesFeeCut, type ConsignInput, type ConsignmentSettlement } from '@tra/core';
 import { AuctionHousePanel } from '../ui/AuctionHousePanel.js';
 import { tilesetPathOf } from '../data/TilesetManifest.js';
-import { OverpassSystem, clipRoadsUnderOverpasses } from './field/OverpassSystem.js';
+import { OverpassSystem, clipRoadsUnderOverpasses, trimRoadEndsAtWater } from './field/OverpassSystem.js';
 import { TrafficSystem } from './TrafficSystem.js';
 import { TILESET_MANIFEST } from '../data/TilesetManifest.js';
 import {
@@ -724,7 +724,8 @@ export class RegionFieldScene extends Phaser.Scene {
       this.chunks = new SeamlessChunks(this, {
         terrainRows: this.mapData.terrain,
         // 184차 — 고가와 나란한 지면 도로 구간은 굽지 않는다(물 위 아스팔트 방지 — 상판이 대신 그린다)
-        roads: clipRoadsUnderOverpasses(this.regionRoads, this.regionPatch.overpasses ?? []),
+        // 186차 — 막다른 끝이 물로 삐져나가는 도로 머리를 뭍 쪽으로 당긴다
+        roads: trimRoadEndsAtWater(clipRoadsUnderOverpasses(this.regionRoads, this.regionPatch.overpasses ?? []), this.mapData.terrain),
         props: this.regionPatch.props,
         tileTex: this.regionPatch.tileTex ?? [],
         lights: this.seamlessDef.hasLights
@@ -2200,7 +2201,7 @@ export class RegionFieldScene extends Phaser.Scene {
   /** 도로 벡터 변경 확정 — 청크 재색인·재베이킹 + 교통 재구성 + 패치 오버라이드 기록 */
   private editCommitRoads(msg: string): void {
     this.regionPatch.roads = this.regionRoads;
-    this.chunks?.setRoads(clipRoadsUnderOverpasses(this.regionRoads, this.regionPatch.overpasses ?? []));
+    this.chunks?.setRoads(trimRoadEndsAtWater(clipRoadsUnderOverpasses(this.regionRoads, this.regionPatch.overpasses ?? []), this.mapData.terrain));
     this.traffic?.destroy();
     this.traffic = new TrafficSystem(this, this.regionRoads, TR, 36, this.cols, this.rows, this.trafficSeed());
     this.wireTrafficLayers();
@@ -5362,6 +5363,28 @@ export class RegionFieldScene extends Phaser.Scene {
     const mPerTile = this.chunks ? 5 : 2;
     const meters = Math.round((d / TR) * mPerTile);
     lbl.setText(`${t.label} · ${meters}m`).setPosition(px + ux * (radius + 24), py + uy * (radius + 24)).setVisible(true);
+    this.nudgeGuideLabel(lbl, nx, ny);
+  }
+
+  /**
+   * 186차 — 거리 라벨이 머리 위 [F] 안내·다른 화살표 라벨과 겹치면 화살표 옆(접선 방향)으로 비켜 세운다.
+   * 목표가 위쪽이면 라벨이 정확히 머리 위 안내 자리에 떨어졌다(사용자 캡처 — 세 문구가 한 자리에 겹침).
+   */
+  private nudgeGuideLabel(lbl: Phaser.GameObjects.Text, nx: number, ny: number): void {
+    const others: Phaser.Geom.Rectangle[] = [];
+    if (this.npcHintText?.visible) others.push(this.npcHintText.getBounds());
+    if (lbl !== this.questGuideLbl && this.questGuideLbl?.visible) others.push(this.questGuideLbl.getBounds());
+    if (!others.length) return;
+    const hits = (): Phaser.Geom.Rectangle | undefined => {
+      const r = lbl.getBounds();
+      return others.find((o) => Phaser.Geom.Intersects.RectangleToRectangle(r, o));
+    };
+    const first = hits();
+    if (!first) return;
+    // 겹친 상대의 중심에서 멀어지는 쪽 접선으로
+    const sgn = ((lbl.x - first.centerX) * nx + (lbl.y - first.centerY) * ny) >= 0 ? 1 : -1;
+    const x0 = lbl.x, y0 = lbl.y;
+    for (let k = 1; k <= 40 && hits(); k++) lbl.setPosition(x0 + nx * sgn * 4 * k, y0 + ny * sgn * 4 * k);
   }
 
   /** M — 전체 지도 오버레이 토글 */
@@ -5400,8 +5423,10 @@ export class RegionFieldScene extends Phaser.Scene {
       const d = Math.hypot(t.x - px, t.y - py);
       if (d < triggerDist) { triggerDist = d; trigger = t.def; }
     }
-    this.nearStoryTrigger = trigger;
-    let nearest: StoryNpcPlacement | null = null, best = 48;
+    // 186차 — 상판 위에서는 밑의 현장 지점·인물이 가깝게 잡히지 않는다
+    const deck = !!this.overpass?.onDeck;
+    this.nearStoryTrigger = deck ? null : trigger;
+    let nearest: StoryNpcPlacement | null = null, best = deck ? -1 : 48;
     for (const n of this.storyNpcs) {
       const d = Math.hypot(n.x - px, (n.y - 12) - py);
       if (d < best) { best = d; nearest = n.def; }
@@ -5428,14 +5453,15 @@ export class RegionFieldScene extends Phaser.Scene {
         this.npcHintText = undefined;
       }
     };
-    if (this.uiBlocked || this.placing) {
+    if (this.uiBlocked || this.placing || this.forage?.isHolding) {   // 채집 중에는 진행 문구·바가 대신한다
       this.npcHintText?.setVisible(false);
     } else if (trigger) {
       hintFor(`[F] ${trigger.labelKo}`, '#ffe9a0');
     } else {
       const opts = this.collectInteractOptions();
       if (!opts.length) this.npcHintText?.setVisible(false);
-      else if (opts.length === 1) hintFor(`[F] ${opts[0].label}`, '#ffe9a0');
+      // 186차 — 채집·통발·화구는 자기 상태(허가·도구·남은 시간)를 담은 문장을 준다
+      else if (opts.length === 1) hintFor(opts[0].hint ?? `[F] ${opts[0].label}`, '#ffe9a0');
       else hintFor(`[F] 상호작용 — ${opts.length}가지`, '#b9f2ff');
     }
     // 방문 장소
@@ -5548,6 +5574,7 @@ export class RegionFieldScene extends Phaser.Scene {
     if (forageName) {
       opts.push({
         label: `${forageName} 채집하기`, note: '[F]를 길게 누른다',
+        hint: this.forage?.nearHintKo ?? undefined,
         run: () => {
           if (this.forage?.onInteractKey()) return;   // 키를 누른 채 골랐다면 바로 시작된다
           this.interactPrefer = { kind: 'forage', until: this.time.now + 6000 };
@@ -5557,10 +5584,10 @@ export class RegionFieldScene extends Phaser.Scene {
     }
     // ⑧ 화구 · 통발
     if (this.stoveField?.hasNearStove) {
-      opts.push({ label: '화구에서 요리하기', run: () => { this.stoveField?.onInteractKey(false); } });
+      opts.push({ label: '화구에서 요리하기', hint: this.stoveField.nearHintKo ?? undefined, run: () => { this.stoveField?.onInteractKey(false); } });
     }
     if (this.trapField?.hasNearTrap) {
-      opts.push({ label: '통발 수거하기', run: () => { this.trapField?.onInteractKey(); } });
+      opts.push({ label: '통발 수거하기', hint: this.trapField.nearHintKo ?? undefined, run: () => { this.trapField?.onInteractKey(); } });
     }
     return opts;
   }
@@ -5947,7 +5974,9 @@ export class RegionFieldScene extends Phaser.Scene {
       isHarborAt: chunks ? (c: number, r: number) => chunks.isHarborAt(c, r) : undefined,
       waterDistAt: chunks ? (c: number, r: number) => chunks.waterDistAt(c, r) : undefined,
       player: () => ({ x: this.playerBody.x, y: this.playerBody.y }),
-      blocked: () => this.uiBlocked || this.isPaused || this.isTransitioning || this.castBusy,
+      // 186차 — 고가 상판 위에서는 밑의 채집 스팟·통발·화구와 상호작용하지 않는다(힌트도 숨는다).
+      //   184차는 [F] 선택 목록만 막아서, 상판 위에 선 채 밑의 「굴 — 해루질 입문」 힌트가 떴다(사용자 캡처).
+      blocked: () => this.uiBlocked || this.isPaused || this.isTransitioning || this.castBusy || !!this.overpass?.onDeck,
       pushLog: (msg: string) => this.hud?.pushLog(msg),
       floatingHint: (msg: string) => this.floatingHint(msg),
     };

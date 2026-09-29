@@ -417,7 +417,9 @@ export class ForageSystem {
     }
     this.nearSpot = nearest;
 
-    // 힌트
+    // 힌트 — 186차: 머리 위 문구는 씬의 [F] 안내 하나로 합친다(구: 이 텍스트 + 씬 [F] 안내 + 할 일 화살표가
+    //   머리 위에 세 겹으로 겹쳤다 — 사용자 캡처). 여기서는 문장만 만들고 씬이 그린다.
+    this.nearHint = null;
     if (nearest && !this.host.blocked() && !this.hold) {
       const c = getCreatureById(nearest.creatureId)!;
       const tool = pickForageTool(c, this.ownedTools());
@@ -425,7 +427,8 @@ export class ForageSystem {
       const label = !lic ? `${c.nameKo} — 해루질 입문 허가 필요 (L)`
         : tool ? `[F 길게] 채집 — ${c.nameKo} (${FORAGE_TOOL_LABEL[tool]})`
         : `${c.nameKo} — ${creatureTools(c).map((t) => FORAGE_TOOL_LABEL[t]).join('/')} 필요`;
-      this.showHint(label, p.x, p.y - 80);   // 홀드 바(y-66)·플로팅 힌트(y-40~-62) 위 — 겹침 방지 (122차 실측)
+      this.nearHint = label;
+      this.hintText?.setVisible(false);
     } else if (!this.hold) {
       this.hintText?.setVisible(false);
     }
@@ -459,6 +462,10 @@ export class ForageSystem {
 
   /** 씬 keydown-F — 소비했으면 true (122차: 상호작용 키 E → F) */
   /** 178차 — 상호작용 겹침 판정용 프로브. 근처 채집 스팟의 생물 이름(없으면 null) */
+  /** 186차 — 가까운 스팟의 안내 문장(허가·도구 상태 포함). 씬의 머리 위 [F] 안내가 쓴다 */
+  get nearHintKo(): string | null { return this.nearHint; }
+  private nearHint: string | null = null;
+
   get nearSpotNameKo(): string | null {
     if (!this.nearSpot) return null;
     return getCreatureById(this.nearSpot.creatureId)?.nameKo ?? null;
@@ -466,6 +473,7 @@ export class ForageSystem {
 
   onInteractKey(): boolean {
     if (this.hold) return true;
+    if (this.host.blocked()) return false;   // 186차 — 상판 위 등 (호출측 가드가 빠져도 밑의 스팟을 집지 않는다)
     const s = this.nearSpot;
     if (!s) return false;
     const c = getCreatureById(s.creatureId);

@@ -338,3 +338,57 @@ export function clipRoadsUnderOverpasses(roads: RegionRoad[], overpasses: Region
   }
   return out;
 }
+
+/**
+ * 막다른 도로 끝이 물로 삐져나가지 않게 끝을 뭍 쪽으로 당긴다 (186차 — 사용자 캡처 3).
+ *
+ * 도로 밴드는 중심선 양쪽으로 보도까지 `(w + 2) / 2` 타일을 칠하고 끝은 둥근 머리로 닫는다.
+ * OSM 중심선이 안벽 끝까지 오면 그 둥근 머리가 **바다 위에** 벽돌 반원을 그렸다(국제크루즈터미널 앞).
+ * 다른 도로와 공유하지 않는 끝점만 본다 — 교차로·다리 끝은 건드리지 않는다.
+ * 원이 물 칸과 겹치지 않을 때까지 0.25타일씩 안쪽으로 줄이고, 다 줄어들면 그 도로는 뺀다.
+ */
+export function trimRoadEndsAtWater(roads: RegionRoad[], terrainRows: string[]): RegionRoad[] {
+  const rows = terrainRows.length, cols = terrainRows[0]?.length ?? 0;
+  const key = (p: [number, number]): string => `${Math.round(p[0] * 10)},${Math.round(p[1] * 10)}`;
+  const deg = new Map<string, number>();
+  for (const rd of roads) for (const p of rd.pts) deg.set(key(p), (deg.get(key(p)) ?? 0) + 1);
+  const wet = (x: number, y: number, rad: number): boolean => {
+    const R = Math.ceil(rad) + 1;
+    for (let dy = -R; dy <= R; dy++) {
+      for (let dx = -R; dx <= R; dx++) {
+        if (dx * dx + dy * dy > rad * rad) continue;
+        const tx = Math.floor(x + dx), ty = Math.floor(y + dy);
+        if (tx >= 0 && ty >= 0 && tx < cols && ty < rows && terrainRows[ty][tx] === '~') return true;
+      }
+    }
+    return false;
+  };
+  const out: RegionRoad[] = [];
+  for (const rd of roads) {
+    if (rd.roundabout || rd.pts.length < 2) { out.push(rd); continue; }
+    let pts = rd.pts.map((p) => [p[0], p[1]] as [number, number]);
+    const rad = (rd.w + 2) / 2;
+    let dropped = false;
+    for (const atEnd of [false, true]) {
+      if (dropped) break;
+      if ((deg.get(key(atEnd ? rd.pts[rd.pts.length - 1] : rd.pts[0])) ?? 0) !== 1) continue;
+      if (atEnd) pts.reverse();
+      // pts[0]이 막다른 끝 — 물에서 떨어질 때까지 다음 점 쪽으로 당긴다
+      let guard = 0;
+      while (wet(pts[0][0], pts[0][1], rad) && guard++ < 400) {
+        const [ax, ay] = pts[0], [bx, by] = pts[1];
+        const len = Math.hypot(bx - ax, by - ay);
+        if (len <= 0.25) {
+          pts.shift();
+          if (pts.length < 2) { dropped = true; break; }
+          continue;
+        }
+        pts[0] = [ax + ((bx - ax) / len) * 0.25, ay + ((by - ay) / len) * 0.25];
+      }
+      if (atEnd) pts.reverse();
+    }
+    if (dropped) continue;
+    out.push(pts.length === rd.pts.length && pts.every((p, i) => p[0] === rd.pts[i][0] && p[1] === rd.pts[i][1]) ? rd : { ...rd, pts });
+  }
+  return out;
+}

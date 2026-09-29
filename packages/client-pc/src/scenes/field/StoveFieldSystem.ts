@@ -35,11 +35,6 @@ export interface StoveHost {
   openCookPanel: (stove: DeployedStove) => void;
 }
 
-const HINT_STYLE = {
-  fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#ffe0a8', fontStyle: 'bold',
-  backgroundColor: '#0a1628cc', padding: { x: 5, y: 2 },
-} as const;
-
 interface StoveView {
   c: Phaser.GameObjects.Container;
   flame: Phaser.GameObjects.Graphics;
@@ -53,7 +48,6 @@ export class StoveFieldSystem {
   private host: StoveHost;
   private views = new Map<string, StoveView>();
   private peerViews = new Map<string, Phaser.GameObjects.Container>();
-  private hintText?: Phaser.GameObjects.Text;
   private previewG?: Phaser.GameObjects.Graphics;
   private acc = 0;
   private peerAcc = 0;
@@ -284,16 +278,19 @@ export class StoveFieldSystem {
     this.nearStove = best;
     if (best && !this.host.blocked() && !this.placing) {
       const lb = CookingStore.statusLabel(best);
-      if (!this.hintText) this.hintText = this.host.scene.add.text(0, 0, '', HINT_STYLE).setOrigin(0.5, 1).setDepth(31);
-      this.hintText.setText(`[F] 요리 — ${lb.text} · [Shift+F] 회수`).setPosition(p.x, p.y - 52).setVisible(true);
+      // 186차 — 머리 위 문구는 씬의 [F] 안내 하나로 합친다
+      this.nearHint = `[F] 요리 — ${lb.text} · [Shift+F] 회수`;
     } else {
-      this.hintText?.setVisible(false);
+      this.nearHint = null;
     }
   }
 
   /** 씬 keydown-F — 소비했으면 true. shift = 회수 */
   /** 178차 — 상호작용 겹침 판정용 프로브 */
   get hasNearStove(): boolean { return this.nearStove !== null; }
+  /** 186차 — 가까운 화구의 안내 문장 (씬의 머리 위 [F] 안내가 쓴다) */
+  get nearHintKo(): string | null { return this.nearHint; }
+  private nearHint: string | null = null;
 
   onInteractKey(shift = false): boolean {
     const st = this.nearStove;
@@ -318,7 +315,6 @@ export class StoveFieldSystem {
     this.views.clear();
     for (const c of this.peerViews.values()) c.destroy();
     this.peerViews.clear();
-    this.hintText?.destroy(); this.hintText = undefined;
     this.previewG?.destroy(); this.previewG = undefined;
   }
 }

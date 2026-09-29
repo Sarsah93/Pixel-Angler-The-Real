@@ -26,6 +26,8 @@ export interface InteractOption {
   label: string;
   /** 보조 설명 (한 줄) */
   note?: string;
+  /** 186차 — 후보가 하나뿐일 때 머리 위 [F] 안내에 쓸 문장 (없으면 `[F] ${label}`) */
+  hint?: string;
   /** 아이템 선택지면 아이콘을 함께 보여준다 */
   icon?: ItemIconLike;
   /** 즉시 실행 — `sub`가 있으면 실행 대신 하위 목록을 펼친다 */

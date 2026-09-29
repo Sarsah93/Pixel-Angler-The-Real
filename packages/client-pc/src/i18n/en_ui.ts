@@ -168,6 +168,25 @@ export const EN_UI: Record<string, string> = {
   '여 박기! 릴링을 멈추고 ↑를 꾹 눌러 버티세요!': 'It’s diving for the rocks! Stop reeling and hold ↑ to ride it out!',
   '몸을 비틀며 요동칩니다 — 텐션이 출렁이니 안전대를 지키세요':
     'It’s thrashing and twisting — the tension swings, so keep it in the safe band',
+  // ── 186차 집 실내 안내 ──
+  '[F] 살펴보기': '[F] Look',
+  '아버지 집이다. 떠날 때 모습 그대로다. 우선 하나씩 둘러보자.': "Dad's house. Everything is just as it was when I left. Let me look around, one thing at a time.",
+  '대충 다 둘러봤다. 궁금한 게 있으면 가구 앞에서 [F]로 다시 살펴보면 된다.': "That's about everything. If I want another look, I can stand by something and press [F].",
+  '들어온 문. 밖으로 나가려면 문 앞에서 [F]를 누르거나 ESC를 누르면 된다.': 'The door I came in through. To go outside, press [F] in front of it, or press ESC.',
+  '화분 하나가 아직 살아 있다. 누가 물을 주고 있었던 모양이다.': 'One potted plant is still alive. Someone must have been watering it.',
+  '낡은 소파. 아버지는 여기서 라디오 물때 방송을 켜 놓고 졸곤 했다.': 'The old sofa. Dad used to doze off here with the tide report on the radio.',
+  '수납 선반. 낚시 잡지 몇 권과 쓰다 만 채비 상자가 그대로 올려져 있다.': 'A storage shelf. A few fishing magazines and a half-used tackle box, right where he left them.',
+  '냉장고는 아직 돌아간다. 위칸은 얼리고 아래칸은 차게 둔다.\n[F]로 열어 잡은 고기나 먹을 것을 넣어 두면, 넣어 둔 동안은 상하지 않는다.': "The fridge still runs. The top freezes, the bottom keeps things cold.\nOpen it with [F] — fish or food kept inside won't spoil while it's in there.",
+  '개수대에서 수돗물이 나온다. 요리할 때 물 걱정은 없겠다.\n개수대나 가스레인지 앞에서 [F]를 누르면 요리를 시작한다.': "The sink has running water. No worrying about water when I cook.\nPress [F] at the sink or the stove to start cooking.",
+  '가스레인지 두 구. 집 화구는 가스가 떨어질 일이 없다.\n[F]로 조리를 시작한다 — 재료는 가방에서 꺼내 넣는다.': "A two-burner gas stove. The gas here never runs out.\nPress [F] to start cooking — ingredients come out of my bag.",
+  '식탁. 둘이 앉으면 딱 맞는 크기다. 밥은 늘 여기서 먹었다.': 'The table. Just the right size for two. We always ate here.',
+  '러그 위에서 고양이가 자고 있다. 누가 밥을 챙겨 줬던 걸까. 이제는 내 몫이겠지.': "A cat is asleep on the rug. Who was feeding it? I suppose that's my job now.",
+  '아버지 침대. 이불 끝이 반듯하게 접혀 있다.\n침대 앞에서 [F]를 누르면 쉴 수 있다. 오늘 한 일을 기록(저장)하는 것도 이 침대에서만 된다.': "Dad's bed. The edge of the blanket is folded neatly.\nPress [F] at the bed to rest. This bed is also the only place to record (save) the day.",
+  '머리맡 협탁. 안경을 늘 두던 자리에 먼지만 앉았다.': 'The bedside table. Only dust where he always kept his glasses.',
+  '서랍장 위 스탠드가 아직 켜진다. 서랍 안에는 아버지 옷가지가 그대로다.': "The lamp on the dresser still turns on. His clothes are still in the drawers.",
+  '벽시계는 멈추지 않고 가고 있다. 누가 건전지를 갈아 두었나.': 'The wall clock is still ticking. Someone must have changed the battery.',
+  '벽 선반의 책. 물때표, 어류 도감, 손때 묻은 매듭 책.': 'Books on the wall shelf. Tide tables, a fish guide, a well-thumbed book of knots.',
+  '창 너머로 바다 냄새가 들어온다. 여기서도 파도 소리가 들린다.': 'The smell of the sea drifts in through the window. I can hear the waves from here, too.',
 };
 
 /** 수치·이름이 끼어 있는 문장 (캡처는 `applyTemplate`이 다시 번역한다) */

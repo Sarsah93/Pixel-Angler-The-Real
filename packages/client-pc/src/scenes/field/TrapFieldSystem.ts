@@ -49,11 +49,6 @@ export interface TrapHost {
   openDeployPanel: (onPick: (trapItem: InvItem, baitItem: InvItem) => void) => void;
 }
 
-const HINT_STYLE = {
-  fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#ffe0a8', fontStyle: 'bold',
-  backgroundColor: '#0a1628cc', padding: { x: 5, y: 2 },
-} as const;
-
 export class TrapFieldSystem {
   private host: TrapHost;
   private buoys = new Map<string, { c: Phaser.GameObjects.Container; label: Phaser.GameObjects.Text }>();
@@ -64,7 +59,6 @@ export class TrapFieldSystem {
    */
   private peerBuoys = new Map<string, { c: Phaser.GameObjects.Container }>();
   private peerSyncAt = 0;
-  private hintText?: Phaser.GameObjects.Text;
   private previewG?: Phaser.GameObjects.Graphics;
   private labelAcc = 0;
   /** 설치 모드 — 선택된 통발/미끼 아이템 */
@@ -280,16 +274,19 @@ export class TrapFieldSystem {
     if (best && !this.host.blocked() && !this.placing) {
       const s = this.statusOf(best);
       const spec = getTrapById(best.trapSpecId);
-      if (!this.hintText) this.hintText = this.host.scene.add.text(0, 0, '', HINT_STYLE).setOrigin(0.5, 1).setDepth(31);
-      this.hintText.setText(`[F] ${spec?.nameKo ?? '통발'} — ${s.label}`).setPosition(p.x, p.y - 52).setVisible(true);
+      // 186차 — 머리 위 문구는 씬의 [F] 안내 하나로 합친다(구: 이 텍스트가 씬 안내와 겹쳤다)
+      this.nearHint = `[F] ${spec?.nameKo ?? '통발'} — ${s.label}`;
     } else {
-      this.hintText?.setVisible(false);
+      this.nearHint = null;
     }
   }
 
   /** 씬 keydown-F — 소비했으면 true (122차) */
   /** 178차 — 상호작용 겹침 판정용 프로브 */
   get hasNearTrap(): boolean { return this.nearTrap !== null; }
+  /** 186차 — 가까운 통발의 안내 문장 (씬의 머리 위 [F] 안내가 쓴다) */
+  get nearHintKo(): string | null { return this.nearHint; }
+  private nearHint: string | null = null;
 
   onInteractKey(): boolean {
     const t = this.nearTrap;
@@ -467,7 +464,6 @@ export class TrapFieldSystem {
     this.buoys.clear();
     for (const b of this.peerBuoys.values()) b.c.destroy();
     this.peerBuoys.clear();
-    this.hintText?.destroy();
     this.previewG?.destroy();
   }
 }

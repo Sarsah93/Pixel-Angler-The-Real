@@ -183,6 +183,15 @@ export class DraggablePanel extends Phaser.GameObjects.Container {
     return sx >= this.x && sx <= this.x + this.panelW && sy >= this.y && sy <= this.y + this.panelH;
   }
 
+  /**
+   * 모달 dim 투명도 조정 (186차 — 집 안내처럼 호출측이 스포트라이트를 직접 그릴 때 0).
+   * 입력 흡수는 그대로 유지된다(알파만 바뀐다).
+   */
+  setDimAlpha(a: number): this {
+    this.dimRect?.setFillStyle(0x000000, a);
+    return this;
+  }
+
   /** 패널 depth 적용 — 모달 dim은 항상 패널 바로 아래를 따라간다 */
   private applyDepth(d: number): void {
     this.setDepth(d);

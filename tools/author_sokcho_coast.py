@@ -21,6 +21,9 @@
  7. 호수 안 성분 = 연석 직벽(quay): 영랑호 2곳(서쪽 소형 · 반도·후미) · 청초호 북안(씨크루즈호텔 앞)
     ⚠ 반도처럼 좁은 뭍은 추론이 '방파제 성분'으로 묶는다(378타일) — 호수에는 테트라포드가 없다.
  8. 속초항 국제크루즈터미널 부두 = 연석 직벽(quay)
+186차 — 사용자 캡처(대교 밑 땅) 대조
+ 9. 고가를 두 다리로 분리(설악금강대교 · 금강대교) — 가운데 반도에 내려서는 끝단이 생긴다
+10. 설악금강대교 밑 좁은 목(y 273~285) = 물 — 양옆에 배가 정박한 수로다
 """
 import json, os, sys
 from collections import deque
@@ -160,20 +163,22 @@ def osm_ways():
 
 
 ways = osm_ways()
-chain = []
-for wid in (168876667, 178808335, 753395815, 178808348):
-    pts = ways[wid]
+
+
+def orient_join(chain, pts):
+    """chain 끝에 가까운 쪽이 앞에 오도록 pts를 뒤집는다 (chain이 비면 북 → 남)"""
     if chain:
-        # 이어지는 쪽 끝을 맞춘다
         if (pts[-1][0] - chain[-1][0]) ** 2 + (pts[-1][1] - chain[-1][1]) ** 2 < \
            (pts[0][0] - chain[-1][0]) ** 2 + (pts[0][1] - chain[-1][1]) ** 2:
-            pts = pts[::-1]
-    elif pts[0][1] > pts[-1][1]:
-        pts = pts[::-1]
+            return pts[::-1]
+        return pts
+    return pts[::-1] if pts[0][1] > pts[-1][1] else pts
+
+
+def append_pts(chain, pts):
     for p in pts:
         if not chain or (p[0] - chain[-1][0]) ** 2 + (p[1] - chain[-1][1]) ** 2 > 0.25:
             chain.append(p)
-chain = [[round(x, 2), round(y, 2)] for x, y in chain]
 
 
 def arc_at_y(pts, yq):
@@ -187,12 +192,47 @@ def arc_at_y(pts, yq):
     return s
 
 
-overpass = {
-    'id': 'geumgang_bridge', 'name': '금강대교',
-    'pts': chain, 'halfW': 2.4, 'level': 3, 'rampTiles': 22,
-    'arch': [round(arc_at_y(chain, 351.5), 1), round(arc_at_y(chain, 371.5), 1)],
-}
-print(f'[4] 고가 {len(chain)}점 · 아치 {overpass["arch"]}')
+# 186차 — 구 184차는 OSM 4구간을 **한 줄의 고가**로 이어 붙여, 중간의 지면 구간(설악금강대교로 y 334~351)까지
+#   3층 높이로 떠 있었다. 그래서 가운데 땅(청호동 쪽 반도)으로 **내려설 곳이 없었고**, 대신 첫 다리 밑의 가짜 땅
+#   (y 273~285 — 사용자 캡처 4: "대교 아래 지형은 실제로 없는 땅")으로 걸어서 건넜다.
+#   → 다리 A(북 → 반도 착지) · 다리 B(반도 → 금강대교 아치 → 남) 두 개로 나누고, A 밑의 좁은 목은 물로 되돌린다.
+a_pts = []
+append_pts(a_pts, orient_join(a_pts, ways[168876667]))
+ground = orient_join(a_pts, ways[178808335])
+b_pts = []
+append_pts(b_pts, [p for p in ground if p[1] >= 344])
+for wid in (753395815, 178808348):
+    append_pts(b_pts, orient_join(b_pts, ways[wid]))
+a_pts = [[round(x, 2), round(y, 2)] for x, y in a_pts]
+b_pts = [[round(x, 2), round(y, 2)] for x, y in b_pts]
+
+overpasses = [
+    {'id': 'seorak_geumgang_bridge', 'name': '설악금강대교', 'pts': a_pts, 'halfW': 2.4, 'level': 3, 'rampTiles': 16},
+    {'id': 'geumgang_bridge', 'name': '금강대교', 'pts': b_pts, 'halfW': 2.4, 'level': 3, 'rampTiles': 10,
+     'arch': [round(arc_at_y(b_pts, 351.5), 1), round(arc_at_y(b_pts, 371.5), 1)]},
+]
+for o in overpasses:
+    print(f'[4] 고가 {o["name"]} {len(o["pts"])}점 · y {o["pts"][0][1]:.0f} → {o["pts"][-1][1]:.0f}')
+
+
+def dist_to(pts, x, y):
+    best = 1e9
+    for i in range(1, len(pts)):
+        (ax, ay), (bx, by) = pts[i - 1], pts[i]
+        dx, dy = bx - ax, by - ay
+        L2 = dx * dx + dy * dy or 1e-9
+        t = max(0.0, min(1.0, ((x - ax) * dx + (y - ay) * dy) / L2))
+        best = min(best, ((x - ax - dx * t) ** 2 + (y - ay - dy * t) ** 2) ** 0.5)
+    return best
+
+
+# 다리 A 밑의 좁은 목 (양옆이 물 — 배가 양쪽에 정박한 자리) → 물
+neck = 0
+for y in range(273, 286):
+    for x in range(438, 462):
+        if at(x, y) in 'brwpd.' and dist_to(a_pts, x + 0.5, y + 0.5) <= 2.4 + 1.2:
+            put(x, y, '~'); neck += 1
+print(f'[4] 다리 밑 가짜 목 → 물 {neck}타일')
 
 # ── 5. 청초호 남서쪽(조양동) ─────────────────────────────────────────────
 segs = []
@@ -281,7 +321,8 @@ for path in PATCHES:
     p['tiles'] = tiles
     keys = {(a['tx'], a['ty']) for a in armor}
     p['armor'] = [a for a in p.get('armor', []) if (a['tx'], a['ty']) not in keys] + armor
-    p['overpasses'] = [o for o in p.get('overpasses', []) if o.get('id') != overpass['id']] + [overpass]
+    ids = {o['id'] for o in overpasses}
+    p['overpasses'] = [o for o in p.get('overpasses', []) if o.get('id') not in ids] + overpasses
     with open(path, 'w', encoding='utf-8') as f:
         json.dump(p, f, ensure_ascii=False, separators=(',', ':'))
     print(f'  → {os.path.relpath(path, ROOT)} · tiles {len(tiles)} · armor {len(p["armor"])} · overpasses {len(p["overpasses"])}')

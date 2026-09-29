@@ -1,6 +1,6 @@
 /**
  * @file HomeInteriorScene.ts
- * @description 집 실내 (Tier 0 소형 원룸) — 침대 저장★ · 문→홈타운 외부
+ * @description 집 실내 (Tier 0 소형 원룸) — 침대 저장 · 문→홈타운 외부 · 첫 입장 가구 안내 혼잣말(186차)
  *
  * HOMETOWN_HOME_SPEC (2026-07-28):
  *  - 시작 사이즈 Tier 0: 원룸 12×10 타일 (hometown_interior_mockup.svg 레이아웃).
@@ -13,7 +13,7 @@
  */
 
 import Phaser from 'phaser';
-import { MapObject, TUNING } from '@tra/core';
+import { CHAR_SCALE, MapObject, TUNING, type CharDir } from '@tra/core';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { GameState } from '../store/GameState.js';
 import { StoryStore } from '../store/StoryStore.js';
@@ -21,6 +21,9 @@ import { FridgePanel } from '../ui/FridgePanel.js';
 import { CookingPanel } from '../ui/CookingPanel.js';
 import { CookingStore } from '../store/CookingStore.js';
 import { fadeOutThen } from './SceneFade.js';
+import { CharacterSprite } from '../ui/CharacterSprite.js';
+import { characterLook } from '../data/EquipOutfit.js';
+import { MonologuePanel } from '../ui/MonologuePanel.js';
 
 /** 실내 타일 렌더 크기 (px) — 외부(20px)보다 큼직하게 */
 const IT = 48;
@@ -49,20 +52,49 @@ const INTERIOR_OBJECTS: MapObject[] = [
   { instanceId: 'door_out', type: 'door',      tx: 5,  ty: 9, fw: 2, fh: 1, collides: false, interact: 'door', movable: false, removable: false },
 ];
 
-/** 실내 캐릭터 표시 높이 (px) — 실내 타일(48px)에 맞춰 큼직하게 */
-const PLAYER_H = 56;
-/** man 스프라이트 하단 투명 여백 보정 — 발이 그림자에 닿도록 스프라이트만 아래로 (RegionFieldScene와 동일 패턴) */
-const PLAYER_FOOT_SINK = 6;
+/**
+ * 가구마다의 혼잣말 (186차 — 사용자 지시 "집으로 들어왔을 때 멈추면서 하나하나 안내").
+ * 첫 입장 때 안내 순서대로 한 단락씩 보여 주고, 그 뒤로는 가구 앞 [F] 「살펴보기」로 다시 읽는다.
+ * 기능이 있는 가구는 **그 기능을 쓰는 법**을 둘째 문장에 담는다(R4 — 정의문이 아니라 주인공의 말).
+ */
+const LOOK_TEXT: Record<string, string> = {
+  door_out: '들어온 문. 밖으로 나가려면 문 앞에서 [F]를 누르거나 ESC를 누르면 된다.',
+  plant: '화분 하나가 아직 살아 있다. 누가 물을 주고 있었던 모양이다.',
+  sofa: '낡은 소파. 아버지는 여기서 라디오 물때 방송을 켜 놓고 졸곤 했다.',
+  shelf: '수납 선반. 낚시 잡지 몇 권과 쓰다 만 채비 상자가 그대로 올려져 있다.',
+  fridge: '냉장고는 아직 돌아간다. 위칸은 얼리고 아래칸은 차게 둔다.\n[F]로 열어 잡은 고기나 먹을 것을 넣어 두면, 넣어 둔 동안은 상하지 않는다.',
+  sink: '개수대에서 수돗물이 나온다. 요리할 때 물 걱정은 없겠다.\n개수대나 가스레인지 앞에서 [F]를 누르면 요리를 시작한다.',
+  stove: '가스레인지 두 구. 집 화구는 가스가 떨어질 일이 없다.\n[F]로 조리를 시작한다 — 재료는 가방에서 꺼내 넣는다.',
+  island: '식탁. 둘이 앉으면 딱 맞는 크기다. 밥은 늘 여기서 먹었다.',
+  rug: '러그 위에서 고양이가 자고 있다. 누가 밥을 챙겨 줬던 걸까. 이제는 내 몫이겠지.',
+  bed: '아버지 침대. 이불 끝이 반듯하게 접혀 있다.\n침대 앞에서 [F]를 누르면 쉴 수 있다. 오늘 한 일을 기록(저장)하는 것도 이 침대에서만 된다.',
+  stand: '머리맡 협탁. 안경을 늘 두던 자리에 먼지만 앉았다.',
+  drawer: '서랍장 위 스탠드가 아직 켜진다. 서랍 안에는 아버지 옷가지가 그대로다.',
+  clock: '벽시계는 멈추지 않고 가고 있다. 누가 건전지를 갈아 두었나.',
+  books: '벽 선반의 책. 물때표, 어류 도감, 손때 묻은 매듭 책.',
+  window: '창 너머로 바다 냄새가 들어온다. 여기서도 파도 소리가 들린다.',
+};
+
+/** 첫 입장 안내 순서 — 문에서 시작해 방을 한 바퀴 돌고 다시 문으로 */
+const TOUR_ORDER = [
+  'door_out', 'plant', 'sofa', 'shelf', 'fridge', 'sink', 'stove', 'island',
+  'rug', 'bed', 'stand', 'drawer', 'clock', 'books', 'window',
+] as const;
+const TOUR_INTRO = '아버지 집이다. 떠날 때 모습 그대로다. 우선 하나씩 둘러보자.';
+const TOUR_OUTRO = '대충 다 둘러봤다. 궁금한 게 있으면 가구 앞에서 [F]로 다시 살펴보면 된다.';
 
 export class HomeInteriorScene extends Phaser.Scene {
   /** 위치 판정용 논리 좌표 (스프라이트 발밑) */
   private px = 0;
   private py = 0;
-  private playerSprite!: Phaser.GameObjects.Image;
+  /** 186차 — 필드와 같은 캐릭터 시트(구 `man-*` 외부 출력물은 138차에 폐기됐다) */
+  private charSprite!: CharacterSprite;
   private playerShadow!: Phaser.GameObjects.Ellipse;
-  private facing: 'front' | 'back' | 'left' | 'right' = 'front';
-  private walkFrame = 1;
-  private walkTimer = 0;
+  private facing: CharDir = 'down';
+  /** 186차 — 가구 안내 혼잣말 진행 중(이동·[F]·ESC를 막는다) */
+  private tourPanel?: MonologuePanel;
+  private tourSpot?: Phaser.GameObjects.Container;
+  private tourSpotTween?: Phaser.Tweens.Tween;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private hintText!: Phaser.GameObjects.Text;
   private bedMenu?: Phaser.GameObjects.Container;
@@ -84,19 +116,24 @@ export class HomeInteriorScene extends Phaser.Scene {
     this.fridgePanel = undefined;
     this.cookPanel = undefined;
     this.nearObj = null;
+    this.tourPanel = undefined;
+    this.tourSpot = undefined;
+    this.tourSpotTween = undefined;
 
     this.drawRoom();
     this.drawFurniture();
 
     // 플레이어 (문 앞 스폰) — 실제 캐릭터 스프라이트 (RegionFieldScene와 동일 에셋)
     this.px = OX + 6 * IT; this.py = OY + 8.4 * IT;
-    this.playerShadow = this.add.ellipse(this.px, this.py, PLAYER_H * 0.42, PLAYER_H * 0.12, 0x000000, 0.28).setDepth(18);
-    this.playerSprite = this.add.image(this.px, this.py + PLAYER_FOOT_SINK, 'man-idle-front').setOrigin(0.5, 1).setDepth(20);
-    this.applySpriteSize();
+    this.charSprite = new CharacterSprite(this, this.px, this.py, characterLook(), CHAR_SCALE);
+    this.charSprite.image.setY(this.py + this.charSprite.footPad).setDepth(20);
+    const bodyH = this.charSprite.bodyHeight;
+    this.playerShadow = this.add.ellipse(this.px, this.py, bodyH * 0.42, bodyH * 0.12, 0x000000, 0.28).setDepth(18);
 
     this.cursors = this.input.keyboard!.createCursorKeys();
-    this.input.keyboard!.on('keydown-F', () => this.tryInteract());   // 122차: 상호작용 키 E → F
+    this.input.keyboard!.on('keydown-F', () => { if (!this.tourPanel) this.tryInteract(); });   // 122차: 상호작용 키 E → F
     this.input.keyboard!.on('keydown-ESC', () => {
+      if (this.tourPanel) return;   // 혼잣말 창이 ESC를 '다음'으로 받는다
       if (this.cookPanel) { this.closeCook(); return; }
       if (this.fridgePanel) { this.closeFridge(); return; }
       if (this.bedMenu) { this.closeBedMenu(); return; }
@@ -108,9 +145,90 @@ export class HomeInteriorScene extends Phaser.Scene {
       backgroundColor: '#0a1628cc', padding: { x: 6, y: 2 },
     }).setOrigin(0.5, 1).setDepth(30).setVisible(false);
 
-    this.add.text(GAME_WIDTH / 2, OY - 28, '집 (Tier 0 원룸) — 침대에서 저장 · 문으로 나가기 (ESC)', {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#8faabf',
-    }).setOrigin(0.5);
+    // 186차 — 구 상단 문구(`집 (Tier 0 원룸) — 침대에서 저장 · 문으로 나가기`)는 개발 메모였다(§8-9).
+    //   안내는 첫 입장 혼잣말과 가구 앞 [F] 힌트가 맡는다.
+    this.events.once('shutdown', () => { this.tourSpotTween?.stop(); this.tourPanel?.destroy(); });
+    if (!GameState.getFlag('intro.homeTour')) {
+      // 페이드인이 끝난 뒤에 열어야 첫 단락이 어둠 속에서 타이핑되지 않는다
+      this.time.delayedCall(320, () => this.startTour());
+    }
+  }
+
+  // ── 첫 입장 안내 (186차) ─────────────────────────────
+
+  /** 안내에 쓰는 대상 사각형(화면 좌표). 벽 장식(시계·책·창)은 가구 목록 밖이라 따로 잰다. */
+  private tourRect(id: string): Phaser.Geom.Rectangle | null {
+    const wallH = Math.round(IT * 1.4);
+    const W = ROOM_W * IT;
+    if (id === 'clock') return new Phaser.Geom.Rectangle(OX + IT * 1.4 - 20, OY + Math.round(IT * 0.62) - 20, 40, 40);
+    if (id === 'books') return new Phaser.Geom.Rectangle(OX + IT * 4.2 - 4, OY + Math.round(IT * 0.72) - 36, IT * 2.4 + 8, 44);
+    if (id === 'window') return new Phaser.Geom.Rectangle(OX + W - IT * 3.4 - 6, OY + 4, IT * 2.2 + 12, wallH - 18);
+    const o = INTERIOR_OBJECTS.find((q) => q.instanceId === id);
+    if (!o) return null;
+    return new Phaser.Geom.Rectangle(OX + o.tx * IT - 4, OY + o.ty * IT - 4, (o.fw ?? 1) * IT + 8, (o.fh ?? 1) * IT + 8);
+  }
+
+  private startTour(): void {
+    const steps: { id: string | null; text: string }[] = [{ id: null, text: TOUR_INTRO }];
+    for (const id of TOUR_ORDER) steps.push({ id, text: LOOK_TEXT[id]! });
+    steps.push({ id: null, text: TOUR_OUTRO });
+    let i = 0;
+    const next = (): void => {
+      if (i >= steps.length) {
+        this.clearSpot();
+        GameState.setFlag('intro.homeTour');
+        GameState.markDirty();
+        return;
+      }
+      const st = steps[i++]!;
+      this.showLook(st.id, st.text, next);
+    };
+    next();
+  }
+
+  /** 대상 하나를 비추고 혼잣말 한 단락 — 닫히면 `onDone` */
+  private showLook(id: string | null, text: string, onDone: () => void): void {
+    this.clearSpot();
+    const r = id ? this.tourRect(id) : null;
+    // 캐릭터가 그쪽을 바라본다
+    if (r) {
+      const dx = r.centerX - this.px, dy = r.centerY - this.py;
+      this.facing = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+      this.charSprite.setDir(this.facing);
+    }
+    const panel = new MonologuePanel(this, [text], () => {
+      panel.destroy();
+      this.tourPanel = undefined;
+      onDone();
+    });
+    this.add.existing(panel);
+    this.tourPanel = panel;
+    if (r) {
+      // 창이 대상을 가리지 않게 — 방 아래쪽 대상이면 창을 위로 올린다
+      if (r.bottom > GAME_HEIGHT - 330) panel.setY(24);
+      panel.setDimAlpha(0);
+      this.drawSpot(r);
+    }
+  }
+
+  /** 스포트라이트 — 대상 밖을 어둡게 + 금색 테 점멸 (창의 dim은 0으로 두고 이것이 대신한다) */
+  private drawSpot(r: Phaser.Geom.Rectangle): void {
+    const g = this.add.graphics();
+    g.fillStyle(0x000000, 0.5);
+    g.fillRect(0, 0, GAME_WIDTH, r.top);
+    g.fillRect(0, r.bottom, GAME_WIDTH, GAME_HEIGHT - r.bottom);
+    g.fillRect(0, r.top, r.left, r.height);
+    g.fillRect(r.right, r.top, GAME_WIDTH - r.right, r.height);
+    const frame = this.add.graphics();
+    frame.lineStyle(2, 0xffd257, 1);
+    frame.strokeRoundedRect(r.x, r.y, r.width, r.height, 6);
+    this.tourSpotTween = this.tweens.add({ targets: frame, alpha: 0.25, duration: 520, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    this.tourSpot = this.add.container(0, 0, [g, frame]).setDepth(941.5);
+  }
+
+  private clearSpot(): void {
+    this.tourSpotTween?.stop(); this.tourSpotTween = undefined;
+    this.tourSpot?.destroy(); this.tourSpot = undefined;
   }
 
   // ── 렌더 ─────────────────────────────────────────────
@@ -331,44 +449,29 @@ export class HomeInteriorScene extends Phaser.Scene {
     // 154차 — 집 주방 화구는 wall-clock으로 계속 끓는다(패널이 닫혀 있어도). 1초마다 동기화.
     this.cookSyncAcc += delta;
     if (this.cookSyncAcc >= 1000) { this.cookSyncAcc = 0; CookingStore.syncAll(); }
-    if (this.bedMenu || this.fridgePanel || this.cookPanel) { this.updateWalkTexture(false); return; }   // 메뉴/패널 열림 중 이동 정지
+    if (this.bedMenu || this.fridgePanel || this.cookPanel || this.tourPanel) {   // 메뉴/패널/안내 중 이동 정지
+      this.charSprite.update(delta, false);
+      this.hintText.setVisible(false);
+      return;
+    }
     // 144차 — Shift 홀드 달리기(실내는 12x10칸이라 피로 드레인 없이 조작감만 통일)
-    const spd = 0.18 * delta * (this.cursors.shift?.isDown ? TUNING.vitals.runSpeedMult : 1);
+    const running = !!this.cursors.shift?.isDown;
+    const spd = 0.18 * delta * (running ? TUNING.vitals.runSpeedMult : 1);
     let dx = 0, dy = 0;
     if (this.cursors.left.isDown) { dx = -spd; this.facing = 'left'; }
     else if (this.cursors.right.isDown) { dx = spd; this.facing = 'right'; }
-    if (this.cursors.up.isDown) { dy = -spd; this.facing = 'back'; }
-    else if (this.cursors.down.isDown) { dy = spd; this.facing = 'front'; }
+    if (this.cursors.up.isDown) { dy = -spd; this.facing = 'up'; }
+    else if (this.cursors.down.isDown) { dy = spd; this.facing = 'down'; }
     if (dx !== 0 && dy !== 0) { dx *= 0.707; dy *= 0.707; }
 
     if (!this.collides(this.px + dx, this.py)) this.px += dx;
     if (!this.collides(this.px, this.py + dy)) this.py += dy;
 
-    this.playerSprite.setPosition(this.px, this.py + PLAYER_FOOT_SINK).setDepth(20 + this.py * 0.001);
+    this.charSprite.image.setPosition(this.px, this.py + this.charSprite.footPad).setDepth(20 + this.py * 0.001);
     this.playerShadow.setPosition(this.px, this.py);
-    this.updateWalkTexture(dx !== 0 || dy !== 0);
+    this.charSprite.setDir(this.facing);
+    this.charSprite.update(delta, dx !== 0 || dy !== 0, running ? TUNING.vitals.runSpeedMult : 1);
     this.updateProximity();
-  }
-
-  private applySpriteSize(): void {
-    const src = this.playerSprite.texture.getSourceImage() as HTMLImageElement;
-    if (!src || !src.height) return;
-    this.playerSprite.setDisplaySize(PLAYER_H * (src.width / src.height), PLAYER_H);
-  }
-
-  /** 방향/이동 상태에 맞춰 스프라이트 텍스처 교체 (2프레임 200ms 걷기) */
-  private updateWalkTexture(moving: boolean): void {
-    let key: string;
-    if (!moving) { key = `man-idle-${this.facing}`; this.walkTimer = 0; this.walkFrame = 1; }
-    else {
-      this.walkTimer += this.game.loop.delta;
-      if (this.walkTimer >= 200) { this.walkTimer = 0; this.walkFrame = this.walkFrame === 1 ? 2 : 1; }
-      key = `man-move-${this.facing}-${this.walkFrame}`;
-    }
-    if (this.playerSprite.texture.key !== key) {
-      this.playerSprite.setTexture(key);
-      this.applySpriteSize();
-    }
   }
 
   private collides(px: number, py: number): boolean {
@@ -389,7 +492,8 @@ export class HomeInteriorScene extends Phaser.Scene {
     let nearest: MapObject | null = null;
     let best = 62;
     for (const o of INTERIOR_OBJECTS) {
-      if (!o.interact || o.interact === 'none') continue;
+      // 186차 — 기능이 없는 가구도 [F] 「살펴보기」로 혼잣말을 다시 읽는다
+      if (o.interact === 'none' && !LOOK_TEXT[o.instanceId]) continue;
       const cx = OX + o.tx * IT + ((o.fw ?? 1) * IT) / 2;
       const cy = OY + o.ty * IT + ((o.fh ?? 1) * IT) / 2;
       const d = Math.hypot(cx - this.px, cy - this.py);
@@ -401,8 +505,8 @@ export class HomeInteriorScene extends Phaser.Scene {
         : nearest.interact === 'door' ? '[F] 나가기'
         : nearest.interact === 'cook' ? '[F] 주방 — 요리'
         : nearest.instanceId === 'fridge' ? '[F] 냉장고 열기'
-        : '[F] 수납';
-      this.hintText.setText(label).setPosition(this.px, this.py - PLAYER_H - 6).setVisible(true);
+        : '[F] 살펴보기';
+      this.hintText.setText(label).setPosition(this.px, this.py - this.charSprite.bodyHeight - 10).setVisible(true);
     } else {
       this.hintText.setVisible(false);
     }
@@ -415,11 +519,18 @@ export class HomeInteriorScene extends Phaser.Scene {
       case 'door': this.exitToField(); break;
       case 'cook': this.openCook(); break;
       case 'storage':
-        if (this.nearObj.instanceId === 'fridge') this.openFridge();
-        else this.flash('아직 쓸 수 없는 가구입니다.');
+        if (this.nearObj.instanceId === 'fridge') { this.openFridge(); break; }
+        this.lookAt(this.nearObj.instanceId);
         break;
-      default: break;
+      default: this.lookAt(this.nearObj.instanceId); break;
     }
+  }
+
+  /** 가구 하나 살펴보기 — 첫 입장 안내와 같은 혼잣말 한 단락 */
+  private lookAt(id: string): void {
+    const t = LOOK_TEXT[id];
+    if (!t) return;
+    this.showLook(id, t, () => this.clearSpot());
   }
 
   // ── 냉장고 (냉동고 8칸 + 냉장고 16칸) ─────────────────

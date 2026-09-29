@@ -46,6 +46,8 @@
   (`tools/author_sokcho_coast.py`) · 피복 `quay` · ⚠ 금강대교 밑 수로가 추론 `'b'`로 막혀 청초호가 끊겨 있었다 →
   물 복원 + core `rules/Overpass.ts` + `OverpassSystem`(난간·경사로 둑·밑 반투명·차량 층) · ⚠ 올린 층 깊이는 y 비례 지면 깊이 위.
   캡처 8(외옹치·대포항)은 맵 밖. 상세 `docs/wiki/03-WORKLOG/2026-09-29-184-satellite-coast-overpass.md`.
+- **186차**: 집 실내 새 캐릭터 + 첫 입장 가구 안내 혼잣말 · 금강대교 고가 2개로 분리(다리 밑 가짜 땅 → 물) · 상판 위 지면 상호작용 차단 ·
+  머리 위 문구 [F] 안내 하나로 · 회전교차로 분리섬 삭제 · 물로 나간 도로 끝. 상세 `docs/wiki/03-WORKLOG/2026-09-29-186-home-tour-bridge-split-hint-merge.md`.
 - **185차 보강**: 호수 안 성분·크루즈터미널 부두 = 연석 직벽(`quay` 4곳 · 데이터만). 상세 `docs/wiki/03-WORKLOG/2026-09-29-185-shore-quay-lakes-cruise-pier.md`.
 - **이전 작업**: 183차 — **고도 층·계단 + 어휘 k/K/D + 영금정 GIS 파일럿 + 방파제 피복 방위 + 도로 정리 + [F] 힌트 중복 제거** —
   사용자 지시 6건. core `rules/Elevation.ts`(정수 층 · 8방위 계단 1타일 전이 · `canStep` 대칭 · 장비 게이트 `climbLevels` 자리) ·
