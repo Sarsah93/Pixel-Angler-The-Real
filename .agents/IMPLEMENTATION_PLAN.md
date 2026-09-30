@@ -1,8 +1,10 @@
 # The Real Angler — 구현 계획서 (IMPLEMENTATION_PLAN)
 
-> **최종 업데이트**: 2026-09-29 — **186차: 집 안내 혼잣말 · 금강대교 고가 분리(다리 밑 땅 → 물) · 머리 위 문구 합치기**.
-> 상세 [워크로그 184](../docs/wiki/03-WORKLOG/2026-09-29-184-satellite-coast-overpass.md).
-> 직전: 183차 고도 층·영금정 파일럿([워크로그 183](../docs/wiki/03-WORKLOG/2026-09-28-183-elevation-yeonggeumjeong-gis-pilot.md)).
+> **최종 업데이트**: 2026-09-30 — **186차: 집 안내 혼잣말 · 금강대교 고가 분리(다리 밑 땅 → 물) · 머리 위 문구 합치기**.
+> 상세 [워크로그 186](../docs/wiki/03-WORKLOG/2026-09-29-186-home-tour-bridge-split-hint-merge.md). gh-pages 21차 = 185차까지 · 186차 미배포.
+> 직전: 185차 호수 안 성분·부두 연석 직벽([워크로그 185](../docs/wiki/03-WORKLOG/2026-09-29-185-shore-quay-lakes-cruise-pier.md)) ·
+> 184차 위성 대조·금강대교 고가([워크로그 184](../docs/wiki/03-WORKLOG/2026-09-29-184-satellite-coast-overpass.md)) ·
+> 183차 고도 층·영금정 파일럿([워크로그 183](../docs/wiki/03-WORKLOG/2026-09-28-183-elevation-yeonggeumjeong-gis-pilot.md)).
 > 직전: 178차 상호작용 겹침 선택([워크로그 178](../docs/wiki/03-WORKLOG/2026-09-28-178-interact-overlap-ground-items.md)).
 > 직전: 177차 홈타운 NPC·일지 고정·컷씬 타이핑([워크로그 177](../docs/wiki/03-WORKLOG/2026-09-23-177-hometown-npc-journal-pin-cutscene-typing.md)).
 > 직전: 176차 어종 픽셀아트 6종([워크로그 176](../docs/wiki/03-WORKLOG/2026-09-23-176-fish-pixelart-6.md)).
@@ -61,7 +63,7 @@
 - core `Elevation.ts`(정수 층 · 8방위 계단 · `canStep` · 장비 게이트 자리) + 어휘 `k`/`K`/`D` + `patch.levels/stairs/armor` · 층 경계 6px 벽.
 - ⚠ 테트라포드 전 해안 = 103차 추론 `'b'`가 영금정 갯바위까지 동명항 방파제와 한 성분(3,003타일) → `k` 재태깅 분리 + 피복 방위(동명항 동쪽만).
 - 영금정 = 작성기(`tools/author_yeonggeumjeong.py`) · 편집기 층/계단/피복 브러시 · [F] 힌트 중복 제거 · 어장 점선 미표시 · 시설물 줄기 바디 · 도로 마킹 3패스.
-- 검증: 실렌더 BFS 도달성 · 프롭 바디 정지 · 빌드 3/3 · typecheck 0 · pageerror 0. **미커밋 · 미배포**.
+- 검증: 실렌더 BFS 도달성 · 프롭 바디 정지 · 빌드 3/3 · typecheck 0 · pageerror 0. gh-pages 20차 배포.
   상세: [워크로그 183](../docs/wiki/03-WORKLOG/2026-09-28-183-elevation-yeonggeumjeong-gis-pilot.md).
 - **다음**: ① 방파제 피복 표(사용자 위성 캡처 대조) ② 184차 조도 재설계 ③ 속초 전역 GIS 스윕 ④ 건물 타일 키트.
 
