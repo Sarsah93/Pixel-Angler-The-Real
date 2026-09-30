@@ -17,8 +17,10 @@ description: Pixel Angler 작업 기록·문서 체계 (docs/wiki 4층 — 구�
 | `docs/wiki/03-WORKLOG/<날짜>-<차수>-<슬러그>.md` | **본문 기록**(8절) | 제한 없음 |
 | `docs/wiki/02-SYSTEMS/<시스템>.md` | 그 시스템의 **현재 상태**(과제 표·잔여·함정) | 누적하지 말고 **갱신** |
 | `docs/wiki/04-BACKLOG.md` | 잔여·위험·최적화 **전역 뷰** | 갱신 |
-| `.agents/AGENTS.md` §9 | 차수 원장 — **요약 3~5줄 + 워크로그 링크** | 짧게 |
-| `.agents/IMPLEMENTATION_PLAN.md` | 다음 착수·직전 완료 | 짧게 |
+| `.agents/AGENTS.md` §9 | 최근 **3개 차수**만 — 요약 3~5줄 + 워크로그 링크 (새 차수 추가 시 가장 오래된 것 삭제) | 짧게 |
+| `.agents/IMPLEMENTATION_PLAN.md` | 다음 착수·차수별 잔여·최근 완료 3건 | 짧게 |
+| `CLAUDE.md` 「현재 진행 상황」 | 최근 3개 차수 한두 줄씩 | 짧게 |
+| `docs/archive/` | 완료·대체 스펙 · 1~186차 원장 · 구 계획서 | **쓰지 않는다**(보관) |
 | `.agents/AGENTS.md` §1~§8 | **불변 규칙** — 규칙이 바뀔 때만 | — |
 
 > 같은 내용을 세 군데에 길게 쓰지 않는다. **긴 설명은 워크로그 1곳**, 나머지는 링크.

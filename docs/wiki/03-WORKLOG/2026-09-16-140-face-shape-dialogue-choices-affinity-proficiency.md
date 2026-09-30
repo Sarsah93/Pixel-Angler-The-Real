@@ -34,7 +34,7 @@
 |---|---|
 | `core/rules/Affinity.ts` | 우호도 규칙 — 클램프·5티어·보상 배율·품삯 배율·서브 발주 게이트·눈금 |
 | `core/db-schema/StoryChoices.ts` | 선택지 데이터 — 톤 3종 · 서브 표준 4종(품삯/가르침/사양/청탁) · **손글 13편** · `choicesFor`·`choiceVisible`·`describeOutcomeKo`·`validateStoryChoices` |
-| `.agents/CHARACTER_SPRITE_PROMPT_SPEC.md` | GPT Image 프롬프트용 스켈레톤 스펙(격자·앵커·프레임·얼굴·팔레트·레이어·복붙 초안) |
+| `docs/archive/specs/CHARACTER_SPRITE_PROMPT_SPEC.md` | GPT Image 프롬프트용 스켈레톤 스펙(격자·앵커·프레임·얼굴·팔레트·레이어·복붙 초안) |
 
 ### 수정
 

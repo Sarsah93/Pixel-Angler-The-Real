@@ -151,5 +151,5 @@ labelY          = feetY + charTopFromFeet − LABEL_GAP(6)    // NPC: y − 64
 - [x] 시스템 페이지 `02-SYSTEMS/character-art.md` §3·§6·§7 갱신
 - [x] `03-WORKLOG/README.md` 색인
 - [x] `.agents/AGENTS.md` §9 · `.agents/IMPLEMENTATION_PLAN.md` 요약
-- [x] `.agents/CHARACTER_SPRITE_PROMPT_SPEC.md` §0 — 시트 임포트 → 절차 재튜닝으로 결론 갱신
+- [x] `docs/archive/specs/CHARACTER_SPRITE_PROMPT_SPEC.md` §0 — 시트 임포트 → 절차 재튜닝으로 결론 갱신
 - [x] `04-BACKLOG.md` O 항목 갱신

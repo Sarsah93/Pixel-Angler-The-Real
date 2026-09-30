@@ -3,8 +3,8 @@
 > **정본 위치**: 스펙 v2 본문은 [RASTER_UPLIFT_SPEC.md](RASTER_UPLIFT_SPEC.md)
 > (2026-09-02 사용자 제공으로 레포 배치 — §0.5 개정 노트가 이 문서를 가리킨다).
 > 이 문서가 개정 내용의 정본이며 스펙 본문보다 우선한다.
-> 근거 = [워크로그 107](../docs/wiki/03-WORKLOG/2026-09-02-107-raster-spec-prep.md) §5-b 실기 검증 +
-> 103차 방파제 추론 구현([build_osm_tilemap.py](../tools/build_osm_tilemap.py) §3c 후처리).
+> 근거 = [워크로그 107](../../wiki/03-WORKLOG/2026-09-02-107-raster-spec-prep.md) §5-b 실기 검증 +
+> 103차 방파제 추론 구현([build_osm_tilemap.py](../../../tools/build_osm_tilemap.py) §3c 후처리).
 
 ---
 
@@ -46,7 +46,7 @@
 - 상실분의 실체 = 속초항 내항 부두 안벽 (542,351) · **청초호 내안 전체** (448,458) —
   실제 감성돔·숭어 낚시터라 고증에도 역행.
 - **개정**: 판정은 현행 유지(`OSM_TILEMAP_SPEC` §0.5-2). b/s는
-  `isFishableStandTerrain`([RegionMap.ts:47](../packages/core/src/types/RegionMap.ts#L47) —
+  `isFishableStandTerrain`([RegionMap.ts:47](../../../packages/core/src/types/RegionMap.ts#L47) —
   §0.5-2가 예약해 둔 그대로)을 **스폰/입질 가중 보너스**로 소비한다.
 - 보너스 배선(클라이언트/core)은 발주 범위 밖 — Claude Code 측 후속 작업.
 

@@ -1,6 +1,6 @@
 /**
  * @file Story.ts
- * @description 스토리·퀘스트 계약 타입 (134차 — `.agents/STORY_SPEC_v3.md` §3-2·§14-4 정합판)
+ * @description 스토리·퀘스트 계약 타입 (134차 — `docs/archive/specs/STORY_SPEC_v3.md` §3-2·§14-4 정합판)
  *
  * 메인 「조행록(釣行錄)」 7챕터 65퀘 + NPC 17아크 55퀘를 한 스키마로 표현한다.
  * - 퀘스트 정의는 `db-schema/StoryQuestDatabase.ts`, 조행록 17장은 `db-schema/JournalPages.ts`,

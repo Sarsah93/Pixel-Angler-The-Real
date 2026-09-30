@@ -11,8 +11,9 @@
 | 문서 | 역할 | 성격 |
 |---|---|---|
 | `CLAUDE.md` | 세션 진입점 — 필수 선행 문서·스킬 목록·현재 위치 요약 | 짧게 유지 |
-| `.agents/AGENTS.md` | **불변 규칙**(§1~§8) + **차수 원장**(§9, append-only 원문 기록) | 규칙은 여기서만 바뀐다 |
-| `.agents/IMPLEMENTATION_PLAN.md` | 로드맵(Phase) · 다음 착수 · 완료 목록 | 계획 축 |
+| `.agents/AGENTS.md` | **불변 규칙**(§1~§8) + 빌드 상태·**최근 3개 차수**(§9) | 규칙은 여기서만 바뀐다 |
+| `.agents/IMPLEMENTATION_PLAN.md` | 로드맵(Phase) · 다음 착수 · 차수별 잔여 · 최근 완료 3건 | 계획 축 |
+| `docs/archive/` | 완료·대체된 스펙 · 1~186차 원장 · 구 계획서 원문 (2026-09-30 정리) | 보관 — 새 기록 금지 |
 | **`docs/wiki/`** (이 문서) | **구조화 뷰** — 시스템별 현황·세부과제·잔여·위험 | 판단·탐색 축 |
 | `.claude/skills/*/SKILL.md` | 반복 작업 절차·함정 노하우 | 방법 축 |
 
@@ -124,7 +125,7 @@
   Ch1 `manual` 목표 4건을 auto 배선 / **법 강제 = M1-06 완료 후**(기본 2 — 구세이브 회귀 0).
   점검 실버그 6건 수정. 실렌더 22/22 + 35/35 · pageerror 0.
   [워크로그 135](03-WORKLOG/2026-09-15-135-wip-plate-dayjobs-law.md).
-- **134차**: **스토리 「조행록」 정립** — 사용자 스펙 v3 → `.agents/STORY_SPEC_v3.md`(+§0.5 코드 정합) ·
+- **134차**: **스토리 「조행록」 정립** — 사용자 스펙 v3 → `docs/archive/specs/STORY_SPEC_v3.md`(+§0.5 코드 정합) ·
   `.agents/PLAYER_SCENARIO.md` · core 계약/법 규칙 5조/퀘스트 **120**/조행록 17/아크 17 ·
   `StoryStore` 진행 엔진 + 일지(J) 재작성 + NPC 대화([F]) + HUD `D-nn` + 판매 창 법 판정.
   ⚠ **법 강제는 OFF**(`TUNING.law.enforceRodSell = 0` — 사용자 결정). 실렌더 12/12 · T1~T7 · 무결성 0건.

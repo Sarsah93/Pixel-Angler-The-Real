@@ -1,8 +1,8 @@
 # S22 스토리·퀘스트 — 「조행록」 7챕터 · NPC 17아크 · 법 규칙 5조
 
 > 상태: 🔶 **데이터·엔진·일지·대화 완비 / 27개 수동 custom 행동 계약·계통 이벤트 배선 진행 중** — 164차.
-> 정본 스펙: [`.agents/STORY_SPEC_v4.md`](../../.agents/STORY_SPEC_v4.md) (v3는 [원안 산문 보관본](../../.agents/STORY_SPEC_v3.md)) ·
-> 플레이어 요약: [`.agents/PLAYER_SCENARIO.md`](../../.agents/PLAYER_SCENARIO.md).
+> 정본 스펙: [`.agents/STORY_SPEC_v4.md`](../../../.agents/STORY_SPEC_v4.md) (v3는 [원안 산문 보관본](../../archive/specs/STORY_SPEC_v3.md)) ·
+> 플레이어 요약: [`.agents/PLAYER_SCENARIO.md`](../../../.agents/PLAYER_SCENARIO.md).
 
 ---
 

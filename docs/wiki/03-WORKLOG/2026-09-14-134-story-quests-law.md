@@ -29,7 +29,7 @@
 
 | 파일 | 내용 |
 |---|---|
-| `.agents/STORY_SPEC_v3.md` | 원문 + **§0.5 코드 정합 v3.1**(어종 17·지역·면허·스키마·법·가방·NPC·미착수 표) |
+| `docs/archive/specs/STORY_SPEC_v3.md` | 원문 + **§0.5 코드 정합 v3.1**(어종 17·지역·면허·스키마·법·가방·NPC·미착수 표) |
 | `.agents/PLAYER_SCENARIO.md` | 플레이어 시점 요약 — 5부 7챕터 흐름 · 17장 표 · 자격 사다리 · 규칙 · 아크 17 · 구현 마커 |
 | `core/types/Story.ts` | 계약 타입 전부 |
 | `core/rules/FisheryLaw.ts` + `.test.ts` | 5조 규칙 표 · 5함수 · `landingLegalFlags` · T1~T7 |

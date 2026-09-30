@@ -50,7 +50,7 @@
 
 ## 6. 위키 아티팩트
 
-전체 위키 생성기는 `tools/gen_game_wiki_data.mjs`와 `tools/game_wiki_template.html`이다. Windows Node의 ESM 절대경로 문제도 `pathToFileURL`로 수정했다. 현재 생성본은 `outputs/pixel-angler-the-real-wiki.html`이며 Claude 전용 아티팩트 API는 이 저장소 작업 환경에서 직접 갱신할 수 없으므로, 이 파일을 Claude에 업로드·교체하면 된다. 연결 규칙은 `docs/wiki/PIXEL-ANGLER-THE-REAL-WIKI-ARTIFACT-CONTEXT.md`에 있다.
+전체 위키 생성기는 `tools/gen_game_wiki_data.mjs`와 `tools/game_wiki_template.html`이다. Windows Node의 ESM 절대경로 문제도 `pathToFileURL`로 수정했다. 현재 생성본은 `outputs/pixel-angler-the-real-wiki.html`이며 Claude 전용 아티팩트 API는 이 저장소 작업 환경에서 직접 갱신할 수 없으므로, 이 파일을 Claude에 업로드·교체하면 된다. 연결 규칙은 `docs/archive/specs/WIKI-ARTIFACT-CONTEXT-157.md`에 있다.
 
 ## 7. 세이브·호환성
 

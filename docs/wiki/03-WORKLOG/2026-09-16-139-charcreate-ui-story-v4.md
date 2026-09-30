@@ -41,7 +41,7 @@
 |---|---|---|
 | 수정 | `packages/client-pc/src/scenes/CharacterCreateScene.ts` | 전면 재작성 (아래) |
 | 신설 | `.agents/STORY_SPEC_v4.md` | 스토리 계통 정본 481줄 |
-| 수정 | `.agents/STORY_SPEC_v3.md` | 헤더에 "원안 산문 보관본 · 정본은 v4" 배너 |
+| 수정 | `docs/archive/specs/STORY_SPEC_v3.md` | 헤더에 "원안 산문 보관본 · 정본은 v4" 배너 |
 | 수정 | `CLAUDE.md` | 필수 선행 문서에 v4 추가 |
 | 수정 | `docs/wiki/02-SYSTEMS/story-quests.md` | 정본 스펙 링크 v3 → v4 |
 | 수정 | `.agents/PLAYER_SCENARIO.md` | 상위 문서 표기 v3 → v4 |

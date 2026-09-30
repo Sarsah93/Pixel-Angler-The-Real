@@ -34,7 +34,7 @@
 | 수정 | `packages/client-pc/src/ui/SashimiPanel.ts`, `UtilizationPanel.ts`, `ShopCatalog.ts`, `InventoryStore.ts` | 완성 회·숙회 산출물을 `요리(회)`·`요리(숙회)`로 분류 |
 | 수정 | `packages/client-pc/src/ui/DialoguePanel.ts` | 얼굴 전용 32px 텍스처와 프레임 크기를 맞추고 둥근 픽셀 카드·우호도 바 적용 |
 | 신설 | `tools/gen_game_wiki_data.mjs`, `tools/game_wiki_template.html` | 퀘스트·요리·어종·제작·아이템·시스템 문서를 한 HTML 위키로 생성 |
-| 신설 | `docs/wiki/PIXEL-ANGLER-THE-REAL-WIKI-ARTIFACT-CONTEXT.md` | Claude 아티팩트에 전체 위키를 반영하기 위한 데이터 연결·표시 규칙 |
+| 신설 | `docs/archive/specs/WIKI-ARTIFACT-CONTEXT-157.md` | Claude 아티팩트에 전체 위키를 반영하기 위한 데이터 연결·표시 규칙 |
 
 ## 4. 구조상 위치 — 어느 계층의 무엇인가
 

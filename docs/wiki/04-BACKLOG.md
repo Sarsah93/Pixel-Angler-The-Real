@@ -119,7 +119,7 @@
   낚시 발판·해루질 스팟과 직결. A(음영)·C(레벨·절벽)는 배제하지 않고 후순위.
 - **경사로 통행을 막지 않는다** — 채집·광질·이벤트 후보에서 지형이 빠지지 않게. 차단은 수동 패치만.
 - 선행: `pip install rasterio`(이 PC 미설치 — DEM 값 판독 불가) · 절벽 타일 에셋 부재(C의 실질 블로커).
-- 근거·방침: `.agents/RASTER_UPLIFT_AMENDMENT.md` §4
+- 근거·방침: `docs/archive/specs/RASTER_UPLIFT_AMENDMENT.md` §4
 1. ~~**해루질·통발 완성**~~ → **✅ 121차 인-맵 1차 완료**(채집 스팟·어촌계 어장 실폴리곤·강원 조례·통발 아이템 설치/수거 —
    D2~D5 배선을 별도 씬 없이 속초 맵 위에서). 잔여 = A1-F → [S14 페이지](02-SYSTEMS/night-hunting-trap.md) §5.
 2. ~~**불요리**(화구·용기)~~ → **✅ 154차**(조합 설치 · 집 주방 · 레시피 8 · 실시간 시뮬 · 별 5개 · 걸어두기 — [S4](02-SYSTEMS/sashimi-cooking.md)).
@@ -200,7 +200,7 @@
 | 소스맵 | dist에 14 MB `.map` | gh-pages 배포에서 이미 제외 중 — 유지 | — |
 | 구운 데이터 파일 | `PixelFish*.ts` 스냅샷이 번들에 포함 | 필요 시 JSON+지연 로드 | 하 |
 | 타일 텍스처 | 맵당 `generateTexture` 캐시(`rmaptex_`) | 현행 유지(알고리즘 변경 시 리로드 필요만 인지) | — |
-| 문서 비대 | `AGENTS.md` **375 KB** · `IMPLEMENTATION_PLAN.md` 106 KB — 세션 컨텍스트를 크게 먹는다 | **이 위키 도입으로 신규 기록은 분산**. 기존 히스토리는 §9에 보존(불변), 위키가 인덱스 역할 | 진행 중 |
+| 문서 비대 | 구 `AGENTS.md` 595 KB · `IMPLEMENTATION_PLAN.md` 217 KB · `CLAUDE.md` 91 KB가 세션 컨텍스트를 먹었다 | **2026-09-30 정리** — 원장·구 계획서는 `docs/archive/`로, 세 문서는 최근 3개 차수만 유지(37 KB · 6 KB · 11 KB) | ✅ 해소 |
 | 검증 하네스 | 매번 스크립트 작성 | 반복 시나리오를 `scratchpad` 재사용 스크립트로 | 하 |
 
 ---
@@ -239,7 +239,7 @@
 
 ## 157차 후속 (2026-09-19)
 
-- **Claude 위키 아티팩트 반영** — `tools/gen_game_wiki_data.mjs --html` 결과와 `docs/wiki/PIXEL-ANGLER-THE-REAL-WIKI-ARTIFACT-CONTEXT.md`를 기존 퀘스트 아티팩트에 반영한다. 퀘스트는 `조행록` 탭으로 유지한다.
+- **Claude 위키 아티팩트 반영** — `tools/gen_game_wiki_data.mjs --html` 결과와 `docs/archive/specs/WIKI-ARTIFACT-CONTEXT-157.md`를 기존 퀘스트 아티팩트에 반영한다. 퀘스트는 `조행록` 탭으로 유지한다.
 - **NPC 초상 후속** — 32px 절차 초상과 새 프레임을 실렌더한 뒤에도 표정이 귀엽지 않으면 ImageGen으로 얼굴 에셋을 교체한다. 현재는 외부 MCP/API 없이 동일 `CharConfig` 정합을 우선했다.
 - **요리 분류 회귀 점검** — 외부 `회(사시미)` exact filter를 `요리(회)`로 이관하고, 필렛·회 조각은 재료로 남긴다.
 

@@ -23,7 +23,7 @@
 
 | 구분 | 위치 | 내용 |
 |---|---|---|
-| 신설 | [.agents/RASTER_UPLIFT_AMENDMENT.md](../../../.agents/RASTER_UPLIFT_AMENDMENT.md) | 개정안 3건 + 부대사항. 발주 시 스펙 병합 또는 파일 첨부 |
+| 신설 | [docs/archive/specs/RASTER_UPLIFT_AMENDMENT.md](../../../docs/archive/specs/RASTER_UPLIFT_AMENDMENT.md) | 개정안 3건 + 부대사항. 발주 시 스펙 병합 또는 파일 첨부 |
 | 수정 | [04-BACKLOG.md](../04-BACKLOG.md) R1 | "발주 전 스펙 반영 필요" ⚠ → 개정안 문서화 ✅108차 |
 
 개정안 3건 요지:
@@ -54,7 +54,7 @@
 
 ## 5-b. 후속(같은 날) — 스펙 원본 입수·레포 배치 + 블로커 1건 발견
 
-- 사용자가 스펙 v2 전문을 제공 → [.agents/RASTER_UPLIFT_SPEC.md](../../../.agents/RASTER_UPLIFT_SPEC.md)로
+- 사용자가 스펙 v2 전문을 제공 → [docs/archive/specs/RASTER_UPLIFT_SPEC.md](../../../docs/archive/specs/RASTER_UPLIFT_SPEC.md)로
   레포 배치. 상단에 **§0.5 개정 노트**(OSM 스펙 관례 — 본문보다 우선) 5항을 달아 개정안과 연결:
   §3-1·3-3·3-4·§9 step 4에 취소선 + 개정 포인터, §6에 4케이스 규칙 포인터, §0-2·§8 준비표에
   107차 완료 반영.

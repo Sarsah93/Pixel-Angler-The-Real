@@ -2,7 +2,7 @@
 
 > ## §0.5 개정 노트 (2026-09-02 108차 — **본문보다 우선**)
 >
-> 실기 검증([워크로그 107](../docs/wiki/03-WORKLOG/2026-09-02-107-raster-spec-prep.md) §5-b)으로
+> 실기 검증([워크로그 107](../../wiki/03-WORKLOG/2026-09-02-107-raster-spec-prep.md) §5-b)으로
 > 본문 일부가 개정됨 — 개정 정본은 [RASTER_UPLIFT_AMENDMENT.md](RASTER_UPLIFT_AMENDMENT.md).
 >
 > 1. **§3-1·§3-3 "b 5→400" 폐기** — b는 이미 **2,583타일·118성분**(103차 coastline 추론).
