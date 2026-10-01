@@ -42,6 +42,7 @@ export const EN_TOUR: Record<string, string> = {
     "A photo taken in front of a seaside rock. Young me and my parents squint into the wind, smiling. I'll start from the place my father wrote down.",
   '몸이 녹았다 — 오한이 가라앉았다': 'You warmed up — the chills have passed',
   '몸이 따뜻해졌다': 'You feel warm',
+  '이야기가 준 물건 — 판매·양도 불가': 'Given by the story — cannot be sold or traded',
   '집': 'Home',
   '우물': 'Well',
   // ── 인벤토리 가이드 ──
@@ -58,3 +59,11 @@ export const EN_TOUR: Record<string, string> = {
   '맨 아래는 가진 돈이다. 물건을 사고팔 때마다 여기서 늘고 준다.':
     'At the bottom is your money. It goes up and down every time you buy or sell.',
 };
+
+/** 수치가 끼는 문장 (188차) */
+type TourRule = [RegExp, (m: RegExpExecArray, tr: (s: string) => string) => string];
+export const EN_TOUR_RULES: TourRule[] = [
+  [/^앞의 일 (\d+)가지를 마쳤다$/, (m) => `Finished ${m[1]} earlier steps`],
+  // 할 일 달성 알림 — HUD 토스트는 「[할 일] 」 말머리를 떼고 띄운다(구: 제목만 번역되고 목표는 한국어로 남았다)
+  [/^(?!\[)(.+) — (.+) 달성$/, (m, tr) => `${tr(m[1])} — ${tr(m[2])} done`],
+];

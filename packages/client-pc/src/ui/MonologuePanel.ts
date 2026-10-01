@@ -12,6 +12,7 @@
 import Phaser from 'phaser';
 import { DraggablePanel, applyScreenFixed } from './DraggablePanel.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
+import { t } from '../i18n/I18n.js';
 import { GameState } from '../store/GameState.js';
 import { ensureFacePortrait } from './CharacterSprite.js';
 import { characterLook } from '../data/EquipOutfit.js';
@@ -60,7 +61,9 @@ export class MonologuePanel extends DraggablePanel {
       width: W, height: H, title, onClose: onDone, dim: true, depth: 942, hideClose: true,
     });
     this.onDone = onDone;
-    this.queue = paras.filter((p) => p.trim().length > 0);
+    // 188차 — 단락을 **먼저 번역**해서 타이핑한다(구: 한국어 원문을 한 글자씩 치다가 다 쳐야 영어로 바뀌었다 —
+    //   부분 문자열은 사전에 없어서 영어 화면에 한국어가 흘러나왔다)
+    this.queue = paras.filter((p) => p.trim().length > 0).map((p) => t(p));
 
     this.keyHandler = (ev: KeyboardEvent) => {
       if (ev.code === 'Enter' || ev.code === 'Space' || ev.code === 'Escape') { ev.preventDefault(); this.advance(); }

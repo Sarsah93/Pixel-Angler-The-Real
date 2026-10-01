@@ -134,8 +134,8 @@ export const EN_UI: Record<string, string> = {
   '미소': 'Smile', '진하게': 'Thick', '옅게': 'Thin', '있음': 'Yes', '없음': 'None',
   '단발 컷': 'Bob cut', '정면': 'Front', '정지': 'Idle', '걷기': 'Walk', '달리기': 'Run',
   '이름없는꾼': 'Nameless Angler',
-  '상의·하의·신발은 입고 시작할 옷입니다. 나중에 가방에서 갈아입을 수 있습니다.\n색은 견본을 눌러 고르세요.':
-    'The top, pants and shoes are what you start out wearing — you can change them from your bag later.\nPick colours by clicking a swatch.',
+  '상의·하의는 입고 시작할 옷입니다. 나중에 가방에서 갈아입을 수 있습니다.\n색은 견본을 눌러 고르세요.':
+    'The top and pants are what you start out wearing — you can change them from your bag later.\nPick colours by clicking a swatch.',
 
   // ── 스탯 (상태 창) ──
   '근력 (Strength)': 'Strength',

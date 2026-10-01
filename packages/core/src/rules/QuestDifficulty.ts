@@ -127,6 +127,8 @@ export function questDifficulty(q: StoryQuestDef): QuestDifficultyInfo {
 
   for (const o of q.objectives ?? []) {
     if (o.manual) continue;             // 강제되지 않는 목표는 난이도에 세지 않는다
+    // 188차 — 프롤로그(M1-01) 체험 단계는 조작을 배우는 길이지 조업이 아니다(14개를 세면 첫 할 일이 「고됨」이 됐다)
+    if (o.placeKey?.startsWith('prologue:')) continue;
     manualOnly = false;
     const w = ACTION_WEIGHT[o.kind] ?? 0;
     if (w > 0) {

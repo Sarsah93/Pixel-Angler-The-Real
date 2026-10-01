@@ -474,6 +474,9 @@ class StoryStoreManager {
       }
       this.event({ kind: 'custom', key: 'quest:ice-crate-check' });
     }
+    // 188차 — 새 게임은 자전거가 없다(빈손 시작). 「공동작업」의 자전거 수리·탑승 목표에 쓸
+    //   어촌계의 낡은 자전거를 수락할 때 내준다(구: dev 시드에만 있어 실플레이로는 R·bikeMount 불가).
+    if (id === 'M1-10') this.host?.giveItem('inv_bike', 1, false);
     this.lastAction = 'accepted';
     // 140차 — 발주 톤 선택지(우호도 미세 차이)
     if (c) { this.choices[id] = { ...this.choices[id], offer: c.id }; this.applyOutcome(q, c.outcome); }

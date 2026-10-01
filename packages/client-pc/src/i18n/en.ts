@@ -16,7 +16,7 @@ import { EN_AUCTION } from './en_auction.js';
 import { EN_CONTENT } from './en_content.js';
 import { EN_FISH } from './en_fish.js';
 import { EN_COOK } from './en_cook.js';
-import { EN_TOUR } from './en_tour.js';
+import { EN_TOUR, EN_TOUR_RULES } from './en_tour.js';
 import { EN_TOUR_PANELS } from './en_tour_panels.js';
 import { EN_SKILL, EN_SKILL_RULES } from './en_skill.js';
 import { EN_UI, EN_UI_RULES } from './en_ui.js';
@@ -578,6 +578,7 @@ export const EN_RULES: Rule[] = [
   [/^([^·›]+?) ([\d.]+)(개|컵|큰술)$/, (m, tr) => `${tr(m[1])} ${tr(m[2] + m[3])}`],   // `·`/`›` = 합성 문장(도움말 경로 줄) — 쪼개기에 맡긴다
   ...EN_UI_RULES,
   ...EN_SKILL_RULES,   // 188차 스킬 창 (호버 팝업 · 다음 레벨)
+  ...EN_TOUR_RULES,    // 188차 일지 순서형 접기
   // ── 167차 장면 게이트 — 상대가 다른 사람일 때 대화창 안내 ──
   [/^(.+)을\(를\) 직접 찾아가야 한다\.$/, (m, tr) => `You need to go and find ${tr(m[1])} in person.`],
   // ── 165차 「지금 할 일」 메인/서브 배지 · 완료 표기 · 행동 진행 로그 ──

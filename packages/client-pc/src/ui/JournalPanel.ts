@@ -944,7 +944,27 @@ export class JournalPanel extends DraggablePanel {
     clampTextWidth(dt, DET_W - 70);
     c.add(dt);
     y += oh.height + 6;
+    // 188차 — 순서형(M1-01 프롤로그 17목표)은 길어서 패널 아래로 넘친다. 앞서 마친 것은 한 줄로 접고
+    //   (최근 2개만 남김) 아직 닿지 않은 뒤 목표는 열지 않는다(R2 — 챕터 뷰와 같은 규칙).
+    let shown = q.objectives.map((_o, i) => i);
+    if (q.ordered) {
+      const first = q.objectives.findIndex((_o, k) => !StoryStore.objectiveDone(q, k));
+      const cur = first < 0 ? q.objectives.length - 1 : first;
+      const folded = Math.max(0, cur - 2);
+      shown = shown.filter((i) => i >= folded && i <= cur);
+      if (folded > 0) {
+        const g0 = this.scene.add.graphics();
+        g0.fillStyle(0x14352c, 0.92); g0.fillRect(DET_X + 4, y, DET_W - 8, 24);
+        g0.lineStyle(1, 0x2f7a5c, 1); g0.strokeRect(DET_X + 4, y, DET_W - 8, 24);
+        c.add(g0);
+        c.add(this.scene.add.text(DET_X + 16, y + 12, `앞의 일 ${folded}가지를 마쳤다`, {
+          fontFamily: FONT, fontSize: '11px', color: C_OK,
+        }).setOrigin(0, 0.5));
+        y += 28;
+      }
+    }
     q.objectives.forEach((o, i) => {
+      if (!shown.includes(i)) return;
       const done = StoryStore.objectiveDone(q, i);
       const tgt = StoryStore.objectiveTarget(o);
       const cur = Math.min(tgt, o.actionKey
