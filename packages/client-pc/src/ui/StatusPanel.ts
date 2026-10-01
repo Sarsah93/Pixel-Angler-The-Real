@@ -5,22 +5,31 @@
  * 다차원 환경에서 캐릭터가 중심을 잡고 물리력을 행사하기 위한 신체적/지적 상태창.
  * 레벨/경험치/HP/피로도 + 물리 스탯 4종(근력/민첩/평형감각/조석 해석력)과
  * 각 스탯의 물리 기여 설명을 표시한다. (스탯 성장 시스템은 추후 연동)
+ *
+ * 188차 — 처음 열 때 체험 가이드(`GuideTour` — 'status'). 읽기 전용 창이라 직접 해 볼 일은
+ *   **창 옮기기**(제목줄 드래그) 하나다 — 모든 창에 공통인 조작을 여기서 한 번 익힌다.
+ *   하단 개발 메모(「…반영될 예정입니다」)는 지웠다(143차 AI 메모성 문구 제거 원칙).
  */
 
 import Phaser from 'phaser';
 import { DEFAULT_ANGLER_STATS, ANGLER_STAT_INFO, AnglerStats } from '@tra/core';
 import { GameState } from '../store/GameState.js';
 import { DraggablePanel } from './DraggablePanel.js';
+import { maybeStartTour, type TourOptions } from './GuideTour.js';
 
 const PANEL_W = 400;
 const PANEL_H = 520;
 
 export class StatusPanel extends DraggablePanel {
+  /** 체험 가이드 하이라이트용 구획 y (패널 로컬) */
+  private readonly secY = { head: 0, bars: 0, stats: 0, statsEnd: 0 };
+
   constructor(scene: Phaser.Scene, x: number, y: number, onClose: () => void) {
     super(scene, { x, y, width: PANEL_W, height: PANEL_H, title: '내 상태', onClose, depth: 810 });
 
     const p = GameState.player;
     let cy = this.contentTop + 10;
+    this.secY.head = cy;
 
     // ── 기본 정보 ──
     const nick = scene.add.text(20, cy, p.nickname, {
@@ -35,6 +44,7 @@ export class StatusPanel extends DraggablePanel {
     }).setOrigin(1, 0);
     this.add([nick, lvl]);
     cy += 32;
+    this.secY.bars = cy;
 
     // ── HP / 피로도 바 ──
     const bars = scene.add.graphics();
@@ -64,6 +74,7 @@ export class StatusPanel extends DraggablePanel {
     div.lineBetween(16, cy, PANEL_W - 16, cy);
     this.add(div);
     cy += 12;
+    this.secY.stats = cy;
 
     // ── 물리 스탯 4종 ──
     const stats: AnglerStats = DEFAULT_ANGLER_STATS;
@@ -99,13 +110,43 @@ export class StatusPanel extends DraggablePanel {
       cy += desc.height + 14;
     });
 
-    // 하단 안내
-    const note = scene.add.text(PANEL_W / 2, PANEL_H - 20,
-      '스탯은 낚시 물리(캐스팅/파이팅)에 실시간 반영될 예정입니다.', {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#607b8e',
-      }).setOrigin(0.5);
-    this.add(note);
+    this.secY.statsEnd = cy;
 
     this.applyFix();
+    maybeStartTour(scene, () => this.buildTour());
+  }
+
+  /** 첫 열기 체험 가이드 — 막대·능력치를 짚고, 창 옮기기를 직접 해 본다 */
+  private buildTour(): TourOptions {
+    let sx = 0, sy = 0;
+    return {
+      id: 'status',
+      anchor: () => this.panelBounds(),
+      alive: () => this.active && !!this.scene,
+      steps: [
+        {
+          text: '내 몸이 지금 어떤 상태인지는 이 창에서 본다.',
+          target: () => this.panelBounds(),
+        },
+        {
+          text: '이름 옆은 레벨과 경험치다. 무언가를 해낼 때마다 경험치가 쌓이고, 가득 차면 레벨이 오른다.',
+          target: () => this.localRect(12, this.secY.head - 4, PANEL_W - 24, 28),
+        },
+        {
+          text: '초록 막대는 체력이다. 굶거나 다치면 줄고, 바닥나면 쓰러진다. 주황 막대는 피로다. 움직일수록 쌓이고, 앉아 쉬거나 잠을 자면 풀린다.',
+          target: () => this.localRect(12, this.secY.bars - 2, PANEL_W - 24, 46),
+        },
+        {
+          text: '아래 넷은 타고난 몸의 능력이다. 줄마다 그 능력이 낚시에서 어떤 힘이 되는지 적혀 있다.',
+          target: () => this.localRect(12, this.secY.stats - 4, PANEL_W - 24, this.secY.statsEnd - this.secY.stats),
+        },
+        {
+          text: '창은 제목줄을 잡고 끌면 원하는 자리로 옮길 수 있다. 이 창을 옆으로 끌어 보자.',
+          target: () => this.localRect(0, 0, PANEL_W - 44, 32),
+          onEnter: () => { sx = this.x; sy = this.y; },
+          wait: () => Math.hypot(this.x - sx, this.y - sy) > 40,
+        },
+      ],
+    };
   }
 }

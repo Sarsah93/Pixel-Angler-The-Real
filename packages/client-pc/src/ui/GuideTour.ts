@@ -346,3 +346,6 @@ export class GuideTour {
     GuideTour.next();
   }
 }
+
+// dev 하네스 전용 — 진행 중 가이드 확인·건너뛰기(`__TOUR.active?.finish()`). 프로덕션 미노출(`__INV`/`__GS`와 같은 규칙)
+if (import.meta.env.DEV) (globalThis as unknown as { __TOUR?: unknown }).__TOUR = GuideTour;

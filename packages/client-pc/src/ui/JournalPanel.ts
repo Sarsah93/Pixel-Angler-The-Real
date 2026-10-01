@@ -16,6 +16,10 @@
  *    나레이션은 `descKo`(설계 요약)가 아니라 `StoryNarrative`(NPC의 말 + 내 생각)를 쓴다.
  *
  * 정의는 core `STORY_QUESTS`, 상태는 `StoryStore`.
+ *
+ * 188차 — 처음 열 때 체험 가이드(`GuideTour` — 'journal'): 할 일 고르기 → 고정 체크(필드 화살표) →
+ *   「완료한 할 일 표시」 → 「이야기」 탭을 **직접 눌러 보게** 한다. 고정 칩의 설명 꼬리
+ *   (「— 「지금 할 일」에 표시」)는 지웠다 — 기능은 글이 아니라 가이드가 가르친다.
  */
 
 import Phaser from 'phaser';
@@ -35,6 +39,7 @@ import { GameState } from '../store/GameState.js';
 import { addPixelIcon } from './PixelIcon.js';
 import { questRewardItemName } from '../data/QuestRewardItems.js';
 import { getLocale } from '../i18n/I18n.js';
+import { maybeStartTour, type TourOptions } from './GuideTour.js';
 
 const PANEL_W = 1080;
 const PANEL_H = 656;
@@ -108,6 +113,9 @@ export class JournalPanel extends DraggablePanel {
   private wheelHandler?: (p: Phaser.Input.Pointer, o: unknown[], dx: number, dy: number) => void;
   private readonly postUpdate: () => void;
   private lastX = NaN; private lastY = NaN;
+  /** 체험 가이드 — 머리줄 단추 자리(패널 로컬) · 목록 행 클릭 수 */
+  private hdrRects: Record<string, Phaser.Geom.Rectangle> = {};
+  private tourRowClicks = 0;
 
   constructor(scene: Phaser.Scene, cfg: JournalConfig) {
     super(scene, {
@@ -136,6 +144,7 @@ export class JournalPanel extends DraggablePanel {
     scene.events.on('postupdate', this.postUpdate);
 
     this.rebuild();
+    maybeStartTour(scene, () => this.buildTour());
   }
 
   override destroy(fromScene?: boolean): void {
@@ -245,7 +254,8 @@ export class JournalPanel extends DraggablePanel {
     this.headerC = c; this.add(c);
     const y = this.contentTop + 10;
 
-    const toggle = (x: number, on: boolean, label: string, hit: () => void): number => {
+    this.hdrRects = {};
+    const toggle = (key: string, x: number, on: boolean, label: string, hit: () => void): number => {
       const g = this.scene.add.graphics();
       g.fillStyle(on ? 0x1f5a3a : 0x14243a, 1); g.fillRect(x, y - 7, 14, 14);
       g.lineStyle(1, on ? 0x4af2a1 : 0x2c5878, 1); g.strokeRect(x, y - 7, 14, 14);
@@ -254,6 +264,7 @@ export class JournalPanel extends DraggablePanel {
         fontFamily: FONT, fontSize: '11px', color: on ? C_TEXT : C_DIM,
       }).setOrigin(0, 0.5);
       const w = 20 + t.width + 14;
+      this.hdrRects[key] = new Phaser.Geom.Rectangle(x - 7, y - 11, w, 22);
       const h = this.scene.add.rectangle(x + w / 2 - 7, y, w, 22, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
       h.on('pointerdown', () => { hit(); restoreHandCursor(this.scene); });
       c.add([g, t, h]);
@@ -270,6 +281,7 @@ export class JournalPanel extends DraggablePanel {
       const g = this.scene.add.graphics();
       g.fillStyle(on ? 0x1b3a52 : 0x0e1c2a, on ? 0.95 : 0.5); g.fillRect(tx, y - 11, 52, 22);
       if (on) { g.fillStyle(0xd8b25f, 1); g.fillRect(tx, y + 9, 52, 2); }
+      this.hdrRects[key] = new Phaser.Geom.Rectangle(tx, y - 11, 52, 22);
       const h = this.scene.add.rectangle(tx + 26, y, 52, 22, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
       h.on('pointerdown', () => { this.tab = key; this.rebuild(); restoreHandCursor(this.scene); });
       c.add([g, t, h]);
@@ -278,8 +290,8 @@ export class JournalPanel extends DraggablePanel {
 
     let x = tx + 12;
     if (this.tab === 'tasks') {
-      x = toggle(x, this.showDone, '완료한 할 일 표시', () => { this.showDone = !this.showDone; this.scroll = 0; this.rebuild(); });
-      toggle(x + 6, this.showLocked, '잠긴 할 일 표시', () => { this.showLocked = !this.showLocked; this.scroll = 0; this.rebuild(); });
+      x = toggle('done', x, this.showDone, '완료한 할 일 표시', () => { this.showDone = !this.showDone; this.scroll = 0; this.rebuild(); });
+      toggle('locked', x + 6, this.showLocked, '잠긴 할 일 표시', () => { this.showLocked = !this.showLocked; this.scroll = 0; this.rebuild(); });
     } else {
       // 188차 — 이야기 탭 보기 전환: 이번 장 / 조행록 (AG ④e)
       for (const [key, label] of [['chapter', '이번 장'], ['log', '조행록']] as const) {
@@ -292,6 +304,7 @@ export class JournalPanel extends DraggablePanel {
         const g = this.scene.add.graphics();
         g.fillStyle(on ? 0x1f5a3a : 0x14243a, 1); g.fillRoundedRect(x, y - 10, w, 20, 4);
         g.lineStyle(1, on ? 0x4af2a1 : 0x2c5878, 1); g.strokeRoundedRect(x, y - 10, w, 20, 4);
+        this.hdrRects[key] = new Phaser.Geom.Rectangle(x, y - 10, w, 20);
         const h = this.scene.add.rectangle(x + w / 2, y, w, 20, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
         h.on('pointerdown', () => { this.storyView = key; this.rebuild(); restoreHandCursor(this.scene); });
         c.add([g, t, h]);
@@ -459,6 +472,7 @@ export class JournalPanel extends DraggablePanel {
     const hit = this.scene.add.rectangle(LIST_X + (LIST_W - 8) / 2, y, LIST_W - 8, ROW_H - 3, 0xffffff, 0.001)
       .setInteractive({ useHandCursor: true });
     hit.on('pointerdown', () => {
+      this.tourRowClicks++;
       this.selId = q.id; this.narrScroll = 0;
       this.renderList(); this.renderDetail(); restoreHandCursor(this.scene);
     });
@@ -476,6 +490,114 @@ export class JournalPanel extends DraggablePanel {
       c.add(ph);
     }
 
+  }
+
+  // ═══════════ 체험 가이드 (188차) ═══════════
+  /** 목록 위 행 사각형 범위 (패널 로컬) */
+  private get listTop(): number { return this.contentTop + 26; }
+
+  /** 목록 첫 행 중심 y (패널 로컬) — renderList의 `hy + 34`와 같은 식 */
+  private rowCenterY(visIndex: number): number { return this.listTop + 14 + 34 + visIndex * ROW_H; }
+
+  /** 고정할 수 있는(진행 중·새) 첫 행 — 보이는 창 안에서 */
+  private firstPinnable(): { id: string; vis: number } | null {
+    const vis = this.visibleRows();
+    for (let i = this.scroll; i < Math.min(this.rows.length, this.scroll + vis); i++) {
+      const r = this.rows[i];
+      if (r.st === 'active' || r.st === 'available') return { id: r.q.id, vis: i - this.scroll };
+    }
+    return null;
+  }
+
+  private listScreenRect(): Phaser.Geom.Rectangle {
+    return this.localRect(LIST_X - 4, this.listTop, LIST_W + 8, PANEL_H - this.listTop - 10);
+  }
+
+  private detailScreenRect(): Phaser.Geom.Rectangle {
+    return this.localRect(DET_X - 6, this.listTop, DET_W + 12, PANEL_H - this.listTop - 10);
+  }
+
+  private hdrScreenRect(key: string): Phaser.Geom.Rectangle | null {
+    const r = this.hdrRects[key];
+    return r ? this.localRect(r.x, r.y, r.width, r.height) : null;
+  }
+
+  /**
+   * 첫 열기 체험 가이드 — 일지가 하는 일 = **할 일 고르기 · 고정(필드 화살표) · 지나온 일 다시 보기 · 이야기**.
+   * 창이 화면을 거의 다 덮으므로 말풍선은 **짚는 곳의 반대편 칸 위**에 앉힌다(목록을 짚으면 상세 쪽).
+   */
+  private buildTour(): TourOptions {
+    let anchor: () => Phaser.Geom.Rectangle | null = () => this.listScreenRect();
+    // 시작 시점에 갈래를 정해 둔다 — skipIf가 진행 중에 뒤집히면 「n / N」 쪽수가 흔들린다
+    const first = this.firstPinnable();
+    const plan = {
+      tasks: this.tab === 'tasks' && this.rows.length > 0,
+      pin: this.tab === 'tasks' && !!first && !StoryStore.isPinned(first.id),
+      done: this.tab === 'tasks' && !this.showDone,
+    };
+    const pinId = plan.pin ? first?.id ?? null : null;
+    const pinRect = (): Phaser.Geom.Rectangle | null => {
+      const p = this.firstPinnable();
+      if (!p) return null;
+      return this.localRect(LIST_X + 6 + C_TRACK / 2 - 12, this.rowCenterY(p.vis) - (ROW_H - 4) / 2, 24, ROW_H - 4);
+    };
+    return {
+      id: 'journal',
+      anchor: () => anchor(),
+      alive: () => this.active && !!this.scene,
+      steps: [
+        {
+          text: '맡은 일과 해야 할 일은 모두 이 일지에 적힌다.',
+          target: () => this.panelBounds(),
+          onEnter: () => { anchor = () => this.listScreenRect(); },
+        },
+        {
+          text: '왼쪽은 지금 맡은 일과 새로 받을 수 있는 일이다. 한 줄을 눌러 보자.',
+          target: () => this.listScreenRect(),
+          skipIf: () => !plan.tasks,
+          onEnter: () => { anchor = () => this.listScreenRect(); this.tourRowClicks = 0; },
+          wait: () => this.tourRowClicks > 0,
+        },
+        {
+          text: '오른쪽에는 그 일을 맡긴 사람의 이야기와 목표, 보상이 나온다. 이야기가 길면 그 칸만 휠로 굴려 읽는다.',
+          target: () => this.detailScreenRect(),
+          skipIf: () => !plan.tasks,
+          onEnter: () => { anchor = () => this.detailScreenRect(); },
+        },
+        {
+          text: '맨 앞 칸에 체크하면 그 일이 화면의 「지금 할 일」에 붙고, 길 위에 갈 곳을 가리키는 화살표가 뜬다. 체크해 보자.',
+          target: pinRect,
+          skipIf: () => !plan.pin,
+          onEnter: () => { anchor = () => this.listScreenRect(); },
+          // 체크한 행이 목록 밖으로 밀렸거나 탭을 옮겼으면 막히지 않게 넘긴다
+          wait: () => (!!pinId && StoryStore.isPinned(pinId)) || this.tab !== 'tasks',
+        },
+        {
+          text: '맨 앞 칸의 체크는 「고정」이다. 고정한 일은 화면의 「지금 할 일」에 붙고, 길 위에 갈 곳을 가리키는 화살표가 뜬다.',
+          target: () => pinRect() ?? this.listScreenRect(),
+          skipIf: () => plan.pin || !plan.tasks,
+          onEnter: () => { anchor = () => this.listScreenRect(); },
+        },
+        {
+          text: '끝낸 일은 목록에서 감춰진다. 「완료한 할 일 표시」를 켜면 다시 볼 수 있다. 켜 보자.',
+          target: () => this.hdrScreenRect('done'),
+          skipIf: () => !plan.done,
+          onEnter: () => { anchor = () => this.hdrScreenRect('done'); },
+          wait: () => this.showDone || this.tab !== 'tasks',
+        },
+        {
+          text: '「이야기」를 누르면 지금 장에서 걸어온 길을 한 줄로 따라 읽을 수 있다. 눌러 보자.',
+          target: () => this.hdrScreenRect('chain'),
+          onEnter: () => { anchor = () => this.hdrScreenRect('chain'); },
+          wait: () => this.tab === 'chain',
+        },
+        {
+          text: '지나온 목표와 지금 할 목표가 한 줄로 이어진다. 「조행록」에는 지나온 장과 채워 가는 기록이 모인다.',
+          target: () => this.localRect(LIST_X - 4, this.listTop, PANEL_W - LIST_X - 8, PANEL_H - this.listTop - 10),
+          onEnter: () => { anchor = () => this.hdrScreenRect('log'); },
+        },
+      ],
+    };
   }
 
   // ═══════════ 이야기 (챕터 체인) ═══════════
@@ -763,7 +885,8 @@ export class JournalPanel extends DraggablePanel {
     // 165차 — 고정 조작은 목록 첫 칸(고정 체크)이 전담한다. 여기서는 상태만 알린다.
     const pinChip = st === 'active' && StoryStore.isPinned(q.id);
     if (pinChip) {
-      const chip = this.scene.add.text(DET_X + DET_W - 4, top + 42, '고정됨 — 「지금 할 일」에 표시', {
+      // 188차 — 설명 꼬리(「— 「지금 할 일」에 표시」) 삭제. 무엇이 되는지는 체험 가이드가 가르친다.
+      const chip = this.scene.add.text(DET_X + DET_W - 4, top + 42, '고정됨', {
         fontFamily: FONT, fontSize: '11px', color: '#7fe0b0',
       }).setOrigin(1, 0.5);
       clampTextWidth(chip, DET_W - 20);

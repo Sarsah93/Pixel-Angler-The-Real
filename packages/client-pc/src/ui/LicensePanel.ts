@@ -6,6 +6,10 @@
  *
  * 면허 = 게임 내 권한 게이트: 낚시(선상·원투 제한구역) · 해루질 · 통발 · 토지(주택 부지·농지) · 선박·어업(소형 선박 조종·
  * 수협 조합원·항만 제한구역) · 사업(식당·해양관광·토너먼트). 요건 판정은 core `checkUnlockRequirements`.
+ *
+ * 188차 — 처음 열 때 체험 가이드(`GuideTour` — 'license'): 자격 하나 골라 보기 · 목록 굴려 보기 →
+ *   상세(여는 일·조건) → 발급 단추 · 추천 면제 → 갱신. 새 게임에서는 발급할 수 있는 자격이 없으니
+ *   발급은 직접 시키지 않고 짚기만 한다.
  */
 
 import Phaser from 'phaser';
@@ -20,6 +24,7 @@ import type { UpkeepItem } from '@tra/core';
 import { GameState } from '../store/GameState.js';
 import { StoryStore } from '../store/StoryStore.js';
 import { clampTextWidth, enforceTextBounds } from './TextFit.js';
+import { maybeStartTour, type TourOptions } from './GuideTour.js';
 
 /** 면허가 여는 기능 — 화면용 이름 (내부 id는 주석에만, R1) */
 const FEATURE_KO: Record<UnlockableFeature, string> = {
@@ -64,6 +69,8 @@ export class LicensePanel extends DraggablePanel {
   private detailC?: Phaser.GameObjects.Container;
   private barG!: Phaser.GameObjects.Graphics;
   private wheelHandler?: (p: Phaser.Input.Pointer, go: unknown, dx: number, dy: number) => void;
+  /** 체험 가이드 — 목록 행을 누른 횟수 */
+  private tourPicks = 0;
 
   constructor(scene: Phaser.Scene, x: number, y: number, onClose: () => void) {
     super(scene, { x, y, width: PANEL_W, height: PANEL_H, title: '면허 · 허가', onClose, depth: 812 });
@@ -86,6 +93,67 @@ export class LicensePanel extends DraggablePanel {
     };
     scene.input.on('wheel', this.wheelHandler);
     applyScreenFixed(this);
+    maybeStartTour(scene, () => this.buildTour());
+  }
+
+  // ── 체험 가이드 (188차) ──
+  private listScreenRect(): Phaser.Geom.Rectangle {
+    const top = this.contentTop;
+    return this.localRect(8, top - 4, LIST_W + 4, PANEL_H - top - 8);
+  }
+
+  private detailScreenRect(): Phaser.Geom.Rectangle {
+    const top = this.contentTop;
+    return this.localRect(DETAIL_X - 6, top - 4, DETAIL_W + 12, PANEL_H - top - 8);
+  }
+
+  /**
+   * 첫 열기 체험 가이드. 창이 화면 가운데를 넓게 쓰므로 말풍선은 **짚는 칸의 반대편 칸 위**에 앉는다
+   * (목록을 짚으면 상세 쪽, 상세를 짚으면 목록 쪽).
+   */
+  private buildTour(): TourOptions {
+    let anchor: () => Phaser.Geom.Rectangle = () => this.listScreenRect();
+    const listOverflows = (): boolean => this.rows().length > this.visibleRows();
+    return {
+      id: 'license',
+      anchor: () => anchor(),
+      alive: () => this.active && !!this.scene,
+      steps: [
+        {
+          text: '바다에서 하는 일 가운데에는 자격이 있어야 할 수 있는 것이 있다. 가진 자격과 앞으로 딸 자격이 모두 이 창에 모인다.',
+          target: () => this.panelBounds(),
+          onEnter: () => { anchor = () => this.listScreenRect(); },
+        },
+        {
+          text: '왼쪽은 자격 목록이다. 종류별로 묶여 있고, 이미 가진 것은 초록색으로 보인다. 궁금한 자격 하나를 눌러 보자.',
+          target: () => this.listScreenRect(),
+          onEnter: () => { anchor = () => this.listScreenRect(); this.tourPicks = 0; },
+          wait: () => this.tourPicks > 0,
+        },
+        {
+          text: '목록이 길면 휠을 굴려 아래를 더 볼 수 있다. 굴려 보자.',
+          target: () => this.listScreenRect(),
+          skipIf: () => !listOverflows(),
+          onEnter: () => { anchor = () => this.listScreenRect(); },
+          wait: () => this.scroll > 0,
+        },
+        {
+          text: '오른쪽에는 그 자격으로 무엇을 할 수 있게 되는지와, 받기 위한 조건이 적혀 있다.',
+          target: () => this.detailScreenRect(),
+          onEnter: () => { anchor = () => this.detailScreenRect(); },
+        },
+        {
+          text: '조건을 모두 채우면 이 단추로 발급받는다. 이야기 속에서 누군가 추천해 주면 수수료와 조건이 면제되기도 한다.',
+          target: () => this.localRect(DETAIL_X + DETAIL_W / 2 - 100, PANEL_H - 58, 200, 32),
+          onEnter: () => { anchor = () => this.detailScreenRect(); },
+        },
+        {
+          text: '기한이 있는 자격은 때가 되면 여기서 갱신해야 한다. 미루면 손해를 보니 가끔 들여다보자.',
+          target: () => this.listScreenRect(),
+          onEnter: () => { anchor = () => this.listScreenRect(); },
+        },
+      ],
+    };
   }
 
   private rows(): Row[] {
@@ -138,7 +206,7 @@ export class LicensePanel extends DraggablePanel {
         const bgF = this.scene.add.rectangle(14, y + 1, rowW, ROW_H - 3, selF ? 0x1f4a6a : f.overdue ? 0x3a1a1a : 0x122236, 0.95).setOrigin(0, 0);
         bgF.setStrokeStyle(1, selF ? 0x5cd0ff : f.overdue ? 0xc05050 : 0x2a3a4a, 1);
         bgF.setInteractive({ useHandCursor: true });
-        bgF.on('pointerdown', () => { this.selectedFee = f.key; this.selected = null; this.renderList(); this.renderDetail(); restoreHandCursor(this.scene); });
+        bgF.on('pointerdown', () => { this.tourPicks++; this.selectedFee = f.key; this.selected = null; this.renderList(); this.renderDetail(); restoreHandCursor(this.scene); });
         const nm = this.scene.add.text(24, y + 6, f.nameKo, { fontFamily: FONT, fontSize: '11px', color: f.overdue ? '#ff9a9a' : '#e8f4fd' });
         clampTextWidth(nm, rowW - 100);
         const due = this.scene.add.text(14 + rowW - 8, y + 6,
@@ -152,7 +220,7 @@ export class LicensePanel extends DraggablePanel {
       const bg = this.scene.add.rectangle(14, y + 1, rowW, ROW_H - 3, sel ? 0x1f4a6a : held ? 0x0f3326 : 0x122236, 0.95).setOrigin(0, 0);
       bg.setStrokeStyle(1, sel ? 0x5cd0ff : held ? 0x2f8a5a : 0x2a3a4a, 1);
       bg.setInteractive({ useHandCursor: true });
-      bg.on('pointerdown', () => { this.selected = row.def.type; this.selectedFee = null; this.renderList(); this.renderDetail(); restoreHandCursor(this.scene); });
+      bg.on('pointerdown', () => { this.tourPicks++; this.selected = row.def.type; this.selectedFee = null; this.renderList(); this.renderDetail(); restoreHandCursor(this.scene); });
       // 188차 — ✓ 글리프 제거(§8-8). 보유는 초록 글자색·행 배경이 이미 알린다
       const name = this.scene.add.text(24, y + 6, row.def.nameKo, { fontFamily: FONT, fontSize: '11px', color: held ? '#aaffcc' : '#e8f4fd' });
       clampTextWidth(name, rowW - 90);

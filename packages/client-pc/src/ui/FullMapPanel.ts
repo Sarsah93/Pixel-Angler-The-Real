@@ -11,6 +11,10 @@
  *  - **범례**(좌하단): 상점 종류·인물·의뢰·장소·나·다른 사람·할 일·핀.
  *  - 나 = 빨간 점 **깜빡임** · 다른 사람 = 파란 점(이름표).
  * 팝업 스택에 들어가므로 ESC·M으로 닫히고, 열려 있는 동안 이동은 막힌다(`uiBlocked`).
+ *
+ * 188차 — 하단의 조작 안내 줄(「휠 = 확대·축소 · 드래그 = 이동 · … · M / ESC = 닫기」)은 지웠다.
+ *   기능은 글로 적지 않는다 — 처음 열 때 체험 가이드(`GuideTour` — 'fullmap')가 휠·드래그·호버·핀을
+ *   직접 해 보게 한다. 범례는 조작 설명이 아니라 지도 기호의 뜻이라 남긴다.
  */
 
 import Phaser from 'phaser';
@@ -18,9 +22,9 @@ import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { applyScreenFixed } from './DraggablePanel.js';
 import { paintHudPanel } from './HudPanelStyle.js';
 import { addPixelIcon } from './PixelIcon.js';
-import { clampTextWidth } from './TextFit.js';
 import type { MiniMarker } from './RegionHud.js';
 import { MapPinStore } from '../store/MapPinStore.js';
+import { maybeStartTour, type TourOptions } from './GuideTour.js';
 
 export interface FullMapConfig {
   mapTex: string;
@@ -66,6 +70,13 @@ export class FullMapPanel extends Phaser.GameObjects.Container {
   private readonly wheelH: (p: Phaser.Input.Pointer, go: unknown, dx: number, dy: number) => void;
   private readonly moveH: (p: Phaser.Input.Pointer) => void;
   private readonly upH: () => void;
+  /** 체험 가이드 — 드래그 제스처를 해 봤는가 / 마커 이름표를 띄워 봤는가 / 이름 있는 마커 하나(뷰 좌표) */
+  private tourDragged = false;
+  private tourTipShown = false;
+  private tourMarker: { x: number; y: number } | null = null;
+  /** 이름 있는 마커(뷰 좌표) — 호버 판정은 포인터 이동에서 직접 한다(아래 `hoverAt`) */
+  private labeled: { x: number; y: number; label: string }[] = [];
+  private legendRect!: Phaser.Geom.Rectangle;
 
   constructor(scene: Phaser.Scene, cfg: FullMapConfig) {
     super(scene, 0, 0);
@@ -106,6 +117,7 @@ export class FullMapPanel extends Phaser.GameObjects.Container {
 
     // 범례 — 좌하단 2행 (사용자 지시). 아이콘은 지도에 찍는 것과 같은 픽셀 아이콘이다.
     const legendY = this.view.y + this.view.h + 8;
+    this.legendRect = new Phaser.Geom.Rectangle(PAD, legendY, GAME_WIDTH - PAD * 2, 52);
     const legendBg = scene.add.graphics();
     legendBg.fillStyle(0x0a1628, 0.85); legendBg.fillRoundedRect(PAD, legendY, GAME_WIDTH - PAD * 2, 52, 4);
     legendBg.lineStyle(1, 0x2a5a8a, 1); legendBg.strokeRoundedRect(PAD, legendY, GAME_WIDTH - PAD * 2, 52, 4);
@@ -136,11 +148,7 @@ export class FullMapPanel extends Phaser.GameObjects.Container {
       this.add(t);
       lx += w;
     }
-    const hint = scene.add.text(GAME_WIDTH - PAD - 8, legendY + 52 + 4, '휠 = 확대·축소 · 드래그 = 이동 · 더블클릭 = 그 자리 중심 · 우클릭 = 핀 설정/제거 · M / ESC = 닫기', {
-      fontFamily: FONT, fontSize: '9px', color: '#7a98ac',
-    }).setOrigin(1, 0);
-    clampTextWidth(hint, GAME_WIDTH - PAD * 2 - 8);
-    this.add(hint);
+    // 188차 — 조작 안내 줄 삭제(기능을 글로 적지 않는다 — 체험 가이드가 가르친다)
 
     // 초기 배율 — 지도가 뷰포트에 딱 들어가는 배율
     this.minZoom = Math.min(this.view.w / cfg.cols, this.view.h / cfg.rows);
@@ -190,7 +198,8 @@ export class FullMapPanel extends Phaser.GameObjects.Container {
       this.dragging = { sx: ptr.x, sy: ptr.y, px: this.panX, py: this.panY };
     });
     this.moveH = (ptr) => {
-      if (!this.dragging) return;
+      if (!this.dragging) { this.hoverAt(ptr.x, ptr.y); return; }
+      if (Math.hypot(ptr.x - this.dragging.sx, ptr.y - this.dragging.sy) > 40) this.tourDragged = true;
       this.panX = this.dragging.px + (ptr.x - this.dragging.sx) * DRAG_DIR;
       this.panY = this.dragging.py + (ptr.y - this.dragging.sy) * DRAG_DIR;
       this.clampPan();
@@ -212,6 +221,83 @@ export class FullMapPanel extends Phaser.GameObjects.Container {
       this.tickEv?.remove(false);
       this.maskG.destroy();
     });
+    maybeStartTour(scene, () => this.buildTour());
+  }
+
+  // ── 체험 가이드 (188차) ──
+  private viewRect(): Phaser.Geom.Rectangle {
+    return new Phaser.Geom.Rectangle(this.view.x, this.view.y, this.view.w, this.view.h);
+  }
+
+  /** 내 위치 둘레 (화면 좌표 — 뷰 안으로 자른다) */
+  private meRect(): Phaser.Geom.Rectangle {
+    const p = this.cfg.player();
+    const x = Phaser.Math.Clamp(this.view.x + this.toVX(p.x), this.view.x + 30, this.view.x + this.view.w - 30);
+    const y = Phaser.Math.Clamp(this.view.y + this.toVY(p.y), this.view.y + 30, this.view.y + this.view.h - 30);
+    return new Phaser.Geom.Rectangle(x - 30, y - 30, 60, 60);
+  }
+
+  /**
+   * 첫 열기 체험 가이드 — 지도가 하는 일 = **내 위치 · 확대 · 둘러보기 · 아이콘 · 핀**.
+   * 지도는 화면 전체라 말풍선은 짚는 자리(주로 내 위치) 옆에 앉는다.
+   */
+  private buildTour(): TourOptions {
+    let zoom0 = 0;
+    let pin0 = '';
+    const pinSig = (): string => { const p = MapPinStore.get(this.cfg.regionId); return p ? `${Math.round(p.x)},${Math.round(p.y)}` : ''; };
+    // 시작 시점에 갈래를 정해 둔다 — skipIf가 진행 중에 뒤집히면 「n / N」 쪽수가 흔들린다
+    const hasLabeled = this.cfg.markers().some((m) => !!m.label);
+    const markerRect = (): Phaser.Geom.Rectangle | null => (this.tourMarker
+      ? new Phaser.Geom.Rectangle(this.view.x + this.tourMarker.x - 12, this.view.y + this.tourMarker.y - 12, 24, 24) : null);
+    let anchor: () => Phaser.Geom.Rectangle | null = () => this.meRect();
+    const at = (f: () => Phaser.Geom.Rectangle | null) => (): void => { anchor = f; };
+    return {
+      id: 'fullmap',
+      anchor: () => anchor(),
+      alive: () => this.active && !!this.scene,
+      steps: [
+        {
+          text: '지금 있는 지역이 한 장의 지도로 펼쳐진다. 깜빡이는 빨간 점이 나다.',
+          target: () => this.meRect(),
+        },
+        {
+          text: '마우스 휠을 굴리면 지도가 커지고 작아진다. 한 번 굴려 보자.',
+          target: () => this.meRect(),
+          allow: () => [this.viewRect()],
+          onEnter: () => { zoom0 = this.zoom; },
+          wait: () => Math.abs(this.zoom - zoom0) > 0.01,
+        },
+        {
+          text: '지도를 잡고 끌면 다른 곳을 둘러볼 수 있다. 끌어 보자.',
+          target: () => this.viewRect(),
+          onEnter: () => { this.tourDragged = false; },
+          wait: () => this.tourDragged,
+        },
+        {
+          text: '아이콘에 마우스를 올리면 그곳의 이름이 나온다. 이 아이콘에 올려 보자.',
+          target: markerRect,
+          skipIf: () => !hasLabeled,
+          onEnter: () => { this.tourTipShown = false; anchor = markerRect; },
+          wait: () => this.tourTipShown || !this.tourMarker,
+        },
+        {
+          text: '아래 줄은 지도 아이콘의 뜻이다. 가게 종류와 사람, 새 의뢰, 지금 할 일이 모두 여기 있다.',
+          target: () => this.legendRect,
+          onEnter: at(() => this.legendRect),
+        },
+        {
+          text: '가고 싶은 곳을 우클릭하면 핀이 꽂힌다. 길 위에도 그곳을 가리키는 화살표가 생긴다. 한 군데 꽂아 보자.',
+          target: () => this.viewRect(),
+          onEnter: () => { pin0 = pinSig(); anchor = () => this.meRect(); },
+          wait: () => pinSig() !== '' && pinSig() !== pin0,
+        },
+        {
+          text: '꽂은 핀은 그 자리를 다시 우클릭하거나 위의 「핀 제거」를 누르면 뽑힌다.',
+          target: () => (this.pinBtn?.visible ? this.pinBtn.getBounds() : null),
+          onEnter: at(() => (this.pinBtn?.visible ? this.pinBtn.getBounds() : null)),
+        },
+      ],
+    };
   }
 
   /** 뷰포트 좌표 (vx, vy)를 고정한 채 배율 변경 — 지도 좌표(mx, my)를 주면 그 점을 (vx, vy)에 둔다 */
@@ -252,6 +338,7 @@ export class FullMapPanel extends Phaser.GameObjects.Container {
   /** 마커 호버 툴팁 — 지도 영역 안쪽으로 붙여 잘리지 않게 한다 */
   private showMarkerTip(vx: number, vy: number, label: string): void {
     this.hideMarkerTip();
+    this.tourTipShown = true;
     const t = this.scene.add.text(0, 0, label, {
       fontFamily: FONT, fontSize: '11px', color: '#eef7ff',
       backgroundColor: '#0a1628f2', padding: { x: 5, y: 3 },
@@ -259,6 +346,7 @@ export class FullMapPanel extends Phaser.GameObjects.Container {
     const x = Phaser.Math.Clamp(this.view.x + vx, this.view.x + t.width / 2 + 2, this.view.x + this.view.w - t.width / 2 - 2);
     const y = Math.max(this.view.y + t.height + 2, this.view.y + vy - 10);
     t.setPosition(x, y);
+    t.setData('label', label);
     this.markerTip = t;
     this.add(t);
     applyScreenFixed(this);
@@ -269,8 +357,30 @@ export class FullMapPanel extends Phaser.GameObjects.Container {
     this.markerTip = undefined;
   }
 
+  /**
+   * 마커 호버 (188차 재작성) — 화면 좌표 (px, py) 가까이(9px) 이름 있는 마커가 있으면 이름표를 세운다.
+   * 구 방식(마커마다 투명 히트 사각형 + pointerover)은 두 겹으로 죽어 있었다 —
+   *  ① 지도 드래그용 뷰 히트가 마커보다 **위**에 깔려(topOnly) 마커가 pointerover를 받지 못했고,
+   *  ② 마커가 120ms마다 다시 그려져 포인터가 멈춰 있으면 이름표가 곧바로 사라졌다.
+   */
+  private hoverAt(px: number, py: number): void {
+    const vx = px - this.view.x, vy = py - this.view.y;
+    let hit: { x: number; y: number; label: string } | null = null;
+    let bestD = 9;
+    if (vx >= 0 && vy >= 0 && vx <= this.view.w && vy <= this.view.h) {
+      for (const m of this.labeled) {
+        const d = Math.hypot(m.x - vx, m.y - vy);
+        if (d <= bestD) { bestD = d; hit = m; }
+      }
+    }
+    if (!hit) { this.hideMarkerTip(); return; }
+    if (this.markerTip?.getData('label') === hit.label) return;
+    this.showMarkerTip(hit.x, hit.y, hit.label);
+  }
+
   private drawMarkers(): void {
     this.hideMarkerTip();
+    this.labeled = [];
     const c = this.markerC;
     c.removeAll(true);
     const toX = (wx: number): number => this.toVX(wx);
@@ -279,6 +389,8 @@ export class FullMapPanel extends Phaser.GameObjects.Container {
     // 아이콘 크기 — 화면 기준 12px 고정(줌과 무관). 축소 지도에서는 셀 충돌을 걸러 더미를 막는다.
     const cell = this.zoom < 1.5 ? 14 : this.zoom < 3 ? 10 : 0;
     const taken = new Set<string>();
+    // 체험 가이드용 — 뷰 가운데에 가장 가까운 이름 있는 마커
+    let best: { x: number; y: number; d: number } | null = null;
     for (const m of [...this.cfg.markers()].sort((a, b) => b.priority - a.priority)) {
       const x = toX(m.wx), y = toY(m.wy);
       if (!inside(x, y)) continue;
@@ -292,12 +404,14 @@ export class FullMapPanel extends Phaser.GameObjects.Container {
       c.add(img);
       // 165차 — 마커에 마우스를 올리면 이름을 보여 준다(지도 범례만으로는 누가 누구인지 모른다)
       if (m.label) {
-        const hit = this.scene.add.rectangle(x, y, 16, 16, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
-        hit.on('pointerover', () => this.showMarkerTip(x, y, m.label!));
-        hit.on('pointerout', () => this.hideMarkerTip());
-        c.add(hit);
+        this.labeled.push({ x, y, label: m.label });
+        if (x > 16 && y > 16 && x < this.view.w - 16 && y < this.view.h - 16) {
+          const d = Math.hypot(x - this.view.w / 2, y - this.view.h / 2);
+          if (!best || d < best.d) best = { x, y, d };
+        }
       }
     }
+    this.tourMarker = best ? { x: best.x, y: best.y } : null;
     // 목표 — 금색 링 + 라벨
     const t = this.cfg.target();
     if (t) {
@@ -346,5 +460,8 @@ export class FullMapPanel extends Phaser.GameObjects.Container {
     c.add([halo, me]);
     const meLbl = this.scene.add.text(px, py + 7, '나', { fontFamily: FONT, fontSize: '9px', color: '#ffd0d0', backgroundColor: '#0a162899', padding: { x: 2, y: 1 } }).setOrigin(0.5, 0);
     c.add(meLbl);
+    // 다시 그린 뒤에도 포인터가 마커 위에 머물러 있으면 이름표를 그대로 세운다(가만히 있어도 사라지지 않게)
+    const ptr = this.scene.input.activePointer;
+    if (!this.dragging) this.hoverAt(ptr.x, ptr.y);
   }
 }

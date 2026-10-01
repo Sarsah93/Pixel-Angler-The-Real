@@ -14,13 +14,15 @@
  *   - 슬롯 **우클릭 = 해제** (인벤토리 칸이 없으면 "아이템 창 공간이 부족합니다.")
  *   - **인벤토리에서 슬롯으로 드래그 = 장착** (`inventory-drop` 씬 이벤트 수신)
  *   - 슬롯 호버 = 아이템명/물리 파라미터 툴팁
+ *   - 188차 — 조작법은 **화면 글자로 적지 않는다**(타이틀바 안내·툴팁 「우클릭 = 해제」 삭제).
+ *     처음 열 때 체험 가이드(`GuideTour` — 'equipment')가 직접 해 보게 하며 가르친다.
  *
  * 좌우 한 쌍 장비(장갑·하의·양말·신발)는 한 아이템이 양쪽 슬롯에 함께 표시된다.
  */
 
 import Phaser from 'phaser';
 import { InventoryStore, InvItem } from '../store/InventoryStore.js';
-import type { InvDropResult } from './InventoryPanel.js';
+import { InventoryPanel, type InvDropResult } from './InventoryPanel.js';
 import { DraggablePanel } from './DraggablePanel.js';
 import { buildItemDetail } from './ItemDetailPanel.js';
 import { createItemIcon } from './ItemIcon.js';
@@ -29,6 +31,7 @@ import { clampTextWidth } from './TextFit.js';
 import { ensureCharSheet, charFrameName } from './CharacterSprite.js';
 import { characterLook } from '../data/EquipOutfit.js';
 import { CHAR_CELL, CHAR_FOOT_Y } from '@tra/core';
+import { maybeStartTour, type TourOptions } from './GuideTour.js';
 
 // ── 지오메트리 ──────────────────────────────────────
 const S = 52;              // 소켓 한 변 (퀵슬롯과 동급)
@@ -123,16 +126,17 @@ export class EquipmentPanel extends DraggablePanel {
   private statusText!: Phaser.GameObjects.Text;
   private onChanged: () => void;
   private rects: SlotRect[] = [];
+  /** 체험 가이드 — 마지막으로 마우스를 올린 슬롯 key */
+  private tourHovered: string | null = null;
+  /** 체험 가이드 — 우클릭 해제가 막혔는가(가방이 꽉 참) — 막히면 벗기 체험을 넘긴다 */
+  private tourUnequipFailed = false;
 
   constructor(scene: Phaser.Scene, x: number, y: number, onClose: () => void, onChanged: () => void) {
     super(scene, { x, y, width: PANEL_W, height: PANEL_H, title: '장비', onClose, depth: 810 });
     this.onChanged = onChanged;
 
-    const hint = scene.add.text(64, 16, '인벤토리에서 드래그 = 장착 · 우클릭 = 해제', {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#607b8e',
-    }).setOrigin(0, 0.5);
-    this.add(hint);
-
+    // 188차 — 타이틀바의 조작 안내 글(「인벤토리에서 드래그 = 장착 · 우클릭 = 해제」)은 지웠다.
+    //   기능을 글로 적지 않는다 — 처음 열 때 체험 가이드가 직접 해 보게 한다.
     this.statusText = scene.add.text(PANEL_W / 2, PANEL_H - 24, '', {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#9fd0e4',
       wordWrap: { width: PANEL_W - 32 }, align: 'center',
@@ -145,6 +149,7 @@ export class EquipmentPanel extends DraggablePanel {
 
     scene.events.on('inventory-changed', this.render, this);
     scene.events.on('inventory-drop', this.onInventoryDrop, this);
+    maybeStartTour(scene, () => this.buildTour());
   }
 
   // ═══════════════════════════════════════════════════
@@ -249,6 +254,7 @@ export class EquipmentPanel extends DraggablePanel {
     const hit = this.scene.add.rectangle(sx + S / 2, sy + S / 2, S, S, 0xffffff, 0.001)
       .setInteractive({ useHandCursor: true });
     hit.on('pointerover', (p: Phaser.Input.Pointer) => {
+      this.tourHovered = def.key;
       this.paintBox(box, sx, sy, !!item, true);
       this.showTooltip(def, item, sx, sy, p);
     });
@@ -258,7 +264,7 @@ export class EquipmentPanel extends DraggablePanel {
     });
     hit.on('pointerdown', (p: Phaser.Input.Pointer) => {
       if (p.rightButtonDown()) this.unequipSlot(def);
-      else if (item) this.setStatus(`${item.name}  ·  ${def.label}  (우클릭 = 해제)`);
+      else if (item) this.setStatus(`${item.name}  ·  ${def.label}`);
       else this.setStatus(`${def.label} — ${def.note}`);
     });
     this.bodyC.add(hit);
@@ -289,10 +295,8 @@ export class EquipmentPanel extends DraggablePanel {
     if (item) {
       const detail = buildItemDetail(item);
       detail.rows.slice(0, 3).forEach((r) => lines.push(`${r.label}: ${r.value}`));
-      lines.push('우클릭 = 해제');
     } else {
       lines.push(def.note);
-      if (def.part || def.hand) lines.push('인벤토리에서 드래그해 장착');
     }
     const title = item ? item.name : `${def.label}${def.pair ? ' (한 쌍)' : ''} — 비어있음`;
 
@@ -340,6 +344,7 @@ export class EquipmentPanel extends DraggablePanel {
     const item = this.itemOf(def);
     if (!item) return;
     const r = InventoryStore.unequipItem(item.id);
+    if (!r.ok) this.tourUnequipFailed = true;
     this.setStatus(r.ok ? `${item.name} 해제 — 인벤토리로 옮겼습니다.` : r.reason ?? '해제할 수 없습니다.');
     if (r.ok) {
       this.render();
@@ -389,6 +394,89 @@ export class EquipmentPanel extends DraggablePanel {
     if (item.subCategory !== def.part) return `${def.label} 슬롯에는 ${def.part} 장비만 장착할 수 있습니다.`;
     const r = InventoryStore.equipItem(item.id);
     return r.ok ? `${item.name} → ${def.label} 착용` : r.reason ?? '착용할 수 없습니다.';
+  }
+
+  // ═══════════════════════════════════════════════════
+  // 체험 가이드 (188차)
+  // ═══════════════════════════════════════════════════
+  /** 슬롯 key → 화면 사각형 */
+  private slotRect(key: string): Phaser.Geom.Rectangle | null {
+    const r = this.rects.find((x) => x.def.key === key);
+    return r ? this.localRect(r.x, r.y, S, S) : null;
+  }
+
+  /** 함께 열려 있는 가방 창 (장비창과 나란히 열 수 있다 — 드래그 장착의 전제) */
+  private openInventory(): InventoryPanel | undefined {
+    return this.scene?.children.list.find((o): o is InventoryPanel => o instanceof InventoryPanel && o.active);
+  }
+
+  /**
+   * 첫 열기 체험 가이드 — 장비창이 하는 일 = **입고 벗기**. 릴 하나로 직접 해 본다.
+   *  - 릴을 이미 끼고 있으면: 우클릭으로 벗기 → 가방 열기 → 끌어다 다시 끼기.
+   *  - 릴이 가방에 있으면: 가방 열기 → 끌어다 끼기 → (벗기는 말로만 — 다시 벗기면 낚시를 못 간다).
+   *  - 릴이 없거나 가방이 꽉 차 벗을 수 없으면 해당 체험은 건너뛰고 설명만 남긴다.
+   */
+  private buildTour(): TourOptions {
+    const reelWorn = (): boolean => !!InventoryStore.getEquipped('릴');
+    const reelInBag = (): boolean => InventoryStore.items.some((i) => i.subCategory === '릴' && i.equippable && !i.equipped);
+    const reel = (): Phaser.Geom.Rectangle | null => this.slotRect('reel');
+    // 시작 시점에 갈래를 정해 둔다 — skipIf가 진행 중에 뒤집히면 「n / N」 쪽수가 흔들린다
+    const plan = { worn: reelWorn(), inBag: reelInBag(), invOpen: !!this.openInventory() };
+    const canEquip = plan.worn || plan.inBag;
+    return {
+      id: 'equipment',
+      // 가방이 함께 열려 있으면 두 창을 묶은 바깥에 말풍선을 붙인다(가방 칸을 가리지 않게)
+      anchor: () => {
+        const inv = this.openInventory();
+        const b = this.panelBounds();
+        return inv ? Phaser.Geom.Rectangle.Union(b, inv.panelBounds()) : b;
+      },
+      alive: () => this.active && !!this.scene,
+      steps: [
+        {
+          text: '몸에 걸친 옷과 손에 든 도구는 모두 이 장비창에 나타난다.',
+          target: () => this.panelBounds(),
+        },
+        {
+          text: '가운데는 지금의 내 모습이다. 무엇을 입고 드느냐에 따라 이 그림도 함께 바뀐다.',
+          target: () => this.localRect(CENTER_X, BODY_Y, CENTER_W, COL_H),
+        },
+        {
+          text: '둘레의 칸은 몸의 부위다. 칸에 마우스를 올리면 그 자리에 무엇을 걸치는지 보인다. 「릴」 칸에 마우스를 올려 보자.',
+          target: reel,
+          onEnter: () => { this.tourHovered = null; },
+          wait: () => this.tourHovered === 'reel',
+        },
+        {
+          text: '장비를 벗을 때는 그 칸을 우클릭한다. 「릴」 칸을 우클릭해 릴을 벗어 보자. 벗은 장비는 가방으로 돌아간다.',
+          target: reel,
+          skipIf: () => !plan.worn,
+          wait: () => !reelWorn() || this.tourUnequipFailed,
+        },
+        {
+          text: '장비를 걸칠 때는 가방에서 꺼내 칸에 끌어다 놓는다. I 키를 눌러 가방을 열어 보자.',
+          allowKeys: ['KeyI'],
+          skipIf: () => !canEquip || plan.invOpen,
+          wait: () => !!this.openInventory() || reelWorn(),
+        },
+        {
+          text: '가방의 릴을 끌어다 「릴」 칸에 놓아 보자. 놓는 순간 몸에 걸친다.',
+          target: reel,
+          allow: () => [reel(), this.openInventory()?.panelBounds()],
+          skipIf: () => !canEquip,
+          wait: () => reelWorn() || !this.openInventory(),
+        },
+        {
+          text: '벗고 싶을 때는 그 칸을 우클릭하면 된다. 벗은 장비는 가방으로 돌아간다.',
+          target: reel,
+          skipIf: () => plan.worn,
+        },
+        {
+          text: '낚싯대처럼 손에 드는 도구는 양옆의 「손(좌)」 · 「손(우)」 칸에 든다.',
+          target: () => this.slotRect('hand_r'),
+        },
+      ],
+    };
   }
 
   private setStatus(msg: string): void {
