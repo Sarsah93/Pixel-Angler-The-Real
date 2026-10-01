@@ -277,7 +277,7 @@ export const EN_PANELS: Record<string, string> = {
   '아직 갱신일이 아닙니다': 'Not due for renewal yet',
   '재화가 부족합니다': 'Not enough money',
   '점검 합격.': 'Inspection passed.',
-  '어촌계에 내는 몫입니다. 밀리지 않으면 위판 수수료를 조금 깎아 줍니다.': 'Your share to the fishing cooperative. Keep it current and the consignment fee drops a little.',
+  '수협 조합원으로서 내는 몫입니다. 밀리지 않으면 위판 수수료를 조금 깎아 줍니다.': 'Your dues as a member of the fisheries cooperative (Suhyup). Keep them current and the consignment fee drops a little.',
   '보험과 정기검사, 계류비를 한 번에 치릅니다. 배를 가진 사람의 고정비입니다.': 'Insurance, periodic inspection and mooring, settled together. The fixed cost of owning a boat.',
   '영업장 위생 점검입니다. 그동안 항구에서 쌓은 신뢰가 합격률을 좌우하고, 불합격하면 재검사료를 물고 다시 받아야 합니다.': 'A hygiene inspection of your premises. The trust you have built at the harbour decides the odds, and failing means paying a re-inspection fee and going through it again.',
 };

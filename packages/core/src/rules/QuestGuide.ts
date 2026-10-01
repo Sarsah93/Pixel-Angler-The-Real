@@ -66,7 +66,8 @@ export function objectiveHowToKo(q: StoryQuestDef, o: StoryObjective, n: GuideNa
   const giver = q.giver ? n.npcName(q.giver) : '';
   const key = o.placeKey ?? '';
   if (o.howToKo) return o.howToKo;
-  if (o.manual && o.kind !== 'talk') return `${giver ? `${giver}에게` : '상대에게'} 말을 걸어 [다음 단계]로 진행 (이야기 장면)`;
+  // 188차 — 구 [다음 단계] 버튼은 167차에 폐기됐다(장면 게이트). 지금은 대화창에 이 일이 선택지로 뜬다.
+  if (o.manual && o.kind !== 'talk') return `${giver ? `${giver}에게` : '상대에게'} 말을 걸어 대화에서 이 일을 고른다 (이야기 장면)`;
   switch (o.kind) {
     case 'talk': return `${n.npcName(o.npcId ?? q.giver)}에게 다가가 [F]`;
     case 'deliverFree': return `${n.npcName(o.npcId ?? q.giver)}에게 물건을 들고 가 [F]`;

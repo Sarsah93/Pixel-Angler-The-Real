@@ -14,7 +14,7 @@ import { DraggablePanel } from './DraggablePanel.js';
 import { paintHudSlot } from './HudPanelStyle.js';
 import { clampTextWidth } from './TextFit.js';
 import { GameState } from '../store/GameState.js';
-import { InventoryStore, type InvItem } from '../store/InventoryStore.js';
+import { InventoryStore, CATEGORY_LABEL, type InvItem } from '../store/InventoryStore.js';
 import { MultiplayerClient } from '../net/MultiplayerClient.js';
 import { createItemIcon } from './ItemIcon.js';
 import { MP_TRADE_MAX_ITEMS, type MpTradeItem, type MpTradeState } from '@tra/core';
@@ -239,7 +239,9 @@ export class TradePanel extends DraggablePanel {
     const need = InventoryStore.slotsNeededFor(other.offer.items);
     for (const [cat, n] of Object.entries(need)) {
       const free = InventoryStore.freeSlotCount(cat as InvItem['category']);
-      if (free < (n ?? 0)) { this.setStatus(`가방 공간이 부족합니다 — ${cat} ${n}칸 필요 (빈 칸 ${free})`); return; }
+      // 188차 — 분류는 내부 id(`gear`·`food`)가 아니라 가방 탭 이름으로 (R1)
+      const catLabel = CATEGORY_LABEL[cat as InvItem['category']] ?? '기타';
+      if (free < (n ?? 0)) { this.setStatus(`가방 공간이 부족합니다 — ${catLabel} ${n}칸 필요 (빈 칸 ${free})`); return; }
     }
     if (this.draft.coins > GameState.player.inventory.coins) { this.setStatus('재화가 부족합니다'); return; }
     void MultiplayerClient.lockTrade(t.tradeId, true).then((r) => { if (!r.ok && r.reasonKo) this.setStatus(r.reasonKo); });

@@ -1098,13 +1098,14 @@ export class RegionHud extends Phaser.GameObjects.Container {
     const HDR = 18, PADX = 8;
     const parts: Phaser.GameObjects.GameObject[] = [];
     let cy = HDR + 6;
-    const mk = (txt: string, size: number, color: string, bold = false, indent = 0): void => {
+    const mk = (txt: string, size: number, color: string, bold = false, indent = 0): Phaser.GameObjects.Text => {
       const t = this.scene.add.text(PADX + indent, cy, txt, {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: `${size}px`, color, fontStyle: bold ? 'bold' : 'normal',
         wordWrap: { width: W - PADX * 2 - indent }, lineSpacing: 2,
       });
       cy += t.height + 4;
       parts.push(t);
+      return t;
     };
     // 메인 → 서브 순으로 카테고리 바를 나눠 싣는다 (165차 사용자 지시)
     const ordered = [...d.entries].sort((a, b) => (a.kind === b.kind ? 0 : a.kind === 'main' ? -1 : 1));
@@ -1115,8 +1116,12 @@ export class RegionHud extends Phaser.GameObjects.Container {
         parts.push(sep);
         cy += 7;
       }
-      const badge = e.kind === 'main' ? 'Ⓜ' : 'Ⓢ';
-      mk(`${badge} ${e.title}${e.pinned ? ' · 고정' : ''}`, 12, e.kind === 'main' ? '#ffe9a0' : '#c9e3f5', true);
+      // 188차 — 구 Ⓜ/Ⓢ 글리프(§8-8) 대신 **색 막대 칩**: 메인 = 금색, 서브 = 하늘색 (제목 색과 짝)
+      const titleT = mk(`${e.title}${e.pinned ? ' · 고정' : ''}`, 12, e.kind === 'main' ? '#ffe9a0' : '#c9e3f5', true, 8);
+      const chip = this.scene.add.graphics();
+      chip.fillStyle(e.kind === 'main' ? 0xffd257 : 0x7fc4ec, 1);
+      chip.fillRoundedRect(PADX, titleT.y + 2, 4, Math.max(10, titleT.height - 4), 1);
+      parts.push(chip);
       mk(e.objective, 11, '#e8f4fd', false, 4);
       if (e.howTo) mk(e.howTo, 10, '#9fc0d4', false, 4);
       if (e.distance) mk(e.distance, 10, '#7fe0b0', true, 4);

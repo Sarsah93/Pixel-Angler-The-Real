@@ -116,9 +116,10 @@ export class MainMenuScene extends Phaser.Scene {
     this.drawTitle();
 
     if (this.gotoSlots && MultiplayerClient.isMulti) {
-      // 세션까지 잡고 돌아왔다 — 슬롯 3칸부터 (멀티는 늘 새 캐릭터를 만든다)
-      this.view = 'slots';
-      this.slotMode = 'new';
+      // 세션까지 잡고 돌아왔다 — [새로 시작 / 이어하기]부터.
+      // ⚠ 188차 — 구 구현은 곧장 '새 슬롯' 목록으로 보내서 145차 멀티 이어하기(저장 캐릭터로 재접속,
+      //   `rejoinSession`)에 닿는 길이 없었다(AG ⑤a).
+      this.view = 'start';
     }
 
     this.panelContainer = this.add.container(0, 0).setDepth(50);
@@ -572,7 +573,7 @@ export class MainMenuScene extends Phaser.Scene {
     }
     entries.push({
       label: '뒤로',
-      action: () => { this.view = MultiplayerClient.isMulti ? 'mode' : 'start'; this.buildView(); },
+      action: () => { this.view = 'start'; this.buildView(); },   // 188차 — 멀티도 [새로 시작 / 이어하기]를 거친다
     });
     return entries;
   }
@@ -934,7 +935,7 @@ export class MainMenuScene extends Phaser.Scene {
     this.input.keyboard?.on('keydown-SPACE', activate);
 
     this.input.keyboard?.on('keydown-ESC', () => {
-      if (this.view === 'slots') { this.view = MultiplayerClient.isMulti ? 'mode' : 'start'; this.buildView(); }
+      if (this.view === 'slots') { this.view = 'start'; this.buildView(); }
       else if (this.view === 'start' || this.view === 'mode') { this.view = 'main'; this.buildView(); }
     });
   }

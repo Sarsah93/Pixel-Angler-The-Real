@@ -536,7 +536,9 @@ export class DialoguePanel extends DraggablePanel {
     paras.push(this.objectiveLines(q));
     const rows: ChoiceRow[] = [];
     const idx = q.objectives.findIndex((o, i) => o.manual && !StoryStore.objectiveDone(q, i));
-    if (idx < 0) paras.push('준비 완료! 대화를 닫고 다시 말을 걸면 제출할 수 있습니다.');
+    // 188차 — '직접 하는 목표'가 남지 않았다는 것만으로는 준비가 끝난 게 아니다(어획·방문 등 자동 목표가
+    //   남아 있으면 제출할 수 없다). 전부 채웠을 때만 안내한다(AG ④a).
+    if (idx < 0 && StoryStore.allObjectivesDone(q)) paras.push('준비 완료! 대화를 닫고 다시 말을 걸면 제출할 수 있습니다.');
     if (idx >= 0) {
       const objective = q.objectives[idx];
       if (objective.actionKey) {
@@ -611,7 +613,8 @@ export class DialoguePanel extends DraggablePanel {
         ? ` (${Math.min(cur, tgt).toLocaleString()}/${tgt.toLocaleString()}${o.actionKey && done ? ' · 준비 완료!' : ''})`
         : '';
       const label = narrativeOf(q.id)?.objectives?.[i] ?? o.labelKo;
-      return `${done ? '✓' : '·'} ${label}${prog}`;
+      // 188차 — ✓ 글리프(§8-8) 대신 말머리. 끝난 줄은 [완료], 남은 줄은 들여쓴 그대로.
+      return done ? `[완료] ${label}${prog}` : `- ${label}${prog}`;
     }).join('\n');
   }
 

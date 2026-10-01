@@ -91,6 +91,9 @@ export const ITEM_VITALS: Record<string, ItemVitalsDef> = {
   shop_assorted_sashimi_small:        { ...nut('shop_assorted_sashimi_small'), hpRestore: 10, fatigueRestore: 5 },
   shop_black_sea_bream_sashimi_small: { ...nut('shop_black_sea_bream_sashimi_small'), hpRestore: 12, fatigueRestore: 8 },
 
+  // ── 약국 (188차 — AG ③e: 'HP를 40 회복한다'고 팔면서 회복 필드가 없어 먹어도 아무 일이 없었다) ──
+  inv_potion: { hpRestore: 40 },
+
   // ── 구급품 (제작 P7 · 약국 판매) ──
   //  붕대 = 출혈 / 부목 = 골절 / 상비약 = 감기·독감·식중독·생물중독 등 medicine 계열.
   craft_bandage:  { cureKind: 'bandage',  medicQuality: 1 },
@@ -117,5 +120,20 @@ export function applyItemVitals<T extends { id: string }>(item: T): T {
   for (const [k, v] of Object.entries(d)) {
     if (t[k] === undefined) t[k] = v;
   }
+  return item;
+}
+
+/**
+ * 영양표에서 파생되는 허기·수분을 **표 값으로 다시 맞춘다** (188차 — 세이브 로드 전용).
+ * `applyItemVitals`는 빈 필드만 채우므로, 상점 리터럴(초코바·생수·주먹밥)로 들어온 옛 값이
+ * 구세이브에 남아 영양표를 계속 덮는다. 이 둘은 개체 상태가 아니라 **품목의 정적 성질**이라
+ * 덮어써도 유저 상태를 건드리지 않는다(요리·회 접시처럼 개체마다 다른 값은 FOOD_NUTRITION에 없다).
+ */
+export function refreshNutritionVitals<T extends { id: string; hungerRestore?: number; hydrationRestore?: number }>(item: T): T {
+  if (!FOOD_NUTRITION[item.id]) return item;
+  const d = ITEM_VITALS[item.id];
+  if (!d) return item;
+  if (d.hungerRestore !== undefined) item.hungerRestore = d.hungerRestore;
+  if (d.hydrationRestore !== undefined) item.hydrationRestore = d.hydrationRestore;
   return item;
 }

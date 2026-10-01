@@ -787,6 +787,21 @@ export interface TuningConfig {
     recoveryMin: number;
     /** 탈진 해제에 필요한 허기·수분 하한(%) */
     exhaustClearPct: number;
+    /**
+     * 188차 — 오한 발생(저온·비 노출). 시간당 발생률(활동 시간)이며 틱마다 1 − e^(−rate·h)로 굴린다.
+     * 체감온도가 `chillColdC` 이하면 `chillColdPerHour`, 비·눈이 오고 `chillRainC` 이하면 `chillRainPerHour`를
+     * 더한다. 영하면 ×`chillFreezeMult`. 상의·하의·모자·장갑 착용 1벌당 `chillLayerCut`씩 깎는다(최대 3벌).
+     */
+    chillColdC: number;
+    chillRainC: number;
+    chillColdPerHour: number;
+    chillRainPerHour: number;
+    chillFreezeMult: number;
+    chillLayerCut: number;
+    /** 보온 — 불을 쬐거나 자고 나면 이 활동 시간(분) 동안 오한이 들지 않는다 */
+    warmBuffMin: number;
+    /** 식중독이 걸릴 때 설사가 함께 올 확률 (정의표 `spawns`) */
+    spawnChance: number;
   };
   /**
    * 날씨 → 캐스팅·채비 (127차 — 사용자 지시 3건).
@@ -1251,6 +1266,9 @@ export const TUNING: TuningConfig = {
   status: {
     progressRollMin: 30, progressChance: 0.35, selfHealMin: 90,
     relapseBleed: 0.3, relapseFracture: 0.25, recoveryMin: 30, exhaustClearPct: 50,
+    // 188차 — 보수적: 영상 5°C에서 맨몸으로 한 시간 ≈ 8%, 비까지 오면 ≈ 13%. 옷 세 벌이면 40%로 준다.
+    chillColdC: 5, chillRainC: 14, chillColdPerHour: 0.08, chillRainPerHour: 0.06,
+    chillFreezeMult: 1.5, chillLayerCut: 0.2, warmBuffMin: 60, spawnChance: 0.5,
   },
   castWeather: {
     calmMs: 3,

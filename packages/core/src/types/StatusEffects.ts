@@ -55,6 +55,12 @@ export interface StatusEffectDef {
   spawns?: StatusEffectId;
   /** 치료 후 재발 확률 */
   relapseChance?: number;
+  /**
+   * 진행(악화) 확률 배수 — 공통 `progressChance`에 곱한다 (188차).
+   * 오한·감기는 실제로 걸리는 경로가 생기면서, 공통 35%/30분이면 한두 시간 만에 독감까지
+   * 번져 버린다 — 손쓸 시간을 주려고 이 둘만 늦춘다.
+   */
+  progressMult?: number;
 }
 
 /** 상태 배지 — 색 칩 + 짧은 라벨(이모지 대신) */
@@ -103,15 +109,15 @@ export const STATUS_EFFECTS: readonly StatusEffectDef[] = [
   },
   {
     id: 'chill', nameKo: '오한', nameEn: 'Chills', badge: { icon: 'chill', color: 0x8ccbe8 },
-    descKo: '저온·비·젖은 옷 탓에 몸이 떨린다. 따뜻한 음식으로 풀리며, 방치하면 감기가 된다.',
-    descEn: 'Cold, rain or wet clothes. Warm food clears it; left alone it becomes a cold.',
-    drainMult: [1, 1, 1.2], cure: 'warmth', progressTo: 'cold',
+    descKo: '추위와 비에 오래 노출돼 몸이 떨린다. 불을 쬐거나 자고 나면 풀리며, 방치하면 감기가 된다.',
+    descEn: 'Too long out in the cold and rain. Warm up by a fire or get some sleep; left alone it becomes a cold.',
+    drainMult: [1, 1, 1.2], cure: 'warmth', progressTo: 'cold', progressMult: 0.5,
   },
   {
     id: 'cold', nameKo: '감기', nameEn: 'Common Cold', badge: { icon: 'cold', color: 0x4d92cf },
     descKo: '오한이 심해졌다. 최대 체력과 최대 피로도가 줄어든다. 휴식과 상비약이 필요하다.',
     descEn: 'The chills got worse. Max HP and max fatigue drop. Needs rest and medicine.',
-    maxHpPct: 0.1, maxFatigueDelta: 15, cure: 'rest', selfHealMin: 180, progressTo: 'flu',
+    maxHpPct: 0.1, maxFatigueDelta: 15, cure: 'rest', selfHealMin: 180, progressTo: 'flu', progressMult: 0.4,
   },
   {
     id: 'flu', nameKo: '독감', nameEn: 'Influenza', badge: { icon: 'flu', color: 0x3f6fae },
@@ -152,7 +158,7 @@ export const STATUS_CURE_LABEL: Record<StatusCure, { ko: string; en: string }> =
   medicine: { ko: '해독제 필요', en: 'Needs antidote' },
   bandage: { ko: '붕대 필요', en: 'Needs a bandage' },
   splint: { ko: '부목 필요', en: 'Needs a splint' },
-  warmth: { ko: '따뜻한 음식 필요', en: 'Needs warm food' },
+  warmth: { ko: '몸을 녹여야 함 (불 · 잠)', en: 'Warm up (fire or sleep)' },
   hospital: { ko: '병원 진료 필요', en: 'Needs hospital care' },
   rest: { ko: '휴식 필요', en: 'Needs rest' },
 };
@@ -258,7 +264,7 @@ export function tickStatuses(
       const period = t.progressRollMin * 60_000;
       while (a.rollMs >= period) {
         a.rollMs -= period;
-        if (rng() < t.progressChance * chanceMult) {
+        if (rng() < t.progressChance * chanceMult * (d.progressMult ?? 1)) {
           const next = d.progressTo;
           if (!active.some((x) => x.id === next)) {
             active.push({ id: next, elapsedMs: 0, rollMs: 0 });
@@ -314,4 +320,43 @@ export function cureStatus(
     : id === 'fracture' ? TUNING.status.relapseFracture
     : (d?.relapseChance ?? 0);
   return { removed: true, relapse: chance > 0 && rng() < chance };
+}
+
+// ─────────────────────────────────────────────
+// 188차 — 오한(저온·비 노출) 발생률 · 파생 상태
+// ─────────────────────────────────────────────
+
+/** 오한 발생 판정 입력 */
+export interface ChillExposure {
+  /** 체감온도(℃) — 없으면 실외 날씨를 모른다(실내·1인칭 등) → 0 */
+  feelsLikeC?: number;
+  /** 비·눈이 오는가 */
+  raining: boolean;
+  /** 추위 내성(life_cold) 랭크 — 저온 경계를 랭크당 `vitals.coldResistBufferC`만큼 낮춘다 */
+  coldResistRank?: number;
+  /** 입고 있는 옷(상의·하의·모자·장갑) 수 */
+  warmLayers?: number;
+}
+
+/**
+ * 오한 **시간당** 발생률 (188차 — AG ③b). 0이면 노출이 없다.
+ * 틱 확률은 호출측이 `1 − e^(−rate·hours)`로 바꿔 굴린다(틱 길이와 무관한 기대값).
+ */
+export function chillRatePerHour(x: ChillExposure): number {
+  const feels = x.feelsLikeC;
+  if (feels === undefined || !Number.isFinite(feels)) return 0;
+  const t = TUNING.status;
+  const buffer = (x.coldResistRank ?? 0) * TUNING.vitals.coldResistBufferC;
+  let rate = 0;
+  if (feels <= t.chillColdC - buffer) rate += t.chillColdPerHour;
+  if (x.raining && feels <= t.chillRainC - buffer) rate += t.chillRainPerHour;
+  if (rate <= 0) return 0;
+  if (feels <= 0) rate *= t.chillFreezeMult;
+  const layers = Math.max(0, Math.min(3, x.warmLayers ?? 0));
+  return rate * Math.max(0, 1 - layers * t.chillLayerCut);
+}
+
+/** 이 상태가 걸릴 때 함께 오는 파생 상태 (정의표 `spawns` — 식중독 → 설사) */
+export function spawnedStatusOf(id: StatusEffectId): StatusEffectId | undefined {
+  return BY_ID.get(id)?.spawns;
 }

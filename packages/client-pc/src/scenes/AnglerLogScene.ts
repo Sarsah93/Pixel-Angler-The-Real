@@ -10,31 +10,37 @@ import Phaser from 'phaser';
 import { GameState } from '../store/GameState.js';
 import {
   FISH_DATABASE, getSpotById, SHORE_CREATURE_DATABASE,
-  DISCOVERY_SOURCE_LABEL,
+  DISCOVERY_SOURCE_LABEL, REGION_AREA_NODES, WORLD_NODE_DATABASE, getRegionById,
   FIRE_RECIPES, RECIPE_LORE, isVariantRecipe, dishVariantCandidates, dishDiscoveryId, dishDiscoveryName, dishBaseName,
 } from '@tra/core';
-import type { ShoreCreatureCategory, DiscoveryKind } from '@tra/core';
+import type { ShoreCreatureCategory, DiscoveryKind, ShoreCreature } from '@tra/core';
 import { DiscoveryStore } from '../store/DiscoveryStore.js';
 import { StoryStore } from '../store/StoryStore.js';
-import { FISH_TEXTURE } from '../data/FishTextures.js';
+import { FISH_TEXTURE, resolveFishTexture } from '../data/FishTextures.js';
 import { itemWikiByCategory } from '../data/WikiCatalog.js';
 import { createItemIcon } from '../ui/ItemIcon.js';
 import { CATEGORY_LABEL } from '../store/InventoryStore.js';
 import type { InvCategory } from '../store/InventoryStore.js';
 import { clampTextWidth } from '../ui/TextFit.js';
 import { fadeOutThen } from './SceneFade.js';
+import { ensureForageDotTextures, forageSpotTexKey, forageTexKey } from './field/ForageSystem.js';
 
 type LogTab = 'encyclopedia' | 'creatures' | 'items' | 'dishes' | 'history';
 
-/** 해양생물 카테고리 라벨/이모지 (위키 카드용) */
+/** 해양생물 카테고리 라벨 (위키 카드용) — 188차: 카테고리 이모지 폐기, 생물 도트 그림으로(§8-8) */
 const CREATURE_CAT_LABEL: Record<ShoreCreatureCategory, string> = {
   shellfish: '조개류', crustacean: '갑각류', cephalopod: '두족류',
   echinoderm: '극피동물', bivalve: '이매패류', gastropod: '복족류',
 };
-const CREATURE_CAT_EMOJI: Record<ShoreCreatureCategory, string> = {
-  shellfish: '🐚', crustacean: '🦀', cephalopod: '🐙',
-  echinoderm: '🦔', bivalve: '🦪', gastropod: '🐌',
-};
+
+/**
+ * 도감 카드 대표 이미지 (188차 — AG ⑤g). 암수 이미지가 갈리는 어종(용치놀래기·돌돔)은 `FISH_TEXTURE`에
+ * 단일 키가 없어 카드가 「이미지 없음」이었다 → 개체 해소 규칙으로 대표 한 장을 고른다
+ * (용치놀래기 = 혼인색 수컷 · 돌돔 = 줄무늬가 있는 기본형).
+ */
+function codexFishTexture(speciesId: string): string | undefined {
+  return FISH_TEXTURE[speciesId] ?? resolveFishTexture(speciesId, 0, speciesId === 'rainbow_wrasse' ? 'M' : 'F');
+}
 
 export class AnglerLogScene extends Phaser.Scene {
   private currentTab: LogTab = 'encyclopedia';
@@ -178,6 +184,38 @@ export class AnglerLogScene extends Phaser.Scene {
   }
 
   /** 발견 정보 한 줄 ("낚시로 어획 · 8/14") — 발견 카드 하단 공통 표기 */
+  /**
+   * 해양생물 그림 (188차 — 도감 생물 탭 이모지 대체). 실사 도트(`forage_<id>` — BootScene)가 있으면
+   * 그것을, 없으면 필드 스팟 도트(`forage_dot_<id>`)를 정수 배율로 키운다. 상자(box) 안에 맞춘다.
+   */
+  private creaturePic(cr: ShoreCreature, x: number, y: number, box: number): Phaser.GameObjects.Image {
+    ensureForageDotTextures(this);
+    const photo = forageTexKey(cr);
+    const key = this.textures.exists(photo) ? photo : forageSpotTexKey(cr);
+    const img = this.add.image(x, y, key).setOrigin(0.5);
+    const raw = Math.max(1, img.width, img.height);
+    // 도트는 정수 배율(§8 비정수 배율 금지), 큰 실사는 상자에 맞춘다
+    const scale = raw <= 32 ? Math.max(1, Math.floor(box / raw)) : box / raw;
+    return img.setScale(scale);
+  }
+
+  /**
+   * 조과 기록의 장소 id → 이름 (188차). 기록은 시대별로 id 체계가 다르다 — 옛 낚시터(SpotDatabase) ·
+   * 출조 구역(REGION_AREA_NODES) · 지도 노드 · 지역 id · 홈타운. 어느 것도 아니면 null.
+   */
+  private locationLabel(id: string): string | null {
+    const spot = getSpotById(id);
+    if (spot) return spot.name;
+    for (const list of Object.values(REGION_AREA_NODES)) {
+      const a = list.find((x) => x.id === id);
+      if (a) return a.name;
+    }
+    const n = WORLD_NODE_DATABASE.find((x) => x.id === id);
+    if (n) return n.name;
+    if (id === 'hometown') return '집 앞바다';
+    return getRegionById(id)?.nameKo ?? null;
+  }
+
   private discoveryLine(kind: DiscoveryKind, id: string): string | null {
     const e = DiscoveryStore.get(kind, id);
     if (!e) return null;
@@ -251,7 +289,7 @@ export class AnglerLogScene extends Phaser.Scene {
 
         // 어종 실사 픽셀 이미지(있는 어종만) — 좌측 박스 안에 종횡비 유지로 축소
         const IMG_X = x + 12, IMG_Y = y + 48, IMG_W = 84, IMG_H = 66;
-        const texKey = FISH_TEXTURE[fish.id];
+        const texKey = codexFishTexture(fish.id);
         if (texKey && this.textures.exists(texKey)) {
           const src = this.textures.get(texKey).getSourceImage() as { width: number; height: number };
           const k = Math.min(IMG_W / src.width, IMG_H / src.height);
@@ -294,7 +332,7 @@ export class AnglerLogScene extends Phaser.Scene {
         });
       } else {
         // ── 미발견 카드: 실루엣 + ??? + 서식 힌트 (어디서 만날 수 있는지만 귀띔) ──
-        const texKey = FISH_TEXTURE[fish.id];
+        const texKey = codexFishTexture(fish.id);
         if (texKey && this.textures.exists(texKey)) {
           const src = this.textures.get(texKey).getSourceImage() as { width: number; height: number };
           const SIL_W = 120, SIL_H = 60;
@@ -372,11 +410,9 @@ export class AnglerLogScene extends Phaser.Scene {
         const sciText = clampTextWidth(this.add.text(x + 15, y + 32, cr.scientificName, {
           fontFamily: 'monospace', fontSize: '9px', color: '#5a8fab', fontStyle: 'italic',
         }), itemW - 27);
-        // 큰 이모지 아이콘 (전용 스프라이트 에셋 도입 전 — spriteKey는 예약)
-        const emoji = this.add.text(x + 44, y + 84, CREATURE_CAT_EMOJI[cr.category] ?? '🐚', {
-          fontSize: '38px',
-        }).setOrigin(0.5);
-        this.tabContainer?.add([nameText, sciText, emoji]);
+        // 생물 그림 — 실사 도트(아이템 아이콘)가 있으면 그것, 없으면 필드 스팟 도트 (188차 — 이모지 대체)
+        const pic = this.creaturePic(cr, x + 44, y + 84, 64);
+        this.tabContainer?.add([nameText, sciText, pic]);
 
         const SX = x + 92;
         const SW = itemW - 92 - 12;
@@ -396,10 +432,8 @@ export class AnglerLogScene extends Phaser.Scene {
           this.tabContainer?.add(t);
         });
       } else {
-        // 미발견 — 카테고리 실루엣 이모지(어둡게) + 조우 힌트
-        const emoji = this.add.text(x + itemW / 2, y + 52, CREATURE_CAT_EMOJI[cr.category] ?? '🐚', {
-          fontSize: '34px',
-        }).setOrigin(0.5).setAlpha(0.18);
+        // 미발견 — 그림을 검은 실루엣으로(어둡게) + 조우 힌트
+        const emoji = this.creaturePic(cr, x + itemW / 2, y + 52, 52).setTintFill(0x0a1a2a).setAlpha(0.55);
         const secretText = this.add.text(x + itemW / 2, y + 92, '???', {
           fontFamily: '"Press Start 2P", monospace', fontSize: '14px', color: '#2a5a8a',
         }).setOrigin(0.5);
@@ -621,9 +655,12 @@ export class AnglerLogScene extends Phaser.Scene {
       }
       entries.sort((a, b) => Number(b.found) - Number(a.found));
     } else {
-      const id = `inv_dish_${r.id}`;
-      const found = DiscoveryStore.isDiscovered('item', id);
-      entries.push({ name: found ? r.nameKo : '???', foot: found ? this.discoveryLine('item', id) : null, found });
+      // 188차 — 조리 완료는 `dish` 발견(`discovery_<레시피>_generic`)으로 기록된다(CookingStore).
+      //   구 코드는 아이템 위키 id(`inv_dish_<레시피>`)를 찾았는데, 완성 요리 아이템 id는 개체형
+      //   (`inv_dish_<레시피>_<순번>`)이라 영영 일치하지 않았다 — 비변형 7종은 만들어도 ??? 였다(AG ⑤b).
+      const id = dishDiscoveryId(r.id, null);
+      const found = DiscoveryStore.isDiscovered('dish', id);
+      entries.push({ name: found ? r.nameKo : '???', foot: found ? this.discoveryLine('dish', id) : null, found });
     }
     const colW = Math.floor((paneW - 32 - 12) / 2), eh = 40;
     const maxRows = Math.max(1, Math.floor((paneY + paneH - 12 - cy) / (eh + 6)));
@@ -668,15 +705,17 @@ export class AnglerLogScene extends Phaser.Scene {
     });
     this.tabContainer?.add(filterLabel);
 
-    // 필터 버튼들 (전체, 거제, 양양, 제주, 여수)
+    // 188차 — 필터는 **실제로 낚은 곳**에서 만든다(AG ⑤c). 구 목록은 옛 FieldScene 시절 낚시터 5곳
+    //   (거제·양양·제주·여수)을 박아 두어 지금 출조 구역(속초·부산 …)으로는 아무것도 걸러지지 않았다.
+    //   많이 낚은 곳부터 최대 5곳 + 전체.
+    const counts = new Map<string, number>();
+    for (const log of GameState.player.caughtFishHistory) counts.set(log.locationId, (counts.get(log.locationId) ?? 0) + 1);
     const filters = [
       { id: 'all', label: '전체' },
-      { id: 'geoje_gujora_breakwater', label: '거제 방파제' },
-      { id: 'geoje_mangchi_rocky', label: '거제 갯바위' },
-      { id: 'yangyang_naksansa_breakwater', label: '양양 낙산' },
-      { id: 'jeju_seongsan_breakwater', label: '제주 성산' },
-      { id: 'yeosu_odongdo_boat', label: '여수 선상' },
+      ...[...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5)
+        .map(([id]) => ({ id, label: this.locationLabel(id) ?? '그 밖의 곳' })),
     ];
+    if (this.filterSpotId !== 'all' && !counts.has(this.filterSpotId)) this.filterSpotId = 'all';
 
     // 라벨 실측 폭 기준으로 첫 버튼을 배치 — 구 고정값(120)은 라벨(우측 끝 ≈112)과 버튼(좌측 85)이 겹쳤다
     let filterBtnX = 40 + filterLabel.width + 12;   // 버튼 좌측 끝 (폭 가변)
@@ -793,7 +832,7 @@ export class AnglerLogScene extends Phaser.Scene {
       pageItems.forEach((log, index) => {
         const itemY = logStartY + index * (logH + 10);
         const fish = FISH_DATABASE.find(f => f.id === log.fishSpeciesId);
-        const spot = getSpotById(log.locationId);
+        const spotName = this.locationLabel(log.locationId);
 
         const rowBg = this.add.rectangle(width / 2, itemY + logH / 2, width - 80, logH, 0x0e1c2d).setStrokeStyle(1.0, 0x1f3d5a);
         this.tabContainer?.add(rowBg);
@@ -821,7 +860,7 @@ export class AnglerLogScene extends Phaser.Scene {
 
         // 장비, 미끼 정보 및 수온/물때 정보
         const dateStr = new Date(log.caughtAt).toLocaleDateString('ko-KR', { hour: '2-digit', minute: '2-digit' });
-        const subTxt = `${spot ? spot.name : '알 수 없는 낚시터'}  ·  ${log.tackleUsed.rigType.replace('_flowing', '').replace('_sinker', '')} (${log.baitUsed})  ·  수온 ${log.waterTempC}°C  ·  ${log.tidePhase}물  ·  ${dateStr}`;
+        const subTxt = `${spotName ?? '알 수 없는 낚시터'}  ·  ${log.tackleUsed.rigType.replace('_flowing', '').replace('_sinker', '')} (${log.baitUsed})  ·  수온 ${log.waterTempC}°C  ·  ${log.tidePhase}물  ·  ${dateStr}`;
         const subTextObj = clampTextWidth(this.add.text(60, itemY + 30, subTxt, {
           fontFamily: '"Noto Sans KR", sans-serif',
           fontSize: '11px',

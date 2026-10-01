@@ -197,7 +197,7 @@ export const QUEST_DATABASE: Quest[] = [
       { type: 'earn_coins', targetAmount: 200000, currentAmount: 0, isCompleted: false },
     ],
     rewards: [
-      { type: 'license', licenseType: 'marine_tourism', descriptionKo: '해양관광사업 등록' },
+      { type: 'license', licenseType: 'marine_tourism_condo', descriptionKo: '해양관광사업 등록' },
     ],
     prerequisiteQuestIds: ['quest_license_food_service', 'quest_license_boat'],
     autoStart: false,

@@ -32,6 +32,7 @@ import { addPixelIcon } from './PixelIcon.js';
 import { GEAR_FAULTS } from '@tra/core';
 import { playEatSfx } from '../audio/Sfx.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
+import { maybeStartTour, type TourOptions } from './GuideTour.js';
 
 const TABS: InvCategory[] = ['gear', 'consumable', 'food', 'tackle', 'quest', 'etc'];
 
@@ -135,10 +136,8 @@ export class InventoryPanel extends DraggablePanel {
     super(scene, { x, y, width: PANEL_W, height: PANEL_H, title: '인벤토리', onClose: cbs.onClose, depth: 800 });
     this.cbs = cbs;
 
-    const hint = scene.add.text(110, 16, '우클릭: 아이템 액션 · 드래그: 위치 이동', {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#607b8e',
-    }).setOrigin(0, 0.5);
-    this.add(hint);
+    // 188차 — 타이틀바의 조작 안내 문구(우클릭 · 드래그)는 지웠다. 조작법은 첫 열기 가이드(GuideTour)가
+    //   직접 해 보게 하며 가르친다(AGENTS §4 「기능을 글로 적지 않는다」).
 
     this.buildTabs();
 
@@ -151,6 +150,7 @@ export class InventoryPanel extends DraggablePanel {
 
     this.buildFooter();
     this.renderGrid();
+    maybeStartTour(scene, () => this.buildTour());
 
     // 퀵슬롯 배정용 숫자 키 리스너
     this.keyHandler = (ev: KeyboardEvent) => {
@@ -960,6 +960,100 @@ export class InventoryPanel extends DraggablePanel {
     this.add(menu);
     this.contextMenu = menu;
     this.applyFix();
+  }
+
+  // ═══════════════════════════════════════════════
+  // 첫 열기 가이드 (188차)
+  // ═══════════════════════════════════════════════
+
+  /** 탭 안 슬롯 번호 → 화면 사각형 (스크롤 밖이면 null) */
+  private slotScreenRect(slot: number): Phaser.Geom.Rectangle | null {
+    const r = this.slotRect(slot);
+    return r ? this.localRect(r.x, r.y, SLOT, SLOT) : null;
+  }
+
+  private tabRect(tab?: InvCategory): Phaser.Geom.Rectangle {
+    const gap = 5, tabH = 30;
+    const tabW = (PANEL_W - 28 - gap * (TABS.length - 1)) / TABS.length;
+    if (!tab) return this.localRect(14, this.contentTop + 8, PANEL_W - 28, tabH);
+    const i = TABS.indexOf(tab);
+    return this.localRect(14 + i * (tabW + gap), this.contentTop + 8, tabW, tabH);
+  }
+
+  private gridRect(): Phaser.Geom.Rectangle {
+    const gridW = GRID_COLS * SLOT + (GRID_COLS - 1) * SLOT_GAP;
+    return this.localRect(this.gridX0, this.gridY0, gridW, GRID_VP_BOTTOM - this.gridY0);
+  }
+
+  /** 가이드 대상 아이템 — 장비 탭에서 손에 드는 도구(낚싯대) 우선 */
+  private tourItem(): InvItem | undefined {
+    const gear = InventoryStore.items.filter((i) => i.category === 'gear' && !i.equipped && i.slot !== undefined);
+    return gear.find((i) => i.tool === 'rod') ?? gear.find((i) => i.equippable) ?? gear[0];
+  }
+
+  private buildTour(): TourOptions {
+    let tourId: string | undefined;
+    let startSlot = -1;
+    const item = (): InvItem | undefined => (tourId ? InventoryStore.find(tourId) : undefined);
+    const itemRect = (): Phaser.Geom.Rectangle | null => {
+      const it = item();
+      return it && !it.equipped && it.slot !== undefined && it.category === this.currentTab ? this.slotScreenRect(it.slot) : null;
+    };
+    const noItem = (): boolean => !item();
+    return {
+      id: 'inventory',
+      anchor: () => this.panelBounds(),
+      alive: () => this.active,
+      steps: [
+        {
+          text: '게임에서 얻는 아이템은 모두 이 가방에 담긴다.',
+          target: () => this.panelBounds(),
+          onEnter: () => { const it = this.tourItem(); tourId = it?.id; },
+        },
+        {
+          text: '아이템은 종류별 칸으로 나뉘어 담긴다. 위쪽의 「낚시용품」을 눌러 칸을 바꿔 보자.',
+          target: () => this.tabRect('tackle'),
+          wait: () => this.currentTab === 'tackle',
+        },
+        {
+          text: '좋다. 이번에는 「장비」를 눌러 다시 돌아오자.',
+          target: () => this.tabRect('gear'),
+          wait: () => this.currentTab === 'gear',
+        },
+        {
+          text: '아이템 하나는 한 칸을 차지한다. 칸을 끌어다 다른 칸에 놓으면 자리를 옮길 수 있다. 이 아이템을 옆 칸으로 옮겨 보자.',
+          target: itemRect,
+          allow: () => [this.gridRect()],
+          skipIf: noItem,
+          onEnter: () => { startSlot = item()?.slot ?? -1; },
+          wait: () => { const it = item(); return !!it && (it.equipped || it.slot !== startSlot); },
+        },
+        {
+          text: '아이템을 우클릭하면 「상세보기」 · 「먹기」 · 「착용하기」처럼 그 아이템으로 할 수 있는 일이 펼쳐진다. 우클릭해 보자.',
+          target: itemRect,
+          skipIf: noItem,
+          wait: () => !!this.contextMenu || !!item()?.equipped,
+        },
+        {
+          text: '손에 드는 도구는 「오른손 착용」 · 「왼손 착용」으로 바로 들 수 있다. 하나를 골라 착용해 보자.',
+          target: () => (this.contextMenu ? this.contextMenuRect() : itemRect()),
+          allow: () => [this.contextMenuRect(), itemRect()],
+          skipIf: () => noItem() || !item()?.equippable,
+          wait: () => !!item()?.equipped,
+        },
+        {
+          text: '맨 아래는 가진 돈이다. 물건을 사고팔 때마다 여기서 늘고 준다.',
+          target: () => this.localRect(14, PANEL_H - 44, PANEL_W - 28, 32),
+        },
+      ],
+    };
+  }
+
+  /** 열린 우클릭 메뉴의 화면 사각형 */
+  private contextMenuRect(): Phaser.Geom.Rectangle | null {
+    if (!this.contextMenu) return null;
+    const b = this.contextMenu.getBounds();
+    return new Phaser.Geom.Rectangle(b.x, b.y, b.width, b.height);
   }
 
   private closeContextMenu(): void {

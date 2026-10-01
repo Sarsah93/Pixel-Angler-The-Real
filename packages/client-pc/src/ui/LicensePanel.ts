@@ -153,7 +153,8 @@ export class LicensePanel extends DraggablePanel {
       bg.setStrokeStyle(1, sel ? 0x5cd0ff : held ? 0x2f8a5a : 0x2a3a4a, 1);
       bg.setInteractive({ useHandCursor: true });
       bg.on('pointerdown', () => { this.selected = row.def.type; this.selectedFee = null; this.renderList(); this.renderDetail(); restoreHandCursor(this.scene); });
-      const name = this.scene.add.text(24, y + 6, `${held ? '✓ ' : ''}${row.def.nameKo}`, { fontFamily: FONT, fontSize: '11px', color: held ? '#aaffcc' : '#e8f4fd' });
+      // 188차 — ✓ 글리프 제거(§8-8). 보유는 초록 글자색·행 배경이 이미 알린다
+      const name = this.scene.add.text(24, y + 6, row.def.nameKo, { fontFamily: FONT, fontSize: '11px', color: held ? '#aaffcc' : '#e8f4fd' });
       clampTextWidth(name, rowW - 90);
       const rowTerms = this.storyTerms(row.def);
       const costLabel = held ? '보유' : rowTerms.done && rowTerms.cost === 0 ? '면제' : `₩${rowTerms.cost.toLocaleString()}`;
@@ -317,7 +318,8 @@ export class LicensePanel extends DraggablePanel {
     const chip = this.scene.add.text(DETAIL_W - 4, y + 2, item.overdue ? '연체' : '정상', { fontFamily: FONT, fontSize: '10px', color: '#0b1620', fontStyle: 'bold', backgroundColor: item.overdue ? '#e08a8a' : '#7fe0b0', padding: { x: 5, y: 1 } }).setOrigin(1, 0);
     y += name.height + 8;
     const NOTE: Record<string, string> = {
-      coop_dues: '어촌계에 내는 몫입니다. 밀리지 않으면 위판 수수료를 조금 깎아 줍니다.',
+      // 188차 — 조합비는 **수협**에 낸다. 어촌계(마을어장 계원)와는 다른 조직이다(STORY_SPEC §6 — 수협 조합원 ≠ 어촌계원)
+      coop_dues: '수협 조합원으로서 내는 몫입니다. 밀리지 않으면 위판 수수료를 조금 깎아 줍니다.',
       vessel_upkeep: '보험과 정기검사, 계류비를 한 번에 치릅니다. 배를 가진 사람의 고정비입니다.',
       hygiene_inspection: '영업장 위생 점검입니다. 그동안 항구에서 쌓은 신뢰가 합격률을 좌우하고, 불합격하면 재검사료를 물고 다시 받아야 합니다.',
     };

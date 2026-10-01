@@ -132,6 +132,9 @@ export const GANGWON_FORAGE_ORDINANCE = {
     'heliocidaris_crassispina',    // 말똥성게
     'mytilus_coruscus',           // 홍합(섭)
     'octopus_vulgaris',           // 문어
+    // 188차 — 오분자기는 DB에 `ordinanceProtected: true`로 적혀 있는데 이 표에서 빠져 단속이 없었다(AG ②f).
+    //   판정(`isOrdinanceViolation`)은 이 표만 본다 — DB 플래그와 이 표를 같이 맞출 것.
+    'haliotis_diversicolor',      // 오분자기 (소형 전복류 — 전복과 같은 정착성 자원)
   ] as readonly string[],
   /** 법정 벌금 상한 (안내문 표기용 — 게임 벌금은 TUNING.forage.fineRatio/fineCapWon) */
   fineMaxWon: 10_000_000,
@@ -142,6 +145,18 @@ export const GANGWON_FORAGE_ORDINANCE = {
   giantOctopusSpawnMonths: [3, 4, 5] as readonly number[],
   giantOctopusProtectKg: 8,
 } as const;
+
+/**
+ * 강원 조례 — 산란기(3~5월) 대문어 8kg 이상 포획 금지 (188차 — AG ②g).
+ * 상수(`giantOctopusSpawnMonths`·`giantOctopusProtectKg`)만 있고 판정이 없어 8kg 넘는 대문어를
+ * 산란기에도 그대로 가져갈 수 있었다. 도내 전 수역(강원 지역 id = `gangwon_` 접두)에 적용한다.
+ */
+export function isGiantOctopusSpawnProtected(speciesId: string, weightG: number, month: number, regionId: string): boolean {
+  if (speciesId !== 'giant_octopus') return false;
+  if (!regionId.startsWith('gangwon')) return false;
+  return GANGWON_FORAGE_ORDINANCE.giantOctopusSpawnMonths.includes(month)
+    && weightG >= GANGWON_FORAGE_ORDINANCE.giantOctopusProtectKg * 1000;
+}
 
 /** 채집물(해루질·통발 포획 생물)은 판매·유통 금지 — 자가 소비·요리 sink 전용 */
 export const FORAGE_CATCH_SELLABLE = false;

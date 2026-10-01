@@ -9,6 +9,7 @@
 import type { AuctionCategory, ConsignInput, LawVerdict } from '@tra/core';
 import { canConsign, provenanceOf } from '@tra/core';
 import { InventoryStore, InvItem } from '../store/InventoryStore.js';
+import { catchMethodOfItem } from '../store/StoryStore.js';
 
 /** 최저 희망가 모드 — 시세 대비 비율. 유찰되면 그대로 돌려받는다 */
 export type ReserveMode = 'none' | 'p70' | 'p90';
@@ -49,7 +50,7 @@ export function consignVerdictOf(item: InvItem, licenses: readonly string[], reg
       alternatives: ['상점에 판매'], alternativesEn: ['Sell at a shop'],
     };
   }
-  const v = canConsign(provenanceOf(item.catchMethod ?? 'rod', regionId, item.lengthCm, day), licenses);
+  const v = canConsign(provenanceOf(catchMethodOfItem(item), regionId, item.lengthCm, day), licenses);
   return v.allowed ? null : v;
 }
 
@@ -81,7 +82,7 @@ export function consignInputOf(item: InvItem, reserve: ReserveMode, origin: stri
     grade: consignGradeOf(item),
     origin,
     basePricePerKg,
-    method: item.catchMethod ?? 'rod',
+    method: catchMethodOfItem(item),
     reservePerKg: Math.round(basePricePerKg * RESERVE_FRAC[reserve]),
     crated,
   };

@@ -29,10 +29,11 @@ import { ExternalDataStore } from './ExternalDataStore.js';
 import { DiscoveryStore } from './DiscoveryStore.js';
 import { isGod } from '../dev/DevMode.js';
 import { resolveFishTexture } from '../data/FishTextures.js';
-import { applyItemVitals } from '../data/ItemVitals.js';
+import { applyItemVitals, refreshNutritionVitals } from '../data/ItemVitals.js';
 import { applyCookItemFields, COOK_CORNER } from '../data/CookItems.js';
 import { StoryStore } from './StoryStore.js';
 import { migrateCatchItemId, migrateSpeciesId } from '../data/SpeciesMigration.js';
+import { SHOP_CATALOG } from '../data/ShopCatalog.js';
 
 /** 인벤토리 카테고리 탭 */
 export type InvCategory = 'gear' | 'consumable' | 'food' | 'tackle' | 'lure' | 'quest' | 'etc';
@@ -1089,7 +1090,7 @@ class InventoryStoreManager {
    * 존재하지 않는 아이템을 가리키는 퀵슬롯/채비 참조는 정리(null)한다.
    */
   deserialize(s: InventorySaveState | undefined | null): void {
-    if (!s || !Array.isArray(s.items)) { this.resetAll(); return; }
+    if (!s || !Array.isArray(s.items)) { this.resetAll(); this.applyStaticBackfill(); return; }
     // 오프라인(게임 종료) 중에는 신선도가 진행하지 않는다 — 저장~로드 실경과만큼
     // 각 아이템의 conditionSinceMs를 앞으로 밀어 "정지"시킨다 (쿨러와 동일 원칙).
     const offlineGap = Math.max(0, Date.now() - (s.savedAtMs ?? Date.now()));
@@ -1128,6 +1129,8 @@ class InventoryStoreManager {
         icon: (!i.iconTexture && sd?.iconTexture) ? '' : i.icon,
         // 121차 채집·통발 정적 필드 — 시드 백필 + id 규칙 폴백(상점 구매분: inv_trap_<specId>)
         lampLumens: i.lampLumens ?? sd?.lampLumens,
+        // 188차 — 상점 집어제는 한동안 `chumKind` 없이 팔렸다(밑밥 배합 칸에 안 뜬다). 시드 백필.
+        chumKind: i.chumKind ?? sd?.chumKind,
         forageTool: i.forageTool ?? sd?.forageTool,
         trapSpecId: i.trapSpecId ?? sd?.trapSpecId ?? (i.id.startsWith('inv_trap_') ? i.id.slice('inv_trap_'.length) : undefined),
         // 129차 P7 — 소모품 효과(음식 회복치·구급품)는 아래 applyItemVitals 가 id로 채운다.
@@ -1137,7 +1140,7 @@ class InventoryStoreManager {
         slot: i.equipped ? SLOT_EQUIPPED : i.slot,
         conditionSinceMs: i.conditionSinceMs !== undefined ? i.conditionSinceMs + offlineGap : undefined,
       };
-    }).map((i) => applyCookItemFields(applyItemVitals(i)));   // 154차 — 조리 필드도 테이블 백필
+    }).map((i) => applyCookItemFields(applyItemVitals(refreshNutritionVitals(i))));   // 154차 — 조리 필드도 테이블 백필 · 188차 영양표 재정합
     this._catchSeq = s.catchSeq ?? 0;
     const valid = new Set(this._items.map((i) => i.id));
     const ref = (id: string | null | undefined): string | null => {
@@ -1176,6 +1179,19 @@ class InventoryStoreManager {
       if (!sd) continue;
       const { qty, slot: _slot, ...tpl } = sd;
       this.addItem(tpl, qty);
+    }
+    // 188차 — 세트 상품(루어 세트 등)을 한 칸짜리 '낚시용품'으로 들고 있는 구세이브는 구성품으로 풀어 준다.
+    //   (그 시절 세트는 루어 탭·루어 채비 어디에도 나타나지 않아 산 값이 사라진 상태였다)
+    for (const def of Object.values(SHOP_CATALOG)) {
+      for (const e of def.sells) {
+        if (!e.bundle) continue;
+        const held = this.find(e.id);
+        if (!held || held.slot < 0) continue;
+        const n = held.qty;
+        const { slot: _s, qty: _q, ...tpl } = held;
+        this.deleteInstance(held.id);
+        if (!this.addBundle(e.bundle, n)) this.addItem(tpl, n, { silent: true });   // 칸이 없으면 그대로 둔다
+      }
     }
     // dev 전용 — 기존 세이브에도 손질 검증용 테스트 어획이 없으면 주입 (2026-07-30)
     if (import.meta.env.DEV) {
@@ -1464,6 +1480,35 @@ class InventoryStoreManager {
     DiscoveryStore.record('item', template.id, 'inventory');
     if (!opts.silent) { this.newIds.add(item.id); this.onGained?.(item, qty); }
     return true;
+  }
+
+  /**
+   * 묶음(세트) 추가 — 구성품을 **전부 넣을 수 있을 때만** 넣는다 (188차 — AG ②b 루어 세트).
+   * 하나씩 addItem하면 가방이 중간에 차서 세트 절반만 들어오고 돈은 다 나가는 경로가 생긴다.
+   * 이미 가진 id는 수량만 늘어 칸이 필요 없고, 새 id만 분류별 빈 칸을 센다.
+   */
+  addBundle(parts: readonly { tpl: InvItemTemplate; qty: number }[], times = 1): boolean {
+    const need: Partial<Record<InvCategory, number>> = {};
+    const seen = new Set<string>();
+    for (const p of parts) {
+      if (this.find(p.tpl.id) || seen.has(p.tpl.id)) continue;
+      seen.add(p.tpl.id);
+      need[p.tpl.category] = (need[p.tpl.category] ?? 0) + 1;
+    }
+    for (const [cat, n] of Object.entries(need) as [InvCategory, number][]) {
+      if (this.freeSlotCount(cat) < n) return false;
+    }
+    for (const p of parts) this.addItem(p.tpl, p.qty * Math.max(1, times));
+    return true;
+  }
+
+  /**
+   * 정적 효과 필드 백필 (188차). 시드(`createSeedItems`)는 효과 테이블(`ITEM_VITALS`·조리 필드)을
+   * 거치지 않아, **새 게임**의 시드 소모품(HP 회복 드링크·통조림 등)은 세이브→로드 전까지 효과가 없었다.
+   * 세이브 로드 경로(deserialize)와 같은 테이블을 새 게임 직후에도 한 번 통과시킨다(빈 필드만 채움).
+   */
+  applyStaticBackfill(): void {
+    this._items = this._items.map((i) => applyCookItemFields(applyItemVitals(i)));
   }
 
   /** 155차 — 새 아이템 표식 해제(칸을 살펴보면 사라진다) */

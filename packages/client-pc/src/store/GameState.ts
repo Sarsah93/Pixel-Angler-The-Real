@@ -49,7 +49,7 @@ import {
   applyIntake as coreApplyIntake, applySleep as coreApplySleep,
   vitalsSpeedMult as coreVitalsSpeed, isVitalsLow as coreVitalsLow,
   aggregateStatus, tickStatuses as coreTickStatuses, addStatus as coreAddStatus,
-  cureStatus as coreCureStatus,
+  cureStatus as coreCureStatus, chillRatePerHour as coreChillRate, spawnedStatusOf,
   BASE_HUNGER_MAX, BASE_HYDRATION_MAX,
   type VitalsState, type VitalsActivity, type VitalsAction, type VitalsEnv,
   getStatusEffect,
@@ -60,13 +60,14 @@ import {
   createEmptyWorldObjectState, TUNING,
 } from '@tra/core';
 import { EnvironmentStore } from './EnvironmentStore.js';
+import { ExternalDataStore } from './ExternalDataStore.js';
 import { CoolerStore, CoolerSaveState } from './CoolerStore.js';
 import { GroundItemStore, type GroundItemSaveState } from './GroundItemStore.js';
 import { InventoryStore, InventorySaveState } from './InventoryStore.js';
 import { FridgeStore, FridgeSaveState } from './FridgeStore.js';
 import { DiscoveryStore, DiscoverySaveState } from './DiscoveryStore.js';
 import {
-  listUpkeep, upkeepAlerts, upkeepPenalty, licenseRenewalFee, fisheryGroundFee,
+  listUpkeep, upkeepAlerts, upkeepPenalty, licenseRenewalFee, fisheryGroundFee, upkeepKeysOfLicense,
   type UpkeepItem, type UpkeepLedger, type UpkeepPenalty,
 } from '@tra/core';
 
@@ -207,6 +208,8 @@ interface SaveData {
   bonusSkillPoints?: number;
   /** 정기 지출 납부 이력 (171차) — key → 마지막 납부한 **게임 일자** */
   upkeepLedger?: UpkeepLedger;
+  /** 마지막으로 머문 항구 지역 (188차) — 없으면 속초 */
+  lastHarborRegionId?: string;
   version: number;
 }
 
@@ -274,7 +277,21 @@ export class GameStateManager {
   /** 자전거 탑승 여부 — 필드 씬(Field/RegionField) 간 유지되는 세션 상태 (저장 비대상) */
   isMounted = false;
   /** 현재 지역 id (WorldMap RegionDef.id) — 필드 씬이 갱신, 퀘스트 어획 이벤트의 regionId (저장 비대상) */
-  currentRegionId = 'gangwon_sokcho';
+  get currentRegionId(): string { return this._currentRegionId; }
+  set currentRegionId(id: string) {
+    this._currentRegionId = id;
+    // 188차 — 항구 평판이 걸리는 지역만 기억한다(홈타운은 항구가 아니다)
+    if (id && id !== 'hometown') this._lastHarborRegionId = id;
+  }
+  private _currentRegionId = 'gangwon_sokcho';
+  /**
+   * 마지막으로 머문 **항구 지역** (188차 — AG ①a).
+   * 정기 지출 연체 감점·위생 점검 합격률은 "지금 서 있는 곳"이 아니라 일하는 항구에 걸린다.
+   * 수면(= 하루 넘김)은 홈타운 집에서 일어나므로 `currentRegionId`를 쓰면 'hometown'이라는
+   * 존재하지 않는 항구의 평판이 깎였다. 구세이브·첫 시작은 이야기의 무대인 속초.
+   */
+  private _lastHarborRegionId = 'gangwon_sokcho';
+  get harborRegionId(): string { return this._lastHarborRegionId; }
   /**
    * 현재 위치 태그 (세션 — 씬 진입 시 설정).
    * 'menu' | 'hometown' | 'hometown_interior' | 'region_field' | 'fishing' …
@@ -335,12 +352,9 @@ export class GameStateManager {
     // 171차 — 정기 지출 이력. 구세이브는 비어 있으므로, 이미 가진 자격의 기산점을
     //   **지금 일자로 백필**한다. 안 하면 납부 예정일이 매번 '오늘 + 한 주기'로 다시 계산돼
     //   영영 도래하지 않는다(= 갱신이 또 사문이 된다).
-    this._upkeepLedger = { ...(saved.upkeepLedger ?? {}) };
-    for (const l of this._licenses) {
-      if (this._upkeepLedger[l.type] !== undefined) continue;
-      const d = getLicenseByType(l.type);
-      if (d?.requiresRenewal && licenseRenewalFee(d) > 0) this._upkeepLedger[l.type] = StoryStore.storyDay;
-    }
+    this._upkeepLedger = { ...(saved.upkeepLedger ?? {}) };   // 기산일 백필은 스토리 일자 복원 뒤(아래)
+    this._lastHarborRegionId = saved.lastHarborRegionId && saved.lastHarborRegionId !== 'hometown'
+      ? saved.lastHarborRegionId : 'gangwon_sokcho';
     this._flags = saved.flags ?? {};
     this._worldObjects = saved.worldObjects ?? {};
     // 쿨러 복원 — 저장~로드 사이 실경과 시간을 sync로 반영 (어획 신선도/매질 만료, 밑밥은 그대로)
@@ -361,6 +375,34 @@ export class GameStateManager {
     this._statuses = saved.vitals?.statuses ?? [];
     // 134차 — 스토리 진행 (구세이브 = M1-01만 활성)
     StoryStore.deserialize(saved.story);
+    // 188차 — 면허 id 분리: 구 'marine_tourism'은 선상콘도용 '해양관광사업 등록'과 Ch5 스토리 자격
+    //   '해양관광업 등록'이 같은 id를 나눠 썼다. 스토리(M5-04)를 마치지 않았는데 들고 있다면
+    //   면허사무소에서 산 선상콘도 쪽이다 → 새 id로 옮긴다(납부 이력 키도 함께).
+    if (!StoryStore.isDone('M5-04')) {
+      for (const l of this._licenses) {
+        if (l.type !== 'marine_tourism') continue;
+        l.type = 'marine_tourism_condo';
+        if (this._upkeepLedger['marine_tourism'] !== undefined && this._upkeepLedger['marine_tourism_condo'] === undefined) {
+          this._upkeepLedger['marine_tourism_condo'] = this._upkeepLedger['marine_tourism'];
+          delete this._upkeepLedger['marine_tourism'];
+        }
+      }
+    }
+    // ⚠ 188차 — 아래 기산일 백필은 **스토리 일자(`StoryStore.storyDay`)가 복원된 뒤**에 해야 한다.
+    //   전에는 복원 전에 돌아 이전 세션(또는 새 게임)의 일자가 찍혔다 — 40일차 세이브에 1일차가
+    //   기산일로 들어가 로드 즉시 연체가 되는 경로.
+    for (const l of this._licenses) {
+      if (this._upkeepLedger[l.type] !== undefined) continue;
+      const d = getLicenseByType(l.type);
+      if (d?.requiresRenewal && licenseRenewalFee(d) > 0) this._upkeepLedger[l.type] = StoryStore.storyDay;
+    }
+    // 188차 — 조합비·선박 유지비·위생 점검도 기산일이 없으면 영영 청구되지 않는다(같은 함정).
+    //   이미 가진 자격이 거는 키 중 이력이 없는 것만 지금 일자로 백필한다(납부 이력은 덮지 않는다).
+    for (const l of this._licenses) {
+      for (const k of upkeepKeysOfLicense(l.type)) {
+        if (this._upkeepLedger[k] === undefined) this._upkeepLedger[k] = StoryStore.storyDay;
+      }
+    }
     // 138차 — 구세이브는 외형 필드가 없다(기본 남성 + 스타터 한 벌로 시작)
     this._character = saved.character ?? GameStateManager.defaultCharacter('m');
     // 130차 (e) — 구세이브가 이미 조합을 갖췄을 수 있다(히든 노드는 세이브에 없던 시절 데이터).
@@ -487,7 +529,9 @@ export class GameStateManager {
   /** 물고기 포획 성공 시 살림망에 추가 및 개인 최고기록 갱신 */
   addCaughtFish(speciesId: string, _nameKo: string, lengthCm: number, weightGram: number, method: CatchMethod = 'rod', spotKind?: StorySpotKind): void {
     if (!this._player) return;
-    const spotId = this._currentSpotId || 'geoje_gujora_breakwater';
+    // 188차 — 조과 기록의 장소. 홈타운은 출조 구역이 없고(전에 고른 구역이 남아 있다), 구역 미지정이면
+    //   구 기본값 '거제 구조라 방파제'가 박혀 엉뚱한 곳으로 기록됐다 → 지금 지역으로 남긴다(AG ⑤c).
+    const spotId = this.currentRegionId === 'hometown' ? 'hometown' : (this._currentSpotId || this.currentRegionId);
     const tide = calculateTideInfo();
     const env = EnvironmentStore.environment;
     const waterTempC = env ? env.weather.seaSurfaceTempC : 20.0;
@@ -681,6 +725,9 @@ export class GameStateManager {
     const mods = this.statusModifiers;
     // 127차 P5 — 상태이상 발생·진행 롤에 면역력(life_immune) 반영
     const st = coreTickStatuses(this._statuses, dtMs, { chanceMult: this.skillMult('immunity') });
+    // 188차 — 보온 남은 시간 차감 · 저온·비 노출로 오한 발생(AG ③b). 오한→감기→독감은 위 진행 체인이 잇는다.
+    if (this._warmMs > 0) this._warmMs = Math.max(0, this._warmMs - dtMs);
+    if (this.rollChill(dtMs, env)) st.added.push('chill');
     // 상태이상 지속 피해 + 설사 등 추가 수분 소모
     if (st.hpLoss > 0) v.hp = Math.max(0, v.hp - st.hpLoss);
     if (mods.hydrationPerHour > 0) {
@@ -815,6 +862,7 @@ export class GameStateManager {
     // 187차 — 치료 수단이 '휴식'인 상태(감기·탈진·기절)는 수면으로 낫는다. 상태 설명과 툴팁이
     //   「휴식 필요 · 쉬면 풀린다」고 약속하는데 수면이 아무것도 풀지 않아 보건소만 답이었다.
     this.applyRemedy('rest');
+    this.warmUp();   // 188차 — 이불 속에서 자고 나면 몸이 녹는다(오한 해제 + 보온)
     StoryStore.advanceDay();   // 134차 — 스토리 하루는 침대 수면으로만 간다 (D-180)
     this.applyUpkeepOverdue();  // 171차 — 연체 중인 정기 지출은 하루마다 평판을 깎는다
     this.markDirty();
@@ -857,7 +905,7 @@ export class GameStateManager {
   ): { cured: StatusEffectId[]; relapsed: StatusEffectId[] } {
     const cured: StatusEffectId[] = [];
     const relapsed: StatusEffectId[] = [];
-    if (kind !== 'hospital' && kind !== 'rest') this.addProficiency('firstaid');   // 140차 — 스스로 처치한 것만 숙련
+    if (kind !== 'hospital' && kind !== 'rest' && kind !== 'warmth') this.addProficiency('firstaid');   // 140차 — 스스로 처치한 것만 숙련
     // 재발 억제 — ⚠ `firstaid`는 **add 모드** 효과다(랭크당 −10%p). skillMult로 읽으면
     // 등록된 mult 항목이 없어 항상 1이 나와 스킬이 조용히 무시된다. 반드시 skillBonus로 뺄 것.
     // 구급품 제작 스킬은 **품질 배율**(mult 모드)로 곱해 들어간다 — 약을 잘 만들면 잘 듣는다.
@@ -891,10 +939,63 @@ export class GameStateManager {
   }
 
   /** 상태이상 부여 — 중복이면 false. 최대치 변화가 있으면 현재값을 즉시 클램프 */
-  addStatus(id: StatusEffectId): boolean {
+  addStatus(id: StatusEffectId, rng: () => number = Math.random): boolean {
     const ok = coreAddStatus(this._statuses, id);
-    if (ok) { this.commitVitals(this.vitals); this.markDirty(); }
+    if (ok) {
+      // 188차 — 정의표 `spawns`(식중독 → 설사)는 진행 체인에서만 지워지고 **붙는 경로가 없었다**(AG ③b).
+      //   걸릴 때 확률로 함께 붙인다. 원 상태가 자연치유되면 core가 파생 상태도 같이 걷는다.
+      const sp = spawnedStatusOf(id);
+      if (sp && rng() < TUNING.status.spawnChance) coreAddStatus(this._statuses, sp);
+      this.commitVitals(this.vitals); this.markDirty();
+    }
     return ok;
+  }
+
+  // ─── 보온 · 오한 (188차 — AG ③b) ───
+
+  /** 보온 남은 활동 시간(ms) — 이 동안 오한이 들지 않는다 (세이브 비대상: 수면·불로 언제든 다시 얻는다) */
+  private _warmMs = 0;
+  get warmLeftMs(): number { return this._warmMs; }
+
+  /**
+   * 몸을 녹인다 — 불을 쬐거나(설치 화구) 자고 나면(침대). 보온을 걸고, 치료 수단이 '보온'인
+   * 상태(오한)를 푼다. 반환 = 이번에 풀린 상태.
+   */
+  warmUp(min: number = TUNING.status.warmBuffMin): StatusEffectId[] {
+    const before = this._warmMs;
+    this._warmMs = Math.max(this._warmMs, min * 60_000);
+    const r = this.applyRemedy('warmth');
+    if (before <= 0 && r.cured.length === 0) this.markDirty();
+    return r.cured;
+  }
+
+  /** 입은 옷 중 추위를 막는 겹 수 (후드·니트 · 재킷 · 비니 · 장갑 · 웨이더) — 최대 3으로 core가 자른다 */
+  private warmLayers(): number {
+    const o = this._character?.outfit;
+    if (!o) return 0;
+    return (o.shirt === 'hoodie' || o.shirt === 'knit' ? 1 : 0)
+      + (o.outer === 'jacket' ? 1 : 0)
+      + (o.hat === 'beanie' ? 1 : 0)
+      + (o.gloves ? 1 : 0)
+      + (o.pants === 'waders' ? 1 : 0);
+  }
+
+  /**
+   * 저온·비 노출 → 오한 (188차). 실외 체감온도(`env.feelsLikeC`)를 아는 틱에서만 굴린다
+   * (실내·1인칭은 env를 넘기지 않는다). 보온 중이거나 이미 오한·감기·독감이면 굴리지 않는다.
+   */
+  private rollChill(dtMs: number, env: VitalsEnv): boolean {
+    if (this._warmMs > 0 || env.feelsLikeC === undefined) return false;
+    if (this.hasStatus('chill') || this.hasStatus('cold') || this.hasStatus('flu')) return false;
+    const kind = ExternalDataStore.getWeatherKind(this.currentRegionId);
+    const raining = kind === 'rain' || kind === 'shower' || kind === 'sleet' || kind === 'snow';
+    const rate = coreChillRate({
+      feelsLikeC: env.feelsLikeC, raining,
+      coldResistRank: env.coldResistRank ?? this.skillRank('life_cold'),
+      warmLayers: this.warmLayers(),
+    });
+    if (rate <= 0) return false;
+    return this.rollStatus('chill', 1 - Math.exp(-rate * (dtMs / 3_600_000)));
   }
 
   /** 상태이상 치료 — 재발 확률이 걸리면 `relapse: true`(호출측이 잠시 뒤 재부여) */
@@ -1220,6 +1321,10 @@ export class GameStateManager {
     if (def.requiresRenewal && licenseRenewalFee(def) > 0) {
       this._upkeepLedger[type] = StoryStore.storyDay;
     }
+    // 188차 — 자격이 거는 정기 지출(조합비·선박 유지비·위생 점검)도 이날부터 주기가 돈다
+    for (const k of upkeepKeysOfLicense(type)) {
+      if (this._upkeepLedger[k] === undefined) this._upkeepLedger[k] = StoryStore.storyDay;
+    }
     // 130차 — 면허는 **스킬 포인트 +1**(등식 우변)이자 (d) 해금 조건이다.
     //   취득 즉시 히든 시너지 조건이 채워질 수 있으므로 함께 갱신한다.
     this.refreshHiddenSkills();
@@ -1278,7 +1383,7 @@ export class GameStateManager {
     //  짧은 기한 안에 다시 받아야 한다 — 식당 운영자에게 붙는 되풀이 압박.
     let note: string | undefined;
     if (item.kind === 'hygiene_inspection') {
-      const rep = StoryStore.harborRep(this.currentRegionId);
+      const rep = StoryStore.harborRep(this.harborRegionId);   // 188차 — 일하는 항구 기준
       const passRate = Math.min(0.95, 0.55 + rep * 0.004);
       if (Math.random() >= passRate) {
         const retest = TUNING.upkeep.hygieneRetestKrw;
@@ -1305,7 +1410,8 @@ export class GameStateManager {
   private applyUpkeepOverdue(): void {
     const pen = this.upkeepPenalty();
     if (pen.repPerDay <= 0) return;
-    StoryStore.addHarborRep(this.currentRegionId, -pen.repPerDay);
+    // 188차 — 수면은 홈타운에서 일어난다. 지금 위치('hometown')가 아니라 일하는 항구에 건다.
+    StoryStore.addHarborRep(this.harborRegionId, -pen.repPerDay);
   }
 
   // ─── 식당/콘도 조작 ─────────────────────────
@@ -1353,6 +1459,7 @@ export class GameStateManager {
       skillProf: this._skillProf,
       bonusSkillPoints: this._bonusSkillPoints,
       upkeepLedger: this._upkeepLedger,
+      lastHarborRegionId: this._lastHarborRegionId,
       coolerBox: CoolerStore.serialize(),
       groundItems: GroundItemStore.serialize(),
       inventoryStore: InventoryStore.serialize(),
@@ -1551,6 +1658,7 @@ export class GameStateManager {
     this._skillProf = {};
     this._bonusSkillPoints = 0;
     this._upkeepLedger = {};
+    this._lastHarborRegionId = 'gangwon_sokcho';
     this._worldObjects = {};
     this._hunger = 100;
     this._hydration = 100;
@@ -1558,6 +1666,7 @@ export class GameStateManager {
     this._dirty = false;
     CoolerStore.resetAll();
     InventoryStore.resetAll();
+    InventoryStore.applyStaticBackfill();   // 188차 — 시드 소모품에도 효과 테이블(HP 회복 드링크 hpRestore 등)
     GroundItemStore.resetAll();
     FridgeStore.resetAll();
     DiscoveryStore.resetAll();

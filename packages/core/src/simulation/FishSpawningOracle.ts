@@ -15,6 +15,7 @@
  */
 
 import { rollTieredLength } from './SizeTierRules.js';
+import { isGiantOctopusSpawnProtected } from '../types/Foraging.js';
 import { TUNING, type BodyFormKey } from '../config/tuning.js';
 
 /**
@@ -772,6 +773,12 @@ export interface SpawnedFish {
   sex: 'M' | 'F';
   isUndersized: boolean;
   isClosedSeason: boolean;
+  /**
+   * 방생 사유가 금어기·금지체장이 아닌 별도 규정일 때의 안내 (188차 — 강원 조례 대문어 8kg).
+   * 있으면 `isClosedSeason`도 true로 세워 기존 방생 경로를 그대로 탄다.
+   */
+  protectReasonKo?: string;
+  protectReasonEn?: string;
   /** 파이팅 힘 계수 (크기 × 어종 기본 힘) */
   powerFactor: number;
   /** 어종 파이팅 프로필 */
@@ -952,7 +959,9 @@ export function spawnFish(ctx: SpawnContext): SpawnedFish {
   const sex: 'M' | 'F' = Math.random() < maleRatio ? 'M' : 'F';
 
   const isUndersized = picked.legalMinCm !== undefined && lengthCm < picked.legalMinCm;
-  const isClosedSeason = picked.closedMonths?.includes(ctx.month) ?? false;
+  // 188차 — 강원 조례: 산란기 8kg 이상 대문어는 방생 대상(금어기와 같은 경로로 처리)
+  const octoProtected = isGiantOctopusSpawnProtected(picked.speciesId, weightG, ctx.month, ctx.region);
+  const isClosedSeason = (picked.closedMonths?.includes(ctx.month) ?? false) || octoProtected;
   // 힘 계수: 어종 기본 힘 × 크기 비율 보정
   const powerFactor = Math.min(1.15, Math.max(0.12,
     picked.fight.basePower * (0.55 + 0.65 * (lengthCm / picked.maxCm)),
@@ -966,6 +975,7 @@ export function spawnFish(ctx: SpawnContext): SpawnedFish {
     sex,
     isUndersized,
     isClosedSeason,
+    ...(octoProtected ? { protectReasonKo: '산란기 8kg 이상 대문어', protectReasonEn: 'Spawning-season giant octopus of 8 kg or more' } : {}),
     powerFactor,
     fight: picked.fight,
     lineCutter: picked.fight.lineCutter ?? false,

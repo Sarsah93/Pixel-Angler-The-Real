@@ -974,6 +974,12 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.f2dPrevPattern = 'none';
 
     // ── 132차 거리 물리 초기화 — 챔질 거리가 랜딩 진행도의 분모(= 파이트 길이) ──
+    // ⚠ 188차 — 구멍치기는 수면 거리가 발밑(1.2±0.8m)이라 **랜딩 판정 거리(2.5m) 안에서** 챔질된다.
+    //   그대로 두면 진행도가 첫 프레임에 100%가 되어 걸자마자 랜딩됐다(AG ②c 실측).
+    //   구멍 속 고기와의 거리는 수평이 아니라 **블록 사이로 내려간 줄 길이**다 — 구멍 깊이만큼을
+    //   파이트 길이로 잡는다(얕은 구멍도 최소 2m는 겨룬다).
+    const hole = this.cfg.hole;
+    if (hole) this.distM = TUNING.fightDist.landRangeM + Math.max(2, hole.depthM);
     this.hookDistM = Math.max(TUNING.fightDist.landRangeM + 0.5, this.distM);
     this.fleeLatM = this.rig.baitX;
     this.fleePlanAng = (Math.random() - 0.5) * Phaser.Math.DegToRad(TUNING.fightDist.runSpreadDeg * 2);
@@ -1024,9 +1030,24 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   }
 
   // ── 루어 액션 (호핑 / 트위칭·저킹) ──────────────────
+  /**
+   * 루어 조작 숙련 (188차 — AG ③c). 루어 모드에서 채비를 움직이면 루어 액션 숙련이 오르고,
+   * 메탈지그·타이라바는 지깅, 에기는 에깅 숙련이 함께 오른다. 연타로 쌓지 못하게 1.5초에 1회.
+   */
+  private lureProfAt = 0;
+  private noteLureActionProf(): void {
+    if (!this.lureMode || this.time.now - this.lureProfAt < 1500) return;
+    this.lureProfAt = this.time.now;
+    GameState.addProficiency('lureAction');
+    const kind = InventoryStore.getEquippedLureSpec()?.kind;
+    if (kind === 'metal_jig' || kind === 'tairaba') GameState.addProficiency('jig');
+    else if (kind === 'egi') GameState.addProficiency('egi');
+  }
+
   /** 호핑 — 좌클릭 싱글 탭: 머리만 살짝 위로 들었다 복귀 */
   private doHop(): void {
     if (this.rigPose === 'twitch') return;
+    this.noteLureActionProf();
     this.rigPose = 'hop';
     this.poseTimer = 0.4;
     this.rig.baitZ = Math.max(0.3, this.rig.baitZ - 0.15);
@@ -1039,6 +1060,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   private doTwitch(_side: -1 | 1): void {
     if (this.twitchCooldown > 0) return;
     this.twitchCooldown = 0.8;
+    this.noteLureActionProf();
     this.rigPose = 'twitch';
     this.poseTimer = 0.7;
     const z0 = this.rig.baitZ;
@@ -2878,7 +2900,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
 
     if (protectedFish) {
       GameState.addLawfulReleaseXp(f.speciesId, f.lengthCm);   // 준법 방생 XP (124차 — 어획 XP × 0.5)
-      const reason = f.isClosedSeason ? '금어기' : `금지체장 미만`;
+      const reason = f.protectReasonKo ?? (f.isClosedSeason ? '금어기' : `금지체장 미만`);   // 188차 — 대문어 8kg 조례
       this.finishFight(`${f.nameKo} ${f.lengthCm}cm — 방생`,
         `${f.nameKo} ${f.lengthCm}cm / ${(f.weightG / 1000).toFixed(2)}kg / ${sexLabel}\n\n${reason} 개체입니다. 규정에 따라 방생합니다.`, '#9fd0e4', fishTexture, imgScale);
     } else {
@@ -4382,6 +4404,10 @@ export class FirstPersonFishingScene extends Phaser.Scene {
    * 쿨러의 매질(해수/얼음) 규칙에 따라 신선도가 진행된다.
    */
   private exitToField(): void {
+    // 188차 — 밑걸림 대처를 고르는 중에 나가면(ESC·그만하기) 채비가 바위에 박힌 채 손실 없이
+    //   빠져나갔다(AG ②d). 박힌 줄을 두고 떠나는 것은 끊는 것과 같다 — [끊기]로 처리하고,
+    //   결과 화면이 뜬 뒤 평소처럼 복귀한다(failAndExit가 다시 이 함수를 부른다).
+    if (this.snagChoice) { this.resolveSnag('break'); return; }
     fadeOutThen(this, () => {
       this.scene.stop();
       this.scene.resume('RegionFieldScene');

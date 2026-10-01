@@ -36,7 +36,9 @@ export type LicenseType =
   | 'port_restricted_access'// 항만 제한구역 낚시 허가
   // 사업 운영
   | 'food_service'          // 식품위생법 영업허가 (식당 경영)
-  | 'marine_tourism'        // 해양관광사업 등록 (선상콘도)
+  // 188차 — 구 id 'marine_tourism'이 134차 스토리 자격(해양관광업 등록, 위)과 겹쳤다. 같은 id 두 줄은
+  //   `getLicenseByType`이 앞의 것만 돌려주고, 보너스 제외 목록이 둘 다 지워 면허 가산이 14가 됐다(Σ 215 → 214).
+  | 'marine_tourism_condo'  // 해양관광사업 등록 (선상콘도)
   | 'tournament_host';      // 토너먼트 주최권
 
 // ─────────────────────────────────────────────
@@ -248,7 +250,7 @@ export const LICENSE_DATABASE: LicenseDef[] = [
     unlocksFeatures: ['restaurant_open', 'catch_and_cook_advanced'],
   },
   {
-    type: 'marine_tourism',
+    type: 'marine_tourism_condo',
     category: 'business',
     nameKo: '해양관광사업 등록',
     nameEn: 'Marine Tourism Registration',

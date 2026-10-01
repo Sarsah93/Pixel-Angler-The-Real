@@ -205,7 +205,9 @@ export function getButcheryFamily(speciesId: string): ButcheryFamily {
 
 /** 손질 형태별 안내 문구 (finfish는 정상 진행이라 문구 없음) */
 export const BUTCHERY_FAMILY_NOTICE: Record<Exclude<ButcheryFamily, 'finfish'>, string> = {
-  cephalopod: '이 두족류의 손질은 준비 중입니다 (현재 무늬오징어만 지원)',
+  // 188차 — 097차에 한치·참문어·대문어 트리가 열렸는데 문구가 87차(무늬오징어만)에 멈춰 있었다.
+  //   지금 이 안내가 뜨는 두족류는 갑오징어뿐이다(AG ⑤f).
+  cephalopod: '갑오징어 손질은 준비 중입니다 (무늬오징어·한치·문어·대문어는 손질할 수 있습니다)',
   pufferfish: '복어는 자격증(독 제거)이 필요합니다 — 준비 중입니다',
   unsupported: '아직 손질할 수 없는 어종입니다 (현재 돔류·방어류·넙치류 지원 — 그 외는 추후 구현)',
 };

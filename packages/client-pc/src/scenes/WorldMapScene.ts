@@ -128,6 +128,7 @@ export class WorldMapScene extends Phaser.Scene {
     //   다시 적용되지 않는다. 리셋이 없으면 첫 출조/귀가 후 월드맵 재진입 시 플래그가
     //   true로 남아 '집으로 돌아가기'·출조 클릭이 전부 무시되는 실버그 (QA 2026-08-05 재현 확정).
     this.isTransitioning = false;
+    this.titleEscArmedUntil = 0;
 
     // 배경 (어두운 해양 색조)
     this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x050b14).setOrigin(0, 0);
@@ -510,10 +511,19 @@ export class WorldMapScene extends Phaser.Scene {
         break;
       case 'region':
       default:
+        // 188차 — 미저장 진행 경고(AG ⑤e). 저장은 집 침대에서만이라 여기서 타이틀로 나가면 그날 진행이
+        //   사라진다. 필드 일시정지 메뉴의 [타이틀 화면]과 같은 '한 번 더' 규칙 — 3초 안에 다시 ESC.
+        if (GameState.isDirty && this.time.now > this.titleEscArmedUntil) {
+          this.titleEscArmedUntil = this.time.now + 3000;
+          this.showFareAlert('저장되지 않은 진행이 있습니다 — ESC를 한 번 더 누르면 타이틀로 나갑니다');
+          return;
+        }
         this.fadeOutThen(() => this.scene.start('MainMenuScene'));
         break;
     }
   }
+  /** 미저장 경고 후 '한 번 더 ESC' 유효 시각 (씬 시계 ms) — 재진입 시 0으로 시작 */
+  private titleEscArmedUntil = 0;
 
   // ═══════════════════════════════════════════════════════
   // 지역 뷰 (REGION_SELECT)

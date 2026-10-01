@@ -326,3 +326,104 @@ export function paintStone(ctx: CanvasRenderingContext2D, ox: number, oy: number
     }
   }
 }
+
+// ─────────────────────────────────────────────
+// 4. 반점 아틀라스 — Kenney 16px 지면 셀의 **무이음 재합성**(188차)
+// ─────────────────────────────────────────────
+
+/**
+ * Kenney 지면 셀(잔디·모래·흙)은 16px 한 장을 ×2로 키워 **타일마다 같은 자리에 같은 반점**을 찍는다
+ * (변형 2장도 반점 배치가 같다 — 실측). 넓은 잔디밭에 흙 점이 32px 간격 격자로 늘어서는 것이
+ * 「지저분한 격자무늬」의 정체였다. 여기서는 **같은 팔레트·같은 밀도·같은 반점 모양**을
+ * 아틀라스 전체에 무작위로 흩어 다시 그린다(주기 = 아틀라스 크기 → 칸 경계와 무관).
+ */
+export interface SpeckSpec {
+  seed: number;
+  base: RGB;
+  /** 반점 — 색 · 2px 칸당 시작 확률 · 모양(2px 칸 단위 [가로, 세로]) 후보 */
+  marks: readonly { rgb: RGB; rate: number; shapes: readonly (readonly [number, number])[] }[];
+  /** 저주파 얼룩 진폭(명도 ±) — 0이면 원본처럼 평평 */
+  mottle: number;
+}
+
+/** Kenney 셀 실측 팔레트(16px 원본) — 잔디 · 모래 · 흙. 반점 비율 ≈ 원본 반점 수 / 256 */
+export const SPECKS = {
+  grass: {
+    seed: 0x6a01, base: [64, 156, 98], mottle: 3,
+    marks: [
+      { rgb: [61, 144, 91], rate: 0.034, shapes: [[1, 2], [1, 1], [1, 2]] },
+      { rgb: [75, 168, 109], rate: 0.02, shapes: [[1, 2], [1, 1]] },
+      { rgb: [180, 131, 85], rate: 0.0012, shapes: [[1, 1]] },
+    ],
+  },
+  sand: {
+    seed: 0x6a02, base: [217, 202, 169], mottle: 3,
+    marks: [
+      { rgb: [205, 190, 158], rate: 0.03, shapes: [[1, 1], [2, 2], [1, 1]] },
+      { rgb: [231, 218, 186], rate: 0.022, shapes: [[2, 1], [2, 2], [1, 1]] },
+    ],
+  },
+  dirt: {
+    seed: 0x6a03, base: [180, 131, 85], mottle: 3,
+    marks: [
+      { rgb: [168, 123, 80], rate: 0.03, shapes: [[1, 1], [2, 2], [1, 1]] },
+      { rgb: [192, 140, 91], rate: 0.022, shapes: [[2, 1], [2, 2], [1, 1]] },
+    ],
+  },
+} as const satisfies Record<string, SpeckSpec>;
+
+export type SpeckName = keyof typeof SPECKS;
+
+/**
+ * `size`×`size` 주기 반점 아틀라스. 반점은 2px 격자(Kenney ×2 입자)에 맞춰 찍고,
+ * 아틀라스 가장자리를 넘는 반점은 반대편으로 감아 이어 붙여도 이음이 없다.
+ * `tint`가 있으면 Kenney 재베이크와 같은 multiply 틴트를 마지막에 얹는다.
+ */
+export function paintSpeckAtlas(ctx: CanvasRenderingContext2D, size: number, spec: SpeckSpec, tint?: string): void {
+  const [br, bg, bb] = spec.base;
+  const n = size >> 1;
+  for (let y = 0; y < size; y += 2) {
+    for (let x = 0; x < size; x += 2) {
+      const v = spec.mottle > 0
+        ? (pNoise(spec.seed, x, y, size / 6, size) - 0.5) * 2 * spec.mottle + (pNoise(spec.seed ^ 0x2d, x, y, size / 16, size) - 0.5) * spec.mottle
+        : 0;
+      ctx.fillStyle = hex(br + v, bg + v, bb + v);
+      ctx.fillRect(x, y, 2, 2);
+    }
+  }
+  spec.marks.forEach((m, mi) => {
+    ctx.fillStyle = hex(m.rgb[0], m.rgb[1], m.rgb[2]);
+    for (let j = 0; j < n; j++) {
+      for (let i = 0; i < n; i++) {
+        if (sHash(spec.seed ^ (0x401 + mi * 97), i, j) >= m.rate) continue;
+        const sh = m.shapes[Math.floor(sHash(spec.seed ^ (0x503 + mi * 89), i, j) * m.shapes.length) % m.shapes.length]!;
+        for (let dy = 0; dy < sh[1]; dy++) for (let dx = 0; dx < sh[0]; dx++) {
+          ctx.fillRect(((i + dx) % n) * 2, ((j + dy) % n) * 2, 2, 2);
+        }
+      }
+    }
+  });
+  if (tint) {
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.fillStyle = tint;
+    ctx.fillRect(0, 0, size, size);
+    ctx.globalCompositeOperation = 'source-over';
+  }
+}
+
+/**
+ * 물 수심 버킷 하나의 주기 아틀라스(188차). 구 물 셀은 32px 한 장에 해시 그레인을 찍어
+ * **변형 2장을 반복**했으므로 글린트·어두운 알갱이가 타일마다 같은 자리에 돌아와 점 격자가 됐다.
+ * 같은 확률 규칙(기본·보조 반반 · 밝은 글린트 3.2% · 어두운 알갱이 2.8%)을 아틀라스 좌표 전체에 적용한다.
+ */
+export function paintWaterAtlas(ctx: CanvasRenderingContext2D, size: number, seed: number, t0: number, t1: number, lite: number, deep: number): void {
+  const css = (c: number): string => `#${c.toString(16).padStart(6, '0')}`;
+  const c0 = css(t0), c1 = css(t1), cl = css(lite), cd = css(deep);
+  for (let y = 0; y < size; y += 2) {
+    for (let x = 0; x < size; x += 2) {
+      const h = sHash(seed, x >> 1, y >> 1);
+      ctx.fillStyle = h > 0.968 ? cl : h < 0.028 ? cd : h > 0.5 ? c0 : c1;
+      ctx.fillRect(x, y, 2, 2);
+    }
+  }
+}

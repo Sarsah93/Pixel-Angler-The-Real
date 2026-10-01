@@ -22,6 +22,7 @@ import Phaser from 'phaser';
 import {
   STORY_CHAPTERS, STORY_QUESTS, getStoryNpc, getLicenseByType, narrativeOf, getSkillById,
   characterOf, questDifficulty, objectiveHowToKo, type StoryQuestDef, type QuestDifficultyTier,
+  JOURNAL_PAGES, ORACLE_FISH_DB, FISH_DATABASE,
 } from '@tra/core';
 import { GUIDE_NAMES as JOURNAL_GUIDE_NAMES } from '../data/QuestGuideNames.js';
 import { DraggablePanel, applyScreenFixed, restoreHandCursor } from './DraggablePanel.js';
@@ -33,6 +34,7 @@ import { characterLook } from '../data/EquipOutfit.js';
 import { GameState } from '../store/GameState.js';
 import { addPixelIcon } from './PixelIcon.js';
 import { questRewardItemName } from '../data/QuestRewardItems.js';
+import { getLocale } from '../i18n/I18n.js';
 
 const PANEL_W = 1080;
 const PANEL_H = 656;
@@ -88,6 +90,8 @@ export class JournalPanel extends DraggablePanel {
 
   /** 임무 목록 / 이야기(챕터 체인) */
   private tab: 'tasks' | 'chain' = 'tasks';
+  /** 188차 — 이야기 탭 안의 보기: 이번 장(체인) / 조행록(지나온 장 + 채워 가는 장) */
+  private storyView: 'chapter' | 'log' = 'chapter';
   private selId: string | null = null;
   private scroll = 0;
   private rows: Row[] = [];
@@ -206,7 +210,7 @@ export class JournalPanel extends DraggablePanel {
       this.listC?.destroy(); this.listC = undefined;
       this.detC?.destroy(); this.detC = undefined;
       this.narrMask?.destroy(); this.narrMask = undefined; this.narrRect = null;
-      this.renderChain();
+      if (this.storyView === 'log') this.renderLog(); else this.renderChain();
     } else {
       this.chainC?.destroy(); this.chainC = undefined;
       this.renderList(); this.renderDetail();
@@ -276,6 +280,23 @@ export class JournalPanel extends DraggablePanel {
     if (this.tab === 'tasks') {
       x = toggle(x, this.showDone, '완료한 할 일 표시', () => { this.showDone = !this.showDone; this.scroll = 0; this.rebuild(); });
       toggle(x + 6, this.showLocked, '잠긴 할 일 표시', () => { this.showLocked = !this.showLocked; this.scroll = 0; this.rebuild(); });
+    } else {
+      // 188차 — 이야기 탭 보기 전환: 이번 장 / 조행록 (AG ④e)
+      for (const [key, label] of [['chapter', '이번 장'], ['log', '조행록']] as const) {
+        const on = this.storyView === key;
+        const t = this.scene.add.text(0, y, label, {
+          fontFamily: FONT, fontSize: '11px', color: on ? C_TEXT : C_DIM, fontStyle: on ? 'bold' : 'normal',
+        }).setOrigin(0.5, 0.5);
+        const w = Math.max(58, t.width + 20);
+        t.setX(x + w / 2);
+        const g = this.scene.add.graphics();
+        g.fillStyle(on ? 0x1f5a3a : 0x14243a, 1); g.fillRoundedRect(x, y - 10, w, 20, 4);
+        g.lineStyle(1, on ? 0x4af2a1 : 0x2c5878, 1); g.strokeRoundedRect(x, y - 10, w, 20, 4);
+        const h = this.scene.add.rectangle(x + w / 2, y, w, 20, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
+        h.on('pointerdown', () => { this.storyView = key; this.rebuild(); restoreHandCursor(this.scene); });
+        c.add([g, t, h]);
+        x += w + 6;
+      }
     }
 
     const ch = StoryStore.currentChapter();
@@ -574,6 +595,112 @@ export class JournalPanel extends DraggablePanel {
     c.add(tail);
 
     enforceTextBounds(c, PANEL_W - 10, 'JournalPanel/chain');
+    applyScreenFixed(this);
+  }
+
+  /**
+   * 조행록 보기 (188차 — AG ④e). 「동명 조행록」 17장 중 **손이 닿은 장만** 펼친다(R2).
+   *  - 지나온 장(챕터): 지금 장까지의 제목만. 다음 장 제목은 쓰지 않는다.
+   *  - 조행록 장: 지표 어종을 잡았거나 그 지역 사람들의 이야기를 마친 장만 카드로 — 두 조건 중
+   *    어느 쪽이 채워졌는지 체크 칸으로 보인다. 아무것도 시작하지 않은 장은 목록에 없다(제목도 숨김).
+   */
+  private renderLog(): void {
+    this.chainC?.destroy();
+    const c = this.scene.add.container(0, 0);
+    this.chainC = c; this.add(c);
+    const top = this.contentTop + 26;
+    const bx = LIST_X + 8;
+    const bw = PANEL_W - bx - 20;
+    const states = StoryStore.journalPageStates();
+    const filled = states.filter((st) => st.caught && st.arcDone).length;
+
+    // 배너
+    const g = this.scene.add.graphics();
+    g.fillStyle(0x12263a, 0.95); g.fillRect(bx, top + 8, bw, 44);
+    g.lineStyle(1, 0x3c6f95, 1); g.strokeRect(bx, top + 8, bw, 44);
+    g.fillStyle(0xd8b25f, 1); g.fillRect(bx, top + 8, 4, 44);
+    const title = this.scene.add.text(bx + 16, top + 30, '동명 조행록', {
+      fontFamily: FONT, fontSize: '17px', color: C_TEXT, fontStyle: 'bold',
+    }).setOrigin(0, 0.5);
+    const cnt = this.scene.add.text(bx + bw - 16, top + 30, getLocale() === 'en'
+      ? `${filled} / ${JOURNAL_PAGES.length} pages filled` : `${filled} / ${JOURNAL_PAGES.length} 장 채움`, {
+      fontFamily: FONT, fontSize: '12px', color: C_GOLD,
+    }).setOrigin(1, 0.5);
+    c.add([g, title, cnt]);
+
+    // 지나온 장 — 지금 장까지만
+    let y = top + 64;
+    const cur = StoryStore.currentChapter();
+    const hd = this.scene.add.text(bx + 4, y, '지나온 장', { fontFamily: FONT, fontSize: '12px', color: '#6f8ba1' });
+    c.add(hd); y += hd.height + 6;
+    const chs = STORY_CHAPTERS.filter((d) => d.chapter <= cur);
+    // 데이터에 영문이 있으므로 조립 문장은 로케일별로 만든다(합성 문자열은 사전을 비껴간다 — 131차)
+    const en = getLocale() === 'en';
+    const chLine = chs.map((d) => (en
+      ? `Ch.${d.chapter} ${d.titleEn}${d.chapter === cur ? ' (now)' : ''}`
+      : `제${d.chapter}장 ${d.titleKo}${d.chapter === cur ? ' (지금)' : ''}`)).join('   ·   ');
+    const chT = this.scene.add.text(bx + 4, y, chLine, {
+      fontFamily: FONT, fontSize: '12px', color: C_TEXT, lineSpacing: 4, wordWrap: { width: bw - 8, useAdvancedWrap: true },
+    });
+    c.add(chT); y += chT.height + 14;
+
+    // 조행록 장 — 손이 닿은 것만 (2열 카드)
+    const hd2 = this.scene.add.text(bx + 4, y, '채워 가는 장', { fontFamily: FONT, fontSize: '12px', color: '#6f8ba1' });
+    c.add(hd2); y += hd2.height + 8;
+    const open = states.filter((st) => st.caught || st.arcDone);
+    if (open.length === 0) {
+      const none = this.scene.add.text(bx + 4, y, '아직 한 장도 쓰지 못했다. 제철 고기를 잡고, 그 바다 사람들과 이야기를 끝내면 한 장이 채워진다.', {
+        fontFamily: FONT, fontSize: '12px', color: '#d6c9a8', fontStyle: 'italic', wordWrap: { width: bw - 8, useAdvancedWrap: true },
+      });
+      c.add(none);
+    }
+    const colW = Math.floor((bw - 12) / 2);
+    const cardH = 58;
+    const bottom = PANEL_H - 16;
+    const speciesName = (id: string): string => {
+      const o = ORACLE_FISH_DB.find((f) => f.speciesId === id);
+      const f = FISH_DATABASE.find((x) => x.id === id);
+      return en ? (o?.nameEn ?? f?.nameEn ?? '') : (o?.nameKo ?? f?.nameKo ?? '');
+    };
+    open.forEach((st, i) => {
+      const def = JOURNAL_PAGES.find((pg) => pg.page === st.page);
+      if (!def) return;
+      const cx = bx + (i % 2) * (colW + 12);
+      const cy = y + Math.floor(i / 2) * (cardH + 8);
+      if (cy + cardH > bottom) return;   // 넘치는 카드는 그리지 않는다(17장 · 2열이면 들어간다)
+      const full = st.caught && st.arcDone;
+      const cg = this.scene.add.graphics();
+      cg.fillStyle(full ? 0x14352c : 0x0e1c2a, 0.95); cg.fillRoundedRect(cx, cy, colW, cardH, 5);
+      cg.lineStyle(1, full ? 0x4af2a1 : 0x2c5878, 1); cg.strokeRoundedRect(cx, cy, colW, cardH, 5);
+      c.add(cg);
+      const head = this.scene.add.text(cx + 10, cy + 8, en ? `Page ${def.page} · ${def.labelEn}` : `${def.page}장 · ${def.labelKo}`, {
+        fontFamily: FONT, fontSize: '13px', color: full ? C_OK : C_TEXT, fontStyle: 'bold',
+      });
+      clampTextWidth(head, colW - 20);
+      const cond = (en
+        ? [def.minCm ? `${def.minCm}cm+` : '', def.count && def.count > 1 ? `×${def.count}` : '']
+        : [def.minCm ? `${def.minCm}cm 이상` : '', def.count && def.count > 1 ? `${def.count}마리` : '']).filter(Boolean).join(' · ');
+      const sub = this.scene.add.text(cx + 10, cy + 27, `${speciesName(def.speciesId)}${cond ? ` (${cond})` : ''} — ${en ? def.howEn : def.howKo}`, {
+        fontFamily: FONT, fontSize: '10px', color: C_DIM,
+      });
+      clampTextWidth(sub, colW - 20);
+      c.add([head, sub]);
+      // 두 조건 체크 칸 — 어획 / 인연(이야기 완주)
+      let kx = cx + 10;
+      for (const [ok, label] of [[st.caught, '잡았다'], [st.arcDone, '이야기를 마쳤다']] as const) {
+        const box = this.scene.add.graphics();
+        box.fillStyle(ok ? 0x1f5a3a : 0x14243a, 1); box.fillRect(kx, cy + 42, 10, 10);
+        box.lineStyle(1, ok ? 0x4af2a1 : 0x2c5878, 1); box.strokeRect(kx, cy + 42, 10, 10);
+        if (ok) { box.lineStyle(2, 0xd8ffe8, 1); box.lineBetween(kx + 2, cy + 47, kx + 4, cy + 50); box.lineBetween(kx + 4, cy + 50, kx + 8, cy + 44); }
+        const lt = this.scene.add.text(kx + 14, cy + 47, label, {
+          fontFamily: FONT, fontSize: '10px', color: ok ? C_TEXT : C_DIM,
+        }).setOrigin(0, 0.5);
+        c.add([box, lt]);
+        kx += 14 + lt.width + 16;
+      }
+    });
+
+    enforceTextBounds(c, PANEL_W - 10, 'JournalPanel/log');
     applyScreenFixed(this);
   }
 

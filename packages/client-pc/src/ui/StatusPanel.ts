@@ -26,7 +26,11 @@ export class StatusPanel extends DraggablePanel {
     const nick = scene.add.text(20, cy, p.nickname, {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '16px', color: '#e8f4fd', fontStyle: 'bold',
     });
-    const lvl = scene.add.text(PANEL_W - 20, cy + 2, `Lv.${p.level}  ·  EXP ${p.experience}/${p.level * 100}`, {
+    // 188차 — 임계는 실제 성장 곡선(`xpToNext`)으로. 구 `level × 100`은 124차에 폐기된 공식이라
+    //   바(RegionHud)와 이 창의 분모가 서로 달랐다. 만렙은 분모 없이 누적치만.
+    const xd = GameState.xpDisplay();
+    const expLabel = xd.maxed ? `EXP ${Math.round(xd.cur).toLocaleString()} (MAX)` : `EXP ${Math.round(xd.cur).toLocaleString()}/${(xd.max ?? 0).toLocaleString()}`;
+    const lvl = scene.add.text(PANEL_W - 20, cy + 2, `Lv.${p.level}  ·  ${expLabel}`, {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#8faabf',
     }).setOrigin(1, 0);
     this.add([nick, lvl]);

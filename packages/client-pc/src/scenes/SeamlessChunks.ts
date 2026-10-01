@@ -25,7 +25,7 @@ import {
 } from '@tra/core';
 import { GRASS_EDGE_SUFFIXES, PAVED_EDGE_SUFFIXES, KENNEY_ROOF_COLORS, KENNEY_ROOF_PARTS, TTP_EDGE_TILES, TTP_UNITS, COAST_DECKS, COAST_RUBBLE, COAST_EDGE_SRC, COAST_ROCK_COUNT } from '../data/TilesetManifest.js';
 import { hasUsableTexture } from '../ui/CanvasTextureGuard.js';
-import { SURFACES, paintSurfaceAtlas, paintRockAtlas, paintTetrapod, paintStone, stoneCanvasSize, TETRA_ART, type SurfaceName, type TetraTone, type StoneTone } from './SurfaceArt.js';
+import { SURFACES, SPECKS, paintSurfaceAtlas, paintSpeckAtlas, paintWaterAtlas, paintRockAtlas, paintTetrapod, paintStone, stoneCanvasSize, TETRA_ART, type SurfaceName, type SpeckName, type TetraTone, type StoneTone } from './SurfaceArt.js';
 
 let seamlessTextureSerial = 0;
 
@@ -481,6 +481,10 @@ export class SeamlessChunks {
   private edgeTex = new Map<string, Map<string, string>>();
   /** 물 타일 — [수심 버킷][변형] 텍스처 키 (절차 베이크) */
   private waterTex: string[][] = [];
+  /** 188차 — 수심 버킷별 물 주기 아틀라스(있으면 `waterTex` 대신 월드 위상 프레임을 깐다) */
+  private waterAtlas: string[] = [];
+  /** 188차 — 잔디 접경 흙 림만 남긴 오버레이(Kenney 엣지 셀에서 잔디 픽셀을 투명으로) — 접미 → 키 */
+  private grassRim = new Map<string, string>();
 
   constructor(scene: Phaser.Scene, cfg: SeamlessChunksConfig) {
     this.scene = scene;
@@ -1473,6 +1477,49 @@ export class SeamlessChunks {
     }
     if (tm.exists(rockKey)) this.surfAtlas.set('islet', rockKey);
 
+    // 188차 — 유기 지형·모래·흙도 반점 아틀라스로(구 Kenney 16px 셀 = 타일마다 같은 자리 반점 → 점 격자).
+    //  틴트는 ensureGroundTextures의 Kenney 재베이크 틴트와 같다(색 톤 불변 — 반점 배치만 바뀐다).
+    const speck = (ch: string, name: SpeckName, tint?: string): void => {
+      const key = `srf_spk_${name}_${tint ? tint.slice(1) : 'n'}_v1`;
+      if (!tm.exists(key)) {
+        const cv = tm.createCanvas(key, size, size);
+        const ctx = cv ? this.canvasContext(cv) : null;
+        if (!cv || !ctx) { cv?.destroy(); return; }
+        paintSpeckAtlas(ctx, size, SPECKS[name], tint);
+        for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) cv.add(`${i}_${j}`, 0, i * tr, j * tr, tr, tr);
+        if (!this.safeRefresh(cv)) { cv.destroy(); return; }
+      }
+      if (!tm.exists(key)) return;
+      this.surfAtlas.set(ch, key);
+      this.groundTex.set(ch, [key]);
+    };
+    speck(',', 'grass');
+    speck('f', 'grass', '#8aa888');
+    speck('s', 'sand', '#f6d47c');
+    speck('t', 'sand', '#b9a98c');
+    speck('d', 'dirt');
+    speck('c', 'dirt', '#e0d4ae');
+    this.ensureGrassRims();
+    // 188차 — 물도 수심 버킷별 주기 아틀라스(구 32px 셀 2장 반복 = 글린트·알갱이 점 격자)
+    const waterAtl: string[] = [];
+    for (let b = 0; b < DEPTH_RAMP.length; b++) {
+      const key = `srf_water_${b}_v1`;
+      if (!tm.exists(key)) {
+        const cv = tm.createCanvas(key, size, size);
+        const ctx = cv ? this.canvasContext(cv) : null;
+        if (!cv || !ctx) { cv?.destroy(); break; }
+        const [t0, t1] = DEPTH_RAMP[b]!;
+        const deep = DEPTH_RAMP[Math.min(DEPTH_RAMP.length - 1, b + 1)]![1];
+        const lite = DEPTH_RAMP[Math.max(0, b - 1)]![0];
+        paintWaterAtlas(ctx, size, 0x9e37 ^ (b * 131), t0, t1, lite, deep);
+        for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) cv.add(`${i}_${j}`, 0, i * tr, j * tr, tr, tr);
+        if (!this.safeRefresh(cv)) { cv.destroy(); break; }
+      }
+      if (!tm.exists(key)) break;
+      waterAtl.push(key);
+    }
+    if (waterAtl.length === DEPTH_RAMP.length) this.waterAtlas = waterAtl;
+
     // ── 방파제 스프라이트 — 테트라포드 (두 방위 × 회전 3) × 톤 3 · 돌 12 × 마름/젖음 ──
     let ok = true;
     const tones: TetraTone[] = ['top', 'low', 'wet'];
@@ -1504,6 +1551,70 @@ export class SeamlessChunks {
       });
     }
     this.armorReady = ok;
+  }
+
+  /**
+   * 188차 — 잔디 접경 림 오버레이. Kenney 블롭 셀에서 **잔디 픽셀만 투명**으로 파 흙 림만 남긴다.
+   * 잔디 속은 반점 아틀라스(월드 위상)가 깔고 림은 그 위에 얹는다 → 림 칸의 잔디 무늬도 이웃과 이어진다.
+   * 한 변·모서리 8종만 쓴다 — Kenney 다변 셀(`ns`·`nswe` 등)은 **흙길 셀**(잔디가 양옆 가장자리에만 남는다)이라
+   * 한 칸 폭 잔디 띠·외딴 잔디가 「초록 테를 두른 흙 사각형」으로 줄지어 찍혔다(실렌더 확인).
+   * 다변 마스크는 한 변/모서리 림의 합집합으로 만든다(`grassRimKeys`).
+   */
+  private ensureGrassRims(): void {
+    const tm = this.scene.textures;
+    const tr = this.cfg.tr;
+    const GRASS: readonly (readonly [number, number, number])[] = [[64, 156, 98], [61, 144, 91], [75, 168, 109]];
+    for (const suf of ['n', 'e', 's', 'w', 'nw', 'ne', 'sw', 'se']) {
+      const key = `kn_grim_${suf}_v1`;
+      if (!tm.exists(key)) {
+        const img = this.sourceImage(`ts_kn_ground_grass_edge_${suf}`);
+        if (!img) return;
+        const cv = tm.createCanvas(key, tr, tr);
+        const ctx = cv ? this.canvasContext(cv) : null;
+        if (!cv || !ctx) { cv?.destroy(); return; }
+        ctx.imageSmoothingEnabled = false;
+        try {
+          ctx.drawImage(img, 0, 0, img.width, img.height, 0, 0, tr, tr);
+          const id = ctx.getImageData(0, 0, tr, tr);
+          const d = id.data;
+          for (let p = 0; p < d.length; p += 4) {
+            if (GRASS.some(([r, g, b]) => d[p] === r && d[p + 1] === g && d[p + 2] === b)) d[p + 3] = 0;
+          }
+          ctx.putImageData(id, 0, 0);
+        } catch { cv.destroy(); return; }
+        if (!this.safeRefresh(cv)) { cv.destroy(); return; }
+      }
+      if (tm.exists(key)) this.grassRim.set(suf, key);
+    }
+  }
+
+  /** 접경 마스크(N1·E2·S4·W8) → 림 오버레이 키 목록 — 이웃한 두 변은 둥근 모서리 셀 하나로 */
+  private grassRimKeys(mask: number): string[] {
+    const n = (mask & 1) !== 0, e = (mask & 2) !== 0, s = (mask & 4) !== 0, w = (mask & 8) !== 0;
+    const out: string[] = [];
+    const add = (suf: string): void => { const k = this.grassRim.get(suf); if (k) out.push(k); };
+    const used = { n: false, e: false, s: false, w: false };
+    for (const [a, b, suf] of [['n', 'w', 'nw'], ['n', 'e', 'ne'], ['s', 'w', 'sw'], ['s', 'e', 'se']] as const) {
+      const on = { n, e, s, w };
+      if (on[a] && on[b]) { add(suf); used[a] = true; used[b] = true; }
+    }
+    if (n && !used.n) add('n');
+    if (e && !used.e) add('e');
+    if (s && !used.s) add('s');
+    if (w && !used.w) add('w');
+    return out;
+  }
+
+  /** 188차 — 물 베이스 키(수심 버킷) — 아틀라스가 있으면 월드 위상 프레임, 없으면 구 셀(해시 변형) */
+  private waterKeyAt(bucket: number, c: number, r: number): string | null {
+    const atl = this.waterAtlas[bucket];
+    if (atl) {
+      const N = SeamlessChunks.SURF_N;
+      return `${atl}#${((c % N) + N) % N}_${((r % N) + N) % N}`;
+    }
+    const wk = this.waterTex[bucket];
+    if (!wk || wk.length === 0) return null;
+    return wk[Math.floor(hash2(this.cfg.seed ^ 0x77aa, c, r) * wk.length) % wk.length] ?? null;
   }
 
   /** 지형 문자의 베이스 텍스처 — 아틀라스가 있으면 **월드 좌표 위상 프레임**, 없으면 Kenney 변형(해시) */
@@ -1563,12 +1674,28 @@ export class SeamlessChunks {
   private kitReady = false;
 
   /** 물 타일 수심 버킷(+암초 융기) — L1 물 타일 선택과 절차 오버레이 패스가 공유.
-   *  버킷 경계는 해시 지터(±1.1타일)로 디더 — 등고선 하드 라인 대신 톱니 혼합 (밴드 계단 완화) */
+   *  188차 — 타일 중심의 **연속 수심장**(`waterCellBucket`) 값이다. 구 구현은 타일마다 해시 지터(±1.1)를
+   *  더해 버킷 경계가 32px 톱니 모자이크가 됐다(바다 전체가 큰 픽셀 격자로 보였다). */
   private waterBucketAt(c: number, r: number): { bucket: number; isReef: boolean } {
-    const d = this.waterDist[r * this.cfg.cols + c];
-    const dj = Math.max(0, d + (hash2(this.cfg.seed ^ 0x3c9d, c, r) - 0.5) * 2.2);
+    return this.waterCellBucket(c + 0.5, r + 0.5);
+  }
+
+  /**
+   * 188차 — 연속 수심장의 버킷. (x, y) = **타일 단위 실수 좌표**. 타일 중심 거리장(waterDist)을
+   * 쌍선형 보간하고 저주파 값 노이즈(≈1.6타일)로 흔든다 → 수심 경계가 타일 변이 아니라 곡선을 따른다.
+   * 암초 융기도 같은 연속 좌표 노이즈라 여밭 경계가 사각으로 끊기지 않는다.
+   */
+  private waterCellBucket(x: number, y: number): { bucket: number; isReef: boolean } {
+    const cols = this.cfg.cols, rows = this.cfg.rows;
+    const fx = x - 0.5, fy = y - 0.5;
+    const ix = Math.floor(fx), iy = Math.floor(fy), tx = fx - ix, ty = fy - iy;
+    const D = (cc: number, rr: number): number =>
+      this.waterDist[Math.min(rows - 1, Math.max(0, rr)) * cols + Math.min(cols - 1, Math.max(0, cc))];
+    const d = D(ix, iy) * (1 - tx) * (1 - ty) + D(ix + 1, iy) * tx * (1 - ty)
+      + D(ix, iy + 1) * (1 - tx) * ty + D(ix + 1, iy + 1) * tx * ty;
+    const dj = Math.max(0, d + (noise2(this.cfg.seed ^ 0x3c9d, x / 1.6, y / 1.6) - 0.5) * 2.2);
     let bucket = bucketOf(dj);
-    const reefNoise = noise2(this.cfg.seed & 0x7fffffff, c / 7, r / 7);
+    const reefNoise = noise2(this.cfg.seed & 0x7fffffff, x / 7, y / 7);
     const isReef = d >= 5 && d <= 18 && reefNoise > 0.82;
     if (isReef) bucket = Math.max(0, bucket - 1);
     return { bucket, isReef };
@@ -1943,6 +2070,7 @@ export class SeamlessChunks {
   invalidateTiles(tiles: { c: number; r: number }[]): void {
     if (tiles.length === 0) return;
     this.waterDist = this.computeWaterDistance();
+    this.farmComp = null; this.farmInfo = [];   // 188차 — 밭 성분은 다음 굽기에서 다시 만든다
     this.islet = this.computeIslets();
     this.isletDepth = this.computeIsletDepth();
     this.lotAxis = this.computeLotAxis();
@@ -1986,6 +2114,63 @@ export class SeamlessChunks {
       slot.decoBuilt = true;
       slot.baked = false;
       if (!this.bakeQueue.includes(idx)) this.bakeQueue.unshift(idx);
+    }
+  }
+
+  /** 188차 — 농경지('c') 연결 성분 id (-1 = 농경지 아님) · 성분별 [이랑 세로 여부, 작물 해시]. 처음 쓸 때 한 번 만든다 */
+  private farmComp: Int32Array | null = null;
+  private farmInfo: { vert: boolean; crop: number }[] = [];
+  private farmFieldAt(c: number, r: number): { vert: boolean; crop: number } {
+    const cols = this.cfg.cols, rows = this.cfg.rows;
+    if (!this.farmComp) {
+      const comp = new Int32Array(cols * rows).fill(-1);
+      const stack: number[] = [];
+      for (let i = 0; i < cols * rows; i++) {
+        if (comp[i] !== -1 || this.tileAt(i % cols, Math.floor(i / cols)) !== 'c') continue;
+        const id = this.farmInfo.length;
+        let c0 = cols, c1 = 0, r0 = rows, r1 = 0;
+        comp[i] = id; stack.push(i);
+        while (stack.length > 0) {
+          const k = stack.pop()!;
+          const kc = k % cols, kr = Math.floor(k / cols);
+          if (kc < c0) c0 = kc; if (kc > c1) c1 = kc; if (kr < r0) r0 = kr; if (kr > r1) r1 = kr;
+          for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+            const nc = kc + dc, nr = kr + dr;
+            if (nc < 0 || nr < 0 || nc >= cols || nr >= rows) continue;
+            const n = nr * cols + nc;
+            if (comp[n] !== -1 || this.tileAt(nc, nr) !== 'c') continue;
+            comp[n] = id; stack.push(n);
+          }
+        }
+        // 이랑은 밭의 긴 변을 따라 — 정사각에 가까우면 해시
+        const w = c1 - c0 + 1, h = r1 - r0 + 1;
+        const vert = h > w * 1.2 ? true : w > h * 1.2 ? false : hash2(this.cfg.seed ^ 0x2c6d, c0, r0) > 0.5;
+        this.farmInfo.push({ vert, crop: hash2(this.cfg.seed ^ 0x9d41, c0, r0) });
+      }
+      this.farmComp = comp;
+    }
+    const id = this.farmComp[r * cols + c] ?? -1;
+    return this.farmInfo[id] ?? { vert: false, crop: 0.5 };
+  }
+
+  /**
+   * 농경지 이랑 (172차) — 밭은 평면이 아니라 줄이 있다. 이랑 = 흙 고랑(어둡게) + 작물 줄(초록),
+   * 위상은 **전역 좌표**라 타일 경계에서 끊기지 않는다.
+   * 188차 — 방향·작물은 **이어진 밭 덩어리**(`farmFieldAt`) 단위(구 8타일 고정 필지 = 밭 안 256px 바둑판 +
+   * 가장자리 한 칸 다른 색 띠). 그리고 도로 밴드 **앞**에서 그린다 — 구: 밴드 뒤 절차 패스에서 그려
+   * 보도 벽돌·연석 위에 반투명 이랑 줄이 비쳤다.
+   */
+  private drawFarmRidges(g: Phaser.GameObjects.Graphics, lx: number, ly: number, c: number, r: number): void {
+    const tr = this.cfg.tr;
+    const farm = this.farmFieldAt(c, r);
+    const vert = farm.vert;
+    const crop = farm.crop;
+    const leaf = crop > 0.62 ? 0x6d8a3e : crop > 0.3 ? 0x7e9447 : 0x8a8f52;
+    for (let k = 0; k < tr; k += 4) {
+      const abs = vert ? (c * tr + k) : (r * tr + k);
+      if (abs % 8 < 4) { g.fillStyle(0x9a8558, 0.45); } else { g.fillStyle(leaf, 0.55); }
+      if (vert) g.fillRect(lx + k, ly, 4, tr);
+      else g.fillRect(lx, ly + k, tr, 4);
     }
   }
 
@@ -5022,10 +5207,9 @@ export class SeamlessChunks {
           const dx = (c - c0) * tr, dy = (r - r0) * tr;
           // ── 물 타일셋 — 수심 버킷·해시 변형 베이스 (암초/파도/포말/배는 절차 패스 오버레이) ──
           if (ch === '~') {
-            if (this.waterTex.length > 0) {
-              const { bucket } = this.waterBucketAt(c, r);
-              const wk = this.waterTex[bucket];
-              if (wk.length > 0) slot.rt.batchDraw(wk[Math.floor(hash2(seed ^ 0x77aa, c, r) * wk.length) % wk.length], dx, dy);
+            {
+              const wk = this.waterKeyAt(this.waterBucketAt(c, r).bucket, c, r);
+              if (wk) SeamlessChunks.put(slot.rt, wk, dx, dy);
             }
             // ── 해변 접경 — 모래와 맞닿은 물 타일에 TTP 시트 접경 셀(방위 회전)을 얹는다.
             //   모래가 접경 방향으로 번지고 그 앞에 포말이 깔린다(103차 절차 서프 밴드를 대체).
@@ -5099,9 +5283,9 @@ export class SeamlessChunks {
           }
           // 181차 — 방파제 성분 = 밑에 물을 깔고(단면이 물가선을 곡선으로 깎는다) 절차 패스·스프라이트가 덮는다
           if (this.armorReady && this.bwComp[r * cols + c] >= 0) {
-            if (this.waterTex.length > 0) {
-              const wk = this.waterTex[Math.min(1, this.waterTex.length - 1)]!;
-              if (wk.length > 0) slot.rt.batchDraw(wk[Math.floor(hash2(seed ^ 0x77aa, c, r) * wk.length) % wk.length]!, dx, dy);
+            {
+              const wk = this.waterKeyAt(Math.min(1, DEPTH_RAMP.length - 1), c, r);
+              if (wk) SeamlessChunks.put(slot.rt, wk, dx, dy);
             }
             continue;
           }
@@ -5109,14 +5293,16 @@ export class SeamlessChunks {
           // 암반을 그릴 때 깎인 부분이 물로 보이게). 포장 베이스는 생략
           // 183차 — 데크('D')는 물 위에 떠 있다: 물 셀을 깔고 판자는 절차 패스가 그린다
           if (ch === 'D') {
-            if (this.waterTex.length > 0 && this.waterTex[0].length > 0) {
-              slot.rt.batchDraw(this.waterTex[0][Math.floor(hash2(seed ^ 0x77aa, c, r) * this.waterTex[0].length) % this.waterTex[0].length], dx, dy);
+            {
+              const wk = this.waterKeyAt(0, c, r);
+              if (wk) SeamlessChunks.put(slot.rt, wk, dx, dy);
             }
             continue;
           }
           if ((this.islet[r * cols + c] && ch === '.') || isRockTerrain(ch)) {
-            if (this.waterTex.length > 0 && this.waterTex[0].length > 0) {
-              slot.rt.batchDraw(this.waterTex[0][Math.floor(hash2(seed ^ 0x77aa, c, r) * this.waterTex[0].length) % this.waterTex[0].length], dx, dy);
+            {
+              const wk = this.waterKeyAt(0, c, r);
+              if (wk) SeamlessChunks.put(slot.rt, wk, dx, dy);
             }
             // 182차 — 암반 = 주기 아틀라스의 월드 위상 프레임(체커판 제거). 볼록 모서리는 45° 삼각 프레임.
             //   사진 시트 셀(조도)은 위에 사진이 얹히므로 건너뛴다(투명 물 부분에 암반이 비치면 안 된다)
@@ -5162,7 +5348,9 @@ export class SeamlessChunks {
           // ── 오토타일 접경 마스크 — 잔디는 다른 군 전부, 포장(tan/pier)은 유기 지형·물만 "바깥"
           //   (포장끼리는 무테 — 밴드/시설이 잇는다) ──
           // 181차 — 무이음 아틀라스 지형은 어두운 테두리 셀을 깔지 않는다(경계 = 재질 차이만)
-          const em = this.surfAtlas.has(ch) ? undefined : this.edgeTex.get(myG);
+          //  188차 — 잔디는 아틀라스 속 + 흙 림 오버레이(`grassRim`)라 접경 마스크는 그대로 잰다
+          const rimOnly = ch === ',' && this.grassRim.size > 0 && this.surfAtlas.has(',');
+          const em = this.surfAtlas.has(ch) && !rimOnly ? undefined : this.edgeTex.get(myG);
           let mask = 0;
           if (em) {
             // ── 172차 — 접경 판정을 core 표(`seamBetween`)로 옮겼다 ──
@@ -5184,6 +5372,11 @@ export class SeamlessChunks {
           //   계단 경계 안쪽마다 "갈색 블롭"으로 찍혔다(실렌더 확인). 대각 케이스는 인접 타일의
           //   림이 이미 곡선을 만들므로 내부 평타일로 충분하다. ──
           if (em && terrainClass(myG) === 'organic' && mask > 0) {
+            if (rimOnly) {
+              SeamlessChunks.put(slot.rt, this.groundKeyAt(ch, c, r) ?? keys[0]!, dx, dy);
+              for (const rk of this.grassRimKeys(mask)) slot.rt.batchDraw(rk, dx, dy);
+              continue;
+            }
             const tk = em.get(EDGE_SUFFIX[mask]);
             if (tk) { slot.rt.batchDraw(tk, dx, dy); continue; }
           }
@@ -5260,7 +5453,22 @@ export class SeamlessChunks {
       slot.rt.endDraw();
     }
     // ── 차도/보도 = 벡터 밴드 (곡선 그대로 — 래스터 계단 대신). 보도 밴드 → 아스팔트 밴드 순 ──
-    if (useGround) this.drawRoadBands(g, idx, c0, r0);
+    // 188차 — 접경 알갱이 띠·농경지 이랑은 **도로 밴드보다 먼저** 그린다. 구: 절차 패스(밴드 뒤)에서 그려
+    //   밴드 밑에 묻힌 잔디·흙 타일의 경계 알갱이가 보도 벽돌·아스팔트 위로 **타일 테두리 사각형**을
+    //   그렸다(실렌더 — 보도 위 초록 점선 상자). 밴드가 덮는 곳의 알갱이는 이제 밴드 밑에 묻힌다.
+    if (useGround) {
+      for (let r = r0; r < r1; r++) {
+        for (let c = c0; c < c1; c++) {
+          const ch = at(c, r);
+          if (ch === 'r' || ch === '~' || ch === 'D' || this.tileTexMap.has(r * cols + c) || !this.groundTex.has(ch)) continue;
+          if (this.armorReady && this.bwComp[r * cols + c] >= 0) continue;
+          if ((ch === '.' && this.islet[r * cols + c]) || isRockTerrain(ch)) continue;
+          this.drawSeamGrains(g, (c - c0) * tr, (r - r0) * tr, c, r, ch);
+          if (ch === 'c') this.drawFarmRidges(g, (c - c0) * tr, (r - r0) * tr, c, r);
+        }
+      }
+      this.drawRoadBands(g, idx, c0, r0);
+    }
 
     for (let r = r0; r < r1; r++) {
       for (let c = c0; c < c1; c++) {
@@ -5282,37 +5490,59 @@ export class SeamlessChunks {
           const ramp = DEPTH_RAMP[bucket];
           // 물 타일셋(L1 베이크)이 깔렸으면 베이스는 생략 — 절차 패스는 오버레이만.
           // 폴백(레거시 TR·타일셋 부재) = 해시 랜덤 2톤 (규칙적 체커는 격자가 도드라진다)
-          if (this.waterTex.length === 0) {
+          if (this.waterTex.length === 0 && this.waterAtlas.length === 0) {
             g.fillStyle(h1 > 0.5 ? ramp[0] : ramp[1], 1);
             g.fillRect(lx, ly, tr, tr);
           }
+          // 188차 — 여 점묘·해구 얼룩은 **해시 위치·크기**로(구: 모든 여 타일 같은 자리 6×4 + 4×3 →
+          //   여밭 전체가 32px 점 격자 / 해구 = 타일보다 8px 작은 사각형 → 깊은 바다에 네모 패치)
           if (isReef) {
+            const h3 = hash2(seed ^ 0x2e46, c, r);
             g.fillStyle(0x2e463f, 0.45);
-            g.fillRect(lx + 4, ly + 7, 6, 4);
-            g.fillRect(lx + 12, ly + 13, 4, 3);
-          } else if (bucket >= 4 && h2 > 0.9) {
-            g.fillStyle(COL.waveDeep, 0.3);
-            g.fillRect(lx + 4, ly + 4, tr - 8, tr - 8);
+            if (h3 > 0.25) {
+              g.fillRect(lx + 2 + Math.floor(h1 * 11) * 2, ly + 2 + Math.floor(h2 * 11) * 2, 4 + Math.floor(h3 * 2) * 2, 2 + Math.floor(h1 * 2) * 2);
+            }
+            if (h3 < 0.6) {
+              g.fillRect(lx + 2 + Math.floor(h3 * 12) * 2, ly + 2 + Math.floor(h1 * 12) * 2, 2 + Math.floor(h2 * 2) * 2, 2 + Math.floor(h3 * 2) * 2);
+            }
+          } else if (bucket >= 4 && h2 > 0.9 && c > c0 && r > r0 && c < c1 - 1 && r < r1 - 1) {
+            // 타원이 이웃 타일로 넘치므로 청크 가장자리 타일은 건너뛴다(청크 RT에 잘려 직선이 생긴다)
+            g.fillStyle(COL.waveDeep, 0.22);
+            g.fillEllipse(lx + tr / 2 + (h1 - 0.5) * tr, ly + tr / 2 + (hash2(seed ^ 0x18a3, c, r) - 0.5) * tr,
+              tr * (0.9 + h1 * 0.8), tr * (0.6 + h2 * 0.5));
           }
           // ── 수심 버킷 계단 완화(106차) — 이웃 타일의 버킷이 다르면 그쪽 색 알갱이를 경계
           //   6px 안쪽에 확률적으로 뿌린다. 버킷은 타일 단위라 색이 통째로 바뀌어 바다에
           //   **큰 사각 패치**가 보였다(사용자 리포트). 입자는 물 타일과 같은 2px 그레인.
+          //  188차 — 6px 띠 디더 대신 **연속 수심장을 2px 칸마다** 평가해, 이 타일 버킷과 다른 칸만
+          //   그 버킷 색(물 아틀라스와 같은 그레인 규칙)으로 덮는다. 경계 선이 타일 변을 따르지 않는다.
           {
-            const nb = [[0, -1], [1, 0], [0, 1], [-1, 0]] as const;
-            for (let d = 0; d < 4; d++) {
-              const nc = c + nb[d][0], nr = r + nb[d][1];
-              if (nc < 0 || nr < 0 || nc >= cols || nr >= this.cfg.rows || at(nc, nr) !== '~') continue;
-              const ob = this.waterBucketAt(nc, nr).bucket;
-              if (ob === bucket) continue;
-              const [o0, o1] = DEPTH_RAMP[ob];
-              const BAND = 6;
-              for (let a = 0; a < tr; a += 2) {
-                for (let b = 0; b < BAND; b += 2) {
-                  const px = d === 1 ? tr - 2 - b : d === 3 ? b : a;
-                  const py = d === 0 ? b : d === 2 ? tr - 2 - b : a;
-                  const hh = hash2(seed ^ (0xd17e + d), c * 40 + px, r * 40 + py);
-                  if (hh > (1 - b / BAND) * 0.55) continue;
-                  g.fillStyle(hh > 0.5 ? o0 : o1, 1);
+            // 5×5 표본(8px 간격)으로 이 타일 안에 다른 버킷이 지나는지 먼저 본다 — 대부분의 물 타일은 여기서 끝난다
+            //  빠른 기각 — 이웃 3×3 거리장의 최소·최대(±노이즈 1.1)가 같은 버킷이고 여 구간(5~18)에 걸치지
+            //  않으면 이 타일 안의 수심장은 한 버킷이다(대부분의 외해 타일)
+            let dMin = Infinity, dMax = -Infinity;
+            for (let dr2 = -1; dr2 <= 1; dr2++) for (let dc2 = -1; dc2 <= 1; dc2++) {
+              const v = this.waterDist[Math.min(this.cfg.rows - 1, Math.max(0, r + dr2)) * cols + Math.min(cols - 1, Math.max(0, c + dc2))];
+              if (v < dMin) dMin = v;
+              if (v > dMax) dMax = v;
+            }
+            const uniform = bucketOf(Math.max(0, dMin - 1.1)) === bucketOf(dMax + 1.1) && (dMax < 5 || dMin > 18);
+            let edge = false;
+            for (let sy = 0; sy <= 4 && !edge && !uniform; sy++) {
+              for (let sx = 0; sx <= 4; sx++) {
+                if (this.waterCellBucket(c + sx / 4, r + sy / 4).bucket !== bucket) { edge = true; break; }
+              }
+            }
+            if (edge) {
+              for (let py = 0; py < tr; py += 2) {
+                for (let px = 0; px < tr; px += 2) {
+                  const cb = this.waterCellBucket(c + (px + 1) / tr, r + (py + 1) / tr).bucket;
+                  if (cb === bucket) continue;
+                  const [o0, o1] = DEPTH_RAMP[cb]!;
+                  const hh = hash2(0x9e37 ^ (cb * 131), (c * tr + px) >> 1, (r * tr + py) >> 1);
+                  g.fillStyle(hh > 0.968 ? DEPTH_RAMP[Math.max(0, cb - 1)]![0]
+                    : hh < 0.028 ? DEPTH_RAMP[Math.min(DEPTH_RAMP.length - 1, cb + 1)]![1]
+                      : hh > 0.5 ? o0 : o1, 1);
                   g.fillRect(lx + px, ly + py, 2, 2);
                 }
               }
@@ -5477,7 +5707,7 @@ export class SeamlessChunks {
         if (based) {
           // 접경 알갱이 띠(172차) — 어느 재료가 어느 재료 위로 흘러나오는지는 core 표가 정한다.
           //  차도('r')는 벡터 밴드가 위에 깔리므로 제외한다.
-          if (ch !== 'r') this.drawSeamGrains(g, lx, ly, c, r, ch);
+          //  188차 — 알갱이는 밴드 앞 선행 패스가 그렸다(위)
           // 180차 — 해안선 · 방파제 단면 전이 · 단차(턱·그림자)
           this.drawShoreBlend(g, lx, ly, c, r, ch);
           this.drawBreakwaterSeam(g, lx, ly, c, r);
@@ -5516,21 +5746,7 @@ export class SeamlessChunks {
               g.fillCircle(px - 1, py - 2, Math.max(2, rad - 3));
             }
           } else if (ch === 'c') {
-            // ── 농경지 이랑 (172차) ── 밭은 평면이 아니라 줄이 있다. 이랑 방향은 필지마다
-            //  다르므로 타일 좌표 해시로 가로/세로를 고르고, 같은 필지 안에서는 같게 유지한다.
-            const fx = Math.floor(c / 8), fy = Math.floor(r / 8);           // 필지 단위(8타일)
-            const vert = hash2(seed ^ 0x2c6d, fx, fy) > 0.5;
-            const crop = hash2(seed ^ 0x9d41, fx, fy);                       // 필지마다 작물 색
-            const leaf = crop > 0.62 ? 0x6d8a3e : crop > 0.3 ? 0x7e9447 : 0x8a8f52;
-            // 이랑 = 흙 고랑(어둡게) + 작물 줄(초록). 위상은 **전역 좌표**라 타일 경계에서 끊기지 않는다.
-            for (let k = 0; k < tr; k += 4) {
-              const gy = (vert ? c * tr + lx : r * tr + ly) * 0;             // (위상 고정용 — 아래 abs 좌표 사용)
-              void gy;
-              const abs = vert ? (c * tr + k) : (r * tr + k);
-              if (abs % 8 < 4) { g.fillStyle(0x9a8558, 0.45); } else { g.fillStyle(leaf, 0.55); }
-              if (vert) g.fillRect(lx + k, ly, 4, tr);
-              else g.fillRect(lx, ly + k, tr, 4);
-            }
+            // 농경지 이랑은 도로 밴드 앞 선행 패스(`drawFarmRidges`)가 그렸다(188차)
           } else if (ch === 's') {
             // 젖은 모래 띠 — ⚠ TTP 접경 셀이 깔리는 물가에는 **그리지 않는다**(106차). 접경 셀이
             //   이미 젖은 모래+포말을 갖고 있어, 여기에 6px 띠를 더하면 물가에 자로 그은

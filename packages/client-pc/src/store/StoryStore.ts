@@ -20,7 +20,7 @@ import {
   spotKindSatisfies, SPOT_KIND_LABEL,
   dayJobsOfNpc, getDayJob,
   clampAffinity, affinityRewardMult, affinityJobWageMult, canOfferSubQuest, canOfferJobs, choicesFor, choiceVisible,
-  getLicenseByType, getSkillById,
+  getLicenseByType, getSkillById, getStoryNpc, getRegionById,
   type StoryQuestDef, type StoryObjective, type StoryActionKey, type ReputationState, type CatchMethod, type StorySpotKind, type JournalPageState, type LawVerdict,
   type DayJobDef, type AffinityState, type QuestChoiceDef, type ChoiceOutcome, type ChoiceCtx, type SkillCategoryId,
 } from '@tra/core';
@@ -114,7 +114,18 @@ export type StoryEvent =
 export type QuestStatus = 'done' | 'active' | 'available' | 'locked' | 'declined';
 
 /** 어획물 아이템의 판매 판정에 필요한 최소 형태 */
-interface SellableLike { speciesId?: string; subCategory?: string; catchMethod?: CatchMethod; lengthCm?: number }
+interface SellableLike { id?: string; speciesId?: string; subCategory?: string; catchMethod?: CatchMethod; lengthCm?: number }
+
+/**
+ * 어획물의 획득 경로 (188차 — AG ①b).
+ * `catchMethod`가 없으면 구세이브 어획물이라 낚싯대로 본다(가장 보수적) — 단 **상점에서 산
+ * 물고기**(`shop_*` 카탈로그 id)는 구매품이다. 이 구분이 없으면 산 물고기가 '직접 잡은 것'으로
+ * 위판 판정을 통과할 수 있었다.
+ */
+export function catchMethodOfItem(item: SellableLike): CatchMethod {
+  if (item.catchMethod) return item.catchMethod;
+  return item.id?.startsWith('shop_') ? 'bought' : 'rod';
+}
 
 class StoryStoreManager {
   private host: StoryHost | null = null;
@@ -369,7 +380,9 @@ class StoryStoreManager {
     if (o.coins) { h?.addCoins(o.coins); out.push(`${o.coins > 0 ? '+' : ''}${o.coins.toLocaleString()}원`); this.onCoins?.(o.coins, q.titleKo); }
     for (const it of o.items ?? []) {
       const ok = h?.giveItem(it.id, it.qty) ?? false;
-      out.push(ok ? `${it.id} ×${it.qty}` : `${it.id} (인벤토리 공간 부족 — 미지급)`);
+      // 188차 — 내부 id(`inv_rod_budget`) 대신 아이템 이름 (R1)
+      const name = h?.itemName(it.id) ?? it.id;
+      out.push(ok ? `${name} ×${it.qty}` : `${name} (인벤토리 공간 부족 — 미지급)`);
     }
     if (o.skillPoints) { h?.addSkillPoints(o.skillPoints); out.push(`스킬 포인트 +${o.skillPoints}`); }
     if (o.proficiency) {
@@ -382,7 +395,8 @@ class StoryStoreManager {
     }
     // 155차 — 무발주(혼자 하는) 할 일은 우호도를 받을 상대가 없다. 구 코드는 빈 npc id('')에 쌓았다.
     if (o.affinity && q.giver) { const v = this.addAffinity(q.giver, o.affinity); out.push(`우호도 ${o.affinity > 0 ? '+' : ''}${o.affinity} (${v.toFixed(2)})`); }
-    for (const a of o.affinityOther ?? []) { this.addAffinity(a.npcId, a.delta); out.push(`${a.npcId} 우호도 ${a.delta > 0 ? '+' : ''}${a.delta}`); }
+    // 188차 — 'hyeonsu 우호도'처럼 NPC id가 그대로 나갔다(R1) → 이름
+    for (const a of o.affinityOther ?? []) { this.addAffinity(a.npcId, a.delta); out.push(`${getStoryNpc(a.npcId)?.nameKo ?? '이웃'} 우호도 ${a.delta > 0 ? '+' : ''}${a.delta}`); }
     if (o.harborRep) { this.addHarborRep(q.region, o.harborRep); out.push(`항구 신뢰 +${o.harborRep}`); }
     if (o.seaRep) { this.addSeaRep(o.seaRep); out.push(`바다 평판 +${o.seaRep}`); }
     if (o.flag) h?.setFlag(o.flag, true);
@@ -428,7 +442,7 @@ class StoryStoreManager {
     return true;
   }
 
-  /** manual 목표를 한 단계 진행 (대화 패널 [다음 단계]) */
+  /** manual 목표를 한 단계 진행 (장면 끝·행동 이벤트가 부른다 — 구 대화 패널 [다음 단계] 버튼은 167차 폐기) */
   advanceManual(id: string, objIdx: number): boolean {
     const q = getStoryQuest(id); const p = this.quests[id];
     if (!q || !p || p.status !== 'active') return false;
@@ -646,7 +660,8 @@ class StoryStoreManager {
     // 141차 — 기술·상점 해금 (스킬 게이트는 questsDone으로, 상점은 플래그로)
     for (const sk of q.rewards?.skillUnlocks ?? []) { h?.setFlag(`unlock.skill.${sk}`, true); rwl.push(`기술 해금: ${getSkillById(sk)?.nameKo ?? sk}`); }
     for (const sh of q.rewards?.shopUnlocks ?? []) { h?.setFlag(`unlock.shop.${sh}`, true); rwl.push('상점 품목 해금'); }
-    if (q.unlocks?.length) rwl.push(...q.unlocks.filter((u) => u.startsWith('region:')).map((u) => `지역 개방: ${u.slice(7)}`));
+    // 188차 — '지역 개방: busan'처럼 지역 id가 나갔다(R1) → 지역 이름
+    if (q.unlocks?.length) rwl.push(...q.unlocks.filter((u) => u.startsWith('region:')).map((u) => `지역 개방: ${getRegionById(u.slice(7))?.nameKo ?? '새 지역'}`));
     this.lastRewardLines = rwl;
     this.lastAction = 'completed';
     if (this.pinned.main === id) this.pinned.main = null;
@@ -921,7 +936,7 @@ class StoryStoreManager {
         alternatives: ['상점에 판매'], alternativesEn: ['Sell at a shop'],
       };
     }
-    const method: CatchMethod = item.catchMethod ?? 'rod';
+    const method: CatchMethod = catchMethodOfItem(item);
     const v = canConsign(provenanceOf(method, regionId, item.lengthCm, this.day), this.heldLicenses());
     return v.allowed ? null : v;
   }
@@ -929,7 +944,7 @@ class StoryStoreManager {
   sellVerdict(item: SellableLike, regionId = ''): LawVerdict | null {
     if (!this.lawEnforced()) return null;
     if (!item.speciesId || item.subCategory !== '어획물') return null;
-    const method: CatchMethod = item.catchMethod ?? 'rod';
+    const method: CatchMethod = catchMethodOfItem(item);
     const v = canSell(provenanceOf(method, regionId, item.lengthCm, this.day), this.host?.heldLicenses() ?? []);
     return v.allowed ? null : v;
   }

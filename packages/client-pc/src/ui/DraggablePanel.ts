@@ -217,6 +217,16 @@ export class DraggablePanel extends Phaser.GameObjects.Container {
   /** 열리는 순간 같은 밴드 최상단으로 (122차 — 새 팝업이 먼저 열린 큰 패널 아래로 깔리지 않게. ESC LIFO와 정합) */
   raiseToTop(): void { this.bringSelfToTop(); }
 
+  /** 화면 좌표의 패널 외곽 (188차 — 가이드 투어 말풍선 배치 기준) */
+  panelBounds(): Phaser.Geom.Rectangle {
+    return new Phaser.Geom.Rectangle(this.x, this.y, this.panelW, this.panelH);
+  }
+
+  /** 패널 로컬 사각형 → 화면 좌표 (가이드 투어 하이라이트용) */
+  localRect(x: number, y: number, w: number, h: number): Phaser.Geom.Rectangle {
+    return new Phaser.Geom.Rectangle(this.x + x, this.y + y, w, h);
+  }
+
   protected bringSelfToTop(): void {
     const modal = this.zBase >= MODAL_BAND_MIN;
     const bandBase = modal ? MODAL_BAND_MIN : 800;

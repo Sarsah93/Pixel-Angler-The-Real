@@ -222,7 +222,7 @@ export type {
 } from './types/Foraging.js';
 export {
   isProtectedFarmKind, FISH_FARM_KIND_LABEL, pointInRing, farmAt,
-  GANGWON_FORAGE_ORDINANCE, FORAGE_CATCH_SELLABLE,
+  GANGWON_FORAGE_ORDINANCE, FORAGE_CATCH_SELLABLE, isGiantOctopusSpawnProtected,
 } from './types/Foraging.js';
 export type { ForageEnvContext, ForageSafety, RollForageOpts, ForageOutcome, ForageResult, EnforcementResult, ForageMods } from './simulation/ForagingEngine.js';
 
@@ -268,10 +268,11 @@ export {
 } from './simulation/CastWeather.js';
 export type {
   StatusEffectId, StatusCure, StatusEffectDef, StatusBadge, ActiveStatus, StatusModifiers, StatusTickResult,
+  ChillExposure,
 } from './types/StatusEffects.js';
 export {
   STATUS_EFFECTS, getStatusEffect, aggregateStatus, tickStatuses, addStatus, cureStatus,
-  STATUS_CURE_LABEL, statusRemainMs,
+  STATUS_CURE_LABEL, statusRemainMs, chillRatePerHour, spawnedStatusOf,
 } from './types/StatusEffects.js';
 export {
   mulberry32, forageSeed, forageSafety, creatureSpotKinds, creatureTools, FORAGE_TOOL_LABEL,
@@ -564,7 +565,7 @@ export {
 export type { UpkeepKind, UpkeepItem, UpkeepLedger, UpkeepContext, UpkeepPenalty } from './rules/Upkeep.js';
 export {
   licenseRenewalFee, licenseRenewalDays, listUpkeep, upkeepAlerts,
-  upkeepPenalty, fisheryGroundFee, coopDuesFeeCut,
+  upkeepPenalty, fisheryGroundFee, coopDuesFeeCut, upkeepKeysOfLicense,
 } from './rules/Upkeep.js';
 
 export type { FisheryLawRule } from './rules/FisheryLaw.js';

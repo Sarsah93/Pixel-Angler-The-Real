@@ -68,3 +68,4 @@ docs/reference/gis/*/*.dbf
 
 # 전체 위키 아티팩트 파생물 (tools/gen_wiki_images.py · tools/dump_wiki_items.mjs 재생성)
 tools/wiki_img/
+.claude/worktrees/

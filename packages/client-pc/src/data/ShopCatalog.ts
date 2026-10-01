@@ -10,7 +10,7 @@
 
 import type { InvCategory, InvItemTemplate } from '../store/InventoryStore.js';
 import { COOK_CORNER } from './CookItems.js';
-import { WEIGHT_SINKER_DB, TRAP_DATABASE } from '@tra/core';
+import { WEIGHT_SINKER_DB, TRAP_DATABASE, getLureSpec } from '@tra/core';
 import { applyItemVitals } from './ItemVitals.js';
 
 /** 건물(상점) 종류 */
@@ -31,6 +31,12 @@ export const BUILDING_LABEL: Record<BuildingKind, string> = {
 /** 상점 판매 품목 (인벤토리 템플릿 + 가격/구매 한도) */
 export interface ShopEntry extends InvItemTemplate {
   price: number;
+  /**
+   * 묶음 상품 (188차 — AG ②b). 있으면 **세트 자체가 아니라 구성품**이 가방에 들어간다.
+   * 루어 세트를 하나의 '낚시용품' 아이템으로 넣으면 루어 탭·루어 채비 어디에도 나타나지 않았다
+   * (루어 채비는 `LURES_CATALOG_DB` id로만 루어를 알아본다).
+   */
+  bundle?: { tpl: InvItemTemplate; qty: number }[];
   /**
    * 상점 해금 키 (141차) — 메인 퀘스트 `rewards.shopUnlocks`가 `unlock.shop.<key>` 플래그를 세우기 전엔
    * 구매 목록에 나타나지 않는다. 이야기가 여는 "구매 해금".
@@ -56,6 +62,23 @@ export interface ShopDef {
    * 그 POI에 이 플래그만 주면 된다(코드 수정 없음).
    */
   auctionWindow?: boolean;
+}
+
+/**
+ * 루어 카탈로그 id → 인벤 템플릿 (188차 — 루어 세트 구성품).
+ * 시드(`createSeedItems`)와 **같은 id·이름 규칙**을 써서, 이미 가진 루어면 수량만 늘어난다.
+ * 아이콘은 이모지가 아니라 텍스처 키로만 둔다(§4 — 새 아이템은 이모지 없이).
+ */
+const LURE_KIND_TEXTURE: Record<string, string> = {
+  worm_grub: 'item_soft_worm', soft_jerkbait: 'item_soft_worm', plug_minnow: 'item_minnow', metal_jig: 'item_metal_jig',
+};
+function lureTemplate(lureId: string): InvItemTemplate {
+  const spec = getLureSpec(lureId);
+  if (!spec) throw new Error(`[ShopCatalog] 루어 카탈로그에 없는 id: ${lureId}`);
+  return {
+    id: spec.id, name: `${spec.nameKo} (${spec.weightG}g)`, icon: '', iconTexture: LURE_KIND_TEXTURE[spec.kind] ?? 'px:it_lure',
+    category: 'lure', subCategory: '루어', basePrice: Math.round(400 + spec.weightG * 220), equippable: false,
+  };
 }
 
 /** 무게추 봉돌 id → 상점 판매 항목 (채비 코너) */
@@ -130,9 +153,9 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
       { id: 'inv_potion',   name: 'HP 회복 드링크', icon: '💊', category: 'consumable', subCategory: '의약품',   basePrice: 5000, price: 6000, maxPerPurchase: 5,  equippable: false, desc: 'HP를 40 회복한다.' },
       { id: 'inv_mosquito', name: '모기향',         icon: '🌀', category: 'consumable', subCategory: '야간 대비', basePrice: 2500, price: 3000, maxPerPurchase: 10, equippable: false, desc: '야간 낚시 모기 디버프 방지.' },
       { id: 'inv_seasick',  name: '멀미약',         icon: '💊', category: 'consumable', subCategory: '의약품',   basePrice: 4000, price: 5000, maxPerPurchase: 5,  equippable: false, desc: '선상 낚시 멀미 내성 10분.' },
-      { id: 'shop_snackbar', name: '초코바',        icon: '🥫', category: 'food',       subCategory: '가공품',   basePrice: 1200, price: 1500, maxPerPurchase: 10, equippable: false, hungerRestore: 12, hydrationRestore: -2, desc: '간단한 요기.' },
-      { id: 'shop_water',    name: '생수 500ml',    icon: '🥫', category: 'food',       subCategory: '가공품',   basePrice: 900,  price: 1200, maxPerPurchase: 10, equippable: false, hungerRestore: 0, hydrationRestore: 30, desc: '갈증 해소의 기본.' },
-      { id: 'shop_riceball', name: '주먹밥',        icon: '🥫', category: 'food',       subCategory: '가공품',   basePrice: 1800, price: 2200, maxPerPurchase: 10, equippable: false, hungerRestore: 22, hydrationRestore: 2, desc: '출조 전 간편식.' },
+      { id: 'shop_snackbar', name: '초코바',        icon: '🥫', category: 'food',       subCategory: '가공품',   basePrice: 1200, price: 1500, maxPerPurchase: 10, equippable: false, desc: '간단한 요기.' },
+      { id: 'shop_water',    name: '생수 500ml',    icon: '🥫', category: 'food',       subCategory: '가공품',   basePrice: 900,  price: 1200, maxPerPurchase: 10, equippable: false, desc: '갈증 해소의 기본.' },
+      { id: 'shop_riceball', name: '주먹밥',        icon: '🥫', category: 'food',       subCategory: '가공품',   basePrice: 1800, price: 2200, maxPerPurchase: 10, equippable: false, desc: '출조 전 간편식.' },
       { id: 'inv_ice_bulk',  name: '대용량 각얼음', icon: '🧊', category: 'consumable', subCategory: '보냉',     basePrice: 4000, price: 5000, maxPerPurchase: 5,  equippable: false, desc: '쿨러 얼음 넣기 재료 — 1개로 2시간 보냉.' },
     ],
   },
@@ -154,7 +177,7 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
       { id: 'inv_mat_wire',  name: '철사',       icon: '', iconTexture: 'px:it_wire', category: 'etc', subCategory: '재료', basePrice: 1000,  price: 1300,  maxPerPurchase: 30, equippable: false, craftMaterial: true, desc: '통발 프레임·바늘 고정 재료.' },
       { id: 'inv_mat_resin', name: '에폭시 수지', icon: '', iconTexture: 'px:it_paint', category: 'etc', subCategory: '재료', basePrice: 4000,  price: 5000,  maxPerPurchase: 20, equippable: false, craftMaterial: true, desc: '로드 도장·루어 코팅 재료.' },
       { id: 'inv_mat_paint', name: '도료 세트',  icon: '', iconTexture: 'px:it_paint', category: 'etc', subCategory: '재료', basePrice: 5000,  price: 6000,  maxPerPurchase: 20, equippable: false, craftMaterial: true, desc: '루어 컬러링 재료.' },
-      { id: 'inv_chum',     name: '집어제 (크릴 배합)',      icon: '🧂', category: 'consumable', subCategory: '집어제/밑밥', basePrice: 6000, price: 7000, maxPerPurchase: 10, equippable: false, desc: '어군 활성도 상승.' },
+      { id: 'inv_chum',     name: '집어제 (크릴 배합)',      icon: '🧂', category: 'consumable', subCategory: '집어제/밑밥', basePrice: 6000, price: 7000, maxPerPurchase: 10, equippable: false, chumKind: 'powder', desc: '어군 활성도 상승.' },
       { id: 'inv_breadbait', name: '빵가루 경단',            icon: '🍞', category: 'tackle',     subCategory: '반죽미끼',    basePrice: 3000, price: 3500, maxPerPurchase: 10, equippable: false, desc: '벵에돔·숭어용 반죽 미끼 — 잡어 성화를 피한다.' },
       { id: 'inv_can',      name: '참치 통조림 (묶음)',      icon: '🥫', category: 'food',       subCategory: '가공품',     basePrice: 2000, price: 2200, maxPerPurchase: 20, equippable: false, desc: '마트 대용량 특가.' },
       { id: 'inv_ice_bulk',   name: '대용량 각얼음',    icon: '🧊', category: 'consumable', subCategory: '보냉', basePrice: 4000, price: 4500, maxPerPurchase: 10, equippable: false, desc: '쿨러 얼음 넣기 재료 — 1개로 2시간 보냉 (마트 특가).' },
@@ -188,12 +211,19 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
         desc: '위판 등록 계원에게만 판다. 규격이 곧 등급이다.' },
       { id: 'lure_starter_set', name: '입문 루어 세트 (미노우·스푼·웜)', icon: '', category: 'tackle', subCategory: '루어',
         basePrice: 48000, price: 48000, maxPerPurchase: 2, equippable: false, iconTexture: 'px:it_lure', unlockKey: 'market_lure_starter',
+        bundle: [
+          { tpl: lureTemplate('lure_minnow_float'), qty: 1 }, { tpl: lureTemplate('lure_minnow_sink'), qty: 1 },
+          { tpl: lureTemplate('lure_spoon_14'), qty: 2 },
+          { tpl: lureTemplate('lure_grub_2in'), qty: 8 }, { tpl: lureTemplate('lure_jerk_4in'), qty: 6 },
+        ],
         desc: '품질관리 교육 수료자용 입문 세트. 미끼 냄새 안 나는 낚시.' },
-      { id: 'egi_pro_set', name: '고급 에기 세트 (3.0·3.5호)', icon: '', category: 'tackle', subCategory: '루어',
+      // 188차 — 에기 카탈로그는 2.5·3.5호뿐이다(3.0호 없음) → 이름을 실제 구성에 맞춘다
+      { id: 'egi_pro_set', name: '고급 에기 세트 (2.5·3.5호)', icon: '', category: 'tackle', subCategory: '루어',
         basePrice: 64000, price: 64000, maxPerPurchase: 2, equippable: false, iconTexture: 'px:it_lure', unlockKey: 'market_egi_pro',
+        bundle: [{ tpl: lureTemplate('lure_egi_25'), qty: 2 }, { tpl: lureTemplate('lure_egi_35'), qty: 2 }],
         desc: '에깅 계열이 열린 사람에게만. 폴링이 다르다.' },
-      { id: 'shop_flatfish', name: '광어 (활어)',   icon: '🐟', category: 'food',   subCategory: '어획물',   basePrice: 25000, price: 30000, maxPerPurchase: 3,  condition: 'live',   equippable: false, desc: '수조 직송 활어.' },
-      { id: 'shop_squid',    name: '오징어 (선어)', icon: '🐟', category: 'food',   subCategory: '어획물',   basePrice: 8000,  price: 10000, maxPerPurchase: 5,  condition: 'chilled', equippable: false, desc: '당일 조업 선어.' },
+      { id: 'shop_flatfish', name: '광어 (활어)',   icon: '🐟', category: 'food',   subCategory: '어획물',   basePrice: 25000, price: 30000, maxPerPurchase: 3,  condition: 'live',   equippable: false, catchMethod: 'bought', desc: '수조 직송 활어.' },
+      { id: 'shop_squid',    name: '오징어 (선어)', icon: '🐟', category: 'food',   subCategory: '어획물',   basePrice: 8000,  price: 10000, maxPerPurchase: 5,  condition: 'chilled', equippable: false, catchMethod: 'bought', desc: '당일 조업 선어.' },
       { id: 'inv_krill',     name: '크릴 (냉동)',   icon: '🦐', category: 'tackle', subCategory: '냉동미끼', basePrice: 4000,  price: 4500,  maxPerPurchase: 10, condition: 'frozen', equippable: false, desc: '범용 냉동 미끼.' },
       { id: 'inv_fishcut',   name: '생선 조각 미끼', icon: '🦐', category: 'tackle', subCategory: '선어미끼', basePrice: 3000,  price: 3500,  maxPerPurchase: 10, condition: 'chilled', equippable: false, desc: '갈치/우럭용 절단 미끼.' },
       { id: 'inv_ragworm',   name: '갯지렁이',      icon: '', iconTexture: 'item_worm', category: 'tackle', subCategory: '생미끼',   basePrice: 6000,  price: 7000,  maxPerPurchase: 10, condition: 'live', equippable: false, desc: '원투·도다리용 생미끼.' },
@@ -301,6 +331,8 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
 };
 
 // 소모품 효과(회복치·구급품)를 단일 테이블에서 주입 — 카탈로그 리터럴에 수치를 중복해 적지 않는다.
+// ⚠ 188차 — `applyItemVitals`는 **빈 필드만** 채운다. 여기 리터럴(초코바·생수·주먹밥의 허기·수분)이 남아 있어
+//   영양표(FoodNutrition) 파생값을 덮고 있었다 — 상세창 '영양' 줄과 실제 회복치가 서로 달랐다(AG ②e).
 // (같은 테이블을 시드 생성·세이브 로드 백필도 쓴다 → 값을 고치면 구세이브까지 자동 정합)
 for (const def of Object.values(SHOP_CATALOG)) {
   for (const e of def.sells) applyItemVitals(e);

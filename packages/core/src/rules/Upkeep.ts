@@ -100,6 +100,24 @@ export interface UpkeepContext {
   ledger: UpkeepLedger;
 }
 
+/**
+ * 자격 → 그 자격이 거는 **자격 외 정기 지출** 키 (188차 — AG ①e).
+ *
+ * ⚠ 이력(ledger)에 기산일이 없으면 `dueDayOf`가 매번 "오늘 + 한 주기"를 돌려줘 납부일이
+ *   영영 오지 않는다(171차 자격 갱신이 겪은 사문과 같은 함정). 자격을 얻는 순간·구세이브 로드 때
+ *   이 표로 기산일을 찍어야 조합비·선박 유지비·위생 점검이 실제로 청구된다.
+ */
+const UPKEEP_KEYS_BY_LICENSE: Partial<Record<LicenseType, string[]>> = {
+  fishery_member: ['coop_dues'],
+  angling_boat_biz: ['vessel_upkeep'],
+  food_service: ['hygiene_inspection'],
+};
+
+/** 이 자격이 거는 정기 지출 키 (자격 갱신료 자체는 제외 — 그건 자격 id가 곧 키) */
+export function upkeepKeysOfLicense(t: LicenseType): readonly string[] {
+  return UPKEEP_KEYS_BY_LICENSE[t] ?? [];
+}
+
 /** 이 키의 다음 납부 예정일 — 이력이 없으면 "지금부터 한 주기 뒤" */
 function dueDayOf(ledger: UpkeepLedger, key: string, day: number, interval: number): number {
   const last = ledger[key];

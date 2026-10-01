@@ -14,6 +14,7 @@ import { TUNING, getCookware, HEAT_FRAC, type DeployedStove, type RegionTerrain 
 import { CookingStore } from '../../store/CookingStore.js';
 import { MultiplayerClient } from '../../net/MultiplayerClient.js';
 import { InventoryStore, type InvItem } from '../../store/InventoryStore.js';
+import { GameState } from '../../store/GameState.js';
 
 export interface StoveHost {
   scene: Phaser.Scene;
@@ -51,6 +52,7 @@ export class StoveFieldSystem {
   private previewG?: Phaser.GameObjects.Graphics;
   private acc = 0;
   private peerAcc = 0;
+  private warmAcc = 0;
   private nearStove: DeployedStove | null = null;
   placing: { stove: InvItem; fuel: InvItem; cookware: InvItem | null } | null = null;
 
@@ -276,6 +278,12 @@ export class StoveFieldSystem {
       if (d < bestD) { bestD = d; best = st; }
     }
     this.nearStove = best;
+    // 188차 — 불 켜진 화구 곁 = 보온(AG ③b). 1초에 한 번만 갱신하고, 오한이 풀리면 한 줄 알린다.
+    this.warmAcc += deltaMs;
+    if (best && this.warmAcc >= 1000 && best.session && best.session.heat > 0 && CookingStore.fuelOk(best)) {
+      this.warmAcc = 0;
+      if (GameState.warmUp().length > 0) this.host.pushLog('[상태] 불을 쬐어 몸이 녹았습니다 — 오한이 가라앉았습니다');
+    }
     if (best && !this.host.blocked() && !this.placing) {
       const lb = CookingStore.statusLabel(best);
       // 186차 — 머리 위 문구는 씬의 [F] 안내 하나로 합친다

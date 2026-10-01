@@ -68,6 +68,97 @@ export function forageSpotTexKey(c: ShoreCreature): string {
   return `forage_dot_${c.id}`;
 }
 
+/**
+ * 해양생물 도트 텍스처를 굽는다 (필드 스팟 · 도감 공용 — 188차에 메서드에서 끌어냈다).
+ * 텍스처 매니저는 게임 전역이라 한 번 구우면 어느 씬에서든 쓴다. 도감(AnglerLogScene)은
+ * 메인 메뉴에서도 열리므로 필드를 거치지 않아도 그림이 있어야 한다 — 이모지 대신(§8-8).
+ */
+export function ensureForageDotTextures(scene: Phaser.Scene): void {
+  const tex = scene.textures;
+  for (const c of SHORE_CREATURE_DATABASE) {
+    const key = forageSpotTexKey(c);
+    if (tex.exists(key)) continue;
+    const g = scene.add.graphics();
+    const w = 16, h = 14;
+    switch (c.id) {
+      case 'turbo_cornutus': // 소라 — 나선 껍데기
+        g.fillStyle(0x6e5a3e, 1); g.fillEllipse(8, 8, 13, 10);
+        g.fillStyle(0x9c8460, 1); g.fillEllipse(6, 7, 6, 5);
+        g.lineStyle(1, 0x3e3020, 1); g.strokeEllipse(8, 8, 13, 10);
+        break;
+      case 'mytilus_coruscus': // 홍합 — 검푸른 조개 군락
+        g.fillStyle(0x1f2a3a, 1); g.fillEllipse(5, 9, 7, 10); g.fillEllipse(11, 8, 7, 10);
+        g.fillStyle(0x38507a, 1); g.fillEllipse(5, 7, 3, 5); g.fillEllipse(11, 6, 3, 5);
+        break;
+      case 'strongylocentrotus_nudus': // 성게 — 검은 가시
+        g.fillStyle(0x14121a, 1); g.fillCircle(8, 8, 5);
+        g.lineStyle(1, 0x2a2438, 1);
+        for (let k = 0; k < 10; k++) { const a = (k / 10) * Math.PI * 2; g.lineBetween(8, 8, 8 + Math.cos(a) * 8, 8 + Math.sin(a) * 8); }
+        break;
+      case 'stichopus_japonicus': // 해삼 — 갈색 돌기
+        g.fillStyle(0x4a3a2a, 1); g.fillRoundedRect(1, 5, 14, 7, 3);
+        g.fillStyle(0x7a5a3a, 1); for (let k = 0; k < 5; k++) g.fillRect(2 + k * 3, 4, 1, 2);
+        break;
+      case 'octopus_vulgaris': // 문어 — 붉은 몸 + 다리
+        g.fillStyle(0xa8402c, 1); g.fillCircle(8, 6, 5);
+        g.lineStyle(2, 0xa8402c, 1);
+        for (let k = 0; k < 5; k++) g.lineBetween(4 + k * 2, 9, 2 + k * 3, 14);
+        g.fillStyle(0xffffff, 1); g.fillCircle(6, 5, 1); g.fillCircle(10, 5, 1);
+        break;
+      case 'haliotis_discus': // 전복
+        g.fillStyle(0x5a6a4a, 1); g.fillEllipse(8, 8, 14, 10);
+        g.fillStyle(0x8aa07a, 1); g.fillEllipse(6, 7, 6, 4);
+        g.fillStyle(0xffffff, 0.8); for (let k = 0; k < 4; k++) g.fillCircle(4 + k * 3, 5, 0.8);
+        break;
+      case 'haliotis_diversicolor': // 오분자기 — 작은 청록 전복
+        g.fillStyle(0x3c6b62, 1); g.fillEllipse(8, 8, 12, 8);
+        g.fillStyle(0x8db39a, 1); g.fillEllipse(6, 7, 5, 3);
+        g.lineStyle(1, 0x1c3939, 1); g.strokeEllipse(8, 8, 12, 8);
+        break;
+      case 'heliocidaris_crassispina': // 말똥성게 — 굵은 갈색 가시
+        g.fillStyle(0x3f251d, 1); g.fillCircle(8, 8, 4);
+        g.lineStyle(1, 0x8d5c3c, 1);
+        for (let k = 0; k < 10; k++) { const a = (k / 10) * Math.PI * 2; g.lineBetween(8, 8, 8 + Math.cos(a) * 8, 8 + Math.sin(a) * 8); }
+        break;
+      case 'aplysia_kurodai': // 참군소 — 낮은 갈색 몸
+        g.fillStyle(0x6b5940, 1); g.fillEllipse(8, 9, 14, 7);
+        g.fillStyle(0xa38a5e, 1); g.fillCircle(5, 7, 2); g.fillCircle(11, 7, 2);
+        break;
+      case 'hemigrapsus_sanguineus': // 쫄장게 — 작은 붉은 게
+        g.fillStyle(0xb45a45, 1); g.fillEllipse(8, 8, 9, 6);
+        g.lineStyle(1, 0xe08464, 1);
+        for (let k = 0; k < 2; k++) { g.lineBetween(4, 7 + k * 3, 1, 5 + k * 4); g.lineBetween(12, 7 + k * 3, 15, 5 + k * 4); }
+        break;
+      case 'charybdis_japonica': case 'portunus_trituberculatus': // 게
+        g.fillStyle(0x8a4a2c, 1); g.fillEllipse(8, 8, 11, 7);
+        g.lineStyle(1.5, 0x8a4a2c, 1);
+        for (let k = 0; k < 3; k++) { g.lineBetween(3, 6 + k * 2, 0, 4 + k * 3); g.lineBetween(13, 6 + k * 2, 16, 4 + k * 3); }
+        break;
+      case 'capitulum_mitella': // 거북손 — 군체
+        g.fillStyle(0x3a3a3a, 1); g.fillTriangle(2, 13, 6, 3, 9, 13); g.fillTriangle(7, 13, 11, 4, 14, 13);
+        g.fillStyle(0xd8c8a0, 1); g.fillTriangle(4, 12, 6, 6, 8, 12);
+        break;
+      case 'cellana_grata': // 삿갓조개 — 원뿔
+        g.fillStyle(0x6a5a4a, 1); g.fillTriangle(1, 12, 8, 3, 15, 12);
+        g.fillStyle(0x9a8a6a, 1); g.fillTriangle(5, 11, 8, 6, 11, 11);
+        break;
+      case 'omphalius_rusticus': // 보말 — 작은 고둥
+        g.fillStyle(0x3e3a34, 1); g.fillCircle(8, 9, 4.5);
+        g.fillStyle(0x6e6a5a, 1); g.fillCircle(7, 8, 2);
+        break;
+      case 'oyster_gigas': // 굴
+        g.fillStyle(0x7a7a72, 1); g.fillEllipse(8, 8, 13, 9);
+        g.fillStyle(0xd8d8cc, 1); g.fillEllipse(8, 8, 8, 5);
+        break;
+      default: // 조개류 기본
+        g.fillStyle(0xc8b898, 1); g.fillEllipse(8, 8, 12, 9);
+        g.lineStyle(1, 0x8a7a5a, 1); g.strokeEllipse(8, 8, 12, 9);
+    }
+    g.generateTexture(key, w, h);
+    g.destroy();
+  }
+}
+
 /** 필드 스팟 도트의 표시 크기 상한 (px) — 키가 어긋나도 화면을 덮지 못하게 하는 안전망 */
 const SPOT_MAX_PX = 28;
 
@@ -136,6 +227,7 @@ export class ForageSystem {
         const bw = this.host.breakwaterClassAt?.(c, r) ?? 0;
         const islet = this.host.isIsletAt?.(c, r) ?? false;
         if (islet) kind = nWater >= 3 ? 'tidepool' : 'rock_shore';
+        else if (t === 'rock') kind = nWater >= 3 ? 'tidepool' : 'rock_shore';   // 188차 — 영금정 등 갯바위 `k`(183차 어휘)가 빠져 있었다
         else if (bw === 2 || bw === 3) kind = 'armor_foot';
         else if (bw === 1 || t === 'pier') {
           // 상판/안벽 — 인접 물이 항만 수역이면 안벽(홍합·굴), 외해면 발밑 사석 취급
@@ -231,89 +323,7 @@ export class ForageSystem {
 
   /** 카테고리별 도트 아이콘 (실사 에셋 교체 자리 — spriteKey는 DB에 예약) */
   private ensureTextures(): void {
-    const tex = this.host.scene.textures;
-    for (const c of SHORE_CREATURE_DATABASE) {
-      const key = forageSpotTexKey(c);
-      if (tex.exists(key)) continue;
-      const g = this.host.scene.add.graphics();
-      const w = 16, h = 14;
-      switch (c.id) {
-        case 'turbo_cornutus': // 소라 — 나선 껍데기
-          g.fillStyle(0x6e5a3e, 1); g.fillEllipse(8, 8, 13, 10);
-          g.fillStyle(0x9c8460, 1); g.fillEllipse(6, 7, 6, 5);
-          g.lineStyle(1, 0x3e3020, 1); g.strokeEllipse(8, 8, 13, 10);
-          break;
-        case 'mytilus_coruscus': // 홍합 — 검푸른 조개 군락
-          g.fillStyle(0x1f2a3a, 1); g.fillEllipse(5, 9, 7, 10); g.fillEllipse(11, 8, 7, 10);
-          g.fillStyle(0x38507a, 1); g.fillEllipse(5, 7, 3, 5); g.fillEllipse(11, 6, 3, 5);
-          break;
-        case 'strongylocentrotus_nudus': // 성게 — 검은 가시
-          g.fillStyle(0x14121a, 1); g.fillCircle(8, 8, 5);
-          g.lineStyle(1, 0x2a2438, 1);
-          for (let k = 0; k < 10; k++) { const a = (k / 10) * Math.PI * 2; g.lineBetween(8, 8, 8 + Math.cos(a) * 8, 8 + Math.sin(a) * 8); }
-          break;
-        case 'stichopus_japonicus': // 해삼 — 갈색 돌기
-          g.fillStyle(0x4a3a2a, 1); g.fillRoundedRect(1, 5, 14, 7, 3);
-          g.fillStyle(0x7a5a3a, 1); for (let k = 0; k < 5; k++) g.fillRect(2 + k * 3, 4, 1, 2);
-          break;
-        case 'octopus_vulgaris': // 문어 — 붉은 몸 + 다리
-          g.fillStyle(0xa8402c, 1); g.fillCircle(8, 6, 5);
-          g.lineStyle(2, 0xa8402c, 1);
-          for (let k = 0; k < 5; k++) g.lineBetween(4 + k * 2, 9, 2 + k * 3, 14);
-          g.fillStyle(0xffffff, 1); g.fillCircle(6, 5, 1); g.fillCircle(10, 5, 1);
-          break;
-        case 'haliotis_discus': // 전복
-          g.fillStyle(0x5a6a4a, 1); g.fillEllipse(8, 8, 14, 10);
-          g.fillStyle(0x8aa07a, 1); g.fillEllipse(6, 7, 6, 4);
-          g.fillStyle(0xffffff, 0.8); for (let k = 0; k < 4; k++) g.fillCircle(4 + k * 3, 5, 0.8);
-          break;
-        case 'haliotis_diversicolor': // 오분자기 — 작은 청록 전복
-          g.fillStyle(0x3c6b62, 1); g.fillEllipse(8, 8, 12, 8);
-          g.fillStyle(0x8db39a, 1); g.fillEllipse(6, 7, 5, 3);
-          g.lineStyle(1, 0x1c3939, 1); g.strokeEllipse(8, 8, 12, 8);
-          break;
-        case 'heliocidaris_crassispina': // 말똥성게 — 굵은 갈색 가시
-          g.fillStyle(0x3f251d, 1); g.fillCircle(8, 8, 4);
-          g.lineStyle(1, 0x8d5c3c, 1);
-          for (let k = 0; k < 10; k++) { const a = (k / 10) * Math.PI * 2; g.lineBetween(8, 8, 8 + Math.cos(a) * 8, 8 + Math.sin(a) * 8); }
-          break;
-        case 'aplysia_kurodai': // 참군소 — 낮은 갈색 몸
-          g.fillStyle(0x6b5940, 1); g.fillEllipse(8, 9, 14, 7);
-          g.fillStyle(0xa38a5e, 1); g.fillCircle(5, 7, 2); g.fillCircle(11, 7, 2);
-          break;
-        case 'hemigrapsus_sanguineus': // 쫄장게 — 작은 붉은 게
-          g.fillStyle(0xb45a45, 1); g.fillEllipse(8, 8, 9, 6);
-          g.lineStyle(1, 0xe08464, 1);
-          for (let k = 0; k < 2; k++) { g.lineBetween(4, 7 + k * 3, 1, 5 + k * 4); g.lineBetween(12, 7 + k * 3, 15, 5 + k * 4); }
-          break;
-        case 'charybdis_japonica': case 'portunus_trituberculatus': // 게
-          g.fillStyle(0x8a4a2c, 1); g.fillEllipse(8, 8, 11, 7);
-          g.lineStyle(1.5, 0x8a4a2c, 1);
-          for (let k = 0; k < 3; k++) { g.lineBetween(3, 6 + k * 2, 0, 4 + k * 3); g.lineBetween(13, 6 + k * 2, 16, 4 + k * 3); }
-          break;
-        case 'capitulum_mitella': // 거북손 — 군체
-          g.fillStyle(0x3a3a3a, 1); g.fillTriangle(2, 13, 6, 3, 9, 13); g.fillTriangle(7, 13, 11, 4, 14, 13);
-          g.fillStyle(0xd8c8a0, 1); g.fillTriangle(4, 12, 6, 6, 8, 12);
-          break;
-        case 'cellana_grata': // 삿갓조개 — 원뿔
-          g.fillStyle(0x6a5a4a, 1); g.fillTriangle(1, 12, 8, 3, 15, 12);
-          g.fillStyle(0x9a8a6a, 1); g.fillTriangle(5, 11, 8, 6, 11, 11);
-          break;
-        case 'omphalius_rusticus': // 보말 — 작은 고둥
-          g.fillStyle(0x3e3a34, 1); g.fillCircle(8, 9, 4.5);
-          g.fillStyle(0x6e6a5a, 1); g.fillCircle(7, 8, 2);
-          break;
-        case 'oyster_gigas': // 굴
-          g.fillStyle(0x7a7a72, 1); g.fillEllipse(8, 8, 13, 9);
-          g.fillStyle(0xd8d8cc, 1); g.fillEllipse(8, 8, 8, 5);
-          break;
-        default: // 조개류 기본
-          g.fillStyle(0xc8b898, 1); g.fillEllipse(8, 8, 12, 9);
-          g.lineStyle(1, 0x8a7a5a, 1); g.strokeEllipse(8, 8, 12, 9);
-      }
-      g.generateTexture(key, w, h);
-      g.destroy();
-    }
+    ensureForageDotTextures(this.host.scene);
   }
 
   // ═══════════════════════════════════════════════════

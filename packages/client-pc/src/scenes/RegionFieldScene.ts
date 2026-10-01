@@ -1020,43 +1020,60 @@ export class RegionFieldScene extends Phaser.Scene {
       for (let r = 0; r < this.rows; r++) {
         for (let c = 0; c < this.cols; c++) {
           const t = this.terrain[r][c];
-          const checker = (c + r) % 2 === 0;
           let color: number;
           if (t === 'water') {
-            const d = waterDist[r][c];
-            let bucket = bucketOf(d);
-            // 암초/여 지대: 노이즈 융기 — 주변보다 얕은 색(단차)으로 도드라짐
-            const reefNoise = RegionFieldScene.noise2(mapSeed, c / 3.2, r / 3.2);
-            const isReef = d >= 2 && d <= 14 && reefNoise > 0.72;
-            if (isReef) bucket = Math.max(0, bucket - 2);
-            const ramp = DEPTH_RAMP[bucket];
-            color = checker ? ramp[0] : ramp[1];
-            g.fillStyle(color, 1);
-            g.fillRect(c * TR, r * TR, TR, TR);
-            // 173차 — 물도 2px 그레인(잔물결). 단색 체커는 비닐처럼 보인다.
+            // ── 188차 — 수심은 **4px 칸마다 보간**한다. 구 구현은 타일 단위 버킷 + `(c+r)%2` 체커라
+            //   바다 전체가 20px 바둑판으로 보였다(사용자 리포트 「지저분한 격자무늬」). 타일 중심 거리장을
+            //   쌍선형 보간하고 저주파 노이즈로 흔들어 수심 경계가 등고선처럼 흐르게 한다.
+            const S = 4;
+            const D = (cc: number, rr: number): number =>
+              waterDist[Phaser.Math.Clamp(rr, 0, this.rows - 1)][Phaser.Math.Clamp(cc, 0, this.cols - 1)];
+            for (let y = 0; y < TR; y += S) for (let x = 0; x < TR; x += S) {
+              const wx = c * TR + x + S / 2, wy = r * TR + y + S / 2;
+              const fx = wx / TR - 0.5, fy = wy / TR - 0.5;
+              const ix = Math.floor(fx), iy = Math.floor(fy), tx = fx - ix, ty = fy - iy;
+              const dl = D(ix, iy) * (1 - tx) * (1 - ty) + D(ix + 1, iy) * tx * (1 - ty)
+                + D(ix, iy + 1) * (1 - tx) * ty + D(ix + 1, iy + 1) * tx * ty;
+              const d = Math.max(0, dl + (RegionFieldScene.noise2(mapSeed ^ 0x3c9d, wx / 26, wy / 26) - 0.5) * 1.6);
+              let bucket = bucketOf(d);
+              // 암초/여 지대: 노이즈 융기 — 주변보다 얕은 색(단차)으로 도드라짐 (위상은 월드 좌표 — 칸 경계와 무관)
+              const reefN = RegionFieldScene.noise2(mapSeed, wx / (3.2 * TR), wy / (3.2 * TR));
+              const reef = d >= 2 && d <= 14 && reefN > 0.72;
+              if (reef) bucket = Math.max(0, bucket - 2);
+              let col = DEPTH_RAMP[bucket][0];
+              // 깊은 곳의 더 어두운 해구 얼룩 (수심 단차 느낌) — 구: 타일보다 4px 작은 사각형
+              if (!reef && bucket >= 4 && RegionFieldScene.noise2(mapSeed ^ 0x9e37, wx / (5 * TR), wy / (5 * TR)) > 0.8) {
+                const mix = (a: number, b: number): number => Math.round(a * 0.6 + b * 0.4);
+                col = (mix(col >> 16, 0x18) << 16) | (mix((col >> 8) & 0xff, 0x34) << 8) | mix(col & 0xff, 0x4f);
+              }
+              g.fillStyle(col, 1);
+              g.fillRect(c * TR + x, r * TR + y, S, S);
+            }
+            // 173차 — 물도 2px 그레인(잔물결). 188차 — 덧칠 색을 타일 버킷색이 아니라 고정 명암으로
+            //   (타일 버킷색을 α0.5로 얹으면 보간한 경계 위에 타일 사각형이 다시 비친다)
             for (let y = 0; y < TR; y += 2) for (let x = 0; x < TR; x += 2) {
               const hw = RegionFieldScene.hash2(mapSeed ^ 0x77aa, c * 32 + x, r * 32 + y);
               if (hw > 0.3) continue;
-              g.fillStyle(hw < 0.08 ? 0xffffff : color, hw < 0.08 ? 0.12 : 0.5);
+              g.fillStyle(hw < 0.08 ? 0xffffff : 0x0c2236, hw < 0.08 ? 0.12 : 0.08);
               g.fillRect(c * TR + x, r * TR + y, 2, 2);
             }
-            if (isReef) {
-              // 수중 바위 점묘 (탑다운에서 비쳐 보이는 여)
+            // 수중 바위 점묘 (탑다운에서 비쳐 보이는 여) — 188차: 위치·크기는 타일 해시로
+            //   (구: 모든 여 타일 같은 자리 → 여밭 전체가 20px 점 격자)
+            const dT = waterDist[r][c];
+            const reefT = RegionFieldScene.noise2(mapSeed, c / 3.2, r / 3.2);
+            if (dT >= 2 && dT <= 14 && reefT > 0.72) {
+              const h1 = RegionFieldScene.hash2(mapSeed ^ 0x3d5a, c, r);
+              const h2 = RegionFieldScene.hash2(mapSeed ^ 0x52a1, c, r);
               g.fillStyle(0x3d5a52, 0.55);
-              g.fillRect(c * TR + 3, r * TR + 5, 6, 4);
-              g.fillRect(c * TR + 11, r * TR + 12, 5, 4);
-              if (reefNoise > 0.78) {
+              if (h1 > 0.3) g.fillRect(c * TR + 2 + Math.floor(h2 * 6) * 2, r * TR + 2 + Math.floor(h1 * 6) * 2, 4 + Math.floor(h2 * 2) * 2, 2 + Math.floor(h1 * 2) * 2);
+              if (h2 < 0.55) {
                 g.fillStyle(0x2f4a44, 0.5);
-                g.fillRect(c * TR + 7, r * TR + 9, 7, 5);
+                g.fillRect(c * TR + 2 + Math.floor(h1 * 7) * 2, r * TR + 2 + Math.floor(h2 * 7) * 2, 2 + Math.floor(h1 * 2) * 2, 2 + Math.floor(h2 * 2) * 2);
               }
-            } else if (bucket >= 4 && RegionFieldScene.noise2(mapSeed ^ 0x9e37, c / 5, r / 5) > 0.8) {
-              // 깊은 곳의 더 어두운 해구 얼룩 (수심 단차 느낌)
-              g.fillStyle(0x18344f, 0.4);
-              g.fillRect(c * TR + 2, r * TR + 2, TR - 4, TR - 4);
             }
             continue;
           } else if (t === 'grass') {
-            color = checker ? COL.grass : COL.grassAlt;
+            color = COL.grass;   // 188차 — 체커 제거(타일 바둑판). 질감은 아래 2px 그레인이 낸다
           } else if (t === 'building') {
             color = COL.buildFill;
           } else {
@@ -1064,7 +1081,7 @@ export class RegionFieldScene extends Phaser.Scene {
             const beach =
               this.terrainAt(c + 1, r) === 'water' || this.terrainAt(c - 1, r) === 'water' ||
               this.terrainAt(c, r + 1) === 'water' || this.terrainAt(c, r - 1) === 'water';
-            color = beach ? COL.beach : (checker ? COL.land : COL.landAlt);
+            color = beach ? COL.beach : COL.land;
           }
           g.fillStyle(color, 1);
           g.fillRect(c * TR, r * TR, TR, TR);
@@ -2912,7 +2929,8 @@ export class RegionFieldScene extends Phaser.Scene {
             this.shopPanel?.setStatus('재화가 부족합니다.');
             return;
           }
-          if (!InventoryStore.addItem(entry, qty)) {
+          // 188차 — 세트 상품은 구성품으로 풀어 넣는다(전부 들어갈 때만)
+          if (!(entry.bundle ? InventoryStore.addBundle(entry.bundle, qty) : InventoryStore.addItem(entry, qty))) {
             this.shopPanel?.setStatus('인벤토리 소켓이 가득 찼습니다.');
             return;
           }
@@ -2923,6 +2941,7 @@ export class RegionFieldScene extends Phaser.Scene {
           this.hud?.pushLog(`[구매] ${entry.name} x${qty} (-${total.toLocaleString()}원)`);
           // 135차 — 구매를 스토리 목표로 쓸 수 있게 이벤트를 흘린다 (M1-04 사이소 저가 장비 등)
           StoryStore.event({ kind: 'custom', key: `buy:${entry.id}` });
+          GameState.addProficiency('haggle');   // 188차 — 흥정 숙련은 사고팔아야 는다
         },
         close,
       ));
@@ -2967,6 +2986,7 @@ export class RegionFieldScene extends Phaser.Scene {
           this.shopPanel?.refresh();
           this.shopPanel?.setStatus(`${item.name} x${qty} 판매 완료 (+${total.toLocaleString()}원)`);
           this.hud?.pushLog(`[판매] ${item.name} x${qty} (+${total.toLocaleString()}원)`);
+          GameState.addProficiency('haggle');   // 188차 — 흥정 숙련
         },
         close,
       ));

@@ -16,6 +16,9 @@ import { EN_AUCTION } from './en_auction.js';
 import { EN_CONTENT } from './en_content.js';
 import { EN_FISH } from './en_fish.js';
 import { EN_COOK } from './en_cook.js';
+import { EN_TOUR } from './en_tour.js';
+import { EN_TOUR_PANELS } from './en_tour_panels.js';
+import { EN_SKILL } from './en_skill.js';
 import { EN_UI, EN_UI_RULES } from './en_ui.js';
 
 /** 기본 사전 — 분야별 사전(EN_ITEMS/EN_RIG_COOKING/EN_HELP)보다 우선한다 */
@@ -515,11 +518,38 @@ const EN_EXTRA: Record<string, string> = {
   '상태': 'Status',
   '주간': 'Day',
   '야간': 'Night',
+  // ── 188차 — AG 백로그 정리 (경제·낚시·생존·이야기 UI·기타) — 이 블록 아래로만 추가 ──
+  '입문 루어 세트 (미노우·스푼·웜)': 'Starter Lure Set (minnow · spoon · worm)',
+  '고급 에기 세트 (2.5·3.5호)': 'Premium Egi Set (#2.5 · #3.5)',
+  '품질관리 교육 수료자용 입문 세트. 미끼 냄새 안 나는 낚시.': 'A starter set for graduates of the quality-control course. Fishing without the smell of bait.',
+  '에깅 계열이 열린 사람에게만. 폴링이 다르다.': 'Only for anglers who have opened up egging. The fall is different.',
+  '산란기 8kg 이상 대문어': 'Spawning-season giant octopus of 8 kg or more',
+  '이번 장': 'This chapter',
+  '조행록': 'Fishing log',
+  '동명 조행록': 'The Dongmyeong Fishing Log',
+  '지나온 장': 'Chapters so far',
+  '채워 가는 장': 'Pages in progress',
+  '잡았다': 'Caught',
+  '이야기를 마쳤다': 'Story finished',
+  '아직 한 장도 쓰지 못했다. 제철 고기를 잡고, 그 바다 사람들과 이야기를 끝내면 한 장이 채워진다.':
+    'Not a single page written yet. Catch a fish in its season and finish the story with the people of that sea, and a page fills in.',
+  '그 밖의 곳': 'Elsewhere',
+  '집 앞바다': 'The sea by home',
+  '저장되지 않은 진행이 있습니다 — ESC를 한 번 더 누르면 타이틀로 나갑니다':
+    'You have unsaved progress — press ESC again to go to the title screen',
+  '· 오징어·한치·문어도 도마에서 손질합니다 — 복어(자격·독)와 갑오징어는 준비 중입니다':
+    '· Squid, swordtip squid and octopus can be dressed on the board too — pufferfish (licence and toxin) and cuttlefish are still in progress.',
+  '갑오징어 손질은 준비 중입니다 (무늬오징어·한치·문어·대문어는 손질할 수 있습니다)':
+    'Cuttlefish dressing is still in progress (bigfin reef squid, swordtip squid, octopus and giant octopus can be dressed)',
+  '불을 쬐어 몸이 녹았습니다 — 오한이 가라앉았습니다': 'You warmed up by the fire — the chills have passed',
+  '[상태] 불을 쬐어 몸이 녹았습니다 — 오한이 가라앉았습니다': '[Status] You warmed up by the fire — the chills have passed',
+  '새 지역': 'a new region',
+  '이웃': 'A neighbour',
 };
 
 /** 최종 사전 — 분야별 사전을 먼저 깔고 기본 사전이 덮는다(충돌 시 기본 우선) */
 export const EN_DICT: Record<string, string> = {
-  ...EN_FISH, ...EN_CONTENT, ...EN_ITEMS, ...EN_RIG_COOKING, ...EN_HELP, ...EN_FORAGE, ...EN_PANELS, ...EN_GEAR, ...EN_AUCTION, ...EN_COOK, ...EN_UI, ...EN_EXTRA, ...EN_BASE,
+  ...EN_FISH, ...EN_CONTENT, ...EN_ITEMS, ...EN_RIG_COOKING, ...EN_HELP, ...EN_FORAGE, ...EN_PANELS, ...EN_GEAR, ...EN_AUCTION, ...EN_COOK, ...EN_UI, ...EN_EXTRA, ...EN_TOUR, ...EN_TOUR_PANELS, ...EN_SKILL, ...EN_BASE,
 };
 
 /**
@@ -930,4 +960,13 @@ export const EN_RULES: Rule[] = [
   // 금액 규칙은 숫자만 (122차 — '국립해양측위정보원'이 '₩국립해양측위정보'로 잘리던 함정)
   [/^([\d,.]+) 원$/, '₩$1'], [/^([\d,.]+)원$/, '₩$1'],
   [/^\[(\d\d:\d\d)\] ([\s\S]+)$/, (m, tr) => `[${m[1]}] ${tr(m[2])}`],
+  // ── 188차 — AG 백로그 정리 — 이 블록 아래로만 추가 ──
+  [/^가방 공간이 부족합니다 — (.+) (\d+)칸 필요 \(빈 칸 (\d+)\)$/, (m, tr) => `Not enough bag space — ${tr(m[1])} needs ${m[2]} slots (${m[3]} free)`],
+  [/^(.+)에게 말을 걸어 대화에서 이 일을 고른다 \(이야기 장면\)$/, (m, tr) => (m[1] === '상대'
+    ? 'Talk to them and pick this task in the conversation (story scene)'
+    : `Talk to ${tr(m[1])} and pick this task in the conversation (story scene)`)],
+  [/^지역 개방: (.+)$/, (m, tr) => `Region opened: ${tr(m[1])}`],
+  [/^(.+) 우호도 ([+-]\d+)$/, (m, tr) => `${tr(m[1])} affinity ${m[2]}`],
+  [/^(.+) \(인벤토리 공간 부족 — 미지급\)$/, (m, tr) => `${tr(m[1])} (no bag space — not given)`],
+  [/^(.+?) · 고정$/, (m, tr) => `${tr(m[1])} · Pinned`],
 ];
