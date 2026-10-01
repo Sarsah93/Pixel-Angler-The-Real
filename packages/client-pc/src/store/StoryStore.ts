@@ -165,6 +165,7 @@ class StoryStoreManager {
   }
   deserialize(s?: StorySaveState): void {
     this.quests = s?.quests ?? {};
+    StoryStoreManager.remapPrologue(this.quests);
     this.rep = s?.rep ?? createDefaultReputation();
     this.pageCatch = s?.pageCatch ?? {};
     this.day = s?.day ?? 0;
@@ -184,6 +185,21 @@ class StoryStoreManager {
     this.refreshAutoQuests();
   }
   resetAll(): void { this.deserialize(undefined); }
+
+  /**
+   * 188차 — M1-01 「막차」가 3목표 → 17목표(프롤로그 14개를 앞에 끼움)로 늘었다.
+   * 구세이브의 M1-01 진행은 **이미 집을 떠난 사람**이므로 앞 14개를 완료로 채우고 옛 3개 값을 뒤에 붙인다.
+   * (완료된 M1-01은 obj를 다시 보지 않으므로 손대지 않아도 되지만, 길이를 맞춰 둔다)
+   */
+  private static remapPrologue(quests: Record<string, QuestProgress>): void {
+    const p = quests['M1-01'];
+    const q = getStoryQuest('M1-01');
+    if (!p || !q) return;
+    const extra = q.objectives.length - p.obj.length;
+    if (extra <= 0) return;
+    const head = q.objectives.slice(0, extra).map((o) => o.target ?? 1);
+    p.obj = [...head, ...p.obj];
+  }
 
   // ── 조회 ──
   get storyDay(): number { return this.day; }
@@ -266,6 +282,32 @@ class StoryStoreManager {
   }
   allObjectivesDone(q: StoryQuestDef): boolean {
     return q.objectives.every((_o, i) => this.objectiveDone(q, i));
+  }
+  /** 188차 — 순서형 퀘스트(`ordered`)는 앞 목표를 다 닫아야 이 목표를 받는다 */
+  objectiveReachable(q: StoryQuestDef, i: number): boolean {
+    if (!q.ordered) return true;
+    for (let k = 0; k < i; k++) if (!this.objectiveDone(q, k)) return false;
+    return true;
+  }
+
+  /**
+   * 188차 — 목표 진행값을 직접 맞춘다(프롤로그 동기화 `story/Prologue.ts` 전용).
+   * 순서형이면 앞 목표가 남았을 때 거부한다. 값은 줄이지 않는다(되감기 금지).
+   * @returns 이번 호출로 목표가 새로 닫혔는가
+   */
+  setObjectiveProgress(questId: string, i: number, value: number): boolean {
+    const q = getStoryQuest(questId); const p = this.quests[questId];
+    if (!q || !p || p.status !== 'active' || !q.objectives[i]) return false;
+    if (!this.objectiveReachable(q, i) || this.objectiveDone(q, i)) return false;
+    const o = q.objectives[i];
+    const v = Math.min(this.objectiveTarget(o), Math.max(p.obj[i] ?? 0, value));
+    if (v === (p.obj[i] ?? 0)) return false;
+    p.obj[i] = v;
+    const done = this.objectiveDone(q, i);
+    if (done) this.onNotify?.(`[할 일] ${q.titleKo} — ${o.labelKo} 달성`);
+    if (q.giver === '' && this.allObjectivesDone(q)) this.complete(q.id);
+    this.host?.markDirty();
+    return done;
   }
 
   /**
@@ -711,6 +753,7 @@ class StoryStoreManager {
       const q = getStoryQuest(ev.questId); const p = this.quests[ev.questId];
       const o = q?.objectives[ev.objectiveIndex];
       if (!q || !p || p.status !== 'active' || !o || !this.isSceneObjective(o) || this.objectiveDone(q, ev.objectiveIndex)) return;
+      if (!this.objectiveReachable(q, ev.objectiveIndex)) return;
       p.obj[ev.objectiveIndex] = this.objectiveTarget(o);
       this.onNotify?.(`[할 일] ${q.titleKo} — ${o.labelKo} 달성`);
       if (q.giver === '' && this.allObjectivesDone(q)) this.complete(q.id);
@@ -722,6 +765,7 @@ class StoryStoreManager {
       if (!p || p.status !== 'active') continue;
       q.objectives.forEach((o, i) => {
         if (this.objectiveDone(q, i)) return;
+        if (!this.objectiveReachable(q, i)) return;   // 188차 — 순서형(M1-01 프롤로그)
         if (o.manual && ev.kind !== 'talk' && !(ev.kind === 'action' && o.actionKey === ev.key)) return;
         if (ev.kind === 'action' && o.actionKey === ev.key) {
           // actionKey 목표는 한 번의 이벤트로 즉시 완료하지 않는다. 같은 계통의

@@ -99,6 +99,14 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
   }
   // 141차 — 귀속 장비: 이야기가 준 물건. 판매·양도 불가를 맨 위에
   if (item.bound) rows.push({ label: '귀속', value: '이야기가 준 물건 — 판매·양도 불가' });
+  // 188차 — 프롤로그 가족사진: 뒷면의 「영금정」이 다음 목적지다(M1-01 「가족사진 뒷면을 살펴본다」)
+  if (item.id === 'quest_family_photo') {
+    rows.push({ label: '뒷면', value: '연필로 눌러 쓴 두 글자 — 영금정' });
+    return {
+      title: item.name, subtitle: '이야기 물건', rows,
+      desc: '바닷가 바위 앞에서 찍은 사진. 어린 나와 부모님이 바람에 눈을 찡그리며 웃고 있다. 아버지 글씨로 적힌 그 자리부터 가 보려 한다.',
+    };
+  }
 
   // ── 136차 장비 상태 — 고장·파손과 내구도를 **최상단**에 (슬롯 우하단 경고 배지와 같은 사실) ──
   if (item.fault) {
@@ -678,7 +686,8 @@ export class ItemDetailPanel extends DraggablePanel {
 
     // 판매가 참고 — 설명 아래로 흘려 배치(스크롤 시 함께 이동)
     const sellY = descY + descText.height + 10;
-    const sellText = scene.add.text(22, sellY, `상점 매입가: ${InventoryStore.getSellPrice(item as InvItem).toLocaleString()} 원`, {
+    // 188차 — 귀속(이야기) 물건은 팔 수 없으므로 매입가를 보이지 않는다(구: 가족사진에 「상점 매입가 100원」)
+    const sellText = scene.add.text(22, sellY, item.bound ? '' : `상점 매입가: ${InventoryStore.getSellPrice(item as InvItem).toLocaleString()} 원`, {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#ffe28a',
     });
     body.add(sellText);

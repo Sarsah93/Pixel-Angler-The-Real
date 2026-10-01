@@ -48,13 +48,51 @@ function mainRows(rows: MainRow[]): StoryQuestDef[] {
 // 제1부 「실습생」 — Ch1 속초 · 11퀘 · 4,400 XP (튜토리얼 전담)
 // ─────────────────────────────────────────────
 const MAIN: StoryQuestDef[] = mainRows([
+  // 188차 — 프롤로그 「떠나는 날 아침」(사용자 확정 시나리오 A). 집 안에서 눈을 떠 조작을 하나씩 직접 해 보며
+  //   속초까지 간다. 앞 14개(prologue:*)는 클라이언트 `story/Prologue.ts`가 실제 행동 플래그로 순서대로 닫는다.
+  //   ⚠ 목표 순서를 바꾸면 StoryStore 구세이브 재배치(M1-01 3목표 → 17목표)와 Prologue 표도 같이 고친다.
   ['M1-01', 1, 1, 240, '', SOK, '막차', 'The Last Bus',
-    '산골집 문을 잠그고 돌아보지 않는다. 종점은 영금정 — 22년 전 가족사진과 같은 자리.',
-    'You lock the mountain house and don\'t look back. The last stop is Yeonggeumjeong — the same spot as the family photo, 22 years ago.',
-    [auto('visit', '영금정에 도착한다', 'Arrive at Yeonggeumjeong', { placeKey: 'poi:yeonggeumjeong' }),
+    '아버지가 남긴 집에서 맞는 마지막 아침. 아버지의 낚시 상자를 챙겨 막차를 타고, 사진 속 자리 영금정으로 간다.',
+    'The last morning in the house your father left. Pack his tackle box, catch the last bus, and head for Yeonggeumjeong — the place in the photo.',
+    [auto('custom', '아버지의 낚시 상자를 연다', 'Open your father\'s tackle box', {
+      placeKey: 'prologue:box', guidePlaceKey: 'home:door',
+      howToKo: '집 안 침대 발치의 낚시 상자 앞에서 [F]', howToEn: 'Press [F] at the tackle box at the foot of the bed' }),
+      auto('custom', '가방(I)을 열어 아버지의 대를 손에 든다', 'Open the bag (I) and take your father\'s rod in hand', {
+        placeKey: 'prologue:rod', guidePlaceKey: 'home:door',
+        howToKo: 'I → 대를 우클릭 → 「오른손 착용」', howToEn: 'I → right-click the rod → "Equip (right hand)"' }),
+      auto('custom', '장비창(E)에서 대에 릴을 단다', 'Fit the reel in the equipment window (E)', {
+        placeKey: 'prologue:reel', guidePlaceKey: 'home:door',
+        howToKo: 'E → 가방의 릴을 「릴」 칸으로 끌어다 놓는다', howToEn: 'E → drag the reel from the bag onto the "Reel" slot' }),
+      auto('custom', '가족사진 뒷면을 살펴본다', 'Look at the back of the family photo', {
+        placeKey: 'prologue:photo', guidePlaceKey: 'home:door',
+        howToKo: '가방(I)에서 사진을 우클릭 → 「상세보기」', howToEn: 'In the bag (I), right-click the photo → "Details"' }),
+      auto('custom', '일지(J)를 펼쳐 오늘 할 일을 확인한다', 'Open the journal (J) and check today\'s tasks', {
+        placeKey: 'prologue:journal', guidePlaceKey: 'home:door',
+        howToKo: 'J — 일지를 펼친다', howToEn: 'J — open the journal' }),
+      auto('custom', '냉동고에서 얼려 둔 오징어를 챙긴다', 'Take the frozen squid from the freezer', {
+        placeKey: 'prologue:squid', guidePlaceKey: 'home:door',
+        howToKo: '냉장고 앞 [F] → 냉동고 칸의 오징어를 클릭해 가방으로', howToEn: 'Press [F] at the fridge → click the squid in the freezer to take it' }),
+      auto('custom', '침대에서 저장한다', 'Save at the bed', { placeKey: 'prologue:save', guidePlaceKey: 'home:door',
+        howToKo: '침대 앞 [F] → 「저장하고 쉬기」', howToEn: 'Press [F] at the bed → "Save and rest"' }),
+      auto('custom', '집을 나선다', 'Step outside', { placeKey: 'prologue:leave', guidePlaceKey: 'home:door',
+        howToKo: '문 앞에서 [F]', howToEn: 'Press [F] at the door' }),
+      auto('custom', '우물물을 한 모금 마신다', 'Take a drink from the well', { placeKey: 'prologue:well', guidePlaceKey: 'home:well',
+        howToKo: '마당의 우물 앞에서 [F]', howToEn: 'Press [F] at the well in the yard' }),
+      auto('custom', '상태 창(S)으로 몸 상태를 살핀다', 'Check how you are doing in the status window (S)', {
+        placeKey: 'prologue:status', howToKo: 'S — 상태 창을 연다', howToEn: 'S — open the status window' }),
+      auto('custom', '지도(M)를 펼쳐 버스 정류장을 찾는다', 'Open the map (M) and find the bus stop', {
+        placeKey: 'prologue:map', guidePlaceKey: 'home:bus', howToKo: 'M — 지도를 펼친다', howToEn: 'M — open the map' }),
+      auto('custom', '막차를 타고 속초로 간다', 'Take the last bus to Sokcho', { placeKey: 'prologue:arrive', guidePlaceKey: 'home:bus',
+        howToKo: '버스 정류장 [F] → 전국 지도에서 속초', howToEn: 'Bus stop [F] → pick Sokcho on the national map' }),
+      auto('custom', '직판장에서 기본 채비를 하나씩 산다 (원줄·바늘·봉돌·찌·미끼)', 'Buy basic tackle at the fish market, one of each (line, hook, sinker, float, bait)', {
+        placeKey: 'prologue:buy', target: 5,
+        howToKo: '수산물 직판장 [F] → 원줄·바늘·봉돌·찌·미끼를 하나씩 산다', howToEn: 'Fish market [F] → buy a line, a hook, a sinker, a float and some bait' }),
+      auto('custom', '얼린 오징어를 직판장에 판다', 'Sell the frozen squid at the fish market', { placeKey: 'prologue:sell',
+        howToKo: '직판장 [F] → 「판매하기」 → 오징어', howToEn: 'Fish market [F] → "Sell" → the squid' }),
+      auto('visit', '영금정에 도착한다', 'Arrive at Yeonggeumjeong', { placeKey: 'poi:yeonggeumjeong' }),
       auto('visit', '동명항 방파제 쪽 정옥선 좌판 근처까지 이동한다', 'Reach Ok-seon\'s stall by the Dongmyeonghang breakwater', { placeKey: 'poi:okseon-stall' }),
       talk('okseon', '정옥선 할머니에게 고민을 털어놓는다', 'Tell Grandma Ok-seon what is on your mind')],
-    { teaches: ['movement', 'inventory', 'statusPanel', 'worldMap'] }],
+    { teaches: ['movement', 'inventory', 'statusPanel', 'worldMap', 'shop', 'save'], ordered: true }],
   ['M1-02', 1, 2, 270, 'okseon', SOK, '얼음 나르기', 'Hauling Ice',
     '정옥선의 심부름용 얼음 상자를 경매장까지 나른다. 인벤토리에서 퀘스트 아이템을 확인하고, 경매장까지 이동한 뒤, 얼음 상자를 지정된 위치에 내려놓는다.',
     'Carry Ok-seon\'s errand ice crate to the auction hall: check the quest item in your inventory, walk it over, and set it down on the marked spot.',

@@ -873,7 +873,28 @@ export function formatRemain(ms: number): string {
   return parts.join(' ');
 }
 
-/** 기본 퀵슬롯 배정 (시드/새 게임) */
+/**
+ * 188차 — 새 게임 지급품 = **없음**(사용자 결정 「대·릴만」). 대와 릴은 집 안 「아버지의 낚시 상자」에서
+ * 꺼낸다(프롤로그 M1-01). 착용하지 않은 채로 들어온다 — 가방(I)·장비창(E) 체험 가이드가 직접 착용시킨다.
+ * 나머지 채비는 속초 직판장에서 하나씩 산다(상점 체험).
+ * ⚠ `createSeedItems()`는 지우지 않는다 — 구세이브 정적 필드 백필과 dev 하네스(`resetAllDevSeed`)가 쓴다.
+ */
+export const FATHER_BOX_ITEMS: InvItemTemplate[] = [
+  { id: 'inv_rod',  name: '용상 파조기 1.5호 5.3m', icon: '', iconTexture: 'item_spinning_rod', category: 'gear', subCategory: '손도구', basePrice: 185000, equippable: true, tool: 'rod' },
+  { id: 'inv_reel', name: '다이오 2500L 스피닝릴',  icon: '', iconTexture: 'item_spinning_reel', category: 'gear', subCategory: '릴', basePrice: 95000, equippable: true },
+];
+
+/** 새 게임 퀵슬롯 — 비어 있다(188차) */
+function starterQuickslots(): (string | null)[] {
+  return [null, null, null, null, null, null, null, null];
+}
+
+/** 새 게임 채비 — 비어 있다(188차 · 부품은 직판장에서 산다) */
+function emptyRig(): Record<RigStepKey, string | null> {
+  return { mainLine: null, floatStop: null, float: null, subFloat: null, swivel: null, leader: null, sinker: null, hook: null, bait: null };
+}
+
+/** 기본 퀵슬롯 배정 (dev 시드) */
 function defaultQuickslots(): (string | null)[] {
   return ['inv_rod', 'inv_krill', 'inv_chum', null, null, null, null, null];
 }
@@ -1213,13 +1234,27 @@ class InventoryStoreManager {
 
   /** 전체 초기화 (새 게임/세이브 없음 — 시드 아이템·기본 채비 재지급) */
   resetAll(): void {
-    this.rigLocked = false;
+    this.resetCommon();
+    // 188차 — 새 게임은 빈손으로 시작한다(대·릴은 아버지의 낚시 상자에서)
+    this._items = [];
+    this._quickslots = starterQuickslots();
+    this._rig = emptyRig();
+    this.hasFloatStop = false;
+  }
+
+  /** dev·하네스 전용 — 188차 이전의 새 게임(시드 아이템 일체 + 기본 채비) */
+  resetAllDevSeed(): void {
+    this.resetCommon();
     this._items = createSeedItems().map((i) => applyCookItemFields(i));   // 154차 — 조리 필드 테이블
-    this._catchSeq = 0;
     this._quickslots = defaultQuickslots();
     this._rig = defaultRig();
-    this.rigDepthLimitM = 5;
     this.hasFloatStop = true;
+  }
+
+  private resetCommon(): void {
+    this.rigLocked = false;
+    this._catchSeq = 0;
+    this.rigDepthLimitM = 5;
     this.spreader = { kind: 'NONE', hookBaits: [] };
     this.rigMode = 'bait';
     this._lure = null;

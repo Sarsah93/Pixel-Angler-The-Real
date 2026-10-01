@@ -9,6 +9,41 @@ export const EN_TOUR: Record<string, string> = {
   // ── 공통 ──
   '다음': 'Next',
   '확인': 'OK',
+  // ── 188차 프롤로그 「떠나는 날 아침」 ──
+  '방향키로 걸을 수 있다. 방 안을 조금 걸어 보자.': 'Use the arrow keys to walk. Take a few steps around the room.',
+  'Shift를 누른 채 걸으면 뛴다. 뛰어 보자.': 'Hold Shift while walking to run. Give it a try.',
+  '가구 앞에 서면 머리 위에 [F]가 뜬다. 소파 앞으로 가서 [F]로 살펴보자.':
+    'Stand in front of furniture and [F] appears above your head. Go to the sofa and press [F] to look at it.',
+  '침대 발치에 아버지의 낚시 상자가 있다. 상자 앞에서 [F]로 열어 보자.':
+    "Your father's tackle box sits at the foot of the bed. Stand in front of it and press [F] to open it.",
+  '눈을 떴다. 천장 무늬가 낯설다. 이 집에서 잔 게 몇 해 만인지 세어 보다가 그만뒀다.':
+    'I open my eyes. The pattern on the ceiling looks strange. I start counting how many years it has been since I slept in this house, then give up.',
+  '아버지가 쓰던 방이다. 장례를 치르고는 한 번도 들어오지 않았는데, 이제 갈 데가 여기밖에 없다.':
+    "This was my father's room. I haven't set foot in it since the funeral, but now there's nowhere else to go.",
+  '침대 발치에 아버지의 낚시 상자가 그대로 놓여 있다.': "My father's tackle box is still sitting at the foot of the bed.",
+  '속초행 막차는 밤에 한 대뿐이라고 했다. 떠나기 전에 챙길 것부터 챙기자.':
+    "They said there's only one last bus to Sokcho, late at night. Before I go, I'll pack what I need.",
+  '상자를 열었다. 아버지가 아끼던 대와 릴이 가지런히 들어 있다.': 'I open the box. The rod and reel my father treasured lie neatly inside.',
+  '그 아래에 사진 한 장이 끼워져 있다. 바다 앞에서 찍은 우리 가족이다.': "Tucked underneath is a photo — my family, standing in front of the sea.",
+  '전부 가방에 넣었다.': 'I put it all in my bag.',
+  '아버지의 낚시 상자. 이제 비어 있다. 손잡이에 감은 테이프만 반질반질하다.':
+    "My father's tackle box. It's empty now. Only the tape wrapped around the handle is worn smooth.",
+  '[F] 낚시 상자 열기': '[F] Open the tackle box',
+  '[F] 우물물 마시기': '[F] Drink from the well',
+  '시원하다. 목이 트인다.': 'Cool and fresh. My throat opens up.',
+  '아직 챙길 것이 남았다.': "There's still something to pack.",
+  '지금 할 일': 'Now',
+  '가족사진': 'Family photo',
+  '냉동 오징어': 'Frozen squid',
+  '이야기 물건': 'Story item',
+  '뒷면': 'Back',
+  '연필로 눌러 쓴 두 글자 — 영금정': 'Two words pressed in pencil — Yeonggeumjeong',
+  '바닷가 바위 앞에서 찍은 사진. 어린 나와 부모님이 바람에 눈을 찡그리며 웃고 있다. 아버지 글씨로 적힌 그 자리부터 가 보려 한다.':
+    "A photo taken in front of a seaside rock. Young me and my parents squint into the wind, smiling. I'll start from the place my father wrote down.",
+  '몸이 녹았다 — 오한이 가라앉았다': 'You warmed up — the chills have passed',
+  '몸이 따뜻해졌다': 'You feel warm',
+  '집': 'Home',
+  '우물': 'Well',
   // ── 인벤토리 가이드 ──
   '게임에서 얻는 아이템은 모두 이 가방에 담긴다.': 'Everything you pick up in the game goes into this bag.',
   '아이템은 종류별 칸으로 나뉘어 담긴다. 위쪽의 「낚시용품」을 눌러 칸을 바꿔 보자.':

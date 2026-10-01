@@ -28,7 +28,7 @@ export type MapObjectType =
 /** 상호작용 종류 (구현 전 예약 포함 — chop=벌목, mine=채굴, gather=해루질/채집, till=개간) */
 export type MapObjectInteract =
   | 'none' | 'chop' | 'mine' | 'gather' | 'till' | 'board'
-  | 'save' | 'storage' | 'aquarium' | 'door' | 'bus' | 'cook' | 'clinic' | 'craft';
+  | 'save' | 'storage' | 'aquarium' | 'door' | 'bus' | 'cook' | 'clinic' | 'craft' | 'well';
 
 /** 맵 오브젝트 인스턴스 — 초기 배치/플레이어 설치 공통 */
 export interface MapObject {
@@ -295,8 +295,8 @@ export const HOMETOWN_OBJECTS: MapObject[] = [
   { instanceId: 'home_door', type: 'door', tx: 23, ty: 7, collides: false, interact: 'door', movable: false, removable: false },
   // 버스정류장 (남동쪽 길 끝) → 전국 지도(출조)
   { instanceId: 'bus_stop', type: 'busStop', tx: 42, ty: 27, collides: true, interact: 'bus', movable: false, removable: false },
-  // 우물
-  { instanceId: 'well_1', type: 'well', tx: 31, ty: 10, collides: true, movable: false, removable: false },
+  // 우물 (188차 — [F] 물 마시기 · 프롤로그 「우물물을 한 모금 마신다」)
+  { instanceId: 'well_1', type: 'well', tx: 31, ty: 10, collides: true, interact: 'well', movable: false, removable: false },
   // 보건소 (129차 P7 — 병원 진료. 구급품으로 못 고치는 감기·독감·생물중독은 여기서 치료한다)
   //  ⚠ 출조 지역(속초 등)의 병원은 OSM 태그(amenity=hospital|clinic)를 받아와야 하는데
   //    파이프라인 질의에 빠져 있었다 → 질의·POI_TAGS는 추가했고, 이미 구운 지역은

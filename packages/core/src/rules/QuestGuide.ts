@@ -51,6 +51,8 @@ export function objectiveTarget(q: StoryQuestDef, o: StoryObjective): QuestGuide
       if (key.startsWith('job:')) return { kind: 'npc', npcId: q.giver, regionId: q.region };
       if (key.startsWith('buy:')) return { kind: 'shop', shopHint: 'daily', itemId: key.slice(4) };
       if (key === 'bedSave') return { kind: 'bed' };
+      // 188차 — 프롤로그 직판장 구매·판매
+      if (key === 'prologue:buy' || key === 'prologue:sell') return { kind: 'shop', shopHint: 'market' };
       return { kind: 'none' };
     case 'communityWork':
       return { kind: 'npc', npcId: q.giver, regionId: q.region };

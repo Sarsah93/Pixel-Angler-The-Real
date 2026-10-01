@@ -177,13 +177,12 @@ export function bareOutfit(): CharOutfit {
   };
 }
 
-/** 캐릭터 생성 직후 지급되는 기본 한 벌 (상의·하의·신발) */
+/** 캐릭터 생성 직후 입고 있는 기본 한 벌 — 상의·하의만 (188차 사용자 결정: 그 외 지급품 없음) */
 export function starterOutfit(sex: CharSex = 'm'): CharOutfit {
   return {
     ...bareOutfit(),
     shirt: 'tee', shirtColor: sex === 'f' ? 0xd1a72f : 0xe8e2d4,
-    pants: sex === 'f' ? 'jeans' : 'jeans', pantsColor: 0x3d5a80,
-    shoes: 'sneakers', shoesColor: 0xe8e2d4,
+    pants: 'jeans', pantsColor: 0x3d5a80,
   };
 }
 

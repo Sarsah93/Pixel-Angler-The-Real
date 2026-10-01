@@ -450,6 +450,12 @@ export interface StoryQuestDef {
    * 메인 = 톤 2종(결과 동일 · 우호도만) / 서브 = 품삯·가르침·사양·(친밀 전용) 4종.
    */
   choices?: QuestChoiceSet;
+  /**
+   * 목표를 **순서대로만** 닫는다 (188차 — M1-01 프롤로그).
+   * 앞 목표가 남아 있으면 뒤 목표의 이벤트는 무시된다. 「지금 할 일」이 언제나 첫 미완 목표 하나를 가리키는
+   * 튜토리얼 흐름용 — 일반 퀘스트는 순서 자유가 기본이다.
+   */
+  ordered?: boolean;
   /** 발주 정책 (141차) — 없으면 `standard` */
   offerPolicy?: QuestOfferPolicy;
   /** `event` 정책의 시기 조건 */

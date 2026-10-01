@@ -38,6 +38,11 @@ export interface TourStep {
   skipIf?: () => boolean;
   /** 단계에 들어설 때 한 번 */
   onEnter?: () => void;
+  /**
+   * 세상 안에서 직접 해 보는 단계 (걷기·뛰기·[F]) — 화면을 어둡게 하지 않고 입력도 막지 않는다.
+   * 말풍선과 금색 테두리만 띄운다. 키 입력은 그대로 씬에 간다.
+   */
+  passive?: boolean;
 }
 
 export interface TourOptions {
@@ -78,6 +83,7 @@ export class GuideTour {
     if (!a) return false;
     const step = a.opts.steps[a.index];
     if (!step) return true;
+    if (step.passive) return false;
     if (step.allowKeys?.includes(code)) return false;
     // 설명 단계의 Enter·Space = [다음] — 말풍선이 받는다(아래 창으로 새지 않게 막는다)
     return true;
@@ -241,7 +247,9 @@ export class GuideTour {
     const g = this.dimG;
     g.clear();
     g.fillStyle(0x000814, 0.5);
-    if (!r) {
+    if (this.step?.passive) {
+      // 세상 안 체험 — 어둡게 하지 않는다
+    } else if (!r) {
       g.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
     } else {
       const x = Math.max(0, r.x - 4), y = Math.max(0, r.y - 4);
@@ -264,6 +272,11 @@ export class GuideTour {
   /** 허용 사각형만 뚫은 입력 방패 */
   private syncShields(target: TourRect | null): void {
     const st = this.step;
+    if (st?.passive) {
+      if (this.shields.length) { this.shields.forEach((sh) => sh.destroy()); this.shields = []; }
+      this.shieldSig = 'passive';
+      return;
+    }
     const holes = (st?.allow ? st.allow() : st?.wait && target ? [target] : [])
       .filter((h): h is TourRect => !!h)
       .map((h) => new Phaser.Geom.Rectangle(Math.max(0, Math.floor(h.x)), Math.max(0, Math.floor(h.y)),

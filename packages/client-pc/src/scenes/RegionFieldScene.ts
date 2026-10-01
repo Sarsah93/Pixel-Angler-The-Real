@@ -94,6 +94,11 @@ import { addPixelIcon } from '../ui/PixelIcon.js';
 import type { MiniMarker, QuestTrackerEntry } from '../ui/RegionHud.js';
 import { TextInput } from '../ui/TextInput.js';
 import { MonologuePanel, OPENING_MONOLOGUE } from '../ui/MonologuePanel.js';
+import { GuideTour } from '../ui/GuideTour.js';
+import {
+  prologueKeyAllowed, markPrologue, syncPrologue, prologueRunning, prologueStepDone,
+  noteProloguePurchase, notePrologueSale, PROLOGUE_PHOTO_ID,
+} from '../store/Prologue.js';
 import { DialoguePanel, type DialogueSceneRequest } from '../ui/DialoguePanel.js';
 import { GeneralMeetingPanel } from '../ui/GeneralMeetingPanel.js';
 import { StoryStore } from '../store/StoryStore.js';
@@ -414,7 +419,8 @@ export class RegionFieldScene extends Phaser.Scene {
   /** 이동/캐스팅을 차단해야 하는 UI 상태 (일시정지 or 팝업 열림 or 쓰러짐 연출) */
   private get uiBlocked(): boolean {
     // 145차 — 채팅 입력 중에는 이동·상호작용을 멈춘다(글자를 치다 캐릭터가 걸어가면 안 된다)
-    return this.isPaused || this.collapsing || this.popupStack.length > 0 || !!this.hud?.isComposing || this.cinematicActive;
+    return this.isPaused || this.collapsing || this.popupStack.length > 0 || !!this.hud?.isComposing || this.cinematicActive
+      || !!GuideTour.active;   // 188차 — 체험 가이드 중 이동·상호작용 정지
   }
 
   /**
@@ -429,6 +435,15 @@ export class RegionFieldScene extends Phaser.Scene {
    */
   private get panelHotkeyBlocked(): boolean {
     return this.isPaused || !!this.interactPanel;
+  }
+
+  /**
+   * 188차 — 패널 단축키를 받아도 되는가.
+   * ① 위 `panelHotkeyBlocked` ② 체험 가이드가 그 키를 허용하는가(`GuideTour.blocksKey`)
+   * ③ 프롤로그 단계(아직 배우지 않은 창은 열리지 않는다 — `prologueKeyAllowed`).
+   */
+  private hotkeyOk(code: string): boolean {
+    return !this.panelHotkeyBlocked && !GuideTour.blocksKey(code) && prologueKeyAllowed(code);
   }
 
   /**
@@ -856,6 +871,7 @@ export class RegionFieldScene extends Phaser.Scene {
       this.hud?.refreshQuickslots();
       // 151차 — 착용이 바뀌면 페이퍼돌도 바뀐다(모자·조끼·가방·손에 든 대).
       this.refreshCharacterLook();
+      syncPrologue();   // 188차 — 대·릴 착용·오징어 챙김은 가방 상태로 판정한다
     });
 
     // 1인칭 낚시 뷰(pause+launch)에서 복귀 시: 페이드인 + 캐스팅 상태 정리
@@ -901,9 +917,15 @@ export class RegionFieldScene extends Phaser.Scene {
     if (GameState.getFlag('intro.monologue')) return;
     GameState.setFlag('intro.monologue');
     GameState.markDirty();
-    // ⚠ `time.delayedCall`로 미루지 않는다 — 홈타운 create()는 재시작으로 다시 돌 수 있고,
-    //   그때 타이머가 죽어 **플래그만 켜지고 창은 안 뜬다**(실측). 바로 연다 —
-    //   페이드인(280ms)이 딤과 함께 밝아지므로 연출도 어색하지 않다.
+    // 188차 — 프롤로그 「떠나는 날 아침」: 새 캐릭터는 **집 안 침대 옆에서** 눈을 뜬다.
+    //   혼잣말·첫 조작 안내는 실내 씬이 맡는다(wake). 필드는 그 아래에서 멈춰 기다린다(pause + launch 규칙).
+    //   ⚠ `time.delayedCall`로 미루지 않는다 — 홈타운 create()는 재시작으로 다시 돌 수 있고 타이머가 죽는다(150차 실측).
+    if (StoryStore.isActive('M1-01') && !prologueStepDone('box')) {
+      MultiplayerClient.setActivity('indoor');
+      this.scene.pause('RegionFieldScene');
+      this.scene.launch('HomeInteriorScene', { wake: true });
+      return;
+    }
     this.openPopup((close) => new MonologuePanel(this, OPENING_MONOLOGUE, close));
   }
 
@@ -1240,6 +1262,8 @@ export class RegionFieldScene extends Phaser.Scene {
     // 134차 — 스토리: 지역 방문 이벤트 · NPC 배치 · 데이터 무결성(dev)
     GameState.currentRegionId = this.region;
     StoryStore.event({ kind: 'visit', placeKey: `region:${this.region}` });
+    // 188차 — 프롤로그: 홈타운 밖(속초)에 내리면 「막차를 타고 속초로 간다」
+    if (this.region !== 'hometown') markPrologue('arrive'); else syncPrologue();
     MapPinStore.onChange = () => this.refreshQuestMarkers(true);
     this.events.once('shutdown', () => { MapPinStore.onChange = null; });
     StoryStore.onNotify = (m) => {
@@ -2461,6 +2485,7 @@ export class RegionFieldScene extends Phaser.Scene {
 
     // ESC: 설치 모드 취소 → 최상단 팝업 닫기 → 일시정지 메뉴 토글
     this.input.keyboard!.on('keydown-ESC', () => {
+      if (GuideTour.blocksKey('Escape')) return;   // 188차 — 체험 가이드 중에는 창을 닫지 않는다
       // 컷씬 재생 중에는 일시정지 메뉴로 새지 않는다 — ESC = 컷씬 건너뛰기
       if (this.skipCinematic()) return;
       if (this.placing) { this.cancelPlacement(); return; }
@@ -2478,25 +2503,25 @@ export class RegionFieldScene extends Phaser.Scene {
 
     // M: 미니맵 / I: 인벤토리 / S: 스테이터스 / U: 활용 / E: 상호작용·장비
     // 155차 — M = 전체 지도 오버레이(휠 줌). 미니맵 크기는 타이틀바 [−][+]가 맡는다.
-    this.input.keyboard!.on('keydown-M', () => { if (!this.panelHotkeyBlocked) this.toggleFullMap(); });
-    this.input.keyboard!.on('keydown-I', () => { if (!this.panelHotkeyBlocked) this.toggleInventory(); });
-    this.input.keyboard!.on('keydown-F1', (e: KeyboardEvent) => { e.preventDefault?.(); if (!this.panelHotkeyBlocked) this.openHelpLibrary(); });
-    this.input.keyboard!.on('keydown-S', () => { if (!this.panelHotkeyBlocked) this.toggleStatus(); });
-    this.input.keyboard!.on('keydown-U', () => { if (!this.panelHotkeyBlocked) this.toggleUtilization('tackles'); });
-    this.input.keyboard!.on('keydown-B', () => { if (!this.panelHotkeyBlocked) this.toggleCooler(); });
+    this.input.keyboard!.on('keydown-M', () => { if (this.hotkeyOk('KeyM')) this.toggleFullMap(); });
+    this.input.keyboard!.on('keydown-I', () => { if (this.hotkeyOk('KeyI')) this.toggleInventory(); });
+    this.input.keyboard!.on('keydown-F1', (e: KeyboardEvent) => { e.preventDefault?.(); if (!this.panelHotkeyBlocked && !GuideTour.blocksKey('F1')) this.openHelpLibrary(); });
+    this.input.keyboard!.on('keydown-S', () => { if (this.hotkeyOk('KeyS')) this.toggleStatus(); });
+    this.input.keyboard!.on('keydown-U', () => { if (this.hotkeyOk('KeyU')) this.toggleUtilization('tackles'); });
+    this.input.keyboard!.on('keydown-B', () => { if (this.hotkeyOk('KeyB')) this.toggleCooler(); });
     this.input.keyboard!.on('keydown-R', (e: KeyboardEvent) => {
       // 편집기가 열려 있으면 R = 배치 회전(자전거 승·하차보다 우선 — 106차)
       if (isMapEditorOpen()) { rotateEditorPlacement(e.shiftKey ? -1 : 1); return; }
-      if (!this.isPaused && !this.uiBlocked) this.toggleBike();
+      if (!this.isPaused && !this.uiBlocked && this.hotkeyOk('KeyR')) this.toggleBike();
     });
     // N: 도감 & 조과첩 (발견 도감 — 인게임 열람. 복귀는 stop+resume)
     this.input.keyboard!.on('keydown-N', () => {
-      if (this.isPaused || this.uiBlocked) return;
+      if (this.isPaused || this.uiBlocked || !this.hotkeyOk('KeyN')) return;
       this.scene.pause();
       this.scene.launch('AnglerLogScene', { returnScene: 'RegionFieldScene' });
     });
     // E = 장비창 전용 · F = 상호작용 (122차 — 사용자 지시: E가 장비창과 혼용되던 것을 분리)
-    this.input.keyboard!.on('keydown-E', () => { if (!this.panelHotkeyBlocked) this.toggleEquipment(); });
+    this.input.keyboard!.on('keydown-E', () => { if (this.hotkeyOk('KeyE')) this.toggleEquipment(); });
     this.input.keyboard!.on('keydown-F', (ev: KeyboardEvent) => {
       if (this.isPaused || this.uiBlocked) return;
       // 160차 — 스토리 현장 지점은 무엇보다 먼저 소비한다. 같은 장소에서 도현수와
@@ -2524,13 +2549,13 @@ export class RegionFieldScene extends Phaser.Scene {
       this.openInteractChoice(opts);
     });
     // L 면허 · K 스킬 · J 일지 (122차 복원)
-    this.input.keyboard!.on('keydown-L', () => { if (!this.panelHotkeyBlocked) this.togglePanel('license'); });
-    this.input.keyboard!.on('keydown-K', () => { if (!this.panelHotkeyBlocked) this.togglePanel('skill'); });
-    this.input.keyboard!.on('keydown-J', () => { if (!this.panelHotkeyBlocked) this.togglePanel('journal'); });
+    this.input.keyboard!.on('keydown-L', () => { if (this.hotkeyOk('KeyL')) this.togglePanel('license'); });
+    this.input.keyboard!.on('keydown-K', () => { if (this.hotkeyOk('KeyK')) this.togglePanel('skill'); });
+    this.input.keyboard!.on('keydown-J', () => { if (this.hotkeyOk('KeyJ')) this.togglePanel('journal'); });
 
     // ── 145차 지역 채널 채팅 — Enter로 열고 Enter로 보낸다 ──
     this.input.keyboard!.on('keydown-ENTER', () => {
-      if (this.isPaused || this.popupStack.length > 0 || this.hud?.isComposing) return;
+      if (this.isPaused || this.popupStack.length > 0 || this.hud?.isComposing || GuideTour.active) return;
       this.startCompose();
     });
     this.events.once('shutdown', () => this.endCompose());
@@ -2543,7 +2568,7 @@ export class RegionFieldScene extends Phaser.Scene {
     this.events.once('shutdown', () => this.events.off('inventory-place', onPlace));
     // T: 통발 놓기 (121차 — 보유 통발 + 미끼 선택 → 물 위 클릭 설치)
     this.input.keyboard!.on('keydown-T', () => {
-      if (this.isPaused || this.uiBlocked) return;
+      if (this.isPaused || this.uiBlocked || !this.hotkeyOk('KeyT')) return;
       this.trapField?.openDeploy();
     });
 
@@ -2551,7 +2576,7 @@ export class RegionFieldScene extends Phaser.Scene {
     const digitKeys = ['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT'];
     digitKeys.forEach((key, i) => {
       this.input.keyboard!.on(`keydown-${key}`, () => {
-        if (this.uiBlocked) return;
+        if (this.uiBlocked || GuideTour.blocksKey(`Digit${i + 1}`)) return;
         GameState.updatePlayer({ activeQuickslotIndex: i });
         this.hud?.refreshQuickslots();
       });
@@ -2707,6 +2732,7 @@ export class RegionFieldScene extends Phaser.Scene {
       (close) => new StatusPanel(this, 80, 80, close),
       () => { this.statusPanel = null; },
     );
+    markPrologue('status');   // 188차 — 프롤로그 「상태 창(S)으로 몸 상태를 살핀다」
   }
 
   // ── 면허(L) · 스킬(K) · 일지(J) — 토글 (122차) ──
@@ -2719,6 +2745,7 @@ export class RegionFieldScene extends Phaser.Scene {
       this.skillPanel = this.openPopup((close) => new SkillTreePanel(this, { onClose: close }), () => { this.skillPanel = null; });
     } else {
       this.journalPanel = this.openPopup((close) => new JournalPanel(this, { onClose: close }), () => { this.journalPanel = null; });
+      markPrologue('journal');
     }
   }
 
@@ -2820,6 +2847,7 @@ export class RegionFieldScene extends Phaser.Scene {
 
   // ── 아이템 상세보기 ──
   private openItemDetail(item: InvItem): void {
+    if (item.id === PROLOGUE_PHOTO_ID) markPrologue('photo');   // 188차 — 사진 뒷면 「영금정」
     this.openPopup((close) => new ItemDetailPanel(this, item, 180 + this.popupStack.length * 24, 100 + this.popupStack.length * 24, close));
   }
 
@@ -2941,6 +2969,7 @@ export class RegionFieldScene extends Phaser.Scene {
           this.hud?.pushLog(`[구매] ${entry.name} x${qty} (-${total.toLocaleString()}원)`);
           // 135차 — 구매를 스토리 목표로 쓸 수 있게 이벤트를 흘린다 (M1-04 사이소 저가 장비 등)
           StoryStore.event({ kind: 'custom', key: `buy:${entry.id}` });
+          noteProloguePurchase(entry);   // 188차 — 기본 채비 하나씩 사기
           GameState.addProficiency('haggle');   // 188차 — 흥정 숙련은 사고팔아야 는다
         },
         close,
@@ -2986,6 +3015,7 @@ export class RegionFieldScene extends Phaser.Scene {
           this.shopPanel?.refresh();
           this.shopPanel?.setStatus(`${item.name} x${qty} 판매 완료 (+${total.toLocaleString()}원)`);
           this.hud?.pushLog(`[판매] ${item.name} x${qty} (+${total.toLocaleString()}원)`);
+          notePrologueSale(item);   // 188차 — 냉동 오징어 팔기
           GameState.addProficiency('haggle');   // 188차 — 흥정 숙련
         },
         close,
@@ -5223,6 +5253,14 @@ export class RegionFieldScene extends Phaser.Scene {
         return { away: this.regionNameKo(away) };
       }
       case 'place': {
+        // 188차 — 프롤로그 홈타운 지점(집 문·우물·버스 정류장)
+        if (t.placeKey?.startsWith('home:')) {
+          const inst = ({ 'home:door': 'home_door', 'home:well': 'well_1', 'home:bus': 'bus_stop' } as Record<string, string>)[t.placeKey];
+          const o = this.region === 'hometown' ? this.homeObjects.find((h) => h.instanceId === inst) : undefined;
+          if (!o) return this.region === 'hometown' ? null : { away: '숙소(집)' };
+          const label = t.placeKey === 'home:door' ? '집' : t.placeKey === 'home:well' ? '우물' : '출조 버스';
+          return { x: o.tx * TR + TR / 2, y: o.ty * TR + TR / 2, label };
+        }
         const pl = STORY_PLACES.find((p) => p.key === t.placeKey);
         if (!pl) return null;
         if (pl.regionId !== this.region) return { away: this.regionNameKo(pl.regionId) };
@@ -5413,6 +5451,7 @@ export class RegionFieldScene extends Phaser.Scene {
     if (this.uiBlocked || !this.hud) return;
     const mapTex = `rhud_mini_${this.mapId}`;
     if (!this.textures.exists(mapTex)) return;
+    markPrologue('map');   // 188차 — 프롤로그 「지도(M)를 펼쳐 버스 정류장을 찾는다」
     this.openPopup((close) => {
       this.fullMapClose = close;
       return new FullMapPanel(this, {
@@ -5489,9 +5528,12 @@ export class RegionFieldScene extends Phaser.Scene {
       if (pl.regionId !== this.region || this.firedPlaces.has(pl.key)) continue;
       const cx = pl.tx * TR + TR / 2, cy = pl.ty * TR + TR / 2;
       if (Math.hypot(cx - px, cy - py) <= pl.radiusTiles * TR) {
-        const m101 = StoryStore.progress('M1-01');
-        const arrivalScene = pl.key === 'poi:yeonggeumjeong' ? (m101?.obj[0] ?? 0) === 0
-          : pl.key === 'poi:okseon-stall' ? (m101?.obj[1] ?? 0) === 0 : false;
+        // 188차 — M1-01은 순서형(프롤로그 14목표 뒤)이라 목표 번호를 placeKey로 찾는다.
+        //   앞 목표(직판장 구매·판매 등)가 남았으면 아직 도착으로 치지 않는다 — 다시 지나갈 때 잡힌다.
+        const m101q = getStoryQuest('M1-01');
+        const m101i = m101q ? m101q.objectives.findIndex((o) => o.kind === 'visit' && o.placeKey === pl.key) : -1;
+        if (m101q && m101i >= 0 && StoryStore.isActive('M1-01') && !StoryStore.objectiveReachable(m101q, m101i)) continue;
+        const arrivalScene = m101q && m101i >= 0 && StoryStore.isActive('M1-01') && !StoryStore.objectiveDone(m101q, m101i);
         this.firedPlaces.add(pl.key);
         StoryStore.event({ kind: 'visit', placeKey: pl.key });
         // 장소 도착 뒤 이어지는 수동 목표의 현장 행동을 실제 이동/도착 이벤트에 연결한다.
@@ -5769,6 +5811,7 @@ export class RegionFieldScene extends Phaser.Scene {
     switch (o.interact) {
       case 'door': return '[F] 집으로 들어가기';
       case 'bus': return '[F] 출조 버스 (전국 지도)';
+      case 'well': return '[F] 우물물 마시기';
       case 'aquarium': return o.placedByPlayer ? '[F] 수조 열기 · [Shift+F] 회수' : '[F] 수조 열기';
       case 'chop': return '[F] 벌목';
       case 'mine': return '[F] 채굴';
@@ -5788,7 +5831,12 @@ export class RegionFieldScene extends Phaser.Scene {
     }
     switch (o.interact) {
       case 'door': this.enterHomeInterior(); break;
-      case 'bus': this.exitToWorldMap(); break;
+      case 'bus':
+        // 188차 — 프롤로그: 지도를 펴 보기 전에는 아직 떠날 때가 아니다(집에서 챙길 것이 남았다)
+        if (prologueRunning() && !prologueStepDone('map')) { this.floatingHint('아직 챙길 것이 남았다.'); break; }
+        this.exitToWorldMap();
+        break;
+      case 'well': this.drinkFromWell(); break;
       case 'aquarium':
         this.floatingHint('수조는 아직 쓸 수 없습니다.');
         break;
@@ -5800,6 +5848,14 @@ export class RegionFieldScene extends Phaser.Scene {
       case 'craft': this.openAdvancedCraft(); break;
       default: break;
     }
+  }
+
+  /** 188차 — 우물 [F]: 수분 +25 (프롤로그 「우물물을 한 모금 마신다」) */
+  private drinkFromWell(): void {
+    GameState.applyIntake(0, 25);
+    GameState.markDirty();
+    this.floatingHint('시원하다. 목이 트인다.');
+    markPrologue('well');
   }
 
   /** 고급 제작대 [F] — 도면 목록은 U 창 '제작' 탭과 같은 보드를 station만 바꿔 쓴다 */

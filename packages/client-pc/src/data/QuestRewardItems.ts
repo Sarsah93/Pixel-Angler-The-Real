@@ -18,6 +18,9 @@ const gear = (id: string, name: string, sub: string, basePrice: number, extra: P
 export const QUEST_REWARD_ITEMS: InvItemTemplate[] = [
   { id: 'quest_ice_crate', name: '정옥선의 심부름용 얼음 상자', icon: '', iconTexture: 'px:it_ice_crate', category: 'quest', subCategory: '심부름',
     basePrice: 0, equippable: false, bound: true },
+  // 188차 — 프롤로그(M1-01): 아버지의 낚시 상자에서 나온 가족사진. 뒷면(상세보기)에 「영금정」
+  { id: 'quest_family_photo', name: '가족사진', icon: '', iconTexture: 'px:it_photo', category: 'quest', subCategory: '이야기 물건',
+    basePrice: 0, equippable: false, bound: true },
   // ── Ch1 — 실습생 ──
   { id: 'qr_tackle_pouch', name: '옛 계원의 채비 주머니', icon: '', category: 'gear', subCategory: '가방', basePrice: 15000,
     equippable: true, bound: true, bagSlots: 3, iconTexture: 'px:it_backpack' },

@@ -3123,7 +3123,7 @@ export class ButcheryPanel extends DraggablePanel {
       this.uiC.add(secT);
       y += SEC_H;
       sec.tasks.forEach((t) => {
-        const doneMark = this.doneTasks.has(t.id) ? '✔ ' : '';
+        const doneMark = '';   // 188차 — ✔ 글리프 금지(§8-8). 완료는 흐린 색으로 구분한다
         const cur = this.sectionIdx === si && this.activeTaskId === t.id;
         const label = clampTextWidth(this.scene.add.text(cx + 6, y, `${doneMark}${t.label}`, {
           fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px',
@@ -3819,7 +3819,7 @@ export class ButcheryPanel extends DraggablePanel {
       rg.lineStyle(1.2, done ? 0x2e7a58 : active ? 0x5cd0ff : selectable ? 0xffd257 : 0x1f3d5a, done ? 0.6 : 0.9);
       rg.strokeRoundedRect(rx, ry, colW - 12, rowH - 4, 4);
       const label = done
-        ? `✔ ${task.label} — 완료됨 (${this.doneTasks.get(task.id)}%)`
+        ? `${task.label} — 완료됨 (${this.doneTasks.get(task.id)}%)`
         : active
           ? `▶ ${task.label}${stepTotal > 1 ? ` (${stepDone + 1}/${stepTotal})` : ''}`
           : task.label;

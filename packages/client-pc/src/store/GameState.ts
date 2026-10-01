@@ -32,6 +32,7 @@ import type {
 import type { WorldObjectState, CatchMethod, StorySpotKind } from '@tra/core';
 import { type CharConfig, type CharSex, defaultAppearance, starterOutfit } from '@tra/core';
 import { StoryStore, type StorySaveState } from './StoryStore.js';
+import { prologueSquid } from './Prologue.js';
 import { buildItemWikiCatalog } from '../data/WikiCatalog.js';
 import {
   skillPointsForLevel, skillPointsSpent, skillPrereqsMet, getSkillById, SKILL_CATEGORIES,
@@ -1669,6 +1670,7 @@ export class GameStateManager {
     InventoryStore.applyStaticBackfill();   // 188차 — 시드 소모품에도 효과 테이블(HP 회복 드링크 hpRestore 등)
     GroundItemStore.resetAll();
     FridgeStore.resetAll();
+    FridgeStore.place('freezer', prologueSquid());   // 188차 — 프롤로그: 직판장에 팔아 볼 냉동 오징어
     DiscoveryStore.resetAll();
     StoryStore.resetAll();
     this.syncInventoryDiscoveries();

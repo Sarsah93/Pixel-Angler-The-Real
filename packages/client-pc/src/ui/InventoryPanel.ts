@@ -30,7 +30,7 @@ import { ConfirmDialog } from './Dialogs.js';
 import { createItemIcon } from './ItemIcon.js';
 import { setSlotLabel, SLOT_LABEL_PX } from './SlotLabel.js';
 import { addPixelIcon } from './PixelIcon.js';
-import { GEAR_FAULTS } from '@tra/core';
+import { GEAR_FAULTS, TUNING } from '@tra/core';
 import { playEatSfx } from '../audio/Sfx.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { maybeStartTour, type TourOptions } from './GuideTour.js';
@@ -1146,6 +1146,11 @@ export class InventoryPanel extends DraggablePanel {
     if (hp) parts.push(`체력 ${hp > 0 ? '+' : ''}${hp}`);
     if (fa) parts.push(`피로 ${fa > 0 ? '-' : '+'}${Math.abs(fa)}`);
 
+    // 188차 — 갓 만든 따뜻한 요리(불요리 완성품)는 몸을 녹인다 — 오한 해제 + 보온(불 쬐기·침대와 같은 효과)
+    if (verb === '섭취' && (item.dishInstance || item.dish) && item.condition !== 'spoiled' && item.condition !== 'bad' && item.condition !== 'chilled' && item.condition !== 'frozen') {
+      const cured = GameState.warmUp(Math.round(TUNING.status.warmBuffMin / 2));
+      parts.push(cured.length ? '몸이 녹았다 — 오한이 가라앉았다' : '몸이 따뜻해졌다');
+    }
     // 보양식 — 드레인 감소 버프 (활동 시간 기준)
     if (item.drainBuffMult && item.drainBuffMin) {
       GameState.applyDrainBuff(item.drainBuffMult, item.drainBuffMin * 60_000);

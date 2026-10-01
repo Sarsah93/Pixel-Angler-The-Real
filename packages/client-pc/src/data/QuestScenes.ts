@@ -68,7 +68,7 @@ export interface QuestSceneCtx {
 /** 각본 손글 우선 — 키 `${questId}#${objectiveIndex}` */
 export const QUEST_SCENE_OVERRIDES: Record<string, (q: StoryQuestDef, idx: number, ctx: QuestSceneCtx) => QuestSceneDef> = {
   // M1-01 ③ 정옥선에게 고민을 털어놓는다 — 첫 퀘스트라 손글로 둔다(할머니가 먼저 말을 건다).
-  'M1-01#2': (q, idx, ctx) => {
+  'M1-01#16': (q, idx, ctx) => {   // 188차 — 프롤로그 14목표가 앞에 붙어 #2 → #16
     const base = generatedScene(q, idx, ctx);
     base.script = {
       id: base.script.id, placeKo: '동명항 · 정옥선 좌판', placeEn: 'Dongmyeong Harbour · Ok-seon\'s stall',
