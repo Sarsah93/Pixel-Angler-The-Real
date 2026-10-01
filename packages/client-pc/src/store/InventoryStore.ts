@@ -128,7 +128,7 @@ export const CONDITION_DESC: Record<InvCondition, string> = {
 };
 
 /** 손 도구 종류 (좌/우 손 착용 대상) */
-export type HandTool = 'rod' | 'net' | 'knife';
+export type HandTool = 'rod' | 'net' | 'knife' | 'watering_can';
 
 /** 착용 손 (L = 왼손, R = 오른손) */
 export type EquipHand = 'L' | 'R';

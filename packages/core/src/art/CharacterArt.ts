@@ -137,7 +137,7 @@ export type PantsKind = 'none' | 'jeans' | 'shorts' | 'waders' | 'skirt';
 export type ShoesKind = 'none' | 'sneakers' | 'boots' | 'rubber';
 export type HatKind = 'none' | 'cap' | 'beanie' | 'sun' | 'bandana' | 'visor';
 export type OuterKind = 'none' | 'vest' | 'apron' | 'jacket';
-export type HeldKind = 'none' | 'rod' | 'net' | 'crate' | 'gaff';
+export type HeldKind = 'none' | 'rod' | 'net' | 'crate' | 'gaff' | 'can';
 
 export interface CharOutfit {
   shirt: ShirtKind; shirtColor: Rgb;
@@ -852,6 +852,13 @@ function L_held(g: Grid, p: Pose, cfg: CharConfig): void {
     const mesh = ramp(0x9a9ea6);
     for (let i = 0; i < 8; i++) g.put(ax, ay + 3 - i, wood[1]);
     g.rect([ax - 2, ay - 8, ax + 2, ay - 5], mesh, { top: false });
+  } else if (k === 'can') {
+    // 189차 — 물뿌리개: 손 아래 초록 통 + 앞으로 뻗은 주둥이 + 손잡이
+    const tin = ramp(0x4f9a5a);
+    const bx0 = Math.min(ax, ax + d * 3), bx1 = Math.max(ax, ax + d * 3);
+    g.rect([bx0, ay + 1, bx1, ay + 3], tin);
+    g.put(ax + d, ay, tin[2]); g.put(ax + d * 2, ay, tin[2]);
+    g.put(ax + d * 4, ay + 1, tin[1]); g.put(ax + d * 5, ay, tin[1]); g.put(ax + d * 6, ay - 1, 0xcfe8f5);
   } else if (k === 'crate') {
     const box = ramp(0x8a6340);
     const [tx0, ty0, tx1] = p.torso;

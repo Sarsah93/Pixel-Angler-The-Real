@@ -123,7 +123,8 @@ async function scanResidue(page, key) {
 
 /** 188차 — 창 첫 열기 체험 가이드 id 전부 (`tour.<id>` 플래그 — 켜 두면 말풍선이 뜨지 않는다) */
 const TOUR_IDS = ['inventory', 'equipment', 'status', 'journal', 'license', 'fullmap', 'skill', 'shop', 'trade',
-  'utilization', 'cooler', 'cooking', 'codex', 'butchery', 'worldmap', 'home_first_steps'];
+  'utilization', 'cooler', 'cooking', 'codex', 'butchery', 'worldmap', 'home_first_steps',
+  'home_fridge', 'home_wardrobe', 'home_shelf', 'home_decorate'];
 /** 188차 — 프롤로그(M1-01 앞 14목표) 행동 플래그 */
 const PROLOGUE_KEYS = ['box', 'rod', 'reel', 'photo', 'journal', 'squid', 'save', 'leave', 'well', 'status', 'map', 'arrive', 'buy', 'sell'];
 const PROLOGUE_BUY = ['line', 'hook', 'sinker', 'float', 'bait'];
@@ -258,7 +259,7 @@ group('menu', ['char_create'], async (page) => {
 });
 
 // ── 홈타운 · 집 실내 ──
-group('hometown', ['hometown', 'home_interior'], async (page) => {
+group('hometown', ['hometown', 'home_interior', 'home_decor'], async (page) => {
   await newGameHometown(page);
   await refreshGuide(page);
   if (want('hometown')) await shot(page, 'hometown');
@@ -276,6 +277,22 @@ group('hometown', ['hometown', 'home_interior'], async (page) => {
   });
   await page.waitForTimeout(500);
   await shot(page, 'home_interior');
+  if (!want('home_decor')) return;
+  // 189차 — 가구 배치: 의자 하나를 넣어 두고, 소파를 들어 오른쪽 아래 빈자리(초록)에 대 본다
+  await page.evaluate(() => {
+    const hi = globalThis.__PIXEL_ANGLER_GAME.scene.getScene('HomeInteriorScene');
+    const IT = 48, OX = (1280 - 12 * IT) / 2, OY = (720 - 10 * IT) / 2 + 10;
+    hi.onEscape();
+    hi.px = OX + 6 * IT; hi.py = OY + 7.5 * IT; hi.update(0, 16);
+    hi.openDecor();
+    const t = globalThis.__TOUR.active; if (t) t.finish();
+    const d = hi.decor;
+    d.onMove(OX + 7.5 * IT, OY + 4.5 * IT); d.onLeft(); d.dropToTray();
+    d.onMove(OX + 2.5 * IT, OY + 7 * IT); d.onLeft();
+    d.onMove(OX + 8.5 * IT, OY + 8 * IT);
+  });
+  await page.waitForTimeout(500);
+  await shot(page, 'home_decor');
 });
 
 // ── 188차 프롤로그: 새 게임 = 집 안 침대 옆에서 눈을 뜬다 (혼잣말 뒤 첫 걸음 가이드 · 「지금 할 일」 띠) ──
@@ -291,19 +308,25 @@ group('prologue', ['prologue'], async (page) => {
   await waitScene(page, 'HomeInteriorScene');
   await page.waitForTimeout(2500);
   // 기상 혼잣말은 time.delayedCall(320)로 열린다 — 헤드리스는 타이머가 돌지 않으므로 직접 열고 바로 닫아
-  // 첫 걸음 가이드로 넘긴다. 가이드는 「낚시 상자를 열어 보자」 단계(4/4)로 건너뛴다.
+  // 첫 걸음 가이드로 넘긴다. 가이드는 「낚시 상자를 열어 보자」 단계(5/5)로 건너뛴다.
   await page.evaluate(() => {
     const hi = globalThis.__PIXEL_ANGLER_GAME.scene.getScene('HomeInteriorScene');
     hi.startWake();
     hi.tourPanel?.destroy(); hi.tourPanel = undefined;
     hi.startFirstSteps();
     const tour = globalThis.__TOUR.active;
-    if (tour) { tour.go(3); tour.completeTyping(); }
+    if (tour) { tour.go(4); tour.completeTyping(); }
     hi.refreshObjective();
   });
   // 가이드는 요청 큐를 거쳐 다음 틱에 뜰 수 있다 — 뜰 때까지 기다렸다가 단계를 맞춘다
   await page.waitForFunction(() => !!globalThis.__TOUR.active, null, { timeout: 15000 });
-  await page.evaluate(() => { const t = globalThis.__TOUR.active; if (t) { if (t.index !== 3) t.go(3); t.completeTyping(); } });
+  await page.evaluate(() => { const t = globalThis.__TOUR.active; if (t) { if (t.index !== 4) t.go(4); t.completeTyping(); } });
+  // 189차 — 상자 왼편에 세워 머리 위 [F] 안내(「낚시 상자 열기」)가 보이게 한다 (콜아웃 ④)
+  await page.evaluate(() => {
+    const hi = globalThis.__PIXEL_ANGLER_GAME.scene.getScene('HomeInteriorScene');
+    const IT = 48, OX = (1280 - 12 * IT) / 2, OY = (720 - 10 * IT) / 2 + 10;
+    hi.px = OX + 8.55 * IT; hi.py = OY + 5.5 * IT; hi.facing = 'right'; hi.update(0, 16);
+  });
   await page.waitForTimeout(400);
   await cleanLog(page);   // 아래에 멈춰 있는 필드 씬 채널의 [dev] 줄(영문 잔존 스캔에 걸린다)
   if (want('prologue')) await shot(page, 'prologue');

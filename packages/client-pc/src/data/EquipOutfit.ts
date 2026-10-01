@@ -107,6 +107,7 @@ function lookByKind(item: InvItem): GearLook | undefined {
 function heldOf(tool: InvItem['tool']): HeldKind | undefined {
   if (tool === 'rod') return 'rod';
   if (tool === 'net') return 'net';
+  if (tool === 'watering_can') return 'can';
   return undefined;
 }
 

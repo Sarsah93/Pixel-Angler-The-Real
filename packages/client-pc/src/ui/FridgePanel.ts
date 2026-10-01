@@ -6,6 +6,8 @@
  *  - 인벤토리 아이템 클릭 → 선택 구획(냉동/냉장)의 첫 빈칸에 보관 (상태 냉동/냉장 전환).
  *  - 보관 아이템 클릭 → 인벤토리로 꺼내기 (신선도 시계 재시작).
  *  - 보관 중에는 신선도 정지. 세이브(GameState.fridge)에 영속.
+ *  - 189차 — 조작 안내 문구(`아이템을 클릭해 보관 · 보관물 클릭해 꺼내기` · 호버 꼬리 `— 클릭 시 …`)를 걷었다(규칙 R11).
+ *    처음 열 때 체험 가이드(`home_fridge`)가 짚고, 아래 줄은 결과만 보여 준다.
  */
 
 import Phaser from 'phaser';
@@ -13,6 +15,7 @@ import { DraggablePanel } from './DraggablePanel.js';
 import { createItemIcon } from './ItemIcon.js';
 import { setSlotLabel, SLOT_LABEL_PX } from './SlotLabel.js';
 import { GameState } from '../store/GameState.js';
+import { maybeStartTour, type TourOptions } from './GuideTour.js';
 import {
   InventoryStore, InvItem, CONDITION_LABEL, CONDITION_COLOR, refreshCondition,
 } from '../store/InventoryStore.js';
@@ -29,6 +32,9 @@ export class FridgePanel extends DraggablePanel {
   private gridC!: Phaser.GameObjects.Container;
   private statusText!: Phaser.GameObjects.Text;
   private depositTo: FridgeSection = 'fridge';
+  /** 가이드 판정 — 이번 창에서 넣은 횟수 · 꺼낸 횟수 */
+  private deposits = 0;
+  private withdraws = 0;
 
   constructor(scene: Phaser.Scene, x: number, y: number, onClose: () => void) {
     super(scene, { x, y, width: PANEL_W, height: PANEL_H, title: '냉장고 (냉동고 · 냉장고)', onClose, depth: 850 });
@@ -36,7 +42,7 @@ export class FridgePanel extends DraggablePanel {
     this.gridC = scene.add.container(0, 0);
     this.add(this.gridC);
 
-    this.statusText = scene.add.text(PANEL_W / 2, PANEL_H - 18, '아이템을 클릭해 보관 · 보관물 클릭해 꺼내기', {
+    this.statusText = scene.add.text(PANEL_W / 2, PANEL_H - 18, '', {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#9fd0e4', align: 'center',
       wordWrap: { width: PANEL_W - 30 },
     }).setOrigin(0.5);
@@ -44,6 +50,49 @@ export class FridgePanel extends DraggablePanel {
 
     this.render();
     this.applyFix();
+    maybeStartTour(scene, () => this.buildTour());
+  }
+
+  // ── 첫 열기 가이드 (189차 — tour id 'home_fridge') ──
+  private sectionRect(section: FridgeSection): Phaser.Geom.Rectangle {
+    const w = FRIDGE_COLS * (CELL + CELL_GAP) - CELL_GAP;
+    const freezerRows = Math.ceil(FREEZER_SLOTS / FRIDGE_COLS);
+    const y0 = this.contentTop + 8;
+    if (section === 'freezer') return this.localRect(14, y0 - 4, w + 8, 26 + freezerRows * (CELL + CELL_GAP) + 4);
+    const y1 = y0 + 26 + freezerRows * (CELL + CELL_GAP) + 10;
+    return this.localRect(14, y1 - 4, w + 8, 26 + Math.ceil(FRIDGE_SLOTS / FRIDGE_COLS) * (CELL + CELL_GAP) + 4);
+  }
+
+  private listRect(): Phaser.Geom.Rectangle {
+    const x0 = 18 + FRIDGE_COLS * (CELL + CELL_GAP) + 24;
+    return this.localRect(x0 - 4, this.contentTop + 4, 198, 12 * 30 + 30);
+  }
+
+  private buildTour(): TourOptions {
+    const stored = (): number => FridgeStore.filledCount('freezer') + FridgeStore.filledCount('fridge');
+    return {
+      id: 'home_fridge',
+      anchor: () => this.panelBounds(),
+      alive: () => this.active,
+      steps: [
+        {
+          text: '위는 냉동고, 아래는 냉장고다. 넣어 둔 동안은 상하지 않는다. 머리줄을 누르면 그쪽에 넣는다.',
+          target: () => this.sectionRect('freezer'),
+        },
+        {
+          text: '오른쪽은 가방 속 음식이다. 하나를 눌러 넣어 보자.',
+          target: () => this.listRect(),
+          skipIf: () => InventoryStore.getByCategory('food').length === 0,
+          wait: () => this.deposits > 0,
+        },
+        {
+          text: '넣어 둔 것을 누르면 가방으로 꺼낸다. 하나 꺼내 보자.',
+          target: () => (FridgeStore.filledCount('freezer') > 0 ? this.sectionRect('freezer') : this.sectionRect('fridge')),
+          skipIf: () => stored() === 0,
+          wait: () => this.withdraws > 0,
+        },
+      ],
+    };
   }
 
   private setStatus(msg: string): void {
@@ -115,7 +164,7 @@ export class FridgePanel extends DraggablePanel {
         }
         const hit = scene.add.rectangle(sx + CELL / 2, sy + CELL / 2, CELL, CELL, 0xffffff, 0.001)
           .setInteractive({ useHandCursor: true });
-        hit.on('pointerover', () => this.setStatus(`${item.name} — 클릭 시 인벤토리로 꺼냅니다`));
+        hit.on('pointerover', () => this.setStatus(item.name));
         hit.on('pointerdown', () => this.withdraw(section, idx));
         this.gridC.add(hit);
       }
@@ -156,7 +205,7 @@ export class FridgePanel extends DraggablePanel {
       }).setOrigin(0, 0.5), item.name, 150, item.qty > 1 ? ` x${item.qty}` : '');
       const hit = scene.add.rectangle(x0 + 95, ry + (rowH - 3) / 2, 190, rowH - 3, 0xffffff, 0.001)
         .setInteractive({ useHandCursor: true });
-      hit.on('pointerover', () => this.setStatus(`${item.name} — 클릭 시 ${this.depositTo === 'freezer' ? '냉동고' : '냉장고'}에 보관`));
+      hit.on('pointerover', () => this.setStatus(item.name));
       hit.on('pointerdown', () => this.deposit(item));
       this.gridC.add([rowBg, icon, nameTxt, hit]);
     });
@@ -177,6 +226,7 @@ export class FridgePanel extends DraggablePanel {
     if (!moved) return;
     FridgeStore.place(this.depositTo, moved);
     InventoryStore.removeItem(moved.id, true);   // 스택 전체 이동
+    this.deposits++;
     GameState.markDirty();
     this.scene.events.emit('inventory-changed');
     this.setStatus(`${item.name} → ${this.depositTo === 'freezer' ? '냉동고' : '냉장고'}에 보관했습니다`);
@@ -189,7 +239,7 @@ export class FridgePanel extends DraggablePanel {
     const item = FridgeStore.get(section, slot);
     if (!item) return;
     if (InventoryStore.freeSlotCount('food') <= 0 && !InventoryStore.find(item.id)) {
-      this.setStatus('인벤토리(음식) 공간이 없습니다 — 자리를 비우고 다시 시도하세요');
+      this.setStatus('가방(음식)에 빈 칸이 없습니다');
       return;
     }
     const taken = FridgeStore.take(section, slot);
@@ -197,6 +247,7 @@ export class FridgePanel extends DraggablePanel {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { slot: _s, qty, ...rest } = taken;
     InventoryStore.addItem(rest, Math.max(1, qty));
+    this.withdraws++;
     GameState.markDirty();
     this.scene.events.emit('inventory-changed');
     this.setStatus(`${taken.name}을(를) 인벤토리로 꺼냈습니다`);

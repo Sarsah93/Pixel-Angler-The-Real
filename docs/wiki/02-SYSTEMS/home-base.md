@@ -14,7 +14,9 @@
 |---|---|---|
 | core | `types/HomeBase.ts` | MapObject 인스턴스 스키마 · `WorldObjectState`(removed/moved/placed) · `canPlaceAt` 칸 판정 · `PLACEMENT_DEFS` · `HouseTier` · `computeTravelFare` · `HOMETOWN_OBJECTS`(초기 19개) |
 | client | `RegionFieldScene`(hometown) | 오브젝트 렌더·충돌 반영·[E] 상호작용·**설치 모드**(그리드·프리뷰·회수) |
-| client | `HomeInteriorScene` | Tier 0 원룸 — 침대(저장)·냉장고·주방·소파 등 |
+| client | `HomeInteriorScene` | Tier 0 원룸 — 침대(저장)·냉장고·주방·앉기(소파·의자)·보관함·화분 · 현관 매트 출구 |
+| client | `data/HomeFurniture.ts` | 가구 13종 정의(크기·회전·[F] 행동) · 기본 배치 · 방향별 그림 · 앉는 자리 (189) |
+| client | `HomeStore` · `HomeDecorMode` · `HomeStoragePanel` | 가구 배치(놓인/넣어 둔) · BFS 길 판정 · 옷장 20 / 수납 선반 15 · 화분 물 시각 — SaveData `home` (189) |
 | client | `FridgeStore` · `FridgePanel` | 냉동 8 / 냉장 16 |
 
 ## 3. 동작 구조
@@ -40,7 +42,8 @@
 | **하우스 Tier 1~3**(평수·주방·지하·2층) | ⬜ | 스키마만 |
 | **수조 2종**(활어 상업용 / 관상) | ⬜ | 스키마·상태 골격 완비, 패널 미구현 |
 | 텃밭 농사 · 벌목 · 채굴 · 보트 | ⬜ | 상호작용 스텁("추후") |
-| 실내 가구 배치 모드 | ⬜ | 스키마 준비됨 |
+| 실내 가구 배치 모드 — 들기·돌리기(소파·의자)·넣어 두기·꺼내기 · 길 판정 · 첫 진입 가이드 | ✅ | **189** |
+| 실내 상호작용 — [F]는 기능 있는 가구만(살펴보기 폐지) · 앉기/소파 휴식 · 옷장(장비)·선반 · 물뿌리개 물 주기 · 현관 매트 출구 · 벽시계 실시각 | ✅ | **189** |
 | 주방 ↔ CookScene/도마 연결 | ⬜ | 불요리 선행 |
 
 ## 5. 잔여·차기 — 농장 경영 로드맵 (E1~E5, 099 조사 기반)
@@ -76,3 +79,10 @@
 2. **저장은 집 침대뿐** — 새 씬을 만들 때 `locationTag`를 설정하지 않으면 저장 불가가 기본값(의도).
 3. Phaser `Container.body`는 예약 프로퍼티 — 필드명 충돌 주의(`gridC` 사용).
 4. 실내 캐릭터도 `PLAYER_FOOT_SINK` 접지 보정을 적용한다(스프라이트 하단 여백).
+5. **실내 [F]는 할 수 있는 일이 있는 가구에만** 뜬다(189 — 사용자 지시). 첫 입장 혼잣말(`LOOK_TEXT`)을 [F]로 되풀이하지 않는다.
+   새 가구에 기능이 없으면 `FURN_DEFS.action`을 비워 둔다. 닿는 거리는 발밑 ↔ footprint 가장자리 26px(옆 칸에 서야 닿는다).
+6. 가구 옮기기·넣어 두기를 [F]에 얹지 않는다 — 배치는 [가구 배치] 모드 전용(모든 가구 앞에 [F]가 다시 뜨면 판정이 겹친다).
+7. 배치 판정은 `HomeStore.checkPlace` 하나 — 바닥 안 · 현관 매트 밖 · 겹침(러그는 가구 밑 허용) · 내가 선 자리 · **매트에서 BFS로
+   내 칸과 기능 있는 가구 앞자리가 닿을 것**. 침대(`storable:false`)는 넣어 둘 수 없다.
+8. 앉은 자세 = `image.setCrop`으로 다리를 자른다. 프레임이 바뀌면 자르기가 풀릴 수 있어 앉아 있는 동안 매 프레임 `applySeatPose`로 다시 건다.
+   등받이가 앞에 오는 자리(`behind`)는 가구 depth보다 아래로.

@@ -66,6 +66,7 @@ import { CoolerStore, CoolerSaveState } from './CoolerStore.js';
 import { GroundItemStore, type GroundItemSaveState } from './GroundItemStore.js';
 import { InventoryStore, InventorySaveState } from './InventoryStore.js';
 import { FridgeStore, FridgeSaveState } from './FridgeStore.js';
+import { HomeStore, type HomeSaveState } from './HomeStore.js';
 import { DiscoveryStore, DiscoverySaveState } from './DiscoveryStore.js';
 import {
   listUpkeep, upkeepAlerts, upkeepPenalty, licenseRenewalFee, fisheryGroundFee, upkeepKeysOfLicense,
@@ -189,6 +190,8 @@ interface SaveData {
   inventoryStore?: InventorySaveState;
   /** 집 냉장고 보관 (냉동고 8칸 + 냉장고 16칸) */
   fridge?: FridgeSaveState;
+  /** 189차 — 집 실내: 가구 배치 · 옷장/수납 선반 · 화분. 구세이브에는 없다(기본 배치) */
+  home?: HomeSaveState;
   /** 1회성 안내 플래그 (chumGuideSeen 등 — 최초 표시 여부) */
   flags?: Record<string, boolean>;
   /** 맵별 오브젝트 월드 상태 — 초기 배치 − removed + moved + placed (HOMETOWN_HOME_SPEC) */
@@ -365,6 +368,7 @@ export class GameStateManager {
     InventoryStore.deserialize(saved.inventoryStore);
     // 집 냉장고 복원 (냉동고/냉장고 보관물)
     FridgeStore.deserialize(saved.fridge);
+    HomeStore.deserialize(saved.home);
     // 발견 기록 복원 — 구세이브(필드 없음)는 어획 기록의 어종을 'legacy'로 백필
     DiscoveryStore.deserialize(
       saved.discoveries,
@@ -1465,6 +1469,7 @@ export class GameStateManager {
       groundItems: GroundItemStore.serialize(),
       inventoryStore: InventoryStore.serialize(),
       fridge: FridgeStore.serialize(),
+      home: HomeStore.serialize(),
       flags: this._flags,
       worldObjects: this._worldObjects,
       discoveries: DiscoveryStore.serialize(),
@@ -1671,6 +1676,7 @@ export class GameStateManager {
     GroundItemStore.resetAll();
     FridgeStore.resetAll();
     FridgeStore.place('freezer', prologueSquid());   // 188차 — 프롤로그: 직판장에 팔아 볼 냉동 오징어
+    HomeStore.resetAll();
     DiscoveryStore.resetAll();
     StoryStore.resetAll();
     this.syncInventoryDiscoveries();

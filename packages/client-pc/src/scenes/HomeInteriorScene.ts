@@ -1,21 +1,25 @@
 /**
  * @file HomeInteriorScene.ts
- * @description 집 실내 (Tier 0 소형 원룸) — 침대 저장 · 문→홈타운 외부 · 첫 입장 가구 안내 혼잣말(186차)
+ * @description 집 실내 (Tier 0 소형 원룸) — 침대 저장 · 현관 매트→홈타운 외부 · 첫 입장 가구 안내 혼잣말(186차)
  *   · 188차 프롤로그 「떠나는 날 아침」 — 새 캐릭터는 여기 침대 옆에서 눈을 뜬다(`wake`).
  *     아버지의 낚시 상자 · 가방(I)/장비(E)/일지(J) 창 · 「지금 할 일」 띠 · 첫 걸음 체험 가이드.
+ *   · 189차 집 정리 — 사용자 지시:
+ *     ① 「살펴보기」 폐지: 첫 입장 혼잣말로 한 번 설명했으면 같은 말을 되풀이하지 않는다. [F]는 **할 수 있는 일이 있는 가구**에만.
+ *     ② 가구 회수·재배치(`ui/HomeDecorMode.ts` — 방 오른쪽 위 [가구 배치]).
+ *     ③ 소파 = 한쪽을 보는 2인용 그림 + [F] 앉기 → 옆에 고를 거리(휴식하기 · 일어나기).
+ *     ④ 화분 = 물뿌리개를 손에 들었을 때만 [F] 물 주기. ⑤ 옷장 = 장비 보관함. ⑥ 의자 = [F] 앉기.
+ *     ⑦ 문 대신 현관 매트 — [F] 「나가기」 판정을 없애고, 매트를 밟고 아래로 걸어 나가면 바로 밖이다.
  *
  * HOMETOWN_HOME_SPEC (2026-07-28):
  *  - 시작 사이즈 Tier 0: 원룸 12×10 타일 (hometown_interior_mockup.svg 레이아웃).
- *    침대(저장★)+협탁 / 냉장고 / 아일랜드 테이블+의자 / 소파 / 러그(+고양이) /
- *    서랍장 / 수납 선반 / 화분 / 하단 문(→외부). 주방·지하실·2층은 HouseTier 확장(후속).
  *  - **저장은 이 씬의 침대에서만** — GameState.locationTag = 'hometown_interior'
  *    (TUNING.save.allowedTags). "저장하고 쉬기" / "그냥 쉬기" 선택.
- *  - 가구는 MapObject 인스턴스 스키마(이동/제거/배치 스탠바이) — 이번 단계는 정적 렌더.
+ *  - 가구 배치는 `HomeStore`(세이브) — 기본 배치·그림은 `data/HomeFurniture.ts`.
  *  - 진입: RegionFieldScene 문 → pause + launch. 복귀: stop() + resume (규칙 준수).
  */
 
 import Phaser from 'phaser';
-import { CHAR_SCALE, MapObject, TUNING, type CharDir } from '@tra/core';
+import { CHAR_SCALE, CHAR_HEAD_TOP, TUNING, kstParts, type CharDir } from '@tra/core';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { GameState } from '../store/GameState.js';
 import { StoryStore } from '../store/StoryStore.js';
@@ -33,64 +37,53 @@ import { InventoryPanel } from '../ui/InventoryPanel.js';
 import { EquipmentPanel } from '../ui/EquipmentPanel.js';
 import { JournalPanel } from '../ui/JournalPanel.js';
 import { ItemDetailPanel } from '../ui/ItemDetailPanel.js';
-import { DraggablePanel } from '../ui/DraggablePanel.js';
+import { DraggablePanel, restoreHandCursor } from '../ui/DraggablePanel.js';
+import { HomeStoragePanel } from '../ui/HomeStoragePanel.js';
+import { HomeDecorMode } from '../ui/HomeDecorMode.js';
 import { GuideTour, maybeStartTour } from '../ui/GuideTour.js';
 import { getLocale } from '../i18n/I18n.js';
+import { HomeStore, type HomeStorageKind } from '../store/HomeStore.js';
+import {
+  IT, ROOM_W, ROOM_H, DOOR_MAT, FURN_DEFS, footprint, seatsOf, drawFurnitureArt,
+  type FurnInstance, type FurnAction,
+} from '../data/HomeFurniture.js';
 import {
   markPrologue, syncPrologue, prologueKeyAllowed, prologueRunning, prologueStepDone, PROLOGUE_PHOTO_ID,
 } from '../store/Prologue.js';
 
-/** 실내 타일 렌더 크기 (px) — 외부(20px)보다 큼직하게 */
-const IT = 48;
-const ROOM_W = 12, ROOM_H = 10;
 const OX = (GAME_WIDTH - ROOM_W * IT) / 2;
 const OY = (GAME_HEIGHT - ROOM_H * IT) / 2 + 10;
+const FONT = '"Noto Sans KR", sans-serif';
+
+/** [F]가 닿는 거리 — 발밑에서 가구 footprint 가장자리까지(px). 바로 옆 칸에 서야 닿는다 */
+const REACH_PX = 26;
+/** 앉은 자세 — 머리끝부터 엉덩이까지만 보인다(다리는 가구가 가린다) */
+const SEAT_ROWS = (CHAR_HEAD_TOP + 19) * CHAR_SCALE;
+/** 소파 휴식 — 한 번에 풀리는 피로(최대치 대비 %) · 소파에서는 이 아래로는 안 풀린다(침대 몫) */
+const SOFA_REST_PCT = 35;
+const SOFA_REST_FLOOR_PCT = 35;
 
 /**
- * Tier 0 가구 초기 배치 (MapObject 스키마 — 추후 이동/배치 시스템과 호환).
- * 좌측 상단 = 주방(냉장고·싱크대·조리대). 침대(우상 저장★). 하단 문.
- */
-const INTERIOR_OBJECTS: MapObject[] = [
-  // ── 주방 (좌측 상단 코너) ──
-  { instanceId: 'fridge',   type: 'furniture', tx: 0,  ty: 2, fw: 1, fh: 2, collides: true,  interact: 'storage', movable: true, removable: false },
-  { instanceId: 'sink',     type: 'furniture', tx: 1,  ty: 2, fw: 1, fh: 1, collides: true,  interact: 'cook',    movable: true, removable: false },
-  { instanceId: 'stove',    type: 'furniture', tx: 2,  ty: 2, fw: 2, fh: 1, collides: true,  interact: 'cook',    movable: true, removable: false },
-  // ── 거실/침실 ──
-  { instanceId: 'bed',      type: 'furniture', tx: 9,  ty: 2, fw: 2, fh: 3, collides: true,  interact: 'save',    movable: true,  removable: false },
-  { instanceId: 'stand',    type: 'furniture', tx: 11, ty: 2, fw: 1, fh: 1, collides: true,  movable: true, removable: false },
-  { instanceId: 'island',   type: 'furniture', tx: 5,  ty: 3, fw: 3, fh: 1, collides: true,  movable: true, removable: false },
-  { instanceId: 'sofa',     type: 'furniture', tx: 2,  ty: 6, fw: 1, fh: 2, collides: true,  movable: true, removable: false },
-  { instanceId: 'rug',      type: 'furniture', tx: 5,  ty: 5, fw: 3, fh: 2, collides: false, movable: true, removable: false },
-  { instanceId: 'drawer',   type: 'furniture', tx: 11, ty: 6, fw: 1, fh: 2, collides: true,  movable: true, removable: false },
-  { instanceId: 'shelf',    type: 'furniture', tx: 0,  ty: 7, fw: 2, fh: 1, collides: true,  interact: 'storage', movable: true,  removable: false },
-  { instanceId: 'plant',    type: 'furniture', tx: 4,  ty: 8, fw: 1, fh: 1, collides: true,  movable: true, removable: false },
-  // 188차 — 아버지의 낚시 상자 (침대 발치). 프롤로그 첫 목표 — 대·릴·가족사진이 들어 있다
-  { instanceId: 'father_box', type: 'furniture', tx: 9, ty: 5, fw: 1, fh: 1, collides: true, interact: 'storage', movable: false, removable: false },
-  { instanceId: 'door_out', type: 'door',      tx: 5,  ty: 9, fw: 2, fh: 1, collides: false, interact: 'door', movable: false, removable: false },
-];
-
-/**
- * 가구마다의 혼잣말 (186차 — 사용자 지시 "집으로 들어왔을 때 멈추면서 하나하나 안내").
- * 첫 입장 때 안내 순서대로 한 단락씩 보여 주고, 그 뒤로는 가구 앞 [F] 「살펴보기」로 다시 읽는다.
- * 기능이 있는 가구는 **그 기능을 쓰는 법**을 둘째 문장에 담는다(R4 — 정의문이 아니라 주인공의 말).
+ * 첫 입장 안내 혼잣말 (186차 — 사용자 지시 "집으로 들어왔을 때 멈추면서 하나하나 안내").
+ * 189차: **첫 입장 때 한 번만** 쓴다(가구 앞 「살펴보기」로 되풀이하던 것은 폐지).
+ * 쓸 수 있는 가구는 그 쓰는 법을 둘째 문장에 담는다(R4 — 정의문이 아니라 주인공의 말).
  */
 const LOOK_TEXT: Record<string, string> = {
-  door_out: '들어온 문. 밖으로 나가려면 문 앞에서 [F]를 누르거나 ESC를 누르면 된다.',
-  plant: '화분 하나가 아직 살아 있다. 누가 물을 주고 있었던 모양이다.',
-  sofa: '낡은 소파. 아버지는 여기서 라디오 물때 방송을 켜 놓고 졸곤 했다.',
-  shelf: '수납 선반. 낚시 잡지 몇 권과 쓰다 만 채비 상자가 그대로 올려져 있다.',
+  door_mat: '현관 매트. 매트를 밟고 아래로 걸어 나가면 바로 밖이다.',
+  plant: '화분 하나가 아직 살아 있다. 누가 물을 주고 있었던 모양이다.\n물뿌리개를 손에 들고 화분 앞에 서면 물을 줄 수 있다.',
+  sofa: '낡은 2인용 소파. 아버지는 여기서 라디오 물때 방송을 켜 놓고 졸곤 했다.\n소파 앞에서 [F]를 누르면 앉는다. 앉아서 잠깐 쉴 수도 있다.',
+  shelf: '수납 선반. 낚시 잡지 몇 권과 쓰다 만 채비 상자가 그대로 올려져 있다.\n[F]로 열어 낚시용품이나 자잘한 물건을 올려 둘 수 있다.',
   fridge: '냉장고는 아직 돌아간다. 위칸은 얼리고 아래칸은 차게 둔다.\n[F]로 열어 잡은 고기나 먹을 것을 넣어 두면, 넣어 둔 동안은 상하지 않는다.',
   sink: '개수대에서 수돗물이 나온다. 요리할 때 물 걱정은 없겠다.\n개수대나 가스레인지 앞에서 [F]를 누르면 요리를 시작한다.',
   stove: '가스레인지 두 구. 집 화구는 가스가 떨어질 일이 없다.\n[F]로 조리를 시작한다 — 재료는 가방에서 꺼내 넣는다.',
-  island: '식탁. 둘이 앉으면 딱 맞는 크기다. 밥은 늘 여기서 먹었다.',
+  island: '식탁. 둘이 앉으면 딱 맞는 크기다. 밥은 늘 여기서 먹었다.\n의자 앞에서 [F]를 누르면 앉는다.',
   rug: '러그 위에서 고양이가 자고 있다. 누가 밥을 챙겨 줬던 걸까. 이제는 내 몫이겠지.',
   bed: '아버지 침대. 이불 끝이 반듯하게 접혀 있다.\n침대 앞에서 [F]를 누르면 쉴 수 있다. 오늘 한 일을 기록(저장)하는 것도 이 침대에서만 된다.',
-  stand: '머리맡 협탁. 안경을 늘 두던 자리에 먼지만 앉았다.',
-  drawer: '서랍장 위 스탠드가 아직 켜진다. 서랍 안에는 아버지 옷가지가 그대로다.',
+  stand: '머리맡 협탁. 스탠드가 아직 켜진다. 안경을 늘 두던 자리에 먼지만 앉았다.',
+  wardrobe: '옷장. 아버지 옷가지가 아직 걸려 있다.\n[F]로 열어 장비를 걸어 둘 수 있다. 가방이 한결 가벼워진다.',
   clock: '벽시계는 멈추지 않고 가고 있다. 누가 건전지를 갈아 두었나.',
   books: '벽 선반의 책. 물때표, 어류 도감, 손때 묻은 매듭 책.',
   window: '창 너머로 바다 냄새가 들어온다. 여기서도 파도 소리가 들린다.',
-  father_box: '아버지의 낚시 상자. 이제 비어 있다. 손잡이에 감은 테이프만 반질반질하다.',
 };
 
 /** 188차 — 프롤로그 기상 혼잣말 (새 캐릭터가 침대 옆에서 눈을 뜬다) */
@@ -108,13 +101,44 @@ const BOX_MONOLOGUE: string[] = [
   '전부 가방에 넣었다.',
 ];
 
-/** 첫 입장 안내 순서 — 문에서 시작해 방을 한 바퀴 돌고 다시 문으로 */
+/** 첫 입장 안내 순서 — 매트에서 시작해 방을 한 바퀴 돌고 다시 매트로 */
 const TOUR_ORDER = [
-  'door_out', 'plant', 'sofa', 'shelf', 'fridge', 'sink', 'stove', 'island',
-  'rug', 'bed', 'stand', 'drawer', 'clock', 'books', 'window',
+  'door_mat', 'plant', 'sofa', 'shelf', 'fridge', 'sink', 'stove', 'island',
+  'rug', 'bed', 'stand', 'wardrobe', 'clock', 'books', 'window',
 ] as const;
 const TOUR_INTRO = '아버지 집이다. 떠날 때 모습 그대로다. 우선 하나씩 둘러보자.';
-const TOUR_OUTRO = '대충 다 둘러봤다. 궁금한 게 있으면 가구 앞에서 [F]로 다시 살펴보면 된다.';
+const TOUR_OUTRO = '대충 다 둘러봤다. 쓸 수 있는 가구 앞에 서면 머리 위에 [F]가 뜬다. 가구 자리는 오른쪽 위 [가구 배치]에서 바꾼다.';
+
+/** 가구가 지금 받을 수 있는 [F] 행동 → 머리 위 문구 */
+const ACTION_LABEL: Record<FurnAction, string> = {
+  bed: '[F] 침대 — 저장하고 쉬기',
+  fridge: '[F] 냉장고 열기',
+  cook: '[F] 주방 — 요리',
+  sofa: '[F] 앉기',
+  chair: '[F] 앉기',
+  wardrobe: '[F] 옷장 열기',
+  shelf: '[F] 선반 열기',
+  plant: '[F] 물 주기',
+  father_box: '[F] 낚시 상자 열기',
+};
+
+interface MenuItem { label: string; color?: string; run: () => void }
+interface OpenMenu {
+  kind: 'bed' | 'seat';
+  c: Phaser.GameObjects.Container;
+  items: MenuItem[];
+  rows: Phaser.GameObjects.Graphics[];
+  sel: number;
+  onCancel: () => void;
+}
+interface Seat {
+  f: FurnInstance;
+  sx: number;
+  sy: number;
+  behind: boolean;
+  standX: number;
+  standY: number;
+}
 
 export class HomeInteriorScene extends Phaser.Scene {
   /** 위치 판정용 논리 좌표 (스프라이트 발밑) */
@@ -130,15 +154,25 @@ export class HomeInteriorScene extends Phaser.Scene {
   private tourSpotTween?: Phaser.Tweens.Tween;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private hintText!: Phaser.GameObjects.Text;
-  private bedMenu?: Phaser.GameObjects.Container;
+  /** 189차 — 확장 패널(침대 메뉴 · 앉은 자리 고를 거리). 구 `bedMenu`는 이것의 'bed' 종류다 */
+  private menu?: OpenMenu;
   private fridgePanel?: FridgePanel;
   /** 154차 — 집 주방 조리 패널 (가스레인지 [F]) */
   private cookPanel?: CookingPanel;
   private cookSyncAcc = 0;
-  private nearObj: MapObject | null = null;
+  private nearFurn: { f: FurnInstance; action: FurnAction } | null = null;
+  /** 189차 — 가구 그림(인스턴스마다 하나) */
+  private furnViews = new Map<string, Phaser.GameObjects.Graphics>();
+  private clockG?: Phaser.GameObjects.Graphics;
+  private clockAcc = 0;
+  private seat: Seat | null = null;
+  private decor?: HomeDecorMode;
+  private decorBtn?: Phaser.GameObjects.Container;
+  private enteredAt = 0;
+  private leaving = false;
   /** 188차 — 프롤로그 기상(새 게임) 진입인가 */
   private wake = false;
-  /** 188차 — 실내에서 여는 창(가방·장비·일지·상세보기) — ESC는 위에서부터 닫는다 */
+  /** 188차 — 실내에서 여는 창(가방·장비·일지·상세보기·보관함) — ESC는 위에서부터 닫는다 */
   private popups: { panel: DraggablePanel; close: () => void }[] = [];
   private invPanel: InventoryPanel | null = null;
   private equipPanel: EquipmentPanel | null = null;
@@ -147,10 +181,11 @@ export class HomeInteriorScene extends Phaser.Scene {
   private objSpot?: Phaser.GameObjects.Graphics;
   private objSpotAt = 0;
   private syncAcc = 0;
-  /** 첫 걸음 체험 — 걸은 거리(px) · 뛴 시간(ms) · 살펴본 가구 수 */
+  /** 첫 걸음 체험 — 걸은 거리(px) · 뛴 시간(ms) · 앉은 횟수 · 일어선 횟수 */
   private walked = 0;
   private ranMs = 0;
-  private looked = 0;
+  private satCount = 0;
+  private stoodCount = 0;
 
   constructor() {
     super({ key: 'HomeInteriorScene' });
@@ -164,55 +199,55 @@ export class HomeInteriorScene extends Phaser.Scene {
     // 저장 정책의 유일한 허용 위치 — 침대 상호작용 지점 (HOMETOWN_HOME_SPEC §4)
     GameState.locationTag = 'hometown_interior';
     this.cameras.main.fadeIn(300, 0, 10, 20);
-    this.bedMenu = undefined;
+    this.menu = undefined;
     this.fridgePanel = undefined;
     this.cookPanel = undefined;
-    this.nearObj = null;
+    this.nearFurn = null;
     this.popups = [];
     this.invPanel = null;
     this.equipPanel = null;
     this.journalPanel = null;
-    this.walked = 0; this.ranMs = 0; this.looked = 0;
+    this.walked = 0; this.ranMs = 0; this.satCount = 0; this.stoodCount = 0;
     this.wakeStarted = false;
     this.tourPanel = undefined;
     this.tourSpot = undefined;
     this.tourSpotTween = undefined;
+    this.furnViews = new Map();
+    this.seat = null;
+    this.decor = undefined;
+    this.leaving = false;
+    this.enteredAt = this.time.now;
 
     this.drawRoom();
-    this.drawFurniture();
+    this.clockG = this.add.graphics().setDepth(2);
+    this.drawClockHands();
+    this.buildFurniture(null);
 
-    // 플레이어 (문 앞 스폰) — 실제 캐릭터 스프라이트 (RegionFieldScene와 동일 에셋)
-    //  188차 — 프롤로그 기상은 침대 왼편에서
-    if (this.wake) { this.px = OX + 8.4 * IT; this.py = OY + 4.6 * IT; }
-    else { this.px = OX + 6 * IT; this.py = OY + 8.4 * IT; }
+    // 플레이어 — 188차 프롤로그 기상은 침대 왼편 · 그 밖에는 현관 매트 위에서 방을 바라본다
+    if (this.wake) { this.px = OX + 8.6 * IT; this.py = OY + 4.6 * IT; this.facing = 'down'; }
+    else { this.px = OX + (DOOR_MAT.tx + DOOR_MAT.fw / 2) * IT; this.py = OY + (DOOR_MAT.ty + 0.25) * IT; this.facing = 'up'; }
     this.charSprite = new CharacterSprite(this, this.px, this.py, characterLook(), CHAR_SCALE);
-    this.charSprite.image.setY(this.py + this.charSprite.footPad).setDepth(20);
+    this.charSprite.image.setY(this.py + this.charSprite.footPad).setDepth(20 + this.py * 0.001);
+    this.charSprite.setDir(this.facing);
     const bodyH = this.charSprite.bodyHeight;
     this.playerShadow = this.add.ellipse(this.px, this.py, bodyH * 0.42, bodyH * 0.12, 0x000000, 0.28).setDepth(18);
 
     this.cursors = this.input.keyboard!.createCursorKeys();
-    this.input.keyboard!.on('keydown-F', () => {   // 122차: 상호작용 키 E → F
-      if (!this.tourPanel && !this.popups.length && !GuideTour.blocksKey('KeyF')) this.tryInteract();
-    });
+    this.input.keyboard!.on('keydown', (ev: KeyboardEvent) => this.onKey(ev));
     // 188차 — 실내에서도 가방(I)·장비(E)·일지(J). 프롤로그 중에는 배운 만큼만 열린다
     this.input.keyboard!.on('keydown-I', () => { if (this.hotkeyOk('KeyI')) this.toggleInventory(); });
     this.input.keyboard!.on('keydown-E', () => { if (this.hotkeyOk('KeyE')) this.toggleEquipment(); });
     this.input.keyboard!.on('keydown-J', () => { if (this.hotkeyOk('KeyJ')) this.toggleJournal(); });
-    const onInv = (): void => { syncPrologue(); this.charSprite.setConfig(characterLook()); };
+    const onInv = (): void => {
+      syncPrologue();
+      this.charSprite.setConfig(characterLook());
+      if (this.seat) this.applySeatPose();
+    };
     this.events.on('inventory-changed', onInv);
     this.events.once('shutdown', () => this.events.off('inventory-changed', onInv));
-    this.input.keyboard!.on('keydown-ESC', () => {
-      if (this.tourPanel) return;   // 혼잣말 창이 ESC를 '다음'으로 받는다
-      if (GuideTour.blocksKey('Escape')) return;
-      if (this.popups.length) { this.popups[this.popups.length - 1].close(); return; }
-      if (this.cookPanel) { this.closeCook(); return; }
-      if (this.fridgePanel) { this.closeFridge(); return; }
-      if (this.bedMenu) { this.closeBedMenu(); return; }
-      this.exitToField();
-    });
 
     this.hintText = this.add.text(this.px, this.py - 40, '', {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#ffe9b0', fontStyle: 'bold',
+      fontFamily: FONT, fontSize: '11px', color: '#ffe9b0', fontStyle: 'bold',
       backgroundColor: '#0a1628cc', padding: { x: 6, y: 2 },
     }).setOrigin(0.5, 1).setDepth(30).setVisible(false);
 
@@ -220,11 +255,12 @@ export class HomeInteriorScene extends Phaser.Scene {
     //   안내는 첫 입장 혼잣말과 가구 앞 [F] 힌트가 맡는다.
     this.events.once('shutdown', () => { this.tourSpotTween?.stop(); this.tourPanel?.destroy(); });
     this.objBanner = this.add.text(GAME_WIDTH / 2, 14, '', {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '14px', color: '#ffe9b0', fontStyle: 'bold',
+      fontFamily: FONT, fontSize: '14px', color: '#ffe9b0', fontStyle: 'bold',
       backgroundColor: '#0a1628dd', padding: { x: 12, y: 6 }, align: 'center',
       wordWrap: { width: GAME_WIDTH - 200, useAdvancedWrap: true },
     }).setOrigin(0.5, 0).setDepth(60).setVisible(false);
     this.objSpot = this.add.graphics().setDepth(41);
+    this.buildDecorButton();
     syncPrologue();
     this.refreshObjective();
     if (this.wake) {
@@ -238,9 +274,41 @@ export class HomeInteriorScene extends Phaser.Scene {
     }
   }
 
+  // ── 키 입력 ─────────────────────────────────────────
+
+  /** 확장 패널 · 배치 모드 · ESC를 한곳에서 받는다 (단축키 I·E·J는 각자) */
+  private onKey(ev: KeyboardEvent): void {
+    if (this.leaving) return;
+    if (ev.code === 'Escape') { this.onEscape(); return; }
+    if (this.decor) {
+      if (ev.code === 'KeyR' && !GuideTour.blocksKey('KeyR')) this.decor.rotate();
+      return;
+    }
+    if (this.menu && !this.popups.length && !this.tourPanel) {
+      if (GuideTour.blocksKey(ev.code)) return;
+      const m = this.menu;
+      if (ev.code === 'ArrowUp') { m.sel = (m.sel + m.items.length - 1) % m.items.length; this.paintMenu(); return; }
+      if (ev.code === 'ArrowDown') { m.sel = (m.sel + 1) % m.items.length; this.paintMenu(); return; }
+      if (ev.code === 'Enter' || ev.code === 'Space' || ev.code === 'KeyF') { m.items[m.sel]?.run(); return; }
+      return;
+    }
+    if (ev.code === 'KeyF' && !this.tourPanel && !this.popups.length && !GuideTour.blocksKey('KeyF')) this.tryInteract();
+  }
+
+  private onEscape(): void {
+    if (this.tourPanel) return;   // 혼잣말 창이 ESC를 '다음'으로 받는다
+    if (GuideTour.blocksKey('Escape')) return;
+    if (this.decor) { this.decor.escape(); return; }
+    if (this.popups.length) { this.popups[this.popups.length - 1].close(); return; }
+    if (this.cookPanel) { this.closeCook(); return; }
+    if (this.fridgePanel) { this.closeFridge(); return; }
+    if (this.menu) { this.menu.onCancel(); return; }
+    this.exitToField();
+  }
+
   // ── 프롤로그 (188차) ─────────────────────────────────
 
-  /** 기상 혼잣말 → 첫 걸음 체험(걷기 · 뛰기 · [F] 살펴보기 · 낚시 상자 열기) */
+  /** 기상 혼잣말 → 첫 걸음 체험(걷기 · 뛰기 · 소파에 앉았다 일어서기 · 낚시 상자 열기) */
   private wakeStarted = false;
   private startWake(): void {
     if (this.wakeStarted) return;   // 지연 호출과 직접 호출이 겹쳐도 한 번만
@@ -277,10 +345,16 @@ export class HomeInteriorScene extends Phaser.Scene {
           wait: () => this.ranMs >= 500,
         },
         {
-          text: '가구 앞에 서면 머리 위에 [F]가 뜬다. 소파 앞으로 가서 [F]로 살펴보자.',
+          text: '쓸 수 있는 가구 앞에 서면 머리 위에 [F]가 뜬다. 소파 앞으로 가서 [F]로 앉아 보자.',
           passive: true,
           target: () => this.tourRect('sofa'),
-          wait: () => this.looked > 0,
+          wait: () => this.satCount > 0,
+        },
+        {
+          text: '앉아 있으면 옆에 고를 거리가 뜬다. 쉬어 갈 수도 있다. 이번에는 [일어나기]를 골라 일어서자.',
+          passive: true,
+          target: () => this.menuRect(),
+          wait: () => this.stoodCount > 0,
         },
         {
           text: '침대 발치에 아버지의 낚시 상자가 있다. 상자 앞에서 [F]로 열어 보자.',
@@ -292,9 +366,9 @@ export class HomeInteriorScene extends Phaser.Scene {
     }));
   }
 
-  /** 단축키를 받아도 되는가 — 대화·안내·메뉴 중이 아니고, 가이드·프롤로그 단계가 허용할 때 */
+  /** 단축키를 받아도 되는가 — 대화·안내·메뉴·배치 중이 아니고, 가이드·프롤로그 단계가 허용할 때 */
   private hotkeyOk(code: string): boolean {
-    if (this.tourPanel || this.bedMenu || this.fridgePanel || this.cookPanel) return false;
+    if (this.tourPanel || this.menu?.kind === 'bed' || this.fridgePanel || this.cookPanel || this.decor || this.leaving) return false;
     return !GuideTour.blocksKey(code) && prologueKeyAllowed(code);
   }
 
@@ -348,9 +422,9 @@ export class HomeInteriorScene extends Phaser.Scene {
     this.openPopup((close) => new ItemDetailPanel(this, item, 180 + this.popups.length * 24, 100 + this.popups.length * 24, close));
   }
 
-  /** 아버지의 낚시 상자 — 처음이면 대·릴·가족사진을 가방에 넣는다 */
+  /** 아버지의 낚시 상자 — 처음 한 번 대·릴·가족사진을 가방에 넣는다 (그 뒤로는 [F]가 뜨지 않는다) */
   private openFatherBox(): void {
-    if (GameState.getFlag('prologue.box')) { this.lookAt('father_box'); return; }
+    if (GameState.getFlag('prologue.box')) return;
     for (const tpl of FATHER_BOX_ITEMS) if (!InventoryStore.find(tpl.id)) InventoryStore.addItem({ ...tpl }, 1);
     const photo = QUEST_REWARD_ITEMS.find((q) => q.id === PROLOGUE_PHOTO_ID);
     if (photo && !InventoryStore.find(PROLOGUE_PHOTO_ID)) InventoryStore.addItem({ ...photo, bound: true }, 1);
@@ -374,6 +448,7 @@ export class HomeInteriorScene extends Phaser.Scene {
   /** 「지금 할 일」 띠 — 프롤로그 동안 M1-01의 다음 목표 하나 */
   private refreshObjective(): void {
     if (!this.objBanner) return;
+    this.decorBtn?.setVisible(!prologueRunning() && !this.decor);
     const q = getStoryQuest('M1-01');
     if (!q || !StoryStore.isActive('M1-01') || !prologueRunning()) { this.objBanner.setVisible(false); return; }
     const idx = nextObjectiveIndex(q, (i) => StoryStore.objectiveDone(q, i));
@@ -392,7 +467,7 @@ export class HomeInteriorScene extends Phaser.Scene {
     if (!prologueStepDone('box')) return 'father_box';
     if (prologueStepDone('journal') && !prologueStepDone('squid')) return 'fridge';
     if (prologueStepDone('squid') && !prologueStepDone('save')) return 'bed';
-    if (prologueStepDone('save') && !prologueStepDone('leave')) return 'door_out';
+    if (prologueStepDone('save') && !prologueStepDone('leave')) return 'door_mat';
     return null;
   }
 
@@ -400,7 +475,7 @@ export class HomeInteriorScene extends Phaser.Scene {
     const g = this.objSpot;
     if (!g) return;
     g.clear();
-    const id = this.tourPanel || this.popups.length ? null : this.objectiveSpotId();
+    const id = this.tourPanel || this.popups.length || this.decor ? null : this.objectiveSpotId();
     const r = id ? this.tourRect(id) : null;
     if (!r) return;
     this.objSpotAt += delta;
@@ -411,21 +486,25 @@ export class HomeInteriorScene extends Phaser.Scene {
 
   // ── 첫 입장 안내 (186차) ─────────────────────────────
 
-  /** 안내에 쓰는 대상 사각형(화면 좌표). 벽 장식(시계·책·창)은 가구 목록 밖이라 따로 잰다. */
+  /** 안내에 쓰는 대상 사각형(화면 좌표). 벽 장식(시계·책·창)과 현관 매트는 가구 목록 밖이라 따로 잰다. */
   private tourRect(id: string): Phaser.Geom.Rectangle | null {
     const wallH = Math.round(IT * 1.4);
     const W = ROOM_W * IT;
     if (id === 'clock') return new Phaser.Geom.Rectangle(OX + IT * 1.4 - 20, OY + Math.round(IT * 0.62) - 20, 40, 40);
     if (id === 'books') return new Phaser.Geom.Rectangle(OX + IT * 4.2 - 4, OY + Math.round(IT * 0.72) - 36, IT * 2.4 + 8, 44);
     if (id === 'window') return new Phaser.Geom.Rectangle(OX + W - IT * 3.4 - 6, OY + 4, IT * 2.2 + 12, wallH - 18);
-    const o = INTERIOR_OBJECTS.find((q) => q.instanceId === id);
-    if (!o) return null;
-    return new Phaser.Geom.Rectangle(OX + o.tx * IT - 4, OY + o.ty * IT - 4, (o.fw ?? 1) * IT + 8, (o.fh ?? 1) * IT + 8);
+    if (id === 'door_mat') {
+      return new Phaser.Geom.Rectangle(OX + DOOR_MAT.tx * IT - 4, OY + DOOR_MAT.ty * IT - 4, DOOR_MAT.fw * IT + 8, DOOR_MAT.fh * IT + 24);
+    }
+    const f = HomeStore.find(id);
+    if (!f) return null;
+    const { w, h } = footprint(f.kind, f.dir);
+    return new Phaser.Geom.Rectangle(OX + f.tx * IT - 4, OY + f.ty * IT - 4, w * IT + 8, h * IT + 8);
   }
 
   private startTour(): void {
     const steps: { id: string | null; text: string }[] = [{ id: null, text: TOUR_INTRO }];
-    for (const id of TOUR_ORDER) steps.push({ id, text: LOOK_TEXT[id]! });
+    for (const id of TOUR_ORDER) if (this.tourRect(id)) steps.push({ id, text: LOOK_TEXT[id]! });
     steps.push({ id: null, text: TOUR_OUTRO });
     let i = 0;
     const next = (): void => {
@@ -446,7 +525,7 @@ export class HomeInteriorScene extends Phaser.Scene {
     this.clearSpot();
     const r = id ? this.tourRect(id) : null;
     // 캐릭터가 그쪽을 바라본다
-    if (r) {
+    if (r && !this.seat) {
       const dx = r.centerX - this.px, dy = r.centerY - this.py;
       this.facing = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
       this.charSprite.setDir(this.facing);
@@ -489,11 +568,12 @@ export class HomeInteriorScene extends Phaser.Scene {
   // ── 렌더 ─────────────────────────────────────────────
 
   /**
-   * 방 — 173차 재작성.
+   * 방 — 173차 재작성 · 189차 현관.
    *
    * 구 구현은 **단색 바닥 + 격자선 + 색 사각형 가구**였고, 그 위에 `주방`·`저장★ 침대`·
    * `지하실 (확장 예약)`·`평수 확장` 같은 **개발 메모가 글자로 박혀** 있었다(§8-9 위반 —
    * 확장 계획은 플레이어의 말이 아니다). 이제 재질을 도트로 그리고, 안내는 [F] 힌트가 맡는다.
+   * 189차: 「가로로 누운 문」 그림을 걷어내고, 아래 벽을 터서 **현관 문턱 + 매트**를 깔았다.
    */
   private drawRoom(): void {
     const g = this.add.graphics().setDepth(1);
@@ -514,7 +594,7 @@ export class HomeInteriorScene extends Phaser.Scene {
         const plank = Math.floor(x / (IT * 0.75));
         const base = plank % 2 === 0 ? 0xb88a45 : 0xb08240;
         const grain = hash(x + plank * 97, y);
-        const col = grain < 0.12 ? 0xa0742f : grain > 0.9 ? 0xc79a52 : (typeof base === 'number' ? base : 0xb08240);
+        const col = grain < 0.12 ? 0xa0742f : grain > 0.9 ? 0xc79a52 : base;
         dot(OX + x, OY + y, col);
       }
     }
@@ -541,13 +621,12 @@ export class HomeInteriorScene extends Phaser.Scene {
     for (let y = -2; y < wh + 2; y += 2) { dot(wx - 2, wy + y, 0x5a3c22); dot(wx + ww, wy + y, 0x5a3c22); }
     for (let y = 0; y < wh; y += 2) dot(wx + ww / 2, wy + y, 0x5a3c22);
     g.fillStyle(0xfff3c4, 0.10); g.fillRect(wx - 8, OY + wallH, ww + 16, IT * 2.2);                                      // 햇살
-    // ── 벽시계 ──
+    // ── 벽시계 (판) ── 바늘은 실제 시각을 따라 `drawClockHands`가 따로 그린다
     const cx = OX + IT * 1.4, cy = OY + Math.round(IT * 0.62);
     g.fillStyle(0x3a2718, 1); g.fillCircle(cx, cy, 16);
     g.fillStyle(0xf2e2b8, 1); g.fillCircle(cx, cy, 13);
     g.fillStyle(0x3a2718, 1);
     for (let a = 0; a < 12; a++) g.fillRect(cx + Math.round(Math.cos(a * Math.PI / 6) * 10) - 1, cy + Math.round(Math.sin(a * Math.PI / 6) * 10) - 1, 2, 2);
-    g.fillRect(cx - 1, cy - 8, 2, 9); g.fillRect(cx - 1, cy - 1, 8, 2);
     // ── 벽 선반 + 책 ──
     const sx = OX + IT * 4.2, sy = OY + Math.round(IT * 0.72);
     for (let x = 0; x < IT * 2.4; x += 2) { dot(sx + x, sy, 0x8a6138); dot(sx + x, sy + 2, 0x5a3c22); }
@@ -556,162 +635,107 @@ export class HomeInteriorScene extends Phaser.Scene {
       const bx = sx + 6 + i * 16, bh = 22 + (i % 3) * 5;
       for (let y = 0; y < bh; y += 2) for (let x = 0; x < 10; x += 2) dot(bx + x, sy - bh + y, y < 3 ? 0xffffff : col);
     });
+    // ── 현관 (189차) ── 아래 벽을 터서 문턱과 바깥 돌계단을 보이고, 바닥에는 매트를 깐다
+    const mx = OX + DOOR_MAT.tx * IT, my = OY + DOOR_MAT.ty * IT, mw = DOOR_MAT.fw * IT;
+    for (let y = 0; y < 20; y += 2) for (let x = 0; x < mw; x += 2) {
+      const col = y < 4 ? 0x2a1a0e : (hash(x, y + 400) > 0.85 ? 0xc9c2b0 : 0xb5ad98);
+      dot(mx + x, OY + H + y, col);
+    }
+    for (let x = 0; x < mw; x += 2) { dot(mx + x, OY + H + 12, 0x9a927c); dot(mx + x, OY + H + 18, 0x847c68); }
+    for (let y = -6; y < 20; y += 2) { dot(mx - 2, OY + H + y, 0x2a1a0e); dot(mx + mw, OY + H + y, 0x2a1a0e); }   // 문설주
+    g.fillStyle(0xfff3c4, 0.08); g.fillRect(mx, OY + H - IT * 1.2, mw, IT * 1.2);                                   // 열린 문으로 드는 빛
+    for (let y = 6; y < IT - 4; y += 2) for (let x = 6; x < mw - 6; x += 2) {
+      const edge = x < 10 || x > mw - 12 || y < 10 || y > IT - 8;
+      const weave = ((x >> 1) + (y >> 1)) % 4 < 2;
+      dot(mx + x, my + y, edge ? 0x6e2f22 : weave ? 0xa8563a : 0x96492f);
+    }
+    for (let x = 8; x < mw - 8; x += 4) { dot(mx + x, my + 4, 0xd8c8a0); dot(mx + x, my + IT - 4, 0xd8c8a0); }       // 술
+  }
+
+  /** 벽시계 바늘 — 실제 한국 시각을 따른다 (30초마다 다시 그린다) */
+  private drawClockHands(): void {
+    const g = this.clockG;
+    if (!g) return;
+    g.clear();
+    const cx = OX + IT * 1.4, cy = OY + Math.round(IT * 0.62);
+    const p = kstParts();
+    const h = (Number(p.hh) % 12) + Number(p.mi) / 60, m = Number(p.mi);
+    const hand = (ang: number, len: number, col: number): void => {
+      g.fillStyle(col, 1);
+      for (let t = 0; t <= len; t += 1.5) {
+        g.fillRect(Math.round(cx + Math.sin(ang) * t) - 1, Math.round(cy - Math.cos(ang) * t) - 1, 2, 2);
+      }
+    };
+    hand((h / 12) * Math.PI * 2, 6, 0x3a2718);
+    hand((m / 60) * Math.PI * 2, 9, 0x5a3c22);
+    g.fillStyle(0xb04a3a, 1); g.fillRect(cx - 1, cy - 1, 2, 2);
+  }
+
+  /** 가구 depth — 러그는 바닥, 나머지는 바닥선(y)으로 캐릭터와 앞뒤를 가린다 */
+  private furnDepth(f: FurnInstance): number {
+    if (FURN_DEFS[f.kind].floor) return 6;
+    const { h } = footprint(f.kind, f.dir);
+    return 20 + (OY + (f.ty + h) * IT - 14) * 0.001;
   }
 
   /**
-   * 가구 — 173차 재작성. 색 사각형 대신 **재질 + 그늘 + 하이라이트**.
-   * 라벨 글자는 전부 걷어냈다 — 무엇인지는 그림이 말하고, 무엇을 할 수 있는지는 [F] 힌트가 말한다.
+   * 가구 — 인스턴스마다 Graphics 하나(189차 — 옮기고 돌리려면 따로 그려야 한다).
+   * 라벨 글자는 없다 — 무엇인지는 그림이 말하고, 무엇을 할 수 있는지는 [F] 힌트가 말한다.
    */
-  private drawFurniture(): void {
-    const g = this.add.graphics().setDepth(10);
-    const dot = (x: number, y: number, col: number, a = 1): void => { g.fillStyle(col, a); g.fillRect(x, y, 2, 2); };
-    /** 사각 면 — 위 하이라이트 + 아래 그늘 */
-    const slab = (x: number, y: number, w: number, h: number, mid: number, lit: number, dark: number): void => {
-      for (let yy = 0; yy < h; yy += 2) for (let xx = 0; xx < w; xx += 2) {
-        dot(x + xx, y + yy, yy < 3 ? lit : yy > h - 5 ? dark : mid);
-      }
-    };
-    /** 접지 그림자 */
-    const shade = (x: number, y: number, w: number): void => {
-      for (let xx = 0; xx < w; xx += 2) dot(x + xx, y, 0x2a1a0e, 0.28);
-    };
-    for (const o of INTERIOR_OBJECTS) {
-      const x = OX + o.tx * IT, y = OY + o.ty * IT;
-      const w = (o.fw ?? 1) * IT, h = (o.fh ?? 1) * IT;
-      switch (o.instanceId) {
-        case 'bed': {
-          shade(x + 4, y + h - 4, w - 8);
-          slab(x + 4, y + 6, w - 8, h - 12, 0x6a4a2c, 0x8a6440, 0x4a3420);          // 프레임
-          slab(x + 8, y + 10, w - 16, h - 22, 0x8a3a34, 0xa64a42, 0x6e2a26);        // 매트리스·이불
-          for (let yy = 0; yy < h - 26; yy += 8) for (let xx = 0; xx < w - 20; xx += 2) dot(x + 10 + xx, y + 16 + yy, 0x9b4139, 0.7);
-          slab(x + 12, y + 14, w - 24, 22, 0xf2e2c8, 0xfff6e2, 0xd8c4a4);           // 베개
-          slab(x + 8, y + h - 24, w - 16, 12, 0x3a6ea5, 0x4d86c0, 0x2a5280);        // 발치 이불단
-          break;
-        }
-        case 'fridge':
-          shade(x + 8, y + h - 6, w - 16);
-          slab(x + 8, y + 6, w - 16, h - 12, 0xe4e6e2, 0xf5f7f3, 0xc2c6c0);
-          for (let xx = 0; xx < w - 16; xx += 2) dot(x + 8 + xx, y + Math.round(h * 0.42), 0xaeb2ac);
-          for (let yy = 0; yy < 14; yy += 2) dot(x + w - 18, y + 14 + yy, 0x8d979f);
-          for (let yy = 0; yy < 14; yy += 2) dot(x + w - 18, y + Math.round(h * 0.5) + yy, 0x8d979f);
-          break;
-        case 'sink':
-          shade(x + 6, y + h - 6, w - 12);
-          slab(x + 4, y + 8, w - 8, h - 14, 0xcfd4d8, 0xe6eaed, 0xa9aeb2);
-          slab(x + 12, y + 16, w - 24, h - 30, 0x5f6a74, 0x76828d, 0x454e57);
-          for (let yy = 0; yy < 12; yy += 2) dot(x + w / 2, y + 6 + yy, 0x9aa6b0);
-          dot(x + w / 2 - 2, y + 6, 0xb6c2cc); dot(x + w / 2 + 2, y + 6, 0xb6c2cc);
-          break;
-        case 'stove': {
-          shade(x + 6, y + h - 6, w - 12);
-          slab(x + 4, y + 8, w - 8, h - 14, 0x3a3f45, 0x4e545b, 0x24282d);
-          for (const bx of [x + w * 0.3, x + w * 0.7]) {
-            for (let a = 0; a < 360; a += 20) {
-              const rx = Math.round(Math.cos(a * Math.PI / 180) * 8 / 2) * 2, ry = Math.round(Math.sin(a * Math.PI / 180) * 8 / 2) * 2;
-              dot(bx + rx, y + h * 0.52 + ry, 0x22262a);
-            }
-            dot(bx - 2, y + h * 0.52, 0xff7a3a); dot(bx, y + h * 0.52 - 2, 0xffa35a);
-            dot(bx, y + h * 0.52 + 2, 0xff7a3a); dot(bx + 2, y + h * 0.52, 0xffa35a);
-          }
-          for (let xx = 0; xx < w - 20; xx += 10) dot(x + 10 + xx, y + h - 10, 0xb0b6bc);   // 손잡이 열
-          break;
-        }
-        case 'island':
-          shade(x + 6, y + h - 2, w - 12);
-          slab(x + 4, y + 10, w - 8, h - 20, 0xd8b98a, 0xeed6ae, 0xb4966a);
-          for (let xx = 0; xx < w - 8; xx += 2) dot(x + 4 + xx, y + 10, 0xf4e4c4);
-          for (const cxp of [x + w * 0.3, x + w * 0.7]) {
-            for (let a = 0; a < 360; a += 24) {
-              const rx = Math.round(Math.cos(a * Math.PI / 180) * 9 / 2) * 2, ry = Math.round(Math.sin(a * Math.PI / 180) * 9 / 2) * 2;
-              dot(cxp + rx, y + h + 10 + ry, 0x7a5734);
-            }
-            slab(cxp - 8, y + h + 4, 16, 8, 0x8a6a44, 0xa8835a, 0x66492b);
-          }
-          break;
-        case 'sofa':
-          shade(x + 6, y + h - 4, w - 12);
-          slab(x + 4, y + 6, w - 8, h - 12, 0x6d4079, 0x855196, 0x522f5c);          // 몸체
-          slab(x + 10, y + 12, (w - 24) / 2, h * 0.42, 0x9a6aaa, 0xb182bf, 0x7c5089); // 쿠션 2
-          slab(x + 14 + (w - 24) / 2, y + 12, (w - 24) / 2, h * 0.42, 0x9a6aaa, 0xb182bf, 0x7c5089);
-          slab(x + 4, y + 6, 10, h - 12, 0x7c4c88, 0x9660a4, 0x5d3a68);             // 팔걸이
-          slab(x + w - 14, y + 6, 10, h - 12, 0x7c4c88, 0x9660a4, 0x5d3a68);
-          break;
-        case 'rug': {
-          for (let yy = 0; yy < h - 4; yy += 2) for (let xx = 0; xx < w - 4; xx += 2) {
-            const edge = xx < 8 || yy < 8 || xx > w - 14 || yy > h - 14;
-            dot(x + 2 + xx, y + 2 + yy, edge ? 0x2e5e3e : ((xx + yy) % 8 < 4 ? 0x3f7d54 : 0x38704b));
-          }
-          for (let xx = 0; xx < w - 4; xx += 4) { dot(x + 2 + xx, y + 2, 0xe8e0c8); dot(x + 2 + xx, y + h - 4, 0xe8e0c8); }  // 술
-          // 고양이 — 웅크린 자세
-          const kx = x + w / 2 - 14, ky = y + h / 2 - 6;
-          for (let yy = 0; yy < 14; yy += 2) for (let xx = 0; xx < 26; xx += 2) {
-            if (yy < 4 && (xx < 4 || xx > 20)) continue;
-            dot(kx + xx, ky + yy, yy < 5 ? 0xe09a46 : 0xd88a3a);
-          }
-          for (let yy = 0; yy < 12; yy += 2) for (let xx = 0; xx < 12; xx += 2) dot(kx + 22 + xx, ky - 4 + yy, yy < 4 ? 0xe09a46 : 0xd88a3a);
-          dot(kx + 24, ky - 6, 0xd88a3a); dot(kx + 30, ky - 6, 0xd88a3a);           // 귀
-          dot(kx + 26, ky + 2, 0x2a1a0e); dot(kx + 30, ky + 2, 0x2a1a0e);           // 눈
-          for (let xx = 0; xx < 10; xx += 2) dot(kx - 2 - xx, ky + 10, 0xd88a3a);   // 꼬리
-          break;
-        }
-        case 'drawer':
-          shade(x + 8, y + h - 4, w - 16);
-          slab(x + 6, y + 6, w - 12, h - 12, 0x6a4a2c, 0x8a6440, 0x4a3420);
-          for (const fy of [0.3, 0.62]) {
-            slab(x + 10, y + h * fy, w - 20, 14, 0x7d5934, 0x9a7046, 0x5c4022);
-            for (let xx = 0; xx < 10; xx += 2) dot(x + w / 2 - 4 + xx, y + h * fy + 6, 0xc9a66a);
-          }
-          for (let yy = 0; yy < 10; yy += 2) for (let xx = 0; xx < 14; xx += 2) dot(x + w / 2 - 6 + xx, y - 6 + yy, 0xffe28a, 0.9);  // 램프갓
-          dot(x + w / 2, y + 4, 0xfff3c4);
-          break;
-        case 'shelf':
-          shade(x + 6, y + h - 4, w - 12);
-          slab(x + 4, y + 6, w - 8, h - 12, 0x5a3a22, 0x7a5232, 0x3f2718);
-          for (const fy of [0.32, 0.64]) for (let xx = 0; xx < w - 16; xx += 2) dot(x + 8 + xx, y + h * fy, 0x8a6138);
-          [0x3a6ea5, 0xb04a3a, 0x3f9e63].forEach((col, i) => {
-            for (let yy = 0; yy < 16; yy += 2) for (let xx = 0; xx < 8; xx += 2) dot(x + 12 + i * 12 + xx, y + h * 0.32 - 16 + yy, col);
-          });
-          break;
-        case 'plant': {
-          const px = x + IT * 0.5;
-          shade(x + IT * 0.28, y + IT * 0.86, IT * 0.44);
-          slab(x + IT * 0.3, y + IT * 0.56, IT * 0.4, IT * 0.3, 0xb06a3b, 0xcb8450, 0x8d5029);
-          for (let a = 0; a < 5; a++) {
-            const ang = -90 + (a - 2) * 26, len = 16 + (a % 2) * 5;
-            for (let t = 0; t < len; t += 2) {
-              dot(px + Math.round(Math.cos(ang * Math.PI / 180) * t / 2) * 2,
-                  y + IT * 0.56 + Math.round(Math.sin(ang * Math.PI / 180) * t / 2) * 2,
-                  t > len - 8 ? 0x4fae56 : 0x3b8a42);
-            }
-          }
-          break;
-        }
-        case 'stand':
-          shade(x + 10, y + h - 6, w - 20);
-          slab(x + 8, y + 12, w - 16, h - 22, 0x6a4a2c, 0x8a6440, 0x4a3420);
-          for (let xx = 0; xx < w - 20; xx += 2) dot(x + 10 + xx, y + 12, 0x9a7046);
-          break;
-        case 'father_box': {
-          // 188차 — 아버지의 낚시 상자: 나무 몸통 + 금속 걸쇠 + 테이프 감은 손잡이
-          shade(x + 6, y + h - 6, w - 12);
-          slab(x + 6, y + 16, w - 12, h - 24, 0x7a5232, 0x9a7046, 0x5a3c22);
-          for (let xx = 0; xx < w - 12; xx += 2) { dot(x + 6 + xx, y + 16, 0xb88a52); dot(x + 6 + xx, y + 26, 0x4a3018); }
-          for (const lx of [x + 12, x + w - 16]) for (let yy = 0; yy < 6; yy += 2) { dot(lx, y + 24 + yy, 0xc9ccd0); dot(lx + 2, y + 24 + yy, 0x8d979f); }
-          for (let xx = 0; xx < 16; xx += 2) dot(x + w / 2 - 8 + xx, y + 8, 0x2e2e34);
-          for (let yy = 0; yy < 8; yy += 2) { dot(x + w / 2 - 10, y + 8 + yy, 0x2e2e34); dot(x + w / 2 + 8, y + 8 + yy, 0x2e2e34); }
-          for (let xx = 0; xx < 8; xx += 2) dot(x + w / 2 - 4 + xx, y + 8, 0x3a6ea5);
-          break;
-        }
-        case 'door_out': {
-          slab(x + 6, y + IT * 0.22, w - 12, IT * 0.82, 0x4a2f1c, 0x6d4a2d, 0x33200f);
-          for (let yy = 0; yy < IT * 0.66; yy += 2) for (let xx = 0; xx < w - 24; xx += 2) {
-            dot(x + 12 + xx, y + IT * 0.3 + yy, (yy % 10 < 5) ? 0x7a5232 : 0x6d4a2d);
-          }
-          dot(x + w - 20, y + IT * 0.6, 0xffd257); dot(x + w - 20, y + IT * 0.62, 0xd6a93d);
-          break;
-        }
-      }
+  private buildFurniture(hideId: string | null): void {
+    for (const v of this.furnViews.values()) v.destroy();
+    this.furnViews.clear();
+    const st = { plantDry: HomeStore.plantDry() };
+    for (const f of HomeStore.placed) {
+      if (f.id === hideId) continue;
+      const g = this.add.graphics();
+      drawFurnitureArt(g, f.kind, f.dir, st);
+      g.setPosition(OX + f.tx * IT, OY + f.ty * IT).setDepth(this.furnDepth(f));
+      this.furnViews.set(f.id, g);
     }
+  }
+
+  // ── 가구 배치 (189차) ─────────────────────────────────
+
+  private buildDecorButton(): void {
+    const w = 150, h = 34;
+    const x = GAME_WIDTH - 16 - w, y = OY - 20;
+    const c = this.add.container(x, y).setDepth(70);
+    const bg = this.add.graphics();
+    const paint = (hover: boolean): void => {
+      bg.clear();
+      bg.fillStyle(hover ? 0x1d3a56 : 0x14283c, 0.95); bg.fillRoundedRect(0, 0, w, h, 6);
+      bg.lineStyle(1.5, 0xffd257, hover ? 1 : 0.7); bg.strokeRoundedRect(0, 0, w, h, 6);
+    };
+    paint(false);
+    const t = this.add.text(w / 2, h / 2, '가구 배치', { fontFamily: FONT, fontSize: '14px', color: '#ffe9b0', fontStyle: 'bold' }).setOrigin(0.5);
+    const hit = this.add.rectangle(0, 0, w, h, 0xffffff, 0.001).setOrigin(0, 0).setInteractive({ useHandCursor: true });
+    hit.on('pointerover', () => paint(true));
+    hit.on('pointerout', () => paint(false));
+    hit.on('pointerdown', () => this.openDecor());
+    c.add([bg, t, hit]);
+    this.decorBtn = c;
+  }
+
+  /** 배치 모드 — 서 있을 때 · 창이 다 닫혔을 때만 */
+  openDecor(): void {
+    if (this.decor || prologueRunning() || this.leaving) return;
+    if (this.tourPanel || this.popups.length || this.fridgePanel || this.cookPanel || this.menu || this.seat) return;
+    if (GuideTour.active && GuideTour.blocksKey('KeyF')) return;
+    this.hintText.setVisible(false);
+    this.decorBtn?.setVisible(false);
+    this.decor = new HomeDecorMode(this, {
+      ox: OX, oy: OY,
+      redraw: (hideId) => this.buildFurniture(hideId),
+      playerTile: () => ({ x: (this.px - OX) / IT, y: (this.py - OY) / IT }),
+      artState: () => ({ plantDry: HomeStore.plantDry() }),
+      onExit: () => {
+        this.decor = undefined;
+        this.buildFurniture(null);
+        this.refreshObjective();
+        restoreHandCursor(this);
+      },
+    });
   }
 
   // ── 이동/충돌 (간이 AABB — 물리 미사용) ──────────────
@@ -723,9 +747,16 @@ export class HomeInteriorScene extends Phaser.Scene {
     // 188차 — 프롤로그 동기화(1초) · 「지금 할 일」 짚기
     this.syncAcc += delta;
     if (this.syncAcc >= 1000) { this.syncAcc = 0; syncPrologue(); this.refreshObjective(); }
+    this.clockAcc += delta;
+    if (this.clockAcc >= 30000) { this.clockAcc = 0; this.drawClockHands(); }
     this.drawObjectiveSpot(delta);
+    if (this.seat) {   // 앉아 있는 동안은 자세만 지킨다(텍스처가 바뀌면 자르기가 풀릴 수 있다)
+      this.applySeatPose();
+      this.hintText.setVisible(false);
+      return;
+    }
     const tourBlocks = !!GuideTour.active && GuideTour.blocksKey('ArrowUp');
-    if (this.bedMenu || this.fridgePanel || this.cookPanel || this.tourPanel || this.popups.length || tourBlocks) {   // 메뉴/패널/안내 중 이동 정지
+    if (this.menu || this.fridgePanel || this.cookPanel || this.tourPanel || this.popups.length || this.decor || this.leaving || tourBlocks) {
       this.charSprite.update(delta, false);
       this.hintText.setVisible(false);
       return;
@@ -751,7 +782,15 @@ export class HomeInteriorScene extends Phaser.Scene {
     this.playerShadow.setPosition(this.px, this.py);
     this.charSprite.setDir(this.facing);
     this.charSprite.update(delta, dx !== 0 || dy !== 0, running ? TUNING.vitals.runSpeedMult : 1);
+    // 189차 — 현관 매트를 밟고 아래로 걸어 나가면 밖이다(들어오자마자 다시 나가지 않게 0.5초 유예)
+    if (this.cursors.down.isDown && this.onMatEdge() && this.time.now - this.enteredAt > 500) { this.exitToField(); return; }
     this.updateProximity();
+  }
+
+  /** 매트 아래 끝에 닿았는가 */
+  private onMatEdge(): boolean {
+    const c = (this.px - OX) / IT;
+    return c >= DOOR_MAT.tx && c <= DOOR_MAT.tx + DOOR_MAT.fw && this.py >= OY + ROOM_H * IT - 10;
   }
 
   private collides(px: number, py: number): boolean {
@@ -759,61 +798,209 @@ export class HomeInteriorScene extends Phaser.Scene {
     if (px < OX + 12 || px > OX + ROOM_W * IT - 12) return true;
     if (py < OY + IT * 2.0 || py > OY + ROOM_H * IT - 6) return true;
     // 가구 AABB (발밑 기준 — 발이 가구 앞면에 닿으면 정지)
-    for (const o of INTERIOR_OBJECTS) {
-      if (!o.collides) continue;
-      const x = OX + o.tx * IT, y = OY + o.ty * IT;
-      const w = (o.fw ?? 1) * IT, h = (o.fh ?? 1) * IT;
+    for (const f of HomeStore.placed) {
+      if (!FURN_DEFS[f.kind].collides) continue;
+      const { w: fw, h: fh } = footprint(f.kind, f.dir);
+      const x = OX + f.tx * IT, y = OY + f.ty * IT, w = fw * IT, h = fh * IT;
       if (px > x - 8 && px < x + w + 8 && py > y + 8 && py < y + h + 12) return true;
     }
     return false;
   }
 
+  /** 이 가구가 **지금** 받을 수 있는 [F] 행동 (없으면 null — 그 가구 앞에는 아무것도 뜨지 않는다) */
+  private actionOf(f: FurnInstance): FurnAction | null {
+    const a = FURN_DEFS[f.kind].action;
+    if (!a) return null;
+    if (a === 'plant') return this.holdingCan() ? 'plant' : null;
+    if (a === 'father_box') return GameState.getFlag('prologue.box') ? null : 'father_box';
+    return a;
+  }
+
+  private holdingCan(): boolean {
+    return InventoryStore.getHandEquipped('R')?.tool === 'watering_can' || InventoryStore.getHandEquipped('L')?.tool === 'watering_can';
+  }
+
+  /** 발밑에서 가구 footprint 가장자리까지 가장 가까운 것 (닿는 거리 안에서만) */
   private updateProximity(): void {
-    let nearest: MapObject | null = null;
-    let best = 62;
-    for (const o of INTERIOR_OBJECTS) {
-      // 186차 — 기능이 없는 가구도 [F] 「살펴보기」로 혼잣말을 다시 읽는다
-      if (o.interact === 'none' && !LOOK_TEXT[o.instanceId]) continue;
-      const cx = OX + o.tx * IT + ((o.fw ?? 1) * IT) / 2;
-      const cy = OY + o.ty * IT + ((o.fh ?? 1) * IT) / 2;
-      const d = Math.hypot(cx - this.px, cy - this.py);
-      if (d < best + Math.max(o.fw ?? 1, o.fh ?? 1) * IT * 0.4) { best = d; nearest = o; }
+    let best: { f: FurnInstance; action: FurnAction } | null = null;
+    let bestD = REACH_PX;
+    for (const f of HomeStore.placed) {
+      const action = this.actionOf(f);
+      if (!action) continue;
+      const { w, h } = footprint(f.kind, f.dir);
+      const x0 = OX + f.tx * IT, y0 = OY + f.ty * IT;
+      const dx = Math.max(x0 - this.px, 0, this.px - (x0 + w * IT));
+      const dy = Math.max(y0 - this.py, 0, this.py - (y0 + h * IT));
+      const d = Math.hypot(dx, dy);
+      if (d < bestD) { bestD = d; best = { f, action }; }
     }
-    this.nearObj = nearest;
-    if (nearest) {
-      const label = nearest.interact === 'save' ? '[F] 침대 — 저장하고 쉬기'
-        : nearest.interact === 'door' ? '[F] 나가기'
-        : nearest.interact === 'cook' ? '[F] 주방 — 요리'
-        : nearest.instanceId === 'fridge' ? '[F] 냉장고 열기'
-        : nearest.instanceId === 'father_box' && !GameState.getFlag('prologue.box') ? '[F] 낚시 상자 열기'
-        : '[F] 살펴보기';
-      this.hintText.setText(label).setPosition(this.px, this.py - this.charSprite.bodyHeight - 10).setVisible(true);
+    this.nearFurn = best;
+    if (best) {
+      this.hintText.setText(ACTION_LABEL[best.action]).setPosition(this.px, this.py - this.charSprite.bodyHeight - 10).setVisible(true);
     } else {
       this.hintText.setVisible(false);
     }
   }
 
   private tryInteract(): void {
-    if (this.bedMenu || this.fridgePanel || this.cookPanel || !this.nearObj) return;
-    switch (this.nearObj.interact) {
-      case 'save': this.openBedMenu(); break;
-      case 'door': this.exitToField(); break;
+    if (this.menu || this.fridgePanel || this.cookPanel || this.decor || !this.nearFurn) return;
+    const { f, action } = this.nearFurn;
+    switch (action) {
+      case 'bed': this.openBedMenu(); break;
+      case 'fridge': this.openFridge(); break;
       case 'cook': this.openCook(); break;
-      case 'storage':
-        if (this.nearObj.instanceId === 'fridge') { this.openFridge(); break; }
-        if (this.nearObj.instanceId === 'father_box') { this.openFatherBox(); break; }
-        this.lookAt(this.nearObj.instanceId);
-        break;
-      default: this.lookAt(this.nearObj.instanceId); break;
+      case 'sofa':
+      case 'chair': this.sitOn(f); break;
+      case 'wardrobe': this.openStorage('wardrobe'); break;
+      case 'shelf': this.openStorage('shelf'); break;
+      case 'plant': this.waterPlant(f); break;
+      case 'father_box': this.openFatherBox(); break;
     }
   }
 
-  /** 가구 하나 살펴보기 — 첫 입장 안내와 같은 혼잣말 한 단락 */
-  private lookAt(id: string): void {
-    const t = LOOK_TEXT[id];
-    if (!t) return;
-    this.looked++;
-    this.showLook(id, t, () => this.clearSpot());
+  // ── 확장 패널 (189차) — 침대 메뉴 · 앉은 자리 고를 거리 ──
+
+  /** 캐릭터 옆에 붙는 작은 고를 거리 창. ↑↓ · Enter/F · 마우스로 고르고 ESC는 `onCancel` */
+  private openMenu(kind: OpenMenu['kind'], title: string, items: MenuItem[], onCancel: () => void): void {
+    this.closeMenu();
+    const w = 190, rowH = 32, headH = 28;
+    const h = headH + items.length * rowH + 8;
+    let x = this.px + 30, y = this.py - this.charSprite.bodyHeight - 6;
+    if (x + w > GAME_WIDTH - 8) x = this.px - 30 - w;
+    y = Phaser.Math.Clamp(y, 8, GAME_HEIGHT - h - 8);
+    const c = this.add.container(x, y).setDepth(100);
+    const bg = this.add.graphics();
+    bg.fillStyle(0x0a1628, 0.96); bg.fillRoundedRect(0, 0, w, h, 7);
+    bg.lineStyle(2, 0x2a5a8a, 1); bg.strokeRoundedRect(0, 0, w, h, 7);
+    c.add(bg);
+    c.add(this.add.text(12, headH / 2 + 2, title, { fontFamily: FONT, fontSize: '13px', color: '#ffe28a', fontStyle: 'bold' }).setOrigin(0, 0.5));
+    const rows: Phaser.GameObjects.Graphics[] = [];
+    items.forEach((it, i) => {
+      const ry = headH + i * rowH;
+      const rg = this.add.graphics();
+      const t = this.add.text(18, ry + rowH / 2, it.label, {
+        fontFamily: FONT, fontSize: '14px', color: it.color ?? '#e8f2fa', fontStyle: 'bold',
+      }).setOrigin(0, 0.5);
+      const hit = this.add.rectangle(6, ry + 2, w - 12, rowH - 4, 0xffffff, 0.001).setOrigin(0, 0).setInteractive({ useHandCursor: true });
+      hit.on('pointerover', () => { if (this.menu) { this.menu.sel = i; this.paintMenu(); } });
+      hit.on('pointerdown', () => it.run());
+      rows.push(rg);
+      c.add([rg, t, hit]);
+    });
+    this.menu = { kind, c, items, rows, sel: 0, onCancel };
+    this.paintMenu();
+  }
+
+  private paintMenu(): void {
+    const m = this.menu;
+    if (!m) return;
+    const w = 190, rowH = 32, headH = 28;
+    m.rows.forEach((g, i) => {
+      g.clear();
+      if (i !== m.sel) return;
+      g.fillStyle(0x1d3a56, 1); g.fillRoundedRect(6, headH + i * rowH + 2, w - 12, rowH - 4, 5);
+      g.lineStyle(1.5, 0xffd257, 0.9); g.strokeRoundedRect(6, headH + i * rowH + 2, w - 12, rowH - 4, 5);
+    });
+  }
+
+  private closeMenu(): void {
+    this.menu?.c.destroy();
+    this.menu = undefined;
+    restoreHandCursor(this);
+  }
+
+  /** 고를 거리 창 영역 (가이드 하이라이트용) */
+  private menuRect(): Phaser.Geom.Rectangle | null {
+    const m = this.menu;
+    if (!m) return null;
+    const b = m.c.getBounds();
+    return new Phaser.Geom.Rectangle(b.x - 4, b.y - 4, b.width + 8, b.height + 8);
+  }
+
+  // ── 앉기 (189차) ─────────────────────────────────────
+
+  private sitOn(f: FurnInstance): void {
+    const seats = seatsOf(f.kind, f.dir).map((s) => ({ ...s, sx: OX + f.tx * IT + s.x, sy: OY + f.ty * IT + s.y }));
+    if (!seats.length) return;
+    seats.sort((a, b) => Math.hypot(a.sx - this.px, a.sy - this.py) - Math.hypot(b.sx - this.px, b.sy - this.py));
+    const s = seats[0]!;
+    this.seat = { f, sx: s.sx, sy: s.sy, behind: s.behind, standX: this.px, standY: this.py };
+    this.facing = f.dir;
+    this.charSprite.update(0, false);
+    this.charSprite.setDir(f.dir);
+    this.playerShadow.setVisible(false);
+    this.hintText.setVisible(false);
+    this.applySeatPose();
+    this.satCount++;
+    const items: MenuItem[] = f.kind === 'sofa'
+      ? [{ label: '휴식하기', color: '#9fd0e4', run: () => this.restOnSofa() }, { label: '일어나기', run: () => this.standUp() }]
+      : [{ label: '일어나기', run: () => this.standUp() }];
+    this.openMenu('seat', FURN_DEFS[f.kind].nameKo, items, () => this.standUp());
+  }
+
+  /** 앉은 자세 — 엉덩이를 좌석에 맞추고 다리를 잘라 낸다(가구가 가린 것으로 읽힌다) */
+  private applySeatPose(): void {
+    const s = this.seat;
+    if (!s) return;
+    const img = this.charSprite.image;
+    const fh = img.frame.height;
+    img.setCrop(0, 0, img.frame.width, SEAT_ROWS);
+    img.setPosition(s.sx, s.sy + (fh - SEAT_ROWS));
+    img.setDepth(this.furnDepth(s.f) + (s.behind ? -0.0005 : 0.0005));
+  }
+
+  private standUp(): void {
+    const s = this.seat;
+    if (!s) return;
+    this.seat = null;
+    this.closeMenu();
+    this.px = s.standX; this.py = s.standY;
+    this.charSprite.image.setCrop();
+    this.charSprite.image.setPosition(this.px, this.py + this.charSprite.footPad).setDepth(20 + this.py * 0.001);
+    this.playerShadow.setPosition(this.px, this.py).setVisible(true);
+    this.stoodCount++;
+  }
+
+  /**
+   * 소파에서 잠깐 쉬기 — 피로가 최대치의 35%만큼 풀린다. 다만 소파로는 35% 아래까지는 못 내려간다
+   * (개운하게 다 풀리는 건 침대 몫 — 침대처럼 하루를 넘기거나 병을 고치지도 않는다).
+   */
+  private restOnSofa(): void {
+    const v = GameState.vitals;
+    const max = Math.max(1, v.maxFatigue);
+    const before = v.fatigue;
+    const floor = (max * SOFA_REST_FLOOR_PCT) / 100;
+    if (before <= floor + 0.5) { this.flash('지금은 그다지 피곤하지 않다.'); return; }
+    const after = Math.max(floor, before - (max * SOFA_REST_PCT) / 100);
+    GameState.applyIntake(0, 0, 0, before - after);   // 양수 = 피로 감소
+    GameState.markDirty();
+    // 잠깐 눈을 감았다 뜨는 연출 (결과는 이미 반영됐다 — 연출이 돌지 않는 환경에서도 같다)
+    const dim = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0).setOrigin(0, 0).setDepth(95);
+    this.tweens.add({ targets: dim, alpha: 0.55, duration: 450, yoyo: true, hold: 350, onComplete: () => dim.destroy() });
+    this.flash(`소파에서 잠깐 눈을 붙였다 — 피로 ${Math.round((before / max) * 100)}% → ${Math.round((after / max) * 100)}%`);
+  }
+
+  // ── 화분 (189차) ─────────────────────────────────────
+
+  private waterPlant(f: FurnInstance): void {
+    const wasDry = HomeStore.plantDry();
+    HomeStore.waterPlant();
+    GameState.markDirty();
+    this.buildFurniture(null);
+    // 물방울 몇 점 — 화분 위에서 떨어진다
+    const x0 = OX + f.tx * IT + IT / 2, y0 = OY + f.ty * IT + 8;
+    for (let i = 0; i < 6; i++) {
+      const d = this.add.rectangle(x0 - 8 + i * 3, y0 - 10 - (i % 3) * 6, 2, 4, 0x9fd0e8, 0.95).setDepth(60);
+      this.tweens.add({ targets: d, y: y0 + 18, alpha: 0, duration: 420 + i * 40, onComplete: () => d.destroy() });
+    }
+    this.flash(wasDry ? '화분에 물을 줬다. 처졌던 잎이 다시 고개를 든다.' : '화분에 물을 줬다.');
+  }
+
+  // ── 옷장 · 수납 선반 (189차) ─────────────────────────
+
+  private openStorage(kind: HomeStorageKind): void {
+    if (this.popups.some((e) => e.panel instanceof HomeStoragePanel)) return;
+    this.openPopup((close) => new HomeStoragePanel(this, kind, GAME_WIDTH / 2 - 310, 70, close));
   }
 
   // ── 냉장고 (냉동고 8칸 + 냉장고 16칸) ─────────────────
@@ -851,43 +1038,32 @@ export class HomeInteriorScene extends Phaser.Scene {
   // ── 침대 — 저장하고 쉬기 / 그냥 쉬기 ─────────────────
 
   private openBedMenu(): void {
-    const c = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2).setDepth(100);
-    const bg = this.add.graphics();
-    bg.fillStyle(0x0a1628, 0.97); bg.fillRoundedRect(-170, -92, 340, 184, 8);
-    bg.lineStyle(2, 0x2a5a8a, 1); bg.strokeRoundedRect(-170, -92, 340, 184, 8);
-    c.add(bg);
-    c.add(this.add.text(0, -64, '침대에서 쉬어갑니다', {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '15px', color: '#ffe28a', fontStyle: 'bold',
-    }).setOrigin(0.5));
+    this.openMenu('bed', '침대', [
+      {
+        label: '저장하고 쉬기', color: '#4af2a1', run: () => {
+          // 수면 회복이 먼저 — 저장 스냅샷에 회복 결과가 담기게 한다 (125차)
+          const rec = this.restInBed();
+          markPrologue('save');   // 188차 — 프롤로그 「침대에서 저장한다」 (저장 스냅샷에 담기게 저장 전에)
+          const ok = GameState.save();
+          if (ok) StoryStore.event({ kind: 'custom', key: 'bedSave' });   // 134차 — M1-03 침대 저장 목표
+          this.closeBedMenu();
+          this.flash(ok ? `슬롯 ${GameState.activeSlot ?? 1}에 저장했습니다. ${rec}` : '저장에 실패했습니다');
+        },
+      },
+      {
+        label: '그냥 쉬기', color: '#9fd0e4', run: () => {
+          const rec = this.restInBed();
+          this.closeBedMenu();
+          this.flash(rec);
+        },
+      },
+      { label: '그만두기', color: '#8faabf', run: () => this.closeBedMenu() },
+    ], () => this.closeBedMenu());
+  }
 
-    const mkBtn = (y: number, label: string, color: string, stroke: number, onClick: () => void): void => {
-      const g = this.add.graphics();
-      g.fillStyle(0x14283c, 0.95); g.fillRoundedRect(-140, y - 17, 280, 34, 5);
-      g.lineStyle(1.5, stroke, 0.95); g.strokeRoundedRect(-140, y - 17, 280, 34, 5);
-      const t = this.add.text(0, y, label, {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px', color, fontStyle: 'bold',
-      }).setOrigin(0.5);
-      const hit = this.add.rectangle(0, y, 280, 34, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
-      hit.on('pointerdown', onClick);
-      c.add([g, t, hit]);
-    };
-    mkBtn(-22, '저장하고 쉬기', '#4af2a1', 0x4af2a1, () => {
-      // 수면 회복이 먼저 — 저장 스냅샷에 회복 결과가 담기게 한다 (125차)
-      const rec = this.restInBed();
-      markPrologue('save');   // 188차 — 프롤로그 「침대에서 저장한다」 (저장 스냅샷에 담기게 저장 전에)
-      const ok = GameState.save();
-      if (ok) StoryStore.event({ kind: 'custom', key: 'bedSave' });   // 134차 — M1-03 침대 저장 목표
-      this.closeBedMenu();
-      this.flash(ok ? `슬롯 ${GameState.activeSlot ?? 1}에 저장했습니다. ${rec}` : '저장에 실패했습니다');
-      // (추후) 날짜 진행 훅 — 로드맵 4·5에서 결합
-    });
-    mkBtn(18, '그냥 쉬기', '#9fd0e4', 0x33b0e0, () => {
-      const rec = this.restInBed();
-      this.closeBedMenu();
-      this.flash(rec);
-    });
-    mkBtn(58, '취소 (ESC)', '#8faabf', 0x2a5a8a, () => this.closeBedMenu());
-    this.bedMenu = c;
+  /** 하네스·구 코드 호환 — 침대 메뉴가 열려 있는가 */
+  get bedMenu(): Phaser.GameObjects.Container | undefined {
+    return this.menu?.kind === 'bed' ? this.menu.c : undefined;
   }
 
   /**
@@ -908,22 +1084,25 @@ export class HomeInteriorScene extends Phaser.Scene {
   }
 
   private closeBedMenu(): void {
-    this.bedMenu?.destroy();
-    this.bedMenu = undefined;
+    if (this.menu?.kind === 'bed') this.closeMenu();
   }
 
   private flashMsg?: Phaser.GameObjects.Text;
   private flash(msg: string): void {
     this.flashMsg?.destroy();
     this.flashMsg = this.add.text(GAME_WIDTH / 2, OY + ROOM_H * IT + 26, msg, {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px', color: '#7fe6b0', fontStyle: 'bold',
-      backgroundColor: '#0a1628dd', padding: { x: 10, y: 5 },
+      fontFamily: FONT, fontSize: '13px', color: '#7fe6b0', fontStyle: 'bold',
+      backgroundColor: '#0a1628dd', padding: { x: 10, y: 5 }, align: 'center',
     }).setOrigin(0.5).setDepth(120);
-    this.time.delayedCall(2200, () => { this.flashMsg?.destroy(); this.flashMsg = undefined; });
+    const mine = this.flashMsg;
+    this.time.delayedCall(2600, () => { if (this.flashMsg === mine) { mine.destroy(); this.flashMsg = undefined; } });
   }
 
-  /** 문 → 홈타운 외부 복귀 (stop + resume 규칙 — RegionFieldScene 재생성 금지) */
+  /** 현관 → 홈타운 외부 복귀 (stop + resume 규칙 — RegionFieldScene 재생성 금지) */
   private exitToField(): void {
+    if (this.leaving) return;
+    if (this.seat) this.standUp();
+    this.leaving = true;
     // 188차 — 프롤로그: 저장까지 마치고 나서야 「집을 나선다」 (앞 단계를 건너뛴 채 나가면 다시 들어와 이어 한다)
     if (prologueStepDone('save')) markPrologue('leave');
     GameState.locationTag = 'hometown';

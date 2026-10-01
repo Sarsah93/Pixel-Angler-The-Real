@@ -311,6 +311,10 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
       { id: 'inv_gloves_work', name: '목장갑', icon: '🧤', category: 'gear', subCategory: '장갑',
         basePrice: 2000, price: 2000, maxPerPurchase: 3, equippable: true,
         desc: '테트라포드·그물 작업 기본. 손을 베지 않는 것이 먼저다.' },
+      // 189차 — 집 화분(나중에는 텃밭)에 물을 준다. 손에 들고 화분 앞에서 [F]
+      { id: 'inv_watering_can', name: '물뿌리개', icon: '', iconTexture: 'px:it_watering_can', category: 'gear', subCategory: '손도구',
+        basePrice: 6000, price: 6000, maxPerPurchase: 1, equippable: true, tool: 'watering_can',
+        desc: '양철 물뿌리개. 손에 들고 화분 앞에 서면 물을 줄 수 있다.' },
       { id: 'inv_headlamp', name: '헤드랜턴 (800lm)', icon: '🔦', category: 'etc', subCategory: '해루질 도구',
         basePrice: 25000, price: 26000, maxPerPurchase: 1, equippable: false, lampLumens: 800,
         desc: '야간 채집 필수 — 루멘이 발견 반경. 100lm당 약 0.55타일.' },
