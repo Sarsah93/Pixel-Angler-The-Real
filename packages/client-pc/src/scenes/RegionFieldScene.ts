@@ -130,6 +130,7 @@ import {
   rotateEditorPlacement, flipEditorPlacement, toggleEditorOverlap,
 } from '../dev/MapEditorPanel.js';
 import { GameState } from '../store/GameState.js';
+import { HomeStore } from '../store/HomeStore.js';
 import { characterLook } from '../data/EquipOutfit.js';
 import { registerNames } from '../i18n/I18n.js';
 import { ExternalDataStore } from '../store/ExternalDataStore.js';
@@ -2955,6 +2956,18 @@ export class RegionFieldScene extends Phaser.Scene {
           close();
           if (GameState.player.inventory.coins < total) {
             this.shopPanel?.setStatus('재화가 부족합니다.');
+            return;
+          }
+          // 190차 — 가구는 가방이 아니라 집 「넣어 둔 가구」로 배달된다
+          if (entry.furnKind) {
+            for (let i = 0; i < qty; i++) HomeStore.addStored(entry.furnKind);
+            GameState.addCoins(-total);
+            GameState.markDirty();
+            this.shopPanel?.refresh();
+            this.shopPanel?.setStatus(`${entry.name} x${qty} — 집 「넣어 둔 가구」로 보냈습니다 (-${total.toLocaleString()}원)`);
+            this.hud?.pushLog(`[구매] ${entry.name} x${qty} (-${total.toLocaleString()}원)`);
+            StoryStore.event({ kind: 'custom', key: `buy:${entry.id}` });
+            GameState.addProficiency('haggle');
             return;
           }
           // 188차 — 세트 상품은 구성품으로 풀어 넣는다(전부 들어갈 때만)

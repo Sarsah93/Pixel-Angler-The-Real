@@ -35,6 +35,8 @@ import { playEatSfx } from '../audio/Sfx.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { maybeStartTour, type TourOptions } from './GuideTour.js';
 
+/** 190차 — 식탁 식사 보너스 (허기 회복량의 25% 추가) */
+const TABLE_MEAL_BONUS = 0.25;
 const TABS: InvCategory[] = ['gear', 'consumable', 'food', 'tackle', 'quest', 'etc'];
 
 const PANEL_W = 440;
@@ -446,6 +448,15 @@ export class InventoryPanel extends DraggablePanel {
       this.add([g, t, hit]);
     });
     this.paintTabs();
+  }
+
+  /** 190차 — 열자마자 특정 탭을 보인다 (집 식탁 「식사하기」 → 음식 탭) */
+  showTab(tab: InvCategory): void {
+    this.currentTab = tab;
+    this.scrollRow = 0;
+    this.closeContextMenu();
+    this.paintTabs();
+    this.renderGrid();
   }
 
   private paintTabs(): void {
@@ -1140,8 +1151,11 @@ export class InventoryPanel extends DraggablePanel {
       if (r.relapsed.length > 0) parts.push('일부 재발');
     }
 
-    if (h || w || hp || fa) GameState.applyIntake(h, w, hp, fa);
+    // 190차 — 집 식탁 앞 의자에 앉아 먹으면 허기가 더 찬다(제대로 차린 끼니)
+    const tableBonus = verb === '섭취' && h > 0 && GameState.mealAtTable ? Math.max(1, Math.round(h * TABLE_MEAL_BONUS)) : 0;
+    if (h || w || hp || fa) GameState.applyIntake(h + tableBonus, w, hp, fa);
     if (h) parts.push(`허기 ${h > 0 ? '+' : ''}${h}`);
+    if (tableBonus) parts.push(`식탁에서 먹었다 +${tableBonus}`);
     if (w) parts.push(`수분 ${w > 0 ? '+' : ''}${w}`);
     if (hp) parts.push(`체력 ${hp > 0 ? '+' : ''}${hp}`);
     if (fa) parts.push(`피로 ${fa > 0 ? '-' : '+'}${Math.abs(fa)}`);

@@ -6,6 +6,8 @@
  * 모든 에셋을 로드하고 MainMenuScene으로 이동합니다.
  */
 
+import { FURNITURE_SALES } from '../data/ShopCatalog.js';
+import { ensureFurnitureIcon } from '../data/HomeFurniture.js';
 import Phaser from 'phaser';
 import { GUIDES } from '../data/GuideContent.js';
 import { HELP_IMAGE_KEYS } from '../data/HelpContent.js';
@@ -22,6 +24,8 @@ export class BootScene extends Phaser.Scene {
   }
 
   create(): void {
+    // 190차 — 생활용품점 가구 아이콘(가구 그림을 구운 텍스처)
+    for (const e of FURNITURE_SALES) if (e.furnKind) ensureFurnitureIcon(this, e.furnKind);
     // 삼면뜨기 픽셀 가이드 시트 → 47컷 그리드 프레임 등록 (지오메트리 = core 단일 소스)
     registerSashimiGuideFrames(this);
     this.scene.start('MainMenuScene');

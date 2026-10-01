@@ -340,10 +340,10 @@ export {
 
 // 기상청 단기예보 (하늘상태·강수·파고 — 해양기상 API에 없는 항목)
 export type {
-  SkyCode, PtyCode, WeatherKind, KmaFcstItem, KmaGrid, KmaWeatherInfo,
+  SkyCode, PtyCode, WeatherKind, KmaFcstItem, KmaGrid, KmaWeatherInfo, KmaDailyOutlook,
 } from './api-client/KmaVilageFcstApiClient.js';
 export {
-  KmaVilageFcstApiClient, WEATHER_LABEL, resolveWeatherKind, parsePrecipitation,
+  KmaVilageFcstApiClient, WEATHER_LABEL, resolveWeatherKind, parsePrecipitation, summarizeDailyForecast,
   ultraSrtNcstBase, vilageFcstBase,
 } from './api-client/KmaVilageFcstApiClient.js';
 export type { KmaGridPoint } from './db-schema/KmaGridPoints.js';

@@ -818,6 +818,12 @@ export class GameStateManager {
    * 섭취 회복 — 음수 허용(술 = 수분 −). 상한 클램프는 core가 처리.
    * `fatigue` 양수 = 피로 감소(129차 P7 — 보양식·카페인).
    */
+  /**
+   * 190차 — 집 식탁 앞 의자에 앉아 있는가 (세션 상태 · 저장하지 않는다). 이때 먹으면 허기가 25% 더 찬다
+   * (`InventoryPanel.applyIntakeOf`). HomeInteriorScene이 앉을 때 켜고 일어날 때 끈다.
+   */
+  mealAtTable = false;
+
   applyIntake(hunger = 0, hydration = 0, hp = 0, fatigue = 0): void {
     const v = this.vitals;
     coreApplyIntake(v, hunger, hydration, hp, fatigue);

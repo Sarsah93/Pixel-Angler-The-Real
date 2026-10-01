@@ -9,6 +9,9 @@
  *  - 식탁 의자는 식탁 그림의 일부가 아니라 따로 앉을 수 있는 가구다.
  *  - 문은 「가로로 누운 문」처럼 보였다 → 문 대신 **현관 매트**(고정 — 가구가 아니다)를 방 아래쪽에 깐다.
  *
+ * 190차: 협탁 스탠드 켜고 끄기(`lamp`) · 라디오(`radio`) · 관상 수조(`aquarium`) · 벽 장식 기능화(`WALL_DECOR`).
+ *   러그 그림의 고양이는 떼어 내 방을 돌아다니는 개체가 됐다(`ui/HomeCat.ts`).
+ *
  * 좌표는 칸(tile) 단위. 방은 12×10칸이고, 위 2줄은 벽이라 바닥은 2~9행이다.
  * 그림 함수는 **footprint 좌상단 = (0,0)** 인 지역 좌표로 그린다(씬이 Graphics를 그 자리로 옮긴다).
  */
@@ -30,11 +33,12 @@ export const DIR_CYCLE: FurnDir[] = ['down', 'left', 'up', 'right'];
 
 /** 가구가 하는 일 — 이것이 있는 가구만 [F]가 뜬다(189차 — 「살펴보기」 폐지) */
 export type FurnAction =
-  | 'bed' | 'fridge' | 'cook' | 'sofa' | 'chair' | 'wardrobe' | 'shelf' | 'plant' | 'father_box';
+  | 'bed' | 'fridge' | 'cook' | 'sofa' | 'chair' | 'wardrobe' | 'shelf' | 'plant' | 'father_box'
+  | 'lamp' | 'radio' | 'aquarium';
 
 export type FurnKind =
   | 'fridge' | 'sink' | 'stove' | 'bed' | 'stand' | 'island' | 'chair' | 'sofa'
-  | 'rug' | 'wardrobe' | 'shelf' | 'plant' | 'father_box';
+  | 'rug' | 'wardrobe' | 'shelf' | 'plant' | 'father_box' | 'radio' | 'aquarium';
 
 export interface FurnDef {
   /** 화면 이름 (한국어 원문 — i18n 키) */
@@ -57,7 +61,7 @@ export const FURN_DEFS: Record<FurnKind, FurnDef> = {
   sink:       { nameKo: '개수대',     w: 1, h: 1, collides: true, storable: true, action: 'cook' },
   stove:      { nameKo: '가스레인지', w: 2, h: 1, collides: true, storable: true, action: 'cook' },
   bed:        { nameKo: '침대',       w: 2, h: 3, collides: true, storable: false, action: 'bed' },
-  stand:      { nameKo: '협탁',       w: 1, h: 1, collides: true, storable: true },
+  stand:      { nameKo: '협탁',       w: 1, h: 1, collides: true, storable: true, action: 'lamp' },
   island:     { nameKo: '식탁',       w: 3, h: 1, collides: true, storable: true },
   chair:      { nameKo: '의자',       w: 1, h: 1, collides: true, storable: true, rotatable: true, action: 'chair' },
   sofa:       { nameKo: '소파',       w: 2, h: 1, collides: true, storable: true, rotatable: true, action: 'sofa' },
@@ -66,7 +70,27 @@ export const FURN_DEFS: Record<FurnKind, FurnDef> = {
   shelf:      { nameKo: '수납 선반',  w: 2, h: 1, collides: true, storable: true, action: 'shelf' },
   plant:      { nameKo: '화분',       w: 1, h: 1, collides: true, storable: true, action: 'plant' },
   father_box: { nameKo: '낚시 상자',  w: 1, h: 1, collides: true, storable: true, action: 'father_box' },
+  radio:      { nameKo: '라디오',     w: 1, h: 1, collides: true, storable: true, action: 'radio' },
+  aquarium:   { nameKo: '관상 수조',  w: 2, h: 1, collides: true, storable: true, action: 'aquarium' },
 };
+
+/**
+ * 벽 장식 (190차) — 가구가 아니라 벽에 붙은 것이라 옮기지 않는다. `x0`~`x1` = 벽 위 가로 범위(칸 단위 실수).
+ * 기능이 있는 장식은 바로 아래 바닥(2행)에 서면 [F]가 뜬다 → 배치 판정이 그 앞자리를 막지 않게 본다.
+ */
+export type WallDecorId = 'books' | 'calendar' | 'fishprint';
+export const WALL_DECOR: { id: WallDecorId; nameKo: string; x0: number; x1: number }[] = [
+  { id: 'books', nameKo: '책', x0: 4.1, x1: 6.0 },
+  { id: 'calendar', nameKo: '달력', x0: 6.25, x1: 6.95 },
+  { id: 'fishprint', nameKo: '어탁', x0: 7.15, x1: 8.45 },
+];
+
+/** 벽 장식 앞자리 — 이 칸들 중 하나에 닿으면 쓸 수 있다 */
+export function wallDecorCols(d: { x0: number; x1: number }): number[] {
+  const out: number[] = [];
+  for (let c = Math.floor(d.x0 - 0.3); c <= Math.floor(d.x1 + 0.3); c++) if (c >= 0 && c < ROOM_W) out.push(c);
+  return out;
+}
 
 /** 배치된 가구 하나 */
 export interface FurnInstance {
@@ -98,6 +122,8 @@ export const DEFAULT_LAYOUT: FurnInstance[] = [
   { id: 'plant',      kind: 'plant',      tx: 4,  ty: 8, dir: 'down' },
   // 188차 — 아버지의 낚시 상자 (침대 발치). 프롤로그 첫 목표 — 대·릴·가족사진이 들어 있다
   { id: 'father_box', kind: 'father_box', tx: 9,  ty: 5, dir: 'down' },
+  // 190차 — 아버지가 소파에서 듣던 라디오 (소파 머리맡)
+  { id: 'radio',      kind: 'radio',      tx: 2,  ty: 5, dir: 'down' },
 ];
 
 /** 방향을 반영한 칸 수 */
@@ -140,6 +166,8 @@ export function seatsOf(kind: FurnKind, dir: FurnDir): { x: number; y: number; b
 export interface FurnArtState {
   /** 화분이 목마른가 (사흘 넘게 물을 못 받았다) */
   plantDry?: boolean;
+  /** 협탁 스탠드가 켜져 있는가 (190차) */
+  lampOn?: boolean;
 }
 
 type Pal = readonly [number, number, number];   // [중간, 밝음, 어두움]
@@ -237,16 +265,6 @@ export function drawFurnitureArt(
         dot(2 + xx, 2 + yy, edge ? 0x2e5e3e : ((xx + yy) % 8 < 4 ? 0x3f7d54 : 0x38704b));
       }
       for (let xx = 0; xx < w - 4; xx += 4) { dot(2 + xx, 2, 0xe8e0c8); dot(2 + xx, h - 4, 0xe8e0c8); }  // 술
-      // 고양이 — 웅크린 자세
-      const kx = w / 2 - 14, ky = h / 2 - 6;
-      for (let yy = 0; yy < 14; yy += 2) for (let xx = 0; xx < 26; xx += 2) {
-        if (yy < 4 && (xx < 4 || xx > 20)) continue;
-        dot(kx + xx, ky + yy, yy < 5 ? 0xe09a46 : 0xd88a3a);
-      }
-      for (let yy = 0; yy < 12; yy += 2) for (let xx = 0; xx < 12; xx += 2) dot(kx + 22 + xx, ky - 4 + yy, yy < 4 ? 0xe09a46 : 0xd88a3a);
-      dot(kx + 24, ky - 6, 0xd88a3a); dot(kx + 30, ky - 6, 0xd88a3a);           // 귀
-      dot(kx + 26, ky + 2, 0x2a1a0e); dot(kx + 30, ky + 2, 0x2a1a0e);           // 눈
-      for (let xx = 0; xx < 10; xx += 2) dot(kx - 2 - xx, ky + 10, 0xd88a3a);   // 꼬리
       break;
     }
     case 'wardrobe': {
@@ -290,16 +308,20 @@ export function drawFurnitureArt(
       }
       break;
     }
-    case 'stand':
-      // 협탁 + 스탠드 (189차 — 구 서랍장 위 램프를 머리맡으로 옮겼다)
+    case 'stand': {
+      // 협탁 + 스탠드 (189차 — 구 서랍장 위 램프를 머리맡으로 옮겼다) · 190차 켜짐/꺼짐
       shade(10, h - 6, w - 20);
       slab(8, 16, w - 16, h - 24, WOOD);
       for (let xx = 0; xx < w - 20; xx += 2) dot(10 + xx, 16, 0x9a7046);
       for (let xx = 0; xx < 8; xx += 2) dot(w / 2 - 4 + xx, h - 18, 0xc9a66a);
       for (let yy = 0; yy < 8; yy += 2) dot(w / 2, 6 + yy, 0x5a4a3a);                                       // 램프 대
-      for (let yy = 0; yy < 10; yy += 2) for (let xx = 0; xx < 14 - yy; xx += 2) dot(w / 2 - 6 + yy / 2 + xx, -4 + yy, 0xffe28a, 0.95);  // 갓
-      dot(w / 2, 4, 0xfff3c4);
+      const on = !!st.lampOn;
+      for (let yy = 0; yy < 10; yy += 2) for (let xx = 0; xx < 14 - yy; xx += 2) {
+        dot(w / 2 - 6 + yy / 2 + xx, -4 + yy, on ? (yy > 5 ? 0xfff3c4 : 0xffe28a) : (yy > 5 ? 0xb8ad94 : 0xa39a86), on ? 1 : 0.95);   // 갓
+      }
+      if (on) for (let xx = 0; xx < 10; xx += 2) dot(w / 2 - 4 + xx, 6, 0xfffbe6);   // 갓 아래로 새는 빛
       break;
+    }
     case 'father_box': {
       // 188차 — 아버지의 낚시 상자: 나무 몸통 + 금속 걸쇠 + 테이프 감은 손잡이
       shade(6, h - 6, w - 12);
@@ -309,6 +331,42 @@ export function drawFurnitureArt(
       for (let xx = 0; xx < 16; xx += 2) dot(w / 2 - 8 + xx, 8, 0x2e2e34);
       for (let yy = 0; yy < 8; yy += 2) { dot(w / 2 - 10, 8 + yy, 0x2e2e34); dot(w / 2 + 8, 8 + yy, 0x2e2e34); }
       for (let xx = 0; xx < 8; xx += 2) dot(w / 2 - 4 + xx, 8, 0x3a6ea5);
+      break;
+    }
+    case 'radio': {
+      // 190차 — 작은 나무 받침대 위의 휴대용 라디오: 스피커 망 · 다이얼 창 · 손잡이 · 안테나
+      shade(10, h - 4, w - 20);
+      slab(10, 26, w - 20, h - 30, WOOD);                                        // 받침대 상판·몸통
+      for (const lx of [12, w - 14]) for (let yy = h - 8; yy < h - 2; yy += 2) dot(lx, yy, 0x3f2718);
+      slab(8, 8, w - 16, 20, [0x7a2e26, 0x9a4034, 0x5a2018]);                    // 라디오 몸통(붉은 칠)
+      for (let yy = 12; yy < 24; yy += 2) for (let xx = 12; xx < 24; xx += 2) {  // 스피커 망
+        if ((xx + yy) % 4 === 0) dot(xx, yy, 0x3a1410); else dot(xx, yy, 0x6a2820);
+      }
+      slab(26, 12, 12, 6, [0xe8d6a0, 0xfff0c0, 0xc8b480]);                        // 주파수 창
+      dot(30, 14, 0xb03a2a);
+      dot(28, 20, 0xd8c8a0); dot(34, 20, 0xd8c8a0);                               // 다이얼 손잡이
+      for (let xx = 14; xx < w - 14; xx += 2) dot(xx, 4, 0x2a1a0e);               // 손잡이
+      dot(14, 6, 0x2a1a0e); dot(w - 16, 6, 0x2a1a0e);
+      for (let t = 0; t < 14; t += 2) dot(w - 12 + Math.round(t / 4) * 2, 6 - t, 0xa8b0b8);   // 안테나
+      break;
+    }
+    case 'aquarium': {
+      // 190차 — 관상 수조: 나무 받침장 위 유리 수조 + 물 · 자갈 · 수초 · 조명 덮개 (물고기는 씬이 따로 띄운다)
+      shade(4, h - 3, w - 8);
+      slab(4, h - 16, w - 8, 14, WOOD);                                          // 받침장
+      for (let xx = 8; xx < w - 8; xx += 2) dot(xx, h - 10, 0x4a3420, 0.6);
+      for (let yy = 0; yy < h - 22; yy += 2) for (let xx = 0; xx < w - 12; xx += 2) {
+        const top = yy < 4;
+        dot(6 + xx, 4 + yy, top ? 0x9fd6e8 : (yy > h - 34 ? 0x2f7aa0 : (yy % 6 === 0 ? 0x4a9ec4 : 0x3f92ba)), top ? 0.9 : 0.95);
+      }
+      for (let xx = 0; xx < w - 12; xx += 2) dot(6 + xx, h - 24, (xx % 6 === 0) ? 0xd8c8a0 : 0xb8a888);   // 자갈
+      for (let xx = 0; xx < w - 12; xx += 2) dot(6 + xx, h - 22, (xx % 4 === 0) ? 0xa89878 : 0xc8b898);
+      for (const [px, len] of [[12, 14], [16, 10], [w - 16, 16], [w - 20, 9]] as const) {   // 수초
+        for (let t = 0; t < len; t += 2) dot(px + ((t >> 2) % 2) * 2, h - 26 - t, t > len - 5 ? 0x6ac46a : 0x3f9e4f);
+      }
+      for (let yy = 2; yy < h - 20; yy += 2) { dot(4, yy, 0xcfe8f0, 0.8); dot(w - 6, yy, 0x8ab8c8, 0.8); }   // 유리 테
+      for (let xx = 4; xx < w - 4; xx += 2) { dot(xx, 0, 0x3a3f45); dot(xx, 2, 0x4e545b); }               // 조명 덮개
+      for (let yy = 6; yy < 16; yy += 2) dot(10, yy, 0xffffff, 0.35);                                        // 유리 반사
       break;
     }
   }
@@ -421,4 +479,32 @@ export function inFloor(c: number, r: number): boolean {
 /** 현관 매트 칸인가 */
 export function onDoorMat(c: number, r: number): boolean {
   return c >= DOOR_MAT.tx && c < DOOR_MAT.tx + DOOR_MAT.fw && r >= DOOR_MAT.ty && r < DOOR_MAT.ty + DOOR_MAT.fh;
+}
+
+/** 가구가 바라보는 앞 칸 (190차 — 식탁 앞 의자 판정) */
+export function frontCell(f: FurnInstance): { c: number; r: number } {
+  const { w, h } = footprint(f.kind, f.dir);
+  switch (f.dir) {
+    case 'up': return { c: f.tx, r: f.ty - 1 };
+    case 'down': return { c: f.tx, r: f.ty + h };
+    case 'left': return { c: f.tx - 1, r: f.ty };
+    case 'right': return { c: f.tx + w, r: f.ty };
+  }
+}
+
+/**
+ * 가구 아이콘 텍스처 `furn_<kind>` (190차 — 상점 목록·아이템 아이콘). 한 번 굽고 재사용한다.
+ * 그림이 칸 위로 조금 넘치는 가구(스탠드 갓)가 있어 위쪽에 여백을 둔다.
+ */
+export function ensureFurnitureIcon(scene: Phaser.Scene, kind: FurnKind): string {
+  const key = `furn_${kind}`;
+  if (scene.textures.exists(key)) return key;
+  const { w, h } = footprint(kind, 'down');
+  const pad = 8;
+  const g = scene.make.graphics({ x: 0, y: 0 }, false);
+  g.translateCanvas(0, pad);
+  drawFurnitureArt(g, kind, 'down', { lampOn: true });
+  g.generateTexture(key, w * IT, h * IT + pad);
+  g.destroy();
+  return key;
 }

@@ -9,13 +9,17 @@
  *    보관 중에는 아이템 상태를 그대로 둔다(신선도가 있는 음식은 받지 않는다).
  *  - 화분: 마지막으로 물을 준 시각. 사흘이 넘으면 잎이 처진다(그림만 — 죽지는 않는다).
  *  - 세이브: `GameState` SaveData.home. 구세이브(필드 없음)는 기본 배치 · 빈 보관함 · 「지금 막 물 줌」.
+ *  - 190차: 화분·스탠드 상태를 **개체(id)별**로(상점에서 같은 가구를 여럿 살 수 있다) · 고양이(밥·정) ·
+ *    관상 수조 속 물고기 · 상점에서 산 가구(`addStored`) · 벽 장식 앞자리도 길 판정에 넣는다.
+ *    구세이브의 `plantWateredMs`(화분 하나)는 기본 화분 id `plant`로 옮겨 읽는다.
  */
 
 import type { InvItem, InvCategory } from './InventoryStore.js';
 import {
-  DEFAULT_LAYOUT, FURN_DEFS, DOOR_MAT, footprint, inFloor, onDoorMat, ROOM_W, ROOM_H, FLOOR_TOP,
+  DEFAULT_LAYOUT, FURN_DEFS, DOOR_MAT, WALL_DECOR, footprint, inFloor, onDoorMat, wallDecorCols, ROOM_W, ROOM_H, FLOOR_TOP,
   type FurnInstance, type FurnKind, type FurnDir,
 } from '../data/HomeFurniture.js';
+import type { CatchMethod } from '@tra/core';
 
 export type HomeStorageKind = 'wardrobe' | 'shelf';
 
@@ -28,12 +32,47 @@ export const HOME_STORAGE: Record<HomeStorageKind, { slots: number; cols: number
 /** 화분이 목말라지는 시간 — 사흘 */
 export const PLANT_DRY_MS = 3 * 24 * 3600 * 1000;
 
+/** 관상 수조 칸 수 · 넣을 수 있는 최대 몸길이(cm) */
+export const TANK_SLOTS = 4;
+export const TANK_MAX_CM = 45;
+
+/** 관상 수조 속 물고기 (190차) — 쿨러 개체와 같은 실측치를 들고 있다가 꺼낼 때 그대로 돌려준다 */
+export interface TankFish {
+  speciesId: string;
+  nameKo: string;
+  lengthCm: number;
+  weightG: number;
+  sex: 'M' | 'F';
+  iconTexture?: string;
+  catchMethod?: CatchMethod;
+  /** 넣은 시각 (ms) */
+  addedMs: number;
+}
+
+/** 고양이 (190차) — 마지막으로 밥을 먹은 시각 · 정(0~100) · 마지막으로 쓰다듬은 시각 */
+export interface HomeCatState {
+  fedMs: number;
+  affection: number;
+  lastPetMs: number;
+  /** 쓰다듬어 마음이 풀린(피로 회복) 마지막 시각 — 30분에 한 번 */
+  lastCalmMs: number;
+}
+
 export interface HomeSaveState {
   placed: FurnInstance[];
   stored: FurnInstance[];
   wardrobe: (InvItem | null)[];
   shelf: (InvItem | null)[];
+  /** 구세이브 호환 — 기본 화분(`plant`)의 마지막 물 준 시각 */
   plantWateredMs: number;
+  /** 190차 — 화분 id → 마지막 물 준 시각 */
+  watered?: Record<string, number>;
+  /** 190차 — 스탠드 id → 켜짐 */
+  lampOn?: Record<string, boolean>;
+  /** 190차 */
+  cat?: HomeCatState;
+  /** 190차 — 수조 id → 물고기 */
+  tanks?: Record<string, TankFish[]>;
 }
 
 export interface PlaceCheck {
@@ -59,7 +98,16 @@ class HomeStoreManager {
     wardrobe: new Array(HOME_STORAGE.wardrobe.slots).fill(null),
     shelf: new Array(HOME_STORAGE.shelf.slots).fill(null),
   };
-  plantWateredMs = Date.now();
+  /** 화분 id → 마지막 물 준 시각 (없으면 「막 물 줌」으로 본다 — 새로 들인 화분) */
+  watered: Record<string, number> = {};
+  lampOn: Record<string, boolean> = {};
+  cat: HomeCatState = HomeStoreManager.freshCat();
+  tanks: Record<string, TankFish[]> = {};
+
+  private static freshCat(now = Date.now()): HomeCatState {
+    // 새 게임 — 누가 아침까지는 밥을 챙겨 준 모양이다(바로 배고파하지 않게)
+    return { fedMs: now, affection: 10, lastPetMs: 0, lastCalmMs: 0 };
+  }
 
   // ── 가구 ─────────────────────────────────────────────
 
@@ -76,12 +124,72 @@ class HomeStoreManager {
     return cellsOf(f);
   }
 
-  plantDry(now = Date.now()): boolean {
-    return now - this.plantWateredMs > PLANT_DRY_MS;
+  /** 그 화분이 목마른가 (id 없이 부르면 방에 놓인 화분 중 하나라도) */
+  plantDry(id?: string, now = Date.now()): boolean {
+    if (id === undefined) return this.placed.some((f) => f.kind === 'plant' && this.plantDry(f.id, now));
+    const at = this.watered[id];
+    return at !== undefined && now - at > PLANT_DRY_MS;
   }
 
-  waterPlant(now = Date.now()): void {
-    this.plantWateredMs = now;
+  waterPlant(id = 'plant', now = Date.now()): void {
+    this.watered[id] = now;
+  }
+
+  /** 구세이브 호환 접근자 — 기본 화분의 물 준 시각 */
+  get plantWateredMs(): number { return this.watered.plant ?? Date.now(); }
+
+  isLampOn(id: string): boolean { return !!this.lampOn[id]; }
+
+  toggleLamp(id: string): boolean {
+    this.lampOn[id] = !this.lampOn[id];
+    return this.lampOn[id];
+  }
+
+  /** 상점에서 산 가구 → 「넣어 둔 가구」 (190차). 새 개체 id를 돌려준다 */
+  addStored(kind: FurnKind): string {
+    const used = new Set(this.placed.concat(this.stored).map((f) => f.id));
+    let n = 1;
+    while (used.has(`${kind}_b${n}`)) n++;
+    const id = `${kind}_b${n}`;
+    this.stored.push({ id, kind, tx: 0, ty: 0, dir: 'down' });
+    if (kind === 'plant') this.watered[id] = Date.now();
+    return id;
+  }
+
+  /** 넣어 둔 가구를 종류별로 묶는다 (트레이 한 칸 = 한 종류 · 개수) */
+  storedGroups(): { kind: FurnKind; items: FurnInstance[] }[] {
+    const out: { kind: FurnKind; items: FurnInstance[] }[] = [];
+    for (const f of this.stored) {
+      const g = out.find((x) => x.kind === f.kind);
+      if (g) g.items.push(f); else out.push({ kind: f.kind, items: [f] });
+    }
+    return out;
+  }
+
+  // ── 관상 수조 ───────────────────────────────────────
+
+  tank(id: string): TankFish[] {
+    return (this.tanks[id] ??= []);
+  }
+
+  /** 수조에 넣을 수 없는 까닭 (넣을 수 있으면 null) */
+  tankReason(id: string, lengthCm: number): string | null {
+    if (this.tank(id).length >= TANK_SLOTS) return '수조가 가득 찼다';
+    if (lengthCm > TANK_MAX_CM) return '수조에 넣기에는 너무 크다';
+    return null;
+  }
+
+  addToTank(id: string, fish: Omit<TankFish, 'addedMs'>, now = Date.now()): boolean {
+    if (this.tankReason(id, fish.lengthCm)) return false;
+    this.tank(id).push({ ...fish, addedMs: now });
+    return true;
+  }
+
+  takeFromTank(id: string, idx: number): TankFish | null {
+    const t = this.tank(id);
+    const f = t[idx] ?? null;
+    if (f) t.splice(idx, 1);
+    return f;
   }
 
   /**
@@ -141,6 +249,10 @@ class HomeStoreManager {
     if (player) {
       const pc = Math.floor(player.x), pr = Math.floor(player.y);
       if (inFloor(pc, pr) && !seen.has(`${pc},${pr}`) && !blocked.has(`${pc},${pr}`)) return '나갈 길이 막힌다';
+    }
+    // 190차 — 벽 장식(책·달력·어탁) 앞 바닥 한 칸 이상은 닿아야 한다
+    for (const d of WALL_DECOR) {
+      if (!wallDecorCols(d).some((c) => seen.has(`${c},${FLOOR_TOP}`))) return '벽 장식 앞으로 갈 길이 막힌다';
     }
     for (const f of layout) {
       if (!FURN_DEFS[f.kind].action) continue;
@@ -218,6 +330,10 @@ class HomeStoreManager {
       wardrobe: copy(this.boxes.wardrobe),
       shelf: copy(this.boxes.shelf),
       plantWateredMs: this.plantWateredMs,
+      watered: { ...this.watered },
+      lampOn: { ...this.lampOn },
+      cat: { ...this.cat },
+      tanks: Object.fromEntries(Object.entries(this.tanks).map(([k, v]) => [k, v.map((f) => ({ ...f }))])),
     };
   }
 
@@ -250,7 +366,27 @@ class HomeStoreManager {
       if (!Array.isArray(src)) continue;
       src.forEach((it, i) => { if (i < HOME_STORAGE[k].slots) this.boxes[k][i] = it ? { ...it } : null; });
     }
-    if (typeof s.plantWateredMs === 'number' && Number.isFinite(s.plantWateredMs)) this.plantWateredMs = s.plantWateredMs;
+    // 화분 — 190차 개체별 맵이 우선, 없으면 구세이브 단일 값을 기본 화분에
+    if (s.watered && typeof s.watered === 'object') {
+      for (const [k, v] of Object.entries(s.watered)) if (typeof v === 'number' && Number.isFinite(v)) this.watered[k] = v;
+    } else if (typeof s.plantWateredMs === 'number' && Number.isFinite(s.plantWateredMs)) {
+      this.watered.plant = s.plantWateredMs;
+    }
+    if (s.lampOn && typeof s.lampOn === 'object') for (const [k, v] of Object.entries(s.lampOn)) this.lampOn[k] = !!v;
+    if (s.cat && typeof s.cat === 'object') {
+      const c = s.cat;
+      this.cat = {
+        fedMs: Number.isFinite(c.fedMs) ? c.fedMs : this.cat.fedMs,
+        affection: Math.max(0, Math.min(100, Number.isFinite(c.affection) ? c.affection : this.cat.affection)),
+        lastPetMs: Number.isFinite(c.lastPetMs) ? c.lastPetMs : 0,
+        lastCalmMs: Number.isFinite(c.lastCalmMs) ? c.lastCalmMs : 0,
+      };
+    }
+    if (s.tanks && typeof s.tanks === 'object') {
+      for (const [k, v] of Object.entries(s.tanks)) {
+        if (Array.isArray(v)) this.tanks[k] = v.filter((f) => f && typeof f.speciesId === 'string').slice(0, TANK_SLOTS).map((f) => ({ ...f }));
+      }
+    }
   }
 
   resetAll(): void {
@@ -260,7 +396,10 @@ class HomeStoreManager {
       wardrobe: new Array(HOME_STORAGE.wardrobe.slots).fill(null),
       shelf: new Array(HOME_STORAGE.shelf.slots).fill(null),
     };
-    this.plantWateredMs = Date.now();
+    this.watered = { plant: Date.now() };
+    this.lampOn = {};
+    this.cat = HomeStoreManager.freshCat();
+    this.tanks = {};
   }
 }
 

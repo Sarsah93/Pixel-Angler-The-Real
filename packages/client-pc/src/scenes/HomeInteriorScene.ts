@@ -9,6 +9,13 @@
  *     ③ 소파 = 한쪽을 보는 2인용 그림 + [F] 앉기 → 옆에 고를 거리(휴식하기 · 일어나기).
  *     ④ 화분 = 물뿌리개를 손에 들었을 때만 [F] 물 주기. ⑤ 옷장 = 장비 보관함. ⑥ 의자 = [F] 앉기.
  *     ⑦ 문 대신 현관 매트 — [F] 「나가기」 판정을 없애고, 매트를 밟고 아래로 걸어 나가면 바로 밖이다.
+ *   · 190차 집 살림 — 사용자 지시 7건:
+ *     ① 창·조명 = 시각·날씨(`ui/HomeAmbience.ts`) — 밤엔 방이 어둡고 협탁 스탠드 [F] 켜고 끄기, 창밖에 비·노을.
+ *     ② 라디오 [F](소파에 앉아서도) = 오늘·내일 물때와 날씨 예보 방송(`data/RadioBroadcast.ts`).
+ *     ③ 식탁 앞 의자에 앉아 먹으면 허기 +25%(「식사하기」 → 가방 음식 탭).
+ *     ④ 고양이(`ui/HomeCat.ts`) — 방을 돌아다니고 [F] 쓰다듬기 · 손질 부산물로 밥 주기.
+ *     ⑤ 벽 장식 [F] — 책(어류 도감 · 물때표) · 달력(납부일) · 어탁(최대어) (`ui/HomeInfoPanels.ts`).
+ *     ⑥ 생활용품점 가구 → 「넣어 둔 가구」(배치 모드에서 꺼내 놓는다). ⑦ 관상 수조 [F](`ui/AquariumPanel.ts`).
  *
  * HOMETOWN_HOME_SPEC (2026-07-28):
  *  - 시작 사이즈 Tier 0: 원룸 12×10 타일 (hometown_interior_mockup.svg 레이아웃).
@@ -44,9 +51,15 @@ import { GuideTour, maybeStartTour } from '../ui/GuideTour.js';
 import { getLocale } from '../i18n/I18n.js';
 import { HomeStore, type HomeStorageKind } from '../store/HomeStore.js';
 import {
-  IT, ROOM_W, ROOM_H, DOOR_MAT, FURN_DEFS, footprint, seatsOf, drawFurnitureArt,
-  type FurnInstance, type FurnAction,
+  IT, ROOM_W, ROOM_H, DOOR_MAT, FLOOR_TOP, FURN_DEFS, WALL_DECOR, footprint, seatsOf, drawFurnitureArt, frontCell, ensureFurnitureIcon,
+  type FurnInstance, type FurnAction, type WallDecorId,
 } from '../data/HomeFurniture.js';
+import { HomeAmbience, type AmbienceLight } from '../ui/HomeAmbience.js';
+import { HomeCat, CAT_FULL_MS } from '../ui/HomeCat.js';
+import { TideTablePanel, CalendarPanel, FishRecordPanel } from '../ui/HomeInfoPanels.js';
+import { AquariumPanel, tankFishTexture } from '../ui/AquariumPanel.js';
+import { buildRadioBroadcast } from '../data/RadioBroadcast.js';
+import { resolveFishTexture } from '../data/FishTextures.js';
 import {
   markPrologue, syncPrologue, prologueKeyAllowed, prologueRunning, prologueStepDone, PROLOGUE_PHOTO_ID,
 } from '../store/Prologue.js';
@@ -62,6 +75,13 @@ const SEAT_ROWS = (CHAR_HEAD_TOP + 19) * CHAR_SCALE;
 /** 소파 휴식 — 한 번에 풀리는 피로(최대치 대비 %) · 소파에서는 이 아래로는 안 풀린다(침대 몫) */
 const SOFA_REST_PCT = 35;
 const SOFA_REST_FLOOR_PCT = 35;
+/** 190차 — 고양이를 쓰다듬으면 풀리는 피로(최대치 대비 %) · 그 간격 */
+const CAT_CALM_PCT = 3;
+const CAT_CALM_GAP_MS = 30 * 60 * 1000;
+/** 소파에서 라디오가 닿는 거리(칸) */
+const RADIO_REACH_TILES = 2.6;
+/** 벽 장식 그림 (drawRoom과 판정이 같은 값을 쓴다) */
+const WALL_Y = { calendar: 0.18, fishprint: 0.3 };
 
 /**
  * 첫 입장 안내 혼잣말 (186차 — 사용자 지시 "집으로 들어왔을 때 멈추면서 하나하나 안내").
@@ -77,13 +97,17 @@ const LOOK_TEXT: Record<string, string> = {
   sink: '개수대에서 수돗물이 나온다. 요리할 때 물 걱정은 없겠다.\n개수대나 가스레인지 앞에서 [F]를 누르면 요리를 시작한다.',
   stove: '가스레인지 두 구. 집 화구는 가스가 떨어질 일이 없다.\n[F]로 조리를 시작한다 — 재료는 가방에서 꺼내 넣는다.',
   island: '식탁. 둘이 앉으면 딱 맞는 크기다. 밥은 늘 여기서 먹었다.\n의자 앞에서 [F]를 누르면 앉는다.',
-  rug: '러그 위에서 고양이가 자고 있다. 누가 밥을 챙겨 줬던 걸까. 이제는 내 몫이겠지.',
+  rug: '러그. 볕이 드는 자리라 고양이가 여기서 자주 잔다.',
+  cat: '고양이 한 마리가 집을 지키고 있었다. 누가 밥을 챙겨 줬던 걸까. 이제는 내 몫이겠지.\n앞에서 [F]를 누르면 쓰다듬는다. 손질하고 남은 부산물을 가방에 넣어 오면 밥도 줄 수 있다.',
+  radio: '아버지 라디오. 소파에 앉아 물때 방송을 듣곤 했다.\n[F]로 켜면 오늘과 내일 물때, 바다 날씨를 알려 준다. 소파에 앉아서도 켤 수 있다.',
+  calendar: '벽에 걸린 달력. 아버지 글씨로 납부일이 적혀 있다.\n[F]로 보면 다가오는 납부일을 알 수 있다.',
+  fishprint: '어탁 액자. 언젠가 내가 낚은 큰 고기로 바꿔 걸고 싶다.\n[F]로 보면 지금까지 낚은 가장 큰 고기의 기록이 나온다.',
   bed: '아버지 침대. 이불 끝이 반듯하게 접혀 있다.\n침대 앞에서 [F]를 누르면 쉴 수 있다. 오늘 한 일을 기록(저장)하는 것도 이 침대에서만 된다.',
-  stand: '머리맡 협탁. 스탠드가 아직 켜진다. 안경을 늘 두던 자리에 먼지만 앉았다.',
+  stand: '머리맡 협탁. 스탠드가 아직 켜진다. 안경을 늘 두던 자리에 먼지만 앉았다.\n밤에는 방이 어둡다. 협탁 앞에서 [F]로 스탠드를 켜고 끈다.',
   wardrobe: '옷장. 아버지 옷가지가 아직 걸려 있다.\n[F]로 열어 장비를 걸어 둘 수 있다. 가방이 한결 가벼워진다.',
   clock: '벽시계는 멈추지 않고 가고 있다. 누가 건전지를 갈아 두었나.',
-  books: '벽 선반의 책. 물때표, 어류 도감, 손때 묻은 매듭 책.',
-  window: '창 너머로 바다 냄새가 들어온다. 여기서도 파도 소리가 들린다.',
+  books: '벽 선반의 책. 물때표, 어류 도감, 손때 묻은 매듭 책.\n책 아래에서 [F]를 누르면 도감이나 물때표를 펼쳐 본다.',
+  window: '창 너머로 바다가 보인다. 해가 지면 노을이, 비가 오면 빗줄기가 보인다.',
 };
 
 /** 188차 — 프롤로그 기상 혼잣말 (새 캐릭터가 침대 옆에서 눈을 뜬다) */
@@ -103,13 +127,13 @@ const BOX_MONOLOGUE: string[] = [
 
 /** 첫 입장 안내 순서 — 매트에서 시작해 방을 한 바퀴 돌고 다시 매트로 */
 const TOUR_ORDER = [
-  'door_mat', 'plant', 'sofa', 'shelf', 'fridge', 'sink', 'stove', 'island',
-  'rug', 'bed', 'stand', 'wardrobe', 'clock', 'books', 'window',
+  'door_mat', 'plant', 'sofa', 'radio', 'shelf', 'fridge', 'sink', 'stove', 'island',
+  'rug', 'cat', 'bed', 'stand', 'wardrobe', 'clock', 'books', 'calendar', 'fishprint', 'window',
 ] as const;
 const TOUR_INTRO = '아버지 집이다. 떠날 때 모습 그대로다. 우선 하나씩 둘러보자.';
 const TOUR_OUTRO = '대충 다 둘러봤다. 쓸 수 있는 가구 앞에 서면 머리 위에 [F]가 뜬다. 가구 자리는 오른쪽 위 [가구 배치]에서 바꾼다.';
 
-/** 가구가 지금 받을 수 있는 [F] 행동 → 머리 위 문구 */
+/** 가구가 지금 받을 수 있는 [F] 행동 → 머리 위 문구 (스탠드는 켜짐에 따라 바뀐다 — `hintOf`) */
 const ACTION_LABEL: Record<FurnAction, string> = {
   bed: '[F] 침대 — 저장하고 쉬기',
   fridge: '[F] 냉장고 열기',
@@ -120,11 +144,25 @@ const ACTION_LABEL: Record<FurnAction, string> = {
   shelf: '[F] 선반 열기',
   plant: '[F] 물 주기',
   father_box: '[F] 낚시 상자 열기',
+  lamp: '[F] 스탠드 켜기',
+  radio: '[F] 라디오 켜기',
+  aquarium: '[F] 수조 보기',
 };
+const WALL_LABEL: Record<WallDecorId, string> = {
+  books: '[F] 책 보기',
+  calendar: '[F] 달력 보기',
+  fishprint: '[F] 어탁 보기',
+};
+
+/** [F]가 닿는 대상 — 가구 · 고양이 · 벽 장식 */
+type NearTarget =
+  | { kind: 'furn'; f: FurnInstance; action: FurnAction }
+  | { kind: 'cat' }
+  | { kind: 'wall'; id: WallDecorId };
 
 interface MenuItem { label: string; color?: string; run: () => void }
 interface OpenMenu {
-  kind: 'bed' | 'seat';
+  kind: 'bed' | 'seat' | 'cat' | 'books';
   c: Phaser.GameObjects.Container;
   items: MenuItem[];
   rows: Phaser.GameObjects.Graphics[];
@@ -160,7 +198,13 @@ export class HomeInteriorScene extends Phaser.Scene {
   /** 154차 — 집 주방 조리 패널 (가스레인지 [F]) */
   private cookPanel?: CookingPanel;
   private cookSyncAcc = 0;
-  private nearFurn: { f: FurnInstance; action: FurnAction } | null = null;
+  private near: NearTarget | null = null;
+  /** 190차 — 창·조명 · 고양이 · 수조 속 고기(방 안 그림) · 라디오 소리 물결 */
+  private ambience?: HomeAmbience;
+  private cat?: HomeCat;
+  private tankSwim: { img: Phaser.GameObjects.Image; x0: number; x1: number; vx: number; y0: number; ph: number }[] = [];
+  private bubbleAcc = 0;
+  private radioWaves?: Phaser.Time.TimerEvent;
   /** 189차 — 가구 그림(인스턴스마다 하나) */
   private furnViews = new Map<string, Phaser.GameObjects.Graphics>();
   private clockG?: Phaser.GameObjects.Graphics;
@@ -202,7 +246,10 @@ export class HomeInteriorScene extends Phaser.Scene {
     this.menu = undefined;
     this.fridgePanel = undefined;
     this.cookPanel = undefined;
-    this.nearFurn = null;
+    this.near = null;
+    this.tankSwim = [];
+    this.radioWaves = undefined;
+    GameState.mealAtTable = false;
     this.popups = [];
     this.invPanel = null;
     this.equipPanel = null;
@@ -219,9 +266,40 @@ export class HomeInteriorScene extends Phaser.Scene {
     this.enteredAt = this.time.now;
 
     this.drawRoom();
+    this.drawFishPrintInk();
     this.clockG = this.add.graphics().setDepth(2);
     this.drawClockHands();
     this.buildFurniture(null);
+    // 190차 — 창·조명 (시각·날씨)
+    const wallH = Math.round(IT * 1.4);
+    this.ambience = new HomeAmbience(this, {
+      ox: OX, oy: OY, w: ROOM_W * IT, h: ROOM_H * IT,
+      win: { x: OX + ROOM_W * IT - IT * 3.4, y: OY + 10, w: IT * 2.2, h: wallH - 30 },
+      lights: () => this.litSources(),
+      dimMul: () => (this.decor ? 0.45 : 1),
+    });
+    // 190차 — 고양이
+    this.cat = new HomeCat(this, {
+      ox: OX, oy: OY,
+      blocked: (c, r) => this.cellBlocked(c, r),
+      bedSpot: () => {
+        const rug = HomeStore.placed.find((f) => f.kind === 'rug');
+        if (!rug) return null;
+        const { w, h } = footprint(rug.kind, rug.dir);
+        return { x: OX + (rug.tx + w / 2) * IT, y: OY + (rug.ty + h / 2) * IT + 10 };
+      },
+      player: () => ({ x: this.px, y: this.py }),
+    });
+    this.events.once('shutdown', () => {
+      this.ambience?.destroy(); this.ambience = undefined;
+      this.cat?.destroy(); this.cat = undefined;
+      this.radioWaves?.remove(); this.radioWaves = undefined;
+      GameState.mealAtTable = false;
+    });
+    // 190차 — 도감(AnglerLogScene)에서 돌아오면 페이드인 + 하늘·불빛 다시 읽기
+    const onResume = (): void => { this.cameras.main.fadeIn(220, 0, 10, 20); this.ambience?.refresh(); };
+    this.events.on('resume', onResume);
+    this.events.once('shutdown', () => this.events.off('resume', onResume));
 
     // 플레이어 — 188차 프롤로그 기상은 침대 왼편 · 그 밖에는 현관 매트 위에서 방을 바라본다
     if (this.wake) { this.px = OX + 8.6 * IT; this.py = OY + 4.6 * IT; this.facing = 'down'; }
@@ -491,7 +569,8 @@ export class HomeInteriorScene extends Phaser.Scene {
     const wallH = Math.round(IT * 1.4);
     const W = ROOM_W * IT;
     if (id === 'clock') return new Phaser.Geom.Rectangle(OX + IT * 1.4 - 20, OY + Math.round(IT * 0.62) - 20, 40, 40);
-    if (id === 'books') return new Phaser.Geom.Rectangle(OX + IT * 4.2 - 4, OY + Math.round(IT * 0.72) - 36, IT * 2.4 + 8, 44);
+    if (id === 'books' || id === 'calendar' || id === 'fishprint') return this.wallRect(id);
+    if (id === 'cat') return this.cat ? this.cat.bounds() : null;
     if (id === 'window') return new Phaser.Geom.Rectangle(OX + W - IT * 3.4 - 6, OY + 4, IT * 2.2 + 12, wallH - 18);
     if (id === 'door_mat') {
       return new Phaser.Geom.Rectangle(OX + DOOR_MAT.tx * IT - 4, OY + DOOR_MAT.ty * IT - 4, DOOR_MAT.fw * IT + 8, DOOR_MAT.fh * IT + 24);
@@ -500,6 +579,15 @@ export class HomeInteriorScene extends Phaser.Scene {
     if (!f) return null;
     const { w, h } = footprint(f.kind, f.dir);
     return new Phaser.Geom.Rectangle(OX + f.tx * IT - 4, OY + f.ty * IT - 4, w * IT + 8, h * IT + 8);
+  }
+
+  /** 벽 장식 그림 영역 (화면 좌표) — 그리기 · 판정 · 안내가 같은 값을 쓴다 */
+  private wallRect(id: WallDecorId): Phaser.Geom.Rectangle {
+    const d = WALL_DECOR.find((w) => w.id === id)!;
+    const x = OX + d.x0 * IT, w = (d.x1 - d.x0) * IT;
+    if (id === 'books') return new Phaser.Geom.Rectangle(x - 4, OY + Math.round(IT * 0.72) - 36, w + 8, 44);
+    if (id === 'calendar') return new Phaser.Geom.Rectangle(x, OY + Math.round(IT * WALL_Y.calendar), w, 38);
+    return new Phaser.Geom.Rectangle(x, OY + Math.round(IT * WALL_Y.fishprint), w, 30);
   }
 
   private startTour(): void {
@@ -620,21 +708,39 @@ export class HomeInteriorScene extends Phaser.Scene {
     for (let x = 0; x < ww; x += 2) { dot(wx + x, wy - 2, 0x5a3c22); dot(wx + x, wy + wh, 0x5a3c22); }
     for (let y = -2; y < wh + 2; y += 2) { dot(wx - 2, wy + y, 0x5a3c22); dot(wx + ww, wy + y, 0x5a3c22); }
     for (let y = 0; y < wh; y += 2) dot(wx + ww / 2, wy + y, 0x5a3c22);
-    g.fillStyle(0xfff3c4, 0.10); g.fillRect(wx - 8, OY + wallH, ww + 16, IT * 2.2);                                      // 햇살
+    // 190차 — 창으로 드는 빛은 시각·날씨를 따라 `HomeAmbience`가 그린다(구 고정 햇살 폐기)
     // ── 벽시계 (판) ── 바늘은 실제 시각을 따라 `drawClockHands`가 따로 그린다
     const cx = OX + IT * 1.4, cy = OY + Math.round(IT * 0.62);
     g.fillStyle(0x3a2718, 1); g.fillCircle(cx, cy, 16);
     g.fillStyle(0xf2e2b8, 1); g.fillCircle(cx, cy, 13);
     g.fillStyle(0x3a2718, 1);
     for (let a = 0; a < 12; a++) g.fillRect(cx + Math.round(Math.cos(a * Math.PI / 6) * 10) - 1, cy + Math.round(Math.sin(a * Math.PI / 6) * 10) - 1, 2, 2);
-    // ── 벽 선반 + 책 ──
-    const sx = OX + IT * 4.2, sy = OY + Math.round(IT * 0.72);
-    for (let x = 0; x < IT * 2.4; x += 2) { dot(sx + x, sy, 0x8a6138); dot(sx + x, sy + 2, 0x5a3c22); }
+    // ── 벽 선반 + 책 ── (190차 — 달력·어탁 자리를 내느라 선반을 줄였다)
+    const sx = OX + IT * 4.1, sy = OY + Math.round(IT * 0.72);
+    for (let x = 0; x < IT * 1.9; x += 2) { dot(sx + x, sy, 0x8a6138); dot(sx + x, sy + 2, 0x5a3c22); }
     const books = [0xb04a3a, 0x3a6ea5, 0x3f9e63, 0xc2913a, 0x8a5aa8];
     books.forEach((col, i) => {
       const bx = sx + 6 + i * 16, bh = 22 + (i % 3) * 5;
       for (let y = 0; y < bh; y += 2) for (let x = 0; x < 10; x += 2) dot(bx + x, sy - bh + y, y < 3 ? 0xffffff : col);
     });
+    // ── 달력 (190차) ── 못에 걸린 한 장 달력: 붉은 머리띠 + 날짜 칸 + 오늘 동그라미
+    const cal = this.wallRect('calendar');
+    for (let y = 0; y < cal.height; y += 2) for (let x = 0; x < cal.width; x += 2) {
+      dot(cal.x + x, cal.y + y, y < 8 ? 0xb04a3a : (x === 0 || x >= cal.width - 2 || y >= cal.height - 2) ? 0xc8bca0 : 0xf4ead2);
+    }
+    dot(cal.x + cal.width / 2 - 1, cal.y - 2, 0x3a2718);
+    const today = Number(kstParts().d);
+    for (let k = 0; k < 28; k++) {
+      const cx = cal.x + 4 + (k % 7) * 4, cy = cal.y + 12 + Math.floor(k / 7) * 6;
+      dot(cx, cy, k + 1 === Math.min(28, today) ? 0xd03a2a : 0x8a7a64);
+    }
+    // ── 어탁 액자 (190차) ── 나무 테 + 한지. 먹으로 뜬 고기는 `drawFishPrintInk`가 얹는다
+    const fp = this.wallRect('fishprint');
+    for (let y = 0; y < fp.height; y += 2) for (let x = 0; x < fp.width; x += 2) {
+      const edge = x < 4 || x >= fp.width - 4 || y < 4 || y >= fp.height - 4;
+      dot(fp.x + x, fp.y + y, edge ? ((x + y) % 6 === 0 ? 0x4a3018 : 0x5a3c22) : (hash(x, y + 77) > 0.9 ? 0xe6dcc4 : 0xf2ead8));
+    }
+    dot(fp.x + fp.width - 10, fp.y + fp.height - 10, 0xb03a2a); dot(fp.x + fp.width - 8, fp.y + fp.height - 10, 0xb03a2a);
     // ── 현관 (189차) ── 아래 벽을 터서 문턱과 바깥 돌계단을 보이고, 바닥에는 매트를 깐다
     const mx = OX + DOOR_MAT.tx * IT, my = OY + DOOR_MAT.ty * IT, mw = DOOR_MAT.fw * IT;
     for (let y = 0; y < 20; y += 2) for (let x = 0; x < mw; x += 2) {
@@ -671,6 +777,19 @@ export class HomeInteriorScene extends Phaser.Scene {
     g.fillStyle(0xb04a3a, 1); g.fillRect(cx - 1, cy - 1, 2, 2);
   }
 
+  /** 어탁 — 지금까지 낚은 가장 큰 고기를 먹빛 실루엣으로 액자 속 한지에 얹는다 (190차) */
+  private drawFishPrintInk(): void {
+    const best = [...GameState.player.caughtFishHistory].sort((a, b) => b.lengthCm - a.lengthCm)[0];
+    if (!best) return;
+    const key = resolveFishTexture(best.fishSpeciesId, best.lengthCm, 'M');
+    if (!key || !this.textures.exists(key)) return;
+    const r = this.wallRect('fishprint');
+    const img = this.add.image(r.centerX - 2, r.centerY, key).setTintFill(0x1e1e24).setAlpha(0.85).setDepth(2);
+    const src = this.textures.get(key).getSourceImage() as HTMLImageElement;
+    const sc = Math.min((r.width - 14) / src.width, (r.height - 10) / src.height);
+    img.setDisplaySize(src.width * sc, src.height * sc);
+  }
+
   /** 가구 depth — 러그는 바닥, 나머지는 바닥선(y)으로 캐릭터와 앞뒤를 가린다 */
   private furnDepth(f: FurnInstance): number {
     if (FURN_DEFS[f.kind].floor) return 6;
@@ -685,14 +804,78 @@ export class HomeInteriorScene extends Phaser.Scene {
   private buildFurniture(hideId: string | null): void {
     for (const v of this.furnViews.values()) v.destroy();
     this.furnViews.clear();
-    const st = { plantDry: HomeStore.plantDry() };
+    for (const s of this.tankSwim) s.img.destroy();
+    this.tankSwim = [];
     for (const f of HomeStore.placed) {
       if (f.id === hideId) continue;
       const g = this.add.graphics();
-      drawFurnitureArt(g, f.kind, f.dir, st);
+      // 190차 — 화분 목마름 · 스탠드 켜짐은 개체마다 다르다
+      drawFurnitureArt(g, f.kind, f.dir, { plantDry: HomeStore.plantDry(f.id), lampOn: HomeStore.isLampOn(f.id) });
       g.setPosition(OX + f.tx * IT, OY + f.ty * IT).setDepth(this.furnDepth(f));
       this.furnViews.set(f.id, g);
+      if (f.kind === 'aquarium') this.buildTankFish(f);
     }
+    this.ambience?.refreshLights();
+  }
+
+  /** 수조 속 고기 — 유리 안에서 좌우로 헤엄친다 (190차) */
+  private buildTankFish(f: FurnInstance): void {
+    const { w } = footprint(f.kind, f.dir);
+    const gx0 = OX + f.tx * IT + 10, gx1 = OX + (f.tx + w) * IT - 10;
+    const top = OY + f.ty * IT + 10, bottom = OY + (f.ty + 1) * IT - 28;
+    HomeStore.tank(f.id).forEach((fish, i) => {
+      const key = tankFishTexture(fish, this);
+      if (!key || !this.textures.exists(key)) return;
+      const img = this.add.image(gx0 + 12 + ((i * 23) % (gx1 - gx0 - 24)), top + ((i * 7) % Math.max(1, bottom - top)), key);
+      const src = this.textures.get(key).getSourceImage() as HTMLImageElement;
+      const len = Phaser.Math.Clamp(8 + fish.lengthCm * 0.4, 10, 22);
+      img.setDisplaySize(len, Math.max(4, (src.height / src.width) * len)).setDepth(this.furnDepth(f) + 0.0001);
+      this.tankSwim.push({ img, x0: gx0, x1: gx1, vx: (i % 2 ? -1 : 1) * (0.01 + (i % 3) * 0.004), y0: img.y, ph: i * 1.3 });
+    });
+  }
+
+  private animateTanks(delta: number): void {
+    for (const s of this.tankSwim) {
+      const half = s.img.displayWidth / 2;
+      let nx = s.img.x + s.vx * delta;
+      if (nx - half < s.x0 || nx + half > s.x1) { s.vx = -s.vx; nx = s.img.x + s.vx * delta; }
+      s.ph += delta / 700;
+      s.img.setPosition(nx, s.y0 + Math.sin(s.ph) * 2).setFlipX(s.vx < 0);
+    }
+    // 이따금 공기 방울
+    this.bubbleAcc += delta;
+    if (this.bubbleAcc < 900) return;
+    this.bubbleAcc = 0;
+    for (const f of HomeStore.placed) {
+      if (f.kind !== 'aquarium') continue;
+      const bx = OX + f.tx * IT + 14 + Math.random() * (footprint(f.kind, f.dir).w * IT - 28);
+      const b = this.add.rectangle(bx, OY + f.ty * IT + IT - 28, 2, 2, 0xe8f6ff, 0.9).setDepth(this.furnDepth(f) + 0.0002);
+      this.tweens.add({ targets: b, y: OY + f.ty * IT + 8, alpha: 0.2, duration: 1400, onComplete: () => b.destroy() });
+    }
+  }
+
+  /** 지금 켜져 있는 불빛 — 스탠드(따뜻한 노랑) · 수조(푸른빛) */
+  private litSources(): AmbienceLight[] {
+    const out: AmbienceLight[] = [];
+    for (const f of HomeStore.placed) {
+      if (f.kind === 'stand' && HomeStore.isLampOn(f.id)) {
+        out.push({ x: OX + f.tx * IT + IT / 2, y: OY + f.ty * IT + 6, r: 190, color: 0xffd98a });
+      } else if (f.kind === 'aquarium') {
+        const { w } = footprint(f.kind, f.dir);
+        out.push({ x: OX + (f.tx + w / 2) * IT, y: OY + f.ty * IT + 16, r: 80, color: 0x5ab8ff });
+      }
+    }
+    return out;
+  }
+
+  /** 그 칸을 지날 수 없는가 (고양이 길찾기 — 가구 칸) */
+  private cellBlocked(c: number, r: number): boolean {
+    if (c < 0 || c >= ROOM_W || r < FLOOR_TOP || r >= ROOM_H) return true;
+    return HomeStore.placed.some((f) => {
+      if (!FURN_DEFS[f.kind].collides) return false;
+      const { w, h } = footprint(f.kind, f.dir);
+      return c >= f.tx && c < f.tx + w && r >= f.ty && r < f.ty + h;
+    });
   }
 
   // ── 가구 배치 (189차) ─────────────────────────────────
@@ -724,18 +907,22 @@ export class HomeInteriorScene extends Phaser.Scene {
     if (GuideTour.active && GuideTour.blocksKey('KeyF')) return;
     this.hintText.setVisible(false);
     this.decorBtn?.setVisible(false);
+    this.cat?.setHidden(true);   // 190차 — 배치 중에는 고양이가 비킨다(칸이 가려지지 않게)
     this.decor = new HomeDecorMode(this, {
       ox: OX, oy: OY,
       redraw: (hideId) => this.buildFurniture(hideId),
       playerTile: () => ({ x: (this.px - OX) / IT, y: (this.py - OY) / IT }),
-      artState: () => ({ plantDry: HomeStore.plantDry() }),
+      artState: () => ({ plantDry: false, lampOn: false }),
       onExit: () => {
         this.decor = undefined;
         this.buildFurniture(null);
+        this.cat?.setHidden(false);
+        this.cat?.relocateIfBlocked();
         this.refreshObjective();
         restoreHandCursor(this);
       },
     });
+    this.ambience?.refreshLights();
   }
 
   // ── 이동/충돌 (간이 AABB — 물리 미사용) ──────────────
@@ -750,6 +937,10 @@ export class HomeInteriorScene extends Phaser.Scene {
     this.clockAcc += delta;
     if (this.clockAcc >= 30000) { this.clockAcc = 0; this.drawClockHands(); }
     this.drawObjectiveSpot(delta);
+    // 190차 — 창밖 비·눈 · 불빛 · 수조 · 고양이는 앉아 있거나 창이 열려 있어도 흐른다
+    this.ambience?.update(delta);
+    this.animateTanks(delta);
+    if (!this.decor) this.cat?.update(delta);
     if (this.seat) {   // 앉아 있는 동안은 자세만 지킨다(텍스처가 바뀌면 자르기가 풀릴 수 있다)
       this.applySeatPose();
       this.hintText.setVisible(false);
@@ -807,6 +998,14 @@ export class HomeInteriorScene extends Phaser.Scene {
     return false;
   }
 
+  /** 머리 위 [F] 문구 */
+  private hintOf(t: NearTarget): string {
+    if (t.kind === 'cat') return '[F] 고양이';
+    if (t.kind === 'wall') return WALL_LABEL[t.id];
+    if (t.action === 'lamp') return HomeStore.isLampOn(t.f.id) ? '[F] 스탠드 끄기' : '[F] 스탠드 켜기';
+    return ACTION_LABEL[t.action];
+  }
+
   /** 이 가구가 **지금** 받을 수 있는 [F] 행동 (없으면 null — 그 가구 앞에는 아무것도 뜨지 않는다) */
   private actionOf(f: FurnInstance): FurnAction | null {
     const a = FURN_DEFS[f.kind].action;
@@ -822,7 +1021,7 @@ export class HomeInteriorScene extends Phaser.Scene {
 
   /** 발밑에서 가구 footprint 가장자리까지 가장 가까운 것 (닿는 거리 안에서만) */
   private updateProximity(): void {
-    let best: { f: FurnInstance; action: FurnAction } | null = null;
+    let best: NearTarget | null = null;
     let bestD = REACH_PX;
     for (const f of HomeStore.placed) {
       const action = this.actionOf(f);
@@ -832,20 +1031,41 @@ export class HomeInteriorScene extends Phaser.Scene {
       const dx = Math.max(x0 - this.px, 0, this.px - (x0 + w * IT));
       const dy = Math.max(y0 - this.py, 0, this.py - (y0 + h * IT));
       const d = Math.hypot(dx, dy);
-      if (d < bestD) { bestD = d; best = { f, action }; }
+      if (d < bestD) { bestD = d; best = { kind: 'furn', f, action }; }
     }
-    this.nearFurn = best;
+    // 190차 — 벽 장식: 바로 아래 바닥(벽에 붙어 선 자리)에서
+    const fromWall = this.py - (OY + FLOOR_TOP * IT);
+    if (fromWall < REACH_PX) {
+      for (const d of WALL_DECOR) {
+        const dx = Math.max(OX + d.x0 * IT - this.px, 0, this.px - (OX + d.x1 * IT));
+        if (dx > 14) continue;
+        const dd = dx + fromWall;
+        if (dd < bestD) { bestD = dd; best = { kind: 'wall', id: d.id }; }
+      }
+    }
+    // 190차 — 고양이: 발치에 있으면 가구보다 먼저
+    if (this.cat) {
+      const d = Math.hypot(this.cat.x - this.px, this.cat.y - this.py);
+      if (d < 34 && d - 12 < bestD) best = { kind: 'cat' };
+    }
+    this.near = best;
     if (best) {
-      this.hintText.setText(ACTION_LABEL[best.action]).setPosition(this.px, this.py - this.charSprite.bodyHeight - 10).setVisible(true);
+      this.hintText.setText(this.hintOf(best)).setPosition(this.px, this.py - this.charSprite.bodyHeight - 10).setVisible(true);
     } else {
       this.hintText.setVisible(false);
     }
   }
 
   private tryInteract(): void {
-    if (this.menu || this.fridgePanel || this.cookPanel || this.decor || !this.nearFurn) return;
-    const { f, action } = this.nearFurn;
+    if (this.menu || this.fridgePanel || this.cookPanel || this.decor || !this.near) return;
+    const t = this.near;
+    if (t.kind === 'cat') { this.openCatMenu(); return; }
+    if (t.kind === 'wall') { this.useWall(t.id); return; }
+    const { f, action } = t;
     switch (action) {
+      case 'lamp': this.toggleLamp(f); break;
+      case 'radio': this.playRadio(f); break;
+      case 'aquarium': this.openAquarium(f); break;
       case 'bed': this.openBedMenu(); break;
       case 'fridge': this.openFridge(); break;
       case 'cook': this.openCook(); break;
@@ -932,10 +1152,18 @@ export class HomeInteriorScene extends Phaser.Scene {
     this.hintText.setVisible(false);
     this.applySeatPose();
     this.satCount++;
-    const items: MenuItem[] = f.kind === 'sofa'
-      ? [{ label: '휴식하기', color: '#9fd0e4', run: () => this.restOnSofa() }, { label: '일어나기', run: () => this.standUp() }]
-      : [{ label: '일어나기', run: () => this.standUp() }];
+    // 190차 — 식탁 앞 의자면 「식사하기」(허기 +25%) · 라디오 곁 소파면 「라디오 듣기」
+    const atTable = f.kind === 'chair' && this.chairAtTable(f);
+    GameState.mealAtTable = atTable;
+    const radio = f.kind === 'sofa' ? this.radioNear(f) : undefined;
+    const items: MenuItem[] = [];
+    if (f.kind === 'sofa') items.push({ label: '휴식하기', color: '#9fd0e4', run: () => this.restOnSofa() });
+    if (radio) items.push({ label: '라디오 듣기', color: '#ffd9a0', run: () => this.playRadio(radio) });
+    if (atTable) items.push({ label: '식사하기', color: '#ffd9a0', run: () => this.openMealBag() });
+    items.push({ label: '일어나기', run: () => this.standUp() });
     this.openMenu('seat', FURN_DEFS[f.kind].nameKo, items, () => this.standUp());
+    // 정이 든 고양이는 소파에 앉으면 곁으로 온다
+    if (f.kind === 'sofa' && HomeStore.cat.affection >= 30 && !this.cat?.hungry()) this.cat?.comeSitNear(s.sx, s.sy);
   }
 
   /** 앉은 자세 — 엉덩이를 좌석에 맞추고 다리를 잘라 낸다(가구가 가린 것으로 읽힌다) */
@@ -953,6 +1181,7 @@ export class HomeInteriorScene extends Phaser.Scene {
     const s = this.seat;
     if (!s) return;
     this.seat = null;
+    GameState.mealAtTable = false;
     this.closeMenu();
     this.px = s.standX; this.py = s.standY;
     this.charSprite.image.setCrop();
@@ -980,11 +1209,163 @@ export class HomeInteriorScene extends Phaser.Scene {
     this.flash(`소파에서 잠깐 눈을 붙였다 — 피로 ${Math.round((before / max) * 100)}% → ${Math.round((after / max) * 100)}%`);
   }
 
+  /** 이 의자가 식탁을 바라보고 붙어 있는가 */
+  private chairAtTable(f: FurnInstance): boolean {
+    const fc = frontCell(f);
+    return HomeStore.placed.some((o) => {
+      if (o.kind !== 'island') return false;
+      const { w, h } = footprint(o.kind, o.dir);
+      return fc.c >= o.tx && fc.c < o.tx + w && fc.r >= o.ty && fc.r < o.ty + h;
+    });
+  }
+
+  /** 소파 곁(몇 칸 안)의 라디오 */
+  private radioNear(sofa: FurnInstance): FurnInstance | undefined {
+    const sw = footprint(sofa.kind, sofa.dir);
+    const cx = sofa.tx + sw.w / 2, cy = sofa.ty + sw.h / 2;
+    return HomeStore.placed.find((o) => o.kind === 'radio' && Math.hypot(o.tx + 0.5 - cx, o.ty + 0.5 - cy) <= RADIO_REACH_TILES);
+  }
+
+  /** 식탁에서 「식사하기」 — 가방을 음식 칸으로 펼친다 */
+  private openMealBag(): void {
+    if (!this.invPanel) this.toggleInventory();
+    this.invPanel?.showTab('food');
+  }
+
+  // ── 스탠드 · 라디오 · 수조 (190차) ───────────────────
+
+  private toggleLamp(f: FurnInstance): void {
+    HomeStore.toggleLamp(f.id);
+    GameState.markDirty();
+    this.buildFurniture(null);   // 갓 그림 + 불빛(refreshLights)
+  }
+
+  /** 라디오 방송 — 아나운서의 말을 한 단락씩 타이핑. 처음 들으면 주인공의 혼잣말이 하나 따라온다 */
+  private playRadio(src: FurnInstance): void {
+    if (this.tourPanel) return;
+    this.hintText.setVisible(false);
+    const lines = buildRadioBroadcast(getLocale() === 'en' ? 'en' : 'ko');
+    this.startRadioWaves(src);
+    const panel = new MonologuePanel(this, lines, () => {
+      panel.destroy();
+      this.tourPanel = undefined;
+      this.radioWaves?.remove(); this.radioWaves = undefined;
+      if (!GameState.getFlag('home.radioHeard')) {
+        GameState.setFlag('home.radioHeard');
+        GameState.markDirty();
+        const after = new MonologuePanel(this, ['아버지가 늘 틀어 놓던 그 목소리다. 물때 이름을 따라 외우던 게 생각난다.'], () => {
+          after.destroy(); this.tourPanel = undefined;
+        });
+        this.add.existing(after);
+        this.tourPanel = after;
+      }
+    }, '라디오', { portraitKey: ensureFurnitureIcon(this, 'radio'), name: '라디오' });
+    this.add.existing(panel);
+    this.tourPanel = panel;
+  }
+
+  /** 방송 중 — 라디오에서 소리 물결이 피어오른다 */
+  private startRadioWaves(src: FurnInstance): void {
+    this.radioWaves?.remove();
+    const x = OX + src.tx * IT + IT - 10, y = OY + src.ty * IT + 10;
+    this.radioWaves = this.time.addEvent({
+      delay: 650, loop: true, callback: () => {
+        const g = this.add.graphics().setDepth(31);
+        g.fillStyle(0xfff3c4, 0.9);
+        for (let a = -50; a <= 50; a += 25) {
+          const r = 6;
+          g.fillRect(Math.round(Math.sin((a * Math.PI) / 180) * r), -Math.round(Math.cos((a * Math.PI) / 180) * r), 2, 2);
+        }
+        g.setPosition(x, y);
+        this.tweens.add({ targets: g, y: y - 18, scale: 1.8, alpha: 0, duration: 1200, onComplete: () => g.destroy() });
+      },
+    });
+  }
+
+  private openAquarium(f: FurnInstance): void {
+    if (this.popups.some((e) => e.panel instanceof AquariumPanel)) return;
+    this.openPopup((close) => new AquariumPanel(this, f.id, GAME_WIDTH / 2 - 340, 60, close, () => this.buildFurniture(null)));
+  }
+
+  // ── 고양이 (190차) ───────────────────────────────────
+
+  /** 밥으로 줄 수 있는 손질 부산물 (상하지 않은 것) */
+  private catFood(): InvItem | undefined {
+    return InventoryStore.items.find((i) => (i.byproductKind || i.subCategory === '부산물') && i.condition !== 'spoiled' && i.qty > 0);
+  }
+
+  private openCatMenu(): void {
+    this.cat?.attend();
+    const food = this.catFood();
+    const items: MenuItem[] = [{ label: '쓰다듬기', color: '#ffb0c4', run: () => this.petCat() }];
+    if (food) items.push({ label: '밥 주기', color: '#ffd9a0', run: () => this.feedCat(food) });
+    items.push({ label: '그만두기', color: '#8faabf', run: () => this.closeMenu() });
+    this.openMenu('cat', '고양이', items, () => this.closeMenu());
+  }
+
+  private petCat(): void {
+    this.closeMenu();
+    const now = Date.now();
+    const c = HomeStore.cat;
+    if (now - c.lastPetMs > 10 * 60 * 1000) c.affection = Math.min(100, c.affection + 2);
+    c.lastPetMs = now;
+    this.cat?.petReact();
+    const v = GameState.vitals;
+    if (now - c.lastCalmMs > CAT_CALM_GAP_MS && v.fatigue > 0.5) {
+      c.lastCalmMs = now;
+      GameState.applyIntake(0, 0, 0, Math.min(v.fatigue, (Math.max(1, v.maxFatigue) * CAT_CALM_PCT) / 100));
+      this.flash('고양이를 쓰다듬었다. 골골거리는 소리에 마음이 조금 풀린다.');
+    } else {
+      this.flash('고양이가 눈을 가늘게 뜨고 골골거린다.');
+    }
+    GameState.markDirty();
+  }
+
+  private feedCat(item: InvItem): void {
+    this.closeMenu();
+    const now = Date.now();
+    if (now - HomeStore.cat.fedMs < CAT_FULL_MS) {
+      this.cat?.refuseReact();
+      this.flash('배가 부른 모양이다. 냄새만 맡고 돌아앉는다.');
+      return;
+    }
+    if (!InventoryStore.removeQty(item.id, 1)) return;
+    HomeStore.cat.fedMs = now;
+    HomeStore.cat.affection = Math.min(100, HomeStore.cat.affection + 5);
+    this.cat?.eatReact();
+    GameState.markDirty();
+    this.events.emit('inventory-changed');
+    this.flash(`고양이가 ${item.name}을(를) 맛있게 먹는다.`);
+  }
+
+  // ── 벽 장식 (190차) ──────────────────────────────────
+
+  private useWall(id: WallDecorId): void {
+    this.hintText.setVisible(false);
+    if (id === 'books') {
+      this.openMenu('books', '책', [
+        { label: '어류 도감', color: '#9fd0e4', run: () => this.openCodex() },
+        { label: '물때표', color: '#9fd0e4', run: () => { this.closeMenu(); this.openPopup((close) => new TideTablePanel(this, GAME_WIDTH / 2 - 330, 70, close)); } },
+        { label: '그만두기', color: '#8faabf', run: () => this.closeMenu() },
+      ], () => this.closeMenu());
+      return;
+    }
+    if (id === 'calendar') { this.openPopup((close) => new CalendarPanel(this, GAME_WIDTH / 2 - 320, 80, close)); return; }
+    this.openPopup((close) => new FishRecordPanel(this, GAME_WIDTH / 2 - 280, 70, close));
+  }
+
+  /** 어류 도감 — 필드의 N과 같은 도감 씬을 띄운다(닫으면 이 방으로 돌아온다) */
+  private openCodex(): void {
+    this.closeMenu();
+    this.scene.pause();
+    this.scene.launch('AnglerLogScene', { returnScene: 'HomeInteriorScene' });
+  }
+
   // ── 화분 (189차) ─────────────────────────────────────
 
   private waterPlant(f: FurnInstance): void {
-    const wasDry = HomeStore.plantDry();
-    HomeStore.waterPlant();
+    const wasDry = HomeStore.plantDry(f.id);
+    HomeStore.waterPlant(f.id);
     GameState.markDirty();
     this.buildFurniture(null);
     // 물방울 몇 점 — 화분 위에서 떨어진다

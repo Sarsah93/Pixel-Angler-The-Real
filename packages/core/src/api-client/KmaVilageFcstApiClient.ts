@@ -104,6 +104,22 @@ export interface KmaWeatherInfo {
   popPct?: number;
   /** 파고 (m) — 단기예보만. 해양기상 API엔 없는 값이라 여기서만 얻을 수 있다 */
   waveHeightM?: number;
+  /** 내일 하루 요약 (190차 — 집 라디오 「내일 날씨」). 단기예보가 내일 슬롯을 주지 않으면 없다 */
+  tomorrow?: KmaDailyOutlook;
+}
+
+/** 하루 예보 요약 (190차) — 단기예보 슬롯들을 하루 단위로 접은 것 */
+export interface KmaDailyOutlook {
+  /** 예보 일자 YYYYMMDD */
+  date: string;
+  /** 낮 동안의 대표 날씨 (강수가 두 슬롯 이상이면 강수가 하늘상태보다 우선) */
+  kind: WeatherKind;
+  tempMinC?: number;
+  tempMaxC?: number;
+  /** 하루 중 가장 높은 강수확률 (%) */
+  popMaxPct?: number;
+  /** 하루 중 가장 높은 파고 (m) */
+  waveMaxM?: number;
 }
 
 /** 결측 판정 — +900 이상 / -900 이하는 Missing */
@@ -163,6 +179,41 @@ export const WEATHER_LABEL: Record<WeatherKind, string> = {
   shower: '소나기',
   fog: '안개',
 };
+
+/**
+ * 단기예보 슬롯 → 하루 요약 (190차). 해당 일자 슬롯이 없으면 undefined.
+ * 대표 날씨는 **낮(06~18시)** 슬롯으로 정한다 — 새벽 한 슬롯의 빗방울로 하루를 「비」라 부르지 않는다.
+ */
+export function summarizeDailyForecast(items: KmaFcstItem[], date: string): KmaDailyOutlook | undefined {
+  const day = items.filter((i) => i.fcstDate === date && i.fcstValue !== undefined);
+  if (!day.length) return undefined;
+  const daytime = (t?: string): boolean => !!t && t >= '0600' && t <= '1800';
+  const vals = (cat: string, onlyDay = false): number[] => day
+    .filter((i) => i.category === cat && (!onlyDay || daytime(i.fcstTime)))
+    .map((i) => num(i.fcstValue))
+    .filter((n): n is number => n !== undefined);
+  const mode = (arr: number[]): number | undefined => {
+    const cnt = new Map<number, number>();
+    for (const n of arr) cnt.set(n, (cnt.get(n) ?? 0) + 1);
+    let best: number | undefined, bc = 0;
+    for (const [n, c] of cnt) if (c > bc || (c === bc && best !== undefined && n > best)) { best = n; bc = c; }
+    return best;
+  };
+  const wet = vals('PTY', true).filter((p) => p > 0);
+  const pty = wet.length >= 2 ? mode(wet) as PtyCode : 0 as PtyCode;
+  const sky = mode(vals('SKY', true)) as SkyCode | undefined;
+  const tmp = vals('TMP');
+  const tmn = vals('TMN'), tmx = vals('TMX');
+  const pop = vals('POP'), wav = vals('WAV');
+  return {
+    date,
+    kind: resolveWeatherKind(sky, pty),
+    tempMinC: tmn.length ? tmn[0] : (tmp.length ? Math.min(...tmp) : undefined),
+    tempMaxC: tmx.length ? tmx[0] : (tmp.length ? Math.max(...tmp) : undefined),
+    popMaxPct: pop.length ? Math.max(...pop) : undefined,
+    waveMaxM: wav.length ? Math.max(...wav) : undefined,
+  };
+}
 
 /** YYYYMMDD */
 function ymd(d: Date): string {
@@ -305,6 +356,10 @@ export class KmaVilageFcstApiClient {
     }
 
     info.kind = resolveWeatherKind(info.sky, info.pty);
+    // 190차 — 내일 하루 요약 (집 라디오)
+    if (fcstR.status === 'fulfilled') {
+      info.tomorrow = summarizeDailyForecast(fcstR.value, ymd(new Date(now.getTime() + 24 * 3600 * 1000)));
+    }
     return info;
   }
 
@@ -338,6 +393,22 @@ export class KmaVilageFcstApiClient {
       rain1hMm: pty === 0 ? 0 : r(50) / 10,
       popPct: r(100),
       waveHeightM: r(30) / 10,
+      tomorrow: this.mockOutlook(grid, new Date(now.getTime() + 24 * 3600 * 1000)),
+    };
+  }
+
+  /** 결정적 Mock 하루 요약 (190차) — 그날 날짜 시드라 오늘 본 「내일」과 내일 본 「오늘」의 계열이 같다 */
+  private mockOutlook(grid: KmaGrid, day: Date): KmaDailyOutlook {
+    let h = (day.getFullYear() * 10000 + (day.getMonth() + 1) * 100 + day.getDate()) >>> 0;
+    h = (h * 31 + grid.nx * 397 + grid.ny) >>> 0;
+    const r = (n: number) => ((h = (h * 1664525 + 1013904223) >>> 0) % n);
+    const sky = ([1, 3, 4] as SkyCode[])[r(3)];
+    const pty = (r(10) < 7 ? 0 : ([1, 2, 3, 4] as PtyCode[])[r(4)]) as PtyCode;
+    const lo = 3 + r(200) / 10;
+    return {
+      date: ymd(day), kind: resolveWeatherKind(sky, pty),
+      tempMinC: Math.round(lo), tempMaxC: Math.round(lo + 4 + r(60) / 10),
+      popMaxPct: pty === 0 ? r(40) : 60 + r(40), waveMaxM: (5 + r(25)) / 10,
     };
   }
 }

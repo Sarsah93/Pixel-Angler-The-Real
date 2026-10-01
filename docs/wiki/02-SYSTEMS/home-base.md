@@ -14,9 +14,10 @@
 |---|---|---|
 | core | `types/HomeBase.ts` | MapObject 인스턴스 스키마 · `WorldObjectState`(removed/moved/placed) · `canPlaceAt` 칸 판정 · `PLACEMENT_DEFS` · `HouseTier` · `computeTravelFare` · `HOMETOWN_OBJECTS`(초기 19개) |
 | client | `RegionFieldScene`(hometown) | 오브젝트 렌더·충돌 반영·[E] 상호작용·**설치 모드**(그리드·프리뷰·회수) |
-| client | `HomeInteriorScene` | Tier 0 원룸 — 침대(저장)·냉장고·주방·앉기(소파·의자)·보관함·화분 · 현관 매트 출구 |
-| client | `data/HomeFurniture.ts` | 가구 13종 정의(크기·회전·[F] 행동) · 기본 배치 · 방향별 그림 · 앉는 자리 (189) |
-| client | `HomeStore` · `HomeDecorMode` · `HomeStoragePanel` | 가구 배치(놓인/넣어 둔) · BFS 길 판정 · 옷장 20 / 수납 선반 15 · 화분 물 시각 — SaveData `home` (189) |
+| client | `HomeInteriorScene` | Tier 0 원룸 — 침대(저장)·냉장고·주방·앉기(소파·의자)·보관함·화분 · 현관 매트 출구 · 스탠드·라디오·수조·고양이·벽 장식 [F] (190) |
+| client | `data/HomeFurniture.ts` | 가구 15종 정의(크기·회전·[F] 행동 — 190 라디오·관상 수조) · 기본 배치 · 방향별 그림 · 앉는 자리 · 벽 장식 3종 위치 |
+| client | `HomeStore` · `HomeDecorMode` · `HomeStoragePanel` | 가구 배치(놓인/넣어 둔 — 종류별 묶음) · BFS 길 판정(벽 장식 앞 포함) · 옷장 20 / 수납 선반 15 · 화분·스탠드 개체별 · 고양이 · 수조 — SaveData `home` (189·190) |
+| client | `HomeAmbience` · `HomeCat` · `HomeInfoPanels` · `AquariumPanel` · `data/RadioBroadcast.ts` | 창·조명(시각·날씨) · 고양이 · 물때표/달력/어탁 창 · 관상 수조 창 · 라디오 원고 (190) |
 | client | `FridgeStore` · `FridgePanel` | 냉동 8 / 냉장 16 |
 
 ## 3. 동작 구조
@@ -40,10 +41,14 @@
 | 홈타운 어획 규제(볼락류 6종) · 랜덤 날씨/물살 | ✅ | 46 |
 | **홈타운·실내 에셋 현대화** — 필드: 2px 그레인 통일 · 경계 알갱이 전이 · 기와/용마루/처마 그늘 · 오브젝트 텍스처 도트 재작성 / 실내: 널마루(결)·징두리·창광·벽시계·책선반 + 가구 10종 도트 · **개발 구역 라벨 삭제**(§8-9) | ✅ | **173** |
 | **하우스 Tier 1~3**(평수·주방·지하·2층) | ⬜ | 스키마만 |
-| **수조 2종**(활어 상업용 / 관상) | ⬜ | 스키마·상태 골격 완비, 패널 미구현 |
+| 관상 수조(실내 가구 — 활어 4마리 · 45cm · 상하지 않음) | ✅ | **190** |
+| 활어 상업용 수조(실외 설치물) | ⬜ | 스키마·상태 골격만 |
 | 텃밭 농사 · 벌목 · 채굴 · 보트 | ⬜ | 상호작용 스텁("추후") |
 | 실내 가구 배치 모드 — 들기·돌리기(소파·의자)·넣어 두기·꺼내기 · 길 판정 · 첫 진입 가이드 | ✅ | **189** |
 | 실내 상호작용 — [F]는 기능 있는 가구만(살펴보기 폐지) · 앉기/소파 휴식 · 옷장(장비)·선반 · 물뿌리개 물 주기 · 현관 매트 출구 · 벽시계 실시각 | ✅ | **189** |
+| 집 살림 — 창·조명(시각·날씨 · 스탠드) · 라디오 물때 방송(오늘·내일 + 예보) · 식탁 식사 +25% · 고양이 · 벽 장식(도감·물때표·달력·어탁) | ✅ | **190** |
+| 생활용품점 가구 8종 → 「넣어 둔 가구」 배달 | ✅ | **190** |
+| 옷장·수납 선반 판매(보관함 개체별 분리) · 가구 제작 | ⬜ | 집 꾸미기 착수 때 |
 | 주방 ↔ CookScene/도마 연결 | ⬜ | 불요리 선행 |
 
 ## 5. 잔여·차기 — 농장 경영 로드맵 (E1~E5, 099 조사 기반)
@@ -56,7 +61,8 @@
 압축 달력을 새로 만들지 말고 **쿨러·냉장고의 "오프라인 경과" 패턴 재사용**
 (작물 = `plantedAt` 절대 시각 기준 lazy 성장, 계절 = 실제 월) — 정체성 일치·재작업 최소.
 
-- **E2 수조 (먼저 — 소~중)**: `AquariumState` 실타입화(InvItem[]) + 세이브 직렬화 +
+- **E2 수조 (먼저 — 소~중)**: 190차에 **관상 수조는 실내 가구로 먼저 열었다**(`HomeStore.tanks`). 남은 것은 상업용 활어 수조 —
+  `AquariumState` 실타입화(InvItem[]) + 세이브 직렬화 +
   `freshnessMult`(0.1) 소비(활어 신선도 정지 = 경제 직결) + 패널 UI(쿨러 패널 재사용) +
   실내(interior) 배치 개방(현재 exterior만 — `aquarium_display`는 설치 불가 상태).
 
@@ -86,3 +92,8 @@
    내 칸과 기능 있는 가구 앞자리가 닿을 것**. 침대(`storable:false`)는 넣어 둘 수 없다.
 8. 앉은 자세 = `image.setCrop`으로 다리를 자른다. 프레임이 바뀌면 자르기가 풀릴 수 있어 앉아 있는 동안 매 프레임 `applySeatPose`로 다시 건다.
    등받이가 앞에 오는 자리(`behind`)는 가구 depth보다 아래로.
+9. **집 실내의 창·어둠은 실시각(KST)·홈타운 날씨를 따른다**(190) — 실내를 찍는 촬영·하네스는 `ambience.force = { phase, weather }`로
+   고정할 것(`capture_help_images.cjs`의 `calmHome`). 고정하지 않으면 밤에 찍은 도움말 그림이 어둡다.
+10. 씬 메서드 이름으로 `lights`를 쓰지 말 것 — Phaser `Scene.lights`(LightsManager)와 충돌해 `this`가 `Scene`에 대입되지 않는다(190 — `litSources`).
+11. 화분·스탠드·수조 상태는 **가구 개체 id** 기준(190 — 상점에서 같은 가구를 여럿 산다). 옷장·수납 선반만 아직 한 벌(`wardrobe`/`shelf` 키)이라
+    상점에서 팔지 않는다. 산 가구 id = `<kind>_b<n>`(`HomeStore.addStored`).

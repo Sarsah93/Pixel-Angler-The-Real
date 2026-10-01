@@ -121,10 +121,28 @@ async function scanResidue(page, key) {
   }
 }
 
+/**
+ * 190차 — 집 실내 촬영 고정: 창·조명은 실시각·날씨를 따르므로(밤에 찍으면 방이 어둡다) 시간대를 고정하고,
+ * 돌아다니는 고양이는 러그 위에서 자게 둔다(콜아웃을 가리지 않게).
+ */
+async function calmHome(page, phase = 'day') {
+  await page.evaluate((phase) => {
+    const hi = globalThis.__PIXEL_ANGLER_GAME.scene.getScene('HomeInteriorScene');
+    if (hi.ambience) { hi.ambience.force = { phase, weather: 'clear' }; hi.ambience.refresh(); }
+    const rug = globalThis.__HOME.placed.find((f) => f.kind === 'rug');
+    if (hi.cat && rug) {
+      const IT = 48, OX = (1280 - 12 * IT) / 2, OY = (720 - 10 * IT) / 2 + 10;
+      hi.cat.x = OX + (rug.tx + 1.5) * IT; hi.cat.y = OY + (rug.ty + 1) * IT + 10;
+      hi.cat.state = 'sleep'; hi.cat.timer = 1e9; globalThis.__HOME.cat.fedMs = Date.now(); hi.cat.update(0);
+    }
+  }, phase);
+}
+
 /** 188차 — 창 첫 열기 체험 가이드 id 전부 (`tour.<id>` 플래그 — 켜 두면 말풍선이 뜨지 않는다) */
 const TOUR_IDS = ['inventory', 'equipment', 'status', 'journal', 'license', 'fullmap', 'skill', 'shop', 'trade',
   'utilization', 'cooler', 'cooking', 'codex', 'butchery', 'worldmap', 'home_first_steps',
-  'home_fridge', 'home_wardrobe', 'home_shelf', 'home_decorate'];
+  'home_fridge', 'home_wardrobe', 'home_shelf', 'home_decorate',
+  'home_aquarium', 'home_tide_table', 'home_calendar', 'home_fishprint'];
 /** 188차 — 프롤로그(M1-01 앞 14목표) 행동 플래그 */
 const PROLOGUE_KEYS = ['box', 'rod', 'reel', 'photo', 'journal', 'squid', 'save', 'leave', 'well', 'status', 'map', 'arrive', 'buy', 'sell'];
 const PROLOGUE_BUY = ['line', 'hook', 'sinker', 'float', 'bait'];
@@ -259,7 +277,7 @@ group('menu', ['char_create'], async (page) => {
 });
 
 // ── 홈타운 · 집 실내 ──
-group('hometown', ['hometown', 'home_interior', 'home_decor'], async (page) => {
+group('hometown', ['hometown', 'home_interior', 'home_decor', 'home_life'], async (page) => {
   await newGameHometown(page);
   await refreshGuide(page);
   if (want('hometown')) await shot(page, 'hometown');
@@ -267,6 +285,7 @@ group('hometown', ['hometown', 'home_interior', 'home_decor'], async (page) => {
   await page.evaluate(() => globalThis.__PIXEL_ANGLER_GAME.scene.getScene('RegionFieldScene').enterHomeInterior());
   await waitScene(page, 'HomeInteriorScene');
   await page.waitForTimeout(2600);
+  await calmHome(page, 'day');
   // 침대 앞으로 옮겨 [F] 힌트를 띄운 뒤 침대 메뉴를 연다
   await page.evaluate(() => {
     const hi = globalThis.__PIXEL_ANGLER_GAME.scene.getScene('HomeInteriorScene');
@@ -293,6 +312,28 @@ group('hometown', ['hometown', 'home_interior', 'home_decor'], async (page) => {
   });
   await page.waitForTimeout(500);
   await shot(page, 'home_decor');
+  if (!want('home_life')) return;
+  // 190차 — 집 살림: 밤 · 스탠드 켬 · 라디오 · 러그 위 고양이 · 관상 수조(고기 둘) · 벽 장식(어탁에 감성돔)
+  await page.evaluate(() => {
+    const hi = globalThis.__PIXEL_ANGLER_GAME.scene.getScene('HomeInteriorScene');
+    const IT = 48, OX = (1280 - 12 * IT) / 2, OY = (720 - 10 * IT) / 2 + 10;
+    hi.decor?.exit();
+    const H = globalThis.__HOME;
+    // 189차 촬영이 옮겨 둔 가구를 기본 자리로 돌린다
+    H.deserialize({ ...H.serialize(), placed: undefined, stored: [] });
+    const id = H.addStored('aquarium');
+    H.place({ id, kind: 'aquarium', tx: 8, ty: 7, dir: 'down' });
+    H.addToTank(id, { speciesId: 'black_seabream', nameKo: '감성돔', lengthCm: 30, weightG: 500, sex: 'M', iconTexture: 'fish_black_sea_bream' });
+    H.addToTank(id, { speciesId: 'largescale_blackfish', nameKo: '벵에돔', lengthCm: 26, weightG: 400, sex: 'M' });
+    H.lampOn.stand = true;
+    globalThis.__GS.addCaughtFish('black_seabream', '감성돔', 47, 1650, 'rod');
+    hi.drawFishPrintInk();
+    hi.buildFurniture(null);
+    hi.px = OX + 6.2 * IT; hi.py = OY + 8.6 * IT; hi.facing = 'up'; hi.update(0, 16);
+  });
+  await calmHome(page, 'night');
+  await page.waitForTimeout(600);
+  await shot(page, 'home_life');
 });
 
 // ── 188차 프롤로그: 새 게임 = 집 안 침대 옆에서 눈을 뜬다 (혼잣말 뒤 첫 걸음 가이드 · 「지금 할 일」 띠) ──
@@ -307,6 +348,7 @@ group('prologue', ['prologue'], async (page) => {
   });
   await waitScene(page, 'HomeInteriorScene');
   await page.waitForTimeout(2500);
+  await calmHome(page, 'day');
   // 기상 혼잣말은 time.delayedCall(320)로 열린다 — 헤드리스는 타이머가 돌지 않으므로 직접 열고 바로 닫아
   // 첫 걸음 가이드로 넘긴다. 가이드는 「낚시 상자를 열어 보자」 단계(5/5)로 건너뛴다.
   await page.evaluate(() => {
@@ -733,6 +775,7 @@ group('home2', ['interact_choice', 'workbench', 'cook_panel'], async (page) => {
     await page.evaluate(() => globalThis.__PIXEL_ANGLER_GAME.scene.getScene('RegionFieldScene').enterHomeInterior());
     await waitScene(page, 'HomeInteriorScene');
     await page.waitForTimeout(2400);
+    await calmHome(page, 'day');
     await page.evaluate(() => {
       const C = globalThis.__COOK, inv = globalThis.__INV;
       inv.devGrantFish('black_seabream');

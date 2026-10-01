@@ -299,7 +299,8 @@ export class HomeDecorMode {
     this.trayBody.add(scene.add.text(14, 12, '넣어 둔 가구', {
       fontFamily: FONT, fontSize: '14px', color: '#ffd9a0', fontStyle: 'bold',
     }));
-    const list = HomeStore.stored;
+    // 190차 — 상점에서 같은 가구를 여럿 살 수 있어 칸 하나 = 종류 하나(개수 표시)로 묶는다
+    const list = HomeStore.storedGroups();
     const x0 = (TRAY_W - (TRAY_COLS * SLOT_W + (TRAY_COLS - 1) * SLOT_GAP)) / 2;
     const rows = 5;
     for (let i = 0; i < TRAY_COLS * rows; i++) {
@@ -309,8 +310,9 @@ export class HomeDecorMode {
       box.fillStyle(0x0e1c2d, 0.92); box.fillRoundedRect(sx, sy, SLOT_W, SLOT_H, 5);
       box.lineStyle(1.2, 0x1f3d5a, 0.8); box.strokeRoundedRect(sx, sy, SLOT_W, SLOT_H, 5);
       this.trayBody.add(box);
-      const f = list[i];
-      if (!f) continue;
+      const grp = list[i];
+      if (!grp) continue;
+      const f = grp.items[0]!;
       const { w, h } = footprint(f.kind, f.dir);
       const art = scene.add.graphics();
       drawFurnitureArt(art, f.kind, f.dir, this.host.artState());
@@ -322,6 +324,11 @@ export class HomeDecorMode {
       const hit = scene.add.rectangle(sx, sy, SLOT_W, SLOT_H, 0xffffff, 0.001).setOrigin(0, 0).setInteractive({ useHandCursor: true });
       hit.on('pointerdown', () => this.takeFromTray(f));
       this.trayBody.add([art, label, hit]);
+      if (grp.items.length > 1) {
+        this.trayBody.add(scene.add.text(sx + SLOT_W - 5, sy + 4, `x${grp.items.length}`, {
+          fontFamily: FONT, fontSize: '11px', color: '#ffe9b0', fontStyle: 'bold',
+        }).setOrigin(1, 0));
+      }
     }
     // 들고 있는 가구를 받는 판 (칸 사이 빈 곳을 눌러도 넣어 둔다)
     const drop = scene.add.rectangle(0, 0, TRAY_W, this.trayH() - 56, 0xffffff, 0.001).setOrigin(0, 0).setInteractive();

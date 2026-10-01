@@ -48,6 +48,22 @@ export const EN_HELP: Record<string, string> = {
   '선착장 · 나무 · 바위 · 갯바위는 아직 쓸 수 없습니다(보트 · 벌목 · 채굴 · 채집 예정). 홈타운 바다에서도 낚시는 되지만 볼락류와 보리멸 정도만 나옵니다.': 'The dock, trees, boulders and shore rocks cannot be used yet (boats · logging · mining · gathering are planned). You can fish in the Hometown sea too, but you will mostly get rockfishes and Japanese whiting.',
   '인벤토리 우클릭 [설치하기]로 텃밭 키트 · 울타리 · 활어 수조 · 고급 제작대를 홈타운 바깥 땅에 놓을 수 있습니다. 초록 칸에 클릭해 놓고, 우클릭이나 ESC로 그만둡니다. 지금 기능이 있는 설치물은 고급 제작대뿐입니다(텃밭은 아직 자라지 않고 수조는 열리지 않습니다). 거둘 때는 Shift+F(울타리는 F).': 'With inventory right-click [Place] you can put a Garden Plot Kit · Fence · Live Fish Tank · Advanced Workbench on outdoor ground in the Hometown. Click a green tile to place it; right-click or ESC to stop. Right now only the Advanced Workbench actually does something (the garden does not grow yet and the tank does not open). To pick one back up, press Shift+F (F for a fence).',
   '집': 'Home',
+  '집 살림 — 불빛 · 라디오 · 고양이 · 수조': 'Home life — lights · radio · cat · aquarium',
+  '① 스탠드 불빛 ② 창 — 시각 · 날씨 ③ 라디오 ④ 고양이 ⑤ 관상 수조 ⑥ 벽 장식(책 · 달력 · 어탁)': '① Lamp light ② Window — time · weather ③ Radio ④ Cat ⑤ Aquarium ⑥ Wall decor (books · calendar · fish print)',
+  '창밖은 실제 시각과 홈타운 날씨를 따라 바뀝니다 — 낮 · 노을 · 밤, 비 · 눈 · 안개. 해가 지면 방이 어두워지니 협탁 앞에서 [F]로 스탠드를 켜고 끕니다. 관상 수조도 은은하게 빛납니다.':
+    'The view outside follows the real time and the hometown weather — day, sunset, night; rain, snow, fog. After sundown the room gets dark, so turn the lamp on and off with [F] at the nightstand. The aquarium glows softly too.',
+  '라디오 [F](소파에 앉아 「라디오 듣기」로도): 오늘 · 내일 물때와 만조 · 간조 시각, 속초 · 부산 앞바다의 지금 날씨와 내일 예보를 들려 줍니다.':
+    "Radio [F] (or \"Listen to the radio\" from the sofa): today's and tomorrow's tides with high and low water times, plus current weather and tomorrow's forecast off Sokcho and Busan.",
+  '식탁을 바라보는 의자에 앉으면 「식사하기」가 뜹니다. 앉은 채로 먹으면 허기가 25% 더 찹니다.':
+    'Sit on a chair facing the table and "Have a meal" appears. Eating while seated fills Hunger 25% more.',
+  '고양이 [F]: 쓰다듬기(30분에 한 번 피로가 조금 풀립니다) · 밥 주기(가방의 손질 부산물 하나 — 배가 부르면 먹지 않습니다). 오래 굶으면 곁에 와서 울고, 정이 들면 소파에 앉을 때 곁으로 옵니다.':
+    "Cat [F]: Pet (eases a little fatigue, once every 30 minutes) · Feed (one butchering trimming from your bag — it won't eat when full). A hungry cat comes and meows at you; a cat that's grown fond of you joins you on the sofa.",
+  '벽 장식은 바로 아래에서 [F]: 책(어류 도감 · 이레 치 물때표) · 달력(이번 달과 다가오는 납부일) · 어탁(가장 큰 고기와 어종별 최대어).':
+    "Wall decor — press [F] right below: books (fish guide · a week's tide table) · calendar (this month and upcoming payments) · fish print (your biggest fish and the biggest of each species).",
+  '관상 수조 [F]: 살아 있는(활어) 고기를 45cm까지 4마리 넣어 둡니다. 수조 안에서는 상하지 않고, 꺼내면 활어로 가방에 들어옵니다. 갓 낚은 고기나 해수 쿨러로 살려 온 고기만 넣을 수 있습니다.':
+    'Aquarium [F]: keep up to 4 live fish, 45 cm or smaller. They never spoil in the tank and come back to your bag alive. Only fresh catches or fish kept alive in a seawater cooler can go in.',
+  '생활용품점 사이소에서 의자 · 식탁 · 소파 · 러그 · 화분 · 협탁 스탠드 · 라디오 · 관상 수조를 팝니다. 산 가구는 집 「넣어 둔 가구」로 배달되고, [가구 배치]에서 꺼내 놓습니다.':
+    'Saiso, the household goods store, sells chairs, a table, a sofa, rugs, plants, a nightstand lamp, a radio and an aquarium. Furniture is delivered to Stored furniture at home — place it from [Arrange].',
   '① 침대 메뉴(저장하고 쉬기 / 그냥 쉬기 / 그만두기) ② 침대 ③ 냉장고 ④ 개수대 · 가스레인지 ⑤ 현관 매트 ⑥ 가구 배치': '① Bed menu (Save & rest / Just rest / Never mind) ② Bed ③ Fridge ④ Sink · gas stove ⑤ Doormat ⑥ Arrange',
   '새 게임은 이 방 침대 옆에서 시작합니다(새 게임 › 떠나는 날 아침). 처음 들어오면 가구를 하나씩 짚으며 혼잣말로 소개하고, 그 뒤로는 쓸 수 있는 가구 앞에 섰을 때만 머리 위에 [F]가 뜹니다. 침대 발치의 낚시 상자는 처음 한 번 대 · 릴 · 가족사진을 꺼내 줍니다.': 'A new game starts beside the bed in this room (New Game › The morning you leave). On your first visit you are walked around the furniture one piece at a time; after that, [F] appears over your head only by furniture you can use. The tackle box at the foot of the bed gives you the rod, reel and family photo once.',
   '침대 [F]: 「저장하고 쉬기」 / 「그냥 쉬기」 / 「그만두기」. 어느 쪽이든 피로가 0이 되고 체력이 최대치의 절반만큼 차며 허기 · 수분이 10씩 줍니다. 감기 · 탈진 같은 휴식 계열 상태이상과 오한이 낫고(그 뒤 활동 1시간 동안은 오한이 들지 않습니다), 이야기 날짜가 하루 넘어갑니다. 「저장하고 쉬기」는 여기에 더해 슬롯에 기록합니다.': 'Bed [F]: "Save & rest" / "Just rest" / "Never mind". Either way your Fatigue drops to 0, you regain half your max HP, and Hunger and Water each drop by 10. Rest-type status effects such as a cold or exhaustion clear up, and so do the chills (you will not catch them again for the next hour of activity); the story date moves on by one day. "Save & rest" also writes to your slot.',

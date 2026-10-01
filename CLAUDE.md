@@ -45,6 +45,9 @@
   맵 확정(육안)·OSM land 14개·조도 재설계·외옹치/대포항 bbox 확장은 사용자 동반 병행 트랙.
 - **재개 지점**: 사용자 실검증(172·173차 타일 조화 규칙 + 178·183~186차 신설분) — 부족하면 규칙 보강,
   괜찮으면 규칙을 켠 채로 새 맵 확장. 차수별 잔여는 PLAN §2-3.
+- **190차**: 집 살림 — 창·조명 = 실시각·날씨(`ui/HomeAmbience.ts` · 스탠드 [F]) · 라디오 물때 방송(오늘·내일 + 예보) ·
+  식탁 「식사하기」 허기 +25% · 고양이(`ui/HomeCat.ts`) · 벽 장식(도감·물때표·달력·어탁) · 사이소 가구 8종 → 넣어 둔 가구 · 관상 수조.
+  ⚠ 집을 찍는 하네스·촬영은 `ambience.force`로 시간대 고정(`calmHome`). 상세 `docs/wiki/03-WORKLOG/2026-10-01-190-home-life.md`.
 - **189차**: 집 실내 정리 — 「살펴보기」 폐지([F]는 기능 있는 가구만) · **가구 배치 모드**(`ui/HomeDecorMode.ts` · 배치 = SaveData `home`) ·
   소파 4방향 그림 + 앉기·휴식 확장 패널 · 의자 · 옷장(장비)/수납 선반 · 물뿌리개 물 주기 · 문 → 현관 매트(아래로 걸어 나가면 밖).
   상세 `docs/wiki/03-WORKLOG/2026-10-01-189-home-interior-furniture.md`.
@@ -53,10 +56,6 @@
   직판장 기본 채비 구매·판매) · 스킬 창 아이콘·호버 · 슬롯 이름 약어 · 격자 제거 · AG 백로그 일괄 · 도움말 40장 재촬영.
   ⚠ 하네스는 새 게임 뒤 `__INV.resetAllDevSeed()` + `intro.*`·`tour.*`·`prologue.*` 플래그(`capture_help_images.cjs` `applyStartKit`).
   상세 `docs/wiki/03-WORKLOG/2026-10-01-188-guided-tours-prologue.md`.
-- **187차**: 도움말 라이브러리 전면 개정 — 14카테고리 76토픽 · 「홈타운 및 저장하기」 · 실캡처 38장 × ko/en 재촬영
-  (하네스 `tools/capture_help_images.cjs` · 번호 콜아웃 = 캡션 ①②③) · ⚠ 속초 이탈 크래시(고가 그룹 파괴 순서) ·
-  영어 대화 대사 미번역 등 감사·재촬영 중 버그 15곳 수정.
-  상세 `docs/wiki/03-WORKLOG/2026-09-30-187-help-library-overhaul.md`.
 - **상시 방침**:
   - 지형 고도(DEM)는 **낚시 확립 후** — B(해안 변형) 우선, 경사로 통행을 막지 않는다
     (`docs/archive/specs/RASTER_UPLIFT_AMENDMENT.md` §4).
@@ -112,7 +111,7 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
 
 - 지역 타일맵 추가/재생성 → **스킬 `add-region`** (`py tools/build_region_maps.py <region>` — 파이프라인·타일 문자·맵 그래프·함정 일체).
 - 차기 과제: 낚시점 전용 상점(루어 판매), 어탐 레이더(SeabedProfile 조회), 타 지역(여수 등) 확장, POI 세분화, 사운드 이펙트 (IMPLEMENTATION_PLAN §6-5l 차기 참고).
-- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages — **최근 24차 배포 2026-10-01 = 188차까지 포함**. 재배포 절차는 **스킬 `deploy-ghpages`**).
+- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages — **최근 25차 배포 2026-10-01 = 189차까지 포함**. 재배포 절차는 **스킬 `deploy-ghpages`**).
   ⚠ **원격 컨테이너에서는 dev 서버(5173)가 사용자 브라우저에 닿지 않는다** — 실플레이 테스트 요청은 이 배포로 답한다.
 
 ## 작업 이어받기 절차

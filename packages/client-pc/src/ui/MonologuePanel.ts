@@ -55,12 +55,16 @@ export class MonologuePanel extends DraggablePanel {
   private readonly postUpdate: () => void;
   private readonly keyHandler: (ev: KeyboardEvent) => void;
 
-  constructor(scene: Phaser.Scene, paras: string[], onDone: () => void, title = '혼잣말') {
+  /** 190차 — 초상·이름을 바꿔 쓴다(집 라디오 방송 = 라디오 그림 + 「라디오」). 없으면 주인공 얼굴·이름 */
+  private readonly voice?: { portraitKey: string; name: string };
+
+  constructor(scene: Phaser.Scene, paras: string[], onDone: () => void, title = '혼잣말', voice?: { portraitKey: string; name: string }) {
     super(scene, {
       x: (GAME_WIDTH - W) / 2, y: GAME_HEIGHT - H - 24,
       width: W, height: H, title, onClose: onDone, dim: true, depth: 942, hideClose: true,
     });
     this.onDone = onDone;
+    this.voice = voice;
     // 188차 — 단락을 **먼저 번역**해서 타이핑한다(구: 한국어 원문을 한 글자씩 치다가 다 쳐야 영어로 바뀌었다 —
     //   부분 문자열은 사전에 없어서 영어 화면에 한국어가 흘러나왔다)
     this.queue = paras.filter((p) => p.trim().length > 0).map((p) => t(p));
@@ -127,12 +131,17 @@ export class MonologuePanel extends DraggablePanel {
     g.fillStyle(0x12263a, 1); g.fillRoundedRect(frameX, top, PORTRAIT_FRAME_W, PORTRAIT_FRAME_H, PORTRAIT_LAYOUT.frameRadius);
     g.lineStyle(2, 0x6b9fbc, 0.95); g.strokeRoundedRect(frameX, top, PORTRAIT_FRAME_W, PORTRAIT_FRAME_H, PORTRAIT_LAYOUT.frameRadius);
     c.add(g);
-    const key = ensureFacePortrait(this.scene, characterLook(), FACE_SCALE);
+    const key = this.voice?.portraitKey ?? ensureFacePortrait(this.scene, characterLook(), FACE_SCALE);
     // 32×32 초상 전체(얼굴·목·어깨)를 프레임 안에 넣고 상하 여백을 확보한다.
     const imageSize = Math.min(FACE_PX, PORTRAIT_FRAME_H - 16);
     const imageTop = top + Math.floor((PORTRAIT_FRAME_H - imageSize) / 2);
     const portrait = this.scene.add.image(PORTRAIT_W / 2, imageTop, key)
       .setOrigin(0.5, 0).setDisplaySize(imageSize, imageSize);
+    if (this.voice) {   // 사람 얼굴이 아닌 초상(가구 그림 등)은 비율을 지켜 가운데에
+      const src = this.scene.textures.get(key).getSourceImage() as HTMLImageElement;
+      const sc = (imageSize * 0.8) / Math.max(src.width, src.height);
+      portrait.setOrigin(0.5).setDisplaySize(src.width * sc, src.height * sc).setY(top + PORTRAIT_FRAME_H / 2);
+    }
     this.portraitMask = applyPortraitMask(this.scene, c, portrait, {
       x: frameX + 3,
       y: top + 3,
@@ -148,7 +157,7 @@ export class MonologuePanel extends DraggablePanel {
     const nameW = PORTRAIT_FRAME_W - 8;
     g.fillStyle(0x08121c, 0.96); g.fillRoundedRect(nameX, nameY, nameW, nameH, 5);
     g.lineStyle(1, 0x356b8f, 0.9); g.strokeRoundedRect(nameX, nameY, nameW, nameH, 5);
-    const nm = this.scene.add.text(PORTRAIT_W / 2, nameY + nameH / 2, GameState.player.nickname || '나', {
+    const nm = this.scene.add.text(PORTRAIT_W / 2, nameY + nameH / 2, this.voice?.name ?? (GameState.player.nickname || '나'), {
       fontFamily: FONT, fontSize: '12px', color: '#ffe9a0', fontStyle: 'bold',
     }).setOrigin(0.5);
     c.add(nm);

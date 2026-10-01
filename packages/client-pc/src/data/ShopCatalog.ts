@@ -12,6 +12,7 @@ import type { InvCategory, InvItemTemplate } from '../store/InventoryStore.js';
 import { COOK_CORNER } from './CookItems.js';
 import { WEIGHT_SINKER_DB, TRAP_DATABASE, getLureSpec } from '@tra/core';
 import { applyItemVitals } from './ItemVitals.js';
+import type { FurnKind } from './HomeFurniture.js';
 
 /** 건물(상점) 종류 */
 export type BuildingKind =
@@ -42,6 +43,11 @@ export interface ShopEntry extends InvItemTemplate {
    * 구매 목록에 나타나지 않는다. 이야기가 여는 "구매 해금".
    */
   unlockKey?: string;
+  /**
+   * 집 가구 (190차) — 있으면 가방이 아니라 집 「넣어 둔 가구」로 배달된다(`HomeStore.addStored`).
+   * 아이콘은 가구 그림을 구운 텍스처 `furn_<kind>`(`ensureFurnitureIcon` — BootScene에서 굽는다).
+   */
+  furnKind?: FurnKind;
   /** 1회 구매 최대 수량 (1이면 단건 확인만) */
   maxPerPurchase: number;
   desc: string;
@@ -69,6 +75,28 @@ export interface ShopDef {
  * 시드(`createSeedItems`)와 **같은 id·이름 규칙**을 써서, 이미 가진 루어면 수량만 늘어난다.
  * 아이콘은 이모지가 아니라 텍스처 키로만 둔다(§4 — 새 아이템은 이모지 없이).
  */
+/**
+ * 생활용품점 가구 (190차 — 사용자 지시 「생활용품점 가구 판매 → 넣어 둔 가구 칸으로 들어오기」).
+ * 옷장·수납 선반은 보관함이 한 벌씩이라 팔지 않는다(여럿 두면 어느 칸이 어느 것인지 갈린다 — 잔여 과제).
+ */
+const FURN_DESC = '집으로 배달되어 「넣어 둔 가구」 칸에 들어간다.';
+function furnEntry(kind: FurnKind, name: string, price: number, max: number, desc: string): ShopEntry {
+  return {
+    id: `furn_${kind}`, name, icon: '', iconTexture: `furn_${kind}`, category: 'etc', subCategory: '가구',
+    basePrice: price, price, maxPerPurchase: max, equippable: false, furnKind: kind, desc: `${desc} ${FURN_DESC}`,
+  };
+}
+export const FURNITURE_SALES: ShopEntry[] = [
+  furnEntry('chair', '나무 의자', 15000, 4, '식탁 앞에 두고 앉으면 밥이 더 든든하다.'),
+  furnEntry('island', '2인용 식탁', 60000, 1, '둘이 앉으면 딱 맞는 원목 식탁.'),
+  furnEntry('sofa', '2인용 소파', 120000, 1, '앉아서 잠깐 쉬어 갈 수 있다.'),
+  furnEntry('rug', '러그', 30000, 2, '볕 드는 자리에 깔면 고양이가 좋아한다.'),
+  furnEntry('plant', '화분', 12000, 4, '물뿌리개로 물을 주며 키운다.'),
+  furnEntry('stand', '협탁 스탠드', 25000, 2, '밤에 켜 두면 방이 환해진다.'),
+  furnEntry('radio', '라디오', 35000, 1, '바다 날씨와 물때 방송이 나온다.'),
+  furnEntry('aquarium', '관상 수조', 180000, 1, '살아 있는 고기를 넣어 두고 본다.'),
+];
+
 const LURE_KIND_TEXTURE: Record<string, string> = {
   worm_grub: 'item_soft_worm', soft_jerkbait: 'item_soft_worm', plug_minnow: 'item_minnow', metal_jig: 'item_metal_jig',
 };
@@ -315,6 +343,8 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
       { id: 'inv_watering_can', name: '물뿌리개', icon: '', iconTexture: 'px:it_watering_can', category: 'gear', subCategory: '손도구',
         basePrice: 6000, price: 6000, maxPerPurchase: 1, equippable: true, tool: 'watering_can',
         desc: '양철 물뿌리개. 손에 들고 화분 앞에 서면 물을 줄 수 있다.' },
+      // 190차 — 집 가구. 사면 집으로 배달되어 「넣어 둔 가구」 칸에 들어간다(가방을 차지하지 않는다)
+      ...FURNITURE_SALES,
       { id: 'inv_headlamp', name: '헤드랜턴 (800lm)', icon: '🔦', category: 'etc', subCategory: '해루질 도구',
         basePrice: 25000, price: 26000, maxPerPurchase: 1, equippable: false, lampLumens: 800,
         desc: '야간 채집 필수 — 루멘이 발견 반경. 100lm당 약 0.55타일.' },
