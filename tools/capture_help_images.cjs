@@ -12,6 +12,9 @@
  *  - 시각: KST 13시대(Date 시프트 · 낮 조명) · 브라우저 시간대 Asia/Seoul(채널 로그 시각도 KST)
  *  - 날씨: 홈타운 맑음(`rerollHometownWeather` 고정) · 속초는 KMA 없으면 기본 맑음
  *  - 새 게임 슬롯 3 · 오프닝 혼잣말/집 안내 생략 플래그 · 1인칭 첫 진입 가이드 생략
+ *  - 188차: 새 게임은 빈손 · 집 안 프롤로그로 시작한다 → `applyStartKit`이 dev 시드 지급품(`resetAllDevSeed`) ·
+ *    창 체험 가이드 플래그(`tour.*`) 전부 · 프롤로그 14목표 완료(단축키 개방)로 187차 무대를 재현한다.
+ *    가이드 자체를 보여 주는 두 장(prologue · guide_tour)만 가이드를 띄운다.
  *  - `[dev]` 채널 로그 제거(개발 빌드 전용 줄)
  *
  * 영문(`--lang en`)은 찍을 때마다 화면 Text의 한글 잔존을 훑어 `<out_dir>/_residue.json`에 모은다
@@ -118,18 +121,54 @@ async function scanResidue(page, key) {
   }
 }
 
-/** 새 게임 → 홈타운 (맑음 · 오프닝 생략) */
+/** 188차 — 창 첫 열기 체험 가이드 id 전부 (`tour.<id>` 플래그 — 켜 두면 말풍선이 뜨지 않는다) */
+const TOUR_IDS = ['inventory', 'equipment', 'status', 'journal', 'license', 'fullmap', 'skill', 'shop', 'trade',
+  'utilization', 'cooler', 'cooking', 'codex', 'butchery', 'worldmap', 'home_first_steps'];
+/** 188차 — 프롤로그(M1-01 앞 14목표) 행동 플래그 */
+const PROLOGUE_KEYS = ['box', 'rod', 'reel', 'photo', 'journal', 'squid', 'save', 'leave', 'well', 'status', 'map', 'arrive', 'buy', 'sell'];
+const PROLOGUE_BUY = ['line', 'hook', 'sinker', 'float', 'bait'];
+
+/**
+ * 188차 — 새 게임은 빈손 · 집 안 프롤로그로 시작한다. 촬영용 무대는 그 이전(187차)의 시작 상태로 맞춘다:
+ *  ① dev 시드 지급품(대·릴 착용 · 채비 · 소모품 일체 — `resetAllDevSeed`)
+ *  ② 오프닝 혼잣말 · 집 안내 · 창 체험 가이드 전부 본 것으로
+ *  ③ 프롤로그 14목표 완료 → 단축키가 모두 열린다(`prologueKeyAllowed`)
+ * ⚠ `import('/src/store/Prologue.ts')`로 `syncPrologue()`를 부르면 게임과 다른 모듈 인스턴스를 잡을 수 있다
+ *   (verify-render) — dev 전역 `__STORY.setObjectiveProgress`로 목표를 직접 채운다(대·릴 착용이 먼저).
+ */
+async function applyStartKit(page, { skipHomeTour = true, prologue = true } = {}) {
+  await page.evaluate(async ({ TOUR_IDS, PROLOGUE_KEYS, PROLOGUE_BUY, skipHomeTour, prologue }) => {
+    const gs = globalThis.__GS, inv = globalThis.__INV, story = globalThis.__STORY;
+    inv.resetAllDevSeed();
+    gs.setFlag('intro.monologue');
+    if (skipHomeTour) gs.setFlag('intro.homeTour');
+    for (const id of TOUR_IDS) gs.setFlag(`tour.${id}`);
+    if (!prologue) return;
+    for (const k of PROLOGUE_KEYS) gs.setFlag(`prologue.${k}`);
+    for (const k of PROLOGUE_BUY) gs.setFlag(`prologue.buy.${k}`);
+    const core = await import('/@id/@tra/core');
+    const q = core.getStoryQuest('M1-01');
+    for (let i = 0; i < 14; i++) story.setObjectiveProgress('M1-01', i, q.objectives[i].target ?? 1);
+  }, { TOUR_IDS, PROLOGUE_KEYS, PROLOGUE_BUY, skipHomeTour, prologue });
+}
+
+/** 새 게임 → 홈타운 (맑음 · 오프닝 생략 · 187차 시작 상태) */
 async function newGameHometown(page, { skipTour = true } = {}) {
-  await page.evaluate(async ({ skipTour }) => {
+  await page.evaluate(async () => {
     const ext = await import('/src/store/ExternalDataStore.ts');
     ext.ExternalDataStore.rerollHometownWeather = function () { this._hometownWeather = 'clear'; };
     ext.ExternalDataStore._hometownWeather = 'clear';
-    const gs = globalThis.__GS;
-    gs.startNewGameInSlot(3);
-    gs.setFlag('intro.monologue');
-    if (skipTour) gs.setFlag('intro.homeTour');
+    globalThis.__GS.startNewGameInSlot(3);
+  });
+  await applyStartKit(page, { skipHomeTour: skipTour });
+  const left = await page.evaluate(() => {
+    const p = globalThis.__STORY.progress('M1-01');
+    return p ? p.obj.slice(0, 14).join(',') : 'none';
+  });
+  log('  M1-01 prologue', left);
+  await page.evaluate(() => {
     globalThis.__PIXEL_ANGLER_GAME.scene.getScene('MainMenuScene').scene.start('RegionFieldScene', { region: 'hometown' });
-  }, { skipTour });
+  });
   await waitScene(page, 'RegionFieldScene');
   await page.waitForTimeout(2500);
   await cleanLog(page);
@@ -201,7 +240,7 @@ async function findWaterside(page) {
 const GROUPS = [];
 const group = (name, keys, fn) => GROUPS.push({ name, keys, fn });
 
-module.exports = { boot, waitScene, shot, newGameHometown, cleanLog, enterSokcho, teleportTile, refreshGuide, findWaterside, want, log, OUT, LANG };
+module.exports = { boot, waitScene, shot, newGameHometown, applyStartKit, cleanLog, enterSokcho, teleportTile, refreshGuide, findWaterside, want, log, OUT, LANG };
 
 // ═══════════════════════════════════════════════════════
 // 그룹 정의
@@ -239,6 +278,37 @@ group('hometown', ['hometown', 'home_interior'], async (page) => {
   await shot(page, 'home_interior');
 });
 
+// ── 188차 프롤로그: 새 게임 = 집 안 침대 옆에서 눈을 뜬다 (혼잣말 뒤 첫 걸음 가이드 · 「지금 할 일」 띠) ──
+group('prologue', ['prologue'], async (page) => {
+  await page.evaluate(async () => {
+    const ext = await import('/src/store/ExternalDataStore.ts');
+    ext.ExternalDataStore.rerollHometownWeather = function () { this._hometownWeather = 'clear'; };
+    ext.ExternalDataStore._hometownWeather = 'clear';
+    // intro.monologue를 켜지 않는다 — 그 플래그가 없을 때만 필드가 집 안 기상(wake)으로 넘긴다
+    globalThis.__GS.startNewGameInSlot(3);
+    globalThis.__PIXEL_ANGLER_GAME.scene.getScene('MainMenuScene').scene.start('RegionFieldScene', { region: 'hometown' });
+  });
+  await waitScene(page, 'HomeInteriorScene');
+  await page.waitForTimeout(2500);
+  // 기상 혼잣말은 time.delayedCall(320)로 열린다 — 헤드리스는 타이머가 돌지 않으므로 직접 열고 바로 닫아
+  // 첫 걸음 가이드로 넘긴다. 가이드는 「낚시 상자를 열어 보자」 단계(4/4)로 건너뛴다.
+  await page.evaluate(() => {
+    const hi = globalThis.__PIXEL_ANGLER_GAME.scene.getScene('HomeInteriorScene');
+    hi.startWake();
+    hi.tourPanel?.destroy(); hi.tourPanel = undefined;
+    hi.startFirstSteps();
+    const tour = globalThis.__TOUR.active;
+    if (tour) { tour.go(3); tour.completeTyping(); }
+    hi.refreshObjective();
+  });
+  // 가이드는 요청 큐를 거쳐 다음 틱에 뜰 수 있다 — 뜰 때까지 기다렸다가 단계를 맞춘다
+  await page.waitForFunction(() => !!globalThis.__TOUR.active, null, { timeout: 15000 });
+  await page.evaluate(() => { const t = globalThis.__TOUR.active; if (t) { if (t.index !== 3) t.go(3); t.completeTyping(); } });
+  await page.waitForTimeout(400);
+  await cleanLog(page);   // 아래에 멈춰 있는 필드 씬 채널의 [dev] 줄(영문 잔존 스캔에 걸린다)
+  if (want('prologue')) await shot(page, 'prologue');
+});
+
 // ── 속초 필드: HUD · 전체 지도 · 일지 · 대화 · 전국 지도 ──
 group('sokcho', ['hud', 'tracker', 'fullmap', 'journal', 'dialog', 'worldmap'], async (page) => {
   await newGameHometown(page);
@@ -256,13 +326,6 @@ group('sokcho', ['hud', 'tracker', 'fullmap', 'journal', 'dialog', 'worldmap'], 
     await shot(page, 'fullmap');
     await page.evaluate(() => globalThis.__PIXEL_ANGLER_GAME.scene.getScene('RegionFieldScene').toggleFullMap());
     await page.waitForTimeout(400);
-  }
-  if (want('journal')) {
-    await page.evaluate(() => globalThis.__PIXEL_ANGLER_GAME.scene.getScene('RegionFieldScene').togglePanel('journal'));
-    await page.waitForTimeout(1000);
-    await shot(page, 'journal');
-    await page.evaluate(() => globalThis.__PIXEL_ANGLER_GAME.scene.getScene('RegionFieldScene').togglePanel('journal'));
-    await page.waitForTimeout(300);
   }
   if (want('dialog')) {
     // 정옥선 좌판 앞 — 도착 컷씬(M1-01 ②)이 대화창을 덮으므로 이 촬영에서만 막는다.
@@ -290,6 +353,24 @@ group('sokcho', ['hud', 'tracker', 'fullmap', 'journal', 'dialog', 'worldmap'], 
       while (s.popupStack.length) s.closeTopPopup();
     });
     await page.waitForTimeout(400);
+  }
+  if (want('journal')) {
+    // 188차 — M1-01은 프롤로그 14목표 + 3목표 = 17줄이라 목표 목록이 창 아래로 넘친다(일지 버그 — 보고).
+    //   촬영은 M1-01을 마치고 M1-02(얼음 나르기)를 진행 중으로 둔 화면을 쓴다(대화 촬영 뒤라 영향 없음).
+    await page.evaluate(() => {
+      const st = globalThis.__STORY;
+      const s = globalThis.__PIXEL_ANGLER_GAME.scene.getScene('RegionFieldScene');
+      while (s.popupStack.length) s.closeTopPopup();
+      for (let i = 14; i < 17 && st.isActive('M1-01'); i++) st.setObjectiveProgress('M1-01', i, 1);   // 의뢰인 없는 할 일 — 다 채우면 저절로 끝난다
+      if (!st.isActive('M1-02') && !st.isDone('M1-02')) st.devActivateQuest('M1-02');
+    });
+    await clearToasts(page);
+    await cleanLog(page);
+    await page.evaluate(() => globalThis.__PIXEL_ANGLER_GAME.scene.getScene('RegionFieldScene').togglePanel('journal'));
+    await page.waitForTimeout(1000);
+    await shot(page, 'journal');
+    await page.evaluate(() => globalThis.__PIXEL_ANGLER_GAME.scene.getScene('RegionFieldScene').togglePanel('journal'));
+    await page.waitForTimeout(300);
   }
   if (want('worldmap')) {
     await page.evaluate(() => {
@@ -337,7 +418,7 @@ async function clearToasts(page) {
 }
 
 // ── 패널류 (속초 물가에서) ──
-group('panels', ['inventory', 'equipment', 'gear_fault', 'cooler', 'codex', 'skill_tree', 'license', 'vitals_panel', 'settings'], async (page) => {
+group('panels', ['guide_tour', 'inventory', 'equipment', 'gear_fault', 'cooler', 'codex', 'skill_tree', 'license', 'vitals_panel', 'settings'], async (page) => {
   await newGameHometown(page);
   await enterSokcho(page);
   const w = (await findWaterside(page))[0];
@@ -354,6 +435,23 @@ group('panels', ['inventory', 'equipment', 'gear_fault', 'cooler', 'codex', 'ski
   });
   await cleanLog(page);
   await clearToasts(page);
+
+  // 188차 — 창 첫 열기 체험 가이드(가방). 이 한 장만 가이드를 다시 켠다 — 「낚시용품」 탭을 눌러 보는 단계(2/7)
+  await cap(page, 'guide_tour', async () => {
+    await page.evaluate((S) => {
+      const s = eval(S);
+      globalThis.__GS.setFlag('tour.inventory', false);
+      s.toggleInventory();
+      const tour = globalThis.__TOUR.active;
+      if (tour) { tour.go(1); tour.completeTyping(); }
+    }, S);
+    await page.waitForFunction(() => !!globalThis.__TOUR.active, null, { timeout: 15000 });
+    await page.waitForTimeout(300);
+    await page.evaluate(() => { const t = globalThis.__TOUR.active; if (t) { if (t.index !== 1) t.go(1); t.completeTyping(); } });
+    await page.waitForTimeout(400);
+  });
+  await page.evaluate(() => { globalThis.__TOUR.active?.finish(); });
+  await closeAll(page);
 
   await cap(page, 'inventory', async () => {
     await page.evaluate((S) => {
@@ -424,6 +522,14 @@ group('panels', ['inventory', 'equipment', 'gear_fault', 'cooler', 'codex', 'ski
       s.togglePanel('skill');
     }, S);
     await page.waitForTimeout(900);
+    // 188차 — 설명은 슬롯 호버 팝업에만 있다. 롱캐스트 칸의 팝업을 고정해 띄운다(맨 아래 「다음 레벨」 줄 포함)
+    await page.evaluate((S) => {
+      const p = eval(S).skillPanel;
+      if (!p) return;
+      p.showTip({ kind: 'skill', id: 'fish_cast' });
+      p.tipPinned = true;
+    }, S);
+    await page.waitForTimeout(400);
   });
   await closeAll(page);
 
@@ -443,7 +549,8 @@ group('panels', ['inventory', 'equipment', 'gear_fault', 'cooler', 'codex', 'ski
       const s = eval(S);
       const gs = globalThis.__GS;
       gs.commitVitals({ ...gs.vitals, hunger: 38, hydration: 17, fatigue: 46 });
-      for (const id of ['bleed', 'food_poison', 'exhaust']) gs.addStatus(id);
+      // 188차 — 식중독은 확률로 설사를 함께 데려온다(정의표 spawns) — 촬영은 같이 붙는 쪽으로 고정
+      for (const id of ['bleed', 'food_poison', 'exhaust']) gs.addStatus(id, () => 0);
       s.hud.updateStatus();
       s.hud.showValueTip('hydration', { x: 200, y: 112, w: 126, h: 16 });
     }, S);
