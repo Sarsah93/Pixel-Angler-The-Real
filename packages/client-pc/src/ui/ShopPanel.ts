@@ -17,7 +17,9 @@ import { InventoryStore, InvItem, CONDITION_LABEL } from '../store/InventoryStor
 import { RecommendationStore } from '../store/RecommendationStore.js';
 import { ShopDef, ShopEntry } from '../data/ShopCatalog.js';
 import { DraggablePanel } from './DraggablePanel.js';
+import { ConfirmDialog, QuantityDialog } from './Dialogs.js';
 import { createItemIcon } from './ItemIcon.js';
+import { maybeStartTour, type TourOptions } from './GuideTour.js';
 import { StoryStore } from '../store/StoryStore.js';
 import {
   consignableItems, consignGradeOf, consignInputOf, hasCrate,
@@ -90,6 +92,8 @@ export class ShopPanel extends DraggablePanel {
   /** 현재 선택 (구매 탭: ShopEntry / 판매 탭: InvItem) */
   private selectedBuy: ShopEntry | null = null;
   private selectedSell: InvItem | null = null;
+  /** 선택된 칸의 패널 로컬 좌상단 (보이는 창 안일 때만 — 가이드 하이라이트용) */
+  private selCellAt: { x: number; y: number } | null = null;
 
   /** 스크롤 — 최상단에 보이는 행 인덱스 (판매 탭은 인벤토리 수량이 무한 증가 가능) */
   private scrollRow = 0;
@@ -139,6 +143,8 @@ export class ShopPanel extends DraggablePanel {
 
     scene.events.on('inventory-changed', this.onInventoryChanged, this);
     this.applyFix();
+    // 188차 — 첫 방문 체험 가이드 (고르기 → 사기 → 팔기를 직접 해 본다)
+    maybeStartTour(scene, () => this.buildTour());
   }
 
   private onInventoryChanged = (): void => {
@@ -186,17 +192,19 @@ export class ShopPanel extends DraggablePanel {
       this.tabTexts.set(def.id, t);
       const hit = this.scene.add.rectangle(tx + tabW / 2, ty + tabH / 2, tabW, tabH, 0xffffff, 0.001)
         .setInteractive({ useHandCursor: true });
-      hit.on('pointerdown', () => {
-        this.currentTab = def.id;
-        this.selectedBuy = null;
-        this.selectedSell = null;
-        this.scrollRow = 0;
-        this.paintTabs();
-        this.renderGrid();
-      });
+      hit.on('pointerdown', () => this.selectTab(def.id));
       this.add([g, t, hit]);
     });
     this.paintTabs();
+  }
+
+  private selectTab(id: ShopTab): void {
+    this.currentTab = id;
+    this.selectedBuy = null;
+    this.selectedSell = null;
+    this.scrollRow = 0;
+    this.paintTabs();
+    this.renderGrid();
   }
 
   /** 탭이 4개까지 늘 수 있어 패널 폭(460)에 맞춰 줄인다 — 고정 120이면 4탭에서 52px 넘친다 */
@@ -233,9 +241,21 @@ export class ShopPanel extends DraggablePanel {
     return Math.round(InventoryStore.getSellPrice(item) * GameState.skillMult('sell_price'));
   }
 
+  /**
+   * 이 가게에 팔 수 있는 내 물건. 착용 중(slot < 0)·채집물(조례 금지 — 121차)·미완성 접시(135차)·
+   * 귀속(141차)·법 규칙 §3(134차)에 걸리는 것은 뺀다.
+   */
+  private sellableItems(): InvItem[] {
+    return InventoryStore.items.filter(
+      (i) => this.shop.buysCategories.includes(i.category) && i.slot >= 0
+        && !i.forageCatch && !i.plateWip && !i.bound && !StoryStore.sellVerdict(i),
+    );
+  }
+
   private renderGrid(): void {
     this.gridContainer.removeAll(true);
     this.hideTooltip();
+    this.selCellAt = null;
 
     const gridW = GRID_COLS * SLOT + (GRID_COLS - 1) * SLOT_GAP;
     const gx0 = (PANEL_W - gridW) / 2;
@@ -303,7 +323,7 @@ export class ShopPanel extends DraggablePanel {
           qtyLabel: `${kg}kg`,
           condition: item.condition,
           selected: picked,
-          tooltip: `${item.name}\n${kg}kg · ${t(`${consignGradeOf(item)}급`)} · ${t('클릭하면 출품 목록에 담깁니다')}`,
+          tooltip: `${item.name}\n${kg}kg · ${t(`${consignGradeOf(item)}급`)}`,
           onSelect: () => {
             if (picked) this.consignSel.delete(item.id); else this.consignSel.add(item.id);
             this.renderGrid();
@@ -327,10 +347,7 @@ export class ShopPanel extends DraggablePanel {
       const lawBlocked = InventoryStore.items.filter((i) => i.slot >= 0 && !!StoryStore.sellVerdict(i));
       // 미완성 사시미 접시(plateWip)도 제외 — 완성해야 값이 매겨진다 (135차)
       const hasWipPlate = InventoryStore.items.some((i) => i.plateWip && i.slot >= 0);
-      const sellable = InventoryStore.items.filter(
-        (i) => this.shop.buysCategories.includes(i.category) && i.slot >= 0
-          && !i.forageCatch && !i.plateWip && !i.bound && !StoryStore.sellVerdict(i),   // 141차 — 귀속 제외
-      );
+      const sellable = this.sellableItems();
       sellable.forEach((item) => {
         cells.push({
           icon: item.icon, iconTexture: item.iconTexture, name: item.name,
@@ -497,6 +514,7 @@ export class ShopPanel extends DraggablePanel {
     const row = Math.floor(idx / GRID_COLS);
     const sx = gx0 + col * (SLOT + SLOT_GAP);
     const sy = gy0 + row * (SLOT + SLOT_GAP);
+    if (cell.selected) this.selCellAt = { x: sx, y: sy };
 
     const box = this.scene.add.graphics();
     const paint = (hover: boolean): void => {
@@ -591,7 +609,8 @@ export class ShopPanel extends DraggablePanel {
 
   // ── 하단 버튼/상태 ────────────────────────────────
   private buildFooter(): void {
-    this.statusText = this.scene.add.text(PANEL_W / 2, PANEL_H - 104, '아이콘 클릭: 선택 · 우클릭: 상세보기', {
+    // 188차 — 조작 안내 문구('아이콘 클릭: 선택 · 우클릭: 상세보기')는 지웠다. 첫 방문 가이드가 직접 해 보게 한다.
+    this.statusText = this.scene.add.text(PANEL_W / 2, PANEL_H - 104, '', {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#9fd0e4',
       wordWrap: { width: PANEL_W - 30 }, align: 'center',
     }).setOrigin(0.5);
@@ -656,6 +675,136 @@ export class ShopPanel extends DraggablePanel {
     hit.on('pointerdown', onClick);
     this.add([bg, txt, hit]);
     return txt;
+  }
+
+  // ═══════════════════════════════════════════════
+  // 첫 방문 체험 가이드 (188차 — tour id 'shop')
+  //  프롤로그는 직판장에서 기본 채비를 하나씩 사고 냉동 오징어를 판다 — 그 흐름 그대로
+  //  「고르기 → 사기 → 판매 탭 → 고르기 → 팔기」를 직접 해 보게 한다.
+  //  살 돈이 없거나 팔 물건이 없으면 그 단계는 설명으로 바뀐다(skipIf 짝).
+  //  구매·판매 완료는 씬(handleBuy/handleSell)이 재화를 바꾸는 것으로 판정한다 — 씬 배선 불필요.
+  // ═══════════════════════════════════════════════
+
+  private tabRectOf(id: ShopTab): Phaser.Geom.Rectangle | null {
+    const i = this.tabDefs.findIndex((d) => d.id === id);
+    if (i < 0) return null;
+    const tabW = this.tabWidth();
+    return this.localRect(14 + i * (tabW + 6), this.contentTop + 20, tabW, 30);
+  }
+
+  private gridAreaRect(): Phaser.Geom.Rectangle {
+    const gridW = GRID_COLS * SLOT + (GRID_COLS - 1) * SLOT_GAP;
+    const gy0 = this.contentTop + 60;
+    return this.localRect((PANEL_W - gridW) / 2, gy0, gridW, GRID_VP_BOTTOM - gy0);
+  }
+
+  private footerBtnRect(right: boolean): Phaser.Geom.Rectangle {
+    const cx = PANEL_W / 2 + (right ? 105 : -105);
+    return this.localRect(cx - 95, PANEL_H - 60, 190, 40);
+  }
+
+  private selCellRect(): Phaser.Geom.Rectangle | null {
+    return this.selCellAt ? this.localRect(this.selCellAt.x, this.selCellAt.y, SLOT, SLOT) : null;
+  }
+
+  /** 지금 떠 있는 수량·확인 창 (씬이 띄운다) */
+  private openDialogRects(): Phaser.Geom.Rectangle[] {
+    return this.scene.children.list
+      .filter((o): o is ConfirmDialog | QuantityDialog => (o instanceof ConfirmDialog || o instanceof QuantityDialog) && o.active)
+      .map((d) => d.panelBounds());
+  }
+
+  private buildTour(): TourOptions {
+    const coins = (): number => GameState.player.inventory.coins;
+    let coinsAtStep = 0;
+    /** 사 보기 단계를 마쳤는가 — 산 뒤 돈이 모자라졌다고 「돈이 모자라다」 설명이 뜨면 안 된다 */
+    let bought = false;
+    const buyables = (): ShopEntry[] => this.shop.sells.filter((e) => !e.unlockKey || GameState.getFlag(`unlock.shop.${e.unlockKey}`));
+    const canBuySel = (): boolean => !!this.selectedBuy && this.buyPriceOf(this.selectedBuy) <= coins();
+    const hasSellable = (): boolean => this.sellableItems().length > 0;
+    /** 사기·팔기 단계 — 수량·확인 창이 뜨면 그 창을 짚고 그 창만 누를 수 있게 */
+    const dealTarget = (right: boolean) => (): Phaser.Geom.Rectangle => this.openDialogRects()[0] ?? this.footerBtnRect(right);
+    const dealAllow = (right: boolean) => (): Phaser.Geom.Rectangle[] => {
+      const d = this.openDialogRects();
+      return d.length ? d : [this.footerBtnRect(right), this.gridAreaRect()];
+    };
+    return {
+      id: 'shop',
+      // 수량·확인 창이 뜨면 말풍선이 그 창을 가리지 않게 기준을 옮긴다
+      anchor: () => this.openDialogRects()[0] ?? this.panelBounds(),
+      alive: () => this.active,
+      steps: [
+        {
+          text: '가게에 들어오면 이 창이 열린다. 진열된 물건을 사고, 내 물건을 팔 수 있다. 오른쪽에는 내 가방이 함께 열린다.',
+          target: () => this.panelBounds(),
+        },
+        {
+          text: '진열대에서 물건 하나를 눌러 골라 보자.',
+          target: () => this.gridAreaRect(),
+          skipIf: () => buyables().length === 0,
+          onEnter: () => { if (this.currentTab !== 'buy') this.selectTab('buy'); },
+          wait: () => !!this.selectedBuy,
+        },
+        {
+          text: '고른 칸은 초록 테두리가 된다. 칸 아래 숫자가 값이다. 커서를 올리면 설명이, 우클릭하면 자세한 정보가 뜬다.',
+          target: () => this.selCellRect() ?? this.gridAreaRect(),
+          skipIf: () => !this.selectedBuy,
+        },
+        {
+          text: '아래 「구매」를 누르고 수량을 정해 값을 치르면 가방에 들어온다. 하나 사 보자.',
+          target: dealTarget(false),
+          allow: dealAllow(false),
+          skipIf: () => !canBuySel(),
+          onEnter: () => { coinsAtStep = coins(); },
+          wait: () => { if (coins() < coinsAtStep) bought = true; return bought; },
+        },
+        {
+          text: '「구매」를 누르면 수량을 정하고 값을 치른다. 지금은 가진 돈이 모자라다.',
+          target: () => this.footerBtnRect(false),
+          skipIf: () => bought || !this.selectedBuy || canBuySel(),
+        },
+        {
+          text: '가진 돈은 여기 나온다. 사고팔 때마다 바로 바뀐다.',
+          target: () => this.localRect(PANEL_W / 2 - 130, PANEL_H - 94, 260, 24),
+        },
+        {
+          text: '이번에는 팔아 보자. 「판매하기」를 누르자.',
+          target: () => this.tabRectOf('sell'),
+          skipIf: () => !hasSellable(),
+          wait: () => this.currentTab === 'sell',
+        },
+        {
+          text: '「판매하기」에는 이 가게가 사들이는 내 물건이 뜬다. 가게마다 사들이는 물건이 다르다.',
+          target: () => this.tabRectOf('sell'),
+          skipIf: hasSellable,
+        },
+        {
+          text: '팔 물건을 하나 골라 보자.',
+          target: () => this.gridAreaRect(),
+          skipIf: () => !hasSellable(),
+          onEnter: () => { if (this.currentTab !== 'sell') this.selectTab('sell'); },
+          wait: () => !!this.selectedSell,
+        },
+        {
+          text: '「판매」를 누르면 값을 받고 넘긴다. 팔아 보자.',
+          target: dealTarget(true),
+          allow: dealAllow(true),
+          skipIf: () => !this.selectedSell,
+          onEnter: () => { coinsAtStep = coins(); },
+          wait: () => coins() > coinsAtStep,
+        },
+        {
+          text: '「수리하기」에서는 고장 난 장비를 돈을 내고 고친다.',
+          target: () => this.tabRectOf('repair'),
+          skipIf: () => !this.canRepair,
+        },
+        {
+          text: '「위판하기」에서는 잡은 고기를 새벽 경매에 올린다.',
+          target: () => this.tabRectOf('consign'),
+          skipIf: () => !this.canConsignHere,
+        },
+      ],
+    };
   }
 
   override destroy(fromScene?: boolean): void {

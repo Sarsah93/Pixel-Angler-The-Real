@@ -15,6 +15,7 @@ import {
 } from '@tra/core';
 import type { ShoreCreatureCategory, DiscoveryKind, ShoreCreature } from '@tra/core';
 import { DiscoveryStore } from '../store/DiscoveryStore.js';
+import { GuideTour, maybeStartTour, type TourOptions } from '../ui/GuideTour.js';
 import { StoryStore } from '../store/StoryStore.js';
 import { FISH_TEXTURE, resolveFishTexture } from '../data/FishTextures.js';
 import { itemWikiByCategory } from '../data/WikiCatalog.js';
@@ -86,11 +87,8 @@ export class AnglerLogScene extends Phaser.Scene {
       fontStyle: 'bold',
     });
 
-    this.add.text(40, 65, 'ESC 키 또는 우측 상단 ✕ 버튼을 누르면 월드로 귀환합니다.', {
-      fontFamily: '"Noto Sans KR", sans-serif',
-      fontSize: '12px',
-      color: '#8faabf',
-    });
+    // 188차 — 조작 안내 줄('ESC 키 또는 우측 상단 ✕ 버튼을 누르면 월드로 귀환합니다.')은 지웠다.
+    //   닫기는 우상단 ✕가 그림으로 말하고, 첫 열기 가이드가 짚는다.
 
     // ─────────────────────────────────────────────
     // [UI] 나가기 버튼
@@ -139,7 +137,10 @@ export class AnglerLogScene extends Phaser.Scene {
     }
 
     // ESC 설정
-    this.input.keyboard?.on('keydown-ESC', () => this.onBack());
+    this.input.keyboard?.on('keydown-ESC', () => {
+      if (GuideTour.blocksKey('Escape')) return;   // 188차 — 가이드 중에는 닫지 않는다
+      this.onBack();
+    });
 
     // 콘텐츠 렌더링 컨테이너
     this.tabContainer = this.add.container(0, 0);
@@ -148,6 +149,50 @@ export class AnglerLogScene extends Phaser.Scene {
     this.switchTab('encyclopedia');
 
     this.cameras.main.fadeIn(300, 0, 10, 20);
+
+    // 188차 — 첫 열기 체험 가이드
+    maybeStartTour(this, () => this.buildTour());
+  }
+
+  // ─────────────────────────────────────────────
+  // 첫 열기 가이드 (188차 — tour id 'codex')
+  //  탭 하나는 직접 넘겨 보게 하고(「나의 조과 기록」), 나머지는 짚어 설명한다.
+  // ─────────────────────────────────────────────
+  private buildTour(): TourOptions {
+    const { width, height } = this.scale;
+    const tabsW = 140 + 130 + 140 + 100 + 160 + 4 * 10;
+    const tabs = (): Phaser.Geom.Rectangle => new Phaser.Geom.Rectangle(60, 110 - 16, tabsW, 32);
+    const historyTab = (): Phaser.Geom.Rectangle => new Phaser.Geom.Rectangle(60 + tabsW - 160, 110 - 16, 160, 32);
+    const body = (): Phaser.Geom.Rectangle => new Phaser.Geom.Rectangle(30, 140, width - 60, height - 200);
+    return {
+      id: 'codex',
+      anchor: () => body(),
+      alive: () => this.sys.isActive(),
+      steps: [
+        {
+          text: '잡거나 만난 것은 모두 이 도감에 남는다. 위 탭으로 어종 · 해양생물 · 아이템 · 요리 · 내 조과 기록을 넘겨 본다.',
+          target: tabs,
+        },
+        {
+          text: '처음 잡거나 만난 것부터 카드가 채워진다. 오른쪽 위에 지금까지 몇 종을 만났는지 나온다.',
+          target: body,
+          onEnter: () => { if (this.currentTab !== 'encyclopedia') this.switchTab('encyclopedia'); },
+        },
+        {
+          text: '「나의 조과 기록」을 눌러 보자.',
+          target: historyTab,
+          wait: () => this.currentTab === 'history',
+        },
+        {
+          text: '낚은 고기가 한 마리씩 여기에 남는다. 장소별로 거르고, 최근 · 길이 · 무게 순으로 줄 세울 수 있다.',
+          target: body,
+        },
+        {
+          text: '다 보면 오른쪽 위 ✕로 닫는다.',
+          target: () => new Phaser.Geom.Rectangle(width - 56, 18, 32, 32),
+        },
+      ],
+    };
   }
 
   private onBack(): void {

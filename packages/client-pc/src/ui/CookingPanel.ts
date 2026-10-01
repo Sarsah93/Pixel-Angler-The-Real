@@ -23,6 +23,7 @@ import { GameState } from '../store/GameState.js';
 import { clampTextWidth, enforceTextBounds } from './TextFit.js';
 import { addPixelIcon } from './PixelIcon.js';
 import { t } from '../i18n/I18n.js';
+import { maybeStartTour, type TourOptions } from './GuideTour.js';
 
 const PANEL_W = 900;
 const PANEL_H = 600;
@@ -88,6 +89,68 @@ export class CookingPanel extends DraggablePanel {
     scene.events.on('update', this.onUpdate);
     scene.input.on('wheel', this.onWheel);
     this.applyFix();
+    // 188차 — 첫 열기 체험 가이드
+    maybeStartTour(scene, () => this.buildTour());
+  }
+
+  // ═══════════════════════════════════════════════
+  // 첫 열기 가이드 (188차 — tour id 'cooking')
+  //  준비 화면(용기 올리기 → 요리 고르기)은 할 수 있으면 직접 해 보게 하고, 조리 화면의 조작
+  //  (재료 넣기 · 불 세기 · 맛 별 · 내리기)은 설명으로 짚는다 — 재료를 써 버리게 강요하지 않는다.
+  // ═══════════════════════════════════════════════
+  private buildTour(): TourOptions {
+    const top = this.contentTop + 6;
+    const colH = PANEL_H - 40 - (top + 28);
+    const leftCol = (): Phaser.Geom.Rectangle => this.localRect(10, top + 24, L_W - 6, colH);
+    const centerCol = (): Phaser.Geom.Rectangle => this.localRect(C_X - 4, top + 24, C_W + 4, colH);
+    const rightCol = (): Phaser.Geom.Rectangle => this.localRect(R_X - 4, top + 24, R_W + 8, colH);
+    const hasWares = (): boolean => InventoryStore.items.some((i) => !!i.cookwareId && i.qty > 0);
+    const setup = (): boolean => !this.stove.session;
+    return {
+      id: 'cooking',
+      anchor: () => this.panelBounds(),
+      alive: () => this.active,
+      steps: [
+        {
+          text: '화구 앞에서 여는 요리 창이다. 맨 위 줄에 지금 쓰는 화구와 용기, 남은 연료가 나온다.',
+          target: () => this.localRect(10, top - 4, PANEL_W - 20, 22),
+        },
+        {
+          text: '요리는 먼저 화구에 용기를 올리는 데서 시작한다. 냄비 · 팬 · 석쇠에 따라 만들 수 있는 요리가 다르다. 왼쪽에서 용기 하나를 올려 보자.',
+          target: leftCol,
+          skipIf: () => !setup() || !!this.cookware() || !hasWares(),
+          wait: () => !!this.cookware(),
+        },
+        {
+          text: '요리는 먼저 화구에 용기를 올리는 데서 시작한다. 냄비 · 팬 · 석쇠에 따라 만들 수 있는 요리가 다르다. 용기는 식자재마트에서 판다.',
+          target: leftCol,
+          skipIf: () => !setup() || !!this.cookware() || hasWares(),
+        },
+        {
+          text: '가운데에 이 용기로 만들 수 있는 요리가 뜬다. 하나를 골라 보자.',
+          target: centerCol,
+          skipIf: () => !setup() || !this.cookware() || recipesForCookware(this.cookware()!.kind).length === 0,
+          wait: () => !!this.pickRecipe,
+        },
+        {
+          text: '오른쪽에 그 요리의 순서와 더 넣으면 좋은 재료가 나온다. 「이 요리 시작」을 누르면 조리가 시작된다.',
+          target: rightCol,
+          skipIf: () => !setup() || !this.pickRecipe,
+        },
+        {
+          text: '조리가 시작되면 왼쪽에서 재료를 양만큼 넣는다. 순서에 맞춰 넣을수록 맛이 산다.',
+          target: leftCol,
+        },
+        {
+          text: '가운데에서 불 세기를 고른다. 온도 막대의 초록 칸이 이 요리에 알맞은 온도다.',
+          target: centerCol,
+        },
+        {
+          text: '오른쪽 별 다섯 개는 지금 내렸을 때의 맛이다. 다 익으면 「불 끄고 내리기」로 요리를 꺼낸다.',
+          target: rightCol,
+        },
+      ],
+    };
   }
 
   /** 현재 포인터가 패널 안인가 (휠 게이트) */
@@ -154,7 +217,7 @@ export class CookingPanel extends DraggablePanel {
       this.staticC.add([r, t]);
     };
     // ── 좌: 용기 · 연료 ──
-    const h1 = sc.add.text(14, y, cw ? `용기: ${cw.nameKo}` : '용기를 올리세요', { fontFamily: FONT, fontSize: '12px', color: '#e8f4fd', fontStyle: 'bold' });
+    const h1 = sc.add.text(14, y, cw ? `용기: ${cw.nameKo}` : '용기: 없음', { fontFamily: FONT, fontSize: '12px', color: '#e8f4fd', fontStyle: 'bold' });
     this.staticC.add(h1); y += 22;
     const wares = InventoryStore.items.filter((i) => i.cookwareId && i.qty > 0);
     if (wares.length === 0 && !cw) {
@@ -189,7 +252,7 @@ export class CookingPanel extends DraggablePanel {
     }
     // ── 중앙: 레시피 목록 (용기로 필터) ──
     let cy = y0;
-    const h2 = sc.add.text(C_X, cy, cw ? `${cw.nameKo}(으)로 만들 수 있는 요리` : '용기를 올리면 만들 수 있는 요리가 보입니다', { fontFamily: FONT, fontSize: '12px', color: '#e8f4fd', fontStyle: 'bold' });
+    const h2 = sc.add.text(C_X, cy, cw ? `${cw.nameKo}(으)로 만들 수 있는 요리` : '만들 수 있는 요리', { fontFamily: FONT, fontSize: '12px', color: '#e8f4fd', fontStyle: 'bold' });
     clampTextWidth(h2, C_W); this.staticC.add(h2); cy += 24;
     if (cw) {
       const list = recipesForCookware(cw.kind);
@@ -235,10 +298,8 @@ export class CookingPanel extends DraggablePanel {
       mkBtn(R_X, Math.min(ry, PANEL_H - 70), R_W, '이 요리 시작', !!cw, () => {
         const res = CookingStore.startRecipe(this.stove, r.id); this.say(res.message); if (res.ok) { this.listScroll = 0; this.stepper.clear(); } this.renderAll();
       });
-    } else {
-      const t = sc.add.text(R_X, ry, '요리를 고르면 순서와 재료가 여기 보입니다.', { fontFamily: FONT, fontSize: '10px', color: '#8a97a8', wordWrap: { width: R_W } });
-      this.staticC.add(t);
     }
+    // 188차 — 빈 자리 안내('요리를 고르면 순서와 재료가 여기 보입니다.')는 지웠다. 첫 열기 가이드가 짚는다.
   }
 
   // ═══════════════════════════════════════════════
@@ -322,7 +383,7 @@ export class CookingPanel extends DraggablePanel {
       y += ROW;
     }
     if (rows.length > maxRows) {
-      const t = sc.add.text(L_W - 10, PANEL_H - 44, `${this.listScroll + 1}–${Math.min(rows.length, this.listScroll + maxRows)} / ${rows.length}행 · 휠`, { fontFamily: FONT, fontSize: '9px', color: '#8a97a8' }).setOrigin(1, 0);
+      const t = sc.add.text(L_W - 10, PANEL_H - 44, `${this.listScroll + 1}–${Math.min(rows.length, this.listScroll + maxRows)} / ${rows.length}행`, { fontFamily: FONT, fontSize: '9px', color: '#8a97a8' }).setOrigin(1, 0);
       this.staticC.add(t);
     }
   }

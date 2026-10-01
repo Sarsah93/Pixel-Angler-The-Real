@@ -53,6 +53,8 @@ import { createItemIcon } from './ItemIcon.js';
 import { setSlotLabel, SLOT_LABEL_PX } from './SlotLabel.js';
 import { CraftBoard } from './CraftBoard.js';
 import { GameState } from '../store/GameState.js';
+import { maybeStartTour, type TourOptions } from './GuideTour.js';
+import { t } from '../i18n/I18n.js';
 
 /** 루어 세부 종류 → 라벨 (2단계 트리) */
 const SOFT_KINDS: { k: LureKind; label: string }[] = [
@@ -138,6 +140,10 @@ export class UtilizationPanel extends DraggablePanel {
   private boardToast?: Phaser.GameObjects.Text;
   /** 교환 확인 모달 */
   private swapConfirm?: ConfirmDialog;
+  /** 열린 선택 리스트의 패널 로컬 사각형 (가이드 하이라이트용 — 188차) */
+  private chooserRect: { x: number; y: number; w: number; h: number } | null = null;
+  /** 채비 탭 제원 상자 상단 y (패널 로컬 — 가이드 하이라이트용) */
+  private tourSpecY = 0;
   /** 회 뜨기 손질 자식 팝업 */
   private butcheryPanel?: ButcheryPanel;
   private sashimiPanel?: SashimiPanel;
@@ -205,6 +211,99 @@ export class UtilizationPanel extends DraggablePanel {
     scene.input.on('pointerup', this.chumUpHandler);
     scene.input.on('pointermove', this.cookMoveHandler);
     scene.input.on('pointerup', this.cookUpHandler);
+    // 188차 — 첫 열기 체험 가이드
+    maybeStartTour(scene, () => this.buildTour());
+  }
+
+  // ═══════════════════════════════════════════════════
+  // 첫 열기 가이드 (188차 — tour id 'utilization')
+  //  새 캐릭터는 낚싯대·릴만 갖고 시작한다 — 부품이 없으면 「칸을 눌러 목록 열기」까지만
+  //  직접 해 보고, 「골라 달기」는 설명으로 바뀐다. 상점에서 부품을 사 온 뒤라면 직접 단다.
+  // ═══════════════════════════════════════════════════
+  private tabRectOf(i: number): Phaser.Geom.Rectangle {
+    return this.localRect(20 + i * (180 + 8), this.contentTop + 4, 180, 34);
+  }
+
+  private socketChainRect(): Phaser.Geom.Rectangle {
+    const n = RIG_STEPS.length;
+    return this.localRect(24, this.contentTop + 80 + 62, n * SOCKET_W + (n - 1) * SOCKET_GAP, SOCKET_H);
+  }
+
+  private buildTour(): TourOptions {
+    const mainLine = RIG_STEPS[0];
+    const tackles = (): boolean => this.currentTab === 'tackles' && InventoryStore.rigMode === 'bait';
+    const hasLine = (): boolean => InventoryStore.items.some((i) => mainLine.matcher!(i));
+    const firstSocket = (): Phaser.Geom.Rectangle => this.localRect(24, this.contentTop + 80 + 62, SOCKET_W, SOCKET_H);
+    const chooserScreen = (): Phaser.Geom.Rectangle | null =>
+      this.chooserRect ? this.localRect(this.chooserRect.x, this.chooserRect.y, this.chooserRect.w, this.chooserRect.h) : null;
+    return {
+      id: 'utilization',
+      anchor: () => this.panelBounds(),
+      alive: () => this.active,
+      steps: [
+        {
+          text: '이 창에서는 낚시 채비를 꾸리고, 잡은 고기를 손질하고, 밑밥을 섞고, 필요한 물건을 만든다. 위 탭으로 할 일을 고른다.',
+          target: () => this.localRect(20, this.contentTop + 4, 4 * 180 + 3 * 8, 34),
+        },
+        {
+          text: '먼저 채비부터 꾸려 보자. 「채비하기」를 누르자.',
+          target: () => this.tabRectOf(1),
+          skipIf: () => this.currentTab === 'tackles',
+          wait: () => this.currentTab === 'tackles',
+        },
+        {
+          text: '채비는 미끼를 다는 채비와 루어 채비 두 가지다. 「미끼 채비」를 눌러 보자.',
+          target: () => this.localRect(24, this.contentTop + 44, 228, 26),
+          skipIf: () => InventoryStore.rigMode === 'bait' || InventoryStore.rigLocked,
+          wait: () => InventoryStore.rigMode === 'bait',
+        },
+        {
+          text: '채비는 미끼를 다는 채비와 루어 채비 두 가지다. 여기서 바꾼다.',
+          target: () => this.localRect(24, this.contentTop + 44, 228, 26),
+          skipIf: () => InventoryStore.rigMode !== 'bait',
+        },
+        {
+          text: '미끼 채비는 원줄에서 미끼까지 왼쪽부터 차례로 이어진다. 칸 하나에 부품 하나를 단다.',
+          target: () => this.socketChainRect(),
+          skipIf: () => !tackles(),
+        },
+        {
+          text: '첫 칸 「원줄」을 눌러 보자. 가방 속에서 그 칸에 달 수 있는 것만 골라 보여 준다.',
+          target: firstSocket,
+          skipIf: () => !tackles() || InventoryStore.rigLocked,
+          wait: () => !!this.chooser,
+        },
+        {
+          text: '목록에서 원줄 하나를 골라 달아 보자.',
+          target: () => chooserScreen() ?? firstSocket(),
+          allow: () => [chooserScreen(), firstSocket()],
+          skipIf: () => !tackles() || InventoryStore.rigLocked || !hasLine() || !this.chooser,
+          // 목록에서 줄을 고르면 선택창이 닫히며 원줄이 달린다(「비우기」를 고르면 다시 연다)
+          wait: () => !this.chooser && !!InventoryStore.rig.mainLine,
+        },
+        {
+          text: '아직 달 부품이 없다. 가게에서 원줄 · 바늘 · 봉돌 · 찌 · 미끼를 사 오면 여기서 골라 단다.',
+          target: () => chooserScreen() ?? this.socketChainRect(),
+          skipIf: () => !tackles() || hasLine(),
+        },
+        {
+          text: '부품을 달 때마다 아래 상자에서 채비 무게와 가라앉는 속도, 닿는 수심이 다시 계산된다.',
+          target: () => this.localRect(24, this.tourSpecY, PANEL_W - 48, 150),
+          skipIf: () => !tackles(),
+          onEnter: () => this.closeChooser(),
+        },
+        {
+          text: '채비를 다 꾸몄으면 「채비 고정」으로 잠근다. 고정한 채비는 던질 때 미끼 같은 소모품만 줄어들고, 실수로 바뀌지 않는다.',
+          target: () => this.localRect(PANEL_W - 36 - 60 - 128 - 60, this.tourSpecY + 150 - 44, 128 + 120, 36),
+          skipIf: () => !tackles(),
+        },
+        {
+          text: '「요리하기」에서는 오른쪽 가방의 고기를 도마로 끌어다 올려 손질하고, 「밑밥 품질」에서는 재료를 통에 넣어 밑밥을 섞는다.',
+          target: () => this.localRect(20, this.contentTop + 4, 3 * 180 + 2 * 8, 34),
+          onEnter: () => this.closeChooser(),
+        },
+      ],
+    };
   }
 
   // ── 상단 탭 (요리하기 / 채비하기) ─────────────────────
@@ -279,10 +378,10 @@ export class UtilizationPanel extends DraggablePanel {
     const surf = InventoryStore.isSurfRigReady();
     const reco = RecommendationStore.get();
 
+    // 188차 — 조작 안내('소켓을 클릭해 부품을 선택하세요…')는 지우고 지금 채비 방식만 적는다.
+    //   부품을 다는 법은 첫 열기 가이드가 직접 해 보게 한다.
     const guide = this.scene.add.text(24, top,
-      surf
-        ? '원투(찌 없이 도래 직결) 모드 — 초릿대 끝으로 입질을 봅니다. 봉돌 소켓에 무게추 봉돌을 다세요.'
-        : '조립 순서대로 소켓을 클릭해 부품을 선택하세요. 수중찌·좁쌀봉돌은 선택 부품(운용법)이며, 면사매듭 위치는 최대 공략 수심(Z_limit)을 결정합니다.', {
+      surf ? '원투 채비 — 찌 없이 도래 직결, 초릿대 끝으로 입질을 본다' : '찌 채비', {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#9fc0d4',
       });
     this.bodyContainer.add(guide);
@@ -422,7 +521,8 @@ export class UtilizationPanel extends DraggablePanel {
       }
 
       if (assigned) {
-        const icon = this.scene.add.text(bx + boxW / 2, chainY + 58, assigned.icon, { fontSize: '26px' }).setOrigin(0.5);
+        // 188차 — 이모지 글리프 대신 아이템 그림(§8-8)
+        const icon = createItemIcon(this.scene, bx + boxW / 2, chainY + 58, assigned, 30);
         // 188차 — 9px 3줄 대신 10px 2줄까지, 넘치면 이름 축약 (SlotLabel)
         const name = setSlotLabel(this.scene.add.text(bx + boxW / 2, chainY + 88, '', {
           fontFamily: '"Noto Sans KR", sans-serif', fontSize: `${SLOT_LABEL_PX}px`, color: '#e8f4fd',
@@ -433,7 +533,7 @@ export class UtilizationPanel extends DraggablePanel {
         const plus = this.scene.add.text(bx + boxW / 2, chainY + 64, '+', {
           fontFamily: 'monospace', fontSize: '30px', color: '#4a6a8a',
         }).setOrigin(0.5);
-        const hintTxt = this.scene.add.text(bx + boxW / 2, chainY + 96, '클릭하여 선택', {
+        const hintTxt = this.scene.add.text(bx + boxW / 2, chainY + 96, '비어 있음', {
           fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#4a6a8a',
         }).setOrigin(0.5);
         this.bodyContainer.add([plus, hintTxt]);
@@ -452,6 +552,7 @@ export class UtilizationPanel extends DraggablePanel {
     }
 
     // ── 조립 스펙 요약 ──
+    this.tourSpecY = sumY;
     const sumBg = this.scene.add.graphics();
     sumBg.fillStyle(0x060d1a, 0.95);
     sumBg.fillRoundedRect(24, sumY, PANEL_W - 48, 150, 5);
@@ -511,9 +612,8 @@ export class UtilizationPanel extends DraggablePanel {
       this.bodyContainer.add([bg, t, hit]);
     };
     const right = PANEL_W - 24 - 12;
-    const badge = this.scene.add.text(right, y - 10, locked
-      ? '채비 고정됨 — 던질 때 소모품(미끼 등)만 줄어듭니다'
-      : '채비 고정 안 됨 — 고정하면 던질 때 소모품만 줄어듭니다', {
+    // 188차 — 상태만 적는다(고정의 뜻은 첫 열기 가이드가 설명)
+    const badge = this.scene.add.text(right, y - 10, locked ? '채비 고정됨' : '채비 고정 안 됨', {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: locked ? '#7fe0b0' : '#8faabf',
     }).setOrigin(1, 1);
     this.bodyContainer.add(badge);
@@ -574,7 +674,7 @@ export class UtilizationPanel extends DraggablePanel {
   private renderLureRig(): void {
     const top = this.contentTop + 80;
     const guide = this.scene.add.text(24, top,
-      '원줄·목줄 소켓은 미끼 채비와 별개입니다. 소프트/하드 → 종류 → 라인업을 고르세요. 소프트 베이트는 지그헤드 결합 필수, 봉돌은 필요 없습니다.', {
+      '루어 채비 — 원줄·목줄은 미끼 채비와 따로 단다. 소프트 베이트는 지그헤드에 끼워 쓰고, 봉돌은 쓰지 않는다.', {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#9fc0d4',
         wordWrap: { width: PANEL_W - 48 },
       });
@@ -597,7 +697,7 @@ export class UtilizationPanel extends DraggablePanel {
       const lbl = this.scene.add.text(bx + SOCKET_W / 2, sockY + 14, sk.label, {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#c8a060', fontStyle: 'bold',
       }).setOrigin(0.5);
-      const nm = this.scene.add.text(bx + SOCKET_W / 2, sockY + SOCKET_H / 2 + 8, assigned ? assigned.name : '클릭해 선택', {
+      const nm = this.scene.add.text(bx + SOCKET_W / 2, sockY + SOCKET_H / 2 + 8, assigned ? assigned.name : '비어 있음', {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: assigned ? '#e8f4fd' : '#6f8ba0',
         align: 'center', wordWrap: { width: SOCKET_W - 10 },
       }).setOrigin(0.5);
@@ -607,7 +707,7 @@ export class UtilizationPanel extends DraggablePanel {
         const cands = InventoryStore.items.filter(sk.matcher);
         const rows: ChooserRow[] = cands.length === 0
           ? [{ text: '사용 가능한 부품이 없습니다 — 직판장 채비 코너', onPick: () => { /* 안내 */ }, muted: true }, { text: '닫기', onPick: () => { /* 선택 없음 */ } }]
-          : [...cands.map((item): ChooserRow => ({ text: `${item.icon} ${item.name} (x${item.qty})`, onPick: () => { sk.set(item.id); this.renderBody(); } })),
+          : [...cands.map((item): ChooserRow => ({ text: `${item.name} (x${item.qty})`, onPick: () => { sk.set(item.id); this.renderBody(); } })),
             { text: '비우기', onPick: () => { sk.set(null); this.renderBody(); } }];
         this.closeChooser();
         this.mountChooserList(this, rows, bx, sockY + SOCKET_H + 4, { listW: 240, title: `${sk.label} 선택` });
@@ -760,7 +860,7 @@ export class UtilizationPanel extends DraggablePanel {
         wordWrap: { width: sbW - 32 },
       }));
     } else {
-      this.bodyContainer.add(this.scene.add.text(40, specY + 60, '루어를 선택하세요.', {
+      this.bodyContainer.add(this.scene.add.text(40, specY + 60, '고른 루어 없음', {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#7a98ac',
       }));
     }
@@ -1004,7 +1104,7 @@ export class UtilizationPanel extends DraggablePanel {
       ]
       : [
         ...candidates.map((item): ChooserRow => ({
-          text: `${item.icon} ${item.name} (x${item.qty})`,
+          text: `${item.name} (x${item.qty})`,
           onPick: () => InventoryStore.setRigPart(step, item.id),
           recommended: !!isReco && isReco(item),
         })),
@@ -1036,6 +1136,7 @@ export class UtilizationPanel extends DraggablePanel {
     const ly = Phaser.Math.Clamp(Math.min(y, PANEL_H - listH - 8), this.contentTop + 4, PANEL_H - listH - 8);
     const maxScroll = rows.length - visRows;
     let scroll = 0;
+    this.chooserRect = { x: lx, y: ly, w: boxW, h: listH };
 
     const c = this.scene.add.container(0, 0);
     this.addChooserBackdrop(c);   // 바깥 클릭 시 선택창 자동 닫힘
@@ -1048,7 +1149,7 @@ export class UtilizationPanel extends DraggablePanel {
     c.add(bg);
 
     if (opts.title) {
-      const title = this.scene.add.text(lx + 12, ly + 7, `${opts.title}${scrollable ? `  (${rows.length}개 · 휠 스크롤)` : ''}`, {
+      const title = this.scene.add.text(lx + 12, ly + 7, `${opts.title}${scrollable ? `  (${rows.length}개)` : ''}`, {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#aee8ff', fontStyle: 'bold',
       });
       c.add(title);
@@ -1123,6 +1224,7 @@ export class UtilizationPanel extends DraggablePanel {
     }
     this.chooser?.destroy();
     this.chooser = undefined;
+    this.chooserRect = null;
   }
 
   /**
@@ -1296,7 +1398,7 @@ export class UtilizationPanel extends DraggablePanel {
     } else {
       if (this.boardSlicedItemId) this.boardSlicedItemId = null;   // 조각 소진 — 스테이징 해제
       const boardLbl = this.scene.add.text(boardX + boardW / 2, boardY + boardH / 2,
-        '도마 — 우측 인벤토리의 생선을 드래그해서 올리세요', {
+        '도마', {
           fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px', color: '#5a4028', fontStyle: 'bold',
         }).setOrigin(0.5);
       this.bodyContainer.add(boardLbl);
@@ -1605,10 +1707,8 @@ export class UtilizationPanel extends DraggablePanel {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#9fc0d4',
       lineSpacing: 8, wordWrap: { width: W - 36 },
     });
-    const hint = this.scene.add.text(W / 2, H - 20, '헤더를 끌어 이동 · ✕ 또는 ESC로 닫기', {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#5a6a78',
-    }).setOrigin(0.5);
-    panel.add([body, hint]);
+    // 188차 — 창 조작 안내('헤더를 끌어 이동 · ✕ 또는 ESC로 닫기')는 지웠다(기능을 글로 적지 않는다)
+    panel.add([body]);
     this.scene.add.existing(panel);
     applyScreenFixed(panel);
     this.cookHelpPopup = panel;
@@ -1740,8 +1840,9 @@ export class UtilizationPanel extends DraggablePanel {
       const wipCnt = InventoryStore.items.filter((i) => this.isWipPlate(i)).length;
       const hint = this.scene.add.text(px + pw / 2, pyTop + ph / 2,
         wipCnt > 0
-          ? `사시미 접시를 이곳에 드래그\n(빈 접시 = 기타 탭 · 미완성 접시 ${wipCnt}개 = 음식 탭 — 이어 담기)`
-          : '사시미 접시를 이곳에 드래그\n(인벤토리 · 기타 탭)', {
+          // ⚠ 합성 문자열은 사전을 비껴간다(131차) — 조각을 먼저 번역해 붙인다
+          ? `${t('사시미 접시 자리')}\n${t('미완성 접시')} ${wipCnt}`
+          : '사시미 접시 자리', {
           fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#5a7a98', align: 'center', lineSpacing: 6,
         }).setOrigin(0.5);
       this.bodyContainer.add(hint);
@@ -2118,7 +2219,7 @@ export class UtilizationPanel extends DraggablePanel {
       this.bodyContainer.add(hit);
     }
     const lbl = this.scene.add.text(bx + bw / 2, by + bh - 18,
-      `${item.name} ×${item.qty} — 한 점씩 아래 접시로 드래그하세요`, {
+      `${t(item.name)} ×${item.qty}`, {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#3a2c1a', fontStyle: 'bold',
       }).setOrigin(0.5);
     this.bodyContainer.add(lbl);
@@ -2241,31 +2342,33 @@ export class UtilizationPanel extends DraggablePanel {
     const selItem = this.cookSelectedId ? InventoryStore.find(this.cookSelectedId) : undefined;
     const footY = gridY + 5 * (cell + gap) + 4;
     const selFam = selItem?.subCategory === '어획물' ? getButcheryFamily(selItem.speciesId ?? '') : 'unsupported';
+    // 188차 — '도마로 드래그하면 …' 같은 조작 안내를 지우고, 올렸을 때 **무엇이 되는지**만 적는다.
+    //   끌어다 올리는 조작은 첫 열기 가이드가 가르친다.
     const selHint = selItem
-      ? (this.cephSliceKind(selItem) === 'mantle' ? '도마로 드래그하면 오징어 회뜨기(가운데 1컷 + 세로 10컷 = 22점)를 진행합니다'
-        : this.cephSliceKind(selItem) === 'fin' ? '도마로 드래그하면 날개살 회뜨기(날개당 1컷 = 4점)를 진행합니다'
-        : this.cephSliceKind(selItem) === 'arms' ? '도마로 드래그하면 촉완 분리(촉완 ×2 + 다리부)를 진행합니다 — 회가 아닌 요리 재료'
-        : this.cephSliceKind(selItem) === 'octoWhole' ? '도마로 드래그하면 다리 분리(3컷 — 삶은 문어 머리 1 + 다리 8)를 진행합니다'
-        : this.cephSliceKind(selItem) === 'octoLeg' ? '도마로 드래그하면 숙회 썰기(사선 7컷 = 8점)를 진행합니다'
-        : selItem.id.startsWith('inv_ceph_octo_whole_') ? '생 문어는 도마에 올릴 수 없습니다 — 우클릭 [삶기]로 삶은 뒤 도마에 올리세요'
-        : this.isPureEngawa(selItem) ? '도마로 드래그하면 엔가와 회썰기(총 2컷)를 진행합니다'
-        : this.isPureFillet(selItem) ? '도마로 드래그하면 회썰기(사시미)를 진행합니다 — 야나기바 장착 시 고급 사시미'
-        : this.isWipPlate(selItem) ? '[사시미 만들기] 영역으로 드래그하면 담던 자리에서 이어 담습니다'
-        : this.isPlateItem(selItem) ? '[사시미 만들기] 영역으로 드래그해 접시를 놓으세요'
-        : this.isSashimiPiece(selItem) ? '접시로 드래그해 배치하세요 (활성 방위에 1점씩 — 접시 돌리기로 방위 전환)'
-        : selItem && this.resumeSectionOf(selItem) ? (this.isRibFillet(selItem) ? '도마로 드래그하면 갈빗대 제거부터 이어서 진행합니다'
-          : this.isPinFillet(selItem) ? '도마로 드래그하면 지아이뼈 분리부터 이어서 진행합니다'
-          : this.isEngwFillet(selItem) ? '도마로 드래그하면 엔가와 분리부터 이어서 진행합니다'
-          : '도마로 드래그하면 박피부터 이어서 진행합니다')
+      ? (this.cephSliceKind(selItem) === 'mantle' ? '오징어 회뜨기 — 가운데 1컷 + 세로 10컷 = 22점'
+        : this.cephSliceKind(selItem) === 'fin' ? '날개살 회뜨기 — 날개당 1컷 = 4점'
+        : this.cephSliceKind(selItem) === 'arms' ? '촉완 분리 — 촉완 ×2 + 다리부 (회가 아닌 요리 재료)'
+        : this.cephSliceKind(selItem) === 'octoWhole' ? '다리 분리 — 3컷, 삶은 문어 머리 1 + 다리 8'
+        : this.cephSliceKind(selItem) === 'octoLeg' ? '숙회 썰기 — 사선 7컷 = 8점'
+        : selItem.id.startsWith('inv_ceph_octo_whole_') ? '생 문어는 도마에 올릴 수 없다 — 먼저 삶아야 한다'
+        : this.isPureEngawa(selItem) ? '엔가와 회썰기 — 총 2컷'
+        : this.isPureFillet(selItem) ? '회썰기(사시미) — 야나기바를 들면 고급 사시미'
+        : this.isWipPlate(selItem) ? '담던 접시 — 담던 자리에서 이어 담는다'
+        : this.isPlateItem(selItem) ? '사시미 접시'
+        : this.isSashimiPiece(selItem) ? '회 조각 — 접시의 활성 방위에 한 점씩 담는다'
+        : selItem && this.resumeSectionOf(selItem) ? (this.isRibFillet(selItem) ? '갈빗대 제거부터 이어서 손질'
+          : this.isPinFillet(selItem) ? '지아이뼈 분리부터 이어서 손질'
+          : this.isEngwFillet(selItem) ? '엔가와 분리부터 이어서 손질'
+          : '박피부터 이어서 손질')
         : selFam === 'finfish' || selFam === 'cephalopod'
-          ? '왼쪽 도마로 드래그해서 올리세요'
+          ? '도마에 올려 손질할 수 있다'
           : selFam === 'pufferfish' ? '복어는 자격·독 처리 준비 중 — 도마 불가'
           : '이 아이템은 도마에 올릴 수 없습니다')
       : '';
     const foot = this.scene.add.text(x + 14, footY,
       selItem
-        ? `선택: ${selItem.name}${selItem.condition ? ` (${CONDITION_LABEL[selItem.condition]})` : ''} — ${selHint}`
-        : '어종을 왼쪽 도마로 드래그하세요 (클릭 = 선택)', {
+        ? `선택: ${selItem.name}${selItem.condition ? ` (${CONDITION_LABEL[selItem.condition]})` : ''} — ${t(selHint)}`
+        : '', {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px',
         color: selItem ? '#7fe6b0' : '#7a98ac', wordWrap: { width: w - 28 },
       });
@@ -2311,7 +2414,7 @@ export class UtilizationPanel extends DraggablePanel {
     const header = this.scene.add.text(boxX, this.contentTop + 56,
       mixed
         ? `배합 완료 — 남은 밑밥 ${CoolerStore.chumRemaining} / 100 (1인칭 C 투척 1회당 ${CHUM_THROW_COST} 소모)`
-        : `밑밥 통 (탑뷰) — 우측 인벤토리의 재료를 통 안으로 드래그하세요`, {
+        : '밑밥 통', {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', fontStyle: 'bold',
         color: mixed ? '#4af2a1' : '#ffe28a',
       });
@@ -2354,7 +2457,7 @@ export class UtilizationPanel extends DraggablePanel {
         this.bodyContainer.add(w);
       }
       if (CoolerStore.chumIngredients.length === 0) {
-        const hint = this.scene.add.text(boxX + boxW / 2, boxY + boxH / 2, '비어있음\n재료를 여기로 드래그 앤 드랍', {
+        const hint = this.scene.add.text(boxX + boxW / 2, boxY + boxH / 2, '비어 있음', {
           fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px', color: '#9a9a92', align: 'center', lineSpacing: 6,
         }).setOrigin(0.5);
         this.bodyContainer.add(hint);
@@ -2508,7 +2611,7 @@ export class UtilizationPanel extends DraggablePanel {
 
     const locked = CoolerStore.chumMixed || CoolerStore.chumRemaining > 0;
     const title = this.scene.add.text(x + 14, y + 10,
-      locked ? '밑밥 재료 — 남은 밑밥을 다 쓰면 새로 배합할 수 있습니다' : '밑밥 재료 (통으로 드래그해서 투입)', {
+      locked ? '밑밥 재료 — 남은 밑밥을 다 쓰면 새로 배합할 수 있습니다' : '밑밥 재료', {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', fontStyle: 'bold',
         color: locked ? '#8faabf' : '#ffe28a',
       });

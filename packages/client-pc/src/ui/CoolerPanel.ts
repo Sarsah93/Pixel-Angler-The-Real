@@ -26,6 +26,8 @@ import {
   InvItem, InventoryStore, CONDITION_LABEL, CONDITION_COLOR, CONDITION_NEXT,
 } from '../store/InventoryStore.js';
 import { StoryStore } from '../store/StoryStore.js';
+import { maybeStartTour, type TourOptions } from './GuideTour.js';
+import { clampTextWidth } from './TextFit.js';
 
 const CELL = 96;
 const GAP = 10;
@@ -123,6 +125,73 @@ export class CoolerPanel extends DraggablePanel {
 
     this.renderBody();
     this.updateHeader();
+    // 188차 — 첫 열기 체험 가이드 (강제 방생 모드는 급한 상황이라 띄우지 않는다)
+    if (!cfg.force) maybeStartTour(scene, () => this.buildTour());
+  }
+
+  // ═══════════════════════════════════════════════════
+  // 첫 열기 가이드 (188차 — tour id 'cooler')
+  //  매질 넣기·가방으로 옮기기는 할 수 있을 때만 직접 해 보게 하고, 아니면 설명으로 넘어간다.
+  // ═══════════════════════════════════════════════════
+  private gridRectScreen(): Phaser.Geom.Rectangle {
+    return this.localRect(24, this.contentTop + 30, CELL * 3 + GAP * 2, CELL * 3 + GAP * 2);
+  }
+
+  private mediumBtnsRect(): Phaser.Geom.Rectangle {
+    const bw = 100, gap = 8;
+    const by = this.contentTop + 30 + 3 * CELL + 2 * GAP + 12;
+    return this.localRect(PANEL_W / 2 - (bw * 3 + gap * 2) / 2, by, bw * 3 + gap * 2, 36);
+  }
+
+  /** 해수·얼음 중 지금 넣을 수 있는 것이 있는가 (버튼 활성 조건과 같은 판정) */
+  private canAddMedium(): boolean {
+    if (CoolerStore.medium !== 'none') return false;
+    const sea = !!InventoryStore.find('inv_bucket') && (this.cfg.isNearSea?.() ?? false);
+    const ice = (InventoryStore.find('inv_ice_bulk')?.qty ?? 0) > 0;
+    return sea || ice;
+  }
+
+  private buildTour(): TourOptions {
+    let countAtStep = 0;
+    return {
+      id: 'cooler',
+      anchor: () => this.panelBounds(),
+      alive: () => this.active,
+      steps: [
+        {
+          text: '잡은 고기를 싱싱하게 담아 두는 쿨러다. 한 칸에 한 마리씩, 아홉 마리까지 들어간다.',
+          target: () => this.gridRectScreen(),
+        },
+        {
+          text: '맨 위 줄과 제목에 지금 쿨러에 무엇을 채웠는지, 얼마나 더 버티는지가 나온다.',
+          target: () => this.localRect(14, this.contentTop, PANEL_W - 28, 20),
+        },
+        {
+          text: '바닷가에서는 두레박으로 해수를 떠 넣어 고기를 산 채로 둔다. 얼음을 넣으면 오래 차갑게 둔다. 다 쓴 물과 얼음은 「비우기」로 버린다.',
+          target: () => this.mediumBtnsRect(),
+        },
+        {
+          text: '지금 넣을 수 있는 것이 있다. 해수나 얼음을 한 번 넣어 보자.',
+          target: () => this.mediumBtnsRect(),
+          skipIf: () => !this.canAddMedium(),
+          wait: () => CoolerStore.medium !== 'none',
+        },
+        {
+          text: '고기를 누르면 자세히 보기 · 가방으로 옮기기 · 놓아주기를 고를 수 있다.',
+          target: () => this.gridRectScreen(),
+          skipIf: () => CoolerStore.count() === 0,
+        },
+        {
+          text: '고기를 쿨러 밖으로 끌어다 놓으면 바로 가방으로 옮겨진다. 한 마리를 옮겨 보자.',
+          target: () => this.gridRectScreen(),
+          // 끌어다 놓는 자리는 창 밖이다 — 창 전체 + 오른쪽 가방 자리를 연다
+          allow: () => [this.panelBounds(), new Phaser.Geom.Rectangle(GAME_WIDTH - 480, 0, 480, GAME_HEIGHT)],
+          skipIf: () => CoolerStore.count() === 0,
+          onEnter: () => { countAtStep = CoolerStore.count(); },
+          wait: () => CoolerStore.count() < countAtStep,
+        },
+      ],
+    };
   }
 
   // ═══════════════════════════════════════════════════
@@ -175,6 +244,7 @@ export class CoolerPanel extends DraggablePanel {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', fontStyle: 'bold',
         color: this.cfg.force ? (need > 0 ? '#ff9a6a' : '#4af2a1') : '#9fd0e4',
       }).setOrigin(0.5);
+    clampTextWidth(info, PANEL_W - 20);   // 188차 — 영문 매질 안내가 창 좌우로 넘치던 것
     this.content.add(info);
 
     // 3x3 소켓
@@ -244,10 +314,8 @@ export class CoolerPanel extends DraggablePanel {
       }
     } else {
       this.buildMediumButtons(gy + 3 * CELL + 2 * GAP + 12);
-      const tip = this.scene.add.text(PANEL_W / 2, PANEL_H - 30, '우클릭: 상세/이송/방생 · 패널 밖으로 드래그: 인벤토리 이송', {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#7a98ac',
-      }).setOrigin(0.5);
-      this.content.add(tip);
+      // 188차 — 하단 조작 안내('우클릭: 상세/이송/방생 · 패널 밖으로 드래그: 인벤토리 이송')는 지웠다.
+      //   첫 열기 가이드가 직접 옮겨 보게 한다(AGENTS §4 「기능을 글로 적지 않는다」).
     }
 
     // 툴팁은 항상 최상단 유지
@@ -262,9 +330,9 @@ export class CoolerPanel extends DraggablePanel {
     const expired = med !== 'none' && CoolerStore.mediumRemainMs() <= 0;
     if (med === 'none') return '해수/얼음 없음 — 상온과 동일하게 신선도 진행';
     if (med === 'seawater') {
-      return expired ? '해수 효과 종료 — 비우고 새 해수를 채우세요' : '해수 물칸 — 활어 무제한 유지';
+      return expired ? '해수 효과 종료 — 새 해수가 필요하다' : '해수 물칸 — 활어 무제한 유지';
     }
-    return expired ? '얼음이 녹음 — 비우고 새 얼음을 채우세요' : '얼음 보냉 — 활어 1시간 유지, 이후 신선 정지';
+    return expired ? '얼음이 녹음 — 새 얼음이 필요하다' : '얼음 보냉 — 활어 1시간 유지, 이후 신선 정지';
   }
 
   // ═══════════════════════════════════════════════════

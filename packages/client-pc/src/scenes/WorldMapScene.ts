@@ -33,6 +33,7 @@ import {
 } from '@tra/core';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { ConfirmTripModal } from '../ui/ConfirmTripModal.js';
+import { GuideTour, maybeStartTour, type TourOptions } from '../ui/GuideTour.js';
 
 // ── 뷰 상태 머신 ────────────────────────────────────────
 // region    : 전국 지도 + 지역 핀/리스트 선택
@@ -145,7 +146,10 @@ export class WorldMapScene extends Phaser.Scene {
     this.spotContainer = this.add.container(0, 0).setDepth(20);
 
     // ── ESC 핸들링 ───────────────────────────────────────
-    this.input.keyboard?.on('keydown-ESC', () => this.handleEsc());
+    this.input.keyboard?.on('keydown-ESC', () => {
+      if (GuideTour.blocksKey('Escape')) return;   // 188차 — 가이드 중에는 뒤로 가지 않는다
+      this.handleEsc();
+    });
 
     // ── 홈타운(집) 귀가 버튼 — 좌상단 고정 (귀가 무료. HOMETOWN_HOME_SPEC §3) ──
     {
@@ -170,7 +174,7 @@ export class WorldMapScene extends Phaser.Scene {
     // ── P 키: 핀 위치 편집 모드 토글 (개발자 도구) ──────────
     // 핀 편집 Dev Tool은 dev 빌드 전용 — 프로덕션에서는 키 바인딩 자체를 만들지 않는다
     if (import.meta.env.DEV) {
-      this.input.keyboard?.on('keydown-P', () => this.togglePinEditMode());
+      this.input.keyboard?.on('keydown-P', () => { if (!GuideTour.blocksKey('KeyP')) this.togglePinEditMode(); });
     }
 
     // ── 지도 위 마우스 이동 시 편집 모드에서 좌표 실시간 표시
@@ -187,6 +191,8 @@ export class WorldMapScene extends Phaser.Scene {
 
     // ── 초기 상태: 지역 뷰 ──────────────────────────────
     this.renderRegionView();
+    // 188차 — 첫 방문 가이드 (구 조작 안내 줄들을 대신한다)
+    maybeStartTour(this, () => this.buildTour());
 
     // ── 개발자 도구 토글 버튼 (dev 빌드 전용 — 프로덕션에는 렌더되지 않음) ──
     if (import.meta.env.DEV) {
@@ -485,6 +491,32 @@ export class WorldMapScene extends Phaser.Scene {
   }
 
   // ═══════════════════════════════════════════════════════
+  // 첫 방문 가이드 (188차 — tour id 'worldmap') — 전국 지도 뷰에서만
+  // ═══════════════════════════════════════════════════════
+  private buildTour(): TourOptions | null {
+    if (this.viewState !== 'region') return null;
+    const listH = REGION_DATABASE.length * 52 - 8;
+    return {
+      id: 'worldmap',
+      alive: () => this.sys.isActive() && this.viewState === 'region',
+      steps: [
+        {
+          text: '갈 수 있는 지역이 왼쪽 목록과 지도 위 핀으로 나온다. 아직 닫힌 곳은 이야기를 따라가다 보면 열린다.',
+          target: () => new Phaser.Geom.Rectangle(16, 116, 340, listH),
+        },
+        {
+          text: '지역을 고르면 지도가 그 지역으로 다가간다. 그 안에서 낚시할 구역을 골라 떠난다. 떠날 때 교통비가 든다.',
+          target: () => new Phaser.Geom.Rectangle(MAP_DISPLAY_X, MAP_DISPLAY_Y, MAP_DISPLAY_W, MAP_DISPLAY_H),
+        },
+        {
+          text: '왼쪽 위 「집으로 돌아가기」를 누르면 언제든 홈타운으로 돌아간다. 집으로 가는 길은 돈이 들지 않는다.',
+          target: () => new Phaser.Geom.Rectangle(16, 14, 150, 34),
+        },
+      ],
+    };
+  }
+
+  // ═══════════════════════════════════════════════════════
   // ESC 계층 복귀
   // ═══════════════════════════════════════════════════════
   private handleEsc(): void {
@@ -554,13 +586,8 @@ export class WorldMapScene extends Phaser.Scene {
       color: '#4af2a1',
       fontStyle: 'bold',
     });
-    const hint = this.add.text(20, 86, '지역을 클릭하거나 지도의 핀을 선택해 출조지를 고르세요  [ESC] 메인 메뉴', {
-      fontFamily: '"Noto Sans KR", sans-serif',
-      fontSize: '10px',
-      color: '#607b8e',
-      wordWrap: { width: 336 },   // 목록 박스 폭(16~356) 안으로 강제
-    });
-    this.regionContainer.add([title, hint]);
+    // 188차 — 조작 안내 줄('지역을 클릭하거나 … [ESC] 메인 메뉴')은 지웠다. 첫 방문 가이드가 짚는다.
+    this.regionContainer.add([title]);
 
     // ── 지역 목록 (왼쪽 패널) ────────────────────────────
     REGION_DATABASE.forEach((region, idx) => {
@@ -884,8 +911,8 @@ export class WorldMapScene extends Phaser.Scene {
 
     const note = this.add.text(20, 150,
       hasFieldMap
-        ? '지도의 핀 또는 아래 목록에서\n활동할 구역을 선택하세요.\n\n[ESC] 전국 지도로 돌아가기'
-        : '이 지역의 세부 낚시 포인트는\n준비중입니다 (타일맵 에셋 제작 예정).\n\n[ESC] 전국 지도로 돌아가기', {
+        ? ''
+        : '이 지역의 세부 낚시 포인트는\n준비중입니다 (타일맵 에셋 제작 예정).', {
         fontFamily: '"Noto Sans KR", sans-serif',
         fontSize: '11px', color: hasFieldMap ? '#7fe6b0' : '#607b8e', lineSpacing: 6,
       });
@@ -1150,11 +1177,7 @@ export class WorldMapScene extends Phaser.Scene {
     }
     c.add(yesBtn);
 
-    // ESC 힌트
-    const escHint = this.add.text(W / 2, cardY + cardH + 12, '[ESC] 취소', {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#4a6a8a',
-    }).setOrigin(0.5, 0);
-    c.add(escHint);
+    // 188차 — '[ESC] 취소' 안내 줄은 지웠다(카드에 취소 버튼이 있다)
 
     // 등장 연출
     c.setScale(0.9); c.setAlpha(0);
@@ -1267,11 +1290,8 @@ export class WorldMapScene extends Phaser.Scene {
       fontFamily: '"Noto Sans KR", sans-serif',
       fontSize: '18px', color: '#4af2a1', fontStyle: 'bold',
     });
-    const hintText = this.add.text(152, 44, '포인트 클릭 → 이동 확인  [ESC] 지역 지도로', {
-      fontFamily: '"Noto Sans KR", sans-serif',
-      fontSize: '10px', color: '#607b8e',
-    });
-    this.spotContainer.add([title, hintText]);
+    // 188차 — 조작 안내 줄('포인트 클릭 → 이동 확인  [ESC] 지역 지도로')은 지웠다
+    this.spotContainer.add([title]);
 
     // ── 해당 지역 스팟 목록 ──────────────────────────────
     const spots = region.subSpotIds

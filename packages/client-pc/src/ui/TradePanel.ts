@@ -19,6 +19,7 @@ import { MultiplayerClient } from '../net/MultiplayerClient.js';
 import { createItemIcon } from './ItemIcon.js';
 import { MP_TRADE_MAX_ITEMS, type MpTradeItem, type MpTradeState } from '@tra/core';
 import type { QuantityDialogConfig } from './Dialogs.js';
+import { maybeStartTour, type TourOptions } from './GuideTour.js';
 
 const W = 760, H = 540;
 const FONT = '"Noto Sans KR", sans-serif';
@@ -56,6 +57,34 @@ export class TradePanel extends DraggablePanel {
     };
     scene.input.on('wheel', this.wheelHandler);
     this.sync();
+    // 188차 — 첫 거래 체험 가이드 (주고받는 흐름 · 잠금 · 확정)
+    maybeStartTour(scene, () => this.buildTour());
+  }
+
+  // ── 첫 거래 가이드 (188차 — tour id 'trade') ──
+  //  상대가 있는 실시간 거래라 체험(wait) 단계는 두지 않는다 — 내 행동이 상대 화면을 바꾸기 때문.
+  private buildTour(): TourOptions {
+    const top = this.contentTop + 8;
+    const bagTop = top + 218;
+    return {
+      id: 'trade',
+      anchor: () => this.panelBounds(),
+      alive: () => this.active,
+      steps: [
+        {
+          text: '다른 낚시꾼과 물건을 주고받는 창이다. 왼쪽이 내가 내놓는 것, 오른쪽이 상대가 내놓는 것이다.',
+          target: () => this.localRect(PAD, top, COL_W * 2 + COL_GAP, 210),
+        },
+        {
+          text: '아래 내 가방에서 줄을 누르면 그 물건이 내 제안에 올라간다. 돈은 「재화 넣기」로 올린다.',
+          target: () => this.localRect(PAD, bagTop, W - PAD * 2, BAG_ROWS * ROW_H + 30),
+        },
+        {
+          text: '둘 다 「잠금」을 누르면 「확정」이 열린다. 제안을 고치면 양쪽 잠금이 다시 풀린다. 둘 다 확정하면 되돌릴 수 없다.',
+          target: () => this.localRect(W / 2 - 240, H - 55, 480, 30),
+        },
+      ],
+    };
   }
 
   private containsPointer(p: Phaser.Input.Pointer): boolean {
@@ -108,7 +137,7 @@ export class TradePanel extends DraggablePanel {
     g.fillStyle(0x050f1e, 0.9); g.fillRect(PAD, bagTop, W - PAD * 2, BAG_ROWS * ROW_H + 30);
     g.lineStyle(1, 0x1f3d5a, 1); g.strokeRect(PAD, bagTop, W - PAD * 2, BAG_ROWS * ROW_H + 30);
     b.add(g);
-    b.add(this.scene.add.text(PAD + 8, bagTop + 6, '내 가방 — 줄을 누르면 제안에 올립니다 (휠로 넘김)', { fontFamily: FONT, fontSize: '11px', color: '#ffe28a', fontStyle: 'bold' }));
+    b.add(this.scene.add.text(PAD + 8, bagTop + 6, '내 가방', { fontFamily: FONT, fontSize: '11px', color: '#ffe28a', fontStyle: 'bold' }));
     const tradable = this.tradableItems();
     const locked = me.offer.locked;
     const rowsShown = tradable.slice(this.bagScroll, this.bagScroll + BAG_ROWS);
@@ -146,9 +175,10 @@ export class TradePanel extends DraggablePanel {
     else this.button(b, W / 2, fy, 140, '상대 확정 대기', false, () => {/* 대기 */});
     this.button(b, W / 2 + 170, fy, 140, '취소', true, () => void MultiplayerClient.cancelTrade(t.tradeId), '#ff9a9a');
 
+    // 188차 — 규칙 설명 문구('제안을 고치면 양쪽 잠금이 풀립니다')는 첫 거래 가이드로 옮겼다. 여기는 상태만.
     const st = this.scene.add.text(W / 2, fy - 24, this.status || (
       me.offer.locked && other.offer.locked ? '양쪽이 잠갔습니다 — 확정하면 되돌릴 수 없습니다'
-        : me.offer.locked ? '상대의 잠금을 기다리는 중' : '제안을 고치면 양쪽 잠금이 풀립니다'),
+        : me.offer.locked ? '상대의 잠금을 기다리는 중' : ''),
     { fontFamily: FONT, fontSize: '11px', color: this.status ? '#ff9a9a' : '#8fa9bd' }).setOrigin(0.5);
     b.add(st);
     this.applyFix();

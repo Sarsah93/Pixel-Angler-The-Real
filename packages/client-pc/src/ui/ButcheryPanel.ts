@@ -31,6 +31,7 @@ import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { InventoryStore, InvItem } from '../store/InventoryStore.js';
 import { GameState } from '../store/GameState.js';
 import { DraggablePanel, applyScreenFixed } from './DraggablePanel.js';
+import { GuideTour, maybeStartTour, type TourOptions } from './GuideTour.js';
 import { fitTextHeight, clampTextWidth } from './TextFit.js';
 import { getFishColors } from './FishTemplateRenderer.js';
 import { drawPixelButcherFish, butcherSpritesFor, computeFishFrame } from './PixelButcherFish.js';
@@ -396,6 +397,52 @@ export class ButcheryPanel extends DraggablePanel {
     else this.enterSection(0);
     this.refresh();
     this.applyFix();
+    // 188차 — 첫 손질 체험 가이드 (구 사이드바 하단 키 안내 줄을 대신한다)
+    maybeStartTour(scene, () => this.buildTour());
+  }
+
+  // ═══════════════════════════════════════════════════
+  // 첫 손질 가이드 (188차 — tour id 'butchery')
+  //  고기 방향이 지금 작업과 어긋나 있으면 직접 맞춰 보게 하고(뒤집기 버튼 · F/V/R 키),
+  //  칼질은 설명으로 짚는다 — 칼질 판정은 작업마다 달라 가이드가 대신 기다릴 수 없다.
+  // ═══════════════════════════════════════════════════
+  private buildTour(): TourOptions {
+    const sx = 700;
+    const board = (): Phaser.Geom.Rectangle => this.localRect(ButcheryPanel.FISH_X0 - 16, ButcheryPanel.FISH_Y0 - 40, ButcheryPanel.FISH_W0 + 32, ButcheryPanel.FISH_H0 + 80);
+    const sideTop = (): Phaser.Geom.Rectangle => this.localRect(sx - 6, this.contentTop + 10, PANEL_W - sx - 20, 130);
+    const flipBtns = (): Phaser.Geom.Rectangle => this.localRect(sx - 4, this.contentTop + 156, 338, 82);
+    const busy = (): boolean => this.done || this.process.finished || !this.process.stage || this.awaitingSelect;
+    return {
+      id: 'butchery',
+      anchor: () => this.panelBounds(),
+      alive: () => this.active,
+      steps: [
+        {
+          text: '도마 위 고기를 직접 손질하는 창이다. 고기 위에 빛나는 선이 칼이 지나갈 길이다.',
+          target: board,
+        },
+        {
+          text: '오른쪽 위에 지금 할 작업과, 고기가 어느 쪽을 보고 있어야 하는지가 나온다.',
+          target: sideTop,
+        },
+        {
+          text: '지금은 고기 방향이 이 작업과 맞지 않는다. 버튼을 누르거나 F · V · R 키로 뒤집고 돌려 맞춰 보자.',
+          target: flipBtns,
+          allowKeys: ['KeyF', 'KeyV', 'KeyR', 'Space'],
+          skipIf: () => this.process.cephalopod || busy() || this.process.canAct(),
+          wait: () => this.process.canAct(),
+        },
+        {
+          text: '고기 방향은 이 버튼으로 뒤집고 돌린다. 키보드 F는 좌우, V는 위아래, R은 회전이다.',
+          target: flipBtns,
+          skipIf: () => this.process.cephalopod,
+        },
+        {
+          text: '마우스를 누른 채 빛나는 선을 따라 끝까지 끌면 칼질이 된다. 씻거나 얼음물에 담그는 작업은 오른쪽 버튼이나 Enter로 한다.',
+          target: board,
+        },
+      ],
+    };
   }
 
   private onPointerDownBound(p: Phaser.Input.Pointer): void {
@@ -448,6 +495,8 @@ export class ButcheryPanel extends DraggablePanel {
   // 키보드 — F/Space 뒤집기 · 1~5 방향 · Enter 세척
   // ═══════════════════════════════════════════════════
   private onKey(ev: KeyboardEvent): void {
+    // 188차 — 가이드 중에는 그 단계가 허용한 키만
+    if (GuideTour.blocksKey(ev.code)) return;
     // 시트 뷰어 열림 중 — ESC = 뷰어만 닫기 (손질 입력 차단)
     if (this.sheetViewer) {
       if (ev.key === 'Escape') this.closeSheetViewer();
@@ -3707,7 +3756,7 @@ export class ButcheryPanel extends DraggablePanel {
       ? '손질 스킬 Lv.20 (MAX)'
       : `손질 스킬 Lv.${fl.level}  ·  ${fl.xp} / ${(fl.level + 1) * 100} XP`;
     mkText(sx, PANEL_H - 74, skillLine, 11, '#ffd257');
-    mkText(sx, PANEL_H - 54, '키: F/Space 좌우 · V 상하 · R 회전(Shift+R 반대) · Enter 세척', 10, '#607b8e');
+    // 188차 — 키 안내 줄('키: F/Space 좌우 · V 상하 · R 회전…')은 지웠다. 첫 손질 가이드가 직접 해 보게 한다.
 
     // 가이드 켜기/끄기 토글 (전 어종 — 끄더라도 유도선은 항상 표시)
     this.drawGuideToggle();
