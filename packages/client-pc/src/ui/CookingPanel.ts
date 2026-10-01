@@ -422,6 +422,8 @@ export class CookingPanel extends DraggablePanel {
     g.fillStyle(s.tempC > hi ? 0xff5a4a : s.tempC >= lo ? 0x4af2a1 : 0x9fd5ff, 1);
     g.fillRect(bx + bw * Math.min(1, s.tempC / tMax) - 2, by - 3, 4, 18);
     const tl = sc.add.text(bx - 6, by + 6, '온도', { fontFamily: FONT, fontSize: '10px', color: '#8fa8bf' }).setOrigin(1, 0.5);
+    // 막대 왼쪽 여백은 34px — 영문(Temperature)은 넘쳐 열 구분선을 가로지른다 → 막대 왼쪽 끝 아래로 (187차)
+    if (tl.width > 34) tl.setOrigin(0, 0).setPosition(bx, by + 14);
     const tv = sc.add.text(bx + bw + 6, by + 6, `${Math.round(s.tempC)}°C`, { fontFamily: FONT, fontSize: '11px', color: '#ffe08a', fontStyle: 'bold' }).setOrigin(0, 0.5);
     const bandT = sc.add.text(bx + bw * ((lo + hi) / 2 / tMax), by + 14, `적정 ${lo}~${hi}°C`, { fontFamily: FONT, fontSize: '9px', color: '#4af2a1' }).setOrigin(0.5, 0);
     this.dynC.add([tl, tv, bandT]);
@@ -488,13 +490,18 @@ export class CookingPanel extends DraggablePanel {
     let ry = this.contentTop + 34 + 22;
     const seasonNote = s.contents.length ? `${SALT_LABEL_KO[ev5.seasonEval.saltLabel]}${ev5.seasonEval.sugarLabel !== 'ok' ? ' · ' + SUGAR_LABEL_KO[ev5.seasonEval.sugarLabel] : ''}` : '';
     const notes = [seasonNote, s.tempC >= r.servingC ? '뜨겁다' : '식었다', ev5.texture >= th ? '알맞다' : mains.some((c) => c.doneness < 0.9) ? '덜 익음' : '과조리', ev5.fresh >= 0.9 ? '싱싱' : ev5.fresh >= 0.6 ? '보통' : '', gate ? '' : '(넷을 먼저)'];
+    // 항목 이름 폭은 언어마다 다르다 — 먼저 만들어 재고, 막대는 가장 긴 이름 뒤에 둔다
+    //   (한국어는 기존 자리 그대로 · 영문 Temperature가 막대를 덮던 것 — 187차). 메모 열(R_X+140)은 고정.
+    const names = STAR_NAME_KO.map((k) => sc.add.text(R_X + 20, 0, k, { fontFamily: FONT, fontSize: '10px', color: '#c8d8e8' }));
+    const barX = R_X + 20 + Math.max(44, Math.ceil(Math.max(...names.map((n) => n.width))) + 6);
+    const barW = R_X + 134 - barX;
     for (let i = 0; i < 5; i++) {
       const earned = i < 4 ? scores[i] >= th : gate && scores[4] >= th;
       const icon = addPixelIcon(sc, earned ? 'star_on' : 'star_off', R_X + 8, ry + 8, 14);
       if (icon) this.dynC.add(icon);
-      const nm = sc.add.text(R_X + 20, ry + 1, STAR_NAME_KO[i], { fontFamily: FONT, fontSize: '10px', color: '#c8d8e8' });
-      g.fillStyle(0x0b1c2b, 1); g.fillRect(R_X + 64, ry + 4, 70, 8);
-      g.fillStyle(earned ? 0xffd257 : 0x4a5a6a, 1); g.fillRect(R_X + 64, ry + 4, 70 * Math.max(0, Math.min(1, scores[i])), 8);
+      const nm = names[i].setY(ry + 1);
+      g.fillStyle(0x0b1c2b, 1); g.fillRect(barX, ry + 4, barW, 8);
+      g.fillStyle(earned ? 0xffd257 : 0x4a5a6a, 1); g.fillRect(barX, ry + 4, barW * Math.max(0, Math.min(1, scores[i])), 8);
       const note = sc.add.text(R_X + 140, ry + 1, notes[i], { fontFamily: FONT, fontSize: '9px', color: '#8fa8bf' });
       clampTextWidth(note, R_W - 140);
       this.dynC.add([nm, note]);

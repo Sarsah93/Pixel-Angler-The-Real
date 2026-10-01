@@ -58,13 +58,16 @@ let installed = false;
  */
 function buildRuntimeDict(): void {
   if (runtimeDict.size) return;
+  // 187차 — 짧은 이름으로 **대신** 등록된 키. 같은 원문이 나중에 정식 이름으로 오면 덮는다
+  //   (어종 DB에서 「참돔 (야간)」이 「참돔」보다 앞이라 「참돔」이 Red Sea Bream (Night)이 됐다).
+  const viaShort = new Set<string>();
   const put = (ko?: string, en?: string): void => {
     if (!ko || !en) return;
-    if (!runtimeDict.has(ko)) runtimeDict.set(ko, en);
+    if (!runtimeDict.has(ko) || viaShort.has(ko)) { runtimeDict.set(ko, en); viaShort.delete(ko); }
     // '광어(넙치)' 처럼 괄호 별칭이 붙은 이름은 **앞부분 짧은 이름**도 등록한다 —
     // 어획 아이템명·팝업은 '광어 (72cm)' 처럼 짧은 이름을 쓴다 (119차 ⑥ 실측).
     const short = ko.split('(')[0].trim();
-    if (short && short !== ko && !runtimeDict.has(short)) runtimeDict.set(short, en);
+    if (short && short !== ko && !runtimeDict.has(short)) { runtimeDict.set(short, en); viaShort.add(short); }
   };
   for (const f of FISH_DATABASE) put(f.nameKo, f.nameEn);
   for (const c of SHORE_CREATURE_DATABASE) put(c.nameKo, c.nameEn);
@@ -239,6 +242,13 @@ function translateDeep(s: string, depth: number): string {
   }
   if (s.includes('\n')) {
     return s.split('\n').map((line) => translateDeep(line, depth + 1)).join('\n');
+  }
+  // 187차 — 인용부호로 감싼 대사("…" · 「…」). 대화창이 NPC 대사를 따옴표로 감싸 붙이므로
+  //   사전의 정확 일치가 전부 빗나갔다(영어 설정에서도 NPC 대사가 한국어로 남았다).
+  const quoted = /^(["“「『])([\s\S]+)(["”」』])$/.exec(s);
+  if (quoted) {
+    const inner = translateDeep(quoted[2], depth + 1);
+    if (inner !== quoted[2]) return quoted[1] + inner + quoted[3];
   }
   // ▾ 라벨 / · 항목 — 글리프 접두 분리
   const gp = GLYPH_PREFIX.exec(s);

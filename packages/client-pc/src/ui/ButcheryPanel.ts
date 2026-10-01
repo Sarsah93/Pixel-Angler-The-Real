@@ -1353,7 +1353,7 @@ export class ButcheryPanel extends DraggablePanel {
         this.grantFailed.length ? `실패 ${this.grantFailed.length}건(칸 부족)` : '');
     }
     if (this.grantFailed.length) {
-      this.flash(`⚠ 인벤토리 칸 부족 — ${this.grantFailed.length}종 미지급`, false);
+      this.flash(`인벤토리 칸 부족 — ${this.grantFailed.length}종 미지급`, false);
     }
     this.scene.events.emit('inventory-changed');
   }
@@ -4222,7 +4222,7 @@ export class ButcheryPanel extends DraggablePanel {
       `수율 ${yieldRes.yieldMassG}g · 슬라이스 ${yieldRes.sliceCount}점 · 컷 정확도 ${(r.avgCutQuality * 100).toFixed(0)}%`,
       `칼: ${knifeName} · 시메 ${r.ikejimeDone ? 'O' : 'X'} · 방혈 ${r.bledDone ? 'O' : 'X'} · 손질 스킬 Lv.${lv.level}${lv.leveledUp ? ' (레벨업!)' : ` (+${xpGain} XP)`}`,
       this.grantFailed.length
-        ? `⚠ 인벤토리 칸 부족 — ${this.grantFailed.length}종 미지급 (${this.grantFailed.slice(0, 2).join(', ')}…)`
+        ? `인벤토리 칸 부족 — ${this.grantFailed.length}종 미지급 (${this.grantFailed.slice(0, 2).join(', ')}…)`
         : yieldRes.undersizedForFillet ? '체장이 작아 회뜨기 비효율 — 통마리 판매/조림 권장' : '인벤토리(음식 탭)에 지급되었습니다.',
     ].join('\n'), {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px',

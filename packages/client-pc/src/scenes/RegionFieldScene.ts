@@ -5525,7 +5525,11 @@ export class RegionFieldScene extends Phaser.Scene {
       const npc = getStoryNpc(id);
       const q = StoryStore.questsForNpc(id);
       const note = q.completable.length ? '의뢰 완료' : q.offer.length ? '새 의뢰' : q.active.length ? '진행 중' : undefined;
-      opts.push({ label: `${npc?.nameKo ?? id}과 대화하기`, note, run: () => this.openDialogue(id) });
+      // 187차 — 받침 없는 이름은 「와」(구: 「도현수과 대화하기」). EN 규칙은 과/와 둘 다 받는다.
+      const nm = npc?.nameKo ?? id;
+      const last = nm.charCodeAt(nm.length - 1);
+      const gwa = last >= 0xac00 && last <= 0xd7a3 && (last - 0xac00) % 28 === 0 ? '와' : '과';
+      opts.push({ label: `${nm}${gwa} 대화하기`, note, run: () => this.openDialogue(id) });
     }
     // ③ 오브젝트(문·버스·설치물)
     if (this.nearObject) {

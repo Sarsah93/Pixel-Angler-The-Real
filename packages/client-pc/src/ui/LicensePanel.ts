@@ -13,13 +13,23 @@ import {
   LICENSE_DATABASE, LICENSE_CATEGORY_LABEL, LICENSE_CATEGORY_ORDER, getLicenseByType, checkUnlockRequirements,
   licenseStoryRoute, applyLicenseWaiver,
   getStoryQuest, getSpotById, getFishById, QUEST_DATABASE,
-  type LicenseType, type LicenseDef, type UnlockRequirement,
+  type LicenseType, type LicenseDef, type UnlockRequirement, type UnlockableFeature,
 } from '@tra/core';
 import { DraggablePanel, applyScreenFixed, restoreHandCursor } from './DraggablePanel.js';
 import type { UpkeepItem } from '@tra/core';
 import { GameState } from '../store/GameState.js';
 import { StoryStore } from '../store/StoryStore.js';
 import { clampTextWidth, enforceTextBounds } from './TextFit.js';
+
+/** 면허가 여는 기능 — 화면용 이름 (내부 id는 주석에만, R1) */
+const FEATURE_KO: Record<UnlockableFeature, string> = {
+  shore_hunting_mode: '해루질', trap_deployment: '통발 설치', trap_commercial: '상업용 통발',
+  restaurant_open: '식당 개업', condo_operation: '선상콘도 운영', tournament_entry: '토너먼트 참가',
+  tournament_hosting: '토너먼트 주최', boat_rental: '보트 대여', protected_area_access: '보호구역 출입',
+  abalone_hunting: '전복 채취', eel_trapping: '장어 통발', catch_and_cook_advanced: '고급 손질·요리',
+  home_expansion: '집 증축·마당 시설', farm_plots: '농지 경작', boat_operation: '개인 보트 운항',
+  village_fishery_gathering: '어촌계 어장 채취', restricted_port_fishing: '항만 제한구역 낚시',
+};
 
 const PANEL_W = 720;
 const PANEL_H = 500;
@@ -228,7 +238,8 @@ export class LicensePanel extends DraggablePanel {
     // 해금 기능
     if (lic.unlocksFeatures.length) {
       y += 6;
-      const ft = this.scene.add.text(0, y, `해금: ${lic.unlocksFeatures.join(' · ')}`, { fontFamily: FONT, fontSize: '10px', color: '#6a8aa0', wordWrap: { width: DETAIL_W } });
+      // 187차 — 구: 내부 id(`trap_deployment`)가 그대로 보였다(R1). 사람이 읽는 말로 바꾼다.
+      const ft = this.scene.add.text(0, y, `해금: ${lic.unlocksFeatures.map((f) => FEATURE_KO[f] ?? f).join(' · ')}`, { fontFamily: FONT, fontSize: '10px', color: '#6a8aa0', wordWrap: { width: DETAIL_W } });
       y += ft.height + 4; c.add(ft);
     }
     if (lic.plannedNote) {
@@ -259,6 +270,9 @@ export class LicensePanel extends DraggablePanel {
         const btn = this.scene.add.rectangle(DETAIL_W / 2 - 100, by, 200, 32, ok ? 0x1f5a3a : 0x2a3340, 1).setOrigin(0, 0).setStrokeStyle(1, ok ? 0x4af2a1 : 0x3a4a5a, 1);
         const bt = this.scene.add.text(DETAIL_W / 2, by + 16, `갱신하기 (₩${ren.costKrw.toLocaleString()})`, { fontFamily: FONT, fontSize: '12px', color: ok ? '#e8fff0' : '#6a7a8a', fontStyle: 'bold' }).setOrigin(0.5);
         const why = this.scene.add.text(DETAIL_W / 2, by - 7, ok ? '' : !payable ? '아직 갱신일이 아닙니다' : '재화가 부족합니다', { fontFamily: FONT, fontSize: '10px', color: '#c88a5a' }).setOrigin(0.5, 1);
+        // 187차 — 안내 줄(by−22 위쪽 기준)과 사유 줄(by−7 아래쪽 기준)이 같은 띠에 겹쳐 그려졌다(실측 12px 겹침).
+        //   안내 줄을 사유 줄 **위**로 흐름 배치한다(두 줄로 감겨도 버튼·사유를 침범하지 않게 아래쪽 기준).
+        info.setOrigin(0.5, 1).setY(ok ? by - 8 : by - 7 - why.height - 4);
         if (ok) {
           btn.setInteractive({ useHandCursor: true });
           btn.on('pointerdown', () => {

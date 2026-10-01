@@ -66,10 +66,18 @@ const HARD_KINDS: { k: LureKind; label: string }[] = [
   { k: 'metal_jig', label: '메탈지그' },
   { k: 'tairaba', label: '타이라바' },
 ];
+/** 라인업 카드용 짧은 침강 라벨 (187차 — 구: 긴 라벨의 첫 단어라 초고속 싱킹이 「초고속」만 남았다) */
+const SINK_SHORT: Record<string, string> = { floating: '플로팅', sinking: '싱킹', fast_sinking: '초고속 싱킹' };
 const SINK_LABEL: Record<string, string> = {
   floating: '플로팅 (수면 유지·리트리브로 파고듦)',
   sinking: '싱킹 (착수 후 하강)',
   fast_sinking: '초고속 싱킹 (빠른 하강)',
+};
+
+/** 추천 배너용 미끼 이름 (RigRecommender의 BaitKey → 화면 이름, R1) */
+const BAIT_KEY_KO: Record<string, string> = {
+  krill: '크릴', worm_blue: '청갯지렁이', worm_king: '참갯지렁이', crab: '게·소라', shellfish: '조개살',
+  urchin: '성게', corn: '옥수수', bread: '빵가루 경단', fishcut: '생선 살', livefish: '생미끼', lure: '루어',
 };
 
 export type UtilizationTab = 'cooking' | 'tackles' | 'chum' | 'craft';
@@ -285,7 +293,8 @@ export class UtilizationPanel extends DraggablePanel {
       const kindKo = reco.sinkerKind === 'hole' ? '구멍' : reco.sinkerKind === 'bundle' ? '묶음추' : '고리';
       recoParts.push(`봉돌 ${kindKo} ${reco.sinkerHoRange[0]}~${reco.sinkerHoRange[1]}호`);
     }
-    if (reco.baitKeys.length) recoParts.push(`미끼 ${reco.baitKeys.slice(0, 2).join('·')}`);
+    // 187차 — 구: 내부 키(`worm_blue·krill`)가 그대로 보였다(R1)
+    if (reco.baitKeys.length) recoParts.push(`미끼 ${reco.baitKeys.slice(0, 2).map((k) => BAIT_KEY_KO[k] ?? k).join('·')}`);
     const recoText = this.scene.add.text(24, top + 18,
       `추천 (${reco.targetNames.join('·') || '지역 대상어'}): ${recoParts.join(' · ')}`, {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#ffd257', fontStyle: 'bold',
@@ -661,7 +670,7 @@ export class UtilizationPanel extends DraggablePanel {
       const nm = this.scene.add.text(lx + 8, cardY + 8, `${spec.sizeLabel} · ${spec.brand}`, {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#e8f4fd', fontStyle: 'bold',
       });
-      const sub = this.scene.add.text(lx + 8, cardY + 26, `${spec.weightG}g · ${SINK_LABEL[spec.sinkType].split(' ')[0]}`, {
+      const sub = this.scene.add.text(lx + 8, cardY + 26, `${spec.weightG}g · ${SINK_SHORT[spec.sinkType] ?? spec.sinkType}`, {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#9fc0d4',
       });
       const qty = this.scene.add.text(lx + w - 8, cardY + 8, `x${item.qty}`, {

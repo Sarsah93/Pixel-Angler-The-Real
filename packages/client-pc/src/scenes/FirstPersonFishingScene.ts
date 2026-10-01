@@ -892,7 +892,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
 
     if (conf.shake > 0) this.cameras.main.shake(140 + stage * 40, conf.shake);
     if (stage === 3) {
-      const now = this.add.text(GAME_WIDTH / 2, 168, '지금 챔질! (우클릭)', {
+      // 187차 — y 168 → 196: 조경지대 진입 안내(y 148 · 높이 ≈29)와 겹치지 않게 그 아래로
+      const now = this.add.text(GAME_WIDTH / 2, 196, '지금 챔질! (우클릭)', {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '22px', color: '#ff5a4a', fontStyle: 'bold',
         stroke: '#0a1628', strokeThickness: 5,
       }).setOrigin(0.5).setDepth(96).setScale(0.6);
@@ -908,6 +909,9 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     const isRip = zone === 'rip';
     const isMain = zone === 'main';
     if (!isRip && !isMain) return;   // 일반 존 전환은 조용히 (우측 패널 라벨로 충분)
+    // 187차 — 파이팅 중에는 띄우지 않는다. 문구가 채비를 흘릴 때의 조언(입질 확률 · 회수)이라 뜻이 없고,
+    //   y 148 자리가 패턴 경고(104~136) · 슬랙 경고(142~) 와 포개졌다(실캡처).
+    if (this.fpState === 'fighting') return;
     const msg = isRip ? `${label} 진입 — 입질 확률 급상승!` : `${label} 진입 — 채비 정렬 불가, 릴링으로 회수하세요`;
     const t = this.add.text(GAME_WIDTH / 2, 148, msg, {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '14px',
@@ -3865,7 +3869,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       `밑밥 동조 ${(chumSync * 100).toFixed(0)}%${this.chumPredPeak >= 0 ? ` (투척 예측 ${(this.chumPredPeak * 100).toFixed(0)}%)` : ''}`,
       `입질 확률 ${(probPerSec * 100).toFixed(1)}%/s${actionLeft > 0 ? '  [리액션 x2.0]' : ''}${this.lureMode ? (this.lureActionMult < 1 ? '  [루어 방치 x0.15 — 액션 필요!]' : `  [액션 x${this.lureActionMult.toFixed(1)}]`) : ''}`,
       `피딩 ${this.feeding.label} x${this.feeding.activity.toFixed(2)}${this.cfg.fieldEvent ? `  [${this.cfg.fieldEvent.label} x${this.cfg.fieldEvent.biteMult.toFixed(1)}]` : ''}`,
-      `지형: ${inReef ? (hold ? '여 밭 안착 (x2.5)' : '여 밭') : '모래/갯벌'}${snagProgress > 0.3 ? '  ⚠ 밑걸림 주의' : ''}`,
+      `지형: ${inReef ? (hold ? '여 밭 안착 (x2.5)' : '여 밭') : '모래/갯벌'}${snagProgress > 0.3 ? '  · 밑걸림 주의' : ''}`,
       `미끼 수심 ${this.rig.baitZ.toFixed(1)}m / 매듭 ${this.zLimitM}m / 바닥 ${this.cfg.zMaxM.toFixed(0)}m`,
     ];
     this.probText.setText(lines.join('\n')).setPosition(16, 40);
@@ -3908,7 +3912,12 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     // ── 136차 슬랙 경고 — 줄을 주는 동안 바늘 빠짐이 얼마나 임박했는지 **보여준다** ──
     //   (경고 없이 빠지면 "왜 놓쳤는지 모르는" 상태가 된다 — 튜토리얼 대체)
     if (st.slackRisk > 0.02) {
-      const sw = 260, sx = GAME_WIDTH / 2 - sw / 2, sy = by + 50;
+      // 187차 — 패턴 경고(여 박기·바늘털이 — y 104~136)와 같은 자리였다(실캡처: 두 문구가 포개짐).
+      //   경고가 떠 있으면 그 아래로 내린다(경고 표시 여부는 직전 프레임 값 — 1프레임 지연은 보이지 않는다).
+      const sw = 260, sx = GAME_WIDTH / 2 - sw / 2;
+      const sy = this.patternText.visible
+        ? Math.round(this.patternText.y + this.patternText.height / 2 + 6)
+        : by + 50;
       g.fillStyle(0x101820, 0.9);
       g.fillRoundedRect(sx, sy, sw, 8, 3);
       g.fillStyle(st.slackRisk > 0.6 ? 0xff5a4a : 0xffb26b, 0.95);
@@ -3939,7 +3948,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       this.hookedFish ? `상대: ??? (힘 ${(this.hookedFish.powerFactor * 100).toFixed(0)})` : '',
       ft
         ? `피로: ${FATIGUE_PHASE_LABEL[ft.phase]} (잔여 ${(ft.ratio * 100).toFixed(0)}%)`
-          + `${ft.recovering ? '  ⚠ 슬랙 — 물고기 회복 중!' : ''}${ft.phase === 'SPENT' ? '  — 랜딩 찬스!' : ''}`
+          + `${ft.recovering ? '  · 슬랙 — 물고기 회복 중!' : ''}${ft.phase === 'SPENT' ? '  — 랜딩 찬스!' : ''}`
         : '',
     ].join('\n')).setPosition(16, 40);
   }

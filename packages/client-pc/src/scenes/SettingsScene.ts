@@ -77,27 +77,28 @@ interface HotkeySection { title: string; items: HotkeyEntry[]; }
 
 const HOTKEY_SECTIONS: HotkeySection[] = [
   {
+    // 187차 — 현행 조작으로 교정(구: 좌클릭 이동 · M 미니맵 크기 · V 오버레이 · SPACE 다시 캐스팅은 모두 없어진 조작).
+    //   왼쪽 열은 패널 하단(640) 안에 들어가도록 18행 이내 — 창 단축키는 두 개씩 묶는다.
     title: '필드 (탑다운)',
     items: [
-      { key: '방향키', desc: '캐릭터 이동' },
-      { key: 'Shift+방향키', desc: '달리기 (1.55배 — 피로 소모 증가)' },
+      { key: '방향키', desc: '캐릭터 이동 (Shift = 달리기 1.55배)' },
       { key: '좌클릭(유지)', desc: '캐스팅 차지 → 착수 시 낚시 진입' },
-      { key: '좌클릭', desc: '클릭 위치로 이동' },
-      { key: 'F', desc: '상호작용 (건물·오브젝트·채집·통발)' },
-      { key: 'E', desc: '장비 패널' },
+      { key: '좌클릭(짧게)', desc: '테트라포드·사석 위 구멍치기' },
+      { key: 'F', desc: '상호작용 (대화·거래·채집·통발·줍기)' },
+      { key: 'Shift+F', desc: '설치물 회수' },
+      { key: 'Enter', desc: '지역 채널 대화' },
       { key: 'R', desc: '자전거 승·하차 (탑승 시 이동 2배)' },
+      { key: 'E / I', desc: '장비 패널 / 인벤토리' },
+      { key: 'U', desc: '활용 (채비·요리·밑밥·제작)' },
       { key: 'B', desc: '쿨러(어창) 열기' },
       { key: 'S', desc: '능력치(스탯) 패널' },
-      { key: 'U', desc: '활용 (요리·채비 조립)' },
-      { key: 'I', desc: '인벤토리 토글' },
-      { key: 'L', desc: '면허 · 허가' },
-      { key: 'K', desc: '스킬 트리' },
+      { key: 'N', desc: '도감' },
+      { key: 'L / K', desc: '면허 · 허가 / 스킬 트리' },
       { key: 'J', desc: '일지 (이야기 · 할 일)' },
       { key: 'T', desc: '통발 놓기' },
-      { key: 'M', desc: '미니맵 크기 순환' },
-      { key: 'V', desc: '조류/수심 오버레이 토글' },
+      { key: 'M', desc: '전체 지도' },
       { key: '1 ~ 8', desc: '퀵슬롯 선택' },
-      { key: 'ESC', desc: '팝업 닫기(LIFO) / 일시정지 메뉴' },
+      { key: 'F1 / ESC', desc: '도움말 / 팝업 닫기 · 일시정지 메뉴' },
     ],
   },
   {
@@ -110,11 +111,12 @@ const HOTKEY_SECTIONS: HotkeySection[] = [
       { key: '←/→', desc: '채비 횡 이동 (조류 방향·세기 연동)' },
       { key: '↑ (유지)', desc: '리프트 (채비 수심 상승)' },
       { key: 'H', desc: '뒷줄견제 (그 지점 홀드)' },
+      { key: 'R (유지)', desc: '베일 개방 — 줄 주기 (흘림)' },
       { key: 'C', desc: '밑밥 투척 (동조율)' },
       { key: 'I', desc: '인벤토리 토글' },
-      { key: 'SPACE', desc: '다시 캐스팅 (결과 화면)' },
-      { key: 'F1 / ?', desc: '도움말 가이드' },
-      { key: 'ESC', desc: '종료 (인벤→쿨러→나가기 LIFO)' },
+      { key: 'SPACE', desc: '필드로 돌아가기 (결과 화면)' },
+      { key: 'F1 / /', desc: '도움말 가이드' },
+      { key: 'ESC', desc: '종료 (가이드→인벤→쿨러→나가기)' },
     ],
   },
   {
@@ -122,7 +124,8 @@ const HOTKEY_SECTIONS: HotkeySection[] = [
     items: [
       { key: '좌클릭(유지)', desc: '릴링 (거리 좁힘)' },
       { key: '←/→', desc: '로드 스티어 (+릴링 = 물고기 횡 견인)' },
-      { key: '↑ (유지)', desc: '버티기 (홀드 — 구 H)' },
+      { key: '↑ (유지)', desc: '버티기 (여 박기 대응)' },
+      { key: 'R (유지)', desc: '줄 주기 (텐션 빼기 · 바늘털이 대응)' },
     ],
   },
 ];

@@ -1,10 +1,11 @@
-"""도움말 라이브러리 실캡처 주석 오버레이 (116차 · 117차 선명화).
+"""도움말 라이브러리 실캡처 주석 오버레이 (116차 · 117차 선명화 · 187차 번호 콜아웃).
 
-    py tools/annotate_help_images.py <raw_dir> [--out packages/client-pc/public/guide/help]
+    node tools/capture_help_images.cjs <raw_dir> [--lang ko|en]      # 1) 실캡처 (dev 서버 필요)
+    py tools/annotate_help_images.py <raw_dir> [--lang ko|en] [--out packages/client-pc/public/guide/help]
 
 `raw_dir`의 `<name>.png`(Playwright 1280×720 실캡처)를 **패널 표시 폭(688px)으로 먼저 축소**(LANCZOS + 언샤프)한 뒤,
-그 위에 번호 박스·라벨을 **최종 픽셀 크기로** 그린다 → 게임이 1:1로 그리므로 라벨이 뭉개지지 않는다
-(116차는 1280 원본에 그리고 960으로 줄여 텍스트가 재샘플링돼 흐렸다 — 117차 피드백 8.2).
+그 위에 테두리와 번호 배지를 **최종 픽셀 크기로** 그린다 → 게임이 1:1로 그리므로 뭉개지지 않는다.
+187차부터는 **번호만** 그린다 — 뜻은 HelpContent.ts의 imageCaption(①②③…)이 말하므로 콜아웃 순서는 캡션 순서와 같아야 한다.
 콜아웃 좌표는 CALLOUTS(1280×720 화면 좌표)로 두고 축소 배율만 곱한다 — 레이아웃이 바뀌면 여기만 고친다.
 캡처가 없는 키는 안내 문구만 있는 플레이스홀더를 만든다(BootScene 404 방지).
 """
@@ -23,311 +24,112 @@ INK = (10, 22, 40)
 OUT_W = 688
 OUT_H = round(720 * OUT_W / 1280)   # 387
 
-# name → [(x, y, w, h, label)]  (1280×720 좌표)
-CALLOUTS: dict[str, list[tuple[int, int, int, int, str]]] = {
-    # ── 136차 — 스풀·베일 / 밑걸림 / 장비 고장 ──
-    'spool': [
-        (1148, 199, 122, 24, '스풀 행 — 줄 길이 · 여유/방출/팽팽'),
-        (16, 40, 190, 122, '입질 확률 · 미끼 수심'),
-        (310, 568, 660, 24, 'R 홀드 = 베일 개방 안내'),
-        (16, 408, 232, 212, '수평뷰 — 흘러간 채비 위치'),
-    ],
-    'spool_fight': [
-        (420, 52, 420, 20, '텐션바 — 안전 30~80'),
-        (508, 114, 268, 24, '슬랙 경고 — 바늘 빠짐까지 N초'),
-        (1148, 199, 122, 24, '줄 길이 · 팽팽/여유'),
-        (310, 568, 660, 24, 'R 줄 주기 중 안내'),
-    ],
-    'snag': [
-        (410, 210, 460, 252, '밑걸림 선택창'),
-        (452, 324, 418, 44, '두 선택지의 확률표'),
-        (452, 392, 384, 42, '끌어당기기 / 끊기'),
-    ],
-    'gear_fault': [
-        (678, 218, 144, 72, '고장 배지 — 슬롯 우하단 빨간 삼각형'),
-        (433, 104, 416, 40, '탭 — 장비 / 소모품 / 음식 / 낚시용품 / 기타'),
-    ],
-    'hud': [
-        (16, 16, 320, 176, '상태 — HP·피로·시계·날씨 (크기/투명 버튼)'),
-        (1110, 10, 158, 100, '미니맵 (M 크기)'),
-        (420, 646, 440, 62, '퀵슬롯 1~8'),
-        (16, 552, 300, 148, '지역 채널 (크기/투명 버튼)'),
-        (1196, 640, 64, 64, '단축키 → 도움말'),
-    ],
-    'rig_bait': [
-        (124, 134, 230, 28, '미끼 / 루어 채비 전환'),
-        (124, 232, 1032, 134, '소켓 체인 — 원줄→면사매듭→부력찌→수중찌→도래→목줄→봉돌→바늘→미끼'),
-        (250, 316, 84, 30, '면사매듭 -/+ = 최대 공략 수심'),
-        (124, 378, 1032, 148, '채비 물리 스펙 (총무게·부력·침강·C_d)'),
-    ],
-    'rig_lure': [
-        (256, 134, 96, 28, '루어 채비 탭'),
-        (124, 196, 222, 132, '루어 전용 원줄·목줄 소켓'),
-        (360, 250, 300, 22, '라인 인장강도 = 텐션 분모'),
-        (124, 342, 270, 60, '소프트/하드 → 종류'),
-        (124, 432, 310, 58, '라인업 (인벤 보유 루어)'),
-        (124, 503, 1032, 150, '루어 제원 · 총무게 (지그헤드 포함)'),
-    ],
-    'cast_aim': [
-        (598, 310, 90, 16, '파워 게이지 (좌클릭 유지)'),
-        (640, 340, 430, 60, '조준선 → 착수 마커 (초록 = 바다)'),
-        (466, 610, 356, 26, '조작 안내'),
-    ],
-    'fp_views': [
-        (410, 16, 462, 24, '상태 · 조작 요약'),
-        (16, 40, 170, 116, '정렬도·동조·입질 확률·피딩·수심'),
-        (16, 408, 232, 212, '수평뷰 — 위에서 본 위치·조류'),
-        (930, 44, 336, 288, '수심 정보 — 찌·매듭·채비·바닥·조류 존'),
-        (596, 250, 240, 40, '찌 · 원줄 (정면)'),
-        (470, 620, 340, 68, '쿨러(어창) · 밑밥 C'),
-        (1220, 340, 40, 110, '가이드 · 밑밥 버튼'),
-    ],
-    # ── 131차 — 제작 탭 · 고급 제작대 · 스킬 트리 · 상태 패널 ──
-    'craft_tab': [
-        (684, 94, 180, 34, '제작 탭 — 조건 없이 어디서나'),
-        (121, 143, 338, 520, '도면 목록 — 그룹별 · 칩 색 = 가능/재료 부족/잠김'),
-        (488, 224, 300, 18, '산출 · 성공률 · 재료 절약'),
-        (485, 248, 400, 60, '필요 재료 — 보유 / 필요'),
-        (492, 318, 270, 30, '수량 −/+/최대 → [제작]'),
-        (488, 630, 380, 18, '고급 품목은 설치한 제작대에서 [F]'),
-    ],
-    'workbench': [
-        (215, 96, 220, 34, '고급 제작대 — 근접 [F] · 회수는 Shift+F'),
-        (228, 145, 280, 470, '고급 도면 6종 — 루어·에기 / 통발 / 로드·릴'),
-        (535, 250, 420, 78, '전용 자재 — 식자재마트에서 구매'),
-        (538, 378, 300, 20, '제작 스킬 랭크가 모자라면 잠김'),
-        (20, 612, 300, 62, '설치 로그'),
-    ],
-    'skill_tree': [
-        (108, 78, 252, 340, '카테고리 7 — 제작 포함'),
-        (856, 80, 324, 20, '포인트 = 레벨 + 면허 (합계 215)'),
-        (588, 166, 44, 16, '예정 배지 = 효과 배선 전'),
-        (978, 500, 176, 62, '??? = 시너지 히든 (조합 완성 시 자동)'),
-        (378, 558, 790, 72, '하단 상세 → [배우기]'),
-    ],
-    'vitals_panel': [
-        (18, 16, 322, 200, '상태 패널 대'),
-        (200, 92, 132, 40, '허기 · 수분 컴팩트 바'),
-        (334, 44, 132, 44, '호버 팝업이 뜨는 자리'),
-        (14, 216, 88, 28, '상태이상 스트립 (패널 바깥)'),
-    ],
-    # 파이팅 (117차 실캡처 — devForceFight)
-    'fp_fight': [
-        (16, 40, 172, 122, '텐션·하중/줄·랜딩·피로'),
-        (410, 16, 462, 24, '상태줄 — 조작'),
-        (430, 86, 420, 22, '대응 판정 배지'),
-        (420, 110, 440, 26, '패턴 안내'),
-        (930, 44, 336, 288, '수심 — 물고기 깊이'),
-    ],
-    'inventory': [
-        (420, 60, 440, 40, '카테고리 탭 (장비/소모품/음식/낚시용품/기타)'),
-        (430, 110, 420, 380, '5×5 소켓 — 드래그 이동 · 우클릭 메뉴'),
-        (430, 500, 420, 60, '선택 요약 (신선도·남은 시간·희귀도)'),
-        (430, 620, 420, 30, '보유 재화'),
-    ],
-    'equipment': [
-        (860, 22, 382, 40, '장비창 (E)'),
-        (880, 70, 340, 60, '머리 4칸'),
-        (880, 140, 90, 250, '좌측 6칸 — 어깨·상의·팔토시·장갑·손(좌)·반지'),
-        (1150, 140, 90, 250, '우측 6칸 — 릴·시계·장갑·손(우)·반지'),
-        (980, 140, 160, 250, '캐릭터 (인벤에서 드래그 장착)'),
-        (990, 420, 120, 200, '다리 — 하의·양말·신발'),
-    ],
-    'shop': [
-        (40, 60, 460, 40, '상점 (구매/판매 탭)'),
-        (50, 110, 440, 380, '상품 그리드 — 호버 툴팁 · 추천 배지'),
-        (50, 560, 440, 60, '구매/판매 버튼 → 수량 팝업'),
-        (810, 60, 440, 596, '함께 열리는 인벤토리'),
-    ],
-    # 117차 추가 — 상점 문 앞 E → 상점(좌) + 인벤토리(우)
-    'shop_trade': [
-        (40, 60, 460, 40, '상점 (구매/판매 탭)'),
-        (50, 110, 440, 380, '상품 그리드 — 추천 배지 · 우클릭 상세'),
-        (810, 60, 440, 596, '캐릭터 인벤토리 (판매 = 여기서 선택)'),
-        (560, 250, 200, 200, '문 앞 캐릭터 — E로 거래 시작'),
-    ],
-    'cooler': [
-        (462, 84, 356, 40, '쿨러 (매질 · 남은 시간)'),
-        (484, 150, 312, 316, '3×3 어창 — 우클릭 메뉴 · 밖으로 드래그 = 인벤 이송'),
-        (482, 472, 316, 38, '해수 넣기 / 얼음 넣기 / 비우기'),
-    ],
-    'board': [
-        (118, 94, 184, 34, '요리하기 탭'),
-        (124, 140, 560, 380, '도마 — 어획물을 드래그해 올린다'),
-        (720, 140, 436, 480, '임베드 인벤토리 (음식 탭)'),
-        (124, 530, 560, 100, '손질 시작 / 회뜨기 버튼'),
-    ],
-    'board_fish': [
-        (124, 140, 560, 380, '도마 위 어획물 (드래그로 올림 · 내리기 버튼)'),
-        (720, 140, 436, 480, '임베드 인벤토리 — 다음 생선 대기'),
-        (124, 530, 560, 100, '[손질 시작] — 손에 회칼 착용 필수'),
-    ],
-    'butchery': [
-        (700, 60, 470, 160, '작업 목록 — 섹션 순서 · 작업은 자유'),
-        (120, 150, 560, 300, '도마 — 유도선을 따라 드래그'),
-        (700, 250, 470, 200, '방향·회전 버튼 / 진행 / 스킬'),
-    ],
-    'chum_tab': [
-        (118, 94, 200, 34, '밑밥 품질 탭'),
-        (124, 150, 480, 380, '밑밥 통 — 재료를 드래그해 투입'),
-        (640, 150, 516, 380, '재료 인벤토리 (파우더·크릴·곡물)'),
-        (124, 540, 480, 60, '물 넣기 → 섞기 = 100 충전'),
-    ],
-    'codex': [
-        (40, 60, 1200, 60, '탭 — 어종 / 해양생물 / 아이템 위키 / 조과 기록'),
-        (40, 140, 1200, 480, '발견한 종만 공개 — 미발견은 실루엣 + 서식 힌트'),
-    ],
-    'bite_s3': [
-        (700, 160, 200, 140, '초릿대 3단계 — 크게 휘어 유지 (지금 우클릭)'),
-        (560, 240, 160, 60, '찌 잠김'),
-        (410, 16, 462, 24, '입질 안내'),
-    ],
-    'dragin_reel': [
-        (440, 300, 400, 120, '큰 화살표 = 이 방향 ←/→ 키 + 릴링'),
-        (410, 16, 462, 24, '제압 완료 — 남은 거리'),
-    ],
-    'catch_popup': [
-        (408, 200, 464, 150, '어획 팝업 — 제목 색 = 희귀도 · 본문 끝 [1.16×, 평균]'),
-        (420, 392, 440, 56, '쿨러 보관 / 인벤토리 / 방생'),
-        (300, 20, 680, 28, '결과 안내 · 계속(SPACE) / 그만(ESC)'),
-    ],
-    'worldmap': [
-        (300, 60, 680, 600, '전국 지도 — 핀 클릭 → 구역 → 출조'),
-        (20, 20, 220, 40, '집으로 돌아가기 (무료)'),
-    ],
-    'home': [
-        (400, 60, 162, 100, '집 — E 로 실내 (침대 저장·냉장고·주방)'),
-        (836, 520, 40, 60, '출조 버스 — 전국 지도'),
-        (180, 262, 110, 20, '선착장 (배 출조 예정)'),
-        (1110, 10, 158, 110, '미니맵'),
-    ],
+# name → [(x, y, w, h[, 배지 위치])]  (1280×720 화면 좌표) — 187차: **번호만** 그린다.
+# 배지 위치 = 'above'(기본 · 박스 왼쪽 위 바깥) / 'left' / 'right' / 'below' / 'in'(안쪽 왼쪽 위) / 'inr'(안쪽 오른쪽 위)
+# — 배지가 제목·탭·글자를 가리면 여기서 옮긴다(검수 = 축소본을 눈으로).
+# 번호의 뜻은 HelpContent.ts의 imageCaption(①②③…)이 말한다 — 순서를 캡션과 똑같이 맞출 것.
+# (131~136차의 라벨형 콜아웃은 좁은 곳에서 라벨끼리 겹쳤고, 영문판 라벨 사전도 따로 관리해야 했다.)
+# 캡처 하네스 = tools/capture_help_images.cjs. 화면이 바뀌면 다시 찍고 좌표만 고친다.
+CALLOUTS: dict[str, list[tuple]] = {
+    # ── 시작하기 ──
+    # 캐릭터 만들기 — ① 미리보기 ② 외형 항목 ③ 생성 버튼
+    'char_create': [(42, 90, 426, 536, 'in'), (488, 120, 750, 350, 'inr'), (66, 652, 572, 40)],
+    # ① 상태 ② 지도 ③ 지금 할 일 ④ 목표 화살표 ⑤ 지역 채널 ⑥ 퀵슬롯 ⑦ 도움말 버튼
+    'hud': [(16, 16, 320, 196), (1110, 10, 158, 112), (1034, 138, 234, 124), (636, 272, 84, 44),
+            (16, 552, 300, 148), (418, 646, 444, 62), (1196, 640, 64, 64)],
+    # ① 집 문 ② 보건소 ③ 우물 ④ 선착장 ⑤ 출조 버스 정류장 ⑥ 지금 할 일
+    'hometown': [(430, 110, 110, 96), (734, 166, 52, 58), (612, 184, 36, 36), (176, 258, 108, 26),
+                 (822, 520, 58, 58), (1034, 156, 234, 124)],
+    # ① 침대 메뉴 ② 침대 ③ 냉장고 ④ 개수대 · 가스레인지 ⑤ 문
+    'home_interior': [(470, 268, 340, 184, 'in'), (786, 230, 92, 132), (358, 230, 36, 88), (402, 230, 140, 40),
+                      (596, 570, 88, 44)],
+    # 전국 지도 — ① 지역 목록 ② 지도 핀 ③ 범례 ④ 집으로 돌아가기
+    'worldmap': [(14, 112, 344, 570, 'below'), (380, 60, 580, 580), (1130, 576, 132, 138), (16, 14, 150, 34, 'right')],
+    # 환경설정 — ① 탭 ② 장소 이름표 ③ 할 일 위치 안내
+    'settings': [(258, 134, 736, 40), (298, 208, 640, 110, 'left'), (298, 360, 640, 108, 'left')],
+    # ── 조작 ──
+    # ① 할 수 있는 일을 고르는 창 ② 바닥의 물건 줄
+    'interact_choice': [(352, 222, 236, 116), (358, 290, 226, 40, 'left')],
+    # ── 이야기 ──
+    # ① 이름 · 나이 · 하는 일 ② 얼굴과 우호도 눈금 ③ 타이핑되는 대사 ④ 선택지
+    'dialog': [(126, 336, 524, 24, 'left'), (138, 374, 204, 320, 'in'), (364, 374, 782, 166, 'inr'), (372, 548, 768, 110)],
+    # ① 할 일 / 이야기 탭 ② 완료 · 잠긴 할 일 표시 ③ 고정 체크 ④ 목록 ⑤ 사연 · 목표 · 방법 · 보상
+    'journal': [(112, 70, 112, 24, 'left'), (234, 70, 236, 24), (118, 134, 34, 26), (190, 124, 410, 44),
+                (612, 100, 556, 390)],
+    # ① 지금 할 일 ② 목표 화살표 ③ 미니맵 표시
+    'tracker': [(1034, 138, 234, 124), (636, 272, 84, 44), (1110, 10, 158, 112)],
+    # ── 낚시 ──
+    # 수산물 직판장 — ① 탭 ② 상품 ③ 구매 / 판매 ④ 함께 열리는 인벤토리
+    'shop': [(52, 118, 434, 36, 'left'), (78, 158, 384, 306, 'left'), (68, 594, 404, 44), (812, 62, 436, 590)],
+    # ① 미끼 / 루어 전환 ② 소켓 9개 ③ 면사매듭 −/+ ④ 채비 제원 ⑤ 채비 고정 버튼
+    'rig_bait': [(122, 132, 232, 30, 'right'), (122, 230, 1036, 136, 'left'), (250, 312, 86, 26, 'right'), (124, 376, 1032, 150),
+                 (894, 480, 252, 40, 'left')],
+    # 루어 채비 탭 — ① 미끼 / 루어 전환 ② 원줄 · 목줄 ③ 소프트 / 하드 → 종류 → 라인업 ④ 루어 제원 · 채비 고정
+    'rig_lure': [(240, 132, 114, 30, 'right'), (122, 192, 224, 136, 'left'), (122, 340, 312, 150, 'in'), (124, 502, 1032, 150, 'inr')],
+    # ① 파워 게이지 ② 조준선 · 착수 마커 · 산포 원 ③ 조작 안내
+    'cast_aim': [(596, 310, 88, 16, 'left'), (632, 372, 92, 150), (420, 610, 440, 28, 'left')],
+    # ① 상태 · 조작 요약 ② 정렬도 · 동조 · 입질 확률 ③ 수평뷰 ④ 수직뷰 ⑤ 쿨러 · 밑밥
+    'fp_views': [(298, 16, 686, 26, 'left'), (16, 40, 174, 110, 'right'), (16, 408, 232, 212), (928, 44, 338, 288, 'left'),
+                 (468, 610, 344, 82, 'left')],
+    # ① 「지금 챔질!」 ② 초릿대 · 찌 ③ 입질 안내
+    'bite_s3': [(566, 180, 148, 32), (620, 250, 180, 70), (310, 568, 660, 24)],
+    # ① 텐션 · 하중/줄 · 랜딩 · 피로 ② 상태줄 ③ 텐션 바 ④ 대응 판정 · 패턴 안내 ⑤ 물고기 깊이
+    # (대응 판정 배지는 랜딩·제압 바 위에 겹쳐 그려져 배지 자리가 없다 — 패턴 안내와 한 박스로)
+    'fp_fight': [(16, 40, 262, 92, 'right'), (392, 16, 498, 26, 'left'), (430, 52, 420, 22, 'left'),
+                 (376, 86, 528, 52, 'left'), (928, 44, 338, 288)],
+    # ① 제압 완료 · 남은 거리 ② 방향 화살표
+    'dragin_reel': [(448, 104, 384, 34), (576, 306, 130, 30)],
+    # ① 제목 ② 길이 · 무게 · 성별 [배율×, 등급] ③ 쿨러 / 인벤토리 / 방생
+    'catch_popup': [(520, 160, 240, 36), (500, 384, 280, 24), (414, 456, 452, 44)],
+    # ① 스풀 행 ② R 유지 = 베일 개방 안내 ③ 수평뷰
+    'spool': [(1146, 200, 120, 24, 'left'), (310, 568, 660, 24), (16, 408, 232, 212)],
+    # ① 텐션 바 ② 슬랙 경고 ③ 줄 주기 중 안내
+    'spool_fight': [(430, 52, 420, 22, 'left'), (508, 142, 264, 36, 'left'), (310, 568, 660, 24)],
+    # 밑걸림 — ① 두 선택지의 결과 확률 ② 끌어당기기 / 끊기
+    'snag': [(452, 320, 376, 50), (452, 390, 376, 44, 'left')],
+    # U → 밑밥 품질 탭 — ① 재료 ② 밑밥 통 ③ 물 넣기 → 섞기 ④ 추천 배합
+    'chum_tab': [(660, 146, 496, 470, 'inr'), (140, 170, 460, 240, 'in'), (128, 424, 484, 38), (136, 472, 500, 130)],
+    # ── 손질 · 회 ──
+    # ① 도마 위 어획물 ② 임베드 인벤토리 ③ [손질 시작]
+    'board_fish': [(250, 236, 260, 140), (660, 146, 496, 470, 'inr'), (146, 196, 96, 28)],
+    # ① 작업 목록 ② 도마 유도선 ③ 방향 · 회전 버튼
+    'butchery': [(504, 78, 222, 84), (140, 196, 592, 262), (798, 230, 334, 78)],
+    # ── 요리 · 제작 ──
+    # ① 재료 · 양념 넣기 ② 단면 뷰 · 온도 적정대 ③ 불 세기 ④ 지금 내리면 받을 별 ⑤ 순서 안내 ⑥ 불 끄고 내리기
+    'cook_panel': [(198, 130, 250, 476, 'left'), (560, 130, 300, 220), (504, 356, 326, 30, 'left'), (876, 130, 200, 134),
+                   (876, 270, 200, 130, 'left'), (474, 584, 230, 30, 'left')],
+    # ① 도면 목록 ② 산출 · 성공률 · 필요 재료 ③ 수량 → [제작] ④ 고급 품목 안내
+    'craft_tab': [(120, 142, 340, 512, 'left'), (486, 170, 420, 140, 'inr'), (490, 316, 264, 32, 'left'), (486, 628, 380, 20)],
+    # ① 고급 도면 6종 ② 필요 재료 ③ 스킬 잠김
+    'workbench': [(226, 144, 282, 458, 'left'), (536, 250, 260, 80, 'left'), (538, 376, 196, 20, 'left')],
+    # ── 가방 · 장비 ──
+    # ① 탭 ② 칸(스크롤) ③ 선택 요약 ④ 보유 재화
+    'inventory': [(432, 106, 416, 34, 'left'), (458, 146, 364, 364, 'left'), (440, 574, 400, 30, 'left'), (432, 610, 416, 36, 'left')],
+    # 장비창 — ① 머리 ② 왼쪽 ③ 오른쪽 ④ 다리 ⑤ 착용 현황
+    'equipment': [(936, 66, 230, 56, 'left'), (874, 128, 56, 346), (1172, 128, 56, 346), (994, 480, 114, 172, 'left'),
+                  (938, 130, 226, 342, 'in')],
+    # ① 고장 표시 ② 상태 · 수리 행
+    'gear_fault': [(154, 148, 66, 66), (536, 286, 290, 48)],
+    # 쿨러 — ① 매질 · 남은 시간 ② 3×3 어창 ③ 해수 · 얼음 · 비우기
+    'cooler': [(464, 86, 352, 30), (484, 150, 312, 314, 'left'), (480, 472, 320, 40)],
+    # ── 경제 · 세계 · 성장 ──
+    # ① 상점 창 ② 함께 열리는 인벤토리
+    'shop_trade': [(42, 62, 456, 592), (812, 62, 436, 590)],
+    # 면허 · 허가 — ① 면허 목록 ② 상세 ③ 갱신
+    'license': [(288, 138, 334, 450, 'left'), (630, 140, 356, 160), (694, 500, 228, 80)],
+    # ① 지도 ② 범례 ③ 목표(금색 고리) ④ 조작 안내
+    'fullmap': [(24, 52, 1232, 580, 'in'), (24, 640, 1232, 30), (722, 184, 34, 34), (850, 692, 410, 16)],
+    # N 도감 — ① 탭 ② 발견 수 ③ 카드
+    'codex': [(58, 92, 714, 36, 'left'), (1120, 130, 126, 22), (38, 158, 944, 494)],
+    # 스킬 트리 — ① 카테고리 ② 남은 포인트 ③ 스킬 카드 ④ ??? ⑤ 상세와 [배우기]
+    'skill_tree': [(112, 78, 240, 364, 'left'), (856, 76, 308, 20), (388, 112, 568, 446, 'left'), (978, 502, 172, 60, 'left'),
+                   (376, 566, 790, 82)],
+    # ① 상태 패널 ② 허기 · 수분 바 ③ 마우스를 올리면 뜨는 값 ④ 상태이상 칩
+    'vitals_panel': [(18, 16, 318, 196, 'right'), (200, 92, 128, 44, 'left'), (332, 112, 94, 46), (14, 214, 80, 28, 'right')],
 }
 
-# 콜아웃 라벨 영문판 (119차) — 영어 로케일용 주석 이미지(help_<key>_en.png)에 쓴다.
-# 새 콜아웃을 추가하면 여기에도 한 줄 추가할 것(없으면 한국어 그대로 그려진다).
-LABEL_EN: dict[str, str] = {
-    # 136차
-    '스풀 행 — 줄 길이 · 여유/방출/팽팽': 'Spool row — line out · slack / payout / taut',
-    '입질 확률 · 미끼 수심': 'Bite chance · bait depth',
-    'R 홀드 = 베일 개방 안내': 'Hold R = bail open',
-    '수평뷰 — 흘러간 채비 위치': 'Plan view — where the rig has drifted',
-    '텐션바 — 안전 30~80': 'Tension bar — safe 30-80',
-    '슬랙 경고 — 바늘 빠짐까지 N초': 'Slack warning — hook pulls in N s',
-    '줄 길이 · 팽팽/여유': 'Line out · taut / slack',
-    'R 줄 주기 중 안내': 'Giving line with R',
-    '밑걸림 선택창': 'Snag prompt',
-    '두 선택지의 확률표': 'Odds for each option',
-    '끌어당기기 / 끊기': 'Pull up / break off',
-    '고장 배지 — 슬롯 우하단 빨간 삼각형': 'Fault badge — red triangle, lower right of the slot',
-    '탭 — 장비 / 소모품 / 음식 / 낚시용품 / 기타': 'Tabs — Gear / Consumables / Food / Tackle / Misc',
-    # ── 131차 ──
-    '제작 탭 — 조건 없이 어디서나': 'Crafting tab — anywhere, no requirements',
-    '도면 목록 — 그룹별 · 칩 색 = 가능/재료 부족/잠김': 'Blueprints by group · chip colour = ready / short on materials / locked',
-    '산출 · 성공률 · 재료 절약': 'Output · success rate · material saving',
-    '필요 재료 — 보유 / 필요': 'Materials — held / needed',
-    '수량 −/+/최대 → [제작]': 'Quantity −/+/Max → [Craft]',
-    '고급 품목은 설치한 제작대에서 [F]': 'Advanced items need a placed workbench ([F])',
-    '고급 제작대 — 근접 [F] · 회수는 Shift+F': 'Advanced workbench — [F] to use · Shift+F to pick up',
-    '고급 도면 6종 — 루어·에기 / 통발 / 로드·릴': 'Six advanced blueprints — lures & egi / traps / rod & reel',
-    '전용 자재 — 식자재마트에서 구매': 'Dedicated materials — sold at the grocery mart',
-    '제작 스킬 랭크가 모자라면 잠김': 'Locked until the crafting skill rank is met',
-    '설치 로그': 'Placement log',
-    '카테고리 7 — 제작 포함': 'Seven categories — Crafting included',
-    '포인트 = 레벨 + 면허 (합계 215)': 'Points = levels + licences (215 total)',
-    '예정 배지 = 효과 배선 전': 'Planned badge = effect not wired yet',
-    '??? = 시너지 히든 (조합 완성 시 자동)': '??? = hidden synergy (granted on completing the combo)',
-    '하단 상세 → [배우기]': 'Detail pane → [Learn]',
-    '상태 패널 대': 'Large status panel',
-    '허기 · 수분 컴팩트 바': 'Compact hunger / hydration bars',
-    '호버 팝업이 뜨는 자리': 'The hover popup appears here',
-    '상태이상 스트립 (패널 바깥)': 'Status effect strip (outside the panel)',
-    '상태 — HP·피로·시계·날씨 (크기/투명 버튼)': 'Status — HP · fatigue · clock · weather (size / opacity buttons)',
-    '미니맵 (M 크기)': 'Minimap (M = size)',
-    '퀵슬롯 1~8': 'Quickslots 1–8',
-    '지역 채널 (크기/투명 버튼)': 'Region channel (size / opacity buttons)',
-    '단축키 → 도움말': 'Help button',
-    '미끼 / 루어 채비 전환': 'Bait / lure rig toggle',
-    '소켓 체인 — 원줄→면사매듭→부력찌→수중찌→도래→목줄→봉돌→바늘→미끼': 'Socket chain — main line → stopper → float → sinking float → swivel → leader → sinker → hook → bait',
-    '면사매듭 -/+ = 최대 공략 수심': 'Stopper knot -/+ = max working depth',
-    '채비 물리 스펙 (총무게·부력·침강·C_d)': 'Rig physics (weight · buoyancy · sink · C_d)',
-    '루어 채비 탭': 'Lure rig tab',
-    '루어 전용 원줄·목줄 소켓': 'Lure-only main line & leader sockets',
-    '라인 인장강도 = 텐션 분모': 'Line strength = tension divisor',
-    '소프트/하드 → 종류': 'Soft / hard → type',
-    '라인업 (인벤 보유 루어)': 'Lineup (lures you own)',
-    '루어 제원 · 총무게 (지그헤드 포함)': 'Lure specs · total weight (incl. jig head)',
-    '파워 게이지 (좌클릭 유지)': 'Power gauge (hold left-click)',
-    '조준선 → 착수 마커 (초록 = 바다)': 'Aim line → splashdown marker (green = water)',
-    '조작 안내': 'Control hints',
-    '상태 · 조작 요약': 'State · control summary',
-    '정렬도·동조·입질 확률·피딩·수심': 'Alignment · chum sync · bite chance · feeding · depth',
-    '수평뷰 — 위에서 본 위치·조류': 'Plan view — position & current from above',
-    '수심 정보 — 찌·매듭·채비·바닥·조류 존': 'Depth panel — float · stopper · rig · bottom · current zone',
-    '찌 · 원줄 (정면)': 'Float · main line (front view)',
-    '쿨러(어창) · 밑밥 C': 'Cooler (fish box) · chum (C)',
-    '가이드 · 밑밥 버튼': 'Guide · chum buttons',
-    '텐션·하중/줄·랜딩·피로': 'Tension · load/line · landing · fatigue',
-    '상태줄 — 조작': 'Status bar — controls',
-    '대응 판정 배지': 'Response verdict badge',
-    '패턴 안내': 'Pattern prompt',
-    '수심 — 물고기 깊이': 'Depth — fish depth',
-    '카테고리 탭 (장비/소모품/음식/낚시용품/기타)': 'Category tabs (Gear / Consumables / Food / Tackle / Misc)',
-    '5×5 소켓 — 드래그 이동 · 우클릭 메뉴': '5×5 sockets — drag to move · right-click menu',
-    '선택 요약 (신선도·남은 시간·희귀도)': 'Selection summary (condition · time left · rarity)',
-    '보유 재화': 'Money',
-    '장비창 (E)': 'Equipment (E)',
-    '머리 4칸': 'Head — 4 slots',
-    '좌측 6칸 — 어깨·상의·팔토시·장갑·손(좌)·반지': 'Left 6 — shoulder · top · sleeve · glove · hand (L) · ring',
-    '우측 6칸 — 릴·시계·장갑·손(우)·반지': 'Right 6 — reel · watch · glove · hand (R) · ring',
-    '캐릭터 (인벤에서 드래그 장착)': 'Character (drag from inventory to equip)',
-    '다리 — 하의·양말·신발': 'Legs — bottoms · socks · shoes',
-    '상점 (구매/판매 탭)': 'Shop (Buy / Sell tabs)',
-    '상품 그리드 — 호버 툴팁 · 추천 배지': 'Item grid — hover tooltip · recommended badge',
-    '구매/판매 버튼 → 수량 팝업': 'Buy / Sell → quantity dialog',
-    '함께 열리는 인벤토리': 'Inventory opens alongside',
-    '상품 그리드 — 추천 배지 · 우클릭 상세': 'Item grid — recommended badge · right-click details',
-    '캐릭터 인벤토리 (판매 = 여기서 선택)': 'Your inventory (pick here to sell)',
-    '문 앞 캐릭터 — E로 거래 시작': 'At the door — press E to trade',
-    '쿨러 (매질 · 남은 시간)': 'Cooler (medium · time left)',
-    '3×3 어창 — 우클릭 메뉴 · 밖으로 드래그 = 인벤 이송': '3×3 fish box — right-click menu · drag out = move to inventory',
-    '해수 넣기 / 얼음 넣기 / 비우기': 'Add seawater / Add ice / Empty',
-    '요리하기 탭': 'Cooking tab',
-    '도마 — 어획물을 드래그해 올린다': 'Board — drag a catch onto it',
-    '임베드 인벤토리 (음식 탭)': 'Embedded inventory (Food tab)',
-    '손질 시작 / 회뜨기 버튼': 'Start butchery / slice sashimi',
-    '도마 위 어획물 (드래그로 올림 · 내리기 버튼)': 'Catch on the board (drag on · Remove button)',
-    '임베드 인벤토리 — 다음 생선 대기': 'Embedded inventory — next fish waiting',
-    '[손질 시작] — 손에 회칼 착용 필수': '[Start butchery] — a sashimi knife must be in hand',
-    '작업 목록 — 섹션 순서 · 작업은 자유': 'Task list — sections in order · tasks in any order',
-    '도마 — 유도선을 따라 드래그': 'Board — drag along the guide line',
-    '방향·회전 버튼 / 진행 / 스킬': 'Flip / rotate buttons · progress · skill',
-    '밑밥 품질 탭': 'Chum quality tab',
-    '밑밥 통 — 재료를 드래그해 투입': 'Chum bucket — drag ingredients in',
-    '재료 인벤토리 (파우더·크릴·곡물)': 'Ingredients (powder · krill · grain)',
-    '물 넣기 → 섞기 = 100 충전': 'Add water → mix = 100 charge',
-    '탭 — 어종 / 해양생물 / 아이템 위키 / 조과 기록': 'Tabs — Fish / Sea life / Item wiki / Catch log',
-    '발견한 종만 공개 — 미발견은 실루엣 + 서식 힌트': 'Only discovered species are shown — the rest stay silhouettes with habitat hints',
-    '초릿대 3단계 — 크게 휘어 유지 (지금 우클릭)': 'Rod tip stage 3 — deep bend held (right-click now)',
-    '찌 잠김': 'Float pulled under',
-    '입질 안내': 'Bite prompt',
-    '큰 화살표 = 이 방향 ←/→ 키 + 릴링': 'Big arrow = press this ←/→ key while reeling',
-    '제압 완료 — 남은 거리': 'Fish subdued — distance left',
-    '어획 팝업 — 제목 색 = 희귀도 · 본문 끝 [1.16×, 평균]': 'Catch popup — title colour = rarity · line ends with [1.16×, Average]',
-    '쿨러 보관 / 인벤토리 / 방생': 'Keep in cooler / inventory / release',
-    '결과 안내 · 계속(SPACE) / 그만(ESC)': 'Result · Continue (SPACE) / Stop (ESC)',
-    '전국 지도 — 핀 클릭 → 구역 → 출조': 'National map — click a pin → area → set out',
-    '집으로 돌아가기 (무료)': 'Go home (free)',
-    '집 — E 로 실내 (침대 저장·냉장고·주방)': 'Home — press E to enter (bed save · fridge · kitchen)',
-    '출조 버스 — 전국 지도': 'Fishing bus — national map',
-    '선착장 (배 출조 예정)': 'Jetty (boat trips coming)',
-    '미니맵': 'Minimap',
-}
-
-KEYS = ['hud', 'worldmap', 'inventory', 'equipment', 'shop', 'shop_trade', 'rig_bait', 'rig_lure', 'cast_aim',
-        'fp_views', 'fp_fight', 'board', 'board_fish', 'butchery', 'cooler', 'home', 'chum_tab', 'codex',
-        'bite_s3', 'dragin_reel', 'catch_popup',
-        'craft_tab', 'workbench', 'skill_tree', 'vitals_panel',
-        'spool', 'spool_fight', 'snag', 'gear_fault']
+# BootScene HELP_IMAGE_KEYS와 같은 목록(help_<key>.png / help_<key>_en.png)
+KEYS = list(CALLOUTS.keys())
 
 
 FONT_CANDIDATES = (
@@ -349,52 +151,37 @@ def font(size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
     return ImageFont.load_default()
 
 
-def hangul_ok() -> bool:
-    """찾은 폰트가 한글을 **실제로** 그릴 수 있는가.
-
-    ⚠ `getmask('가')`가 비어 있지 않은 것만으로는 판정할 수 없다 — 글리프가 없으면
-    FreeType이 `.notdef`(두부 □)를 그려 주기 때문에 마스크가 항상 채워져 나온다.
-    그래서 **사용자 영역 문자(글리프가 있을 리 없는 것)와 비교**해 같으면 두부로 본다.
-    """
-    f = font(16)
-    try:
-        # ⚠ Pillow 11부터 ImagingCore.tobytes()가 사라졌다 — bytes()로 감싼다(136차).
-        a = bytes(f.getmask('가'))
-        b = bytes(f.getmask('\ue000'))
-        return a != b
-    except Exception:
-        return False
-
-
 def downscale(im: Image.Image) -> Image.Image:
     """표시 크기로 축소 + 약한 언샤프 — 도트·UI 텍스트 선명도 보존"""
     out = im.convert('RGB').resize((OUT_W, OUT_H), Image.LANCZOS)
     return out.filter(ImageFilter.UnsharpMask(radius=1.2, percent=70, threshold=2))
 
 
-def draw_callouts(im: Image.Image, items: list[tuple[int, int, int, int, str]], k: float,
-                  lang: str = 'ko') -> None:
-    """축소된 이미지 위에 최종 픽셀 크기로 그린다 — 라벨 13px 볼드 + 어두운 외곽선(가독)"""
+def draw_callouts(im: Image.Image, items: list[tuple], k: float) -> None:
+    """축소된 이미지 위에 최종 픽셀 크기로 그린다 — 테두리 + 번호 배지(뜻은 캡션의 ①②③)"""
     d = ImageDraw.Draw(im, 'RGBA')
-    f = font(13)
     fb = font(12)
-    for i, (x, y, w, h, label) in enumerate(items, 1):
-        if not label:
-            continue
-        if lang == 'en':
-            label = LABEL_EN.get(label, label)
-        x, y, w, h = round(x * k), round(y * k), round(w * k), round(h * k)
+    B = 18   # 배지 한 변
+    for i, it in enumerate(items, 1):
+        x, y, w, h = (round(v * k) for v in it[:4])
+        where = it[4] if len(it) > 4 else 'above'
         d.rectangle([x, y, x + w, y + h], outline=ACCENT, width=2)
-        bx, by = x, max(2, y - 20)
-        d.rounded_rectangle([bx, by, bx + 18, by + 18], radius=4, fill=ACCENT)
-        d.text((bx + 9, by + 9), str(i), fill=INK, font=fb, anchor='mm')
-        tw = d.textlength(label, font=f)
-        lx = bx + 22
-        if lx + tw + 8 > im.width:
-            lx = max(3, x + w - tw - 8)
-        d.rounded_rectangle([lx - 4, by, lx + tw + 5, by + 18], radius=4, fill=(6, 14, 28, 235))
-        # 외곽선(stroke)으로 작은 글자 가독 확보
-        d.text((lx, by + 9), label, fill=ACCENT, font=f, anchor='lm', stroke_width=1, stroke_fill=(6, 14, 28))
+        if where == 'left':
+            bx, by = x - B - 2, y
+        elif where == 'right':
+            bx, by = x + w + 4, y
+        elif where == 'below':
+            bx, by = x, y + h + 2
+        elif where == 'in':
+            bx, by = x + 3, y + 3
+        elif where == 'inr':
+            bx, by = x + w - B - 3, y + 3
+        else:   # above — 화면 위쪽에 붙어 있으면 안쪽으로
+            bx, by = (x, y - B - 2) if y - B - 2 >= 2 else (x + 3, y + 3)
+        bx = max(2, min(im.width - B - 2, bx))
+        by = max(2, min(im.height - B - 2, by))
+        d.rounded_rectangle([bx, by, bx + B, by + B], radius=4, fill=ACCENT, outline=(6, 14, 28), width=1)
+        d.text((bx + B / 2, by + B / 2), str(i), fill=INK, font=fb, anchor='mm')
 
 
 def placeholder(key: str, text: str, out: str) -> None:
@@ -412,7 +199,7 @@ def main() -> None:
     ap.add_argument('--out', default=os.path.join(ROOT, 'packages', 'client-pc', 'public', 'guide', 'help'))
     ap.add_argument('--only', nargs='*', default=None, help='특정 키만 재생성')
     ap.add_argument('--lang', default='ko', choices=['ko', 'en'],
-                    help='en이면 라벨을 영문으로 그리고 help_<key>_en.png로 저장')
+                    help='en이면 help_<key>_en.png로 저장(영문 UI 캡처 입력)')
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
     made = []
@@ -423,12 +210,9 @@ def main() -> None:
         out = os.path.join(a.out, f'help_{key}{suffix}.png')
         if os.path.exists(src):
             im = downscale(Image.open(src))
-            items = [c for c in CALLOUTS.get(key, []) if c[4]]
-            if items and a.lang == 'ko' and not hangul_ok():
-                print(f'  ! {key}: 한글 폰트가 없어 콜아웃을 건너뜁니다 (축소본만 저장)')
-                items = []
+            items = CALLOUTS.get(key, [])
             if items:
-                draw_callouts(im, items, k, a.lang)
+                draw_callouts(im, items, k)
             im.save(out, optimize=True)
             made.append(f'{key} ({len(items)} callouts)')
         elif not os.path.exists(out):

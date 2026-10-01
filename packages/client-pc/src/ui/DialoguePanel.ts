@@ -32,6 +32,7 @@ import { STORY_FIELD_TRIGGERS } from '../data/StoryNpcs.js';
 import { clampTextWidth } from './TextFit.js';
 import { ensureFacePortrait } from './CharacterSprite.js';
 import { applyScreenFixed } from './DraggablePanel.js';
+import { t } from '../i18n/I18n.js';
 import { applyPortraitMask, type PortraitMaskHandle } from './PortraitMask.js';
 import { PORTRAIT_LAYOUT } from './PortraitLayout.js';
 
@@ -382,7 +383,9 @@ export class DialoguePanel extends DraggablePanel {
     this.typeTimer?.remove(); this.typeTimer = undefined;
     const next = this.queue.shift();
     if (next === undefined) { this.typingPara = ''; this.typed = 0; this.paintLog(); this.afterPara(); return; }
-    this.typingPara = next;
+    // 187차 — 찍기 **전에** 번역한다. 부분 문자열은 사전에 없어서, 영어 설정에서 한국어가 한 글자씩
+    //   찍히다가 끝에서야 영어로 바뀌었다(따옴표로 감싼 대사는 끝까지 한국어였다 — I18n 인용부호 규칙).
+    this.typingPara = t(next);
     this.typed = 0;
     this.paintLog();
     this.typeTimer = this.scene.time.addEvent({

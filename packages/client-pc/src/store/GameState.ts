@@ -812,6 +812,9 @@ export class GameStateManager {
     const v = this.vitals;
     coreApplySleep(v, mult * this.skillMult('sleep_recovery'));   // 127차 — 쾌면(life_sleep)
     this.commitVitals(v);
+    // 187차 — 치료 수단이 '휴식'인 상태(감기·탈진·기절)는 수면으로 낫는다. 상태 설명과 툴팁이
+    //   「휴식 필요 · 쉬면 풀린다」고 약속하는데 수면이 아무것도 풀지 않아 보건소만 답이었다.
+    this.applyRemedy('rest');
     StoryStore.advanceDay();   // 134차 — 스토리 하루는 침대 수면으로만 간다 (D-180)
     this.applyUpkeepOverdue();  // 171차 — 연체 중인 정기 지출은 하루마다 평판을 깎는다
     this.markDirty();

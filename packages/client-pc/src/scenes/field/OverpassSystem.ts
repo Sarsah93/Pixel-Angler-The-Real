@@ -150,7 +150,10 @@ export class OverpassSystem {
 
   destroy(): void {
     for (const o of this.ops) for (const g of o.layers) g.destroy();
-    this.groundWalls.clear(true, true);
+    // ⚠ 187차 — 씬 shutdown에서는 UpdateList가 이 그룹을 **먼저** 파괴한다(children = undefined).
+    //   그 뒤에 `clear()`를 부르면 TypeError로 shutdown 콜백이 끊겨 속초 → 집으로 가기·타이틀이
+    //   전환되지 않았다(실측). `destroy(true)`는 이미 파괴된 그룹에 다시 불러도 안전하다.
+    this.groundWalls.destroy(true);
   }
 
   // ── 충돌 ───────────────────────────────────────────────────────────────

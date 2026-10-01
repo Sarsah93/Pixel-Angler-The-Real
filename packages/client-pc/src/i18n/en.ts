@@ -164,12 +164,12 @@ const EN_BASE: Record<string, string> = {
   // 아이템명 (시드·상점)
   '용상 파조기 1.5호 5.3m': 'Yongsang Rod 1.5 / 5.3m', '다이오 2500L 스피닝릴': 'Daio 2500L Spinning Reel', '뜰채 5m': 'Landing Net 5m', '낚시 모자': 'Fishing Hat', '편광 안경': 'Polarized Glasses',
   '낚시 조끼': 'Fishing Vest', '기모 장갑': 'Fleece Gloves', '조과 기록 시계': 'Catch Log Watch', '방수 바지': 'Waterproof Pants', '갯바위 단화': 'Rock Shoes',
-  '집어제 (크릴 배합)': 'Chum (krill mix)', '감성돔 집어 파우더': 'Black Porgy Chum Powder', '고비중 파우더': 'Heavy Chum Powder', '빵가루 (밑밥용)': 'Bread Crumbs (chum)',
+  '집어제 (크릴 배합)': 'Chum (krill mix)', '감성돔 집어 파우더': 'Black Seabream Chum Powder', '고비중 파우더': 'Heavy Chum Powder', '빵가루 (밑밥용)': 'Bread Crumbs (chum)',
   '냉동 크릴 (밑밥 블록)': 'Frozen Krill (chum block)', '압맥 (눌린 보리)': 'Pressed Barley', '옥수수 캔 (밑밥용)': 'Canned Corn (chum)', '대용량 각얼음': 'Bulk Ice Cubes', '굵은소금': 'Coarse Salt',
   '기능성 스프레이': 'Functional Spray', '릴 오일': 'Reel Oil', '도구 케어 세트': 'Tool Care Kit', '상처 연고': 'Wound Ointment', 'HP 회복 드링크': 'HP Drink', '멀미약': 'Motion Sickness Pills', '모기향': 'Mosquito Coil',
-  '참치 통조림': 'Canned Tuna', '감성돔 (38cm)': 'Black Porgy (38cm)', '식자재 묶음 (대파/양파)': 'Grocery Bundle (leek/onion)', '지렁이': 'Earthworm', '갯지렁이': 'Lugworm', '혼무시': 'Honmushi Worm',
+  '참치 통조림': 'Canned Tuna', '감성돔 (38cm)': 'Black Seabream (38cm)', '식자재 묶음 (대파/양파)': 'Grocery Bundle (leek/onion)', '지렁이': 'Earthworm', '갯지렁이': 'Lugworm', '혼무시': 'Honmushi Worm',
   '크릴 (냉동)': 'Krill (frozen)', '빵가루 경단': 'Bread Dough Ball', '생선 조각 미끼': 'Cut Fish Bait', 'PE 합사 원줄 1호': 'PE Braid Main Line #1',
-  '나일론 목줄 2호': 'Nylon Leader #2', '카본 목줄 3호': 'Fluorocarbon Leader #3', '감성돔 바늘 3호': 'Porgy Hook #3', '루어용 트레블 훅': 'Treble Hook', '지그헤드 3g': 'Jighead 3g',
+  '나일론 목줄 2호': 'Nylon Leader #2', '카본 목줄 3호': 'Fluorocarbon Leader #3', '감성돔 바늘 3호': 'Seabream Hook #3', '루어용 트레블 훅': 'Treble Hook', '지그헤드 3g': 'Jighead 3g',
   '미노우 90F (플로팅)': 'Minnow 90F (floating)', '메탈지그 20g': 'Metal Jig 20g', '제로찌 (0호)': 'Zero Float (#0)', '구멍찌 0.5호': 'Hole Float #0.5', '구멍찌 0.8호': 'Hole Float #0.8', '구멍찌 1.0호': 'Hole Float #1.0',
   '기울찌 0.5호': 'Tilt Float #0.5', '잠길찌 (-0.5호)': 'Sinking Float (-0.5)', '수중찌 -0.5호': 'Sub-float -0.5', '수중찌 -0.8호': 'Sub-float -0.8', '수중찌 -1.0호': 'Sub-float -1.0', '좁쌀봉돌 G2': 'Split Shot G2',
   '맨도래': 'Barrel Swivel', '쿠션고무 / 반달구슬': 'Cushion Rubber / Bead', '낡은 릴 부품': 'Old Reel Parts', '자전거': 'Bicycle', '회칼 (사시미)': 'Sashimi Knife', '낚시용 두레박': 'Bait Bucket',
@@ -219,6 +219,33 @@ const EN_BASE: Record<string, string> = {
   '채비 횡 이동 (조류 방향·세기 연동)': 'Move rig sideways (follows current)', '↑ (유지)': '↑ (hold)', '리프트 (채비 수심 상승)': 'Lift (raise rig)', '뒷줄견제 (그 지점 홀드)': 'Line hold (hold in place)',
   '밑밥 투척 (동조율)': 'Throw chum (sync)', '다시 캐스팅 (결과 화면)': 'Cast again (result screen)', '도움말 가이드': 'Help guide', '종료 (인벤→쿨러→나가기 LIFO)': 'Exit (inventory → cooler → leave)',
   '1인칭 파이팅': 'First-person fight', '릴링 (거리 좁힘)': 'Reel (close distance)', '로드 스티어 (+릴링 = 물고기 횡 견인)': 'Rod steer (+reel = pull fish sideways)', '버티기 (홀드 — 구 H)': 'Hold (was H)',
+  // 187차 — 추천 배너 미끼 이름
+  '청갯지렁이': 'Blue lugworm', '참갯지렁이': 'King ragworm', '게·소라': 'Crab / turban shell', '조개살': 'Clam meat', '생선 살': 'Fish meat',
+  // 187차 — 면허가 여는 기능(구: 내부 id 노출)
+  '통발 설치': 'Trap placement', '상업용 통발': 'Commercial traps', '식당 개업': 'Open a restaurant', '선상콘도 운영': 'Run a floating condo', '토너먼트 참가': 'Tournament entry', '토너먼트 주최': 'Host tournaments', '보트 대여': 'Boat rental', '보호구역 출입': 'Protected-area access', '전복 채취': 'Abalone gathering', '장어 통발': 'Eel traps', '고급 손질·요리': 'Advanced prep & cooking', '집 증축·마당 시설': 'House extension & yard facilities', '농지 경작': 'Farmland cultivation', '개인 보트 운항': 'Private boat operation', '어촌계 어장 채취': 'Gathering in fishery-cooperative grounds', '항만 제한구역 낚시': 'Fishing in restricted port areas',
+  // 187차 — 설정 단축키 탭 현행화
+  '캐릭터 이동 (Shift = 달리기 1.55배)': 'Move (Shift = run, 1.55×)', '좌클릭(짧게)': 'LMB (short)', '테트라포드·사석 위 구멍치기': 'Hole fishing on tetrapods / riprap',
+  '상호작용 (대화·거래·채집·통발·줍기)': 'Interact (talk · trade · forage · traps · pick up)', '설치물 회수': 'Pick up placed object', '지역 채널 대화': 'Region channel chat',
+  'E / I': 'E / I', '장비 패널 / 인벤토리': 'Equipment / inventory', '활용 (채비·요리·밑밥·제작)': 'Utilization (rig · cooking · chum · crafting)',
+  'L / K': 'L / K', '면허 · 허가 / 스킬 트리': 'Licenses & permits / skill tree', '일지 (이야기 · 할 일)': 'Journal (story · tasks)', '전체 지도': 'Full map',
+  // 187차 — 도움말 영문 캡처에서 드러난 미수록(설정 토글 · 선택 창 행 · 대화창 일손 줄)
+  '켬': 'On', '집으로 들어가기': 'Enter home', '오늘은 없음': 'None today',
+  '싱킹': 'Sinking', '플로팅': 'Floating', '초고속 싱킹': 'Fast sinking', '미숙': 'Unpracticed',
+  '여 밭': 'Reef bed', '여 밭 안착 (x2.5)': 'Settled on the reef bed (x2.5)', '◀ ←키 + 릴링': '◀ ← key + reel', '→키 + 릴링 ▶': '→ key + reel ▶',
+  '배치': 'Layout', '도마 배치': 'Board layout', '끓기 시작했다': 'It has started to boil', '충분히 달궈졌다': 'It is hot enough',
+  '반탄류 구역': 'Backwash zone', '횡조류 구역': 'Cross-current zone', '본대조류 구역': 'Main-stream zone', '조경지대 (Hit Zone)': 'Tide rip (Hit Zone)', '조경지대 ★': 'Tide rip ★', '조경지대': 'Tide rip',
+  // 1인칭 하단 조작 바 — 136차 스풀(R) 이후 문구가 바뀌어 옛 키만 남아 있었다
+  '우클릭 챔질 · 좌클릭 릴링 · R 줄 주기(흘림) · ←/→ 채비 횡이동 · ↑ 리프트 · H 뒷줄견제 · C 밑밥 · I 인벤 · F1 도움말':
+    'RMB hookset · LMB reel · R give line (drift) · ←/→ move rig sideways · ↑ lift · H line hold · C chum · I inventory · F1 help',
+  '우클릭 챔질 · ↑ 들어올리기(고패질) · 좌클릭 릴링 · R 줄 주기(밑걸림) · I 인벤 · F1 도움말':
+    'RMB hookset · ↑ lift (jigging) · LMB reel · R give line (snag) · I inventory · F1 help',
+  '좌클릭 릴링 · ←/→ 로드 스티어 · ↑ 버티기 · R 줄 주기(텐션 급락·거리 손실) — 텐션 30~80':
+    'LMB reel · ←/→ rod steer · ↑ hold · R give line (tension drops · distance lost) — tension 30~80',
+  '줄 주기 중 — 고기가 원하는 방향으로 달립니다. 텐션이 빠지면 R을 떼고 다시 감으세요':
+    'Giving line — the fish runs where it wants. When the tension drops, release R and reel again',
+  'F1 / ESC': 'F1 / ESC', '도움말 / 팝업 닫기 · 일시정지 메뉴': 'Help / close popup · pause menu', 'R (유지)': 'R (hold)', '베일 개방 — 줄 주기 (흘림)': 'Open bail — give line (drift)',
+  '필드로 돌아가기 (결과 화면)': 'Back to the field (result screen)', 'F1 / /': 'F1 / /', '종료 (가이드→인벤→쿨러→나가기)': 'Exit (guide → inventory → cooler → leave)',
+  '버티기 (여 박기 대응)': 'Hold (counter a dive)', '줄 주기 (텐션 빼기 · 바늘털이 대응)': 'Give line (ease tension · counter a jump)',
 
   // ── 전국 지도 / 홈 ──
   '방파제': 'Breakwater', '갯바위': 'Rocks', '선상': 'Boat', '갯벌': 'Tidal Flat', '해수욕장': 'Beach', '집으로 돌아가기': 'Return Home', '출조지 선택': 'Choose a Destination',
@@ -277,13 +304,13 @@ const EN_BASE: Record<string, string> = {
   '약은 입질(1~2단계)엔 1초 릴링이나 뒷줄견제(H)로 3단계를 유도할 수 있어요.': 'On shy bites (stage 1–2), reel for 1s or hold the line (H) to provoke stage 3.',
   '여 박기(dive)엔 ↑ 버티기, 바늘털이(jump)엔 릴링·버티기를 멈추고 줄 늦추기, 횡 러닝(lateral)엔 같은 쪽 ←/→ 스티어. 맞게 대응하면 화면 위에 "대응 OK"가 뜨고 텐션이 억제돼요. 틀리면 급등!': 'Dive → hold ↑. Jump (head shake) → stop reeling/holding and give line. Lateral run → steer ←/→ the same way. Respond correctly and "Response OK" appears with tension suppressed. Wrong = spike!',
   '텐션 게이지 = 물고기 요구 장력 ÷ 내 줄 인장강도. 줄보다 센 고기는 달려 보내며 지치길 기다려요.': 'Tension gauge = fish pull ÷ your line strength. If the fish is stronger than the line, let it run and wait for it to tire.',
-  '텐션바가 초록→주황→빨강. 90%에서 릴이 잠기니 드랙을 풀어요(↑/↓ 또는 F/G). 드랙은 줄 강도의 약 1/3이 기본.': 'Tension bar goes green → orange → red. The reel locks at 90%, so loosen drag (↑/↓ or F/G). Default drag ≈ 1/3 of line strength.',
-  '빨강에서 무리하면 줄 터짐. 풀고 버티다 잦아들 때 감기.': 'Forcing it in the red snaps the line. Loosen, hold, then reel when it eases.',
+  '텐션바가 초록→주황→빨강으로 변해요. 드랙은 자동이라 한계에 닿으면 알아서 줄이 나가지만, 70 이상에서 계속 감으면 릴이 미끄러지고 88 이상에서 버티면 터져요.': 'The tension bar goes green → orange → red. The drag is automatic and pays out line at the limit, but keep reeling above 70 and the reel slips; push on above 88 and the line snaps.',
+  '빨강에서 무리하면 줄 터짐. 감기를 멈추거나 R로 줄을 주고, 잦아들 때 감기.': 'Forcing it in the red snaps the line. Stop reeling or give line with R, then reel when it eases.',
   '물고기가 좌/우로 째면 그쪽으로 로드를 눕혀(←/→) 버텨요. 텐션이 잦아든 틈에 반대로 눌러 머리를 돌리면 제압이 진행돼요.': 'When the fish runs left/right, lean the rod that way (←/→) and hold. When tension eases, push the other way to turn its head and gain ground.',
   '러닝엔 같이 눕혀 버티고, 잠잠할 때 반대로 뺏기.': 'Lean with the run; steal line against it when calm.',
   '파이트는 러닝→소강→파상저항→제압 순으로 힘이 빠져요. 슬랙(줄 늦춤)을 주면 회복하니 긴장을 유지해요. 대물일수록 오래 버팁니다.': 'A fight goes run → lull → surge → spent. Slack lets the fish recover, so keep tension. Big fish last longer.',
   '소강 구간에 펌핑으로 줄을 벌어요.': 'Pump during the lull to gain line.',
-  '지치면 물고기가 수면으로 부상하며 화면 앞으로 끌려와 커져요. 이때 뜰채로 랜딩 → 어획!': 'A spent fish rises to the surface and comes toward the screen, growing larger. Net it → catch!',
+  '지치면(제압) 끌어오기가 시작돼요. 감기만 하면 물고기가 화면 앞으로 끌려와 커지고, 발앞 2.5m 안에 들어오면 어획!': 'Once it is spent (subdued) the drag-in starts. Just keep reeling: the fish comes toward the screen, growing larger, and is landed once it is within 2.5 m of your feet!',
   '제압 근접엔 머리가 반대여도 몸이 딸려와요.': 'Near the end the body follows even if the head points away.',
   '좌클릭 유지로 채비를 감아요. 거리가 줄면 채비가 화면 중앙~살짝 아래로 다가오며 커져요(입질 없어도 동일).': 'Hold LMB to reel in. As distance shrinks the rig approaches the center-bottom and grows (bite or not).',
   '찌 채비 크기 기준 최대 2배까지 커집니다.': 'Grows up to 2× the float-rig size.',
@@ -291,7 +318,7 @@ const EN_BASE: Record<string, string> = {
   '세트 전체가 한 덩어리로 움직여요.': 'The whole set moves as one.',
   '발앞 0.5m까지 감으면 채비가 회수되고 탑다운(필드) 화면으로 복귀해요. 낚시를 마치거나 자리를 옮길 때 사용.': 'Reel to 0.5m and the rig is retrieved; you return to the top-down field. Use it to finish or move spots.',
   '입질 없이 자리 이동할 때도 회수부터.': 'Retrieve first even when moving without a bite.',
-  'H 뒷줄견제(그 지점에 채비 홀드) · ↑ 리프트(채비를 위로) · ↓ 폴링(가라앉히며 대기). 조류·수심에 맞춰 채비를 다뤄요.': 'H line hold (hold the rig there) · ↑ lift · ↓ fall and wait. Work the rig with the current and depth.',
+  'H 뒷줄견제(그 지점에 채비 홀드) · ↑ 리프트(채비를 위로) · R 줄 주기(흘림). 조류·수심에 맞춰 채비를 다뤄요.': 'H line hold (hold the rig there) · ↑ lift (raise the rig) · R give line (drift). Work the rig to suit the current and depth.',
   '뒷줄견제는 속조류 정렬만 영향받는 홀드예요.': 'Line hold is a hold affected only by sub-current alignment.',
   '어군을 모으고 미끼와 겹치게 흘려 입질을 만드는 떡밥이에요. 밑밥과 미끼가 만나는 타이밍이 핵심.': 'Groundbait that gathers fish and drifts over your bait to trigger bites. Timing the overlap is the key.',
   "HUD '밑밥 동조 %'가 겹칠수록 올라 입질↑.": "The HUD 'chum sync %' rises with overlap → more bites.",
@@ -426,7 +453,7 @@ const EN_BASE: Record<string, string> = {
   '나가기': 'Exit', '어종 도감': 'Fish Codex', '아이템 위키': 'Item Wiki', '나의 조과 기록': 'My Catch Log', '이미지 없음': 'No image', '제철 연중': 'In season all year', '낚시 기록 없음': 'No catch record', '표층': 'Surface',
   '금어기 없음': 'No closed season', '주야': 'Day/Night', '출조지 필터:': 'Spot filter:', '전체': 'All', '정렬 방식:': 'Sort:', '최신순': 'Newest', '최대어순': 'Largest', '무게순': 'Heaviest', '기록된 조과 정보가 없습니다.': 'No catches recorded.',
   '이 카테고리에 등록된 품목이 없습니다.': 'No items in this category.', '조개류': 'Shellfish', '갑각류': 'Crustaceans', '극피동물': 'Echinoderms', '이매패류': 'Bivalves', '복족류': 'Gastropods',
-  '📖 도감 & 조과첩 (Angler\'s Log)': "📖 Codex & Angler's Log", 'ESC 키 또는 상단 [나가기] 버튼을 누르면 월드로 귀환합니다.': 'Press ESC or [Exit] to return.',
+  '도감 & 조과첩 (Angler\'s Log)': "Codex & Angler's Log", 'ESC 키 또는 상단 [나가기] 버튼을 누르면 월드로 귀환합니다.': 'Press ESC or [Exit] to return.',
 
   // ── 데이터 출처 / 스탯 ──
   '데이터 출처 및 저작권': 'Data Sources & Credits', '뒤로 (ESC)': 'Back (ESC)', '내 상태': 'Status', '스탯은 낚시 물리(캐스팅/파이팅)에 실시간 반영될 예정입니다.': 'Stats will feed into fishing physics (casting/fighting).',
@@ -508,6 +535,16 @@ const DOW_EN: Record<string, string> = {
 };
 /** 수치·이름이 끼어 있는 문장 — 정규식 규칙. 캡처 그룹은 그대로 옮긴다(이름은 사전을 다시 타지 않으므로 어종·아이템명은 한국어로 남을 수 있음). */
 export const EN_RULES: Rule[] = [
+  // 187차 — 「조피볼락(우럭) (28cm)」: 크기 꼬리를 먼저 떼야 별칭 괄호까지 한 이름으로 번역된다
+  [/^(.+?) \((\d+(?:\.\d+)?)cm\)$/, (m, tr) => `${tr(m[1])} (${m[2]}cm)`],
+  // 1인칭 파이팅 게이지 줄 · 금지체장 방생 팝업(소수 cm · 어종명 번역) · 요리창 머리(뒤의 「(.+) 매운탕」 규칙이 먼저 삼켰다)
+  [/^랜딩 (\d+)%  \(남은 거리 ([\d.]+)m\)$/, 'Landing $1%  ($2m to go)'],
+  [/^제압 (\d+)%$/, 'Subdued $1%'], [/^제압 (\d+)% — 완전 제압!$/, 'Subdued $1% — fully subdued!'],
+  [/^(.+?) ([\d.]+)cm — 방생$/, (m, tr) => `${tr(m[1])} ${m[2]}cm — released`],
+  [/^(.+?) ([\d.]+)cm \/ ([\d.]+)kg \/ (.+)\n\n(.+) 개체입니다\. 규정에 따라 방생합니다\.$/,
+    (m, tr) => `${tr(m[1])} ${m[2]}cm / ${m[3]}kg / ${tr(m[4])}\n\n${tr(m[5])} — released by regulation.`],
+  [/^재료 넣기 — (.+)$/, (m, tr) => `Add ingredients — ${tr(m[1])}`],
+  [/^([^·›]+?) ([\d.]+)(개|컵|큰술)$/, (m, tr) => `${tr(m[1])} ${tr(m[2] + m[3])}`],   // `·`/`›` = 합성 문장(도움말 경로 줄) — 쪼개기에 맡긴다
   ...EN_UI_RULES,
   // ── 167차 장면 게이트 — 상대가 다른 사람일 때 대화창 안내 ──
   [/^(.+)을\(를\) 직접 찾아가야 한다\.$/, (m, tr) => `You need to go and find ${tr(m[1])} in person.`],
@@ -531,6 +568,8 @@ export const EN_RULES: Rule[] = [
   [/^(.+)에게 \[F\] → 일감 「공동작업」$/, (m, tr) => `${tr(m[1])} [F] → job "Community work"`],
   [/^(.+)에게 \[F\]$/, (m, tr) => `${tr(m[1])} [F]`],
   [/^(.+)에게 물건을 들고 가 \[F\]$/, (m, tr) => `Bring the item to ${tr(m[1])} and press [F]`],
+  // 187차 — 「방법 · …」을 먼저 떼어야 뒤의 문장 규칙이 「How」까지 삼키지 않는다
+  [/^방법 · (.+)$/, (m, tr) => `How · ${tr(m[1])}`],
   [/^(.+)까지 걸어간다 — 화살표를 따라간다$/, (m, tr) => `Walk to ${tr(m[1])} — follow the arrow`],
   [/^(.+)으로 출조한다 — 버스 정류장 \[F\] → 전국 지도$/, (m, tr) => `Travel to ${tr(m[1])} — bus stop [F] → national map`],
   [/^상점에서 「(.+)」을\(를\) 산다 \(생활용품점 사이소\)$/, (m, tr) => `Buy "${tr(m[1])}" at the Saiso daily-goods store`],
@@ -538,7 +577,6 @@ export const EN_RULES: Rule[] = [
   [/^낚싯대를 손에 들고 (.+)에서 클릭 → 캐스팅(?: · (\d+)cm 이상)?$/, (m, tr) => `Hold a rod, click at ${tr(m[1])} → cast${m[2] ? ` · ${m[2]}cm+` : ''}`],
   [/^(.+)에게 말을 걸어 \[다음 단계\]로 진행 \(이야기 장면\)$/, (m, tr) => `Talk to ${tr(m[1])} and pick [Next step] (story scene)`],
   [/^재화를 ([\d,]+)원까지 모은다$/, (m) => `Save up ${m[1]} won`],
-  [/^방법 · (.+)$/, (m, tr) => `How · ${tr(m[1])}`],
   [/^(.+) · (\d+)m$/, (m, tr) => `${tr(m[1])} · ${m[2]}m`],
   [/^([+\-][\d,]+)원 — (.+)$/, (m, tr) => `${m[1]} won — ${tr(m[2])}`],
   [/^품삯 · (.+)$/, (m, tr) => `Wages · ${tr(m[1])}`],
@@ -573,7 +611,7 @@ export const EN_RULES: Rule[] = [
   [/^\[요리\] 화구 설치 모드 — 뭍 위\(플레이어 (\d+)타일 이내\) 클릭 = 설치 · 우클릭\/ESC = 취소$/,
     (m) => `[Cooking] Stove placement — click on land (within ${m[1]} tiles) to place · right-click/ESC to cancel`],
   [/^(.+) 끼우기 \(x(\d+)\)$/, (m, tr) => `Fit ${tr(m[1])} (x${m[2]})`],
-  [/^(.+) 올리기$/, (m, tr) => `Put on ${tr(m[1])}`],
+  [/^([^·›]+) 올리기$/, (m, tr) => `Put on ${tr(m[1])}`],
   [/^(.+)\(으\)로 만들 수 있는 요리$/, (m, tr) => `Recipes for ${tr(m[1])}`],
   [/^용기: (.+)$/, (m, tr) => `Cookware: ${tr(m[1])}`],
   [/^재료 넣기 — (.+)$/, (m, tr) => `Add ingredients — ${tr(m[1])}`],
@@ -605,7 +643,7 @@ export const EN_RULES: Rule[] = [
   [/^(\d+)% — (.+)$/, (m, tr) => `${m[1]}% — ${tr(m[2])}`],
   [/^(\d+)시간 (\d+)분$/, (m) => `${m[1]} h ${m[2]} min`],
   [/^허기·수분 회복 ×([\d.]+)$/, (m) => `Hunger/thirst recovery ×${m[1]}`],
-  [/^([\d.]+)(큰술|컵|개)$/, (m) => `${m[1]} ${m[2] === '큰술' ? 'tbsp' : m[2] === '컵' ? 'cup' : 'pc'}`],
+  [/^([\d.]+)(큰술|컵|개)$/, (m) => `${m[1]} ${m[2] === '큰술' ? 'tbsp' : m[2] === '컵' ? (m[1] === '1' ? 'cup' : 'cups') : 'pc'}`],
   // ── 150차 일지(임무/이야기) ──
   //  ⚠ 캡처 안의 한국어(장 제목)는 `tr`로 다시 번역한다 — 131차 합성 문자열 함정.
   [/^제(\d+)장 · (.+)$/, (m, tr) => `Chapter ${m[1]} · ${tr(m[2])}`],
@@ -709,7 +747,31 @@ export const EN_RULES: Rule[] = [
   [/^• 할 일 완료: (.+)$/, (m, tr) => `• Task: ${tr(m[1])}`],
   [/^• 평판 (\d+) 이상$/, (m) => `• Reputation ${m[1]}+`],
   [/^• 특정 어종 포획: (.+)$/, (m, tr) => `• Catch: ${tr(m[1])}`],
-  [/^해금: (.+)$/, (m) => `Unlocks: ${m[1]}`],
+  [/^해금: (.+)$/, (m, tr) => `Unlocks: ${m[1].split(' · ').map((x) => tr(x)).join(' · ')}`],
+  // 187차 — 대화창 「일손이 필요하진 않으세요?」 오른쪽 건수 · 바닥에 내려놓기 로그
+  [/^지금 (\d+)건$/, (m) => `${m[1]} available`],
+  // 187차 — 영문 도움말 캡처 잔존(인벤 요약 · 장비 상세 · 면허 갱신 · 숙련도 · 요리 재료 줄)
+  [/^다음 상태까지 (.+)$/, (m, tr) => `Next stage in ${tr(m[1])}`],
+  [/^(\d+)분 (\d+)초$/, '$1m $2s'],
+  [/^(\d+) \/ (\d+) 회$/, '$1 / $2 casts'],
+  [/^숙련 (\d+)$/, 'Practiced $1'],
+  [/^\[장소\] (.+)에 도착했습니다$/, (m, tr) => { const p = tr(m[1]); return /^Near /.test(p) ? `[Place] Arrived near ${p.slice(5)}` : `[Place] Arrived at ${p}`; }],
+  [/^자가 가능 · 수리점 ([\d,]+)원$/, (m) => `Self-repair, or ₩${m[1]} at a repair shop`],
+  [/^수리점 ([\d,]+)원$/, (m) => `₩${m[1]} at a repair shop`],
+  [/^다음 갱신까지 (\d+)일 · (\d+)일마다$/, (m) => `Next renewal in ${m[1]} days · every ${m[2]} days`],
+  [/^갱신하기 \(₩([\d,]+)\)$/, (m) => `Renew (₩${m[1]})`],
+  [/^숙련도 Lv\.(\d+)\/(\d+) · (\d+)(?: \/ (\d+)| \(만숙\)) · 현재 효과 ×([\d.]+) · 채우기: (.+)$/,
+    (m, tr) => `Proficiency Lv.${m[1]}/${m[2]} · ${m[3]}${m[4] ? ` / ${m[4]}` : ' (mastered)'} · effect ×${m[5]} · raised by: ${tr(m[6])}`],
+  [/^\[숙련\] (.+) 숙련도 Lv\.(\d+) — 효과 ×([\d.]+)$/, (m, tr) => `[Proficiency] ${tr(m[1])} proficiency Lv.${m[2]} — effect ×${m[3]}`],
+  [/^(.*?) ?· 들어감 (.+)$/, (m, tr) => `${m[1] ? `${m[1]} · ` : ''}added ${tr(m[2])}`],
+  [/^([\d.]+)컵$/, (m) => `${m[1]} cup${m[1] === '1' ? '' : 's'}`],
+  [/^([\d.]+)큰술$/, (m) => `${m[1]} tbsp`],
+  [/^([\d.]+)개$/, (m) => `${m[1]} pc${m[1] === '1' ? '' : 's'}`],
+  // 꼬리표까지 규칙에 넣는다 — 로그 줄은 「[시각] [내려놓기] …」라 태그 없이 두면 시각까지 이름으로 삼킨다
+  [/^\[내려놓기\] (.+?)을\(를\) 바닥에 놓았습니다\. \[F\]로 다시 회수할 수 있습니다\.$/, (m, tr) => `[Put down] ${tr(m[1])} is on the ground. Press [F] to pick it back up.`],
+  // 187차 — 대화창 초상 아래 우호도 줄(`AFFINITY_TIER_LABEL.ko  (+0.00)`). 단어 분해로는 적대·냉담·호의·친밀이
+  //   원문으로 남고 보통이 'Normal'이 됐다 — 우호도 5단계 영문(core AFFINITY_TIER_LABEL.en)으로 옮긴다.
+  [/^(적대|냉담|보통|호의|친밀)  \(([+-]?[\d.]+)\)$/, (m) => `${({ 적대: 'Hostile', 냉담: 'Cold', 보통: 'Neutral', 호의: 'Warm', 친밀: 'Close' } as Record<string, string>)[m[1]]}  (${m[2]})`],
   [/^※ (.+)$/, (m, tr) => `※ ${tr(m[1])}`],
   // 출처 화면 (122차) — '사용: …' 접두 · '라이선스  ·  URL' 꼬리
   [/^사용: (.+)$/, (m, tr) => `Used for: ${tr(m[1])}`],
@@ -796,9 +858,9 @@ export const EN_RULES: Rule[] = [
   [/^(.+) → (.+)까지 (.+)$/, '$1 → $2 in $3'], [/^(.+) \(종착 상태\)$/, '$1 (final state)'],
   [/^(\d+) \/ (\d+)마리$/, '$1 / $2 fish'], [/^(\d+)마리$/, '$1 fish'],
   [/^(.+) (\d+)cm 낚음!(.*)$/s, '$1 $2cm caught!$3'], [/^(.+) (\d+)cm — 방생$/, '$1 $2cm — released'],
-  [/^(.+) (\d+)cm \/ ([\d.]+)kg \/ (.+) \[([\d.]+)×, (.+)\](.*)$/s, (m) => `${m[1]} ${m[2]}cm / ${m[3]}kg / ${EN_DICT[m[4]] ?? m[4]} [${m[5]}×, ${EN_DICT[m[6]] ?? m[6]}]${m[7]}`],
+  [/^(.+) (\d+)cm \/ ([\d.]+)kg \/ (.+) \[([\d.]+)×, (.+)\](.*)$/s, (m, tr) => `${tr(m[1])} ${m[2]}cm / ${m[3]}kg / ${EN_DICT[m[4]] ?? m[4]} [${m[5]}×, ${EN_DICT[m[6]] ?? m[6]}]${m[7]}`],
   [/^\[([\d.]+)×, (.+)\]$/, (m) => `[${m[1]}×, ${EN_DICT[m[2]] ?? m[2]}]`], [/^([\d.]+)×, (.+)$/, (m) => `${m[1]}×, ${EN_DICT[m[2]] ?? m[2]}`],
-  [/^(.+) (\d+)cm \/ ([\d.]+)kg \/ (.+)\n\n(.+) 개체입니다\. 규정에 따라 방생합니다\.$/, (m) => `${m[1]} ${m[2]}cm / ${m[3]}kg / ${EN_DICT[m[4]] ?? m[4]}\n\n${EN_DICT[m[5]] ?? m[5]} — released by regulation.`],
+  [/^(.+) (\d+)cm \/ ([\d.]+)kg \/ (.+)\n\n(.+) 개체입니다\. 규정에 따라 방생합니다\.$/, (m, tr) => `${tr(m[1])} ${m[2]}cm / ${m[3]}kg / ${EN_DICT[m[4]] ?? m[4]}\n\n${EN_DICT[m[5]] ?? m[5]} — released by regulation.`],
   [/^쿨러가 가득 찼습니다 \((\d+)마리\) — 방생하거나 쿨러를 비우세요$/, 'Cooler full ($1) — release it or empty the cooler'],
   [/^채비 보충 필요: (.+)\n\(U 채비하기에서 재장착 후 다시 캐스팅\)$/, 'Rig restock needed: $1\n(re-rig in U Tackles, then cast again)'], [/^채비 보충 필요: (.+)$/, 'Rig restock needed: $1'],
   [/^수면 거리 ([\d.]+)m · (.+)$/, 'Surface dist $1m · $2'], [/^수면 거리 ([\d.]+)m$/, 'Surface dist $1m'],
@@ -807,18 +869,20 @@ export const EN_RULES: Rule[] = [
   [/^정렬도 A (\d+)%$/, 'Alignment A $1%'], [/^밑밥 동조 (\d+)%(.*)$/, 'Chum sync $1%$2'],
   [/^입질 확률 ([\d.]+)%\/s(.*)$/, 'Bite chance $1%/s$2'], [/^피딩 (.+) x([\d.]+)(.*)$/, 'Feeding $1 ×$2$3'],
   [/^하중 ([\d.]+)kg \/ 줄 ([\d.]+)kg$/, 'Load $1kg / line $2kg'], [/^텐션 (\d+) \/ 100  \(안전 30~80\)(.*)$/, 'Tension $1 / 100  (safe 30–80)$2'],
-  [/^랜딩 (\d+)%$/, 'Landing $1%'], [/^상대: \?\?\? \(힘 (\d+)\)$/, 'Opponent: ??? (power $1)'], [/^피로: (.+) \(잔여 (\d+)%\)$/, (m) => `Fatigue: ${EN_DICT[m[1]] ?? m[1]} (left ${m[2]}%)`],
+  [/^랜딩 (\d+)%$/, 'Landing $1%'], [/^상대: \?\?\? \(힘 (\d+)\)$/, 'Opponent: ??? (power $1)'], [/^피로: (.+?) \(잔여 (\d+)%\)((?:  · 슬랙 — 물고기 회복 중!)?)((?:  — 랜딩 찬스!)?)$/, (m) => `Fatigue: ${EN_DICT[m[1]] ?? m[1]} (left ${m[2]}%)${m[3] ? '  · Slack — the fish is recovering!' : ''}${m[4] ? '  — landing chance!' : ''}`],
   [/^제압 완료! 릴링으로 끌어오세요 — 남은 ([\d.]+)m$/, 'Subdued! Reel it in — $1m to go'],
   [/^횡으로 쏩니다! (←|→) 같은쪽 스티어로 버티세요!$/, 'Running sideways! Steer $1 the same way and hold!'],
   [/^(.+) 진입 — 입질 확률 급상승!$/, 'Entered $1 — bite chance surging!'], [/^(.+) 진입 — 채비 정렬 불가, 릴링으로 회수하세요$/, "Entered $1 — can't align the rig, reel in"],
   [/^미끼 수심 ([\d.]+)m \/ 매듭 (.+)m \/ 바닥 (\d+)m$/, 'Bait $1m / knot $2m / bottom $3m'],
-  [/^지형: (.+)$/, 'Terrain: $1'],
+  [/^지형: (.+)  · 밑걸림 주의$/, (m, tr) => `Terrain: ${tr(m[1])}  · snag risk`], [/^지형: (.+)$/, 'Terrain: $1'],
+  [/^인벤토리 칸 부족 — (\d+)종 미지급$/, 'Inventory full — $1 kinds not received'],
+  [/^인벤토리 칸 부족 — (\d+)종 미지급 \((.+)…\)$/, (m, tr) => `Inventory full — ${m[1]} kinds not received (${m[2].split(', ').map(tr).join(', ')}…)`],
   [/^라인 인장강도 ≈ ([\d.]+)kg \(원줄·목줄 중 약한 쪽 — 파이팅 텐션 분모\)$/, 'Line strength ≈ $1kg (weaker of main/leader — fight tension divisor)'],
   [/^루어: (.+) \((.+)\)$/, 'Lure: $1 ($2)'], [/^총 무게: (.+)$/, 'Total weight: $1'], [/^침강: (.+)$/, 'Sink: $1'], [/^공기저항 C_d: (.+)$/, 'Drag C_d: $1'], [/^타겟 가중: (.+)$/, 'Target bias: $1'], [/^액션: (.+)$/, 'Action: $1'],
   [/^필수 소켓이 비었습니다: (.+) — 채워야 캐스팅할 수 있습니다\.$/, 'Required sockets empty: $1 — fill them to cast.'],
   [/^총 무게: ([\d.]+) g$/, 'Total weight: $1 g'], [/^부력 합: ([\d.]+) g 상당$/, 'Buoyancy: $1 g eq.'], [/^침강 속도 \(V_z\): ([\d.]+) m\/s$/, 'Sink rate (V_z): $1 m/s'],
   [/^공기 저항 계수 \(C_d\): ([\d.]+)$/, 'Drag coeff. (C_d): $1'], [/^최대 공략 수심 \(Z_limit\): (.+) m$/, 'Max depth (Z_limit): $1 m'],
-  [/^(.+) 선택$/, 'Select $1'], [/^추천 \((.+)\): (.+)$/, 'Pick ($1): $2'], [/^조법 (.+)$/, 'Method $1'], [/^찌 (.+)호$/, 'Float #$1'], [/^미끼 (.+)$/, 'Bait $1'],
+  [/^(.+) 선택$/, 'Select $1'], [/^추천 \((.+)\): (.+)$/, (m, tr) => `Pick (${m[1].split('·').map((x) => tr(x)).join(' · ')}): ${m[2].split(' · ').map((x) => tr(x)).join(' · ')}`], [/^조법 (.+)$/, (m, tr) => `Method ${tr(m[1])}`], [/^찌 (.+)호$/, 'Float #$1'], [/^미끼 (.+)$/, (m, tr) => `Bait ${m[1].split('·').map((x) => tr(x)).join(' · ')}`],
   [/^배합 완료 — 남은 밑밥 (\d+) \/ 100 \(1인칭 C 투척 1회당 (\d+) 소모\)$/, 'Mixed — chum left $1 / 100 (C throw uses $2)'],
   [/^발견 (\d+) \/ (\d+)종$/, 'Found $1 / $2 species'], [/^제철 (.+)월$/, 'Season: months $1'], [/^최대어 (.+) cm$/, 'Record $1 cm'], [/^누적 (\d+) 수$/, 'Total $1'], [/^kg당 (.+)원$/, '₩$1/kg'],
   [/^금어기 (.+)월$/, 'Closed: months $1'], [/^(.+)월$/, 'months $1'], [/^(.+)에서 구매$/, 'Sold at $1'], [/^(.+) — 플레이로 입수$/, '$1 — obtained in play'],
@@ -826,7 +890,7 @@ export const EN_RULES: Rule[] = [
   [/^(\d+)개 관측소$/, '$1 stations'], [/^(\d+)\/(\d+)개 지역$/, '$1/$2 regions'], [/^(\d+)개$/, '$1'], [/^상점 매입가: (.+) 원$/, 'Shop buys at: ₩$1'], [/^(.+) g 상당$/, '$1 g eq.'],
   [/^교통비가 부족합니다 \(₩(.+)\) — 보유 ₩(.+)$/, 'Not enough for the fare (₩$1) — you have ₩$2'], [/^수심 (\d+)~(\d+)m$/, 'Depth $1–$2m'],
   [/^(.+) \(잠금\)$/, '$1 (locked)'], [/^(.+) 은\(는\) 아직 준비중입니다\. 입장 가능: (.+)$/, '$1 is not ready yet. Available: $2'],
-  [/^포인트 (\d+)개(.*)$/, '$1 spots$2'], [/^낚시 유형: (.+)$/, 'Types: $1'],
+  [/^포인트 1개(.*)$/, '1 spot$1'], [/^포인트 (\d+)개(.*)$/, '$1 spots$2'], [/^낚시 유형: (.+)$/, 'Types: $1'],
   [/^(.+)  ◀ 보관 대상$/, '$1  ◀ storing here'], [/^(.+) — 클릭 시 인벤토리로 꺼냅니다$/, '$1 — click to take out'],
   [/^(.+)이\(가\) 가득 찼습니다$/, '$1 is full'], [/^(.+) → (.+)에 보관했습니다$/, '$1 → stored in $2'], [/^(.+)을\(를\) 인벤토리로 꺼냈습니다$/, 'Took $1 out to inventory'], [/^… 외 (\d+)개$/, '… and $1 more'],
   [/^피로도  (\d+)$/, 'Fatigue  $1'],

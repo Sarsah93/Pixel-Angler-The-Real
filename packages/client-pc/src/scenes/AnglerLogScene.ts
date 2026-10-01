@@ -73,7 +73,7 @@ export class AnglerLogScene extends Phaser.Scene {
     this.add.rectangle(0, 0, width, height, 0x050b14).setOrigin(0, 0);
 
     // 타이틀
-    this.add.text(40, 30, '📖 도감 & 조과첩 (Angler\'s Log)', {
+    this.add.text(40, 30, '도감 & 조과첩 (Angler\'s Log)', {
       fontFamily: '"Noto Sans KR", sans-serif',
       fontSize: '24px',
       color: '#4af2a1',
@@ -281,7 +281,7 @@ export class AnglerLogScene extends Phaser.Scene {
               [`kg당 ${fish.sashimiValuePerKg.toLocaleString()}원`, '#c8a060'],
             ]
           : [
-              [`🔍 ${discLine ?? '발견'}`, '#8fd4b8'],
+              [discLine ?? '발견', '#8fd4b8'],
               ['낚시 기록 없음', '#607b8e'],
               [season, '#8faabf'],
               [`kg당 ${fish.sashimiValuePerKg.toLocaleString()}원`, '#c8a060'],
@@ -387,7 +387,7 @@ export class AnglerLogScene extends Phaser.Scene {
           [CREATURE_CAT_LABEL[cr.category] ?? cr.category, '#8faabf'],
           [`kg당 ${cr.marketValuePerKg.toLocaleString()}원`, '#c8a060'],
           [closed, cr.closedSeasonMonths.length > 0 ? '#d47a6a' : '#607b8e'],
-          [`🔍 ${discLine ?? '발견'}`, '#8fd4b8'],
+          [discLine ?? '발견', '#8fd4b8'],
         ];
         rows.forEach(([label, color], i) => {
           const t = clampTextWidth(this.add.text(SX, y + 54 + i * 19, label, {
@@ -504,7 +504,7 @@ export class AnglerLogScene extends Phaser.Scene {
         }
 
         const discLine = this.discoveryLine('item', entry.id);
-        const foot = clampTextWidth(this.add.text(x + 12, y + itemH - 20, `🔍 ${discLine ?? '취득'}`, {
+        const foot = clampTextWidth(this.add.text(x + 12, y + itemH - 20, discLine ?? '취득', {
           fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#8fd4b8',
         }), itemW - 24);
         this.tabContainer?.add(foot);

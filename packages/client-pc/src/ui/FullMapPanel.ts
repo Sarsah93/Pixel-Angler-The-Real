@@ -120,7 +120,9 @@ export class FullMapPanel extends Phaser.GameObjects.Container {
     let lx = PAD + 10, ly = legendY + 12;
     const rowW = GAME_WIDTH - PAD * 2 - 20;
     for (const it of LEGEND) {
-      const w = 22 + it.label.length * 11 + 14;
+      // 187차 — 폭은 **그려진 글자**로 잰다(구: 한국어 글자 수 × 11 — 영어에서 「Convenience Store」가 「Pharmacy」를 덮었다)
+      const t = scene.add.text(0, 0, it.label, { fontFamily: FONT, fontSize: '10px', color: '#c6d8e6' }).setOrigin(0, 0.5);
+      const w = 20 + Math.ceil(t.width) + 16;
       if (lx + w > PAD + 10 + rowW) { lx = PAD + 10; ly += 22; }
       if (it.icon) { const ic = addPixelIcon(scene, it.icon, lx + 8, ly, 12); if (ic) this.add(ic); }
       else {
@@ -130,7 +132,7 @@ export class FullMapPanel extends Phaser.GameObjects.Container {
         else if (it.pin) this.drawPinShape(g, lx + 8, ly + 5);
         this.add(g);
       }
-      const t = scene.add.text(lx + 20, ly, it.label, { fontFamily: FONT, fontSize: '10px', color: '#c6d8e6' }).setOrigin(0, 0.5);
+      t.setPosition(lx + 20, ly);
       this.add(t);
       lx += w;
     }

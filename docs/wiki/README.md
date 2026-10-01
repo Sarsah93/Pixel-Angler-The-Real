@@ -2,7 +2,7 @@
 
 > **이 위키의 목적**: 날짜·차수 순으로만 쌓이던 작업 기록을 **구조(시스템) 기준**으로 다시 배열해,
 > "지금 무엇이 어디까지 되어 있고 / 무엇이 남았고 / 어디가 위험한가"를 한 화면에서 판별한다.
-> 최종 업데이트: 2026-09-30 (186차 반영 — 183~186차 지형·고도·고가·집 안내는 `02-SYSTEMS/world-field.md` 참고)
+> 최종 업데이트: 2026-09-30 (187차 반영 — 도움말 전면 개정은 `02-SYSTEMS/ui-framework.md` · 183~186차 지형·고가는 `world-field.md`)
 
 ---
 
@@ -48,7 +48,7 @@
 | S7 | [월드맵·지역 타일맵](02-SYSTEMS/world-field.md) | 🔶 | `WorldMapScene` · **OSM 파이프라인 3종** · `build_region_maps.py` | 속초(심리스 v2)·부산·홈타운 개방 — OSM 16개 지역 확장 잔여 |
 | S8 | [홈베이스 (집)](02-SYSTEMS/home-base.md) | 🔶 | `HomeInteriorScene` · `types/HomeBase.ts` | 하우스 Tier 1~3, 수조 패널, 농사 |
 | S9 | [외부 실데이터](02-SYSTEMS/economy-data.md#외부-api) | 🟢⚠ | `core/api-client/*` | **배포 시 CORS 프록시 필수** |
-| S10 | [UI 프레임워크](02-SYSTEMS/ui-framework.md) | 🟢 | `DraggablePanel` · `TextFit` · `SceneFade` · `HelpLibraryPanel`(**11카테고리 44토픽**) · `i18n/*` | 저순위 팝업 검수 잔여 · **131차 도움말 현행화·제작 UI 영문화 완료** · 한국어 콜아웃 4장 대기 |
+| S10 | [UI 프레임워크](02-SYSTEMS/ui-framework.md) | 🟢 | `DraggablePanel` · `TextFit` · `SceneFade` · `HelpLibraryPanel`(**14카테고리 76토픽**) · `i18n/*` | 저순위 팝업 검수 잔여 · **187차 도움말 전면 개정**(실캡처 38장 ko/en · 번호 콜아웃) |
 | S11 | [가이드·온보딩](02-SYSTEMS/ui-framework.md#가이드-허브) | 🟢 | `GuidePanel` · `GuideContent` | 삽화 실게임 스크린샷 교체 |
 | S12 | [세이브·슬롯](02-SYSTEMS/inventory-equipment.md#세이브) | 🟢 | `GameState` | 저장은 집 침대 전용 |
 | S13 | [튜닝·dev 도구](02-SYSTEMS/ui-framework.md#dev-도구) | 🟢 | `config/tuning.ts` · `DevTuningPanel`(F8) | fight/rod/yield 테이블 소비 전환 |

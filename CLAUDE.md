@@ -45,14 +45,15 @@
   맵 확정(육안)·OSM land 14개·조도 재설계·외옹치/대포항 bbox 확장은 사용자 동반 병행 트랙.
 - **재개 지점**: 사용자 실검증(172·173차 타일 조화 규칙 + 178·183~186차 신설분) — 부족하면 규칙 보강,
   괜찮으면 규칙을 켠 채로 새 맵 확장. 차수별 잔여는 PLAN §2-3.
+- **187차**: 도움말 라이브러리 전면 개정 — 14카테고리 76토픽 · 「홈타운 및 저장하기」 · 실캡처 38장 × ko/en 재촬영
+  (하네스 `tools/capture_help_images.cjs` · 번호 콜아웃 = 캡션 ①②③) · ⚠ 속초 이탈 크래시(고가 그룹 파괴 순서) ·
+  영어 대화 대사 미번역 등 감사·재촬영 중 버그 15곳 수정.
+  상세 `docs/wiki/03-WORKLOG/2026-09-30-187-help-library-overhaul.md`.
 - **186차**: 집 실내 새 캐릭터 + 첫 입장 가구 안내 혼잣말 · 금강대교 고가 2개로 분리(다리 밑 가짜 땅 → 물) ·
   상판 위 지면 상호작용 차단 · 머리 위 문구 [F] 안내 하나로 · 회전교차로 분리섬 삭제 · 물로 나간 도로 끝.
   상세 `docs/wiki/03-WORKLOG/2026-09-29-186-home-tour-bridge-split-hint-merge.md`.
 - **185차**: 호수 안 성분·크루즈터미널 부두 = 연석 직벽(`quay` 4곳 · 데이터만).
   상세 `docs/wiki/03-WORKLOG/2026-09-29-185-shore-quay-lakes-cruise-pier.md`.
-- **184차**: 속초 해안 위성 대조 8장(`tools/author_sokcho_coast.py`) · 피복 `quay` · 금강대교 밑 수로 복원 +
-  core `rules/Overpass.ts` + `OverpassSystem`(두 번째 층) · ⚠ 올린 층 깊이는 y 비례 지면 깊이 위.
-  상세 `docs/wiki/03-WORKLOG/2026-09-29-184-satellite-coast-overpass.md`.
 - **상시 방침**:
   - 지형 고도(DEM)는 **낚시 확립 후** — B(해안 변형) 우선, 경사로 통행을 막지 않는다
     (`docs/archive/specs/RASTER_UPLIFT_AMENDMENT.md` §4).
@@ -106,7 +107,7 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
 
 - 지역 타일맵 추가/재생성 → **스킬 `add-region`** (`py tools/build_region_maps.py <region>` — 파이프라인·타일 문자·맵 그래프·함정 일체).
 - 차기 과제: 낚시점 전용 상점(루어 판매), 어탐 레이더(SeabedProfile 조회), 타 지역(여수 등) 확장, POI 세분화, 사운드 이펙트 (IMPLEMENTATION_PLAN §6-5l 차기 참고).
-- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages — **최근 22차 배포 2026-09-30 = 186차까지 포함**. 재배포 절차는 **스킬 `deploy-ghpages`**).
+- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages — **최근 23차 배포 2026-09-30 = 187차까지 포함**. 재배포 절차는 **스킬 `deploy-ghpages`**).
   ⚠ **원격 컨테이너에서는 dev 서버(5173)가 사용자 브라우저에 닿지 않는다** — 실플레이 테스트 요청은 이 배포로 답한다.
 
 ## 작업 이어받기 절차
