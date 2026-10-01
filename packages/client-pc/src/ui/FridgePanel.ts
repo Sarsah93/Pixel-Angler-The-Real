@@ -11,6 +11,7 @@
 import Phaser from 'phaser';
 import { DraggablePanel } from './DraggablePanel.js';
 import { createItemIcon } from './ItemIcon.js';
+import { setSlotLabel, SLOT_LABEL_PX } from './SlotLabel.js';
 import { GameState } from '../store/GameState.js';
 import {
   InventoryStore, InvItem, CONDITION_LABEL, CONDITION_COLOR, refreshCondition,
@@ -149,10 +150,10 @@ export class FridgePanel extends DraggablePanel {
       rowBg.lineStyle(1, 0x1f3d5a, 0.7);
       rowBg.strokeRoundedRect(x0, ry, 190, rowH - 3, 4);
       const icon = createItemIcon(scene, x0 + 15, ry + (rowH - 3) / 2, item, 20);
-      const nameTxt = scene.add.text(x0 + 30, ry + (rowH - 3) / 2, `${item.name}${item.qty > 1 ? ` x${item.qty}` : ''}`, {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#c8dceb',
-      }).setOrigin(0, 0.5);
-      if (nameTxt.width > 150) nameTxt.setScale(150 / nameTxt.width);
+      // 188차 — 글씨 축소(setScale) 대신 이름 축약 (수량 꼬리는 지킨다)
+      const nameTxt = setSlotLabel(scene.add.text(x0 + 30, ry + (rowH - 3) / 2, '', {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: `${SLOT_LABEL_PX}px`, color: '#c8dceb',
+      }).setOrigin(0, 0.5), item.name, 150, item.qty > 1 ? ` x${item.qty}` : '');
       const hit = scene.add.rectangle(x0 + 95, ry + (rowH - 3) / 2, 190, rowH - 3, 0xffffff, 0.001)
         .setInteractive({ useHandCursor: true });
       hit.on('pointerover', () => this.setStatus(`${item.name} — 클릭 시 ${this.depositTo === 'freezer' ? '냉동고' : '냉장고'}에 보관`));

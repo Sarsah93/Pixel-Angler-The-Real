@@ -17,6 +17,7 @@ import { DraggablePanel } from './DraggablePanel.js';
 import { ConfirmDialog } from './Dialogs.js';
 import { ItemDetailPanel } from './ItemDetailPanel.js';
 import { createItemIcon } from './ItemIcon.js';
+import { setSlotLabel, SLOT_LABEL_PX } from './SlotLabel.js';
 import { getCreatureById } from '@tra/core';
 import {
   CoolerStore, COOLER_CAPACITY, CoolerFish, MEDIUM_LABEL,
@@ -192,10 +193,9 @@ export class CoolerPanel extends DraggablePanel {
       if (!fish) continue;
 
       this.content.add(createItemIcon(this.scene, cx + CELL / 2, cy + CELL / 2 - 12, this.toInvItem(i, fish), 52));
-      const nm = this.scene.add.text(cx + CELL / 2, cy + CELL - 22, `${fish.nameKo}`, {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#cfe3f2', fontStyle: 'bold',
-        wordWrap: { width: CELL - 8 }, maxLines: 1,
-      }).setOrigin(0.5);
+      const nm = setSlotLabel(this.scene.add.text(cx + CELL / 2, cy + CELL - 22, '', {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: `${SLOT_LABEL_PX}px`, color: '#cfe3f2', fontStyle: 'bold',
+      }).setOrigin(0.5), fish.nameKo, CELL - 8);   // 188차 — maxLines 잘림 대신 이름 축약
       const sz = this.scene.add.text(cx + CELL / 2, cy + CELL - 10, `${fish.lengthCm}cm · ${(fish.weightG / 1000).toFixed(1)}kg`, {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '8px', color: '#8fb8d0',
       }).setOrigin(0.5);

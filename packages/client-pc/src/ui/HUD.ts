@@ -7,6 +7,7 @@ import Phaser from 'phaser';
 import { GameState } from '../store/GameState.js';
 import { calculateTideInfo } from '@tra/core';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
+import { setSlotLabel, SLOT_LABEL_PX } from './SlotLabel.js';
 
 export class HUD extends Phaser.GameObjects.Container {
   // STATUS (좌상단)
@@ -126,12 +127,12 @@ export class HUD extends Phaser.GameObjects.Container {
       });
       slotContainer.add(label);
 
-      // 아이템명 (하단 아주 작게)
-      const nameTxt = this.scene.add.text(0, slotH / 2 - 8, item.name, {
+      // 아이템명 (하단) — 188차: 8px 대신 10px + 이름 축약 (SlotLabel)
+      const nameTxt = setSlotLabel(this.scene.add.text(0, slotH / 2 - 1, '', {
         fontFamily: '"Noto Sans KR", sans-serif',
-        fontSize: '8px',
+        fontSize: `${SLOT_LABEL_PX}px`,
         color: '#ffffff88',
-      }).setOrigin(0.5);
+      }).setOrigin(0.5, 1), item.name, slotW - 4);
       slotContainer.add(nameTxt);
 
       // 상호작용성 추가 (클릭하여 퀵슬롯 활성화)

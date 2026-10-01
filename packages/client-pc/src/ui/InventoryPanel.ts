@@ -28,6 +28,7 @@ import { CoolerStore } from '../store/CoolerStore.js';
 import { DraggablePanel, applyScreenFixed } from './DraggablePanel.js';
 import { ConfirmDialog } from './Dialogs.js';
 import { createItemIcon } from './ItemIcon.js';
+import { setSlotLabel, SLOT_LABEL_PX } from './SlotLabel.js';
 import { addPixelIcon } from './PixelIcon.js';
 import { GEAR_FAULTS } from '@tra/core';
 import { playEatSfx } from '../audio/Sfx.js';
@@ -545,10 +546,10 @@ export class InventoryPanel extends DraggablePanel {
       }
 
       // (착용 배지 없음 — 착용 아이템은 그리드에서 빠져 장비창(E)에 표시된다. 2026-08-05)
-      const nameTxt = this.scene.add.text(sx + SLOT / 2, sy + SLOT - 14, item.name, {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '7px', color: '#a8c4d8',
-      }).setOrigin(0.5, 0);
-      if (nameTxt.width > SLOT - 6) nameTxt.setScale((SLOT - 6) / nameTxt.width);
+      // 188차 — 글씨 축소(7px·setScale) 대신 이름 축약. 하단 기준 배치(10px 높이가 칸 아래 테를 넘지 않게)
+      const nameTxt = setSlotLabel(this.scene.add.text(sx + SLOT / 2, sy + SLOT - 2, '', {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: `${SLOT_LABEL_PX}px`, color: '#a8c4d8',
+      }).setOrigin(0.5, 1), item.name, SLOT - 4);
       this.gridContainer.add(nameTxt);
 
       // 155차 — 이야기가 준 물건(귀속)은 금색 테두리, 새로 받은 물건은 우상단 금색 점 + 잠깐 반짝임

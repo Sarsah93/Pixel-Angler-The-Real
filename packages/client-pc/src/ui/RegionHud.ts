@@ -24,10 +24,11 @@ import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { MultiplayerClient } from '../net/MultiplayerClient.js';
 import { applyScreenFixed, restoreHandCursor } from './DraggablePanel.js';
 import { createItemIcon } from './ItemIcon.js';
+import { setSlotLabel, SLOT_LABEL_PX } from './SlotLabel.js';
 import { clampTextWidth } from './TextFit.js';
 import { addPixelIcon } from './PixelIcon.js';
 import { paintHudPanel, paintHudSlot } from './HudPanelStyle.js';
-import { t, getLocale } from '../i18n/I18n.js';
+import { getLocale } from '../i18n/I18n.js';
 import { StoryStore } from '../store/StoryStore.js';
 
 /** 미니맵 마커 — priority: 0 상점 / 2 퀘스트 보유 / 3 완료 가능 (높을수록 셀 점유 우선) */
@@ -1362,9 +1363,9 @@ export class RegionHud extends Phaser.GameObjects.Container {
       });
       sc.add(keyLabel);
 
-      const nameTxt = this.scene.add.text(0, slotH / 2 - 8, '', {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '8px', color: '#ffffffaa',
-      }).setOrigin(0.5);
+      const nameTxt = this.scene.add.text(0, slotH / 2 - 1, '', {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: `${SLOT_LABEL_PX}px`, color: '#ffffffaa',
+      }).setOrigin(0.5, 1);
       nameTxt.name = 'name';
       sc.add(nameTxt);
 
@@ -1403,8 +1404,10 @@ export class RegionHud extends Phaser.GameObjects.Container {
         sc.add(icon);
         this.slotIcons[i] = icon;
       }
-      // **번역 후** 자른다 — 원문을 먼저 자르면 조각('용상')이 사전에 없어 영어에서 한글이 남는다 (119차 6)
-      nameTxt.setText(item ? t(item.name).split(' ')[0] : '');
+      // **번역 후** 줄인다 — 원문을 먼저 자르면 조각('용상')이 사전에 없어 영어에서 한글이 남는다 (119차 6).
+      // 188차 — 첫 단어 자르기 대신 슬롯 이름표 축약(SlotLabel — 번역 뒤 축약)
+      if (item) setSlotLabel(nameTxt, item.name, slotW - 4);
+      else nameTxt.setText('');
 
       box.clear();
       paintHudSlot(box, 0, 0, slotW, slotH, i === activeIdx);

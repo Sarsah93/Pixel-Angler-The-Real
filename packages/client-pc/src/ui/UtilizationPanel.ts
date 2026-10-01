@@ -50,6 +50,7 @@ import { ConfirmDialog } from './Dialogs.js';
 import { makeFishPreview } from './FishTemplateRenderer.js';
 import { butcherFamilyOf } from './PixelButcherFish.js';
 import { createItemIcon } from './ItemIcon.js';
+import { setSlotLabel, SLOT_LABEL_PX } from './SlotLabel.js';
 import { CraftBoard } from './CraftBoard.js';
 import { GameState } from '../store/GameState.js';
 
@@ -422,10 +423,11 @@ export class UtilizationPanel extends DraggablePanel {
 
       if (assigned) {
         const icon = this.scene.add.text(bx + boxW / 2, chainY + 58, assigned.icon, { fontSize: '26px' }).setOrigin(0.5);
-        const name = this.scene.add.text(bx + boxW / 2, chainY + 88, assigned.name, {
-          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#e8f4fd',
+        // 188차 — 9px 3줄 대신 10px 2줄까지, 넘치면 이름 축약 (SlotLabel)
+        const name = setSlotLabel(this.scene.add.text(bx + boxW / 2, chainY + 88, '', {
+          fontFamily: '"Noto Sans KR", sans-serif', fontSize: `${SLOT_LABEL_PX}px`, color: '#e8f4fd',
           wordWrap: { width: boxW - 12 }, align: 'center',
-        }).setOrigin(0.5, 0);
+        }).setOrigin(0.5, 0), assigned.name, boxW - 12, '', 2);
         this.bodyContainer.add([icon, name]);
       } else {
         const plus = this.scene.add.text(bx + boxW / 2, chainY + 64, '+', {
@@ -2194,10 +2196,9 @@ export class UtilizationPanel extends DraggablePanel {
       if (!item) continue;
 
       this.bodyContainer.add(createItemIcon(this.scene, cx + cell / 2, cy + cell / 2 - 6, item, 34));
-      const nm = this.scene.add.text(cx + cell / 2, cy + cell - 12, item.name, {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '8px', color: '#cfe3f2',
-        wordWrap: { width: cell - 8 }, maxLines: 1,
-      }).setOrigin(0.5);
+      const nm = setSlotLabel(this.scene.add.text(cx + cell / 2, cy + cell - 2, '', {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: `${SLOT_LABEL_PX}px`, color: '#cfe3f2',
+      }).setOrigin(0.5, 1), item.name, cell - 6);   // 188차 — 8px 대신 이름 축약
       this.bodyContainer.add(nm);
       if (item.qty > 1) {
         const q = this.scene.add.text(cx + cell - 6, cy + 4, `x${item.qty}`, {
@@ -2526,10 +2527,9 @@ export class UtilizationPanel extends DraggablePanel {
       sg.strokeRoundedRect(cx, cy, cell, cell, 5);
       this.bodyContainer.add(sg);
       this.bodyContainer.add(createItemIcon(this.scene, cx + cell / 2, cy + cell / 2 - 14, item, 36));
-      const nm = this.scene.add.text(cx + cell / 2, cy + cell - 24, item.name, {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '8px', color: '#cfe3f2',
-        wordWrap: { width: cell - 8 }, maxLines: 1,
-      }).setOrigin(0.5);
+      const nm = setSlotLabel(this.scene.add.text(cx + cell / 2, cy + cell - 24, '', {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: `${SLOT_LABEL_PX}px`, color: '#cfe3f2',
+      }).setOrigin(0.5), item.name, cell - 8);   // 188차 — 8px 대신 이름 축약
       const kd = this.scene.add.text(cx + cell / 2, cy + cell - 12, kindLabel[item.chumKind!], {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '8px', color: '#8fb8d0',
       }).setOrigin(0.5);
