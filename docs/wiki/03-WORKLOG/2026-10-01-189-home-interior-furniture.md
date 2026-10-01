@@ -47,7 +47,7 @@
 | 수정 | `store/GameState.ts` | SaveData `home?` · 로드/저장/새 게임 리셋 |
 | 수정 | `store/InventoryStore.ts` · `data/EquipOutfit.ts` · core `art/CharacterArt.ts` | 손 도구 `watering_can` · 손에 든 물뿌리개 그림(`HeldKind 'can'`) |
 | 수정 | `data/ShopCatalog.ts` · `tools/gen_pixel_icons.py` → `PixelIconArt.ts` | 생활용품점 사이소 **물뿌리개 6,000원** · 16px 아이콘 `it_watering_can` |
-| 수정 | `data/HelpContent.ts` · `i18n/en_help.ts` | 「집 안 — 침대 · 가구」 개정 + 「가구 배치」 쪽 신설 · 이미지 `help_home_decor` |
+| 수정 | `data/HelpContent.ts` · `i18n/en_help.ts` | 「집」(구 「집 안 — 침대 · 가구」) 개정 + 「가구 배치」 쪽 신설 · 이미지 `help_home_decor` |
 | 수정 | `tools/capture_help_images.cjs` · `tools/annotate_help_images.py` | 첫 걸음 가이드 5단계(상자 = 5/5) · 새 가이드 id 4종 · `home_decor` 촬영 · 콜아웃 재계산 |
 | 삭제 | 씬의 `LOOK_TEXT` 재사용 경로(`lookAt`) · 문(`door_out`) 오브젝트 · 서랍장(`drawer`) | 살펴보기 폐지 · 문 → 매트 · 서랍장 → 옷장(램프는 협탁으로) |
 
