@@ -94,6 +94,7 @@ export function createGame(): Phaser.Game {
     ],
   };
 
+  installStaleTextGuard();
   const game = new Phaser.Game(config);
   holder[GAME_KEY] = game;
   installCrashGuards(game);
@@ -118,6 +119,35 @@ export function disposeGame(): void {
   } finally {
     delete holder[GAME_KEY];
   }
+}
+
+/**
+ * 파괴된 Text 갱신 방어 (191차 — 마지막 방어선).
+ *
+ * Phaser 씬 인스턴스는 재사용되어 클래스 필드가 직전 세대의 **파괴된** Text를 붙잡고 있을 수 있다.
+ * 그 Text에 `setText`/`setColor`가 한 번만 닿아도 `updateText → Frame.setSize → updateUVs`가
+ * `data.drawImage`(data = null)에서 예외를 내고 그 씬은 그리다 만 채 멈춘다
+ * (2026-08-29 홈타운 재진입 · 2026-10-01 두 번째 캐릭터 만들기 — 둘 다 같은 스택).
+ * 원인은 각 씬의 create/init 리셋으로 고치고, 여기서는 **놓친 경로가 있어도 게임이 멈추지 않게**
+ * 죽은 Text의 갱신을 무시하고 경고만 남긴다(다음 재현에서 스택으로 출처를 찾는다).
+ */
+function installStaleTextGuard(): void {
+  const proto = Phaser.GameObjects.Text.prototype as unknown as {
+    updateText: (this: Phaser.GameObjects.Text) => Phaser.GameObjects.Text;
+    __staleGuard?: boolean;
+  };
+  if (proto.__staleGuard) return;
+  proto.__staleGuard = true;
+  const orig = proto.updateText;
+  let warned = 0;
+  proto.updateText = function (this: Phaser.GameObjects.Text) {
+    const frame = this.frame as (Phaser.Textures.Frame & { data?: unknown }) | undefined;
+    if (!this.scene || !frame || !frame.data) {
+      if (warned++ < 5) console.warn('[StaleTextGuard] 파괴된 Text 갱신을 건너뜀', JSON.stringify(this.text?.slice?.(0, 40) ?? ''), new Error().stack);
+      return this;
+    }
+    return orig.call(this);
+  };
 }
 
 /**

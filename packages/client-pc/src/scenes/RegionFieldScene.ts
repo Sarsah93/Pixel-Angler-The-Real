@@ -95,9 +95,11 @@ import type { MiniMarker, QuestTrackerEntry } from '../ui/RegionHud.js';
 import { TextInput } from '../ui/TextInput.js';
 import { MonologuePanel, OPENING_MONOLOGUE } from '../ui/MonologuePanel.js';
 import { GuideTour } from '../ui/GuideTour.js';
+import { PrologueCoach, type CoachStage } from '../ui/PrologueCoach.js';
 import {
   prologueKeyAllowed, markPrologue, syncPrologue, prologueRunning, prologueStepDone,
   noteProloguePurchase, notePrologueSale, PROLOGUE_PHOTO_ID,
+  inPrologue, PROLOGUE_BUY_KINDS,
 } from '../store/Prologue.js';
 import { DialoguePanel, type DialogueSceneRequest } from '../ui/DialoguePanel.js';
 import { GeneralMeetingPanel } from '../ui/GeneralMeetingPanel.js';
@@ -421,7 +423,7 @@ export class RegionFieldScene extends Phaser.Scene {
   private get uiBlocked(): boolean {
     // 145차 — 채팅 입력 중에는 이동·상호작용을 멈춘다(글자를 치다 캐릭터가 걸어가면 안 된다)
     return this.isPaused || this.collapsing || this.popupStack.length > 0 || !!this.hud?.isComposing || this.cinematicActive
-      || !!GuideTour.active;   // 188차 — 체험 가이드 중 이동·상호작용 정지
+      || GuideTour.blocking;   // 188차 — 체험 가이드 중 이동·상호작용 정지 (191차 — 세상 안 말풍선은 제외)
   }
 
   /**
@@ -560,6 +562,19 @@ export class RegionFieldScene extends Phaser.Scene {
     this.editGhost = undefined;
     this.editPreviewG = undefined;
     this.popupStack = [];
+    // 191차 전수 — 토글 패널·연출·표식 참조도 세대마다 비운다. 남아 있으면 재진입 첫 단축키가
+    //   파괴된 창을 「닫기」로 처리하거나(두 번 눌러야 열림), 파괴된 객체를 갱신한다.
+    this.helpPanel = null;
+    this.coolerPanel = null;
+    this.licensePanel = null;
+    this.skillPanel = null;
+    this.journalPanel = null;
+    this.tradePanel = null;
+    this.interactPanel = undefined;
+    this.iceDropMarker = undefined;
+    this.cinematic = undefined;
+    this.cinematicActive = false;
+    if (this.chatInput) { this.chatInput.close(); this.chatInput = undefined; }
     this.invPanel = null;
     this.statusPanel = null;
     this.equipPanel = null;
@@ -2556,10 +2571,12 @@ export class RegionFieldScene extends Phaser.Scene {
 
     // ── 145차 지역 채널 채팅 — Enter로 열고 Enter로 보낸다 ──
     this.input.keyboard!.on('keydown-ENTER', () => {
-      if (this.isPaused || this.popupStack.length > 0 || this.hud?.isComposing || GuideTour.active) return;
+      if (this.isPaused || this.popupStack.length > 0 || this.hud?.isComposing || GuideTour.blocking) return;
       this.startCompose();
     });
     this.events.once('shutdown', () => this.endCompose());
+    // 191차 — 프롤로그 말풍선 코치(마당 → 속초 직판장). 세대마다 새로 만든다(씬 인스턴스 재사용)
+    this.coach = new PrologueCoach(this);
     // 178차 — 인벤토리 우클릭 '내려놓기' → 캐릭터가 서 있는 자리에 둔다
     const onPlace = (item: InvItem, res: { ok: boolean; message: string }): void => {
       const r = this.placeItemFromInventory(item);
@@ -3927,6 +3944,7 @@ export class RegionFieldScene extends Phaser.Scene {
     this.applyPeerPush(delta);
     this.updateOccluders(delta);
     for (const line of MultiplayerClient.drainChat()) this.hud?.pushLog(`${line.name}: ${line.text}`);
+    this.coach?.update(this.coachStage(), this.coachBlocked());
     if (this.isTransitioning || this.uiBlocked) { this.playerBody.setVelocity(0, 0); return; }
     if (this.placing) {
       // 설치 모드 — 이동은 허용, 프리뷰는 커서 추적 (클릭=설치 / 우클릭·ESC=취소)
@@ -3952,6 +3970,55 @@ export class RegionFieldScene extends Phaser.Scene {
     this.stoveField?.update(delta);
     this.updateCharge();
     this.checkEdgeTransition();
+  }
+
+  // ── 프롤로그 말풍선 코치 (191차) ─────────────────────
+
+  /**
+   * 짚을 자리 없는 안내의 자리 — 화면 왼편, 상태 창 아래 (꼬리 없음).
+   * 오른편은 「지금 할 일」 창 아래로 아이템 알림 카드가 30초씩 쌓여 겹친다(191차 실측).
+   */
+  private coachDock(key: string, text: string): CoachStage {
+    return { key, text, anchor: () => new Phaser.Geom.Rectangle(-2, 236, 0, 0), side: 'right', dockY: 236 };
+  }
+
+  /** 직판장이 열려 있을 때의 자리 — 왼쪽 상점 창과 오른쪽 가방 사이 (191차 실측 500~812px) */
+  private coachShopDock(key: string, text: string): CoachStage {
+    return { key, text, anchor: () => new Phaser.Geom.Rectangle(488, 430, 0, 0), side: 'right', dockY: 430 };
+  }
+
+  /** 지금 단계의 말풍선 — 집 밖 단계(우물 → 상태 창 → 지도 → 막차 → 직판장 구매·판매) */
+  private coachStage(): CoachStage | null {
+    if (!inPrologue() || !prologueStepDone('leave')) return null;
+    const home = this.region === 'hometown';
+    if (!prologueStepDone('well')) return home ? this.coachDock('well', '마당의 우물 앞에서 [F]를 눌러 물을 한 모금 마시자.') : null;
+    if (!prologueStepDone('status')) return this.coachDock('status', '물을 마시니 정신이 든다. 단축키 [S]로 상태 창을 열어 몸 상태를 살펴보자.');
+    if (!prologueStepDone('map')) return this.coachDock('map', '이제 버스 정류장을 찾자. 단축키 [M]으로 지도를 펼쳐 보자.');
+    if (!prologueStepDone('arrive')) {
+      return home ? this.coachDock('arrive', '버스 정류장 앞에서 [F]를 눌러 막차에 오르자. 전국 지도에서 속초를 고르면 된다.') : null;
+    }
+    if (!prologueStepDone('buy')) {
+      const left = PROLOGUE_BUY_KINDS.filter((k) => !GameState.getFlag(`prologue.buy.${k}`));
+      const ko: Record<string, string> = { line: '원줄', hook: '바늘', sinker: '봉돌', float: '찌', bait: '미끼' };
+      const names = left.map((k) => ko[k]).join(' · ');
+      return this.shopPanel
+        ? this.coachShopDock(`buy_${left.join('_')}`, `기본 채비를 하나씩 사 보자. 아직 사지 않은 것: ${names}`)
+        : this.coachDock('buy', `속초에 왔다. 수산물 직판장 앞에서 [F]를 눌러 기본 채비를 하나씩 사자. (${names})`);
+    }
+    if (!prologueStepDone('sell')) {
+      return this.shopPanel
+        ? this.coachShopDock('sell_tab', '「판매하기」로 바꿔 얼린 오징어를 팔아 보자. 노잣돈에 보탬이 된다.')
+        : this.coachDock('sell', '직판장 앞에서 [F]를 눌러, 얼려 온 오징어를 팔아 보자.');
+    }
+    return null;
+  }
+
+  /** 코치가 끼면 안 되는 순간 — 전환·일시정지·연출·대화·창(직판장만 예외) */
+  private coachBlocked(): boolean {
+    if (this.isTransitioning || this.isPaused || this.collapsing || this.cinematicActive || this.hud?.isComposing || this.interactPanel) return true;
+    // 직판장은 가방과 함께 열린다 — 그 둘만 떠 있으면 사이에 말풍선을 둔다
+    const shopOnly = !!this.shopPanel && this.popupStack.every((e) => e.panel === this.shopPanel || e.panel === this.invPanel);
+    return this.popupStack.length > 0 && !shopOnly;
   }
 
   /**
@@ -5192,6 +5259,8 @@ export class RegionFieldScene extends Phaser.Scene {
 
   /** 채팅 입력 중인 숨김 DOM 입력 (없으면 입력 중이 아니다) */
   private chatInput?: TextInput;
+  /** 191차 — 프롤로그 말풍선 코치 (create에서 새로 만든다) */
+  private coach?: PrologueCoach;
 
   private clearPeers(): void {
     for (const o of this.peerObjs.values()) { o.img.destroy(); o.tag.destroy(); o.badge?.destroy(); }

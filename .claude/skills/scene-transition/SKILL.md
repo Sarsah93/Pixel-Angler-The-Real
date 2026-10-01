@@ -28,6 +28,10 @@ description: Pixel Angler Phaser 씬 전환·페이드 규칙 (SceneFade 안전�
   핸들러 정리에만 기대면 예외 한 번으로 죽은 참조가 다음 지역에 새어 나간다(08-29 홈타운 `drawImage` null:
   파괴된 Text에 setText). shutdown 시 물리 그룹은 우리 핸들러보다 먼저 파괴되므로 `group.remove`는
   `group.children` 확인 후 호출.
+- **`if (!this.x) this.x = this.add…` 지연 생성은 어떤 씬이든 create()에서 `this.x = undefined`부터** (191차 — 캐릭터 만들기 두 번째 생성
+  `setProgress → setColor → updateUVs` 멈춤 · 월드맵 `areaConfirmContainer`가 남아 구역 카드 영구 잠금). 신규 필드를 추가하면
+  create/init 리셋 목록에 같이 넣는다. `game.ts` `installStaleTextGuard`는 마지막 방어선일 뿐 — `[StaleTextGuard]` 경고는 원인 필드를 찾아 고친다.
+- 하위 씬이 pause되는 동안 그 씬의 `GuideTour`는 tick이 멈춘 채 화면에 남는다 — 상태 구동 말풍선(`PrologueCoach`)은 `pause`/`sleep`에 접는다.
 - pause+launch 진입도 fadeOutThen 경유 시 `keepTransitioning=false`류 해제 시점 주의 — 복귀 후 이동 잠김 잔존 방지.
 
 ## 기타 규칙

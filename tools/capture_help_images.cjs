@@ -358,7 +358,6 @@ group('prologue', ['prologue'], async (page) => {
     hi.startFirstSteps();
     const tour = globalThis.__TOUR.active;
     if (tour) { tour.go(4); tour.completeTyping(); }
-    hi.refreshObjective();
   });
   // 가이드는 요청 큐를 거쳐 다음 틱에 뜰 수 있다 — 뜰 때까지 기다렸다가 단계를 맞춘다
   await page.waitForFunction(() => !!globalThis.__TOUR.active, null, { timeout: 15000 });

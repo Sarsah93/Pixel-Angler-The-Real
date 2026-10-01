@@ -18,7 +18,8 @@
 | `ui/GuidePanel.ts` · `data/GuideContent.ts` | 가이드 허브(4카테고리 19페이지, 데이터 추가만으로 확장) |
 | `core/config/tuning.ts` · `dev/DevTuningPanel.ts` | TUNING/META → **F8 슬라이더** + 스냅샷 복사 |
 | `ui/RegionHud.ts` · `HUD.ts` · `MiniMap.ts` | HUD 계열 — 상태/채널 **크기 3단·투명 4단**(117차, `GameSettings.hud*`) |
-| `ui/GuideTour.ts` | **체험 가이드**(188차) — 창을 처음 열 때 말풍선(좌/우 자동)·타이핑·금색 하이라이트·허용 구멍 입력 방패·`wait()` 직접 해 보기·`passive` 세상 안 단계 · 키 게이트 `GuideTour.blocksKey` · 대기열 · 플래그 `tour.<id>` · 14개 창 |
+| `ui/GuideTour.ts` | **체험 가이드**(188차) — 창을 처음 열 때 말풍선(좌/우 자동 · 191차 `side`·`alignTo`·`dockY`)·타이핑·금색 하이라이트·허용 구멍 입력 방패·`wait()` 직접 해 보기·`passive` 세상 안 단계(짚을 대상이 없으면 꼬리 없음) · 키 게이트 `GuideTour.blocksKey` · 세상 정지 판정 `GuideTour.blocking` · 대기열(씬 shutdown에 정리) · 플래그 `tour.<id>`(`ephemeral`이면 없음) · 14개 창 |
+| `ui/PrologueCoach.ts` | **프롤로그 말풍선 코치**(191차) — 씬이 매 프레임 넘기는 「지금 단계」(`CoachStage`)의 말풍선 하나 · 단계가 바뀌면 접고 새로 · 다른 가이드가 있으면 대기(`GuideTour.busy`) · 씬 pause에 접힘 · 집(`HomeInteriorScene.coachStage`)·필드(`RegionFieldScene.coachStage`) |
 | `ui/SlotLabel.ts` | 슬롯 이름표 **10px 고정 + 약어**(188차 — 글씨 축소 금지) |
 | `ui/HelpLibraryPanel.ts` · `data/HelpContent.ts` | **도움말 라이브러리**(117차 → 131차 → **187차 전면 개정**) — **14카테고리 76토픽**(준비 중 4) · 113쪽 트리 + 마스크 본문 · 실캡처 **38장 × ko/en**(`tools/capture_help_images.cjs` 하네스 → `tools/annotate_help_images.py` 번호 콜아웃 · 뜻은 캡션 ①②③) · F1/단축키 버튼 |
 | `i18n/I18n.ts` · `i18n/en.ts` + 사전 6벌 | **영어 설정**(118~120차) — `Text.setText` 훅 사전(원문 = 키) · `setLocale` 즉시 전환 · **데이터의 `nameEn` 이 사전보다 먼저**(어종·지명·지역 노드) · `registerNames()` 로 런타임 이름(POI 상호명) 합류 |
@@ -59,6 +60,7 @@ ESC: depth 최고(시각적 최상단)부터 닫는다 (동률이면 LIFO)
 | 과제 | 상태 | 차수 |
 |---|---|---|
 | **체험 가이드**(`GuideTour`) — 기능창 14종 첫 열기 · 창 안 조작 안내 문구 삭제(규칙 R11) · 189차 집 4종 추가(`home_decorate` · `home_wardrobe` · `home_shelf` · `home_fridge`) | ✅ | **188 · 189** |
+| **프롤로그 말풍선 코치** — 상단 「지금 할 일」 띠·금색 자리 표시 폐지 → 집(상자 → I → 대 → E·릴 → 사진 → J → 오징어 → 저장 → 매트) · 마당(우물 → S → M → 막차) · 속초 직판장(남은 품목 → 오징어 판매)까지 말풍선 연속 | ✅ | **191** |
 | **슬롯 이름 약어**(`SlotLabel` — 인벤·퀵슬롯·U창·냉장고·쿨러) | ✅ | 188 |
 | **스킬 창 재설계**(정사각 아이콘 92종 · 호버 팝업 · 다음 레벨) | ✅ | 188 — [S21](progression.md) |
 | **상호작용 겹침 선택 창**(`InteractChoicePanel`) — 드래그 · 우측 한 겹 확장 · ↑↓/Enter/ESC | ✅ | 178 |
@@ -105,6 +107,18 @@ dev 전용 문자열(순간이동 로그·맵 편집기·손질 dev 버튼)은 *
 `import.meta.env.DEV` 게이트라 프로덕션 빌드에 없다.
 
 ## 6. 함정·불변조건
+
+### [191차] 씬 인스턴스는 재사용된다 — 지연 생성 객체 참조는 create/init에서 비운다
+
+- `if (!this.x) this.x = this.add.text(…)` 꼴의 필드를 create가 비우지 않으면, 두 번째 세대에서 **파괴된 Text**를 갱신해
+  `Frame.updateUVs → "Cannot read properties of null (reading 'drawImage')"`로 씬이 멈춘다(캐릭터 만들기 두 번째 생성 · 2026-08-29 홈타운 재진입).
+- 토글 창 참조(`this.licensePanel` 등)도 같다 — 남으면 첫 단축키가 파괴된 창을 「닫기」로 처리한다. `if (this.x) return` 가드는 영구 잠금이 된다(월드맵 구역 확인 카드).
+- `game.ts` `installStaleTextGuard`가 마지막 방어선으로 죽은 Text 갱신을 건너뛰고 `[StaleTextGuard]` 경고(스택)를 남긴다 — 경고가 보이면 원인 필드를 찾아 리셋한다.
+
+### [191차] passive 말풍선을 띄우는 동안 세상을 멈추지 말 것
+
+- 필드 `uiBlocked`가 `GuideTour.active`만 보면 프롤로그 코치 말풍선이 떠 있는 내내 캐릭터가 얼어붙는다 — `GuideTour.blocking`(passive 단계 제외)을 쓴다.
+- 코치 단계 키는 **말풍선 자리까지** 담는다(열린 창 구성이 바뀌면 키가 바뀌어야 다시 놓인다 — `journal@70:510`).
 
 ### [188차] 창에 조작 안내를 쓰지 말고, 첫 열기 가이드를 만든다
 

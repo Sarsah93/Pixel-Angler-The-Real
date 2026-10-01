@@ -984,6 +984,17 @@ export class InventoryPanel extends DraggablePanel {
     return r ? this.localRect(r.x, r.y, SLOT, SLOT) : null;
   }
 
+  /**
+   * 191차 — 프롤로그 코치가 짚을 자리: 그 아이템 칸(지금 탭에 보이면) · 아니면 그 아이템의 탭 단추.
+   * 착용 중이거나 가방에 없으면 null.
+   */
+  itemGuideRect(id: string): Phaser.Geom.Rectangle | null {
+    const it = InventoryStore.find(id);
+    if (!it || it.equipped || it.slot === undefined) return null;
+    if (it.category !== this.currentTab) return TABS.includes(it.category as InvCategory) ? this.tabRect(it.category as InvCategory) : null;
+    return this.slotScreenRect(it.slot);
+  }
+
   private tabRect(tab?: InvCategory): Phaser.Geom.Rectangle {
     const gap = 5, tabH = 30;
     const tabW = (PANEL_W - 28 - gap * (TABS.length - 1)) / TABS.length;
@@ -1049,6 +1060,8 @@ export class InventoryPanel extends DraggablePanel {
         {
           text: '손에 드는 도구는 「오른손 착용」 · 「왼손 착용」으로 바로 들 수 있다. 하나를 골라 착용해 보자.',
           target: () => (this.contextMenu ? this.contextMenuRect() : itemRect()),
+          // 191차 — 말풍선은 아이템 높이에 (우클릭 메뉴는 아래로 펼쳐져 말풍선이 내려가 보였다)
+          alignTo: itemRect,
           allow: () => [this.contextMenuRect(), itemRect()],
           skipIf: () => noItem() || !item()?.equippable,
           wait: () => !!item()?.equipped,

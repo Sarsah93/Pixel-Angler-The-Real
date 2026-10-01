@@ -73,6 +73,8 @@ export interface HomeSaveState {
   cat?: HomeCatState;
   /** 190차 — 수조 id → 물고기 */
   tanks?: Record<string, TankFish[]>;
+  /** 191차 — 방에서 아주 치운 기본 가구 id (로드 때 기본 배치로 다시 채우지 않는다 — 아버지의 낚시 상자) */
+  discarded?: string[];
 }
 
 export interface PlaceCheck {
@@ -103,6 +105,8 @@ class HomeStoreManager {
   lampOn: Record<string, boolean> = {};
   cat: HomeCatState = HomeStoreManager.freshCat();
   tanks: Record<string, TankFish[]> = {};
+  /** 191차 — 치운 기본 가구 (세이브) */
+  discarded: string[] = [];
 
   private static freshCat(now = Date.now()): HomeCatState {
     // 새 게임 — 누가 아침까지는 밥을 챙겨 준 모양이다(바로 배고파하지 않게)
@@ -273,6 +277,16 @@ class HomeStoreManager {
     this.stored = this.stored.filter((s) => s.id !== f.id);
   }
 
+  /**
+   * 191차 — 방에서 아주 치운다(넣어 둔 가구로도 가지 않는다). 아버지의 낚시 상자 = 열면 내 가방이 된다.
+   * 치운 id는 `discarded`로 저장해 로드가 기본 배치로 되살리지 않는다(구세이브는 집 씬이 입장 때 플래그로 정리).
+   */
+  discard(id: string): void {
+    this.placed = this.placed.filter((p) => p.id !== id);
+    this.stored = this.stored.filter((p) => p.id !== id);
+    if (!this.discarded.includes(id)) this.discarded.push(id);
+  }
+
   /** 넣어 두기 */
   store(id: string): boolean {
     const f = this.placed.find((p) => p.id === id) ?? this.stored.find((s) => s.id === id);
@@ -334,6 +348,7 @@ class HomeStoreManager {
       lampOn: { ...this.lampOn },
       cat: { ...this.cat },
       tanks: Object.fromEntries(Object.entries(this.tanks).map(([k, v]) => [k, v.map((f) => ({ ...f }))])),
+      discarded: [...this.discarded],
     };
   }
 
@@ -344,6 +359,7 @@ class HomeStoreManager {
   deserialize(s?: Partial<HomeSaveState>): void {
     this.resetAll();
     if (!s) return;
+    if (Array.isArray(s.discarded)) this.discarded = s.discarded.filter((x): x is string => typeof x === 'string');
     const valid = (f: FurnInstance | null | undefined): f is FurnInstance =>
       !!f && typeof f.id === 'string' && !!FURN_DEFS[f.kind as FurnKind] && DIRS.includes(f.dir);
     if (Array.isArray(s.placed)) {
@@ -351,6 +367,7 @@ class HomeStoreManager {
       this.stored = (s.stored ?? []).filter(valid).filter((f) => !this.placed.some((p) => p.id === f.id)).map((f) => ({ ...f }));
       for (const d of DEFAULT_LAYOUT) {
         if (this.placed.some((p) => p.id === d.id) || this.stored.some((p) => p.id === d.id)) continue;
+        if (this.discarded.includes(d.id)) continue;
         const others = this.placed;
         if (this.checkPlace(d, others).ok) this.placed.push({ ...d });
         else this.stored.push({ ...d });
@@ -400,6 +417,7 @@ class HomeStoreManager {
     this.lampOn = {};
     this.cat = HomeStoreManager.freshCat();
     this.tanks = {};
+    this.discarded = [];
   }
 }
 

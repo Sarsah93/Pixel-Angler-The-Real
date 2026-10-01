@@ -141,6 +141,10 @@ export class FieldScene extends Phaser.Scene {
   }
 
   create(): void {
+    // 191차 전수 — 씬 재사용 시 직전 세대의 모달 참조(파괴됨)가 남으면 입력 게이트가 영구히 닫힌다
+    this.slipWarningModal = null;
+    this.gatherPanel = null;
+    this.activeLicensePanel = null;
     // 월드 바운드 설정
     this.physics.world.setBounds(0, 0, this.worldW, this.worldH);
 

@@ -37,7 +37,6 @@ import { fadeOutThen } from './SceneFade.js';
 import { CharacterSprite } from '../ui/CharacterSprite.js';
 import { characterLook } from '../data/EquipOutfit.js';
 import { MonologuePanel } from '../ui/MonologuePanel.js';
-import { getStoryQuest, nextObjectiveIndex, narrativeOf } from '@tra/core';
 import { InventoryStore, FATHER_BOX_ITEMS, type InvItem } from '../store/InventoryStore.js';
 import { QUEST_REWARD_ITEMS } from '../data/QuestRewardItems.js';
 import { InventoryPanel } from '../ui/InventoryPanel.js';
@@ -48,6 +47,7 @@ import { DraggablePanel, restoreHandCursor } from '../ui/DraggablePanel.js';
 import { HomeStoragePanel } from '../ui/HomeStoragePanel.js';
 import { HomeDecorMode } from '../ui/HomeDecorMode.js';
 import { GuideTour, maybeStartTour } from '../ui/GuideTour.js';
+import { PrologueCoach, type CoachStage } from '../ui/PrologueCoach.js';
 import { getLocale } from '../i18n/I18n.js';
 import { HomeStore, type HomeStorageKind } from '../store/HomeStore.js';
 import {
@@ -122,7 +122,7 @@ const WAKE_MONOLOGUE: string[] = [
 const BOX_MONOLOGUE: string[] = [
   '상자를 열었다. 아버지가 아끼던 대와 릴이 가지런히 들어 있다.',
   '그 아래에 사진 한 장이 끼워져 있다. 바다 앞에서 찍은 우리 가족이다.',
-  '전부 가방에 넣었다.',
+  '상자째로 어깨에 멨다. 오늘부터 이게 내 낚시 가방이다.',
 ];
 
 /** 첫 입장 안내 순서 — 매트에서 시작해 방을 한 바퀴 돌고 다시 매트로 */
@@ -221,9 +221,8 @@ export class HomeInteriorScene extends Phaser.Scene {
   private invPanel: InventoryPanel | null = null;
   private equipPanel: EquipmentPanel | null = null;
   private journalPanel: JournalPanel | null = null;
-  private objBanner?: Phaser.GameObjects.Text;
-  private objSpot?: Phaser.GameObjects.Graphics;
-  private objSpotAt = 0;
+  /** 191차 — 프롤로그 말풍선 코치 (구 상단 「지금 할 일」 띠·금색 자리 표시를 대신한다) */
+  private coach?: PrologueCoach;
   private syncAcc = 0;
   /** 첫 걸음 체험 — 걸은 거리(px) · 뛴 시간(ms) · 앉은 횟수 · 일어선 횟수 */
   private walked = 0;
@@ -269,6 +268,8 @@ export class HomeInteriorScene extends Phaser.Scene {
     this.drawFishPrintInk();
     this.clockG = this.add.graphics().setDepth(2);
     this.drawClockHands();
+    // 191차 — 연 상자는 가방이 되어 방에 없다 (세이브 로드가 기본 배치를 다시 채우므로 입장마다 정리)
+    if (GameState.getFlag('prologue.box')) HomeStore.discard('father_box');
     this.buildFurniture(null);
     // 190차 — 창·조명 (시각·날씨)
     const wallH = Math.round(IT * 1.4);
@@ -332,15 +333,12 @@ export class HomeInteriorScene extends Phaser.Scene {
     // 186차 — 구 상단 문구(`집 (Tier 0 원룸) — 침대에서 저장 · 문으로 나가기`)는 개발 메모였다(§8-9).
     //   안내는 첫 입장 혼잣말과 가구 앞 [F] 힌트가 맡는다.
     this.events.once('shutdown', () => { this.tourSpotTween?.stop(); this.tourPanel?.destroy(); });
-    this.objBanner = this.add.text(GAME_WIDTH / 2, 14, '', {
-      fontFamily: FONT, fontSize: '14px', color: '#ffe9b0', fontStyle: 'bold',
-      backgroundColor: '#0a1628dd', padding: { x: 12, y: 6 }, align: 'center',
-      wordWrap: { width: GAME_WIDTH - 200, useAdvancedWrap: true },
-    }).setOrigin(0.5, 0).setDepth(60).setVisible(false);
-    this.objSpot = this.add.graphics().setDepth(41);
+    // 191차 — 상단 「지금 할 일 · 목표 · 방법」 띠는 지웠다(규칙 R11 — 글자 나열 금지). 프롤로그는 말풍선 코치가 잇는다.
+    this.coach = new PrologueCoach(this);
+    this.events.once('shutdown', () => { this.coach?.destroy(); this.coach = undefined; });
     this.buildDecorButton();
     syncPrologue();
-    this.refreshObjective();
+    this.refreshDecorButton();
     if (this.wake) {
       // 188차 — 프롤로그: 186차 가구 순회 안내 대신 기상 혼잣말 → 첫 걸음 체험 가이드
       GameState.setFlag('intro.homeTour');
@@ -381,7 +379,18 @@ export class HomeInteriorScene extends Phaser.Scene {
     if (this.cookPanel) { this.closeCook(); return; }
     if (this.fridgePanel) { this.closeFridge(); return; }
     if (this.menu) { this.menu.onCancel(); return; }
+    if (this.prologueHoldsDoor()) return;
     this.exitToField();
+  }
+
+  /**
+   * 191차 — 프롤로그 집 안 단계(저장 전)에는 집 밖으로 나가지 않는다.
+   * 사용자 리포트: 안내 도중 ESC를 누르니 마당으로 나가져 말풍선 흐름이 끊겼다. 문 앞 매트도 같다.
+   */
+  private prologueHoldsDoor(): boolean {
+    if (!prologueRunning() || prologueStepDone('save')) return false;
+    this.flash('아직 집에서 챙길 것이 남았다.');
+    return true;
   }
 
   // ── 프롤로그 (188차) ─────────────────────────────────
@@ -407,6 +416,8 @@ export class HomeInteriorScene extends Phaser.Scene {
   }
 
   private startFirstSteps(): void {
+    const sofa = this.tourRect('sofa');
+    const sofaSide: 'left' | 'right' = sofa && sofa.centerX < OX + (ROOM_W * IT) / 2 ? 'left' : 'right';
     maybeStartTour(this, () => ({
       id: 'home_first_steps',
       anchor: () => this.roomRect(),
@@ -426,18 +437,23 @@ export class HomeInteriorScene extends Phaser.Scene {
           text: '쓸 수 있는 가구 앞에 서면 머리 위에 [F]가 뜬다. 소파 앞으로 가서 [F]로 앉아 보자.',
           passive: true,
           target: () => this.tourRect('sofa'),
+          side: 'auto',
           wait: () => this.satCount > 0,
         },
         {
-          text: '앉아 있으면 옆에 고를 거리가 뜬다. 쉬어 갈 수도 있다. 이번에는 [일어나기]를 골라 일어서자.',
+          // 191차 — 사용자 문안 그대로 · 소파가 방 왼편이면 말풍선도 왼편에
+          text: '앉아 있을 때, 실시간으로 고를 수 있는 다른 행동을 취할 수 있다. 계속 쉬려면 그대로 두면 된다. [일어나기]를 선택해서, 다시 일어나자.',
           passive: true,
           target: () => this.menuRect(),
+          // 메뉴는 앉은 자리 옆 어디에든 뜰 수 있다 — 말풍선은 소파가 있는 쪽에 둔다
+          side: sofaSide,
           wait: () => this.stoodCount > 0,
         },
         {
           text: '침대 발치에 아버지의 낚시 상자가 있다. 상자 앞에서 [F]로 열어 보자.',
           passive: true,
           target: () => this.tourRect('father_box'),
+          side: 'auto',
           wait: () => GameState.getFlag('prologue.box'),
         },
       ],
@@ -458,7 +474,7 @@ export class HomeInteriorScene extends Phaser.Scene {
       this.popups = this.popups.filter((x) => x !== e);
       e.panel.destroy();
       onClosed?.();
-      this.refreshObjective();
+      this.refreshDecorButton();
     };
     const panel = make(close);
     this.add.existing(panel);
@@ -516,50 +532,108 @@ export class HomeInteriorScene extends Phaser.Scene {
       panel.destroy();
       this.tourPanel = undefined;
       this.clearSpot();
-      this.refreshObjective();
+      // 191차 — 상자는 이제 내 가방이다(방에서 치운다). 가방 = 인벤토리(I)가 이 순간 열린다.
+      this.takeBoxAsBag();
+      this.refreshDecorButton();
     });
     this.add.existing(panel);
     this.tourPanel = panel;
     if (r) { panel.setDimAlpha(0); this.drawSpot(r); }
   }
 
-  /** 「지금 할 일」 띠 — 프롤로그 동안 M1-01의 다음 목표 하나 */
-  private refreshObjective(): void {
-    if (!this.objBanner) return;
-    this.decorBtn?.setVisible(!prologueRunning() && !this.decor);
-    const q = getStoryQuest('M1-01');
-    if (!q || !StoryStore.isActive('M1-01') || !prologueRunning()) { this.objBanner.setVisible(false); return; }
-    const idx = nextObjectiveIndex(q, (i) => StoryStore.objectiveDone(q, i));
-    if (idx === null) { this.objBanner.setVisible(false); return; }
-    const en = getLocale() === 'en';
-    const o = q.objectives[idx];
-    const label = en ? o.labelEn : (narrativeOf(q.id)?.objectives?.[idx] ?? o.labelKo);
-    const how = en ? (o.howToEn ?? '') : (o.howToKo ?? '');
-    const head = en ? 'Now' : '지금 할 일';
-    this.objBanner.setText(`${head}  ·  ${label}${how ? `\n${how}` : ''}`).setVisible(true);
+  /** 191차 — 아버지의 낚시 상자를 가방으로 메고 간다 — 방에서 치운다(구세이브는 입장 때 정리) */
+  private takeBoxAsBag(): void {
+    if (!HomeStore.find('father_box') && !HomeStore.stored.some((f) => f.id === 'father_box')) return;
+    HomeStore.discard('father_box');
+    this.buildFurniture(null);
+    this.cat?.relocateIfBlocked();
   }
 
-  /** 지금 할 일이 집 안의 물건이면 그 자리를 금색 테두리로 짚는다 */
-  private objectiveSpotId(): string | null {
-    if (!prologueRunning()) return null;
-    if (!prologueStepDone('box')) return 'father_box';
-    if (prologueStepDone('journal') && !prologueStepDone('squid')) return 'fridge';
-    if (prologueStepDone('squid') && !prologueStepDone('save')) return 'bed';
-    if (prologueStepDone('save') && !prologueStepDone('leave')) return 'door_mat';
+  /** 배치 모드 단추 — 프롤로그 동안 · 배치 중에는 숨긴다 */
+  private refreshDecorButton(): void {
+    this.decorBtn?.setVisible(!prologueRunning() && !this.decor);
+  }
+
+  /** 191차 — 프롤로그 코치: 지금 단계의 말풍선 (집 안 단계만 — 마당부터는 필드 씬이 잇는다) */
+  private coachStage(): CoachStage | null {
+    if (!prologueRunning() || this.decor) return null;
+    const room = (): Phaser.Geom.Rectangle => this.roomRect();
+    const anyPopup = this.popups.length > 0 || !!this.fridgePanel || !!this.cookPanel;
+    // 짚을 자리가 없는 안내 — 방 오른편에 꼬리 없이. 창이 떠 있으면 창들 옆으로 비킨다(둘 다 막히면 아래 가운데).
+    //   열린 창 구성이 바뀌면 자리도 바뀌어야 하므로 단계 키에 붙인다.
+    const openB = this.openPanelBounds();
+    const dock = (key: string, text: string): CoachStage => openB
+      ? { key: `${key}@${Math.round(openB.x)}:${Math.round(openB.right)}`, text, anchor: () => openB, side: 'right', dockY: GAME_HEIGHT - 150 }
+      : { key, text, anchor: room, side: 'right', dockY: OY + 30 };
+    const inv = this.invPanel;
+    const invB = (): Phaser.Geom.Rectangle | null => (this.invPanel?.active ? this.invPanel.panelBounds() : null);
+    if (!prologueStepDone('box')) {
+      // 새 게임(기상) 입장은 첫 걸음 가이드가 상자까지 맡는다 — 혼잣말이 열리기 전 틈에 끼어들지 않게
+      if (this.wake || anyPopup || this.menu) return null;
+      return { key: 'box', text: '침대 발치에 아버지의 낚시 상자가 있다. 상자 앞에서 [F]로 열어 보자.',
+        target: () => this.tourRect('father_box'), anchor: room, side: 'auto' };
+    }
+    if (!prologueStepDone('rod')) {
+      if (!inv) return dock('bag', '단축키 [I] 키를 눌러, 인벤토리를 열어 보자. 가방에서 얻은 아버지의 장비를 확인해 보자.');
+      const rod = InventoryStore.items.find((i) => i.tool === 'rod' && !i.equipped);
+      return { key: 'rod', text: '아버지의 대를 우클릭해 「오른손 착용」으로 손에 들어 보자.',
+        target: () => (rod ? this.invPanel?.itemGuideRect(rod.id) : null), anchor: invB };
+    }
+    if (!prologueStepDone('reel')) {
+      const eq = this.equipPanel;
+      if (!eq) return dock('reel_open', '대를 손에 들었다. 나머지 릴도 장착해 보자. 단축키 [E]로 장비창을 열자.');
+      const both = (): Phaser.Geom.Rectangle | null => {
+        const b = this.equipPanel?.active ? this.equipPanel.panelBounds() : null;
+        const i = invB();
+        return b && i ? Phaser.Geom.Rectangle.Union(b, i) : b;
+      };
+      if (!inv) return { key: 'reel_bag', text: '릴은 가방에 있다. [I]로 가방도 함께 열자.', anchor: both };
+      return { key: 'reel_fit', text: '가방의 릴을 끌어다 장비창 「릴」 칸에 놓아 보자.',
+        target: () => this.equipPanel?.slotGuideRect('reel'), anchor: both };
+    }
+    if (!prologueStepDone('photo')) {
+      if (!inv) return dock('photo_bag', '상자 속 사진도 가방에 넣어 두었다. [I]로 가방을 열어 사진을 찾아보자.');
+      return { key: 'photo', text: '사진을 우클릭해 「상세보기」로 뒷면을 살펴보자.',
+        target: () => this.invPanel?.itemGuideRect(PROLOGUE_PHOTO_ID), anchor: invB };
+    }
+    if (!prologueStepDone('journal')) return dock('journal', '오늘 할 일을 일지에 적어 두었다. 단축키 [J]로 일지를 펼쳐 보자.');
+    if (!prologueStepDone('squid')) {
+      if (this.fridgePanel) {
+        return { key: 'squid_take', text: '냉동고 칸의 오징어를 눌러 가방으로 옮기자. 속초 직판장에 팔아 노잣돈을 보탤 것이다.',
+          anchor: () => (this.fridgePanel?.active ? this.fridgePanel.panelBounds() : null) };
+      }
+      if (anyPopup) return dock('squid_close', '창을 닫고 부엌 냉장고로 가자. 얼려 둔 오징어를 챙겨야 한다.');
+      return { key: 'squid', text: '부엌 냉장고 앞에서 [F]로 냉동고를 열자. 얼려 둔 오징어를 챙겨야 한다.',
+        target: () => this.tourRect('fridge'), anchor: room, side: 'auto' };
+    }
+    if (!prologueStepDone('save')) {
+      if (this.menu?.kind === 'bed') {
+        return { key: 'save_menu', text: '「저장하고 쉬기」를 골라 오늘을 저장하자.', target: () => this.menuRect(), anchor: room, side: 'auto' };
+      }
+      if (anyPopup) return dock('save_close', '창을 닫고 침대로 가자. 떠나기 전에 저장해 두어야 한다.');
+      return { key: 'save', text: '떠나기 전에 침대 앞에서 [F]를 눌러 저장해 두자.',
+        target: () => this.tourRect('bed'), anchor: room, side: 'auto' };
+    }
+    if (!prologueStepDone('leave')) {
+      if (anyPopup) return null;
+      return { key: 'leave', text: '이제 집을 나서자. 현관 매트를 밟고 아래로 걸어 나가면 된다.',
+        target: () => this.tourRect('door_mat'), anchor: room, side: 'auto' };
+    }
     return null;
   }
 
-  private drawObjectiveSpot(delta: number): void {
-    const g = this.objSpot;
-    if (!g) return;
-    g.clear();
-    const id = this.tourPanel || this.popups.length || this.decor ? null : this.objectiveSpotId();
-    const r = id ? this.tourRect(id) : null;
-    if (!r) return;
-    this.objSpotAt += delta;
-    const a = 0.45 + 0.45 * Math.abs(Math.sin(this.objSpotAt / 360));
-    g.lineStyle(3, 0xffce54, a);
-    g.strokeRoundedRect(r.x, r.y, r.width, r.height, 6);
+  /** 열린 창(가방·장비·일지·상세보기·냉장고·조리)을 모두 덮는 사각형 — 없으면 null */
+  private openPanelBounds(): Phaser.Geom.Rectangle | null {
+    const list: Phaser.Geom.Rectangle[] = this.popups.filter((e) => e.panel.active).map((e) => (e.panel as DraggablePanel).panelBounds());
+    if (this.fridgePanel?.active) list.push(this.fridgePanel.panelBounds());
+    if (this.cookPanel?.active) list.push(this.cookPanel.panelBounds());
+    if (!list.length) return null;
+    return list.reduce((a, b) => Phaser.Geom.Rectangle.Union(a, b));
+  }
+
+  /** 코치가 끼면 안 되는 순간 — 혼잣말·앉은 자리 메뉴·나가는 중 */
+  private coachBlocked(): boolean {
+    return !!this.tourPanel || this.leaving || !!this.seat || (!!this.menu && this.menu.kind !== 'bed');
   }
 
   // ── 첫 입장 안내 (186차) ─────────────────────────────
@@ -918,7 +992,7 @@ export class HomeInteriorScene extends Phaser.Scene {
         this.buildFurniture(null);
         this.cat?.setHidden(false);
         this.cat?.relocateIfBlocked();
-        this.refreshObjective();
+        this.refreshDecorButton();
         restoreHandCursor(this);
       },
     });
@@ -933,10 +1007,10 @@ export class HomeInteriorScene extends Phaser.Scene {
     if (this.cookSyncAcc >= 1000) { this.cookSyncAcc = 0; CookingStore.syncAll(); }
     // 188차 — 프롤로그 동기화(1초) · 「지금 할 일」 짚기
     this.syncAcc += delta;
-    if (this.syncAcc >= 1000) { this.syncAcc = 0; syncPrologue(); this.refreshObjective(); }
+    if (this.syncAcc >= 1000) { this.syncAcc = 0; syncPrologue(); this.refreshDecorButton(); }
     this.clockAcc += delta;
     if (this.clockAcc >= 30000) { this.clockAcc = 0; this.drawClockHands(); }
-    this.drawObjectiveSpot(delta);
+    this.coach?.update(this.coachStage(), this.coachBlocked());
     // 190차 — 창밖 비·눈 · 불빛 · 수조 · 고양이는 앉아 있거나 창이 열려 있어도 흐른다
     this.ambience?.update(delta);
     this.animateTanks(delta);
@@ -974,7 +1048,10 @@ export class HomeInteriorScene extends Phaser.Scene {
     this.charSprite.setDir(this.facing);
     this.charSprite.update(delta, dx !== 0 || dy !== 0, running ? TUNING.vitals.runSpeedMult : 1);
     // 189차 — 현관 매트를 밟고 아래로 걸어 나가면 밖이다(들어오자마자 다시 나가지 않게 0.5초 유예)
-    if (this.cursors.down.isDown && this.onMatEdge() && this.time.now - this.enteredAt > 500) { this.exitToField(); return; }
+    if (this.cursors.down.isDown && this.onMatEdge() && this.time.now - this.enteredAt > 500) {
+      if (!this.prologueHoldsDoor()) { this.exitToField(); return; }
+      this.py -= 6;   // 매트 끝에서 한 발 물린다(메시지가 매 프레임 다시 뜨지 않게)
+    }
     this.updateProximity();
   }
 
@@ -1396,7 +1473,7 @@ export class HomeInteriorScene extends Phaser.Scene {
     this.fridgePanel?.destroy();
     this.fridgePanel = undefined;
     syncPrologue();   // 188차 — 냉동 오징어를 챙겼는가
-    this.refreshObjective();
+    this.refreshDecorButton();
   }
 
   // ── 주방 — 가스레인지 (154차 불요리 · 연료 무한 · 수돗물) ─────────────────

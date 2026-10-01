@@ -163,12 +163,43 @@ export const EN_HOME: Record<string, string> = {
   // ── 물뿌리개 ──
   '물뿌리개': 'Watering can',
   '양철 물뿌리개. 손에 들고 화분 앞에 서면 물을 줄 수 있다.': 'A tin watering can. Hold it and stand by a plant to water it.',
+  // ── 191차 프롤로그 말풍선 코치 · 첫 걸음 개정 ──
+  '앉아 있을 때, 실시간으로 고를 수 있는 다른 행동을 취할 수 있다. 계속 쉬려면 그대로 두면 된다. [일어나기]를 선택해서, 다시 일어나자.':
+    'While seated, you can pick other things to do right then. To keep resting, just leave it be. Choose [Stand up] to get back on your feet.',
+  '상자째로 어깨에 멨다. 오늘부터 이게 내 낚시 가방이다.': 'I slung the whole box over my shoulder. From today, this is my fishing bag.',
+  '단축키 [I] 키를 눌러, 인벤토리를 열어 보자. 가방에서 얻은 아버지의 장비를 확인해 보자.':
+    "Press [I] to open your inventory. Take a look at Dad's gear from the bag.",
+  '아버지의 대를 우클릭해 「오른손 착용」으로 손에 들어 보자.': 'Right-click Dad\'s rod and pick "Equip (right hand)" to hold it.',
+  '대를 손에 들었다. 나머지 릴도 장착해 보자. 단축키 [E]로 장비창을 열자.': 'The rod is in hand. Now fit the reel too. Press [E] to open the equipment window.',
+  '릴은 가방에 있다. [I]로 가방도 함께 열자.': 'The reel is in the bag. Open the bag as well with [I].',
+  '가방의 릴을 끌어다 장비창 「릴」 칸에 놓아 보자.': 'Drag the reel from the bag onto the "Reel" slot of the equipment window.',
+  '상자 속 사진도 가방에 넣어 두었다. [I]로 가방을 열어 사진을 찾아보자.': 'The photo from the box is in the bag too. Open the bag with [I] and find it.',
+  '사진을 우클릭해 「상세보기」로 뒷면을 살펴보자.': 'Right-click the photo and pick "Details" to look at the back.',
+  '오늘 할 일을 일지에 적어 두었다. 단축키 [J]로 일지를 펼쳐 보자.': "Today's plan is written in the journal. Press [J] to open it.",
+  '냉동고 칸의 오징어를 눌러 가방으로 옮기자. 속초 직판장에 팔아 노잣돈을 보탤 것이다.':
+    "Click the squid in the freezer to move it to the bag. I'll sell it at the Sokcho fish market for travel money.",
+  '창을 닫고 부엌 냉장고로 가자. 얼려 둔 오징어를 챙겨야 한다.': 'Close the windows and head to the kitchen fridge. I need to grab the frozen squid.',
+  '부엌 냉장고 앞에서 [F]로 냉동고를 열자. 얼려 둔 오징어를 챙겨야 한다.': 'Press [F] at the kitchen fridge to open the freezer. I need to grab the frozen squid.',
+  '「저장하고 쉬기」를 골라 오늘을 저장하자.': 'Pick "Save & rest" to save today.',
+  '창을 닫고 침대로 가자. 떠나기 전에 저장해 두어야 한다.': 'Close the windows and go to the bed. I should save before I leave.',
+  '떠나기 전에 침대 앞에서 [F]를 눌러 저장해 두자.': 'Before leaving, press [F] at the bed to save.',
+  '이제 집을 나서자. 현관 매트를 밟고 아래로 걸어 나가면 된다.': 'Time to head out. Step on the doormat and walk out downward.',
+  '아직 집에서 챙길 것이 남았다.': 'There is still something to take care of at home.',
+  '마당의 우물 앞에서 [F]를 눌러 물을 한 모금 마시자.': 'Press [F] at the well in the yard to take a drink.',
+  '물을 마시니 정신이 든다. 단축키 [S]로 상태 창을 열어 몸 상태를 살펴보자.': 'The water wakes me up. Press [S] to open the status window and check how I am doing.',
+  '이제 버스 정류장을 찾자. 단축키 [M]으로 지도를 펼쳐 보자.': 'Now to find the bus stop. Press [M] to open the map.',
+  '버스 정류장 앞에서 [F]를 눌러 막차에 오르자. 전국 지도에서 속초를 고르면 된다.': 'Press [F] at the bus stop to board the last bus. Pick Sokcho on the national map.',
+  '「판매하기」로 바꿔 얼린 오징어를 팔아 보자. 노잣돈에 보탬이 된다.': 'Switch to "Sell" and sell the frozen squid. It will help with travel money.',
+  '직판장 앞에서 [F]를 눌러, 얼려 온 오징어를 팔아 보자.': 'Press [F] at the fish market and sell the squid you brought.',
 };
 
 /** 이름·수치가 끼어 있는 문장 */
 export const EN_HOME_RULES: [RegExp, (m: RegExpMatchArray, tr: (s: string) => string) => string][] = [
   [/^소파에서 잠깐 눈을 붙였다 — 피로 (\d+)% → (\d+)%$/, (m) => `Dozed off on the sofa for a moment — fatigue ${m[1]}% → ${m[2]}%`],
   [/^(\d+)물$/, (m) => `Tide day ${m[1]}`],
+  // 191차 — 직판장 코치(남은 채비 목록)
+  [/^기본 채비를 하나씩 사 보자\. 아직 사지 않은 것: (.+)$/, (m, tr) => `Buy one of each basic item. Still to buy: ${m[1].split(' · ').map((x) => tr(x)).join(' · ')}`],
+  [/^속초에 왔다\. 수산물 직판장 앞에서 \[F\]를 눌러 기본 채비를 하나씩 사자\. \((.+)\)$/, (m, tr) => `Here in Sokcho. Press [F] at the fish market and buy one of each basic item. (${m[1].split(' · ').map((x) => tr(x)).join(' · ')})`],
   [/^(\d+)물 \((.+)\)$/, (m, tr) => `Tide day ${m[1]} (${tr(m[2])})`],
   [/^식탁에서 먹었다 \+(\d+)$/, (m) => `ate at the table +${m[1]}`],
   [/^고양이가 (.+)을\(를\) 맛있게 먹는다\.$/, (m, tr) => `The cat happily eats the ${tr(m[1])}.`],

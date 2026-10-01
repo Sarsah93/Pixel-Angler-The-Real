@@ -159,6 +159,13 @@ export class CharacterCreateScene extends Phaser.Scene {
     this.previewPhase = 0;
     this.previewTimer = 0;
     this.buttons = [];
+    // 191차 — 씬 인스턴스는 재사용된다. 지연 생성 Text(`progressText`)가 직전 세대의 파괴된 객체를 들고 있으면
+    //   두 번째 캐릭터 만들기에서 [이대로 생성하기] → setText → Frame.updateUVs → "reading 'drawImage'" 로 멈춘다(사용자 리포트).
+    this.progressText = undefined;
+    this.previewImg = undefined;
+    this.captionText = undefined;
+    this.dirLabel = undefined;
+    this.hintText = undefined;
     this.look = defaultAppearance('m');
     this.starterShirt = 0;
     this.starterPants = 1;

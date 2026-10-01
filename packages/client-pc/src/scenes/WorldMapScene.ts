@@ -130,6 +130,11 @@ export class WorldMapScene extends Phaser.Scene {
     //   true로 남아 '집으로 돌아가기'·출조 클릭이 전부 무시되는 실버그 (QA 2026-08-05 재현 확정).
     this.isTransitioning = false;
     this.titleEscArmedUntil = 0;
+    // 191차 — 직전 세대의 팝업 참조(파괴됨)가 남으면 출조 확인 카드가 다시 열리지 않는다
+    //   (`showAreaConfirm`의 `if (this.areaConfirmContainer) return` — 출조 후 월드맵 재진입 시 구역 클릭 무반응).
+    this.areaConfirmContainer = undefined;
+    this.fareAlertText = undefined;
+    this.tooltipContainer = undefined;
 
     // 배경 (어두운 해양 색조)
     this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x050b14).setOrigin(0, 0);

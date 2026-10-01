@@ -43,6 +43,15 @@ export interface TourStep {
    * 말풍선과 금색 테두리만 띄운다. 키 입력은 그대로 씬에 간다.
    */
   passive?: boolean;
+  /**
+   * 191차 — 말풍선을 기준 사각형의 어느 쪽에 붙일지. 'auto' = 짚는 대상이 화면 중심의 왼쪽이면 왼쪽.
+   * 기본은 오른쪽이 들어가면 오른쪽.
+   */
+  side?: 'left' | 'right' | 'auto';
+  /** 191차 — 말풍선 세로 위치를 이 사각형 가운데에 맞춘다(짚는 대상과 다를 때 — 예: 우클릭 메뉴를 짚되 아이템 높이에) */
+  alignTo?: () => TourRect | null | undefined;
+  /** 191차 — 짚는 대상이 없을 때 말풍선 위쪽 y (없으면 화면 세로 가운데) */
+  dockY?: number;
 }
 
 export interface TourOptions {
@@ -54,6 +63,8 @@ export interface TourOptions {
   /** 창이 닫혔는지 등 — 거짓이면 가이드를 접는다(플래그는 켜지 않는다 — 다음에 다시 뜬다) */
   alive?: () => boolean;
   onDone?: () => void;
+  /** 191차 — 끝나도 `tour.<id>` 플래그를 남기지 않는다(프롤로그 코치처럼 상태로 판정하는 일회성 말풍선) */
+  ephemeral?: boolean;
 }
 
 const BUBBLE_W = 300;
@@ -76,6 +87,23 @@ export class GuideTour {
   /** 지금 떠 있는 가이드 (씬과 무관하게 하나뿐) */
   static active: GuideTour | null = null;
   private static queue: { scene: Phaser.Scene; build: () => TourOptions | null }[] = [];
+  /** 다음 프레임에 열기로 한 요청 수 (request ~ 첫 update 사이) */
+  private static pending = 0;
+
+  /** 가이드가 떠 있거나 열릴 차례를 기다리는 중인가 — 프롤로그 코치는 이때 끼어들지 않는다 */
+  static get busy(): boolean {
+    return !!GuideTour.active || GuideTour.queue.length > 0 || GuideTour.pending > 0;
+  }
+
+  /**
+   * 191차 — 세상(이동·상호작용)을 멈춰야 하는가. 세상 안 체험 단계(passive — 걷기·프롤로그 코치)는 멈추지 않는다.
+   * 필드의 `uiBlocked`가 `GuideTour.active`만 보면 코치 말풍선이 떠 있는 동안 캐릭터가 얼어붙는다.
+   */
+  static get blocking(): boolean {
+    const a = GuideTour.active;
+    if (!a) return false;
+    return !a.opts.steps[a.index]?.passive;
+  }
 
   /** 키 입력을 막아야 하는가 — 각 씬의 단축키 처리 앞에서 묻는다 */
   static blocksKey(code: string): boolean {
@@ -90,16 +118,34 @@ export class GuideTour {
   }
 
   static request(scene: Phaser.Scene, build: () => TourOptions | null): void {
-    if (GuideTour.active) { GuideTour.queue.push({ scene, build }); return; }
+    // 191차 — 씬이 내려가면 그 씬이 걸어 둔 요청은 버린다. 씬 인스턴스·`scene.events`는 재사용되므로
+    //   남겨 두면 다음 세대(재시작·새 게임)에서 **파괴된 창을 붙잡은 build**가 실행된다.
+    let armed = false;
+    const disarm = (): void => { if (armed) { armed = false; GuideTour.pending = Math.max(0, GuideTour.pending - 1); } };
+    const purge = (): void => {
+      scene.events.off('update', once);
+      disarm();
+      GuideTour.queue = GuideTour.queue.filter((q) => q.scene !== scene);
+    };
+    const enqueue = (): void => {
+      GuideTour.queue.push({ scene, build });
+      scene.events.once('shutdown', purge);
+    };
     // 창이 자리를 잡은 다음 프레임에 연다(생성자 안에서 바로 열면 좌표가 0이다)
     const once = (): void => {
       scene.events.off('update', once);
-      if (GuideTour.active) { GuideTour.queue.push({ scene, build }); return; }
+      scene.events.off('shutdown', purge);
+      disarm();
+      if (GuideTour.active) { enqueue(); return; }
       const opts = build();
       if (!opts || tourSeen(opts.id) || opts.steps.length === 0) { GuideTour.next(); return; }
       new GuideTour(scene, opts);
     };
+    if (GuideTour.active) { enqueue(); return; }
+    armed = true;
+    GuideTour.pending++;
     scene.events.on('update', once);
+    scene.events.once('shutdown', purge);
   }
 
   private static next(): void {
@@ -176,6 +222,9 @@ export class GuideTour {
   /** 하네스·디버그 — 남은 단계를 건너뛰고 끝낸다 */
   finish(): void { this.teardown(true); }
 
+  /** 191차 — 완료 처리 없이 접는다(프롤로그 코치가 단계가 바뀌었을 때) */
+  dismiss(): void { this.teardown(false); }
+
   private get step(): TourStep | undefined { return this.opts.steps[this.index]; }
 
   private go(i: number): void {
@@ -192,7 +241,7 @@ export class GuideTour {
     this.bodyText.setText('');
     const total = this.opts.steps.filter((s) => !s.skipIf?.()).length;
     const pos = this.opts.steps.slice(0, n + 1).filter((s) => !s.skipIf?.()).length;
-    this.countText.setText(`${pos} / ${total}`);
+    this.countText.setText(total > 1 ? `${pos} / ${total}` : '');   // 191차 — 한 단계짜리(프롤로그 코치)는 쪽수 없이
     const last = n === this.opts.steps.length - 1 || this.opts.steps.slice(n + 1).every((s) => s.skipIf?.());
     this.nextLabel.setText(t(last ? '확인' : '다음'));
     this.layoutBubble();
@@ -311,20 +360,31 @@ export class GuideTour {
     const textH = Math.max(this.bodyText.height, 20);
     const st = this.step;
     const btnShown = !st?.wait && this.typed >= this.fullText.length;
-    const h = PAD + textH + 12 + 28 + PAD;
+    // 191차 — 단추도 쪽수도 없는 말풍선(체험 대기 · 한 단계짜리)은 아래 여백을 줄인다
+    const footer = !st?.wait || this.countText.text !== '';
+    const h = footer ? PAD + textH + 12 + 28 + PAD : PAD + textH + PAD;
     this.countText.setPosition(PAD, h - PAD - 21);
     this.nextBtn.setPosition(BUBBLE_W - PAD - 76, h - PAD - 28).setVisible(btnShown);
     (this.bubble.getData('bodyHit') as Phaser.GameObjects.Rectangle).setSize(BUBBLE_W, h);
 
     const target = this.targetRect();
     const anchor = this.opts.anchor?.() ?? target;
-    const ty = target ? target.centerY : GAME_HEIGHT / 2;
+    const align = st?.alignTo?.() ?? target;
+    const ty = align ? align.centerY : GAME_HEIGHT / 2;
     let bx: number, by: number, tail: 'left' | 'right' | 'none' = 'none';
-    if (anchor && anchor.right + 18 + BUBBLE_W <= GAME_WIDTH - 6) { bx = anchor.right + 18; tail = 'left'; }
-    else if (anchor && anchor.x - 18 - BUBBLE_W >= 6) { bx = anchor.x - 18 - BUBBLE_W; tail = 'right'; }
+    const fitsRight = !!anchor && anchor.right + 18 + BUBBLE_W <= GAME_WIDTH - 6;
+    const fitsLeft = !!anchor && anchor.x - 18 - BUBBLE_W >= 6;
+    let side = st?.side ?? 'right';
+    if (side === 'auto') side = target && target.centerX < GAME_WIDTH / 2 ? 'left' : 'right';
+    const goLeft = side === 'left' ? fitsLeft : !fitsRight && fitsLeft;
+    if (anchor && goLeft) { bx = anchor.x - 18 - BUBBLE_W; tail = 'right'; }
+    else if (anchor && fitsRight) { bx = anchor.right + 18; tail = 'left'; }
     else { bx = (GAME_WIDTH - BUBBLE_W) / 2; }
     by = Phaser.Math.Clamp(ty - h / 2, 8, GAME_HEIGHT - h - 8);
+    if (!align && st?.dockY !== undefined) by = Phaser.Math.Clamp(st.dockY, 8, GAME_HEIGHT - h - 8);
     if (tail === 'none' && target) by = target.bottom + 16 + h <= GAME_HEIGHT ? target.bottom + 16 : Math.max(8, target.y - 16 - h);
+    // 191차 — 짚는 대상이 없는 말풍선(걷기·뛰기·단축키 안내)에는 꼬리를 달지 않는다 — 가리킬 것이 없다
+    const pointAt = !!target || !!st?.alignTo;
     this.bubble.setPosition(Math.round(bx), Math.round(by));
 
     const g = this.bubbleBg;
@@ -333,7 +393,7 @@ export class GuideTour {
     g.fillRoundedRect(0, 0, BUBBLE_W, h, 8);
     g.lineStyle(2, 0xffce54, 1);
     g.strokeRoundedRect(0, 0, BUBBLE_W, h, 8);
-    if (tail !== 'none') {
+    if (tail !== 'none' && pointAt) {
       const yy = Phaser.Math.Clamp(ty - by, 14, h - 14);
       g.fillStyle(0xffce54, 1);
       if (tail === 'left') g.fillTriangle(0, yy - 8, 0, yy + 8, -12, yy);
@@ -352,8 +412,10 @@ export class GuideTour {
     this.frameG.destroy();
     this.bubble.destroy();
     if (done) {
-      GameState.setFlag(`tour.${this.opts.id}`);
-      GameState.markDirty();
+      if (!this.opts.ephemeral) {
+        GameState.setFlag(`tour.${this.opts.id}`);
+        GameState.markDirty();
+      }
       this.opts.onDone?.();
     }
     GuideTour.next();

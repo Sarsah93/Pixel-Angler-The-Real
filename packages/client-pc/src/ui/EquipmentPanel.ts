@@ -400,6 +400,9 @@ export class EquipmentPanel extends DraggablePanel {
   // 체험 가이드 (188차)
   // ═══════════════════════════════════════════════════
   /** 슬롯 key → 화면 사각형 */
+  /** 191차 — 프롤로그 코치용 (「릴」 칸 등) */
+  slotGuideRect(key: string): Phaser.Geom.Rectangle | null { return this.slotRect(key); }
+
   private slotRect(key: string): Phaser.Geom.Rectangle | null {
     const r = this.rects.find((x) => x.def.key === key);
     return r ? this.localRect(r.x, r.y, S, S) : null;

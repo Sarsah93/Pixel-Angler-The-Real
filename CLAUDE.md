@@ -45,17 +45,16 @@
   맵 확정(육안)·OSM land 14개·조도 재설계·외옹치/대포항 bbox 확장은 사용자 동반 병행 트랙.
 - **재개 지점**: 사용자 실검증(172·173차 타일 조화 규칙 + 178·183~186차 신설분) — 부족하면 규칙 보강,
   괜찮으면 규칙을 켠 채로 새 맵 확장. 차수별 잔여는 PLAN §2-3.
+- **191차**: 프롤로그 **말풍선 코치**(`ui/PrologueCoach.ts` — 집 → 마당 → 속초 직판장까지 다음 할 일을 말풍선 하나로) ·
+  집 상단 「지금 할 일」 띠·금색 자리 표시 폐지(R11 보강) · 상자 = 가방 · 저장 전 집 밖 금지 ·
+  **캐릭터 두 번째 생성 `drawImage` 멈춤** = 씬 재사용 파괴 Text → 5개 씬·가이드 대기열 전수 리셋 + `StaleTextGuard`.
+  ⚠ 지연 생성 객체(`if (!this.x)`)는 create/init에서 비운다. 상세 `docs/wiki/03-WORKLOG/2026-10-01-191-prologue-coach-stale-refs.md`.
 - **190차**: 집 살림 — 창·조명 = 실시각·날씨(`ui/HomeAmbience.ts` · 스탠드 [F]) · 라디오 물때 방송(오늘·내일 + 예보) ·
   식탁 「식사하기」 허기 +25% · 고양이(`ui/HomeCat.ts`) · 벽 장식(도감·물때표·달력·어탁) · 사이소 가구 8종 → 넣어 둔 가구 · 관상 수조.
   ⚠ 집을 찍는 하네스·촬영은 `ambience.force`로 시간대 고정(`calmHome`). 상세 `docs/wiki/03-WORKLOG/2026-10-01-190-home-life.md`.
 - **189차**: 집 실내 정리 — 「살펴보기」 폐지([F]는 기능 있는 가구만) · **가구 배치 모드**(`ui/HomeDecorMode.ts` · 배치 = SaveData `home`) ·
   소파 4방향 그림 + 앉기·휴식 확장 패널 · 의자 · 옷장(장비)/수납 선반 · 물뿌리개 물 주기 · 문 → 현관 매트(아래로 걸어 나가면 밖).
   상세 `docs/wiki/03-WORKLOG/2026-10-01-189-home-interior-furniture.md`.
-- **188차**: 기능창 14종 **첫 열기 체험 가이드**(`ui/GuideTour.ts` · 창 안 조작 안내 문구 금지 = 규칙 R11) ·
-  새 게임 = **집 안 기상 · 빈손** → 아버지 낚시 상자 → M1-01 프롤로그 14단계(`store/Prologue.ts` · 단축키 단계 해금 ·
-  직판장 기본 채비 구매·판매) · 스킬 창 아이콘·호버 · 슬롯 이름 약어 · 격자 제거 · AG 백로그 일괄 · 도움말 40장 재촬영.
-  ⚠ 하네스는 새 게임 뒤 `__INV.resetAllDevSeed()` + `intro.*`·`tour.*`·`prologue.*` 플래그(`capture_help_images.cjs` `applyStartKit`).
-  상세 `docs/wiki/03-WORKLOG/2026-10-01-188-guided-tours-prologue.md`.
 - **상시 방침**:
   - 지형 고도(DEM)는 **낚시 확립 후** — B(해안 변형) 우선, 경사로 통행을 막지 않는다
     (`docs/archive/specs/RASTER_UPLIFT_AMENDMENT.md` §4).
@@ -106,12 +105,13 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
 8. **UI 이모지·특수문자 금지 + 텍스트 약어 배지 금지**(2026-09-10 · 128차 정정) — 막는 것은 ① 이모지 ② `[아이콘] [타이틀]`식 텍스트 장식이고, **시각 아이콘은 권장**이다. 아이콘 = **16x16 손그림 픽셀 아이콘**(`tools/gen_pixel_icons.py` → `PixelIconArt` → `ui/PixelIcon.ts`) / 절차 픽셀 그래픽 / 스프라이트. 예외 글리프는 `✕ ◀▶ ◱◐`. 상세 AGENTS §4.
 9. **창에 조작 안내 문구 금지**(2026-10-01 · 188차 R11) — `우클릭: … / 드래그: …` 같은 글자 대신 **처음 열 때 체험 가이드**
    (`ui/GuideTour.ts` — 말풍선·하이라이트·직접 해 보기). 새 기능창은 가이드 단계도 함께 만든다. 다시 읽는 곳은 도움말(F1).
+   화면 위 「지금 할 일 · 목표 / 방법」 나열 띠도 금지(191차) — 다음 할 일은 말풍선 코치(`ui/PrologueCoach.ts`)가 잇는다.
 
 ## 타일맵 · 배포 (상세 절차는 스킬 참조)
 
 - 지역 타일맵 추가/재생성 → **스킬 `add-region`** (`py tools/build_region_maps.py <region>` — 파이프라인·타일 문자·맵 그래프·함정 일체).
 - 차기 과제: 낚시점 전용 상점(루어 판매), 어탐 레이더(SeabedProfile 조회), 타 지역(여수 등) 확장, POI 세분화, 사운드 이펙트 (IMPLEMENTATION_PLAN §6-5l 차기 참고).
-- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages — **최근 26차 배포 2026-10-01 = 190차까지 포함**. 재배포 절차는 **스킬 `deploy-ghpages`**).
+- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages — **최근 27차 배포 2026-10-01 = 191차까지 포함**. 재배포 절차는 **스킬 `deploy-ghpages`**).
   ⚠ **원격 컨테이너에서는 dev 서버(5173)가 사용자 브라우저에 닿지 않는다** — 실플레이 테스트 요청은 이 배포로 답한다.
 
 ## 작업 이어받기 절차
