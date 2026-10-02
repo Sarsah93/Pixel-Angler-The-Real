@@ -189,6 +189,9 @@ export class BootScene extends Phaser.Scene {
       tairaba_skirt_red: 'item-icons/it_tairaba_skirt_red.png',
       tairaba_necktie_orange: 'item-icons/it_tairaba_necktie_orange.png',
       swivel_barrel: 'item-icons/it_swivel_barrel.png',
+      // 193차 — 카드 채비(반짝이 깃 / 민바늘) 절차 생성
+      card_rig_flasher: 'item-icons/it_card_rig_flasher.png',
+      card_rig_plain: 'item-icons/it_card_rig_plain.png',
       forage_haliotis_diversicolor: 'item-icons/forage_haliotis_diversicolor.png',
       forage_heliocidaris_crassispina: 'item-icons/forage_heliocidaris_crassispina.png',
       forage_aplysia_kurodai: 'item-icons/forage_aplysia_kurodai.png',

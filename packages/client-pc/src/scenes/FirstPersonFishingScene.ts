@@ -37,7 +37,8 @@ import {
   ChumParcel, createChumParcel, stepChum, maxChumSync, predictChumPath,
   isChumExpired, chumAlpha01, chumEllipseRadii,
   spawnFish, SpawnedFish, FightingPhase, FightStatus,
-  calculateTideInfo, getBaitAffinity, BaitKey, SpawnContext,
+  calculateTideInfo, getBaitAffinity, candidateCount, BaitKey, SpawnContext,
+  FLASHER_ONLY_BITE_MULT, FLASHER_TARGET_SPECIES,
   getAreaSnagRiskMult,
   BiteSequenceEngine, TidalCurrentEngine, TidalInfluence,
   SeabedProfile, kstHour,
@@ -2224,7 +2225,12 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     );
 
     // 미끼 종류 × 어종 선호도 친화도 (오라클 연동)
-    const baitAffinity = getBaitAffinity(this.buildSpawnCtx(inReef));
+    //   193차 — 바늘마다 미끼가 다르면 끼운 미끼들의 평균(서로 다른 미끼 = 더 많은 어종에 말을 건다)
+    const baitAffinity = this.rigBaitAffinity(inReef);
+    // 193차 — 반짝이 깃 카드 채비만 단 채(미끼 없음): 전갱이만, 미끼를 끼웠을 때의 10%.
+    //   이 자리에 전갱이가 없으면(지역·수심·홈타운 규제) 입질 자체가 없다
+    const flasherMult = InventoryStore.rigSummary().flasherOnly
+      ? (candidateCount(this.buildSpawnCtx(inReef)) > 0 ? FLASHER_ONLY_BITE_MULT : 0) : 1;
     // 바다낚시지수 API 캐시 → P_base 보정 (지수 1~5 → 0.7~1.4배)
     const indexModifier = ExternalDataStore.getFishingIndexModifier();
 
@@ -2252,7 +2258,9 @@ export class FirstPersonFishingScene extends Phaser.Scene {
         // 136차 — 고장난 채비는 입질을 깎는다 (찌 부력 변성 ×0.78 / 루어 부분 파손 ×0.72)
         * gearBiteMult(InventoryStore.rigFloat?.fault)
         * gearBiteMult(this.lureMode ? InventoryStore.rigLure?.fault : undefined)
-        * this.feeding.activity * (this.cfg.fieldEvent?.biteMult ?? 1) * this.skillBiteMult(),
+        * this.feeding.activity * (this.cfg.fieldEvent?.biteMult ?? 1) * this.skillBiteMult()
+        // 193차 — 미끼 수(+2%씩) · 이웃한 같은 미끼(+1%) · 한 바늘에 두 미끼(바늘마다 +2%) · 반짝이 단독(전갱이 10%)
+        * InventoryStore.rigBiteMult() * flasherMult,
       inReefZone: inReef,
       isHold: hold,
       alignmentIndex: this.lineTension.alignmentIndex,
@@ -2321,6 +2329,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       this.onSnagged();
     } else if (tick.event === 'bite' && !this.biteSeq.active && !this.pendingFish) {
       // 입질 발생 → 어종 결정 + 입질 시퀀스 시작 (파이팅은 챔질 성공 시에만)
+      //   193차 — 미끼를 단 바늘 하나가 물린다: 그 바늘의 미끼가 어종을 정하고, 소모도 그 바늘에서만 일어난다
+      InventoryStore.pickBittenBait();
       this.pendingFish = spawnFish(this.buildSpawnCtx(inReef));
       this.biteSeq.start({
         speciesId: this.pendingFish.speciesId,
@@ -2348,12 +2358,24 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     });
   }
 
+  /**
+   * 193차 — 끼운 미끼들의 평균 친화도. 같은 미끼는 한 번만 센다(종류가 다양할수록 여러 어종에 말을 건다).
+   * 미끼가 없으면(루어·반짝이 단독) 기존 한 키 경로.
+   */
+  private rigBaitAffinity(inReef: boolean): number {
+    const ctx = this.buildSpawnCtx(inReef);
+    if (!InventoryStore.hookNeedsBait()) return getBaitAffinity(ctx);
+    const keys = [...new Set(InventoryStore.rigBaitItems().map((it) => baitKeyOf(it) ?? 'krill'))];
+    if (keys.length <= 1) return getBaitAffinity(ctx);
+    return keys.reduce((a, k) => a + getBaitAffinity({ ...ctx, baitKey: k }), 0) / keys.length;
+  }
+
   /** 현재 채비 미끼 → BaitKey 매핑 (루어 장착 시 'lure') */
   private currentBaitKey(): BaitKey {
     // 바늘 소켓의 루어(가짜미끼)가 미끼보다 우선 — 루어 채비는 미끼 소켓이 비어 있다
     if (!InventoryStore.hookNeedsBait()) return 'lure';
-    const id = InventoryStore.rig.bait;
-    const item = id ? InventoryStore.find(id) : undefined;
+    // 193차 — 입질 중이면 문 바늘의 미끼, 아니면 첫 미끼(반짝이 단독은 미끼가 없어 'krill' — 전갱이 기준 친화도)
+    const item = InventoryStore.bittenBait ?? InventoryStore.rigBaitItems()[0];
     if (!item) return 'krill';
     if (item.subCategory === '바늘/훅') return 'lure';
     // 192차 — 분류기는 채비창(권장 미끼 대조)과 같은 것을 쓴다
@@ -2410,6 +2432,14 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     if (Object.keys(rigBias).length) ctx.speciesWeightBias = { ...ctx.speciesWeightBias, ...rigBias };
     // 홈타운(집 앞 바다) 어획 규제 — 볼락류 + 보리멸만 (초보 구역. 루어 바인딩보다 우선)
     if (this.cfg.region === 'hometown') ctx.speciesFilter = HOMETOWN_SPECIES;
+    // 193차 — 반짝이 깃 카드 채비 단독(미끼 없음) = 전갱이만 덤빈다(기존 필터와 교집합 — 홈타운엔 없다)
+    if (InventoryStore.rigSummary().flasherOnly) {
+      ctx.speciesFilter = ctx.speciesFilter
+        ? ctx.speciesFilter.filter((id) => id === FLASHER_TARGET_SPECIES)
+        : [FLASHER_TARGET_SPECIES];
+      // 필터가 비면 spawnFish가 전 어종으로 폴백하므로, 없는 어종 id를 넣어 후보 0을 유지한다
+      if (ctx.speciesFilter.length === 0) ctx.speciesFilter = ['__none__'];
+    }
     // 포말지대(농어 야간 예외) — 발앞 반탄류(counter) 존이 백파·포말대에 해당
     ctx.inWashZone = this.lastTidal?.zone === 'counter';
     // 필드 이벤트(보일링/스쿨링) 착수 보너스 — 어종 가중 병합 + tier 상향
@@ -3092,13 +3122,23 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     if (!InventoryStore.isSurfRigReady() || sp.kind !== 'CARD_RIG' || !sp.cardType) return [];
     const info = CARD_RIG_INFO[sp.cardType];
     const extra: string[] = [];
-    for (let i = 0; i < info.hooks; i++) {
-      if (!sp.hookBaits[i]) continue;
+    const flasher = InventoryStore.rigSummary().flasher;
+    const hooks = Math.min(info.hooks, sp.hookBaits.length || info.hooks);
+    for (let i = 0; i < hooks; i++) {
+      const baitItem = sp.hookBaits[i] ? InventoryStore.find(sp.hookBaits[i]!) : undefined;
+      // 193차 — 미끼 없는 반짝이 바늘도 전갱이는 문다(10%). 민바늘에 미끼가 없으면 판정하지 않는다
+      if (!baitItem && !flasher) continue;
       const hz = Math.max(0.3, this.rig.baitZ - (i + 1) * info.gapM);
       const ctx = this.buildSpawnCtx(false);
       ctx.depthZ = hz;
-      // 바늘별 독립 판정 — 수심층 친화도에 비례 (기본 18%)
-      const p = 0.18 * Math.min(1.6, Math.max(0.4, getBaitAffinity(ctx)));
+      if (baitItem) ctx.baitKey = baitKeyOf(baitItem) ?? ctx.baitKey;
+      else {
+        ctx.baitKey = 'krill';
+        ctx.speciesFilter = (ctx.speciesFilter ?? [FLASHER_TARGET_SPECIES]).filter((id) => id === FLASHER_TARGET_SPECIES);
+        if (ctx.speciesFilter.length === 0 || candidateCount(ctx) === 0) continue;
+      }
+      // 바늘별 독립 판정 — 수심층 친화도에 비례 (기본 18%) · 반짝이 단독 바늘은 그 10%
+      const p = 0.18 * Math.min(1.6, Math.max(0.4, getBaitAffinity(ctx))) * (baitItem ? 1 : FLASHER_ONLY_BITE_MULT);
       if (Math.random() < p) {
         const ef = spawnFish(ctx);
         if (ef.isUndersized || ef.isClosedSeason) continue;
@@ -3126,7 +3166,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
         }
         this.sessionCatch.push(`${ef.nameKo} ${ef.lengthCm}cm`);
         GameState.addCaughtFish(ef.speciesId, ef.nameKo, ef.lengthCm, ef.weightG, 'rod', this.spotKind());
-        InventoryStore.setSpreaderBait(i, null);   // 해당 단 미끼 소모
+        if (baitItem) InventoryStore.consumeBaitNode(i);   // 해당 단 미끼 소모(두 미끼면 2개 · 남은 미끼가 있으면 다시 꿰어 둔다)
         extra.push(`${ef.nameKo} ${ef.lengthCm}cm${tag}`);
       }
     }

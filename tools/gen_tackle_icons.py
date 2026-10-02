@@ -3,6 +3,7 @@
 @file gen_tackle_icons.py
 @description 채비 부속 도트 아이콘 절차 생성기 (192차)
   - 바렐형 도래(it_swivel_barrel.png): 고리 2개 + 코일 + 통(바렐) — 스냅 없는 일반 도래.
+  - 카드 채비(it_card_rig_flasher.png / it_card_rig_plain.png · 193차): 판지 카드 + 가지바늘 3단(반짝이 깃 유무).
   작은 격자(48x78)에 픽셀 단위로 그린 뒤 NEAREST로 16배 확대해 기존 item-icons(≈1254px)와 같은 해상도로 저장한다.
   실행: py tools/gen_tackle_icons.py  →  packages/client-pc/public/item-icons/it_swivel_barrel.png
 """
@@ -78,5 +79,51 @@ def gen_barrel_swivel():
     print('saved', path, canvas.size)
 
 
+def gen_card_rig(flasher: bool):
+    """카드 채비 — 판지 카드에 감긴 가지바늘 3단. 반짝이 깃이면 바늘마다 은·청록 비늘 조각을 붙인다."""
+    W, H = 48, 64
+    im = Image.new('RGBA', (W, H), (0, 0, 0, 0))
+    d = ImageDraw.Draw(im)
+    CARD_D = (120, 84, 44, 255); CARD = (196, 150, 92, 255); CARD_L = (226, 190, 132, 255)
+    LINE = (220, 230, 236, 255)
+    # 판지 카드(둥근 모서리 직사각)
+    d.rectangle((9, 3, 38, 60), fill=OUTLINE)
+    d.rectangle((10, 4, 37, 59), fill=CARD)
+    d.rectangle((10, 4, 12, 59), fill=CARD_L)
+    d.rectangle((35, 4, 37, 59), fill=CARD_D)
+    # 가운데 원줄(세로)
+    d.line((24, 6, 24, 57), fill=LINE)
+    for k, y in enumerate((14, 30, 46)):
+        # 가지줄 → 바늘
+        d.line((24, y, 31, y + 3), fill=LINE)
+        # 바늘(J)
+        d.line((31, y + 3, 31, y + 9), fill=OUTLINE)
+        d.line((32, y + 3, 32, y + 9), fill=MID)
+        d.point((31, y + 10), fill=OUTLINE); d.point((30, y + 10), fill=OUTLINE)
+        d.line((29, y + 9, 29, y + 7), fill=OUTLINE)
+        d.point((29, y + 6), fill=HI)
+        if flasher:
+            # 반짝이 깃 — 은빛·청록 비늘 조각 3픽셀 + 하이라이트
+            d.rectangle((33, y + 3, 35, y + 7), fill=(150, 220, 210, 255))
+            d.rectangle((33, y + 4, 34, y + 5), fill=HI)
+            d.point((35, y + 7), fill=(60, 150, 160, 255))
+        else:
+            d.point((33, y + 4), fill=DARK)
+    # 아래 봉돌 고리
+    d.rectangle((22, 56, 26, 60), fill=OUTLINE)
+    d.rectangle((23, 57, 25, 59), fill=DARK)
+    big = im.resize((W * 16, H * 16), Image.NEAREST)
+    s = max(big.size)
+    canvas = Image.new('RGBA', (s, s), (0, 0, 0, 0))
+    canvas.paste(big, ((s - big.size[0]) // 2, (s - big.size[1]) // 2))
+    canvas = canvas.resize((1254, 1254), Image.NEAREST)
+    name = 'it_card_rig_flasher.png' if flasher else 'it_card_rig_plain.png'
+    path = os.path.join(OUT_DIR, name)
+    canvas.save(path)
+    print('saved', path)
+
+
 if __name__ == '__main__':
     gen_barrel_swivel()
+    gen_card_rig(True)
+    gen_card_rig(False)

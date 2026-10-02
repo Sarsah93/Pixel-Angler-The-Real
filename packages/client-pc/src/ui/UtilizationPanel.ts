@@ -53,7 +53,7 @@ import { createItemIcon } from './ItemIcon.js';
 import { setSlotLabel, SLOT_LABEL_PX } from './SlotLabel.js';
 import { CraftBoard } from './CraftBoard.js';
 import { GameState } from '../store/GameState.js';
-import { maybeStartTour, type TourOptions } from './GuideTour.js';
+import { maybeStartTour, tourSeen, type TourOptions } from './GuideTour.js';
 import { t } from '../i18n/I18n.js';
 
 /** 추천 배너용 미끼 이름 (RigRecommender의 BaitKey → 화면 이름, R1) */
@@ -110,6 +110,8 @@ export class UtilizationPanel extends DraggablePanel {
   /** 192차 — 체인 영역 상단 y·행 수 (가이드 사각형 계산용) */
   private chainTop = 0;
   private chainRows = 1;
+  /** 193차 — 이번 렌더에서 처음 그린 x2 단추(첫 노출 가이드의 짚을 자리) */
+  private doubleBtnFirst: Phaser.Geom.Rectangle | null = null;
   /** 회 뜨기 손질 자식 팝업 */
   private butcheryPanel?: ButcheryPanel;
   private sashimiPanel?: SashimiPanel;
@@ -347,6 +349,7 @@ export class UtilizationPanel extends DraggablePanel {
     // ── 채비 체인 (192차 — 원줄 하나에서 출발해 고른 것에 따라 오른쪽으로 칸이 열린다) ──
     const nodes = InventoryStore.rigTree.nodes;
     const summary = InventoryStore.rigSummary();
+    this.doubleBtnFirst = null;
     const chainY = top + 26;
     this.chainTop = chainY;
     this.chainRows = Math.max(1, Math.ceil(nodes.length / CHAIN_PER_ROW));
@@ -371,9 +374,29 @@ export class UtilizationPanel extends DraggablePanel {
     sbg.strokeRoundedRect(24, sumY, sbW, sbH, 5);
     this.bodyContainer.add(sbg);
     this.renderRigLockButtons(sumY + sbH - 44);   // 155차 — 제원 상자 안 우측 하단
+    // 193차 — x2 단추가 처음 보이면 한 번만 짚어 준다(R11 — 단추 자체에는 설명을 박지 않는다)
+    if (this.doubleBtnFirst && !tourSeen('double_bait')) {
+      maybeStartTour(this.scene, () => {
+        const b = this.doubleBtnFirst;
+        if (!b || this.currentTab !== 'tackles') return null;
+        return {
+          id: 'double_bait',
+          anchor: () => this.panelBounds(),
+          alive: () => this.active && this.currentTab === 'tackles',
+          steps: [{
+            text: '「한 바늘에 두 미끼」를 배웠다. 미끼 칸 아래 x2를 켜면 같은 미끼를 두 마리 꿴다 — 던질 때마다 두 개씩 줄지만 입질이 조금 오른다.',
+            target: () => (this.doubleBtnFirst ? this.localRect(this.doubleBtnFirst.x, this.doubleBtnFirst.y, this.doubleBtnFirst.width, this.doubleBtnFirst.height) : null),
+          }],
+        };
+      });
+    }
 
     const spec = this.computeRigSpec();
-    const title = this.scene.add.text(40, sumY + 10, summary.kit ? `채비 물리 스펙 (실시간 합산) · ${KIT_DEFS[summary.kit].label}` : '채비 물리 스펙 (실시간 합산)', {
+    // 193차 — 미끼 수·같은 미끼 시너지·두 미끼로 오른 입질을 제목 줄 끝에 붙인다(4번째 줄을 늘리면 안내문과 겹친다)
+    const titleParts = ['채비 물리 스펙 (실시간 합산)'];
+    if (summary.kit) titleParts.push(KIT_DEFS[summary.kit].label);
+    if (summary.biteBonus > 0) titleParts.push(`입질 +${Math.round(summary.biteBonus * 100)}%`);
+    const title = this.scene.add.text(40, sumY + 10, titleParts.join(' · '), {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#ffe28a', fontStyle: 'bold',
     });
     this.bodyContainer.add(title);
@@ -400,7 +423,9 @@ export class UtilizationPanel extends DraggablePanel {
       : summary.offRecommendedBait ? '#ffb36a' : '#7fe6b0';
     const advice = summary.offRecommendedBait && !spec.advice.includes('비었습니다')
       ? '권장되는 채비 유형이 아닙니다 — 이 세트는 다른 미끼를 쓰면 대상어종이 거의 물지 않는다.'
-      : spec.advice;
+      : summary.flasherOnly && !spec.advice.includes('비었습니다')
+        ? '반짝이 바늘만 달린 채비 — 미끼가 없어 전갱이만 작은 멸치로 보고 덤빈다.'
+        : spec.advice;
     this.bodyContainer.add(this.scene.add.text(40, sumY + sbH - 22, advice, {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: adviceColor, wordWrap: { width: sbW - 32 - 300 },
     }).setOrigin(0, 0.5));
@@ -443,8 +468,9 @@ export class UtilizationPanel extends DraggablePanel {
 
     // 바탕 — 채움(초록) / 필수 빈 칸(주황) / 선택 빈 칸(어두운 파랑) / 고정(회색)
     const box = this.scene.add.graphics();
-    const fill = fixed ? 0x141a22 : filled ? 0x0e2a1e : optional ? 0x0e1824 : 0x1a1a0e;
-    const stroke = fixed ? 0x3a4652 : filled ? 0x2f7d5a : optional ? 0x2a4a6a : 0xd08a3a;
+    const wantBait = n.slot === 'bait' && !filled && InventoryStore.getMissingRigParts().includes('미끼');
+    const fill = fixed ? 0x141a22 : filled ? 0x0e2a1e : optional && !wantBait ? 0x0e1824 : 0x1a1a0e;
+    const stroke = fixed ? 0x3a4652 : filled ? 0x2f7d5a : optional && !wantBait ? 0x2a4a6a : 0xd08a3a;
     box.fillStyle(fill, 0.95);
     box.fillRoundedRect(r.x, r.y, r.width, r.height, 5);
     box.lineStyle(1.5, stroke, 0.95);
@@ -487,12 +513,15 @@ export class UtilizationPanel extends DraggablePanel {
     // 이름 줄
     let name: string;
     let nameColor = '#e8f4fd';
-    if (item) name = item.name;
+    // 193차 — 미끼가 하나도 없으면(반짝이 바늘 제외) 빈 미끼 칸을 전부 주황으로 — 아무 바늘에나 하나 끼우면 된다
+    const needBait = n.slot === 'bait' && !item && InventoryStore.getMissingRigParts().includes('미끼');
+    if (item) name = n.slot === 'bait' && n.double && InventoryStore.doubleBaitAllowed() ? `${item.name} 두 마리` : item.name;
     else if (fixed) { name = '고정'; nameColor = '#7a8894'; }
     else if (def.type === 'choice') {
       name = n.choice ? (def.options?.find((o) => o.id === n.choice)?.label ?? n.choice) : '선택';
       if (!n.choice) nameColor = '#ffb36a';
     } else if (def.type === 'toggle') { name = n.on === false ? '뺌 (전유동)' : '묶음'; }
+    else if (needBait) { name = '비어 있음'; nameColor = '#ffb36a'; }
     else { name = optional ? '비어 있음 (선택)' : '비어 있음'; nameColor = optional ? '#6f8ba0' : '#ffb36a'; }
     const nm = this.scene.add.text(r.x + r.width / 2, r.y + r.height - 16, name, {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: nameColor, align: 'center',
@@ -533,11 +562,41 @@ export class UtilizationPanel extends DraggablePanel {
       .setInteractive({ useHandCursor: true });
     hit.on('pointerdown', () => this.onRigNodeClick(n, i));
     this.bodyContainer.add(hit);
+
+    // 193차 — 「한 바늘에 두 미끼」 스킬: 미끼를 끼운 칸 바로 아래 작은 x2 단추(켜고 끈다 · 고정 중에도)
+    if (n.slot === 'bait' && item && InventoryStore.doubleBaitAllowed()) this.renderDoubleBaitButton(n, i, r);
+  }
+
+  /** x2 단추 사각형 (칸 아래 오른쪽 — 행 끝 칸의 ↓ 화살표는 가운데라 겹치지 않는다) */
+  private doubleBtnRect(r: Phaser.Geom.Rectangle): Phaser.Geom.Rectangle {
+    return new Phaser.Geom.Rectangle(r.x + r.width - 30, r.y + r.height + 3, 30, 16);
+  }
+
+  private renderDoubleBaitButton(n: RigNode, i: number, r: Phaser.Geom.Rectangle): void {
+    const on = !!n.double;
+    const b = this.doubleBtnRect(r);
+    const g = this.scene.add.graphics();
+    g.fillStyle(on ? 0x6a4a10 : 0x0e1c2d, 0.95);
+    g.fillRoundedRect(b.x, b.y, b.width, b.height, 3);
+    g.lineStyle(1, on ? 0xffd257 : 0x2a5a8a, 0.95);
+    g.strokeRoundedRect(b.x, b.y, b.width, b.height, 3);
+    const t = this.scene.add.text(b.centerX, b.centerY, 'x2', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', fontStyle: 'bold', color: on ? '#ffe28a' : '#8faabf',
+    }).setOrigin(0.5);
+    const hit = this.scene.add.rectangle(b.centerX, b.centerY, b.width, b.height, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
+    hit.on('pointerdown', () => {
+      if (!InventoryStore.setBaitDouble(i, !on)) this.flashBoardToast('같은 미끼가 두 마리 이상 남아 있어야 합니다');
+      this.closeChooser();
+      this.renderBody();
+    });
+    this.bodyContainer.add([g, t, hit]);
+    this.doubleBtnFirst ??= b;
   }
 
   /** 칸 클릭 — item: 가방 후보 목록 / choice: 갈래 목록 / toggle: 즉시 전환 */
   private onRigNodeClick(n: RigNode, i: number): void {
-    if (this.rigLockedGuard()) return;
+    // 193차 — 고정 중에도 미끼 칸은 연다(낚시 뒤 미끼만 다시 끼우면 되도록)
+    if (n.slot !== 'bait' && this.rigLockedGuard()) return;
     const def = RIG_SLOTS[n.slot];
     const r = this.rigNodeRect(i);
     const listX = r.x, listY = r.y + r.height + 4;
@@ -557,7 +616,10 @@ export class UtilizationPanel extends DraggablePanel {
       return;
     }
     // item 칸 — 후보는 받는 종류만, 추천을 위로
-    const candidates = InventoryStore.items.filter((it) => this.nodeAccepts(n, it))
+    // 193차 — 미끼는 가방의 같은 묶음을 바늘끼리 나눠 쓴다: 남은 수(다른 바늘 몫 제외)가 모자라면 목록에서 뺀다
+    const need = n.double && InventoryStore.doubleBaitAllowed() ? 2 : 1;
+    const left = (it: InvItem): number => (n.slot === 'bait' ? InventoryStore.baitStockLeft(it.id, i) : it.qty);
+    const candidates = InventoryStore.items.filter((it) => this.nodeAccepts(n, it) && (n.slot !== 'bait' || left(it) >= need))
       .sort((a, b) => Number(this.nodeRecommends(n, b)) - Number(this.nodeRecommends(n, a)));
     const rows: ChooserRow[] = candidates.length === 0
       ? [
@@ -566,10 +628,10 @@ export class UtilizationPanel extends DraggablePanel {
       ]
       : [
         ...candidates.map((it): ChooserRow => ({
-          text: `${it.name} (x${it.qty})`,
+          text: `${it.name} (x${left(it)})`,
           recommended: this.nodeRecommends(n, it),
           onPick: () => {
-            InventoryStore.setRigNode(i, { itemId: it.id });
+            if (!InventoryStore.setRigNode(i, { itemId: it.id })) { this.flashBoardToast('남은 미끼가 모자랍니다'); return; }
             // 세트가 권장 미끼를 정했는데 다른 미끼를 끼우면 — 끼워지긴 하지만 알려 준다
             if (n.slot === 'bait' && n.kit && KIT_DEFS[n.kit].recommendedBaits?.length && !baitRecommendedFor(n.kit, baitKeyOf(it))) {
               this.flashBoardToast('권장되는 채비 유형이 아닙니다.');

@@ -1,7 +1,7 @@
 /**
  * @file SkillDatabase.ts
  * @description 스킬 트리 데이터 (122차 골격 · 124차 증설 · **130차 확장**) —
- * 7카테고리 **92노드**(유료 87 + 시너지 히든 5) · **Σ(유료) = 정확히 215pt**.
+ * 7카테고리 **93노드**(유료 88 + 시너지 히든 5) · **Σ(유료) = 정확히 216pt**(193차 — 한 바늘에 두 미끼 +1 · 시작 보너스 +1).
  *
  * **215 등식(130차 재정의)**: 레벨당 1SP × MAX_LEVEL 200 **+ 면허 보너스 15** = 215SP = 유료 노드 총 비용 —
  * **"만렙 + 전 면허 취득 = 전 스킬 마스터"**. 124차 등식(200)은 (a)(c) 노드를 넣으면서 우변을 늘려 갱신했다
@@ -24,7 +24,7 @@
  */
 
 import { MAX_LEVEL } from '../types/Progression.js';
-import { SKILL_POINTS_PER_LEVEL } from '../types/Skills.js';
+import { SKILL_POINTS_PER_LEVEL, SKILL_STARTER_BONUS_PT } from '../types/Skills.js';
 import { profLevel, profScale } from '../types/Skills.js';
 import type {
   SkillCategoryDef, SkillCategoryId, SkillDef, SkillEffectKey, SkillRanks,
@@ -57,6 +57,9 @@ export const SKILL_DATABASE: SkillDef[] = [
   { id: 'fish_line', category: 'fishing', nameKo: '라인 관리', nameEn: 'Line Care', descKo: '원줄·목줄 인장 강도 +5%/랭크', descEn: 'Line and leader strength +5% per rank', tier: 1, maxRank: 3, costPerRank: 1, requires: [{ id: 'fish_cast', rank: 1 }], effect: mult('line_strength', 0.05), wired: false },
   { id: 'fish_weather', category: 'fishing', nameKo: '궂은날 조사', nameEn: 'Foul-Weather Angler', descKo: '비·강풍일 때 입질 확률 +8%/랭크', descEn: 'Bite chance +8% per rank in rain or strong wind', tier: 1, maxRank: 2, costPerRank: 1, requires: [{ id: 'fish_bite', rank: 1 }], effect: mult('weather_bite', 0.08), wired: true },
   { id: 'fish_night', category: 'fishing', nameKo: '야간 눈', nameEn: 'Night Eyes', descKo: '야간 입질 확률 +5%/랭크', descEn: 'Night bite chance +5% per rank', tier: 1, maxRank: 2, costPerRank: 1, requires: [{ id: 'fish_bite', rank: 2 }], effect: mult('night_bite', 0.05), wired: true },
+  // 193차 — 사용자 경험담(청갯지렁이 두 마리를 한 바늘에 꿰니 입질이 확 올랐다). 채비창 미끼 칸 아래 x2 단추가 열린다.
+  //   켠 바늘은 같은 미끼를 2개씩 소모하고, 바늘마다 입질 +2%(RigTree.DOUBLE_BAIT_BONUS).
+  { id: 'fish_double_bait', category: 'fishing', nameKo: '한 바늘에 두 미끼', nameEn: 'Two Baits, One Hook', descKo: '바늘 하나에 같은 미끼를 두 마리 꿴다 — 미끼 2개 소모 · 입질 +2%/바늘', descEn: 'Thread two of the same bait on one hook — uses 2 baits · bite chance +2% per hook', tier: 1, maxRank: 1, costPerRank: 1, requires: [{ id: 'fish_bite', rank: 1 }], effect: add('double_bait', 1), wired: true },
   { id: 'fish_fresh', category: 'fishing', nameKo: '보관 요령', nameEn: 'Keeping Fresh', descKo: '어획물 신선도 유지 시간 +10%/랭크', descEn: 'Catch freshness lasts +10% longer per rank', tier: 1, maxRank: 3, costPerRank: 1, requires: [{ id: 'fish_cast', rank: 1 }], effect: mult('freshness_time', 0.10), wired: false },
   { id: 'fish_drag', category: 'fishing', nameKo: '드랙 제어', nameEn: 'Drag Control', descKo: '파이팅 텐션 저항 +6%/랭크', descEn: 'Fight tension resistance +6% per rank', tier: 2, maxRank: 3, costPerRank: 1, requires: [{ id: 'fish_line', rank: 1 }], effect: mult('drag_control', 0.06), wired: false },
   { id: 'fish_chum', category: 'fishing', nameKo: '밑밥 감각', nameEn: 'Chum Sense', descKo: '밑밥 동조율 +5%/랭크', descEn: 'Chum sync +5% per rank', tier: 2, maxRank: 2, costPerRank: 1, requires: [{ id: 'fish_bite', rank: 1 }], effect: mult('chum_sync', 0.05), wired: false },
@@ -216,7 +219,7 @@ export const SKILL_DATABASE: SkillDef[] = [
  * ⚠ 현재 발급 가능한 면허는 16종 중 9종(7종은 `plannedNote`) — 지금 도달 가능한 실예산은
  *   200 + 8이다(기본 제공 `basic_angling` 제외). 만렙과 마찬가지로 **장기 등식**이다.
  */
-export const SKILL_TREE_TOTAL_PT = 215;
+export const SKILL_TREE_TOTAL_PT = 216;
 
 /** 면허 보너스로 들어오는 총 포인트 (기본 제공 면허 제외 — 등식의 우변 둘째 항) */
 export const SKILL_LICENSE_BONUS_TOTAL_PT = 15;
@@ -231,7 +234,7 @@ export const SKILL_TIER_MAX_NODES = 8;
   if (total !== SKILL_TREE_TOTAL_PT) {
     console.warn(`[SkillDatabase] 트리 총 비용 ${total}pt ≠ ${SKILL_TREE_TOTAL_PT}pt — 노드 비용 또는 등식을 맞출 것`);
   }
-  if (SKILL_TREE_TOTAL_PT !== MAX_LEVEL * SKILL_POINTS_PER_LEVEL + SKILL_LICENSE_BONUS_TOTAL_PT) {
+  if (SKILL_TREE_TOTAL_PT !== MAX_LEVEL * SKILL_POINTS_PER_LEVEL + SKILL_LICENSE_BONUS_TOTAL_PT + SKILL_STARTER_BONUS_PT) {
     console.warn('[SkillDatabase] 등식 불일치 — Σ(유료) = 만렙 포인트 + 면허 보너스 총량이어야 한다');
   }
   const byId = new Map(SKILL_DATABASE.map((d) => [d.id, d]));

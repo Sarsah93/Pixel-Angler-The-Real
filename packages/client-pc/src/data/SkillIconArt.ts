@@ -3,7 +3,7 @@
  * @description 스킬 트리 아이콘 아트 (자동 생성 — 수동 편집 금지)
  *
  * 생성기: `py tools/gen_skill_icons.py` (아트 원본도 그 안에 있다)
- * 스킬 92종 × 16x16 손그림 매트릭스 — 키 = 스킬 id, 문자 = 팔레트 키, `.` = 투명.
+ * 스킬 93종 × 16x16 손그림 매트릭스 — 키 = 스킬 id, 문자 = 팔레트 키, `.` = 투명.
  * 숨은 시너지(syn_*)는 공용 금테 엠블럼 위에 그림을 얹는다.
  * 굽기·렌더는 `ui/PixelIcon.ts`와 같은 방식으로 한다(여기는 순수 데이터).
  */
@@ -427,6 +427,28 @@ export const SKILL_ICON_ART: Record<string, PixelIconArt> = {
       '...eEEEE........',
       '....eeee........',
       '................',
+      '................',
+    ],
+  },
+  fish_double_bait: {
+    w: 16, h: 16,
+    pal: { 'G': 0xd0d8e0, 'P': 0xb04a78, 'g': 0x8c98a4, 'o': 0x1a1c24, 'p': 0xf08cb0, 'w': 0xffffff },
+    rows: [
+      '................',
+      '.........ooo....',
+      '........oG.Go...',
+      '.........oGo....',
+      '......ooooGoo...',
+      '....opwppppwppo.',
+      '....oPPPPPPPPPo.',
+      '.....oooooGooo..',
+      '...opwppppppwo..',
+      '...oPPPPPPPPPo..',
+      '....ooooooGoo...',
+      '.....owo.oGo....',
+      '.....oGoooGo....',
+      '......oGGgo.....',
+      '.......ooo......',
       '................',
     ],
   },

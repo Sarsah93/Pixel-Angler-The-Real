@@ -15,6 +15,8 @@ const ITEMS: Record<string, RigItemView> = {
   bundle16: { id: 'bundle16', name: '묶음추봉돌 16호 (60g)', partKind: 'bundle_sinker', qty: 2, sinkerWeightG: 60, kitHooks: 3 },
   worm: { id: 'worm', name: '청갯지렁이', partKind: 'bait', qty: 10, baitKey: 'worm_blue' },
   krill: { id: 'krill', name: '크릴', partKind: 'bait', qty: 10, baitKey: 'krill' },
+  card3: { id: 'card3', name: '카드 채비 반짝이 3단', partKind: 'card_rig', qty: 2, kitHooks: 3, flasher: true },
+  card7: { id: 'card7', name: '카드 채비 민바늘 7단', partKind: 'card_rig', qty: 2, kitHooks: 7, flasher: false },
   head: { id: 'head', name: '타이라바 헤드 80g', partKind: 'tairaba_head', qty: 1, sinkerWeightG: 80 },
   skirt: { id: 'skirt', name: '스커트', partKind: 'tairaba_skirt', qty: 1 },
   tie: { id: 'tie', name: '넥타이', partKind: 'tairaba_necktie', qty: 1 },
@@ -50,8 +52,9 @@ describe('RigTree — 확장', () => {
     const fixed = s.nodes.filter((n) => n.slot === 'fixed').map((n) => n.fixedLabel);
     expect(fixed).toEqual(['핀도래', '바늘 1', '바늘 2', '바렐 도래', '묶음추봉돌 16호', '바늘 3']);
     expect(s.nodes.filter((n) => n.slot === 'bait')).toHaveLength(3);
-    expect(missingParts(s)).toEqual(['미끼 1']);
-    s = put(s, 'bait', { itemId: 'worm' });
+    expect(missingParts(s)).toEqual(['미끼']);
+    // 193차 — 어느 바늘이든 하나만 채우면 완성(미끼 3 칸에만)
+    s = put(s, 'bait', { itemId: 'worm' }, 2);
     expect(missingParts(s)).toEqual([]);
     const sum = summarize(s, view);
     expect(sum.kit).toBe('bundle_sinker');
@@ -73,7 +76,7 @@ describe('RigTree — 확장', () => {
     s = put(s, 'tairaba_skirt', { itemId: 'skirt' });
     s = put(s, 'tairaba_necktie', { itemId: 'tie' });
     s = put(s, 'hook', { itemId: 'hook' });
-    expect(missingParts(s)).toEqual(['미끼 1']);
+    expect(missingParts(s)).toEqual(['미끼']);
     s = put(s, 'bait', { itemId: 'krill' });
     expect(missingParts(s)).toEqual([]);
     let sum = summarize(s, view);
@@ -164,5 +167,56 @@ describe('RigTree — 구세이브 이관', () => {
     expect(sum.kit).toBe('bundle_sinker');
     expect(sum.baitIds[0]).toBe('worm');
     expect(missingParts(s)).toEqual([]);
+  });
+});
+
+describe('RigTree — 193차 다중 미끼', () => {
+  const bundle = (): RigTreeState => {
+    let s = put(newRigTree(), 'main_line', { itemId: 'pe' });
+    s = put(s, 'knot', { choice: KNOT_SWIVEL });
+    s = put(s, 'swivel', { itemId: 'pin' });
+    s = put(s, 'after_swivel', { choice: 'kit' });
+    s = put(s, 'kit_kind', { choice: 'bundle_sinker' });
+    return put(s, 'bundle_kit', { itemId: 'bundle16' });
+  };
+  it('바늘마다 다른 미끼 · 미끼 수 +2%씩 · 이웃한 같은 미끼 시너지 +1%', () => {
+    let s = bundle();
+    s = put(s, 'bait', { itemId: 'worm' }, 0);
+    expect(summarize(s, view).biteBonus).toBeCloseTo(0);
+    s = put(s, 'bait', { itemId: 'krill' }, 1);
+    expect(summarize(s, view).biteBonus).toBeCloseTo(0.02);
+    s = put(s, 'bait', { itemId: 'krill' }, 2);
+    expect(summarize(s, view).biteBonus).toBeCloseTo(0.05);   // 3개 +4% · 2·3 같은 미끼 +1%
+    expect(summarize(s, view).baitIds).toEqual(['worm', 'krill', 'krill']);
+  });
+  it('한 바늘에 두 미끼 — 켠 바늘마다 +2%', () => {
+    let s = bundle();
+    s = put(s, 'bait', { itemId: 'worm' }, 0);
+    const i = s.nodes.findIndex((n) => n.slot === 'bait');
+    s = { nodes: s.nodes.map((n, k) => (k === i ? { ...n, double: true } : n)) };
+    expect(summarize(s, view).biteBonus).toBeCloseTo(0.02);
+    expect(summarize(s, view).baitDouble[0]).toBe(true);
+  });
+  it('반짝이 깃 카드 채비는 미끼 없이 완성 · 민바늘 카드 채비는 미끼 하나가 필요', () => {
+    const card = (id: string): RigTreeState => {
+      let s = put(newRigTree(), 'main_line', { itemId: 'pe' });
+      s = put(s, 'knot', { choice: KNOT_SWIVEL });
+      s = put(s, 'swivel', { itemId: 'pin' });
+      s = put(s, 'after_swivel', { choice: 'kit' });
+      s = put(s, 'kit_kind', { choice: 'card_rig' });
+      return put(s, 'card_kit', { itemId: id });
+    };
+    const f = card('card3');
+    expect(missingParts(f)).toEqual([]);
+    expect(f.nodes.filter((n) => n.slot === 'fixed' && n.flasher)).toHaveLength(3);
+    const fs = summarize(f, view);
+    expect(fs.flasherOnly).toBe(true);
+    expect(fs.cardType).toBe('jeongaengi');
+    const baited = put(f, 'bait', { itemId: 'krill' });
+    expect(summarize(baited, view).flasherOnly).toBe(false);
+    const p = card('card7');
+    expect(missingParts(p)).toEqual(['미끼']);
+    expect(p.nodes.filter((n) => n.slot === 'bait')).toHaveLength(7);
+    expect(summarize(p, view).cardType).toBe('yeolgi');
   });
 });

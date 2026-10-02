@@ -35,6 +35,7 @@ export type RigPartKind =
   | 'hook'             // 단품 바늘
   | 'bait'             // 미끼
   | 'bundle_sinker'    // 묶음추 채비(봉돌 + 바늘 묶음 완제품)
+  | 'card_rig'         // 카드 채비(가지바늘 여러 단 완제품 — 반짝이 깃 바늘이면 미끼 없이도 전갱이가 덤빈다)
   | 'jig_head'         // 지그헤드
   | 'soft_lure'        // 웜·소프트 베이트(지그헤드 필요)
   | 'hard_lure'        // 미노우·스푼·스피너·에기·메탈지그·완성 타이라바
@@ -45,7 +46,7 @@ export type RigPartKind =
 export const RIG_PART_LABEL: Record<RigPartKind, string> = {
   main_line: '원줄', leader_line: '목줄', bead: '구슬', float: '부력찌', cushion: '쿠션고무', sub_float: '수중찌',
   sliding_sinker: '유동 봉돌', split_shot: '좁쌀봉돌', swivel_plain: '도래', swivel_snap: '스냅 도래',
-  hook: '바늘', bait: '미끼', bundle_sinker: '묶음추 채비', jig_head: '지그헤드', soft_lure: '웜',
+  hook: '바늘', bait: '미끼', bundle_sinker: '묶음추 채비', card_rig: '카드 채비', jig_head: '지그헤드', soft_lure: '웜',
   hard_lure: '루어', tairaba_head: '타이라바 헤드', tairaba_skirt: '타이라바 스커트', tairaba_necktie: '타이라바 넥타이',
 };
 
@@ -57,8 +58,10 @@ export interface RigItemView {
   qty: number;
   /** 무게추·헤드 자중(g) */
   sinkerWeightG?: number;
-  /** 묶음추 채비의 바늘 수(없으면 3) */
+  /** 묶음추·카드 채비의 바늘 수(없으면 3) */
   kitHooks?: number;
+  /** 193차 — 카드 채비 바늘에 반짝이 깃(스킨)이 붙어 있는가 */
+  flasher?: boolean;
   /** 미끼 종류(추천 대조용) */
   baitKey?: BaitKey;
 }
@@ -71,7 +74,7 @@ export interface RigItemView {
 export type RigSlotKind =
   | 'main_line' | 'line_attach' | 'float_stop' | 'bead' | 'float' | 'cushion' | 'sub_float' | 'sliding_sinker'
   | 'knot' | 'swivel' | 'after_swivel' | 'leader' | 'leader_end' | 'connector' | 'split_shot' | 'hook' | 'bait'
-  | 'kit_kind' | 'bundle_kit' | 'tairaba_head' | 'tairaba_skirt' | 'tairaba_necktie' | 'card_type' | 'tbar_sinker'
+  | 'kit_kind' | 'bundle_kit' | 'tairaba_head' | 'tairaba_skirt' | 'tairaba_necktie' | 'card_type' | 'card_kit' | 'tbar_sinker'
   | 'lure_hard' | 'jig_head' | 'lure_soft' | 'fixed';
 
 export type RigNodeType = 'item' | 'choice' | 'toggle' | 'fixed';
@@ -175,7 +178,8 @@ export const RIG_SLOTS: Record<RigSlotKind, RigSlotDef> = {
   connector: { kind: 'connector', type: 'item', label: '연결 도래', accepts: ['swivel_snap', 'swivel_plain'] },
   split_shot: { kind: 'split_shot', type: 'item', label: '좁쌀봉돌', accepts: ['split_shot'], optional: true },
   hook: { kind: 'hook', type: 'item', label: '바늘', accepts: ['hook'] },
-  bait: { kind: 'bait', type: 'item', label: '미끼', accepts: ['bait'] },
+  // 193차 — 미끼 칸은 하나하나는 선택이고, 채비 전체에 **최소 하나**가 있어야 완성이다(missingParts)
+  bait: { kind: 'bait', type: 'item', label: '미끼', accepts: ['bait'], optional: true },
   kit_kind: {
     kind: 'kit_kind', type: 'choice', label: '간편 채비',
     options: KIT_ORDER.map((k) => ({ id: k, label: KIT_DEFS[k].label, desc: KIT_DEFS[k].desc })),
@@ -184,7 +188,9 @@ export const RIG_SLOTS: Record<RigSlotKind, RigSlotDef> = {
   tairaba_head: { kind: 'tairaba_head', type: 'item', label: '헤드', accepts: ['tairaba_head'] },
   tairaba_skirt: { kind: 'tairaba_skirt', type: 'item', label: '스커트', accepts: ['tairaba_skirt'] },
   tairaba_necktie: { kind: 'tairaba_necktie', type: 'item', label: '넥타이', accepts: ['tairaba_necktie'] },
+  // 192차 구세이브 호환 — 단수 갈래(아이템 없이 고르던 카드 채비). 193차부터는 카드 채비 아이템(card_kit)을 고른다
   card_type: { kind: 'card_type', type: 'choice', label: '단수', options: CARD_TYPES.map((c) => ({ id: c.id, label: c.label })) },
+  card_kit: { kind: 'card_kit', type: 'item', label: '카드 채비', accepts: ['card_rig'] },
   tbar_sinker: { kind: 'tbar_sinker', type: 'item', label: '봉돌', accepts: ['sliding_sinker', 'bundle_sinker'] },
   lure_hard: { kind: 'lure_hard', type: 'item', label: '루어', accepts: ['hard_lure'] },
   jig_head: { kind: 'jig_head', type: 'item', label: '지그헤드', accepts: ['jig_head'] },
@@ -217,6 +223,10 @@ export interface RigNode {
   label?: string;
   /** 비워 둬도 되는가(슬롯 정의를 덮어쓴다) */
   optional?: boolean;
+  /** 193차 — 미끼 칸: 「한 바늘에 두 미끼」(같은 미끼 두 마리 · 2개 소모) */
+  double?: boolean;
+  /** 193차 — 고정 바늘 칸: 반짝이 깃 바늘 */
+  flasher?: boolean;
 }
 
 export interface RigTreeState { nodes: RigNode[] }
@@ -289,7 +299,7 @@ export function childrenOf(n: RigNode, idx: number, item: RigItemView | null): R
             node('tairaba_head', idx, { kit }), node('tairaba_skirt', idx, { kit }), node('tairaba_necktie', idx, { kit }),
             node('hook', idx, { kit, hookNo: 1, label: '바늘 1' }), node('hook', idx, { kit, hookNo: 2, label: '바늘 2', optional: true }),
           ];
-        case 'card_rig': return [node('card_type', idx, { kit })];
+        case 'card_rig': return [node('card_kit', idx, { kit })];
         case 't_bar': return [node('tbar_sinker', idx, { kit }), node('hook', idx, { kit, hookNo: 1 })];
         case 'lure_hard': return [node('lure_hard', idx, { kit })];
         case 'lure_soft': return [node('jig_head', idx, { kit }), node('lure_soft', idx, { kit })];
@@ -303,7 +313,7 @@ export function childrenOf(n: RigNode, idx: number, item: RigItemView | null): R
       const out: RigNode[] = [node('fixed', idx, { fixedLabel: '핀도래', fixedIcon: 'swivel', kit: 'bundle_sinker' })];
       const hookFixed = (no: number): RigNode[] => [
         node('fixed', idx, { fixedLabel: `바늘 ${no}`, fixedIcon: 'item_hook_chinu', kit: 'bundle_sinker', hookNo: no }),
-        node('bait', idx, { kit: 'bundle_sinker', hookNo: no, label: `미끼 ${no}`, optional: no > 1 }),
+        node('bait', idx, { kit: 'bundle_sinker', hookNo: no, label: `미끼 ${no}` }),
       ];
       const above = Math.min(2, hooks - 1);
       for (let i = 1; i <= above; i++) out.push(...hookFixed(i));
@@ -312,20 +322,25 @@ export function childrenOf(n: RigNode, idx: number, item: RigItemView | null): R
       for (let i = above + 1; i <= hooks; i++) out.push(...hookFixed(i));
       return out;
     }
-    case 'card_type': {
+    case 'card_type': case 'card_kit': {
+      // 단수 = 아이템의 바늘 수(193차) 또는 구세이브의 단수 갈래
       const ct = CARD_TYPES.find((c) => c.id === n.choice);
-      const hooks = ct?.hooks ?? 3;
+      const hooks = n.slot === 'card_kit' ? Math.max(1, item?.kitHooks ?? 3) : (ct?.hooks ?? 3);
+      const flasher = n.slot === 'card_kit' && !!item?.flasher;
       const out: RigNode[] = [];
       for (let i = 1; i <= hooks; i++) {
-        out.push(node('fixed', idx, { fixedLabel: `가지바늘 ${i}`, fixedIcon: 'item_hook_chinu', kit: 'card_rig', hookNo: i }));
-        out.push(node('bait', idx, { kit: 'card_rig', hookNo: i, label: `미끼 ${i}`, optional: i > 1 }));
+        out.push(node('fixed', idx, {
+          fixedLabel: flasher ? `반짝이 바늘 ${i}` : `가지바늘 ${i}`, fixedIcon: flasher ? 'card_rig_flasher' : 'item_hook_chinu',
+          kit: 'card_rig', hookNo: i, flasher,
+        }));
+        out.push(node('bait', idx, { kit: 'card_rig', hookNo: i, label: `미끼 ${i}` }));
       }
       out.push(node('fixed', idx, { fixedLabel: '봉돌', fixedIcon: 'sinker_pillar', kit: 'card_rig' }));
       return out;
     }
     case 'hook':
       // 바늘을 달면 미끼 칸 — 세트 바늘(hookNo)이면 번호를 잇는다
-      return [node('bait', idx, { kit: n.kit, hookNo: n.hookNo, label: n.hookNo && n.kit ? `미끼 ${n.hookNo}` : undefined, optional: (n.hookNo ?? 1) > 1 })];
+      return [node('bait', idx, { kit: n.kit, hookNo: n.hookNo, label: n.hookNo && n.kit ? `미끼 ${n.hookNo}` : undefined })];
     default:
       return [];
   }
@@ -434,10 +449,41 @@ export function missingParts(state: RigTreeState): string[] {
     if (nodeFilled(n) || nodeOptional(n)) continue;
     out.push(nodeLabel(n));
   }
+  // 193차 — 미끼 칸이 하나라도 있으면 그중 **최소 하나**는 채워야 한다(각 칸은 선택).
+  //   예외: 반짝이 깃 카드 채비는 미끼 없이도 완성(전갱이가 바늘 자체를 문다 — summarize().flasherOnly)
+  const baitNodes = state.nodes.filter((n) => n.slot === 'bait');
+  const flasher = state.nodes.some((n) => n.slot === 'fixed' && n.flasher);
+  if (baitNodes.length > 0 && !baitNodes.some((n) => !!n.itemId) && !flasher) out.push('미끼');
   // 끝이 열린 채비(마지막 노드가 값을 가졌지만 자식이 없는 중간 칸)는 아직 완성이 아니다
   const last = state.nodes[state.nodes.length - 1];
   if (last && nodeFilled(last) && !isTerminal(last) && out.length === 0) out.push(RIG_SLOTS[nextSlotHint(last)].label);
   return out;
+}
+
+// ─────────────────────────────────────────────────────────────
+// 193차 — 미끼 수·시너지·한 바늘에 두 미끼 → 입질 가중
+// ─────────────────────────────────────────────────────────────
+
+/** 미끼를 끼운 바늘이 하나 늘 때마다 입질 +2% (바늘 3개 = 최대 +4%) */
+export const MULTI_BAIT_BONUS = 0.02;
+/** 이웃한 바늘에 같은 미끼가 이어지면 시너지 +1% (한 번만) */
+export const SAME_BAIT_SYNERGY = 0.01;
+/** 「한 바늘에 두 미끼」를 켠 바늘마다 입질 +2% */
+export const DOUBLE_BAIT_BONUS = 0.02;
+/** 반짝이 깃 카드 채비를 미끼 없이 쓸 때 — 전갱이만, 미끼를 끼웠을 때 입질의 10% */
+export const FLASHER_ONLY_BITE_MULT = 0.10;
+export const FLASHER_TARGET_SPECIES = 'horse_mackerel';
+
+/** 바늘에 걸린 미끼 묶음 — 연속 판정은 칸 순서(바늘 번호) 기준 */
+export function baitBiteBonus(baits: { itemId: string | null; double?: boolean }[]): number {
+  const filled = baits.filter((b) => !!b.itemId);
+  if (filled.length === 0) return 0;
+  let bonus = (filled.length - 1) * MULTI_BAIT_BONUS;
+  for (let i = 1; i < baits.length; i++) {
+    if (baits[i].itemId && baits[i].itemId === baits[i - 1].itemId) { bonus += SAME_BAIT_SYNERGY; break; }
+  }
+  bonus += filled.filter((b) => b.double).length * DOUBLE_BAIT_BONUS;
+  return bonus;
 }
 
 /** 이 노드로 채비가 끝날 수 있는가 */
@@ -487,6 +533,14 @@ export interface RigSummary {
   /** 대상어종 가중(세트 + 비권장 페널티 반영) */
   speciesBias: Record<string, number>;
   tairaba: { headId: string | null; skirtId: string | null; necktieId: string | null } | null;
+  /** 193차 — 미끼 칸별 「한 바늘에 두 미끼」 (baitIds와 같은 순서) */
+  baitDouble: boolean[];
+  /** 193차 — 반짝이 깃 카드 채비인가 */
+  flasher: boolean;
+  /** 193차 — 반짝이 깃 카드 채비에 미끼가 하나도 없다(전갱이 전용 · 입질 10%) */
+  flasherOnly: boolean;
+  /** 193차 — 미끼 수·시너지·두 미끼로 오른 입질 비율(0.05 = +5%) */
+  biteBonus: number;
 }
 
 export function summarize(state: RigTreeState, view: (id: string) => RigItemView | null): RigSummary {
@@ -494,6 +548,7 @@ export function summarize(state: RigTreeState, view: (id: string) => RigItemView
     mainLineId: null, leaderId: null, floatId: null, subFloatId: null, floatStop: true, swivelId: null, sinkerId: null,
     hookIds: [], baitIds: [], fixedHooks: 0, kit: null, cardType: null, lureId: null, jigHeadId: null, usesBait: true,
     bottomRig: true, offRecommendedBait: false, speciesBias: {}, tairaba: null,
+    baitDouble: [], flasher: false, flasherOnly: false, biteBonus: 0,
   };
   let hasFloatSet = false;
   for (const n of state.nodes) {
@@ -508,10 +563,15 @@ export function summarize(state: RigTreeState, view: (id: string) => RigItemView
       case 'sliding_sinker': case 'split_shot': case 'bundle_kit': case 'tbar_sinker': case 'tairaba_head':
         if (n.itemId) s.sinkerId = n.itemId; break;
       case 'hook': if (n.itemId) s.hookIds.push(n.itemId); break;
-      case 'fixed': if (n.hookNo) s.fixedHooks++; break;
-      case 'bait': s.baitIds.push(n.itemId ?? null); break;
+      case 'fixed': if (n.hookNo) s.fixedHooks++; if (n.flasher) s.flasher = true; break;
+      case 'bait': s.baitIds.push(n.itemId ?? null); s.baitDouble.push(!!n.itemId && !!n.double); break;
       case 'kit_kind': s.kit = (n.choice as RigKitKind) ?? null; break;
       case 'card_type': s.cardType = n.choice ?? null; break;
+      case 'card_kit': if (n.itemId) {
+        const hooks = view(n.itemId)?.kitHooks ?? 3;
+        s.cardType = CARD_TYPES.find((c) => c.hooks === hooks)?.id ?? CARD_TYPES[0].id;
+        s.sinkerId = n.itemId;   // 카드 채비는 아래 봉돌까지 한 벌 — 아이템 자중(sinkerWeightG)이 채비 무게
+      } break;
       case 'lure_hard': case 'lure_soft': if (n.itemId) s.lureId = n.itemId; break;
       case 'jig_head': if (n.itemId) s.jigHeadId = n.itemId; break;
       default: break;
@@ -525,6 +585,9 @@ export function summarize(state: RigTreeState, view: (id: string) => RigItemView
   s.usesBait = kitDef ? kitDef.usesBait : true;
   s.bottomRig = !hasFloatSet || !s.floatId;
   if (kitDef?.speciesBias) s.speciesBias = { ...kitDef.speciesBias };
+  const baits = s.baitIds.map((itemId, i) => ({ itemId, double: s.baitDouble[i] }));
+  s.biteBonus = baitBiteBonus(baits);
+  s.flasherOnly = s.flasher && !s.baitIds.some((b) => !!b);
   // 권장 미끼 대조 — 세트가 권장 미끼를 정했고 끼운 미끼가 거기 없으면 비권장
   if (kitDef?.recommendedBaits?.length) {
     for (const id of s.baitIds) {

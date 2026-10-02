@@ -70,7 +70,32 @@ export const EN_RIG: Record<string, string> = {
   '헤드 뒤에 다는 고무 스커트 — 새우·게 다리처럼 흔들린다.': 'Rubber skirt behind the head — flutters like shrimp or crab legs.',
   '길게 늘어뜨린 넥타이 — 등속 릴링에서 꼬리처럼 흐른다.': 'Long trailing necktie — streams like a tail on a steady retrieve.',
 
+  // ── 193차 — 다중 미끼 · 한 바늘에 두 미끼 · 반짝이 카드 채비 ──
+  '카드 채비 반짝이 3단': 'Flasher card rig, 3 tiers', '카드 채비 반짝이 5단': 'Flasher card rig, 5 tiers',
+  '카드 채비 민바늘 7단': 'Plain card rig, 7 tiers',
+  '가지바늘 3단 — 바늘마다 반짝이는 깃이 달려 미끼 없이도 전갱이가 문다.': 'Three branch hooks, each with a flashy skin — horse mackerel bite even without bait.',
+  '가지바늘 5단 반짝이 깃 — 고등어·전갱이 떼를 노린다.': 'Five flasher branch hooks — for schools of mackerel and horse mackerel.',
+  '깃 없는 가지바늘 7단 — 단마다 미끼를 끼워 열기를 노린다.': 'Seven plain branch hooks — bait each tier for rockfish.',
+  '남은 미끼가 모자랍니다': 'Not enough bait left',
+  '같은 미끼가 두 마리 이상 남아 있어야 합니다': 'You need at least two of the same bait left',
+  '반짝이 바늘만 달린 채비 — 미끼가 없어 전갱이만 작은 멸치로 보고 덤빈다.': 'Flasher hooks only — with no bait, only horse mackerel take them for tiny anchovies.',
+  '「한 바늘에 두 미끼」를 배웠다. 미끼 칸 아래 x2를 켜면 같은 미끼를 두 마리 꿴다 — 던질 때마다 두 개씩 줄지만 입질이 조금 오른다.':
+    'You learned Two Baits, One Hook. Turn on x2 under a bait slot to thread two of the same bait — it uses two per cast, but bites come a little more often.',
+
   // ── 도움말 「장비 설정 (채비)」 ──
+  '도래 뒤나 목줄 끝에서 「간편 채비」를 고르면 세트가 펼쳐집니다. 묶음추 채비: 묶음추 하나를 고르면 핀도래 · 바늘 1 · 2 · 바렐 도래 · 봉돌 · 바늘 3이 고정으로 열리고, 바늘마다 미끼 칸이 붙습니다. 바늘마다 다른 미끼를 끼울 수 있고, 어느 바늘이든 하나만 끼우면 완성입니다.':
+    'Choose Ready rig after a swivel or at the leader end and the set unfolds. Bundle-sinker rig: pick one bundle sinker and pin swivel · hook 1 · 2 · barrel swivel · sinker · hook 3 open as fixed parts, with a bait slot after each hook. Each hook can take a different bait, and baiting any one hook completes the rig.',
+  '카드 채비(반짝이 3단 · 반짝이 5단 · 민바늘 7단 — 직판장) · T자 천평 편대 · 하드 베이트(미노우 · 스푼 · 스피너 · 에기 · 메탈지그 · 완성 타이라바) · 소프트 베이트(지그헤드 + 웜)도 같은 자리에서 고릅니다. 루어 세트는 미끼를 끼우지 않습니다. 반짝이 깃 카드 채비는 미끼 없이도 고정되며, 그때는 전갱이만 미끼를 끼웠을 때의 10% 정도로 덤빕니다.':
+    'Card rigs (flasher 3 · flasher 5 · plain 7 tiers — fish market), the T-bar spreader, hard baits (minnow · spoon · spinner · egi · metal jig · finished tairaba) and soft baits (jig head + worm) are chosen in the same place. Lure sets take no bait. A flasher card rig locks even with no bait; then only horse mackerel bite, at about 10% of the baited rate.',
+  '미끼 여러 개 · 한 바늘에 두 미끼': 'Several baits · two baits on one hook',
+  '미끼를 단 바늘이 하나 늘 때마다 입질이 2% 오릅니다(바늘 3개 = +4%). 이웃한 바늘에 같은 미끼가 이어지면 1%가 더해집니다. 오른 만큼은 채비 제원 상자 제목 끝에 보입니다.':
+    'Each extra baited hook raises bites by 2% (three hooks = +4%). The same bait on neighbouring hooks adds another 1%. The total shows at the end of the rig-spec box title.',
+  '미끼는 가방의 같은 미끼를 바늘끼리 나눠 씁니다 — 남은 수보다 많은 바늘에 같은 미끼를 끼울 수 없고, 입질이 오면 문 바늘의 미끼만 줄어듭니다. 가방에 남은 미끼가 있으면 그 바늘에 그대로 다시 꿰어져 있습니다.':
+    'Hooks share the bait in your bag — you cannot put the same bait on more hooks than you have, and a bite only uses up the bait on the hook that was taken. If more of that bait is left, the hook stays baited.',
+  '채비를 고정해도 미끼 칸은 바꿀 수 있습니다 — 낚시 뒤 미끼만 다시 끼우면 됩니다. 미끼가 하나도 없으면 고정 · 캐스팅이 되지 않습니다(반짝이 카드 채비 제외).':
+    'Bait slots stay editable even on a locked rig — after fishing, just re-bait. With no bait at all the rig cannot be locked or cast (except a flasher card rig).',
+  '스킬 「한 바늘에 두 미끼」(낚시)를 배우면 미끼 칸 아래 x2 단추가 생깁니다. 켜면 같은 미끼를 두 마리 꿰어 던질 때마다 2개씩 줄고, 켠 바늘마다 입질이 2% 더 오릅니다.':
+    'Learning the Fishing skill Two Baits, One Hook adds an x2 button under each bait slot. Turned on, the hook carries two of the same bait — two are used per cast, and each such hook adds another 2% to bites.',
   '채비 엮기 (찌 · 원투 · 구멍치기)': 'Building a Rig (float · surf · hole)',
   '원줄 한 칸에서 시작': 'Start from the main line',
   'U → 채비하기 탭 — ① 추천 한 줄 ② 채비 체인(원줄부터 오른쪽으로 열린다) ③ 채비 제원 ④ 채비 고정 버튼':
@@ -84,12 +109,8 @@ export const EN_RIG: Record<string, string> = {
   '앞 칸을 바꾸면 그 뒤에 달렸던 것은 전부 풀립니다(원줄을 빼면 처음부터). 비어 있는 주황 테두리 칸이 지금 채워야 할 자리입니다. 금색 「추천」은 그 자리에 맞는 부품이 가방에 있다는 뜻입니다.':
     'Change an earlier slot and everything after it comes off (remove the main line and you start over). An empty orange-bordered slot is what to fill next. A gold "Pick" means your bag holds a part that suits that slot.',
   '간편 채비 세트': 'Ready-rig sets',
-  '도래 뒤나 목줄 끝에서 「간편 채비」를 고르면 세트가 펼쳐집니다. 묶음추 채비: 묶음추 하나를 고르면 핀도래 · 바늘 1 · 2 · 바렐 도래 · 봉돌 · 바늘 3이 고정으로 열리고, 바늘마다 미끼 칸이 붙습니다(미끼 1만 필수).':
-    'Choose Ready rig after a swivel or at the leader end and the set unfolds. Bundle-sinker rig: pick one bundle sinker and pin swivel · hook 1 · 2 · barrel swivel · sinker · hook 3 open as fixed parts, with a bait slot after each hook (only bait 1 is required).',
   '타이라바 채비: 헤드 · 스커트 · 넥타이 셋을 다 채워야 완성되고, 바늘 1(필수) · 2(선택)에 미끼를 끼웁니다. 혼무시 · 청갯지렁이가 권장 미끼이며, 크릴 같은 다른 미끼를 끼우면 「권장되는 채비 유형이 아닙니다」가 뜨고 참돔이 거의 물지 않습니다.':
     'Tairaba rig: head, skirt and necktie must all be filled, then bait hook 1 (required) and hook 2 (optional). King ragworm and blue ragworm are the advised baits; other bait such as krill shows "not the advised bait" and red seabream will hardly bite.',
-  '카드 채비(전갱이 3단 · 고등어 5단 · 열기 7단) · T자 천평 편대 · 하드 베이트(미노우 · 스푼 · 스피너 · 에기 · 메탈지그 · 완성 타이라바) · 소프트 베이트(지그헤드 + 웜)도 같은 자리에서 고릅니다. 루어 세트는 미끼를 끼우지 않습니다.':
-    'Card rigs (horse mackerel 3 · mackerel 5 · rockfish 7 tiers), the T-bar spreader, hard baits (minnow · spoon · spinner · egi · metal jig · finished tairaba) and soft baits (jig head + worm) are chosen in the same place. Lure sets take no bait.',
   '오른쪽 아래 [채비 고정]을 누르면 지금 채비가 잠깁니다(필수 칸이 다 차 있어야 합니다). 고정 중에는 칸을 바꾸려 하면 「고정 해제」 안내가 뜨고, [고정 해제]로 풉니다. 캐스팅에 고정이 꼭 필요하지는 않습니다.':
     'Press [Lock rig] at the bottom right to lock the current rig (all required slots must be filled). While locked, trying to change a slot shows an unlock notice; [Unlock rig] releases it. Casting does not require a lock.',
   '줄터짐 · 밑걸림으로 잃은 부품 자리는 고정 중에도 비워집니다 — 목줄을 잃으면 그 아래 바늘 · 미끼도 같이 풀립니다. 다시 채우려면 고정을 풀어야 합니다.':
@@ -109,4 +130,8 @@ export const EN_RIG_RULES: [RegExp, (m: RegExpMatchArray, tr: (s: string) => str
   [/^라인 인장: (.+) kg$/, (m) => `Line strength: ${m[1]} kg`],
   [/^(.+) 선택$/, (m, tr) => `Choose ${tr(m[1])}`],
   [/^(.+)  ·  (.+)$/, (m, tr) => `${tr(m[1])}  ·  ${tr(m[2])}`],
+  // 193차
+  [/^입질 \+(\d+)%$/, (m) => `Bites +${m[1]}%`],
+  [/^(.+) 두 마리$/, (m, tr) => `${tr(m[1])} ×2`],
+  [/^반짝이 바늘 (\d+)$/, (m) => `Flasher hook ${m[1]}`],
 ];

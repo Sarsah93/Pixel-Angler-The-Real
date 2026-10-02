@@ -234,7 +234,7 @@ export type {
 export {
   SKILL_POINTS_PER_LEVEL, skillPointsForLevel,
   // 130차 — 면허 보너스 포인트 (등식 우변 둘째 항)
-  SKILL_POINTS_PER_LICENSE, SKILL_BONUS_EXCLUDED_LICENSES, skillPointsFromLicenses,
+  SKILL_POINTS_PER_LICENSE, SKILL_BONUS_EXCLUDED_LICENSES, skillPointsFromLicenses, SKILL_STARTER_BONUS_PT,
 } from './types/Skills.js';
 export {
   SKILL_CATEGORIES, SKILL_DATABASE, SKILL_TREE_TOTAL_PT, getSkillById, skillsOfCategory, skillPointsSpent, skillPrereqsMet, skillMult, skillBonus,
@@ -435,7 +435,7 @@ export type {
   FishMasterSpec, SpawnContext, SpawnedFish,
 } from './simulation/FishSpawningOracle.js';
 export {
-  ORACLE_FISH_DB, spawnFish, classifyLayer, getBaitAffinity,
+  ORACLE_FISH_DB, spawnFish, classifyLayer, getBaitAffinity, candidateCount,
   standardWeightG, speciesStandardWeightG, conditionFactorFor,
 } from './simulation/FishSpawningOracle.js';
 
@@ -685,4 +685,5 @@ export {
   RIG_PART_LABEL, RIG_SLOTS, KIT_DEFS, KIT_ORDER, CARD_TYPES, KNOT_DIRECT, KNOT_SWIVEL, OFF_RECOMMENDED_BIAS,
   newRigTree, nodeFilled, nodeOptional, nodeLabel, childrenOf, descendantsOf, setRigValue, dropMissingItems,
   missingParts, summarize, baitRecommendedFor, treeFromLegacy,
+  MULTI_BAIT_BONUS, SAME_BAIT_SYNERGY, DOUBLE_BAIT_BONUS, FLASHER_ONLY_BITE_MULT, FLASHER_TARGET_SPECIES, baitBiteBonus,
 } from './simulation/RigTree.js';

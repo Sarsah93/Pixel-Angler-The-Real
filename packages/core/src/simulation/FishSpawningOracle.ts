@@ -906,6 +906,14 @@ function weightedCandidates(ctx: SpawnContext): { spec: FishMasterSpec; weight: 
 }
 
 /**
+ * 이 조건에서 물 수 있는 어종 수 (193차) — 필터(반짝이 카드 채비 = 전갱이 전용 등)가 걸렸을 때
+ * 후보가 0이면 `spawnFish`는 전 어종으로 폴백하므로, 입질 자체를 막으려면 호출측이 먼저 이것을 본다.
+ */
+export function candidateCount(ctx: SpawnContext): number {
+  return weightedCandidates(ctx).length;
+}
+
+/**
  * 현재 미끼/지형/수심 조건의 미끼 친화도 (0.25 ~ 1.6).
  * BiteProbabilityEngine의 기본 입질 확률에 곱해 사용한다.
  */

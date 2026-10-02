@@ -201,8 +201,10 @@ export interface InvItem {
   lineStrengthLb?: number;
   /** 192차 — 채비 칸 종류(없으면 `RigParts.partKindOf`가 이름·제원으로 추정) */
   rigPart?: RigPartKind;
-  /** 192차 — 묶음추 채비의 바늘 수 */
+  /** 192차 — 묶음추·카드 채비의 바늘 수 */
   kitHooks?: number;
+  /** 193차 — 카드 채비 바늘에 반짝이 깃(스킨)이 붙어 있다(미끼 없이도 전갱이가 문다) */
+  cardFlasher?: boolean;
 
   /**
    * 밑밥 재료 종류 (U 밑밥 품질 탭 드래그 앤 드랍 대상) —
@@ -598,6 +600,8 @@ function createSeedItems(): InvItem[] {
     { id: 'inv_cushion_round', name: '원형 쿠션고무 2호',   icon: '', iconTexture: 'cushion_round', category: 'tackle', subCategory: '채비 부속', qty: 6, basePrice: 1200, equippable: false },
     { id: 'inv_bead_halfmoon', name: '반달구슬 3호',         icon: '', iconTexture: 'bead_halfmoon', category: 'tackle', subCategory: '채비 부속', qty: 6, basePrice: 1500, equippable: false },
     // 192차 — 채비 모딩: 바렐 도래 · 타이라바 조립 부품(헤드·스커트·넥타이)
+    // 193차 — 카드 채비 완제품(반짝이 깃 바늘 3·5단 · 민바늘 7단)
+    { id: 'inv_card_flasher_3', name: '카드 채비 반짝이 3단', icon: '', iconTexture: 'card_rig_flasher', category: 'tackle', subCategory: '채비 부속', qty: 2, basePrice: 3000, equippable: false, rigPart: 'card_rig', kitHooks: 3, cardFlasher: true, sinkerWeightG: 38 },
     { id: 'inv_swivel_barrel', name: '바렐 도래 6호',       icon: '', iconTexture: 'swivel_barrel', category: 'tackle', subCategory: '채비 부속', qty: 10, basePrice: 1800, equippable: false, rigPart: 'swivel_plain' },
     { id: 'inv_tairaba_head_80', name: '타이라바 헤드 80g', icon: '', iconTexture: 'tairaba_head_red', category: 'tackle', subCategory: '채비 부속', qty: 2, basePrice: 9000, equippable: false, rigPart: 'tairaba_head', sinkerWeightG: 80 },
     { id: 'inv_tairaba_skirt_red', name: '타이라바 스커트 (빨강)', icon: '', iconTexture: 'tairaba_skirt_red', category: 'tackle', subCategory: '채비 부속', qty: 3, basePrice: 3500, equippable: false, rigPart: 'tairaba_skirt' },
@@ -1182,6 +1186,9 @@ class InventoryStoreManager {
         // 192차 — 채비 칸 종류·묶음추 바늘 수. 구 「면도래 8호」는 그림이 스냅 도래라 이름을 바로잡는다.
         rigPart: i.rigPart ?? sd?.rigPart,
         kitHooks: i.kitHooks ?? sd?.kitHooks,
+        cardFlasher: i.cardFlasher ?? sd?.cardFlasher,
+        // 193차 — 카드 채비는 아래 봉돌까지 한 벌(자중). 시드에 없는 상점 구매분은 단수로 추정
+        sinkerWeightG: i.sinkerWeightG ?? sd?.sinkerWeightG ?? (i.rigPart === 'card_rig' ? ((i.kitHooks ?? 3) >= 7 ? 60 : (i.kitHooks ?? 3) >= 5 ? 45 : 38) : undefined),
         name: (i.id === 'inv_swivel' && i.name === '면도래 8호') ? '핀 도래 8호' : i.name,
         forageTool: i.forageTool ?? sd?.forageTool,
         trapSpecId: i.trapSpecId ?? sd?.trapSpecId ?? (i.id.startsWith('inv_trap_') ? i.id.slice('inv_trap_'.length) : undefined),
@@ -1797,8 +1804,106 @@ class InventoryStoreManager {
 
   /** 트리 요약(투영값) — 한 번 계산해 두고 트리·아이템이 바뀌면 다시 계산한다 */
   rigSummary(): RigSummary {
-    if (!this._summary) this._summary = treeSummarize(this._tree, this.rigView);
+    if (!this._summary) {
+      // 193차 — 「한 바늘에 두 미끼」는 스킬이 있을 때만 효과가 있다(스킬을 되돌리면 켜 둔 단추는 무시)
+      const tree = this.doubleBaitAllowed() ? this._tree
+        : { nodes: this._tree.nodes.map((n) => (n.double ? { ...n, double: false } : n)) };
+      this._summary = treeSummarize(tree, this.rigView);
+    }
     return this._summary;
+  }
+
+  /** 193차 — 「한 바늘에 두 미끼」 스킬 보유 여부. GameState가 주입한다(순환 import 회피) */
+  doubleBaitAllowed: () => boolean = () => false;
+
+  /** 193차 — 채비가 주는 입질 배율 (미끼 수 +2%씩 · 이웃한 같은 미끼 +1% · 두 미끼 바늘마다 +2%) */
+  rigBiteMult(): number { return 1 + this.rigSummary().biteBonus; }
+
+  /** 이 미끼 칸이 미끼를 몇 개 쓰는가 (두 미끼면 2) */
+  private baitUse(n: { slot: string; itemId?: string; double?: boolean }): number {
+    return n.slot === 'bait' && n.itemId ? (n.double && this.doubleBaitAllowed() ? 2 : 1) : 0;
+  }
+
+  /**
+   * 193차 — 이 미끼를 몇 개 더 끼울 수 있나. 미끼 칸은 가방의 같은 미끼 묶음을 **나눠 쓴다**
+   * (청갯지렁이 20마리 = 바늘 3개에 한 마리씩 끼워도 17마리 남는 게 아니라, 끼운 셋도 그 20마리 중 하나다).
+   * @param exceptIdx 지금 바꾸려는 칸(자기 몫은 빼고 센다)
+   */
+  baitStockLeft(itemId: string, exceptIdx = -1): number {
+    const it = this.find(itemId);
+    if (!it) return 0;
+    let used = 0;
+    this._tree.nodes.forEach((n, i) => { if (i !== exceptIdx && n.itemId === itemId) used += this.baitUse(n); });
+    return it.qty - used;
+  }
+
+  /** 193차 — 미끼 칸의 「한 바늘에 두 미끼」 켜고 끄기 (고정 중에도 된다 — 미끼는 소모품이다) */
+  setBaitDouble(idx: number, on: boolean): boolean {
+    const n = this._tree.nodes[idx];
+    if (!n || n.slot !== 'bait' || !n.itemId) return false;
+    if (on && (!this.doubleBaitAllowed() || this.baitStockLeft(n.itemId, idx) < 2)) return false;
+    this._tree = { nodes: this._tree.nodes.map((x, i) => (i === idx ? { ...x, double: on } : x)) };
+    this.projectTree();
+    return true;
+  }
+
+  /** 193차 — 지금 미끼를 문 바늘(미끼 칸 인덱스). 입질이 시작될 때 고르고, 소모가 끝나면 비운다 */
+  private bittenBaitIdx: number | null = null;
+
+  /** 193차 — 입질 시작: 미끼를 단 바늘 하나를 고른다. 돌려주는 것은 그 미끼 아이템(없으면 null — 반짝이 바늘) */
+  pickBittenBait(): InvItem | null {
+    const idxs = this._tree.nodes.map((n, i) => (n.slot === 'bait' && n.itemId ? i : -1)).filter((i) => i >= 0);
+    if (idxs.length === 0) { this.bittenBaitIdx = null; return null; }
+    this.bittenBaitIdx = idxs[Math.floor(Math.random() * idxs.length)];
+    return this.find(this._tree.nodes[this.bittenBaitIdx].itemId!) ?? null;
+  }
+
+  /** 지금 문 바늘의 미끼(입질 중이 아니면 null) */
+  get bittenBait(): InvItem | null {
+    const n = this.bittenBaitIdx !== null ? this._tree.nodes[this.bittenBaitIdx] : undefined;
+    return n?.itemId ? this.find(n.itemId) ?? null : null;
+  }
+
+  /** 끼운 미끼 아이템 목록(칸 순서 · 같은 미끼 반복 포함) */
+  rigBaitItems(): InvItem[] {
+    return this._tree.nodes.filter((n) => n.slot === 'bait' && n.itemId)
+      .map((n) => this.find(n.itemId!)).filter((x): x is InvItem => !!x);
+  }
+
+  /**
+   * 193차 — 미끼 칸 하나의 미끼를 먹힌다(두 미끼면 2개). 가방에 남은 수가 끼운 수보다 적어지면
+   * 그 칸부터 비운다 — 남은 미끼가 있으면 같은 미끼가 그대로 다시 꿰어져 있는 셈이다.
+   * @returns 잃은 미끼 이름(없으면 null)
+   */
+  private consumeBaitAt(idx: number): string | null {
+    const n = this._tree.nodes[idx];
+    if (!n || n.slot !== 'bait' || !n.itemId) return null;
+    const it = this.find(n.itemId);
+    if (!it) return null;
+    const name = it.name;
+    const use = Math.min(it.qty, Math.max(1, this.baitUse(n)));
+    const id = n.itemId;
+    this.removeQty(id, use);                    // 다 떨어지면 deleteInstance → 트리 동기화(칸 비움)
+    if (this.find(id) && this.baitStockLeft(id) < 0) {
+      // 남은 수로는 다 못 끼운다 — 먹힌 바늘부터, 그다음은 뒤쪽 바늘부터 비운다
+      const order = [idx, ...this._tree.nodes.map((_, i) => i).reverse().filter((i) => i !== idx)];
+      for (const i of order) {
+        if (this.baitStockLeft(id) >= 0) break;
+        if (this._tree.nodes[i]?.slot === 'bait' && this._tree.nodes[i].itemId === id) {
+          this._tree = setRigValue(this._tree, i, { itemId: null }, null);
+        }
+      }
+      this.projectTree();
+    }
+    return name;
+  }
+
+  /** 193차 — 카드 채비 n번째 미끼 칸 소모(1인칭 다관점 히트) */
+  consumeBaitNode(nth: number): void {
+    if (isGod()) return;
+    let seen = 0;
+    const i = this._tree.nodes.findIndex((n) => n.slot === 'bait' && seen++ === nth);
+    if (i >= 0) this.consumeBaitAt(i);
   }
 
   /** 대상어종 가중(세트 + 비권장 미끼 페널티) — 1인칭 스폰 컨텍스트가 합친다 */
@@ -1809,11 +1914,22 @@ class InventoryStoreManager {
    * @returns 바뀌었는가 (고정 중·fixed 칸·같은 값이면 false)
    */
   setRigNode(idx: number, value: RigValue): boolean {
-    if (this.rigLocked) return false;   // 155차 — 고정된 채비는 [고정 해제]로 풀어야 편집된다
+    const target = this._tree.nodes[idx];
+    // 155차 — 고정된 채비는 [고정 해제]로 풀어야 편집된다.
+    //   193차 — **미끼 칸만은 예외**: 낚시 뒤 미끼만 다시 끼우면 되도록(사용자 지시)
+    if (this.rigLocked && target?.slot !== 'bait') return false;
+    if (target?.slot === 'bait' && 'itemId' in value && value.itemId) {
+      // 가방에 남은 수만큼만 끼운다 — 두 미끼를 켠 칸이면 2개가 필요하다
+      const need = target.double && this.doubleBaitAllowed() ? 2 : 1;
+      if (this.baitStockLeft(value.itemId, idx) < need) return false;
+    }
     const item = 'itemId' in value && value.itemId ? this.rigView(value.itemId) : null;
     const next = setRigValue(this._tree, idx, value, item);
     if (next === this._tree) return false;
     this._tree = next;
+    if (target?.slot === 'bait' && 'itemId' in value && !value.itemId && this._tree.nodes[idx]?.double) {
+      this._tree = { nodes: this._tree.nodes.map((x, i) => (i === idx ? { ...x, double: false } : x)) };
+    }
     this.projectTree();
     return true;
   }
@@ -2003,6 +2119,13 @@ class InventoryStoreManager {
    */
   consumeRigItem(step: RigStepKey): void {
     if (isGod()) return;   // dev 무적: 미끼/소모 부품 무한
+    if (step === 'bait') {
+      // 193차 — 미끼는 **문 바늘의 것만** 먹힌다(두 미끼면 2개). 문 바늘이 없으면(반짝이 바늘 단독) 아무것도 줄지 않는다
+      const idx = this.bittenBaitIdx ?? this._tree.nodes.findIndex((n) => n.slot === 'bait' && !!n.itemId);
+      this.bittenBaitIdx = null;
+      if (idx >= 0) this.consumeBaitAt(idx);
+      return;
+    }
     const id = this._rig[step];
     if (!id) return;
     this.removeQty(id, 1);
@@ -2093,6 +2216,13 @@ class InventoryStoreManager {
 
   loseRigParts(steps: RigStepKey[]): string[] {
     if (isGod()) return [];   // dev 무적: 채비 손실 없음
+    // 193차 — 미끼만 털리면 문 바늘의 미끼만 잃는다(다른 바늘의 미끼는 그대로)
+    if (steps.length === 1 && steps[0] === 'bait') {
+      const idx = this.bittenBaitIdx ?? this._tree.nodes.findIndex((n) => n.slot === 'bait' && !!n.itemId);
+      this.bittenBaitIdx = null;
+      const name = idx >= 0 ? this.consumeBaitAt(idx) : null;
+      return name ? [name] : [];
+    }
     const lost: string[] = [];
     for (const step of steps) {
       const id = this._rig[step];

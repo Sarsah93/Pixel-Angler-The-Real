@@ -35,7 +35,7 @@ import { StoryStore, type StorySaveState } from './StoryStore.js';
 import { prologueSquid } from './Prologue.js';
 import { buildItemWikiCatalog } from '../data/WikiCatalog.js';
 import {
-  skillPointsForLevel, skillPointsSpent, skillPrereqsMet, getSkillById, SKILL_CATEGORIES,
+  skillPointsForLevel, SKILL_STARTER_BONUS_PT, skillPointsSpent, skillPrereqsMet, getSkillById, SKILL_CATEGORIES,
   skillPointsFromLicenses as coreSkillPointsFromLicenses, skillUnlockMissing,
   newlyUnlockedHiddenSkills, describeUnlockCond as coreDescribeUnlockCond,
   type SkillDef, type SkillUnlockCtx,
@@ -1079,10 +1079,11 @@ export class GameStateManager {
 
   /**
    * 총 스킬 포인트 = **레벨 파생 + 면허 보너스** (130차).
-   * 만렙(200) + 전 면허(15) = 215 = 유료 노드 총비용 — "만렙 + 전 면허 = 전 스킬 마스터".
+   * 만렙(200) + 전 면허(15) + 시작 1(193차) = 216 = 유료 노드 총비용 — "만렙 + 전 면허 = 전 스킬 마스터".
    */
   skillPointsTotal(): number {
-    return skillPointsForLevel(this._player?.level ?? 1) + this.skillPointsFromLicenses() + this._bonusSkillPoints;
+    // 193차 — 시작 보너스 1pt(SKILL_STARTER_BONUS_PT): 「한 바늘에 두 미끼」 노드를 더하면서 우변도 같이 늘렸다
+    return skillPointsForLevel(this._player?.level ?? 1) + this.skillPointsFromLicenses() + this._bonusSkillPoints + SKILL_STARTER_BONUS_PT;
   }
   /** 선택지 보상 스킬 포인트 (140차) — 예산 우변에 더한다(노드 비용 불변) */
   get bonusSkillPoints(): number { return this._bonusSkillPoints; }
@@ -1719,6 +1720,9 @@ StoryStore.bind({
   grantProfXp: (t, xp) => GameState.grantProfXp(t, xp),
   grantProfLevelUp: (id) => GameState.grantProfLevelUp(id),
 });
+
+// 193차 — 채비 「한 바늘에 두 미끼」 스킬 게이트 (InventoryStore가 GameState를 import하면 순환이라 주입)
+InventoryStore.doubleBaitAllowed = () => GameState.skillBonus('double_bait') > 0;
 
 // dev 검증용 전역 노출 — 하네스의 `import('/src/…')` 모듈은 게임 인스턴스와 다를 수
 // 있으므로(InventoryStore `__INV`와 동일한 함정) 실싱글턴을 노출한다. (프로덕션 미노출)

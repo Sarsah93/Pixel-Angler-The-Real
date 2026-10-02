@@ -20,6 +20,8 @@ export type SkillEffectKey =
   | 'chum_sync' | 'night_bite' | 'lure_action' | 'hook_set' | 'big_fish_luck' | 'tide_reading'
   // 낚시 — 124차 증설 (캐스팅 산포·바람·스풀·지깅·에깅·원투·채비 회수)
   | 'cast_scatter' | 'wind_comp' | 'spool_trouble' | 'jig_efficiency' | 'egi_stability' | 'surf_distance' | 'rig_salvage'
+  // 낚시 — 193차 (한 바늘에 두 미끼 — 채비창 미끼 칸 x2 단추)
+  | 'double_bait'
   // 채집·통발
   | 'forage_radius' | 'hand_injury' | 'octopus_escape' | 'trap_bait_duration' | 'trap_attempts' | 'trap_loss' | 'balance'
   // 채집·통발 — 124차 증설 (간조 보너스·랜턴 반경·채집 속도·회수물 신선도)
@@ -196,6 +198,12 @@ export function skillPointsForLevel(level: number): number {
  * 등식: **Σ(유료 노드) = 레벨 만렙 포인트 + 면허 보너스 총량.**
  */
 export const SKILL_POINTS_PER_LICENSE = 1;
+
+/**
+ * 시작 보너스 스킬 포인트 (193차) — 「한 바늘에 두 미끼」 노드(1pt)를 더하면서 예산도 같이 늘렸다.
+ * 130차 원칙 그대로: **기존 노드 비용을 깎지 않고 우변을 늘린다**. 등식 = 만렙 200 + 면허 15 + 시작 1 = 216.
+ */
+export const SKILL_STARTER_BONUS_PT = 1;
 
 /** 기본 제공이라 보너스에서 빼는 면허 */
 export const SKILL_BONUS_EXCLUDED_LICENSES: readonly string[] = [
