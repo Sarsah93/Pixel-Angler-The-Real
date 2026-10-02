@@ -285,6 +285,14 @@ class CoolerStoreImpl {
     return idx;
   }
 
+  /** 198차 — 정해진 칸에 넣기(쿨러 정리 창: 비운 그 자리에 넣는다) — 칸이 차 있으면 false */
+  addAt(idx: number, fish: CoolerFishInput): boolean {
+    this.sync();
+    if (idx < 0 || idx >= COOLER_CAPACITY || this.slots[idx]) return false;
+    this.slots[idx] = { ...fish, condition: 'live', stateElapsedMs: 0 };
+    return true;
+  }
+
   get(idx: number): CoolerFish | null {
     this.sync();
     return this.slots[idx] ?? null;

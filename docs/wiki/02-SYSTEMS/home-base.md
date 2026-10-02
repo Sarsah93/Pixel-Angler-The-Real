@@ -97,3 +97,5 @@
 10. 씬 메서드 이름으로 `lights`를 쓰지 말 것 — Phaser `Scene.lights`(LightsManager)와 충돌해 `this`가 `Scene`에 대입되지 않는다(190 — `litSources`).
 11. 화분·스탠드·수조 상태는 **가구 개체 id** 기준(190 — 상점에서 같은 가구를 여럿 산다). 옷장·수납 선반만 아직 한 벌(`wardrobe`/`shelf` 키)이라
     상점에서 팔지 않는다. 산 가구 id = `<kind>_b<n>`(`HomeStore.addStored`).
+12. **[가구 배치]·배치 트레이는 필드 HUD를 피한다**(198) — 집 안에도 필드 HUD가 그려진다. 단추 = 방 액자 오른쪽 위 바깥,
+    트레이 = `ui/ScreenReserve.columnGap`으로 찾은 세로 빈 구간(줄 수는 높이에서 · 넘치면 쪽 넘김). 방은 화면 가운데 + 12px(상태 창과 8px 겹쳤다).

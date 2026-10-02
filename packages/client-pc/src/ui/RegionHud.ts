@@ -362,6 +362,8 @@ export class RegionHud extends Phaser.GameObjects.Container {
 
   // 퀵슬롯
   private slotContainers: Phaser.GameObjects.Container[] = [];
+  /** 퀵슬롯 띠 화면 사각형(198차 — 화면 예약) */
+  private quickBarRect: HudRect = { x: 0, y: 0, w: 0, h: 0 };
   /** 슬롯별 아이콘 오브젝트 (이미지/이모지 동적 교체) */
   private slotIcons: (Phaser.GameObjects.GameObject | null)[] = [];
 
@@ -1348,6 +1350,7 @@ export class RegionHud extends Phaser.GameObjects.Container {
 
     const barBg = this.scene.add.graphics();
     paintHudPanel(barBg, startX - 10, slotY - 8, totalW + 20, slotH + 16, { alpha: 0.8 });
+    this.quickBarRect = { x: startX - 10, y: slotY - 8, w: totalW + 20, h: slotH + 16 };
     this.add(barBg);
 
     for (let i = 0; i < 8; i++) {
@@ -1572,6 +1575,22 @@ export class RegionHud extends Phaser.GameObjects.Container {
       this.hudDrag = { key, sx: p.x, sy: p.y, rect: this.hudRect(key) };
     });
     return hit;
+  }
+
+  /**
+   * 198차 — 지금 HUD가 차지한 화면 사각형(`ui/ScreenReserve`). 창을 끌어 옮기거나 크기를 바꿔도 실제 위치를 돌려준다.
+   * 상태 이상 띠·알림(잠깐 뜨는 것)은 넣지 않는다.
+   */
+  occupiedRects(): { name: string; rect: Phaser.Geom.Rectangle }[] {
+    const R = (r: HudRect): Phaser.Geom.Rectangle => new Phaser.Geom.Rectangle(r.x, r.y, r.w, r.h);
+    const out = [
+      { name: 'hud.status', rect: R(this.hudRect('status')) },
+      { name: 'hud.chat', rect: R(this.hudRect('chat')) },
+      { name: 'hud.map', rect: R(this.hudRect('map')) },
+      { name: 'hud.quickslot', rect: R(this.quickBarRect) },
+    ];
+    if (this.trackerC?.visible) out.push({ name: 'hud.quest', rect: R(this.hudRect('quest')) });
+    return out;
   }
 
   private hudRect(key: HudWindow): HudRect {

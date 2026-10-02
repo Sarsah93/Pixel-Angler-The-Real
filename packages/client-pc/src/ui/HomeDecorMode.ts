@@ -23,6 +23,7 @@ import {
 } from '../data/HomeFurniture.js';
 import { maybeStartTour, type TourOptions } from './GuideTour.js';
 import { restoreHandCursor } from './DraggablePanel.js';
+import { fieldReserved, columnGap, assertClear } from './ScreenReserve.js';
 
 const FONT = '"Noto Sans KR", sans-serif';
 const TRAY_W = 300;
@@ -30,6 +31,10 @@ const TRAY_COLS = 3;
 const SLOT_W = 88;
 const SLOT_H = 74;
 const SLOT_GAP = 8;
+/** 쪽 넘김 줄 높이 */
+const PAGER_H = 24;
+/** 트레이 최소 높이 — 머리 + 한 줄 + 쪽 넘김 + [완료] */
+const TRAY_MIN_H = 42 + SLOT_H + PAGER_H + 56;
 
 export interface DecorHost {
   ox: number;
@@ -65,6 +70,10 @@ export class HomeDecorMode {
   private holding: Holding | null = null;
   private lastPointer = { x: 0, y: 0 };
   private overTray = false;
+  /** 트레이 높이(198차 — HUD를 피한 빈 구간에 맞춘다) */
+  private trayHeight = 0;
+  /** 트레이 페이지(칸이 모자라면 ◀ ▶) */
+  private trayPage = 0;
   /** 가이드 판정용 횟수 */
   picks = 0;
   places = 0;
@@ -110,7 +119,11 @@ export class HomeDecorMode {
     this.roomZone.on('pointerout', () => { this.hoverG.clear(); this.nameText.setVisible(false); });
 
     // 넣어 둔 가구 칸
-    this.tray = scene.add.container(GAME_WIDTH - TRAY_W - 16, oy - 20).setDepth(90);
+    // 198차 — 화면 오른쪽 끝 상수 좌표(GAME_WIDTH − TRAY_W − 16)는 필드 HUD의 미니맵·「지금 할 일」을 덮었다.
+    //   HUD가 비워 둔 세로 구간을 찾아 그 안에 넣고, 모자라면 칸 줄 수를 줄여 페이지로 넘긴다.
+    const place = this.trayPlacement();
+    this.trayHeight = place.h;
+    this.tray = scene.add.container(place.x, place.y).setDepth(90);
     this.trayFrame = scene.add.graphics();
     this.trayBody = scene.add.container(0, 0);
     this.tray.add([this.trayFrame, this.trayBody]);
@@ -133,7 +146,29 @@ export class HomeDecorMode {
     return new Phaser.Geom.Rectangle(this.tray.x + 12, this.tray.y + this.trayH() - 48, TRAY_W - 24, 36);
   }
 
-  private trayH(): number { return ROOM_H * IT + 40; }
+  private trayH(): number { return this.trayHeight; }
+
+  /** 트레이 자리 — 방 오른쪽·왼쪽 바깥 열 중 HUD를 피한 세로 빈 구간이 긴 쪽(방 윗변에 맞춘다) */
+  private trayPlacement(): { x: number; y: number; h: number } {
+    const reserved = fieldReserved(this.scene);
+    const { ox, oy } = this.host;
+    const full = ROOM_H * IT + 40;
+    const frameL = ox - 20, frameR = ox + ROOM_W * IT + 20;
+    let best: { x: number; y: number; h: number } | null = null;
+    // 오른쪽 열은 방 액자에 붙이고(8px) 화면 끝 여백 6px까지 허용, 왼쪽 열은 화면 왼쪽 16px
+    for (const x of [Math.max(frameR + 8, GAME_WIDTH - 16 - TRAY_W), 16]) {
+      if (x + TRAY_W > GAME_WIDTH - 6) continue;
+      if (!(x >= frameR + 8 || x + TRAY_W <= frameL - 8)) continue;   // 방 액자와 겹치는 열은 버린다
+      const gap = columnGap(x, TRAY_W, reserved);
+      if (!gap) continue;
+      const h = Math.min(full, gap.h);
+      const y = Phaser.Math.Clamp(oy - 20, gap.y, gap.y + gap.h - h);
+      if (!best || h > best.h) best = { x, y, h };
+    }
+    const pick = best && best.h >= TRAY_MIN_H ? best : { x: Math.max(frameR + 8, GAME_WIDTH - 16 - TRAY_W), y: oy - 20, h: full };
+    assertClear('home.decorTray', new Phaser.Geom.Rectangle(pick.x, pick.y, TRAY_W, pick.h), reserved);
+    return pick;
+  }
 
   private furnAt(sx: number, sy: number): FurnInstance | null {
     const c = (sx - this.host.ox) / IT, r = (sy - this.host.oy) / IT;
@@ -302,15 +337,24 @@ export class HomeDecorMode {
     // 190차 — 상점에서 같은 가구를 여럿 살 수 있어 칸 하나 = 종류 하나(개수 표시)로 묶는다
     const list = HomeStore.storedGroups();
     const x0 = (TRAY_W - (TRAY_COLS * SLOT_W + (TRAY_COLS - 1) * SLOT_GAP)) / 2;
-    const rows = 5;
-    for (let i = 0; i < TRAY_COLS * rows; i++) {
+    // 198차 — 줄 수는 트레이 높이에서 낸다(머리 42 · [완료] 56). 넘치면 아래에 쪽 넘김 줄(조용히 잘리지 않게)
+    const rowsFor = (pager: number): number =>
+      Math.max(1, Math.floor((this.trayH() - 42 - 56 - pager + SLOT_GAP) / (SLOT_H + SLOT_GAP)));
+    let rows = Math.min(5, rowsFor(0));
+    const paged = list.length > TRAY_COLS * rows;
+    if (paged) rows = Math.min(5, rowsFor(PAGER_H));
+    const per = TRAY_COLS * rows;
+    const pages = Math.max(1, Math.ceil(list.length / per));
+    this.trayPage = Phaser.Math.Clamp(this.trayPage, 0, pages - 1);
+    const first = this.trayPage * per;
+    for (let i = 0; i < per; i++) {
       const sx = x0 + (i % TRAY_COLS) * (SLOT_W + SLOT_GAP);
       const sy = 42 + Math.floor(i / TRAY_COLS) * (SLOT_H + SLOT_GAP);
       const box = scene.add.graphics();
       box.fillStyle(0x0e1c2d, 0.92); box.fillRoundedRect(sx, sy, SLOT_W, SLOT_H, 5);
       box.lineStyle(1.2, 0x1f3d5a, 0.8); box.strokeRoundedRect(sx, sy, SLOT_W, SLOT_H, 5);
       this.trayBody.add(box);
-      const grp = list[i];
+      const grp = list[first + i];
       if (!grp) continue;
       const f = grp.items[0]!;
       const { w, h } = footprint(f.kind, f.dir);
@@ -330,6 +374,7 @@ export class HomeDecorMode {
         }).setOrigin(1, 0));
       }
     }
+    if (paged) this.addPager(42 + rows * (SLOT_H + SLOT_GAP), pages);
     // 들고 있는 가구를 받는 판 (칸 사이 빈 곳을 눌러도 넣어 둔다)
     const drop = scene.add.rectangle(0, 0, TRAY_W, this.trayH() - 56, 0xffffff, 0.001).setOrigin(0, 0).setInteractive();
     drop.on('pointermove', (p: Phaser.Input.Pointer) => this.onMove(p.x, p.y));
@@ -346,6 +391,28 @@ export class HomeDecorMode {
     const hit = scene.add.rectangle(12, by, TRAY_W - 24, 36, 0xffffff, 0.001).setOrigin(0, 0).setInteractive({ useHandCursor: true });
     hit.on('pointerdown', () => this.exit());
     this.trayBody.add([bg, tx, hit]);
+  }
+
+  /** 쪽 넘김 줄 ◀ n / m ▶ */
+  private addPager(y: number, pages: number): void {
+    const scene = this.scene;
+    const mid = scene.add.text(TRAY_W / 2, y + PAGER_H / 2 - 2, `${this.trayPage + 1} / ${pages}`, {
+      fontFamily: FONT, fontSize: '12px', color: '#9fc0d4', fontStyle: 'bold',
+    }).setOrigin(0.5);
+    this.trayBody.add(mid);
+    const arrow = (x: number, glyph: string, d: number): void => {
+      const on = this.trayPage + d >= 0 && this.trayPage + d < pages;
+      const t = scene.add.text(x, y + PAGER_H / 2 - 2, glyph, {
+        fontFamily: 'sans-serif', fontSize: '14px', color: on ? '#ffe9b0' : '#3a4a5a',
+      }).setOrigin(0.5);
+      this.trayBody.add(t);
+      if (!on) return;
+      const hit = scene.add.rectangle(x, y + PAGER_H / 2 - 2, 36, PAGER_H, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
+      hit.on('pointerdown', () => { this.trayPage += d; this.renderTray(); restoreHandCursor(scene); });
+      this.trayBody.add(hit);
+    };
+    arrow(TRAY_W / 2 - 60, '◀', -1);
+    arrow(TRAY_W / 2 + 60, '▶', 1);
   }
 
   /** 넣어 둔 칸의 가구를 든다 (들고 있던 것은 그 자리에 돌려놓지 않고 넣어 둔다) */

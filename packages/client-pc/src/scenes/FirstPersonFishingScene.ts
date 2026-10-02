@@ -70,6 +70,7 @@ import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { applyScreenFixed } from '../ui/DraggablePanel.js';
 import { CoolerPanel } from '../ui/CoolerPanel.js';
 import { CoolerSwapPanel } from '../ui/CoolerSwapPanel.js';
+import { ConfirmDialog } from '../ui/Dialogs.js';
 import { InventoryPanel } from '../ui/InventoryPanel.js';
 import { ItemDetailPanel } from '../ui/ItemDetailPanel.js';
 import { GuidePanel } from '../ui/GuidePanel.js';
@@ -621,6 +622,9 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.input.keyboard!.on('keydown-C', () => this.tossChum());
     this.input.keyboard!.on('keydown-I', () => this.toggleFpInventory());
     this.input.keyboard!.on('keydown-ESC', () => {
+      // 198차 — 확인 창·쿨러 정리 창이 떠 있으면 ESC는 그 창만 닫는다(고기를 둔 채 필드로 나가지 않게)
+      if (this.releaseConfirm) { this.releaseConfirm.destroy(); this.releaseConfirm = null; return; }
+      if (this.coolerSwap?.active) { this.coolerSwap.onEsc(); return; }
       if (this.guideHub) { this.closeGuideHub(); return; }
       if (this.invPanel) { this.closeFpInventory(); return; }
       if (this.coolerPanel) {
@@ -634,7 +638,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       if (this.coolerPanel || this.invPanel || this.guideHub) return;
       // 196차 — 들어뽕 알림은 SPACE로 [확인] · 쿨러 정리 창이 떠 있으면 무시(고른 것을 날리지 않게)
       if (this.landingAlert) { this.landingAlert.close(); return; }
-      if (this.coolerSwap?.active || GuideTour.active) return;
+      if (this.coolerSwap?.active || this.releaseConfirm || GuideTour.active) return;
       // 155차 — 결과 화면에서 SPACE = 필드 복귀(재캐스팅 폐기)
       if (this.fpState === 'result' && this.resultContainer) this.exitToField();
     });
@@ -3158,12 +3162,28 @@ export class FirstPersonFishingScene extends Phaser.Scene {
         },
         {
           label: '방생하기', fill: 0x123a52, stroke: 0x5cd0ff, color: '#9fd0e4',
-          onClick: () => this.showPostDecisionPanel(n > 1 ? `${n}마리를 모두 방생하였습니다.` : '해당 어종을 방생하였습니다.', '#9fd0e4', fishTexture, imgScale, n),
+          // 198차 — 잘못 눌러 놓치지 않게 한 번 더 묻는다(사용자 지시)
+          onClick: () => this.confirmReleaseCatch(school, () => this.showPostDecisionPanel(
+            n > 1 ? `${n}마리를 모두 방생하였습니다.` : '해당 어종을 방생하였습니다.', '#9fd0e4', fishTexture, imgScale, n)),
         },
       ],
       imgScale, n,
     );
   }
+  /** 198차 — 방생 확인 창(이름·크기 목록 + 「방생하기」/「취소」) */
+  private releaseConfirm: ConfirmDialog | null = null;
+  private confirmReleaseCatch(school: SpawnedFish[], onYes: () => void): void {
+    if (this.releaseConfirm) return;
+    const rows = school.map((x) => `${x.nameKo} ${x.lengthCm}cm`).join('\n');
+    const dlg = new ConfirmDialog(this,
+      `${school.length > 1 ? `${school.length}마리를 모두` : '이 고기를'} 방생할까요?\n${rows}\n방생한 고기는 되돌릴 수 없습니다.`,
+      () => { dlg.destroy(); this.releaseConfirm = null; onYes(); },
+      () => { dlg.destroy(); this.releaseConfirm = null; },
+      { yes: '방생하기', no: '취소', danger: true });
+    this.add.existing(dlg);
+    this.releaseConfirm = dlg;
+  }
+
   /** 196차 — 쿨러 정리 창(결정 패널을 내리고 연다 · [돌아가기]면 결정 패널을 다시 세운다) */
   private coolerSwap: CoolerSwapPanel | null = null;
   private openCoolerSwap(school: SpawnedFish[], extra: string[], fishTexture?: string): void {
@@ -3184,9 +3204,13 @@ export class FirstPersonFishingScene extends Phaser.Scene {
         if (r.releasedOld > 0) parts.push(`쿨러의 ${r.releasedOld}마리 방생`);
         this.showPostDecisionPanel(`${parts.join(' · ')}하였습니다.`, '#4af2a1', fishTexture, imgScale, school.length);
       },
-      onCancel: () => {
+      onCancel: (remaining) => {
+        // 198차 — 정리 창에서 이미 놓아준 새 고기는 결정 패널에서 빠진다
         this.coolerSwap = null;
-        this.showCatchDecisionPanel(school, extra, fishTexture);
+        this.refreshCoolerUi();
+        const left = remaining.map((i) => school[i]);
+        if (left.length === 0) { this.showPostDecisionPanel('방금 낚은 고기를 모두 방생하였습니다.', '#9fd0e4', fishTexture, imgScale, school.length); return; }
+        this.showCatchDecisionPanel(left, left.length === school.length ? extra : [], fishTexture);
       },
     });
   }

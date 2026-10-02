@@ -60,11 +60,17 @@ import { TideTablePanel, CalendarPanel, FishRecordPanel } from '../ui/HomeInfoPa
 import { AquariumPanel, tankFishTexture } from '../ui/AquariumPanel.js';
 import { buildRadioBroadcast } from '../data/RadioBroadcast.js';
 import { resolveFishTexture } from '../data/FishTextures.js';
+import { fieldReserved, overlapsReserved, assertClear } from '../ui/ScreenReserve.js';
 import {
   markPrologue, syncPrologue, prologueKeyAllowed, prologueRunning, prologueStepDone, PROLOGUE_PHOTO_ID,
 } from '../store/Prologue.js';
 
-const OX = (GAME_WIDTH - ROOM_W * IT) / 2;
+/**
+ * 방 가로 위치 — 화면 가운데에서 12px 오른쪽(198차). 가운데 그대로면 방 액자 왼쪽(328)이 필드 HUD 상태 창
+ * 오른쪽 끝(336)을 8px 덮었다(겹침 감사). 오른쪽은 「지금 할 일」(1033~)까지 여유가 있다.
+ */
+const ROOM_SHIFT_X = 12;
+const OX = (GAME_WIDTH - ROOM_W * IT) / 2 + ROOM_SHIFT_X;
 const OY = (GAME_HEIGHT - ROOM_H * IT) / 2 + 10;
 const FONT = '"Noto Sans KR", sans-serif';
 
@@ -961,7 +967,9 @@ export class HomeInteriorScene extends Phaser.Scene {
 
   private buildDecorButton(): void {
     const w = 150, h = 34;
-    const x = GAME_WIDTH - 16 - w, y = OY - 20;
+    // 198차 — 화면 오른쪽 끝(GAME_WIDTH 기준)이 아니라 **방 액자 오른쪽 위**에 앵커한다.
+    //   구 좌표는 필드 HUD의 미니맵 아래쪽을 덮었다(사용자 지적). 놓은 뒤 HUD 예약 영역과 겹치는지 확인한다.
+    const { x, y } = this.decorButtonSpot(w, h);
     const c = this.add.container(x, y).setDepth(70);
     const bg = this.add.graphics();
     const paint = (hover: boolean): void => {
@@ -977,6 +985,19 @@ export class HomeInteriorScene extends Phaser.Scene {
     hit.on('pointerdown', () => this.openDecor());
     c.add([bg, t, hit]);
     this.decorBtn = c;
+  }
+
+  /** [가구 배치] 자리 — 방 액자 오른쪽 위 바깥 → 막히면 왼쪽 위 바깥 (HUD 예약 영역을 피한다) */
+  private decorButtonSpot(w: number, h: number): { x: number; y: number } {
+    const reserved = fieldReserved(this);
+    const frameTop = OY - 20, frameRight = OX + ROOM_W * IT + 20, frameLeft = OX - 20;
+    const cands = [
+      new Phaser.Geom.Rectangle(frameRight - w, frameTop - 8 - h, w, h),
+      new Phaser.Geom.Rectangle(frameLeft, frameTop - 8 - h, w, h),
+    ];
+    const pick = cands.find((r) => overlapsReserved(r, reserved).length === 0) ?? cands[0];
+    assertClear('home.decorButton', pick, reserved);
+    return { x: pick.x, y: pick.y };
   }
 
   /** 배치 모드 — 서 있을 때 · 창이 다 닫혔을 때만 */
@@ -1553,7 +1574,8 @@ export class HomeInteriorScene extends Phaser.Scene {
   private flashMsg?: Phaser.GameObjects.Text;
   private flash(msg: string): void {
     this.flashMsg?.destroy();
-    this.flashMsg = this.add.text(GAME_WIDTH / 2, OY + ROOM_H * IT + 26, msg, {
+    // 198차 — 방 아래 바깥(구 y = 방 밑변 + 26)은 필드 HUD 퀵슬롯 띠 윗변을 덮었다 → 방 안 바닥 아래쪽(현관 위)
+    this.flashMsg = this.add.text(OX + (ROOM_W * IT) / 2, OY + ROOM_H * IT - 44, msg, {
       fontFamily: FONT, fontSize: '13px', color: '#7fe6b0', fontStyle: 'bold',
       backgroundColor: '#0a1628dd', padding: { x: 10, y: 5 }, align: 'center',
     }).setOrigin(0.5).setDepth(120);

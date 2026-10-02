@@ -108,6 +108,14 @@ dev 전용 문자열(순간이동 로그·맵 편집기·손질 dev 버튼)은 *
 
 ## 6. 함정·불변조건
 
+### [198차] 화면 고정 UI는 화면 끝 상수로 놓지 않는다 — HUD 예약 영역을 피한다
+
+- 집 안 [가구 배치]가 `GAME_WIDTH - 16 - w`로 놓여 **필드 HUD 미니맵 아래쪽을 덮었다**(사용자 지적). 배치 트레이는 미니맵·「지금 할 일」을
+  통째로 덮었고, 방 액자는 상태 창 오른쪽 끝을 8px 덮었고, 월드맵 개발 도구 단추는 범례 제목을 덮었다.
+- 집 안처럼 필드 위에 `launch`된 씬은 필드 HUD가 **그대로 보인다**(일시정지 씬도 그린다). `ui/ScreenReserve.fieldReserved`로 HUD의
+  현재 사각형(끌어 옮긴 위치 포함)을 받아 피한다. HUD에 상시 요소를 더하면 `RegionHud.occupiedRects()`에 등록한다.
+- 검수 = `tools/ui_overlap_audit.js`(부분 겹침 0) + 스크린샷. Graphics만으로 된 판은 경계가 없어 감사가 못 본다.
+
 ### [197차] 데이터 없는 `scene.launch(key)`/`start(key)`는 지난번 데이터를 다시 넘긴다
 
 - Phaser `Systems.start(data)`는 `if (data) settings.data = data` — 빈 호출이면 **옛 `settings.data`가 그대로 `init`에 들어간다**.

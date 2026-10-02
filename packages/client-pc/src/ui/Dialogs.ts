@@ -15,7 +15,11 @@ import { DraggablePanel } from './DraggablePanel.js';
 // 확인 다이얼로그 (예 / 아니오)
 // ═══════════════════════════════════════════════════
 export class ConfirmDialog extends DraggablePanel {
-  constructor(scene: Phaser.Scene, message: string, onYes: () => void, onCancel: () => void) {
+  constructor(
+    scene: Phaser.Scene, message: string, onYes: () => void, onCancel: () => void,
+    /** 198차 — 버튼 글자를 행동으로(예: 「놓아주기」/「취소」). 생략하면 예/아니오 */
+    labels?: { yes?: string; no?: string; danger?: boolean },
+  ) {
     const w = 400;
     const lineCount = message.split('\n').length;
     const h = 130 + lineCount * 20;
@@ -31,8 +35,9 @@ export class ConfirmDialog extends DraggablePanel {
     this.add(msg);
 
     const btnY = h - 34;
-    this.addButton(w / 2 - 90, btnY, '아니오', 0x1f3045, 0x4a6a8a, '#8faabf', onCancel);
-    this.addButton(w / 2 + 90, btnY, '예', 0x0d4a2e, 0x4af2a1, '#4af2a1', onYes);
+    this.addButton(w / 2 - 90, btnY, labels?.no ?? '아니오', 0x1f3045, 0x4a6a8a, '#8faabf', onCancel);
+    if (labels?.danger) this.addButton(w / 2 + 90, btnY, labels.yes ?? '예', 0x4a1a14, 0xff7a6a, '#ffb0a4', onYes);
+    else this.addButton(w / 2 + 90, btnY, labels?.yes ?? '예', 0x0d4a2e, 0x4af2a1, '#4af2a1', onYes);
 
     this.applyFix();
   }

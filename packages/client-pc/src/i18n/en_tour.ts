@@ -56,6 +56,17 @@ export const EN_TOUR: Record<string, string> = {
     'Right-click an item to see what you can do with it — "Details", "Eat", "Equip" and so on. Try right-clicking.',
   '손에 드는 도구는 「오른손 착용」 · 「왼손 착용」으로 바로 들 수 있다. 하나를 골라 착용해 보자.':
     'Hand tools can be held right away with "Equip (right hand)" or "Equip (left hand)". Pick one and equip it.',
+  // 198차 — 쿨러 정리 창 재작성(고르기 → 놓아주기 확인 → 빈 칸에 넣기)
+  '쿨러가 가득 찼을 때 여는 정리 창입니다. 맨 위가 방금 낚은 고기, 아래가 쿨러에 들어 있던 고기예요.':
+    'This window opens when your cooler is full. The top row is what you just caught; below are the fish already in the cooler.',
+  '고기를 누르면 고른 상태가 됩니다. 여러 마리를 함께 고를 수 있고, 다시 누르면 풀립니다.':
+    'Click a fish to select it. You can select several at once — click again to deselect.',
+  '고른 고기는 「놓아주기」로 놓아줍니다. 한 번 더 묻고, 놓아준 자리는 빈 칸이 됩니다.':
+    'Release sends the selected fish back. You will be asked once more, and their slots become empty.',
+  '방금 낚은 고기를 고른 채 빈 칸을 누르면 그 자리에 들어갑니다. 넣을 고기와 빈 자리 수는 여기서 봅니다.':
+    'Select a fish you just caught, then click an empty slot to put it there. The count of fish to store and free slots is shown here.',
+  '「넣고 마치기」로 확정합니다. 자리가 모자라면 남는 고기를 놓아줄지 한 번 더 묻습니다.':
+    'Store & finish confirms it. If there is not enough room, you will be asked whether to release the leftovers.',
   // 196차 — 쿨러 정리 창
   '쿨러가 가득 찼을 때 여는 정리 창입니다. 맨 위가 방금 낚은 고기예요. 누르면 놓아줄 고기로 바뀝니다.':
     'This window opens when your cooler is full. The top row is what you just caught — click one to mark it for release.',

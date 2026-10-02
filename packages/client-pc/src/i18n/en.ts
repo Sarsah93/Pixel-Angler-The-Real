@@ -66,6 +66,9 @@ const EN_BASE: Record<string, string> = {
   // ── 공통 버튼·라벨 ──
   '돌아가기': 'Back', '해변': 'beach', '사석': 'riprap', '안벽': 'quay', '방파제 상판': 'breakwater deck', '테트라포드': 'tetrapods', '테트라포드 구멍': 'tetrapod hole', '배': 'boat',
   '쿨러 정리': 'Sort the cooler', '방금 낚은 고기': 'Just caught', '놓아줌': 'Release', '정리하고 넣기': 'Swap & store', '들어가는 만큼만 넣기': 'Store what fits',
+  // 198차 — 쿨러 정리 창 재작성 · 방생 확인
+  '방금 낚음': 'Just caught', '놓아주기': 'Release', '넣고 마치기': 'Store & finish', '놓아주고 넣기': 'Release & store',
+  '방금 낚은 고기를 모두 방생하였습니다.': 'Released everything you just caught.',
   '구멍이 좁아 뜰채를 넣을 수 없었습니다.': 'The hole was too narrow for the landing net.',
   '확인': 'OK', '취소': 'Cancel', '예': 'Yes', '아니오': 'No', '닫기': 'Close', '뒤로': 'Back', '계속하기': 'Continue',
   '저장하기': 'Save', '환경설정': 'Settings', '설정': 'Settings', '집으로 가기': 'Go Home', '타이틀 화면': 'Title Screen',
@@ -565,6 +568,16 @@ export const EN_DICT: Record<string, string> = {
  */
 type Rule = [RegExp, string | ((m: RegExpExecArray, tr: (s: string) => string) => string)];
 
+/** 198차 — 확인 창의 고기 목록(「노래미 32cm · 우럭 28cm」 줄들 · 「외 N마리」) 영문화 */
+function fishListEn(block: string, tr: (s: string) => string): string {
+  return block.split('\n').map((line) => line.split(' · ').map((it) => {
+    const fm = /^(.+) ([\d.]+)cm$/.exec(it);
+    if (fm) return `${tr(fm[1])} ${fm[2]}cm`;
+    const more = /^외 (\d+)마리$/.exec(it);
+    return more ? `+${more[1]} more` : tr(it);
+  }).join(' · ')).join('\n');
+}
+
 /** 요일 1글자(KstTime DOW) → 영문 약기 — 상태 패널 축소 단계까지 고려해 3글자 */
 const DOW_EN: Record<string, string> = {
   '일': 'Sun', '월': 'Mon', '화': 'Tue', '수': 'Wed', '목': 'Thu', '금': 'Fri', '토': 'Sat',
@@ -915,6 +928,16 @@ export const EN_RULES: Rule[] = [
       .replace(/^방금 낚은 (\d+)마리 방생$/, 'released $1 just caught')
       .replace(/^쿨러의 (\d+)마리 방생$/, 'released $1 from the cooler')).join(' · ')}.`],
   [/^(항구 편의점|식자재마트|수산물 직판장|항구 식당|방파제 카페|항구 약국|생활용품점 사이소|포구 주점) · (.+)$/, (m, tr) => `${tr(m[1])} · ${tr(m[2])}`],
+  // 198차 — 쿨러 정리 창 · 방생 확인 창(고기 목록은 「이름 길이cm」를 ' · '로 잇고 줄을 바꾼다)
+  [/^놓아주기 \((\d+)\)$/, 'Release ($1)'],
+  [/^고른 고기 (\d+)마리를 놓아줄까요\?\n([\s\S]*)\n놓아준 고기는 되돌릴 수 없습니다\.$/,
+    (m, tr) => `Release the ${m[1]} selected fish?\n${fishListEn(m[2], tr)}\nReleased fish can't be taken back.`],
+  [/^빈 자리가 모자랍니다\.\n들어가는 만큼만 넣고 (\d+)마리는 놓아줄까요\?\n([\s\S]*)$/,
+    (m, tr) => `Not enough room.\nStore what fits and release ${m[1]}?\n${fishListEn(m[2], tr)}`],
+  [/^(\d+)마리를 모두 방생할까요\?\n([\s\S]*)\n방생한 고기는 되돌릴 수 없습니다\.$/,
+    (m, tr) => `Release all ${m[1]} fish?\n${fishListEn(m[2], tr)}\nReleased fish can't be taken back.`],
+  [/^이 고기를 방생할까요\?\n([\s\S]*)\n방생한 고기는 되돌릴 수 없습니다\.$/,
+    (m, tr) => `Release this fish?\n${fishListEn(m[1], tr)}\nReleased fish can't be taken back.`],
   // 195차 — 무리 걸림(한 번에 두세 마리) 보관·방생
   [/^쿨러에 (\d+)마리 보관하였습니다\.$/, 'Stored $1 fish in the cooler.'],
   [/^인벤토리에 (\d+)마리 보관하였습니다\. \(활어 10분부터 신선도 진행\)$/, 'Stored $1 fish in inventory. (freshness starts after 10 min live)'],

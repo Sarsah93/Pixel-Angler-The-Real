@@ -64,6 +64,9 @@ const MAP_DISPLAY_Y = 60;    // 지도 좌상단 Y
 const MAP_DISPLAY_W = 580;   // 지도 표시 너비
 const MAP_DISPLAY_H = 580;   // 지도 표시 높이
 
+/** 범례 판 윗변 y(198차 — 개발 도구 단추가 이 위에 선다) */
+const LEGEND_TOP_Y = GAME_HEIGHT - 130 - 24;
+
 export class WorldMapScene extends Phaser.Scene {
   // ── 상태 머신 ────────────────────────────────────────
   private viewState: ViewState = 'region';
@@ -1453,11 +1456,12 @@ export class WorldMapScene extends Phaser.Scene {
     const lx = GAME_WIDTH - 140;
     const ly = GAME_HEIGHT - 130;
 
+    // 198차 — 제목이 판 윗변에 걸쳐 있었다(겹침 감사) → 판을 제목 띠(14px)만큼 위로 늘린다
     const bgG = this.add.graphics();
     bgG.fillStyle(0x06111e, 0.88);
-    bgG.fillRoundedRect(lx - 10, ly - 10, 132, LEGEND_ITEMS.length * 22 + 24, 4);
+    bgG.fillRoundedRect(lx - 10, LEGEND_TOP_Y, 132, LEGEND_ITEMS.length * 22 + 38, 4);
     bgG.lineStyle(1, 0x1f3d5a, 0.7);
-    bgG.strokeRoundedRect(lx - 10, ly - 10, 132, LEGEND_ITEMS.length * 22 + 24, 4);
+    bgG.strokeRoundedRect(lx - 10, LEGEND_TOP_Y, 132, LEGEND_ITEMS.length * 22 + 38, 4);
 
     const legendTitle = this.add.text(lx + 50, ly - 4, '낚시 유형', {
       fontFamily: '"Noto Sans KR", sans-serif',
@@ -1616,11 +1620,12 @@ export class WorldMapScene extends Phaser.Scene {
   private createDevToolToggleButton(): void {
     const bx = GAME_WIDTH - 150;
     const bw = 132;
-    const by = GAME_HEIGHT - 170;
     const bh = 32;
+    // 198차 — 고정 y(GAME_HEIGHT − 170)는 범례 판·제목을 덮었다(겹침 감사) → 범례 윗변 위 8px
+    const by = LEGEND_TOP_Y - 8 - bh;
 
     this._devToolBtnBg = this.add.graphics().setDepth(250);
-    this._devToolBtnText = this.add.text(bx + bw / 2, by + bh / 2, '🛠️ Dev Tool (P)', {
+    this._devToolBtnText = this.add.text(bx + bw / 2, by + bh / 2, 'Dev Tool (P)', {
       fontFamily: '"Noto Sans KR", sans-serif',
       fontSize: '11px',
       color: '#a0b8c8',
@@ -1655,8 +1660,8 @@ export class WorldMapScene extends Phaser.Scene {
 
     const bx = GAME_WIDTH - 150;
     const bw = 132;
-    const by = GAME_HEIGHT - 170;
     const bh = 32;
+    const by = LEGEND_TOP_Y - 8 - bh;   // 198차 — 생성부와 같은 자리(범례 판 위)
 
     if (this._pinEditMode) {
       // 활성화 상태 (오렌지 배너 테마색)
@@ -1665,7 +1670,7 @@ export class WorldMapScene extends Phaser.Scene {
       this._devToolBtnBg.lineStyle(1.5, 0xffcc44, 1);
       this._devToolBtnBg.strokeRoundedRect(bx, by, bw, bh, 4);
       this._devToolBtnText.setColor('#ffffff');
-      this._devToolBtnText.setText('🛠️ Dev Tool ON');
+      this._devToolBtnText.setText('Dev Tool ON');
     } else {
       // 비활성화 상태 (일반 버튼)
       const bgColor = hover ? 0x162a40 : 0x0f253d;
@@ -1677,7 +1682,7 @@ export class WorldMapScene extends Phaser.Scene {
       this._devToolBtnBg.lineStyle(1.5, strokeColor, 0.8);
       this._devToolBtnBg.strokeRoundedRect(bx, by, bw, bh, 4);
       this._devToolBtnText.setColor(textColor);
-      this._devToolBtnText.setText('🛠️ Dev Tool (P)');
+      this._devToolBtnText.setText('Dev Tool (P)');
     }
   }
 }

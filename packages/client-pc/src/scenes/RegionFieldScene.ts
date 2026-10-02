@@ -138,6 +138,7 @@ import { registerNames } from '../i18n/I18n.js';
 import { ExternalDataStore } from '../store/ExternalDataStore.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { RegionHud } from '../ui/RegionHud.js';
+import type { ReservedRect } from '../ui/ScreenReserve.js';
 import { StoryCinematicPanel, type CineActor, type CineDir, type CineScript } from '../ui/StoryCinematicPanel.js';
 import { CINE_M1_ICE_DROP, CINE_M1_OKSEON_STALL, CINE_M1_YEONGGEUMJEONG, CINE_N186_LEDGER, CINE_N186_REPORT, CINE_N186_WATCH } from '../data/StoryCinematics.js';
 import { FieldEventManager } from '../ui/FieldEventManager.js';
@@ -222,6 +223,9 @@ const LEGACY_GRAIN_SEAM: Record<string, readonly number[]> = {
   f: [0x7e6a46, 0x2f5a30, 0x376a36],
   '.': [0xbfae82, 0xd2c39a, 0xb2a077],
 };
+
+/** 우하단 도움말 단추 한 변(px) — 화면 예약(198차)과 그리기가 같은 값을 쓴다 */
+const HELP_BTN = 64;
 
 export class RegionFieldScene extends Phaser.Scene {
   private region!: string;
@@ -3577,6 +3581,20 @@ export class RegionFieldScene extends Phaser.Scene {
   // ═══════════════════════════════════════════════════
   // HUD
   // ═══════════════════════════════════════════════════
+  /**
+   * 198차 — 화면 예약 영역(HUD 창 · 도움말 단추 · 지역 명패). 이 씬 위에 그려지는 상시 단추·트레이
+   * (집 안 [가구 배치] 등)는 `ui/ScreenReserve`로 이 영역을 피한다.
+   */
+  screenReserved(): ReservedRect[] {
+    const out: ReservedRect[] = [...(this.hud?.occupiedRects() ?? [])];
+    if (this.titleTxt) {
+      const plateW = Math.max(120, this.titleTxt.width + 56);
+      out.push({ name: 'field.title', rect: new Phaser.Geom.Rectangle(GAME_WIDTH / 2 - plateW / 2, 10, plateW, 32) });
+    }
+    out.push({ name: 'field.help', rect: new Phaser.Geom.Rectangle(GAME_WIDTH - 20 - HELP_BTN, GAME_HEIGHT - 16 - HELP_BTN, HELP_BTN, HELP_BTN) });
+    return out;
+  }
+
   /** 지역 타이틀 명패 — 텍스트 실측 폭 기준 (생성 시 + 로케일 전환 시) */
   private layoutTitlePlate(): void {
     if (!this.titleTxt || !this.titlePlateG) return;
@@ -3601,7 +3619,7 @@ export class RegionFieldScene extends Phaser.Scene {
 
     // 단축키 버튼 (우하단, 116차) — 구 조작 힌트 바 대체. 모서리 둥근 정사각형, 라벨은 한글만(117차).
     //   클릭 = 도움말 라이브러리 "조작·단축키 › 필드" 토픽.
-    const SB = 64;
+    const SB = HELP_BTN;
     const sbx = GAME_WIDTH - 20 - SB, sby = GAME_HEIGHT - 16 - SB;
     const sbG = this.add.graphics().setScrollFactor(0).setDepth(100);
     paintHudPanel(sbG, sbx, sby, SB, SB, { alpha: 0.9, studs: false, shadow: true });
