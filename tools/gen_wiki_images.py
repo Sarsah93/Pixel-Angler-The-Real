@@ -25,6 +25,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PUBLIC = os.path.join(ROOT, 'packages/client-pc/public')
 BOOT = os.path.join(ROOT, 'packages/client-pc/src/scenes/BootScene.ts')
 ICON_ART = os.path.join(ROOT, 'packages/client-pc/src/data/PixelIconArt.ts')
+# 197차 — 스킬 아이콘(16x16 · 같은 형식). 위키 「스킬」 탭 카드에 쓴다 → `sk_<id>.png` · manifest 키 `sk:<id>`
+SKILL_ART = os.path.join(ROOT, 'packages/client-pc/src/data/SkillIconArt.ts')
 
 # 위키에 싣지 않는 계열 (캐릭터 시트·타일셋·가이드 시트 등 — 카드에 쓸 그림이 아니다)
 SKIP_PREFIX = ('man-', 'girl-', 'ts_', 'tile_', 'help_', 'guide_', 'kn_', 'smx_', 'sg_')
@@ -43,10 +45,10 @@ def parse_boot_map() -> dict:
     return out
 
 
-def parse_icon_art() -> dict:
-    """PixelIconArt.ts의 {w,h,pal,rows}를 파싱한다 (자동 생성 파일 — 형식 고정)."""
-    src = open(ICON_ART, encoding='utf-8').read()
-    body = src[src.index('PIXEL_ICON_ART'):]
+def parse_icon_art(path: str = ICON_ART, marker: str = 'PIXEL_ICON_ART') -> dict:
+    """PixelIconArt.ts · SkillIconArt.ts의 {w,h,pal,rows}를 파싱한다 (자동 생성 파일 — 형식 고정)."""
+    src = open(path, encoding='utf-8').read()
+    body = src[src.index(marker):]
     out = {}
     for m in re.finditer(
         r"\n  ([A-Za-z_][A-Za-z0-9_]*):\s*\{\s*\n\s*w:\s*(\d+),\s*h:\s*(\d+),\s*\n"
@@ -121,6 +123,12 @@ def main() -> int:
         name = f'px_{key}.png'
         total += save(img, os.path.join(args.out, name))
         manifest[f'px:{key}'] = {'f': name, 'w': img.width, 'h': img.height}
+
+    for key, art in sorted(parse_icon_art(SKILL_ART, 'SKILL_ICON_ART').items()):
+        img = render_icon(art, args.icon_scale)
+        name = f'sk_{key}.png'
+        total += save(img, os.path.join(args.out, name))
+        manifest[f'sk:{key}'] = {'f': name, 'w': img.width, 'h': img.height}
 
     with open(os.path.join(args.out, 'manifest.json'), 'w', encoding='utf-8') as fh:
         json.dump(manifest, fh, ensure_ascii=False)

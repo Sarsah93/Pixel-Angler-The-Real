@@ -151,6 +151,8 @@ export class SettingsScene extends Phaser.Scene {
 
   init(data?: { returnScene?: string }): void {
     this.returnScene = data?.returnScene ?? 'MainMenuScene';
+    // 197차 — 빈 launch가 지난번 returnScene을 다시 쓰지 않게 읽은 뒤 비운다(Phaser는 데이터 없는 launch에 옛 데이터를 넘긴다)
+    this.sys.settings.data = {};
     this.settings = loadSettings();
     this.currentTab = 'hotkey';
     this.tabBgs = {};

@@ -189,6 +189,9 @@ STORY_ARCS ────┘     traineeDay (D-180)                └─ RegionHu
 - ⚠ 목표 번호에 기대는 코드는 **placeKey로 찾는다** — 도착 연출(구 `obj[0]`·`obj[1]`) · 장면 손글 키(`M1-01#16`) · 나레이션 `obj` 배열(17칸).
 - ⚠ 구세이브(3목표)는 `StoryStore.remapPrologue`가 앞 14개를 완료로 채운다. 목표를 더 넣거나 순서를 바꾸면 이 재배치도 고친다.
 - 새 게임은 `intro.monologue`가 없을 때 집 안 기상(`HomeInteriorScene` `wake`)으로 들어간다 — 하네스는 이 플래그를 미리 켠다.
+- 기상은 `prologueStepDone('box')` 전까지만이다(197) — 빈 `launch`가 옛 `{ wake: true }`를 다시 넘겨 집 재입장마다 혼잣말이 반복됐다.
+- 말풍선 코치(`coachStage`)는 **지역을 가린다**(197) — `arrive` 뒤 `buy`/`sell`이 남은 채 홈타운에 오면 속초 문구 대신
+  「속초 직판장에서 할 일이 남았다」(`back_to_sokcho`) 한 줄만 낸다. 새 단계를 넣을 때도 그 지역에서 할 수 있는 말인지 본다.
 
 ### 25. 장소 좌표는 **걷기 가능한 칸**인지 검사하고 넣는다 (178차)
 

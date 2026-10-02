@@ -45,14 +45,15 @@
   맵 확정(육안)·OSM land 14개·조도 재설계·외옹치/대포항 bbox 확장은 사용자 동반 병행 트랙.
 - **재개 지점**: 사용자 실검증(172·173차 타일 조화 규칙 + 178·183~186차 신설분) — 부족하면 규칙 보강,
   괜찮으면 규칙을 켠 채로 새 맵 확장. 차수별 잔여는 PLAN §2-3.
+- **197차**: **속초 다녀온 뒤 튜토리얼 반복** — Phaser 빈 `launch(key)`는 **지난번 데이터를 다시 넘긴다**(새 게임 `{ wake: true }` 재사용 →
+  집 재입장마다 기상 혼잣말). ⚠ `init(data)`로 분기하는 씬은 읽은 뒤 `sys.settings.data = {}` + 부르는 쪽 데이터 명시. 홈타운 코치는 속초 문구 대신 「다시 속초로」.
+  위키 「스킬」 탭 추가. 상세 `docs/wiki/03-WORKLOG/2026-10-02-197-prologue-repeat-home-skills-wiki.md`.
 - **196차**: **들어뽕 · 뜰채 · 쿨러 정리 · 시세 하락** — 랜딩 바늘 빠짐(`LandingDrop` · 발판 높이·무게·40cm↑ · 뜰채 0 · 최대 한 마리) ·
   쿨러 정리 창 · 판매처별 시세 하락(`MarketStore` · 판 수 · 반감기 6h) + 인벤 칸 우상단 화살표 · 카드 채비 열기/전갱이 3~7단 · 루어 무리 0 · 타이라바 ¼.
   ⚠ 상점 매입가는 `MarketStore.quote`를 거친다(위판·상세보기는 `getSellPrice` 그대로). 상세 `docs/wiki/03-WORKLOG/2026-10-02-196-landing-drop-cooler-swap-market.md`.
 - **195차**: **무리 걸림** — 열기·전갱이 제철 + 어종 활성도(`speciesBiteReadiness`) 50%↑ → 두 마리 10% · 세 마리 2.5%(바늘 수만큼) ·
   파이트 ×1.2/×1.5(숨김) · 결정 패널 노란 `x2`/`x3` · 무리 단위 원자 보관. ⚠ 파이트 물리에 `f.powerFactor`/`weightG`를 쓰면 `schoolMult`를 곱한다.
   상세 `docs/wiki/03-WORKLOG/2026-10-02-195-school-hookup.md`.
-- **194차**: 타이라바 헤드 **40~200g 8종**(그림 1장 · `ItemIcon.iconWeightScale` 지름 ∝ 무게^(1/3)) ·
-  「한 바늘에 두 미끼」 +1%/바늘 · 최대 +2%(`DOUBLE_BAIT_MAX`) · 카드 채비 가중 합계 +10% 상한(`CARD_RIG_BITE_BONUS_MAX`). 상세 `docs/wiki/03-WORKLOG/2026-10-02-194-tairaba-head-lineup-double-bait-rebalance.md`.
 - **상시 방침**:
   - 지형 고도(DEM)는 **낚시 확립 후** — B(해안 변형) 우선, 경사로 통행을 막지 않는다
     (`docs/archive/specs/RASTER_UPLIFT_AMENDMENT.md` §4).
@@ -109,7 +110,7 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
 
 - 지역 타일맵 추가/재생성 → **스킬 `add-region`** (`py tools/build_region_maps.py <region>` — 파이프라인·타일 문자·맵 그래프·함정 일체).
 - 차기 과제: 낚시점 전용 상점(루어 판매), 어탐 레이더(SeabedProfile 조회), 타 지역(여수 등) 확장, POI 세분화, 사운드 이펙트 (IMPLEMENTATION_PLAN §6-5l 차기 참고).
-- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages — **최근 33차 배포 2026-10-02 = 196차(들어뽕·쿨러 정리·시세 하락)까지 포함**. 재배포 절차는 **스킬 `deploy-ghpages`**).
+- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages — **최근 34차 배포 2026-10-02 = 197차(튜토리얼 반복 버그)까지 포함**. 재배포 절차는 **스킬 `deploy-ghpages`**).
   ⚠ **원격 컨테이너에서는 dev 서버(5173)가 사용자 브라우저에 닿지 않는다** — 실플레이 테스트 요청은 이 배포로 답한다.
 
 ## 작업 이어받기 절차

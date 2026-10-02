@@ -108,6 +108,13 @@ dev 전용 문자열(순간이동 로그·맵 편집기·손질 dev 버튼)은 *
 
 ## 6. 함정·불변조건
 
+### [197차] 데이터 없는 `scene.launch(key)`/`start(key)`는 지난번 데이터를 다시 넘긴다
+
+- Phaser `Systems.start(data)`는 `if (data) settings.data = data` — 빈 호출이면 **옛 `settings.data`가 그대로 `init`에 들어간다**.
+  새 게임의 `{ wake: true }`가 남아 속초에 다녀와 집에 들어올 때마다 기상 혼잣말이 다시 나왔다(QA).
+- `init(data)`로 분기하는 씬은 **읽은 뒤 `this.sys.settings.data = {}`로 비우고**, 부르는 쪽도 데이터를 명시한다
+  (집 `{ wake: false }` · 설정 `{ returnScene: 'MainMenuScene' }`). 현재 비우는 씬: 집 · 설정 · 메인 메뉴.
+
 ### [191차] 씬 인스턴스는 재사용된다 — 지연 생성 객체 참조는 create/init에서 비운다
 
 - `if (!this.x) this.x = this.add.text(…)` 꼴의 필드를 create가 비우지 않으면, 두 번째 세대에서 **파괴된 Text**를 갱신해

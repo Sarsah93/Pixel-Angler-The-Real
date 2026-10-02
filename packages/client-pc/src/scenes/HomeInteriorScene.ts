@@ -235,7 +235,12 @@ export class HomeInteriorScene extends Phaser.Scene {
   }
 
   init(data?: { wake?: boolean }): void {
-    this.wake = !!data?.wake;
+    // ⚠ 197차 — Phaser는 `launch(key)`를 데이터 없이 부르면 **지난번 데이터를 그대로 다시 넘긴다**
+    //   (`Systems.start`: `if (data) settings.data = data`). 새 게임의 `{ wake: true }`가 남아,
+    //   속초에 다녀와 집에 들어올 때마다 기상 혼잣말이 다시 나왔다(QA 리포트). 읽은 뒤 비우고,
+    //   상자를 이미 열었으면(프롤로그 첫 단계 통과) 기상은 다시 하지 않는다.
+    this.wake = !!data?.wake && !prologueStepDone('box');
+    this.sys.settings.data = {};
   }
 
   create(): void {

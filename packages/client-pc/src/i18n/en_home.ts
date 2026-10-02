@@ -188,6 +188,7 @@ export const EN_HOME: Record<string, string> = {
   '마당의 우물 앞에서 [F]를 눌러 물을 한 모금 마시자.': 'Press [F] at the well in the yard to take a drink.',
   '물을 마시니 정신이 든다. 단축키 [S]로 상태 창을 열어 몸 상태를 살펴보자.': 'The water wakes me up. Press [S] to open the status window and check how I am doing.',
   '이제 버스 정류장을 찾자. 단축키 [M]으로 지도를 펼쳐 보자.': 'Now to find the bus stop. Press [M] to open the map.',
+  '속초 직판장에서 할 일이 남았다. 버스 정류장 앞에서 [F]를 눌러 다시 속초로 가자.': 'There is still something to do at the Sokcho fish market. Press [F] at the bus stop to head back to Sokcho.',
   '버스 정류장 앞에서 [F]를 눌러 막차에 오르자. 전국 지도에서 속초를 고르면 된다.': 'Press [F] at the bus stop to board the last bus. Pick Sokcho on the national map.',
   '「판매하기」로 바꿔 얼린 오징어를 팔아 보자. 노잣돈에 보탬이 된다.': 'Switch to "Sell" and sell the frozen squid. It will help with travel money.',
   '직판장 앞에서 [F]를 눌러, 얼려 온 오징어를 팔아 보자.': 'Press [F] at the fish market and sell the squid you brought.',

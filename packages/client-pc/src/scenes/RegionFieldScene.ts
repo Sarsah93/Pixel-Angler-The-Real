@@ -4036,6 +4036,10 @@ export class RegionFieldScene extends Phaser.Scene {
     if (!prologueStepDone('arrive')) {
       return home ? this.coachDock('arrive', '버스 정류장 앞에서 [F]를 눌러 막차에 오르자. 전국 지도에서 속초를 고르면 된다.') : null;
     }
+    // 197차 — 속초에 다녀와 집(홈타운)에 돌아오면 「속초에 왔다」 말풍선이 다시 떴다(QA). 집에서는 갈 곳만 짚는다
+    if (home && (!prologueStepDone('buy') || !prologueStepDone('sell'))) {
+      return this.coachDock('back_to_sokcho', '속초 직판장에서 할 일이 남았다. 버스 정류장 앞에서 [F]를 눌러 다시 속초로 가자.');
+    }
     if (!prologueStepDone('buy')) {
       const left = PROLOGUE_BUY_KINDS.filter((k) => !GameState.getFlag(`prologue.buy.${k}`));
       const ko: Record<string, string> = { line: '원줄', hook: '바늘', sinker: '봉돌', float: '찌', bait: '미끼' };
@@ -6037,7 +6041,8 @@ export class RegionFieldScene extends Phaser.Scene {
     this.fadeOutThen(() => {
       MultiplayerClient.setActivity('indoor');   // 145차
       this.scene.pause('RegionFieldScene');
-      this.scene.launch('HomeInteriorScene');
+      // 197차 — 데이터를 꼭 넘긴다: 빈 launch는 새 게임 때의 `{ wake: true }`를 다시 쓴다(Phaser 동작)
+      this.scene.launch('HomeInteriorScene', { wake: false });
     }, 250, false);
   }
 

@@ -104,6 +104,8 @@ export class MainMenuScene extends Phaser.Scene {
 
   init(data?: { gotoSlots?: boolean }): void {
     this.gotoSlots = data?.gotoSlots === true;
+    // 197차 — 빈 start가 로비의 `{ gotoSlots: true }`를 다시 쓰지 않게 읽은 뒤 비운다
+    this.sys.settings.data = {};
   }
 
   create(): void {
@@ -690,7 +692,7 @@ export class MainMenuScene extends Phaser.Scene {
   private openSettings(): void {
     this.fadeOutThen(200, () => {
       this.scene.pause('MainMenuScene');
-      this.scene.launch('SettingsScene');
+      this.scene.launch('SettingsScene', { returnScene: 'MainMenuScene' });
     });
     this.onReturnFadeIn();
   }

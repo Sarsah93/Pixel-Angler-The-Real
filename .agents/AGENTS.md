@@ -453,7 +453,14 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-10-02 196차) — 들어뽕 · 뜰채 · 쿨러 정리 · 판매처별 시세 하락 · 카드 채비 라인업**
+**최근 변경 (2026-10-02 197차) — 속초 다녀온 뒤 튜토리얼 반복 버그 · 위키 「스킬」 탭**
+
+- 원인: Phaser 빈 `launch(key)`가 지난 `settings.data`(새 게임 `{ wake: true }`)를 다시 넘겨 집 재입장마다 기상 혼잣말 반복.
+- 수정: 집·설정·메인 메뉴 `init`에서 읽은 뒤 비움 + 부르는 쪽 데이터 명시 · 홈타운 코치는 속초 문구 대신 「다시 속초로」 한 줄.
+- 위키 「스킬」 탭(분야 7 · 88 + 숨은 시너지 5 · 아이콘 93장). 함정은 `ui-framework.md` §6.
+  상세: [197차 워크로그](../docs/wiki/03-WORKLOG/2026-10-02-197-prologue-repeat-home-skills-wiki.md).
+
+**이전 변경 (2026-10-02 196차) — 들어뽕 · 뜰채 · 쿨러 정리 · 판매처별 시세 하락 · 카드 채비 라인업**
 
 - 랜딩 바늘 빠짐(core `LandingDrop` — 0.5/0.5/1% · 전갱이 +1%p · 최대 한 마리 · 발판 높이×무게 · 40cm↑) · 뜰채(손 도구) = 0.
 - 쿨러 정리 창(`ui/CoolerSwapPanel`) · 판매처별 시세 하락(core `MarketSaturation` · `store/MarketStore` · 세이브 `market`) + 화살표 5단계.
@@ -465,13 +472,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - 제철(`peakSeasonMonths`) + 어종 활성도(`speciesBiteReadiness` ≥ 0.5) → 두 마리 10% · 세 마리 2.5% — 바늘 수만큼(core `SchoolHookup`).
 - 파이트 ×1.2/×1.5(힘·무게·피로 — 숨김) · 결정 패널 노란 `x2`/`x3` · 보관·방생은 무리 전체 원자 적용(쿨러 빈 칸 · `addBundle`).
   상세: [195차 워크로그](../docs/wiki/03-WORKLOG/2026-10-02-195-school-hookup.md).
-
-**이전 변경 (2026-10-02 194차) — 타이라바 헤드 무게별 라인업 · 「한 바늘에 두 미끼」 하향**
-
-- 헤드 40~200g 8종 — 그림 1장을 `ItemIcon.iconWeightScale`(지름 ∝ 무게^(1/3))로 키우고 줄인다.
-- 두 미끼 +2% → **+1%/바늘 · 최대 +2%**(`DOUBLE_BAIT_MAX`). 시너지는 원래부터 최대 +1%(확인).
-- 보강: 카드 채비는 미끼 가중 합계 **+10% 상한**(`CARD_RIG_BITE_BONUS_MAX` — 7단 만끼 15% → 10%).
-  상세: [194차 워크로그](../docs/wiki/03-WORKLOG/2026-10-02-194-tairaba-head-lineup-double-bait-rebalance.md).
 
 ---
 

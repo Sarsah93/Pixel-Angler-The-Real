@@ -484,6 +484,40 @@ const rules = [
 ];
 
 // ─────────────────────────────────────────────
+// 스킬 (197차 — 위키 「스킬」 탭). 아이콘 = SkillIconArt 16x16 → gen_wiki_images.py가 `sk:<id>`로 굽는다
+// ─────────────────────────────────────────────
+const PROF_ACTION_KO = {
+  cast: '캐스팅', landing: '랜딩', fight: '파이트', lureAction: '루어 액션', jig: '지깅', egi: '에깅', surf: '원투',
+  chum: '밑밥 투척', forage: '채집', trap: '통발', butcher: '손질', sashimi: '회 뜨기', cook: '요리', craft: '제작',
+  ride: '자전거·운전', firstaid: '응급 처치', haggle: '흥정',
+};
+const skillName = (id) => core.getSkillById(id)?.nameKo ?? id;
+const licenseName = (t) => core.getLicenseByType?.(t)?.nameKo ?? core.getLicenseByType?.(t)?.name ?? t;
+const questTitle = (id) => core.getStoryQuest?.(id)?.titleKo ?? id;
+const unlockKo = (u) => u.kind === 'level' ? `레벨 ${u.value} 이상`
+  : u.kind === 'license' ? `자격 「${licenseName(u.value)}」 보유`
+  : u.kind === 'categoryRanks' ? `${core.SKILL_CATEGORIES.find((c) => c.id === u.category)?.nameKo ?? u.category} 분야 누적 ${u.value}랭크`
+  : u.kind === 'quest' ? `이야기 「${questTitle(u.value)}」 완료` : '';
+const skillList = core.SKILL_DATABASE.map((d) => ({
+  id: d.id, cat: d.category, name: d.nameKo, desc: d.descKo, tier: d.tier, maxRank: d.maxRank, cost: d.costPerRank,
+  totalCost: d.maxRank * d.costPerRank,
+  requires: d.requires.map((r) => `${skillName(r.id)} ${r.rank}랭크`),
+  unlock: (d.unlock ?? []).map(unlockKo).filter(Boolean),
+  wired: d.wired, hidden: !!d.hidden,
+  prof: d.proficiency ? `${d.proficiency.actions.map((a) => PROF_ACTION_KO[a] ?? a).join(' · ')} 1회당 ${d.proficiency.xpPerAction} XP` : '',
+  img: imgOf(`sk:${d.id}`),
+}));
+const skills = {
+  groups: core.SKILL_CATEGORIES.map((c) => ({
+    id: c.id, label: c.nameKo, desc: c.descKo, locked: !!c.locked, lockedNote: c.lockedNoteKo ?? '',
+    count: skillList.filter((x) => x.cat === c.id).length,
+  })),
+  list: skillList,
+  totalPt: core.SKILL_TREE_TOTAL_PT,
+  prof: { levels: [...core.PROF_LEVEL_XP], scale: [...core.PROF_EFFECT_SCALE] },
+};
+
+// ─────────────────────────────────────────────
 // 업데이트 이력 — 워크로그 색인(§3.1) 표를 그대로 읽는다
 // ─────────────────────────────────────────────
 const updates = fs.readFileSync(path.join(ROOT, 'docs/wiki/03-WORKLOG/README.md'), 'utf8')
@@ -506,7 +540,7 @@ const out = {
     quests: quests.counts.quests, recipes: recipes.length, ingredients: ingredients.length,
     species: speciesList.length, crafting: core.CRAFT_BLUEPRINTS.length,
     items: items.length, images: Object.keys(manifest).length,
-    rules: rules.length, updates: updates.length,
+    rules: rules.length, updates: updates.length, skills: skillList.length,
   },
   quests,
   cooking: {
@@ -534,6 +568,7 @@ const out = {
   systems: readSystemPages(),
   rules,
   updates,
+  skills,
 };
 
 // 발행용 — 카드·상세가 실제로 참조하는 그림만 추려 둔다(아티팩트 파일 수 절약)
@@ -541,6 +576,7 @@ const used = new Set();
 for (const r of recipes) { if (r.img) used.add(r.img); for (const v of r.variants) if (v.img) used.add(v.img); }
 for (const s of speciesList) { if (s.img) used.add(s.img); for (const v of s.imgs ?? []) if (v.src) used.add(v.src); }
 for (const i of items) if (i.img) used.add(i.img);
+for (const k of skillList) if (k.img) used.add(k.img);
 if (Object.keys(manifest).length) {
   fs.writeFileSync(path.join(IMG_DIR, 'used.txt'), [...used].sort().join('\n') + '\n');
 }
