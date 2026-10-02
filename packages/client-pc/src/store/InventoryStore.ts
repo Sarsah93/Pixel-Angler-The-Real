@@ -22,6 +22,7 @@ import {
   type MpTradeItem,
   newRigTree, setRigValue, dropMissingItems, missingParts as treeMissingParts, summarize as treeSummarize, treeFromLegacy,
   type RigTreeState, type RigValue, type RigSummary, type RigPartKind, type RigSlotKind, type RigItemView,
+  FLASHER_TARGET_SPECIES,
 } from '@tra/core';
 import type { DishData, DishInstance } from '@tra/core';
 import { getFireRecipe, dishStarsAt, dishValueKrw, dishInstanceValueKrw } from '@tra/core';
@@ -1896,6 +1897,34 @@ class InventoryStoreManager {
       this.projectTree();
     }
     return name;
+  }
+
+  /**
+   * 195차 무리 걸림 — 문 바늘(미끼 칸 순번)과, 같은 입질에 함께 물릴 수 있는 **다른** 바늘 목록.
+   * 미끼를 단 바늘 + (전갱이면) 미끼 없는 반짝이 바늘. 루어처럼 미끼 칸이 없는 채비는 빈 목록이다.
+   * 입질 직후(`pickBittenBait` 뒤 · 챔질 소모 전)에 부른다.
+   */
+  schoolHookPlan(speciesId: string): { bitten: number | null; extras: number[] } {
+    let nth = -1;
+    let bitten: number | null = null;
+    const extras: number[] = [];
+    this._tree.nodes.forEach((n, i) => {
+      if (n.slot !== 'bait') return;
+      nth++;
+      if (i === this.bittenBaitIdx) { bitten = nth; return; }
+      const prev = this._tree.nodes[i - 1];
+      const flasher = prev?.slot === 'fixed' && !!prev.flasher;
+      if (n.itemId || (flasher && speciesId === FLASHER_TARGET_SPECIES)) extras.push(nth);
+    });
+    // 문 바늘이 미끼 없는 반짝이 바늘이었다면(문 칸 없음) 그 한 자리를 뺀다
+    if (bitten === null && extras.length > 0) bitten = extras.shift()!;
+    return { bitten, extras };
+  }
+
+  /** 195차 — n번째 미끼 칸에 미끼가 꿰어져 있는가(반짝이 빈 바늘은 false) */
+  baitNodeFilled(nth: number): boolean {
+    let seen = 0;
+    return this._tree.nodes.some((n) => n.slot === 'bait' && seen++ === nth && !!n.itemId);
   }
 
   /** 193차 — 카드 채비 n번째 미끼 칸 소모(1인칭 다관점 히트) */

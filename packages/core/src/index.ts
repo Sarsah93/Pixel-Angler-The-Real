@@ -435,9 +435,16 @@ export type {
   FishMasterSpec, SpawnContext, SpawnedFish,
 } from './simulation/FishSpawningOracle.js';
 export {
-  ORACLE_FISH_DB, spawnFish, classifyLayer, getBaitAffinity, candidateCount,
+  ORACLE_FISH_DB, spawnFish, classifyLayer, getBaitAffinity, candidateCount, speciesBiteShare, speciesBiteReadiness,
   standardWeightG, speciesStandardWeightG, conditionFactorFor,
 } from './simulation/FishSpawningOracle.js';
+
+// 195차 — 무리 걸림(열기·전갱이 · 제철 + 입질 확률(활성도) 50% 이상 → 두 마리 10% · 세 마리 2.5%)
+export type { SchoolCount } from './simulation/SchoolHookup.js';
+export {
+  SCHOOL_HOOKUP_SPECIES, SCHOOL_DOUBLE_CHANCE, SCHOOL_TRIPLE_CHANCE, SCHOOL_MIN_BITE_CHANCE, SCHOOL_FIGHT_MULT,
+  isPeakSeason, schoolHookupEligible, rollSchoolHookup,
+} from './simulation/SchoolHookup.js';
 
 // 크기 등급(소/중/대) + 루어 무게·주간·급심 게이트 (중대형 회유어)
 export type { SizeTier, TierRollContext } from './simulation/SizeTierRules.js';

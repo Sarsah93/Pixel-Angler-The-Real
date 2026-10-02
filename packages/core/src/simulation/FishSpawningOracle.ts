@@ -861,11 +861,37 @@ function terrainFit(spec: FishMasterSpec, inReef: boolean): number {
   return sandLike || mixed ? 1 : 0.25;
 }
 
-/** 후보 어종 + 가중치 계산 (스폰/미끼 친화도 공용) */
-function weightedCandidates(ctx: SpawnContext): { spec: FishMasterSpec; weight: number }[] {
+/**
+ * 어종 고유의 입질 조건 가중 — 수심층 · 서식 수심 · 지형 · 미끼 · 물때 · 주야간 (다른 어종·통계·채비 가중 제외).
+ * 195차 — 스폰 가중(`weightedCandidates`)과 어종 활성도(`speciesBiteReadiness`)가 같은 식을 쓴다.
+ */
+function intrinsicWeight(spec: FishMasterSpec, ctx: SpawnContext): number {
   const layer = classifyLayer(ctx.depthZ, ctx.zMax);
   const tideIdx = Math.min(14, Math.max(0, Math.round(ctx.tidePhase) - 1));
+  // 수심층 적합 — 선호층 1.0 / 인접층 0.15 / 두 층 어긋남 0.03
+  // (저서 어종이 표층에, 표층 회유어가 바닥에 나타나는 일은 사실상 없어야 한다)
+  const layerOrder: Record<SwimLayer, number> = { surface: 0, mid: 1, bottom: 2 };
+  const layerDist = Math.min(
+    ...spec.preferredLayers.map((l) => Math.abs(layerOrder[l] - layerOrder[layer])),
+  );
+  const layerW = layerDist === 0 ? 1 : layerDist === 1 ? 0.15 : 0.03;
+  // 서식 수심 범위 적합 (바닥 수심 기준 느슨하게)
+  const depthW = ctx.zMax >= spec.minDepthM * 0.5 && ctx.zMax <= spec.maxDepthM * 1.5 ? 1 : 0.2;
+  // 지형 적합
+  const terrW = terrainFit(spec, ctx.inReef);
+  // 미끼 선호도 (미정의 미끼는 기본 5)
+  const baitW = Math.max(0.03, (spec.baitPreference[ctx.baitKey] ?? 5) / 50);
+  // 물때 활성도
+  const tideW = Math.max(0.05, spec.tideActivity[tideIdx] ?? 0.5);
+  // 주야간 — 야간엔 nightBonus 그대로 (야행성 증폭 / 주행성 nb<1 억제),
+  // 주간엔 강한 야행성(nb>1.5)만 0.55로 억제하고 주행성은 1.0 유지
+  const nb = spec.nightBonus ?? 1;
+  const dayNightW = ctx.isNight ? nb : nb > 1.5 ? 0.55 : 1;
+  return layerW * depthW * terrW * baitW * tideW * dayNightW;
+}
 
+/** 후보 어종 + 가중치 계산 (스폰/미끼 친화도 공용) */
+function weightedCandidates(ctx: SpawnContext): { spec: FishMasterSpec; weight: number }[] {
   const filterSet = ctx.speciesFilter && ctx.speciesFilter.length > 0 ? new Set(ctx.speciesFilter) : null;
 
   return ORACLE_FISH_DB.map((spec) => {
@@ -874,25 +900,6 @@ function weightedCandidates(ctx: SpawnContext): { spec: FishMasterSpec; weight: 
     // 스폰 필터가 있으면 그 어종만 남긴다 (에기 spawnBinding)
     if (filterSet && !filterSet.has(spec.speciesId)) return { spec, weight: 0 };
 
-    // 수심층 적합 — 선호층 1.0 / 인접층 0.15 / 두 층 어긋남 0.03
-    // (저서 어종이 표층에, 표층 회유어가 바닥에 나타나는 일은 사실상 없어야 한다)
-    const layerOrder: Record<SwimLayer, number> = { surface: 0, mid: 1, bottom: 2 };
-    const layerDist = Math.min(
-      ...spec.preferredLayers.map((l) => Math.abs(layerOrder[l] - layerOrder[layer])),
-    );
-    const layerW = layerDist === 0 ? 1 : layerDist === 1 ? 0.15 : 0.03;
-    // 서식 수심 범위 적합 (바닥 수심 기준 느슨하게)
-    const depthW = ctx.zMax >= spec.minDepthM * 0.5 && ctx.zMax <= spec.maxDepthM * 1.5 ? 1 : 0.2;
-    // 지형 적합
-    const terrW = terrainFit(spec, ctx.inReef);
-    // 미끼 선호도 (미정의 미끼는 기본 5)
-    const baitW = Math.max(0.03, (spec.baitPreference[ctx.baitKey] ?? 5) / 50);
-    // 물때 활성도
-    const tideW = Math.max(0.05, spec.tideActivity[tideIdx] ?? 0.5);
-    // 주야간 — 야간엔 nightBonus 그대로 (야행성 증폭 / 주행성 nb<1 억제),
-    // 주간엔 강한 야행성(nb>1.5)만 0.55로 억제하고 주행성은 1.0 유지
-    const nb = spec.nightBonus ?? 1;
-    const dayNightW = ctx.isNight ? nb : nb > 1.5 ? 0.55 : 1;
     // 지역 어획량 통계 가중 (KOSIS 캐시 — 없으면 1.0)
     const catchW = ctx.catchWeightBySpecies?.[spec.speciesId] ?? 1;
     // 루어 타겟 가중 (speciesWeightBias) + 서식 성향 가중 (habitatBias)
@@ -901,8 +908,24 @@ function weightedCandidates(ctx: SpawnContext): { spec: FishMasterSpec; weight: 
     // 농어 포말/야간 예외 (surfNightBonus) — 포말지대 + 야간이면 대폭 강세
     const washW = spec.speciesId === 'sea_bass' && ctx.inWashZone && ctx.isNight ? 2.2 : 1;
 
-    return { spec, weight: layerW * depthW * terrW * baitW * tideW * dayNightW * catchW * lureBias * habW * washW };
+    return { spec, weight: intrinsicWeight(spec, ctx) * catchW * lureBias * habW * washW };
   }).filter((c) => c.weight > 0.001);
+}
+
+/**
+ * 어종 활성도(0~1) — 195차 무리 걸림의 「입질 확률」.
+ * 지금 조건에서 그 어종 고유의 입질 가중을 **그 어종이 가장 잘 무는 조건**(선호층 · 서식 수심 · 맞는 지형 ·
+ * 가장 좋아하는 미끼 · 최고 물때 · 유리한 주야간)의 가중으로 나눈 값. 다른 어종이 얼마나 많은지와는 무관하다
+ * (떼가 먹이를 쫓는 정도를 본다). 후보 몫(`speciesBiteShare`)은 어종이 수십 종이라 최대 20~25%에 머문다.
+ */
+export function speciesBiteReadiness(ctx: SpawnContext, speciesId: string): number {
+  const spec = ORACLE_FISH_DB.find((s) => s.speciesId === speciesId);
+  if (!spec) return 0;
+  const baitBest = Math.max(5, ...Object.values(spec.baitPreference).map((v) => v ?? 0));
+  const tideBest = Math.max(...spec.tideActivity);
+  const nb = spec.nightBonus ?? 1;
+  const ideal = Math.max(0.03, baitBest / 50) * Math.max(0.05, tideBest) * Math.max(1, nb);
+  return Math.min(1, intrinsicWeight(spec, ctx) / ideal);
 }
 
 /**
@@ -911,6 +934,17 @@ function weightedCandidates(ctx: SpawnContext): { spec: FishMasterSpec; weight: 
  */
 export function candidateCount(ctx: SpawnContext): number {
   return weightedCandidates(ctx).length;
+}
+
+/**
+ * 이 조건에서 입질이 오면 그것이 이 어종일 확률(0~1) — 후보 가중치 중 그 어종의 몫 (195차 무리 걸림 판정).
+ * 후보가 없으면 0.
+ */
+export function speciesBiteShare(ctx: SpawnContext, speciesId: string): number {
+  const candidates = weightedCandidates(ctx);
+  const total = candidates.reduce((a, c) => a + c.weight, 0);
+  if (total <= 0) return 0;
+  return (candidates.find((c) => c.spec.speciesId === speciesId)?.weight ?? 0) / total;
 }
 
 /**

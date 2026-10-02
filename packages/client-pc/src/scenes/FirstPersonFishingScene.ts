@@ -38,6 +38,7 @@ import {
   isChumExpired, chumAlpha01, chumEllipseRadii,
   spawnFish, SpawnedFish, FightingPhase, FightStatus,
   calculateTideInfo, getBaitAffinity, candidateCount, BaitKey, SpawnContext,
+  speciesBiteReadiness, rollSchoolHookup, SCHOOL_FIGHT_MULT, type SchoolCount,
   FLASHER_ONLY_BITE_MULT, FLASHER_TARGET_SPECIES,
   getAreaSnagRiskMult,
   BiteSequenceEngine, TidalCurrentEngine, TidalInfluence,
@@ -241,6 +242,20 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   };
   /** 입질 시퀀스 대상 물고기 (챔질 성공 시 hookedFish로 승격) */
   private pendingFish: SpawnedFish | null = null;
+  /**
+   * 195차 무리 걸림 — 입질 때 정해 둔, 같은 입질에 함께 물린 개체(문 바늘 외)와 그 바늘(미끼 칸 순번).
+   * 챔질하면 `school*`로 옮겨 파이트를 무겁게 하고, **낚아 올리기 전까지 화면에 드러내지 않는다**.
+   */
+  private pendingSchool: SpawnedFish[] = [];
+  private pendingSchoolHooks: number[] = [];
+  private pendingBittenHook: number | null = null;
+  private schoolExtras: SpawnedFish[] = [];
+  private schoolHooks: number[] = [];
+  private bittenHook: number | null = null;
+  /** 파이트 난이도 배율 — 힘·무게·체력 (한 마리 1 · 두 마리 1.2 · 세 마리 1.5) */
+  private schoolMult = 1;
+  /** dev — 다음 입질의 마릿수 강제(하네스) */
+  devSchoolForce: SchoolCount | null = null;
   /** 현재 초릿대 굽힘 각도 (도) — 입질/파이팅 렌더 공용 */
   private rodBendDeg = 0;
   /** 부호 포함 벤딩 각(도, 스무딩) — 부호 = 하중 side (renderRod rev2, 전환 시 0 경유) */
@@ -441,6 +456,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.fight = null;
     this.hookedFish = null;
     this.pendingFish = null;
+    this.pendingSchool = []; this.pendingSchoolHooks = []; this.pendingBittenHook = null;
+    this.schoolExtras = []; this.schoolHooks = []; this.bittenHook = null; this.schoolMult = 1;
     this.reeling = false;
     this.viewCenterX = 0;
     this.sessionCatch = [];
@@ -942,6 +959,12 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     const f = this.pendingFish!;
     this.hookedFish = f;
     this.pendingFish = null;
+    // 195차 — 무리 걸림은 입질 때 정해졌다. 마릿수는 파이트의 무게로만 느껴진다(표시 없음)
+    this.schoolExtras = this.pendingSchool;
+    this.schoolHooks = this.pendingSchoolHooks;
+    this.bittenHook = this.pendingBittenHook;
+    this.pendingSchool = []; this.pendingSchoolHooks = []; this.pendingBittenHook = null;
+    this.schoolMult = SCHOOL_FIGHT_MULT[(1 + this.schoolExtras.length) as SchoolCount] ?? 1;
     this.fpState = 'fighting';
     this.overstrain = 0;
     this.events.emit('Biting');
@@ -954,12 +977,12 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     //   목줄이 없는 채비(구세이브 등)는 3kg(1.5호급)로 간주 — 텐션 게이지 분모가 0이 되지 않게.
     const lineCap = InventoryStore.lineCapacityKg() ?? 3;
     this.fight = new FightingPhase({
-      powerFactor: f.powerFactor,
+      powerFactor: f.powerFactor * this.schoolMult,
       tackleA: this.computeTackleA(),
       patternWeights: f.fight.patternWeights,
       intervalMult: f.fight.intervalMult,
       mouthFragility: f.fight.mouthFragility,
-      weightKg: f.weightG / 1000,
+      weightKg: f.weightG / 1000 * this.schoolMult,
       burstMult: TUNING.fightPhys.burst[fightGroupOf(f.speciesId)],
       // 133차 — 체형: 어종군(힘의 크기)과 직교하는 "힘의 성질"(면적·추력·요동)
       bodyForm: f.bodyForm ?? fightBodyFormOf(f.speciesId),
@@ -990,7 +1013,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.fightElapsedSec = 0;
 
     // ── 피로 페이즈 모델 (어종 × 사이즈 — RUN/LULL/SURGE/SPENT, thrust 게이트) ──
-    this.fatigue = new FishFatigueModel(f.speciesId, f.weightG / 1000, this.f2dProfile.runPower);
+    this.fatigue = new FishFatigueModel(f.speciesId, f.weightG / 1000 * this.schoolMult, this.f2dProfile.runPower);
     this.lastFatigue = null;
     this.fightDepthNorm = 0;
 
@@ -1015,7 +1038,9 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   devForceFight(pattern?: 'dive' | 'jump' | 'lateral' | 'none', lateralDir: -1 | 1 = 1): void {
     if (!import.meta.env.DEV) return;
     if (this.fpState !== 'drift') return;
-    this.pendingFish = spawnFish(this.buildSpawnCtx(false));
+    const ctx = this.buildSpawnCtx(false);
+    this.pendingFish = spawnFish(ctx);
+    this.rollSchool(ctx, this.pendingFish);
     this.enterFight();
     if (this.fight && pattern) {
       this.fight.pattern = pattern;
@@ -1027,7 +1052,9 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   devForceBite(): void {
     if (!import.meta.env.DEV) return;
     if (this.fpState !== 'drift' || this.biteSeq.active) return;
-    this.pendingFish = spawnFish(this.buildSpawnCtx(false));
+    const ctx = this.buildSpawnCtx(false);
+    this.pendingFish = spawnFish(ctx);
+    this.rollSchool(ctx, this.pendingFish);
     this.biteSeq.start({ speciesId: this.pendingFish.speciesId, biteProbPerSec: 0.5, stageTimeScale: 1 });
   }
 
@@ -2331,7 +2358,9 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       // 입질 발생 → 어종 결정 + 입질 시퀀스 시작 (파이팅은 챔질 성공 시에만)
       //   193차 — 미끼를 단 바늘 하나가 물린다: 그 바늘의 미끼가 어종을 정하고, 소모도 그 바늘에서만 일어난다
       InventoryStore.pickBittenBait();
-      this.pendingFish = spawnFish(this.buildSpawnCtx(inReef));
+      const biteCtx = this.buildSpawnCtx(inReef);
+      this.pendingFish = spawnFish(biteCtx);
+      this.rollSchool(biteCtx, this.pendingFish);   // 195차 — 열기·전갱이 무리 걸림(제철 + 입질 확률 50% 이상)
       this.biteSeq.start({
         speciesId: this.pendingFish.speciesId,
         biteProbPerSec: tick.probPerSec,
@@ -2628,7 +2657,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
    */
   private fightReelMps(subdued: boolean): number {
     const D = TUNING.fightDist;
-    const kg = (this.hookedFish?.weightG ?? 300) / 1000;
+    const kg = (this.hookedFish?.weightG ?? 300) / 1000 * this.schoolMult;   // 195차 — 무리 걸림은 그만큼 무겁다
     const v = Math.max(D.reelMinMps, D.reelBaseMps / (1 + kg * D.reelWeightK));
     return v * (subdued ? D.subduedReelMult : 1);
   }
@@ -2669,7 +2698,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     // 133차 — 체형 배수: 방추형(회유어)은 줄을 끌고 나가고, 장어형은 직선 도주력이 약하다
     const formResist = TUNING.fightPhys.form[f.bodyForm ?? fightBodyFormOf(f.speciesId)].resist;
     const resistMps = reelCap * D.resistFrac
-      * (D.fleePowerBase + f.powerFactor * D.fleePowerGain) * resist01 * patMul * formResist;
+      * (D.fleePowerBase + f.powerFactor * this.schoolMult * D.fleePowerGain) * resist01 * patMul * formResist;
 
     // ③ 거리 = 도주 전진분 − 릴링 회수분 (랜딩의 유일한 시계)
     //    패턴이 진행되는 동안에는 물고기가 줄을 버텨(하한 holdMps) 릴링이 거의 거리를 못 번다 —
@@ -2677,7 +2706,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     const reelMps = reeling ? this.fightReelMps(subdued) : 0;
     const holdMps = st.pattern !== 'none'
       ? reelCap * D.patternHoldFrac * resist01 * formResist
-        * (D.fleePowerBase + f.powerFactor * D.fleePowerGain)
+        * (D.fleePowerBase + f.powerFactor * this.schoolMult * D.fleePowerGain)
       : 0;
     let fwd = Math.max(holdMps, Math.max(0, Math.cos(this.fleePlanAng)) * resistMps);
     // 136차 — 줄을 내주면 물고기는 제 방향으로 거침없이 달린다(거리 손실 = 줄 주기의 대가)
@@ -2930,11 +2959,17 @@ export class FirstPersonFishingScene extends Phaser.Scene {
         `${f.nameKo} ${f.lengthCm}cm / ${(f.weightG / 1000).toFixed(2)}kg / ${sexLabel}\n\n${reason} 개체입니다. 규정에 따라 방생합니다.`, '#9fd0e4', fishTexture, imgScale);
     } else {
       // 도감/기록 등록은 어획 시점 (쿨러 보관/방생 선택과 무관)
-      this.sessionCatch.push(`${f.nameKo} ${f.lengthCm}cm (${sexLabel})`);
-      GameState.addCaughtFish(f.speciesId, f.nameKo, f.lengthCm, f.weightG, 'rod', this.spotKind());
+      //   195차 — 무리 걸림이면 같이 올라온 개체도 한 마리씩 기록한다(도감·숙련·퀘스트 집계가 마릿수만큼)
+      const school = [f, ...this.schoolExtras];
+      for (const x of school) {
+        this.sessionCatch.push(`${x.nameKo} ${x.lengthCm}cm (${x.sex === 'M' ? '수컷' : '암컷'})`);
+        GameState.addCaughtFish(x.speciesId, x.nameKo, x.lengthCm, x.weightG, 'rod', this.spotKind());
+      }
+      // 같이 물린 바늘의 미끼도 먹혔다(문 바늘은 챔질 때 이미 소모 · 반짝이 빈 바늘은 소모 없음)
+      for (const h of this.schoolHooks) if (InventoryStore.baitNodeFilled(h)) InventoryStore.consumeBaitNode(h);
 
-      // ── 다관점 히트 (Multi-Hit): 카드 채비의 다른 바늘에도 개별 입질 판정 ──
-      const extra = this.rollMultiHit();
+      // ── 다관점 히트 (Multi-Hit): 카드 채비의 **남은** 바늘에도 개별 입질 판정 ──
+      const extra = this.rollMultiHit(new Set([this.bittenHook ?? -1, ...this.schoolHooks]));
       this.refreshCoolerUi();
 
       // 보관/방생 선택은 유저 몫 — 결정 패널은 세트 접근 애니가 정착한 뒤 표시 (겹침 방지)
@@ -2943,7 +2978,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       this.clearFight2DStage();
       this.time.delayedCall(420, () => {
         if (this.fpState === 'result' && !this.resultContainer) {
-          this.showCatchDecisionPanel(f, extra, fishTexture);
+          this.showCatchDecisionPanel(school, extra, fishTexture);
         }
       });
     }
@@ -2954,18 +2989,35 @@ export class FirstPersonFishingScene extends Phaser.Scene {
    * 쿨러(기타 아이템) 미보유 시 '쿨러에 보관하기'는 비활성 — 인벤토리/방생만 가능.
    * 선택 후 안내 메시지와 함께 [계속하기] / [그만하기]로 이어진다.
    */
-  private showCatchDecisionPanel(f: SpawnedFish, extra: string[], fishTexture?: string): void {
-    const sexLabel = f.sex === 'M' ? '수컷' : '암컷';
+  private showCatchDecisionPanel(school: SpawnedFish[], extra: string[], fishTexture?: string): void {
+    const f = school[0];
+    const n = school.length;   // 195차 — 무리 걸림 마릿수(1~3). 보관·방생은 무리 전체에 한 번에 적용한다
     const extraLine = extra.length > 0
       ? `\n\n다관점 히트! 카드 채비 추가 어획 ${extra.length}마리:\n${extra.join(', ')}`
       : '';
     // 희귀도(116차 ⑤) — 평균 개체 대비 길이 비율 6단계 (검붉 ≥2.4× … 초록 ≤0.8×). 제목이 그 색.
-    const rr = fishRarity(f.speciesId, f.lengthCm);
-    const body = `${f.nameKo} ${f.lengthCm}cm / ${(f.weightG / 1000).toFixed(2)}kg / ${sexLabel} [${rr.ratio.toFixed(2)}×, ${rr.label}]${extraLine}`;
+    //   무리 걸림은 그중 가장 큰 개체의 희귀도를 제목에 쓴다
+    const lead = school.reduce((a, b) => (b.lengthCm > a.lengthCm ? b : a), f);
+    const rr = fishRarity(lead.speciesId, lead.lengthCm);
+    const line = (x: SpawnedFish): string => {
+      const r = fishRarity(x.speciesId, x.lengthCm);
+      return `${x.nameKo} ${x.lengthCm}cm / ${(x.weightG / 1000).toFixed(2)}kg / ${x.sex === 'M' ? '수컷' : '암컷'} [${r.ratio.toFixed(2)}×, ${r.label}]`;
+    };
+    const body = `${school.map(line).join('\n')}${extraLine}`;
     const hasCooler = InventoryStore.hasCooler();
-    const imgScale = fishImageSizeScale(f.speciesId, f.lengthCm);
+    const imgScale = fishImageSizeScale(lead.speciesId, lead.lengthCm);
+    const texOf = (x: SpawnedFish): string | undefined => resolveFishTexture(x.speciesId, x.lengthCm, x.sex);
+    const invTpl = (x: SpawnedFish) => ({
+      id: `inv_catch_${x.speciesId}_${InventoryStore.nextCatchSeq()}`,
+      name: `${x.nameKo} (${x.lengthCm}cm)`,
+      icon: '🐟', iconTexture: texOf(x),
+      category: 'food' as const, subCategory: '어획물',
+      basePrice: Math.max(2000, Math.round(x.weightG * 12)),
+      condition: 'live' as const, equippable: false,
+      speciesId: x.speciesId, lengthCm: x.lengthCm, weightG: x.weightG, sex: x.sex, catchMethod: 'rod' as const,
+    });
     this.buildDecisionPanel(
-      `${f.nameKo} ${f.lengthCm}cm 낚음!${extra.length > 0 ? ` (+${extra.length})` : ''}`,
+      `${lead.nameKo} ${lead.lengthCm}cm 낚음!${extra.length > 0 ? ` (+${extra.length})` : ''}`,
       body, rr.color, fishTexture,
       [
         {
@@ -2973,48 +3025,50 @@ export class FirstPersonFishingScene extends Phaser.Scene {
           disabled: !hasCooler,
           disabledHint: '쿨러가 없습니다 — 기타 아이템에 쿨러(아이스박스)가 필요합니다',
           onClick: () => {
-            if (CoolerStore.isFull()) {
-              this.flashState(`쿨러가 가득 찼습니다 (${COOLER_CAPACITY}마리) — 방생하거나 쿨러를 비우세요`);
+            // 무리는 통째로 — 자리가 모자라면 한 마리도 넣지 않는다(반쯤 들어가고 나머지가 사라지지 않게)
+            const free = COOLER_CAPACITY - CoolerStore.count();
+            if (free < n) {
+              this.flashState(n > 1
+                ? `쿨러 자리가 모자랍니다 (${n}마리 · 빈 칸 ${free}) — 방생하거나 쿨러를 비우세요`
+                : `쿨러가 가득 찼습니다 (${COOLER_CAPACITY}마리) — 방생하거나 쿨러를 비우세요`);
               return;
             }
-            CoolerStore.add({
-              speciesId: f.speciesId, nameKo: f.nameKo, lengthCm: f.lengthCm,
-              weightG: f.weightG, sex: f.sex, iconTexture: fishTexture, catchMethod: 'rod',
-            });
+            for (const x of school) {
+              CoolerStore.add({
+                speciesId: x.speciesId, nameKo: x.nameKo, lengthCm: x.lengthCm,
+                weightG: x.weightG, sex: x.sex, iconTexture: texOf(x), catchMethod: 'rod',
+              });
+            }
             this.refreshCoolerUi();
-            this.showPostDecisionPanel('쿨러에 보관하였습니다.', '#4af2a1', fishTexture, imgScale);
+            this.showPostDecisionPanel(n > 1 ? `쿨러에 ${n}마리 보관하였습니다.` : '쿨러에 보관하였습니다.', '#4af2a1', fishTexture, imgScale, n);
           },
         },
         {
           label: '인벤토리에 보관하기', fill: 0x14425e, stroke: 0x33b0e0, color: '#aee8ff',
           onClick: () => {
-            const ok = InventoryStore.addItem({
-              id: `inv_catch_${f.speciesId}_${InventoryStore.nextCatchSeq()}`,
-              name: `${f.nameKo} (${f.lengthCm}cm)`,
-              icon: '🐟', iconTexture: fishTexture,
-              category: 'food', subCategory: '어획물',
-              basePrice: Math.max(2000, Math.round(f.weightG * 12)),
-              condition: 'live', equippable: false,
-              speciesId: f.speciesId, lengthCm: f.lengthCm, weightG: f.weightG, sex: f.sex, catchMethod: 'rod',
-            }, 1);
+            // 개체마다 길이·무게가 달라 칸을 따로 쓴다 — 전부 들어갈 때만 넣는다(addBundle)
+            const ok = InventoryStore.addBundle(school.map((x) => ({ tpl: invTpl(x), qty: 1 })));
             if (!ok) {
-              this.flashState('인벤토리(음식) 공간이 없습니다 — 방생하거나 자리를 비우세요');
+              this.flashState(n > 1
+                ? `인벤토리(음식) 빈 칸이 ${n}칸 필요합니다 — 방생하거나 자리를 비우세요`
+                : '인벤토리(음식) 공간이 없습니다 — 방생하거나 자리를 비우세요');
               return;
             }
-            this.showPostDecisionPanel('인벤토리에 보관하였습니다. (활어 10분부터 신선도 진행)', '#aee8ff', fishTexture, imgScale);
+            this.showPostDecisionPanel(n > 1
+              ? `인벤토리에 ${n}마리 보관하였습니다. (활어 10분부터 신선도 진행)`
+              : '인벤토리에 보관하였습니다. (활어 10분부터 신선도 진행)', '#aee8ff', fishTexture, imgScale, n);
           },
         },
         {
           label: '방생하기', fill: 0x123a52, stroke: 0x5cd0ff, color: '#9fd0e4',
-          onClick: () => this.showPostDecisionPanel('해당 어종을 방생하였습니다.', '#9fd0e4', fishTexture, imgScale),
+          onClick: () => this.showPostDecisionPanel(n > 1 ? `${n}마리를 모두 방생하였습니다.` : '해당 어종을 방생하였습니다.', '#9fd0e4', fishTexture, imgScale, n),
         },
       ],
-      imgScale,
+      imgScale, n,
     );
   }
-
   /** 보관/방생 후 안내 — [필드로 돌아가기] (155차 — 성공해도 같은 자리 재캐스팅은 없다) */
-  private showPostDecisionPanel(message: string, color: string, fishTexture?: string, imgScale = 1): void {
+  private showPostDecisionPanel(message: string, color: string, fishTexture?: string, imgScale = 1, schoolCount = 1): void {
     const missing = InventoryStore.getMissingRigParts();
     const buttons: DecisionButton[] = [{
       label: '필드로 돌아가기 (SPACE)', fill: 0x0d4a2e, stroke: 0x4af2a1, color: '#4af2a1',
@@ -3025,7 +3079,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       missing.length > 0
         ? `채비 보충 필요: ${missing.join(', ')}\n(U 채비하기에서 재장착 후 다시 캐스팅하세요)`
         : '탑다운으로 돌아갑니다 — 다시 조준해 캐스팅하세요.',
-      color, fishTexture, buttons, imgScale,
+      color, fishTexture, buttons, imgScale, schoolCount,
     );
   }
 
@@ -3046,7 +3100,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   /** 결정 패널 공통 렌더 — 제목/본문/어종 이미지 + 버튼 목록 */
   private buildDecisionPanel(
     title: string, body: string, color: string, fishTexture: string | undefined,
-    buttons: DecisionButton[], imgScale = 1,
+    buttons: DecisionButton[], imgScale = 1, schoolCount = 1,
   ): void {
     this.resultContainer?.destroy();
     const hasImage = !!fishTexture && this.textures.exists(fishTexture);
@@ -3071,6 +3125,22 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       const [dw, dh] = this.fishDisplaySize(src, 264, 107, 360, 146, imgScale);
       const img = this.add.image(0, -half + 122, fishTexture).setDisplaySize(dw, dh);
       c.add(img);
+      // 195차 — 무리 걸림: 물고기 옆에 노란 굵은 x2 / x3 (패널 오른쪽 안쪽으로 붙여 창을 넘지 않게)
+      if (schoolCount > 1) {
+        const badge = this.add.text(0, -half + 122, `x${schoolCount}`, {
+          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '30px', color: '#ffd84a', fontStyle: 'bold',
+          stroke: '#3a2a00', strokeThickness: 5,
+        }).setOrigin(0, 0.5);
+        badge.x = Math.min(dw / 2 + 8, 230 - 12 - badge.width);
+        c.add(badge);
+      }
+    } else if (schoolCount > 1) {
+      const badge = this.add.text(0, -half + 30, `x${schoolCount}`, {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '22px', color: '#ffd84a', fontStyle: 'bold',
+        stroke: '#3a2a00', strokeThickness: 4,
+      }).setOrigin(0, 0.5);
+      badge.x = Math.min(t1.width / 2 + 8, 230 - 12 - badge.width);
+      c.add(badge);
     }
 
     const t2 = this.add.text(0, hasImage ? half - 130 : -10, body, {
@@ -3114,10 +3184,36 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   }
 
   /**
+   * 195차 무리 걸림 판정 — 입질이 정해진 직후(문 바늘 선택 뒤 · 챔질 전) 한 번.
+   * 열기·전갱이가 제철이고 그 어종의 입질 확률(활성도)이 50% 이상이면 두 마리 10% · 세 마리 2.5%.
+   * 같이 물리는 개체는 같은 어종으로 다시 뽑고(크기는 제각각), 미끼를 단 다른 바늘(전갱이면 반짝이 빈 바늘도)에 건다.
+   * 바늘이 모자라면 그 마릿수는 나오지 않는다.
+   */
+  private rollSchool(ctx: SpawnContext, f: SpawnedFish): void {
+    const plan = InventoryStore.schoolHookPlan(f.speciesId);
+    this.pendingBittenHook = plan.bitten;
+    const slots = 1 + plan.extras.length;
+    let n: SchoolCount = rollSchoolHookup(f.speciesId, ctx.month, speciesBiteReadiness(ctx, f.speciesId), slots, Math.random());
+    if (import.meta.env.DEV && this.devSchoolForce) {
+      n = Math.min(this.devSchoolForce, slots) as SchoolCount;
+      this.devSchoolForce = null;
+    }
+    const hooks = Phaser.Utils.Array.Shuffle([...plan.extras]);
+    const sctx: SpawnContext = { ...ctx, speciesFilter: [f.speciesId] };
+    this.pendingSchool = [];
+    this.pendingSchoolHooks = [];
+    for (let k = 1; k < n; k++) {
+      this.pendingSchool.push(spawnFish(sctx));
+      this.pendingSchoolHooks.push(hooks[k - 1]);
+    }
+  }
+
+  /**
    * 다관점 히트 — 원투 카드 채비의 각 미끼 바늘에 개별 확률(수심층별 오라클)로
    * 추가 어획을 판정한다. 걸린 바늘의 미끼는 소모된다.
+   * 195차 — 이미 고기가 걸린 바늘(문 바늘 · 무리 걸림 바늘)은 건너뛴다.
    */
-  private rollMultiHit(): string[] {
+  private rollMultiHit(occupied: ReadonlySet<number> = new Set()): string[] {
     const sp = InventoryStore.spreader;
     if (!InventoryStore.isSurfRigReady() || sp.kind !== 'CARD_RIG' || !sp.cardType) return [];
     const info = CARD_RIG_INFO[sp.cardType];
@@ -3125,6 +3221,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     const flasher = InventoryStore.rigSummary().flasher;
     const hooks = Math.min(info.hooks, sp.hookBaits.length || info.hooks);
     for (let i = 0; i < hooks; i++) {
+      if (occupied.has(i)) continue;
       const baitItem = sp.hookBaits[i] ? InventoryStore.find(sp.hookBaits[i]!) : undefined;
       // 193차 — 미끼 없는 반짝이 바늘도 전갱이는 문다(10%). 민바늘에 미끼가 없으면 판정하지 않는다
       if (!baitItem && !flasher) continue;

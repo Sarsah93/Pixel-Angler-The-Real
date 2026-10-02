@@ -453,7 +453,13 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-10-02 194차) — 타이라바 헤드 무게별 라인업 · 「한 바늘에 두 미끼」 하향**
+**최근 변경 (2026-10-02 195차) — 무리 걸림: 열기·전갱이 한 번에 두세 마리**
+
+- 제철(`peakSeasonMonths`) + 어종 활성도(`speciesBiteReadiness` ≥ 0.5) → 두 마리 10% · 세 마리 2.5% — 바늘 수만큼(core `SchoolHookup`).
+- 파이트 ×1.2/×1.5(힘·무게·피로 — 숨김) · 결정 패널 노란 `x2`/`x3` · 보관·방생은 무리 전체 원자 적용(쿨러 빈 칸 · `addBundle`).
+  상세: [195차 워크로그](../docs/wiki/03-WORKLOG/2026-10-02-195-school-hookup.md).
+
+**이전 변경 (2026-10-02 194차) — 타이라바 헤드 무게별 라인업 · 「한 바늘에 두 미끼」 하향**
 
 - 헤드 40~200g 8종 — 그림 1장을 `ItemIcon.iconWeightScale`(지름 ∝ 무게^(1/3))로 키우고 줄인다.
 - 두 미끼 +2% → **+1%/바늘 · 최대 +2%**(`DOUBLE_BAIT_MAX`). 시너지는 원래부터 최대 +1%(확인).
@@ -466,15 +472,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - 입질 = × `rigBiteMult()`(추가 바늘 +2% · 이웃 같은 미끼 +1% · 두 미끼 바늘 +2%) · 입질 때 `pickBittenBait()`로 문 바늘의 미끼만 소모.
 - 스킬 `fish_double_bait`(x2 단추 · 2개 소모) + 시작 SP +1(등식 216) · 반짝이 단독 = 전갱이 전용 10%(`candidateCount` 가드).
   상세: [193차 워크로그](../docs/wiki/03-WORKLOG/2026-10-02-193-multi-bait-double-flasher.md).
-
-**이전 변경 (2026-10-02 192차) — 채비 모딩 트리: 원줄 한 칸에서 좌→우로 열리는 채비창 · 부력찌 필수 폐지 · 매듭 직결/도래 · 간편 채비 세트**
-
-- core `simulation/RigTree.ts` = 채비 문법(칸 item/choice/toggle/fixed · `childrenOf` · 앞 칸 변경 시 자손 절단 · 완성 판정 · 세트 6종 · 투영 요약)
-  + vitest 9. client는 `InventoryStore.rigTree`가 정본, 평면 9소켓·모드·편대·루어 필드는 `projectTree()` 투영값(1인칭·캐스팅·손실 무수정).
-- QA 3건 해소: 부력찌는 찌 세트에서만 필수(구멍치기·원투 찌 없이 완성) · 매듭 칸 = 직결/도래 양자택일 · 봉돌은 「유동 봉돌」 칸·묶음추는 간편 채비.
-  타이라바 = 헤드·스커트·넥타이 셋 필수 + 권장 미끼(혼무시·청갯지렁이) 외 「권장되는 채비 유형이 아닙니다」 + 참돔 −92%.
-- 에셋: 사용자 도트 3장(헤드·스커트·넥타이) + 바렐 도래 절차 생성(`tools/gen_tackle_icons.py`) · 상점 6종 · 도움말 재작성·재촬영 ·
-  영문 `en_rig.ts`. 상세: [192차 워크로그](../docs/wiki/03-WORKLOG/2026-10-02-192-rig-modding-tree.md) · 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1
 
 ---
 
