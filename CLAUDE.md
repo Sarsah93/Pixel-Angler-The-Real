@@ -46,7 +46,7 @@
 - **재개 지점**: 사용자 실검증(172·173차 타일 조화 규칙 + 178·183~186차 신설분) — 부족하면 규칙 보강,
   괜찮으면 규칙을 켠 채로 새 맵 확장. 차수별 잔여는 PLAN §2-3.
 - **194차**: 타이라바 헤드 **40~200g 8종**(그림 1장 · `ItemIcon.iconWeightScale` 지름 ∝ 무게^(1/3)) ·
-  「한 바늘에 두 미끼」 +1%/바늘 · 최대 +2%(`DOUBLE_BAIT_MAX`). 상세 `docs/wiki/03-WORKLOG/2026-10-02-194-tairaba-head-lineup-double-bait-rebalance.md`.
+  「한 바늘에 두 미끼」 +1%/바늘 · 최대 +2%(`DOUBLE_BAIT_MAX`) · 카드 채비 가중 합계 +10% 상한(`CARD_RIG_BITE_BONUS_MAX`). 상세 `docs/wiki/03-WORKLOG/2026-10-02-194-tairaba-head-lineup-double-bait-rebalance.md`.
 - **193차**: **다중 미끼** — 바늘별 미끼 · 미끼 하나면 완성 · 고정 중 미끼 칸만 편집 · 입질 × `InventoryStore.rigBiteMult()`
   (+2%/추가 바늘 · 이웃 같은 미끼 +1% · 스킬 「한 바늘에 두 미끼」 x2 — 194차 +1%/바늘·최대 +2%) · 반짝이 카드 채비 단독 = 전갱이 10%.
   ⚠ 입질 시작 때 `pickBittenBait()` 먼저(문 바늘 미끼로 어종·소모). 상세 `docs/wiki/03-WORKLOG/2026-10-02-193-multi-bait-double-flasher.md`.

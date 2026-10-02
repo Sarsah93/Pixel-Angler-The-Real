@@ -223,5 +223,13 @@ describe('RigTree — 193차 다중 미끼', () => {
     expect(missingParts(p)).toEqual(['미끼']);
     expect(p.nodes.filter((n) => n.slot === 'bait')).toHaveLength(7);
     expect(summarize(p, view).cardType).toBe('yeolgi');
+    // 194차 보강 — 카드 채비는 미끼 가중 합계 +10% 상한(7바늘 전부 같은 미끼 + 두 미끼 = 12+1+2 = 15% → 10%)
+    let full = p;
+    for (let k = 0; k < 7; k++) full = put(full, 'bait', { itemId: 'worm' }, k);
+    full = { nodes: full.nodes.map((n) => (n.slot === 'bait' ? { ...n, double: true } : n)) };
+    expect(summarize(full, view).biteBonus).toBeCloseTo(0.10);
+    let four = p;
+    for (let k = 0; k < 4; k++) four = put(four, 'bait', { itemId: k % 2 ? 'worm' : 'krill' }, k);
+    expect(summarize(four, view).biteBonus).toBeCloseTo(0.06);   // 상한 아래는 그대로
   });
 });

@@ -685,5 +685,5 @@ export {
   RIG_PART_LABEL, RIG_SLOTS, KIT_DEFS, KIT_ORDER, CARD_TYPES, KNOT_DIRECT, KNOT_SWIVEL, OFF_RECOMMENDED_BIAS,
   newRigTree, nodeFilled, nodeOptional, nodeLabel, childrenOf, descendantsOf, setRigValue, dropMissingItems,
   missingParts, summarize, baitRecommendedFor, treeFromLegacy,
-  MULTI_BAIT_BONUS, SAME_BAIT_SYNERGY, DOUBLE_BAIT_BONUS, DOUBLE_BAIT_MAX, FLASHER_ONLY_BITE_MULT, FLASHER_TARGET_SPECIES, baitBiteBonus,
+  MULTI_BAIT_BONUS, SAME_BAIT_SYNERGY, DOUBLE_BAIT_BONUS, DOUBLE_BAIT_MAX, CARD_RIG_BITE_BONUS_MAX, FLASHER_ONLY_BITE_MULT, FLASHER_TARGET_SPECIES, baitBiteBonus,
 } from './simulation/RigTree.js';

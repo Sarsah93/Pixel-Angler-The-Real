@@ -457,6 +457,7 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 
 - 헤드 40~200g 8종 — 그림 1장을 `ItemIcon.iconWeightScale`(지름 ∝ 무게^(1/3))로 키우고 줄인다.
 - 두 미끼 +2% → **+1%/바늘 · 최대 +2%**(`DOUBLE_BAIT_MAX`). 시너지는 원래부터 최대 +1%(확인).
+- 보강: 카드 채비는 미끼 가중 합계 **+10% 상한**(`CARD_RIG_BITE_BONUS_MAX` — 7단 만끼 15% → 10%).
   상세: [194차 워크로그](../docs/wiki/03-WORKLOG/2026-10-02-194-tairaba-head-lineup-double-bait-rebalance.md).
 
 **이전 변경 (2026-10-02 193차) — 다중 미끼 · 최소 1미끼 고정 · 「한 바늘에 두 미끼」 스킬 · 반짝이 깃 카드 채비**

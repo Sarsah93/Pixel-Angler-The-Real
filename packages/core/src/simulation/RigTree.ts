@@ -472,12 +472,14 @@ export const SAME_BAIT_SYNERGY = 0.01;
 export const DOUBLE_BAIT_BONUS = 0.01;
 /** 「한 바늘에 두 미끼」 가중의 상한 — 바늘이 많아도 +2%까지 (194차) */
 export const DOUBLE_BAIT_MAX = 0.02;
+/** 카드 채비의 미끼 가중 상한 — 바늘이 5~7개라 쌓이기 쉬워 합계 +10%에서 멈춘다 (194차 보강) */
+export const CARD_RIG_BITE_BONUS_MAX = 0.10;
 /** 반짝이 깃 카드 채비를 미끼 없이 쓸 때 — 전갱이만, 미끼를 끼웠을 때 입질의 10% */
 export const FLASHER_ONLY_BITE_MULT = 0.10;
 export const FLASHER_TARGET_SPECIES = 'horse_mackerel';
 
-/** 바늘에 걸린 미끼 묶음 — 연속 판정은 칸 순서(바늘 번호) 기준 */
-export function baitBiteBonus(baits: { itemId: string | null; double?: boolean }[]): number {
+/** 바늘에 걸린 미끼 묶음 — 연속 판정은 칸 순서(바늘 번호) 기준. `maxBonus`는 합계 상한(카드 채비 10%) */
+export function baitBiteBonus(baits: { itemId: string | null; double?: boolean }[], maxBonus = Infinity): number {
   const filled = baits.filter((b) => !!b.itemId);
   if (filled.length === 0) return 0;
   let bonus = (filled.length - 1) * MULTI_BAIT_BONUS;
@@ -485,7 +487,7 @@ export function baitBiteBonus(baits: { itemId: string | null; double?: boolean }
     if (baits[i].itemId && baits[i].itemId === baits[i - 1].itemId) { bonus += SAME_BAIT_SYNERGY; break; }
   }
   bonus += Math.min(DOUBLE_BAIT_MAX, filled.filter((b) => b.double).length * DOUBLE_BAIT_BONUS);
-  return bonus;
+  return Math.min(maxBonus, bonus);
 }
 
 /** 이 노드로 채비가 끝날 수 있는가 */
@@ -588,7 +590,7 @@ export function summarize(state: RigTreeState, view: (id: string) => RigItemView
   s.bottomRig = !hasFloatSet || !s.floatId;
   if (kitDef?.speciesBias) s.speciesBias = { ...kitDef.speciesBias };
   const baits = s.baitIds.map((itemId, i) => ({ itemId, double: s.baitDouble[i] }));
-  s.biteBonus = baitBiteBonus(baits);
+  s.biteBonus = baitBiteBonus(baits, s.cardType ? CARD_RIG_BITE_BONUS_MAX : Infinity);
   s.flasherOnly = s.flasher && !s.baitIds.some((b) => !!b);
   // 권장 미끼 대조 — 세트가 권장 미끼를 정했고 끼운 미끼가 거기 없으면 비권장
   if (kitDef?.recommendedBaits?.length) {

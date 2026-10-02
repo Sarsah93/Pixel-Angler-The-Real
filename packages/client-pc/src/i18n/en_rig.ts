@@ -89,8 +89,8 @@ export const EN_RIG: Record<string, string> = {
   '카드 채비(반짝이 3단 · 반짝이 5단 · 민바늘 7단 — 직판장) · T자 천평 편대 · 하드 베이트(미노우 · 스푼 · 스피너 · 에기 · 메탈지그 · 완성 타이라바) · 소프트 베이트(지그헤드 + 웜)도 같은 자리에서 고릅니다. 루어 세트는 미끼를 끼우지 않습니다. 반짝이 깃 카드 채비는 미끼 없이도 고정되며, 그때는 전갱이만 미끼를 끼웠을 때의 10% 정도로 덤빕니다.':
     'Card rigs (flasher 3 · flasher 5 · plain 7 tiers — fish market), the T-bar spreader, hard baits (minnow · spoon · spinner · egi · metal jig · finished tairaba) and soft baits (jig head + worm) are chosen in the same place. Lure sets take no bait. A flasher card rig locks even with no bait; then only horse mackerel bite, at about 10% of the baited rate.',
   '미끼 여러 개 · 한 바늘에 두 미끼': 'Several baits · two baits on one hook',
-  '미끼를 단 바늘이 하나 늘 때마다 입질이 2% 오릅니다(바늘 3개 = +4%). 이웃한 바늘에 같은 미끼가 이어지면 1%가 더해집니다. 오른 만큼은 채비 제원 상자 제목 끝에 보입니다.':
-    'Each extra baited hook raises bites by 2% (three hooks = +4%). The same bait on neighbouring hooks adds another 1%. The total shows at the end of the rig-spec box title.',
+  '미끼를 단 바늘이 하나 늘 때마다 입질이 2% 오릅니다(바늘 3개 = +4%). 이웃한 바늘에 같은 미끼가 이어지면 1%가 더해집니다. 바늘이 많은 카드 채비는 오르는 몫이 모두 합쳐 10%까지입니다. 오른 만큼은 채비 제원 상자 제목 끝에 보입니다.':
+    'Each extra baited hook raises bites by 2% (three hooks = +4%). The same bait on neighbouring hooks adds another 1%. Card rigs, with their many hooks, top out at +10% in all. The total shows at the end of the rig-spec box title.',
   '미끼는 가방의 같은 미끼를 바늘끼리 나눠 씁니다 — 남은 수보다 많은 바늘에 같은 미끼를 끼울 수 없고, 입질이 오면 문 바늘의 미끼만 줄어듭니다. 가방에 남은 미끼가 있으면 그 바늘에 그대로 다시 꿰어져 있습니다.':
     'Hooks share the bait in your bag — you cannot put the same bait on more hooks than you have, and a bite only uses up the bait on the hook that was taken. If more of that bait is left, the hook stays baited.',
   '채비를 고정해도 미끼 칸은 바꿀 수 있습니다 — 낚시 뒤 미끼만 다시 끼우면 됩니다. 미끼가 하나도 없으면 고정 · 캐스팅이 되지 않습니다(반짝이 카드 채비 제외).':
