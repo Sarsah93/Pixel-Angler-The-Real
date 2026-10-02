@@ -56,6 +56,15 @@ export const EN_TOUR: Record<string, string> = {
     'Right-click an item to see what you can do with it — "Details", "Eat", "Equip" and so on. Try right-clicking.',
   '손에 드는 도구는 「오른손 착용」 · 「왼손 착용」으로 바로 들 수 있다. 하나를 골라 착용해 보자.':
     'Hand tools can be held right away with "Equip (right hand)" or "Equip (left hand)". Pick one and equip it.',
+  // 196차 — 쿨러 정리 창
+  '쿨러가 가득 찼을 때 여는 정리 창입니다. 맨 위가 방금 낚은 고기예요. 누르면 놓아줄 고기로 바뀝니다.':
+    'This window opens when your cooler is full. The top row is what you just caught — click one to mark it for release.',
+  '아래는 쿨러에 들어 있던 고기입니다. 작은 고기를 눌러 놓아주면 그만큼 자리가 생깁니다.':
+    'Below are the fish already in the cooler. Click a small one to release it and free up its slot.',
+  '넣을 고기와 빈 자리 수입니다. 넣을 고기가 더 많으면 빨갛게 표시됩니다.':
+    'Fish to store versus free slots. It turns red when there are more fish than room.',
+  '「정리하고 넣기」는 고른 대로 바꿔 넣고, 「들어가는 만큼만 넣기」는 빈 자리만큼 무거운 고기부터 넣고 나머지를 놓아줍니다.':
+    'Swap & store applies your picks. Store what fits fills the free slots with the heaviest fish first and releases the rest.',
   '맨 아래는 가진 돈이다. 물건을 사고팔 때마다 여기서 늘고 준다.':
     'At the bottom is your money. It goes up and down every time you buy or sell.',
 };

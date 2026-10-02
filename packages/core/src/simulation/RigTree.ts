@@ -62,6 +62,8 @@ export interface RigItemView {
   kitHooks?: number;
   /** 193차 — 카드 채비 바늘에 반짝이 깃(스킨)이 붙어 있는가 */
   flasher?: boolean;
+  /** 196차 — 카드 채비가 노리는 어종(열기 적색 깃 · 전갱이 녹색 깃) — 그 어종 가중 +`CARD_TARGET_BIAS` */
+  cardTarget?: string;
   /** 미끼 종류(추천 대조용) */
   baitKey?: BaitKey;
 }
@@ -127,6 +129,15 @@ export const KIT_DEFS: Record<RigKitKind, RigKitDef> = {
 };
 
 export const KIT_ORDER: RigKitKind[] = ['bundle_sinker', 'tairaba', 'card_rig', 't_bar', 'lure_hard', 'lure_soft'];
+
+/**
+ * 196차 — 카드 채비의 대상 어종 가중. 열기용(빨간 깃)·전갱이용(녹색 깃) 포장은 바늘 크기·깃 색이
+ * 그 어종에 맞춰져 있다 → 대상 어종 weight ×(1+0.3). 타이라바(+0.6)보다 약하게 — 카드 채비는 잡어도 잘 문다.
+ */
+export const CARD_TARGET_BIAS = 0.3;
+/** 196차 — 카드 채비 단수 범위(상점 라인업). 7단을 넘으면 원투·방파제에서 꼬임이 감당이 안 된다 */
+export const CARD_HOOKS_MIN = 3;
+export const CARD_HOOKS_MAX = 7;
 
 /** 카드 채비 단수 */
 export const CARD_TYPES: { id: string; label: string; hooks: number; gapM: number }[] = [
@@ -526,6 +537,8 @@ export interface RigSummary {
   kit: RigKitKind | null;
   /** 카드 채비 단수 id */
   cardType: string | null;
+  /** 196차 — 카드 채비 실제 바늘 수(아이템 단수 · 0 = 카드 채비 아님) */
+  cardHooks: number;
   lureId: string | null;
   jigHeadId: string | null;
   /** 세트가 미끼를 쓰는가 (루어면 false) */
@@ -550,11 +563,12 @@ export interface RigSummary {
 export function summarize(state: RigTreeState, view: (id: string) => RigItemView | null): RigSummary {
   const s: RigSummary = {
     mainLineId: null, leaderId: null, floatId: null, subFloatId: null, floatStop: true, swivelId: null, sinkerId: null,
-    hookIds: [], baitIds: [], fixedHooks: 0, kit: null, cardType: null, lureId: null, jigHeadId: null, usesBait: true,
+    hookIds: [], baitIds: [], fixedHooks: 0, kit: null, cardType: null, cardHooks: 0, lureId: null, jigHeadId: null, usesBait: true,
     bottomRig: true, offRecommendedBait: false, speciesBias: {}, tairaba: null,
     baitDouble: [], flasher: false, flasherOnly: false, biteBonus: 0,
   };
   let hasFloatSet = false;
+  let cardTarget: string | null = null;
   for (const n of state.nodes) {
     switch (n.slot) {
       case 'main_line': s.mainLineId = n.itemId ?? null; break;
@@ -572,8 +586,15 @@ export function summarize(state: RigTreeState, view: (id: string) => RigItemView
       case 'kit_kind': s.kit = (n.choice as RigKitKind) ?? null; break;
       case 'card_type': s.cardType = n.choice ?? null; break;
       case 'card_kit': if (n.itemId) {
-        const hooks = view(n.itemId)?.kitHooks ?? 3;
-        s.cardType = CARD_TYPES.find((c) => c.hooks === hooks)?.id ?? CARD_TYPES[0].id;
+        const v = view(n.itemId);
+        const hooks = v?.kitHooks ?? 3;
+        // 196차 — 단수가 3~7로 늘었다. 가지 간격(gapM)은 대상 어종으로 고른다(열기 0.3m · 전갱이 0.5m),
+        //  정해지지 않았으면 단수가 같거나 큰 첫 표(4단 → 5단 간격)
+        s.cardType = v?.cardTarget === 'red_snapper_rockfish' ? 'yeolgi'
+          : v?.cardTarget === 'horse_mackerel' ? 'jeongaengi'
+          : (CARD_TYPES.find((c) => c.hooks >= hooks) ?? CARD_TYPES[CARD_TYPES.length - 1]).id;
+        s.cardHooks = hooks;
+        if (v?.cardTarget) cardTarget = v.cardTarget;
         s.sinkerId = n.itemId;   // 카드 채비는 아래 봉돌까지 한 벌 — 아이템 자중(sinkerWeightG)이 채비 무게
       } break;
       case 'lure_hard': case 'lure_soft': if (n.itemId) s.lureId = n.itemId; break;
@@ -589,6 +610,7 @@ export function summarize(state: RigTreeState, view: (id: string) => RigItemView
   s.usesBait = kitDef ? kitDef.usesBait : true;
   s.bottomRig = !hasFloatSet || !s.floatId;
   if (kitDef?.speciesBias) s.speciesBias = { ...kitDef.speciesBias };
+  if (cardTarget) s.speciesBias[cardTarget] = (s.speciesBias[cardTarget] ?? 0) + CARD_TARGET_BIAS;
   const baits = s.baitIds.map((itemId, i) => ({ itemId, double: s.baitDouble[i] }));
   s.biteBonus = baitBiteBonus(baits, s.cardType ? CARD_RIG_BITE_BONUS_MAX : Infinity);
   s.flasherOnly = s.flasher && !s.baitIds.some((b) => !!b);

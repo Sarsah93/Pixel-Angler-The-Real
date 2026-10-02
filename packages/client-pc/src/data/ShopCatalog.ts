@@ -135,6 +135,43 @@ const GUILD_CORNER: ShopEntry[] = [
 ];
 
 /** 194차 — 타이라바 헤드 무게 라인업 (g) */
+/**
+ * 196차 — 카드 채비 라인업(사용자 제공 포장 사진 2장 · 단수 3~7단).
+ *
+ * - **전갱이 카드 채비**(녹색 깃): 반짝이 깃(`cardFlasher`) — 미끼 없이도 전갱이가 작은 멸치로 보고 덤빈다.
+ *   가지 간격 0.5m · 가벼운 봉돌. 대상 어종 전갱이 가중 +30%.
+ * - **열기 카드 채비**(빨간 깃): 깃이 있지만 열기는 미끼(크릴·오징어살)를 끼워야 제대로 문다 → 미끼 채비.
+ *   가지 간격 0.3m · 깊은 바닥용 무거운 봉돌. 대상 어종 열기 가중 +30%.
+ *
+ * id는 193차 세이브 호환을 위해 `inv_card_flasher_N`(전갱이) · `inv_card_plain_N`(열기) 규칙을 잇는다
+ * (구 「반짝이 3·5단」 → 전갱이 3·5단, 구 「민바늘 7단」 → 열기 7단 — 로드 때 이름·그림을 바꿔 준다).
+ */
+export const CARD_RIG_HOOK_RANGE = [3, 4, 5, 6, 7] as const;
+const CARD_JEONGAENGI_WEIGHT_G: Record<number, number> = { 3: 38, 4: 42, 5: 45, 6: 52, 7: 60 };
+const CARD_YEOLGI_WEIGHT_G: Record<number, number> = { 3: 45, 4: 52, 5: 60, 6: 68, 7: 75 };
+
+function cardRigEntry(kind: 'jeongaengi' | 'yeolgi', hooks: number): ShopEntry {
+  const flasher = kind === 'jeongaengi';
+  const basePrice = (flasher ? 3000 : 3500) + (hooks - 3) * 500;
+  return {
+    id: flasher ? `inv_card_flasher_${hooks}` : `inv_card_plain_${hooks}`,
+    name: `${flasher ? '전갱이' : '열기'} 카드 채비 ${hooks}단`,
+    icon: '', iconTexture: flasher ? 'card_rig_jeongaengi' : 'card_rig_yeolgi',
+    category: 'tackle', subCategory: '채비 부속', basePrice, price: Math.round(basePrice * 1.2 / 100) * 100,
+    maxPerPurchase: 10, equippable: false, rigPart: 'card_rig', kitHooks: hooks, cardFlasher: flasher,
+    cardTarget: flasher ? 'horse_mackerel' : 'red_snapper_rockfish',
+    sinkerWeightG: (flasher ? CARD_JEONGAENGI_WEIGHT_G : CARD_YEOLGI_WEIGHT_G)[hooks],
+    desc: flasher
+      ? `녹색 반짝이 깃 가지바늘 ${hooks}단 — 미끼 없이도 전갱이가 문다. 미끼를 끼우면 고등어·잡어도 붙는다.`
+      : `빨간 깃 가지바늘 ${hooks}단 — 단마다 크릴·오징어살을 끼워 깊은 바닥의 열기 떼를 노린다.`,
+  };
+}
+
+export const CARD_RIG_ENTRIES: ShopEntry[] = [
+  ...CARD_RIG_HOOK_RANGE.map((n) => cardRigEntry('jeongaengi', n)),
+  ...CARD_RIG_HOOK_RANGE.map((n) => cardRigEntry('yeolgi', n)),
+];
+
 const TAIRABA_HEAD_WEIGHTS = [40, 60, 80, 100, 120, 150, 180, 200] as const;
 
 /** 타이라바 헤드 상점 항목 — 무게가 수심·조류 운용을 정한다 */
@@ -169,10 +206,8 @@ const TACKLE_CORNER: ShopEntry[] = [
   { id: 'inv_sinkerG2', name: '좁쌀봉돌 G2', icon: '', iconTexture: 'splitshot', category: 'tackle', subCategory: '채비 부속', basePrice: 2000, price: 2500, maxPerPurchase: 20, equippable: false, desc: '찌낚시 목줄 미세 조정용 좁쌀 봉돌.' },
   { id: 'inv_swivel', name: '핀 도래 8호', icon: '', iconTexture: 'swivel', category: 'tackle', subCategory: '채비 부속', basePrice: 2500, price: 3000, maxPerPurchase: 20, equippable: false, rigPart: 'swivel_snap', desc: '핀(스냅)이 달린 도래 — 묶음추·타이라바 같은 간편 채비를 걸고 뺀다.' },
   // 192차 — 채비 모딩: 바렐 도래 · 타이라바 조립 부품(헤드 60/80/100g · 스커트 · 넥타이)
-  // 193차 — 카드 채비 완제품. 반짝이 깃 바늘은 미끼 없이도 전갱이가 작은 멸치로 보고 덤빈다
-  { id: 'inv_card_flasher_3', name: '카드 채비 반짝이 3단', icon: '', iconTexture: 'card_rig_flasher', category: 'tackle', subCategory: '채비 부속', basePrice: 3000, price: 3600, maxPerPurchase: 10, equippable: false, rigPart: 'card_rig', kitHooks: 3, cardFlasher: true, sinkerWeightG: 38, desc: '가지바늘 3단 — 바늘마다 반짝이는 깃이 달려 미끼 없이도 전갱이가 문다.' },
-  { id: 'inv_card_flasher_5', name: '카드 채비 반짝이 5단', icon: '', iconTexture: 'card_rig_flasher', category: 'tackle', subCategory: '채비 부속', basePrice: 4000, price: 4800, maxPerPurchase: 10, equippable: false, rigPart: 'card_rig', kitHooks: 5, cardFlasher: true, sinkerWeightG: 45, desc: '가지바늘 5단 반짝이 깃 — 고등어·전갱이 떼를 노린다.' },
-  { id: 'inv_card_plain_7', name: '카드 채비 민바늘 7단', icon: '', iconTexture: 'card_rig_plain', category: 'tackle', subCategory: '채비 부속', basePrice: 4500, price: 5400, maxPerPurchase: 10, equippable: false, rigPart: 'card_rig', kitHooks: 7, cardFlasher: false, sinkerWeightG: 60, desc: '깃 없는 가지바늘 7단 — 단마다 미끼를 끼워 열기를 노린다.' },
+  // 196차 — 열기(빨간 깃)·전갱이(녹색 깃) 카드 채비 3~7단 — 사용자 제공 포장 사진(tools/gen_card_rig_icons.py)
+  ...CARD_RIG_ENTRIES,
   { id: 'inv_swivel_barrel', name: '바렐 도래 6호', icon: '', iconTexture: 'swivel_barrel', category: 'tackle', subCategory: '채비 부속', basePrice: 1800, price: 2200, maxPerPurchase: 20, equippable: false, rigPart: 'swivel_plain', desc: '통 모양 몸통의 일반 도래 — 원줄과 목줄의 꼬임을 줄인다.' },
 // 194차 — 헤드 무게별 라인업(40~200g · 사용자 참고 이미지). 그림은 하나 — 크기는 ItemIcon.iconWeightScale이 무게로 조절
   ...TAIRABA_HEAD_WEIGHTS.map(tairabaHeadEntry),
@@ -188,6 +223,10 @@ const FORAGE_CORNER: ShopEntry[] = [
   { id: 'inv_headlamp', name: '헤드랜턴 (800lm)', icon: '🔦', category: 'etc', subCategory: '해루질 도구', basePrice: 25000, price: 28000, maxPerPurchase: 1, equippable: false, lampLumens: 800, desc: '야간 채집 필수 — 루멘이 발견 반경. 100lm당 약 0.55타일.' },
   { id: 'inv_tongs',    name: '채집 집게',        icon: '🥢', category: 'etc', subCategory: '해루질 도구', basePrice: 8000,  price: 9500,  maxPerPurchase: 1, equippable: false, forageTool: 'tongs', desc: '소라·홍합·성게·해삼. 맨손으로 성게를 집으면 가시에 찔린다.' },
   { id: 'inv_gaff',     name: '채집 갈고리',      icon: '🪝', category: 'etc', subCategory: '해루질 도구', basePrice: 12000, price: 14000, maxPerPurchase: 1, equippable: false, forageTool: 'gaff', desc: '바위틈 문어·전복. 뜰채보다 문어를 덜 놓친다.' },
+  // 196차 — 뜰채(손 도구 — 낚싯대 반대 손). 자루가 발판 높이 + 0.5m에 닿으면 들어 올릴 때 바늘이 빠지지 않는다
+  { id: 'shop_net_3', name: '뜰채 3m', icon: '', iconTexture: 'px:it_net', category: 'gear', subCategory: '손도구', basePrice: 18000, price: 22000, maxPerPurchase: 1, equippable: true, tool: 'net', netReachM: 3, desc: '짧은 뜰채 — 갯바위·사석·해변처럼 수면이 가까운 자리용.' },
+  { id: 'shop_net_5', name: '뜰채 5m', icon: '', iconTexture: 'px:it_net', category: 'gear', subCategory: '손도구', basePrice: 30000, price: 36000, maxPerPurchase: 1, equippable: true, tool: 'net', netReachM: 5, desc: '가장 흔한 길이 — 안벽·테트라포드까지 닿는다.' },
+  { id: 'shop_net_7', name: '뜰채 7m', icon: '', iconTexture: 'px:it_net', category: 'gear', subCategory: '손도구', basePrice: 52000, price: 62000, maxPerPurchase: 1, equippable: true, tool: 'net', netReachM: 7, desc: '긴 자루 뜰채 — 높은 방파제 상판에서 간조 때도 수면에 닿는다.' },
   ...TRAP_DATABASE.map((t): ShopEntry => ({
     id: `inv_trap_${t.id}`, name: t.nameKo, icon: '🪤', category: 'etc', subCategory: '통발',
     basePrice: Math.round(t.priceWon * 0.8), price: t.priceWon, maxPerPurchase: 3, equippable: false, trapSpecId: t.id,

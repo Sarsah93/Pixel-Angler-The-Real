@@ -19,6 +19,10 @@ import { ShopDef, ShopEntry } from '../data/ShopCatalog.js';
 import { DraggablePanel } from './DraggablePanel.js';
 import { ConfirmDialog, QuantityDialog } from './Dialogs.js';
 import { createItemIcon } from './ItemIcon.js';
+import { drawTrendIcon, TREND_ICON_PX } from './MarketTrendIcon.js';
+import { MarketStore } from '../store/MarketStore.js';
+import { clampTextWidth } from './TextFit.js';
+import type { MarketTrend } from '@tra/core';
 import { maybeStartTour, type TourOptions } from './GuideTour.js';
 import { StoryStore } from '../store/StoryStore.js';
 import {
@@ -49,6 +53,8 @@ interface ShopCell {
   condition?: InvItem['condition']; recommended?: boolean;
   // 어획물은 iconTexture가 비어도 speciesId로 이미지 폴백 해소 (createItemIcon)
   speciesId?: string; lengthCm?: number;
+  /** 196차 — 이 지점의 시세·수요 화살표(어획물만) */
+  trend?: MarketTrend;
   selected: boolean; tooltip: string;
   onSelect: () => void; onDetail: () => void;
 }
@@ -109,6 +115,12 @@ export class ShopPanel extends DraggablePanel {
     super(scene, { x, y, width: PANEL_W, height: PANEL_H, title: shop.name, onClose: cbs.onClose, depth: 820 });
     this.shop = shop;
     this.cbs = cbs;
+    // 196차 — 지점 이름(상호)을 제목에 붙인다: 같은 직판장이라도 지점마다 수요·시세가 다르다
+    const branch = MarketStore.branch;
+    if (branch && branch.name && branch.name !== shop.name) {
+      this.titleText.setText(`${shop.name} · ${branch.name}`);
+      clampTextWidth(this.titleText, PANEL_W - 70);
+    }
 
     // 휠 스크롤 — 포인터가 이 패널 위에 있을 때만 (동시에 열리는 인벤토리 휠을 가로채지 않음)
     this.wheelHandler = (p, _go, _dx, dy): void => {
@@ -238,7 +250,13 @@ export class ShopPanel extends DraggablePanel {
   }
   /** 판매가 — 스킬 흥정·단골 배율 (122차) */
   private sellPriceOf(item: InvItem): number {
-    return Math.round(InventoryStore.getSellPrice(item) * GameState.skillMult('sell_price'));
+    const base = Math.round(InventoryStore.getSellPrice(item) * GameState.skillMult('sell_price'));
+    return MarketStore.quote(item, base)?.unit ?? base;   // 196차 — 지점 수요 × 시세 하락
+  }
+
+  /** 196차 — 이 지점의 시세·수요 화살표(어획물만) */
+  private trendOf(item: InvItem): MarketTrend | undefined {
+    return MarketStore.quote(item, 0)?.trend;
   }
 
   /**
@@ -355,6 +373,7 @@ export class ShopPanel extends DraggablePanel {
           priceLabel: `${this.sellPriceOf(item).toLocaleString()}원`,
           qtyLabel: item.qty > 1 ? `x${item.qty}` : '',
           condition: item.condition,
+          trend: this.trendOf(item),
           selected: this.selectedSell?.id === item.id,
           tooltip: `${item.name}\n매입가 ${this.sellPriceOf(item).toLocaleString()}원${item.condition ? ' · ' + CONDITION_LABEL[item.condition] : ''}`,
           onSelect: () => { this.selectedSell = item; this.renderGrid(); },
@@ -550,6 +569,10 @@ export class ShopPanel extends DraggablePanel {
         fontFamily: 'monospace', fontSize: '9px', color: '#aee8ff', fontStyle: 'bold',
       }).setOrigin(1, 0);
       this.gridContainer.add(qty);
+    }
+    // 196차 — 우상단 시세·수요 화살표(수량 글자가 있으면 그 아래)
+    if (cell.trend !== undefined) {
+      this.gridContainer.add(drawTrendIcon(this.scene, sx + SLOT - TREND_ICON_PX - 2, sy + (cell.qtyLabel ? 14 : 2), cell.trend));
     }
 
     if (cell.condition) {

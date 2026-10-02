@@ -443,8 +443,24 @@ export {
 export type { SchoolCount } from './simulation/SchoolHookup.js';
 export {
   SCHOOL_HOOKUP_SPECIES, SCHOOL_DOUBLE_CHANCE, SCHOOL_TRIPLE_CHANCE, SCHOOL_MIN_BITE_CHANCE, SCHOOL_FIGHT_MULT,
-  isPeakSeason, schoolHookupEligible, rollSchoolHookup,
+  isPeakSeason, schoolHookupEligible, rollSchoolHookup, SCHOOL_KIT_MULT, schoolKitMult,
 } from './simulation/SchoolHookup.js';
+// 196차 — 랜딩(들어뽕) 바늘 빠짐 · 판매처별 시세 하락
+export type {
+  FootingKind, LandingFish, LandingDropInput, LandingDropOdds, LandingDropResult,
+} from './simulation/LandingDrop.js';
+export {
+  FOOTING_LIFT_M, FOOTING_LABEL, LANDING_DROP_BASE, WEAK_MOUTH_ADD, LIFT_FREE_M, LIFT_ADD_PER_M,
+  LIFT_WEIGHT_MULT_MAX, TETRAPOD_ADD, BEACH_MULT, BIG_FISH_CM, BIG_FISH_ADD, BIG_FISH_ADD_PER_CM,
+  BIG_FISH_ADD_MAX, NET_DIP_MARGIN_M, LANDING_DROP_MAX, netUsable, landingDropOdds, rollLandingDrop,
+} from './simulation/LandingDrop.js';
+export type { SaturationEntry, SaturationBook, SaturationInput, MarketTrend } from './simulation/MarketSaturation.js';
+export {
+  SAT_HALF_LIFE_MS, SAT_STEP, SAT_MAX_CUT, SAT_LIVE_SOFTEN, SAT_BIG_SOFTEN, BRANCH_PREF_PCT,
+  PRICE_HIGH, PRICE_LOW, SAT_PRUNE_MS, saturationKey, saturationThreshold, decayedLoad, saturationSteps,
+  saturationMult, branchPreference, branchPreferenceMult, priceLevel, demandLevel, marketTrend,
+  recordSale, pruneSaturation,
+} from './simulation/MarketSaturation.js';
 
 // 크기 등급(소/중/대) + 루어 무게·주간·급심 게이트 (중대형 회유어)
 export type { SizeTier, TierRollContext } from './simulation/SizeTierRules.js';
@@ -692,5 +708,5 @@ export {
   RIG_PART_LABEL, RIG_SLOTS, KIT_DEFS, KIT_ORDER, CARD_TYPES, KNOT_DIRECT, KNOT_SWIVEL, OFF_RECOMMENDED_BIAS,
   newRigTree, nodeFilled, nodeOptional, nodeLabel, childrenOf, descendantsOf, setRigValue, dropMissingItems,
   missingParts, summarize, baitRecommendedFor, treeFromLegacy,
-  MULTI_BAIT_BONUS, SAME_BAIT_SYNERGY, DOUBLE_BAIT_BONUS, DOUBLE_BAIT_MAX, CARD_RIG_BITE_BONUS_MAX, FLASHER_ONLY_BITE_MULT, FLASHER_TARGET_SPECIES, baitBiteBonus,
+  MULTI_BAIT_BONUS, SAME_BAIT_SYNERGY, DOUBLE_BAIT_BONUS, DOUBLE_BAIT_MAX, CARD_RIG_BITE_BONUS_MAX, CARD_TARGET_BIAS, CARD_HOOKS_MIN, CARD_HOOKS_MAX, FLASHER_ONLY_BITE_MULT, FLASHER_TARGET_SPECIES, baitBiteBonus,
 } from './simulation/RigTree.js';

@@ -19,7 +19,7 @@ import { DraggablePanel } from './DraggablePanel.js';
 import { clampTextWidth } from './TextFit.js';
 import { createItemIcon } from './ItemIcon.js';
 import { resolveFishTexture } from '../data/FishTextures.js';
-import {
+import { netReachFromName,
   InvItem, InventoryStore, CONDITION_LABEL, CONDITION_COLOR, CONDITION_DESC,
   CONDITION_NEXT, refreshCondition, conditionRemainMs, formatDhms, plateWipProgress,
 } from '../store/InventoryStore.js';
@@ -59,7 +59,7 @@ const LINE_FORM_LABEL: Record<NonNullable<InvItem['lineForm']>, string> = {
 };
 
 /** 아이템 종류별 상세 스펙 추론 생성 (목업) — 어획물은 개체 실측치·어종 정보(FISH_DATABASE) 표시 */
-export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory' | 'category' | 'qty' | 'basePrice' | 'condition' | 'conditionSinceMs' | 'speciesId' | 'lengthCm' | 'weightG' | 'floatBuoyG' | 'plateWip' | 'fault' | 'useCount' | 'tool' | 'bound' | 'dish' | 'dishInstance' | 'sashimi' | 'cutQuality' | 'hungerRestore' | 'hydrationRestore' | 'hpRestore' | 'fatigueRestore' | 'lineMaterial' | 'lineForm' | 'lineLengthM' | 'lineNo' | 'lineDiameterMm' | 'lineStrengthLb' | 'sinkerKind' | 'sinkerWeightG' | 'sinkerHo'>): ItemDetailData {
+export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory' | 'category' | 'qty' | 'basePrice' | 'condition' | 'conditionSinceMs' | 'speciesId' | 'lengthCm' | 'weightG' | 'floatBuoyG' | 'plateWip' | 'fault' | 'useCount' | 'tool' | 'bound' | 'dish' | 'dishInstance' | 'sashimi' | 'cutQuality' | 'hungerRestore' | 'hydrationRestore' | 'hpRestore' | 'fatigueRestore' | 'lineMaterial' | 'lineForm' | 'lineLengthM' | 'lineNo' | 'lineDiameterMm' | 'lineStrengthLb' | 'sinkerKind' | 'sinkerWeightG' | 'sinkerHo' | 'netReachM'>): ItemDetailData {
   const rows: ItemDetailRow[] = [];
   let desc = '';
   // 155차 — 완성 사시미 접시: 맛 별 5개(지금 / 담은 직후) — 불요리와 같은 문법
@@ -246,13 +246,15 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
       break;
     }
     case '손도구':
-      if (item.id === 'inv_net' || item.name.includes('뜰채')) {
+      if (item.tool === 'net' || item.name.includes('뜰채')) {
+        // 196차 — 자루 길이가 곧 성능이다. 발판에서 수면까지(+ 담글 여유 0.5m)에 닿아야 쓸 수 있다
+        const reach = item.netReachM ?? netReachFromName(item.name);
         rows.push(
-          { label: '길이', value: '5.0 m' },
-          { label: '랜딩 성공 보정', value: '+15%' },
-          { label: '착용 방식', value: '왼손/오른손 선택 착용' },
+          { label: '자루 길이', value: `${reach.toFixed(1)} m` },
+          { label: '닿는 높이', value: `발판에서 수면까지 ${(reach - 0.5).toFixed(1)} m` },
+          { label: '착용 방식', value: '낚싯대 반대 손' },
         );
-        desc = '파이팅 마무리 단계에서 대상어를 안전하게 끌어올립니다.';
+        desc = '고기를 물 밖으로 들어 올릴 때 바늘이 빠지지 않게 떠 올립니다. 자루가 수면에 닿지 않는 높은 자리나 테트라포드 구멍에서는 쓸 수 없습니다.';
       } else {
         rows.push(
           { label: '로드 탄성 계수 (k_rod)', value: '0.82' },

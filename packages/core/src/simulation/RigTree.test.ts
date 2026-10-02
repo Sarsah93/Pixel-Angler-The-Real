@@ -233,3 +233,29 @@ describe('RigTree — 193차 다중 미끼', () => {
     expect(summarize(four, view).biteBonus).toBeCloseTo(0.06);   // 상한 아래는 그대로
   });
 });
+
+describe('RigTree — 196차 카드 채비 대상 어종 · 3~7단', () => {
+  const card = (it: RigItemView): ReturnType<typeof summarize> => {
+    ITEMS[it.id] = it;
+    let s = put(newRigTree(), 'main_line', { itemId: 'pe' });
+    s = put(s, 'knot', { choice: KNOT_SWIVEL });
+    s = put(s, 'swivel', { itemId: 'pin' });
+    s = put(s, 'after_swivel', { choice: 'kit' });
+    s = put(s, 'kit_kind', { choice: 'card_rig' });
+    s = put(s, 'card_kit', { itemId: it.id });
+    return summarize(s, view);
+  };
+  it('열기 카드 채비 4단 — 열기 가중 +30% · 열기 간격 표 · 바늘 4', () => {
+    const sum = card({ id: 'y4', name: '열기 카드 채비 4단', partKind: 'card_rig', qty: 1, kitHooks: 4, cardTarget: 'red_snapper_rockfish' });
+    expect(sum.speciesBias.red_snapper_rockfish).toBeCloseTo(0.3);
+    expect(sum.cardType).toBe('yeolgi');
+    expect(sum.cardHooks).toBe(4);
+    expect(sum.baitIds).toHaveLength(4);
+  });
+  it('전갱이 카드 채비 6단 — 반짝이 · 전갱이 가중', () => {
+    const sum = card({ id: 'j6', name: '전갱이 카드 채비 6단', partKind: 'card_rig', qty: 1, kitHooks: 6, flasher: true, cardTarget: 'horse_mackerel' });
+    expect(sum.speciesBias.horse_mackerel).toBeCloseTo(0.3);
+    expect(sum.cardType).toBe('jeongaengi');
+    expect(sum.flasherOnly).toBe(true);
+  });
+});

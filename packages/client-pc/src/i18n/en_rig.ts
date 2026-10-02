@@ -77,6 +77,14 @@ export const EN_RIG: Record<string, string> = {
   '가지바늘 3단 — 바늘마다 반짝이는 깃이 달려 미끼 없이도 전갱이가 문다.': 'Three branch hooks, each with a flashy skin — horse mackerel bite even without bait.',
   '가지바늘 5단 반짝이 깃 — 고등어·전갱이 떼를 노린다.': 'Five flasher branch hooks — for schools of mackerel and horse mackerel.',
   '깃 없는 가지바늘 7단 — 단마다 미끼를 끼워 열기를 노린다.': 'Seven plain branch hooks — bait each tier for rockfish.',
+  // ── 196차 — 열기·전갱이 카드 채비 3~7단 · 뜰채 ──
+  '뜰채 3m': 'Landing Net 3m', '뜰채 7m': 'Landing Net 7m',
+  '짧은 뜰채 — 갯바위·사석·해변처럼 수면이 가까운 자리용.': 'Short landing net — for rocks, riprap and beaches where the water is close.',
+  '가장 흔한 길이 — 안벽·테트라포드까지 닿는다.': 'The most common length — reaches from quays and tetrapods.',
+  '긴 자루 뜰채 — 높은 방파제 상판에서 간조 때도 수면에 닿는다.': 'Long-handled net — reaches the water from a high breakwater deck even at low tide.',
+  '자루 길이': 'Handle length', '닿는 높이': 'Reach', '낚싯대 반대 손': 'Hand opposite the rod',
+  '고기를 물 밖으로 들어 올릴 때 바늘이 빠지지 않게 떠 올립니다. 자루가 수면에 닿지 않는 높은 자리나 테트라포드 구멍에서는 쓸 수 없습니다.':
+    "Scoops the fish so the hook can't pull free while you lift it out. It can't be used where the handle won't reach the water, or in tetrapod holes.",
   '남은 미끼가 모자랍니다': 'Not enough bait left',
   '같은 미끼가 두 마리 이상 남아 있어야 합니다': 'You need at least two of the same bait left',
   '반짝이 바늘만 달린 채비 — 미끼가 없어 전갱이만 작은 멸치로 보고 덤빈다.': 'Flasher hooks only — with no bait, only horse mackerel take them for tiny anchovies.',
@@ -86,8 +94,8 @@ export const EN_RIG: Record<string, string> = {
   // ── 도움말 「장비 설정 (채비)」 ──
   '도래 뒤나 목줄 끝에서 「간편 채비」를 고르면 세트가 펼쳐집니다. 묶음추 채비: 묶음추 하나를 고르면 핀도래 · 바늘 1 · 2 · 바렐 도래 · 봉돌 · 바늘 3이 고정으로 열리고, 바늘마다 미끼 칸이 붙습니다. 바늘마다 다른 미끼를 끼울 수 있고, 어느 바늘이든 하나만 끼우면 완성입니다.':
     'Choose Ready rig after a swivel or at the leader end and the set unfolds. Bundle-sinker rig: pick one bundle sinker and pin swivel · hook 1 · 2 · barrel swivel · sinker · hook 3 open as fixed parts, with a bait slot after each hook. Each hook can take a different bait, and baiting any one hook completes the rig.',
-  '카드 채비(반짝이 3단 · 반짝이 5단 · 민바늘 7단 — 직판장) · T자 천평 편대 · 하드 베이트(미노우 · 스푼 · 스피너 · 에기 · 메탈지그 · 완성 타이라바) · 소프트 베이트(지그헤드 + 웜)도 같은 자리에서 고릅니다. 루어 세트는 미끼를 끼우지 않습니다. 반짝이 깃 카드 채비는 미끼 없이도 고정되며, 그때는 전갱이만 미끼를 끼웠을 때의 10% 정도로 덤빕니다.':
-    'Card rigs (flasher 3 · flasher 5 · plain 7 tiers — fish market), the T-bar spreader, hard baits (minnow · spoon · spinner · egi · metal jig · finished tairaba) and soft baits (jig head + worm) are chosen in the same place. Lure sets take no bait. A flasher card rig locks even with no bait; then only horse mackerel bite, at about 10% of the baited rate.',
+  '카드 채비(전갱이용 녹색 깃 · 열기용 빨간 깃, 각 3~7단 — 직판장) · T자 천평 편대 · 하드 베이트(미노우 · 스푼 · 스피너 · 에기 · 메탈지그 · 완성 타이라바) · 소프트 베이트(지그헤드 + 웜)도 같은 자리에서 고릅니다. 루어 세트는 미끼를 끼우지 않습니다. 전갱이 카드 채비(반짝이 깃)는 미끼 없이도 고정되며, 그때는 전갱이만 미끼를 끼웠을 때의 10% 정도로 덤빕니다. 열기 카드 채비는 단마다 미끼를 끼워 씁니다.':
+    'Card rigs (horse mackerel green-flasher · red rockfish red-skin, 3–7 hooks each — fish market), the T-bar spreader, hard baits (minnow · spoon · spinner · egi · metal jig · finished tairaba) and soft baits (jig head + worm) are chosen in the same place. Lure sets take no bait. The horse mackerel sabiki (flasher skins) locks even with no bait, and then only horse mackerel bite, at about 10% of the baited rate. Bait each hook of the red rockfish sabiki.',
   '미끼 여러 개 · 한 바늘에 두 미끼': 'Several baits · two baits on one hook',
   '미끼를 단 바늘이 하나 늘 때마다 입질이 2% 오릅니다(바늘 3개 = +4%). 이웃한 바늘에 같은 미끼가 이어지면 1%가 더해집니다. 바늘이 많은 카드 채비는 오르는 몫이 모두 합쳐 10%까지입니다. 오른 만큼은 채비 제원 상자 제목 끝에 보입니다.':
     'Each extra baited hook raises bites by 2% (three hooks = +4%). The same bait on neighbouring hooks adds another 1%. Card rigs, with their many hooks, top out at +10% in all. The total shows at the end of the rig-spec box title.',
@@ -136,4 +144,13 @@ export const EN_RIG_RULES: [RegExp, (m: RegExpMatchArray, tr: (s: string) => str
   [/^(.+) 두 마리$/, (m, tr) => `${tr(m[1])} ×2`],
   [/^반짝이 바늘 (\d+)$/, (m) => `Flasher hook ${m[1]}`],
   [/^타이라바 헤드 (\d+)g$/, (m) => `Tairaba head ${m[1]}g`],
+  // 196차 — 카드 채비 3~7단 · 뜰채
+  [/^전갱이 카드 채비 (\d)단$/, (m) => `Horse mackerel sabiki, ${m[1]} hooks`],
+  [/^열기 카드 채비 (\d)단$/, (m) => `Red rockfish sabiki, ${m[1]} hooks`],
+  [/^녹색 반짝이 깃 가지바늘 (\d)단 — 미끼 없이도 전갱이가 문다\. 미끼를 끼우면 고등어·잡어도 붙는다\.$/,
+    (m) => `${m[1]} green flasher branch hooks — horse mackerel bite even without bait. Bait them and mackerel and others join in.`],
+  [/^빨간 깃 가지바늘 (\d)단 — 단마다 크릴·오징어살을 끼워 깊은 바닥의 열기 떼를 노린다\.$/,
+    (m) => `${m[1]} red-skin branch hooks — bait each with krill or squid strip for red rockfish schools near the deep bottom.`],
+  [/^뜰채 (\d+)m$/, (m) => `Landing Net ${m[1]}m`],
+  [/^발판에서 수면까지 ([\d.]+) m$/, (m) => `Up to ${m[1]} m above the water`],
 ];

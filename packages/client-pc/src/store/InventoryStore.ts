@@ -36,7 +36,7 @@ import { applyItemVitals, refreshNutritionVitals } from '../data/ItemVitals.js';
 import { applyCookItemFields, COOK_CORNER } from '../data/CookItems.js';
 import { StoryStore } from './StoryStore.js';
 import { migrateCatchItemId, migrateSpeciesId } from '../data/SpeciesMigration.js';
-import { SHOP_CATALOG } from '../data/ShopCatalog.js';
+import { SHOP_CATALOG, CARD_RIG_ENTRIES } from '../data/ShopCatalog.js';
 import { rigViewOf } from './RigParts.js';
 
 /** 인벤토리 카테고리 탭 */
@@ -206,6 +206,10 @@ export interface InvItem {
   kitHooks?: number;
   /** 193차 — 카드 채비 바늘에 반짝이 깃(스킨)이 붙어 있다(미끼 없이도 전갱이가 문다) */
   cardFlasher?: boolean;
+  /** 196차 — 카드 채비 대상 어종(열기 · 전갱이) — 그 어종 가중 +30% */
+  cardTarget?: string;
+  /** 196차 — 뜰채 자루 길이(m). 발판 높이 + 0.5m에 닿으면 바늘 빠짐 0 */
+  netReachM?: number;
 
   /**
    * 밑밥 재료 종류 (U 밑밥 품질 탭 드래그 앤 드랍 대상) —
@@ -443,6 +447,32 @@ export const SPREADER_LABEL: Record<SpreaderKind, string> = {
   GALCHI: '갈치 와이어',
 };
 
+/** 196차 — 뜰채 이름의 「N m」 → 자루 길이(m). 못 읽으면 5m(구 시드 「뜰채 5m」) */
+export function netReachFromName(name: string): number {
+  const m = /(\d+(?:\.\d+)?)\s*m/.exec(name);
+  return m ? parseFloat(m[1]) : 5;
+}
+
+/** 196차 — 구세이브 뜰채는 이모지(🥅)만 들고 있다 → 픽셀 아이콘으로 */
+function refreshNetIcon(i: InvItem): InvItem {
+  if (i.tool !== 'net' || i.iconTexture) return i;
+  return { ...i, iconTexture: 'px:it_net', icon: '' };
+}
+
+/**
+ * 196차 — 카드 채비는 제품 정체(이름·그림·대상 어종)가 바뀌었다(구 「반짝이 3·5단」 → 전갱이,
+ * 구 「민바늘 7단」 → 열기). 정적 제품 정보라 카탈로그 값으로 덮는다 — 수량·칸은 그대로.
+ */
+function refreshCardRigIdentity(i: InvItem): InvItem {
+  if (i.rigPart !== 'card_rig') return i;
+  const e = CARD_RIG_ENTRIES.find((c) => c.id === i.id);
+  if (!e) return i;
+  return {
+    ...i, name: e.name, iconTexture: e.iconTexture, icon: '', kitHooks: e.kitHooks,
+    cardFlasher: e.cardFlasher, cardTarget: e.cardTarget, sinkerWeightG: e.sinkerWeightG,
+  };
+}
+
 export const CARD_RIG_INFO: Record<CardRigType, { label: string; hooks: number; gapM: number }> = {
   yeolgi:     { label: '열기 (7단)',   hooks: 7, gapM: 0.3 },
   godeungeo:  { label: '고등어 (5단)', hooks: 5, gapM: 0.5 },
@@ -530,7 +560,7 @@ function createSeedItems(): InvItem[] {
     // ── 장비 (손/의류) ──
     { id: 'inv_rod',      name: '용상 파조기 1.5호 5.3m',   icon: '', iconTexture: 'item_spinning_rod', category: 'gear', subCategory: '손도구', qty: 1, basePrice: 185000, equippable: true, equipped: true, tool: 'rod', equippedHand: 'R' },
     { id: 'inv_reel',     name: '다이오 2500L 스피닝릴',    icon: '', iconTexture: 'item_spinning_reel', category: 'gear', subCategory: '릴',     qty: 1, basePrice: 95000,  equippable: true, equipped: true },
-    { id: 'inv_net',      name: '뜰채 5m',                  icon: '🥅', category: 'gear', subCategory: '손도구', qty: 1, basePrice: 30000, equippable: true, tool: 'net' },
+    { id: 'inv_net',      name: '뜰채 5m',                  icon: '', iconTexture: 'px:it_net', category: 'gear', subCategory: '손도구', qty: 1, basePrice: 30000, equippable: true, tool: 'net', netReachM: 5 },
     { id: 'inv_cap',      name: '낚시 모자',                icon: '🧢', category: 'gear', subCategory: '모자',   qty: 1, basePrice: 12000, equippable: true },
     { id: 'inv_glasses',  name: '편광 안경',                icon: '🕶️', category: 'gear', subCategory: '안경',   qty: 1, basePrice: 45000, equippable: true },
     { id: 'inv_top',      name: '낚시 조끼',                icon: '👕', category: 'gear', subCategory: '상의',   qty: 1, basePrice: 25000, equippable: true },
@@ -602,7 +632,7 @@ function createSeedItems(): InvItem[] {
     { id: 'inv_bead_halfmoon', name: '반달구슬 3호',         icon: '', iconTexture: 'bead_halfmoon', category: 'tackle', subCategory: '채비 부속', qty: 6, basePrice: 1500, equippable: false },
     // 192차 — 채비 모딩: 바렐 도래 · 타이라바 조립 부품(헤드·스커트·넥타이)
     // 193차 — 카드 채비 완제품(반짝이 깃 바늘 3·5단 · 민바늘 7단)
-    { id: 'inv_card_flasher_3', name: '카드 채비 반짝이 3단', icon: '', iconTexture: 'card_rig_flasher', category: 'tackle', subCategory: '채비 부속', qty: 2, basePrice: 3000, equippable: false, rigPart: 'card_rig', kitHooks: 3, cardFlasher: true, sinkerWeightG: 38 },
+    { id: 'inv_card_flasher_3', name: '전갱이 카드 채비 3단', icon: '', iconTexture: 'card_rig_jeongaengi', category: 'tackle', subCategory: '채비 부속', qty: 2, basePrice: 3000, equippable: false, rigPart: 'card_rig', kitHooks: 3, cardFlasher: true, cardTarget: 'horse_mackerel', sinkerWeightG: 38 },
     { id: 'inv_swivel_barrel', name: '바렐 도래 6호',       icon: '', iconTexture: 'swivel_barrel', category: 'tackle', subCategory: '채비 부속', qty: 10, basePrice: 1800, equippable: false, rigPart: 'swivel_plain' },
     { id: 'inv_tairaba_head_80', name: '타이라바 헤드 80g', icon: '', iconTexture: 'tairaba_head_red', category: 'tackle', subCategory: '채비 부속', qty: 2, basePrice: 9000, equippable: false, rigPart: 'tairaba_head', sinkerWeightG: 80 },
     { id: 'inv_tairaba_skirt_red', name: '타이라바 스커트 (빨강)', icon: '', iconTexture: 'tairaba_skirt_red', category: 'tackle', subCategory: '채비 부속', qty: 3, basePrice: 3500, equippable: false, rigPart: 'tairaba_skirt' },
@@ -1188,6 +1218,8 @@ class InventoryStoreManager {
         rigPart: i.rigPart ?? sd?.rigPart,
         kitHooks: i.kitHooks ?? sd?.kitHooks,
         cardFlasher: i.cardFlasher ?? sd?.cardFlasher,
+        // 196차 — 뜰채 자루 길이: 이름의 「N m」에서 읽는다(시드·상점 공통). 이모지 아이콘은 픽셀 아이콘으로 바꾼다
+        netReachM: i.netReachM ?? sd?.netReachM ?? (i.tool === 'net' ? netReachFromName(i.name) : undefined),
         // 193차 — 카드 채비는 아래 봉돌까지 한 벌(자중). 시드에 없는 상점 구매분은 단수로 추정
         sinkerWeightG: i.sinkerWeightG ?? sd?.sinkerWeightG ?? (i.rigPart === 'card_rig' ? ((i.kitHooks ?? 3) >= 7 ? 60 : (i.kitHooks ?? 3) >= 5 ? 45 : 38) : undefined),
         name: (i.id === 'inv_swivel' && i.name === '면도래 8호') ? '핀 도래 8호' : i.name,
@@ -1200,7 +1232,8 @@ class InventoryStoreManager {
         slot: i.equipped ? SLOT_EQUIPPED : i.slot,
         conditionSinceMs: i.conditionSinceMs !== undefined ? i.conditionSinceMs + offlineGap : undefined,
       };
-    }).map((i) => applyCookItemFields(applyItemVitals(refreshNutritionVitals(i))));   // 154차 — 조리 필드도 테이블 백필 · 188차 영양표 재정합
+    }).map((i) => refreshCardRigIdentity(refreshNetIcon(i)))
+      .map((i) => applyCookItemFields(applyItemVitals(refreshNutritionVitals(i))));   // 154차 — 조리 필드도 테이블 백필 · 188차 영양표 재정합
     this._catchSeq = s.catchSeq ?? 0;
     const valid = new Set(this._items.map((i) => i.id));
     const ref = (id: string | null | undefined): string | null => {

@@ -16,6 +16,7 @@
 | core | `api-client/` | 낚시지수 · **MAFRA 경락가** · KOSIS 어획량 · NMPNT 해양기상 · 기상청 단기예보 (+ Mock 폴백) |
 | client | `store/ExternalDataStore.ts` | 스타트업 1회 `fetchAll()` 캐시 — 인게임 루프는 캐시만 참조 |
 | client | `ui/ShopPanel.ts` · `data/ShopCatalog.ts` | 상점 6종(편의점·마트·직판장·식당·카페·주점) |
+| core · client | `simulation/MarketSaturation.ts` · `store/MarketStore.ts` · `ui/MarketTrendIcon.ts` | 판매처별 시세 하락 장부(196) · 가게 수요 · 시세 화살표 |
 
 ## 3. 동작 구조
 ```
@@ -49,6 +50,7 @@
 | 위판 수수료 = 평판 소비처 | ✅ 평판 0 = 6% → 100 = 3%(하한). **낙찰가에는 평판을 걸지 않는다** | 147 |
 | 경매 **구매자 측**(경매장에서 사기) | ⬜ `AuctionEngine`(`placeBid`·`calcPlayerAuctionTotal`)이 자리만 서 있다 | — |
 | **정기 지출(유지비)** — 자격 갱신료 · 수협 조합비(월 12,000원 → 위판 수수료 −0.5%p) · 선박 유지비 · 위생 점검 · 어장 행사료(계원 1,000 / 비계원 5,000원) | ✅ | **171** — `core/rules/Upkeep.ts` · 인게임 일자 기준 |
+| **판매처별 시세 하락**(판 수 · 지점마다 · 반감기 6h · 기준 마릿수 15/10/7/5 · −3%/마리 최대 −40% · 활어·대물 ½ · 위판 무관) + 가게 수요 ±8% + 화살표 5단계(인벤·판매 칸 우상단) | ✅ | **196** — [196](../03-WORKLOG/2026-10-02-196-landing-drop-cooler-swap-market.md) |
 | **낚시점 전용 상점**(루어 판매) | ⬜ | 그리드 오버플로 회피로 보류 중 |
 | 식당 납품·경영 | ⬜ | Phase 6 잔여 |
 
@@ -66,7 +68,9 @@
 1. **매칭 테이블은 부분 일치 + 선착순** — `MAFRA_ITEM_TO_SPECIES` / `KOSIS_SPECIES_MATCH`는 **긴 이름을 먼저** 둔다(`말쥐치⊃쥐치`, `강도다리⊃도다리`, `잿방어⊃방어`, `한치` 등). 순서가 틀리면 조용히 오매칭.
 2. **API 키는 `.env`(`VITE_*`)** — 소스 하드코딩 금지. 프로덕션 번들엔 인라인되므로 노출을 감안한다.
 3. **프로덕션 배포에는 vite 프록시가 없다** — HTTP 전용(MAFRA·NMPNT)은 서버 프록시 필요. gh-pages에서는 Mock 폴백.
-4. 시세 이중 적용 금지(§3 주석). **위판 기준가도 같다** — `getSellPrice`(경락 캐시 반영)를
+4. **포화·가게 수요는 상점 매입에만**(196차) — `getSellPrice`는 손대지 않는다(위판 기준가·상세보기·손질 가치가 같이 쓴다).
+   상점 판매가는 `MarketStore.quote(item, base)`, 팔린 뒤 `recordSale`. 상점을 열 때 `MarketStore.open(branch)`, 닫을 때 `close()`.
+   시세 이중 적용 금지(§3 주석). **위판 기준가도 같다** — `getSellPrice`(경락 캐시 반영)를
    kg으로 환산해 쓰고 `getMarketPriceFactor`를 다시 곱하지 않는다.
 5. **경매는 계약이 두 벌이고 방향이 반대다**(147차) — `AuctionEngine` = 플레이어가 **사는 쪽**
    (`calcPlayerAuctionTotal` = 총 *비용*) / `ConsignmentAuction` = 플레이어가 **파는 쪽**.

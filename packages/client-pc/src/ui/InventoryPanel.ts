@@ -28,6 +28,8 @@ import { CoolerStore } from '../store/CoolerStore.js';
 import { DraggablePanel, applyScreenFixed } from './DraggablePanel.js';
 import { ConfirmDialog } from './Dialogs.js';
 import { createItemIcon } from './ItemIcon.js';
+import { drawTrendIcon, TREND_ICON_PX } from './MarketTrendIcon.js';
+import { MarketStore, isMarketFish } from '../store/MarketStore.js';
 import { setSlotLabel, SLOT_LABEL_PX } from './SlotLabel.js';
 import { addPixelIcon } from './PixelIcon.js';
 import { GEAR_FAULTS, TUNING } from '@tra/core';
@@ -527,6 +529,15 @@ export class InventoryPanel extends DraggablePanel {
           fontFamily: 'monospace', fontSize: '10px', color: '#ffe28a', fontStyle: 'bold',
         }).setOrigin(1, 0);
         this.gridContainer.add(qty);
+      }
+
+      // 196차 — 상점이 열려 있으면 어획물 칸 **우상단**에 그 지점의 시세·수요 화살표.
+      //   우상단 = 수량 글자 자리인데 어획물은 개체마다 칸을 따로 써서 수량이 1이라 비어 있다
+      //   (좌상단 = 신선도 배지 · 좌하단 = 미완성 접시 % · 우하단 = 고장 표식·NEW 점).
+      //   사온 활어처럼 수량이 2 이상이면 수량 글자 아래에 둔다.
+      if (MarketStore.branch && isMarketFish(item)) {
+        const q = MarketStore.quote(item, 0);
+        if (q) this.gridContainer.add(drawTrendIcon(this.scene, sx + SLOT - TREND_ICON_PX - 3, sy + (item.qty > 1 ? 15 : 3), q.trend));
       }
 
       if (item.condition) {

@@ -23,7 +23,7 @@ import {
   isFieldActive, type MpActivity, mpTimeSlot, mpWorldSeed,
   MP_TRADE_RANGE_PX, MP_TRADE_REASON_KO, type MpTradeState, type MpProfile, type MpPeer,
   // 149차 — 구멍치기(테트라포드·사석 틈)
-  type HoleSpotInfo, type StorySpotKind,
+  type HoleSpotInfo, type StorySpotKind, type FootingKind,
   holeKindOfBreakwaterClass, evaluateHoleSpot, holeSlipChance, holeGearWarning,
   STAIR_DIR_LABEL,
 } from '@tra/core';
@@ -154,6 +154,7 @@ import { ConfirmDialog, QuantityDialog } from '../ui/Dialogs.js';
 import { AdvancedCraftPanel } from '../ui/AdvancedCraftPanel.js';
 import { paintHudPanel, paintTitlePlate } from '../ui/HudPanelStyle.js';
 import { DraggablePanel, applyScreenFixed, restoreHandCursor } from '../ui/DraggablePanel.js';
+import { MarketStore, type MarketBranch } from '../store/MarketStore.js';
 import { InventoryStore, InvItem } from '../store/InventoryStore.js';
 import { CoolerStore } from '../store/CoolerStore.js';
 import { DiscoveryStore } from '../store/DiscoveryStore.js';
@@ -367,8 +368,9 @@ export class RegionFieldScene extends Phaser.Scene {
   private shopPanel: ShopPanel | null = null;
 
   // ── 건물(상점) ──
-  private buildings: { x: number; y: number; kind: BuildingKind }[] = [];
-  private nearBuilding: { x: number; y: number; kind: BuildingKind } | null = null;
+  /** 196차 — branch = 판매처(시세 하락·가게 수요를 따로 센다) */
+  private buildings: { x: number; y: number; kind: BuildingKind; branch: MarketBranch }[] = [];
+  private nearBuilding: { x: number; y: number; kind: BuildingKind; branch: MarketBranch } | null = null;
 
   // ── 홈타운(집) — 오브젝트 인스턴스 + 칸 단위 설치 모드 (HOMETOWN_HOME_SPEC) ──
   /** 유효 오브젝트 (초기 배치 − removed + moved + placed) */
@@ -1522,7 +1524,7 @@ export class RegionFieldScene extends Phaser.Scene {
       }).setOrigin(0.5, 0).setDepth(15);
       void label;
 
-      this.buildings.push({ x, y, kind });
+      this.buildings.push({ x, y, kind, branch: { key: `${this.region}:${this.mapId}:poi${i}`, name: BUILDING_LABEL[kind] } });
     });
   }
 
@@ -1742,7 +1744,10 @@ export class RegionFieldScene extends Phaser.Scene {
       // 거래 가능 POI = 기존 건물 근접([E] 거래) 흐름에 그대로 편입
       const kind = this.poiBuildingKind(poi);
       if (kind) {
-        this.buildings.push({ x: door.x, y: door.y, kind });
+        this.buildings.push({
+          x: door.x, y: door.y, kind,
+          branch: { key: `${this.region}:osm:${poi.osmId || `${poi.tx},${poi.ty}`}`, name: poi.name || BUILDING_LABEL[kind] },
+        });
         // 물품 상점(1)이 음식점·카페·주점(0)보다 미니맵 셀을 먼저 차지한다
         const goods = kind !== 'restaurant' && kind !== 'cafe' && kind !== 'pub';
         this.miniShopMarkers.push({
@@ -2872,20 +2877,22 @@ export class RegionFieldScene extends Phaser.Scene {
   // ═══════════════════════════════════════════════════
   // 상점 (건물 근접 E → 거래 확인 → 상점+인벤토리 나란히)
   // ═══════════════════════════════════════════════════
-  private promptTrade(kind: BuildingKind): void {
+  private promptTrade(kind: BuildingKind, branch?: MarketBranch): void {
     StoryStore.event({ kind: 'visit', placeKey: 'shop:any' });   // 134차 — M1-02 상점 UI 목표
     this.openPopup((close) => new ConfirmDialog(
       this,
       `${BUILDING_LABEL[kind]}에 들어갑니다.\n상품을 거래하시겠습니까?`,
-      () => { close(); this.openShop(kind); },
+      () => { close(); this.openShop(kind, branch); },
       close,
     ));
   }
 
-  private openShop(kind: BuildingKind): void {
+  private openShop(kind: BuildingKind, branch?: MarketBranch): void {
     if (this.shopPanel) return;
     this.dismountBike();   // 실내(상점)에선 자전거에서 내린다
     const shop = SHOP_CATALOG[kind];
+    // 196차 — 판매처(지점)를 알려 둔다: 매입가의 가게 수요·시세 하락과 인벤 화살표가 이 지점 기준이 된다
+    MarketStore.open(branch ?? { key: `${this.region}:${kind}`, name: shop.name });
 
     // 좌측: 상점 / 우측: 인벤토리
     this.shopPanel = this.openPopup(
@@ -2896,9 +2903,14 @@ export class RegionFieldScene extends Phaser.Scene {
         onOpenDetail: (itemLike) => this.openItemDetail({ slot: 0, qty: 1, ...itemLike } as InvItem),
         onConsign: (inputs) => this.openConsignment(inputs),
       }),
-      () => { this.shopPanel = null; },
+      () => {
+        this.shopPanel = null;
+        MarketStore.close();
+        this.events.emit('inventory-changed');   // 인벤 칸의 시세 화살표를 거둔다
+      },
     );
     if (!this.invPanel) this.toggleInventory(GAME_WIDTH - 470);
+    else this.events.emit('inventory-changed');   // 이미 열린 인벤에 화살표를 그린다
     this.hud?.pushLog(`[상점] ${shop.name} 이용 시작`);
   }
 
@@ -3041,6 +3053,7 @@ export class RegionFieldScene extends Phaser.Scene {
             return;
           }
           GameState.addCoins(total);
+          MarketStore.recordSale(item, qty);   // 196차 — 이 지점에 풀린 물량(판 수)
           this.events.emit('inventory-changed');
           this.shopPanel?.refresh();
           this.shopPanel?.setStatus(`${item.name} x${qty} 판매 완료 (+${total.toLocaleString()}원)`);
@@ -3116,6 +3129,30 @@ export class RegionFieldScene extends Phaser.Scene {
    * 149차 — 플레이어가 선 자리의 어획 장소 종류 (퀘스트 장소 조건 판정용).
    * 방파제 단면 분류(0 안벽·1 상판·2 피복·3 사석)가 있거나 부두 타일이면 방파제로 본다.
    */
+  /**
+   * 196차 — 캐릭터가 선 발판 → 랜딩(들어뽕) 높이. 방파제 단면 분류(0 없음/안벽 · 1 상판 · 2 사석 ·
+   * 3 테트라포드)를 먼저 보고, 없으면 지형(안벽 · 갯바위 · 모래)으로 가른다. 그 밖(도로·잔디 등 물가)은 안벽 취급.
+   */
+  private standingFooting(): FootingKind {
+    const c = Math.floor(this.playerBody.x / TR);
+    const r = Math.floor(this.playerBody.y / TR);
+    const k = this.chunks?.breakwaterClassAt(c, r) ?? 0;
+    if (k === 1) return 'breakwater_top';
+    if (k === 2) return 'riprap';
+    if (k === 3) return 'tetrapod';
+    const t = this.terrainAt(c, r);
+    if (t === 'rock' || t === 'cliff') return 'rocks';
+    if (t === 'sand' || t === 'tidal') return 'beach';
+    return 'quay';
+  }
+
+  /** 196차 — 물때 높이 보정(m): 중간 수위보다 물이 빠져 있으면 그만큼 더 들어 올린다 */
+  private tideLiftM(): number {
+    const ti = calculateTideInfo();
+    const mid = (ti.highTideHeightCm + ti.lowTideHeightCm) / 2;
+    return Math.round((mid - ti.currentWaterLevelCm)) / 100;
+  }
+
   private standingSpotKind(): StorySpotKind {
     const c = Math.floor(this.playerBody.x / TR);
     const r = Math.floor(this.playerBody.y / TR);
@@ -3183,6 +3220,7 @@ export class RegionFieldScene extends Phaser.Scene {
         region: this.region,
         shoreKind: 'gravel' as const,
         hole,
+        footing: 'hole' as const, tideLiftM: this.tideLiftM(),
       });
     }, 260, false);
   }
@@ -3505,6 +3543,7 @@ export class RegionFieldScene extends Phaser.Scene {
       this.scene.launch('FirstPersonFishingScene', {
         zMaxM, castDistanceM, reefSeed, region: this.region, shoreKind, fieldEvent,
         spotKind: this.standingSpotKind(),
+        footing: this.standingFooting(), tideLiftM: this.tideLiftM(),
       });
     }, 260, false);
   }
@@ -4102,7 +4141,7 @@ export class RegionFieldScene extends Phaser.Scene {
   /** 건물 입구 근접 감지 → [E] 거래 힌트 */
   private updateBuildingProximity(): void {
     const px = this.playerBody.x, py = this.playerBody.y;
-    let nearest: { x: number; y: number; kind: BuildingKind } | null = null;
+    let nearest: { x: number; y: number; kind: BuildingKind; branch: MarketBranch } | null = null;
     let bestDist = 52;
     for (const b of this.buildings) {
       const d = Math.hypot(b.x - px, b.y - py);
@@ -5682,8 +5721,8 @@ export class RegionFieldScene extends Phaser.Scene {
     }
     // ④ 건물 거래
     if (this.nearBuilding) {
-      const kind = this.nearBuilding.kind;
-      opts.push({ label: `${BUILDING_LABEL[kind]} — 거래하기`, run: () => this.promptTrade(kind) });
+      const { kind, branch } = this.nearBuilding;
+      opts.push({ label: `${BUILDING_LABEL[kind]} — 거래하기`, run: () => this.promptTrade(kind, branch) });
     }
     // ⑤ 밀려온 불가사리 (자격·크기 제한 없음)
     const washed = this.nuisance?.gatherableNear(this.playerBody.x, this.playerBody.y, TR * 1.4);
@@ -6213,7 +6252,9 @@ export class RegionFieldScene extends Phaser.Scene {
 
   /** 판매가 — 스킬 흥정·단골 배율 (122차) */
   private sellPriceOf(item: InvItem): number {
-    return Math.round(InventoryStore.getSellPrice(item) * GameState.skillMult('sell_price'));
+    const base = Math.round(InventoryStore.getSellPrice(item) * GameState.skillMult('sell_price'));
+    // 196차 — 이 지점의 가게 수요 × 시세 하락(판 만큼 떨어지고 서서히 회복)
+    return MarketStore.quote(item, base)?.unit ?? base;
   }
 
   private handleMovement(): void {

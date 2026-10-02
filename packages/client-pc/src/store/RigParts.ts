@@ -17,7 +17,7 @@ export function partKindOf(i: Pick<InvItem, 'id' | 'name' | 'subCategory' | 'rig
   if (sub === '원줄 스풀') return 'main_line';
   if (sub === '목줄 스풀') return 'leader_line';
   if (i.sinkerKind === 'bundle') return 'bundle_sinker';
-  if ((i.name ?? '').startsWith('카드 채비')) return 'card_rig';
+  if ((i.name ?? '').includes('카드 채비')) return 'card_rig';
   if (i.sinkerKind === 'ring' || i.sinkerKind === 'hole') return 'sliding_sinker';
   if (sub === '지그헤드' || n.includes('지그헤드')) return 'jig_head';
   const lure = getLureSpec(i.id);
@@ -69,6 +69,7 @@ export function rigViewOf(i: InvItem): RigItemView {
     sinkerWeightG: i.sinkerWeightG,
     kitHooks: i.kitHooks,
     flasher: !!i.cardFlasher,
+    cardTarget: i.cardTarget,
     baitKey: kind === 'bait' ? baitKeyOf(i) : undefined,
   };
 }

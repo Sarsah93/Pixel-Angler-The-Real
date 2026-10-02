@@ -64,6 +64,9 @@ const EN_BASE: Record<string, string> = {
   '한 끼는 하루 필요 열량의 3분의 1(≈800 kcal)입니다. 간식은 그보다 훨씬 적습니다.': 'One meal is a third of a day\'s calories (≈800 kcal). Snacks are far less.',
   '허기·수분 회복': 'Restores hunger & hydration',
   // ── 공통 버튼·라벨 ──
+  '돌아가기': 'Back', '해변': 'beach', '사석': 'riprap', '안벽': 'quay', '방파제 상판': 'breakwater deck', '테트라포드': 'tetrapods', '테트라포드 구멍': 'tetrapod hole', '배': 'boat',
+  '쿨러 정리': 'Sort the cooler', '방금 낚은 고기': 'Just caught', '놓아줌': 'Release', '정리하고 넣기': 'Swap & store', '들어가는 만큼만 넣기': 'Store what fits',
+  '구멍이 좁아 뜰채를 넣을 수 없었습니다.': 'The hole was too narrow for the landing net.',
   '확인': 'OK', '취소': 'Cancel', '예': 'Yes', '아니오': 'No', '닫기': 'Close', '뒤로': 'Back', '계속하기': 'Continue',
   '저장하기': 'Save', '환경설정': 'Settings', '설정': 'Settings', '집으로 가기': 'Go Home', '타이틀 화면': 'Title Screen',
   '일시정지': 'Paused', '↑↓ 이동 · Enter 선택 · ESC 닫기': '↑↓ Move · Enter Select · ESC Close',
@@ -899,6 +902,19 @@ export const EN_RULES: Rule[] = [
   [/^\[([\d.]+)×, (.+)\]$/, (m) => `[${m[1]}×, ${EN_DICT[m[2]] ?? m[2]}]`], [/^([\d.]+)×, (.+)$/, (m) => `${m[1]}×, ${EN_DICT[m[2]] ?? m[2]}`],
   [/^(.+) (\d+)cm \/ ([\d.]+)kg \/ (.+)\n\n(.+) 개체입니다\. 규정에 따라 방생합니다\.$/, (m, tr) => `${tr(m[1])} ${m[2]}cm / ${m[3]}kg / ${EN_DICT[m[4]] ?? m[4]}\n\n${EN_DICT[m[5]] ?? m[5]} — released by regulation.`],
   [/^쿨러가 가득 찼습니다 \((\d+)마리\) — 방생하거나 쿨러를 비우세요$/, 'Cooler full ($1) — release it or empty the cooler'],
+  // 196차 — 들어뽕(바늘 빠짐) · 쿨러 정리 · 지점 상점 제목
+  [/^어획물을 회수하는 과정에서 바늘이 빠져버렸습니다!\n\n(.+) ([\d.]+)cm 놓침([\s\S]*)$/, (m, tr) => `The hook pulled free while landing the catch!\n\nLost: ${tr(m[1])} ${m[2]}cm${m[3].split('\n').map((x) => x ? tr(x) : x).join('\n')}`],
+  [/^(.+) ([\d.]+)cm — 놓침$/, (m, tr) => `${tr(m[1])} ${m[2]}cm — lost`],
+  [/^뜰채 자루가 수면까지 닿지 않았습니다 \((.+)\)\.$/, (m, tr) => `The net handle couldn't reach the water (${tr(m[1])}).`],
+  [/^쿨러 \((\d+)\/(\d+)\)$/, 'Cooler ($1/$2)'],
+  [/^넣을 고기 (\d+)마리 · 빈 자리 (\d+)칸$/, 'To store: $1 · Free: $2'],
+  [/^(\d+)cm · (.+)$/, (m, tr) => `${m[1]}cm · ${tr(m[2])}`],
+  [/^((?:쿨러에 \d+마리 보관|방금 낚은 \d+마리 방생|쿨러의 \d+마리 방생)(?: · (?:쿨러에 \d+마리 보관|방금 낚은 \d+마리 방생|쿨러의 \d+마리 방생))*)하였습니다\.$/,
+    (m) => `${m[1].split(' · ').map((x) => x
+      .replace(/^쿨러에 (\d+)마리 보관$/, 'Stored $1 in the cooler')
+      .replace(/^방금 낚은 (\d+)마리 방생$/, 'released $1 just caught')
+      .replace(/^쿨러의 (\d+)마리 방생$/, 'released $1 from the cooler')).join(' · ')}.`],
+  [/^(항구 편의점|식자재마트|수산물 직판장|항구 식당|방파제 카페|항구 약국|생활용품점 사이소|포구 주점) · (.+)$/, (m, tr) => `${tr(m[1])} · ${tr(m[2])}`],
   // 195차 — 무리 걸림(한 번에 두세 마리) 보관·방생
   [/^쿨러에 (\d+)마리 보관하였습니다\.$/, 'Stored $1 fish in the cooler.'],
   [/^인벤토리에 (\d+)마리 보관하였습니다\. \(활어 10분부터 신선도 진행\)$/, 'Stored $1 fish in inventory. (freshness starts after 10 min live)'],

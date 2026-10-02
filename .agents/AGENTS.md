@@ -453,7 +453,14 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-10-02 195차) — 무리 걸림: 열기·전갱이 한 번에 두세 마리**
+**최근 변경 (2026-10-02 196차) — 들어뽕 · 뜰채 · 쿨러 정리 · 판매처별 시세 하락 · 카드 채비 라인업**
+
+- 랜딩 바늘 빠짐(core `LandingDrop` — 0.5/0.5/1% · 전갱이 +1%p · 최대 한 마리 · 발판 높이×무게 · 40cm↑) · 뜰채(손 도구) = 0.
+- 쿨러 정리 창(`ui/CoolerSwapPanel`) · 판매처별 시세 하락(core `MarketSaturation` · `store/MarketStore` · 세이브 `market`) + 화살표 5단계.
+- 카드 채비 열기·전갱이 3~7단(사진 도트) · 무리 걸림 루어 0 · 타이라바 ¼ · 두 미끼 스킬 아이콘 재작화.
+  상세: [196차 워크로그](../docs/wiki/03-WORKLOG/2026-10-02-196-landing-drop-cooler-swap-market.md).
+
+**이전 변경 (2026-10-02 195차) — 무리 걸림: 열기·전갱이 한 번에 두세 마리**
 
 - 제철(`peakSeasonMonths`) + 어종 활성도(`speciesBiteReadiness` ≥ 0.5) → 두 마리 10% · 세 마리 2.5% — 바늘 수만큼(core `SchoolHookup`).
 - 파이트 ×1.2/×1.5(힘·무게·피로 — 숨김) · 결정 패널 노란 `x2`/`x3` · 보관·방생은 무리 전체 원자 적용(쿨러 빈 칸 · `addBundle`).
@@ -465,13 +472,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - 두 미끼 +2% → **+1%/바늘 · 최대 +2%**(`DOUBLE_BAIT_MAX`). 시너지는 원래부터 최대 +1%(확인).
 - 보강: 카드 채비는 미끼 가중 합계 **+10% 상한**(`CARD_RIG_BITE_BONUS_MAX` — 7단 만끼 15% → 10%).
   상세: [194차 워크로그](../docs/wiki/03-WORKLOG/2026-10-02-194-tairaba-head-lineup-double-bait-rebalance.md).
-
-**이전 변경 (2026-10-02 193차) — 다중 미끼 · 최소 1미끼 고정 · 「한 바늘에 두 미끼」 스킬 · 반짝이 깃 카드 채비**
-
-- 바늘마다 다른 미끼 · 어느 바늘이든 미끼 하나면 완성(반짝이 카드 채비는 미끼 없이도) · **고정 중에도 미끼 칸만 편집**.
-- 입질 = × `rigBiteMult()`(추가 바늘 +2% · 이웃 같은 미끼 +1% · 두 미끼 바늘 +2%) · 입질 때 `pickBittenBait()`로 문 바늘의 미끼만 소모.
-- 스킬 `fish_double_bait`(x2 단추 · 2개 소모) + 시작 SP +1(등식 216) · 반짝이 단독 = 전갱이 전용 10%(`candidateCount` 가드).
-  상세: [193차 워크로그](../docs/wiki/03-WORKLOG/2026-10-02-193-multi-bait-double-flasher.md).
 
 ---
 

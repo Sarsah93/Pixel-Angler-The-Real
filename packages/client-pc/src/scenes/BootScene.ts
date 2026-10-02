@@ -192,6 +192,9 @@ export class BootScene extends Phaser.Scene {
       // 193차 — 카드 채비(반짝이 깃 / 민바늘) 절차 생성
       card_rig_flasher: 'item-icons/it_card_rig_flasher.png',
       card_rig_plain: 'item-icons/it_card_rig_plain.png',
+      // 196차 — 카드 채비 포장 사진 도트(열기 빨간 깃 · 전갱이 녹색 깃 — tools/gen_card_rig_icons.py)
+      card_rig_yeolgi: 'item-icons/it_card_rig_yeolgi.png',
+      card_rig_jeongaengi: 'item-icons/it_card_rig_jeongaengi.png',
       forage_haliotis_diversicolor: 'item-icons/forage_haliotis_diversicolor.png',
       forage_heliocidaris_crassispina: 'item-icons/forage_heliocidaris_crassispina.png',
       forage_aplysia_kurodai: 'item-icons/forage_aplysia_kurodai.png',

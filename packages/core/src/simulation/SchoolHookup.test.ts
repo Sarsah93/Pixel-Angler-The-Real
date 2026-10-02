@@ -54,3 +54,17 @@ describe('무리 걸림', () => {
     expect(speciesBiteReadiness(base, '__none__')).toBe(0);
   });
 });
+
+describe('SchoolHookup — 196차 채비 배율', () => {
+  it('루어는 무리 걸림 없음 · 타이라바는 ¼', async () => {
+    const { schoolKitMult, rollSchoolHookup } = await import('./SchoolHookup.js');
+    expect(schoolKitMult('lure_hard')).toBe(0);
+    expect(schoolKitMult('lure_soft')).toBe(0);
+    expect(schoolKitMult('tairaba')).toBe(0.25);
+    expect(schoolKitMult('card_rig')).toBe(1);
+    // 열기 12월 · 활성도 0.9 · 바늘 2개 — 타이라바는 0.03에서 두 마리, 0.04에선 한 마리
+    expect(rollSchoolHookup('red_snapper_rockfish', 12, 0.9, 2, 0.03, 0.25)).toBe(2);
+    expect(rollSchoolHookup('red_snapper_rockfish', 12, 0.9, 2, 0.04, 0.25)).toBe(1);
+    expect(rollSchoolHookup('red_snapper_rockfish', 12, 0.9, 7, 0.001, 0)).toBe(1);
+  });
+});

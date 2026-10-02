@@ -394,7 +394,7 @@ const rules = [
         const rec = d.recommendedBaits?.length ? ` · 권장 미끼: ${d.recommendedBaits.map((b) => BAIT_KO[b] ?? b).join(', ')}` : '';
         return [d.label, d.desc + rec];
       }),
-      ['카드 채비 단수', core.CARD_TYPES.map((c) => `${c.label} — 바늘 ${c.hooks}개 · 간격 ${c.gapM}m`).join(' / ')],
+      ['카드 채비', `열기 카드 채비(빨간 깃 · 미끼를 끼운다 · 가지 간격 0.3m) / 전갱이 카드 채비(녹색 반짝이 깃 · 미끼 없이도 · 간격 0.5m) — 각 ${core.CARD_HOOKS_MIN}~${core.CARD_HOOKS_MAX}단 · 대상 어종 가중 +${pct(core.CARD_TARGET_BIAS)}`],
       ['비권장 미끼', `세트가 정한 권장 미끼가 아니면 대상어종 확률 ${Math.round(core.OFF_RECOMMENDED_BIAS * 100)}% (「권장되는 채비 유형이 아닙니다」)`],
     ],
   },
@@ -418,8 +418,8 @@ const rules = [
     ],
   },
   {
-    id: 'flasher', round: 193, hidden: false, title: '반짝이 깃 카드 채비 — 미끼 없이',
-    lede: '반짝이 깃이 달린 카드 채비는 미끼가 없어도 고정·캐스팅된다.',
+    id: 'flasher', round: 193, hidden: false, title: '전갱이 카드 채비 — 미끼 없이',
+    lede: '녹색 반짝이 깃이 달린 전갱이 카드 채비는 미끼가 없어도 고정·캐스팅된다.',
     rows: [
       ['대상', `${fishKo(core.FLASHER_TARGET_SPECIES)}만`],
       ['입질', `미끼를 끼웠을 때의 ${pct(core.FLASHER_ONLY_BITE_MULT)}`],
@@ -435,7 +435,50 @@ const rules = [
       ['두 마리', `${pct(core.SCHOOL_DOUBLE_CHANCE)} — 미끼 단 바늘 2개 이상`],
       ['세 마리', `${pct(core.SCHOOL_TRIPLE_CHANCE)} — 미끼 단 바늘 3개 이상 (전갱이는 반짝이 빈 바늘도 센다)`],
       ['파이트', `두 마리 ×${core.SCHOOL_FIGHT_MULT[2]} · 세 마리 ×${core.SCHOOL_FIGHT_MULT[3]} (힘·무게·체력) — 화면 표시 없음, 손맛으로만`],
-      ['낚은 뒤', '결정 창 물고기 옆에 노란 x2 / x3 · 보관·방생은 함께 올라온 전부에 한 번에 · 자리가 모자라면 한 마리도 넣지 않는다'],
+      ['채비', `루어(하드·소프트) ×${core.SCHOOL_KIT_MULT.lure_hard} — 걸리지 않음 · 타이라바(바늘 2개) ×${core.SCHOOL_KIT_MULT.tairaba} — 두 마리 ${pct((core.SCHOOL_DOUBLE_CHANCE + core.SCHOOL_TRIPLE_CHANCE) * core.SCHOOL_KIT_MULT.tairaba)}·세 마리 없음 · 그 밖 ×1`],
+      ['낚은 뒤', '결정 창 물고기 옆에 노란 x2 / x3 · 보관·방생은 함께 올라온 전부에 한 번에 · 쿨러 자리가 모자라면 「쿨러 정리」 창'],
+    ],
+  },
+  {
+    id: 'landing_drop', round: 196, hidden: true, title: '들어뽕 — 물 밖으로 올리다 바늘이 빠진다',
+    lede: '파이트를 이겨 고기를 띄워도, 물 밖으로 들어 올리는 순간 바늘이 빠질 수 있다. 낚시 성공 창 위에 「바늘이 빠져버렸습니다!」 알림이 한 장 더 뜬다. 빠진 고기는 기록에 남지 않는다.',
+    rows: [
+      ['기준(발판 2m 이하 · 40cm 미만)', `한 마리 ${pct(core.LANDING_DROP_BASE[1])} · 두 마리 중 하나 ${pct(core.LANDING_DROP_BASE[2])} · 세 마리 중 하나 ${pct(core.LANDING_DROP_BASE[3])}`],
+      ['입이 약한 어종', Object.entries(core.WEAK_MOUTH_ADD).map(([id, v]) => `${fishKo(id)} +${pct(v)}p`).join(' · ') + ' — 모든 경우'],
+      ['최대 빠지는 수', '한 마리 — 둘 다·셋 중 둘은 없다'],
+      ['발판 높이', Object.entries(core.FOOTING_LIFT_M).map(([k, m]) => `${core.FOOTING_LABEL[k]} ${m}m`).join(' · ') + ' (간조면 높아지고 만조면 낮아진다)'],
+      ['높은 발판', `${core.LIFT_FREE_M}m를 넘는 1m마다 +${pct(core.LIFT_ADD_PER_M)}p × (1 + 무게kg, 최대 ${core.LIFT_WEIGHT_MULT_MAX}배)`],
+      ['테트라포드', `블록에 부딪힌다 +${pct(core.TETRAPOD_ADD)}p (구멍치기 포함)`],
+      ['해변', `들지 않고 끌어 올린다 — 기준값 ×${core.BEACH_MULT}`],
+      ['큰 고기', `${core.BIG_FISH_CM}cm 이상 +${pct(core.BIG_FISH_ADD)}p, 넘는 1cm마다 +${pct(core.BIG_FISH_ADD_PER_CM)}p · 최대 +${pct(core.BIG_FISH_ADD_MAX)}p`],
+      ['뜰채', `낚싯대 반대 손에 들면 0 — 자루가 발판 높이 + ${core.NET_DIP_MARGIN_M}m에 닿아야 한다(3m · 5m · 7m) · 테트라포드 구멍에서는 쓸 수 없다`],
+      ['상한', pct(core.LANDING_DROP_MAX)],
+      ['예', `방파제 상판에서 55cm 참돔(2.6kg)을 뜰채 없이 = ${pct(core.landingDropOdds({ footing: 'breakwater_top', netReachM: null, fish: [{ speciesId: 'red_seabream', lengthCm: 55, weightG: 2600 }] }).chance)} · 5m 뜰채 = 0%`],
+    ],
+  },
+  {
+    id: 'cooler_swap', round: 196, hidden: false, title: '쿨러 정리',
+    lede: '쿨러가 차서 방금 낚은 고기가 다 들어가지 않으면 결정 창 대신 정리 창이 열린다.',
+    rows: [
+      ['방금 낚은 고기', '누르면 「놓아줌」으로 바뀐다'],
+      ['쿨러 3x3', '쿨러에 있던 고기를 눌러 놓아주면 그만큼 자리가 생긴다'],
+      ['정리하고 넣기', '고른 대로 바꿔 넣는다 — 넣을 고기 ≤ 빈 자리일 때만'],
+      ['들어가는 만큼만 넣기', '빈 자리만큼 무거운 고기부터 넣고 나머지는 놓아준다'],
+    ],
+  },
+  {
+    id: 'market', round: 196, hidden: true, title: '시세 하락과 가게 수요',
+    lede: '같은 가게에 같은 고기를 많이 팔면 값이 내려간다. 상점을 열면 인벤토리 어획물 칸 오른쪽 위에 그 가게의 화살표가 뜬다.',
+    rows: [
+      ['세는 것', '판 마릿수(잡은 수 아님) · 판매처(지점)마다 따로'],
+      ['회복', `반감기 ${core.SAT_HALF_LIFE_MS / 3600000}시간 — 하루 뒤 1/16만 남는다(자정에 한꺼번에 풀리지 않는다)`],
+      ['기준 마릿수', 'kg당 평년 단가 1.2만 원 이하 15마리 · 2.5만 원 미만 10마리 · 4만 원 미만 7마리 · 그 이상 5마리 — 기준 마릿수째부터 하락'],
+      ['하락', `한 마리당 −${pct(core.SAT_STEP)} · 최대 −${pct(core.SAT_MAX_CUT)}`],
+      ['완화', `활어 ×${core.SAT_LIVE_SOFTEN} · 대물(평균의 1.6배 이상) ×${core.SAT_BIG_SOFTEN} — 둘 다면 ×${core.SAT_LIVE_SOFTEN * core.SAT_BIG_SOFTEN}`],
+      ['가게 수요', `지점·어종·날짜마다 찾음(20%) +${pct(core.BRANCH_PREF_PCT)} · 보통(60%) · 덜 찾음(20%) −${pct(core.BRANCH_PREF_PCT)}`],
+      ['시세', `그날 경락가 ÷ 평년 단가 ≥ ${core.PRICE_HIGH} 높음 · ≤ ${core.PRICE_LOW} 낮음`],
+      ['화살표', '수요(포화가 시작되면 한 단계 내림) + 시세 = +2 파랑 위 · +1 초록 오른쪽 위 · 0 노랑 가로줄 · −1 주황 오른쪽 아래 · −2 빨강 아래'],
+      ['위판(경매)', '영향 없음 — 위판은 로트마다 중매인 호가로 값이 서고, 낚싯대 어획은 위판할 수 없다'],
     ],
   },
 ];
