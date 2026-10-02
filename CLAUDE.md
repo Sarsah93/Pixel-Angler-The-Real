@@ -33,7 +33,7 @@
 - **`work-log`** — **작업 기록·문서 체계** (docs/wiki 4층·8절 양식·갱신 체크리스트). **모든 작업 완료 시 필수**
 - **`doc-readability`** — **문서 가독성 규칙** (빈 줄·줄 길이 상한·블록인용 제한·차수 요약 양식). **문서 기록·갱신 시 `work-log`와 함께 로드**
 
-## 현재 진행 상황 (2026-10-01) — 이어받기 요약
+## 현재 진행 상황 (2026-10-02) — 이어받기 요약
 
 > 로드맵·다음 착수·잔여는 **`.agents/IMPLEMENTATION_PLAN.md`**, 차수 본문은 **`docs/wiki/03-WORKLOG/`**
 > (색인 `03-WORKLOG/README.md` §3.1). 이 절에는 **최근 3개 차수만** 둔다 — 새 차수를 넣으면 가장 오래된 것을 지운다.
@@ -45,6 +45,10 @@
   맵 확정(육안)·OSM land 14개·조도 재설계·외옹치/대포항 bbox 확장은 사용자 동반 병행 트랙.
 - **재개 지점**: 사용자 실검증(172·173차 타일 조화 규칙 + 178·183~186차 신설분) — 부족하면 규칙 보강,
   괜찮으면 규칙을 켠 채로 새 맵 확장. 차수별 잔여는 PLAN §2-3.
+- **192차**: **채비 모딩 트리**(core `simulation/RigTree.ts` · `InventoryStore.rigTree` 정본 → 평면 9소켓은 `projectTree()` 투영값) —
+  원줄 한 칸에서 좌→우로 열리는 채비창 · 앞 칸 변경 시 자손 해제 · 부력찌는 찌 세트에서만 필수 · 매듭 직결/도래 ·
+  간편 채비 6종(묶음추 고정 확장 · 타이라바 헤드/스커트/넥타이 + 권장 미끼 외 −92%). ⚠ 채비 편집은 `setRigNode`만(구 `setRigPart` 폐기).
+  상세 `docs/wiki/03-WORKLOG/2026-10-02-192-rig-modding-tree.md`.
 - **191차**: 프롤로그 **말풍선 코치**(`ui/PrologueCoach.ts` — 집 → 마당 → 속초 직판장까지 다음 할 일을 말풍선 하나로) ·
   집 상단 「지금 할 일」 띠·금색 자리 표시 폐지(R11 보강) · 상자 = 가방 · 저장 전 집 밖 금지 ·
   **캐릭터 두 번째 생성 `drawImage` 멈춤** = 씬 재사용 파괴 Text → 5개 씬·가이드 대기열 전수 리셋 + `StaleTextGuard`.
@@ -52,9 +56,6 @@
 - **190차**: 집 살림 — 창·조명 = 실시각·날씨(`ui/HomeAmbience.ts` · 스탠드 [F]) · 라디오 물때 방송(오늘·내일 + 예보) ·
   식탁 「식사하기」 허기 +25% · 고양이(`ui/HomeCat.ts`) · 벽 장식(도감·물때표·달력·어탁) · 사이소 가구 8종 → 넣어 둔 가구 · 관상 수조.
   ⚠ 집을 찍는 하네스·촬영은 `ambience.force`로 시간대 고정(`calmHome`). 상세 `docs/wiki/03-WORKLOG/2026-10-01-190-home-life.md`.
-- **189차**: 집 실내 정리 — 「살펴보기」 폐지([F]는 기능 있는 가구만) · **가구 배치 모드**(`ui/HomeDecorMode.ts` · 배치 = SaveData `home`) ·
-  소파 4방향 그림 + 앉기·휴식 확장 패널 · 의자 · 옷장(장비)/수납 선반 · 물뿌리개 물 주기 · 문 → 현관 매트(아래로 걸어 나가면 밖).
-  상세 `docs/wiki/03-WORKLOG/2026-10-01-189-home-interior-furniture.md`.
 - **상시 방침**:
   - 지형 고도(DEM)는 **낚시 확립 후** — B(해안 변형) 우선, 경사로 통행을 막지 않는다
     (`docs/archive/specs/RASTER_UPLIFT_AMENDMENT.md` §4).
@@ -111,7 +112,7 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
 
 - 지역 타일맵 추가/재생성 → **스킬 `add-region`** (`py tools/build_region_maps.py <region>` — 파이프라인·타일 문자·맵 그래프·함정 일체).
 - 차기 과제: 낚시점 전용 상점(루어 판매), 어탐 레이더(SeabedProfile 조회), 타 지역(여수 등) 확장, POI 세분화, 사운드 이펙트 (IMPLEMENTATION_PLAN §6-5l 차기 참고).
-- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages — **최근 27차 배포 2026-10-01 = 191차까지 포함**. 재배포 절차는 **스킬 `deploy-ghpages`**).
+- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages — **최근 28차 배포 2026-10-02 = 192차까지 포함**. 재배포 절차는 **스킬 `deploy-ghpages`**).
   ⚠ **원격 컨테이너에서는 dev 서버(5173)가 사용자 브라우저에 닿지 않는다** — 실플레이 테스트 요청은 이 배포로 답한다.
 
 ## 작업 이어받기 절차

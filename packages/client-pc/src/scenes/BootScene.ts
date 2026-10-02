@@ -184,6 +184,11 @@ export class BootScene extends Phaser.Scene {
       cushion_bell: 'item-icons/it_cushion_bell_v2.png',
       cushion_round: 'item-icons/it_cushion_round_v2.png',
       bead_halfmoon: 'item-icons/it_bead_halfmoon_v2.png',
+      // 192차 — 채비 모딩: 사용자 제공 타이라바 도트 3종 + 절차 생성 바렐형 도래(tools/gen_tackle_icons.py)
+      tairaba_head_red: 'item-icons/it_tairaba_head_red.png',
+      tairaba_skirt_red: 'item-icons/it_tairaba_skirt_red.png',
+      tairaba_necktie_orange: 'item-icons/it_tairaba_necktie_orange.png',
+      swivel_barrel: 'item-icons/it_swivel_barrel.png',
       forage_haliotis_diversicolor: 'item-icons/forage_haliotis_diversicolor.png',
       forage_heliocidaris_crassispina: 'item-icons/forage_heliocidaris_crassispina.png',
       forage_aplysia_kurodai: 'item-icons/forage_aplysia_kurodai.png',

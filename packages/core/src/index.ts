@@ -675,3 +675,14 @@ export { FOOD_NUTRITION, DAILY_KCAL, DAILY_WATER_ML, restoreFromNutrition, foodN
   type FoodNutrition } from './db-schema/FoodNutrition.js';
 export { objectiveTarget, objectiveHowToKo, nextObjectiveIndex,
   type QuestGuideTarget, type QuestGuideTargetKind, type GuideNames } from './rules/QuestGuide.js';
+
+// 192차 — 채비 모딩 트리 (원줄 → 매듭 → … 좌→우 확장 · 앞 노드 변경 시 자손 해제)
+export type {
+  RigPartKind, RigItemView, RigSlotKind, RigNodeType, RigChoiceOption, RigSlotDef, RigKitKind, RigKitDef,
+  RigNode, RigTreeState, RigValue, RigSummary, LegacyRigSockets,
+} from './simulation/RigTree.js';
+export {
+  RIG_PART_LABEL, RIG_SLOTS, KIT_DEFS, KIT_ORDER, CARD_TYPES, KNOT_DIRECT, KNOT_SWIVEL, OFF_RECOMMENDED_BIAS,
+  newRigTree, nodeFilled, nodeOptional, nodeLabel, childrenOf, descendantsOf, setRigValue, dropMissingItems,
+  missingParts, summarize, baitRecommendedFor, treeFromLegacy,
+} from './simulation/RigTree.js';

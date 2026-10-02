@@ -22,6 +22,7 @@ import { EN_SKILL, EN_SKILL_RULES } from './en_skill.js';
 import { EN_UI, EN_UI_RULES } from './en_ui.js';
 import { EN_TOUR_PANELS2 } from './en_tour_panels2.js';
 import { EN_HOME, EN_HOME_RULES } from './en_home.js';
+import { EN_RIG, EN_RIG_RULES } from './en_rig.js';
 
 /** 기본 사전 — 분야별 사전(EN_ITEMS/EN_RIG_COOKING/EN_HELP)보다 우선한다 */
 const EN_BASE: Record<string, string> = {
@@ -551,7 +552,7 @@ const EN_EXTRA: Record<string, string> = {
 
 /** 최종 사전 — 분야별 사전을 먼저 깔고 기본 사전이 덮는다(충돌 시 기본 우선) */
 export const EN_DICT: Record<string, string> = {
-  ...EN_FISH, ...EN_CONTENT, ...EN_ITEMS, ...EN_RIG_COOKING, ...EN_HELP, ...EN_FORAGE, ...EN_PANELS, ...EN_GEAR, ...EN_AUCTION, ...EN_COOK, ...EN_UI, ...EN_EXTRA, ...EN_TOUR, ...EN_TOUR_PANELS, ...EN_TOUR_PANELS2, ...EN_SKILL, ...EN_HOME, ...EN_BASE,
+  ...EN_FISH, ...EN_CONTENT, ...EN_ITEMS, ...EN_RIG_COOKING, ...EN_HELP, ...EN_FORAGE, ...EN_PANELS, ...EN_GEAR, ...EN_AUCTION, ...EN_COOK, ...EN_UI, ...EN_EXTRA, ...EN_TOUR, ...EN_TOUR_PANELS, ...EN_TOUR_PANELS2, ...EN_SKILL, ...EN_HOME, ...EN_RIG, ...EN_BASE,
 };
 
 /**
@@ -581,6 +582,7 @@ export const EN_RULES: Rule[] = [
   ...EN_SKILL_RULES,   // 188차 스킬 창 (호버 팝업 · 다음 레벨)
   ...EN_TOUR_RULES,    // 188차 일지 순서형 접기
   ...EN_HOME_RULES,    // 189차 집 실내
+  ...EN_RIG_RULES,     // 192차 채비 모딩 트리
   // ── 167차 장면 게이트 — 상대가 다른 사람일 때 대화창 안내 ──
   [/^(.+)을\(를\) 직접 찾아가야 한다\.$/, (m, tr) => `You need to go and find ${tr(m[1])} in person.`],
   // ── 165차 「지금 할 일」 메인/서브 배지 · 완료 표기 · 행동 진행 로그 ──

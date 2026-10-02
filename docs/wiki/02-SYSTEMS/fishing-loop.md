@@ -23,7 +23,7 @@
 | core | `FightingPhase` · `FightPhysics2D` · `FishFatigueModel` | **물리 텐션**(117차 — 요구 장력 ÷ 라인 강도)·패턴·측면하중 2D·피로 페이즈 |
 | core | `FishRarity` | 어종군(8) · 희귀도 6단계(평균 길이 대비 비율) · `lineStrengthKg`(호수 → kg) |
 | core | `FishSpawningOracle` · `SizeTierRules` · `FeedingTimeCalculator` | 어종 스폰 · 크기 등급 · 피딩타임 배율 |
-| core | `LureRig` · `SinkerDatabase` · `RigRecommender` | 루어 채비 연산 · 봉돌 · 채비 추천 |
+| core | `LureRig` · `SinkerDatabase` · `RigRecommender` · **`RigTree`**(192) | 루어 채비 연산 · 봉돌 · 채비 추천 · **채비 모딩 트리**(칸 문법 · 절단 · 완성 판정 · 세트 · 투영 요약) |
 | client | `RegionFieldScene` | 조준 캐스팅(차지·탄도 미리보기·**릴링 경로 육지 차단**) |
 | client | `FirstPersonFishingScene` | 1인칭 전 뷰(정면·수평·수심) · 입력 · 연출 |
 | client | `FieldEventManager` | 보일링·스쿨링 |
@@ -89,6 +89,7 @@
 | 가이드 삽화 실게임 스크린샷 교체 | ⬜ | 현재 목업 SVG 렌더 |
 | 사운드 이펙트 | ⬜ | 전역 과제 |
 | **채비 고정**(U 채비 탭 우측 하단 [채비 고정]/[고정 해제] · `InventoryStore.rigLocked` 세이브 · 고정 중 소켓·루어·모드 변경 무시) | ✅ | **155** — 캐스팅은 고정 여부와 무관(관문 아님) · 소모·손실은 `_rig` 직접 갱신 |
+| **채비 모딩 트리**(원줄 한 칸 → 고른 것에 따라 오른쪽으로 열림 · 매듭 직결/도래 · 원줄 부속 찌 세트/유동 봉돌 · 간편 채비 6종 · 앞 칸 변경 시 자손 해제 · 부력찌 필수 폐지 · 권장 미끼 외 대상어종 −92%) | ✅ | **192** — 평면 9소켓은 `projectTree()` 투영값(1인칭·캐스팅·손실 무수정) · [192](../03-WORKLOG/2026-10-02-192-rig-modding-tree.md) |
 | **1인칭 결과 후 항상 탑다운 복귀**(결과·후속 화면 = 「필드로 돌아가기 (SPACE)」 · `recast()` 폐기) | ✅ | 155 — 사용자 지시 |
 
 ## 5. 잔여·차기
@@ -114,6 +115,14 @@
   (현재는 기존 1인칭 뷰에 거리만 1.4m).
 
 ## 6. 함정·불변조건
+
+> **192차 신규 함정**
+> 1. **채비의 정본은 트리(`InventoryStore.rigTree`)다** — 평면 `rig`·`rigMode`·`spreader`·루어 소켓은 `projectTree()`가 채우는 투영값이라
+>    직접 쓰면 다음 투영에서 덮인다. 편집은 `setRigNode(idx, value)` 하나. 아이템이 사라지면 `deleteInstance`가 트리를 동기화한다.
+> 2. **`isSurfRigReady()` = 찌 없는 바닥 채비**(도래 유무 무관) · **`hookNeedsBait()` = 세트가 정한다**(루어 세트만 false).
+>    바늘 칸에 루어를 다는 경로는 없다 — 루어는 「간편 채비」 갈래다.
+> 3. **세트 권장 미끼는 `KIT_DEFS[kit].recommendedBaits`** — 비권장이면 `summarize().speciesBias[target] = −0.92`가 스폰 컨텍스트에 병합된다.
+>    새 세트를 더할 때 `targetSpecies`를 빼먹으면 페널티가 아무 데도 안 걸린다.
 
 > **149차 신규 함정**
 > 22. **구멍치기는 `SeabedProfile` 기본 프로필과 맞지 않는다** — 기본 프로필은 발앞을

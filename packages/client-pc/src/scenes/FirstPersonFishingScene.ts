@@ -58,6 +58,7 @@ import {
 } from '@tra/core';
 import { drawRigIcon, RigIconKind } from '../ui/RigIconRenderer.js';
 import { GameState } from '../store/GameState.js';
+import { baitKeyOf } from '../store/RigParts.js';
 import { InventoryStore, RigStepKey, CARD_RIG_INFO } from '../store/InventoryStore.js';
 import { isGod } from '../dev/DevMode.js';
 import { CoolerStore, COOLER_CAPACITY } from '../store/CoolerStore.js';
@@ -2354,18 +2355,9 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     const id = InventoryStore.rig.bait;
     const item = id ? InventoryStore.find(id) : undefined;
     if (!item) return 'krill';
-    const n = item.name;
-    if (n.includes('혼무시')) return 'worm_king';
-    if (n.includes('지렁이')) return 'worm_blue';
-    if (n.includes('크릴')) return 'krill';
-    if (n.includes('빵') || n.includes('떡밥')) return 'bread';
-    if (n.includes('생선') || n.includes('오징어')) return 'fishcut';
-    if (n.includes('옥수수')) return 'corn';
-    if (n.includes('게') || n.includes('소라')) return 'crab';
-    if (n.includes('성게')) return 'urchin';
-    if (n.includes('조개') || n.includes('개불')) return 'shellfish';
     if (item.subCategory === '바늘/훅') return 'lure';
-    return 'krill';
+    // 192차 — 분류기는 채비창(권장 미끼 대조)과 같은 것을 쓴다
+    return baitKeyOf(item) ?? 'krill';
   }
 
   /**
@@ -2413,6 +2405,9 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       ctx.speciesWeightBias = { ...hole.speciesBias, ...ctx.speciesWeightBias };
       ctx.habitatBias = ['reef', 'structure'];
     }
+    // 192차 — 채비 세트의 대상어종 가중(타이라바 → 참돔) + 비권장 미끼 페널티(대상어종 가중 −92%)
+    const rigBias = InventoryStore.rigSpeciesBias();
+    if (Object.keys(rigBias).length) ctx.speciesWeightBias = { ...ctx.speciesWeightBias, ...rigBias };
     // 홈타운(집 앞 바다) 어획 규제 — 볼락류 + 보리멸만 (초보 구역. 루어 바인딩보다 우선)
     if (this.cfg.region === 'hometown') ctx.speciesFilter = HOMETOWN_SPECIES;
     // 포말지대(농어 야간 예외) — 발앞 반탄류(counter) 존이 백파·포말대에 해당

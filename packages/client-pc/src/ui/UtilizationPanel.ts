@@ -26,15 +26,15 @@ import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import {
   InventoryStore, InvItem, InvCategory, RigStepKey,
   CATEGORY_LABEL, CONDITION_LABEL, CONDITION_COLOR,
-  isHookItem, isBaitItem, isLureItem, isWeightSinker, isSplitShot, isJigHeadItem,
-  isBuoyFloatItem, isSubFloatItem,
-  SpreaderKind, CardRigType, SPREADER_LABEL, CARD_RIG_INFO,
+  isBaitItem, isLureItem, isWeightSinker,
   PlateWipData, plateWipProgress, worstCondition, refreshCondition,
 } from '../store/InventoryStore.js';
+import { partKindOf, baitKeyOf } from '../store/RigParts.js';
+import { clampTextWidth, fitTextHeight } from './TextFit.js';
 import { RecommendationStore } from '../store/RecommendationStore.js';
 import { CoolerStore, ChumIngredientKind, CHUM_THROW_COST } from '../store/CoolerStore.js';
 import {
-  LureFamily, LureKind, getLureSpec, getLureSinkProfile, jigHeadWeightById,
+  RIG_SLOTS, KIT_DEFS, nodeFilled, nodeOptional, nodeLabel, baitRecommendedFor, type RigNode,
   getButcheryFamily, BUTCHERY_FAMILY_NOTICE, ButcheryFamily, canButcherSpecies,
   getBestKnife, SashimiMode, SASHIMI_MODES,
   SASHIMI_PLATE_SPECS, MIXED_SASHIMI_PRICING, singleSashimiPlatePrice, SashimiSizeTier,
@@ -56,27 +56,6 @@ import { GameState } from '../store/GameState.js';
 import { maybeStartTour, type TourOptions } from './GuideTour.js';
 import { t } from '../i18n/I18n.js';
 
-/** 루어 세부 종류 → 라벨 (2단계 트리) */
-const SOFT_KINDS: { k: LureKind; label: string }[] = [
-  { k: 'worm_grub', label: '웜/그럽' },
-  { k: 'soft_jerkbait', label: '소프트 저크베이트' },
-];
-const HARD_KINDS: { k: LureKind; label: string }[] = [
-  { k: 'plug_minnow', label: '미노우' },
-  { k: 'spoon', label: '스푼' },
-  { k: 'spinner', label: '스피너' },
-  { k: 'egi', label: '에기' },
-  { k: 'metal_jig', label: '메탈지그' },
-  { k: 'tairaba', label: '타이라바' },
-];
-/** 라인업 카드용 짧은 침강 라벨 (187차 — 구: 긴 라벨의 첫 단어라 초고속 싱킹이 「초고속」만 남았다) */
-const SINK_SHORT: Record<string, string> = { floating: '플로팅', sinking: '싱킹', fast_sinking: '초고속 싱킹' };
-const SINK_LABEL: Record<string, string> = {
-  floating: '플로팅 (수면 유지·리트리브로 파고듦)',
-  sinking: '싱킹 (착수 후 하강)',
-  fast_sinking: '초고속 싱킹 (빠른 하강)',
-};
-
 /** 추천 배너용 미끼 이름 (RigRecommender의 BaitKey → 화면 이름, R1) */
 const BAIT_KEY_KO: Record<string, string> = {
   krill: '크릴', worm_blue: '청갯지렁이', worm_king: '참갯지렁이', crab: '게·소라', shellfish: '조개살',
@@ -91,29 +70,12 @@ const PANEL_H = 620;
 /** 선택 리스트 행 서술자 (부품/미끼 선택 공용) */
 type ChooserRow = { text: string; onPick: () => void; recommended?: boolean; muted?: boolean };
 
-/**
- * 채비 단계 정의 — matcher로 인벤토리 부품 필터.
- * 2026-07-16: 바늘 & 미끼 통합 소켓을 [바늘/루어] → [미끼] 2소켓으로 분리.
- * 바늘 소켓에 루어(미노우 등 바늘 일체형 가짜미끼)를 달면 미끼 소켓은 비활성화.
- * 2026-07-22: 구멍찌/수중찌 통합 소켓을 [부력찌] → [수중찌] 2소켓으로 분리 —
- * 부력찌는 필수, 수중찌는 침력 유도용 선택 부품 (좁쌀봉돌과 동급의 운용 선택지).
- */
-const RIG_STEPS: { key: RigStepKey; label: string; matcher: ((i: InvItem) => boolean) | null }[] = [
-  { key: 'mainLine',  label: '원줄',        matcher: (i) => i.subCategory === '원줄 스풀' },
-  { key: 'floatStop', label: '면사매듭',    matcher: null },   // 수심 한계 조절 전용
-  { key: 'float',     label: '부력찌',      matcher: isBuoyFloatItem },
-  { key: 'subFloat',  label: '수중찌 (선택)', matcher: isSubFloatItem },
-  { key: 'swivel',    label: '도래',        matcher: (i) => i.subCategory === '채비 부속' && i.name.includes('도래') },
-  { key: 'leader',    label: '목줄',        matcher: (i) => i.subCategory === '목줄 스풀' },
-  { key: 'sinker',    label: '봉돌',        matcher: (i) => i.subCategory === '채비 부속' && i.name.includes('봉돌') },
-  { key: 'hook',      label: '바늘/루어',   matcher: isHookItem },
-  { key: 'bait',      label: '미끼',        matcher: isBaitItem },
-];
-
-/** 소켓 9개가 PANEL_W(1080) 안에 들어가도록 축소 배치 (부력찌/수중찌 분리로 8→9) */
-const SOCKET_W = 104;
-const SOCKET_H = 132;
-const SOCKET_GAP = 12;
+/** 192차 — 채비 체인 칸 배치: 한 행에 9칸, 넘치면 다음 행으로 꺾인다 */
+const NODE_W = 104;
+const NODE_H = 104;
+const NODE_GAP = 12;
+const CHAIN_PER_ROW = 9;
+const CHAIN_ROW_H = NODE_H + 22;
 
 export class UtilizationPanel extends DraggablePanel {
   private currentTab: UtilizationTab;
@@ -144,6 +106,10 @@ export class UtilizationPanel extends DraggablePanel {
   private chooserRect: { x: number; y: number; w: number; h: number } | null = null;
   /** 채비 탭 제원 상자 상단 y (패널 로컬 — 가이드 하이라이트용) */
   private tourSpecY = 0;
+  private tourSpecH = 150;
+  /** 192차 — 체인 영역 상단 y·행 수 (가이드 사각형 계산용) */
+  private chainTop = 0;
+  private chainRows = 1;
   /** 회 뜨기 손질 자식 팝업 */
   private butcheryPanel?: ButcheryPanel;
   private sashimiPanel?: SashimiPanel;
@@ -168,9 +134,6 @@ export class UtilizationPanel extends DraggablePanel {
   private boardSlicedItemId: string | null = null;
   /** 통합 가이드 팝업 (최초 회뜨기 — '회뜨기' 탭 1회 자동 표시) */
   private guideHubPanel?: GuidePanel;
-  /** 루어 채비 트리 네비게이션 상태 */
-  private lureFamily: LureFamily = 'soft';
-  private lureKindSel: LureKind = 'worm_grub';
 
   // ── 밑밥 품질 탭 드래그 상태 ──
   private chumDragItem: InvItem | null = null;
@@ -225,15 +188,14 @@ export class UtilizationPanel extends DraggablePanel {
   }
 
   private socketChainRect(): Phaser.Geom.Rectangle {
-    const n = RIG_STEPS.length;
-    return this.localRect(24, this.contentTop + 80 + 62, n * SOCKET_W + (n - 1) * SOCKET_GAP, SOCKET_H);
+    const n = Math.min(CHAIN_PER_ROW, InventoryStore.rigTree.nodes.length);
+    return this.localRect(24, this.chainTop, n * NODE_W + (n - 1) * NODE_GAP, this.chainRows * CHAIN_ROW_H - 22);
   }
 
   private buildTour(): TourOptions {
-    const mainLine = RIG_STEPS[0];
-    const tackles = (): boolean => this.currentTab === 'tackles' && InventoryStore.rigMode === 'bait';
-    const hasLine = (): boolean => InventoryStore.items.some((i) => mainLine.matcher!(i));
-    const firstSocket = (): Phaser.Geom.Rectangle => this.localRect(24, this.contentTop + 80 + 62, SOCKET_W, SOCKET_H);
+    const tackles = (): boolean => this.currentTab === 'tackles';
+    const hasLine = (): boolean => InventoryStore.items.some((i) => partKindOf(i) === 'main_line');
+    const nodeRect = (i: number): Phaser.Geom.Rectangle => { const r = this.rigNodeRect(i); return this.localRect(r.x, r.y, r.width, r.height); };
     const chooserScreen = (): Phaser.Geom.Rectangle | null =>
       this.chooserRect ? this.localRect(this.chooserRect.x, this.chooserRect.y, this.chooserRect.w, this.chooserRect.h) : null;
     return {
@@ -252,33 +214,21 @@ export class UtilizationPanel extends DraggablePanel {
           wait: () => this.currentTab === 'tackles',
         },
         {
-          text: '채비는 미끼를 다는 채비와 루어 채비 두 가지다. 「미끼 채비」를 눌러 보자.',
-          target: () => this.localRect(24, this.contentTop + 44, 228, 26),
-          skipIf: () => InventoryStore.rigMode === 'bait' || InventoryStore.rigLocked,
-          wait: () => InventoryStore.rigMode === 'bait',
-        },
-        {
-          text: '채비는 미끼를 다는 채비와 루어 채비 두 가지다. 여기서 바꾼다.',
-          target: () => this.localRect(24, this.contentTop + 44, 228, 26),
-          skipIf: () => InventoryStore.rigMode !== 'bait',
-        },
-        {
-          text: '미끼 채비는 원줄에서 미끼까지 왼쪽부터 차례로 이어진다. 칸 하나에 부품 하나를 단다.',
+          text: '채비는 「원줄」 한 칸에서 시작한다. 칸에 무엇을 다느냐에 따라 오른쪽에 다음 칸이 열린다 — 직접 엮어 가는 방식이다.',
           target: () => this.socketChainRect(),
           skipIf: () => !tackles(),
         },
         {
           text: '첫 칸 「원줄」을 눌러 보자. 가방 속에서 그 칸에 달 수 있는 것만 골라 보여 준다.',
-          target: firstSocket,
+          target: () => nodeRect(0),
           skipIf: () => !tackles() || InventoryStore.rigLocked,
           wait: () => !!this.chooser,
         },
         {
           text: '목록에서 원줄 하나를 골라 달아 보자.',
-          target: () => chooserScreen() ?? firstSocket(),
-          allow: () => [chooserScreen(), firstSocket()],
+          target: () => chooserScreen() ?? nodeRect(0),
+          allow: () => [chooserScreen(), nodeRect(0)],
           skipIf: () => !tackles() || InventoryStore.rigLocked || !hasLine() || !this.chooser,
-          // 목록에서 줄을 고르면 선택창이 닫히며 원줄이 달린다(「비우기」를 고르면 다시 연다)
           wait: () => !this.chooser && !!InventoryStore.rig.mainLine,
         },
         {
@@ -287,14 +237,20 @@ export class UtilizationPanel extends DraggablePanel {
           skipIf: () => !tackles() || hasLine(),
         },
         {
-          text: '부품을 달 때마다 아래 상자에서 채비 무게와 가라앉는 속도, 닿는 수심이 다시 계산된다.',
-          target: () => this.localRect(24, this.tourSpecY, PANEL_W - 48, 150),
+          text: '원줄을 달면 「매듭」 칸이 열린다. 직결로 목줄을 바로 묶거나, 도래를 달아 간편 채비를 걸 수 있다. 앞 칸을 바꾸면 그 뒤에 달렸던 것은 전부 풀린다.',
+          target: () => nodeRect(Math.min(2, InventoryStore.rigTree.nodes.length - 1)),
+          skipIf: () => !tackles() || !InventoryStore.rig.mainLine,
+          onEnter: () => this.closeChooser(),
+        },
+        {
+          text: '부품을 달 때마다 아래 상자에서 채비 무게와 가라앉는 속도, 닿는 수심이 다시 계산된다. 금색 「추천」은 지금 자리에 맞는 부품이 가방에 있다는 뜻이다.',
+          target: () => this.localRect(24, this.tourSpecY, PANEL_W - 48, this.tourSpecH),
           skipIf: () => !tackles(),
           onEnter: () => this.closeChooser(),
         },
         {
           text: '채비를 다 꾸몄으면 「채비 고정」으로 잠근다. 고정한 채비는 던질 때 미끼 같은 소모품만 줄어들고, 실수로 바뀌지 않는다.',
-          target: () => this.localRect(PANEL_W - 36 - 60 - 128 - 60, this.tourSpecY + 150 - 44, 128 + 120, 36),
+          target: () => this.localRect(PANEL_W - 36 - 60 - 128 - 60, this.tourSpecY + this.tourSpecH - 44, 128 + 120, 36),
           skipIf: () => !tackles(),
         },
         {
@@ -370,23 +326,10 @@ export class UtilizationPanel extends DraggablePanel {
   // 채비하기 (Tackles)
   // ═══════════════════════════════════════════════════
   private renderTackles(): void {
-    // ── 채비 모드 토글 (미끼 채비 / 루어 채비) ──
-    this.renderRigModeToggle(this.contentTop + 44);
-    if (InventoryStore.rigMode === 'lure') { this.renderLureRig(); return; }
-
-    const top = this.contentTop + 80;
-    const surf = InventoryStore.isSurfRigReady();
+    const top = this.contentTop + 44;
     const reco = RecommendationStore.get();
 
-    // 188차 — 조작 안내('소켓을 클릭해 부품을 선택하세요…')는 지우고 지금 채비 방식만 적는다.
-    //   부품을 다는 법은 첫 열기 가이드가 직접 해 보게 한다.
-    const guide = this.scene.add.text(24, top,
-      surf ? '원투 채비 — 찌 없이 도래 직결, 초릿대 끝으로 입질을 본다' : '찌 채비', {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#9fc0d4',
-      });
-    this.bodyContainer.add(guide);
-
-    // ── 추천 배너 (지역/지형/물때/대상어종 반영) ──
+    // ── 추천 배너 (지역/지형/물때/대상어종 반영) — 조법·찌·봉돌·미끼 한 줄 ──
     const recoParts: string[] = [`조법 ${reco.techniqueLabel}`];
     if (reco.floatHo !== undefined) recoParts.push(`찌 ${reco.floatHo}호`);
     if (reco.sinkerKind && reco.sinkerHoRange) {
@@ -395,196 +338,247 @@ export class UtilizationPanel extends DraggablePanel {
     }
     // 187차 — 구: 내부 키(`worm_blue·krill`)가 그대로 보였다(R1)
     if (reco.baitKeys.length) recoParts.push(`미끼 ${reco.baitKeys.slice(0, 2).map((k) => BAIT_KEY_KO[k] ?? k).join('·')}`);
-    const recoText = this.scene.add.text(24, top + 18,
+    const recoText = this.scene.add.text(24, top,
       `추천 (${reco.targetNames.join('·') || '지역 대상어'}): ${recoParts.join(' · ')}`, {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#ffd257', fontStyle: 'bold',
       });
     this.bodyContainer.add(recoText);
 
-    // ── 조립 체인 소켓 ──
-    const boxW = SOCKET_W, boxH = SOCKET_H, gap = SOCKET_GAP;
-    const chainY = top + 62;
-    // 루어 장착 시 미끼 소켓 비활성 (바늘 일체형 가짜미끼 — 미끼 불필요)
-    const baitDisabled = !InventoryStore.hookNeedsBait();
-    RIG_STEPS.forEach((step, i) => {
-      const bx = 24 + i * (boxW + gap);
-      const disabled = step.key === 'bait' && baitDisabled;
+    // ── 채비 체인 (192차 — 원줄 하나에서 출발해 고른 것에 따라 오른쪽으로 칸이 열린다) ──
+    const nodes = InventoryStore.rigTree.nodes;
+    const summary = InventoryStore.rigSummary();
+    const chainY = top + 26;
+    this.chainTop = chainY;
+    this.chainRows = Math.max(1, Math.ceil(nodes.length / CHAIN_PER_ROW));
+    nodes.forEach((n, i) => this.renderRigNode(n, i, chainY));
 
-      // 봉돌 소켓은 모드에 따라: 원투 → 무게추 봉돌 / 찌낚시 → 좁쌀 봉돌
-      let matcher = step.matcher;
-      let label = step.label;
-      if (step.key === 'sinker') {
-        matcher = surf ? isWeightSinker : isSplitShot;
-        label = surf ? '무게추 봉돌' : '봉돌 (좁쌀)';
-      }
-      // 추천 부합 아이템 판정기 (소켓별)
-      const recoPredicate: ((it: InvItem) => boolean) | null =
-        step.key === 'sinker' && surf ? (it) => RecommendationStore.isSinkerRecommended(it, reco)
-        : step.key === 'float' ? (it) => RecommendationStore.isFloatRecommended(it, reco)
-        : step.key === 'bait' ? (it) => RecommendationStore.isBaitRecommended(it, reco)
-        : null;
-
-      const box = this.scene.add.graphics();
-      const assignedId = InventoryStore.rig[step.key];
-      const assigned = assignedId ? InventoryStore.find(assignedId) : undefined;
-      const isKnot = step.matcher === null;
-
-      box.fillStyle(disabled ? 0x101820 : assigned || isKnot ? 0x0e2a1e : 0x0e1c2d, 0.95);
-      box.fillRoundedRect(bx, chainY, boxW, boxH, 5);
-      box.lineStyle(1.5, disabled ? 0x2a3642 : assigned || isKnot ? 0x2f7d5a : 0x2a5a8a, 0.95);
-      box.strokeRoundedRect(bx, chainY, boxW, boxH, 5);
-      this.bodyContainer.add(box);
-
-      // 소켓 추천 배지 — 유효 부품 미장착 + 추천 후보가 인벤토리에 있으면 우상단 '추천' 표시
-      // (원투 전환 후 봉돌 소켓에 좁쌀이 남아 있는 경우처럼 '잘못된 장착'도 미장착으로 취급)
-      const validAssigned = assigned && matcher && matcher(assigned);
-      if (!disabled && !validAssigned && recoPredicate && InventoryStore.items.some(recoPredicate)) {
-        const rb = this.scene.add.text(bx + boxW - 6, chainY + 4, '추천', {
-          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#0b1f14',
-          backgroundColor: '#ffd257', padding: { x: 3, y: 1 }, fontStyle: 'bold',
-        }).setOrigin(1, 0);
-        this.bodyContainer.add(rb);
-      }
-
-      const stepLbl = this.scene.add.text(bx + boxW / 2, chainY + 14, label, {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px',
-        color: disabled ? '#556570' : '#c8a060', fontStyle: 'bold',
-      }).setOrigin(0.5);
-      this.bodyContainer.add(stepLbl);
-
-      // 화살표
-      if (i < RIG_STEPS.length - 1) {
-        const arrow = this.scene.add.text(bx + boxW + gap / 2, chainY + boxH / 2, '→', {
-          fontSize: '16px', color: '#4a6a8a',
-        }).setOrigin(0.5);
-        this.bodyContainer.add(arrow);
-      }
-
-      // 미끼 소켓 비활성 — 클릭 불가 안내만 표시하고 종료
-      if (disabled) {
-        const lure = this.scene.add.text(bx + boxW / 2, chainY + 58, '—', {
-          fontFamily: 'monospace', fontSize: '26px', color: '#3a4a58',
-        }).setOrigin(0.5);
-        const why = this.scene.add.text(bx + boxW / 2, chainY + 88, '루어 장착 중\n미끼 불필요', {
-          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#556570', align: 'center',
-        }).setOrigin(0.5, 0);
-        this.bodyContainer.add([lure, why]);
-        return;
-      }
-
-      if (isKnot) {
-        const hasKnot = InventoryStore.hasFloatStop;
-        // 면사매듭: 수심 한계 조절 (-/+) — 제거하면 전유동 (무한 침강)
-        const depthTxt = this.scene.add.text(bx + boxW / 2, chainY + 52, hasKnot ? `${InventoryStore.rigDepthLimitM} m` : '∞', {
-          fontFamily: 'monospace', fontSize: '20px', color: hasKnot ? '#4af2a1' : '#66b8ff', fontStyle: 'bold',
-        }).setOrigin(0.5);
-        const sub = this.scene.add.text(bx + boxW / 2, chainY + 74, hasKnot ? '최대 공략 수심' : '전유동 (무한 침강)', {
-          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: hasKnot ? '#7a98ac' : '#66b8ff',
-        }).setOrigin(0.5);
-        this.bodyContainer.add([depthTxt, sub]);
-
-        if (hasKnot) {
-          const mkBtn = (bxx: number, label: string, delta: number): void => {
-            const btnBg = this.scene.add.graphics();
-            btnBg.fillStyle(0x155a7c, 0.95);
-            btnBg.fillRoundedRect(bxx, chainY + 84, 34, 20, 4);
-            const btnTxt = this.scene.add.text(bxx + 17, chainY + 94, label, {
-              fontFamily: 'monospace', fontSize: '13px', color: '#aee8ff', fontStyle: 'bold',
-            }).setOrigin(0.5);
-            const btnHit = this.scene.add.rectangle(bxx + 17, chainY + 94, 34, 20, 0xffffff, 0.001)
-              .setInteractive({ useHandCursor: true });
-            btnHit.on('pointerdown', () => {
-              InventoryStore.rigDepthLimitM = Phaser.Math.Clamp(InventoryStore.rigDepthLimitM + delta, 1, 30);
-              this.renderBody();
-            });
-            this.bodyContainer.add([btnBg, btnTxt, btnHit]);
-          };
-          mkBtn(bx + 12, '-', -1);
-          mkBtn(bx + boxW - 46, '+', 1);
-        }
-
-        // 면사 제거/부착 토글 — 제거 시 전유동 조법
-        const tg = this.scene.add.graphics();
-        tg.fillStyle(hasKnot ? 0x3a2a20 : 0x155a7c, 0.95);
-        tg.fillRoundedRect(bx + 12, chainY + boxH - 24, boxW - 24, 18, 3);
-        const tt = this.scene.add.text(bx + boxW / 2, chainY + boxH - 15, hasKnot ? '면사 제거 (전유동)' : '면사 부착', {
-          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: hasKnot ? '#ffce9a' : '#aee8ff',
-        }).setOrigin(0.5);
-        const th = this.scene.add.rectangle(bx + boxW / 2, chainY + boxH - 15, boxW - 24, 18, 0xffffff, 0.001)
-          .setInteractive({ useHandCursor: true });
-        th.on('pointerdown', () => {
-          InventoryStore.hasFloatStop = !InventoryStore.hasFloatStop;
-          this.renderBody();
-        });
-        this.bodyContainer.add([tg, tt, th]);
-        return;
-      }
-
-      if (assigned) {
-        // 188차 — 이모지 글리프 대신 아이템 그림(§8-8)
-        const icon = createItemIcon(this.scene, bx + boxW / 2, chainY + 58, assigned, 30);
-        // 188차 — 9px 3줄 대신 10px 2줄까지, 넘치면 이름 축약 (SlotLabel)
-        const name = setSlotLabel(this.scene.add.text(bx + boxW / 2, chainY + 88, '', {
-          fontFamily: '"Noto Sans KR", sans-serif', fontSize: `${SLOT_LABEL_PX}px`, color: '#e8f4fd',
-          wordWrap: { width: boxW - 12 }, align: 'center',
-        }).setOrigin(0.5, 0), assigned.name, boxW - 12, '', 2);
-        this.bodyContainer.add([icon, name]);
-      } else {
-        const plus = this.scene.add.text(bx + boxW / 2, chainY + 64, '+', {
-          fontFamily: 'monospace', fontSize: '30px', color: '#4a6a8a',
-        }).setOrigin(0.5);
-        const hintTxt = this.scene.add.text(bx + boxW / 2, chainY + 96, '비어 있음', {
-          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#4a6a8a',
-        }).setOrigin(0.5);
-        this.bodyContainer.add([plus, hintTxt]);
-      }
-
-      const hit = this.scene.add.rectangle(bx + boxW / 2, chainY + boxH / 2, boxW, boxH, 0xffffff, 0.001)
-        .setInteractive({ useHandCursor: true });
-      hit.on('pointerdown', () => { if (this.rigLockedGuard()) return; this.openChooser(step.key, label, matcher!, bx, chainY + boxH + 8, recoPredicate); });
-      this.bodyContainer.add(hit);
-    });
-
-    // ── 원투 편대/서브 채비 (찌 비움 + 도래 장착 시 병렬 활성) ──
-    let sumY = chainY + boxH + 12;
-    if (InventoryStore.isSurfRigReady()) {
-      sumY += this.renderSpreaderRow(24, sumY) + 10;
+    // 끝이 열린 자리 표시 — 마지막 칸 뒤에 「다음 칸이 열린다」 힌트(값을 넣으면 사라진다)
+    const last = nodes[nodes.length - 1];
+    if (last && !nodeFilled(last)) {
+      // 비어 있는 마지막 칸이 곧 다음 할 일 — 별도 표시 없음
     }
 
-    // ── 조립 스펙 요약 ──
+    // ── 제원 스펙 컨테이너 (실시간 합산) ──
+    const sumY = chainY + this.chainRows * CHAIN_ROW_H + 6;
     this.tourSpecY = sumY;
-    const sumBg = this.scene.add.graphics();
-    sumBg.fillStyle(0x060d1a, 0.95);
-    sumBg.fillRoundedRect(24, sumY, PANEL_W - 48, 150, 5);
-    sumBg.lineStyle(1.5, 0xc8a060, 0.9);
-    sumBg.strokeRoundedRect(24, sumY, PANEL_W - 48, 150, 5);
-    this.bodyContainer.add(sumBg);
-    this.renderRigLockButtons(sumY + 150 - 44);   // 155차 — 제원 상자 안 우측 하단
-
-    const sumTitle = this.scene.add.text(40, sumY + 12, '채비 물리 스펙 (실시간 합산)', {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#ffe28a', fontStyle: 'bold',
-    });
-    this.bodyContainer.add(sumTitle);
+    const sbW = PANEL_W - 48;
+    const sbH = Math.max(110, Math.min(150, PANEL_H - sumY - 14));
+    this.tourSpecH = sbH;
+    const sbg = this.scene.add.graphics();
+    sbg.fillStyle(0x060d1a, 0.95);
+    sbg.fillRoundedRect(24, sumY, sbW, sbH, 5);
+    sbg.lineStyle(1.5, 0xc8a060, 0.9);
+    sbg.strokeRoundedRect(24, sumY, sbW, sbH, 5);
+    this.bodyContainer.add(sbg);
+    this.renderRigLockButtons(sumY + sbH - 44);   // 155차 — 제원 상자 안 우측 하단
 
     const spec = this.computeRigSpec();
+    const title = this.scene.add.text(40, sumY + 10, summary.kit ? `채비 물리 스펙 (실시간 합산) · ${KIT_DEFS[summary.kit].label}` : '채비 물리 스펙 (실시간 합산)', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#ffe28a', fontStyle: 'bold',
+    });
+    this.bodyContainer.add(title);
     const lines = [
       `총 무게: ${spec.weightG.toFixed(2)} g`,
       `부력 합: ${spec.buoyG.toFixed(2)} g 상당`,
       `침강 속도 (V_z): ${spec.sinkMps.toFixed(2)} m/s`,
       `공기 저항 계수 (C_d): ${spec.dragCd.toFixed(2)}`,
-      `최대 공략 수심 (Z_limit): ${InventoryStore.rigDepthLimitM} m`,
+      `최대 공략 수심 (Z_limit): ${InventoryStore.hasFloatStop && summary.floatId ? `${InventoryStore.rigDepthLimitM} m` : '제한 없음 (바닥까지)'}`,
+      `라인 인장: ${InventoryStore.lineCapacityKg()?.toFixed(1) ?? '-'} kg`,
     ];
+    const colW = [330, 330];
+    const colY = [sumY + 34, sumY + 34];
+    const rowPitch = sbH >= 140 ? 22 : 18;
     lines.forEach((line, i) => {
-      const t = this.scene.add.text(40 + Math.floor(i / 3) * 340, sumY + 40 + (i % 3) * 24, line, {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#d0e8f5',
+      const col = i < 3 ? 0 : 1;
+      const t = this.scene.add.text(40 + col * 350, colY[col], line, {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#d0e8f5', wordWrap: { width: colW[col] },
       });
       this.bodyContainer.add(t);
+      colY[col] += rowPitch;
     });
+    const adviceColor = spec.advice.includes('비었습니다') || spec.advice.includes('과부하') ? '#ff9a6a'
+      : summary.offRecommendedBait ? '#ffb36a' : '#7fe6b0';
+    const advice = summary.offRecommendedBait && !spec.advice.includes('비었습니다')
+      ? '권장되는 채비 유형이 아닙니다 — 이 세트는 다른 미끼를 쓰면 대상어종이 거의 물지 않는다.'
+      : spec.advice;
+    this.bodyContainer.add(this.scene.add.text(40, sumY + sbH - 22, advice, {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: adviceColor, wordWrap: { width: sbW - 32 - 300 },
+    }).setOrigin(0, 0.5));
+  }
 
-    const advice = this.scene.add.text(40, sumY + 118, spec.advice, {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#7fe6b0',
-    });
-    this.bodyContainer.add(advice);
+  /** 체인 칸 하나의 패널 로컬 사각형 */
+  private rigNodeRect(i: number): Phaser.Geom.Rectangle {
+    const row = Math.floor(i / CHAIN_PER_ROW), col = i % CHAIN_PER_ROW;
+    return new Phaser.Geom.Rectangle(24 + col * (NODE_W + NODE_GAP), this.chainTop + row * CHAIN_ROW_H, NODE_W, NODE_H);
+  }
+
+  /** 칸이 받는 아이템인가 (가방에서 고를 후보) */
+  private nodeAccepts(n: RigNode, item: InvItem): boolean {
+    const def = RIG_SLOTS[n.slot];
+    if (def.type !== 'item' || !def.accepts) return false;
+    const kind = partKindOf(item);
+    return !!kind && def.accepts.includes(kind);
+  }
+
+  /** 칸·아이템 기준 「추천」 — 세트 권장 미끼 > 지역 추천(찌·봉돌·미끼) */
+  private nodeRecommends(n: RigNode, item: InvItem): boolean {
+    const reco = RecommendationStore.get();
+    if (n.slot === 'bait') {
+      if (n.kit && KIT_DEFS[n.kit].recommendedBaits?.length) return baitRecommendedFor(n.kit, baitKeyOf(item));
+      return RecommendationStore.isBaitRecommended(item, reco);
+    }
+    if (n.slot === 'float') return RecommendationStore.isFloatRecommended(item, reco);
+    if (n.slot === 'sliding_sinker' || n.slot === 'bundle_kit' || n.slot === 'tbar_sinker') return RecommendationStore.isSinkerRecommended(item, reco);
+    return false;
+  }
+
+  /** 체인 칸 하나 — 라벨 · 그림 · 이름 · 상태 테두리 · 클릭 */
+  private renderRigNode(n: RigNode, i: number, _chainY: number): void {
+    const r = this.rigNodeRect(i);
+    const def = RIG_SLOTS[n.slot];
+    const filled = nodeFilled(n);
+    const optional = nodeOptional(n);
+    const fixed = def.type === 'fixed';
+    const item = n.itemId ? InventoryStore.find(n.itemId) : undefined;
+
+    // 바탕 — 채움(초록) / 필수 빈 칸(주황) / 선택 빈 칸(어두운 파랑) / 고정(회색)
+    const box = this.scene.add.graphics();
+    const fill = fixed ? 0x141a22 : filled ? 0x0e2a1e : optional ? 0x0e1824 : 0x1a1a0e;
+    const stroke = fixed ? 0x3a4652 : filled ? 0x2f7d5a : optional ? 0x2a4a6a : 0xd08a3a;
+    box.fillStyle(fill, 0.95);
+    box.fillRoundedRect(r.x, r.y, r.width, r.height, 5);
+    box.lineStyle(1.5, stroke, 0.95);
+    box.strokeRoundedRect(r.x, r.y, r.width, r.height, 5);
+    this.bodyContainer.add(box);
+
+    // 라벨
+    const lbl = this.scene.add.text(r.x + r.width / 2, r.y + 12, nodeLabel(n), {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: fixed ? '#8a98a6' : '#c8a060', fontStyle: 'bold',
+    }).setOrigin(0.5);
+    clampTextWidth(lbl, r.width - 8);
+    this.bodyContainer.add(lbl);
+
+    // 가운데 그림 — 아이템 아이콘 / 고정 부품 아이콘 / 갈래 글리프
+    const cy = r.y + r.height / 2 - 6;
+    if (item) {
+      this.bodyContainer.add(createItemIcon(this.scene, r.x + r.width / 2, cy, item, 40));
+    } else if (fixed) {
+      const tex = n.fixedIcon && this.scene.textures.exists(n.fixedIcon) ? n.fixedIcon : undefined;
+      if (tex) {
+        this.bodyContainer.add(createItemIcon(this.scene, r.x + r.width / 2, cy, { iconTexture: tex, icon: '', name: n.fixedLabel ?? '' }, 36));
+      }
+    } else if (def.type === 'choice') {
+      const glyph = this.scene.add.text(r.x + r.width / 2, cy, n.choice ? '◆' : '?', {
+        fontFamily: 'monospace', fontSize: n.choice ? '22px' : '26px', color: n.choice ? '#7fe6b0' : '#d08a3a',
+      }).setOrigin(0.5);
+      this.bodyContainer.add(glyph);
+    } else if (def.type === 'toggle') {
+      const glyph = this.scene.add.text(r.x + r.width / 2, cy, n.on === false ? '—' : '●', {
+        fontFamily: 'monospace', fontSize: '22px', color: n.on === false ? '#607b8e' : '#7fe6b0',
+      }).setOrigin(0.5);
+      this.bodyContainer.add(glyph);
+    } else {
+      const glyph = this.scene.add.text(r.x + r.width / 2, cy, '+', {
+        fontFamily: 'monospace', fontSize: '26px', color: optional ? '#3a5a7a' : '#d08a3a',
+      }).setOrigin(0.5);
+      this.bodyContainer.add(glyph);
+    }
+
+    // 이름 줄
+    let name: string;
+    let nameColor = '#e8f4fd';
+    if (item) name = item.name;
+    else if (fixed) { name = '고정'; nameColor = '#7a8894'; }
+    else if (def.type === 'choice') {
+      name = n.choice ? (def.options?.find((o) => o.id === n.choice)?.label ?? n.choice) : '선택';
+      if (!n.choice) nameColor = '#ffb36a';
+    } else if (def.type === 'toggle') { name = n.on === false ? '뺌 (전유동)' : '묶음'; }
+    else { name = optional ? '비어 있음 (선택)' : '비어 있음'; nameColor = optional ? '#6f8ba0' : '#ffb36a'; }
+    const nm = this.scene.add.text(r.x + r.width / 2, r.y + r.height - 16, name, {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: nameColor, align: 'center',
+      wordWrap: { width: r.width - 8 },
+    }).setOrigin(0.5);
+    fitTextHeight(nm, 30);
+    this.bodyContainer.add(nm);
+
+    // 「추천」 배지 — 유효 부품 미장착 + 추천 후보가 가방에 있으면
+    if (!fixed && def.type === 'item' && !item && InventoryStore.items.some((it) => this.nodeAccepts(n, it) && this.nodeRecommends(n, it))) {
+      const rb = this.scene.add.text(r.x + r.width - 5, r.y + 4, '추천', {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#0b1f14',
+        backgroundColor: '#ffd257', padding: { x: 3, y: 1 }, fontStyle: 'bold',
+      }).setOrigin(1, 0);
+      this.bodyContainer.add(rb);
+    }
+    // 비권장 미끼 표식
+    if (item && n.slot === 'bait' && n.kit && KIT_DEFS[n.kit].recommendedBaits?.length && !baitRecommendedFor(n.kit, baitKeyOf(item))) {
+      const warn = this.scene.add.text(r.x + r.width - 5, r.y + 4, '비권장', {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#2a1206',
+        backgroundColor: '#ffb36a', padding: { x: 3, y: 1 }, fontStyle: 'bold',
+      }).setOrigin(1, 0);
+      this.bodyContainer.add(warn);
+    }
+
+    // 연결선 — 같은 행이면 → · 행 끝이면 ↵
+    const col = i % CHAIN_PER_ROW;
+    const nodes = InventoryStore.rigTree.nodes;
+    if (i < nodes.length - 1) {
+      const endOfRow = col === CHAIN_PER_ROW - 1;
+      const arrow = this.scene.add.text(endOfRow ? r.x + r.width / 2 : r.x + r.width + NODE_GAP / 2, endOfRow ? r.y + r.height + 10 : r.y + r.height / 2,
+        endOfRow ? '↓' : '→', { fontSize: '16px', color: '#4a6a8a' }).setOrigin(0.5);
+      this.bodyContainer.add(arrow);
+    }
+
+    if (fixed) return;
+    const hit = this.scene.add.rectangle(r.x + r.width / 2, r.y + r.height / 2, r.width, r.height, 0xffffff, 0.001)
+      .setInteractive({ useHandCursor: true });
+    hit.on('pointerdown', () => this.onRigNodeClick(n, i));
+    this.bodyContainer.add(hit);
+  }
+
+  /** 칸 클릭 — item: 가방 후보 목록 / choice: 갈래 목록 / toggle: 즉시 전환 */
+  private onRigNodeClick(n: RigNode, i: number): void {
+    if (this.rigLockedGuard()) return;
+    const def = RIG_SLOTS[n.slot];
+    const r = this.rigNodeRect(i);
+    const listX = r.x, listY = r.y + r.height + 4;
+    this.closeChooser();
+    if (def.type === 'toggle') {
+      InventoryStore.setRigNode(i, { on: n.on === false });
+      this.renderBody();
+      return;
+    }
+    if (def.type === 'choice') {
+      const rows: ChooserRow[] = (def.options ?? []).map((o) => ({
+        text: o.label + (o.desc ? `  ·  ${o.desc}` : ''),
+        onPick: () => { InventoryStore.setRigNode(i, { choice: o.id }); },
+        recommended: false,
+      }));
+      this.mountChooserList(this, rows, listX, listY, { listW: 420, title: `${nodeLabel(n)} 선택` });
+      return;
+    }
+    // item 칸 — 후보는 받는 종류만, 추천을 위로
+    const candidates = InventoryStore.items.filter((it) => this.nodeAccepts(n, it))
+      .sort((a, b) => Number(this.nodeRecommends(n, b)) - Number(this.nodeRecommends(n, a)));
+    const rows: ChooserRow[] = candidates.length === 0
+      ? [
+        { text: '사용 가능한 부품이 없습니다 — 직판장 채비 코너', onPick: () => { /* 안내행 */ }, muted: true },
+        { text: '닫기', onPick: () => { /* 선택 없음 */ } },
+      ]
+      : [
+        ...candidates.map((it): ChooserRow => ({
+          text: `${it.name} (x${it.qty})`,
+          recommended: this.nodeRecommends(n, it),
+          onPick: () => {
+            InventoryStore.setRigNode(i, { itemId: it.id });
+            // 세트가 권장 미끼를 정했는데 다른 미끼를 끼우면 — 끼워지긴 하지만 알려 준다
+            if (n.slot === 'bait' && n.kit && KIT_DEFS[n.kit].recommendedBaits?.length && !baitRecommendedFor(n.kit, baitKeyOf(it))) {
+              this.flashBoardToast('권장되는 채비 유형이 아닙니다.');
+            }
+          },
+        })),
+        ...(n.itemId ? [{ text: '비우기', onPick: () => { InventoryStore.setRigNode(i, { itemId: null }); } }] : []),
+      ];
+    this.mountChooserList(this, rows, listX, listY, { listW: 260, title: `${nodeLabel(n)} 선택` });
   }
 
   /**
@@ -637,380 +631,6 @@ export class UtilizationPanel extends DraggablePanel {
   }
 
   // ── 채비 모드 토글 (미끼 채비 / 루어 채비) ─────────────
-  private renderRigModeToggle(y: number): void {
-    const modes: { id: 'bait' | 'lure'; label: string }[] = [
-      { id: 'bait', label: '미끼 채비' },
-      { id: 'lure', label: '루어 채비' },
-    ];
-    let x = 24;
-    modes.forEach((m) => {
-      const sel = InventoryStore.rigMode === m.id;
-      const w = 110;
-      const g = this.scene.add.graphics();
-      g.fillStyle(sel ? 0x155a7c : 0x0e1c2d, 0.95);
-      g.fillRoundedRect(x, y, w, 26, 4);
-      g.lineStyle(1.5, sel ? 0x5cd0ff : 0x2a5a8a, 0.95);
-      g.strokeRoundedRect(x, y, w, 26, 4);
-      const t = this.scene.add.text(x + w / 2, y + 13, m.label, {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', fontStyle: 'bold',
-        color: sel ? '#aee8ff' : '#8faabf',
-      }).setOrigin(0.5);
-      const hit = this.scene.add.rectangle(x + w / 2, y + 13, w, 26, 0xffffff, 0.001)
-        .setInteractive({ useHandCursor: true });
-      hit.on('pointerdown', () => {
-        if (this.rigLockedGuard()) return;
-        InventoryStore.setRigMode(m.id);
-        this.closeChooser();
-        this.renderBody();
-      });
-      this.bodyContainer.add([g, t, hit]);
-      x += w + 8;
-    });
-  }
-
-  // ═══════════════════════════════════════════════════
-  // 루어 채비 (rigMode === 'lure') — 2단계 종류 트리 + 지그헤드 + 제원
-  // ═══════════════════════════════════════════════════
-  private renderLureRig(): void {
-    const top = this.contentTop + 80;
-    const guide = this.scene.add.text(24, top,
-      '루어 채비 — 원줄·목줄은 미끼 채비와 따로 단다. 소프트 베이트는 지그헤드에 끼워 쓰고, 봉돌은 쓰지 않는다.', {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#9fc0d4',
-        wordWrap: { width: PANEL_W - 48 },
-      });
-    this.bodyContainer.add(guide);
-
-    // ── 루어 전용 원줄/목줄 소켓 (116차 — 피드백 7: 미끼 채비 소켓과 분리) ──
-    const sockY = top + 24;
-    const lureSockets: { label: string; id: string | null; matcher: (i: InvItem) => boolean; set: (id: string | null) => void }[] = [
-      { label: '원줄', id: InventoryStore.lureLineId, matcher: (i) => i.subCategory === '원줄 스풀', set: (id) => InventoryStore.setLureLine(id) },
-      { label: '목줄', id: InventoryStore.lureLeaderId, matcher: (i) => i.subCategory === '목줄 스풀', set: (id) => InventoryStore.setLureLeader(id) },
-    ];
-    lureSockets.forEach((sk, i) => {
-      const bx = 24 + i * (SOCKET_W + SOCKET_GAP);
-      const assigned = sk.id ? InventoryStore.find(sk.id) : undefined;
-      const box = this.scene.add.graphics();
-      box.fillStyle(assigned ? 0x0e2a1e : 0x0e1c2d, 0.95);
-      box.fillRoundedRect(bx, sockY, SOCKET_W, SOCKET_H, 5);
-      box.lineStyle(1.5, assigned ? 0x2f7d5a : 0x2a5a8a, 0.95);
-      box.strokeRoundedRect(bx, sockY, SOCKET_W, SOCKET_H, 5);
-      const lbl = this.scene.add.text(bx + SOCKET_W / 2, sockY + 14, sk.label, {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#c8a060', fontStyle: 'bold',
-      }).setOrigin(0.5);
-      const nm = this.scene.add.text(bx + SOCKET_W / 2, sockY + SOCKET_H / 2 + 8, assigned ? assigned.name : '비어 있음', {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: assigned ? '#e8f4fd' : '#6f8ba0',
-        align: 'center', wordWrap: { width: SOCKET_W - 10 },
-      }).setOrigin(0.5);
-      const hit = this.scene.add.rectangle(bx + SOCKET_W / 2, sockY + SOCKET_H / 2, SOCKET_W, SOCKET_H, 0xffffff, 0.001)
-        .setInteractive({ useHandCursor: true });
-      hit.on('pointerdown', () => {
-        const cands = InventoryStore.items.filter(sk.matcher);
-        const rows: ChooserRow[] = cands.length === 0
-          ? [{ text: '사용 가능한 부품이 없습니다 — 직판장 채비 코너', onPick: () => { /* 안내 */ }, muted: true }, { text: '닫기', onPick: () => { /* 선택 없음 */ } }]
-          : [...cands.map((item): ChooserRow => ({ text: `${item.name} (x${item.qty})`, onPick: () => { sk.set(item.id); this.renderBody(); } })),
-            { text: '비우기', onPick: () => { sk.set(null); this.renderBody(); } }];
-        this.closeChooser();
-        this.mountChooserList(this, rows, bx, sockY + SOCKET_H + 4, { listW: 240, title: `${sk.label} 선택` });
-      });
-      this.bodyContainer.add([box, lbl, nm, hit]);
-      if (i < lureSockets.length - 1) {
-        this.bodyContainer.add(this.scene.add.text(bx + SOCKET_W + SOCKET_GAP / 2, sockY + SOCKET_H / 2, '→', { fontSize: '16px', color: '#4a6a8a' }).setOrigin(0.5));
-      }
-    });
-    const capKg = InventoryStore.lineCapacityKg();
-    this.bodyContainer.add(this.scene.add.text(24 + 2 * (SOCKET_W + SOCKET_GAP) + 6, sockY + SOCKET_H / 2,
-      capKg ? `라인 인장강도 ≈ ${capKg.toFixed(1)}kg (원줄·목줄 중 약한 쪽 — 파이팅 텐션 분모)` : '원줄·목줄을 달아야 캐스팅됩니다', {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: capKg ? '#7fe6b0' : '#ff9a7a', wordWrap: { width: 300 },
-      }).setOrigin(0, 0.5));
-
-    // 1단계: 소프트 / 하드
-    const fam: { f: LureFamily; label: string }[] = [
-      { f: 'soft', label: '소프트 베이트' }, { f: 'hard', label: '하드 베이트' },
-    ];
-    let fx = 24;
-    const famY = sockY + SOCKET_H + 16;
-    fam.forEach(({ f, label }) => {
-      const sel = this.lureFamily === f;
-      const w = 130;
-      this.mkPill(fx, famY, w, 26, label, sel, () => {
-        this.lureFamily = f;
-        this.lureKindSel = (f === 'soft' ? SOFT_KINDS : HARD_KINDS)[0].k;
-        this.renderBody();
-      });
-      fx += w + 8;
-    });
-
-    // 2단계: 종류 (선택 family에 따라)
-    const kinds = this.lureFamily === 'soft' ? SOFT_KINDS : HARD_KINDS;
-    let kx = 24;
-    const kindY = famY + 34;
-    kinds.forEach(({ k, label }) => {
-      const sel = this.lureKindSel === k;
-      const w = label.length * 12 + 24;
-      this.mkPill(kx, kindY, w, 24, label, sel, () => { this.lureKindSel = k; this.renderBody(); });
-      kx += w + 8;
-    });
-
-    // 3단계: 라인업 (인벤토리 루어 중 선택 종류)
-    const lures = InventoryStore.getByCategory('lure')
-      .filter((i) => getLureSpec(i.id)?.kind === this.lureKindSel);
-    const lineY = kindY + 36;
-    this.bodyContainer.add(this.scene.add.text(24, lineY, '라인업', {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#c8a060', fontStyle: 'bold',
-    }));
-    let lx = 24;
-    const cardY = lineY + 20;
-    lures.forEach((item) => {
-      const spec = getLureSpec(item.id)!;
-      const sel = InventoryStore.lureId === item.id;
-      const w = 150, h = 56;
-      const g = this.scene.add.graphics();
-      g.fillStyle(sel ? 0x0e2a1e : 0x0e1c2d, 0.95);
-      g.fillRoundedRect(lx, cardY, w, h, 5);
-      g.lineStyle(1.5, sel ? 0x4af2a1 : 0x2a5a8a, 0.95);
-      g.strokeRoundedRect(lx, cardY, w, h, 5);
-      const nm = this.scene.add.text(lx + 8, cardY + 8, `${spec.sizeLabel} · ${spec.brand}`, {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#e8f4fd', fontStyle: 'bold',
-      });
-      const sub = this.scene.add.text(lx + 8, cardY + 26, `${spec.weightG}g · ${SINK_SHORT[spec.sinkType] ?? spec.sinkType}`, {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#9fc0d4',
-      });
-      const qty = this.scene.add.text(lx + w - 8, cardY + 8, `x${item.qty}`, {
-        fontFamily: 'monospace', fontSize: '10px', color: '#ffe28a',
-      }).setOrigin(1, 0);
-      const hit = this.scene.add.rectangle(lx + w / 2, cardY + h / 2, w, h, 0xffffff, 0.001)
-        .setInteractive({ useHandCursor: true });
-      hit.on('pointerdown', () => { if (this.rigLockedGuard()) return; InventoryStore.setLure(item.id); this.renderBody(); });
-      this.bodyContainer.add([g, nm, sub, qty, hit]);
-      lx += w + 8;
-    });
-    if (lures.length === 0) {
-      this.bodyContainer.add(this.scene.add.text(24, cardY + 14, '보유한 루어가 없습니다 (낚시점에서 구매).', {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#607b8e',
-      }));
-    }
-
-    // 지그헤드 소켓 (소프트 베이트만)
-    let specY = cardY + 70;
-    const eqSpec = InventoryStore.getEquippedLureSpec();
-    if (eqSpec?.requiresJigHead) {
-      this.bodyContainer.add(this.scene.add.text(24, specY, '지그헤드 (소프트 베이트 필수 — 무게가 침강 속도를 결정)', {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#c8a060', fontStyle: 'bold',
-      }));
-      let jx = 24;
-      const jy = specY + 20;
-      InventoryStore.getByCategory('lure').filter(isJigHeadItem).forEach((jh) => {
-        const sel = InventoryStore.jigHeadId === jh.id;
-        const w = 84;
-        this.mkPill(jx, jy, w, 24, `${jigHeadWeightById(jh.id)}g (x${jh.qty})`, sel, () => {
-          if (this.rigLockedGuard()) return;
-          InventoryStore.setJigHead(jh.id); this.renderBody();
-        });
-        jx += w + 8;
-      });
-      specY = jy + 36;
-    }
-
-    // ── 제원 스펙 컨테이너 (실시간 — 계산은 core, UI는 표시만) ──
-    const sbW = PANEL_W - 48, sbH = 150;
-    const sbg = this.scene.add.graphics();
-    sbg.fillStyle(0x060d1a, 0.95);
-    sbg.fillRoundedRect(24, specY, sbW, sbH, 5);
-    sbg.lineStyle(1.5, 0xc8a060, 0.9);
-    sbg.strokeRoundedRect(24, specY, sbW, sbH, 5);
-    this.bodyContainer.add(sbg);
-    this.renderRigLockButtons(specY + sbH - 44);   // 155차 — 제원 상자 안 우측 하단
-    this.bodyContainer.add(this.scene.add.text(40, specY + 12, '루어 제원 (실시간)', {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#ffe28a', fontStyle: 'bold',
-    }));
-
-    if (eqSpec) {
-      const jhW = jigHeadWeightById(InventoryStore.jigHeadId);
-      const sink = getLureSinkProfile(eqSpec, jhW);
-      const missing = InventoryStore.getMissingRigParts();
-      const bias = eqSpec.speciesWeightBias
-        ? Object.entries(eqSpec.speciesWeightBias).map(([s, v]) => `${s} +${Math.round(v * 100)}%`).join(', ')
-        : eqSpec.spawnBinding ? `두족류 전용 (${eqSpec.spawnBinding.join('/')})`
-        : eqSpec.targetHabitatBias ? `서식 성향 가중 (${eqSpec.targetHabitatBias.join('/')})` : '-';
-      const lines = [
-        `루어: ${eqSpec.nameKo} (${eqSpec.brand})`,
-        `총 무게: ${InventoryStore.getLureRigWeightG().toFixed(1)} g${eqSpec.requiresJigHead ? ` (웜 ${eqSpec.weightG} + 지그헤드 ${jhW})` : ''}`,
-        `침강: ${SINK_LABEL[sink.sinkType]}${sink.sinkRateMps > 0 ? ` ${sink.sinkRateMps.toFixed(2)} m/s` : ''}`,
-        `공기저항 C_d: ${eqSpec.dragCoefficient.toFixed(2)}${eqSpec.kind === 'metal_jig' ? ' (초장타)' : ''}`,
-        `타겟 가중: ${bias}`,
-        `액션: ${eqSpec.actionFlags?.join(', ') ?? '-'}${eqSpec.snagRiskMult ? ` · 밑걸림 ×${eqSpec.snagRiskMult}` : ''}`,
-      ];
-      // 2열 흐름 배치 — 타겟 가중처럼 긴 줄은 열 폭 안에서 줄바꿈하고 다음 줄을 그만큼 밀어낸다
-      //   (117차 — 고정 22px 행 배치가 창 밖으로 글자를 흘렸다)
-      const colW = [340, sbW - 16 - 376];
-      const colY = [specY + 38, specY + 38];
-      lines.forEach((line, i) => {
-        const col = i < 3 ? 0 : 1;
-        const t = this.scene.add.text(40 + col * 360, colY[col], line, {
-          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#d0e8f5', wordWrap: { width: colW[col] },
-        });
-        this.bodyContainer.add(t);
-        colY[col] += Math.max(22, t.height + 4);
-      });
-      const advice = missing.length
-        ? `필수 소켓이 비었습니다: ${missing.join(', ')} — 채워야 캐스팅할 수 있습니다.`
-        : '루어 채비 완성 — 입질/챔질 실패로는 루어를 잃지 않습니다(목줄째 터질 때만 손실).';
-      this.bodyContainer.add(this.scene.add.text(40, specY + sbH - 24, advice, {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: missing.length ? '#ff9a6a' : '#7fe6b0',
-        wordWrap: { width: sbW - 32 },
-      }));
-    } else {
-      this.bodyContainer.add(this.scene.add.text(40, specY + 60, '고른 루어 없음', {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#7a98ac',
-      }));
-    }
-  }
-
-  /** 작은 선택 pill 버튼 유틸 */
-  private mkPill(x: number, y: number, w: number, h: number, label: string, sel: boolean, onClick: () => void): void {
-    const g = this.scene.add.graphics();
-    g.fillStyle(sel ? 0x1a6a3e : 0x0e1c2d, 0.95);
-    g.fillRoundedRect(x, y, w, h, 4);
-    g.lineStyle(1, sel ? 0x4af2a1 : 0x2a5a8a, 0.9);
-    g.strokeRoundedRect(x, y, w, h, 4);
-    const t = this.scene.add.text(x + w / 2, y + h / 2, label, {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: sel ? '#d6ffe8' : '#8faabf',
-    }).setOrigin(0.5);
-    const hit = this.scene.add.rectangle(x + w / 2, y + h / 2, w, h, 0xffffff, 0.001)
-      .setInteractive({ useHandCursor: true });
-    hit.on('pointerdown', onClick);
-    this.bodyContainer.add([g, t, hit]);
-  }
-
-  /**
-   * 원투 편대/서브 채비 선택 행 — 찌 소켓을 비우고 도래를 장착하면 병렬 활성.
-   * NONE/T자 천평/카드(열기7·고등어5·전갱이3 서브 토글)/학꽁치/갈치.
-   * 카드 채비는 단수만큼 미끼 멀티 슬롯(MultiHookContainer)이 확장된다.
-   * @returns 렌더한 블록 높이 (px)
-   */
-  private renderSpreaderRow(x: number, y: number): number {
-    const sp = InventoryStore.spreader;
-    const w = PANEL_W - 48;
-    const hasCard = sp.kind === 'CARD_RIG' && !!sp.cardType;
-    const h = hasCard ? 120 : 74;
-
-    const bg = this.scene.add.graphics();
-    bg.fillStyle(0x0c1a10, 0.95);
-    bg.fillRoundedRect(x, y, w, h, 5);
-    bg.lineStyle(1.5, 0x2f7d5a, 0.9);
-    bg.strokeRoundedRect(x, y, w, h, 5);
-    this.bodyContainer.add(bg);
-
-    const title = this.scene.add.text(x + 12, y + 8, '편대/서브 채비 (원투 — 찌 없이 도래 직결)', {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#7fe6b0', fontStyle: 'bold',
-    });
-    this.bodyContainer.add(title);
-
-    // 종류 선택 버튼 5개
-    const kinds: SpreaderKind[] = ['NONE', 'T_BAR', 'CARD_RIG', 'HAKGONGCHI', 'GALCHI'];
-    let bx = x + 12;
-    kinds.forEach((kind) => {
-      const label = SPREADER_LABEL[kind];
-      const bw = label.length * 11 + 22;
-      const sel = sp.kind === kind;
-      const g = this.scene.add.graphics();
-      g.fillStyle(sel ? 0x1a6a3e : 0x0e1c2d, 0.95);
-      g.fillRoundedRect(bx, y + 28, bw, 24, 4);
-      g.lineStyle(1, sel ? 0x4af2a1 : 0x2a5a8a, 0.9);
-      g.strokeRoundedRect(bx, y + 28, bw, 24, 4);
-      const t = this.scene.add.text(bx + bw / 2, y + 40, label, {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: sel ? '#d6ffe8' : '#8faabf',
-      }).setOrigin(0.5);
-      const hit = this.scene.add.rectangle(bx + bw / 2, y + 40, bw, 24, 0xffffff, 0.001)
-        .setInteractive({ useHandCursor: true });
-      hit.on('pointerdown', () => { if (this.rigLockedGuard()) return; InventoryStore.setSpreader(kind, sp.cardType); this.renderBody(); });
-      this.bodyContainer.add([g, t, hit]);
-      bx += bw + 8;
-    });
-
-    // 카드 채비 서브 토글 (열기 7단 / 고등어 5단 / 전갱이 3단)
-    if (sp.kind === 'CARD_RIG') {
-      let cx = x + 12;
-      (Object.keys(CARD_RIG_INFO) as CardRigType[]).forEach((ct) => {
-        const info = CARD_RIG_INFO[ct];
-        const bw = info.label.length * 11 + 18;
-        const sel = sp.cardType === ct;
-        const g = this.scene.add.graphics();
-        g.fillStyle(sel ? 0x155a7c : 0x0e1c2d, 0.95);
-        g.fillRoundedRect(cx, y + 56, bw, 20, 3);
-        g.lineStyle(1, sel ? 0x5cd0ff : 0x2a5a8a, 0.9);
-        g.strokeRoundedRect(cx, y + 56, bw, 20, 3);
-        const t = this.scene.add.text(cx + bw / 2, y + 66, info.label, {
-          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: sel ? '#aee8ff' : '#8faabf',
-        }).setOrigin(0.5);
-        const hit = this.scene.add.rectangle(cx + bw / 2, y + 66, bw, 20, 0xffffff, 0.001)
-          .setInteractive({ useHandCursor: true });
-        hit.on('pointerdown', () => { if (this.rigLockedGuard()) return; InventoryStore.setSpreader('CARD_RIG', ct); this.renderBody(); });
-        this.bodyContainer.add([g, t, hit]);
-        cx += bw + 6;
-      });
-      const gapNote = this.scene.add.text(cx + 8, y + 66, sp.cardType ? `바늘 간격 ${CARD_RIG_INFO[sp.cardType].gapM}m` : '', {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#7a98ac',
-      }).setOrigin(0, 0.5);
-      this.bodyContainer.add(gapNote);
-    }
-
-    // MultiHookContainer — 카드 단수만큼 미끼 개별 장착 슬롯
-    if (hasCard && sp.cardType) {
-      const info = CARD_RIG_INFO[sp.cardType];
-      const cell = 34;
-      let hx = x + 12;
-      const hy = y + 82;
-      for (let i = 0; i < info.hooks; i++) {
-        const baitId = sp.hookBaits[i];
-        const bait = baitId ? InventoryStore.find(baitId) : undefined;
-        const g = this.scene.add.graphics();
-        g.fillStyle(bait ? 0x0e2a1e : 0x0e1c2d, 0.95);
-        g.fillRoundedRect(hx, hy, cell, cell, 3);
-        g.lineStyle(1, bait ? 0x4af2a1 : 0x2a5a8a, 0.9);
-        g.strokeRoundedRect(hx, hy, cell, cell, 3);
-        const icon = this.scene.add.text(hx + cell / 2, hy + cell / 2, bait ? bait.icon : '🪝', {
-          fontSize: '14px',
-        }).setOrigin(0.5).setAlpha(bait ? 1 : 0.4);
-        const num = this.scene.add.text(hx + 3, hy + 1, `${i + 1}`, {
-          fontFamily: 'monospace', fontSize: '8px', color: '#7a98ac',
-        });
-        const hookIdx = i;
-        const hit = this.scene.add.rectangle(hx + cell / 2, hy + cell / 2, cell, cell, 0xffffff, 0.001)
-          .setInteractive({ useHandCursor: true });
-        hit.on('pointerdown', () => { if (this.rigLockedGuard()) return; this.openSpreaderBaitChooser(hookIdx, hx, hy + cell + 4); });
-        this.bodyContainer.add([g, icon, num, hit]);
-        hx += cell + 6;
-      }
-      const fillAll = this.scene.add.text(hx + 8, hy + 17, '[전체 크릴 장착]', {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#ffce54',
-      }).setOrigin(0, 0.5).setInteractive({ useHandCursor: true });
-      fillAll.on('pointerdown', () => {
-        for (let i = 0; i < info.hooks; i++) {
-          if (InventoryStore.find('inv_krill')) InventoryStore.setSpreaderBait(i, 'inv_krill');
-        }
-        this.renderBody();
-      });
-      this.bodyContainer.add(fillAll);
-    }
-
-    return h;
-  }
-
-  /** 카드 채비 단수별 미끼 선택 팝업 */
-  private openSpreaderBaitChooser(hookIdx: number, x: number, y: number): void {
-    this.closeChooser();
-    const candidates = InventoryStore.items.filter(isBaitItem);
-    const rows: ChooserRow[] = [
-      { text: '(비우기)', onPick: () => InventoryStore.setSpreaderBait(hookIdx, null) },
-      ...candidates.map((item): ChooserRow => ({
-        text: `${item.icon} ${item.name} x${item.qty}`,
-        onPick: () => InventoryStore.setSpreaderBait(hookIdx, item.id),
-      })),
-    ];
-    this.mountChooserList(this.bodyContainer, rows, x, y, { listW: 200, title: '편대 미끼 선택' });
-  }
-
   /** 조립 부품 기반 물리 스펙 계산 (목업 수치) */
   private computeRigSpec(): { weightG: number; buoyG: number; sinkMps: number; dragCd: number; advice: string } {
     let weightG = 0;
@@ -1021,7 +641,7 @@ export class UtilizationPanel extends DraggablePanel {
       if (!id) return;
       const item = InventoryStore.find(id);
       if (!item) return;
-      if (isWeightSinker(item)) weightG += item.sinkerWeightG ?? 0;   // 원투 무게추 봉돌 (60~113g)
+      if (isWeightSinker(item) || item.sinkerWeightG !== undefined) weightG += item.sinkerWeightG ?? 0;   // 원투 무게추 봉돌 (60~113g) · 타이라바 헤드
       // 찌 제원 (floatBuoyG): 양수 = 부력(부력찌) / 음수 = 침력(수중찌·잠길찌 마이너스 잔존부력)
       else if (item.floatBuoyG !== undefined) {
         if (item.floatBuoyG >= 0) buoyG += item.floatBuoyG;
@@ -1062,6 +682,8 @@ export class UtilizationPanel extends DraggablePanel {
     const bundleSinker = InventoryStore.getEquippedWeightSinker()?.sinkerKind === 'bundle';
     if (overload) advice = '채비 과부하! 봉돌 호수를 낮추거나 경량 채비를 선택하세요.';
     else if (missing.length > 0) advice = `필수 소켓이 비었습니다: ${missing.join(', ')} — 채워야 캐스팅할 수 있습니다.`;
+    // 192차 — 루어 세트는 바닥 채비이기도 하므로 원투 안내보다 먼저 가른다
+    else if (!InventoryStore.hookNeedsBait()) advice = '루어 채비입니다 — 미끼 없이 캐스팅 가능하며, 입질 시 미끼가 소모되지 않습니다.';
     else if (surf) {
       advice = holeSinker
         ? '원투 채비 (구멍 봉돌) — 이물감이 적어 예신 타이밍 피드백 +15%. 초릿대 끝으로 입질을 보세요.'
@@ -1083,35 +705,6 @@ export class UtilizationPanel extends DraggablePanel {
     else advice = '균형 잡힌 채비입니다. 면사매듭 수심을 포인트 수심대에 맞추세요.';
 
     return { weightG, buoyG, sinkMps, dragCd, advice };
-  }
-
-  /** 부품 선택 리스트 팝업 */
-  private openChooser(
-    step: RigStepKey, label: string, matcher: (i: InvItem) => boolean,
-    x: number, y: number, isReco?: ((i: InvItem) => boolean) | null,
-  ): void {
-    this.closeChooser();
-
-    // 추천 후보를 상단으로 정렬
-    const candidates = InventoryStore.items.filter(matcher)
-      .sort((a, b) => (isReco ? (Number(isReco(b)) - Number(isReco(a))) : 0));
-
-    // 행 서술자 — 후보 목록 + (비우기 / 후보 없을 때 안내·닫기)
-    const rows: ChooserRow[] = candidates.length === 0
-      ? [
-        { text: '사용 가능한 부품이 없습니다', onPick: () => { /* 안내행 */ }, muted: true },
-        { text: '닫기', onPick: () => { /* 선택 없음 */ } },
-      ]
-      : [
-        ...candidates.map((item): ChooserRow => ({
-          text: `${item.name} (x${item.qty})`,
-          onPick: () => InventoryStore.setRigPart(step, item.id),
-          recommended: !!isReco && isReco(item),
-        })),
-        { text: '비우기', onPick: () => InventoryStore.setRigPart(step, null) },
-      ];
-
-    this.mountChooserList(this, rows, x, y, { listW: 240, title: `${label} 선택` });
   }
 
   /**

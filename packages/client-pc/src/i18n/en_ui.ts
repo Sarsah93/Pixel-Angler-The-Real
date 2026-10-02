@@ -162,7 +162,7 @@ export const EN_UI: Record<string, string> = {
   // ── 숙련도 행동명 ──
   '캐스팅': 'Casting', '손질': 'Butchery', '회썰기': 'Slicing', '조리': 'Cooking', '채집': 'Foraging',
   // ── 채비 소모품 이름 ──
-  '면도래 8호': 'Barrel swivel #8',
+  '면도래 8호': 'Barrel swivel #8',   // 구세이브 이름(192차에 핀 도래 8호로 바로잡음)
 
   // ── 1인칭 파이팅 안내 ──
   '여 박기! 릴링을 멈추고 ↑를 꾹 눌러 버티세요!': 'It’s diving for the rocks! Stop reeling and hold ↑ to ride it out!',

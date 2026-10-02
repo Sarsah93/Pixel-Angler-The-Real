@@ -20,6 +20,8 @@ import {
   speciesStandardWeightG, SASHIMI_PLATE_SPECS, type SashimiPlateMeta, type SashimiKnifeTier,
   type GearFaultId, GEAR_FAULTS, gearUsable,
   type MpTradeItem,
+  newRigTree, setRigValue, dropMissingItems, missingParts as treeMissingParts, summarize as treeSummarize, treeFromLegacy,
+  type RigTreeState, type RigValue, type RigSummary, type RigPartKind, type RigSlotKind, type RigItemView,
 } from '@tra/core';
 import type { DishData, DishInstance } from '@tra/core';
 import { getFireRecipe, dishStarsAt, dishValueKrw, dishInstanceValueKrw } from '@tra/core';
@@ -34,6 +36,7 @@ import { applyCookItemFields, COOK_CORNER } from '../data/CookItems.js';
 import { StoryStore } from './StoryStore.js';
 import { migrateCatchItemId, migrateSpeciesId } from '../data/SpeciesMigration.js';
 import { SHOP_CATALOG } from '../data/ShopCatalog.js';
+import { rigViewOf } from './RigParts.js';
 
 /** 인벤토리 카테고리 탭 */
 export type InvCategory = 'gear' | 'consumable' | 'food' | 'tackle' | 'lure' | 'quest' | 'etc';
@@ -196,6 +199,10 @@ export interface InvItem {
   lineNo?: number;
   lineDiameterMm?: number;
   lineStrengthLb?: number;
+  /** 192차 — 채비 칸 종류(없으면 `RigParts.partKindOf`가 이름·제원으로 추정) */
+  rigPart?: RigPartKind;
+  /** 192차 — 묶음추 채비의 바늘 수 */
+  kitHooks?: number;
 
   /**
    * 밑밥 재료 종류 (U 밑밥 품질 탭 드래그 앤 드랍 대상) —
@@ -460,6 +467,8 @@ export interface InventorySaveState {
   /** 155차 — 채비 고정(잠금) 여부 */
   rigLocked?: boolean;
   rig: Record<RigStepKey, string | null>;
+  /** 192차 — 채비 모딩 트리(정본). 없으면(구세이브) `rig` 평면 소켓에서 옮긴다 */
+  rigTree?: RigTreeState;
   rigDepthLimitM: number;
   hasFloatStop: boolean;
   spreader: SpreaderState;
@@ -583,11 +592,16 @@ function createSeedItems(): InvItem[] {
     { id: 'inv_subfloat_2b', name: '수중찌 -2B',             icon: '', iconTexture: 'subfloat_light', category: 'tackle', subCategory: '채비 부속', qty: 2,  basePrice: 5200,  equippable: false, floatBuoyG: -2 },
     { id: 'inv_subfloat_20', name: '수중찌 -2.0',            icon: '', iconTexture: 'subfloat_heavy', category: 'tackle', subCategory: '채비 부속', qty: 2,  basePrice: 6800,  equippable: false, floatBuoyG: -20 },
     { id: 'inv_sinkerG2', name: '좁쌀봉돌 G2',              icon: '', iconTexture: 'splitshot', category: 'tackle', subCategory: '채비 부속', qty: 20, basePrice: 2000,  equippable: false },
-    { id: 'inv_swivel',   name: '면도래 8호',               icon: '', iconTexture: 'swivel', category: 'tackle', subCategory: '채비 부속', qty: 10, basePrice: 2500,  equippable: false },
+    { id: 'inv_swivel',   name: '핀 도래 8호',              icon: '', iconTexture: 'swivel', category: 'tackle', subCategory: '채비 부속', qty: 10, basePrice: 2500,  equippable: false, rigPart: 'swivel_snap' },
     { id: 'inv_cushion',  name: '쿠션고무 / 반달구슬',      icon: '', iconTexture: 'cushion_round', category: 'tackle', subCategory: '채비 부속', qty: 12, basePrice: 2000,  equippable: false },
     { id: 'inv_cushion_bell', name: '종형 쿠션고무 2호',    icon: '', iconTexture: 'cushion_bell', category: 'tackle', subCategory: '채비 부속', qty: 6, basePrice: 1200, equippable: false },
     { id: 'inv_cushion_round', name: '원형 쿠션고무 2호',   icon: '', iconTexture: 'cushion_round', category: 'tackle', subCategory: '채비 부속', qty: 6, basePrice: 1200, equippable: false },
     { id: 'inv_bead_halfmoon', name: '반달구슬 3호',         icon: '', iconTexture: 'bead_halfmoon', category: 'tackle', subCategory: '채비 부속', qty: 6, basePrice: 1500, equippable: false },
+    // 192차 — 채비 모딩: 바렐 도래 · 타이라바 조립 부품(헤드·스커트·넥타이)
+    { id: 'inv_swivel_barrel', name: '바렐 도래 6호',       icon: '', iconTexture: 'swivel_barrel', category: 'tackle', subCategory: '채비 부속', qty: 10, basePrice: 1800, equippable: false, rigPart: 'swivel_plain' },
+    { id: 'inv_tairaba_head_80', name: '타이라바 헤드 80g', icon: '', iconTexture: 'tairaba_head_red', category: 'tackle', subCategory: '채비 부속', qty: 2, basePrice: 9000, equippable: false, rigPart: 'tairaba_head', sinkerWeightG: 80 },
+    { id: 'inv_tairaba_skirt_red', name: '타이라바 스커트 (빨강)', icon: '', iconTexture: 'tairaba_skirt_red', category: 'tackle', subCategory: '채비 부속', qty: 3, basePrice: 3500, equippable: false, rigPart: 'tairaba_skirt' },
+    { id: 'inv_tairaba_necktie_orange', name: '타이라바 넥타이 (주황)', icon: '', iconTexture: 'tairaba_necktie_orange', category: 'tackle', subCategory: '채비 부속', qty: 3, basePrice: 2500, equippable: false, rigPart: 'tairaba_necktie' },
 
     // ── 기타 ──
     { id: 'inv_junk',     name: '낡은 릴 부품',             icon: '📦', category: 'etc', subCategory: '잡동사니', qty: 1, basePrice: 500, equippable: false },
@@ -939,8 +953,20 @@ class InventoryStoreManager {
   /** 퀵슬롯 8칸 — 아이템 id 또는 null */
   private _quickslots: (string | null)[] = defaultQuickslots();
 
-  /** 채비(리그) 조립 상태 — 단계 키 → 아이템 id */
+  /**
+   * 채비(리그) 조립 상태 — 단계 키 → 아이템 id.
+   * 192차부터 **트리(`_tree`)의 투영값**이다 — 물리·캐스팅·입질이 읽는 평면 뷰. 직접 쓰지 말고 `projectTree()`가 채운다.
+   */
   private _rig: Record<RigStepKey, string | null> = defaultRig();
+  /** 192차 — 채비 모딩 트리(정본). 원줄 → 매듭 → … 좌→우 확장, 앞 노드 변경 시 자손 해제 */
+  private _tree: RigTreeState = newRigTree();
+  private _summary: RigSummary | null = null;
+
+  constructor() {
+    // dev 기본 채비(반유동)를 트리로 옮겨 시작한다 — 새 게임은 resetAll이 빈 트리로 바꾼다
+    this._tree = treeFromLegacy({ ...this._rig, hasFloatStop: true }, this.rigView);
+    this.projectTree();
+  }
 
   /** 면사매듭 수심 한계 Z_limit (m) — 채비가 도달할 최대 수심 */
   rigDepthLimitM = 5;
@@ -1091,6 +1117,7 @@ class InventoryStoreManager {
       catchSeq: this._catchSeq,
       quickslots: [...this._quickslots],
       rig: { ...this._rig },
+      rigTree: { nodes: this._tree.nodes.map((n) => ({ ...n })) },
       rigDepthLimitM: this.rigDepthLimitM,
       hasFloatStop: this.hasFloatStop,
       spreader: { ...this.spreader, hookBaits: [...this.spreader.hookBaits] },
@@ -1152,6 +1179,10 @@ class InventoryStoreManager {
         lampLumens: i.lampLumens ?? sd?.lampLumens,
         // 188차 — 상점 집어제는 한동안 `chumKind` 없이 팔렸다(밑밥 배합 칸에 안 뜬다). 시드 백필.
         chumKind: i.chumKind ?? sd?.chumKind,
+        // 192차 — 채비 칸 종류·묶음추 바늘 수. 구 「면도래 8호」는 그림이 스냅 도래라 이름을 바로잡는다.
+        rigPart: i.rigPart ?? sd?.rigPart,
+        kitHooks: i.kitHooks ?? sd?.kitHooks,
+        name: (i.id === 'inv_swivel' && i.name === '면도래 8호') ? '핀 도래 8호' : i.name,
         forageTool: i.forageTool ?? sd?.forageTool,
         trapSpecId: i.trapSpecId ?? sd?.trapSpecId ?? (i.id.startsWith('inv_trap_') ? i.id.slice('inv_trap_'.length) : undefined),
         // 129차 P7 — 소모품 효과(음식 회복치·구급품)는 아래 applyItemVitals 가 id로 채운다.
@@ -1192,6 +1223,15 @@ class InventoryStoreManager {
     this._jigHead = ref(s.jigHead);
     this._lureLine = ref(s.lureLine);
     this._lureLeader = ref(s.lureLeader);
+    // 192차 — 채비 트리. 없으면(구세이브) 평면 소켓·루어 소켓에서 옮긴다. 사라진 아이템을 가리키는 칸은 비운다.
+    if (s.rigTree?.nodes?.length) this._tree = { nodes: s.rigTree.nodes.map((n) => ({ ...n })) };
+    else {
+      this._tree = treeFromLegacy({
+        ...this._rig, hasFloatStop: this.hasFloatStop, lure: this._lure, jigHead: this._jigHead,
+        lureLine: this._lureLine, lureLeader: this._lureLeader, lureMode: this.rigMode === 'lure',
+      }, this.rigView);
+    }
+    this.syncTreeWithItems();
 
     // 121차 — 구세이브에 채집·통발 기본 도구가 없으면 1회 주입 (상점에서 팔 수 없는 etc 아이템이라 '판매 후 재주입' 혼선 없음)
     for (const id of ['inv_headlamp', 'inv_tongs', 'inv_trap_trap_crab_basic']) {
@@ -1239,7 +1279,8 @@ class InventoryStoreManager {
     this._items = [];
     this._quickslots = starterQuickslots();
     this._rig = emptyRig();
-    this.hasFloatStop = false;
+    this._tree = newRigTree();
+    this.projectTree();
   }
 
   /** dev·하네스 전용 — 188차 이전의 새 게임(시드 아이템 일체 + 기본 채비) */
@@ -1248,7 +1289,8 @@ class InventoryStoreManager {
     this._items = createSeedItems().map((i) => applyCookItemFields(i));   // 154차 — 조리 필드 테이블
     this._quickslots = defaultQuickslots();
     this._rig = defaultRig();
-    this.hasFloatStop = true;
+    this._tree = treeFromLegacy({ ...this._rig, hasFloatStop: true }, this.rigView);
+    this.projectTree();
   }
 
   private resetCommon(): void {
@@ -1726,6 +1768,7 @@ class InventoryStoreManager {
     if (this._jigHead === itemId) this._jigHead = null;
     if (this._lureLine === itemId) this._lureLine = null;
     if (this._lureLeader === itemId) this._lureLeader = null;
+    this.syncTreeWithItems();   // 192차 — 트리의 그 칸을 비우고 평면 뷰를 다시 만든다
   }
 
   // ── 퀵슬롯 ──────────────────────────────────────────
@@ -1743,34 +1786,79 @@ class InventoryStoreManager {
     this._quickslots[slotIndex] = null;
   }
 
-  // ── 채비(리그) ──────────────────────────────────────
-  setRigPart(step: RigStepKey, itemId: string | null): void {
-    if (this.rigLocked) return;   // 155차 — 고정된 채비는 [고정 해제]로 풀어야 편집된다
-    // 부력찌/수중찌 소켓 교차 장착 방지 (선택 리스트가 걸러주지만 방어적으로)
-    if (itemId) {
-      const it = this.find(itemId);
-      if (it && step === 'float' && isSubFloatItem(it)) return;
-      if (it && step === 'subFloat' && !isSubFloatItem(it)) return;
+  // ── 채비 모딩 트리 (192차) ──────────────────────────
+  get rigTree(): RigTreeState { return this._tree; }
+
+  /** 트리가 보는 아이템 뷰 (없는 아이템이면 null) */
+  readonly rigView = (id: string): RigItemView | null => {
+    const it = this.find(id);
+    return it ? rigViewOf(it) : null;
+  };
+
+  /** 트리 요약(투영값) — 한 번 계산해 두고 트리·아이템이 바뀌면 다시 계산한다 */
+  rigSummary(): RigSummary {
+    if (!this._summary) this._summary = treeSummarize(this._tree, this.rigView);
+    return this._summary;
+  }
+
+  /** 대상어종 가중(세트 + 비권장 미끼 페널티) — 1인칭 스폰 컨텍스트가 합친다 */
+  rigSpeciesBias(): Record<string, number> { return this.rigSummary().speciesBias; }
+
+  /**
+   * 칸에 값을 넣는다 — 앞 칸을 바꾸면 그 뒤에 달렸던 것이 전부 풀린다(core `setRigValue`).
+   * @returns 바뀌었는가 (고정 중·fixed 칸·같은 값이면 false)
+   */
+  setRigNode(idx: number, value: RigValue): boolean {
+    if (this.rigLocked) return false;   // 155차 — 고정된 채비는 [고정 해제]로 풀어야 편집된다
+    const item = 'itemId' in value && value.itemId ? this.rigView(value.itemId) : null;
+    const next = setRigValue(this._tree, idx, value, item);
+    if (next === this._tree) return false;
+    this._tree = next;
+    this.projectTree();
+    return true;
+  }
+
+  /** 사라진 아이템(소모·판매·손실)을 가리키는 칸을 비우고 투영을 다시 만든다 */
+  private syncTreeWithItems(): void {
+    const next = dropMissingItems(this._tree, (id) => !!this.find(id));
+    if (next !== this._tree) this._tree = next;
+    this.projectTree();
+  }
+
+  /** 특정 칸 종류의 아이템을 모두 비운다(손실) — 자손도 함께 풀린다 */
+  private clearTreeSlots(slots: RigSlotKind[]): void {
+    const set = new Set(slots);
+    for (;;) {
+      const i = this._tree.nodes.findIndex((n) => set.has(n.slot) && !!n.itemId);
+      if (i < 0) break;
+      this._tree = setRigValue(this._tree, i, { itemId: null }, null);
     }
-    this._rig[step] = itemId;
-    // 바늘 소켓에 루어(바늘 일체형)를 달면 미끼 소켓은 의미가 없으므로 비운다
-    // — 남겨두면 소모/손실 계산에 유령 미끼가 끼어든다.
-    if (step === 'hook' && itemId && !this.hookNeedsBait()) {
-      this._rig.bait = null;
-    }
+    this.projectTree();
   }
 
   /**
-   * 캐스팅에 필수인 채비 소켓 (감성돔 반유동 기준) — 미끼는 조건부라 별도 처리.
-   * 수중찌(subFloat)·좁쌀봉돌(sinker)은 **운용 선택 부품**이라 필수가 아니다
-   * (제로찌 상층 공략 = 수중찌 없이 좁쌀+바늘 무게만으로 운용하는 경우 등).
+   * 트리 → 평면 소켓·모드·편대·루어 필드 투영.
+   * 1인칭 물리(`rig`)·캐스팅 게이트·입질 미끼 키·손실 규칙은 전부 이 평면 뷰를 읽으므로 트리가 바뀔 때마다 다시 채운다.
    */
-  private static readonly REQUIRED_RIG: { key: RigStepKey; label: string }[] = [
-    { key: 'mainLine', label: '원줄' },
-    { key: 'float', label: '부력찌' },
-    { key: 'leader', label: '목줄' },
-    { key: 'hook', label: '바늘' },
-  ];
+  private projectTree(): void {
+    this._summary = null;
+    const s = this.rigSummary();
+    this._rig = {
+      mainLine: s.mainLineId, floatStop: null, float: s.floatId, subFloat: s.subFloatId, swivel: s.swivelId,
+      leader: s.leaderId, sinker: s.sinkerId, hook: s.hookIds[0] ?? null, bait: s.baitIds.find((b) => !!b) ?? null,
+    };
+    this.hasFloatStop = s.floatStop;
+    const lureKit = s.kit === 'lure_hard' || s.kit === 'lure_soft';
+    this.rigMode = lureKit ? 'lure' : 'bait';
+    this._lure = lureKit ? s.lureId : null;
+    this._jigHead = lureKit ? s.jigHeadId : null;
+    this._lureLine = s.mainLineId;
+    this._lureLeader = s.leaderId;
+    this.spreader = s.kit === 'card_rig'
+      ? { kind: 'CARD_RIG', cardType: (s.cardType ?? 'jeongaengi') as CardRigType, hookBaits: [...s.baitIds] }
+      : s.kit === 't_bar' ? { kind: 'T_BAR', hookBaits: [] }
+      : { kind: 'NONE', hookBaits: s.kit === 'bundle_sinker' ? [...s.baitIds] : [] };
+  }
 
   /**
    * 현재 바늘 소켓 기준으로 미끼가 필요한지.
@@ -1788,23 +1876,8 @@ class InventoryStoreManager {
   /** 155차 — [고정 해제] */
   unlockRig(): void { this.rigLocked = false; }
   hookNeedsBait(): boolean {
-    if (this.rigMode === 'lure') return false;
-    const id = this._rig.hook;
-    if (!id) return true;
-    const item = this.find(id);
-    return !item || !isLureItem(item);
-  }
-
-  // ── 루어 채비 (rigMode === 'lure') ───────────────────
-  setRigMode(mode: 'bait' | 'lure'): void {
-    if (this.rigLocked) return;   // 155차
-    this.rigMode = mode;
-    // 루어 소켓이 비어 있으면 미끼 채비의 원줄/목줄을 시드 — 같은 스풀을 참조할 뿐 소모는 없다.
-    //   이후 두 모드는 서로 독립(피드백 7 — "미끼 채비에서 목줄을 못 골라 루어를 못 던진다" 해소)
-    if (mode === 'lure') {
-      if (!this._lureLine && this._rig.mainLine) this._lureLine = this._rig.mainLine;
-      if (!this._lureLeader && this._rig.leader) this._lureLeader = this._rig.leader;
-    }
+    // 192차 — 세트가 정한다(루어 세트는 미끼를 끼우지 않는다)
+    return this.rigSummary().usesBait;
   }
 
   /**
@@ -1818,19 +1891,6 @@ class InventoryStoreManager {
     const b = lineStrengthKg(leaderId ? this.find(leaderId) : null);
     const vals = [a, b].filter((v): v is number => v !== null && v > 0);
     return vals.length ? Math.min(...vals) : null;
-  }
-
-  /** 루어 소켓 설정 — 하드 베이트 장착 시 지그헤드 소켓은 자동 비움 */
-  setLure(lureId: string | null): void {
-    if (this.rigLocked) return;
-    this._lure = lureId;
-    const spec = lureId ? getLureSpec(lureId) : undefined;
-    if (!spec?.requiresJigHead) this._jigHead = null;
-  }
-
-  setJigHead(id: string | null): void {
-    if (this.rigLocked) return;
-    this._jigHead = id;
   }
 
   /** 현재 장착 루어의 카탈로그 스펙 (없으면 undefined) */
@@ -1853,35 +1913,9 @@ class InventoryStoreManager {
 
   /** 비어 있는 필수 채비 부품 라벨 목록 (비어 있으면 캐스팅 불가) */
   getMissingRigParts(): string[] {
-    // ── 루어 모드: 원줄+목줄+루어(+소프트면 지그헤드)만 필수 ──
-    if (this.rigMode === 'lure') {
-      const missing: string[] = [];
-      if (!this._lureLine) missing.push('원줄');
-      if (!this._lureLeader) missing.push('목줄');
-      const spec = this.getEquippedLureSpec();
-      if (!spec) missing.push('루어');
-      else if (spec.requiresJigHead && !this._jigHead) missing.push('지그헤드');
-      return missing;
-    }
-    // 원투 낚시(찌 없이 도래 직결) 모드 — 단일 봉돌·편대 모두 포함.
-    // 이 모드에서는 '찌'가 필수가 아니며, 대신 메인 싱커(무게추 봉돌)가 필수다.
-    const surfRig = this.isSurfRigReady();
-    const missing = InventoryStoreManager.REQUIRED_RIG
-      .filter((r) => !(surfRig && r.key === 'float'))
-      .filter((r) => !this._rig[r.key])
-      .map((r) => r.label);
-    // 원투 모드: 메인 싱커(무게추 봉돌)를 반드시 달아야 캐스팅 가능.
-    //   단 바늘 소켓에 루어(지그헤드 결합 웜·메탈지그 등 자중 있는 가짜미끼)가 있으면 봉돌 없이 던진다
-    //   (116차 — 피드백 6 "지그헤드 채비는 봉돌 없이 운용돼야 한다").
-    if (surfRig && this.hookNeedsBait()) {
-      const sinker = this._rig.sinker ? this.find(this._rig.sinker) : undefined;
-      if (!sinker || !isWeightSinker(sinker)) missing.push('무게추 봉돌');
-    }
-    // 미끼는 일반 바늘일 때만 필수 — 루어 장착 시 제외.
-    // 카드 채비는 다단 미끼(hookBaits)가 1개 이상이면 통과.
-    const cardBaited = this.spreader.kind === 'CARD_RIG' && this.spreader.hookBaits.some(Boolean);
-    if (this.hookNeedsBait() && !this._rig.bait && !cardBaited) missing.push('미끼');
-    return missing;
+    // 192차 — 트리가 정본. 비어 있는 필수 칸(원줄·매듭·목줄·바늘·미끼 1·세트 부품…)의 라벨.
+    //   부력찌는 더 이상 필수가 아니다 — 구멍치기·원투·간편 채비는 찌 없이 완성된다.
+    return treeMissingParts(this._tree);
   }
 
   // ── 원투 편대/서브 채비 ───────────────────────────────
@@ -1891,7 +1925,8 @@ class InventoryStoreManager {
    * 이때 U창에 편대 선택 슬롯이 병렬로 활성화된다.
    */
   isSurfRigReady(): boolean {
-    return !this._rig.float && !this._rig.subFloat && !!this._rig.swivel;
+    // 192차 — 찌가 없는 바닥 채비(원투·구멍치기·간편 채비·타이라바)면 참. 도래 유무와 무관.
+    return this.rigSummary().bottomRig;
   }
 
   /** 현재 모드의 낚싯대 허용 채비 중량 (g) — 원투는 무거운 싱커 감당 */
@@ -1926,26 +1961,14 @@ class InventoryStoreManager {
       ? SINKER_HOLE_FEEDBACK_MULT : 1;
   }
 
-  /** 편대 종류 설정 — 카드 채비면 단수만큼 미끼 슬롯 초기화 */
-  setSpreader(kind: SpreaderKind, cardType?: CardRigType): void {
-    if (kind === 'CARD_RIG') {
-      const ct = cardType ?? 'jeongaengi';
-      const prev = this.spreader.cardType === ct ? this.spreader.hookBaits : [];
-      const n = CARD_RIG_INFO[ct].hooks;
-      this.spreader = {
-        kind, cardType: ct,
-        hookBaits: Array.from({ length: n }, (_, i) => prev[i] ?? null),
-      };
-    } else {
-      this.spreader = { kind, hookBaits: [] };
-    }
-  }
-
-  /** 카드 채비 단수별 미끼 장착 */
+  /** 카드 채비 단수별 미끼 장착·소모 (1인칭 다단 입질) — 트리의 n번째 미끼 칸을 같이 바꾼다 */
   setSpreaderBait(hookIdx: number, itemId: string | null): void {
-    if (hookIdx >= 0 && hookIdx < this.spreader.hookBaits.length) {
-      this.spreader.hookBaits[hookIdx] = itemId;
-    }
+    let seen = 0;
+    const i = this._tree.nodes.findIndex((n) => n.slot === 'bait' && seen++ === hookIdx);
+    if (i < 0) return;
+    const item = itemId ? this.rigView(itemId) : null;
+    this._tree = setRigValue(this._tree, i, { itemId }, item);
+    this.projectTree();
   }
 
   /**
@@ -1957,7 +1980,7 @@ class InventoryStoreManager {
     (Object.keys(this._rig) as RigStepKey[]).forEach((k) => {
       const item = this._rig[k] ? this.find(this._rig[k]!) : undefined;
       if (!item) return;
-      if (isWeightSinker(item)) w += item.sinkerWeightG ?? 0;
+      if (isWeightSinker(item) || item.sinkerWeightG !== undefined) w += item.sinkerWeightG ?? 0;   // 무게추 · 타이라바 헤드
       // 찌 제원: 침력(음수 floatBuoyG)만 무게로 합산 — 부력찌는 물에 뜨므로 하중 제외
       else if (item.floatBuoyG !== undefined) { if (item.floatBuoyG < 0) w += -item.floatBuoyG; }
       else if (item.name.includes('봉돌')) w += 3.2;
@@ -2081,6 +2104,19 @@ class InventoryStoreManager {
       }
       this._rig[step] = null;
     }
+    // 192차 — 트리에서도 그 칸을 비운다(목줄을 잃으면 그 아래 바늘·미끼도 함께 풀린다)
+    const slots: RigSlotKind[] = [];
+    for (const step of steps) {
+      if (step === 'hook') slots.push('hook');
+      else if (step === 'bait') slots.push('bait');
+      else if (step === 'leader') slots.push('leader');
+      else if (step === 'sinker') slots.push('split_shot', 'sliding_sinker', 'bundle_kit', 'tbar_sinker', 'tairaba_head');
+      else if (step === 'float') slots.push('float');
+      else if (step === 'subFloat') slots.push('sub_float');
+      else if (step === 'swivel') slots.push('swivel', 'connector');
+      else if (step === 'mainLine') slots.push('main_line');
+    }
+    if (slots.length) this.clearTreeSlots(slots);
     return lost;
   }
 
@@ -2097,8 +2133,7 @@ class InventoryStoreManager {
       const item = this.find(id);
       if (item) { lost.push(item.name); this.removeQty(id, 1); }
     }
-    if (this._lure && !this.find(this._lure)) this._lure = null;
-    if (this._jigHead && !this.find(this._jigHead)) this._jigHead = null;
+    this.clearTreeSlots(['lure_hard', 'lure_soft', 'jig_head']);   // 192차 — 트리에서도 비운다
     return lost;
   }
 }

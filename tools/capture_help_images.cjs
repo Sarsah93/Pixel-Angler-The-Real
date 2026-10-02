@@ -681,16 +681,31 @@ group('util', ['rig_bait', 'rig_lure', 'chum_tab', 'craft_tab', 'board_fish', 'b
     await page.waitForTimeout(900);
   });
   await closeAll(page);
+  // 192차 — 루어 채비 = 간편 채비의 한 갈래. 트리를 직접 엮는다(원줄 → 직결 → 목줄 → 간편 채비 직결 → 하드 베이트 → 미노우)
   await cap(page, 'rig_lure', async () => {
     await page.evaluate((S) => {
       const s = eval(S);
-      globalThis.__INV.setRigMode('lure');
+      const inv = globalThis.__INV;
+      const saved = JSON.stringify(inv.rigTree);
+      globalThis.__RIG_SAVED = saved;
+      const put = (slot, v, nth = 0) => { let seen = 0; const i = inv.rigTree.nodes.findIndex((n) => n.slot === slot && seen++ === nth); if (i >= 0) inv.setRigNode(i, v); };
+      put('main_line', { itemId: null }); put('main_line', { itemId: 'inv_pe1' });
+      put('knot', { choice: 'direct' }); put('leader', { itemId: 'inv_carbon15' });
+      put('leader_end', { choice: 'kit' }); put('kit_kind', { choice: 'lure_hard' }); put('lure_hard', { itemId: 'inv_minnow' });
       s.toggleUtilization('tackles', true);
     }, S);
     await page.waitForTimeout(900);
   });
   await closeAll(page);
-  await page.evaluate(() => globalThis.__INV.setRigMode('bait'));
+  await page.evaluate(() => {
+    const inv = globalThis.__INV;
+    const put = (slot, v, nth = 0) => { let seen = 0; const i = inv.rigTree.nodes.findIndex((n) => n.slot === slot && seen++ === nth); if (i >= 0) inv.setRigNode(i, v); };
+    put('main_line', { itemId: null }); put('main_line', { itemId: 'inv_pe1' });
+    put('line_attach', { choice: 'float_set' }); put('float', { itemId: 'inv_float08' });
+    put('knot', { choice: 'swivel' }); put('swivel', { itemId: 'inv_swivel' }); put('after_swivel', { choice: 'leader' });
+    put('leader', { itemId: 'inv_carbon15' }); put('leader_end', { choice: 'hook' });
+    put('split_shot', { itemId: 'inv_sinkerG2' }); put('hook', { itemId: 'inv_chinu3' }); put('bait', { itemId: 'inv_krill' });
+  });
   await cap(page, 'chum_tab', async () => {
     await page.evaluate((S) => { const s = eval(S); s.toggleUtilization('chum', true); }, S);
     await page.waitForTimeout(900);

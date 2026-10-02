@@ -10,7 +10,7 @@
 ## 2. 구성
 | 파일 | 역할 |
 |---|---|
-| `store/InventoryStore.ts` | 아이템 목록 · 카테고리 5탭 × **5열 소켓 25~37칸**(slot 좌표 · 가방 사다리) · 채비 9소켓 · 퀵슬롯 8 · 신선도 그래프 · serialize/deserialize |
+| `store/InventoryStore.ts` | 아이템 목록 · 카테고리 5탭 × **5열 소켓 25~37칸**(slot 좌표 · 가방 사다리) · **채비 모딩 트리**(192 — 정본) + 9소켓 투영 · 퀵슬롯 8 · 신선도 그래프 · serialize/deserialize |
 | `store/CoolerStore.ts` | 어창 3×3 + **매질**(해수 1h / 얼음 2h) + 밑밥 배합 상태 |
 | `store/FridgeStore.ts` | 집 냉장고(냉동 8 / 냉장 16) — 보관 중 시계 정지 |
 | `store/GameState.ts` | 싱글톤 — 재화·스킬·플래그·슬롯 3 저장/로드 · `locationTag`/`canSaveHere` · dev `__GS` |
@@ -75,7 +75,7 @@
 | **수리점 탭**(직판장·생활용품점) | ✅ | 136 — ShopPanel 3번째 탭 · 재화 차감 후 고장 해제 |
 | 상세보기 고장·수리비·내구도 행 | ✅ | 136 |
 | **획득 훅 + NEW 표시**(`onGained` → HUD 토스트 · `newIds`/`markSeen`/`hasNewIn` → 탭 금점·셀 NEW 점(호버 해제)·귀속 금테) | ✅ | **155** |
-| **채비 고정**(`rigLocked` · `lockRig`(부품 누락이면 거부)/`unlockRig` · 세이브 · `setRigPart`·`setLure`·`setJigHead`·`setRigMode` 가드 — `consumeRigItem`·`loseRigParts`는 `_rig` 직접 갱신이라 영향 없음) | ✅ | 155 — [S1](fishing-loop.md) |
+| **채비 고정**(`rigLocked` · `lockRig`(트리 필수 칸 누락이면 거부)/`unlockRig` · 세이브 · `setRigNode` 가드(192 — 구 `setRigPart`·`setLure`·`setJigHead`·`setRigMode` 폐기) — `consumeRigItem`·`loseRigParts`는 `_rig` 직접 갱신이라 영향 없음) | ✅ | 155 — [S1](fishing-loop.md) |
 | **사시미 접시 메타**(`InvItem.sashimi`·`cutQuality`·`knifeTier`) + 음식 영양 상세(`FoodNutrition` 파생) | ✅ | 155 — [S4](sashimi-cooking.md) |
 
 ## 5. 잔여·차기
@@ -125,3 +125,6 @@
    패널은 **안내 문구**만 책임진다.
 12. **i18n 사전을 고쳤으면 dev 서버를 재시작하고 검증한다**(120차 · 148차 재현) — HMR `?t=` 분화로
    하네스가 게임과 다른 사전 인스턴스를 물어 "전 항목 미번역"으로 보인다.
+13. **`InvItem.rigPart`가 없으면 `RigParts.partKindOf`가 이름·제원으로 추정한다**(192차) — 새 채비 부품은 상점·시드에
+   `rigPart`를 명시한다(「도래」·「봉돌」 같은 이름 추정은 마지막 수단). 세이브는 `rigTree`가 정본이고 `rig`는 투영값이다 —
+   구세이브(`rigTree` 없음)는 `treeFromLegacy`로 옮기고, 사라진 아이템을 가리키는 칸은 비운다.
