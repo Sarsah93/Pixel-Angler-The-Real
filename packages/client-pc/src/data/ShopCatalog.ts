@@ -134,6 +134,21 @@ const GUILD_CORNER: ShopEntry[] = [
   },
 ];
 
+/** 194차 — 타이라바 헤드 무게 라인업 (g) */
+const TAIRABA_HEAD_WEIGHTS = [40, 60, 80, 100, 120, 150, 180, 200] as const;
+
+/** 타이라바 헤드 상점 항목 — 무게가 수심·조류 운용을 정한다 */
+function tairabaHeadEntry(g: number): ShopEntry {
+  const basePrice = Math.round((4500 + 60 * g) / 100) * 100;
+  const use = g <= 60 ? '얕은 수심·약한 조류.' : g <= 100 ? '중간 수심의 표준.' : g <= 150 ? '깊은 수심·센 조류.' : '대심도·급류.';
+  return {
+    id: `inv_tairaba_head_${g}`, name: `타이라바 헤드 ${g}g`, icon: '', iconTexture: 'tairaba_head_red',
+    category: 'tackle', subCategory: '채비 부속', basePrice, price: Math.round(basePrice * 1.2 / 100) * 100,
+    maxPerPurchase: 5, equippable: false, rigPart: 'tairaba_head', sinkerWeightG: g,
+    desc: `참돔 러버지그 헤드(유동식). ${use}`,
+  };
+}
+
 /** 직판장 채비 코너 — 무게추 봉돌(대표 호수) + 찌 + 좁쌀봉돌 + **줄·바늘 소모품**(116차) */
 const TACKLE_CORNER: ShopEntry[] = [
   // 줄·바늘은 줄터짐/밑걸림으로 잃는 소모품인데 어디서도 다시 살 수 없었다(외부 테스터 — 목줄을 잃고
@@ -159,9 +174,8 @@ const TACKLE_CORNER: ShopEntry[] = [
   { id: 'inv_card_flasher_5', name: '카드 채비 반짝이 5단', icon: '', iconTexture: 'card_rig_flasher', category: 'tackle', subCategory: '채비 부속', basePrice: 4000, price: 4800, maxPerPurchase: 10, equippable: false, rigPart: 'card_rig', kitHooks: 5, cardFlasher: true, sinkerWeightG: 45, desc: '가지바늘 5단 반짝이 깃 — 고등어·전갱이 떼를 노린다.' },
   { id: 'inv_card_plain_7', name: '카드 채비 민바늘 7단', icon: '', iconTexture: 'card_rig_plain', category: 'tackle', subCategory: '채비 부속', basePrice: 4500, price: 5400, maxPerPurchase: 10, equippable: false, rigPart: 'card_rig', kitHooks: 7, cardFlasher: false, sinkerWeightG: 60, desc: '깃 없는 가지바늘 7단 — 단마다 미끼를 끼워 열기를 노린다.' },
   { id: 'inv_swivel_barrel', name: '바렐 도래 6호', icon: '', iconTexture: 'swivel_barrel', category: 'tackle', subCategory: '채비 부속', basePrice: 1800, price: 2200, maxPerPurchase: 20, equippable: false, rigPart: 'swivel_plain', desc: '통 모양 몸통의 일반 도래 — 원줄과 목줄의 꼬임을 줄인다.' },
-  { id: 'inv_tairaba_head_60', name: '타이라바 헤드 60g', icon: '', iconTexture: 'tairaba_head_red', category: 'tackle', subCategory: '채비 부속', basePrice: 7500, price: 9000, maxPerPurchase: 5, equippable: false, rigPart: 'tairaba_head', sinkerWeightG: 60, desc: '참돔 러버지그 헤드(유동식). 얕은 수심·약한 조류.' },
-  { id: 'inv_tairaba_head_80', name: '타이라바 헤드 80g', icon: '', iconTexture: 'tairaba_head_red', category: 'tackle', subCategory: '채비 부속', basePrice: 9000, price: 10500, maxPerPurchase: 5, equippable: false, rigPart: 'tairaba_head', sinkerWeightG: 80, desc: '참돔 러버지그 헤드(유동식). 중간 수심의 표준.' },
-  { id: 'inv_tairaba_head_100', name: '타이라바 헤드 100g', icon: '', iconTexture: 'tairaba_head_red', category: 'tackle', subCategory: '채비 부속', basePrice: 10500, price: 12500, maxPerPurchase: 5, equippable: false, rigPart: 'tairaba_head', sinkerWeightG: 100, desc: '참돔 러버지그 헤드(유동식). 깊은 수심·센 조류.' },
+// 194차 — 헤드 무게별 라인업(40~200g · 사용자 참고 이미지). 그림은 하나 — 크기는 ItemIcon.iconWeightScale이 무게로 조절
+  ...TAIRABA_HEAD_WEIGHTS.map(tairabaHeadEntry),
   { id: 'inv_tairaba_skirt_red', name: '타이라바 스커트 (빨강)', icon: '', iconTexture: 'tairaba_skirt_red', category: 'tackle', subCategory: '채비 부속', basePrice: 3500, price: 4200, maxPerPurchase: 10, equippable: false, rigPart: 'tairaba_skirt', desc: '헤드 뒤에 다는 고무 스커트 — 새우·게 다리처럼 흔들린다.' },
   { id: 'inv_tairaba_necktie_orange', name: '타이라바 넥타이 (주황)', icon: '', iconTexture: 'tairaba_necktie_orange', category: 'tackle', subCategory: '채비 부속', basePrice: 2500, price: 3000, maxPerPurchase: 10, equippable: false, rigPart: 'tairaba_necktie', desc: '길게 늘어뜨린 넥타이 — 등속 릴링에서 꼬리처럼 흐른다.' },
   { id: 'inv_cushion_bell', name: '종형 쿠션고무 2호', icon: '', iconTexture: 'cushion_bell', category: 'tackle', subCategory: '채비 부속', basePrice: 1200, price: 1500, maxPerPurchase: 20, equippable: false, desc: '찌·채비 충격을 흡수하는 종형 쿠션고무.' },

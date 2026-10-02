@@ -31,6 +31,8 @@ export interface ItemIconLike {
   icon: string;
   /** 텍스처 키. `px:` 접두사면 픽셀 아이콘 아트 키 (예: 'px:it_bandage') */
   iconTexture?: string;
+  /** 194차 — 무게추·타이라바 헤드 자중(g). 같은 그림을 무게에 맞춰 키우고 줄이는 데 쓴다 */
+  sinkerWeightG?: number;
   /** 어획물 어종 ID — iconTexture가 비었을 때 텍스처 폴백 해소용 */
   speciesId?: string;
   /** 개체 체장 (돌돔 암수 분기 등 텍스처 해소용) */
@@ -46,6 +48,19 @@ export interface ItemIconLike {
  * iconTexture가 비어 있거나 로드되지 않았어도, 어획물이면 speciesId로 텍스처를
  * 폴백 해소한다 (텍스처 배선 전에 낚은 구세이브 어획물도 이미지로 표시).
  */
+/**
+ * 194차 — 무게별 라인업이 **한 그림**을 쓰는 아이템의 크기 배율(사용자 지시: 사이즈별 별도 이미지 없이 비율로).
+ * 타이라바 헤드: 부피 ∝ 무게라 지름 ∝ 무게^(1/3) — 200g = 1.0 · 40g ≈ 0.58. 무게가 없으면 이름의 「NNg」로 읽는다.
+ */
+const WEIGHT_SCALED_ICONS: Record<string, number> = { tairaba_head_red: 200 };
+export function iconWeightScale(item: ItemIconLike): number {
+  const ref = item.iconTexture ? WEIGHT_SCALED_ICONS[item.iconTexture] : undefined;
+  if (!ref) return 1;
+  const g = item.sinkerWeightG ?? Number(item.name?.match(/(\d+)\s*g/)?.[1] ?? NaN);
+  if (!Number.isFinite(g) || g <= 0) return 1;
+  return Math.max(0.55, Math.min(1, Math.cbrt(g / ref)));
+}
+
 export function createItemIcon(
   scene: Phaser.Scene,
   x: number,
@@ -53,6 +68,7 @@ export function createItemIcon(
   item: ItemIconLike,
   sizePx: number,
 ): Phaser.GameObjects.Image | Phaser.GameObjects.Text | Phaser.GameObjects.Container {
+  sizePx *= iconWeightScale(item);
   const rasterKey = item.iconTexture ? RASTER_ICON_ALIASES[item.iconTexture] ?? item.iconTexture : undefined;
   if (rasterKey && scene.textures.exists(rasterKey)) {
     const img = scene.add.image(0, 0, rasterKey).setOrigin(0.5);

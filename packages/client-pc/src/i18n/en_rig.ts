@@ -67,6 +67,7 @@ export const EN_RIG: Record<string, string> = {
   '참돔 러버지그 헤드(유동식). 얕은 수심·약한 조류.': 'Red seabream rubber-jig head (free-sliding). Shallow water, light current.',
   '참돔 러버지그 헤드(유동식). 중간 수심의 표준.': 'Red seabream rubber-jig head (free-sliding). The standard for mid depths.',
   '참돔 러버지그 헤드(유동식). 깊은 수심·센 조류.': 'Red seabream rubber-jig head (free-sliding). Deep water, strong current.',
+  '참돔 러버지그 헤드(유동식). 대심도·급류.': 'Red seabream rubber-jig head (free-sliding). Very deep water, racing current.',
   '헤드 뒤에 다는 고무 스커트 — 새우·게 다리처럼 흔들린다.': 'Rubber skirt behind the head — flutters like shrimp or crab legs.',
   '길게 늘어뜨린 넥타이 — 등속 릴링에서 꼬리처럼 흐른다.': 'Long trailing necktie — streams like a tail on a steady retrieve.',
 
@@ -94,8 +95,8 @@ export const EN_RIG: Record<string, string> = {
     'Hooks share the bait in your bag — you cannot put the same bait on more hooks than you have, and a bite only uses up the bait on the hook that was taken. If more of that bait is left, the hook stays baited.',
   '채비를 고정해도 미끼 칸은 바꿀 수 있습니다 — 낚시 뒤 미끼만 다시 끼우면 됩니다. 미끼가 하나도 없으면 고정 · 캐스팅이 되지 않습니다(반짝이 카드 채비 제외).':
     'Bait slots stay editable even on a locked rig — after fishing, just re-bait. With no bait at all the rig cannot be locked or cast (except a flasher card rig).',
-  '스킬 「한 바늘에 두 미끼」(낚시)를 배우면 미끼 칸 아래 x2 단추가 생깁니다. 켜면 같은 미끼를 두 마리 꿰어 던질 때마다 2개씩 줄고, 켠 바늘마다 입질이 2% 더 오릅니다.':
-    'Learning the Fishing skill Two Baits, One Hook adds an x2 button under each bait slot. Turned on, the hook carries two of the same bait — two are used per cast, and each such hook adds another 2% to bites.',
+  '스킬 「한 바늘에 두 미끼」(낚시)를 배우면 미끼 칸 아래 x2 단추가 생깁니다. 켜면 같은 미끼를 두 마리 꿰어 던질 때마다 2개씩 줄고, 켠 바늘마다 입질이 1% 더 오릅니다(두 미끼로 오르는 몫은 최대 2%).':
+    'Learning the Fishing skill Two Baits, One Hook adds an x2 button under each bait slot. Turned on, the hook carries two of the same bait — two are used per cast, and each such hook adds another 1% to bites (up to 2% in total from doubled hooks).',
   '채비 엮기 (찌 · 원투 · 구멍치기)': 'Building a Rig (float · surf · hole)',
   '원줄 한 칸에서 시작': 'Start from the main line',
   'U → 채비하기 탭 — ① 추천 한 줄 ② 채비 체인(원줄부터 오른쪽으로 열린다) ③ 채비 제원 ④ 채비 고정 버튼':
@@ -134,4 +135,5 @@ export const EN_RIG_RULES: [RegExp, (m: RegExpMatchArray, tr: (s: string) => str
   [/^입질 \+(\d+)%$/, (m) => `Bites +${m[1]}%`],
   [/^(.+) 두 마리$/, (m, tr) => `${tr(m[1])} ×2`],
   [/^반짝이 바늘 (\d+)$/, (m) => `Flasher hook ${m[1]}`],
+  [/^타이라바 헤드 (\d+)g$/, (m) => `Tairaba head ${m[1]}g`],
 ];

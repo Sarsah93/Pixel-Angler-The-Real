@@ -189,13 +189,18 @@ describe('RigTree — 193차 다중 미끼', () => {
     expect(summarize(s, view).biteBonus).toBeCloseTo(0.05);   // 3개 +4% · 2·3 같은 미끼 +1%
     expect(summarize(s, view).baitIds).toEqual(['worm', 'krill', 'krill']);
   });
-  it('한 바늘에 두 미끼 — 켠 바늘마다 +2%', () => {
+  it('한 바늘에 두 미끼 — 켠 바늘마다 +1% · 최대 +2% (194차)', () => {
     let s = bundle();
     s = put(s, 'bait', { itemId: 'worm' }, 0);
     const i = s.nodes.findIndex((n) => n.slot === 'bait');
     s = { nodes: s.nodes.map((n, k) => (k === i ? { ...n, double: true } : n)) };
-    expect(summarize(s, view).biteBonus).toBeCloseTo(0.02);
+    expect(summarize(s, view).biteBonus).toBeCloseTo(0.01);
     expect(summarize(s, view).baitDouble[0]).toBe(true);
+    // 세 바늘 같은 미끼 + 전부 두 미끼 = 미끼 수 +4% · 시너지 +1% · 두 미끼 +2%(상한) = +7%
+    s = put(s, 'bait', { itemId: 'worm' }, 1);
+    s = put(s, 'bait', { itemId: 'worm' }, 2);
+    s = { nodes: s.nodes.map((n) => (n.slot === 'bait' ? { ...n, double: true } : n)) };
+    expect(summarize(s, view).biteBonus).toBeCloseTo(0.07);
   });
   it('반짝이 깃 카드 채비는 미끼 없이 완성 · 민바늘 카드 채비는 미끼 하나가 필요', () => {
     const card = (id: string): RigTreeState => {

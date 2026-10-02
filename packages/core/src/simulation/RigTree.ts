@@ -468,8 +468,10 @@ export function missingParts(state: RigTreeState): string[] {
 export const MULTI_BAIT_BONUS = 0.02;
 /** 이웃한 바늘에 같은 미끼가 이어지면 시너지 +1% (한 번만) */
 export const SAME_BAIT_SYNERGY = 0.01;
-/** 「한 바늘에 두 미끼」를 켠 바늘마다 입질 +2% */
-export const DOUBLE_BAIT_BONUS = 0.02;
+/** 「한 바늘에 두 미끼」를 켠 바늘마다 입질 +1% (194차 — 사용자 밸런스 조정: 2% → 1%) */
+export const DOUBLE_BAIT_BONUS = 0.01;
+/** 「한 바늘에 두 미끼」 가중의 상한 — 바늘이 많아도 +2%까지 (194차) */
+export const DOUBLE_BAIT_MAX = 0.02;
 /** 반짝이 깃 카드 채비를 미끼 없이 쓸 때 — 전갱이만, 미끼를 끼웠을 때 입질의 10% */
 export const FLASHER_ONLY_BITE_MULT = 0.10;
 export const FLASHER_TARGET_SPECIES = 'horse_mackerel';
@@ -482,7 +484,7 @@ export function baitBiteBonus(baits: { itemId: string | null; double?: boolean }
   for (let i = 1; i < baits.length; i++) {
     if (baits[i].itemId && baits[i].itemId === baits[i - 1].itemId) { bonus += SAME_BAIT_SYNERGY; break; }
   }
-  bonus += filled.filter((b) => b.double).length * DOUBLE_BAIT_BONUS;
+  bonus += Math.min(DOUBLE_BAIT_MAX, filled.filter((b) => b.double).length * DOUBLE_BAIT_BONUS);
   return bonus;
 }
 
