@@ -767,13 +767,53 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
         .map(toItemCard),
     },
     systems: {
-      note: '게임을 이루는 계통별 현황 요약입니다.',
-      groups: () => [],
-      list: () => G.systems.map((x, i) => ({
-        key: 'sys' + i, name: x.title, meta: '시스템', img: null, price: '',
-        search: x.title + ' ' + x.summary,
-        detail: () => ({ title: x.title, sub: '', lede: x.summary, tags: [], img: null, body: '' }),
-      })),
+      note: '게임을 이루는 계통별 현황 · 규칙 · 화면에 드러나지 않는 숨은 규칙 · 차수별 업데이트 이력입니다.',
+      groups: () => [
+        { id: '', label: '전체', count: G.systems.length + (G.rules || []).length + (G.updates || []).length },
+        { id: 'sys', label: '시스템 현황', count: G.systems.length },
+        { id: 'rule', label: '규칙', count: (G.rules || []).filter(r => !r.hidden).length },
+        { id: 'hidden', label: '숨은 규칙', count: (G.rules || []).filter(r => r.hidden).length },
+        { id: 'log', label: '업데이트 이력', count: (G.updates || []).length },
+      ],
+      list: () => {
+        const out = [];
+        if (!group || group === 'hidden' || group === 'rule') {
+          for (const r of (G.rules || [])) {
+            if (group === 'hidden' && !r.hidden) continue;
+            if (group === 'rule' && r.hidden) continue;
+            out.push({
+              key: 'rule-' + r.id, name: r.title, meta: (r.hidden ? '숨은 규칙' : '규칙') + ' · ' + r.round + '차',
+              img: null, price: '',
+              search: r.title + ' ' + r.lede + ' ' + r.rows.map(x => x.join(' ')).join(' '),
+              detail: () => ({
+                title: r.title, sub: r.round + '차 반영', lede: r.lede, img: null,
+                tags: r.hidden ? ['숨은 규칙 — 게임 화면에는 보이지 않음'] : ['규칙'],
+                body: '<div class="ssec"><h3>세부</h3>' + kvRows(r.rows.map(([k, v]) => [k, esc(v)])) + '</div>',
+              }),
+            });
+          }
+        }
+        if (!group || group === 'sys') {
+          G.systems.forEach((x, i) => out.push({
+            key: 'sys' + i, name: x.title, meta: '시스템', img: null, price: '',
+            search: x.title + ' ' + x.summary,
+            detail: () => ({ title: x.title, sub: '', lede: x.summary, tags: [], img: null, body: '' }),
+          }));
+        }
+        if (!group || group === 'log') {
+          for (const u of (G.updates || [])) {
+            let head = u.title.split(' — ')[0];
+            if (head.length > 34) head = head.split(' · ')[0];
+            if (head.length > 34) head = head.slice(0, 33) + '…';
+            out.push({
+              key: 'log' + u.round, name: u.round + '차 · ' + head, meta: u.date + ' · ' + u.tags, img: null, price: '',
+              search: u.round + ' ' + u.tags + ' ' + u.title,
+              detail: () => ({ title: u.round + '차 — ' + head, sub: u.date, lede: u.title, tags: u.tags.split(/\s*·\s*/), img: null, body: '' }),
+            });
+          }
+        }
+        return out;
+      },
     },
   };
   const uniqSubs = arr => {

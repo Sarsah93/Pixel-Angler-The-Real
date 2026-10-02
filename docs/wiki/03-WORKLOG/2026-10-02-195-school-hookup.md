@@ -81,3 +81,15 @@
 ## 8. 후속 반영
 
 - [x] 워크로그 · 색인 · S1 §4·§6 · 백로그 AM · AGENTS §9 · PLAN · CLAUDE.md 회전(192 제거)
+
+---
+
+## 보강 — 위키 아티팩트 재발행 (Version 18 · 같은 URL)
+
+- 사용자 지시: 「현재 구현된 '모르게'들은 WIKI에서 확인할 수 있도록 … 현재까지 반영된 모든 구현 요소에 대해 WIKI 아티팩트를 업데이트」.
+- `tools/gen_game_wiki_data.mjs` — `rules`(core 상수에서 읽는 규칙 5건: 채비 모딩 트리 · 미끼 여러 개 · 두 미끼 스킬 ·
+  반짝이 단독 · **무리 걸림 = 숨은 규칙**) · `updates`(워크로그 색인 §3.1 표 → 80~195차 115건).
+- `tools/game_wiki_template.html` — 시스템 탭에 칩 5개(전체 · 시스템 현황 · 규칙 · 숨은 규칙 · 업데이트 이력) · 규칙 상세 표.
+- 재생성 4단계(core build → 그림 239장 → 아이템 342건 → HTML) · 발행 그림 126장(used.txt) · 실렌더: 깨진 그림 0 · 4xx 0 · pageerror 0.
+- 링크: https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c
+- ⚠ 숨은 규칙은 `rules[].hidden = true`로 표시한다 — 새 「모르게」 규칙을 넣으면 여기에 한 건 추가.

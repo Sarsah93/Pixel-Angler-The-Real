@@ -362,6 +362,94 @@ function itemSpec(t) {
   return out;
 }
 
+// ─────────────────────────────────────────────
+// 규칙 — 채비·미끼·무리 걸림 (192~195차). 숫자는 전부 core 상수에서 읽는다.
+//   hidden = 게임 화면에는 드러나지 않는 규칙(「모르게」) — 위키에서만 확인한다.
+// ─────────────────────────────────────────────
+const pct = (x) => `${+(x * 100).toFixed(2)}%`;
+const fishKo = (id) => core.getFishById?.(id)?.nameKo
+  ?? core.ORACLE_FISH_DB.find((s) => s.speciesId === id)?.nameKo ?? id;
+// 미끼 종류 이름(표시용 라벨 — 수치 아님)
+const BAIT_KO = {
+  worm_king: '혼무시·참갯지렁이', worm_blue: '청갯지렁이', krill: '크릴', fishcut: '생선·오징어살',
+  bread: '빵·떡밥', corn: '옥수수', crab: '게·소라', urchin: '성게', shellfish: '조개·개불',
+  livefish: '살아 있는 작은 고기', lure: '루어',
+};
+const monthsKo = (ms) => (ms?.length ? ms.join('·') + '월' : '—');
+const bestBaitOf = (id) => {
+  const pref = core.ORACLE_FISH_DB.find((s) => s.speciesId === id)?.baitPreference ?? {};
+  const top = Object.entries(pref).sort((a, b) => b[1] - a[1])[0];
+  return top ? (BAIT_KO[top[0]] ?? top[0]) : '—';
+};
+const dbl = core.SKILL_DATABASE.find((k) => k.id === 'fish_double_bait');
+const rules = [
+  {
+    id: 'rig_tree', round: 192, hidden: false, title: '채비 모딩 트리',
+    lede: '원줄 한 칸에서 시작해, 고른 부품에 따라 오른쪽으로 다음 칸이 열린다. 앞 칸을 바꾸면 그 뒤에 달렸던 칸은 전부 풀린다.',
+    rows: [
+      ['매듭', '직결 / 도래 중 하나'],
+      ['부력찌', '찌 세트를 고른 경우에만 필수 — 원투·구멍치기는 찌 없이 완성'],
+      ...core.KIT_ORDER.map((k) => {
+        const d = core.KIT_DEFS[k];
+        const rec = d.recommendedBaits?.length ? ` · 권장 미끼: ${d.recommendedBaits.map((b) => BAIT_KO[b] ?? b).join(', ')}` : '';
+        return [d.label, d.desc + rec];
+      }),
+      ['카드 채비 단수', core.CARD_TYPES.map((c) => `${c.label} — 바늘 ${c.hooks}개 · 간격 ${c.gapM}m`).join(' / ')],
+      ['비권장 미끼', `세트가 정한 권장 미끼가 아니면 대상어종 확률 ${Math.round(core.OFF_RECOMMENDED_BIAS * 100)}% (「권장되는 채비 유형이 아닙니다」)`],
+    ],
+  },
+  {
+    id: 'multi_bait', round: 193, hidden: false, title: '미끼 여러 개',
+    lede: '바늘마다 다른 미끼를 끼울 수 있다. 미끼가 하나라도 있으면 채비가 완성되고, 고정한 뒤에도 미끼 칸만은 바꿀 수 있다.',
+    rows: [
+      ['추가 바늘', `미끼 단 바늘이 하나 늘 때마다 입질 +${pct(core.MULTI_BAIT_BONUS)}`],
+      ['같은 미끼 연속', `이웃한 바늘에 같은 미끼가 이어지면 +${pct(core.SAME_BAIT_SYNERGY)} (한 번만)`],
+      ['카드 채비 상한', `미끼로 오르는 몫 합계 최대 +${pct(core.CARD_RIG_BITE_BONUS_MAX)}`],
+      ['소모', '입질이 오면 문 바늘의 미끼만 줄어든다 — 남은 미끼가 있으면 그 바늘에 다시 꿰어져 있다'],
+    ],
+  },
+  {
+    id: 'double_bait', round: 194, hidden: false, title: dbl ? `스킬 「${dbl.nameKo}」` : '한 바늘에 두 미끼',
+    lede: dbl?.descKo ?? '',
+    rows: [
+      ['효과', `켠 바늘마다 입질 +${pct(core.DOUBLE_BAIT_BONUS)} · 합계 최대 +${pct(core.DOUBLE_BAIT_MAX)}`],
+      ['비용', `스킬 포인트 ${dbl?.costPerRank ?? 1} · 던질 때마다 그 바늘 미끼 2개 소모`],
+      ['예', '같은 미끼 세 바늘 + 전부 두 미끼 = 미끼 수 +4% · 연속 +1% · 두 미끼 +2% = +7%'],
+    ],
+  },
+  {
+    id: 'flasher', round: 193, hidden: false, title: '반짝이 깃 카드 채비 — 미끼 없이',
+    lede: '반짝이 깃이 달린 카드 채비는 미끼가 없어도 고정·캐스팅된다.',
+    rows: [
+      ['대상', `${fishKo(core.FLASHER_TARGET_SPECIES)}만`],
+      ['입질', `미끼를 끼웠을 때의 ${pct(core.FLASHER_ONLY_BITE_MULT)}`],
+    ],
+  },
+  {
+    id: 'school', round: 195, hidden: true, title: '무리 걸림 — 한 번에 두세 마리',
+    lede: '떼로 다니는 어종이 제철이고 입질 확률이 높을 때, 한 번의 입질에 여러 바늘이 함께 물린다. 몇 마리인지는 물 밖으로 올리기 전까지 보이지 않는다.',
+    rows: [
+      ...core.SCHOOL_HOOKUP_SPECIES.map((id) => [fishKo(id),
+        `제철 ${monthsKo(core.getFishById?.(id)?.peakSeasonMonths)} · 가장 잘 무는 미끼: ${bestBaitOf(id)}`]),
+      ['입질 확률 조건', `그 어종의 입질 확률 ${pct(core.SCHOOL_MIN_BITE_CHANCE)} 이상 — 지금 수심층·지형·미끼·물때·낮밤이 그 어종이 가장 잘 무는 조건에 얼마나 가까운가`],
+      ['두 마리', `${pct(core.SCHOOL_DOUBLE_CHANCE)} — 미끼 단 바늘 2개 이상`],
+      ['세 마리', `${pct(core.SCHOOL_TRIPLE_CHANCE)} — 미끼 단 바늘 3개 이상 (전갱이는 반짝이 빈 바늘도 센다)`],
+      ['파이트', `두 마리 ×${core.SCHOOL_FIGHT_MULT[2]} · 세 마리 ×${core.SCHOOL_FIGHT_MULT[3]} (힘·무게·체력) — 화면 표시 없음, 손맛으로만`],
+      ['낚은 뒤', '결정 창 물고기 옆에 노란 x2 / x3 · 보관·방생은 함께 올라온 전부에 한 번에 · 자리가 모자라면 한 마리도 넣지 않는다'],
+    ],
+  },
+];
+
+// ─────────────────────────────────────────────
+// 업데이트 이력 — 워크로그 색인(§3.1) 표를 그대로 읽는다
+// ─────────────────────────────────────────────
+const updates = fs.readFileSync(path.join(ROOT, 'docs/wiki/03-WORKLOG/README.md'), 'utf8')
+  .split(/\r?\n/)
+  .map((ln) => ln.match(/^\|\s*\[(\d+)\]\([^)]*\)\s*\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|\s*(.+?)\s*\|\s*$/))
+  .filter(Boolean)
+  .map((m) => ({ round: Number(m[1]), date: m[2], tags: m[3], title: m[4].replace(/\*\*|`/g, '') }))
+  .sort((a, b) => b.round - a.round);
+
 const groupCount = (list, key) => {
   const m = new Map();
   for (const e of list) m.set(e[key], (m.get(e[key]) ?? 0) + 1);
@@ -375,6 +463,7 @@ const out = {
     quests: quests.counts.quests, recipes: recipes.length, ingredients: ingredients.length,
     species: speciesList.length, crafting: core.CRAFT_BLUEPRINTS.length,
     items: items.length, images: Object.keys(manifest).length,
+    rules: rules.length, updates: updates.length,
   },
   quests,
   cooking: {
@@ -400,6 +489,8 @@ const out = {
     station: b.station, desc: b.descKo ?? '',
   })),
   systems: readSystemPages(),
+  rules,
+  updates,
 };
 
 // 발행용 — 카드·상세가 실제로 참조하는 그림만 추려 둔다(아티팩트 파일 수 절약)
