@@ -461,7 +461,13 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-10-03 201차) — 가게 영업시간 · 정보 카드 눌러 핀**
+**최근 변경 (2026-10-03 202차) — 문 닫은 시간엔 거래 막기 · 문 앞 혼잣말**
+
+- `RegionFieldScene.promptTrade` — `BUILDING_HOURS` 밖이면 거래 대신 `showClosedDoor`(혼잣말 2단락 · 가게 모습 4종 + 안내문).
+- 직판장·편의점 24시간 · 이야기 인물의 물건 팔기는 시간 무관. 타이틀 업적은 설계안 확인 대기(백로그 AR).
+  상세: [202차 워크로그](../docs/wiki/03-WORKLOG/2026-10-03-202-closed-shop-door.md).
+
+**이전 변경 (2026-10-03 201차) — 가게 영업시간 · 정보 카드 눌러 핀**
 
 - `ShopCatalog.BUILDING_HOURS`/`shopHoursState` — 직판장·편의점 24시간 · 나머지 10~22시(KST · 표시 전용 — 거래는 막지 않음).
 - 정보 카드/목록 줄 누르기 = `MapPinStore` 토글 · 마커→카드 통로 유지(`tipHolds`) · 사람 마커는 핀 판정 64px(`moves`).
@@ -474,13 +480,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - `MiniMarker.sub/goods/status` · `ShopCatalog.BUILDING_GOODS` · 거리는 목표 화살표와 같은 `metersPerPx()`.
 - 미니맵 크기 변경은 `RegionHud.resizeMiniMap` — 붙어 있던 추적기를 지도 아래로 다시 붙인다(겹침 0).
   상세: [200차 워크로그](../docs/wiki/03-WORKLOG/2026-10-03-200-map-marker-info-card.md).
-
-**이전 변경 (2026-10-03 199차) — 조작 안내 띠 정리(R11) · 쿨러 여러 마리 놓아주기 · 도움말 재촬영**
-
-- 1인칭 하단 조작 띠 삭제 · 상단 상태 줄은 상황만(스풀 개방 문구) · 필드 캐스팅 안내 띠 → 첫 말풍선(`cast_first`·`cast_hole`).
-- 쿨러 패널(B) 여러 마리 고르기(메뉴/Shift+클릭) → [놓아주기 (N)] → `ConfirmDialog` 목록 · ESC 한 겹씩(`onEscIntercept`).
-- Graphics 판은 `ScreenReserve.tagUiRect`로 감사에 올린다 · 도움말 13쪽 × ko/en 재촬영.
-  상세: [199차 워크로그](../docs/wiki/03-WORKLOG/2026-10-03-199-r11-control-bands-cooler-multi-release.md).
 
 ---
 

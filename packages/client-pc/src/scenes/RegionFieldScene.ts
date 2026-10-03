@@ -74,7 +74,7 @@ import { RegionLight,
   seamlessRegionOf,
   seamBetween,
   getStatusEffect,
-  computeCastWeather, castScatterRadius, applyCastScatter, castWeatherLabelKo,
+  computeCastWeather, castScatterRadius, applyCastScatter, castWeatherLabelKo, kstParts,
   type CastWeatherEffect,
   type VitalsActivity,
 } from '@tra/core';
@@ -159,7 +159,7 @@ import { MarketStore, type MarketBranch } from '../store/MarketStore.js';
 import { InventoryStore, InvItem } from '../store/InventoryStore.js';
 import { CoolerStore } from '../store/CoolerStore.js';
 import { DiscoveryStore } from '../store/DiscoveryStore.js';
-import { BuildingKind, BUILDING_LABEL, BUILDING_GOODS, BUILDING_HOURS, BUILDING_KIND_CYCLE, SHOP_CATALOG, ShopEntry } from '../data/ShopCatalog.js';
+import { BuildingKind, BUILDING_LABEL, BUILDING_GOODS, BUILDING_HOURS, shopHoursState, BUILDING_KIND_CYCLE, SHOP_CATALOG, ShopEntry } from '../data/ShopCatalog.js';
 
 interface RegionFieldInit {
   region: string;
@@ -2891,6 +2891,14 @@ export class RegionFieldScene extends Phaser.Scene {
   // 상점 (건물 근접 E → 거래 확인 → 상점+인벤토리 나란히)
   // ═══════════════════════════════════════════════════
   private promptTrade(kind: BuildingKind, branch?: MarketBranch): void {
+    // 202차 — 문 닫은 시간엔 거래하지 않는다(사용자 지시). 문 앞에서 혼잣말로 알려 준다.
+    const hours = BUILDING_HOURS[kind];
+    const k = kstParts(new Date());
+    const hh = Number(k.hh), mi = Number(k.mi);
+    if (hours !== 'always' && shopHoursState(hours, hh, mi).tone === 'closed') {
+      this.showClosedDoor(kind, hours, hh * 60 + mi < hours.open * 60);
+      return;
+    }
     StoryStore.event({ kind: 'visit', placeKey: 'shop:any' });   // 134차 — M1-02 상점 UI 목표
     this.openPopup((close) => new ConfirmDialog(
       this,
@@ -2898,6 +2906,24 @@ export class RegionFieldScene extends Phaser.Scene {
       () => { close(); this.openShop(kind, branch); },
       close,
     ));
+  }
+
+  /**
+   * 202차 — 문 닫은 가게 앞의 혼잣말(R3 — 타이핑 · ▼). 첫 단락은 가게 모습(먹는 곳 / 물건 파는 곳 · 열기 전 / 닫은 뒤),
+   * 둘째 단락은 문에 붙은 영업시간과 언제 다시 올지. 카드(지도)와 같은 시간표(`BUILDING_HOURS`)를 읽는다.
+   */
+  private showClosedDoor(kind: BuildingKind, hours: { open: number; close: number }, beforeOpen: boolean): void {
+    const food = kind === 'restaurant' || kind === 'cafe' || kind === 'pub';
+    const hhmm = (h: number): string => `${String(h).padStart(2, '0')}:00`;
+    const first = beforeOpen
+      ? (food ? '아직 문을 열기 전이다. 안쪽 주방에서 재료 손질하는 소리만 난다.'
+        : '아직 문을 열기 전이다. 셔터가 반쯤 올라가 있고, 안에서 진열대를 채우고 있다.')
+      : (food ? '가게 불이 꺼져 있다. 의자가 모두 테이블 위에 올라가 있다.'
+        : '셔터가 내려가 있다. 오늘 장사는 끝났다.');
+    const sign = `문에 붙은 안내문 — 「영업시간 ${hhmm(hours.open)} ~ ${hhmm(hours.close)}」.`;
+    const when = beforeOpen ? `${hhmm(hours.open)}에 연다. 그때 다시 와야겠다.` : `내일 ${hhmm(hours.open)}에 다시 와야겠다.`;
+    this.hud?.pushLog(`[상점] ${BUILDING_LABEL[kind]} — 영업시간이 아니다`);
+    this.openPopup((close) => new MonologuePanel(this, [first, `${sign} ${when}`], close));
   }
 
   private openShop(kind: BuildingKind, branch?: MarketBranch): void {

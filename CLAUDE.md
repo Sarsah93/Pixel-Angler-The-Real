@@ -45,13 +45,12 @@
   맵 확정(육안)·OSM land 14개·조도 재설계·외옹치/대포항 bbox 확장은 사용자 동반 병행 트랙.
 - **재개 지점**: 사용자 실검증(172·173차 타일 조화 규칙 + 178·183~186차 신설분) — 부족하면 규칙 보강,
   괜찮으면 규칙을 켠 채로 새 맵 확장. 차수별 잔여는 PLAN §2-3.
+- **202차**: **문 닫은 시간엔 거래 막기** — 영업시간 밖이면 거래 대신 문 앞 혼잣말(`showClosedDoor`) · 직판장·편의점 24시간 ·
+  타이틀(칭호) 업적은 설계안 사용자 확인 대기(백로그 AR). 상세 `docs/wiki/03-WORKLOG/2026-10-03-202-closed-shop-door.md`.
 - **201차**: **가게 영업시간 · 카드 눌러 핀** — 직판장(미끼·채비)·편의점 24시간 · 나머지 10~22시(`BUILDING_HOURS` · 표시 전용) ·
   정보 카드/목록 줄 누르기 = 핀 토글 · 마커→카드 통로 유지(`tipHolds`). 상세 `docs/wiki/03-WORKLOG/2026-10-03-201-shop-hours-card-pin.md`.
 - **200차**: **지도 마커 정보 카드** — 미니맵·전체 지도 아이콘 호버 = `ui/MapMarkerTip`(이름 · 종류 · 파는 것 / 직업 · 의뢰 상태 · 거리·방향 · 겹친 자리 목록) ·
   미니맵을 키우면 「지금 할 일」이 따라 내려감(`RegionHud.resizeMiniMap`). 상세 `docs/wiki/03-WORKLOG/2026-10-03-200-map-marker-info-card.md`.
-- **199차**: **조작 안내 띠 정리(R11) · 쿨러 여러 마리 놓아주기** — 1인칭 하단 조작 띠 삭제 · 상단 상태 줄은 상황만(스풀 개방 문구) ·
-  필드 캐스팅 안내 띠 → 첫 말풍선 · 쿨러(B) 「여러 마리 고르기」 → 확인 창 · Graphics 판은 `ScreenReserve.tagUiRect`로 감사에 올린다 · 도움말 26장 재촬영.
-  상세 `docs/wiki/03-WORKLOG/2026-10-03-199-r11-control-bands-cooler-multi-release.md`.
 - **상시 방침**:
   - 지형 고도(DEM)는 **낚시 확립 후** — B(해안 변형) 우선, 경사로 통행을 막지 않는다
     (`docs/archive/specs/RASTER_UPLIFT_AMENDMENT.md` §4).
@@ -111,7 +110,7 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
 
 - 지역 타일맵 추가/재생성 → **스킬 `add-region`** (`py tools/build_region_maps.py <region>` — 파이프라인·타일 문자·맵 그래프·함정 일체).
 - 차기 과제: 낚시점 전용 상점(루어 판매), 어탐 레이더(SeabedProfile 조회), 타 지역(여수 등) 확장, POI 세분화, 사운드 이펙트 (IMPLEMENTATION_PLAN §6-5l 차기 참고).
-- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages — **최근 38차 배포 2026-10-03 = 201차(영업시간 · 카드 눌러 핀)까지 포함**. 재배포 절차는 **스킬 `deploy-ghpages`**).
+- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages — **최근 39차 배포 2026-10-03 = 202차(문 닫은 시간 거래 막기)까지 포함**. 재배포 절차는 **스킬 `deploy-ghpages`**).
   ⚠ **원격 컨테이너에서는 dev 서버(5173)가 사용자 브라우저에 닿지 않는다** — 실플레이 테스트 요청은 이 배포로 답한다.
 
 ## 작업 이어받기 절차

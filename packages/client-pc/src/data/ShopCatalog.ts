@@ -51,7 +51,7 @@ export type ShopHours = 'always' | { open: number; close: number };
  * 가게 종류별 영업시간 (201차 — 사용자 지시).
  *  - 24시간: 낚시용품점(야간 낚시꾼을 위해 실제로 밤새 연다 — 이 게임에서 미끼·채비는 **직판장**이 판다) · 편의점.
  *  - 나머지는 대부분 오전 10시 ~ 오후 10시.
- * 지금은 지도 정보 카드의 표시용이다(문 닫은 시간에 거래를 막지는 않는다 — 막을지는 사용자 결정 대기).
+ * 지도 정보 카드가 보여 주고, 202차부터 **문 닫은 시간엔 거래도 막는다**(`RegionFieldScene.promptTrade` — 문 앞 혼잣말).
  */
 export const BUILDING_HOURS: Record<BuildingKind, ShopHours> = {
   market: 'always',
