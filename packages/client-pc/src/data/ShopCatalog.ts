@@ -29,6 +29,21 @@ export const BUILDING_LABEL: Record<BuildingKind, string> = {
   daily: '생활용품점',
 };
 
+/**
+ * 지도 정보 카드(200차)의 「무엇을 파는 곳」 한 줄 — 카탈로그(`SHOP_CATALOG`)의 실제 품목에서 요약했다.
+ * 품목을 크게 바꾸면 이 줄도 함께 고친다.
+ */
+export const BUILDING_GOODS: Record<BuildingKind, string> = {
+  market: '미끼 · 채비 · 줄 · 잡은 고기 매입',
+  mart: '식재료 · 양념 · 조리도구 · 밑밥 · 쿨러',
+  daily: '낚싯대 · 릴 · 원줄 · 손도구 · 가구',
+  convenience: '간식 · 생수 · 각얼음 · 상비약',
+  pharmacy: '붕대 · 구급품 · 약',
+  restaurant: '식사 · 매운탕 · 회',
+  cafe: '커피 · 음료',
+  pub: '술 · 해물 안주',
+};
+
 /** 상점 판매 품목 (인벤토리 템플릿 + 가격/구매 한도) */
 export interface ShopEntry extends InvItemTemplate {
   price: number;

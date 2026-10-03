@@ -28,6 +28,7 @@ import { setSlotLabel, SLOT_LABEL_PX } from './SlotLabel.js';
 import { clampTextWidth } from './TextFit.js';
 import { addPixelIcon } from './PixelIcon.js';
 import { paintHudPanel, paintHudSlot } from './HudPanelStyle.js';
+import { buildMarkerTip, placeTip, tipSignature } from './MapMarkerTip.js';
 import { getLocale } from '../i18n/I18n.js';
 import { StoryStore } from '../store/StoryStore.js';
 
@@ -42,6 +43,12 @@ export interface MiniMarker {
   shape?: 'pin';
   /** 165차 — 전체 지도에서 마우스를 올렸을 때 보여 줄 이름 */
   label?: string;
+  /** 200차 정보 카드 2줄 — 가게 종류 / 사람의 나이·직업 / 장소 종류 (이름과 같으면 비운다) */
+  sub?: string;
+  /** 200차 정보 카드 3줄 — 가게가 파는 것 */
+  goods?: string;
+  /** 200차 — 인물의 의뢰 상태(지도 범례와 같은 말) */
+  status?: 'quest' | 'ready';
 }
 
 /** 165차 — 「지금 할 일」 한 줄(할 일 하나) */
@@ -82,6 +89,8 @@ export interface RegionHudConfig {
   rows: number;
   worldW: number;
   worldH: number;
+  /** 200차 — 월드 1px = N 미터 (마커 정보 카드의 거리 표기) */
+  metersPerPx?: number;
 }
 
 // ── 미니맵 지형 색 (필드 팔레트 축소판) ────────────────
@@ -359,6 +368,14 @@ export class RegionHud extends Phaser.GameObjects.Container {
   /** 미니맵 마커 (136차 — 상점 카테고리 · 퀘스트 느낌표/물음표) */
   private miniMarkers: MiniMarker[] = [];
   private miniMarkerC?: Phaser.GameObjects.Container;
+  /** 200차 — 그려진 마커(미니맵 로컬 좌표)와 그 셀에 있는 마커 전부(겹쳐 가려진 것 포함) */
+  private miniDrawn: { x: number; y: number; m: MiniMarker; items: MiniMarker[] }[] = [];
+  /** 200차 — 미니맵 호버 정보 카드 · 강조 링 · 마지막 포인터(화면 좌표 — 마커를 다시 그린 뒤 재판정) */
+  private miniTip?: Phaser.GameObjects.Container;
+  private miniTipSig = '';
+  private miniTipRing?: Phaser.GameObjects.Graphics;
+  private miniHoverPtr: { x: number; y: number } | null = null;
+  private miniPlayerWorld: { x: number; y: number } | null = null;
 
   // 퀵슬롯
   private slotContainers: Phaser.GameObjects.Container[] = [];
@@ -999,6 +1016,8 @@ export class RegionHud extends Phaser.GameObjects.Container {
   }
 
   private buildMiniMap(): void {
+    this.hideMiniTip();
+    this.miniHoverPtr = null;
     this.miniContainer.removeAll(true);
 
     const size = MINI_SIZES[this.miniSizeIdx];
@@ -1041,6 +1060,10 @@ export class RegionHud extends Phaser.GameObjects.Container {
       .setScale(scale)
       .setAlpha(0.92)
       .setInteractive();
+    // 200차 — 마커 호버 정보 카드. 마커 아이콘은 입력을 받지 않으므로 지도 이미지가 포인터를 받는다
+    //  (topOnly — 다른 창이 미니맵을 덮고 있으면 이미지가 이벤트를 못 받아 카드도 뜨지 않는다).
+    img.on('pointermove', (p: Phaser.Input.Pointer) => { this.miniHoverPtr = { x: p.x, y: p.y }; this.updateMiniTip(); });
+    img.on('pointerout', () => { this.miniHoverPtr = null; this.hideMiniTip(); });
     // 미니맵 클릭 → 정규화 좌표 이벤트 (dev: Ctrl+클릭 순간이동 — RegionFieldScene가 소비)
     img.on('pointerdown', (p: Phaser.Input.Pointer) => {
       const ev = p.event as MouseEvent | undefined;
@@ -1071,8 +1094,27 @@ export class RegionHud extends Phaser.GameObjects.Container {
   stepMiniMapSize(dir: 1 | -1): void {
     const next = Phaser.Math.Clamp(this.miniSizeIdx + dir, 0, MINI_SIZES.length - 1);
     if (next === this.miniSizeIdx) return;
-    this.miniSizeIdx = next;
+    this.resizeMiniMap(next);
+  }
+
+  /**
+   * 200차 — 미니맵 크기를 바꾸면 그 아래 붙어 있던 「지금 할 일」도 따라 움직인다.
+   * 구: 추적기 자리는 처음 한 번(작은 지도 기준)만 정해져, 지도를 키우면 지도 아래쪽을 덮었다(규칙 10).
+   * 붙어 있던 추적기(사용자가 옮기지 않음)이거나 커진 지도와 겹치면 지도 바로 아래로 다시 붙인다.
+   */
+  private resizeMiniMap(idx: number): void {
+    const oldBottom = this.miniBottomY();
+    const wasDocked = !this.trackerPosition || Math.abs(this.trackerPosition.top - oldBottom) < 2;
+    this.miniSizeIdx = idx;
     this.buildMiniMap();
+    if (!this.trackerPosition) return;
+    const m = this.hudRect('map'), q = this.hudRect('quest');
+    const overlaps = !!this.trackerC && q.x < m.x + m.w && q.x + q.w > m.x && q.y < m.y + m.h && q.y + q.h > m.y;
+    if (wasDocked || overlaps) {
+      this.trackerPosition = { right: this.trackerPosition.right, top: this.miniBottomY() };
+      this.layoutTracker();
+      this.relayoutToasts();
+    }
   }
 
   /** 미니맵 하단 y (화면 좌표) — 추적기·토스트가 그 아래에 선다 */
@@ -1302,18 +1344,22 @@ export class RegionHud extends Phaser.GameObjects.Container {
     const minPri = size < 250 ? 2 : size < 350 ? 1 : 0;
     const cell = size < 250 ? 16 : size < 350 ? 14 : 12;
     const taken = new Map<string, number>();
-    const picked: { x: number; y: number; m: MiniMarker }[] = [];
+    const picked: { x: number; y: number; m: MiniMarker; key: string }[] = [];
+    // 200차 — 셀마다 그 자리에 있는 마커 전부(우선순위순). 하나만 그려도 정보 카드는 전부 보여 준다.
+    const cellAll = new Map<string, MiniMarker[]>();
     for (const m of [...this.miniMarkers].sort((a, b) => b.priority - a.priority)) {
       if (m.priority < minPri) continue;
       const x = (m.wx / this.cfg.worldW) * this.miniDispW;
       const y = (m.wy / this.cfg.worldH) * this.miniDispH;
       if (x < 0 || y < 0 || x > this.miniDispW || y > this.miniDispH) continue;
       const key = `${Math.floor(x / cell)}:${Math.floor(y / cell)}`;
+      if (m.label) { const arr = cellAll.get(key); if (arr) arr.push(m); else cellAll.set(key, [m]); }
       const best = taken.get(key) ?? -1;
       if (best >= m.priority) continue;
       taken.set(key, m.priority);
-      picked.push({ x, y, m });
+      picked.push({ x, y, m, key });
     }
+    this.miniDrawn = picked.map((p) => ({ x: p.x, y: p.y, m: p.m, items: cellAll.get(p.key) ?? [] }));
     for (const { x, y, m } of picked) {
       if (m.shape === 'pin') {
         const g = this.scene.add.graphics();
@@ -1325,14 +1371,65 @@ export class RegionHud extends Phaser.GameObjects.Container {
       const img = addPixelIcon(this.scene, m.icon, x, y, 10);
       if (img) c.add(img);
     }
+    // 마커가 바뀌어도(의뢰 상태·핀) 포인터가 그대로 있으면 카드를 다시 맞춘다
+    if (this.miniHoverPtr) this.updateMiniTip();
+  }
+
+  /**
+   * 200차 — 미니맵 마커 정보 카드. 포인터 가까이(8px) 그려진 마커가 있으면 그 셀의 마커 전부를 카드로 보인다.
+   * 내용이 같으면(서명 비교) 다시 만들지 않는다 — 걸어가는 동안 거리 줄만 바뀌면 그때 다시 만든다.
+   */
+  private updateMiniTip(): void {
+    const ptr = this.miniHoverPtr;
+    if (!ptr || !this.miniContainer.visible || !this.visible) { this.hideMiniTip(); return; }
+    const lx = ptr.x - this.miniContainer.x, ly = ptr.y - this.miniContainer.y;
+    let hit: (typeof this.miniDrawn)[number] | null = null;
+    let bestD = 8;
+    for (const d of this.miniDrawn) {
+      if (d.items.length === 0) continue;
+      const dd = Math.hypot(d.x - lx, d.y - ly);
+      if (dd <= bestD) { bestD = dd; hit = d; }
+    }
+    if (!hit) { this.hideMiniTip(); return; }
+    const from = this.miniPlayerWorld && this.cfg.metersPerPx
+      ? { x: this.miniPlayerWorld.x, y: this.miniPlayerWorld.y, metersPerPx: this.cfg.metersPerPx } : null;
+    const sig = `${Math.round(hit.x)},${Math.round(hit.y)}|${tipSignature(hit.items, from)}`;
+    if (sig === this.miniTipSig && this.miniTip) return;
+    this.hideMiniTip();
+    this.miniTipSig = sig;
+    const { c, w, h } = buildMarkerTip(this.scene, hit.items, from);
+    // 카드는 미니맵 **바깥**(좌우 중 여유가 큰 쪽)에 둔다 — 지도를 덮으면 옆 아이콘을 못 본다. 높이는 마커에 맞춘다.
+    //  어느 아이콘인지는 흰 링이 짚는다.
+    const ay = this.miniContainer.y + hit.y;
+    const frameL = this.miniContainer.x - 6, frameR = this.miniContainer.x + this.miniDispW + 6;
+    placeTip(c, w, h, new Phaser.Geom.Rectangle(frameL, ay - 8, frameR - frameL, 16), new Phaser.Geom.Rectangle(4, 4, GAME_WIDTH - 8, GAME_HEIGHT - 8));
+    this.add(c);
+    this.bringToTop(c);
+    const ring = this.scene.add.graphics();
+    ring.lineStyle(2, 0xffffff, 0.95); ring.strokeCircle(hit.x, hit.y, 7);
+    ring.lineStyle(1, 0x0a1628, 0.9); ring.strokeCircle(hit.x, hit.y, 8.5);
+    this.miniContainer.add(ring);
+    this.miniTip = c;
+    this.miniTipRing = ring;
+    applyScreenFixed(this);
+  }
+
+  private hideMiniTip(): void {
+    this.miniTip?.destroy();
+    this.miniTip = undefined;
+    this.miniTipRing?.destroy();
+    this.miniTipRing = undefined;
+    this.miniTipSig = '';
   }
 
   toggleMiniMapSize(): void {
-    this.miniSizeIdx = (this.miniSizeIdx + 1) % MINI_SIZES.length;
-    this.buildMiniMap();
+    this.resizeMiniMap((this.miniSizeIdx + 1) % MINI_SIZES.length);
   }
 
   updatePlayerMarker(worldX: number, worldY: number): void {
+    this.miniPlayerWorld = { x: worldX, y: worldY };
+    // 카드가 떠 있으면 거리·방향 줄을 따라 갱신(서명이 같으면 아무것도 하지 않는다)
+    if (this.miniTip) this.updateMiniTip();
     if (!this.miniMarker) return;
     const mx = Phaser.Math.Clamp((worldX / this.cfg.worldW) * this.miniDispW, 3, this.miniDispW - 3);
     const my = Phaser.Math.Clamp((worldY / this.cfg.worldH) * this.miniDispH, 3, this.miniDispH - 3);

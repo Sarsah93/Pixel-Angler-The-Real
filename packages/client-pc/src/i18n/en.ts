@@ -121,6 +121,16 @@ const EN_BASE: Record<string, string> = {
   '낚싯대를 손에 착용하면 캐스팅할 수 있습니다 (E 장비창)': 'Equip a rod in your hand to cast (E Equipment)',
   '정말로 집으로 돌아가시겠습니까?': 'Return home now?', '저장 완료': 'Saved', '집 침대에서만 저장할 수 있습니다': 'You can only save at your bed at home',
   '저장되지 않은 진행이 있습니다 — 한 번 더 선택하면 이동합니다': 'Unsaved progress — select again to leave anyway',
+  // 200차 — 지도 마커 정보 카드
+  '미끼 · 채비 · 줄 · 잡은 고기 매입': 'Bait · rigs · line · buys your catch',
+  '식재료 · 양념 · 조리도구 · 밑밥 · 쿨러': 'Groceries · seasoning · cookware · chum · coolers',
+  '낚싯대 · 릴 · 원줄 · 손도구 · 가구': 'Rods · reels · main line · hand tools · furniture',
+  '간식 · 생수 · 각얼음 · 상비약': 'Snacks · water · ice · basic medicine',
+  '붕대 · 구급품 · 약': 'Bandages · first aid · medicine',
+  '식사 · 매운탕 · 회': 'Meals · spicy fish stew · sashimi',
+  '커피 · 음료': 'Coffee · drinks',
+  '술 · 해물 안주': 'Drinks · seafood side dishes',
+  '바로 근처': 'Right nearby', '내가 꽂은 곳': 'My pin',
   '공중화장실': 'Restroom', '파출소': 'Police Box', '여객터미널': 'Ferry Terminal', '등대': 'Lighthouse', '전망 포인트': 'Viewpoint', '낚시터': 'Fishing Spot', '시장': 'Market', '관광안내소': 'Tourist Info', '주유소': 'Gas Station',
   '거래하기': 'Trade', '편의점': 'Convenience Store', '식자재마트': 'Grocery Mart', '직판장': 'Fish Market', '음식점': 'Restaurant', '카페': 'Cafe', '주점': 'Pub',
 
@@ -595,6 +605,10 @@ const DOW_EN: Record<string, string> = {
 };
 /** 수치·이름이 끼어 있는 문장 — 정규식 규칙. 캡처 그룹은 그대로 옮긴다(이름은 사전을 다시 타지 않으므로 어종·아이템명은 한국어로 남을 수 있음). */
 export const EN_RULES: Rule[] = [
+  // 200차 — 지도 마커 정보 카드(거리·방향 · 겹친 자리 목록)
+  [/^약 ([\d.]+)(m|km) · (북동|북서|남동|남서|동|서|남|북)쪽$/, (m) => `About ${m[1]} ${m[2]} ${({ 동: 'east', 서: 'west', 남: 'south', 북: 'north', 북동: 'northeast', 북서: 'northwest', 남동: 'southeast', 남서: 'southwest' } as Record<string, string>)[m[3]] ?? ''}`],
+  [/^이 자리에 (\d+)곳$/, '$1 places here'],
+  [/^외 (\d+)곳$/, '+$1 more'],
   // 187차 — 「조피볼락(우럭) (28cm)」: 크기 꼬리를 먼저 떼야 별칭 괄호까지 한 이름으로 번역된다
   [/^(.+?) \((\d+(?:\.\d+)?)cm\)$/, (m, tr) => `${tr(m[1])} (${m[2]}cm)`],
   // 1인칭 파이팅 게이지 줄 · 금지체장 방생 팝업(소수 cm · 어종명 번역) · 요리창 머리(뒤의 「(.+) 매운탕」 규칙이 먼저 삼켰다)

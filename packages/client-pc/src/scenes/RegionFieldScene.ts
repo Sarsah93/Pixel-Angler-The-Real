@@ -134,7 +134,7 @@ import {
 import { GameState } from '../store/GameState.js';
 import { HomeStore } from '../store/HomeStore.js';
 import { characterLook } from '../data/EquipOutfit.js';
-import { registerNames } from '../i18n/I18n.js';
+import { registerNames, getLocale } from '../i18n/I18n.js';
 import { ExternalDataStore } from '../store/ExternalDataStore.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { RegionHud } from '../ui/RegionHud.js';
@@ -159,7 +159,7 @@ import { MarketStore, type MarketBranch } from '../store/MarketStore.js';
 import { InventoryStore, InvItem } from '../store/InventoryStore.js';
 import { CoolerStore } from '../store/CoolerStore.js';
 import { DiscoveryStore } from '../store/DiscoveryStore.js';
-import { BuildingKind, BUILDING_LABEL, BUILDING_KIND_CYCLE, SHOP_CATALOG, ShopEntry } from '../data/ShopCatalog.js';
+import { BuildingKind, BUILDING_LABEL, BUILDING_GOODS, BUILDING_KIND_CYCLE, SHOP_CATALOG, ShopEntry } from '../data/ShopCatalog.js';
 
 interface RegionFieldInit {
   region: string;
@@ -835,6 +835,7 @@ export class RegionFieldScene extends Phaser.Scene {
       rows: this.rows,
       worldW: this.worldW,
       worldH: this.worldH,
+      metersPerPx: this.metersPerPx(),
     });
     this.add.existing(this.hud);
     this.hud.pushLog(`[이동] ${this.node.name}에 도착했습니다.`);
@@ -1754,17 +1755,24 @@ export class RegionFieldScene extends Phaser.Scene {
         });
         // 물품 상점(1)이 음식점·카페·주점(0)보다 미니맵 셀을 먼저 차지한다
         const goods = kind !== 'restaurant' && kind !== 'cafe' && kind !== 'pub';
+        // 200차 — 지도 정보 카드: 이름 + 가게 종류(이름이 곧 종류면 생략) + 파는 것
+        const shopName = poi.name || BUILDING_LABEL[kind];
         this.miniShopMarkers.push({
           wx: door.x, wy: door.y,
           icon: RegionFieldScene.MINI_SHOP_ICON[kind], priority: goods ? 1 : 0,
-          label: poi.name || BUILDING_LABEL[kind],
+          label: shopName,
+          sub: shopName === BUILDING_LABEL[kind] ? undefined : BUILDING_LABEL[kind],
+          goods: BUILDING_GOODS[kind],
         });
       }
       else if ((poi.name ?? '') !== '' || RegionFieldScene.POI_LABEL[poi.type] !== undefined) {
         // 거래는 안 되지만 이름이 있는 장소 — 바닥 이름표 대신 미니맵 핀으로만 (143차)
+        const placeKind = RegionFieldScene.POI_LABEL[poi.type];
+        const placeName = poi.name || placeKind;
         this.miniPlaceMarkers.push({
           wx: door.x, wy: door.y, icon: 'mm_poi', priority: 0,
-          label: poi.name || RegionFieldScene.POI_LABEL[poi.type],
+          label: placeName,
+          sub: placeKind && placeKind !== placeName ? placeKind : undefined,
         });
       }
       // 건물 프리팹이 붙는 POI의 건물 컴포넌트는 고층 자동 배치에서 제외
@@ -4944,14 +4952,18 @@ export class RegionFieldScene extends Phaser.Scene {
       }
       const mk = this.npcMarkerIcon(n.def.npcId, true);
       // 의뢰가 없어도 인물은 미니맵에 남는다 (143차 — 바닥 이름표를 끈 대신)
-      const npcName = getStoryNpc(n.def.npcId)?.nameKo ?? n.def.npcId;
+      const npcDef = getStoryNpc(n.def.npcId);
+      const npcName = npcDef?.nameKo ?? n.def.npcId;
+      // 200차 — 정보 카드: 나이·직업 한 줄 + 의뢰 상태(범례와 같은 말). 의뢰 이름은 싣지 않는다(대화로 연다 — R3).
+      const npcSub = npcDef ? (getLocale() === 'en' ? npcDef.roleEn : npcDef.roleKo) : undefined;
       markers.push(mk
-        ? { wx: n.x, wy: n.y - 12, icon: mk, priority: mk === 'mm_ready' ? 3 : 2, label: npcName }
-        : { wx: n.x, wy: n.y - 12, icon: 'mm_npc', priority: 2, label: npcName });
+        ? { wx: n.x, wy: n.y - 12, icon: mk, priority: mk === 'mm_ready' ? 3 : 2, label: npcName, sub: npcSub,
+          status: mk === 'mm_ready' ? 'ready' : 'quest' }
+        : { wx: n.x, wy: n.y - 12, icon: 'mm_npc', priority: 2, label: npcName, sub: npcSub });
     }
     // 155차 — 전체 지도에서 찍은 핀은 미니맵에도 (청록 다이아)
     const pin = MapPinStore.get(this.region);
-    if (pin) markers.push({ wx: pin.x, wy: pin.y, icon: 'mm_pin', priority: 4, shape: 'pin' });
+    if (pin) markers.push({ wx: pin.x, wy: pin.y, icon: 'mm_pin', priority: 4, shape: 'pin', label: '핀', sub: '내가 꽂은 곳' });
     this.lastMiniMarkers = markers;
     this.hud?.setMiniMarkers(markers);
   }
@@ -5543,6 +5555,11 @@ export class RegionFieldScene extends Phaser.Scene {
     this.drawGuideArrow(this.pinArrowG!, this.pinArrowLbl!, blocked || !pin ? null : { x: pin.x, y: pin.y, label: '핀' }, 60, 0x5cd0ff, blink);
   }
 
+  /** 월드 1px = N 미터 — 심리스 지역 1타일 5m · 구 타일맵 2m (안내 화살표·지도 정보 카드가 같은 값을 쓴다) */
+  private metersPerPx(): number {
+    return (this.chunks ? 5 : 2) / TR;
+  }
+
   private drawGuideArrow(
     g: Phaser.GameObjects.Graphics, lbl: Phaser.GameObjects.Text,
     t: { x: number; y: number; label: string } | null, radius: number, color: number, alpha: number,
@@ -5561,8 +5578,7 @@ export class RegionFieldScene extends Phaser.Scene {
     const nx = -uy, ny = ux;
     g.fillStyle(0x0a1628, 0.9); g.fillTriangle(tipX + ux, tipY + uy, bx + nx * 7, by + ny * 7, bx - nx * 7, by - ny * 7);
     g.fillStyle(color, 1); g.fillTriangle(tipX, tipY, bx + nx * 5.5, by + ny * 5.5, bx - nx * 5.5, by - ny * 5.5);
-    const mPerTile = this.chunks ? 5 : 2;
-    const meters = Math.round((d / TR) * mPerTile);
+    const meters = Math.round(d * this.metersPerPx());
     lbl.setText(`${t.label} · ${meters}m`).setPosition(px + ux * (radius + 24), py + uy * (radius + 24)).setVisible(true);
     this.nudgeGuideLabel(lbl, nx, ny);
   }
@@ -5605,6 +5621,7 @@ export class RegionFieldScene extends Phaser.Scene {
         player: () => ({ x: this.playerBody.x, y: this.playerBody.y }),
         peers: () => [...this.peerObjs.values()].map((o) => ({ x: o.img.x, y: o.img.y, name: o.tag.text })),
         target: () => this.questTargetPos,
+        metersPerPx: this.metersPerPx(),
         onClose: close,
       });
     }, () => { this.fullMapClose = undefined; });

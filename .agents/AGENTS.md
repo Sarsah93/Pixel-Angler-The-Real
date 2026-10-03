@@ -461,7 +461,14 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-10-03 199차) — 조작 안내 띠 정리(R11) · 쿨러 여러 마리 놓아주기 · 도움말 재촬영**
+**최근 변경 (2026-10-03 200차) — 지도 마커 정보 카드 · 미니맵 확대 시 「지금 할 일」 겹침**
+
+- 미니맵·전체 지도 아이콘 호버 = `ui/MapMarkerTip` 카드(이름 · 종류 · 파는 것 / 직업 · 의뢰 상태 · 거리·방향 · 겹친 자리 목록).
+- `MiniMarker.sub/goods/status` · `ShopCatalog.BUILDING_GOODS` · 거리는 목표 화살표와 같은 `metersPerPx()`.
+- 미니맵 크기 변경은 `RegionHud.resizeMiniMap` — 붙어 있던 추적기를 지도 아래로 다시 붙인다(겹침 0).
+  상세: [200차 워크로그](../docs/wiki/03-WORKLOG/2026-10-03-200-map-marker-info-card.md).
+
+**이전 변경 (2026-10-03 199차) — 조작 안내 띠 정리(R11) · 쿨러 여러 마리 놓아주기 · 도움말 재촬영**
 
 - 1인칭 하단 조작 띠 삭제 · 상단 상태 줄은 상황만(스풀 개방 문구) · 필드 캐스팅 안내 띠 → 첫 말풍선(`cast_first`·`cast_hole`).
 - 쿨러 패널(B) 여러 마리 고르기(메뉴/Shift+클릭) → [놓아주기 (N)] → `ConfirmDialog` 목록 · ESC 한 겹씩(`onEscIntercept`).
@@ -474,13 +481,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - 겹침: 집 [가구 배치](미니맵 덮음)·배치 트레이·방 액자·월드맵 개발 단추 → `ui/ScreenReserve`(HUD `occupiedRects`)로 피함.
 - 규칙 §4·§8-14 「화면 고정 UI 겹침 금지」 + 감사 `tools/ui_overlap_audit.js`(10화면 부분 겹침 0).
   상세: [198차 워크로그](../docs/wiki/03-WORKLOG/2026-10-02-198-cooler-release-confirm-screen-overlap.md).
-
-**이전 변경 (2026-10-02 197차) — 속초 다녀온 뒤 튜토리얼 반복 버그 · 위키 「스킬」 탭**
-
-- 원인: Phaser 빈 `launch(key)`가 지난 `settings.data`(새 게임 `{ wake: true }`)를 다시 넘겨 집 재입장마다 기상 혼잣말 반복.
-- 수정: 집·설정·메인 메뉴 `init`에서 읽은 뒤 비움 + 부르는 쪽 데이터 명시 · 홈타운 코치는 속초 문구 대신 「다시 속초로」 한 줄.
-- 위키 「스킬」 탭(분야 7 · 88 + 숨은 시너지 5 · 아이콘 93장). 함정은 `ui-framework.md` §6.
-  상세: [197차 워크로그](../docs/wiki/03-WORKLOG/2026-10-02-197-prologue-repeat-home-skills-wiki.md).
 
 ---
 
