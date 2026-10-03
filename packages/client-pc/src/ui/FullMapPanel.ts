@@ -25,7 +25,8 @@ import { addPixelIcon } from './PixelIcon.js';
 import type { MiniMarker } from './RegionHud.js';
 import { MapPinStore } from '../store/MapPinStore.js';
 import { maybeStartTour, type TourOptions } from './GuideTour.js';
-import { buildMarkerTip, placeTip, tipSignature } from './MapMarkerTip.js';
+import { buildMarkerTip, placeTip, tipSignature, tipHolds, tipItems, isPinnedAt } from './MapMarkerTip.js';
+import { restoreHandCursor } from './DraggablePanel.js';
 
 export interface FullMapConfig {
   mapTex: string;
@@ -65,6 +66,9 @@ export class FullMapPanel extends Phaser.GameObjects.Container {
   private markerTip?: Phaser.GameObjects.Container;
   private markerRing?: Phaser.GameObjects.Graphics;
   private markerTipSig = '';
+  /** 201차 — 지금 카드의 마커(월드 좌표 — 지도를 끌어도 따라간다) · 카드 화면 사각형(마커→카드 통로 판정) */
+  private tipAnchor: { wx: number; wy: number } | null = null;
+  private tipRect: Phaser.Geom.Rectangle | null = null;
   private maskG!: Phaser.GameObjects.Graphics;
   private zoom = 1;
   private minZoom = 1;
@@ -280,7 +284,7 @@ export class FullMapPanel extends Phaser.GameObjects.Container {
           wait: () => this.tourDragged,
         },
         {
-          text: '아이콘에 마우스를 올리면 그곳이 어떤 곳인지, 얼마나 먼지 나온다. 이 아이콘에 올려 보자.',
+          text: '아이콘에 마우스를 올리면 그곳이 어떤 곳인지, 얼마나 먼지 나온다. 이 아이콘에 올려 보자. 뜬 카드를 누르면 그곳에 핀이 꽂힌다.',
           target: markerRect,
           skipIf: () => !hasLabeled,
           onEnter: () => { this.tourTipShown = false; anchor = markerRect; },
@@ -345,15 +349,18 @@ export class FullMapPanel extends Phaser.GameObjects.Container {
    * 마커 정보 카드 (200차 — 구: 이름 한 줄) — 앵커 = 마커 둘레, 지도 뷰 안에서 여유가 큰 쪽으로 펼친다.
    * 같은 자리(10px)에 여럿이면 목록으로 — 축소 지도는 셀 충돌로 하나만 그리므로 가려진 것도 여기서 드러난다.
    */
-  private showMarkerTip(vx: number, vy: number, items: MiniMarker[]): void {
+  private showMarkerTip(vx: number, vy: number, items: MiniMarker[], anchor: { wx: number; wy: number }): void {
     const p = this.cfg.player();
     const from = this.cfg.metersPerPx ? { x: p.x, y: p.y, metersPerPx: this.cfg.metersPerPx } : null;
-    const sig = `${Math.round(vx)},${Math.round(vy)}|${tipSignature(items, from)}`;
+    const pin = MapPinStore.get(this.cfg.regionId);
+    const sig = `${Math.round(vx)},${Math.round(vy)}|${tipSignature(items, from, pin)}`;
     this.tourTipShown = true;
+    this.tipAnchor = anchor;
     if (sig === this.markerTipSig && this.markerTip) return;
     this.hideMarkerTip();
+    this.tipAnchor = anchor;
     this.markerTipSig = sig;
-    const { c, w, h } = buildMarkerTip(this.scene, items, from);
+    const { c, w, h } = buildMarkerTip(this.scene, items, from, { pinnedAt: pin, onPick: (m) => this.toggleMarkerPin(m) });
     const ax = this.view.x + vx, ay = this.view.y + vy;
     placeTip(c, w, h, new Phaser.Geom.Rectangle(ax - 10, ay - 10, 20, 20),
       new Phaser.Geom.Rectangle(this.view.x + 2, this.view.y + 2, this.view.w - 4, this.view.h - 4));
@@ -363,15 +370,29 @@ export class FullMapPanel extends Phaser.GameObjects.Container {
     this.add([ring, c]);
     this.markerTip = c;
     this.markerRing = ring;
+    this.tipRect = new Phaser.Geom.Rectangle(c.x, c.y, w, h);
     applyScreenFixed(this);
+    restoreHandCursor(this.scene);
   }
 
   private hideMarkerTip(): void {
+    const had = !!this.markerTip;
     this.markerTip?.destroy();
     this.markerTip = undefined;
     this.markerRing?.destroy();
     this.markerRing = undefined;
     this.markerTipSig = '';
+    this.tipAnchor = null;
+    this.tipRect = null;
+    if (had) restoreHandCursor(this.scene);
+  }
+
+  /** 201차 — 카드를 누르면 그 자리에 핀(이미 꽂힌 자리면 뽑는다) — 우클릭 핀과 같은 저장소 */
+  private toggleMarkerPin(m: MiniMarker): void {
+    const region = this.cfg.regionId;
+    if (isPinnedAt(m, MapPinStore.get(region))) MapPinStore.clear(region);
+    else MapPinStore.set(region, m.wx, m.wy);
+    this.drawMarkers();
   }
 
   /**
@@ -379,12 +400,22 @@ export class FullMapPanel extends Phaser.GameObjects.Container {
    * 구 방식(마커마다 투명 히트 사각형 + pointerover)은 두 겹으로 죽어 있었다 —
    *  ① 지도 드래그용 뷰 히트가 마커보다 **위**에 깔려(topOnly) 마커가 pointerover를 받지 못했고,
    *  ② 마커가 120ms마다 다시 그려져 포인터가 멈춰 있으면 이름표가 곧바로 사라졌다.
+   * 201차 — 포인터가 카드 위나 마커→카드 통로 안이면 지금 카드를 붙잡는다(카드를 눌러 핀을 꽂을 수 있게).
    */
   private hoverAt(px: number, py: number): void {
     const vx = px - this.view.x, vy = py - this.view.y;
-    let hit: { x: number; y: number } | null = null;
-    let bestD = 9;
-    if (vx >= 0 && vy >= 0 && vx <= this.view.w && vy <= this.view.h) {
+    let hit: { x: number; y: number; m: MiniMarker } | null = null;
+    if (this.markerTip && this.tipAnchor && this.tipRect) {
+      const a = this.tipAnchor;
+      const hx = this.toVX(a.wx), hy = this.toVY(a.wy);
+      if (tipHolds(px, py, { x: this.view.x + hx, y: this.view.y + hy }, this.tipRect)) {
+        // 그 자리 마커 — 핀을 꽂으면 핀(우선순위 4)이 셀을 차지해 가게는 「안 그린 것」이 되므로 그린 여부와 무관하게 찾는다
+        const same = this.labeled.find((m) => Math.abs(m.m.wx - a.wx) < 0.5 && Math.abs(m.m.wy - a.wy) < 0.5);
+        if (same) hit = same;
+      }
+    }
+    if (!hit && vx >= 0 && vy >= 0 && vx <= this.view.w && vy <= this.view.h) {
+      let bestD = 9;
       for (const m of this.labeled) {
         if (!m.drawn) continue;
         const d = Math.hypot(m.x - vx, m.y - vy);
@@ -394,11 +425,11 @@ export class FullMapPanel extends Phaser.GameObjects.Container {
     if (!hit) { this.hideMarkerTip(); return; }
     const h = hit;
     // 그 자리(10px)에 있는 것 전부 — 그려진 것(우선순위 높은 것)이 먼저
-    const items = this.labeled
+    const items = tipItems(this.labeled
       .filter((m) => Math.hypot(m.x - h.x, m.y - h.y) <= 10)
       .sort((a, b) => Number(b.drawn) - Number(a.drawn) || b.m.priority - a.m.priority)
-      .map((m) => m.m);
-    this.showMarkerTip(h.x, h.y, items);
+      .map((m) => m.m));
+    this.showMarkerTip(h.x, h.y, items, { wx: h.m.wx, wy: h.m.wy });
   }
 
   private drawMarkers(): void {

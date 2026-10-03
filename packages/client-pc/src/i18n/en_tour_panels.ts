@@ -76,8 +76,8 @@ export const EN_TOUR_PANELS: Record<string, string> = {
     'Scroll the mouse wheel to zoom the map in and out. Give it a scroll.',
   '지도를 잡고 끌면 다른 곳을 둘러볼 수 있다. 끌어 보자.':
     'Grab the map and drag to look around. Drag it.',
-  '아이콘에 마우스를 올리면 그곳이 어떤 곳인지, 얼마나 먼지 나온다. 이 아이콘에 올려 보자.':
-    'Hover over an icon to see what the place is and how far it is. Try this one.',
+  '아이콘에 마우스를 올리면 그곳이 어떤 곳인지, 얼마나 먼지 나온다. 이 아이콘에 올려 보자. 뜬 카드를 누르면 그곳에 핀이 꽂힌다.':
+    'Hover over an icon to see what the place is and how far it is. Try this one. Click the card that appears to drop a pin there.',
   '아래 줄은 지도 아이콘의 뜻이다. 가게 종류와 사람, 새 의뢰, 지금 할 일이 모두 여기 있다.':
     'The strip below explains the map icons: kinds of shops, people, new requests and your current task.',
   '가고 싶은 곳을 우클릭하면 핀이 꽂힌다. 길 위에도 그곳을 가리키는 화살표가 생긴다. 한 군데 꽂아 보자.':

@@ -461,7 +461,14 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-10-03 200차) — 지도 마커 정보 카드 · 미니맵 확대 시 「지금 할 일」 겹침**
+**최근 변경 (2026-10-03 201차) — 가게 영업시간 · 정보 카드 눌러 핀**
+
+- `ShopCatalog.BUILDING_HOURS`/`shopHoursState` — 직판장·편의점 24시간 · 나머지 10~22시(KST · 표시 전용 — 거래는 막지 않음).
+- 정보 카드/목록 줄 누르기 = `MapPinStore` 토글 · 마커→카드 통로 유지(`tipHolds`) · 사람 마커는 핀 판정 64px(`moves`).
+- 함정: 누를 수 있는 호버 카드는 통로 유지가 필요 · `mm_pin` 픽셀 아이콘 없음(`ui-framework.md` §6).
+  상세: [201차 워크로그](../docs/wiki/03-WORKLOG/2026-10-03-201-shop-hours-card-pin.md).
+
+**이전 변경 (2026-10-03 200차) — 지도 마커 정보 카드 · 미니맵 확대 시 「지금 할 일」 겹침**
 
 - 미니맵·전체 지도 아이콘 호버 = `ui/MapMarkerTip` 카드(이름 · 종류 · 파는 것 / 직업 · 의뢰 상태 · 거리·방향 · 겹친 자리 목록).
 - `MiniMarker.sub/goods/status` · `ShopCatalog.BUILDING_GOODS` · 거리는 목표 화살표와 같은 `metersPerPx()`.
@@ -474,13 +481,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - 쿨러 패널(B) 여러 마리 고르기(메뉴/Shift+클릭) → [놓아주기 (N)] → `ConfirmDialog` 목록 · ESC 한 겹씩(`onEscIntercept`).
 - Graphics 판은 `ScreenReserve.tagUiRect`로 감사에 올린다 · 도움말 13쪽 × ko/en 재촬영.
   상세: [199차 워크로그](../docs/wiki/03-WORKLOG/2026-10-03-199-r11-control-bands-cooler-multi-release.md).
-
-**이전 변경 (2026-10-02 198차) — 쿨러 정리 창 재작성 · 화면 고정 UI 겹침 전수조사**
-
-- 정리 창: 고기 골라 [놓아주기] → `ConfirmDialog` 재확인 → 빈 칸에 새 고기를 **그 칸에** 넣기(`CoolerStore.addAt`) · 결정 패널 방생도 재확인.
-- 겹침: 집 [가구 배치](미니맵 덮음)·배치 트레이·방 액자·월드맵 개발 단추 → `ui/ScreenReserve`(HUD `occupiedRects`)로 피함.
-- 규칙 §4·§8-14 「화면 고정 UI 겹침 금지」 + 감사 `tools/ui_overlap_audit.js`(10화면 부분 겹침 0).
-  상세: [198차 워크로그](../docs/wiki/03-WORKLOG/2026-10-02-198-cooler-release-confirm-screen-overlap.md).
 
 ---
 

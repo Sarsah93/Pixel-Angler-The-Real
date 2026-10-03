@@ -28,7 +28,9 @@ import { setSlotLabel, SLOT_LABEL_PX } from './SlotLabel.js';
 import { clampTextWidth } from './TextFit.js';
 import { addPixelIcon } from './PixelIcon.js';
 import { paintHudPanel, paintHudSlot } from './HudPanelStyle.js';
-import { buildMarkerTip, placeTip, tipSignature } from './MapMarkerTip.js';
+import { buildMarkerTip, placeTip, tipSignature, tipHolds, tipItems, isPinnedAt } from './MapMarkerTip.js';
+import type { ShopHours } from '../data/ShopCatalog.js';
+import { MapPinStore } from '../store/MapPinStore.js';
 import { getLocale } from '../i18n/I18n.js';
 import { StoryStore } from '../store/StoryStore.js';
 
@@ -49,6 +51,10 @@ export interface MiniMarker {
   goods?: string;
   /** 200차 — 인물의 의뢰 상태(지도 범례와 같은 말) */
   status?: 'quest' | 'ready';
+  /** 201차 — 가게 영업시간(카드에 지금 열림·닫힘) */
+  hours?: ShopHours;
+  /** 201차 — 돌아다니는 마커(사람) — 핀 일치 판정을 넓게 */
+  moves?: boolean;
 }
 
 /** 165차 — 「지금 할 일」 한 줄(할 일 하나) */
@@ -373,6 +379,9 @@ export class RegionHud extends Phaser.GameObjects.Container {
   /** 200차 — 미니맵 호버 정보 카드 · 강조 링 · 마지막 포인터(화면 좌표 — 마커를 다시 그린 뒤 재판정) */
   private miniTip?: Phaser.GameObjects.Container;
   private miniTipSig = '';
+  /** 201차 — 지금 카드의 마커(미니맵 로컬) · 카드 화면 사각형 — 마커에서 카드로 가는 동안 붙잡는 데 쓴다 */
+  private miniTipHit: { x: number; y: number; items: MiniMarker[] } | null = null;
+  private miniTipRect: Phaser.Geom.Rectangle | null = null;
   private miniTipRing?: Phaser.GameObjects.Graphics;
   private miniHoverPtr: { x: number; y: number } | null = null;
   private miniPlayerWorld: { x: number; y: number } | null = null;
@@ -404,6 +413,9 @@ export class RegionHud extends Phaser.GameObjects.Container {
     super(scene);
     this.cfg = cfg;
     this.setScrollFactor(0);
+    // 201차 — 미니맵 정보 카드: 지도 밖 포인터 이동(카드로 가는 길) · 창 밖으로 나가면 닫기
+    scene.input.on('pointermove', this.onScenePointerMove);
+    scene.input.on('gameout', this.onMiniGameOut);
     this.setDepth(200);
 
     const st = loadSettings();
@@ -1063,7 +1075,8 @@ export class RegionHud extends Phaser.GameObjects.Container {
     // 200차 — 마커 호버 정보 카드. 마커 아이콘은 입력을 받지 않으므로 지도 이미지가 포인터를 받는다
     //  (topOnly — 다른 창이 미니맵을 덮고 있으면 이미지가 이벤트를 못 받아 카드도 뜨지 않는다).
     img.on('pointermove', (p: Phaser.Input.Pointer) => { this.miniHoverPtr = { x: p.x, y: p.y }; this.updateMiniTip(); });
-    img.on('pointerout', () => { this.miniHoverPtr = null; this.hideMiniTip(); });
+    // 지도 밖으로 나가도 바로 지우지 않는다 — 카드(지도 바깥)로 가는 중일 수 있다. 판정은 씬 pointermove(`onScenePointerMove`)
+    img.on('pointerout', (p: Phaser.Input.Pointer) => { this.miniHoverPtr = { x: p.x, y: p.y }; this.updateMiniTip(); });
     // 미니맵 클릭 → 정규화 좌표 이벤트 (dev: Ctrl+클릭 순간이동 — RegionFieldScene가 소비)
     img.on('pointerdown', (p: Phaser.Input.Pointer) => {
       const ev = p.event as MouseEvent | undefined;
@@ -1378,26 +1391,42 @@ export class RegionHud extends Phaser.GameObjects.Container {
   /**
    * 200차 — 미니맵 마커 정보 카드. 포인터 가까이(8px) 그려진 마커가 있으면 그 셀의 마커 전부를 카드로 보인다.
    * 내용이 같으면(서명 비교) 다시 만들지 않는다 — 걸어가는 동안 거리 줄만 바뀌면 그때 다시 만든다.
+   * 201차 — 포인터가 카드 위나 마커→카드 통로 안이면 지금 카드를 붙잡는다(지나가는 다른 마커로 바뀌지 않는다).
    */
   private updateMiniTip(): void {
     const ptr = this.miniHoverPtr;
     if (!ptr || !this.miniContainer.visible || !this.visible) { this.hideMiniTip(); return; }
-    const lx = ptr.x - this.miniContainer.x, ly = ptr.y - this.miniContainer.y;
-    let hit: (typeof this.miniDrawn)[number] | null = null;
-    let bestD = 8;
-    for (const d of this.miniDrawn) {
-      if (d.items.length === 0) continue;
-      const dd = Math.hypot(d.x - lx, d.y - ly);
-      if (dd <= bestD) { bestD = dd; hit = d; }
+    let hit: { x: number; y: number; items: MiniMarker[] } | null = null;
+    if (this.miniTip && this.miniTipHit && this.miniTipRect) {
+      const apex = { x: this.miniContainer.x + this.miniTipHit.x, y: this.miniContainer.y + this.miniTipHit.y };
+      if (tipHolds(ptr.x, ptr.y, apex, this.miniTipRect)) {
+        // 마커를 다시 그렸으면 같은 자리 항목을 새로 받는다(핀·의뢰 상태)
+        const prev = this.miniTipHit;
+        hit = this.miniDrawn.find((d) => Math.abs(d.x - prev.x) < 0.5 && Math.abs(d.y - prev.y) < 0.5) ?? prev;
+      }
     }
-    if (!hit) { this.hideMiniTip(); return; }
+    if (!hit) {
+      const lx = ptr.x - this.miniContainer.x, ly = ptr.y - this.miniContainer.y;
+      const onMap = lx >= 0 && ly >= 0 && lx <= this.miniDispW && ly <= this.miniDispH;
+      let bestD = 8;
+      for (const d of onMap ? this.miniDrawn : []) {
+        if (d.items.length === 0) continue;
+        const dd = Math.hypot(d.x - lx, d.y - ly);
+        if (dd <= bestD) { bestD = dd; hit = d; }
+      }
+    }
+    if (!hit || hit.items.length === 0) { this.hideMiniTip(); return; }
+    const items = tipItems(hit.items);
     const from = this.miniPlayerWorld && this.cfg.metersPerPx
       ? { x: this.miniPlayerWorld.x, y: this.miniPlayerWorld.y, metersPerPx: this.cfg.metersPerPx } : null;
-    const sig = `${Math.round(hit.x)},${Math.round(hit.y)}|${tipSignature(hit.items, from)}`;
+    const pin = MapPinStore.get(this.cfg.regionId);
+    const sig = `${Math.round(hit.x)},${Math.round(hit.y)}|${tipSignature(items, from, pin)}`;
+    this.miniTipHit = hit;
     if (sig === this.miniTipSig && this.miniTip) return;
     this.hideMiniTip();
+    this.miniTipHit = hit;
     this.miniTipSig = sig;
-    const { c, w, h } = buildMarkerTip(this.scene, hit.items, from);
+    const { c, w, h } = buildMarkerTip(this.scene, items, from, { pinnedAt: pin, onPick: (m) => this.toggleMarkerPin(m) });
     // 카드는 미니맵 **바깥**(좌우 중 여유가 큰 쪽)에 둔다 — 지도를 덮으면 옆 아이콘을 못 본다. 높이는 마커에 맞춘다.
     //  어느 아이콘인지는 흰 링이 짚는다.
     const ay = this.miniContainer.y + hit.y;
@@ -1411,15 +1440,38 @@ export class RegionHud extends Phaser.GameObjects.Container {
     this.miniContainer.add(ring);
     this.miniTip = c;
     this.miniTipRing = ring;
+    this.miniTipRect = new Phaser.Geom.Rectangle(c.x, c.y, w, h);
     applyScreenFixed(this);
+    restoreHandCursor(this.scene);
   }
 
+  /** 201차 — 카드를 누르면 그 자리에 핀(이미 꽂힌 자리면 뽑는다). 미니맵·필드 화살표는 `MapPinStore.onChange`가 갱신한다 */
+  private toggleMarkerPin(m: MiniMarker): void {
+    const region = this.cfg.regionId;
+    if (isPinnedAt(m, MapPinStore.get(region))) MapPinStore.clear(region);
+    else MapPinStore.set(region, m.wx, m.wy);
+    this.updateMiniTip();
+  }
+
+  private readonly onMiniGameOut = (): void => { this.miniHoverPtr = null; this.hideMiniTip(); };
+
+  /** 201차 — 지도 밖(카드 위·통로)에서의 포인터 이동도 본다. 카드가 떠 있을 때만 일한다 */
+  private readonly onScenePointerMove = (p: Phaser.Input.Pointer): void => {
+    if (!this.miniTip) return;
+    this.miniHoverPtr = { x: p.x, y: p.y };
+    this.updateMiniTip();
+  };
+
   private hideMiniTip(): void {
+    const had = !!this.miniTip;
     this.miniTip?.destroy();
     this.miniTip = undefined;
     this.miniTipRing?.destroy();
     this.miniTipRing = undefined;
     this.miniTipSig = '';
+    this.miniTipHit = null;
+    this.miniTipRect = null;
+    if (had) restoreHandCursor(this.scene);
   }
 
   toggleMiniMapSize(): void {
@@ -1925,6 +1977,8 @@ export class RegionHud extends Phaser.GameObjects.Container {
     this.scene?.input?.off('pointermove', this.hudMove);
     this.scene?.input?.off('pointerup', this.hudUp);
     this.scene?.input?.off('gameout', this.hudUp);
+    this.scene?.input?.off('pointermove', this.onScenePointerMove);
+    this.scene?.input?.off('gameout', this.onMiniGameOut);
     this.hideWeatherTip();
     if (this.scene?.input) this.destroyLogPanel();
     super.destroy(fromScene);

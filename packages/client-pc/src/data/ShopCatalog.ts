@@ -44,6 +44,44 @@ export const BUILDING_GOODS: Record<BuildingKind, string> = {
   pub: '술 · 해물 안주',
 };
 
+/** 영업시간 (201차) — 'always' = 24시간 연중무휴 · 아니면 그날 open시 ~ close시(KST · 게임 시각 = 실제 한국 시각) */
+export type ShopHours = 'always' | { open: number; close: number };
+
+/**
+ * 가게 종류별 영업시간 (201차 — 사용자 지시).
+ *  - 24시간: 낚시용품점(야간 낚시꾼을 위해 실제로 밤새 연다 — 이 게임에서 미끼·채비는 **직판장**이 판다) · 편의점.
+ *  - 나머지는 대부분 오전 10시 ~ 오후 10시.
+ * 지금은 지도 정보 카드의 표시용이다(문 닫은 시간에 거래를 막지는 않는다 — 막을지는 사용자 결정 대기).
+ */
+export const BUILDING_HOURS: Record<BuildingKind, ShopHours> = {
+  market: 'always',
+  convenience: 'always',
+  mart: { open: 10, close: 22 },
+  daily: { open: 10, close: 22 },
+  pharmacy: { open: 10, close: 22 },
+  restaurant: { open: 10, close: 22 },
+  cafe: { open: 10, close: 22 },
+  pub: { open: 10, close: 22 },
+};
+
+/** 마감 몇 분 전부터 「곧 마감」인가 */
+const CLOSING_SOON_MIN = 60;
+
+/**
+ * 지금(KST 시·분) 영업 상태 한 줄 — 지도 정보 카드용.
+ * `tone`: open = 초록 · soon = 주황(마감 1시간 안) · closed = 빨강.
+ */
+export function shopHoursState(h: ShopHours, hour: number, minute: number): { text: string; tone: 'open' | 'soon' | 'closed' } {
+  if (h === 'always') return { text: '24시간 영업', tone: 'open' };
+  const pad = (n: number): string => `${String(n).padStart(2, '0')}:00`;
+  const t = hour * 60 + minute;
+  const o = h.open * 60, c = h.close * 60;
+  if (t < o) return { text: `영업 전 · ${pad(h.open)} 개점`, tone: 'closed' };
+  if (t >= c) return { text: `영업 종료 · 내일 ${pad(h.open)} 개점`, tone: 'closed' };
+  if (c - t <= CLOSING_SOON_MIN) return { text: `곧 마감 · ${pad(h.close)}까지`, tone: 'soon' };
+  return { text: `영업 중 · ${pad(h.close)}까지`, tone: 'open' };
+}
+
 /** 상점 판매 품목 (인벤토리 템플릿 + 가격/구매 한도) */
 export interface ShopEntry extends InvItemTemplate {
   price: number;

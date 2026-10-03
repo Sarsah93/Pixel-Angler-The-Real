@@ -131,6 +131,7 @@ const EN_BASE: Record<string, string> = {
   '커피 · 음료': 'Coffee · drinks',
   '술 · 해물 안주': 'Drinks · seafood side dishes',
   '바로 근처': 'Right nearby', '내가 꽂은 곳': 'My pin',
+  '24시간 영업': 'Open 24 hours', '핀을 꽂은 곳': 'Pinned', '영업 전': 'Not open yet', '영업 종료': 'Closed',
   '공중화장실': 'Restroom', '파출소': 'Police Box', '여객터미널': 'Ferry Terminal', '등대': 'Lighthouse', '전망 포인트': 'Viewpoint', '낚시터': 'Fishing Spot', '시장': 'Market', '관광안내소': 'Tourist Info', '주유소': 'Gas Station',
   '거래하기': 'Trade', '편의점': 'Convenience Store', '식자재마트': 'Grocery Mart', '직판장': 'Fish Market', '음식점': 'Restaurant', '카페': 'Cafe', '주점': 'Pub',
 
@@ -609,6 +610,11 @@ export const EN_RULES: Rule[] = [
   [/^약 ([\d.]+)(m|km) · (북동|북서|남동|남서|동|서|남|북)쪽$/, (m) => `About ${m[1]} ${m[2]} ${({ 동: 'east', 서: 'west', 남: 'south', 북: 'north', 북동: 'northeast', 북서: 'northwest', 남동: 'southeast', 남서: 'southwest' } as Record<string, string>)[m[3]] ?? ''}`],
   [/^이 자리에 (\d+)곳$/, '$1 places here'],
   [/^외 (\d+)곳$/, '+$1 more'],
+  // 201차 — 가게 영업 상태
+  [/^영업 중 · (\d\d:\d\d)까지$/, 'Open · until $1'],
+  [/^곧 마감 · (\d\d:\d\d)까지$/, 'Closing soon · until $1'],
+  [/^영업 전 · (\d\d:\d\d) 개점$/, 'Not open yet · opens $1'],
+  [/^영업 종료 · 내일 (\d\d:\d\d) 개점$/, 'Closed · opens $1 tomorrow'],
   // 187차 — 「조피볼락(우럭) (28cm)」: 크기 꼬리를 먼저 떼야 별칭 괄호까지 한 이름으로 번역된다
   [/^(.+?) \((\d+(?:\.\d+)?)cm\)$/, (m, tr) => `${tr(m[1])} (${m[2]}cm)`],
   // 1인칭 파이팅 게이지 줄 · 금지체장 방생 팝업(소수 cm · 어종명 번역) · 요리창 머리(뒤의 「(.+) 매운탕」 규칙이 먼저 삼켰다)

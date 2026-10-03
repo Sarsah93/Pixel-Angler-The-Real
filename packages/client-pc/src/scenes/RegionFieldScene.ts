@@ -159,7 +159,7 @@ import { MarketStore, type MarketBranch } from '../store/MarketStore.js';
 import { InventoryStore, InvItem } from '../store/InventoryStore.js';
 import { CoolerStore } from '../store/CoolerStore.js';
 import { DiscoveryStore } from '../store/DiscoveryStore.js';
-import { BuildingKind, BUILDING_LABEL, BUILDING_GOODS, BUILDING_KIND_CYCLE, SHOP_CATALOG, ShopEntry } from '../data/ShopCatalog.js';
+import { BuildingKind, BUILDING_LABEL, BUILDING_GOODS, BUILDING_HOURS, BUILDING_KIND_CYCLE, SHOP_CATALOG, ShopEntry } from '../data/ShopCatalog.js';
 
 interface RegionFieldInit {
   region: string;
@@ -1763,6 +1763,7 @@ export class RegionFieldScene extends Phaser.Scene {
           label: shopName,
           sub: shopName === BUILDING_LABEL[kind] ? undefined : BUILDING_LABEL[kind],
           goods: BUILDING_GOODS[kind],
+          hours: BUILDING_HOURS[kind],   // 201차 — 카드에 지금 열림·닫힘
         });
       }
       else if ((poi.name ?? '') !== '' || RegionFieldScene.POI_LABEL[poi.type] !== undefined) {
@@ -4958,8 +4959,8 @@ export class RegionFieldScene extends Phaser.Scene {
       const npcSub = npcDef ? (getLocale() === 'en' ? npcDef.roleEn : npcDef.roleKo) : undefined;
       markers.push(mk
         ? { wx: n.x, wy: n.y - 12, icon: mk, priority: mk === 'mm_ready' ? 3 : 2, label: npcName, sub: npcSub,
-          status: mk === 'mm_ready' ? 'ready' : 'quest' }
-        : { wx: n.x, wy: n.y - 12, icon: 'mm_npc', priority: 2, label: npcName, sub: npcSub });
+          status: mk === 'mm_ready' ? 'ready' : 'quest', moves: true }
+        : { wx: n.x, wy: n.y - 12, icon: 'mm_npc', priority: 2, label: npcName, sub: npcSub, moves: true });
     }
     // 155차 — 전체 지도에서 찍은 핀은 미니맵에도 (청록 다이아)
     const pin = MapPinStore.get(this.region);
