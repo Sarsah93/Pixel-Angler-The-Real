@@ -71,6 +71,7 @@ import { applyScreenFixed } from '../ui/DraggablePanel.js';
 import { CoolerPanel } from '../ui/CoolerPanel.js';
 import { CoolerSwapPanel } from '../ui/CoolerSwapPanel.js';
 import { ConfirmDialog } from '../ui/Dialogs.js';
+import { tagUiRect } from '../ui/ScreenReserve.js';
 import { InventoryPanel } from '../ui/InventoryPanel.js';
 import { ItemDetailPanel } from '../ui/ItemDetailPanel.js';
 import { GuidePanel } from '../ui/GuidePanel.js';
@@ -396,8 +397,6 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   // ── 가이드/이펙트 (2026-07-23 — 통합 가이드 허브로 일원화) ──
   /** 통합 가이드 허브 (파이트·회수·밑밥·회뜨기 — GuidePanel, 구 텍스트 가이드 대체) */
   private guideHub?: GuidePanel;
-  /** 하단 상태별 조작 가이드 바 */
-  private controlBarText!: Phaser.GameObjects.Text;
   /** 입질 단계 전환 감지용 (이펙트 1회 발동) */
   private prevStage: number | null = null;
   /** 조류 존 전환 감지용 (토스트 1회) */
@@ -608,6 +607,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.buildRetrieveGroup();                        // 회수 세트 컨테이너 (depth 35)
     this.rodG = this.add.graphics().setDepth(60);
     this.panelG = this.add.graphics().setDepth(85);   // 수심 모식도 — 낚싯대 위
+    tagUiRect(this.panelG, 'fp.depthPanel', DP_X, DP_Y, DP_W, DP_H);   // 199차 — 겹침 감사가 볼 수 있게
     this.buildUi();
 
     // 입력
@@ -628,6 +628,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       if (this.guideHub) { this.closeGuideHub(); return; }
       if (this.invPanel) { this.closeFpInventory(); return; }
       if (this.coolerPanel) {
+        // 199차 — 쿨러 창 안의 확인 창·메뉴·고르기부터 닫는다(창째 닫지 않는다)
+        if (this.coolerPanel.onEscIntercept()) return;
         // 강제 방생 모드는 ESC로 닫을 수 없다 — 방생을 끝내야 진행
         if (!this.coolerPanel.lockedOpen) this.closeCoolerPanel();
         return;
@@ -672,7 +674,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
 
     // ── 가이드/이펙트 계층 (2026-07-19) ──
     this.vignetteG = this.add.graphics().setDepth(99);
-    this.buildControlBar();
+    // 199차 — 하단 조작 안내 띠(「우클릭 챔질 · 좌클릭 릴링 · …」)는 R11(창에 조작 안내 금지)로 지웠다.
+    //   조작은 상황 가이드(회수·입질·파이트·밑밥 — 첫 상황에서 게임을 멈추고 연다)와 F1 가이드북이 알려 준다.
     this.buildHelpButton();
     this.buildGuideBookButton();
     this.buildChumGuideButton();
@@ -691,39 +694,6 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   // ═══════════════════════════════════════════════════
   // 온보딩 가이드 / 도움말 (첫 진입 튜토리얼 + F1 재열람)
   // ═══════════════════════════════════════════════════
-  /** 하단 상태별 조작 가이드 바 — 상황에 맞는 키만 노출 */
-  private buildControlBar(): void {
-    // 쿨러(뚜껑 상단 ≈ GAME_HEIGHT-110)와 겹치지 않게 위로 띄움 (2026-07-20 가시성 개선)
-    const bg = this.add.graphics().setDepth(94);
-    bg.fillStyle(0x0a1628, 0.78);
-    bg.fillRoundedRect(GAME_WIDTH / 2 - 330, GAME_HEIGHT - 152, 660, 22, 4);
-    this.controlBarText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 141, '', {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#9fd0e4',
-    }).setOrigin(0.5).setDepth(95);
-    this.refreshControlBar();
-  }
-
-  /** 상태별 조작 바 내용 갱신 (update 루프에서 상태 변화 시 호출) */
-  private refreshControlBar(): void {
-    if (!this.controlBarText) return;
-    let text: string;
-    if (this.fpState === 'fighting') {
-      text = this.spoolKey?.isDown
-        ? '줄 주기 중 — 고기가 원하는 방향으로 달립니다. 텐션이 빠지면 R을 떼고 다시 감으세요'
-        : '좌클릭 릴링 · ←/→ 로드 스티어 · ↑ 버티기 · R 줄 주기(텐션 급락·거리 손실) — 텐션 30~80';
-    } else if (this.biteSeq.active || this.pendingFish) {
-      text = '입질 중! 초릿대가 크게 휘는 3단계에 우클릭 챔질 (1단계 5% · 2단계 20% · 3단계 100%)';
-    } else {
-      text = this.spoolKey?.isDown
-        ? '스풀 개방 — 원줄이 나갑니다(전유동·흘림). 떼면 다시 잠기고 회수할 수 있습니다'
-        // 149차 구멍치기 — 흘릴 거리가 없다. 횡이동·뒷줄견제·밑밥 리드는 안내하지 않는다.
-        : this.cfg.hole
-          ? '우클릭 챔질 · ↑ 들어올리기(고패질) · 좌클릭 릴링 · R 줄 주기(밑걸림) · I 인벤 · F1 도움말'
-          : '우클릭 챔질 · 좌클릭 릴링 · R 줄 주기(흘림) · ←/→ 채비 횡이동 · ↑ 리프트 · H 뒷줄견제 · C 밑밥 · I 인벤 · F1 도움말';
-    }
-    if (this.controlBarText.text !== text) this.controlBarText.setText(text);
-  }
-
   /** 도움말(?) 버튼 — 로드 반대편 하단(릴이 가려지지 않도록) */
   private buildHelpButton(): void {
     const bx = this.rodSide === 'right' ? 200 : GAME_WIDTH - 200;
@@ -926,7 +896,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     if (conf.shake > 0) this.cameras.main.shake(140 + stage * 40, conf.shake);
     if (stage === 3) {
       // 187차 — y 168 → 196: 조경지대 진입 안내(y 148 · 높이 ≈29)와 겹치지 않게 그 아래로
-      const now = this.add.text(GAME_WIDTH / 2, 196, '지금 챔질! (우클릭)', {
+      const now = this.add.text(GAME_WIDTH / 2, 196, '지금 챔질!', {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '22px', color: '#ff5a4a', fontStyle: 'bold',
         stroke: '#0a1628', strokeThickness: 5,
       }).setOrigin(0.5).setDepth(96).setScale(0.6);
@@ -1037,7 +1007,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.cameras.main.shake(180, 0.004);
     this.playHookUpEffect();
     this.prevStage = null;
-    this.stateText.setText('챔질 성공! 좌클릭 릴링 · ←/→ 로드 스티어(+릴링=견인) · ↑ 버티기 — 텐션 30~80!');
+    this.stateText.setText('챔질 성공! 텐션을 30~80 사이로 지키세요');   // 199차 — 키 안내는 파이트 가이드로
 
     // 최초 파이팅 — 파이트 튜토리얼(게임 정지 · 계속하기 · 다시 표시 안 함)
     if (!GameState.getFlag('guideSeen.fight')) {
@@ -1228,7 +1198,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     }
     if (sp.spooled && this.time.now - this.spoolWarnedAt > 4000) {
       this.spoolWarnedAt = this.time.now;
-      this.flashState('스풀이 바닥났습니다 — R을 떼고 회수하세요');
+      this.flashState('스풀이 바닥났습니다 — 더는 줄을 줄 수 없습니다');
     }
   }
 
@@ -1600,6 +1570,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.uiG = this.add.graphics().setDepth(80);
     // 좌측 하단 수평뷰(top-down plan) — 정보 텍스트는 좌상단 (v2.1 재배치)
     this.planG = this.add.graphics().setDepth(80);
+    tagUiRect(this.planG, 'fp.planView', PLAN_X, PLAN_Y, PLAN_W, PLAN_H);   // 199차 — 겹침 감사
     this.add.text(24, 413, '수평뷰 (위에서 본 평면)', {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#7a98ac', fontStyle: 'bold',
     }).setDepth(81);
@@ -1698,7 +1669,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     g.strokeRoundedRect(-24, -52, 48, 10, 4);
     cooler.add(g);
 
-    const catchLbl = this.add.text(-85, -22, '어창 (클릭해서 열기)', {
+    const catchLbl = this.add.text(-85, -22, '어창', {   // 199차 — '(클릭해서 열기)' 안내 글 삭제(R11)
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#cfe8ff', fontStyle: 'bold',
     }).setOrigin(0.5);
     this.coolerCatchText = this.add.text(-85, 2, '0마리', {
@@ -1973,7 +1944,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.renderRigVisuals();
     this.renderPlanView();
     this.renderRod();
-    this.refreshControlBar();
+    this.refreshSpoolState();
     this.renderTensionVignette();
     this.distText?.setText(`수면 거리 ${this.distM.toFixed(1)}m · ${influence.label}`);
   }
@@ -2382,8 +2353,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
         stageTimeScale: InventoryStore.getBiteFeedbackMult(),
       });
       this.stateText.setText(this.surfMode
-        ? '입질 감지! 초릿대 끝을 보고 우클릭으로 챔질하세요'
-        : '입질 감지! 초릿대를 보고 우클릭으로 챔질하세요');
+        ? '입질 감지! 초릿대 끝을 지켜보세요'
+        : '입질 감지! 초릿대를 지켜보세요');
     }
   }
 
@@ -2831,7 +2802,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
           this.fleeLatM + tide.x * 0.35 * dt, -TUNING.fightDist.latMaxM, TUNING.fightDist.latMaxM);
         if (sp.spooled && this.time.now - this.spoolWarnedAt > 4000) {
           this.spoolWarnedAt = this.time.now;
-          this.flashState('스풀이 바닥났습니다 — R을 떼고 버티세요');
+          this.flashState('스풀이 바닥났습니다 — 더는 줄을 줄 수 없습니다');
         }
       }
     }
@@ -3500,10 +3471,22 @@ export class FirstPersonFishingScene extends Phaser.Scene {
    * 드리프트 상태 조작 안내. 149차 — 구멍치기는 **흘리는 낚시가 아니다**:
    * 발밑 수직이라 횡이동·뒷줄견제·밑밥 리드가 의미 없고, 대신 들었다 내리는 고패질이 전부다.
    */
+  /** 199차 — 스풀(베일)을 열고 닫는 순간 상태 줄만 바꾼다(구 하단 조작 띠가 하던 상황 알림) */
+  private lastSpoolOpen = false;
+  private refreshSpoolState(): void {
+    const open = !!this.spoolKey?.isDown && (this.fpState === 'drift' || this.fpState === 'fighting');
+    if (open === this.lastSpoolOpen) return;
+    this.lastSpoolOpen = open;
+    if (open) this.stateText.setText(this.fpState === 'fighting' ? '줄 주는 중 — 고기가 원하는 방향으로 달립니다' : '스풀 개방 — 원줄이 나갑니다');
+    else if (this.fpState === 'fighting') this.stateText.setText('파이팅 — 텐션을 30~80 사이로 지키세요');
+    else if (this.fpState === 'drift') this.stateText.setText(this.driftHintText());
+  }
+
   private driftHintText(): string {
     const hole = this.cfg.hole;
-    if (hole) return `구멍치기 (${hole.labelKo}) — 우클릭 챔질 · ↑ 들어올리기 · 좌클릭 릴링 · 블록에 걸리면 R 줄 주기`;
-    return '채비 흘리는 중 — 우클릭 챔질 · R 줄 주기 · ←/→ 채비이동 · H 뒷줄견제 · C 밑밥 · ↑ 리프트';
+    // 199차 — 상태 줄은 「지금 무슨 상황인가」만 말한다(키 안내는 R11 — 회수 가이드·F1)
+    if (hole) return `구멍치기 (${hole.labelKo})`;
+    return '채비 흘리는 중';
   }
 
   // ═══════════════════════════════════════════════════
@@ -4674,7 +4657,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   private flashState(msg: string): void {
     this.stateText.setText(msg);
     this.time.delayedCall(2200, () => {
-      if (this.fpState === 'drift') this.stateText.setText(this.cfg.hole ? `구멍치기 (${this.cfg.hole.labelKo}) — ↑ 들어올리기` : '채비 흘리는 중 — H 뒷줄견제 · C 밑밥');
+      if (this.fpState === 'drift') this.stateText.setText(this.driftHintText());
     });
   }
 

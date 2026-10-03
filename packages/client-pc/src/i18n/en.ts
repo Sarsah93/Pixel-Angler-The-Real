@@ -67,7 +67,7 @@ const EN_BASE: Record<string, string> = {
   '돌아가기': 'Back', '해변': 'beach', '사석': 'riprap', '안벽': 'quay', '방파제 상판': 'breakwater deck', '테트라포드': 'tetrapods', '테트라포드 구멍': 'tetrapod hole', '배': 'boat',
   '쿨러 정리': 'Sort the cooler', '방금 낚은 고기': 'Just caught', '놓아줌': 'Release', '정리하고 넣기': 'Swap & store', '들어가는 만큼만 넣기': 'Store what fits',
   // 198차 — 쿨러 정리 창 재작성 · 방생 확인
-  '방금 낚음': 'Just caught', '놓아주기': 'Release', '넣고 마치기': 'Store & finish', '놓아주고 넣기': 'Release & store',
+  '방금 낚음': 'Just caught', '여러 마리 고르기': 'Select several', '놓아주기': 'Release', '넣고 마치기': 'Store & finish', '놓아주고 넣기': 'Release & store',
   '방금 낚은 고기를 모두 방생하였습니다.': 'Released everything you just caught.',
   '구멍이 좁아 뜰채를 넣을 수 없었습니다.': 'The hole was too narrow for the landing net.',
   '확인': 'OK', '취소': 'Cancel', '예': 'Yes', '아니오': 'No', '닫기': 'Close', '뒤로': 'Back', '계속하기': 'Continue',
@@ -330,6 +330,17 @@ const EN_BASE: Record<string, string> = {
   '세트 전체가 한 덩어리로 움직여요.': 'The whole set moves as one.',
   '발앞 0.5m까지 감으면 채비가 회수되고 탑다운(필드) 화면으로 복귀해요. 낚시를 마치거나 자리를 옮길 때 사용.': 'Reel to 0.5m and the rig is retrieved; you return to the top-down field. Use it to finish or move spots.',
   '입질 없이 자리 이동할 때도 회수부터.': 'Retrieve first even when moving without a bite.',
+  '←/→ 채비 횡이동(조류 연동) · ↑ 리프트(채비를 위로) · H 뒷줄견제(그 지점에 채비 홀드) · R 줄 주기(흘림) · C 밑밥 · I 인벤토리 · F1 이 가이드북. 조류·수심에 맞춰 채비를 다뤄요.':
+    '←/→ move the rig sideways (with the current) · ↑ lift (raise the rig) · H line hold (hold the rig there) · R give line (drift) · C chum · I inventory · F1 this guidebook. Work the rig to suit the current and depth.',
+  '구멍치기 자리에서는 ↑가 고패질(들었다 놓기)이고, 블록에 걸리면 R로 줄을 줘요.': 'At a hole-fishing spot, ↑ jigs the rig up and down; if it snags on a block, give line with R.',
+  // 199차 — 1인칭 상태 줄(키 안내 제거)
+  '챔질 성공! 텐션을 30~80 사이로 지키세요': 'Hooked! Keep the tension between 30 and 80',
+  '파이팅 — 텐션을 30~80 사이로 지키세요': 'Fighting — keep the tension between 30 and 80',
+  '줄 주는 중 — 고기가 원하는 방향으로 달립니다': 'Giving line — the fish runs where it wants',
+  '스풀 개방 — 원줄이 나갑니다': 'Bail open — line is paying out',
+  '스풀이 바닥났습니다 — 더는 줄을 줄 수 없습니다': 'Out of line — you cannot give any more',
+  '입질 감지! 초릿대를 지켜보세요': 'Bite! Watch the rod', '입질 감지! 초릿대 끝을 지켜보세요': 'Bite! Watch the rod tip',
+  '채비 흘리는 중': 'Drifting', '지금 챔질!': 'Strike now!',
   'H 뒷줄견제(그 지점에 채비 홀드) · ↑ 리프트(채비를 위로) · R 줄 주기(흘림). 조류·수심에 맞춰 채비를 다뤄요.': 'H line hold (hold the rig there) · ↑ lift (raise the rig) · R give line (drift). Work the rig to suit the current and depth.',
   '뒷줄견제는 속조류 정렬만 영향받는 홀드예요.': 'Line hold is a hold affected only by sub-current alignment.',
   '어군을 모으고 미끼와 겹치게 흘려 입질을 만드는 떡밥이에요. 밑밥과 미끼가 만나는 타이밍이 핵심.': 'Groundbait that gathers fish and drifts over your bait to trigger bites. Timing the overlap is the key.',
@@ -399,7 +410,7 @@ const EN_BASE: Record<string, string> = {
   '트위칭! 루어가 튀어오릅니다': 'Twitch! The lure darts up', '제압 성공! 지친 고기를 릴링으로 발앞까지 끌어오세요': 'Subdued! Reel the tired fish to your feet',
   '◀  ← 키 + 릴링': '◀  ← key + reel', '→ 키 + 릴링  ▶': '→ key + reel  ▶', '▲ 릴링 유지': '▲ keep reeling', '구멍찌': 'Hole float', '수평뷰 (위에서 본 평면)': 'Plan view (from above)',
   '채비 흘리는 중 — 우클릭 챔질 · ←/→ 채비이동 · H 뒷줄견제 · C 밑밥 · ↑ 리프트': 'Drifting — RMB hookset · ←/→ move rig · H line hold · C chum · ↑ lift', '수심 정보': 'Depth Info', '그만하기': 'Stop',
-  '어창 (클릭해서 열기)': 'Fish hold (click to open)', '0마리': '0 fish', '밑밥 (C)': 'Chum (C)', '쿨러 없음': 'No cooler', '사용 불가': 'Unavailable', '비어있음': 'Empty',
+  '어창 (클릭해서 열기)': 'Fish hold (click to open)', '어창': 'Fish hold', '0마리': '0 fish', '밑밥 (C)': 'Chum (C)', '쿨러 없음': 'No cooler', '사용 불가': 'Unavailable', '비어있음': 'Empty',
   '채비 조립은 탑다운 U 활용 창에서 가능합니다': 'Assemble rigs in the top-down U window', '쿨러가 없어 밑밥을 쓸 수 없습니다 — 기타 아이템에 쿨러가 필요합니다': 'No cooler, so no chum — you need a cooler in Misc items',
   '밑밥이 비어 있습니다 — 탑다운 U 밑밥 품질에서 배합하세요': 'Chum is empty — mix it in U › Chum in the top-down view', '밑밥 투척! 예측 궤적과 동조율을 확인하세요': 'Chum thrown! Watch the predicted drift and sync',
   '루어를 회수했습니다': 'Lure retrieved', '채비를 회수했습니다': 'Rig retrieved', '뒷줄견제! 채비를 세워 그 지점에 홀드합니다 (리액션 찬스)': 'Line hold! The rig stands and holds there (reaction chance)',
@@ -709,6 +720,7 @@ export const EN_RULES: Rule[] = [
     (m) => `[Hole fishing] Lowering the rig into the ${m[1] === '테트라포드' ? 'tetrapod' : 'riprap'} gap — hole depth ${m[2]}m`],
   [/^구멍치기 \((테트라포드|사석)\) — 우클릭 챔질 · ↑ 들어올리기 · 좌클릭 릴링 · 블록에 걸리면 R 줄 주기$/,
     (m) => `Hole fishing (${m[1] === '테트라포드' ? 'tetrapods' : 'riprap'}) — right-click hookset · ↑ lift · left-click reel · R gives line when snagged`],
+  [/^구멍치기 \((테트라포드|사석)\)$/, (m) => `Hole fishing (${m[1] === '테트라포드' ? 'tetrapods' : 'riprap'})`],   // 199차 — 상태 줄
   [/^구멍치기 \((테트라포드|사석)\) — ↑ 들어올리기$/,
     (m) => `Hole fishing (${m[1] === '테트라포드' ? 'tetrapods' : 'riprap'}) — ↑ lift`],
   [/^\[안전\] 테트라포드에서 미끄러졌습니다 \(체력 -(\d+)\)\. 파고가 높으면 올라서지 마세요\.$/,
@@ -928,6 +940,11 @@ export const EN_RULES: Rule[] = [
       .replace(/^방금 낚은 (\d+)마리 방생$/, 'released $1 just caught')
       .replace(/^쿨러의 (\d+)마리 방생$/, 'released $1 from the cooler')).join(' · ')}.`],
   [/^(항구 편의점|식자재마트|수산물 직판장|항구 식당|방파제 카페|항구 약국|생활용품점 사이소|포구 주점) · (.+)$/, (m, tr) => `${tr(m[1])} · ${tr(m[2])}`],
+  // 199차 — 쿨러 창(B) 여러 마리 고르기 · 한 마리 놓아주기 확인
+  [/^놓아줄 고기 (\d+)마리$/, 'Fish to release: $1'],
+  [/^(\d+)마리를 놓아주었습니다\.$/, 'Released $1 fish.'],
+  [/^이 고기를 놓아줄까요\?\n(.+) ([\d.]+)cm \/ ([\d.]+)kg\n놓아준 고기는 되돌릴 수 없습니다\.$/,
+    (m, tr) => `Release this fish?\n${tr(m[1])} ${m[2]}cm / ${m[3]}kg\nReleased fish can't be taken back.`],
   // 198차 — 쿨러 정리 창 · 방생 확인 창(고기 목록은 「이름 길이cm」를 ' · '로 잇고 줄을 바꾼다)
   [/^놓아주기 \((\d+)\)$/, 'Release ($1)'],
   [/^고른 고기 (\d+)마리를 놓아줄까요\?\n([\s\S]*)\n놓아준 고기는 되돌릴 수 없습니다\.$/,

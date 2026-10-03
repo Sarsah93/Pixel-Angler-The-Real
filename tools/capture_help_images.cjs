@@ -142,7 +142,9 @@ async function calmHome(page, phase = 'day') {
 const TOUR_IDS = ['inventory', 'equipment', 'status', 'journal', 'license', 'fullmap', 'skill', 'shop', 'trade',
   'utilization', 'cooler', 'cooking', 'codex', 'butchery', 'worldmap', 'home_first_steps',
   'home_fridge', 'home_wardrobe', 'home_shelf', 'home_decorate',
-  'home_aquarium', 'home_tide_table', 'home_calendar', 'home_fishprint'];
+  'home_aquarium', 'home_tide_table', 'home_calendar', 'home_fishprint',
+  // 196·198·199차 — 쿨러 정리 창 · 첫 캐스팅 말풍선
+  'cooler_swap', 'cooler_swap2', 'cast_first', 'cast_hole'];
 /** 188차 — 프롤로그(M1-01 앞 14목표) 행동 플래그 */
 const PROLOGUE_KEYS = ['box', 'rod', 'reel', 'photo', 'journal', 'squid', 'save', 'leave', 'well', 'status', 'map', 'arrive', 'buy', 'sell'];
 const PROLOGUE_BUY = ['line', 'hook', 'sinker', 'float', 'bait'];
@@ -851,7 +853,19 @@ const NO_ESCAPE = 'const __r = Math.random; Math.random = () => 0.999; try { STE
 group('fp', ['cast_aim', 'fp_views', 'spool', 'bite_s3', 'fp_fight', 'spool_fight', 'dragin_reel', 'catch_popup'], async (page) => {
   await castToFp(page, 'cast_aim');
   await cap(page, 'fp_views', async () => { await stepFp(page, 60); await page.waitForTimeout(400); });
-  await cap(page, 'spool', async () => { await stepFp(page, 200, 'fp.spoolKey.isDown = true;'); await page.waitForTimeout(300); });
+  await cap(page, 'spool', async () => {
+    await stepFp(page, 200, 'fp.spoolKey.isDown = true;');
+    // 199차 — 스풀 개방은 상태 줄이 알린다. 촬영 중 입질 알림이 덮었으면 다시 세운다
+    await page.evaluate(() => {
+      const fp = globalThis.__FP;
+      // 촬영 중 들어온 입질은 걷어 낸다(입질 알림·「지금 챔질!」이 상태 줄을 덮는다)
+      if (fp.biteSeq) fp.biteSeq.active = false;
+      fp.pendingFish = null;
+      for (const o of fp.children.list) if (o.type === 'Text' && /^(지금 챔질!|Strike now!)$/.test(o.__i18nSrc || o.text)) o.setVisible(false);
+      fp.lastSpoolOpen = false; fp.refreshSpoolState();
+    });
+    await page.waitForTimeout(300);
+  });
   await stepFp(page, 5, 'fp.spoolKey.isDown = false;');
   await cap(page, 'bite_s3', async () => {
     await page.evaluate(() => {
@@ -865,10 +879,10 @@ group('fp', ['cast_aim', 'fp_views', 'spool', 'bite_s3', 'fp_fight', 'spool_figh
         if (fp.prevStage !== 3) fp.biteSeq.reset();
       }
     });
-    await pinFpText(page, '지금 챔질! (우클릭)', 1);
+    await pinFpText(page, '지금 챔질!', 1);
     await page.waitForTimeout(250);
   });
-  await pinFpText(page, '지금 챔질! (우클릭)', 0);
+  await pinFpText(page, '지금 챔질!', 0);
   await cap(page, 'fp_fight', async () => {
     await page.evaluate((NO_ESCAPE) => {
       const fp = globalThis.__FP;

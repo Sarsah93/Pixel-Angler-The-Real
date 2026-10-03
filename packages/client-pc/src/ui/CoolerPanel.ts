@@ -66,6 +66,11 @@ export class CoolerPanel extends DraggablePanel {
   /** 신선도/매질 변화 감지용 시그니처 — 변하면 그리드 재렌더 */
   private lastSig = '';
 
+  // ── 199차 — 여러 마리 고르기(한꺼번에 놓아주기) ──
+  /** 고르는 중인가 — 칸을 누르면 고르고/풀고, 아래 단추가 [놓아주기 (N)] · [취소]로 바뀐다 */
+  private selectMode = false;
+  private selected = new Set<number>();
+
   // ── 어획 드래그 앤 드랍 상태 (셀 → 패널 밖 드랍 = 인벤토리 이송) ──
   private dragIdx: number | null = null;
   private dragStart = { x: 0, y: 0 };
@@ -177,7 +182,7 @@ export class CoolerPanel extends DraggablePanel {
           wait: () => CoolerStore.medium !== 'none',
         },
         {
-          text: '고기를 누르면 자세히 보기 · 가방으로 옮기기 · 놓아주기를 고를 수 있다.',
+          text: '고기를 누르면 자세히 보기 · 가방으로 옮기기 · 놓아주기를 고를 수 있다. 「여러 마리 고르기」로 여러 마리를 한꺼번에 놓아줄 수도 있다.',
           target: () => this.gridRectScreen(),
           skipIf: () => CoolerStore.count() === 0,
         },
@@ -233,16 +238,18 @@ export class CoolerPanel extends DraggablePanel {
 
     const need = this.cfg.force ? (this.cfg.requiredReleases?.() ?? 0) : 0;
 
-    // 상단 안내 줄 — 매질 상태별 규칙 설명
+    // 상단 안내 줄 — 매질 상태별 규칙 설명 (199차 — 고르는 중에는 고른 수)
     const info = this.scene.add.text(PANEL_W / 2, this.contentTop + 10,
-      this.cfg.force
+      this.selectMode
+        ? `놓아줄 고기 ${this.selected.size}마리`
+        : this.cfg.force
         ? (need > 0
           ? `인벤토리 공간 부족 — ${need}마리 이상 방생해야 합니다`
           : '방생 완료 — 계속 진행할 수 있습니다')
         : `보관 ${CoolerStore.count()} / ${COOLER_CAPACITY}마리 · ${this.mediumInfoLine()}`,
       {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', fontStyle: 'bold',
-        color: this.cfg.force ? (need > 0 ? '#ff9a6a' : '#4af2a1') : '#9fd0e4',
+        color: this.selectMode ? '#ffb0a4' : this.cfg.force ? (need > 0 ? '#ff9a6a' : '#4af2a1') : '#9fd0e4',
       }).setOrigin(0.5);
     clampTextWidth(info, PANEL_W - 20);   // 188차 — 영문 매질 안내가 창 좌우로 넘치던 것
     this.content.add(info);
@@ -254,10 +261,11 @@ export class CoolerPanel extends DraggablePanel {
       const cy = gy + Math.floor(i / 3) * (CELL + GAP);
       const fish = CoolerStore.get(i);
 
+      const sel = !!fish && this.selectMode && this.selected.has(i);
       const sg = this.scene.add.graphics();
-      sg.fillStyle(fish ? 0x0e2a3e : 0x0e1c2d, 0.95);
+      sg.fillStyle(sel ? 0x123a56 : fish ? 0x0e2a3e : 0x0e1c2d, 0.95);
       sg.fillRoundedRect(cx, cy, CELL, CELL, 6);
-      sg.lineStyle(1.5, fish ? 0x2f6d9a : 0x22384e, 0.9);
+      sg.lineStyle(sel ? 3 : 1.5, sel ? 0x5cd0ff : fish ? 0x2f6d9a : 0x22384e, sel ? 1 : 0.9);
       sg.strokeRoundedRect(cx, cy, CELL, CELL, 6);
       this.content.add(sg);
       if (!fish) continue;
@@ -282,6 +290,8 @@ export class CoolerPanel extends DraggablePanel {
       const hit = this.scene.add.rectangle(cx + CELL / 2, cy + CELL / 2, CELL, CELL, 0xffffff, 0.001)
         .setInteractive({ useHandCursor: true });
       hit.on('pointerdown', (p: Phaser.Input.Pointer) => {
+        // 199차 — 고르는 중이면 누를 때마다 고르고/풀고(드래그·메뉴 없음). Shift+클릭은 바로 고르기 시작
+        if (this.selectMode || (p.event as MouseEvent | undefined)?.shiftKey) { this.toggleSelect(i); return; }
         // 우클릭 = 즉시 컨텍스트 메뉴 / 좌클릭 = 드래그 시작 후보
         //  (드래그 없이 떼면 메뉴 — 좌클릭 접근성 유지, 드래그하면 인벤토리 이송)
         if (p.rightButtonDown()) {
@@ -295,8 +305,10 @@ export class CoolerPanel extends DraggablePanel {
       this.content.add(hit);
     }
 
-    // 하단: 매질 버튼 3개 (일반 모드) / 강제 모드 진행 버튼
-    if (this.cfg.force) {
+    // 하단: 고르는 중 [놓아주기 (N)]·[취소] / 매질 버튼 3개 (일반 모드) / 강제 모드 진행 버튼
+    if (this.selectMode) {
+      this.buildSelectButtons(gy + 3 * CELL + 2 * GAP + 12);
+    } else if (this.cfg.force) {
       if (need <= 0) {
         const by = PANEL_H - 34;
         const bg = this.scene.add.graphics();
@@ -446,6 +458,7 @@ export class CoolerPanel extends DraggablePanel {
       { label: '상세보기', enabled: true, onClick: () => this.openDetail(idx, fish) },
       { label: '인벤토리로 넣기', enabled: true, onClick: () => this.transferToInventory(idx) },
       { label: '방생하기', enabled: true, onClick: () => this.confirmRelease(idx, fish) },
+      { label: '여러 마리 고르기', enabled: true, onClick: () => this.toggleSelect(idx) },
       { label: '손질하기 (준비중)', enabled: false },
     ];
     const mh = rows.length * rowH + headerH + 10;
@@ -573,11 +586,97 @@ export class CoolerPanel extends DraggablePanel {
     this.childPopup = panel;
   }
 
+  // ── 199차 — 여러 마리 고르기 · 한꺼번에 놓아주기 ──────────────────
+
+  /** 칸 하나를 고르거나 풀기 — 고르는 중이 아니면 고르기를 시작한다 */
+  private toggleSelect(idx: number): void {
+    if (!CoolerStore.get(idx)) return;
+    this.closeCtxMenu();
+    this.selectMode = true;
+    if (this.selected.has(idx)) this.selected.delete(idx); else this.selected.add(idx);
+    this.renderBody();
+  }
+
+  private exitSelect(): void {
+    this.selectMode = false;
+    this.selected.clear();
+    this.renderBody();
+  }
+
+  /** 고르는 중 아래 단추 — [놓아주기 (N)] · [취소] (매질 단추 자리) */
+  private buildSelectButtons(by: number): void {
+    const bw = 150, bh = 36, gap = 10;
+    const x0 = PANEL_W / 2 - (bw * 2 + gap) / 2;
+    const n = this.selected.size;
+    const mk = (bx: number, label: string, on: boolean, fill: number, stroke: number, color: string, onClick: () => void): void => {
+      const bg = this.scene.add.graphics();
+      bg.fillStyle(on ? fill : 0x101a26, 0.95); bg.fillRoundedRect(bx, by, bw, bh, 5);
+      bg.lineStyle(1.5, on ? stroke : 0x2a3846, 0.95); bg.strokeRoundedRect(bx, by, bw, bh, 5);
+      const txt = this.scene.add.text(bx + bw / 2, by + bh / 2, label, {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', fontStyle: 'bold', color: on ? color : '#546a7c',
+      }).setOrigin(0.5);
+      const hit = this.scene.add.rectangle(bx + bw / 2, by + bh / 2, bw, bh, 0xffffff, 0.001).setInteractive({ useHandCursor: on });
+      if (on) {
+        hit.on('pointerover', () => txt.setColor('#ffffff'));
+        hit.on('pointerout', () => txt.setColor(color));
+        hit.on('pointerdown', onClick);
+      }
+      this.content.add([bg, txt, hit]);
+    };
+    mk(x0, n > 0 ? `놓아주기 (${n})` : '놓아주기', n > 0, 0x4a1a14, 0xff7a6a, '#ffb0a4', () => this.confirmReleaseSelected());
+    mk(x0 + bw + gap, '취소', true, 0x1f3045, 0x4a6a8a, '#9fd0e4', () => this.exitSelect());
+  }
+
+  /** 고른 고기 이름 목록 — 한 줄에 둘 · 최대 여섯 마리 + 「외 N마리」(정리 창과 같은 모양) */
+  private listLines(items: string[]): string {
+    const shown = items.slice(0, 6);
+    const rows: string[] = [];
+    for (let i = 0; i < shown.length; i += 2) rows.push(shown.slice(i, i + 2).join(' · '));
+    if (items.length > shown.length) rows.push(`외 ${items.length - shown.length}마리`);
+    return rows.join('\n');
+  }
+
+  private confirmReleaseSelected(): void {
+    const idxs = [...this.selected].filter((i) => !!CoolerStore.get(i)).sort((a, b) => a - b);
+    if (idxs.length === 0) return;
+    this.childPopup?.destroy();
+    const names = idxs.map((i) => { const f = CoolerStore.get(i)!; return `${f.nameKo} ${f.lengthCm}cm`; });
+    const dlg = new ConfirmDialog(
+      this.scene,
+      `고른 고기 ${names.length}마리를 놓아줄까요?\n${this.listLines(names)}\n놓아준 고기는 되돌릴 수 없습니다.`,
+      () => {
+        for (const i of idxs) CoolerStore.removeAt(i);
+        dlg.destroy();
+        this.childPopup = undefined;
+        this.selectMode = false;
+        this.selected.clear();
+        this.cfg.onChanged?.();
+        this.renderBody();
+        this.setStatus(`${idxs.length}마리를 놓아주었습니다.`);
+      },
+      () => { dlg.destroy(); this.childPopup = undefined; },
+      { yes: '놓아주기', no: '취소', danger: true },
+    );
+    this.scene.add.existing(dlg);
+    this.childPopup = dlg;
+  }
+
+  /**
+   * ESC 가로채기(필드 `closeTopPopup` · 1인칭 ESC) — 확인 창·상세보기가 떠 있으면 그것만, 고르는 중이면 고르기만 끝낸다.
+   * 처리했으면 true(쿨러 창은 그대로).
+   */
+  onEscIntercept(): boolean {
+    if (this.childPopup) { this.childPopup.destroy(); this.childPopup = undefined; return true; }
+    if (this.ctxMenu) { this.closeCtxMenu(); return true; }
+    if (this.selectMode) { this.exitSelect(); return true; }
+    return false;
+  }
+
   private confirmRelease(idx: number, fish: CoolerFish): void {
     this.childPopup?.destroy();
     const dlg = new ConfirmDialog(
       this.scene,
-      `정말 방생하시겠습니까?\n${fish.nameKo} ${fish.lengthCm}cm / ${(fish.weightG / 1000).toFixed(2)}kg`,
+      `이 고기를 놓아줄까요?\n${fish.nameKo} ${fish.lengthCm}cm / ${(fish.weightG / 1000).toFixed(2)}kg\n놓아준 고기는 되돌릴 수 없습니다.`,
       () => {
         CoolerStore.removeAt(idx);
         dlg.destroy();
@@ -586,6 +685,7 @@ export class CoolerPanel extends DraggablePanel {
         this.renderBody();
       },
       () => { dlg.destroy(); this.childPopup = undefined; },
+      { yes: '놓아주기', no: '취소', danger: true },
     );
     this.scene.add.existing(dlg);
     this.childPopup = dlg;

@@ -56,6 +56,11 @@ export const EN_TOUR: Record<string, string> = {
     'Right-click an item to see what you can do with it — "Details", "Eat", "Equip" and so on. Try right-clicking.',
   '손에 드는 도구는 「오른손 착용」 · 「왼손 착용」으로 바로 들 수 있다. 하나를 골라 착용해 보자.':
     'Hand tools can be held right away with "Equip (right hand)" or "Equip (left hand)". Pick one and equip it.',
+  // 199차 — 물가·구멍 자리 첫 캐스팅 말풍선(구 하단 조작 안내 글 대체)
+  '발밑 블록 틈에 채비를 내릴 수 있는 자리다. 좌클릭을 짧게 누르면 구멍치기, 길게 누르고 있으면 캐스팅이다.':
+    'You can lower your rig into the gap between the blocks here. A short left-click drops it into the hole; hold left-click to cast instead.',
+  '물가에서 좌클릭을 누르고 있으면 힘이 모인다. 마우스로 던질 방향을 잡고 손을 떼면 채비가 날아간다.':
+    'At the water, hold left-click to build power. Aim with the mouse and let go to cast your rig.',
   // 198차 — 쿨러 정리 창 재작성(고르기 → 놓아주기 확인 → 빈 칸에 넣기)
   '쿨러가 가득 찼을 때 여는 정리 창입니다. 맨 위가 방금 낚은 고기, 아래가 쿨러에 들어 있던 고기예요.':
     'This window opens when your cooler is full. The top row is what you just caught; below are the fish already in the cooler.',

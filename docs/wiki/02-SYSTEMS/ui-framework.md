@@ -114,7 +114,9 @@ dev 전용 문자열(순간이동 로그·맵 편집기·손질 dev 버튼)은 *
   통째로 덮었고, 방 액자는 상태 창 오른쪽 끝을 8px 덮었고, 월드맵 개발 도구 단추는 범례 제목을 덮었다.
 - 집 안처럼 필드 위에 `launch`된 씬은 필드 HUD가 **그대로 보인다**(일시정지 씬도 그린다). `ui/ScreenReserve.fieldReserved`로 HUD의
   현재 사각형(끌어 옮긴 위치 포함)을 받아 피한다. HUD에 상시 요소를 더하면 `RegionHud.occupiedRects()`에 등록한다.
-- 검수 = `tools/ui_overlap_audit.js`(부분 겹침 0) + 스크린샷. Graphics만으로 된 판은 경계가 없어 감사가 못 본다.
+- 검수 = `tools/ui_overlap_audit.js`(부분 겹침 0) + 스크린샷. Graphics만으로 된 판은 경계가 없어 감사가 못 본다 —
+  **199차부터 `tagUiRect(g, 이름, x, y, w, h)`로 화면 사각형을 달면 감사가 읽는다**(1인칭 수심 패널·평면도 · 월드맵 범례).
+  감사는 상호작용 없는 Image/Sprite(장식 구름)를 건너뛴다 — 상호작용 있는 그림은 그대로 본다.
 
 ### [197차] 데이터 없는 `scene.launch(key)`/`start(key)`는 지난번 데이터를 다시 넘긴다
 

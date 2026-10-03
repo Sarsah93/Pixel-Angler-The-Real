@@ -14,6 +14,7 @@
  */
 
 import Phaser from 'phaser';
+import { tagUiRect } from '../ui/ScreenReserve.js';
 import { GameState } from '../store/GameState.js';
 import {
   SPOT_DATABASE,
@@ -1462,6 +1463,7 @@ export class WorldMapScene extends Phaser.Scene {
     bgG.fillRoundedRect(lx - 10, LEGEND_TOP_Y, 132, LEGEND_ITEMS.length * 22 + 38, 4);
     bgG.lineStyle(1, 0x1f3d5a, 0.7);
     bgG.strokeRoundedRect(lx - 10, LEGEND_TOP_Y, 132, LEGEND_ITEMS.length * 22 + 38, 4);
+    tagUiRect(bgG, 'worldmap.legend', lx - 10, LEGEND_TOP_Y, 132, LEGEND_ITEMS.length * 22 + 38);   // 199차 — 겹침 감사
 
     const legendTitle = this.add.text(lx + 50, ly - 4, '낚시 유형', {
       fontFamily: '"Noto Sans KR", sans-serif',

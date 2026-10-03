@@ -94,7 +94,7 @@ import { addPixelIcon } from '../ui/PixelIcon.js';
 import type { MiniMarker, QuestTrackerEntry } from '../ui/RegionHud.js';
 import { TextInput } from '../ui/TextInput.js';
 import { MonologuePanel, OPENING_MONOLOGUE } from '../ui/MonologuePanel.js';
-import { GuideTour } from '../ui/GuideTour.js';
+import { GuideTour, maybeStartTour, tourSeen } from '../ui/GuideTour.js';
 import { PrologueCoach, type CoachStage } from '../ui/PrologueCoach.js';
 import {
   prologueKeyAllowed, markPrologue, syncPrologue, prologueRunning, prologueStepDone,
@@ -6430,19 +6430,47 @@ export class RegionFieldScene extends Phaser.Scene {
     if (this.nearBuilding) {
       this.promptText.setVisible(false);
     } else if (this.holeSpot && InventoryStore.getEquippedRod()) {
-      // 149차 — 블록 위에 서면 캐스팅보다 구멍치기가 먼저 안내된다(여기서 할 조법이다)
-      this.promptText.setText(
-        `${this.holeSpot.labelKo} — 좌클릭 짧게 = 구멍치기 (수심 ${this.holeSpot.depthM.toFixed(1)}m) · 길게 = 캐스팅`,
-      );
-      this.promptText.setVisible(true);
+      // 149차 — 블록 위에 서면 캐스팅보다 구멍치기가 먼저다(여기서 할 조법이다)
+      // 199차 — 하단 조작 안내 글(「좌클릭 짧게 = 구멍치기 · 길게 = 캐스팅」)은 R11로 지웠다 → 처음 한 번 말풍선
+      this.promptText.setVisible(false);
+      this.maybeCastTour(true);
     } else if (this.nearWater) {
       // 캐스팅 가능 조건 = **손에 낚싯대 착용** (퀵슬롯 선택은 무관 — 2026-08-05 개편)
-      const rodEquipped = !!InventoryStore.getEquippedRod();
-      this.promptText.setText(rodEquipped ? '좌클릭 유지 = 조준·차지 → 놓으면 캐스팅 (마우스로 각도 조절)' : '');
-      this.promptText.setVisible(rodEquipped);
+      // 199차 — 「좌클릭 유지 = 조준·차지 → …」 하단 글 삭제(R11) → 처음 한 번 말풍선
+      this.promptText.setVisible(false);
+      if (InventoryStore.getEquippedRod()) this.maybeCastTour(false);
     } else {
       this.promptText.setVisible(false);
     }
+  }
+
+  /**
+   * 199차 — 물가·구멍 자리 첫 캐스팅 체험 말풍선(구 하단 조작 안내 글 대체 · R11).
+   * 플레이어 곁에 띄우고 차지를 시작하면 끝난다. 물가를 벗어나면 접히고(본 것으로 치지 않음) 다음에 다시 뜬다.
+   */
+  private maybeCastTour(hole: boolean): void {
+    const id = hole ? 'cast_hole' : 'cast_first';
+    if (GuideTour.busy || tourSeen(id) || this.uiBlocked) return;
+    maybeStartTour(this, () => ({
+      id,
+      alive: () => this.sys.isActive() && (hole ? !!this.holeSpot : this.nearWater) && !this.castBusy,
+      steps: [{
+        text: hole
+          ? '발밑 블록 틈에 채비를 내릴 수 있는 자리다. 좌클릭을 짧게 누르면 구멍치기, 길게 누르고 있으면 캐스팅이다.'
+          : '물가에서 좌클릭을 누르고 있으면 힘이 모인다. 마우스로 던질 방향을 잡고 손을 떼면 채비가 날아간다.',
+        passive: true,
+        target: () => this.playerScreenRect(),
+        wait: () => this.charging || this.castBusy,
+      }],
+    }));
+  }
+
+  /** 플레이어 둘레 화면 사각형(말풍선이 짚는 자리) */
+  private playerScreenRect(): Phaser.Geom.Rectangle {
+    const cam = this.cameras.main;
+    const sx = (this.playerBody.x - cam.worldView.x) * cam.zoom;
+    const sy = (this.playerBody.y - cam.worldView.y) * cam.zoom;
+    return new Phaser.Geom.Rectangle(sx - 30, sy - 60, 60, 76);
   }
 
   private updateCharge(): void {

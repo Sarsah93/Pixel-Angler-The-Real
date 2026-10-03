@@ -46,8 +46,8 @@ export const EN_TOUR_PANELS2: Record<string, string> = {
   '바닷가에서는 두레박으로 해수를 떠 넣어 고기를 산 채로 둔다. 얼음을 넣으면 오래 차갑게 둔다. 다 쓴 물과 얼음은 「비우기」로 버린다.':
     'By the sea, scoop seawater in with a bucket to keep fish alive. Ice keeps them cold for a long time. Throw out used water and ice with "Empty".',
   '지금 넣을 수 있는 것이 있다. 해수나 얼음을 한 번 넣어 보자.': 'You have something you can add right now. Try putting in seawater or ice.',
-  '고기를 누르면 자세히 보기 · 가방으로 옮기기 · 놓아주기를 고를 수 있다.':
-    'Click a fish to choose Details · Move to bag · Release.',
+  '고기를 누르면 자세히 보기 · 가방으로 옮기기 · 놓아주기를 고를 수 있다. 「여러 마리 고르기」로 여러 마리를 한꺼번에 놓아줄 수도 있다.':
+    'Click a fish to choose Details · Move to bag · Release. With "Select several" you can release many at once.',
   '고기를 쿨러 밖으로 끌어다 놓으면 바로 가방으로 옮겨진다. 한 마리를 옮겨 보자.':
     'Drag a fish out of the cooler and drop it to move it straight into your bag. Try moving one.',
   '해수 효과 종료 — 새 해수가 필요하다': 'Seawater has run out — fresh seawater needed',

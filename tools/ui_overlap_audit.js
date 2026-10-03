@@ -12,14 +12,19 @@
  *  - 그 밖의 씬 객체는 화면 고정(scrollFactor 0 · 카메라가 안 움직이는 씬의 Container/Text/RenderTexture/입력 객체)만.
  *    화면 12% 넘는 컨테이너는 자식으로 펼친다.
  *  - **부분 겹침만** 보고한다 — 한쪽이 다른 쪽에 완전히 들어가면(단추 안 글자, 패널 안 칸) 정상 구성이다.
- * ⚠ Graphics는 경계를 모른다 — 그림만으로 된 판(범례 배경 등)은 이 감사가 못 본다. 스크린샷을 눈으로 함께 본다.
+ * ⚠ Graphics는 경계를 모른다 — 그림만으로 된 판은 `tagUiRect(g, name, x, y, w, h)`(ui/ScreenReserve)를 붙여야 이 감사가 본다(199차).
+ *   붙이지 않은 판은 여전히 못 본다 — 스크린샷을 눈으로 함께 본다.
  */
 // 198차 — 화면 고정 UI 겹침 감사(페이지 안에서 실행). 부분 겹침만 보고(완전 포함 = 단추 안 글자 등 정상 구성)
 globalThis.__uiAudit = (keys) => {
   const g = globalThis.__PIXEL_ANGLER_GAME; const W = g.scale.width, H = g.scale.height;
   const items = [];
   const push = (scene, o, owner) => {
-    if (!o.visible || o.alpha === 0 || !o.getBounds) return;
+    if (!o.visible || o.alpha === 0) return;
+    // 199차 — Graphics만으로 그린 판은 `ui/ScreenReserve.tagUiRect`가 붙인 화면 사각형으로 본다
+    const tag = o.getData?.('uiRect');
+    if (tag) { items.push({ scene, owner: owner + ':' + tag.name, type: 'Tagged', x: tag.x, y: tag.y, r: tag.x + tag.w, b: tag.y + tag.h, txt: tag.name }); return; }
+    if (!o.getBounds) return;
     let b; try { b = o.getBounds(); } catch (e) { return; }
     if (b.width < 6 || b.height < 6) return;
     if (b.right <= 0 || b.bottom <= 0 || b.x >= W || b.y >= H) return;
@@ -27,11 +32,14 @@ globalThis.__uiAudit = (keys) => {
     if (o.list && area > W * H * 0.12 && o.list.length > 1) { for (const c of o.list) push(scene, c, owner + '>' + (o.constructor?.name ?? o.type)); return; }
     if (area > W * H * 0.5) return;   // 화면 전체 딤·입력 흡수판
     if (o.type === 'Rectangle' && o.fillAlpha <= 0.01 && !o.input) return;
+    // 장식 그림(구름 그림자·날씨 막·빛)은 UI가 아니다 — 입력을 받지 않는 낱장 이미지는 건너뛴다(199차 오탐)
+    if ((o.type === 'Image' || o.type === 'Sprite') && !o.input?.enabled) return;
     const txt = (o.list ? o.list.find((c) => c.type === 'Text' && c.text)?.text : o.text) ?? '';
     items.push({ scene, owner, type: o.type, x: Math.round(b.x), y: Math.round(b.y), r: Math.round(b.right), b: Math.round(b.bottom), txt: String(txt).replace(/\n/g, ' ').slice(0, 18) });
   };
   for (const key of keys) {
     const s = g.scene.getScene(key);
+    if (!s) continue;
     if (!s || !s.sys.settings.visible || !(s.scene.isActive() || s.scene.isPaused())) continue;
     const camScroll = s.cameras.main.scrollX !== 0 || s.cameras.main.scrollY !== 0;
     if (typeof s.screenReserved === 'function') for (const v of s.screenReserved()) items.push({ scene: key, owner: v.name, type: 'HUD', x: v.rect.x, y: v.rect.y, r: v.rect.right, b: v.rect.bottom, txt: v.name });
@@ -40,7 +48,7 @@ globalThis.__uiAudit = (keys) => {
       const kids = o.list ?? [];
       const sf0 = o.scrollFactorX === 0 || (kids.length > 0 && kids.every((c) => c.scrollFactorX === 0));
       // 필드는 카메라가 움직이므로 scrollFactor 0만 UI. 고정 카메라 씬은 그림(이미지·도형)을 빼고 UI형만
-      const fixed = sf0 || (!camScroll && key !== 'RegionFieldScene' && (['Container', 'Text', 'RenderTexture'].includes(o.type) || !!o.input?.enabled));
+      const fixed = sf0 || (!camScroll && key !== 'RegionFieldScene' && (['Container', 'Text', 'RenderTexture'].includes(o.type) || !!o.input?.enabled)) || !!o.getData?.('uiRect');
       if (!fixed) continue;
       push(key, o, key.replace('Scene', '') + ':' + (o.constructor?.name ?? o.type));
     }
