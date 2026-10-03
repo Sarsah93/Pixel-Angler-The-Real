@@ -53,6 +53,7 @@ import { createItemIcon } from './ItemIcon.js';
 import { setSlotLabel, SLOT_LABEL_PX } from './SlotLabel.js';
 import { CraftBoard } from './CraftBoard.js';
 import { GameState } from '../store/GameState.js';
+import { TitleStore } from '../store/TitleStore.js';
 import { maybeStartTour, tourSeen, type TourOptions } from './GuideTour.js';
 import { t } from '../i18n/I18n.js';
 
@@ -1758,6 +1759,7 @@ export class UtilizationPanel extends DraggablePanel {
     };
     const starsNow = sashimiStarsAt(meta, worst?.condition ?? 'fresh', meta.madeAtMs);
     meta.starsAtMake = starsNow.stars;
+    if (starsNow.stars >= 5) TitleStore.bump('sashimiFiveStar');   // 203차 — 「회칼 장인」
     price = Math.round(price * sashimiStarPriceMult(starsNow.stars) / 100) * 100;
     name = sashimiPlateName(name, starsNow.stars);
     const seq = InventoryStore.nextCatchSeq();

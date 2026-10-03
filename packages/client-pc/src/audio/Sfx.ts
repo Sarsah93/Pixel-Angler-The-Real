@@ -38,3 +38,25 @@ export function playEatSfx(): void {
     osc.stop(t + 0.1);
   }
 }
+
+/** 203차 — 숨은 업적(타이틀) 달성 징글: 짧게 올라가는 4음 + 마지막 음 길게. 레어도가 높을수록 한 음 더 */
+export function playTitleJingle(steps = 4): void {
+  const ac = ctx();
+  if (!ac) return;
+  const notes = [523.25, 659.25, 783.99, 1046.5, 1318.5].slice(0, Math.max(3, Math.min(5, steps)));
+  const t0 = ac.currentTime + 0.02;
+  notes.forEach((f, i) => {
+    const t = t0 + i * 0.1;
+    const last = i === notes.length - 1;
+    const osc = ac.createOscillator();
+    const gain = ac.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(f, t);
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(0.12, t + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + (last ? 0.55 : 0.12));
+    osc.connect(gain).connect(ac.destination);
+    osc.start(t);
+    osc.stop(t + (last ? 0.6 : 0.14));
+  });
+}

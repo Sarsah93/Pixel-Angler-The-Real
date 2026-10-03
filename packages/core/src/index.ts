@@ -710,3 +710,11 @@ export {
   missingParts, summarize, baitRecommendedFor, treeFromLegacy,
   MULTI_BAIT_BONUS, SAME_BAIT_SYNERGY, DOUBLE_BAIT_BONUS, DOUBLE_BAIT_MAX, CARD_RIG_BITE_BONUS_MAX, CARD_TARGET_BIAS, CARD_HOOKS_MIN, CARD_HOOKS_MAX, FLASHER_ONLY_BITE_MULT, FLASHER_TARGET_SPECIES, baitBiteBonus,
 } from './simulation/RigTree.js';
+
+// 203차 — 타이틀(칭호) 히든 업적
+export type { TitleRarity, TitleStatKey, TitleEffectKind, TitleDef, TitleStats, TitleModifiers } from './types/Titles.js';
+export {
+  TITLE_DATABASE, TITLE_EFFECT_SCALE, TITLE_RARITY_LABEL_KO,
+  getTitleById, titleEffectValue, titleEffectLabelKo, titleModifiers, titleBiteMultAt, titlesNewlyEarned,
+  isTitleNightHour, isTitleDawnCastHour, isTitleDawnBiteHour,
+} from './db-schema/TitleDatabase.js';

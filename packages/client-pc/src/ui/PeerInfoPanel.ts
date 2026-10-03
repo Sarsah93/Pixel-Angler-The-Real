@@ -2,12 +2,13 @@
  * @file PeerInfoPanel.ts
  * @description 다른 플레이어 정보 보기 (146차).
  *
- * 보여 주는 것은 `MpProfile`뿐이다 — 이름·레벨·착용 장비·면허·최대어·출조 횟수.
+ * 보여 주는 것은 `MpProfile`뿐이다 — 이름·레벨·단 타이틀(203차)·착용 장비·면허·최대어·출조 횟수.
  * 재화·인벤토리·퀘스트·생존 지표·스킬·우호도는 **서버에 올라가지도 않는다**(계약 §MpProfile).
  */
 import Phaser from 'phaser';
 import { DraggablePanel } from './DraggablePanel.js';
-import { LICENSE_DATABASE, FISH_DATABASE, type MpProfile, type MpPeer } from '@tra/core';
+import { LICENSE_DATABASE, FISH_DATABASE, TITLE_RARITY_LABEL_KO, getTitleById, type MpProfile, type MpPeer } from '@tra/core';
+import { TITLE_RARITY_COLOR } from './TitleBanner.js';
 import { clampTextWidth } from './TextFit.js';
 
 const W = 360;
@@ -16,7 +17,8 @@ const FONT = '"Noto Sans KR", sans-serif';
 export class PeerInfoPanel extends DraggablePanel {
   constructor(scene: Phaser.Scene, x: number, y: number, peer: MpPeer, onClose: () => void) {
     const p: MpProfile = peer.profile ?? { level: 1, gear: [], licenses: [], records: [], trips: 0 };
-    const rows = 4 + Math.max(1, p.gear.length) + Math.max(1, p.licenses.length) + Math.max(1, p.records.length);
+    const title = getTitleById(p.title);
+    const rows = 4 + (title ? 1 : 0) + Math.max(1, p.gear.length) + Math.max(1, p.licenses.length) + Math.max(1, p.records.length);
     const h = 96 + rows * 18;
     super(scene, { x, y, width: W, height: h, title: `${peer.name} 님의 정보`, onClose, depth: 830 });
 
@@ -30,6 +32,8 @@ export class PeerInfoPanel extends DraggablePanel {
     const head = (text: string): void => { cy += 4; line(text, '#ffe28a', 12, true); };
 
     line(`${peer.name} · Lv.${p.level} · 출조 ${p.trips}회`, '#e8f4fd', 13, true);
+    // 203차 — 단 타이틀(이름 · 레어도). 효과·얻는 법은 보여 주지 않는다(히든 — 위키에서 찾는 재미)
+    if (title) line(`${title.nameKo} · ${TITLE_RARITY_LABEL_KO[title.rarity]}`, TITLE_RARITY_COLOR[title.rarity], 11, true);
     head('착용 장비');
     if (!p.gear.length) line('  (착용 중인 장비 없음)', '#8fa9bd');
     for (const g of p.gear) line(`  ${g.slot} — ${g.name}`);

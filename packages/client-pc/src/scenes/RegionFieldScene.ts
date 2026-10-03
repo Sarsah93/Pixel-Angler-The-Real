@@ -26,6 +26,7 @@ import {
   type HoleSpotInfo, type StorySpotKind, type FootingKind,
   holeKindOfBreakwaterClass, evaluateHoleSpot, holeSlipChance, holeGearWarning,
   STAIR_DIR_LABEL,
+  getTitleById,
 } from '@tra/core';
 import { openContextMenu } from '../ui/ContextMenu.js';
 import { PeerInfoPanel } from '../ui/PeerInfoPanel.js';
@@ -117,6 +118,8 @@ import { getStoryNpc, validateStoryQuests, validateStoryChoices, validateLicense
   type StoryQuestDef, type QuestGuideTarget, type GuideNames } from '@tra/core';
 import { FullMapPanel } from '../ui/FullMapPanel.js';
 import { MapPinStore } from '../store/MapPinStore.js';
+import { TitleStore } from '../store/TitleStore.js';
+import { pumpTitleBanners, TITLE_RARITY_COLOR } from '../ui/TitleBanner.js';
 import { buildItemWikiCatalog } from '../data/WikiCatalog.js';
 import { playCollapse, type CollapseKind } from '../ui/CollapseOverlay.js';
 import { TUNING, getTrapById, MP_CHAT_MAX_LEN, type RegionFishFarms } from '@tra/core';
@@ -673,6 +676,8 @@ export class RegionFieldScene extends Phaser.Scene {
     // NPC 근접 힌트도 같은 수명 문제를 가진다. 홈타운에서 만든 Text를 속초 씬이
     // 재사용하면 첫 updateNpcHint()의 setText가 파괴된 CanvasTexture를 갱신한다.
     this.npcHintText = undefined;
+    this.selfTitleText = undefined;   // 203차 — 같은 수명 문제(지연 생성 Text)
+    this.selfTitleKey = '';
     // 맵 JSON 로드 실패(서버 순단·404 등) 시 mapData가 캐시에 없다 — 그대로 진행하면
     // 아래 필드 접근에서 TypeError로 create가 중단돼 **에러 표시 없는 검은 화면**이 된다
     // (2026-08-10 전수검사). 안내를 띄우고 메인 메뉴로 안전 복귀한다.
@@ -702,6 +707,8 @@ export class RegionFieldScene extends Phaser.Scene {
 
     // 위치 태그 — 저장 정책(집 침대에서만)의 기준 (HOMETOWN_HOME_SPEC)
     GameState.locationTag = this.region === 'hometown' ? 'hometown' : 'region_field';
+    // 203차 — 「빈 쿨러」 출조 단위: 낚시 지역 진입 = 출조 시작/이어 가기, 집 동네 = 출조 끝
+    TitleStore.enterRegion(this.region, this.region !== 'hometown');
     // 홈타운은 실데이터 지역이 아니므로 날씨를 방문마다 랜덤 추첨 (HUD/조명/날씨효과 공유)
     // 145차 — 홈타운 날씨도 세션 공용(1시간 슬롯). 날씨는 피딩 활성도를 통해 이벤트 스케줄까지 좌우한다.
     if (this.region === 'hometown') {
@@ -1408,6 +1415,31 @@ export class RegionFieldScene extends Phaser.Scene {
   /** 플레이어 머리 위 라벨의 하단 y (라벨은 `setOrigin(0.5, 1)` 전제) */
   private get playerLabelY(): number {
     return this.playerBody.y + this.PLAYER_FOOT_OFFSET + this.charTopFromFeet - RegionFieldScene.LABEL_GAP;
+  }
+
+  /** 머리 위 안내([F] · 떠오르는 힌트)의 하단 y — 203차: 타이틀을 달았으면 그 위로 비켜 선다 */
+  private get playerHintY(): number {
+    const t = this.selfTitleText;
+    return this.playerLabelY - (t?.visible ? t.height + 2 : 0);
+  }
+
+  // ── 203차 타이틀 — 머리 위 작은 한 줄(레어도 색) ──
+  private selfTitleText?: Phaser.GameObjects.Text;
+  private selfTitleKey = '';
+
+  /** 내 머리 위 타이틀 — 단 것이 바뀌었을 때만 글자를 다시 쓴다(매 프레임 위치만) */
+  private updateSelfTitle(depth: number): void {
+    const def = TitleStore.equippedDef();
+    if (!def) { this.selfTitleText?.setVisible(false); this.selfTitleKey = ''; return; }
+    if (!this.selfTitleText || !this.selfTitleText.active) {
+      this.selfTitleText = this.add.text(0, 0, '', titleTagStyle()).setOrigin(0.5, 1);
+      this.selfTitleKey = '';
+    }
+    if (this.selfTitleKey !== def.id) {
+      this.selfTitleKey = def.id;
+      this.selfTitleText.setText(def.nameKo).setColor(TITLE_RARITY_COLOR[def.rarity]);
+    }
+    this.selfTitleText.setVisible(true).setPosition(this.playerBody.x, this.playerLabelY).setDepth(depth + 0.0007);
   }
 
   /** 장비·외형이 바뀌면 시트를 다시 굽는다 (장착 변경 → 즉시 반영) */
@@ -2923,6 +2955,7 @@ export class RegionFieldScene extends Phaser.Scene {
     const sign = `문에 붙은 안내문 — 「영업시간 ${hhmm(hours.open)} ~ ${hhmm(hours.close)}」.`;
     const when = beforeOpen ? `${hhmm(hours.open)}에 연다. 그때 다시 와야겠다.` : `내일 ${hhmm(hours.open)}에 다시 와야겠다.`;
     this.hud?.pushLog(`[상점] ${BUILDING_LABEL[kind]} — 영업시간이 아니다`);
+    TitleStore.bump('closedDoor');   // 203차 — 「올빼미」
     this.openPopup((close) => new MonologuePanel(this, [first, `${sign} ${when}`], close));
   }
 
@@ -3016,7 +3049,8 @@ export class RegionFieldScene extends Phaser.Scene {
   private handleBuy(entry: ShopEntry): void {
     const confirmBuy = (qty: number): void => {
       // 스킬 흥정(122차): 랭크당 구매가 -3%
-      const total = Math.round(entry.price * qty * (1 - 0.03 * GameState.skillRank('eco_haggle')));
+      // 203차 — 단 타이틀 구매가 할인(「빈 쿨러」 · 「단골」)
+      const total = Math.round(entry.price * qty * (1 - 0.03 * GameState.skillRank('eco_haggle')) * TitleStore.modifiers().buyMult);
       this.openPopup((close) => new ConfirmDialog(
         this,
         `${entry.name} ${qty}개를 구매하시겠습니까?\n소요 재화: ${total.toLocaleString()} 원`,
@@ -3036,6 +3070,7 @@ export class RegionFieldScene extends Phaser.Scene {
             this.hud?.pushLog(`[구매] ${entry.name} x${qty} (-${total.toLocaleString()}원)`);
             StoryStore.event({ kind: 'custom', key: `buy:${entry.id}` });
             GameState.addProficiency('haggle');
+            TitleStore.recordTrade(MarketStore.branch?.key);
             return;
           }
           // 188차 — 세트 상품은 구성품으로 풀어 넣는다(전부 들어갈 때만)
@@ -3051,6 +3086,7 @@ export class RegionFieldScene extends Phaser.Scene {
           // 135차 — 구매를 스토리 목표로 쓸 수 있게 이벤트를 흘린다 (M1-04 사이소 저가 장비 등)
           StoryStore.event({ kind: 'custom', key: `buy:${entry.id}` });
           noteProloguePurchase(entry);   // 188차 — 기본 채비 하나씩 사기
+          TitleStore.recordTrade(MarketStore.branch?.key);   // 203차 — 「단골」
           GameState.addProficiency('haggle');   // 188차 — 흥정 숙련은 사고팔아야 는다
         },
         close,
@@ -3098,6 +3134,7 @@ export class RegionFieldScene extends Phaser.Scene {
           this.shopPanel?.setStatus(`${item.name} x${qty} 판매 완료 (+${total.toLocaleString()}원)`);
           this.hud?.pushLog(`[판매] ${item.name} x${qty} (+${total.toLocaleString()}원)`);
           notePrologueSale(item);   // 188차 — 냉동 오징어 팔기
+          TitleStore.recordTrade(MarketStore.branch?.key);   // 203차 — 「단골」
           GameState.addProficiency('haggle');   // 188차 — 흥정 숙련
         },
         close,
@@ -3251,6 +3288,7 @@ export class RegionFieldScene extends Phaser.Scene {
     this.fadeOutThen(() => {
       this.dismountBike();
       MultiplayerClient.setActivity('fishing');
+      TitleStore.recordCast();   // 203차 — 새벽 첫 줄 · 출조 캐스팅
       this.scene.pause();
       this.scene.launch('FirstPersonFishingScene', {
         zMaxM: hole.depthM,
@@ -3578,6 +3616,7 @@ export class RegionFieldScene extends Phaser.Scene {
       }
       this.dismountBike();   // 낚시 진입 시 자동 하차
       MultiplayerClient.setActivity('fishing');   // 145차 — 이름표 옆 배지 + 밀어내기 제외
+      TitleStore.recordCast();   // 203차 — 새벽 첫 줄 · 출조 캐스팅
       this.scene.pause();
       this.scene.launch('FirstPersonFishingScene', {
         zMaxM, castDistanceM, reefSeed, region: this.region, shoreKind, fieldEvent,
@@ -3684,7 +3723,7 @@ export class RegionFieldScene extends Phaser.Scene {
   }
 
   private floatingHint(msg: string): void {
-    const t = this.add.text(this.playerBody.x, this.playerLabelY, msg, {
+    const t = this.add.text(this.playerBody.x, this.playerHintY, msg, {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#fff',
       backgroundColor: '#0a1628cc', padding: { x: 8, y: 4 },
     }).setOrigin(0.5, 1).setDepth(60);
@@ -3994,6 +4033,7 @@ export class RegionFieldScene extends Phaser.Scene {
   update(_time: number, delta: number): void {
     // init → create 사이 또는 shutdown 직전의 stale update 차단.
     if (this.bootFailed || !this.playerBody?.active) return;
+    pumpTitleBanners(this);   // 203차 — 숨은 업적 달성 배너
     this.updateStoryProximity(delta);
     this.updateFieldNpcs(delta);
     this.nuisance?.update(delta);
@@ -4935,6 +4975,8 @@ export class RegionFieldScene extends Phaser.Scene {
   private peerObjs = new Map<string, {
     img: Phaser.GameObjects.Image; tag: Phaser.GameObjects.Text;
     badge?: Phaser.GameObjects.Image; badgeKey?: string;
+    /** 203차 — 이름 위 타이틀 한 줄(단 것이 없으면 숨김) */
+    title?: Phaser.GameObjects.Text; titleKey?: string;
   }>();
   /** 밀어내기 대상 — 필드에서 실제로 걸어다니는 피어의 발 위치만 (145차) */
   private peerFeet: { x: number; y: number; id: string }[] = [];
@@ -5060,6 +5102,16 @@ export class RegionFieldScene extends Phaser.Scene {
         .setAlpha(onField ? 1 : 0.55);
       o.tag.setPosition(peer.x, tagY).setText(peer.activity === 'cinematic' ? `${peer.name} · 바쁨` : peer.name).setDepth(depth + 0.0007);
 
+      // 203차 — 타이틀은 이름 위 작은 한 줄(id로 받아 내 언어로 이름을 찾는다)
+      const tdef = getTitleById(peer.profile?.title);
+      if (!tdef) {
+        o.title?.setVisible(false);
+      } else {
+        if (!o.title) o.title = this.add.text(peer.x, tagY, '', titleTagStyle()).setOrigin(0.5, 1);
+        if (o.titleKey !== tdef.id) { o.titleKey = tdef.id; o.title.setText(tdef.nameKo).setColor(TITLE_RARITY_COLOR[tdef.rarity]); }
+        o.title.setVisible(true).setPosition(peer.x, tagY - o.tag.height - 1).setDepth(depth + 0.0007);
+      }
+
       // 활동 배지 — 이름표 오른쪽에 붙인다(이름 길이에 따라 자리가 따라간다)
       const key = RegionFieldScene.ACTIVITY_ICON[peer.activity ?? 'field'];
       if (!key) {
@@ -5075,7 +5127,7 @@ export class RegionFieldScene extends Phaser.Scene {
     }
     for (const [id, o] of this.peerObjs) {
       if (alive.has(id)) continue;
-      o.img.destroy(); o.tag.destroy(); o.badge?.destroy();
+      o.img.destroy(); o.tag.destroy(); o.badge?.destroy(); o.title?.destroy();
       this.peerObjs.delete(id);
     }
   }
@@ -5105,6 +5157,7 @@ export class RegionFieldScene extends Phaser.Scene {
       level: GameState.player.level, gear,
       licenses: GameState.licenses.filter((l) => !l.isExpired).map((l) => l.type as string),
       records: rec, trips: GameState.player.totalTrips,
+      ...(TitleStore.equippedId() ? { title: TitleStore.equippedId()! } : {}),
     };
   }
 
@@ -5363,7 +5416,7 @@ export class RegionFieldScene extends Phaser.Scene {
   private coach?: PrologueCoach;
 
   private clearPeers(): void {
-    for (const o of this.peerObjs.values()) { o.img.destroy(); o.tag.destroy(); o.badge?.destroy(); }
+    for (const o of this.peerObjs.values()) { o.img.destroy(); o.tag.destroy(); o.badge?.destroy(); o.title?.destroy(); }
     this.peerObjs.clear();
     this.peerFeet = [];
   }
@@ -5693,7 +5746,7 @@ export class RegionFieldScene extends Phaser.Scene {
       }
       try {
         this.npcHintText.setColor(color);
-        this.npcHintText.setText(text).setPosition(px, this.playerLabelY).setVisible(true);
+        this.npcHintText.setText(text).setPosition(px, this.playerHintY).setVisible(true);
       } catch (e) {
         console.warn('[RegionFieldScene] 오래된 상호작용 힌트 텍스트 폐기', e);
         this.npcHintText = undefined;
@@ -6319,7 +6372,8 @@ export class RegionFieldScene extends Phaser.Scene {
 
   /** 판매가 — 스킬 흥정·단골 배율 (122차) */
   private sellPriceOf(item: InvItem): number {
-    const base = Math.round(InventoryStore.getSellPrice(item) * GameState.skillMult('sell_price'));
+    // 203차 — 단 타이틀 판매가(「회칼 장인」 · 「바다 도감」)
+    const base = Math.round(InventoryStore.getSellPrice(item) * GameState.skillMult('sell_price') * TitleStore.modifiers().sellMult);
     // 196차 — 이 지점의 가게 수요 × 시세 하락(판 만큼 떨어지고 서서히 회복)
     return MarketStore.quote(item, base)?.unit ?? base;
   }
@@ -6413,6 +6467,7 @@ export class RegionFieldScene extends Phaser.Scene {
 
     this.playerSprite.setPosition(this.playerBody.x, feetY + this.charFootSink + riderOffset);
     this.playerSprite.setDepth(depth);
+    this.updateSelfTitle(depth);
     const shadow = this.registry.get('_rfShadow') as Phaser.GameObjects.Ellipse | undefined;
     if (shadow) {
       shadow.setDepth(this.overpass?.onDeck ? depth - 0.0001 : 19);
@@ -6908,4 +6963,12 @@ export class RegionFieldScene extends Phaser.Scene {
   private gotoTitle(): void {
     this.fadeOutThen(() => this.scene.start('MainMenuScene'), 280);
   }
+}
+
+/** 203차 — 머리 위 타이틀 글씨(작게 · 테두리로 바탕 없이 읽히게). 색은 레어도로 따로 입힌다 */
+function titleTagStyle(): Phaser.Types.GameObjects.Text.TextStyle {
+  return {
+    fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#e8f4fd', fontStyle: 'bold',
+    stroke: '#0a1628', strokeThickness: 3,
+  };
 }

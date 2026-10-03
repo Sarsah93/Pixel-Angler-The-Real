@@ -61,6 +61,8 @@ import {
 } from '@tra/core';
 import { drawRigIcon, RigIconKind } from '../ui/RigIconRenderer.js';
 import { GameState } from '../store/GameState.js';
+import { TitleStore } from '../store/TitleStore.js';
+import { pumpTitleBanners } from '../ui/TitleBanner.js';
 import { baitKeyOf } from '../store/RigParts.js';
 import { InventoryStore, RigStepKey, CARD_RIG_INFO, netReachFromName } from '../store/InventoryStore.js';
 import { isGod } from '../dev/DevMode.js';
@@ -959,7 +961,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
 
     // 116차 — 물리 텐션: 체중 × 어종군 순간가속 ÷ 라인 인장강도(원줄·목줄 약한 쪽).
     //   목줄이 없는 채비(구세이브 등)는 3kg(1.5호급)로 간주 — 텐션 게이지 분모가 0이 되지 않게.
-    const lineCap = InventoryStore.lineCapacityKg() ?? 3;
+    const lineCap = (InventoryStore.lineCapacityKg() ?? 3) * TitleStore.modifiers().lineMult;   // 203차 — 타이틀 줄 강도
     this.fight = new FightingPhase({
       powerFactor: f.powerFactor * this.schoolMult,
       tackleA: this.computeTackleA(),
@@ -1159,7 +1161,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
 
   /** 현재 드랙 설정 (kg) — 라인 강도 × 드랙 비율 (파이팅 드랙 조절과 같은 기준) */
   private currentDragKg(): number {
-    const capKg = Math.max(0.8, InventoryStore.lineCapacityKg() ?? 3);
+    const capKg = Math.max(0.8, (InventoryStore.lineCapacityKg() ?? 3) * TitleStore.modifiers().lineMult);
     return capKg * 0.55;
   }
 
@@ -1853,6 +1855,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   // ═══════════════════════════════════════════════════
   update(_time: number, deltaMs: number): void {
     let dt = Math.min(0.05, deltaMs / 1000);
+    pumpTitleBanners(this);   // 203차 — 숨은 업적 달성 배너(들어뽕 · 줄 터짐 · 방생 …)
     // 제압 후 끌어오기(dragIn)는 슬로우 — 연출이 너무 빨라 방향 대응을 못 따라간다는 피드백(116차 ①)
     if (this.dragInMode) dt *= TUNING.fightPhys.dragInTimeScale;
 
@@ -2409,7 +2412,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   private skillBiteMult(): number {
     const wk = ExternalDataStore.getWeatherKind(this.cfg.region);
     const foul = wk === 'rain' || wk === 'shower' || wk === 'sleet' || wk === 'snow';
-    return GameState.skillMult('bite_chance') * (foul ? GameState.skillMult('weather_bite') : 1) * (isNightNowKst() ? GameState.skillMult('night_bite') : 1);
+    return GameState.skillMult('bite_chance') * (foul ? GameState.skillMult('weather_bite') : 1) * (isNightNowKst() ? GameState.skillMult('night_bite') : 1)
+      * TitleStore.biteMultNow();   // 203차 — 단 타이틀 효과(입질 · 밤/새벽 입질)
   }
 
   private buildSpawnCtx(inReef: boolean): SpawnContext {
@@ -2854,6 +2858,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
             ? ['float', 'subFloat', 'swivel', 'leader', 'sinker', 'hook', 'bait']
             : ['leader', 'sinker', 'hook', 'bait'];
           const lost = [...InventoryStore.loseRigParts(parts), ...(this.lureMode ? InventoryStore.loseLureRig() : [])];
+          TitleStore.bump('lineBreak');   // 203차 — 「줄 끊는 사람」
           this.failAndExit(floatToo ? '줄터짐! 찌까지 터졌습니다' : '줄터짐! 목줄이 터졌습니다',
             `텐션이 한계를 넘어 ${floatToo ? '찌 위에서' : '목줄이'} 터졌습니다.\n손실: ${lost.join(', ')}\n\nU 채비하기에서 재장착 후 다시 캐스팅하세요.`);
           break;
@@ -2897,6 +2902,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       ? ['float', 'subFloat', 'swivel', 'leader', 'sinker', 'hook', 'bait']
       : ['leader', 'sinker', 'hook', 'bait'];
     const lost = [...InventoryStore.loseRigParts(parts), ...(this.lureMode ? InventoryStore.loseLureRig() : [])];
+    TitleStore.bump('lineBreak');
     this.failAndExit('무리한 릴링! 줄이 터졌습니다',
       `한계 텐션에서 릴링을 강행해 라인이 파단됐습니다.\n손실: ${lost.join(', ')}\n\n텐션이 높을 때는 릴링을 멈추고 드랙으로 버티세요.`);
   }
@@ -2992,11 +2998,13 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       footing: this.cfg.footing ?? (this.cfg.hole ? 'hole' : 'quay'),
       tideLiftM: this.cfg.tideLiftM ?? 0,
       netReachM: net ? (net.netReachM ?? netReachFromName(net.name)) : null,
-    }, Math.random(), Math.random());
+    }, Math.random() / Math.max(0.05, TitleStore.modifiers().landingDropMult), Math.random());   // 203차 — 타이틀 효과(빠짐 확률 비율 감소)
     if (import.meta.env.DEV && this.devLandingDrop) {
       this.devLandingDrop = false;
+      TitleStore.bump('landingDrop');
       return { ...res, droppedIndex: Math.min(hooked.length - 1, Math.floor(Math.random() * hooked.length)) };
     }
+    if (res.droppedIndex !== null) TitleStore.bump('landingDrop');   // 203차 — 「들어뽕의 아픔」
     return res;
   }
 
@@ -3148,7 +3156,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     const rows = school.map((x) => `${x.nameKo} ${x.lengthCm}cm`).join('\n');
     const dlg = new ConfirmDialog(this,
       `${school.length > 1 ? `${school.length}마리를 모두` : '이 고기를'} 방생할까요?\n${rows}\n방생한 고기는 되돌릴 수 없습니다.`,
-      () => { dlg.destroy(); this.releaseConfirm = null; onYes(); },
+      () => { dlg.destroy(); this.releaseConfirm = null; TitleStore.bump('release', school.length); onYes(); },
       () => { dlg.destroy(); this.releaseConfirm = null; },
       { yes: '방생하기', no: '취소', danger: true });
     this.add.existing(dlg);
@@ -3170,6 +3178,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
         this.coolerSwap = null;
         this.refreshCoolerUi();
         const parts: string[] = [];
+        TitleStore.bump('release', r.releasedNew + r.releasedOld);   // 203차 — 「구원자」
         if (r.stored.length > 0) parts.push(`쿨러에 ${r.stored.length}마리 보관`);
         if (r.releasedNew > 0) parts.push(`방금 낚은 ${r.releasedNew}마리 방생`);
         if (r.releasedOld > 0) parts.push(`쿨러의 ${r.releasedOld}마리 방생`);

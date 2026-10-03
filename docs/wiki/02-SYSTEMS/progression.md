@@ -108,6 +108,7 @@ learnSkill(id): ranks[id]++ · markDirty   (세이브 `skillTree`)
 | 커스텀 로드·릴의 실제 성능치 | ⬜ | 템플릿만 — `GearSpecs` 물리값 연결 미착수 |
 | 스킬 트리 확장 (a)(c)(d)(e) | ✅ | 130 — 위 4행 참조 |
 | **생존 드레인 하루 3끼 기준 재보정**(`TUNING.vitals.drain*` — 전형 하루 허기 105 / 수분 134) + **음식 영양 테이블**(core `FoodNutrition.ts` — g·kcal·ml → 회복치 · `DAILY_KCAL 2400`·`DAILY_WATER_ML 2000` · `ItemVitals`는 파생만) | ✅ | **155** |
+| **타이틀(숨은 업적) 12종** — 행동 누적 12종 → 목표 도달 시 획득 · 전부 히든(S 창 「??? × N」) · 하나만 단다 · 레어도별 소소한 효과(입질·밤/새벽 입질·줄 강도·바늘 빠짐·판매/구매가·피로) · 세이브 `titles` | ✅ | **203** — core `Titles.ts`·`TitleDatabase.ts` · client `TitleStore` · 훅 12곳 · [워크로그](../03-WORKLOG/2026-10-03-203-hidden-titles.md) |
 
 ## 5. 잔여·차기
 
@@ -229,3 +230,11 @@ learnSkill(id): ranks[id]++ · markDirty   (세이브 `skillTree`)
     XP·Σ·도면 수·진료비·임계값은 전부 `TUNING`/DB 상수에서 확인해 넣었다.
 30. **i18n 사전 키 = 한국어 원문**이라, 본문 문구를 고치면 번역이 조용히 사라진다(131차).
     `HelpContent`를 수정하면 `en_help.ts`도 같은 커밋에서 고칠 것 — 전수 스캔이 있어야 안전하다.
+
+### [203차] 타이틀 목표 수치는 바꿔도 얻은 것은 뺏지 않는다
+
+- `TitleStore.deserialize`는 저장된 `owned`를 그대로 두고(없는 id만 거른다) 로드 직후 조건을 **다시 본다** —
+  목표를 낮추면 다음 로드에 새로 얻고, 높여도 이미 얻은 타이틀은 남는다.
+- 「바다 도감」은 누적이 아니라 **지금 도감 수**(어종 + 채집 생물)를 센다(`syncSpecies`) — 구세이브도 첫 로드에 바로 얻을 수 있다.
+- 스스로 놓아주기(결정 창 · 쿨러 · 정리 창)는 `TitleStore.bump('release')`로 **직접** 센다.
+  `StoryStore.event({kind:'release'})`는 금지체장 자동 방생 전용이라(퀘스트 목표가 듣는다) 거기 끼우면 퀘스트가 오작동한다.

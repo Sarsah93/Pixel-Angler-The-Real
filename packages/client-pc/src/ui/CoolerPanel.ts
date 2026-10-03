@@ -26,6 +26,7 @@ import {
   InvItem, InventoryStore, CONDITION_LABEL, CONDITION_COLOR, CONDITION_NEXT,
 } from '../store/InventoryStore.js';
 import { StoryStore } from '../store/StoryStore.js';
+import { TitleStore } from '../store/TitleStore.js';
 import { maybeStartTour, type TourOptions } from './GuideTour.js';
 import { clampTextWidth } from './TextFit.js';
 
@@ -646,6 +647,7 @@ export class CoolerPanel extends DraggablePanel {
       `고른 고기 ${names.length}마리를 놓아줄까요?\n${this.listLines(names)}\n놓아준 고기는 되돌릴 수 없습니다.`,
       () => {
         for (const i of idxs) CoolerStore.removeAt(i);
+        TitleStore.bump('release', idxs.length);
         dlg.destroy();
         this.childPopup = undefined;
         this.selectMode = false;
@@ -679,6 +681,7 @@ export class CoolerPanel extends DraggablePanel {
       `이 고기를 놓아줄까요?\n${fish.nameKo} ${fish.lengthCm}cm / ${(fish.weightG / 1000).toFixed(2)}kg\n놓아준 고기는 되돌릴 수 없습니다.`,
       () => {
         CoolerStore.removeAt(idx);
+        TitleStore.bump('release');
         dlg.destroy();
         this.childPopup = undefined;
         this.cfg.onChanged?.();

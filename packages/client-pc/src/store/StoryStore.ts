@@ -25,6 +25,7 @@ import {
   type DayJobDef, type AffinityState, type QuestChoiceDef, type ChoiceOutcome, type ChoiceCtx, type SkillCategoryId,
 } from '@tra/core';
 import { storyActionSpec, type StoryActionChoice, type StoryActionSource } from './StoryActionRegistry.js';
+import { TitleStore } from './TitleStore.js';
 
 export interface QuestProgress {
   status: 'active' | 'done';
@@ -750,6 +751,7 @@ class StoryStoreManager {
 
   /** 자동 추적 이벤트 — 활성 퀘 전체의 미완 목표와 대조 */
   event(ev: StoryEvent): void {
+    TitleStore.onStoryEvent(ev);   // 203차 — 타이틀 업적도 같은 사건을 센다(어획 · 방생)
     let changed = false;
     // 167차 — 장면 종료 = 그 목표 하나만 닫는다. 다른 퀘스트·다른 목표로 새지 않는다.
     if (ev.kind === 'scene') {

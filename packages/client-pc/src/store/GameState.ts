@@ -68,6 +68,7 @@ import { InventoryStore, InventorySaveState } from './InventoryStore.js';
 import { FridgeStore, FridgeSaveState } from './FridgeStore.js';
 import { HomeStore, type HomeSaveState } from './HomeStore.js';
 import { MarketStore, type MarketSaveState } from './MarketStore.js';
+import { TitleStore, type TitleSaveState } from './TitleStore.js';
 import { DiscoveryStore, DiscoverySaveState } from './DiscoveryStore.js';
 import {
   listUpkeep, upkeepAlerts, upkeepPenalty, licenseRenewalFee, fisheryGroundFee, upkeepKeysOfLicense,
@@ -195,6 +196,8 @@ interface SaveData {
   home?: HomeSaveState;
   /** 196차 — 판매처별 시세 하락 장부(구세이브 = 빈 장부) */
   market?: MarketSaveState;
+  /** 203차 — 타이틀(칭호) 업적: 행동 누적 수 · 얻은 것 · 단 것(구세이브 = 없음) */
+  titles?: TitleSaveState;
   /** 1회성 안내 플래그 (chumGuideSeen 등 — 최초 표시 여부) */
   flags?: Record<string, boolean>;
   /** 맵별 오브젝트 월드 상태 — 초기 배치 − removed + moved + placed (HOMETOWN_HOME_SPEC) */
@@ -373,6 +376,7 @@ export class GameStateManager {
     FridgeStore.deserialize(saved.fridge);
     HomeStore.deserialize(saved.home);
     MarketStore.deserialize(saved.market);
+    TitleStore.deserialize(saved.titles);   // 203차 — 타이틀 업적(구세이브 = 0부터)
     // 발견 기록 복원 — 구세이브(필드 없음)는 어획 기록의 어종을 'legacy'로 백필
     DiscoveryStore.deserialize(
       saved.discoveries,
@@ -798,7 +802,11 @@ export class GameStateManager {
     const free = this.skillBonus('action_free');
     if (free > 0 && rng() < Math.min(0.6, free)) return true;
     const v = this.vitals;
+    const f0 = v.fatigue;
     coreVitalsAction(v, action, mult);
+    // 203차 — 단 타이틀 「올빼미」: 행동으로 쌓이는 피로만 그 비율만큼 줄인다
+    const fm = TitleStore.modifiers().fatigueMult;
+    if (fm < 1 && v.fatigue > f0) v.fatigue = f0 + (v.fatigue - f0) * fm;
     this.commitVitals(v);
     this.markDirty();
     return false;
@@ -1482,6 +1490,7 @@ export class GameStateManager {
       fridge: FridgeStore.serialize(),
       home: HomeStore.serialize(),
       market: MarketStore.serialize(),
+      titles: TitleStore.serialize(),
       flags: this._flags,
       worldObjects: this._worldObjects,
       discoveries: DiscoveryStore.serialize(),
@@ -1690,6 +1699,7 @@ export class GameStateManager {
     FridgeStore.place('freezer', prologueSquid());   // 188차 — 프롤로그: 직판장에 팔아 볼 냉동 오징어
     HomeStore.resetAll();
     MarketStore.resetAll();
+    TitleStore.resetAll();
     DiscoveryStore.resetAll();
     StoryStore.resetAll();
     this.syncInventoryDiscoveries();

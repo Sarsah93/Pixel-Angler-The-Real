@@ -16,6 +16,7 @@
 import Phaser from 'phaser';
 import { tagUiRect } from '../ui/ScreenReserve.js';
 import { GameState } from '../store/GameState.js';
+import { TitleStore } from '../store/TitleStore.js';
 import {
   SPOT_DATABASE,
   REGION_DATABASE,
@@ -134,6 +135,7 @@ export class WorldMapScene extends Phaser.Scene {
     //   true로 남아 '집으로 돌아가기'·출조 클릭이 전부 무시되는 실버그 (QA 2026-08-05 재현 확정).
     this.isTransitioning = false;
     this.titleEscArmedUntil = 0;
+    TitleStore.enterRegion(null, false);   // 203차 — 월드맵으로 나오면 출조가 끝난다(「빈 쿨러」)
     // 191차 — 직전 세대의 팝업 참조(파괴됨)가 남으면 출조 확인 카드가 다시 열리지 않는다
     //   (`showAreaConfirm`의 `if (this.areaConfirmContainer) return` — 출조 후 월드맵 재진입 시 구역 클릭 무반응).
     this.areaConfirmContainer = undefined;

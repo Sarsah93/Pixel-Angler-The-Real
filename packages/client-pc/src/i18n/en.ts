@@ -581,6 +581,20 @@ const EN_EXTRA: Record<string, string> = {
   '[상태] 불을 쬐어 몸이 녹았습니다 — 오한이 가라앉았습니다': '[Status] You warmed up by the fire — the chills have passed',
   '새 지역': 'a new region',
   '이웃': 'A neighbour',
+  // 203차 — 타이틀(숨은 업적)
+  '타이틀': 'Titles',
+  '단 타이틀': 'Equipped title',
+  '아직 단 타이틀이 없다': 'No title equipped yet',
+  '떼기': 'Remove',
+  '흔함': 'Common',
+  '드묾': 'Rare',
+  '전설': 'Legendary',
+  '오른쪽은 타이틀이다. 낚시꾼으로 살아온 흔적이 쌓이면 어느 날 이름 하나를 얻는다. 단 타이틀은 머리 위 이름 위에 작게 걸린다.':
+    'On the right are titles. As the marks of an angler\'s life pile up, one day you earn a name. The title you wear hangs small above your head.',
+  '얻은 타이틀은 아래 줄에 모인다. 줄을 누르면 그 타이틀로 바꿔 단다. 타이틀마다 작은 덕이 하나씩 붙어 있고, 한 번에 하나만 단다.':
+    'Titles you have earned gather in the rows below. Click a row to wear that title instead. Each title carries one small perk, and you wear only one at a time.',
+  '물음표로 남은 것은 아직 얻지 못한 타이틀이다. 무엇을 하면 얻는지는 아무도 알려 주지 않는다. 바다에서 지내다 보면 언젠가 알게 될 것이다.':
+    'The question marks are titles you have not earned yet. Nobody will tell you how to get them. Spend enough time at sea and you will find out.',
 };
 
 /** 최종 사전 — 분야별 사전을 먼저 깔고 기본 사전이 덮는다(충돌 시 기본 우선) */
@@ -1067,4 +1081,18 @@ export const EN_RULES: Rule[] = [
   [/^(.+) 우호도 ([+-]\d+)$/, (m, tr) => `${tr(m[1])} affinity ${m[2]}`],
   [/^(.+) \(인벤토리 공간 부족 — 미지급\)$/, (m, tr) => `${tr(m[1])} (no bag space — not given)`],
   [/^(.+?) · 고정$/, (m, tr) => `${tr(m[1])} · Pinned`],
+  // 203차 — 타이틀(숨은 업적) 배너 · S창 · 정보 보기 · 지역 채널
+  [/^숨은 업적 달성 · (흔함|드묾|전설)$/, (m, tr) => `Hidden achievement unlocked · ${tr(m[1])}`],
+  [/^「(.+)」$/, (m, tr) => `"${tr(m[1])}"`],
+  [/^\[업적\] 숨은 업적 달성 — 「(.+)」$/, (m, tr) => `[Achievement] Hidden achievement unlocked — "${tr(m[1])}"`],
+  [/^얻은 타이틀 {2}(\d+)$/, 'Titles earned  $1'],
+  [/^(.+) · (흔함|드묾|전설)$/, (m, tr) => `${tr(m[1])} · ${tr(m[2])}`],
+  [/^입질 \+(\d+)%$/, 'Bite rate +$1%'],
+  [/^밤\(22~04시\) 입질 \+(\d+)%$/, 'Night (22:00–04:00) bite rate +$1%'],
+  [/^새벽\(04~08시\) 입질 \+(\d+)%$/, 'Dawn (04:00–08:00) bite rate +$1%'],
+  [/^줄 강도 \+(\d+)%$/, 'Line strength +$1%'],
+  [/^랜딩 바늘 빠짐 -(\d+)%$/, 'Hook pulls while landing -$1%'],
+  [/^상점 판매가 \+(\d+)%$/, 'Shop sell price +$1%'],
+  [/^상점 구매가 -(\d+)%$/, 'Shop buy price -$1%'],
+  [/^행동 피로 -(\d+)%$/, 'Fatigue from actions -$1%'],
 ];

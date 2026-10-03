@@ -612,6 +612,17 @@ export const EN_HELP: Record<string, string> = {
   '독감과 이상고열은 약으로 낫지 않습니다. 홈타운 보건소에 다가가 F를 누르면 진료를 받습니다 — 진료비 45,000원에 병원 · 휴식 계열 상태이상이 모두 낫고 체력이 전부 찹니다. 치료할 것이 없고 체력만 모자라도 같은 값에 체력을 채웁니다.': 'Influenza and High Fever cannot be cured with medicine. Walk up to the Hometown Clinic and press F for treatment — for a 45,000 won fee, every hospital- and rest-type status effect is cured and your HP is fully restored. Even with nothing to treat, it refills your HP for the same price if you are short.',
   '돈이 아깝다면 감기 · 탈진은 침대에서 자도 낫습니다. 진료비를 낼 만한 것은 체력이 계속 깎이는 이상고열입니다.': 'If the fee hurts, Common Cold · Exhaustion also heal with a night in bed. What is worth paying for is High Fever, which keeps draining your HP.',
   '상태 패널 읽는 법': 'Reading the Status Panel',
+  // 203차 — 타이틀(숨은 업적)
+  '타이틀 (숨은 업적)': 'Titles (Hidden Achievements)',
+  '타이틀 얻기 · 달기': 'Earning and wearing titles',
+  '낚시꾼으로 지내며 어떤 행동이 쌓이면 어느 날 「숨은 업적 달성」 알림과 함께 타이틀 하나를 얻습니다. 무엇을 해야 얻는지는 게임 안에서 알려 주지 않습니다 — 전부 숨은 업적입니다.':
+    'As certain things you do as an angler pile up, one day a "Hidden achievement unlocked" notice appears and you earn a title. The game never tells you what earns one — every title is a hidden achievement.',
+  '얻은 타이틀은 S(내 상태) 창 오른쪽 「타이틀」 칸에 모입니다. 줄을 누르면 그 타이틀로 바꿔 달고, [떼기]로 뗄 수 있습니다. 아직 못 얻은 것은 「??? × 개수」로만 보입니다.':
+    'Earned titles gather in the "Titles" column on the right of the S (Status) window. Click a row to wear that title, or [Remove] to take it off. Titles not yet earned only show as "??? × count".',
+  '단 타이틀은 내 캐릭터 머리 위에 작게 걸리고, 여럿이 할 때는 다른 사람 이름 위에도 보입니다. 글자색은 레어도입니다 — 흰색 흔함 · 하늘색 드묾 · 금색 전설.':
+    'The title you wear hangs small above your character, and in multiplayer it shows above other players\' names too. The text color is the rarity — white Common, sky blue Rare, gold Legendary.',
+  '타이틀마다 작은 덕이 하나씩 붙어 있고(입질 · 줄 강도 · 상점 가격 · 피로 등 몇 %), 단 것 하나만 적용됩니다. 레어도가 높을수록 덕이 조금 큽니다.':
+    'Each title carries one small perk (a few % to bites, line strength, shop prices, fatigue and so on), and only the one you wear applies. Higher rarity means a slightly bigger perk.',
   '대 · 중 · 소 3단계와 호버 팝업': 'Three sizes and the hover popup',
   '① 상태 패널 — 체력 · 피로도 · 경험치 · 시계 · 날씨 ② 허기 · 수분 바 ③ 마우스를 올리면 뜨는 값 ④ 상태이상 칩': '① Status panel — HP · Fatigue · EXP · clock · weather ② Hunger · Water bars ③ Value shown on mouse-over ④ Status effect chips',
   '타이틀바의 ◱로 대 · 중 · 소 3단계, ◐로 투명도를 바꿉니다(저장됩니다). 대 단계에서는 체력 · 피로도 아래에 경험치 바(Lv)와 허기 · 수분 바, 날짜 · 시계 · 날씨 배지가 보입니다. 중 · 소 단계에서는 일부 바가 숨고 아이콘과 툴팁으로 봅니다.': '◱ on the title bar switches between 3 sizes — large · medium · small — and ◐ changes the opacity (both are saved). At large size you see the EXP bar (Lv), the Hunger · Water bars, and the date · clock · weather badges below HP · Fatigue. At medium · small some bars hide, and you read them from icons and tooltips.',

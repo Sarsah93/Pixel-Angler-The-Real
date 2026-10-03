@@ -461,7 +461,14 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-10-03 202차) — 문 닫은 시간엔 거래 막기 · 문 앞 혼잣말**
+**최근 변경 (2026-10-03 203차) — 타이틀(숨은 업적) 12종 · 달성 배너 · S 창 타이틀 칸 · 머리 위 표시**
+
+- core `TitleDatabase`(12종 · 전부 히든 · 레어도별 1~3% 효과) + client `TitleStore`(누적 · 세이브 `titles`) · 훅 12곳.
+- 달성 배너 `ui/TitleBanner`(`pumpTitleBanners` — 필드 · 1인칭 · 집) · S 창 타이틀 칸 · 머리 위 레어도 색 · 멀티 `MpProfile.title` id.
+- 함정: 일시정지된 씬의 배너는 영영 안 닫힌다 — 펌프가 걷어 낸다(`ui-framework.md` §6).
+  상세: [203차 워크로그](../docs/wiki/03-WORKLOG/2026-10-03-203-hidden-titles.md).
+
+**이전 변경 (2026-10-03 202차) — 문 닫은 시간엔 거래 막기 · 문 앞 혼잣말**
 
 - `RegionFieldScene.promptTrade` — `BUILDING_HOURS` 밖이면 거래 대신 `showClosedDoor`(혼잣말 2단락 · 가게 모습 4종 + 안내문).
 - 직판장·편의점 24시간 · 이야기 인물의 물건 팔기는 시간 무관. 타이틀 업적은 설계안 확인 대기(백로그 AR).
@@ -473,13 +480,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - 정보 카드/목록 줄 누르기 = `MapPinStore` 토글 · 마커→카드 통로 유지(`tipHolds`) · 사람 마커는 핀 판정 64px(`moves`).
 - 함정: 누를 수 있는 호버 카드는 통로 유지가 필요 · `mm_pin` 픽셀 아이콘 없음(`ui-framework.md` §6).
   상세: [201차 워크로그](../docs/wiki/03-WORKLOG/2026-10-03-201-shop-hours-card-pin.md).
-
-**이전 변경 (2026-10-03 200차) — 지도 마커 정보 카드 · 미니맵 확대 시 「지금 할 일」 겹침**
-
-- 미니맵·전체 지도 아이콘 호버 = `ui/MapMarkerTip` 카드(이름 · 종류 · 파는 것 / 직업 · 의뢰 상태 · 거리·방향 · 겹친 자리 목록).
-- `MiniMarker.sub/goods/status` · `ShopCatalog.BUILDING_GOODS` · 거리는 목표 화살표와 같은 `metersPerPx()`.
-- 미니맵 크기 변경은 `RegionHud.resizeMiniMap` — 붙어 있던 추적기를 지도 아래로 다시 붙인다(겹침 0).
-  상세: [200차 워크로그](../docs/wiki/03-WORKLOG/2026-10-03-200-map-marker-info-card.md).
 
 ---
 

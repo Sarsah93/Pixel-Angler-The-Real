@@ -30,6 +30,8 @@ import { CHAR_SCALE, CHAR_HEAD_TOP, TUNING, kstParts, type CharDir } from '@tra/
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { GameState } from '../store/GameState.js';
 import { StoryStore } from '../store/StoryStore.js';
+import { TitleStore } from '../store/TitleStore.js';
+import { pumpTitleBanners } from '../ui/TitleBanner.js';
 import { FridgePanel } from '../ui/FridgePanel.js';
 import { CookingPanel } from '../ui/CookingPanel.js';
 import { CookingStore } from '../store/CookingStore.js';
@@ -1028,6 +1030,7 @@ export class HomeInteriorScene extends Phaser.Scene {
   // ── 이동/충돌 (간이 AABB — 물리 미사용) ──────────────
 
   update(_t: number, delta: number): void {
+    pumpTitleBanners(this);   // 203차 — 숨은 업적 달성 배너(고양이 집사 …)
     // 154차 — 집 주방 화구는 wall-clock으로 계속 끓는다(패널이 닫혀 있어도). 1초마다 동기화.
     this.cookSyncAcc += delta;
     if (this.cookSyncAcc >= 1000) { this.cookSyncAcc = 0; CookingStore.syncAll(); }
@@ -1411,6 +1414,7 @@ export class HomeInteriorScene extends Phaser.Scene {
     const now = Date.now();
     const c = HomeStore.cat;
     if (now - c.lastPetMs > 10 * 60 * 1000) c.affection = Math.min(100, c.affection + 2);
+    if (now - c.lastPetMs > 3000) TitleStore.bump('catPet');   // 203차 — 「고양이 집사」(연타는 3초에 한 번)
     c.lastPetMs = now;
     this.cat?.petReact();
     const v = GameState.vitals;

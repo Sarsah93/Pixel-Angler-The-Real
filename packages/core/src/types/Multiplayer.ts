@@ -395,6 +395,8 @@ export interface MpProfile {
   /** 최대어 상위 3종 */
   records: { speciesId: string; cm: number }[];
   trips: number;
+  /** 203차 — 단 타이틀 id(글자가 아니라 id — 받는 쪽이 자기 언어로 이름을 찾는다). 없으면 안 단 것 */
+  title?: string;
 }
 
 // ── 메인 서버 플리마켓 (계약만 — 원장은 나중) ─────────
