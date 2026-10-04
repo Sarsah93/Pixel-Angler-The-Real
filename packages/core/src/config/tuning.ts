@@ -661,6 +661,18 @@ export interface TuningConfig {
     pricing: { ingredientMultiplier: number; qualityMultiplier: number; freshnessMultiplier: number };
   };
   /**
+   * 밑걸림·채비 손실 (206차 — QA 「밑걸림이 너무 잦아 퀘스트 진행이 어렵다」 · 채비 손실 감사).
+   * 소비: `FirstPersonFishingScene` 입질 틱 · `InventoryStore.applyRigLoss`.
+   */
+  snag: {
+    /** 낚시 어획 목표가 남은 진행 중 퀘스트(처음 1회)일 때 밑걸림 위험 배율 */
+    questFirstMult: number;
+    /** 목줄이 터질 때 스풀에서 잘려 나가는 길이(m) — 스풀째 잃지 않는다 */
+    leaderCutM: number;
+    /** 원줄이 터질 때 잘려 나가는 길이(m) */
+    mainLineCutM: number;
+  };
+  /**
    * 물때 흐름 × 어종 × 장르 (205차 — TIDE_PHASE_STRATEGY_SPEC P1~P3 · 초기값은 설계 초안, 실플레이 조율 대기).
    * 소비: `simulation/TidePhaseStrategy.ts`.
    */
@@ -1272,6 +1284,11 @@ export const TUNING: TuningConfig = {
     naming: { freshThreshold: 90, premiumThreshold: 95, fattyThreshold: 0.8 },
     pricing: { ingredientMultiplier: 0.2, qualityMultiplier: 0.9, freshnessMultiplier: 0.3 },
   },
+  snag: {
+    questFirstMult: 0.3,
+    leaderCutM: 1.5,
+    mainLineCutM: 8,
+  },
   tidePhase: {
     eastSeaK: 0.3,
     eastSeaFlowK: 0.4,
@@ -1426,6 +1443,10 @@ export const TUNING_META: TuningParamMeta[] = [
   { path: 'cook.dishEffect.weightExp', min: 0, max: 1, step: 0.05, category: 'balance', label: '요리 중량 배율 지수' },
   { path: 'cook.pricing.qualityMultiplier', min: 0.3, max: 1.5, step: 0.05, category: 'balance', label: '요리 판매가 품질 계수' },
   { path: 'cook.naming.freshThreshold', min: 70, max: 100, step: 1, category: 'balance', label: '「싱싱한」 신선도 임계' },
+  // ── 밑걸림·채비 손실 (206차) ──
+  { path: 'snag.questFirstMult', min: 0, max: 1, step: 0.05, category: 'balance', label: '퀘스트 첫 진행 밑걸림 배율' },
+  { path: 'snag.leaderCutM', min: 0.5, max: 5, step: 0.5, category: 'balance', label: '목줄 끊김 길이(m)' },
+  { path: 'snag.mainLineCutM', min: 2, max: 30, step: 1, category: 'balance', label: '원줄 끊김 길이(m)' },
   // ── 물때 흐름 × 어종 × 장르 (205차 — 설계 초안, 실플레이 조율 대기) ──
   { path: 'tidePhase.eastSeaK', min: 0, max: 1, step: 0.05, category: 'balance', label: '동해 물때 효과 계수' },
   { path: 'tidePhase.eastSeaFlowK', min: 0, max: 1, step: 0.05, category: 'balance', label: '동해 물살 계수' },

@@ -58,6 +58,8 @@ export interface StorySaveState {
   affinity?: AffinityState;
   /** 퀘스트별 고른 선택지 (140차) — questId → { offer, complete } */
   choices?: Record<string, { offer?: string; complete?: string }>;
+  /** 206차 — 한 번이라도 끝낸 퀘스트(다시 받는 서브 퀘스트 구분 — 구세이브는 done 상태에서 채운다) */
+  everDone?: string[];
   /** 거절해 영영 사라진 once 퀘스트 (141차) */
   declined?: string[];
   /** 거절·미수락 뒤 재발주 가능 일차 (141차 — event 정책) — questId → 스토리 일차 */
@@ -141,6 +143,8 @@ class StoryStoreManager {
   private offerCooldown: Record<string, number> = {};
   private affinity: AffinityState = {};
   private choices: Record<string, { offer?: string; complete?: string }> = {};
+  /** 206차 — 한 번이라도 끝낸 퀘스트 id(퀘스트 첫 진행 밑걸림 완화 판정) */
+  private everDone = new Set<string>();
   /**
    * 165차 — 일지에서 고정한 할 일. **메인 1건 · 서브 1건**만 동시에 고정되고,
    * 「지금 할 일」 창과 필드 화살표가 이 둘을 최우선으로 가리킨다.
@@ -161,7 +165,7 @@ class StoryStoreManager {
     return {
       quests: this.quests, rep: this.rep, pageCatch: this.pageCatch, day: this.day, traineeDay: this.traineeDay, jobs: this.jobs,
       affinity: this.affinity, choices: this.choices, tracked: this.pinned.main, pinned: { ...this.pinned },
-      declined: [...this.declined], offerCooldown: this.offerCooldown,
+      declined: [...this.declined], offerCooldown: this.offerCooldown, everDone: [...this.everDone],
     };
   }
   deserialize(s?: StorySaveState): void {
@@ -183,6 +187,8 @@ class StoryStoreManager {
     }
     this.declined = new Set(s?.declined ?? []);
     this.offerCooldown = s?.offerCooldown ?? {};
+    // 206차 — 구세이브는 지금 끝난 상태인 퀘스트로 채운다
+    this.everDone = new Set([...(s?.everDone ?? []), ...Object.entries(this.quests).filter(([, p]) => p.status === 'done').map(([id]) => id)]);
     this.refreshAutoQuests();
   }
   resetAll(): void { this.deserialize(undefined); }
@@ -283,6 +289,26 @@ class StoryStoreManager {
   }
   allObjectivesDone(q: StoryQuestDef): boolean {
     return q.objectives.every((_o, i) => this.objectiveDone(q, i));
+  }
+  /**
+   * 206차 — 처음 진행하는 퀘스트에 **낚싯대로 잡아야 하는 목표**가 지금 열려 있는가.
+   * QA: 「밑걸림이 너무 잦아 퀘스트를 진행하기 어렵다 — 처음 1회 진행 시 고려」 → 1인칭 밑걸림 위험을 낮춘다.
+   * (한 번 끝낸 퀘스트를 다시 받으면 해당 없음 · 채집·통발 같은 낚싯대 밖 어획은 제외)
+   */
+  firstRunRodObjectiveOpen(): boolean {
+    for (const [id, p] of Object.entries(this.quests)) {
+      if (p.status !== 'active' || this.everDone.has(id)) continue;
+      const q = getStoryQuest(id);
+      if (!q) continue;
+      for (let i = 0; i < q.objectives.length; i++) {
+        const o = q.objectives[i];
+        if (o.kind !== 'catch' && o.kind !== 'release') continue;
+        if (o.method && o.method !== 'rod') continue;
+        if (this.objectiveDone(q, i) || !this.objectiveReachable(q, i)) continue;
+        return true;
+      }
+    }
+    return false;
   }
   /** 188차 — 순서형 퀘스트(`ordered`)는 앞 목표를 다 닫아야 이 목표를 받는다 */
   objectiveReachable(q: StoryQuestDef, i: number): boolean {
@@ -687,6 +713,7 @@ class StoryStoreManager {
     const q = getStoryQuest(id); const p = this.quests[id];
     if (!q || !p || p.status !== 'active' || !this.allObjectivesDone(q)) return false;
     p.status = 'done'; p.day = this.day;
+    this.everDone.add(id);
     const h = this.host;
     const aff = this.affinityOf(q.giver);
     const choice = choiceId ? this.visibleChoices(q, 'complete').find((c) => c.id === choiceId) : undefined;

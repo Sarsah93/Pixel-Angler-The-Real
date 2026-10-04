@@ -38,6 +38,10 @@ export const EN_GEAR: Record<string, string> = {
   '채비가 통째로 뜯겼다 — 처음부터 다시': 'The rig tore off completely — rebuild from scratch',
   '도래 아래가 터졌다 — 찌·수중찌·도래는 남았다': 'It parted below the swivel — float, sub-float and swivel survived',
   '손실 없음': 'Nothing lost',
+  // 206차 — 채비 트리 기준 손실 한 줄
+  '가지바늘이 뜯겨 나갔다 — 채비 한 벌을 버렸다': 'A branch hook tore off — the whole rig set is ruined',
+  '루어가 바위틈에 박혀 떨어져 나갔다': 'The lure wedged in the rocks and broke off',
+  '목줄 아래가 터졌다 — 원줄 쪽은 남았다': 'It broke below the leader knot — the main-line side survived',
   '찌가 바위에 부딪혀 깨졌습니다': 'The float hit rock and cracked',
 
   // ── 장비 고장 ──

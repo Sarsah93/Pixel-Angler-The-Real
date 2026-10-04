@@ -65,6 +65,7 @@ import {
 import { drawRigIcon, RigIconKind } from '../ui/RigIconRenderer.js';
 import { GameState } from '../store/GameState.js';
 import { TitleStore } from '../store/TitleStore.js';
+import { StoryStore } from '../store/StoryStore.js';
 import { pumpTitleBanners } from '../ui/TitleBanner.js';
 import { pumpTideFlow, tideSenseLabel, queueTideLoreNote } from '../ui/TideFlowNotifier.js';
 import { TideLoreStore } from '../store/TideLoreStore.js';
@@ -517,6 +518,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     if (import.meta.env.DEV) (globalThis as unknown as { __FP?: unknown }).__FP = this;
     // 205차 — 씬 인스턴스는 재사용된다: 지역별 물때 캐시(동해 계수)·쌓인 밑밥은 캐스팅마다 새로
     this.tideNowCache = null; this.tideClock = null; this.chumBank = 0; this.surfRolling = false;
+    // 206차 — 처음 진행하는 퀘스트에 낚싯대 어획 목표가 열려 있으면 밑걸림을 덜 낸다(QA — 퀘스트 원활 진행)
+    this.snagQuestMult = StoryStore.firstRunRodObjectiveOpen() ? TUNING.snag.questFirstMult : 1;
     const zMax = this.cfg.zMaxM;
     this.pxPerMZ = Math.min(46, (GAME_HEIGHT - WATERLINE - 110) / Math.max(2, zMax));
     // 면사매듭 제거(전유동) 시 Z_limit 무한 — 바닥까지 무한 침강
@@ -2327,7 +2330,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       snagRiskMult: getAreaSnagRiskMult(GameState.currentSpotId)
         * (this.lureSpec?.snagRiskMult ?? 1) * (this.castWx?.snagMult ?? 1)
         // 149차 — 콘크리트 블록 틈은 밑걸림이 기본값이다(그래서 저가 장비로 한다)
-        * (this.cfg.hole?.snagRiskMult ?? 1) * tideGenreSnag,
+        * (this.cfg.hole?.snagRiskMult ?? 1) * tideGenreSnag * this.snagQuestMult,
     });
 
     // ── 입질 시퀀스 진행 (초릿대 굽힘/찌 잠김 구동) ──
@@ -2421,6 +2424,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     return this.tideNowCache;
   }
   private tideNowCache: { at: number; state: TideFlowState; strength: number; flow01: number; level01: number; k: number } | null = null;
+  /** 206차 — 퀘스트 첫 진행 밑걸림 배율(`TUNING.snag.questFirstMult` · 캐스팅마다 판정) */
+  private snagQuestMult = 1;
   /** 205차 — 물때 고인 밑밥 저장량 0~1(찌) */
   private chumBank = 0;
   /** 205차 — 원투 봉돌이 물살에 구르는 중(하류로 끌린다) */
@@ -2600,7 +2605,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.snagChoice = false;
     const table = kind === 'pull' ? SNAG_PULL_UP : SNAG_BREAK_OFF;
     const row = rollSnagOutcome(table, Math.random());
-    const lost = this.applySnagLoss(row.outcome);
+    const { lost, label } = this.applySnagLoss(row.outcome, row.labelKo);
 
     // 로드 과부하 — 라인이 로드 등급보다 **과하게** 강하면 줄이 아니라 대가 먼저 나간다.
     //   (적정 채비를 쓰면 줄이 끊어지며 대를 지킨다 — 채비 매칭을 가르치는 지점)
@@ -2615,29 +2620,31 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     const rodLine = snapped ? '\n\n[경고] 무리한 힘에 낚싯대 절지가 부러졌습니다 — 수리할 수 없습니다.' : '';
     if (row.outcome === 'all_saved') {
       this.failAndExit('채비를 건졌습니다',
-        `${row.labelKo}\n${lostLine}${rodLine}\n\n뒷줄견제(H)로 미끼를 띄우면 밑걸림을 예방할 수 있습니다.`);
+        `${label}\n${lostLine}${rodLine}\n\n뒷줄견제(H)로 미끼를 띄우면 밑걸림을 예방할 수 있습니다.`);
     } else {
-      this.failAndExit('밑걸림', `${row.labelKo}\n${lostLine}${rodLine}`);
+      this.failAndExit('밑걸림', `${label}\n${lostLine}${rodLine}`);
     }
   }
 
-  /** 대처 결과 → 실제 채비 손실 */
-  private applySnagLoss(outcome: SnagOutcome): string[] {
-    const L = (steps: RigStepKey[]): string[] => InventoryStore.loseRigParts(steps);
-    switch (outcome) {
-      case 'all_saved':
-        return [];
-      case 'bait_lost':
-        return L(['bait'] as RigStepKey[]);
-      case 'hook_bait_lost':
-        return [...L(['hook', 'bait'] as RigStepKey[]), ...(this.lureMode ? InventoryStore.loseLureRig() : [])];
-      case 'below_swivel':
-        return [...L(['leader', 'sinker', 'hook', 'bait'] as RigStepKey[]),
-          ...(this.lureMode ? InventoryStore.loseLureRig() : [])];
-      default:
-        return [...L(['float', 'subFloat', 'swivel', 'leader', 'sinker', 'hook', 'bait'] as RigStepKey[]),
-          ...(this.lureMode ? InventoryStore.loseLureRig() : [])];
-    }
+  /**
+   * 대처 결과 → 실제 채비 손실. 206차 — 평면 칸 목록 대신 **채비 트리의 어느 아래가 떨어졌는가**(core `planRigLoss`).
+   * 남은 재고가 있는 칸은 그대로 다시 달린다(다시 채비하지 않아도 된다).
+   * @returns 잃은 것 · 상황에 맞춘 한 줄(세트·루어는 「바늘과 미끼」가 아니다)
+   */
+  private applySnagLoss(outcome: SnagOutcome, labelKo: string): { lost: string[]; label: string } {
+    const plan = InventoryStore.planRigLoss(outcome);
+    const lost = InventoryStore.applyRigLoss(plan);
+    let label = labelKo;
+    if (outcome === 'hook_bait_lost' && plan.scope === 'kit') label = '가지바늘이 뜯겨 나갔다 — 채비 한 벌을 버렸다';
+    else if (outcome === 'hook_bait_lost' && plan.scope === 'lure') label = '루어가 바위틈에 박혀 떨어져 나갔다';
+    else if (outcome === 'below_swivel' && !InventoryStore.rigSummary().swivelId) label = '목줄 아래가 터졌다 — 원줄 쪽은 남았다';
+    return { lost, label };
+  }
+
+  /** 206차 — 파이팅 중 파단 · 이빨 절단 손실(밑걸림과 같은 트리 규칙) */
+  private applyLineLoss(kind: 'leader' | 'above_float' | 'cutter'): string[] {
+    const cause = kind === 'above_float' ? 'line_break_main' : kind === 'cutter' ? 'cutter' : 'line_break_leader';
+    return InventoryStore.applyRigLoss(InventoryStore.planRigLoss(cause));
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -2948,10 +2955,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
           // 목줄 터짐 — 30% 확률로 찌(원줄 파단 — 수중찌 포함)까지 함께 손실.
           // 루어 모드는 루어도 목줄째 손실.
           const floatToo = Math.random() < 0.3;
-          const parts: RigStepKey[] = floatToo
-            ? ['float', 'subFloat', 'swivel', 'leader', 'sinker', 'hook', 'bait']
-            : ['leader', 'sinker', 'hook', 'bait'];
-          const lost = [...InventoryStore.loseRigParts(parts), ...(this.lureMode ? InventoryStore.loseLureRig() : [])];
+          const lost = this.applyLineLoss(floatToo ? 'above_float' : 'leader');   // 206차 — 트리 기준
           TitleStore.bump('lineBreak');   // 203차 — 「줄 끊는 사람」
           this.failAndExit(floatToo ? '줄터짐! 찌까지 터졌습니다' : '줄터짐! 목줄이 터졌습니다',
             `텐션이 한계를 넘어 ${floatToo ? '찌 위에서' : '목줄이'} 터졌습니다.\n손실: ${lost.join(', ')}\n\nU 채비하기에서 재장착 후 다시 캐스팅하세요.`);
@@ -2960,8 +2964,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
         case 'hook_off': {
           // 미끼 털림 / 복어류는 목줄째 절단
           if (this.hookedFish?.lineCutter) {
-            const lost = [...InventoryStore.loseRigParts(['leader', 'sinker', 'hook', 'bait'] as RigStepKey[]),
-              ...(this.lureMode ? InventoryStore.loseLureRig() : [])];
+            const lost = this.applyLineLoss('cutter');   // 206차 — 도래 아래 전부(목줄은 길이만)
             this.failAndExit('복어가 목줄을 끊었습니다!',
               `날카로운 이빨에 목줄째 잘려나갔습니다.\n손실: ${lost.join(', ')}`);
           } else {
@@ -2992,10 +2995,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     // dev 무적(갓모드): 줄이 터지지 않는다 (손실·강제 종료 전부 무시)
     if (isGod()) return;
     const floatToo = Math.random() < 0.3;
-    const parts: RigStepKey[] = floatToo
-      ? ['float', 'subFloat', 'swivel', 'leader', 'sinker', 'hook', 'bait']
-      : ['leader', 'sinker', 'hook', 'bait'];
-    const lost = [...InventoryStore.loseRigParts(parts), ...(this.lureMode ? InventoryStore.loseLureRig() : [])];
+    const lost = this.applyLineLoss(floatToo ? 'above_float' : 'leader');   // 206차 — 트리 기준
     TitleStore.bump('lineBreak');
     this.failAndExit('무리한 릴링! 줄이 터졌습니다',
       `한계 텐션에서 릴링을 강행해 라인이 파단됐습니다.\n손실: ${lost.join(', ')}\n\n텐션이 높을 때는 릴링을 멈추고 드랙으로 버티세요.`);

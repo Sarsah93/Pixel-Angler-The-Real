@@ -33,6 +33,7 @@ import type { ShopHours } from '../data/ShopCatalog.js';
 import { MapPinStore } from '../store/MapPinStore.js';
 import { getLocale } from '../i18n/I18n.js';
 import { StoryStore } from '../store/StoryStore.js';
+import { tideFlowStateAt, TIDE_FLOW_LABEL_KO, TIDE_FLOW_NOTE_KO, TIDE_FLOW_PROFILE } from '@tra/core';
 
 /** 미니맵 마커 — priority: 0 상점 / 2 퀘스트 보유 / 3 완료 가능 (높을수록 셀 점유 우선) */
 export interface MiniMarker {
@@ -255,6 +256,21 @@ interface TipAnchor { x: number; y: number; w: number; h: number }
  */
 const STRIP = { chip: 22, gap: 4, perRow: 4, top: 6, icon: 16 } as const;
 
+/**
+ * 물때 단계 칩(206차) — 상태 패널 **바로 아래 한 줄**(상태이상 스트립은 그 아래로 밀린다).
+ * 이름은 누구나 본다(물때표로 알 수 있는 정보). 「물때 감각」(fish_tide ≥ 1)이 있으면
+ * 다음 단계까지 남은 분과 입질도 색(테두리)이 붙는다 — 스킬의 몫을 칩이 빼앗지 않게.
+ */
+const TIDE_CHIP = { h: 22, padX: 6, icon: 16, gap: 4 } as const;
+
+/** 입질도 별 → 칩 테두리 색 (스킬 있을 때만) */
+function tideStarColor(stars: number): number {
+  if (stars >= 4.5) return 0xffcc44;
+  if (stars >= 3.5) return 0x4af2a1;
+  if (stars >= 3) return 0x6fb8e0;
+  return 0x8fa4b8;
+}
+
 /** 남은 활동 시간 표기 — 상위 0단위는 생략 (44차 compactRemain과 같은 문법) */
 function formatRemain(ms: number): string {
   const total = Math.max(0, Math.round(ms / 1000));
@@ -328,6 +344,12 @@ export class RegionHud extends Phaser.GameObjects.Container {
   private stripC?: Phaser.GameObjects.Container;
   /** 스트립 재생성 판단용 시그니처 (id 목록 + 로케일) */
   private stripSig = '';
+  /** 물때 단계 칩 (206차 — 패널 밖 바로 아래) */
+  private tideC?: Phaser.GameObjects.Container;
+  /** 칩 재생성 판단용 시그니처 (로케일 · 크기 단계 · 단계 · 남은 분) */
+  private tideSig = '';
+  /** 칩 박스(패널 좌표 — statusOffset 전) · 없으면 숨김 */
+  private tideBox: TipAnchor | null = null;
 
   /** 상태 패널·지역 채널 래퍼 — 크기(scale)·투명도(alpha)를 통째로 조절 (116차) */
   private statusC!: Phaser.GameObjects.Container;
@@ -456,6 +478,10 @@ export class RegionHud extends Phaser.GameObjects.Container {
     this.stripC?.destroy();
     this.stripC = undefined;
     this.stripSig = '';
+    this.tideC?.destroy();
+    this.tideC = undefined;
+    this.tideSig = '';
+    this.tideBox = null;
   }
 
   /**
@@ -726,7 +752,7 @@ export class RegionHud extends Phaser.GameObjects.Container {
   /** 활성 목록이 바뀔 때만 재생성 — 매초 파괴/생성하면 호버가 끊긴다 */
   private refreshStatusStrip(): void {
     const list = GameState.statuses;
-    const sig = `${getLocale()}|${this.statusSize}|${list.map((a) => a.id).join(',')}`;
+    const sig = `${getLocale()}|${this.statusSize}|${this.tideBox ? 1 : 0}|${list.map((a) => a.id).join(',')}`;
     if (sig === this.stripSig) return;
     this.stripSig = sig;
     this.stripC?.destroy();
@@ -734,7 +760,8 @@ export class RegionHud extends Phaser.GameObjects.Container {
     if (list.length === 0) return;
 
     const c = this.scene.add.container(0, 0);
-    const y0 = SP.y + this.statusLayout.h + STRIP.top;
+    // 물때 칩이 있으면 그 아래로 내려간다
+    const y0 = this.tideBox ? this.tideBox.y + this.tideBox.h + STRIP.gap : SP.y + this.statusLayout.h + STRIP.top;
     // 툴팁 앵커는 **스트립 전체 박스**다 — 칩 하나에 붙이면 팝업이 옆 칩들을 덮어
     // 다른 상태이상으로 커서를 옮길 수 없다(실렌더에서 확인).
     const rows = Math.ceil(list.length / STRIP.perRow);
@@ -768,6 +795,103 @@ export class RegionHud extends Phaser.GameObjects.Container {
     c.setPosition(this.statusOffset.x, this.statusOffset.y);
     this.add(c);
     applyScreenFixed(this);
+  }
+
+  // ── 물때 단계 칩 (206차 — 패널 밖 바로 아래) ────────────
+  /** 단계가 바뀌거나(스킬이 있으면) 남은 분이 바뀔 때만 재생성 — 홈타운은 물때가 없다 */
+  private refreshTideChip(): void {
+    const hidden = this.cfg.regionId.includes('hometown');
+    const st = hidden ? null : tideFlowStateAt();
+    const skilled = GameState.skillRank('fish_tide') >= 1;
+    const remain = st ? Math.max(1, st.minutesToPhaseEnd) : 0;
+    const sig = st ? `${getLocale()}|${this.statusSize}|${st.phase}|${skilled ? remain : ''}` : 'none';
+    if (sig === this.tideSig) return;
+    this.tideSig = sig;
+    this.tideC?.destroy();
+    this.tideC = undefined;
+    this.tideBox = null;
+    if (!st) return;
+
+    const x = SP.x, y = SP.y + this.statusLayout.h + STRIP.top;
+    const maxW = this.statusLayout.w;
+    const color = skilled ? tideStarColor(TIDE_FLOW_PROFILE[st.phase].stars) : 0x8fa4b8;
+    const label = skilled
+      ? `${TIDE_FLOW_LABEL_KO[st.phase]} · ${remain}분 뒤 ${TIDE_FLOW_LABEL_KO[st.nextPhase]}`
+      : TIDE_FLOW_LABEL_KO[st.phase];
+    const c = this.scene.add.container(0, 0);
+    const g = this.scene.add.graphics();
+    const icon = addPixelIcon(this.scene, 'tide', x + TIDE_CHIP.padX + TIDE_CHIP.icon / 2, y + TIDE_CHIP.h / 2, TIDE_CHIP.icon);
+    const textX = x + TIDE_CHIP.padX + TIDE_CHIP.icon + TIDE_CHIP.gap;
+    const t = this.scene.add.text(textX, y + TIDE_CHIP.h / 2, label, {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#e8f4ff',
+    }).setOrigin(0, 0.5);
+    const avail = maxW - (textX - x) - TIDE_CHIP.padX;
+    // 좁은 단계에서 넘치면 다음 단계 이름을 빼고 남은 분만 남긴다(말줄임이 숫자를 먹지 않게)
+    if (skilled && t.width > avail) t.setText(`${TIDE_FLOW_LABEL_KO[st.phase]} · ${remain}분`);
+    clampTextWidth(t, avail);
+    const w = Math.min(maxW, Math.ceil(textX - x + t.width + TIDE_CHIP.padX));
+    g.fillStyle(0x06101e, 0.82);
+    g.fillRoundedRect(x, y, w, TIDE_CHIP.h, 4);
+    g.lineStyle(1.2, color, 0.95);
+    g.strokeRoundedRect(x, y, w, TIDE_CHIP.h, 4);
+    const box: TipAnchor = { x, y, w, h: TIDE_CHIP.h };
+    const hit = this.scene.add.rectangle(x + w / 2, y + TIDE_CHIP.h / 2, w, TIDE_CHIP.h, 0xffffff, 0.001)
+      .setInteractive({ useHandCursor: false });
+    hit.on('pointerover', () => this.showTideTip(box));
+    hit.on('pointerout', () => this.hideValueTip());
+    c.add(icon ? [g, icon, t, hit] : [g, t, hit]);
+    this.tideC = c;
+    this.tideBox = box;
+    c.setPosition(this.statusOffset.x, this.statusOffset.y);
+    this.add(c);
+    applyScreenFixed(this);
+  }
+
+  /** 물때 칩 툴팁 — (스킬 없음) 물 방향 / (스킬) 단계 한마디 · 다음 단계까지 */
+  private showTideTip(anchor: TipAnchor): void {
+    this.hideValueTip();
+    const st = tideFlowStateAt();
+    const skilled = GameState.skillRank('fish_tide') >= 1;
+    const dir = st.direction === 'flood' ? '물이 들어오는 중' : st.direction === 'ebb' ? '물이 빠지는 중' : '물이 멈췄다';
+    const c = this.scene.add.container(0, 0);
+    const g = this.scene.add.graphics();
+    c.add(g);
+    const padX = 10, padY = 8, maxW = 240;
+    const tipIcon = addPixelIcon(this.scene, 'tide', padX + 9, padY + 9, 18);
+    if (tipIcon) c.add(tipIcon);
+    const nameX = tipIcon ? padX + 24 : padX;
+    const name = this.scene.add.text(nameX, padY + 2, TIDE_FLOW_LABEL_KO[st.phase], {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#f2f8ff', fontStyle: 'bold',
+    });
+    const parts: Phaser.GameObjects.Text[] = [name];
+    let yy = Math.max(name.y + name.height, padY + 18) + 4;
+    const line = (s: string, color: string, size: string): void => {
+      const tx = this.scene.add.text(padX, yy, s, {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: size, color, wordWrap: { width: maxW },
+      });
+      parts.push(tx);
+      yy = tx.y + tx.height + 4;
+    };
+    // 스킬이 있으면 단계 한마디가 물 방향까지 말한다(같은 말 두 번 금지)
+    if (!skilled) line(dir, '#cfe3f2', '11px');
+    else {
+      line(TIDE_FLOW_NOTE_KO[st.phase], '#e8ddc0', '10px');
+      line(`${Math.max(1, st.minutesToPhaseEnd)}분 뒤 ${TIDE_FLOW_LABEL_KO[st.nextPhase]}`, '#ffcc44', '11px');
+    }
+    c.add(parts);
+    const w = padX * 2 + Math.max(nameX - padX + name.width, ...parts.slice(1).map((p) => p.width));
+    const h = yy - 4 + padY;
+    const color = skilled ? tideStarColor(TIDE_FLOW_PROFILE[st.phase].stars) : 0x8fa4b8;
+    g.fillStyle(0x06101e, 0.96);
+    g.fillRoundedRect(0, 0, w, h, 5);
+    g.lineStyle(1.2, color, 0.95);
+    g.strokeRoundedRect(0, 0, w, h, 5);
+    c.setSize(w, h);
+    this.valueTip = c;
+    this.add(c);
+    applyScreenFixed(this);
+    this.anchorTip(c, anchor);
+    this.tipRefresh = () => this.showTideTip(anchor);
   }
 
   /**
@@ -927,7 +1051,8 @@ export class RegionHud extends Phaser.GameObjects.Container {
       this.vitalLabels.get(key)?.setColor(low ? '#ff9a8a' : '#a0b8c8');
     }
 
-    // ── 상태이상 스트립 (패널 밖) ──
+    // ── 물때 칩 · 상태이상 스트립 (패널 밖 — 칩이 위, 스트립이 그 아래) ──
+    this.refreshTideChip();
     this.refreshStatusStrip();
     // 열린 호버 팝업이 있으면 같은 주기로 다시 그린다(남은 시간·수치 실시간)
     this.tipRefresh?.();
@@ -1739,6 +1864,11 @@ export class RegionHud extends Phaser.GameObjects.Container {
       { name: 'hud.quickslot', rect: R(this.quickBarRect) },
     ];
     if (this.trackerC?.visible) out.push({ name: 'hud.quest', rect: R(this.hudRect('quest')) });
+    // 206차 물때 칩 — 상시 요소(상태이상 띠와 달리 늘 떠 있다)
+    if (this.tideBox) {
+      const b = this.tideBox;
+      out.push({ name: 'hud.tide', rect: new Phaser.Geom.Rectangle(b.x + this.statusOffset.x, b.y + this.statusOffset.y, b.w, b.h) });
+    }
     return out;
   }
 
@@ -1766,6 +1896,7 @@ export class RegionHud extends Phaser.GameObjects.Container {
       this.statusOffset = { x: x - SP.x, y: y - SP.y };
       this.statusC.setPosition(this.statusOffset.x, this.statusOffset.y);
       this.stripC?.setPosition(this.statusOffset.x, this.statusOffset.y);
+      this.tideC?.setPosition(this.statusOffset.x, this.statusOffset.y);
       shift(this.statusCtrl);
     } else if (key === 'chat') {
       shift([...this.logParts.filter((o) => o !== this.logBarG), ...this.chatCtrl]);

@@ -461,7 +461,14 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-10-04 205차) — 어종 × 물때 · 채비 × 물때 · 해루질/통발 물때 · 동해 감쇠 0.3**
+**최근 변경 (2026-10-04 206차) — 채비 손실 감사 · 트리 기준 손실 · 퀘스트 첫 진행 밑걸림 완화 · 물때 칩**
+
+- 감사: 루어 무손실 · 목줄 스풀째 · 카드 채비 무손실 · 유동 봉돌 오손실 · 원줄 무손실 · 재고 있어도 칸 비움 → core `planRigLoss`(트리 기준) + 줄 길이 손실.
+- 낚시 어획 목표 퀘스트를 처음 진행할 때 밑걸림 ×0.3(`StoryStore.everDone` · `TUNING.snag`) · HUD 물때 칩(`RegionHud.refreshTideChip`).
+- 함정: 손실을 평면 칸 이름으로 하나씩 비우면 부모 칸이 자손을 풀어 뒤 손실이 헛돈다 — 트리로 계획해 한 번에(`fishing-loop.md` §6-19).
+  상세: [206차 워크로그](../docs/wiki/03-WORKLOG/2026-10-04-206-rig-loss-snag-tide-chip.md).
+
+**이전 변경 (2026-10-04 205차) — 어종 × 물때 · 채비 × 물때 · 해루질/통발 물때 · 동해 감쇠 0.3**
 
 - core `TidePhasePreference`(어종 13묶음 × 8단계) + `TidePhaseStrategy`(지역·사리·물살·수위 · 장르 조건 · 해루질 창 · 통발) · `TUNING.tidePhase`.
 - 1인칭: 밑밥 쌓기/풀림/띠 · 원투 봉돌 구름 · 루어 종류 · 구멍치기 수위 · 잘 무는 물때에 잡으면 `TideLoreStore` 기록(채널 · 도감).
@@ -474,13 +481,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - 타이틀 v2: 경로 OR × 조건 AND + 전설 `minLevel` · 대물 점수 · 30종 · 집 안 머리 위 · 위키 공략 탭 · 장르×어종 공략은 스펙(결정 대기).
 - 함정: 조류 엔진 `tideFactor`에 벽시계를 넣으면 물살이 만조와 어긋난다 — `tideClockHours()`(`fishing-loop.md` §6).
   상세: [204차 워크로그](../docs/wiki/03-WORKLOG/2026-10-04-204-tide-flow-titles-v2.md).
-
-**이전 변경 (2026-10-03 203차) — 타이틀(숨은 업적) 12종 · 달성 배너 · S 창 타이틀 칸 · 머리 위 표시**
-
-- core `TitleDatabase`(12종 · 전부 히든 · 레어도별 1~3% 효과) + client `TitleStore`(누적 · 세이브 `titles`) · 훅 12곳.
-- 달성 배너 `ui/TitleBanner`(`pumpTitleBanners` — 필드 · 1인칭 · 집) · S 창 타이틀 칸 · 머리 위 레어도 색 · 멀티 `MpProfile.title` id.
-- 함정: 일시정지된 씬의 배너는 영영 안 닫힌다 — 펌프가 걷어 낸다(`ui-framework.md` §6).
-  상세: [203차 워크로그](../docs/wiki/03-WORKLOG/2026-10-03-203-hidden-titles.md).
 
 ---
 

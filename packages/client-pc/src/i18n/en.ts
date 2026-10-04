@@ -599,6 +599,10 @@ const EN_EXTRA: Record<string, string> = {
 
 /** 최종 사전 — 분야별 사전을 먼저 깔고 기본 사전이 덮는다(충돌 시 기본 우선) */
 export const EN_DICT: Record<string, string> = {
+  // 206차 — HUD 물때 칩 툴팁(물 방향)
+  '물이 들어오는 중': 'Water coming in',
+  '물이 빠지는 중': 'Water going out',
+  '물이 멈췄다': 'The water has stopped',
   ...EN_FISH, ...EN_CONTENT, ...EN_ITEMS, ...EN_RIG_COOKING, ...EN_HELP, ...EN_FORAGE, ...EN_PANELS, ...EN_GEAR, ...EN_AUCTION, ...EN_COOK, ...EN_UI, ...EN_EXTRA, ...EN_TOUR, ...EN_TOUR_PANELS, ...EN_TOUR_PANELS2, ...EN_SKILL, ...EN_HOME, ...EN_RIG, ...EN_BASE,
 };
 
@@ -1099,6 +1103,10 @@ export const EN_RULES: Rule[] = [
   [/^\[물때\] (\d+)분 뒤 (.+)$/, (m, tr) => `[Tide] ${tr(m[2])} in ${m[1]} min`],
   // 205차 — 물때 공략 발견 기록 · 도감 카드 「물때」 줄
   [/^\[물때 기록\] (.+)$/, (m, tr) => `[Tide note] ${tr(m[1])}`],
+  // 206차 — HUD 물때 칩 · 칩 툴팁
+  [/^(초들물|중들물|끝들물|만조 물돌이|초날물|중날물|끝날물|간조 물돌이) · (\d+)분 뒤 (초들물|중들물|끝들물|만조 물돌이|초날물|중날물|끝날물|간조 물돌이)$/, (m, tr) => `${tr(m[1])} · ${tr(m[3])} in ${m[2]} min`],
+  [/^(\d+)분 뒤 (초들물|중들물|끝들물|만조 물돌이|초날물|중날물|끝날물|간조 물돌이)$/, (m, tr) => `${tr(m[2])} in ${m[1]} min`],
+  [/^(초들물|중들물|끝들물|만조 물돌이|초날물|중날물|끝날물|간조 물돌이) · (\d+)분$/, (m, tr) => `${tr(m[1])} · ${m[2]} min`],
   [/^\[채집\] 물이 다시 들어오기 시작했다\. 너무 깊이 들어가지 말자\.$/, () => '[Gather] The water is starting to come back in. Better not wade out too far.'],
   [/^물때 · (.+)$/, (m, tr) => `Tide · ${m[1].split(' · ').map((x) => tr(x)).join(' · ')}`],
   [/^줄 강도 \+(\d+)%$/, 'Line strength +$1%'],

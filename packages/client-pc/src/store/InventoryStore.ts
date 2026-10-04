@@ -24,6 +24,7 @@ import {
   type RigTreeState, type RigValue, type RigSummary, type RigPartKind, type RigSlotKind, type RigItemView,
   FLASHER_TARGET_SPECIES,
 } from '@tra/core';
+import { planRigLoss, TUNING as TUNING_RL, type RigLossCause, type RigLossPlan } from '@tra/core';
 import type { DishData, DishInstance } from '@tra/core';
 import { getFireRecipe, dishStarsAt, dishValueKrw, dishInstanceValueKrw } from '@tra/core';
 import type { SashimiSizeTier } from '@tra/core';
@@ -197,6 +198,8 @@ export interface InvItem {
   lineMaterial?: 'nylon' | 'fluorocarbon' | 'pe_braid' | 'monofilament';
   lineForm?: LineForm;
   lineLengthM?: number;
+  /** 206차 — 원줄·목줄 스풀에서 이미 잘려 나간 길이(m). `lineLengthM`을 다 쓰면 스풀 하나가 소모된다(구세이브 = 0) */
+  lineUsedM?: number;
   lineNo?: number;
   lineDiameterMm?: number;
   lineStrengthLb?: number;
@@ -2310,6 +2313,80 @@ class InventoryStoreManager {
     }
     if (slots.length) this.clearTreeSlots(slots);
     return lost;
+  }
+
+  /**
+   * 206차 — 채비 손실을 트리 기준으로 계획한다(core `planRigLoss`). 적용은 `applyRigLoss`.
+   * @param cause 밑걸림 대처 결과 · 파이팅 중 파단 · 이빨 절단
+   */
+  planRigLoss(cause: RigLossCause): RigLossPlan {
+    const plan = planRigLoss(this._tree, cause, {
+      snaggedBaitIdx: this.bittenBaitIdx,
+      baitUse: (n) => this.baitUse(n),
+      leaderCutM: TUNING_RL.snag.leaderCutM,
+      mainLineCutM: TUNING_RL.snag.mainLineCutM,
+    });
+    return plan;
+  }
+
+  /**
+   * 206차 — 손실 계획 적용. 가방에서 빼고, **남은 재고가 있는 칸은 그대로 다시 단다**(같은 부품으로 다시 묶는 셈) —
+   * 재고가 바닥난 칸만 비워진다(자손도 함께). 줄은 스풀에서 길이만 잘린다.
+   * @returns 잃은 것 표시 줄(「감성돔 바늘 3호」 · 「카본 목줄 3호 1.5m」)
+   */
+  applyRigLoss(plan: RigLossPlan): string[] {
+    this.bittenBaitIdx = null;
+    if (isGod()) return [];   // dev 무적: 채비 손실 없음
+    const lost: string[] = [];
+    // 1) 미끼 — 칸마다(두 미끼면 2개). consumeBaitAt은 미끼 칸만 비우므로 인덱스가 밀리지 않는다
+    for (const it of plan.items.filter((x) => x.bait)) {
+      const name = this.consumeBaitAt(it.nodeIdx);
+      if (name) lost.push(name);
+    }
+    // 2) 부품 — 같은 아이템은 모아서 뺀다(타이라바 바늘 두 개 = 2개)
+    const byId = new Map<string, number>();
+    for (const it of plan.items) if (!it.bait) byId.set(it.itemId, (byId.get(it.itemId) ?? 0) + it.qty);
+    for (const [id, qty] of byId) {
+      const item = this.find(id);
+      if (!item) continue;
+      const n = Math.min(qty, item.qty);
+      const name = item.name;
+      this.removeQty(id, n);
+      lost.push(n > 1 ? `${name} x${n}` : name);
+    }
+    // 3) 줄 — 스풀째가 아니라 잘린 길이만
+    for (const ln of plan.lines) {
+      const r = this.cutLine(ln.itemId, ln.meters);
+      if (r) lost.push(r);
+    }
+    // 4) 재고가 바닥난 칸만 비운다(자손 포함) — 나머지는 그대로 다시 단다
+    this.syncTreeWithItems();
+    return lost;
+  }
+
+  /**
+   * 206차 — 스풀에서 줄을 잘라 낸다. 다 쓰면 스풀 하나를 소모하고 다음 스풀로 넘어간다.
+   * @returns 표시 줄(없으면 null)
+   */
+  cutLine(itemId: string, meters: number): string | null {
+    const item = this.find(itemId);
+    if (!item || meters <= 0) return null;
+    const total = item.lineLengthM ?? 100;
+    const used = (item.lineUsedM ?? 0) + meters;
+    const label = `${item.name.replace(/\s*·\s*\d+m$/, '')} ${Number.isInteger(meters) ? meters : meters.toFixed(1)}m`;
+    if (used >= total) {
+      item.lineUsedM = used - total;
+      this.removeQty(itemId, 1);
+      return `${label} (스풀을 다 썼다)`;
+    }
+    item.lineUsedM = used;
+    return label;
+  }
+
+  /** 206차 — 스풀에 남은 줄(m). 줄이 아니면 null */
+  lineLeftM(item: Pick<InvItem, 'lineLengthM' | 'lineUsedM'>): number | null {
+    if (item.lineLengthM === undefined) return null;
+    return Math.max(0, item.lineLengthM - (item.lineUsedM ?? 0));
   }
 
   /**

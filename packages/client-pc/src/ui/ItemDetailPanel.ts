@@ -59,7 +59,14 @@ const LINE_FORM_LABEL: Record<NonNullable<InvItem['lineForm']>, string> = {
 };
 
 /** 아이템 종류별 상세 스펙 추론 생성 (목업) — 어획물은 개체 실측치·어종 정보(FISH_DATABASE) 표시 */
-export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory' | 'category' | 'qty' | 'basePrice' | 'condition' | 'conditionSinceMs' | 'speciesId' | 'lengthCm' | 'weightG' | 'floatBuoyG' | 'plateWip' | 'fault' | 'useCount' | 'tool' | 'bound' | 'dish' | 'dishInstance' | 'sashimi' | 'cutQuality' | 'hungerRestore' | 'hydrationRestore' | 'hpRestore' | 'fatigueRestore' | 'lineMaterial' | 'lineForm' | 'lineLengthM' | 'lineNo' | 'lineDiameterMm' | 'lineStrengthLb' | 'sinkerKind' | 'sinkerWeightG' | 'sinkerHo' | 'netReachM'>): ItemDetailData {
+/** 206차 — 스풀 길이(잘려 나간 만큼 남은 길이 / 처음 길이) */
+function spoolLeftLabel(total: number, used?: number): string {
+  const u = used ?? 0;
+  if (u <= 0) return `${total}m`;
+  return `${Math.max(0, Math.round((total - u) * 10) / 10)}m / ${total}m`;
+}
+
+export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory' | 'category' | 'qty' | 'basePrice' | 'condition' | 'conditionSinceMs' | 'speciesId' | 'lengthCm' | 'weightG' | 'floatBuoyG' | 'plateWip' | 'fault' | 'useCount' | 'tool' | 'bound' | 'dish' | 'dishInstance' | 'sashimi' | 'cutQuality' | 'hungerRestore' | 'hydrationRestore' | 'hpRestore' | 'fatigueRestore' | 'lineMaterial' | 'lineForm' | 'lineLengthM' | 'lineUsedM' | 'lineNo' | 'lineDiameterMm' | 'lineStrengthLb' | 'sinkerKind' | 'sinkerWeightG' | 'sinkerHo' | 'netReachM'>): ItemDetailData {
   const rows: ItemDetailRow[] = [];
   let desc = '';
   // 155차 — 완성 사시미 접시: 맛 별 5개(지금 / 담은 직후) — 불요리와 같은 문법
@@ -443,7 +450,7 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
         { label: '재질', value: item.lineMaterial ? LINE_MATERIAL_LABEL[item.lineMaterial] : 'PE 합사' },
         { label: '라인 형태', value: item.lineForm ? LINE_FORM_LABEL[item.lineForm] : 'Sinking (침강)' },
         { label: '호수', value: item.lineNo !== undefined ? `${item.lineNo}호` : '1호' },
-        { label: '스풀 길이', value: item.lineLengthM !== undefined ? `${item.lineLengthM}m` : '-' },
+        { label: '스풀 길이', value: item.lineLengthM !== undefined ? spoolLeftLabel(item.lineLengthM, item.lineUsedM) : '-' },
         { label: '직경', value: item.lineDiameterMm !== undefined ? `${item.lineDiameterMm.toFixed(3)}mm` : '-' },
         { label: '인장 강도', value: item.lineStrengthLb !== undefined ? `${item.lineStrengthLb}lb` : '-' },
       );
@@ -456,7 +463,7 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
         { label: '재질', value: item.lineMaterial ? LINE_MATERIAL_LABEL[item.lineMaterial] : item.id.includes('carbon') ? '카본 (내마모)' : '나일론 (신축)' },
         { label: '라인 형태', value: item.lineForm ? LINE_FORM_LABEL[item.lineForm] : 'Suspend (중층 유지)' },
         { label: '호수', value: item.lineNo !== undefined ? `${item.lineNo}호` : item.id.includes('carbon') ? '1.5호' : '2호' },
-        { label: '스풀 길이', value: item.lineLengthM !== undefined ? `${item.lineLengthM}m` : '-' },
+        { label: '스풀 길이', value: item.lineLengthM !== undefined ? spoolLeftLabel(item.lineLengthM, item.lineUsedM) : '-' },
         { label: '직경', value: item.lineDiameterMm !== undefined ? `${item.lineDiameterMm.toFixed(3)}mm` : '-' },
         { label: '인장 강도', value: item.lineStrengthLb !== undefined ? `${item.lineStrengthLb}lb` : '-' },
       );
