@@ -15,8 +15,13 @@
  *    흐린 날 한낮 페널티 완화, 급수온 하강(냉수대) 급감.
  *  - 지역 계수: 동해(속초·동명)는 조석간만이 작아 조류 비중↓·시간창 비중↑.
  *
+ * 204차 — `flowPhase`(물때 흐름 8단계)를 주면 조류 배율이 단계 기반으로 바뀐다(`TideFlowPhase.ts`).
+ *
  * 순수 TS — 렌더/브라우저 API 없음.
  */
+
+import type { TideFlowPhase } from '../types/TideFlow.js';
+import { tideFlowBiteMult } from './TideFlowPhase.js';
 
 /** 지역 프로필 — 조류/시간창 비중 배분 */
 export type FeedingRegionProfile = 'east_sea' | 'south_sea' | 'default';
@@ -40,6 +45,13 @@ export interface FeedingTimeInput {
   coldWaterShockIndex?: number;
   /** 지역 계수 (기본 default) */
   regionProfile?: FeedingRegionProfile;
+  /**
+   * 204차 — 물때 흐름 8단계. 있으면 구 근사(만조 90분 전 ↑ · 간조 45분 전 ↓) 대신
+   * 단계별 입질 배율(`tideFlowBiteMult` — 초들물 최고 · 끝날물 최저 · 사리일수록 차이 큼)을 쓴다.
+   */
+  flowPhase?: TideFlowPhase;
+  /** 204차 — 깊은 자리(발앞 15m↑) — 끝날물·중날물 감소를 덜 받는다 */
+  deepSpot?: boolean;
 }
 
 export interface FeedingActivityResult {
@@ -150,7 +162,10 @@ export function weatherActivityFactor(
  */
 export function computeFeedingActivity(input: FeedingTimeInput): FeedingActivityResult {
   let season = seasonTimeWindow(input.hour, input.month);
-  const tide = tideActivityFactor(input.tidePhase, input.minutesToNextTide, input.nextTideType);
+  const tide = input.flowPhase
+    ? Math.max(0.55, Math.min(1.4, (0.78 + tidePhaseStrength(input.tidePhase) * 0.42)
+      * tideFlowBiteMult(input.flowPhase, tidePhaseStrength(input.tidePhase), input.deepSpot)))
+    : tideActivityFactor(input.tidePhase, input.minutesToNextTide, input.nextTideType);
   const weather = weatherActivityFactor(
     input.weatherKind, input.pressureTrendHpaPerHour, input.coldWaterShockIndex,
   );

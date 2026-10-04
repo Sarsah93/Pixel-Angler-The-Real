@@ -22,6 +22,14 @@ import { playTitleJingle } from '../audio/Sfx.js';
 export const TITLE_RARITY_COLOR: Record<TitleRarity, string> = { common: '#e8f4fd', rare: '#7fe0ff', legend: '#ffd257' };
 export const TITLE_RARITY_HEX: Record<TitleRarity, number> = { common: 0xe8f4fd, rare: 0x7fe0ff, legend: 0xffd257 };
 
+/** 203차 — 머리 위 타이틀 글씨(작게 · 테두리로 바탕 없이 읽히게). 색은 레어도로 따로 입힌다 — 필드 · 집 공용 */
+export function titleTagStyle(): Phaser.Types.GameObjects.Text.TextStyle {
+  return {
+    fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#e8f4fd', fontStyle: 'bold',
+    stroke: '#0a1628', strokeThickness: 3,
+  };
+}
+
 const W = 440;
 const HOLD_MS = 6500;
 const FONT = '"Noto Sans KR", sans-serif';

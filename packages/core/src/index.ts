@@ -126,6 +126,13 @@ export {
 
 // Simulation
 export { calculateTideInfo, evaluateFishingTide } from './simulation/TideCalculator.js';
+// 204차 — 물때 흐름 8단계(초·중·끝 들물/날물 · 물돌이)
+export type { TideFlowPhase, TideFlowDirection, TideFlowState, TideFlowProfile } from './types/TideFlow.js';
+export {
+  TIDE_FLOW_PROFILE, TIDE_FLOW_LABEL_KO, TIDE_FLOW_LABEL_EN, TIDE_FLOW_NOTE_KO, TIDE_FLOW_NOTE_EN, TIDE_FLOW_TIP_KO, TIDE_SLACK_HALF_MIN,
+  tideFlowStateAt, nextTideFlowPhase, tideFlowBiteMult, tideFlowCurrentMult, tideFlowSizeBias,
+  isFloodPhase, isEbbPhase, isSlackPhase,
+} from './simulation/TideFlowPhase.js';
 export { calculateBiteChance, pickFishByWeight, generateFishSize } from './simulation/FishBiteEngine.js';
 export type { BiteCalculationResult, BiteFactors } from './simulation/FishBiteEngine.js';
 export { getLineTensionRatio, getEffectiveDragKg, getTensionDangerLevel, getRetrieveSpeedMps, adjustDrag, simulateFightTick, canReel, getRecommendedDragKg, castLineOut } from './simulation/LinePhysics.js';
@@ -712,9 +719,9 @@ export {
 } from './simulation/RigTree.js';
 
 // 203차 — 타이틀(칭호) 히든 업적
-export type { TitleRarity, TitleStatKey, TitleEffectKind, TitleDef, TitleStats, TitleModifiers } from './types/Titles.js';
+export type { TitleRarity, TitleStatKey, TitleEffectKind, TitleDef, TitleReq, TitleStats, TitleModifiers } from './types/Titles.js';
 export {
   TITLE_DATABASE, TITLE_EFFECT_SCALE, TITLE_RARITY_LABEL_KO,
   getTitleById, titleEffectValue, titleEffectLabelKo, titleModifiers, titleBiteMultAt, titlesNewlyEarned,
-  isTitleNightHour, isTitleDawnCastHour, isTitleDawnBiteHour,
+  isTitleNightHour, isTitleDawnHour, trophyPointsOf, titleConditionMet, TITLE_STAT_LABEL_KO, titleConditionLabelKo,
 } from './db-schema/TitleDatabase.js';

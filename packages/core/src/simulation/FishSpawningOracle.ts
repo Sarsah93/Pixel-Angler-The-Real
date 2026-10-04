@@ -762,6 +762,8 @@ export interface SpawnContext {
   inWashZone?: boolean;
   /** 보일링 히트 등 필드 이벤트 tier 상향 가중 */
   eventTierBoost?: boolean;
+  /** 204차 — 물때 대물 가중 0~1(`tideFlowSizeBias` — 물돌이·끝들물) */
+  sizeBias?: number;
 }
 
 /** 당첨 물고기 결과 */
@@ -988,11 +990,14 @@ export function spawnFish(ctx: SpawnContext): SpawnedFish {
     zMax: ctx.zMax,
     isNight: ctx.isNight,
     eventTierBoost: ctx.eventTierBoost,
+    sizeBias: ctx.sizeBias,
   });
   const lengthCm = Math.round(
     (tiered >= 0
       ? tiered
-      : Math.min(picked.maxCm, Math.max(picked.minCm, gaussian(picked.meanCm, picked.sdCm)))) * 10,
+      // 204차 — 물돌이·끝물 대물 가중: 평균을 표준편차의 최대 0.5배까지 위로
+      : Math.min(picked.maxCm, Math.max(picked.minCm,
+        gaussian(picked.meanCm + picked.sdCm * 0.5 * Math.max(0, Math.min(1, ctx.sizeBias ?? 0)), picked.sdCm)))) * 10,
   ) / 10;
   // 133차 — 체형별 LWR(W = a·L^b) × 비만도(계절·산란·개체 편차)
   const conditionFactor = conditionFactorFor(picked, ctx.month, gaussian(0, 1));

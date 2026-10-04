@@ -26,7 +26,7 @@ import {
   FIRE_RECIPES, COOK_INGREDIENTS, HEAT_SOURCES, COOKWARES, FUELS,
   RECIPE_LORE, DISH_VARIANT_LORE, RECIPE_EFFECTS, FOOD_EFFECT_KIND_KO, DISH_MODIFIER_KO, DISH_MODIFIER_EN,
   fatnessLabel, textureLabel, fishinessLabel, flavorLabel,
-  TITLE_DATABASE,
+  TITLE_DATABASE, TIDE_FLOW_LABEL_KO, TIDE_FLOW_LABEL_EN, TIDE_FLOW_NOTE_KO, TIDE_FLOW_NOTE_EN,
 } from '@tra/core';
 import { EN_PLACES } from './places.js';
 import { EN_POIS } from './en_pois.js';
@@ -87,6 +87,10 @@ function buildRuntimeDict(): void {
   for (const sk of SKILL_DATABASE) { put(sk.nameKo, sk.nameEn); put(sk.descKo, sk.descEn); }
   // 203차 — 타이틀(숨은 업적) 이름·사연은 데이터(nameEn/storyEn)가 정본
   for (const t of TITLE_DATABASE) { put(t.nameKo, t.nameEn); put(t.storyKo, t.storyEn); }
+  // 204차 — 물때 흐름 8단계 이름 · 물때 감각 관찰 한 줄
+  for (const k of Object.keys(TIDE_FLOW_LABEL_KO) as (keyof typeof TIDE_FLOW_LABEL_KO)[]) {
+    put(TIDE_FLOW_LABEL_KO[k], TIDE_FLOW_LABEL_EN[k]); put(TIDE_FLOW_NOTE_KO[k], TIDE_FLOW_NOTE_EN[k]);
+  }
   for (const c of SKILL_CATEGORIES) { put(c.nameKo, c.nameEn); put(c.descKo, c.descEn); put(c.lockedNoteKo, c.lockedNoteEn); }
   // 131차 — 제작 도면·그룹 라벨도 데이터(nameEn/descEn)가 정본
   for (const bp of CRAFT_BLUEPRINTS) { put(bp.nameKo, bp.nameEn); put(bp.descKo, bp.descEn); }

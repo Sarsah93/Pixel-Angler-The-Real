@@ -377,6 +377,7 @@ export class GameStateManager {
     HomeStore.deserialize(saved.home);
     MarketStore.deserialize(saved.market);
     TitleStore.deserialize(saved.titles);   // 203차 — 타이틀 업적(구세이브 = 0부터)
+    TitleStore.setStat('licenses', this._licenses.length);   // 204차 — 지금 가진 자격 수
     // 발견 기록 복원 — 구세이브(필드 없음)는 어획 기록의 어종을 'legacy'로 백필
     DiscoveryStore.deserialize(
       saved.discoveries,
@@ -623,6 +624,7 @@ export class GameStateManager {
       this.commitVitals(this.vitals);   // maxHp가 레벨에 비례하므로 상한 재계산
       this.refreshHiddenSkills();       // 130차 (d) — 레벨 조건 히든이 열릴 수 있다
       StoryStore.event({ kind: 'level', level: p.level ?? 1 });   // 134차 — reachLevel 목표·자동 시작 퀘
+      TitleStore.recheck();   // 204차 — 전설 타이틀 레벨 문턱
       this.markDirty();
     }
     return ups;
@@ -1353,6 +1355,7 @@ export class GameStateManager {
     //   취득 즉시 히든 시너지 조건이 채워질 수 있으므로 함께 갱신한다.
     this.refreshHiddenSkills();
     StoryStore.event({ kind: 'license', licenseId: type });   // 134차 — 퀘스트 면허 목표
+    TitleStore.setStat('licenses', this._licenses.length);   // 204차 — 「자격증 부자」
     this.markDirty();
     return true;
   }
@@ -1709,6 +1712,8 @@ export class GameStateManager {
 }
 
 export const GameState = new GameStateManager();
+// 204차 — 타이틀 전설 레벨 문턱용 레벨 조회(TitleStore → GameState 순환 import를 피해 주입한다)
+TitleStore.setLevelSource(() => GameState.player.level ?? 1);
 
 // 134차 — 스토리 스토어에 XP·재화·면허·플래그 권한 위임 (순환 import 회피)
 StoryStore.bind({

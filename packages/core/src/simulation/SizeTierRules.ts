@@ -91,6 +91,8 @@ export interface TierRollContext {
   isNight: boolean;
   /** 보일링 히트 등 이벤트 tier 상향 가중 (회유어 대물 확률↑) */
   eventTierBoost?: boolean;
+  /** 204차 — 물때 대물 가중 0~1(물돌이·끝들물) — 소형 확률 일부를 중·대형으로 */
+  sizeBias?: number;
 }
 
 /**
@@ -124,6 +126,13 @@ export function rollTierWeights(speciesId: string, ctx: TierRollContext): [numbe
   if (ctx.eventTierBoost) {
     const shift = w[0] * 0.4;
     w = [w[0] - shift, w[1] + shift * 0.6, w[2] + shift * 0.4];
+  }
+
+  // 204차 — 물돌이·끝물 대물 시간: 잔챙이 비중을 덜어 중·대형으로(최대 소형의 35%)
+  const sb = Math.max(0, Math.min(1, ctx.sizeBias ?? 0));
+  if (sb > 0) {
+    const shift = w[0] * 0.35 * sb;
+    w = [w[0] - shift, w[1] + shift * 0.55, w[2] + shift * 0.45];
   }
 
   const sum = w[0] + w[1] + w[2];

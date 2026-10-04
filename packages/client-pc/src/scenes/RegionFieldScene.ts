@@ -59,6 +59,7 @@ import { RegionLight,
   kstHour,
   calculateTideInfo,
   computeFeedingActivity,
+  tideFlowStateAt,
   feedingRegionProfileOf,
   MapObject,
   effectiveObjects,
@@ -119,7 +120,8 @@ import { getStoryNpc, validateStoryQuests, validateStoryChoices, validateLicense
 import { FullMapPanel } from '../ui/FullMapPanel.js';
 import { MapPinStore } from '../store/MapPinStore.js';
 import { TitleStore } from '../store/TitleStore.js';
-import { pumpTitleBanners, TITLE_RARITY_COLOR } from '../ui/TitleBanner.js';
+import { pumpTitleBanners, TITLE_RARITY_COLOR, titleTagStyle } from '../ui/TitleBanner.js';
+import { pumpTideFlow } from '../ui/TideFlowNotifier.js';
 import { buildItemWikiCatalog } from '../data/WikiCatalog.js';
 import { playCollapse, type CollapseKind } from '../ui/CollapseOverlay.js';
 import { TUNING, getTrapById, MP_CHAT_MAX_LEN, type RegionFishFarms } from '@tra/core';
@@ -3038,6 +3040,7 @@ export class RegionFieldScene extends Phaser.Scene {
       StoryStore.event({ kind: 'sell' });
     }
     if (result.netWon > 0) GameState.addCoins(result.netWon);
+    TitleStore.bump('auctionSold', sold);   // 204차 — 「위판장 큰손」
     this.events.emit('inventory-changed');
     this.shopPanel?.refresh();
     this.hud?.pushLog(`[위판] 낙찰 ${result.soldLots}건 · 유찰 ${result.unsoldLots}건 — 실수령 ${result.netWon.toLocaleString()}원 (수수료 ${result.feeWon.toLocaleString()}원)`);
@@ -3563,6 +3566,8 @@ export class RegionFieldScene extends Phaser.Scene {
       nextTideType: tide.nextTideType,
       weatherKind: ExternalDataStore.getWeatherKind(this.region),
       regionProfile: feedingRegionProfileOf(this.region),
+      // 204차 — 물때 흐름 8단계(보일링·스쿨링 이벤트 발생률도 같은 물때를 탄다)
+      flowPhase: this.region === 'hometown' ? undefined : tideFlowStateAt(d).phase,
     }).activity;
   }
 
@@ -4034,6 +4039,7 @@ export class RegionFieldScene extends Phaser.Scene {
     // init → create 사이 또는 shutdown 직전의 stale update 차단.
     if (this.bootFailed || !this.playerBody?.active) return;
     pumpTitleBanners(this);   // 203차 — 숨은 업적 달성 배너
+    pumpTideFlow(this);       // 204차 — 패시브 「물때 감각」: 물때가 바뀌면 지역 채널 알림
     this.updateStoryProximity(delta);
     this.updateFieldNpcs(delta);
     this.nuisance?.update(delta);
@@ -4201,7 +4207,7 @@ export class RegionFieldScene extends Phaser.Scene {
   private beginCollapse(kind: CollapseKind): void {
     if (this.collapsing) return;
     this.collapsing = true;
-    if (kind === 'faint') GameState.addStatus('faint');
+    if (kind === 'faint') { GameState.addStatus('faint'); TitleStore.bump('faint'); }   // 204차 — 「몸 갈아 넣는 조사」
     this.playerBody.setVelocity(0, 0);
     this.hud?.pushLog(kind === 'death' ? '[치명] 의식을 잃고 쓰러졌습니다' : '[경고] 피로도가 한계에 도달해 쓰러졌습니다');
 
@@ -6965,10 +6971,3 @@ export class RegionFieldScene extends Phaser.Scene {
   }
 }
 
-/** 203차 — 머리 위 타이틀 글씨(작게 · 테두리로 바탕 없이 읽히게). 색은 레어도로 따로 입힌다 */
-function titleTagStyle(): Phaser.Types.GameObjects.Text.TextStyle {
-  return {
-    fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#e8f4fd', fontStyle: 'bold',
-    stroke: '#0a1628', strokeThickness: 3,
-  };
-}

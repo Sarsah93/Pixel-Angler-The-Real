@@ -518,6 +518,32 @@ const skills = {
 };
 
 // ─────────────────────────────────────────────
+// 204차 — 공략: 타이틀(숨은 업적) 조건 · 물때 흐름 8단계
+// ─────────────────────────────────────────────
+const RARITY_ORDER = { common: 0, rare: 1, legend: 2 };
+const guide = {
+  titles: [...core.TITLE_DATABASE]
+    .sort((a, b) => RARITY_ORDER[a.rarity] - RARITY_ORDER[b.rarity])
+    .map((t) => ({
+      id: t.id, name: t.nameKo, nameEn: t.nameEn, rarity: t.rarity, rarityKo: core.TITLE_RARITY_LABEL_KO[t.rarity],
+      cond: core.titleConditionLabelKo(t), minLevel: t.minLevel ?? 0, paths: t.paths.length,
+      effect: core.titleEffectLabelKo(t), story: t.storyKo,
+    })),
+  tide: ['flood_early', 'flood_mid', 'flood_late', 'slack_high', 'ebb_early', 'ebb_mid', 'ebb_late', 'slack_low'].map((ph) => {
+    const p = core.TIDE_FLOW_PROFILE[ph];
+    const when = {
+      flood_early: '간조 30분 뒤 ~ 간조 2시간 뒤', flood_mid: '간조 2시간 뒤 ~ 4시간 뒤', flood_late: '간조 4시간 뒤 ~ 만조 30분 전',
+      slack_high: '만조 앞뒤 30분', ebb_early: '만조 30분 뒤 ~ 만조 2시간 뒤', ebb_mid: '만조 2시간 뒤 ~ 4시간 뒤',
+      ebb_late: '만조 4시간 뒤 ~ 간조 30분 전', slack_low: '간조 앞뒤 30분',
+    }[ph];
+    return {
+      id: ph, name: core.TIDE_FLOW_LABEL_KO[ph], nameEn: core.TIDE_FLOW_LABEL_EN[ph], when, stars: p.stars,
+      bite: p.biteMult, size: p.sizeBias, current: p.currentMult, note: core.TIDE_FLOW_NOTE_KO[ph], tip: core.TIDE_FLOW_TIP_KO[ph],
+    };
+  }),
+};
+
+// ─────────────────────────────────────────────
 // 업데이트 이력 — 워크로그 색인(§3.1) 표를 그대로 읽는다
 // ─────────────────────────────────────────────
 const updates = fs.readFileSync(path.join(ROOT, 'docs/wiki/03-WORKLOG/README.md'), 'utf8')
@@ -540,7 +566,7 @@ const out = {
     quests: quests.counts.quests, recipes: recipes.length, ingredients: ingredients.length,
     species: speciesList.length, crafting: core.CRAFT_BLUEPRINTS.length,
     items: items.length, images: Object.keys(manifest).length,
-    rules: rules.length, updates: updates.length, skills: skillList.length,
+    rules: rules.length, updates: updates.length, skills: skillList.length, titles: guide.titles.length,
   },
   quests,
   cooking: {
@@ -569,6 +595,7 @@ const out = {
   rules,
   updates,
   skills,
+  guide,
 };
 
 // 발행용 — 카드·상세가 실제로 참조하는 그림만 추려 둔다(아티팩트 파일 수 절약)

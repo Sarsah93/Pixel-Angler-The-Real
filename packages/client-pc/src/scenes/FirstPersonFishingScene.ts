@@ -45,6 +45,7 @@ import {
   SeabedProfile, kstHour,
   LureSpec, LureSinkProfile, getLureSinkProfile, jigHeadWeightById, lureBodyType,
   computeFeedingActivity, feedingRegionProfileOf, FeedingActivityResult,
+  tideFlowStateAt, tideFlowSizeBias,
   getMovementProfile, pickRunHeading,
   FishFatigueModel, FatigueTick, FATIGUE_PHASE_LABEL,
   fightGroupOf, fightBodyFormOf, fishRarity, RARITY_STYLE,
@@ -63,6 +64,7 @@ import { drawRigIcon, RigIconKind } from '../ui/RigIconRenderer.js';
 import { GameState } from '../store/GameState.js';
 import { TitleStore } from '../store/TitleStore.js';
 import { pumpTitleBanners } from '../ui/TitleBanner.js';
+import { pumpTideFlow, tideSenseLabel } from '../ui/TideFlowNotifier.js';
 import { baitKeyOf } from '../store/RigParts.js';
 import { InventoryStore, RigStepKey, CARD_RIG_INFO, netReachFromName } from '../store/InventoryStore.js';
 import { isGod } from '../dev/DevMode.js';
@@ -530,12 +532,14 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       windComp: GameState.skillBonus('wind_comp'),
     });
     const rainCur = this.castWx.currentMult;
+    // 204차 — 물때 흐름: 조류의 오르내림은 `tideClockHours()`(만조·간조 시각에 맞춘 시계)가 맡는다
+    const flow = tideFlowStateAt();
     this.tideBase = (0.12 + curStrength * 0.5) * rainCur;
 
     // 조류 엔진 — 물때 세기/밀물썰물/횡류 방향, 존 경계는 캐스팅 거리 비례
     this.tidal = new TidalCurrentEngine({
       tideStrength: (0.5 + curStrength) * rainCur,
-      isFloodTide: isHometown ? Math.random() < 0.5 : tide.nextTideType === 'high',
+      isFloodTide: isHometown ? Math.random() < 0.5 : flow.direction === 'slack' ? flow.nextExtreme === 'high' : flow.direction === 'flood',
       crossSpeed: this.tideBase * (Math.random() < 0.5 ? 1 : -1),
       maxCastM: Math.max(12, this.cfg.castDistanceM * 1.15),
     });
@@ -1856,6 +1860,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   update(_time: number, deltaMs: number): void {
     let dt = Math.min(0.05, deltaMs / 1000);
     pumpTitleBanners(this);   // 203차 — 숨은 업적 달성 배너(들어뽕 · 줄 터짐 · 방생 …)
+    // 204차 — 「물때 감각」: 파이팅 중엔 미뤘다가 끝나면 띄운다(패턴 경고 자리와 겹치지 않게)
+    pumpTideFlow(this, { toastY: 60, hold: this.fpState === 'fighting' });
     // 제압 후 끌어오기(dragIn)는 슬로우 — 연출이 너무 빨라 방향 대응을 못 따라간다는 피드백(116차 ①)
     if (this.dragInMode) dt *= TUNING.fightPhys.dragInTimeScale;
 
@@ -1886,7 +1892,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     // 결과창을 띄운 채 채비가 계속 흘러가면 "다 잡았는데 물고기가 뒤로 간다"로 보인다.
     // 마지막 조류값(lastTidal)을 그대로 유지해 수평뷰 화살표·포말도 그 자리에 멈춘다.
     const landed = this.fpState === 'result';
-    const hoursNow = new Date().getHours() + new Date().getMinutes() / 60;
+    const hoursNow = this.tideClockHours();
     const influence = landed && this.lastTidal
       ? this.lastTidal
       : this.tidal.calc({ x: this.rig.baitX, y: this.distM, z: this.rig.baitZ }, 0, hoursNow);
@@ -2361,6 +2367,26 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     }
   }
 
+  /**
+   * 204차 — 조류 엔진에 넣는 「물때 시계」(시간). 엔진은 |sin(2π/12.5 × t)|로 유속을 정하는데,
+   * 벽시계를 넣으면 만조·간조 시각과 위상이 어긋났다(HUD는 만조인데 물살은 최강 — 조사 보고서 P0).
+   * 직전 극점 이후 경과를 반주기(6.25h)에 펼쳐 넣으면 만조·간조(물돌이)에 0, 중들물·중날물에 최대가 된다.
+   * 홈타운(실물때 없음)은 벽시계 그대로.
+   */
+  private tideClockHours(): number {
+    const now = new Date();
+    if (this.cfg.region === 'hometown') return now.getHours() + now.getMinutes() / 60;
+    // 1분 캐시 — 매 프레임 극점 계산을 피한다
+    if (!this.tideClock || now.getTime() - this.tideClock.at > 60_000) {
+      const st = tideFlowStateAt(now);
+      const half = Math.max(60, st.minutesSinceExtreme + st.minutesToNextExtreme);
+      this.tideClock = { at: now.getTime(), since: st.minutesSinceExtreme, half };
+    }
+    const since = this.tideClock.since + (now.getTime() - this.tideClock.at) / 60_000;
+    return 6.25 * Math.min(1, since / this.tideClock.half);
+  }
+  private tideClock: { at: number; since: number; half: number } | null = null;
+
   /** 피딩타임 활성도 갱신 — 계절 시간창 × 물때/조류 × 날씨 (실데이터 캐시) */
   private refreshFeedingActivity(): void {
     const tide = calculateTideInfo();
@@ -2372,6 +2398,9 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       nextTideType: tide.nextTideType,
       weatherKind: ExternalDataStore.getWeatherKind(this.cfg.region),
       regionProfile: feedingRegionProfileOf(this.cfg.region),
+      // 204차 — 물때 흐름 8단계(초들물 최고 · 끝날물 소강 · 깊은 자리는 날물 감소 완화)
+      flowPhase: this.cfg.region === 'hometown' ? undefined : tideFlowStateAt().phase,
+      deepSpot: this.cfg.zMaxM >= 15,
     });
   }
 
@@ -2413,7 +2442,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     const wk = ExternalDataStore.getWeatherKind(this.cfg.region);
     const foul = wk === 'rain' || wk === 'shower' || wk === 'sleet' || wk === 'snow';
     return GameState.skillMult('bite_chance') * (foul ? GameState.skillMult('weather_bite') : 1) * (isNightNowKst() ? GameState.skillMult('night_bite') : 1)
-      * TitleStore.biteMultNow();   // 203차 — 단 타이틀 효과(입질 · 밤/새벽 입질)
+      * TitleStore.biteMultNow(foul);   // 203차 · 204차 — 단 타이틀 효과(입질 · 밤/새벽 · 물때 단계 · 궂은 날)
   }
 
   private buildSpawnCtx(inReef: boolean): SpawnContext {
@@ -2424,6 +2453,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       region: this.cfg.region,
       tidePhase: calculateTideInfo().tidePhase,
       month: new Date().getMonth() + 1,
+      // 204차 — 물돌이·끝들물 대물 가중
+      sizeBias: this.cfg.region === 'hometown' ? 0 : tideFlowSizeBias(tideFlowStateAt().phase),
       baitKey: this.currentBaitKey(),
       inReef,
       isNight: hour >= 20 || hour < 5,
@@ -2955,6 +2986,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       // 196차 — 들어뽕: 물 밖으로 들어 올리다 바늘이 빠진다(최대 한 마리). 빠진 고기는 기록하지 않는다
       const drop = this.rollLanding(hooked);
       const school = drop.droppedIndex === null ? hooked : hooked.filter((_, i) => i !== drop.droppedIndex);
+      if (school.length >= 2) TitleStore.bump('doubleHook');   // 204차 — 「쌍걸이 복권」(올라온 것만)
       for (const x of school) {
         this.sessionCatch.push(`${x.nameKo} ${x.lengthCm}cm (${x.sex === 'M' ? '수컷' : '암컷'})`);
         GameState.addCaughtFish(x.speciesId, x.nameKo, x.lengthCm, x.weightG, 'rod', this.spotKind());
@@ -4105,6 +4137,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       ...(laRow ? [laRow] : []),
       inReefHere ? (kelpHere ? '여 밭 + 수초' : '여 밭 (암초)') : '모래/갯벌',
       hitZone ? `${zoneLabel} ★` : zoneLabel,
+      // 204차 — 「물때 감각」을 배웠으면 지금 물때
+      ...(tideSenseLabel() ? [tideSenseLabel()!] : []),
     ].join('\n'));
   }
 
@@ -4633,7 +4667,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
 
     // ── 예측 드리프트 고스트 (조준) — 침강+조류 궤적 점선 + 동조 피크 마커 ──
     if (!TUNING.chumThrow.predictGhost) { this.chumPredPeak = -1; return; }
-    const hoursNow = new Date().getHours() + new Date().getMinutes() / 60;
+    const hoursNow = this.tideClockHours();
     const inf = this.tidal.calc({ x: xs[bi], y: this.distM, z: Math.min(2, this.rig.baitZ) }, 0, hoursNow);
     const pred = predictChumPath(
       xs[bi], this.distM, { x: inf.force.x, d: inf.force.y },

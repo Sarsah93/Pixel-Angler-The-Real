@@ -33,7 +33,7 @@
 - **`work-log`** — **작업 기록·문서 체계** (docs/wiki 4층·8절 양식·갱신 체크리스트). **모든 작업 완료 시 필수**
 - **`doc-readability`** — **문서 가독성 규칙** (빈 줄·줄 길이 상한·블록인용 제한·차수 요약 양식). **문서 기록·갱신 시 `work-log`와 함께 로드**
 
-## 현재 진행 상황 (2026-10-03) — 이어받기 요약
+## 현재 진행 상황 (2026-10-04) — 이어받기 요약
 
 > 로드맵·다음 착수·잔여는 **`.agents/IMPLEMENTATION_PLAN.md`**, 차수 본문은 **`docs/wiki/03-WORKLOG/`**
 > (색인 `03-WORKLOG/README.md` §3.1). 이 절에는 **최근 3개 차수만** 둔다 — 새 차수를 넣으면 가장 오래된 것을 지운다.
@@ -45,12 +45,13 @@
   맵 확정(육안)·OSM land 14개·조도 재설계·외옹치/대포항 bbox 확장은 사용자 동반 병행 트랙.
 - **재개 지점**: 사용자 실검증(172·173차 타일 조화 규칙 + 178·183~186차 신설분) — 부족하면 규칙 보강,
   괜찮으면 규칙을 켠 채로 새 맵 확장. 차수별 잔여는 PLAN §2-3.
+- **204차**: **물때 흐름 8단계 · 「물때 감각」 · 타이틀 v2 30종** — 초·중·끝 들물/날물 + 물돌이 입질·대물(`TideFlowPhase`) ·
+  조류 위상 시계(벽시계 버그) · 채널 알림 스킬 · 경로 OR + 전설 레벨 문턱 · 집 안 머리 위 · 위키 공략 탭 ·
+  장르×어종 공략은 `.agents/TIDE_PHASE_STRATEGY_SPEC.md`(결정 대기). 상세 `docs/wiki/03-WORKLOG/2026-10-04-204-tide-flow-titles-v2.md`.
 - **203차**: **타이틀(숨은 업적) 12종** — 전부 히든 · 달성 배너(`ui/TitleBanner`) · S 창 타이틀 칸(「??? × N」) ·
   머리 위 레어도 색(혼자일 때도) · 멀티 `MpProfile.title` id · 레어도별 소소한 효과. 상세 `docs/wiki/03-WORKLOG/2026-10-03-203-hidden-titles.md`.
 - **202차**: **문 닫은 시간엔 거래 막기** — 영업시간 밖이면 거래 대신 문 앞 혼잣말(`showClosedDoor`) · 직판장·편의점 24시간 ·
   타이틀(칭호) 업적은 설계안 사용자 확인 대기(백로그 AR). 상세 `docs/wiki/03-WORKLOG/2026-10-03-202-closed-shop-door.md`.
-- **201차**: **가게 영업시간 · 카드 눌러 핀** — 직판장(미끼·채비)·편의점 24시간 · 나머지 10~22시(`BUILDING_HOURS` · 표시 전용) ·
-  정보 카드/목록 줄 누르기 = 핀 토글 · 마커→카드 통로 유지(`tipHolds`). 상세 `docs/wiki/03-WORKLOG/2026-10-03-201-shop-hours-card-pin.md`.
 - **상시 방침**:
   - 지형 고도(DEM)는 **낚시 확립 후** — B(해안 변형) 우선, 경사로 통행을 막지 않는다
     (`docs/archive/specs/RASTER_UPLIFT_AMENDMENT.md` §4).
@@ -110,7 +111,7 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
 
 - 지역 타일맵 추가/재생성 → **스킬 `add-region`** (`py tools/build_region_maps.py <region>` — 파이프라인·타일 문자·맵 그래프·함정 일체).
 - 차기 과제: 낚시점 전용 상점(루어 판매), 어탐 레이더(SeabedProfile 조회), 타 지역(여수 등) 확장, POI 세분화, 사운드 이펙트 (IMPLEMENTATION_PLAN §6-5l 차기 참고).
-- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages — **최근 40차 배포 2026-10-03 = 203차(타이틀 숨은 업적)까지 포함**. 재배포 절차는 **스킬 `deploy-ghpages`**).
+- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages — **최근 41차 배포 2026-10-04 = 204차(물때 흐름 · 타이틀 v2)까지 포함**. 재배포 절차는 **스킬 `deploy-ghpages`**).
   ⚠ **원격 컨테이너에서는 dev 서버(5173)가 사용자 브라우저에 닿지 않는다** — 실플레이 테스트 요청은 이 배포로 답한다.
 
 ## 작업 이어받기 절차

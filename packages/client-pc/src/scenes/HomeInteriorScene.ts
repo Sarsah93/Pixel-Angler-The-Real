@@ -31,7 +31,8 @@ import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { GameState } from '../store/GameState.js';
 import { StoryStore } from '../store/StoryStore.js';
 import { TitleStore } from '../store/TitleStore.js';
-import { pumpTitleBanners } from '../ui/TitleBanner.js';
+import { pumpTitleBanners, titleTagStyle, TITLE_RARITY_COLOR } from '../ui/TitleBanner.js';
+import { pumpTideFlow } from '../ui/TideFlowNotifier.js';
 import { FridgePanel } from '../ui/FridgePanel.js';
 import { CookingPanel } from '../ui/CookingPanel.js';
 import { CookingStore } from '../store/CookingStore.js';
@@ -192,6 +193,9 @@ export class HomeInteriorScene extends Phaser.Scene {
   private py = 0;
   /** 186차 — 필드와 같은 캐릭터 시트(구 `man-*` 외부 출력물은 138차에 폐기됐다) */
   private charSprite!: CharacterSprite;
+  /** 204차 — 머리 위 타이틀(혼자 있는 집 안에서도 — 사용자 지시) */
+  private homeTitle?: Phaser.GameObjects.Text;
+  private homeTitleKey = '';
   private playerShadow!: Phaser.GameObjects.Ellipse;
   private facing: CharDir = 'down';
   /** 186차 — 가구 안내 혼잣말 진행 중(이동·[F]·ESC를 막는다) */
@@ -252,6 +256,8 @@ export class HomeInteriorScene extends Phaser.Scene {
   }
 
   create(): void {
+    this.homeTitle = undefined;   // 204차 — 재진입 시 파괴된 Text를 다시 쓰지 않게
+    this.homeTitleKey = '';
     // 저장 정책의 유일한 허용 위치 — 침대 상호작용 지점 (HOMETOWN_HOME_SPEC §4)
     GameState.locationTag = 'hometown_interior';
     this.cameras.main.fadeIn(300, 0, 10, 20);
@@ -1031,6 +1037,8 @@ export class HomeInteriorScene extends Phaser.Scene {
 
   update(_t: number, delta: number): void {
     pumpTitleBanners(this);   // 203차 — 숨은 업적 달성 배너(고양이 집사 …)
+    pumpTideFlow(this, { toastY: 60 });   // 204차 — 「물때 감각」
+    this.updateHomeTitle();
     // 154차 — 집 주방 화구는 wall-clock으로 계속 끓는다(패널이 닫혀 있어도). 1초마다 동기화.
     this.cookSyncAcc += delta;
     if (this.cookSyncAcc >= 1000) { this.cookSyncAcc = 0; CookingStore.syncAll(); }
@@ -1156,7 +1164,9 @@ export class HomeInteriorScene extends Phaser.Scene {
     }
     this.near = best;
     if (best) {
-      this.hintText.setText(this.hintOf(best)).setPosition(this.px, this.py - this.charSprite.bodyHeight - 10).setVisible(true);
+      // 204차 — 머리 위 타이틀이 있으면 그 위로 비켜 선다
+      const lift = this.homeTitle?.visible ? this.homeTitle.height + 2 : 0;
+      this.hintText.setText(this.hintOf(best)).setPosition(this.px, this.py - this.charSprite.bodyHeight - 10 - lift).setVisible(true);
     } else {
       this.hintText.setVisible(false);
     }
@@ -1244,6 +1254,24 @@ export class HomeInteriorScene extends Phaser.Scene {
   }
 
   // ── 앉기 (189차) ─────────────────────────────────────
+
+  /** 204차 — 머리 위 타이틀: 단 것이 바뀌면 글자를, 매 프레임 자리만 */
+  private updateHomeTitle(): void {
+    const def = TitleStore.equippedDef();
+    if (!def || !this.charSprite) { this.homeTitle?.setVisible(false); this.homeTitleKey = ''; return; }
+    if (!this.homeTitle || !this.homeTitle.active) {
+      this.homeTitle = this.add.text(0, 0, '', titleTagStyle()).setOrigin(0.5, 1);
+      this.homeTitleKey = '';
+    }
+    if (this.homeTitleKey !== def.id) {
+      this.homeTitleKey = def.id;
+      this.homeTitle.setText(def.nameKo).setColor(TITLE_RARITY_COLOR[def.rarity]);
+    }
+    const img = this.charSprite.image;
+    // 앉으면 다리를 잘라 그림이 내려가므로 이미지 위쪽 기준으로 붙인다
+    const top = img.y - img.displayHeight * img.originY;
+    this.homeTitle.setVisible(img.visible).setPosition(img.x, top - 2).setDepth(img.depth + 0.0007);
+  }
 
   private sitOn(f: FurnInstance): void {
     const seats = seatsOf(f.kind, f.dir).map((s) => ({ ...s, sx: OX + f.tx * IT + s.x, sy: OY + f.ty * IT + s.y }));

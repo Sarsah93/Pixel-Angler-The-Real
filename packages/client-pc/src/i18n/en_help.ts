@@ -619,10 +619,23 @@ export const EN_HELP: Record<string, string> = {
     'As certain things you do as an angler pile up, one day a "Hidden achievement unlocked" notice appears and you earn a title. The game never tells you what earns one — every title is a hidden achievement.',
   '얻은 타이틀은 S(내 상태) 창 오른쪽 「타이틀」 칸에 모입니다. 줄을 누르면 그 타이틀로 바꿔 달고, [떼기]로 뗄 수 있습니다. 아직 못 얻은 것은 「??? × 개수」로만 보입니다.':
     'Earned titles gather in the "Titles" column on the right of the S (Status) window. Click a row to wear that title, or [Remove] to take it off. Titles not yet earned only show as "??? × count".',
-  '단 타이틀은 내 캐릭터 머리 위에 작게 걸리고, 여럿이 할 때는 다른 사람 이름 위에도 보입니다. 글자색은 레어도입니다 — 흰색 흔함 · 하늘색 드묾 · 금색 전설.':
-    'The title you wear hangs small above your character, and in multiplayer it shows above other players\' names too. The text color is the rarity — white Common, sky blue Rare, gold Legendary.',
-  '타이틀마다 작은 덕이 하나씩 붙어 있고(입질 · 줄 강도 · 상점 가격 · 피로 등 몇 %), 단 것 하나만 적용됩니다. 레어도가 높을수록 덕이 조금 큽니다.':
-    'Each title carries one small perk (a few % to bites, line strength, shop prices, fatigue and so on), and only the one you wear applies. Higher rarity means a slightly bigger perk.',
+  '단 타이틀은 내 캐릭터 머리 위(집 안 포함)에 작게 걸리고, 여럿이 할 때는 다른 사람 이름 위에도 보입니다. 글자색은 레어도입니다 — 흰색 흔함 · 하늘색 드묾 · 금색 전설.':
+    'The title you wear hangs small above your character (indoors too), and in multiplayer it shows above other players\' names. The text color is the rarity — white Common, sky blue Rare, gold Legendary.',
+  '타이틀마다 작은 덕이 하나씩 붙어 있고(입질 · 물때 단계 입질 · 줄 강도 · 상점 가격 · 피로 등 몇 %), 단 것 하나만 적용됩니다. 레어도가 높을수록 덕이 조금 큽니다. 전설은 얻기가 훨씬 어렵고 레벨도 받쳐 줘야 합니다.':
+    'Each title carries one small perk (a few % to bites, bites in a given tide phase, line strength, shop prices, fatigue and so on), and only the one you wear applies. Higher rarity means a slightly bigger perk. Legendary titles are far harder to earn and need a high enough level too.',
+  // 204차 — 물때 흐름
+  '물때 흐름 (들물 · 날물 · 물돌이)': 'Tide Flow (Flood · Ebb · Slack)',
+  '하루 두 번 오르내리는 물': 'Water that rises and falls twice a day',
+  '「몇 물」(1~15물)은 그날 조류가 얼마나 센지(사리 · 조금)이고, 들물 · 날물은 지금 이 시각 물이 어디쯤 흐르는지입니다. 만조 · 간조 시각은 집의 물때표 책과 라디오에서 알 수 있습니다.':
+    'The tide day (1–15) tells how strong the current is that day (spring or neap); flood and ebb tell where the water is flowing right now. High and low water times are in the tide-table book at home and on the radio.',
+  '간조 뒤 2시간까지 초들물, 2~4시간 중들물, 그 뒤 만조 30분 전까지 끝들물입니다. 만조 앞뒤 30분은 만조 물돌이 — 물이 멈춥니다. 날물도 같은 순서로 초날물 · 중날물 · 끝날물 · 간조 물돌이가 이어집니다.':
+    'Up to 2 hours after low water is the early flood, 2–4 hours the mid flood, then the late flood until 30 minutes before high water. The 30 minutes either side of high water is high-water slack — the water stops. The ebb follows the same order: early ebb, mid ebb, late ebb, low-water slack.',
+  '물이 다시 움직이기 시작하는 초들물 · 초날물에 입질이 가장 좋습니다. 중들물 · 중날물은 물살이 거세 채비가 잘 안 서고, 끝날물은 얕은 자리에서 고기가 빠집니다. 물돌이에는 잔챙이가 조용해지는 대신 큰 고기가 잘 나옵니다.':
+    'Bites are best in the early flood and early ebb, when the water starts moving again. In the mid flood and mid ebb the current is too strong for rigs to settle, and in the late ebb fish leave the shallow spots. At slack the small fry go quiet, but big fish come out.',
+  '사리일수록 단계 차이가 커지고 조금이면 덜합니다. 동해(속초)는 물높이 차이가 작아 물때보다 시간대 영향이 더 큽니다.':
+    'The differences grow on spring tides and shrink on neaps. The East Sea (Sokcho) has a small tidal range, so the time of day matters more than the tide there.',
+  '스킬 「물때 감각」을 배우면 물때가 바뀔 때마다 지역 채널로 알려 주고, 바뀌기 10분 전에 미리 알려 줍니다. 낚시 중 수심 정보에도 지금 물때가 보입니다.':
+    'Learn the Tide Sense skill and the local channel tells you whenever the tide phase changes, with a warning 10 minutes ahead. The current phase also shows in the depth readout while fishing.',
   '대 · 중 · 소 3단계와 호버 팝업': 'Three sizes and the hover popup',
   '① 상태 패널 — 체력 · 피로도 · 경험치 · 시계 · 날씨 ② 허기 · 수분 바 ③ 마우스를 올리면 뜨는 값 ④ 상태이상 칩': '① Status panel — HP · Fatigue · EXP · clock · weather ② Hunger · Water bars ③ Value shown on mouse-over ④ Status effect chips',
   '타이틀바의 ◱로 대 · 중 · 소 3단계, ◐로 투명도를 바꿉니다(저장됩니다). 대 단계에서는 체력 · 피로도 아래에 경험치 바(Lv)와 허기 · 수분 바, 날짜 · 시계 · 날씨 배지가 보입니다. 중 · 소 단계에서는 일부 바가 숨고 아이콘과 툴팁으로 봅니다.': '◱ on the title bar switches between 3 sizes — large · medium · small — and ◐ changes the opacity (both are saved). At large size you see the EXP bar (Lv), the Hunger · Water bars, and the date · clock · weather badges below HP · Fatigue. At medium · small some bars hide, and you read them from icons and tooltips.',
