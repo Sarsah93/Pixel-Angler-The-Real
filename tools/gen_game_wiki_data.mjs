@@ -485,7 +485,11 @@ const rules = [
     id: 'snag', round: 206, hidden: false, title: '밑걸림과 채비 손실',
     lede: '여 밭에서 채비를 세워 둔 채 견제하지 않으면 바닥에 걸린다. 걸리면 끌어당기거나 끊는다 — 무엇을 잃는지는 채비가 어디서 떨어져 나갔느냐로 정해진다.',
     rows: [
-      ['걸리는 시간', `위험 배율만큼 쌓여 5초를 넘기면 초당 25% × 배율 — 보통 자리 평균 약 9초 · 위험한 자리(×1.6) 약 6초 · 테트라포드 구멍(×${core.TUNING.hole.snagMultTetrapod}) 약 4초`],
+      ['언제 걸리나', '채비가 여 위를 끌려 움직일 때만 — 감아 올 때 · 물살에 흘릴 때 · 봉돌이 구를 때. 바닥에 멈춘 봉돌은 걸리지 않는다(207차)'],
+      ['얼마나', `여 위를 1m 끌 때 ${(core.TUNING.snag.dragHazardPerM * 100).toFixed(0)}% 남짓 × 자리 · 강수 · 구멍치기 배율 — 여 7m를 끌고 오면 약 ${Math.round((1 - Math.exp(-core.TUNING.snag.dragHazardPerM * 7)) * 100)}%`],
+      ['닿는 높이', `봉돌 ${core.TUNING.snag.sinkerReachM}m · 루어 ${core.TUNING.snag.lureReachM}m · 찌 목줄 ${core.TUNING.snag.floatReachBaseM}m + 물살 × ${core.TUNING.snag.floatReachFlowM}m(속조류에 날린다) — 이보다 높이 떠 있으면 걸리지 않는다`],
+      ['봉돌이 구를 때', `물살 > ${core.TUNING.tidePhase.surfRollFlow} 이고 봉돌 < ${core.TUNING.tidePhase.surfSinkerMinG}g · 또는 파고 ≥ ${core.TUNING.snag.waveRollMinM}m 이고 봉돌 < 파고 × ${core.TUNING.snag.waveSinkerGPerM}g`],
+      ['걸린 모습', '찌는 쑥 잠기지 않고 살짝 잠긴 채 거의 멈춘다(속조류에 들락날락) · 원투 · 루어는 초릿대가 휜 채 떨림이 없다 — 감거나 채면 대처 창'],
       ['끌어당기기', core.SNAG_PULL_UP.map((r) => `${r.labelKo.split(' — ')[0]} ${Math.round(r.p * 100)}%`).join(' · ')],
       ['끊기', core.SNAG_BREAK_OFF.map((r) => `${r.labelKo.split(' — ')[0]} ${Math.round(r.p * 100)}%`).join(' · ')],
       ['바늘과 미끼', '단품 바늘은 바늘 + 미끼 + 좁쌀봉돌 · 타이라바는 바늘 둘 다 · 묶음추 · 카드 채비는 한 벌을 버린다(바늘이 고정) · 루어는 루어'],
@@ -493,6 +497,18 @@ const rules = [
       ['통째로', `찌 · 수중찌 · 유동 봉돌 · 도래부터 아래 전부 + 원줄 ${core.TUNING.snag.mainLineCutM}m`],
       ['줄 길이', '줄은 스풀째가 아니라 쓴 길이만큼 준다 — 다 쓰면 그 스풀이 사라진다(상세 보기에 남은 m)'],
       ['다시 채비', '가방에 같은 부품이 남아 있으면 그 칸은 그대로 끼워져 있다 — 다 떨어진 칸만 빈다'],
+    ],
+  },
+  {
+    id: 'rod_holder', round: 207, hidden: false, title: '원투 거치대',
+    lede: '원투 봉돌이 바닥에 닿으면 낚싯대를 거치대에 걸어 두고 자리를 떠날 수 있다. 입질은 탑다운에서 초릿대 끝과 「!」로 본다.',
+    rows: [
+      ['사는 곳', '낚시점 「원투 거치대 (삼발이)」'],
+      ['거치', '1인칭에서 봉돌이 바닥에 안착하면 [거치하기] — 서 있던 자리 앞에 거치대가 선다'],
+      ['입질', `거치 순간 입질 확률 × ${core.TUNING.rodHolder.parkedBiteMult} · 초릿대가 까딱이고 「!」 · 지역 채널 한 줄 · ${core.TUNING.rodHolder.biteWindowSec}초 안에 [F]로 잡으면 1인칭에서 입질이 이어진다`],
+      ['놓치면', `초릿대가 잠잠해진다 — ${Math.round(core.TUNING.rodHolder.missBaitLossChance * 100)}% 확률로 미끼를 따먹힌다`],
+      ['밑걸림', '멈춘 봉돌은 걸리지 않는다 — 물살 · 파도가 봉돌을 굴려 여 위를 끌 때만 걸리고, 그러면 초릿대가 휜 채 멈춘다'],
+      ['여럿이', '남이 걸어 둔 낚싯대는 보이기만 하고 잡을 수 없다'],
     ],
   },
   {

@@ -450,6 +450,9 @@ export const SPREADER_LABEL: Record<SpreaderKind, string> = {
   GALCHI: '갈치 와이어',
 };
 
+/** 207차 — 원투 거치대 아이템 id (상점 · 1인칭 거치하기 · 탑다운 거치대) */
+export const ROD_HOLDER_ITEM_ID = 'shop_rod_holder';
+
 /** 196차 — 뜰채 이름의 「N m」 → 자루 길이(m). 못 읽으면 5m(구 시드 「뜰채 5m」) */
 export function netReachFromName(name: string): number {
   const m = /(\d+(?:\.\d+)?)\s*m/.exec(name);
@@ -1060,6 +1063,11 @@ class InventoryStoreManager {
 
   find(id: string): InvItem | undefined {
     return this._items.find((i) => i.id === id);
+  }
+
+  /** 207차 — 원투 거치대(삼발이)를 가졌나 — 1인칭 「거치하기」 게이트 */
+  hasRodHolder(): boolean {
+    return this._items.some((i) => i.id === ROD_HOLDER_ITEM_ID && i.qty > 0);
   }
 
   itemAtSlot(cat: InvCategory, slot: number): InvItem | undefined {

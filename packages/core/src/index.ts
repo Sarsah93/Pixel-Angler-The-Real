@@ -436,6 +436,10 @@ export {
 // 206차 — 채비 손실 계획(트리 기준 — 밑걸림·줄터짐·절단 공통)
 export type { RigLossCause, RigLossScope, RigLossPlan } from './types/RigLoss.js';
 export { planRigLoss, type RigLossOpts } from './simulation/RigLoss.js';
+export type {
+  SnagRigKind, SnagDragInput, SinkerHoldResult, ParkedRodPhase, ParkedRigSnapshot, ParkedRodLaunch, ParkedRodState,
+} from './types/SnagDrag.js';
+export { snagReachM, snagProximity, snagHazardPerM, snagDragChance, sinkerHoldsBottom } from './simulation/SnagDrag.js';
 export type { ChumBall, ChumProbePos, ChumParcel, ChumDrift, ChumSyncTarget, ChumPathPrediction, ChumSyncOpts } from './simulation/ChumPhysics.js';
 export {
   ChumPhysics, CHUM_PARCEL_TTL_SEC,

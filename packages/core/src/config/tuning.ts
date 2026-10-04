@@ -671,6 +671,43 @@ export interface TuningConfig {
     leaderCutM: number;
     /** 원줄이 터질 때 잘려 나가는 길이(m) */
     mainLineCutM: number;
+    // ── 207차 — 밑걸림 = 끌림 거리 모델(`simulation/SnagDrag.ts`). 멈춘 채비는 걸리지 않는다 ──
+    /** 여 위에서 바닥을 1m 끌 때의 밑걸림 위험(λ, /m) — 기대 끌림 거리 = 1/λ */
+    dragHazardPerM: number;
+    /** 봉돌(원투)이 장애물에 닿는 높이(m) — 바닥 위 이 높이 안에서 끌리면 걸린다 */
+    sinkerReachM: number;
+    /** 루어가 장애물에 닿는 높이(m) */
+    lureReachM: number;
+    /** 찌 채비 목줄·바늘이 닿는 높이(m) — 기본 + 물살(0~1) × 날림 */
+    floatReachBaseM: number;
+    floatReachFlowM: number;
+    /** 이보다 짧게 움직인 프레임은 끌림으로 치지 않는다(m/s) — 물살 요동 잡음 */
+    dragMinMps: number;
+    /** 파도가 봉돌을 미는 문턱 파고(m) */
+    waveRollMinM: number;
+    /** 파고 1m를 버티는 데 드는 봉돌 무게(g) */
+    waveSinkerGPerM: number;
+    /** 파도에 밀린 봉돌이 발 앞으로 끌려오는 속도(m/s) */
+    waveDriftMps: number;
+    /** 걸린 찌가 살짝 잠긴 깊이(m) · 들락날락 진폭(m) */
+    stuckDipM: number;
+    stuckBobAmpM: number;
+    /** 걸린 채 원투·루어 초릿대가 휜 각도(도) */
+    stuckBendDeg: number;
+  };
+  /**
+   * 낚싯대 거치대(207차 — 원투를 던져 두고 기다리기).
+   * 소비: `scenes/field/RodHolderSystem.ts` · `FirstPersonFishingScene` 「거치하기」.
+   */
+  rodHolder: {
+    /** 초릿대가 움직이는 동안(입질 창 · 초) — 이 안에 와서 [F]로 잡으면 1인칭에서 챔질할 수 있다 */
+    biteWindowSec: number;
+    /** 입질 창을 놓쳤을 때 미끼를 따먹혔을 확률 */
+    missBaitLossChance: number;
+    /** 걸어 둔 동안 입질 확률 배율(사람이 지켜보지 않으니 유도 · 견제가 없다) */
+    parkedBiteMult: number;
+    /** [F]가 닿는 거리(타일) */
+    reachTiles: number;
   };
   /**
    * 물때 흐름 × 어종 × 장르 (205차 — TIDE_PHASE_STRATEGY_SPEC P1~P3 · 초기값은 설계 초안, 실플레이 조율 대기).
@@ -1288,6 +1325,24 @@ export const TUNING: TuningConfig = {
     questFirstMult: 0.3,
     leaderCutM: 1.5,
     mainLineCutM: 8,
+    dragHazardPerM: 0.1,
+    sinkerReachM: 0.25,
+    lureReachM: 0.45,
+    floatReachBaseM: 0.35,
+    floatReachFlowM: 0.9,
+    dragMinMps: 0.03,
+    waveRollMinM: 0.8,
+    waveSinkerGPerM: 55,
+    waveDriftMps: 0.06,
+    stuckDipM: 0.05,
+    stuckBobAmpM: 0.035,
+    stuckBendDeg: 11,
+  },
+  rodHolder: {
+    biteWindowSec: 25,
+    missBaitLossChance: 0.5,
+    parkedBiteMult: 0.8,
+    reachTiles: 2.2,
   },
   tidePhase: {
     eastSeaK: 0.3,
@@ -1447,6 +1502,12 @@ export const TUNING_META: TuningParamMeta[] = [
   { path: 'snag.questFirstMult', min: 0, max: 1, step: 0.05, category: 'balance', label: '퀘스트 첫 진행 밑걸림 배율' },
   { path: 'snag.leaderCutM', min: 0.5, max: 5, step: 0.5, category: 'balance', label: '목줄 끊김 길이(m)' },
   { path: 'snag.mainLineCutM', min: 2, max: 30, step: 1, category: 'balance', label: '원줄 끊김 길이(m)' },
+  { path: 'snag.dragHazardPerM', min: 0.02, max: 1, step: 0.02, category: 'balance', label: '여 끌림 1m당 밑걸림' },
+  { path: 'snag.sinkerReachM', min: 0.05, max: 1, step: 0.05, category: 'balance', label: '봉돌 걸림 높이(m)' },
+  { path: 'snag.floatReachFlowM', min: 0, max: 2, step: 0.1, category: 'balance', label: '찌 목줄 날림 높이(m)' },
+  { path: 'snag.waveSinkerGPerM', min: 20, max: 120, step: 5, category: 'balance', label: '파고 1m 버티는 봉돌(g)' },
+  { path: 'rodHolder.biteWindowSec', min: 5, max: 90, step: 5, category: 'balance', label: '거치대 입질 창(초)' },
+  { path: 'rodHolder.parkedBiteMult', min: 0.2, max: 1.5, step: 0.05, category: 'balance', label: '거치 중 입질 배율' },
   // ── 물때 흐름 × 어종 × 장르 (205차 — 설계 초안, 실플레이 조율 대기) ──
   { path: 'tidePhase.eastSeaK', min: 0, max: 1, step: 0.05, category: 'balance', label: '동해 물때 효과 계수' },
   { path: 'tidePhase.eastSeaFlowK', min: 0, max: 1, step: 0.05, category: 'balance', label: '동해 물살 계수' },

@@ -229,7 +229,6 @@ export const EN_HELP: Record<string, string> = {
   '부력찌와 수중찌를 모두 비우고 도래를 달면 원투 모드입니다 — 찌 대신 무게추 봉돌이 필수이고 편대(카드 채비 · 천평)를 붙일 수 있습니다. 바늘 자리에 지그헤드+웜처럼 무게가 있는 루어를 달면 봉돌 없이 던집니다.': 'Leave both the Float and the Sub-float empty and fit a Swivel for surf mode — a weight sinker becomes required instead of a float, and you can add a spreader (sabiki rig · T-arm). Put a weighted lure such as a jighead + worm in the Hook slot and you cast with no sinker.',
   '면사매듭 −/+로 채비가 내려갈 한계 수심을 정합니다. 전유동(매듭 없음)은 바닥까지 가라앉습니다.': 'Stopper knot −/+ sets the depth limit the rig sinks to. Free-drift (no knot) sinks all the way to the bottom.',
   '오른쪽 아래 [채비 고정]을 누르면 지금 채비가 잠깁니다(필수 부품이 다 있어야 합니다). 고정 중에는 소켓 · 모드 · 루어를 바꾸려 하면 「고정 해제」 안내가 뜨고, [고정 해제]로 풉니다. 캐스팅에 고정이 꼭 필요하지는 않습니다.': 'Press [Lock rig] at the bottom right to lock your current rig (all required parts must be in). While locked, trying to change a socket · mode · lure shows an "Unlock rig" notice; release it with [Unlock rig]. You do not have to lock the rig to cast.',
-  '줄터짐 · 밑걸림으로 잃은 부품 자리는 고정 중에도 비워집니다. 다시 채우려면 고정을 풀어야 합니다.': 'Parts lost to break-offs · snags leave empty sockets even while locked. To refill them, unlock the rig first.',
   '루어 채비 탭 — ① 미끼 / 루어 전환 ② 원줄 · 목줄 ③ 소프트 / 하드 → 종류 → 라인업 ④ 루어 제원 · 채비 고정': 'Lure Rig tab — ① Bait / lure toggle ② Main line · leader ③ Soft / hard → type → lineup ④ Lure specs · Lock rig',
   '채비 탭 위쪽 [루어 채비]로 바꾸면 미끼 채비와 따로 쓰는 원줄 · 목줄 소켓이 있습니다(처음 바꿀 때는 미끼 채비 줄을 그대로 가져옵니다). 소프트 베이트(웜 · 저크베이트)는 지그헤드가 필수이고, 하드 베이트(미노우 · 스푼 · 스피너 · 에기 · 메탈지그 · 타이라바)는 자체 무게로 던집니다.': 'Switch to [Lure Rig] at the top of the Tackles tab and you get Main line and Leader sockets separate from the Bait Rig (the first switch copies the Bait Rig lines over). Soft baits (worms · jerkbaits) need a Jighead; hard baits (Minnow · Spoon · Spinner · Egi · Metal Jig · Tairaba) cast on their own weight.',
   '루어는 목줄째 터질 때, 밑걸림 결과(바늘 · 도래 아래 · 전부 손실)로, 복어가 끊어 먹을 때 잃습니다. 루어는 가만두면 물지 않습니다 — 액션이 입질을 만듭니다(낚시하기 › 액션 주기).': 'You lose a lure when the leader itself snaps, through snag outcomes (hook · everything below the swivel · everything lost), and when a pufferfish bites it off. A lure left sitting gets no bites — action makes the bite (Fishing › Lure Action).',
@@ -298,13 +297,11 @@ export const EN_HELP: Record<string, string> = {
   '밑걸림 대처': 'Snag recovery',
   '선택창 — 끌어당기기 vs 끊기': 'The prompt — pull up or break off',
   '밑걸림 — ① 두 선택지의 결과 확률 ② [로드 위로 끌어당기기] / [로드 뒤로 당겨 끊기]': 'Snag — ① Odds for each option ② [Pull the rod up] / [Pull back and break off]',
-  '여 밭에 채비를 오래 두면 밑걸림이 걸리고 「밑걸림이 발생한 것 같다. 어떻게 대처할까?」 선택창이 뜹니다. 선택은 두 가지이고 되돌릴 수 없습니다.': 'Leave a rig on a reef bed too long and it snags, bringing up the prompt "Looks like you are snagged. What now?". There are two choices and neither can be undone.',
   '① 로드 위로 끌어당기기 — 채비 완전 회수 10% / 미끼만 손실 10% / 바늘 + 미끼 손실 30% / 채비 완전 손실 50%.': '① Pull the rod up — rig fully recovered 10% / lose only the bait 10% / lose hook + bait 30% / lose the whole rig 50%.',
   '② 로드 뒤로 당겨 끊기 — 채비는 반드시 잃습니다. 다만 50%는 구멍찌 · 수중찌 · 도래가 살아남고 그 아래(목줄 · 좁쌀봉돌 · 바늘 · 미끼)만 터집니다. 찌가 비쌀수록 ①이, 시간이 급하면 ②가 낫습니다.': '② Pull back and break off — you always lose the rig. But 50% of the time the hole float · sub-float · swivel survive and only what hangs below them (leader · split shot · hook · bait) goes. The pricier your floats, the better ①; if you are short on time, ② is better.',
   '너무 센 줄은 대를 부러뜨린다': 'Line that is too strong snaps the rod',
   '원줄 · 목줄 중 약한 쪽이 로드 등급(2.2kg + 로드 가격 60,000원당 1kg)의 1.5배를 넘을 때만 절지 파단 판정이 굴려집니다 — 끊기 15%, 끌어당기기 7.5%. 채비가 로드 등급 안이면 아무리 당겨도 부러지지 않습니다.': 'A snapped-section roll only happens when the weaker of main line and leader is rated above 1.5× the rod rating (2.2kg + 1kg per 60,000 won of rod price) — 15% when breaking off, 7.5% when pulling up. Keep the rig within the rod rating and no amount of pulling will snap it.',
   '루어는 회수 · 충돌 한 번마다 35% 확률로 부분 파손(입질 확률 ×0.72)이 붙습니다. 수리점에서 훅과 스플릿링을 갈면 복구됩니다.': 'Each recovery or impact gives a lure a 35% chance of damage (bite chance ×0.72). A repair shop restores it by replacing the hooks and split rings.',
-  '예방: 여 밭에서는 방치하지 말고 뒷줄견제(H)와 릴링으로 자주 띄우세요. 비 오는 날은 밑걸림이 1.33배(소나기 1.55배)로 늘어납니다. 수심 패널 오른쪽에 「여 밭」이 뜨면 바닥이 암초입니다.': 'Prevention: never leave a rig sitting over a reef bed — lift it often with line holds (H) and reeling. On rainy days snags rise to 1.33× (1.55× in a shower). If "Reef" appears on the right of the depth panel, the bottom is rock.',
   '에기는 밑걸림 확률이 0.7배로 낮습니다 — 암초 지대 두족류 공략에 유리합니다.': 'Egi snag at only 0.7× the usual rate, which makes them the tool for cephalopods over rocks.',
   '구멍치기 (테트라포드 · 사석)': 'Hole fishing (tetrapods · riprap)',
   '던지지 않는 낚시': 'Fishing without casting',
@@ -629,8 +626,6 @@ export const EN_HELP: Record<string, string> = {
   '물때와 채비': 'Tides and your rig',
   '찌낚시: 물이 멈춘 물돌이 · 끝물에 던진 밑밥은 발밑에 쌓였다가, 물이 다시 흐르는 초들물 · 중들물(날물도 같다)에 띠처럼 풀리며 고기를 끌어모읍니다. 물살이 셀수록 밑밥이 넓게 퍼집니다.':
     'Float fishing: chum thrown at slack water or the late tide piles up at your feet, then spreads out like a ribbon and draws fish in once the water starts moving again in the early and mid flood (the ebb works the same way). The stronger the current, the wider the chum spreads.',
-  '원투: 물살이 가장 센 중물에 봉돌이 가벼우면 바닥에서 굴러 채비가 하류로 끌리고, 입질은 줄고 밑걸림은 늘어납니다. 무거운 봉돌(25호 안팎 이상)이면 버팁니다. 물이 막 흐르기 시작하는 초들물 · 초날물에는 냄새가 퍼져 입질이 조금 오릅니다.':
-    'Surf casting: in the strongest mid-tide current a light sinker rolls along the bottom and drags the rig downstream — fewer bites, more snags. A heavy sinker (around 25 or more) holds. In the early flood and early ebb the scent spreads and bites pick up a little.',
   '루어: 지그 · 미노우 · 스푼은 물살이 있는 중물에 살아나고 물돌이에는 처집니다. 에기는 물이 완만한 물돌이 앞뒤가 좋고, 타이라바는 물이 멈추면 스커트가 흔들리지 않아 입질이 끊깁니다. 바닥 웜은 흐름이 막 붙는 초물에 좋습니다.':
     'Lures: jigs, minnows and spoons come alive in the mid-tide current and fall flat at slack water. Egi work best around slack water when the current is gentle, while a tairaba stops getting bites when the water stops because the skirt no longer sways. Bottom worms do best in the early tide as the current starts to build.',
   '구멍치기: 단계보다 물높이입니다. 만조 무렵 블록 위로 물이 깊을 때 잘 물고, 간조에 블록이 드러나면 거의 안 뭅니다.':
@@ -694,4 +689,27 @@ export const EN_HELP: Record<string, string> = {
   '첫 할 일 「막차」를 하는 동안에는 단축키가 배운 순서대로 하나씩 열립니다(시작하기 › 새 게임 · 캐릭터 만들기). 속초에 도착하면 모두 열립니다.': 'During your first task, "The Last Bus", hotkeys open one by one in the order you learn them (Getting Started › New Game · Character Creation). They all open once you reach Sokcho.',
   '테두리가 금색인 칸은 지금 배울 수 있고, 오른쪽 위 귀퉁이에 단추가 붙습니다 — 그 단추를 누르면 포인트를 써서 한 레벨 오릅니다. 초록 = 배운 스킬, 회색 = 잠김, 주황 = 조건 잠김, 보라 실루엣 = 숨은 조합입니다. 오른쪽 위 「스킬 포인트」에 마우스를 올리면 남은 · 쓴 포인트와 레벨 · 면허로 얻은 몫이 나옵니다.': 'A slot with a gold border can be learned now and has a button on its top-right corner — press it to spend points and gain one level. Green = learned, grey = locked, orange = locked by a condition, purple silhouette = hidden combination. Hover over "Skill points" at the top right to see points left and spent and how many came from levels and licences.',
   '팝업에 「준비 중인 스킬이다 — 지금 배워 두면 효과는 나중에 난다」가 붙은 스킬은 효과가 아직 연결되지 않아 포인트만 들어갑니다. 바로 효과가 나는 스킬부터 배우는 게 안전합니다(지금 44개가 실제로 동작합니다).': 'A skill whose popup says "This skill is still being prepared — learn it now and the effect arrives later." has no effect connected yet, so the points just sit there. It is safer to learn skills that work right away first (44 of them work right now).',
+  // 207차 — 밑걸림 끌림 모델 · 원투 거치대
+  '줄터짐 · 밑걸림으로 잃은 부품은 가방에 같은 것이 남아 있으면 그 칸에 그대로 다시 달립니다 — 다 떨어진 칸만 비고, 그 칸을 채우려면 고정을 풀어야 합니다.':
+    'Parts lost to line breaks or snags are put straight back on if the same item is still in your bag — only a slot that has run out goes empty, and refilling it needs the lock released.',
+  '원투: 물살이 가장 센 중물에 봉돌이 가벼우면 바닥에서 굴러 채비가 하류로 끌리고 입질이 줄며, 끌려가는 동안 여에 걸리기 쉽습니다. 무거운 봉돌(25호 안팎 이상)이면 버팁니다. 파도가 높은 날도 같습니다 — 파고 1m마다 봉돌 55g 정도가 있어야 버팁니다. 물이 막 흐르기 시작하는 초들물 · 초날물에는 냄새가 퍼져 입질이 조금 오릅니다.':
+    'Surf: in the strongest mid-tide current a light sinker rolls along the bottom, dragging the rig downstream — fewer bites, and it catches on reef while it drags. A heavy sinker (around No. 25 and up) holds. High waves do the same — you need about 55 g of sinker per metre of wave height. Early flood and early ebb spread the scent and lift bites a little.',
+  '밑걸림은 채비가 여 위를 끌려 움직일 때 생깁니다 — 감아 올 때, 물살에 흘려 보낼 때, 봉돌이 구를 때. 바닥에 멈춰 있는 봉돌은 걸리지 않습니다. 걸리면 찌는 쑥 잠기지 않고 살짝 잠긴 채 거의 멈추고(속조류가 당길 때마다 들락날락), 원투 · 루어는 초릿대가 휜 채 떨림이 없습니다. 감거나 채면 바닥이라는 걸 알게 되고 선택창이 뜹니다. 선택은 두 가지이고 되돌릴 수 없습니다.':
+    'Snags happen while the rig drags over reef — reeling in, drifting on the current, or a rolling sinker. A sinker resting still on the bottom does not snag. When snagged, a float does not plunge; it sits slightly under and barely moves (bobbing whenever the undercurrent tugs), and a surf or lure rod tip stays bent with no trembling. Reel or strike and you feel the bottom, and the choice appears. There are two choices and neither can be undone.',
+  '예방: 여 위에서는 바닥을 긁으며 끌지 마세요 — 감기 전에 띄우거나, 뒷줄견제(H)로 줄을 잡으면 채비가 끌리지 않습니다. 찌 채비는 수심을 바닥보다 조금 얕게 맞추면 목줄이 여에 덜 감깁니다(물살이 셀수록 목줄이 날려 더 깊이 닿습니다). 비 오는 날은 밑걸림이 1.33배(소나기 1.55배)로 늘어납니다. 수심 패널 오른쪽에 「여 밭」이 뜨면 바닥이 암초입니다.':
+    "Prevention: don't drag along the bottom over reef — lift before you reel, or hold the line (H) and the rig won't drag. With a float rig, set the depth a little shallower than the bottom and the leader tangles less (stronger current blows the leader deeper). Rain raises snags ×1.33 (×1.55 in showers). When the depth panel shows \"reef\" on the right, the bottom is rock.",
+  '원투 거치대': 'Surf rod holder',
+  '걸어 두고 기다리기': 'Set it down and wait',
+  '원투 거치대(삼발이)는 낚시점에서 삽니다. 원투 채비를 던져 봉돌이 바닥에 닿으면 1인칭 화면 아래 로드 반대편(그만하기 위)에 [거치하기]가 나타납니다.':
+    'Buy a surf rod holder (tripod) at the tackle shop. Once a surf rig is cast and the sinker touches bottom, [Set on holder] appears at the bottom of the first-person view, opposite the rod (above Quit).',
+  '거치하면 탑다운으로 나오고, 서 있던 자리에 거치대와 낚싯대가 섭니다. 채비는 물속에 그대로 있습니다 — 그동안 다른 일을 해도 됩니다.':
+    'You return to the top-down view and the holder and rod stand where you were. The rig stays in the water — you are free to do other things meanwhile.',
+  '입질이 오면 거치대 위에 「!」가 뜨고 초릿대 끝이 까딱거리며, 지역 채널에 [거치대] 한 줄이 남습니다. 25초 안에 가서 [F]로 낚싯대를 잡으면 1인칭에서 입질이 이어지고, 챔질은 직접 합니다. 늦으면 미끼를 따먹혔을 수 있습니다.':
+    'On a bite a "!" pops above the holder, the rod tip nods, and a [Rod holder] line appears in the area chat. Reach it within 25 seconds and pick it up with [F] — the bite carries on in first-person and the strike is yours. Too late and the bait may have been stolen.',
+  '바닥에 멈춘 봉돌은 걸리지 않습니다. 다만 물살이나 파도가 봉돌보다 세면 봉돌이 구르고, 여 위를 구르면 걸립니다 — 그러면 초릿대가 휜 채 꼼짝하지 않습니다.':
+    'A sinker resting on the bottom does not snag. But if the current or waves beat the sinker it rolls, and rolling over reef snags — then the rod tip stays bent and does not move.',
+  '거치해 둔 동안에는 다른 낚싯대로 던지지 않습니다. 다른 지역으로 떠나면 두고 온 낚싯대는 거둬 온 것으로 칩니다.':
+    'While a rod is on the holder you cannot cast another. Leave for another region and the rod you left counts as packed up.',
+  '여럿이 함께할 때 남이 걸어 둔 낚싯대는 보이기만 하고 잡을 수 없습니다.':
+    "In multiplayer you can see other people's set rods but cannot pick them up.",
 };

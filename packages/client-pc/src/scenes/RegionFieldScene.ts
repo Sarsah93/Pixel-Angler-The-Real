@@ -86,6 +86,8 @@ import { AmbientNpcSystem, StoryNpcActor, type NpcFieldHost } from './field/Fiel
 import { TrapFieldSystem } from './field/TrapFieldSystem.js';
 import { TrapDeployPanel } from '../ui/TrapDeployPanel.js';
 import { StoveFieldSystem } from './field/StoveFieldSystem.js';
+import { RodHolderSystem, type ParkRequest } from './field/RodHolderSystem.js';
+import type { ParkedRodState } from '@tra/core';
 import { StoveDeployPanel } from '../ui/StoveDeployPanel.js';
 import { CookingPanel } from '../ui/CookingPanel.js';
 import { CookingStore } from '../store/CookingStore.js';
@@ -394,6 +396,10 @@ export class RegionFieldScene extends Phaser.Scene {
   private trapField?: TrapFieldSystem;
   /** 154차 불요리 — 화구 조합 설치물(탑다운 [F] 조리) */
   private stoveField?: StoveFieldSystem;
+  /** 207차 — 원투 거치대(걸어 둔 낚싯대 · 입질 연출 · [F]로 다시 잡기) */
+  private rodHolder?: RodHolderSystem;
+  /** 207차 — 마지막 착수점(월드 px) — 거치대 낚싯대가 이쪽으로 줄을 드리운다 */
+  private lastCastLand: { x: number; y: number } | null = null;
   /** 면허(L) · 스킬(K) · 일지(J) 팝업 (122차) */
   private licensePanel: LicensePanel | null = null;
   private skillPanel: SkillTreePanel | null = null;
@@ -916,6 +922,13 @@ export class RegionFieldScene extends Phaser.Scene {
       this.restoreCamFollow();   // 127차 — 1인칭에서 돌아오면 카메라를 플레이어로
       this.clearCastFlight();
       this.hud?.refreshQuickslots();
+      // 207차 — 1인칭에서 「거치하기」: 서 있던 자리에 거치대를 세운다
+      const park = this.registry.get('fp_park') as ParkRequest | undefined;
+      if (park) {
+        this.registry.remove('fp_park');
+        const at = { x: this.playerBody.x, y: this.playerBody.y };
+        this.rodHolder?.park(park, at, this.lastCastLand ?? { x: at.x, y: at.y + TR * 3 });
+      }
       // 1인칭 씬이 남긴 종료 사유(채비 손실 등) 표시
       const exitMsg = this.registry.get('fp_exit_msg') as string | undefined;
       if (exitMsg) {
@@ -3164,6 +3177,11 @@ export class RegionFieldScene extends Phaser.Scene {
     if (GameState.isMounted) return;
     // 184차 — 고가 상판 위에서는 던지지 않는다(차도 한가운데다)
     if (this.overpass?.onDeck) return;
+    // 207차 — 낚싯대가 거치대에 걸려 있다(한 대를 두고 또 던지지 않는다)
+    if (GameState.parkedRod && InventoryStore.getEquippedRod()) {
+      this.floatingHint('낚싯대가 거치대에 걸려 있다');
+      return;
+    }
     // ── 장비 게이팅이 **최우선** (사용자 지시 2026-08-05) ──
     //  손에 낚싯대가 없으면 애초에 캐스팅 시도가 아니다 → 안내 없이 무시.
     //  (구 구현은 물가 판정을 먼저 해서, 낚싯대가 없어도 아무 데나 클릭하면
@@ -3275,6 +3293,7 @@ export class RegionFieldScene extends Phaser.Scene {
   private enterHoleFishing(): void {
     const hole = this.holeSpot;
     if (!hole || this.castBusy || this.isTransitioning) return;
+    if (GameState.parkedRod) { this.floatingHint('낚싯대가 거치대에 걸려 있다'); return; }
     // 미끄러짐 — 파고 반영 (테트라포드 안전, M1-04 학습 태그)
     const waveM = ExternalDataStore.getWaveHeightM(this.region) ?? 0.5;
     if (Math.random() < holeSlipChance(hole, waveM)) {
@@ -3591,8 +3610,29 @@ export class RegionFieldScene extends Phaser.Scene {
     this.castBusy = false;
   }
 
+  /**
+   * 207차 — 거치해 둔 낚싯대를 다시 잡는다. 걸어 둔 채비를 그대로 1인칭에 돌려 놓는다(캐스팅 · 침강 없이).
+   * 초릿대가 움직이는 중이었으면 입질이 이어지고, 휘어 있었으면 걸린 채로 시작한다.
+   */
+  private pickUpParkedRod(rod: ParkedRodState): void {
+    if (this.isTransitioning) return;
+    this.lastCastLand = { x: rod.landX, y: rod.landY };
+    this.hud?.pushLog(rod.phase === 'bite' ? '[거치대] 낚싯대를 집어 들었다 — 초릿대가 움직인다'
+      : rod.phase === 'snagged' ? '[거치대] 낚싯대를 집어 들었다 — 바닥에 걸려 있다' : '[거치대] 낚싯대를 집어 들었다');
+    this.fadeOutThen(() => {
+      this.dismountBike();
+      MultiplayerClient.setActivity('fishing');
+      this.scene.pause();
+      this.scene.launch('FirstPersonFishingScene', {
+        ...rod.launch, region: this.region,
+        parked: { rig: rod.rig, phase: rod.phase },
+      });
+    }, 200, false);
+  }
+
   /** 착수 → 1인칭 낚시 씬 진입 (pause + launch — 복귀 시 위치 보존) */
   private enterFirstPersonFishing(landX: number, landY: number, col: number, row: number): void {
+    this.lastCastLand = { x: landX, y: landY };
     const distPx = Math.hypot(landX - this.playerBody.x, landY - this.playerBody.y);
     const castDistanceM = (distPx / TR) * 2;   // 타일 = 2m 스케일
     const zMaxM = this.resolveCastDepth(castDistanceM);
@@ -4106,6 +4146,7 @@ export class RegionFieldScene extends Phaser.Scene {
     this.forage?.update(delta);
     this.trapField?.update(delta);
     this.stoveField?.update(delta);
+    this.rodHolder?.update(delta);
     this.updateCharge();
     this.checkEdgeTransition();
   }
@@ -5806,6 +5847,7 @@ export class RegionFieldScene extends Phaser.Scene {
   /** 구 [F] 순서 그대로 (Shift+F 회수 · 선택지 실행의 공용 경로) */
   private runLegacyInteract(shift: boolean): void {
     if (this.nearObject) this.interactWithObject(this.nearObject, shift);
+    else if (this.rodHolder?.onInteractKey()) { /* 207차 — 거치해 둔 낚싯대 잡기 */ }
     else if (this.stoveField?.onInteractKey(shift)) { /* 요리 패널 · 회수 확인 */ }
     else if (this.trapField?.onInteractKey()) { /* 통발 수거 확인 */ }
   }
@@ -5894,7 +5936,10 @@ export class RegionFieldScene extends Phaser.Scene {
         },
       });
     }
-    // ⑧ 화구 · 통발
+    // ⑧ 거치대 · 화구 · 통발
+    if (this.rodHolder?.hasNearHolder) {
+      opts.push({ label: '거치해 둔 낚싯대 잡기', hint: this.rodHolder.nearHintKo ?? undefined, run: () => { this.rodHolder?.onInteractKey(); } });
+    }
     if (this.stoveField?.hasNearStove) {
       opts.push({ label: '화구에서 요리하기', hint: this.stoveField.nearHintKo ?? undefined, run: () => { this.stoveField?.onInteractKey(false); } });
     }
@@ -6344,19 +6389,27 @@ export class RegionFieldScene extends Phaser.Scene {
         }));
       },
     });
+    this.rodHolder = new RodHolderSystem({
+      scene: this, tr: TR, regionId: this.region, mapKey: common.mapKey,
+      player: common.player, blocked: common.blocked, pushLog: common.pushLog, floatingHint: common.floatingHint,
+      pickUp: (rod: ParkedRodState) => this.pickUpParkedRod(rod),
+    });
     if (import.meta.env.DEV) {
       const st = this.forage.candidateStats();
       this.hud?.pushLog(`[dev] 채집 후보 갯바위 ${st.rock_shore} · 사석/TTP ${st.armor_foot} · 웅덩이 ${st.tidepool} · 안벽 ${st.harbor_wall} · 스팟 ${this.forage.allSpots().length} · 어장 ${farms.length}`);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (globalThis as any).__FIELD = { forage: this.forage, trapField: this.trapField, stoveField: this.stoveField, scene: this, cooler: CoolerStore, tuning: TUNING, getTrapById };
+      (globalThis as any).__FIELD = { forage: this.forage, trapField: this.trapField, stoveField: this.stoveField, rodHolder: this.rodHolder, scene: this, cooler: CoolerStore, tuning: TUNING, getTrapById };
     }
     const ownedForage = this.forage;
     const ownedTrapField = this.trapField;
     const ownedStoveField = this.stoveField;
+    const ownedRodHolder = this.rodHolder;
     this.events.once('shutdown', () => {
       ownedForage?.destroy();
       ownedTrapField?.destroy();
       ownedStoveField?.destroy();
+      ownedRodHolder?.destroy();
+      if (this.rodHolder === ownedRodHolder) this.rodHolder = undefined;
       if (this.forage === ownedForage) this.forage = undefined;
       if (this.trapField === ownedTrapField) this.trapField = undefined;
       if (this.stoveField === ownedStoveField) this.stoveField = undefined;

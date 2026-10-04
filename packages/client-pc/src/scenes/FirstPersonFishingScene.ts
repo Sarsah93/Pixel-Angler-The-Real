@@ -62,6 +62,10 @@ import {
   type HoleSpotInfo, type StorySpotKind,
   rollLandingDrop, FOOTING_LABEL, type FootingKind, type LandingDropResult,
 } from '@tra/core';
+import {
+  snagDragChance, snagHazardPerM, sinkerHoldsBottom,
+  type SnagRigKind, type SinkerHoldResult, type ParkedRigSnapshot, type ParkedRodPhase,
+} from '@tra/core';
 import { drawRigIcon, RigIconKind } from '../ui/RigIconRenderer.js';
 import { GameState } from '../store/GameState.js';
 import { TitleStore } from '../store/TitleStore.js';
@@ -83,7 +87,7 @@ import { tagUiRect } from '../ui/ScreenReserve.js';
 import { InventoryPanel } from '../ui/InventoryPanel.js';
 import { ItemDetailPanel } from '../ui/ItemDetailPanel.js';
 import { GuidePanel } from '../ui/GuidePanel.js';
-import { GuideTour } from '../ui/GuideTour.js';
+import { GuideTour, maybeStartTour } from '../ui/GuideTour.js';
 import { GuideCatKey } from '../data/GuideContent.js';
 import { resolveFishTexture } from '../data/FishTextures.js';
 import { loadSettings } from './SettingsScene.js';
@@ -130,7 +134,15 @@ export interface FirstPersonFishingInit {
   footing?: FootingKind;
   /** 196차 — 물때 높이 보정(m · 간조 +) */
   tideLiftM?: number;
+  /**
+   * 207차 — 거치대에서 다시 잡았다: 걸어 둔 채비를 그대로 돌려 놓는다(캐스팅 · 침강 연출 없이).
+   * `phase` 'bite'면 초릿대가 움직이는 중 — 바로 입질 시퀀스로, 'snagged'면 걸린 채로 시작한다.
+   */
+  parked?: { rig: ParkedRigSnapshot; phase: ParkedRodPhase };
 }
+
+/** 207차 — 봉돌이 구르지 않는 기본값 */
+const SINKER_HOLDS: SinkerHoldResult = { rolling: false, cause: 'none', shorewardMps: 0 };
 
 type FpState = 'drift' | 'fighting' | 'result';
 
@@ -517,9 +529,12 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     // dev 전용 — 하네스가 입질/파이팅을 강제할 수 있게 씬 인스턴스를 노출 (도움말 캡처·검증용, 117차)
     if (import.meta.env.DEV) (globalThis as unknown as { __FP?: unknown }).__FP = this;
     // 205차 — 씬 인스턴스는 재사용된다: 지역별 물때 캐시(동해 계수)·쌓인 밑밥은 캐스팅마다 새로
-    this.tideNowCache = null; this.tideClock = null; this.chumBank = 0; this.surfRolling = false;
+    this.tideNowCache = null; this.tideClock = null; this.chumBank = 0;
     // 206차 — 처음 진행하는 퀘스트에 낚싯대 어획 목표가 열려 있으면 밑걸림을 덜 낸다(QA — 퀘스트 원활 진행)
     this.snagQuestMult = StoryStore.firstRunRodObjectiveOpen() ? TUNING.snag.questFirstMult : 1;
+    // 207차 — 끌림 거리 · 걸림 상태 · 봉돌 굴림도 캐스팅마다 새로
+    this.dragPrev = null; this.snagStuck = null; this.snagChoice = false; this.parkTourAsked = false; this.snagHazardNow = 0; this.sinkerHold = SINKER_HOLDS;
+    this.lastBiteProbPerSec = 0; this.lastSnagRisk = 1;
     const zMax = this.cfg.zMaxM;
     this.pxPerMZ = Math.min(46, (GAME_HEIGHT - WATERLINE - 110) / Math.max(2, zMax));
     // 면사매듭 제거(전유동) 시 Z_limit 무한 — 바닥까지 무한 침강
@@ -702,6 +717,9 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       this.time.delayedCall(400, () => this.openTutorial('retrieve'));
     }
 
+    this.buildParkButton();
+    if (this.cfg.parked) this.restoreParked(this.cfg.parked.rig, this.cfg.parked.phase);
+
     this.cameras.main.fadeIn(320, 2, 12, 24);
   }
 
@@ -845,6 +863,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   // ═══════════════════════════════════════════════════
   private attemptHookset(): void {
     if (this.fpState !== 'drift') return;
+    // 207차 — 걸린 채비를 채면 바닥이 버틴다 → 대처 창
+    if (this.snagStuck) { this.onSnagged(); return; }
     const r = this.biteSeq.attemptHook();
     if (r.reason === 'no_bite') {
       this.flashState(r.message);
@@ -1926,7 +1946,16 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       // 132차: 파이트 중에는 줄이 팽팽해 채비가 자유 표류하지 않는다 → 기여를 35%로 감쇠
       //   (거리 = 랜딩 시계이므로 조류 노이즈가 진행도를 흔들면 정합이 무너진다)
       const curK = this.fpState === 'fighting' ? 0.35 : 1;
-      this.distM = Math.max(0.3, this.distM + influence.force.y * curK * dt);
+      // 207차 — 끌림 거리의 출발점(이 아래 조류 · 릴링 · 굴림이 옮긴 만큼이 「끌린 거리」다)
+      this.dragPrev = this.fpState === 'drift' ? { x: this.rig.baitX, d: this.distM } : null;
+      if (this.snagStuck) {
+        // 걸린 채비는 그 자리에 박혀 있다 — 조류가 거리를 밀지 못한다
+      } else if (this.sinkerAnchored()) {
+        // 207차 — 바닥에 안착한 봉돌은 물살에 밀리지 않는다(구르지 않는 한). 파도에 밀리면 발 앞으로 끌려온다.
+        this.distM = Math.max(0.3, this.distM - this.sinkerHold.shorewardMps * dt);
+      } else {
+        this.distM = Math.max(0.3, this.distM + influence.force.y * curK * dt);
+      }
     }
 
     // 조류 벡터 (존별 X 유속 + 완만한 요동) — 결과 상태에서는 0 (채비 횡 드리프트 정지)
@@ -1937,6 +1966,21 @@ export class FirstPersonFishingScene extends Phaser.Scene {
 
     if (this.fpState === 'drift') this.updateDrift(dt, tide, influence);
     else if (this.fpState === 'fighting') this.updateFighting(dt, tide);
+    const canPark = this.canPark();
+    this.parkBtn?.setVisible(canPark);
+    // 207차 — 단추가 처음 보이는 순간 말풍선으로 한 번 짚는다(창에 설명 문구를 두지 않는다 — R11)
+    if (canPark && !this.parkTourAsked && this.parkBtn) {
+      this.parkTourAsked = true;
+      const b = this.parkBtn;
+      maybeStartTour(this, () => ({
+        id: 'rod_holder',
+        steps: [{
+          text: '봉돌이 바닥에 닿았다. 거치대에 낚싯대를 걸어 두면 자리를 떠나도 채비는 그대로다 — 입질이 오면 초릿대 끝이 움직인다.',
+          target: () => new Phaser.Geom.Rectangle(b.x - 72, b.y - 20, 144, 40),
+        }],
+        alive: () => this.fpState === 'drift' && b.visible,
+      }));
+    }
 
     // 타이머 감쇠
     this.twitchCooldown = Math.max(0, this.twitchCooldown - dt);
@@ -2065,7 +2109,13 @@ export class FirstPersonFishingScene extends Phaser.Scene {
 
   // ── 흘림(드리프트) 상태 ──────────────────────────────
   private updateDrift(dt: number, tide: TideVector, influence: TidalInfluence): void {
+    // 207차 — 걸린 채 멈춘 상태: 물리 대신 「살짝 잠긴 찌 · 휜 초릿대」만 그린다(입질도 없다)
+    // 대처 창을 고르는 동안은 채비도 시간도 멈춘다(창 뒤에서 또 걸리거나 입질이 오지 않게)
+    if (this.snagChoice) return;
+    if (this.snagStuck) { this.updateSnagStuck(dt, tide); return; }
     const holding = this.hKey.isDown;
+    // 207차 — 안착한 봉돌은 프레임 시작 자리를 지킨다(아래 stepUnderwater의 수평 표류를 되돌린다)
+    const anchorX = this.sinkerAnchored() ? { b: this.rig.baitX, f: this.rig.floatX } : null;
     const tideSpeed = Math.hypot(tide.x, tide.y);
 
     const lt = this.lineTension.update({
@@ -2140,9 +2190,14 @@ export class FirstPersonFishingScene extends Phaser.Scene {
           this.rig.settled = this.rig.baitZ >= bottom - 0.05;
           this.rigLineAngleDeg = sr.lineAngleDeg;
           // 205차 — 물살이 센 물때에 봉돌이 가벼우면 바닥에서 구르며 하류로 끌린다
-          if (isSinkerRig && this.surfRolling && this.rig.settled) {
-            const rollDx = Math.sign(tide.x || 1) * TUNING.tidePhase.surfRollDriftMps * dt;
-            this.rig.floatX += rollDx; this.rig.baitX += rollDx;
+          // 207차 — 굴림 원인을 물살 · 파도로 나눴다. 파도는 거리(발 앞)로, 물살은 하류(옆)로 민다.
+          //   구르지 않는 봉돌은 그 자리에 멈춘다(stepUnderwater의 수평 표류를 되돌린다).
+          if (isSinkerRig && this.rig.settled) {
+            if (anchorX && !retrieving0) { this.rig.baitX = anchorX.b; this.rig.floatX = anchorX.f; }
+            if (this.sinkerHold.cause === 'current') {
+              const rollDx = Math.sign(tide.x || 1) * TUNING.tidePhase.surfRollDriftMps * dt;
+              this.rig.floatX += rollDx; this.rig.baitX += rollDx;
+            }
           }
         }
       }
@@ -2198,6 +2253,13 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       this.rig.baitX += side * (withCurrent ? 0.9 : 0.45) * dt;
       // 릴링하면 채비가 조금씩 상층으로 떠오른다 (루어 리트리브)
       this.rig.baitZ = Math.max(0.3, this.rig.baitZ - 0.28 * dt);
+      // 207차 — 원투 봉돌은 무거울수록 바닥을 긁으며 끌려온다(60g 이상은 거의 뜨지 않는다) — 여 위라면 이때 걸린다
+      if (this.surfMode && !this.lureMode) {
+        const liftK = Phaser.Math.Clamp(1 - InventoryStore.getSinkerWeightG() / 60, 0, 1);
+        const bed = this.seabed.depthAt(this.distM);
+        this.rig.baitZ = bed - (bed - this.rig.baitZ) * liftK;
+        this.rig.settled = liftK < 0.5;
+      }
       if (this.rigPose !== 'twitch' && this.rigPose !== 'lift') this.rigPose = 'retrieve';
       if (!withCurrent && Math.random() < dt * 0.5) this.biteEngine.triggerReactionLift();
 
@@ -2270,15 +2332,37 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       chumBankBonus = rel.syncBonus;
     }
     let tideGenreBite = 1;
-    let tideGenreSnag = 1;
-    this.surfRolling = false;
     if (tn) {
       if (this.surfMode && !this.lureMode) {
+        // 205차 봉돌 구름의 입질 몫만 쓴다 — 밑걸림 몫(×1.3)은 207차 끌림 거리가 대신한다(구르면 끌리고, 끌리면 걸린다)
         const sr = surfSinkerTide(tn.state.phase, tn.flow01, InventoryStore.getSinkerWeightG(), tn.k);
-        tideGenreBite *= sr.biteMult; tideGenreSnag *= sr.snagMult; this.surfRolling = sr.rolling;
+        tideGenreBite *= sr.biteMult;
       }
       if (this.cfg.hole) tideGenreBite *= holeWaterLevelMult(tn.level01, tn.k);
     }
+    // 207차 — 원투 봉돌: 물살(205차 문턱) + 파도(파고 × 55g) 중 하나라도 이기면 구른다
+    this.sinkerHold = this.surfMode && !this.lureMode && !this.cfg.hole
+      ? sinkerHoldsBottom(tn?.flow01 ?? 0, ExternalDataStore.getWaveHeightM(this.cfg.region) ?? 0, InventoryStore.getSinkerWeightG())
+      : SINKER_HOLDS;
+
+    // ══ 207차 밑걸림 = 여 위를 끌린 거리 ══
+    //  구 모델은 「여 위에 세워 둔 채」 5초 뒤 초당 25%로 걸렸다(멈춘 봉돌이 걸리는 모순 · 초반 퀘스트 붕괴).
+    //  이제 이번 프레임 바닥 위를 움직인 거리(릴링 · 표류 · 굴림)만큼만 굴린다. 견제(H)로 줄을 잡으면 끌리지 않는다.
+    const snagKind: SnagRigKind = this.lureMode ? 'lure' : this.surfMode ? 'sinker' : 'float';
+    const snagRisk = getAreaSnagRiskMult(GameState.currentSpotId)
+      * (this.lureSpec?.snagRiskMult ?? 1) * (this.castWx?.snagMult ?? 1)
+      // 149차 — 콘크리트 블록 틈은 밑걸림이 기본값이다(그래서 저가 장비로 한다)
+      * (this.cfg.hole?.snagRiskMult ?? 1) * this.snagQuestMult;
+    this.lastSnagRisk = snagRisk;
+    const snagGeom = {
+      clearanceM: Math.max(0, bedHereM - this.rig.baitZ),
+      inReef: this.seabed.isRockAt(this.distM),
+      kind: snagKind, flow01: tn?.flow01 ?? Math.min(1, Math.hypot(tide.x, tide.y) / 0.6), riskMult: snagRisk,
+    };
+    const dragM = holding || !this.dragPrev ? 0 : Math.hypot(this.rig.baitX - this.dragPrev.x, this.distM - this.dragPrev.d);
+    this.snagHazardNow = snagHazardPerM(snagGeom);
+    const snagNow = !this.biteSeq.active && !this.pendingFish
+      && Math.random() < snagDragChance({ ...snagGeom, dragM, dtSec: dt });
 
     // 미끼 종류 × 어종 선호도 친화도 (오라클 연동)
     //   193차 — 바늘마다 미끼가 다르면 끼운 미끼들의 평균(서로 다른 미끼 = 더 많은 어종에 말을 건다)
@@ -2325,13 +2409,10 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       isHoldingLine: holding,
       // 동조→입질 배율 스케일 (TUNING.chumSync.syncToBiteMul — balance 튜닝)
       chumSyncRate: Math.min(1, sync * TUNING.chumSync.syncToBiteMul + chumBankBonus),
-      // 낚시터 특성(RegionAreaNode.snagRisk) × 루어 밑걸림 배율(에기 바닥 드래깅 -30%)
-      // 127차 — 강수 시 밑걸림·채비 손실 확률 상승
-      snagRiskMult: getAreaSnagRiskMult(GameState.currentSpotId)
-        * (this.lureSpec?.snagRiskMult ?? 1) * (this.castWx?.snagMult ?? 1)
-        // 149차 — 콘크리트 블록 틈은 밑걸림이 기본값이다(그래서 저가 장비로 한다)
-        * (this.cfg.hole?.snagRiskMult ?? 1) * tideGenreSnag * this.snagQuestMult,
+      // 207차 — 엔진의 「세워 두면 걸리는」 타이머는 끈다(0). 밑걸림은 위 끌림 거리 모델이 굴린다.
+      snagRiskMult: 0,
     });
+    this.lastBiteProbPerSec = tick.probPerSec;
 
     // ── 입질 시퀀스 진행 (초릿대 굽힘/찌 잠김 구동) ──
     const seq = this.biteSeq.update(dt);
@@ -2381,10 +2462,13 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     }
 
     // ── UI 게이지 갱신 ──
-    this.renderGauges(tick.probPerSec, sync, inReef, hold, tick.snagProgress, tick.actionTimeLeft);
+    // 207차 — 「밑걸림 주의」는 여 위를 **움직이는** 동안만(멈춘 채비는 걸리지 않는다)
+    const moving = dragM / Math.max(dt, 1e-3) >= TUNING.snag.dragMinMps;
+    this.renderGauges(tick.probPerSec, sync, inReef, hold,
+      moving ? Math.min(1, this.snagHazardNow / Math.max(1e-6, TUNING.snag.dragHazardPerM)) : 0, tick.actionTimeLeft);
 
-    if (tick.event === 'snagged') {
-      this.onSnagged();
+    if (snagNow) {
+      this.enterSnagStuck(snagKind);
     } else if (tick.event === 'bite' && !this.biteSeq.active && !this.pendingFish) {
       // 입질 발생 → 어종 결정 + 입질 시퀀스 시작 (파이팅은 챔질 성공 시에만)
       //   193차 — 미끼를 단 바늘 하나가 물린다: 그 바늘의 미끼가 어종을 정하고, 소모도 그 바늘에서만 일어난다
@@ -2426,10 +2510,26 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   private tideNowCache: { at: number; state: TideFlowState; strength: number; flow01: number; level01: number; k: number } | null = null;
   /** 206차 — 퀘스트 첫 진행 밑걸림 배율(`TUNING.snag.questFirstMult` · 캐스팅마다 판정) */
   private snagQuestMult = 1;
+  /** 207차 — 프레임 시작 때 미끼 위치 — 이번 프레임 바닥 위를 끌린 거리를 잰다 */
+  private dragPrev: { x: number; d: number } | null = null;
+  /** 207차 — 지금 1m 끌릴 때의 밑걸림 위험(게이지 · 거치 스냅샷) */
+  private snagHazardNow = 0;
+  /** 207차 — 원투 봉돌이 물살 · 파도에 구르는가 */
+  private sinkerHold: SinkerHoldResult = SINKER_HOLDS;
+  /** 207차 — 마지막 입질 확률(초당)과 밑걸림 위험 배율 — 거치대 스냅샷에 넘긴다 */
+  private lastBiteProbPerSec = 0;
+  private lastSnagRisk = 1;
+  /**
+   * 207차 — 걸린 채 멈춘 상태. 찌는 살짝 잠긴 채 거의 멈춰(속조류에 들락날락) 있고,
+   * 원투 · 루어는 초릿대가 휜 채 떨림이 없다. 감거나 챔질하거나 견제하면 그때 대처 창이 뜬다.
+   */
+  private snagStuck: { at: number; anchorX: number; anchorD: number; anchorZ: number; floatX: number; kind: SnagRigKind } | null = null;
+  /** 207차 — 「거치하기」 단추(원투 · 봉돌 안착 · 거치대 보유일 때만 보인다) */
+  private parkBtn?: Phaser.GameObjects.Container;
+  /** 207차 — 거치 말풍선을 이번 캐스팅에 이미 요청했나 */
+  private parkTourAsked = false;
   /** 205차 — 물때 고인 밑밥 저장량 0~1(찌) */
   private chumBank = 0;
-  /** 205차 — 원투 봉돌이 물살에 구르는 중(하류로 끌린다) */
-  private surfRolling = false;
 
   /**
    * 204차 — 조류 엔진에 넣는 「물때 시계」(시간). 엔진은 |sin(2π/12.5 × t)|로 유속을 정하는데,
@@ -2579,13 +2679,157 @@ export class FirstPersonFishingScene extends Phaser.Scene {
    *  ② 로드 뒤로 당겨 끊기 — 100% 채비 손실. 도래 위가 남느냐만 반반.
    * 어느 쪽이든 로드에는 무리가 간다 — 라인이 로드 등급보다 과하게 강하면 절지 파단 위험.
    */
+  // ═══════════════════════════════════════════════════
+  // 207차 — 밑걸림 관찰 상태 · 봉돌 안착 · 거치대
+  // ═══════════════════════════════════════════════════
+
+  /** 바닥에 안착해 구르지 않는 원투 봉돌 — 물살 · 표류가 옮기지 못한다 */
+  private sinkerAnchored(): boolean {
+    return this.fpState === 'drift' && this.surfMode && !this.lureMode && !this.cfg.hole
+      && this.rig.settled && !this.sinkerHold.rolling && !this.reeling && !this.hKey?.isDown && !this.upKey?.isDown;
+  }
+
+  /**
+   * 걸렸다 — 곧바로 창을 띄우지 않는다. 채비는 그 자리에 박히고, 화면이 단서를 준다:
+   *  - 찌: 쑥 잠기지 않고 **살짝 잠긴 채 거의 멈춰** 있다(속조류가 당길 때마다 들락날락).
+   *  - 원투 · 루어: 초릿대가 **휜 채 떨림이 없다**.
+   * 감거나 · 채거나 · 견제하면 그때 「바닥이다」를 알고 대처 창이 뜬다.
+   */
+  private enterSnagStuck(kind: SnagRigKind): void {
+    this.snagStuck = {
+      at: this.time.now, kind,
+      anchorX: this.rig.baitX, anchorD: this.distM, anchorZ: this.rig.baitZ, floatX: this.rig.floatX,
+    };
+    this.biteSeq.reset();
+    this.pendingFish = null;
+    this.prevStage = null;
+    this.reeling = false;   // 감던 손이 그대로면 바로 창이 뜬다 — 한 번 놓고 다시 감아야 한다
+    this.stateText.setText(kind === 'float'
+      ? '찌가 살짝 잠긴 채 움직이지 않는다'
+      : kind === 'sinker' ? '초릿대가 휜 채 그대로다 — 떨림이 없다' : '줄이 팽팽한데 루어가 움직이지 않는다');
+  }
+
+  /** 걸린 채 멈춘 프레임 — 그림만 움직이고, 감기 · 견제가 들어오면 대처 창 */
+  private updateSnagStuck(dt: number, tide: TideVector): void {
+    const st = this.snagStuck!;
+    const T = TUNING.snag;
+    this.rig.baitX = st.anchorX; this.distM = st.anchorD; this.rig.baitZ = st.anchorZ;
+    this.rig.settled = true; this.rig.driftSpeed = 0;
+    const t = (this.time.now - st.at) / 1000;
+    if (st.kind === 'float') {
+      // 찌는 걸린 목줄에 묶여 하류로 조금 기울고, 속조류가 당길 때마다 살짝 더 잠겼다 떠오른다
+      const lean = Phaser.Math.Clamp(tide.x * 1.2, -0.9, 0.9);
+      st.floatX += (st.anchorX + lean - st.floatX) * Math.min(1, dt * 0.8);
+      this.rig.floatX = st.floatX;
+      const tug = Math.max(0, Math.sin(t * 0.9) * Math.sin(t * 0.31 + 1.2));
+      this.floatSinkM = T.stuckDipM + T.stuckBobAmpM * (tug * 2 - 0.6);
+      this.rodBendDeg = 3 + tug * 2;
+    } else {
+      // 초릿대 — 일정하게 휜 채(물고기의 떨림 · 리듬이 없다)
+      this.floatSinkM = 0;
+      this.rodBendDeg = T.stuckBendDeg + Math.sin(t * 0.5) * 0.4;
+    }
+    this.floatSinkVisM += (this.floatSinkM - this.floatSinkVisM) * Math.min(1, dt * 4);
+    const retrieving = this.reeling && !this.spoolKey?.isDown && this.time.now - this.pointerDownAt > 220;
+    if (retrieving || this.hKey?.isDown || this.upKey?.isDown) this.onSnagged();
+  }
+
+  /** 거치할 수 있나 — 원투 봉돌이 바닥에 안착 · 입질 · 걸림 없음 · 거치대 보유 */
+  private canPark(): boolean {
+    return this.fpState === 'drift' && this.surfMode && !this.lureMode && !this.cfg.hole
+      && this.rig.settled && !this.snagStuck && !this.snagChoice && !this.biteSeq.active && !this.pendingFish
+      && !this.guideHub && InventoryStore.hasRodHolder();
+  }
+
+  /**
+   * 「거치하기」 단추 — 그만하기 · 도움말(?) 옆 같은 줄(로드 반대편 아래). 조건이 맞을 때만 보인다.
+   * 그만하기 위는 수평뷰 판(아래 끝 ≈ 620)과 겹친다 — 같은 줄 안쪽으로 둔다.
+   */
+  private buildParkButton(): void {
+    const x = this.rodSide === 'right' ? 302 : GAME_WIDTH - 302;
+    const btn = this.add.container(x, GAME_HEIGHT - 44).setDepth(95).setVisible(false);
+    const g = this.add.graphics();
+    g.fillStyle(0x1d3a2c, 0.95);
+    g.fillRoundedRect(-72, -20, 144, 40, 6);
+    g.lineStyle(2, 0x4fae7c, 1);
+    g.strokeRoundedRect(-72, -20, 144, 40, 6);
+    const txt = this.add.text(0, 0, '거치하기', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '14px', color: '#b8f0cf', fontStyle: 'bold',
+    }).setOrigin(0.5);
+    const hit = this.add.rectangle(0, 0, 144, 40, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
+    hit.on('pointerover', () => txt.setColor('#ffffff'));
+    hit.on('pointerout', () => txt.setColor('#b8f0cf'));
+    hit.on('pointerdown', (_p: Phaser.Input.Pointer, _x: number, _y: number, ev: Phaser.Types.Input.EventData) => {
+      ev.stopPropagation();
+      this.reeling = false;
+      if (this.canPark()) this.parkRod();
+    });
+    btn.add([g, txt, hit]);
+    applyScreenFixed(btn);
+    this.parkBtn = btn;
+  }
+
+  /**
+   * 거치 — 채비를 물속에 둔 채 탑다운으로 나간다. 탑다운이 그 자리에 거치대를 세우고(`fp_park`),
+   * 걸어 둔 동안 입질 · 봉돌 굴림을 이어서 굴린다. 채비 소모 · 마모 판정은 하지 않는다(아직 회수 전).
+   */
+  private parkRod(): void {
+    this.fpState = 'result';
+    this.parkBtn?.setVisible(false);
+    this.registry.set('fp_park', {
+      launch: {
+        zMaxM: this.cfg.zMaxM, castDistanceM: this.cfg.castDistanceM, reefSeed: this.cfg.reefSeed,
+        shoreKind: this.cfg.shoreKind, spotKind: this.cfg.spotKind, footing: this.cfg.footing, tideLiftM: this.cfg.tideLiftM,
+      },
+      rig: {
+        distM: this.distM, floatX: this.rig.floatX, baitX: this.rig.baitX, baitZ: this.rig.baitZ,
+        settled: this.rig.settled, lineOutM: this.spool.lineOutM,
+      },
+      biteProbPerSec: this.lastBiteProbPerSec,
+      onReef: this.seabed.isRockAt(this.distM),
+      snagRisk: this.lastSnagRisk,
+      sinkerG: InventoryStore.getSinkerWeightG(),
+    });
+    this.registry.set('fp_exit_msg', '낚싯대를 거치대에 걸어 두었다');
+    this.stateText.setText('낚싯대를 거치대에 걸어 두었다');
+    fadeOutThen(this, () => {
+      this.scene.stop();
+      this.scene.resume('RegionFieldScene');
+    }, 240, [2, 12, 24]);
+  }
+
+  /** 거치대에서 다시 잡았다 — 걸어 둔 채비 그대로(캐스팅 · 침강 연출 없이) */
+  private restoreParked(rig: ParkedRigSnapshot, phase: ParkedRodPhase): void {
+    this.distM = rig.distM;
+    this.rig.floatX = rig.floatX; this.rig.baitX = rig.baitX; this.rig.baitZ = rig.baitZ;
+    this.rig.settled = rig.settled; this.rig.driftSpeed = 0;
+    this.spool.lineOutM = Math.max(this.spool.lineOutM, rig.lineOutM);
+    this.sinkCameoStart = 0;
+    this.viewCenterX = rig.floatX;
+    if (phase === 'snagged') {
+      this.enterSnagStuck('sinker');
+    } else if (phase === 'bite') {
+      // 초릿대가 움직이는 중에 잡았다 — 입질 시퀀스가 이어진다(챔질은 플레이어 몫)
+      InventoryStore.pickBittenBait();
+      const ctx = this.buildSpawnCtx(this.seabed.isRockAt(this.distM));
+      this.pendingFish = spawnFish(ctx);
+      this.rollSchool(ctx, this.pendingFish);
+      this.biteSeq.start({ speciesId: this.pendingFish.speciesId, biteProbPerSec: 0.2, stageTimeScale: InventoryStore.getBiteFeedbackMult() });
+      this.stateText.setText('초릿대 끝이 까딱거린다');
+    } else {
+      this.stateText.setText('거치대에서 낚싯대를 집었다');
+    }
+  }
+
   private onSnagged(): void {
+    if (this.snagChoice) return;
     this.snagChoice = true;
     this.reeling = false;
+    this.snagStuck = null;
     this.buildDecisionPanel(
       '밑걸림',
       // 확률을 감추면 "왜 잃었는지 모르는" 선택이 된다 — 표를 그대로 보여준다(136차)
-      '밑걸림이 발생한 것 같다. 어떻게 대처할까?\n\n[끌어당기기] 회수 10% · 미끼만 10% · 바늘+미끼 30% · 전량 50%\n[끊기] 채비 100% 손실 — 절반은 찌·수중찌·도래가 남는다',
+      '감아도 줄이 들어오지 않는다 — 바닥에 걸렸다. 어떻게 대처할까?\n\n[끌어당기기] 회수 10% · 미끼만 10% · 바늘+미끼 30% · 전량 50%\n[끊기] 채비 100% 손실 — 절반은 찌·수중찌·도래가 남는다',
       '#ffb26b', undefined,
       [
         {
@@ -2620,7 +2864,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     const rodLine = snapped ? '\n\n[경고] 무리한 힘에 낚싯대 절지가 부러졌습니다 — 수리할 수 없습니다.' : '';
     if (row.outcome === 'all_saved') {
       this.failAndExit('채비를 건졌습니다',
-        `${label}\n${lostLine}${rodLine}\n\n뒷줄견제(H)로 미끼를 띄우면 밑걸림을 예방할 수 있습니다.`);
+        `${label}\n${lostLine}${rodLine}\n\n여 위를 끌고 오는 동안 걸린다 — 바닥에 멈춰 있는 봉돌은 걸리지 않는다.`);
     } else {
       this.failAndExit('밑걸림', `${label}\n${lostLine}${rodLine}`);
     }
@@ -4786,6 +5030,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     //   빠져나갔다(AG ②d). 박힌 줄을 두고 떠나는 것은 끊는 것과 같다 — [끊기]로 처리하고,
     //   결과 화면이 뜬 뒤 평소처럼 복귀한다(failAndExit가 다시 이 함수를 부른다).
     if (this.snagChoice) { this.resolveSnag('break'); return; }
+    // 207차 — 걸린 채로는 감아 들일 수 없다 — 먼저 대처한다
+    if (this.snagStuck && this.fpState === 'drift') { this.onSnagged(); return; }
     fadeOutThen(this, () => {
       this.scene.stop();
       this.scene.resume('RegionFieldScene');
