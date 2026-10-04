@@ -21,6 +21,8 @@ import { clampTextWidth, enforceTextBounds } from './TextFit.js';
 import { resolveFishTexture } from '../data/FishTextures.js';
 import { maybeStartTour, type TourOptions } from './GuideTour.js';
 import { playDayChime, playPageFlip, playUiClick } from '../audio/Sfx.js';
+import { buildNextDayHint, type NextDayHint } from '../data/NextDayHint.js';
+import { getLocale } from '../i18n/I18n.js';
 
 const W = 760;
 const H = 548;
@@ -32,6 +34,9 @@ const CARD_W = (W - 24 * 2 - 16) / COLS;
 const CARD_H = 108;
 const GAP_Y = 10;
 const CARDS_TOP = 100;   // 날짜 · 부제 줄 아래(부제 하단 ≈ 88)
+/** 카드 3줄 아래 — 「내일 할 만한 것」 띠(212차). 카드 하단 444 · 아래 단추 윗변 498 사이 */
+const HINT_Y = CARDS_TOP + ROWS * CARD_H + (ROWS - 1) * GAP_Y + 8;
+const HINT_H = 40;
 
 const DOW_KO = ['일', '월', '화', '수', '목', '금', '토'];
 
@@ -88,6 +93,8 @@ export class DayReportPanel extends DraggablePanel {
   /** 지금 펼친 장 — 검증 하네스가 읽는다 */
   get page(): DayLedgerPage | undefined { return this.pages[this.dayIdx]; }
   get cardCount(): number { return this.cards.length; }
+  /** 지금 장의 「내일 할 만한 것」(없으면 null) — 검증 하네스가 읽는다 */
+  hint: NextDayHint | null = null;
   get cardPages(): number { return Math.max(1, Math.ceil(this.cards.length / PER_PAGE)); }
 
   private onKey(ev: KeyboardEvent): void {
@@ -166,6 +173,11 @@ export class DayReportPanel extends DraggablePanel {
       }
     });
 
+    // ── 내일 할 만한 것 — 다음 날 물때 · 날씨로 고른 한 줄(212차) ──
+    const region = [...p.regions].reverse().find((r) => r !== 'hometown');
+    this.hint = buildNextDayHint(p, getLocale() === 'en' ? 'en' : 'ko', region);
+    if (this.hint) this.drawHint(this.hint);
+
     // ── 아래 — 카드 넘기기 · 확인 ──
     const by = H - 34;
     if (this.cardPages > 1) {
@@ -198,6 +210,23 @@ export class DayReportPanel extends DraggablePanel {
     const hit = this.scene.add.rectangle(cx, cy, 34, 30, 0, 0).setInteractive({ useHandCursor: true });
     hit.on('pointerdown', onClick);
     this.bodyC.add(hit);
+  }
+
+  /** 「내일」 띠 — 머리(내일/오늘) + 주인공의 생각 한 문장(두 줄까지) */
+  private drawHint(h: NextDayHint): void {
+    const x = 24, w = W - 48;
+    const g = this.scene.add.graphics();
+    g.fillStyle(0x132a3c, 1).fillRoundedRect(x, HINT_Y, w, HINT_H, 6);
+    g.lineStyle(1, 0xf2d98a, 0.45).strokeRoundedRect(x, HINT_Y, w, HINT_H, 6);
+    const label = this.scene.add.text(x + 14, HINT_Y + HINT_H / 2, h.label, {
+      fontFamily: FONT, fontSize: '14px', color: '#f2d98a', fontStyle: 'bold',
+    }).setOrigin(0, 0.5);
+    const tx = x + 14 + Math.max(44, label.width + 14);
+    const body = this.scene.add.text(tx, HINT_Y + HINT_H / 2, h.text, {
+      fontFamily: FONT, fontSize: '12px', color: '#d8e4ec', lineSpacing: 2,
+      wordWrap: { width: x + w - 12 - tx, useAdvancedWrap: true },
+    }).setOrigin(0, 0.5).setName('nextDayHint');
+    this.bodyC.add([g, label, body]);
   }
 
   private drawCard(c: LedgerCard, x: number, y: number): Phaser.GameObjects.Container {

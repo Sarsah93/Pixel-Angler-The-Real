@@ -664,8 +664,8 @@ export { renderFacePortrait, PORTRAIT_CELL, type PortraitRaster } from './art/Fa
 export type { CharAge, CharRole, CastTrait } from './art/CharacterCast.js';
 export { CAST_TRAITS, CAST_OVERRIDE, characterOf, castIds } from './art/CharacterCast.js';
 // 211차 — 하루 기록 · 결산 카드
-export type { CoinReason, LedgerCatch, DayLedgerPage, LedgerCard } from './types/DayLedger.js';
-export { COIN_REASON_LABEL, newLedgerPage, normalizeLedgerPage, wonText, playTimeText, buildLedgerCards, josaWa, type LedgerNames } from './simulation/DayLedger.js';
+export type { CoinReason, LedgerCatch, DayLedgerPage, LedgerCard, NextDayPlanKind, NextDayInput, NextDayPlan } from './types/DayLedger.js';
+export { COIN_REASON_LABEL, newLedgerPage, normalizeLedgerPage, wonText, playTimeText, buildLedgerCards, josaWa, DAY_BOUNDARY_HOUR, logicalYmd, addYmd, nextDayOf, planNextDay, type LedgerNames } from './simulation/DayLedger.js';
 // 211차 — 대사 목소리(동물의 숲식 블립 — 인물별 음높이 · 모음 억양)
 export type { VoiceProfile, VoiceWave } from './types/Voice.js';
 export { voiceFor, voiceOfNpc, voiceOfPlayer, voiceSemitone, GUIDE_VOICE } from './art/CharacterVoice.js';

@@ -7,7 +7,8 @@
  * 비어 있는 카드는 만들지 않는다(낚시만 한 날은 낚시 · 돈 카드만 나온다).
  */
 
-import type { CoinReason, DayLedgerPage, LedgerCard } from '../types/DayLedger.js';
+import type { CoinReason, DayLedgerPage, LedgerCard, NextDayInput, NextDayPlan } from '../types/DayLedger.js';
+import { kstYmd } from '../utils/KstTime.js';
 
 export const COIN_REASON_LABEL: Record<CoinReason, string> = {
   sell: '판매', auction: '위판', quest: '의뢰 · 품삯', trade: '거래',
@@ -184,4 +185,55 @@ export function buildLedgerCards(p: DayLedgerPage, names: LedgerNames): LedgerCa
     cards.push({ key: 'places', titleKo: '다닌 곳', lines: [p.regions.map(names.region).join(' · ')] });
   }
   return cards;
+}
+
+
+// ── 내일 할 만한 것 (212차) ─────────────────────────────
+
+/**
+ * 하루의 경계 시각(KST) — 자정이 아니라 새벽 4시다. 밤낚시(22~02시)가 자정에 쪼개지지 않고,
+ * 새벽 위판 · 새벽 물때부터가 「새 하루」로 읽힌다.
+ */
+export const DAY_BOUNDARY_HOUR = 4;
+
+/** 그 순간이 속한 「하루」(YYYYMMDD) — 새벽 4시 전이면 전날 */
+export function logicalYmd(atMs: number): string {
+  return kstYmd(new Date(atMs - DAY_BOUNDARY_HOUR * 3600000));
+}
+
+/** YYYYMMDD + n일 */
+export function addYmd(ymd: string, n: number): string {
+  const t = Date.UTC(Number(ymd.slice(0, 4)), Number(ymd.slice(4, 6)) - 1, Number(ymd.slice(6, 8))) + n * 86400000;
+  const d = new Date(t);
+  return `${d.getUTCFullYear()}${String(d.getUTCMonth() + 1).padStart(2, '0')}${String(d.getUTCDate()).padStart(2, '0')}`;
+}
+
+/**
+ * 이 장 다음에 오는 하루 — 잠들며 닫은 장은 잠든 순간의 하루 + 1, 자정에 닫힌 장은 연 날 + 1.
+ * (새벽 2시에 잠들면 「다음 날」은 그날 낮이다.)
+ */
+export function nextDayOf(p: DayLedgerPage): string {
+  if (p.closedBy === 'sleep' && p.closedAtMs !== undefined) return addYmd(logicalYmd(p.closedAtMs), 1);
+  return addYmd(p.openedYmd, 1);
+}
+
+/** 그날 밤 — 19시부터 다음 날 새벽 4시(=분 1680)까지. 다음 날 새벽 시각은 +1440분으로 넘겨받는다 */
+const inNight = (m: number): boolean => m >= 19 * 60 && m <= (24 + DAY_BOUNDARY_HOUR) * 60;
+
+/**
+ * 다음 날 바다로 할 만한 것 하나를 고른다 — 위에서부터 먼저 걸리는 것.
+ * ① 파도가 막는 높이 이상 · 비 확률 70% 이상 · 비 예보 → 바다는 쉰다
+ * ② 물살 센 날(0.7+) 밤 간조 → 해루질
+ * ③ 사리(0.85+) → 무거운 채비 · 새벽 5시 뒤 첫 만조
+ * ④ 조금(0.5 미만) → 가벼운 채비
+ * ⑤ 그 밖 → 만조 앞뒤
+ */
+export function planNextDay(i: NextDayInput): NextDayPlan {
+  if ((i.waveMaxM ?? 0) >= i.maxSafeWaveM || (i.popMaxPct ?? 0) >= 70 || i.wet) return { kind: 'stormy' };
+  const nightLow = i.lowTimesMin.find(inNight);
+  if (i.currentStrength >= 0.7 && nightLow !== undefined) return { kind: 'night_forage', atMin: nightLow };
+  const high = i.highTimesMin.find((m) => m >= 5 * 60) ?? i.highTimesMin[0];
+  if (i.currentStrength >= 0.85) return { kind: 'spring_tide', atMin: high };
+  if (i.currentStrength < 0.5) return { kind: 'neap_tide' };
+  return { kind: 'good_tide', atMin: high };
 }

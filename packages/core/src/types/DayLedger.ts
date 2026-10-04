@@ -91,3 +91,38 @@ export interface LedgerCard {
   /** 돈 카드 — 순이익 부호(색) */
   tone?: 'good' | 'bad' | 'neutral';
 }
+
+/**
+ * 결산 끝의 「내일 할 만한 것」 한 줄(212차) — 다음 날 물때 · 날씨로 고르는 제안 갈래.
+ *  - stormy       : 파도 · 비가 거세다 → 바다는 쉬고 손질 · 요리 · 정비
+ *  - night_forage : 물살 센 날 밤 간조 → 해루질
+ *  - spring_tide  : 사리 → 무거운 채비로 만조 앞뒤
+ *  - neap_tide    : 조금 → 가벼운 찌 채비로 천천히
+ *  - good_tide    : 알맞은 물 → 만조 앞뒤 두 시간
+ */
+export type NextDayPlanKind = 'stormy' | 'night_forage' | 'spring_tide' | 'neap_tide' | 'good_tide';
+
+/** 제안을 고르는 데 쓰는 다음 날 바다 */
+export interface NextDayInput {
+  /** 조류 세기 0~1 (`TideInfo.currentStrength`) */
+  currentStrength: number;
+  /** 만조 시각 — KST 자정부터 분 */
+  highTimesMin: number[];
+  /** 간조 시각 — 그날 KST 자정부터 분(다음 날 새벽 간조는 1440 + 분) */
+  lowTimesMin: number[];
+  /** 예보 최고 파고 (m) — 없으면 모름 */
+  waveMaxM?: number;
+  /** 예보 최고 강수확률 (%) */
+  popMaxPct?: number;
+  /** 비 · 눈 · 소나기 예보 */
+  wet?: boolean;
+  /** 이 파고부터 갯바위 · 해루질이 막힌다(`TUNING.forage.maxWaveM`) */
+  maxSafeWaveM: number;
+}
+
+/** 고른 제안 — 문장은 화면 쪽이 로케일별로 쓴다 */
+export interface NextDayPlan {
+  kind: NextDayPlanKind;
+  /** 짚어 줄 시각(분) — 해루질 간조 · 만조 */
+  atMin?: number;
+}
