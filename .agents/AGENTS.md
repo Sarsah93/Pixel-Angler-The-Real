@@ -461,7 +461,14 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-10-04 209차) — 낚싯대 · 릴 제원 라인업 · 파이팅 중 다른 거치대**
+**최근 변경 (2026-10-04 210차) — 릴 드랙 · 기어비를 파이팅에**
+
+- core `FightingPhase` 입력 `reelDragKg` · `reelGearK` — 드랙 = 줄 쪽과 릴 최대 드랙 중 약한 쪽 · 넘친 장력 `dragSlipKg`만큼 줄이 나가고 감기 헛돎.
+- core `RodFit.reelRetrieveMps` — 회수 속도 = 기준 × 한 바퀴 감기 배율 ÷ (1 + 체중 × 감쇠 × 감기 부하) · `TUNING.reelFight`.
+- 함정: 1인칭 파이팅은 `FightPhysics2D`가 아니라 `FightingPhase` + `stepFightKinematics` · 충격 파단은 드랙과 무관(`fishing-loop.md` §6-23).
+  상세: [210차 워크로그](../docs/wiki/03-WORKLOG/2026-10-04-210-reel-drag-gear-fight.md).
+
+**이전 변경 (2026-10-04 209차) — 낚싯대 · 릴 제원 라인업 · 파이팅 중 다른 거치대**
 
 - core `RodItem`/`RodCatalog`/`RodFit` — 낚싯대 14 · 릴 6(용도 · 길이 · 호수 · 적합 무게 · 하중 · 릴 종류)
   → 비거리 · 과부하 초릿대 파손 · 릴 맞춤 · 하중.
@@ -477,13 +484,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - 번호 1~3 · 「[거치대 N]」 채널 · [F] 입질 우선 · 세이브 `parkedRods[]` · 끌림 λ 0.10 → 0.08/m(여 7m 43%).
 - 함정: 거치대 「!」는 그림 컨테이너 밖 깊이 61 — 안에 두면 머리 위 [F] 안내(60)에 가린다(`fishing-loop.md` §6-21).
   상세: [208차 워크로그](../docs/wiki/03-WORKLOG/2026-10-04-208-multi-rod-holder-snag-008.md).
-
-**이전 변경 (2026-10-04 207차) — 밑걸림 = 끌림 거리 · 걸림 관찰 상태 · 원투 거치대**
-
-- core `SnagDrag` — 여 위를 끌린 거리로만 걸림(멈춘 봉돌 0) · 봉돌 고정(물살 · 파도 굴림) · 엔진 타이머는 `snagRiskMult: 0`.
-- 걸리면 찌 살짝 잠김 · 초릿대 휨 → 감기/챔질 시 대처 창 · 원투 거치대(「거치하기」 → 탑다운 삼발이 · 「!」 · [F] 복귀 · 멀티 보기만 · `parkedRod`).
-- 함정: 밑걸림은 멈춤이 아니라 끌림에서 굴린다 · 대처 창 동안 물리 정지(`fishing-loop.md` §6-20).
-  상세: [207차 워크로그](../docs/wiki/03-WORKLOG/2026-10-04-207-snag-drag-rod-holder.md).
 
 ---
 

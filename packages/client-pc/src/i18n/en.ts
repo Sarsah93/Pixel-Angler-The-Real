@@ -1014,7 +1014,7 @@ export const EN_RULES: Rule[] = [
   [/^라인각 (\d+)° (충분|적정|부족)$/, (m) => `Line ${m[1]}° ${({ '충분': 'plenty', '적정': 'good', '부족': 'light' } as Record<string, string>)[m[2]]}`],
   [/^정렬도 A (\d+)%$/, 'Alignment A $1%'], [/^밑밥 동조 (\d+)%(.*)$/, 'Chum sync $1%$2'],
   [/^입질 확률 ([\d.]+)%\/s(.*)$/, 'Bite chance $1%/s$2'], [/^피딩 (.+) x([\d.]+)(.*)$/, 'Feeding $1 ×$2$3'],
-  [/^하중 ([\d.]+)kg \/ 줄 ([\d.]+)kg$/, 'Load $1kg / line $2kg'], [/^텐션 (\d+) \/ 100  \(안전 30~80\)(.*)$/, 'Tension $1 / 100  (safe 30–80)$2'],
+  [/^하중 ([\d.]+)kg \/ 줄 ([\d.]+)kg$/, 'Load $1kg / line $2kg'], [/^드랙 ([\d.]+)kg — 줄이 풀려 나간다$/, 'Drag $1kg — line is peeling off'], [/^드랙 ([\d.]+)kg$/, 'Drag $1kg'], [/^텐션 (\d+) \/ 100  \(안전 30~80\)(.*)$/, 'Tension $1 / 100  (safe 30–80)$2'],
   [/^랜딩 (\d+)%$/, 'Landing $1%'], [/^상대: \?\?\? \(힘 (\d+)\)$/, 'Opponent: ??? (power $1)'], [/^피로: (.+?) \(잔여 (\d+)%\)((?:  · 슬랙 — 물고기 회복 중!)?)((?:  — 랜딩 찬스!)?)$/, (m) => `Fatigue: ${EN_DICT[m[1]] ?? m[1]} (left ${m[2]}%)${m[3] ? '  · Slack — the fish is recovering!' : ''}${m[4] ? '  — landing chance!' : ''}`],
   [/^제압 완료! 릴링으로 끌어오세요 — 남은 ([\d.]+)m$/, 'Subdued! Reel it in — $1m to go'],
   [/^횡으로 쏩니다! (←|→) 같은쪽 스티어로 버티세요!$/, 'Running sideways! Steer $1 the same way and hold!'],

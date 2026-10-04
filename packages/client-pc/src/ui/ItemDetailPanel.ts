@@ -8,7 +8,7 @@
 
 import Phaser from 'phaser';
 import { ensurePixelIcon } from './PixelIcon.js';
-import { rodSpecFor, reelSpecFor, rodLoadState, ROD_USE_LABEL, getRodCatalogEntry, getReelCatalogEntry, getLureSpec, getNuisance, sashimiStarsAt, sashimiNutrition, foodNutritionOf, nutritionLineKo, restoreFromNutrition } from '@tra/core';
+import { reelCmPerTurn, rodSpecFor, reelSpecFor, rodLoadState, ROD_USE_LABEL, getRodCatalogEntry, getReelCatalogEntry, getLureSpec, getNuisance, sashimiStarsAt, sashimiNutrition, foodNutritionOf, nutritionLineKo, restoreFromNutrition } from '@tra/core';
 import { FISH_DATABASE, fishImageSizeScale, fishRarity, speciesStandardWeightG,
   GEAR_FAULTS, gearRepairFee, rodMaxCasts,
   getFireRecipe, getCookIngredient, dishStarsAt, dishVitalsMult, fmtUnits, SALT_LABEL_KO, SUGAR_LABEL_KO, STAR_NAME_KO,
@@ -155,6 +155,8 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
     rows.push({ label: '종류', value: rs.kind === 'bait' ? `베이트릴 ${rs.size}` : `스피닝릴 ${rs.size}번` });
     rows.push({ label: '최대 드랙', value: `${rs.maxDragKg}kg` });
     rows.push({ label: '기어비', value: `${rs.gearRatio.toFixed(1)} : 1` });
+    // 210차 — 한 바퀴에 감기는 길이(기어비 × 스풀 둘레) — 파이팅 감기 속도가 이것으로 정해진다
+    rows.push({ label: '한 바퀴 감기', value: `${Math.round(reelCmPerTurn(rs))}cm` });
     rows.push({ label: '권사량', value: `3호 ${rs.lineCapM}m` });
   }
   if (item.tool === 'rod' || item.subCategory === '릴') {

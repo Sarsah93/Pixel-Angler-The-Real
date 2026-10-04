@@ -361,6 +361,7 @@ function itemSpec(t, it = {}) {
     push('종류', rs.kind === 'bait' ? `베이트릴 ${rs.size}` : `스피닝릴 ${rs.size}번`);
     push('최대 드랙', `${rs.maxDragKg} kg`);
     push('기어비', `${rs.gearRatio} : 1`);
+    push('한 바퀴 감기', `${Math.round(core.reelCmPerTurn(rs))} cm`);
   }
   push('착용 부위', t.equipSlot);
   push('손 도구', t.tool === 'rod' ? '낚싯대' : t.tool === 'net' ? '뜰채' : t.tool === 'knife' ? '회칼' : undefined);
@@ -542,7 +543,9 @@ const rules = [
       ['채비 무게', `적합 범위면 ×1 · 가벼우면 최소 ×${core.TUNING.rodSpec.underLoadFloor} · 무거우면 최소 ×${core.TUNING.rodSpec.overLoadFloor}`],
       ['초릿대 파손', `적합 상한 ×${core.TUNING.rodSpec.dangerRatio}를 넘는 채비를 파워 ${Math.round(core.TUNING.rodSpec.tipSnapPowerMin * 100)}% 이상으로 던지면 최대 ${Math.round(core.TUNING.rodSpec.tipSnapMax * 100)}% — 수리 가능`],
       ['릴', '베이트대 = 베이트릴 · 그 밖 = 스피닝릴(안 맞으면 던질 수 없다) · 원투 전용릴 롱캐스트 스풀 ×1.08'],
-      ['하중', '대가 견디는 하중(kg)보다 1.5배 넘게 강한 줄이면 큰 고기를 걸었을 때 대가 먼저 부러질 수 있다'],
+      ['하중', '대가 견디는 하중(kg)보다 1.5배 넘게 강한 줄이면 큰 고기를 걸었을 때 대가 먼저 부러질 수 있다 — 단 릴 드랙이 그보다 약하면 드랙이 먼저 미끄러져 대를 지킨다'],
+      ['릴 드랙', `파이팅 드랙 = 줄 강도 × 85%(감는 중 97%)와 릴 최대 드랙 중 약한 쪽 — 릴이 약하면 줄은 안 터지지만 넘친 1kg마다 초당 ${core.TUNING.reelFight.slipMpsPerKg}m(최대 ${core.TUNING.reelFight.slipMaxMps}m) 줄이 나가고 감기는 최대 ${Math.round(core.TUNING.reelFight.slipReelCut * 100)}% 헛돈다`],
+      ['기어비', `한 바퀴 감기 = 기어비 × 스풀 둘레(기준 ${core.TUNING.reelFight.refCmPerTurn}cm) — 많이 감길수록 빨리 끌어오지만 무거운 고기에는 감기 부하로 이득이 준다 · 큰 릴 · 베이트릴(×${core.TUNING.reelFight.baitWindMult})은 덜 힘들다`],
       ['구멍치기', `${core.TUNING.rodSpec.holeMaxLenM}m 넘는 대는 틈에서 들어 올리다 빠짐 ×${core.TUNING.rodSpec.holeLongSlipMult}`],
     ],
   },

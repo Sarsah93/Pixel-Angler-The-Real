@@ -452,6 +452,8 @@ export {
 export {
   ROD_USE_LABEL, ROD_USE_CAST, PE_TO_NYLON_NO, rodLoadState, rodLoadCastK, rodCastDistanceMult, rodTipSnapChance,
   rodLineFit, reelFitsRod, rodFitsHole, rodSelfHookChance,
+  // 210차 — 릴 드랙 · 기어비 → 파이팅
+  reelSpoolDiamCm, reelCmPerTurn, reelGearK, reelWindLoad, reelRetrieveMps, effectiveDragKg, reelDragBinds,
 } from './simulation/RodFit.js';
 export type { ChumBall, ChumProbePos, ChumParcel, ChumDrift, ChumSyncTarget, ChumPathPrediction, ChumSyncOpts } from './simulation/ChumPhysics.js';
 export {

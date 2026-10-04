@@ -63,6 +63,9 @@ import {
   rollLandingDrop, FOOTING_LABEL, type FootingKind, type LandingDropResult,
 } from '@tra/core';
 import {
+  reelGearK, reelRetrieveMps, effectiveDragKg,
+} from '@tra/core';
+import {
   snagDragChance, snagHazardPerM, sinkerHoldsBottom,
   type SnagRigKind, type SinkerHoldResult, type ParkedRigSnapshot, type ParkedRodPhase, type ParkedRodEvent,
 } from '@tra/core';
@@ -258,6 +261,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   /** 수직뷰 파슬+지형 코팅 레이어 — 수심 게이지 박스 마스크 */
   private chumDepthG!: Phaser.GameObjects.Graphics;
   private fight: FightingPhase | null = null;
+  /** 210차 — 릴 드랙이 미끄러지는 중(넘친 장력만큼 줄이 나간다) — 하네스 · 연출 */
+  private dragSlipping = false;
   private hookedFish: SpawnedFish | null = null;
 
   private zLimitM = 5;
@@ -486,6 +491,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.cfg = data;
     this.fpState = 'drift';
     this.fight = null;
+    this.dragSlipping = false;
     this.hookedFish = null;
     this.pendingFish = null;
     this.pendingSchool = []; this.pendingSchoolHooks = []; this.pendingBittenHook = null;
@@ -1011,6 +1017,9 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       // 133차 — 체형: 어종군(힘의 크기)과 직교하는 "힘의 성질"(면적·추력·요동)
       bodyForm: f.bodyForm ?? fightBodyFormOf(f.speciesId),
       lineCapacityKg: lineCap,
+      // 210차 — 릴 드랙이 줄보다 약하면 릴이 먼저 미끄러진다 · 기어비는 감는 중 하중
+      reelDragKg: InventoryStore.reelSpec?.maxDragKg,
+      reelGearK: reelGearK(InventoryStore.reelSpec),
     });
 
     // ── 파이트 2D 무대 초기화 (상단 앵커 수중 단면뷰) ──
@@ -1197,10 +1206,13 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   // 136차 — 스풀·베일 (전유동/흘림 · 줄 주기)
   // ═══════════════════════════════════════════════════════════════
 
-  /** 현재 드랙 설정 (kg) — 라인 강도 × 드랙 비율 (파이팅 드랙 조절과 같은 기준) */
+  /**
+   * 현재 드랙 설정 (kg) — 라인 강도 × 드랙 비율 (파이팅 드랙 조절과 같은 기준).
+   * 210차 — 릴 최대 드랙보다 세게 조일 수는 없다(약한 릴은 줄보다 먼저 미끄러진다).
+   */
   private currentDragKg(): number {
     const capKg = Math.max(0.8, (InventoryStore.lineCapacityKg() ?? 3) * TitleStore.modifiers().lineMult);
-    return capKg * 0.55;
+    return effectiveDragKg(capKg, 0.55, InventoryStore.reelSpec);
   }
 
   /**
@@ -1287,7 +1299,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       tension: 24, progress: this.landProgress(), subdue: 100,
       pattern: 'none', patternTimeLeft: 0,
       event: 'none', escapeProbPerSec: 0, lateralDir: 1, slackRisk: 0,
-      demandKg: 0, lineCapKg: 0, response: 'neutral',
+      demandKg: 0, lineCapKg: 0, response: 'neutral', dragSlipKg: 0, dragKg: this.currentDragKg(),
     });
     this.patternText
       .setText('제압 완료! 릴링으로 끌어오세요 — 남은 '
@@ -2999,7 +3011,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   private rollRodOverload(scale: number): boolean {
     const rod = InventoryStore.handRod;
     if (!rod || rod.fault) return false;
-    const lineKg = InventoryStore.lineCapacityKg() ?? 3;
+    // 210차 — 대에 실리는 하중은 줄과 릴 드랙 중 약한 쪽(드랙이 먼저 미끄러지면 대를 지킨다)
+    const lineKg = Math.min(InventoryStore.lineCapacityKg() ?? 3, InventoryStore.reelSpec?.maxDragKg ?? Infinity);
     if (lineKg <= this.rodMaxLoadKg() * 1.5) return false;
     if (Math.random() >= ROD_OVERLOAD_SNAP * scale) return false;
     return InventoryStore.setFault(rod, 'rod_section');
@@ -3077,12 +3090,14 @@ export class FirstPersonFishingScene extends Phaser.Scene {
 
   /**
    * 릴링 회수 속도 (m/s) — 무게가 클수록 느리게 감긴다.
-   * `reelBaseMps / (1 + kg × reelWeightK)`, 완전 제압 시 보너스.
+   * `reelBaseMps × 기어 배율 / (1 + kg × reelWeightK × 감기 부하)`, 완전 제압 시 보너스.
+   * 210차 — 기어비 × 스풀 둘레(한 바퀴 회수 길이)가 길수록 빨리 감기지만, 무거운 고기에는 감기 부하가
+   *   이득을 깎는다(core `reelRetrieveMps`). 릴이 없으면 기준 릴(배율 1)과 같다.
    */
   private fightReelMps(subdued: boolean): number {
     const D = TUNING.fightDist;
     const kg = (this.hookedFish?.weightG ?? 300) / 1000 * this.schoolMult;   // 195차 — 무리 걸림은 그만큼 무겁다
-    const v = Math.max(D.reelMinMps, D.reelBaseMps / (1 + kg * D.reelWeightK));
+    const v = reelRetrieveMps(D.reelBaseMps, D.reelMinMps, kg, D.reelWeightK, InventoryStore.reelSpec);
     return v * (subdued ? D.subduedReelMult : 1);
   }
 
@@ -3127,7 +3142,13 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     // ③ 거리 = 도주 전진분 − 릴링 회수분 (랜딩의 유일한 시계)
     //    패턴이 진행되는 동안에는 물고기가 줄을 버텨(하한 holdMps) 릴링이 거의 거리를 못 번다 —
     //    이 구간이 "패턴 대응으로 제압도를 쌓는" 상호작용 몫이고, 제압·피로가 오르면 무너진다.
-    const reelMps = reeling ? this.fightReelMps(subdued) : 0;
+    let reelMps = reeling ? this.fightReelMps(subdued) : 0;
+    // 210차 — 릴 드랙이 미끄러지면(요구 장력 > 릴 최대 드랙) 감아도 스풀이 헛돌고, 넘친 만큼 줄이 나간다
+    const RF = TUNING.reelFight;
+    const slipKg = spoolOpen || subdued || this.dragInMode ? 0 : st.dragSlipKg;
+    const slip01 = slipKg > 0 ? Math.min(1, slipKg / Math.max(0.1, st.demandKg + slipKg)) : 0;
+    reelMps *= 1 - slip01 * RF.slipReelCut;
+    const slipOutMps = Math.min(RF.slipMaxMps, slipKg * RF.slipMpsPerKg);
     const holdMps = st.pattern !== 'none'
       ? reelCap * D.patternHoldFrac * resist01 * formResist
         * (D.fleePowerBase + f.powerFactor * this.schoolMult * D.fleePowerGain)
@@ -3138,8 +3159,9 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     // 릴링 중에는 도주 전진을 회수 속도 아래로 묶는다 — **감는 동안은 항상 조금씩 가까워진다**.
     //   손을 놓으면(reelMps 0) 상한이 사라져 물고기가 줄을 끌고 나간다.
     if (reeling) fwd = Math.min(fwd, reelMps * D.reelHoldCap);
+    this.dragSlipping = slipKg > 0;
     this.distM = Phaser.Math.Clamp(
-      this.distM + (fwd - reelMps) * dt, D.landRangeM * 0.4, this.hookDistM * 1.6);
+      this.distM + (fwd + slipOutMps - reelMps) * dt, D.landRangeM * 0.4, this.hookDistM * 1.6);
 
     // ④ 횡 — 도주 횡분 + 릴링/제압 시 중앙 수렴 (끌려오면 정면으로 정렬)
     this.fleeLatM = Phaser.Math.Clamp(
@@ -3221,6 +3243,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
 
     // ── 132차 파이트 3D 운동 (횡 · 거리 · 수심) — 세 뷰가 같은 물리를 소비 ──
     this.stepFightKinematics(dt, st, effectiveReeling, spoolOpen);
+    // 210차 — 드랙이 미끄러지는 동안 초릿대가 잘게 떨린다(스풀이 역회전하며 줄이 풀린다)
+    if (this.dragSlipping) this.rodBendDeg += Math.sin(this.time.now / 35) * 2.5;
 
     // ── 줄 주기 중 스풀 방출 + 조류에 따른 횡 흐름 (실시간 연동) ──
     //  물고기가 원하는 방향(수평뷰의 좌/좌상/상/우상/우)으로 달리는 동안 줄이 나가고,
@@ -4674,6 +4698,10 @@ export class FirstPersonFishingScene extends Phaser.Scene {
 
     const ft = this.lastFatigue;
     const load = st.lineCapKg > 0 ? `하중 ${st.demandKg.toFixed(1)}kg / 줄 ${st.lineCapKg.toFixed(1)}kg` : '';
+    // 210차 — 드랙(줄 · 릴 중 약한 쪽)과 미끄럼 — 미끄러지면 줄이 풀려 나간다
+    const dragLine = st.lineCapKg > 0
+      ? (st.dragSlipKg > 0 ? `드랙 ${st.dragKg.toFixed(1)}kg — 줄이 풀려 나간다` : `드랙 ${st.dragKg.toFixed(1)}kg`)
+      : '';
     // 패턴 대응 판정 — 맞게 대응하면 요구 장력이 감쇠돼 텐션이 오르지 않는다(116차 ③)
     if (st.pattern !== 'none' && st.response !== 'neutral') {
       this.responseText
@@ -4682,6 +4710,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     } else this.responseText.setVisible(false);
     this.probText.setText([
       `텐션 ${st.tension.toFixed(0)} / 100  (안전 30~80)${load ? '  ' + load : ''}`,
+      dragLine,
       `랜딩 ${st.progress.toFixed(0)}%  (남은 거리 ${Math.max(0, this.distM - TUNING.fightDist.landRangeM).toFixed(1)}m)`,
       `제압 ${st.subdue.toFixed(0)}%${st.subdue >= 100 ? ' — 완전 제압!' : ''}`,
       this.hookedFish ? `상대: ??? (힘 ${(this.hookedFish.powerFactor * 100).toFixed(0)})` : '',

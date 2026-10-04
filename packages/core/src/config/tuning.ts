@@ -744,6 +744,26 @@ export interface TuningConfig {
     holeLongSlipMult: number;
   };
   /**
+   * 210차 — 릴 드랙 · 기어비를 파이팅에 (소비: `FightingPhase` · `RodFit.reel*` · 1인칭 `fightReelMps`).
+   *  - 드랙: 릴 최대 드랙이 줄 강도 × 드랙 상한보다 약하면 **릴이 먼저 미끄러진다** — 줄은 안전하지만 고기가 줄을 끌고 나간다.
+   *  - 기어비: 한 바퀴 회수 길이(기어비 × 스풀 둘레)가 길수록 빨리 감기지만, 무거운 고기에는 감기 부하가 커서 이득이 줄어든다.
+   */
+  reelFight: {
+    /** 기준 릴(2500번 · 5.1:1)의 한 바퀴 회수 길이(cm) — 기어 배율 1의 기준 */
+    refCmPerTurn: number;
+    /** 감기 부하의 릴 크기 지수 — 큰 릴일수록 몸체가 튼튼해 무거운 고기를 덜 힘들게 감는다 */
+    sizePowerExp: number;
+    /** 베이트릴 감기 부하 배율(직결 구동 — 같은 기어비라도 덜 힘들다) */
+    baitWindMult: number;
+    /** 드랙 미끄럼 1kg당 줄이 나가는 속도(m/s) · 상한 */
+    slipMpsPerKg: number;
+    slipMaxMps: number;
+    /** 드랙이 미끄러지는 동안 감기 손실 상한(0~1 — 1이면 미끄러지는 만큼 전부 헛돈다) */
+    slipReelCut: number;
+    /** 감는 중 하중(reelLoadKg)에 기어 배율을 몇 제곱으로 곱하나 — 하이기어는 감을 때 더 당긴다 */
+    gearLoadExp: number;
+  };
+  /**
    * 물때 흐름 × 어종 × 장르 (205차 — TIDE_PHASE_STRATEGY_SPEC P1~P3 · 초기값은 설계 초안, 실플레이 조율 대기).
    * 소비: `simulation/TidePhaseStrategy.ts`.
    */
@@ -1396,6 +1416,15 @@ export const TUNING: TuningConfig = {
     holeMaxLenM: 3,
     holeLongSlipMult: 1.4,
   },
+  reelFight: {
+    refCmPerTurn: 78,
+    sizePowerExp: 0.3,
+    baitWindMult: 0.85,
+    slipMpsPerKg: 0.35,
+    slipMaxMps: 1.6,
+    slipReelCut: 0.85,
+    gearLoadExp: 1,
+  },
   tidePhase: {
     eastSeaK: 0.3,
     eastSeaFlowK: 0.4,
@@ -1567,6 +1596,10 @@ export const TUNING_META: TuningParamMeta[] = [
   { path: 'rodSpec.overLoadSlope', min: 0, max: 1.5, step: 0.05, category: 'balance', label: '과부하 비거리 감소' },
   { path: 'rodSpec.dangerRatio', min: 1, max: 3, step: 0.1, category: 'balance', label: '대 위험 하중 배수' },
   { path: 'rodSpec.tipSnapScale', min: 0, max: 1, step: 0.05, category: 'balance', label: '과부하 캐스팅 초릿대 파손' },
+  { path: 'reelFight.slipMpsPerKg', min: 0, max: 1.5, step: 0.05, category: 'balance', label: '드랙 미끄럼 줄 방출(m/s·kg)' },
+  { path: 'reelFight.slipReelCut', min: 0, max: 1, step: 0.05, category: 'balance', label: '드랙 미끄럼 감기 손실' },
+  { path: 'reelFight.sizePowerExp', min: 0, max: 1, step: 0.05, category: 'balance', label: '릴 크기 감기 힘 지수' },
+  { path: 'reelFight.gearLoadExp', min: 0, max: 2, step: 0.1, category: 'balance', label: '하이기어 감기 하중 지수' },
   // ── 물때 흐름 × 어종 × 장르 (205차 — 설계 초안, 실플레이 조율 대기) ──
   { path: 'tidePhase.eastSeaK', min: 0, max: 1, step: 0.05, category: 'balance', label: '동해 물때 효과 계수' },
   { path: 'tidePhase.eastSeaFlowK', min: 0, max: 1, step: 0.05, category: 'balance', label: '동해 물살 계수' },

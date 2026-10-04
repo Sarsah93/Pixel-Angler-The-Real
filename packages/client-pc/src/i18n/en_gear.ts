@@ -187,7 +187,7 @@ export const EN_GEAR: Record<string, string> = {
     'A baitcasting reel for tai-rubber and slow jigging — press the clutch to drop, then wind steadily. Fits bait rods only.',
   '용도': 'Use', '길이': 'Length', '호수 · 파워': 'Grade · power', '적합 원줄': 'Main line',
   '적합 채비 무게': 'Rig weight', '견디는 하중': 'Load rating', '자중': 'Rod weight', '지금 채비': 'Current rig',
-  '종류': 'Type', '최대 드랙': 'Max drag', '기어비': 'Gear ratio', '권사량': 'Line capacity',
+  '종류': 'Type', '최대 드랙': 'Max drag', '기어비': 'Gear ratio', '권사량': 'Line capacity', '한 바퀴 감기': 'Per turn',
   '갯바위 · 방파제 찌낚시': 'Float fishing (rocks · breakwater)', '원투': 'Surf casting', '쇼어지깅': 'Shore jigging',
   '라이트게임': 'Light game', '에깅': 'Eging', '선상 타이라바 · 슬로우지깅': 'Boat tai-rubber · slow jigging',
   '구멍치기': 'Hole fishing', '다용도(입문)': 'All-round (entry)', '경질': 'Stiff',

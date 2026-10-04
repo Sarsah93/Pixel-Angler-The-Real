@@ -113,3 +113,64 @@ export function rodSelfHookChance(spec: RodItemSpec | undefined, sinkerG: number
   const base = spec?.use === 'surf' ? H.selfHookSurf : H.selfHookOther;
   return Math.max(0, Math.min(0.9, base * Math.max(0.5, Math.min(1.2, sinkerG / 60))));
 }
+
+// ═══════════════════════════════════════════════════════════════
+// 210차 — 릴 드랙 · 기어비 → 파이팅
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * 스풀 지름(cm) 근사 — 스피닝은 번수가 두 배가 될 때마다 0.8cm 굵어진다(1000번 3.9cm · 4000번 5.5cm).
+ * 베이트는 스풀이 작다(150 · 200번 3.4cm 남짓). 원투 전용 롱캐스트 스풀(비거리 배율 ≥ 1.05)은 지름이 1.6cm 더 크다.
+ */
+export function reelSpoolDiamCm(reel: ReelItemSpec): number {
+  if (reel.kind === 'bait') return 3.0 + 0.4 * Math.log2(Math.max(50, reel.size) / 100);
+  const longCast = reel.castMult >= 1.05 ? 1.6 : 0;
+  return 3.9 + 0.8 * Math.log2(Math.max(500, reel.size) / 1000) + longCast;
+}
+
+/** 핸들 한 바퀴에 감기는 줄 길이(cm) = 기어비 × 스풀 둘레 */
+export function reelCmPerTurn(reel: ReelItemSpec): number {
+  return reel.gearRatio * Math.PI * reelSpoolDiamCm(reel);
+}
+
+/** 기어 배율 — 기준 릴(2500번 5.1:1) 대비 한 바퀴 회수 길이. 릴이 없으면 1 */
+export function reelGearK(reel: ReelItemSpec | undefined): number {
+  if (!reel) return 1;
+  return reelCmPerTurn(reel) / TUNING.reelFight.refCmPerTurn;
+}
+
+/**
+ * 감기 부하 배율 — 무거운 고기를 감을 때 얼마나 힘든가.
+ * 한 바퀴에 많이 감을수록(하이기어 · 큰 스풀) 손에 걸리는 힘이 크고, 큰 릴은 몸체가 튼튼해 덜 힘들다.
+ * 베이트릴은 직결 구동이라 같은 조건에서 덜 힘들다.
+ */
+export function reelWindLoad(reel: ReelItemSpec | undefined): number {
+  if (!reel) return 1;
+  const F = TUNING.reelFight;
+  const sizeEq = reel.kind === 'bait' ? reel.size * 20 : reel.size;   // 베이트 150 ≈ 스피닝 3000
+  const sizeK = Math.pow(2500 / Math.max(500, sizeEq), F.sizePowerExp);
+  return reelGearK(reel) * sizeK * (reel.kind === 'bait' ? F.baitWindMult : 1);
+}
+
+/**
+ * 파이팅 회수 속도(m/s) — 기준 속도 × 기어 배율 ÷ (1 + 체중 × 무게 감쇠 × 감기 부하).
+ * 가벼운 고기는 하이기어가 빨리 감고, 무거운 고기는 감기 부하가 이득을 깎아 기어비 차이가 줄어든다.
+ */
+export function reelRetrieveMps(baseMps: number, minMps: number, fishKg: number, weightK: number, reel: ReelItemSpec | undefined): number {
+  const g = reelGearK(reel);
+  return Math.max(minMps * Math.min(1, g), baseMps * g / (1 + fishKg * weightK * reelWindLoad(reel)));
+}
+
+/**
+ * 유효 드랙(kg) — 줄 강도 × 드랙 상한과 릴 최대 드랙 중 **약한 쪽**.
+ * 릴 드랙이 약하면 줄이 터지기 전에 릴이 먼저 미끄러진다(줄은 지키지만 고기가 줄을 끌고 나간다).
+ */
+export function effectiveDragKg(lineCapKg: number, lineFrac: number, reel: ReelItemSpec | undefined): number {
+  const byLine = lineCapKg * lineFrac;
+  return reel ? Math.min(byLine, reel.maxDragKg) : byLine;
+}
+
+/** 릴 드랙이 줄보다 먼저 미끄러지나(드랙이 줄을 지키는 채비인가) */
+export function reelDragBinds(lineCapKg: number, lineFrac: number, reel: ReelItemSpec | undefined): boolean {
+  return !!reel && reel.maxDragKg < lineCapKg * lineFrac;
+}

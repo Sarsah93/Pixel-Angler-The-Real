@@ -96,6 +96,13 @@ export interface FightStatus {
   lineCapKg: number;
   response: FightResponse;
   /**
+   * 210차 — 릴 드랙이 미끄러지는 양(kg) — 요구 장력이 릴 드랙을 넘친 만큼. 0 = 안 미끄러짐.
+   * 호출부(거리 물리)가 이만큼 줄을 내주고 감기를 헛돌게 한다.
+   */
+  dragSlipKg: number;
+  /** 210차 — 지금 적용 중인 드랙(kg) — 줄 강도 × 드랙 상한과 릴 최대 드랙 중 약한 쪽 */
+  dragKg: number;
+  /**
    * 슬랙 바늘빠짐 위험도 0~1 (136차). 1이 되는 순간 `hook_off`.
    * 줄을 주는 동안 **경고를 눈으로 볼 수 있어야** 억울하지 않다 — HUD가 이 값을 그린다.
    */
@@ -123,6 +130,13 @@ export interface FightingFishSpec {
   lineCapacityKg?: number;
   /** 133차 — 체형 (fightBodyFormOf). 미지정 = 'roundish'(배수 전부 1) */
   bodyForm?: BodyFormKey;
+  /**
+   * 210차 — 릴 최대 드랙(kg). 줄 강도 × 드랙 상한보다 약하면 **릴이 먼저 미끄러진다** —
+   * 요구 장력이 이 값에서 막혀 줄은 지키지만, 넘친 만큼(`dragSlipKg`) 고기가 줄을 끌고 나간다. 미지정 = 줄만 본다.
+   */
+  reelDragKg?: number;
+  /** 210차 — 기어 배율(`reelGearK` — 한 바퀴 회수 길이 / 기준 릴). 감는 중 하중에 곱한다. 미지정 = 1 */
+  reelGearK?: number;
 }
 
 /** 안정 텐션 구간 */
@@ -149,6 +163,9 @@ export class FightingPhase {
   private slackTimer = 0;
   private slackRisk = 0;
   private lastDemandKg = 0;
+  /** 210차 — 릴 드랙 미끄럼(kg) · 지금 드랙(kg) */
+  private lastDragSlipKg = 0;
+  private lastDragKg = 0;
   private lastResponse: FightResponse = 'neutral';
 
   private readonly power: number;
@@ -162,6 +179,9 @@ export class FightingPhase {
   private readonly burst: number;
   private readonly lineCapKg: number;
   private readonly physical: boolean;
+  /** 210차 — 릴 최대 드랙(kg, 0 = 줄만) · 기어 배율 */
+  private readonly reelDragKg: number;
+  private readonly gearK: number;
   /** 체형 배수 (정적하중·추력·요동·바늘빠짐) */
   private readonly form: typeof TUNING.fightPhys.form[BodyFormKey];
   /** 요동 위상 (장어·리본형 텐션 출렁임) */
@@ -179,6 +199,8 @@ export class FightingPhase {
     this.burst = fish.burstMult ?? 2.2;
     this.lineCapKg = fish.lineCapacityKg ?? 0;
     this.physical = this.weightKg > 0 && this.lineCapKg > 0;
+    this.reelDragKg = fish.reelDragKg ?? 0;
+    this.gearK = fish.reelGearK ?? 1;
     // 132차 — **첫 패턴은 챔질 직후**(훅셋 버스트). 구 구현은 첫 패턴까지 4.7~10.7초가 걸려
     //   가까운 거리에서 건 고기는 패턴을 한 번도 못 보고 끌려왔다(= 상호작용 없는 파이트).
     this.nextPatternIn = TUNING.fightPhys.firstPatternSec * (0.6 + Math.random() * 0.8);
@@ -351,7 +373,8 @@ export class FightingPhase {
       this.thrashPhase += dtSec * this.form.thrashHz * Math.PI * 2;
       demand *= 1 + Math.sin(this.thrashPhase) * this.form.thrashAmp * Math.min(1, gate);
     }
-    if (reeling) demand = demand * P.reelLoadMult + P.reelLoadKg;
+    // 210차 — 하이기어(한 바퀴에 많이 감는 릴)는 감는 동안 더 당긴다
+    if (reeling) demand = demand * P.reelLoadMult + P.reelLoadKg * Math.pow(this.gearK, TUNING.reelFight.gearLoadExp);
     else if (!holding) demand *= P.slackMult;
     // 136차 — 스풀 개방: 줄이 나가는 동안에는 하중이 로드·라인에 실리지 않는다.
     //   릴링/홀드보다 **뒤에** 곱해야 "감으면서 스풀을 열어도 안전"이 성립하지 않는다.
@@ -363,8 +386,17 @@ export class FightingPhase {
     //  대신 요구 장력이 라인 강도의 shockBreakFrac 배를 넘는 **충격 하중**은 드랙이 풀리는
     //  속도로 못 따라가 그대로 파단된다 — 라이트 채비 대물(116차 4.1)과 패턴 오대응이 여기서
     //  터진다. 일상적인 파단은 이제 "한계 텐션에서 릴링 강행"(과부하)이 담당한다.
+    //  210차 — 릴 최대 드랙이 줄 쪽 상한보다 약하면 **릴이 먼저 미끄러진다**. 줄은 지키지만
+    //  넘친 장력만큼(dragSlipKg) 고기가 줄을 끌고 나간다(거리 물리는 호출부). 충격 하중은 그대로 터진다.
+    const lineDrag = this.lineCapKg * (reeling ? P.reelDragCapFrac : P.dragCapFrac);
+    const dragKg = this.reelDragKg > 0 ? Math.min(lineDrag, this.reelDragKg) : lineDrag;
+    this.lastDragKg = dragKg;
+    this.lastDragSlipKg = 0;
     if (demand <= this.lineCapKg * P.shockBreakFrac) {
-      demand = Math.min(demand, this.lineCapKg * (reeling ? P.reelDragCapFrac : P.dragCapFrac));
+      if (this.reelDragKg > 0 && this.reelDragKg < lineDrag && demand > this.reelDragKg) {
+        this.lastDragSlipKg = demand - this.reelDragKg;
+      }
+      demand = Math.min(demand, dragKg);
     }
     this.lastDemandKg = demand;
     const target = Math.max(0, Math.min(140, demand / this.lineCapKg * 100));
@@ -424,6 +456,8 @@ export class FightingPhase {
       lateralDir: this.lateralDir,
       demandKg: this.lastDemandKg,
       lineCapKg: this.lineCapKg,
+      dragSlipKg: this.lastDragSlipKg,
+      dragKg: this.lastDragKg,
       response: this.lastResponse,
       slackRisk: this.slackRisk,
     };
