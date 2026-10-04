@@ -19,6 +19,9 @@
 import Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH } from '../PhaserConfig.js';
 import { paintHudPanel } from './HudPanelStyle.js';
+import { voiceOfNpc, voiceOfPlayer } from '@tra/core';
+import { VoiceTyper } from '../audio/Voice.js';
+import { GameState } from '../store/GameState.js';
 
 export type CineDir = 'up' | 'down' | 'left' | 'right';
 export type CineEmote = 'surprise' | 'think' | 'sad' | 'joy';
@@ -30,6 +33,8 @@ export interface CineActor {
   /** 본체와 함께 움직여야 하는 부속 (이름표·마커 등) */
   followers?: (Phaser.GameObjects.GameObject & { x: number; y: number })[];
   nameKo: string;
+  /** 211차 — 대사 목소리 id(스토리 인물 id). 없으면 이름으로 정한다 · 'player'는 주인공 목소리 */
+  voiceId?: string;
   /** 말풍선 꼬리가 닿는 머리 위 오프셋 (월드 px, 음수) */
   headY?: number;
   /** 방향 프레임 교체 (스프라이트 시트 배우만) */
@@ -101,6 +106,8 @@ export class StoryCinematicPanel extends Phaser.GameObjects.Container {
   private readonly placeText: Phaser.GameObjects.Text;
   private readonly boxG: Phaser.GameObjects.Graphics;
   private readonly speakerText: Phaser.GameObjects.Text;
+  /** 211차 — 대사 블립 */
+  private readonly voice = new VoiceTyper(voiceOfPlayer('m'));
   private readonly bodyText: Phaser.GameObjects.Text;
   private readonly skipHint: Phaser.GameObjects.Text;
   /** 말풍선 — 화면 고정 좌표에서 배우를 매 프레임 따라간다 */
@@ -233,6 +240,10 @@ export class StoryCinematicPanel extends Phaser.GameObjects.Container {
   private runSay(step: Extract<CineStep, { kind: 'say' }>): void {
     const actor = this.actorOf(step.who);
     this.speakerText.setText(step.thought ? '혼잣말' : (actor?.nameKo ?? step.who));
+    // 211차 — 말하는 사람 목소리(주인공 · 혼잣말은 주인공 목소리)
+    this.voice.setProfile(step.who === 'player' || step.thought
+      ? voiceOfPlayer(GameState.character.look.sex)
+      : voiceOfNpc(actor?.voiceId ?? actor?.nameKo ?? step.who));
     this.speakerText.setColor(step.thought ? '#f0bf6c' : '#ffe9a0');
     this.startTyping(step.text, step.ms ?? Phaser.Math.Clamp(700 + step.text.length * 62, 1200, 4200));
     if (step.thought || !actor) {
@@ -259,6 +270,7 @@ export class StoryCinematicPanel extends Phaser.GameObjects.Container {
       delay: TYPE_MS, loop: true,
       callback: () => {
         this.sayTyped = Math.min(this.sayFull.length, this.sayTyped + 1);
+        this.voice.say(this.sayFull.charAt(this.sayTyped - 1));
         this.bodyText.setText(this.sayFull.slice(0, this.sayTyped));
         if (this.sayTyped >= this.sayFull.length) this.finishTyping();
       },

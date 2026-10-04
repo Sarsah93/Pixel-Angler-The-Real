@@ -15,6 +15,7 @@
  */
 
 import Phaser from 'phaser';
+import { setAmbience } from '../audio/Ambience.js';
 import { GameState, SAVE_SLOT_COUNT } from '../store/GameState.js';
 import { characterLook } from '../data/EquipOutfit.js';
 import { MultiplayerClient } from '../net/MultiplayerClient.js';
@@ -109,6 +110,7 @@ export class MainMenuScene extends Phaser.Scene {
   }
 
   create(): void {
+    setAmbience({ sea: 0.3, rain: 0 });   // 211차 — 메인 메뉴 — 잔잔한 파도
     this.view = 'main';
     this.selectedIndex = 0;
     this.confirmSlot = null;

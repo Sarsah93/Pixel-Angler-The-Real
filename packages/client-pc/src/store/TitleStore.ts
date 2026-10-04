@@ -18,6 +18,7 @@
  * 아무것도 안 달았으면 첫 타이틀을 자동으로 단다.
  */
 
+import { LedgerStore } from './LedgerStore.js';
 import {
   TITLE_DATABASE, getTitleById, titleModifiers, titleBiteMultAt, titlesNewlyEarned,
   isTitleNightHour, isTitleDawnHour, trophyPointsOf, kstParts, calculateTideInfo,
@@ -196,7 +197,7 @@ class TitleStoreImpl {
       this.stats.titlesOwned = this.owned.length;
       const fresh = titlesNewlyEarned(this.stats, new Set(this.owned), this.levelOf());
       if (fresh.length === 0) return;
-      for (const d of fresh) { this.owned.push(d.id); this.pending.push(d); }
+      for (const d of fresh) { this.owned.push(d.id); this.pending.push(d); LedgerStore.title(d.nameKo); }   // 211차
       if (!this.equipped) this.equip(fresh[0].id);
       else this.emit();
     }

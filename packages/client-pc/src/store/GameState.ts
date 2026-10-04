@@ -33,9 +33,12 @@ import type {
   TrapCatchItem,
   CaughtFishRecord,
 } from '@tra/core';
+import type { CoinReason } from '@tra/core';
 import type { WorldObjectState, CatchMethod, StorySpotKind } from '@tra/core';
 import { type CharConfig, type CharSex, defaultAppearance, starterOutfit } from '@tra/core';
 import { StoryStore, type StorySaveState } from './StoryStore.js';
+import { playCoin } from '../audio/Sfx.js';
+import { LedgerStore, type LedgerSaveState } from './LedgerStore.js';
 import { prologueSquid } from './Prologue.js';
 import { buildItemWikiCatalog } from '../data/WikiCatalog.js';
 import {
@@ -209,6 +212,8 @@ interface SaveData {
   parkedRod?: ParkedRodState;
   /** 208차 — 거치대 여러 대(최대 `TUNING.rodHolder.maxHolders`) · 구세이브 `parkedRod` 한 대는 여기로 옮긴다 */
   parkedRods?: ParkedRodSave[];
+  /** 211차 — 하루 기록 장부(지금 장 + 지난 14장 · 구세이브 = 빈 장부) */
+  ledger?: LedgerSaveState;
   /** 1회성 안내 플래그 (chumGuideSeen 등 — 최초 표시 여부) */
   flags?: Record<string, boolean>;
   /** 맵별 오브젝트 월드 상태 — 초기 배치 − removed + moved + placed (HOMETOWN_HOME_SPEC) */
@@ -332,6 +337,8 @@ export class GameStateManager {
     if (this._isInitialized) return;
 
     const saved = this.load();
+    LedgerStore.coinsOf = () => this._player?.inventory.coins ?? 0;   // 211차 — 장부가 지금 가진 돈을 읽는다
+    LedgerStore.suspend(true);   // 211차 — 불러오며 다시 쌓이는 발견 · 타이틀을 오늘 일로 적지 않는다
     if (saved) {
       this.applySaveData(saved);
     } else {
@@ -346,6 +353,7 @@ export class GameStateManager {
 
     // 시드 인벤 발견 동기 — 첫 부팅(세이브 없음)은 applySaveData를 거치지 않으므로 여기서 보장 (멱등)
     this.syncInventoryDiscoveries();
+    LedgerStore.suspend(false);
 
     this._isInitialized = true;
     console.log('[GameState] Initialized. Player:', this._player?.nickname);
@@ -392,6 +400,7 @@ export class GameStateManager {
     HomeStore.deserialize(saved.home);
     MarketStore.deserialize(saved.market);
     TitleStore.deserialize(saved.titles);   // 203차 — 타이틀 업적(구세이브 = 0부터)
+    LedgerStore.deserialize(saved.ledger);   // 211차 — 하루 기록(구세이브 = 빈 장부)
     TideLoreStore.deserialize(saved.tideLore);   // 205차 — 물때 공략 발견 기록
     TitleStore.setStat('licenses', this._licenses.length);   // 204차 — 지금 가진 자격 수
     // 발견 기록 복원 — 구세이브(필드 없음)는 어획 기록의 어종을 'legacy'로 백필
@@ -558,12 +567,14 @@ export class GameStateManager {
    * `quiet` = 스토리 이벤트를 쏘지 않는다 (146차 — **거래로 받은 재화는 `earn` 목표에 안 센다**.
    * 인벤토리를 읽는 목표가 없는 이 게임에서 유저 간 거래가 새는 유일한 구멍이 이 이벤트였다).
    */
-  addCoins(amount: number, quiet = false): boolean {
+  addCoins(amount: number, quiet = false, reason: CoinReason = 'other'): boolean {
     if (!this._player) return false;
     const newCoins = this._player.inventory.coins + amount;
     if (newCoins < 0) return false;
     this._player.inventory.coins = newCoins;
     if (!quiet) StoryStore.event({ kind: 'coins', coins: newCoins });   // 134차 — earn 목표
+    if (amount !== 0) playCoin(Math.abs(amount));   // 211차 — 짤랑(큰돈이면 한 번 더)
+    LedgerStore.coin(amount, reason);   // 211차 — 하루 기록(들고 난 까닭)
     return true;
   }
 
@@ -594,6 +605,8 @@ export class GameStateManager {
 
     // 도감 발견 기록 (최초 1회 — 이미 발견된 어종은 무시. true = 첫 포획 → XP ×firstDiscoveryMult)
     const firstDiscovery = DiscoveryStore.record('fish', speciesId, 'catch');
+    // 211차 — 하루 기록(보관으로 적고, 결정 창에서 놓아주면 `LedgerStore.released`가 고친다)
+    LedgerStore.fish({ speciesId, nameKo: getFishById(speciesId)?.nameKo ?? _nameKo, lengthCm, weightG: weightGram, fate: 'kept' });
 
     const record: CaughtFishRecord = {
       id: crypto.randomUUID(),
@@ -639,13 +652,14 @@ export class GameStateManager {
     // 138차 — 만렙(200)에서도 XP는 계속 쌓인다. 퀘스트가 계속 늘어나는데 만렙에서 보상이
     // 통째로 증발하면 후반 퀘스트가 무보상이 된다. 레벨만 200에서 멈추고 경험치는 누적한다.
     p.experience = (p.experience ?? 0) + add;
-    if ((p.level ?? 1) >= MAX_LEVEL) return 0;
+    if ((p.level ?? 1) >= MAX_LEVEL) { LedgerStore.xp(add, 0); return 0; }
     let ups = 0;
     while ((p.level ?? 1) < MAX_LEVEL && p.experience >= xpToNext(p.level ?? 1)) {
       p.experience -= xpToNext(p.level ?? 1);
       p.level = (p.level ?? 1) + 1;
       ups++;
     }
+    LedgerStore.xp(add, ups);   // 211차
     if (ups > 0) {
       console.log(`[GameState] Level Up! Lv.${(p.level ?? 1) - ups} -> Lv.${p.level} (스킬 포인트 +${ups})`);
       this.commitVitals(this.vitals);   // maxHp가 레벨에 비례하므로 상한 재계산
@@ -679,6 +693,10 @@ export class GameStateManager {
     const profOf: Partial<Record<XpActivity, ProfActionKey>> = { butcher: 'butcher', sashimi: 'sashimi', forage: 'forage', craft: 'craft', cook: 'cook' };
     const pa = profOf[kind];
     if (pa) this.addProficiency(pa);
+    // 211차 — 하루 기록 생활 칸
+    const lifeOf: Partial<Record<XpActivity, 'cook' | 'butcher' | 'sashimi' | 'craft' | 'forage'>> = { butcher: 'butcher', sashimi: 'sashimi', forage: 'forage', craft: 'craft', cook: 'cook' };
+    const lk = lifeOf[kind];
+    if (lk) LedgerStore.life(lk);
     return this.grantXp(activityXp(kind, mult));
   }
 
@@ -687,6 +705,7 @@ export class GameStateManager {
     const fish = getFishById(speciesId);
     const avgCm = fish ? (fish.avgSizeRangeCm[0] + fish.avgSizeRangeCm[1]) / 2 : undefined;
     StoryStore.event({ kind: 'release', speciesId, lengthCm });
+    LedgerStore.fish({ speciesId, nameKo: fish?.nameKo ?? speciesId, lengthCm, weightG: 0, fate: 'lawful' });   // 211차
     return this.grantXp(catchXp(fish?.rarity ?? 'common', lengthCm, avgCm) * TUNING.xp.lawfulReleaseMult);
   }
 
@@ -917,6 +936,7 @@ export class GameStateManager {
     this.warmUp();   // 188차 — 이불 속에서 자고 나면 몸이 녹는다(오한 해제 + 보온)
     StoryStore.advanceDay();   // 134차 — 스토리 하루는 침대 수면으로만 간다 (D-180)
     this.applyUpkeepOverdue();  // 171차 — 연체 중인 정기 지출은 하루마다 평판을 깎는다
+    LedgerStore.closeForSleep();   // 211차 — 잠들면 오늘 장을 닫는다(결산은 집 씬이 그린다)
     this.markDirty();
   }
 
@@ -1082,7 +1102,7 @@ export class GameStateManager {
     const t = TUNING.collapse;
     const p = this.player;
     const coinLost = Math.floor((p.inventory.coins ?? 0) * t.deathCoinLossRate);
-    if (coinLost > 0) this.addCoins(-coinLost);
+    if (coinLost > 0) this.addCoins(-coinLost, false, 'death');
     // 사망 판정을 부른 상태이상은 전부 해제하고 후유증만 남긴다
     for (const a of [...this._statuses]) this.cureStatus(a.id);
     this._statuses.length = 0;
@@ -1154,6 +1174,7 @@ export class GameStateManager {
   learnSkill(id: string): boolean {
     if (!this.canLearnSkill(id).ok) return false;
     this._skillRanks[id] = (this._skillRanks[id] ?? 0) + 1;
+    LedgerStore.skill(coreGetSkillById(id)?.nameKo ?? id);   // 211차
     this.commitVitals(this.vitals);      // 최대치 스킬(대식가·강단 등)은 즉시 상한 재계산
     this.markDirty();
     this.refreshHiddenSkills();          // 이번 습득으로 시너지가 완성됐을 수 있다
@@ -1224,6 +1245,7 @@ export class GameStateManager {
     if (gains.length === 0) return gains;
     const ups = gains.filter((g) => g.leveled);
     if (ups.length) this._recentProfUps.push(...ups);
+    for (const g of ups) LedgerStore.profUp(`${coreGetSkillById(g.skillId)?.nameKo ?? g.skillId} ${g.level}단계`);   // 211차
     this.markDirty();
     return gains;
   }
@@ -1428,7 +1450,7 @@ export class GameStateManager {
     if ((this._player?.inventory.coins ?? 0) < item.costKrw) {
       return { ok: false, reason: '재화가 부족합니다.' };
     }
-    this.addCoins(-item.costKrw);
+    this.addCoins(-item.costKrw, false, 'upkeep');
     // 기산점은 "원래 납부일" — 늦게 냈다고 주기가 통째로 밀리지 않는다.
     this._upkeepLedger[key] = item.overdue ? StoryStore.storyDay : item.dueDay;
 
@@ -1441,7 +1463,7 @@ export class GameStateManager {
       const passRate = Math.min(0.95, 0.55 + rep * 0.004);
       if (Math.random() >= passRate) {
         const retest = TUNING.upkeep.hygieneRetestKrw;
-        this.addCoins(-retest);
+        this.addCoins(-retest, false, 'upkeep');
         // 다음 점검을 곧(=경고 구간 안)으로 당긴다 — 재검사
         this._upkeepLedger[key] = StoryStore.storyDay - item.intervalDays + TUNING.upkeep.warnDays;
         note = `점검 불합격 — 재검사료 ${retest.toLocaleString()}원, 곧 재점검을 받아야 합니다.`;
@@ -1523,6 +1545,7 @@ export class GameStateManager {
       titles: TitleStore.serialize(),
       tideLore: TideLoreStore.serialize(),
       parkedRods: this._parkedRods,
+      ledger: LedgerStore.serialize(),
       flags: this._flags,
       worldObjects: this._worldObjects,
       discoveries: DiscoveryStore.serialize(),
@@ -1601,7 +1624,8 @@ export class GameStateManager {
     if (!raw) return false;
     const parsed = this.parseSaveData(raw);
     if (!parsed) return false;
-    this.applySaveData(parsed);
+    LedgerStore.suspend(true);
+    try { this.applySaveData(parsed); } finally { LedgerStore.suspend(false); }
     this._activeSlot = slot;
     this._isInitialized = true;
     console.log(`[GameState] Loaded from slot ${slot}.`);
@@ -1701,6 +1725,7 @@ export class GameStateManager {
   }
 
   newGame(): void {
+    LedgerStore.suspend(true);   // 211차 — 시작 장비 · 시드 발견은 하루 기록이 아니다
     this._character = GameStateManager.defaultCharacter('m');
     this._player = createDefaultPlayer();
     this._deployedTraps = [];
@@ -1736,7 +1761,9 @@ export class GameStateManager {
     TideLoreStore.resetAll();
     DiscoveryStore.resetAll();
     StoryStore.resetAll();
+    LedgerStore.resetAll();
     this.syncInventoryDiscoveries();
+    LedgerStore.suspend(false);
     this._currentSpotId = null;
     this._isInitialized = true;
   }
@@ -1749,7 +1776,7 @@ TitleStore.setLevelSource(() => GameState.player.level ?? 1);
 // 134차 — 스토리 스토어에 XP·재화·면허·플래그 권한 위임 (순환 import 회피)
 StoryStore.bind({
   grantXp: (n) => { GameState.grantXp(n); },
-  addCoins: (n) => { GameState.addCoins(n); },
+  addCoins: (n) => { GameState.addCoins(n, false, 'quest'); },
   acquireLicense: (t) => GameState.acquireLicense(t as never),
   heldLicenses: () => GameState.licenses.filter((l) => !l.isExpired).map((l) => l.type as string),
   level: () => GameState.player.level ?? 1,

@@ -167,6 +167,10 @@ import { MarketStore, type MarketBranch } from '../store/MarketStore.js';
 import { InventoryStore, InvItem } from '../store/InventoryStore.js';
 import { CoolerStore } from '../store/CoolerStore.js';
 import { DiscoveryStore } from '../store/DiscoveryStore.js';
+import { LedgerStore } from '../store/LedgerStore.js';
+import { playCast, playPickup, playQuestChime } from '../audio/Sfx.js';
+import { DayReportPanel } from '../ui/DayReportPanel.js';
+import { setAmbience } from '../audio/Ambience.js';
 import { BuildingKind, BUILDING_LABEL, BUILDING_GOODS, BUILDING_HOURS, shopHoursState, BUILDING_KIND_CYCLE, SHOP_CATALOG, ShopEntry } from '../data/ShopCatalog.js';
 
 interface RegionFieldInit {
@@ -475,6 +479,8 @@ export class RegionFieldScene extends Phaser.Scene {
 
   // 낚시 캐스팅
   private nearWater = false;
+  /** 211차 — 배경음 갱신 간격(ms) */
+  private ambienceT = 0;
   /**
    * 149차 — 발밑 구멍치기 자리. 테트라포드 피복(단면 2)·사석(3) 위에 서 있을 때만 값이 있다.
    * 좌클릭을 **짧게 탭**하면 구멍치기, 꾹 누르면 종전대로 캐스팅 차지다.
@@ -1308,6 +1314,8 @@ export class RegionFieldScene extends Phaser.Scene {
     // 134차 — 스토리: 지역 방문 이벤트 · NPC 배치 · 데이터 무결성(dev)
     GameState.currentRegionId = this.region;
     StoryStore.event({ kind: 'visit', placeKey: `region:${this.region}` });
+    LedgerStore.region(this.region);   // 211차 — 하루 기록 다닌 곳
+    this.time.delayedCall(1500, () => this.maybeShowUnseenDay(0));   // 211차 — 자는 사이 넘어간 하루
     // 188차 — 프롤로그: 홈타운 밖(속초)에 내리면 「막차를 타고 속초로 간다」
     if (this.region !== 'hometown') markPrologue('arrive'); else syncPrologue();
     MapPinStore.onChange = () => this.refreshQuestMarkers(true);
@@ -1316,12 +1324,16 @@ export class RegionFieldScene extends Phaser.Scene {
       this.hud?.pushLog(m);
       // 155차 — 수락·완료·거절은 로그 한 줄로 끝내지 않는다(테스터: "코드-내적 로그로만 주고받는다")
       if (m.startsWith('[할 일]')) this.floatingHint(m.replace(/^\[할 일\]\s*/, ''));
+      // 211차 — 완료는 화음, 목표 달성 · 수락은 두 음
+      if (/ 완료 — XP/.test(m)) playQuestChime(true);
+      else if (/ 달성$| 수락$/.test(m)) playQuestChime(false);
     };
     StoryStore.onActionProgress = (key, step) => this.showActionProgressScene(key, step);
     // 155차 — 획득 토스트(아이콘 + 수량, 우측 페이드). 퀘스트 보상·상점 구매·손질 산출 전부 같은 경로다.
-    InventoryStore.onGained = (item, qty) => this.hud?.showItemToast({
-      kind: item.bound ? 'quest' : 'item', name: item.name, qty, bound: item.bound, item,
-    });
+    InventoryStore.onGained = (item, qty) => {
+      playPickup();   // 211차
+      this.hud?.showItemToast({ kind: item.bound ? 'quest' : 'item', name: item.name, qty, bound: item.bound, item });
+    };
     StoryStore.onCoins = (n, why) => this.hud?.showItemToast({ kind: 'coin', name: `${n > 0 ? '+' : ''}${n.toLocaleString()}원 — ${why}`, qty: 1, iconKey: 'rw_coin' });
     this.events.once('shutdown', () => {
       InventoryStore.onGained = null; StoryStore.onCoins = null; StoryStore.onActionProgress = null;
@@ -2773,6 +2785,21 @@ export class RegionFieldScene extends Phaser.Scene {
     return panel;
   }
 
+  /**
+   * 211차 — 자지 않고 날짜가 넘어가 자정에 닫힌 장이 있으면 한 번 보여 준다(실시간 시계 — 지난 하루).
+   * 창 · 컷씬 · 가이드 · 프롤로그 중이면 2초 뒤 다시 본다(최대 30번 — 1분).
+   */
+  private maybeShowUnseenDay(tries: number): void {
+    if (!this.scene.isActive()) return;
+    const page = LedgerStore.unseenClosed();
+    if (!page) return;
+    const busy = this.popupStack.length > 0 || this.cinematicActive || GuideTour.blocking || prologueRunning() || this.isPaused;
+    if (busy) { if (tries < 30) this.time.delayedCall(2000, () => this.maybeShowUnseenDay(tries + 1)); return; }
+    const pages = LedgerStore.closedPages();
+    LedgerStore.markShown(page.no);
+    this.openPopup((close) => new DayReportPanel(this, pages, pages.length - 1, 'past', close));
+  }
+
   /** 최상단(가장 나중에 열린) 팝업 닫기. 닫은 게 있으면 true */
   private closeTopPopup(): boolean {
     if (!this.popupStack.length) return false;
@@ -3053,7 +3080,8 @@ export class RegionFieldScene extends Phaser.Scene {
       // 위판은 정당한 수입이라 조용히 넣지 않는다 — `earn` 목표에 그대로 잡힌다(146차 quiet는 거래 전용)
       StoryStore.event({ kind: 'sell' });
     }
-    if (result.netWon > 0) GameState.addCoins(result.netWon);
+    if (result.netWon > 0) GameState.addCoins(result.netWon, false, 'auction');
+    LedgerStore.life('auctionLots', sold);   // 211차
     TitleStore.bump('auctionSold', sold);   // 204차 — 「위판장 큰손」
     this.events.emit('inventory-changed');
     this.shopPanel?.refresh();
@@ -3080,7 +3108,7 @@ export class RegionFieldScene extends Phaser.Scene {
           // 190차 — 가구는 가방이 아니라 집 「넣어 둔 가구」로 배달된다
           if (entry.furnKind) {
             for (let i = 0; i < qty; i++) HomeStore.addStored(entry.furnKind);
-            GameState.addCoins(-total);
+            GameState.addCoins(-total, false, 'shop');
             GameState.markDirty();
             this.shopPanel?.refresh();
             this.shopPanel?.setStatus(`${entry.name} x${qty} — 집 「넣어 둔 가구」로 보냈습니다 (-${total.toLocaleString()}원)`);
@@ -3095,7 +3123,7 @@ export class RegionFieldScene extends Phaser.Scene {
             this.shopPanel?.setStatus('인벤토리 소켓이 가득 찼습니다.');
             return;
           }
-          GameState.addCoins(-total);
+          GameState.addCoins(-total, false, 'shop');
           this.events.emit('inventory-changed');
           this.shopPanel?.refresh();
           this.shopPanel?.setStatus(`${entry.name} x${qty} 구매 완료 (-${total.toLocaleString()}원)`);
@@ -3144,7 +3172,7 @@ export class RegionFieldScene extends Phaser.Scene {
             this.shopPanel?.setStatus('판매 수량이 부족합니다.');
             return;
           }
-          GameState.addCoins(total);
+          GameState.addCoins(total, false, 'sell');
           MarketStore.recordSale(item, qty);   // 196차 — 이 지점에 풀린 물량(판 수)
           this.events.emit('inventory-changed');
           this.shopPanel?.refresh();
@@ -3417,6 +3445,7 @@ export class RegionFieldScene extends Phaser.Scene {
    */
   private startCastFlight(dir: { x: number; y: number }, power: number): void {
     this.castBusy = true;
+    playCast(power);   // 211차 — 휙(세게 던질수록 길고 높게)
     const originX = this.playerBody.x;
     const originY = this.playerBody.y;
 
@@ -4103,6 +4132,17 @@ export class RegionFieldScene extends Phaser.Scene {
   }
 
   update(_time: number, delta: number): void {
+    LedgerStore.playTick(delta);   // 211차 — 하루 기록 놀던 시간
+    // 211차 — 배경음: 물가에 서면 파도가 커지고, 비가 오면 빗소리(1초마다 목표만 갱신)
+    this.ambienceT -= delta;
+    if (this.ambienceT <= 0) {
+      this.ambienceT = 1000;
+      const kind = ExternalDataStore.getWeatherKind(this.region);
+      setAmbience({
+        sea: this.region === 'hometown' ? 0.2 : this.nearWater ? 0.85 : 0.4,
+        rain: kind === 'rain' ? 0.8 : kind === 'shower' ? 0.5 : 0,
+      });
+    }
     // init → create 사이 또는 shutdown 직전의 stale update 차단.
     if (this.bootFailed || !this.playerBody?.active) return;
     pumpTitleBanners(this);   // 203차 — 숨은 업적 달성 배너
@@ -4701,6 +4741,7 @@ export class RegionFieldScene extends Phaser.Scene {
       obj: n.actor,
       followers: [n.label],
       nameKo: getStoryNpc(n.def.npcId)?.nameKo ?? n.def.npcId,
+      voiceId: n.def.npcId,   // 211차 — 대사 목소리(인물 표의 성별 · 나이)
       headY: this.charTopFromFeet - 6,
       setFacing: (d: CineDir) => {
         if (n.ai) { n.ai.face(d); return; }
@@ -5322,10 +5363,10 @@ export class RegionFieldScene extends Phaser.Scene {
   private applyTrade(t: MpTradeState, me: MpTradeState['from'], other: MpTradeState['from']): void {
     MultiplayerClient.markTradeApplied(t.tradeId);
     for (const it of me.offer.items) InventoryStore.removeQty(it.srcId, it.qty);
-    if (me.offer.coins > 0) GameState.addCoins(-me.offer.coins, true);
+    if (me.offer.coins > 0) GameState.addCoins(-me.offer.coins, true, 'trade');
     let lost = 0;
     for (const it of other.offer.items) if (!InventoryStore.importTradeItem(it)) lost += it.qty;
-    if (other.offer.coins > 0) GameState.addCoins(other.offer.coins, true);
+    if (other.offer.coins > 0) GameState.addCoins(other.offer.coins, true, 'trade');
     GameState.markDirty();
     this.events.emit('inventory-changed');
     this.hud?.refreshQuickslots();
@@ -6214,7 +6255,7 @@ export class RegionFieldScene extends Phaser.Scene {
           this.floatingHint(`진료비가 부족합니다 (${fee.toLocaleString()}원 필요)`);
           return;
         }
-        GameState.player.inventory.coins -= fee;
+        GameState.addCoins(-fee, true, 'clinic');   // 211차 — 하루 기록(구: 직접 차감 · 이벤트 없이)
         const cured = [
           ...GameState.applyRemedy('hospital', 1.5).cured,
           ...GameState.applyRemedy('rest', 1.5).cured,

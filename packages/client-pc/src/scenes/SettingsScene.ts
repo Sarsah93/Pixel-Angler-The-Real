@@ -15,6 +15,9 @@ import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { fadeOutThen } from './SceneFade.js';
 import { setLocale } from '../i18n/I18n.js';
+import { refreshAudioVolumes, playUiClick } from '../audio/Sfx.js';
+import { VoiceTyper } from '../audio/Voice.js';
+import { GUIDE_VOICE } from '@tra/core';
 
 // ─────────────────────────────────────────────
 // 설정 저장 구조체
@@ -22,6 +25,8 @@ import { setLocale } from '../i18n/I18n.js';
 export interface GameSettings {
   sfxVolume: number;    // 0.0 ~ 1.0
   bgmVolume: number;    // 0.0 ~ 1.0
+  /** 211차 — 대사 소리(글자마다 나는 목소리 블립) 0.0 ~ 1.0 */
+  voiceVolume: number;
   language: 'ko' | 'en';
   /** 1인칭 낚시 뷰 낚싯대(로드) 화면 위치 — 화면 중앙 기준 좌/우 */
   rodSide: 'left' | 'right';
@@ -49,7 +54,7 @@ export interface GameSettings {
 const SETTINGS_STORAGE_KEY = 'pixelAngler_settings';
 
 const DEFAULT_SETTINGS: GameSettings = {
-  sfxVolume: 0.7, bgmVolume: 0.5, language: 'ko',
+  sfxVolume: 0.7, bgmVolume: 0.5, voiceVolume: 0.6, language: 'ko',
   rodSide: 'right', reelHandle: 'left',
   hudStatusSize: 0, hudStatusAlpha: 0, hudChatSize: 0, hudChatAlpha: 0,
   showFieldLabels: false,
@@ -67,6 +72,7 @@ export function loadSettings(): GameSettings {
 
 export function saveSettings(settings: GameSettings): void {
   localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+  refreshAudioVolumes();   // 211차 — 다음 소리부터 새 볼륨
 }
 
 // ─────────────────────────────────────────────
@@ -507,8 +513,9 @@ export class SettingsScene extends Phaser.Scene {
     const startY = panelY + 130;
 
     const audioItems: { key: keyof GameSettings; label: string; desc: string }[] = [
-      { key: 'sfxVolume', label: '효과음 볼륨 (SFX)', desc: '버튼 클릭, 낚시 입질, 캐스팅 등 효과음 음량' },
-      { key: 'bgmVolume', label: '배경음 볼륨 (BGM)', desc: '배경 ASMR 파도소리, 갈매기 소리, 인게임 BGM 음량' },
+      { key: 'sfxVolume', label: '효과음 볼륨 (SFX)', desc: '캐스팅 · 입질 · 릴 · 드랙 · 돈 · 버튼 같은 효과음 음량' },
+      { key: 'bgmVolume', label: '배경음 볼륨 (BGM)', desc: '파도 · 빗소리 같은 배경음 음량' },
+      { key: 'voiceVolume', label: '대사 소리', desc: '대화 글자가 찍힐 때 나는 인물 목소리 음량' },
     ];
 
     audioItems.forEach((item, i) => {
@@ -567,13 +574,22 @@ export class SettingsScene extends Phaser.Scene {
         if (!isDragging) return;
         this.updateSlider(pointer.x, startX, trackW, item.key, fill, handle, valText);
       });
-      this.input.on('pointerup', () => { isDragging = false; saveSettings(this.settings); });
+      this.input.on('pointerup', () => {
+        const was = isDragging;
+        isDragging = false;
+        saveSettings(this.settings);
+        // 211차 — 놓는 순간 그 볼륨으로 한 번 들려준다(대사 소리는 짧은 한마디)
+        if (was) {
+          if (item.key === 'voiceVolume') { const v = new VoiceTyper(GUIDE_VOICE); [...'안녕하세요'].forEach((ch, i) => this.time.delayedCall(i * 70, () => v.say(ch))); }
+          else if (item.key === 'sfxVolume') playUiClick();
+        }
+      });
 
       this.contentContainer.add(dragZone);
     });
 
     // 저장 안내
-    const saveNote = this.add.text(startX, startY + 250, '슬라이더 조절 후 자동 저장됩니다.', {
+    const saveNote = this.add.text(startX, startY + 330, '슬라이더 조절 후 자동 저장됩니다.', {
       fontFamily: '"Noto Sans KR", sans-serif',
       fontSize: '11px',
       color: '#4af2a1',

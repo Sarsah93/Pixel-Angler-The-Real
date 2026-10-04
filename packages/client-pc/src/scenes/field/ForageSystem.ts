@@ -646,7 +646,7 @@ export class ForageSystem {
     //   계원이든 아니든 행사료를 낸다(계원은 싸다). 막지는 않는다 — 위반 판정은 아래 조례가 한다.
     if (farm) {
       const fee = GameState.fisheryGroundFeeKrw();
-      if (fee > 0 && GameState.addCoins(-fee)) {
+      if (fee > 0 && GameState.addCoins(-fee, false, 'fee')) {
         this.host.pushLog(`[어장] ${farm.name} 행사료 ${fee.toLocaleString()}원 납부`);
       }
     }
@@ -657,7 +657,7 @@ export class ForageSystem {
       if (enf.caught) {
         if (where === 'cooler') CoolerStore.removeAt(coolerIdx);
         else InventoryStore.removeQty(invId, 1);
-        if (enf.fineWon > 0) GameState.addCoins(-enf.fineWon);
+        if (enf.fineWon > 0) GameState.addCoins(-enf.fineWon, false, 'fine');
         GameState.markDirty();
         this.host.scene.cameras.main.flash(260, 200, 40, 40);
         this.host.scene.cameras.main.shake(200, 0.006);

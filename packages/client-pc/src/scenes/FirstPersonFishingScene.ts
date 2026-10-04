@@ -63,8 +63,13 @@ import {
   rollLandingDrop, FOOTING_LABEL, type FootingKind, type LandingDropResult,
 } from '@tra/core';
 import {
-  reelGearK, reelRetrieveMps, effectiveDragKg,
+  reelGearK, reelRetrieveMps, effectiveDragKg, reelCmPerTurn,
 } from '@tra/core';
+import {
+  playSplash, playBiteTick, playHookSet, playHookMiss, playReelTick, playDragZing, playLineSnap,
+  playCatchFanfare, playRelease,
+} from '../audio/Sfx.js';
+import { setAmbience } from '../audio/Ambience.js';
 import {
   snagDragChance, snagHazardPerM, sinkerHoldsBottom,
   type SnagRigKind, type SinkerHoldResult, type ParkedRigSnapshot, type ParkedRodPhase, type ParkedRodEvent,
@@ -80,6 +85,7 @@ import { baitKeyOf } from '../store/RigParts.js';
 import { InventoryStore, RigStepKey, CARD_RIG_INFO, netReachFromName } from '../store/InventoryStore.js';
 import { isGod } from '../dev/DevMode.js';
 import { CoolerStore, COOLER_CAPACITY } from '../store/CoolerStore.js';
+import { LedgerStore } from '../store/LedgerStore.js';
 import { ExternalDataStore } from '../store/ExternalDataStore.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { applyScreenFixed } from '../ui/DraggablePanel.js';
@@ -263,6 +269,23 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   private fight: FightingPhase | null = null;
   /** 210차 — 릴 드랙이 미끄러지는 중(넘친 장력만큼 줄이 나간다) — 하네스 · 연출 */
   private dragSlipping = false;
+  /** 211차 — 릴 딸깍 누적(감은 m) · 드랙 지지직 간격 */
+  private reelSoundAccM = 0;
+  private dragZingT = 0;
+
+  /**
+   * 211차 — 감은 길이로 릴 딸깍을 낸다. 핸들 ¼바퀴(한 바퀴 감기 ÷ 4)마다 한 번 —
+   * 하이기어 릴은 같은 속도에 핸들이 덜 돌고, 무거운 고기는 감기 자체가 느려 딸깍이 드문드문해진다.
+   */
+  private tickReelSound(dt: number, mps: number, load01: number): void {
+    if (mps <= 0) return;
+    const spec = InventoryStore.reelSpec;
+    const quarterM = (spec ? reelCmPerTurn(spec) : 78) / 100 / 4;
+    this.reelSoundAccM += mps * dt;
+    let n = 0;
+    while (this.reelSoundAccM >= quarterM && n < 3) { this.reelSoundAccM -= quarterM; n++; playReelTick(load01); }
+    if (this.reelSoundAccM > quarterM) this.reelSoundAccM = 0;
+  }
   private hookedFish: SpawnedFish | null = null;
 
   private zLimitM = 5;
@@ -543,6 +566,13 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.tideNowCache = null; this.tideClock = null; this.chumBank = 0;
     // 206차 — 처음 진행하는 퀘스트에 낚싯대 어획 목표가 열려 있으면 밑걸림을 덜 낸다(QA — 퀘스트 원활 진행)
     this.snagQuestMult = StoryStore.firstRunRodObjectiveOpen() ? TUNING.snag.questFirstMult : 1;
+    // 211차 — 착수 풍덩(채비가 무거울수록 낮고 크게) · 바닷가 배경음
+    this.reelSoundAccM = 0; this.dragZingT = 0;
+    playSplash(Math.min(1, InventoryStore.getRigTotalWeightG() / 120));
+    {
+      const kind = ExternalDataStore.getWeatherKind(this.cfg.region);
+      setAmbience({ sea: 0.9, rain: kind === 'rain' ? 0.8 : kind === 'shower' ? 0.5 : 0 });
+    }
     // 207차 — 끌림 거리 · 걸림 상태 · 봉돌 굴림도 캐스팅마다 새로
     this.dragPrev = null; this.snagStuck = null; this.snagChoice = false; this.parkTourAsked = false; this.parkChipAcc = 0; this.parkToastUntil = 0; this.snagHazardNow = 0; this.sinkerHold = SINKER_HOLDS;
     this.lastBiteProbPerSec = 0; this.lastSnagRisk = 1;
@@ -904,6 +934,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
         : baitKept
           ? '\n\n미끼는 살아남았습니다. 3단계 입질에 챔질하세요.'
           : '\n\n물고기가 미끼를 뱉고 달아났습니다.\n초릿대가 크게 휘는 3단계 입질에 챔질하세요.';
+      playHookMiss();   // 211차
+      LedgerStore.lost('missed');
       this.showResultPanel('챔질 실패', `${r.message}${tail}`, '#ff9a6a');
     }
   }
@@ -916,6 +948,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
    * 3단계는 "지금 챔질!" 강조까지 (유저가 챔질 타이밍을 시각으로 읽도록).
    */
   private playStageEffect(stage: number): void {
+    playBiteTick(stage);   // 211차 — 초릿대 톡 · 톡톡 · 쿡
     const fx = this.screenX(this.rig.floatX);
     const conf = [
       { marks: '!', color: '#ffe28a', ripple: 10, shake: 0 },
@@ -973,6 +1006,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
 
   /** 챔질 성공 배너 — HOOK UP! 플래시 */
   private playHookUpEffect(): void {
+    playHookSet();   // 211차
     const banner = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 90, 'HOOK UP!', {
       fontFamily: 'monospace', fontSize: '42px', color: '#4af2a1', fontStyle: 'bold',
       stroke: '#0a1628', strokeThickness: 8,
@@ -1908,6 +1942,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   // ═══════════════════════════════════════════════════
   update(_time: number, deltaMs: number): void {
     let dt = Math.min(0.05, deltaMs / 1000);
+    LedgerStore.playTick(deltaMs);   // 211차 — 하루 기록 놀던 시간
     pumpTitleBanners(this);   // 203차 — 숨은 업적 달성 배너(들어뽕 · 줄 터짐 · 방생 …)
     // 204차 — 「물때 감각」: 파이팅 중엔 미뤘다가 끝나면 띄운다(패턴 경고 자리와 겹치지 않게)
     pumpTideFlow(this, { toastY: 60, hold: this.fpState === 'fighting' });
@@ -2269,6 +2304,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       const withCurrent = Math.sign(cross) === side;
       const reelMps = 1.7 * (withCurrent ? 1.4 : 0.65);
       frameReelMps = reelMps;
+      this.tickReelSound(dt, reelMps, 0.05);   // 211차 — 빈 채비 감는 딸깍(가볍고 빠르다)
       this.distM = Math.max(0, this.distM - reelMps * dt);
       this.rig.floatX += side * (withCurrent ? 0.9 : 0.45) * dt;
       this.rig.baitX += side * (withCurrent ? 0.9 : 0.45) * dt;
@@ -3160,6 +3196,12 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     //   손을 놓으면(reelMps 0) 상한이 사라져 물고기가 줄을 끌고 나간다.
     if (reeling) fwd = Math.min(fwd, reelMps * D.reelHoldCap);
     this.dragSlipping = slipKg > 0;
+    // 211차 — 소리: 감은 만큼 릴 딸깍(핸들 ¼바퀴마다) · 드랙이 풀리면 지지직
+    this.tickReelSound(dt, reelMps, st.tension / 100);
+    if (slipKg > 0) {
+      this.dragZingT -= dt;
+      if (this.dragZingT <= 0) { this.dragZingT = 0.14; playDragZing(slip01); }
+    }
     this.distM = Phaser.Math.Clamp(
       this.distM + (fwd + slipOutMps - reelMps) * dt, D.landRangeM * 0.4, this.hookDistM * 1.6);
 
@@ -3315,11 +3357,14 @@ export class FirstPersonFishingScene extends Phaser.Scene {
           const floatToo = Math.random() < 0.3;
           const lost = this.applyLineLoss(floatToo ? 'above_float' : 'leader');   // 206차 — 트리 기준
           TitleStore.bump('lineBreak');   // 203차 — 「줄 끊는 사람」
+          playLineSnap();   // 211차
+          LedgerStore.lost('lineBreak');
           this.failAndExit(floatToo ? '줄터짐! 찌까지 터졌습니다' : '줄터짐! 목줄이 터졌습니다',
             `텐션이 한계를 넘어 ${floatToo ? '찌 위에서' : '목줄이'} 터졌습니다.\n손실: ${lost.join(', ')}\n\nU 채비하기에서 재장착 후 다시 캐스팅하세요.`);
           break;
         }
         case 'hook_off': {
+          LedgerStore.lost('hookOff');   // 211차
           // 미끼 털림 / 복어류는 목줄째 절단
           if (this.hookedFish?.lineCutter) {
             const lost = this.applyLineLoss('cutter');   // 206차 — 도래 아래 전부(목줄은 길이만)
@@ -3336,6 +3381,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
           break;
         }
         case 'escaped': {
+          playHookMiss();   // 211차
+          LedgerStore.lost('escaped');
           const lost = InventoryStore.loseRigParts(['bait'] as RigStepKey[]);
           this.failAndExit('놓쳤다! 물고기가 탈출했습니다',
             `${lost.length ? `물고기가 탈출하며 미끼를 채갔습니다.\n손실: ${lost.join(', ')}` : '물고기가 탈출했습니다. 루어는 무사히 회수했습니다.'}\n패턴(바늘털이/여 박기/횡이동)에 맞게 대응하세요.`);
@@ -3355,6 +3402,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     const floatToo = Math.random() < 0.3;
     const lost = this.applyLineLoss(floatToo ? 'above_float' : 'leader');   // 206차 — 트리 기준
     TitleStore.bump('lineBreak');
+    playLineSnap();   // 211차
+    LedgerStore.lost('lineBreak');
     this.failAndExit('무리한 릴링! 줄이 터졌습니다',
       `한계 텐션에서 릴링을 강행해 라인이 파단됐습니다.\n손실: ${lost.join(', ')}\n\n텐션이 높을 때는 릴링을 멈추고 드랙으로 버티세요.`);
   }
@@ -3390,6 +3439,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   private onLanded(): void {
     GameState.applyVitalsAction('fightWin');   // 125차 — 성공 파이팅 행동 비용
     const f = this.hookedFish!;
+    // 211차 — 들어 올리는 첨벙 + 팡파르(1kg · 3kg을 넘으면 한 음씩 더)
+    playCatchFanfare(f.weightG >= 3000 ? 2 : f.weightG >= 1000 ? 1 : 0);
     const protectedFish = f.isUndersized || f.isClosedSeason;
     const sexLabel = f.sex === 'M' ? '수컷' : '암컷';
     const fishTexture = resolveFishTexture(f.speciesId, f.lengthCm, f.sex);
@@ -3620,7 +3671,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     const rows = school.map((x) => `${x.nameKo} ${x.lengthCm}cm`).join('\n');
     const dlg = new ConfirmDialog(this,
       `${school.length > 1 ? `${school.length}마리를 모두` : '이 고기를'} 방생할까요?\n${rows}\n방생한 고기는 되돌릴 수 없습니다.`,
-      () => { dlg.destroy(); this.releaseConfirm = null; TitleStore.bump('release', school.length); onYes(); },
+      () => { dlg.destroy(); this.releaseConfirm = null; TitleStore.bump('release', school.length); playRelease(); LedgerStore.released(school.length); onYes(); },
       () => { dlg.destroy(); this.releaseConfirm = null; },
       { yes: '방생하기', no: '취소', danger: true });
     this.add.existing(dlg);

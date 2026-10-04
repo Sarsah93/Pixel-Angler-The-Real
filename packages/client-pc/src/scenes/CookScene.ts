@@ -380,7 +380,7 @@ export class CookScene extends Phaser.Scene {
         this.showFinalMessage(`${recipe.nameKo}을(를) 식당 메뉴에 추가하고 재료를 소모했습니다!`, false);
       } else {
         // 즉시 판매로 코인 추가
-        GameState.addCoins(recipe.estimatedSaleValue);
+        GameState.addCoins(recipe.estimatedSaleValue, false, 'sell');
         GameState.markDirty();   // 저장은 집 침대에서만 (HOMETOWN_HOME_SPEC)
         this.showFinalMessage(`${recipe.nameKo}을(를) 즉시 판매하여 ₩${recipe.estimatedSaleValue.toLocaleString()}을 획득했습니다!`, false);
       }

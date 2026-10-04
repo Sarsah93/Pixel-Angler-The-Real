@@ -18,6 +18,8 @@ import { ensureFacePortrait } from './CharacterSprite.js';
 import { characterLook } from '../data/EquipOutfit.js';
 import { applyPortraitMask, type PortraitMaskHandle } from './PortraitMask.js';
 import { PORTRAIT_LAYOUT } from './PortraitLayout.js';
+import { voiceOfNpc, voiceOfPlayer } from '@tra/core';
+import { VoiceTyper } from '../audio/Voice.js';
 
 const W = 1040;
 const H = 300;
@@ -57,6 +59,7 @@ export class MonologuePanel extends DraggablePanel {
 
   /** 190차 — 초상·이름을 바꿔 쓴다(집 라디오 방송 = 라디오 그림 + 「라디오」). 없으면 주인공 얼굴·이름 */
   private readonly voice?: { portraitKey: string; name: string };
+  private readonly blips: VoiceTyper;
 
   constructor(scene: Phaser.Scene, paras: string[], onDone: () => void, title = '혼잣말', voice?: { portraitKey: string; name: string }) {
     super(scene, {
@@ -65,6 +68,8 @@ export class MonologuePanel extends DraggablePanel {
     });
     this.onDone = onDone;
     this.voice = voice;
+    // 211차 — 혼잣말은 주인공 목소리, 다른 사람(가구 그림 등 이름 있는 초상)은 그 이름으로 정한 목소리
+    this.blips = new VoiceTyper(voice ? voiceOfNpc(voice.name) : voiceOfPlayer(GameState.character.look.sex));
     // 188차 — 단락을 **먼저 번역**해서 타이핑한다(구: 한국어 원문을 한 글자씩 치다가 다 쳐야 영어로 바뀌었다 —
     //   부분 문자열은 사전에 없어서 영어 화면에 한국어가 흘러나왔다)
     this.queue = paras.filter((p) => p.trim().length > 0).map((p) => t(p));
@@ -217,6 +222,7 @@ export class MonologuePanel extends DraggablePanel {
       delay: TYPE_MS, loop: true,
       callback: () => {
         this.typed = Math.min(this.typingPara.length, this.typed + 1);
+        this.blips.say(this.typingPara.charAt(this.typed - 1));
         this.paintLog();
         if (this.typed >= this.typingPara.length) {
           this.typeTimer?.remove(); this.typeTimer = undefined;

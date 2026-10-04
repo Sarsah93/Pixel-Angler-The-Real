@@ -1216,7 +1216,7 @@ export class WorldMapScene extends Phaser.Scene {
       this.showFareAlert(`교통비가 부족합니다 (₩${fare.toLocaleString()}) — 보유 ₩${coins.toLocaleString()}`);
       return;
     }
-    GameState.player.inventory.coins = coins - fare;
+    GameState.addCoins(-fare, true, 'travel');   // 211차 — 하루 기록(구: 직접 대입)
     GameState.applyVitalsAction('travel');   // 125차 — 지역 간 이동(출조) 행동 비용
     GameState.markDirty();
 

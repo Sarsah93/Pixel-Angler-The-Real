@@ -35,6 +35,9 @@ import { applyScreenFixed } from './DraggablePanel.js';
 import { t } from '../i18n/I18n.js';
 import { applyPortraitMask, type PortraitMaskHandle } from './PortraitMask.js';
 import { PORTRAIT_LAYOUT } from './PortraitLayout.js';
+import { voiceOfNpc } from '@tra/core';
+import { VoiceTyper } from '../audio/Voice.js';
+import { playUiClick } from '../audio/Sfx.js';
 
 const W = 1040;
 const H = 372;
@@ -88,6 +91,8 @@ type View = 'menu' | 'quest' | 'reply' | 'jobs';
 export class DialoguePanel extends DraggablePanel {
   private bodyC?: Phaser.GameObjects.Container;   // ⚠ `body`는 Phaser Container 예약 프로퍼티(44차 함정)
   private readonly npcId: string;
+  /** 211차 — 이 사람의 목소리(글자마다 블립) */
+  private readonly voice: VoiceTyper;
   private readonly onClose: () => void;
   private readonly regionId: string;
   private readonly onTrade?: (shopId: string) => void;
@@ -141,6 +146,7 @@ export class DialoguePanel extends DraggablePanel {
       width: W, height: H, title: `${npc?.nameKo ?? npcId}  ·  ${npc?.roleKo ?? ''}`, onClose, dim: true, depth: 940,
     });
     this.npcId = npcId;
+    this.voice = new VoiceTyper(voiceOfNpc(npcId));
     this.onClose = onClose;
     this.regionId = regionId;
     this.onTrade = onTrade;
@@ -190,7 +196,7 @@ export class DialoguePanel extends DraggablePanel {
     else if (ev.code === 'ArrowDown') { this.moveCursor(1); ev.preventDefault(); }
     else if (ev.code === 'Enter' || ev.code === 'Space') {
       const r = this.rows[this.cursor];
-      if (r && !r.disabled) { ev.preventDefault(); r.action(); }
+      if (r && !r.disabled) { ev.preventDefault(); playUiClick(); r.action(); }
     }
   }
 
@@ -391,7 +397,9 @@ export class DialoguePanel extends DraggablePanel {
     this.typeTimer = this.scene.time.addEvent({
       delay: TYPE_MS, loop: true,
       callback: () => {
+        const from = this.typed;
         this.typed = Math.min(this.typingPara.length, this.typed + CHARS_PER_TICK);
+        for (let i = from; i < this.typed; i++) this.voice.say(this.typingPara.charAt(i));
         this.paintLog();
         if (this.typed >= this.typingPara.length) {
           this.typeTimer?.remove(); this.typeTimer = undefined;
@@ -719,7 +727,7 @@ export class DialoguePanel extends DraggablePanel {
       const hit = this.scene.add.rectangle(TEXT_X + TEXT_W / 2, y, TEXT_W, step - 2, 0xffffff, 0.001)
         .setInteractive({ useHandCursor: !row.disabled });
       hit.on('pointerover', () => { if (!row.disabled) { this.cursor = i; this.paintCursor(); } });
-      hit.on('pointerdown', () => { if (!row.disabled) row.action(); });
+      hit.on('pointerdown', () => { if (!row.disabled) { playUiClick(); row.action(); } });
       c.add([g, t, hit]); if (h) c.add(h);
       this.rowObjs.push({ g, t, h, row, cy: y });
       y += step;

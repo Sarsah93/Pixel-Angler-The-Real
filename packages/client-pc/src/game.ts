@@ -14,6 +14,7 @@
 
 import Phaser from 'phaser';
 import { PHASER_CONFIG } from './PhaserConfig.js';
+import { installAudioUnlock } from './audio/Sfx.js';
 import { BootScene } from './scenes/BootScene.js';
 import { MainMenuScene } from './scenes/MainMenuScene.js';
 import { CharacterCreateScene } from './scenes/CharacterCreateScene.js';
@@ -66,6 +67,8 @@ export function createGame(): Phaser.Game {
   initDevTuningPanel();
   // dev 전용 크리에이티브 콘솔 (F10) — 아이템/어종 지급·무적·도감 해금
   initDevConsolePanel();
+  // 211차 — 첫 클릭 · 키 입력에 오디오를 깨운다(브라우저 자동재생 정책)
+  installAudioUnlock();
 
   // 씬 등록 순서가 곧 씬 키 우선순위
   const config: Phaser.Types.Core.GameConfig = {

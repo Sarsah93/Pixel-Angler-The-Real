@@ -461,7 +461,14 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-10-04 210차) — 릴 드랙 · 기어비를 파이팅에**
+**최근 변경 (2026-10-04 211차) — 사운드 1차 · 대사 목소리 · 하루 결산**
+
+- client `audio/Sfx`(버스 3 · 효과음 19종) · `Ambience`(파도/비) · `Voice`(`VoiceTyper`) + core `CharacterVoice`(인물별 목소리).
+- core `DayLedger`(`buildLedgerCards`) + client `LedgerStore`(잠/자정 마감 · 14장 · 세이브 `ledger`) + `ui/DayReportPanel`(오늘 하루 / 지난 하루).
+- 함정: 자동으로 띄우는 창은 `GuideTour.blocking`만 기다린다(수동 말풍선은 busy지만 입력을 막지 않는다) · 장부는 스토어 변경 지점에서, 불러오기 중엔 `suspend`.
+  상세: [211차 워크로그](../docs/wiki/03-WORKLOG/2026-10-04-211-sound-day-ledger.md).
+
+**이전 변경 (2026-10-04 210차) — 릴 드랙 · 기어비를 파이팅에**
 
 - core `FightingPhase` 입력 `reelDragKg` · `reelGearK` — 드랙 = 줄 쪽과 릴 최대 드랙 중 약한 쪽 · 넘친 장력 `dragSlipKg`만큼 줄이 나가고 감기 헛돎.
 - core `RodFit.reelRetrieveMps` — 회수 속도 = 기준 × 한 바퀴 감기 배율 ÷ (1 + 체중 × 감쇠 × 감기 부하) · `TUNING.reelFight`.
@@ -476,14 +483,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
   · 스스로 걸림(`hooked`) · 엉킴(`tangled`) · 평면 판 위 칩.
 - 함정: 입질 창은 벽시계가 아니라 굴린 시간(`phaseAgeSec`) · 대 배율은 비행 · 조준 가이드 · 예상 궤적 셋 다(`fishing-loop.md` §6-22).
   상세: [209차 워크로그](../docs/wiki/03-WORKLOG/2026-10-04-209-rod-lineup-parked-fight.md).
-
-**이전 변경 (2026-10-04 208차) — 거치대 여러 대(최대 3) · 낚싯대 한 벌 이동 · 밑걸림 λ 0.08/m**
-
-- 거치대 상한 `min(maxHolders 3, 가진 거치대 수)` · 거치 = 대 · 릴 · 부품 · 미끼 한 벌을 가방에서 빼 `gear`로
-  (`takeRigForParking` · `returnParkedGear`).
-- 번호 1~3 · 「[거치대 N]」 채널 · [F] 입질 우선 · 세이브 `parkedRods[]` · 끌림 λ 0.10 → 0.08/m(여 7m 43%).
-- 함정: 거치대 「!」는 그림 컨테이너 밖 깊이 61 — 안에 두면 머리 위 [F] 안내(60)에 가린다(`fishing-loop.md` §6-21).
-  상세: [208차 워크로그](../docs/wiki/03-WORKLOG/2026-10-04-208-multi-rod-holder-snag-008.md).
 
 ---
 

@@ -10,6 +10,7 @@
  * - 신규 발견 알림: onNew 훅 (HUD가 등록 — pushLog "도감에 등록되었습니다")
  */
 
+import { LedgerStore } from './LedgerStore.js';
 import type { DiscoveryKind, DiscoverySource, DiscoveryEntry } from '@tra/core';
 import { discoveryKey, FISH_DATABASE, dishDiscoveryName } from '@tra/core';
 import { SHORE_CREATURE_DATABASE } from '@tra/core';
@@ -35,6 +36,8 @@ class DiscoveryStoreClass {
     if (this.entries.has(key)) return false;
     const entry: DiscoveryEntry = { kind, id, firstAtMs: Date.now(), source };
     this.entries.set(key, entry);
+    // 211차 — 하루 기록(아이템은 가방 칸이 따로 센다 — 어종 · 생물 · 요리 같은 「알게 된 것」만)
+    if (kind !== 'item') LedgerStore.discovery(kind, this.displayNameOf(kind, id));
     if (this.onNew) {
       this.onNew(entry, this.displayNameOf(kind, id));
     }

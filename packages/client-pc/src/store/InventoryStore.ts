@@ -12,6 +12,7 @@
  * 데이터 원본(@tra/core UniversalItemDatabase)과의 정식 연동은 추후 작업.
  */
 
+import { LedgerStore } from './LedgerStore.js';
 import {
   evaluateFishSellPrice, WEIGHT_SINKER_DB, WeightSinkerKind,
   SINKER_BASE_DRAG_CD, SINKER_BUNDLE_DRAG_CD, SINKER_HOLE_FEEDBACK_MULT,
@@ -1667,7 +1668,7 @@ class InventoryStoreManager {
     const existing = this.find(template.id);
     if (existing) {
       existing.qty += qty;
-      if (!opts.silent) { this.newIds.add(existing.id); this.onGained?.(existing, qty); }
+      if (!opts.silent) { this.newIds.add(existing.id); this.onGained?.(existing, qty); LedgerStore.gained(existing.name, qty); }
       return true;
     }
     const slot = this.findFreeSlot(template.category);
@@ -1680,7 +1681,7 @@ class InventoryStoreManager {
     this._items.push(item);
     // 위키 발견 기록 (최초 취득 1회 — 개체형 id는 위키 카탈로그에 없어 자연 무시됨)
     DiscoveryStore.record('item', template.id, 'inventory');
-    if (!opts.silent) { this.newIds.add(item.id); this.onGained?.(item, qty); }
+    if (!opts.silent) { this.newIds.add(item.id); this.onGained?.(item, qty); LedgerStore.gained(item.name, qty); }   // 211차 — 하루 기록(토스트로 본 것 = 얻은 것)
     return true;
   }
 
@@ -1725,6 +1726,7 @@ class InventoryStoreManager {
     const item = this.find(itemId);
     if (!item || item.qty < qty) return false;
     item.qty -= qty;
+    LedgerStore.used(item.name, qty);   // 211차 — 하루 기록(팔고 · 먹고 · 쓰고 · 잃은 것)
     if (item.qty <= 0) this.deleteInstance(itemId);
     return true;
   }
@@ -1870,6 +1872,7 @@ class InventoryStoreManager {
   removeItem(itemId: string, all: boolean): void {
     const item = this.find(itemId);
     if (!item) return;
+    LedgerStore.used(item.name, !all && item.qty > 1 ? 1 : item.qty);   // 211차
     if (!all && item.qty > 1) {
       item.qty -= 1;
       return;
@@ -2327,6 +2330,7 @@ class InventoryStoreManager {
   setFault(item: InvItem | undefined, fault: GearFaultId): boolean {
     if (!item || item.fault) return false;
     item.fault = fault;
+    LedgerStore.gear(`${item.name} — ${GEAR_FAULTS[fault].labelKo}`);   // 211차
     // 사용불가 고장은 즉시 손에서 내린다 — 부러진 대를 든 채로 던질 수는 없다
     if (!gearUsable(fault) && item.equipped) {
       item.equipped = false;
@@ -2457,6 +2461,7 @@ class InventoryStoreManager {
     }
     // 4) 재고가 바닥난 칸만 비운다(자손 포함) — 나머지는 그대로 다시 단다
     this.syncTreeWithItems();
+    if (lost.length) LedgerStore.gear(`잃은 채비 — ${lost.join(', ')}`);   // 211차
     return lost;
   }
 

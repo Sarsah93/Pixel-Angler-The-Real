@@ -20,6 +20,8 @@ import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { t } from '../i18n/I18n.js';
 import { GameState } from '../store/GameState.js';
+import { GUIDE_VOICE } from '@tra/core';
+import { VoiceTyper } from '../audio/Voice.js';
 
 export type TourRect = Phaser.Geom.Rectangle;
 
@@ -172,6 +174,8 @@ export class GuideTour {
   private nextLabel: Phaser.GameObjects.Text;
   private fullText = '';
   private typed = 0;
+  /** 211차 — 안내 말풍선 목소리(부드럽고 높낮이가 작다) */
+  private readonly blips = new VoiceTyper(GUIDE_VOICE);
   private typeAcc = 0;
   private pulse = 0;
   /** 체험 단계 완료 후 다음으로 넘어가기까지 남은 시간 (ms) */
@@ -270,7 +274,9 @@ export class GuideTour {
       const add = Math.floor(this.typeAcc / TYPE_MS);
       if (add > 0) {
         this.typeAcc -= add * TYPE_MS;
+        const from = this.typed;
         this.typed = Math.min(this.fullText.length, this.typed + add);
+        for (let i = from; i < this.typed; i++) this.blips.say(this.fullText.charAt(i));
         this.bodyText.setText(this.fullText.slice(0, this.typed));
         this.layoutBubble();
       }

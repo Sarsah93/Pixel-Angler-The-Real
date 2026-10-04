@@ -362,7 +362,7 @@ export class LicensePanel extends DraggablePanel {
       if (ok) {
         btn.setInteractive({ useHandCursor: true });
         btn.on('pointerdown', () => {
-          if (terms.cost > 0) GameState.addCoins(-terms.cost);
+          if (terms.cost > 0) GameState.addCoins(-terms.cost, false, 'license');
           GameState.acquireLicense(lic.type);
           StoryStore.emitActionSource('selection', `license:${lic.type}`);
           GameState.markDirty();

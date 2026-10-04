@@ -673,7 +673,7 @@ export class ShopPanel extends DraggablePanel {
       this.setStatus(`재화가 부족합니다 — ${fee.toLocaleString()}원 필요`);
       return;
     }
-    GameState.player.inventory.coins -= fee;
+    GameState.addCoins(-fee, true, 'repair');   // 211차 — 하루 기록(구: 직접 차감)
     InventoryStore.clearFault(item);
     this.selectedRepair = null;
     this.setStatus(`${item.name} 수리 완료 — ${fee.toLocaleString()}원 지불`);

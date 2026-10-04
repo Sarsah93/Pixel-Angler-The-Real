@@ -599,6 +599,22 @@ const EN_EXTRA: Record<string, string> = {
 
 /** 최종 사전 — 분야별 사전을 먼저 깔고 기본 사전이 덮는다(충돌 시 기본 우선) */
 export const EN_DICT: Record<string, string> = {
+  // 211차 — 하루 결산 · 사운드 설정
+  '오늘 하루': 'Today', '지난 하루': 'The Day Before', '확인': 'OK', '조용한 하루였다.': 'A quiet day.',
+  '잠들며 마친 하루': 'Ended with sleep', '자정을 넘긴 하루': 'Rolled over at midnight', '아직 이어지는 하루': 'Still going',
+  '돈': 'Money', '낚시': 'Fishing', '이야기': 'Story', '성장': 'Growth', '새로 알게 된 것': 'Newly learned', '생활': 'Daily life',
+  '가방': 'Bag', '장비': 'Gear', '다닌 곳': 'Places', '빈손': 'Empty-handed', '고향 집': 'Hometown',
+  '판매': 'Sales', '위판': 'Auction', '의뢰 · 품삯': 'Requests · wages', '거래': 'Trades', '구매': 'Purchases',
+  '자격 · 허가': 'Licenses', '정기 지출': 'Upkeep', '수리': 'Repairs', '차비': 'Fares', '보건소': 'Clinic', '벌금': 'Fines',
+  '어장 행사료': 'Fishing-ground fee', '쓰러짐': 'Collapse', '기타': 'Other', '1분 미만': 'under a minute',
+  '지난 날 돌아보기': 'Look back on past days',
+  '대사 소리': 'Voice blips', '대화 글자가 찍힐 때 나는 인물 목소리 음량': 'Volume of the character voices played as dialogue types out',
+  '캐스팅 · 입질 · 릴 · 드랙 · 돈 · 버튼 같은 효과음 음량': 'Volume of effects — casting, bites, reel, drag, coins, buttons',
+  '파도 · 빗소리 같은 배경음 음량': 'Volume of background sounds — waves, rain',
+  '하루를 마쳤다. 오늘 바뀐 것들을 카드로 모아 두었다 — 돈 · 낚시 · 이야기 · 성장 · 생활 순이다.': 'The day is done. Everything that changed today is gathered on cards — money, fishing, story, growth, daily life.',
+  '자는 사이 하루가 지나갔다. 지난 하루에 있었던 일을 모아 두었다.': 'A day went by while you were away. Here is what happened that day.',
+  '카드가 더 있으면 아래 화살표로 넘긴다.': 'If there are more cards, flip with the arrows below.',
+  '지난 날들은 침대에서 다시 펼쳐 볼 수 있다.': 'You can look back on past days from your bed.',
   // 206차 — HUD 물때 칩 툴팁(물 방향)
   '물이 들어오는 중': 'Water coming in',
   '물이 빠지는 중': 'Water going out',
@@ -629,6 +645,31 @@ const DOW_EN: Record<string, string> = {
 };
 /** 수치·이름이 끼어 있는 문장 — 정규식 규칙. 캡처 그룹은 그대로 옮긴다(이름은 사전을 다시 타지 않으므로 어종·아이템명은 한국어로 남을 수 있음). */
 export const EN_RULES: Rule[] = [
+  // 211차 — 하루 결산 카드
+  [/^(\d+)월 (\d+)일 (일|월|화|수|목|금|토)요일$/, (m) => `${['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][Number(m[1])]} ${m[2]}, ${({ 일: 'Sunday', 월: 'Monday', 화: 'Tuesday', 수: 'Wednesday', 목: 'Thursday', 금: 'Friday', 토: 'Saturday' } as Record<string, string>)[m[3]]}`],
+  [/^(\d+)시간 (\d+)분 머묾$/, '$1h $2m played'], [/^(\d+)분 머묾$/, '$1m played'], [/^1분 미만 머묾$/, 'under a minute played'],
+  [/^([+−])([\d,]+)원$/, (m) => `${m[1] === '−' ? '−' : '+'}₩${m[2]}`],
+  [/^([\d,]+)원 → ([\d,]+)원$/, '₩$1 → ₩$2'],
+  [/^([+−]) (.+) ([\d,]+)원$/, (m, tr) => `${m[1]} ${tr(m[2])} ₩${m[3]}`],
+  [/^(\d+)마리 · (\d+)종$/, '$1 fish · $2 species'],
+  [/^가장 큰 고기 — (.+) (\d+)cm$/, (m, tr) => `Biggest — ${tr(m[1])} ${m[2]}cm`],
+  [/^보관 (\d+)마리$/, 'Kept $1'], [/^놓아줌 (\d+)마리$/, 'Released $1'],
+  [/^작거나 금어기라 돌려보냄 (\d+)마리$/, 'Returned $1 (undersized or closed season)'],
+  [/^놓친 것 — (.+)$/, (m, tr) => `Lost — ${tr(m[1])}`],
+  [/^줄터짐 (\d+)$/, 'line breaks $1'], [/^탈출 (\d+)$/, 'escapes $1'], [/^바늘 빠짐 (\d+)$/, 'thrown hooks $1'], [/^헛챔질 (\d+)$/, 'missed strikes $1'],
+  [/^(\d+)건 마침$/, '$1 done'], [/^새로 (\d+)가지$/, '$1 new'], [/^할 일 (\d+)개 해냄$/, '$1 objectives done'],
+  [/^마침 — (.+)$/, (m, tr) => `Done — ${tr(m[1])}`], [/^맡음 — (.+)$/, (m, tr) => `Took on — ${tr(m[1])}`],
+  [/^… 외 (\d+)건 마침$/, '… and $1 more done'], [/^… 외 (\d+)$/, '… and $1 more'],
+  [/^(.+)(와|과) 가까워졌다$/, (m, tr) => `Grew closer to ${tr(m[1])}`],
+  [/^(.+)(와|과) 서먹해졌다$/, (m, tr) => `Drifted apart from ${tr(m[1])}`],
+  [/^경험 \+([\d,]+)$/, 'XP +$1'], [/^레벨 (\d+)단계 올랐다$/, 'Level +$1'],
+  [/^솜씨 — (.+) (\d+)단계$/, (m, tr) => `Skill — ${tr(m[1])} Lv.${m[2]}`],
+  [/^새 기술 — (.+)$/, (m, tr) => `New skill — ${tr(m[1])}`], [/^타이틀 — (.+)$/, (m, tr) => `Title — ${tr(m[1])}`],
+  [/^요리 (\d+)번$/, 'Cooked $1×'], [/^손질 (\d+)마리$/, 'Filleted $1'], [/^회 (\d+)접시$/, 'Sashimi $1 plates'],
+  [/^제작 (\d+)번$/, 'Crafted $1×'], [/^통발 걷기 (\d+)번$/, 'Hauled traps $1×'], [/^채집 (\d+)번$/, 'Foraged $1×'],
+  [/^위판 낙찰 (\d+)건$/, 'Auction lots sold $1'],
+  [/^([+−]) (.+) ×(\d+)$/, (m, tr) => `${m[1]} ${tr(m[2])} ×${m[3]}`],
+  [/^잃은 채비 — (.+)$/, (m, tr) => `Rig lost — ${tr(m[1])}`],
   // 200차 — 지도 마커 정보 카드(거리·방향 · 겹친 자리 목록)
   [/^약 ([\d.]+)(m|km) · (북동|북서|남동|남서|동|서|남|북)쪽$/, (m) => `About ${m[1]} ${m[2]} ${({ 동: 'east', 서: 'west', 남: 'south', 북: 'north', 북동: 'northeast', 북서: 'northwest', 남동: 'southeast', 남서: 'southwest' } as Record<string, string>)[m[3]] ?? ''}`],
   [/^이 자리에 (\d+)곳$/, '$1 places here'],

@@ -14,6 +14,7 @@
  *   퀘스트는 처음부터 — 스킵 수단은 dev 콘솔(추후)뿐.
  */
 
+import { LedgerStore } from './LedgerStore.js';
 import {
   STORY_QUESTS, getStoryQuest, lastMainQuestOfChapter, JOURNAL_PAGES, journalCatchMatches, STORY_ARCS, getStoryArc,
   seasonOfMonth, createDefaultReputation, clampHarbor, clampSea, canSell, canConsign, provenanceOf, TUNING,
@@ -331,7 +332,7 @@ class StoryStoreManager {
     if (v === (p.obj[i] ?? 0)) return false;
     p.obj[i] = v;
     const done = this.objectiveDone(q, i);
-    if (done) this.onNotify?.(`[할 일] ${q.titleKo} — ${o.labelKo} 달성`);
+    if (done) { this.onNotify?.(`[할 일] ${q.titleKo} — ${o.labelKo} 달성`); LedgerStore.objective(); }
     if (q.giver === '' && this.allObjectivesDone(q)) this.complete(q.id);
     this.host?.markDirty();
     return done;
@@ -403,7 +404,9 @@ class StoryStoreManager {
   // ── 우호도 · 선택지 (140차) ──
   affinityOf(npcId: string): number { return this.affinity[npcId] ?? 0; }
   addAffinity(npcId: string, d: number): number {
-    const v = clampAffinity(this.affinityOf(npcId) + d);
+    const before = this.affinityOf(npcId);
+    const v = clampAffinity(before + d);
+    LedgerStore.affinity(npcId, v - before);   // 211차 — 실제로 바뀐 만큼
     if (v !== 0) this.affinity[npcId] = v; else delete this.affinity[npcId];
     this.host?.markDirty();
     return v;
@@ -511,6 +514,7 @@ class StoryStoreManager {
     this.evaluateStateful(q);
     this.host?.markDirty();
     this.onNotify?.(`[할 일] ${q.titleKo} 수락`);
+    LedgerStore.questAccepted(q.titleKo);   // 211차
     return true;
   }
 
@@ -752,6 +756,7 @@ class StoryStoreManager {
     }
     h?.markQuestDone(id);
     h?.markDirty();
+    LedgerStore.questDone(q.titleKo);   // 211차
     this.onNotify?.(`[할 일] ${q.titleKo} 완료 — XP +${xp.toLocaleString()}${xpMult !== 1 ? ` (×${xpMult.toFixed(2)})` : ''}`);
     this.refreshAutoQuests();
     return true;
@@ -788,6 +793,7 @@ class StoryStoreManager {
       if (!this.objectiveReachable(q, ev.objectiveIndex)) return;
       p.obj[ev.objectiveIndex] = this.objectiveTarget(o);
       this.onNotify?.(`[할 일] ${q.titleKo} — ${o.labelKo} 달성`);
+      LedgerStore.objective();   // 211차
       if (q.giver === '' && this.allObjectivesDone(q)) this.complete(q.id);
       this.host?.markDirty();
       return;
@@ -833,7 +839,7 @@ class StoryStoreManager {
         }
         p.obj[i] = hit === 'set' ? this.setValue(o, ev) : (p.obj[i] ?? 0) + 1;
         changed = true;
-        if (this.objectiveDone(q, i)) this.onNotify?.(`[할 일] ${q.titleKo} — ${o.labelKo} 달성`);
+        if (this.objectiveDone(q, i)) { this.onNotify?.(`[할 일] ${q.titleKo} — ${o.labelKo} 달성`); LedgerStore.objective(); }
       });
     }
     // 조행록 — 제철 자가어획 누적 (퀘스트와 무관하게 언제나)

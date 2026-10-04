@@ -9,6 +9,7 @@
  * 산란기 도루묵(10~12월) 포획은 강원 조례 위반 → 적발 롤(채집과 같은 규칙).
  */
 
+import { LedgerStore } from '../../store/LedgerStore.js';
 import Phaser from 'phaser';
 import {
   type DeployedTrap, type RegionTerrain, type SpotType, type TrapSpec, type TrapCatchItem,
@@ -357,6 +358,7 @@ export class TrapFieldSystem {
   }
 
   private harvest(t: DeployedTrap): void {
+    LedgerStore.life('trap');   // 211차 — 하루 기록(걷은 횟수 · 잃어도 한 번 걷은 것)
     const spec = getTrapById(t.trapSpecId);
     const tide = calculateTideInfo();
     const soakH = (Date.now() - t.deployedAt.getTime()) / 3_600_000;
@@ -409,7 +411,7 @@ export class TrapFieldSystem {
       if (enf.caught) {
         // 압수 — 쿨러/인벤에서 해당 어종 제거
         for (const id of viol) this.confiscate(id);
-        if (enf.fineWon > 0) GameState.addCoins(-enf.fineWon);
+        if (enf.fineWon > 0) GameState.addCoins(-enf.fineWon, false, 'fine');
         GameState.markDirty();
         this.host.scene.cameras.main.flash(260, 200, 40, 40);
         this.host.floatingHint(`단속 적발! 산란기 ${names} 압수 · 벌금 ${enf.fineWon.toLocaleString()}원`);

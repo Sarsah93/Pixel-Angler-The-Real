@@ -26,6 +26,9 @@
  */
 
 import Phaser from 'phaser';
+import { LedgerStore } from '../store/LedgerStore.js';
+import { DayReportPanel, type DayReportMode } from '../ui/DayReportPanel.js';
+import { setAmbience } from '../audio/Ambience.js';
 import { CHAR_SCALE, CHAR_HEAD_TOP, TUNING, kstParts, type CharDir } from '@tra/core';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { GameState } from '../store/GameState.js';
@@ -256,6 +259,8 @@ export class HomeInteriorScene extends Phaser.Scene {
   }
 
   create(): void {
+    setAmbience({ sea: 0.12, rain: 0 });   // 211차 — 집 안 — 창 너머 먼 파도
+    this.time.delayedCall(1200, () => this.maybeShowUnseenDay(0));   // 211차 — 자는 사이 넘어간 하루
     this.homeTitle = undefined;   // 204차 — 재진입 시 파괴된 Text를 다시 쓰지 않게
     this.homeTitleKey = '';
     // 저장 정책의 유일한 허용 위치 — 침대 상호작용 지점 (HOMETOWN_HOME_SPEC §4)
@@ -1036,6 +1041,7 @@ export class HomeInteriorScene extends Phaser.Scene {
   // ── 이동/충돌 (간이 AABB — 물리 미사용) ──────────────
 
   update(_t: number, delta: number): void {
+    LedgerStore.playTick(delta);   // 211차 — 하루 기록 놀던 시간
     pumpTitleBanners(this);   // 203차 — 숨은 업적 달성 배너(고양이 집사 …)
     pumpTideFlow(this, { toastY: 60 });   // 204차 — 「물때 감각」
     this.updateHomeTitle();
@@ -1564,6 +1570,7 @@ export class HomeInteriorScene extends Phaser.Scene {
           if (ok) StoryStore.event({ kind: 'custom', key: 'bedSave' });   // 134차 — M1-03 침대 저장 목표
           this.closeBedMenu();
           this.flash(ok ? `슬롯 ${GameState.activeSlot ?? 1}에 저장했습니다. ${rec}` : '저장에 실패했습니다');
+          this.openDayReport('today');   // 211차 — 잠들며 닫은 하루 결산
         },
       },
       {
@@ -1571,10 +1578,41 @@ export class HomeInteriorScene extends Phaser.Scene {
           const rec = this.restInBed();
           this.closeBedMenu();
           this.flash(rec);
+          this.openDayReport('today');
         },
       },
+      // 211차 — 지난 날들(최대 14장)을 다시 펼친다
+      ...(LedgerStore.closedPages().length > 0 ? [{
+        label: '지난 날 돌아보기', color: '#e8d49a', run: () => { this.closeBedMenu(); this.openDayReport('past'); },
+      }] : []),
       { label: '그만두기', color: '#8faabf', run: () => this.closeBedMenu() },
     ], () => this.closeBedMenu());
+  }
+
+  /**
+   * 211차 — 하루 결산 창. 'today' = 방금 닫은 장(마지막 장), 'past' = 지난 장들을 최근 것부터.
+   * 장부에 닫힌 장이 없으면 열지 않는다.
+   */
+  openDayReport(mode: DayReportMode): DayReportPanel | null {
+    const pages = LedgerStore.closedPages();
+    if (!pages.length) return null;
+    const last = pages[pages.length - 1]!;
+    LedgerStore.markShown(last.no);
+    // 프롤로그(집 · 고향 단계)의 첫 잠은 안내 말풍선이 이어지는 중이라 결산을 띄우지 않는다(장은 그대로 닫혀 있다 —
+    //   침대 「지난 날 돌아보기」로 볼 수 있다)
+    if (mode === 'today' && prologueRunning()) return null;
+    return this.openPopup((close) => new DayReportPanel(this, pages, pages.length - 1, mode, close));
+  }
+
+  /**
+   * 211차 — 자지 않고 날짜가 넘어가 자정에 닫힌 장이 있으면 들어오자마자 한 번 보여 준다.
+   * 혼잣말 · 메뉴 · 창 · 가이드 · 프롤로그가 진행 중이면 2초 뒤 다시 본다(최대 30번 — 1분).
+   */
+  private maybeShowUnseenDay(tries: number): void {
+    if (!this.scene.isActive() || !LedgerStore.unseenClosed()) return;
+    const busy = !!this.tourPanel || !!this.menu || this.popups.length > 0 || !!this.decor || GuideTour.blocking || prologueRunning();
+    if (busy) { if (tries < 30) this.time.delayedCall(2000, () => this.maybeShowUnseenDay(tries + 1)); return; }
+    this.openDayReport('past');
   }
 
   /** 하네스·구 코드 호환 — 침대 메뉴가 열려 있는가 */
