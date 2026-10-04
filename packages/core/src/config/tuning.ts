@@ -660,6 +660,46 @@ export interface TuningConfig {
     /** 156차 — 완성 요리 판매가 계수 (사시미와 별개) */
     pricing: { ingredientMultiplier: number; qualityMultiplier: number; freshnessMultiplier: number };
   };
+  /**
+   * 물때 흐름 × 어종 × 장르 (205차 — TIDE_PHASE_STRATEGY_SPEC P1~P3 · 초기값은 설계 초안, 실플레이 조율 대기).
+   * 소비: `simulation/TidePhaseStrategy.ts`.
+   */
+  tidePhase: {
+    /** 동해 물때 효과 계수(어종 선호 · 대물 · 수위 · 해루질 창) — 조차 30cm 남짓 */
+    eastSeaK: number;
+    /** 동해 물살 세기 계수(장르 조건의 flow01) */
+    eastSeaFlowK: number;
+    /** 어종 단계 선호 전체 세기(1 = 표 그대로) */
+    speciesScale: number;
+    /** 어종 단계 대물 가중 전체 세기 */
+    sizeScale: number;
+    /** 찌 — 물 약할 때 밑밥 1회 투척당 쌓이는 양 · 상한 */
+    chumBankPerThrow: number;
+    chumBankMax: number;
+    /** 찌 — 흐름이 붙을 때 저장량 1당 동조 가산 · 초당 소진 */
+    chumBankSyncBonus: number;
+    chumBankDecayPerSec: number;
+    /** 찌 — 물살 1당 밑밥 수평 동조 폭 증가(띠) */
+    chumBandPerFlow: number;
+    /** 원투 — 봉돌이 구르기 시작하는 물살 · 기준 봉돌 무게(g — 25호 ≈ 94g) */
+    surfRollFlow: number;
+    surfSinkerMinG: number;
+    /** 원투 — 구를 때 입질 · 밑걸림 배율 · 하류로 끌리는 속도(m/s) */
+    surfRollBite: number;
+    surfRollSnag: number;
+    surfRollDriftMps: number;
+    /** 원투 — 초들물·초날물 입질 배율(냄새 확산) */
+    surfEarlyBite: number;
+    /** 루어 — 물살이 이 이상이면 에기·바닥 웜이 바닥을 못 지킨다 */
+    lureFlowHigh: number;
+    /** 구멍치기 — 간조 · 만조 입질 배율 */
+    holeLow: number;
+    holeHigh: number;
+    /** 해루질 — 간조 시간창 발견·성공 가산 */
+    forageWindowBonus: number;
+    /** 통발 — 평균 물살에 따른 어획 폭(0.3 = 0.85~1.15) */
+    trapFlowSpan: number;
+  };
   /** 구멍치기(테트라포드·사석 틈) — 149차. 캐스팅이 아니라 발밑 구멍에 수직으로 내리는 조법 */
   hole: {
     /** 연안 수심 대비 구멍 깊이 배율 — 테트라포드(블록이 겹쳐 수직 굴이 생긴다) */
@@ -1232,6 +1272,28 @@ export const TUNING: TuningConfig = {
     naming: { freshThreshold: 90, premiumThreshold: 95, fattyThreshold: 0.8 },
     pricing: { ingredientMultiplier: 0.2, qualityMultiplier: 0.9, freshnessMultiplier: 0.3 },
   },
+  tidePhase: {
+    eastSeaK: 0.3,
+    eastSeaFlowK: 0.4,
+    speciesScale: 1,
+    sizeScale: 1,
+    chumBankPerThrow: 0.2,
+    chumBankMax: 1,
+    chumBankSyncBonus: 0.3,
+    chumBankDecayPerSec: 0.01,
+    chumBandPerFlow: 0.8,
+    surfRollFlow: 0.6,
+    surfSinkerMinG: 94,
+    surfRollBite: 0.85,
+    surfRollSnag: 1.3,
+    surfRollDriftMps: 0.15,
+    surfEarlyBite: 1.1,
+    lureFlowHigh: 0.7,
+    holeLow: 0.6,
+    holeHigh: 1.2,
+    forageWindowBonus: 0.2,
+    trapFlowSpan: 0.3,
+  },
   hole: {
     depthMultTetrapod: 1.15, depthMultRiprap: 0.85, depthVarianceM: 0.9, tideDepthM: 0.8,
     minDepthM: 1.5, maxDepthM: 9, distanceM: 1.2, distanceVarianceM: 0.8,
@@ -1364,6 +1426,19 @@ export const TUNING_META: TuningParamMeta[] = [
   { path: 'cook.dishEffect.weightExp', min: 0, max: 1, step: 0.05, category: 'balance', label: '요리 중량 배율 지수' },
   { path: 'cook.pricing.qualityMultiplier', min: 0.3, max: 1.5, step: 0.05, category: 'balance', label: '요리 판매가 품질 계수' },
   { path: 'cook.naming.freshThreshold', min: 70, max: 100, step: 1, category: 'balance', label: '「싱싱한」 신선도 임계' },
+  // ── 물때 흐름 × 어종 × 장르 (205차 — 설계 초안, 실플레이 조율 대기) ──
+  { path: 'tidePhase.eastSeaK', min: 0, max: 1, step: 0.05, category: 'balance', label: '동해 물때 효과 계수' },
+  { path: 'tidePhase.eastSeaFlowK', min: 0, max: 1, step: 0.05, category: 'balance', label: '동해 물살 계수' },
+  { path: 'tidePhase.speciesScale', min: 0, max: 2, step: 0.05, category: 'balance', label: '어종 물때 선호 세기' },
+  { path: 'tidePhase.sizeScale', min: 0, max: 2, step: 0.05, category: 'balance', label: '어종 물때 대물 세기' },
+  { path: 'tidePhase.chumBankSyncBonus', min: 0, max: 1, step: 0.05, category: 'balance', label: '쌓인 밑밥 동조 가산' },
+  { path: 'tidePhase.chumBandPerFlow', min: 0, max: 2, step: 0.1, category: 'balance', label: '물살당 밑밥 띠 폭' },
+  { path: 'tidePhase.surfRollFlow', min: 0.2, max: 1, step: 0.05, category: 'balance', label: '원투 봉돌 구름 물살' },
+  { path: 'tidePhase.surfSinkerMinG', min: 20, max: 200, step: 5, category: 'balance', label: '원투 기준 봉돌(g)' },
+  { path: 'tidePhase.holeLow', min: 0.3, max: 1, step: 0.05, category: 'balance', label: '구멍치기 간조 배율' },
+  { path: 'tidePhase.holeHigh', min: 1, max: 1.6, step: 0.05, category: 'balance', label: '구멍치기 만조 배율' },
+  { path: 'tidePhase.forageWindowBonus', min: 0, max: 0.6, step: 0.05, category: 'balance', label: '해루질 간조창 가산' },
+  { path: 'tidePhase.trapFlowSpan', min: 0, max: 0.8, step: 0.05, category: 'balance', label: '통발 물살 어획 폭' },
   // ── 구멍치기 (149차 — mockup, 실플레이 조율 대기) ──
   { path: 'hole.depthMultTetrapod', min: 0.5, max: 2, step: 0.05, category: 'balance', label: '테트라포드 구멍 깊이 배율' },
   { path: 'hole.snagMultTetrapod', min: 1, max: 4, step: 0.1, category: 'balance', label: '테트라포드 밑걸림 배율' },

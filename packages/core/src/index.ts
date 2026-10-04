@@ -133,6 +133,17 @@ export {
   tideFlowStateAt, nextTideFlowPhase, tideFlowBiteMult, tideFlowCurrentMult, tideFlowSizeBias,
   isFloodPhase, isEbbPhase, isSlackPhase,
 } from './simulation/TideFlowPhase.js';
+// 205차 — 어종 × 물때 · 장르 조건 · 해루질/통발 (TIDE_PHASE_STRATEGY_SPEC P1~P3)
+export type { TidePhaseRow, TidePhasePrefGroup, TideLureGroup, SurfSinkerTideResult } from './types/TideFlow.js';
+export {
+  TIDE_PHASE_PREF_GROUPS, TIDE_PREF_PHASE_ORDER, tidePhasePrefGroupOf, rawTidePhasePref, rawTidePhaseSize, isFavoredTidePhase,
+} from './db-schema/TidePhasePreference.js';
+export {
+  tideRegionK, tideRegionFlowK, tideSpringK, tideFlow01, tideWaterLevel01,
+  speciesTidePhaseMult, speciesTidePhaseBest, speciesTideSizeBias, regionalSizeBias,
+  chumBankDeposit, chumBankRelease, chumBandSigmaMult, surfSinkerTide, tideLureGroupOf, lureKindTideMult,
+  holeWaterLevelMult, forageTideMult, forageTideWindow, forageFloodWarning, averageTideFlow01, trapTideMult, tidePhaseKindKo,
+} from './simulation/TidePhaseStrategy.js';
 export { calculateBiteChance, pickFishByWeight, generateFishSize } from './simulation/FishBiteEngine.js';
 export type { BiteCalculationResult, BiteFactors } from './simulation/FishBiteEngine.js';
 export { getLineTensionRatio, getEffectiveDragKg, getTensionDangerLevel, getRetrieveSpeedMps, adjustDrag, simulateFightTick, canReel, getRecommendedDragKg, castLineOut } from './simulation/LinePhysics.js';

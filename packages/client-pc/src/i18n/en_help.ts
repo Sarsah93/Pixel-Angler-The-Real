@@ -626,6 +626,19 @@ export const EN_HELP: Record<string, string> = {
   // 204차 — 물때 흐름
   '물때 흐름 (들물 · 날물 · 물돌이)': 'Tide Flow (Flood · Ebb · Slack)',
   '하루 두 번 오르내리는 물': 'Water that rises and falls twice a day',
+  '물때와 채비': 'Tides and your rig',
+  '찌낚시: 물이 멈춘 물돌이 · 끝물에 던진 밑밥은 발밑에 쌓였다가, 물이 다시 흐르는 초들물 · 중들물(날물도 같다)에 띠처럼 풀리며 고기를 끌어모읍니다. 물살이 셀수록 밑밥이 넓게 퍼집니다.':
+    'Float fishing: chum thrown at slack water or the late tide piles up at your feet, then spreads out like a ribbon and draws fish in once the water starts moving again in the early and mid flood (the ebb works the same way). The stronger the current, the wider the chum spreads.',
+  '원투: 물살이 가장 센 중물에 봉돌이 가벼우면 바닥에서 굴러 채비가 하류로 끌리고, 입질은 줄고 밑걸림은 늘어납니다. 무거운 봉돌(25호 안팎 이상)이면 버팁니다. 물이 막 흐르기 시작하는 초들물 · 초날물에는 냄새가 퍼져 입질이 조금 오릅니다.':
+    'Surf casting: in the strongest mid-tide current a light sinker rolls along the bottom and drags the rig downstream — fewer bites, more snags. A heavy sinker (around 25 or more) holds. In the early flood and early ebb the scent spreads and bites pick up a little.',
+  '루어: 지그 · 미노우 · 스푼은 물살이 있는 중물에 살아나고 물돌이에는 처집니다. 에기는 물이 완만한 물돌이 앞뒤가 좋고, 타이라바는 물이 멈추면 스커트가 흔들리지 않아 입질이 끊깁니다. 바닥 웜은 흐름이 막 붙는 초물에 좋습니다.':
+    'Lures: jigs, minnows and spoons come alive in the mid-tide current and fall flat at slack water. Egi work best around slack water when the current is gentle, while a tairaba stops getting bites when the water stops because the skirt no longer sways. Bottom worms do best in the early tide as the current starts to build.',
+  '구멍치기: 단계보다 물높이입니다. 만조 무렵 블록 위로 물이 깊을 때 잘 물고, 간조에 블록이 드러나면 거의 안 뭅니다.':
+    'Hole fishing: water height matters more than the phase. Fish bite well near high water when the blocks are deep underwater, and hardly at all at low tide when the blocks are exposed.',
+  '해루질은 간조 2시간 전부터 간조 1시간 뒤까지가 가장 좋고 사리일수록 더 드러납니다. 그 뒤로는 물이 다시 차오르니 깊이 들어가지 마세요. 통발은 담가 둔 동안 물살이 고르게 흘렀을수록 많이 듭니다.':
+    'Night foraging is best from two hours before low tide to an hour after, and more is exposed on spring tides. After that the water rises again, so do not wade out too far. Traps catch more when the current flowed steadily while they soaked.',
+  '어종마다 좋아하는 물때가 다릅니다. 그 고기가 잘 무는 물때에 낚아 보면 그때 깨달은 한 줄이 남고, 도감에도 「물때」가 적힙니다. 동해(속초)는 물높이 차이가 작아 이런 차이가 약하게 나타납니다.':
+    'Every species has its own favorite tide. Catch one during the tide it likes and you will note down what you learned, and its encyclopedia card gets a Tide line. In the East Sea (Sokcho) the tide range is small, so these differences are faint.',
   '「몇 물」(1~15물)은 그날 조류가 얼마나 센지(사리 · 조금)이고, 들물 · 날물은 지금 이 시각 물이 어디쯤 흐르는지입니다. 만조 · 간조 시각은 집의 물때표 책과 라디오에서 알 수 있습니다.':
     'The tide day (1–15) tells how strong the current is that day (spring or neap); flood and ebb tell where the water is flowing right now. High and low water times are in the tide-table book at home and on the radio.',
   '간조 뒤 2시간까지 초들물, 2~4시간 중들물, 그 뒤 만조 30분 전까지 끝들물입니다. 만조 앞뒤 30분은 만조 물돌이 — 물이 멈춥니다. 날물도 같은 순서로 초날물 · 중날물 · 끝날물 · 간조 물돌이가 이어집니다.':

@@ -14,6 +14,7 @@ import {
   FIRE_RECIPES, RECIPE_LORE, isVariantRecipe, dishVariantCandidates, dishDiscoveryId, dishDiscoveryName, dishBaseName,
 } from '@tra/core';
 import type { ShoreCreatureCategory, DiscoveryKind, ShoreCreature } from '@tra/core';
+import { TideLoreStore } from '../store/TideLoreStore.js';
 import { DiscoveryStore } from '../store/DiscoveryStore.js';
 import { GuideTour, maybeStartTour, type TourOptions } from '../ui/GuideTour.js';
 import { StoryStore } from '../store/StoryStore.js';
@@ -369,6 +370,15 @@ export class AnglerLogScene extends Phaser.Scene {
               [season, '#8faabf'],
               [`kg당 ${fish.sashimiValuePerKg.toLocaleString()}원`, '#c8a060'],
             ];
+        // 205차 — 잘 무는 물때에 잡아 본 어종만 「물때」 줄이 생긴다(미리 보여 주지 않는다 — R2).
+        //   우측 열은 좁아 잘리므로 이미지 아래 카드 전체 폭(y+126 · 카드 아래 끝 150 안)에 둔다
+        const tideLabel = TideLoreStore.favoredLabel(fish.id);
+        if (tideLabel) {
+          const tt = clampTextWidth(this.add.text(x + 15, y + 126, `물때 · ${tideLabel}`, {
+            fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#7fc8ff',
+          }), itemW - 27);
+          this.tabContainer?.add(tt);
+        }
         rows.forEach(([label, color], i) => {
           const t = clampTextWidth(this.add.text(SX, y + 50 + i * 19, label, {
             fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color,

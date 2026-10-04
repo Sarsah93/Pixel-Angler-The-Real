@@ -46,3 +46,41 @@ export interface TideFlowProfile {
   /** 조류 세기 배율 — 채비가 흐르는 속도 */
   currentMult: number;
 }
+
+// ── 205차 — 어종 × 물때 · 장르 조건 (TIDE_PHASE_STRATEGY_SPEC P1~P3) ──
+
+/** 단계별 배율 한 줄(누락 단계 = 1.0) */
+export type TidePhaseRow = Partial<Record<TideFlowPhase, number>>;
+
+/** 어종 묶음 하나의 물때 선호 — 같은 성향의 어종을 한 줄로 묶는다 */
+export interface TidePhasePrefGroup {
+  /** 묶음 키(위키·발견 기록용) */
+  id: string;
+  /** 묶음 이름(위키용 — 어종 이름 나열) */
+  nameKo: string;
+  nameEn: string;
+  /** 속한 어종 id */
+  members: string[];
+  /** 단계별 입질 배율(사리 · 남해 기준 — 동해·조금이면 1에 가깝게 눌린다) */
+  bite: TidePhaseRow;
+  /** 단계별 대물 가중 0~1(없으면 공통 단계 가중만) */
+  size?: TidePhaseRow;
+  /** 잡아 본 뒤 남는 한 줄(1인칭 — 발견 기록 · 위키) */
+  noteKo: string;
+  noteEn: string;
+  /** 근거 강도 — 위키 표기용 */
+  evidence: 'research' | 'community' | 'folk';
+}
+
+/** 루어 종류별 물때 반응 묶음 */
+export type TideLureGroup = 'swim' | 'egi' | 'tairaba' | 'soft' | 'other';
+
+/** 원투 봉돌이 물살에 구르는지 판정 결과 */
+export interface SurfSinkerTideResult {
+  /** 입질 배율 */
+  biteMult: number;
+  /** 밑걸림 배율 */
+  snagMult: number;
+  /** 봉돌이 구르는 중 — 채비가 하류로 끌린다 */
+  rolling: boolean;
+}

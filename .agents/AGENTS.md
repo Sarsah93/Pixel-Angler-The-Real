@@ -461,7 +461,14 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-10-04 204차) — 물때 흐름 8단계 · 「물때 감각」 알림 스킬 · 타이틀 v2 30종 · 집 안 타이틀**
+**최근 변경 (2026-10-04 205차) — 어종 × 물때 · 채비 × 물때 · 해루질/통발 물때 · 동해 감쇠 0.3**
+
+- core `TidePhasePreference`(어종 13묶음 × 8단계) + `TidePhaseStrategy`(지역·사리·물살·수위 · 장르 조건 · 해루질 창 · 통발) · `TUNING.tidePhase`.
+- 1인칭: 밑밥 쌓기/풀림/띠 · 원투 봉돌 구름 · 루어 종류 · 구멍치기 수위 · 잘 무는 물때에 잡으면 `TideLoreStore` 기록(채널 · 도감).
+- 함정: 1인칭 씬 인스턴스는 재사용된다 — 지역별 캐시는 `create()`에서 비울 것(`fishing-loop.md` §6-18).
+  상세: [205차 워크로그](../docs/wiki/03-WORKLOG/2026-10-04-205-tide-species-genre.md).
+
+**이전 변경 (2026-10-04 204차) — 물때 흐름 8단계 · 「물때 감각」 알림 스킬 · 타이틀 v2 30종 · 집 안 타이틀**
 
 - core `TideFlowPhase`(초·중·끝 들물/날물 + 물돌이) → 입질 배율 · 대물 편향 · 스킬 「물때 감각」(`ui/TideFlowNotifier` 채널 알림).
 - 타이틀 v2: 경로 OR × 조건 AND + 전설 `minLevel` · 대물 점수 · 30종 · 집 안 머리 위 · 위키 공략 탭 · 장르×어종 공략은 스펙(결정 대기).
@@ -474,12 +481,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - 달성 배너 `ui/TitleBanner`(`pumpTitleBanners` — 필드 · 1인칭 · 집) · S 창 타이틀 칸 · 머리 위 레어도 색 · 멀티 `MpProfile.title` id.
 - 함정: 일시정지된 씬의 배너는 영영 안 닫힌다 — 펌프가 걷어 낸다(`ui-framework.md` §6).
   상세: [203차 워크로그](../docs/wiki/03-WORKLOG/2026-10-03-203-hidden-titles.md).
-
-**이전 변경 (2026-10-03 202차) — 문 닫은 시간엔 거래 막기 · 문 앞 혼잣말**
-
-- `RegionFieldScene.promptTrade` — `BUILDING_HOURS` 밖이면 거래 대신 `showClosedDoor`(혼잣말 2단락 · 가게 모습 4종 + 안내문).
-- 직판장·편의점 24시간 · 이야기 인물의 물건 팔기는 시간 무관. 타이틀 업적은 설계안 확인 대기(백로그 AR).
-  상세: [202차 워크로그](../docs/wiki/03-WORKLOG/2026-10-03-202-closed-shop-door.md).
 
 ---
 

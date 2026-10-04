@@ -221,7 +221,12 @@ export interface ForageResult {
 }
 
 /** 스킬 트리 보정 (122차) — escapeMult = 문어 도주 배율 · injuryChance = 맨손 부상 확률 배율(1 = 항상) */
-export interface ForageMods { escapeMult?: number; injuryChance?: number }
+export interface ForageMods {
+  escapeMult?: number;
+  injuryChance?: number;
+  /** 205차 — 성공 확률 배율(해루질 간조 시간창 `forageTideMult`) */
+  successMult?: number;
+}
 
 export function attemptForage(c: ShoreCreature, tool: ForageTool, rng: () => number, mods: ForageMods = {}): ForageResult {
   const t = TUNING.forage;
@@ -244,6 +249,7 @@ export function attemptForage(c: ShoreCreature, tool: ForageTool, rng: () => num
   }
   let p = t.baseSuccess;
   if (tool !== 'hand' && allowed[0] === tool) p += t.toolMatchBonus;
+  p *= Math.max(0, mods.successMult ?? 1);
   if (rng() > Math.min(0.97, p)) return { ...base, outcome: 'failed', message: `${c.nameKo}을(를) 놓쳤다…` };
 
   // 크기·무게 — 법정 크기 기준 밴드 (미달 개체는 방류)

@@ -69,6 +69,7 @@ import { FridgeStore, FridgeSaveState } from './FridgeStore.js';
 import { HomeStore, type HomeSaveState } from './HomeStore.js';
 import { MarketStore, type MarketSaveState } from './MarketStore.js';
 import { TitleStore, type TitleSaveState } from './TitleStore.js';
+import { TideLoreStore, type TideLoreSaveState } from './TideLoreStore.js';
 import { DiscoveryStore, DiscoverySaveState } from './DiscoveryStore.js';
 import {
   listUpkeep, upkeepAlerts, upkeepPenalty, licenseRenewalFee, fisheryGroundFee, upkeepKeysOfLicense,
@@ -198,6 +199,8 @@ interface SaveData {
   market?: MarketSaveState;
   /** 203차 — 타이틀(칭호) 업적: 행동 누적 수 · 얻은 것 · 단 것(구세이브 = 없음) */
   titles?: TitleSaveState;
+  /** 205차 — 물때 공략 발견 기록(어종 묶음 id · 구세이브 = 빈 기록) */
+  tideLore?: TideLoreSaveState;
   /** 1회성 안내 플래그 (chumGuideSeen 등 — 최초 표시 여부) */
   flags?: Record<string, boolean>;
   /** 맵별 오브젝트 월드 상태 — 초기 배치 − removed + moved + placed (HOMETOWN_HOME_SPEC) */
@@ -377,6 +380,7 @@ export class GameStateManager {
     HomeStore.deserialize(saved.home);
     MarketStore.deserialize(saved.market);
     TitleStore.deserialize(saved.titles);   // 203차 — 타이틀 업적(구세이브 = 0부터)
+    TideLoreStore.deserialize(saved.tideLore);   // 205차 — 물때 공략 발견 기록
     TitleStore.setStat('licenses', this._licenses.length);   // 204차 — 지금 가진 자격 수
     // 발견 기록 복원 — 구세이브(필드 없음)는 어획 기록의 어종을 'legacy'로 백필
     DiscoveryStore.deserialize(
@@ -1494,6 +1498,7 @@ export class GameStateManager {
       home: HomeStore.serialize(),
       market: MarketStore.serialize(),
       titles: TitleStore.serialize(),
+      tideLore: TideLoreStore.serialize(),
       flags: this._flags,
       worldObjects: this._worldObjects,
       discoveries: DiscoveryStore.serialize(),
@@ -1703,6 +1708,7 @@ export class GameStateManager {
     HomeStore.resetAll();
     MarketStore.resetAll();
     TitleStore.resetAll();
+    TideLoreStore.resetAll();
     DiscoveryStore.resetAll();
     StoryStore.resetAll();
     this.syncInventoryDiscoveries();

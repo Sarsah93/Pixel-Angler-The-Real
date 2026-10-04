@@ -66,7 +66,7 @@ export function pumpTideFlow(scene: Phaser.Scene, opts: TideFlowPumpOpts = {}): 
   lastPollMs = wall;
   const st = tideFlowStateAt(opts.now ?? new Date());
   const skilled = hasTideSense();
-  if (!skilled) { lastPhase = st.phase; introduced = false; return; }
+  if (!skilled) { lastPhase = st.phase; introduced = false; flush(scene, opts); return; }
   if (!introduced) {
     introduced = true;
     pending.push(`[물때] 지금은 ${TIDE_FLOW_LABEL_KO[st.phase]}입니다 — ${TIDE_FLOW_NOTE_KO[st.phase]}`);
@@ -89,6 +89,14 @@ function flush(scene: Phaser.Scene, opts: TideFlowPumpOpts): void {
     channelLog(scene, line);
     if (opts.toastY !== undefined) { toast(scene, line, y); y += 30; }
   }
+}
+
+/**
+ * 205차 — 물때 공략 발견 한 줄을 알림 대기열에 넣는다(스킬과 무관 — 겪어서 안 것).
+ * 다음 펌프가 필드 채널 + (필드 밖이면) 화면 위로 띄운다.
+ */
+export function queueTideLoreNote(noteKo: string): void {
+  pending.push(`[물때 기록] ${noteKo}`);
 }
 
 /** 지금 물때 이름(스킬이 있을 때만 — 1인칭 수심 정보 줄) */

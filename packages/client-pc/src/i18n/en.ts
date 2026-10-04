@@ -1097,6 +1097,10 @@ export const EN_RULES: Rule[] = [
   [/^\[물때\] 지금은 (.+)입니다 — (.+)$/, (m, tr) => `[Tide] It is ${tr(m[1]).toLowerCase()} now — ${tr(m[2])}`],
   [/^\[물때\] (.+)입니다 — (.+)$/, (m, tr) => `[Tide] ${tr(m[1])} — ${tr(m[2])}`],
   [/^\[물때\] (\d+)분 뒤 (.+)$/, (m, tr) => `[Tide] ${tr(m[2])} in ${m[1]} min`],
+  // 205차 — 물때 공략 발견 기록 · 도감 카드 「물때」 줄
+  [/^\[물때 기록\] (.+)$/, (m, tr) => `[Tide note] ${tr(m[1])}`],
+  [/^\[채집\] 물이 다시 들어오기 시작했다\. 너무 깊이 들어가지 말자\.$/, () => '[Gather] The water is starting to come back in. Better not wade out too far.'],
+  [/^물때 · (.+)$/, (m, tr) => `Tide · ${m[1].split(' · ').map((x) => tr(x)).join(' · ')}`],
   [/^줄 강도 \+(\d+)%$/, 'Line strength +$1%'],
   [/^랜딩 바늘 빠짐 -(\d+)%$/, 'Hook pulls while landing -$1%'],
   [/^상점 판매가 \+(\d+)%$/, 'Shop sell price +$1%'],

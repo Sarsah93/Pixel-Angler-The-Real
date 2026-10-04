@@ -778,15 +778,17 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
         .map(toSkillCard),
     },
     guide: {
-      note: '게임 안에서는 알려 주지 않는 것들입니다. 타이틀(숨은 업적)을 얻는 조건과 효과, 물때 흐름 8단계를 낚시에 어떻게 쓰는지 정리했습니다. 타이틀은 경로가 여럿이면 그중 하나만 채우면 됩니다.',
+      note: '게임 안에서는 알려 주지 않는 것들입니다. 타이틀(숨은 업적)을 얻는 조건과 효과, 물때 흐름 8단계, 어종마다 잘 무는 물때, 채비마다 물때를 타는 방식을 정리했습니다. 타이틀은 경로가 여럿이면 그중 하나만 채우면 됩니다.',
       groups: () => {
         const T = (G.guide && G.guide.titles) || [];
         return [
-          { id: '', label: '전체', count: T.length + ((G.guide && G.guide.tide) || []).length },
+          { id: '', label: '전체', count: T.length + ((G.guide && G.guide.tide) || []).length + ((G.guide && G.guide.species) || []).length + ((G.guide && G.guide.genre) || []).length },
           { id: 't_common', label: '타이틀 · 흔함', count: T.filter(t => t.rarity === 'common').length },
           { id: 't_rare', label: '타이틀 · 드묾', count: T.filter(t => t.rarity === 'rare').length },
           { id: 't_legend', label: '타이틀 · 전설', count: T.filter(t => t.rarity === 'legend').length },
           { id: 'tide', label: '물때 흐름', count: ((G.guide && G.guide.tide) || []).length },
+          { id: 'tide_species', label: '어종 × 물때', count: ((G.guide && G.guide.species) || []).length },
+          { id: 'tide_genre', label: '채비 × 물때', count: ((G.guide && G.guide.genre) || []).length },
         ];
       },
       list: () => {
@@ -806,6 +808,31 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
                   ['물때 감각 알림', p.note],
                 ].map(([k, v]) => [k, esc(v)])) + '</div>',
               }),
+            });
+          }
+        }
+        if (!group || group === 'tide_species') {
+          for (const g of ((G.guide && G.guide.species) || [])) {
+            const best = g.phases.filter(p => p.south >= 1.15).sort((a, b) => b.south - a.south).map(p => p.name);
+            out.push({
+              key: 'tsp-' + g.id, name: g.name, meta: '어종 × 물때 · ' + (best.length ? best.slice(0, 2).join(' · ') : '물때 덜 탐'), img: null, price: '',
+              search: g.name + ' ' + g.nameEn + ' ' + g.members.join(' ') + ' ' + g.note + ' ' + best.join(' '),
+              detail: () => ({
+                title: g.name, sub: g.nameEn + ' · ' + g.members.join(' · '), lede: g.note, img: null,
+                tags: ['어종 × 물때', '근거: ' + g.evidence, '게임 안 = 잘 무는 물때에 잡으면 기록'],
+                body: '<div class="ssec"><h3>단계별 입질 배율 — 남해 사리 / 남해 조금 / 동해 사리</h3>' + kvRows(g.phases.map(p => [p.name,
+                  '×' + p.south.toFixed(2) + '  /  ×' + p.neap.toFixed(2) + '  /  ×' + p.east.toFixed(2) + (p.size > 0 ? '  · 대물 +' + Math.round(p.size * 100) + '%' : '')]).map(([k, v]) => [k, esc(v)])) + '</div>',
+              }),
+            });
+          }
+        }
+        if (!group || group === 'tide_genre') {
+          for (const r of ((G.guide && G.guide.genre) || [])) {
+            out.push({
+              key: 'tgn-' + r.id, name: r.name, meta: '채비 × 물때', img: null, price: '',
+              search: r.name + ' ' + r.lede + ' ' + r.rows.map(x => x.join(' ')).join(' '),
+              detail: () => ({ title: r.name, sub: '물때 흐름에 따라 바뀌는 것', lede: r.lede, img: null, tags: ['채비 × 물때'],
+                body: '<div class="ssec"><h3>게임 수치</h3>' + kvRows(r.rows.map(([k, v]) => [k, esc(v)])) + '</div>' }),
             });
           }
         }

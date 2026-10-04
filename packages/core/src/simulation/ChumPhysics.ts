@@ -272,13 +272,15 @@ export function stepChum(
 export interface ChumSyncOpts {
   /** 미끼가 바닥층(국소 바닥 근처)에 있는지 — 코팅 파슬 보너스 대상 */
   baitNearBottom?: boolean;
+  /** 205차 — 수평 동조 폭 배율(물살이 셀수록 밑밥이 띠로 퍼진다 — `chumBandSigmaMult`) */
+  horizSigmaMult?: number;
 }
 
 export function computeChumSync(p: ChumParcel, bait: ChumSyncTarget, opts?: ChumSyncOpts): number {
   if (isChumExpired(p)) return 0;
   const dz = (p.z - bait.z) / TUNING.chumSync.depthSigmaM;
   const depthGate = Math.exp(-(dz * dz));
-  const sigmaH = TUNING.chumSync.horizSigmaM + p.spreadM * 0.3;
+  const sigmaH = (TUNING.chumSync.horizSigmaM + p.spreadM * 0.3) * (opts?.horizSigmaMult ?? 1);
   const dh = Math.hypot(p.x - bait.x, p.d - bait.d) / sigmaH;
   const horizNear = Math.exp(-(dh * dh));
   const freshness = 1 - Math.min(1, p.ageSec / p.ttlSec) * 0.4;

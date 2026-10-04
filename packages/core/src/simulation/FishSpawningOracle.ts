@@ -15,6 +15,8 @@
  */
 
 import { rollTieredLength } from './SizeTierRules.js';
+import type { TideFlowPhase } from '../types/TideFlow.js';
+import { speciesTideSizeBias, speciesTidePhaseBest, speciesTidePhaseMult } from './TidePhaseStrategy.js';
 import { isGiantOctopusSpawnProtected } from '../types/Foraging.js';
 import { TUNING, type BodyFormKey } from '../config/tuning.js';
 
@@ -117,6 +119,26 @@ export interface FishMasterSpec {
 function flatTide(v: number): number[] {
   return Array.from({ length: 15 }, () => v);
 }
+/**
+ * 205차 — 쌍봉 활성도: 사리·조금을 피하고 중간 물때(4물·12물 근처)에 피크 · 사리(7~9물)는 `trough`로 받친다.
+ * 「돌돔은 3~5물 · 11~13물」(조사 보고서 §3 물때 곡선 정정).
+ */
+function twinPeak(base: number, peak: number, trough: number): number[] {
+  return Array.from({ length: 15 }, (_, i) => {
+    const t = i + 1;
+    const d = Math.min(Math.abs(t - 4), Math.abs(t - 12));
+    const v = base + (peak - base) * Math.max(0, 1 - d / 3);
+    // 사리(7~9물)는 바닥값 대신 `trough`까지는 받쳐 준다(완전히 죽지는 않는다)
+    return t >= 7 && t <= 9 ? Math.max(v, trough) : v;
+  });
+}
+/** 205차 — 조금(1·15물 쪽) 피크: 사리에서 멀수록 활성 ↑ (볼락 「조금~6물」 · 바닥 두족류) */
+function neapPeak(base: number, peak: number): number[] {
+  return Array.from({ length: 15 }, (_, i) => {
+    const d = Math.abs(i + 1 - 8);
+    return base + (peak - base) * Math.min(1, d / 7);
+  });
+}
 /** 사리(7~9물) 피크 활성도 */
 function sariPeak(base: number, peak: number): number[] {
   return Array.from({ length: 15 }, (_, i) => {
@@ -137,7 +159,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     minCm: 20, maxCm: 80, meanCm: 48, sdCm: 10, lwrA: 0.0185, lwrB: 3.04, bodyForm: 'deepBody', maleRatio: 0.5,
     sexNote: '수컷 성어는 줄무늬가 사라지고 주둥이가 검게 변함(강구)',
     // 주행성 — 시력에 의존하는 낮 사냥꾼, 야간 활동 거의 없음
-    legalMinCm: 24, nightBonus: 0.35, tideActivity: sariPeak(0.4, 0.85),
+    legalMinCm: 24, nightBonus: 0.35, tideActivity: twinPeak(0.45, 0.9, 0.6),
     fight: { basePower: 0.85, patternWeights: { jump: 0.1, dive: 0.7, lateral: 0.2 }, intervalMult: 0.9, mouthFragility: 0.1 },
   },
   {
@@ -147,7 +169,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     minCm: 22, maxCm: 90, meanCm: 52, sdCm: 11, lwrA: 0.02, lwrB: 3.04, bodyForm: 'deepBody', maleRatio: 0.5,
     sexNote: '수컷 성어는 주둥이가 하얗게 변함(백화)',
     // 주행성 — 돌돔과 동일한 낮 시력 사냥꾼
-    legalMinCm: 24, nightBonus: 0.35, tideActivity: sariPeak(0.35, 0.8),
+    legalMinCm: 24, nightBonus: 0.35, tideActivity: twinPeak(0.4, 0.85, 0.55),
     fight: { basePower: 0.9, patternWeights: { jump: 0.1, dive: 0.65, lateral: 0.25 }, intervalMult: 0.9, mouthFragility: 0.1 },
   },
   {
@@ -304,7 +326,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     baitPreference: { krill: 60, lure: 25, worm_blue: 15 },
     minCm: 10, maxCm: 35, meanCm: 19, sdCm: 3.5, lwrA: 0.022, lwrB: 3, bodyForm: 'roundish', maleRatio: 0.5,
     sexNote: '중층에 무리 지어 조류를 타는 회유성 — 야간 상층 피딩 보일링을 형성한다',
-    legalMinCm: 15, nightBonus: 2.0, tideActivity: sariPeak(0.5, 0.85),
+    legalMinCm: 15, nightBonus: 2.0, tideActivity: neapPeak(0.55, 0.85),
     fight: { basePower: 0.3, patternWeights: { jump: 0.2, dive: 0.3, lateral: 0.5 }, intervalMult: 1.1, mouthFragility: 0.25 },
   },
   {
@@ -327,7 +349,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     sexRule: (len) => (len > 70 ? 0.2 : 0.5),
     sexNote: '두 눈이 왼쪽 — 암컷이 압도적으로 크게 자람',
     // 낮 매복 사냥이 메인 — 밤에도 먹지만 활성 저하
-    legalMinCm: 35, nightBonus: 0.7, tideActivity: sariPeak(0.4, 0.75),
+    legalMinCm: 35, nightBonus: 0.7, tideActivity: flatTide(0.7),
     fight: { basePower: 0.7, patternWeights: { jump: 0.1, dive: 0.5, lateral: 0.4 }, intervalMult: 1.0, mouthFragility: 0.1 },
   },
   {
@@ -619,7 +641,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     baitPreference: { lure: 85 }, egiOnly: true,
     minCm: 10, maxCm: 30, meanCm: 17, sdCm: 4, lwrA: 0.055, lwrB: 2.9, bodyForm: 'cephalopod', maleRatio: 0.5,
     sexNote: '주야 무관하게 먹는 연안 에깅 입문 대상 — 바닥 단차에 에기를 붙여 노린다',
-    nightBonus: 1.2, tideActivity: flatTide(0.65),
+    nightBonus: 1.2, tideActivity: neapPeak(0.6, 0.75),
     fight: { basePower: 0.3, patternWeights: { jump: 0.0, dive: 0.6, lateral: 0.4 }, intervalMult: 1.2, mouthFragility: 0.3 },
   },
   {
@@ -764,6 +786,12 @@ export interface SpawnContext {
   eventTierBoost?: boolean;
   /** 204차 — 물때 대물 가중 0~1(`tideFlowSizeBias` — 물돌이·끝들물) */
   sizeBias?: number;
+  /** 205차 — 지금 물때 흐름 단계(있으면 어종별 단계 선호 · 단계 대물 가중을 건다) */
+  flowPhase?: TideFlowPhase;
+  /** 205차 — 사리·조금 세기 0~1(`TideInfo.currentStrength`) — 없으면 0.5 */
+  tideStrength01?: number;
+  /** 205차 — 물때 효과 지역 계수(`tideRegionK` — 동해 0.3) — 없으면 1 */
+  tideRegionK?: number;
 }
 
 /** 당첨 물고기 결과 */
@@ -889,7 +917,11 @@ function intrinsicWeight(spec: FishMasterSpec, ctx: SpawnContext): number {
   // 주간엔 강한 야행성(nb>1.5)만 0.55로 억제하고 주행성은 1.0 유지
   const nb = spec.nightBonus ?? 1;
   const dayNightW = ctx.isNight ? nb : nb > 1.5 ? 0.55 : 1;
-  return layerW * depthW * terrW * baitW * tideW * dayNightW;
+  // 205차 — 어종별 물때 흐름 선호(감성돔 초들물 · 참돔 중물 · 벵에돔 물돌이 약세 …) — 사리·지역으로 눌린다
+  const phaseW = ctx.flowPhase
+    ? speciesTidePhaseMult(spec.speciesId, ctx.flowPhase, ctx.tideStrength01 ?? 0.5, ctx.tideRegionK ?? 1)
+    : 1;
+  return layerW * depthW * terrW * baitW * tideW * dayNightW * phaseW;
 }
 
 /** 후보 어종 + 가중치 계산 (스폰/미끼 친화도 공용) */
@@ -926,7 +958,10 @@ export function speciesBiteReadiness(ctx: SpawnContext, speciesId: string): numb
   const baitBest = Math.max(5, ...Object.values(spec.baitPreference).map((v) => v ?? 0));
   const tideBest = Math.max(...spec.tideActivity);
   const nb = spec.nightBonus ?? 1;
-  const ideal = Math.max(0.03, baitBest / 50) * Math.max(0.05, tideBest) * Math.max(1, nb);
+  // 205차 — 최고 물때 단계 배율도 기준에 넣는다(안 넣으면 선호 단계에서 1을 넘어 잘려 정보가 사라진다)
+  const phaseBest = ctx.flowPhase
+    ? speciesTidePhaseBest(speciesId, ctx.tideStrength01 ?? 0.5, ctx.tideRegionK ?? 1) : 1;
+  const ideal = Math.max(0.03, baitBest / 50) * Math.max(0.05, tideBest) * Math.max(1, nb) * phaseBest;
   return Math.min(1, intrinsicWeight(spec, ctx) / ideal);
 }
 
@@ -985,19 +1020,22 @@ export function spawnFish(ctx: SpawnContext): SpawnedFish {
   // 개체 생성 — tier 등재 어종(중대형 회유어)은 크기 등급 규칙으로 길이 결정:
   // 루어 무게↑ → 대물 가중 / 청물 야간 = 소형만 / 얕은 수심 = 중·대형 저확률.
   // 미등재 어종은 기존 가우시안 분포 그대로.
+  // 205차 — 공통 단계 대물 가중 + 그 어종만의 단계 대물 가중(감성돔 물돌이 · 참돔 강물 …)
+  const sizeBias = Math.min(1, (ctx.sizeBias ?? 0) + (ctx.flowPhase
+    ? speciesTideSizeBias(picked.speciesId, ctx.flowPhase, ctx.tideStrength01 ?? 0.5, ctx.tideRegionK ?? 1) : 0));
   const tiered = rollTieredLength(picked.speciesId, picked.minCm, picked.maxCm, {
     lureWeightG: ctx.lureWeightG,
     zMax: ctx.zMax,
     isNight: ctx.isNight,
     eventTierBoost: ctx.eventTierBoost,
-    sizeBias: ctx.sizeBias,
+    sizeBias,
   });
   const lengthCm = Math.round(
     (tiered >= 0
       ? tiered
       // 204차 — 물돌이·끝물 대물 가중: 평균을 표준편차의 최대 0.5배까지 위로
       : Math.min(picked.maxCm, Math.max(picked.minCm,
-        gaussian(picked.meanCm + picked.sdCm * 0.5 * Math.max(0, Math.min(1, ctx.sizeBias ?? 0)), picked.sdCm)))) * 10,
+        gaussian(picked.meanCm + picked.sdCm * 0.5 * Math.max(0, sizeBias), picked.sdCm)))) * 10,
   ) / 10;
   // 133차 — 체형별 LWR(W = a·L^b) × 비만도(계절·산란·개체 편차)
   const conditionFactor = conditionFactorFor(picked, ctx.month, gaussian(0, 1));

@@ -45,7 +45,9 @@ import {
   SeabedProfile, kstHour,
   LureSpec, LureSinkProfile, getLureSinkProfile, jigHeadWeightById, lureBodyType,
   computeFeedingActivity, feedingRegionProfileOf, FeedingActivityResult,
-  tideFlowStateAt, tideFlowSizeBias,
+  tideFlowStateAt, tideFlowSizeBias, type TideFlowState,
+  tideRegionK, tideRegionFlowK, tideFlow01, tideWaterLevel01, regionalSizeBias,
+  chumBankDeposit, chumBankRelease, chumBandSigmaMult, surfSinkerTide, lureKindTideMult, holeWaterLevelMult,
   getMovementProfile, pickRunHeading,
   FishFatigueModel, FatigueTick, FATIGUE_PHASE_LABEL,
   fightGroupOf, fightBodyFormOf, fishRarity, RARITY_STYLE,
@@ -64,7 +66,8 @@ import { drawRigIcon, RigIconKind } from '../ui/RigIconRenderer.js';
 import { GameState } from '../store/GameState.js';
 import { TitleStore } from '../store/TitleStore.js';
 import { pumpTitleBanners } from '../ui/TitleBanner.js';
-import { pumpTideFlow, tideSenseLabel } from '../ui/TideFlowNotifier.js';
+import { pumpTideFlow, tideSenseLabel, queueTideLoreNote } from '../ui/TideFlowNotifier.js';
+import { TideLoreStore } from '../store/TideLoreStore.js';
 import { baitKeyOf } from '../store/RigParts.js';
 import { InventoryStore, RigStepKey, CARD_RIG_INFO, netReachFromName } from '../store/InventoryStore.js';
 import { isGod } from '../dev/DevMode.js';
@@ -512,6 +515,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   create(): void {
     // dev 전용 — 하네스가 입질/파이팅을 강제할 수 있게 씬 인스턴스를 노출 (도움말 캡처·검증용, 117차)
     if (import.meta.env.DEV) (globalThis as unknown as { __FP?: unknown }).__FP = this;
+    // 205차 — 씬 인스턴스는 재사용된다: 지역별 물때 캐시(동해 계수)·쌓인 밑밥은 캐스팅마다 새로
+    this.tideNowCache = null; this.tideClock = null; this.chumBank = 0; this.surfRolling = false;
     const zMax = this.cfg.zMaxM;
     this.pxPerMZ = Math.min(46, (GAME_HEIGHT - WATERLINE - 110) / Math.max(2, zMax));
     // 면사매듭 제거(전유동) 시 Z_limit 무한 — 바닥까지 무한 침강
@@ -1796,6 +1801,9 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     const x = xs[this.chumThrowIdx] ?? this.rig.floatX;
     // 배합 재료 → 밑밥 종류 (파우더=느림·넓음·조류↑ / 압맥=범용 / 경단=빠름·정밀)
     this.chumParcels.push(createChumParcel(x, this.distM, CoolerStore.chumTypeKey()));
+    // 205차 — 물이 약할 때(물돌이·끝물) 던진 밑밥은 발밑에 쌓였다가 흐름이 붙으면 띠로 풀린다
+    const tnChum = this.tideNow();
+    if (tnChum) this.chumBank = chumBankDeposit(this.chumBank, tnChum.state.phase);
     this.refreshCoolerUi();
 
     // 착수 파문 (정면 뷰 — 투척점 거리의 수면 원근 Y)
@@ -2128,6 +2136,11 @@ export class FirstPersonFishingScene extends Phaser.Scene {
           this.rig.baitZ = Math.min(bottom, this.rig.baitZ + sr.sinkRateMps * dt);
           this.rig.settled = this.rig.baitZ >= bottom - 0.05;
           this.rigLineAngleDeg = sr.lineAngleDeg;
+          // 205차 — 물살이 센 물때에 봉돌이 가벼우면 바닥에서 구르며 하류로 끌린다
+          if (isSinkerRig && this.surfRolling && this.rig.settled) {
+            const rollDx = Math.sign(tide.x || 1) * TUNING.tidePhase.surfRollDriftMps * dt;
+            this.rig.floatX += rollDx; this.rig.baitX += rollDx;
+          }
         }
       }
     }
@@ -2239,11 +2252,30 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     // rev2: 바닥층 미끼(국소 바닥 근처)는 코팅 파슬의 bottomSyncBonus 가산 대상 (§2-5)
     // 미끼(바늘) 위치 = 뒷줄견제 목줄 스트리밍 반영 (Task 5) — 밑밥 파슬과의 3D 겹침 판정
     const needle = this.needleSyncPos(tide);
+    // 205차 — 물때 장르 조건: 찌(밑밥 띠·쌓인 밑밥) · 원투(봉돌 구름) · 루어 종류 · 구멍치기(수위)
+    const tn = this.tideNow();
+    const floatRig = !this.lureMode && !this.surfMode;
     const sync = maxChumSync(
       this.chumParcels,
       needle,
-      { baitNearBottom: needle.z >= bedHereM - 1.2 },
+      { baitNearBottom: needle.z >= bedHereM - 1.2, horizSigmaMult: tn && floatRig ? chumBandSigmaMult(tn.flow01) : 1 },
     );
+    let chumBankBonus = 0;
+    if (tn && floatRig) {
+      const rel = chumBankRelease(this.chumBank, tn.state.phase, dt, tn.k);
+      this.chumBank = rel.bank;
+      chumBankBonus = rel.syncBonus;
+    }
+    let tideGenreBite = 1;
+    let tideGenreSnag = 1;
+    this.surfRolling = false;
+    if (tn) {
+      if (this.surfMode && !this.lureMode) {
+        const sr = surfSinkerTide(tn.state.phase, tn.flow01, InventoryStore.getSinkerWeightG(), tn.k);
+        tideGenreBite *= sr.biteMult; tideGenreSnag *= sr.snagMult; this.surfRolling = sr.rolling;
+      }
+      if (this.cfg.hole) tideGenreBite *= holeWaterLevelMult(tn.level01, tn.k);
+    }
 
     // 미끼 종류 × 어종 선호도 친화도 (오라클 연동)
     //   193차 — 바늘마다 미끼가 다르면 끼운 미끼들의 평균(서로 다른 미끼 = 더 많은 어종에 말을 건다)
@@ -2269,6 +2301,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       if (this.lureSink?.sinkType === 'fast_sinking' && (this.rigPose === 'lift' || this.rigPose === 'fall')) {
         this.lureActionMult *= 1.3;
       }
+      // 205차 — 루어 종류별 물때 반응(지그·미노우 중물 · 에기 물돌이 · 타이라바 정조 약세 · 바닥 웜 초물)
+      if (tn) this.lureActionMult *= lureKindTideMult(this.lureSpec?.kind, tn.state.phase, tn.flow01, tn.k);
     }
 
     const tick = this.biteEngine.update({
@@ -2281,19 +2315,19 @@ export class FirstPersonFishingScene extends Phaser.Scene {
         * gearBiteMult(this.lureMode ? InventoryStore.rigLure?.fault : undefined)
         * this.feeding.activity * (this.cfg.fieldEvent?.biteMult ?? 1) * this.skillBiteMult()
         // 193차 — 미끼 수(+2%씩) · 이웃한 같은 미끼(+1%) · 한 바늘에 두 미끼(바늘마다 +2%) · 반짝이 단독(전갱이 10%)
-        * InventoryStore.rigBiteMult() * flasherMult,
+        * InventoryStore.rigBiteMult() * flasherMult * tideGenreBite,
       inReefZone: inReef,
       isHold: hold,
       alignmentIndex: this.lineTension.alignmentIndex,
       isHoldingLine: holding,
       // 동조→입질 배율 스케일 (TUNING.chumSync.syncToBiteMul — balance 튜닝)
-      chumSyncRate: Math.min(1, sync * TUNING.chumSync.syncToBiteMul),
+      chumSyncRate: Math.min(1, sync * TUNING.chumSync.syncToBiteMul + chumBankBonus),
       // 낚시터 특성(RegionAreaNode.snagRisk) × 루어 밑걸림 배율(에기 바닥 드래깅 -30%)
       // 127차 — 강수 시 밑걸림·채비 손실 확률 상승
       snagRiskMult: getAreaSnagRiskMult(GameState.currentSpotId)
         * (this.lureSpec?.snagRiskMult ?? 1) * (this.castWx?.snagMult ?? 1)
         // 149차 — 콘크리트 블록 틈은 밑걸림이 기본값이다(그래서 저가 장비로 한다)
-        * (this.cfg.hole?.snagRiskMult ?? 1),
+        * (this.cfg.hole?.snagRiskMult ?? 1) * tideGenreSnag,
     });
 
     // ── 입질 시퀀스 진행 (초릿대 굽힘/찌 잠김 구동) ──
@@ -2366,6 +2400,31 @@ export class FirstPersonFishingScene extends Phaser.Scene {
         : '입질 감지! 초릿대를 지켜보세요');
     }
   }
+
+  /**
+   * 205차 — 지금 물때(30초 캐시): 단계 · 사리 세기 · 물살 0~1 · 수위 0~1 · 지역 계수(동해 0.3).
+   * 홈타운(실물때 없음)은 null — 물때 공략 규칙을 전부 끈다.
+   */
+  private tideNow(): { state: TideFlowState; strength: number; flow01: number; level01: number; k: number } | null {
+    if (this.cfg.region === 'hometown') return null;
+    const nowMs = Date.now();
+    if (!this.tideNowCache || nowMs - this.tideNowCache.at > 30_000) {
+      const state = tideFlowStateAt(new Date(nowMs));
+      const strength = calculateTideInfo().currentStrength;
+      this.tideNowCache = {
+        at: nowMs, state, strength,
+        flow01: tideFlow01(state, strength, tideRegionFlowK(this.cfg.region)),
+        level01: tideWaterLevel01(state),
+        k: tideRegionK(this.cfg.region),
+      };
+    }
+    return this.tideNowCache;
+  }
+  private tideNowCache: { at: number; state: TideFlowState; strength: number; flow01: number; level01: number; k: number } | null = null;
+  /** 205차 — 물때 고인 밑밥 저장량 0~1(찌) */
+  private chumBank = 0;
+  /** 205차 — 원투 봉돌이 물살에 구르는 중(하류로 끌린다) */
+  private surfRolling = false;
 
   /**
    * 204차 — 조류 엔진에 넣는 「물때 시계」(시간). 엔진은 |sin(2π/12.5 × t)|로 유속을 정하는데,
@@ -2447,14 +2506,18 @@ export class FirstPersonFishingScene extends Phaser.Scene {
 
   private buildSpawnCtx(inReef: boolean): SpawnContext {
     const hour = new Date().getHours();
+    const tnSpawn = this.tideNow();
     const ctx: SpawnContext = {
       depthZ: this.rig.baitZ,
       zMax: this.cfg.zMaxM,
       region: this.cfg.region,
       tidePhase: calculateTideInfo().tidePhase,
       month: new Date().getMonth() + 1,
-      // 204차 — 물돌이·끝들물 대물 가중
-      sizeBias: this.cfg.region === 'hometown' ? 0 : tideFlowSizeBias(tideFlowStateAt().phase),
+      // 204차 — 물돌이·끝들물 대물 가중(205차 — 동해 감쇠) · 205차 어종별 물때 선호 · 단계 대물
+      sizeBias: tnSpawn ? regionalSizeBias(tideFlowSizeBias(tnSpawn.state.phase), tnSpawn.k) : 0,
+      flowPhase: tnSpawn?.state.phase,
+      tideStrength01: tnSpawn?.strength,
+      tideRegionK: tnSpawn?.k,
       baitKey: this.currentBaitKey(),
       inReef,
       isNight: hour >= 20 || hour < 5,
@@ -2987,6 +3050,12 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       const drop = this.rollLanding(hooked);
       const school = drop.droppedIndex === null ? hooked : hooked.filter((_, i) => i !== drop.droppedIndex);
       if (school.length >= 2) TitleStore.bump('doubleHook');   // 204차 — 「쌍걸이 복권」(올라온 것만)
+      // 205차 — 이 어종이 잘 무는 물때에 잡았다면 그 한 줄이 기록으로 남는다(처음 한 번)
+      const tnCatch = this.tideNow();
+      for (const x of school) {
+        const learned = TideLoreStore.observeCatch(x.speciesId, tnCatch?.state.phase);
+        if (learned) queueTideLoreNote(learned.noteKo);
+      }
       for (const x of school) {
         this.sessionCatch.push(`${x.nameKo} ${x.lengthCm}cm (${x.sex === 'M' ? '수컷' : '암컷'})`);
         GameState.addCaughtFish(x.speciesId, x.nameKo, x.lengthCm, x.weightG, 'rod', this.spotKind());

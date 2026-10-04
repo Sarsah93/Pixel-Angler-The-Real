@@ -194,5 +194,7 @@ export function feedingRegionProfileOf(regionId: string): FeedingRegionProfile {
     || regionId.includes('pohang') || regionId.includes('ulleung') || regionId.includes('dokdo')) {
     return 'east_sea';
   }
+  // 205차 — 부산(남해 동부) — 지금은 기본과 같은 비중이지만 지역 판정이 갈리는 자리(조사 보고서 §5)
+  if (regionId.includes('busan')) return 'south_sea';
   return 'default';
 }

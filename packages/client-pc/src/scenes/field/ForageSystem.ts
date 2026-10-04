@@ -19,6 +19,7 @@ import {
   farmAt, isProtectedFarmKind, forageSeed, rollForageSpots, forageSafety, pickForageTool, forageHoldMs,
   attemptForage, isOrdinanceViolation, rollEnforcement, creatureTools, FORAGE_TOOL_LABEL,
   calculateTideInfo, isNightNow, checkSlipHazard, TUNING,
+  tideFlowStateAt, tideWaterLevel01, tideRegionK, forageTideMult, forageFloodWarning,
 } from '@tra/core';
 import { GameState } from '../../store/GameState.js';
 import { InventoryStore } from '../../store/InventoryStore.js';
@@ -255,11 +256,14 @@ export class ForageSystem {
   // 환경
   // ═══════════════════════════════════════════════════
 
-  private env(): { month: number; isNight: boolean; windSpeedMs: number; waveHeightM: number; tideLevel01: number; hasAdvancedLicense: boolean; currentStrength: number } {
+  private env(): { month: number; isNight: boolean; windSpeedMs: number; waveHeightM: number; tideLevel01: number; hasAdvancedLicense: boolean; currentStrength: number; tideMult: number; floodWarn: boolean } {
     const kma = ExternalDataStore.getKmaWeather(this.host.regionId);
     const marine = ExternalDataStore.getRegionMarineWeather(this.host.regionId);
     const tide = calculateTideInfo();
-    const level = tide.highTideHeightCm > 0 ? tide.currentWaterLevelCm / tide.highTideHeightCm : 0.5;
+    // 205차 — 수위는 물때 흐름(만조·간조 시각)에서 잇는다 · 동해는 간만이 작아 「물 빠짐」이 덜하다
+    const flow = tideFlowStateAt();
+    const k = tideRegionK(this.host.regionId);
+    const level = 1 - (1 - tideWaterLevel01(flow)) * k;
     return {
       month: new Date().getMonth() + 1,
       isNight: isNightNow(),
@@ -268,6 +272,8 @@ export class ForageSystem {
       tideLevel01: Math.max(0, Math.min(1, level)),
       hasAdvancedLicense: GameState.hasLicense('shore_hunting_advanced'),
       currentStrength: tide.currentStrength,
+      tideMult: forageTideMult(flow, tide.currentStrength, k),
+      floodWarn: forageFloodWarning(flow) && k >= 0.5,
     };
   }
 
@@ -299,7 +305,9 @@ export class ForageSystem {
     const e = this.env();
     this.spots = rollForageSpots(this.candidates, {
       seed, month: e.month, isNight: e.isNight, tideLevel01: e.tideLevel01,
-      hasAdvancedLicense: e.hasAdvancedLicense, farms: this.farms, maxSpots: TUNING.forage.maxSpots,
+      hasAdvancedLicense: e.hasAdvancedLicense, farms: this.farms,
+      // 205차 — 간조 시간창(간조 2시간 전 ~ 1시간 뒤)이면 스팟이 더 드러난다
+      maxSpots: Math.round(TUNING.forage.maxSpots * e.tideMult),
     });
     this.renderSpots();
   }
@@ -390,6 +398,20 @@ export class ForageSystem {
   // ═══════════════════════════════════════════════════
   // 업데이트 — 가시성 · 근접 · 홀드
   // ═══════════════════════════════════════════════════
+
+  /**
+   * 205차 — 간조 1시간 뒤부터는 물이 차오른다. 한 번만 혼잣말로 알린다(남해·서해 — 동해는 간만이 작아 생략).
+   * @returns 알렸는가
+   */
+  private maybeFloodWarning(): boolean {
+    const e = this.env();
+    if (!e.floodWarn) { this.floodWarned = false; return false; }
+    if (this.floodWarned) return false;
+    this.floodWarned = true;
+    this.host.pushLog('[채집] 물이 다시 들어오기 시작했다. 너무 깊이 들어가지 말자.');
+    return true;
+  }
+  private floodWarned = false;
 
   update(deltaMs: number): void {
     this.refreshAcc += deltaMs;
@@ -553,7 +575,9 @@ export class ForageSystem {
     this.holdG?.clear();
     const res = attemptForage(h.creature, h.tool, Math.random, {
       escapeMult: GameState.skillMult('octopus_escape'), injuryChance: GameState.skillMult('hand_injury'),
+      successMult: this.env().tideMult,   // 205차 — 간조 시간창 가산
     });
+    this.maybeFloodWarning();
     const p = this.host.player();
     switch (res.outcome) {
       case 'injured': {

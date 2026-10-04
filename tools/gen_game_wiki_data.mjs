@@ -541,6 +541,45 @@ const guide = {
       bite: p.biteMult, size: p.sizeBias, current: p.currentMult, note: core.TIDE_FLOW_NOTE_KO[ph], tip: core.TIDE_FLOW_TIP_KO[ph],
     };
   }),
+  // 205차 — 어종 × 물때(게임 안에서는 잘 무는 물때에 잡아 봐야 알게 되는 숨은 표)
+  species: core.TIDE_PHASE_PREF_GROUPS.map((g) => {
+    const T = core.TUNING.tidePhase;
+    return {
+      id: g.id, name: g.nameKo, nameEn: g.nameEn, note: g.noteKo,
+      evidence: { research: '조사 근거', community: '낚시 매체 · 커뮤니티', folk: '통설' }[g.evidence],
+      members: g.members.map((id) => core.FISH_DATABASE.find((f) => f.id === id)?.nameKo ?? id),
+      phases: core.TIDE_PREF_PHASE_ORDER.map((ph) => ({
+        name: core.TIDE_FLOW_LABEL_KO[ph],
+        south: +core.speciesTidePhaseMult(g.members[0], ph, 1, 1).toFixed(2),
+        neap: +core.speciesTidePhaseMult(g.members[0], ph, 0, 1).toFixed(2),
+        east: +core.speciesTidePhaseMult(g.members[0], ph, 1, T.eastSeaK).toFixed(2),
+        size: g.size?.[ph] ?? 0,
+      })),
+    };
+  }),
+  // 205차 — 채비(장르) × 물때 규칙
+  genre: (() => {
+    const T = core.TUNING.tidePhase;
+    return [
+      { id: 'float', name: '찌낚시 · 밑밥', lede: '물이 약할 때(물돌이 · 끝들물 · 끝날물) 던진 밑밥은 발밑에 쌓이고, 흐름이 붙는 초물 · 중물에 띠로 풀린다.',
+        rows: [['쌓이는 양', `1회 투척 +${T.chumBankPerThrow} (최대 ${T.chumBankMax})`], ['풀릴 때 동조 가산', `저장량 × ${T.chumBankSyncBonus} (동해는 ×${(0.4 + 0.6 * T.eastSeaK).toFixed(2)})`],
+          ['소진', `초당 ${T.chumBankDecayPerSec}`], ['밑밥 띠', `수평 동조 폭 × (1 + 물살 × ${T.chumBandPerFlow})`]] },
+      { id: 'surf', name: '원투 · 봉돌', lede: '물살이 센 중물에 봉돌이 가벼우면 바닥에서 구르며 하류로 끌린다. 무거운 봉돌이면 버틴다.',
+        rows: [['구르는 조건', `물살 > ${T.surfRollFlow} 이고 봉돌 < ${T.surfSinkerMinG}g (25호 ≈ 94g)`], ['구를 때', `입질 ×${T.surfRollBite} · 밑걸림 ×${T.surfRollSnag} · 하류로 ${T.surfRollDriftMps}m/s`],
+          ['초들물 · 초날물', `입질 ×${T.surfEarlyBite} (냄새 확산)`], ['동해', '물살이 약해(최대 ≈ 0.4) 봉돌이 거의 구르지 않는다']] },
+      { id: 'lure', name: '루어 종류', lede: '단계 몫은 동해에서 1 쪽으로 눌린다. 물살 몫은 이미 지역 물살에 들어 있다.',
+        rows: [['지그 · 미노우 · 스푼 · 스피너', '중물 ×1.10 · 물돌이 ×0.85'], ['에기', `물돌이 ×1.10 · 물살 > ${T.lureFlowHigh} 이면 ×0.85`],
+          ['타이라바', '중물 ×1.15 · 물돌이 ×0.70'], ['웜 · 소프트 저크베이트', `초물 ×1.10 · 물살 > ${T.lureFlowHigh} 이면 ×0.85`]] },
+      { id: 'hole', name: '구멍치기', lede: '단계보다 물높이. 만조 무렵 블록 위 물이 깊을 때 잘 물고, 간조엔 블록이 드러난다.',
+        rows: [['간조 → 만조', `입질 ×${T.holeLow} → ×${T.holeHigh}`], ['동해', `×${(1 + (T.holeLow - 1) * T.eastSeaK).toFixed(2)} → ×${(1 + (T.holeHigh - 1) * T.eastSeaK).toFixed(2)}`]] },
+      { id: 'forage', name: '해루질', lede: '간조 2시간 전 ~ 간조 물돌이 ~ 간조 1시간 뒤가 시간창. 그 뒤로는 물이 다시 차오른다(혼잣말 경고 — 동해 제외).',
+        rows: [['시간창 안', `스팟 수 · 채집 성공 × (1 + ${T.forageWindowBonus} × 사리 × 지역)`], ['사리 계수', '조금 0.5 ~ 사리 1.0'], ['동해', `× (1 + ${(T.forageWindowBonus * T.eastSeaK).toFixed(2)}) 까지`]] },
+      { id: 'trap', name: '통발', lede: '담가 둔 동안 물살이 고르게 흘렀을수록 미끼 냄새가 멀리 퍼져 많이 든다.',
+        rows: [['어획 배율', `${(1 - T.trapFlowSpan / 2).toFixed(2)} ~ ${(1 + T.trapFlowSpan / 2).toFixed(2)} (평균 물살 기준)`], ['동해', `${(1 - T.trapFlowSpan / 2 * T.eastSeaK).toFixed(2)} ~ ${(1 + T.trapFlowSpan / 2 * T.eastSeaK).toFixed(2)}`]] },
+      { id: 'east', name: '동해 감쇠', lede: '동해(속초·포항·울릉)는 조차가 30cm 남짓이라 물때 효과를 크게 깎는다 — 대신 새벽 · 해질녘 같은 시간대가 더 중요하다.',
+        rows: [['어종 선호 · 대물 · 수위 · 해루질', `효과 × ${T.eastSeaK}`], ['물살 세기', `× ${T.eastSeaFlowK}`], ['사리 · 조금', '조금이면 어종 선호가 절반으로 눌린다']] },
+    ];
+  })(),
 };
 
 // ─────────────────────────────────────────────

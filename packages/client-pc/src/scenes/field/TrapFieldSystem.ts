@@ -13,7 +13,7 @@ import Phaser from 'phaser';
 import {
   type DeployedTrap, type RegionTerrain, type SpotType, type TrapSpec, type TrapCatchItem,
   getTrapById, getCreatureById, FISH_DATABASE,
-  harvestTrap, rollTrapLoss, validateTrapDeployment, getNextOptimalHarvestTime,
+  harvestTrap, rollTrapLoss, trapTideMult, averageTideFlow01, tideRegionK, validateTrapDeployment, getNextOptimalHarvestTime,
   trapSeasonViolations, rollEnforcement, GANGWON_FORAGE_ORDINANCE,
   calculateTideInfo, TUNING,
 } from '@tra/core';
@@ -376,6 +376,9 @@ export class TrapFieldSystem {
       spotType: this.spotTypeAt(t.tileX, t.tileY), depthM: t.depthM ?? 5, tide,
       month: new Date().getMonth() + 1, currentStrength: tide.currentStrength,
     });
+    // 205차 — 담가 둔 동안 물살이 고르게 흘렀을수록 미끼 냄새가 멀리 퍼져 많이 든다(0.85~1.15 · 동해는 물살이 약하다)
+    const tideMult = trapTideMult(averageTideFlow01(t.deployedAt.getTime(), Date.now()), tideRegionK(this.host.regionId));
+    for (const it of result.items) it.countOrWeightG = Math.max(1, Math.round(it.countOrWeightG * tideMult));
     // 포획물 → 쿨러(활어) 우선, 가득이면 인벤토리
     const stored: string[] = [];
     let coolerCount = 0;
