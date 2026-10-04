@@ -10,7 +10,7 @@
 
 import type { InvCategory, InvItemTemplate } from '../store/InventoryStore.js';
 import { COOK_CORNER } from './CookItems.js';
-import { WEIGHT_SINKER_DB, TRAP_DATABASE, getLureSpec } from '@tra/core';
+import { WEIGHT_SINKER_DB, TRAP_DATABASE, getLureSpec, ROD_SHOP, REEL_SHOP } from '@tra/core';
 import { applyItemVitals } from './ItemVitals.js';
 import type { FurnKind } from './HomeFurniture.js';
 
@@ -282,6 +282,18 @@ const FORAGE_CORNER: ShopEntry[] = [
   { id: 'shop_net_7', name: '뜰채 7m', icon: '', iconTexture: 'px:it_net', category: 'gear', subCategory: '손도구', basePrice: 52000, price: 62000, maxPerPurchase: 1, equippable: true, tool: 'net', netReachM: 7, desc: '긴 자루 뜰채 — 높은 방파제 상판에서 간조 때도 수면에 닿는다.' },
   // 207차 — 원투 거치대(삼발이). 봉돌이 바닥에 안착하면 1인칭 「거치하기」로 걸어 두고 자리를 떠날 수 있다
   { id: 'shop_rod_holder', name: '원투 거치대 (삼발이)', icon: '', iconTexture: 'px:it_rodholder', category: 'etc', subCategory: '낚시 도구', basePrice: 16000, price: 19000, maxPerPurchase: 3, equippable: false, desc: '원투 낚싯대를 걸어 두는 삼발이 받침. 봉돌을 바닥에 내려 두고 기다리는 동안 초릿대 끝으로 입질을 본다.' },
+  // 209차 — 용도별 낚싯대 14자루 · 릴 6개(제원은 core `RodCatalog` — id로 조회). 그림은 릴 종류로 가른다:
+  //  스피닝대 = item_spinning_rod · 베이트대 = item_bait_rod (사이소 민물대가 베이트대 그림을 쓰던 것도 정정)
+  ...ROD_SHOP.map((r): ShopEntry => ({
+    id: r.id, name: r.nameKo, icon: '', iconTexture: r.spec.reel === 'bait' ? 'item_bait_rod' : 'item_spinning_rod',
+    category: 'gear', subCategory: '손도구', basePrice: Math.round(r.priceWon * 0.85 / 1000) * 1000, price: r.priceWon,
+    maxPerPurchase: 3, equippable: true, tool: 'rod', desc: r.descKo,
+  })),
+  ...REEL_SHOP.map((r): ShopEntry => ({
+    id: r.id, name: r.nameKo, icon: '', iconTexture: r.spec.kind === 'bait' ? 'item_bait_reel' : 'item_spinning_reel',
+    category: 'gear', subCategory: '릴', basePrice: Math.round(r.priceWon * 0.85 / 1000) * 1000, price: r.priceWon,
+    maxPerPurchase: 3, equippable: true, desc: r.descKo,
+  })),
   ...TRAP_DATABASE.map((t): ShopEntry => ({
     id: `inv_trap_${t.id}`, name: t.nameKo, icon: '🪤', category: 'etc', subCategory: '통발',
     basePrice: Math.round(t.priceWon * 0.8), price: t.priceWon, maxPerPurchase: 3, equippable: false, trapSpecId: t.id,
@@ -446,7 +458,7 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
       { id: 'workshop_pro_tools', name: '로드 빌딩 공구 세트', icon: '', category: 'etc', subCategory: '재료',
         basePrice: 150000, price: 150000, maxPerPurchase: 1, equippable: false, craftMaterial: true, unlockKey: 'daily_workshop_pro',
         desc: '탁만수가 말해 둔 물건. 대를 깎는 사람에게만.' },
-      { id: 'inv_rod_budget', name: '사이소 민물대 2.4m', icon: '', iconTexture: 'item_bait_rod', category: 'gear', subCategory: '손도구',
+      { id: 'inv_rod_budget', name: '사이소 민물대 2.4m', icon: '', iconTexture: 'item_spinning_rod', category: 'gear', subCategory: '손도구',
         basePrice: 12000, price: 12000, maxPerPurchase: 1, equippable: true, tool: 'rod',
         desc: '싸구려 짧은 대. 테트라포드 구멍치기 전용 — 밑걸림으로 부러져도 아깝지 않다.' },
       { id: 'inv_reel_budget', name: '사이소 소형 스피닝릴', icon: '', iconTexture: 'item_spinning_reel', category: 'gear', subCategory: '릴',

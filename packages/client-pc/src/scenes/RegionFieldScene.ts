@@ -77,6 +77,7 @@ import { RegionLight,
   seamBetween,
   getStatusEffect,
   computeCastWeather, castScatterRadius, applyCastScatter, castWeatherLabelKo, kstParts,
+  rodCastDistanceMult, rodLoadState, rodTipSnapChance, reelFitsRod, rodFitsHole,
   type CastWeatherEffect,
   type VitalsActivity,
 } from '@tra/core';
@@ -3199,6 +3200,12 @@ export class RegionFieldScene extends Phaser.Scene {
       this.floatingHint(`${broken.name} — ${def.labelKo}. ${def.fixKo}`);
       return;
     }
+    // 209차 — 릴이 대에 안 맞으면(스피닝대 · 베이트대) 던질 수 없다
+    const rodSpec = InventoryStore.handRodSpec;
+    if (rodSpec && !reelFitsRod(rodSpec, InventoryStore.reelSpec)) {
+      this.floatingHint(rodSpec.reel === 'bait' ? '베이트대에는 베이트릴을 달아야 한다' : '스피닝대에는 스피닝릴을 달아야 한다');
+      return;
+    }
     // 구멍치기는 발밑 블록 틈에 그대로 내리는 조법이라 "바다 인접" 판정과 무관하다
     //  (테트라포드 안쪽 상판에 서 있어도 발밑에 구멍이 있다).
     if (!this.nearWater && !this.holeSpot) {
@@ -3210,6 +3217,10 @@ export class RegionFieldScene extends Phaser.Scene {
     if (missing.length > 0) {
       this.floatingHint(`채비가 불완전합니다 — ${missing.join(', ')} 장착 필요 (U 채비하기)`);
       return;
+    }
+    // 209차 — 채비가 대에 비해 너무 무거우면 미리 알린다(세게 던지면 초릿대가 부러진다)
+    if (rodSpec && !this.holeSpot && rodLoadState(rodSpec, InventoryStore.getRigTotalWeightG()) === 'danger') {
+      this.floatingHint('채비가 이 대에 비해 너무 무겁다 — 세게 던지면 초릿대가 부러진다');
     }
     this.charging = true;
     this.chargeDownAt = this.time.now;
@@ -3300,6 +3311,9 @@ export class RegionFieldScene extends Phaser.Scene {
     }
     const warn = holeGearWarning(InventoryStore.getEquippedRod()?.basePrice);
     if (warn) this.hud?.pushLog(`[구멍치기] ${warn.ko}`);
+    // 209차 — 긴 대는 블록 틈에서 휘두르기 어렵다(걸린 고기가 잘 빠진다 — 1인칭 미끄러짐 가중)
+    const hs = InventoryStore.handRodSpec;
+    if (hs && !rodFitsHole(hs)) this.hud?.pushLog('[구멍치기] 대가 길어 틈 속에서 다루기 어렵다 — 짧은 대가 낫다');
     this.castBusy = true;
     this.hud?.pushLog(`[구멍치기] ${hole.labelKo} 틈에 채비를 내립니다 — 구멍 수심 ${hole.depthM.toFixed(1)}m`);
     this.fadeOutThen(() => {
@@ -3347,6 +3361,12 @@ export class RegionFieldScene extends Phaser.Scene {
     return { x: eff.crossWind.x * g, y: eff.crossWind.y * g };
   }
 
+  /** 209차 — 손에 든 대 · 릴 · 지금 채비 무게로 정한 비거리 배율(대가 없으면 1) */
+  private rodCastMult(): number {
+    const spec = InventoryStore.handRodSpec;
+    return spec ? rodCastDistanceMult(spec, InventoryStore.getRigTotalWeightG(), InventoryStore.reelSpec) : 1;
+  }
+
   private releaseCast(): void {
     if (!this.charging) return;
     this.charging = false;
@@ -3357,6 +3377,16 @@ export class RegionFieldScene extends Phaser.Scene {
     // 149차 — 발밑에 구멍이 있으면 **짧은 탭 = 구멍치기 / 꾹 누르기 = 캐스팅**.
     //  (탭/홀드 문법은 1인칭 호핑·릴링과 동일 — 새 단축키를 만들지 않는다)
     if (this.holeSpot && heldMs < TUNING.hole.tapMs) { this.enterHoleFishing(); return; }
+    // 209차 — 대가 받는 무게를 한참 넘는 채비를 힘껏 휘두르면 초릿대가 부러진다(수리 가능한 고장)
+    const rod = InventoryStore.handRod;
+    const rodSpec = InventoryStore.handRodSpec;
+    if (rod && rodSpec && Math.random() < rodTipSnapChance(rodSpec, InventoryStore.getRigTotalWeightG(), power)) {
+      if (InventoryStore.setFault(rod, 'rod_tip')) {
+        this.floatingHint('딱 — 휘두르는 순간 초릿대가 부러졌다');
+        this.hud?.pushLog(`[장비] ${rod.name} — 초릿대 부서짐. 채비가 대에 비해 너무 무거웠다`);
+        return;
+      }
+    }
     this.startCastFlight(this.lastAimDir, power);
   }
 
@@ -3405,7 +3435,8 @@ export class RegionFieldScene extends Phaser.Scene {
       // 스킬 롱캐스트(122차)
       strength: DEFAULT_ANGLER_STATS.strength * GameState.skillMult('cast_distance'),
       // 날씨 비거리 배율(127차) — 완력이 아니라 **수평 속도 전체**에 곱한다
-      speedMult: eff.distanceMult,
+      // 209차 — 대(용도 · 길이 · 채비 무게 적합) × 릴(롱캐스트 스풀 · 베이트) 비거리 배율
+      speedMult: eff.distanceMult * this.rodCastMult(),
       wind: this.windForce(eff),
       // 채비 공기저항(루어 dragCoefficient/봉돌 종류) → 비거리 (메탈지그 초장타)
       airDragCd: InventoryStore.getRigDragCd(),
@@ -3613,7 +3644,8 @@ export class RegionFieldScene extends Phaser.Scene {
     if (this.isTransitioning) return;
     this.lastCastLand = { x: rod.landX, y: rod.landY };
     this.hud?.pushLog(rod.phase === 'bite' ? '[거치대] 낚싯대를 집어 들었다 — 초릿대가 움직인다'
-      : rod.phase === 'snagged' ? '[거치대] 낚싯대를 집어 들었다 — 바닥에 걸려 있다' : '[거치대] 낚싯대를 집어 들었다');
+      : rod.phase === 'hooked' ? '[거치대] 낚싯대를 집어 들었다 — 고기가 걸려 있다'
+        : rod.phase === 'snagged' ? '[거치대] 낚싯대를 집어 들었다 — 바닥에 걸려 있다' : '[거치대] 낚싯대를 집어 들었다');
     this.fadeOutThen(() => {
       this.dismountBike();
       MultiplayerClient.setActivity('fishing');
@@ -6389,6 +6421,8 @@ export class RegionFieldScene extends Phaser.Scene {
       player: common.player, blocked: common.blocked, pushLog: common.pushLog, floatingHint: common.floatingHint,
       pickUp: (rod: ParkedRodSave) => this.pickUpParkedRod(rod),
     });
+    // 209차 — 1인칭 동안 필드는 멈춘다. 다른 거치대는 1인칭이 이 함수를 불러 대신 굴린다(파이팅 중 엉킴 포함)
+    this.registry.set('rodHolderTick', (ms: number, tanglePerSec: number) => this.rodHolder?.simulate(ms, tanglePerSec) ?? []);
     if (import.meta.env.DEV) {
       const st = this.forage.candidateStats();
       this.hud?.pushLog(`[dev] 채집 후보 갯바위 ${st.rock_shore} · 사석/TTP ${st.armor_foot} · 웅덩이 ${st.tidepool} · 안벽 ${st.harbor_wall} · 스팟 ${this.forage.allSpots().length} · 어장 ${farms.length}`);
@@ -6404,7 +6438,7 @@ export class RegionFieldScene extends Phaser.Scene {
       ownedTrapField?.destroy();
       ownedStoveField?.destroy();
       ownedRodHolder?.destroy();
-      if (this.rodHolder === ownedRodHolder) this.rodHolder = undefined;
+      if (this.rodHolder === ownedRodHolder) { this.rodHolder = undefined; this.registry.remove('rodHolderTick'); }
       if (this.forage === ownedForage) this.forage = undefined;
       if (this.trapField === ownedTrapField) this.trapField = undefined;
       if (this.stoveField === ownedStoveField) this.stoveField = undefined;
@@ -6676,7 +6710,7 @@ export class RegionFieldScene extends Phaser.Scene {
         originX: this.playerBody.x, originY: this.playerBody.y,
         dirX: this.lastAimDir.x, dirY: this.lastAimDir.y,
         strength: DEFAULT_ANGLER_STATS.strength * GameState.skillMult('cast_distance'),
-        speedMult: effG.distanceMult,
+        speedMult: effG.distanceMult * this.rodCastMult(),
         wind: this.windForce(effG),
         airDragCd: InventoryStore.getRigDragCd(),
       }, len);
@@ -6708,7 +6742,7 @@ export class RegionFieldScene extends Phaser.Scene {
       dirX: this.lastAimDir.x, dirY: this.lastAimDir.y,
       power: this.chargePower,
       strength: DEFAULT_ANGLER_STATS.strength * GameState.skillMult('cast_distance'),
-      speedMult: eff.distanceMult,
+      speedMult: eff.distanceMult * this.rodCastMult(),
       wind: this.windForce(eff),
       airDragCd: InventoryStore.getRigDragCd(),
     });

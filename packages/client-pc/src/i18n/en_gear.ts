@@ -125,4 +125,91 @@ export const EN_GEAR: Record<string, string> = {
   '초릿대 끝이 까딱거린다!': 'The rod tip is nodding!',
   '초릿대가 잠잠해졌다': 'The rod tip has gone still',
   '초릿대가 잠잠해졌다 — 미끼를 따먹힌 것 같다': 'The rod tip has gone still — the bait was probably stolen',
+  // ── 209차 — 낚싯대 · 릴 라인업 · 제원 · 거치대 걸림/엉킴 ──
+  '해원 갯바위 0.6호 5.0m': 'Haewon Iso 0.6 · 5.0m',
+  '해원 갯바위 1호 5.3m': 'Haewon Iso 1 · 5.3m',
+  '해원 갯바위 1.5호 5.3m': 'Haewon Iso 1.5 · 5.3m',
+  '해원 갯바위 2호 5.3m': 'Haewon Iso 2 · 5.3m',
+  '크로스캐스트 원투 15호 3.6m': 'Crosscast Surf 15 · 3.6m',
+  '크로스캐스트 원투 25호 4.05m': 'Crosscast Surf 25 · 4.05m',
+  '서프마스터 원투 30호 4.25m': 'Surfmaster Surf 30 · 4.25m',
+  '블루러너 쇼어지깅 96MH': 'Bluerunner Shore Jigging 96MH',
+  '블루러너 쇼어지깅 100H': 'Bluerunner Shore Jigging 100H',
+  '문라이트 라이트게임 76UL': 'Moonlight Light Game 76UL',
+  '아오리 에깅 83M': 'Aori Eging 83M',
+  '레드씨 타이라바 66ML 베이트': 'Red Sea Tai-rubber 66ML Bait',
+  '딥슬로우 슬로우지깅 63#3 베이트': 'Deep Slow Slow-jigging 63#3 Bait',
+  '틈새 구멍치기대 2.1m': 'Crevice Hole Rod 2.1m',
+  '문라이트 1000S 스피닝릴': 'Moonlight 1000S Spinning Reel',
+  '다이오 2500LBD 레버브레이크': 'Daio 2500LBD Lever Brake',
+  '다이오 3000 범용 스피닝릴': 'Daio 3000 All-round Spinning Reel',
+  '서프마스터 5000 원투 전용릴': 'Surfmaster 5000 Surf Reel',
+  '블루러너 4000HG 쇼어지깅릴': 'Bluerunner 4000HG Shore Jigging Reel',
+  '레드씨 150 베이트릴': 'Red Sea 150 Baitcasting Reel',
+  '낭창한 저호수 찌낚시대. 벵에돔 · 학꽁치처럼 입이 약한 고기를 가벼운 찌로 노린다.':
+    'A soft, light-grade float rod for soft-mouthed fish like opaleye and halfbeak on light floats.',
+  '방파제 감성돔 · 벵에돔 범용 찌낚시대. 구멍찌 0.5~2호 채비가 제 무게다.':
+    'An all-round breakwater float rod for black porgy and opaleye. Built for 0.5–2 grade floats.',
+  '허리힘이 받쳐 주는 표준 찌낚시대. 조류가 센 갯바위에서 찌를 세워 흘리기 좋다.':
+    'The standard float rod with a firm backbone — keeps the float upright in strong rock-shore currents.',
+  '참돔 · 대형 감성돔용 강한 찌낚시대. 무거운 수중찌와 굵은 목줄을 받는다.':
+    'A strong float rod for red seabream and big porgy. Handles heavy sub-floats and thick leaders.',
+  '입문 원투대. 10~20호 봉돌을 받는다. 거치대에 걸어 두고 초릿대로 입질을 본다.':
+    'An entry surf rod for 10–20 grade sinkers. Set it on a holder and watch the tip for bites.',
+  '모래사장 · 방파제 원투 표준. 15~30호 봉돌로 100m 가까이 던진다.':
+    'The standard beach and breakwater surf rod. Throws 15–30 grade sinkers close to 100m.',
+  '고탄성 원투 전용대. 20~35호 봉돌을 끝까지 실어 던지는 장타 대.':
+    'A high-modulus distance surf rod that loads 20–35 grade sinkers all the way.',
+  '방파제 · 갯바위에서 메탈지그를 멀리 던져 청물(방어 · 부시리 · 삼치)을 노린다.':
+    'Throws metal jigs far from breakwaters and rocks for pelagics — yellowtail, amberjack, Spanish mackerel.',
+  '무거운 지그와 대형 청물을 위한 강한 쇼어지깅대. 손목에 오는 부담도 크다.':
+    'A heavy shore jigging rod for big jigs and big pelagics. Hard on the wrists.',
+  '볼락 · 전갱이 지그헤드 전용. 1g 남짓한 채비의 무게를 손끝까지 전해 준다.':
+    'Made for rockfish and horse mackerel jigheads. You feel a 1g rig right in your fingertips.',
+  '에기 2.5~3.5호를 쳐올리기 좋은 빳빳한 허리. 무늬오징어 전용대.':
+    'A crisp backbone for snapping 2.5–3.5 egi. Built for bigfin reef squid.',
+  '타이라바를 바닥에서 일정하게 감아 올리는 낭창한 베이트대. 던지는 대가 아니다 — 발밑에 내린다.':
+    'A soft bait rod for a steady tai-rubber retrieve off the bottom. Not for casting — you drop it straight down.',
+  '무거운 지그를 느리게 띄우는 슬로우지깅 전용 베이트대. 깊은 곳 대물 바닥고기용.':
+    'A slow-jigging bait rod that flutters heavy jigs. For big bottom fish in deep water.',
+  '짧고 뻣뻣한 테트라포드 구멍치기 전용대. 걸면 바로 틈에서 뽑아낸다.':
+    'A short, stiff tetrapod hole rod. Hook up and haul the fish straight out of the gap.',
+  '라이트게임용 소형 스피닝릴. 가는 PE와 1~5g 채비에 맞춘 가벼운 몸.':
+    'A small light-game spinning reel, made for thin PE and 1–5g rigs.',
+  '찌낚시 표준 레버브레이크 릴. 손가락으로 줄을 풀어 주며 고기를 띄운다.':
+    'The standard lever-brake reel for float fishing. Feed line with a finger while you lift the fish.',
+  '에깅 · 가벼운 원투 · 찌낚시를 두루 받는 범용 릴.': 'An all-round reel for eging, light surf casting and float fishing.',
+  '롱캐스트 스풀을 단 원투 전용 대형 릴. 스풀이 길어 줄이 덜 걸리고 멀리 나간다.':
+    'A big surf reel with a long-cast spool — less line friction, more distance.',
+  '고기어 · 강한 드랙의 쇼어지깅릴. 지그를 빠르게 감아 올리고 청물의 첫 질주를 버틴다.':
+    'A high-gear, strong-drag shore jigging reel. Fast retrieve, and it holds a pelagic\'s first run.',
+  '타이라바 · 슬로우지깅용 베이트릴. 클러치를 눌러 발밑에 떨어뜨리고 일정하게 감는다. 베이트대에만 맞는다.':
+    'A baitcasting reel for tai-rubber and slow jigging — press the clutch to drop, then wind steadily. Fits bait rods only.',
+  '용도': 'Use', '길이': 'Length', '호수 · 파워': 'Grade · power', '적합 원줄': 'Main line',
+  '적합 채비 무게': 'Rig weight', '견디는 하중': 'Load rating', '자중': 'Rod weight', '지금 채비': 'Current rig',
+  '종류': 'Type', '최대 드랙': 'Max drag', '기어비': 'Gear ratio', '권사량': 'Line capacity',
+  '갯바위 · 방파제 찌낚시': 'Float fishing (rocks · breakwater)', '원투': 'Surf casting', '쇼어지깅': 'Shore jigging',
+  '라이트게임': 'Light game', '에깅': 'Eging', '선상 타이라바 · 슬로우지깅': 'Boat tai-rubber · slow jigging',
+  '구멍치기': 'Hole fishing', '다용도(입문)': 'All-round (entry)', '경질': 'Stiff',
+  '베이트릴': 'Baitcasting reel', '스피닝릴': 'Spinning reel',
+  '베이트대에는 베이트릴을 달아야 한다': 'A bait rod needs a baitcasting reel',
+  '스피닝대에는 스피닝릴을 달아야 한다': 'A spinning rod needs a spinning reel',
+  '채비가 이 대에 비해 너무 무겁다 — 세게 던지면 초릿대가 부러진다': 'This rig is far too heavy for the rod — a hard cast will snap the tip',
+  '딱 — 휘두르는 순간 초릿대가 부러졌다': 'Crack — the rod tip snapped mid-swing',
+  '[구멍치기] 대가 길어 틈 속에서 다루기 어렵다 — 짧은 대가 낫다': '[Hole fishing] The rod is too long to work inside the gap — a short rod is better',
+  '초릿대가 크게 휘어 들썩인다 — 고기가 스스로 걸렸다!': 'The rod is bent hard and bucking — a fish hooked itself!',
+  '휘어 있던 초릿대가 튕기듯 펴졌다 — 빠진 것 같다': 'The bent rod sprang straight — the fish is off',
+  '옆으로 짼 고기에 줄이 엉켰다': 'A fish ran sideways and tangled the line',
+  '[거치대] 초릿대가 크게 휘어 들썩인다 — 고기가 스스로 걸렸다!': '[Rod holder] The rod is bent hard and bucking — a fish hooked itself!',
+  '[거치대] 휘어 있던 초릿대가 튕기듯 펴졌다 — 빠진 것 같다': '[Rod holder] The bent rod sprang straight — the fish is off',
+  '[거치대] 옆으로 짼 고기에 줄이 엉켰다': '[Rod holder] A fish ran sideways and tangled the line',
+  '[F] 거치해 둔 낚싯대 — 고기가 걸려 있다': '[F] Parked rod — fish on',
+  '[F] 거치해 둔 낚싯대 — 줄이 엉켜 있다': '[F] Parked rod — line tangled',
+  '[거치대] 낚싯대를 집어 들었다 — 고기가 걸려 있다': '[Rod holder] Picked up the rod — a fish is on',
+  '걸려 있던 고기가 차고 나간다': 'The hooked fish tears away',
+  '엉킨 줄을 잘라 내고 감아 들였다': 'Cut the tangle free and reeled in',
+  '[거치대] 엉킨 줄을 풀다 목줄을 잘라 냈다': '[Rod holder] Cut the leader while clearing the tangle',
+  '왼손 · 오른손 중 골라 든다.': 'Hold it in either hand.', '낚싯대. 손에 들어야 던질 수 있다.': 'A fishing rod. You must hold it to cast.',
+  '알맞다': 'just right', '가볍다 — 대가 덜 휘어 덜 나간다': 'light — the rod barely loads, so it casts short',
+  '무겁다 — 덜 나간다': 'heavy — casts short', '너무 무겁다 — 세게 던지면 초릿대가 부러진다': 'far too heavy — a hard cast will snap the tip',
 };

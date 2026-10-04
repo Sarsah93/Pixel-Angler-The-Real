@@ -710,6 +710,38 @@ export interface TuningConfig {
     reachTiles: number;
     /** 208차 — 한 사람이 펼 수 있는 거치대 수(가진 거치대 수와 낚싯대 한 벌 수가 더 적으면 그만큼) */
     maxHolders: number;
+    /** 209차 — 입질 창을 놓쳤을 때 고기가 스스로 걸릴 확률(원투대 · 그 밖) — 봉돌 60g 기준, 가벼우면 줄어든다 */
+    selfHookSurf: number;
+    selfHookOther: number;
+    /** 209차 — 걸린 채 기다리는 동안 초당 빠질 확률(평균 1/값 초) */
+    hookedEscapePerSec: number;
+    /** 209차 — 1인칭 파이팅 중 고기가 옆으로 크게 째면 다른 거치대 줄과 엉킬 확률(초당 · 거치대 하나당) */
+    fightTanglePerSec: number;
+    /** 209차 — 엉킴을 굴리기 시작하는 옆 째기 세기(파이트 횡변위 m) */
+    fightTangleLateralM: number;
+  };
+  /**
+   * 낚싯대 제원 판정 (209차 — `simulation/RodFit.ts`). 초기값은 설계 초안(실플레이 조율 대기).
+   * (`rod`는 1인칭 로드 벤딩 연출 섹션이다 — 이름을 나눈다)
+   */
+  rodSpec: {
+    /** 표준 길이에서 1m 길 때마다 비거리 +비율(0.9~1.1로 막는다) */
+    lengthCastK: number;
+    /** 채비가 적합 하한보다 가벼울 때 최소 비거리 배율(무게 0일 때) */
+    underLoadFloor: number;
+    /** 적합 상한 초과 1배(=상한만큼 더 무거움)당 비거리 감소 · 하한 */
+    overLoadSlope: number;
+    overLoadFloor: number;
+    /** 적합 상한의 이 배수를 넘으면 위험(초릿대 파손 판정 · 경고) */
+    dangerRatio: number;
+    /** 초릿대 파손을 굴리는 최소 캐스팅 파워(0~1) · (배수 − dangerRatio)당 확률 · 상한 */
+    tipSnapPowerMin: number;
+    tipSnapScale: number;
+    tipSnapMax: number;
+    /** 구멍치기에 쓸 만한 최대 길이(m) — 넘으면 경고 · 미끄러짐 가중 */
+    holeMaxLenM: number;
+    /** 구멍치기에 긴 대를 쓰면 미끄러짐(바늘 빠짐) 배율 */
+    holeLongSlipMult: number;
   };
   /**
    * 물때 흐름 × 어종 × 장르 (205차 — TIDE_PHASE_STRATEGY_SPEC P1~P3 · 초기값은 설계 초안, 실플레이 조율 대기).
@@ -1346,6 +1378,23 @@ export const TUNING: TuningConfig = {
     parkedBiteMult: 0.8,
     reachTiles: 2.2,
     maxHolders: 3,
+    selfHookSurf: 0.45,
+    selfHookOther: 0.15,
+    hookedEscapePerSec: 1 / 90,
+    fightTanglePerSec: 0.02,
+    fightTangleLateralM: 4,
+  },
+  rodSpec: {
+    lengthCastK: 0.05,
+    underLoadFloor: 0.75,
+    overLoadSlope: 0.6,
+    overLoadFloor: 0.55,
+    dangerRatio: 1.3,
+    tipSnapPowerMin: 0.85,
+    tipSnapScale: 0.2,
+    tipSnapMax: 0.35,
+    holeMaxLenM: 3,
+    holeLongSlipMult: 1.4,
   },
   tidePhase: {
     eastSeaK: 0.3,
@@ -1511,6 +1560,13 @@ export const TUNING_META: TuningParamMeta[] = [
   { path: 'snag.waveSinkerGPerM', min: 20, max: 120, step: 5, category: 'balance', label: '파고 1m 버티는 봉돌(g)' },
   { path: 'rodHolder.biteWindowSec', min: 5, max: 90, step: 5, category: 'balance', label: '거치대 입질 창(초)' },
   { path: 'rodHolder.parkedBiteMult', min: 0.2, max: 1.5, step: 0.05, category: 'balance', label: '거치 중 입질 배율' },
+  { path: 'rodHolder.selfHookSurf', min: 0, max: 0.9, step: 0.05, category: 'balance', label: '거치 원투대 자동 걸림' },
+  { path: 'rodHolder.hookedEscapePerSec', min: 0, max: 0.1, step: 0.005, category: 'balance', label: '걸린 채 초당 빠짐' },
+  { path: 'rodHolder.fightTanglePerSec', min: 0, max: 0.2, step: 0.01, category: 'balance', label: '파이팅 중 옆 줄 엉킴(초당)' },
+  { path: 'rodSpec.lengthCastK', min: 0, max: 0.2, step: 0.01, category: 'balance', label: '대 길이 1m당 비거리' },
+  { path: 'rodSpec.overLoadSlope', min: 0, max: 1.5, step: 0.05, category: 'balance', label: '과부하 비거리 감소' },
+  { path: 'rodSpec.dangerRatio', min: 1, max: 3, step: 0.1, category: 'balance', label: '대 위험 하중 배수' },
+  { path: 'rodSpec.tipSnapScale', min: 0, max: 1, step: 0.05, category: 'balance', label: '과부하 캐스팅 초릿대 파손' },
   // ── 물때 흐름 × 어종 × 장르 (205차 — 설계 초안, 실플레이 조율 대기) ──
   { path: 'tidePhase.eastSeaK', min: 0, max: 1, step: 0.05, category: 'balance', label: '동해 물때 효과 계수' },
   { path: 'tidePhase.eastSeaFlowK', min: 0, max: 1, step: 0.05, category: 'balance', label: '동해 물살 계수' },

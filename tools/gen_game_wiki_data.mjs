@@ -338,13 +338,30 @@ const items = itemCatalog.map((it) => ({
   soldAt: it.soldAt ?? [],
   seed: !!it.isSeed,
   img: imgOf(it.iconTexture),
-  spec: itemSpec(it.tpl ?? {}),
+  spec: itemSpec(it.tpl ?? {}, it),
 }));
 
 /** 템플릿에 실린 제원을 사람이 읽는 줄로 (없는 필드는 싣지 않는다) */
-function itemSpec(t) {
+function itemSpec(t, it = {}) {
   const out = [];
   const push = (k, v) => { if (v !== undefined && v !== null && v !== '') out.push([k, String(v)]); };
+  // 209차 — 낚싯대 · 릴 제원(core 제원표 · id 조회 → 이름 추정)
+  if (t.tool === 'rod') {
+    const sp = core.rodSpecFor(it.id ?? '', it.name ?? '', it.basePrice ?? 12000);
+    push('용도', core.ROD_USE_LABEL[sp.use].ko);
+    push('길이', `${sp.lengthM.toFixed(2)} m · ${sp.pieces}절${sp.telescopic ? ' 뽑기식' : ' 꽂기식'}`);
+    push('호수 · 파워', sp.grade);
+    push('적합 원줄', `${sp.lineBasis === 'pe' ? 'PE ' : ''}${sp.lineNo[0]}~${sp.lineNo[1]} 호`);
+    push('적합 채비 무게', `${sp.loadG[0]}~${sp.loadG[1]} g`);
+    push('견디는 하중', `${sp.powerKg} kg`);
+    push('릴', sp.reel === 'bait' ? '베이트릴' : '스피닝릴');
+  }
+  if (it.subCategory === '릴') {
+    const rs = core.reelSpecFor(it.id ?? '', it.name ?? '');
+    push('종류', rs.kind === 'bait' ? `베이트릴 ${rs.size}` : `스피닝릴 ${rs.size}번`);
+    push('최대 드랙', `${rs.maxDragKg} kg`);
+    push('기어비', `${rs.gearRatio} : 1`);
+  }
   push('착용 부위', t.equipSlot);
   push('손 도구', t.tool === 'rod' ? '낚싯대' : t.tool === 'net' ? '뜰채' : t.tool === 'knife' ? '회칼' : undefined);
   push('원줄 재질', { nylon: '나일론', fluorocarbon: '카본', pe_braid: 'PE 합사', monofilament: '모노필라멘트' }[t.lineMaterial]);
@@ -510,6 +527,23 @@ const rules = [
       ['놓치면', `초릿대가 잠잠해진다 — ${Math.round(core.TUNING.rodHolder.missBaitLossChance * 100)}% 확률로 미끼를 따먹힌다`],
       ['밑걸림', '멈춘 봉돌은 걸리지 않는다 — 물살 · 파도가 봉돌을 굴려 여 위를 끌 때만 걸리고, 그러면 초릿대가 휜 채 멈춘다'],
       ['여럿이', '남이 걸어 둔 낚싯대는 보이기만 하고 잡을 수 없다'],
+      ['파이팅 중', '한 대를 잡고 1인칭에 있는 동안에도 나머지 거치대는 계속 굴러간다 — 평면 판 위 칩(노랑 입질 · 빨강 걸림 · 주황 밑걸림 · 보라 엉킴)'],
+      ['스스로 걸림', `놓친 입질은 원투대 ${Math.round(core.TUNING.rodHolder.selfHookSurf * 100)}% · 그 밖 ${Math.round(core.TUNING.rodHolder.selfHookOther * 100)}%(봉돌 60g 기준)로 고기가 스스로 걸린다 — 잡으면 바로 파이팅 · 평균 ${Math.round(1 / core.TUNING.rodHolder.hookedEscapePerSec)}초 뒤 빠진다`],
+      ['엉킴', `파이팅 중 고기가 옆으로 ${core.TUNING.rodHolder.fightTangleLateralM}m 넘게 째면 초당 ${Math.round(core.TUNING.rodHolder.fightTanglePerSec * 100)}%로 옆 거치대 줄과 엉킨다 — 잡으면 목줄을 잘라 내고 감아 들인다`],
+    ],
+  },
+  {
+    id: 'rod_spec', round: 209, hidden: false, title: '낚싯대 · 릴 제원',
+    lede: '낚싯대는 용도마다 길이 · 호수 · 받는 채비 무게 · 견디는 하중이 다르다. 채비 무게가 맞아야 멀리 나가고, 한참 무거우면 초릿대가 부러진다.',
+    rows: [
+      ['사는 곳', `수산물 직판장 — 낚싯대 ${core.ROD_SHOP.length}자루 · 릴 ${core.REEL_SHOP.length}개`],
+      ['용도별 비거리', Object.entries(core.ROD_USE_CAST).map(([u, v]) => `${core.ROD_USE_LABEL[u].ko} ×${v.base}`).join(' · ')],
+      ['길이', `그 용도의 표준 길이보다 1m 길 때마다 ×${(1 + core.TUNING.rodSpec.lengthCastK).toFixed(2)} (0.9~1.1)`],
+      ['채비 무게', `적합 범위면 ×1 · 가벼우면 최소 ×${core.TUNING.rodSpec.underLoadFloor} · 무거우면 최소 ×${core.TUNING.rodSpec.overLoadFloor}`],
+      ['초릿대 파손', `적합 상한 ×${core.TUNING.rodSpec.dangerRatio}를 넘는 채비를 파워 ${Math.round(core.TUNING.rodSpec.tipSnapPowerMin * 100)}% 이상으로 던지면 최대 ${Math.round(core.TUNING.rodSpec.tipSnapMax * 100)}% — 수리 가능`],
+      ['릴', '베이트대 = 베이트릴 · 그 밖 = 스피닝릴(안 맞으면 던질 수 없다) · 원투 전용릴 롱캐스트 스풀 ×1.08'],
+      ['하중', '대가 견디는 하중(kg)보다 1.5배 넘게 강한 줄이면 큰 고기를 걸었을 때 대가 먼저 부러질 수 있다'],
+      ['구멍치기', `${core.TUNING.rodSpec.holeMaxLenM}m 넘는 대는 틈에서 들어 올리다 빠짐 ×${core.TUNING.rodSpec.holeLongSlipMult}`],
     ],
   },
   {

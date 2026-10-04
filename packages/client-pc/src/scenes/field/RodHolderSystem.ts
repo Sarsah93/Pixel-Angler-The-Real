@@ -13,12 +13,16 @@
  *    (`InventoryStore.takeRigForParking`), 다시 잡으면 돌아온다 — 다음 대를 던지려면 낚싯대 한 벌이 더 있어야 한다.
  *    채널 문구는 `[거치대 N]`(왼쪽부터 번호) · 2대 이상이면 거치대 아래 번호 표.
  *  - 세이브: `GameState.parkedRods`. 다른 지역 필드에 들어가면 두고 온 낚싯대를 거둬 온 것으로 친다(막힘 방지 — 한 벌이 가방으로).
+ *  - 209차 — 굴리는 규칙은 core `stepParkedRod`(탑다운 · 1인칭 공용). **1인칭 동안에도** 필드 대신 1인칭이
+ *    `simulate`를 불러 다른 거치대가 계속 산다(registry `rodHolderTick`). 놓친 입질은 원투대일수록 고기가 스스로 걸리고
+ *    (`hooked` — 초릿대가 크게 휜 채 들썩 · 빨간 「!」 · 잡으면 바로 파이팅), 1인칭 파이팅 중 고기가 옆으로 크게 째면
+ *    다른 대 줄과 엉킨다(`tangled` — 잡으면 목줄을 잘라 내고 감아 들인다).
  */
 
 import Phaser from 'phaser';
 import {
-  TUNING, sinkerHoldsBottom, snagDragChance, tideFlowStateAt, tideFlow01, tideRegionFlowK, calculateTideInfo,
-  type ParkedRodLaunch, type ParkedRigSnapshot,
+  TUNING, stepParkedRod, rodSelfHookChance, rodSpecFor, tideFlowStateAt, tideFlow01, tideRegionFlowK, calculateTideInfo,
+  type ParkedRodLaunch, type ParkedRigSnapshot, type ParkedRodEvent, type RodItemSpec,
 } from '@tra/core';
 import { GameState, type ParkedRodSave } from '../../store/GameState.js';
 import { InventoryStore } from '../../store/InventoryStore.js';
@@ -52,10 +56,19 @@ interface HolderView {
   c: Phaser.GameObjects.Container;
   rodG: Phaser.GameObjects.Graphics;
   bang?: Phaser.GameObjects.Text;
+  /** 「!」가 걸림(빨강)용인가 */
+  bangHooked?: boolean;
   label?: Phaser.GameObjects.Text;
   /** 2대 이상일 때 거치대 아래 번호 */
   num?: Phaser.GameObjects.Text;
 }
+
+/** 상태별 초릿대 휨(px) — 걸림이 가장 크게, 엉킴은 살짝 */
+const BENT_PX: Record<ParkedRodSave['phase'], number> = { waiting: 0, bite: 0, snagged: 5, hooked: 10, tangled: 3 };
+/** 머리 위 [F] 안내 꼬리 */
+const HINT_TAIL: Record<ParkedRodSave['phase'], string> = {
+  waiting: '', bite: ' — 입질 중', snagged: ' — 초릿대가 휘어 있다', hooked: ' — 고기가 걸려 있다', tangled: ' — 줄이 엉켜 있다',
+};
 
 export class RodHolderSystem {
   private host: RodHolderHost;
@@ -149,7 +162,7 @@ export class RodHolderSystem {
     for (const r of list) {
       let v = this.views.get(r.id);
       if (!v) { v = this.buildView(r.x, r.y, false); this.views.set(r.id, v); }
-      this.drawRod(v, r, 0, r.phase === 'snagged' ? 5 : 0);
+      this.drawRod(v, r, 0, BENT_PX[r.phase]);
       this.setNumber(v, list.length > 1 ? this.numberOf(r.id) : 0);
     }
   }
@@ -213,12 +226,15 @@ export class RodHolderSystem {
     v.c.destroy();
   }
 
-  private setBang(v: HolderView, on: boolean): void {
+  private setBang(v: HolderView, on: boolean, hooked = false): void {
+    // 209차 — 걸림(빨강)과 입질(노랑)은 색으로 가른다. 상태가 바뀌면 다시 만든다
+    if (on && v.bang && v.bangHooked !== hooked) { v.bang.destroy(); v.bang = undefined; }
+    v.bangHooked = hooked;
     if (on && !v.bang) {
       // 208차 — 머리 위 [F] 안내(depth 60)에 가리지 않게 거치대 그림과 떼어 그 위에 둔다
       v.bang = this.host.scene.add.text(v.c.x, v.c.y - 46, '!', {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '18px', color: '#ffe066', fontStyle: 'bold',
-        stroke: '#3a2400', strokeThickness: 4,
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '18px', color: hooked ? '#ff6a4a' : '#ffe066', fontStyle: 'bold',
+        stroke: hooked ? '#3a0a00' : '#3a2400', strokeThickness: 4,
       }).setOrigin(0.5, 1).setDepth(61);
       this.host.scene.tweens.add({ targets: v.bang, y: v.c.y - 50, duration: 260, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     } else if (!on && v.bang) {
@@ -256,16 +272,21 @@ export class RodHolderSystem {
     return true;
   }
 
-  update(deltaMs: number): void {
-    this.peerSyncAt += deltaMs;
-    if (this.peerSyncAt > 1_000) { this.peerSyncAt = 0; this.renderPeers(); }
-    const list = this.mine();
-    const p = this.host.player();
-    if (list.length === 0) { this.nearId = null; this.nearHint = null; return; }
-    if (this.views.size !== list.length) this.render();
-    const dt = Math.min(0.25, deltaMs / 1000);
-    const now = Date.now();
+  /** 거치대에 건 낚싯대의 제원(옮겨 둔 한 벌에서 대를 찾는다 · 구세이브는 원투대로 본다) */
+  private parkedRodSpec(rod: ParkedRodSave): RodItemSpec | undefined {
+    const it = rod.gear?.items.find((e) => e.item.tool === 'rod')?.item;
+    return it ? rodSpecFor(it.id, it.name, it.basePrice) : rodSpecFor('', '원투', 98000);
+  }
 
+  /**
+   * 209차 — 걸어 둔 낚싯대를 dt만큼 굴린다(그림 없이). 필드 `update`와 1인칭(registry `rodHolderTick`)이 함께 쓴다.
+   * @param tanglePerSec 1인칭 파이팅 중 고기가 옆으로 크게 짤 때만 > 0
+   * @returns 이번에 생긴 일(1인칭 칩 · 알림용) — 번호 · 일 · 채널 문구
+   */
+  simulate(deltaMs: number, tanglePerSec = 0): { n: number; event: ParkedRodEvent; msg: string }[] {
+    const list = this.mine();
+    if (list.length === 0) return [];
+    const now = Date.now();
     // 물살 · 파고 — 5초마다(물때 · 파고는 천천히 바뀐다). 굴림은 봉돌 무게가 거치대마다 달라 따로 본다
     if (now - this.holdCheckAt > 5_000) {
       this.holdCheckAt = now;
@@ -273,50 +294,61 @@ export class RodHolderSystem {
         : tideFlow01(tideFlowStateAt(), calculateTideInfo().currentStrength, tideRegionFlowK(this.host.regionId));
       this.waveM = ExternalDataStore.getWaveHeightM(this.host.regionId) ?? 0;
     }
+    const out: { n: number; event: ParkedRodEvent; msg: string }[] = [];
+    for (const rod of list) {
+      const ev = stepParkedRod(rod, {
+        dtSec: deltaMs / 1000, flow01: this.flow01, waveM: this.waveM, baitless: this.baitless(rod),
+        selfHookChance: rodSelfHookChance(this.parkedRodSpec(rod), rod.sinkerG),
+        tanglePerSec, nowMs: now, rng: Math.random,
+      });
+      if (!ev) continue;
+      GameState.markDirty();
+      const tag = this.tag(rod.id);
+      let msg = '';
+      if (ev === 'snagged') msg = `${tag} 초릿대가 휜 채 꼼짝하지 않는다`;
+      else if (ev === 'bite') {
+        msg = `${tag} 초릿대 끝이 까딱거린다!`;
+        this.host.floatingHint('거치해 둔 낚싯대에 입질이 왔다');
+      } else if (ev === 'bite_missed') {
+        const lost = Math.random() < TUNING.rodHolder.missBaitLossChance && this.loseOneBait(rod);
+        msg = `${tag} 초릿대가 잠잠해졌다${lost ? ' — 미끼를 따먹힌 것 같다' : ''}`;
+      } else if (ev === 'hooked') msg = `${tag} 초릿대가 크게 휘어 들썩인다 — 고기가 스스로 걸렸다!`;
+      else if (ev === 'escaped') {
+        this.loseOneBait(rod);
+        msg = `${tag} 휘어 있던 초릿대가 튕기듯 펴졌다 — 빠진 것 같다`;
+      } else if (ev === 'tangled') msg = `${tag} 옆으로 짼 고기에 줄이 엉켰다`;
+      this.host.pushLog(msg);
+      out.push({ n: this.numberOf(rod.id), event: ev, msg });
+    }
+    return out;
+  }
 
-    const t = now / 1000;
+  update(deltaMs: number): void {
+    this.peerSyncAt += deltaMs;
+    if (this.peerSyncAt > 1_000) { this.peerSyncAt = 0; this.renderPeers(); }
+    const list = this.mine();
+    const p = this.host.player();
+    if (list.length === 0) { this.nearId = null; this.nearHint = null; return; }
+    if (this.views.size !== list.length) this.render();
+    this.simulate(deltaMs);
+
+    const t = Date.now() / 1000;
     const reach = TUNING.rodHolder.reachTiles * this.host.tr;
     let near: ParkedRodSave | null = null;
     let nearD = reach;
-    // 208차 — 손 닿는 거치대가 여럿이면 입질 > 걸림 > 대기 순으로 잡는다(급한 대가 먼저)
+    // 208차 — 손 닿는 거치대가 여럿이면 급한 대부터 잡는다(209차 — 걸림 > 입질 > 밑걸림 > 엉킴 > 대기)
     let nearRank = 9;
-    const rankOf = (r: ParkedRodSave): number => (r.phase === 'bite' ? 0 : r.phase === 'snagged' ? 1 : 2);
+    const RANK: Record<ParkedRodSave['phase'], number> = { hooked: 0, bite: 1, snagged: 2, tangled: 3, waiting: 4 };
     for (const rod of list) {
-      const tag = this.tag(rod.id);
-      if (rod.phase === 'waiting') {
-        // 구르면 끌린다 → 여 위면 걸린다. 파도는 발 앞으로 끌어온다
-        const roll = sinkerHoldsBottom(this.flow01, this.waveM, rod.sinkerG);
-        if (roll.rolling) {
-          const speed = roll.cause === 'wave' ? roll.shorewardMps : TUNING.tidePhase.surfRollDriftMps;
-          const dragM = speed * dt;
-          if (roll.cause === 'wave') rod.rig.distM = Math.max(1, rod.rig.distM - dragM);
-          if (Math.random() < snagDragChance({
-            dragM, dtSec: dt, clearanceM: 0, inReef: rod.onReef, kind: 'sinker', flow01: this.flow01, riskMult: rod.snagRisk,
-          })) {
-            rod.phase = 'snagged'; rod.phaseAtMs = now; GameState.markDirty();
-            this.host.pushLog(`${tag} 초릿대가 휜 채 꼼짝하지 않는다`);
-          }
-        }
-        const p1 = this.baitless(rod) ? 0 : rod.biteProbPerSec * TUNING.rodHolder.parkedBiteMult;
-        if (rod.phase === 'waiting' && Math.random() < 1 - Math.exp(-p1 * dt)) {
-          rod.phase = 'bite'; rod.phaseAtMs = now; GameState.markDirty();
-          this.host.pushLog(`${tag} 초릿대 끝이 까딱거린다!`);
-          this.host.floatingHint('거치해 둔 낚싯대에 입질이 왔다');
-        }
-      } else if (rod.phase === 'bite' && now - rod.phaseAtMs > TUNING.rodHolder.biteWindowSec * 1000) {
-        rod.phase = 'waiting'; rod.phaseAtMs = now; GameState.markDirty();
-        const lost = Math.random() < TUNING.rodHolder.missBaitLossChance && this.loseOneBait(rod);
-        this.host.pushLog(`${tag} 초릿대가 잠잠해졌다${lost ? ' — 미끼를 따먹힌 것 같다' : ''}`);
-      }
-
-      // 그림 — 입질: 초릿대 끝이 까딱 · 「!」 / 밑걸림: 휜 채 멈춤
+      // 그림 — 입질: 초릿대 끝이 까딱 · 「!」 / 걸림: 크게 휜 채 들썩 · 빨간 「!」 / 밑걸림: 휜 채 멈춤 / 엉킴: 살짝 휜 채
       const v = this.views.get(rod.id);
       if (v) {
-        const shake = rod.phase === 'bite' ? Math.sin(t * 18 + rod.parkedAtMs) * 2.2 * (0.6 + 0.4 * Math.abs(Math.sin(t * 2.3))) : 0;
-        this.drawRod(v, rod, shake, rod.phase === 'snagged' ? 5 : 0);
+        const shake = rod.phase === 'bite' ? Math.sin(t * 18 + rod.parkedAtMs) * 2.2 * (0.6 + 0.4 * Math.abs(Math.sin(t * 2.3)))
+          : rod.phase === 'hooked' ? Math.sin(t * 7 + rod.parkedAtMs) * 3.2 : 0;
+        this.drawRod(v, rod, shake, BENT_PX[rod.phase]);
       }
       const d = Math.hypot(rod.x - p.x, rod.y - p.y);
-      const rk = rankOf(rod);
+      const rk = RANK[rod.phase];
       if (d <= reach && (rk < nearRank || (rk === nearRank && d <= nearD))) { nearD = d; nearRank = rk; near = rod; }
     }
 
@@ -325,11 +357,11 @@ export class RodHolderSystem {
     // 「!」 — 머리 위 [F] 안내가 이미 「입질 중」이라 말하는 대는 겹쳐 그리지 않는다
     for (const rod of list) {
       const v = this.views.get(rod.id);
-      if (v) this.setBang(v, rod.phase === 'bite' && rod.id !== this.nearId);
+      if (v) this.setBang(v, (rod.phase === 'bite' || rod.phase === 'hooked') && rod.id !== this.nearId, rod.phase === 'hooked');
     }
     if (near && this.nearId) {
       const n = list.length > 1 ? ` ${this.numberOf(near.id)}` : '';
-      this.nearHint = `[F] 거치해 둔 낚싯대${n}${near.phase === 'bite' ? ' — 입질 중' : near.phase === 'snagged' ? ' — 초릿대가 휘어 있다' : ''}`;
+      this.nearHint = `[F] 거치해 둔 낚싯대${n}${HINT_TAIL[near.phase]}`;
     } else {
       this.nearHint = null;
     }
@@ -381,6 +413,13 @@ export class RodHolderSystem {
       const old = this.views.get(rod.id); if (old) this.dropView(old); this.views.delete(rod.id);
       this.nearId = null; this.nearHint = null;
       this.render();   // 남은 거치대 번호를 다시 매긴다
+      if (rod.phase === 'tangled') {
+        // 209차 — 엉킨 줄은 1인칭으로 갈 것 없이 그 자리에서 푼다: 목줄 아래(바늘 · 미끼)를 잘라 내고 감아 들인다
+        const lost = InventoryStore.applyRigLoss(InventoryStore.planRigLoss('line_break_leader'));
+        this.host.pushLog(`[거치대] 엉킨 줄을 풀다 목줄을 잘라 냈다${lost.length ? ` — ${lost.join(', ')}` : ''}`);
+        this.host.floatingHint('엉킨 줄을 잘라 내고 감아 들였다');
+        return true;
+      }
       this.host.pickUp(rod);
       return true;
     }

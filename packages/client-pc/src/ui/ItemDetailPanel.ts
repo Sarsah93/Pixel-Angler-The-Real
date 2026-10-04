@@ -8,7 +8,7 @@
 
 import Phaser from 'phaser';
 import { ensurePixelIcon } from './PixelIcon.js';
-import { getLureSpec, getNuisance, sashimiStarsAt, sashimiNutrition, foodNutritionOf, nutritionLineKo, restoreFromNutrition } from '@tra/core';
+import { rodSpecFor, reelSpecFor, rodLoadState, ROD_USE_LABEL, getRodCatalogEntry, getReelCatalogEntry, getLureSpec, getNuisance, sashimiStarsAt, sashimiNutrition, foodNutritionOf, nutritionLineKo, restoreFromNutrition } from '@tra/core';
 import { FISH_DATABASE, fishImageSizeScale, fishRarity, speciesStandardWeightG,
   GEAR_FAULTS, gearRepairFee, rodMaxCasts,
   getFireRecipe, getCookIngredient, dishStarsAt, dishVitalsMult, fmtUnits, SALT_LABEL_KO, SUGAR_LABEL_KO, STAR_NAME_KO,
@@ -127,6 +127,35 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
           : `수리점 ${fee.toLocaleString()}원`,
     });
     if (def.biteMult) rows.push({ label: '입질 확률', value: `×${def.biteMult.toFixed(2)} (성능 저하)` });
+  }
+  // 209차 — 낚싯대 · 릴 제원(용도 · 길이 · 호수 · 적합 원줄 · 적합 채비 무게 · 하중 · 릴 종류)
+  if (item.tool === 'rod') {
+    const sp = rodSpecFor(item.id, item.name, item.basePrice);
+    const lineUnit = sp.lineBasis === 'pe' ? 'PE ' : '';
+    rows.push({ label: '용도', value: ROD_USE_LABEL[sp.use].ko, color: '#8fd4ff' });
+    rows.push({ label: '길이', value: `${sp.lengthM.toFixed(2)}m · ${sp.pieces}절${sp.telescopic ? ' 뽑기식' : ' 꽂기식'}` });
+    rows.push({ label: '호수 · 파워', value: sp.grade });
+    rows.push({ label: '적합 원줄', value: `${lineUnit}${sp.lineNo[0]}~${sp.lineNo[1]}호` });
+    rows.push({ label: '적합 채비 무게', value: `${sp.loadG[0]}~${sp.loadG[1]}g` });
+    rows.push({ label: '견디는 하중', value: `${sp.powerKg.toFixed(1)}kg` });
+    rows.push({ label: '릴', value: sp.reel === 'bait' ? '베이트릴' : '스피닝릴' });
+    rows.push({ label: '자중', value: `${sp.weightG}g` });
+    // 지금 짜 둔 채비가 이 대에 맞는가 — 무거우면 덜 나가고, 아주 무거우면 세게 던질 때 초릿대가 부러진다
+    const rigG = InventoryStore.getRigTotalWeightG();
+    if (rigG > 0) {
+      const st = rodLoadState(sp, rigG);
+      const txt = st === 'ok' ? '알맞다' : st === 'under' ? '가볍다 — 대가 덜 휘어 덜 나간다'
+        : st === 'over' ? '무겁다 — 덜 나간다' : '너무 무겁다 — 세게 던지면 초릿대가 부러진다';
+      rows.push({ label: '지금 채비', value: `${Math.round(rigG)}g · ${txt}`,
+        color: st === 'ok' ? '#8affb0' : st === 'danger' ? '#ff5a4a' : '#ffd257' });
+    }
+  }
+  if (item.subCategory === '릴') {
+    const rs = reelSpecFor(item.id, item.name);
+    rows.push({ label: '종류', value: rs.kind === 'bait' ? `베이트릴 ${rs.size}` : `스피닝릴 ${rs.size}번` });
+    rows.push({ label: '최대 드랙', value: `${rs.maxDragKg}kg` });
+    rows.push({ label: '기어비', value: `${rs.gearRatio.toFixed(1)} : 1` });
+    rows.push({ label: '권사량', value: `3호 ${rs.lineCapM}m` });
   }
   if (item.tool === 'rod' || item.subCategory === '릴') {
     const mx = rodMaxCasts(item.basePrice ?? 12000);
@@ -263,13 +292,9 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
         );
         desc = '고기를 물 밖으로 들어 올릴 때 바늘이 빠지지 않게 떠 올립니다. 자루가 수면에 닿지 않는 높은 자리나 테트라포드 구멍에서는 쓸 수 없습니다.';
       } else {
-        rows.push(
-          { label: '로드 탄성 계수 (k_rod)', value: '0.82' },
-          { label: '길이', value: '5.3 m' },
-          { label: '허용 추 부하', value: '최대 25 g' },
-          { label: '착용 방식', value: '왼손/오른손 선택 착용' },
-        );
-        desc = '물고기의 인장력 벡터를 휨새로 분산합니다. 손에 착용해야 캐스팅할 수 있습니다.';
+        // 209차 — 대마다 다른 제원은 아래 「낚싯대 제원」 줄이 싣는다(옛 고정값 5.3m · 25g은 모든 대에 같은 값이었다)
+        desc = (getRodCatalogEntry(item.id)?.descKo ?? '낚싯대. 손에 들어야 던질 수 있다.')
+          + '\n왼손 · 오른손 중 골라 든다.';
       }
       break;
     case '안경':
@@ -301,12 +326,9 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
       desc = '현재 물때와 다음 조류 변화 시각을 손목에서 바로 확인합니다.';
       break;
     case '릴':
-      rows.push(
-        { label: '기어비', value: '5.2 : 1' },
-        { label: '최대 드랙 장력 (T_drag)', value: '5.0 kg' },
-        { label: '권사량', value: '나일론 2호 150m' },
-      );
-      desc = '드랙을 원줄 한계 장력보다 낮게 설정해야 줄 터짐 전에 릴이 풀려나갑니다.';
+      // 209차 — 기어비 · 드랙 · 권사량은 릴마다 다르다(아래 「릴 제원」 줄 · 옛 고정값 5.2 · 5kg 삭제)
+      desc = (getReelCatalogEntry(item.id)?.descKo ? `${getReelCatalogEntry(item.id)?.descKo}\n` : '')
+        + '드랙을 원줄 한계 장력보다 낮게 설정해야 줄 터짐 전에 릴이 풀려나갑니다.';
       break;
     case '집어제/밑밥':
       rows.push(

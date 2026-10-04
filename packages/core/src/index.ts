@@ -438,8 +438,21 @@ export type { RigLossCause, RigLossScope, RigLossPlan } from './types/RigLoss.js
 export { planRigLoss, type RigLossOpts } from './simulation/RigLoss.js';
 export type {
   SnagRigKind, SnagDragInput, SinkerHoldResult, ParkedRodPhase, ParkedRigSnapshot, ParkedRodLaunch, ParkedRodState,
+  ParkedRodEvent, ParkedRodStepEnv,
 } from './types/SnagDrag.js';
 export { snagReachM, snagProximity, snagHazardPerM, snagDragChance, sinkerHoldsBottom } from './simulation/SnagDrag.js';
+// 209차 — 낚싯대 · 릴 제원 + 판정 · 거치대 한 대 굴리기(탑다운 · 1인칭 공용)
+export { stepParkedRod } from './simulation/ParkedRodSim.js';
+export type {
+  RodUse, ReelKind, RodLineBasis, RodItemSpec, ReelItemSpec, RodLoadState, RodCatalogEntry, ReelCatalogEntry,
+} from './types/RodItem.js';
+export {
+  ROD_SHOP, REEL_SHOP, ROD_SPEC_BY_ID, REEL_SPEC_BY_ID, rodSpecFor, reelSpecFor, getRodCatalogEntry, getReelCatalogEntry,
+} from './db-schema/RodCatalog.js';
+export {
+  ROD_USE_LABEL, ROD_USE_CAST, PE_TO_NYLON_NO, rodLoadState, rodLoadCastK, rodCastDistanceMult, rodTipSnapChance,
+  rodLineFit, reelFitsRod, rodFitsHole, rodSelfHookChance,
+} from './simulation/RodFit.js';
 export type { ChumBall, ChumProbePos, ChumParcel, ChumDrift, ChumSyncTarget, ChumPathPrediction, ChumSyncOpts } from './simulation/ChumPhysics.js';
 export {
   ChumPhysics, CHUM_PARCEL_TTL_SEC,

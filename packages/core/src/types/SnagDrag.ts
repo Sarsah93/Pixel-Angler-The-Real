@@ -41,8 +41,32 @@ export interface SinkerHoldResult {
   shorewardMps: number;
 }
 
-/** 거치대에 걸어 둔 채비의 상태 */
-export type ParkedRodPhase = 'waiting' | 'bite' | 'snagged';
+/**
+ * 거치대에 걸어 둔 채비의 상태.
+ *  - `hooked`(209차) — 지켜보지 않은 입질에 고기가 스스로 걸렸다(초릿대가 크게 휜 채 들썩인다). 잡으면 바로 파이팅.
+ *  - `tangled`(209차) — 다른 대로 파이팅하는 동안 고기가 옆으로 째서 줄이 엉켰다. 잡으면 목줄을 잘라 내고 감아 들인다.
+ */
+export type ParkedRodPhase = 'waiting' | 'bite' | 'snagged' | 'hooked' | 'tangled';
+
+/** 한 번 굴렸을 때 일어난 일 */
+export type ParkedRodEvent = 'snagged' | 'bite' | 'bite_missed' | 'hooked' | 'escaped' | 'tangled';
+
+/** 거치대 한 대를 한 번 굴리는 데 필요한 주변 값 */
+export interface ParkedRodStepEnv {
+  dtSec: number;
+  /** 물살 0~1 · 파고(m) */
+  flow01: number;
+  waveM: number;
+  /** 거치대에 미끼가 남았나(없으면 입질이 없다) */
+  baitless: boolean;
+  /** 자동 걸림 확률(`rodSelfHookChance` — 대 용도 · 봉돌 무게) */
+  selfHookChance: number;
+  /** 초당 엉킴 확률(1인칭 파이팅 중 고기가 옆으로 크게 짤 때만 > 0) */
+  tanglePerSec: number;
+  /** 시각(ms · 기록용) · 난수 */
+  nowMs: number;
+  rng: () => number;
+}
 
 /** 걸어 둔 채비 스냅샷(1인칭 복귀 때 그대로 돌려 놓는다) */
 export interface ParkedRigSnapshot {
@@ -90,4 +114,6 @@ export interface ParkedRodState {
   sinkerG: number;
   phase: ParkedRodPhase;
   phaseAtMs: number;
+  /** 209차 — 지금 상태로 굴린 시간(초). 입질 창을 벽시계가 아니라 이 값으로 잰다(구세이브 = 없음 → 0) */
+  phaseAgeSec?: number;
 }

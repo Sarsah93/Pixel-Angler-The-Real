@@ -53,7 +53,7 @@ import {
   fightGroupOf, fightBodyFormOf, fishRarity, RARITY_STYLE,
   fishImageSizeScale,
   TUNING,
-  computeCastWeather,
+  computeCastWeather, rodFitsHole,
   type CastWeatherEffect,
   initSpool, stepSpool, driftPullKg, type SpoolState,
   SNAG_PULL_UP, SNAG_BREAK_OFF, rollSnagOutcome, type SnagOutcome,
@@ -64,7 +64,7 @@ import {
 } from '@tra/core';
 import {
   snagDragChance, snagHazardPerM, sinkerHoldsBottom,
-  type SnagRigKind, type SinkerHoldResult, type ParkedRigSnapshot, type ParkedRodPhase,
+  type SnagRigKind, type SinkerHoldResult, type ParkedRigSnapshot, type ParkedRodPhase, type ParkedRodEvent,
 } from '@tra/core';
 import { drawRigIcon, RigIconKind } from '../ui/RigIconRenderer.js';
 import { GameState } from '../store/GameState.js';
@@ -173,6 +173,11 @@ const VIEW_EDGE_MARGIN = 220;
 
 // ── 수평뷰(plan)/수심 패널 지오메트리 — 렌더와 밑밥 마스크(rev2)가 공유하는 단일 소스 ──
 const PLAN_X = 16, PLAN_Y = 408, PLAN_W = 232, PLAN_H = 212;
+/** 209차 — 거치대 칩(평면 판 위 한 줄 · 최대 3개가 판 폭에 맞는다) */
+const PARK_CHIP_W = 72, PARK_CHIP_H = 26, PARK_CHIP_GAP = 8;
+const PARK_CHIP_COLOR: Record<ParkedRodPhase, number> = {
+  waiting: 0x5a7a96, bite: 0xffd257, hooked: 0xff6a4a, snagged: 0xd0903a, tangled: 0xb07ad8,
+};
 const DP_W = 338, DP_H = 288;
 const DP_X = GAME_WIDTH - DP_W - 14, DP_Y = 44;
 const DP_BOX_X = DP_X + 14, DP_BOX_W = 196;
@@ -533,7 +538,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     // 206차 — 처음 진행하는 퀘스트에 낚싯대 어획 목표가 열려 있으면 밑걸림을 덜 낸다(QA — 퀘스트 원활 진행)
     this.snagQuestMult = StoryStore.firstRunRodObjectiveOpen() ? TUNING.snag.questFirstMult : 1;
     // 207차 — 끌림 거리 · 걸림 상태 · 봉돌 굴림도 캐스팅마다 새로
-    this.dragPrev = null; this.snagStuck = null; this.snagChoice = false; this.parkTourAsked = false; this.snagHazardNow = 0; this.sinkerHold = SINKER_HOLDS;
+    this.dragPrev = null; this.snagStuck = null; this.snagChoice = false; this.parkTourAsked = false; this.parkChipAcc = 0; this.parkToastUntil = 0; this.snagHazardNow = 0; this.sinkerHold = SINKER_HOLDS;
     this.lastBiteProbPerSec = 0; this.lastSnagRisk = 1;
     const zMax = this.cfg.zMaxM;
     this.pxPerMZ = Math.min(46, (GAME_HEIGHT - WATERLINE - 110) / Math.max(2, zMax));
@@ -718,6 +723,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     }
 
     this.buildParkButton();
+    this.buildParkChips();   // 209차 — 걸어 둔 다른 낚싯대 상태(평면 판 위)
     if (this.cfg.parked) this.restoreParked(this.cfg.parked.rig, this.cfg.parked.phase);
 
     this.cameras.main.fadeIn(320, 2, 12, 24);
@@ -1913,6 +1919,9 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       return;
     }
 
+    // 209차 — 거치해 둔 다른 낚싯대도 계속 산다(필드가 멈춰 있어 1인칭이 대신 굴린다 · 파이팅 중 옆 째기는 엉킴)
+    this.tickParkedRods(deltaMs);
+
     // 착수 침강 카메오 취소 — 릴링/루어 액션/뒷줄견제가 시작되면 즉시 RETRIEVE 규칙(α=vp)으로
     if (this.sinkCameoStart > 0 && (this.reeling || this.rigPose !== 'idle' || this.hKey?.isDown)) {
       this.sinkCameoStart = 0;
@@ -2817,9 +2826,89 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       this.rollSchool(ctx, this.pendingFish);
       this.biteSeq.start({ speciesId: this.pendingFish.speciesId, biteProbPerSec: 0.2, stageTimeScale: InventoryStore.getBiteFeedbackMult() });
       this.stateText.setText('초릿대 끝이 까딱거린다');
+    } else if (phase === 'hooked') {
+      // 209차 — 지켜보지 않는 사이 고기가 스스로 걸렸다. 집어 드는 순간 파이팅이다(챔질 없음)
+      InventoryStore.pickBittenBait();
+      const ctx = this.buildSpawnCtx(this.seabed.isRockAt(this.distM));
+      this.pendingFish = spawnFish(ctx);
+      this.rollSchool(ctx, this.pendingFish);
+      this.enterFight();
+      this.stateText.setText('걸려 있던 고기가 차고 나간다');
     } else {
       this.stateText.setText('거치대에서 낚싯대를 집었다');
     }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // 209차 — 걸어 둔 다른 낚싯대(1인칭 중에도 굴린다 · 평면 판 위 칩 · 알림 한 줄)
+  // ═══════════════════════════════════════════════════════════════
+
+  private parkChipsC?: Phaser.GameObjects.Container;
+  private parkToast?: Phaser.GameObjects.Text;
+  private parkChipAcc = 0;
+  private parkToastUntil = 0;
+
+  /** 평면 판(수평뷰) 바로 위에 한 줄 — 칩 하나 = 거치대 하나(번호 · 초릿대 그림 · 상태 색) */
+  private buildParkChips(): void {
+    this.parkChipsC = this.add.container(PLAN_X, PLAN_Y - 8 - PARK_CHIP_H).setDepth(40);
+    this.parkToast = this.add.text(PLAN_X, PLAN_Y - 8 - PARK_CHIP_H - 6, '', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#ffe9a0',
+      backgroundColor: '#0a1628cc', padding: { x: 6, y: 3 }, wordWrap: { width: PLAN_W - 12 },
+    }).setOrigin(0, 1).setDepth(40).setVisible(false);
+    this.renderParkChips();
+  }
+
+  /** 이 맵에 걸어 둔 내 낚싯대 — 칩 · 굴림 대상 */
+  private parkedHere(): typeof GameState.parkedRods {
+    const key = GameState.parkedRods.find((r) => r.regionId === this.cfg.region)?.mapKey;
+    return key ? GameState.parkedRods.filter((r) => r.mapKey === key) : [];
+  }
+
+  private renderParkChips(): void {
+    const c = this.parkChipsC;
+    if (!c) return;
+    c.removeAll(true);
+    const list = this.parkedHere();
+    c.setVisible(list.length > 0);
+    const t = this.time.now / 1000;
+    list.forEach((r, i) => {
+      const x = i * (PARK_CHIP_W + PARK_CHIP_GAP);
+      const col = PARK_CHIP_COLOR[r.phase];
+      const blink = (r.phase === 'bite' || r.phase === 'hooked') && Math.sin(t * 8) > 0;
+      const bg = this.add.rectangle(x, 0, PARK_CHIP_W, PARK_CHIP_H, blink ? 0x2a1c0a : 0x0a1628, 0.9)
+        .setOrigin(0, 0).setStrokeStyle(2, col, 1);
+      const g = this.add.graphics();
+      // 삼발이 + 초릿대 — 상태만큼 휜다(걸림 크게 · 입질 까딱)
+      const bx = x + 12, by = PARK_CHIP_H - 5;
+      g.lineStyle(1.5, 0x9aa8b4, 1);
+      g.lineBetween(bx, by - 10, bx - 4, by); g.lineBetween(bx, by - 10, bx + 4, by);
+      const bend = { waiting: 0, bite: Math.sin(t * 18) * 2, snagged: 4, hooked: 6 + Math.sin(t * 7) * 2, tangled: 2 }[r.phase];
+      g.lineStyle(2, 0x3a74aa, 1);
+      g.lineBetween(bx - 6, by - 6, bx + 14, by - 18 + bend);
+      g.fillStyle(col, 1);
+      g.fillRect(bx + 13, by - 19 + bend, 3, 3);
+      const n = this.add.text(x + PARK_CHIP_W - 8, PARK_CHIP_H / 2, String(i + 1), {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px', color: '#e8f4ff', fontStyle: 'bold',
+      }).setOrigin(1, 0.5);
+      c.add([bg, g, n]);
+    });
+  }
+
+  private tickParkedRods(deltaMs: number): void {
+    const fn = this.registry.get('rodHolderTick') as
+      ((ms: number, tangle: number) => { n: number; event: ParkedRodEvent; msg: string }[]) | undefined;
+    if (!fn) return;
+    const fighting = this.fpState === 'fighting' && !!this.fight;
+    const tangle = fighting && Math.abs(this.fleeLatM) >= TUNING.rodHolder.fightTangleLateralM
+      ? TUNING.rodHolder.fightTanglePerSec : 0;
+    const evs = fn(deltaMs, tangle);
+    if (evs.length && this.parkToast) {
+      this.parkToast.setText(evs[evs.length - 1].msg).setVisible(true);
+      this.parkToastUntil = this.time.now + 3500;
+    }
+    if (this.parkToast?.visible && this.time.now > this.parkToastUntil) this.parkToast.setVisible(false);
+    this.parkChipAcc += deltaMs;
+    if (evs.length || this.parkChipAcc > 120) { this.parkChipAcc = 0; this.renderParkChips(); }
   }
 
   private onSnagged(): void {
@@ -2896,10 +2985,10 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   // 136차 — 장비 고장·파손 판정
   // ═══════════════════════════════════════════════════════════════
 
-  /** 로드가 견딜 수 있는 하중 (kg) — 가격대에서 파생 (사이소 2.4kg ~ 고급 5kg대) */
+  /** 로드가 견딜 수 있는 하중 (kg) — 209차부터 대의 제원(`powerKg`) · 사이소 2.4kg ~ 쇼어지깅 18kg */
   private rodMaxLoadKg(): number {
-    const rod = InventoryStore.handRod;
-    return 2.2 + (rod?.basePrice ?? 12000) / 60000;
+    // 209차 — 대마다 정한 하중(용도 · 호수). 제원표에 없는 대는 이름 · 가격으로 추정(구 공식 = 2.2 + 가격/6만)
+    return InventoryStore.handRodSpec?.powerKg ?? 2.2 + 12000 / 60000;
   }
 
   /**
@@ -3337,6 +3426,11 @@ export class FirstPersonFishingScene extends Phaser.Scene {
    * 최대 한 마리를 떨군다. 개발용 강제(`devLandingDrop`)는 무조건 빠지게 한다.
    */
   devLandingDrop = false;
+  /** 209차 — 구멍치기에 긴 대(> `rodSpec.holeMaxLenM`)를 쓰면 틈에서 들어 올리다 빠지기 쉽다 */
+  private holeLongRodK(): number {
+    const sp = InventoryStore.handRodSpec;
+    return this.cfg.hole && sp && !rodFitsHole(sp) ? TUNING.rodSpec.holeLongSlipMult : 1;
+  }
   private rollLanding(hooked: SpawnedFish[]): LandingDropResult {
     const net = [InventoryStore.getHandEquipped('L'), InventoryStore.getHandEquipped('R')].find((i) => i?.tool === 'net');
     const res = rollLandingDrop({
@@ -3344,7 +3438,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       footing: this.cfg.footing ?? (this.cfg.hole ? 'hole' : 'quay'),
       tideLiftM: this.cfg.tideLiftM ?? 0,
       netReachM: net ? (net.netReachM ?? netReachFromName(net.name)) : null,
-    }, Math.random() / Math.max(0.05, TitleStore.modifiers().landingDropMult), Math.random());   // 203차 — 타이틀 효과(빠짐 확률 비율 감소)
+    }, Math.random() / Math.max(0.05, TitleStore.modifiers().landingDropMult * this.holeLongRodK()), Math.random());   // 203차 — 타이틀 효과(빠짐 확률 비율 감소)
     if (import.meta.env.DEV && this.devLandingDrop) {
       this.devLandingDrop = false;
       TitleStore.bump('landingDrop');

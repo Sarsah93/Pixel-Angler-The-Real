@@ -25,6 +25,7 @@ import {
   FLASHER_TARGET_SPECIES,
 } from '@tra/core';
 import { planRigLoss, TUNING as TUNING_RL, type RigLossCause, type RigLossPlan } from '@tra/core';
+import { rodSpecFor, reelSpecFor, type RodItemSpec, type ReelItemSpec } from '@tra/core';
 import type { DishData, DishInstance } from '@tra/core';
 import { getFireRecipe, dishStarsAt, dishValueKrw, dishInstanceValueKrw } from '@tra/core';
 import type { SashimiSizeTier } from '@tra/core';
@@ -1287,9 +1288,11 @@ class InventoryStoreManager {
         //  iconTexture가 비었고 시드에 있으면 채우고, 그때는 이모지도 지운다(아이콘 이중 표시 방지).
         // 170차 — 과증식 해양생물은 필드 도트(`nui_*`)를 슬롯에 그대로 쓰고 있었다.
         //  실사 사진이 들어왔으므로 구세이브분도 강제로 갈아끼운다(내용은 같은 개체).
+        // 209차 — 사이소 민물대는 스피닝대인데 베이트대 그림을 달고 팔렸다. 구세이브분도 바로잡는다
         iconTexture: i.id.startsWith('inv_nuisance_')
           ? `nuisance_${i.id.slice('inv_nuisance_'.length)}`
-          : (i.iconTexture ?? sd?.iconTexture),
+          : (i.id.startsWith('inv_rod_budget') && i.iconTexture === 'item_bait_rod') ? 'item_spinning_rod'
+            : (i.iconTexture ?? sd?.iconTexture),
         icon: (!i.iconTexture && sd?.iconTexture) ? '' : i.icon,
         // 121차 채집·통발 정적 필드 — 시드 백필 + id 규칙 폴백(상점 구매분: inv_trap_<specId>)
         lampLumens: i.lampLumens ?? sd?.lampLumens,
@@ -2190,6 +2193,9 @@ class InventoryStoreManager {
 
   /** 현재 모드의 낚싯대 허용 채비 중량 (g) — 원투는 무거운 싱커 감당 */
   getRodCapacityG(): number {
+    // 209차 — 낚싯대마다 받는 채비 무게가 다르다(적합 상한). 대가 없으면 구 모드 상수
+    const spec = this.handRodSpec;
+    if (spec) return spec.loadG[1];
     return this.isSurfRigReady() ? SURF_ROD_CAPACITY_G : ROD_CAPACITY_G;
   }
 
@@ -2292,6 +2298,18 @@ class InventoryStoreManager {
   /** 장착 릴 */
   get equippedReel(): InvItem | undefined {
     return this._items.find((i) => i.equipped && i.subCategory === '릴');
+  }
+
+  /** 209차 — 손에 든 낚싯대 제원(용도 · 길이 · 호수 · 적합 채비 무게 · 하중 · 릴 종류). id 표 → 이름 추정 */
+  get handRodSpec(): RodItemSpec | undefined {
+    const r = this.handRod;
+    return r ? rodSpecFor(r.id, r.name, r.basePrice) : undefined;
+  }
+
+  /** 209차 — 장착 릴 제원 */
+  get reelSpec(): ReelItemSpec | undefined {
+    const r = this.equippedReel;
+    return r ? reelSpecFor(r.id, r.name) : undefined;
   }
 
   /** 채비에 물린 찌 (부력 변성 대상) */
