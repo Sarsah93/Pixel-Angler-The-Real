@@ -453,6 +453,18 @@ export const SPREADER_LABEL: Record<SpreaderKind, string> = {
 /** 207차 — 원투 거치대 아이템 id (상점 · 1인칭 거치하기 · 탑다운 거치대) */
 export const ROD_HOLDER_ITEM_ID = 'shop_rod_holder';
 
+/**
+ * 208차 — 거치대에 걸린 낚싯대 한 벌. 거치할 때 가방에서 **꺼내 거치대로 옮긴다**
+ * (낚싯대 · 릴 · 끝채비 부품 · 미끼). 원줄 스풀은 가방에 둔 채 쓰고, 목줄은 묶는 길이만 잘린다.
+ * 다시 잡으면 그대로 가방에 돌아오고, 채비 트리도 그 낚싯대의 것으로 돌아온다.
+ */
+export interface ParkedGear {
+  /** 거치 순간의 채비 트리(그 낚싯대에 묶여 있던 모양) */
+  tree: RigTreeState;
+  /** 가방에서 옮긴 것(아이템 사본 · 수량) */
+  items: { item: InvItem; qty: number }[];
+}
+
 /** 196차 — 뜰채 이름의 「N m」 → 자루 길이(m). 못 읽으면 5m(구 시드 「뜰채 5m」) */
 export function netReachFromName(name: string): number {
   const m = /(\d+(?:\.\d+)?)\s*m/.exec(name);
@@ -1067,7 +1079,65 @@ class InventoryStoreManager {
 
   /** 207차 — 원투 거치대(삼발이)를 가졌나 — 1인칭 「거치하기」 게이트 */
   hasRodHolder(): boolean {
-    return this._items.some((i) => i.id === ROD_HOLDER_ITEM_ID && i.qty > 0);
+    return this.rodHolderCount() > 0;
+  }
+  /** 208차 — 가진 거치대 수(세워 둔 것 포함 — 거치대는 가방에 남고 쓰는 수만 센다) */
+  rodHolderCount(): number {
+    return this.find(ROD_HOLDER_ITEM_ID)?.qty ?? 0;
+  }
+
+  /**
+   * 208차 — 지금 손의 낚싯대 한 벌을 거치대로 옮긴다: 낚싯대 · 릴 · 끝채비 부품 · 미끼를 가방에서 빼고,
+   * 목줄은 묶는 길이(`snag.leaderCutM`)만 자른다. 원줄 스풀은 가방에 남긴다(빼면 채비 트리가 통째로 풀린다).
+   * 남은 재고가 있으면 채비 칸은 그대로 다시 채워진다(206차 재장착) — 다음 낚싯대를 바로 던질 수 있다.
+   */
+  takeRigForParking(): ParkedGear {
+    const tree: RigTreeState = { nodes: this._tree.nodes.map((n) => ({ ...n })) };
+    const want = new Map<string, number>();
+    const add = (id: string, q: number): void => { want.set(id, (want.get(id) ?? 0) + q); };
+    const rod = this.getEquippedRod();
+    if (rod) add(rod.id, 1);
+    const reel = this.equippedReel;
+    if (reel) add(reel.id, 1);
+    let leaderId: string | null = null;
+    for (const n of tree.nodes) {
+      if (!n.itemId) continue;
+      if (n.slot === 'main_line') continue;
+      if (n.slot === 'leader') { leaderId = n.itemId; continue; }
+      add(n.itemId, n.slot === 'bait' ? this.baitUse(n) : 1);
+    }
+    const items: ParkedGear['items'] = [];
+    for (const [id, q] of want) {
+      const it = this.find(id);
+      if (!it) continue;
+      const qty = Math.min(q, it.qty);
+      if (qty <= 0) continue;
+      items.push({ item: { ...it, qty }, qty });
+      if (it.qty > qty) it.qty -= qty;
+      else this.deleteInstance(id);
+    }
+    if (leaderId) this.cutLine(leaderId, TUNING_RL.snag.leaderCutM);
+    this.syncTreeWithItems();
+    return { tree, items };
+  }
+
+  /**
+   * 208차 — 거치대의 낚싯대를 다시 잡는다: 옮겼던 것을 가방에 돌려놓고, 그 낚싯대의 채비 트리로 바꾼 뒤
+   * 낚싯대 · 릴을 손에 든다(들고 있던 다른 낚싯대는 가방으로).
+   */
+  returnParkedGear(g: ParkedGear): void {
+    let rodId: string | null = null;
+    let reelId: string | null = null;
+    for (const { item, qty } of g.items) {
+      const { slot: _slot, qty: _q, ...tpl } = item;
+      if (item.tool === 'rod') rodId = item.id;
+      if (item.subCategory === '릴') reelId = item.id;
+      this.addItem({ ...tpl, equipped: false, equippedHand: undefined }, qty, { silent: true });
+    }
+    this._tree = { nodes: g.tree.nodes.map((n) => ({ ...n })) };
+    this.syncTreeWithItems();
+    if (rodId) this.equipHand(rodId, 'R');
+    if (reelId) this.equipItem(reelId);
   }
 
   itemAtSlot(cat: InvCategory, slot: number): InvItem | undefined {

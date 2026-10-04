@@ -2738,7 +2738,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   private canPark(): boolean {
     return this.fpState === 'drift' && this.surfMode && !this.lureMode && !this.cfg.hole
       && this.rig.settled && !this.snagStuck && !this.snagChoice && !this.biteSeq.active && !this.pendingFish
-      && !this.guideHub && InventoryStore.hasRodHolder();
+      // 208차 — 거치대 여러 대: 상한(`maxHolders` 3)과 가진 거치대 수 중 작은 쪽까지
+      && !this.guideHub && GameState.parkedRods.length < Math.min(TUNING.rodHolder.maxHolders, InventoryStore.rodHolderCount());
   }
 
   /**

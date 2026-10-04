@@ -15,6 +15,10 @@
  */
 
 import type { DeployedStove, ParkedRodState } from '@tra/core';
+import type { ParkedGear } from './InventoryStore.js';
+
+/** 208차 — 세이브에 남는 거치대 한 대(core 상태 + 옮겨 둔 낚싯대 한 벌) */
+export type ParkedRodSave = ParkedRodState & { gear?: ParkedGear };
 import type {
   PlayerState,
   TackleSetup,
@@ -203,6 +207,8 @@ interface SaveData {
   tideLore?: TideLoreSaveState;
   /** 207차 — 거치대에 걸어 둔 원투 낚싯대(한 대 · 구세이브 = 없음) */
   parkedRod?: ParkedRodState;
+  /** 208차 — 거치대 여러 대(최대 `TUNING.rodHolder.maxHolders`) · 구세이브 `parkedRod` 한 대는 여기로 옮긴다 */
+  parkedRods?: ParkedRodSave[];
   /** 1회성 안내 플래그 (chumGuideSeen 등 — 최초 표시 여부) */
   flags?: Record<string, boolean>;
   /** 맵별 오브젝트 월드 상태 — 초기 배치 − removed + moved + placed (HOMETOWN_HOME_SPEC) */
@@ -250,7 +256,7 @@ export class GameStateManager {
   private _player: PlayerState | null = null;
   private _deployedTraps: DeployedTrap[] = [];
   /** 207차 — 거치대에 걸어 둔 낚싯대(없으면 null) */
-  private _parkedRod: ParkedRodState | null = null;
+  private _parkedRods: ParkedRodSave[] = [];
   private _deployedStoves: DeployedStove[] = [];
   private _coolerInventory: CoolerInventory = createDefaultCoolerInventory();
   private _licenses: HeldLicense[] = [];
@@ -349,7 +355,8 @@ export class GameStateManager {
   private applySaveData(saved: SaveData): void {
     this._player = saved.player;
     this._deployedTraps = saved.deployedTraps ?? [];
-    this._parkedRod = saved.parkedRod ?? null;   // 207차 — 구세이브 = 거치 없음
+    // 207차 한 대(`parkedRod`) → 208차 여러 대. 구세이브 = 거치 없음
+    this._parkedRods = saved.parkedRods ?? (saved.parkedRod ? [saved.parkedRod] : []);
     // 154차 — 화구 위 조리는 오프라인(게임 종료) 중 정지한다(신선도·통발과 같은 규칙):
     //  저장~로드 실경과만큼 lastTickMs를 밀어 "그 사이 익지 않은 것"으로 만든다.
     {
@@ -459,8 +466,15 @@ export class GameStateManager {
   }
 
   /** 207차 — 거치대에 걸어 둔 낚싯대 */
-  get parkedRod(): ParkedRodState | null { return this._parkedRod; }
-  set parkedRod(v: ParkedRodState | null) { this._parkedRod = v; this.markDirty(); }
+  get parkedRods(): readonly ParkedRodSave[] { return this._parkedRods; }
+  addParkedRod(r: ParkedRodSave): void { this._parkedRods.push(r); this.markDirty(); }
+  removeParkedRod(id: string): ParkedRodSave | null {
+    const i = this._parkedRods.findIndex((r) => r.id === id);
+    if (i < 0) return null;
+    const [r] = this._parkedRods.splice(i, 1);
+    this.markDirty();
+    return r ?? null;
+  }
 
   get deployedTraps(): DeployedTrap[] {
     return this._deployedTraps;
@@ -1508,7 +1522,7 @@ export class GameStateManager {
       market: MarketStore.serialize(),
       titles: TitleStore.serialize(),
       tideLore: TideLoreStore.serialize(),
-      parkedRod: this._parkedRod ?? undefined,
+      parkedRods: this._parkedRods,
       flags: this._flags,
       worldObjects: this._worldObjects,
       discoveries: DiscoveryStore.serialize(),
@@ -1690,7 +1704,7 @@ export class GameStateManager {
     this._character = GameStateManager.defaultCharacter('m');
     this._player = createDefaultPlayer();
     this._deployedTraps = [];
-    this._parkedRod = null;
+    this._parkedRods = [];
     this._deployedStoves = [];
     this._coolerInventory = createDefaultCoolerInventory();
     this._licenses = [{ type: 'basic_angling', acquiredAt: new Date(), isExpired: false }];

@@ -107,10 +107,10 @@ export const EN_GEAR: Record<string, string> = {
   '거치해 둔 낚싯대에 입질이 왔다': 'A bite on the rod you set down',
   '[거치대] 초릿대가 잠잠해졌다': '[Rod holder] The rod tip has gone still',
   '[거치대] 초릿대가 잠잠해졌다 — 미끼를 따먹힌 것 같다': '[Rod holder] The rod tip has gone still — the bait was probably stolen',
-  '[F] 거치해 둔 낚싯대': '[F] Your set rod',
-  '[F] 거치해 둔 낚싯대 — 입질 중': '[F] Your set rod — biting',
-  '[F] 거치해 둔 낚싯대 — 초릿대가 휘어 있다': '[F] Your set rod — tip is bent',
-  '거치해 둔 낚싯대 잡기': 'Pick up your set rod',
+  '[F] 거치해 둔 낚싯대': '[F] Parked rod',
+  '[F] 거치해 둔 낚싯대 — 입질 중': '[F] Parked rod — biting',
+  '[F] 거치해 둔 낚싯대 — 초릿대가 휘어 있다': '[F] Parked rod — tip is bent',
+  '거치해 둔 낚싯대 잡기': 'Pick up the parked rod',
   '[거치대] 낚싯대를 집어 들었다': '[Rod holder] Picked up the rod',
   '[거치대] 낚싯대를 집어 들었다 — 초릿대가 움직인다': '[Rod holder] Picked up the rod — the tip is moving',
   '[거치대] 낚싯대를 집어 들었다 — 바닥에 걸려 있다': '[Rod holder] Picked up the rod — it is snagged on the bottom',
@@ -121,4 +121,8 @@ export const EN_GEAR: Record<string, string> = {
   '낚시 도구': 'Fishing tools',
   '봉돌이 바닥에 닿았다. 거치대에 낚싯대를 걸어 두면 자리를 떠나도 채비는 그대로다 — 입질이 오면 초릿대 끝이 움직인다.':
     'The sinker is on the bottom. Set the rod on the holder and the rig stays put even if you walk away — the rod tip moves when a fish bites.',
+  '초릿대가 휜 채 꼼짝하지 않는다': 'The rod tip is bent and not moving',
+  '초릿대 끝이 까딱거린다!': 'The rod tip is nodding!',
+  '초릿대가 잠잠해졌다': 'The rod tip has gone still',
+  '초릿대가 잠잠해졌다 — 미끼를 따먹힌 것 같다': 'The rod tip has gone still — the bait was probably stolen',
 };

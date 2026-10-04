@@ -281,7 +281,7 @@ const FORAGE_CORNER: ShopEntry[] = [
   { id: 'shop_net_5', name: '뜰채 5m', icon: '', iconTexture: 'px:it_net', category: 'gear', subCategory: '손도구', basePrice: 30000, price: 36000, maxPerPurchase: 1, equippable: true, tool: 'net', netReachM: 5, desc: '가장 흔한 길이 — 안벽·테트라포드까지 닿는다.' },
   { id: 'shop_net_7', name: '뜰채 7m', icon: '', iconTexture: 'px:it_net', category: 'gear', subCategory: '손도구', basePrice: 52000, price: 62000, maxPerPurchase: 1, equippable: true, tool: 'net', netReachM: 7, desc: '긴 자루 뜰채 — 높은 방파제 상판에서 간조 때도 수면에 닿는다.' },
   // 207차 — 원투 거치대(삼발이). 봉돌이 바닥에 안착하면 1인칭 「거치하기」로 걸어 두고 자리를 떠날 수 있다
-  { id: 'shop_rod_holder', name: '원투 거치대 (삼발이)', icon: '', iconTexture: 'px:it_rodholder', category: 'etc', subCategory: '낚시 도구', basePrice: 16000, price: 19000, maxPerPurchase: 1, equippable: false, desc: '원투 낚싯대를 걸어 두는 삼발이 받침. 봉돌을 바닥에 내려 두고 기다리는 동안 초릿대 끝으로 입질을 본다.' },
+  { id: 'shop_rod_holder', name: '원투 거치대 (삼발이)', icon: '', iconTexture: 'px:it_rodholder', category: 'etc', subCategory: '낚시 도구', basePrice: 16000, price: 19000, maxPerPurchase: 3, equippable: false, desc: '원투 낚싯대를 걸어 두는 삼발이 받침. 봉돌을 바닥에 내려 두고 기다리는 동안 초릿대 끝으로 입질을 본다.' },
   ...TRAP_DATABASE.map((t): ShopEntry => ({
     id: `inv_trap_${t.id}`, name: t.nameKo, icon: '🪤', category: 'etc', subCategory: '통발',
     basePrice: Math.round(t.priceWon * 0.8), price: t.priceWon, maxPerPurchase: 3, equippable: false, trapSpecId: t.id,

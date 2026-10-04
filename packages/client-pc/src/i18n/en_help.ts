@@ -708,8 +708,11 @@ export const EN_HELP: Record<string, string> = {
     'On a bite a "!" pops above the holder, the rod tip nods, and a [Rod holder] line appears in the area chat. Reach it within 25 seconds and pick it up with [F] — the bite carries on in first-person and the strike is yours. Too late and the bait may have been stolen.',
   '바닥에 멈춘 봉돌은 걸리지 않습니다. 다만 물살이나 파도가 봉돌보다 세면 봉돌이 구르고, 여 위를 구르면 걸립니다 — 그러면 초릿대가 휜 채 꼼짝하지 않습니다.':
     'A sinker resting on the bottom does not snag. But if the current or waves beat the sinker it rolls, and rolling over reef snags — then the rod tip stays bent and does not move.',
-  '거치해 둔 동안에는 다른 낚싯대로 던지지 않습니다. 다른 지역으로 떠나면 두고 온 낚싯대는 거둬 온 것으로 칩니다.':
-    'While a rod is on the holder you cannot cast another. Leave for another region and the rod you left counts as packed up.',
   '여럿이 함께할 때 남이 걸어 둔 낚싯대는 보이기만 하고 잡을 수 없습니다.':
-    "In multiplayer you can see other people's set rods but cannot pick them up.",
+    "In multiplayer you can see other people's parked rods but cannot pick them up.",
+  // 208차 — 거치대 여러 대
+  '거치대는 가진 수만큼, 최대 3대까지 펼 수 있습니다. 거치할 때 낚싯대 · 릴 · 끝채비가 가방에서 거치대로 옮겨지므로, 다음 대를 던지려면 낚싯대와 릴이 한 벌 더 있어야 합니다. 다시 잡으면 그대로 가방에 돌아옵니다.':
+    'You can set up as many holders as you own, up to three. Setting a rod moves the rod, reel and terminal rig from your bag onto the holder, so to cast another you need one more rod and reel. Pick it up and everything goes back into your bag.',
+  '두 대 이상이면 거치대 아래에 번호가 붙고, 지역 채널도 [거치대 2]처럼 번호로 알립니다. 다른 지역으로 떠나면 두고 온 낚싯대는 거둬 온 것으로 칩니다.':
+    'With two or more, each holder gets a number underneath and the area chat names it, like [Rod holder 2]. Leave for another region and the rods you left count as packed up.',
 };

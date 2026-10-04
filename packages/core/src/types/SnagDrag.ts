@@ -66,7 +66,7 @@ export interface ParkedRodLaunch {
   tideLiftM?: number;
 }
 
-/** 낚싯대 거치대 — 세이브 `parkedRods`(한 사람이 한 대) */
+/** 낚싯대 거치대 — 세이브 `parkedRods`(208차 — 한 사람이 최대 `TUNING.rodHolder.maxHolders` 대 · 대마다 낚싯대 한 벌) */
 export interface ParkedRodState {
   id: string;
   regionId: string;

@@ -87,7 +87,7 @@ import { TrapFieldSystem } from './field/TrapFieldSystem.js';
 import { TrapDeployPanel } from '../ui/TrapDeployPanel.js';
 import { StoveFieldSystem } from './field/StoveFieldSystem.js';
 import { RodHolderSystem, type ParkRequest } from './field/RodHolderSystem.js';
-import type { ParkedRodState } from '@tra/core';
+import type { ParkedRodSave } from '../store/GameState.js';
 import { StoveDeployPanel } from '../ui/StoveDeployPanel.js';
 import { CookingPanel } from '../ui/CookingPanel.js';
 import { CookingStore } from '../store/CookingStore.js';
@@ -3177,11 +3177,7 @@ export class RegionFieldScene extends Phaser.Scene {
     if (GameState.isMounted) return;
     // 184차 — 고가 상판 위에서는 던지지 않는다(차도 한가운데다)
     if (this.overpass?.onDeck) return;
-    // 207차 — 낚싯대가 거치대에 걸려 있다(한 대를 두고 또 던지지 않는다)
-    if (GameState.parkedRod && InventoryStore.getEquippedRod()) {
-      this.floatingHint('낚싯대가 거치대에 걸려 있다');
-      return;
-    }
+    // 208차 — 거치대에 건 낚싯대는 가방에서 빠져 있다(손에 다른 낚싯대가 있어야 던진다 — 아래 장비 게이트)
     // ── 장비 게이팅이 **최우선** (사용자 지시 2026-08-05) ──
     //  손에 낚싯대가 없으면 애초에 캐스팅 시도가 아니다 → 안내 없이 무시.
     //  (구 구현은 물가 판정을 먼저 해서, 낚싯대가 없어도 아무 데나 클릭하면
@@ -3293,7 +3289,6 @@ export class RegionFieldScene extends Phaser.Scene {
   private enterHoleFishing(): void {
     const hole = this.holeSpot;
     if (!hole || this.castBusy || this.isTransitioning) return;
-    if (GameState.parkedRod) { this.floatingHint('낚싯대가 거치대에 걸려 있다'); return; }
     // 미끄러짐 — 파고 반영 (테트라포드 안전, M1-04 학습 태그)
     const waveM = ExternalDataStore.getWaveHeightM(this.region) ?? 0.5;
     if (Math.random() < holeSlipChance(hole, waveM)) {
@@ -3614,7 +3609,7 @@ export class RegionFieldScene extends Phaser.Scene {
    * 207차 — 거치해 둔 낚싯대를 다시 잡는다. 걸어 둔 채비를 그대로 1인칭에 돌려 놓는다(캐스팅 · 침강 없이).
    * 초릿대가 움직이는 중이었으면 입질이 이어지고, 휘어 있었으면 걸린 채로 시작한다.
    */
-  private pickUpParkedRod(rod: ParkedRodState): void {
+  private pickUpParkedRod(rod: ParkedRodSave): void {
     if (this.isTransitioning) return;
     this.lastCastLand = { x: rod.landX, y: rod.landY };
     this.hud?.pushLog(rod.phase === 'bite' ? '[거치대] 낚싯대를 집어 들었다 — 초릿대가 움직인다'
@@ -6392,7 +6387,7 @@ export class RegionFieldScene extends Phaser.Scene {
     this.rodHolder = new RodHolderSystem({
       scene: this, tr: TR, regionId: this.region, mapKey: common.mapKey,
       player: common.player, blocked: common.blocked, pushLog: common.pushLog, floatingHint: common.floatingHint,
-      pickUp: (rod: ParkedRodState) => this.pickUpParkedRod(rod),
+      pickUp: (rod: ParkedRodSave) => this.pickUpParkedRod(rod),
     });
     if (import.meta.env.DEV) {
       const st = this.forage.candidateStats();

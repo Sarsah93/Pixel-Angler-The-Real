@@ -461,7 +461,15 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-10-04 207차) — 밑걸림 = 끌림 거리 · 걸림 관찰 상태 · 원투 거치대**
+**최근 변경 (2026-10-04 208차) — 거치대 여러 대(최대 3) · 낚싯대 한 벌 이동 · 밑걸림 λ 0.08/m**
+
+- 거치대 상한 `min(maxHolders 3, 가진 거치대 수)` · 거치 = 대 · 릴 · 부품 · 미끼 한 벌을 가방에서 빼 `gear`로
+  (`takeRigForParking` · `returnParkedGear`).
+- 번호 1~3 · 「[거치대 N]」 채널 · [F] 입질 우선 · 세이브 `parkedRods[]` · 끌림 λ 0.10 → 0.08/m(여 7m 43%).
+- 함정: 거치대 「!」는 그림 컨테이너 밖 깊이 61 — 안에 두면 머리 위 [F] 안내(60)에 가린다(`fishing-loop.md` §6-21).
+  상세: [208차 워크로그](../docs/wiki/03-WORKLOG/2026-10-04-208-multi-rod-holder-snag-008.md).
+
+**이전 변경 (2026-10-04 207차) — 밑걸림 = 끌림 거리 · 걸림 관찰 상태 · 원투 거치대**
 
 - core `SnagDrag` — 여 위를 끌린 거리로만 걸림(멈춘 봉돌 0) · 봉돌 고정(물살 · 파도 굴림) · 엔진 타이머는 `snagRiskMult: 0`.
 - 걸리면 찌 살짝 잠김 · 초릿대 휨 → 감기/챔질 시 대처 창 · 원투 거치대(「거치하기」 → 탑다운 삼발이 · 「!」 · [F] 복귀 · 멀티 보기만 · `parkedRod`).
@@ -474,13 +482,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - 낚시 어획 목표 퀘스트를 처음 진행할 때 밑걸림 ×0.3(`StoryStore.everDone` · `TUNING.snag`) · HUD 물때 칩(`RegionHud.refreshTideChip`).
 - 함정: 손실을 평면 칸 이름으로 하나씩 비우면 부모 칸이 자손을 풀어 뒤 손실이 헛돈다 — 트리로 계획해 한 번에(`fishing-loop.md` §6-19).
   상세: [206차 워크로그](../docs/wiki/03-WORKLOG/2026-10-04-206-rig-loss-snag-tide-chip.md).
-
-**이전 변경 (2026-10-04 205차) — 어종 × 물때 · 채비 × 물때 · 해루질/통발 물때 · 동해 감쇠 0.3**
-
-- core `TidePhasePreference`(어종 13묶음 × 8단계) + `TidePhaseStrategy`(지역·사리·물살·수위 · 장르 조건 · 해루질 창 · 통발) · `TUNING.tidePhase`.
-- 1인칭: 밑밥 쌓기/풀림/띠 · 원투 봉돌 구름 · 루어 종류 · 구멍치기 수위 · 잘 무는 물때에 잡으면 `TideLoreStore` 기록(채널 · 도감).
-- 함정: 1인칭 씬 인스턴스는 재사용된다 — 지역별 캐시는 `create()`에서 비울 것(`fishing-loop.md` §6-18).
-  상세: [205차 워크로그](../docs/wiki/03-WORKLOG/2026-10-04-205-tide-species-genre.md).
 
 ---
 

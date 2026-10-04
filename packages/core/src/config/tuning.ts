@@ -708,6 +708,8 @@ export interface TuningConfig {
     parkedBiteMult: number;
     /** [F]가 닿는 거리(타일) */
     reachTiles: number;
+    /** 208차 — 한 사람이 펼 수 있는 거치대 수(가진 거치대 수와 낚싯대 한 벌 수가 더 적으면 그만큼) */
+    maxHolders: number;
   };
   /**
    * 물때 흐름 × 어종 × 장르 (205차 — TIDE_PHASE_STRATEGY_SPEC P1~P3 · 초기값은 설계 초안, 실플레이 조율 대기).
@@ -1325,7 +1327,7 @@ export const TUNING: TuningConfig = {
     questFirstMult: 0.3,
     leaderCutM: 1.5,
     mainLineCutM: 8,
-    dragHazardPerM: 0.1,
+    dragHazardPerM: 0.08,
     sinkerReachM: 0.25,
     lureReachM: 0.45,
     floatReachBaseM: 0.35,
@@ -1343,6 +1345,7 @@ export const TUNING: TuningConfig = {
     missBaitLossChance: 0.5,
     parkedBiteMult: 0.8,
     reachTiles: 2.2,
+    maxHolders: 3,
   },
   tidePhase: {
     eastSeaK: 0.3,
