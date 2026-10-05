@@ -467,7 +467,14 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-10-05 214차) — 일지 「나날」 · NPC 일과 · 맡긴 물건 목록 · 도움말 갱신**
+**최근 변경 (2026-10-05 215차) — 실내 공간 1단계: 가게 · 보건소 · 위판장 안**
+
+- 필드 위 겹층 방 `scenes/field/InteriorSystem.ts`(depth 70~99) + 배치 `data/InteriorLayouts.ts`(틀 5종) + 그림 `ui/InteriorArt.ts` — 씬을 나누지 않은 까닭은 거래 · 위판 · 진료 흐름이 필드 씬에 묶여 있어서다.
+- 문 앞 [F] = 들어가기(확인 창 삭제) · 계산대 [F] = `openShop` · 위판장 창구 = 위판하기 탭부터(`ShopPanel` `initialTab`) · 보건소 접수대 = `openClinic` · 의자 식사 · 경매대 시각.
+- 함정: 실내 동안 필드 `update`는 겹층만 돌린다(새 필드 동작은 실내에서 막을지 먼저) · 머리 위 알림은 방 안 알림 줄로.
+  상세: [215차 워크로그](../docs/wiki/03-WORKLOG/2026-10-05-215-interior-spaces-stage1.md).
+
+**이전 변경 (2026-10-05 214차) — 일지 「나날」 · NPC 일과 · 맡긴 물건 목록 · 도움말 갱신**
 
 - core `NpcRoutine`(`npcWhereabouts` · 시간표 8갈래 · 인물 9명 — 24시간형 2) + 필드 집 문(채광창 불) · [F] 문 두드리기 → 같은 대화(R12) · 행인 수 시각 연동.
 - 일지 3번째 탭 「나날」 — 이야기 N번째(잠 횟수) · 앞으로(기한 · 정기 지출 · 맡긴 물건) · 지난 하루 → 결산. 장부 `storyDay` · 수지 ±0 버그 정정.
@@ -480,13 +487,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - 하루 경계 새벽 4시(`LedgerStore` = `logicalYmd`) · 오프라인 = 잠(저장 후 4시간+ · 잠들 수 있던 상태) · 일어나면 지금 실제 시각 혼잣말.
 - 위판이 닫혀 있으면 맡겨 두기(`ConsignQueue` · `ConsignSettle` · `nextConsignmentWindowStart`) — 위판 목표 이야기 12편의 시각 제약(R12) 해소.
   함정: `rectangle(…, color, 0)`은 채움 알파 0(암전 안 보임) · 타이핑 창 루프 타이머는 `removeEvent`. 상세: [213차 워크로그](../docs/wiki/03-WORKLOG/2026-10-05-213-sleep-save-day-boundary.md).
-
-**이전 변경 (2026-10-04 212차) — 결산 「내일 할 만한 것」 · 퀘스트 시각 원칙 R12**
-
-- core `planNextDay`(거친 바다 · 밤 간조 해루질 · 사리 · 조금 · 알맞은 물) · `logicalYmd`(하루 경계 새벽 4시) + client `NextDayHint` → 결산 끝 「내일」 띠.
-- 규칙 R12(§4 · §8-15): 퀘스트는 「밤에」 · 「물이 빠질 때」 · 계절처럼 넓은 때만 — 시각 창 최소 3시간. 현행 186편 위반 0.
-- 잠 · 결산 · 저장 기준은 제안만(잘 수 있는 때 · 새벽 4시 경계 · 「저장만 하기」 · 오프라인 = 잠) — 사용자 확인 대기.
-  상세: [212차 워크로그](../docs/wiki/03-WORKLOG/2026-10-04-212-next-day-hint-time-rules.md).
 
 ---
 

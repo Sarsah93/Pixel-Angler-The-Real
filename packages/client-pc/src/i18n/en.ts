@@ -650,6 +650,26 @@ export const EN_DICT: Record<string, string> = {
   '기한이나 납부처럼 정해진 때가 있는 일이 여기 모인다. 「잠 N번 남음」은 그때까지 남은 잠의 횟수다.':
     'Things with a set time — deadlines, payments — gather here. "N sleeps left" is how many nights of sleep remain until then.',
   '지난 하루를 누르면 그날의 결산을 다시 펼쳐 볼 수 있다.': 'Click a past day to open that day\'s summary again.',
+  // 215차 — 건물 실내(가게 · 보건소 · 위판장)
+  '[F] 주문하기': '[F] Order', '[F] 물건 보기': '[F] Browse goods', '[F] 위판 창구': '[F] Auction window',
+  '[F] 진료 접수': '[F] Reception', '[F] 경매 시간 보기': '[F] Auction times',
+  '[F] 보건소 들어가기': '[F] Enter the clinic', '보건소 들어가기': 'Enter the clinic',
+  '어서 오세요.': 'Welcome.', '어서 오세요. 오늘 생선 좋아요.': 'Welcome. The fish is good today.',
+  '어서 오세요. 천천히 보세요.': 'Welcome. Take your time.', '어디가 불편하세요?': 'What seems to be the trouble?',
+  '어서 오세요. 편한 자리에 앉으세요.': 'Welcome. Sit anywhere you like.',
+  '어서 오세요. 주문은 여기서 도와드릴게요.': 'Welcome. I can take your order here.',
+  '어서 와요. 한잔하고 가요.': 'Come on in. Have a drink.', '어서 와요. 찾는 채비 있어요?': 'Come on in. Looking for any tackle?',
+  '접수 도와드릴게요.': 'I can check you in.', '위판이세요? 창구로 오세요.': 'Here for the auction? Come to the window.',
+  '계산대 앞에서 [F]를 누르면 물건을 사고판다.': 'Press [F] at the counter to buy and sell.',
+  '카운터 앞에서 [F]를 누르면 주문한다. 의자에 앉아 먹으면 더 든든하다.': 'Press [F] at the counter to order. Eating seated at a table fills you up more.',
+  '접수대 앞에서 [F]를 누르면 진료를 받는다.': 'Press [F] at the reception desk to see the doctor.',
+  '위판 창구 앞에서 [F]를 누르면 잡은 고기를 경매에 올리거나 맡겨 둔다. 경매대에서는 다음 경매 시각을 알려 준다.':
+    'Press [F] at the auction window to put your catch up for auction or leave it there. At the auction stand they tell you when the next auction is.',
+  '나갈 때는 문 앞 매트를 밟고 아래로 걸어 나간다.': 'To leave, step on the doormat by the door and walk out downward.',
+  '직판장에 들어가 계산대에서 얼려 온 오징어를 팔아 보자.': 'Go into the fish market and sell the frozen squid at the counter.',
+  '계산대 앞에서 [F]를 눌러, 얼려 온 오징어를 팔아 보자.': 'Press [F] at the counter and sell the squid you brought.',
+  '「물건 올리려면 창구에 맡겨요. 문 닫은 시간에 맡겨도 다음 경매에 올라가요.」':
+    '"To put something up, leave it at the window. Even while we are closed it goes into the next auction."',
 };
 
 /**
@@ -675,6 +695,17 @@ const DOW_EN: Record<string, string> = {
 };
 /** 수치·이름이 끼어 있는 문장 — 정규식 규칙. 캡처 그룹은 그대로 옮긴다(이름은 사전을 다시 타지 않으므로 어종·아이템명은 한국어로 남을 수 있음). */
 export const EN_RULES: Rule[] = [
+  // 215차 — 건물 실내
+  [/^\[실내\] ([^·›]+)에 들어왔다$/, (m, tr) => `[Indoors] Entered ${tr(m[1])}`],
+  [/^\[F\] ([^·›]+) — 들어가기$/, (m, tr) => `[F] ${tr(m[1])} — Enter`],
+  [/^([^·›]+) — 들어가기$/, (m, tr) => `${tr(m[1])} — Enter`],
+  [/^직판장 안이다\. 계산대 앞에 서서 \[F\]를 눌러 주인에게 물건을 보자\. \((.+)\)$/, (m, tr) => `Inside the fish market. Stand at the counter and press [F] to see the goods. (${m[1].split(' · ').map((x) => tr(x)).join(' · ')})`],
+  [/^속초에 왔다\. 수산물 직판장 앞에서 \[F\]를 눌러 안으로 들어가자\. 기본 채비를 하나씩 사야 한다\. \((.+)\)$/, (m, tr) => `Here in Sokcho. Press [F] at the fish market to go inside. I need one of each basic item. (${m[1].split(' · ').map((x) => tr(x)).join(' · ')})`],
+  [/^(활어|선어) 경매는 지금 서고 있다\.$/, (m) => `The ${m[1] === '활어' ? 'live-fish' : 'fresh-fish'} auction is on right now.`],
+  [/^(활어|선어) 경매는 당분간 없다\.$/, (m) => `No ${m[1] === '활어' ? 'live-fish' : 'fresh-fish'} auction for a while.`],
+  [/^(활어|선어) 경매는 (오늘|내일|모레) (\d\d:\d\d)에 선다\.$/, (m) => `The ${m[1] === '활어' ? 'live-fish' : 'fresh-fish'} auction is ${({ '오늘': 'today', '내일': 'tomorrow', '모레': 'the day after tomorrow' } as Record<string, string>)[m[2]!]} at ${m[3]}.`],
+  [/^경매사가 장부를 넘기며 말한다\. 「(.+)」$/, (m, tr) => `The auctioneer flips through the ledger. "${m[1]!.split(/(?<=다\.) /).map((x) => tr(x)).join(' ')}"`],
+  [/^「맡겨 둔 물건 (\d+)건은 그때 올라가요\. 경매 전에 도로 가져가려면 창구로 가요\.」$/, (m) => `"Your ${m[1]} lot${m[1] === '1' ? '' : 's'} left here go${m[1] === '1' ? 'es' : ''} up then. To take ${m[1] === '1' ? 'it' : 'them'} back before the auction, go to the window."`],
   // 214차 — 나날 · 맡긴 물건
   [/^이야기 (\d+)번째$/, 'Story #$1'], [/^이야기 (\d+)번째까지$/, 'until Story #$1'],
   [/^잠 (\d+)번 남음$/, '$1 sleeps left'], [/^(\d+)번 지남$/, '$1 past'], [/^(\d+)번 밀림$/, '$1 overdue'],

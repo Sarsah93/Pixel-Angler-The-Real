@@ -33,7 +33,7 @@ import { ConsignQueue } from '../store/ConsignQueue.js';
 import { isConsignmentOpen, minutesUntilConsignment, consignmentFeeRate, coopDuesFeeCut, REGION_DATABASE } from '@tra/core';
 import { t, getLocale } from '../i18n/I18n.js';
 
-type ShopTab = 'buy' | 'sell' | 'repair' | 'consign';
+export type ShopTab = 'buy' | 'sell' | 'repair' | 'consign';
 
 const PANEL_W = 460;
 const PANEL_H = 596;
@@ -114,7 +114,8 @@ export class ShopPanel extends DraggablePanel {
   private barMoveHandler: (p: Phaser.Input.Pointer) => void;
   private barUpHandler: () => void;
 
-  constructor(scene: Phaser.Scene, x: number, y: number, shop: ShopDef, cbs: ShopPanelCallbacks) {
+  /** @param initialTab 215차 — 위판장 창구에서 열면 「위판하기」 탭부터(그 탭이 없는 가게면 구매) */
+  constructor(scene: Phaser.Scene, x: number, y: number, shop: ShopDef, cbs: ShopPanelCallbacks, initialTab: ShopTab = 'buy') {
     super(scene, { x, y, width: PANEL_W, height: PANEL_H, title: shop.name, onClose: cbs.onClose, depth: 820 });
     this.shop = shop;
     this.cbs = cbs;
@@ -150,11 +151,13 @@ export class ShopPanel extends DraggablePanel {
     this.add(greeting);
 
     this.buildTabs();
+    if (this.tabDefs.some((d) => d.id === initialTab)) this.currentTab = initialTab;
     this.gridContainer = scene.add.container(0, 0);
     this.add(this.gridContainer);
     this.buildFooter();
     this.buildTooltip();
     this.renderGrid();
+    this.paintTabs();   // 215차 — 첫 탭이 구매가 아닐 수 있다(하단 단추 글자까지)
 
     scene.events.on('inventory-changed', this.onInventoryChanged, this);
     this.applyFix();

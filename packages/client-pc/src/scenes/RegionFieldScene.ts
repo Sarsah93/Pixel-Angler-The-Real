@@ -99,7 +99,7 @@ import { addPixelIcon } from '../ui/PixelIcon.js';
 import type { MiniMarker, QuestTrackerEntry } from '../ui/RegionHud.js';
 import { TextInput } from '../ui/TextInput.js';
 import { MonologuePanel, OPENING_MONOLOGUE } from '../ui/MonologuePanel.js';
-import { GuideTour, maybeStartTour, tourSeen } from '../ui/GuideTour.js';
+import { GuideTour, maybeStartTour, tourSeen, type TourOptions } from '../ui/GuideTour.js';
 import { PrologueCoach, type CoachStage } from '../ui/PrologueCoach.js';
 import {
   prologueKeyAllowed, markPrologue, syncPrologue, prologueRunning, prologueStepDone,
@@ -175,6 +175,8 @@ import { offlineWakeLines } from '../data/WakeLines.js';
 import { settleDueConsignments } from '../store/ConsignSettle.js';
 import { ConsignQueue } from '../store/ConsignQueue.js';
 import { DayReportPanel } from '../ui/DayReportPanel.js';
+import { InteriorSystem } from './field/InteriorSystem.js';
+import { interiorLayoutOf, type InteriorAction } from '../data/InteriorLayouts.js';
 import { setAmbience } from '../audio/Ambience.js';
 import { BuildingKind, BUILDING_LABEL, BUILDING_GOODS, BUILDING_HOURS, shopHoursState, BUILDING_KIND_CYCLE, SHOP_CATALOG, ShopEntry } from '../data/ShopCatalog.js';
 
@@ -392,6 +394,9 @@ export class RegionFieldScene extends Phaser.Scene {
   /** 196차 — branch = 판매처(시세 하락·가게 수요를 따로 센다) */
   private buildings: { x: number; y: number; kind: BuildingKind; branch: MarketBranch }[] = [];
   private nearBuilding: { x: number; y: number; kind: BuildingKind; branch: MarketBranch } | null = null;
+  /** 215차 — 들어가 있는 건물 실내(필드 위 겹층). 그 건물의 거래 종류 · 지점(보건소는 kind null) */
+  private interior: InteriorSystem | null = null;
+  private interiorAt: { kind: BuildingKind | null; branch?: MarketBranch; name: string } | null = null;
 
   // ── 홈타운(집) — 오브젝트 인스턴스 + 칸 단위 설치 모드 (HOMETOWN_HOME_SPEC) ──
   /** 유효 오브젝트 (초기 배치 − removed + moved + placed) */
@@ -611,6 +616,8 @@ export class RegionFieldScene extends Phaser.Scene {
     this.shopPanel = null;
     this.buildings = [];
     this.nearBuilding = null;
+    this.interior = null;
+    this.interiorAt = null;
     this.homeObjects = [];
     this.homeObjSprites = new Map();
     this.nearObject = null;
@@ -2591,6 +2598,8 @@ export class RegionFieldScene extends Phaser.Scene {
       if (this.trapField?.placing) { this.trapField.cancelPlacement(); return; }
       if (this.stoveField?.placing) { this.stoveField.cancelPlacement(); return; }
       if (this.closeTopPopup()) return;
+      // 215차 — 실내: 앉아 있으면 일어서고, 아니면 밖으로 (일시정지 메뉴는 밖에서)
+      if (this.interior && !this.isPaused) { if (!this.interior.escape()) this.interior.leave(); return; }
       this.togglePauseMenu();
     });
 
@@ -2611,7 +2620,7 @@ export class RegionFieldScene extends Phaser.Scene {
     this.input.keyboard!.on('keydown-R', (e: KeyboardEvent) => {
       // 편집기가 열려 있으면 R = 배치 회전(자전거 승·하차보다 우선 — 106차)
       if (isMapEditorOpen()) { rotateEditorPlacement(e.shiftKey ? -1 : 1); return; }
-      if (!this.isPaused && !this.uiBlocked && this.hotkeyOk('KeyR')) this.toggleBike();
+      if (!this.isPaused && !this.uiBlocked && !this.interior && this.hotkeyOk('KeyR')) this.toggleBike();
     });
     // N: 도감 & 조과첩 (발견 도감 — 인게임 열람. 복귀는 stop+resume)
     this.input.keyboard!.on('keydown-N', () => {
@@ -2623,6 +2632,7 @@ export class RegionFieldScene extends Phaser.Scene {
     this.input.keyboard!.on('keydown-E', () => { if (this.hotkeyOk('KeyE')) this.toggleEquipment(); });
     this.input.keyboard!.on('keydown-F', (ev: KeyboardEvent) => {
       if (this.isPaused || this.uiBlocked) return;
+      if (this.interior) { if (!this.isTransitioning) this.interior.interact(); return; }   // 215차 — 실내 집기 · 앉은 자리 고를 거리
       // 160차 — 스토리 현장 지점은 무엇보다 먼저 소비한다. 같은 장소에서 도현수와
       // 마주쳐도 증거 연출/기록/보고의 순서를 건너뛸 수 없다(각본 게이트라 선택지로 내리지 않는다).
       if (this.nearStoryTrigger) { this.startStoryTrigger(this.nearStoryTrigger); return; }
@@ -2655,6 +2665,7 @@ export class RegionFieldScene extends Phaser.Scene {
     // ── 145차 지역 채널 채팅 — Enter로 열고 Enter로 보낸다 ──
     this.input.keyboard!.on('keydown-ENTER', () => {
       if (this.isPaused || this.popupStack.length > 0 || this.hud?.isComposing || GuideTour.blocking) return;
+      if (this.interior?.menuOpen) return;   // 215차 — 앉은 자리 고를 거리의 Enter
       this.startCompose();
     });
     this.events.once('shutdown', () => this.endCompose());
@@ -2669,7 +2680,7 @@ export class RegionFieldScene extends Phaser.Scene {
     this.events.once('shutdown', () => this.events.off('inventory-place', onPlace));
     // T: 통발 놓기 (121차 — 보유 통발 + 미끼 선택 → 물 위 클릭 설치)
     this.input.keyboard!.on('keydown-T', () => {
-      if (this.isPaused || this.uiBlocked || !this.hotkeyOk('KeyT')) return;
+      if (this.isPaused || this.uiBlocked || this.interior || !this.hotkeyOk('KeyT')) return;
       this.trapField?.openDeploy();
     });
 
@@ -2747,6 +2758,7 @@ export class RegionFieldScene extends Phaser.Scene {
         return;
       }
       if (this.uiBlocked || this.isPaused || this.time.now < this.suppressClickUntil) return;
+      if (this.interior) return;   // 215차 — 실내에서는 캐스팅하지 않는다
       if (p.leftButtonDown()) this.tryStartCharge();
     });
     this.input.on('pointerup', () => this.releaseCast());
@@ -2993,7 +3005,11 @@ export class RegionFieldScene extends Phaser.Scene {
   // ═══════════════════════════════════════════════════
   // 상점 (건물 근접 E → 거래 확인 → 상점+인벤토리 나란히)
   // ═══════════════════════════════════════════════════
-  private promptTrade(kind: BuildingKind, branch?: MarketBranch): void {
+  /**
+   * 건물 문 [F] — 215차부터는 확인 창(「…에 들어갑니다. 상품을 거래하시겠습니까?」) 대신 **안으로 들어간다**.
+   * 거래는 안의 계산대 · 창구 앞에서 [F]. 문 닫은 시간이면 문 앞 혼잣말(202차)만.
+   */
+  private enterBuilding(kind: BuildingKind, branch?: MarketBranch): void {
     // 202차 — 문 닫은 시간엔 거래하지 않는다(사용자 지시). 문 앞에서 혼잣말로 알려 준다.
     const hours = BUILDING_HOURS[kind];
     const k = kstParts(new Date());
@@ -3003,12 +3019,122 @@ export class RegionFieldScene extends Phaser.Scene {
       return;
     }
     StoryStore.event({ kind: 'visit', placeKey: 'shop:any' });   // 134차 — M1-02 상점 UI 목표
-    this.openPopup((close) => new ConfirmDialog(
-      this,
-      `${BUILDING_LABEL[kind]}에 들어갑니다.\n상품을 거래하시겠습니까?`,
-      () => { close(); this.openShop(kind, branch); },
-      close,
-    ));
+    this.enterInterior(kind, branch, branch?.name || BUILDING_LABEL[kind]);
+  }
+
+  // ═══════════════════════════════════════════════════
+  // 건물 실내 (215차 — 실내 공간 1단계: 가게 · 보건소 · 위판장)
+  // ═══════════════════════════════════════════════════
+  /**
+   * 실내로 들어간다 — 필드 위 겹층(`InteriorSystem`). 씬을 멈추지 않으므로 거래 · 위판 · 진료는
+   * 이 씬의 원래 흐름(`openShop` · `openClinic`)을 그대로 부른다. `kind === null` = 보건소.
+   */
+  private enterInterior(kind: BuildingKind | null, branch: MarketBranch | undefined, name: string): void {
+    if (this.interior) return;
+    this.fadeOutThen(() => {
+      this.dismountBike();   // 실내에선 자전거에서 내린다
+      this.charging = false;
+      this.chargeBar?.clear();
+      const layout = interiorLayoutOf(kind, name);
+      this.interiorAt = { kind, branch, name };
+      this.interior = new InteriorSystem(this, {
+        onAction: (a) => this.onInteriorAction(a),
+        onMeal: () => { GameState.mealAtTable = true; this.openMealBag(); },
+        onLeave: () => this.leaveInterior(),
+      }, { layout, seed: `interior:${branch?.key ?? `${this.region}:${kind ?? 'clinic'}`}` });
+      MultiplayerClient.setActivity('indoor');   // 145차 — 이름표 옆 배지
+      this.titleTxt?.setText(name);
+      this.layoutTitlePlate();
+      this.hud?.pushLog(`[실내] ${name}에 들어왔다`);
+      this.cameras.main.fadeIn(240, 0, 10, 20);
+      // 처음 들어선 가게 — 체험 가이드(R11): 무엇에 [F]를 하고 어디로 나가는지
+      maybeStartTour(this, () => this.buildInteriorTour());
+    }, 220, false);
+  }
+
+  /** 실내 → 필드(문 앞). 열린 거래 창 · 고를 거리는 먼저 닫는다 */
+  private leaveInterior(instant = false): void {
+    const it = this.interior;
+    if (!it) return;
+    const done = (): void => {
+      while (this.popupStack.length) this.popupStack[this.popupStack.length - 1]!.close();
+      it.destroy();
+      this.interior = null;
+      this.interiorAt = null;
+      GameState.mealAtTable = false;
+      MultiplayerClient.setActivity('field');
+      this.titleTxt?.setText(this.node.name);
+      this.layoutTitlePlate();
+      this.playerFacing = 'down';
+      this.updateSpriteAndShadow();
+      if (!instant) this.cameras.main.fadeIn(220, 0, 10, 20);
+    };
+    if (instant) { done(); return; }
+    this.fadeOutThen(done, 200, false);
+  }
+
+  private onInteriorAction(a: Exclude<InteriorAction, 'sit'>): void {
+    const at = this.interiorAt;
+    if (!at) return;
+    switch (a) {
+      case 'trade':
+      case 'consign':
+        if (at.kind) this.openShop(at.kind, at.branch, a === 'consign' ? 'consign' : 'buy');
+        break;
+      case 'clinic': this.openClinic(); break;
+      case 'schedule': this.openAuctionBoard(); break;
+    }
+  }
+
+  /** 의자에서 「식사하기」 — 가방 음식 칸 (식탁 보너스는 앉아 있는 동안만) */
+  private openMealBag(): void {
+    if (!this.invPanel) this.toggleInventory(GAME_WIDTH - 470);
+    this.invPanel?.showTab('food');
+  }
+
+  /**
+   * 위판장 경매대 [F] — 경매사가 다음 경매 시각을 알려 준다(R3 — 혼잣말 창 · 타이핑).
+   * 맡겨 둔 물건이 있으면 그것도 한마디. 시간표는 위판 창구와 같은 `nextConsignmentWindowStart`.
+   */
+  private openAuctionBoard(): void {
+    const now = Date.now();
+    const hm = (ms: number): string => {
+      const k = new Date(ms + 9 * 3_600_000);
+      const d = kstYmd(new Date(ms)) === kstYmd(new Date(now)) ? '오늘' : kstYmd(new Date(ms)) === kstYmd(new Date(now + 86_400_000)) ? '내일' : '모레';
+      return `${d} ${String(k.getUTCHours()).padStart(2, '0')}:${String(k.getUTCMinutes()).padStart(2, '0')}`;
+    };
+    const line = (cat: 'fish_live' | 'fish_fresh', label: string): string => {
+      const t = nextConsignmentWindowStart(cat, now);
+      if (t < 0) return `${label} 경매는 당분간 없다.`;
+      return t <= now + 60_000 ? `${label} 경매는 지금 서고 있다.` : `${label} 경매는 ${hm(t)}에 선다.`;
+    };
+    const lines = [
+      `경매사가 장부를 넘기며 말한다. 「${line('fish_live', '활어')} ${line('fish_fresh', '선어')}」`,
+    ];
+    const n = ConsignQueue.pending.length;
+    lines.push(n > 0
+      ? `「맡겨 둔 물건 ${n}건은 그때 올라가요. 경매 전에 도로 가져가려면 창구로 가요.」`
+      : '「물건 올리려면 창구에 맡겨요. 문 닫은 시간에 맡겨도 다음 경매에 올라가요.」');
+    this.openPopup((close) => new MonologuePanel(this, lines, close));
+  }
+
+  /** 처음 들어선 가게의 체험 가이드 — 계산대(창구 · 접수대)와 현관 매트 */
+  private buildInteriorTour(): TourOptions | null {
+    const it = this.interior;
+    if (!it) return null;
+    const main: InteriorAction = it.layout.template === 'clinic' ? 'clinic' : it.layout.template === 'auction' ? 'consign' : 'trade';
+    const what = it.layout.template === 'clinic' ? '접수대 앞에서 [F]를 누르면 진료를 받는다.'
+      : it.layout.template === 'auction' ? '위판 창구 앞에서 [F]를 누르면 잡은 고기를 경매에 올리거나 맡겨 둔다. 경매대에서는 다음 경매 시각을 알려 준다.'
+        : it.layout.template === 'food' ? '카운터 앞에서 [F]를 누르면 주문한다. 의자에 앉아 먹으면 더 든든하다.'
+          : '계산대 앞에서 [F]를 누르면 물건을 사고판다.';
+    return {
+      id: 'interior_shop',
+      alive: () => this.interior === it,
+      steps: [
+        { text: what, target: () => it.actionRect(main) },
+        { text: '나갈 때는 문 앞 매트를 밟고 아래로 걸어 나간다.', target: () => it.matRect() },
+      ],
+    };
   }
 
   /**
@@ -3030,7 +3156,7 @@ export class RegionFieldScene extends Phaser.Scene {
     this.openPopup((close) => new MonologuePanel(this, [first, `${sign} ${when}`], close));
   }
 
-  private openShop(kind: BuildingKind, branch?: MarketBranch): void {
+  private openShop(kind: BuildingKind, branch?: MarketBranch, tab: 'buy' | 'consign' = 'buy'): void {
     if (this.shopPanel) return;
     this.dismountBike();   // 실내(상점)에선 자전거에서 내린다
     const shop = SHOP_CATALOG[kind];
@@ -3046,7 +3172,7 @@ export class RegionFieldScene extends Phaser.Scene {
         onOpenDetail: (itemLike) => this.openItemDetail({ slot: 0, qty: 1, ...itemLike } as InvItem),
         onConsign: (inputs) => this.openConsignment(inputs),
         onShowConsigned: () => this.openConsignList(true),
-      }),
+      }, tab),
       () => {
         this.shopPanel = null;
         MarketStore.close();
@@ -3894,6 +4020,8 @@ export class RegionFieldScene extends Phaser.Scene {
   }
 
   private floatingHint(msg: string): void {
+    // 215차 — 실내에서는 머리 위(세상 좌표)가 방에 가려진다 → 방 안 알림 줄
+    if (this.interior) { this.interior.flash(msg); return; }
     const t = this.add.text(this.playerBody.x, this.playerHintY, msg, {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#fff',
       backgroundColor: '#0a1628cc', padding: { x: 8, y: 4 },
@@ -4209,10 +4337,10 @@ export class RegionFieldScene extends Phaser.Scene {
     if (this.ambienceT <= 0) {
       this.ambienceT = 1000;
       const kind = ExternalDataStore.getWeatherKind(this.region);
-      setAmbience({
-        sea: this.region === 'hometown' ? 0.2 : this.nearWater ? 0.85 : 0.4,
-        rain: kind === 'rain' ? 0.8 : kind === 'shower' ? 0.5 : 0,
-      });
+      const rain = kind === 'rain' ? 0.8 : kind === 'shower' ? 0.5 : 0;
+      setAmbience(this.interior
+        ? { sea: 0.08, rain: rain * 0.3 }   // 215차 — 실내: 문 너머로 먼 소리만
+        : { sea: this.region === 'hometown' ? 0.2 : this.nearWater ? 0.85 : 0.4, rain });
       this.settleConsignments();   // 213차 — 맡겨 둔 위판(회차가 열렸으면 정산)
     }
     // init → create 사이 또는 shutdown 직전의 stale update 차단.
@@ -4262,6 +4390,15 @@ export class RegionFieldScene extends Phaser.Scene {
     this.updateOccluders(delta);
     for (const line of MultiplayerClient.drainChat()) this.hud?.pushLog(`${line.name}: ${line.text}`);
     this.coach?.update(this.coachStage(), this.coachBlocked());
+    // 215차 — 건물 실내: 필드 몸은 문 앞에 세워 두고 방 안에서만 움직인다(장면이 시작되면 바로 밖으로)
+    if (this.interior) {
+      this.playerBody.setVelocity(0, 0);
+      if (this.cinematicActive) { this.leaveInterior(true); return; }
+      this.interior.update(delta, this.cursors, this.isTransitioning || this.uiBlocked);
+      if (!this.interior.seated) GameState.mealAtTable = false;   // 식탁 보너스는 앉아 있는 동안만
+      if (!this.isTransitioning && !this.uiBlocked) this.tickVitals(delta);
+      return;
+    }
     if (this.isTransitioning || this.uiBlocked) { this.playerBody.setVelocity(0, 0); return; }
     if (this.placing) {
       // 설치 모드 — 이동은 허용, 프리뷰는 커서 추적 (클릭=설치 / 우클릭·ESC=취소)
@@ -4323,14 +4460,15 @@ export class RegionFieldScene extends Phaser.Scene {
       const left = PROLOGUE_BUY_KINDS.filter((k) => !GameState.getFlag(`prologue.buy.${k}`));
       const ko: Record<string, string> = { line: '원줄', hook: '바늘', sinker: '봉돌', float: '찌', bait: '미끼' };
       const names = left.map((k) => ko[k]).join(' · ');
-      return this.shopPanel
-        ? this.coachShopDock(`buy_${left.join('_')}`, `기본 채비를 하나씩 사 보자. 아직 사지 않은 것: ${names}`)
-        : this.coachDock('buy', `속초에 왔다. 수산물 직판장 앞에서 [F]를 눌러 기본 채비를 하나씩 사자. (${names})`);
+      if (this.shopPanel) return this.coachShopDock(`buy_${left.join('_')}`, `기본 채비를 하나씩 사 보자. 아직 사지 않은 것: ${names}`);
+      // 215차 — 직판장 안: 계산대로
+      if (this.interior) return this.coachDock('buy_in', `직판장 안이다. 계산대 앞에 서서 [F]를 눌러 주인에게 물건을 보자. (${names})`);
+      return this.coachDock('buy', `속초에 왔다. 수산물 직판장 앞에서 [F]를 눌러 안으로 들어가자. 기본 채비를 하나씩 사야 한다. (${names})`);
     }
     if (!prologueStepDone('sell')) {
-      return this.shopPanel
-        ? this.coachShopDock('sell_tab', '「판매하기」로 바꿔 얼린 오징어를 팔아 보자. 노잣돈에 보탬이 된다.')
-        : this.coachDock('sell', '직판장 앞에서 [F]를 눌러, 얼려 온 오징어를 팔아 보자.');
+      if (this.shopPanel) return this.coachShopDock('sell_tab', '「판매하기」로 바꿔 얼린 오징어를 팔아 보자. 노잣돈에 보탬이 된다.');
+      if (this.interior) return this.coachDock('sell_in', '계산대 앞에서 [F]를 눌러, 얼려 온 오징어를 팔아 보자.');
+      return this.coachDock('sell', '직판장에 들어가 계산대에서 얼려 온 오징어를 팔아 보자.');
     }
     return null;
   }
@@ -4386,6 +4524,7 @@ export class RegionFieldScene extends Phaser.Scene {
    */
   private beginCollapse(kind: CollapseKind): void {
     if (this.collapsing) return;
+    if (this.interior) this.leaveInterior(true);   // 215차 — 쓰러지는 연출은 필드에서(실내 겹층에 가려진다)
     this.collapsing = true;
     if (kind === 'faint') { GameState.addStatus('faint'); TitleStore.bump('faint'); }   // 204차 — 「몸 갈아 넣는 조사」
     this.playerBody.setVelocity(0, 0);
@@ -6164,7 +6303,8 @@ export class RegionFieldScene extends Phaser.Scene {
     // ④ 건물 거래
     if (this.nearBuilding) {
       const { kind, branch } = this.nearBuilding;
-      opts.push({ label: `${BUILDING_LABEL[kind]} — 거래하기`, run: () => this.promptTrade(kind, branch) });
+      // 215차 — 문 앞 [F]는 안으로 들어간다(거래는 안의 계산대에서)
+      opts.push({ label: `${branch.name || BUILDING_LABEL[kind]} — 들어가기`, run: () => this.enterBuilding(kind, branch) });
     }
     // ⑤ 밀려온 불가사리 (자격·크기 제한 없음)
     const washed = this.nuisance?.gatherableNear(this.playerBody.x, this.playerBody.y, TR * 1.4);
@@ -6398,7 +6538,7 @@ export class RegionFieldScene extends Phaser.Scene {
       case 'mine': return '[F] 채굴';
       case 'gather': return '[F] 채집';
       case 'board': return '[F] 보트';
-      case 'clinic': return '[F] 보건소 진료';
+      case 'clinic': return '[F] 보건소 들어가기';
       case 'craft': return o.placedByPlayer ? '[F] 고급 제작대 · [Shift+F] 회수' : '[F] 고급 제작대';
       default: return '[F]';
     }
@@ -6425,7 +6565,7 @@ export class RegionFieldScene extends Phaser.Scene {
       case 'mine': this.floatingHint('채굴은 추후 — 곡괭이가 필요합니다'); break;
       case 'gather': this.floatingHint('갯바위 채집은 추후 개방됩니다'); break;
       case 'board': this.floatingHint('개인 보트 출조는 추후 개방됩니다'); break;
-      case 'clinic': this.openClinic(); break;
+      case 'clinic': this.enterInterior(null, undefined, '보건소'); break;   // 215차 — 안에 들어가 접수대에서 진료
       case 'craft': this.openAdvancedCraft(); break;
       default: break;
     }
