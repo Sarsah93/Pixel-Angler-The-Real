@@ -40,6 +40,9 @@ import { addPixelIcon } from './PixelIcon.js';
 import { questRewardItemName } from '../data/QuestRewardItems.js';
 import { getLocale } from '../i18n/I18n.js';
 import { maybeStartTour, type TourOptions } from './GuideTour.js';
+import { LedgerStore } from '../store/LedgerStore.js';
+import { ConsignQueue } from '../store/ConsignQueue.js';
+import { kstYmd, type DayLedgerPage } from '@tra/core';
 
 const PANEL_W = 1080;
 const PANEL_H = 656;
@@ -85,7 +88,13 @@ const REGION_LABEL: Record<string, string> = {
 
 type Row = { q: StoryQuestDef; st: ReturnType<typeof StoryStore.status>; pct: number };
 
-export interface JournalConfig { onClose: () => void }
+export interface JournalConfig {
+  onClose: () => void;
+  /** 214차 「나날」 — 지난 하루 한 장을 결산 창으로 연다(씬의 팝업 스택에 올린다) */
+  onOpenDay?: (pages: DayLedgerPage[], idx: number) => void;
+  /** 214차 「나날」 — 맡겨 둔 위판 물건 목록 */
+  onOpenConsign?: () => void;
+}
 
 export class JournalPanel extends DraggablePanel {
   /** 완료한 임무도 보여준다 (기본 꺼짐 — 재미를 깨지 않는다) */
@@ -94,7 +103,12 @@ export class JournalPanel extends DraggablePanel {
   private showLocked = false;
 
   /** 임무 목록 / 이야기(챕터 체인) */
-  private tab: 'tasks' | 'chain' = 'tasks';
+  private tab: 'tasks' | 'chain' | 'days' = 'tasks';
+  private readonly cfg: JournalConfig;
+  /** 214차 「나날」 — 지난 하루 목록 스크롤 · 영역(휠) · 가이드가 짚는 칸 */
+  private daysScroll = 0;
+  private daysPastRect: Phaser.Geom.Rectangle | null = null;
+  private daysRects: Record<'head' | 'ahead' | 'past', Phaser.Geom.Rectangle | null> = { head: null, ahead: null, past: null };
   /** 188차 — 이야기 탭 안의 보기: 이번 장(체인) / 조행록(지나온 장 + 채워 가는 장) */
   private storyView: 'chapter' | 'log' = 'chapter';
   private selId: string | null = null;
@@ -123,6 +137,7 @@ export class JournalPanel extends DraggablePanel {
       width: PANEL_W, height: PANEL_H, title: '일지 — 할 일', onClose: cfg.onClose, dim: false, depth: 891,
     });
 
+    this.cfg = cfg;
     this.frameG = scene.add.graphics();
     this.add(this.frameG);
 
@@ -131,6 +146,14 @@ export class JournalPanel extends DraggablePanel {
       if (this.narrRect && Phaser.Geom.Rectangle.Contains(this.narrRect, lx, ly)) {
         const next = Phaser.Math.Clamp(this.narrScroll + (dy > 0 ? 34 : -34), 0, this.narrMax);
         if (next !== this.narrScroll) { this.narrScroll = next; this.applyNarrScroll(); }
+        return;
+      }
+      if (this.tab === 'days') {
+        if (this.daysPastRect && Phaser.Geom.Rectangle.Contains(this.daysPastRect, lx, ly)) {
+          const max = Math.max(0, LedgerStore.closedPages().length - this.daysVisible());
+          const next = Phaser.Math.Clamp(this.daysScroll + (dy > 0 ? 1 : -1), 0, max);
+          if (next !== this.daysScroll) { this.daysScroll = next; this.renderDays(); }
+        }
         return;
       }
       if (this.listRect && Phaser.Geom.Rectangle.Contains(this.listRect, lx, ly)) {
@@ -214,12 +237,14 @@ export class JournalPanel extends DraggablePanel {
     const max = Math.max(0, this.rows.length - this.visibleRows());
     this.scroll = Phaser.Math.Clamp(this.scroll, 0, max);
     this.paintFrame();
+    this.setTitle(this.tab === 'days' ? '일지 — 나날' : this.tab === 'chain' ? '일지 — 이야기' : '일지 — 할 일');   // 214차 — 탭을 따라간다
     this.renderHeader();
-    if (this.tab === 'chain') {
+    if (this.tab === 'chain' || this.tab === 'days') {
       this.listC?.destroy(); this.listC = undefined;
       this.detC?.destroy(); this.detC = undefined;
       this.narrMask?.destroy(); this.narrMask = undefined; this.narrRect = null;
-      if (this.storyView === 'log') this.renderLog(); else this.renderChain();
+      if (this.tab === 'days') this.renderDays();
+      else if (this.storyView === 'log') this.renderLog(); else this.renderChain();
     } else {
       this.chainC?.destroy(); this.chainC = undefined;
       this.renderList(); this.renderDetail();
@@ -236,7 +261,7 @@ export class JournalPanel extends DraggablePanel {
     g.clear();
     const top = this.contentTop + 26;
     const h = PANEL_H - top - 10;
-    if (this.tab === 'chain') {
+    if (this.tab === 'chain' || this.tab === 'days') {
       g.fillStyle(0x0a1b2d, 0.6); g.fillRoundedRect(LIST_X - 4, top, PANEL_W - LIST_X - 8, h, 6);
       g.lineStyle(1, 0x1c3d5a, 1); g.strokeRoundedRect(LIST_X - 4, top, PANEL_W - LIST_X - 8, h, 6);
       return;
@@ -273,7 +298,7 @@ export class JournalPanel extends DraggablePanel {
 
     // 탭 — 할 일 목록 / 이야기(챕터 체인)
     let tx = LIST_X + 2;
-    for (const [key, label] of [['tasks', '할 일'], ['chain', '이야기']] as const) {
+    for (const [key, label] of [['tasks', '할 일'], ['chain', '이야기'], ['days', '나날']] as const) {
       const on = this.tab === key;
       const t = this.scene.add.text(tx + 26, y, label, {
         fontFamily: FONT, fontSize: '12px', color: on ? C_GOLD : C_DIM, fontStyle: on ? 'bold' : 'normal',
@@ -283,7 +308,11 @@ export class JournalPanel extends DraggablePanel {
       if (on) { g.fillStyle(0xd8b25f, 1); g.fillRect(tx, y + 9, 52, 2); }
       this.hdrRects[key] = new Phaser.Geom.Rectangle(tx, y - 11, 52, 22);
       const h = this.scene.add.rectangle(tx + 26, y, 52, 22, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
-      h.on('pointerdown', () => { this.tab = key; this.rebuild(); restoreHandCursor(this.scene); });
+      h.on('pointerdown', () => {
+        this.tab = key; this.rebuild(); restoreHandCursor(this.scene);
+        // 214차 — 「나날」을 처음 열면 그 칸만의 체험 가이드(R11)
+        if (key === 'days') maybeStartTour(this.scene, () => this.buildDaysTour());
+      });
       c.add([g, t, h]);
       tx += 56;
     }
@@ -292,7 +321,7 @@ export class JournalPanel extends DraggablePanel {
     if (this.tab === 'tasks') {
       x = toggle('done', x, this.showDone, '완료한 할 일 표시', () => { this.showDone = !this.showDone; this.scroll = 0; this.rebuild(); });
       toggle('locked', x + 6, this.showLocked, '잠긴 할 일 표시', () => { this.showLocked = !this.showLocked; this.scroll = 0; this.rebuild(); });
-    } else {
+    } else if (this.tab === 'chain') {
       // 188차 — 이야기 탭 보기 전환: 이번 장 / 조행록 (AG ④e)
       for (const [key, label] of [['chapter', '이번 장'], ['log', '조행록']] as const) {
         const on = this.storyView === key;
@@ -596,6 +625,200 @@ export class JournalPanel extends DraggablePanel {
           target: () => this.localRect(LIST_X - 4, this.listTop, PANEL_W - LIST_X - 8, PANEL_H - this.listTop - 10),
           onEnter: () => { anchor = () => this.hdrScreenRect('log'); },
         },
+      ],
+    };
+  }
+
+  // ═══════════ 나날 (214차) ═══════════
+  /**
+   * 「나날」 — 이야기 날짜(다 잔 잠 횟수)와 실제 날짜를 따로 보여 준다(사용자 지시: 「N일째」는 실제 일수와 헷갈린다 → 「이야기 N번째」).
+   *  - 위: 이야기 N번째 + 오늘 실제 날짜.
+   *  - 왼쪽 「앞으로」: 정해진 때가 있는 일 — 실습 기한 · 정기 납부 · 맡긴 위판. 남은 것은 **잠 횟수**로 센다(「잠 N번 남음」).
+   *  - 오른쪽 「지난 날들」: 닫힌 장(최근 14장) — 누르면 그날의 결산 창.
+   * 장부는 하루 경계(새벽 4시)마다 · 잠마다 닫히므로 실제 날짜 줄과 이야기 번째가 1:1이 아니다(하루에 두 번 자면 두 번째가 늘어난다).
+   */
+  private static readonly DAYS_ROW_H = 38;
+
+  private daysTop(): number { return this.contentTop + 26; }
+  private daysVisible(): number {
+    const top = this.daysTop() + 92 + 30;
+    return Math.max(3, Math.floor((PANEL_H - 16 - top) / JournalPanel.DAYS_ROW_H));
+  }
+
+  private renderDays(): void {
+    this.chainC?.destroy();
+    const c = this.scene.add.container(0, 0);
+    this.chainC = c; this.add(c);
+    const en = getLocale() === 'en';
+    const top = this.daysTop();
+    const L = LIST_X + 8;
+    const R = PANEL_W - 24;
+    const midX = LIST_X + 8 + 470;
+
+    // ── 머리 — 이야기 N번째 + 실제 날짜 ──
+    const nth = StoryStore.storyDay + 1;
+    const big = this.scene.add.text(L + 6, top + 14, `이야기 ${nth}번째`, {
+      fontFamily: FONT, fontSize: '26px', color: C_GOLD, fontStyle: 'bold',
+    });
+    const k = new Date(Date.now() + 9 * 3_600_000);
+    const dows = en ? ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] : ['일', '월', '화', '수', '목', '금', '토'];
+    const real = en
+      ? `Today · ${k.getUTCMonth() + 1}/${k.getUTCDate()} (${dows[k.getUTCDay()]})`
+      : `오늘 · ${k.getUTCMonth() + 1}월 ${k.getUTCDate()}일 (${dows[k.getUTCDay()]})`;
+    const realT = this.scene.add.text(L + 6, top + 56, real, { fontFamily: FONT, fontSize: '12px', color: C_DIM });
+    c.add([big, realT]);
+    this.daysRects.head = new Phaser.Geom.Rectangle(L, top + 8, Math.max(big.width, realT.width) + 16, 72);
+    const sep = this.scene.add.graphics();
+    sep.lineStyle(1, 0x1c3d5a, 1);
+    sep.lineBetween(L, top + 88, R, top + 88);
+    sep.lineBetween(midX, top + 96, midX, PANEL_H - 18);
+    c.add(sep);
+
+    // ── 왼쪽 「앞으로」 ──
+    const colTop = top + 100;
+    const head = (x: number, label: string): void => {
+      c.add(this.scene.add.text(x, colTop, label, { fontFamily: FONT, fontSize: '12px', color: '#8aa7bd', fontStyle: 'bold' }));
+    };
+    head(L, '앞으로');
+    type Ahead = { name: string; sub?: string; right: string; color: string; onClick?: () => void };
+    const ahead: Ahead[] = [];
+    const left = StoryStore.deadlineDaysLeft();
+    if (left !== null) {
+      ahead.push({
+        name: '실습 기한', sub: `이야기 ${nth + Math.max(0, left)}번째까지`,
+        right: left >= 0 ? `잠 ${left}번 남음` : `${-left}번 지남`, color: left < 0 ? '#ff8a7a' : left <= 14 ? C_ACT : C_TEXT,
+      });
+    }
+    for (const it of [...GameState.upkeepItems()].sort((a, b) => a.daysLeft - b.daysLeft)) {
+      ahead.push({
+        name: en ? it.nameEn : it.nameKo,
+        sub: `${it.costKrw.toLocaleString()}원 · 이야기 ${it.dueDay + 1}번째`,
+        right: it.overdue ? `${it.overdueDays}번 밀림` : `잠 ${it.daysLeft}번 남음`,
+        color: it.overdue ? '#ff8a7a' : it.daysLeft <= 3 ? C_ACT : C_TEXT,
+      });
+    }
+    const pend = ConsignQueue.pending;
+    if (pend.length) {
+      const due = Math.min(...pend.map((b) => b.dueAtMs));
+      const kd = new Date(due + 9 * 3_600_000);
+      const hm = `${String(kd.getUTCHours()).padStart(2, '0')}:${String(kd.getUTCMinutes()).padStart(2, '0')}`;
+      const day = kstYmd(new Date(due)) === kstYmd(new Date()) ? '오늘' : '내일';
+      const lots = pend.reduce((n, b) => n + b.items.length, 0);
+      ahead.push({ name: `위판장에 맡긴 물건 ${lots}개`, sub: `다음 경매 ${day} ${hm}`, right: '목록 보기', color: '#bfe9ff', onClick: this.cfg.onOpenConsign });
+    }
+    const RH = JournalPanel.DAYS_ROW_H;
+    const colW = midX - L - 12;
+    const maxAhead = this.daysVisible();
+    let y = colTop + 24;
+    if (!ahead.length) {
+      c.add(this.scene.add.text(L + 4, y + 4, '정해진 때가 있는 일이 없다.', { fontFamily: FONT, fontSize: '12px', color: C_DIM }));
+    }
+    for (const a of ahead.slice(0, maxAhead)) {
+      const g = this.scene.add.graphics();
+      g.fillStyle(0x0e1c2a, 0.6); g.fillRect(L, y, colW, RH - 4);
+      c.add(g);
+      const rt = this.scene.add.text(L + colW - 8, y + (RH - 4) / 2, a.right, {
+        fontFamily: FONT, fontSize: '12px', color: a.color, fontStyle: 'bold',
+      }).setOrigin(1, 0.5);
+      const nm = this.scene.add.text(L + 8, y + 3, a.name, { fontFamily: FONT, fontSize: '13px', color: C_TEXT });
+      clampTextWidth(nm, colW - rt.width - 28);
+      c.add([rt, nm]);
+      if (a.sub) {
+        const st = this.scene.add.text(L + 8, y + 19, a.sub, { fontFamily: FONT, fontSize: '10px', color: C_DIM });
+        clampTextWidth(st, colW - rt.width - 28);
+        c.add(st);
+      }
+      if (a.onClick) {
+        const hit = this.scene.add.rectangle(L + colW / 2, y + (RH - 4) / 2, colW, RH - 4, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
+        const cb = a.onClick;
+        hit.on('pointerdown', () => { cb(); restoreHandCursor(this.scene); });
+        c.add(hit);
+      }
+      y += RH;
+    }
+    if (ahead.length > maxAhead) {
+      c.add(this.scene.add.text(L + colW, y, `외 ${ahead.length - maxAhead}건`, { fontFamily: FONT, fontSize: '10px', color: C_DIM }).setOrigin(1, 0));
+    }
+    this.daysRects.ahead = new Phaser.Geom.Rectangle(L - 4, colTop - 4, colW + 8, Math.max(60, y - colTop + 4));
+
+    // ── 오른쪽 「지난 하루」 ──
+    const PX = midX + 14;
+    const pw = R - PX;
+    head(PX, '지난 날들');
+    const pages = LedgerStore.closedPages();
+    const order = pages.map((p, i) => ({ p, i })).reverse();
+    const vis = this.daysVisible();
+    this.daysScroll = Phaser.Math.Clamp(this.daysScroll, 0, Math.max(0, order.length - vis));
+    this.daysPastRect = new Phaser.Geom.Rectangle(PX - 4, colTop - 4, pw + 8, PANEL_H - colTop - 12);
+    this.daysRects.past = this.daysPastRect;
+    let py = colTop + 24;
+    if (!order.length) {
+      c.add(this.scene.add.text(PX + 4, py + 4, '아직 지난 하루가 없다.', { fontFamily: FONT, fontSize: '12px', color: C_DIM }));
+    }
+    const end = Math.min(order.length, this.daysScroll + vis);
+    for (let j = this.daysScroll; j < end; j++) {
+      const { p, i } = order[j]!;
+      this.drawDayRow(c, p, PX, py, pw - 10, () => this.cfg.onOpenDay?.(pages, i));
+      py += RH;
+    }
+    if (order.length > vis) {
+      const trackY = colTop + 24, trackH = vis * RH - 4;
+      const g = this.scene.add.graphics();
+      g.fillStyle(0x0d1c2c, 1); g.fillRect(R - 4, trackY, 4, trackH);
+      const th = Math.max(20, trackH * (vis / order.length));
+      g.fillStyle(0x3d6f96, 1); g.fillRect(R - 4, trackY + (trackH - th) * (this.daysScroll / Math.max(1, order.length - vis)), 4, th);
+      c.add(g);
+      c.add(this.scene.add.text(R, PANEL_H - 16, `${this.daysScroll + 1}–${end} / ${order.length}`, { fontFamily: FONT, fontSize: '9px', color: '#6a8aa0' }).setOrigin(1, 1));
+    }
+    enforceTextBounds(c, PANEL_W - 20, 'JournalPanel.days');
+    applyScreenFixed(this);
+  }
+
+  /** 지난 하루 한 줄 — 날짜 · 이야기 번째 · 돈 변화 · 어획 수 */
+  private drawDayRow(c: Phaser.GameObjects.Container, p: DayLedgerPage, x: number, y: number, w: number, onClick: () => void): void {
+    const RH = JournalPanel.DAYS_ROW_H;
+    const en = getLocale() === 'en';
+    const g = this.scene.add.graphics();
+    g.fillStyle(0x0e1c2a, 0.6); g.fillRect(x, y, w, RH - 4);
+    c.add(g);
+    const ymd = p.openedYmd;
+    const d = new Date(Date.UTC(Number(ymd.slice(0, 4)), Number(ymd.slice(4, 6)) - 1, Number(ymd.slice(6, 8))));
+    const dows = en ? ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] : ['일', '월', '화', '수', '목', '금', '토'];
+    const date = en ? `${d.getUTCMonth() + 1}/${d.getUTCDate()} (${dows[d.getUTCDay()]})` : `${d.getUTCMonth() + 1}월 ${d.getUTCDate()}일 (${dows[d.getUTCDay()]})`;
+    const net = p.coinsEnd - p.coinsStart;
+    const money = net === 0 ? '±0원' : `${net > 0 ? '+' : '−'}${Math.abs(net).toLocaleString()}원`;
+    const fish = p.catches.length;
+    const rt = this.scene.add.text(x + w - 8, y + 9, money, {
+      fontFamily: FONT, fontSize: '12px', color: net > 0 ? C_OK : net < 0 ? '#ff9b8a' : C_DIM, fontStyle: 'bold',
+    }).setOrigin(1, 0);
+    const dt = this.scene.add.text(x + 8, y + 3, date, { fontFamily: FONT, fontSize: '13px', color: C_TEXT });
+    const sub = [p.storyDay !== undefined ? `이야기 ${p.storyDay + 1}번째` : '', fish > 0 ? `어획 ${fish}` : '', p.closedBy === 'sleep' ? '잠으로 마침' : '새벽 4시를 넘김']
+      .filter(Boolean).join(' · ');
+    const st = this.scene.add.text(x + 8, y + 19, sub, { fontFamily: FONT, fontSize: '10px', color: C_DIM });
+    clampTextWidth(dt, w - rt.width - 28);
+    clampTextWidth(st, w - rt.width - 28);
+    const hit = this.scene.add.rectangle(x + w / 2, y + (RH - 4) / 2, w, RH - 4, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
+    hit.on('pointerover', () => { g.clear(); g.fillStyle(0x1b3a52, 0.9); g.fillRect(x, y, w, RH - 4); });
+    hit.on('pointerout', () => { g.clear(); g.fillStyle(0x0e1c2a, 0.6); g.fillRect(x, y, w, RH - 4); });
+    hit.on('pointerdown', () => { onClick(); restoreHandCursor(this.scene); });
+    c.add([rt, dt, st, hit]);
+  }
+
+  /** 「나날」 첫 열기 가이드 — 이야기 번째 · 앞으로 · 지난 하루 */
+  private buildDaysTour(): TourOptions {
+    const r = (k: 'head' | 'ahead' | 'past'): Phaser.Geom.Rectangle | null => {
+      const x = this.daysRects[k];
+      return x ? this.localRect(x.x, x.y, x.width, x.height) : null;
+    };
+    let anchor: () => Phaser.Geom.Rectangle | null = () => r('past');
+    return {
+      id: 'journal_days',
+      anchor: () => anchor(),
+      alive: () => this.active && !!this.scene && this.tab === 'days',
+      steps: [
+        { text: '침대에서 다 자고 일어날 때마다 이야기가 한 번씩 넘어간다. 달력 날짜와는 따로 센다.', target: () => r('head'), onEnter: () => { anchor = () => r('past'); } },
+        { text: '기한이나 납부처럼 정해진 때가 있는 일이 여기 모인다. 「잠 N번 남음」은 그때까지 남은 잠의 횟수다.', target: () => r('ahead'), onEnter: () => { anchor = () => r('past'); } },
+        { text: '지난 하루를 누르면 그날의 결산을 다시 펼쳐 볼 수 있다.', target: () => r('past'), onEnter: () => { anchor = () => r('ahead'); } },
       ],
     };
   }

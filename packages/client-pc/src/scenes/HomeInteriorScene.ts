@@ -28,6 +28,7 @@
 import Phaser from 'phaser';
 import { LedgerStore } from '../store/LedgerStore.js';
 import { DayReportPanel, type DayReportMode } from '../ui/DayReportPanel.js';
+import { ConsignListPanel } from '../ui/ConsignListPanel.js';
 import { setAmbience } from '../audio/Ambience.js';
 import { wakeLine, offlineWakeLines } from '../data/WakeLines.js';
 import { settleDueConsignments } from '../store/ConsignSettle.js';
@@ -539,7 +540,11 @@ export class HomeInteriorScene extends Phaser.Scene {
 
   private toggleJournal(): void {
     if (this.journalPanel) { this.popups.find((e) => e.panel === this.journalPanel)?.close(); return; }
-    this.journalPanel = this.openPopup((close) => new JournalPanel(this, { onClose: close }), () => { this.journalPanel = null; });
+    this.journalPanel = this.openPopup((close) => new JournalPanel(this, {
+      onClose: close,
+      onOpenDay: (pages, idx) => { this.openPopup((c2) => new DayReportPanel(this, pages, idx, 'past', c2)); },
+      onOpenConsign: () => { this.openPopup((c2) => new ConsignListPanel(this, { onClose: c2, canRetrieve: false })); },
+    }), () => { this.journalPanel = null; });
     markPrologue('journal');
   }
 

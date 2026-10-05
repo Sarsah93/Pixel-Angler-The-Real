@@ -33,6 +33,8 @@ class LedgerStoreImpl {
   private suspended = 0;
   /** 지금 가진 돈 — GameState가 주입 */
   coinsOf: () => number = () => 0;
+  /** 214차 — 지금 이야기 날짜(잠 횟수) — GameState가 주입(StoryStore를 직접 import하지 않는다) */
+  storyDayOf: () => number = () => 0;
   /** dev — 하네스가 날짜를 넘긴다(실시간 시계를 기다릴 수 없다) */
   private ymdOverride: string | null = null;
 
@@ -47,12 +49,16 @@ class LedgerStoreImpl {
    * 지금 장을 돌려준다. 날짜가 바뀌었으면 자정에 닫고 새 장을 연다.
    * 기록 중이 아니면 null(아무것도 쌓지 않는다).
    */
-  private page(): DayLedgerPage | null {
+  private page(pendingCoinDelta = 0): DayLedgerPage | null {
     if (!this.recording) return null;
     const today = this.ymd();
     // 날짜가 **앞으로** 넘어갔을 때만 닫는다(기기 시계 · 시간대가 뒤로 가도 장을 쪼개지 않는다)
     if (this.current && today > this.current.openedYmd) this.close('midnight');
-    if (!this.current) this.current = newLedgerPage(++this.counter, today, Date.now(), this.coinsOf());
+    if (!this.current) {
+      // 214차 — 돈이 들고 난 **뒤에** 첫 기록으로 장이 열리면 시작 잔액이 이미 바뀐 값이었다(그날 수지 ±0) → 이번 변동을 빼고 시작한다
+      this.current = newLedgerPage(++this.counter, today, Date.now(), this.coinsOf() - pendingCoinDelta);
+      this.current.storyDay = this.storyDayOf();
+    }
     this.current.coinsEnd = this.coinsOf();
     return this.current;
   }
@@ -73,7 +79,7 @@ class LedgerStoreImpl {
   // ── 기록 ────────────────────────────────────────────
 
   coin(amount: number, reason: CoinReason): void {
-    const p = this.page();
+    const p = this.page(amount);
     if (!p || amount === 0) return;
     const bag = amount > 0 ? p.earned : p.spent;
     bag[reason] = (bag[reason] ?? 0) + Math.abs(amount);
@@ -177,7 +183,11 @@ class LedgerStoreImpl {
    */
   closeForSleep(shown = true): DayLedgerPage | null {
     if (!this.recording) return null;
-    if (!this.current) this.current = newLedgerPage(++this.counter, this.ymd(), Date.now(), this.coinsOf());
+    if (!this.current) {
+      this.current = newLedgerPage(++this.counter, this.ymd(), Date.now(), this.coinsOf());
+      // 잠(`sleepRecover`)은 이야기 날짜를 먼저 넘기고 장을 닫는다 — 빈 장을 여기서 만들면 그 하루는 한 칸 앞이다
+      this.current.storyDay = Math.max(0, this.storyDayOf() - 1);
+    }
     const p = this.close('sleep');
     if (p && shown) this.shownNo = Math.max(this.shownNo, p.no);
     return p;

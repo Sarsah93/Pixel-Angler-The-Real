@@ -48,6 +48,14 @@ class ConsignQueueImpl {
     return due;
   }
 
+  /** 214차 — 회차 전에 찾아온다: 그 묶음을 큐에서 꺼낸다(없으면 null) */
+  take(id: string): ConsignBatch | null {
+    const b = this.batches.find((x) => x.id === id);
+    if (!b) return null;
+    this.batches = this.batches.filter((x) => x !== b);
+    return b;
+  }
+
   /** 정산을 못 했으면 다시 넣는다(가방이 가득 차 유찰품을 못 돌려줄 때 등) */
   restore(b: ConsignBatch): void { this.batches.push(b); }
 

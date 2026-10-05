@@ -769,3 +769,6 @@ export {
 // 213차 — 잠 규칙(잘 수 있는 때 · 부분 수면 · 오프라인 = 잠)
 export type { SleepGateInput, SleepGate, DayPart } from './types/Sleep.js';
 export { canSleep, sleepFraction, applyPartialSleep, offlineCountsAsSleep, dayPartOf } from './simulation/SleepRules.js';
+export type { NpcRoutineKind, NpcShift, NpcRoutineDef, NpcWhere, NpcHomeReason, NpcWhereabouts } from './types/NpcRoutine.js';
+export { NPC_ROUTINES, STORY_NPC_ROUTINE, routineOfNpc } from './db-schema/NpcRoutines.js';
+export { npcWhereabouts, routinePostMinutes } from './simulation/NpcRoutine.js';

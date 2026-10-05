@@ -467,7 +467,14 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-10-05 213차) — 잠 · 결산 · 저장 기준(A~F) · 위판 맡겨 두기**
+**최근 변경 (2026-10-05 214차) — 일지 「나날」 · NPC 일과 · 맡긴 물건 목록 · 도움말 갱신**
+
+- core `NpcRoutine`(`npcWhereabouts` · 시간표 8갈래 · 인물 9명 — 24시간형 2) + 필드 집 문(채광창 불) · [F] 문 두드리기 → 같은 대화(R12) · 행인 수 시각 연동.
+- 일지 3번째 탭 「나날」 — 이야기 N번째(잠 횟수) · 앞으로(기한 · 정기 지출 · 맡긴 물건) · 지난 하루 → 결산. 장부 `storyDay` · 수지 ±0 버그 정정.
+- `ConsignListPanel`(찾아오기는 창구에서만) · 도움말 8토픽 + 그림 5종 ko/en. 함정: i18n 사전 추가는 `EN_DICT` 안에(옆 객체 `DOW_EN`에 들어가면 조용히 미번역).
+  상세: [214차 워크로그](../docs/wiki/03-WORKLOG/2026-10-05-214-days-tab-npc-routine.md).
+
+**이전 변경 (2026-10-05 213차) — 잠 · 결산 · 저장 기준(A~F) · 위판 맡겨 두기**
 
 - core `SleepRules`(`canSleep` · `applyPartialSleep` · `offlineCountsAsSleep`) + `TUNING.sleep` · 침대 「저장만 하기 / 자기」(실시간 15초 · 도중에 깨면 잔 만큼 · 다 자면 저장).
 - 하루 경계 새벽 4시(`LedgerStore` = `logicalYmd`) · 오프라인 = 잠(저장 후 4시간+ · 잠들 수 있던 상태) · 일어나면 지금 실제 시각 혼잣말.
@@ -480,13 +487,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - 규칙 R12(§4 · §8-15): 퀘스트는 「밤에」 · 「물이 빠질 때」 · 계절처럼 넓은 때만 — 시각 창 최소 3시간. 현행 186편 위반 0.
 - 잠 · 결산 · 저장 기준은 제안만(잘 수 있는 때 · 새벽 4시 경계 · 「저장만 하기」 · 오프라인 = 잠) — 사용자 확인 대기.
   상세: [212차 워크로그](../docs/wiki/03-WORKLOG/2026-10-04-212-next-day-hint-time-rules.md).
-
-**이전 변경 (2026-10-04 211차) — 사운드 1차 · 대사 목소리 · 하루 결산**
-
-- client `audio/Sfx`(버스 3 · 효과음 19종) · `Ambience`(파도/비) · `Voice`(`VoiceTyper`) + core `CharacterVoice`(인물별 목소리).
-- core `DayLedger`(`buildLedgerCards`) + client `LedgerStore`(잠/자정 마감 · 14장 · 세이브 `ledger`) + `ui/DayReportPanel`(오늘 하루 / 지난 하루).
-- 함정: 자동으로 띄우는 창은 `GuideTour.blocking`만 기다린다(수동 말풍선은 busy지만 입력을 막지 않는다) · 장부는 스토어 변경 지점에서, 불러오기 중엔 `suspend`.
-  상세: [211차 워크로그](../docs/wiki/03-WORKLOG/2026-10-04-211-sound-day-ledger.md).
 
 ---
 

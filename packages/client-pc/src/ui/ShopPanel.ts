@@ -70,6 +70,8 @@ export interface ShopPanelCallbacks {
   onOpenDetail: (item: InvItem | ShopEntry) => void;
   /** 위판 출품 요청 (147차) — 세션 생성·경매 진행·정산은 씬이 담당 */
   onConsign?: (inputs: ReturnType<typeof consignInputOf>[], items: InvItem[]) => void;
+  /** 214차 — 맡겨 둔 물건 목록(찾아오기) 열기 */
+  onShowConsigned?: () => void;
 }
 
 export class ShopPanel extends DraggablePanel {
@@ -448,9 +450,8 @@ export class ShopPanel extends DraggablePanel {
     const y0 = this.contentTop + 58;
     // 213차 — 맡겨 둔 물건이 있으면 몇 건인지(정산되면 사라진다)
     const held = ConsignQueue.pending.reduce((n, b) => n + b.inputs.length, 0);
-    const heldLabel = held > 0 ? `   ·   ${t('맡겨 둔 물건')} ${held}${getLocale() === 'en' ? '' : '건'}` : '';
     const info = this.scene.add.text(16, y0,
-      `${openLabel}   ·   ${t('위판 수수료')} ${(fee * 100).toFixed(1)}%${crated ? '   ·   ' + t('규격 상자 보유') : ''}${heldLabel}`, {
+      `${openLabel}   ·   ${t('위판 수수료')} ${(fee * 100).toFixed(1)}%${crated ? '   ·   ' + t('규격 상자 보유') : ''}`, {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px',
         color: (liveOpen || freshOpen) ? '#4af2a1' : '#ffb27a',
         wordWrap: { width: PANEL_W - 32 },
@@ -463,6 +464,21 @@ export class ShopPanel extends DraggablePanel {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#9fd0e4',
       });
     this.gridContainer.add(sel);
+
+    // 214차 — 맡겨 둔 물건이 있으면 누를 수 있는 칩(목록 · 찾아오기)
+    if (held > 0) {
+      const hx = 16 + sel.width + 18;
+      const hl = this.scene.add.text(hx + 8, y0 + 17, `${t('맡겨 둔 물건')} ${held}${getLocale() === 'en' ? '' : '건'}`, {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#bfe9ff',
+      });
+      const hg = this.scene.add.graphics();
+      hg.fillStyle(0x16324a, 0.95); hg.fillRoundedRect(hx, y0 + 14, hl.width + 16, hl.height + 6, 3);
+      hg.lineStyle(1, 0x5cd0ff, 0.8); hg.strokeRoundedRect(hx, y0 + 14, hl.width + 16, hl.height + 6, 3);
+      const hh = this.scene.add.rectangle(hx + (hl.width + 16) / 2, y0 + 17 + hl.height / 2, hl.width + 16, hl.height + 6, 0xffffff, 0.001)
+        .setInteractive({ useHandCursor: true });
+      hh.on('pointerdown', () => this.cbs.onShowConsigned?.());
+      this.gridContainer.add([hg, hl, hh]);
+    }
 
     // 최저 희망가 — 클릭하면 없음 → 70% → 90% 순환
     const rLabel = this.scene.add.text(PANEL_W - 16, y0 + 17,

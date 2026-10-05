@@ -349,6 +349,7 @@ export class GameStateManager {
 
     const saved = this.load();
     LedgerStore.coinsOf = () => this._player?.inventory.coins ?? 0;   // 211차 — 장부가 지금 가진 돈을 읽는다
+    LedgerStore.storyDayOf = () => StoryStore.storyDay;                 // 214차 — 장마다 이야기 날짜를 적는다(일지 「나날」)
     LedgerStore.suspend(true);   // 211차 — 불러오며 다시 쌓이는 발견 · 타이틀을 오늘 일로 적지 않는다
     if (saved) {
       this.applySaveData(saved);

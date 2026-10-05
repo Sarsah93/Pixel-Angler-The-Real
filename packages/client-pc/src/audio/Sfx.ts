@@ -229,6 +229,18 @@ export function playDayChime(): void {
   tone(ac, { type: 'sine', f0: 1174.66, dur: 0.9, peak: 0.04, at: 0.44, attack: 0.02 });
 }
 
+/** 214차 — 문 두드리기: 나무문 「똑, 똑, 똑」(낮은 톤 + 짧은 둔탁한 잡음 세 번) */
+export function playKnock(): void {
+  const ac = audioContext();
+  if (!ac) return;
+  note('knock');
+  for (let i = 0; i < 3; i++) {
+    const at = 0.01 + i * 0.19;
+    tone(ac, { type: 'triangle', f0: 210, f1: 120, at, dur: 0.07, peak: 0.16, attack: 0.002 });
+    noise(ac, { at, dur: 0.05, peak: 0.08, filter: 'lowpass', f0: 900, f1: 300, q: 0.8 });
+  }
+}
+
 /** 결산 카드 한 장 넘길 때 — 종이 */
 export function playPageFlip(): void {
   const ac = audioContext();

@@ -36,6 +36,13 @@ export interface StoryNpcPlacement {
   behavior?: StoryNpcBehavior;
   /** 서 있는 방향 (기본 정면) */
   facing?: 'down' | 'left' | 'right' | 'up';
+  /**
+   * 214차 — 일과 밖 시간에 머무는 곳의 **문 앞 칸**(월드 타일 · 건물 바로 아래 보도).
+   * 일과(core `routineOfNpc`)가 「집」이면 인물은 일터에서 사라지고 이 문 앞에서 [F] 「문 두드리기」로 만난다.
+   * 없으면 24시간 일터에 있다(떠돌이 · 감시원처럼 일부러 비운 경우 포함).
+   * 좌표는 214차 탐색(건물 2칸 아래 보도 · 거래 문 3칸 밖)으로 고른 실측 칸이다.
+   */
+  home?: { tx: number; ty: number; labelKo: string };
 }
 
 export interface StoryPlace {
@@ -72,24 +79,24 @@ export interface StoryFieldTrigger {
 
 export const STORY_NPC_PLACEMENTS: StoryNpcPlacement[] = [
   // 정옥선 — 동명활어센터 좌판. 자리를 지키고 가끔 옆 칸에 다녀온다
-  { npcId: 'okseon', regionId: 'gangwon_sokcho', tx: 584, ty: 158, behavior: 'stall' },
+  { npcId: 'okseon', regionId: 'gangwon_sokcho', tx: 584, ty: 158, behavior: 'stall', home: { tx: 548, ty: 129, labelKo: '정옥선의 집' } },
   // 어촌계장 — 안벽을 오가며 둘러본다
-  { npcId: 'coop', regionId: 'gangwon_sokcho', tx: 591, ty: 160, behavior: 'patrol' },
+  { npcId: 'coop', regionId: 'gangwon_sokcho', tx: 591, ty: 160, behavior: 'patrol', home: { tx: 583, ty: 155, labelKo: '어촌계 사무실' } },
   // 도현수 — 라이벌 낚시꾼. 방파제 입구 앞 해안에서 캐스팅을 반복한다
-  { npcId: 'hyeonsu', regionId: 'gangwon_sokcho', tx: 534, ty: 151, behavior: 'fishing' },
+  { npcId: 'hyeonsu', regionId: 'gangwon_sokcho', tx: 534, ty: 151, behavior: 'fishing', home: { tx: 529, ty: 143, labelKo: '도현수의 집' } },
   // 강두철 — "채비 못 묶는 척하던" 조합장. 안벽 모서리에서 초보처럼 낚시한다
-  { npcId: 'kang_ducheol', regionId: 'gangwon_sokcho', tx: 567, ty: 138, behavior: 'fishing' },
+  { npcId: 'kang_ducheol', regionId: 'gangwon_sokcho', tx: 567, ty: 138, behavior: 'fishing', home: { tx: 555, ty: 129, labelKo: '강두철의 집' } },
   // 탁만수 — 죽간 장인. 좌판 옆을 오가며 둘러본다(낚시는 하지 않는다)
-  { npcId: 'tak_mansu', regionId: 'gangwon_sokcho', tx: 560, ty: 150, behavior: 'wander' },
+  { npcId: 'tak_mansu', regionId: 'gangwon_sokcho', tx: 560, ty: 150, behavior: 'wander', home: { tx: 541, ty: 144, labelKo: '탁씨 죽간 공방' } },
   // 배누리 — 영금정 구경 중
-  { npcId: 'bae_nuri', regionId: 'gangwon_sokcho', tx: 562, ty: 92, behavior: 'wander' },
-  // 바람 — 떠돌이. 뭔가를 찾듯 주변을 돈다
+  { npcId: 'bae_nuri', regionId: 'gangwon_sokcho', tx: 562, ty: 92, behavior: 'wander', home: { tx: 579, ty: 110, labelKo: '배누리가 묵는 민박' } },
+  // 바람 — 떠돌이. 뭔가를 찾듯 주변을 돈다 (214차 — 집이 없다: 24시간 밖)
   //  ⚠ 178차 좌표 교정 — 구 (520,134)는 건물 블록 안이라 런타임 `nearestWalkable`이 매번 밀어냈다
   { npcId: 'baram', regionId: 'gangwon_sokcho', tx: 520, ty: 131, behavior: 'wander' },
-  // 오세찬 — 해양환경 감시원. 밀려온 불가사리를 세는 사람이라 물가 안벽을 오간다 (178차 신규)
+  // 오세찬 — 해양환경 감시원. 밀려온 불가사리를 세는 사람이라 물가 안벽을 오간다 (178차 신규 · 214차 교대 근무 = 24시간 밖)
   { npcId: 'oh_sechan', regionId: 'gangwon_sokcho', tx: 594, ty: 159, behavior: 'patrol' },
   // 탁새벽 — 탁만수의 손녀. 할아버지 좌판 근처 보도에서 서성인다 (178차 신규)
-  { npcId: 'tak_saebyeok', regionId: 'gangwon_sokcho', tx: 556, ty: 148, behavior: 'wander' },
+  { npcId: 'tak_saebyeok', regionId: 'gangwon_sokcho', tx: 556, ty: 148, behavior: 'wander', home: { tx: 539, ty: 144, labelKo: '공방 살림채' } },
 
   // ── 178차 — 지역만 등록한 인물들 (좌표 없음 = 필드에 세우지 않는다) ──
   //  이 표에 없으면 할 일을 고정해도 화살표도, 「다른 지역 — ○○」 안내도 나오지 않았다(백로그 AA ①).

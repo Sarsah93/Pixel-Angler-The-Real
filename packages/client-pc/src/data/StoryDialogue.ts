@@ -34,6 +34,62 @@ export const NPC_IDLE: Record<string, Line> = {
   baram: ['바람 부는 쪽으로 가면 돼.', 'Just go where the wind blows.'],
 };
 
+/**
+ * 214차 — 집에 있는 사람의 문을 두드렸을 때. [까닭] → 첫마디. 까닭: sleep(22~05시) · rest(일 끝나고) · dayoff(쉬는 날).
+ * 없는 칸은 `DOOR_GENERIC`. 문 앞 나레이션은 `DOOR_NARR`.
+ * ⚠ R12 — 이 대사 다음은 평소와 똑같은 대화 메뉴다. 시각 때문에 이야기가 막히지 않는다.
+ */
+export type DoorReason = 'sleep' | 'rest' | 'dayoff';
+
+export const DOOR_NARR: Record<DoorReason, Line> = {
+  sleep: ['(문을 두드리자 한참 뒤에야 안쪽에 불이 켜진다. 문이 반쯤 열린다.)', '(I knock. After a long pause a light comes on inside, and the door opens halfway.)'],
+  rest: ['(문을 두드리자 안에서 발소리가 나고 문이 열린다.)', '(I knock. Footsteps inside, and the door opens.)'],
+  dayoff: ['(문을 두드리자 느긋한 발소리와 함께 문이 열린다.)', '(I knock. Unhurried footsteps, and the door opens.)'],
+};
+
+export const DOOR_GENERIC: Record<DoorReason, Line> = {
+  sleep: ['…이 시간에 무슨 일이에요?', '…What is it, at this hour?'],
+  rest: ['아, 무슨 일이에요?', 'Oh — what is it?'],
+  dayoff: ['오늘은 쉬는 날인데. 그래, 무슨 일이에요?', 'It\'s my day off. Well — what is it?'],
+};
+
+export const NPC_DOOR: Record<string, Partial<Record<DoorReason, Line>>> = {
+  okseon: {
+    sleep: ['아이고, 이 밤에 누구여… 너구나. 들어오진 말고 거기서 말해.', 'Goodness, who is it this late… oh, you. Don\'t come in. Say it from there.'],
+    rest: ['좌판 접고 막 씻었다. 무슨 일이여?', 'I just packed up the stall and washed. What is it?'],
+  },
+  coop: {
+    sleep: ['(당직 계원이 졸린 눈으로 문을 연다) 계장님은 퇴근하셨어요. 급한 거면 제가 받아 둘게요.', '(The night clerk opens the door, half asleep.) The chief has gone home. If it\'s urgent, I\'ll take it down.'],
+    rest: ['(당직 계원이 문을 연다) 사무실은 닫았는데요, 말씀하세요. 전해 드릴게요.', '(The night clerk opens the door.) The office is closed, but go ahead. I\'ll pass it on.'],
+    dayoff: ['(당직 계원) 일요일이라 문 닫았어요. 그래도 들은 건 전해 드릴게요.', '(The duty clerk.) We\'re closed on Sundays. I\'ll still pass on whatever you tell me.'],
+  },
+  hyeonsu: {
+    sleep: ['…뭐야, 지금 몇 시인 줄 알아? 새벽 물때 보려면 자야 한다고.', '…What? Do you know what time it is? I need sleep if I\'m catching the dawn tide.'],
+    rest: ['왜. 오늘 조과 자랑하러 왔냐?', 'What. Here to brag about today\'s catch?'],
+  },
+  kang_ducheol: {
+    sleep: ['허허, 이 시간에. 늙은이 잠 다 깨웠네. 그래, 무슨 일인가?', 'Heh, at this hour. You\'ve woken an old man. Well, what is it?'],
+    rest: ['어서 오게. 저녁 먹고 채비 정리하던 참이야.', 'Come in. I was just sorting my tackle after dinner.'],
+  },
+  tak_mansu: {
+    sleep: ['(헛기침) 대나무는 밤에 안 깎네. 무슨 일인가.', '(A dry cough.) I don\'t carve bamboo at night. What is it.'],
+    rest: ['공방 문은 닫았네. 그래도 들어 줄 말은 있지.', 'The workshop is closed. I can still listen.'],
+  },
+  tak_saebyeok: {
+    sleep: ['(할아버지 뒤에서 눈을 비비며) …자고 있었는데. 무슨 일이에요?', '(Rubbing her eyes behind her grandfather.) …I was asleep. What is it?'],
+    rest: ['아, 왔어요? 할아버지는 대나무 말리는 중이에요.', 'Oh, it\'s you. Grandpa\'s drying bamboo.'],
+  },
+  bae_nuri: {
+    sleep: ['(민박 창문이 열린다) 헉, 이 시간에요? …쉿, 사장님 깨세요.', '(The guesthouse window slides open.) Whoa, now? …Shh, you\'ll wake the owner.'],
+    rest: ['아, 저 민박에서 쉬고 있었어요! 무슨 일이세요?', 'Oh, I was resting at the guesthouse! What\'s up?'],
+  },
+};
+
+/** 문 앞 첫마디 — 인물 전용이 없으면 공용 */
+export function doorLineOf(npcId: string, reason: DoorReason): Line {
+  return NPC_DOOR[npcId]?.[reason] ?? NPC_DOOR[npcId]?.rest ?? DOOR_GENERIC[reason];
+}
+
 export const STORY_DIALOGUE: Record<string, QuestDialogue> = {
   'M1-02': {
     offer: [
@@ -52,7 +108,7 @@ export const STORY_DIALOGUE: Record<string, QuestDialogue> = {
       ['이건 실습생 증이다. 여긴 처음 온 사람이 바로 계원 되는 곳이 아니야. 우리 계는 육 개월이야. 딴 데는 삼 년도 받아. 일부터 배워.',
         'This is your trainee card. Nobody becomes a member the day they arrive here. Our co-op takes six months. Some take three years. Learn the work first.'],
     ],
-    progress: ['숙소에 가서 잠은 자 봤어? 침대에서 자야 저장이 된다.', 'Have you slept at the lodging? You only save when you sleep in that bed.'],
+    progress: ['숙소 침대는 봐 뒀어? 저장은 그 침대에서 한다. 피곤하면 거기서 자고.', 'Have you seen the bed at the lodging? That bed is where you save. Sleep there when you\'re tired.'],
     done: [
       ['오늘부터 백팔십 일이다. 달력에 적어 둬.', 'One hundred and eighty days from today. Mark the calendar.'],
       ['※ 본 게임의 \'6개월 실습기간\'은 게임 진행을 위한 설정입니다. 실제 어촌계의 가입 자격·거주기간·가입 절차는 각 어촌계의 정관 및 관련 법령에 따라 다를 수 있습니다.',
@@ -169,7 +225,8 @@ export function dialogueOf(questId: string): QuestDialogue {
 
 /** 사전 합류용 — 모든 [ko,en] 쌍 */
 export function allDialogueLines(): Line[] {
-  const out: Line[] = [...TONE_CHOICES, ...Object.values(NPC_IDLE)];
+  const out: Line[] = [...TONE_CHOICES, ...Object.values(NPC_IDLE), ...Object.values(DOOR_NARR), ...Object.values(DOOR_GENERIC)];
+  for (const m of Object.values(NPC_DOOR)) out.push(...Object.values(m).filter((x): x is Line => !!x));
   for (const d of [...Object.values(STORY_DIALOGUE), GENERIC_DIALOGUE]) out.push(...d.offer, d.progress, ...d.done);
   return out;
 }

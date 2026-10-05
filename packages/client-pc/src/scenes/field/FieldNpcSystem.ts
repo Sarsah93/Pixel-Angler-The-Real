@@ -168,6 +168,16 @@ export class NpcWalker {
     this.spr.image.setPosition(this.x, this.y + this.spr.footPad).setDepth(actorDepth(this.y));
   }
 
+  /** 214차 — 그 칸으로 곧장 옮긴다(집 ↔ 일터 전환 · 문 앞에 나와 서기) */
+  teleportTo(col: number, row: number): void {
+    this.x = col * this.host.tr + this.host.tr / 2;
+    this.y = row * this.host.tr + this.host.tr;
+    this.path = [];
+    this.moving = false;
+    this.apply();
+    this.spr.update(0, false);
+  }
+
   destroy(): void { this.spr.destroy(); }
 }
 
@@ -531,6 +541,18 @@ export class StoryNpcActor {
     this.shadow?.destroy(); this.shadow = undefined;
     this.lineG?.destroy(); this.lineG = undefined;
     if (this.fish === 'cast' || this.fish === 'wait' || this.fish === 'retrieve') this.fish = 'rest';
+  }
+
+  /**
+   * 214차 — 일과 전환: 일터 자리(앵커)로 곧장 돌아오거나(`col/row` 생략) 지정 칸(집 문 앞)으로 옮긴다.
+   * 낚시 중이던 찌·줄은 거둔다.
+   */
+  relocate(col = this.anchorC, row = this.anchorR): void {
+    this.clearFishing();
+    this.fish = 'rest';
+    this.state = 'idle';
+    this.timer = rnd(1500, 3500);
+    this.walker.teleportTo(col, row);
   }
 
   destroy(): void {

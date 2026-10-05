@@ -113,6 +113,7 @@ import { storyActionScene, storyActionSpec } from '../store/StoryActionRegistry.
 import { questSceneFor, type SceneExtra } from '../data/QuestScenes.js';
 import { loadSettings } from './SettingsScene.js';
 import { MultiplayerClient } from '../net/MultiplayerClient.js';
+import { ConsignListPanel } from '../ui/ConsignListPanel.js';
 import { STORY_NPC_PLACEMENTS, STORY_PLACES, STORY_FIELD_TRIGGERS, type StoryNpcPlacement, type StoryFieldTrigger } from '../data/StoryNpcs.js';
 import { GroundItemStore, type GroundItem } from '../store/GroundItemStore.js';
 import { InteractChoicePanel, type InteractOption } from '../ui/InteractChoicePanel.js';
@@ -168,7 +169,8 @@ import { InventoryStore, InvItem } from '../store/InventoryStore.js';
 import { CoolerStore } from '../store/CoolerStore.js';
 import { DiscoveryStore } from '../store/DiscoveryStore.js';
 import { LedgerStore } from '../store/LedgerStore.js';
-import { playCast, playPickup, playQuestChime, playCoin } from '../audio/Sfx.js';
+import { playCast, playPickup, playQuestChime, playCoin, playKnock } from '../audio/Sfx.js';
+import { npcWhereabouts, routineOfNpc, type NpcHomeReason } from '@tra/core';
 import { offlineWakeLines } from '../data/WakeLines.js';
 import { settleDueConsignments } from '../store/ConsignSettle.js';
 import { ConsignQueue } from '../store/ConsignQueue.js';
@@ -2877,7 +2879,11 @@ export class RegionFieldScene extends Phaser.Scene {
     } else if (kind === 'skill') {
       this.skillPanel = this.openPopup((close) => new SkillTreePanel(this, { onClose: close }), () => { this.skillPanel = null; });
     } else {
-      this.journalPanel = this.openPopup((close) => new JournalPanel(this, { onClose: close }), () => { this.journalPanel = null; });
+      this.journalPanel = this.openPopup((close) => new JournalPanel(this, {
+        onClose: close,
+        onOpenDay: (pages, idx) => { this.openPopup((c2) => new DayReportPanel(this, pages, idx, 'past', c2)); },
+        onOpenConsign: () => this.openConsignList(false),
+      }), () => { this.journalPanel = null; });
       markPrologue('journal');
     }
   }
@@ -3039,6 +3045,7 @@ export class RegionFieldScene extends Phaser.Scene {
         onSell: (item) => this.handleSell(item),
         onOpenDetail: (itemLike) => this.openItemDetail({ slot: 0, qty: 1, ...itemLike } as InvItem),
         onConsign: (inputs) => this.openConsignment(inputs),
+        onShowConsigned: () => this.openConsignList(true),
       }),
       () => {
         this.shopPanel = null;
@@ -4719,7 +4726,21 @@ export class RegionFieldScene extends Phaser.Scene {
     markDx?: number;
     /** 166차 — 자유 행동(3x3 배회·낚시·좌판·순찰). 이미지는 `ai.image === actor` */
     ai?: StoryNpcActor;
+    /** 214차 — 일과 밖 시간에 머무는 집의 문 앞(발 좌표 · 타일) */
+    door?: { x: number; y: number; c: number; r: number };
+    /** 214차 — 문(그림) · 집에 있으면 켜지는 창빛 */
+    doorG?: Phaser.GameObjects.Graphics;
+    doorLight?: Phaser.GameObjects.Rectangle;
+    /** 214차 — 지금 집에 있다(인물은 숨고 [F]는 「문 두드리기」) */
+    atHome?: boolean;
+    homeReason?: NpcHomeReason;
+    /** 214차 — 집 ↔ 일터 전환 페이드 중 */
+    shifting?: boolean;
   }[] = [];
+  /** 214차 — 일과 재평가 누적(ms) */
+  private routineAt = 0;
+  /** dev — 하네스가 일과 시각을 고정한다(분 0~1439 · 요일 0~6) */
+  devRoutineClock: { min: number; wd: number } | null = null;
   private nearNpc: StoryNpcPlacement | null = null;
   private npcHintText?: Phaser.GameObjects.Text;
   private storyTriggers: {
@@ -4802,6 +4823,7 @@ export class RegionFieldScene extends Phaser.Scene {
     }
     const n = this.storyNpcs.find((s) => s.def.npcId === who);
     if (!n) return undefined;
+    this.npcStepOut(n);   // 214차 — 집에 있던 사람은 문 앞으로 나와 장면에 선다
     return {
       obj: n.actor,
       followers: [n.label],
@@ -5076,8 +5098,11 @@ export class RegionFieldScene extends Phaser.Scene {
       if (import.meta.env.DEV && def.behavior === 'fishing' && !ai.fishingSpotFound) {
         console.warn(`[FieldNpc] ${def.npcId}: 앵커 5x5 안에 물가가 없어 낚시 대신 배회한다 (${col},${row})`);
       }
-      this.storyNpcs.push({ def, x, y, actor, label, ai });
+      const entry: (typeof this.storyNpcs)[number] = { def, x, y, actor, label, ai };
+      if (def.home) this.buildNpcDoor(entry, def.home);
+      this.storyNpcs.push(entry);
     }
+    this.refreshNpcRoutines(true);   // 214차 — 지금 시각에 집에 있는 사람은 문 안으로
     StoryStore.setFieldNpcs(this.storyNpcs.map((n) => n.def.npcId));   // 167차 — 장면 입구 판정
     this.refreshQuestMarkers(true);
     // 166차 — 마을 사람: 스토리 NPC 앵커를 피해 결정적으로 흩어 놓는다
@@ -5086,12 +5111,119 @@ export class RegionFieldScene extends Phaser.Scene {
     this.ambientNpcs = undefined;
     if (this.region !== 'hometown') {
       this.ambientNpcs = new AmbientNpcSystem(this, this.npcHost);
-      this.ambientNpcs.spawn(`${this.region}:${this.mapId}`, this.storyNpcs.map((n) => ({ c: Math.floor(n.x / TR), r: Math.floor((n.y - 1) / TR) })));
+      // 214차 — 지나다니는 사람 수도 시각을 따른다(한밤 ¼ · 늦은 밤/새벽 ½ · 낮 전부). 씬에 들어올 때 정한다.
+      const hr = Math.floor(this.routineClock().min / 60);
+      const crowd = hr < 5 ? 30 : hr < 7 || hr >= 22 ? 60 : 120;
+      this.ambientNpcs.spawn(`${this.region}:${this.mapId}`, this.storyNpcs.map((n) => ({ c: Math.floor(n.x / TR), r: Math.floor((n.y - 1) / TR) })), crowd);
     }
     this.events.once('shutdown', () => {
       this.sceneExtras = [];   // 씬이 내려가며 오브젝트는 같이 파괴된다
       this.ambientNpcs?.destroy(); this.ambientNpcs = undefined;
       for (const n of this.storyNpcs) n.ai?.destroy();
+    });
+  }
+
+  // ── 214차 — 인물 일과 (집 ↔ 일터 · 문 두드리기) ──
+
+  /** 일과 판정 시각 — 실제 KST(하네스는 `devRoutineClock`) */
+  private routineClock(): { min: number; wd: number } {
+    if (this.devRoutineClock) return this.devRoutineClock;
+    const k = kstParts(new Date());
+    const wd = ['일', '월', '화', '수', '목', '금', '토'].indexOf(k.dow);
+    return { min: Number(k.hh) * 60 + Number(k.mi), wd: wd < 0 ? new Date().getDay() : wd };
+  }
+
+  /**
+   * 집 문 앞 칸 + 문 그림. 문 앞 칸은 건물 바로 아래 보도(데이터는 대략값 — 가장 가까운 걸을 수 있는 칸으로 스냅).
+   * 문은 건물 아랫변에 붙인 작은 나무문 — 집에 있으면 문 위 창(채광창)에 불이 켜진다.
+   */
+  private buildNpcDoor(n: (typeof this.storyNpcs)[number], home: { tx: number; ty: number; labelKo: string }): void {
+    const { col, row } = this.nearestWalkable(home.tx, home.ty);
+    const x = col * TR + TR / 2, y = row * TR + TR;
+    n.door = { x, y, c: col, r: row };
+    const top = row * TR;   // 건물 아랫변 = 문 앞 칸의 윗변
+    // 건물 그림(바닥선 기준 20 + y·0.001)보다 위 — 문은 문 앞 칸의 발 좌표로 정렬한다(그 칸 앞 사람은 문을 가린다)
+    const g = this.add.graphics().setDepth(20 + y * 0.001 + 0.0002);
+    const w = 16, h = 24;
+    g.fillStyle(0x3b2617, 1); g.fillRect(x - w / 2 - 2, top - h - 2, w + 4, h + 2);          // 문틀
+    g.fillStyle(0x7a4f2c, 1); g.fillRect(x - w / 2, top - h, w, h);                           // 문짝
+    g.fillStyle(0x8f6037, 1); g.fillRect(x - w / 2 + 2, top - h + 3, w - 4, 8); g.fillRect(x - w / 2 + 2, top - h + 13, w - 4, 8);   // 널판
+    g.fillStyle(0xd9b45a, 1); g.fillRect(x + w / 2 - 5, top - h / 2, 2, 3);                   // 손잡이
+    g.fillStyle(0x5d5d5d, 1); g.fillRect(x - w / 2 - 3, top, w + 6, 3);                       // 문턱
+    n.doorG = g;
+    n.doorLight = this.add.rectangle(x, top - h - 6, w - 2, 5, 0xffd884, 1).setDepth(20 + y * 0.001 + 0.0003).setVisible(false);
+  }
+
+  /** 지금 시각에 맞춰 집 ↔ 일터를 옮긴다. `instant` = 페이드 없이(씬 시작) */
+  private refreshNpcRoutines(instant: boolean): void {
+    const { min, wd } = this.routineClock();
+    for (const n of this.storyNpcs) {
+      if (!n.door || !n.ai || n.shifting) continue;
+      const w = npcWhereabouts(routineOfNpc(n.def.npcId), min, wd);
+      const home = w.where === 'home';
+      n.homeReason = w.reason;
+      if (home === !!n.atHome) continue;
+      // 지금 이 사람과 말하는 중이면 다음 평가로 미룬다
+      if (!instant && this.nearNpc === n.def && this.popupStack.length > 0) continue;
+      if (home) this.npcGoHome(n, instant); else this.npcGoOut(n, instant);
+    }
+  }
+
+  private npcGoHome(n: (typeof this.storyNpcs)[number], instant: boolean): void {
+    const d = n.door!;
+    const settle = (): void => {
+      n.shifting = false;
+      n.atHome = true;
+      n.ai?.relocate(d.c, d.r);
+      n.actor.setVisible(false).setAlpha(1);
+      n.x = d.x; n.y = d.y;
+      // 집 이름표는 띄우지 않는다 — 누구 집인지는 문 앞 [F] 안내가 말한다(공방처럼 문이 붙어 있으면 이름표끼리 겹친다)
+      n.label.setVisible(false);
+      n.mark?.setPosition(n.x + (n.markDx ?? 14), n.y - TR - 18).setDepth(20 + n.y * 0.001 + 0.0008);
+      n.doorLight?.setVisible(true);
+      this.refreshQuestMarkers(true);
+    };
+    if (instant) { settle(); return; }
+    n.shifting = true;
+    this.tweens.add({ targets: [n.actor, n.label], alpha: 0, duration: 600, onComplete: () => { n.label.setAlpha(1); settle(); } });
+  }
+
+  private npcGoOut(n: (typeof this.storyNpcs)[number], instant: boolean): void {
+    n.atHome = false;
+    n.doorLight?.setVisible(false);
+    n.ai?.relocate();
+    n.x = n.ai?.x ?? n.x; n.y = n.ai?.y ?? n.y;
+    n.label.setVisible(true).setPosition(n.x, n.y + this.charTopFromFeet - RegionFieldScene.LABEL_GAP).setDepth(20 + n.y * 0.001 + 0.0007);
+    n.actor.setVisible(true);
+    this.refreshQuestMarkers(true);
+    if (instant) { n.actor.setAlpha(1); return; }
+    n.shifting = true;
+    n.actor.setAlpha(0); n.label.setAlpha(0);
+    this.tweens.add({ targets: [n.actor, n.label], alpha: 1, duration: 600, onComplete: () => { n.shifting = false; } });
+  }
+
+  /**
+   * 장면(컷씬)이 집에 있는 사람을 부르면 — 문 앞으로 나와 선다. 일과 재평가가 장면이 끝난 뒤 다시 들여보낸다.
+   */
+  private npcStepOut(n: (typeof this.storyNpcs)[number]): void {
+    if (!n.atHome || !n.door) return;
+    n.atHome = false;
+    n.doorLight?.setVisible(false);
+    n.ai?.relocate(n.door.c, n.door.r);
+    n.x = n.ai?.x ?? n.door.x; n.y = n.ai?.y ?? n.door.y;
+    n.label.setVisible(true).setAlpha(1).setPosition(n.x, n.y + this.charTopFromFeet - RegionFieldScene.LABEL_GAP);
+    n.actor.setVisible(true).setAlpha(1);
+  }
+
+  /** 문 두드리기 → 똑똑 → (잠깐 뒤) 문이 열리고 평소와 같은 대화(R12) */
+  private knockDoor(npcId: string): void {
+    const n = this.storyNpcs.find((x) => x.def.npcId === npcId);
+    if (!n?.atHome) { this.openDialogue(npcId); return; }
+    playKnock();
+    const reason = n.homeReason ?? 'rest';
+    this.time.delayedCall(reason === 'sleep' ? 900 : 600, () => {
+      if (!this.scene.isActive()) return;
+      this.openDialogue(npcId, reason);
     });
   }
 
@@ -5110,8 +5242,11 @@ export class RegionFieldScene extends Phaser.Scene {
       for (const t of this.storyTriggers) if (t.actor) t.actor.spr.update(delta, t.actor.walking);
       this.charSprite?.update(delta, this.playerCineWalking);
     }
+    // 214차 — 일과(집 ↔ 일터)는 5초마다 다시 본다(실시간 시계라 그보다 촘촘할 필요가 없다)
+    this.routineAt += delta;
+    if (this.routineAt >= 5000 && !this.cinematicActive) { this.routineAt = 0; this.refreshNpcRoutines(false); }
     for (const n of this.storyNpcs) {
-      if (!n.ai) continue;
+      if (!n.ai || n.atHome) continue;
       const hold = !this.cinematicActive && (this.nearNpc === n.def || (this.popupStack.length > 0 && Math.hypot(n.x - px, n.y - 12 - py) < 64));
       n.ai.update(delta, { paused: this.cinematicActive, hold, playerX: px, playerY: py });
       if (this.cinematicActive) continue;   // 컷씬이 이미지·이름표를 직접 옮긴다
@@ -5940,7 +6075,12 @@ export class RegionFieldScene extends Phaser.Scene {
       const opts = this.collectInteractOptions();
       if (!opts.length) this.npcHintText?.setVisible(false);
       // 186차 — 채집·통발·화구는 자기 상태(허가·도구·남은 시간)를 담은 문장을 준다
-      else if (opts.length === 1) hintFor(opts[0].hint ?? `[F] ${opts[0].label}`, '#ffe9a0');
+      else if (opts.length === 1) {
+        hintFor(opts[0].hint ?? `[F] ${opts[0].label}`, '#ffe9a0');
+        // 214차 — 문 두드리기는 안내를 **문 위**에 띄운다(머리 위에 두면 바로 앞의 문을 덮는다 · 누구 집인지 문에 붙어 읽힌다)
+        const home = this.nearNpc ? this.storyNpcs.find((x) => x.def === this.nearNpc && x.atHome && x.door) : undefined;
+        if (home?.door) this.npcHintText?.setPosition(home.door.x, home.door.r * TR - 30);
+      }
       else hintFor(`[F] 상호작용 — ${opts.length}가지`, '#b9f2ff');
     }
     // 방문 장소
@@ -6012,7 +6152,9 @@ export class RegionFieldScene extends Phaser.Scene {
       const nm = npc?.nameKo ?? id;
       const last = nm.charCodeAt(nm.length - 1);
       const gwa = last >= 0xac00 && last <= 0xd7a3 && (last - 0xac00) % 28 === 0 ? '와' : '과';
-      opts.push({ label: `${nm}${gwa} 대화하기`, note, run: () => this.openDialogue(id) });
+      const home = this.storyNpcs.find((x) => x.def.npcId === id && x.atHome);
+      if (home) opts.push({ label: `${home.def.home?.labelKo ?? nm} — 문 두드리기`, note, run: () => this.knockDoor(id) });
+      else opts.push({ label: `${nm}${gwa} 대화하기`, note, run: () => this.openDialogue(id) });
     }
     // ③ 오브젝트(문·버스·설치물)
     if (this.nearObject) {
@@ -6197,7 +6339,22 @@ export class RegionFieldScene extends Phaser.Scene {
     this.playCinematic(CINE_M1_ICE_DROP, { player: 'player', coop: 'coop' });
   }
 
-  private openDialogue(npcId: string): void {
+  /**
+   * 214차 — 맡겨 둔 물건 목록. `canRetrieve` = 위판장 창구에서 열었다(찾아오기 가능).
+   * 찾아오면 가방이 바뀌므로 열린 상점 창을 다시 그린다.
+   */
+  openConsignList(canRetrieve: boolean): void {
+    this.openPopup((close) => new ConsignListPanel(this, {
+      onClose: close, canRetrieve,
+      onRetrieved: (n) => {
+        this.hud?.pushLog(`[위판] 맡겨 둔 물건 ${n}개를 찾아왔다`);
+        this.shopPanel?.refresh();
+        this.events.emit('inventory-changed');
+      },
+    }));
+  }
+
+  private openDialogue(npcId: string, atDoor?: NpcHomeReason): void {
     // 147차 — M1-11 「총회」는 대화 이전에 표결 장면이 먼저다.
     //  계장(coop)과 마주 선 순간, 레벨 목표를 채웠고 아직 총회에 서지 않았다면
     //  총회장이 열리고 그 결과(찬성률 → 항구 신뢰)를 들고 대화로 넘어간다.
@@ -6219,7 +6376,7 @@ export class RegionFieldScene extends Phaser.Scene {
       }));
       return;
     }
-    this.openPopup((close) => new DialoguePanel(this, npcId, close, this.region, undefined, this.onDialogueScene));
+    this.openPopup((close) => new DialoguePanel(this, npcId, close, this.region, undefined, this.onDialogueScene, atDoor));
   }
 
   /** 대화창 → 장면 요청. 창이 닫히고 dim이 걷힌 다음 프레임에 컷씬을 튼다 */

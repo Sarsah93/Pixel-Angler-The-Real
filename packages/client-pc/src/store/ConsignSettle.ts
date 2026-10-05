@@ -57,6 +57,18 @@ export function settleDueConsignments(nowMs = Date.now()): ConsignSettleReport |
   return rep;
 }
 
+/**
+ * 214차 — 경매 전에 찾아온다(위판장 창구에서만). 맡긴 그대로 가방에 돌아온다 — 맡긴 동안 신선도는 멈춰 있었다.
+ * @returns 돌려준 물건 수(묶음이 없으면 0)
+ */
+export function retrieveConsignment(batchId: string): number {
+  const b = ConsignQueue.take(batchId);
+  if (!b) return 0;
+  returnItems(b.items);
+  GameState.markDirty();
+  return b.items.length;
+}
+
 /** 유찰 · 회차 실패 — 맡긴 물건을 그대로 돌려준다 */
 function returnItems(items: readonly import('./InventoryStore.js').InvItem[]): void {
   for (const it of items) {

@@ -54,6 +54,7 @@
 | **낚시점 전용 상점**(루어 판매) | ⬜ | 그리드 오버플로 회피로 보류 중 |
 | 식당 납품·경영 | ⬜ | Phase 6 잔여 |
 | **위판 맡겨 두기** — 경매가 서지 않는 시간엔 위판장에 맡기고 다음 회차(`nextConsignmentWindowStart`)에 자동 정산(`ConsignQueue` · `ConsignSettle` · 세이브 `consignQueue`) | ✅ | **213** |
+| **맡긴 물건 목록 · 찾아오기** — `ConsignListPanel`(창구에서만 찾아오기 · 일지에서는 보기) · 위판 탭 칩 | ✅ | 214 |
 
 ## 5. 잔여·차기
 

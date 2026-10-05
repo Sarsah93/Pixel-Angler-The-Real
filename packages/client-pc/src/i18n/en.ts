@@ -630,6 +630,26 @@ export const EN_DICT: Record<string, string> = {
   '물이 빠지는 중': 'Water going out',
   '물이 멈췄다': 'The water has stopped',
   ...EN_FISH, ...EN_CONTENT, ...EN_ITEMS, ...EN_RIG_COOKING, ...EN_HELP, ...EN_FORAGE, ...EN_PANELS, ...EN_GEAR, ...EN_AUCTION, ...EN_COOK, ...EN_UI, ...EN_EXTRA, ...EN_TOUR, ...EN_TOUR_PANELS, ...EN_TOUR_PANELS2, ...EN_SKILL, ...EN_HOME, ...EN_RIG, ...EN_BASE,
+  // 214차 — 인물의 집 · 문 두드리기
+  '정옥선의 집': "Jeong Ok-seon's house", '어촌계 사무실': 'Co-op office', '도현수의 집': "Do Hyeon-su's house",
+  '강두철의 집': "Kang Du-cheol's house", '탁씨 죽간 공방': "The Taks' bamboo-rod workshop", '공방 살림채': 'Workshop living quarters',
+  '배누리가 묵는 민박': "Bae Nu-ri's guesthouse",
+  // 214차 — 나날 · 맡긴 물건 · 문 두드리기
+  '나날': 'Days', '지난 날들': 'Past days', '일지 — 나날': 'Journal — Days', '일지 — 이야기': 'Journal — Story',
+  '앞으로': 'Coming up', '실습 기한': 'Trainee deadline', '목록 보기': 'View list',
+  '정해진 때가 있는 일이 없다.': 'Nothing with a set date.', '아직 지난 하루가 없다.': 'No past days yet.',
+  '잠으로 마침': 'ended with sleep', '새벽 4시를 넘김': 'ran past 4 AM', '±0원': '±₩0',
+  '찾아오기': 'Take back', '선어': 'Fresh', '패류': 'Shellfish', '맡겨 둔 물건이 없다.': 'Nothing left with the hall.',
+  '경매 전에 도로 가져오려면 위판장 창구로.': 'To take it back before the auction, go to the auction hall counter.',
+  '위판장에 맡겨 둔 물건이 여기 모인다. 다음 경매가 끝나면 값이 들어오고, 안 팔린 것은 가방으로 돌아온다.':
+    'What you left with the auction hall is listed here. When the next auction ends the money comes in, and anything unsold comes back to your bag.',
+  '경매 전에 마음이 바뀌면 여기서 도로 찾아올 수 있다. 맡긴 그대로 돌아온다.':
+    'Changed your mind before the auction? Take it back here — it returns just as you left it.',
+  '침대에서 다 자고 일어날 때마다 이야기가 한 번씩 넘어간다. 달력 날짜와는 따로 센다.':
+    'Each time you sleep the night through in bed, the story moves on by one. It is counted apart from the calendar date.',
+  '기한이나 납부처럼 정해진 때가 있는 일이 여기 모인다. 「잠 N번 남음」은 그때까지 남은 잠의 횟수다.':
+    'Things with a set time — deadlines, payments — gather here. "N sleeps left" is how many nights of sleep remain until then.',
+  '지난 하루를 누르면 그날의 결산을 다시 펼쳐 볼 수 있다.': 'Click a past day to open that day\'s summary again.',
 };
 
 /**
@@ -655,6 +675,16 @@ const DOW_EN: Record<string, string> = {
 };
 /** 수치·이름이 끼어 있는 문장 — 정규식 규칙. 캡처 그룹은 그대로 옮긴다(이름은 사전을 다시 타지 않으므로 어종·아이템명은 한국어로 남을 수 있음). */
 export const EN_RULES: Rule[] = [
+  // 214차 — 나날 · 맡긴 물건
+  [/^이야기 (\d+)번째$/, 'Story #$1'], [/^이야기 (\d+)번째까지$/, 'until Story #$1'],
+  [/^잠 (\d+)번 남음$/, '$1 sleeps left'], [/^(\d+)번 지남$/, '$1 past'], [/^(\d+)번 밀림$/, '$1 overdue'],
+  [/^어획 (\d+)$/, 'catch $1'], [/^외 (\d+)건$/, '+$1 more'],
+  [/^위판장에 맡긴 물건 (\d+)개$/, '$1 item(s) left at the auction hall'],
+  [/^다음 경매 (.+)$/, (m, tr) => `Next auction ${tr(m[1])}`],
+  [/^(\d+)월 (\d+)일 (\d\d:\d\d)$/, '$1/$2 $3'],
+  [/^([^…].*) 외 (\d+)$/, (m, tr) => `${tr(m[1])} +${m[2]} more`],
+  [/^\[위판\] 맡겨 둔 물건 (\d+)개를 찾아왔다$/, '[Auction] Took back $1 item(s) you had left'],
+  [/^([\d,]+)원$/, '₩$1'],
   // 213차 — 잠 · 맡겨 두기
   [/^슬롯 (\d+)에 저장했다\.$/, 'Saved to slot $1.'],
   [/^잠깐 눈을 붙였다 — 피로 (\d+)% → (\d+)%$/, 'A short nap — Fatigue $1% → $2%'],

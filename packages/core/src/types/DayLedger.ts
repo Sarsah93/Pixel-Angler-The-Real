@@ -77,6 +77,11 @@ export interface DayLedgerPage {
   gear: string[];
   /** 다닌 지역 id */
   regions: string[];
+  /**
+   * 214차 — 이 장을 연 때의 이야기 날짜(다 잔 잠 횟수 · 0부터). 일지 「나날」이 「이야기 N번째」로 보인다.
+   * 실제 날짜(`openedYmd`)와 다르다 — 하루에 두 번 자면 이야기는 두 번 넘어간다. 구세이브 장은 없다.
+   */
+  storyDay?: number;
 }
 
 /** 결산 화면의 카드 한 장 */
