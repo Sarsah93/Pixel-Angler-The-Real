@@ -1943,6 +1943,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   update(_time: number, deltaMs: number): void {
     let dt = Math.min(0.05, deltaMs / 1000);
     LedgerStore.playTick(deltaMs);   // 211차 — 하루 기록 놀던 시간
+    GameState.noteAwake(deltaMs);   // 213차 — 잠 가부(깨어 논 시간)
     pumpTitleBanners(this);   // 203차 — 숨은 업적 달성 배너(들어뽕 · 줄 터짐 · 방생 …)
     // 204차 — 「물때 감각」: 파이팅 중엔 미뤘다가 끝나면 띄운다(패턴 경고 자리와 겹치지 않게)
     pumpTideFlow(this, { toastY: 60, hold: this.fpState === 'fighting' });

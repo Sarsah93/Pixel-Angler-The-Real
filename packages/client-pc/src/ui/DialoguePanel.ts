@@ -171,7 +171,7 @@ export class DialoguePanel extends DraggablePanel {
   }
 
   override destroy(fromScene?: boolean): void {
-    this.typeTimer?.remove();
+    if (this.typeTimer) { this.typeTimer.remove(); this.scene?.time?.removeEvent(this.typeTimer); }   // 213차 — 닫은 뒤 한 번 더 불리지 않게
     this.caretTween?.stop();
     this.scene?.input?.keyboard?.off('keydown', this.keyHandler);
     this.scene?.events?.off('postupdate', this.postUpdate);

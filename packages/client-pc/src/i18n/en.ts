@@ -608,6 +608,16 @@ export const EN_DICT: Record<string, string> = {
   '자격 · 허가': 'Licenses', '정기 지출': 'Upkeep', '수리': 'Repairs', '차비': 'Fares', '보건소': 'Clinic', '벌금': 'Fines',
   '어장 행사료': 'Fishing-ground fee', '쓰러짐': 'Collapse', '기타': 'Other', '1분 미만': 'under a minute',
   '지난 날 돌아보기': 'Look back on past days',
+  // 213차 — 잠 · 저장 · 맡겨 두기
+  '저장만 하기': 'Save only', '자기': 'Sleep', '일어나기': 'Wake up', '맡겨 두기': 'Leave it', '맡겨 둔 물건': 'Left with the hall',
+  '[F] 침대 — 저장 · 잠': '[F] Bed — save · sleep', '새벽 4시를 넘긴 하루': 'Rolled over at 4 a.m.',
+  '「저장만 하기」를 골라 오늘을 저장해 두자.': 'Pick "Save only" to save the day.',
+  '아직 잠이 오지 않는다. 눈만 말똥말똥하다.': "I'm not sleepy yet. Wide awake.",
+  '조금 더 움직이다 피곤해지면 자자. 잠깐 쉬고 싶으면 소파도 있다.': "I'll sleep once I'm tired. If I just want a breather, there's the sofa.",
+  '막대가 다 차면 하룻밤을 다 잔 것이다 — 하루가 저물고, 일어나며 저장된다.': 'When the bar fills, I have slept through the night — the day ends and the game saves as I wake.',
+  '도중에 일어나면 잔 만큼만 풀린다. 하루는 넘어가지 않고, 저장도 되지 않는다.': 'Wake up early and I only recover for the time I slept. The day does not end, and nothing is saved.',
+  '맡길 물건이 없습니다.': 'Nothing to leave.',
+  '위판장에서 연락이 왔다 — 맡긴 물건이 유찰돼 가방으로 돌아왔다.': 'Word from the auction hall — what I left went unsold and is back in my bag.',
   '대사 소리': 'Voice blips', '대화 글자가 찍힐 때 나는 인물 목소리 음량': 'Volume of the character voices played as dialogue types out',
   '캐스팅 · 입질 · 릴 · 드랙 · 돈 · 버튼 같은 효과음 음량': 'Volume of effects — casting, bites, reel, drag, coins, buttons',
   '파도 · 빗소리 같은 배경음 음량': 'Volume of background sounds — waves, rain',
@@ -645,6 +655,18 @@ const DOW_EN: Record<string, string> = {
 };
 /** 수치·이름이 끼어 있는 문장 — 정규식 규칙. 캡처 그룹은 그대로 옮긴다(이름은 사전을 다시 타지 않으므로 어종·아이템명은 한국어로 남을 수 있음). */
 export const EN_RULES: Rule[] = [
+  // 213차 — 잠 · 맡겨 두기
+  [/^슬롯 (\d+)에 저장했다\.$/, 'Saved to slot $1.'],
+  [/^잠깐 눈을 붙였다 — 피로 (\d+)% → (\d+)%$/, 'A short nap — Fatigue $1% → $2%'],
+  [/^오늘 (\d\d:\d\d)$/, 'today $1'], [/^내일 (\d\d:\d\d)$/, 'tomorrow $1'],
+  [/^지금은 경매가 서지 않는다\.\n위판장에 맡겨 두면 다음 경매\((.+)\)에 올라가고,\n값은 경매가 끝나는 대로 들어온다\. 맡겨 둘까\?$/,
+    (m, tr) => `No auction is running now.\nLeave it with the auction hall and it goes up at the next auction (${tr(m[1])}),\nwith the money coming in as soon as it ends. Leave it?`],
+  [/^위판장에 (\d+)건을 맡겼습니다 — 다음 경매가 끝나는 대로 값이 들어옵니다\.$/, 'Left $1 lot(s) with the auction hall — the money comes in once the next auction ends.'],
+  [/^(\d+)건은 경매 시간이 달라 다음 회차에 맡겨 두었습니다\.$/, '$1 lot(s) go to a different auction — left for the next one.'],
+  [/^\[위판\] (\d+)건을 위판장에 맡겼다 — 다음 경매에 올라간다$/, '[Auction] Left $1 lot(s) with the hall — they go up at the next auction'],
+  [/^\[위판\] 맡겨 둔 물건 낙찰 (\d+)건 · 유찰 (\d+)건 — 실수령 ([\d,]+)원 \(수수료 ([\d,]+)원\)$/, '[Auction] Lots you left: $1 sold · $2 unsold — net ₩$3 (fee ₩$4)'],
+  [/^\[위판\] 맡겨 둔 물건이 유찰돼 가방으로 돌아왔다 \((\d+)건\)$/, '[Auction] What you left went unsold and is back in your bag ($1)'],
+  [/^위판장에서 연락이 왔다 — 맡긴 물건 (\d+)건 낙찰, ([\d,]+)원이 들어왔다\.$/, 'Word from the auction hall — $1 lot(s) sold, ₩$2 came in.'],
   // 211차 — 하루 결산 카드
   [/^(\d+)월 (\d+)일 (일|월|화|수|목|금|토)요일$/, (m) => `${['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][Number(m[1])]} ${m[2]}, ${({ 일: 'Sunday', 월: 'Monday', 화: 'Tuesday', 수: 'Wednesday', 목: 'Thursday', 금: 'Friday', 토: 'Saturday' } as Record<string, string>)[m[3]]}`],
   [/^(\d+)시간 (\d+)분 머묾$/, '$1h $2m played'], [/^(\d+)분 머묾$/, '$1m played'], [/^1분 미만 머묾$/, 'under a minute played'],

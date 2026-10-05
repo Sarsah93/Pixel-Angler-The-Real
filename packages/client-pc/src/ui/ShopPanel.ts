@@ -29,6 +29,7 @@ import {
   consignableItems, consignGradeOf, consignInputOf, hasCrate,
   ReserveMode, RESERVE_LABEL,
 } from '../data/Consignment.js';
+import { ConsignQueue } from '../store/ConsignQueue.js';
 import { isConsignmentOpen, minutesUntilConsignment, consignmentFeeRate, coopDuesFeeCut, REGION_DATABASE } from '@tra/core';
 import { t, getLocale } from '../i18n/I18n.js';
 
@@ -240,7 +241,7 @@ export class ShopPanel extends DraggablePanel {
       this.tabTexts.get(id)!.setColor(selected ? '#aee8ff' : '#8faabf');
     });
     this.footerRight?.setText(
-      this.currentTab === 'repair' ? '수리' : this.currentTab === 'consign' ? '출품하기' : '판매');
+      this.currentTab === 'repair' ? '수리' : this.currentTab === 'consign' ? (this.auctionOpenNow() ? '출품하기' : '맡겨 두기') : '판매');
   }
 
   // ── 그리드 ────────────────────────────────────────
@@ -413,6 +414,14 @@ export class ShopPanel extends DraggablePanel {
    * 위판 탭 상단 — 개장 여부·다음 개장까지·수수료(평판 반영)·최저 희망가 토글.
    * 개장 시간은 구매자 측 경매와 같은 스케줄을 쓴다(선어 01~03시 / 활어 03~07시 · 일요일 미개장).
    */
+  /** 213차 — 지금 어느 위판이든 서 있는가(아니면 [출품하기]가 [맡겨 두기]가 된다) */
+  private auctionOpenNow(): boolean {
+    const now = new Date();
+    const kst = new Date(now.getTime() + (9 * 60 + now.getTimezoneOffset()) * 60_000);
+    const h = kst.getHours(), m = kst.getMinutes(), wd = kst.getDay();
+    return isConsignmentOpen('fish_live', h, m, wd) || isConsignmentOpen('fish_fresh', h, m, wd);
+  }
+
   private renderConsignHeader(count: number, crated: boolean): void {
     const now = new Date();
     const kst = new Date(now.getTime() + (9 * 60 + now.getTimezoneOffset()) * 60_000);
@@ -437,8 +446,11 @@ export class ShopPanel extends DraggablePanel {
         })();
 
     const y0 = this.contentTop + 58;
+    // 213차 — 맡겨 둔 물건이 있으면 몇 건인지(정산되면 사라진다)
+    const held = ConsignQueue.pending.reduce((n, b) => n + b.inputs.length, 0);
+    const heldLabel = held > 0 ? `   ·   ${t('맡겨 둔 물건')} ${held}${getLocale() === 'en' ? '' : '건'}` : '';
     const info = this.scene.add.text(16, y0,
-      `${openLabel}   ·   ${t('위판 수수료')} ${(fee * 100).toFixed(1)}%${crated ? '   ·   ' + t('규격 상자 보유') : ''}`, {
+      `${openLabel}   ·   ${t('위판 수수료')} ${(fee * 100).toFixed(1)}%${crated ? '   ·   ' + t('규격 상자 보유') : ''}${heldLabel}`, {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px',
         color: (liveOpen || freshOpen) ? '#4af2a1' : '#ffb27a',
         wordWrap: { width: PANEL_W - 32 },

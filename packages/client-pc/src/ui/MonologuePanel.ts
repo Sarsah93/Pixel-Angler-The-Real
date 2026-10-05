@@ -91,7 +91,8 @@ export class MonologuePanel extends DraggablePanel {
   }
 
   override destroy(fromScene?: boolean): void {
-    this.typeTimer?.remove();
+    // 213차 — 타이핑 도중에 닫으면(ESC) 루프 타이머가 한 번 더 불려 파괴된 창의 scene을 읽었다 → 시계에서 바로 뺀다
+    if (this.typeTimer) { this.typeTimer.remove(); this.scene?.time?.removeEvent(this.typeTimer); this.typeTimer = undefined; }
     this.caretTween?.stop();
     this.scene?.input?.keyboard?.off('keydown', this.keyHandler);
     this.scene?.events?.off('postupdate', this.postUpdate);
@@ -221,6 +222,7 @@ export class MonologuePanel extends DraggablePanel {
     this.typeTimer = this.scene.time.addEvent({
       delay: TYPE_MS, loop: true,
       callback: () => {
+        if (!this.scene) return;   // 이미 닫힌 창
         this.typed = Math.min(this.typingPara.length, this.typed + 1);
         this.blips.say(this.typingPara.charAt(this.typed - 1));
         this.paintLog();
@@ -250,6 +252,7 @@ export class MonologuePanel extends DraggablePanel {
 
   private showCaret(on: boolean): void {
     this.caretTween?.stop(); this.caretTween = undefined;
+    if (!this.scene) return;
     this.caret?.setVisible(on).setAlpha(1);
     if (!on || !this.caret) return;
     this.caretTween = this.scene.tweens.add({

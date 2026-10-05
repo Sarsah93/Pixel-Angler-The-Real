@@ -141,7 +141,7 @@ export class DayReportPanel extends DraggablePanel {
     const dateText = this.scene.add.text(W / 2, top + 6, ymdLabel(p.closedYmd ?? p.openedYmd), {
       fontFamily: FONT, fontSize: '20px', color: '#f2ead0', fontStyle: 'bold',
     }).setOrigin(0.5, 0);
-    const how = p.closedBy === 'sleep' ? '잠들며 마친 하루' : p.closedBy === 'midnight' ? '자정을 넘긴 하루' : '아직 이어지는 하루';
+    const how = p.closedBy === 'sleep' ? '잠들며 마친 하루' : p.closedBy === 'midnight' ? '새벽 4시를 넘긴 하루' : '아직 이어지는 하루';
     const sub = this.scene.add.text(W / 2, top + 32, `${how} · ${playTimeText(p.playMs)} 머묾`, {
       fontFamily: FONT, fontSize: '12px', color: '#9fb8c8',
     }).setOrigin(0.5, 0);

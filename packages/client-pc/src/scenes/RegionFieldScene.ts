@@ -129,7 +129,7 @@ import { buildItemWikiCatalog } from '../data/WikiCatalog.js';
 import { playCollapse, type CollapseKind } from '../ui/CollapseOverlay.js';
 import { TUNING, getTrapById, MP_CHAT_MAX_LEN, type RegionFishFarms } from '@tra/core';
 // 147차 — 위판(경매 현장). 구매자 측 AuctionEngine과 방향이 반대다(ConsignmentAuction 헤더 참조).
-import { buildConsignmentLots, isConsignmentOpen, openConsignmentSession, coopDuesFeeCut, type ConsignInput, type ConsignmentSettlement } from '@tra/core';
+import { buildConsignmentLots, isConsignmentOpen, nextConsignmentWindowStart, kstYmd, openConsignmentSession, coopDuesFeeCut, type ConsignInput, type ConsignmentSettlement } from '@tra/core';
 import { AuctionHousePanel } from '../ui/AuctionHousePanel.js';
 import { tilesetPathOf } from '../data/TilesetManifest.js';
 import { OverpassSystem, clipRoadsUnderOverpasses, trimRoadEndsAtWater } from './field/OverpassSystem.js';
@@ -168,7 +168,10 @@ import { InventoryStore, InvItem } from '../store/InventoryStore.js';
 import { CoolerStore } from '../store/CoolerStore.js';
 import { DiscoveryStore } from '../store/DiscoveryStore.js';
 import { LedgerStore } from '../store/LedgerStore.js';
-import { playCast, playPickup, playQuestChime } from '../audio/Sfx.js';
+import { playCast, playPickup, playQuestChime, playCoin } from '../audio/Sfx.js';
+import { offlineWakeLines } from '../data/WakeLines.js';
+import { settleDueConsignments } from '../store/ConsignSettle.js';
+import { ConsignQueue } from '../store/ConsignQueue.js';
 import { DayReportPanel } from '../ui/DayReportPanel.js';
 import { setAmbience } from '../audio/Ambience.js';
 import { BuildingKind, BUILDING_LABEL, BUILDING_GOODS, BUILDING_HOURS, shopHoursState, BUILDING_KIND_CYCLE, SHOP_CATALOG, ShopEntry } from '../data/ShopCatalog.js';
@@ -2791,13 +2794,32 @@ export class RegionFieldScene extends Phaser.Scene {
    */
   private maybeShowUnseenDay(tries: number): void {
     if (!this.scene.isActive()) return;
-    const page = LedgerStore.unseenClosed();
-    if (!page) return;
+    if (!LedgerStore.unseenClosed() && !GameState.hasWakeNote) return;
     const busy = this.popupStack.length > 0 || this.cinematicActive || GuideTour.blocking || prologueRunning() || this.isPaused;
     if (busy) { if (tries < 30) this.time.delayedCall(2000, () => this.maybeShowUnseenDay(tries + 1)); return; }
-    const pages = LedgerStore.closedPages();
-    LedgerStore.markShown(page.no);
-    this.openPopup((close) => new DayReportPanel(this, pages, pages.length - 1, 'past', close));
+    const report = (): void => {
+      const page = LedgerStore.unseenClosed();
+      if (!page) return;
+      const pages = LedgerStore.closedPages();
+      LedgerStore.markShown(page.no);
+      this.openPopup((close) => new DayReportPanel(this, pages, pages.length - 1, 'past', close));
+    };
+    // 213차 E — 꺼 둔 사이 잤다면 먼저 「잘 잤다 · 지금 몇 시」 혼잣말(이어하기는 집 앞에서 시작한다), 그다음 지난 하루
+    const note = GameState.consumeWakeNote();
+    if (!note) { report(); return; }
+    this.openPopup((close) => new MonologuePanel(this, offlineWakeLines(note.offlineMs, getLocale() === 'en' ? 'en' : 'ko'), () => { close(); report(); }));
+  }
+
+  /** 213차 — 맡겨 둔 위판이 회차를 지났으면 정산하고 알린다(꺼 둔 사이 열린 회차는 들어오자마자) */
+  private settleConsignments(): void {
+    const r = settleDueConsignments();
+    if (!r) return;
+    if (r.netWon > 0) playCoin(r.netWon);
+    this.events.emit('inventory-changed');
+    this.shopPanel?.refresh();
+    this.hud?.pushLog(r.soldLots > 0
+      ? `[위판] 맡겨 둔 물건 낙찰 ${r.soldLots}건 · 유찰 ${r.unsoldLots}건 — 실수령 ${r.netWon.toLocaleString()}원 (수수료 ${r.feeWon.toLocaleString()}원)`
+      : `[위판] 맡겨 둔 물건이 유찰돼 가방으로 돌아왔다 (${r.unsoldLots}건)`);
   }
 
   /** 최상단(가장 나중에 열린) 팝업 닫기. 닫은 게 있으면 true */
@@ -3044,16 +3066,13 @@ export class RegionFieldScene extends Phaser.Scene {
     const h = kst.getHours(), m = kst.getMinutes(), wd = kst.getDay();
 
     const openCat = (['fish_live', 'fish_fresh'] as const).find((c) => isConsignmentOpen(c, h, m, wd));
-    if (!openCat) {
-      this.shopPanel?.setStatus('지금은 파장입니다 — 선어는 01~03시, 활어는 03~07시에 경매가 섭니다.');
-      return;
-    }
+    // 213차 — 경매가 서지 않는 시간(또는 다른 카테고리)이면 위판장에 맡겨 두고 다음 회차에 올린다(R12 — 새벽에 못 오는 사람도 위판한다)
+    if (!openCat) { this.confirmDeferConsignment(inputs); return; }
     const going = inputs.filter((i) => i.category === openCat);
-    const left = inputs.length - going.length;
-    if (going.length === 0) {
-      this.shopPanel?.setStatus(`지금은 ${openCat === 'fish_live' ? '활어' : '선어'} 경매 시간입니다 — 고른 물건은 다음 회차에 올리세요.`);
-      return;
-    }
+    const leftInputs = inputs.filter((i) => i.category !== openCat);
+    const left = leftInputs.length;
+    if (going.length === 0) { this.confirmDeferConsignment(inputs); return; }
+    if (left > 0) this.deferConsignment(leftInputs);
 
     const rep = StoryStore.harborRep(GameState.currentRegionId);
     // 171차 — 조합비를 내고 있으면 위판 수수료가 더 싸다
@@ -3063,11 +3082,55 @@ export class RegionFieldScene extends Phaser.Scene {
     );
     if (!session) { this.shopPanel?.setStatus('경매를 열 수 없습니다.'); return; }
 
-    if (left > 0) this.shopPanel?.setStatus(`${left}건은 경매 시간이 달라 남겨 두었습니다.`);
+    if (left > 0) this.shopPanel?.setStatus(`${left}건은 경매 시간이 달라 다음 회차에 맡겨 두었습니다.`);
     this.openPopup((close) => new AuctionHousePanel(this, session, {
       onClose: close,
       onSettle: (result) => this.settleConsignment(result),
     }));
+  }
+
+  /** 213차 — 「맡겨 두기」 확인. 다음 회차 시각을 알려 주고, 맡기면 물건은 가방에서 빠져 위판장이 보관한다 */
+  private confirmDeferConsignment(inputs: ConsignInput[]): void {
+    const now = Date.now();
+    const next = Math.min(...inputs.map((i) => nextConsignmentWindowStart(i.category, now)).filter((t) => t > 0));
+    const k = kstParts(new Date(next));
+    const dayWord = kstYmd(new Date(next)) === kstYmd(new Date(now)) ? '오늘' : '내일';
+    const when = Number.isFinite(next) ? `${dayWord} ${k.hh}:${k.mi}` : '다음 회차';
+    this.openPopup((close) => new ConfirmDialog(
+      this,
+      `지금은 경매가 서지 않는다.\n위판장에 맡겨 두면 다음 경매(${when})에 올라가고,\n값은 경매가 끝나는 대로 들어온다. 맡겨 둘까?`,
+      () => { close(); this.deferConsignment(inputs); },
+      close,
+    ));
+  }
+
+  /** 213차 — 위판장에 맡긴다(카테고리별 다음 회차로 묶는다) */
+  private deferConsignment(inputs: ConsignInput[]): void {
+    const now = Date.now();
+    const byCat = new Map<ConsignInput['category'], ConsignInput[]>();
+    for (const i of inputs) byCat.set(i.category, [...(byCat.get(i.category) ?? []), i]);
+    let n = 0;
+    for (const [cat, list] of byCat) {
+      const due = nextConsignmentWindowStart(cat, now);
+      if (due < 0) continue;
+      const items: InvItem[] = [];
+      for (const inp of list) {
+        const it = InventoryStore.find(inp.sourceItemId);
+        if (!it) continue;
+        items.push(JSON.parse(JSON.stringify(it)) as InvItem);
+        InventoryStore.removeItem(inp.sourceItemId, true);
+      }
+      const kept = list.filter((inp) => items.some((it) => it.id === inp.sourceItemId));
+      if (!kept.length) continue;
+      ConsignQueue.add({ regionId: GameState.currentRegionId, category: cat, inputs: kept, items, leftAtMs: now, dueAtMs: due });
+      n += kept.length;
+    }
+    if (n === 0) { this.shopPanel?.setStatus('맡길 물건이 없습니다.'); return; }
+    GameState.markDirty();
+    this.events.emit('inventory-changed');
+    this.shopPanel?.refresh();
+    this.shopPanel?.setStatus(`위판장에 ${n}건을 맡겼습니다 — 다음 경매가 끝나는 대로 값이 들어옵니다.`);
+    this.hud?.pushLog(`[위판] ${n}건을 위판장에 맡겼다 — 다음 경매에 올라간다`);
   }
 
   /** 정산 — 낙찰분만 인벤에서 빠지고 실수령액이 들어온다. 유찰분은 그대로 남는다(회수) */
@@ -4133,6 +4196,7 @@ export class RegionFieldScene extends Phaser.Scene {
 
   update(_time: number, delta: number): void {
     LedgerStore.playTick(delta);   // 211차 — 하루 기록 놀던 시간
+    GameState.noteAwake(delta);   // 213차 — 잠 가부(깨어 논 시간)
     // 211차 — 배경음: 물가에 서면 파도가 커지고, 비가 오면 빗소리(1초마다 목표만 갱신)
     this.ambienceT -= delta;
     if (this.ambienceT <= 0) {
@@ -4142,6 +4206,7 @@ export class RegionFieldScene extends Phaser.Scene {
         sea: this.region === 'hometown' ? 0.2 : this.nearWater ? 0.85 : 0.4,
         rain: kind === 'rain' ? 0.8 : kind === 'shower' ? 0.5 : 0,
       });
+      this.settleConsignments();   // 213차 — 맡겨 둔 위판(회차가 열렸으면 정산)
     }
     // init → create 사이 또는 shutdown 직전의 stale update 차단.
     if (this.bootFailed || !this.playerBody?.active) return;

@@ -467,7 +467,14 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-10-04 212차) — 결산 「내일 할 만한 것」 · 퀘스트 시각 원칙 R12**
+**최근 변경 (2026-10-05 213차) — 잠 · 결산 · 저장 기준(A~F) · 위판 맡겨 두기**
+
+- core `SleepRules`(`canSleep` · `applyPartialSleep` · `offlineCountsAsSleep`) + `TUNING.sleep` · 침대 「저장만 하기 / 자기」(실시간 15초 · 도중에 깨면 잔 만큼 · 다 자면 저장).
+- 하루 경계 새벽 4시(`LedgerStore` = `logicalYmd`) · 오프라인 = 잠(저장 후 4시간+ · 잠들 수 있던 상태) · 일어나면 지금 실제 시각 혼잣말.
+- 위판이 닫혀 있으면 맡겨 두기(`ConsignQueue` · `ConsignSettle` · `nextConsignmentWindowStart`) — 위판 목표 이야기 12편의 시각 제약(R12) 해소.
+  함정: `rectangle(…, color, 0)`은 채움 알파 0(암전 안 보임) · 타이핑 창 루프 타이머는 `removeEvent`. 상세: [213차 워크로그](../docs/wiki/03-WORKLOG/2026-10-05-213-sleep-save-day-boundary.md).
+
+**이전 변경 (2026-10-04 212차) — 결산 「내일 할 만한 것」 · 퀘스트 시각 원칙 R12**
 
 - core `planNextDay`(거친 바다 · 밤 간조 해루질 · 사리 · 조금 · 알맞은 물) · `logicalYmd`(하루 경계 새벽 4시) + client `NextDayHint` → 결산 끝 「내일」 띠.
 - 규칙 R12(§4 · §8-15): 퀘스트는 「밤에」 · 「물이 빠질 때」 · 계절처럼 넓은 때만 — 시각 창 최소 3시간. 현행 186편 위반 0.
@@ -480,13 +487,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - core `DayLedger`(`buildLedgerCards`) + client `LedgerStore`(잠/자정 마감 · 14장 · 세이브 `ledger`) + `ui/DayReportPanel`(오늘 하루 / 지난 하루).
 - 함정: 자동으로 띄우는 창은 `GuideTour.blocking`만 기다린다(수동 말풍선은 busy지만 입력을 막지 않는다) · 장부는 스토어 변경 지점에서, 불러오기 중엔 `suspend`.
   상세: [211차 워크로그](../docs/wiki/03-WORKLOG/2026-10-04-211-sound-day-ledger.md).
-
-**이전 변경 (2026-10-04 210차) — 릴 드랙 · 기어비를 파이팅에**
-
-- core `FightingPhase` 입력 `reelDragKg` · `reelGearK` — 드랙 = 줄 쪽과 릴 최대 드랙 중 약한 쪽 · 넘친 장력 `dragSlipKg`만큼 줄이 나가고 감기 헛돎.
-- core `RodFit.reelRetrieveMps` — 회수 속도 = 기준 × 한 바퀴 감기 배율 ÷ (1 + 체중 × 감쇠 × 감기 부하) · `TUNING.reelFight`.
-- 함정: 1인칭 파이팅은 `FightPhysics2D`가 아니라 `FightingPhase` + `stepFightKinematics` · 충격 파단은 드랙과 무관(`fishing-loop.md` §6-23).
-  상세: [210차 워크로그](../docs/wiki/03-WORKLOG/2026-10-04-210-reel-drag-gear-fight.md).
 
 ---
 

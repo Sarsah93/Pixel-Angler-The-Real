@@ -3,7 +3,7 @@
  * @description 하루 기록 장부 (211차 — 하루 결산).
  *
  * 게임 안에서 일어나는 변화(돈 · 어획 · 아이템 · 이야기 · 우호도 · 성장 · 도감 · 타이틀 · 생활 · 장비 · 다닌 곳)를
- * **지금 장(page)** 에 쌓는다. 장은 침대에서 잠들 때(`closeForSleep`) 또는 한국 시각 날짜가 바뀔 때 닫힌다.
+ * **지금 장(page)** 에 쌓는다. 장은 침대에서 잠들 때(`closeForSleep`) 또는 하루 경계(KST 새벽 4시 — 213차)를 넘길 때 닫힌다.
  * 닫힌 장은 최대 `KEEP_PAGES`장 보관하고 세이브에 함께 저장한다.
  *
  * ⚠ 다른 스토어를 import하지 않는다(순환 참조 방지) — 지금 가진 돈은 GameState가 `coinsOf`로 주입한다.
@@ -11,7 +11,7 @@
  */
 
 import {
-  kstYmd, newLedgerPage, normalizeLedgerPage,
+  logicalYmd, newLedgerPage, normalizeLedgerPage,
   type CoinReason, type DayLedgerPage, type LedgerCatch,
 } from '@tra/core';
 
@@ -36,7 +36,8 @@ class LedgerStoreImpl {
   /** dev — 하네스가 날짜를 넘긴다(실시간 시계를 기다릴 수 없다) */
   private ymdOverride: string | null = null;
 
-  private ymd(): string { return this.ymdOverride ?? kstYmd(); }
+  /** 213차 C — 하루 경계는 새벽 4시(`logicalYmd`) — 밤낚시가 자정에 쪼개지지 않는다 */
+  private ymd(): string { return this.ymdOverride ?? logicalYmd(Date.now()); }
 
   /** 기록 멈춤/재개 — 중첩 가능 */
   suspend(on: boolean): void { this.suspended = Math.max(0, this.suspended + (on ? 1 : -1)); }
@@ -169,11 +170,16 @@ class LedgerStoreImpl {
 
   // ── 잠 · 결산 ──────────────────────────────────────
 
-  /** 잠들었다 — 지금 장을 닫고 돌려준다(결산 화면이 그린다). 장이 비어 있어도 닫는다 */
-  closeForSleep(): DayLedgerPage | null {
-    this.page();   // 날짜가 바뀌었으면 자정 장부터 정리하고, 지금 장을 연다
+  /**
+   * 잠들었다 — 지금 장을 닫고 돌려준다(결산 화면이 그린다). 장이 비어 있어도 닫는다.
+   * 213차 — 잠이 하루를 닫는다: 새벽 4시 경계를 넘긴 채 깨어 있다 잠들어도 그 장 전체를 잠으로 닫는다(빈 장을 하나 더 만들지 않는다).
+   * @param shown false = 오프라인 잠(꺼 둔 사이) — 다음 진입 때 「지난 하루」로 보여 준다
+   */
+  closeForSleep(shown = true): DayLedgerPage | null {
+    if (!this.recording) return null;
+    if (!this.current) this.current = newLedgerPage(++this.counter, this.ymd(), Date.now(), this.coinsOf());
     const p = this.close('sleep');
-    if (p) this.shownNo = Math.max(this.shownNo, p.no);
+    if (p && shown) this.shownNo = Math.max(this.shownNo, p.no);
     return p;
   }
 

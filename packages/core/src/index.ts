@@ -320,6 +320,7 @@ export {
   buildConsignmentLots,
   isConsignmentOpen,
   minutesUntilConsignment,
+  nextConsignmentWindowStart,
   openConsignmentSession,
   stepConsignment,
   runConsignmentToEnd,
@@ -764,3 +765,7 @@ export {
   getTitleById, titleEffectValue, titleEffectLabelKo, titleModifiers, titleBiteMultAt, titlesNewlyEarned,
   isTitleNightHour, isTitleDawnHour, trophyPointsOf, titleConditionMet, TITLE_STAT_LABEL_KO, titleConditionLabelKo,
 } from './db-schema/TitleDatabase.js';
+
+// 213차 — 잠 규칙(잘 수 있는 때 · 부분 수면 · 오프라인 = 잠)
+export type { SleepGateInput, SleepGate, DayPart } from './types/Sleep.js';
+export { canSleep, sleepFraction, applyPartialSleep, offlineCountsAsSleep, dayPartOf } from './simulation/SleepRules.js';

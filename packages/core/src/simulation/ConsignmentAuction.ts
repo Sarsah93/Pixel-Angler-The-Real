@@ -162,6 +162,27 @@ export function isConsignmentOpen(
   return isAuctionOpen(category, gameHour, gameMinute, gameWeekday, schedule);
 }
 
+/**
+ * 213차 — 이 카테고리 위판이 `atMs` 이후(포함) 처음 열리는 시각(ms). 지금 열려 있으면 `atMs` 그대로.
+ * 15분 간격으로 8일 앞까지 훑는다(휴무 요일 포함). 못 찾으면 −1.
+ * 「맡겨 두기」(지금 문 닫은 위판장에 물건을 두고 가면 다음 회차에 올라간다)가 쓴다.
+ */
+export function nextConsignmentWindowStart(
+  category: AuctionCategory,
+  atMs: number,
+  schedule: AuctionScheduleRule = DEFAULT_AUCTION_SCHEDULE,
+): number {
+  const step = 15 * 60_000;
+  // 15분 경계로 내림(창은 정시 · 30분 단위로 열린다)
+  let t = atMs;
+  for (let i = 0; i < 8 * 24 * 4 + 1; i++) {
+    const k = new Date(t + 9 * 3_600_000);   // KST 벽시계
+    if (isConsignmentOpen(category, k.getUTCHours(), k.getUTCMinutes(), k.getUTCDay(), schedule)) return t;
+    t = (Math.floor(t / step) + 1) * step;
+  }
+  return -1;
+}
+
 /** 다음 개장까지 남은 분 (−1 = 산출 불가) */
 export function minutesUntilConsignment(
   gameHour: number,

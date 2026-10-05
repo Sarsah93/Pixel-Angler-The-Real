@@ -441,6 +441,20 @@ export interface TuningConfig {
     /** 저장 허용 위치 태그 (침대 상호작용 지점 — 민박 등 확장 시 태그 추가) */
     allowedTags: string[];
   };
+  /**
+   * 잠(213차 — 사용자 확정 A~F). 세계 시계는 건너뛰지 않는다 — 잠은 「몸의 하루」다.
+   * 실시간으로 `fullNightSec`만큼 누워 있으면 하룻밤을 다 잔 것(하루 마감 · 저장), 그 전에 일어나면 잔 만큼만 회복.
+   */
+  sleep: {
+    /** 잠들 수 있는 피로(최대치 대비 %) — 이 이상이면 바로 잘 수 있다 */
+    minFatiguePct: number;
+    /** 또는 지난 잠 뒤 깨어 논 시간(분) — 이 이상이면 피곤하지 않아도 잘 수 있다 */
+    minAwakeMin: number;
+    /** 하룻밤을 다 자는 데 드는 실제 시간(초) — 그 전에 일어나면 비율만큼 회복 */
+    fullNightSec: number;
+    /** 침대에서 저장하고 끈 뒤 이만큼(시간) 지나 돌아오면 그사이 잔 것으로 친다(오프라인 = 잠) */
+    offlineSleepHours: number;
+  };
   hometown: {
     mapW: number;
     mapH: number;
@@ -1334,6 +1348,7 @@ export const TUNING: TuningConfig = {
   // 홈타운·출조 — 일괄 ₩10,000 출발 1회 + 귀가 무료 · 저장 = 집 침대에서만
   travel: { baseFareKrw: 10000, returnFareKrw: 0 },
   save: { allowedTags: ['hometown_interior'] },
+  sleep: { minFatiguePct: 50, minAwakeMin: 60, fullNightSec: 15, offlineSleepHours: 4 },
   hometown: { mapW: 48, mapH: 32, seaRatio: 0.30 },
   // 회뜨기 흐름 — 자동 방향 스냅 on(먹통 방지) · 회칼 하드락 off(막칼 폴백)
   // autoOrient=false (2026-07-30 자유 손질 개편) — 자동 뒤집기 폐지, 수동 상하/좌우 뒤집기 버튼
@@ -1568,6 +1583,11 @@ export interface TuningParamMeta {
   category: 'feel' | 'balance'; label: string;
 }
 export const TUNING_META: TuningParamMeta[] = [
+  // ── 잠 (213차) ──
+  { path: 'sleep.minFatiguePct', min: 0, max: 100, step: 5, category: 'balance', label: '잠들 수 있는 피로 (%)' },
+  { path: 'sleep.minAwakeMin', min: 0, max: 240, step: 10, category: 'balance', label: '잠들 수 있는 깨어 있은 시간 (분)' },
+  { path: 'sleep.fullNightSec', min: 3, max: 60, step: 1, category: 'feel', label: '하룻밤 잠 길이 (실제 초)' },
+  { path: 'sleep.offlineSleepHours', min: 1, max: 12, step: 0.5, category: 'balance', label: '오프라인 = 잠 (시간)' },
   // ── 불요리 (154차 — mockup, 실플레이 조율 대기) ──
   { path: 'cook.timeScale', min: 1, max: 12, step: 0.5, category: 'feel', label: '요리 시뮬 시간 배율' },
   { path: 'cook.lossWPerK', min: 3, max: 20, step: 0.5, category: 'balance', label: '요리 열 손실 (W/K)' },

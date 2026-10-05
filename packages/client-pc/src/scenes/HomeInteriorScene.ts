@@ -20,7 +20,7 @@
  * HOMETOWN_HOME_SPEC (2026-07-28):
  *  - 시작 사이즈 Tier 0: 원룸 12×10 타일 (hometown_interior_mockup.svg 레이아웃).
  *  - **저장은 이 씬의 침대에서만** — GameState.locationTag = 'hometown_interior'
- *    (TUNING.save.allowedTags). "저장하고 쉬기" / "그냥 쉬기" 선택.
+ *    (TUNING.save.allowedTags). 213차 — 「저장만 하기」(잠 없이) / 「자기」(실시간 · 다 자면 하루 마감 + 저장 · 도중에 깨면 잔 만큼만).
  *  - 가구 배치는 `HomeStore`(세이브) — 기본 배치·그림은 `data/HomeFurniture.ts`.
  *  - 진입: RegionFieldScene 문 → pause + launch. 복귀: stop() + resume (규칙 준수).
  */
@@ -29,7 +29,10 @@ import Phaser from 'phaser';
 import { LedgerStore } from '../store/LedgerStore.js';
 import { DayReportPanel, type DayReportMode } from '../ui/DayReportPanel.js';
 import { setAmbience } from '../audio/Ambience.js';
-import { CHAR_SCALE, CHAR_HEAD_TOP, TUNING, kstParts, type CharDir } from '@tra/core';
+import { wakeLine, offlineWakeLines } from '../data/WakeLines.js';
+import { settleDueConsignments } from '../store/ConsignSettle.js';
+import { playCoin, playUiClick } from '../audio/Sfx.js';
+import { CHAR_SCALE, CHAR_HEAD_TOP, TUNING, kstParts, sleepFraction, type CharDir } from '@tra/core';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { GameState } from '../store/GameState.js';
 import { StoryStore } from '../store/StoryStore.js';
@@ -147,7 +150,7 @@ const TOUR_OUTRO = '대충 다 둘러봤다. 쓸 수 있는 가구 앞에 서면
 
 /** 가구가 지금 받을 수 있는 [F] 행동 → 머리 위 문구 (스탠드는 켜짐에 따라 바뀐다 — `hintOf`) */
 const ACTION_LABEL: Record<FurnAction, string> = {
-  bed: '[F] 침대 — 저장하고 쉬기',
+  bed: '[F] 침대 — 저장 · 잠',
   fridge: '[F] 냉장고 열기',
   cook: '[F] 주방 — 요리',
   sofa: '[F] 앉기',
@@ -379,6 +382,11 @@ export class HomeInteriorScene extends Phaser.Scene {
   /** 확장 패널 · 배치 모드 · ESC를 한곳에서 받는다 (단축키 I·E·J는 각자) */
   private onKey(ev: KeyboardEvent): void {
     if (this.leaving) return;
+    // 213차 — 자는 중: ESC · Enter · Space · F = 일어나기(가이드가 떠 있으면 가이드가 먼저)
+    if (this.sleepState) {
+      if (!GuideTour.blocking && ['Escape', 'Enter', 'Space', 'KeyF'].includes(ev.code)) this.wakeUp(false);
+      return;
+    }
     if (ev.code === 'Escape') { this.onEscape(); return; }
     if (this.decor) {
       if (ev.code === 'KeyR' && !GuideTour.blocksKey('KeyR')) this.decor.rotate();
@@ -632,7 +640,7 @@ export class HomeInteriorScene extends Phaser.Scene {
     }
     if (!prologueStepDone('save')) {
       if (this.menu?.kind === 'bed') {
-        return { key: 'save_menu', text: '「저장하고 쉬기」를 골라 오늘을 저장하자.', target: () => this.menuRect(), anchor: room, side: 'auto' };
+        return { key: 'save_menu', text: '「저장만 하기」를 골라 오늘을 저장해 두자.', target: () => this.menuRect(), anchor: room, side: 'auto' };
       }
       if (anyPopup) return dock('save_close', '창을 닫고 침대로 가자. 떠나기 전에 저장해 두어야 한다.');
       return { key: 'save', text: '떠나기 전에 침대 앞에서 [F]를 눌러 저장해 두자.',
@@ -1042,6 +1050,11 @@ export class HomeInteriorScene extends Phaser.Scene {
 
   update(_t: number, delta: number): void {
     LedgerStore.playTick(delta);   // 211차 — 하루 기록 놀던 시간
+    // 213차 — 자는 중: 잠 막대만 흐르고 다른 건 멈춘다(창밖 날씨 · 불빛은 계속)
+    if (this.sleepState) { this.stepSleep(delta); this.ambience?.update(delta); return; }
+    GameState.noteAwake(delta);   // 213차 — 잠 가부(깨어 논 시간)
+    this.consignAcc += delta;   // 213차 — 맡겨 둔 위판 정산(회차가 열렸으면)
+    if (this.consignAcc >= 1000) { this.consignAcc = 0; this.settleConsignments(); }
     pumpTitleBanners(this);   // 203차 — 숨은 업적 달성 배너(고양이 집사 …)
     pumpTideFlow(this, { toastY: 60 });   // 204차 — 「물때 감각」
     this.updateHomeTitle();
@@ -1344,7 +1357,7 @@ export class HomeInteriorScene extends Phaser.Scene {
     GameState.applyIntake(0, 0, 0, before - after);   // 양수 = 피로 감소
     GameState.markDirty();
     // 잠깐 눈을 감았다 뜨는 연출 (결과는 이미 반영됐다 — 연출이 돌지 않는 환경에서도 같다)
-    const dim = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0).setOrigin(0, 0).setDepth(95);
+    const dim = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x000000, 1).setOrigin(0, 0).setDepth(95).setAlpha(0);
     this.tweens.add({ targets: dim, alpha: 0.55, duration: 450, yoyo: true, hold: 350, onComplete: () => dim.destroy() });
     this.flash(`소파에서 잠깐 눈을 붙였다 — 피로 ${Math.round((before / max) * 100)}% → ${Math.round((after / max) * 100)}%`);
   }
@@ -1560,25 +1573,29 @@ export class HomeInteriorScene extends Phaser.Scene {
   // ── 침대 — 저장하고 쉬기 / 그냥 쉬기 ─────────────────
 
   private openBedMenu(): void {
+    // 213차 — 저장과 잠을 나눈다(사용자 확정 D): 저장은 언제나 · 잠은 피곤하거나 오래 깨어 있었을 때(A)
+    const gate = GameState.sleepGate();
     this.openMenu('bed', '침대', [
       {
-        label: '저장하고 쉬기', color: '#4af2a1', run: () => {
-          // 수면 회복이 먼저 — 저장 스냅샷에 회복 결과가 담기게 한다 (125차)
-          const rec = this.restInBed();
+        label: '저장만 하기', color: '#4af2a1', run: () => {
           markPrologue('save');   // 188차 — 프롤로그 「침대에서 저장한다」 (저장 스냅샷에 담기게 저장 전에)
           const ok = GameState.save();
           if (ok) StoryStore.event({ kind: 'custom', key: 'bedSave' });   // 134차 — M1-03 침대 저장 목표
           this.closeBedMenu();
-          this.flash(ok ? `슬롯 ${GameState.activeSlot ?? 1}에 저장했습니다. ${rec}` : '저장에 실패했습니다');
-          this.openDayReport('today');   // 211차 — 잠들며 닫은 하루 결산
+          this.flash(ok ? `슬롯 ${GameState.activeSlot ?? 1}에 저장했다.` : '저장에 실패했습니다');
         },
       },
       {
-        label: '그냥 쉬기', color: '#9fd0e4', run: () => {
-          const rec = this.restInBed();
+        label: '자기', color: gate.ok ? '#9fd0e4' : '#5f7486', run: () => {
           this.closeBedMenu();
-          this.flash(rec);
-          this.openDayReport('today');
+          if (!gate.ok) {
+            this.openPopup((close) => new MonologuePanel(this, [
+              '아직 잠이 오지 않는다. 눈만 말똥말똥하다.',
+              '조금 더 움직이다 피곤해지면 자자. 잠깐 쉬고 싶으면 소파도 있다.',
+            ], close));
+            return;
+          }
+          this.startSleep();
         },
       },
       // 211차 — 지난 날들(최대 14장)을 다시 펼친다
@@ -1589,11 +1606,135 @@ export class HomeInteriorScene extends Phaser.Scene {
     ], () => this.closeBedMenu());
   }
 
+  // ── 213차 B — 잠(실시간 · 중간에 깰 수 있다) ─────────
+
+  private sleepState: {
+    elapsed: number;
+    c: Phaser.GameObjects.Container;
+    dim: Phaser.GameObjects.Rectangle;
+    bar: Phaser.GameObjects.Graphics;
+    clock: Phaser.GameObjects.Text;
+    fatigue0: number;
+  } | null = null;
+  private consignAcc = 0;
+  /** 잠 창 자리(가이드가 짚는다) */
+  private static readonly SLEEP_W = 320;
+  private static readonly SLEEP_H = 112;
+
+  /** 하네스 — 지금 자는 중인가 · 잔 비율 */
+  get sleeping(): boolean { return !!this.sleepState; }
+  get sleepFrac(): number { return this.sleepState ? sleepFraction(this.sleepState.elapsed) : 0; }
+
+  private sleepRect(): Phaser.Geom.Rectangle {
+    const W = HomeInteriorScene.SLEEP_W, H = HomeInteriorScene.SLEEP_H;
+    return new Phaser.Geom.Rectangle(Math.round((GAME_WIDTH - W) / 2), Math.round(GAME_HEIGHT * 0.62), W, H);
+  }
+
+  /** 침대에 눕는다 — 화면이 어두워지고 잠 막대가 차오른다. 다 차면 하룻밤, 그 전에 일어나면 잔 만큼 */
+  startSleep(): void {
+    if (this.sleepState) return;
+    const r = this.sleepRect();
+    // ⚠ rectangle의 6번째 인자는 채움 알파다 — 0으로 만들면 객체 알파를 올려도 안 보인다(213차 실측)
+    const dim = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x02060c, 1).setOrigin(0, 0).setDepth(930).setAlpha(0).setInteractive();
+    this.tweens.add({ targets: dim, alpha: 0.82, duration: 600 });
+    const c = this.add.container(r.x, r.y).setDepth(931);
+    const bg = this.add.graphics();
+    bg.fillStyle(0x0a1628, 0.92).fillRoundedRect(0, 0, r.width, r.height, 8);
+    bg.lineStyle(1, 0x2a5a8a, 0.9).strokeRoundedRect(0, 0, r.width, r.height, 8);
+    const clock = this.add.text(r.width / 2, 12, '', { fontFamily: FONT, fontSize: '22px', color: '#e8eef4', fontStyle: 'bold' }).setOrigin(0.5, 0);
+    const bar = this.add.graphics();
+    const btnW = 120, btnH = 30, bx = (r.width - btnW) / 2, by = r.height - btnH - 10;
+    const btn = this.add.graphics();
+    btn.fillStyle(0x24425e, 1).fillRoundedRect(bx, by, btnW, btnH, 6);
+    btn.lineStyle(1, 0x9fd0e4, 0.8).strokeRoundedRect(bx, by, btnW, btnH, 6);
+    const btnT = this.add.text(bx + btnW / 2, by + btnH / 2, '일어나기', { fontFamily: FONT, fontSize: '14px', color: '#e8eef4', fontStyle: 'bold' }).setOrigin(0.5);
+    const hit = this.add.rectangle(bx + btnW / 2, by + btnH / 2, btnW, btnH, 0, 0).setInteractive({ useHandCursor: true }).setName('wakeBtn');
+    hit.on('pointerdown', () => { if (!GuideTour.blocking) this.wakeUp(false); });
+    c.add([bg, clock, bar, btn, btnT, hit]);
+    this.hintText.setVisible(false);
+    this.sleepState = { elapsed: 0, c, dim, bar, clock, fatigue0: GameState.vitals.fatigue };
+    this.drawSleep();
+    // 처음 잘 때 한 번 — 다 자면 하루가 넘어가고 저장된다 / 도중에 깨면 잔 만큼만
+    maybeStartTour(this, () => ({
+      id: 'sleep',
+      anchor: () => this.sleepRect(),
+      alive: () => !!this.sleepState,
+      steps: [
+        { text: '막대가 다 차면 하룻밤을 다 잔 것이다 — 하루가 저물고, 일어나며 저장된다.',
+          target: () => new Phaser.Geom.Rectangle(r.x + 16, r.y + 44, r.width - 32, 20) },
+        { text: '도중에 일어나면 잔 만큼만 풀린다. 하루는 넘어가지 않고, 저장도 되지 않는다.',
+          target: () => new Phaser.Geom.Rectangle(r.x + bx, r.y + by, btnW, btnH) },
+      ],
+    }));
+  }
+
+  private drawSleep(): void {
+    const st = this.sleepState;
+    if (!st) return;
+    const r = this.sleepRect();
+    const k = kstParts();
+    st.clock.setText(`${k.hh}:${k.mi}`);
+    const frac = sleepFraction(st.elapsed);
+    const x = 16, y = 44, w = r.width - 32, h = 20;
+    st.bar.clear();
+    st.bar.fillStyle(0x111f30, 1).fillRoundedRect(x, y, w, h, 4);
+    // 밤하늘 → 새벽빛으로 차오른다
+    const col = Phaser.Display.Color.Interpolate.ColorWithColor(
+      Phaser.Display.Color.ValueToColor(0x2a3f7a), Phaser.Display.Color.ValueToColor(0xf2c27a), 100, Math.round(frac * 100));
+    st.bar.fillStyle(Phaser.Display.Color.GetColor(col.r, col.g, col.b), 1).fillRoundedRect(x, y, Math.max(6, w * frac), h, 4);
+    st.bar.lineStyle(1, 0x5a7a9a, 0.8).strokeRoundedRect(x, y, w, h, 4);
+  }
+
+  private stepSleep(delta: number): void {
+    const st = this.sleepState;
+    if (!st) return;
+    if (!GuideTour.blocking) st.elapsed += delta / 1000;   // 가이드가 말하는 동안은 잠도 멈춘다
+    this.drawSleep();
+    if (sleepFraction(st.elapsed) >= 1) this.wakeUp(true);
+  }
+
+  /**
+   * 일어난다. full = 하룻밤을 다 잤다 → 하루 마감(이야기 날짜 · 장부 · 정기 지출) + 저장 + 결산 + 지금 시각 혼잣말.
+   * 아니면 선잠 — 잔 비율만큼만 회복(하루 · 저장 없음).
+   */
+  wakeUp(full: boolean): void {
+    const st = this.sleepState;
+    if (!st) return;
+    const frac = full ? 1 : sleepFraction(st.elapsed);
+    this.sleepState = null;
+    this.tweens.add({ targets: [st.dim, st.c], alpha: 0, duration: 400, onComplete: () => { st.dim.destroy(); st.c.destroy(true); } });
+    playUiClick();
+    const locale = getLocale() === 'en' ? 'en' : 'ko';
+    if (!full) {
+      const max = Math.max(1, GameState.vitals.maxFatigue);
+      GameState.napRecover(frac);
+      const after = GameState.vitals.fatigue;
+      this.flash(`잠깐 눈을 붙였다 — 피로 ${Math.round((st.fatigue0 / max) * 100)}% → ${Math.round((after / max) * 100)}%`);
+      return;
+    }
+    const rec = this.restInBed();
+    const ok = GameState.save();   // 다 자면 저장된다(사용자 확정 — 「저장하고 자기」 = 자기)
+    if (ok) StoryStore.event({ kind: 'custom', key: 'bedSave' });
+    this.flash(ok ? rec : `${rec}\n저장에 실패했습니다`);
+    const say = (): void => { this.openPopup((close) => new MonologuePanel(this, [wakeLine(locale)], close)); };
+    if (!this.openDayReport('today', say)) say();
+  }
+
+  /** 213차 — 맡겨 둔 위판이 회차를 지났으면 정산하고 알린다 */
+  private settleConsignments(): void {
+    const r = settleDueConsignments();
+    if (!r) return;
+    if (r.netWon > 0) playCoin(r.netWon);
+    this.flash(r.soldLots > 0
+      ? `위판장에서 연락이 왔다 — 맡긴 물건 ${r.soldLots}건 낙찰, ${r.netWon.toLocaleString()}원이 들어왔다.`
+      : '위판장에서 연락이 왔다 — 맡긴 물건이 유찰돼 가방으로 돌아왔다.');
+  }
+
   /**
    * 211차 — 하루 결산 창. 'today' = 방금 닫은 장(마지막 장), 'past' = 지난 장들을 최근 것부터.
    * 장부에 닫힌 장이 없으면 열지 않는다.
    */
-  openDayReport(mode: DayReportMode): DayReportPanel | null {
+  openDayReport(mode: DayReportMode, onClosed?: () => void): DayReportPanel | null {
     const pages = LedgerStore.closedPages();
     if (!pages.length) return null;
     const last = pages[pages.length - 1]!;
@@ -1601,7 +1742,7 @@ export class HomeInteriorScene extends Phaser.Scene {
     // 프롤로그(집 · 고향 단계)의 첫 잠은 안내 말풍선이 이어지는 중이라 결산을 띄우지 않는다(장은 그대로 닫혀 있다 —
     //   침대 「지난 날 돌아보기」로 볼 수 있다)
     if (mode === 'today' && prologueRunning()) return null;
-    return this.openPopup((close) => new DayReportPanel(this, pages, pages.length - 1, mode, close));
+    return this.openPopup((close) => new DayReportPanel(this, pages, pages.length - 1, mode, close), onClosed);
   }
 
   /**
@@ -1609,10 +1750,14 @@ export class HomeInteriorScene extends Phaser.Scene {
    * 혼잣말 · 메뉴 · 창 · 가이드 · 프롤로그가 진행 중이면 2초 뒤 다시 본다(최대 30번 — 1분).
    */
   private maybeShowUnseenDay(tries: number): void {
-    if (!this.scene.isActive() || !LedgerStore.unseenClosed()) return;
-    const busy = !!this.tourPanel || !!this.menu || this.popups.length > 0 || !!this.decor || GuideTour.blocking || prologueRunning();
+    if (!this.scene.isActive() || (!LedgerStore.unseenClosed() && !GameState.hasWakeNote)) return;
+    const busy = !!this.tourPanel || !!this.menu || this.popups.length > 0 || !!this.decor || GuideTour.blocking || prologueRunning() || !!this.sleepState;
     if (busy) { if (tries < 30) this.time.delayedCall(2000, () => this.maybeShowUnseenDay(tries + 1)); return; }
-    this.openDayReport('past');
+    // 213차 E — 꺼 둔 사이 잤다면 먼저 「잘 잤다 · 지금 몇 시」 혼잣말, 그다음 지난 하루
+    const note = GameState.consumeWakeNote();
+    const report = (): void => { if (LedgerStore.unseenClosed()) this.openDayReport('past'); };
+    if (note) this.openPopup((close) => new MonologuePanel(this, offlineWakeLines(note.offlineMs, getLocale() === 'en' ? 'en' : 'ko'), close), report);
+    else report();
   }
 
   /** 하네스·구 코드 호환 — 침대 메뉴가 열려 있는가 */

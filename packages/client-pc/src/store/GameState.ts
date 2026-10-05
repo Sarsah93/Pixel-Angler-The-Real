@@ -39,6 +39,8 @@ import { type CharConfig, type CharSex, defaultAppearance, starterOutfit } from 
 import { StoryStore, type StorySaveState } from './StoryStore.js';
 import { playCoin } from '../audio/Sfx.js';
 import { LedgerStore, type LedgerSaveState } from './LedgerStore.js';
+import { ConsignQueue, type ConsignQueueSave } from './ConsignQueue.js';
+import { canSleep, applyPartialSleep, offlineCountsAsSleep, type SleepGate } from '@tra/core';
 import { prologueSquid } from './Prologue.js';
 import { buildItemWikiCatalog } from '../data/WikiCatalog.js';
 import {
@@ -214,6 +216,10 @@ interface SaveData {
   parkedRods?: ParkedRodSave[];
   /** 211차 — 하루 기록 장부(지금 장 + 지난 14장 · 구세이브 = 빈 장부) */
   ledger?: LedgerSaveState;
+  /** 213차 — 잠: 지난 잠 뒤 깨어 논 시간 · 마지막으로 다 잔 시각(구세이브 = 바로 잘 수 있게 `minAwakeMin` 채움) */
+  sleep?: { awakeMs: number; lastSleepAtMs?: number };
+  /** 213차 — 위판장에 맡겨 둔 물건(다음 회차 정산 · 구세이브 = 없음) */
+  consignQueue?: ConsignQueueSave;
   /** 1회성 안내 플래그 (chumGuideSeen 등 — 최초 표시 여부) */
   flags?: Record<string, boolean>;
   /** 맵별 오브젝트 월드 상태 — 초기 배치 − removed + moved + placed (HOMETOWN_HOME_SPEC) */
@@ -262,6 +268,11 @@ export class GameStateManager {
   private _deployedTraps: DeployedTrap[] = [];
   /** 207차 — 거치대에 걸어 둔 낚싯대(없으면 null) */
   private _parkedRods: ParkedRodSave[] = [];
+  /** 213차 — 지난 잠(다 잔 잠) 뒤 깨어 논 시간(ms) · 잠 가부(`canSleep`)가 읽는다 */
+  private _awakeMs = 0;
+  private _lastSleepAtMs = 0;
+  /** 213차 — 불러오며 「그사이 잤다」로 친 경우 필드 · 집이 한 번 혼잣말로 알린다 */
+  private _wakeNote: { offlineMs: number } | null = null;
   private _deployedStoves: DeployedStove[] = [];
   private _coolerInventory: CoolerInventory = createDefaultCoolerInventory();
   private _licenses: HeldLicense[] = [];
@@ -401,6 +412,11 @@ export class GameStateManager {
     MarketStore.deserialize(saved.market);
     TitleStore.deserialize(saved.titles);   // 203차 — 타이틀 업적(구세이브 = 0부터)
     LedgerStore.deserialize(saved.ledger);   // 211차 — 하루 기록(구세이브 = 빈 장부)
+    // 213차 — 잠 · 맡긴 위판(구세이브 = 바로 잘 수 있게 · 빈 큐)
+    this._awakeMs = saved.sleep?.awakeMs ?? TUNING.sleep.minAwakeMin * 60_000;
+    this._lastSleepAtMs = saved.sleep?.lastSleepAtMs ?? 0;
+    this._wakeNote = null;
+    ConsignQueue.deserialize(saved.consignQueue);
     TideLoreStore.deserialize(saved.tideLore);   // 205차 — 물때 공략 발견 기록
     TitleStore.setStat('licenses', this._licenses.length);   // 204차 — 지금 가진 자격 수
     // 발견 기록 복원 — 구세이브(필드 없음)는 어획 기록의 어종을 'legacy'로 백필
@@ -926,7 +942,7 @@ export class GameStateManager {
   }
 
   /** 수면(침대) — 피로 0 · HP +50% · 허기/수분 −10 */
-  sleepRecover(mult = 1): void {
+  sleepRecover(mult = 1, opts: { offline?: boolean } = {}): void {
     const v = this.vitals;
     coreApplySleep(v, mult * this.skillMult('sleep_recovery'));   // 127차 — 쾌면(life_sleep)
     this.commitVitals(v);
@@ -936,8 +952,53 @@ export class GameStateManager {
     this.warmUp();   // 188차 — 이불 속에서 자고 나면 몸이 녹는다(오한 해제 + 보온)
     StoryStore.advanceDay();   // 134차 — 스토리 하루는 침대 수면으로만 간다 (D-180)
     this.applyUpkeepOverdue();  // 171차 — 연체 중인 정기 지출은 하루마다 평판을 깎는다
-    LedgerStore.closeForSleep();   // 211차 — 잠들면 오늘 장을 닫는다(결산은 집 씬이 그린다)
+    LedgerStore.closeForSleep(!opts.offline);   // 211차 — 잠들면 오늘 장을 닫는다(오프라인 잠은 다음 진입 때 「지난 하루」로)
+    this._awakeMs = 0;   // 213차 — 다 잔 잠은 깨어 있은 시간을 0으로
+    this._lastSleepAtMs = Date.now();
     this.markDirty();
+  }
+
+  /** 213차 — 노는 시간(필드 · 집 · 1인칭 update가 부른다). 잠 가부에 쓴다 */
+  noteAwake(ms: number): void { this._awakeMs += Math.min(Math.max(0, ms), 1000); }
+  get awakeMs(): number { return this._awakeMs; }
+  /** dev · 하네스 — 깨어 있은 시간을 바꾼다 */
+  devSetAwakeMs(ms: number): void { this._awakeMs = Math.max(0, ms); }
+
+  /** 213차 A — 지금 잠들 수 있는가(피로 50% 이상 또는 60분 이상 깨어 있었다) */
+  sleepGate(): SleepGate {
+    const v = this.vitals;
+    return canSleep({ fatigue: v.fatigue, maxFatigue: v.maxFatigue, awakeMs: this._awakeMs });
+  }
+
+  /**
+   * 213차 B — 다 자기 전에 일어났다(선잠). 잔 비율만큼만 회복하고, 하루 · 저장 · 병 낫기는 없다.
+   * @param frac 하룻밤 중 잔 비율 0~1
+   */
+  napRecover(frac: number): void {
+    const v = this.vitals;
+    applyPartialSleep(v, frac, this.skillMult('sleep_recovery'));
+    this.commitVitals(v);
+    this.markDirty();
+  }
+
+  /** 213차 E — 불러오며 「그사이 잤다」로 쳤다면 한 번 꺼내 준다(혼잣말용) */
+  get hasWakeNote(): boolean { return !!this._wakeNote; }
+
+  consumeWakeNote(): { offlineMs: number } | null {
+    const n = this._wakeNote;
+    this._wakeNote = null;
+    return n;
+  }
+
+  /**
+   * 213차 E — 침대에서 저장하고 끈 뒤 오래 지나 돌아왔다면 그사이 잔 것으로 친다.
+   * 잠들 수 있는 상태(피곤했거나 오래 깨어 있었다)였을 때만 — 자고 나서 바로 끈 경우는 다시 자지 않는다.
+   */
+  private applyOfflineSleep(offlineMs: number): void {
+    const v = this.vitals;
+    if (!offlineCountsAsSleep(offlineMs, { fatigue: v.fatigue, maxFatigue: v.maxFatigue, awakeMs: this._awakeMs })) return;
+    this.sleepRecover(1, { offline: true });
+    this._wakeNote = { offlineMs };
   }
 
   /** 활성 상태이상 목록 (읽기 전용 뷰) */
@@ -1546,6 +1607,8 @@ export class GameStateManager {
       tideLore: TideLoreStore.serialize(),
       parkedRods: this._parkedRods,
       ledger: LedgerStore.serialize(),
+      sleep: { awakeMs: this._awakeMs, lastSleepAtMs: this._lastSleepAtMs },
+      consignQueue: ConsignQueue.serialize(),
       flags: this._flags,
       worldObjects: this._worldObjects,
       discoveries: DiscoveryStore.serialize(),
@@ -1628,6 +1691,9 @@ export class GameStateManager {
     try { this.applySaveData(parsed); } finally { LedgerStore.suspend(false); }
     this._activeSlot = slot;
     this._isInitialized = true;
+    // 213차 E — 꺼 둔 사이(실제 시간)에 잤는가. 장부 기록이 다시 켜진 뒤에 한다(잠이 오늘 장을 닫는다)
+    const savedAt = parsed.player?.lastSavedAt ? new Date(parsed.player.lastSavedAt).getTime() : 0;
+    if (savedAt > 0) this.applyOfflineSleep(Date.now() - savedAt);
     console.log(`[GameState] Loaded from slot ${slot}.`);
     return true;
   }
@@ -1762,6 +1828,8 @@ export class GameStateManager {
     DiscoveryStore.resetAll();
     StoryStore.resetAll();
     LedgerStore.resetAll();
+    ConsignQueue.resetAll();   // 213차
+    this._awakeMs = 0; this._lastSleepAtMs = 0; this._wakeNote = null;
     this.syncInventoryDiscoveries();
     LedgerStore.suspend(false);
     this._currentSpotId = null;
