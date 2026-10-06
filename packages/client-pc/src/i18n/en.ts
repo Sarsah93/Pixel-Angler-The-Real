@@ -702,6 +702,8 @@ export const EN_RULES: Rule[] = [
   // 215차 — 건물 실내
   [/^\[실내\] ([^·›]+)에 들어왔다$/, (m, tr) => `[Indoors] Entered ${tr(m[1])}`],
   [/^\[F\] ([^·›]+) — 들어가기$/, (m, tr) => `[F] ${tr(m[1])} — Enter`],
+  [/^\[F\] ([^·›]+) — 물건 보기$/, (m, tr) => `[F] ${tr(m[1])} — Browse`],
+  [/^([^·›]+) — 물건 보기$/, (m, tr) => `${tr(m[1])} — Browse`],
   [/^([^·›]+) — 들어가기$/, (m, tr) => `${tr(m[1])} — Enter`],
   [/^직판장 안이다\. 계산대 앞에 서서 \[F\]를 눌러 주인에게 물건을 보자\. \((.+)\)$/, (m, tr) => `Inside the fish market. Stand at the counter and press [F] to see the goods. (${m[1].split(' · ').map((x) => tr(x)).join(' · ')})`],
   [/^속초에 왔다\. 수산물 직판장 앞에서 \[F\]를 눌러 안으로 들어가자\. 기본 채비를 하나씩 사야 한다\. \((.+)\)$/, (m, tr) => `Here in Sokcho. Press [F] at the fish market to go inside. I need one of each basic item. (${m[1].split(' · ').map((x) => tr(x)).join(' · ')})`],

@@ -125,6 +125,11 @@ export interface RegionPoi {
    */
   door?: [number, number];
   osmId: number;
+  /**
+   * 출처(217차). 없으면 OSM. `'capture'` = 사용자 지도 캡처에서 판독해 합친 가게
+   * (`tools/merge_capture_pois.py` — osmId는 음수라 OSM id와 겹치지 않는다).
+   */
+  src?: 'osm' | 'capture';
 }
 
 /** 차도 중심선 벡터 (build_osm_tilemap.py roads.json) — 타일 좌표 폴리라인 */

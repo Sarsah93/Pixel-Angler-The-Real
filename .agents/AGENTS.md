@@ -467,7 +467,13 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-10-06 216차) — 실내 공간 2단계: 인물의 집**
+**최근 변경 (2026-10-06 217차) — 바닥 점 → 가게 간판 · 좌판만 노점 · 지도 캡처 POI 176곳**
+
+- 바닥 점 · 이름표 폐지 → 문 옆 종류 간판(`addShopSign`) · 노점 그림 = 진짜 좌판만(`isStallPoi`) · 좌판 [F] = 바로 거래(실내 없음) · 문 옆 장식 인물 정리 · 「장소 핀」 설정.
+- 사용자 네이버 캡처 → 도로 앵커 정합 + 판독 → `pixelazed/sokcho_v2/capture_pois.json` → `tools/merge_capture_pois.py`(176곳 · 주점 4 · osmId 음수).
+- 함정: OSM 빌드가 `pois.json`을 새로 쓰면 캡처분이 사라진다 → 병합 스크립트 재실행. 상세: [217차 워크로그](../docs/wiki/03-WORKLOG/2026-10-06-217-shop-signs-stalls-capture-pois.md).
+
+**이전 변경 (2026-10-06 216차) — 실내 공간 2단계: 인물의 집**
 
 - 문 앞 [F] 「들어가기」(똑똑 → 안으로) — 잘 시간(22~05시)과 어촌계 사무실은 214차처럼 「문 두드리기」. 방 6장(`homeLayoutOf` · 틀 `home`) · 가구 16종.
 - 집 주인 = 필드와 같은 얼굴 · 다가가 「[F] 말 걸기」 = 같은 대화창(`atDoor 'inside'` — 첫마디만 `NPC_HOME`) · 머리 위 의뢰 표시 동기화.
@@ -480,13 +486,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - 문 앞 [F] = 들어가기(확인 창 삭제) · 계산대 [F] = `openShop` · 위판장 창구 = 위판하기 탭부터(`ShopPanel` `initialTab`) · 보건소 접수대 = `openClinic` · 의자 식사 · 경매대 시각.
 - 함정: 실내 동안 필드 `update`는 겹층만 돌린다(새 필드 동작은 실내에서 막을지 먼저) · 머리 위 알림은 방 안 알림 줄로.
   상세: [215차 워크로그](../docs/wiki/03-WORKLOG/2026-10-05-215-interior-spaces-stage1.md).
-
-**이전 변경 (2026-10-05 214차) — 일지 「나날」 · NPC 일과 · 맡긴 물건 목록 · 도움말 갱신**
-
-- core `NpcRoutine`(`npcWhereabouts` · 시간표 8갈래 · 인물 9명 — 24시간형 2) + 필드 집 문(채광창 불) · [F] 문 두드리기 → 같은 대화(R12) · 행인 수 시각 연동.
-- 일지 3번째 탭 「나날」 — 이야기 N번째(잠 횟수) · 앞으로(기한 · 정기 지출 · 맡긴 물건) · 지난 하루 → 결산. 장부 `storyDay` · 수지 ±0 버그 정정.
-- `ConsignListPanel`(찾아오기는 창구에서만) · 도움말 8토픽 + 그림 5종 ko/en. 함정: i18n 사전 추가는 `EN_DICT` 안에(옆 객체 `DOW_EN`에 들어가면 조용히 미번역).
-  상세: [214차 워크로그](../docs/wiki/03-WORKLOG/2026-10-05-214-days-tab-npc-routine.md).
 
 ---
 

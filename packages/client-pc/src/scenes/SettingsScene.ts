@@ -38,7 +38,7 @@ export interface GameSettings {
   hudChatSize: number;
   hudChatAlpha: number;
   /**
-   * 필드 바닥의 장소 이름표·점 표시 (143차 — 기본 끔).
+   * 미니맵 장소 핀 (143차 — 기본 끔 · 217차 — 바닥 이름표·점은 폐지, 미니맵 핀만 바꾼다).
    * 켜면 지도 데이터의 모든 지점 이름이 땅 위에 뜬다. 끄면 상호작용 가능한 건물 표시만 남고,
    * 장소는 미니맵 핀으로만 보인다.
    */
@@ -301,11 +301,11 @@ export class SettingsScene extends Phaser.Scene {
     const startX = panelX + 60;
     const startY = panelY + 130;
 
-    const label = this.add.text(startX, startY, '장소 이름표', {
+    const label = this.add.text(startX, startY, '장소 핀', {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '15px', color: '#d0e8f5', fontStyle: 'bold',
     });
     const desc = this.add.text(startX, startY + 22,
-      '지도에 기록된 장소 이름을 땅 위에 띄웁니다. 끄면 상호작용할 수 있는 건물 표시만 남고, 장소는 미니맵 핀으로 보입니다.', {
+      '미니맵에 정류장 · 여객터미널 같은 장소 핀을 가게 핀과 함께 띄웁니다. 전체 지도(M)에는 늘 보입니다. 땅 위에는 이름을 띄우지 않습니다 — 가게 앞에는 작은 간판이 서고, 이름은 다가가면 보입니다.', {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#607b8e',
         wordWrap: { width: 640 },
       });

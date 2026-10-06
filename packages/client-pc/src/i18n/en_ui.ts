@@ -50,9 +50,9 @@ export const EN_UI: Record<string, string> = {
   '음향': 'Sound',
   '언어': 'Language',
   '게임 언어': 'Game language',
-  '장소 이름표': 'Place labels',
-  '지도에 기록된 장소 이름을 땅 위에 띄웁니다. 끄면 상호작용할 수 있는 건물 표시만 남고, 장소는 미니맵 핀으로 보입니다.':
-    'Shows recorded place names on the ground. Turn it off and only interactable buildings stay marked — places show as minimap pins instead.',
+  '장소 핀': 'Place pins',
+  '미니맵에 정류장 · 여객터미널 같은 장소 핀을 가게 핀과 함께 띄웁니다. 전체 지도(M)에는 늘 보입니다. 땅 위에는 이름을 띄우지 않습니다 — 가게 앞에는 작은 간판이 서고, 이름은 다가가면 보입니다.':
+    'Shows pins for places such as bus stops and ferry terminals on the minimap along with shop pins. The full map (M) always shows them. No names are drawn on the ground — shops have a small sign out front, and the name appears when you walk up.',
   '캐릭터와 NPC의 이름표는 이 설정과 상관없이 늘 보입니다.': 'Name tags over characters and NPCs always stay visible, whatever this is set to.',
   '할 일 위치 안내': 'Task direction guide',
   '지금 할 일의 목표 방향을 가리키는 화살표를 캐릭터 주변에 띄웁니다. 끄면 화살표만 사라지고, 일지(J)와 「지금 할 일」의 안내 문구는 그대로 남습니다.':

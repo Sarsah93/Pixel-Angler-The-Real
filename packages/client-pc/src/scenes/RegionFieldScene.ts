@@ -176,7 +176,7 @@ import { settleDueConsignments } from '../store/ConsignSettle.js';
 import { ConsignQueue } from '../store/ConsignQueue.js';
 import { DayReportPanel } from '../ui/DayReportPanel.js';
 import { InteriorSystem } from './field/InteriorSystem.js';
-import { interiorLayoutOf, homeLayoutOf, type InteriorAction, type InteriorLayout } from '../data/InteriorLayouts.js';
+import { interiorLayoutOf, interiorTemplateOf, homeLayoutOf, type InteriorAction, type InteriorLayout } from '../data/InteriorLayouts.js';
 import { homeLineOf } from '../data/StoryDialogue.js';
 import { setAmbience } from '../audio/Ambience.js';
 import { BuildingKind, BUILDING_LABEL, BUILDING_GOODS, BUILDING_HOURS, shopHoursState, BUILDING_KIND_CYCLE, SHOP_CATALOG, ShopEntry } from '../data/ShopCatalog.js';
@@ -393,8 +393,9 @@ export class RegionFieldScene extends Phaser.Scene {
 
   // ── 건물(상점) ──
   /** 196차 — branch = 판매처(시세 하락·가게 수요를 따로 센다) */
-  private buildings: { x: number; y: number; kind: BuildingKind; branch: MarketBranch }[] = [];
-  private nearBuilding: { x: number; y: number; kind: BuildingKind; branch: MarketBranch } | null = null;
+  /** 217차 — `stall` = 길가 좌판(노점 그림 + 상인). [F]가 들어가기가 아니라 바로 거래다 */
+  private buildings: { x: number; y: number; kind: BuildingKind; branch: MarketBranch; stall?: boolean }[] = [];
+  private nearBuilding: { x: number; y: number; kind: BuildingKind; branch: MarketBranch; stall?: boolean } | null = null;
   /** 215차 — 들어가 있는 건물 실내(필드 위 겹층). 그 건물의 거래 종류 · 지점(보건소는 kind null) */
   private interior: InteriorSystem | null = null;
   /** 216차 — `npcId` = 그 사람 집 안(실내 공간 2단계) */
@@ -697,6 +698,10 @@ export class RegionFieldScene extends Phaser.Scene {
     const onGuideToggle = (v: boolean): void => { this.showQuestGuide = v; };
     this.game.events.on('quest-guide-changed', onGuideToggle);
     this.events.once('shutdown', () => this.game.events.off('quest-guide-changed', onGuideToggle));
+    // 217차 — 「장소 핀」 설정(구 장소 이름표)은 미니맵 핀만 바꾼다 — 바꾸면 바로 반영(구: 지역 재진입 뒤)
+    const onLabelsToggle = (v: boolean): void => { this.showFieldLabels = v; this.refreshQuestMarkers(true); };
+    this.game.events.on('field-labels-changed', onLabelsToggle);
+    this.events.once('shutdown', () => this.game.events.off('field-labels-changed', onLabelsToggle));
     // 멀티 — 세션에 들어와 있으면 위치 알림을 켠다 (싱글이면 아무것도 하지 않는다)
     MultiplayerClient.startPresence();
     this.events.once('shutdown', () => this.clearPeers());
@@ -1597,12 +1602,7 @@ export class RegionFieldScene extends Phaser.Scene {
       // 발밑 기준 배치 (건물 하단 = 타일 중앙)
       this.add.image(x, y + 10, `bld_${kind}`).setOrigin(0.5, 1).setDepth(14 + y * 0.001);
 
-      const label = this.add.text(x, y + 14, BUILDING_LABEL[kind], {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#ffe9b0', fontStyle: 'bold',
-        backgroundColor: '#0a1628cc', padding: { x: 4, y: 1 },
-      }).setOrigin(0.5, 0).setDepth(15);
-      void label;
-
+      // 217차 — 바닥 이름표는 그리지 않는다(이름은 다가가면 [F] 안내가 말한다)
       this.buildings.push({ x, y, kind, branch: { key: `${this.region}:${this.mapId}:poi${i}`, name: BUILDING_LABEL[kind] } });
     });
   }
@@ -1753,6 +1753,18 @@ export class RegionFieldScene extends Phaser.Scene {
   }
 
   /**
+   * 217차 — 길가 좌판(노점)인가. 거래 종류가 직판장(`market`)이고 위판장(수협 · 활어센터 · 어판장)이 아니며,
+   * 시장(OSM marketplace) · 이름에 시장/난전/노점/좌판 · 수산물 가게(shop=seafood)일 때.
+   * 좌판은 노점 그림 + 상인이 서고, [F]가 들어가기가 아니라 상인과 바로 거래다(실내 없음).
+   */
+  private isStallPoi(poi: RegionPoi): boolean {
+    if (this.poiBuildingKind(poi) !== 'market') return false;
+    const name = poi.name ?? '';
+    if (interiorTemplateOf('market', name) === 'auction') return false;
+    return poi.type === 'market' || poi.shopKind === 'seafood' || /시장|난전|노점|좌판/.test(name);
+  }
+
+  /**
    * POI → 건물 프리팹 텍스처 (의미 일치만 — 사용자 규칙 "편의점에 팝업스토어/횟집 금지").
    *  횟집 = 음식점/수산 상점 중 이름이 횟집·회센터·활어·물회·해물 계열 → Gemini 횟집 2종
    *  팝업스토어(노점) = 시장·기념품·잡화·수산물 판매(비음식점)·이름에 난전/노점/시장 → Gemini 팝업 4종
@@ -1766,10 +1778,9 @@ export class RegionFieldScene extends Phaser.Scene {
     if ((poi.type === 'restaurant' && seafoodName) || (poi.type === 'shop' && kind === 'seafood' && /횟집|회/.test(name))) {
       return `ts_gem_sashimi_${1 + (Math.floor(h * 2) % 2)}`;
     }
-    const popupKinds = ['gift', 'souvenir', 'kiosk', 'greengrocer', 'variety_store', 'seafood', 'fishing', 'farm', 'dried_fish'];
-    if (poi.type === 'market' || (poi.type === 'shop' && popupKinds.includes(kind)) || /난전|노점|시장/.test(name)) {
-      return `ts_gem_popup_${1 + (Math.floor(h * 4) % 4)}`;
-    }
+    // 217차 — 노점 그림은 **진짜 좌판**에만(시장 · 수산 좌판). 다이소 · 마트처럼 건물인 가게가
+    //  길가 노점으로 서 있던 것(사용자 지적 「밖에서 상점처럼 상호작용」)을 걷었다.
+    if (this.isStallPoi(poi)) return `ts_gem_popup_${1 + (Math.floor(h * 4) % 4)}`;
     if (poi.type === 'lodging') {
       return /호텔|hotel|리조트|resort|콘도/i.test(name)
         ? `ts_gem_building_${1 + (Math.floor(h * 5) % 5)}`
@@ -1787,13 +1798,10 @@ export class RegionFieldScene extends Phaser.Scene {
   private poiNpcRole(poi: RegionPoi): CharRole | null {
     const h = Math.abs(Math.imul((poi.osmId | 0) ^ 0x5bd1, 2246822519) >>> 0) / 4294967296;
     if (poi.type === 'police') return 'official';
-    if (poi.type === 'market' || (poi.type === 'shop' && (poi.shopKind === 'seafood' || poi.shopKind === 'fishing'))) {
-      return h < 0.6 ? 'vendor' : null;
-    }
-    if (poi.type === 'viewpoint' || poi.type === 'cafe' || poi.type === 'lodging' || poi.type === 'info') {
-      return h < 0.5 ? 'office' : null;
-    }
-    if (poi.type === 'restaurant') return h < 0.25 ? 'cook' : h < 0.4 ? 'camper' : null;
+    // 217차 — 좌판에는 상인이 늘 선다(그 사람과 거래한다). 가게 · 음식점 · 숙소 문 옆에 서 있던 장식 인물은 걷었다 —
+    //  가게 사람은 안(계산대)에 있다. 문 옆 인물이 「밖에서 장사하는 사람」으로 읽혔다(사용자 지적).
+    if (this.isStallPoi(poi)) return 'vendor';
+    if (poi.type === 'viewpoint' || poi.type === 'info') return h < 0.5 ? 'office' : null;
     if (poi.type === 'ferry_terminal' || poi.type === 'toilet') return h < 0.5 ? 'crew' : null;
     return null;
   }
@@ -1826,6 +1834,7 @@ export class RegionFieldScene extends Phaser.Scene {
         this.buildings.push({
           x: door.x, y: door.y, kind,
           branch: { key: `${this.region}:osm:${poi.osmId || `${poi.tx},${poi.ty}`}`, name: poi.name || BUILDING_LABEL[kind] },
+          stall: this.isStallPoi(poi) || undefined,
         });
         // 물품 상점(1)이 음식점·카페·주점(0)보다 미니맵 셀을 먼저 차지한다
         const goods = kind !== 'restaurant' && kind !== 'cafe' && kind !== 'pub';
@@ -1871,7 +1880,6 @@ export class RegionFieldScene extends Phaser.Scene {
       const poi = this.regionPois[i];
       const door = this.poiDoors[i];
       const kind = this.poiBuildingKind(poi);
-      const notable = kind !== null || RegionFieldScene.POI_LABEL[poi.type] !== undefined;
       // 건물 프리팹 (타일셋):
       //  - 빌딩 파사드(building_N) = 건물 풋프린트 하단 중앙 (지붕 스프라이트 위 +0.0005)
       //  - 상점 오브젝트(팝업/횟집) = **건물 앞 문 위치에 별도 배치 + 자체 충돌**(하단 띠) —
@@ -1918,34 +1926,52 @@ export class RegionFieldScene extends Phaser.Scene {
         const depthY = Math.max(ny, bb ? (bb.r1 + 1) * TR + 1 : 0);
         const sheet = ensureCharSheet(this, characterOf(`poi_${poi.osmId}`, { role }), CHAR_SCALE);
         const pad = (CHAR_CELL - 1 - CHAR_FOOT_Y) * CHAR_SCALE;
-        const img = this.add.image(nx, ny + pad, sheet, charFrameName(side > 0 ? 'left' : 'right', 0))
+        // 좌판 상인은 손님(앞)을 본다
+        const face = role === 'vendor' ? 'down' : side > 0 ? 'left' : 'right';
+        const img = this.add.image(nx, ny + pad, sheet, charFrameName(face, 0))
           .setOrigin(0.5, 1).setDepth(20 + depthY * 0.001 + 0.0006);
         objs.push(img);
         const body = this.add.rectangle(nx, ny - 6, Math.max(12, img.displayWidth * 0.7), 12, 0, 0).setVisible(false);
         this.poiWalls?.add(body);
         objs.push(body);
       }
-      // 143차 — 바닥 표시는 **상호작용 가능한 건물**만 남긴다.
-      //  스프라이트 없는 상점은 점 하나로 "여기서 거래된다"를 알리고,
-      //  그 밖의 장소(여객터미널·정류장 등)는 설정을 켜야 보인다(기본 끔).
-      const showDot = !hasSprite && (kind !== null || this.showFieldLabels);
-      const dot = this.add.circle(door.x, door.y, 3.5, kind ? 0xffd24a : 0x9fc3d8, notable ? 0.95 : 0.55)
-        .setStrokeStyle(1, 0x0a1628, 0.8)
-        .setDepth(15 + door.y * 0.001)
-        .setVisible(showDot);
-      objs.push(dot);
-      const label = poi.name || RegionFieldScene.POI_LABEL[poi.type] || '';
-      if (label && notable && this.showFieldLabels) {
-        const t = this.add.text(door.x, door.y + 6, label, {
-          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px',
-          color: kind ? '#ffe9b0' : '#cfe4f2',
-          backgroundColor: '#0a1628cc', padding: { x: 4, y: 1 },
-        }).setOrigin(0.5, 0).setDepth(15 + door.y * 0.001);
-        objs.push(t);
-      }
+      // 217차 — 바닥의 점(「o」)과 이름표를 걷었다(사용자 지적 「날 것의 o 표시와 상호명」).
+      //  그림이 없는 가게는 문 옆에 **작은 간판**(기둥 + 판 + 종류 아이콘)이 선다 — 상호는 다가가면 [F] 안내가 말한다.
+      //  거래가 없는 장소(정류장 · 여객터미널 …)는 땅에 아무것도 없고 지도(미니맵 · M)에만 핀이 있다.
+      if (kind && !hasSprite) objs.push(...this.addShopSign(door.x, door.y, kind, poi.osmId | 0));
     }
     this.poiObjects.set(key, objs);
     if (occluders.length) this.occludersByChunk.set(key, occluders);
+  }
+
+  /**
+   * 217차 — 가게 간판(문 옆 땅에 박힌 기둥 + 판 + 종류 아이콘). 판은 종류마다 색이 다르다.
+   * 문을 가리지 않게 문 옆(osmId로 좌우를 고른다)에 서고, y 정렬로 사람 앞뒤가 맞는다.
+   */
+  private addShopSign(dx: number, dy: number, kind: BuildingKind, seed: number): Phaser.GameObjects.GameObject[] {
+    const base = `poi_sign_${kind}`;
+    if (!this.textures.exists(base)) {
+      const col: Record<BuildingKind, number> = {
+        convenience: 0x2f8a57, mart: 0xc8662a, market: 0x2a6aa8, restaurant: 0xa8402a,
+        cafe: 0x6a4a2a, pub: 0x7a2a3a, pharmacy: 0x2a8a7a, daily: 0xb83a4a,
+      };
+      const g = this.add.graphics();
+      g.fillStyle(0x3a2616, 1); g.fillRect(10, 18, 4, 12);            // 기둥
+      g.fillStyle(0x000000, 0.25); g.fillEllipse(12, 30, 14, 4);       // 그림자
+      g.fillStyle(0x1a1410, 1); g.fillRect(0, 0, 24, 20);             // 판 테
+      g.fillStyle(col[kind], 1); g.fillRect(1, 1, 22, 18);             // 판
+      g.fillStyle(0xffffff, 0.18); g.fillRect(1, 1, 22, 3);            // 윗면 빛
+      g.generateTexture(base, 24, 32);
+      g.destroy();
+    }
+    const side = (seed & 2) === 0 ? 1 : -1;
+    const sx = dx + side * 20, sy = dy + 10;   // 발 = 기둥 밑
+    const depth = 20 + sy * 0.001 + 0.0004;
+    const board = this.add.image(sx, sy, base).setOrigin(0.5, 30 / 32).setDepth(depth);
+    const out: Phaser.GameObjects.GameObject[] = [board];
+    const icon = addPixelIcon(this, RegionFieldScene.MINI_SHOP_ICON[kind], sx, sy - 30 + 10, 16);
+    if (icon) { icon.setDepth(depth + 0.00005); out.push(icon); }
+    return out;
   }
 
   /** 청크 상주 해제 — 마커 파괴 (프리팹·프롭도 같은 수명 규칙을 따른다 — §11) */
@@ -3011,7 +3037,7 @@ export class RegionFieldScene extends Phaser.Scene {
    * 건물 문 [F] — 215차부터는 확인 창(「…에 들어갑니다. 상품을 거래하시겠습니까?」) 대신 **안으로 들어간다**.
    * 거래는 안의 계산대 · 창구 앞에서 [F]. 문 닫은 시간이면 문 앞 혼잣말(202차)만.
    */
-  private enterBuilding(kind: BuildingKind, branch?: MarketBranch): void {
+  private enterBuilding(kind: BuildingKind, branch?: MarketBranch, stall = false): void {
     // 202차 — 문 닫은 시간엔 거래하지 않는다(사용자 지시). 문 앞에서 혼잣말로 알려 준다.
     const hours = BUILDING_HOURS[kind];
     const k = kstParts(new Date());
@@ -3021,6 +3047,7 @@ export class RegionFieldScene extends Phaser.Scene {
       return;
     }
     StoryStore.event({ kind: 'visit', placeKey: 'shop:any' });   // 134차 — M1-02 상점 UI 목표
+    if (stall) { this.openShop(kind, branch, 'buy'); return; }   // 217차 — 좌판: 상인과 바로 거래
     this.enterInterior(kind, branch, branch?.name || BUILDING_LABEL[kind]);
   }
 
@@ -6356,9 +6383,11 @@ export class RegionFieldScene extends Phaser.Scene {
     }
     // ④ 건물 거래
     if (this.nearBuilding) {
-      const { kind, branch } = this.nearBuilding;
+      const { kind, branch, stall } = this.nearBuilding;
       // 215차 — 문 앞 [F]는 안으로 들어간다(거래는 안의 계산대에서)
-      opts.push({ label: `${branch.name || BUILDING_LABEL[kind]} — 들어가기`, run: () => this.enterBuilding(kind, branch) });
+      // 217차 — 좌판은 안이 없다 — 상인에게 바로 「물건 보기」
+      if (stall) opts.push({ label: `${branch.name || BUILDING_LABEL[kind]} — 물건 보기`, run: () => this.enterBuilding(kind, branch, true) });
+      else opts.push({ label: `${branch.name || BUILDING_LABEL[kind]} — 들어가기`, run: () => this.enterBuilding(kind, branch) });
     }
     // ⑤ 밀려온 불가사리 (자격·크기 제한 없음)
     const washed = this.nuisance?.gatherableNear(this.playerBody.x, this.playerBody.y, TR * 1.4);
@@ -6570,7 +6599,11 @@ export class RegionFieldScene extends Phaser.Scene {
       }));
       return;
     }
-    this.openPopup((close) => new DialoguePanel(this, npcId, close, this.region, undefined, this.onDialogueScene, atDoor));
+    // 217차 — 「물건을 볼 수 있을까요?」(R3 — 거래하는 사람만): 인물의 `shopId`가 거래 종류면 그 자리에서 거래창
+    const onTrade = (shopId: string): void => {
+      if (shopId in BUILDING_LABEL) this.openShop(shopId as BuildingKind, { key: `${this.region}:npc:${npcId}`, name: getStoryNpc(npcId)?.nameKo ?? '' });
+    };
+    this.openPopup((close) => new DialoguePanel(this, npcId, close, this.region, onTrade, this.onDialogueScene, atDoor));
   }
 
   /** 대화창 → 장면 요청. 창이 닫히고 dim이 걷힌 다음 프레임에 컷씬을 튼다 */
