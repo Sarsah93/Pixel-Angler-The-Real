@@ -303,7 +303,8 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
     <button data-tab="species" aria-pressed="false">어종·수산생물</button>
     <button data-tab="items" aria-pressed="false">아이템</button>
     <button data-tab="skills" aria-pressed="false">스킬</button>
-    <button data-tab="guide" aria-pressed="false">공략</button>
+    <button data-tab="tide" aria-pressed="false">물때 공략</button>
+    <button data-tab="titles" aria-pressed="false">타이틀·업적</button>
     <button data-tab="systems" aria-pressed="false">시스템</button>
   </nav>
   <div id="tab-quests">
@@ -777,20 +778,14 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
         .filter(k => group === '_hidden' ? k.hidden : !k.hidden && (!group || k.cat === group))
         .map(toSkillCard),
     },
-    guide: {
-      note: '게임 안에서는 알려 주지 않는 것들입니다. 타이틀(숨은 업적)을 얻는 조건과 효과, 물때 흐름 8단계, 어종마다 잘 무는 물때, 채비마다 물때를 타는 방식을 정리했습니다. 타이틀은 경로가 여럿이면 그중 하나만 채우면 됩니다.',
-      groups: () => {
-        const T = (G.guide && G.guide.titles) || [];
-        return [
-          { id: '', label: '전체', count: T.length + ((G.guide && G.guide.tide) || []).length + ((G.guide && G.guide.species) || []).length + ((G.guide && G.guide.genre) || []).length },
-          { id: 't_common', label: '타이틀 · 흔함', count: T.filter(t => t.rarity === 'common').length },
-          { id: 't_rare', label: '타이틀 · 드묾', count: T.filter(t => t.rarity === 'rare').length },
-          { id: 't_legend', label: '타이틀 · 전설', count: T.filter(t => t.rarity === 'legend').length },
-          { id: 'tide', label: '물때 흐름', count: ((G.guide && G.guide.tide) || []).length },
-          { id: 'tide_species', label: '어종 × 물때', count: ((G.guide && G.guide.species) || []).length },
-          { id: 'tide_genre', label: '채비 × 물때', count: ((G.guide && G.guide.genre) || []).length },
-        ];
-      },
+    tide: {
+      note: '게임 안에서는 알려 주지 않는 물때 이야기입니다. 물때 흐름 8단계, 어종마다 잘 무는 물때, 채비마다 물때를 타는 방식을 정리했습니다.',
+      groups: () => [
+        { id: '', label: '전체', count: ((G.guide && G.guide.tide) || []).length + ((G.guide && G.guide.species) || []).length + ((G.guide && G.guide.genre) || []).length },
+        { id: 'tide', label: '물때 흐름', count: ((G.guide && G.guide.tide) || []).length },
+        { id: 'tide_species', label: '어종 × 물때', count: ((G.guide && G.guide.species) || []).length },
+        { id: 'tide_genre', label: '채비 × 물때', count: ((G.guide && G.guide.genre) || []).length },
+      ],
       list: () => {
         const out = [];
         const star = n => '★'.repeat(Math.floor(n)) + (n % 1 ? '☆' : '');
@@ -836,6 +831,22 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
             });
           }
         }
+        return out;
+      },
+    },
+    titles: {
+      note: '타이틀(숨은 업적)을 얻는 조건과 효과입니다. 경로가 여럿이면 그중 하나만 채우면 됩니다. 단 타이틀 하나만 효과가 납니다.',
+      groups: () => {
+        const T = (G.guide && G.guide.titles) || [];
+        return [
+          { id: '', label: '전체', count: T.length },
+          { id: 't_common', label: '흔함', count: T.filter(t => t.rarity === 'common').length },
+          { id: 't_rare', label: '드묾', count: T.filter(t => t.rarity === 'rare').length },
+          { id: 't_legend', label: '전설', count: T.filter(t => t.rarity === 'legend').length },
+        ];
+      },
+      list: () => {
+        const out = [];
         for (const t of ((G.guide && G.guide.titles) || [])) {
           if (group && group !== 't_' + t.rarity) continue;
           out.push({

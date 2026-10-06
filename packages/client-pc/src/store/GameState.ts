@@ -77,6 +77,7 @@ import { InventoryStore, InventorySaveState } from './InventoryStore.js';
 import { FridgeStore, FridgeSaveState } from './FridgeStore.js';
 import { HomeStore, type HomeSaveState } from './HomeStore.js';
 import { MarketStore, type MarketSaveState } from './MarketStore.js';
+import { ShopStore, type ShopSaveState } from './ShopStore.js';
 import { TitleStore, type TitleSaveState } from './TitleStore.js';
 import { TideLoreStore, type TideLoreSaveState } from './TideLoreStore.js';
 import { DiscoveryStore, DiscoverySaveState } from './DiscoveryStore.js';
@@ -206,6 +207,8 @@ interface SaveData {
   home?: HomeSaveState;
   /** 196차 — 판매처별 시세 하락 장부(구세이브 = 빈 장부) */
   market?: MarketSaveState;
+  /** 221차 — 가게별 오늘 판 수(재고) · 즐겨찾기 */
+  shops?: ShopSaveState;
   /** 203차 — 타이틀(칭호) 업적: 행동 누적 수 · 얻은 것 · 단 것(구세이브 = 없음) */
   titles?: TitleSaveState;
   /** 205차 — 물때 공략 발견 기록(어종 묶음 id · 구세이브 = 빈 기록) */
@@ -411,6 +414,7 @@ export class GameStateManager {
     FridgeStore.deserialize(saved.fridge);
     HomeStore.deserialize(saved.home);
     MarketStore.deserialize(saved.market);
+    ShopStore.deserialize(saved.shops);
     TitleStore.deserialize(saved.titles);   // 203차 — 타이틀 업적(구세이브 = 0부터)
     LedgerStore.deserialize(saved.ledger);   // 211차 — 하루 기록(구세이브 = 빈 장부)
     // 213차 — 잠 · 맡긴 위판(구세이브 = 바로 잘 수 있게 · 빈 큐)
@@ -1604,6 +1608,7 @@ export class GameStateManager {
       fridge: FridgeStore.serialize(),
       home: HomeStore.serialize(),
       market: MarketStore.serialize(),
+      shops: ShopStore.serialize(),
       titles: TitleStore.serialize(),
       tideLore: TideLoreStore.serialize(),
       parkedRods: this._parkedRods,
@@ -1824,6 +1829,7 @@ export class GameStateManager {
     FridgeStore.place('freezer', prologueSquid());   // 188차 — 프롤로그: 직판장에 팔아 볼 냉동 오징어
     HomeStore.resetAll();
     MarketStore.resetAll();
+    ShopStore.resetAll();
     TitleStore.resetAll();
     TideLoreStore.resetAll();
     DiscoveryStore.resetAll();

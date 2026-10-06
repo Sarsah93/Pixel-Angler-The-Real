@@ -159,7 +159,8 @@ import { HelpLibraryPanel } from '../ui/HelpLibraryPanel.js';
 import { UtilizationPanel, UtilizationTab } from '../ui/UtilizationPanel.js';
 import { CoolerPanel } from '../ui/CoolerPanel.js';
 import { BikeComposite, RiderDir } from '../ui/BikeComposite.js';
-import { ShopPanel, shopBuyUnitPrice } from '../ui/ShopPanel.js';
+import { ShopPanel, shopBuyUnitPrice, shopSellUnitPrice, entryKey } from '../ui/ShopPanel.js';
+import { ShopStore } from '../store/ShopStore.js';
 import { ConfirmDialog, QuantityDialog } from '../ui/Dialogs.js';
 import { AdvancedCraftPanel } from '../ui/AdvancedCraftPanel.js';
 import { paintHudPanel, paintTitlePlate } from '../ui/HudPanelStyle.js';
@@ -3001,6 +3002,11 @@ export class RegionFieldScene extends Phaser.Scene {
     // 219차 — 자전거가 없으면 **아무 말도 하지 않는다**(사용자 지적: 자전거를 모르는 사람이 R을 잘못 눌렀는데
     //  「자전거를 보유해야 탈 수 있다」가 뜨면 요구하지도 않은 정보가 튀어나온 것처럼 보인다). 안내는 자전거를 얻은 뒤 코치가 한다.
     if (!GameState.isMounted && !InventoryStore.find('inv_bike')) return;
+    // 221차 — 골절이면 탈 수 없다(상태 이상 정의에만 있고 막지 않았다 — 성장·생존 감사)
+    if (!GameState.isMounted && !GameState.canRideBike) {
+      this.floatingHint('다리를 다쳐 자전거를 탈 수 없다 — 부목을 대고 나을 때까지 걷자');
+      return;
+    }
     GameState.isMounted = !GameState.isMounted;
     if (GameState.isMounted) StoryStore.event({ kind: 'custom', key: 'bikeMount' });   // 134차 — M1-10 자전거 목표
     // 219차 — 자전거 코치: 처음 타면 2단계(달리기 · 저절로 내림)로, 그 뒤 내리면 끝
@@ -3095,7 +3101,7 @@ export class RegionFieldScene extends Phaser.Scene {
       return;
     }
     StoryStore.event({ kind: 'visit', placeKey: 'shop:any' });   // 134차 — M1-02 상점 UI 목표
-    if (stall) { this.openShop(kind, branch, 'buy'); return; }   // 217차 — 좌판: 상인과 바로 거래
+    if (stall) { this.openShop(kind, branch, 'buy', true); return; }   // 217차 — 좌판: 상인과 바로 거래
     this.enterInterior(kind, branch, branch?.name || BUILDING_LABEL[kind]);
   }
 
@@ -3255,12 +3261,17 @@ export class RegionFieldScene extends Phaser.Scene {
     this.openPopup((close) => new MonologuePanel(this, [first, `${sign} ${when}`], close));
   }
 
-  private openShop(kind: BuildingKind, branch?: MarketBranch, tab: 'buy' | 'consign' = 'buy'): void {
+  private openShop(kind: BuildingKind, branch?: MarketBranch, tab: 'buy' | 'consign' = 'buy', stall = false): void {
     if (this.shopPanel) return;
     this.dismountBike();   // 실내(상점)에선 자전거에서 내린다
     const shop = SHOP_CATALOG[kind];
     // 196차 — 판매처(지점)를 알려 둔다: 매입가의 가게 수요·시세 하락과 인벤 화살표가 이 지점 기준이 된다
-    MarketStore.open(branch ?? { key: `${this.region}:${kind}`, name: shop.name });
+    const where = branch ?? { key: `${this.region}:${kind}`, name: shop.name };
+    MarketStore.open(where);
+    // 221차 — 진열 재고 · 즐겨찾기 장부(가게 규모 = 종류 + 상호 + 좌판/인물 가게)
+    const shopCtx = ShopStore.open(where.key, {
+      kind, name: where.name, stall, npc: where.key.includes(':npc:'), fallback: !branch,
+    });
 
     // 좌측: 상점 / 우측: 인벤토리
     this.shopPanel = this.openPopup(
@@ -3272,10 +3283,11 @@ export class RegionFieldScene extends Phaser.Scene {
         onOpenDetail: (itemLike) => this.openItemDetail({ slot: 0, qty: 1, ...itemLike } as InvItem),
         onConsign: (inputs) => this.openConsignment(inputs),
         onShowConsigned: () => this.openConsignList(true),
-      }, tab),
+      }, tab, shopCtx),
       () => {
         this.shopPanel = null;
         MarketStore.close();
+        ShopStore.close();
         this.events.emit('inventory-changed');   // 인벤 칸의 시세 화살표를 거둔다
       },
     );
@@ -3416,17 +3428,24 @@ export class RegionFieldScene extends Phaser.Scene {
     let paid = 0;
     const done: string[] = [];
     const failed: string[] = [];
-    for (const { entry, qty } of lines) {
+    const ctx = ShopStore.current;
+    for (const line of lines) {
+      const { entry } = line;
+      // 221차 — 진열 재고: 그새 바뀌었으면 남은 만큼만(품절이면 그 줄은 사지 않는다)
+      const left = ctx ? ShopStore.remaining(ctx, entry, entryKey(entry)) : null;
+      const qty = left === null ? line.qty : Math.min(line.qty, left);
+      if (qty <= 0) { failed.push(`${entry.name}(다 팔림)`); continue; }
       const cost = shopBuyUnitPrice(entry) * qty;
       // 190차 — 가구는 가방이 아니라 집 「넣어 둔 가구」로 배달된다
       if (entry.furnKind) {
         for (let i = 0; i < qty; i++) HomeStore.addStored(entry.furnKind);
       } else if (!(entry.bundle ? InventoryStore.addBundle(entry.bundle, qty) : InventoryStore.addItem(entry, qty))) {
         // 188차 — 세트 상품은 구성품으로 풀어 넣는다(전부 들어갈 때만)
-        failed.push(entry.name);
+        failed.push(`${entry.name}(가방에 자리 없음)`);
         continue;
       }
       paid += cost;
+      if (ctx) ShopStore.take(ctx, entryKey(entry), qty);
       done.push(`${entry.name} x${qty}`);
       this.hud?.pushLog(`[구매] ${entry.name} x${qty} (-${cost.toLocaleString()}원)`);
       // 135차 — 구매를 스토리 목표로 쓸 수 있게 이벤트를 흘린다 (M1-04 사이소 저가 장비 등)
@@ -3443,7 +3462,7 @@ export class RegionFieldScene extends Phaser.Scene {
     this.shopPanel?.refresh();
     const head = done.length === 1 ? done[0] : `${done.length}가지`;
     this.shopPanel?.setStatus(failed.length
-      ? `${done.length ? `${head} 구매 완료 · ` : ''}가방에 자리가 없어 못 산 것: ${failed.join(', ')}`
+      ? `${done.length ? `${head} 구매 완료 · ` : ''}못 산 것: ${failed.join(', ')}`
       : `${head} 구매 완료 (-${paid.toLocaleString()}원)`);
     if (lines.some((l) => l.entry.furnKind)) this.hud?.pushLog('[구매] 가구는 집 「넣어 둔 가구」로 보냈다');
     this.prologueBuyAid();   // 219차 — 남은 채비 살 돈이 모자라면 채워 준다
@@ -6993,13 +7012,16 @@ export class RegionFieldScene extends Phaser.Scene {
 
   /** 판매가 — 스킬 흥정·단골 배율 (122차) */
   private sellPriceOf(item: InvItem): number {
-    // 203차 — 단 타이틀 판매가(「회칼 장인」 · 「바다 도감」)
-    const base = Math.round(InventoryStore.getSellPrice(item) * GameState.skillMult('sell_price') * TitleStore.modifiers().sellMult);
-    // 196차 — 이 지점의 가게 수요 × 시세 하락(판 만큼 떨어지고 서서히 회복)
-    return MarketStore.quote(item, base)?.unit ?? base;
+    // 203차 — 단 타이틀 판매가 · 196차 지점 수요 × 시세 하락. 221차 — 상점 창과 한 함수
+    return shopSellUnitPrice(item);
   }
 
   private handleMovement(): void {
+    // 221차 — 타는 중에 다리를 다치면(골절) 그 자리에서 내린다
+    if (GameState.isMounted && !GameState.canRideBike) {
+      this.dismountBike();
+      this.floatingHint('다리를 다쳐 자전거를 탈 수 없다 — 부목을 대고 나을 때까지 걷자');
+    }
     // 자전거 탑승 시 이동 속도 2배 (충돌/카메라 팔로우는 불변).
     // 심리스는 타일 32px라 같은 px/s면 타일 체감이 느려진다 → 1.4배 보정 (동서 횡단 ≈ 3분 유지)
     // 스킬 트리(122차): 달리기 배율 · 자전거 배율

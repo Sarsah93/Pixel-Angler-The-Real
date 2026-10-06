@@ -143,6 +143,10 @@ learnSkill(id): ranks[id]++ · markDirty   (세이브 `skillTree`)
 - 스킬 툴팁 실효과 수치 표기(현재 설명 문구만) · 리스펙 아이템의 퀘스트 보상 지급 경로(`rewards.items` 지급 — S22 §5).
 - **131차 신규 캡처 4장의 한국어 콜아웃 라벨** — 작업 환경에 한글 폰트가 없어 축소본만 저장했다(영문판은 정상).
   한글 폰트가 있는 곳에서 `py tools/annotate_help_images.py <raw> --only craft_tab workbench skill_tree vitals_panel` 재실행.
+- **221차 점검(원안 대조)** — 고침: 골절 자전거 막기(`canRideBike` 미사용이었음) · 허기/수분 최대값 고정 100 · 도움말 스킬 수.
+  원안과 다른 수치(기본 체력 100 vs 50 · 사망 재화 15% vs 80% + 가방 전부)는 사용자 확인 대기.
+  미구현: 붕대·부목 유지 시간 뒤 재발 · 이상고열 입원 3일 · 레벨로 열리는 전용 지역 · 구 해루질 씬 생존 지표.
+- **제작 확장 기획** `.agents/CRAFTING_EXPANSION_SPEC.md` v0.1(221차 제안 — 시간 · 이어 하기 · 종류 탭 · 덤 옵션 · 맨손/작업대/고급 분류).
 - ~~퀘스트 진행 판정 + 일지 상태 실갱신~~ ✅134 — `StoryStore`(S22). 레거시 `GameState.quests`는 면허 요구조건용으로만 잔존.
 
 ## 6. 함정·불변조건

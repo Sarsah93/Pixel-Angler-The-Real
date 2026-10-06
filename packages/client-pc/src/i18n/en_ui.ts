@@ -101,6 +101,42 @@ export const EN_UI: Record<string, string> = {
   '맵 데이터 불러오는 중': 'Loading area data',
   '맵 그림 불러오는 중': 'Loading area art',
   '맵 그리는 중': 'Building the area',
+  // 221차 — 재고 · 즐겨찾기 · 판매 수량
+  '다리를 다쳐 자전거를 탈 수 없다 — 부목을 대고 나을 때까지 걷자': "Your leg is hurt — you can't ride. Splint it and walk until it heals.",
+  '즐겨찾기': 'Favorites',
+  '모두 담기': 'Add all',
+  '품절': 'Sold out',
+  '개 남음': ' left',
+  '남은 수': 'In stock',
+  '1개': '1',
+  '판매 목록에 담기': 'Add to sell list',
+  '오늘은 다 팔렸다 — 새벽에 다시 들어온다': 'Sold out today — restocked at dawn',
+  '즐겨찾기에 넣었다': 'added to favorites',
+  '즐겨찾기에서 뺐다': 'removed from favorites',
+  '가지를 장바구니에 담았다': ' kinds put in the cart',
+  '판매 목록에 담았다': 'added to the sell list',
+  '위판 목록에 올렸다': 'added to the auction list',
+  '그 물건은 위판에 올릴 수 없다.': "That can't go to the auction.",
+  '몇 개 팔지 정하자.': 'Choose how many to sell.',
+  '진열 칸 오른쪽 위 별을 누르면 여기에 모인다.': 'Click the star at the top-right of a shelf slot to collect it here.',
+  '이 가게는 물건을 사들이지 않는다.': "This shop doesn't buy anything.",
+  '쓰고 있는 장비는 먼저 벗어야 팔 수 있다.': 'Take off gear you are using before selling it.',
+  '채집물은 팔 수 없다 (강원 조례).': "Foraged catch can't be sold (Gangwon ordinance).",
+  '미완성 접시는 마저 담아야 값이 매겨진다.': 'Finish plating it first — unfinished plates have no price.',
+  '이 물건은 팔 수 없다.': "This can't be sold.",
+  '이 가게는 그 물건을 사지 않는다.': "This shop doesn't buy that.",
+  '진열 칸 오른쪽 위 별을 누르면 이 가게 즐겨찾기에 들어간다. 장바구니는 가게를 나가면 비지만 즐겨찾기는 남는다.':
+    'Click the star at the top-right of a slot to add it to this shop\'s favorites. The cart empties when you leave, but favorites stay.',
+  '「즐겨찾기」에는 별을 단 물건만 모인다. 눌러서 장바구니에 담거나, 「모두 담기」로 한꺼번에 담는다.':
+    'The Favorites tab only shows starred items. Click to put them in the cart, or use "Add all".',
+  '가게마다 하루에 들여놓는 수가 있다. 칸에 남은 수가 보이고, 다 팔리면 새벽 4시에 다시 찬다. 작은 가게일수록 적다.':
+    'Each shop stocks a set amount per day. The slot shows how many are left, and sold-out items come back at 4 a.m. Smaller shops keep less.',
+  '팔 때는 가방의 물건을 이 창으로 끌어 놓아도 된다. 여러 개를 가진 물건은 몇 개 팔지 먼저 묻는다.':
+    'To sell, you can also drag things from your bag onto this window. For stacks, it asks how many first.',
+  '칸 오른쪽 위 별을 누르면 이 가게 즐겨찾기에 들어간다. 장바구니는 가게를 나가면 비지만, 즐겨찾기는 「즐겨찾기」 탭에 남는다. 가게마다 하루에 들여놓는 수가 있어 다 팔리면 새벽에 다시 찬다.':
+    'The star at the top-right of a slot adds it to this shop\'s favorites. The cart empties when you leave, but favorites stay on the Favorites tab. Each shop stocks a set amount per day and restocks at dawn.',
+  '팔 물건을 눌러 판매 목록에 담아 보자. 여러 개 가진 물건은 몇 개 팔지 먼저 묻는다. 가방에서 이 창으로 끌어 놓아도 된다.':
+    'Click something to add it to the sell list. For stacks it asks how many first. You can also drag from your bag onto this window.',
   // 220차 — 상점 장바구니 · 종류 칩 · 찾기
   '장바구니': 'Cart',
   '판매 목록': 'Selling',
@@ -244,6 +280,15 @@ export const EN_UI: Record<string, string> = {
 };
 
 /** 수치·이름이 끼어 있는 문장 (캡처는 `applyTemplate`이 다시 번역한다) */
+/** 221차 — 「이름(까닭), …」 못 산 목록 */
+function shopFailEn(list: string, tr: (s: string) => string): string {
+  return list.split(', ').map((x) => {
+    const m = /^(.+)\((다 팔림|가방에 자리 없음)\)$/.exec(x);
+    if (!m) return tr(x);
+    return `${tr(m[1])} (${m[2] === '다 팔림' ? 'sold out' : 'no room in the bag'})`;
+  }).join(', ');
+}
+
 export const EN_UI_RULES: [RegExp, (m: RegExpMatchArray, tr: (s: string) => string) => string][] = [
   // 179차 — 겹침 선택 창 머리말 · 바닥의 물건 수량
   [/^\[F\] 상호작용 — (\d+)가지$/, (m) => `[F] Interact — ${m[1]} options`],
@@ -279,10 +324,19 @@ export const EN_UI_RULES: [RegExp, (m: RegExpMatchArray, tr: (s: string) => stri
   // 220차 — 장바구니 거래 결과
   [/^(\d+)가지 구매 완료 \(-(.+)원\)$/, (m) => `Bought ${m[1]} kinds (-₩${m[2]})`],
   [/^(\d+)가지 판매 완료 \(\+(.+)원\)$/, (m) => `Sold ${m[1]} kinds (+₩${m[2]})`],
-  [/^(.+) 구매 완료 · 가방에 자리가 없어 못 산 것: (.+)$/, (m, tr) => `${tr(m[1])} bought · no room in the bag for: ${m[2]}`],
-  [/^가방에 자리가 없어 못 산 것: (.+)$/, (m) => `No room in the bag for: ${m[1]}`],
+  [/^(.+) 구매 완료 · 못 산 것: (.+)$/, (m, tr) => `${tr(m[1])} bought · couldn't buy: ${shopFailEn(m[2], tr)}`],
+  [/^못 산 것: (.+)$/, (m, tr) => `Couldn't buy: ${shopFailEn(m[1], tr)}`],
   [/^(.+) 판매 완료 · 팔지 못한 것: (.+)$/, (m, tr) => `${tr(m[1])} sold · could not sell: ${m[2]}`],
   [/^팔지 못한 것: (.+)$/, (m) => `Could not sell: ${m[1]}`],
   [/^구매 \((\d+)\)$/, (m) => `Buy (${m[1]})`],
+  // 221차 — 재고 · 즐겨찾기
+  [/^(\d+)개 남음$/, (m) => `${m[1]} left`],
+  [/^남은 수 (\d+)$/, (m) => `In stock ${m[1]}`],
+  [/^즐겨찾기 (\d+)$/, (m) => `Favorites ${m[1]}`],
+  [/^(\d+)가지를 장바구니에 담았다$/, (m) => `Put ${m[1]} kinds in the cart`],
+  [/^(.+) ×(\d+) — 판매 목록에 담았다$/, (m, tr) => `${tr(m[1])} ×${m[2]} — added to the sell list`],
+  [/^(.+) — 즐겨찾기에 넣었다$/, (m, tr) => `${tr(m[1])} — added to favorites`],
+  [/^(.+) — 즐겨찾기에서 뺐다$/, (m, tr) => `${tr(m[1])} — removed from favorites`],
+  [/^(.+) — 위판 목록에 올렸다$/, (m, tr) => `${tr(m[1])} — added to the auction list`],
   [/^판매 \((\d+)\)$/, (m) => `Sell (${m[1]})`],
 ];

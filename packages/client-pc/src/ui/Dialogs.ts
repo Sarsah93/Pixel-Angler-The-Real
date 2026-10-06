@@ -70,6 +70,10 @@ export interface QuantityDialogConfig {
   maxQty: number;
   /** '구매' | '판매' 등 액션 라벨 */
   actionLabel: string;
+  /** 221차 — 처음 보이는 수량(없으면 1) */
+  initialQty?: number;
+  /** 221차 — 확인 단추 글자(없으면 「{actionLabel} 확인」) */
+  confirmLabel?: string;
   onConfirm: (qty: number) => void;
   onCancel: () => void;
 }
@@ -90,24 +94,28 @@ export class QuantityDialog extends DraggablePanel {
       width: w, height: h, title: '수량 지정', onClose: cfg.onCancel, dim: true, depth: 950,
     });
     this.cfg = cfg;
+    this.qty = Phaser.Math.Clamp(Math.round(cfg.initialQty ?? 1), 1, Math.max(1, cfg.maxQty));
 
     const name = scene.add.text(w / 2, this.contentTop + 12, cfg.itemName, {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '14px', color: '#4af2a1', fontStyle: 'bold',
     }).setOrigin(0.5);
-    const sub = scene.add.text(w / 2, this.contentTop + 34, `개당 ${cfg.unitPrice.toLocaleString()} 원 · 최대 ${cfg.maxQty}개 · 숫자 키로 직접 입력 가능`, {
+    const sub = scene.add.text(w / 2, this.contentTop + 34, `개당 ${cfg.unitPrice.toLocaleString()} 원 · 최대 ${cfg.maxQty}개`, {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#8faabf',
     }).setOrigin(0.5);
     this.add([name, sub]);
 
     // 수량 표시 + -/+ 버튼
     const qy = this.contentTop + 82;
-    this.qtyText = scene.add.text(w / 2, qy, '1', {
+    this.qtyText = scene.add.text(w / 2, qy, String(this.qty), {
       fontFamily: 'monospace', fontSize: '30px', color: '#e8f4fd', fontStyle: 'bold',
     }).setOrigin(0.5);
     this.add(this.qtyText);
 
     this.addStepButton(w / 2 - 90, qy, '-', -1);
     this.addStepButton(w / 2 + 90, qy, '+', 1);
+    // 221차 — 한 번에 1개 · 전부(판매 목록에 묶음 통째로 담기 등)
+    this.addJumpChip(36, qy, '1개', () => 1);
+    this.addJumpChip(w - 36, qy, '최대', () => this.cfg.maxQty);
 
     this.totalText = scene.add.text(w / 2, qy + 42, '', {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px', color: '#ffe28a', fontStyle: 'bold',
@@ -118,7 +126,7 @@ export class QuantityDialog extends DraggablePanel {
     // 하단 버튼
     const btnY = h - 34;
     this.addActionButton(w / 2 - 90, btnY, '취소', 0x1f3045, 0x4a6a8a, '#8faabf', cfg.onCancel);
-    this.addActionButton(w / 2 + 90, btnY, `${cfg.actionLabel} 확인`, 0x0d4a2e, 0x4af2a1, '#4af2a1', () => cfg.onConfirm(this.qty));
+    this.addActionButton(w / 2 + 90, btnY, cfg.confirmLabel ?? `${cfg.actionLabel} 확인`, 0x0d4a2e, 0x4af2a1, '#4af2a1', () => cfg.onConfirm(this.qty));
 
     // 숫자 직접 입력
     this.keyHandler = (ev: KeyboardEvent) => {
@@ -153,6 +161,24 @@ export class QuantityDialog extends DraggablePanel {
     hit.on('pointerdown', () => {
       this.typedBuffer = '';
       this.qty = Phaser.Math.Clamp(this.qty + delta, 1, this.cfg.maxQty);
+      this.refresh();
+    });
+    this.add([bg, txt, hit]);
+  }
+
+  private addJumpChip(cx: number, cy: number, label: string, to: () => number): void {
+    const bg = this.scene.add.graphics();
+    bg.fillStyle(0x0e1c2d, 0.95); bg.fillRoundedRect(cx - 22, cy - 13, 44, 26, 4);
+    bg.lineStyle(1.2, 0x2a5070, 0.95); bg.strokeRoundedRect(cx - 22, cy - 13, 44, 26, 4);
+    const txt = this.scene.add.text(cx, cy, label, {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#9fc0d4', fontStyle: 'bold',
+    }).setOrigin(0.5);
+    const hit = this.scene.add.rectangle(cx, cy, 44, 26, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
+    hit.on('pointerover', () => txt.setColor('#ffffff'));
+    hit.on('pointerout', () => txt.setColor('#9fc0d4'));
+    hit.on('pointerdown', () => {
+      this.typedBuffer = '';
+      this.qty = Phaser.Math.Clamp(to(), 1, Math.max(1, this.cfg.maxQty));
       this.refresh();
     });
     this.add([bg, txt, hit]);

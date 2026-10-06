@@ -467,7 +467,14 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-10-06 220차) — 상점 장바구니 · 종류 칩 · 이름 찾기**
+**최근 변경 (2026-10-06 221차) — 상점 재고 · 즐겨찾기 · 판매 수량 창 · 위키 탭 분리 · 제작 기획**
+
+- 가게 규모 3단계 × 갈래 하루 재고(core `rules/ShopStock` · client `store/ShopStore` — 새벽 4시 다시 참 · 프롤로그/이야기 물건 예외) · 칸 별 → 가게별 「즐겨찾기」 탭.
+- 여러 개 팔 때 −/+ 수량 창 · 가방→상점 끌어 놓기(`inventory-drop`) · 매입가 한 곳 `shopSellUnitPrice` · 골절 자전거 막기 · 허기/수분 최대값.
+- 함정: 칸 모서리는 이미 주인이 있다(상태 글자 · 추천 · 담은 수) — 새 표식은 빈 모서리에 두고 실렌더로 겹침을 본다.
+  상세: [221차 워크로그](../docs/wiki/03-WORKLOG/2026-10-06-221-shop-stock-favorites-sell-qty.md).
+
+**이전 변경 (2026-10-06 220차) — 상점 장바구니 · 종류 칩 · 이름 찾기**
 
 - 칸 토글로 여러 개 담기 → `구매 (n)`/`판매 (n)` → 장바구니 창(`ui/ShopCartDialog` — 줄마다 −/+ · ✕ · 합계 · 남는 돈) → 씬 `handleBuy/handleSell(lines)` 한 번에.
 - 이 가게 종류만 칩(전체 + 인벤토리 분류) · 한글 찾기 칸(`TextInput`) · 단가 한 곳 `shopBuyUnitPrice`(흥정 × 타이틀 할인).
@@ -481,13 +488,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - 프롤로그 막힘 안전망(`prologueProtects` · `repairPrologue` · 비상금 · 차비) · 전체 지도 제목 줄(`hudHeaderMidY`) · 자전거 코치 · 방파제 피복 방위 동률 판정.
 - 함정: 「대상을 품은 창 = 설명하는 창」은 단계 시작 때 떠 있던 창에만 — 아니면 새로 연 모달(라디오) 위에 테두리가 뜬다.
   상세: [219차 워크로그](../docs/wiki/03-WORKLOG/2026-10-06-219-loading-guide-guards-softlocks.md).
-
-**이전 변경 (2026-10-06 218차) — 지도 캡처 6~10 · 게임 상호(실제 상호를 조금씩 바꾸기)**
-
-- 캡처 6~10은 확대 단계가 달라(0.59~0.83 m/px) OSM 이름 붙은 장소 최소제곱으로 정합 → 새 가게 76(캡처 합 249).
-- 게임 상호 표 `pixelazed/sokcho_v2/name_alias.json`(419개 · 업종 말 유지 · 프랜차이즈 = 가상 브랜드) — `merge_capture_pois.py`가 OSM · 캡처 가게 모두에 적용.
-- 함정: `pois.json`을 쓰는 도구(OSM 빌드 · `backfill_poi_nameen.py`) 뒤엔 병합 스크립트를 마지막에 — 안 그러면 실제 상호로 돌아간다. 가게 영어 이름을 `en_pois.ts`에 다시 적지 않는다.
-  상세: [218차 워크로그](../docs/wiki/03-WORKLOG/2026-10-06-218-captures-6-10-game-shop-names.md).
 
 ---
 

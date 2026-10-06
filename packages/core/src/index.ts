@@ -632,6 +632,12 @@ export {
   upkeepPenalty, fisheryGroundFee, coopDuesFeeCut, upkeepKeysOfLicense,
 } from './rules/Upkeep.js';
 
+// ── 상점 진열 재고 — 221차 ──
+export type { ShopScale, StockBucket, ShopScaleInput, StockEntryInput } from './rules/ShopStock.js';
+export {
+  SHOP_STOCK_BASE, SHOP_STOCK_PLENTY, SHOP_STOCK_BIG_PRICE, shopScaleOf, stockBucketOf, stockUnlimited, shopStockCap,
+} from './rules/ShopStock.js';
+
 export type { FisheryLawRule } from './rules/FisheryLaw.js';
 export {
   FISHERY_LAW_RULES, getFisheryLawRule, NON_FISHER_GEAR_WHITELIST, VILLAGE_FISHERY_TARGETS,

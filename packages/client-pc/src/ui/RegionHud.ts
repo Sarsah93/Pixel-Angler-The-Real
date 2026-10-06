@@ -659,8 +659,9 @@ export class RegionHud extends Phaser.GameObjects.Container {
     switch (key) {
       case 'hp': return { cur: Math.round(v.hp), max: v.maxHp, ratio: v.maxHp > 0 ? v.hp / v.maxHp : 0 };
       case 'fatigue': return { cur: Math.round(v.fatigue), max: v.maxFatigue, ratio: v.maxFatigue > 0 ? v.fatigue / v.maxFatigue : 0 };
-      case 'hunger': return { cur: Math.round(v.hunger), max: 100, ratio: v.hunger / 100 };
-      case 'hydration': return { cur: Math.round(v.hydration), max: 100, ratio: v.hydration / 100 };
+      // 221차 — 최대는 100 고정이 아니다(대식가 · 큰 물통 스킬로 늘어난다 — 구: /100이라 바가 넘치고 호버가 틀렸다)
+      case 'hunger': return { cur: Math.round(v.hunger), max: v.maxHunger, ratio: v.maxHunger > 0 ? v.hunger / v.maxHunger : 0 };
+      case 'hydration': return { cur: Math.round(v.hydration), max: v.maxHydration, ratio: v.maxHydration > 0 ? v.hydration / v.maxHydration : 0 };
       case 'xp': {
         const lv = p.level ?? 1;
         // 138차 — 만렙에서도 XP는 쌓인다. 바는 채운 채로 두고 누적치를 숫자로 보여준다.
@@ -685,7 +686,7 @@ export class RegionHud extends Phaser.GameObjects.Container {
     // 허기·수분은 100 만점 지표라 **비율 표기**가 직관적이다 — `62% / 100%`.
     // 체력·피로도·경험치는 절대치가 의미를 가지므로 `현재 / 최대 (비율)`을 유지한다.
     const valueStr = d.icon
-      ? `${pct}% / 100%`
+      ? `${val.cur}% / ${val.max}%`
       : (val.max > 0 ? `${val.cur} / ${val.max} (${pct}%)` : `(${pct}%)`);
 
     const c = this.scene.add.container(0, 0);
