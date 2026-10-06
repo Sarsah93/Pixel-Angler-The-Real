@@ -339,9 +339,11 @@ export interface ForageInjury {
  */
 export function forageInjuryRoll(c: ShoreCreature, tool: ForageTool, gloves: boolean, rng: () => number, injuryMult = 1): ForageInjury {
   if (tool !== 'hand' || !c.handInjury) return { injured: false, dropped: false };
-  const p = (gloves ? 0.12 : 0.55) * Math.max(0, injuryMult);
-  if (rng() >= p) return { injured: false, dropped: false };
+  // 성게(가시)는 맨손이면 열에 일곱 넘게 찔린다(225차 사용자 지시 75%) — 장갑도 가시가 뚫고 들어온다
   const spiny = c.category === 'echinoderm' && c.id !== 'stichopus_japonicus';
+  const base = spiny ? (gloves ? 0.25 : 0.75) : (gloves ? 0.12 : 0.55);
+  const p = Math.min(1, base * Math.max(0, injuryMult));
+  if (rng() >= p) return { injured: false, dropped: false };
   return { injured: true, dropped: !gloves || spiny, status: spiny ? 'bio_poison' : 'bleed' };
 }
 

@@ -201,7 +201,7 @@ const GONE = new Set<string>();
 /** 224차 — 갯것 미끼 아이템(직접 잡은 쫄장게 · 갯강구). 갯지렁이는 상점 미끼와 같은 물건(inv_ragworm · inv_honmushi)으로 들어간다 */
 const BAIT_TEMPLATES: Record<string, { name: string; iconTexture: string; basePrice: number }> = {
   inv_bait_shorecrab: { name: '쫄장게 (생미끼)', iconTexture: 'forage_hemigrapsus_sanguineus', basePrice: 400 },
-  inv_bait_slater: { name: '갯강구 (생미끼)', iconTexture: 'forage_dot_ligia_exotica', basePrice: 200 },
+  inv_bait_slater: { name: '갯강구 (생미끼)', iconTexture: 'forage_ligia_exotica', basePrice: 200 },
 };
 
 /** 달아나는 녀석 상태(스팟별 — 세션 메모리) */

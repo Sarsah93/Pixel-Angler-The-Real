@@ -498,7 +498,7 @@ export const SHORE_CREATURE_DATABASE: ShoreCreature[] = [
     marketValuePerKg: 0, isRestaurantIngredient: false, canBeUsedAsBait: true,
     description: '「바다 바퀴벌레」. 쓰는 사람은 적지만 입질이 잦은 미끼다 — 망상어 · 벵에돔 · 감성돔. 크릴처럼 꼬리에서 머리로 꿴다.',
     requiredLicense: null, tools: ['hand', 'net'], spotKinds: ['rock_shore', 'armor_foot', 'harbor_wall'],
-    behavior: 'runner', agility: 0.9, absentMonths: [1, 2], baitItemId: 'inv_bait_slater',
+    behavior: 'runner', agility: 0.97, absentMonths: [1, 2], baitItemId: 'inv_bait_slater',
   },
   {
     id: 'perinereis_aibuhitensis', nameKo: '청갯지렁이', nameEn: 'Clam Worm',

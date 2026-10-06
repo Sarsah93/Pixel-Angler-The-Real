@@ -164,6 +164,14 @@ export class BootScene extends Phaser.Scene {
       forage_aplysia_kurodai: 'item-icons/forage_aplysia_kurodai.png',
       forage_hemigrapsus_sanguineus: 'item-icons/forage_hemigrapsus_sanguineus.png',
       forage_portunus_trituberculatus: 'item-icons/forage_portunus_trituberculatus.png',
+      // 225차 — 사용자 사진 3장 도트(tools/pixelize_forage_photos.py). 청갯지렁이는 한 갑 상자 모양
+      forage_perinereis_aibuhitensis: 'item-icons/forage_perinereis_aibuhitensis.png',
+      forage_marphysa_sanguinea: 'item-icons/forage_marphysa_sanguinea.png',
+      forage_ligia_exotica: 'item-icons/forage_ligia_exotica.png',
+      item_ragworm: 'item-icons/forage_perinereis_aibuhitensis.png',
+      // 225차 — 채집 놀이 판 그림(도트 원래 크기 · 머리 왼쪽). 없으면 필드 도트를 키워 쓴다
+      forageboard_marphysa_sanguinea: 'forage-board/marphysa_sanguinea.png',
+      forageboard_ligia_exotica: 'forage-board/ligia_exotica.png',
     };
     for (const [key, path] of Object.entries(ITEM_ICON_ASSETS)) this.load.image(key, path);
     // 회썰기(사시미) 미니게임 — 필렛 2뷰 (tools/gen_sashimi_fillet.cjs 생성, 원본 실사 리매핑)

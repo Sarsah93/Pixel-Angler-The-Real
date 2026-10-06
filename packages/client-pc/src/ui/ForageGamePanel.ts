@@ -42,8 +42,9 @@ const TOUR_TEXT: Record<ForageGameKind, string[]> = {
     '가시나 껍데기가 날카로운 것은 맨손이면 다칠 수 있다. 장갑을 끼거나 집게를 쓰자.',
   ],
   pry: [
-    '바위에 붙은 녀석이다. 오가는 바늘이 초록 칸에 들어올 때 눌러 떼어 낸다.',
-    '놓치면 꽉 조여 붙어 칸이 좁아지고 바늘이 빨라진다. 동그라미를 다 채우면 떨어진다.',
+    '바위에 꽉 붙은 녀석이다. 집게 끝(맨손이면 손끝)이 껍데기 가장자리를 따라 왔다 갔다 한다.',
+    '껍데기가 살짝 들린 틈(초록)에 집게 끝이 닿는 순간 눌러 비집어 넣는다. 동그라미를 다 채우면 떨어진다.',
+    '헛짚으면 녀석이 놀라 더 꽉 붙는다 — 틈이 좁아지고 손이 급해진다.',
   ],
   dig: [
     '묻힌 녀석이다. 누르고 있으면 판다. 오른쪽 막대는 내가 낸 소란이다.',
@@ -61,6 +62,10 @@ export class ForageGamePanel extends DraggablePanel {
   private readonly rng: () => number;
   private readonly g: Phaser.GameObjects.Graphics;
   private readonly img: Phaser.GameObjects.Image | null;
+  /** 225차 — 사진 도트 판 그림인가(머리 왼쪽) · 필드 도트 16px 대비 배율 · 마지막으로 본 방향 */
+  private boardArt = false;
+  private imgBase = 1;
+  private lastFaceRight = false;
   private readonly boardTop: number;
   private readonly pebbles: { x: number; y: number; r: number; c: number }[] = [];
   private aimX = 0.5;
@@ -96,9 +101,16 @@ export class ForageGamePanel extends DraggablePanel {
     }
     this.g = scene.add.graphics();
     this.add(this.g);
-    const key = forageSpotTexKey(creature);
+    // 225차 — 사진 도트 판 그림(forageboard_*)이 있으면 그쪽(머리 왼쪽 · 크기는 필드 도트 16px 기준으로 맞춘다)
+    const boardKey = `forageboard_${creature.id}`;
+    const key = scene.textures.exists(boardKey) ? boardKey : forageSpotTexKey(creature);
+    this.boardArt = key === boardKey;
     this.img = scene.textures.exists(key) ? scene.add.image(0, 0, key).setScale(3) : null;
-    if (this.img) this.add(this.img);
+    if (this.img) {
+      const f = this.img.frame;
+      this.imgBase = 16 / Math.max(1, f.width, f.height);
+      this.add(this.img);
+    }
 
     // 입력 — 판 위 누르기 · 움직이기 / Space
     const hit = scene.add.rectangle(BX + BW / 2, this.boardTop + BOARD_H / 2, BW, BOARD_H, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
@@ -120,7 +132,8 @@ export class ForageGamePanel extends DraggablePanel {
     });
 
     // 처음이면 가이드가 끝날 때까지 판을 멈춘다(R11)
-    const tourId = `forage_${state.kind}`;
+    // 225차 — 떼기 가이드 문장을 고쳐 다시 보여 준다(_v2)
+    const tourId = `forage_${state.kind}${state.kind === 'pry' ? '_v2' : ''}`;
     this.paused = !tourSeen(tourId);
     if (this.paused) maybeStartTour(scene, () => this.buildTour(tourId));
     this.draw();
@@ -194,13 +207,16 @@ export class ForageGamePanel extends DraggablePanel {
     g.fillStyle(left > 0.3 ? 0x9fd0e4 : 0xff9a6a, 1); g.fillRect(BX, top - 6, BW * left, 3);
   }
 
-  private setCreature(x: number, y: number, scale: number, tint?: number, angle = 0): void {
+  private setCreature(x: number, y: number, scale: number, tint?: number, angle = 0, faceRight?: boolean): void {
     if (!this.img) {
       this.g.fillStyle(tint ?? 0xc8b898, 1);
       this.g.fillEllipse(x, y, 30 * scale / 3, 22 * scale / 3);
       return;
     }
-    this.img.setPosition(x, y).setScale(scale).setAngle(angle);
+    // 도트가 뭉개지지 않게 1배 이상이면 0.5 단위로 맞춘다
+    const k = scale * this.imgBase;
+    this.img.setPosition(x, y).setScale(k >= 1 ? Math.round(k * 2) / 2 : k).setAngle(angle);
+    if (this.boardArt) this.img.setFlipX(faceRight === true);   // 판 그림은 머리가 왼쪽 — 오른쪽으로 달리면 뒤집는다
     if (tint !== undefined) this.img.setTint(tint); else this.img.clearTint();
   }
 
@@ -223,7 +239,9 @@ export class ForageGamePanel extends DraggablePanel {
       for (let k = 0; k < 3; k++) g.lineBetween(cx - n.dir * (18 + k * 5), cy + 8 - k * 6, cx - n.dir * (26 + k * 6), cy + 4 - k * 7);
     }
     const alarmTint = n.alarm > 0.05 ? Phaser.Display.Color.GetColor(255, Math.round(255 - n.alarm * 140), Math.round(255 - n.alarm * 140)) : undefined;
-    this.setCreature(cx + shake, cy, 3, alarmTint, n.phase === 'dash' || n.phase === 'bolt' ? n.dir * 8 : 0);
+    const moving = n.phase === 'dash' || n.phase === 'bolt' || n.phase === 'tell';
+    this.setCreature(cx + shake, cy, 3, alarmTint, (n.phase === 'dash' || n.phase === 'bolt') && !this.boardArt ? n.dir * 8 : 0, moving ? n.dir > 0 : this.lastFaceRight);
+    if (moving) this.lastFaceRight = n.dir > 0;
     // 손 — 잡히는 반경 고리 · 덮치는 중이면 그림자가 줄어든다
     const hx = BX + n.handX * BW;
     const r = n.catchR * BW;
@@ -240,27 +258,66 @@ export class ForageGamePanel extends DraggablePanel {
     for (let i = 0; i < n.misses; i++) { g.fillStyle(0xff6a5a, 1); g.fillCircle(hx - 8 + i * 8, cy - r - 10, 3); }
   }
 
+  /**
+   * 떼기 — 위에서 본 바위 위의 껍데기. 껍데기 앞쪽 가장자리(아래 반원)를 따라 집게 끝(맨손이면 손끝)이 오가고,
+   * 껍데기가 살짝 들린 틈이 초록 호로 보인다. 끝이 틈에 닿을 때 누르면 비집어 들어간다.
+   * (225차 — 「오가는 바늘」이 무엇인지 안 읽힌다는 지적. 판정은 그대로 0~1 바늘이다)
+   */
   private drawPry(): void {
     const p = this.gs.pry!;
     const g = this.g;
     const top = this.boardTop;
     const flash = p.flash;
-    const clamp = flash?.kind === 'miss' ? 0.9 : 1;
-    this.setCreature(BX + BW / 2, top + 62, 3.2 * clamp, flash?.kind === 'miss' ? 0xff9a8a : undefined);
-    // 막대
-    const by = top + 128, bh = 20;
-    g.fillStyle(0x0a1628, 0.9); g.fillRect(BX + 20, by, BW - 40, bh);
-    const zx = BX + 20 + (p.zoneC - p.zoneW / 2) * (BW - 40);
-    g.fillStyle(0x4af2a1, 0.85); g.fillRect(zx, by, p.zoneW * (BW - 40), bh);
-    const nx = BX + 20 + p.needle * (BW - 40);
-    g.fillStyle(0xffffff, 1); g.fillRect(nx - 2, by - 6, 4, bh + 12);
-    g.lineStyle(1.5, flash ? (flash.kind === 'hit' ? 0x4af2a1 : 0xff6a5a) : 0x2a5a8a, 1);
-    g.strokeRect(BX + 20, by, BW - 40, bh);
-    // 떼어 낼 횟수
+    const cx = BX + BW / 2, cy = top + 74;
+    // 껍데기 가장자리 타원 — 그림(도트 16px × 8.4배)이 그래픽 위에 그려지므로 그림 바깥으로 잡아야 틈이 가려지지 않는다
+    const a = 74, b = 54, ry = cy + 6;
+    // 껍데기 — 맞힐수록 조금씩 들려 그림자가 넓어진다
+    const lift = p.hits / Math.max(1, p.need);
+    g.fillStyle(0x000000, 0.35); g.fillEllipse(cx, cy + 6 + lift * 4, a * 2 + 6, b * 2 + 6);
+    this.setCreature(cx, cy, 8.4 * (flash?.kind === 'miss' ? 0.96 : 1), flash?.kind === 'miss' ? 0xff9a8a : undefined);
+    // 가장자리 앞쪽 반원 — 각도 θ = π(1 − 바늘) (왼쪽 → 아래 → 오른쪽)
+    const at = (v: number): { x: number; y: number; nx: number; ny: number } => {
+      const th = Math.PI * (1 - Math.max(0, Math.min(1, v)));
+      const x = cx + a * Math.cos(th), y = ry + b * Math.sin(th);
+      const nx = b * Math.cos(th), ny = a * Math.sin(th), l = Math.hypot(nx, ny) || 1;
+      return { x, y, nx: nx / l, ny: ny / l };
+    };
+    const arc = (v0: number, v1: number, w: number, color: number, alpha = 1): void => {
+      g.lineStyle(w, color, alpha);
+      g.beginPath();
+      const n = 24;
+      for (let k = 0; k <= n; k++) { const q = at(v0 + (v1 - v0) * (k / n)); if (k === 0) g.moveTo(q.x, q.y); else g.lineTo(q.x, q.y); }
+      g.strokePath();
+    };
+    arc(0, 1, 4, 0xe8d8b8, 0.6);                                    // 가장자리 길
+    arc(p.zoneC - p.zoneW / 2, p.zoneC + p.zoneW / 2, 14, 0x0a0e14); // 들린 틈(어둠)
+    arc(p.zoneC - p.zoneW / 2, p.zoneC + p.zoneW / 2, 7, flash?.kind === 'hit' ? 0xffffff : 0x4af2a1);
+    // 집게 끝(또는 손끝) — 바깥에서 가장자리로 들이댄다
+    const q = at(p.needle);
+    const isHand = this.gs.tool === 'hand';
+    const ox = q.nx * 40, oy = q.ny * 40;
+    if (isHand) {
+      g.lineStyle(11, 0x8a5a3a, 1); g.lineBetween(q.x + ox, q.y + oy, q.x + q.nx * 4, q.y + q.ny * 4);
+      g.lineStyle(7, 0xe8b48a, 1); g.lineBetween(q.x + ox, q.y + oy, q.x + q.nx * 4, q.y + q.ny * 4);
+      g.fillStyle(0xf6d8c0, 1); g.fillCircle(q.x + q.nx * 4, q.y + q.ny * 4, 3);
+    } else {
+      const px = -q.ny * 4, py = q.nx * 4;   // 집게 두 갈래 간격
+      g.lineStyle(6, 0x2a3036, 1);
+      g.lineBetween(q.x + ox + px, q.y + oy + py, q.x + px * 0.3, q.y + py * 0.3);
+      g.lineBetween(q.x + ox - px, q.y + oy - py, q.x - px * 0.3, q.y - py * 0.3);
+      g.lineStyle(3, 0xd8e0e8, 1);
+      g.lineBetween(q.x + ox + px, q.y + oy + py, q.x + px * 0.3, q.y + py * 0.3);
+      g.lineBetween(q.x + ox - px, q.y + oy - py, q.x - px * 0.3, q.y - py * 0.3);
+    }
+    if (flash) {
+      g.lineStyle(2, flash.kind === 'hit' ? 0x4af2a1 : 0xff6a5a, 1);
+      g.strokeCircle(q.x, q.y, 8 + (1 - flash.ms / 320) * 10);
+    }
+    // 비집을 횟수 — 판 왼쪽 아래
     for (let i = 0; i < p.need; i++) {
-      const x = BX + BW / 2 - (p.need - 1) * 10 + i * 20;
-      g.lineStyle(2, 0xffe28a, 1); g.strokeCircle(x, by + bh + 16, 6);
-      if (i < p.hits) { g.fillStyle(0xffe28a, 1); g.fillCircle(x, by + bh + 16, 4); }
+      const x = BX + 22 + i * 20, y = top + BOARD_H - 18;
+      g.lineStyle(2, 0xffe28a, 1); g.strokeCircle(x, y, 6);
+      if (i < p.hits) { g.fillStyle(0xffe28a, 1); g.fillCircle(x, y, 4); }
     }
   }
 

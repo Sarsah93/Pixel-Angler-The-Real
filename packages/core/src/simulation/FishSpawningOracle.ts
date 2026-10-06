@@ -200,7 +200,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     speciesId: 'chub_mackerel', nameKo: '고등어', nameEn: 'Chub Mackerel',
     // 표층~중층 회유 — 서식 수심대 자체는 0~300m로 넓음 (실측 데이터 2026-07-16)
     habitat: ['open', 'structure'], minDepthM: 0, maxDepthM: 300, preferredLayers: ['surface', 'mid'],
-    baitPreference: { krill: 60, worm_blue: 30, lure: 10 },
+    baitPreference: { krill: 60, worm_blue: 30, slater: 20, lure: 10 },
     minCm: 15, maxCm: 60, meanCm: 32, sdCm: 5, lwrA: 0.0092, lwrB: 3.1, bodyForm: 'fusiform', maleRatio: 0.5,
     sexNote: '무리 지어 회유 — 찌를 사방으로 빠르게 끌고 다님',
     // 야간 집어등 불빛에 유집 — 방파제 밤 고등어 카드채비 실적
@@ -211,7 +211,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     speciesId: 'horse_mackerel', nameKo: '전갱이', nameEn: 'Japanese Horse Mackerel',
     // 연안 회유 5~50m, 야간 집어등에 강하게 반응 (실측 데이터 2026-07-16)
     habitat: ['structure', 'reef'], minDepthM: 5, maxDepthM: 50, preferredLayers: ['mid', 'bottom'],
-    baitPreference: { krill: 60, worm_blue: 30, lure: 10 },
+    baitPreference: { krill: 60, worm_blue: 30, slater: 20, lure: 10 },
     minCm: 12, maxCm: 50, meanCm: 25, sdCm: 5, lwrA: 0.0088, lwrB: 3.1, bodyForm: 'fusiform', maleRatio: 0.5,
     sexNote: '입가가 약해 과텐션 시 입술이 찢어져 바늘이 빠지기 쉬움. 야간 집어등 불빛에 강하게 반응',
     nightBonus: 1.4, tideActivity: flatTide(0.75),
@@ -220,7 +220,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
   {
     speciesId: 'rainbow_wrasse', nameKo: '용치놀래기', nameEn: 'Multicolorfin Rainbow Wrasse',
     habitat: ['reef'], minDepthM: 2, maxDepthM: 15, preferredLayers: ['bottom'],
-    baitPreference: { worm_blue: 50, krill: 40, shellfish: 10 },
+    baitPreference: { worm_blue: 50, slater: 45, krill: 40, shellfish: 10 },   // 225차 — 갯강구는 잡어가 다 좋아한다
     minCm: 10, maxCm: 26, meanCm: 18, sdCm: 3, lwrA: 0.0105, lwrB: 3.05, bodyForm: 'roundish',
     maleRatio: 0.3,
     sexRule: (len) => (len > 22 ? 0.85 : 0.3),
@@ -233,7 +233,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     // 표준명 정정: 구 '졸복어'(fine_puffer) → 복섬 (Takifugu alboplumbeus, 항·방파제 흔한 소형 복어)
     speciesId: 'grass_puffer', nameKo: '복섬', nameEn: 'Grass Puffer',
     habitat: ['sand', 'structure'], minDepthM: 1, maxDepthM: 20, preferredLayers: ['bottom'],
-    baitPreference: { krill: 50, worm_blue: 45, shellfish: 5 },
+    baitPreference: { krill: 50, worm_blue: 45, crab: 40, slater: 35, shellfish: 5 },   // 225차 — 복어는 쫄장게도 잘 문다
     minCm: 6, maxCm: 15, meanCm: 10, sdCm: 2, lwrA: 0.024, lwrB: 3, bodyForm: 'globular', maleRatio: 0.5,
     sexNote: '테트로도톡신 맹독 — 이빨로 바늘과 목줄을 갉아 끊는 미끼 도둑',
     // 복어류 — 주야 모두 먹는 잡식성 (강한 야행성 아님)
@@ -243,7 +243,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
   {
     speciesId: 'tiger_puffer', nameKo: '참복어(자주복)', nameEn: 'Tiger Puffer',
     habitat: ['mixed'], minDepthM: 10, maxDepthM: 50, preferredLayers: ['bottom'],
-    baitPreference: { shellfish: 40, worm_king: 30, krill: 20, fishcut: 10 },
+    baitPreference: { shellfish: 40, crab: 35, worm_king: 30, krill: 20, slater: 20, fishcut: 10 },
     minCm: 18, maxCm: 75, meanCm: 40, sdCm: 9, lwrA: 0.0205, lwrB: 3.02, bodyForm: 'globular', maleRatio: 0.5,
     sexNote: '치명적 맹독 — 이빨 힘이 강해 와이어가 아니면 채비를 끊음',
     // 복어류는 주행성
@@ -263,7 +263,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
   {
     speciesId: 'yellowfin_goby', nameKo: '문절망둑', nameEn: 'Yellowfin Goby',
     habitat: ['mud', 'sand'], minDepthM: 0.5, maxDepthM: 5, preferredLayers: ['bottom'],
-    baitPreference: { worm_blue: 70, krill: 20, lure: 10 },
+    baitPreference: { worm_blue: 70, slater: 30, krill: 20, lure: 10 },
     minCm: 8, maxCm: 25, meanCm: 15, sdCm: 3, lwrA: 0.0095, lwrB: 3.05, bodyForm: 'roundish', maleRatio: 0.5,
     sexNote: '1년생 — 식탐이 강해 미끼를 넣자마자 삼킴',
     // 낮 생활낚시 대표 어종 — 밤엔 활성 저하
@@ -283,7 +283,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
   {
     speciesId: 'scorpionfish', nameKo: '쏨뱅이', nameEn: 'False Kelpfish',
     habitat: ['reef', 'structure'], minDepthM: 5, maxDepthM: 40, preferredLayers: ['bottom'],
-    baitPreference: { fishcut: 40, worm_blue: 40, krill: 20 },
+    baitPreference: { fishcut: 40, worm_blue: 40, slater: 30, krill: 20 },
     minCm: 10, maxCm: 35, meanCm: 20, sdCm: 4, lwrA: 0.029, lwrB: 3, bodyForm: 'roundish', maleRatio: 0.5,
     sexNote: '난태생 — 미끼가 눈앞에 정렬될 때 물고 틈새로 파고듦',
     nightBonus: 1.5, tideActivity: flatTide(0.65),
@@ -292,7 +292,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
   {
     speciesId: 'fat_greenling', nameKo: '쥐노래미', nameEn: 'Fat Greenling',
     habitat: ['reef'], minDepthM: 2, maxDepthM: 30, preferredLayers: ['bottom'],
-    baitPreference: { worm_king: 45, krill: 35, crab: 20 },
+    baitPreference: { worm_king: 45, krill: 35, slater: 30, crab: 20 },
     minCm: 15, maxCm: 65, meanCm: 35, sdCm: 8, lwrA: 0.0145, lwrB: 3, bodyForm: 'roundish', maleRatio: 0.5,
     sexNote: '산란기 수컷은 황금색 혼인색으로 변해 알을 지킴',
     // 주행성 저서 어종 — 밤엔 활성 저하
@@ -302,7 +302,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
   {
     speciesId: 'greenling', nameKo: '노래미', nameEn: 'Hexagrammos otakii',
     habitat: ['reef', 'structure'], minDepthM: 1, maxDepthM: 15, preferredLayers: ['bottom'],
-    baitPreference: { worm_blue: 60, krill: 30, shellfish: 10 },
+    baitPreference: { worm_blue: 60, slater: 35, krill: 30, shellfish: 10 },
     minCm: 10, maxCm: 30, meanCm: 18, sdCm: 3, lwrA: 0.018, lwrB: 3, bodyForm: 'roundish', maleRatio: 0.5,
     sexNote: '측선 1개 (쥐노래미는 5개) — 꼬리 끝이 둥근 부채꼴',
     // 주행성 저서 어종
@@ -483,7 +483,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     speciesId: 'black_scraper', nameKo: '말쥐치', nameEn: 'Black Scraper',
     // 내만·암초·해조류 70~100m — 회유 1~3월 제주, 4~11월 남해>동해, 6~10월 제주>서해
     habitat: ['reef', 'structure'], minDepthM: 20, maxDepthM: 100, preferredLayers: ['mid', 'bottom'],
-    baitPreference: { shellfish: 45, krill: 35, worm_blue: 20 },
+    baitPreference: { shellfish: 45, krill: 35, slater: 30, worm_blue: 20 },
     minCm: 12, maxCm: 36, meanCm: 22, sdCm: 4, lwrA: 0.013, lwrB: 3.05, bodyForm: 'globular', maleRatio: 0.5,
     sexNote: '쥐치보다 크고 길쭉한 쥐포의 주 원료 — 작은 입으로 미끼만 갉아먹는 악명 높은 미끼 도둑',
     // 쥐치류는 주행성 — 밤엔 취면(수면) 상태
@@ -578,7 +578,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     speciesId: 'filefish', nameKo: '쥐치', nameEn: 'Thread-sail Filefish',
     // 갯바위·방파제 수중여 주변 5~30m (실측 데이터 2026-07-16)
     habitat: ['reef', 'structure'], minDepthM: 5, maxDepthM: 30, preferredLayers: ['mid'],
-    baitPreference: { shellfish: 40, krill: 40, worm_blue: 20 },
+    baitPreference: { shellfish: 40, krill: 40, slater: 30, worm_blue: 20 },
     minCm: 10, maxCm: 30, meanCm: 18, sdCm: 4, lwrA: 0.021, lwrB: 3, bodyForm: 'globular', maleRatio: 0.5,
     sexNote: '작은 입으로 미끼를 갉아먹는 미끼 도둑 — 쥐포의 원료',
     // 쥐치류는 주행성 — 밤엔 취면(수면) 상태
@@ -685,7 +685,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
   {
     speciesId: 'yellowfin_puffer', nameKo: '까치복', nameEn: 'Yellowfin Puffer',
     habitat: ['reef', 'mixed', 'open'], minDepthM: 10, maxDepthM: 100, preferredLayers: ['bottom', 'mid'],
-    baitPreference: { fishcut: 35, shellfish: 20, crab: 20, worm_blue: 15, krill: 10 },
+    baitPreference: { fishcut: 35, crab: 35, shellfish: 20, slater: 20, worm_blue: 15, krill: 10 },
     minCm: 20, maxCm: 50, meanCm: 33, sdCm: 7, lwrA: 0.019, lwrB: 3, bodyForm: 'globular', maleRatio: 0.5,
     sexNote: '등에 흰 줄무늬·노란 지느러미의 대형 참복류. 테트로도톡신 보유, 이빨로 목줄을 끊는다',
     nightBonus: 1.0, tideActivity: flatTide(0.65),

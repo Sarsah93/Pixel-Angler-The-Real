@@ -24,8 +24,8 @@ function baitKeyOf(item: InvItem): string | undefined {
   if (n.includes('빵') || n.includes('떡밥')) return 'bread';
   if (n.includes('생선') || n.includes('오징어')) return 'fishcut';
   if (n.includes('옥수수')) return 'corn';
+  if (n.includes('성게')) return 'urchin';   // 225차 — '성게'도 '게'를 품으므로 게보다 먼저 본다
   if (n.includes('게') || n.includes('소라')) return 'crab';
-  if (n.includes('성게')) return 'urchin';
   if (n.includes('조개') || n.includes('개불')) return 'shellfish';
   return undefined;
 }

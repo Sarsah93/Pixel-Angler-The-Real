@@ -320,8 +320,9 @@ export const EN_PANELS: Record<string, string> = {
     'Your hand takes a moment to come down. When it twitches it is about to dart — aim for where it will be, not where it is. Bring your hand in too fast and it bolts into the rocks.',
   '느리게 기는 녀석이다. 손을 가져가 눌러서 집는다.': 'This one crawls slowly. Bring your hand over and click to pick it up.',
   '가시나 껍데기가 날카로운 것은 맨손이면 다칠 수 있다. 장갑을 끼거나 집게를 쓰자.': 'Spines and sharp shells can hurt bare hands. Wear gloves or use tongs.',
-  '바위에 붙은 녀석이다. 오가는 바늘이 초록 칸에 들어올 때 눌러 떼어 낸다.': 'This one clings to the rock. Click when the moving needle is inside the green band to pry it off.',
-  '놓치면 꽉 조여 붙어 칸이 좁아지고 바늘이 빨라진다. 동그라미를 다 채우면 떨어진다.': 'Miss and it clamps down — the band narrows and the needle speeds up. Fill every circle and it comes free.',
+  '바위에 꽉 붙은 녀석이다. 집게 끝(맨손이면 손끝)이 껍데기 가장자리를 따라 왔다 갔다 한다.': 'This one is clamped to the rock. The tip of your tongs (or your fingertip, bare-handed) slides back and forth along the edge of its shell.',
+  '껍데기가 살짝 들린 틈(초록)에 집게 끝이 닿는 순간 눌러 비집어 넣는다. 동그라미를 다 채우면 떨어진다.': 'Click the moment the tip reaches the gap where the shell lifts a little (green) to wedge it in. Fill every circle and it comes free.',
+  '헛짚으면 녀석이 놀라 더 꽉 붙는다 — 틈이 좁아지고 손이 급해진다.': 'Miss and it clamps down harder — the gap narrows and your hand speeds up.',
   '묻힌 녀석이다. 누르고 있으면 판다. 오른쪽 막대는 내가 낸 소란이다.': 'This one is buried. Hold to dig. The bar on the right is how much noise you are making.',
   '소란이 크면 녀석이 움찔하며 더 깊이 숨는다. 쉬면 조용히 올라오지만 판 구멍도 조금씩 메워진다. 파고 쉬는 박자를 찾자.':
     'Too much noise and it flinches and burrows deeper. Rest and it creeps back up — but your hole slowly fills in. Find the rhythm of digging and resting.',

@@ -625,7 +625,7 @@ function createSeedItems(): InvItem[] {
 
     // ── 낚시용품 ──
     { id: 'inv_worm',     name: '지렁이',                   icon: '', iconTexture: 'item_worm', category: 'tackle', subCategory: '생미끼',    qty: 20, basePrice: 5000,  condition: 'live',    equippable: false },
-    { id: 'inv_ragworm',  name: '갯지렁이',                 icon: '', iconTexture: 'item_worm', category: 'tackle', subCategory: '생미끼',    qty: 15, basePrice: 600,   condition: 'live',    equippable: false },
+    { id: 'inv_ragworm',  name: '청갯지렁이',               icon: '', iconTexture: 'item_ragworm', category: 'tackle', subCategory: '생미끼',    qty: 15, basePrice: 600,   condition: 'live',    equippable: false },
     { id: 'inv_honmushi', name: '혼무시',                   icon: '', iconTexture: 'item_honmushi', category: 'tackle', subCategory: '생미끼',    qty: 8,  basePrice: 1500,  condition: 'live',    equippable: false },
     { id: 'inv_krill',    name: '크릴 (냉동)',              icon: '🦐', category: 'tackle', subCategory: '냉동미끼',  qty: 30, basePrice: 4000,  condition: 'frozen',  equippable: false },
     { id: 'inv_breadbait', name: '빵가루 경단',             icon: '', iconTexture: 'px:it_breadball', category: 'tackle', subCategory: '반죽미끼',  qty: 15, basePrice: 300,   equippable: false },
@@ -1305,6 +1305,9 @@ class InventoryStoreManager {
         iconTexture: i.id.startsWith('inv_nuisance_')
           ? `nuisance_${i.id.slice('inv_nuisance_'.length)}`
           : (i.id.startsWith('inv_rod_budget') && i.iconTexture === 'item_bait_rod') ? 'item_spinning_rod'
+            // 225차 — 청갯지렁이는 지렁이(육지) 그림을 쓰고 있었다 · 갯강구 생미끼는 필드 도트를 쓰고 있었다 → 사진 도트로
+            : (i.id === 'inv_ragworm' && i.iconTexture === 'item_worm') ? 'item_ragworm'
+            : (i.id === 'inv_bait_slater' && i.iconTexture === 'forage_dot_ligia_exotica') ? 'forage_ligia_exotica'
             : (i.iconTexture ?? sd?.iconTexture),
         icon: (!i.iconTexture && sd?.iconTexture) ? '' : i.icon,
         // 121차 채집·통발 정적 필드 — 시드 백필 + id 규칙 폴백(상점 구매분: inv_trap_<specId>)
@@ -1319,7 +1322,9 @@ class InventoryStoreManager {
         netReachM: i.netReachM ?? sd?.netReachM ?? (i.tool === 'net' ? netReachFromName(i.name) : undefined),
         // 193차 — 카드 채비는 아래 봉돌까지 한 벌(자중). 시드에 없는 상점 구매분은 단수로 추정
         sinkerWeightG: i.sinkerWeightG ?? sd?.sinkerWeightG ?? (i.rigPart === 'card_rig' ? ((i.kitHooks ?? 3) >= 7 ? 60 : (i.kitHooks ?? 3) >= 5 ? 45 : 38) : undefined),
-        name: (i.id === 'inv_swivel' && i.name === '면도래 8호') ? '핀 도래 8호' : i.name,
+        name: (i.id === 'inv_swivel' && i.name === '면도래 8호') ? '핀 도래 8호'
+          : (i.id === 'inv_ragworm' && i.name === '갯지렁이') ? '청갯지렁이'   // 225차 — 상점 갑 이름과 맞춘다
+          : i.name,
         forageTool: i.forageTool ?? sd?.forageTool,
         // 224차 — 장화(신발 칸) · 포장 묶음 — 상점 구매분은 저장된 필드 그대로, 이름 규칙 폴백만
         wading: i.wading ?? sd?.wading ?? (i.subCategory === '신발' && /장화/.test(i.name) ? true : undefined),

@@ -124,7 +124,12 @@ export const FORAGE_GAME = {
     strikeMs: { hand: 300, tongs: 240, net: 190, gaff: 260, rake: 300 } as Record<ForageTool, number>,
     catchR: { hand: 0.042, tongs: 0.055, net: 0.08, gaff: 0.048, rake: 0.04 } as Record<ForageTool, number>,
     idleMs: [380, 1050] as [number, number],
-    tellMs: [200, 380] as [number, number],
+    tellMs: [150, 380] as [number, number],
+    /** 날랜 녀석일수록 몸이 작고 납작해 덮을 자리가 좁다(225차 — 갯강구 > 쫄장게) */
+    sizeByAgility: [1.35, 0.6] as [number, number],
+    /** 이 빠르기를 넘으면 한 번 튄 뒤 쉬지 않고 또 튄다(이어 뛰기) */
+    chainFrom: 0.8,
+    chainChance: 0.7,
     dashSpeed: [1.3, 3.0] as [number, number],   // agility 0 → 1
     dashDist: [0.16, 0.42] as [number, number],
     feint: 0.3,
@@ -195,7 +200,7 @@ export function createForageGame(c: ShoreCreature, tool: ForageTool, rng: () => 
     base.snatch = {
       x, handX: x < 0.5 ? 0.85 : 0.15, phase: 'idle', phaseMs: between(S.idleMs, rng), dir: 1, targetX: x,
       alarm: 0, strikeMs: 0, strikeTotalMs: S.strikeMs[tool], misses: 0,
-      catchR: S.catchR[tool] * (1 + d * 0.45),
+      catchR: S.catchR[tool] * (1 + d * 0.45) * (pick ? 1 : lerp(S.sizeByAgility[0], S.sizeByAgility[1], agilityOf(c, kind))),
       holes: !pick,
     };
   } else if (kind === 'pry') {
@@ -287,7 +292,13 @@ function stepSnatch(s: ForageGameState, n: SnatchState, input: ForageGameInput, 
       break;
     case 'dash': {
       const step = dashSpeed * sec;
-      if (Math.abs(n.targetX - n.x) <= step) { n.x = n.targetX; n.phase = 'idle'; n.phaseMs = between(S.idleMs, rng) * (1 - agi * 0.4); }
+      if (Math.abs(n.targetX - n.x) <= step) {
+        n.x = n.targetX;
+        n.phase = 'idle';
+        n.phaseMs = between(S.idleMs, rng) * (1 - agi * 0.4);
+        // 이어 뛰기 — 날랜 녀석은 내려앉자마자 곧 또 움찔한다
+        if (agi >= S.chainFrom && rng() < S.chainChance) n.phaseMs = 30;
+      }
       else n.x += Math.sign(n.targetX - n.x) * step;
       break;
     }

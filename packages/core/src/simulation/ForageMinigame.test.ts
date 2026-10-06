@@ -151,6 +151,19 @@ describe('ForagingEngine — 224차 서식 규칙', () => {
     expect(getCreatureById('hemigrapsus_sanguineus')!.baitItemId).toBeTruthy();
     expect(getCreatureById('ligia_exotica')!.baitItemId).toBeTruthy();
   });
+  it('갯강구는 쫄장게보다 덮치기 어렵다(225차)', () => {
+    const crab = rate('hemigrapsus_sanguineus', 'hand', careful, 200);
+    const slater = rate('ligia_exotica', 'hand', careful, 200);
+    expect(slater).toBeLessThan(crab - 0.12);
+  });
+  it('성게는 맨손이면 75% 찔린다(225차)', () => {
+    const urchin = getCreatureById('strongylocentrotus_nudus')!;
+    const rng = mulberry32(21);
+    let hit = 0;
+    for (let k = 0; k < 4000; k++) if (forageInjuryRoll(urchin, 'hand', false, rng).injured) hit++;
+    expect(hit / 4000).toBeGreaterThan(0.72);
+    expect(hit / 4000).toBeLessThan(0.78);
+  });
   it('수확 무게는 양수 · 장갑을 끼면 덜 다친다', () => {
     const rng = mulberry32(9);
     for (const c of SHORE_CREATURE_DATABASE) expect(rollForageHarvest(c, rng).weightG).toBeGreaterThan(0);
