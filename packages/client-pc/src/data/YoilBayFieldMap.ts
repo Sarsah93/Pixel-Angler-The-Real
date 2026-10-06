@@ -489,7 +489,7 @@ export const YOIL_BAY_BUILDINGS: Building[] = [
   // 농협 하나로마트
   {
     id: 'hanaro_mart',
-    label: '농협 하나로마트',
+    label: '농민조합 한마음마트',
     sublabel: '식료품 / 소모품',
     x: 640,
     y: YOIL_BAY_LANDMARKS.TOWN_Y + 40,
@@ -498,7 +498,7 @@ export const YOIL_BAY_BUILDINGS: Building[] = [
     color: 0x1565c0,
     doorColor: 0xffb74d,
     action: 'hanaro_mart',
-    hint: '[E] 하나로마트 이용',
+    hint: '[E] 한마음마트 이용',
   },
   // 전망대 횟집
   {

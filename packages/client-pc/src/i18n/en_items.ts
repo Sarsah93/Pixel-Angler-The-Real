@@ -14,7 +14,7 @@ export const EN_ITEMS: Record<string, string> = {
   '생물 내장 액기스': 'Fish Guts Extract',
   '돌게 (활어 미끼)': 'Shore Crab (Live Bait)',
   '생물 오징어 조각 (낚시점 선어)': 'Fresh Squid Strips (Tackle Shop)',
-  '빵가루 (하나로마트)': 'Breadcrumbs (Hanaro Mart)',
+  '빵가루 (한마음마트)': 'Breadcrumbs (Hanmaeum Mart)',
   '생 오징어 (마트 선어)': 'Fresh Squid (Mart)',
   '옥수수 통조림': 'Canned Corn',
   '생 전갱이 (활어, 직판장)': 'Live Horse Mackerel (Fish Market)',

@@ -18,8 +18,8 @@
  {
   "type": "shop",
   "shopKind": "supermarket",
-  "name": "속초마트",
-  "nameEn": "Sokcho Mart",
+  "name": "속초알뜰마트",
+  "nameEn": "Sokcho Altteul Mart",
   "tx": 534,
   "ty": 100,
   "osmId": 368682453
@@ -27,8 +27,8 @@
  {
   "type": "shop",
   "shopKind": "supermarket",
-  "name": "롯데슈퍼",
-  "nameEn": "Lotte Super",
+  "name": "로열슈퍼",
+  "nameEn": "Royal Super",
   "tx": 212,
   "ty": 607,
   "osmId": 368682459
@@ -36,8 +36,8 @@
  {
   "type": "shop",
   "shopKind": "supermarket",
-  "name": "GS더프래시 속초교동점",
-  "nameEn": "",
+  "name": "GX프레시 교동점",
+  "nameEn": "GX Fresh Gyodong",
   "tx": 158,
   "ty": 226,
   "osmId": 368682471
@@ -45,16 +45,16 @@
  {
   "type": "shop",
   "shopKind": "computer",
-  "name": "컴퓨터종합병원",
-  "nameEn": "Computer Jonghap Hospital",
+  "name": "컴퓨터수리병원",
+  "nameEn": "Keompyuteosuribyeongwon",
   "tx": 175,
   "ty": 358,
   "osmId": 368779629
  },
  {
   "type": "lodging",
-  "name": "해물찜질방",
-  "nameEn": "Haemul Jjimjilbang",
+  "name": "해물찜찜질방",
+  "nameEn": "Haemuljjimjjimjilbang",
   "tx": 90,
   "ty": 494,
   "osmId": 368856523
@@ -62,40 +62,40 @@
  {
   "type": "shop",
   "shopKind": "supermarket",
-  "name": "속초벼룩시장",
-  "nameEn": "Sokcho Flea Market",
+  "name": "속초나눔장터",
+  "nameEn": "Sokcho Nanum Market",
   "tx": 176,
   "ty": 494,
   "osmId": 368868184
  },
  {
   "type": "bank",
-  "name": "KB국민은행",
-  "nameEn": "KB Kookmin Bank",
+  "name": "한빛국민은행",
+  "nameEn": "Hanbit Kookmin Bank",
   "tx": 418,
   "ty": 293,
   "osmId": 368896774
  },
  {
   "type": "bank",
-  "name": "우리은행",
-  "nameEn": "Woori Bank",
+  "name": "우람은행",
+  "nameEn": "Uram Bank",
   "tx": 421,
   "ty": 269,
   "osmId": 368896776
  },
  {
   "type": "fuel",
-  "name": "드림주유소",
-  "nameEn": "Deurim Gas Station",
+  "name": "드림셀프주유소",
+  "nameEn": "Dream Self Gas",
   "tx": 387,
   "ty": 62,
   "osmId": 368912454
  },
  {
   "type": "fuel",
-  "name": "중앙주유소",
-  "nameEn": "Jungang Gas Station",
+  "name": "중앙셀프주유소",
+  "nameEn": "Jungang Self Gas",
   "tx": 440,
   "ty": 239,
   "osmId": 368912479
@@ -112,8 +112,8 @@
  {
   "type": "shop",
   "shopKind": "convenience",
-  "name": "교동편의점",
-  "nameEn": "Gyodong Convenience Store",
+  "name": "교동24편의점",
+  "nameEn": "Gyodong24 Convenience Store",
   "tx": 198,
   "ty": 380,
   "osmId": 368948972
@@ -121,8 +121,8 @@
  {
   "type": "shop",
   "shopKind": "convenience",
-  "name": "대동편의점",
-  "nameEn": "Daedong Convenience Store",
+  "name": "대동마을편의점",
+  "nameEn": "Daedong Village Convenience Store",
   "tx": 432,
   "ty": 219,
   "osmId": 368948975
@@ -130,8 +130,8 @@
  {
   "type": "shop",
   "shopKind": "convenience",
-  "name": "남일편의점",
-  "nameEn": "Namil Convenience Store",
+  "name": "남이편의점",
+  "nameEn": "Nami Convenience Store",
   "tx": 515,
   "ty": 64,
   "osmId": 368948979
@@ -139,8 +139,8 @@
  {
   "type": "shop",
   "shopKind": "convenience",
-  "name": "영진편의점",
-  "nameEn": "Yeongjin Convenience Store",
+  "name": "영신편의점",
+  "nameEn": "Yeongsin Convenience Store",
   "tx": 123,
   "ty": 513,
   "osmId": 368948990
@@ -148,8 +148,8 @@
  {
   "type": "shop",
   "shopKind": "convenience",
-  "name": "GS25",
-  "nameEn": "",
+  "name": "GX24",
+  "nameEn": "GX24",
   "tx": 262,
   "ty": 567,
   "osmId": 368948993
@@ -157,8 +157,8 @@
  {
   "type": "shop",
   "shopKind": "convenience",
-  "name": "곰돌이편의점",
-  "nameEn": "Gomdoli Convenience Store",
+  "name": "곰순이편의점",
+  "nameEn": "Gomsuni Convenience Store",
   "tx": 252,
   "ty": 279,
   "osmId": 368948999
@@ -166,8 +166,8 @@
  {
   "type": "shop",
   "shopKind": "convenience",
-  "name": "논스톱편의점",
-  "nameEn": "Nonseutop Convenience Store",
+  "name": "쉼없는편의점",
+  "nameEn": "Swimeopneun Convenience Store",
   "tx": 332,
   "ty": 205,
   "osmId": 368949000
@@ -175,96 +175,96 @@
  {
   "type": "shop",
   "shopKind": "convenience",
-  "name": "수복25시편의점",
-  "nameEn": "Subok 25 Si Convenience Store",
+  "name": "수복24시편의점",
+  "nameEn": "Subok24si Convenience Store",
   "tx": 439,
   "ty": 168,
   "osmId": 368949006
  },
  {
   "type": "lodging",
-  "name": "굿모닝가족호텔",
-  "nameEn": "Good Morning Family Hotel",
+  "name": "굿데이가족호텔",
+  "nameEn": "Gutdeigajok Hotel",
   "tx": 568,
   "ty": 594,
   "osmId": 368952481
  },
  {
   "type": "restaurant",
-  "name": "영금정회집",
-  "nameEn": "Yeonggeumjeong Fish Restaurant",
+  "name": "영금정바다회집",
+  "nameEn": "Yeonggeumjeong Bada Sashimi House",
   "tx": 574,
   "ty": 108,
   "osmId": 368955461
  },
  {
   "type": "restaurant",
-  "name": "대선횟집",
-  "nameEn": "Daeseon Fish Restaurant",
+  "name": "대성횟집",
+  "nameEn": "Daeseong Sashimi House",
   "tx": 580,
   "ty": 102,
   "osmId": 368963102
  },
  {
   "type": "restaurant",
-  "name": "청정횟집",
-  "nameEn": "Cheongjeong Fish Restaurant",
+  "name": "청정바다횟집",
+  "nameEn": "Cheongjeongbada Sashimi House",
   "tx": 567,
   "ty": 114,
   "osmId": 368963108
  },
  {
   "type": "restaurant",
-  "name": "수현횟집",
-  "nameEn": "Suhyeon Fish Restaurant",
+  "name": "수연횟집",
+  "nameEn": "Suyeon Sashimi House",
   "tx": 438,
   "ty": 273,
   "osmId": 368963142
  },
  {
   "type": "restaurant",
-  "name": "진숙이엄마횟집",
-  "nameEn": "Jinsukieomma Fish Restaurant",
+  "name": "진순이엄마횟집",
+  "nameEn": "Jinsunieomma Sashimi House",
   "tx": 391,
   "ty": 287,
   "osmId": 368963158
  },
  {
   "type": "restaurant",
-  "name": "충청도음성횟집",
-  "nameEn": "Chungcheongdoeumseong Fish Restaurant",
+  "name": "충청도진천횟집",
+  "nameEn": "Chungcheongdojincheon Sashimi House",
   "tx": 388,
   "ty": 282,
   "osmId": 368963168
  },
  {
   "type": "restaurant",
-  "name": "속초할머니횟집",
-  "nameEn": "Sokchohalmeoni Fish Restaurant",
+  "name": "속초외할머니횟집",
+  "nameEn": "Sokcho Oehalmeoni Sashimi House",
   "tx": 391,
   "ty": 292,
   "osmId": 368963169
  },
  {
   "type": "restaurant",
-  "name": "스끼다시천국횟집",
-  "nameEn": "Seuggidasicheonguk Fish Restaurant",
+  "name": "스끼다시낙원횟집",
+  "nameEn": "Seukkidasinakwon Sashimi House",
   "tx": 575,
   "ty": 101,
   "osmId": 368963178
  },
  {
   "type": "restaurant",
-  "name": "동해파도소리횟집",
-  "nameEn": "Donghaepadosori Fish Restaurant",
+  "name": "동해물결소리횟집",
+  "nameEn": "Donghae Mulgyeolsori Sashimi House",
   "tx": 561,
   "ty": 106,
   "osmId": 368963184
  },
  {
   "type": "restaurant",
-  "name": "바다나라활어횟집",
-  "nameEn": "Badanarahwaleo Fish Restaurant",
+  "name": "바다마을활어횟집",
+  "nameEn": "Bada Village Hwaleo Sashimi House",
   "tx": 412,
   "ty": 145,
   "osmId": 368963189
@@ -272,8 +272,8 @@
  {
   "type": "shop",
   "shopKind": "supermarket",
-  "name": "이마트",
-  "nameEn": "E-Mart",
+  "name": "오마트",
+  "nameEn": "O-Mart",
   "tx": 487,
   "ty": 586,
   "osmId": 916466340
@@ -289,8 +289,8 @@
  {
   "type": "shop",
   "shopKind": "car",
-  "name": "기아",
-  "nameEn": "Kia",
+  "name": "기린자동차",
+  "nameEn": "Girin Motors",
   "tx": 339,
   "ty": 626,
   "osmId": 1899083679
@@ -298,16 +298,16 @@
  {
   "type": "shop",
   "shopKind": "car",
-  "name": "현대자동차",
-  "nameEn": "Hyundai Motor",
+  "name": "현재자동차",
+  "nameEn": "Hyeonjae Motors",
   "tx": 343,
   "ty": 626,
   "osmId": 1899083686
  },
  {
   "type": "restaurant",
-  "name": "속초 생대구",
-  "nameEn": "",
+  "name": "속초 생대구탕집",
+  "nameEn": "Sokcho Saengdaegutangjip",
   "tx": 496,
   "ty": 60,
   "osmId": 2705254937
@@ -346,24 +346,24 @@
  },
  {
   "type": "bank",
-  "name": "신한은행",
-  "nameEn": "Shinhan Bank",
+  "name": "신화은행",
+  "nameEn": "Sinhwa Bank",
   "tx": 404,
   "ty": 307,
   "osmId": 3793839813
  },
  {
   "type": "restaurant",
-  "name": "하누랑",
-  "nameEn": "",
+  "name": "한우랑",
+  "nameEn": "Hanu Rang",
   "tx": 244,
   "ty": 432,
   "osmId": 3793839816
  },
  {
   "type": "cafe",
-  "name": "",
-  "nameEn": "Coffee Mama",
+  "name": "커피마미",
+  "nameEn": "Coffee Mami",
   "tx": 501,
   "ty": 606,
   "osmId": 3793839818
@@ -378,8 +378,8 @@
  },
  {
   "type": "lodging",
-  "name": "해피하우스",
-  "nameEn": "Happy House",
+  "name": "해피홈하우스",
+  "nameEn": "Haepihom House",
   "tx": 445,
   "ty": 217,
   "osmId": 3793858935
@@ -394,24 +394,24 @@
  },
  {
   "type": "restaurant",
-  "name": "함흥냉면옥",
-  "nameEn": "",
+  "name": "함경냉면옥",
+  "nameEn": "Hamgyeong Naengmyeonok",
   "tx": 384,
   "ty": 344,
   "osmId": 4337100892
  },
  {
   "type": "lodging",
-  "name": "Story Guesthouse",
-  "nameEn": "",
+  "name": "스토리온 게스트하우스",
+  "nameEn": "Storyon Guesthouse",
   "tx": 438,
   "ty": 177,
   "osmId": 4339434292
  },
  {
   "type": "cafe",
-  "name": "선사로길 Coffee Roasters",
-  "nameEn": "Sunsarogil Cafe",
+  "name": "선사로길 커피볶는집",
+  "nameEn": "Seonsa-ro Coffee Roastery",
   "tx": 401,
   "ty": 636,
   "osmId": 4554929591
@@ -420,39 +420,39 @@
   "type": "shop",
   "shopKind": "funeral_directors",
   "name": "속초의료원 장례식장",
-  "nameEn": "Sokcho Medical Center Funeral Hall",
+  "nameEn": "Sokcho Uiryowon Funeral Hall",
   "tx": 356,
   "ty": 30,
   "osmId": 4566071094
  },
  {
   "type": "lodging",
-  "name": "라온게스트하우스",
-  "nameEn": "Raon Guesthouse",
+  "name": "라움게스트하우스",
+  "nameEn": "Raum Guesthouse",
   "tx": 369,
   "ty": 253,
   "osmId": 4628572593
  },
  {
   "type": "restaurant",
-  "name": "맥도날드",
-  "nameEn": "McDonald's",
+  "name": "맥스버거",
+  "nameEn": "Max's Burger",
   "tx": 281,
   "ty": 613,
   "osmId": 4630801432
  },
  {
   "type": "bank",
-  "name": "IBK기업은행",
-  "nameEn": "Industrial Bank of Korea",
+  "name": "기업신용은행",
+  "nameEn": "Business Credit Bank",
   "tx": 266,
   "ty": 345,
   "osmId": 4644233628
  },
  {
   "type": "cafe",
-  "name": "마캉마캉 속초점",
-  "nameEn": "",
+  "name": "마콩마콩 속초점",
+  "nameEn": "Makongmakong Sokcho Jeom",
   "tx": 293,
   "ty": 338,
   "osmId": 4644240638
@@ -460,24 +460,24 @@
  {
   "type": "shop",
   "shopKind": "supermarket",
-  "name": "l마트",
-  "nameEn": "",
+  "name": "엘엘마트",
+  "nameEn": "LL Mart",
   "tx": 264,
   "ty": 337,
   "osmId": 4644249872
  },
  {
   "type": "bank",
-  "name": "농협",
-  "nameEn": "Nonghyup Bank",
+  "name": "농민조합",
+  "nameEn": "Farmers Co-op",
   "tx": 200,
   "ty": 418,
   "osmId": 4704509290
  },
  {
   "type": "bank",
-  "name": "MG새마을금고",
-  "nameEn": "",
+  "name": "새마루금고",
+  "nameEn": "Saemaru Credit Union",
   "tx": 418,
   "ty": 135,
   "osmId": 4704509391
@@ -492,8 +492,8 @@
  },
  {
   "type": "cafe",
-  "name": "Café Novel",
-  "nameEn": "",
+  "name": "카페 노벨라",
+  "nameEn": "Cafe Novella",
   "tx": 94,
   "ty": 471,
   "osmId": 4793334422
@@ -540,48 +540,48 @@
  },
  {
   "type": "cafe",
-  "name": "커피플레이트",
-  "nameEn": "",
+  "name": "커피플래터",
+  "nameEn": "Coffee Peulraeteo",
   "tx": 478,
   "ty": 493,
   "osmId": 4842900523
  },
  {
   "type": "cafe",
-  "name": "",
-  "nameEn": "Coffee Daibang",
+  "name": "커피다락방",
+  "nameEn": "Coffee Attic",
   "tx": 458,
   "ty": 319,
   "osmId": 4867439123
  },
  {
   "type": "lodging",
-  "name": "",
-  "nameEn": "Light Gueshouse",
+  "name": "라이트하우스 게스트하우스",
+  "nameEn": "Lighthouse Guesthouse",
   "tx": 384,
   "ty": 128,
   "osmId": 4982481222
  },
  {
   "type": "restaurant",
-  "name": "88",
-  "nameEn": "",
+  "name": "88식당",
+  "nameEn": "88 Restaurant",
   "tx": 419,
   "ty": 310,
   "osmId": 5081613722
  },
  {
   "type": "restaurant",
-  "name": "버거킹",
-  "nameEn": "Burger King",
+  "name": "버거퀸",
+  "nameEn": "Burger Queen",
   "tx": 399,
   "ty": 626,
   "osmId": 5162658421
  },
  {
   "type": "cafe",
-  "name": "스타벅스",
-  "nameEn": "Starbucks",
+  "name": "스타빈스",
+  "nameEn": "Starbeans",
   "tx": 290,
   "ty": 612,
   "osmId": 5162664828
@@ -589,8 +589,8 @@
  {
   "type": "shop",
   "shopKind": "convenience",
-  "name": "",
-  "nameEn": "7-Eleven",
+  "name": "세븐나인",
+  "nameEn": "Seven-Nine",
   "tx": 106,
   "ty": 524,
   "osmId": 5162699023
@@ -598,8 +598,8 @@
  {
   "type": "shop",
   "shopKind": "convenience",
-  "name": "GS25",
-  "nameEn": "GS25",
+  "name": "GX24",
+  "nameEn": "GX24",
   "tx": 124,
   "ty": 523,
   "osmId": 5162699526
@@ -607,8 +607,8 @@
  {
   "type": "shop",
   "shopKind": "bakery",
-  "name": "뉴욕제과",
-  "nameEn": "New York Bakery",
+  "name": "뉴포트제과",
+  "nameEn": "Newport Bakery",
   "tx": 202,
   "ty": 365,
   "osmId": 5162773322
@@ -616,16 +616,16 @@
  {
   "type": "shop",
   "shopKind": "clothes",
-  "name": "",
-  "nameEn": "Hummel",
+  "name": "험블스포츠",
+  "nameEn": "Humble Sports",
   "tx": 253,
   "ty": 299,
   "osmId": 5162773635
  },
  {
   "type": "cafe",
-  "name": "",
-  "nameEn": "Flower & Cafe",
+  "name": "꽃과 카페",
+  "nameEn": "Flowers & Cafe",
   "tx": 246,
   "ty": 308,
   "osmId": 5162774332
@@ -656,16 +656,16 @@
  },
  {
   "type": "restaurant",
-  "name": "매자식당",
-  "nameEn": "",
+  "name": "매화식당",
+  "nameEn": "Maehwa Restaurant",
   "tx": 330,
   "ty": 156,
   "osmId": 5772250753
  },
  {
   "type": "restaurant",
-  "name": "현이네포차",
-  "nameEn": "",
+  "name": "현아네포차",
+  "nameEn": "Hyeonane Pocha",
   "tx": 302,
   "ty": 130,
   "osmId": 5772777554
@@ -680,56 +680,56 @@
  },
  {
   "type": "cafe",
-  "name": "",
-  "nameEn": "Starbucks",
+  "name": "스타빈스",
+  "nameEn": "Starbeans",
   "tx": 365,
   "ty": 294,
   "osmId": 6440381695
  },
  {
   "type": "cafe",
-  "name": "칠성조선소",
-  "nameEn": "Chilsung boatyard salon",
+  "name": "칠성조선소 카페",
+  "nameEn": "Chilseongjoseonso Cafe",
   "tx": 266,
   "ty": 422,
   "osmId": 6468042986
  },
  {
   "type": "restaurant",
-  "name": "Domino's",
-  "nameEn": "",
+  "name": "다이스피자",
+  "nameEn": "Dice Pizza",
   "tx": 105,
   "ty": 542,
   "osmId": 6681485074
  },
  {
   "type": "restaurant",
-  "name": "Pizza Hut",
-  "nameEn": "",
+  "name": "피자하우스",
+  "nameEn": "Pizza House",
   "tx": 212,
   "ty": 467,
   "osmId": 6681485075
  },
  {
   "type": "cafe",
-  "name": "",
-  "nameEn": "Coffee & Candle",
+  "name": "커피와 촛불",
+  "nameEn": "Coffee & Candlelight",
   "tx": 232,
   "ty": 504,
   "osmId": 6765673991
  },
  {
   "type": "cafe",
-  "name": "",
-  "nameEn": "Coffee Marly",
+  "name": "커피 말리",
+  "nameEn": "Coffee Marley",
   "tx": 209,
   "ty": 501,
   "osmId": 6765678505
  },
  {
   "type": "restaurant",
-  "name": "청초수물회",
-  "nameEn": "Chongchoosoo Mulhoe",
+  "name": "청초호물회",
+  "nameEn": "Cheongchoho Mulhoe",
   "tx": 395,
   "ty": 562,
   "osmId": 6765680495
@@ -737,8 +737,8 @@
  {
   "type": "shop",
   "shopKind": "variety_store",
-  "name": "다이소",
-  "nameEn": "Daiso",
+  "name": "사이소",
+  "nameEn": "Saiso",
   "tx": 444,
   "ty": 608,
   "osmId": 6765843486
@@ -746,24 +746,24 @@
  {
   "type": "shop",
   "shopKind": "confectionery",
-  "name": "배스킨라빈스",
-  "nameEn": "Baskin-Robbins",
+  "name": "빙글31",
+  "nameEn": "Binggeul 31",
   "tx": 471,
   "ty": 607,
   "osmId": 6765843488
  },
  {
   "type": "fuel",
-  "name": "현대오일뱅크",
-  "nameEn": "Hyundai Oilbank",
+  "name": "현재오일",
+  "nameEn": "Hyeonjae Oil",
   "tx": 432,
   "ty": 623,
   "osmId": 6765843688
  },
  {
   "type": "restaurant",
-  "name": "",
-  "nameEn": "Vietnam",
+  "name": "베트남 쌀국수",
+  "nameEn": "Vietnam Pho",
   "tx": 475,
   "ty": 493,
   "osmId": 6766081686
@@ -779,8 +779,8 @@
  {
   "type": "shop",
   "shopKind": "convenience",
-  "name": "CU",
-  "nameEn": "CU",
+  "name": "QU",
+  "nameEn": "QU",
   "tx": 578,
   "ty": 598,
   "osmId": 6768432288
@@ -788,8 +788,8 @@
  {
   "type": "shop",
   "shopKind": "convenience",
-  "name": "세븐일레븐",
-  "nameEn": "7-Eleven",
+  "name": "세븐나인",
+  "nameEn": "Seven-Nine",
   "tx": 585,
   "ty": 598,
   "osmId": 6768432585
@@ -804,8 +804,8 @@
  },
  {
   "type": "cafe",
-  "name": "",
-  "nameEn": "Coffee & dessert",
+  "name": "커피와 디저트",
+  "nameEn": "Coffee & Desserts",
   "tx": 327,
   "ty": 143,
   "osmId": 6911599186
@@ -820,24 +820,24 @@
  },
  {
   "type": "bank",
-  "name": "NH농협은행",
-  "nameEn": "NH Bank",
+  "name": "농민은행",
+  "nameEn": "Farmers Bank",
   "tx": 425,
   "ty": 265,
   "osmId": 7899010385
  },
  {
   "type": "restaurant",
-  "name": "짬뽕일번지",
-  "nameEn": "",
+  "name": "짬뽕일등지",
+  "nameEn": "Jjamppong Ildeungji",
   "tx": 420,
   "ty": 278,
   "osmId": 7899012885
  },
  {
   "type": "pharmacy",
-  "name": "대승당약국",
-  "nameEn": "",
+  "name": "대성당약국",
+  "nameEn": "Daeseongdang Pharmacy",
   "tx": 412,
   "ty": 293,
   "osmId": 7899014285
@@ -845,8 +845,8 @@
  {
   "type": "shop",
   "shopKind": "mobile_phone",
-  "name": "Tworld",
-  "nameEn": "",
+  "name": "Z월드",
+  "nameEn": "Z World",
   "tx": 413,
   "ty": 290,
   "osmId": 7899014985
@@ -854,16 +854,16 @@
  {
   "type": "shop",
   "shopKind": "jewelry",
-  "name": "보명당",
-  "nameEn": "",
+  "name": "보광당",
+  "nameEn": "Bogwangdang",
   "tx": 411,
   "ty": 289,
   "osmId": 7899016185
  },
  {
   "type": "pharmacy",
-  "name": "하나약국",
-  "nameEn": "",
+  "name": "하나로약국",
+  "nameEn": "Hanaro Pharmacy",
   "tx": 393,
   "ty": 274,
   "osmId": 7899016886
@@ -871,8 +871,8 @@
  {
   "type": "shop",
   "shopKind": "supermarket",
-  "name": "설악슈퍼",
-  "nameEn": "",
+  "name": "설악동슈퍼",
+  "nameEn": "Seolak Dong Super",
   "tx": 404,
   "ty": 286,
   "osmId": 7899017685
@@ -880,32 +880,32 @@
  {
   "type": "shop",
   "shopKind": "butcher",
-  "name": "신개념축산물백화점",
-  "nameEn": "",
+  "name": "새개념축산물백화점",
+  "nameEn": "Saegaenyeomchuksanmulbaekhwajeom",
   "tx": 402,
   "ty": 282,
   "osmId": 7899018185
  },
  {
   "type": "restaurant",
-  "name": "대일회할인마트",
-  "nameEn": "",
+  "name": "대한회할인마트",
+  "nameEn": "Daehanhoehalin Mart",
   "tx": 389,
   "ty": 274,
   "osmId": 7899020785
  },
  {
   "type": "restaurant",
-  "name": "속초엄지닭강정",
-  "nameEn": "",
+  "name": "속초엄지척닭강정",
+  "nameEn": "Sokcho Eomjicheok Dakgangjeong",
   "tx": 368,
   "ty": 265,
   "osmId": 7899035485
  },
  {
   "type": "restaurant",
-  "name": "함지박식당",
-  "nameEn": "",
+  "name": "함지네식당",
+  "nameEn": "Hamjine Restaurant",
   "tx": 369,
   "ty": 268,
   "osmId": 7899038885
@@ -920,8 +920,8 @@
  },
  {
   "type": "restaurant",
-  "name": "한우와문어국밥",
-  "nameEn": "",
+  "name": "한우와문어곰국밥",
+  "nameEn": "Hanu Wamuneogom Gukbap",
   "tx": 370,
   "ty": 302,
   "osmId": 7899053286
@@ -929,8 +929,8 @@
  {
   "type": "shop",
   "shopKind": "butcher",
-  "name": "성실축산",
-  "nameEn": "",
+  "name": "성심축산",
+  "nameEn": "Seongsimchuksan",
   "tx": 380,
   "ty": 300,
   "osmId": 7899059885
@@ -938,8 +938,8 @@
  {
   "type": "shop",
   "shopKind": "mobile_phone",
-  "name": "Tworld",
-  "nameEn": "",
+  "name": "Z월드",
+  "nameEn": "Z World",
   "tx": 382,
   "ty": 302,
   "osmId": 7899061885
@@ -947,56 +947,56 @@
  {
   "type": "shop",
   "shopKind": "mobile_phone",
-  "name": "u+",
-  "nameEn": "",
+  "name": "V플러스",
+  "nameEn": "V Plus",
   "tx": 407,
   "ty": 301,
   "osmId": 7899072785
  },
  {
   "type": "restaurant",
-  "name": "영금정횟집",
-  "nameEn": "",
+  "name": "영금정앞횟집",
+  "nameEn": "Yeonggeumjeong Ap Sashimi House",
   "tx": 578,
   "ty": 76,
   "osmId": 8682207371
  },
  {
   "type": "restaurant",
-  "name": "단천식당",
-  "nameEn": "",
+  "name": "단촌식당",
+  "nameEn": "Danchon Restaurant",
   "tx": 452,
   "ty": 329,
   "osmId": 8692432644
  },
  {
   "type": "cafe",
-  "name": "Stage R.",
-  "nameEn": "Stage R.",
+  "name": "스테이지 알",
+  "nameEn": "Stage Al",
   "tx": 571,
   "ty": 513,
   "osmId": 8692432686
  },
  {
   "type": "restaurant",
-  "name": "그리운보리밥",
-  "nameEn": "",
+  "name": "그리운꽁보리밥",
+  "nameEn": "Geuriunkkongboribap",
   "tx": 452,
   "ty": 76,
   "osmId": 8859872097
  },
  {
   "type": "lodging",
-  "name": "체스터톤스 속초",
-  "nameEn": "",
+  "name": "체스트넛 속초",
+  "nameEn": "Chestnut Sokcho",
   "tx": 222,
   "ty": 516,
   "osmId": 9561744556
  },
  {
   "type": "restaurant",
-  "name": "용신포차",
-  "nameEn": "",
+  "name": "용궁포차",
+  "nameEn": "Yonggung Pocha",
   "tx": 513,
   "ty": 58,
   "osmId": 9604897721
@@ -1004,32 +1004,32 @@
  {
   "type": "shop",
   "shopKind": "convenience",
-  "name": "GS25",
-  "nameEn": "GS25",
+  "name": "GX24",
+  "nameEn": "GX24",
   "tx": 426,
   "ty": 329,
   "osmId": 9824304935
  },
  {
   "type": "cafe",
-  "name": "5구도선장",
-  "nameEn": "",
+  "name": "오구도선장네",
+  "nameEn": "Ogudoseonjangne",
   "tx": 426,
   "ty": 325,
   "osmId": 9824304936
  },
  {
   "type": "restaurant",
-  "name": "KFC",
-  "nameEn": "",
+  "name": "켄치킨",
+  "nameEn": "Ken Chicken",
   "tx": 328,
   "ty": 614,
   "osmId": 10048537108
  },
  {
   "type": "restaurant",
-  "name": "",
-  "nameEn": "Sokcho Seolong",
+  "name": "속초 설롱",
+  "nameEn": "Sokcho Seollong",
   "tx": 390,
   "ty": 307,
   "osmId": 10244441509
@@ -1044,8 +1044,8 @@
  },
  {
   "type": "lodging",
-  "name": "등대 비치 레지던스 호텔",
-  "nameEn": "Sokcho LightHouse Beach Hotel",
+  "name": "등대 해변 레지던스 호텔",
+  "nameEn": "Deungdae Haebyeon Rejideonseu Hotel",
   "tx": 498,
   "ty": 63,
   "osmId": 10833549507
@@ -1053,40 +1053,40 @@
  {
   "type": "shop",
   "shopKind": "bakery",
-  "name": "설악찹쌀 & 기정떡",
-  "nameEn": "",
+  "name": "설악찹쌀 & 술떡",
+  "nameEn": "Seolak Chapssal & Sultteok",
   "tx": 123,
   "ty": 562,
   "osmId": 10858988421
  },
  {
   "type": "restaurant",
-  "name": "24시 전주 명가 콩나물국밥",
-  "nameEn": "Gukbap",
+  "name": "24시 전주 명품 콩나물국밥",
+  "nameEn": "24si Jeonju Myeongpum Kongnamul Gukbap",
   "tx": 477,
   "ty": 571,
   "osmId": 11230547637
  },
  {
   "type": "restaurant",
-  "name": "스시나미",
-  "nameEn": "",
+  "name": "스시나루",
+  "nameEn": "Seusinaru",
   "tx": 249,
   "ty": 287,
   "osmId": 11276303904
  },
  {
   "type": "lodging",
-  "name": "아이파크 스위트",
-  "nameEn": "ipark suite",
+  "name": "아이포트 스위트",
+  "nameEn": "I-Port Suite",
   "tx": 501,
   "ty": 83,
   "osmId": 11528460069
  },
  {
   "type": "restaurant",
-  "name": "이모네식당",
-  "nameEn": "imone",
+  "name": "고모네식당",
+  "nameEn": "Gomone Restaurant",
   "tx": 493,
   "ty": 52,
   "osmId": 11528465969
@@ -1101,16 +1101,16 @@
  },
  {
   "type": "cafe",
-  "name": "Merry Go Round",
-  "nameEn": "",
+  "name": "메리고라운지",
+  "nameEn": "Merry-Go-Lounge",
   "tx": 396,
   "ty": 561,
   "osmId": 11668408498
  },
  {
   "type": "restaurant",
-  "name": "돈우마을",
-  "nameEn": "Donwoo Village Town",
+  "name": "돈소마을",
+  "nameEn": "Donso Village",
   "tx": 363,
   "ty": 601,
   "osmId": 11821700829
@@ -1118,8 +1118,8 @@
  {
   "type": "shop",
   "shopKind": "convenience",
-  "name": "GS25",
-  "nameEn": "",
+  "name": "GX24",
+  "nameEn": "GX24",
   "tx": 420,
   "ty": 593,
   "osmId": 11823189575
@@ -1134,8 +1134,8 @@
  },
  {
   "type": "cafe",
-  "name": "커피해요",
-  "nameEn": "",
+  "name": "커피할래요",
+  "nameEn": "Coffee Halraeyo",
   "tx": 488,
   "ty": 29,
   "osmId": 11849704213
@@ -1158,8 +1158,8 @@
  },
  {
   "type": "restaurant",
-  "name": "안동식당",
-  "nameEn": "",
+  "name": "안동집식당",
+  "nameEn": "Andongjip Restaurant",
   "tx": 518,
   "ty": 603,
   "osmId": 12328164358
@@ -1167,8 +1167,8 @@
  {
   "type": "shop",
   "shopKind": "convenience",
-  "name": "세븐일레븐",
-  "nameEn": "7-Eleven",
+  "name": "세븐나인",
+  "nameEn": "Seven-Nine",
   "tx": 539,
   "ty": 601,
   "osmId": 12328164360
@@ -1191,8 +1191,8 @@
  },
  {
   "type": "cafe",
-  "name": "Whale Light",
-  "nameEn": "",
+  "name": "고래등불",
+  "nameEn": "Whale Lamp",
   "tx": 613,
   "ty": 594,
   "osmId": 12343049385
@@ -1200,24 +1200,24 @@
  {
   "type": "shop",
   "shopKind": "convenience",
-  "name": "세븐일레븐",
-  "nameEn": "7-Eleven",
+  "name": "세븐나인",
+  "nameEn": "Seven-Nine",
   "tx": 623,
   "ty": 632,
   "osmId": 12343116626
  },
  {
   "type": "lodging",
-  "name": "Dollma Chelin",
-  "nameEn": "",
+  "name": "돌마 셸린",
+  "nameEn": "Dolma Shelin",
   "tx": 363,
   "ty": 139,
   "osmId": 12357336002
  },
  {
   "type": "bank",
-  "name": "우리은행",
-  "nameEn": "Woori Bank",
+  "name": "우람은행",
+  "nameEn": "Uram Bank",
   "tx": 427,
   "ty": 99,
   "osmId": 12398988005
@@ -1225,8 +1225,8 @@
  {
   "type": "shop",
   "shopKind": "convenience",
-  "name": "GS25",
-  "nameEn": "",
+  "name": "GX24",
+  "nameEn": "GX24",
   "tx": 510,
   "ty": 604,
   "osmId": 12462734869
@@ -1234,8 +1234,8 @@
  {
   "type": "shop",
   "shopKind": "convenience",
-  "name": "GS25",
-  "nameEn": "GS25",
+  "name": "GX24",
+  "nameEn": "GX24",
   "tx": 562,
   "ty": 606,
   "osmId": 12803703339
@@ -1250,24 +1250,24 @@
  },
  {
   "type": "cafe",
-  "name": "컴포즈커피",
-  "nameEn": "Compose Coffee",
+  "name": "컴퍼스커피",
+  "nameEn": "Compass Coffee",
   "tx": 557,
   "ty": 598,
   "osmId": 13020849911
  },
  {
   "type": "cafe",
-  "name": "텐퍼센트커피",
-  "nameEn": "Tenpercent Coffee",
+  "name": "텐포인트커피",
+  "nameEn": "Tenpointeu Coffee",
   "tx": 406,
   "ty": 305,
   "osmId": 13020854801
  },
  {
   "type": "cafe",
-  "name": "Cinnabon",
-  "nameEn": "",
+  "name": "시나몬롤하우스",
+  "nameEn": "Cinnamon Roll House",
   "tx": 440,
   "ty": 178,
   "osmId": 13111291201
@@ -1283,8 +1283,8 @@
  {
   "type": "shop",
   "shopKind": "supermarket",
-  "name": "하나로마트",
-  "nameEn": "",
+  "name": "한마음마트",
+  "nameEn": "Hanmaeum Mart",
   "tx": 194,
   "ty": 507,
   "osmId": 13521335636
@@ -1292,16 +1292,16 @@
  {
   "type": "shop",
   "shopKind": "variety_store",
-  "name": "제이마트",
-  "nameEn": "",
+  "name": "케이마트",
+  "nameEn": "K Mart",
   "tx": 159,
   "ty": 633,
   "osmId": 13521987112
  },
  {
   "type": "bank",
-  "name": "NH농협은행",
-  "nameEn": "NH Bank",
+  "name": "농민은행",
+  "nameEn": "Farmers Bank",
   "tx": 354,
   "ty": 626,
   "osmId": 13521987130
@@ -1309,8 +1309,8 @@
  {
   "type": "shop",
   "shopKind": "electronics",
-  "name": "LG전자 베스트샵",
-  "nameEn": "LG Electronics Best Shop",
+  "name": "럭키전자 베스트샵",
+  "nameEn": "Lucky Electronics Best Shop",
   "tx": 295,
   "ty": 626,
   "osmId": 13521987131
@@ -1318,8 +1318,8 @@
  {
   "type": "shop",
   "shopKind": "electronics",
-  "name": "삼성스토어 속초",
-  "nameEn": "Samsung Store Sokcho",
+  "name": "삼별스토어 속초",
+  "nameEn": "Sambyeol Store Sokcho",
   "tx": 230,
   "ty": 625,
   "osmId": 13521987136
@@ -1334,8 +1334,8 @@
  },
  {
   "type": "bank",
-  "name": "MG새마을금고",
-  "nameEn": "",
+  "name": "새마루금고",
+  "nameEn": "Saemaru Credit Union",
   "tx": 264,
   "ty": 625,
   "osmId": 13522026893
@@ -1343,8 +1343,8 @@
  {
   "type": "shop",
   "shopKind": "electronics",
-  "name": "롯데하이마트",
-  "nameEn": "Lotte Himart",
+  "name": "하이일렉트로",
+  "nameEn": "Hi-Electro",
   "tx": 252,
   "ty": 626,
   "osmId": 13522081448
@@ -1352,8 +1352,8 @@
  {
   "type": "shop",
   "shopKind": "convenience",
-  "name": "CU",
-  "nameEn": "",
+  "name": "QU",
+  "nameEn": "QU",
   "tx": 265,
   "ty": 629,
   "osmId": 13522081470
@@ -1361,8 +1361,8 @@
  {
   "type": "shop",
   "shopKind": "variety_store",
-  "name": "DC타이거",
-  "nameEn": "",
+  "name": "DC라이거",
+  "nameEn": "DC Liger",
   "tx": 260,
   "ty": 626,
   "osmId": 13522081471
@@ -1370,40 +1370,40 @@
  {
   "type": "shop",
   "shopKind": "furniture",
-  "name": "에이스침대",
-  "nameEn": "",
+  "name": "에이플침대",
+  "nameEn": "A-Ple Bed",
   "tx": 258,
   "ty": 626,
   "osmId": 13522081472
  },
  {
   "type": "cafe",
-  "name": "컴포즈커피",
-  "nameEn": "Compose Coffee",
+  "name": "컴퍼스커피",
+  "nameEn": "Compass Coffee",
   "tx": 242,
   "ty": 625,
   "osmId": 13522081487
  },
  {
   "type": "cafe",
-  "name": "스타벅스",
-  "nameEn": "Starbucks",
+  "name": "스타빈스",
+  "nameEn": "Starbeans",
   "tx": 67,
   "ty": 461,
   "osmId": 13523707682
  },
  {
   "type": "cafe",
-  "name": "스타벅스",
-  "nameEn": "Starbucks",
+  "name": "스타빈스",
+  "nameEn": "Starbeans",
   "tx": 220,
   "ty": 186,
   "osmId": 13523734845
  },
  {
   "type": "fuel",
-  "name": "S-Oil",
-  "nameEn": "",
+  "name": "SO주유소",
+  "nameEn": "SO Gas",
   "tx": 273,
   "ty": 611,
   "osmId": 13523734880
@@ -1411,8 +1411,8 @@
  {
   "type": "shop",
   "shopKind": "clothes",
-  "name": "탑텐",
-  "nameEn": "Topten",
+  "name": "탑나인",
+  "nameEn": "Top Nine",
   "tx": 252,
   "ty": 611,
   "osmId": 13523734881
@@ -1420,16 +1420,16 @@
  {
   "type": "shop",
   "shopKind": "clothes",
-  "name": "탑텐",
-  "nameEn": "Topten",
+  "name": "탑나인",
+  "nameEn": "Top Nine",
   "tx": 481,
   "ty": 580,
   "osmId": 13523734882
  },
  {
   "type": "restaurant",
-  "name": "롯데리아",
-  "nameEn": "Lotteria",
+  "name": "버거리아",
+  "nameEn": "Burgeria",
   "tx": 389,
   "ty": 333,
   "osmId": 13523734959
@@ -1437,24 +1437,24 @@
  {
   "type": "shop",
   "shopKind": "convenience",
-  "name": "세븐일레븐",
-  "nameEn": "7-Eleven",
+  "name": "세븐나인",
+  "nameEn": "Seven-Nine",
   "tx": 367,
   "ty": 603,
   "osmId": 13523734966
  },
  {
   "type": "lodging",
-  "name": "마리나베이 속초",
-  "nameEn": "Marinabay Sokcho",
+  "name": "마리나코브 속초",
+  "nameEn": "Marinakobeu Sokcho",
   "tx": 427,
   "ty": 594,
   "osmId": 13523734967
  },
  {
   "type": "cafe",
-  "name": "컴포즈커피",
-  "nameEn": "Compose Coffee",
+  "name": "컴퍼스커피",
+  "nameEn": "Compass Coffee",
   "tx": 62,
   "ty": 411,
   "osmId": 13524895754
@@ -1462,8 +1462,8 @@
  {
   "type": "shop",
   "shopKind": "convenience",
-  "name": "세븐일레븐",
-  "nameEn": "7-Eleven",
+  "name": "세븐나인",
+  "nameEn": "Seven-Nine",
   "tx": 63,
   "ty": 416,
   "osmId": 13524895755
@@ -1471,8 +1471,8 @@
  {
   "type": "shop",
   "shopKind": "convenience",
-  "name": "GS25",
-  "nameEn": "",
+  "name": "GX24",
+  "nameEn": "GX24",
   "tx": 87,
   "ty": 418,
   "osmId": 13524895756
@@ -1480,16 +1480,16 @@
  {
   "type": "shop",
   "shopKind": "convenience",
-  "name": "CU",
-  "nameEn": "",
+  "name": "QU",
+  "nameEn": "QU",
   "tx": 100,
   "ty": 425,
   "osmId": 13524895757
  },
  {
   "type": "cafe",
-  "name": "공차",
-  "nameEn": "Gong Cha",
+  "name": "버블차관",
+  "nameEn": "Bubble Teahouse",
   "tx": 571,
   "ty": 554,
   "osmId": 13524895766
@@ -1497,8 +1497,8 @@
  {
   "type": "shop",
   "shopKind": "cosmetics",
-  "name": "올리브영",
-  "nameEn": "Olive Young",
+  "name": "올리브그린",
+  "nameEn": "Olive Green",
   "tx": 446,
   "ty": 609,
   "osmId": 13524895767
@@ -1506,8 +1506,8 @@
  {
   "type": "shop",
   "shopKind": "cosmetics",
-  "name": "올리브영",
-  "nameEn": "Olive Young",
+  "name": "올리브그린",
+  "nameEn": "Olive Green",
   "tx": 233,
   "ty": 625,
   "osmId": 13524895768
@@ -1515,16 +1515,16 @@
  {
   "type": "shop",
   "shopKind": "variety_store",
-  "name": "다이소",
-  "nameEn": "Daiso",
+  "name": "사이소",
+  "nameEn": "Saiso",
   "tx": 214,
   "ty": 609,
   "osmId": 13524895769
  },
  {
   "type": "bank",
-  "name": "KB국민은행",
-  "nameEn": "KB Kookmin Bank",
+  "name": "한빛국민은행",
+  "nameEn": "Hanbit Kookmin Bank",
   "tx": 198,
   "ty": 581,
   "osmId": 13524895775
@@ -1532,24 +1532,24 @@
  {
   "type": "shop",
   "shopKind": "convenience",
-  "name": "GS25",
-  "nameEn": "",
+  "name": "GX24",
+  "nameEn": "GX24",
   "tx": 198,
   "ty": 582,
   "osmId": 13524895776
  },
  {
   "type": "restaurant",
-  "name": "Dunkin'",
-  "nameEn": "",
+  "name": "도넛킨",
+  "nameEn": "Donutkin",
   "tx": 195,
   "ty": 577,
   "osmId": 13524895777
  },
  {
   "type": "fuel",
-  "name": "SK주유소",
-  "nameEn": "SK gas",
+  "name": "SJ주유소",
+  "nameEn": "SJ Gas",
   "tx": 210,
   "ty": 578,
   "osmId": 13524895778
@@ -1557,8 +1557,8 @@
  {
   "type": "shop",
   "shopKind": "convenience",
-  "name": "GS25",
-  "nameEn": "",
+  "name": "GX24",
+  "nameEn": "GX24",
   "tx": 62,
   "ty": 625,
   "osmId": 13528483784
@@ -1566,24 +1566,24 @@
  {
   "type": "shop",
   "shopKind": "car",
-  "name": "현대자동차",
-  "nameEn": "Hyundai Motor",
+  "name": "현재자동차",
+  "nameEn": "Hyeonjae Motors",
   "tx": 76,
   "ty": 440,
   "osmId": 13529457791
  },
  {
   "type": "restaurant",
-  "name": "크리스피크림도넛",
-  "nameEn": "Krispy Kreme",
+  "name": "크리미도넛",
+  "nameEn": "Creamy Donut",
   "tx": 398,
   "ty": 320,
   "osmId": 13529491081
  },
  {
   "type": "cafe",
-  "name": "메가MGC커피",
-  "nameEn": "Mega Coffee",
+  "name": "기가커피",
+  "nameEn": "Giga Coffee",
   "tx": 464,
   "ty": 607,
   "osmId": 13529546540
@@ -1591,16 +1591,16 @@
  {
   "type": "shop",
   "shopKind": "convenience",
-  "name": "세븐일레븐",
-  "nameEn": "7-Eleven",
+  "name": "세븐나인",
+  "nameEn": "Seven-Nine",
   "tx": 466,
   "ty": 607,
   "osmId": 13529546579
  },
  {
   "type": "restaurant",
-  "name": "써브웨이",
-  "nameEn": "Subway",
+  "name": "서브샌드",
+  "nameEn": "Sub Sand",
   "tx": 457,
   "ty": 608,
   "osmId": 13529546580
@@ -1608,8 +1608,8 @@
  {
   "type": "shop",
   "shopKind": "convenience",
-  "name": "세븐일레븐",
-  "nameEn": "7-Eleven",
+  "name": "세븐나인",
+  "nameEn": "Seven-Nine",
   "tx": 453,
   "ty": 620,
   "osmId": 13529546581
@@ -1617,8 +1617,8 @@
  {
   "type": "shop",
   "shopKind": "convenience",
-  "name": "CU",
-  "nameEn": "",
+  "name": "QU",
+  "nameEn": "QU",
   "tx": 344,
   "ty": 637,
   "osmId": 13529546582
@@ -1626,32 +1626,32 @@
  {
   "type": "shop",
   "shopKind": "convenience",
-  "name": "GS25",
-  "nameEn": "",
+  "name": "GX24",
+  "nameEn": "GX24",
   "tx": 305,
   "ty": 636,
   "osmId": 13529546583
  },
  {
   "type": "cafe",
-  "name": "투썸플레이스",
-  "nameEn": "A Twosome Place",
+  "name": "투스푼플레이스",
+  "nameEn": "Two Spoon Place",
   "tx": 76,
   "ty": 452,
   "osmId": 13531773418
  },
  {
   "type": "lodging",
-  "name": "속초 마리비스타 호텔",
-  "nameEn": "Sokcho Mari Vista Hotel",
+  "name": "속초 마리뷰 호텔",
+  "nameEn": "Sokcho Maribyu Hotel",
   "tx": 459,
   "ty": 620,
   "osmId": 13532129194
  },
  {
   "type": "lodging",
-  "name": "Hotel 청초",
-  "nameEn": "Hotel Cheongcho",
+  "name": "호텔 청초호",
+  "nameEn": "Hotel Cheongchoho",
   "tx": 336,
   "ty": 611,
   "osmId": 13534013310
@@ -1659,32 +1659,32 @@
  {
   "type": "shop",
   "shopKind": "convenience",
-  "name": "CU",
-  "nameEn": "",
+  "name": "QU",
+  "nameEn": "QU",
   "tx": 310,
   "ty": 611,
   "osmId": 13534716360
  },
  {
   "type": "cafe",
-  "name": "카페드롭탑",
-  "nameEn": "Cafe Droptop",
+  "name": "드립탑",
+  "nameEn": "Driptop",
   "tx": 312,
   "ty": 588,
   "osmId": 13534716361
  },
  {
   "type": "restaurant",
-  "name": "장수루 양꼬치 훠궈",
-  "nameEn": "",
+  "name": "장성루 양꼬치 훠궈",
+  "nameEn": "Jangseongru Yangkkochi Hwogwo",
   "tx": 363,
   "ty": 626,
   "osmId": 13540339087
  },
  {
   "type": "cafe",
-  "name": "할리스",
-  "nameEn": "Hollys",
+  "name": "할로스커피",
+  "nameEn": "Hallos Coffee",
   "tx": 323,
   "ty": 611,
   "osmId": 13544899302
@@ -1692,16 +1692,16 @@
  {
   "type": "shop",
   "shopKind": "supermarket",
-  "name": "우리홈마트",
-  "nameEn": "",
+  "name": "우리집마트",
+  "nameEn": "Urijip Mart",
   "tx": 118,
   "ty": 430,
   "osmId": 13544899339
  },
  {
   "type": "fuel",
-  "name": "현대오일뱅크",
-  "nameEn": "Hyundai Oilbank",
+  "name": "현재오일",
+  "nameEn": "Hyeonjae Oil",
   "tx": 68,
   "ty": 542,
   "osmId": 13544899402
@@ -1709,23 +1709,23 @@
  {
   "type": "shop",
   "shopKind": "tyres",
-  "name": "타이어뱅크",
-  "nameEn": "Tire Bank",
+  "name": "타이어은행",
+  "nameEn": "Tire Bank Co.",
   "tx": 185,
   "ty": 534,
   "osmId": 13545122925
  },
  {
   "type": "restaurant",
-  "name": "전주속풀이해장국",
-  "nameEn": "",
+  "name": "전주속편한해장국",
+  "nameEn": "Jeonjusokpyeonhan Haejangguk",
   "tx": 366,
   "ty": 612,
   "osmId": 13545122987
  },
  {
   "type": "bank",
-  "name": "신협",
+  "name": "신용조합",
   "nameEn": "Credit Union",
   "tx": 373,
   "ty": 613,
@@ -1733,40 +1733,40 @@
  },
  {
   "type": "restaurant",
-  "name": "청진동",
-  "nameEn": "Cheongjindong",
+  "name": "청진골",
+  "nameEn": "Cheongjingol",
   "tx": 386,
   "ty": 612,
   "osmId": 13545122995
  },
  {
   "type": "fuel",
-  "name": "속초농협클린주유소",
-  "nameEn": "Sokcho Nonghyup Clean",
+  "name": "속초농민클린주유소",
+  "nameEn": "Sokcho Farmers Clean Gas",
   "tx": 178,
   "ty": 522,
   "osmId": 13545317323
  },
  {
   "type": "fuel",
-  "name": "GS칼텍스",
-  "nameEn": "GS Caltex",
+  "name": "GX칼텍",
+  "nameEn": "GX Caltech",
   "tx": 183,
   "ty": 460,
   "osmId": 13545317345
  },
  {
   "type": "restaurant",
-  "name": "회식의달인",
-  "nameEn": "",
+  "name": "회식의고수",
+  "nameEn": "Hoesikuigosu",
   "tx": 479,
   "ty": 617,
   "osmId": 13546269867
  },
  {
   "type": "cafe",
-  "name": "빽다방",
-  "nameEn": "Paik's Coffee",
+  "name": "빼꼼다방",
+  "nameEn": "Ppaekkom Dabang",
   "tx": 380,
   "ty": 330,
   "osmId": 13546269869
@@ -1774,8 +1774,8 @@
  {
   "type": "shop",
   "shopKind": "clothes",
-  "name": "Puma",
-  "nameEn": "",
+  "name": "퓨마스포츠",
+  "nameEn": "Cougar Sports",
   "tx": 383,
   "ty": 335,
   "osmId": 13546269870
@@ -1783,16 +1783,16 @@
  {
   "type": "shop",
   "shopKind": "shoes",
-  "name": "New Balance",
-  "nameEn": "",
+  "name": "뉴밸런서",
+  "nameEn": "New Balancer",
   "tx": 374,
   "ty": 338,
   "osmId": 13546269871
  },
  {
   "type": "restaurant",
-  "name": "김밥천국",
-  "nameEn": "",
+  "name": "김밥낙원",
+  "nameEn": "Gimbap Nagwon",
   "tx": 367,
   "ty": 340,
   "osmId": 13546269872
@@ -1800,16 +1800,16 @@
  {
   "type": "shop",
   "shopKind": "clothes",
-  "name": "Nike",
-  "nameEn": "",
+  "name": "나이스",
+  "nameEn": "Nais",
   "tx": 354,
   "ty": 344,
   "osmId": 13546269873
  },
  {
   "type": "restaurant",
-  "name": "맘스터치",
-  "nameEn": "Mom's Touch",
+  "name": "맘스키친",
+  "nameEn": "Mom's Kitchen",
   "tx": 349,
   "ty": 340,
   "osmId": 13546269874
@@ -1817,8 +1817,8 @@
  {
   "type": "shop",
   "shopKind": "sports",
-  "name": "Adidas",
-  "nameEn": "",
+  "name": "아디오스",
+  "nameEn": "Adios",
   "tx": 338,
   "ty": 349,
   "osmId": 13546269875
@@ -1826,8 +1826,8 @@
  {
   "type": "shop",
   "shopKind": "shoes",
-  "name": "Crocs",
-  "nameEn": "",
+  "name": "클록스",
+  "nameEn": "Clocs",
   "tx": 317,
   "ty": 347,
   "osmId": 13546269876
@@ -1835,16 +1835,16 @@
  {
   "type": "shop",
   "shopKind": "clothes",
-  "name": "Lacoste",
-  "nameEn": "",
+  "name": "라코스타",
+  "nameEn": "Lacosta",
   "tx": 306,
   "ty": 348,
   "osmId": 13546269877
  },
  {
   "type": "bank",
-  "name": "MG새마을금고",
-  "nameEn": "",
+  "name": "새마루금고",
+  "nameEn": "Saemaru Credit Union",
   "tx": 298,
   "ty": 349,
   "osmId": 13546269878
@@ -1852,8 +1852,8 @@
  {
   "type": "shop",
   "shopKind": "convenience",
-  "name": "GS25",
-  "nameEn": "",
+  "name": "GX24",
+  "nameEn": "GX24",
   "tx": 288,
   "ty": 350,
   "osmId": 13546269879
@@ -1861,8 +1861,8 @@
  {
   "type": "shop",
   "shopKind": "clothes",
-  "name": "The North Face",
-  "nameEn": "",
+  "name": "노스마운틴",
+  "nameEn": "North Mountain",
   "tx": 287,
   "ty": 356,
   "osmId": 13546269880
@@ -1870,8 +1870,8 @@
  {
   "type": "shop",
   "shopKind": "shoes",
-  "name": "ASICS",
-  "nameEn": "",
+  "name": "아키스",
+  "nameEn": "Akis",
   "tx": 347,
   "ty": 341,
   "osmId": 13546269881
@@ -1879,8 +1879,8 @@
  {
   "type": "shop",
   "shopKind": "bakery",
-  "name": "파리바게뜨",
-  "nameEn": "Paris Baguette",
+  "name": "파리베이커",
+  "nameEn": "Paris Baker",
   "tx": 384,
   "ty": 328,
   "osmId": 13546269882
@@ -1888,16 +1888,16 @@
  {
   "type": "shop",
   "shopKind": "clothes",
-  "name": "Le Coq Sportif",
-  "nameEn": "",
+  "name": "르꼬꼬",
+  "nameEn": "Le Coco",
   "tx": 386,
   "ty": 334,
   "osmId": 13546269883
  },
  {
   "type": "pharmacy",
-  "name": "서독약국",
-  "nameEn": "West Germany Pharmacy",
+  "name": "서동약국",
+  "nameEn": "Seodong Pharmacy",
   "tx": 391,
   "ty": 327,
   "osmId": 13546269884
@@ -1905,40 +1905,40 @@
  {
   "type": "shop",
   "shopKind": "cosmetics",
-  "name": "올리브영",
-  "nameEn": "Olive Young",
+  "name": "올리브그린",
+  "nameEn": "Olive Green",
   "tx": 394,
   "ty": 331,
   "osmId": 13546269885
  },
  {
   "type": "cafe",
-  "name": "공차",
-  "nameEn": "Gong Cha",
+  "name": "버블차관",
+  "nameEn": "Bubble Teahouse",
   "tx": 414,
   "ty": 308,
   "osmId": 13546269887
  },
  {
   "type": "cafe",
-  "name": "이디야커피",
-  "nameEn": "Ediya Coffee",
+  "name": "이데아커피",
+  "nameEn": "Idea Coffee",
   "tx": 234,
   "ty": 392,
   "osmId": 13546269888
  },
  {
   "type": "bank",
-  "name": "MG새마을금고",
-  "nameEn": "",
+  "name": "새마루금고",
+  "nameEn": "Saemaru Credit Union",
   "tx": 132,
   "ty": 437,
   "osmId": 13546269889
  },
  {
   "type": "bank",
-  "name": "MG새마을금고",
-  "nameEn": "",
+  "name": "새마루금고",
+  "nameEn": "Saemaru Credit Union",
   "tx": 148,
   "ty": 618,
   "osmId": 13546269890
@@ -1946,32 +1946,32 @@
  {
   "type": "shop",
   "shopKind": "bakery",
-  "name": "파리바게뜨",
-  "nameEn": "Paris Baguette",
+  "name": "파리베이커",
+  "nameEn": "Paris Baker",
   "tx": 220,
   "ty": 620,
   "osmId": 13546269893
  },
  {
   "type": "pharmacy",
-  "name": "종로약국",
-  "nameEn": "Jongno Pharmacy",
+  "name": "종로온누리약국",
+  "nameEn": "Jongroonnuri Pharmacy",
   "tx": 221,
   "ty": 621,
   "osmId": 13546269894
  },
  {
   "type": "bank",
-  "name": "NH농협은행",
-  "nameEn": "NH Bank",
+  "name": "농민은행",
+  "nameEn": "Farmers Bank",
   "tx": 421,
   "ty": 222,
   "osmId": 13550219732
  },
  {
   "type": "restaurant",
-  "name": "둘둘치킨",
-  "nameEn": "Two Two Fried Chicken",
+  "name": "셋셋치킨",
+  "nameEn": "Setset Chicken",
   "tx": 289,
   "ty": 625,
   "osmId": 13556301607
@@ -1979,8 +1979,8 @@
  {
   "type": "shop",
   "shopKind": "books",
-  "name": "문우당서림",
-  "nameEn": "Moonwoodang Bookshop",
+  "name": "문운당서림",
+  "nameEn": "Munundangseorim",
   "tx": 236,
   "ty": 381,
   "osmId": 13556301648
@@ -1988,8 +1988,8 @@
  {
   "type": "shop",
   "shopKind": "books",
-  "name": "동아서점",
-  "nameEn": "Donga Bookstore",
+  "name": "동해서점",
+  "nameEn": "Donghae Seojeom",
   "tx": 226,
   "ty": 367,
   "osmId": 13556301649
@@ -1997,8 +1997,8 @@
  {
   "type": "shop",
   "shopKind": "convenience",
-  "name": "CU",
-  "nameEn": "",
+  "name": "QU",
+  "nameEn": "QU",
   "tx": 500,
   "ty": 604,
   "osmId": 13556548854
@@ -2006,24 +2006,24 @@
  {
   "type": "shop",
   "shopKind": "convenience",
-  "name": "GS25",
-  "nameEn": "",
+  "name": "GX24",
+  "nameEn": "GX24",
   "tx": 506,
   "ty": 597,
   "osmId": 13556548878
  },
  {
   "type": "restaurant",
-  "name": "No Brand Burger",
-  "nameEn": "",
+  "name": "노네임버거",
+  "nameEn": "No Name Burger",
   "tx": 488,
   "ty": 571,
   "osmId": 13556554406
  },
  {
   "type": "restaurant",
-  "name": "페리카나 Chicken",
-  "nameEn": "Pelicana Chicken",
+  "name": "펠리컨치킨",
+  "nameEn": "Pelican Chicken",
   "tx": 520,
   "ty": 603,
   "osmId": 13556554411
@@ -2031,16 +2031,16 @@
  {
   "type": "shop",
   "shopKind": "convenience",
-  "name": "이마트24",
-  "nameEn": "emart24",
+  "name": "오마트24",
+  "nameEn": "O-Mart 24",
   "tx": 533,
   "ty": 602,
   "osmId": 13556554412
  },
  {
   "type": "bank",
-  "name": "농협",
-  "nameEn": "Nonghyup Bank",
+  "name": "농민조합",
+  "nameEn": "Farmers Co-op",
   "tx": 536,
   "ty": 612,
   "osmId": 13556554413
@@ -2048,24 +2048,24 @@
  {
   "type": "shop",
   "shopKind": "tyres",
-  "name": "T'Station",
-  "nameEn": "",
+  "name": "티포인트",
+  "nameEn": "T-Point",
   "tx": 301,
   "ty": 611,
   "osmId": 13564230728
  },
  {
   "type": "restaurant",
-  "name": "교촌치킨",
-  "nameEn": "KyoChon",
+  "name": "교동치킨",
+  "nameEn": "Gyodong Chicken",
   "tx": 124,
   "ty": 507,
   "osmId": 13564230805
  },
  {
   "type": "restaurant",
-  "name": "설악본가",
-  "nameEn": "",
+  "name": "설악본채",
+  "nameEn": "Seolak Bonchae",
   "tx": 350,
   "ty": 627,
   "osmId": 13566679916
@@ -2073,8 +2073,8 @@
  {
   "type": "shop",
   "shopKind": "car",
-  "name": "르노코리아",
-  "nameEn": "Renault Korea",
+  "name": "르네코리아",
+  "nameEn": "Rene Korea",
   "tx": 384,
   "ty": 625,
   "osmId": 13567104150
@@ -2082,8 +2082,8 @@
  {
   "type": "shop",
   "shopKind": "car",
-  "name": "KG모빌리티",
-  "nameEn": "KG Mobility",
+  "name": "KM모빌리티",
+  "nameEn": "KM Mobility",
   "tx": 326,
   "ty": 625,
   "osmId": 13567104159
@@ -2091,56 +2091,56 @@
  {
   "type": "shop",
   "shopKind": "convenience",
-  "name": "GS25",
-  "nameEn": "",
+  "name": "GX24",
+  "nameEn": "GX24",
   "tx": 368,
   "ty": 632,
   "osmId": 13569253440
  },
  {
   "type": "restaurant",
-  "name": "롯데리아",
-  "nameEn": "Lotteria",
+  "name": "버거리아",
+  "nameEn": "Burgeria",
   "tx": 450,
   "ty": 609,
   "osmId": 13572479078
  },
  {
   "type": "cafe",
-  "name": "스탠브루",
-  "nameEn": "Stanbru",
+  "name": "스톤브루",
+  "nameEn": "Seutonbeuru",
   "tx": 451,
   "ty": 609,
   "osmId": 13572479079
  },
  {
   "type": "restaurant",
-  "name": "단천면옥",
-  "nameEn": "",
+  "name": "단촌면옥",
+  "nameEn": "Danchon Myeonok",
   "tx": 254,
   "ty": 556,
   "osmId": 13577475916
  },
  {
   "type": "restaurant",
-  "name": "만석닭강정",
-  "nameEn": "Mansuk Dakgangjeong",
+  "name": "만선닭강정",
+  "nameEn": "Manseon Dakgangjeong",
   "tx": 333,
   "ty": 603,
   "osmId": 13577475917
  },
  {
   "type": "pharmacy",
-  "name": "율곡약국",
-  "nameEn": "Yulgok Pharmacy",
+  "name": "율곡로약국",
+  "nameEn": "Yulgokro Pharmacy",
   "tx": 222,
   "ty": 569,
   "osmId": 13577475954
  },
  {
   "type": "restaurant",
-  "name": "에그드랍",
-  "nameEn": "Eggdrop",
+  "name": "에그드롭스",
+  "nameEn": "Egg Drops",
   "tx": 309,
   "ty": 600,
   "osmId": 13579796187
@@ -2148,8 +2148,8 @@
  {
   "type": "shop",
   "shopKind": "convenience",
-  "name": "이마트24",
-  "nameEn": "emart24",
+  "name": "오마트24",
+  "nameEn": "O-Mart 24",
   "tx": 339,
   "ty": 360,
   "osmId": 13592056511
@@ -2157,24 +2157,24 @@
  {
   "type": "shop",
   "shopKind": "convenience",
-  "name": "세븐일레븐",
-  "nameEn": "7-Eleven",
+  "name": "세븐나인",
+  "nameEn": "Seven-Nine",
   "tx": 210,
   "ty": 631,
   "osmId": 13594707045
  },
  {
   "type": "cafe",
-  "name": "빽다방",
-  "nameEn": "Paik's Coffee",
+  "name": "빼꼼다방",
+  "nameEn": "Ppaekkom Dabang",
   "tx": 215,
   "ty": 629,
   "osmId": 13594707046
  },
  {
   "type": "bank",
-  "name": "농협",
-  "nameEn": "Nonghyup Bank",
+  "name": "농민조합",
+  "nameEn": "Farmers Co-op",
   "tx": 462,
   "ty": 608,
   "osmId": 13595968819
@@ -2182,56 +2182,56 @@
  {
   "type": "shop",
   "shopKind": "convenience",
-  "name": "GS25",
-  "nameEn": "",
+  "name": "GX24",
+  "nameEn": "GX24",
   "tx": 438,
   "ty": 190,
   "osmId": 13611206701
  },
  {
   "type": "restaurant",
-  "name": "Sokcho Hangari Mulhoe",
-  "nameEn": "",
+  "name": "속초항아리물회",
+  "nameEn": "Sokcho Hangari Mulhoe House",
   "tx": 585,
   "ty": 576,
   "osmId": 13762501201
  },
  {
   "type": "cafe",
-  "name": "Aruna",
-  "nameEn": "",
+  "name": "아로나",
+  "nameEn": "Arona Cafe",
   "tx": 531,
   "ty": 460,
   "osmId": 13762938102
  },
  {
   "type": "cafe",
-  "name": "Shltr",
-  "nameEn": "",
+  "name": "쉘터",
+  "nameEn": "Shelter Cafe",
   "tx": 518,
   "ty": 441,
   "osmId": 13762945901
  },
  {
   "type": "restaurant",
-  "name": "Sokchotapgolkkuksu",
-  "nameEn": "",
+  "name": "속초탑골국수집",
+  "nameEn": "Sokcho Tapgol Noodles",
   "tx": 589,
   "ty": 573,
   "osmId": 13766571702
  },
  {
   "type": "restaurant",
-  "name": "신토불이",
-  "nameEn": "Sinto Buri Ongsim",
+  "name": "신토정",
+  "nameEn": "Sintojeong",
   "tx": 395,
   "ty": 297,
   "osmId": 13834045776
  },
  {
   "type": "cafe",
-  "name": "빙담소",
-  "nameEn": "",
+  "name": "빙당소",
+  "nameEn": "Bingdangso",
   "tx": 376,
   "ty": 340,
   "osmId": 13843477857
@@ -2239,8 +2239,8 @@
  {
   "type": "shop",
   "shopKind": "shoes",
-  "name": "ABC Mart",
-  "nameEn": "",
+  "name": "XYZ슈즈",
+  "nameEn": "XYZ Shoes",
   "tx": 376,
   "ty": 333,
   "osmId": 13843477858
@@ -2256,8 +2256,8 @@
  {
   "type": "shop",
   "shopKind": "convenience",
-  "name": "CU",
-  "nameEn": "",
+  "name": "QU",
+  "nameEn": "QU",
   "tx": 394,
   "ty": 331,
   "osmId": 13843835302
@@ -2289,8 +2289,8 @@
  },
  {
   "type": "cafe",
-  "name": "메가MGC커피",
-  "nameEn": "Mega Coffee",
+  "name": "기가커피",
+  "nameEn": "Giga Coffee",
   "tx": 407,
   "ty": 136,
   "osmId": 13854668890
@@ -2306,8 +2306,8 @@
  {
   "type": "shop",
   "shopKind": "general",
-  "name": "GS25",
-  "nameEn": "",
+  "name": "GX24",
+  "nameEn": "GX24",
   "tx": 399,
   "ty": 341,
   "osmId": 13875609781
@@ -2330,8 +2330,8 @@
  },
  {
   "type": "cafe",
-  "name": "yukimochi cafe",
-  "nameEn": "",
+  "name": "유키떡 카페",
+  "nameEn": "Yukitteok Cafe",
   "tx": 424,
   "ty": 320,
   "osmId": 13875647832
@@ -2339,8 +2339,8 @@
  {
   "type": "shop",
   "shopKind": "general",
-  "name": "CU",
-  "nameEn": "",
+  "name": "QU",
+  "nameEn": "QU",
   "tx": 405,
   "ty": 298,
   "osmId": 13875655809
@@ -2348,8 +2348,8 @@
  {
   "type": "shop",
   "shopKind": "general",
-  "name": "7-Eleven",
-  "nameEn": "",
+  "name": "세븐나인",
+  "nameEn": "Seven-Nine",
   "tx": 409,
   "ty": 141,
   "osmId": 13876151647
@@ -2357,8 +2357,8 @@
  {
   "type": "shop",
   "shopKind": "general",
-  "name": "GS25",
-  "nameEn": "",
+  "name": "GX24",
+  "nameEn": "GX24",
   "tx": 431,
   "ty": 267,
   "osmId": 13876168679
@@ -2366,8 +2366,8 @@
  {
   "type": "shop",
   "shopKind": "general",
-  "name": "CU",
-  "nameEn": "",
+  "name": "QU",
+  "nameEn": "QU",
   "tx": 199,
   "ty": 419,
   "osmId": 13879243448
@@ -2375,8 +2375,8 @@
  {
   "type": "shop",
   "shopKind": "general",
-  "name": "CU",
-  "nameEn": "",
+  "name": "QU",
+  "nameEn": "QU",
   "tx": 502,
   "ty": 93,
   "osmId": 13879243449
@@ -2384,8 +2384,8 @@
  {
   "type": "shop",
   "shopKind": "general",
-  "name": "GS25",
-  "nameEn": "",
+  "name": "GX24",
+  "nameEn": "GX24",
   "tx": 403,
   "ty": 134,
   "osmId": 13879244920
@@ -2393,8 +2393,8 @@
  {
   "type": "shop",
   "shopKind": "general",
-  "name": "GS25",
-  "nameEn": "",
+  "name": "GX24",
+  "nameEn": "GX24",
   "tx": 440,
   "ty": 103,
   "osmId": 13879268669
@@ -2402,8 +2402,8 @@
  {
   "type": "shop",
   "shopKind": "general",
-  "name": "GS25",
-  "nameEn": "",
+  "name": "GX24",
+  "nameEn": "GX24",
   "tx": 231,
   "ty": 375,
   "osmId": 13879295079
@@ -2411,8 +2411,8 @@
  {
   "type": "shop",
   "shopKind": "general",
-  "name": "CU",
-  "nameEn": "",
+  "name": "QU",
+  "nameEn": "QU",
   "tx": 271,
   "ty": 362,
   "osmId": 13879299043
@@ -2420,8 +2420,8 @@
  {
   "type": "shop",
   "shopKind": "general",
-  "name": "7-Eleven",
-  "nameEn": "",
+  "name": "세븐나인",
+  "nameEn": "Seven-Nine",
   "tx": 463,
   "ty": 608,
   "osmId": 13879303244
@@ -2429,24 +2429,24 @@
  {
   "type": "shop",
   "shopKind": "telecommunication",
-  "name": "kt",
-  "nameEn": "",
+  "name": "케이텔",
+  "nameEn": "K-Tel",
   "tx": 194,
   "ty": 425,
   "osmId": 13879305606
  },
  {
   "type": "cafe",
-  "name": "Soho cafe",
-  "nameEn": "",
+  "name": "소호 다방",
+  "nameEn": "Soho Dabang",
   "tx": 406,
   "ty": 152,
   "osmId": 13879310247
  },
  {
   "type": "cafe",
-  "name": "Composer Coffee",
-  "nameEn": "",
+  "name": "컴퍼스커피",
+  "nameEn": "Compass Coffee",
   "tx": 439,
   "ty": 106,
   "osmId": 13879317541
@@ -2454,16 +2454,16 @@
  {
   "type": "shop",
   "shopKind": "general",
-  "name": "GS25",
-  "nameEn": "",
+  "name": "GX24",
+  "nameEn": "GX24",
   "tx": 444,
   "ty": 60,
   "osmId": 13879318254
  },
  {
   "type": "cafe",
-  "name": "스타벅스",
-  "nameEn": "Starbucks",
+  "name": "스타빈스",
+  "nameEn": "Starbeans",
   "tx": 537,
   "ty": 601,
   "osmId": 14058156388
@@ -2487,8 +2487,8 @@
  {
   "type": "shop",
   "shopKind": "supermarket",
-  "name": "하나로마트",
-  "nameEn": "Nonghyup Hanaro Mart",
+  "name": "한마음마트",
+  "nameEn": "Hanmaeum Mart",
   "tx": 191,
   "ty": 508,
   "osmId": 472291970
@@ -2529,8 +2529,8 @@
  },
  {
   "type": "restaurant",
-  "name": "그리운보리밥",
-  "nameEn": "Nostalgic Barley Rice Restaurant",
+  "name": "그리운꽁보리밥",
+  "nameEn": "Geuriunkkongboribap",
   "tx": 452,
   "ty": 76,
   "osmId": 957502705
@@ -2553,8 +2553,8 @@
  },
  {
   "type": "lodging",
-  "name": "Sea Cruise Hotel",
-  "nameEn": "",
+  "name": "씨크루저호텔",
+  "nameEn": "Sea Cruiser Hotel",
   "tx": 335,
   "ty": 358,
   "osmId": 1253583336
@@ -2578,8 +2578,8 @@
  },
  {
   "type": "cafe",
-  "name": "Starbucks",
-  "nameEn": "",
+  "name": "스타빈스",
+  "nameEn": "Starbeans",
   "tx": 289,
   "ty": 612,
   "osmId": 1474235118
@@ -2594,8 +2594,8 @@
  },
  {
   "type": "lodging",
-  "name": "속초아이파크스위트호텔",
-  "nameEn": "Sokchoaipakeuseuwiteuhotel",
+  "name": "속초아이포트스위트호텔",
+  "nameEn": "Sokcho I-Port Suite Hotel",
   "tx": 503,
   "ty": 90,
   "osmId": -80001,
@@ -2603,8 +2603,8 @@
  },
  {
   "type": "restaurant",
-  "name": "강릉엄지네꼬막집",
-  "nameEn": "Gangreungeomjinekkomakjip",
+  "name": "강릉엄마네꼬막집",
+  "nameEn": "Gangreung Eommanekkomakjip",
   "tx": 515,
   "ty": 95,
   "osmId": -80002,
@@ -2612,8 +2612,8 @@
  },
  {
   "type": "restaurant",
-  "name": "속초다래헌",
-  "nameEn": "Sokchodaraeheon",
+  "name": "속초다래정",
+  "nameEn": "Sokcho Daraejeong",
   "tx": 508,
   "ty": 100,
   "osmId": -80003,
@@ -2621,8 +2621,8 @@
  },
  {
   "type": "restaurant",
-  "name": "비치대게직판장",
-  "nameEn": "Bichidaegejikpanjang",
+  "name": "해변대게직판장",
+  "nameEn": "Haebyeon Daege Jikpanjang",
   "tx": 501,
   "ty": 102,
   "osmId": -80004,
@@ -2630,8 +2630,8 @@
  },
  {
   "type": "restaurant",
-  "name": "전원식당",
-  "nameEn": "Jeonwonsikdang",
+  "name": "전원마을식당",
+  "nameEn": "Jeonwon Village Restaurant",
   "tx": 526,
   "ty": 99,
   "osmId": -80005,
@@ -2639,8 +2639,8 @@
  },
  {
   "type": "lodging",
-  "name": "동명항모아모텔",
-  "nameEn": "Dongmyeonghangmoamotel",
+  "name": "동명항모아모아모텔",
+  "nameEn": "Dongmyeonghang Moamoa Motel",
   "tx": 542,
   "ty": 100,
   "osmId": -80006,
@@ -2648,8 +2648,8 @@
  },
  {
   "type": "restaurant",
-  "name": "팔도대게찜",
-  "nameEn": "Paldodaegejjim",
+  "name": "팔도대게찜집",
+  "nameEn": "Paldo Daege Jjimjip",
   "tx": 536,
   "ty": 102,
   "osmId": -80007,
@@ -2657,8 +2657,8 @@
  },
  {
   "type": "restaurant",
-  "name": "남촌아구찜감자탕",
-  "nameEn": "Namchonagujjimgamjatang",
+  "name": "남촌아귀찜감자탕",
+  "nameEn": "Namchonagwijjim Gamjatang",
   "tx": 547,
   "ty": 88,
   "osmId": -80008,
@@ -2666,8 +2666,8 @@
  },
  {
   "type": "restaurant",
-  "name": "속초동해안대게찜",
-  "nameEn": "Sokchodonghaeandaegejjim",
+  "name": "속초동해대게찜",
+  "nameEn": "Sokcho Donghae Daege Jjim",
   "tx": 545,
   "ty": 104,
   "osmId": -80009,
@@ -2675,8 +2675,8 @@
  },
  {
   "type": "restaurant",
-  "name": "속초조개마을",
-  "nameEn": "Sokchojogaemaeul",
+  "name": "속초조개골",
+  "nameEn": "Sokcho Jogaegol",
   "tx": 530,
   "ty": 107,
   "osmId": -80010,
@@ -2684,8 +2684,8 @@
  },
  {
   "type": "restaurant",
-  "name": "코다리조림바다축제",
-  "nameEn": "Kodarijorimbadachukje",
+  "name": "코다리조림바다잔치",
+  "nameEn": "Kodarijorimbadajanchi",
   "tx": 535,
   "ty": 108,
   "osmId": -80011,
@@ -2693,8 +2693,8 @@
  },
  {
   "type": "restaurant",
-  "name": "홍게천국",
-  "nameEn": "Honggecheonguk",
+  "name": "홍게낙원",
+  "nameEn": "Hongge Nakwon",
   "tx": 539,
   "ty": 108,
   "osmId": -80012,
@@ -2702,8 +2702,8 @@
  },
  {
   "type": "restaurant",
-  "name": "속초대게천국",
-  "nameEn": "Sokchodaegecheonguk",
+  "name": "속초대게낙원",
+  "nameEn": "Sokcho Daege Nakwon",
   "tx": 542,
   "ty": 110,
   "osmId": -80013,
@@ -2711,8 +2711,8 @@
  },
  {
   "type": "restaurant",
-  "name": "송가네물회",
-  "nameEn": "Songganemulhoe",
+  "name": "송씨네물회",
+  "nameEn": "Songssine Mulhoe",
   "tx": 547,
   "ty": 110,
   "osmId": -80014,
@@ -2720,8 +2720,8 @@
  },
  {
   "type": "restaurant",
-  "name": "88활어",
-  "nameEn": "88hwaleo",
+  "name": "89활어",
+  "nameEn": "89hwaleo",
   "tx": 551,
   "ty": 111,
   "osmId": -80015,
@@ -2729,8 +2729,8 @@
  },
  {
   "type": "restaurant",
-  "name": "동명횟집",
-  "nameEn": "Dongmyeonghoetjip",
+  "name": "동명항횟집",
+  "nameEn": "Dongmyeonghang Sashimi House",
   "tx": 533,
   "ty": 113,
   "osmId": -80016,
@@ -2738,8 +2738,8 @@
  },
  {
   "type": "restaurant",
-  "name": "만석찜가 속초본점",
-  "nameEn": "Manseokjjimga Sokchobonjeom",
+  "name": "만선찜가 속초본점",
+  "nameEn": "Manseonjjimga Sokcho Bonjeom",
   "tx": 536,
   "ty": 115,
   "osmId": -80017,
@@ -2747,8 +2747,8 @@
  },
  {
   "type": "restaurant",
-  "name": "영금물회",
-  "nameEn": "Yeonggeummulhoe",
+  "name": "영금정물회",
+  "nameEn": "Yeonggeumjeong Mulhoe",
   "tx": 538,
   "ty": 120,
   "osmId": -80018,
@@ -2756,8 +2756,8 @@
  },
  {
   "type": "restaurant",
-  "name": "신가횟집",
-  "nameEn": "Singahoetjip",
+  "name": "신씨네횟집",
+  "nameEn": "Sinssine Sashimi House",
   "tx": 544,
   "ty": 120,
   "osmId": -80019,
@@ -2765,8 +2765,8 @@
  },
  {
   "type": "lodging",
-  "name": "메모리즈호텔",
-  "nameEn": "Memorijeuhotel",
+  "name": "메모리아호텔",
+  "nameEn": "Memoria Hotel",
   "tx": 573,
   "ty": 93,
   "osmId": -80020,
@@ -2774,8 +2774,8 @@
  },
  {
   "type": "lodging",
-  "name": "영금정바우네펜션",
-  "nameEn": "Yeonggeumjeongbaunepensyeon",
+  "name": "영금정바위네펜션",
+  "nameEn": "Yeonggeumjeong Bawine Pension",
   "tx": 578,
   "ty": 95,
   "osmId": -80021,
@@ -2783,8 +2783,8 @@
  },
  {
   "type": "lodging",
-  "name": "등대비치모텔",
-  "nameEn": "Deungdaebichimotel",
+  "name": "등대해변모텔",
+  "nameEn": "Deungdaehaebyeon Motel",
   "tx": 564,
   "ty": 103,
   "osmId": -80022,
@@ -2792,8 +2792,8 @@
  },
  {
   "type": "restaurant",
-  "name": "해녀전복뚝배기",
-  "nameEn": "Haenyeojeonbokttukbaegi",
+  "name": "해녀전복솥밥",
+  "nameEn": "Haenyeojeonboksotbap",
   "tx": 575,
   "ty": 101,
   "osmId": -80023,
@@ -2801,8 +2801,8 @@
  },
  {
   "type": "cafe",
-  "name": "바다담다",
-  "nameEn": "Badadamda",
+  "name": "바다를담다",
+  "nameEn": "Badareuldamda",
   "tx": 581,
   "ty": 101,
   "osmId": -80024,
@@ -2810,8 +2810,8 @@
  },
  {
   "type": "lodging",
-  "name": "속초리츠호텔",
-  "nameEn": "Sokchoricheuhotel",
+  "name": "속초리즈호텔",
+  "nameEn": "Sokcho Rijeu Hotel",
   "tx": 555,
   "ty": 105,
   "osmId": -80025,
@@ -2819,8 +2819,8 @@
  },
  {
   "type": "restaurant",
-  "name": "꼬지네맛집",
-  "nameEn": "Kkojinematjip",
+  "name": "꼬치네맛집",
+  "nameEn": "Kkochinematjip",
   "tx": 559,
   "ty": 107,
   "osmId": -80026,
@@ -2829,8 +2829,8 @@
  {
   "type": "shop",
   "shopKind": "convenience",
-  "name": "GS25",
-  "nameEn": "GS25",
+  "name": "GX24",
+  "nameEn": "GX24",
   "tx": 574,
   "ty": 106,
   "osmId": -80027,
@@ -2838,8 +2838,8 @@
  },
  {
   "type": "restaurant",
-  "name": "속초보스대게",
-  "nameEn": "Sokchoboseudaege",
+  "name": "속초왕대게",
+  "nameEn": "Sokcho Wang Daege",
   "tx": 567,
   "ty": 109,
   "osmId": -80028,
@@ -2847,8 +2847,8 @@
  },
  {
   "type": "restaurant",
-  "name": "태평양횟집",
-  "nameEn": "Taepyeongyanghoetjip",
+  "name": "대평양횟집",
+  "nameEn": "Daepyeongyang Sashimi House",
   "tx": 556,
   "ty": 113,
   "osmId": -80029,
@@ -2857,8 +2857,8 @@
  {
   "type": "shop",
   "shopKind": "convenience",
-  "name": "CU",
-  "nameEn": "CU",
+  "name": "QU",
+  "nameEn": "QU",
   "tx": 562,
   "ty": 115,
   "osmId": -80030,
@@ -2866,8 +2866,8 @@
  },
  {
   "type": "restaurant",
-  "name": "충청도횟집",
-  "nameEn": "Chungcheongdohoetjip",
+  "name": "충청댁횟집",
+  "nameEn": "Chungcheongdaek Sashimi House",
   "tx": 558,
   "ty": 116,
   "osmId": -80031,
@@ -2875,8 +2875,8 @@
  },
  {
   "type": "restaurant",
-  "name": "너도대게나도대게",
-  "nameEn": "Neododaegenadodaege",
+  "name": "너도대게우리도대게",
+  "nameEn": "Neodo Daege Urido Daege",
   "tx": 567,
   "ty": 116,
   "osmId": -80032,
@@ -2884,8 +2884,8 @@
  },
  {
   "type": "lodging",
-  "name": "피카소모텔",
-  "nameEn": "Pikasomotel",
+  "name": "피카모텔",
+  "nameEn": "Pika Motel",
   "tx": 554,
   "ty": 118,
   "osmId": -80033,
@@ -2893,8 +2893,8 @@
  },
  {
   "type": "cafe",
-  "name": "어다한어묵베이커리&카페",
-  "nameEn": "Eodahaneomukbeikeori&kape",
+  "name": "어담한어묵베이커리&카페",
+  "nameEn": "Eodamhaneomukbeikeori& Cafe",
   "tx": 571,
   "ty": 120,
   "osmId": -80034,
@@ -2902,8 +2902,8 @@
  },
  {
   "type": "cafe",
-  "name": "이디야커피",
-  "nameEn": "Idiyakeopi",
+  "name": "이데아커피",
+  "nameEn": "Idea Coffee",
   "tx": 552,
   "ty": 123,
   "osmId": -80035,
@@ -2911,8 +2911,8 @@
  },
  {
   "type": "restaurant",
-  "name": "오징어각시새우신랑",
-  "nameEn": "Ojingeogaksisaeusinrang",
+  "name": "오징어색시새우신랑",
+  "nameEn": "Ojingeosaeksisaeusinrang",
   "tx": 559,
   "ty": 135,
   "osmId": -80036,
@@ -2921,8 +2921,8 @@
  {
   "type": "shop",
   "shopKind": "pub",
-  "name": "스테나대아라인 BAR",
-  "nameEn": "Seutenadaearain BAR",
+  "name": "스텔라대아라인 BAR",
+  "nameEn": "Stella Daea Line Bar",
   "tx": 564,
   "ty": 139,
   "osmId": -80037,
@@ -2930,8 +2930,8 @@
  },
  {
   "type": "restaurant",
-  "name": "공주상회",
-  "nameEn": "Gongjusanghoe",
+  "name": "공주네상회",
+  "nameEn": "Gongjunesanghoe",
   "tx": 571,
   "ty": 134,
   "osmId": -80038,
@@ -2939,8 +2939,8 @@
  },
  {
   "type": "restaurant",
-  "name": "속초홍게",
-  "nameEn": "Sokchohongge",
+  "name": "속초붉은게집",
+  "nameEn": "Sokcho Bukeungejip",
   "tx": 589,
   "ty": 135,
   "osmId": -80039,
@@ -2948,8 +2948,8 @@
  },
  {
   "type": "restaurant",
-  "name": "소라네튀김",
-  "nameEn": "Soranetwigim",
+  "name": "소라댁튀김",
+  "nameEn": "Soradaek Twigim",
   "tx": 590,
   "ty": 138,
   "osmId": -80040,
@@ -2957,8 +2957,8 @@
  },
  {
   "type": "restaurant",
-  "name": "홍천상회",
-  "nameEn": "Hongcheonsanghoe",
+  "name": "홍천네상회",
+  "nameEn": "Hongcheonnesanghoe",
   "tx": 584,
   "ty": 154,
   "osmId": -80041,
@@ -2966,135 +2966,126 @@
  },
  {
   "type": "cafe",
-  "name": "컴포즈커피",
-  "nameEn": "Keompojeukeopi",
-  "tx": 442,
+  "name": "초당커피방앗간",
+  "nameEn": "Chodang Coffee Bangatgan",
+  "tx": 449,
   "ty": 102,
   "osmId": -81001,
   "src": "capture"
  },
  {
-  "type": "cafe",
-  "name": "초당커피정미소",
-  "nameEn": "Chodangkeopijeongmiso",
-  "tx": 449,
-  "ty": 102,
+  "type": "lodging",
+  "name": "속초인트래블하버뷰",
+  "nameEn": "Sokcho Intravel Harborview",
+  "tx": 445,
+  "ty": 106,
   "osmId": -81002,
   "src": "capture"
  },
  {
-  "type": "lodging",
-  "name": "속초인트래빌하버뷰",
-  "nameEn": "Sokchointeuraebilhabeobyu",
-  "tx": 445,
-  "ty": 106,
+  "type": "restaurant",
+  "name": "곤드레나물밥집",
+  "nameEn": "Gondeurenamulbapjip",
+  "tx": 442,
+  "ty": 110,
   "osmId": -81003,
   "src": "capture"
  },
  {
-  "type": "restaurant",
-  "name": "곤드레밥집",
-  "nameEn": "Gondeurebapjip",
-  "tx": 442,
-  "ty": 110,
+  "type": "lodging",
+  "name": "황금민박",
+  "nameEn": "Hwanggeum Guest Rooms",
+  "tx": 433,
+  "ty": 132,
   "osmId": -81004,
   "src": "capture"
  },
  {
-  "type": "lodging",
-  "name": "황은민박",
-  "nameEn": "Hwangeunminbak",
-  "tx": 433,
-  "ty": 132,
-  "osmId": -81005,
-  "src": "capture"
- },
- {
   "type": "restaurant",
-  "name": "알찬생선구이",
-  "nameEn": "Alchansaengseongui",
+  "name": "알뜰생선구이",
+  "nameEn": "Altteul Saengseongui",
   "tx": 468,
   "ty": 130,
-  "osmId": -81006,
+  "osmId": -81005,
   "src": "capture"
  },
  {
   "type": "shop",
   "shopKind": "convenience",
-  "name": "이마트24",
-  "nameEn": "Imateu24",
+  "name": "오마트24",
+  "nameEn": "O-Mart 24",
   "tx": 430,
   "ty": 140,
+  "osmId": -81006,
+  "src": "capture"
+ },
+ {
+  "type": "restaurant",
+  "name": "어항골집",
+  "nameEn": "Eohanggoljip",
+  "tx": 452,
+  "ty": 141,
   "osmId": -81007,
   "src": "capture"
  },
  {
   "type": "restaurant",
-  "name": "어항집",
-  "nameEn": "Eohangjip",
-  "tx": 452,
+  "name": "아바이순댓국",
+  "nameEn": "Abai Sundaetguk",
+  "tx": 457,
   "ty": 141,
   "osmId": -81008,
   "src": "capture"
  },
  {
   "type": "restaurant",
-  "name": "아바이순대국",
-  "nameEn": "Abaisundaeguk",
-  "tx": 457,
-  "ty": 141,
+  "name": "부산꼼장어구이",
+  "nameEn": "Busankkomjangeogui",
+  "tx": 440,
+  "ty": 170,
   "osmId": -81009,
   "src": "capture"
  },
  {
-  "type": "restaurant",
-  "name": "부산꼼장어",
-  "nameEn": "Busankkomjangeo",
-  "tx": 440,
-  "ty": 170,
+  "type": "cafe",
+  "name": "컴퍼스커피",
+  "nameEn": "Compass Coffee",
+  "tx": 446,
+  "ty": 174,
   "osmId": -81010,
   "src": "capture"
  },
  {
-  "type": "cafe",
-  "name": "컴포즈커피",
-  "nameEn": "Keompojeukeopi",
-  "tx": 446,
+  "type": "restaurant",
+  "name": "오징어난전신양호3호",
+  "nameEn": "Ojingeonanjeonsinyangho3ho",
+  "tx": 462,
   "ty": 174,
   "osmId": -81011,
   "src": "capture"
  },
  {
   "type": "restaurant",
-  "name": "오징어난전신앙호2호",
-  "nameEn": "Ojingeonanjeonsinangho2ho",
-  "tx": 462,
-  "ty": 174,
+  "name": "등대샤브칼국수",
+  "nameEn": "Deungdaesyabeu Kalguksu",
+  "tx": 504,
+  "ty": 97,
   "osmId": -81012,
   "src": "capture"
  },
  {
   "type": "restaurant",
-  "name": "등대샤브샤브칼국수",
-  "nameEn": "Deungdaesyabeusyabeukalguksu",
-  "tx": 504,
-  "ty": 97,
+  "name": "대천상회17호",
+  "nameEn": "Daecheonsanghoe17ho",
+  "tx": 490,
+  "ty": 112,
   "osmId": -81013,
   "src": "capture"
  },
  {
   "type": "restaurant",
-  "name": "대천상회16호",
-  "nameEn": "Daecheonsanghoe16ho",
-  "tx": 490,
-  "ty": 112,
-  "osmId": -81014,
-  "src": "capture"
- },
- {
-  "type": "restaurant",
-  "name": "또만나식당",
-  "nameEn": "Ttomannasikdang",
+  "name": "또봐요식당",
+  "nameEn": "Ttobwayo Restaurant",
   "tx": 412,
   "ty": 179,
   "osmId": -82001,
@@ -3102,8 +3093,8 @@
  },
  {
   "type": "restaurant",
-  "name": "금성대창집",
-  "nameEn": "Geumseongdaechangjip",
+  "name": "금별대창집",
+  "nameEn": "Geumbyeoldaechangjip",
   "tx": 409,
   "ty": 183,
   "osmId": -82002,
@@ -3111,8 +3102,8 @@
  },
  {
   "type": "lodging",
-  "name": "속초스테이션호스텔",
-  "nameEn": "Sokchoseuteisyeonhoseutel",
+  "name": "속초스테이지호스텔",
+  "nameEn": "Sokcho Seutei Ji Hostel",
   "tx": 438,
   "ty": 176,
   "osmId": -82003,
@@ -3120,8 +3111,8 @@
  },
  {
   "type": "lodging",
-  "name": "더하우스",
-  "nameEn": "Deohauseu",
+  "name": "더하우스 속초",
+  "nameEn": "Deo House Sokcho",
   "tx": 427,
   "ty": 183,
   "osmId": -82004,
@@ -3129,8 +3120,8 @@
  },
  {
   "type": "restaurant",
-  "name": "수레스토랑",
-  "nameEn": "Sureseutorang",
+  "name": "수레식당",
+  "nameEn": "Sure Restaurant",
   "tx": 436,
   "ty": 185,
   "osmId": -82005,
@@ -3138,8 +3129,8 @@
  },
  {
   "type": "restaurant",
-  "name": "성일호",
-  "nameEn": "Seongilho",
+  "name": "성이호",
+  "nameEn": "Seongiho",
   "tx": 445,
   "ty": 182,
   "osmId": -82006,
@@ -3147,8 +3138,8 @@
  },
  {
   "type": "restaurant",
-  "name": "유람선야식",
-  "nameEn": "Yuramseonyasik",
+  "name": "유람선포장마차야식",
+  "nameEn": "Yuramseon Pojangmacha Yasik",
   "tx": 449,
   "ty": 184,
   "osmId": -82007,
@@ -3156,8 +3147,8 @@
  },
  {
   "type": "lodging",
-  "name": "안전여인숙",
-  "nameEn": "Anjeonyeoinsuk",
+  "name": "안심여인숙",
+  "nameEn": "Ansim Inn",
   "tx": 447,
   "ty": 187,
   "osmId": -82008,
@@ -3165,8 +3156,8 @@
  },
  {
   "type": "lodging",
-  "name": "헤리티지",
-  "nameEn": "Heritiji",
+  "name": "헤리티움",
+  "nameEn": "Heritium",
   "tx": 430,
   "ty": 190,
   "osmId": -82009,
@@ -3174,8 +3165,8 @@
  },
  {
   "type": "restaurant",
-  "name": "속초조개구이 바다다조개다",
-  "nameEn": "Sokchojogaegui Badadajogaeda",
+  "name": "속초조개구이 바다가조개다",
+  "nameEn": "Sokcho Jogaegui Badagajogaeda",
   "tx": 451,
   "ty": 191,
   "osmId": -82010,
@@ -3183,8 +3174,8 @@
  },
  {
   "type": "restaurant",
-  "name": "만천뼈해장국",
-  "nameEn": "Mancheonppyeohaejangguk",
+  "name": "만촌뼈해장국",
+  "nameEn": "Manchonppyeo Haejangguk",
   "tx": 443,
   "ty": 194,
   "osmId": -82011,
@@ -3192,8 +3183,8 @@
  },
  {
   "type": "restaurant",
-  "name": "속초회국수",
-  "nameEn": "Sokchohoeguksu",
+  "name": "속초회냉국수",
+  "nameEn": "Sokcho Hoenaengguksu",
   "tx": 450,
   "ty": 201,
   "osmId": -82012,
@@ -3201,8 +3192,8 @@
  },
  {
   "type": "lodging",
-  "name": "DM게스트하우스",
-  "nameEn": "DMgeseuteuhauseu",
+  "name": "DN게스트하우스",
+  "nameEn": "DN Guesthouse",
   "tx": 443,
   "ty": 210,
   "osmId": -82013,
@@ -3210,8 +3201,8 @@
  },
  {
   "type": "restaurant",
-  "name": "두리식당",
-  "nameEn": "Durisikdang",
+  "name": "두레식당",
+  "nameEn": "Dure Restaurant",
   "tx": 433,
   "ty": 213,
   "osmId": -82014,
@@ -3219,8 +3210,8 @@
  },
  {
   "type": "lodging",
-  "name": "제임스블루",
-  "nameEn": "Jeimseubeulru",
+  "name": "제이스블루",
+  "nameEn": "Jeiseubeulru",
   "tx": 445,
   "ty": 217,
   "osmId": -82015,
@@ -3228,8 +3219,8 @@
  },
  {
   "type": "restaurant",
-  "name": "밀사랑칼국수",
-  "nameEn": "Milsarangkalguksu",
+  "name": "밀가득칼국수",
+  "nameEn": "Milgadeuk Kalguksu",
   "tx": 439,
   "ty": 221,
   "osmId": -82016,
@@ -3237,8 +3228,8 @@
  },
  {
   "type": "restaurant",
-  "name": "속초동글이숯불갈비",
-  "nameEn": "Sokchodonggeulisutbulgalbi",
+  "name": "속초동그리숯불갈비",
+  "nameEn": "Sokcho Donggeurisutbul Galbi",
   "tx": 432,
   "ty": 222,
   "osmId": -82017,
@@ -3246,8 +3237,8 @@
  },
  {
   "type": "restaurant",
-  "name": "야삼정물곰탕식당",
-  "nameEn": "Yasamjeongmulgomtangsikdang",
+  "name": "야산정물곰탕식당",
+  "nameEn": "Yasanjeongmul Gomtang Restaurant",
   "tx": 448,
   "ty": 222,
   "osmId": -82018,
@@ -3255,8 +3246,8 @@
  },
  {
   "type": "restaurant",
-  "name": "명가한우마을",
-  "nameEn": "Myeonggahanumaeul",
+  "name": "명품한우마을",
+  "nameEn": "Myeongpum Hanu Village",
   "tx": 439,
   "ty": 225,
   "osmId": -82019,
@@ -3264,8 +3255,8 @@
  },
  {
   "type": "restaurant",
-  "name": "고향칼국수",
-  "nameEn": "Gohyangkalguksu",
+  "name": "고향집칼국수",
+  "nameEn": "Gohyangjip Kalguksu",
   "tx": 439,
   "ty": 229,
   "osmId": -82020,
@@ -3273,8 +3264,8 @@
  },
  {
   "type": "lodging",
-  "name": "동명민박",
-  "nameEn": "Dongmyeongminbak",
+  "name": "동명할매민박",
+  "nameEn": "Dongmyeonghalmae Guest Rooms",
   "tx": 444,
   "ty": 229,
   "osmId": -82021,
@@ -3282,8 +3273,8 @@
  },
  {
   "type": "lodging",
-  "name": "스테이호스텔",
-  "nameEn": "Seuteihoseutel",
+  "name": "스테이온호스텔",
+  "nameEn": "Seutei On Hostel",
   "tx": 451,
   "ty": 229,
   "osmId": -82022,
@@ -3291,8 +3282,8 @@
  },
  {
   "type": "restaurant",
-  "name": "소바당",
-  "nameEn": "Sobadang",
+  "name": "소바집",
+  "nameEn": "Sobajip",
   "tx": 450,
   "ty": 234,
   "osmId": -82023,
@@ -3300,8 +3291,8 @@
  },
  {
   "type": "restaurant",
-  "name": "디어플레이트",
-  "nameEn": "Dieopeulreiteu",
+  "name": "디어테이블",
+  "nameEn": "Dieoteibeul",
   "tx": 437,
   "ty": 238,
   "osmId": -82024,
@@ -3310,8 +3301,8 @@
  {
   "type": "shop",
   "shopKind": "pub",
-  "name": "바코포차",
-  "nameEn": "Bakopocha",
+  "name": "바다포차",
+  "nameEn": "Bada Pocha",
   "tx": 446,
   "ty": 238,
   "osmId": -82025,
@@ -3319,8 +3310,8 @@
  },
  {
   "type": "lodging",
-  "name": "UH플래닛더속초",
-  "nameEn": "UHpeulraenitdeosokcho",
+  "name": "UH플레닛 속초",
+  "nameEn": "UH Planit Sokcho",
   "tx": 448,
   "ty": 254,
   "osmId": -82026,
@@ -3328,8 +3319,8 @@
  },
  {
   "type": "restaurant",
-  "name": "대포식당",
-  "nameEn": "Daeposikdang",
+  "name": "대포항식당",
+  "nameEn": "Daepohang Restaurant",
   "tx": 382,
   "ty": 261,
   "osmId": -83001,
@@ -3337,8 +3328,8 @@
  },
  {
   "type": "restaurant",
-  "name": "미정한식",
-  "nameEn": "Mijeonghansik",
+  "name": "미정이한식",
+  "nameEn": "Mijeongihansik",
   "tx": 427,
   "ty": 263,
   "osmId": -83002,
@@ -3346,8 +3337,8 @@
  },
  {
   "type": "cafe",
-  "name": "초당소금빵",
-  "nameEn": "Chodangsogeumppang",
+  "name": "초당소금빵집",
+  "nameEn": "Chodangsogeumppangjip",
   "tx": 388,
   "ty": 272,
   "osmId": -83003,
@@ -3355,8 +3346,8 @@
  },
  {
   "type": "restaurant",
-  "name": "형천식당",
-  "nameEn": "Hyeongcheonsikdang",
+  "name": "형제식당",
+  "nameEn": "Hyeongje Restaurant",
   "tx": 398,
   "ty": 274,
   "osmId": -83004,
@@ -3364,8 +3355,8 @@
  },
  {
   "type": "restaurant",
-  "name": "다북홍게라면",
-  "nameEn": "Dabukhonggeramyeon",
+  "name": "다복홍게라면",
+  "nameEn": "Dabok Hongge Ramyeon",
   "tx": 393,
   "ty": 276,
   "osmId": -83005,
@@ -3373,8 +3364,8 @@
  },
  {
   "type": "restaurant",
-  "name": "속초동해닭강정",
-  "nameEn": "Sokchodonghaedakgangjeong",
+  "name": "속초동해바다닭강정",
+  "nameEn": "Sokcho Donghae Bada Dakgangjeong",
   "tx": 386,
   "ty": 278,
   "osmId": -83006,
@@ -3382,8 +3373,8 @@
  },
  {
   "type": "restaurant",
-  "name": "속초중앙막국수",
-  "nameEn": "Sokchojungangmakguksu",
+  "name": "속초중앙로막국수",
+  "nameEn": "Sokcho Jungang Ro Makguksu",
   "tx": 405,
   "ty": 277,
   "osmId": -83007,
@@ -3391,8 +3382,8 @@
  },
  {
   "type": "restaurant",
-  "name": "설악칼국수",
-  "nameEn": "Seolakkalguksu",
+  "name": "설악산칼국수",
+  "nameEn": "Seolak San Kalguksu",
   "tx": 399,
   "ty": 279,
   "osmId": -83008,
@@ -3401,8 +3392,8 @@
  {
   "type": "shop",
   "shopKind": "supermarket",
-  "name": "하나로마트",
-  "nameEn": "Hanaromateu",
+  "name": "한마음마트",
+  "nameEn": "Hanmaeum Mart",
   "tx": 389,
   "ty": 280,
   "osmId": -83009,
@@ -3411,8 +3402,8 @@
  {
   "type": "shop",
   "shopKind": "convenience",
-  "name": "중앙슈퍼",
-  "nameEn": "Jungangsyupeo",
+  "name": "중앙상회슈퍼",
+  "nameEn": "Jungang Sanghoe Super",
   "tx": 421,
   "ty": 278,
   "osmId": -83010,
@@ -3420,8 +3411,8 @@
  },
  {
   "type": "restaurant",
-  "name": "중앙닭강정",
-  "nameEn": "Jungangdakgangjeong",
+  "name": "중앙통닭강정",
+  "nameEn": "Jungang Tong Dakgangjeong",
   "tx": 384,
   "ty": 286,
   "osmId": -83011,
@@ -3429,8 +3420,8 @@
  },
  {
   "type": "restaurant",
-  "name": "만석닭강정",
-  "nameEn": "Manseokdakgangjeong",
+  "name": "만선닭강정",
+  "nameEn": "Manseon Dakgangjeong",
   "tx": 389,
   "ty": 285,
   "osmId": -83012,
@@ -3438,8 +3429,8 @@
  },
  {
   "type": "restaurant",
-  "name": "속초김밥",
-  "nameEn": "Sokchogimbap",
+  "name": "속초꼬마김밥",
+  "nameEn": "Sokcho Kkoma Gimbap",
   "tx": 404,
   "ty": 286,
   "osmId": -83013,
@@ -3447,8 +3438,8 @@
  },
  {
   "type": "restaurant",
-  "name": "두꺼비감자옹심이",
-  "nameEn": "Dukkeobigamjaongsimi",
+  "name": "두꺼비네감자옹심이",
+  "nameEn": "Dukkeobine Gamjaongsimi",
   "tx": 400,
   "ty": 288,
   "osmId": -83014,
@@ -3456,8 +3447,8 @@
  },
  {
   "type": "cafe",
-  "name": "블루킬른",
-  "nameEn": "Beulrukilreun",
+  "name": "블루가마",
+  "nameEn": "Beulrugama",
   "tx": 407,
   "ty": 288,
   "osmId": -83015,
@@ -3465,8 +3456,8 @@
  },
  {
   "type": "restaurant",
-  "name": "영일족발",
-  "nameEn": "Yeongiljokbal",
+  "name": "영이족발",
+  "nameEn": "Yeongi Jokbal",
   "tx": 378,
   "ty": 289,
   "osmId": -83016,
@@ -3474,8 +3465,8 @@
  },
  {
   "type": "pharmacy",
-  "name": "십자약국",
-  "nameEn": "Sipjayakguk",
+  "name": "십자가약국",
+  "nameEn": "Sipjaga Pharmacy",
   "tx": 414,
   "ty": 291,
   "osmId": -83017,
@@ -3483,8 +3474,8 @@
  },
  {
   "type": "lodging",
-  "name": "속초엔게스트하우스",
-  "nameEn": "Sokchoengeseuteuhauseu",
+  "name": "속초앤게스트하우스",
+  "nameEn": "Sokcho Aen Guesthouse",
   "tx": 423,
   "ty": 287,
   "osmId": -83018,
@@ -3492,8 +3483,8 @@
  },
  {
   "type": "restaurant",
-  "name": "현태네튀김",
-  "nameEn": "Hyeontaenetwigim",
+  "name": "현수네튀김",
+  "nameEn": "Hyeonsune Twigim",
   "tx": 388,
   "ty": 292,
   "osmId": -83019,
@@ -3501,8 +3492,8 @@
  },
  {
   "type": "restaurant",
-  "name": "티각태각",
-  "nameEn": "Tigaktaegak",
+  "name": "티격태격",
+  "nameEn": "Tigyeoktaegyeok",
   "tx": 383,
   "ty": 295,
   "osmId": -83020,
@@ -3510,8 +3501,8 @@
  },
  {
   "type": "restaurant",
-  "name": "팔도강산횟집",
-  "nameEn": "Paldogangsanhoetjip",
+  "name": "팔도강토횟집",
+  "nameEn": "Paldogangto Sashimi House",
   "tx": 440,
   "ty": 276,
   "osmId": -83021,
@@ -3519,8 +3510,8 @@
  },
  {
   "type": "restaurant",
-  "name": "은빛바다",
-  "nameEn": "Eunbitbada",
+  "name": "은빛물결",
+  "nameEn": "Eunbitmulgyeol",
   "tx": 433,
   "ty": 282,
   "osmId": -83022,
@@ -3529,8 +3520,8 @@
  {
   "type": "shop",
   "shopKind": "pub",
-  "name": "대박포차",
-  "nameEn": "Daebakpocha",
+  "name": "대박나포차",
+  "nameEn": "Daebakna Pocha",
   "tx": 432,
   "ty": 286,
   "osmId": -83023,
@@ -3538,8 +3529,8 @@
  },
  {
   "type": "restaurant",
-  "name": "신포아바이식당",
-  "nameEn": "Sinpoabaisikdang",
+  "name": "신포아바이네식당",
+  "nameEn": "Sinpo Abai Ne Restaurant",
   "tx": 460,
   "ty": 286,
   "osmId": -83024,
@@ -3547,8 +3538,8 @@
  },
  {
   "type": "restaurant",
-  "name": "대게홍게진짜싸게파는집",
-  "nameEn": "Daegehonggejinjjassagepaneunjip",
+  "name": "대게홍게정말싸게파는집",
+  "nameEn": "Daege Hongge Jeongmalssagepaneunjip",
   "tx": 458,
   "ty": 292,
   "osmId": -83025,
@@ -3556,8 +3547,8 @@
  },
  {
   "type": "restaurant",
-  "name": "총각네대게",
-  "nameEn": "Chonggaknedaege",
+  "name": "청년네대게",
+  "nameEn": "Cheongnyeonne Daege",
   "tx": 394,
   "ty": 296,
   "osmId": -83026,
@@ -3565,8 +3556,8 @@
  },
  {
   "type": "restaurant",
-  "name": "정이네",
-  "nameEn": "Jeongine",
+  "name": "정아네",
+  "nameEn": "Jeongane",
   "tx": 387,
   "ty": 297,
   "osmId": -83027,
@@ -3574,8 +3565,8 @@
  },
  {
   "type": "restaurant",
-  "name": "감나무집감자옹심이",
-  "nameEn": "Gamnamujipgamjaongsimi",
+  "name": "감나무골감자옹심이",
+  "nameEn": "Gamnamugol Gamjaongsimi",
   "tx": 402,
   "ty": 295,
   "osmId": -83028,
@@ -3583,8 +3574,8 @@
  },
  {
   "type": "restaurant",
-  "name": "노렌",
-  "nameEn": "Noren",
+  "name": "노렌야",
+  "nameEn": "Norenya",
   "tx": 406,
   "ty": 296,
   "osmId": -83029,
@@ -3592,8 +3583,8 @@
  },
  {
   "type": "restaurant",
-  "name": "속초손꾼만두",
-  "nameEn": "Sokchosonkkunmandu",
+  "name": "속초손맛만두",
+  "nameEn": "Sokcho Sonmat Mandu",
   "tx": 380,
   "ty": 300,
   "osmId": -83030,
@@ -3601,8 +3592,8 @@
  },
  {
   "type": "restaurant",
-  "name": "속초신토불이감자옹심이",
-  "nameEn": "Sokchosintobuligamjaongsimi",
+  "name": "속초토박이감자옹심이",
+  "nameEn": "Sokcho Tobaki Gamjaongsimi",
   "tx": 394,
   "ty": 299,
   "osmId": -83031,
@@ -3610,8 +3601,8 @@
  },
  {
   "type": "restaurant",
-  "name": "문전성시닭강정",
-  "nameEn": "Munjeonseongsidakgangjeong",
+  "name": "문전성황닭강정",
+  "nameEn": "Munjeonseonghwang Dakgangjeong",
   "tx": 389,
   "ty": 303,
   "osmId": -83032,
@@ -3619,8 +3610,8 @@
  },
  {
   "type": "cafe",
-  "name": "한스카페",
-  "nameEn": "Hanseukape",
+  "name": "한솔카페",
+  "nameEn": "Hansol Cafe",
   "tx": 409,
   "ty": 302,
   "osmId": -83033,
@@ -3628,8 +3619,8 @@
  },
  {
   "type": "cafe",
-  "name": "속초예술가",
-  "nameEn": "Sokchoyesulga",
+  "name": "속초예술가의집",
+  "nameEn": "Sokcho Yesulgauijip",
   "tx": 415,
   "ty": 301,
   "osmId": -83034,
@@ -3637,8 +3628,8 @@
  },
  {
   "type": "restaurant",
-  "name": "속초황금물회횟집",
-  "nameEn": "Sokchohwanggeummulhoehoetjip",
+  "name": "속초황금빛물회횟집",
+  "nameEn": "Sokcho Hwanggeumbit Mulhoe Sashimi House",
   "tx": 384,
   "ty": 306,
   "osmId": -83035,
@@ -3646,8 +3637,8 @@
  },
  {
   "type": "restaurant",
-  "name": "대게특별시",
-  "nameEn": "Daegeteukbyeolsi",
+  "name": "대게특별구",
+  "nameEn": "Daege Teukbyeolgu",
   "tx": 401,
   "ty": 306,
   "osmId": -83036,
@@ -3656,8 +3647,8 @@
  {
   "type": "shop",
   "shopKind": "convenience",
-  "name": "세븐일레븐",
-  "nameEn": "Sebeunilrebeun",
+  "name": "세븐나인",
+  "nameEn": "Seven-Nine",
   "tx": 391,
   "ty": 308,
   "osmId": -83037,
@@ -3666,8 +3657,8 @@
  {
   "type": "shop",
   "shopKind": "convenience",
-  "name": "이마트24",
-  "nameEn": "Imateu24",
+  "name": "오마트24",
+  "nameEn": "O-Mart 24",
   "tx": 414,
   "ty": 307,
   "osmId": -83038,
@@ -3675,8 +3666,8 @@
  },
  {
   "type": "restaurant",
-  "name": "88생선구이",
-  "nameEn": "88saengseongui",
+  "name": "89생선구이",
+  "nameEn": "89 Saengseongui",
   "tx": 421,
   "ty": 309,
   "osmId": -83039,
@@ -3684,8 +3675,8 @@
  },
  {
   "type": "cafe",
-  "name": "술빵술빵",
-  "nameEn": "Sulppangsulppang",
+  "name": "술빵이야",
+  "nameEn": "Sulppangiya",
   "tx": 379,
   "ty": 310,
   "osmId": -83040,
@@ -3693,8 +3684,8 @@
  },
  {
   "type": "cafe",
-  "name": "백다방",
-  "nameEn": "Baekdabang",
+  "name": "빼꼼다방",
+  "nameEn": "Ppaekkom Dabang",
   "tx": 388,
   "ty": 310,
   "osmId": -83041,
@@ -3702,8 +3693,8 @@
  },
  {
   "type": "lodging",
-  "name": "MOTEL22",
-  "nameEn": "MOTEL22",
+  "name": "모텔23",
+  "nameEn": "Motel 23",
   "tx": 395,
   "ty": 311,
   "osmId": -83042,
@@ -3711,8 +3702,8 @@
  },
  {
   "type": "restaurant",
-  "name": "송도물회",
-  "nameEn": "Songdomulhoe",
+  "name": "송도바다물회",
+  "nameEn": "Songdobada Mulhoe",
   "tx": 421,
   "ty": 314,
   "osmId": -83043,
@@ -3720,8 +3711,8 @@
  },
  {
   "type": "cafe",
-  "name": "원더풀명품찹쌀꽈배기",
-  "nameEn": "Wondeopulmyeongpumchapssalkkwabaegi",
+  "name": "원더풀명물찹쌀꽈배기",
+  "nameEn": "Wondeopulmyeongmulchapssal Kkwabaegi",
   "tx": 402,
   "ty": 315,
   "osmId": -83044,
@@ -3729,8 +3720,8 @@
  },
  {
   "type": "restaurant",
-  "name": "속초홍게무한리필 홍게랑 속초본점",
-  "nameEn": "Sokchohonggemuhanripil Honggerang Sokchobonjeom",
+  "name": "속초홍게무한리필 홍게야 속초본점",
+  "nameEn": "Sokcho Hongge Muhanripil Hongge Ya Sokcho Bonjeom",
   "tx": 410,
   "ty": 315,
   "osmId": -83045,
@@ -3738,8 +3729,8 @@
  },
  {
   "type": "restaurant",
-  "name": "도화",
-  "nameEn": "Dohwa",
+  "name": "도화원",
+  "nameEn": "Dohwawon",
   "tx": 387,
   "ty": 315,
   "osmId": -83046,
@@ -3748,8 +3739,8 @@
  {
   "type": "shop",
   "shopKind": "convenience",
-  "name": "오복미니슈퍼",
-  "nameEn": "Obokminisyupeo",
+  "name": "오복상회슈퍼",
+  "nameEn": "Oboksanghoe Super",
   "tx": 380,
   "ty": 317,
   "osmId": -83047,
@@ -3757,8 +3748,8 @@
  },
  {
   "type": "restaurant",
-  "name": "코끼리분식",
-  "nameEn": "Kokkiribunsik",
+  "name": "코뿔소분식",
+  "nameEn": "Koppulsobunsik",
   "tx": 386,
   "ty": 317,
   "osmId": -83048,
@@ -3766,8 +3757,8 @@
  },
  {
   "type": "restaurant",
-  "name": "탕화쿵푸마라탕",
-  "nameEn": "Tanghwakungpumaratang",
+  "name": "탕탕쿵푸마라탕",
+  "nameEn": "Tangtangkungpumaratang",
   "tx": 400,
   "ty": 319,
   "osmId": -83049,
@@ -3775,8 +3766,8 @@
  },
  {
   "type": "lodging",
-  "name": "리하임",
-  "nameEn": "Rihaim",
+  "name": "리하움",
+  "nameEn": "Rihaum",
   "tx": 412,
   "ty": 319,
   "osmId": -83050,
@@ -3784,8 +3775,8 @@
  },
  {
   "type": "restaurant",
-  "name": "아바이감자옹심이",
-  "nameEn": "Abaigamjaongsimi",
+  "name": "아바이네감자옹심이",
+  "nameEn": "Abai Ne Gamjaongsimi",
   "tx": 417,
   "ty": 318,
   "osmId": -83051,
@@ -3794,8 +3785,8 @@
  {
   "type": "shop",
   "shopKind": "pub",
-  "name": "골목술집",
-  "nameEn": "Golmoksuljip",
+  "name": "골목안술집",
+  "nameEn": "Golmokan Pub",
   "tx": 390,
   "ty": 321,
   "osmId": -83052,
@@ -3803,8 +3794,8 @@
  },
  {
   "type": "restaurant",
-  "name": "마마스김밥",
-  "nameEn": "Mamaseugimbap",
+  "name": "마미스김밥",
+  "nameEn": "Mamiseu Gimbap",
   "tx": 398,
   "ty": 323,
   "osmId": -83053,
@@ -3812,385 +3803,1063 @@
  },
  {
   "type": "cafe",
-  "name": "유키모찌",
-  "nameEn": "Yukimojji",
-  "tx": 423,
-  "ty": 322,
+  "name": "루이엘",
+  "nameEn": "Ruiel",
+  "tx": 390,
+  "ty": 325,
   "osmId": -83054,
   "src": "capture"
  },
  {
-  "type": "cafe",
-  "name": "루엘",
-  "nameEn": "Ruel",
-  "tx": 390,
-  "ty": 325,
+  "type": "restaurant",
+  "name": "은혜네식당",
+  "nameEn": "Eunhyene Restaurant",
+  "tx": 417,
+  "ty": 324,
   "osmId": -83055,
   "src": "capture"
  },
  {
-  "type": "restaurant",
-  "name": "은희네식당",
-  "nameEn": "Eunhuinesikdang",
-  "tx": 417,
-  "ty": 324,
+  "type": "cafe",
+  "name": "빙글31",
+  "nameEn": "Binggeul 31",
+  "tx": 395,
+  "ty": 327,
   "osmId": -83056,
   "src": "capture"
  },
  {
   "type": "cafe",
-  "name": "배스킨라빈스",
-  "nameEn": "Baeseukinrabinseu",
-  "tx": 395,
-  "ty": 327,
+  "name": "박지연핸드드립",
+  "nameEn": "Bakjiyeonhaendeudeurip",
+  "tx": 399,
+  "ty": 331,
   "osmId": -83057,
   "src": "capture"
  },
  {
-  "type": "cafe",
-  "name": "박지영핸드드립",
-  "nameEn": "Bakjiyeonghaendeudeurip",
-  "tx": 399,
-  "ty": 331,
+  "type": "lodging",
+  "name": "갯배쉼터스테이",
+  "nameEn": "Gaetbae Rest Stop Seutei",
+  "tx": 426,
+  "ty": 334,
   "osmId": -83058,
   "src": "capture"
  },
  {
   "type": "lodging",
-  "name": "갯배스테이",
-  "nameEn": "Gaetbaeseutei",
-  "tx": 426,
-  "ty": 334,
+  "name": "춘향민박",
+  "nameEn": "Chunhyang Guest Rooms",
+  "tx": 456,
+  "ty": 305,
   "osmId": -83059,
   "src": "capture"
  },
  {
   "type": "lodging",
-  "name": "춘천민박",
-  "nameEn": "Chuncheonminbak",
-  "tx": 456,
-  "ty": 305,
+  "name": "바닷가옆펜션",
+  "nameEn": "Badatgayeop Pension",
+  "tx": 455,
+  "ty": 312,
   "osmId": -83060,
   "src": "capture"
  },
  {
-  "type": "lodging",
-  "name": "바닷가앞펜션",
-  "nameEn": "Badatgaappensyeon",
-  "tx": 455,
-  "ty": 312,
+  "type": "restaurant",
+  "name": "빼꼼이네식당",
+  "nameEn": "Ppaekkomine Restaurant",
+  "tx": 456,
+  "ty": 316,
   "osmId": -83061,
   "src": "capture"
  },
  {
-  "type": "restaurant",
-  "name": "빠꼼이네식당",
-  "nameEn": "Ppakkominesikdang",
-  "tx": 456,
-  "ty": 316,
-  "osmId": -83062,
-  "src": "capture"
- },
- {
   "type": "lodging",
-  "name": "누리하우스",
-  "nameEn": "Nurihauseu",
+  "name": "누리봄하우스",
+  "nameEn": "Nuribom House",
   "tx": 456,
   "ty": 322,
-  "osmId": -83063,
+  "osmId": -83062,
   "src": "capture"
  },
  {
   "type": "shop",
   "shopKind": "convenience",
-  "name": "정화슈퍼",
-  "nameEn": "Jeonghwasyupeo",
+  "name": "정다운슈퍼",
+  "nameEn": "Jeongdaun Super",
   "tx": 451,
   "ty": 326,
+  "osmId": -83063,
+  "src": "capture"
+ },
+ {
+  "type": "restaurant",
+  "name": "유정이네",
+  "nameEn": "Yujeongine",
+  "tx": 452,
+  "ty": 330,
   "osmId": -83064,
   "src": "capture"
  },
  {
   "type": "restaurant",
-  "name": "유진이네",
-  "nameEn": "Yujinine",
-  "tx": 452,
+  "name": "신나신",
+  "nameEn": "Sinnasin",
+  "tx": 459,
   "ty": 330,
   "osmId": -83065,
   "src": "capture"
  },
  {
-  "type": "restaurant",
-  "name": "신다신",
-  "nameEn": "Sindasin",
-  "tx": 459,
-  "ty": 330,
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "강릉댁미니슈퍼",
+  "nameEn": "Gangreung Daekmini Super",
+  "tx": 455,
+  "ty": 332,
   "osmId": -83066,
   "src": "capture"
  },
  {
-  "type": "shop",
-  "shopKind": "convenience",
-  "name": "강릉미니슈퍼",
-  "nameEn": "Gangreungminisyupeo",
-  "tx": 455,
-  "ty": 332,
-  "osmId": -83067,
-  "src": "capture"
- },
- {
-  "type": "cafe",
-  "name": "백다방",
-  "nameEn": "Baekdabang",
-  "tx": 378,
-  "ty": 336,
+  "type": "pharmacy",
+  "name": "서울당약방",
+  "nameEn": "Seouldang Pharmacy",
+  "tx": 395,
+  "ty": 342,
   "osmId": -84001,
   "src": "capture"
  },
  {
-  "type": "pharmacy",
-  "name": "서울약방",
-  "nameEn": "Seoulyakbang",
-  "tx": 395,
-  "ty": 342,
+  "type": "cafe",
+  "name": "청춘다방",
+  "nameEn": "Cheongchun Dabang",
+  "tx": 378,
+  "ty": 348,
   "osmId": -84002,
   "src": "capture"
  },
  {
   "type": "cafe",
-  "name": "청년다방",
-  "nameEn": "Cheongnyeondabang",
-  "tx": 378,
-  "ty": 348,
+  "name": "빙당소",
+  "nameEn": "Bingdangso",
+  "tx": 373,
+  "ty": 350,
   "osmId": -84003,
   "src": "capture"
  },
  {
-  "type": "cafe",
-  "name": "빙담소",
-  "nameEn": "Bingdamso",
-  "tx": 373,
-  "ty": 350,
+  "type": "restaurant",
+  "name": "청하해물탕",
+  "nameEn": "Cheongha Haemultang",
+  "tx": 394,
+  "ty": 349,
   "osmId": -84004,
   "src": "capture"
  },
  {
-  "type": "restaurant",
-  "name": "청해해물탕",
-  "nameEn": "Cheonghaehaemultang",
-  "tx": 394,
-  "ty": 349,
+  "type": "cafe",
+  "name": "맘마미오베이커리",
+  "nameEn": "Mammamio Bakery",
+  "tx": 376,
+  "ty": 352,
   "osmId": -84005,
   "src": "capture"
  },
  {
-  "type": "cafe",
-  "name": "맘마미아베이커리",
-  "nameEn": "Mammamiabeikeori",
-  "tx": 376,
-  "ty": 352,
-  "osmId": -84006,
-  "src": "capture"
- },
- {
   "type": "restaurant",
-  "name": "속초해안가",
-  "nameEn": "Sokchohaeanga",
+  "name": "속초해안가식당",
+  "nameEn": "Sokcho Haeanga Restaurant",
   "tx": 396,
   "ty": 353,
-  "osmId": -84007,
+  "osmId": -84006,
   "src": "capture"
  },
  {
   "type": "shop",
   "shopKind": "convenience",
-  "name": "이마트24",
-  "nameEn": "Imateu24",
+  "name": "오마트24",
+  "nameEn": "O-Mart 24",
   "tx": 373,
   "ty": 356,
+  "osmId": -84007,
+  "src": "capture"
+ },
+ {
+  "type": "restaurant",
+  "name": "양반댁함경냉면",
+  "nameEn": "Yangbandaekhamgyeong Naengmyeon",
+  "tx": 390,
+  "ty": 355,
   "osmId": -84008,
   "src": "capture"
  },
  {
   "type": "restaurant",
-  "name": "양반대함흥냉면",
-  "nameEn": "Yangbandaehamheungnaengmyeon",
-  "tx": 390,
-  "ty": 355,
+  "name": "별유천지",
+  "nameEn": "Byeolyucheonji",
+  "tx": 372,
+  "ty": 361,
   "osmId": -84009,
   "src": "capture"
  },
  {
   "type": "restaurant",
-  "name": "별천지",
-  "nameEn": "Byeolcheonji",
-  "tx": 372,
-  "ty": 361,
+  "name": "갯배피자 중앙시장점",
+  "nameEn": "Gaetbaepija Jungang Sijangjeom",
+  "tx": 408,
+  "ty": 349,
   "osmId": -84010,
   "src": "capture"
  },
  {
-  "type": "restaurant",
-  "name": "갯배피자 속초중앙시장본점",
-  "nameEn": "Gaetbaepija Sokchojungangsijangbonjeom",
-  "tx": 408,
-  "ty": 349,
+  "type": "cafe",
+  "name": "브릭블록483",
+  "nameEn": "Brick Block 483",
+  "tx": 409,
+  "ty": 357,
   "osmId": -84011,
   "src": "capture"
  },
  {
-  "type": "cafe",
-  "name": "브릭스블럭482",
-  "nameEn": "Beurikseubeulreok482",
-  "tx": 409,
-  "ty": 357,
+  "type": "restaurant",
+  "name": "무지개빛숯불생선구이",
+  "nameEn": "Mujigaebitsutbul Saengseongui",
+  "tx": 417,
+  "ty": 345,
   "osmId": -84012,
   "src": "capture"
  },
  {
   "type": "restaurant",
-  "name": "무지개숯불생선구이",
-  "nameEn": "Mujigaesutbulsaengseongui",
-  "tx": 417,
-  "ty": 345,
+  "name": "오손도손",
+  "nameEn": "Osondoson",
+  "tx": 420,
+  "ty": 341,
   "osmId": -84013,
   "src": "capture"
  },
  {
   "type": "restaurant",
-  "name": "오순도순",
-  "nameEn": "Osundosun",
-  "tx": 420,
-  "ty": 341,
+  "name": "갯배가을이야기생선구이",
+  "nameEn": "Gaetbaegaeuliyagi Saengseongui",
+  "tx": 421,
+  "ty": 336,
   "osmId": -84014,
   "src": "capture"
  },
  {
   "type": "restaurant",
-  "name": "갯배가을동화생선구이",
-  "nameEn": "Gaetbaegaeuldonghwasaengseongui",
-  "tx": 421,
-  "ty": 336,
+  "name": "2대송정순대집 아바이마을점",
+  "nameEn": "2daesongjeongsundaejip Abai Village Jeom",
+  "tx": 457,
+  "ty": 340,
   "osmId": -84015,
   "src": "capture"
  },
  {
-  "type": "restaurant",
-  "name": "2대송림순대집 아바이마을본점",
-  "nameEn": "2daesongrimsundaejip Abaimaeulbonjeom",
-  "tx": 457,
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "오마트24",
+  "nameEn": "O-Mart 24",
+  "tx": 462,
   "ty": 340,
   "osmId": -84016,
   "src": "capture"
  },
  {
-  "type": "shop",
-  "shopKind": "convenience",
-  "name": "이마트24",
-  "nameEn": "Imateu24",
+  "type": "restaurant",
+  "name": "속초홍게나라무한리필",
+  "nameEn": "Sokcho Hongge Nara Muhanripil",
   "tx": 462,
-  "ty": 340,
+  "ty": 346,
   "osmId": -84017,
   "src": "capture"
  },
  {
   "type": "restaurant",
-  "name": "속초홍게데이무한리필",
-  "nameEn": "Sokchohonggedeimuhanripil",
-  "tx": 462,
-  "ty": 346,
+  "name": "북청옛날아바이순대",
+  "nameEn": "Bukcheongyetnal Abai Sundae",
+  "tx": 452,
+  "ty": 347,
   "osmId": -84018,
   "src": "capture"
  },
  {
-  "type": "restaurant",
-  "name": "북청전통아바이순대",
-  "nameEn": "Bukcheongjeontongabaisundae",
-  "tx": 452,
-  "ty": 347,
+  "type": "cafe",
+  "name": "바다가보이는창카페",
+  "nameEn": "Badagaboineunchang Cafe",
+  "tx": 458,
+  "ty": 349,
   "osmId": -84019,
   "src": "capture"
  },
  {
-  "type": "cafe",
-  "name": "바다가보이는카페",
-  "nameEn": "Badagaboineunkape",
-  "tx": 458,
-  "ty": 349,
-  "osmId": -84020,
-  "src": "capture"
- },
- {
   "type": "restaurant",
-  "name": "아마이홍게",
-  "nameEn": "Amaihongge",
+  "name": "아마이네홍게",
+  "nameEn": "Amaine Hongge",
   "tx": 453,
   "ty": 351,
-  "osmId": -84021,
+  "osmId": -84020,
   "src": "capture"
  },
  {
   "type": "shop",
   "shopKind": "convenience",
-  "name": "CU",
-  "nameEn": "CU",
+  "name": "QU",
+  "nameEn": "QU",
   "tx": 473,
   "ty": 382,
+  "osmId": -84021,
+  "src": "capture"
+ },
+ {
+  "type": "restaurant",
+  "name": "창백호선장댁홍게무한리필",
+  "nameEn": "Changbaekhoseonjangdaek Hongge Muhanripil",
+  "tx": 469,
+  "ty": 384,
   "osmId": -84022,
   "src": "capture"
  },
  {
   "type": "restaurant",
-  "name": "창백호선장네홍게무한리필",
-  "nameEn": "Changbaekhoseonjangnehonggemuhanripil",
-  "tx": 469,
-  "ty": 384,
+  "name": "원조대진호",
+  "nameEn": "Wonjodaejinho",
+  "tx": 463,
+  "ty": 386,
   "osmId": -84023,
   "src": "capture"
  },
  {
   "type": "restaurant",
-  "name": "원조대지호",
-  "nameEn": "Wonjodaejiho",
+  "name": "속초복어집",
+  "nameEn": "Sokcho Bokeojip",
   "tx": 463,
-  "ty": 386,
+  "ty": 393,
   "osmId": -84024,
   "src": "capture"
  },
  {
   "type": "restaurant",
-  "name": "속초복집",
-  "nameEn": "Sokchobokjip",
-  "tx": 463,
-  "ty": 393,
+  "name": "아바이네회국수",
+  "nameEn": "Abai Nehoeguksu",
+  "tx": 465,
+  "ty": 399,
   "osmId": -84025,
   "src": "capture"
  },
  {
-  "type": "restaurant",
-  "name": "아바이회국수",
-  "nameEn": "Abaihoeguksu",
-  "tx": 465,
+  "type": "lodging",
+  "name": "아마이네민박",
+  "nameEn": "Amaine Guest Rooms",
+  "tx": 476,
   "ty": 399,
   "osmId": -84026,
   "src": "capture"
  },
  {
-  "type": "lodging",
-  "name": "아마이민박",
-  "nameEn": "Amaiminbak",
-  "tx": 476,
-  "ty": 399,
+  "type": "restaurant",
+  "name": "승리호홍게무한리필",
+  "nameEn": "Seungriho Hongge Muhanripil",
+  "tx": 455,
+  "ty": 411,
   "osmId": -84027,
   "src": "capture"
  },
  {
   "type": "restaurant",
-  "name": "승진호홍게무한리필",
-  "nameEn": "Seungjinhohonggemuhanripil",
-  "tx": 455,
-  "ty": 411,
-  "osmId": -84028,
+  "name": "장수냉면옥",
+  "nameEn": "Jangsu Naengmyeonok",
+  "tx": 478,
+  "ty": 386,
+  "osmId": -85001,
+  "src": "capture"
+ },
+ {
+  "type": "lodging",
+  "name": "아바 하우스",
+  "nameEn": "Aba House",
+  "tx": 482,
+  "ty": 392,
+  "osmId": -85002,
+  "src": "capture"
+ },
+ {
+  "type": "cafe",
+  "name": "카페청호마을",
+  "nameEn": "Kape Cheongho Village",
+  "tx": 491,
+  "ty": 406,
+  "osmId": -85003,
+  "src": "capture"
+ },
+ {
+  "type": "lodging",
+  "name": "루미네민박",
+  "nameEn": "Rumine Guest Rooms",
+  "tx": 487,
+  "ty": 409,
+  "osmId": -85004,
+  "src": "capture"
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "삼호미니슈퍼",
+  "nameEn": "Samhomini Super",
+  "tx": 481,
+  "ty": 413,
+  "osmId": -85005,
+  "src": "capture"
+ },
+ {
+  "type": "lodging",
+  "name": "속초 블루오션펜션",
+  "nameEn": "Sokcho Beulruosyeon Pension",
+  "tx": 495,
+  "ty": 414,
+  "osmId": -85006,
+  "src": "capture"
+ },
+ {
+  "type": "lodging",
+  "name": "스테이 청호",
+  "nameEn": "Seutei Cheongho",
+  "tx": 503,
+  "ty": 426,
+  "osmId": -85007,
+  "src": "capture"
+ },
+ {
+  "type": "restaurant",
+  "name": "아바이2호",
+  "nameEn": "Abai 2ho",
+  "tx": 506,
+  "ty": 440,
+  "osmId": -85008,
+  "src": "capture"
+ },
+ {
+  "type": "restaurant",
+  "name": "녹수생선찜",
+  "nameEn": "Noksu Saengseonjjim",
+  "tx": 512,
+  "ty": 440,
+  "osmId": -85009,
+  "src": "capture"
+ },
+ {
+  "type": "lodging",
+  "name": "속초외갓집",
+  "nameEn": "Sokcho Oegatjip",
+  "tx": 498,
+  "ty": 442,
+  "osmId": -85010,
+  "src": "capture"
+ },
+ {
+  "type": "restaurant",
+  "name": "해운홍게무한리필 속초점",
+  "nameEn": "Haeun Hongge Muhanripil Sokcho Jeom",
+  "tx": 499,
+  "ty": 449,
+  "osmId": -85011,
+  "src": "capture"
+ },
+ {
+  "type": "cafe",
+  "name": "쉘터",
+  "nameEn": "Shelter Cafe",
+  "tx": 521,
+  "ty": 451,
+  "osmId": -85012,
+  "src": "capture"
+ },
+ {
+  "type": "restaurant",
+  "name": "속초까마귀골막국수",
+  "nameEn": "Sokcho Kkamagwigol Makguksu",
+  "tx": 396,
+  "ty": 572,
+  "osmId": -86001,
+  "src": "capture"
+ },
+ {
+  "type": "restaurant",
+  "name": "속초감자옹심이집",
+  "nameEn": "Sokcho Gamjaongsimi Jip",
+  "tx": 496,
+  "ty": 521,
+  "osmId": -86002,
+  "src": "capture"
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "QU",
+  "nameEn": "QU",
+  "tx": 481,
+  "ty": 532,
+  "osmId": -86003,
+  "src": "capture"
+ },
+ {
+  "type": "lodging",
+  "name": "스테이소담",
+  "nameEn": "Seutei Sodam",
+  "tx": 486,
+  "ty": 563,
+  "osmId": -86004,
+  "src": "capture"
+ },
+ {
+  "type": "restaurant",
+  "name": "전주호식당 속초점",
+  "nameEn": "Jeonjuho Restaurant Sokcho Jeom",
+  "tx": 473,
+  "ty": 577,
+  "osmId": -86005,
+  "src": "capture"
+ },
+ {
+  "type": "restaurant",
+  "name": "속초대게마루",
+  "nameEn": "Sokcho Daege Maru",
+  "tx": 356,
+  "ty": 585,
+  "osmId": -86006,
+  "src": "capture"
+ },
+ {
+  "type": "cafe",
+  "name": "파스텔리",
+  "nameEn": "Pastelli",
+  "tx": 362,
+  "ty": 597,
+  "osmId": -86007,
+  "src": "capture"
+ },
+ {
+  "type": "restaurant",
+  "name": "도촌짚불구이",
+  "nameEn": "Dochonjipbulgui",
+  "tx": 356,
+  "ty": 602,
+  "osmId": -86008,
+  "src": "capture"
+ },
+ {
+  "type": "lodging",
+  "name": "모아엔호텔",
+  "nameEn": "Moaen Hotel",
+  "tx": 375,
+  "ty": 601,
+  "osmId": -86009,
+  "src": "capture"
+ },
+ {
+  "type": "lodging",
+  "name": "미리내관광호텔",
+  "nameEn": "Mirinaegwangwang Hotel",
+  "tx": 386,
+  "ty": 598,
+  "osmId": -86010,
+  "src": "capture"
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "QU",
+  "nameEn": "QU",
+  "tx": 388,
+  "ty": 608,
+  "osmId": -86011,
+  "src": "capture"
+ },
+ {
+  "type": "restaurant",
+  "name": "추필이국시",
+  "nameEn": "Chupiliguksi",
+  "tx": 422,
+  "ty": 636,
+  "osmId": -86012,
+  "src": "capture"
+ },
+ {
+  "type": "lodging",
+  "name": "홈마린속초",
+  "nameEn": "Hommarin Sokcho",
+  "tx": 491,
+  "ty": 604,
+  "osmId": -86013,
+  "src": "capture"
+ },
+ {
+  "type": "restaurant",
+  "name": "솔숲가든막국수",
+  "nameEn": "Solsupgadeun Makguksu",
+  "tx": 464,
+  "ty": 626,
+  "osmId": -86014,
+  "src": "capture"
+ },
+ {
+  "type": "lodging",
+  "name": "르콜렉트",
+  "nameEn": "Le Collect",
+  "tx": 228,
+  "ty": 522,
+  "osmId": -87001,
+  "src": "capture"
+ },
+ {
+  "type": "lodging",
+  "name": "호텔갤러리앤스테이",
+  "nameEn": "Hotelgaelreoriaen Seutei",
+  "tx": 200,
+  "ty": 560,
+  "osmId": -87002,
+  "src": "capture"
+ },
+ {
+  "type": "lodging",
+  "name": "호텔포레스타",
+  "nameEn": "Hotelporeseuta",
+  "tx": 219,
+  "ty": 594,
+  "osmId": -87003,
+  "src": "capture"
+ },
+ {
+  "type": "shop",
+  "shopKind": "supermarket",
+  "name": "노네임",
+  "nameEn": "No Name",
+  "tx": 233,
+  "ty": 612,
+  "osmId": -87004,
+  "src": "capture"
+ },
+ {
+  "type": "restaurant",
+  "name": "김밥마을",
+  "nameEn": "Gimbap Maeul",
+  "tx": 222,
+  "ty": 616,
+  "osmId": -87005,
+  "src": "capture"
+ },
+ {
+  "type": "shop",
+  "shopKind": "pub",
+  "name": "두다리",
+  "nameEn": "Dudari",
+  "tx": 212,
+  "ty": 630,
+  "osmId": -87006,
+  "src": "capture"
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "엑스포쉼터매점",
+  "nameEn": "Ekseupo Rest Stop Kiosk",
+  "tx": 325,
+  "ty": 567,
+  "osmId": -87007,
+  "src": "capture"
+ },
+ {
+  "type": "restaurant",
+  "name": "숯불닭숯불닭 속초점",
+  "nameEn": "Sutbuldaksutbuldak Sokcho Jeom",
+  "tx": 311,
+  "ty": 602,
+  "osmId": -87008,
+  "src": "capture"
+ },
+ {
+  "type": "restaurant",
+  "name": "왕대박",
+  "nameEn": "Wangdaebak",
+  "tx": 320,
+  "ty": 603,
+  "osmId": -87009,
+  "src": "capture"
+ },
+ {
+  "type": "cafe",
+  "name": "투스푼플레이스",
+  "nameEn": "Two Spoon Place",
+  "tx": 328,
+  "ty": 599,
+  "osmId": -87010,
+  "src": "capture"
+ },
+ {
+  "type": "restaurant",
+  "name": "사촌짬뽕",
+  "nameEn": "Sachon Jjamppong",
+  "tx": 179,
+  "ty": 481,
+  "osmId": -88001,
+  "src": "capture"
+ },
+ {
+  "type": "cafe",
+  "name": "설향빙수",
+  "nameEn": "Seolhyang Bingsu",
+  "tx": 233,
+  "ty": 443,
+  "osmId": -88002,
+  "src": "capture"
+ },
+ {
+  "type": "lodging",
+  "name": "호텔헤이든",
+  "nameEn": "Hotelheideun",
+  "tx": 221,
+  "ty": 452,
+  "osmId": -88003,
+  "src": "capture"
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "QU",
+  "nameEn": "QU",
+  "tx": 216,
+  "ty": 462,
+  "osmId": -88004,
+  "src": "capture"
+ },
+ {
+  "type": "lodging",
+  "name": "투호텔",
+  "nameEn": "Tu Hotel",
+  "tx": 238,
+  "ty": 464,
+  "osmId": -88005,
+  "src": "capture"
+ },
+ {
+  "type": "restaurant",
+  "name": "조프로뼈찜감자탕",
+  "nameEn": "Jopeuroppyeojjim Gamjatang",
+  "tx": 213,
+  "ty": 467,
+  "osmId": -88006,
+  "src": "capture"
+ },
+ {
+  "type": "restaurant",
+  "name": "강릉초당마을짬뽕순두부 속초점",
+  "nameEn": "Gangreung Chodang Village Jjamppong Sundubu Sokcho Jeom",
+  "tx": 213,
+  "ty": 475,
+  "osmId": -88007,
+  "src": "capture"
+ },
+ {
+  "type": "restaurant",
+  "name": "이비짬뽕 교동점",
+  "nameEn": "Ibi Jjamppong Gyodongjeom",
+  "tx": 231,
+  "ty": 475,
+  "osmId": -88008,
+  "src": "capture"
+ },
+ {
+  "type": "restaurant",
+  "name": "파스타지오니",
+  "nameEn": "Paseutajioni",
+  "tx": 211,
+  "ty": 489,
+  "osmId": -88009,
+  "src": "capture"
+ },
+ {
+  "type": "restaurant",
+  "name": "속초향기찜",
+  "nameEn": "Sokcho Hyanggijjim",
+  "tx": 231,
+  "ty": 494,
+  "osmId": -88010,
+  "src": "capture"
+ },
+ {
+  "type": "restaurant",
+  "name": "하북돼지집",
+  "nameEn": "Habuk Pork House",
+  "tx": 211,
+  "ty": 500,
+  "osmId": -88011,
+  "src": "capture"
+ },
+ {
+  "type": "restaurant",
+  "name": "호수식당 속초",
+  "nameEn": "Hosu Restaurant Sokcho",
+  "tx": 234,
+  "ty": 499,
+  "osmId": -88012,
+  "src": "capture"
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "QU",
+  "nameEn": "QU",
+  "tx": 221,
+  "ty": 501,
+  "osmId": -88013,
+  "src": "capture"
+ },
+ {
+  "type": "lodging",
+  "name": "패밀리홈게스트하우스",
+  "nameEn": "Paemilrihom Guesthouse",
+  "tx": 187,
+  "ty": 522,
+  "osmId": -88014,
+  "src": "capture"
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "오마트24",
+  "nameEn": "O-Mart 24",
+  "tx": 249,
+  "ty": 279,
+  "osmId": -89001,
+  "src": "capture"
+ },
+ {
+  "type": "restaurant",
+  "name": "맘스키친",
+  "nameEn": "Mom's Kitchen",
+  "tx": 253,
+  "ty": 296,
+  "osmId": -89002,
+  "src": "capture"
+ },
+ {
+  "type": "cafe",
+  "name": "스마일명물찹쌀꽈배기",
+  "nameEn": "Seumailmyeongmulchapssal Kkwabaegi",
+  "tx": 260,
+  "ty": 314,
+  "osmId": -89003,
+  "src": "capture"
+ },
+ {
+  "type": "restaurant",
+  "name": "속초동경식당",
+  "nameEn": "Sokcho Donggyeong Restaurant",
+  "tx": 294,
+  "ty": 337,
+  "osmId": -89004,
+  "src": "capture"
+ },
+ {
+  "type": "lodging",
+  "name": "속초오세요스테이",
+  "nameEn": "Sokcho Oseyo Seutei",
+  "tx": 318,
+  "ty": 272,
+  "osmId": -89005,
+  "src": "capture"
+ },
+ {
+  "type": "cafe",
+  "name": "강원도막걸리찐빵",
+  "nameEn": "Gangwondomakgeolri Jjinppang",
+  "tx": 380,
+  "ty": 275,
+  "osmId": -89006,
+  "src": "capture"
+ },
+ {
+  "type": "shop",
+  "shopKind": "supermarket",
+  "name": "원플러스마트",
+  "nameEn": "Wonpeulreoseu Mart",
+  "tx": 366,
+  "ty": 282,
+  "osmId": -89007,
+  "src": "capture"
+ },
+ {
+  "type": "restaurant",
+  "name": "88순댓국",
+  "nameEn": "88 Sundaetguk",
+  "tx": 368,
+  "ty": 288,
+  "osmId": -89008,
+  "src": "capture"
+ },
+ {
+  "type": "cafe",
+  "name": "속초옥수수버터빵",
+  "nameEn": "Sokcho Oksusu Beoteoppang",
+  "tx": 355,
+  "ty": 293,
+  "osmId": -89009,
+  "src": "capture"
+ },
+ {
+  "type": "restaurant",
+  "name": "정아네",
+  "nameEn": "Jeongane",
+  "tx": 389,
+  "ty": 291,
+  "osmId": -89010,
+  "src": "capture"
+ },
+ {
+  "type": "restaurant",
+  "name": "대게특별구",
+  "nameEn": "Daege Teukbyeolgu",
+  "tx": 403,
+  "ty": 300,
+  "osmId": -89011,
+  "src": "capture"
+ },
+ {
+  "type": "cafe",
+  "name": "빼꼼다방",
+  "nameEn": "Ppaekkom Dabang",
+  "tx": 389,
+  "ty": 304,
+  "osmId": -89012,
+  "src": "capture"
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "마흔계단미니수퍼",
+  "nameEn": "Maheungyedanmini Super",
+  "tx": 324,
+  "ty": 316,
+  "osmId": -89013,
+  "src": "capture"
+ },
+ {
+  "type": "restaurant",
+  "name": "속초중앙로상회",
+  "nameEn": "Sokcho Jungang Rosanghoe",
+  "tx": 369,
+  "ty": 315,
+  "osmId": -89014,
+  "src": "capture"
+ },
+ {
+  "type": "restaurant",
+  "name": "원산냉면옥",
+  "nameEn": "Wonsan Naengmyeonok",
+  "tx": 329,
+  "ty": 339,
+  "osmId": -89015,
+  "src": "capture"
+ },
+ {
+  "type": "restaurant",
+  "name": "양반댁함경냉면",
+  "nameEn": "Yangbandaekhamgyeong Naengmyeon",
+  "tx": 392,
+  "ty": 349,
+  "osmId": -89016,
+  "src": "capture"
+ },
+ {
+  "type": "restaurant",
+  "name": "온죽&비빔밥",
+  "nameEn": "Onjuk & Bibimbap",
+  "tx": 314,
+  "ty": 348,
+  "osmId": -89017,
+  "src": "capture"
+ },
+ {
+  "type": "lodging",
+  "name": "선라이즈베이호텔",
+  "nameEn": "Seonraijeubei Hotel",
+  "tx": 368,
+  "ty": 350,
+  "osmId": -89018,
+  "src": "capture"
+ },
+ {
+  "type": "lodging",
+  "name": "시내한복판펜션",
+  "nameEn": "Sinaehanbokpan Pension",
+  "tx": 359,
+  "ty": 354,
+  "osmId": -89019,
+  "src": "capture"
+ },
+ {
+  "type": "lodging",
+  "name": "SJ Stay호텔",
+  "nameEn": "SJ Stay Hotel",
+  "tx": 324,
+  "ty": 362,
+  "osmId": -89020,
+  "src": "capture"
+ },
+ {
+  "type": "restaurant",
+  "name": "교동반점짬뽕",
+  "nameEn": "Gyodongbanjeom Jjamppong",
+  "tx": 302,
+  "ty": 367,
+  "osmId": -89021,
+  "src": "capture"
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "QU",
+  "nameEn": "QU",
+  "tx": 248,
+  "ty": 362,
+  "osmId": -89022,
+  "src": "capture"
+ },
+ {
+  "type": "lodging",
+  "name": "쉼표게스트하우스",
+  "nameEn": "Swimpyo Guesthouse",
+  "tx": 271,
+  "ty": 363,
+  "osmId": -89023,
+  "src": "capture"
+ },
+ {
+  "type": "lodging",
+  "name": "베리타",
+  "nameEn": "Berita",
+  "tx": 228,
+  "ty": 381,
+  "osmId": -89024,
+  "src": "capture"
+ },
+ {
+  "type": "lodging",
+  "name": "속초스테이온",
+  "nameEn": "Sokcho Seutei On",
+  "tx": 224,
+  "ty": 400,
+  "osmId": -89025,
+  "src": "capture"
+ },
+ {
+  "type": "restaurant",
+  "name": "속초그바다에",
+  "nameEn": "Sokcho Geubadae",
+  "tx": 228,
+  "ty": 416,
+  "osmId": -89026,
   "src": "capture"
  }
 ]

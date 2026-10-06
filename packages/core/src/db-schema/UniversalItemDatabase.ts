@@ -177,7 +177,7 @@ const TACKLE_SHOP_ITEMS: UniversalItem[] = [
 const MART_ITEMS: UniversalItem[] = [
   {
     id: 'mart_breadcrumb',
-    nameKo: '빵가루 (하나로마트)',
+    nameKo: '빵가루 (한마음마트)',
     availableAt: ['hanaro_mart'],
     buyPriceByVendor: { hanaro_mart: 3000 },
     sellPriceByVendor: { hanaro_mart: 500 },

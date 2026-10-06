@@ -11,7 +11,9 @@
  * ## 표기 규칙 (사용자 확정 2026-09-08)
  * 고유명(상호 이름)은 **로마자 음차**, 업종 접미(횟집·식당·주유소·편의점 …)만 **의미역**.
  *   함흥냉면옥 → Hamheung Naengmyeon House · 짬뽕일번지 → Jjamppong Ilbeonji
- * 실브랜드는 그 브랜드의 **공식 영문 표기**를 쓴다(하나로마트 → Hanaro Mart).
+ * 218차 — 가게 상호는 게임 상호로 바뀌었다(`pixelazed/<region>/name_alias.json` — 실제 상호를 조금씩 바꾼 것).
+ * 가게의 영어 표기는 그 표가 `pois.json.nameEn`으로 내보내므로 **여기에 가게 이름을 다시 적지 않는다**(실제 상호가 번들에 남는다).
+ * 이 사전에는 공공 시설 · 지명 · 협동조합(수협)처럼 이름을 바꾸지 않는 것만 둔다.
  * 지명이 섞이면 국립국어원 로마자 표기법을 따른다(속초 → Sokcho).
  *
  * ## 우선순위
@@ -24,47 +26,9 @@ export const EN_POIS: Record<string, string> = {
   // 두 지구대가 똑같이 'Sokcho Police Station' 이라 지도에서 구분이 안 된다
   '속초경찰서 영랑지구대': 'Sokcho Police – Yeongnang Substation',
   '속초경찰서 청초지구대': 'Sokcho Police – Cheongcho Substation',
-  '24시 전주 명가 콩나물국밥': 'Jeonju Kongnamul Gukbap (24h)',   // 원본은 그냥 'Gukbap'
-  '서독약국': 'Seodok Pharmacy',                                  // 원본 'West Germany Pharmacy' = 직역
 
-  // ── 음식점 ──
-  '그리운보리밥': 'Geuriun Boribap',
-  '김밥천국': 'Gimbap Cheonguk',
-  '단천면옥': 'Dancheon Myeonok',
-  '단천식당': 'Dancheon Restaurant',
-  '대일회할인마트': 'Daeil Sashimi Discount Mart',
-  '매자식당': 'Maeja Restaurant',
-  '설악본가': 'Seorak Bonga',
-  '속초 생대구': 'Sokcho Fresh Cod',
-  '속초엄지닭강정': 'Sokcho Eomji Dakgangjeong',
-  '스시나미': 'Sushi Nami',
-  '안동식당': 'Andong Restaurant',
-  '영금정횟집': 'Yeonggeumjeong Sashimi',
-  '용신포차': 'Yongsin Pocha',
-  '장수루 양꼬치 훠궈': 'Jangsuru Lamb Skewers & Hot Pot',
-  '전주속풀이해장국': 'Jeonju Haejang-guk',
-  '짬뽕일번지': 'Jjamppong Ilbeonji',
-  '하누랑': 'Hanurang',
-  '한우와문어국밥': 'Hanwoo & Octopus Gukbap',
-  '함지박식당': 'Hamjibak Restaurant',
-  '함흥냉면옥': 'Hamheung Naengmyeon House',
-  '현이네포차': "Hyeoni's Pocha",
-  '회식의달인': 'Hoesik-ui Dalin',
-
-  // ── 카페 ──
-  '5구도선장': 'Ogudo Seonjang',
-  '마캉마캉 속초점': 'Macan Macan Sokcho',
-  '빙담소': 'Bingdamso',
-  '커피플레이트': 'Coffee Plate',
-  '커피해요': 'Coffee Haeyo',
-
-  // ── 상점 ──
-  'GS더프래시 속초교동점': 'GS The Fresh Sokcho Gyodong',
-  'l마트': 'L Mart',
-  '설악슈퍼': 'Seorak Super',
+  // ── 협동조합 (이름을 바꾸지 않는다) ──
   '속초시 수협 동명활어센터': 'Sokcho Suhyup Dongmyeong Live Fish Center',
-  '우리홈마트': 'Uri Home Mart',
-  '하나로마트': 'Hanaro Mart',
 
   // ── 시설·표지 ──
   '동명항': 'Dongmyeong Port',                       // EN_PLACES 와 동일 — POI info 로도 나온다
@@ -76,17 +40,4 @@ export const EN_POIS: Record<string, string> = {
   '조도등대': 'Jodo Lighthouse',
   '중앙치안센터': 'Jungang Police Post',
   '청호동방파제': 'Cheongho-dong Breakwater',
-
-  // ── 라벨로 렌더되진 않지만 상세·검색에서 나올 수 있는 것 ──
-  'DC타이거': 'DC Tiger',
-  'MG새마을금고': 'MG Community Credit Cooperative',
-  '대승당약국': 'Daeseungdang Pharmacy',
-  '보명당': 'Bomyeongdang',
-  '설악찹쌀 & 기정떡': 'Seorak Chapssal & Gijeongtteok',
-  '성실축산': 'Seongsil Meat',
-  '신개념축산물백화점': 'Singaenyeom Meat Department',
-  '에이스침대': 'Ace Bed',
-  '제이마트': 'J Mart',
-  '체스터톤스 속초': 'Chestertons Sokcho',
-  '하나약국': 'Hana Pharmacy',
 };

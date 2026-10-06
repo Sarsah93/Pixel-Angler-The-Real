@@ -1,8 +1,15 @@
 """
-캡처 POI 병합 (217차) — 사용자가 준 지도 캡처에서 판독한 가게를 심리스 POI(`pois.json`)에 합친다.
+캡처 POI 병합 (217차) + 게임 상호 바꾸기 (218차) — 사용자가 준 지도 캡처에서 판독한 가게를 심리스 POI(`pois.json`)에 합치고,
+가게 이름을 게임 상호(`name_alias.json` — 실제 상호를 조금씩 바꾼 것)로 바꿔 쓴다.
 
-입력: pixelazed/<region>/capture_pois.json   (정본 — 이름 · 분류 · 위경도)
+입력: pixelazed/<region>/capture_pois.json   (정본 — 원래 이름 · 분류 · 위경도)
+      pixelazed/<region>/name_alias.json     (원래 이름 → 게임 이름 · 영어 표기)
 출력: pixelazed/<region>/pois.json · packages/client-pc/public/data/<region>/pois.json (둘 다 갱신)
+
+- **pois.json을 새로 쓰는 도구 다음에는 반드시 이 스크립트를 마지막에 돌린다** — `build_osm_tilemap.py`(캡처분 · 게임 상호가 사라진다) ·
+  `backfill_poi_nameen.py`(OSM 영어 이름이 실제 상호로 돌아온다). 순서: OSM 빌드 → 영어 채우기 → 이 스크립트.
+- 게임 상호: OSM 가게(음식점 · 카페 · 상점 · 숙박 · 약국 · 주유소 · 은행)와 캡처 가게 전부. 표에 없는 이름은 그대로 두고 경고한다
+  (공공 · 협동조합 · 지명은 일부러 표에 없다). 이미 바뀐 이름(표의 값)은 다시 바꾸지 않는다 — 몇 번을 돌려도 같다.
 
 - 몇 번을 돌려도 같다: 앞서 합친 캡처 항목(`src: 'capture'`)을 먼저 지우고 다시 넣는다.
   OSM 빌드(`build_osm_tilemap.py`)가 pois.json을 새로 쓰면 이 스크립트를 한 번 더 돌린다.
@@ -22,6 +29,8 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REGION = sys.argv[1] if len(sys.argv) > 1 else 'sokcho_v2'
 SRC = os.path.join(ROOT, 'pixelazed', REGION, 'capture_pois.json')
+ALIAS = os.path.join(ROOT, 'pixelazed', REGION, 'name_alias.json')
+BUSINESS = {'restaurant', 'cafe', 'shop', 'lodging', 'pharmacy', 'fuel', 'bank'}
 META = os.path.join(ROOT, 'packages/client-pc/public/data', REGION, 'meta.json')
 OUTS = [os.path.join(ROOT, 'pixelazed', REGION, 'pois.json'),
         os.path.join(ROOT, 'packages/client-pc/public/data', REGION, 'pois.json')]
@@ -58,6 +67,50 @@ def romanize(text: str) -> str:
     return ' '.join(words)
 
 
+# 영어 표기 자동 생성 — 업종 말은 뜻으로, 나머지는 로마자. 붙여 쓴 한국어 상호는 아는 낱말 앞뒤로 띄운다
+_SUFFIX_EN = [('게스트하우스', 'Guesthouse'), ('편의점', 'Convenience Store'), ('주유소', 'Gas Station'), ('장례식장', 'Funeral Hall'),
+              ('횟집', 'Sashimi House'), ('회집', 'Sashimi House'), ('식당', 'Restaurant'), ('호스텔', 'Hostel'), ('여인숙', 'Inn'),
+              ('호텔', 'Hotel'), ('모텔', 'Motel'), ('펜션', 'Pension'), ('민박', 'Guest Rooms'), ('약국', 'Pharmacy'), ('약방', 'Pharmacy'),
+              ('슈퍼', 'Super'), ('수퍼', 'Super'), ('마트', 'Mart'), ('포차', 'Pocha'), ('술집', 'Pub'), ('카페', 'Cafe'), ('커피', 'Coffee'),
+              ('베이커리', 'Bakery'), ('다방', 'Dabang'), ('하우스', 'House'), ('매점', 'Kiosk'), ('장터', 'Market')]
+_WORDS = ['속초', '강릉', '동해', '설악', '중앙', '청초호', '청호', '동명항', '영금정', '아바이', '대게', '홍게', '물회', '막국수', '칼국수',
+          '냉면옥', '냉면', '면옥', '짬뽕', '순두부', '닭강정', '감자옹심이', '생선구이', '생선찜', '무한리필', '해물탕', '순댓국', '해장국',
+          '감자탕', '김밥', '만두', '족발', '갈비', '국밥', '곰탕', '튀김', '라면', '찐빵', '버터빵', '꽈배기', '본점', '점', '스테이',
+          '커피', '한우', '마을', '포장마차', '야식', '방앗간', '쉼터']
+_WORD_EN = {'커피': 'Coffee', '마을': 'Village', '포장마차': 'Pojangmacha', '쉼터': 'Rest Stop'}
+
+
+def auto_en(ko: str) -> str:
+    words = []
+    for w in ko.split():
+        tail = ''
+        for k, e in _SUFFIX_EN:
+            if w.endswith(k) and len(w) > len(k):
+                w, tail = w[:-len(k)], e
+                break
+            if w == k:
+                w, tail = '', e
+                break
+        parts, buf, i = [], '', 0
+        while i < len(w):
+            hit = next((t for t in sorted(_WORDS, key=len, reverse=True) if w.startswith(t, i) and t != '점'), None)
+            if hit:
+                if buf:
+                    parts.append(buf)
+                    buf = ''
+                parts.append(hit)
+                i += len(hit)
+            else:
+                buf += w[i]
+                i += 1
+        if buf:
+            parts.append(buf)
+        words += [_WORD_EN.get(p) or romanize(p) for p in parts if p]
+        if tail:
+            words.append(tail)
+    return ' '.join(words)
+
+
 def norm(s: str) -> str:
     return re.sub(r'[\s·&()\-_.]', '', s or '').lower()
 
@@ -74,7 +127,36 @@ def main() -> None:
         return round(tx), round(ty)
 
     src = json.load(open(SRC, encoding='utf-8'))
+    aliases: dict[str, dict] = json.load(open(ALIAS, encoding='utf-8'))['aliases'] if os.path.exists(ALIAS) else {}
+    alias_values = {a['ko'] for a in aliases.values()}
+    unknown: list[str] = []
+
+    def game_name(real: str, kind_ok: bool = True) -> tuple[str, str | None]:
+        """원래 이름 → (게임 이름, 영어 표기 | None = 바꾸지 않음)"""
+        a = aliases.get(real)
+        if a:
+            return a['ko'], a.get('en') or auto_en(a['ko'])
+        if kind_ok and real and real not in alias_values:
+            unknown.append(real)
+        return real, None
+
     base = [p for p in json.load(open(OUTS[1], encoding='utf-8')) if p.get('src') != 'capture']
+    renamed = 0
+    by_game = {a['ko']: a for a in aliases.values()}
+    for p in base:
+        if p.get('type') in BUSINESS and not p.get('name') and p.get('nameEn') in aliases:
+            # 한국어 이름 없이 영어 이름만 있는 OSM 가게 — 영어 이름으로 찾는다
+            p['name'], p['nameEn'] = game_name(p['nameEn'])
+            renamed += 1
+        elif p.get('type') in BUSINESS and p.get('name') in aliases:
+            p['name'], p['nameEn'] = game_name(p['name'])
+            renamed += 1
+        elif p.get('type') in BUSINESS and p.get('name') in by_game:
+            # 이미 바뀐 이름 — 영어 표기만 표 · 규칙의 최신 값으로
+            a = by_game[p['name']]
+            p['nameEn'] = a.get('en') or auto_en(a['ko'])
+        elif p.get('type') in BUSINESS and p.get('name') and p['name'] not in alias_values:
+            unknown.append(p['name'])
     osm_names: dict[str, list[tuple[int, int]]] = {}
     for p in base:
         osm_names.setdefault(norm(p.get('name', '')), []).append((p['tx'], p['ty']))
@@ -87,7 +169,8 @@ def main() -> None:
         if not (0 <= tx < meta['width'] and 0 <= ty < meta['height']):
             out_of_map += 1
             continue
-        k = norm(c['name'])
+        name, name_en = game_name(c['name'])
+        k = norm(name)
         if any(math.hypot(tx - x, ty - y) <= 8 for x, y in osm_names.get(k, [])):
             dup_osm += 1
             continue
@@ -96,7 +179,7 @@ def main() -> None:
             continue
         n = int(c['capture'])
         seq[n] = seq.get(n, 0) + 1
-        added.append({**CAT[c['cat']], 'name': c['name'], 'nameEn': c.get('nameEn') or romanize(c['name']), 'tx': tx, 'ty': ty,
+        added.append({**CAT[c['cat']], 'name': name, 'nameEn': name_en or c.get('nameEn') or auto_en(name), 'tx': tx, 'ty': ty,
                       'osmId': -(n * 1000 + seq[n]), 'src': 'capture'})
 
     merged = base + added
@@ -109,7 +192,10 @@ def main() -> None:
         kinds[key] = kinds.get(key, 0) + 1
     print(f'[capture] 입력 {len(src["pois"])} · 추가 {len(added)} · OSM 중복 {dup_osm} · 캡처 중복 {dup_cap} · 지도 밖 {out_of_map}')
     print('[capture] 종류', ', '.join(f'{k} {v}' for k, v in sorted(kinds.items(), key=lambda x: -x[1])))
-    print(f'[capture] pois.json {len(merged)}건 (OSM {len(base)})')
+    print(f'[capture] pois.json {len(merged)}건 (OSM {len(base)}) · OSM 게임 상호 {renamed}건')
+    if unknown:
+        print(f'[alias] 표에 없는 가게 이름 {len(set(unknown))}개 — 원래 이름 그대로 나간다(공공 · 협동조합이면 정상):',
+              ', '.join(sorted(set(unknown))))
 
 
 if __name__ == '__main__':

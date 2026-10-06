@@ -1040,10 +1040,10 @@ export class FieldScene extends Phaser.Scene {
         this.showPlayerFloatingHint('🚻 화장실에서 세면을 마쳐 피로가 풀렸습니다!');
       } else if (action === 'hanaro_mart') {
         // 하나로마트 상호작용
-        this.showPlayerFloatingHint('🛒 하나로마트에서 미끼와 식음료를 가득 구매했습니다!');
+        this.showPlayerFloatingHint('🛒 한마음마트에서 미끼와 식음료를 가득 구매했습니다!');
       } else if (action === 'convenience') {
         // 편의점 상호작용
-        this.showPlayerFloatingHint('🏪 GS25 마트에서 따뜻한 조지아 캔커피를 마셨습니다.');
+        this.showPlayerFloatingHint('🏪 GX24 마트에서 따뜻한 캔커피를 마셨습니다.');
       } else if (action === 'fish_market') {
         // 어판장 상호작용: 살림망의 모든 물고기 수매
         const livewell = GameState.player.inventory.livewell;

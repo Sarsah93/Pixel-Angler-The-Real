@@ -349,7 +349,7 @@ export function generateSpotFieldLayout(spot: FishingSpotInfo): SpotFieldLayout 
   if (spot.facilities.includes('hanaro_mart')) {
     buildings.push({
       id: 'hanaro_mart',
-      label: '농협 하나로마트',
+      label: '농민조합 한마음마트',
       sublabel: '식료품 / 소모품',
       x: currentX,
       y: startY,
@@ -358,13 +358,13 @@ export function generateSpotFieldLayout(spot: FishingSpotInfo): SpotFieldLayout 
       color: 0x1565c0,
       doorColor: 0xffb74d,
       action: 'hanaro_mart',
-      hint: '[E] 하나로마트 이용하기',
+      hint: '[E] 한마음마트 이용하기',
     });
     currentX += colSpacing + 15;
   } else if (spot.hasNearbyConvenienceStore || spot.facilities.includes('convenience_store')) {
     buildings.push({
       id: 'convenience',
-      label: 'GS25 마트',
+      label: 'GX24 마트',
       sublabel: '소모품 및 간식',
       x: currentX,
       y: startY,

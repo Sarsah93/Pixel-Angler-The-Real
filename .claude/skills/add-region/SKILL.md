@@ -88,8 +88,25 @@ py tools/extract_lights.py <region>        # → public/data/<region>/lights.jso
 py tools/backfill_poi_nameen.py <region>   # 정본 + public 사본 동시, 멱등
 ```
 
-`name:en` 이 없는 상호는 `packages/client-pc/src/i18n/en_pois.ts` 에 손으로 넣는다
-(속초 실측: 라벨 렌더 133건 중 91건은 OSM 보유 → 수작업 42건). 한국어 로케일에는 영향이 없다.
+~~`name:en` 이 없는 상호는 `en_pois.ts` 에 손으로 넣는다~~ — **218차부터 가게 이름은 게임 상호**다(아래).
+
+## 게임 상호 · 캡처 POI (217 · 218차 — 필수)
+
+가게 이름은 **실제 상호를 조금씩 바꾼 게임 상호**로 나간다(사용자 지시 — 상호명 저작권).
+표 = `pixelazed/<region>/name_alias.json`(원래 이름 → `{ko, en}`), 적용 = 병합 스크립트:
+
+```bash
+py tools/merge_capture_pois.py <region>   # 캡처 POI 병합 + 게임 상호 적용 — pois.json 정본 · public 동시, 멱등
+```
+
+- **`pois.json`을 쓰는 도구(`build_osm_tilemap.py` · `backfill_poi_nameen.py`) 다음에는 반드시 이것을 마지막에** 돌린다 —
+  안 돌리면 캡처 가게가 사라지고 이름이 실제 상호로 돌아간다.
+- 스크립트가 「표에 없는 가게 이름」을 찍으면 표에 추가한다(공공 · 협동조합 · 지명은 일부러 뺀다).
+  업종 말(횟집 · 물회 · 활어 · 호텔 · 포차 · 약국 · 편의점 · 마트)은 남긴다 — 간판 그림 · 실내 틀이 그 말로 갈린다.
+  프랜차이즈는 가상 브랜드(GS25 → GX24 · CU → QU · 스타벅스 → 스타빈스) — 다른 지역에서도 같은 이름을 쓴다.
+- 가게 영어 이름을 `en_pois.ts`에 적지 않는다(실제 상호가 번들에 남는다). 거기는 공공 시설 · 지명 · 수협만.
+- 사용자 지도 캡처 정합: 캡처마다 **배율부터** 잰다(확대 단계가 바뀐다). OSM 이름 붙은 장소 5곳 이상 최소제곱 → 도로선 겹쳐 보기로 확인
+  (상세 217 · 218 워크로그 §2).
 
 그리고 core `SEAMLESS_REGIONS[<id>].hasLights = true`. ⚠ 파일 없이 플래그만 켜면 Vite dev SPA 폴백이
 index.html을 돌려줘 JSON 파싱 pageerror(함정 — depthProfileUrl과 동일). 방파제 단면(테트라포드/사석/

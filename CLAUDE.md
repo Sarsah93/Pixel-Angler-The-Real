@@ -45,12 +45,12 @@
   맵 확정(육안)·OSM land 14개·조도 재설계·외옹치/대포항 bbox 확장은 사용자 동반 병행 트랙.
 - **재개 지점**: 사용자 실검증(172·173차 타일 조화 규칙 + 178·183~186차 신설분) — 부족하면 규칙 보강,
   괜찮으면 규칙을 켠 채로 새 맵 확장. 차수별 잔여는 PLAN §2-3.
+- **218차**: **지도 캡처 6~10 · 게임 상호** — 캡처 6~10(배율 0.59~0.83 m/px — OSM 장소 최소제곱 정합) · 새 가게 76 · 실제 상호를 조금씩 바꾼 표 `name_alias.json` 419개
+  (업종 말 유지 · 프랜차이즈 = 가상 브랜드) · `merge_capture_pois.py`가 적용. 상세 `docs/wiki/03-WORKLOG/2026-10-06-218-captures-6-10-game-shop-names.md`.
 - **217차**: **바닥 점 → 가게 간판 · 좌판만 노점 · 지도 캡처 POI 176곳** — 바닥 점 · 이름표 폐지 · 문 옆 종류 간판 · 시장 좌판 [F] 바로 거래 ·
   네이버 캡처 5장 도로 앵커 정합 + 판독 → `tools/merge_capture_pois.py`(주점 4 포함). 상세 `docs/wiki/03-WORKLOG/2026-10-06-217-shop-signs-stalls-capture-pois.md`.
 - **216차**: **실내 공간 2단계 — 인물의 집** — 문 앞 [F] 들어가기(잘 시간 · 어촌계 사무실은 문 두드리기) · 방 6장 · 가구 16종 · 주인에게 [F] 말 걸기 = 같은 대화 ·
   손님이 있는 동안 일과 멈춤 · 도움말 그림 1종 · 바닥 점 · 주점 POI 조사(제안). 상세 `docs/wiki/03-WORKLOG/2026-10-06-216-interior-spaces-stage2-homes.md`.
-- **215차**: **실내 공간 1단계 — 가게 · 보건소 · 위판장 안** — 문 앞 [F] = 들어가기 · 필드 위 겹층 방(`InteriorSystem`) · 틀 5종 · 계산대 · 창구 · 접수대 [F] = 원래 거래 · 위판 · 진료 ·
-  의자 식사 · 경매대 다음 경매 시각 · 첫 입장 가이드 · 도움말 그림 2종. 상세 `docs/wiki/03-WORKLOG/2026-10-05-215-interior-spaces-stage1.md`.
 - **상시 방침**:
   - 지형 고도(DEM)는 **낚시 확립 후** — B(해안 변형) 우선, 경사로 통행을 막지 않는다
     (`docs/archive/specs/RASTER_UPLIFT_AMENDMENT.md` §4).
@@ -111,7 +111,7 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
 
 - 지역 타일맵 추가/재생성 → **스킬 `add-region`** (`py tools/build_region_maps.py <region>` — 파이프라인·타일 문자·맵 그래프·함정 일체).
 - 차기 과제: 낚시점 전용 상점(루어 판매), 어탐 레이더(SeabedProfile 조회), 타 지역(여수 등) 확장, POI 세분화, 사운드 이펙트 (IMPLEMENTATION_PLAN §6-5l 차기 참고).
-- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages — **최근 54차 배포 2026-10-06 = 217차(가게 간판 · 좌판 · 캡처 POI)까지 포함**. 재배포 절차는 **스킬 `deploy-ghpages`**).
+- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages — **최근 55차 배포 2026-10-06 = 218차(캡처 6~10 · 게임 상호)까지 포함**. 재배포 절차는 **스킬 `deploy-ghpages`**).
   ⚠ **원격 컨테이너에서는 dev 서버(5173)가 사용자 브라우저에 닿지 않는다** — 실플레이 테스트 요청은 이 배포로 답한다.
 
 ## 작업 이어받기 절차

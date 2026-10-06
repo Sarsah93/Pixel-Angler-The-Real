@@ -467,7 +467,14 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-10-06 217차) — 바닥 점 → 가게 간판 · 좌판만 노점 · 지도 캡처 POI 176곳**
+**최근 변경 (2026-10-06 218차) — 지도 캡처 6~10 · 게임 상호(실제 상호를 조금씩 바꾸기)**
+
+- 캡처 6~10은 확대 단계가 달라(0.59~0.83 m/px) OSM 이름 붙은 장소 최소제곱으로 정합 → 새 가게 76(캡처 합 249).
+- 게임 상호 표 `pixelazed/sokcho_v2/name_alias.json`(419개 · 업종 말 유지 · 프랜차이즈 = 가상 브랜드) — `merge_capture_pois.py`가 OSM · 캡처 가게 모두에 적용.
+- 함정: `pois.json`을 쓰는 도구(OSM 빌드 · `backfill_poi_nameen.py`) 뒤엔 병합 스크립트를 마지막에 — 안 그러면 실제 상호로 돌아간다. 가게 영어 이름을 `en_pois.ts`에 다시 적지 않는다.
+  상세: [218차 워크로그](../docs/wiki/03-WORKLOG/2026-10-06-218-captures-6-10-game-shop-names.md).
+
+**이전 변경 (2026-10-06 217차) — 바닥 점 → 가게 간판 · 좌판만 노점 · 지도 캡처 POI 176곳**
 
 - 바닥 점 · 이름표 폐지 → 문 옆 종류 간판(`addShopSign`) · 노점 그림 = 진짜 좌판만(`isStallPoi`) · 좌판 [F] = 바로 거래(실내 없음) · 문 옆 장식 인물 정리 · 「장소 핀」 설정.
 - 사용자 네이버 캡처 → 도로 앵커 정합 + 판독 → `pixelazed/sokcho_v2/capture_pois.json` → `tools/merge_capture_pois.py`(176곳 · 주점 4 · osmId 음수).
@@ -479,13 +486,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - 집 주인 = 필드와 같은 얼굴 · 다가가 「[F] 말 걸기」 = 같은 대화창(`atDoor 'inside'` — 첫마디만 `NPC_HOME`) · 머리 위 의뢰 표시 동기화.
 - 함정: 일과 재평가(`updateFieldNpcs`)는 실내에서도 돈다 — 손님이 안에 있는 사람은 빼야 한다. 조사: 바닥 점 = OSM POI 마커 · 주점 0곳 = 매핑 3곳 누락.
   상세: [216차 워크로그](../docs/wiki/03-WORKLOG/2026-10-06-216-interior-spaces-stage2-homes.md).
-
-**이전 변경 (2026-10-05 215차) — 실내 공간 1단계: 가게 · 보건소 · 위판장 안**
-
-- 필드 위 겹층 방 `scenes/field/InteriorSystem.ts`(depth 70~99) + 배치 `data/InteriorLayouts.ts`(틀 5종) + 그림 `ui/InteriorArt.ts` — 씬을 나누지 않은 까닭은 거래 · 위판 · 진료 흐름이 필드 씬에 묶여 있어서다.
-- 문 앞 [F] = 들어가기(확인 창 삭제) · 계산대 [F] = `openShop` · 위판장 창구 = 위판하기 탭부터(`ShopPanel` `initialTab`) · 보건소 접수대 = `openClinic` · 의자 식사 · 경매대 시각.
-- 함정: 실내 동안 필드 `update`는 겹층만 돌린다(새 필드 동작은 실내에서 막을지 먼저) · 머리 위 알림은 방 안 알림 줄로.
-  상세: [215차 워크로그](../docs/wiki/03-WORKLOG/2026-10-05-215-interior-spaces-stage1.md).
 
 ---
 
