@@ -101,6 +101,39 @@ export const EN_UI: Record<string, string> = {
   '맵 데이터 불러오는 중': 'Loading area data',
   '맵 그림 불러오는 중': 'Loading area art',
   '맵 그리는 중': 'Building the area',
+  // 220차 — 상점 장바구니 · 종류 칩 · 찾기
+  '장바구니': 'Cart',
+  '판매 목록': 'Selling',
+  '합계': 'Total',
+  '사기': 'Buy',
+  '팔기': 'Sell',
+  '이름으로 찾기': 'Search by name',
+  '찾는 물건이 없다.': 'Nothing matches.',
+  '담은 물건이 없다.': 'The cart is empty.',
+  '팔 물건을 고르지 않았다.': 'Nothing picked to sell.',
+  '가진 돈이 모자라다 — 수량을 줄이거나 빼자.': "Not enough money — lower the counts or take something out.",
+  '살 물건을 눌러 장바구니에 담으세요.': 'Click items to put them in the cart.',
+  '구매하기 탭에서 상품을 담으세요.': 'Put items in the cart on the Buy tab.',
+  '팔 물건을 눌러 판매 목록에 담으세요.': 'Click items to add them to the sell list.',
+  '판매하기 탭에서 팔 물건을 담으세요.': 'Add items to sell on the Sell tab.',
+  '진열대에서 물건 하나를 눌러 장바구니에 담아 보자.': 'Click an item on the shelf to put it in the cart.',
+  '담은 칸은 초록 테두리가 된다. 칸 아래 숫자가 값이다. 여러 개를 담을 수 있고, 다시 누르면 뺀다. 우클릭하면 자세한 정보가 뜬다.':
+    'Items in the cart get a green frame. The number below is the price. You can add several, and clicking again takes one out. Right-click for details.',
+  '위쪽 칩을 누르면 그 종류만 보이고, 오른쪽 칸에 이름을 쳐서 찾을 수도 있다.':
+    'Click a chip at the top to show only that kind, or type a name in the box on the right.',
+  '위쪽 칩을 누르면 그 종류만 보이고, 오른쪽 칸에 이름을 쳐서 찾을 수 있다.':
+    'Click a chip at the top to show only that kind, or type a name in the box on the right.',
+  '아래 「구매」를 누르면 장바구니가 열린다. 줄마다 수량을 정하고 「사기」를 누르면 값을 치르고 가방에 들어온다. 사 보자.':
+    'Press "Buy" below to open the cart. Set a count on each line and press "Buy" to pay — it goes into your bag. Try it.',
+  '「구매」를 누르면 장바구니가 열리고 값을 치른다. 지금은 담은 물건 값이 가진 돈보다 많다.':
+    'Pressing "Buy" opens the cart and you pay there. Right now the cart costs more than you have.',
+  '팔 물건을 눌러 판매 목록에 담아 보자. 여러 개를 함께 담을 수 있다.': 'Click something to add it to the sell list. You can add several.',
+  '「판매」를 누르면 판매 목록이 열린다. 수량을 확인하고 「팔기」를 누르면 값을 받는다. 팔아 보자.':
+    'Press "Sell" to open the sell list. Check the counts and press "Sell" to get paid. Try it.',
+  '이제 물건을 여러 개 한꺼번에 사고팔 수 있다. 칸을 누를 때마다 장바구니에 담기고, 다시 누르면 빠진다.':
+    'You can now buy and sell several things at once. Each click puts an item in the cart; clicking again takes it out.',
+  '「구매」 · 「판매」 옆 숫자는 담은 가짓수다. 누르면 줄마다 수량을 정하는 창이 열리고, 합계와 남는 돈을 보고 한 번에 거래한다.':
+    'The number next to "Buy" / "Sell" is how many kinds you picked. Press it to set counts per line, check the total and what you will have left, and trade in one go.',
   // 219차 — 자전거 코치 · 프롤로그 안전망
   '자전거가 생겼다. [R]을 눌러 올라타 보자.': 'You have a bicycle now. Press [R] to hop on.',
   '걸을 때보다 두 배 빠르다. 가게에 들어가거나 낚시를 시작하면 저절로 내린다. 내릴 때도 [R]이다.':
@@ -243,4 +276,13 @@ export const EN_UI_RULES: [RegExp, (m: RegExpMatchArray, tr: (s: string) => stri
   [/^힘을 아껴 캐스팅했습니다$/, () => 'You cast without spending the effort'],
   [/^\[장비\] (.+)$/, (m, tr) => `[Gear] ${tr(m[1])}`],
   [/^찌가 깨졌습니다 — 여유분으로 교체하세요\.$/, () => 'Your float cracked — swap in a spare.'],
+  // 220차 — 장바구니 거래 결과
+  [/^(\d+)가지 구매 완료 \(-(.+)원\)$/, (m) => `Bought ${m[1]} kinds (-₩${m[2]})`],
+  [/^(\d+)가지 판매 완료 \(\+(.+)원\)$/, (m) => `Sold ${m[1]} kinds (+₩${m[2]})`],
+  [/^(.+) 구매 완료 · 가방에 자리가 없어 못 산 것: (.+)$/, (m, tr) => `${tr(m[1])} bought · no room in the bag for: ${m[2]}`],
+  [/^가방에 자리가 없어 못 산 것: (.+)$/, (m) => `No room in the bag for: ${m[1]}`],
+  [/^(.+) 판매 완료 · 팔지 못한 것: (.+)$/, (m, tr) => `${tr(m[1])} sold · could not sell: ${m[2]}`],
+  [/^팔지 못한 것: (.+)$/, (m) => `Could not sell: ${m[1]}`],
+  [/^구매 \((\d+)\)$/, (m) => `Buy (${m[1]})`],
+  [/^판매 \((\d+)\)$/, (m) => `Sell (${m[1]})`],
 ];

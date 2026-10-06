@@ -8,12 +8,18 @@
  *    우클릭 = 상세 정보창). 상점 아이템은 재화 결제 없이는 인벤토리로 이동 불가.
  *  - 판매 탭: 플레이어 인벤토리 중 이 상점이 매입하는 카테고리 아이템 목록
  *  - 최하단: [구매] [판매] 버튼 — 선택 아이템에 대해 수량/확인 플로우 진행
+ *  - 220차 — 사고팔기는 **장바구니**다(사용자 지시): 칸을 누를 때마다 담고 빼고(여러 개), [구매 (n)] / [판매 (n)]이
+ *    장바구니 확인 창(`ShopCartDialog` — 줄마다 수량 −/+ · 빼기 · 합계 · 남는 돈)을 연다. 구매 · 판매 탭 위에는
+ *    이 가게가 다루는 **종류 칩**(전체 + 인벤토리와 같은 분류)과 **이름 찾기 칸**(한글 IME — `TextInput`)이 있다.
  */
 
 import Phaser from 'phaser';
 import { GEAR_FAULTS, gearRepairFee } from '@tra/core';
 import { GameState } from '../store/GameState.js';
-import { InventoryStore, InvItem, CONDITION_LABEL } from '../store/InventoryStore.js';
+import { InventoryStore, InvItem, CONDITION_LABEL, CATEGORY_LABEL, type InvCategory } from '../store/InventoryStore.js';
+import { TitleStore } from '../store/TitleStore.js';
+import { ShopCartDialog, type CartLine } from './ShopCartDialog.js';
+import { TextInput } from './TextInput.js';
 import { RecommendationStore } from '../store/RecommendationStore.js';
 import { ShopDef, ShopEntry } from '../data/ShopCatalog.js';
 import { DraggablePanel } from './DraggablePanel.js';
@@ -23,7 +29,7 @@ import { drawTrendIcon, TREND_ICON_PX } from './MarketTrendIcon.js';
 import { MarketStore } from '../store/MarketStore.js';
 import { clampTextWidth } from './TextFit.js';
 import type { MarketTrend } from '@tra/core';
-import { maybeStartTour, type TourOptions } from './GuideTour.js';
+import { maybeStartTour, tourSeen, type TourOptions } from './GuideTour.js';
 import { StoryStore } from '../store/StoryStore.js';
 import {
   consignableItems, consignGradeOf, consignInputOf, hasCrate,
@@ -47,6 +53,20 @@ const SLOT_GAP = 7;
 const GRID_VP_BOTTOM = PANEL_H - 124;
 /** 스크롤바 트랙 x (그리드 우측 바깥) */
 const BAR_X = PANEL_W - 16;
+/** 종류 칩 순서 — 인벤토리 탭과 같은 차례(루어는 낚시용품 다음) */
+const CAT_ORDER: InvCategory[] = ['gear', 'consumable', 'food', 'tackle', 'lure', 'quest', 'etc'];
+const FONT = '"Noto Sans KR", sans-serif';
+const SEARCH_W = 150;
+
+/**
+ * 220차 — 상점 구매 단가(장바구니 · 실제 결제 공용). 스킬 흥정(랭크당 -3% · 122차) × 단 타이틀 할인(203차).
+ * 창이 보여 주는 값과 씬이 받는 값이 한 함수에서 나온다(구: 창은 타이틀 할인을 빼고 보여 줬다).
+ */
+export function shopBuyUnitPrice(entry: { price: number }): number {
+  return Math.round(entry.price * (1 - 0.03 * GameState.skillRank('eco_haggle')) * TitleStore.modifiers().buyMult);
+}
+
+const entryKey = (e: Pick<ShopEntry, 'id' | 'name'>): string => `${e.id}|${e.name}`;
 
 /** 그리드 셀 1칸 렌더 스펙 (구매 entry / 판매 InvItem 공통) */
 interface ShopCell {
@@ -62,10 +82,12 @@ interface ShopCell {
 
 export interface ShopPanelCallbacks {
   onClose: () => void;
-  /** 구매 요청 (수량/확인 플로우는 씬이 담당) */
-  onBuy: (entry: ShopEntry) => void;
-  /** 판매 요청 */
-  onSell: (item: InvItem) => void;
+  /** 220차 — 장바구니 구매(수량 · 확인은 장바구니 창이 받았다) */
+  onBuy: (lines: { entry: ShopEntry; qty: number }[]) => void;
+  /** 220차 — 판매 목록 한 번에 팔기 */
+  onSell: (lines: { item: InvItem; qty: number }[]) => void;
+  /** 220차 — 장바구니 창을 씬의 팝업 스택(ESC 순서)에 올린다 */
+  openPopup?: (make: (close: () => void) => Phaser.GameObjects.Container) => void;
   /** 아이템 상세보기 (우클릭) */
   onOpenDetail: (item: InvItem | ShopEntry) => void;
   /** 위판 출품 요청 (147차) — 세션 생성·경매 진행·정산은 씬이 담당 */
@@ -98,9 +120,22 @@ export class ShopPanel extends DraggablePanel {
   private statusText!: Phaser.GameObjects.Text;
   private coinText!: Phaser.GameObjects.Text;
 
-  /** 현재 선택 (구매 탭: ShopEntry / 판매 탭: InvItem) */
-  private selectedBuy: ShopEntry | null = null;
-  private selectedSell: InvItem | null = null;
+  /** 220차 — 장바구니(구매) · 판매 목록. 키 = 상품 id|이름 / 가방 아이템 id. 넣은 순서를 지킨다(Map) */
+  private buyCart = new Map<string, { entry: ShopEntry; qty: number }>();
+  private sellCart = new Map<string, { item: InvItem; qty: number }>();
+  /** 마지막에 담은 칸 — 가이드가 짚는다 */
+  private lastPick: string | null = null;
+  /** 탭별 종류 칩 · 이름 찾기 */
+  private catFilter: { buy: InvCategory | 'all'; sell: InvCategory | 'all' } = { buy: 'all', sell: 'all' };
+  private query = '';
+  private searchInput?: TextInput;
+  /** 찾기 칸 패널 로컬 사각(바깥을 누르면 입력을 끝낸다) */
+  private searchRect: Phaser.Geom.Rectangle | null = null;
+  private filterRowRect: Phaser.Geom.Rectangle | null = null;
+  private cartOpen = false;
+  private readonly downOutside: (p: Phaser.Input.Pointer) => void;
+  private footerLeft?: Phaser.GameObjects.Text;
+
   /** 선택된 칸의 패널 로컬 좌상단 (보이는 창 안일 때만 — 가이드 하이라이트용) */
   private selCellAt: { x: number; y: number } | null = null;
 
@@ -144,6 +179,12 @@ export class ShopPanel extends DraggablePanel {
     this.barUpHandler = (): void => { this.thumbDrag = false; };
     scene.input.on('pointermove', this.barMoveHandler);
     scene.input.on('pointerup', this.barUpHandler);
+    // 220차 — 찾기 칸 밖을 누르면 입력을 끝낸다(입력 중엔 Phaser 키보드가 꺼져 있다)
+    this.downOutside = (p: Phaser.Input.Pointer): void => {
+      if (!this.searchInput || !this.searchRect) return;
+      if (!this.searchRect.contains(p.x - this.x, p.y - this.y)) this.stopSearch();
+    };
+    scene.input.on('pointerdown', this.downOutside);
 
     const greeting = scene.add.text(14, this.contentTop + 2, shop.greeting, {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#8faabf',
@@ -163,13 +204,39 @@ export class ShopPanel extends DraggablePanel {
     this.applyFix();
     // 188차 — 첫 방문 체험 가이드 (고르기 → 사기 → 팔기를 직접 해 본다)
     maybeStartTour(scene, () => this.buildTour());
+    // 220차 — 이미 상점 가이드를 본 사람에게는 장바구니 · 종류 칩 · 찾기만 짧게
+    maybeStartTour(scene, () => (tourSeen('shop') ? this.buildCartTour() : null));
+  }
+
+  private buildCartTour(): TourOptions {
+    return {
+      id: 'shop_cart',
+      anchor: () => this.openDialogRects()[0] ?? this.panelBounds(),
+      alive: () => this.active,
+      steps: [
+        {
+          text: '이제 물건을 여러 개 한꺼번에 사고팔 수 있다. 칸을 누를 때마다 장바구니에 담기고, 다시 누르면 빠진다.',
+          target: () => this.gridAreaRect(),
+          onEnter: () => { if (this.currentTab !== 'buy' && this.currentTab !== 'sell') this.selectTab('buy'); },
+        },
+        {
+          text: '위쪽 칩을 누르면 그 종류만 보이고, 오른쪽 칸에 이름을 쳐서 찾을 수 있다.',
+          target: () => (this.filterRowRect ? this.localRect(this.filterRowRect.x, this.filterRowRect.y, this.filterRowRect.width, this.filterRowRect.height) : null),
+          skipIf: () => !this.filterRowRect,
+        },
+        {
+          text: '「구매」 · 「판매」 옆 숫자는 담은 가짓수다. 누르면 줄마다 수량을 정하는 창이 열리고, 합계와 남는 돈을 보고 한 번에 거래한다.',
+          target: () => this.footerBtnRect(false),
+        },
+      ],
+    };
   }
 
   private onInventoryChanged = (): void => {
     if (!this.scene) return;
     this.coinText.setText(`보유 재화  ${GameState.player.inventory.coins.toLocaleString()} 원`);
     if (this.currentTab === 'sell') {
-      this.selectedSell = null;
+      this.pruneSellCart();
       this.renderGrid();
     } else if (this.currentTab === 'consign') {
       this.renderGrid();   // 147차 — 위판으로 빠진 어획물이 목록에서 사라져야 한다
@@ -217,9 +284,10 @@ export class ShopPanel extends DraggablePanel {
   }
 
   private selectTab(id: ShopTab): void {
+    this.stopSearch();
+    // 220차 — 찾는 말은 탭마다 따로다(구매에서 친 「찌」가 판매 목록을 비워 보이게 하지 않는다)
+    if (id !== this.currentTab) this.query = '';
     this.currentTab = id;
-    this.selectedBuy = null;
-    this.selectedSell = null;
     this.scrollRow = 0;
     this.paintTabs();
     this.renderGrid();
@@ -247,12 +315,13 @@ export class ShopPanel extends DraggablePanel {
     });
     this.footerRight?.setText(
       this.currentTab === 'repair' ? '수리' : this.currentTab === 'consign' ? (this.auctionOpenNow() ? '출품하기' : '맡겨 두기') : '판매');
+    this.updateFooterLabels();
   }
 
   // ── 그리드 ────────────────────────────────────────
   /** 구매가 — 스킬 흥정(랭크당 -3%) (122차) */
   private buyPriceOf(entry: { price: number }): number {
-    return Math.round(entry.price * (1 - 0.03 * GameState.skillRank('eco_haggle')));
+    return shopBuyUnitPrice(entry);
   }
   /** 판매가 — 스킬 흥정·단골 배율 (122차) */
   private sellPriceOf(item: InvItem): number {
@@ -283,30 +352,42 @@ export class ShopPanel extends DraggablePanel {
 
     const gridW = GRID_COLS * SLOT + (GRID_COLS - 1) * SLOT_GAP;
     const gx0 = (PANEL_W - gridW) / 2;
-    const gy0 = this.contentTop + (this.currentTab === 'consign' ? 96 : 60);
+    let gy0 = this.contentTop + (this.currentTab === 'consign' ? 96 : 60);
+    this.searchRect = null;
+    this.filterRowRect = null;
 
     // ── 1) 셀 스펙 수집 ──
     const cells: ShopCell[] = [];
     if (this.currentTab === 'buy') {
       const reco = RecommendationStore.get();
-      this.shop.sells.forEach((entry) => {
-        // 141차 — 메인 퀘스트가 열기 전엔 목록에 없다(잠금 표시도 없음: 이야기가 알려 준다)
-        if (entry.unlockKey && !GameState.getFlag(`unlock.shop.${entry.unlockKey}`)) return;
+      // 141차 — 메인 퀘스트가 열기 전엔 목록에 없다(잠금 표시도 없음: 이야기가 알려 준다)
+      const all = this.shop.sells.filter((e) => !e.unlockKey || GameState.getFlag(`unlock.shop.${e.unlockKey}`));
+      gy0 = this.renderFilters('buy', all.map((e) => e.category));
+      const shown = all.filter((e) => this.passesFilter('buy', e.category, e.name, e.subCategory));
+      shown.forEach((entry) => {
         const recommended = RecommendationStore.isItemRecommended(entry as unknown as InvItem, reco);
+        const k = entryKey(entry);
+        const inCart = this.buyCart.get(k);
         cells.push({
           icon: entry.icon, iconTexture: entry.iconTexture, name: entry.name,
           speciesId: entry.speciesId, lengthCm: entry.lengthCm,
           priceLabel: `${this.buyPriceOf(entry).toLocaleString()}원`,
-          qtyLabel: '',
+          qtyLabel: inCart && inCart.qty > 1 ? `×${inCart.qty}` : '',
           condition: entry.condition,
           recommended,
-          selected: this.selectedBuy?.id === entry.id && this.selectedBuy?.name === entry.name,
+          selected: !!inCart,
           tooltip: `${recommended ? '[추천] ' : ''}${entry.name}\n${this.buyPriceOf(entry).toLocaleString()}원 · ${entry.desc}`,
-          onSelect: () => { this.selectedBuy = entry; this.renderGrid(); },
+          onSelect: () => {
+            // 220차 — 누를 때마다 담고 뺀다(장바구니)
+            if (this.buyCart.has(k)) { this.buyCart.delete(k); if (this.lastPick === k) this.lastPick = null; }
+            else { this.buyCart.set(k, { entry, qty: 1 }); this.lastPick = k; }
+            this.renderGrid();
+          },
           onDetail: () => this.cbs.onOpenDetail(entry),
         });
       });
-      if (cells.length === 0) this.renderEmptyNote(gy0, '판매 품목이 없습니다.');
+      if (all.length === 0) this.renderEmptyNote(gy0, '판매 품목이 없습니다.');
+      else if (cells.length === 0) this.renderEmptyNote(gy0, '찾는 물건이 없다.');
     } else if (this.currentTab === 'repair') {
       // 136차 — 고장난 장비 목록. 수리 불가(절지 파단·찌 파손)는 폐기 안내만 뜬다.
       const faulty = InventoryStore.faultyItems();
@@ -372,7 +453,10 @@ export class ShopPanel extends DraggablePanel {
       // 미완성 사시미 접시(plateWip)도 제외 — 완성해야 값이 매겨진다 (135차)
       const hasWipPlate = InventoryStore.items.some((i) => i.plateWip && i.slot >= 0);
       const sellable = this.sellableItems();
-      sellable.forEach((item) => {
+      if (this.shop.buysCategories.length > 0 && sellable.length > 0) gy0 = this.renderFilters('sell', sellable.map((i) => i.category));
+      const shownSell = sellable.filter((i) => this.passesFilter('sell', i.category, i.name, i.subCategory));
+      shownSell.forEach((item) => {
+        const inCart = this.sellCart.get(item.id);
         cells.push({
           icon: item.icon, iconTexture: item.iconTexture, name: item.name,
           speciesId: item.speciesId, lengthCm: item.lengthCm,
@@ -380,14 +464,21 @@ export class ShopPanel extends DraggablePanel {
           qtyLabel: item.qty > 1 ? `x${item.qty}` : '',
           condition: item.condition,
           trend: this.trendOf(item),
-          selected: this.selectedSell?.id === item.id,
+          selected: !!inCart,
           tooltip: `${item.name}\n매입가 ${this.sellPriceOf(item).toLocaleString()}원${item.condition ? ' · ' + CONDITION_LABEL[item.condition] : ''}`,
-          onSelect: () => { this.selectedSell = item; this.renderGrid(); },
+          onSelect: () => {
+            // 220차 — 누를 때마다 판매 목록에 넣고 뺀다(기본 수량 = 가진 만큼 — 확인 창에서 줄인다)
+            if (this.sellCart.has(item.id)) { this.sellCart.delete(item.id); if (this.lastPick === item.id) this.lastPick = null; }
+            else { this.sellCart.set(item.id, { item, qty: item.qty }); this.lastPick = item.id; }
+            this.renderGrid();
+          },
           onDetail: () => this.cbs.onOpenDetail(item),
         });
       });
       if (this.shop.buysCategories.length === 0) {
         this.renderEmptyNote(gy0, '이 상점은 아이템을 매입하지 않습니다.');
+      } else if (sellable.length > 0 && shownSell.length === 0) {
+        this.renderEmptyNote(gy0, '찾는 물건이 없다.');
       } else if (sellable.length === 0) {
         const v = lawBlocked.length ? StoryStore.sellVerdict(lawBlocked[0]) : null;
         this.renderEmptyNote(gy0, v ? `${v.reasonKo}\n대안: ${v.alternatives.slice(0, 2).join(' / ')}`
@@ -412,7 +503,171 @@ export class ShopPanel extends DraggablePanel {
     for (let i = first; i < last; i++) this.renderCell(gx0, gy0, i - first, cells[i]);
 
     this.drawScrollBar(gy0, vpH, totalRows, rowsVisible);
+    this.updateFooterLabels();
     this.applyFix();
+  }
+
+  // ── 220차 — 종류 칩 · 이름 찾기 ─────────────────────
+  private passesFilter(tab: 'buy' | 'sell', cat: InvCategory, name: string, sub?: string): boolean {
+    const f = this.catFilter[tab];
+    if (f !== 'all' && cat !== f) return false;
+    const q = this.query.trim().toLowerCase();
+    if (!q) return true;
+    // 한국어 원문 · 지금 언어 표기 · 하위 분류 어느 것에 걸려도 찾는다
+    return [name, t(name), sub ?? '', sub ? t(sub) : ''].some((s) => s.toLowerCase().includes(q));
+  }
+
+  /**
+   * 종류 칩(전체 + 이 목록에 있는 종류만) · 찾기 칸을 흐름 배치로 그리고 **그리드가 시작할 y**를 돌려준다.
+   * 칩이 한 줄을 넘으면 다음 줄로 넘기고, 찾기 칸은 마지막 줄 오른쪽 끝(자리가 없으면 새 줄)에 둔다.
+   */
+  private renderFilters(tab: 'buy' | 'sell', cats: InvCategory[]): number {
+    const present = CAT_ORDER.filter((c) => cats.includes(c));
+    if (this.catFilter[tab] !== 'all' && !present.includes(this.catFilter[tab] as InvCategory)) this.catFilter[tab] = 'all';
+    const x0 = 14, xMax = PANEL_W - 14, chipH = 22, gap = 5;
+    let x = x0, y = this.contentTop + 56;
+    const chips: ('all' | InvCategory)[] = present.length > 1 ? ['all', ...present] : [];
+    for (const c of chips) {
+      const on = this.catFilter[tab] === c;
+      const label = this.scene.add.text(0, 0, c === 'all' ? '전체' : CATEGORY_LABEL[c], {
+        fontFamily: FONT, fontSize: '11px', fontStyle: 'bold', color: on ? '#0b1f14' : '#9fc0d4',
+      }).setOrigin(0.5);
+      const w = Math.ceil(label.width) + 18;
+      if (x + w > xMax) { x = x0; y += chipH + 4; }
+      const g = this.scene.add.graphics();
+      g.fillStyle(on ? 0x4af2a1 : 0x0e1c2d, on ? 0.95 : 0.9); g.fillRoundedRect(x, y, w, chipH, 11);
+      g.lineStyle(1, on ? 0x4af2a1 : 0x2a5070, 0.95); g.strokeRoundedRect(x, y, w, chipH, 11);
+      label.setPosition(x + w / 2, y + chipH / 2);
+      const hit = this.scene.add.rectangle(x + w / 2, y + chipH / 2, w, chipH, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
+      hit.on('pointerdown', () => { this.catFilter[tab] = c; this.scrollRow = 0; this.renderGrid(); });
+      this.gridContainer.add([g, label, hit]);
+      x += w + gap;
+    }
+    // 찾기 칸
+    if (x + SEARCH_W > xMax) { if (chips.length) { x = x0; y += chipH + 4; } }
+    const sx = chips.length ? xMax - SEARCH_W : x0;
+    const sw = chips.length ? SEARCH_W : xMax - x0;
+    this.renderSearch(sx, y, sw, chipH);
+    this.filterRowRect = new Phaser.Geom.Rectangle(x0, this.contentTop + 56, xMax - x0, y + chipH - (this.contentTop + 56));
+    return y + chipH + 8;
+  }
+
+  private renderSearch(x: number, y: number, w: number, h: number): void {
+    const editing = !!this.searchInput;
+    const g = this.scene.add.graphics();
+    g.fillStyle(0x07121e, 0.95); g.fillRoundedRect(x, y, w, h, 4);
+    g.lineStyle(1.2, editing ? 0x5cd0ff : 0x2a5070, 0.95); g.strokeRoundedRect(x, y, w, h, 4);
+    // 돋보기(절차 그림 — 이모지 금지)
+    g.lineStyle(1.6, editing ? 0x9fe8ff : 0x6f93ad, 1);
+    g.strokeCircle(x + 11, y + h / 2 - 1, 4.5);
+    g.lineBetween(x + 14.5, y + h / 2 + 2.5, x + 18, y + h / 2 + 6);
+    this.gridContainer.add(g);
+    const hasQ = this.query.length > 0;
+    const shown = hasQ ? this.query : (editing ? '' : t('이름으로 찾기'));
+    const txt = this.scene.add.text(x + 24, y + h / 2, shown + (editing ? '|' : ''), {
+      fontFamily: FONT, fontSize: '11px', color: hasQ || editing ? '#e8f4fd' : '#56708a',
+    }).setOrigin(0, 0.5);
+    clampTextWidth(txt, w - 24 - (hasQ ? 22 : 6));
+    this.gridContainer.add(txt);
+    const hit = this.scene.add.rectangle(x + w / 2, y + h / 2, w, h, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
+    hit.on('pointerdown', () => { if (!this.searchInput) this.startSearch(); });
+    this.gridContainer.add(hit);
+    this.searchRect = new Phaser.Geom.Rectangle(x, y, w, h);
+    if (hasQ) {
+      const cx = this.scene.add.text(x + w - 11, y + h / 2, '✕', { fontFamily: 'sans-serif', fontSize: '11px', color: '#8faabf' })
+        .setOrigin(0.5).setInteractive({ useHandCursor: true });
+      cx.on('pointerdown', () => { this.query = ''; this.searchInput?.setValue(''); this.scrollRow = 0; this.renderGrid(); });
+      this.gridContainer.add(cx);
+    }
+  }
+
+  private startSearch(): void {
+    this.searchInput = new TextInput(this.scene, {
+      value: this.query,
+      maxLength: 20,
+      filter: (v) => v.replace(/[\r\n\t]/g, ''),
+      onChange: (v) => { this.query = v; this.scrollRow = 0; this.renderGrid(); },
+      onSubmit: () => this.stopSearch(),
+      onCancel: () => this.stopSearch(),
+    });
+    this.renderGrid();
+  }
+
+  private stopSearch(): void {
+    if (!this.searchInput) return;
+    this.searchInput.close();
+    this.searchInput = undefined;
+    if (this.scene) this.renderGrid();
+  }
+
+  /** 가방에서 사라진(팔렸거나 옮긴) 물건은 판매 목록에서 뺀다 */
+  private pruneSellCart(): void {
+    for (const [id, l] of this.sellCart) {
+      const live = InventoryStore.find(id);
+      if (!live || live.slot < 0) this.sellCart.delete(id);
+      else { l.item = live; l.qty = Math.min(l.qty, live.qty); }
+    }
+  }
+
+  private updateFooterLabels(): void {
+    const nb = this.buyCart.size, ns = this.sellCart.size;
+    this.footerLeft?.setText(nb > 0 ? `${t('구매')} (${nb})` : t('구매'));
+    if (this.currentTab === 'sell' || this.currentTab === 'buy') {
+      this.footerRight?.setText(ns > 0 ? `${t('판매')} (${ns})` : t('판매'));
+    }
+  }
+
+  /** 220차 — 장바구니 · 판매 목록 확인 창 */
+  private openCart(mode: 'buy' | 'sell'): void {
+    if (this.cartOpen) return;
+    this.stopSearch();
+    const lines: CartLine[] = mode === 'buy'
+      ? [...this.buyCart.entries()].map(([key, { entry, qty }]) => ({
+        key, name: entry.name, icon: entry.icon, iconTexture: entry.iconTexture, speciesId: entry.speciesId, lengthCm: entry.lengthCm,
+        unit: this.buyPriceOf(entry), qty, max: Math.max(1, entry.maxPerPurchase),
+      }))
+      : [...this.sellCart.entries()].map(([key, { item, qty }]) => ({
+        key, name: item.name, icon: item.icon, iconTexture: item.iconTexture, speciesId: item.speciesId, lengthCm: item.lengthCm,
+        unit: this.sellPriceOf(item), qty, max: Math.max(1, item.qty),
+      }));
+    // 창이 수량을 고치면 담은 표시도 맞춘다
+    const sync = (ls: CartLine[]): void => {
+      const keep = new Set(ls.map((l) => l.key));
+      if (mode === 'buy') {
+        for (const k of [...this.buyCart.keys()]) if (!keep.has(k)) this.buyCart.delete(k);
+        for (const l of ls) { const c = this.buyCart.get(l.key); if (c) c.qty = l.qty; }
+      } else {
+        for (const k of [...this.sellCart.keys()]) if (!keep.has(k)) this.sellCart.delete(k);
+        for (const l of ls) { const c = this.sellCart.get(l.key); if (c) c.qty = l.qty; }
+      }
+      this.renderGrid();
+    };
+    const make = (close: () => void): ShopCartDialog => new ShopCartDialog(this.scene, {
+      mode, lines, coins: GameState.player.inventory.coins,
+      onChange: sync,
+      onCancel: () => { this.cartOpen = false; close(); },
+      onConfirm: (ls) => {
+        this.cartOpen = false;
+        close();
+        if (mode === 'buy') {
+          const req = ls.map((l) => ({ entry: this.buyCart.get(l.key)!.entry, qty: l.qty })).filter((r) => r.entry);
+          this.buyCart.clear();
+          this.cbs.onBuy(req);
+        } else {
+          const req = ls.map((l) => ({ item: this.sellCart.get(l.key)!.item, qty: l.qty })).filter((r) => r.item);
+          this.sellCart.clear();
+          this.cbs.onSell(req);
+        }
+        this.lastPick = null;
+        this.renderGrid();
+      },
+    });
+    this.cartOpen = true;
+    if (this.cbs.openPopup) this.cbs.openPopup((close) => make(() => { this.cartOpen = false; close(); }));
+    else {
+      const d = make(() => { this.cartOpen = false; d.destroy(); });
+      this.scene.add.existing(d);
+    }
   }
 
   /**
@@ -679,17 +934,22 @@ export class ShopPanel extends DraggablePanel {
 
     // 구매/판매 버튼
     const btnY = PANEL_H - 40;
-    this.addFooterButton(PANEL_W / 2 - 105, btnY, '구매', () => {
-      if (this.currentTab !== 'buy') { this.setStatus('구매하기 탭에서 상품을 선택하세요.'); return; }
-      if (!this.selectedBuy) { this.setStatus('구매할 상품을 먼저 선택하세요.'); return; }
-      this.cbs.onBuy(this.selectedBuy);
+    this.footerLeft = this.addFooterButton(PANEL_W / 2 - 105, btnY, '구매', () => {
+      if (this.buyCart.size === 0) {
+        this.setStatus(this.currentTab === 'buy' ? '살 물건을 눌러 장바구니에 담으세요.' : '구매하기 탭에서 상품을 담으세요.');
+        return;
+      }
+      this.openCart('buy');
     });
     this.footerRight = this.addFooterButton(PANEL_W / 2 + 105, btnY, '판매', () => {
       if (this.currentTab === 'repair') { this.doRepair(); return; }
       if (this.currentTab === 'consign') { this.doConsign(); return; }
-      if (this.currentTab !== 'sell') { this.setStatus('판매하기 탭에서 아이템을 선택하세요.'); return; }
-      if (!this.selectedSell) { this.setStatus('판매할 아이템을 먼저 선택하세요.'); return; }
-      this.cbs.onSell(this.selectedSell);
+      this.pruneSellCart();
+      if (this.sellCart.size === 0) {
+        this.setStatus(this.currentTab === 'sell' ? '팔 물건을 눌러 판매 목록에 담으세요.' : '판매하기 탭에서 팔 물건을 담으세요.');
+        return;
+      }
+      this.openCart('sell');
     });
   }
 
@@ -764,7 +1024,8 @@ export class ShopPanel extends DraggablePanel {
   /** 지금 떠 있는 수량·확인 창 (씬이 띄운다) */
   private openDialogRects(): Phaser.Geom.Rectangle[] {
     return this.scene.children.list
-      .filter((o): o is ConfirmDialog | QuantityDialog => (o instanceof ConfirmDialog || o instanceof QuantityDialog) && o.active)
+      .filter((o): o is ConfirmDialog | QuantityDialog | ShopCartDialog =>
+        (o instanceof ConfirmDialog || o instanceof QuantityDialog || o instanceof ShopCartDialog) && o.active)
       .map((d) => d.panelBounds());
   }
 
@@ -774,7 +1035,8 @@ export class ShopPanel extends DraggablePanel {
     /** 사 보기 단계를 마쳤는가 — 산 뒤 돈이 모자라졌다고 「돈이 모자라다」 설명이 뜨면 안 된다 */
     let bought = false;
     const buyables = (): ShopEntry[] => this.shop.sells.filter((e) => !e.unlockKey || GameState.getFlag(`unlock.shop.${e.unlockKey}`));
-    const canBuySel = (): boolean => !!this.selectedBuy && this.buyPriceOf(this.selectedBuy) <= coins();
+    const cartTotal = (): number => [...this.buyCart.values()].reduce((n, l) => n + this.buyPriceOf(l.entry) * l.qty, 0);
+    const canBuySel = (): boolean => this.buyCart.size > 0 && cartTotal() <= coins();
     const hasSellable = (): boolean => this.sellableItems().length > 0;
     /** 사기·팔기 단계 — 수량·확인 창이 뜨면 그 창을 짚고 그 창만 누를 수 있게 */
     const dealTarget = (right: boolean) => (): Phaser.Geom.Rectangle => this.openDialogRects()[0] ?? this.footerBtnRect(right);
@@ -791,21 +1053,28 @@ export class ShopPanel extends DraggablePanel {
         {
           text: '가게에 들어오면 이 창이 열린다. 진열된 물건을 사고, 내 물건을 팔 수 있다. 오른쪽에는 내 가방이 함께 열린다.',
           target: () => this.panelBounds(),
+          // 220차 — 이 가이드가 장바구니 · 찾기를 함께 알려 준다(따로 도는 짧은 가이드는 건너뛴다)
+          onEnter: () => GameState.setFlag('tour.shop_cart'),
         },
         {
-          text: '진열대에서 물건 하나를 눌러 골라 보자.',
+          text: '진열대에서 물건 하나를 눌러 장바구니에 담아 보자.',
           target: () => this.gridAreaRect(),
           skipIf: () => buyables().length === 0,
           onEnter: () => { if (this.currentTab !== 'buy') this.selectTab('buy'); },
-          wait: () => !!this.selectedBuy,
+          wait: () => this.buyCart.size > 0,
         },
         {
-          text: '고른 칸은 초록 테두리가 된다. 칸 아래 숫자가 값이다. 커서를 올리면 설명이, 우클릭하면 자세한 정보가 뜬다.',
+          text: '담은 칸은 초록 테두리가 된다. 칸 아래 숫자가 값이다. 여러 개를 담을 수 있고, 다시 누르면 뺀다. 우클릭하면 자세한 정보가 뜬다.',
           target: () => this.selCellRect() ?? this.gridAreaRect(),
-          skipIf: () => !this.selectedBuy,
+          skipIf: () => this.buyCart.size === 0,
         },
         {
-          text: '아래 「구매」를 누르고 수량을 정해 값을 치르면 가방에 들어온다. 하나 사 보자.',
+          text: '위쪽 칩을 누르면 그 종류만 보이고, 오른쪽 칸에 이름을 쳐서 찾을 수도 있다.',
+          target: () => (this.filterRowRect ? this.localRect(this.filterRowRect.x, this.filterRowRect.y, this.filterRowRect.width, this.filterRowRect.height) : null),
+          skipIf: () => !this.filterRowRect,
+        },
+        {
+          text: '아래 「구매」를 누르면 장바구니가 열린다. 줄마다 수량을 정하고 「사기」를 누르면 값을 치르고 가방에 들어온다. 사 보자.',
           target: dealTarget(false),
           allow: dealAllow(false),
           skipIf: () => !canBuySel(),
@@ -813,9 +1082,9 @@ export class ShopPanel extends DraggablePanel {
           wait: () => { if (coins() < coinsAtStep) bought = true; return bought; },
         },
         {
-          text: '「구매」를 누르면 수량을 정하고 값을 치른다. 지금은 가진 돈이 모자라다.',
+          text: '「구매」를 누르면 장바구니가 열리고 값을 치른다. 지금은 담은 물건 값이 가진 돈보다 많다.',
           target: () => this.footerBtnRect(false),
-          skipIf: () => bought || !this.selectedBuy || canBuySel(),
+          skipIf: () => bought || this.buyCart.size === 0 || canBuySel(),
         },
         {
           text: '가진 돈은 여기 나온다. 사고팔 때마다 바로 바뀐다.',
@@ -833,17 +1102,17 @@ export class ShopPanel extends DraggablePanel {
           skipIf: hasSellable,
         },
         {
-          text: '팔 물건을 하나 골라 보자.',
+          text: '팔 물건을 눌러 판매 목록에 담아 보자. 여러 개를 함께 담을 수 있다.',
           target: () => this.gridAreaRect(),
           skipIf: () => !hasSellable(),
           onEnter: () => { if (this.currentTab !== 'sell') this.selectTab('sell'); },
-          wait: () => !!this.selectedSell,
+          wait: () => this.sellCart.size > 0,
         },
         {
-          text: '「판매」를 누르면 값을 받고 넘긴다. 팔아 보자.',
+          text: '「판매」를 누르면 판매 목록이 열린다. 수량을 확인하고 「팔기」를 누르면 값을 받는다. 팔아 보자.',
           target: dealTarget(true),
           allow: dealAllow(true),
-          skipIf: () => !this.selectedSell,
+          skipIf: () => this.sellCart.size === 0,
           onEnter: () => { coinsAtStep = coins(); },
           wait: () => coins() > coinsAtStep,
         },
@@ -866,6 +1135,9 @@ export class ShopPanel extends DraggablePanel {
     this.scene?.input?.off('wheel', this.wheelHandler);
     this.scene?.input?.off('pointermove', this.barMoveHandler);
     this.scene?.input?.off('pointerup', this.barUpHandler);
+    this.scene?.input?.off('pointerdown', this.downOutside);
+    this.searchInput?.close();
+    this.searchInput = undefined;
     super.destroy(fromScene);
   }
 }

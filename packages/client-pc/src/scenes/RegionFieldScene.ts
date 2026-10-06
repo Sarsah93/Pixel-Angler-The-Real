@@ -159,7 +159,7 @@ import { HelpLibraryPanel } from '../ui/HelpLibraryPanel.js';
 import { UtilizationPanel, UtilizationTab } from '../ui/UtilizationPanel.js';
 import { CoolerPanel } from '../ui/CoolerPanel.js';
 import { BikeComposite, RiderDir } from '../ui/BikeComposite.js';
-import { ShopPanel } from '../ui/ShopPanel.js';
+import { ShopPanel, shopBuyUnitPrice } from '../ui/ShopPanel.js';
 import { ConfirmDialog, QuantityDialog } from '../ui/Dialogs.js';
 import { AdvancedCraftPanel } from '../ui/AdvancedCraftPanel.js';
 import { paintHudPanel, paintTitlePlate } from '../ui/HudPanelStyle.js';
@@ -3266,8 +3266,9 @@ export class RegionFieldScene extends Phaser.Scene {
     this.shopPanel = this.openPopup(
       (close) => new ShopPanel(this, 40, 60, shop, {
         onClose: close,
-        onBuy: (entry) => this.handleBuy(entry),
-        onSell: (item) => this.handleSell(item),
+        onBuy: (lines) => this.handleBuy(lines),
+        onSell: (lines) => this.handleSell(lines),
+        openPopup: (make) => { this.openPopup(make); },
         onOpenDetail: (itemLike) => this.openItemDetail({ slot: 0, qty: 1, ...itemLike } as InvItem),
         onConsign: (inputs) => this.openConsignment(inputs),
         onShowConsigned: () => this.openConsignList(true),
@@ -3405,115 +3406,80 @@ export class RegionFieldScene extends Phaser.Scene {
     else this.shopPanel?.setStatus('전부 유찰되었습니다 — 물건은 그대로 돌려받았습니다.');
   }
 
-  /** 구매 플로우: (수량 지정) → 확인 → 재화 차감 + 인벤토리 추가 */
-  private handleBuy(entry: ShopEntry): void {
-    const confirmBuy = (qty: number): void => {
-      // 스킬 흥정(122차): 랭크당 구매가 -3%
-      // 203차 — 단 타이틀 구매가 할인(「빈 쿨러」 · 「단골」)
-      const total = Math.round(entry.price * qty * (1 - 0.03 * GameState.skillRank('eco_haggle')) * TitleStore.modifiers().buyMult);
-      this.openPopup((close) => new ConfirmDialog(
-        this,
-        `${entry.name} ${qty}개를 구매하시겠습니까?\n소요 재화: ${total.toLocaleString()} 원`,
-        () => {
-          close();
-          if (GameState.player.inventory.coins < total) {
-            this.shopPanel?.setStatus('재화가 부족합니다.');
-            return;
-          }
-          // 190차 — 가구는 가방이 아니라 집 「넣어 둔 가구」로 배달된다
-          if (entry.furnKind) {
-            for (let i = 0; i < qty; i++) HomeStore.addStored(entry.furnKind);
-            GameState.addCoins(-total, false, 'shop');
-            GameState.markDirty();
-            this.shopPanel?.refresh();
-            this.shopPanel?.setStatus(`${entry.name} x${qty} — 집 「넣어 둔 가구」로 보냈습니다 (-${total.toLocaleString()}원)`);
-            this.hud?.pushLog(`[구매] ${entry.name} x${qty} (-${total.toLocaleString()}원)`);
-            StoryStore.event({ kind: 'custom', key: `buy:${entry.id}` });
-            GameState.addProficiency('haggle');
-            TitleStore.recordTrade(MarketStore.branch?.key);
-            return;
-          }
-          // 188차 — 세트 상품은 구성품으로 풀어 넣는다(전부 들어갈 때만)
-          if (!(entry.bundle ? InventoryStore.addBundle(entry.bundle, qty) : InventoryStore.addItem(entry, qty))) {
-            this.shopPanel?.setStatus('인벤토리 소켓이 가득 찼습니다.');
-            return;
-          }
-          GameState.addCoins(-total, false, 'shop');
-          this.events.emit('inventory-changed');
-          this.shopPanel?.refresh();
-          this.shopPanel?.setStatus(`${entry.name} x${qty} 구매 완료 (-${total.toLocaleString()}원)`);
-          this.hud?.pushLog(`[구매] ${entry.name} x${qty} (-${total.toLocaleString()}원)`);
-          // 135차 — 구매를 스토리 목표로 쓸 수 있게 이벤트를 흘린다 (M1-04 사이소 저가 장비 등)
-          StoryStore.event({ kind: 'custom', key: `buy:${entry.id}` });
-          noteProloguePurchase(entry);   // 188차 — 기본 채비 하나씩 사기
-          this.prologueBuyAid();   // 219차 — 남은 채비 살 돈이 모자라면 채워 준다
-          TitleStore.recordTrade(MarketStore.branch?.key);   // 203차 — 「단골」
-          GameState.addProficiency('haggle');   // 188차 — 흥정 숙련은 사고팔아야 는다
-        },
-        close,
-      ));
-    };
-
-    if (entry.maxPerPurchase > 1) {
-      this.openPopup((close) => new QuantityDialog(this, {
-        itemName: entry.name,
-        unitPrice: entry.price,
-        maxQty: entry.maxPerPurchase,
-        actionLabel: '구매',
-        onConfirm: (qty) => { close(); confirmBuy(qty); },
-        onCancel: close,
-      }));
-    } else {
-      confirmBuy(1);
+  /**
+   * 220차 — 장바구니 구매. 상점 창의 장바구니 확인 창(`ShopCartDialog`)이 수량을 정하고 확인까지 받은 뒤 부른다.
+   * 돈은 합계로 먼저 확인하고, 줄마다 가방(또는 집 「넣어 둔 가구」)에 넣는다 — 안 들어간 줄은 값을 받지 않는다.
+   */
+  private handleBuy(lines: { entry: ShopEntry; qty: number }[]): void {
+    const total = lines.reduce((n, l) => n + shopBuyUnitPrice(l.entry) * l.qty, 0);
+    if (GameState.player.inventory.coins < total) { this.shopPanel?.setStatus('재화가 부족합니다.'); return; }
+    let paid = 0;
+    const done: string[] = [];
+    const failed: string[] = [];
+    for (const { entry, qty } of lines) {
+      const cost = shopBuyUnitPrice(entry) * qty;
+      // 190차 — 가구는 가방이 아니라 집 「넣어 둔 가구」로 배달된다
+      if (entry.furnKind) {
+        for (let i = 0; i < qty; i++) HomeStore.addStored(entry.furnKind);
+      } else if (!(entry.bundle ? InventoryStore.addBundle(entry.bundle, qty) : InventoryStore.addItem(entry, qty))) {
+        // 188차 — 세트 상품은 구성품으로 풀어 넣는다(전부 들어갈 때만)
+        failed.push(entry.name);
+        continue;
+      }
+      paid += cost;
+      done.push(`${entry.name} x${qty}`);
+      this.hud?.pushLog(`[구매] ${entry.name} x${qty} (-${cost.toLocaleString()}원)`);
+      // 135차 — 구매를 스토리 목표로 쓸 수 있게 이벤트를 흘린다 (M1-04 사이소 저가 장비 등)
+      StoryStore.event({ kind: 'custom', key: `buy:${entry.id}` });
+      noteProloguePurchase(entry);   // 188차 — 기본 채비 하나씩 사기
     }
+    if (paid > 0) {
+      GameState.addCoins(-paid, false, 'shop');
+      GameState.markDirty();
+      TitleStore.recordTrade(MarketStore.branch?.key);   // 203차 — 「단골」
+      GameState.addProficiency('haggle');   // 188차 — 흥정 숙련은 사고팔아야 는다
+    }
+    this.events.emit('inventory-changed');
+    this.shopPanel?.refresh();
+    const head = done.length === 1 ? done[0] : `${done.length}가지`;
+    this.shopPanel?.setStatus(failed.length
+      ? `${done.length ? `${head} 구매 완료 · ` : ''}가방에 자리가 없어 못 산 것: ${failed.join(', ')}`
+      : `${head} 구매 완료 (-${paid.toLocaleString()}원)`);
+    if (lines.some((l) => l.entry.furnKind)) this.hud?.pushLog('[구매] 가구는 집 「넣어 둔 가구」로 보냈다');
+    this.prologueBuyAid();   // 219차 — 남은 채비 살 돈이 모자라면 채워 준다
   }
 
-  /** 판매 플로우: (수량 지정) → 확인 → 아이템 차감 + 재화 지급 */
-  private handleSell(item: InvItem): void {
-    // 쿨러는 내용물(어획/해수·얼음/밑밥)이 남아 있으면 판매 불가 (유실 방지)
-    if (item.id === 'inv_cooler'
-      && (CoolerStore.count() > 0 || CoolerStore.medium !== 'none' || CoolerStore.chumRemaining > 0)) {
-      this.shopPanel?.setStatus('쿨러 안에 내용물(어획/해수·얼음/밑밥)이 있어 판매할 수 없습니다 — 먼저 비우세요');
-      return;
+  /** 220차 — 판매 목록을 한 번에 판다(판매 목록 확인 창이 수량 · 확인을 받은 뒤) */
+  private handleSell(lines: { item: InvItem; qty: number }[]): void {
+    let got = 0;
+    const done: string[] = [];
+    const failed: string[] = [];
+    for (const { item, qty } of lines) {
+      // 쿨러는 내용물(어획/해수·얼음/밑밥)이 남아 있으면 판매 불가 (유실 방지)
+      if (item.id === 'inv_cooler'
+        && (CoolerStore.count() > 0 || CoolerStore.medium !== 'none' || CoolerStore.chumRemaining > 0)) {
+        failed.push(`${item.name}(내용물이 남아 있음)`);
+        continue;
+      }
+      const unit = this.sellPriceOf(item);
+      if (!InventoryStore.removeQty(item.id, qty)) { failed.push(item.name); continue; }
+      got += unit * qty;
+      done.push(`${item.name} x${qty}`);
+      MarketStore.recordSale(item, qty);   // 196차 — 이 지점에 풀린 물량(판 수)
+      this.hud?.pushLog(`[판매] ${item.name} x${qty} (+${(unit * qty).toLocaleString()}원)`);
+      notePrologueSale(item);   // 188차 — 냉동 오징어 팔기
     }
-    const unit = this.sellPriceOf(item);
-    const confirmSell = (qty: number): void => {
-      const total = unit * qty;
-      this.openPopup((close) => new ConfirmDialog(
-        this,
-        `${item.name} ${qty}개를 판매하시겠습니까?\n획득 재화: ${total.toLocaleString()} 원`,
-        () => {
-          close();
-          if (!InventoryStore.removeQty(item.id, qty)) {
-            this.shopPanel?.setStatus('판매 수량이 부족합니다.');
-            return;
-          }
-          GameState.addCoins(total, false, 'sell');
-          MarketStore.recordSale(item, qty);   // 196차 — 이 지점에 풀린 물량(판 수)
-          this.events.emit('inventory-changed');
-          this.shopPanel?.refresh();
-          this.shopPanel?.setStatus(`${item.name} x${qty} 판매 완료 (+${total.toLocaleString()}원)`);
-          this.hud?.pushLog(`[판매] ${item.name} x${qty} (+${total.toLocaleString()}원)`);
-          notePrologueSale(item);   // 188차 — 냉동 오징어 팔기
-          TitleStore.recordTrade(MarketStore.branch?.key);   // 203차 — 「단골」
-          GameState.addProficiency('haggle');   // 188차 — 흥정 숙련
-        },
-        close,
-      ));
-    };
-
-    if (item.qty > 1) {
-      this.openPopup((close) => new QuantityDialog(this, {
-        itemName: item.name,
-        unitPrice: unit,
-        maxQty: item.qty,
-        actionLabel: '판매',
-        onConfirm: (qty) => { close(); confirmSell(qty); },
-        onCancel: close,
-      }));
-    } else {
-      confirmSell(1);
+    if (got > 0) {
+      GameState.addCoins(got, false, 'sell');
+      TitleStore.recordTrade(MarketStore.branch?.key);   // 203차 — 「단골」
+      GameState.addProficiency('haggle');   // 188차 — 흥정 숙련
     }
+    this.events.emit('inventory-changed');
+    this.shopPanel?.refresh();
+    const head = done.length === 1 ? done[0] : `${done.length}가지`;
+    this.shopPanel?.setStatus(failed.length
+      ? `${done.length ? `${head} 판매 완료 · ` : ''}팔지 못한 것: ${failed.join(', ')}`
+      : `${head} 판매 완료 (+${got.toLocaleString()}원)`);
   }
 
   private tryStartCharge(): void {

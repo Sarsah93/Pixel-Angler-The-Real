@@ -467,7 +467,14 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-10-06 219차) — 원본 상호 지우기 · 로딩 화면 · 가이드 겹침/유도 · 진행 막힘**
+**최근 변경 (2026-10-06 220차) — 상점 장바구니 · 종류 칩 · 이름 찾기**
+
+- 칸 토글로 여러 개 담기 → `구매 (n)`/`판매 (n)` → 장바구니 창(`ui/ShopCartDialog` — 줄마다 −/+ · ✕ · 합계 · 남는 돈) → 씬 `handleBuy/handleSell(lines)` 한 번에.
+- 이 가게 종류만 칩(전체 + 인벤토리 분류) · 한글 찾기 칸(`TextInput`) · 단가 한 곳 `shopBuyUnitPrice`(흥정 × 타이틀 할인).
+- 함정: 기존 가이드에 새 기능을 더하면 이미 본 사람은 못 본다 — `tourSeen(원래 id)`일 때만 뜨는 짧은 가이드(`shop_cart`)를 같이 건다.
+  상세: [220차 워크로그](../docs/wiki/03-WORKLOG/2026-10-06-220-shop-cart-categories-search.md).
+
+**이전 변경 (2026-10-06 219차) — 원본 상호 지우기 · 로딩 화면 · 가이드 겹침/유도 · 진행 막힘**
 
 - 원본도 실제 상호 0(표 키 = SHA-1 앞 16자 · 캡처 = 게임 이름) · `Loading...` 가림막(`ui/LoadingOverlay` — 단계 이름만).
 - 가이드: 단계 뒤에 열린 창은 피하고(테두리 숨김 · 말풍선 비킴 · ✕ 구멍) · 단계 밖 행동은 회색 + 흔들기(`TourStep.focus` · `GuideTour.allows/nudge`).
@@ -481,12 +488,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - 게임 상호 표 `pixelazed/sokcho_v2/name_alias.json`(419개 · 업종 말 유지 · 프랜차이즈 = 가상 브랜드) — `merge_capture_pois.py`가 OSM · 캡처 가게 모두에 적용.
 - 함정: `pois.json`을 쓰는 도구(OSM 빌드 · `backfill_poi_nameen.py`) 뒤엔 병합 스크립트를 마지막에 — 안 그러면 실제 상호로 돌아간다. 가게 영어 이름을 `en_pois.ts`에 다시 적지 않는다.
   상세: [218차 워크로그](../docs/wiki/03-WORKLOG/2026-10-06-218-captures-6-10-game-shop-names.md).
-
-**이전 변경 (2026-10-06 217차) — 바닥 점 → 가게 간판 · 좌판만 노점 · 지도 캡처 POI 176곳**
-
-- 바닥 점 · 이름표 폐지 → 문 옆 종류 간판(`addShopSign`) · 노점 그림 = 진짜 좌판만(`isStallPoi`) · 좌판 [F] = 바로 거래(실내 없음) · 문 옆 장식 인물 정리 · 「장소 핀」 설정.
-- 사용자 네이버 캡처 → 도로 앵커 정합 + 판독 → `pixelazed/sokcho_v2/capture_pois.json` → `tools/merge_capture_pois.py`(176곳 · 주점 4 · osmId 음수).
-- 함정: OSM 빌드가 `pois.json`을 새로 쓰면 캡처분이 사라진다 → 병합 스크립트 재실행. 상세: [217차 워크로그](../docs/wiki/03-WORKLOG/2026-10-06-217-shop-signs-stalls-capture-pois.md).
 
 ---
 
