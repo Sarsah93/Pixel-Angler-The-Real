@@ -431,6 +431,13 @@ export const EN_HELP: Record<string, string> = {
     'Dexterity is the sum of your masteries, plus twice your learned crafting skill ranks, plus 1 per 10 levels. Hover "Dexterity" at the top of the window to see each kind. A blueprint you craft for the first time gives triple EXP.',
   '「인내심」 기술을 배우면 손 · 작업대 줄마다 2건을 더 기다리게 걸어 둘 수 있습니다.':
     'Learning Patience lets you queue 2 more jobs on each lane (hands · workbench).',
+  '도면 얻기 · 분해': 'Learning blueprints · taking apart',
+  '처음부터 아는 도면 말고도 얻어야 만들 수 있는 도면이 있습니다. 수산물 직판장 · 약국 · 생활용품점에서 「… 도면」 종이를 사서 가방에서 우클릭 [도면 읽기]를 하면 그 도면을 익히고 종이 한 장이 없어집니다. 이미 아는 도면의 종이는 가게에 나오지 않습니다. 모르는 도면은 제작 창 목록에도 나오지 않습니다.':
+    'Besides the blueprints you start with, some must be learned. Buy a "Blueprint: …" sheet at the seafood market, pharmacy or general store and right-click it in your bag → [Read blueprint] to learn it (the sheet is used up). Sheets for blueprints you already know are not sold, and blueprints you do not know do not appear in the crafting list.',
+  '손으로 만들 수 있는 물건(채비 · 봉돌·찌 · 루어 · 통발 · 장비)은 가방에서 우클릭 [분해하기]로 풀 수 있습니다. 물건은 사라지고 재료 일부만 돌아옵니다 — 한 번에 여러 개 나오는 물건일수록 적게 돌아옵니다. 묶음추 · 수중찌 · 타이라바 헤드는 사 온 것을 풀어 보다가 짜임새를 깨쳐 도면을 얻는 일도 있습니다(손재주가 높을수록 잘 깨칩니다).':
+    'Anything you can make by hand (rigs · sinkers & floats · lures · traps · gear) can be taken apart from your bag with right-click → [Take apart]. The item is gone and only some materials come back — fewer for things that are made several at a time. Taking apart bought bundle sinkers, sinking floats or tai-rubber heads can teach you how they are made (higher dexterity helps).',
+  '레벨이 도면의 최소 레벨보다 10 높을 때마다 성공률이 3%씩 오릅니다(최대 9%). 익숙한 일은 덜 틀립니다.':
+    'For every 10 levels above a blueprint\'s minimum level, success rises by 3% (up to 9%). Familiar work goes wrong less often.',
   '작업대 [F]': 'Workbench [F]',
   '설치하고 다가가서 F': 'Place it, walk up, press F',
   '설치한 작업대([F]) — ① 작업대 도면(봉돌·찌 · 루어·에기 · 통발·채집 · 장비) ② 결과물 · 조건 · 재료 ③ 수량 · 성공률 · 시간 ④ 제작하기 · 중지 · 취소':

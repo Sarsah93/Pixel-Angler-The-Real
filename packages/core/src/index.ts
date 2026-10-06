@@ -102,17 +102,18 @@ export type { ShoreCreature } from './db-schema/ShoreCreatureDatabase.js';
 export { TRAP_DATABASE, getTrapById, getTrapsByType } from './db-schema/TrapDatabase.js';
 export { RECIPE_DATABASE, getRecipeById, getRecipesByLocation, getRecipesByIngredient } from './db-schema/RecipeDatabase.js';
 // 제작 도면 (P7 — 요리와 분리된 별도 DB)
-export type { CraftStation, CraftGroup, CraftMaterial, CraftBlueprint } from './db-schema/CraftingDatabase.js';
+export type { CraftStation, CraftGroup, CraftMaterial, CraftBlueprint, CraftLearn } from './db-schema/CraftingDatabase.js';
 // ── 제작 판정 규칙 — 222차(시간 · 품질 · 취소 · 분야 숙련 · 손재주) ──
-export type { CraftQuality, CraftHandState, CraftModifiers, DexterityInput } from './simulation/CraftRules.js';
+export type { CraftQuality, CraftHandState, CraftModifiers, DexterityInput, CraftScrapLine } from './simulation/CraftRules.js';
 export {
   CRAFT_QUALITY_LABEL, CRAFT_MASTERY_XP, CRAFT_MASTERY_MAX, craftMasteryLevel, craftMasteryNextXp,
   craftModifiers, craftSuccessFinal, craftUnitMs, craftLossChance, rollCraftQuality, craftCancelRefund,
-  craftMasteryGain, dexterityScore,
+  craftMasteryGain, dexterityScore, craftLevelBonus, craftScrapReturn, craftScrapLearnChance,
 } from './simulation/CraftRules.js';
 export {
   CRAFT_BLUEPRINTS, CRAFT_GROUP_LABEL, CRAFT_GROUP_ORDER, CRAFT_STATION_LABEL, CRAFT_DEFAULT_TIME_SEC,
   blueprintsFor, getBlueprint, craftSuccessRate, materialSaveChance,
+  blueprintPaperId, blueprintsByOutput, CRAFT_SCRAP_GROUPS,
 } from './db-schema/CraftingDatabase.js';
 export { ANGLER_APP_REGIONS, TIDAL_CHARACTERISTICS, getRegionByCode, getRegionsByProvince, getRegionsByTidalCharacteristic, getAnglerAppRegions } from './db-schema/AnglerAppSpots.js';
 export type { AnglerAppRegion } from './db-schema/AnglerAppSpots.js';

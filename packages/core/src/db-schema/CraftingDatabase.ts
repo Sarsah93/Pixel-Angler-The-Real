@@ -85,13 +85,25 @@ export interface CraftBlueprint {
   minLevel?: number;
   /** 222차 — 실패 시 재료 하나하나를 잃을 확률(없으면 `TUNING.craft.failLossChance`) */
   lossChance?: number;
+  /** 223차 — 도면을 얻는 길(없으면 처음부터 안다) */
+  learn?: CraftLearn;
 }
+
+/**
+ * 223차 — 도면을 얻는 길. 없으면 **처음부터 아는 도면**(222차까지의 26종 — 구세이브도 그대로 안다).
+ *  - `shop`  = 가게(`shop` = 클라이언트 건물 종류 키)에서 도면 종이를 사서 읽는다.
+ *  - `scrap` = 같은 물건(산출물)을 분해하다가 `chance`로 짜임새를 깨친다(손재주가 조금 돕는다).
+ * 모르는 도면은 제작 목록에 나오지 않는다(R2 — 스포일러 금지).
+ */
+export type CraftLearn =
+  | { via: 'shop'; shop: string; priceWon: number }
+  | { via: 'scrap'; chance: number };
 
 /** 위치별 기본 제작 시간(초) */
 export const CRAFT_DEFAULT_TIME_SEC: Record<CraftStation, number> = { hand: 20, workbench: 60, advanced: 300 };
 
 /**
- * 도면 26종(222차 — 맨손 11 · 작업대 12 · 고급 3). 아래는 129차 원래 주석.
+ * 도면 40종(223차 — 맨손 16 · 작업대 20 · 고급 4 · 그중 13종은 얻어야 안다). 222차 26종 · 아래는 129차 원래 주석.
  * 도면 14종 (hand 8 + workbench 6).
  * ⚠ 스펙 §11 P7은 "도면 12종"으로 적혀 있으나, 스펙 §2-5가 열거한 품목을 전부 만들면 14종이다
  *   (채비 3 · 봉돌 2 · 구급품 3 / 루어 1 · 에기 1 · 통발 2 · 로드 1 · 릴 1).
@@ -435,6 +447,201 @@ export const CRAFT_BLUEPRINTS: readonly CraftBlueprint[] = [
     requiresSkill: { id: 'craft_reel', rank: 1 },
     timeSec: 900, minLevel: 55,
   },
+  // ══ 223차 — 새 도면 14종(상점 도면 10 · 분해 3 · 처음부터 아는 것 1) ══════════════════
+  // 산출물은 전부 이미 있는 물건(상점 · 시드)이라 채비 · 루어 · 통발 계통에 그대로 들어간다.
+  {
+    id: 'bp_card_jeongaengi', station: 'hand', group: 'rig',
+    nameKo: '전갱이 카드 채비 5단 묶기', nameEn: 'Tie a 5-hook Horse Mackerel Sabiki',
+    descKo: '원줄 한 가닥에 가지바늘 다섯을 일정한 간격으로 내고, 녹색 깃을 감아 멸치처럼 반짝이게 한다.',
+    descEn: 'Five droppers at even spacing on one line, each wrapped in green flash so it glints like an anchovy.',
+    materials: [
+      { itemId: 'inv_nylon2', qty: 1, nameKo: '나일론 목줄 2호', nameEn: 'Nylon Leader #2' },
+      { itemId: 'inv_chinu3', qty: 5, nameKo: '감성돔 바늘 3호', nameEn: 'Chinu Hook #3' },
+      { itemId: 'inv_mat_cloth', qty: 1, nameKo: '무명천', nameEn: 'Cotton Cloth' },
+    ],
+    outputId: 'inv_card_flasher_5', outputQty: 1, baseSuccess: 0.86, xp: 20,
+    requiresSkill: { id: 'craft_knot', rank: 1 },
+    timeSec: 45, minLevel: 8,
+    learn: { via: 'shop', shop: 'market', priceWon: 15000 },
+  },
+  {
+    id: 'bp_card_yeolgi', station: 'hand', group: 'rig',
+    nameKo: '열기 카드 채비 5단 묶기', nameEn: 'Tie a 5-hook Rockfish Dropper Rig',
+    descKo: '가지 간격을 좁게 잡고 빨간 깃을 단다. 단마다 미끼를 끼워 깊은 바닥의 떼를 노린다.',
+    descEn: 'Tight dropper spacing with red flash — bait each hook for schools on the deep bottom.',
+    materials: [
+      { itemId: 'inv_nylon2', qty: 1, nameKo: '나일론 목줄 2호', nameEn: 'Nylon Leader #2' },
+      { itemId: 'inv_chinu3', qty: 5, nameKo: '감성돔 바늘 3호', nameEn: 'Chinu Hook #3' },
+      { itemId: 'inv_mat_paint', qty: 1, nameKo: '도료 세트', nameEn: 'Paint Set' },
+    ],
+    outputId: 'inv_card_plain_5', outputQty: 1, baseSuccess: 0.84, xp: 22,
+    requiresSkill: { id: 'craft_knot', rank: 2 },
+    timeSec: 50, minLevel: 12,
+    learn: { via: 'shop', shop: 'market', priceWon: 18000 },
+  },
+  {
+    id: 'bp_bait_krill_pick', station: 'hand', group: 'bait',
+    nameKo: '밑밥 크릴에서 미끼 고르기', nameEn: 'Pick Hook Krill from a Chum Block',
+    descKo: '밑밥 블록을 반쯤 녹여 머리와 꼬리가 성한 크릴만 골라낸다. 나머지는 버린다.',
+    descEn: 'Half-thaw a chum block and pick out the krill with heads and tails intact; the rest goes.',
+    materials: [{ itemId: 'inv_chum_krill_block', qty: 1, nameKo: '냉동 크릴 (밑밥 블록)', nameEn: 'Frozen Krill (chum block)' }],
+    outputId: 'inv_krill', outputQty: 1, baseSuccess: 0.95, xp: 6,
+    timeSec: 30, minLevel: 2,
+  },
+  {
+    id: 'bp_bandage_sterile', station: 'hand', group: 'medic',
+    nameKo: '멸균 붕대 만들기', nameEn: 'Make Sterile Bandages',
+    descKo: '무명천을 소금물에 오래 끓여 말린 뒤 접어 싼다. 수제 붕대보다 덧나지 않는다.',
+    descEn: 'Boil cotton long in brine, dry it and fold it — less likely to fester than a plain bandage.',
+    materials: [
+      { itemId: 'inv_mat_cloth', qty: 1, nameKo: '무명천', nameEn: 'Cotton Cloth' },
+      { itemId: 'inv_coarse_salt', qty: 1, nameKo: '굵은소금', nameEn: 'Coarse Salt' },
+    ],
+    outputId: 'shop_bandage', outputQty: 1, baseSuccess: 0.88, xp: 16,
+    requiresSkill: { id: 'craft_medic', rank: 2 },
+    timeSec: 60, minLevel: 10,
+    learn: { via: 'shop', shop: 'pharmacy', priceWon: 12000 },
+  },
+  {
+    id: 'bp_mosquito', station: 'hand', group: 'life',
+    nameKo: '쑥 모기향 말기', nameEn: 'Roll Mugwort Mosquito Coils',
+    descKo: '말린 약초를 곱게 빻아 나무 가루와 반죽한 뒤 둥글게 말아 말린다.',
+    descEn: 'Grind dried herbs, knead them with sawdust, coil and dry.',
+    materials: [
+      { itemId: 'inv_mat_herb', qty: 1, nameKo: '약초', nameEn: 'Herbs' },
+      { itemId: 'inv_mat_wood', qty: 1, nameKo: '목재', nameEn: 'Wood' },
+    ],
+    outputId: 'inv_mosquito', outputQty: 3, baseSuccess: 0.9, xp: 10,
+    timeSec: 40, minLevel: 3,
+    learn: { via: 'shop', shop: 'pharmacy', priceWon: 6000 },
+  },
+  {
+    id: 'bp_sinker_bundle', station: 'workbench', group: 'sinker',
+    nameKo: '묶음추 주조 (25호)', nameEn: 'Cast Bundle Sinker (#25)',
+    descKo: '가는 봉돌 여럿을 철사로 묶는다. 바닥에 잘 박혀 센 물살에도 덜 끌린다.',
+    descEn: 'Several thin weights bound with wire — they dig in and hold against strong current.',
+    materials: [
+      { itemId: 'inv_mat_tin', qty: 3, nameKo: '주석 잉곳', nameEn: 'Tin Ingot' },
+      { itemId: 'inv_mat_wire', qty: 1, nameKo: '철사', nameEn: 'Wire' },
+    ],
+    outputId: 'inv_sinker_bundle_25', outputQty: 2, baseSuccess: 0.82, xp: 18,
+    requiresSkill: { id: 'craft_sinker', rank: 1 },
+    timeSec: 120, minLevel: 12,
+    learn: { via: 'scrap', chance: 0.3 },
+  },
+  {
+    id: 'bp_subfloat', station: 'workbench', group: 'sinker',
+    nameKo: '수중찌 깎기 (-0.8호)', nameEn: 'Carve a Sinking Float (-0.8)',
+    descKo: '나무 몸통에 주석을 박아 물속에서 천천히 가라앉게 맞춘다. 무게 맞추기가 까다롭다.',
+    descEn: 'Set tin into a wooden body so it sinks slowly underwater — fiddly to balance.',
+    materials: [
+      { itemId: 'inv_mat_wood', qty: 1, nameKo: '목재', nameEn: 'Wood' },
+      { itemId: 'inv_mat_tin', qty: 1, nameKo: '주석 잉곳', nameEn: 'Tin Ingot' },
+      { itemId: 'inv_mat_paint', qty: 1, nameKo: '도료 세트', nameEn: 'Paint Set' },
+    ],
+    outputId: 'inv_subfloat', outputQty: 2, baseSuccess: 0.8, xp: 20,
+    timeSec: 150, minLevel: 14,
+    learn: { via: 'scrap', chance: 0.25 },
+  },
+  {
+    id: 'bp_float_15', station: 'workbench', group: 'sinker',
+    nameKo: '구멍찌 깎기 (1.5호)', nameEn: 'Carve a Hole Float (#1.5)',
+    descKo: '부력이 큰 몸통을 깎아 구멍을 뚫고 칠한다. 물살이 센 날 채비를 띄운다.',
+    descEn: 'A buoyant body, bored and painted — keeps the rig up on fast-current days.',
+    materials: [
+      { itemId: 'inv_mat_wood', qty: 2, nameKo: '목재', nameEn: 'Wood' },
+      { itemId: 'inv_mat_paint', qty: 1, nameKo: '도료 세트', nameEn: 'Paint Set' },
+      { itemId: 'inv_mat_resin', qty: 1, nameKo: '에폭시 수지', nameEn: 'Epoxy Resin' },
+    ],
+    outputId: 'shop_float15', outputQty: 2, baseSuccess: 0.78, xp: 26,
+    timeSec: 200, minLevel: 18,
+    learn: { via: 'shop', shop: 'market', priceWon: 20000 },
+  },
+  {
+    id: 'bp_tairaba_head', station: 'workbench', group: 'lure',
+    nameKo: '타이라바 헤드 주조 (80g)', nameEn: 'Cast a Tai-rubber Head (80g)',
+    descKo: '둥근 틀에 주석을 부어 헤드를 뽑고 붉게 칠한다. 중간 수심의 표준 무게.',
+    descEn: 'Pour tin into a round mould and paint it red — the standard weight for mid depths.',
+    materials: [
+      { itemId: 'inv_mat_tin', qty: 3, nameKo: '주석 잉곳', nameEn: 'Tin Ingot' },
+      { itemId: 'inv_mat_paint', qty: 1, nameKo: '도료 세트', nameEn: 'Paint Set' },
+    ],
+    outputId: 'inv_tairaba_head_80', outputQty: 1, baseSuccess: 0.82, xp: 24,
+    requiresSkill: { id: 'craft_sinker', rank: 1 },
+    timeSec: 180, minLevel: 22,
+    learn: { via: 'scrap', chance: 0.3 },
+  },
+  {
+    id: 'bp_tairaba_necktie', station: 'workbench', group: 'lure',
+    nameKo: '타이라바 넥타이 물들이기', nameEn: 'Dye a Tai-rubber Necktie',
+    descKo: '천을 넓적하게 잘라 주황으로 물들인다. 스커트보다 크게 펄럭여 멀리서도 보인다.',
+    descEn: 'Cut wide strips and dye them orange — they flutter bigger than a skirt and show from afar.',
+    materials: [
+      { itemId: 'inv_mat_cloth', qty: 1, nameKo: '무명천', nameEn: 'Cotton Cloth' },
+      { itemId: 'inv_mat_paint', qty: 1, nameKo: '도료 세트', nameEn: 'Paint Set' },
+    ],
+    outputId: 'inv_tairaba_necktie_orange', outputQty: 2, baseSuccess: 0.88, xp: 16,
+    timeSec: 120, minLevel: 15,
+    learn: { via: 'shop', shop: 'market', priceWon: 9000 },
+  },
+  {
+    id: 'bp_metaljig', station: 'workbench', group: 'lure',
+    nameKo: '메탈지그 주조 (20g)', nameEn: 'Cast a Metal Jig (20g)',
+    descKo: '길쭉한 틀에 주석을 붓고 철사 고리를 박은 뒤 은빛으로 칠한다. 멀리 날아가 빨리 가라앉는다.',
+    descEn: 'Pour tin into a long mould, set a wire eye and paint it silver — casts far, sinks fast.',
+    materials: [
+      { itemId: 'inv_mat_tin', qty: 2, nameKo: '주석 잉곳', nameEn: 'Tin Ingot' },
+      { itemId: 'inv_mat_wire', qty: 1, nameKo: '철사', nameEn: 'Wire' },
+      { itemId: 'inv_mat_paint', qty: 1, nameKo: '도료 세트', nameEn: 'Paint Set' },
+    ],
+    outputId: 'inv_metaljig', outputQty: 1, baseSuccess: 0.8, xp: 24,
+    requiresSkill: { id: 'craft_paint', rank: 1 },
+    timeSec: 180, minLevel: 18,
+    learn: { via: 'shop', shop: 'market', priceWon: 16000 },   // 메탈지그는 가게에서 팔지 않아 풀어 볼 물건이 없다
+  },
+  {
+    id: 'bp_jighead', station: 'workbench', group: 'lure',
+    nameKo: '지그헤드 주조 (3g)', nameEn: 'Cast Jig Heads (3g)',
+    descKo: '작은 틀에 바늘을 물리고 주석을 붓는다. 한 번에 여러 개가 나온다.',
+    descEn: 'Clamp hooks in a small mould and pour tin — several come out at once.',
+    materials: [
+      { itemId: 'inv_mat_tin', qty: 1, nameKo: '주석 잉곳', nameEn: 'Tin Ingot' },
+      { itemId: 'inv_chinu3', qty: 2, nameKo: '감성돔 바늘 3호', nameEn: 'Chinu Hook #3' },
+    ],
+    outputId: 'inv_jighead', outputQty: 4, baseSuccess: 0.86, xp: 18,
+    requiresSkill: { id: 'craft_sinker', rank: 1 },
+    timeSec: 120, minLevel: 10,
+    learn: { via: 'shop', shop: 'market', priceWon: 12000 },
+  },
+  {
+    id: 'bp_trap_shrimp', station: 'workbench', group: 'trap',
+    nameKo: '새우 통발 짜기', nameEn: 'Weave a Shrimp Trap',
+    descKo: '눈이 고운 그물을 원통에 씌우고 입구를 좁게 접는다. 새우가 들어오면 못 나간다.',
+    descEn: 'Fine mesh over a cylinder with a narrow folded mouth — shrimp get in but not out.',
+    materials: [
+      { itemId: 'inv_mat_mesh', qty: 1, nameKo: '통발 그물망', nameEn: 'Trap Mesh' },
+      { itemId: 'inv_mat_wire', qty: 2, nameKo: '철사', nameEn: 'Wire' },
+    ],
+    outputId: 'inv_trap_trap_shrimp_basic', outputQty: 1, baseSuccess: 0.86, xp: 22,
+    requiresSkill: { id: 'craft_trap', rank: 1 },
+    timeSec: 150, minLevel: 14,
+    learn: { via: 'shop', shop: 'market', priceWon: 20000 },
+  },
+  {
+    id: 'bp_net_long', station: 'advanced', group: 'gear',
+    nameKo: '긴 뜰채 만들기 (7m)', nameEn: 'Build a Long Landing Net (7m)',
+    descKo: '로드 블랭크를 자루로 이어 붙이고 그물을 단다. 높은 방파제에서도 수면에 닿는다.',
+    descEn: 'Join rod blanks into a pole and hang a net — reaches the water even from a tall breakwater.',
+    materials: [
+      { itemId: 'inv_mat_blank', qty: 1, nameKo: '로드 블랭크', nameEn: 'Rod Blank' },
+      { itemId: 'inv_mat_mesh', qty: 1, nameKo: '통발 그물망', nameEn: 'Trap Mesh' },
+      { itemId: 'inv_mat_resin', qty: 1, nameKo: '에폭시 수지', nameEn: 'Epoxy Resin' },
+    ],
+    outputId: 'shop_net_7', outputQty: 1, baseSuccess: 0.78, xp: 40,
+    requiresSkill: { id: 'craft_rod', rank: 1 },
+    timeSec: 600, minLevel: 45,
+    learn: { via: 'shop', shop: 'daily', priceWon: 40000 },
+  },
 ];
 
 /** 위치별 도면 목록 (목록 렌더 — 그룹 순서 유지) */
@@ -445,6 +652,19 @@ export function blueprintsFor(station: CraftStation): CraftBlueprint[] {
 export function getBlueprint(id: string): CraftBlueprint | undefined {
   return CRAFT_BLUEPRINTS.find((b) => b.id === id);
 }
+
+/** 223차 — 도면 종이 아이템 id (`inv_bp_<도면 id에서 bp_를 뗀 것>`) */
+export function blueprintPaperId(bpId: string): string {
+  return `inv_bp_${bpId.replace(/^bp_/, '')}`;
+}
+
+/** 223차 — 이 물건을 만드는 도면들(분해 · 도면 깨치기) */
+export function blueprintsByOutput(itemId: string): CraftBlueprint[] {
+  return CRAFT_BLUEPRINTS.filter((b) => b.outputId === itemId);
+}
+
+/** 223차 — 분해할 수 있는 갈래(소모품 · 구급품 · 생활용품은 분해하지 않는다) */
+export const CRAFT_SCRAP_GROUPS: readonly CraftGroup[] = ['rig', 'sinker', 'lure', 'trap', 'gear'];
 
 /** 제작 1건 성공률 — `craft_success`(매듭 숙련) 선형 합산 보정, 상한 0.99 */
 export function craftSuccessRate(bp: CraftBlueprint, successMult = 1): number {

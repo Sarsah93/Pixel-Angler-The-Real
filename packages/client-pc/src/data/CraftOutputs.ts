@@ -9,7 +9,7 @@
  * 상점 카탈로그의 것을 그대로 재사용한다 — 같은 물건이 두 벌 정의되면 가격·스펙이 갈라진다.
  */
 
-import type { InvItemTemplate } from '../store/InventoryStore.js';
+import { InventoryStore, type InvItemTemplate } from '../store/InventoryStore.js';
 import { SHOP_CATALOG } from './ShopCatalog.js';
 import { applyItemVitals } from './ItemVitals.js';
 
@@ -85,11 +85,22 @@ function fromShops(id: string): InvItemTemplate | null {
   return null;
 }
 
+/**
+ * 223차 — 상점에 없고 시작 가방(시드)에만 있는 물건(지그헤드 · 메탈지그 등).
+ * 유저 상태(수량 · 착용 · 신선도 시각)는 떼고 정적 모양만 넘긴다.
+ */
+function fromSeed(id: string): InvItemTemplate | null {
+  const sd = InventoryStore.seedCatalog().find((x) => x.id === id);
+  if (!sd) return null;
+  const { slot: _s, qty: _q, equipped: _e, equippedHand: _h, conditionSinceMs: _c, ...tpl } = sd;
+  return tpl;
+}
+
 /** 산출 id → 인벤토리 템플릿. 모르는 id면 null (도면 검증에서 걸러진다) */
 export function craftOutputTemplate(outputId: string): InvItemTemplate | null {
   const own = CRAFT_ONLY[outputId];
   if (own) return applyItemVitals({ ...own });
-  return fromShops(outputId);
+  return fromShops(outputId) ?? fromSeed(outputId);
 }
 
 /** 제작 전용 산출물 id 목록 (무결성 검사·위키용) */

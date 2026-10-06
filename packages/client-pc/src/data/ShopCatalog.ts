@@ -10,7 +10,7 @@
 
 import type { InvCategory, InvItemTemplate } from '../store/InventoryStore.js';
 import { COOK_CORNER } from './CookItems.js';
-import { WEIGHT_SINKER_DB, TRAP_DATABASE, getLureSpec, ROD_SHOP, REEL_SHOP } from '@tra/core';
+import { WEIGHT_SINKER_DB, TRAP_DATABASE, getLureSpec, ROD_SHOP, REEL_SHOP, CRAFT_BLUEPRINTS, blueprintPaperId } from '@tra/core';
 import { applyItemVitals } from './ItemVitals.js';
 import type { FurnKind } from './HomeFurniture.js';
 
@@ -501,6 +501,24 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
 // (같은 테이블을 시드 생성·세이브 로드 백필도 쓴다 → 값을 고치면 구세이브까지 자동 정합)
 for (const def of Object.values(SHOP_CATALOG)) {
   for (const e of def.sells) applyItemVitals(e);
+}
+
+/**
+ * 223차 — 도면 종이. 도면 DB의 `learn: { via: 'shop' }` 가 가게(건물 종류)와 값을 정한다 —
+ * 도면을 하나 더 팔려면 core 도면에 얻는 길만 적으면 된다(여기는 고치지 않는다).
+ * 사서 가방에서 「도면 읽기」 → 그 도면을 만들 줄 알게 된다. 이미 아는 도면은 가게 목록에서 빠진다(ShopPanel).
+ */
+for (const bp of CRAFT_BLUEPRINTS) {
+  if (bp.learn?.via !== 'shop') continue;
+  const def = SHOP_CATALOG[bp.learn.shop as BuildingKind];
+  if (!def) continue;
+  const where = bp.station === 'hand' ? '맨손으로' : '작업대에서';
+  def.sells.push({
+    id: blueprintPaperId(bp.id), name: `${bp.nameKo} 도면`, icon: '', iconTexture: 'px:it_blueprint',
+    category: 'etc', subCategory: '도면', basePrice: Math.round(bp.learn.priceWon * 0.4 / 100) * 100,
+    price: bp.learn.priceWon, maxPerPurchase: 1, equippable: false, blueprintId: bp.id,
+    desc: `읽으면 ${where} 「${bp.nameKo}」를 만들 줄 알게 된다.`,
+  });
 }
 
 /** 건물 배치용 종류 순환 배열 (POI 인덱스 → 건물 종류) */

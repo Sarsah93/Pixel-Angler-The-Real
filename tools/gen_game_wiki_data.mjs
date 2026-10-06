@@ -711,6 +711,8 @@ const out = {
     timeSec: b.timeSec ?? core.CRAFT_DEFAULT_TIME_SEC[b.station], minLevel: b.minLevel ?? 1,
     materials: b.materials.map((m) => `${m.nameKo} ×${m.qty}`), outQty: b.outputQty,
     success: Math.round(b.baseSuccess * 100),
+    // 223차 — 얻는 길(없으면 처음부터 앎)
+    learn: !b.learn ? '처음부터' : b.learn.via === 'shop' ? `도면 종이 ${b.learn.priceWon.toLocaleString('ko-KR')}원` : '분해하다 깨침',
   })),
   systems: readSystemPages(),
   rules,

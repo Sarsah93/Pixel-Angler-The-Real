@@ -37,6 +37,7 @@ import { playEatSfx } from '../audio/Sfx.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { maybeStartTour, type TourOptions } from './GuideTour.js';
 import { prologueProtects, PROLOGUE_PROTECT_MSG } from '../store/Prologue.js';
+import { CraftingStore } from '../store/CraftingStore.js';
 
 /** 190차 — 식탁 식사 보너스 (허기 회복량의 25% 추가) */
 const TABLE_MEAL_BONUS = 0.25;
@@ -766,6 +767,46 @@ export class InventoryPanel extends DraggablePanel {
           }
           this.renderGrid();
           this.scene.events.emit('inventory-changed');
+        },
+      });
+    }
+    // 223차 — 도면 종이: 읽으면 그 도면을 만들 줄 알게 된다(한 장 소모 · 이미 알면 종이를 남긴다)
+    if (item.blueprintId) {
+      actions.push({
+        label: '도면 읽기',
+        color: '#4af2a1', hoverColor: '#8dffce',
+        run: () => {
+          const r = CraftingStore.readPaper(item);
+          this.setStatus(r.message);
+          if (r.ok) { this.renderGrid(); this.scene.events.emit('inventory-changed'); }
+        },
+      });
+    }
+    // 223차 — 분해: 만든 물건(채비 · 봉돌 · 루어 · 통발 · 장비)을 풀어 재료 일부를 돌려받는다.
+    //  분해로 깨치는 도면이면 짜임새를 알게 될 수도 있다. 물건이 사라지므로 한 번 더 묻는다(198차 규칙).
+    const scrapBp = CraftingStore.scrapTarget(item);
+    if (scrapBp) {
+      actions.push({
+        label: '분해하기',
+        color: '#ffd257', hoverColor: '#ffe9a0',
+        run: () => {
+          if (this.protectedNow(item)) return;
+          const dlg = new ConfirmDialog(
+            this.scene,
+            `${item.name} 1개를 분해합니다.\n재료는 일부만 돌아오고 물건은 사라집니다.`,
+            () => {
+              const r = CraftingStore.scrap(item);
+              dlg.destroy();
+              if (!r.ok) { this.setStatus(r.reason ?? '분해할 수 없다'); return; }
+              const got = r.returned.length ? r.returned.map((x) => `${x.name} ${x.qty}`).join(' · ') : '건진 재료 없음';
+              this.setStatus(`분해했다 — ${got}${r.learned ? ` · 도면을 깨쳤다: ${r.bpName}` : ''}`);
+              this.renderGrid();
+              this.scene.events.emit('inventory-changed');
+            },
+            () => dlg.destroy(),
+            { yes: '분해하기', no: '취소', danger: true },
+          );
+          this.scene.add.existing(dlg);
         },
       });
     }

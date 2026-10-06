@@ -699,6 +699,18 @@ const DOW_EN: Record<string, string> = {
 };
 /** 수치·이름이 끼어 있는 문장 — 정규식 규칙. 캡처 그룹은 그대로 옮긴다(이름은 사전을 다시 타지 않으므로 어종·아이템명은 한국어로 남을 수 있음). */
 export const EN_RULES: Rule[] = [
+  // ── 223차 도면 얻기 · 분해 ──
+  [/^도면을 익혔다 — (.+)$/, (m, tr) => `Learned a blueprint — ${tr(m[1])}`],
+  [/^이미 아는 도면이다 — (.+)$/, (m, tr) => `You already know this blueprint — ${tr(m[1])}`],
+  [/^(.+) 1개를 분해합니다\.$/, (m, tr) => `Take apart 1 × ${tr(m[1])}.`],
+  [/^분해했다 — (.+)$/, (m, tr) => `Taken apart — ${m[1].split(' · ').map((x) => {
+    if (x.startsWith('도면을 깨쳤다: ')) return `learned the blueprint: ${tr(x.slice('도면을 깨쳤다: '.length))}`;
+    const q = /^(.+) (\d+)$/.exec(x);
+    return q ? `${tr(q[1])} ${q[2]}` : tr(x);
+  }).join(' · ')}`],
+  [/^읽으면 (맨손으로|작업대에서) 「(.+)」를 만들 줄 알게 된다\.$/,
+    (m, tr) => `Read it to learn "${tr(m[2])}" ${m[1] === '맨손으로' ? 'by hand' : 'at the workbench'}.`],
+  [/^(.+) 도면$/, (m, tr) => `Blueprint: ${tr(m[1])}`],
   // ── 222차 스킬 재정비 — 잠긴 스킬 사유 · 시세 읽기 ──
   [/^아직 배울 수 없다 — (.+) 열린다\.?$/, (m, tr) => `Not learnable yet — opens ${tr(m[1])}.`],
   [/^시세 — 물량 ([+−]\d+%) · 판매처 ([+−]\d+%)$/, (m) => `Price — supply ${m[1]} · buyer ${m[2]}`],

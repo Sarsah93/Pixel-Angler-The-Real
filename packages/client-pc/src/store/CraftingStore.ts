@@ -17,6 +17,10 @@
  *  - 가방에 자리가 없으면 시작 전에 막는다. 그래도 넘치면(진행 중 가방이 참) **제작 보관함**에 쌓아 둔다(사라지지 않음).
  *  - 분야 숙련(손재주) = 갈래별 제작 경험. 성공률 · 시간 · 품질을 조금씩 돕는다.
  *
+ * 223차 — **도면을 얻어야 만든다**(`bp.learn`). 처음부터 아는 도면(learn 없음)은 그대로 —
+ *  상점 도면 종이를 읽거나(`readPaper`), 만든 물건을 분해하다(`scrap`) 짜임새를 깨친다.
+ *  모르는 도면은 목록에 나오지 않는다(R2). 분해는 재료 일부만 돌려준다(`craftScrapReturn`).
+ *
  * ⚠ 스킬 효과 모드 함정: `craft_success`·`craft_material`·`medic_quality` 는 **mult 모드**라
  *   `skillMult` 로 읽는다. add 모드 키(`craft_batch` 등)는 `skillBonus` 로 읽는다.
  */
@@ -25,6 +29,7 @@ import {
   CRAFT_BLUEPRINTS, getBlueprint, materialSaveChance, TUNING, getSkillById, skillsOfCategory,
   craftModifiers, craftSuccessFinal, craftUnitMs, craftLossChance, rollCraftQuality, craftCancelRefund,
   craftMasteryLevel, craftMasteryGain, dexterityScore,
+  craftLevelBonus, craftScrapReturn, craftScrapLearnChance, blueprintsByOutput, CRAFT_SCRAP_GROUPS,
   type CraftBlueprint, type CraftMaterial, type CraftStation, type CraftGroup, type CraftModifiers, type CraftQuality,
 } from '@tra/core';
 import { InventoryStore, type InvItem, type InvItemTemplate } from './InventoryStore.js';
@@ -119,6 +124,19 @@ export interface CraftingSaveState {
   reports: CraftReport[];
   mastery: Partial<Record<CraftGroup, number>>;
   crafted: string[];
+  /** 223차 — 얻어서 아는 도면(처음부터 아는 것은 넣지 않는다) */
+  known?: string[];
+}
+
+/** 223차 — 분해 결과 */
+export interface CraftScrapResult {
+  ok: boolean;
+  reason?: string;
+  bpName?: string;
+  /** 돌려받은 재료(이름 · 개수) */
+  returned: { name: string; qty: number }[];
+  /** 이번에 도면을 깨쳤는가 */
+  learned: boolean;
 }
 
 /** 인벤토리 아이템이 이 재료에 해당하는가 (itemId | speciesId | byproductKind) */
@@ -163,14 +181,80 @@ class CraftingStoreManager {
   private reports: CraftReport[] = [];
   private mastery: Partial<Record<CraftGroup, number>> = {};
   private crafted = new Set<string>();
+  private known = new Set<string>();
   private seq = 0;
   private listeners = new Set<(r: CraftReport | null) => void>();
 
   // ── 조회 ─────────────────────────────────────────
   /** 위치별 도면 목록 — 작업대는 고급(공구 세트) 도면까지 함께 보인다 */
   blueprints(station: CraftStation): CraftBlueprint[] {
-    if (station === 'hand') return CRAFT_BLUEPRINTS.filter((b) => b.station === 'hand');
-    return CRAFT_BLUEPRINTS.filter((b) => b.station !== 'hand');
+    const known = CRAFT_BLUEPRINTS.filter((b) => this.knows(b.id));
+    if (station === 'hand') return known.filter((b) => b.station === 'hand');
+    return known.filter((b) => b.station !== 'hand');
+  }
+
+  // ── 223차 — 도면 얻기 ───────────────────────────────
+  /** 이 도면을 아는가(얻는 길이 없는 도면은 처음부터 안다) */
+  knows(bpId: string): boolean {
+    const bp = getBlueprint(bpId);
+    if (!bp) return false;
+    return !bp.learn || this.known.has(bpId);
+  }
+
+  /** 얻어서 아는 도면 수 · 얻을 수 있는 도면 수 */
+  learnedCount(): { learned: number; total: number } {
+    const total = CRAFT_BLUEPRINTS.filter((b) => !!b.learn).length;
+    return { learned: this.known.size, total };
+  }
+
+  /** 도면을 깨친다 — 새로 알게 됐으면 true */
+  learn(bpId: string): boolean {
+    const bp = getBlueprint(bpId);
+    if (!bp?.learn || this.known.has(bpId)) return false;
+    this.known.add(bpId);
+    GameState.markDirty();
+    this.emit(null);
+    return true;
+  }
+
+  /** 도면 종이 읽기 — 한 장을 쓰고 도면을 안다. 이미 알면 종이를 남긴다 */
+  readPaper(item: InvItem): { ok: boolean; message: string } {
+    const bp = item.blueprintId ? getBlueprint(item.blueprintId) : undefined;
+    if (!bp) return { ok: false, message: '읽을 수 없는 종이다' };
+    if (this.knows(bp.id)) return { ok: false, message: `이미 아는 도면이다 — ${bp.nameKo}` };
+    InventoryStore.removeQty(item.id, 1);
+    this.learn(bp.id);
+    return { ok: true, message: `도면을 익혔다 — ${bp.nameKo}` };
+  }
+
+  /** 이 물건을 분해할 수 있는가 — 만드는 도면이 있고 분해하는 갈래여야 한다 */
+  scrapTarget(item: InvItem): CraftBlueprint | null {
+    if (item.slot < 0 || item.equipped || item.bound || item.category === 'quest') return null;
+    const bps = blueprintsByOutput(item.id).filter((b) => CRAFT_SCRAP_GROUPS.includes(b.group));
+    // 분해로 깨치는 도면을 먼저 — 같은 물건을 여러 도면이 만들면 배울 것이 있는 쪽
+    return bps.find((b) => b.learn?.via === 'scrap') ?? bps[0] ?? null;
+  }
+
+  /** 분해 — 물건 1개를 풀어 재료 일부를 돌려받고, 분해로 깨치는 도면이면 확률로 안다 */
+  scrap(item: InvItem, rng: () => number = Math.random): CraftScrapResult {
+    const bp = this.scrapTarget(item);
+    if (!bp) return { ok: false, reason: '분해할 수 없는 물건이다', returned: [], learned: false };
+    if (!InventoryStore.removeQty(item.id, 1)) return { ok: false, reason: '물건이 없다', returned: [], learned: false };
+    const returned: { name: string; qty: number }[] = [];
+    for (const line of craftScrapReturn(bp, rng)) {
+      const m = bp.materials[line.index];
+      const tpl = m.itemId ? craftOutputTemplate(m.itemId) : null;
+      if (!tpl) continue;
+      this.give(tpl, line.qty);
+      returned.push({ name: m.nameKo, qty: line.qty });
+    }
+    let learned = false;
+    if (!this.knows(bp.id) && rng() < craftScrapLearnChance(bp, this.dexterity())) learned = this.learn(bp.id);
+    this.mastery[bp.group] = this.masteryXp(bp.group) + craftMasteryGain(bp, false);
+    GameState.applyVitalsAction('craft', 1);
+    GameState.markDirty();
+    this.emit(null);
+    return { ok: true, bpName: bp.nameKo, returned, learned };
   }
 
   /** 스킬 조건 */
@@ -201,12 +285,13 @@ class CraftingStoreManager {
   /** 지금 손 상태 → 배수 */
   modifiers(bp: CraftBlueprint): CraftModifiers {
     const v = GameState.vitals;
+    const lvBonus = craftLevelBonus(GameState.player.level ?? 1, bp.minLevel ?? 0);
     return craftModifiers(this.masteryLevel(bp.group), {
       fatigue: v.maxFatigue > 0 ? v.fatigue / v.maxFatigue : 0,
       injured: GameState.hasStatus('bleed') || GameState.hasStatus('fracture'),
       ill: GameState.hasStatus('chill') || GameState.hasStatus('cold') || GameState.hasStatus('flu'),
       drunk: false,
-    });
+    }, lvBonus);
   }
 
   /** 성공률 (스킬 · 숙련 · 손 상태, 0.05~0.99) */
@@ -250,6 +335,9 @@ class CraftingStoreManager {
    * 제작 가능 여부. `at` = 지금 열린 자리(맨손 창 · 작업대 창) — 작업대 도면은 작업대에서만.
    */
   check(bp: CraftBlueprint, qty = 1, at: CraftStation = bp.station): CraftCheck {
+    if (!this.knows(bp.id)) {
+      return { ok: false, materials: [], reason: '모르는 도면이다', maxQty: 0, locked: true };
+    }
     const materials = bp.materials.map((m) => {
       const have = haveCount(m);
       const need = m.qty * qty;
@@ -537,6 +625,7 @@ class CraftingStoreManager {
       reports: [...this.reports],
       mastery: { ...this.mastery },
       crafted: [...this.crafted],
+      known: [...this.known],
     };
   }
 
@@ -546,10 +635,12 @@ class CraftingStoreManager {
     this.reports = s?.reports ?? [];
     this.mastery = s?.mastery ?? {};
     this.crafted = new Set(s?.crafted ?? []);
+    // 223차 — 구세이브는 known이 없다(처음부터 아는 도면만 쓰던 때라 잃는 것 없음)
+    this.known = new Set((s?.known ?? []).filter((id) => !!getBlueprint(id)?.learn));
   }
 
   resetAll(): void {
-    this.jobs = []; this.storage = []; this.reports = []; this.mastery = {}; this.crafted = new Set();
+    this.jobs = []; this.storage = []; this.reports = []; this.mastery = {}; this.crafted = new Set(); this.known = new Set();
   }
 }
 

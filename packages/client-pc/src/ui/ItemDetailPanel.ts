@@ -8,12 +8,14 @@
 
 import Phaser from 'phaser';
 import { ensurePixelIcon } from './PixelIcon.js';
+import { getBlueprint, CRAFT_STATION_LABEL, CRAFT_GROUP_LABEL } from '@tra/core';
 import { reelCmPerTurn, rodSpecFor, reelSpecFor, rodLoadState, ROD_USE_LABEL, getRodCatalogEntry, getReelCatalogEntry, getLureSpec, getNuisance, sashimiStarsAt, sashimiNutrition, foodNutritionOf, nutritionLineKo, restoreFromNutrition } from '@tra/core';
 import { FISH_DATABASE, fishImageSizeScale, fishRarity, speciesStandardWeightG,
   GEAR_FAULTS, gearRepairFee, rodMaxCasts,
   getFireRecipe, getCookIngredient, dishStarsAt, dishVitalsMult, fmtUnits, SALT_LABEL_KO, SUGAR_LABEL_KO, STAR_NAME_KO,
   fatnessLabel, textureLabel, fishinessLabel, flavorLabel, FOOD_EFFECT_KIND_KO } from '@tra/core';
 import { CookingStore } from '../store/CookingStore.js';
+import { CraftingStore } from '../store/CraftingStore.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { DraggablePanel } from './DraggablePanel.js';
 import { clampTextWidth } from './TextFit.js';
@@ -66,7 +68,7 @@ function spoolLeftLabel(total: number, used?: number): string {
   return `${Math.max(0, Math.round((total - u) * 10) / 10)}m / ${total}m`;
 }
 
-export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory' | 'category' | 'qty' | 'basePrice' | 'condition' | 'conditionSinceMs' | 'speciesId' | 'lengthCm' | 'weightG' | 'floatBuoyG' | 'plateWip' | 'fault' | 'useCount' | 'tool' | 'bound' | 'dish' | 'dishInstance' | 'sashimi' | 'cutQuality' | 'hungerRestore' | 'hydrationRestore' | 'hpRestore' | 'fatigueRestore' | 'lineMaterial' | 'lineForm' | 'lineLengthM' | 'lineUsedM' | 'lineNo' | 'lineDiameterMm' | 'lineStrengthLb' | 'sinkerKind' | 'sinkerWeightG' | 'sinkerHo' | 'netReachM'>): ItemDetailData {
+export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory' | 'category' | 'qty' | 'basePrice' | 'condition' | 'conditionSinceMs' | 'speciesId' | 'lengthCm' | 'weightG' | 'floatBuoyG' | 'plateWip' | 'fault' | 'useCount' | 'tool' | 'bound' | 'dish' | 'dishInstance' | 'sashimi' | 'cutQuality' | 'hungerRestore' | 'hydrationRestore' | 'hpRestore' | 'fatigueRestore' | 'lineMaterial' | 'lineForm' | 'lineLengthM' | 'lineUsedM' | 'lineNo' | 'lineDiameterMm' | 'lineStrengthLb' | 'sinkerKind' | 'sinkerWeightG' | 'sinkerHo' | 'netReachM' | 'blueprintId'>): ItemDetailData {
   const rows: ItemDetailRow[] = [];
   let desc = '';
   // 155차 — 완성 사시미 접시: 맛 별 5개(지금 / 담은 직후) — 불요리와 같은 문법
@@ -113,6 +115,18 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
       title: item.name, subtitle: '이야기 물건', rows,
       desc: '바닷가 바위 앞에서 찍은 사진. 어린 나와 부모님이 바람에 눈을 찡그리며 웃고 있다. 아버지 글씨로 적힌 그 자리부터 가 보려 한다.',
     };
+  }
+
+  // 223차 — 도면 종이: 무엇을 어디서 만들게 되는지 · 이미 아는지
+  if (item.blueprintId) {
+    const bp = getBlueprint(item.blueprintId);
+    if (bp) {
+      rows.push({ label: '만드는 곳', value: CRAFT_STATION_LABEL[bp.station].ko });
+      rows.push({ label: '갈래', value: CRAFT_GROUP_LABEL[bp.group].ko });
+      if (bp.minLevel) rows.push({ label: '조건', value: `레벨 ${bp.minLevel} 이상` });
+      rows.push({ label: '익힘', value: CraftingStore.knows(bp.id) ? '이미 아는 도면' : '아직 모르는 도면' });
+      return { title: item.name, subtitle: '도면', rows, desc: bp.descKo };
+    }
   }
 
   // ── 136차 장비 상태 — 고장·파손과 내구도를 **최상단**에 (슬롯 우하단 경고 배지와 같은 사실) ──

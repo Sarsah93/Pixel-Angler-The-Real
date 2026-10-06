@@ -10,6 +10,9 @@
  *  - **분야 숙련(손재주)**: 갈래(채비 · 봉돌·찌 …)마다 따로 쌓는 제작 경험. 레벨이 성공률 · 시간 · 품질을 조금씩 돕는다.
  *    「손재주」 = 분야 숙련 합 + 배운 제작 기술 숙련 + 레벨 몫(해루질 등 다른 손 쓰는 일에도 쓴다).
  *  - **손 상태**: 피로 · 다친 손(출혈 · 골절) · 몸살(오한 · 감기 · 독감) · 술이 성공률을 깎고 시간을 늘린다.
+ *  - **레벨 차**(223차): 도면 최소 레벨보다 10 높을 때마다 성공 배수 +3%(상한 +9%) — 익숙한 일은 덜 틀린다.
+ *  - **분해**(223차): 만든 물건(산출물)을 풀면 재료 1단위마다 `scrapReturn / 산출 수` 확률로 돌려받고,
+ *    분해로 깨치는 도면이면 `chance + 손재주 몫`으로 도면을 얻는다. 사는 값보다 많이 돌려받지 않게 산출 수로 나눈다.
  *
  * 순수 규칙만 — 상태(큐 · 숙련 XP)는 클라이언트 `CraftingStore`.
  */
@@ -65,8 +68,15 @@ export interface CraftModifiers {
   handNotes: string[];
 }
 
-/** 분야 숙련 레벨 + 손 상태 → 배수 */
-export function craftModifiers(masteryLv: number, hand: CraftHandState): CraftModifiers {
+/** 223차 — 도면 최소 레벨을 넘긴 만큼의 성공 배수 몫(10레벨마다 +3% · 상한 +9%) */
+export function craftLevelBonus(level: number, minLevel = 0): number {
+  const T = TUNING.craft;
+  const steps = Math.floor(Math.max(0, level - minLevel) / 10);
+  return Math.min(T.levelBonusCap, steps * T.levelBonusPer10);
+}
+
+/** 분야 숙련 레벨 + 손 상태(+ 223차 레벨 차 몫) → 배수 */
+export function craftModifiers(masteryLv: number, hand: CraftHandState, levelBonus = 0): CraftModifiers {
   const T = TUNING.craft;
   const lv = Math.max(0, Math.min(CRAFT_MASTERY_MAX, masteryLv));
   const notes: string[] = [];
@@ -77,7 +87,7 @@ export function craftModifiers(masteryLv: number, hand: CraftHandState): CraftMo
   if (hand.drunk) { pen += T.handDrunkPenalty; notes.push('술기운'); }
   pen = Math.min(0.6, pen);
   return {
-    successMult: (1 + lv * T.masterySuccessPerLv) * (1 - pen),
+    successMult: (1 + lv * T.masterySuccessPerLv) * (1 + Math.max(0, levelBonus)) * (1 - pen),
     timeMult: Math.max(0.5, 1 - lv * T.masteryTimePerLv) * (1 + pen),
     qualityBonus: Math.min(T.qualityBonusCap, lv * T.masteryQualityPerLv),
     handPenalty: pen,
@@ -145,4 +155,34 @@ export function dexterityScore(d: DexterityInput): number {
   const m = Object.values(d.mastery).reduce<number>((a, v) => a + (v ?? 0), 0);
   const p = d.craftSkillProf.reduce((a, v) => a + v, 0);
   return Math.round(m + p * 2 + Math.floor(d.level / 10));
+}
+
+/** 223차 — 분해 결과 한 줄(재료 1종) */
+export interface CraftScrapLine {
+  /** 재료 목록의 순번(bp.materials) */
+  index: number;
+  qty: number;
+}
+
+/**
+ * 223차 — 산출물 1개를 분해했을 때 돌려받는 재료.
+ * 재료 1단위마다 `TUNING.craft.scrapReturn / outputQty` 확률 — 한 번에 여러 개 나오는 도면(봉돌 2개 등)은
+ * 하나를 풀어 봐야 재료의 일부만 나온다. 기대값이 언제나 재료값보다 작다(사서 풀어 재료를 버는 길 차단).
+ */
+export function craftScrapReturn(bp: CraftBlueprint, rng: () => number): CraftScrapLine[] {
+  const p = Math.max(0, Math.min(1, TUNING.craft.scrapReturn / Math.max(1, bp.outputQty)));
+  const out: CraftScrapLine[] = [];
+  bp.materials.forEach((m, index) => {
+    let n = 0;
+    for (let k = 0; k < m.qty; k++) if (rng() < p) n++;
+    if (n > 0) out.push({ index, qty: n });
+  });
+  return out;
+}
+
+/** 223차 — 분해로 도면을 깨칠 확률(분해로 얻는 도면만 · 손재주가 조금 돕는다) */
+export function craftScrapLearnChance(bp: CraftBlueprint, dexterity: number): number {
+  if (bp.learn?.via !== 'scrap') return 0;
+  const T = TUNING.craft;
+  return Math.min(T.scrapLearnCap, bp.learn.chance + Math.max(0, dexterity) * T.scrapLearnPerDex);
 }

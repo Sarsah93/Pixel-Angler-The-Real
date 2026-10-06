@@ -944,6 +944,14 @@ export interface TuningConfig {
     handInjuryPenalty: number;
     handIllPenalty: number;
     handDrunkPenalty: number;
+    /** 223차 — 도면 최소 레벨보다 10 높을 때마다 성공 배수 몫 · 상한 */
+    levelBonusPer10: number;
+    levelBonusCap: number;
+    /** 223차 — 분해: 도면 재료 1단위를 돌려받는 확률(산출 수로 나눈다) */
+    scrapReturn: number;
+    /** 223차 — 분해로 도면을 깨칠 확률에 손재주 1점마다 더하는 몫 · 상한 */
+    scrapLearnPerDex: number;
+    scrapLearnCap: number;
     /** 상비약 1개가 앞당기는 자연치유 시간(활동 분) */
     medicineShortenMin: number;
     /** 붕대·부목 기본 재발 억제 — `life_firstaid`와 곱해진다 */
@@ -1517,6 +1525,7 @@ export const TUNING: TuningConfig = {
     qualityGood: 0.22, qualityGreat: 0.03, qualityBonusCap: 0.1,
     masterySuccessPerLv: 0.01, masteryTimePerLv: 0.02, masteryQualityPerLv: 0.01, masteryFailShare: 0.2,
     handFatigueAt: 0.8, handFatiguePenalty: 0.1, handInjuryPenalty: 0.15, handIllPenalty: 0.08, handDrunkPenalty: 0.1,
+    levelBonusPer10: 0.03, levelBonusCap: 0.09, scrapReturn: 0.4, scrapLearnPerDex: 0.004, scrapLearnCap: 0.8,
     medicineShortenMin: 60, medicRelapseMult: 1,
     workbenchPrice: 180_000, hospitalFee: 45_000,
   },
@@ -1685,6 +1694,8 @@ export const TUNING_META: TuningParamMeta[] = [
   { path: 'craft.cancelFullUpTo', min: 0, max: 1, step: 0.05, category: 'balance', label: '제작 취소 전액 반환 진행 상한' },
   { path: 'craft.cancelHalfUpTo', min: 0, max: 1, step: 0.05, category: 'balance', label: '제작 취소 절반 반환 진행 상한' },
   { path: 'craft.qualityGood', min: 0, max: 1, step: 0.01, category: 'balance', label: '제작 품질 좋음 기본 확률' },
+  { path: 'craft.scrapReturn', min: 0, max: 1, step: 0.05, category: 'balance', label: '분해 재료 돌려받는 확률' },
+  { path: 'craft.levelBonusCap', min: 0, max: 0.3, step: 0.01, category: 'balance', label: '제작 레벨 차 성공 보정 상한' },
   { path: 'craft.qualityGreat', min: 0, max: 0.5, step: 0.01, category: 'balance', label: '제작 품질 훌륭함 기본 확률' },
   { path: 'craft.medicineShortenMin', min: 0, max: 120, step: 5, category: 'balance', label: '상비약 치유 단축(분)' },
   { path: 'craft.hospitalFee', min: 0, max: 200_000, step: 5000, category: 'balance', label: '병원 진료비(원)' },

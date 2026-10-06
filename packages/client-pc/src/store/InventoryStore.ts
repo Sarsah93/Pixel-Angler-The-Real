@@ -253,6 +253,8 @@ export interface InvItem {
   fault?: GearFaultId;
   /** 222차 — 손으로 만든 장비의 품질(좋음 · 훌륭함). 고장이 날 때 그만큼 버틴다(`setFault`) */
   craftQuality?: 'good' | 'great';
+  /** 223차 — 도면 종이: 읽으면 이 도면(core `CRAFT_BLUEPRINTS` id)을 만들 줄 알게 된다 */
+  blueprintId?: string;
   /**
    * 136차 — 누적 사용 횟수(던지고 감은 사이클). 로드·릴은 마모 계수의 입력,
    * 찌는 부력 변성 판정 시점(300회)의 입력이다.

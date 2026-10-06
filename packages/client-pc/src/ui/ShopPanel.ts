@@ -41,6 +41,7 @@ import {
   ReserveMode, RESERVE_LABEL,
 } from '../data/Consignment.js';
 import { ConsignQueue } from '../store/ConsignQueue.js';
+import { CraftingStore } from '../store/CraftingStore.js';
 import { isConsignmentOpen, minutesUntilConsignment, consignmentFeeRate, coopDuesFeeCut, REGION_DATABASE } from '@tra/core';
 import { t, getLocale } from '../i18n/I18n.js';
 
@@ -696,7 +697,8 @@ export class ShopPanel extends DraggablePanel {
 
   /** 141차 — 메인 퀘스트가 열기 전엔 목록에 없다(잠금 표시도 없음: 이야기가 알려 준다) */
   private buyables(): ShopEntry[] {
-    return this.shop.sells.filter((e) => !e.unlockKey || GameState.getFlag(`unlock.shop.${e.unlockKey}`));
+    return this.shop.sells.filter((e) => (!e.unlockKey || GameState.getFlag(`unlock.shop.${e.unlockKey}`))
+      && !(e.blueprintId && CraftingStore.knows(e.blueprintId)));   // 223차 — 아는 도면 종이는 안 판다
   }
 
   /** 221차 — 즐겨찾기 탭 머리줄(개수 · 「모두 담기」). 그리드 시작 y를 돌려준다 */

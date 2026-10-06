@@ -32,6 +32,7 @@
 | client 데이터 | `data/ItemVitals.ts` | 소모품 효과 **단일 테이블**(음식 회복치·보양식 버프·카페인 리바운드·구급품) — 상점·시드·**세이브 백필** 공유 | ✅ 129 |
 | client 데이터 | `data/CraftOutputs.ts` | 산출 id → 인벤토리 템플릿 (상점에 있는 물건은 카탈로그 재사용) | ✅ 129 |
 | client 상태 | `store/CraftingStore.ts` | **두 줄 대기열**(손: 손이 비어 있을 때만 · 2초 넘는 틈은 버림 / 작업대: 오프라인 최대 8시간) · 개당 재료 · 진행 이월 · 보관함 · 취소 · 세이브 | ✅ 129 · 222 |
+| client 데이터 | `data/ShopCatalog.ts` 도면 종이 · `InvItem.blueprintId` | 도면 DB `learn.shop`이 가게 · 값을 정한다(자동 진열) · 아는 도면은 `ShopPanel`이 뺀다 | ✅ 223 |
 | client UI | `ui/CraftBoard.ts` · `ui/AdvancedCraftPanel.ts` · `ui/CraftResultDialog.ts` | 제작 보드(종류별 도면 › 상세·수량·시간·성공률) — **U '제작' 탭과 「작업대」 팝업이 공유** · 결과 창 · HUD 제작 칩(`RegionHud.refreshCraftChip`) | ✅ 129 · 222 |
 | core 계약 | `types/License.ts` | `LicenseCategory` 6군(낚시·해루질·통발·토지/주거·선박/어업·사업) · 16종(122차 +7) · `nameEn/descriptionEn/plannedNote` | ✅ 122 |
 | client 상태 | `store/GameState.ts` | `skillTree` 세이브 · `canLearnSkill/learnSkill` · `skillMult/skillBonus` · **`grantXp`·`addActivityXp`·`addLawfulReleaseXp`** · **`vitals`/`maxHp`/`maxFatigue`·`tickVitals`·`applyVitalsAction`·`applyIntake`·`sleepRecover`·`statuses`·`moveSpeedMult`** | ✅ 122·124·125 |
@@ -104,6 +105,7 @@ learnSkill(id): ranks[id]++ · markDirty   (세이브 `skillTree`)
 | **제작·스킬 UI 영문화** | ✅ | 131 — `buildRuntimeDict`에 제작 DB 합류 + 사전 156·규칙 16 (en 한국어 잔존 0) |
 | **상태이상·생존 지표 픽셀 아이콘 + 앵커 호버 팝업** | ✅ | 128 — `PixelIconArt` 13종 · `StatusBadge.icon` · 텍스트 약어 제거 |
 | **제작 시스템 (스펙 P7)** | ✅ | 129 — 도면 14종 · U '제작' 탭 · 고급 제작대 설치물 + [F] |
+| **도면 얻기 · 분해 · 도면 40종**(기획 C5 — 상점 도면 종이 · 가방 「도면 읽기」/「분해하기」 · 모르는 도면 숨김 · 레벨 차 보정) | ✅ | **223** — [워크로그](../03-WORKLOG/2026-10-06-223-blueprint-learning-scrap.md) |
 | **시간 걸리는 제작**(제작 확장 기획 1단계 — 두 줄 대기열 · 오프라인 · 취소 · 품질 · 숙련 · 손재주 · HUD 칩 · 결과 창 · 「작업대」 이름) | ✅ | **222** — [워크로그](../03-WORKLOG/2026-10-06-222-timed-crafting-skill-overhaul.md) |
 | **구급품 3종 + 상태이상 치료 배선** | ✅ | 129 — 약국 판매 + 제작 · `GameState.applyRemedy` |
 | **병원(보건소) 진료** | 🔶 홈타운만 | 129 — 홈타운 보건소 ✅ / **출조 지역 POI는 OSM 백필 대기**(네트워크) |
@@ -152,7 +154,7 @@ learnSkill(id): ranks[id]++ · markDirty   (세이브 `skillTree`)
   원안과 다른 수치(기본 체력 100 vs 50 · 사망 재화 15% vs 80% + 가방 전부)는 사용자 확인 대기.
   미구현: 붕대·부목 유지 시간 뒤 재발 · 이상고열 입원 3일 · 레벨로 열리는 전용 지역 · 구 해루질 씬 생존 지표.
 - **제작 확장 기획** `.agents/CRAFTING_EXPANSION_SPEC.md` — 222차에 1단계(시간 · 대기열 · 취소 · 품질 · 숙련) 구현.
-  남은 것: 재료 체인 · 광질(봉돌 주조는 작업대) · 작업대 업그레이드.
+  223차에 C5(도면 얻기 · 분해 · 40종). 남은 것: 재료 체인 · 광질(봉돌 주조는 작업대) · 작업대 업그레이드 · 도면 퀘스트/우호도 보상.
 - 221차 점검의 수치 결정은 222차에 확정: 기본 체력 100 · 사망 재화 15%(가방 유지) · 판매 수량 창 1부터.
 - ~~퀘스트 진행 판정 + 일지 상태 실갱신~~ ✅134 — `StoryStore`(S22). 레거시 `GameState.quests`는 면허 요구조건용으로만 잔존.
 
@@ -269,3 +271,10 @@ learnSkill(id): ranks[id]++ · markDirty   (세이브 `skillTree`)
   (`setFreshnessMult` · `CoolerStore.chumAmountMult` · `ShopStore.stockMult` · `MarketStore.saturationMult` · `setAuctionBidMult`).
 - **EN 규칙은 위에서부터 첫 일치** — 일반 규칙(`^(.+)  ·  (.+)$` · `개` 규칙)이 아래 구체 규칙을 가린다.
   새 문장 규칙은 `EN_RULES` 맨 위 블록에 둔다. 조각 `t()`를 이어 붙이지 말고 **문장 하나**로 만든다.
+
+### [223차] 도면 얻기 · 분해
+
+- **얻는 길이 없는 도면 = 처음부터 안다** — 세이브 `known`은 얻은 것만 담는다. 새 도면에 `learn`을 붙이면 구세이브도 모르는 채로 시작하고,
+  **기존 도면에 `learn`을 나중에 붙이면 이미 쓰던 사람이 도면을 잃는다**(그럴 땐 deserialize에서 백필할 것).
+- **분해로 깨치는 도면의 산출물은 가게에서 팔아야 한다** — 메탈지그는 시드에만 있어 풀어 볼 물건이 없었다(상점 도면으로 돌림).
+- 분해 반환은 `scrapReturn / 산출 수` — 한 번에 여러 개 나오는 도면을 산출 수로 나누지 않으면 「사서 풀어 재료 벌기」가 생긴다.
