@@ -34,9 +34,29 @@
          */
         image-rendering: auto !important;
       }
+      /* 219차 — 로딩 가림막(ui/LoadingOverlay.ts). 페이지를 열자마자 보이고, 메인 화면이 그려지면 걷힌다 */
+      #loading-overlay {
+        position: fixed; inset: 0; z-index: 10;
+        display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+        background: #0a0e14; color: #e8f4fd; opacity: 1; transition: opacity 0.25s ease;
+        font-family: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+        user-select: none; pointer-events: auto;
+      }
+      #loading-overlay.lo-fading { opacity: 0; pointer-events: none; }
+      #loading-overlay.lo-hidden { display: none; }
+      #loading-overlay .lo-title {
+        font-family: "Press Start 2P", monospace; font-size: 22px; letter-spacing: 2px;
+        text-shadow: 3px 3px 0 #001a33;
+      }
+      #loading-overlay .lo-stage { font-size: 15px; color: #8fb8cf; min-height: 22px; }
+      #loading-overlay .lo-bar {
+        width: min(360px, 70vw); height: 8px; background: #1a2535; border: 1px solid #2c4258; visibility: hidden;
+      }
+      #loading-overlay .lo-fill { width: 0%; height: 100%; background: #4af2a1; transition: width 0.15s linear; }
     </style>
-    <script type="module" crossorigin src="./assets/index-nG1WJAce.js"></script>
+    <script type="module" crossorigin src="./assets/index-rSr1C7ob.js"></script>
   </head>
   <body>
+    <div id="loading-overlay"><div class="lo-title">Loading...</div><div class="lo-stage"></div><div class="lo-bar"><div class="lo-fill"></div></div></div>
   </body>
 </html>
