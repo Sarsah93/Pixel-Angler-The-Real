@@ -24,6 +24,8 @@ export interface CoachStage {
   anchor?: () => TourRect | null | undefined;
   side?: 'left' | 'right' | 'auto';
   dockY?: number;
+  /** 219차 — 이 단계에서 허용하는 세상 행동 id(`TourStep.focus`) — 없으면 막지 않는다 */
+  focus?: string[];
 }
 
 export class PrologueCoach {
@@ -79,6 +81,7 @@ export class PrologueCoach {
           target: want.target,
           side: want.side,
           dockY: want.dockY,
+          focus: want.focus,
           // 단계가 바뀌면 update()가 접는다 — 스스로는 끝나지 않는다
           wait: () => false,
         }],

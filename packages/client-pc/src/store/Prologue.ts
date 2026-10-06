@@ -15,12 +15,18 @@
  *    순서를 어겨 먼저 해 둔 행동도 플래그로 남아 있다가 차례가 오면 바로 닫힌다 — 막힘(데드락)이 없다.
  *  - 단축키는 배운 만큼만 열린다(`prologueKeyAllowed`) — 아직 배우지 않은 창이 튀어나오지 않게.
  *  - 구세이브(이미 집을 떠난 사람)는 StoryStore가 앞 14개를 완료로 채워 둔다(`remapPrologue`).
+ *  - 219차 — **진행 막힘 안전망**(사용자 리포트: 오징어를 꺼냈다가 냉동고에 다시 넣고 나서면 판매 단계에서 막혔다).
+ *    ① 단계에 필요한 물건(대 · 릴 · 사진 · 오징어)은 그 단계가 끝날 때까지 버리기 · 먹기 · 보관 · 요리 · 거래를 막는다
+ *       (`prologueProtects` — 창들이 묻는다).
+ *    ② 그래도 사라졌으면 `syncPrologue()`가 되살린다 — 냉장고에 있으면 꺼내 오고, 없으면 다시 준다(`repairPrologue`).
  */
 
 import { getStoryQuest } from '@tra/core';
 import { GameState } from './GameState.js';
 import { StoryStore } from './StoryStore.js';
-import { InventoryStore, type InvItem } from './InventoryStore.js';
+import { InventoryStore, FATHER_BOX_ITEMS, type InvItem } from './InventoryStore.js';
+import { FridgeStore, type FridgeSection } from './FridgeStore.js';
+import { QUEST_REWARD_ITEMS } from '../data/QuestRewardItems.js';
 
 const QID = 'M1-01';
 
@@ -93,9 +99,75 @@ function value(key: string): number {
   }
 }
 
+/** 아버지 상자 물건 id — 순환 import를 피하려고 처음 쓸 때 만든다 */
+let boxIds: Set<string> | null = null;
+const isBoxItem = (id: string): boolean => (boxIds ??= new Set(FATHER_BOX_ITEMS.map((t) => t.id))).has(id);
+
+/**
+ * 219차 — 이 물건을 지금 잃으면(버리기 · 먹기 · 보관 · 요리 · 거래) 프롤로그가 막히는가.
+ * 참이면 그 행동을 막고 「아직 필요한 물건이다」를 알린다.
+ */
+export function prologueProtects(id: string): boolean {
+  if (!StoryStore.isActive(QID)) return false;
+  if (id === PROLOGUE_SQUID_ID) return !prologueStepDone('sell');
+  if (id === PROLOGUE_PHOTO_ID) return !prologueStepDone('photo');
+  if (isBoxItem(id)) return !prologueStepDone('rod') || !prologueStepDone('reel');
+  return false;
+}
+
+/** 219차 — 막을 때 보여 줄 한 줄 */
+export const PROLOGUE_PROTECT_MSG = '지금 꼭 필요한 물건이다. 할 일을 마친 뒤에 정리하자.';
+
+/** 219차 — 냉장고 · 냉동고에서 그 물건을 꺼낸다(있으면) */
+function takeFromFridge(id: string): InvItem | null {
+  for (const sec of ['freezer', 'fridge'] as FridgeSection[]) {
+    for (let i = 0; i < FridgeStore.capacity(sec); i++) {
+      if (FridgeStore.get(sec, i)?.id === id) return FridgeStore.take(sec, i);
+    }
+  }
+  return null;
+}
+
+let repairing = false;
+/**
+ * 219차 — 단계에 필요한 물건이 사라졌으면 되살린다(진행 막힘 방지). `syncPrologue()`가 매번 부른다.
+ *  - 상자를 연 뒤 대 · 릴 단계가 남았는데 가방(착용 포함)에 없으면 다시 넣는다.
+ *  - 사진 단계가 남았는데 사진이 없으면 다시 넣는다.
+ *  - 오징어를 챙긴 뒤 판매 단계가 남았는데 가방에 없으면 — 냉장고에 있으면 꺼내 오고, 없으면 다시 준다.
+ */
+export function repairPrologue(): boolean {
+  if (repairing || !StoryStore.isActive(QID)) return false;
+  repairing = true;
+  let fixed = false;
+  try {
+    const boxOpen = GameState.getFlag(flagKey('box'));
+    if (boxOpen && (!prologueStepDone('rod') || !prologueStepDone('reel'))) {
+      for (const tpl of FATHER_BOX_ITEMS) {
+        if (InventoryStore.find(tpl.id)) continue;
+        const back = takeFromFridge(tpl.id);
+        InventoryStore.addItem(back ?? { ...tpl }, 1);
+        fixed = true;
+      }
+    }
+    if (boxOpen && !prologueStepDone('photo') && !InventoryStore.find(PROLOGUE_PHOTO_ID)) {
+      const photo = QUEST_REWARD_ITEMS.find((q) => q.id === PROLOGUE_PHOTO_ID);
+      if (photo) { InventoryStore.addItem(takeFromFridge(PROLOGUE_PHOTO_ID) ?? { ...photo, bound: true }, 1); fixed = true; }
+    }
+    if (GameState.getFlag(flagKey('squid')) && !prologueStepDone('sell') && !InventoryStore.find(PROLOGUE_SQUID_ID)) {
+      InventoryStore.addItem(takeFromFridge(PROLOGUE_SQUID_ID) ?? prologueSquid(), 1);
+      fixed = true;
+    }
+    if (fixed) GameState.markDirty();
+  } finally {
+    repairing = false;
+  }
+  return fixed;
+}
+
 /** 앞에서부터 차례로 — 조건이 서 있는 목표를 닫고, 처음 막히는 곳에서 멈춘다 */
 export function syncPrologue(): void {
   if (!StoryStore.isActive(QID)) return;
+  repairPrologue();
   const q = getStoryQuest(QID);
   if (!q) return;
   for (let i = 0; i < q.objectives.length; i++) {

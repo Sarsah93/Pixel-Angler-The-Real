@@ -17,6 +17,8 @@ import Phaser from 'phaser';
 import { tagUiRect } from '../ui/ScreenReserve.js';
 import { GameState } from '../store/GameState.js';
 import { TitleStore } from '../store/TitleStore.js';
+import { showLoadingThen } from '../ui/LoadingOverlay.js';
+import { inPrologue } from '../store/Prologue.js';
 import {
   SPOT_DATABASE,
   REGION_DATABASE,
@@ -1210,8 +1212,9 @@ export class WorldMapScene extends Phaser.Scene {
     // 전환 중 재클릭 가드 — 요금 차감보다 먼저 (없으면 페이드 중 더블클릭에 요금이 이중 차감된다)
     if (this.isTransitioning) return;
     // 출조 요금 (일괄 — TransportProfile 확장 자리). 잔액 부족 시 출조 불가.
-    const fare = computeTravelFare(region.id);
     const coins = GameState.player.inventory.coins;
+    // 219차 — 프롤로그(첫 장보기 · 판매) 중에 차비가 모자라면 오도 가도 못 한다 → 그때만 차비를 받지 않는다
+    const fare = inPrologue() && coins < computeTravelFare(region.id) ? 0 : computeTravelFare(region.id);
     if (coins < fare) {
       this.showFareAlert(`교통비가 부족합니다 (₩${fare.toLocaleString()}) — 보유 ₩${coins.toLocaleString()}`);
       return;
@@ -1222,7 +1225,8 @@ export class WorldMapScene extends Phaser.Scene {
 
     GameState.setCurrentSpot(area.id);
     this.fadeOutThen(() => {
-      this.scene.start('RegionFieldScene', { region: region.id, mapId: area.fieldMapId });
+      // 219차 — 검은 화면 대신 「Loading...」 가림막을 먼저 그리고 지역을 연다
+      showLoadingThen('맵 불러오는 중', () => this.scene.start('RegionFieldScene', { region: region.id, mapId: area.fieldMapId }));
     });
   }
 
@@ -1260,7 +1264,7 @@ export class WorldMapScene extends Phaser.Scene {
   /** 홈타운(집) 귀가 — 무료 (TUNING.travel.returnFareKrw = 0, 하루 왕복권 개념) */
   private goHome(): void {
     this.fadeOutThen(() => {
-      this.scene.start('RegionFieldScene', { region: 'hometown' });
+      showLoadingThen('맵 불러오는 중', () => this.scene.start('RegionFieldScene', { region: 'hometown' }));
     }, 280);
   }
 

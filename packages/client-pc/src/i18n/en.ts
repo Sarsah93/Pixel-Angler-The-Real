@@ -46,7 +46,7 @@ const EN_BASE: Record<string, string> = {
   '할 일을 마쳤다 — 일지(J)에서 확인': 'Task complete — check the journal (J)',
   '숙소로 돌아간다 — 버스 정류장 [F] → 전국 지도 → [집으로 돌아가기]': 'Go back to the lodging — bus stop [F] → national map → [Go home]',
   '아무 상점 문 앞에서 [F] → 거래 창을 연다': 'Press [F] at any shop door → open the trade window',
-  '그 장소로 이동한다': 'Go to that place', '집 침대 [F] → [저장하고 쉬기]': 'Home bed [F] → [Save and rest]', '대화로 진행한다': 'Progress through dialogue',
+  '그 장소로 이동한다': 'Go to that place', '집 침대 [F] → [저장만 하기]': 'Home bed [F] → [Save only]', '대화로 진행한다': 'Progress through dialogue',
   '방파제(테트라포드 틈 = 짧게 클릭 · 캐스팅 = 길게)': 'the breakwater (tetrapod gap = short click · cast = hold)', '테트라포드 틈에서 짧게 클릭': 'a tetrapod gap with a short click', '물가': 'the waterside',
   '낚은 뒤 어획 창에서 [방생하기] (금지체장·금어기 개체는 자로 재고 놓아준다)': 'After landing, choose [Release] (measure undersized/closed-season fish and let them go)',
   'U 요리 탭 — 원물을 도마에 올려 [손질 시작]': 'U Cooking tab — put the whole fish on the board → [Start butchering]',

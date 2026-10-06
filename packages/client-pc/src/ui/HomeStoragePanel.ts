@@ -16,6 +16,7 @@ import { maybeStartTour, type TourOptions } from './GuideTour.js';
 import { GameState } from '../store/GameState.js';
 import { InventoryStore, type InvItem } from '../store/InventoryStore.js';
 import { HomeStore, HOME_STORAGE, type HomeStorageKind } from '../store/HomeStore.js';
+import { prologueProtects, PROLOGUE_PROTECT_MSG } from '../store/Prologue.js';
 
 const PANEL_W = 620;
 const PANEL_H = 430;
@@ -174,6 +175,8 @@ export class HomeStoragePanel extends DraggablePanel {
   private deposit(item: InvItem): void {
     const live = InventoryStore.items.find((i) => i === item) ?? InventoryStore.find(item.id);
     if (!live || !HomeStore.accepts(this.kind, live)) return;
+    // 219차 — 프롤로그에 아직 쓸 물건은 넣어 두지 않는다(진행 막힘 방지)
+    if (prologueProtects(live.id)) { this.setStatus(PROLOGUE_PROTECT_MSG, '#ff9a7a'); return; }
     const { slot: _s, qty, ...rest } = live;
     if (!HomeStore.put(this.kind, { ...rest, slot: 0, qty } as InvItem, qty)) {
       this.setStatus(`${TITLE[this.kind]}이 가득 찼다`, '#ff9a7a');

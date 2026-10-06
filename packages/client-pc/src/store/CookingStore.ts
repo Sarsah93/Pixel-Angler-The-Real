@@ -21,6 +21,7 @@ import {
 import { GameState } from './GameState.js';
 import { InventoryStore, type InvItem, type InvItemTemplate } from './InventoryStore.js';
 import { DiscoveryStore } from './DiscoveryStore.js';
+import { prologueProtects, PROLOGUE_PROTECT_MSG } from './Prologue.js';
 
 export const HOME_STOVE_ID = 'home_stove';
 /** 요리 아이템 신선도 배율 — dishStarsAt(condMult) */
@@ -160,6 +161,7 @@ class CookingStoreClass {
   addIngredientItem(st: DeployedStove, item: InvItem, units: number): CookActionResult {
     const m = ingredientOfItem(item);
     if (!m) return { ok: false, message: '조리 재료가 아닙니다' };
+    if (prologueProtects(item.id)) return { ok: false, message: PROLOGUE_PROTECT_MSG };   // 219차 — 프롤로그 판매용 오징어
     const def = getCookIngredient(m.ing);
     if (!def) return { ok: false, message: '조리 재료가 아닙니다' };
     if (item.condition === 'bad' || item.condition === 'spoiled') return { ok: false, message: `${item.name} — 상해서 넣을 수 없습니다` };

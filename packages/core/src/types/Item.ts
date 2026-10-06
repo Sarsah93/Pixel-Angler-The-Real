@@ -53,8 +53,8 @@ export type ItemUsePurpose =
 /** 아이템을 최초로 획득한 경로 */
 export type ItemSourceVendor =
   | 'tackle_shop'   // 낚시용품점
-  | 'hanaro_mart'   // 농협 하나로마트
-  | 'convenience'   // 편의점 (GS25 등)
+  | 'hanaro_mart'   // 농협 한마음마트
+  | 'convenience'   // 편의점 (GX24 등)
   | 'fish_market'   // 직판장 / 수산 어판장
   | 'self_caught'   // 플레이어 직접 낚시·해루질·통발
   | 'foraged';      // 현장 채집 (갯바위 홍합 등)

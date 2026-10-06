@@ -486,7 +486,7 @@ export const YOIL_BAY_BUILDINGS: Building[] = [
     action: 'TackleRoomScene',
     hint: '[E] 장비/미끼 구매',
   },
-  // 농협 하나로마트
+  // 농협 한마음마트
   {
     id: 'hanaro_mart',
     label: '농민조합 한마음마트',

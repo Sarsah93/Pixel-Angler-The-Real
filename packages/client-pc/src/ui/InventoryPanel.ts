@@ -36,6 +36,7 @@ import { GEAR_FAULTS, TUNING } from '@tra/core';
 import { playEatSfx } from '../audio/Sfx.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { maybeStartTour, type TourOptions } from './GuideTour.js';
+import { prologueProtects, PROLOGUE_PROTECT_MSG } from '../store/Prologue.js';
 
 /** 190차 — 식탁 식사 보너스 (허기 회복량의 25% 추가) */
 const TABLE_MEAL_BONUS = 0.25;
@@ -721,6 +722,7 @@ export class InventoryPanel extends DraggablePanel {
         label: '사용하기',
         color: '#4af2a1', hoverColor: '#8dffce',
         run: () => {
+          if (this.protectedNow(item)) return;
           // 127차 P5 — 리스펙(조업 재교육 이수증): 되돌릴 수 없으니 확인창을 거친다
           if (item.skillReset) {
             const spent = GameState.skillPointsTotal() - GameState.skillPointsAvailable();
@@ -906,6 +908,7 @@ export class InventoryPanel extends DraggablePanel {
       actions.push({
         label: '내려놓기',
         run: () => {
+          if (this.protectedNow(item)) return;
           const res = { ok: false, message: '여기서는 내려놓을 수 없습니다.' };
           this.scene.events.emit('inventory-place', item, res);
           this.setStatus(res.message);
@@ -917,12 +920,12 @@ export class InventoryPanel extends DraggablePanel {
     actions.push({
       label: '버리기',
       color: '#ff6b6b', hoverColor: '#ff9a9a',
-      run: () => this.confirmDiscard(item, false),
+      run: () => { if (!this.protectedNow(item)) this.confirmDiscard(item, false); },
     });
     actions.push({
       label: '완전제거',
       color: '#ff6b6b', hoverColor: '#ff9a9a',
-      run: () => this.confirmDiscard(item, true),
+      run: () => { if (!this.protectedNow(item)) this.confirmDiscard(item, true); },
     });
     actions.push({ label: '취소', run: () => { /* 메뉴만 닫음 */ } });
 
@@ -1095,6 +1098,13 @@ export class InventoryPanel extends DraggablePanel {
   private closeContextMenu(): void {
     this.contextMenu?.destroy();
     this.contextMenu = undefined;
+  }
+
+  /** 219차 — 프롤로그에 아직 필요한 물건(대 · 릴 · 사진 · 오징어)은 버리기 · 먹기 · 내려놓기를 막는다(진행 막힘 방지) */
+  private protectedNow(item: InvItem): boolean {
+    if (!prologueProtects(item.id)) return false;
+    this.setStatus(PROLOGUE_PROTECT_MSG);
+    return true;
   }
 
   /** 버리기/완전제거 확인창 — "정말 버리시겠습니까?" 예/아니오 */

@@ -104,7 +104,7 @@ import { PrologueCoach, type CoachStage } from '../ui/PrologueCoach.js';
 import {
   prologueKeyAllowed, markPrologue, syncPrologue, prologueRunning, prologueStepDone,
   noteProloguePurchase, notePrologueSale, PROLOGUE_PHOTO_ID,
-  inPrologue, PROLOGUE_BUY_KINDS,
+  inPrologue, PROLOGUE_BUY_KINDS, prologueProtects, buyKindOf,
 } from '../store/Prologue.js';
 import { DialoguePanel, type DialogueSceneRequest } from '../ui/DialoguePanel.js';
 import { GeneralMeetingPanel } from '../ui/GeneralMeetingPanel.js';
@@ -178,6 +178,7 @@ import { DayReportPanel } from '../ui/DayReportPanel.js';
 import { InteriorSystem } from './field/InteriorSystem.js';
 import { interiorLayoutOf, interiorTemplateOf, homeLayoutOf, type InteriorAction, type InteriorLayout } from '../data/InteriorLayouts.js';
 import { homeLineOf } from '../data/StoryDialogue.js';
+import { hideLoadingAfterRender, isLoadingShown, setLoadingProgress, setLoadingStage, stageForFile } from '../ui/LoadingOverlay.js';
 import { setAmbience } from '../audio/Ambience.js';
 import { BuildingKind, BUILDING_LABEL, BUILDING_GOODS, BUILDING_HOURS, shopHoursState, BUILDING_KIND_CYCLE, SHOP_CATALOG, ShopEntry } from '../data/ShopCatalog.js';
 
@@ -539,6 +540,9 @@ export class RegionFieldScene extends Phaser.Scene {
     // 이전 Text/RenderTexture를 새 지역 데이터로 갱신하려다 폐기된 Frame을
     // 참조할 수 있으므로, 새 create가 준비될 때까지 필드 루프를 잠근다.
     this.bootFailed = true;
+    // 219차 — 지역 진입 가림막(「Loading...」 · 단계 이름)은 첫 화면이 그려진 뒤 걷는다.
+    //   create()에 중간 return이 있어도 CREATE 이벤트는 끝에 한 번 온다.
+    this.events.once(Phaser.Scenes.Events.CREATE, () => hideLoadingAfterRender(this.game, 2));
     this.region = dataIn.region;
     this.graph = REGION_MAP_GRAPHS[this.region];
     // 심리스 모드 판정 — 등록 지역이면 맵 그래프(엣지 전환)를 무시하고 단일 맵으로 연다.
@@ -641,6 +645,20 @@ export class RegionFieldScene extends Phaser.Scene {
   }
 
   preload(): void {
+    // 219차 — 가림막이 떠 있으면 파일 이름 대신 단계 이름 + 진행 막대(맵 데이터 · 맵 그림 · 인물 …)
+    if (isLoadingShown()) {
+      const onProg = (v: number): void => setLoadingProgress(v);
+      const onFile = (f: { key: string; url?: unknown; type?: string }): void => setLoadingStage(stageForFile(f, true));
+      this.load.on('progress', onProg);
+      this.load.on('fileprogress', onFile);
+      const off = (): void => {
+        this.load.off('progress', onProg);
+        this.load.off('fileprogress', onFile);
+        setLoadingStage('맵 그리는 중');
+      };
+      this.load.once('complete', off);
+      this.events.once(Phaser.Scenes.Events.CREATE, () => { this.load.off('complete', off); off(); });
+    }
     const key = `rmap_${this.mapId}`;
     if (this.seamlessDef) {
       // 심리스 — 단일 seamless.json + OSM POI + 지역 메타 (스펙 §1 산출물)
@@ -1336,7 +1354,8 @@ export class RegionFieldScene extends Phaser.Scene {
     LedgerStore.region(this.region);   // 211차 — 하루 기록 다닌 곳
     this.time.delayedCall(1500, () => this.maybeShowUnseenDay(0));   // 211차 — 자는 사이 넘어간 하루
     // 188차 — 프롤로그: 홈타운 밖(속초)에 내리면 「막차를 타고 속초로 간다」
-    if (this.region !== 'hometown') markPrologue('arrive'); else syncPrologue();
+    // 219차 — 프롤로그 목적지는 속초뿐(다른 지역에 내려도 「속초에 도착」으로 닫지 않는다)
+    if (this.region === 'gangwon_sokcho') markPrologue('arrive'); else syncPrologue();
     MapPinStore.onChange = () => this.refreshQuestMarkers(true);
     this.events.once('shutdown', () => { MapPinStore.onChange = null; });
     StoryStore.onNotify = (m) => {
@@ -1778,7 +1797,7 @@ export class RegionFieldScene extends Phaser.Scene {
     if ((poi.type === 'restaurant' && seafoodName) || (poi.type === 'shop' && kind === 'seafood' && /횟집|회/.test(name))) {
       return `ts_gem_sashimi_${1 + (Math.floor(h * 2) % 2)}`;
     }
-    // 217차 — 노점 그림은 **진짜 좌판**에만(시장 · 수산 좌판). 다이소 · 마트처럼 건물인 가게가
+    // 217차 — 노점 그림은 **진짜 좌판**에만(시장 · 수산 좌판). 사이소 · 마트처럼 건물인 가게가
     //  길가 노점으로 서 있던 것(사용자 지적 「밖에서 상점처럼 상호작용」)을 걷었다.
     if (this.isStallPoi(poi)) return `ts_gem_popup_${1 + (Math.floor(h * 4) % 4)}`;
     if (poi.type === 'lodging') {
@@ -2674,7 +2693,7 @@ export class RegionFieldScene extends Phaser.Scene {
       if (ev.shiftKey) { this.runLegacyInteract(true); return; }
       // 178차 — 상호작용이 겹치면 무엇을 할지 고른다 (하나면 바로 실행)
       const opts = this.collectInteractOptions();
-      if (!opts.length) return;
+      if (!opts.length) { if (this.interactGuideBlocked) GuideTour.nudge(); return; }
       if (opts.length === 1) {
         const only = opts[0];
         // 후보가 하나인데 그 하나가 「펼쳐지는 것」이면(= 바닥에 물건만 여러 개) 그 목록을 바로 연다.
@@ -2699,6 +2718,12 @@ export class RegionFieldScene extends Phaser.Scene {
     this.events.once('shutdown', () => this.endCompose());
     // 191차 — 프롤로그 말풍선 코치(마당 → 속초 직판장). 세대마다 새로 만든다(씬 인스턴스 재사용)
     this.coach = new PrologueCoach(this);
+    // 219차 — 가이드 말풍선 · 테두리가 피할 창: DraggablePanel이 아닌 팝업(전체 지도 등)과 연출 화면
+    GuideTour.setOccluders(this, () => [
+      ...this.popupStack.map((e) => e.panel).filter((pnl) => !(pnl instanceof DraggablePanel) && pnl.active && (pnl as Phaser.GameObjects.Container).visible)
+        .map((pnl) => (pnl as Phaser.GameObjects.Container).getBounds()),
+      this.cinematic?.active ? new Phaser.Geom.Rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT) : null,
+    ]);
     // 178차 — 인벤토리 우클릭 '내려놓기' → 캐릭터가 서 있는 자리에 둔다
     const onPlace = (item: InvItem, res: { ok: boolean; message: string }): void => {
       const r = this.placeItemFromInventory(item);
@@ -2972,17 +2997,40 @@ export class RegionFieldScene extends Phaser.Scene {
       this.floatingHint('낚시 중에는 자전거를 탈 수 없습니다');
       return;
     }
-    // 자전거는 인벤토리(기타)에 보유해야 탈 수 있다
-    if (!GameState.isMounted && !InventoryStore.find('inv_bike')) {
-      this.floatingHint('자전거가 없습니다 — 자전거(기타 인벤토리)를 보유해야 탈 수 있습니다');
-      return;
-    }
+    // 자전거는 인벤토리(기타)에 보유해야 탈 수 있다.
+    // 219차 — 자전거가 없으면 **아무 말도 하지 않는다**(사용자 지적: 자전거를 모르는 사람이 R을 잘못 눌렀는데
+    //  「자전거를 보유해야 탈 수 있다」가 뜨면 요구하지도 않은 정보가 튀어나온 것처럼 보인다). 안내는 자전거를 얻은 뒤 코치가 한다.
+    if (!GameState.isMounted && !InventoryStore.find('inv_bike')) return;
     GameState.isMounted = !GameState.isMounted;
     if (GameState.isMounted) StoryStore.event({ kind: 'custom', key: 'bikeMount' });   // 134차 — M1-10 자전거 목표
+    // 219차 — 자전거 코치: 처음 타면 2단계(달리기 · 저절로 내림)로, 그 뒤 내리면 끝
+    if (GameState.isMounted) { if (!GameState.getFlag('guide.bike.mount')) { GameState.setFlag('guide.bike.mount'); this.bikeCoachMs = 0; } }
+    else if (GameState.getFlag('guide.bike.mount')) GameState.setFlag('guide.bike.done');
     this.bike?.setVisible(GameState.isMounted);
     this.hud?.pushLog(GameState.isMounted
-      ? '[이동] 자전거에 탔습니다 — 이동 속도 2배 (R: 내리기)'
-      : '[이동] 자전거에서 내렸습니다.');
+      ? '[이동] 자전거에 탔다 — 걸을 때보다 두 배 빠르다.'
+      : '[이동] 자전거에서 내렸다.');
+  }
+
+  /** 219차 — 자전거 코치가 둘째 말풍선을 띄운 시간(오래 타면 접는다) */
+  private bikeCoachMs = 0;
+
+  /**
+   * 219차 — 자전거를 얻은 뒤의 단계 안내(사용자 지시: 자전거 안내는 얻은 뒤에 단계적으로).
+   *  1) 가방에 자전거가 생겼는데 아직 안 타 봤다 → [R]로 올라타 보자.
+   *  2) 처음 탔다 → 빠르다 · 가게나 낚시에 들어가면 저절로 내린다 · 내릴 때도 [R] (내리거나 20초 지나면 끝).
+   * 막는 행동은 없다(focus 없음) — 말풍선만 띄운다.
+   */
+  private bikeCoachStage(delta: number): CoachStage | null {
+    if (GameState.getFlag('guide.bike.done') || this.interior) return null;
+    if (!GameState.getFlag('guide.bike.mount')) {
+      if (!InventoryStore.find('inv_bike')) return null;
+      return this.coachDock('bike_get', '자전거가 생겼다. [R]을 눌러 올라타 보자.');
+    }
+    if (!GameState.isMounted) return null;
+    this.bikeCoachMs += delta;
+    if (this.bikeCoachMs > 20000) { GameState.setFlag('guide.bike.done'); return null; }
+    return this.coachDock('bike_ride', '걸을 때보다 두 배 빠르다. 가게에 들어가거나 낚시를 시작하면 저절로 내린다. 내릴 때도 [R]이다.');
   }
 
   /** 하위 씬(낚시/상점 등) 진입 시 자동 하차 — 실내/낚시 중 자전거 금지 */
@@ -3233,6 +3281,26 @@ export class RegionFieldScene extends Phaser.Scene {
     if (!this.invPanel) this.toggleInventory(GAME_WIDTH - 470);
     else this.events.emit('inventory-changed');   // 이미 열린 인벤에 화살표를 그린다
     this.hud?.pushLog(`[상점] ${shop.name} 이용 시작`);
+    if (kind === 'market') this.prologueBuyAid();
+  }
+
+  /**
+   * 219차 — 프롤로그 장보기 안전망. 비싼 물건을 먼저 사 버려 남은 기본 채비(원줄 · 바늘 · 봉돌 · 찌 · 미끼)를
+   * 살 돈이 모자라면 진행이 막힌다(벌 길이 없다) → 그 차액만 채워 준다(비상금).
+   */
+  private prologueBuyAid(): void {
+    if (!inPrologue() || prologueStepDone('buy')) return;
+    const left = PROLOGUE_BUY_KINDS.filter((k) => !GameState.getFlag(`prologue.buy.${k}`));
+    let need = 0;
+    for (const k of left) {
+      const prices = SHOP_CATALOG.market.sells.filter((e) => buyKindOf(e) === k).map((e) => e.price);
+      if (prices.length) need += Math.min(...prices);
+    }
+    const coins = GameState.player.inventory.coins;
+    if (need <= coins) return;
+    GameState.addCoins(need - coins, true, 'quest');
+    GameState.markDirty();
+    this.hud?.pushLog('주머니 안쪽에서 어머니가 넣어 둔 비상금을 찾았다. 꼭 필요한 채비부터 사자.');
   }
 
   // ── 위판 (147차) ───────────────────────────────────
@@ -3300,7 +3368,7 @@ export class RegionFieldScene extends Phaser.Scene {
       const items: InvItem[] = [];
       for (const inp of list) {
         const it = InventoryStore.find(inp.sourceItemId);
-        if (!it) continue;
+        if (!it || prologueProtects(it.id)) continue;   // 219차 — 프롤로그 판매 체험용 물건은 직접 판다
         items.push(JSON.parse(JSON.stringify(it)) as InvItem);
         InventoryStore.removeItem(inp.sourceItemId, true);
       }
@@ -3378,6 +3446,7 @@ export class RegionFieldScene extends Phaser.Scene {
           // 135차 — 구매를 스토리 목표로 쓸 수 있게 이벤트를 흘린다 (M1-04 사이소 저가 장비 등)
           StoryStore.event({ kind: 'custom', key: `buy:${entry.id}` });
           noteProloguePurchase(entry);   // 188차 — 기본 채비 하나씩 사기
+          this.prologueBuyAid();   // 219차 — 남은 채비 살 돈이 모자라면 채워 준다
           TitleStore.recordTrade(MarketStore.branch?.key);   // 203차 — 「단골」
           GameState.addProficiency('haggle');   // 188차 — 흥정 숙련은 사고팔아야 는다
         },
@@ -4440,7 +4509,7 @@ export class RegionFieldScene extends Phaser.Scene {
     this.applyPeerPush(delta);
     this.updateOccluders(delta);
     for (const line of MultiplayerClient.drainChat()) this.hud?.pushLog(`${line.name}: ${line.text}`);
-    this.coach?.update(this.coachStage(), this.coachBlocked());
+    this.coach?.update(this.coachStage() ?? this.bikeCoachStage(delta), this.coachBlocked());
     // 215차 — 건물 실내: 필드 몸은 문 앞에 세워 두고 방 안에서만 움직인다(장면이 시작되면 바로 밖으로)
     if (this.interior) {
       this.playerBody.setVelocity(0, 0);
@@ -4484,28 +4553,29 @@ export class RegionFieldScene extends Phaser.Scene {
    * 짚을 자리 없는 안내의 자리 — 화면 왼편, 상태 창 아래 (꼬리 없음).
    * 오른편은 「지금 할 일」 창 아래로 아이템 알림 카드가 30초씩 쌓여 겹친다(191차 실측).
    */
-  private coachDock(key: string, text: string): CoachStage {
-    return { key, text, anchor: () => new Phaser.Geom.Rectangle(-2, 236, 0, 0), side: 'right', dockY: 236 };
+  /** 219차 — `focus` = 이 단계에서 허용하는 세상 행동(없으면 [] — 가이드 밖 행동은 말풍선이 흔들리며 막힌다) */
+  private coachDock(key: string, text: string, focus: string[] = []): CoachStage {
+    return { key, text, anchor: () => new Phaser.Geom.Rectangle(-2, 236, 0, 0), side: 'right', dockY: 236, focus };
   }
 
   /** 직판장이 열려 있을 때의 자리 — 왼쪽 상점 창과 오른쪽 가방 사이 (191차 실측 500~812px) */
   private coachShopDock(key: string, text: string): CoachStage {
-    return { key, text, anchor: () => new Phaser.Geom.Rectangle(488, 430, 0, 0), side: 'right', dockY: 430 };
+    return { key, text, anchor: () => new Phaser.Geom.Rectangle(488, 430, 0, 0), side: 'right', dockY: 430, focus: [] };
   }
 
   /** 지금 단계의 말풍선 — 집 밖 단계(우물 → 상태 창 → 지도 → 막차 → 직판장 구매·판매) */
   private coachStage(): CoachStage | null {
     if (!inPrologue() || !prologueStepDone('leave')) return null;
     const home = this.region === 'hometown';
-    if (!prologueStepDone('well')) return home ? this.coachDock('well', '마당의 우물 앞에서 [F]를 눌러 물을 한 모금 마시자.') : null;
+    if (!prologueStepDone('well')) return home ? this.coachDock('well', '마당의 우물 앞에서 [F]를 눌러 물을 한 모금 마시자.', ['obj:well', 'obj:door']) : null;
     if (!prologueStepDone('status')) return this.coachDock('status', '물을 마시니 정신이 든다. 단축키 [S]로 상태 창을 열어 몸 상태를 살펴보자.');
     if (!prologueStepDone('map')) return this.coachDock('map', '이제 버스 정류장을 찾자. 단축키 [M]으로 지도를 펼쳐 보자.');
     if (!prologueStepDone('arrive')) {
-      return home ? this.coachDock('arrive', '버스 정류장 앞에서 [F]를 눌러 막차에 오르자. 전국 지도에서 속초를 고르면 된다.') : null;
+      return home ? this.coachDock('arrive', '버스 정류장 앞에서 [F]를 눌러 막차에 오르자. 전국 지도에서 속초를 고르면 된다.', ['obj:bus', 'obj:door']) : null;
     }
     // 197차 — 속초에 다녀와 집(홈타운)에 돌아오면 「속초에 왔다」 말풍선이 다시 떴다(QA). 집에서는 갈 곳만 짚는다
     if (home && (!prologueStepDone('buy') || !prologueStepDone('sell'))) {
-      return this.coachDock('back_to_sokcho', '속초 직판장에서 할 일이 남았다. 버스 정류장 앞에서 [F]를 눌러 다시 속초로 가자.');
+      return this.coachDock('back_to_sokcho', '속초 직판장에서 할 일이 남았다. 버스 정류장 앞에서 [F]를 눌러 다시 속초로 가자.', ['obj:bus', 'obj:door']);
     }
     if (!prologueStepDone('buy')) {
       const left = PROLOGUE_BUY_KINDS.filter((k) => !GameState.getFlag(`prologue.buy.${k}`));
@@ -4514,12 +4584,12 @@ export class RegionFieldScene extends Phaser.Scene {
       if (this.shopPanel) return this.coachShopDock(`buy_${left.join('_')}`, `기본 채비를 하나씩 사 보자. 아직 사지 않은 것: ${names}`);
       // 215차 — 직판장 안: 계산대로
       if (this.interior) return this.coachDock('buy_in', `직판장 안이다. 계산대 앞에 서서 [F]를 눌러 주인에게 물건을 보자. (${names})`);
-      return this.coachDock('buy', `속초에 왔다. 수산물 직판장 앞에서 [F]를 눌러 안으로 들어가자. 기본 채비를 하나씩 사야 한다. (${names})`);
+      return this.coachDock('buy', `속초에 왔다. 수산물 직판장 앞에서 [F]를 눌러 안으로 들어가자. 기본 채비를 하나씩 사야 한다. (${names})`, ['shop:market', 'quest', 'npc']);
     }
     if (!prologueStepDone('sell')) {
       if (this.shopPanel) return this.coachShopDock('sell_tab', '「판매하기」로 바꿔 얼린 오징어를 팔아 보자. 노잣돈에 보탬이 된다.');
       if (this.interior) return this.coachDock('sell_in', '계산대 앞에서 [F]를 눌러, 얼려 온 오징어를 팔아 보자.');
-      return this.coachDock('sell', '직판장에 들어가 계산대에서 얼려 온 오징어를 팔아 보자.');
+      return this.coachDock('sell', '직판장에 들어가 계산대에서 얼려 온 오징어를 팔아 보자.', ['shop:market', 'quest', 'npc']);
     }
     return null;
   }
@@ -6357,7 +6427,7 @@ export class RegionFieldScene extends Phaser.Scene {
     if (this.overpass?.onDeck) return opts;
     // ① 퀘스트 하역 (지정 위치에서 얼음 상자 내려놓기)
     if (this.nearIceDrop) {
-      opts.push({ label: '얼음 상자 내려놓기', note: '경매장 하역 표시', run: () => { this.tryPlaceQuestIceCrate(); } });
+      opts.push({ label: '얼음 상자 내려놓기', note: '경매장 하역 표시', run: () => { this.tryPlaceQuestIceCrate(); }, action: 'quest' });
     }
     // ② 인물과 대화
     if (this.nearNpc) {
@@ -6372,22 +6442,22 @@ export class RegionFieldScene extends Phaser.Scene {
       const home = this.storyNpcs.find((x) => x.def.npcId === id && x.atHome);
       // 216차 — 들일 수 있는 집이고 잘 시간이 아니면 「들어가기」(똑똑 → 안으로). 아니면 문 앞에서(214차)
       const canEnter = !!home && home.homeReason !== 'sleep' && !!homeLayoutOf(id);
-      if (home && canEnter) opts.push({ label: `${home.def.home?.labelKo ?? nm} — 들어가기`, note, run: () => this.visitHome(id) });
-      else if (home) opts.push({ label: `${home.def.home?.labelKo ?? nm} — 문 두드리기`, note, run: () => this.knockDoor(id) });
-      else opts.push({ label: `${nm}${gwa} 대화하기`, note, run: () => this.openDialogue(id) });
+      if (home && canEnter) opts.push({ label: `${home.def.home?.labelKo ?? nm} — 들어가기`, note, run: () => this.visitHome(id), action: 'npc' });
+      else if (home) opts.push({ label: `${home.def.home?.labelKo ?? nm} — 문 두드리기`, note, run: () => this.knockDoor(id), action: 'npc' });
+      else opts.push({ label: `${nm}${gwa} 대화하기`, note, run: () => this.openDialogue(id), action: 'npc' });
     }
     // ③ 오브젝트(문·버스·설치물)
     if (this.nearObject) {
       const o = this.nearObject;
-      opts.push({ label: this.objInteractLabel(o).replace(/^\[F\]\s*/, '').split(' · ')[0], run: () => this.interactWithObject(o, false) });
+      opts.push({ label: this.objInteractLabel(o).replace(/^\[F\]\s*/, '').split(' · ')[0], run: () => this.interactWithObject(o, false), action: `obj:${o.interact ?? 'other'}` });
     }
     // ④ 건물 거래
     if (this.nearBuilding) {
       const { kind, branch, stall } = this.nearBuilding;
       // 215차 — 문 앞 [F]는 안으로 들어간다(거래는 안의 계산대에서)
       // 217차 — 좌판은 안이 없다 — 상인에게 바로 「물건 보기」
-      if (stall) opts.push({ label: `${branch.name || BUILDING_LABEL[kind]} — 물건 보기`, run: () => this.enterBuilding(kind, branch, true) });
-      else opts.push({ label: `${branch.name || BUILDING_LABEL[kind]} — 들어가기`, run: () => this.enterBuilding(kind, branch) });
+      if (stall) opts.push({ label: `${branch.name || BUILDING_LABEL[kind]} — 물건 보기`, run: () => this.enterBuilding(kind, branch, true), action: `shop:${kind}` });
+      else opts.push({ label: `${branch.name || BUILDING_LABEL[kind]} — 들어가기`, run: () => this.enterBuilding(kind, branch), action: `shop:${kind}` });
     }
     // ⑤ 밀려온 불가사리 (자격·크기 제한 없음)
     const washed = this.nuisance?.gatherableNear(this.playerBody.x, this.playerBody.y, TR * 1.4);
@@ -6444,8 +6514,15 @@ export class RegionFieldScene extends Phaser.Scene {
     if (this.trapField?.hasNearTrap) {
       opts.push({ label: '통발 수거하기', hint: this.trapField.nearHintKo ?? undefined, run: () => { this.trapField?.onInteractKey(); } });
     }
-    return opts;
+    // 219차 — 가이드 단계가 허용하지 않는 행동은 빼 둔다(머리 위 [F] 안내도 뜨지 않는다).
+    //   빠진 것만 남았는데 [F]를 누르면 말풍선이 흔들려 지금 할 일을 다시 짚는다(`interactGuideBlocked`).
+    const allowed = opts.filter((o) => GuideTour.allows(o.action ?? 'other'));
+    this.interactGuideBlocked = opts.length > 0 && allowed.length === 0;
+    return allowed;
   }
+
+  /** 219차 — 닿는 상호작용이 있지만 가이드 단계가 전부 막았다 */
+  private interactGuideBlocked = false;
 
   /** 겹침 선택 창 — 캐릭터 아래가 기본 위치, 드래그로 옮길 수 있다 */
   private openInteractChoice(opts: InteractOption[], title = '상호작용'): void {

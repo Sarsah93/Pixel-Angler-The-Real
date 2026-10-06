@@ -345,7 +345,7 @@ export function generateSpotFieldLayout(spot: FishingSpotInfo): SpotFieldLayout 
     currentX += colSpacing;
   }
 
-  // [조건부 4] 하나로마트 또는 편의점 배치
+  // [조건부 4] 한마음마트 또는 편의점 배치
   if (spot.facilities.includes('hanaro_mart')) {
     buildings.push({
       id: 'hanaro_mart',

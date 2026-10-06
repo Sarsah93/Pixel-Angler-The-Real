@@ -467,7 +467,15 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-10-06 218차) — 지도 캡처 6~10 · 게임 상호(실제 상호를 조금씩 바꾸기)**
+**최근 변경 (2026-10-06 219차) — 원본 상호 지우기 · 로딩 화면 · 가이드 겹침/유도 · 진행 막힘**
+
+- 원본도 실제 상호 0(표 키 = SHA-1 앞 16자 · 캡처 = 게임 이름) · `Loading...` 가림막(`ui/LoadingOverlay` — 단계 이름만).
+- 가이드: 단계 뒤에 열린 창은 피하고(테두리 숨김 · 말풍선 비킴 · ✕ 구멍) · 단계 밖 행동은 회색 + 흔들기(`TourStep.focus` · `GuideTour.allows/nudge`).
+- 프롤로그 막힘 안전망(`prologueProtects` · `repairPrologue` · 비상금 · 차비) · 전체 지도 제목 줄(`hudHeaderMidY`) · 자전거 코치 · 방파제 피복 방위 동률 판정.
+- 함정: 「대상을 품은 창 = 설명하는 창」은 단계 시작 때 떠 있던 창에만 — 아니면 새로 연 모달(라디오) 위에 테두리가 뜬다.
+  상세: [219차 워크로그](../docs/wiki/03-WORKLOG/2026-10-06-219-loading-guide-guards-softlocks.md).
+
+**이전 변경 (2026-10-06 218차) — 지도 캡처 6~10 · 게임 상호(실제 상호를 조금씩 바꾸기)**
 
 - 캡처 6~10은 확대 단계가 달라(0.59~0.83 m/px) OSM 이름 붙은 장소 최소제곱으로 정합 → 새 가게 76(캡처 합 249).
 - 게임 상호 표 `pixelazed/sokcho_v2/name_alias.json`(419개 · 업종 말 유지 · 프랜차이즈 = 가상 브랜드) — `merge_capture_pois.py`가 OSM · 캡처 가게 모두에 적용.
@@ -479,13 +487,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - 바닥 점 · 이름표 폐지 → 문 옆 종류 간판(`addShopSign`) · 노점 그림 = 진짜 좌판만(`isStallPoi`) · 좌판 [F] = 바로 거래(실내 없음) · 문 옆 장식 인물 정리 · 「장소 핀」 설정.
 - 사용자 네이버 캡처 → 도로 앵커 정합 + 판독 → `pixelazed/sokcho_v2/capture_pois.json` → `tools/merge_capture_pois.py`(176곳 · 주점 4 · osmId 음수).
 - 함정: OSM 빌드가 `pois.json`을 새로 쓰면 캡처분이 사라진다 → 병합 스크립트 재실행. 상세: [217차 워크로그](../docs/wiki/03-WORKLOG/2026-10-06-217-shop-signs-stalls-capture-pois.md).
-
-**이전 변경 (2026-10-06 216차) — 실내 공간 2단계: 인물의 집**
-
-- 문 앞 [F] 「들어가기」(똑똑 → 안으로) — 잘 시간(22~05시)과 어촌계 사무실은 214차처럼 「문 두드리기」. 방 6장(`homeLayoutOf` · 틀 `home`) · 가구 16종.
-- 집 주인 = 필드와 같은 얼굴 · 다가가 「[F] 말 걸기」 = 같은 대화창(`atDoor 'inside'` — 첫마디만 `NPC_HOME`) · 머리 위 의뢰 표시 동기화.
-- 함정: 일과 재평가(`updateFieldNpcs`)는 실내에서도 돈다 — 손님이 안에 있는 사람은 빼야 한다. 조사: 바닥 점 = OSM POI 마커 · 주점 0곳 = 매핑 3곳 누락.
-  상세: [216차 워크로그](../docs/wiki/03-WORKLOG/2026-10-06-216-interior-spaces-stage2-homes.md).
 
 ---
 

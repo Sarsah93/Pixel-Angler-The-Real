@@ -16,6 +16,7 @@ import { createItemIcon } from './ItemIcon.js';
 import { setSlotLabel, SLOT_LABEL_PX } from './SlotLabel.js';
 import { GameState } from '../store/GameState.js';
 import { maybeStartTour, type TourOptions } from './GuideTour.js';
+import { prologueProtects, PROLOGUE_PROTECT_MSG } from '../store/Prologue.js';
 import {
   InventoryStore, InvItem, CONDITION_LABEL, CONDITION_COLOR, refreshCondition,
 } from '../store/InventoryStore.js';
@@ -218,6 +219,8 @@ export class FridgePanel extends DraggablePanel {
 
   /** 인벤토리 → 냉장고 보관 */
   private deposit(item: InvItem): void {
+    // 219차 — 프롤로그에 아직 쓸 물건(오징어 · 대 · 릴 · 사진)은 다시 넣지 않는다(나가서 막힘 방지)
+    if (prologueProtects(item.id)) { this.setStatus(PROLOGUE_PROTECT_MSG); return; }
     if (FridgeStore.firstEmpty(this.depositTo) < 0) {
       this.setStatus(`${this.depositTo === 'freezer' ? '냉동고' : '냉장고'}가 가득 찼습니다`);
       return;

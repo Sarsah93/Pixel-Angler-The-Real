@@ -1,15 +1,17 @@
 """
-캡처 POI 병합 (217차) + 게임 상호 바꾸기 (218차) — 사용자가 준 지도 캡처에서 판독한 가게를 심리스 POI(`pois.json`)에 합치고,
-가게 이름을 게임 상호(`name_alias.json` — 실제 상호를 조금씩 바꾼 것)로 바꿔 쓴다.
+캡처 POI 병합 (217차) + 게임 상호 바꾸기 (218 · 219차) — 사용자가 준 지도 캡처에서 판독한 가게를 심리스 POI(`pois.json`)에 합치고,
+OSM 가게 이름을 게임 상호(`name_alias.json` — 실제 상호를 조금씩 바꾼 것)로 바꿔 쓴다.
 
-입력: pixelazed/<region>/capture_pois.json   (정본 — 원래 이름 · 분류 · 위경도)
-      pixelazed/<region>/name_alias.json     (원래 이름 → 게임 이름 · 영어 표기)
+입력: pixelazed/<region>/capture_pois.json   (정본 — **게임 상호** · 분류 · 위경도. 원래 상호는 보관하지 않는다)
+      pixelazed/<region>/name_alias.json     (OSM 원래 이름의 SHA-1 앞 16자 → 게임 이름 · 영어 표기 — 평문 상호 없음)
 출력: pixelazed/<region>/pois.json · packages/client-pc/public/data/<region>/pois.json (둘 다 갱신)
 
 - **pois.json을 새로 쓰는 도구 다음에는 반드시 이 스크립트를 마지막에 돌린다** — `build_osm_tilemap.py`(캡처분 · 게임 상호가 사라진다) ·
   `backfill_poi_nameen.py`(OSM 영어 이름이 실제 상호로 돌아온다). 순서: OSM 빌드 → 영어 채우기 → 이 스크립트.
-- 게임 상호: OSM 가게(음식점 · 카페 · 상점 · 숙박 · 약국 · 주유소 · 은행)와 캡처 가게 전부. 표에 없는 이름은 그대로 두고 경고한다
-  (공공 · 협동조합 · 지명은 일부러 표에 없다). 이미 바뀐 이름(표의 값)은 다시 바꾸지 않는다 — 몇 번을 돌려도 같다.
+- 게임 상호: OSM 가게(음식점 · 카페 · 상점 · 숙박 · 약국 · 주유소 · 은행) — 이름(없으면 영어 이름)의 해시로 표를 찾는다.
+  표에 없는 이름은 그대로 두고 경고한다(공공 · 협동조합 · 지명은 일부러 표에 없다). 이미 바뀐 이름(표의 값)은 다시 바꾸지 않는다.
+  캡처 가게는 처음부터 게임 상호로 적는다(판독 → 바로 바꿔 적기).
+- 표에 새 가게 추가: `python tools/merge_capture_pois.py --add "원래 이름" "게임 이름" ["영어"]` (원래 이름은 해시만 남는다).
 
 - 몇 번을 돌려도 같다: 앞서 합친 캡처 항목(`src: 'capture'`)을 먼저 지우고 다시 넣는다.
   OSM 빌드(`build_osm_tilemap.py`)가 pois.json을 새로 쓰면 이 스크립트를 한 번 더 돌린다.
@@ -20,6 +22,7 @@
 
 사용: python tools/merge_capture_pois.py [region=sokcho_v2]
 """
+import hashlib
 import json
 import math
 import os
@@ -27,7 +30,8 @@ import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-REGION = sys.argv[1] if len(sys.argv) > 1 else 'sokcho_v2'
+ADD = sys.argv[sys.argv.index('--add') + 1:] if '--add' in sys.argv else None
+REGION = sys.argv[1] if len(sys.argv) > 1 and not sys.argv[1].startswith('--') else 'sokcho_v2'
 SRC = os.path.join(ROOT, 'pixelazed', REGION, 'capture_pois.json')
 ALIAS = os.path.join(ROOT, 'pixelazed', REGION, 'name_alias.json')
 BUSINESS = {'restaurant', 'cafe', 'shop', 'lodging', 'pharmacy', 'fuel', 'bank'}
@@ -111,11 +115,27 @@ def auto_en(ko: str) -> str:
     return ' '.join(words)
 
 
+def name_key(real: str) -> str:
+    """원래 상호 → 표 키(SHA-1 앞 16자). 표에 평문 상호를 남기지 않는다."""
+    return hashlib.sha1(real.encode('utf-8')).hexdigest()[:16]
+
+
 def norm(s: str) -> str:
     return re.sub(r'[\s·&()\-_.]', '', s or '').lower()
 
 
+def add_alias(real: str, ko: str, en: str | None) -> None:
+    d = json.load(open(ALIAS, encoding='utf-8')) if os.path.exists(ALIAS) else {'_doc': '', 'aliases': {}}
+    d['aliases'][name_key(real)] = {'ko': ko, **({'en': en} if en else {})}
+    with open(ALIAS, 'w', encoding='utf-8') as f:
+        f.write(json.dumps(d, ensure_ascii=False, indent=1))
+    print(f'[alias] 추가 — 게임 이름 {ko}' + (f' / {en}' if en else ''))
+
+
 def main() -> None:
+    if ADD:
+        add_alias(ADD[0], ADD[1], ADD[2] if len(ADD) > 2 else None)
+        return
     meta = json.load(open(META, encoding='utf-8'))
     lat0, lon0, lat1, lon1 = meta['bbox']
     tm = meta['tileMeters']
@@ -133,7 +153,7 @@ def main() -> None:
 
     def game_name(real: str, kind_ok: bool = True) -> tuple[str, str | None]:
         """원래 이름 → (게임 이름, 영어 표기 | None = 바꾸지 않음)"""
-        a = aliases.get(real)
+        a = aliases.get(name_key(real)) if real else None
         if a:
             return a['ko'], a.get('en') or auto_en(a['ko'])
         if kind_ok and real and real not in alias_values:
@@ -144,11 +164,11 @@ def main() -> None:
     renamed = 0
     by_game = {a['ko']: a for a in aliases.values()}
     for p in base:
-        if p.get('type') in BUSINESS and not p.get('name') and p.get('nameEn') in aliases:
+        if p.get('type') in BUSINESS and not p.get('name') and p.get('nameEn') and name_key(p['nameEn']) in aliases:
             # 한국어 이름 없이 영어 이름만 있는 OSM 가게 — 영어 이름으로 찾는다
             p['name'], p['nameEn'] = game_name(p['nameEn'])
             renamed += 1
-        elif p.get('type') in BUSINESS and p.get('name') in aliases:
+        elif p.get('type') in BUSINESS and p.get('name') and name_key(p['name']) in aliases:
             p['name'], p['nameEn'] = game_name(p['name'])
             renamed += 1
         elif p.get('type') in BUSINESS and p.get('name') in by_game:
@@ -169,7 +189,7 @@ def main() -> None:
         if not (0 <= tx < meta['width'] and 0 <= ty < meta['height']):
             out_of_map += 1
             continue
-        name, name_en = game_name(c['name'])
+        name, name_en = c['name'], c.get('nameEn')   # 캡처는 처음부터 게임 상호
         k = norm(name)
         if any(math.hypot(tx - x, ty - y) <= 8 for x, y in osm_names.get(k, [])):
             dup_osm += 1

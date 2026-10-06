@@ -12,6 +12,15 @@
  *    허용 사각형만 뚫어 깐다. 키보드는 각 씬이 `GuideTour.blocksKey()`로 거른다.
  *  - 끝나면 세이브 플래그 `tour.<id>`를 켠다 — 다시 뜨지 않는다(다시 보기는 도움말 라이브러리 · 설정).
  *
+ * 219차 — **창과 겹치지 않는다**(사용자 지적: 라디오 창 위에 말풍선 · 금색 테두리가 올라탔다).
+ *  - 씬에 열린 창(`DraggablePanel` 전부 + 씬이 `setOccluders`로 알린 메뉴 등)을 매 프레임 본다.
+ *  - 말풍선이 창에 걸리면 창 옆 · 화면 귀퉁이로 비키고, 자리가 없으면 창이 닫힐 때까지 숨는다.
+ *  - 짚는 대상이 창에 가려지면 금색 테두리를 그리지 않는다(창보다 앞에 테두리가 뜨지 않게).
+ *  - 가이드가 짚는 그 창(대상 · 기준이 그 창 안)은 가림 목록에서 뺀다.
+ * 219차 — **가이드 밖 행동 막기**(사용자 지시: 가이드대로 하지 않고 고양이를 만지는 등 다른 행동을 못 하게 유도):
+ *  - 단계에 `focus`(허용 행동 id 목록)를 두면, 씬은 행동 전에 `GuideTour.allows(id)`를 묻고
+ *    거절이면 `GuideTour.nudge()` — 말풍선이 흔들리며 지금 할 일을 다시 보여 준다.
+ *
  * ⚠ 헤드리스(하네스)에서는 `scene.time` 타이머가 돌지 않는다(verify-render 스킬) —
  *   타이핑·폴링은 씬 `update` 이벤트로 돈다. 하네스는 `GuideTour.active.finish()`로 건너뛸 수 있다.
  */
@@ -22,6 +31,7 @@ import { t } from '../i18n/I18n.js';
 import { GameState } from '../store/GameState.js';
 import { GUIDE_VOICE } from '@tra/core';
 import { VoiceTyper } from '../audio/Voice.js';
+import { DraggablePanel } from './DraggablePanel.js';
 
 export type TourRect = Phaser.Geom.Rectangle;
 
@@ -54,6 +64,11 @@ export interface TourStep {
   alignTo?: () => TourRect | null | undefined;
   /** 191차 — 짚는 대상이 없을 때 말풍선 위쪽 y (없으면 화면 세로 가운데) */
   dockY?: number;
+  /**
+   * 219차 — 이 단계에서 허용하는 세상 행동 id(씬이 정한다 — 예: 집 'sofa' · 'stand' · 'father_box').
+   * 없으면 막지 않는다. 빈 배열이면 세상 행동을 전부 막는다(걷기는 행동이 아니다).
+   */
+  focus?: string[];
 }
 
 export interface TourOptions {
@@ -105,6 +120,30 @@ export class GuideTour {
     const a = GuideTour.active;
     if (!a) return false;
     return !a.opts.steps[a.index]?.passive;
+  }
+
+  /** 219차 — 씬별 「창」 사각형 공급자(DraggablePanel이 아닌 메뉴 · 대화 상자 등) */
+  private static occluderFns = new Map<Phaser.Scene, () => (TourRect | null | undefined)[]>();
+
+  /** 219차 — 씬이 DraggablePanel 밖의 창(작은 고를 거리 메뉴 등)을 알린다. 씬이 내려가면 지운다. */
+  static setOccluders(scene: Phaser.Scene, fn: () => (TourRect | null | undefined)[]): void {
+    GuideTour.occluderFns.set(scene, fn);
+    scene.events.once('shutdown', () => { if (GuideTour.occluderFns.get(scene) === fn) GuideTour.occluderFns.delete(scene); });
+  }
+
+  /**
+   * 219차 — 지금 단계가 이 세상 행동을 허용하는가. 씬은 행동 직전에 묻고, 거절이면 `nudge()`를 부른다.
+   * 가이드가 없거나 단계에 `focus`가 없으면 허용.
+   */
+  static allows(action: string): boolean {
+    const st = GuideTour.active?.step;
+    if (!st?.focus) return true;
+    return st.focus.includes(action);
+  }
+
+  /** 219차 — 가이드 밖 행동을 하려 했다: 말풍선을 흔들어 지금 할 일을 다시 짚는다 */
+  static nudge(): void {
+    GuideTour.active?.shake();
   }
 
   /** 키 입력을 막아야 하는가 — 각 씬의 단축키 처리 앞에서 묻는다 */
@@ -180,6 +219,14 @@ export class GuideTour {
   private pulse = 0;
   /** 체험 단계 완료 후 다음으로 넘어가기까지 남은 시간 (ms) */
   private advanceIn = -1;
+  /** 219차 — 흔들림(가이드 밖 행동) 남은 시간 · 창에 가려 숨었는가 */
+  private shakeMs = 0;
+  private occluded: TourRect[] = [];
+  /** 219차 — 단계가 시작된 뒤 새로 열린 창(유저가 연 상세보기 등) — 막지 않고 덮지 않는다 */
+  private baseline = new Set<DraggablePanel>();
+  private freshOcc: TourRect[] = [];
+  /** 219차 — 그중 모달(확인 · 수량 창 — depth 900대) — 어둡게 덮지 않고 방패에 구멍을 낸다(가두지 않게) */
+  private modalOcc: TourRect[] = [];
   private updateFn: (time: number, delta: number) => void;
   private keyFn: (ev: KeyboardEvent) => void;
   private shutdownFn: () => void;
@@ -209,6 +256,13 @@ export class GuideTour {
     bodyHit.on('pointerdown', () => this.completeTyping());
     this.bubble.add([this.bubbleBg, bodyHit, this.bodyText, this.countText, this.nextBtn]);
     this.bubble.setData('bodyHit', bodyHit);
+    // 219차 — 컨테이너 안 자식도 화면 고정이어야 히트 판정이 맞는다(카메라가 움직이는 필드 · 실내에서
+    //   「다음」이 눌리지 않았다 — 사용자 리포트). 자식 scrollFactor 1이면 카메라 이동량만큼 어긋난다.
+    const fix = (o: Phaser.GameObjects.GameObject): void => {
+      (o as unknown as { setScrollFactor?: (v: number) => void }).setScrollFactor?.(0);
+      if (o instanceof Phaser.GameObjects.Container) o.list.forEach(fix);
+    };
+    fix(this.bubble);
 
     this.updateFn = (_t, delta) => this.tick(delta);
     scene.events.on('update', this.updateFn);
@@ -231,12 +285,53 @@ export class GuideTour {
 
   private get step(): TourStep | undefined { return this.opts.steps[this.index]; }
 
+  /** 219차 — 가이드 밖 행동 신호: 문장을 다 보이고 말풍선을 잠깐 흔든다 */
+  shake(): void {
+    this.completeTyping();
+    this.shakeMs = 420;
+  }
+
+  /**
+   * 219차 — 이 씬에 열린 창 사각형. 가이드가 짚는 창(대상 중심이 그 안 · 기준 사각형이 그 안)은 뺀다.
+   * 가이드 자신의 그림(말풍선 · 방패)은 DraggablePanel이 아니므로 섞이지 않는다.
+   */
+  private collectOccluders(): TourRect[] {
+    const list: TourRect[] = [];
+    const modal: TourRect[] = [];
+    const fresh: TourRect[] = [];
+    const opened: TourRect[] = [];   // 단계가 시작된 뒤에 열린 창(모달 포함)
+    for (const o of this.scene.children.list) {
+      if (!(o instanceof DraggablePanel) || !o.active || !o.visible) continue;
+      const b = o.panelBounds();
+      list.push(b);
+      if (!this.baseline.has(o)) opened.push(b);
+      if (o.depth >= 900) modal.push(b);
+      else if (!this.baseline.has(o)) fresh.push(b);
+    }
+    this.modalOcc = modal;
+    this.freshOcc = fresh;
+    const extra = GuideTour.occluderFns.get(this.scene)?.() ?? [];
+    for (const r of extra) if (r && r.width > 0 && r.height > 0) list.push(r);
+    const target = this.targetRect();
+    const anchor = this.opts.anchor?.() ?? null;
+    return list.filter((r) => {
+      const grown = new Phaser.Geom.Rectangle(r.x - 2, r.y - 2, r.width + 4, r.height + 4);
+      // 대상이 그 창 안에 있으면 「이 가이드가 설명하는 창」이다 — 단, **단계가 시작된 뒤에 열린 창**(라디오 혼잣말 등)은
+      //   대상을 덮고 있어도 가리는 창이다(219차 — 상자 단계에 라디오 창이 상자 위를 덮었는데 테두리 · 말풍선이 그 위에 떴다)
+      if (target && grown.contains(target.centerX, target.centerY) && !opened.includes(r)) return false;
+      if (anchor && Phaser.Geom.Rectangle.ContainsRect(grown, anchor)) return false;
+      return true;
+    });
+  }
+
   private go(i: number): void {
     let n = i;
     while (n < this.opts.steps.length && this.opts.steps[n].skipIf?.()) n++;
     if (n >= this.opts.steps.length) { this.teardown(true); return; }
     this.index = n;
     this.advanceIn = -1;
+    // 219차 — 이 단계가 시작될 때 이미 떠 있던 창들. 그 뒤에 열린 창은 유저가 연 것이다(✕ · 조작을 막지 않는다)
+    this.baseline = new Set(this.scene.children.list.filter((o): o is DraggablePanel => o instanceof DraggablePanel));
     const st = this.opts.steps[n];
     st.onEnter?.();
     this.fullText = t(st.text);
@@ -268,6 +363,8 @@ export class GuideTour {
     if (this.opts.alive && !this.opts.alive()) { this.teardown(false); return; }
     const st = this.step;
     if (!st) return;
+    // 219차 — 단계 도중에 대상이 사라지면(버린 아이템 등) 그 단계를 건너뛴다 — 기다릴 수 없는 일을 기다리며 화면을 막지 않는다
+    if (st.skipIf?.() && this.advanceIn < 0) { this.go(this.index + 1); return; }
     // 타이핑
     if (this.typed < this.fullText.length) {
       this.typeAcc += delta;
@@ -288,6 +385,8 @@ export class GuideTour {
       if (this.advanceIn <= 0) { this.go(this.index + 1); return; }
     }
     this.pulse += delta;
+    if (this.shakeMs > 0) this.shakeMs = Math.max(0, this.shakeMs - delta);
+    this.occluded = this.collectOccluders();
     this.drawHighlight();
     this.layoutBubble();
   }
@@ -302,8 +401,8 @@ export class GuideTour {
     const g = this.dimG;
     g.clear();
     g.fillStyle(0x000814, 0.5);
-    if (this.step?.passive) {
-      // 세상 안 체험 — 어둡게 하지 않는다
+    if (this.step?.passive || this.modalOcc.length || this.freshOcc.length) {
+      // 세상 안 체험 — 어둡게 하지 않는다 / 219차 — 확인 창이 떠 있으면 그 창을 어둡게 덮지 않는다
     } else if (!r) {
       g.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
     } else {
@@ -316,9 +415,11 @@ export class GuideTour {
     }
     const f = this.frameG;
     f.clear();
-    if (r) {
+    // 219차 — 창이 대상을 가리면 테두리를 그리지 않는다(창보다 앞에 뜨면 안 된다)
+    const hidden = !!r && this.occluded.some((o) => Phaser.Geom.Rectangle.Overlaps(o, r));
+    if (r && !hidden) {
       const a = 0.55 + 0.45 * Math.abs(Math.sin(this.pulse / 320));
-      f.lineStyle(3, 0xffce54, a);
+      f.lineStyle(3, this.shakeMs > 0 ? 0xff8a5a : 0xffce54, this.shakeMs > 0 ? 1 : a);
       f.strokeRoundedRect(r.x - 5, r.y - 5, r.width + 10, r.height + 10, 6);
     }
     this.syncShields(r);
@@ -332,7 +433,7 @@ export class GuideTour {
       this.shieldSig = 'passive';
       return;
     }
-    const holes = (st?.allow ? st.allow() : st?.wait && target ? [target] : [])
+    const holes = [...(st?.allow ? st.allow() : st?.wait && target ? [target] : []), ...this.modalOcc, ...this.freshOcc]
       .filter((h): h is TourRect => !!h)
       .map((h) => new Phaser.Geom.Rectangle(Math.max(0, Math.floor(h.x)), Math.max(0, Math.floor(h.y)),
         Math.ceil(h.width), Math.ceil(h.height)));
@@ -390,14 +491,35 @@ export class GuideTour {
     if (!align && st?.dockY !== undefined) by = Phaser.Math.Clamp(st.dockY, 8, GAME_HEIGHT - h - 8);
     if (tail === 'none' && target) by = target.bottom + 16 + h <= GAME_HEIGHT ? target.bottom + 16 : Math.max(8, target.y - 16 - h);
     // 191차 — 짚는 대상이 없는 말풍선(걷기·뛰기·단축키 안내)에는 꼬리를 달지 않는다 — 가리킬 것이 없다
-    const pointAt = !!target || !!st?.alignTo;
-    this.bubble.setPosition(Math.round(bx), Math.round(by));
+    let pointAt = !!target || !!st?.alignTo;
+    // 219차 — 열린 창에 걸리면 비킨다: 창들 옆 → 화면 네 귀퉁이 · 위아래 가운데. 자리가 없으면 숨는다.
+    const occ = this.occluded;
+    const hits = (x: number, y: number): boolean => {
+      const rr = new Phaser.Geom.Rectangle(x - 4, y - 4, BUBBLE_W + 8, h + 8);
+      return occ.some((o) => Phaser.Geom.Rectangle.Overlaps(o, rr));
+    };
+    let show = true;
+    if (occ.length && hits(bx, by)) {
+      const U = occ.reduce((a, b) => Phaser.Geom.Rectangle.Union(a, b));
+      const clampY = (y: number): number => Phaser.Math.Clamp(y, 8, GAME_HEIGHT - h - 8);
+      const cands: [number, number][] = [
+        [U.x - 18 - BUBBLE_W, clampY(ty - h / 2)], [U.right + 18, clampY(ty - h / 2)],
+        [U.x - 18 - BUBBLE_W, 8], [U.right + 18, 8],
+        [(GAME_WIDTH - BUBBLE_W) / 2, U.y - 16 - h], [(GAME_WIDTH - BUBBLE_W) / 2, U.bottom + 16],
+        [8, 8], [GAME_WIDTH - BUBBLE_W - 8, 8], [8, GAME_HEIGHT - h - 8], [GAME_WIDTH - BUBBLE_W - 8, GAME_HEIGHT - h - 8],
+      ];
+      const ok = cands.find(([x, y]) => x >= 6 && y >= 6 && x + BUBBLE_W <= GAME_WIDTH - 6 && y + h <= GAME_HEIGHT - 6 && !hits(x, y));
+      if (ok) { [bx, by] = ok; tail = 'none'; pointAt = false; } else show = false;
+    }
+    this.bubble.setVisible(show);
+    const shakeX = this.shakeMs > 0 ? Math.round(Math.sin(this.shakeMs / 22) * 6) : 0;
+    this.bubble.setPosition(Math.round(bx) + shakeX, Math.round(by));
 
     const g = this.bubbleBg;
     g.clear();
     g.fillStyle(0x0d2131, 0.97);
     g.fillRoundedRect(0, 0, BUBBLE_W, h, 8);
-    g.lineStyle(2, 0xffce54, 1);
+    g.lineStyle(2, this.shakeMs > 0 ? 0xff8a5a : 0xffce54, 1);
     g.strokeRoundedRect(0, 0, BUBBLE_W, h, 8);
     if (tail !== 'none' && pointAt) {
       const yy = Phaser.Math.Clamp(ty - by, 14, h - 14);

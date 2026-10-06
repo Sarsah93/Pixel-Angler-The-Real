@@ -185,4 +185,4 @@ export type SpotFacility =
   | 'restaurant'
   | 'sashimi_restaurant'
   | 'toilet'             // 신규: 개별 화장실
-  | 'hanaro_mart';       // 신규: 지역 하나로마트
+  | 'hanaro_mart';       // 신규: 지역 한마음마트

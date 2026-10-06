@@ -176,12 +176,15 @@ type NearTarget =
   | { kind: 'cat' }
   | { kind: 'wall'; id: WallDecorId };
 
-interface MenuItem { label: string; color?: string; run: () => void }
+/** `action` = 가이드 단계가 허용해야 하는 행동 id(219차) — 없으면 늘 고를 수 있다 */
+interface MenuItem { label: string; color?: string; run: () => void; action?: string }
 interface OpenMenu {
   kind: 'bed' | 'seat' | 'cat' | 'books';
   c: Phaser.GameObjects.Container;
   items: MenuItem[];
   rows: Phaser.GameObjects.Graphics[];
+  /** 219차 — 고를 거리 글자(가이드가 막은 줄을 흐리게) */
+  labels?: Phaser.GameObjects.Text[];
   sel: number;
   onCancel: () => void;
 }
@@ -363,6 +366,8 @@ export class HomeInteriorScene extends Phaser.Scene {
     this.events.once('shutdown', () => { this.tourSpotTween?.stop(); this.tourPanel?.destroy(); });
     // 191차 — 상단 「지금 할 일 · 목표 · 방법」 띠는 지웠다(규칙 R11 — 글자 나열 금지). 프롤로그는 말풍선 코치가 잇는다.
     this.coach = new PrologueCoach(this);
+    // 219차 — 가이드가 피할 창: 캐릭터 옆 작은 고를 거리(앉기 · 고양이 · 침대) — DraggablePanel(라디오 · 냉장고 …)은 가이드가 스스로 찾는다
+    GuideTour.setOccluders(this, () => [this.menu ? this.menu.c.getBounds() : null]);
     this.events.once('shutdown', () => { this.coach?.destroy(); this.coach = undefined; });
     this.buildDecorButton();
     syncPrologue();
@@ -398,7 +403,7 @@ export class HomeInteriorScene extends Phaser.Scene {
       const m = this.menu;
       if (ev.code === 'ArrowUp') { m.sel = (m.sel + m.items.length - 1) % m.items.length; this.paintMenu(); return; }
       if (ev.code === 'ArrowDown') { m.sel = (m.sel + 1) % m.items.length; this.paintMenu(); return; }
-      if (ev.code === 'Enter' || ev.code === 'Space' || ev.code === 'KeyF') { m.items[m.sel]?.run(); return; }
+      if (ev.code === 'Enter' || ev.code === 'Space' || ev.code === 'KeyF') { const it = m.items[m.sel]; if (it) this.runMenuItem(it); return; }
       return;
     }
     if (ev.code === 'KeyF' && !this.tourPanel && !this.popups.length && !GuideTour.blocksKey('KeyF')) this.tryInteract();
@@ -459,11 +464,13 @@ export class HomeInteriorScene extends Phaser.Scene {
         {
           text: '방향키로 걸을 수 있다. 방 안을 조금 걸어 보자.',
           passive: true,
+          focus: [],   // 219차 — 걷기 · 뛰기를 배우는 동안 가구 · 고양이 [F]는 쉰다
           wait: () => this.walked >= 140,
         },
         {
           text: 'Shift를 누른 채 걸으면 뛴다. 뛰어 보자.',
           passive: true,
+          focus: [],
           wait: () => this.ranMs >= 500,
         },
         {
@@ -471,6 +478,7 @@ export class HomeInteriorScene extends Phaser.Scene {
           passive: true,
           target: () => this.tourRect('sofa'),
           side: 'auto',
+          focus: ['sofa', 'chair'],
           wait: () => this.satCount > 0,
         },
         {
@@ -480,6 +488,7 @@ export class HomeInteriorScene extends Phaser.Scene {
           target: () => this.menuRect(),
           // 메뉴는 앉은 자리 옆 어디에든 뜰 수 있다 — 말풍선은 소파가 있는 쪽에 둔다
           side: sofaSide,
+          focus: ['stand'],   // 219차 — 라디오 · 휴식은 이 단계를 마친 뒤에(사용자 지적: 라디오 창이 가이드와 겹쳤다)
           wait: () => this.stoodCount > 0,
         },
         {
@@ -487,6 +496,7 @@ export class HomeInteriorScene extends Phaser.Scene {
           passive: true,
           target: () => this.tourRect('father_box'),
           side: 'auto',
+          focus: ['father_box'],   // 219차 — 고양이 · 라디오 등은 상자를 연 뒤에(사용자 지적)
           wait: () => GameState.getFlag('prologue.box'),
         },
       ],
@@ -600,21 +610,21 @@ export class HomeInteriorScene extends Phaser.Scene {
     //   열린 창 구성이 바뀌면 자리도 바뀌어야 하므로 단계 키에 붙인다.
     const openB = this.openPanelBounds();
     const dock = (key: string, text: string): CoachStage => openB
-      ? { key: `${key}@${Math.round(openB.x)}:${Math.round(openB.right)}`, text, anchor: () => openB, side: 'right', dockY: GAME_HEIGHT - 150 }
-      : { key, text, anchor: room, side: 'right', dockY: OY + 30 };
+      ? { key: `${key}@${Math.round(openB.x)}:${Math.round(openB.right)}`, text, anchor: () => openB, side: 'right', dockY: GAME_HEIGHT - 150, focus: [] }
+      : { key, text, anchor: room, side: 'right', dockY: OY + 30, focus: [] };
     const inv = this.invPanel;
     const invB = (): Phaser.Geom.Rectangle | null => (this.invPanel?.active ? this.invPanel.panelBounds() : null);
     if (!prologueStepDone('box')) {
       // 새 게임(기상) 입장은 첫 걸음 가이드가 상자까지 맡는다 — 혼잣말이 열리기 전 틈에 끼어들지 않게
       if (this.wake || anyPopup || this.menu) return null;
       return { key: 'box', text: '침대 발치에 아버지의 낚시 상자가 있다. 상자 앞에서 [F]로 열어 보자.',
-        target: () => this.tourRect('father_box'), anchor: room, side: 'auto' };
+        target: () => this.tourRect('father_box'), anchor: room, side: 'auto', focus: ['father_box'] };
     }
     if (!prologueStepDone('rod')) {
       if (!inv) return dock('bag', '단축키 [I] 키를 눌러, 인벤토리를 열어 보자. 가방에서 얻은 아버지의 장비를 확인해 보자.');
       const rod = InventoryStore.items.find((i) => i.tool === 'rod' && !i.equipped);
       return { key: 'rod', text: '아버지의 대를 우클릭해 「오른손 착용」으로 손에 들어 보자.',
-        target: () => (rod ? this.invPanel?.itemGuideRect(rod.id) : null), anchor: invB };
+        target: () => (rod ? this.invPanel?.itemGuideRect(rod.id) : null), anchor: invB, focus: [] };
     }
     if (!prologueStepDone('reel')) {
       const eq = this.equipPanel;
@@ -624,37 +634,37 @@ export class HomeInteriorScene extends Phaser.Scene {
         const i = invB();
         return b && i ? Phaser.Geom.Rectangle.Union(b, i) : b;
       };
-      if (!inv) return { key: 'reel_bag', text: '릴은 가방에 있다. [I]로 가방도 함께 열자.', anchor: both };
+      if (!inv) return { key: 'reel_bag', text: '릴은 가방에 있다. [I]로 가방도 함께 열자.', anchor: both, focus: [] };
       return { key: 'reel_fit', text: '가방의 릴을 끌어다 장비창 「릴」 칸에 놓아 보자.',
-        target: () => this.equipPanel?.slotGuideRect('reel'), anchor: both };
+        target: () => this.equipPanel?.slotGuideRect('reel'), anchor: both, focus: [] };
     }
     if (!prologueStepDone('photo')) {
       if (!inv) return dock('photo_bag', '상자 속 사진도 가방에 넣어 두었다. [I]로 가방을 열어 사진을 찾아보자.');
       return { key: 'photo', text: '사진을 우클릭해 「상세보기」로 뒷면을 살펴보자.',
-        target: () => this.invPanel?.itemGuideRect(PROLOGUE_PHOTO_ID), anchor: invB };
+        target: () => this.invPanel?.itemGuideRect(PROLOGUE_PHOTO_ID), anchor: invB, focus: [] };
     }
     if (!prologueStepDone('journal')) return dock('journal', '오늘 할 일을 일지에 적어 두었다. 단축키 [J]로 일지를 펼쳐 보자.');
     if (!prologueStepDone('squid')) {
       if (this.fridgePanel) {
         return { key: 'squid_take', text: '냉동고 칸의 오징어를 눌러 가방으로 옮기자. 속초 직판장에 팔아 노잣돈을 보탤 것이다.',
-          anchor: () => (this.fridgePanel?.active ? this.fridgePanel.panelBounds() : null) };
+          anchor: () => (this.fridgePanel?.active ? this.fridgePanel.panelBounds() : null), focus: [] };
       }
       if (anyPopup) return dock('squid_close', '창을 닫고 부엌 냉장고로 가자. 얼려 둔 오징어를 챙겨야 한다.');
       return { key: 'squid', text: '부엌 냉장고 앞에서 [F]로 냉동고를 열자. 얼려 둔 오징어를 챙겨야 한다.',
-        target: () => this.tourRect('fridge'), anchor: room, side: 'auto' };
+        target: () => this.tourRect('fridge'), anchor: room, side: 'auto', focus: ['fridge'] };
     }
     if (!prologueStepDone('save')) {
       if (this.menu?.kind === 'bed') {
-        return { key: 'save_menu', text: '「저장만 하기」를 골라 오늘을 저장해 두자.', target: () => this.menuRect(), anchor: room, side: 'auto' };
+        return { key: 'save_menu', text: '「저장만 하기」를 골라 오늘을 저장해 두자.', target: () => this.menuRect(), anchor: room, side: 'auto', focus: ['bed'] };
       }
       if (anyPopup) return dock('save_close', '창을 닫고 침대로 가자. 떠나기 전에 저장해 두어야 한다.');
       return { key: 'save', text: '떠나기 전에 침대 앞에서 [F]를 눌러 저장해 두자.',
-        target: () => this.tourRect('bed'), anchor: room, side: 'auto' };
+        target: () => this.tourRect('bed'), anchor: room, side: 'auto', focus: ['bed'] };
     }
     if (!prologueStepDone('leave')) {
       if (anyPopup) return null;
       return { key: 'leave', text: '이제 집을 나서자. 현관 매트를 밟고 아래로 걸어 나가면 된다.',
-        target: () => this.tourRect('door_mat'), anchor: room, side: 'auto' };
+        target: () => this.tourRect('door_mat'), anchor: room, side: 'auto', focus: [] };
     }
     return null;
   }
@@ -1058,6 +1068,7 @@ export class HomeInteriorScene extends Phaser.Scene {
     // 213차 — 자는 중: 잠 막대만 흐르고 다른 건 멈춘다(창밖 날씨 · 불빛은 계속)
     if (this.sleepState) { this.stepSleep(delta); this.ambience?.update(delta); return; }
     GameState.noteAwake(delta);   // 213차 — 잠 가부(깨어 논 시간)
+    if (this.menu) this.paintMenu();   // 219차 — 가이드 단계가 바뀌면 막힌 고를 거리 색도 따라 바뀐다
     this.consignAcc += delta;   // 213차 — 맡겨 둔 위판 정산(회차가 열렸으면)
     if (this.consignAcc >= 1000) { this.consignAcc = 0; this.settleConsignments(); }
     pumpTitleBanners(this);   // 203차 — 숨은 업적 달성 배너(고양이 집사 …)
@@ -1161,6 +1172,17 @@ export class HomeInteriorScene extends Phaser.Scene {
   private updateProximity(): void {
     let best: NearTarget | null = null;
     let bestD = REACH_PX;
+    // 219차 — 가이드 단계가 허용하지 않는 대상은 뒤로 미룬다(허용 대상이 닿으면 그것이 먼저).
+    //   닿는 것이 막힌 대상뿐이면 [F]를 눌렀을 때 말풍선이 흔들려 지금 할 일을 다시 짚는다.
+    let blocked: NearTarget | null = null;
+    let blockedD = REACH_PX;
+    const consider = (t: NearTarget, d: number): boolean => {
+      if (!GuideTour.allows(this.nearActionId(t))) {
+        if (d < blockedD) { blockedD = d; blocked = t; }
+        return false;
+      }
+      return true;
+    };
     for (const f of HomeStore.placed) {
       const action = this.actionOf(f);
       if (!action) continue;
@@ -1169,7 +1191,7 @@ export class HomeInteriorScene extends Phaser.Scene {
       const dx = Math.max(x0 - this.px, 0, this.px - (x0 + w * IT));
       const dy = Math.max(y0 - this.py, 0, this.py - (y0 + h * IT));
       const d = Math.hypot(dx, dy);
-      if (d < bestD) { bestD = d; best = { kind: 'furn', f, action }; }
+      if (d < bestD && consider({ kind: 'furn', f, action }, d)) { bestD = d; best = { kind: 'furn', f, action }; }
     }
     // 190차 — 벽 장식: 바로 아래 바닥(벽에 붙어 선 자리)에서
     const fromWall = this.py - (OY + FLOOR_TOP * IT);
@@ -1178,15 +1200,16 @@ export class HomeInteriorScene extends Phaser.Scene {
         const dx = Math.max(OX + d.x0 * IT - this.px, 0, this.px - (OX + d.x1 * IT));
         if (dx > 14) continue;
         const dd = dx + fromWall;
-        if (dd < bestD) { bestD = dd; best = { kind: 'wall', id: d.id }; }
+        if (dd < bestD && consider({ kind: 'wall', id: d.id }, dd)) { bestD = dd; best = { kind: 'wall', id: d.id }; }
       }
     }
     // 190차 — 고양이: 발치에 있으면 가구보다 먼저
     if (this.cat) {
       const d = Math.hypot(this.cat.x - this.px, this.cat.y - this.py);
-      if (d < 34 && d - 12 < bestD) best = { kind: 'cat' };
+      if (d < 34 && d - 12 < bestD && consider({ kind: 'cat' }, d - 12)) best = { kind: 'cat' };
     }
     this.near = best;
+    this.nearBlocked = best ? null : blocked;
     if (best) {
       // 204차 — 머리 위 타이틀이 있으면 그 위로 비켜 선다
       const lift = this.homeTitle?.visible ? this.homeTitle.height + 2 : 0;
@@ -1196,9 +1219,21 @@ export class HomeInteriorScene extends Phaser.Scene {
     }
   }
 
+  /** 219차 — 가이드 단계 허용 판정에 쓰는 행동 id (가구 = 행동 이름 · 고양이 · 벽 장식) */
+  private nearActionId(t: NearTarget): string {
+    if (t.kind === 'cat') return 'cat';
+    if (t.kind === 'wall') return 'wall';
+    return t.action;
+  }
+
+  /** 219차 — 닿는 것이 가이드가 막은 대상뿐일 때(그것에 [F]를 누르면 말풍선이 흔들린다) */
+  private nearBlocked: NearTarget | null = null;
+
   private tryInteract(): void {
-    if (this.menu || this.fridgePanel || this.cookPanel || this.decor || !this.near) return;
+    if (this.menu || this.fridgePanel || this.cookPanel || this.decor) return;
+    if (!this.near) { if (this.nearBlocked) GuideTour.nudge(); return; }
     const t = this.near;
+    if (!GuideTour.allows(this.nearActionId(t))) { GuideTour.nudge(); return; }
     if (t.kind === 'cat') { this.openCatMenu(); return; }
     if (t.kind === 'wall') { this.useWall(t.id); return; }
     const { f, action } = t;
@@ -1235,6 +1270,7 @@ export class HomeInteriorScene extends Phaser.Scene {
     c.add(bg);
     c.add(this.add.text(12, headH / 2 + 2, title, { fontFamily: FONT, fontSize: '13px', color: '#ffe28a', fontStyle: 'bold' }).setOrigin(0, 0.5));
     const rows: Phaser.GameObjects.Graphics[] = [];
+    const labels: Phaser.GameObjects.Text[] = [];
     items.forEach((it, i) => {
       const ry = headH + i * rowH;
       const rg = this.add.graphics();
@@ -1243,17 +1279,32 @@ export class HomeInteriorScene extends Phaser.Scene {
       }).setOrigin(0, 0.5);
       const hit = this.add.rectangle(6, ry + 2, w - 12, rowH - 4, 0xffffff, 0.001).setOrigin(0, 0).setInteractive({ useHandCursor: true });
       hit.on('pointerover', () => { if (this.menu) { this.menu.sel = i; this.paintMenu(); } });
-      hit.on('pointerdown', () => it.run());
+      hit.on('pointerdown', () => this.runMenuItem(it));
       rows.push(rg);
+      labels.push(t);
       c.add([rg, t, hit]);
     });
-    this.menu = { kind, c, items, rows, sel: 0, onCancel };
+    this.menu = { kind, c, items, rows, labels, sel: 0, onCancel };
     this.paintMenu();
+  }
+
+  /** 219차 — 가이드 단계가 막은 고를 거리는 흐리게 · 고르면 말풍선이 흔들린다 */
+  private runMenuItem(it: MenuItem): void {
+    if (it.action && !GuideTour.allows(it.action)) { GuideTour.nudge(); return; }
+    it.run();
   }
 
   private paintMenu(): void {
     const m = this.menu;
     if (!m) return;
+    // 219차 — 가이드가 막은 항목에는 커서를 두지 않는다(첫 허용 항목으로)
+    const okAt = (i: number): boolean => { const it = m.items[i]; return !!it && (!it.action || GuideTour.allows(it.action)); };
+    if (!okAt(m.sel)) { const j = m.items.findIndex((_, i) => okAt(i)); if (j >= 0) m.sel = j; }
+    m.labels?.forEach((t, i) => {
+      const it = m.items[i];
+      const ok = !it?.action || GuideTour.allows(it.action);
+      t.setColor(ok ? (it?.color ?? '#e8f2fa') : '#56677a');
+    });
     const w = 190, rowH = 32, headH = 28;
     m.rows.forEach((g, i) => {
       g.clear();
@@ -1315,10 +1366,10 @@ export class HomeInteriorScene extends Phaser.Scene {
     GameState.mealAtTable = atTable;
     const radio = f.kind === 'sofa' ? this.radioNear(f) : undefined;
     const items: MenuItem[] = [];
-    if (f.kind === 'sofa') items.push({ label: '휴식하기', color: '#9fd0e4', run: () => this.restOnSofa() });
-    if (radio) items.push({ label: '라디오 듣기', color: '#ffd9a0', run: () => this.playRadio(radio) });
-    if (atTable) items.push({ label: '식사하기', color: '#ffd9a0', run: () => this.openMealBag() });
-    items.push({ label: '일어나기', run: () => this.standUp() });
+    if (f.kind === 'sofa') items.push({ label: '휴식하기', color: '#9fd0e4', run: () => this.restOnSofa(), action: 'rest' });
+    if (radio) items.push({ label: '라디오 듣기', color: '#ffd9a0', run: () => this.playRadio(radio), action: 'radio' });
+    if (atTable) items.push({ label: '식사하기', color: '#ffd9a0', run: () => this.openMealBag(), action: 'meal' });
+    items.push({ label: '일어나기', run: () => this.standUp(), action: 'stand' });
     this.openMenu('seat', FURN_DEFS[f.kind].nameKo, items, () => this.standUp());
     // 정이 든 고양이는 소파에 앉으면 곁으로 온다
     if (f.kind === 'sofa' && HomeStore.cat.affection >= 30 && !this.cat?.hungry()) this.cat?.comeSitNear(s.sx, s.sy);
@@ -1455,8 +1506,8 @@ export class HomeInteriorScene extends Phaser.Scene {
   private openCatMenu(): void {
     this.cat?.attend();
     const food = this.catFood();
-    const items: MenuItem[] = [{ label: '쓰다듬기', color: '#ffb0c4', run: () => this.petCat() }];
-    if (food) items.push({ label: '밥 주기', color: '#ffd9a0', run: () => this.feedCat(food) });
+    const items: MenuItem[] = [{ label: '쓰다듬기', color: '#ffb0c4', run: () => this.petCat(), action: 'cat' }];
+    if (food) items.push({ label: '밥 주기', color: '#ffd9a0', run: () => this.feedCat(food), action: 'cat' });
     items.push({ label: '그만두기', color: '#8faabf', run: () => this.closeMenu() });
     this.openMenu('cat', '고양이', items, () => this.closeMenu());
   }

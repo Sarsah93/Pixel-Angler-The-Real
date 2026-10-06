@@ -128,7 +128,7 @@ dev 서버 + Playwright(설치 Chrome) 실렌더. **전 하네스 pageerror 0.**
 | 패널 9종 | 인벤·상세·채비·요리·쿨러·도감 3탭·도움말 실오픈 후 화면 Text 수집 | **잔여 0** (119차 대비 `바람 —`·신선도 설명 해소) |
 | 도감 실렌더 | 어종 57종 해금 후 스크린샷 | 카드 87 Text 중 **한글 0** — 이름·학명·제철·kg가·발견 출처 전부 영문 |
 | 손질 패널 실렌더 | 무늬오징어 도마 → `openButchery` | 제목·섹션 트리·안내문·방향·상태줄·키 힌트 영문. **잔여 = dev 버튼 3개**(프로덕션 미노출) |
-| POI 라벨 (영어) | POI 최밀집 지점 순간이동 후 라벨 수집 | 52 Text 중 **한글 1 = dev 순간이동 로그**. `속초할머니횟집 → Sokchohalmeoni Fish Restaurant` · `함흥냉면옥 → Hamheung Naengmyeon House` · `빽다방 → Paik's Coffee` |
+| POI 라벨 (영어) | POI 최밀집 지점 순간이동 후 라벨 수집 | 52 Text 중 **한글 1 = dev 순간이동 로그**. `속초외할머니횟집 → Sokchohalmeoni Fish Restaurant` · `함경냉면옥 → Hamheung Naengmyeon House` · `빼꼼다방 → Paik's Coffee` |
 | POI 라벨 (한국어) | 같은 지점 · `language: 'ko'` | 상호명 **전부 원문 유지** — 회귀 없음 |
 | 백필 정합 | `pois.json` 재검사 | 310건 중 `nameEn` 159 · 라벨 렌더 175건 |
 | 빌드 | `npx pnpm run build` / `typecheck` | **3/3 · 0 오류** |

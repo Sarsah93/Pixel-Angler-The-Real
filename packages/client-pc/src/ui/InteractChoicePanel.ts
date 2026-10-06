@@ -34,6 +34,8 @@ export interface InteractOption {
   run?: () => void;
   /** 우측으로 한 겹 펼쳐질 하위 선택지 */
   sub?: () => InteractOption[];
+  /** 219차 — 가이드 단계 허용 판정용 행동 id(`GuideTour.allows`) — 없으면 'other' */
+  action?: string;
 }
 
 const PANEL_W = 240;

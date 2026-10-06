@@ -27,6 +27,7 @@ import { MultiplayerClient } from '../net/MultiplayerClient.js';
 import { ensureCharSheet, charFrameName, CHAR_WALK_MS, WALK_SEQ } from '../ui/CharacterSprite.js';
 import { paintHudPanel, paintHudSlot } from '../ui/HudPanelStyle.js';
 import { clampTextWidth } from '../ui/TextFit.js';
+import { showLoadingThen } from '../ui/LoadingOverlay.js';
 
 const W = 1280, H = 720;
 const PREVIEW_SCALE = 10;
@@ -722,7 +723,7 @@ export class CharacterCreateScene extends Phaser.Scene {
     GameState.setCharacter(this.cfg(true));
     GameState.updatePlayer({ nickname: name || '한여름' });
     this.cameras.main.fadeOut(280, 1, 8, 18);
-    this.time.delayedCall(320, () => this.scene.start('RegionFieldScene', { region: 'hometown' }));
+    this.time.delayedCall(320, () => showLoadingThen('맵 불러오는 중', () => this.scene.start('RegionFieldScene', { region: 'hometown' })));
   }
 
   private back(): void {

@@ -1039,7 +1039,7 @@ export class FieldScene extends Phaser.Scene {
         }
         this.showPlayerFloatingHint('🚻 화장실에서 세면을 마쳐 피로가 풀렸습니다!');
       } else if (action === 'hanaro_mart') {
-        // 하나로마트 상호작용
+        // 한마음마트 상호작용
         this.showPlayerFloatingHint('🛒 한마음마트에서 미끼와 식음료를 가득 구매했습니다!');
       } else if (action === 'convenience') {
         // 편의점 상호작용

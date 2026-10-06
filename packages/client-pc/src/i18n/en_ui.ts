@@ -89,6 +89,27 @@ export const EN_UI: Record<string, string> = {
   // ── 부팅 화면 ──
   '채비 중...': 'Rigging up...',
   '출조 준비 완료!': 'Ready to head out!',
+  // 219차 — 로딩 가림막 단계 이름(ui/LoadingOverlay)
+  '구성요소 불러오는 중': 'Loading components',
+  '지도 불러오는 중': 'Loading maps',
+  '인물 불러오는 중': 'Loading characters',
+  '물고기 그림 불러오는 중': 'Loading fish art',
+  '안내 그림 불러오는 중': 'Loading guide art',
+  '소리 불러오는 중': 'Loading sounds',
+  '게임 준비 중': 'Getting the game ready',
+  '맵 불러오는 중': 'Loading the area',
+  '맵 데이터 불러오는 중': 'Loading area data',
+  '맵 그림 불러오는 중': 'Loading area art',
+  '맵 그리는 중': 'Building the area',
+  // 219차 — 자전거 코치 · 프롤로그 안전망
+  '자전거가 생겼다. [R]을 눌러 올라타 보자.': 'You have a bicycle now. Press [R] to hop on.',
+  '걸을 때보다 두 배 빠르다. 가게에 들어가거나 낚시를 시작하면 저절로 내린다. 내릴 때도 [R]이다.':
+    "It's twice as fast as walking. You get off on your own when you enter a shop or start fishing. [R] gets you off too.",
+  '[이동] 자전거에 탔다 — 걸을 때보다 두 배 빠르다.': '[Move] On the bike — twice as fast as walking.',
+  '[이동] 자전거에서 내렸다.': '[Move] Off the bike.',
+  '지금 꼭 필요한 물건이다. 할 일을 마친 뒤에 정리하자.': "I still need this. I'll sort it out once I'm done.",
+  '주머니 안쪽에서 어머니가 넣어 둔 비상금을 찾았다. 꼭 필요한 채비부터 사자.':
+    'Found the emergency money Mom tucked into my inner pocket. Basic tackle first.',
 
   // ── 상세보기 (접시·과증식·어획물) ──
   '접시 크기': 'Plate size',

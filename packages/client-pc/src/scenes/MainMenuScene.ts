@@ -21,6 +21,7 @@ import { characterLook } from '../data/EquipOutfit.js';
 import { MultiplayerClient } from '../net/MultiplayerClient.js';
 import { ExternalDataStore } from '../store/ExternalDataStore.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
+import { showLoadingThen } from '../ui/LoadingOverlay.js';
 
 type MenuView = 'main' | 'mode' | 'start' | 'slots';
 type SlotMode = 'new' | 'load';
@@ -656,9 +657,9 @@ export class MainMenuScene extends Phaser.Scene {
       return;
     }
     const r = MultiplayerClient.resume;
-    this.fadeOutThen(320, () => this.scene.start('RegionFieldScene', {
+    this.fadeOutThen(320, () => showLoadingThen('맵 불러오는 중', () => this.scene.start('RegionFieldScene', {
       region: r?.regionId || 'hometown',
-    }));
+    })));
   }
 
   /** 슬롯 화면 하단 안내 — 실패 사유를 그 자리에 보여준다 */
@@ -670,7 +671,7 @@ export class MainMenuScene extends Phaser.Scene {
 
   private startAdventure(): void {
     // 시작 지점 = 홈타운(집) — 출조는 버스정류장/전국 지도에서 (HOMETOWN_HOME_SPEC)
-    this.fadeOutThen(320, () => this.scene.start('RegionFieldScene', { region: 'hometown' }));
+    this.fadeOutThen(320, () => showLoadingThen('맵 불러오는 중', () => this.scene.start('RegionFieldScene', { region: 'hometown' })));
   }
 
   // ── 도감 / 설정 / 종료 ─────────────────────────────

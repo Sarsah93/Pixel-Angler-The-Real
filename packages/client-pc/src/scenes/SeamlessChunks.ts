@@ -2638,14 +2638,51 @@ export class SeamlessChunks {
         let armed = quayAll ? 0 : 1;
         if (sides && !quayAll) {
           const c = i % cols, r = Math.floor(i / cols);
-          let best = d, bestE: TileEdge | null = null;
-          for (const [dc, dr, e] of DIRS4) {
+          // 219차 — 가장 가까운 물 쪽 방위: 거리장(dw)이 가장 작은 4-이웃. 구: 그런 이웃이 둘 이상이어도
+          //   n→e→s→w 순으로 **처음 것**을 잡아, 항내 쪽 물가 줄에서 동·남이 같은 거리면 'e'가 뽑혔다 →
+          //   「우측만」 방파제의 항내 모서리에 테트라포드가 한 줄 외따로 박혔다(사용자: "알 수 없는 구조물 — 직판장 근처").
+          //   동률이면 그 방향으로 **곧장 가서 물을 만나는 걸음 수**로 가리고, 그래도 같으면(돌출 끝 · 모서리)
+          //   **모두** 지정 방위일 때만 피복한다 — 외따로 한 개가 남지 않게.
+          let minV = d;
+          for (const [dc, dr] of DIRS4) {
             const nc = c + dc, nr = r + dr;
             if (nc < 0 || nr < 0 || nc >= cols || nr >= rows) continue;
-            const j = nr * cols + nc;
-            if (dw[j] < best) { best = dw[j]; bestE = e; }
+            minV = Math.min(minV, dw[nr * cols + nc]);
           }
-          armed = bestE === null ? 1 : sides.includes(bestE) ? 1 : 0;
+          let bestEdges: TileEdge[] = [];
+          if (minV < d) {
+            const tied = DIRS4.filter(([dc, dr]) => {
+              const nc = c + dc, nr = r + dr;
+              return nc >= 0 && nr >= 0 && nc < cols && nr < rows && dw[nr * cols + nc] === minV;
+            });
+            if (tied.length === 1) bestEdges = [tied[0][2]];
+            else {
+              let bestSteps = Infinity;
+              for (const [dc, dr, e] of tied) {
+                let steps = Infinity;
+                for (let k = 1; k <= 40; k++) {
+                  const nc = c + dc * k, nr = r + dr * k;
+                  if (nc < 0 || nr < 0 || nc >= cols || nr >= rows) break;
+                  const t = this.tileAt(nc, nr);
+                  if (t === '~') { steps = k; break; }
+                  if (t !== 'b' && t !== '.') break;
+                }
+                if (steps < bestSteps) { bestSteps = steps; bestEdges = [e]; } else if (steps === bestSteps) bestEdges.push(e);
+              }
+            }
+          }
+          if (bestEdges.length) armed = bestEdges.every((e) => sides.includes(e)) ? 1 : 0;
+          else {
+            // 물이 **대각선에만** 있는 안쪽 모퉁이 — 대각선 물의 두 방위 중 하나라도 지정 방위일 때만 피복
+            let diagBest = d, diagEdges: TileEdge[] | null = null;
+            for (const [dc, dr] of [[1, -1], [1, 1], [-1, 1], [-1, -1]] as const) {
+              const nc = c + dc, nr = r + dr;
+              if (nc < 0 || nr < 0 || nc >= cols || nr >= rows) continue;
+              const j = nr * cols + nc;
+              if (dw[j] < diagBest) { diagBest = dw[j]; diagEdges = [dr < 0 ? 'n' : 's', dc > 0 ? 'e' : 'w']; }
+            }
+            armed = diagEdges === null ? 1 : diagEdges.some((e) => sides.includes(e)) ? 1 : 0;
+          }
         }
         this.bwArm[i] = armed;
         cls[i] = !armed ? 1 : armor === 1

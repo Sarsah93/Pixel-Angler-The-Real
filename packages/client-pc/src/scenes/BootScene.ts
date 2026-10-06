@@ -12,6 +12,7 @@ import Phaser from 'phaser';
 import { GUIDES } from '../data/GuideContent.js';
 import { HELP_IMAGE_KEYS } from '../data/HelpContent.js';
 import { SASHIMI_GUIDE_TEXTURE, registerSashimiGuideFrames } from '../data/SashimiGuideFrames.js';
+import { hideLoadingAfterRender, setLoadingProgress, setLoadingStage, showLoading, stageForFile } from '../ui/LoadingOverlay.js';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -28,60 +29,23 @@ export class BootScene extends Phaser.Scene {
     for (const e of FURNITURE_SALES) if (e.furnKind) ensureFurnitureIcon(this, e.furnKind);
     // 삼면뜨기 픽셀 가이드 시트 → 47컷 그리드 프레임 등록 (지오메트리 = core 단일 소스)
     registerSashimiGuideFrames(this);
+    hideLoadingAfterRender(this.game, 3);   // 219차 — 메인 화면이 그려진 뒤 가림막을 걷는다
     this.scene.start('MainMenuScene');
   }
 
+  /**
+   * 219차 — 로딩 화면은 HTML 가림막(`ui/LoadingOverlay`)이 맡는다. 파일 이름을 하나씩 보여 주던 줄을 걷고
+   * 단계 이름(지도 · 인물 · 물고기 그림 · 구성요소)과 진행 막대만 남겼다(사용자 지시).
+   */
   private createLoadingScreen(): void {
     const { width, height } = this.cameras.main;
-
-    // 배경
     this.add.rectangle(0, 0, width, height, 0x0a0e14).setOrigin(0, 0);
-
-    // 로딩 바 배경
-    const barBg = this.add.rectangle(width / 2, height / 2, 400, 8, 0x1a2535).setOrigin(0.5);
-    // 로딩 바 (실제 진행)
-    const bar = this.add.rectangle(width / 2 - 200, height / 2, 0, 8, 0x4af2a1).setOrigin(0, 0.5);
-
-    // 타이틀 텍스트
-    this.add
-      .text(width / 2, height / 2 - 60, 'THE REAL ANGLER', {
-        fontFamily: '"Press Start 2P", monospace',
-        fontSize: '24px',
-        color: '#e8f4fd',
-        shadow: { offsetX: 3, offsetY: 3, color: '#001a33', blur: 0, fill: true },
-      })
-      .setOrigin(0.5);
-
-    this.add
-      .text(width / 2, height / 2 - 28, 'Pixel Angler The Real', {
-        fontFamily: 'monospace',
-        fontSize: '14px',
-        color: '#5a8fab',
-      })
-      .setOrigin(0.5);
-
-    const loadingText = this.add
-      .text(width / 2, height / 2 + 30, '채비 중...', {
-        fontFamily: 'monospace',
-        fontSize: '12px',
-        color: '#5a8fab',
-      })
-      .setOrigin(0.5);
-
-    void barBg;
-
-    // 로딩 진행률 업데이트
-    this.load.on('progress', (value: number) => {
-      bar.width = 400 * value;
+    showLoading('구성요소 불러오는 중');
+    this.load.on('progress', (value: number) => setLoadingProgress(value));
+    this.load.on('fileprogress', (file: { key: string; url?: unknown; type?: string }) => {
+      setLoadingStage(stageForFile(file));
     });
-
-    this.load.on('fileprogress', (file: { key: string }) => {
-      loadingText.setText(`로딩 중: ${file.key}`);
-    });
-
-    this.load.on('complete', () => {
-      loadingText.setText('출조 준비 완료!');
-    });
+    this.load.on('complete', () => setLoadingStage('게임 준비 중'));
   }
 
   private loadAssets(): void {

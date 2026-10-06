@@ -20,7 +20,7 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { applyScreenFixed } from './DraggablePanel.js';
-import { paintHudPanel } from './HudPanelStyle.js';
+import { paintHudPanel, hudHeaderMidY } from './HudPanelStyle.js';
 import { addPixelIcon } from './PixelIcon.js';
 import type { MiniMarker } from './RegionHud.js';
 import { MapPinStore } from '../store/MapPinStore.js';
@@ -99,17 +99,24 @@ export class FullMapPanel extends Phaser.GameObjects.Container {
     const frame = scene.add.graphics();
     paintHudPanel(frame, PAD - 8, PAD - 8, GAME_WIDTH - PAD * 2 + 16, GAME_HEIGHT - PAD * 2 + 16, { alpha: 0.96, headerH: HDR });
     this.add(frame);
-    const title = scene.add.text(PAD + 4, PAD + 6, `${cfg.titleKo} — 전체 지도`, { fontFamily: FONT, fontSize: '14px', color: '#ffe9a0', fontStyle: 'bold' });
+    // 219차 — 제목 띠 안의 것은 모두 띠의 세로 가운데에 맞춘다(구: 위쪽 기준 y라 제목이 띠 아래로 처졌다).
+    //  오른쪽은 ✕ ← 배율 ← 핀 제거 순으로 **서로의 실제 폭**에 이어 붙인다(구: 화면 끝 상수라 사이가 들쭉날쭉했다).
+    const midY = hudHeaderMidY(PAD - 8, HDR);
+    const title = scene.add.text(PAD + 4, midY, `${cfg.titleKo} — 전체 지도`, { fontFamily: FONT, fontSize: '14px', color: '#ffe9a0', fontStyle: 'bold' })
+      .setOrigin(0, 0.5);
     this.add(title);
-    this.zoomText = scene.add.text(GAME_WIDTH - PAD - 40, PAD + 8, '', { fontFamily: FONT, fontSize: '11px', color: '#9fc0d4' }).setOrigin(1, 0);
-    this.add(this.zoomText);
-    const xt = scene.add.text(GAME_WIDTH - PAD - 8, PAD + 4, '✕', { fontFamily: 'sans-serif', fontSize: '16px', color: '#ff9a9a' }).setOrigin(1, 0)
+    const xt = scene.add.text(GAME_WIDTH - PAD - 4, midY, '✕', { fontFamily: 'sans-serif', fontSize: '16px', color: '#ff9a9a' }).setOrigin(1, 0.5)
       .setInteractive({ useHandCursor: true });
     xt.on('pointerdown', () => cfg.onClose());
     this.add(xt);
-    this.pinBtn = scene.add.text(GAME_WIDTH - PAD - 100, PAD + 8, '핀 제거', {
+    // 배율 칸은 가장 넓은 값(×8.0) 폭으로 자리를 잡아 두고 오른쪽 정렬 — 값이 바뀌어도 옆 단추가 움직이지 않는다
+    const zoomRight = xt.x - xt.width - 14;
+    this.zoomText = scene.add.text(zoomRight, midY, '×8.0', { fontFamily: FONT, fontSize: '11px', color: '#9fc0d4' }).setOrigin(1, 0.5);
+    const zoomSlotW = this.zoomText.width;
+    this.add(this.zoomText);
+    this.pinBtn = scene.add.text(zoomRight - zoomSlotW - 12, midY, '핀 제거', {
       fontFamily: FONT, fontSize: '11px', color: '#9fe8ff', backgroundColor: '#0a1628', padding: { x: 6, y: 2 },
-    }).setOrigin(1, 0).setInteractive({ useHandCursor: true });
+    }).setOrigin(1, 0.5).setInteractive({ useHandCursor: true });
     this.pinBtn.on('pointerdown', () => { MapPinStore.clear(cfg.regionId); this.drawMarkers(); });
     this.add(this.pinBtn);
 

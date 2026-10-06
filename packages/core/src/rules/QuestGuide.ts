@@ -82,7 +82,7 @@ export function objectiveHowToKo(q: StoryQuestDef, o: StoryObjective, n: GuideNa
     case 'custom':
       if (key.startsWith('job:')) return `${giver}에게 [F] → 「일손이 필요하진 않으세요?」 → 일감 「${n.jobName(key.slice(4))}」`;
       if (key.startsWith('buy:')) return `상점에서 「${n.itemName(key.slice(4))}」을(를) 산다 (생활용품점 사이소)`;
-      if (key === 'bedSave') return '집 침대 [F] → [저장하고 쉬기]';
+      if (key === 'bedSave') return '집 침대 [F] → [저장만 하기]';
       return '대화로 진행한다';
     case 'catch': {
       const where = o.spotKind === 'breakwater' ? '방파제(테트라포드 틈 = 짧게 클릭 · 캐스팅 = 길게)' : o.spotKind === 'hole' ? '테트라포드 틈에서 짧게 클릭' : '물가';

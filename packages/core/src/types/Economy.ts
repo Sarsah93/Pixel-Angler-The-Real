@@ -299,7 +299,7 @@ export const SEAFOOD_AUCTION_MAPPING: Record<string, AuctionMappingDef> = {
 };
 
 /**
- * 마트(하나로마트/대형마트) 유통 품목 규격 정의
+ * 마트(한마음마트/대형마트) 유통 품목 규격 정의
  */
 export interface MartRetailMappingDef {
   /** 품목 고유 ID (인벤토리 아이템 ID와 대응) */
@@ -315,7 +315,7 @@ export interface MartRetailMappingDef {
 }
 
 /**
- * 하나로마트/대형마트 유통 상품 데이터베이스 (선어 및 기타 농수산물/가공품)
+ * 한마음마트/대형마트 유통 상품 데이터베이스 (선어 및 기타 농수산물/가공품)
  */
 export const MART_RETAIL_DATABASE: Record<string, MartRetailMappingDef> = {
   // ─── 1. 선어 및 Chilled Seafood (활어를 회뜨거나 말린 제품) ───

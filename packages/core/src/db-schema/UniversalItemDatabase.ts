@@ -4,7 +4,7 @@
  *
  * 구매처별 구분:
  *  - tackle_shop  : 낚시용품점 전용 재료 (요리 불가)
- *  - hanaro_mart  : 하나로마트 식재료 (낚시용 1회 변환 가능)
+ *  - hanaro_mart  : 한마음마트 식재료 (낚시용 1회 변환 가능)
  *  - fish_market  : 직판장 활어·선어 (dual: 요리+미끼 모두 가능)
  *  - dual can     : 통조림 등 예외 품목 (낚시점·마트 공통, 양쪽 모두 가능)
  */
@@ -171,7 +171,7 @@ const TACKLE_SHOP_ITEMS: UniversalItem[] = [
 ];
 
 // ─────────────────────────────────────────────────────────────
-// 하나로마트/편의점 식재료 (cooking_convertible_to_bait)
+// 한마음마트/편의점 식재료 (cooking_convertible_to_bait)
 // ─────────────────────────────────────────────────────────────
 
 const MART_ITEMS: UniversalItem[] = [

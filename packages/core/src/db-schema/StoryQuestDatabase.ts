@@ -73,7 +73,7 @@ const MAIN: StoryQuestDef[] = mainRows([
         placeKey: 'prologue:squid', guidePlaceKey: 'home:door',
         howToKo: '냉장고 앞 [F] → 냉동고 칸의 오징어를 클릭해 가방으로', howToEn: 'Press [F] at the fridge → click the squid in the freezer to take it' }),
       auto('custom', '침대에서 저장한다', 'Save at the bed', { placeKey: 'prologue:save', guidePlaceKey: 'home:door',
-        howToKo: '침대 앞 [F] → 「저장하고 쉬기」', howToEn: 'Press [F] at the bed → "Save and rest"' }),
+        howToKo: '침대 앞 [F] → 「저장만 하기」', howToEn: 'Press [F] at the bed → "Save only"' }),
       auto('custom', '집을 나선다', 'Step outside', { placeKey: 'prologue:leave', guidePlaceKey: 'home:door',
         howToKo: '문 앞에서 [F]', howToEn: 'Press [F] at the door' }),
       auto('custom', '우물물을 한 모금 마신다', 'Take a drink from the well', { placeKey: 'prologue:well', guidePlaceKey: 'home:well',

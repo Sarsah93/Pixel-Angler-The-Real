@@ -88,6 +88,15 @@ export function paintHudPanel(
   }
 }
 
+/**
+ * 219차 — `paintHudPanel(…, { headerH })`가 그린 제목 띠의 **세로 가운데**(패널 y 기준 절대 좌표).
+ * 띠는 테두리 3px 안쪽에서 시작하므로 `y + headerH / 2`가 아니다 — 제목 · 단추를 이 값에 `originY 0.5`로 맞춘다.
+ * (전체 지도 제목이 띠 아래로 4px 처져 「아래 정렬」처럼 보였다 — 사용자 리포트)
+ */
+export function hudHeaderMidY(y: number, headerH: number): number {
+  return y + 3 + Math.round(headerH / 2);
+}
+
 /** 퀵슬롯/그리드 셀 1칸 — 중심 기준 (cx, cy) */
 export function paintHudSlot(
   g: Phaser.GameObjects.Graphics, cx: number, cy: number, w: number, h: number, active: boolean,
