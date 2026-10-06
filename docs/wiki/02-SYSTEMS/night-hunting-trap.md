@@ -59,7 +59,7 @@
 | D2c 안전 판정 배선 | ✅ `forageSafety` — 실데이터 풍속/파고(파고 2.1m 실측 차단) | 121 |
 | D2d 수심·침지 실연동 | ✅ `depthAtWaterTile`(육지 거리×수심 프로필) · `baitDurationHours` | 121 |
 | D3 확률 튜닝 중앙화 | 🔶 신규 시스템은 `TUNING.forage/trap` · 레거시 `NightHuntingEngine` 매직넘버 잔존 | 121 |
-| D4 생물 스프라이트 | 🔶 사진 도트 3종(갯강구 · 청갯지렁이 상자 · 혼무시 — `tools/pixelize_forage_photos.py`) + 놀이 판 그림 2종 · 나머지는 절차 도트 | 225 — [워크로그](../03-WORKLOG/2026-10-06-225-forage-feedback-pry-board-photo-icons.md) |
+| D4 생물 스프라이트 | 🔶 사진 · 그림 도트 5종(갯강구 · 청갯지렁이 상자 · 혼무시 · 해삼 · 보라성게 — `tools/pixelize_forage_photos.py`) + 놀이 판 그림 4종 · 나머지는 절차 도트 | 225 · 226 — [워크로그](../03-WORKLOG/2026-10-06-226-sea-cucumber-urchin-art.md) |
 | D5 RegionFieldScene 진입 동선 | ✅ 인-맵 [F]·T (122차 E→F) — 별도 씬 없음 | 121 |
 | **통발 어획물의 sink(위판)** | ✅ 직판장 위판 창구 — 계원 자격 시 경매 출품 | 147 — [S6](economy-data.md) |
 | 스킬 배율 훅(스팟 반경·균형·맨손 부상·문어 도주·통발 분실) + 어촌계원(`fishery_member`) 조례 면제 | ✅ | 122 — `attemptForage(…, mods)` · `rollTrapLoss(…, riskMult)` 기본값은 종전과 동일 |

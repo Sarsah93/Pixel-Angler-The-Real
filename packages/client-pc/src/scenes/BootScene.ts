@@ -172,6 +172,11 @@ export class BootScene extends Phaser.Scene {
       // 225차 — 채집 놀이 판 그림(도트 원래 크기 · 머리 왼쪽). 없으면 필드 도트를 키워 쓴다
       forageboard_marphysa_sanguinea: 'forage-board/marphysa_sanguinea.png',
       forageboard_ligia_exotica: 'forage-board/ligia_exotica.png',
+      // 226차 — 사용자가 그려 온 도트 그림(해삼 · 보라성게) — 아이콘은 원본 그대로, 판 그림은 줄인 것
+      forage_stichopus_japonicus: 'item-icons/forage_stichopus_japonicus.png',
+      forage_strongylocentrotus_nudus: 'item-icons/forage_strongylocentrotus_nudus.png',
+      forageboard_stichopus_japonicus: 'forage-board/stichopus_japonicus.png',
+      forageboard_strongylocentrotus_nudus: 'forage-board/strongylocentrotus_nudus.png',
     };
     for (const [key, path] of Object.entries(ITEM_ICON_ASSETS)) this.load.image(key, path);
     // 회썰기(사시미) 미니게임 — 필렛 2뷰 (tools/gen_sashimi_fillet.cjs 생성, 원본 실사 리매핑)

@@ -2,6 +2,7 @@
 225차 — 사용자 실사(갯것 3종) → 픽셀 아이템 아이콘 · 채집 판 그림.
 
 입력: food assets/forage/{ragworm,honmushi,sea_slater}.png  (사용자 사진 원본 — 수정 금지)
+      food assets/forage/{sea_cucumber,purple_urchin}.png  (226차 — 사용자가 그려 온 투명 도트 그림)
 출력:
   packages/client-pc/public/item-icons/forage_<speciesId>.png  — 아이템 아이콘(도트 × 정수배, 투명 여백)
   packages/client-pc/public/forage-board/<speciesId>.png        — 채집 놀이 판 그림(도트 원래 크기 — 게임이 정수배로 키운다)
@@ -22,8 +23,15 @@ OUT_BOARD = os.path.join(ROOT, 'packages', 'client-pc', 'public', 'forage-board'
 
 
 def load(name):
-    im = Image.open(os.path.join(SRC, name + '.png')).convert('RGB')
-    return im, np.asarray(im).astype(np.float32), np.asarray(im.convert('HSV')).astype(np.float32)
+    raw = Image.open(os.path.join(SRC, name + '.png'))
+    im = raw.convert('RGB')
+    alpha = np.asarray(raw.convert('RGBA'))[..., 3] if raw.mode in ('RGBA', 'LA', 'P') else None
+    return im, np.asarray(im).astype(np.float32), np.asarray(im.convert('HSV')).astype(np.float32), alpha
+
+
+def mask_alpha(rgb, hsv, alpha):
+    """226차 — 이미 투명 배경으로 그려 온 도트 그림(해삼 · 보라성게)은 알파가 곧 마스크다."""
+    return alpha >= 128
 
 
 def largest(mask):
@@ -108,7 +116,7 @@ def enhance(rgb, sat=1.0, con=1.0):
     return np.asarray(im).astype(np.float32)
 
 
-def pixelize(rgb, mask, long_px, colors=22, rotate=0):
+def pixelize(rgb, mask, long_px, colors=22, rotate=0, alpha_cut=110):
     ys, xs = np.where(mask)
     y0, y1, x0, x1 = ys.min(), ys.max() + 1, xs.min(), xs.max() + 1
     rgba = np.zeros((y1 - y0, x1 - x0, 4), np.float32)
@@ -118,6 +126,7 @@ def pixelize(rgb, mask, long_px, colors=22, rotate=0):
     if rotate:
         im = im.rotate(rotate, expand=True, resample=Image.BICUBIC)
         a = np.asarray(im).copy(); a[..., 3] = np.where(a[..., 3] >= 128, 255, 0); im = Image.fromarray(a, 'RGBA')
+        im = im.crop(im.getbbox())   # 돌리고 생긴 빈 여백을 잘라야 긴 축 기준 크기가 맞는다
     w, h = im.size
     k = long_px / max(w, h)
     tw, th = max(1, round(w * k)), max(1, round(h * k))
@@ -127,7 +136,7 @@ def pixelize(rgb, mask, long_px, colors=22, rotate=0):
     pre[..., :3] *= a[..., 3:4] / 255
     small = np.asarray(Image.fromarray(pre.astype(np.uint8), 'RGBA').resize((tw, th), Image.BOX)).astype(np.float32)
     alpha = small[..., 3]
-    on = alpha >= 110
+    on = alpha >= alpha_cut
     rgb_s = np.zeros((th, tw, 3), np.float32)
     rgb_s[on] = np.clip(small[on, :3] * 255 / np.maximum(alpha[on, None], 1), 0, 255)
     # 색 줄이기 — 불투명 칸만
@@ -170,6 +179,23 @@ def add_antennae(px, frac=0.5, color=(70, 60, 50)):
     return im.crop(im.getbbox())
 
 
+def save_icon_hires(rgb, mask, species, rotate=0, pad=0.06):
+    """226차 — 원본이 이미 도트 그림이면 다시 굽지 않고 잘라서 정사각 투명 캔버스에 앉힌다(다른 forage_* 아이콘과 같은 꼴)."""
+    ys, xs = np.where(mask)
+    y0, y1, x0, x1 = ys.min(), ys.max() + 1, xs.min(), xs.max() + 1
+    rgba = np.zeros((y1 - y0, x1 - x0, 4), np.uint8)
+    rgba[..., :3] = rgb[y0:y1, x0:x1].astype(np.uint8)
+    rgba[..., 3] = mask[y0:y1, x0:x1] * 255
+    im = Image.fromarray(rgba, 'RGBA')
+    if rotate:
+        im = im.rotate(rotate, expand=True, resample=Image.NEAREST)
+        im = im.crop(im.getbbox())
+    side = int(max(im.size) * (1 + pad * 2))
+    can = Image.new('RGBA', (side, side), (0, 0, 0, 0))
+    can.paste(im, ((side - im.width) // 2, (side - im.height) // 2))
+    can.save(os.path.join(OUT_ICON, f'forage_{species}.png'))
+
+
 def save_icon(px, species, canvas=96, scale=10):
     w, h = px.size
     can = Image.new('RGBA', (canvas, canvas), (0, 0, 0, 0))
@@ -188,22 +214,31 @@ JOBS = [
     ('ragworm', 'perinereis_aibuhitensis', mask_ragworm, 72, 0, 0, 1.45, 1.2),   # 판 그림은 상자가 아니라 한 마리라 도트 유지
     ('honmushi', 'marphysa_sanguinea', mask_honmushi, 80, 40, 0, 1.0, 1.05),
     ('sea_slater', 'ligia_exotica', mask_slater, 72, 30, 'axis', 1.1, 1.15),   # 판에서 옆으로 달린다
+    # 226차 — 사용자가 도트 그림으로 그려 온 것(투명 배경): 아이콘은 원본 그대로 · 판 그림만 줄인다
+    ('sea_cucumber', 'stichopus_japonicus', mask_alpha, 'hires', 48, 'axis', 1.0, 1.0),
+    ('purple_urchin', 'strongylocentrotus_nudus', mask_alpha, 'hires', 44, 0, 1.0, 1.0),
 ]
 
 if __name__ == '__main__':
     for src, sp, fn, icon_px, board_px, rot, sat, con in JOBS:
-        im, rgb, hsv = load(src)
-        m = fn(rgb, hsv)
+        im, rgb, hsv, alpha = load(src)
+        m = fn(rgb, hsv, alpha) if fn is mask_alpha else fn(rgb, hsv)
         if rot == 'axis':
             rot = axis_angle(m)
         rgb = enhance(rgb, sat, con)
         print(f'{src}: mask {m.mean():.3f}')
-        icon = pixelize(rgb, m, icon_px, rotate=rot)
-        board = pixelize(rgb, m, board_px, colors=14, rotate=rot) if board_px else None
+        cut = 50 if sp == 'strongylocentrotus_nudus' else 110   # 성게 가시는 가늘어 알파 문턱을 낮춘다
+        if icon_px == 'hires':
+            save_icon_hires(rgb, m, sp, rotate=rot)
+            icon = None
+        else:
+            icon = pixelize(rgb, m, icon_px, rotate=rot)
+        board = pixelize(rgb, m, board_px, colors=18, rotate=rot, alpha_cut=cut) if board_px else None
         if sp == 'ligia_exotica':
-            icon = add_antennae(icon)
+            icon = add_antennae(icon) if icon else None
             board = add_antennae(board) if board else None
-        save_icon(icon, sp)
+        if icon:
+            save_icon(icon, sp)
         if board:
             save_board(board, sp)
     print('ok')
