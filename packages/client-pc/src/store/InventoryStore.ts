@@ -251,6 +251,8 @@ export interface InvItem {
   plateWip?: PlateWipData;
   /** 136차 — 장비 고장·파손 상태 (없으면 정상) */
   fault?: GearFaultId;
+  /** 222차 — 손으로 만든 장비의 품질(좋음 · 훌륭함). 고장이 날 때 그만큼 버틴다(`setFault`) */
+  craftQuality?: 'good' | 'great';
   /**
    * 136차 — 누적 사용 횟수(던지고 감은 사이클). 로드·릴은 마모 계수의 입력,
    * 찌는 부력 변성 판정 시점(300회)의 입력이다.
@@ -796,10 +798,14 @@ function condNextOf(cond: InvCondition, profile?: InvItem['condProfile']): InvCo
   if (profile === 'viscera' && cond in VISCERA_NEXT) return VISCERA_NEXT[cond] ?? null;
   return CONDITION_NEXT[cond];
 }
+/** 222차 — 「보관 요령」 배수(GameState가 주입 — 순환 import 회피). 종착(Infinity)은 그대로 */
+let freshnessMult: () => number = () => 1;
+export function setFreshnessMult(fn: () => number): void { freshnessMult = fn; }
+
 /** 프로필 반영 단계 유지 시간 (분) */
 function condDurationOf(cond: InvCondition, profile?: InvItem['condProfile']): number {
-  if (profile === 'viscera' && cond in VISCERA_DURATION_MIN) return VISCERA_DURATION_MIN[cond]!;
-  return CONDITION_DURATION_MIN[cond];
+  if (profile === 'viscera' && cond in VISCERA_DURATION_MIN) return VISCERA_DURATION_MIN[cond]! * freshnessMult();
+  return CONDITION_DURATION_MIN[cond] * freshnessMult();
 }
 
 /** 현재 상태부터 종착까지의 전이 경로 (상세보기 '신선도 단계' 표기용) */
@@ -1740,7 +1746,7 @@ class InventoryStoreManager {
     inv_place_fence:   { id: 'inv_place_fence',   name: '울타리',            icon: '🪵', category: 'etc', subCategory: '설치형', basePrice: 1500,   equippable: false, placeKey: 'fence' },
     inv_place_aq_live: { id: 'inv_place_aq_live', name: '활어 수조 (업소용)', icon: '🐠', category: 'etc', subCategory: '설치형', basePrice: 120000, equippable: false, placeKey: 'aquarium_live' },
     inv_place_aq_disp: { id: 'inv_place_aq_disp', name: '관상용 수족관',      icon: '🐟', category: 'etc', subCategory: '설치형', basePrice: 60000,  equippable: false, placeKey: 'aquarium_display' },
-    inv_place_workbench: { id: 'inv_place_workbench', name: '고급 제작대', icon: '', iconTexture: 'px:it_workbench', category: 'etc', subCategory: '설치형', basePrice: 180000, equippable: false, placeKey: 'workbench' },
+    inv_place_workbench: { id: 'inv_place_workbench', name: '작업대', icon: '', iconTexture: 'px:it_workbench', category: 'etc', subCategory: '설치형', basePrice: 180000, equippable: false, placeKey: 'workbench' },
   };
 
   recoverPlaceable(itemId: string): boolean {
@@ -2329,6 +2335,8 @@ class InventoryStoreManager {
   /** 고장 부여 — 이미 고장난 장비는 덮어쓰지 않는다(먼저 고쳐야 한다) */
   setFault(item: InvItem | undefined, fault: GearFaultId): boolean {
     if (!item || item.fault) return false;
+    // 222차 — 손으로 잘 만든 장비는 버틴다(좋음 15% · 훌륭함 30% 확률로 고장을 넘긴다 — 작은 이득)
+    if (item.craftQuality && Math.random() < (item.craftQuality === 'great' ? 0.3 : 0.15)) return false;
     item.fault = fault;
     LedgerStore.gear(`${item.name} — ${GEAR_FAULTS[fault].labelKo}`);   // 211차
     // 사용불가 고장은 즉시 손에서 내린다 — 부러진 대를 든 채로 던질 수는 없다

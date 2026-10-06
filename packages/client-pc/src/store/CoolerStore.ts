@@ -93,9 +93,13 @@ export interface CoolerSaveState {
   chumWaterAdded: boolean;
   chumMixed: boolean;
   chumRemaining: number;
+  /** 222차 — 이번 배합 한 통의 양(「밑밥 블렌딩」) · 구세이브 100 */
+  chumMax?: number;
 }
 
 class CoolerStoreImpl {
+  /** 222차 — 「보관 요령」 배수(GameState가 주입 — 순환 import 회피) */
+  freshnessMult: () => number = () => 1;
   /** 어창 9칸 — null = 빈 칸 */
   slots: (CoolerFish | null)[] = Array.from({ length: COOLER_CAPACITY }, () => null);
 
@@ -118,6 +122,10 @@ class CoolerStoreImpl {
   chumMixed = false;
   /** 남은 밑밥량 (0~100, 0 = 비어있음) */
   chumRemaining = 0;
+  /** 222차 — 이번 배합 한 통의 양 */
+  chumMax = 100;
+  /** 222차 — 「밑밥 블렌딩」 배수(GameState가 주입) */
+  chumAmountMult: () => number = () => 1;
 
   // ═══════════════════════════════════════════════════
   // 신선도 동기화 엔진
@@ -176,9 +184,9 @@ class CoolerStoreImpl {
       let remain = deltaMs;
       while (remain > 0) {
         if (this.isPaused(f.condition, med)) break;
-        const durMin = med === 'ice' && f.condition === 'live'
+        const durMin = (med === 'ice' && f.condition === 'live'
           ? ICE_LIVE_DURATION_MIN
-          : CONDITION_DURATION_MIN[f.condition];
+          : CONDITION_DURATION_MIN[f.condition]) * this.freshnessMult();   // 222차 「보관 요령」
         if (!Number.isFinite(durMin)) break;   // 종착(부패)
         const durMs = durMin * 60_000;
         const need = durMs - f.stateElapsedMs;
@@ -227,9 +235,9 @@ class CoolerStoreImpl {
     this.sync(now);
     const med = this.activeMedium();
     if (this.isPaused(f.condition, med)) return null;
-    const durMin = med === 'ice' && f.condition === 'live'
+    const durMin = (med === 'ice' && f.condition === 'live'
       ? ICE_LIVE_DURATION_MIN
-      : CONDITION_DURATION_MIN[f.condition];
+      : CONDITION_DURATION_MIN[f.condition]) * this.freshnessMult();
     if (!Number.isFinite(durMin)) return null;   // 종착(부패)
     return Math.max(0, durMin * 60_000 - f.stateElapsedMs);
   }
@@ -330,6 +338,7 @@ class CoolerStoreImpl {
       chumWaterAdded: this.chumWaterAdded,
       chumMixed: this.chumMixed,
       chumRemaining: this.chumRemaining,
+      chumMax: this.chumMax,
     };
   }
 
@@ -353,6 +362,7 @@ class CoolerStoreImpl {
     this.chumWaterAdded = s.chumWaterAdded ?? false;
     this.chumMixed = s.chumMixed ?? false;
     this.chumRemaining = s.chumRemaining ?? 0;
+    this.chumMax = s.chumMax ?? 100;
     // ── 오프라인(게임 종료) 중에는 신선도가 진행하지 않는다 ──
     // 구 구현은 저장~로드 wall-clock 갭 전체를 sync()로 적용해, 하루 뒤 재접속하면
     // 방금 넣은 어획까지 전부 부패로 점프하던 버그가 있었다(활어→부패 상온 ~10시간).
@@ -384,10 +394,11 @@ class CoolerStoreImpl {
     this.chumIngredients.push({ kind, name });
   }
 
-  /** 섞기 완료 — 밑밥 100 충전 */
+  /** 섞기 완료 — 밑밥 100 충전(222차 「밑밥 블렌딩」이 늘린다) */
   completeChumMix(): void {
     this.chumMixed = true;
-    this.chumRemaining = 100;
+    this.chumMax = Math.round(100 * this.chumAmountMult());
+    this.chumRemaining = this.chumMax;
   }
 
   /**

@@ -21,7 +21,7 @@ import {
   LICENSE_DATABASE, LICENSE_STORY_ROUTES, SKILL_DATABASE, SKILL_CATEGORIES,
   REGION_DATABASE, WORLD_NODE_DATABASE, REGION_AREA_NODES, REGION_MAP_GRAPHS, SEAMLESS_REGIONS,
   DATA_ATTRIBUTIONS, LICENSE_LABEL, LICENSE_LABEL_EN,
-  CRAFT_BLUEPRINTS, CRAFT_GROUP_LABEL,
+  CRAFT_BLUEPRINTS, CRAFT_GROUP_LABEL, CRAFT_STATION_LABEL, CRAFT_QUALITY_LABEL,
   allChoiceLines, allNarrativeLines,
   FIRE_RECIPES, COOK_INGREDIENTS, HEAT_SOURCES, COOKWARES, FUELS,
   RECIPE_LORE, DISH_VARIANT_LORE, RECIPE_EFFECTS, FOOD_EFFECT_KIND_KO, DISH_MODIFIER_KO, DISH_MODIFIER_EN,
@@ -96,7 +96,13 @@ function buildRuntimeDict(): void {
   for (const c of SKILL_CATEGORIES) { put(c.nameKo, c.nameEn); put(c.descKo, c.descEn); put(c.lockedNoteKo, c.lockedNoteEn); }
   // 131차 — 제작 도면·그룹 라벨도 데이터(nameEn/descEn)가 정본
   for (const bp of CRAFT_BLUEPRINTS) { put(bp.nameKo, bp.nameEn); put(bp.descKo, bp.descEn); }
+  // 222차 — 잠긴 스킬의 「… 열린다」 조건절
+  for (const sk of SKILL_DATABASE) if (sk.pendingSystem) put(sk.pendingSystem.ko, sk.pendingSystem.en);
   for (const g of Object.values(CRAFT_GROUP_LABEL)) put(g.ko, g.en);
+  // 222차 — 제작 위치 · 품질 · 재료 이름
+  for (const g of Object.values(CRAFT_STATION_LABEL)) put(g.ko, g.en);
+  for (const g of Object.values(CRAFT_QUALITY_LABEL)) put(g.ko, g.en);
+  for (const bp of CRAFT_BLUEPRINTS) for (const m of bp.materials) put(m.nameKo, m.nameEn);
   // 154차 — 불요리: 레시피·단계·재료·화구·용기·연료는 데이터(nameEn/labelEn/descEn)가 정본
   for (const r of FIRE_RECIPES) { put(r.nameKo, r.nameEn); put(r.descKo, r.descEn); for (const st of r.stages) put(st.labelKo, st.labelEn); }
   for (const i of COOK_INGREDIENTS) put(i.nameKo, i.nameEn);

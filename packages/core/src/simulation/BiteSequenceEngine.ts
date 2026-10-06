@@ -303,7 +303,8 @@ export class BiteSequenceEngine {
    *  - 3단계 릴리즈(1.0s~) 중: 100% 실패 "너무 늦게 챔질하였습니다."
    *  - 어신 없음: no_bite (허탕 — 페널티 없음, 호출 측에서 안내만)
    */
-  attemptHook(): HooksetResult {
+  /** @param earlyBonus 1·2단계 챔질 성공률에 더할 몫(222차 「챔질 타이밍」 — +3%p/랭크) */
+  attemptHook(earlyBonus = 0): HooksetResult {
     const stage = this.currentStage();
     if (!stage) {
       return { success: false, reason: 'no_bite', stage: null, message: '입질이 없습니다 — 초릿대를 지켜보세요.' };
@@ -318,7 +319,7 @@ export class BiteSequenceEngine {
       return { success: true, stage, message: '챔질 성공! 파이팅 개시!' };
     }
 
-    const p = HOOKSET_SUCCESS[stage];
+    const p = Math.min(0.95, HOOKSET_SUCCESS[stage] + Math.max(0, earlyBonus));
     if (this.rng() < p) {
       this.reset();
       return { success: true, stage, message: '챔질 성공! 파이팅 개시!' };

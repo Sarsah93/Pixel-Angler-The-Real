@@ -377,6 +377,8 @@ export class TrapFieldSystem {
     const result = harvestTrap(t, {
       spotType: this.spotTypeAt(t.tileX, t.tileY), depthM: t.depthM ?? 5, tide,
       month: new Date().getMonth() + 1, currentStrength: tide.currentStrength,
+      baitDurationMult: GameState.skillMult('trap_bait_duration'),   // 222차 「미끼 절약」
+      extraAttempts: GameState.skillBonus('trap_attempts'),          // 222차 「통발 운」
     });
     // 205차 — 담가 둔 동안 물살이 고르게 흘렀을수록 미끼 냄새가 멀리 퍼져 많이 든다(0.85~1.15 · 동해는 물살이 약하다)
     const tideMult = trapTideMult(averageTideFlow01(t.deployedAt.getTime(), Date.now()), tideRegionK(this.host.regionId));

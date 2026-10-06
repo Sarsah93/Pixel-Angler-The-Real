@@ -107,6 +107,8 @@ export interface ConsignInput {
   reservePerKg?: number;
   /** 위판 규격 상자 사용 */
   crated?: boolean;
+  /** 222차 「경매 배짱」 — 중매인 최고 호가 배수(1 = 그대로) */
+  bidMult?: number;
 }
 
 /** 출품 목록 → 위판 로트. 순서가 곧 경매 순서다. */
@@ -120,7 +122,7 @@ export function buildConsignmentLots(
     const crateMult = inp.crated ? t.crateBonus : 1;
     const startPerKg = Math.round(inp.basePricePerKg * gm * t.startFrac);
     const span = Math.max(0, t.npcMaxHigh - t.npcMaxLow);
-    const npcMax = Math.round(inp.basePricePerKg * gm * crateMult * (t.npcMaxLow + rng() * span));
+    const npcMax = Math.round(inp.basePricePerKg * gm * crateMult * (inp.bidMult ?? 1) * (t.npcMaxLow + rng() * span));
 
     const lot: AuctionLot = {
       lotId: `clot_${inp.speciesId}_${i}_${Math.floor(rng() * 1e9)}`,

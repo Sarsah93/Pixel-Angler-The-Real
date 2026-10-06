@@ -28,6 +28,10 @@ export interface TrapDeploymentContext {
   month: number;
   /** 해류 강도 (0.0~1.0) */
   currentStrength: number;
+  /** 222차 「미끼 절약」 — 미끼 지속 시간 배수(1 = 그대로) */
+  baitDurationMult?: number;
+  /** 222차 「통발 운」 — 포획 시도 추가 횟수 */
+  extraAttempts?: number;
 }
 
 // ─────────────────────────────────────────────
@@ -61,7 +65,7 @@ export function harvestTrap(
   const soakTimeHours = soakTimeMs / (1000 * 60 * 60);
 
   // 미끼 소모 계산
-  const baitConsumed = soakTimeHours >= spec.baitDurationHours;
+  const baitConsumed = soakTimeHours >= spec.baitDurationHours * (context.baitDurationMult ?? 1);
 
   // 포획물 계산
   const items = calculateTrapCatch(trap, context, soakTimeHours);
@@ -134,13 +138,13 @@ function calculateTrapCatch(
 
   // 침지 시간에 따른 포획 시도 횟수
   // 최적 침지 시간 = 8~12시간, 그 이후는 효율 감소
-  const optimalHours = spec.baitDurationHours;
+  const optimalHours = spec.baitDurationHours * (context.baitDurationMult ?? 1);
   const efficiencyRatio = soakTimeHours <= optimalHours
     ? soakTimeHours / optimalHours
     : 1.0 - (soakTimeHours - optimalHours) / (optimalHours * 2);
   const adjustedEfficiency = Math.max(0.1, Math.min(1.0, efficiencyRatio));
 
-  const maxAttempts = Math.round(10 * adjustedEfficiency);
+  const maxAttempts = Math.round(10 * adjustedEfficiency) + Math.max(0, Math.round(context.extraAttempts ?? 0));
 
   for (let i = 0; i < maxAttempts; i++) {
     const cand = candidates[Math.floor(Math.random() * candidates.length)];

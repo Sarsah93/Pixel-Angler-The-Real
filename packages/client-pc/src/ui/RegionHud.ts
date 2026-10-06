@@ -19,6 +19,8 @@ import {
 import { GameState } from '../store/GameState.js';
 import { loadSettings, saveSettings } from '../scenes/SettingsScene.js';
 import { InventoryStore } from '../store/InventoryStore.js';
+import { CraftingStore, type CraftJob } from '../store/CraftingStore.js';
+import { durText } from './CraftBoard.js';
 import { ExternalDataStore } from '../store/ExternalDataStore.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { MultiplayerClient } from '../net/MultiplayerClient.js';
@@ -33,7 +35,7 @@ import type { ShopHours } from '../data/ShopCatalog.js';
 import { MapPinStore } from '../store/MapPinStore.js';
 import { getLocale } from '../i18n/I18n.js';
 import { StoryStore } from '../store/StoryStore.js';
-import { tideFlowStateAt, TIDE_FLOW_LABEL_KO, TIDE_FLOW_NOTE_KO, TIDE_FLOW_PROFILE } from '@tra/core';
+import { tideFlowStateAt, TIDE_FLOW_LABEL_KO, TIDE_FLOW_NOTE_KO, TIDE_FLOW_PROFILE, getBlueprint } from '@tra/core';
 
 /** 미니맵 마커 — priority: 0 상점 / 2 퀘스트 보유 / 3 완료 가능 (높을수록 셀 점유 우선) */
 export interface MiniMarker {
@@ -350,6 +352,12 @@ export class RegionHud extends Phaser.GameObjects.Container {
   private tideSig = '';
   /** 칩 박스(패널 좌표 — statusOffset 전) · 없으면 숨김 */
   private tideBox: TipAnchor | null = null;
+  /** 222차 — 제작 진행 칩(물때 칩 아래 · 만드는 게 있을 때만) */
+  private craftC?: Phaser.GameObjects.Container;
+  private craftSig = '';
+  private craftBox: TipAnchor | null = null;
+  private craftLabel?: Phaser.GameObjects.Text;
+  private craftBar?: Phaser.GameObjects.Graphics;
 
   /** 상태 패널·지역 채널 래퍼 — 크기(scale)·투명도(alpha)를 통째로 조절 (116차) */
   private statusC!: Phaser.GameObjects.Container;
@@ -482,6 +490,10 @@ export class RegionHud extends Phaser.GameObjects.Container {
     this.tideC = undefined;
     this.tideSig = '';
     this.tideBox = null;
+    this.craftC?.destroy();
+    this.craftC = undefined;
+    this.craftSig = '';
+    this.craftBox = null;
   }
 
   /**
@@ -753,7 +765,7 @@ export class RegionHud extends Phaser.GameObjects.Container {
   /** 활성 목록이 바뀔 때만 재생성 — 매초 파괴/생성하면 호버가 끊긴다 */
   private refreshStatusStrip(): void {
     const list = GameState.statuses;
-    const sig = `${getLocale()}|${this.statusSize}|${this.tideBox ? 1 : 0}|${list.map((a) => a.id).join(',')}`;
+    const sig = `${getLocale()}|${this.statusSize}|${this.tideBox ? 1 : 0}|${this.craftBox ? 1 : 0}|${list.map((a) => a.id).join(',')}`;
     if (sig === this.stripSig) return;
     this.stripSig = sig;
     this.stripC?.destroy();
@@ -762,7 +774,8 @@ export class RegionHud extends Phaser.GameObjects.Container {
 
     const c = this.scene.add.container(0, 0);
     // 물때 칩이 있으면 그 아래로 내려간다
-    const y0 = this.tideBox ? this.tideBox.y + this.tideBox.h + STRIP.gap : SP.y + this.statusLayout.h + STRIP.top;
+    const above = this.craftBox ?? this.tideBox;
+    const y0 = above ? above.y + above.h + STRIP.gap : SP.y + this.statusLayout.h + STRIP.top;
     // 툴팁 앵커는 **스트립 전체 박스**다 — 칩 하나에 붙이면 팝업이 옆 칩들을 덮어
     // 다른 상태이상으로 커서를 옮길 수 없다(실렌더에서 확인).
     const rows = Math.ceil(list.length / STRIP.perRow);
@@ -846,6 +859,124 @@ export class RegionHud extends Phaser.GameObjects.Container {
     c.setPosition(this.statusOffset.x, this.statusOffset.y);
     this.add(c);
     applyScreenFixed(this);
+  }
+
+  // ── 제작 진행 칩 (222차 — 물때 칩 바로 아래, 만드는 게 있을 때만) ────────────
+  /** 지금 칩이 보여 줄 건 — 먼저 끝나는 쪽 */
+  private craftFocus(): CraftJob | null {
+    const act = (['hand', 'bench'] as const).map((l) => CraftingStore.activeJob(l)).filter((j): j is CraftJob => !!j);
+    if (!act.length) return null;
+    return act.reduce((a, b) => (CraftingStore.remainingMs(a) <= CraftingStore.remainingMs(b) ? a : b));
+  }
+
+  /** 칩 틀은 건이 바뀔 때만 다시 만들고(호버 유지), 글자 · 막대는 매초 제자리에서 고친다 */
+  private refreshCraftChip(): void {
+    const job = this.craftFocus();
+    const lanes = CraftingStore.allJobs().length;
+    const sig = job ? `${getLocale()}|${this.statusSize}|${this.tideBox ? this.tideBox.y + this.tideBox.h : 0}|${job.id}|${lanes}` : 'none';
+    if (sig !== this.craftSig) {
+      this.craftSig = sig;
+      this.craftC?.destroy();
+      this.craftC = undefined;
+      this.craftBox = null;
+      this.craftLabel = undefined;
+      this.craftBar = undefined;
+      if (!job) return;
+      const x = SP.x;
+      const y = this.tideBox ? this.tideBox.y + this.tideBox.h + STRIP.gap : SP.y + this.statusLayout.h + STRIP.top;
+      const w = this.statusLayout.w;
+      const c = this.scene.add.container(0, 0);
+      const g = this.scene.add.graphics();
+      g.fillStyle(0x06101e, 0.82);
+      g.fillRoundedRect(x, y, w, TIDE_CHIP.h, 4);
+      g.lineStyle(1.2, 0xd8a656, 0.95);
+      g.strokeRoundedRect(x, y, w, TIDE_CHIP.h, 4);
+      const icon = addPixelIcon(this.scene, job.lane === 'bench' ? 'it_workbench' : 'it_rig',
+        x + TIDE_CHIP.padX + TIDE_CHIP.icon / 2, y + TIDE_CHIP.h / 2 - 1, TIDE_CHIP.icon);
+      const textX = x + TIDE_CHIP.padX + TIDE_CHIP.icon + TIDE_CHIP.gap;
+      const label = this.scene.add.text(textX, y + TIDE_CHIP.h / 2 - 1, '', {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#ffe8bf',
+      }).setOrigin(0, 0.5);
+      const bar = this.scene.add.graphics();
+      const box: TipAnchor = { x, y, w, h: TIDE_CHIP.h };
+      const hit = this.scene.add.rectangle(x + w / 2, y + TIDE_CHIP.h / 2, w, TIDE_CHIP.h, 0xffffff, 0.001)
+        .setInteractive({ useHandCursor: false });
+      hit.on('pointerover', () => this.showCraftTip(box));
+      hit.on('pointerout', () => this.hideValueTip());
+      c.add(icon ? [g, bar, icon, label, hit] : [g, bar, label, hit]);
+      this.craftC = c;
+      this.craftBox = box;
+      this.craftLabel = label;
+      this.craftBar = bar;
+      c.setPosition(this.statusOffset.x, this.statusOffset.y);
+      this.add(c);
+      applyScreenFixed(this);
+    }
+    if (!job || !this.craftBox || !this.craftLabel || !this.craftBar) return;
+    const bp = getBlueprint(job.bpId);
+    const b = this.craftBox;
+    const more = lanes > 1 ? ` 외 ${lanes - 1}` : '';
+    const avail = b.w - (this.craftLabel.x - b.x) - TIDE_CHIP.padX;
+    this.craftLabel.setText(`${bp?.nameKo ?? ''} ${job.done + 1}/${job.qty}${more} · ${durText(CraftingStore.remainingMs(job))}`);
+    if (this.craftLabel.width > avail) this.craftLabel.setText(`${job.done + 1}/${job.qty} · ${durText(CraftingStore.remainingMs(job))}`);
+    clampTextWidth(this.craftLabel, avail);
+    // 지금 1개 진행 막대 — 칩 아래 테두리 안쪽 2px
+    const p = CraftingStore.progressOf(job);
+    this.craftBar.clear();
+    this.craftBar.fillStyle(0x2a3a4a, 1);
+    this.craftBar.fillRect(b.x + 3, b.y + b.h - 4, b.w - 6, 2);
+    this.craftBar.fillStyle(0x4af2a1, 1);
+    this.craftBar.fillRect(b.x + 3, b.y + b.h - 4, Math.round((b.w - 6) * p), 2);
+  }
+
+  /** 제작 칩 툴팁 — 줄(맨손 · 작업대)마다 만드는 것 · 개수 · 남은 시간 · 기다리는 건 */
+  private showCraftTip(anchor: TipAnchor): void {
+    this.hideValueTip();
+    const jobs = CraftingStore.allJobs();
+    if (!jobs.length) return;
+    const c = this.scene.add.container(0, 0);
+    const g = this.scene.add.graphics();
+    c.add(g);
+    const padX = 10, padY = 8, maxW = 260;
+    const parts: Phaser.GameObjects.Text[] = [];
+    let yy = padY;
+    const line = (s: string, color: string, size: string, bold = false): void => {
+      const tx = this.scene.add.text(padX, yy, s, {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: size, color, wordWrap: { width: maxW },
+        fontStyle: bold ? 'bold' : 'normal',
+      });
+      parts.push(tx);
+      yy = tx.y + tx.height + 3;
+    };
+    for (const lane of ['hand', 'bench'] as const) {
+      const list = CraftingStore.laneJobs(lane);
+      if (!list.length) continue;
+      line(lane === 'hand' ? '손으로 만드는 중' : '작업대에서 만드는 중', '#ffd58a', '11px', true);
+      list.forEach((j, i) => {
+        const bp = getBlueprint(j.bpId);
+        const name = bp?.nameKo ?? '';
+        if (i === 0) {
+          const pct = Math.round(CraftingStore.progressOf(j) * 100);
+          line(`${name} ${j.done + 1}/${j.qty} · ${pct}% · 남은 시간 ${durText(CraftingStore.remainingMs(j))}`, '#f2f8ff', '11px');
+          if (j.stopAfterUnit) line('지금 것까지만 만들고 멈춘다', '#9fb4c6', '10px');
+        } else {
+          line(`기다리는 중 — ${name} ${j.qty}개`, '#9fb4c6', '10px');
+        }
+      });
+    }
+    c.add(parts);
+    const w = padX * 2 + Math.max(...parts.map((p) => p.width));
+    const h = yy - 3 + padY;
+    g.fillStyle(0x06101e, 0.96);
+    g.fillRoundedRect(0, 0, w, h, 5);
+    g.lineStyle(1.2, 0xd8a656, 0.95);
+    g.strokeRoundedRect(0, 0, w, h, 5);
+    c.setSize(w, h);
+    this.valueTip = c;
+    this.add(c);
+    applyScreenFixed(this);
+    this.anchorTip(c, anchor);
+    this.tipRefresh = () => this.showCraftTip(anchor);
   }
 
   /** 물때 칩 툴팁 — (스킬 없음) 물 방향 / (스킬) 단계 한마디 · 다음 단계까지 */
@@ -1054,6 +1185,7 @@ export class RegionHud extends Phaser.GameObjects.Container {
 
     // ── 물때 칩 · 상태이상 스트립 (패널 밖 — 칩이 위, 스트립이 그 아래) ──
     this.refreshTideChip();
+    this.refreshCraftChip();
     this.refreshStatusStrip();
     // 열린 호버 팝업이 있으면 같은 주기로 다시 그린다(남은 시간·수치 실시간)
     this.tipRefresh?.();
@@ -1870,6 +2002,10 @@ export class RegionHud extends Phaser.GameObjects.Container {
       const b = this.tideBox;
       out.push({ name: 'hud.tide', rect: new Phaser.Geom.Rectangle(b.x + this.statusOffset.x, b.y + this.statusOffset.y, b.w, b.h) });
     }
+    if (this.craftBox) {
+      const b = this.craftBox;
+      out.push({ name: 'hud.craft', rect: new Phaser.Geom.Rectangle(b.x + this.statusOffset.x, b.y + this.statusOffset.y, b.w, b.h) });
+    }
     return out;
   }
 
@@ -1898,6 +2034,7 @@ export class RegionHud extends Phaser.GameObjects.Container {
       this.statusC.setPosition(this.statusOffset.x, this.statusOffset.y);
       this.stripC?.setPosition(this.statusOffset.x, this.statusOffset.y);
       this.tideC?.setPosition(this.statusOffset.x, this.statusOffset.y);
+      this.craftC?.setPosition(this.statusOffset.x, this.statusOffset.y);
       shift(this.statusCtrl);
     } else if (key === 'chat') {
       shift([...this.logParts.filter((o) => o !== this.logBarG), ...this.chatCtrl]);

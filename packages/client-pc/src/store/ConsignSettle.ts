@@ -36,7 +36,7 @@ export function settleDueConsignments(nowMs = Date.now()): ConsignSettleReport |
     const k = new Date(b.dueAtMs + 9 * 3_600_000);   // 그 회차의 KST 벽시계
     const session = openConsignmentSession(
       b.category, buildConsignmentLots(b.inputs), k.getUTCHours(), k.getUTCMinutes(), k.getUTCDay(),
-      StoryStore.harborRep(b.regionId), undefined, coopDuesFeeCut(GameState.coopDuesPaid()),
+      StoryStore.harborRep(b.regionId), undefined, coopDuesFeeCut(GameState.coopDuesPaid()) + GameState.ledgerFeeCut(),
     );
     if (!session) { returnItems(b.items); rep.unsoldLots += b.items.length; continue; }
     runConsignmentToEnd(session);

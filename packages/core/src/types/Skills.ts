@@ -27,7 +27,7 @@ export type SkillEffectKey =
   // 채집·통발 — 124차 증설 (간조 보너스·랜턴 반경·채집 속도·회수물 신선도)
   | 'forage_tide' | 'lantern_range' | 'forage_speed' | 'trap_harvest_fresh'
   // 경제
-  | 'sell_price' | 'buy_price' | 'bulk_bonus' | 'land_deal' | 'stock_insight' | 'market_eye' | 'restaurant_margin'
+  | 'sell_price' | 'buy_price' | 'bulk_bonus' | 'shop_stock' | 'market_saturation' | 'creature_detect' | 'chum_amount' | 'land_deal' | 'stock_insight' | 'market_eye' | 'restaurant_margin'
   // 경제 — 124차 증설 (경매·수수료·보관 슬롯)
   | 'auction_bonus' | 'ledger_fees' | 'storage_slots'
   // 운전
@@ -163,6 +163,12 @@ export interface SkillDef {
    * 소비처는 `skillMult(ranks, key, prof)`처럼 숙련도를 함께 넘긴다. 없는 스킬은 즉시 효과.
    */
   proficiency?: SkillProficiencyDef;
+  /**
+   * 아직 없는 시스템에 걸린 스킬 (222차 사용자 지시) — `ko`는 「… 열린다」 앞에 붙는 조건절(예: 「배를 몰 수 있게 되면」). 있으면 **배울 수 없다**(패널은 잠금 + 사유만 보여 준다).
+   * 규칙: 잠긴 스킬은 **다른 스킬의 선행이 될 수 없다**(`skillPendingViolations`가 0이어야 한다 — 테스트로 잠근다).
+   * 시스템이 들어오면 이 필드를 지우고 `wired: true`로 연다.
+   */
+  pendingSystem?: { ko: string; en: string };
 }
 
 export interface SkillCategoryDef {

@@ -92,6 +92,8 @@ import type { ParkedRodSave } from '../store/GameState.js';
 import { StoveDeployPanel } from '../ui/StoveDeployPanel.js';
 import { CookingPanel } from '../ui/CookingPanel.js';
 import { CookingStore } from '../store/CookingStore.js';
+import { CraftingStore } from '../store/CraftingStore.js';
+import { CraftResultDialog } from '../ui/CraftResultDialog.js';
 import { LicensePanel } from '../ui/LicensePanel.js';
 import { SkillTreePanel } from '../ui/SkillTreePanel.js';
 import { JournalPanel } from '../ui/JournalPanel.js';
@@ -509,6 +511,9 @@ export class RegionFieldScene extends Phaser.Scene {
   private chargePower = 0;
   private chargeBar?: Phaser.GameObjects.Graphics;
   private castBusy = false;
+  /** 222차 — 제작 큐 틱 간격(ms) · 열려 있는 제작 결과 창 */
+  private craftTickT = 0;
+  private craftResult?: CraftResultDialog;
 
   // 3D 탄도 캐스팅 비행 상태 (CastingPhysicsEngine)
   private castProj: CastProjectile | null = null;
@@ -3343,7 +3348,7 @@ export class RegionFieldScene extends Phaser.Scene {
     // 171차 — 조합비를 내고 있으면 위판 수수료가 더 싸다
     const session = openConsignmentSession(
       openCat, buildConsignmentLots(going), h, m, wd, rep,
-      undefined, coopDuesFeeCut(GameState.coopDuesPaid()),
+      undefined, coopDuesFeeCut(GameState.coopDuesPaid()) + GameState.ledgerFeeCut(),
     );
     if (!session) { this.shopPanel?.setStatus('경매를 열 수 없습니다.'); return; }
 
@@ -3693,7 +3698,10 @@ export class RegionFieldScene extends Phaser.Scene {
   /** 209차 — 손에 든 대 · 릴 · 지금 채비 무게로 정한 비거리 배율(대가 없으면 1) */
   private rodCastMult(): number {
     const spec = InventoryStore.handRodSpec;
-    return spec ? rodCastDistanceMult(spec, InventoryStore.getRigTotalWeightG(), InventoryStore.reelSpec) : 1;
+    if (!spec) return 1;
+    // 222차 — 「원투 숙련」은 원투대를 들었을 때만
+    const surf = spec.use === 'surf' ? GameState.skillMult('surf_distance') : 1;
+    return rodCastDistanceMult(spec, InventoryStore.getRigTotalWeightG(), InventoryStore.reelSpec) * surf;
   }
 
   private releaseCast(): void {
@@ -3763,7 +3771,7 @@ export class RegionFieldScene extends Phaser.Scene {
       dirX: dir.x, dirY: dir.y,
       power,
       // 스킬 롱캐스트(122차)
-      strength: DEFAULT_ANGLER_STATS.strength * GameState.skillMult('cast_distance'),
+      strength: (DEFAULT_ANGLER_STATS.strength + GameState.skillBonus('strength')) * GameState.skillMult('cast_distance'),
       // 날씨 비거리 배율(127차) — 완력이 아니라 **수평 속도 전체**에 곱한다
       // 209차 — 대(용도 · 길이 · 채비 무게 적합) × 릴(롱캐스트 스풀 · 베이트) 비거리 배율
       speedMult: eff.distanceMult * this.rodCastMult(),
@@ -4450,6 +4458,8 @@ export class RegionFieldScene extends Phaser.Scene {
     }
     // init → create 사이 또는 shutdown 직전의 stale update 차단.
     if (this.bootFailed || !this.playerBody?.active) return;
+    this.craftTickT -= delta;
+    if (this.craftTickT <= 0) { this.craftTickT = 250; this.pumpCrafting(); }
     pumpTitleBanners(this);   // 203차 — 숨은 업적 달성 배너
     pumpTideFlow(this);       // 204차 — 패시브 「물때 감각」: 물때가 바뀌면 지역 채널 알림
     this.updateStoryProximity(delta);
@@ -6688,7 +6698,7 @@ export class RegionFieldScene extends Phaser.Scene {
       case 'gather': return '[F] 채집';
       case 'board': return '[F] 보트';
       case 'clinic': return '[F] 보건소 들어가기';
-      case 'craft': return o.placedByPlayer ? '[F] 고급 제작대 · [Shift+F] 회수' : '[F] 고급 제작대';
+      case 'craft': return o.placedByPlayer ? '[F] 작업대 · [Shift+F] 회수' : '[F] 작업대';
       default: return '[F]';
     }
   }
@@ -6728,9 +6738,28 @@ export class RegionFieldScene extends Phaser.Scene {
     markPrologue('well');
   }
 
-  /** 고급 제작대 [F] — 도면 목록은 U 창 '제작' 탭과 같은 보드를 station만 바꿔 쓴다 */
+  /**
+   * 222차 — 제작 큐를 벽시계로 진행한다. 맨손 제작은 캐스팅 중엔 멈춘다(1인칭 낚시 · 손질은 이 씬이 멈춰 있어
+   * 틱 자체가 없고, 돌아와서 첫 틱의 큰 dt는 스토어가 버린다). 끝난 건이 있으면 결과 창을 띄운다.
+   */
+  private pumpCrafting(): void {
+    const done = CraftingStore.tick(Date.now(), !this.castBusy);
+    if (done.length) {
+      this.events.emit('inventory-changed');
+      for (const r of done) {
+        if (r.reason !== 'cancel') this.hud?.pushLog(`[제작] ${r.name} — 성공 ${r.ok} · 실패 ${r.fail}`);
+      }
+    }
+    if (this.craftResult?.active || !CraftingStore.hasReports()) return;
+    if (this.isTransitioning || this.cinematicActive) return;
+    const reports = CraftingStore.takeReports();
+    this.craftResult = this.openPopup((close) => new CraftResultDialog(this, reports, close),
+      () => { this.craftResult = undefined; });
+  }
+
+  /** 작업대 [F] — 도면 목록은 U 창 '제작' 탭과 같은 보드를 station만 바꿔 쓴다 */
   private openAdvancedCraft(): void {
-    this.openPopup((close) => new AdvancedCraftPanel(this, GAME_WIDTH / 2 - 430, 96, {
+    this.openPopup((close) => new AdvancedCraftPanel(this, GAME_WIDTH / 2 - 450, 92, {
       onClose: close,
       onCrafted: () => this.events.emit('inventory-changed'),
     }));
@@ -7264,7 +7293,7 @@ export class RegionFieldScene extends Phaser.Scene {
       this.aimGuidePower = solveCastPower({
         originX: this.playerBody.x, originY: this.playerBody.y,
         dirX: this.lastAimDir.x, dirY: this.lastAimDir.y,
-        strength: DEFAULT_ANGLER_STATS.strength * GameState.skillMult('cast_distance'),
+        strength: (DEFAULT_ANGLER_STATS.strength + GameState.skillBonus('strength')) * GameState.skillMult('cast_distance'),
         speedMult: effG.distanceMult * this.rodCastMult(),
         wind: this.windForce(effG),
         airDragCd: InventoryStore.getRigDragCd(),
@@ -7296,7 +7325,7 @@ export class RegionFieldScene extends Phaser.Scene {
       originX: px, originY: py,
       dirX: this.lastAimDir.x, dirY: this.lastAimDir.y,
       power: this.chargePower,
-      strength: DEFAULT_ANGLER_STATS.strength * GameState.skillMult('cast_distance'),
+      strength: (DEFAULT_ANGLER_STATS.strength + GameState.skillBonus('strength')) * GameState.skillMult('cast_distance'),
       speedMult: eff.distanceMult * this.rodCastMult(),
       wind: this.windForce(eff),
       airDragCd: InventoryStore.getRigDragCd(),

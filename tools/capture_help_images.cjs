@@ -144,7 +144,9 @@ const TOUR_IDS = ['inventory', 'equipment', 'status', 'journal', 'license', 'ful
   'home_fridge', 'home_wardrobe', 'home_shelf', 'home_decorate',
   'home_aquarium', 'home_tide_table', 'home_calendar', 'home_fishprint',
   // 196·198·199차 — 쿨러 정리 창 · 첫 캐스팅 말풍선
-  'cooler_swap', 'cooler_swap2', 'cast_first', 'cast_hole'];
+  'cooler_swap', 'cooler_swap2', 'cast_first', 'cast_hole',
+  // 220·222차 — 장바구니 짧은 가이드 · 제작 창(시간제)
+  'shop_cart', 'craft_v2'];
 /** 188차 — 프롤로그(M1-01 앞 14목표) 행동 플래그 */
 const PROLOGUE_KEYS = ['box', 'rod', 'reel', 'photo', 'journal', 'squid', 'save', 'leave', 'well', 'status', 'map', 'arrive', 'buy', 'sell'];
 const PROLOGUE_BUY = ['line', 'hook', 'sinker', 'float', 'bait'];
@@ -713,10 +715,23 @@ group('util', ['rig_bait', 'rig_lure', 'chum_tab', 'craft_tab', 'board_fish', 'b
     await page.waitForTimeout(900);
   });
   await closeAll(page);
+  // 222차 — 시간제 제작: 붕대 3개를 걸어 진행 막대 · 중지/취소가 보이게 찍는다
   await cap(page, 'craft_tab', async () => {
-    await page.evaluate((S) => { const s = eval(S); s.toggleUtilization('craft', true); }, S);
+    await page.evaluate(async (S) => {
+      const s = eval(S);
+      const { SHOP_CATALOG } = await import('/src/data/ShopCatalog.ts');
+      const cloth = Object.values(SHOP_CATALOG).flatMap((d) => d.sells).find((e) => e.id === 'inv_mat_cloth');
+      if (cloth) globalThis.__INV.addItem({ ...cloth }, 12, { silent: true });
+      const core = await import('/@id/@tra/core');
+      const C = globalThis.__CRAFT;
+      C.start(core.getBlueprint('bp_bandage'), 3, 'hand');
+      const j = C.activeJob('hand'); if (j) j.progressMs = j.unitMs * 0.45;
+      s.toggleUtilization('craft', true);
+      const bd = s.utilPanel?.craftBoard; if (bd) { bd.selectedId = 'bp_bandage'; bd.redraw(); }
+    }, S);
     await page.waitForTimeout(900);
   });
+  await page.evaluate(() => { const C = globalThis.__CRAFT; const j = C.activeJob('hand'); if (j) C.cancel(j.id); C.takeReports(); });
   await closeAll(page);
   await cap(page, 'board_fish', async () => {
     await page.evaluate((S) => {
@@ -783,7 +798,18 @@ group('home2', ['interact_choice', 'workbench', 'cook_panel'], async (page) => {
   });
   await closeAll(page);
   await cap(page, 'workbench', async () => {
-    await page.evaluate((S) => { const s = eval(S); s.openAdvancedCraft(); }, S);
+    await page.evaluate(async (S) => {
+      const s = eval(S);
+      const { SHOP_CATALOG } = await import('/src/data/ShopCatalog.ts');
+      const all = Object.values(SHOP_CATALOG).flatMap((d) => d.sells);
+      for (const [id, n] of [['inv_mat_wire', 6], ['inv_mat_mesh', 2], ['inv_mat_wood', 6], ['workshop_pro_tools', 1]]) {
+        const t = all.find((e) => e.id === id); if (t) globalThis.__INV.addItem({ ...t }, n, { silent: true });
+      }
+      globalThis.__GS.updatePlayer({ level: 20 });
+      s.openAdvancedCraft();
+      const p = s.popupStack[s.popupStack.length - 1]?.panel;
+      if (p?.board) { p.board.selectedId = 'bp_landing_net'; p.board.redraw(); }
+    }, S);
     await page.waitForTimeout(900);
   });
   await closeAll(page);

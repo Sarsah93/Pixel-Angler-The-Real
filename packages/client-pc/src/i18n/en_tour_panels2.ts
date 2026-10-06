@@ -152,4 +152,18 @@ export const EN_TOUR_PANELS2: Record<string, string> = {
     'Press "Return Home" at the top left to return to your hometown at any time. Going home is free.',
   '이 지역의 세부 낚시 포인트는\n준비중입니다 (타일맵 에셋 제작 예정).':
     'Detailed fishing spots for this region\nare still in progress (tile map assets coming).',
+  // ── 222차 제작 창 가이드(craft_v2) ──
+  '위쪽 칩으로 만들 것의 종류를 고른다. 오른쪽 「만들 수 있는 것만」을 켜면 지금 재료로 되는 것만 남는다.':
+    'Pick a kind of item with the chips at the top. Turn on "Craftable only" on the right to keep just what your materials allow.',
+  '왼쪽 목록의 네모 색이 상태다. 초록은 지금 만들 수 있고, 노랑은 재료가 모자라고, 회색은 레벨이나 기술이 아직 안 된다.':
+    'The square on each row shows its state: green you can craft now, yellow is short on materials, grey needs more level or skill.',
+  '고른 도면의 결과물 · 조건 · 재료가 여기에 나온다. 재료 옆 숫자는 가진 수와 필요한 수다.':
+    'The chosen blueprint shows its result, requirements and materials here. The numbers are what you have and what it needs.',
+  '몇 개 만들지 정한다. 가운데 숫자 칸을 누르면 직접 칠 수 있다. 옆에는 성공률 · 걸리는 시간 · 얻는 경험치가 나온다.':
+    'Set how many to make. Click the number box to type it. Success rate, time and EXP are listed beside it.',
+  '제작은 시간이 걸린다. 창을 닫거나 밖으로 나가도 계속 만든다. 「중지」는 지금 것을 마저 만들고 멈추고, 「취소」는 지금 것을 버린다 — 일찍 그만둘수록 재료를 많이 돌려받는다.':
+    'Crafting takes time and keeps going after you close the window. "Stop" finishes the current one and stops; "Cancel" drops it — the earlier you cancel, the more materials you get back.',
+  '손재주는 갈래마다 쌓은 제작 경험을 모은 것이다. 위에 올리면 갈래별로 보인다. 높을수록 조금 더 잘, 빨리, 좋게 만든다.':
+    'Dexterity sums the crafting experience you built in each kind. Hover to see each one. Higher means slightly better, faster and finer work.',
 };
+

@@ -1007,7 +1007,7 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
         tags: [cat.label]
           .concat(k.hidden ? ['숨은 시너지 — 조건을 채우면 저절로 열림'] : [])
           .concat(cat.locked ? ['분야 잠김'] : [])
-          .concat(k.wired ? [] : ['준비 중']),
+          .concat(k.pending ? ['잠김 — ' + k.pending + ' 열림'] : (k.wired ? [] : ['준비 중'])),
         body: '<div class="ssec"><h3>배우기</h3>' + kvRows([
           ['최대 랭크', k.maxRank + '랭크'],
           ['포인트', k.cost ? '<b>' + k.cost + 'pt</b> / 랭크 <span class="dim">(다 찍으면 ' + k.totalCost + 'pt)</span>' : '포인트 없이 조건만 채우면 열립니다'],

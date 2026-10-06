@@ -272,7 +272,8 @@ export class ForageSystem {
       tideLevel01: Math.max(0, Math.min(1, level)),
       hasAdvancedLicense: GameState.hasLicense('shore_hunting_advanced'),
       currentStrength: tide.currentStrength,
-      tideMult: forageTideMult(flow, tide.currentStrength, k),
+      // 222차 「물 빠진 길」 — 간조 창 안의 보너스 몫만 키운다(창 밖은 정확히 1)
+      tideMult: 1 + (forageTideMult(flow, tide.currentStrength, k) - 1) * GameState.skillMult('forage_tide'),
       floodWarn: forageFloodWarning(flow) && k >= 0.5,
     };
   }
@@ -422,7 +423,8 @@ export class ForageSystem {
     const night = isNightNow();
     const lm = this.lampLumens();
     // 스킬 채집 눈(122차) — 발견 반경 배율
-    const radiusTiles = (night ? (lm / 100) * TUNING.forage.lampRadiusPer100lm : TUNING.forage.dayRadiusTiles) * GameState.skillMult('forage_radius');
+    // 222차 「헤드랜턴 효율」 — 밤 랜턴 반경만
+    const radiusTiles = (night ? (lm / 100) * TUNING.forage.lampRadiusPer100lm * GameState.skillMult('lantern_range') : TUNING.forage.dayRadiusTiles) * GameState.skillMult('forage_radius');
     const radiusPx = radiusTiles * tr;
 
     // 어장 진입 안내 (1회/진입)

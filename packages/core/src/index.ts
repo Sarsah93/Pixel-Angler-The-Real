@@ -103,9 +103,16 @@ export { TRAP_DATABASE, getTrapById, getTrapsByType } from './db-schema/TrapData
 export { RECIPE_DATABASE, getRecipeById, getRecipesByLocation, getRecipesByIngredient } from './db-schema/RecipeDatabase.js';
 // 제작 도면 (P7 — 요리와 분리된 별도 DB)
 export type { CraftStation, CraftGroup, CraftMaterial, CraftBlueprint } from './db-schema/CraftingDatabase.js';
+// ── 제작 판정 규칙 — 222차(시간 · 품질 · 취소 · 분야 숙련 · 손재주) ──
+export type { CraftQuality, CraftHandState, CraftModifiers, DexterityInput } from './simulation/CraftRules.js';
 export {
-  CRAFT_BLUEPRINTS, CRAFT_GROUP_LABEL, blueprintsFor, getBlueprint,
-  craftSuccessRate, materialSaveChance,
+  CRAFT_QUALITY_LABEL, CRAFT_MASTERY_XP, CRAFT_MASTERY_MAX, craftMasteryLevel, craftMasteryNextXp,
+  craftModifiers, craftSuccessFinal, craftUnitMs, craftLossChance, rollCraftQuality, craftCancelRefund,
+  craftMasteryGain, dexterityScore,
+} from './simulation/CraftRules.js';
+export {
+  CRAFT_BLUEPRINTS, CRAFT_GROUP_LABEL, CRAFT_GROUP_ORDER, CRAFT_STATION_LABEL, CRAFT_DEFAULT_TIME_SEC,
+  blueprintsFor, getBlueprint, craftSuccessRate, materialSaveChance,
 } from './db-schema/CraftingDatabase.js';
 export { ANGLER_APP_REGIONS, TIDAL_CHARACTERISTICS, getRegionByCode, getRegionsByProvince, getRegionsByTidalCharacteristic, getAnglerAppRegions } from './db-schema/AnglerAppSpots.js';
 export type { AnglerAppRegion } from './db-schema/AnglerAppSpots.js';
@@ -255,7 +262,7 @@ export {
   SKILL_POINTS_PER_LICENSE, SKILL_BONUS_EXCLUDED_LICENSES, skillPointsFromLicenses, SKILL_STARTER_BONUS_PT,
 } from './types/Skills.js';
 export {
-  SKILL_CATEGORIES, SKILL_DATABASE, SKILL_TREE_TOTAL_PT, getSkillById, skillsOfCategory, skillPointsSpent, skillPrereqsMet, skillMult, skillBonus,
+  SKILL_CATEGORIES, SKILL_DATABASE, SKILL_TREE_TOTAL_PT, getSkillById, skillsOfCategory, skillPointsSpent, skillPrereqsMet, isSkillPending, skillPendingViolations, skillMult, skillBonus,
   // 130차 — 해금 조건 (d) · 시너지 히든 (e) · 티어 제약
   SKILL_LICENSE_BONUS_TOTAL_PT, SKILL_TIER_MAX_NODES,
   categoryRanks, categoryMaxRanks, skillUnlockMet, skillUnlockCondMet, skillUnlockMissing,

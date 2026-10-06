@@ -45,12 +45,12 @@
   맵 확정(육안)·OSM land 14개·조도 재설계·외옹치/대포항 bbox 확장은 사용자 동반 병행 트랙.
 - **재개 지점**: 사용자 실검증(172·173차 타일 조화 규칙 + 178·183~186차 신설분) — 부족하면 규칙 보강,
   괜찮으면 규칙을 켠 채로 새 맵 확장. 차수별 잔여는 PLAN §2-3.
+- **222차**: **시간 걸리는 제작 · 스킬 정비 · 잠금** — 손 · 작업대 두 줄 대기열(맨손은 낚시·손질 중 멈춤 · 작업대만 오프라인 8시간) · 취소 3구간 반환 · 품질 · HUD 제작 칩 ·
+  「물때 시계」/「물 빠진 길」 · 열린 스킬 65개 전부 배선 · 미구현 시스템 스킬 14개 자물쇠 · 긴꼬리벵에돔 좌우 반전 · 해루질 현실화 기획(`.agents/FORAGING_REALISM_SPEC.md` 제안). 상세 `docs/wiki/03-WORKLOG/2026-10-06-222-timed-crafting-skill-overhaul.md`.
 - **221차**: **상점 재고 · 즐겨찾기 · 판매 수량 창** — 가게 규모별 하루 재고(새벽 4시 다시 참) · 칸 별 → 가게별 즐겨찾기 탭 · 여러 개 팔 때 −/+ 창 · 가방에서 끌어 놓아 팔기 ·
   위키 「물때 공략」/「타이틀·업적」 · 골절 자전거 · 제작 확장 기획(`.agents/CRAFTING_EXPANSION_SPEC.md` 제안). 상세 `docs/wiki/03-WORKLOG/2026-10-06-221-shop-stock-favorites-sell-qty.md`.
 - **220차**: **상점 장바구니 · 종류 칩 · 이름 찾기** — 칸 토글 다중 선택 · 장바구니 창(줄마다 수량 · 합계 · 남는 돈) · 이 가게 종류만 칩 · 한글 찾기 칸 ·
   짧은 가이드(이미 본 사람용). 상세 `docs/wiki/03-WORKLOG/2026-10-06-220-shop-cart-categories-search.md`.
-- **219차**: **원본 상호 지우기 · 로딩 화면 · 가이드 겹침/유도 · 진행 막힘** — 표 키 해시 · `Loading...` 가림막 · 새로 연 창은 가이드가 피함 · 단계 밖 행동 회색 + 흔들기 ·
-  프롤로그 물건 보호 · 되살리기 · 비상금 · 차비 · 전체 지도 제목 줄 · 자전거 코치 · 동명항 테트라포드. 상세 `docs/wiki/03-WORKLOG/2026-10-06-219-loading-guide-guards-softlocks.md`.
 - **상시 방침**:
   - 지형 고도(DEM)는 **낚시 확립 후** — B(해안 변형) 우선, 경사로 통행을 막지 않는다
     (`docs/archive/specs/RASTER_UPLIFT_AMENDMENT.md` §4).
@@ -111,7 +111,7 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
 
 - 지역 타일맵 추가/재생성 → **스킬 `add-region`** (`py tools/build_region_maps.py <region>` — 파이프라인·타일 문자·맵 그래프·함정 일체).
 - 차기 과제: 낚시점 전용 상점(루어 판매), 어탐 레이더(SeabedProfile 조회), 타 지역(여수 등) 확장, POI 세분화, 사운드 이펙트 (IMPLEMENTATION_PLAN §6-5l 차기 참고).
-- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages — **최근 57차 배포 2026-10-06 = 221차(상점 재고 · 즐겨찾기 · 판매 수량 창)까지 포함**. 재배포 절차는 **스킬 `deploy-ghpages`**).
+- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages — **최근 58차 배포 2026-10-06 = 222차(시간 걸리는 제작 · 스킬 정비 · 잠금)까지 포함**. 재배포 절차는 **스킬 `deploy-ghpages`**).
   ⚠ **원격 컨테이너에서는 dev 서버(5173)가 사용자 브라우저에 닿지 않는다** — 실플레이 테스트 요청은 이 배포로 답한다.
 
 ## 작업 이어받기 절차

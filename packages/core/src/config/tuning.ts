@@ -919,8 +919,31 @@ export interface TuningConfig {
   /** 상태이상 (125차 — SPEC §5. 시간은 활동 시간 기준 분) */
   /** 제작·구급품 (129차 P7) */
   craft: {
-    /** 제작 실패 시 소모되는 재료 비율 (0.5 = 절반만 날린다) */
-    failMaterialPct: number;
+    /** 222차 — 실패 시 재료 하나하나를 잃을 확률(못 잃은 것은 돌려받는다) */
+    failLossChance: number;
+    /** 222차 — 작업대 제작이 접속하지 않은 동안 이어지는 최대 시간(시) */
+    benchOfflineCapH: number;
+    /** 222차 — 취소 시 지금 1개 진행이 이 몫 이하면 재료 전부 돌려받음 */
+    cancelFullUpTo: number;
+    /** 222차 — 이 몫 이하면 절반(그 위는 전부 잃음) */
+    cancelHalfUpTo: number;
+    /** 222차 — 품질 기본 확률(좋음 · 훌륭함) */
+    qualityGood: number;
+    qualityGreat: number;
+    /** 222차 — 분야 숙련 품질 몫 상한 */
+    qualityBonusCap: number;
+    /** 222차 — 분야 숙련 1레벨당 성공 배수 · 시간 단축 · 품질 몫 */
+    masterySuccessPerLv: number;
+    masteryTimePerLv: number;
+    masteryQualityPerLv: number;
+    /** 222차 — 실패해도 쌓이는 분야 숙련 몫 */
+    masteryFailShare: number;
+    /** 222차 — 손 상태: 피로 문턱(0~1) · 각 깎임 */
+    handFatigueAt: number;
+    handFatiguePenalty: number;
+    handInjuryPenalty: number;
+    handIllPenalty: number;
+    handDrunkPenalty: number;
     /** 상비약 1개가 앞당기는 자연치유 시간(활동 분) */
     medicineShortenMin: number;
     /** 붕대·부목 기본 재발 억제 — `life_firstaid`와 곱해진다 */
@@ -1490,7 +1513,11 @@ export const TUNING: TuningConfig = {
     runSpeedMult: 1.55, runFatigueGatePct: 85, runBlockWhenLow: true,
   },
   craft: {
-    failMaterialPct: 0.5, medicineShortenMin: 60, medicRelapseMult: 1,
+    failLossChance: 0.5, benchOfflineCapH: 8, cancelFullUpTo: 0.25, cancelHalfUpTo: 0.5,
+    qualityGood: 0.22, qualityGreat: 0.03, qualityBonusCap: 0.1,
+    masterySuccessPerLv: 0.01, masteryTimePerLv: 0.02, masteryQualityPerLv: 0.01, masteryFailShare: 0.2,
+    handFatigueAt: 0.8, handFatiguePenalty: 0.1, handInjuryPenalty: 0.15, handIllPenalty: 0.08, handDrunkPenalty: 0.1,
+    medicineShortenMin: 60, medicRelapseMult: 1,
     workbenchPrice: 180_000, hospitalFee: 45_000,
   },
   status: {
@@ -1653,7 +1680,12 @@ export const TUNING_META: TuningParamMeta[] = [
   { path: 'auction.crateBonus', min: 1, max: 1.3, step: 0.01, category: 'balance', label: '규격 상자 보정' },
   { path: 'auction.hammerHoldSec', min: 0.2, max: 3, step: 0.1, category: 'feel', label: '낙찰 연출 유예(초)' },
   // ── 제작·구급품 (129차 P7) ──
-  { path: 'craft.failMaterialPct', min: 0, max: 1, step: 0.05, category: 'balance', label: '제작 실패 재료 소모율' },
+  { path: 'craft.failLossChance', min: 0, max: 1, step: 0.05, category: 'balance', label: '제작 실패 시 재료 잃을 확률' },
+  { path: 'craft.benchOfflineCapH', min: 0, max: 24, step: 1, category: 'balance', label: '작업대 오프라인 진행 상한(시)' },
+  { path: 'craft.cancelFullUpTo', min: 0, max: 1, step: 0.05, category: 'balance', label: '제작 취소 전액 반환 진행 상한' },
+  { path: 'craft.cancelHalfUpTo', min: 0, max: 1, step: 0.05, category: 'balance', label: '제작 취소 절반 반환 진행 상한' },
+  { path: 'craft.qualityGood', min: 0, max: 1, step: 0.01, category: 'balance', label: '제작 품질 좋음 기본 확률' },
+  { path: 'craft.qualityGreat', min: 0, max: 0.5, step: 0.01, category: 'balance', label: '제작 품질 훌륭함 기본 확률' },
   { path: 'craft.medicineShortenMin', min: 0, max: 120, step: 5, category: 'balance', label: '상비약 치유 단축(분)' },
   { path: 'craft.hospitalFee', min: 0, max: 200_000, step: 5000, category: 'balance', label: '병원 진료비(원)' },
   // ── 날씨 → 캐스팅·채비 (127차) ──

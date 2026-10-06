@@ -177,7 +177,7 @@ export const PLACEMENT_DEFS: Record<string, PlacementDef> = {
    *   설치 자체는 홈타운에서만 된다(`startPlacement` 규칙).
    */
   workbench: {
-    key: 'workbench', label: '고급 제작대', objectType: 'workbench',
+    key: 'workbench', label: '작업대', objectType: 'workbench',
     rule: { footprint: { w: 2, h: 1 }, allowedTerrain: ['grass', 'land', 'sidewalk'], scope: ['exterior'] },
     collides: true, interact: 'craft',
   },

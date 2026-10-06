@@ -467,7 +467,14 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-10-06 221차) — 상점 재고 · 즐겨찾기 · 판매 수량 창 · 위키 탭 분리 · 제작 기획**
+**최근 변경 (2026-10-06 222차) — 시간 걸리는 제작 · 스킬 정비 · 잠금 · 채집 현실성 기획**
+
+- 제작 두 줄 대기열(core `CraftRules` · `store/CraftingStore`) — 맨손은 낚시·손질 중 멈춤 · 작업대만 오프라인 최대 8시간 · 취소 3구간 반환 · 품질 · 분야 숙련 · 손재주 · HUD 제작 칩 · 결과 창.
+- 스킬 이름 겹침 정리(「물때 시계」/「물 빠진 길」) · 효과 22개 배선(열린 65개 전부) · 미구현 시스템 스킬 14개 `pendingSystem` 자물쇠(선행 조건 0 — 테스트).
+- 함정: 스토어가 `GameState`를 import하면 순환 — 스킬 배율은 `GameState`가 함수로 주입한다. EN 규칙은 첫 일치라 새 문장 규칙은 맨 위에.
+  상세: [222차 워크로그](../docs/wiki/03-WORKLOG/2026-10-06-222-timed-crafting-skill-overhaul.md).
+
+**이전 변경 (2026-10-06 221차) — 상점 재고 · 즐겨찾기 · 판매 수량 창 · 위키 탭 분리 · 제작 기획**
 
 - 가게 규모 3단계 × 갈래 하루 재고(core `rules/ShopStock` · client `store/ShopStore` — 새벽 4시 다시 참 · 프롤로그/이야기 물건 예외) · 칸 별 → 가게별 「즐겨찾기」 탭.
 - 여러 개 팔 때 −/+ 수량 창 · 가방→상점 끌어 놓기(`inventory-drop`) · 매입가 한 곳 `shopSellUnitPrice` · 골절 자전거 막기 · 허기/수분 최대값.
@@ -480,14 +487,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - 이 가게 종류만 칩(전체 + 인벤토리 분류) · 한글 찾기 칸(`TextInput`) · 단가 한 곳 `shopBuyUnitPrice`(흥정 × 타이틀 할인).
 - 함정: 기존 가이드에 새 기능을 더하면 이미 본 사람은 못 본다 — `tourSeen(원래 id)`일 때만 뜨는 짧은 가이드(`shop_cart`)를 같이 건다.
   상세: [220차 워크로그](../docs/wiki/03-WORKLOG/2026-10-06-220-shop-cart-categories-search.md).
-
-**이전 변경 (2026-10-06 219차) — 원본 상호 지우기 · 로딩 화면 · 가이드 겹침/유도 · 진행 막힘**
-
-- 원본도 실제 상호 0(표 키 = SHA-1 앞 16자 · 캡처 = 게임 이름) · `Loading...` 가림막(`ui/LoadingOverlay` — 단계 이름만).
-- 가이드: 단계 뒤에 열린 창은 피하고(테두리 숨김 · 말풍선 비킴 · ✕ 구멍) · 단계 밖 행동은 회색 + 흔들기(`TourStep.focus` · `GuideTour.allows/nudge`).
-- 프롤로그 막힘 안전망(`prologueProtects` · `repairPrologue` · 비상금 · 차비) · 전체 지도 제목 줄(`hudHeaderMidY`) · 자전거 코치 · 방파제 피복 방위 동률 판정.
-- 함정: 「대상을 품은 창 = 설명하는 창」은 단계 시작 때 떠 있던 창에만 — 아니면 새로 연 모달(라디오) 위에 테두리가 뜬다.
-  상세: [219차 워크로그](../docs/wiki/03-WORKLOG/2026-10-06-219-loading-guide-guards-softlocks.md).
 
 ---
 

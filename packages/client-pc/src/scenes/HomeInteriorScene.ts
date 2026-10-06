@@ -36,6 +36,8 @@ import { playCoin, playUiClick } from '../audio/Sfx.js';
 import { CHAR_SCALE, CHAR_HEAD_TOP, TUNING, kstParts, sleepFraction, type CharDir } from '@tra/core';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { GameState } from '../store/GameState.js';
+import { CraftingStore } from '../store/CraftingStore.js';
+import { CraftResultDialog } from '../ui/CraftResultDialog.js';
 import { StoryStore } from '../store/StoryStore.js';
 import { TitleStore } from '../store/TitleStore.js';
 import { pumpTitleBanners, titleTagStyle, TITLE_RARITY_COLOR } from '../ui/TitleBanner.js';
@@ -507,6 +509,15 @@ export class HomeInteriorScene extends Phaser.Scene {
   private hotkeyOk(code: string): boolean {
     if (this.tourPanel || this.menu?.kind === 'bed' || this.fridgePanel || this.cookPanel || this.decor || this.leaving) return false;
     return !GuideTour.blocksKey(code) && prologueKeyAllowed(code);
+  }
+
+  /** 222차 — 제작 큐 진행 + 끝난 건 결과 창 */
+  private pumpCrafting(): void {
+    if (CraftingStore.tick(Date.now(), true).length) this.events.emit('inventory-changed');
+    if (this.craftResult?.active || !CraftingStore.hasReports() || this.leaving) return;
+    const reports = CraftingStore.takeReports();
+    this.craftResult = this.openPopup((close) => new CraftResultDialog(this, reports, close),
+      () => { this.craftResult = undefined; });
   }
 
   private openPopup<T extends DraggablePanel>(make: (close: () => void) => T, onClosed?: () => void): T {
@@ -1069,6 +1080,9 @@ export class HomeInteriorScene extends Phaser.Scene {
     if (this.sleepState) { this.stepSleep(delta); this.ambience?.update(delta); return; }
     GameState.noteAwake(delta);   // 213차 — 잠 가부(깨어 논 시간)
     if (this.menu) this.paintMenu();   // 219차 — 가이드 단계가 바뀌면 막힌 고를 거리 색도 따라 바뀐다
+    // 222차 — 제작 큐(벽시계). 집 안에서는 손이 늘 비어 있다.
+    this.craftAcc += delta;
+    if (this.craftAcc >= 250) { this.craftAcc = 0; this.pumpCrafting(); }
     this.consignAcc += delta;   // 213차 — 맡겨 둔 위판 정산(회차가 열렸으면)
     if (this.consignAcc >= 1000) { this.consignAcc = 0; this.settleConsignments(); }
     pumpTitleBanners(this);   // 203차 — 숨은 업적 달성 배너(고양이 집사 …)
@@ -1673,6 +1687,8 @@ export class HomeInteriorScene extends Phaser.Scene {
     fatigue0: number;
   } | null = null;
   private consignAcc = 0;
+  private craftAcc = 0;
+  private craftResult?: CraftResultDialog;
   /** 잠 창 자리(가이드가 짚는다) */
   private static readonly SLEEP_W = 320;
   private static readonly SLEEP_H = 112;

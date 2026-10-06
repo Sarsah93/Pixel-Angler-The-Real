@@ -51,6 +51,8 @@ export function isMarketFish(item: Pick<InvItem, 'subCategory' | 'speciesId'>): 
 }
 
 class MarketStoreImpl {
+  /** 222차 — 「물량 조절」 하락폭 배수(1 = 그대로 · GameState가 주입) */
+  saturationMult: () => number = () => 1;
   private book: SaturationBook = {};
   /** 지금 열려 있는 판매처(상점 창이 열려 있는 동안) */
   branch: MarketBranch | null = null;
@@ -64,10 +66,12 @@ class MarketStoreImpl {
     const sp = item.speciesId!;
     const load = decayedLoad(this.book[saturationKey(branchKey, sp)], nowMs);
     const tier = fishRarity(sp, item.lengthCm ?? 0).tier;
-    const sat = saturationMult({
+    const rawSat = saturationMult({
       speciesId: sp, load, live: item.condition === 'live',
       big: tier === 'big' || tier === 'trophy' || tier === 'monster',
     });
+    // 222차 「물량 조절」 — 하락폭(1 − sat)을 줄인다(GameState가 주입)
+    const sat = 1 - (1 - rawSat) * Math.max(0, this.saturationMult());
     const pref = branchPreference(branchKey, sp, kstDayKey(nowMs));
     const prefMult = branchPreferenceMult(pref);
     const trend = marketTrend(demandLevel(pref, load, sp), priceLevel(ExternalDataStore.getMarketPriceFactor(sp)));

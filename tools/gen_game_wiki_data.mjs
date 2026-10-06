@@ -580,6 +580,8 @@ const skillList = core.SKILL_DATABASE.map((d) => ({
   requires: d.requires.map((r) => `${skillName(r.id)} ${r.rank}랭크`),
   unlock: (d.unlock ?? []).map(unlockKo).filter(Boolean),
   wired: d.wired, hidden: !!d.hidden,
+  // 222차 — 아직 없는 시스템에 걸린 스킬(배울 수 없음)
+  pending: d.pendingSystem?.ko ?? '',
   prof: d.proficiency ? `${d.proficiency.actions.map((a) => PROF_ACTION_KO[a] ?? a).join(' · ')} 1회당 ${d.proficiency.xpPerAction} XP` : '',
   img: imgOf(`sk:${d.id}`),
 }));
@@ -702,9 +704,13 @@ const out = {
     subs: [...groupCount(items, 'sub').entries()].map(([id, count]) => ({ id, count })),
     list: items,
   },
+  // 222차 — 위치 · 1개 시간 · 레벨 · 재료까지(제작 시간제)
   blueprints: core.CRAFT_BLUEPRINTS.map((b) => ({
     id: b.id, name: b.nameKo, group: core.CRAFT_GROUP_LABEL[b.group]?.ko ?? b.group,
-    station: b.station, desc: b.descKo ?? '',
+    station: b.station, stationLabel: core.CRAFT_STATION_LABEL[b.station]?.ko ?? b.station, desc: b.descKo ?? '',
+    timeSec: b.timeSec ?? core.CRAFT_DEFAULT_TIME_SEC[b.station], minLevel: b.minLevel ?? 1,
+    materials: b.materials.map((m) => `${m.nameKo} ×${m.qty}`), outQty: b.outputQty,
+    success: Math.round(b.baseSuccess * 100),
   })),
   systems: readSystemPages(),
   rules,

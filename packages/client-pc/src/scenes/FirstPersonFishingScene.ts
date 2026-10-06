@@ -907,7 +907,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     if (this.fpState !== 'drift') return;
     // 207차 — 걸린 채비를 채면 바닥이 버틴다 → 대처 창
     if (this.snagStuck) { this.onSnagged(); return; }
-    const r = this.biteSeq.attemptHook();
+    const r = this.biteSeq.attemptHook(GameState.skillBonus('hook_set'));   // 222차 — 「챔질 타이밍」
     if (r.reason === 'no_bite') {
       this.flashState(r.message);
       return;
@@ -1039,7 +1039,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
 
     // 116차 — 물리 텐션: 체중 × 어종군 순간가속 ÷ 라인 인장강도(원줄·목줄 약한 쪽).
     //   목줄이 없는 채비(구세이브 등)는 3kg(1.5호급)로 간주 — 텐션 게이지 분모가 0이 되지 않게.
-    const lineCap = (InventoryStore.lineCapacityKg() ?? 3) * TitleStore.modifiers().lineMult;   // 203차 — 타이틀 줄 강도
+    const lineCap = (InventoryStore.lineCapacityKg() ?? 3) * TitleStore.modifiers().lineMult   // 203차 — 타이틀 줄 강도
+      * GameState.skillMult('line_strength');   // 222차 — 「라인 관리」
     this.fight = new FightingPhase({
       powerFactor: f.powerFactor * this.schoolMult,
       tackleA: this.computeTackleA(),
@@ -1053,6 +1054,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       lineCapacityKg: lineCap,
       // 210차 — 릴 드랙이 줄보다 약하면 릴이 먼저 미끄러진다 · 기어비는 감는 중 하중
       reelDragKg: InventoryStore.reelSpec?.maxDragKg,
+      tensionResist: GameState.skillMult('drag_control'),   // 222차 — 「드랙 제어」
       reelGearK: reelGearK(InventoryStore.reelSpec),
     });
 
@@ -1789,7 +1791,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       return;
     }
     this.coolerCatchText?.setText(`${CoolerStore.count()} / ${COOLER_CAPACITY}마리`);
-    this.coolerChumText?.setText(CoolerStore.chumRemaining > 0 ? `${CoolerStore.chumRemaining} / 100` : '비어있음');
+    this.coolerChumText?.setText(CoolerStore.chumRemaining > 0 ? `${CoolerStore.chumRemaining} / ${CoolerStore.chumMax}` : '비어있음');
   }
 
   // ── 어창(쿨러) 3x3 팝업 ─────────────────────────────
@@ -2441,10 +2443,10 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       const poseMult: Record<typeof this.rigPose, number> = {
         idle: 0.15, retrieve: 2.2, lift: 1.8, fall: 2.6, twitch: 3.0, hop: 2.0,
       };
-      this.lureActionMult = poseMult[this.rigPose];
+      this.lureActionMult = poseMult[this.rigPose] * GameState.skillMult('lure_action');   // 222차 — 「루어 액션」
       // 패스트싱킹(메탈지그 등) 리프트앤폴 = 지깅 — 추가 보정
       if (this.lureSink?.sinkType === 'fast_sinking' && (this.rigPose === 'lift' || this.rigPose === 'fall')) {
-        this.lureActionMult *= 1.3;
+        this.lureActionMult *= 1.3 * GameState.skillMult('jig_efficiency');   // 222차 — 「지깅 숙련」
       }
       // 205차 — 루어 종류별 물때 반응(지그·미노우 중물 · 에기 물돌이 · 타이라바 정조 약세 · 바닥 웜 초물)
       if (tn) this.lureActionMult *= lureKindTideMult(this.lureSpec?.kind, tn.state.phase, tn.flow01, tn.k);
@@ -2466,7 +2468,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       alignmentIndex: this.lineTension.alignmentIndex,
       isHoldingLine: holding,
       // 동조→입질 배율 스케일 (TUNING.chumSync.syncToBiteMul — balance 튜닝)
-      chumSyncRate: Math.min(1, sync * TUNING.chumSync.syncToBiteMul + chumBankBonus),
+      chumSyncRate: Math.min(1, sync * TUNING.chumSync.syncToBiteMul * GameState.skillMult('chum_sync') + chumBankBonus),   // 222차 — 「밑밥 감각」
       // 207차 — 엔진의 「세워 두면 걸리는」 타이머는 끈다(0). 밑걸림은 위 끌림 거리 모델이 굴린다.
       snagRiskMult: 0,
     });
@@ -2677,7 +2679,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       tidePhase: calculateTideInfo().tidePhase,
       month: new Date().getMonth() + 1,
       // 204차 — 물돌이·끝들물 대물 가중(205차 — 동해 감쇠) · 205차 어종별 물때 선호 · 단계 대물
-      sizeBias: tnSpawn ? regionalSizeBias(tideFlowSizeBias(tnSpawn.state.phase), tnSpawn.k) : 0,
+      // 222차 — 「대물 운」은 물때 대물 가중에 더해진다(0~1로 묶임)
+      sizeBias: Math.min(1, (tnSpawn ? regionalSizeBias(tideFlowSizeBias(tnSpawn.state.phase), tnSpawn.k) : 0) + GameState.skillBonus('big_fish_luck')),
       flowPhase: tnSpawn?.state.phase,
       tideStrength01: tnSpawn?.strength,
       tideRegionK: tnSpawn?.k,
@@ -2987,7 +2990,11 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   private resolveSnag(kind: 'pull' | 'break'): void {
     this.snagChoice = false;
     const table = kind === 'pull' ? SNAG_PULL_UP : SNAG_BREAK_OFF;
-    const row = rollSnagOutcome(table, Math.random());
+    let row = rollSnagOutcome(table, Math.random());
+    // 222차 — 「원줄 절약」: 통째로 뜯길 때 도래 위(찌 · 수중찌 · 도래)를 건질 확률
+    if (row.outcome === 'all_lost' && Math.random() < GameState.skillBonus('rig_salvage')) {
+      row = SNAG_BREAK_OFF.find((r) => r.outcome === 'below_swivel') ?? row;
+    }
     const { lost, label } = this.applySnagLoss(row.outcome, row.labelKo);
 
     // 로드 과부하 — 라인이 로드 등급보다 **과하게** 강하면 줄이 아니라 대가 먼저 나간다.
@@ -3092,7 +3099,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       const used = InventoryStore.bumpUse(reel);
       const w = wearFactor(used, rodMaxCasts(reel.basePrice ?? GEAR_REF_PRICE.reel));
       // 백래시가 오래 이어졌으면 스풀 꼬임이 크게 오른다 (스풀 개방 운용의 대가)
-      const tangleW = w * (1 + Math.min(4, this.spoolOverrunT * 1.2));
+      const tangleW = w * (1 + Math.min(4, this.spoolOverrunT * 1.2)) * GameState.skillMult('spool_trouble');   // 222차 — 「스풀 컨트롤」
       if (!this.rollFault(reel, 'reel_tangle', GEAR_REF_PRICE.reel, tangleW)
         && !this.rollFault(reel, 'reel_bail', GEAR_REF_PRICE.reel, w)) {
         this.rollFault(reel, 'reel_handle', GEAR_REF_PRICE.reel, w);

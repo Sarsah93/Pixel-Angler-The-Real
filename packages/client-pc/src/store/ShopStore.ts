@@ -28,6 +28,8 @@ export interface ShopContext {
 }
 
 class ShopStoreImpl {
+  /** 222차 — 「단골 가게」 재고 배수(GameState가 주입 — 순환 import 회피) */
+  stockMult: () => number = () => 1;
   private day = '';
   private sold: Record<string, Record<string, number>> = {};
   private fav: Record<string, string[]> = {};
@@ -50,7 +52,9 @@ class ShopStoreImpl {
   /** 하루 재고(null = 동나지 않음) */
   cap(ctx: ShopContext, entry: StockEntryInput, entryKey: string): number | null {
     if (inPrologue()) return null;
-    return shopStockCap(ctx.scale, entry, ctx.key, entryKey);
+    const base = shopStockCap(ctx.scale, entry, ctx.key, entryKey);
+    // 222차 「단골 가게」 — 정해진 재고를 늘린다(GameState가 주입)
+    return base === null ? null : Math.max(1, Math.round(base * this.stockMult()));
   }
 
   /** 오늘 남은 수(null = 동나지 않음) */

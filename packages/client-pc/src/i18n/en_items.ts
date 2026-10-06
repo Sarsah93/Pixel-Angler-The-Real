@@ -207,4 +207,17 @@ export const EN_ITEMS: Record<string, string> = {
   '설치형': 'Placeable',
   '재료': 'Material',
   '구급품': 'First Aid',
+  // ── 222차 — 손으로 만든 물건(CraftOutputs) ──
+  '감성돔 묶음 채비 (수제)': 'Black Seabream Snelled Rig (handmade)',
+  '벵에돔 목줄 채비 (수제)': 'Opaleye Leader Rig (handmade)',
+  '원투 카드 채비 3단 (수제)': 'Surf Card Rig, 3 hooks (handmade)',
+  '수제 붕대': 'Handmade Bandage',
+  '수제 부목': 'Handmade Splint',
+  '수제 상비약': 'Handmade Medicine',
+  '커스텀 미노우 (자개 도색)': 'Custom Minnow (pearl paint)',
+  '튜닝 에기 3.5호': 'Tuned Egi #3.5',
+  '커스텀 로드 (수제)': 'Custom Rod (handmade)',
+  '간이 백팩': 'Rough Backpack',
+  '튜닝 스피닝릴 (수제)': 'Tuned Spinning Reel (handmade)',
 };
+

@@ -389,10 +389,10 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
       // 제작 재료 (129차 P7) — 낚시 계열 재료는 직판장이 취급한다.
       { id: 'inv_mat_tin',   name: '주석 잉곳',    icon: '', iconTexture: 'px:it_ingot', category: 'etc', subCategory: '재료', basePrice: 3000,  price: 3600,  maxPerPurchase: 30, equippable: false, craftMaterial: true, desc: '봉돌·에기 싱커 주조 재료.' },
       { id: 'inv_mat_mesh',  name: '통발 그물망',  icon: '', iconTexture: 'px:it_mesh', category: 'etc', subCategory: '재료', basePrice: 6000,  price: 7200,  maxPerPurchase: 20, equippable: false, craftMaterial: true, desc: '통발 제작 재료.' },
-      { id: 'inv_mat_blank', name: '로드 블랭크',  icon: '', iconTexture: 'px:it_rod', category: 'etc', subCategory: '재료', basePrice: 55000, price: 66000, maxPerPurchase: 5,  equippable: false, craftMaterial: true, desc: '커스텀 로드의 뼈대 — 고급 제작대 전용.' },
-      { id: 'inv_mat_gear',  name: '정밀 기어 세트', icon: '', iconTexture: 'px:it_ingot', category: 'etc', subCategory: '재료', basePrice: 48000, price: 58000, maxPerPurchase: 5,  equippable: false, craftMaterial: true, desc: '릴 튜닝용 기어 — 고급 제작대 전용.' },
+      { id: 'inv_mat_blank', name: '로드 블랭크',  icon: '', iconTexture: 'px:it_rod', category: 'etc', subCategory: '재료', basePrice: 55000, price: 66000, maxPerPurchase: 5,  equippable: false, craftMaterial: true, desc: '커스텀 로드의 뼈대 — 작업대에서 로드 빌딩 공구 세트로 쓴다.' },
+      { id: 'inv_mat_gear',  name: '정밀 기어 세트', icon: '', iconTexture: 'px:it_ingot', category: 'etc', subCategory: '재료', basePrice: 48000, price: 58000, maxPerPurchase: 5,  equippable: false, craftMaterial: true, desc: '릴 튜닝용 기어 — 작업대에서 로드 빌딩 공구 세트로 쓴다.' },
       // 고급 제작대 (129차 P7) — 설치 후 근접 [F]로 고급 도면(루어·에기·통발·로드·릴)을 연다.
-      { id: 'inv_place_workbench', name: '고급 제작대', icon: '', iconTexture: 'px:it_workbench', category: 'etc', subCategory: '설치형', basePrice: 150000, price: 180000, maxPerPurchase: 1, equippable: false, placeKey: 'workbench', desc: '설치하면 고급 제작 도면이 열린다. 기본 제작은 설치 없이 U 창 제작 탭에서.' },
+      { id: 'inv_place_workbench', name: '작업대', icon: '', iconTexture: 'px:it_workbench', category: 'etc', subCategory: '설치형', basePrice: 150000, price: 180000, maxPerPurchase: 1, equippable: false, placeKey: 'workbench', desc: '설치하면 봉돌 주조 · 찌 깎기 · 통발 · 도구 같은 작업대 도면이 열린다. 맨손으로 만드는 것은 설치 없이 U 창 제작 탭에서.' },
       // 채비 코너 — 무게추 봉돌(원투)/찌/좁쌀봉돌 (추천 마크 연동)
       ...TACKLE_CORNER,
       // 채집·통발 코너 (121차)

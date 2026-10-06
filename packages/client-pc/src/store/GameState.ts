@@ -73,11 +73,13 @@ import { EnvironmentStore } from './EnvironmentStore.js';
 import { ExternalDataStore } from './ExternalDataStore.js';
 import { CoolerStore, CoolerSaveState } from './CoolerStore.js';
 import { GroundItemStore, type GroundItemSaveState } from './GroundItemStore.js';
-import { InventoryStore, InventorySaveState } from './InventoryStore.js';
+import { InventoryStore, InventorySaveState, setFreshnessMult } from './InventoryStore.js';
 import { FridgeStore, FridgeSaveState } from './FridgeStore.js';
 import { HomeStore, type HomeSaveState } from './HomeStore.js';
 import { MarketStore, type MarketSaveState } from './MarketStore.js';
 import { ShopStore, type ShopSaveState } from './ShopStore.js';
+import { setAuctionBidMult } from '../data/Consignment.js';
+import { CraftingStore, type CraftingSaveState } from './CraftingStore.js';
 import { TitleStore, type TitleSaveState } from './TitleStore.js';
 import { TideLoreStore, type TideLoreSaveState } from './TideLoreStore.js';
 import { DiscoveryStore, DiscoverySaveState } from './DiscoveryStore.js';
@@ -209,6 +211,8 @@ interface SaveData {
   market?: MarketSaveState;
   /** 221차 — 가게별 오늘 판 수(재고) · 즐겨찾기 */
   shops?: ShopSaveState;
+  /** 222차 — 제작 큐 · 보관함 · 분야 숙련 */
+  crafting?: CraftingSaveState;
   /** 203차 — 타이틀(칭호) 업적: 행동 누적 수 · 얻은 것 · 단 것(구세이브 = 없음) */
   titles?: TitleSaveState;
   /** 205차 — 물때 공략 발견 기록(어종 묶음 id · 구세이브 = 빈 기록) */
@@ -395,6 +399,11 @@ export class GameStateManager {
     this._completedQuestIds = new Set(saved.completedQuestIds ?? []);
     this._skills = saved.skills ?? createDefaultSkills();
     this._skillRanks = saved.skillTree ?? {};
+    // 222차 — 아직 없는 시스템에 걸려 잠근 스킬은 옛 세이브의 랭크를 지운다(포인트는 파생값이라 저절로 돌아온다)
+    for (const id of Object.keys(this._skillRanks)) {
+      const d = getSkillById(id);
+      if (d?.pendingSystem) delete this._skillRanks[id];
+    }
     this._skillProf = saved.skillProf ?? {};
     this._bonusSkillPoints = saved.bonusSkillPoints ?? 0;
     // 171차 — 정기 지출 이력. 구세이브는 비어 있으므로, 이미 가진 자격의 기산점을
@@ -415,6 +424,7 @@ export class GameStateManager {
     HomeStore.deserialize(saved.home);
     MarketStore.deserialize(saved.market);
     ShopStore.deserialize(saved.shops);
+    CraftingStore.deserialize(saved.crafting);
     TitleStore.deserialize(saved.titles);   // 203차 — 타이틀 업적(구세이브 = 0부터)
     LedgerStore.deserialize(saved.ledger);   // 211차 — 하루 기록(구세이브 = 빈 장부)
     // 213차 — 잠 · 맡긴 위판(구세이브 = 바로 잘 수 있게 · 빈 큐)
@@ -821,7 +831,8 @@ export class GameStateManager {
     const sk: [number, number, number] = [
       this.skillMult('hunger_drain'),
       this.skillMult('thirst_drain'),
-      restoring ? this.skillMult('fatigue_recovery') : 1,
+      // 222차 「자전거 지구력」 — 자전거 탈 때 피로 누적만 줄인다
+      restoring ? this.skillMult('fatigue_recovery') : activity === 'bike' ? this.skillMult('bike_fatigue') : 1,
     ];
     // 카페인 리바운드 — 활동 시간 경과분만 차감하고, 만료분은 피로로 되돌린다
     let reboundFatigue = 0;
@@ -1224,6 +1235,7 @@ export class GameStateManager {
     const d = getSkillById(id);
     if (!d) return { ok: false, reason: '알 수 없는 스킬' };
     if (SKILL_CATEGORIES.find((c) => c.id === d.category)?.locked) return { ok: false, reason: '이 카테고리는 아직 잠겨 있습니다' };
+    if (d.pendingSystem) return { ok: false, reason: `아직 배울 수 없다 — ${d.pendingSystem.ko} 열린다` };   // 222차
     // 130차 (e) — 히든 시너지는 **사는 것이 아니라 열리는 것**이다(조건 충족 시 자동 습득).
     if (d.hidden) return { ok: false, reason: '조합을 완성하면 저절로 열립니다' };
     if ((this._skillRanks[id] ?? 0) >= d.maxRank) return { ok: false, reason: '이미 최대 랭크입니다' };
@@ -1482,12 +1494,19 @@ export class GameStateManager {
 
   /** 지금 걸려 있는 정기 지출 전체 (납부 예정일 순) */
   upkeepItems(): UpkeepItem[] {
+    // 222차 「장부 정리」 — 정기 지출 −8%/랭크(표시 · 납부가 같은 값을 쓴다)
+    const m = this.skillMult('ledger_fees');
     return listUpkeep({
       day: StoryStore.storyDay,
       heldLicenses: this._licenses.map((l) => l.type),
       licenseDef: (t) => getLicenseByType(t),
       ledger: this._upkeepLedger,
-    });
+    }).map((i) => (m === 1 ? i : { ...i, costKrw: Math.round(i.costKrw * m) }));
+  }
+
+  /** 222차 「장부 정리」 — 위판 수수료율에서 덜어 낼 몫(기본 수수료율 × 할인율) */
+  ledgerFeeCut(): number {
+    return TUNING.auction.feeRateBase * (1 - this.skillMult('ledger_fees'));
   }
 
   /** 곧 다가오거나 이미 지난 것만 (알림용) */
@@ -1609,6 +1628,7 @@ export class GameStateManager {
       home: HomeStore.serialize(),
       market: MarketStore.serialize(),
       shops: ShopStore.serialize(),
+      crafting: CraftingStore.serialize(),
       titles: TitleStore.serialize(),
       tideLore: TideLoreStore.serialize(),
       parkedRods: this._parkedRods,
@@ -1830,6 +1850,7 @@ export class GameStateManager {
     HomeStore.resetAll();
     MarketStore.resetAll();
     ShopStore.resetAll();
+    CraftingStore.resetAll();
     TitleStore.resetAll();
     TideLoreStore.resetAll();
     DiscoveryStore.resetAll();
@@ -1877,6 +1898,14 @@ StoryStore.bind({
 
 // 193차 — 채비 「한 바늘에 두 미끼」 스킬 게이트 (InventoryStore가 GameState를 import하면 순환이라 주입)
 InventoryStore.doubleBaitAllowed = () => GameState.skillBonus('double_bait') > 0;
+// 222차 — 「보관 요령」(신선도 단계 유지 시간) · 같은 이유로 주입
+setFreshnessMult(() => GameState.skillMult('freshness_time'));
+CoolerStore.freshnessMult = () => GameState.skillMult('freshness_time');
+CoolerStore.chumAmountMult = () => GameState.skillMult('chum_amount');   // 222차 「밑밥 블렌딩」
+// 222차 — 「단골 가게」(상점 재고) · 「물량 조절」(시세 하락폭)
+ShopStore.stockMult = () => GameState.skillMult('shop_stock');
+MarketStore.saturationMult = () => GameState.skillMult('market_saturation');
+setAuctionBidMult(() => GameState.skillMult('auction_bonus'));   // 222차 「경매 배짱」
 
 // dev 검증용 전역 노출 — 하네스의 `import('/src/…')` 모듈은 게임 인스턴스와 다를 수
 // 있으므로(InventoryStore `__INV`와 동일한 함정) 실싱글턴을 노출한다. (프로덕션 미노출)

@@ -735,7 +735,11 @@ class StoryStoreManager {
       else this.onNotify?.(`[할 일] 보상 ${name} — 인벤토리 공간이 부족해 받지 못했습니다`);
     }
     // 141차 — 기술·상점 해금 (스킬 게이트는 questsDone으로, 상점은 플래그로)
-    for (const sk of q.rewards?.skillUnlocks ?? []) { h?.setFlag(`unlock.skill.${sk}`, true); rwl.push(`기술 해금: ${getSkillById(sk)?.nameKo ?? sk}`); }
+    for (const sk of q.rewards?.skillUnlocks ?? []) {
+      h?.setFlag(`unlock.skill.${sk}`, true);
+      // 222차 — 아직 없는 시스템에 걸린 스킬은 「해금」이라고 말하지 않는다(배울 수 없으니까)
+      if (!getSkillById(sk)?.pendingSystem) rwl.push(`기술 해금: ${getSkillById(sk)?.nameKo ?? sk}`);
+    }
     for (const sh of q.rewards?.shopUnlocks ?? []) { h?.setFlag(`unlock.shop.${sh}`, true); rwl.push('상점 품목 해금'); }
     // 188차 — '지역 개방: busan'처럼 지역 id가 나갔다(R1) → 지역 이름
     if (q.unlocks?.length) rwl.push(...q.unlocks.filter((u) => u.startsWith('region:')).map((u) => `지역 개방: ${getRegionById(u.slice(7))?.nameKo ?? '새 지역'}`));

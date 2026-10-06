@@ -1339,6 +1339,7 @@ export class JournalPanel extends DraggablePanel {
       cards.push({ icon: 'rw_license', label: getLicenseByType(lic)?.nameKo ?? String(lic), value: '자격' });
     }
     for (const sk of r?.skillUnlocks ?? []) {
+      if (getSkillById(sk)?.pendingSystem) continue;   // 222차 — 아직 배울 수 없는 스킬은 보상으로 내세우지 않는다
       cards.push({ icon: 'rw_skill', label: getSkillById(sk)?.nameKo ?? sk, value: '기술' });
     }
     if (r?.shopUnlocks?.length) {

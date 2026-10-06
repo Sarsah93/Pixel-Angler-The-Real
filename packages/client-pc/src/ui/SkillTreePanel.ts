@@ -303,7 +303,7 @@ export class SkillTreePanel extends DraggablePanel {
     const cat = SKILL_CATEGORIES.find((c) => c.id === def.category);
     const ranks = GameState.skillRanks;
     const r = ranks[def.id] ?? 0;
-    if (cat?.locked) return 'catLocked';
+    if (cat?.locked || def.pendingSystem) return 'catLocked';   // 222차 — 아직 없는 시스템의 스킬도 같은 잠금
     if (r >= def.maxRank) return 'maxed';
     if (def.hidden) return 'secret';
     if (skillPrereqsMet(def, ranks) && skillUnlockMissing(def, GameState.skillUnlockCtxPublic).length > 0) return 'condLocked';
@@ -400,6 +400,16 @@ export class SkillTreePanel extends DraggablePanel {
         if (secret) img.setTintFill(0x4a3a78);
         else if (dim) img.setAlpha(0.42);
         c.add(img);
+      }
+      // 222차 — 아직 없는 시스템에 걸린 스킬: 오른쪽 위에 픽셀 자물쇠(2배 정수 배율)
+      if (d.pendingSystem) {
+        const k = 2, lx = p.x + S - 6 * k - 4, ly = p.y + 4;
+        const lg = this.scene.add.graphics();
+        const px = (x: number, y: number, w: number, h: number, col: number): void => { lg.fillStyle(col, 1); lg.fillRect(lx + x * k, ly + y * k, w * k, h * k); };
+        px(1, 0, 4, 1, 0xd8d0c0); px(0, 1, 1, 2, 0xd8d0c0); px(5, 1, 1, 2, 0xd8d0c0);   // 고리
+        px(0, 3, 6, 4, 0xc88a5a); px(0, 3, 6, 1, 0xe0a870);                              // 몸통 · 윗면 밝게
+        px(2, 4, 2, 2, 0x3a2414);                                                         // 열쇠 구멍
+        c.add(lg);
       }
       // 레벨 눈금 — 슬롯 아래 테두리에 걸친 작은 칸 (배운 만큼 채움)
       if (!secret) {
@@ -587,12 +597,15 @@ export class SkillTreePanel extends DraggablePanel {
         addText('함께 익혀야 할 스킬들을 모두 배우면 저절로 열린다. 포인트는 들지 않는다.', 12, '#d8ccf0', false, 6);
       } else {
         addText(displayDesc(d), 13, '#e8f4fd', false, 6);
-        if (!d.wired) addText('준비 중인 스킬이다 — 지금 배워 두면 효과는 나중에 난다.', 11, '#a89a80', false, 6);
+        if (!d.wired && !d.pendingSystem) addText('준비 중인 스킬이다 — 지금 배워 두면 효과는 나중에 난다.', 11, '#a89a80', false, 6);
         this.addProficiencyLines(d, r, addText, c, () => y, (ny) => { y = ny; });
         // 잠김 사유 — 이야기 조건은 제목을 숨긴다(R2)
         const cat = SKILL_CATEGORIES.find((x) => x.id === d.category);
         if (cat?.locked) {
           addText('이 분야는 아직 배울 수 없다.', 12, '#c88a5a', false, 6);
+        } else if (d.pendingSystem) {
+          // 222차 — 아직 없는 일에 걸린 스킬: 배울 수 없고, 무엇이 생기면 열리는지만 말한다
+          addText(`아직 배울 수 없다 — ${d.pendingSystem.ko} 열린다.`, 12, '#c88a5a', false, 6);
         } else if (r < d.maxRank) {
           const ranks = GameState.skillRanks;
           const pre = d.requires.filter((q) => (ranks[q.id] ?? 0) < q.rank);

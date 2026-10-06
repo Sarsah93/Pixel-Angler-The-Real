@@ -3,8 +3,8 @@
 > 신설 2026-09-09 (122차) · 124 P1 · 125 P2 · 126 P3·P4 · 127 P5·P6 · 129 P7 · 130 트리 확장 ·
 > **131차 도움말 현행화** 반영. 상태 🔶 —
 > **레벨 200 곡선 + XP + 트리 92노드(유료 87 Σ=215pt + 시너지 히든 5)** · **생존 지표 4종(최대치 확장 가능) ·
-> 상태이상 11종** · **상태 패널 + 기절·사망 FSM** · **제작 14도면 + 구급품·보건소 치료** 가동.
-> 스킬 효과 실배선 **43/92** · 스펙 P1~P7 + 트리 확장 완료 (남은 것 = P8 퀘스트 XP · P9 도움말).
+> 상태이상 11종** · **상태 패널 + 기절·사망 FSM** · **시간 걸리는 제작(손 · 작업대 두 줄) + 구급품·보건소 치료** 가동.
+> **222차: 열린 유료 스킬 65개 전부 배선 · 미구현 시스템 스킬 14개 자물쇠(+ 농사 9 = 잠금 23)** · 잠긴 스킬은 선행 조건 0(테스트 강제).
 >
 > **등식(130차 재정의)**: Σ(유료 노드) **215** = 만렙 포인트 200 + **면허 보너스 15** —
 > "만렙 + 전 면허 취득 = 전 스킬 마스터". 히든 시너지는 비용 0이라 예산 밖이다.
@@ -26,12 +26,13 @@
 | core 계약 | `types/Vitals.ts` | `VitalsState`(HP·피로·허기·수분 + **maxHunger/maxHydration**) · 활동 드레인 6종 · 행동 비용 8종 · **임계 20% = 비율** · 온도 계수 · 수면 · `normalizeVitals` | ✅ 125 · 130 |
 | core 계약 | `types/StatusEffects.ts` | 11종 정의(Ko/En) · `aggregateStatus` · `tickStatuses`(진행 체인·자연치유) · `cureStatus`(재발) | ✅ 125 |
 | core 튜닝 | `config/tuning.ts` `vitals`·`status` | 드레인·비용·임계·온도·수면 / 진행 주기·확률·자연치유·재발·회복기 | ✅ 125 |
-| core 데이터 | `db-schema/CraftingDatabase.ts` | 도면 **14종**(hand 8 / workbench 6) · `CraftBlueprint{materials,outputId,baseSuccess,xp,requiresSkill}` · `craftSuccessRate`·`materialSaveChance` | ✅ 129 |
+| core 데이터 | `db-schema/CraftingDatabase.ts` | 도면(손 · 작업대) · `CraftBlueprint{materials,outputId,baseSuccess,xp,requiresSkill,timeSec,minLevel,group}` · `craftSuccessRate`·`materialSaveChance` | ✅ 129 · 222 |
+| core 판정 | `simulation/CraftRules.ts` | 한 개 시간 · 성공률(손재주 · 분야 숙련) · 품질(보통/좋음/아주 좋음 + 덤) · 취소 반환 3구간 | ✅ 222 |
 | core 튜닝 | `config/tuning.ts` `craft` | 실패 재료 소모율 · 상비약 치유 단축 · 재발 배율 · 제작대 가격 · **진료비** + F8 3종 | ✅ 129 |
 | client 데이터 | `data/ItemVitals.ts` | 소모품 효과 **단일 테이블**(음식 회복치·보양식 버프·카페인 리바운드·구급품) — 상점·시드·**세이브 백필** 공유 | ✅ 129 |
 | client 데이터 | `data/CraftOutputs.ts` | 산출 id → 인벤토리 템플릿 (상점에 있는 물건은 카탈로그 재사용) | ✅ 129 |
-| client 상태 | `store/CraftingStore.ts` | 재료 판정(`itemId`/`speciesId`/`byproductKind`)·소비·성공 롤·XP·행동 비용 | ✅ 129 |
-| client UI | `ui/CraftBoard.ts` · `ui/AdvancedCraftPanel.ts` | 제작 보드(좌 도면 › 우 상세·수량·제작) — **U '제작' 탭과 고급 제작대 팝업이 공유** | ✅ 129 |
+| client 상태 | `store/CraftingStore.ts` | **두 줄 대기열**(손: 손이 비어 있을 때만 · 2초 넘는 틈은 버림 / 작업대: 오프라인 최대 8시간) · 개당 재료 · 진행 이월 · 보관함 · 취소 · 세이브 | ✅ 129 · 222 |
+| client UI | `ui/CraftBoard.ts` · `ui/AdvancedCraftPanel.ts` · `ui/CraftResultDialog.ts` | 제작 보드(종류별 도면 › 상세·수량·시간·성공률) — **U '제작' 탭과 「작업대」 팝업이 공유** · 결과 창 · HUD 제작 칩(`RegionHud.refreshCraftChip`) | ✅ 129 · 222 |
 | core 계약 | `types/License.ts` | `LicenseCategory` 6군(낚시·해루질·통발·토지/주거·선박/어업·사업) · 16종(122차 +7) · `nameEn/descriptionEn/plannedNote` | ✅ 122 |
 | client 상태 | `store/GameState.ts` | `skillTree` 세이브 · `canLearnSkill/learnSkill` · `skillMult/skillBonus` · **`grantXp`·`addActivityXp`·`addLawfulReleaseXp`** · **`vitals`/`maxHp`/`maxFatigue`·`tickVitals`·`applyVitalsAction`·`applyIntake`·`sleepRecover`·`statuses`·`moveSpeedMult`** | ✅ 122·124·125 |
 | client 배선 | `RegionFieldScene`·`FirstPersonFishingScene`·`ForageSystem`·`HomeInteriorScene`·`InventoryPanel` | 드레인 틱(활동 자동 판정) · 행동 비용 5곳 · 음식 회복치 · 침대 수면 · 채집 부상 → 상태이상 승격 | ✅ 125 |
@@ -78,7 +79,9 @@ learnSkill(id): ranks[id]++ · markDirty   (세이브 `skillTree`)
 | **자격 이야기 경로**(170차 — 관련 할 일을 끝내면 추천으로 **수수료·실적 요건 면제**. 8자격 · 면허사무소 경로는 무수정 가산) | ✅ | 170 — `LicenseStoryRoutes.ts` · `applyLicenseWaiver` · 검증기 0건 |
 | **정기 지출(유지비) — 자격 갱신료·수협 조합비·선박 유지비·위생 점검 + 어장 행사료** · 시계는 **인게임 일자**(`StoryStore.storyDay`) · 갱신료 = 취득가 25%(하한 2,000원)·180일 · 전 자격 1회차 **187,000원** · 연체 = 위판 차단 + 평판 −1/일(상한 3) + 법 강제 ×1.6 | ✅ | **171** — `core/rules/Upkeep.ts` · `TUNING.upkeep` 17키 · SaveData `upkeepLedger`(백필) |
 | **구 갱신 장치 폐기** — `checkLicenseExpiry()`·`HeldLicense.expiresAt`(실 벽시계 365일 · 호출측 0건 = 사문) | ✅ | **171** — 인게임 일자 기반 `listUpkeep`이 대체 |
-| 스킬 효과 실배선 | 🔶 **43/92** | 122(13) · 127(+11) · 129(+9) · **130(+10 — 생존 최대치 3·행동력 면제·위생·응급처치 정정·시너지 5)** |
+| 스킬 효과 실배선 | ✅ **열린 65/65** | 122(13) · 127(+11) · 129(+9) · 130(+10) · **222(+22 · 효과 키 4 신설)** — 잠긴 23개(대기 14 + 농사 9)는 시스템 착수 때 |
+| **미구현 시스템 스킬 자물쇠**(`pendingSystem` · 배우기 막힘 · 패널 자물쇠 · 보상 문구 숨김 · 구세이브 랭크 환급) | ✅ | **222** — 14종 · 선행 조건 0(`SkillDatabase.test.ts`) |
+| **겹치는 이름 · 비슷한 효과 정리**(「물때 시계」/「물 빠진 길」 · 「부표 매듭」 · 「밤낚시」 · 단골 가게 재고 · 물량 조절 · 밑밥 양) | ✅ | **222** — id · 비용 유지(Σ 216 불변) |
 | **(a) 생존 지표 최대치 노드** | ✅ | 130 — 대식가·큰 물통·강단 (그릇 확장 — 소모 속도와 별개 축) |
 | **(c) 행동력 확률적 미소비** | ✅ | 130 — 요령 4%p/랭크 · `applyVitalsAction`이 면제 여부 반환 |
 | **(d) 스킬 해금 조건** | ✅ | 130 — 레벨·면허·카테고리 숙련 · 기존 7노드에 부여 + 패널 사유 표시 |
@@ -101,6 +104,7 @@ learnSkill(id): ranks[id]++ · markDirty   (세이브 `skillTree`)
 | **제작·스킬 UI 영문화** | ✅ | 131 — `buildRuntimeDict`에 제작 DB 합류 + 사전 156·규칙 16 (en 한국어 잔존 0) |
 | **상태이상·생존 지표 픽셀 아이콘 + 앵커 호버 팝업** | ✅ | 128 — `PixelIconArt` 13종 · `StatusBadge.icon` · 텍스트 약어 제거 |
 | **제작 시스템 (스펙 P7)** | ✅ | 129 — 도면 14종 · U '제작' 탭 · 고급 제작대 설치물 + [F] |
+| **시간 걸리는 제작**(제작 확장 기획 1단계 — 두 줄 대기열 · 오프라인 · 취소 · 품질 · 숙련 · 손재주 · HUD 칩 · 결과 창 · 「작업대」 이름) | ✅ | **222** — [워크로그](../03-WORKLOG/2026-10-06-222-timed-crafting-skill-overhaul.md) |
 | **구급품 3종 + 상태이상 치료 배선** | ✅ | 129 — 약국 판매 + 제작 · `GameState.applyRemedy` |
 | **병원(보건소) 진료** | 🔶 홈타운만 | 129 — 홈타운 보건소 ✅ / **출조 지역 POI는 OSM 백필 대기**(네트워크) |
 | **피로 회복 음식 + 보양식 버프 + 카페인 리바운드** | ✅ | 129 — 사용자 결정 (b) · 활동 시간 기준 |
@@ -109,7 +113,7 @@ learnSkill(id): ranks[id]++ · markDirty   (세이브 `skillTree`)
 | 스킬 트리 확장 (a)(c)(d)(e) | ✅ | 130 — 위 4행 참조 |
 | **생존 드레인 하루 3끼 기준 재보정**(`TUNING.vitals.drain*` — 전형 하루 허기 105 / 수분 134) + **음식 영양 테이블**(core `FoodNutrition.ts` — g·kcal·ml → 회복치 · `DAILY_KCAL 2400`·`DAILY_WATER_ML 2000` · `ItemVitals`는 파생만) | ✅ | **155** |
 | **타이틀(숨은 업적) 30종** — 흔함 15 · 드묾 11 · 전설 4 · 전부 히든 · 조건 = 경로(OR) × 조건(AND) · 전설 Lv 문턱(40~100) · 대물 가중 점수 · 밤 20~04/새벽 02~06 겹침 · 물때 6종 · 집 안 머리 위 표시 | ✅ | 203 신설 · **204** 재설계 — [워크로그](../03-WORKLOG/2026-10-04-204-tide-flow-titles-v2.md) |
-| **패시브 「물때 감각」**(`fish_tide` 재배선 — 물때 단계가 바뀌면 지역 채널 · 10분 전 예고 · 1인칭 수심 정보에 지금 물때) | ✅ | **204** — 비용·위치·id 유지(Σ 등식 불변) |
+| **패시브 「물때 시계」**(222차 「물때 감각」에서 개명 · `fish_tide` 재배선 — 물때 단계가 바뀌면 지역 채널 · 10분 전 예고 · 1인칭 수심 정보에 지금 물때) | ✅ | **204** — 비용·위치·id 유지(Σ 등식 불변) |
 
 ## 5. 잔여·차기
 
@@ -130,9 +134,10 @@ learnSkill(id): ranks[id]++ · markDirty   (세이브 `skillTree`)
   경로를 늘릴 때는 **`standard` 정책 퀘스트에만** 건다(검증기가 `once`·`event`를 거부).
 - **출조 지역 병원 POI 백필 1회 필요** — `py tools/backfill_hospital_poi.py sokcho_v2`
   (Overpass 접근이 되는 환경에서. 129차 원격 세션은 egress 정책으로 차단됐다).
-- 미배선 제작 효과 3종(`trap_durability`·`lure_tuning`·`egi_tuning`) — 통발 내구·루어 편차 시스템 대기.
+- ~~미배선 제작 효과~~ 222차에 열린 스킬 전부 배선. **잠긴 14종**은 시스템이 들어올 때 `pendingSystem`을 지우고 연다
+  (농장 · 배 · 자동차 · 토지 · 식당 · 집 수납 · 희귀 도면 · 해루질 현실화 등).
 - **눕기 전용 스프라이트 대기** — 눈 감은 2프레임(man/girl). 현재는 idle 90° 회전 + 호흡 스케일 플레이스홀더.
-- 스킬 49종 배선 대기(43/92) — 농사는 농장 단계, 요리 계열은 불요리 단계에 `effect.key` 소비.
+- 「인내심」(줄마다 +2건)은 배선했으나 하네스로 2건 걸기를 따로 재지 않았다(222차).
 - **면허 7종이 아직 발급 불가**(`plannedNote`) → 지금 도달 가능한 실예산은 200 + 8이다.
   만렙과 마찬가지로 장기 등식이며, 해당 면허 시스템이 열릴 때 자동으로 채워진다.
 - **히든 시너지는 5종**(운전·농사 제외) — 농사는 카테고리가 잠겨 있어 농장 착수 시 함께 추가.
@@ -146,7 +151,9 @@ learnSkill(id): ranks[id]++ · markDirty   (세이브 `skillTree`)
 - **221차 점검(원안 대조)** — 고침: 골절 자전거 막기(`canRideBike` 미사용이었음) · 허기/수분 최대값 고정 100 · 도움말 스킬 수.
   원안과 다른 수치(기본 체력 100 vs 50 · 사망 재화 15% vs 80% + 가방 전부)는 사용자 확인 대기.
   미구현: 붕대·부목 유지 시간 뒤 재발 · 이상고열 입원 3일 · 레벨로 열리는 전용 지역 · 구 해루질 씬 생존 지표.
-- **제작 확장 기획** `.agents/CRAFTING_EXPANSION_SPEC.md` v0.1(221차 제안 — 시간 · 이어 하기 · 종류 탭 · 덤 옵션 · 맨손/작업대/고급 분류).
+- **제작 확장 기획** `.agents/CRAFTING_EXPANSION_SPEC.md` — 222차에 1단계(시간 · 대기열 · 취소 · 품질 · 숙련) 구현.
+  남은 것: 재료 체인 · 광질(봉돌 주조는 작업대) · 작업대 업그레이드.
+- 221차 점검의 수치 결정은 222차에 확정: 기본 체력 100 · 사망 재화 15%(가방 유지) · 판매 수량 창 1부터.
 - ~~퀘스트 진행 판정 + 일지 상태 실갱신~~ ✅134 — `StoryStore`(S22). 레거시 `GameState.quests`는 면허 요구조건용으로만 잔존.
 
 ## 6. 함정·불변조건
@@ -164,7 +171,9 @@ learnSkill(id): ranks[id]++ · markDirty   (세이브 `skillTree`)
    `CraftingStore`가 그랬고, 그래서 **제작 목표는 영영 안 닫히고 제작 숙련도는 0에서 움직이지 않았다**.
    ⚠ `cook`은 아직 어떤 호출처도 없다(불요리 미구현).
 1. **효과 소비처는 `GameState.skillMult/skillBonus`만** — 랭크를 직접 읽어 계산하지 말 것(배선 여부·mode를 한 곳에서 관리).
-2. **`wired: false` 스킬은 배우기가 막히지 않는다**(포인트만 소모) — 실배선 전에 툴팁 '예정'을 지우지 말 것.
+2. **미구현 시스템 스킬은 `pendingSystem`으로 잠근다**(222차) — `wired: false`만으로는 배우기가 막히지 않아 포인트만 샌다.
+   잠긴 스킬은 **다른 스킬의 선행 조건이 될 수 없다**(`skillPendingViolations` · 테스트). `skillPointsSpent`는 잠긴 스킬을 빼고 센다.
+   `pendingSystem.ko`는 「열린다」 앞에 붙는 조건절이다(문장으로 조립된다).
 3. `skillPointsForLevel`을 바꾸면 기존 세이브의 사용 포인트가 총량을 넘을 수 있다 — `skillPointsAvailable`은 0 하한이지만 환급 로직은 없음.
 4. **자격 면제선은 실적·재화까지다**(170차). `KEEP_ALWAYS = {license_held, quest_completed}` —
    **선행 면허와 선행 할 일은 어떤 경로로도 면제되지 않는다.** 면제로 단계를 건너뛰면 자격 체계가 무너진다.
@@ -250,3 +259,13 @@ learnSkill(id): ranks[id]++ · markDirty   (세이브 `skillTree`)
   레벨이 늦게 차도 그때 얻는다(누적은 이미 차 있으므로).
 - 「6짜 수집가」 대물 점수: 60cm대 1 · 70cm대 3 · 80cm↑ 6. 구세이브 `trophyCatch`(60cm 마릿수)는 1점씩 `trophyPts`로 백필.
 - 「바다가 키운 사람」은 얻은 타이틀 수를 센다 — `check()`가 연쇄 획득을 위해 최대 4회 다시 돈다.
+
+### [222차] 제작 대기열 · 스킬 효과 주입
+
+- **진행 이월은 지급 전에 떼어 둔다** — `payUnit`이 `progressMs`를 0으로 만들어, 오프라인 몫이 한 개만 끝나고 나머지가 버려졌다.
+  `completeUnit`에서 `carry`를 먼저 저장하고 지급 뒤 되돌린다.
+- **손 줄은 2초 넘는 틈을 버린다**(창을 내렸다 오면 진행 안 됨) · **작업대 줄만 60초 넘는 틈을 8시간까지** 받는다.
+- **스토어가 `GameState`를 import하면 순환이 생긴다** — 스킬 배율은 `GameState`가 스토어에 함수로 꽂는다
+  (`setFreshnessMult` · `CoolerStore.chumAmountMult` · `ShopStore.stockMult` · `MarketStore.saturationMult` · `setAuctionBidMult`).
+- **EN 규칙은 위에서부터 첫 일치** — 일반 규칙(`^(.+)  ·  (.+)$` · `개` 규칙)이 아래 구체 규칙을 가린다.
+  새 문장 규칙은 `EN_RULES` 맨 위 블록에 둔다. 조각 `t()`를 이어 붙이지 말고 **문장 하나**로 만든다.

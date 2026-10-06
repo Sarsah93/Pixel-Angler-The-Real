@@ -518,6 +518,15 @@ export class ShopPanel extends DraggablePanel {
     return shopSellUnitPrice(item);   // 221차 — 씬 정산과 같은 값(단 타이틀 판매가 포함)
   }
 
+  /** 222차 「시세 읽기」 — 지금 값이 기준가에서 몇 % 오르내렸는지(물량 · 판매처 선호). 스킬 없으면 빈 줄 */
+  private marketEyeLine(item: InvItem): string {
+    if (GameState.skillBonus('market_eye') <= 0) return '';
+    const q = MarketStore.quote(item, 0);
+    if (!q) return '';
+    const pct = (m: number): string => { const v = Math.round((m - 1) * 100); return `${v >= 0 ? '+' : '−'}${Math.abs(v)}%`; };
+    return `\n시세 — 물량 ${pct(q.satMult)} · 판매처 ${pct(q.prefMult)}`;
+  }
+
   /** 196차 — 이 지점의 시세·수요 화살표(어획물만) */
   private trendOf(item: InvItem): MarketTrend | undefined {
     return MarketStore.quote(item, 0)?.trend;
@@ -644,7 +653,7 @@ export class ShopPanel extends DraggablePanel {
           condition: item.condition,
           trend: this.trendOf(item),
           selected: !!inCart,
-          tooltip: `${item.name}\n매입가 ${this.sellPriceOf(item).toLocaleString()}원${item.condition ? ' · ' + CONDITION_LABEL[item.condition] : ''}`,
+          tooltip: `${item.name}\n매입가 ${this.sellPriceOf(item).toLocaleString()}원${item.condition ? ' · ' + CONDITION_LABEL[item.condition] : ''}${this.marketEyeLine(item)}`,
           onSelect: () => {
             // 220차 — 누를 때마다 판매 목록에 넣고 뺀다. 221차 — 여러 개면 몇 개 팔지 먼저 묻는다(구: 가진 만큼 통째로)
             if (this.sellCart.has(item.id)) { this.sellCart.delete(item.id); if (this.lastPick === item.id) this.lastPick = null; this.renderGrid(); }

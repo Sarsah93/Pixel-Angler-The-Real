@@ -135,6 +135,8 @@ export interface FightingFishSpec {
    * 요구 장력이 이 값에서 막혀 줄은 지키지만, 넘친 만큼(`dragSlipKg`) 고기가 줄을 끌고 나간다. 미지정 = 줄만 본다.
    */
   reelDragKg?: number;
+  /** 222차 「드랙 제어」 — 텐션이 오르는 속도를 이 배수로 나눈다(1 = 그대로) */
+  tensionResist?: number;
   /** 210차 — 기어 배율(`reelGearK` — 한 바퀴 회수 길이 / 기준 릴). 감는 중 하중에 곱한다. 미지정 = 1 */
   reelGearK?: number;
 }
@@ -181,6 +183,7 @@ export class FightingPhase {
   private readonly physical: boolean;
   /** 210차 — 릴 최대 드랙(kg, 0 = 줄만) · 기어 배율 */
   private readonly reelDragKg: number;
+  private readonly tensionResist: number;
   private readonly gearK: number;
   /** 체형 배수 (정적하중·추력·요동·바늘빠짐) */
   private readonly form: typeof TUNING.fightPhys.form[BodyFormKey];
@@ -200,6 +203,7 @@ export class FightingPhase {
     this.lineCapKg = fish.lineCapacityKg ?? 0;
     this.physical = this.weightKg > 0 && this.lineCapKg > 0;
     this.reelDragKg = fish.reelDragKg ?? 0;
+    this.tensionResist = Math.max(1, fish.tensionResist ?? 1);
     this.gearK = fish.reelGearK ?? 1;
     // 132차 — **첫 패턴은 챔질 직후**(훅셋 버스트). 구 구현은 첫 패턴까지 4.7~10.7초가 걸려
     //   가까운 거리에서 건 고기는 패턴을 한 번도 못 보고 끌려왔다(= 상호작용 없는 파이트).
@@ -400,7 +404,7 @@ export class FightingPhase {
     }
     this.lastDemandKg = demand;
     const target = Math.max(0, Math.min(140, demand / this.lineCapKg * 100));
-    const rate = target > this.tension ? P.tensionRiseRate : P.tensionFallRate;
+    const rate = target > this.tension ? P.tensionRiseRate / this.tensionResist : P.tensionFallRate;
     this.tension += (target - this.tension) * Math.min(1, dtSec * rate);
   }
 

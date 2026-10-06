@@ -2048,6 +2048,8 @@ export class UtilizationPanel extends DraggablePanel {
     this.craftBoard = new CraftBoard(this.scene, this.bodyContainer, {
       station: 'hand',
       x: 20, y: top, w: PANEL_W - 40, h: PANEL_H - top - 16,
+      origin: () => ({ x: this.x + this.bodyContainer.x, y: this.y + this.bodyContainer.y }),
+      alive: () => this.active && this.visible,
       onCrafted: () => this.scene.events.emit('inventory-changed'),
     });
     this.craftBoard.render();
@@ -2070,7 +2072,7 @@ export class UtilizationPanel extends DraggablePanel {
     // 상태 헤더
     const header = this.scene.add.text(boxX, this.contentTop + 56,
       mixed
-        ? `배합 완료 — 남은 밑밥 ${CoolerStore.chumRemaining} / 100 (1인칭 C 투척 1회당 ${CHUM_THROW_COST} 소모)`
+        ? `배합 완료 — 남은 밑밥 ${CoolerStore.chumRemaining} / ${CoolerStore.chumMax} (1인칭 C 투척 1회당 ${CHUM_THROW_COST} 소모)`
         : '밑밥 통', {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', fontStyle: 'bold',
         color: mixed ? '#4af2a1' : '#ffe28a',
@@ -2100,7 +2102,7 @@ export class UtilizationPanel extends DraggablePanel {
         m.fillEllipse(boxX + 34 + r1 * (boxW - 70), boxY + 34 + r2 * (boxH - 70), 6 + r3 * 6, 4 + r3 * 4);
       }
       this.bodyContainer.add(m);
-      const remain = this.scene.add.text(boxX + boxW / 2, boxY + boxH / 2, `${CoolerStore.chumRemaining} / 100`, {
+      const remain = this.scene.add.text(boxX + boxW / 2, boxY + boxH / 2, `${CoolerStore.chumRemaining} / ${CoolerStore.chumMax}`, {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '26px', color: '#fff2dc', fontStyle: 'bold',
       }).setOrigin(0.5).setAlpha(0.92);
       this.bodyContainer.add(remain);

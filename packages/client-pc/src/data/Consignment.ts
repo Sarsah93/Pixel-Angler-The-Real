@@ -70,6 +70,10 @@ export function consignableItems(licenses: readonly string[], regionId: string, 
  * 아이템 → 로트 입력. 기준 단가는 `getSellPrice`(경락 시세 캐시 + 신선도 배율)를 kg으로 환산한다.
  * ⚠ 여기에 `getMarketPriceFactor`를 **또** 곱하지 말 것 — 시세 이중 적용(39차 함정).
  */
+/** 222차 「경매 배짱」 배수 — GameState가 주입(이 파일은 GameState를 import하지 않는다) */
+let auctionBidMult: () => number = () => 1;
+export function setAuctionBidMult(fn: () => number): void { auctionBidMult = fn; }
+
 export function consignInputOf(item: InvItem, reserve: ReserveMode, origin: string, crated: boolean): ConsignInput {
   const weightKg = Math.max(0.01, (item.weightG ?? 0) / 1000);
   const basePricePerKg = Math.round(InventoryStore.getSellPrice(item) / weightKg);
@@ -85,6 +89,7 @@ export function consignInputOf(item: InvItem, reserve: ReserveMode, origin: stri
     method: catchMethodOfItem(item),
     reservePerKg: Math.round(basePricePerKg * RESERVE_FRAC[reserve]),
     crated,
+    bidMult: auctionBidMult(),
   };
 }
 
