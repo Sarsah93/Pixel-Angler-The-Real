@@ -742,10 +742,23 @@ export const EN_HELP: Record<string, string> = {
     'If the fish you are fighting runs hard to the side, it can tangle a neighbouring holder\'s line. Picking up a tangled rod cuts the leader on the spot and reels in.',
   '게임을 끈 채 4시간 넘게 지나 돌아오면, 끄기 전에 잠이 올 만한 상태였을 때(피로 절반 이상이거나 한 시간 넘게 깨어 있었음)에 한해 그사이 집에서 자고 나온 것으로 칩니다 — 이야기가 한 번 넘어가고, 들어오자마자 「지난 하루」가 뜹니다. 방금 자고 껐다면 다시 잔 것으로 치지 않습니다. 꺼 둔 동안 허기 · 수분은 줄지 않습니다.': 'If you come back more than 4 hours after quitting, and you could have fallen asleep when you quit (Fatigue over half, or up for more than an hour), it counts as having slept at home in the meantime — the story moves on by one and a "Past day" opens as soon as you enter. If you had just slept before quitting, it does not count again. Hunger and Water do not drop while the game is off.',
   '바깥(필드 · 낚시 중)에서 게임이 꺼지면 마지막 저장으로 돌아갑니다 — 다음에는 홈타운 집 앞에서, 그때의 실제 시각으로 시작합니다.': 'If the game closes while you are outside (in the field or fishing), you go back to your last save — next time you start in front of your house in the hometown, at the real time of that moment.',
-  '하루 일과 · 문 두드리기': 'Daily routines · Knocking',
   '① 불 켜진 문 — 집에 있다 ② [F] 문 두드리기': '① A lit door — someone is home ② [F] Knock',
   '사람마다 하루 일과가 있습니다. 좌판 상인은 새벽 장부터 해 질 녘까지, 어촌계는 사무실 시간(일요일은 쉼), 낚시꾼은 동트기 전부터 밤까지 밖에 나와 있고, 그 밖의 시간에는 집에 들어갑니다. 떠돌이나 교대 근무하는 감시원처럼 밤낮없이 밖에 있는 사람도 있습니다. 늦은 밤에는 지나다니는 사람도 줄어듭니다.': 'Everyone has a daily routine. Stall keepers are out from the dawn market until dusk, the co-op keeps office hours (closed on Sundays), anglers are out from before dawn until night, and outside those hours they go home. Some people are out day and night, like the drifter or the shift-working warden. Late at night there are fewer passers-by too.',
-  '집에 있는 사람은 그 집 문 앞에서 [F] 「문 두드리기」로 만납니다. 문 위 창에 불이 켜진 집이 사람이 있는 집입니다(할 일 화살표도 그 문을 가리킵니다). 문이 열리고 한마디 하고 나면 평소와 똑같이 이야기할 수 있습니다 — 할 일은 시각 때문에 막히지 않습니다. 잘 시간에 두드리면 잠이 덜 깬 얼굴로 나옵니다.': 'Someone at home is met at their front door with [F] "Knock". A house with the window over the door lit up has someone in (the task arrow points to that door too). Once the door opens and they say a word, you can talk just as usual — tasks are never blocked by the time of day. Knock at bedtime and they come out half asleep.',
+  '집에 있는 사람은 그 집 문 앞에서 만납니다. 문 위 창에 불이 켜진 집이 사람이 있는 집입니다(할 일 화살표도 그 문을 가리킵니다). [F] 「들어가기」를 누르면 문을 두드리고, 문이 열리면 안으로 들어갑니다.':
+    'You meet someone at home at their front door. A house with the window over the door lit up has someone in (the task arrow points to that door too). Press [F] "Enter" to knock, and when the door opens you go inside.',
+  '잘 시간(밤 10시~새벽 5시)에는 안으로 들이지 않습니다 — 「문 두드리기」가 되고, 잠이 덜 깬 얼굴로 문 앞에 나와 이야기합니다. 어촌계 사무실은 일이 끝나면 당직 계원이 문 앞에서 말을 받아 둡니다. 어느 쪽이든 그다음은 평소와 똑같은 대화라서, 할 일은 시각 때문에 막히지 않습니다.':
+    'At bedtime (10 p.m. to 5 a.m.) nobody lets you in — the option becomes "Knock", and they come to the door half asleep to talk. At the co-op office, after hours, the night clerk takes your message at the door. Either way what follows is the usual conversation, so tasks are never blocked by the time of day.',
+  '하루 일과 · 집에 찾아가기': 'Daily routines · Visiting homes',
+  '① 불 켜진 문 — 집에 있다 ② [F] 문 앞 선택지': '① Lit door — someone is home ② [F] door option',
+  '집 안에서 만나기': 'Meeting them at home',
+  '① 집 주인 — [F] 말 걸기 ② 새 의뢰 · 보고할 일 표시 ③ 방석 · 의자 — [F] 앉기 ④ 현관 매트 — 밟고 아래로 나가기':
+    '① The owner — [F] Talk ② New request / something to report ③ Cushion or chair — [F] Sit ④ Doormat — step on it and walk down to leave',
+  '집 안에는 그 사람이 있습니다. 다가가면 「[F] 말 걸기」가 뜨고, 밖에서 하던 이야기와 같은 대화창이 열립니다. 머리 위의 느낌표 · 물음표도 밖에서와 같은 뜻입니다.':
+    'The person is inside. Walk up and "[F] Talk" appears, opening the same conversation window as outside. The exclamation and question marks over their head mean the same as outside.',
+  '사람마다 사는 모양이 다릅니다 — 할머니 방의 자개장과 밥상, 낚시꾼 원룸의 벽 낚싯대, 공방의 대나무와 연장 벽. 방석 · 소파 · 의자에서는 [F]로 앉을 수 있습니다. 나갈 때는 문 앞 매트를 밟고 아래로 걸어 나갑니다.':
+    'Everyone lives differently — the grandmother\'s mother-of-pearl wardrobe and low dining table, the angler\'s studio with rods on the wall, the workshop\'s bamboo and tool wall. You can sit on cushions, sofas and chairs with [F]. To leave, step on the doormat and walk out downward.',
+  '손님이 안에 있는 동안 집 주인은 나가지 않습니다. 나오고 나서 일할 시간이 되었으면 그때 일터로 나갑니다.':
+    'While you are inside, the owner stays home. If it is time for work when you leave, they head out then.',
   '① 할 일 / 이야기 / 나날 탭 ② 완료 · 잠긴 할 일 표시 ③ 고정 체크 ④ 목록 ⑤ 사연 · 목표 · 방법 · 보상': '① Tasks / Story / Days tabs ② Show done · locked tasks ③ Pin check ④ List ⑤ Story · objectives · how · rewards',
   '나날 — 이야기 N번째': 'Days — Story #N',
   '① 이야기 N번째 · 오늘 날짜 ② 앞으로 — 기한 · 납부 · 맡긴 물건 ③ 지난 날들': '① Story #N · today\'s date ② Coming up — deadlines · payments · items left ③ Past days',
@@ -756,7 +769,8 @@ export const EN_HELP: Record<string, string> = {
   '① 맡겨 둔 묶음 — 활어 · 선어 · 다음 경매 ② 찾아오기': '① Lots left — live · fresh · next auction ② Take back',
   '실내 공간': 'Indoor spaces',
   '실내 공간 — 다음 단계 (계획)': 'Indoor spaces — next steps (planned)',
-  '가게 · 보건소 · 위판장 안은 열렸습니다(「상점 · 경제 → 건물과 거래」). 다음은 이야기 속 인물의 집 안, 그다음은 아파트입니다. 지금은 집에 있는 사람과 문 앞에서 이야기합니다.': 'Shops, the clinic and the auction hall are open inside now (see "Shops & Economy → Buildings and trading"). Next come the homes of people in the story, then apartments. For now you talk to people at home at their front door.',
+  '가게 · 보건소 · 위판장 안(「상점 · 경제 → 건물과 거래」)과 이야기 속 인물의 집 안(「사람과 대화하기 → 집 안에서 만나기」)은 열렸습니다. 다음은 아파트입니다.':
+    'Shops, the clinic and the auction hall (see "Shops · Economy → Buildings & Trade") and the homes of people in the story (see "Talking to People → Meeting them at home") are open inside now. Apartments come next.',
   // 215차 — 건물 실내
   '들어가서 계산대에서 F': 'Go in and press F at the counter',
   '① 계산대 — [F] 물건 보기 ② 점원 ③ 현관 매트 — 밟고 아래로 나가기': '① Counter — [F] Browse goods ② Shopkeeper ③ Doormat — step on it and walk out downward',

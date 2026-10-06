@@ -176,7 +176,8 @@ import { settleDueConsignments } from '../store/ConsignSettle.js';
 import { ConsignQueue } from '../store/ConsignQueue.js';
 import { DayReportPanel } from '../ui/DayReportPanel.js';
 import { InteriorSystem } from './field/InteriorSystem.js';
-import { interiorLayoutOf, type InteriorAction } from '../data/InteriorLayouts.js';
+import { interiorLayoutOf, homeLayoutOf, type InteriorAction, type InteriorLayout } from '../data/InteriorLayouts.js';
+import { homeLineOf } from '../data/StoryDialogue.js';
 import { setAmbience } from '../audio/Ambience.js';
 import { BuildingKind, BUILDING_LABEL, BUILDING_GOODS, BUILDING_HOURS, shopHoursState, BUILDING_KIND_CYCLE, SHOP_CATALOG, ShopEntry } from '../data/ShopCatalog.js';
 
@@ -396,7 +397,8 @@ export class RegionFieldScene extends Phaser.Scene {
   private nearBuilding: { x: number; y: number; kind: BuildingKind; branch: MarketBranch } | null = null;
   /** 215차 — 들어가 있는 건물 실내(필드 위 겹층). 그 건물의 거래 종류 · 지점(보건소는 kind null) */
   private interior: InteriorSystem | null = null;
-  private interiorAt: { kind: BuildingKind | null; branch?: MarketBranch; name: string } | null = null;
+  /** 216차 — `npcId` = 그 사람 집 안(실내 공간 2단계) */
+  private interiorAt: { kind: BuildingKind | null; branch?: MarketBranch; name: string; npcId?: string } | null = null;
 
   // ── 홈타운(집) — 오브젝트 인스턴스 + 칸 단위 설치 모드 (HOMETOWN_HOME_SPEC) ──
   /** 유효 오브젝트 (초기 배치 − removed + moved + placed) */
@@ -3029,19 +3031,29 @@ export class RegionFieldScene extends Phaser.Scene {
    * 실내로 들어간다 — 필드 위 겹층(`InteriorSystem`). 씬을 멈추지 않으므로 거래 · 위판 · 진료는
    * 이 씬의 원래 흐름(`openShop` · `openClinic`)을 그대로 부른다. `kind === null` = 보건소.
    */
-  private enterInterior(kind: BuildingKind | null, branch: MarketBranch | undefined, name: string): void {
+  private enterInterior(
+    kind: BuildingKind | null, branch: MarketBranch | undefined, name: string,
+    /** 216차 — 인물의 집: 배치 · 집 주인 · 들어서며 듣는 말 */
+    home?: { layout: InteriorLayout; npcId: string; greetKo: string },
+  ): void {
     if (this.interior) return;
     this.fadeOutThen(() => {
       this.dismountBike();   // 실내에선 자전거에서 내린다
       this.charging = false;
       this.chargeBar?.clear();
-      const layout = interiorLayoutOf(kind, name);
-      this.interiorAt = { kind, branch, name };
+      const layout = home?.layout ?? interiorLayoutOf(kind, name);
+      this.interiorAt = { kind, branch, name, npcId: home?.npcId };
       this.interior = new InteriorSystem(this, {
         onAction: (a) => this.onInteriorAction(a),
         onMeal: () => { GameState.mealAtTable = true; this.openMealBag(); },
         onLeave: () => this.leaveInterior(),
-      }, { layout, seed: `interior:${branch?.key ?? `${this.region}:${kind ?? 'clinic'}`}` });
+        onTalk: (id) => this.openDialogue(id, 'inside'),
+      }, {
+        layout,
+        seed: home ? `home:${home.npcId}` : `interior:${branch?.key ?? `${this.region}:${kind ?? 'clinic'}`}`,
+        greetKo: home?.greetKo,
+      });
+      if (home) this.interior.setMark(home.npcId, this.npcMarkerIcon(home.npcId, false));
       MultiplayerClient.setActivity('indoor');   // 145차 — 이름표 옆 배지
       this.titleTxt?.setText(name);
       this.layoutTitlePlate();
@@ -3122,6 +3134,18 @@ export class RegionFieldScene extends Phaser.Scene {
   private buildInteriorTour(): TourOptions | null {
     const it = this.interior;
     if (!it) return null;
+    // 216차 — 인물의 집: 집 주인에게 말 걸기 · 나가기
+    const owner = this.interiorAt?.npcId;
+    if (owner) {
+      return {
+        id: 'interior_home',
+        alive: () => this.interior === it,
+        steps: [
+          { text: '집 주인에게 다가가 [F]를 누르면 이야기를 나눈다. 밖에서 하던 이야기와 같다.', target: () => it.personRect(owner) },
+          { text: '나갈 때는 문 앞 매트를 밟고 아래로 걸어 나간다.', target: () => it.matRect() },
+        ],
+      };
+    }
     const main: InteriorAction = it.layout.template === 'clinic' ? 'clinic' : it.layout.template === 'auction' ? 'consign' : 'trade';
     const what = it.layout.template === 'clinic' ? '접수대 앞에서 [F]를 누르면 진료를 받는다.'
       : it.layout.template === 'auction' ? '위판 창구 앞에서 [F]를 누르면 잡은 고기를 경매에 올리거나 맡겨 둔다. 경매대에서는 다음 경매 시각을 알려 준다.'
@@ -5298,6 +5322,7 @@ export class RegionFieldScene extends Phaser.Scene {
     const { min, wd } = this.routineClock();
     for (const n of this.storyNpcs) {
       if (!n.door || !n.ai || n.shifting) continue;
+      if (this.interiorAt?.npcId === n.def.npcId) continue;   // 216차 — 손님이 집 안에 있는 동안은 집에 머문다
       const w = npcWhereabouts(routineOfNpc(n.def.npcId), min, wd);
       const home = w.where === 'home';
       n.homeReason = w.reason;
@@ -5352,6 +5377,30 @@ export class RegionFieldScene extends Phaser.Scene {
     n.x = n.ai?.x ?? n.door.x; n.y = n.ai?.y ?? n.door.y;
     n.label.setVisible(true).setAlpha(1).setPosition(n.x, n.y + this.charTopFromFeet - RegionFieldScene.LABEL_GAP);
     n.actor.setVisible(true).setAlpha(1);
+  }
+
+  /**
+   * 216차 — 집 문 [F] 「들어가기」: 똑똑 → 문이 열리고 안으로 들인다(실내 공간 2단계).
+   * 잘 시간(22~05시)이면 들이지 않는다 — 214차처럼 문 앞에서 말한다(`knockDoor`).
+   */
+  private visitHome(npcId: string): void {
+    const n = this.storyNpcs.find((x) => x.def.npcId === npcId);
+    const layout = homeLayoutOf(npcId);
+    if (!n?.atHome || !layout || n.homeReason === 'sleep') { this.knockDoor(npcId); return; }
+    playKnock();
+    this.time.delayedCall(550, () => {
+      if (!this.scene.isActive() || this.interior || !n.atHome) return;
+      this.enterNpcHome(npcId);
+    });
+  }
+
+  /** 인물의 집 안으로(하네스도 이 입구를 쓴다 — 헤드리스는 지연 호출이 돌지 않는다) */
+  private enterNpcHome(npcId: string): void {
+    const n = this.storyNpcs.find((x) => x.def.npcId === npcId);
+    const layout = homeLayoutOf(npcId);
+    if (!n || !layout) return;
+    const name = n.def.home?.labelKo ?? getStoryNpc(npcId)?.nameKo ?? npcId;
+    this.enterInterior(null, undefined, name, { layout, npcId, greetKo: homeLineOf(npcId).welcome[0] });
   }
 
   /** 문 두드리기 → 똑똑 → (잠깐 뒤) 문이 열리고 평소와 같은 대화(R12) */
@@ -5472,6 +5521,8 @@ export class RegionFieldScene extends Phaser.Scene {
           const img = addPixelIcon(this, key, n.x + n.markDx, n.y - 26, 16);
           if (img) { img.setDepth(20 + n.y * 0.001 + 0.0008); n.mark = img; }
         }
+        // 216차 — 그 사람 집 안이면 방 안 머리 위 표시도 같이 바꾼다
+        if (this.interiorAt?.npcId === n.def.npcId) this.interior?.setMark(n.def.npcId, key);
       }
       const mk = this.npcMarkerIcon(n.def.npcId, true);
       // 의뢰가 없어도 인물은 미니맵에 남는다 (143차 — 바닥 이름표를 끈 대신)
@@ -6292,7 +6343,10 @@ export class RegionFieldScene extends Phaser.Scene {
       const last = nm.charCodeAt(nm.length - 1);
       const gwa = last >= 0xac00 && last <= 0xd7a3 && (last - 0xac00) % 28 === 0 ? '와' : '과';
       const home = this.storyNpcs.find((x) => x.def.npcId === id && x.atHome);
-      if (home) opts.push({ label: `${home.def.home?.labelKo ?? nm} — 문 두드리기`, note, run: () => this.knockDoor(id) });
+      // 216차 — 들일 수 있는 집이고 잘 시간이 아니면 「들어가기」(똑똑 → 안으로). 아니면 문 앞에서(214차)
+      const canEnter = !!home && home.homeReason !== 'sleep' && !!homeLayoutOf(id);
+      if (home && canEnter) opts.push({ label: `${home.def.home?.labelKo ?? nm} — 들어가기`, note, run: () => this.visitHome(id) });
+      else if (home) opts.push({ label: `${home.def.home?.labelKo ?? nm} — 문 두드리기`, note, run: () => this.knockDoor(id) });
       else opts.push({ label: `${nm}${gwa} 대화하기`, note, run: () => this.openDialogue(id) });
     }
     // ③ 오브젝트(문·버스·설치물)
@@ -6494,7 +6548,7 @@ export class RegionFieldScene extends Phaser.Scene {
     }));
   }
 
-  private openDialogue(npcId: string, atDoor?: NpcHomeReason): void {
+  private openDialogue(npcId: string, atDoor?: NpcHomeReason | 'inside'): void {
     // 147차 — M1-11 「총회」는 대화 이전에 표결 장면이 먼저다.
     //  계장(coop)과 마주 선 순간, 레벨 목표를 채웠고 아직 총회에 서지 않았다면
     //  총회장이 열리고 그 결과(찬성률 → 항구 신뢰)를 들고 대화로 넘어간다.

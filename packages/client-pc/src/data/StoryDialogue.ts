@@ -85,6 +85,48 @@ export const NPC_DOOR: Record<string, Partial<Record<DoorReason, Line>>> = {
   },
 };
 
+/**
+ * 216차 — 집 안에서 만날 때(실내 공간 2단계). 문을 두드리면 문이 열리고 안으로 들인다(잘 시간은 빼고 — 그때는 문 앞).
+ *  welcome = 들어서자마자 머리 위 말풍선 · talk = 다가가 말을 걸었을 때 대화창 첫마디.
+ * ⚠ R12 — 그 다음 메뉴는 평소와 같다.
+ */
+export const NPC_HOME: Record<string, { welcome: Line; talk: Line }> = {
+  okseon: {
+    welcome: ['들어와. 신발은 거기 벗고.', 'Come in. Leave your shoes there.'],
+    talk: ['밥은 먹었어? 앉아. 할 말 있으면 하고.', 'Have you eaten? Sit. Say what you came to say.'],
+  },
+  hyeonsu: {
+    welcome: ['…들어와. 대 건드리지 말고.', '…Come in. Don\'t touch the rods.'],
+    talk: ['뭐. 남의 집까지 와서.', 'What. Coming all the way to my place.'],
+  },
+  kang_ducheol: {
+    welcome: ['어서 들어오게. 마침 차 끓이던 참이야.', 'Come on in. I was just making tea.'],
+    talk: ['앉게, 앉아. 그래 무슨 일로 왔나?', 'Sit, sit. Now, what brings you here?'],
+  },
+  tak_mansu: {
+    welcome: ['대팻밥 밟지 말고 들어오게.', 'Mind the shavings. Come in.'],
+    talk: ['손이 비었으면 저 대나 좀 잡아 주게. 그래, 무슨 일인가.', 'If your hands are free, hold that pole. Now, what is it.'],
+  },
+  tak_saebyeok: {
+    welcome: ['어, 들어와요! 좀 어질러져 있어요.', 'Oh, come in! It\'s a bit messy.'],
+    talk: ['할아버지한테는 비밀이에요. 무슨 일이에요?', 'Don\'t tell Grandpa. What is it?'],
+  },
+  bae_nuri: {
+    welcome: ['들어와요! 과자 있어요, 과자.', 'Come in! I\'ve got snacks!'],
+    talk: ['오늘 뭐 잡았어요? 아, 나 먼저 말할까요?', 'What did you catch today? Oh — should I go first?'],
+  },
+};
+
+export const HOME_GENERIC: { welcome: Line; talk: Line } = {
+  welcome: ['들어와요.', 'Come in.'],
+  talk: ['그래, 무슨 일이에요?', 'So, what is it?'],
+};
+
+/** 집 안 인사 — 인물 전용이 없으면 공용 */
+export function homeLineOf(npcId: string): { welcome: Line; talk: Line } {
+  return NPC_HOME[npcId] ?? HOME_GENERIC;
+}
+
 /** 문 앞 첫마디 — 인물 전용이 없으면 공용 */
 export function doorLineOf(npcId: string, reason: DoorReason): Line {
   return NPC_DOOR[npcId]?.[reason] ?? NPC_DOOR[npcId]?.rest ?? DOOR_GENERIC[reason];
@@ -227,6 +269,7 @@ export function dialogueOf(questId: string): QuestDialogue {
 export function allDialogueLines(): Line[] {
   const out: Line[] = [...TONE_CHOICES, ...Object.values(NPC_IDLE), ...Object.values(DOOR_NARR), ...Object.values(DOOR_GENERIC)];
   for (const m of Object.values(NPC_DOOR)) out.push(...Object.values(m).filter((x): x is Line => !!x));
+  for (const h of [...Object.values(NPC_HOME), HOME_GENERIC]) out.push(h.welcome, h.talk);   // 216차
   for (const d of [...Object.values(STORY_DIALOGUE), GENERIC_DIALOGUE]) out.push(...d.offer, d.progress, ...d.done);
   return out;
 }

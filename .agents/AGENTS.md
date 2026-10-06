@@ -467,7 +467,14 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-10-05 215차) — 실내 공간 1단계: 가게 · 보건소 · 위판장 안**
+**최근 변경 (2026-10-06 216차) — 실내 공간 2단계: 인물의 집**
+
+- 문 앞 [F] 「들어가기」(똑똑 → 안으로) — 잘 시간(22~05시)과 어촌계 사무실은 214차처럼 「문 두드리기」. 방 6장(`homeLayoutOf` · 틀 `home`) · 가구 16종.
+- 집 주인 = 필드와 같은 얼굴 · 다가가 「[F] 말 걸기」 = 같은 대화창(`atDoor 'inside'` — 첫마디만 `NPC_HOME`) · 머리 위 의뢰 표시 동기화.
+- 함정: 일과 재평가(`updateFieldNpcs`)는 실내에서도 돈다 — 손님이 안에 있는 사람은 빼야 한다. 조사: 바닥 점 = OSM POI 마커 · 주점 0곳 = 매핑 3곳 누락.
+  상세: [216차 워크로그](../docs/wiki/03-WORKLOG/2026-10-06-216-interior-spaces-stage2-homes.md).
+
+**이전 변경 (2026-10-05 215차) — 실내 공간 1단계: 가게 · 보건소 · 위판장 안**
 
 - 필드 위 겹층 방 `scenes/field/InteriorSystem.ts`(depth 70~99) + 배치 `data/InteriorLayouts.ts`(틀 5종) + 그림 `ui/InteriorArt.ts` — 씬을 나누지 않은 까닭은 거래 · 위판 · 진료 흐름이 필드 씬에 묶여 있어서다.
 - 문 앞 [F] = 들어가기(확인 창 삭제) · 계산대 [F] = `openShop` · 위판장 창구 = 위판하기 탭부터(`ShopPanel` `initialTab`) · 보건소 접수대 = `openClinic` · 의자 식사 · 경매대 시각.
@@ -480,13 +487,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - 일지 3번째 탭 「나날」 — 이야기 N번째(잠 횟수) · 앞으로(기한 · 정기 지출 · 맡긴 물건) · 지난 하루 → 결산. 장부 `storyDay` · 수지 ±0 버그 정정.
 - `ConsignListPanel`(찾아오기는 창구에서만) · 도움말 8토픽 + 그림 5종 ko/en. 함정: i18n 사전 추가는 `EN_DICT` 안에(옆 객체 `DOW_EN`에 들어가면 조용히 미번역).
   상세: [214차 워크로그](../docs/wiki/03-WORKLOG/2026-10-05-214-days-tab-npc-routine.md).
-
-**이전 변경 (2026-10-05 213차) — 잠 · 결산 · 저장 기준(A~F) · 위판 맡겨 두기**
-
-- core `SleepRules`(`canSleep` · `applyPartialSleep` · `offlineCountsAsSleep`) + `TUNING.sleep` · 침대 「저장만 하기 / 자기」(실시간 15초 · 도중에 깨면 잔 만큼 · 다 자면 저장).
-- 하루 경계 새벽 4시(`LedgerStore` = `logicalYmd`) · 오프라인 = 잠(저장 후 4시간+ · 잠들 수 있던 상태) · 일어나면 지금 실제 시각 혼잣말.
-- 위판이 닫혀 있으면 맡겨 두기(`ConsignQueue` · `ConsignSettle` · `nextConsignmentWindowStart`) — 위판 목표 이야기 12편의 시각 제약(R12) 해소.
-  함정: `rectangle(…, color, 0)`은 채움 알파 0(암전 안 보임) · 타이핑 창 루프 타이머는 `removeEvent`. 상세: [213차 워크로그](../docs/wiki/03-WORKLOG/2026-10-05-213-sleep-save-day-boundary.md).
 
 ---
 

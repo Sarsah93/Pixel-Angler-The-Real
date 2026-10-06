@@ -9,6 +9,7 @@
  *  - tackle : 직판장(낚시점) — 낚싯대 거치대 · 루어 벽 · 미끼 냉장고 · 진열 매대 · 계산대
  *  - clinic : 보건소 — 접수대 · 대기 의자 · 진료 침대 · 약장
  *  - auction: 위판장(수협 활어센터 등) — 위판 창구 · 경매대(경매사) · 고기 상자 줄 · 활어 수조 · 얼음
+ *  - home   : 216차(2단계) — 인물의 집 · 공방 · 민박 방. 집 주인이 안에 있고, 다가가 [F]면 같은 대화(R12)
  *
  * 사용자 참고 캡처(옷 가게 · 음식점 탑다운)의 **밀도**를 따랐다 — 벽을 따라 진열, 가운데 섬 진열대,
  * 카운터 뒤 점원, 탁자 사이 통로. 그대로 베끼지 않는다(214차 사용자 지시).
@@ -21,7 +22,7 @@ import type { CharDir, CharRole } from '@tra/core';
 import type { BuildingKind } from './ShopCatalog.js';
 
 /** 실내 틀 */
-export type InteriorTemplate = 'store' | 'food' | 'tackle' | 'clinic' | 'auction';
+export type InteriorTemplate = 'store' | 'food' | 'tackle' | 'clinic' | 'auction' | 'home';
 
 /** [F]로 하는 일 — 실제 동작은 필드 씬이 맡는다(거래 · 위판 · 진료 흐름을 그대로 쓴다) */
 export type InteriorAction = 'trade' | 'consign' | 'clinic' | 'sit' | 'schedule';
@@ -32,7 +33,10 @@ export type FixtureArt =
   | 'table' | 'chair' | 'fish_tank' | 'plant' | 'barrel' | 'book_shelf'
   | 'rod_rack' | 'lure_wall' | 'bait_fridge' | 'display_table' | 'ice_chest'
   | 'reception' | 'partition' | 'bench' | 'exam_bed' | 'med_cabinet' | 'scale' | 'water_cooler'
-  | 'crate_row' | 'podium' | 'ice_pile' | 'hand_cart';
+  | 'crate_row' | 'podium' | 'ice_pile' | 'hand_cart'
+  // 216차 — 집 · 공방 · 민박
+  | 'wardrobe' | 'tv' | 'sink' | 'fridge' | 'low_table' | 'cushion' | 'futon' | 'futon_open'
+  | 'bed' | 'desk' | 'sofa' | 'rug' | 'suitcase' | 'bamboo' | 'tool_wall' | 'workbench';
 
 export interface FixtureDef {
   id: string;
@@ -56,10 +60,15 @@ export interface InteriorPerson {
   role: CharRole;
   /** 들어오면 머리 위에 한 번 하는 말 */
   greetKo?: string;
+  /**
+   * 216차 — 이야기 인물(집 주인). 있으면 얼굴은 필드와 같은 `characterOf(npcId)`이고,
+   * 다가가 [F]면 「말 걸기」 → 평소와 같은 대화창(R12 — 일과는 만나는 곳만 바꾼다).
+   */
+  npcId?: string;
 }
 
-export type FloorStyle = 'vinyl' | 'wood' | 'dark_wood' | 'tackle_tile' | 'clinic' | 'concrete';
-export type WallStyle = 'shop' | 'warm' | 'pub' | 'tackle' | 'clinic' | 'hall';
+export type FloorStyle = 'vinyl' | 'wood' | 'dark_wood' | 'tackle_tile' | 'clinic' | 'concrete' | 'ondol';
+export type WallStyle = 'shop' | 'warm' | 'pub' | 'tackle' | 'clinic' | 'hall' | 'home';
 
 export interface InteriorLayout {
   /** 텍스처 캐시 키에 들어간다(틀 + 변형) */
@@ -76,7 +85,8 @@ export interface InteriorLayout {
   /** 진열 상품 색(선반 위 물건) */
   goods: number[];
   /** 벽에 그리는 장식(배경에 구워진다) */
-  wallDecor: ('kitchen' | 'espresso' | 'bottles' | 'menu' | 'poster' | 'clock' | 'window' | 'shutter' | 'notice')[];
+  wallDecor: ('kitchen' | 'espresso' | 'bottles' | 'menu' | 'poster' | 'clock' | 'window' | 'shutter' | 'notice'
+    | 'calendar' | 'photo' | 'fish_print')[];
   fixtures: FixtureDef[];
   people: InteriorPerson[];
   /** 현관 매트 — 아래 벽에 붙는다 */
@@ -320,6 +330,187 @@ function auctionLayout(): InteriorLayout {
   };
 }
 
+// ── 216차 — 인물의 집 (실내 공간 2단계) ─────────────────
+
+/**
+ * 집 한 칸 방 — 10×8칸 · 48px(공방은 12×9). 집 주인 자리(`people[0]`)가 곧 일과의 `home` 자리다.
+ * 사람마다 사는 모양이 다르다 — 같은 틀을 돌려쓰지 않고 인물마다 한 장씩 그린다.
+ */
+function homeBase(key: string, cols: number, rows: number, floor: FloorStyle, wall: WallStyle, accent: number,
+  wallDecor: InteriorLayout['wallDecor'], fixtures: FixtureDef[], owner: InteriorPerson): InteriorLayout {
+  return {
+    key: `home_${key}`, template: 'home', it: 48, cols, rows, floor, wall, accent,
+    goods: [0xc84a3a, 0x3a6ea5, 0xe8c070, 0x6aa86a, 0xe8e0d0],
+    wallDecor, fixtures, people: [owner], mat: { tx: Math.floor(cols / 2) - 1, fw: 2 },
+  };
+}
+
+/**
+ * 정옥선의 집 — 장판 방 하나에 부엌 한쪽. 자개장 · 텔레비전 · 밥상 · 개어 둔 이불.
+ *
+ * ```
+ *  ▓▓▓▓▓▓▓▓▓▓
+ *  ▓▓▓▓▓▓▓▓▓▓   (창 · 달력 · 사진)
+ *  WWW...TTSS   W 자개장 · T 텔레비전 · S 개수대
+ *  ..........
+ *  FF..BB....   F 개어 둔 이불 · B 밥상
+ *  ....cc...p   c 방석(앉기) · p 화분
+ *  ..........
+ *  ....mm....
+ * ```
+ */
+function grandmaHome(npcId: string): InteriorLayout {
+  return homeBase('okseon', 10, 8, 'ondol', 'home', 0x8a5a3a, ['window', 'photo', 'calendar'], [
+    { id: 'wardrobe', art: 'wardrobe', tx: 0, ty: 2, fw: 3, fh: 1 },
+    { id: 'tv', art: 'tv', tx: 6, ty: 2, fw: 2, fh: 1 },
+    { id: 'sink', art: 'sink', tx: 8, ty: 2, fw: 2, fh: 1 },
+    { id: 'futon', art: 'futon', tx: 0, ty: 4, fw: 2, fh: 1 },
+    { id: 'table', art: 'low_table', tx: 4, ty: 4, fw: 2, fh: 1 },
+    { id: 'cushion', art: 'cushion', tx: 4, ty: 5, fw: 2, fh: 1, action: 'sit', seatDir: 'up' },
+    { id: 'plant', art: 'plant', tx: 9, ty: 5, fw: 1, fh: 1 },
+  ], { tx: 7.0, ty: 4.7, dir: 'down', role: 'vendor', npcId });
+}
+
+/**
+ * 도현수의 집 — 낚시꾼 원룸. 침대 · 책상(모니터) · 벽 낚싯대 · 쿨러 · 작은 개수대.
+ *
+ * ```
+ *  BB.DD.RRRS   B 침대 · D 책상 · R 낚싯대 거치 · S 개수대
+ *  BB.h......   h 의자(앉기)
+ *  ..........
+ *  ...rrr..I.   r 깔개 · I 쿨러
+ *  ..........
+ *  ....mm....
+ * ```
+ */
+function anglerHome(npcId: string): InteriorLayout {
+  return homeBase('hyeonsu', 10, 8, 'wood', 'home', 0x2a5a8a, ['calendar', 'clock'], [
+    { id: 'bed', art: 'bed', tx: 0, ty: 2, fw: 2, fh: 2 },
+    { id: 'desk', art: 'desk', tx: 3, ty: 2, fw: 2, fh: 1 },
+    { id: 'chair', art: 'chair', tx: 3, ty: 3, fw: 1, fh: 1, action: 'sit', seatDir: 'up' },
+    { id: 'rods', art: 'rod_rack', tx: 6, ty: 2, fw: 3, fh: 1 },
+    { id: 'sink', art: 'sink', tx: 9, ty: 2, fw: 1, fh: 1 },
+    { id: 'rug', art: 'rug', tx: 3, ty: 5, fw: 3, fh: 1, solid: false },
+    { id: 'cooler', art: 'ice_chest', tx: 8, ty: 5, fw: 1, fh: 1 },
+  ], { tx: 6.6, ty: 4.4, dir: 'down', role: 'angler', npcId });
+}
+
+/**
+ * 강두철의 집 — 거실. 벽 텔레비전 · 거실 탁자 · 소파(앉기) · 장식장 · 어탁 · 식탁.
+ *
+ * ```
+ *  ..TTT.KK.p   T 텔레비전 · K 장식장 · p 화분
+ *  ..........
+ *  ..LLL.....   L 거실 탁자
+ *  ..SSS..tt.   S 소파(앉기) · t 식탁
+ *  .......hh.   h 의자(앉기)
+ *  ....mm....
+ * ```
+ */
+function elderHome(npcId: string): InteriorLayout {
+  return homeBase('kang_ducheol', 10, 8, 'wood', 'home', 0x5a3a2a, ['fish_print', 'clock'], [
+    { id: 'tv', art: 'tv', tx: 2, ty: 2, fw: 3, fh: 1 },
+    { id: 'case', art: 'book_shelf', tx: 6, ty: 2, fw: 2, fh: 1 },
+    { id: 'plant', art: 'plant', tx: 9, ty: 2, fw: 1, fh: 1 },
+    { id: 'ltable', art: 'low_table', tx: 2, ty: 4, fw: 3, fh: 1 },
+    { id: 'sofa', art: 'sofa', tx: 2, ty: 5, fw: 3, fh: 1, action: 'sit', seatDir: 'up' },
+    { id: 'dining', art: 'table', tx: 7, ty: 5, fw: 2, fh: 1 },
+    { id: 'dining_c1', art: 'chair', tx: 7, ty: 6, fw: 1, fh: 1, action: 'sit', seatDir: 'up' },
+    { id: 'dining_c2', art: 'chair', tx: 8, ty: 6, fw: 1, fh: 1, action: 'sit', seatDir: 'up' },
+  ], { tx: 6.4, ty: 3.9, dir: 'down', role: 'angler', npcId });
+}
+
+/**
+ * 탁씨 죽간 공방 — 12×9. 기대 세운 대나무 · 다 깎은 대 · 연장 벽 · 작업대 · 재료 상자.
+ *
+ * ```
+ *  BBB.RRR.TTT.   B 대나무 묶음 · R 다 깎은 대 · T 연장 벽
+ *  ............
+ *  ...WWWW.....   W 작업대
+ *  ....h.......   h 걸상(앉기)
+ *  .........XXX   X 재료 상자
+ *  ............
+ *  .....mm.....
+ * ```
+ */
+function workshopHome(npcId: string): InteriorLayout {
+  return homeBase('tak_mansu', 12, 9, 'wood', 'tackle', 0x6a4a1a, ['window', 'clock'], [
+    { id: 'bamboo', art: 'bamboo', tx: 0, ty: 2, fw: 3, fh: 1 },
+    { id: 'rods', art: 'rod_rack', tx: 4, ty: 2, fw: 3, fh: 1 },
+    { id: 'tools', art: 'tool_wall', tx: 8, ty: 2, fw: 3, fh: 1 },
+    { id: 'bench', art: 'workbench', tx: 3, ty: 4, fw: 4, fh: 1 },
+    { id: 'stool', art: 'chair', tx: 4, ty: 5, fw: 1, fh: 1, action: 'sit', seatDir: 'up' },
+    { id: 'stock', art: 'stock_boxes', tx: 9, ty: 6, fw: 3, fh: 1 },
+  ], { tx: 8.2, ty: 4.7, dir: 'left', role: 'artisan', npcId });
+}
+
+/**
+ * 공방 살림채 — 탁새벽의 방. 침대 · 책상 · 책장 · 옷장 · 깔개.
+ *
+ * ```
+ *  BB.DD.KKWW   B 침대 · D 책상 · K 책장 · W 옷장
+ *  BB.h......   h 의자(앉기)
+ *  ..........
+ *  ...rrr...p   r 깔개 · p 화분
+ *  ..........
+ *  ....mm....
+ * ```
+ */
+function kidRoom(npcId: string): InteriorLayout {
+  return homeBase('tak_saebyeok', 10, 8, 'ondol', 'home', 0xc86a8a, ['window', 'calendar'], [
+    { id: 'bed', art: 'bed', tx: 0, ty: 2, fw: 2, fh: 2 },
+    { id: 'desk', art: 'desk', tx: 3, ty: 2, fw: 2, fh: 1 },
+    { id: 'chair', art: 'chair', tx: 3, ty: 3, fw: 1, fh: 1, action: 'sit', seatDir: 'up' },
+    { id: 'books', art: 'book_shelf', tx: 6, ty: 2, fw: 2, fh: 1 },
+    { id: 'wardrobe', art: 'wardrobe', tx: 8, ty: 2, fw: 2, fh: 1 },
+    { id: 'rug', art: 'rug', tx: 3, ty: 5, fw: 3, fh: 1, solid: false },
+    { id: 'plant', art: 'plant', tx: 9, ty: 5, fw: 1, fh: 1 },
+  ], { tx: 6.8, ty: 4.4, dir: 'down', role: 'student', npcId });
+}
+
+/**
+ * 배누리가 묵는 민박 — 장판 손님방. 펴 둔 이불 · 작은 상 · 텔레비전 · 여행 가방 · 작은 냉장고.
+ *
+ * ```
+ *  WW....TTsf   W 이불장 · T 텔레비전 · s 여행 가방 · f 냉장고
+ *  ..........
+ *  FF..LL....   F 펴 둔 이불 · L 작은 상
+ *  FF..cc....   c 방석(앉기)
+ *  ..........
+ *  ....mm....
+ * ```
+ */
+function guestRoom(npcId: string): InteriorLayout {
+  return homeBase('bae_nuri', 10, 8, 'ondol', 'home', 0x3a8a8a, ['window', 'clock'], [
+    { id: 'wardrobe', art: 'wardrobe', tx: 0, ty: 2, fw: 2, fh: 1 },
+    { id: 'tv', art: 'tv', tx: 6, ty: 2, fw: 2, fh: 1 },
+    { id: 'suitcase', art: 'suitcase', tx: 8, ty: 2, fw: 1, fh: 1 },
+    { id: 'fridge', art: 'fridge', tx: 9, ty: 2, fw: 1, fh: 1 },
+    { id: 'futon', art: 'futon_open', tx: 0, ty: 4, fw: 2, fh: 2 },
+    { id: 'table', art: 'low_table', tx: 4, ty: 4, fw: 2, fh: 1 },
+    { id: 'cushion', art: 'cushion', tx: 4, ty: 5, fw: 2, fh: 1, action: 'sit', seatDir: 'up' },
+  ], { tx: 7.2, ty: 4.6, dir: 'down', role: 'student', npcId });
+}
+
+/**
+ * 인물 → 집 안 배치. 없으면 그 집은 문 앞에서만 만난다(문 두드리기).
+ *  - 어촌계 사무실(coop): 계장은 퇴근했고 당직 계원이 문을 연다 — 안으로 들이지 않는다(대사가 그렇다).
+ */
+const HOME_LAYOUTS: Record<string, (npcId: string) => InteriorLayout> = {
+  okseon: grandmaHome,
+  hyeonsu: anglerHome,
+  kang_ducheol: elderHome,
+  tak_mansu: workshopHome,
+  tak_saebyeok: kidRoom,
+  bae_nuri: guestRoom,
+};
+
+/** 인물의 집 안 배치 — 들일 수 없는 집이면 null */
+export function homeLayoutOf(npcId: string): InteriorLayout | null {
+  const f = HOME_LAYOUTS[npcId];
+  return f ? f(npcId) : null;
+}
+
 /** 건물 종류 + 상호 → 실내 배치. 보건소는 `kind = null` */
 export function interiorLayoutOf(kind: BuildingKind | null, name: string): InteriorLayout {
   if (kind === null) return clinicLayout();
@@ -335,4 +526,5 @@ export const SAMPLE_LAYOUTS = (): InteriorLayout[] => [
   storeLayout('convenience'), storeLayout('mart'), storeLayout('daily'), storeLayout('pharmacy'),
   foodLayout('restaurant'), foodLayout('cafe'), foodLayout('pub'),
   tackleLayout(), clinicLayout(), auctionLayout(),
+  ...Object.entries(HOME_LAYOUTS).map(([id, f]) => f(id)),
 ];

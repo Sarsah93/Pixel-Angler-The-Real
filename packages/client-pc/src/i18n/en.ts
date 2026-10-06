@@ -650,6 +650,10 @@ export const EN_DICT: Record<string, string> = {
   '기한이나 납부처럼 정해진 때가 있는 일이 여기 모인다. 「잠 N번 남음」은 그때까지 남은 잠의 횟수다.':
     'Things with a set time — deadlines, payments — gather here. "N sleeps left" is how many nights of sleep remain until then.',
   '지난 하루를 누르면 그날의 결산을 다시 펼쳐 볼 수 있다.': 'Click a past day to open that day\'s summary again.',
+  // 216차 — 인물의 집(실내 공간 2단계)
+  '[F] 말 걸기': '[F] Talk',
+  '집 주인에게 다가가 [F]를 누르면 이야기를 나눈다. 밖에서 하던 이야기와 같다.':
+    'Walk up to the owner and press [F] to talk. It is the same conversation as outside.',
   // 215차 — 건물 실내(가게 · 보건소 · 위판장)
   '[F] 주문하기': '[F] Order', '[F] 물건 보기': '[F] Browse goods', '[F] 위판 창구': '[F] Auction window',
   '[F] 진료 접수': '[F] Reception', '[F] 경매 시간 보기': '[F] Auction times',

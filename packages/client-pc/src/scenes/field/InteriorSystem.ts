@@ -12,6 +12,8 @@
  *  - 이동 · 충돌 · [F] 판정은 집 실내와 같은 규칙(발밑 AABB · 닿는 거리 26px · 현관 매트를 밟고 아래로 나가기).
  *  - 앉기(음식점 의자 · 보건소 대기 의자)는 집과 같은 자세(다리를 잘라 가구가 가린 것으로 읽힌다).
  *  - 사람(점원 · 간호사 · 경매사)은 `characterOf(시드)` — 같은 가게면 같은 얼굴. 다가가면 나를 본다.
+ *  - 216차(2단계) — 인물의 집. 집 주인(`InteriorPerson.npcId`)은 필드와 같은 얼굴(`characterOf(npcId)`)로 서 있고,
+ *    다가가 [F]면 「말 걸기」 → 필드의 대화창. 머리 위 의뢰 표시(물음표 · 느낌표)도 필드와 같다.
  */
 
 import Phaser from 'phaser';
@@ -27,6 +29,7 @@ import {
   FLOOR_TOP, type FixtureDef, type InteriorAction, type InteriorLayout, type InteriorPerson,
 } from '../../data/InteriorLayouts.js';
 import { fieldReserved, assertClear } from '../../ui/ScreenReserve.js';
+import { addPixelIcon } from '../../ui/PixelIcon.js';
 
 /** 겹층 depth — 배경 · 집기/사람(+y) · 안내 */
 const D_BACK = 70;
@@ -39,6 +42,8 @@ const FONT = '"Noto Sans KR", sans-serif';
 const REACH_PX = 26;
 /** 앉은 자세 — 머리끝부터 엉덩이까지만 보인다 */
 const SEAT_ROWS = (CHAR_HEAD_TOP + 19) * CHAR_SCALE;
+/** 216차 — 사람에게 말이 닿는 거리(발 ↔ 발, px) */
+const TALK_PX = 46;
 /** 방 가로 위치 — 집과 같은 자리(198차 — 필드 HUD 상태 창을 피한 12px) */
 const ROOM_SHIFT_X = 12;
 
@@ -50,12 +55,16 @@ export interface InteriorHost {
   onMeal(): void;
   /** 매트를 밟고 나가거나 ESC — 필드가 페이드 후 `destroy` */
   onLeave(): void;
+  /** 216차 — 집 주인에게 [F] 「말 걸기」 */
+  onTalk?(npcId: string): void;
 }
 
 export interface InteriorEnter {
   layout: InteriorLayout;
   /** 사람 얼굴 시드(같은 가게면 같은 얼굴) */
   seed: string;
+  /** 216차 — 첫 사람의 인사말을 바꾼다(집 주인의 「들어와」) */
+  greetKo?: string;
 }
 
 interface MenuItem { label: string; color?: string; run: () => void }
@@ -71,7 +80,10 @@ export class InteriorSystem {
   private char!: CharacterSprite;
   private shadow!: Phaser.GameObjects.Ellipse;
   private hint!: Phaser.GameObjects.Text;
-  private people: { img: Phaser.GameObjects.Image; p: InteriorPerson; sheet: string; dir: CharDir }[] = [];
+  private people: { img: Phaser.GameObjects.Image; p: InteriorPerson; sheet: string; dir: CharDir; mark?: Phaser.GameObjects.Image }[] = [];
+  /** 216차 — 지금 말이 닿는 집 주인 */
+  private nearPerson: InteriorPerson | null = null;
+  private greetOverride?: string;
   private px = 0;
   private py = 0;
   private facing: CharDir = 'up';
@@ -92,6 +104,7 @@ export class InteriorSystem {
     this.ox = Math.round((GAME_WIDTH - W) / 2 + ROOM_SHIFT_X);
     this.oy = Math.round((GAME_HEIGHT - H) / 2 + 10);
     this.enteredAt = scene.time.now;
+    this.greetOverride = enter.greetKo;
 
     // 바깥(필드)을 덮는 어둠 + 방 배경
     this.keep(scene.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x07090d, 1).setOrigin(0, 0));
@@ -103,7 +116,9 @@ export class InteriorSystem {
     }
     // 사람
     L.people.forEach((p, i) => {
-      const sheet = ensureCharSheet(scene, characterOf(`${enter.seed}:${i}`, { role: p.role }), CHAR_SCALE);
+      // 216차 — 이야기 인물은 필드와 같은 얼굴
+      const cfg = p.npcId ? characterOf(p.npcId) : characterOf(`${enter.seed}:${i}`, { role: p.role });
+      const sheet = ensureCharSheet(scene, cfg, CHAR_SCALE);
       const pad = (CHAR_CELL - 1 - CHAR_FOOT_Y) * CHAR_SCALE;
       const x = this.ox + p.tx * L.it, y = this.oy + p.ty * L.it;
       const img = scene.add.image(x, y + pad, sheet, charFrameName(p.dir, 0)).setOrigin(0.5, 1);
@@ -147,6 +162,7 @@ export class InteriorSystem {
   }
 
   private fixtureDepth(f: FixtureDef): number {
+    if (f.art === 'rug') return D_BG + 0.5;   // 깔개는 바닥 — 사람 · 가구 밑
     return D_OBJ + (this.oy + (f.ty + f.fh) * this.layout.it - 10) * 0.001;
   }
 
@@ -175,6 +191,42 @@ export class InteriorSystem {
 
   /** 지금 [F]가 닿는 행동 */
   get nearAction(): InteriorAction | null { return this.near?.action ?? null; }
+  /** 216차 — 지금 말이 닿는 집 주인 */
+  get nearNpc(): string | null { return this.nearPerson?.npcId ?? null; }
+
+  /** 216차 — 집 주인의 화면 사각형(가이드 · 하네스) */
+  personRect(npcId: string): Phaser.Geom.Rectangle | null {
+    const h = this.people.find((x) => x.p.npcId === npcId);
+    if (!h) return null;
+    const b = h.img.getBounds();
+    return new Phaser.Geom.Rectangle(b.x - 4, b.y - 4, b.width + 8, b.height + 8);
+  }
+
+  /** 216차 — 집 주인 머리 위 의뢰 표시(필드 `npcMarkerIcon`과 같은 키 · null = 지움) */
+  setMark(npcId: string, key: string | null): void {
+    const h = this.people.find((x) => x.p.npcId === npcId);
+    if (!h) return;
+    h.mark?.destroy();
+    h.mark = undefined;
+    if (!key) return;
+    const img = addPixelIcon(this.scene, key, h.img.x + 14, h.img.y - h.img.displayHeight * 0.55, 16);
+    if (!img) return;
+    img.setScrollFactor(0).setDepth(D_OBJ + h.img.y * 0.001 + 0.0009);
+    this.objs.push(img);
+    h.mark = img;
+  }
+
+  /** 하네스 — 집 주인 앞으로 순간 이동 */
+  devStandAtPerson(npcId: string): boolean {
+    const h = this.people.find((x) => x.p.npcId === npcId);
+    if (!h) return false;
+    const L = this.layout;
+    const fx = this.ox + h.p.tx * L.it, fy = this.oy + h.p.ty * L.it;
+    for (const [x, y] of [[fx, fy + 34], [fx - 34, fy + 4], [fx + 34, fy + 4], [fx, fy - 30]] as [number, number][]) {
+      if (!this.collides(x, y)) { this.px = x; this.py = y; this.placeSelf(); this.updateNear(); return this.nearPerson?.npcId === npcId; }
+    }
+    return false;
+  }
   get menuOpen(): boolean { return !!this.menu; }
   get seated(): boolean { return !!this.seat; }
   get player(): { x: number; y: number } { return { x: this.px, y: this.py }; }
@@ -257,6 +309,12 @@ export class InteriorSystem {
       const x = this.ox + f.tx * L.it, y = this.oy + f.ty * L.it, w = f.fw * L.it, h = f.fh * L.it;
       if (px > x - 8 && px < x + w + 8 && py > y + 6 && py < y + h + 12) return true;
     }
+    // 216차 — 방 한가운데 선 사람(집 주인)은 지나갈 수 없다(발 기준 작은 상자)
+    for (const h of this.people) {
+      if (!h.p.npcId) continue;
+      const fx = this.ox + h.p.tx * L.it, fy = this.oy + h.p.ty * L.it;
+      if (Math.abs(px - fx) < 20 && py > fy - 14 && py < fy + 10) return true;
+    }
     return false;
   }
 
@@ -273,9 +331,18 @@ export class InteriorSystem {
       const d = Math.hypot(dx, dy);
       if (d < bestD) { bestD = d; best = f; }
     }
-    this.near = best;
-    if (best) {
-      this.hint.setText(this.hintOf(best.action!)).setPosition(this.px, this.py - this.char.bodyHeight - 10).setVisible(true);
+    // 216차 — 집 주인이 집기보다 가까우면 말 걸기가 먼저
+    let person: InteriorPerson | null = null;
+    for (const h of this.people) {
+      if (!h.p.npcId) continue;
+      const d = Math.hypot(this.px - this.ox - h.p.tx * L.it, this.py - this.oy - h.p.ty * L.it);
+      if (d < TALK_PX && d < bestD + REACH_PX) { person = h.p; break; }
+    }
+    this.nearPerson = person;
+    this.near = person ? null : best;
+    const text = person ? '[F] 말 걸기' : best ? this.hintOf(best.action!) : null;
+    if (text) {
+      this.hint.setText(text).setPosition(this.px, this.py - this.char.bodyHeight - 10).setVisible(true);
     } else {
       this.hint.setVisible(false);
     }
@@ -297,6 +364,7 @@ export class InteriorSystem {
   interact(): void {
     if (this.leaving) return;
     if (this.menu) { this.menu.items[this.menu.sel]?.run(); return; }
+    if (this.nearPerson?.npcId) { this.host.onTalk?.(this.nearPerson.npcId); return; }
     const f = this.near;
     if (!f?.action) return;
     if (f.action === 'sit') { this.sitOn(f); return; }
@@ -411,16 +479,18 @@ export class InteriorSystem {
 
   /** 들어서면 점원이 한마디 (말풍선 — 몇 초 뒤 옅어진다) */
   private greet(): void {
-    const h = this.people.find((x) => x.p.greetKo);
-    if (!h) return;
-    const t = this.scene.add.text(h.img.x, h.img.y - h.img.displayHeight - 4, h.p.greetKo!, {
+    const h = this.greetOverride ? this.people[0] : this.people.find((x) => x.p.greetKo);
+    const msg = this.greetOverride ?? h?.p.greetKo;
+    if (!h || !msg) return;
+    const t = this.scene.add.text(h.img.x, h.img.y - h.img.displayHeight - 4, msg, {
       fontFamily: FONT, fontSize: '12px', color: '#1a2a3a', backgroundColor: '#f4f0e4', padding: { x: 7, y: 4 },
+      wordWrap: { width: 260 }, align: 'center',
     }).setOrigin(0.5, 1);
     // 방 밖으로 나가지 않게
     const fr = this.frameRect();
     t.setX(Phaser.Math.Clamp(t.x, fr.x + t.width / 2 + 4, fr.right - t.width / 2 - 4));
     this.keep(t, D_HINT);
-    this.scene.tweens.add({ targets: t, alpha: 0, delay: 2600, duration: 600 });
+    this.scene.tweens.add({ targets: t, alpha: 0, delay: this.greetOverride ? 3400 : 2600, duration: 600 });
   }
 
   /** 방 안 바닥 아래쪽(현관 위)에 한 줄 알림 — 필드의 머리 위 알림은 방에 가려 보이지 않는다 */

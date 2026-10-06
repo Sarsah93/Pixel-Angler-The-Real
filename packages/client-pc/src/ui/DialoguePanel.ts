@@ -27,7 +27,7 @@ import { DraggablePanel } from './DraggablePanel.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { StoryStore } from '../store/StoryStore.js';
 import { storyActionSpec } from '../store/StoryActionRegistry.js';
-import { dialogueOf, doorLineOf, DOOR_NARR, NPC_IDLE, type DoorReason } from '../data/StoryDialogue.js';
+import { dialogueOf, doorLineOf, homeLineOf, DOOR_NARR, NPC_IDLE, type DoorReason } from '../data/StoryDialogue.js';
 import { STORY_FIELD_TRIGGERS } from '../data/StoryNpcs.js';
 import { clampTextWidth } from './TextFit.js';
 import { ensureFacePortrait } from './CharacterSprite.js';
@@ -98,8 +98,8 @@ export class DialoguePanel extends DraggablePanel {
   private readonly onTrade?: (shopId: string) => void;
   private readonly onScene?: (req: DialogueSceneRequest) => void;
   private view: View = 'menu';
-  /** 214차 — 문 앞 대화(첫 인사만 바뀐다) */
-  private readonly atDoor?: DoorReason;
+  /** 214차 — 문 앞 대화(첫 인사만 바뀐다) · 216차 'inside' = 그 사람 집 안 */
+  private readonly atDoor?: DoorReason | 'inside';
 
   /** 지금 화면 — 검증 하네스가 읽는다 */
   get currentView(): View { return this.view; }
@@ -142,7 +142,7 @@ export class DialoguePanel extends DraggablePanel {
     scene: Phaser.Scene, npcId: string, onClose: () => void,
     regionId = '', onTrade?: (shopId: string) => void, onScene?: (req: DialogueSceneRequest) => void,
     /** 214차 — 집에 있는 사람의 문을 두드려 열었다(까닭에 따라 첫마디가 다르다). 메뉴는 평소와 같다(R12) */
-    atDoor?: DoorReason,
+    atDoor?: DoorReason | 'inside',
   ) {
     const npc = getStoryNpc(npcId);
     super(scene, {
@@ -455,8 +455,11 @@ export class DialoguePanel extends DraggablePanel {
     this.view = 'menu';
     const paras: string[] = [];
     if (this.lastWorkMsg) { paras.push(this.lastWorkMsg); this.lastWorkMsg = ''; }
-    if (greet && this.atDoor) {
-      paras.push(DOOR_NARR[this.atDoor][0], `"${doorLineOf(this.npcId, this.atDoor)[0]}"`);
+    const at = this.atDoor;
+    if (greet && at === 'inside') {
+      paras.push(`"${homeLineOf(this.npcId).talk[0]}"`);
+    } else if (greet && at && at !== 'inside') {
+      paras.push(DOOR_NARR[at][0], `"${doorLineOf(this.npcId, at)[0]}"`);
     } else if (greet) {
       const [ko] = NPC_IDLE[this.npcId] ?? (['…', '…'] as const);
       paras.push(`"${ko}"`);
