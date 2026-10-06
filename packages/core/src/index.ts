@@ -653,6 +653,9 @@ export {
   SHOP_STOCK_BASE, SHOP_STOCK_PLENTY, SHOP_STOCK_BIG_PRICE, shopScaleOf, stockBucketOf, stockUnlimited, shopStockCap,
 } from './rules/ShopStock.js';
 
+// 227차 — 금어기 날짜 단위 · 지역 규정(제주)
+export type { MonthDay, ClosedSeason, LegalRegionKey, RegionalLegalRule, ResolvedLegalRule } from './types/LegalSeason.js';
+export { inSeason, seasonTouchesMonth, isClosedOn, monthsOfSeasons, formatSeasons, legalRegionOf, resolveLegal, closedFor } from './rules/ClosedSeason.js';
 export type { FisheryLawRule } from './rules/FisheryLaw.js';
 export {
   FISHERY_LAW_RULES, getFisheryLawRule, NON_FISHER_GEAR_WHITELIST, VILLAGE_FISHERY_TARGETS,

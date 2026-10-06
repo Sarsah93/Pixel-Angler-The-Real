@@ -1228,6 +1228,7 @@ export const EN_RULES: Rule[] = [
   [/^(.+) 선택$/, 'Select $1'], [/^추천 \((.+)\): (.+)$/, (m, tr) => `Pick (${m[1].split('·').map((x) => tr(x)).join(' · ')}): ${m[2].split(' · ').map((x) => tr(x)).join(' · ')}`], [/^조법 (.+)$/, (m, tr) => `Method ${tr(m[1])}`], [/^찌 (.+)호$/, 'Float #$1'], [/^미끼 (.+)$/, (m, tr) => `Bait ${m[1].split('·').map((x) => tr(x)).join(' · ')}`],
   [/^배합 완료 — 남은 밑밥 (\d+) \/ (\d+) \(1인칭 C 투척 1회당 (\d+) 소모\)$/, 'Mixed — chum left $1 / $2 (C throw uses $3)'],
   [/^발견 (\d+) \/ (\d+)종$/, 'Found $1 / $2 species'], [/^제철 (.+)월$/, 'Season: months $1'], [/^최대어 (.+) cm$/, 'Record $1 cm'], [/^누적 (\d+) 수$/, 'Total $1'], [/^kg당 (.+)원$/, '₩$1/kg'],
+  [/^금어기 ([\d.~ ·]+)$/, 'Closed $1'], [/^금지체중 (\d+)g 미만$/, 'Under the $1 g legal minimum weight'],
   [/^금어기 (.+)월$/, 'Closed: months $1'], [/^(.+)월$/, 'months $1'], [/^(.+)에서 구매$/, 'Sold at $1'], [/^(.+) — 플레이로 입수$/, '$1 — obtained in play'],
   [/^발견 (\d+) \/ (\d+) — 취득하면 등록$/, 'Found $1 / $2 — registers when obtained'], [/^발견 (\d+) \/ (\d+)종 — 해루질·통발로 채집해 발견$/, 'Found $1 / $2 — discover by gathering/traps'],
   [/^(\d+)개 관측소$/, '$1 stations'], [/^(\d+)\/(\d+)개 지역$/, '$1/$2 regions'], [/^(\d+)개$/, '$1'], [/^상점 매입가: (.+) 원$/, 'Shop buys at: ₩$1'], [/^(.+) g 상당$/, '$1 g eq.'],

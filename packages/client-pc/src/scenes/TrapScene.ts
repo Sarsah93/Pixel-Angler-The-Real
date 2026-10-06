@@ -340,7 +340,7 @@ export class TrapScene extends Phaser.Scene {
       spotType: spot.spotType,
       depthM: 5,
       tide: env.tide,
-      month: new Date().getMonth() + 1,
+      month: new Date().getMonth() + 1, day: new Date().getDate(),
       currentStrength: env.tide.currentStrength,
     });
 

@@ -142,7 +142,7 @@ export class NightHuntingScene extends Phaser.Scene {
       weather: env.weather as any,
       gear: defaultGear,
       huntingDurationMinutes: 0,
-      month: new Date().getMonth() + 1,
+      month: new Date().getMonth() + 1, day: new Date().getDate(),
       hasAdvancedLicense: GameState.hasLicense('shore_hunting_advanced'),
     };
 

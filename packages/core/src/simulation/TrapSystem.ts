@@ -15,6 +15,7 @@ import type { FishSpecies } from '../db-schema/FishDatabase.js';
 import type { SpotType } from '../types/Environment.js';
 import type { TideInfo } from '../types/Environment.js';
 import { TUNING } from '../config/tuning.js';
+import { closedFor } from '../rules/ClosedSeason.js';
 
 // ─────────────────────────────────────────────
 // 통발 설치 컨텍스트
@@ -26,6 +27,9 @@ export interface TrapDeploymentContext {
   tide: TideInfo;
   /** 현재 월 */
   month: number;
+  /** 227차 — 오늘 날짜 · 지역(금어기 날짜 단위) */
+  day?: number;
+  regionId?: string;
   /** 해류 강도 (0.0~1.0) */
   currentStrength: number;
   /** 222차 「미끼 절약」 — 미끼 지속 시간 배수(1 = 그대로) */
@@ -120,7 +124,7 @@ function calculateTrapCatch(
   const eligibleCreatures = SHORE_CREATURE_DATABASE.filter((creature) => {
     if (!spec.targetCategories.includes(creature.category)) return false;
     if (!creature.habitatSpotTypes.includes(context.spotType)) return false;
-    if (creature.closedSeasonMonths.includes(context.month)) return false;
+    if (closedFor(creature, context.month, context.day, context.regionId)) return false;
     return true;
   });
 

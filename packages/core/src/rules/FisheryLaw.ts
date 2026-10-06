@@ -13,6 +13,8 @@
  */
 
 import type { CatchMethod, CatchProvenance, FisheryLawRuleId, LawVerdict, LegalFlag } from '../types/Story.js';
+import type { ClosedSeason } from '../types/LegalSeason.js';
+import { isClosedOn } from './ClosedSeason.js';
 
 // ─────────────────────────────────────────────
 // 규칙 5조 (§3-1) — 근거 법령은 실재, 수치는 `[VERIFY]` 대상
@@ -223,11 +225,17 @@ export function requiredLicenseFor(action: 'auction' | 'commercialGear' | 'villa
  */
 export function landingLegalFlags(input: {
   lengthCm: number; legalMinCm?: number; closedMonths?: readonly number[]; month: number;
+  /** 227차 — 날짜 단위 금어기 · 오늘 날짜 · 금지체중 */
+  closedSeasons?: readonly ClosedSeason[]; day?: number; weightG?: number; legalMinWeightG?: number;
   restrictedGear?: boolean; villageFishery?: boolean;
 }): LegalFlag[] {
   const out: LegalFlag[] = [];
   if (input.legalMinCm && input.lengthCm < input.legalMinCm) out.push('undersize');
-  if (input.closedMonths?.includes(input.month)) out.push('closed_season');
+  else if (input.legalMinWeightG && input.weightG !== undefined && input.weightG < input.legalMinWeightG) out.push('undersize');
+  const closed = input.closedSeasons && input.closedSeasons.length > 0
+    ? isClosedOn(input.closedSeasons, input.month, input.day)
+    : (input.closedMonths?.includes(input.month) ?? false);
+  if (closed) out.push('closed_season');
   if (input.restrictedGear) out.push('restricted_gear');
   if (input.villageFishery) out.push('village_fishery');
   return out;

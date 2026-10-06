@@ -1406,7 +1406,8 @@ export const TUNING: TuningConfig = {
     baseSuccess: 0.72, toolMatchBonus: 0.18, octopusEscape: 0.35, handInjuryStamina: 15,
     holdMsBase: 900, lampRadiusPer100lm: 0.55, dayRadiusTiles: 3,
     maxWindMps: 12, maxWaveM: 1.5, slipWaveM: 1.0, slipChanceBase: 0.04, slipChanceSwell: 0.22,
-    enforcementChance: 0.25, fineRatio: 0.3, fineCapWon: 300_000,
+    // 227차 — 상한 = 비어업인 과태료 최대 80만원(2020.9~ 수산자원관리법 — 사용자 조사)
+    enforcementChance: 0.25, fineRatio: 0.3, fineCapWon: 800_000,
   },
   trap: { lossRiskMult: 1.0, minSoakHours: 1, maxRangeTiles: 4, maxWaterDistTiles: 3 },
   cook: {

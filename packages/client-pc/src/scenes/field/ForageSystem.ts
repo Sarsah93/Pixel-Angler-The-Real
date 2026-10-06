@@ -23,7 +23,7 @@ import {
   isOrdinanceViolation, rollEnforcement, creatureTools, FORAGE_TOOL_LABEL,
   calculateTideInfo, isNightNow, checkSlipHazard, TUNING,
   tideFlowStateAt, tideWaterLevel01, tideRegionK, forageTideMult, forageFloodWarning,
-  forageBehaviorOf, isEastSeaRegion, rollForageHarvest, forageInjuryRoll, forageLossLineKo, shallowWaterDepthM,
+  forageBehaviorOf, isEastSeaRegion, rollForageHarvest, resolveLegal, forageInjuryRoll, forageLossLineKo, shallowWaterDepthM,
   type ForageGameState,
 } from '@tra/core';
 import { GameState } from '../../store/GameState.js';
@@ -357,6 +357,7 @@ export class ForageSystem {
       // 205차 — 간조 시간창(간조 2시간 전 ~ 1시간 뒤)이면 스팟이 더 드러난다
       maxSpots: Math.round(TUNING.forage.maxSpots * e.tideMult),
       eastSea: isEastSeaRegion(this.host.regionId),   // 224차 — 동해엔 없는 · 드문 종
+      day: new Date().getDate(), regionId: this.host.regionId,   // 227차 — 금어기 날짜 단위 · 지역 규정
     }).filter((s) => !GONE.has(`${seed}|${s.id}`));   // 224차 — 놓친 · 잡은 것은 이번 슬롯에 다시 나오지 않는다
     this.runners.clear();
     for (const s of this.spots) {
@@ -701,9 +702,9 @@ export class ForageSystem {
       this.host.pushLog(`[채집] ${msg}`);
       if (inj.dropped) return;
     }
-    const res = rollForageHarvest(c, Math.random);
+    const res = rollForageHarvest(c, Math.random, this.host.regionId);
     if (res.undersized) {
-      const msg = `${c.nameKo} ${res.sizeCm}cm — 법정 크기(${c.minLegalSizeCm}cm) 미달, 놓아주었다`;
+      const msg = `${c.nameKo} ${res.sizeCm}cm — 법정 크기(${resolveLegal(c, this.host.regionId).minLegalSizeCm}cm) 미달, 놓아주었다`;
       this.host.floatingHint(msg);
       this.host.pushLog(`[채집] ${msg}`);
       return;

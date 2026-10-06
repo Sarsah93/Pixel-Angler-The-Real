@@ -208,7 +208,7 @@ export class TrapFieldSystem {
     const tide = calculateTideInfo();
     const depthM = this.host.depthAtWaterTile(tx, ty);
     const v = validateTrapDeployment(spec.id, {
-      spotType: this.spotTypeAt(tx, ty), depthM, tide, month: new Date().getMonth() + 1, currentStrength: tide.currentStrength,
+      spotType: this.spotTypeAt(tx, ty), depthM, tide, month: new Date().getMonth() + 1, day: new Date().getDate(), regionId: this.host.regionId, currentStrength: tide.currentStrength,
     }, GameState.deployedTraps.filter((t) => !t.isLostOrDamaged).length,
       GameState.hasLicense('commercial_trap'), GameState.hasLicense('trap_advanced'));
     if (!v.valid) { this.host.floatingHint(v.reason ?? '설치 불가'); this.cancelPlacement(); return; }
@@ -376,7 +376,7 @@ export class TrapFieldSystem {
     }
     const result = harvestTrap(t, {
       spotType: this.spotTypeAt(t.tileX, t.tileY), depthM: t.depthM ?? 5, tide,
-      month: new Date().getMonth() + 1, currentStrength: tide.currentStrength,
+      month: new Date().getMonth() + 1, day: new Date().getDate(), regionId: this.host.regionId, currentStrength: tide.currentStrength,
       baitDurationMult: GameState.skillMult('trap_bait_duration'),   // 222차 「미끼 절약」
       extraAttempts: GameState.skillBonus('trap_attempts'),          // 222차 「통발 운」
     });

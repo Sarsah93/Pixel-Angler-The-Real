@@ -12,6 +12,7 @@ import {
   FISH_DATABASE, getSpotById, SHORE_CREATURE_DATABASE,
   DISCOVERY_SOURCE_LABEL, REGION_AREA_NODES, WORLD_NODE_DATABASE, getRegionById,
   FIRE_RECIPES, RECIPE_LORE, isVariantRecipe, dishVariantCandidates, dishDiscoveryId, dishDiscoveryName, dishBaseName,
+  resolveLegal, formatSeasons,
 } from '@tra/core';
 import type { ShoreCreatureCategory, DiscoveryKind, ShoreCreature } from '@tra/core';
 import { TideLoreStore } from '../store/TideLoreStore.js';
@@ -471,13 +472,14 @@ export class AnglerLogScene extends Phaser.Scene {
 
         const SX = x + 92;
         const SW = itemW - 92 - 12;
-        const closed = cr.closedSeasonMonths.length > 0
-          ? `금어기 ${cr.closedSeasonMonths.join('·')}월` : '금어기 없음';
+        // 227차 — 금어기는 날짜 구간으로(참문어 5.16~6.30) · 지금 지역 규정(제주) 반영
+        const legal = resolveLegal(cr, GameState.currentRegionId);
+        const closed = legal.closedSeasons.length > 0 ? `금어기 ${formatSeasons(legal.closedSeasons)}` : '금어기 없음';
         const discLine = this.discoveryLine('creature', cr.id);
         const rows: [string, string][] = [
           [CREATURE_CAT_LABEL[cr.category] ?? cr.category, '#8faabf'],
           [`kg당 ${cr.marketValuePerKg.toLocaleString()}원`, '#c8a060'],
-          [closed, cr.closedSeasonMonths.length > 0 ? '#d47a6a' : '#607b8e'],
+          [closed, legal.closedSeasons.length > 0 ? '#d47a6a' : '#607b8e'],
           [discLine ?? '발견', '#8fd4b8'],
         ];
         rows.forEach(([label, color], i) => {

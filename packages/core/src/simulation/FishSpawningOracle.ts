@@ -19,6 +19,8 @@ import type { TideFlowPhase } from '../types/TideFlow.js';
 import { speciesTideSizeBias, speciesTidePhaseBest, speciesTidePhaseMult } from './TidePhaseStrategy.js';
 import { isGiantOctopusSpawnProtected } from '../types/Foraging.js';
 import { TUNING, type BodyFormKey } from '../config/tuning.js';
+import type { ClosedSeason } from '../types/LegalSeason.js';
+import { isClosedOn } from '../rules/ClosedSeason.js';
 
 /**
  * 체형 분류 (133차) — **같은 체중이라도 파이트에서 내는 힘·압력이 다르다.**
@@ -105,8 +107,12 @@ export interface FishMasterSpec {
   sexNote?: string;
   /** 금지체장 (cm) */
   legalMinCm?: number;
-  /** 금어기 (월) */
+  /** 금어기 (월) — 산란기 비만도 계산에도 쓴다. 날짜 구간이 있으면 판정은 `closedSeasons`가 정본 */
   closedMonths?: number[];
+  /** 227차 — 금어기 날짜 구간(참문어 5.16~6.30) */
+  closedSeasons?: ClosedSeason[];
+  /** 227차 — 금지체중(g) — 대문어 600g(2021 개정 400 → 600) */
+  legalMinWeightG?: number;
   /** 1~15물때 활성도 (0~1) */
   tideActivity: number[];
   /** 야간 활성 배율 (기본 1.0, 2.0 = 야간 어종) */
@@ -620,6 +626,8 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     minCm: 20, maxCm: 65, meanCm: 38, sdCm: 9, lwrA: 0.06, lwrB: 2.6, bodyForm: 'cephalopod', maleRatio: 0.5,
     sexNote: '따뜻한 남해권 돌문어 — 바닥에 붙는 힘이 강해 초반에 띄우는 것이 관건',
     // 야행성 — 밤에 은신처를 벗어나 사냥
+    // 227차 — 참문어(동해 「돌문어」) 금어기 5.16~6.30(국가 기본 · 강원 적용) · 금지체중은 국가 기준 없음
+    closedMonths: [5, 6], closedSeasons: [{ from: [5, 16], to: [6, 30] }],
     nightBonus: 1.5, tideActivity: flatTide(0.6),
     fight: { basePower: 0.55, patternWeights: { jump: 0.0, dive: 0.8, lateral: 0.2 }, intervalMult: 1.0, mouthFragility: 0.2 },
   },
@@ -632,6 +640,8 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     minCm: 30, maxCm: 200, meanCm: 80, sdCm: 40, lwrA: 0.115, lwrB: 2.32, bodyForm: 'cephalopod', maleRatio: 0.5,
     sexNote: '동해 대표 대물 문어 — 개체 편차가 커 작은 놈부터 수십 kg 대물까지 나온다',
     // 냉수성 야행성 — 동해 깊은 바닥
+    // 227차 — 대문어는 금어기 없음 · 금지체중 600g(참문어와 다른 종 · 다른 규정)
+    legalMinWeightG: 600,
     nightBonus: 1.5, tideActivity: flatTide(0.6),
     fight: { basePower: 0.85, patternWeights: { jump: 0.0, dive: 0.85, lateral: 0.15 }, intervalMult: 0.9, mouthFragility: 0.15 },
   },
@@ -752,6 +762,8 @@ export interface SpawnContext {
   tidePhase: number;
   /** 월 (1~12) */
   month: number;
+  /** 227차 — 오늘 날짜(1~31). 없으면 금어기를 달 단위로 본다 */
+  day?: number;
   /** 현재 미끼 종류 */
   baitKey: BaitKey;
   /** 미끼가 여 밭(암초) 지형에 있는지 */
@@ -1044,10 +1056,13 @@ export function spawnFish(ctx: SpawnContext): SpawnedFish {
   const maleRatio = picked.sexRule ? picked.sexRule(lengthCm) : picked.maleRatio;
   const sex: 'M' | 'F' = Math.random() < maleRatio ? 'M' : 'F';
 
-  const isUndersized = picked.legalMinCm !== undefined && lengthCm < picked.legalMinCm;
+  const underWeight = picked.legalMinWeightG !== undefined && weightG < picked.legalMinWeightG;
+  const isUndersized = (picked.legalMinCm !== undefined && lengthCm < picked.legalMinCm) || underWeight;
   // 188차 — 강원 조례: 산란기 8kg 이상 대문어는 방생 대상(금어기와 같은 경로로 처리)
   const octoProtected = isGiantOctopusSpawnProtected(picked.speciesId, weightG, ctx.month, ctx.region);
-  const isClosedSeason = (picked.closedMonths?.includes(ctx.month) ?? false) || octoProtected;
+  const isClosedSeason = (picked.closedSeasons && picked.closedSeasons.length > 0
+    ? isClosedOn(picked.closedSeasons, ctx.month, ctx.day)
+    : (picked.closedMonths?.includes(ctx.month) ?? false)) || octoProtected;
   // 힘 계수: 어종 기본 힘 × 크기 비율 보정
   const powerFactor = Math.min(1.15, Math.max(0.12,
     picked.fight.basePower * (0.55 + 0.65 * (lengthCm / picked.maxCm)),
@@ -1061,7 +1076,8 @@ export function spawnFish(ctx: SpawnContext): SpawnedFish {
     sex,
     isUndersized,
     isClosedSeason,
-    ...(octoProtected ? { protectReasonKo: '산란기 8kg 이상 대문어', protectReasonEn: 'Spawning-season giant octopus of 8 kg or more' } : {}),
+    ...(octoProtected ? { protectReasonKo: '산란기 8kg 이상 대문어', protectReasonEn: 'Spawning-season giant octopus of 8 kg or more' }
+      : underWeight ? { protectReasonKo: `금지체중 ${picked.legalMinWeightG}g 미만`, protectReasonEn: `Under the ${picked.legalMinWeightG} g legal minimum weight` } : {}),
     powerFactor,
     fight: picked.fight,
     lineCutter: picked.fight.lineCutter ?? false,

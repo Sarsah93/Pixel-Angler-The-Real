@@ -7,6 +7,7 @@
  */
 
 import type { ShoreCreatureCategory } from '../types/Activities.js';
+import type { ClosedSeason, LegalRegionKey, RegionalLegalRule } from '../types/LegalSeason.js';
 import type { SpotType } from '../types/Environment.js';
 import type { ForageTool, ForageSpotKind, ForageAccess, ForageBehavior } from '../types/Foraging.js';
 
@@ -29,8 +30,12 @@ export interface ShoreCreature {
   minLegalSizeCm: number;
   /** 일일 채취 제한량 (g, 0=무제한) */
   dailyLimitG: number;
-  /** 금어기 월 (1~12, 해당 월에 채취 불가) */
+  /** 금어기 월 (1~12) — 달 단위 호환용. 날짜 구간(`closedSeasons`)이 있으면 그쪽이 정본이고 이건 걸치는 달 */
   closedSeasonMonths: number[];
+  /** 227차 — 금어기 날짜 구간(국가 기준 · 강원 기본 적용). 판정은 `resolveLegal` · `isClosedOn` */
+  closedSeasons?: ClosedSeason[];
+  /** 227차 — 지역 규정이 다르면 덮어쓴다(제주 전복 · 소라 · 오분자기) */
+  regional?: Partial<Record<LegalRegionKey, RegionalLegalRule>>;
   /** 발견 가능 조도 (낮/밤/모두) */
   discoveryTime: 'day' | 'night' | 'both';
   /** 발견에 필요한 최소 랜턴 루멘 */
@@ -133,6 +138,8 @@ export const SHORE_CREATURE_DATABASE: ShoreCreature[] = [
     substrate: 'rock',
     eastSeaWeight: 0.3,
     handInjury: true,
+    // 국가 금어기 없음 · 각고 5cm — 제주만 6.1~8.31 금어기 · 각고 7cm
+    regional: { jeju: { closedSeasons: [{ from: [6, 1], to: [8, 31] }], minLegalSizeCm: 7 } },
   },
   {
     id: 'oyster_gigas',
@@ -145,7 +152,7 @@ export const SHORE_CREATURE_DATABASE: ShoreCreature[] = [
     habitatDesc: '조간대 중·하부 바위에 시멘트처럼 붙는다. 껍데기 가장자리가 칼날처럼 날카롭다.',
     minLegalSizeCm: 0,
     dailyLimitG: 5000,
-    closedSeasonMonths: [],  // 여름 산란기 금채기
+    closedSeasonMonths: [],  // 227차 — 국가 금어기 없음(봄철 패류독소 채취 금지는 별개 — 백로그 BG)
     discoveryTime: 'both',
     minLampLumens: 0,
     marketValuePerKg: 12000,
@@ -168,7 +175,7 @@ export const SHORE_CREATURE_DATABASE: ShoreCreature[] = [
     habitatDesc: '물속 바위 밑에 숨었다가 밤에 기어 나온다. 건드리면 꽉 붙는다 — 깊으면 집게, 가까우면 장갑 낀 손.',
     minLegalSizeCm: 7.0,
     dailyLimitG: 2000,
-    closedSeasonMonths: [9, 10],  // 산란기 보호
+    closedSeasonMonths: [9, 10],  // 산란기 보호 — 9.1~10.31(국가) · 제주 10.1~12.31 · 각장 10cm
     discoveryTime: 'night',
     minLampLumens: 1500,
     marketValuePerKg: 90000,
@@ -183,6 +190,8 @@ export const SHORE_CREATURE_DATABASE: ShoreCreature[] = [
     handInjury: true,
     pryHits: 3,
     eastSeaWeight: 0.5,
+    closedSeasons: [{ from: [9, 1], to: [10, 31] }],
+    regional: { jeju: { closedSeasons: [{ from: [10, 1], to: [12, 31] }], minLegalSizeCm: 10 } },
   },
   // ────────── 갑각류 ──────────
   {
@@ -196,7 +205,7 @@ export const SHORE_CREATURE_DATABASE: ShoreCreature[] = [
     habitatDesc: '낮엔 모래에 묻혀 있다가 밤에 얕은 물로 들어온다. 헤엄쳐 달아나는 게라 빠르다. 동해엔 드물다.',
     minLegalSizeCm: 6.4,
     dailyLimitG: 0,
-    closedSeasonMonths: [7, 8],  // 포란기 암컷 보호
+    closedSeasonMonths: [6, 7, 8],  // 6.21~8.20(시·도 고시 통상값) · 6.4cm(두흉갑장) — 민꽃게에는 해당 없음
     discoveryTime: 'night',
     minLampLumens: 500,
     marketValuePerKg: 40000,
@@ -211,6 +220,7 @@ export const SHORE_CREATURE_DATABASE: ShoreCreature[] = [
     eastSeaWeight: 0.15,
     agility: 0.75,
     handInjury: true,
+    closedSeasons: [{ from: [6, 21], to: [8, 20] }],
   },
   {
     id: 'charybdis_japonica',
@@ -265,6 +275,7 @@ export const SHORE_CREATURE_DATABASE: ShoreCreature[] = [
     substrate: 'soft',
     tools: ['rake', 'hand'],
     eastSeaWeight: 0.1,
+    closedSeasons: [{ from: [6, 1], to: [6, 30] }],
   },
   {
     id: 'octopus_vulgaris',
@@ -277,7 +288,7 @@ export const SHORE_CREATURE_DATABASE: ShoreCreature[] = [
     habitatDesc: '얕은 물 바위 틈에 숨어 빨판으로 버틴다. 밤에 나와 먹이를 찾고, 놀라면 먹물을 쏘고 순식간에 달아난다.',
     minLegalSizeCm: 0,
     dailyLimitG: 0,
-    closedSeasonMonths: [6],
+    closedSeasonMonths: [5, 6],  // 참문어(동해 「돌문어」) 5.16~6.30 — 금지체중은 국가 기준 없음
     discoveryTime: 'night',
     minLampLumens: 1000,
     marketValuePerKg: 45000,
@@ -290,6 +301,7 @@ export const SHORE_CREATURE_DATABASE: ShoreCreature[] = [
     access: 'wade',
     substrate: 'rock',
     eastSeaWeight: 0.6,
+    closedSeasons: [{ from: [5, 16], to: [6, 30] }],
   },
   // ────────── 극피동물 ──────────
   {
@@ -342,6 +354,7 @@ export const SHORE_CREATURE_DATABASE: ShoreCreature[] = [
     substrate: 'rock',
     absentMonths: [8, 9],
     agility: 0.1,
+    closedSeasons: [{ from: [7, 1], to: [7, 31] }],
   },
   // ────────── 동해 암반 조간대 4종 (121차 — 속초 갯바위·방파제 실제 채집물) ──────────
   {
@@ -442,7 +455,7 @@ export const SHORE_CREATURE_DATABASE: ShoreCreature[] = [
     id: 'haliotis_diversicolor', nameKo: '오분자기', nameEn: 'Small Abalone',
     scientificName: 'Haliotis diversicolor', spriteKey: 'creature_abalone_small', category: 'gastropod',
     habitatSpotTypes: ['rocky_shore', 'breakwater'], habitatDesc: '제주와 남해 일부의 얕은 바다 바위 틈. 동해에는 살지 않는다.',
-    minLegalSizeCm: 3.5, dailyLimitG: 0, closedSeasonMonths: [7, 8], discoveryTime: 'night', minLampLumens: 800,
+    minLegalSizeCm: 0, dailyLimitG: 0, closedSeasonMonths: [], discoveryTime: 'night', minLampLumens: 800,   // 227차 — 금어기 · 체장은 제주 한정(아래 regional)
     marketValuePerKg: 45000, isRestaurantIngredient: true, canBeUsedAsBait: false,
     description: '전복보다 작은 암반성 소형 전복류. 바위에 단단히 붙어 집게나 갈고리가 필요하다.',
     requiredLicense: 'shore_hunting_advanced', tools: ['gaff', 'tongs'], spotKinds: ['shallows'], ordinanceProtected: true,
@@ -451,6 +464,7 @@ export const SHORE_CREATURE_DATABASE: ShoreCreature[] = [
     substrate: 'rock',
     eastSeaWeight: 0,
     pryHits: 2,
+    regional: { jeju: { closedSeasons: [{ from: [7, 1], to: [8, 31] }], minLegalSizeCm: 4 } },
   },
   {
     id: 'heliocidaris_crassispina', nameKo: '말똥성게', nameEn: 'Black-spined Urchin',

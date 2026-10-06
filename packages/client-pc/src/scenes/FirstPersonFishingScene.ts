@@ -2677,7 +2677,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       zMax: this.cfg.zMaxM,
       region: this.cfg.region,
       tidePhase: calculateTideInfo().tidePhase,
-      month: new Date().getMonth() + 1,
+      month: new Date().getMonth() + 1, day: new Date().getDate(),
       // 204차 — 물돌이·끝들물 대물 가중(205차 — 동해 감쇠) · 205차 어종별 물때 선호 · 단계 대물
       // 222차 — 「대물 운」은 물때 대물 가중에 더해진다(0~1로 묶임)
       sizeBias: Math.min(1, (tnSpawn ? regionalSizeBias(tideFlowSizeBias(tnSpawn.state.phase), tnSpawn.k) : 0) + GameState.skillBonus('big_fish_luck')),

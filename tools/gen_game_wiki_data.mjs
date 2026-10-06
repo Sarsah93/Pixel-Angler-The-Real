@@ -246,6 +246,17 @@ const MONTHS = (arr) => (arr?.length ? arr.slice().sort((a, b) => a - b).map((m)
 /** 카드 계약 — `img`는 대표 1장(목록 썸네일), `imgs`는 상세 시트에 나란히 싣는 전부 */
 const pickImgs = (list) => ({ img: list[0]?.src ?? null, imgs: list });
 
+/** 227차 — 금어기(날짜 구간 우선 · 없으면 달) + 금지체중. 오라클에 없는 어종은 빈 배열 */
+const fishLegalTraits = (id) => {
+  const o = core.ORACLE_FISH_DB.find((x) => x.speciesId === id);
+  if (!o) return [];
+  const closed = o.closedSeasons?.length ? core.formatSeasons(o.closedSeasons)
+    : o.closedMonths?.length ? MONTHS(o.closedMonths) : '없음';
+  const out = [['금어기', closed]];
+  if (o.legalMinWeightG) out.push(['금지 체중', `${o.legalMinWeightG} g 미만 방류`]);
+  return out;
+};
+
 const speciesList = [];
 for (const f of core.FISH_DATABASE) {
   const group = CEPH_FISH.has(f.id) ? 'cephalopod' : 'fish';
@@ -268,10 +279,19 @@ for (const f of core.FISH_DATABASE) {
       ['주야', f.isNocturnal ? `야행성 (야간 입질 +${f.nightBiteBonus ?? 0}%)` : '주행성'],
       ['난이도', '★'.repeat(Math.max(1, f.difficulty ?? 1))],
       ['금지 체장', f.minLegalSizeCm ? `${f.minLegalSizeCm} cm 미만 방류` : '없음'],
+      // 227차 — 금어기 · 금지체중은 스폰 오라클이 정본(날짜 구간이 있으면 그쪽)
+      ...fishLegalTraits(f.id),
       ['선호 미끼', (f.preferredBaits ?? []).join(', ') || '—'],
     ],
   });
 }
+const jejuRuleKo = (s) => {
+  const r = core.resolveLegal(s, 'jeju');
+  const parts = [];
+  parts.push(r.closedSeasons.length ? `금어기 ${core.formatSeasons(r.closedSeasons)}` : '금어기 없음');
+  if (r.minLegalSizeCm) parts.push(`${r.minLegalSizeCm} cm 미만 방류`);
+  return parts.join(' · ');
+};
 for (const s of core.SHORE_CREATURE_DATABASE) {
   const [group, subgroup] = SHORE_GROUP[s.category] ?? ['other', s.category];
   // 170차 — 같은 생물이 어종 DB와 채집 DB에 둘 다 있으면(돌문어) **카드를 두 장 만들지 않는다**.
@@ -301,7 +321,9 @@ for (const s of core.SHORE_CREATURE_DATABASE) {
       ['조명 요건', s.minLampLumens ? `헤드랜턴 ${s.minLampLumens} lm 이상` : '불필요'],
       ['금지 체장', s.minLegalSizeCm ? `${s.minLegalSizeCm} cm 미만 방류` : '없음'],
       ['일일 채취 한도', s.dailyLimitG ? `${(s.dailyLimitG / 1000).toFixed(1)} kg` : '없음'],
-      ['금채기', MONTHS(s.closedSeasonMonths)],
+      // 227차 — 날짜 단위 금어기(국가 기본) + 제주 별도 규정
+      ['금어기', core.formatSeasons(core.resolveLegal(s).closedSeasons) || '없음'],
+      ...(s.regional?.jeju ? [['제주 규정', jejuRuleKo(s)]] : []),
       ['필요 허가', s.requiredLicense ?? '없음'],
       ['미끼 활용', s.canBeUsedAsBait ? '가능' : '불가'],
       ['사는 모양', BEHAVIOR_KO[core.forageBehaviorOf(s)] ?? '—'],

@@ -10,6 +10,7 @@ import type { ShoreHuntingGear, ShoreHarvestItem, ShoreHuntingResult } from '../
 import type { TideInfo, WeatherData } from '../types/Environment.js';
 import { SHORE_CREATURE_DATABASE, type ShoreCreature } from '../db-schema/ShoreCreatureDatabase.js';
 import type { SpotType } from '../types/Environment.js';
+import { closedFor } from '../rules/ClosedSeason.js';
 
 // ─────────────────────────────────────────────
 // 해루질 입력 컨텍스트
@@ -30,6 +31,9 @@ export interface NightHuntingContext {
   huntingDurationMinutes: number;
   /** 현재 월 (1~12) */
   month: number;
+  /** 227차 — 오늘 날짜(1~31) · 지역 — 금어기를 날짜 단위로(없으면 달 단위) */
+  day?: number;
+  regionId?: string;
   /** 심화 라이선스 보유 여부 */
   hasAdvancedLicense: boolean;
 }
@@ -100,7 +104,7 @@ export function getHuntableCreatures(
     if (!creature.habitatSpotTypes.includes(spotType)) return false;
 
     // 금어기 체크
-    if (creature.closedSeasonMonths.includes(month)) return false;
+    if (closedFor(creature, month, context.day, context.regionId)) return false;
 
     // 시간대 체크
     if (creature.discoveryTime === 'night' && !isNight) return false;

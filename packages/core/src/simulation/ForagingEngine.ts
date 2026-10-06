@@ -12,6 +12,7 @@ import { SHORE_CREATURE_DATABASE } from '../db-schema/ShoreCreatureDatabase.js';
 import type { ForageCandidate, ForageSpot, ForageSpotKind, ForageTool, FishFarm, ForageBehavior, ForageGameKind } from '../types/Foraging.js';
 import { GANGWON_FORAGE_ORDINANCE, farmAt, isProtectedFarmKind } from '../types/Foraging.js';
 import { TUNING } from '../config/tuning.js';
+import { closedFor, resolveLegal } from '../rules/ClosedSeason.js';
 
 // ─────────────────────────────────────────────
 // 시드 PRNG (mulberry32) — 시간 시드 재현용
@@ -179,6 +180,9 @@ export interface RollForageOpts {
   maxSpots: number;
   /** 224차 — 동해 지역이면 생물별 `eastSeaWeight`를 곱한다(0 = 안 나온다) */
   eastSea?: boolean;
+  /** 227차 — 오늘 날짜(1~31) · 지역 id — 금어기를 날짜 단위 · 지역 규정(제주)으로 */
+  day?: number;
+  regionId?: string;
 }
 
 /**
@@ -194,7 +198,7 @@ export function rollForageSpots(candidates: ForageCandidate[], opts: RollForageO
   const target = Math.min(opts.maxSpots, Math.max(1, Math.round((candidates.length / 100) * t.spotsPerHundred * tideBonus)));
 
   const pool = SHORE_CREATURE_DATABASE.filter((c) => {
-    if (c.closedSeasonMonths.includes(opts.month)) return false;
+    if (closedFor(c, opts.month, opts.day, opts.regionId)) return false;
     if (c.absentMonths?.includes(opts.month)) return false;           // 224차 — 여름잠 · 추위
     if (opts.eastSea && (c.eastSeaWeight ?? 1) <= 0) return false;     // 224차 — 동해에 없는 종
     if (c.discoveryTime === 'night' && !opts.isNight) return false;
@@ -310,8 +314,8 @@ export function attemptForage(c: ShoreCreature, tool: ForageTool, rng: () => num
  * 224차 — 손놀림 놀이에 이긴 뒤의 수확(크기 · 무게 · 법정 크기 미달). `attemptForage`의 뒷부분을 떼어 냈다.
  * 갯지렁이처럼 미끼로 들어가는 것은 마리로 센다(크기는 몸길이).
  */
-export function rollForageHarvest(c: ShoreCreature, rng: () => number): Pick<ForageResult, 'sizeCm' | 'weightG' | 'undersized'> {
-  const legal = c.minLegalSizeCm;
+export function rollForageHarvest(c: ShoreCreature, rng: () => number, regionId?: string): Pick<ForageResult, 'sizeCm' | 'weightG' | 'undersized'> {
+  const legal = resolveLegal(c, regionId).minLegalSizeCm;   // 227차 — 지역 규정(제주 전복 10cm 등)
   const sizeCm = legal > 0 ? legal * (0.8 + rng() * 1.0)
     : c.category === 'annelid' ? 8 + rng() * 14
     : c.id === 'ligia_exotica' ? 2.5 + rng() * 2
