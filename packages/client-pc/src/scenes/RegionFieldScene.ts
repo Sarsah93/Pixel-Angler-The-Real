@@ -82,6 +82,7 @@ import { RegionLight,
   type VitalsActivity,
 } from '@tra/core';
 import { SeamlessChunks, type OccluderObj, PROP_DEFS, propFootprint, type PropDef } from './SeamlessChunks.js';
+import { ForageGamePanel } from '../ui/ForageGamePanel.js';
 import { ForageSystem } from './field/ForageSystem.js';
 import { AmbientNpcSystem, StoryNpcActor, type NpcFieldHost } from './field/FieldNpcSystem.js';
 import { TrapFieldSystem } from './field/TrapFieldSystem.js';
@@ -130,7 +131,7 @@ import { pumpTitleBanners, TITLE_RARITY_COLOR, titleTagStyle } from '../ui/Title
 import { pumpTideFlow } from '../ui/TideFlowNotifier.js';
 import { buildItemWikiCatalog } from '../data/WikiCatalog.js';
 import { playCollapse, type CollapseKind } from '../ui/CollapseOverlay.js';
-import { TUNING, getTrapById, MP_CHAT_MAX_LEN, type RegionFishFarms } from '@tra/core';
+import { TUNING, shallowWaterDepthM, getTrapById, MP_CHAT_MAX_LEN, type RegionFishFarms } from '@tra/core';
 // 147차 — 위판(경매 현장). 구매자 측 AuctionEngine과 방향이 반대다(ConsignmentAuction 헤더 참조).
 import { buildConsignmentLots, isConsignmentOpen, nextConsignmentWindowStart, kstYmd, openConsignmentSession, coopDuesFeeCut, type ConsignInput, type ConsignmentSettlement } from '@tra/core';
 import { AuctionHousePanel } from '../ui/AuctionHousePanel.js';
@@ -274,6 +275,12 @@ export class RegionFieldScene extends Phaser.Scene {
   /** 지면 충돌 — 상판 위에 올라서 있는 동안 끈다 */
   private wallCollider?: Phaser.Physics.Arcade.Collider;
   private poiCollider?: Phaser.Physics.Arcade.Collider;
+  /** 224차 — 얕은 물 충돌(장화를 신으면 끈다) */
+  private wadeCollider?: Phaser.Physics.Arcade.Collider;
+  /** 224차 — 지금 얕은 물에 들어가 서 있다 */
+  wading = false;
+  private wadeRipple?: Phaser.GameObjects.Graphics;
+  private wadeRippleT = 0;
   private overpassCollider?: Phaser.Physics.Arcade.Collider;
   /** POI 상점 프리팹 충돌 바디 (심리스 전용 — 청크 walls와 별도) */
   private poiWalls?: Phaser.Physics.Arcade.StaticGroup;
@@ -848,6 +855,7 @@ export class RegionFieldScene extends Phaser.Scene {
       this.spawnPlayer();
       this.poiCollider = this.physics.add.collider(this.playerBody, this.poiWalls);
       this.overpassCollider = this.physics.add.collider(this.playerBody, this.overpass.groundWalls);
+      this.wadeCollider = this.physics.add.collider(this.playerBody, this.chunks.wadeWalls);   // 224차
       // 스폰 지점 주변 상주 즉시 확보 (충돌 바디는 로드 즉시 생성 — 낙하/관통 방지)
       // 182차 — 3×3을 페이드인 동안 모두 굽는다(첫 화면에 빈 청크가 보이지 않게)
       this.chunks.preloadAround(this.playerBody.x, this.playerBody.y);
@@ -3437,10 +3445,20 @@ export class RegionFieldScene extends Phaser.Scene {
     for (const line of lines) {
       const { entry } = line;
       // 221차 — 진열 재고: 그새 바뀌었으면 남은 만큼만(품절이면 그 줄은 사지 않는다)
-      const left = ctx ? ShopStore.remaining(ctx, entry, entryKey(entry)) : null;
+      const used = entry.usedUid && ctx ? ShopStore.usedGoods(ctx.key).find((u) => u.uid === entry.usedUid) : undefined;
+      const left = used ? used.qty : entry.usedUid ? 0 : ctx ? ShopStore.remaining(ctx, entry, entryKey(entry)) : null;
       const qty = left === null ? line.qty : Math.min(line.qty, left);
       if (qty <= 0) { failed.push(`${entry.name}(다 팔림)`); continue; }
       const cost = shopBuyUnitPrice(entry) * qty;
+      // 224차 — 중고 장비는 판 그대로(이름 · 상태 · 고장)로 돌아온다
+      if (used) {
+        if (!InventoryStore.addItem(used.tpl, qty)) { failed.push(`${entry.name}(가방에 자리 없음)`); continue; }
+        ShopStore.takeUsed(ctx!.key, used.uid, qty);
+        paid += cost;
+        done.push(`${entry.name} x${qty}`);
+        this.hud?.pushLog(`[구매] ${entry.name} x${qty} (-${cost.toLocaleString()}원)`);
+        continue;
+      }
       // 190차 — 가구는 가방이 아니라 집 「넣어 둔 가구」로 배달된다
       if (entry.furnKind) {
         for (let i = 0; i < qty; i++) HomeStore.addStored(entry.furnKind);
@@ -3489,6 +3507,11 @@ export class RegionFieldScene extends Phaser.Scene {
       if (!InventoryStore.removeQty(item.id, qty)) { failed.push(item.name); continue; }
       got += unit * qty;
       done.push(`${item.name} x${qty}`);
+      // 224차 — 장비는 가게 중고 칸에 올라 웃돈을 얹어 되팔린다(장착 칸 표시는 떼고)
+      if (item.category === 'gear' && ShopStore.current) {
+        const { slot: _slot, qty: _qty, equipped: _eq, equippedHand: _hand, ...tpl } = item;
+        ShopStore.addUsed(ShopStore.current.key, tpl, qty, unit);
+      }
       MarketStore.recordSale(item, qty);   // 196차 — 이 지점에 풀린 물량(판 수)
       this.hud?.pushLog(`[판매] ${item.name} x${qty} (+${(unit * qty).toLocaleString()}원)`);
       notePrologueSale(item);   // 188차 — 냉동 오징어 팔기
@@ -4529,6 +4552,7 @@ export class RegionFieldScene extends Phaser.Scene {
     }
     this.handleMovement();
     this.stepOverpass();
+    this.updateWading(delta);
     this.tickVitals(delta);
     this.updateSpriteAndShadow();
     this.updateBuildingProximity();
@@ -6965,6 +6989,13 @@ export class RegionFieldScene extends Phaser.Scene {
       knockback: (dx: number, dy: number) => {
         this.knockVx = dx * 220; this.knockVy = dy * 220; this.knockUntil = this.time.now + 220;
       },
+      // 224차 — 얕은 물 · 장화 · 달리기 · 손놀림 놀이 창
+      wadeAt: chunks ? (c: number, r: number) => chunks.wadeAt(c, r) : undefined,
+      wading: () => this.wading,
+      running: () => this.running,
+      openForageGame: (c, tool, opts, onEnd) => {
+        this.openPopup((close) => new ForageGamePanel(this, c, tool, opts, onEnd, close));
+      },
     }, farms);
     this.trapField = new TrapFieldSystem({
       ...common,
@@ -7058,7 +7089,8 @@ export class RegionFieldScene extends Phaser.Scene {
     const speed = (this.seamless ? 210 : 150) * GameState.skillMult('run_speed')
       * (GameState.isMounted ? 2 * GameState.skillMult('bike_speed') : 1)
       * this.runSpeedFactor()
-      * GameState.moveSpeedMult;
+      * GameState.moveSpeedMult
+      * (this.wading ? 0.55 : 1);   // 224차 — 물속은 느리다
     let vx = 0, vy = 0;
     if (this.time.now < this.knockUntil) {
       // 차량 충돌 넉백 — 입력 무시, 진행 방향 뒤로 밀림
@@ -7165,6 +7197,46 @@ export class RegionFieldScene extends Phaser.Scene {
       if (this.overpassCollider) this.overpassCollider.active = ground;
     }
     if (this.traffic) this.traffic.playerOnDeck = ov.onDeck;
+  }
+
+  /**
+   * 224차 — 얕은 물 들어가기(사용자 지시 「장화를 신고 · 완만한 물가 · 캐릭터 한 칸」).
+   * 걸어 들어갈 수 있는 물은 `SeamlessChunks.wadeAt`이 정한 물가 한 칸뿐이고, 그 칸의 충돌은 장화를 신고
+   * (자전거를 타지 않고 · 고가 위가 아닐 때) 꺼진다. 물때가 높아 1m를 넘으면 들어가지 못한다.
+   */
+  private updateWading(delta: number): void {
+    if (!this.chunks || !this.playerBody) return;
+    const deck = this.overpass?.onDeck ?? false;
+    const can = InventoryStore.wearingWaders && !GameState.isMounted && !deck && shallowWaterDepthM(this.wadeTideLevel()) < 1;
+    if (this.wadeCollider) this.wadeCollider.active = !can && !deck;
+    const c = Math.floor(this.playerBody.x / TR);
+    const r = Math.floor((this.playerBody.y + this.PLAYER_FOOT_OFFSET * 0.5) / TR);
+    const was = this.wading;
+    this.wading = this.chunks.wadeAt(c, r) > 0;
+    if (this.wading && !was) this.hud?.pushLog('[채집] 장화를 신고 얕은 물에 들어섰다.');
+    // 발목 물결 — 서 있는 자리에 작은 동심원
+    if (this.wading) {
+      this.wadeRippleT += delta;
+      if (!this.wadeRipple) this.wadeRipple = this.add.graphics().setDepth(this.playerSprite ? this.playerSprite.depth - 0.01 : 7);
+      const g = this.wadeRipple;
+      g.clear();
+      const ph = (this.wadeRippleT % 1200) / 1200;
+      const fx = this.playerBody.x, fy = this.playerBody.y + this.PLAYER_FOOT_OFFSET;
+      g.lineStyle(1.5, 0xd8f0ff, 0.6 * (1 - ph));
+      g.strokeEllipse(fx, fy, 18 + ph * 22, 6 + ph * 7);
+      g.fillStyle(0x3d7fa8, 0.5);      // 발목까지 잠긴 물
+      g.fillEllipse(fx, fy - 2, 22, 9);
+      g.lineStyle(1, 0xd8f0ff, 0.35);
+      g.strokeEllipse(fx, fy, 16, 5);
+      if (this.playerSprite) g.setDepth(this.playerSprite.depth + 0.01);
+    } else if (this.wadeRipple) {
+      this.wadeRipple.clear();
+    }
+  }
+
+  /** 224차 — 지금 물가 수위(0~1) — 채집 환경과 같은 규칙 */
+  private wadeTideLevel(): number {
+    return this.forage?.tideLevel01() ?? 0.5;
   }
 
   /** 184차 — 차량이 고가 위/밑을 구분하게 한다 */

@@ -2,7 +2,7 @@
 
 > 상태 **🟢 운영(인-맵 1차)** — 121차에 **속초 심리스 맵 위에서** 채집·어장 규제·통발이 동작한다.
 > 레거시 별도 씬(`NightHuntingScene`/`TrapScene`)은 FieldScene 경로에만 남아 있고 폐기 후보.
-> 관련 차수 099(조사·결함 2건) · **121(인-맵 채집·어장·조례·통발)** — 세부 로드맵은 §5.
+> 관련 차수 099(조사·결함 2건) · **121(인-맵 채집·어장·조례·통발)** · **224(현실화 1차 — 얕은 물 · 장화 · 손놀림 놀이 5종 · 갯것 미끼)** — 세부 로드맵은 §5.
 
 ---
 
@@ -18,12 +18,15 @@
 | 계층 | 파일 | 역할 | 상태 |
 |---|---|---|---|
 | core | `types/Foraging.ts` | 도구·접근·스팟·어장 폴리곤 타입 · `farmAt` · 조례 상수 · 판매 금지 상수 | ✅ 121 |
-| core | `simulation/ForagingEngine.ts` | 시드 스팟 롤링 · 안전 판정 · 도구/홀드 · 채집 결과 · 조례 위반·적발 · 통발 산란기 위반 | ✅ 121 |
-| core | `db-schema/ShoreCreatureDatabase.ts` | 생물 12종(동해 4종 신설) — 도구·스팟 종류·맨손 부상·보호종 | ✅ |
+| core | `simulation/ForagingEngine.ts` | 시드 스팟 롤링(동해 배율 · 여름잠 · 바닥 일치) · 안전 판정 · 사는 모양 → 놀이 갈래 · 수확 · 다침(장갑) · 얕은 물 수심 · 조례 | ✅ 224 |
+| core | `simulation/ForageMinigame.ts` | 손놀림 놀이 5종(덮치기 · 줍기 · 떼기 · 파기 · 당기기) 상태 머신 + 난이도 테스트 | ✅ 224 |
+| core | `db-schema/ShoreCreatureDatabase.ts` | 생물 21종 — 웹 조사 반영(서식 · 금어기 · 체장 · 동해 출현 · 여름잠) · 갈래 · 바닥 · 미끼 아이템 | ✅ 224 |
 | core | `simulation/TrapSystem.ts` · `db-schema/TrapDatabase.ts` | 수거·효율 곡선·분실 롤·면허 등급·가격 · 통발 8종(+도루묵) | ✅ |
 | core | `config/tuning.ts` `forage`·`trap` | 밀도·성공·도주·적발·벌금·분실 배율 (F8 11종 — **mockup**) | 🔶 조율 대기 |
 | data | `public/data/<region>/fishfarms.json` ← `tools/extract_fishfarms.py` | 어촌계 어장 폴리곤(EPSG:5179 SHP 클립 · 타일 좌표) | ✅ 속초 3개 |
-| client | `scenes/field/ForageSystem.ts` | 후보 타일 → 스팟 렌더 · 어장 오버레이 · 랜턴 가시성 · [F] 홀드 · 수확 · 단속 · 미끄러짐 | ✅ 121 |
+| client | `scenes/field/ForageSystem.ts` | 후보 타일(테트라포드 제외 · 얕은 물) → 스팟 · 달아나기 · 랜턴 가시성 · [F] → 놀이 · 놓침 = 사라짐 · 수확/미끼 · 단속 · 미끄러짐 | ✅ 224 |
+| client | `ui/ForageGamePanel.ts` | 놀이 판 그리기 · 마우스/Space · ESC = 포기 · 갈래별 첫 열기 가이드 | ✅ 224 |
+| client | `SeamlessChunks.computeWade` · `RegionFieldScene.updateWading` | 얕은 물 칸 · 따로 굽는 충돌(`wadeWalls`) · 장화면 그 collider만 끔 · 1m · 물결 | ✅ 224 |
 | client | `scenes/field/TrapFieldSystem.ts` · `ui/TrapDeployPanel.ts` | 통발 선택 → 물 위 설치 · 부표 · [F] 수거 · 반환 | ✅ 121 |
 | client | `RegionFieldScene` 배선 | E 우선순위 · T 키 · 설치 클릭/ESC · `depthAtWaterTile` · `__FIELD`(dev) | ✅ 121 |
 | client(legacy) | `scenes/NightHuntingScene.ts` · `TrapScene.ts` · `GameState.addHarvestToCooler` | 별도 씬(이모지 클릭) · 화면에 없는 legacy 쿨러 | ⚠ 폐기 후보 |
@@ -31,11 +34,12 @@
 ## 3. 동작 구조
 
 ```
-채집: 지형 규칙(섬/암초=갯바위 · 사석/TTP=발밑 · 상판+항만=안벽 · 자연 뭍=갯바위/웅덩이)
-      → 후보 3,836타일 → rollForageSpots(시간 슬롯 시드 · 밀도 5/100 · 간조 보너스 · 시장가 역가중) → 스팟 ≤220
-      → 가시성(낮: 랜턴 0 생물 / 밤: 헤드랜턴 루멘×0.55타일 반경)
-      → [F] 홀드(forageSafety 풍속·파고 게이트 → 미끄러짐 롤) → attemptForage(도구·부상·도주·법정 크기)
-      → CoolerStore(활어) 또는 인벤 '채집물'(forageCatch) → 도감 → 어장 안 보호종이면 rollEnforcement → 압수+벌금
+채집: 지형 규칙(섬/암초 · 갯바위=rock_shore/웅덩이 · 사석=발밑 · 상판+항만=안벽 · 테트라포드 ✕ · 얕은 물 칸=shallows)
+      → 후보(속초 1,910) → rollForageSpots(시드 · 밀도 · 간조 · 시장가 역가중 · 동해 배율 · 여름잠 · 바닥) − GONE → 스팟
+      → 가시성(낮: 랜턴 0 생물 / 밤: 헤드랜턴 반경) · 달아나는 녀석은 어슬렁 · 뛰어오면 튐(2회 뒤 사라짐)
+      → [F](허가 · 장화로 물에 섰나 · 안전 · 미끄러짐) → ForageGamePanel(core 놀이) → 이김/놓침/포기 = 그 스팟 GONE
+      → 이김: 다침 롤(맨손 · 장갑) → rollForageHarvest(법정 크기) → 미끼 갯것이면 가방 미끼 / 아니면 쿨러 · 인벤 '채집물'
+      → 도감 → 어장 안 보호종이면 rollEnforcement → 압수+벌금
 통발: T / 인벤 '통발 놓기' → TrapDeployPanel(통발×미끼) → 물 타일(플레이어 4타일·육지 거리 ≤3) 클릭
       → validateTrapDeployment(면허 등급·개수·수심) → 통발 1 + 미끼 1 소모 → DeployedTrap(mapId·depthM·durability)
       → wall-clock 침지 → [E] 확인 → rollTrapLoss 1회 → harvestTrap → 쿨러/인벤 → 통발 반환(내구도 0 = 파손)
@@ -63,7 +67,9 @@
 | F2 강원 조례 재현 | ✅ 5종 금지·적발/압수/벌금·판매 금지·산란기 도루묵·스쿠버 없음 | 121 |
 | F3 야간 실검증 | ⬜ 실시간 시계라 낮에만 검증 — 야간 생물·랜턴 반경 미검증 | — |
 | 물때 시간창 · 물살 | ✅ 해루질 = 간조 2시간 전 ~ 1시간 뒤 스팟·성공 가산 + 들물 경고(동해 제외) · 수위 = 물때 흐름 기반 · 통발 = 침지 평균 물살 0.85~1.15 · 동해 감쇠 | 205 — [워크로그](../03-WORKLOG/2026-10-04-205-tide-species-genre.md) |
-| F4 접근 확장(wade/dive) | ⬜ `ForageAccess` 자리만 — 가슴장화·스킨/스쿠버(사용자 계획) | — |
+| F4 접근 확장 — wade | ✅ 장화 · 완만한 물가 한 칸 · 1m · 물 생물은 그곳만 (dive는 ⬜) | 224 — [워크로그](../03-WORKLOG/2026-10-06-224-foraging-realism-bait-economy.md) |
+| 현실화 P1 — 갈래 · 놀이 5종 · 놓침 = 사라짐 · 달아나기 · 다침(장갑) · 갯것 미끼 · 웹 조사 반영 | ✅ | 224 |
+| 단서 보기(숨구멍 · 배설 둔덕) | ⬜ 기획 §2 A — 동해엔 갯벌이 거의 없어 후순위 | — |
 
 ## 5. 잔여·차기 (착수 로드맵)
 
@@ -74,13 +80,11 @@
 
 1. **야간 검증 + F8 조율**(밀도·성공·적발·벌금) — 야간 세션 또는 시각 오버라이드 dev 훅.
 2. **D4 실사 스프라이트** 12종(스킬 `asset-pipeline`) — 키 `forage_<id>` 교체만.
-3. **wade/dive 접근** — 물 안 이동 규칙·장비 아이템(가슴장화·수경/스노클·스쿠버) + 스쿠버 = 조례상 비어업인 금지라
-   면허/어업인 루트 설계 필요.
+3. **dive 접근** — 수경/스노클·스쿠버 + 스쿠버 = 조례상 비어업인 금지라 면허/어업인 루트 설계 필요(wade는 224 ✅).
 4. 레거시 씬·legacy 쿨러 폐기(사용자 결정) · HUD 로그 영어 규칙 재수집(120차 전수 하네스) · 미니맵 스팟/어장 표시.
 5. 채집물 sink = 불요리 대과제(S15) — 섭국·보말죽·성게알 등 레시피.
-6. **해루질 현실화 기획** [`.agents/FORAGING_REALISM_SPEC.md`](../../../.agents/FORAGING_REALISM_SPEC.md) v0.1(222차 제안) —
-   생물 4갈래(묻혀 사는 것 · 붙어 사는 것 · 기어 다니는 것 · 걸어 다니며 도망치는 것) · 단서 · 맨손/도구 · 다침 → 상태이상 · 손재주 연동 · P1~P4.
-   **§8 질문 6개 사용자 답 대기**. 관련 스킬 「조용한 걸음」(`drv_nightride`)은 이 기획이 들어올 때까지 자물쇠.
+6. **해루질 현실화 남은 것** — 단서 보기 · 생물 그림(새 3종 · 놀이 판용 큰 몸 — 224 §6) · 법령 수치 정본 대조 ·
+   생물별 크기 밴드 · 「조용한 걸음」(`drv_nightride`) 자물쇠를 풀어 달아나기 놀람 반경에 연결.
 
 ## 6. 함정·불변조건
 
@@ -98,3 +102,7 @@
 10. i18n 규칙은 `(m, tr)`의 **`tr()`로 캡처를 재번역**해야 런타임 사전(생물 `nameEn`·지명)이 먹는다 — `EN_DICT[...]` 직접 조회는 정적 사전만.
 11. **홀드 폴링 키 = 시작 키** — 122차 E→F 전환 때 `keyE.isDown` 폴링이 남아 F 홀드가 다음 프레임에 취소됐다(하네스 실측). 키를 바꾸면 `addKey`도 함께.
 12. **홀드 라벨은 y−80** — 플로팅 힌트(y−40 → −62 트윈)·홀드 바(y−66)와 겹치지 않게(122차 스크린샷 실측).
+13. **얕은 물은 바다 벽(`walls`)에서 빠지고 `wadeWalls`로 따로 굽힌다**(224) — `isBlockedAt`이 얕은 칸을 false로 돌려준다.
+   청크를 다시 굽는 경로(생성 · `invalidateTiles` · `setArmor`)는 전부 `computeWade`를 다시 불러야 한다(안 부르면 얕은 칸이 벽도 물도 아닌 구멍이 된다).
+14. **놀이 창이 닫히면 반드시 `onEnd`가 한 번 불린다**(224) — 끝나기 전에 닫히면(ESC · ✕) 「포기 = 놓침」으로 친다. 놀이 상태(`playing`)가 남으면 [F]가 영영 막힌다.
+15. **시간이 밤이면 하네스가 스팟을 못 본다**(224) — 헤드랜턴이 없으면 가시성 0 → `nearSpot` null. 하네스는 `inv_headlamp`를 쥐여 줄 것.

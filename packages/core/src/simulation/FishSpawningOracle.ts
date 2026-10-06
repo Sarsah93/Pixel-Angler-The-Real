@@ -48,6 +48,7 @@ export type BaitKey =
   | 'bread'       // 빵가루 경단·떡밥 (벵에돔/숭어류)
   | 'fishcut'     // 생선·오징어 살
   | 'livefish'    // 살아있는 생미끼 (전갱이/미꾸라지 등)
+  | 'slater'      // 224차 — 갯강구(갯바위에서 직접 잡는 생미끼 · 망상어 · 벵에돔 · 감성돔)
   | 'lure';       // 루어류
 
 /** 서식 지형 분류 */
@@ -272,7 +273,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
   {
     speciesId: 'surfperch', nameKo: '망상어', nameEn: 'Ditrema temminckii',
     habitat: ['structure'], minDepthM: 2, maxDepthM: 10, preferredLayers: ['mid', 'bottom'],
-    baitPreference: { krill: 60, worm_blue: 35, corn: 5 },
+    baitPreference: { krill: 60, slater: 45, worm_blue: 35, corn: 5 },
     minCm: 12, maxCm: 30, meanCm: 21, sdCm: 3, lwrA: 0.015, lwrB: 3.05, bodyForm: 'deepBody', maleRatio: 0.5,
     sexNote: '태생 어종 — 봄에 완전히 자란 새끼를 직접 출산',
     // 주행성 — 봄철 낮 방파제 찌낚시 어종
@@ -494,7 +495,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     speciesId: 'largescale_blackfish', nameKo: '벵에돔', nameEn: 'Largescale Blackfish',
     // 조류 완만한 내만성 갯바위/암초/테트라포드, 해조류 무성한 곳 (실측 데이터 2026-07-16)
     habitat: ['reef', 'structure'], minDepthM: 3, maxDepthM: 15, preferredLayers: ['mid'],
-    baitPreference: { bread: 50, krill: 30, worm_blue: 20 },
+    baitPreference: { bread: 50, krill: 30, slater: 25, worm_blue: 20 },
     minCm: 15, maxCm: 55, meanCm: 30, sdCm: 5, lwrA: 0.0205, lwrB: 3, bodyForm: 'deepBody', maleRatio: 0.5,
     sexNote: '수온·소음에 극도로 예민 — 이물감이 느껴지면 바로 뱉는 약은 입질. 금지체장 없음(20~23cm 미만 자율 방생 권장)',
     // 주행성 — 낮 찌낚시 대표 어종
@@ -587,7 +588,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
   {
     speciesId: 'black_seabream', nameKo: '감성돔', nameEn: 'Black Seabream',
     habitat: ['reef'], minDepthM: 10, maxDepthM: 40, preferredLayers: ['bottom'],
-    baitPreference: { crab: 40, corn: 30, krill: 20, worm_blue: 10 },
+    baitPreference: { crab: 40, corn: 30, slater: 25, krill: 20, worm_blue: 10 },
     minCm: 18, maxCm: 72, meanCm: 40, sdCm: 8, lwrA: 0.0179, lwrB: 2.95, bodyForm: 'deepBody',
     maleRatio: 0.5,
     sexRule: (len) => (len < 30 ? 0.9 : len < 40 ? 0.6 : 0.25),

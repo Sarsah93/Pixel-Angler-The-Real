@@ -46,6 +46,7 @@ export function partKindOf(i: Pick<InvItem, 'id' | 'name' | 'subCategory' | 'rig
 export function baitKeyOf(i: Pick<InvItem, 'name' | 'subCategory'>): BaitKey | undefined {
   const n = i.name ?? '';
   if (n.includes('혼무시') || n.includes('참갯지렁이')) return 'worm_king';
+  if (n.includes('갯강구')) return 'slater';   // 224차
   if (n.includes('지렁이')) return 'worm_blue';
   if (n.includes('크릴')) return 'krill';
   if (n.includes('빵') || n.includes('떡밥')) return 'bread';

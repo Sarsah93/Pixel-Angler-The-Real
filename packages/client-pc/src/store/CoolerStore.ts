@@ -395,6 +395,9 @@ class CoolerStoreImpl {
   }
 
   /** 섞기 완료 — 밑밥 100 충전(222차 「밑밥 블렌딩」이 늘린다) */
+  /** 224차 — 빵가루가 들어간 배합인가(물과 갤 때 바늘에 다는 경단도 뭉쳐 둘 수 있다) */
+  chumHasBread(): boolean { return this.chumIngredients.some((i) => i.name.includes('빵가루')); }
+
   completeChumMix(): void {
     this.chumMixed = true;
     this.chumMax = Math.round(100 * this.chumAmountMult());

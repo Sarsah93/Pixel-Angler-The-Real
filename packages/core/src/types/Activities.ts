@@ -19,7 +19,8 @@ export type ShoreCreatureCategory =
   | 'cephalopod'      // 두족류 (낙지, 문어)
   | 'echinoderm'      // 극피동물 (성게, 해삼)
   | 'bivalve'         // 이매패류 (키조개, 대합)
-  | 'gastropod';      // 복족류 (소라, 전복)
+  | 'gastropod'       // 복족류 (소라, 전복)
+  | 'annelid';        // 224차 — 환형동물 (갯지렁이 · 혼무시)
 
 /** 해루질 장비 */
 export interface ShoreHuntingGear {

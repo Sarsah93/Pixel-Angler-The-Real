@@ -103,6 +103,8 @@ export interface ShopEntry extends InvItemTemplate {
   furnKind?: FurnKind;
   /** 1회 구매 최대 수량 (1이면 단건 확인만) */
   maxPerPurchase: number;
+  /** 224차 — 손님이 판 중고 장비(가게가 되판다). 사면 가게 중고 칸에서 빠진다 */
+  usedUid?: string;
   desc: string;
 }
 
@@ -276,6 +278,13 @@ const FORAGE_CORNER: ShopEntry[] = [
   { id: 'inv_headlamp', name: '헤드랜턴 (800lm)', icon: '🔦', category: 'etc', subCategory: '해루질 도구', basePrice: 25000, price: 28000, maxPerPurchase: 1, equippable: false, lampLumens: 800, desc: '야간 채집 필수 — 루멘이 발견 반경. 100lm당 약 0.55타일.' },
   { id: 'inv_tongs',    name: '채집 집게',        icon: '🥢', category: 'etc', subCategory: '해루질 도구', basePrice: 8000,  price: 9500,  maxPerPurchase: 1, equippable: false, forageTool: 'tongs', desc: '소라·홍합·성게·해삼. 맨손으로 성게를 집으면 가시에 찔린다.' },
   { id: 'inv_gaff',     name: '채집 갈고리',      icon: '🪝', category: 'etc', subCategory: '해루질 도구', basePrice: 12000, price: 14000, maxPerPurchase: 1, equippable: false, forageTool: 'gaff', desc: '바위틈 문어·전복. 뜰채보다 문어를 덜 놓친다.' },
+  // 224차 — 얕은 물 해루질(사용자 지시 「물에 사는 생물은 장화를 신고 들어가도록」) · 갯지렁이 파기 · 손 보호
+  { id: 'inv_boots_wading', name: '해루질 장화', icon: '', iconTexture: 'px:it_boots', category: 'gear', subCategory: '신발', basePrice: 22000, price: 26000, maxPerPurchase: 1, equippable: true, wading: true,
+    desc: '무릎까지 오는 고무 장화. 신으면 모래·자갈·갯바위가 바다와 만나는 물가의 얕은 물(1m 미만) 한 칸까지 걸어 들어갈 수 있다.' },
+  { id: 'inv_rake', name: '갯지렁이 갈퀴', icon: '', iconTexture: 'px:it_rake', category: 'etc', subCategory: '해루질 도구', basePrice: 6000, price: 7000, maxPerPurchase: 1, equippable: false, forageTool: 'rake',
+    desc: '세 발 갈퀴. 삽처럼 몸을 끊지 않고 펄·모래를 긁어 뒤집는다 — 갯지렁이 · 조개 파기.' },
+  { id: 'inv_gloves_rubber', name: '해루질 고무장갑', icon: '', iconTexture: 'px:it_gloves', category: 'gear', subCategory: '장갑', basePrice: 5000, price: 6000, maxPerPurchase: 2, equippable: true,
+    desc: '두꺼운 고무장갑. 굴 껍데기 · 게 집게 · 성게 가시에 덜 다친다.' },
   // 196차 — 뜰채(손 도구 — 낚싯대 반대 손). 자루가 발판 높이 + 0.5m에 닿으면 들어 올릴 때 바늘이 빠지지 않는다
   { id: 'shop_net_3', name: '뜰채 3m', icon: '', iconTexture: 'px:it_net', category: 'gear', subCategory: '손도구', basePrice: 18000, price: 22000, maxPerPurchase: 1, equippable: true, tool: 'net', netReachM: 3, desc: '짧은 뜰채 — 갯바위·사석·해변처럼 수면이 가까운 자리용.' },
   { id: 'shop_net_5', name: '뜰채 5m', icon: '', iconTexture: 'px:it_net', category: 'gear', subCategory: '손도구', basePrice: 30000, price: 36000, maxPerPurchase: 1, equippable: true, tool: 'net', netReachM: 5, desc: '가장 흔한 길이 — 안벽·테트라포드까지 닿는다.' },
@@ -337,7 +346,9 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
       { id: 'inv_mat_resin', name: '에폭시 수지', icon: '', iconTexture: 'px:it_paint', category: 'etc', subCategory: '재료', basePrice: 4000,  price: 5000,  maxPerPurchase: 20, equippable: false, craftMaterial: true, desc: '로드 도장·루어 코팅 재료.' },
       { id: 'inv_mat_paint', name: '도료 세트',  icon: '', iconTexture: 'px:it_paint', category: 'etc', subCategory: '재료', basePrice: 5000,  price: 6000,  maxPerPurchase: 20, equippable: false, craftMaterial: true, desc: '루어 컬러링 재료.' },
       { id: 'inv_chum',     name: '집어제 (크릴 배합)',      icon: '🧂', category: 'consumable', subCategory: '집어제/밑밥', basePrice: 6000, price: 7000, maxPerPurchase: 10, equippable: false, chumKind: 'powder', desc: '어군 활성도 상승.' },
-      { id: 'inv_breadbait', name: '빵가루 경단',            icon: '🍞', category: 'tackle',     subCategory: '반죽미끼',    basePrice: 3000, price: 3500, maxPerPurchase: 10, equippable: false, desc: '벵에돔·숭어용 반죽 미끼 — 잡어 성화를 피한다.' },
+      // 224차 — 미끼용 빵가루 반죽은 200g 한 봉지로 판다. 가방에서 「포장 뜯기」를 하면 바늘에 다는 경단 10개가 된다.
+      { id: 'inv_breadbait_pack', name: '빵가루 반죽 (200g)', icon: '', iconTexture: 'px:it_breadpack', category: 'tackle', subCategory: '반죽미끼', basePrice: 3000, price: 4000, maxPerPurchase: 10, equippable: false,
+        unpack: { id: 'inv_breadbait', qty: 10 }, desc: '벵에돔·숭어용 반죽 미끼 한 봉지. 뜯으면 경단 10개 — 잡어 성화를 피한다.' },
       { id: 'inv_can',      name: '참치 통조림 (묶음)',      icon: '🥫', category: 'food',       subCategory: '가공품',     basePrice: 2000, price: 2200, maxPerPurchase: 20, equippable: false, desc: '마트 대용량 특가.' },
       { id: 'inv_ice_bulk',   name: '대용량 각얼음',    icon: '🧊', category: 'consumable', subCategory: '보냉', basePrice: 4000, price: 4500, maxPerPurchase: 10, equippable: false, desc: '쿨러 얼음 넣기 재료 — 1개로 2시간 보냉 (마트 특가).' },
       { id: 'inv_coarse_salt', name: '굵은소금',        icon: '🧂', category: 'consumable', subCategory: '조미/손질', basePrice: 2000, price: 2500, maxPerPurchase: 10, equippable: false, desc: '문어 손질(소금 치대기) 재료 — 점액과 이물을 걷어낸다. 1회 1개 소모.' },
@@ -360,7 +371,7 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
     kind: 'market',
     name: '수산물 직판장',
     greeting: '오늘 새벽에 들어온 물건입니다. 잡으신 고기도 매입해요.',
-    buysCategories: ['food'],
+    buysCategories: ['food', 'gear'],   // 224차 — 장비(대 · 릴 · 옷 · 뜰채)는 사서 되판다
     // 147차 — 속초는 위판장 POI가 따로 없어 직판장이 위판 창구를 겸한다(사용자 결정)
     auctionWindow: true,
     sells: [
@@ -385,7 +396,13 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
       { id: 'shop_squid',    name: '오징어 (선어)', icon: '🐟', category: 'food',   subCategory: '어획물',   basePrice: 8000,  price: 10000, maxPerPurchase: 5,  condition: 'chilled', equippable: false, catchMethod: 'bought', desc: '당일 조업 선어.' },
       { id: 'inv_krill',     name: '크릴 (냉동)',   icon: '🦐', category: 'tackle', subCategory: '냉동미끼', basePrice: 4000,  price: 4500,  maxPerPurchase: 10, condition: 'frozen', equippable: false, desc: '범용 냉동 미끼.' },
       { id: 'inv_fishcut',   name: '생선 조각 미끼', icon: '🦐', category: 'tackle', subCategory: '선어미끼', basePrice: 3000,  price: 3500,  maxPerPurchase: 10, condition: 'chilled', equippable: false, desc: '갈치/우럭용 절단 미끼.' },
-      { id: 'inv_ragworm',   name: '갯지렁이',      icon: '', iconTexture: 'item_worm', category: 'tackle', subCategory: '생미끼',   basePrice: 6000,  price: 7000,  maxPerPurchase: 10, condition: 'live', equippable: false, desc: '원투·도다리용 생미끼.' },
+      // 224차 — 생미끼는 마리가 아니라 「갑」으로 판다. 한 갑을 사면 가방에 마리 수만큼 들어간다(사용자 지시 — 혼무시 1갑 ≈ 15,000원 · 8마리 · 60g).
+      { id: 'pack_ragworm', name: '청갯지렁이 1갑 (8마리)', icon: '', iconTexture: 'item_worm', category: 'tackle', subCategory: '생미끼', basePrice: 5000, price: 6000, maxPerPurchase: 5, equippable: false,
+        bundle: [{ tpl: { id: 'inv_ragworm', name: '갯지렁이', icon: '', iconTexture: 'item_worm', category: 'tackle', subCategory: '생미끼', basePrice: 600, condition: 'live', equippable: false }, qty: 8 }],
+        desc: '원투·도다리용 생미끼 한 갑. 여덟 마리가 들어 있다.' },
+      { id: 'pack_honmushi', name: '참갯지렁이(혼무시) 1갑 (8마리 · 60g)', icon: '', iconTexture: 'item_honmushi', category: 'tackle', subCategory: '생미끼', basePrice: 12000, price: 15000, maxPerPurchase: 5, equippable: false,
+        bundle: [{ tpl: { id: 'inv_honmushi', name: '혼무시', icon: '', iconTexture: 'item_honmushi', category: 'tackle', subCategory: '생미끼', basePrice: 1500, condition: 'live', equippable: false }, qty: 8 }],
+        desc: '굵고 냄새가 진한 참갯지렁이 한 갑(8마리 · 60g 남짓). 감성돔 · 참돔 · 대물 원투용.' },
       // 제작 재료 (129차 P7) — 낚시 계열 재료는 직판장이 취급한다.
       { id: 'inv_mat_tin',   name: '주석 잉곳',    icon: '', iconTexture: 'px:it_ingot', category: 'etc', subCategory: '재료', basePrice: 3000,  price: 3600,  maxPerPurchase: 30, equippable: false, craftMaterial: true, desc: '봉돌·에기 싱커 주조 재료.' },
       { id: 'inv_mat_mesh',  name: '통발 그물망',  icon: '', iconTexture: 'px:it_mesh', category: 'etc', subCategory: '재료', basePrice: 6000,  price: 7200,  maxPerPurchase: 20, equippable: false, craftMaterial: true, desc: '통발 제작 재료.' },
@@ -467,7 +484,7 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
       { id: 'inv_line_nylon3', name: '나일론 원줄 3호 100m', icon: '🧵', category: 'tackle', subCategory: '원줄 스풀',
         basePrice: 4000, price: 4000, maxPerPurchase: 5, equippable: false,
         desc: '거친 구멍 바닥에 쓸려도 덜 아픈 값싼 원줄.' },
-      { id: 'inv_gloves_work', name: '목장갑', icon: '🧤', category: 'gear', subCategory: '장갑',
+      { id: 'inv_gloves_work', name: '목장갑', icon: '', iconTexture: 'px:it_gloves', category: 'gear', subCategory: '장갑',
         basePrice: 2000, price: 2000, maxPerPurchase: 3, equippable: true,
         desc: '테트라포드·그물 작업 기본. 손을 베지 않는 것이 먼저다.' },
       // 189차 — 집 화분(나중에는 텃밭)에 물을 준다. 손에 들고 화분 앞에서 [F]
@@ -480,7 +497,7 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
         basePrice: 25000, price: 26000, maxPerPurchase: 1, equippable: false, lampLumens: 800,
         desc: '야간 채집 필수 — 루멘이 발견 반경. 100lm당 약 0.55타일.' },
     ],
-    buysCategories: [],
+    buysCategories: ['gear'],   // 224차 — 파는 장비(대 · 릴 · 장갑)는 사서 되판다
   },
   pub: {
     kind: 'pub',
@@ -503,6 +520,14 @@ for (const def of Object.values(SHOP_CATALOG)) {
   for (const e of def.sells) applyItemVitals(e);
 }
 
+/** 224차 — 가게가 파는 물건 id(산 물건 되사기 판정 — `shopBuysItem`). 번들 구성품 id도 넣는다 */
+const SHOP_ITEM_IDS = new Set<string>();
+for (const def of Object.values(SHOP_CATALOG)) for (const e of def.sells) {
+  SHOP_ITEM_IDS.add(e.id);
+  for (const b of e.bundle ?? []) SHOP_ITEM_IDS.add(b.tpl.id);
+  if (e.unpack) SHOP_ITEM_IDS.add(e.unpack.id);
+}
+
 /**
  * 223차 — 도면 종이. 도면 DB의 `learn: { via: 'shop' }` 가 가게(건물 종류)와 값을 정한다 —
  * 도면을 하나 더 팔려면 core 도면에 얻는 길만 적으면 된다(여기는 고치지 않는다).
@@ -519,6 +544,27 @@ for (const bp of CRAFT_BLUEPRINTS) {
     price: bp.learn.priceWon, maxPerPurchase: 1, equippable: false, blueprintId: bp.id,
     desc: `읽으면 ${where} 「${bp.nameKo}」를 만들 줄 알게 된다.`,
   });
+}
+
+/**
+ * 224차 — 가게가 손님에게서 사들이는가(사용자 지시 「장비는 사서 되팔 수 있으나, 미끼 · 소모품은 사지 않는다」).
+ *  - 장비(`gear` — 대 · 릴 · 옷 · 뜰채 · 장갑)는 그 가게가 매입 갈래에 `gear`를 두었을 때.
+ *  - 먹을거리(`food`)는 **손님이 잡거나 만든 것**만 — 어획물 · 손질물 · 부산물 · 요리 · 회 접시.
+ *    가게에서 산 주먹밥 · 통조림 · 활어 같은 가공품은 되사지 않는다(사서 되파는 돈벌이 차단).
+ *  - 그 밖의 갈래(미끼 · 채비 · 소모품 · 재료 · 기타)는 사들이지 않는다.
+ */
+export function shopBuysItem(
+  def: Pick<ShopDef, 'buysCategories'>,
+  i: Pick<InvItemTemplate, 'id' | 'category' | 'speciesId' | 'dish' | 'dishInstance' | 'sashimi' | 'byproductKind' | 'subCategory' | 'catchMethod'>,
+): boolean {
+  if (!def.buysCategories.includes(i.category)) return false;
+  if (i.category === 'gear') return true;
+  if (i.category === 'food') {
+    if (SHOP_ITEM_IDS.has(i.id) || i.catchMethod === 'bought') return false;
+    return !!(i.speciesId || i.dish || i.dishInstance || i.sashimi || i.byproductKind)
+      || ['어획물', '손질 필렛', '손질 통마리', '부산물', '요리'].includes(i.subCategory);
+  }
+  return false;
 }
 
 /** 건물 배치용 종류 순환 배열 (POI 인덱스 → 건물 종류) */

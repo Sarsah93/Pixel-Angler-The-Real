@@ -424,6 +424,11 @@ export class SeamlessChunks {
 
   /** 충돌 그룹 — 씬이 playerBody와 collider를 1회 등록한다 */
   readonly walls: Phaser.Physics.Arcade.StaticGroup;
+  /**
+   * 224차 — 얕은 물(걸어 들어갈 수 있는 물가 1칸) 충돌. `walls`와 따로 둔다 —
+   * 씬이 장화를 신었을 때 이 그룹의 collider만 끈다(사용자 지시 「장화를 신고 들어가도록」).
+   */
+  readonly wadeWalls: Phaser.Physics.Arcade.StaticGroup;
 
   /** 바다 타일의 육지 거리 (수심 그라데이션) — 전맵 1회 BFS */
   private waterDist: Uint16Array;
@@ -447,6 +452,8 @@ export class SeamlessChunks {
   private lotFill: Float32Array;
   /** 항만 수역(112차) — 뭍에 둘러싸인 물(항 내측·석호). 정박 어선·계선주·크레인의 기준. computeHarbor */
   private harbor: Uint8Array;
+  /** 224차 — 얕은 물 1칸(0 아님 · 1 모래·흙 · 2 갯바위 · 3 섞임). computeWade */
+  private wade: Uint8Array = new Uint8Array(0);
   /** 섬/암초 플래그 (computeIslets — 조도 등 소형 야생 육지 = 갯바위 렌더) */
   private islet: Uint8Array;
   /** 섬 암반('.') 안쪽 깊이(물가 = 1 · 한 칸 들어갈 때마다 +1) — 이끼 연속장의 뼈대(182차) */
@@ -493,6 +500,7 @@ export class SeamlessChunks {
     this.chunkCols = Math.ceil(cfg.cols / this.cfg.chunkTiles);
     this.chunkRows = Math.ceil(cfg.rows / this.cfg.chunkTiles);
     this.walls = scene.physics.add.staticGroup();
+    this.wadeWalls = scene.physics.add.staticGroup();
     this.armorSpec = cfg.armor ?? [];
     this.levelGrid = new Uint8Array(cfg.cols * cfg.rows);
     this.setLevels(cfg.levels ?? [], cfg.stairs ?? [], false);
@@ -502,6 +510,7 @@ export class SeamlessChunks {
     this.lotAxis = this.computeLotAxis();
     this.harbor = this.computeHarbor();
     this.bwClass = this.computeBreakwaters();       // harbor 뒤 (항 내측/외해 구분에 쓴다)
+    this.wade = this.computeWade();                  // 224차 — bwClass · harbor · islet 뒤
     this.compOf = new Int32Array(cfg.cols * cfg.rows).fill(-1);
     this.labelBuildings();
     this.indexRoads();
@@ -2079,6 +2088,7 @@ export class SeamlessChunks {
     this.lotFill = lots2.fill;
     this.harbor = this.computeHarbor();
     this.bwClass = this.computeBreakwaters();
+    this.wade = this.computeWade();
     this.compOf.fill(-1);
     this.comps = [];
     this.labelBuildings();
@@ -2185,6 +2195,7 @@ export class SeamlessChunks {
    */
   private isBlockedAt(c: number, r: number): boolean {
     const ch = this.tileAt(c, r);
+    if (ch === '~' && this.wadeAt(c, r) > 0) return false;   // 224차 — 얕은 물은 wadeWalls가 따로 막는다
     if (ch === '~' || ch === 'K') return true;      // 183차 — 암반 절벽은 통째로 막는다
     if (ch !== '#') return false;
     return this.tileAt(c, r + 1) !== '#' || this.tileAt(c, r + 2) !== '#';
@@ -2218,6 +2229,7 @@ export class SeamlessChunks {
     this.armorSpec = armor;
     this.cfg.armor = armor;
     this.bwClass = this.computeBreakwaters();
+    this.wade = this.computeWade();
     this.rebakeResident();
   }
 
@@ -3047,6 +3059,42 @@ export class SeamlessChunks {
   waterDistAt(c: number, r: number): number {
     if (c < 0 || r < 0 || c >= this.cfg.cols || r >= this.cfg.rows) return 0;
     return this.waterDist[r * this.cfg.cols + c];
+  }
+
+  /**
+   * 224차 — 걸어 들어갈 수 있는 얕은 물 1칸인가(0 = 아님 · 1 모래·흙·자갈 · 2 갯바위 · 3 섞임).
+   * 사용자 지시: 직벽(안벽 · 방파제 · 테트라포드 · 도로 호안)이 아니라 **모래 · 자갈 · 흙 · 갯바위가 바다와 만나는 곳**,
+   * 수심 1m가 채 안 되는 **물가 한 칸**만.
+   */
+  wadeAt(c: number, r: number): number {
+    if (c < 0 || r < 0 || c >= this.cfg.cols || r >= this.cfg.rows) return 0;
+    return this.wade[r * this.cfg.cols + c] ?? 0;
+  }
+
+  private computeWade(): Uint8Array {
+    const { cols, rows } = this.cfg;
+    const out = new Uint8Array(cols * rows);
+    const SOFT = new Set(['s', 't', 'd']);
+    const MIXED = new Set(['.', ',']);
+    for (let r = 1; r < rows - 1; r++) {
+      for (let c = 1; c < cols - 1; c++) {
+        if (this.tileAt(c, r) !== '~' || this.harbor[r * cols + c] === 1) continue;
+        let soft = false, rock = false, mixed = false, hard = false;
+        for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+          const cc = c + dc, rr = r + dr;
+          const ch = this.tileAt(cc, rr);
+          if (ch === '~') continue;
+          if (this.bwClass[rr * cols + cc]! > 0) { hard = true; continue; }
+          if (ch === 'k' || this.islet[rr * cols + cc] === 1) rock = true;
+          else if (SOFT.has(ch)) soft = true;
+          else if (MIXED.has(ch)) mixed = true;
+          else hard = true;   // 차도 · 보도 · 포장 · 방파제 · 건물 · 절벽 · 데크 · 밭 · 숲 = 직벽 · 호안
+        }
+        if (hard || !(soft || rock || mixed)) continue;
+        out[r * cols + c] = (soft && rock) || mixed ? 3 : rock ? 2 : 1;
+      }
+    }
+    return out;
   }
 
   /** 항만 수역(computeHarbor — 항 내측·석호) 여부 — 안벽 채집 후보 판정 (121차) */
@@ -3888,6 +3936,22 @@ export class SeamlessChunks {
           );
           this.scene.physics.add.existing(rect, true);
           this.walls.add(rect);
+          slot.bodies.push(rect);
+          runStart = -1;
+        }
+      }
+    }
+    // 224차 — 얕은 물 칸은 따로 막는다(장화를 신으면 씬이 이 collider만 끈다)
+    for (let r = r0; r < r1; r++) {
+      let runStart = -1;
+      for (let c = c0; c <= c1; c++) {
+        const w = c < c1 && this.wadeAt(c, r) > 0;
+        if (w && runStart < 0) runStart = c;
+        else if (!w && runStart >= 0) {
+          const runLen = c - runStart;
+          const rect = this.scene.add.rectangle(runStart * tr + (runLen * tr) / 2, r * tr + tr / 2, runLen * tr, tr, 0x000000, 0);
+          this.scene.physics.add.existing(rect, true);
+          this.wadeWalls.add(rect);
           slot.bodies.push(rect);
           runStart = -1;
         }

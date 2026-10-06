@@ -255,6 +255,10 @@ export interface InvItem {
   craftQuality?: 'good' | 'great';
   /** 223차 — 도면 종이: 읽으면 이 도면(core `CRAFT_BLUEPRINTS` id)을 만들 줄 알게 된다 */
   blueprintId?: string;
+  /** 224차 — 포장 묶음: 가방에서 「포장 뜯기」를 하면 이 물건 qty개가 된다(빵가루 반죽 200g → 경단 10개) */
+  unpack?: { id: string; qty: number };
+  /** 224차 — 장화(신발 칸). 신으면 물가 한 칸 얕은 물에 들어갈 수 있다 */
+  wading?: boolean;
   /**
    * 136차 — 누적 사용 횟수(던지고 감은 사이클). 로드·릴은 마모 계수의 입력,
    * 찌는 부력 변성 판정 시점(300회)의 입력이다.
@@ -621,10 +625,10 @@ function createSeedItems(): InvItem[] {
 
     // ── 낚시용품 ──
     { id: 'inv_worm',     name: '지렁이',                   icon: '', iconTexture: 'item_worm', category: 'tackle', subCategory: '생미끼',    qty: 20, basePrice: 5000,  condition: 'live',    equippable: false },
-    { id: 'inv_ragworm',  name: '갯지렁이',                 icon: '', iconTexture: 'item_worm', category: 'tackle', subCategory: '생미끼',    qty: 15, basePrice: 6000,  condition: 'live',    equippable: false },
-    { id: 'inv_honmushi', name: '혼무시',                   icon: '', iconTexture: 'item_honmushi', category: 'tackle', subCategory: '생미끼',    qty: 8,  basePrice: 12000, condition: 'live',    equippable: false },
+    { id: 'inv_ragworm',  name: '갯지렁이',                 icon: '', iconTexture: 'item_worm', category: 'tackle', subCategory: '생미끼',    qty: 15, basePrice: 600,   condition: 'live',    equippable: false },
+    { id: 'inv_honmushi', name: '혼무시',                   icon: '', iconTexture: 'item_honmushi', category: 'tackle', subCategory: '생미끼',    qty: 8,  basePrice: 1500,  condition: 'live',    equippable: false },
     { id: 'inv_krill',    name: '크릴 (냉동)',              icon: '🦐', category: 'tackle', subCategory: '냉동미끼',  qty: 30, basePrice: 4000,  condition: 'frozen',  equippable: false },
-    { id: 'inv_breadbait', name: '빵가루 경단',             icon: '🍞', category: 'tackle', subCategory: '반죽미끼',  qty: 15, basePrice: 3000,  equippable: false },
+    { id: 'inv_breadbait', name: '빵가루 경단',             icon: '', iconTexture: 'px:it_breadball', category: 'tackle', subCategory: '반죽미끼',  qty: 15, basePrice: 300,   equippable: false },
     { id: 'inv_fishcut',  name: '생선 조각 미끼',           icon: '🦐', category: 'tackle', subCategory: '선어미끼',  qty: 6,  basePrice: 3000,  condition: 'chilled', equippable: false },
     { id: 'inv_pe1',      name: 'AMSTRONG 합사 원줄 1호 · 150m', icon: '', iconTexture: 'line_spool_saiso', category: 'tackle', subCategory: '원줄 스풀', qty: 1,  basePrice: 18000, equippable: false, lineMaterial: 'pe_braid', lineForm: 'sinking', lineLengthM: 150, lineNo: 1, lineDiameterMm: 0.165, lineStrengthLb: 18 },
     { id: 'inv_carbon15', name: 'AMSTRONG 카본 목줄 3호 · 150m', icon: '', iconTexture: 'line_spool_saiso', category: 'tackle', subCategory: '목줄 스풀', qty: 1,  basePrice: 9000,  equippable: false, lineMaterial: 'fluorocarbon', lineForm: 'suspend', lineLengthM: 150, lineNo: 3, lineDiameterMm: 0.285, lineStrengthLb: 10.5 },
@@ -1317,6 +1321,8 @@ class InventoryStoreManager {
         sinkerWeightG: i.sinkerWeightG ?? sd?.sinkerWeightG ?? (i.rigPart === 'card_rig' ? ((i.kitHooks ?? 3) >= 7 ? 60 : (i.kitHooks ?? 3) >= 5 ? 45 : 38) : undefined),
         name: (i.id === 'inv_swivel' && i.name === '면도래 8호') ? '핀 도래 8호' : i.name,
         forageTool: i.forageTool ?? sd?.forageTool,
+        // 224차 — 장화(신발 칸) · 포장 묶음 — 상점 구매분은 저장된 필드 그대로, 이름 규칙 폴백만
+        wading: i.wading ?? sd?.wading ?? (i.subCategory === '신발' && /장화/.test(i.name) ? true : undefined),
         trapSpecId: i.trapSpecId ?? sd?.trapSpecId ?? (i.id.startsWith('inv_trap_') ? i.id.slice('inv_trap_'.length) : undefined),
         // 129차 P7 — 소모품 효과(음식 회복치·구급품)는 아래 applyItemVitals 가 id로 채운다.
         //  상점 구매분은 시드에 없어 seedById 로는 복원되지 않는다 → 테이블이 유일한 경로.
@@ -1711,6 +1717,36 @@ class InventoryStoreManager {
     }
     for (const p of parts) this.addItem(p.tpl, p.qty * Math.max(1, times));
     return true;
+  }
+
+  /** 224차 — 장화를 신고 있는가(신발 칸) */
+  get wearingWaders(): boolean { return this._items.some((i) => i.equipped && i.wading); }
+  /** 224차 — 장갑을 끼고 있는가(장갑 칸) — 손으로 채집할 때 덜 다친다 */
+  get wearingGloves(): boolean { return this._items.some((i) => i.equipped && i.subCategory === '장갑'); }
+
+  /** 224차 — 시드 카탈로그의 물건 모양(칸 · 수량 제외). 없으면 null */
+  seedTemplate(id: string): InvItemTemplate | null {
+    const seed = createSeedItems().find((x) => x.id === id);
+    if (!seed) return null;
+    const { slot: _slot, qty: _qty, ...tpl } = seed;
+    return tpl;
+  }
+
+  /**
+   * 224차 — 포장 뜯기. 묶음 한 개(`unpack` — 빵가루 반죽 200g 등)를 열어 안의 물건으로 바꾼다.
+   * 안의 물건 모양은 시드 카탈로그에서 가져온다. 봉지가 마지막 하나면 그 칸이 비므로 같은 갈래면 자리로 친다.
+   */
+  unpack(itemId: string): { ok: boolean; name?: string; qty?: number; reason?: string } {
+    const it = this.find(itemId);
+    if (!it?.unpack) return { ok: false, reason: '뜯을 포장이 아니다.' };
+    const tpl = this.seedTemplate(it.unpack.id);
+    if (!tpl) return { ok: false, reason: '뜯을 포장이 아니다.' };
+    const freesSlot = it.qty === 1 && it.category === tpl.category;
+    if (!this.find(tpl.id) && !freesSlot && this.freeSlotCount(tpl.category) < 1) return { ok: false, reason: '가방에 자리가 없다.' };
+    const n = it.unpack.qty;
+    if (!this.removeQty(it.id, 1)) return { ok: false, reason: '뜯을 포장이 아니다.' };
+    this.addItem(tpl, n);
+    return { ok: true, name: tpl.name, qty: n };
   }
 
   /**

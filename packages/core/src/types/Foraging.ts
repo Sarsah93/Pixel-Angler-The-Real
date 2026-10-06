@@ -14,12 +14,25 @@
  * `public/data/<region>/fishfarms.json`(RegionFishFarms)이다.
  */
 
-/** 채집 도구 — 시행령 허용 범위 안. 'hand' = 맨손 */
-export type ForageTool = 'hand' | 'tongs' | 'net' | 'gaff';
+/** 채집 도구 — 시행령 허용 범위 안. 'hand' = 맨손 · 'rake' = 갈퀴/호미(224차 — 갯지렁이 파기) */
+export type ForageTool = 'hand' | 'tongs' | 'net' | 'gaff' | 'rake';
 
 /**
- * 접근 방식 — 현재는 'shore'(뭍에서)만 구현. 'wade'(가슴장화 얕은 물 진입)·'dive'(스킨/스쿠버)는
- * 후속 확장 자리(사용자 계획 2026-09-09). 생물마다 요구 접근을 두면 스쿠버 전용 채집을 데이터로 열 수 있다.
+ * 224차 — 생물이 사는 모양(미세서식지 · 사용자 지시 「서식 환경 반영」 · 웹 조사 2026-10-06).
+ *  - buried  : 모래·펄·자갈 속에 묻혀 산다(갯지렁이 · 바지락) → 「파기」
+ *  - attached: 바위에 붙어 산다(전복 · 삿갓조개 · 거북손 · 굴 · 홍합) → 「떼기」
+ *  - crevice : 바위 틈 · 돌 밑에 숨는다(문어) → 「당기기」
+ *  - crawler : 느리게 긴다(보말 · 소라 · 해삼 · 군소 · 성게) → 「줍기」
+ *  - runner  : 다가가면 달아난다(쫄장게 · 갯강구 · 민꽃게 · 꽃게) → 「덮치기」
+ */
+export type ForageBehavior = 'buried' | 'attached' | 'crevice' | 'crawler' | 'runner';
+
+/** 224차 — 채집 손놀림 놀이 갈래 (갈래마다 판정이 다르다 — `ForageMinigame`) */
+export type ForageGameKind = 'snatch' | 'pry' | 'dig' | 'pull' | 'pick';
+
+/**
+ * 접근 방식 — 'shore'(뭍에서) · 'wade'(224차 — 장화를 신고 얕은 물 1칸에 들어가서) · 'dive'(스킨/스쿠버 — 후속).
+ * 물에 사는 생물은 'wade'다: 얕은 물(`shallows`) 스팟에만 나오고, 장화를 신고 그 물에 서야 잡는다.
  */
 export type ForageAccess = 'shore' | 'wade' | 'dive';
 
@@ -28,13 +41,16 @@ export type ForageSpotKind =
   | 'rock_shore'    // 갯바위·암반 조간대 (조도·섬/암초 셀·암반 해안)
   | 'armor_foot'    // 방파제 사석·테트라포드 발밑
   | 'tidepool'      // 간조에 드러나는 웅덩이 (암반 안쪽 물 타일)
-  | 'harbor_wall';  // 항만 안벽 아래 (홍합·굴 고착)
+  | 'harbor_wall'   // 항만 안벽 아래 (홍합·굴 고착)
+  | 'shallows';     // 224차 — 완만한 물가(모래·자갈·흙·갯바위)의 얕은 물 1칸 (장화로 들어가 잡는다)
 
 /** 씬이 넘기는 스팟 후보 (걷기 가능한 뭍 타일 — 물에 인접) */
 export interface ForageCandidate {
   tx: number;
   ty: number;
   kind: ForageSpotKind;
+  /** 224차 — 얕은 물 바닥(모래·자갈·흙 = soft / 갯바위 = rock / 섞임 = mixed). 뭍 스팟은 없음 */
+  substrate?: 'soft' | 'rock' | 'mixed';
 }
 
 /** 롤링된 채집 스팟 (세션 메모리 — 시간 시드로 재현 가능하므로 세이브 불필요) */

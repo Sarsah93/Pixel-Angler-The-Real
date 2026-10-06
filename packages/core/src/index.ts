@@ -243,7 +243,7 @@ export { harvestTrap, calculateTrapLossRisk, rollTrapLoss, validateTrapDeploymen
 
 // 인-맵 채집(해루질) · 어장 폴리곤 · 강원 조례 (121차)
 export type {
-  ForageTool, ForageAccess, ForageSpotKind, ForageCandidate, ForageSpot,
+  ForageTool, ForageAccess, ForageSpotKind, ForageCandidate, ForageSpot, ForageBehavior, ForageGameKind,
   FishFarmKind, FishFarm, RegionFishFarms,
 } from './types/Foraging.js';
 export {
@@ -304,7 +304,14 @@ export {
   mulberry32, forageSeed, forageSafety, creatureSpotKinds, creatureTools, FORAGE_TOOL_LABEL,
   pickForageTool, forageHoldMs, rollForageSpots, attemptForage, isOrdinanceViolation,
   rollEnforcement, trapSeasonViolations,
+  forageBehaviorOf, forageGameKindOf, isEastSeaRegion, rollForageHarvest, forageInjuryRoll, shallowWaterDepthM,
 } from './simulation/ForagingEngine.js';
+export type { ForageInjury } from './simulation/ForagingEngine.js';
+// 224차 — 채집 손놀림 놀이(덮치기 · 줍기 · 떼기 · 파기 · 당기기)
+export { createForageGame, stepForageGame, forageLossLineKo, FORAGE_GAME } from './simulation/ForageMinigame.js';
+export type {
+  ForageGameInput, ForageGameState, ForageGameLoss, SnatchState, PryState, DigState, PullState,
+} from './simulation/ForageMinigame.js';
 export type { TrapDeploymentContext } from './simulation/TrapSystem.js';
 export { evaluateFishSellPrice } from './simulation/MarketPriceEvaluator.js';
 export type { PriceEvaluationResult } from './simulation/MarketPriceEvaluator.js';

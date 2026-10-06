@@ -770,6 +770,18 @@ export class InventoryPanel extends DraggablePanel {
         },
       });
     }
+    // 224차 — 포장 뜯기(빵가루 반죽 200g → 경단 10개 등)
+    if (item.unpack) {
+      actions.push({
+        label: '포장 뜯기',
+        color: '#4af2a1', hoverColor: '#8dffce',
+        run: () => {
+          const r = InventoryStore.unpack(item.id);
+          this.setStatus(r.ok ? `포장을 뜯었다 — ${r.name} ${r.qty}개` : (r.reason ?? '뜯을 수 없다'));
+          if (r.ok) { this.renderGrid(); this.scene.events.emit('inventory-changed'); }
+        },
+      });
+    }
     // 223차 — 도면 종이: 읽으면 그 도면을 만들 줄 알게 된다(한 장 소모 · 이미 알면 종이를 남긴다)
     if (item.blueprintId) {
       actions.push({

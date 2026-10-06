@@ -227,6 +227,12 @@ const SHORE_GROUP = {
   bivalve: ['shellfish', '이매패류'], gastropod: ['shellfish', '복족류'],
   crustacean: ['crustacean', '십각류'], shellfish: ['crustacean', '만각류'],
   cephalopod: ['cephalopod', '팔완·십완류'], echinoderm: ['other', '극피동물'],
+  annelid: ['other', '갯지렁이류'],   // 224차
+};
+// 224차 — 사는 모양 → 잡는 법(채집 손놀림 놀이)
+const BEHAVIOR_KO = {
+  buried: '묻혀 산다 — 파기', attached: '바위에 붙어 산다 — 떼기', crevice: '바위 틈에 숨는다 — 당기기',
+  crawler: '느리게 긴다 — 줍기', runner: '다가가면 달아난다 — 덮치기',
 };
 const CEPH_FISH = new Set(['squid', 'cuttlefish', 'swordtip_squid', 'octopus', 'giant_octopus']);
 const RARITY_KO = { common: '흔함', uncommon: '드묾', rare: '귀함', epic: '진귀' };
@@ -298,6 +304,10 @@ for (const s of core.SHORE_CREATURE_DATABASE) {
       ['금채기', MONTHS(s.closedSeasonMonths)],
       ['필요 허가', s.requiredLicense ?? '없음'],
       ['미끼 활용', s.canBeUsedAsBait ? '가능' : '불가'],
+      ['사는 모양', BEHAVIOR_KO[core.forageBehaviorOf(s)] ?? '—'],
+      ['들어가는 곳', (s.spotKinds ?? []).includes('shallows') ? ((s.spotKinds ?? []).length === 1 ? '얕은 물(장화)만' : '뭍 · 얕은 물(장화)') : '뭍(갯바위 · 안벽)'],
+      ['동해(속초)', (s.eastSeaWeight ?? 1) <= 0 ? '살지 않는다' : (s.eastSeaWeight ?? 1) < 0.5 ? '드물다' : '있다'],
+      ['여름잠 · 안 보이는 달', s.absentMonths?.length ? MONTHS(s.absentMonths) : '없음'],
     ],
   });
 }

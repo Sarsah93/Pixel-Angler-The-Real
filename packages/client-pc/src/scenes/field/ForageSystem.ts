@@ -3,9 +3,12 @@
  * @description 인-맵 채집(해루질) 필드 시스템 (121차) — RegionFieldScene에 붙는 컨트롤러.
  *
  * 역할: ① 어촌계 어장(마을어장·협동양식장) 폴리곤 오버레이 + 진입 안내
- *      ② 지형 규칙으로 채집 스팟 후보(갯바위·테트라포드 발밑·안벽·웅덩이)를 만들고 시간 시드로 롤링
- *      ③ 야간 랜턴 반경 가시성 · [E] 홀드 게이지 · 결과(쿨러/인벤·도감·부상·도주)
+ *      ② 지형 규칙으로 채집 스팟 후보(갯바위·사석 발밑·안벽·웅덩이 · 224차 얕은 물)를 만들고 시간 시드로 롤링
+ *      ③ 야간 랜턴 반경 가시성 · [F] → 손놀림 놀이(224차 — `ui/ForageGamePanel`) · 결과(쿨러/인벤/미끼·도감·다침)
  *      ④ 강원 조례 위반 판정 → 적발 롤 → 압수 + 벌금
+ *
+ * 224차(사용자 지시): 테트라포드에서는 채집하지 않는다 · 물에 사는 생물은 장화를 신고 완만한 물가의
+ * 얕은 물 한 칸에 들어가 잡는다 · 놓친 생물은 사라진다 · 달아나는 녀석(쫄장게 · 갯강구)은 다가가면 피한다.
  * 판정·수치는 전부 core(`ForagingEngine`·`TUNING.forage`) — 여기는 지형 후보 생성·렌더·입력만.
  *
  * 씬 결합은 `ForageHost` 인터페이스 하나 — 씬은 지형·플레이어·HUD 접근자만 넘긴다.
@@ -16,10 +19,12 @@ import {
   type FishFarm, type ForageCandidate, type ForageSpot, type ForageSpotKind, type ForageTool, type RegionTerrain,
   type ShoreCreature,
   SHORE_CREATURE_DATABASE, getCreatureById, FISH_FARM_KIND_LABEL, GANGWON_FORAGE_ORDINANCE,
-  farmAt, isProtectedFarmKind, forageSeed, rollForageSpots, forageSafety, pickForageTool, forageHoldMs,
-  attemptForage, isOrdinanceViolation, rollEnforcement, creatureTools, FORAGE_TOOL_LABEL,
+  farmAt, isProtectedFarmKind, forageSeed, rollForageSpots, forageSafety, pickForageTool,
+  isOrdinanceViolation, rollEnforcement, creatureTools, FORAGE_TOOL_LABEL,
   calculateTideInfo, isNightNow, checkSlipHazard, TUNING,
   tideFlowStateAt, tideWaterLevel01, tideRegionK, forageTideMult, forageFloodWarning,
+  forageBehaviorOf, isEastSeaRegion, rollForageHarvest, forageInjuryRoll, forageLossLineKo, shallowWaterDepthM,
+  type ForageGameState,
 } from '@tra/core';
 import { GameState } from '../../store/GameState.js';
 import { InventoryStore } from '../../store/InventoryStore.js';
@@ -50,6 +55,14 @@ export interface ForageHost {
   knockback: (dx: number, dy: number) => void;
   /** 183차 — 어장 경계 오버레이를 그릴지(dev 참고용). 없으면 그리지 않는다 */
   devFarmOverlay?: () => boolean;
+  /** 224차 — 걸어 들어갈 수 있는 얕은 물 칸(0 아님 · 1 모래 · 2 바위 · 3 섞임) */
+  wadeAt?: (c: number, r: number) => number;
+  /** 224차 — 지금 얕은 물에 들어가 서 있는가 */
+  wading?: () => boolean;
+  /** 224차 — 달리는 중인가(달아나는 생물이 놀란다) */
+  running?: () => boolean;
+  /** 224차 — 손놀림 놀이 창을 연다(씬 팝업 스택) */
+  openForageGame?: (c: ShoreCreature, tool: ForageTool, opts: { dex: number; underwater: boolean }, onEnd: (s: ForageGameState) => void) => void;
 }
 
 /**
@@ -151,6 +164,21 @@ export function ensureForageDotTextures(scene: Phaser.Scene): void {
         g.fillStyle(0x7a7a72, 1); g.fillEllipse(8, 8, 13, 9);
         g.fillStyle(0xd8d8cc, 1); g.fillEllipse(8, 8, 8, 5);
         break;
+      case 'ligia_exotica': // 갯강구 — 납작한 회갈색 몸 + 더듬이
+        g.fillStyle(0x5a5650, 1); g.fillEllipse(8, 8, 12, 6);
+        g.fillStyle(0x7a766c, 1); for (let k = 0; k < 4; k++) g.fillRect(3 + k * 3, 6, 1, 4);
+        g.lineStyle(1, 0x3a3630, 1); g.lineBetween(2, 7, 0, 3); g.lineBetween(2, 9, 0, 13); g.lineBetween(14, 8, 16, 6); g.lineBetween(14, 8, 16, 10);
+        break;
+      case 'perinereis_aibuhitensis': // 청갯지렁이 — 푸르스름한 마디 몸
+        g.lineStyle(3, 0x4f6e6a, 1);
+        g.beginPath(); g.moveTo(1, 10); g.lineTo(5, 6); g.lineTo(9, 10); g.lineTo(13, 6); g.lineTo(15, 8); g.strokePath();
+        g.fillStyle(0x9ec0b0, 1); for (let k = 0; k < 4; k++) g.fillRect(2 + k * 4, 7, 1, 1);
+        break;
+      case 'marphysa_sanguinea': // 혼무시 — 굵고 붉은 갯지렁이
+        g.lineStyle(4, 0x9a3a2e, 1);
+        g.beginPath(); g.moveTo(1, 9); g.lineTo(5, 5); g.lineTo(10, 10); g.lineTo(15, 6); g.strokePath();
+        g.fillStyle(0xd07060, 1); for (let k = 0; k < 4; k++) g.fillRect(3 + k * 3, 7, 1, 1);
+        break;
       default: // 조개류 기본
         g.fillStyle(0xc8b898, 1); g.fillEllipse(8, 8, 12, 9);
         g.lineStyle(1, 0x8a7a5a, 1); g.strokeEllipse(8, 8, 12, 9);
@@ -163,10 +191,28 @@ export function ensureForageDotTextures(scene: Phaser.Scene): void {
 /** 필드 스팟 도트의 표시 크기 상한 (px) — 키가 어긋나도 화면을 덮지 못하게 하는 안전망 */
 const SPOT_MAX_PX = 28;
 
-const HINT_STYLE = {
-  fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#c8f5d8', fontStyle: 'bold',
-  backgroundColor: '#0a1628cc', padding: { x: 5, y: 2 },
-} as const;
+
+/**
+ * 224차 — 놓친 · 잡은 스팟(이번 시간 슬롯 동안 다시 나오지 않는다). 씬을 다시 만들어도(맵 재진입) 남도록 모듈 전역.
+ * 키 = `시드|스팟 id`. 시드(시간 슬롯)가 바뀌면 자연히 무효가 된다.
+ */
+const GONE = new Set<string>();
+
+/** 224차 — 갯것 미끼 아이템(직접 잡은 쫄장게 · 갯강구). 갯지렁이는 상점 미끼와 같은 물건(inv_ragworm · inv_honmushi)으로 들어간다 */
+const BAIT_TEMPLATES: Record<string, { name: string; iconTexture: string; basePrice: number }> = {
+  inv_bait_shorecrab: { name: '쫄장게 (생미끼)', iconTexture: 'forage_hemigrapsus_sanguineus', basePrice: 400 },
+  inv_bait_slater: { name: '갯강구 (생미끼)', iconTexture: 'forage_dot_ligia_exotica', basePrice: 200 },
+};
+
+/** 달아나는 녀석 상태(스팟별 — 세션 메모리) */
+interface RunnerState {
+  /** 남은 도망 횟수 — 다 쓰면 바위 틈으로 숨어 사라진다 */
+  flees: number;
+  /** 다음 어슬렁 이동까지(ms) */
+  roamMs: number;
+  /** 다가가 있는 동안 놀람이 쌓인다 */
+  nerve: number;
+}
 
 export class ForageSystem {
   private host: ForageHost;
@@ -174,23 +220,21 @@ export class ForageSystem {
   private candidates: ForageCandidate[] = [];
   private spots: ForageSpot[] = [];
   private spotSprites = new Map<string, Phaser.GameObjects.Image>();
+  private runners = new Map<string, RunnerState>();
   private farmG?: Phaser.GameObjects.Graphics;
   private farmLabels: Phaser.GameObjects.Text[] = [];
-  private hintText?: Phaser.GameObjects.Text;
-  private holdG?: Phaser.GameObjects.Graphics;
   private lastSeed = -1;
   private lastFarmName: string | null = null;
   private refreshAcc = 0;
-  private keyF?: Phaser.Input.Keyboard.Key;
 
   /** 현재 가장 가까운(상호작용 대상) 스팟 */
   private nearSpot: ForageSpot | null = null;
-  /** 홀드 진행 */
-  private hold: { spot: ForageSpot; creature: ShoreCreature; tool: ForageTool; startedAt: number; ms: number } | null = null;
+  /** 224차 — 손놀림 놀이 중인 스팟 */
+  private playing: { spot: ForageSpot; creature: ShoreCreature; tool: ForageTool } | null = null;
 
-  /** 채집 홀드 진행 중인가 — 생존 지표 드레인 활동 판정(125차) */
+  /** 채집 중인가(놀이 창이 열려 있다) — 생존 지표 드레인 활동 판정(125차) */
   get isHolding(): boolean {
-    return this.hold !== null;
+    return this.playing !== null;
   }
 
   constructor(host: ForageHost, farms: FishFarm[]) {
@@ -199,7 +243,6 @@ export class ForageSystem {
     this.ensureTextures();
     this.candidates = this.computeCandidates();
     this.drawFarms();
-    this.keyF = host.scene.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.F, false);
     this.refreshSpots(true);
   }
 
@@ -209,9 +252,10 @@ export class ForageSystem {
 
   /**
    * 물에 인접한 뭍 타일 중:
-   *  섬/암초 셀 → rock_shore(웅덩이 = 물 3면) · 사석/테트라포드 → armor_foot · 상판+항만 물 → harbor_wall ·
-   *  포장 아닌 자연 뭍('land'/'grass')이 외해와 닿음 → rock_shore. 모래('sand')·도로·보도·건물은 제외
-   *  (동해 모래 해변엔 채집 대상이 없다 — 리서치 §2).
+   *  섬/암초 셀 · 갯바위 → rock_shore(웅덩이 = 물 3면) · 사석 → armor_foot · 상판·안벽 + 항만 물 → harbor_wall ·
+   *  자연 뭍('land'/'grass')이 외해와 닿음 → rock_shore. 모래('sand')·도로·보도·건물은 제외.
+   * 224차 — **테트라포드(3)는 제외**(사용자 지시) · 외해 쪽 상판 끝(발밑이 테트라포드)도 제외 ·
+   *  걸어 들어갈 수 있는 얕은 물 칸(`wadeAt`)은 그 물 칸 자체가 `shallows` 후보(바닥 모래·바위·섞임).
    */
   private computeCandidates(): ForageCandidate[] {
     const { cols, rows, terrainAt } = this.host;
@@ -220,25 +264,25 @@ export class ForageSystem {
     for (let r = 1; r < rows - 1; r++) {
       for (let c = 1; c < cols - 1; c++) {
         const t = terrainAt(c, r);
-        if (!t || t === 'water' || t === 'building' || t === 'road' || t === 'sidewalk' || t === 'sand') continue;
+        if (t === 'water') {
+          const w = this.host.wadeAt?.(c, r) ?? 0;
+          if (w > 0) out.push({ tx: c, ty: r, kind: 'shallows', substrate: w === 1 ? 'soft' : w === 2 ? 'rock' : 'mixed' });
+          continue;
+        }
+        if (!t || t === 'building' || t === 'road' || t === 'sidewalk' || t === 'sand') continue;
         const wN = water(c, r - 1), wS = water(c, r + 1), wE = water(c + 1, r), wW = water(c - 1, r);
         const nWater = (wN ? 1 : 0) + (wS ? 1 : 0) + (wE ? 1 : 0) + (wW ? 1 : 0);
         if (nWater === 0) continue;
         let kind: ForageSpotKind | null = null;
         const bw = this.host.breakwaterClassAt?.(c, r) ?? 0;
         const islet = this.host.isIsletAt?.(c, r) ?? false;
+        const harborNear = [[0, -1], [0, 1], [1, 0], [-1, 0]].some(([dc, dr]) => water(c + dc!, r + dr!) && (this.host.isHarborAt?.(c + dc!, r + dr!) ?? false));
+        if (bw === 3) continue;                                                     // 224차 — 테트라포드 위에서는 채집하지 않는다
         if (islet) kind = nWater >= 3 ? 'tidepool' : 'rock_shore';
-        else if (t === 'rock') kind = nWater >= 3 ? 'tidepool' : 'rock_shore';   // 188차 — 영금정 등 갯바위 `k`(183차 어휘)가 빠져 있었다
-        else if (bw === 2 || bw === 3) kind = 'armor_foot';
-        else if (bw === 1 || t === 'pier') {
-          // 상판/안벽 — 인접 물이 항만 수역이면 안벽(홍합·굴), 외해면 발밑 사석 취급
-          const harbor = [[0, -1], [0, 1], [1, 0], [-1, 0]].some(([dc, dr]) => water(c + dc!, r + dr!) && (this.host.isHarborAt?.(c + dc!, r + dr!) ?? false));
-          kind = harbor ? 'harbor_wall' : 'armor_foot';
-        } else if (t === 'land' || t === 'grass') {
-          // 자연 해안 — 항만 안쪽(석호·항 내측)이면 웅덩이 없이 안벽 취급, 외해면 갯바위
-          const harbor = [[0, -1], [0, 1], [1, 0], [-1, 0]].some(([dc, dr]) => water(c + dc!, r + dr!) && (this.host.isHarborAt?.(c + dc!, r + dr!) ?? false));
-          kind = harbor ? 'harbor_wall' : nWater >= 3 ? 'tidepool' : 'rock_shore';
-        }
+        else if (t === 'rock') kind = nWater >= 3 ? 'tidepool' : 'rock_shore';   // 188차 — 영금정 등 갯바위 `k`
+        else if (bw === 2) kind = 'armor_foot';                                    // 사석(돌무더기) 발밑
+        else if (bw === 1 || t === 'pier') kind = harborNear ? 'harbor_wall' : null;   // 외해 쪽 상판 끝 = 발밑이 테트라포드
+        else if (t === 'land' || t === 'grass') kind = harborNear ? 'harbor_wall' : nWater >= 3 ? 'tidepool' : 'rock_shore';
         if (kind) out.push({ tx: c, ty: r, kind });
       }
     }
@@ -247,7 +291,7 @@ export class ForageSystem {
 
   /** 후보 통계 (dev/검증용) */
   candidateStats(): Record<ForageSpotKind, number> {
-    const s: Record<ForageSpotKind, number> = { rock_shore: 0, armor_foot: 0, tidepool: 0, harbor_wall: 0 };
+    const s: Record<ForageSpotKind, number> = { rock_shore: 0, armor_foot: 0, tidepool: 0, harbor_wall: 0, shallows: 0 };
     for (const c of this.candidates) s[c.kind]++;
     return s;
   }
@@ -277,6 +321,9 @@ export class ForageSystem {
       floodWarn: forageFloodWarning(flow) && k >= 0.5,
     };
   }
+
+  /** 224차 — 지금 물가 수위(0 간조 ~ 1 만조) — 씬이 얕은 물 수심(1m 미만 판정)에 쓴다 */
+  tideLevel01(): number { return this.env().tideLevel01; }
 
   /** 보유 채집 도구 (아이템 보유 = 사용 가능 — 손 착용 불요) */
   private ownedTools(): ForageTool[] {
@@ -309,7 +356,13 @@ export class ForageSystem {
       hasAdvancedLicense: e.hasAdvancedLicense, farms: this.farms,
       // 205차 — 간조 시간창(간조 2시간 전 ~ 1시간 뒤)이면 스팟이 더 드러난다
       maxSpots: Math.round(TUNING.forage.maxSpots * e.tideMult),
-    });
+      eastSea: isEastSeaRegion(this.host.regionId),   // 224차 — 동해엔 없는 · 드문 종
+    }).filter((s) => !GONE.has(`${seed}|${s.id}`));   // 224차 — 놓친 · 잡은 것은 이번 슬롯에 다시 나오지 않는다
+    this.runners.clear();
+    for (const s of this.spots) {
+      const c = getCreatureById(s.creatureId);
+      if (c && forageBehaviorOf(c) === 'runner') this.runners.set(s.id, { flees: 2, roamMs: 1500 + Math.random() * 3000, nerve: 0 });
+    }
     this.renderSpots();
   }
 
@@ -326,6 +379,8 @@ export class ForageSystem {
       // 안전망 — 어떤 이유로든 큰 텍스처가 들어오면 스팟 크기로 줄인다(화면 덮기 방지)
       const raw = Math.max(img.width, img.height);
       if (raw > SPOT_MAX_PX) img.setScale(SPOT_MAX_PX / raw);
+      // 물속 생물은 물빛에 잠겨 보인다
+      if (s.kind === 'shallows') img.setAlpha(0.8).setTint(0xb8d8f0);
       this.spotSprites.set(s.id, img);
     }
   }
@@ -397,7 +452,7 @@ export class ForageSystem {
   }
 
   // ═══════════════════════════════════════════════════
-  // 업데이트 — 가시성 · 근접 · 홀드
+  // 업데이트 — 가시성 · 근접 · 달아나는 녀석
   // ═══════════════════════════════════════════════════
 
   /**
@@ -437,6 +492,9 @@ export class ForageSystem {
       }
     }
 
+    // 224차 — 달아나는 녀석: 어슬렁거리고, 뛰어 다가오면 · 오래 곁에 있으면 피한다
+    if (!this.playing) this.updateRunners(deltaMs, p);
+
     // 가시성 — 낮: 랜턴 불요 생물만 / 밤: 랜턴 반경 안
     let nearest: ForageSpot | null = null;
     let bestD = tr * 1.7;
@@ -446,74 +504,125 @@ export class ForageSystem {
       const d = Math.hypot(img.x - p.x, img.y - p.y);
       const visible = night ? (lm > 0 && d <= radiusPx) : (s.minLampLumens === 0 && d <= Math.max(radiusPx, tr * 12));
       img.setVisible(visible);
-      if (visible) img.setAlpha(night ? Phaser.Math.Clamp(1.2 - d / Math.max(1, radiusPx), 0.35, 1) : 1);
+      const baseA = s.kind === 'shallows' ? 0.8 : 1;
+      if (visible) img.setAlpha(baseA * (night ? Phaser.Math.Clamp(1.2 - d / Math.max(1, radiusPx), 0.35, 1) : 1));
       if (visible && d < bestD) { bestD = d; nearest = s; }
     }
     this.nearSpot = nearest;
 
-    // 힌트 — 186차: 머리 위 문구는 씬의 [F] 안내 하나로 합친다(구: 이 텍스트 + 씬 [F] 안내 + 할 일 화살표가
-    //   머리 위에 세 겹으로 겹쳤다 — 사용자 캡처). 여기서는 문장만 만들고 씬이 그린다.
+    // 힌트 — 186차: 머리 위 문구는 씬의 [F] 안내 하나로 합친다. 여기서는 문장만 만들고 씬이 그린다.
     this.nearHint = null;
-    if (nearest && !this.host.blocked() && !this.hold) {
-      const c = getCreatureById(nearest.creatureId)!;
-      const tool = pickForageTool(c, this.ownedTools());
-      const lic = GameState.hasLicense('shore_hunting_basic');
-      const label = !lic ? `${c.nameKo} — 해루질 입문 허가 필요 (L)`
-        : tool ? `[F 길게] 채집 — ${c.nameKo} (${FORAGE_TOOL_LABEL[tool]})`
-        : `${c.nameKo} — ${creatureTools(c).map((t) => FORAGE_TOOL_LABEL[t]).join('/')} 필요`;
-      this.nearHint = label;
-      this.hintText?.setVisible(false);
-    } else if (!this.hold) {
-      this.hintText?.setVisible(false);
-    }
-
-    // 홀드 진행
-    if (this.hold) {
-      if (!this.keyF?.isDown || this.host.blocked()) { this.cancelHold('중단'); return; }
-      const t = (Date.now() - this.hold.startedAt) / this.hold.ms;
-      this.drawHold(Math.min(1, t), p.x, p.y);
-      if (t >= 1) this.resolveHold();
+    if (nearest && !this.host.blocked() && !this.playing) {
+      this.nearHint = this.hintFor(nearest);
     }
   }
 
-  private showHint(text: string, x: number, y: number): void {
-    if (!this.hintText) this.hintText = this.host.scene.add.text(0, 0, '', HINT_STYLE).setOrigin(0.5, 1).setDepth(31);
-    this.hintText.setText(text).setPosition(x, y).setVisible(true);
+  /** 가까운 스팟 안내 문장(허가 · 도구 · 장화 · 수심) */
+  private hintFor(s: ForageSpot): string {
+    const c = getCreatureById(s.creatureId)!;
+    const tool = pickForageTool(c, this.ownedTools());
+    const needLic = c.requiredLicense !== null && !GameState.hasLicense('shore_hunting_basic');
+    if (needLic) return `${c.nameKo} — 해루질 입문 허가 필요 (L)`;
+    if (s.kind === 'shallows' && !(this.host.wading?.() ?? false)) {
+      if (!InventoryStore.wearingWaders) return `${c.nameKo} — 물속이다. 장화를 신어야 들어간다`;
+      if (shallowWaterDepthM(this.env().tideLevel01) >= 1) return `${c.nameKo} — 물이 차서 들어갈 수 없다`;
+      return `${c.nameKo} — 물에 들어가야 손이 닿는다`;
+    }
+    if (!tool) return `${c.nameKo} — ${creatureTools(c).map((t) => FORAGE_TOOL_LABEL[t]).join('/')} 필요`;
+    return `[F] 채집 — ${c.nameKo} (${FORAGE_TOOL_LABEL[tool]})`;
   }
 
-  private drawHold(t01: number, x: number, y: number): void {
-    if (!this.holdG) this.holdG = this.host.scene.add.graphics().setDepth(32);
-    const g = this.holdG;
-    g.clear();
-    const w = 44, h = 6, x0 = x - w / 2, y0 = y - 66;
-    g.fillStyle(0x0a1628, 0.85); g.fillRoundedRect(x0 - 1, y0 - 1, w + 2, h + 2, 2);
-    g.fillStyle(0x4af2a1, 1); g.fillRect(x0, y0, w * t01, h);
+  /**
+   * 224차 — 달아나는 녀석(쫄장게 · 갯강구 · 게). 몇 초마다 이웃 칸으로 어슬렁 옮기고,
+   * 뛰어서 3칸 안으로 오거나 1.7칸 안에 오래 서 있으면 2~5칸 떨어진 같은 종류 자리로 튄다.
+   * 두 번 튀고 나면 바위 틈으로 숨어 사라진다(이번 시간 슬롯 동안).
+   */
+  private updateRunners(deltaMs: number, p: { x: number; y: number }): void {
+    const tr = this.host.tr;
+    const running = this.host.running?.() ?? false;
+    for (const s of [...this.spots]) {
+      const st = this.runners.get(s.id);
+      if (!st) continue;
+      const img = this.spotSprites.get(s.id);
+      if (!img) continue;
+      const d = Math.hypot(img.x - p.x, img.y - p.y) / tr;
+      const spooked = (running && d < 3) || (d < 1.7 && (st.nerve += deltaMs) > 2200);
+      if (d >= 1.7) st.nerve = Math.max(0, st.nerve - deltaMs);
+      if (spooked) {
+        st.nerve = 0;
+        if (st.flees <= 0 || !this.hopSpot(s, p, 2, 5)) {
+          this.markGone(s);
+          if (img.visible) this.host.floatingHint(`${getCreatureById(s.creatureId)?.nameKo ?? ''}이(가) 바위 틈으로 숨어 버렸다`);
+          continue;
+        }
+        st.flees -= 1;
+        continue;
+      }
+      st.roamMs -= deltaMs;
+      if (st.roamMs <= 0) {
+        st.roamMs = 2000 + Math.random() * 3500;
+        this.hopSpot(s, null, 1, 1);
+      }
+    }
   }
 
+  /** 같은 종류 후보 칸으로 스팟을 옮긴다(멀어지는 쪽 우선). 옮겼으면 true */
+  private hopSpot(s: ForageSpot, away: { x: number; y: number } | null, minT: number, maxT: number): boolean {
+    const tr = this.host.tr;
+    const taken = new Set(this.spots.map((x) => `${x.tx},${x.ty}`));
+    const opts = this.candidates.filter((c) => c.kind === s.kind && !taken.has(`${c.tx},${c.ty}`)
+      && Math.max(Math.abs(c.tx - s.tx), Math.abs(c.ty - s.ty)) >= minT
+      && Math.max(Math.abs(c.tx - s.tx), Math.abs(c.ty - s.ty)) <= maxT);
+    if (!opts.length) return false;
+    let pick = opts[Math.floor(Math.random() * opts.length)]!;
+    if (away) {
+      const dist = (c: ForageCandidate): number => Math.hypot(c.tx * tr - away.x, c.ty * tr - away.y);
+      pick = opts.reduce((a, b) => (dist(b) > dist(a) ? b : a));
+    }
+    s.tx = pick.tx; s.ty = pick.ty;
+    const img = this.spotSprites.get(s.id);
+    if (img) {
+      this.host.scene.tweens.killTweensOf(img);
+      this.host.scene.tweens.add({ targets: img, x: s.tx * tr + tr / 2, y: s.ty * tr + tr * 0.72, duration: away ? 220 : 600, ease: away ? 'Quad.easeOut' : 'Sine.easeInOut' });
+    }
+    return true;
+  }
+
+  private markGone(s: ForageSpot): void {
+    GONE.add(`${this.lastSeed}|${s.id}`);
+    this.removeSpot(s.id);
+  }
+
+
   // ═══════════════════════════════════════════════════
-  // 입력 — [F] 누르는 순간 홀드 시작 (122차: E → F)
+  // 입력 — [F] 누르면 손놀림 놀이 (224차 — 구: 홀드 게이지)
   // ═══════════════════════════════════════════════════
 
-  /** 씬 keydown-F — 소비했으면 true (122차: 상호작용 키 E → F) */
-  /** 178차 — 상호작용 겹침 판정용 프로브. 근처 채집 스팟의 생물 이름(없으면 null) */
   /** 186차 — 가까운 스팟의 안내 문장(허가·도구 상태 포함). 씬의 머리 위 [F] 안내가 쓴다 */
   get nearHintKo(): string | null { return this.nearHint; }
   private nearHint: string | null = null;
 
+  /** 178차 — 상호작용 겹침 판정용 프로브. 근처 채집 스팟의 생물 이름(없으면 null) */
   get nearSpotNameKo(): string | null {
     if (!this.nearSpot) return null;
     return getCreatureById(this.nearSpot.creatureId)?.nameKo ?? null;
   }
 
+  /** 씬 keydown-F — 소비했으면 true */
   onInteractKey(): boolean {
-    if (this.hold) return true;
-    if (this.host.blocked()) return false;   // 186차 — 상판 위 등 (호출측 가드가 빠져도 밑의 스팟을 집지 않는다)
+    if (this.playing) return true;
+    if (this.host.blocked()) return false;   // 186차 — 상판 위 등
     const s = this.nearSpot;
     if (!s) return false;
     const c = getCreatureById(s.creatureId);
     if (!c) return false;
-    if (!GameState.hasLicense('shore_hunting_basic')) {
+    if (c.requiredLicense !== null && !GameState.hasLicense('shore_hunting_basic')) {
       this.host.floatingHint('해루질 입문 허가가 필요합니다 — L 면허 창');
+      return true;
+    }
+    // 224차 — 물속 생물은 장화를 신고 들어가야 닿는다
+    if (s.kind === 'shallows' && !(this.host.wading?.() ?? false)) {
+      this.host.floatingHint(this.hintFor(s));
       return true;
     }
     const e = this.env();
@@ -529,7 +638,7 @@ export class ForageSystem {
       return true;
     }
     // 갯바위·사석 미끄러짐 (너울 시 상승) — 시작 순간 1회
-    if (s.kind === 'rock_shore' || s.kind === 'armor_foot') {
+    if (s.kind === 'rock_shore' || s.kind === 'armor_foot' || s.kind === 'shallows') {
       const slip = checkSlipHazard(safety.slipChance * GameState.skillMult('balance'), GameState.player.stamina, GameState.player.fatigue);
       if (slip.slipped) {
         GameState.updatePlayer({ stamina: Math.max(0, GameState.player.stamina - Math.max(8, Math.round(slip.staminaLost * 0.4))) });
@@ -539,8 +648,7 @@ export class ForageSystem {
         this.host.knockback(dx / l, dy / l);
         this.host.scene.cameras.main.shake(160, 0.005);
         this.host.floatingHint(safety.warning ? '너울에 미끄러졌다! 갯바위 주의' : '이끼에 미끄러졌다!');
-        // 125차: 단발 HP 감소 → 상태이상 승격 (골절 20% / 출혈 35%)
-        // 127차: `rollStatus` 경유 — 면역력(life_immune)이 발생 확률을 깎는다
+        // 125차: 단발 HP 감소 → 상태이상 승격 (골절 20% / 출혈 35%) · 127차 면역력 경유
         const r = Math.random();
         const hurt = r < 0.2 ? (GameState.rollStatus('fracture', 1) ? '골절' : '')
           : r < 0.55 ? (GameState.rollStatus('bleed', 1) ? '출혈' : '') : '';
@@ -551,84 +659,95 @@ export class ForageSystem {
       }
     }
     if (safety.warning) this.host.floatingHint(safety.warning);
-    // 127차 P5 — 채집 손놀림(gath_speed): 홀드 시간을 배율만큼 줄인다
-    const holdMs = forageHoldMs(c, tool) / Math.max(0.3, GameState.skillMult('forage_speed'));
-    this.hold = { spot: s, creature: c, tool, startedAt: Date.now(), ms: holdMs };
-    this.showHint(`${c.nameKo} 채집 중… (${FORAGE_TOOL_LABEL[tool]})`, this.host.player().x, this.host.player().y - 80);
+    if (!this.host.openForageGame) return false;
+    this.playing = { spot: s, creature: c, tool };
+    // 손재주 — 채집 손놀림 스킬(gath_speed) 배율을 0~1로 펼친다
+    const dex = Math.max(0, Math.min(1, (GameState.skillMult('forage_speed') - 1) * 2));
+    this.host.openForageGame(c, tool, { dex, underwater: s.kind === 'shallows' }, (st) => this.finishGame(st));
     return true;
-  }
-
-  private cancelHold(_why: string): void {
-    this.hold = null;
-    this.holdG?.clear();
-    this.hintText?.setVisible(false);
   }
 
   private removeSpot(id: string): void {
     this.spots = this.spots.filter((s) => s.id !== id);
+    this.runners.delete(id);
     const img = this.spotSprites.get(id);
     if (img) { img.destroy(); this.spotSprites.delete(id); }
   }
 
-  private resolveHold(): void {
-    const h = this.hold;
+  /** 224차 — 놀이가 끝났다(이김 · 놓침 · 포기). 어느 쪽이든 그 생물은 이번 슬롯에서 사라진다 */
+  private finishGame(st: ForageGameState): void {
+    const h = this.playing;
     if (!h) return;
-    this.hold = null;
-    this.holdG?.clear();
-    const res = attemptForage(h.creature, h.tool, Math.random, {
-      escapeMult: GameState.skillMult('octopus_escape'), injuryChance: GameState.skillMult('hand_injury'),
-      successMult: this.env().tideMult,   // 205차 — 간조 시간창 가산
-    });
+    this.playing = null;
+    this.markGone(h.spot);
     this.maybeFloodWarning();
-    const p = this.host.player();
-    switch (res.outcome) {
-      case 'injured': {
-        GameState.updatePlayer({ stamina: Math.max(0, GameState.player.stamina - res.staminaLoss) });
-        this.host.scene.cameras.main.shake(140, 0.004);
-        this.host.floatingHint(res.message);
-        // 125차: 부상 → 상태이상 (쏘이는 생물 = 생물중독 / 그 외 = 출혈 60%)
-        // 독성 = 가시·독침 보유종만 (해삼 같은 극피동물은 제외 — 이름으로 판정)
-        const venomous = /성게|해파리|쏠|쐐기|미역치/.test(h.creature.nameKo);
-        const st = venomous
-          ? (GameState.rollStatus('bio_poison', 1) ? '생물중독' : '')
-          : (GameState.rollStatus('bleed', 0.6) ? '출혈' : '');
-        this.host.pushLog(`[채집] ${res.message}${st ? ` · ${st}` : ''}`);
-        return;
-      }
-      case 'escaped':
-        this.removeSpot(h.spot.id);
-        this.host.floatingHint(res.message);
-        this.host.pushLog(`[채집] ${res.message}`);
-        return;
-      case 'failed':
-        this.host.floatingHint(res.message);
-        return;
-      case 'success':
-        break;
-    }
-    this.removeSpot(h.spot.id);
-    if (res.undersized) {
-      this.host.floatingHint(res.message);
-      this.host.pushLog(`[채집] ${res.message}`);
+    const c = h.creature;
+    if (st.status !== 'won') {
+      const line = forageLossLineKo(c.nameKo, st.lost ?? 'escaped');
+      this.host.floatingHint(line);
+      this.host.pushLog(`[채집] ${line}`);
       return;
     }
-    // 수확 — 쿨러(활어) 우선, 없거나 가득이면 인벤토리(음식 · 채집물)
-    const tex = forageTexKey(h.creature);
+    // 손으로 잡았으면 다칠 수 있다 — 장갑이면 덜 다치고 대개 놓치지 않는다
+    const inj = forageInjuryRoll(c, h.tool, InventoryStore.wearingGloves, Math.random, GameState.skillMult('hand_injury'));
+    if (inj.injured) {
+      GameState.updatePlayer({ stamina: Math.max(0, GameState.player.stamina - TUNING.forage.handInjuryStamina) });
+      this.host.scene.cameras.main.shake(140, 0.004);
+      const stName = inj.status && GameState.rollStatus(inj.status, 1) ? (inj.status === 'bio_poison' ? '생물중독' : '출혈') : '';
+      const msg = inj.dropped
+        ? `${c.nameKo}에 손을 다쳐 놓쳤다${stName ? ` · ${stName}` : ''}`
+        : `${c.nameKo}에 손을 조금 다쳤다${stName ? ` · ${stName}` : ''}`;
+      this.host.floatingHint(msg);
+      this.host.pushLog(`[채집] ${msg}`);
+      if (inj.dropped) return;
+    }
+    const res = rollForageHarvest(c, Math.random);
+    if (res.undersized) {
+      const msg = `${c.nameKo} ${res.sizeCm}cm — 법정 크기(${c.minLegalSizeCm}cm) 미달, 놓아주었다`;
+      this.host.floatingHint(msg);
+      this.host.pushLog(`[채집] ${msg}`);
+      return;
+    }
+    this.deliver(h.spot, c, res);
+  }
+
+  /** 수확물을 넣는다 — 미끼 갯것은 미끼 아이템으로, 그 밖은 쿨러(활어) 우선 · 인벤토리(채집물) */
+  private deliver(spot: ForageSpot, c: ShoreCreature, res: { sizeCm: number; weightG: number }): void {
+    // 224차 — 직접 잡은 미끼(갯지렁이 · 혼무시 · 쫄장게 · 갯강구)는 바로 바늘에 다는 미끼로
+    if (c.baitItemId) {
+      const seed = InventoryStore.seedTemplate(c.baitItemId);
+      const extra = BAIT_TEMPLATES[c.baitItemId];
+      const tpl = seed ?? (extra ? {
+        id: c.baitItemId, name: extra.name, icon: '', iconTexture: extra.iconTexture,
+        category: 'tackle' as const, subCategory: '생미끼', basePrice: extra.basePrice, condition: 'live' as const, equippable: false,
+      } : null);
+      if (tpl && InventoryStore.addItem({ ...tpl, conditionSinceMs: Date.now() }, 1)) {
+        DiscoveryStore.record('creature', c.id, 'night_hunting');
+        GameState.addActivityXp('forage');
+        this.host.floatingHint(`${c.nameKo} — 미끼로 쓸 수 있다`);
+        this.host.pushLog(`[채집] ${c.nameKo} ${res.sizeCm}cm — 가방(미끼)`);
+        this.host.scene.cameras.main.flash(120, 40, 160, 90);
+        return;
+      }
+      this.host.floatingHint('가방이 가득 찼습니다 — 놓아주었습니다');
+      return;
+    }
+    const tex = forageTexKey(c);
     let where: 'cooler' | 'inventory' | 'none' = 'none';
     let coolerIdx = -1;
     let invId = '';
     if (InventoryStore.hasCooler() && !CoolerStore.isFull()) {
-      coolerIdx = CoolerStore.add({ speciesId: res.creatureId, nameKo: res.nameKo, lengthCm: res.sizeCm, weightG: res.weightG, sex: 'F', iconTexture: tex });
+      coolerIdx = CoolerStore.add({ speciesId: c.id, nameKo: c.nameKo, lengthCm: res.sizeCm, weightG: res.weightG, sex: 'F', iconTexture: tex });
       if (coolerIdx >= 0) where = 'cooler';
     }
     if (where === 'none') {
-      invId = `inv_forage_${res.creatureId}_${InventoryStore.nextCatchSeq()}`;
+      invId = `inv_forage_${c.id}_${InventoryStore.nextCatchSeq()}`;
       const ok = InventoryStore.addItem({
-        id: invId, name: `${res.nameKo} (${res.sizeCm}cm)`, icon: '🐚', iconTexture: tex,
+        id: invId, name: `${c.nameKo} (${res.sizeCm}cm)`, icon: '', iconTexture: tex,
         category: 'food', subCategory: '채집물',
-        basePrice: Math.max(500, Math.round((res.weightG / 1000) * h.creature.marketValuePerKg)),
+        basePrice: Math.max(500, Math.round((res.weightG / 1000) * c.marketValuePerKg)),
         condition: 'live', equippable: false,
-        speciesId: res.creatureId, lengthCm: res.sizeCm, weightG: res.weightG, forageCatch: true,
+        speciesId: c.id, lengthCm: res.sizeCm, weightG: res.weightG, forageCatch: true,
       }, 1);
       if (ok) where = 'inventory';
     }
@@ -636,16 +755,15 @@ export class ForageSystem {
       this.host.floatingHint('쿨러와 인벤토리가 가득 찼습니다 — 놓아주었습니다');
       return;
     }
-    DiscoveryStore.record('creature', res.creatureId, 'night_hunting');
+    DiscoveryStore.record('creature', c.id, 'night_hunting');
     GameState.addActivityXp('forage');   // 플레이어 레벨 XP (124차 — 수확 1회)
-    this.host.floatingHint(res.message);
-    this.host.pushLog(`[채집] ${res.nameKo} ${res.weightG}g — ${where === 'cooler' ? '쿨러 보관' : '인벤토리(채집물)'}`);
+    this.host.floatingHint(`${c.nameKo} ${res.weightG}g 채집!`);
+    this.host.pushLog(`[채집] ${c.nameKo} ${res.weightG}g — ${where === 'cooler' ? '쿨러 보관' : '인벤토리(채집물)'}`);
     this.host.scene.cameras.main.flash(120, 40, 160, 90);
 
     // ── 강원 조례 — 어촌계 어장 안 보호 5종 → 적발 롤 ──
-    const farm = farmAt(this.farms, h.spot.tx + 0.5, h.spot.ty + 0.5);
-    // ── 171차 · 어장 행사료 ── 어촌계 어장은 남의 앞마당이다. 그 안에서 거둬 가면
-    //   계원이든 아니든 행사료를 낸다(계원은 싸다). 막지는 않는다 — 위반 판정은 아래 조례가 한다.
+    const farm = farmAt(this.farms, spot.tx + 0.5, spot.ty + 0.5);
+    // ── 171차 · 어장 행사료 ── 어촌계 어장은 남의 앞마당이다. 그 안에서 거둬 가면 행사료를 낸다.
     if (farm) {
       const fee = GameState.fisheryGroundFeeKrw();
       if (fee > 0 && GameState.addCoins(-fee, false, 'fee')) {
@@ -653,7 +771,7 @@ export class ForageSystem {
       }
     }
     // 수협 조합원증(어업인 등록)은 조례 면제 (122차 면허)
-    if (farm && !GameState.hasLicense('fishery_member') && isOrdinanceViolation(res.creatureId, farm)) {
+    if (farm && !GameState.hasLicense('fishery_member') && isOrdinanceViolation(c.id, farm)) {
       // 171차 — 자격 갱신 연체 중이면 단속이 더 붙는다
       const enf = rollEnforcement(GameState.player.inventory.coins, Math.random, GameState.upkeepPenalty().enforceMult);
       if (enf.caught) {
@@ -663,13 +781,12 @@ export class ForageSystem {
         GameState.markDirty();
         this.host.scene.cameras.main.flash(260, 200, 40, 40);
         this.host.scene.cameras.main.shake(200, 0.006);
-        this.host.floatingHint(`단속 적발! ${res.nameKo} 압수 · 벌금 ${enf.fineWon.toLocaleString()}원`);
-        this.host.pushLog(`[단속] ${farm.name}(${FISH_FARM_KIND_LABEL[farm.kind]}) 안 ${res.nameKo} 채취 적발 — 압수 · 벌금 ${enf.fineWon.toLocaleString()}원 (조례 상한 ${GANGWON_FORAGE_ORDINANCE.fineMaxWon.toLocaleString()}원)`);
+        this.host.floatingHint(`단속 적발! ${c.nameKo} 압수 · 벌금 ${enf.fineWon.toLocaleString()}원`);
+        this.host.pushLog(`[단속] ${farm.name}(${FISH_FARM_KIND_LABEL[farm.kind]}) 안 ${c.nameKo} 채취 적발 — 압수 · 벌금 ${enf.fineWon.toLocaleString()}원 (조례 상한 ${GANGWON_FORAGE_ORDINANCE.fineMaxWon.toLocaleString()}원)`);
       } else {
-        this.host.pushLog(`[주의] ${farm.name} 안 ${res.nameKo} 채취 — 강원 조례 위반 (적발 시 압수·벌금)`);
+        this.host.pushLog(`[주의] ${farm.name} 안 ${c.nameKo} 채취 — 강원 조례 위반 (적발 시 압수·벌금)`);
       }
     }
-    void p;
   }
 
   // ═══════════════════════════════════════════════════
@@ -685,18 +802,24 @@ export class ForageSystem {
     const c = getCreatureById(creatureId);
     if (!s || !c) return;
     s.creatureId = c.id; s.minLampLumens = c.minLampLumens;
+    if (forageBehaviorOf(c) === 'runner') this.runners.set(s.id, { flees: 2, roamMs: 99_999, nerve: 0 });
+    else this.runners.delete(s.id);
     const img = this.spotSprites.get(s.id);
     if (img) img.setTexture(forageSpotTexKey(c));
   }
-  /** dev: 홀드를 즉시 완료 */
-  devResolveNow(): void { if (this.hold) { this.hold.startedAt = 0; this.resolveHold(); } }
+  /** dev: 지금 놀이를 이긴 것으로 끝낸다(하네스) */
+  devResolveNow(won = true): void {
+    if (!this.playing) return;
+    const fake = { kind: 'pick', creatureId: this.playing.creature.id, tool: this.playing.tool, t: 0, limitMs: 1, status: won ? 'won' : 'lost', lost: won ? undefined : 'escaped' } as ForageGameState;
+    this.finishGame(fake);
+  }
+  /** dev: 근처 스팟(하네스) */
+  get devNearSpot(): ForageSpot | null { return this.nearSpot; }
 
   destroy(): void {
     for (const img of this.spotSprites.values()) img.destroy();
     this.spotSprites.clear();
     this.farmG?.destroy();
     for (const t of this.farmLabels) t.destroy();
-    this.hintText?.destroy();
-    this.holdG?.destroy();
   }
 }

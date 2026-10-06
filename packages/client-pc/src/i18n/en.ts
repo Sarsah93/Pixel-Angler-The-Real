@@ -699,6 +699,25 @@ const DOW_EN: Record<string, string> = {
 };
 /** 수치·이름이 끼어 있는 문장 — 정규식 규칙. 캡처 그룹은 그대로 옮긴다(이름은 사전을 다시 타지 않으므로 어종·아이템명은 한국어로 남을 수 있음). */
 export const EN_RULES: Rule[] = [
+  // ── 224차 미끼 경제 · 해루질 현실화 ──
+  [/^(.+) \(중고\)$/, (m, tr) => `${tr(m[1])} (used)`],
+  [/^포장을 뜯었다 — (.+) (\d+)개$/, (m, tr) => `Opened the pack — ${tr(m[1])} ×${m[2]}`],
+  [/^(.+) — 물속이다\. 장화를 신어야 들어간다$/, (m, tr) => `${tr(m[1])} — it’s in the water. You need wading boots to go in`],
+  [/^(.+) — 물이 차서 들어갈 수 없다$/, (m, tr) => `${tr(m[1])} — the water is too high to go in`],
+  [/^(.+) — 물에 들어가야 손이 닿는다$/, (m, tr) => `${tr(m[1])} — step into the water to reach it`],
+  [/^\[F\] 채집 — (.+) \((.+)\)$/, (m, tr) => `[F] Gather — ${tr(m[1])} (${tr(m[2])})`],
+  [/^(.+)이\(가\) 바위 틈으로 숨어 버렸다$/, (m, tr) => `The ${tr(m[1])} slipped into the rocks`],
+  [/^(.+)이\(가\) 바위 틈으로 달아났다\.$/, (m, tr) => `The ${tr(m[1])} darted into the rocks.`],
+  [/^(.+)이\(가\) 바위에 꽉 붙어 버렸다\. 더는 못 떼겠다\.$/, (m, tr) => `The ${tr(m[1])} clamped onto the rock. It won’t come off now.`],
+  [/^(.+)이\(가\) 깊이 파고들어 버렸다\.$/, (m, tr) => `The ${tr(m[1])} burrowed out of reach.`],
+  [/^너무 세게 당겼다 — (.+)이\(가\) 먹물을 쏘고 달아났다\.$/, (m, tr) => `Pulled too hard — the ${tr(m[1])} inked and got away.`],
+  [/^머뭇거리는 사이 (.+)을\(를\) 놓쳤다\.$/, (m, tr) => `You hesitated and lost the ${tr(m[1])}.`],
+  [/^(.+)에 손을 다쳐 놓쳤다(?: · (.+))?$/, (m, tr) => `Hurt your hand on the ${tr(m[1])} and dropped it${m[2] ? ` · ${tr(m[2])}` : ''}`],
+  [/^(.+)에 손을 조금 다쳤다(?: · (.+))?$/, (m, tr) => `Scratched your hand on the ${tr(m[1])}${m[2] ? ` · ${tr(m[2])}` : ''}`],
+  [/^(.+) ([\d.]+)cm — 법정 크기\(([\d.]+)cm\) 미달, 놓아주었다$/, (m, tr) => `${tr(m[1])} ${m[2]}cm — under the legal ${m[3]}cm, released`],
+  [/^(.+) — 미끼로 쓸 수 있다$/, (m, tr) => `${tr(m[1])} — usable as bait`],
+  [/^\[채집\] (.+) ([\d.]+)cm — 가방\(미끼\)$/, (m, tr) => `[Gather] ${tr(m[1])} ${m[2]}cm — bag (bait)`],
+  [/^(.+) (\d+)g 채집!$/, (m, tr) => `${tr(m[1])} ${m[2]}g gathered!`],
   // ── 223차 도면 얻기 · 분해 ──
   [/^도면을 익혔다 — (.+)$/, (m, tr) => `Learned a blueprint — ${tr(m[1])}`],
   [/^이미 아는 도면이다 — (.+)$/, (m, tr) => `You already know this blueprint — ${tr(m[1])}`],
@@ -1309,4 +1328,6 @@ export const EN_RULES: Rule[] = [
   [/^상점 판매가 \+(\d+)%$/, 'Shop sell price +$1%'],
   [/^상점 구매가 -(\d+)%$/, 'Shop buy price -$1%'],
   [/^행동 피로 -(\d+)%$/, 'Fatigue from actions -$1%'],
+  // 224차 — 채집 로그 꼬리(놓침 · 다침 문장은 위 규칙이 옮긴다). 첫 일치라 맨 끝에 둔다
+  [/^\[채집\] (.+)$/, (m, tr) => `[Gather] ${tr(m[1])}`],
 ];

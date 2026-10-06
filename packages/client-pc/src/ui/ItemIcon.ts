@@ -102,6 +102,8 @@ export function createItemIcon(
   if (!texKey && item.speciesId) {
     const resolved = resolveFishTexture(item.speciesId, item.lengthCm ?? 0, 'F');
     if (resolved && scene.textures.exists(resolved)) texKey = resolved;
+    // 224차 — 사진이 없는 채집물은 필드 도트(`forage_dot_<id>`)로(이모지 대신)
+    else if (scene.textures.exists(`forage_dot_${item.speciesId}`)) texKey = `forage_dot_${item.speciesId}`;
   }
   if (texKey) {
     const img = scene.add.image(x, y, texKey).setOrigin(0.5);

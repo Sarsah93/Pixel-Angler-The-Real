@@ -24,10 +24,10 @@ import { TitleStore } from '../store/TitleStore.js';
 import { ShopCartDialog, type CartLine } from './ShopCartDialog.js';
 import { TextInput } from './TextInput.js';
 import { RecommendationStore } from '../store/RecommendationStore.js';
-import { ShopDef, ShopEntry } from '../data/ShopCatalog.js';
+import { ShopDef, ShopEntry, shopBuysItem } from '../data/ShopCatalog.js';
 import { DraggablePanel } from './DraggablePanel.js';
 import { ConfirmDialog, QuantityDialog } from './Dialogs.js';
-import { ShopStore, type ShopContext } from '../store/ShopStore.js';
+import { ShopStore, type ShopContext, type UsedGood } from '../store/ShopStore.js';
 import type { InvDropResult } from './InventoryPanel.js';
 import { createItemIcon } from './ItemIcon.js';
 import { drawTrendIcon, TREND_ICON_PX } from './MarketTrendIcon.js';
@@ -92,7 +92,15 @@ function starPoints(cx: number, cy: number, r: number, ri: number): Phaser.Math.
   return pts;
 }
 
-export const entryKey = (e: Pick<ShopEntry, 'id' | 'name'>): string => `${e.id}|${e.name}`;
+export const entryKey = (e: Pick<ShopEntry, 'id' | 'name' | 'usedUid'>): string => e.usedUid ? `used|${e.usedUid}` : `${e.id}|${e.name}`;
+
+/** 224차 — 가게 중고 칸 한 줄을 진열 항목으로(이름에 「(중고)」 · 1회 최대 = 남은 수) */
+export function usedShopEntry(u: UsedGood): ShopEntry {
+  return {
+    ...u.tpl, name: `${u.tpl.name} (중고)`, price: u.price, maxPerPurchase: u.qty, usedUid: u.uid,
+    desc: '손님이 팔고 간 물건 — 쓰던 상태 그대로다.',
+  };
+}
 
 /** 그리드 셀 1칸 렌더 스펙 (구매 entry / 판매 InvItem 공통) */
 interface ShopCell {
@@ -284,6 +292,7 @@ export class ShopPanel extends DraggablePanel {
   // ── 221차 — 재고 ─────────────────────────────────
   /** 오늘 남은 수(null = 동나지 않음) */
   private remainingOf(entry: ShopEntry): number | null {
+    if (entry.usedUid) return ShopStore.usedLeft(this.ctx.key, entry.usedUid);   // 224차 — 중고는 그 물건 수만큼
     return ShopStore.remaining(this.ctx, entry, entryKey(entry));
   }
 
@@ -378,6 +387,9 @@ export class ShopPanel extends DraggablePanel {
     if (item.forageCatch) return t('채집물은 팔 수 없다 (강원 조례).');
     if (item.plateWip) return t('미완성 접시는 마저 담아야 값이 매겨진다.');
     if (item.bound) return t('이 물건은 팔 수 없다.');
+    // 224차 — 장비만 되사고 미끼 · 소모품 · 산 먹을거리는 사들이지 않는다
+    if (['tackle', 'lure', 'consumable', 'etc'].includes(item.category)) return t('미끼 · 소모품은 사들이지 않는다.');
+    if (item.category === 'food' && this.shop.buysCategories.includes('food')) return t('가게에서 산 먹을거리는 되사지 않는다.');
     return t('이 가게는 그 물건을 사지 않는다.');
   }
 
@@ -539,7 +551,7 @@ export class ShopPanel extends DraggablePanel {
    */
   private sellableItems(): InvItem[] {
     return InventoryStore.items.filter(
-      (i) => this.shop.buysCategories.includes(i.category) && i.slot >= 0
+      (i) => shopBuysItem(this.shop, i) && i.slot >= 0
         && !i.forageCatch && !i.plateWip && !i.bound && !StoryStore.sellVerdict(i),
     );
   }
@@ -698,7 +710,8 @@ export class ShopPanel extends DraggablePanel {
   /** 141차 — 메인 퀘스트가 열기 전엔 목록에 없다(잠금 표시도 없음: 이야기가 알려 준다) */
   private buyables(): ShopEntry[] {
     return this.shop.sells.filter((e) => (!e.unlockKey || GameState.getFlag(`unlock.shop.${e.unlockKey}`))
-      && !(e.blueprintId && CraftingStore.knows(e.blueprintId)));   // 223차 — 아는 도면 종이는 안 판다
+      && !(e.blueprintId && CraftingStore.knows(e.blueprintId)))   // 223차 — 아는 도면 종이는 안 판다
+      .concat(ShopStore.usedGoods(this.ctx.key).map(usedShopEntry));   // 224차 — 손님이 판 장비(중고)
   }
 
   /** 221차 — 즐겨찾기 탭 머리줄(개수 · 「모두 담기」). 그리드 시작 y를 돌려준다 */

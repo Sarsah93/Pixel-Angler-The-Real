@@ -32,7 +32,7 @@ type LogTab = 'encyclopedia' | 'creatures' | 'items' | 'dishes' | 'history';
 /** 해양생물 카테고리 라벨 (위키 카드용) — 188차: 카테고리 이모지 폐기, 생물 도트 그림으로(§8-8) */
 const CREATURE_CAT_LABEL: Record<ShoreCreatureCategory, string> = {
   shellfish: '조개류', crustacean: '갑각류', cephalopod: '두족류',
-  echinoderm: '극피동물', bivalve: '이매패류', gastropod: '복족류',
+  echinoderm: '극피동물', bivalve: '이매패류', gastropod: '복족류', annelid: '갯지렁이류',
 };
 
 /**

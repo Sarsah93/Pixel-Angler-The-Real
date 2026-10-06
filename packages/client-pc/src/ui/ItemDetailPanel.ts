@@ -68,7 +68,7 @@ function spoolLeftLabel(total: number, used?: number): string {
   return `${Math.max(0, Math.round((total - u) * 10) / 10)}m / ${total}m`;
 }
 
-export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory' | 'category' | 'qty' | 'basePrice' | 'condition' | 'conditionSinceMs' | 'speciesId' | 'lengthCm' | 'weightG' | 'floatBuoyG' | 'plateWip' | 'fault' | 'useCount' | 'tool' | 'bound' | 'dish' | 'dishInstance' | 'sashimi' | 'cutQuality' | 'hungerRestore' | 'hydrationRestore' | 'hpRestore' | 'fatigueRestore' | 'lineMaterial' | 'lineForm' | 'lineLengthM' | 'lineUsedM' | 'lineNo' | 'lineDiameterMm' | 'lineStrengthLb' | 'sinkerKind' | 'sinkerWeightG' | 'sinkerHo' | 'netReachM' | 'blueprintId'>): ItemDetailData {
+export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory' | 'category' | 'qty' | 'basePrice' | 'condition' | 'conditionSinceMs' | 'speciesId' | 'lengthCm' | 'weightG' | 'floatBuoyG' | 'plateWip' | 'fault' | 'useCount' | 'tool' | 'bound' | 'dish' | 'dishInstance' | 'sashimi' | 'cutQuality' | 'hungerRestore' | 'hydrationRestore' | 'hpRestore' | 'fatigueRestore' | 'lineMaterial' | 'lineForm' | 'lineLengthM' | 'lineUsedM' | 'lineNo' | 'lineDiameterMm' | 'lineStrengthLb' | 'sinkerKind' | 'sinkerWeightG' | 'sinkerHo' | 'netReachM' | 'blueprintId' | 'wading'>): ItemDetailData {
   const rows: ItemDetailRow[] = [];
   let desc = '';
   // 155차 — 완성 사시미 접시: 맛 별 5개(지금 / 담은 직후) — 불요리와 같은 문법
@@ -321,11 +321,20 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
       desc = '기상 일조량 기준 반사광을 걷어내고 바다 구역별 수심 경계와 물속 여밭 충돌 영역을 표시합니다.';
       break;
     case '신발':
-      rows.push(
-        { label: '접지 마찰 계수 (μ)', value: '0.85' },
-        { label: '효과', value: '갯바위 미끄러짐 방지' },
-      );
-      desc = '파도가 들이치는 연안 갯바위에서 강풍/파도 디버프를 무효화합니다.';
+      if (item.wading) {
+        // 224차 — 장화: 물가 얕은 물 한 칸까지 걸어 들어간다
+        rows.push(
+          { label: '들어갈 수 있는 물', value: '완만한 물가의 한 칸 · 1m 미만' },
+          { label: '물속 걸음', value: '느려진다' },
+        );
+        desc = '모래 · 자갈 · 흙 · 갯바위가 바다와 만나는 물가에서 얕은 물로 들어가 물속 생물을 잡을 수 있다. 방파제 · 안벽 같은 직벽 아래로는 내려가지 못하고, 만조 무렵 물이 1m를 넘으면 들어갈 수 없다.';
+      } else {
+        rows.push(
+          { label: '접지 마찰 계수 (μ)', value: '0.85' },
+          { label: '효과', value: '갯바위 미끄러짐 방지' },
+        );
+        desc = '파도가 들이치는 연안 갯바위에서 강풍/파도 디버프를 무효화합니다.';
+      }
       break;
     case '모자': case '상의': case '장갑': case '하의':
       rows.push(

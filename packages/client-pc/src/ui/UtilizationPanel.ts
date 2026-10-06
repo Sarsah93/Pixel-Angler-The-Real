@@ -60,11 +60,13 @@ import { t } from '../i18n/I18n.js';
 /** 추천 배너용 미끼 이름 (RigRecommender의 BaitKey → 화면 이름, R1) */
 const BAIT_KEY_KO: Record<string, string> = {
   krill: '크릴', worm_blue: '청갯지렁이', worm_king: '참갯지렁이', crab: '게·소라', shellfish: '조개살',
-  urchin: '성게', corn: '옥수수', bread: '빵가루 경단', fishcut: '생선 살', livefish: '생미끼', lure: '루어',
+  urchin: '성게', corn: '옥수수', bread: '빵가루 경단', fishcut: '생선 살', livefish: '생미끼', slater: '갯강구', lure: '루어',
 };
 
 export type UtilizationTab = 'cooking' | 'tackles' | 'chum' | 'craft';
 
+/** 224차 — 빵가루 밑밥 한 번 갤 때 뭉쳐 두는 미끼 경단 수(200g ≈ 10개 — 사용자 제안) */
+const BREAD_BALLS_PER_MIX = 10;
 const PANEL_W = 1080;
 const PANEL_H = 620;
 
@@ -2253,6 +2255,11 @@ export class UtilizationPanel extends DraggablePanel {
       onComplete: () => {
         overlay.destroy();
         CoolerStore.completeChumMix();
+        // 224차 — 빵가루를 물과 갤 때 바늘에 달 경단(200g ≈ 10개)도 따로 뭉쳐 둔다
+        if (CoolerStore.chumHasBread()) {
+          const ball = InventoryStore.seedTemplate('inv_breadbait');
+          if (ball && InventoryStore.addItem(ball, BREAD_BALLS_PER_MIX)) this.scene.events.emit('inventory-changed');
+        }
         this.renderBody();
       },
     });

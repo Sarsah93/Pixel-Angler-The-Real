@@ -9,7 +9,7 @@
 
 import type { ShoreCreature } from '../db-schema/ShoreCreatureDatabase.js';
 import { SHORE_CREATURE_DATABASE } from '../db-schema/ShoreCreatureDatabase.js';
-import type { ForageCandidate, ForageSpot, ForageSpotKind, ForageTool, FishFarm } from '../types/Foraging.js';
+import type { ForageCandidate, ForageSpot, ForageSpotKind, ForageTool, FishFarm, ForageBehavior, ForageGameKind } from '../types/Foraging.js';
 import { GANGWON_FORAGE_ORDINANCE, farmAt, isProtectedFarmKind } from '../types/Foraging.js';
 import { TUNING } from '../config/tuning.js';
 
@@ -102,13 +102,50 @@ export function creatureTools(c: ShoreCreature): ForageTool[] {
     case 'cephalopod': return ['net', 'gaff'];
     case 'crustacean': return ['tongs', 'net', 'hand'];
     case 'echinoderm': return ['tongs'];
+    case 'annelid': return ['rake', 'hand'];
     default: return ['tongs', 'hand'];
   }
 }
 
 export const FORAGE_TOOL_LABEL: Record<ForageTool, string> = {
-  hand: '맨손', tongs: '집게', net: '뜰채', gaff: '갈고리',
+  hand: '맨손', tongs: '집게', net: '뜰채', gaff: '갈고리', rake: '갈퀴',
 };
+
+/** 224차 — 사는 모양(DB `behavior` 우선, 없으면 카테고리로) */
+export function forageBehaviorOf(c: ShoreCreature): ForageBehavior {
+  if (c.behavior) return c.behavior;
+  switch (c.category) {
+    case 'cephalopod': return 'crevice';
+    case 'crustacean': return 'runner';
+    case 'annelid': return 'buried';
+    case 'bivalve': return 'buried';
+    default: return 'crawler';
+  }
+}
+
+/** 224차 — 사는 모양 → 손놀림 놀이 갈래 */
+export function forageGameKindOf(c: ShoreCreature): ForageGameKind {
+  switch (forageBehaviorOf(c)) {
+    case 'runner': return 'snatch';
+    case 'attached': return 'pry';
+    case 'buried': return 'dig';
+    case 'crevice': return 'pull';
+    default: return 'pick';
+  }
+}
+
+/**
+ * 224차 — 물가 한 칸 얕은 물의 지금 수심(m). 물때 수위 0(간조)~1(만조)로 0.25~1.1m.
+ * 1m 이상이면 장화로 들어갈 수 없다(사용자 지시 「수심 1m가 채 안 되는 곳만」 — 만조 무렵엔 닫힌다).
+ */
+export function shallowWaterDepthM(tideLevel01: number): number {
+  return Math.round((0.25 + 0.85 * Math.max(0, Math.min(1, tideLevel01))) * 100) / 100;
+}
+
+/** 224차 — 동해(강원 · 경북) 지역인가 — 출현 배율(`eastSeaWeight`)을 건다 */
+export function isEastSeaRegion(regionId: string): boolean {
+  return /gangwon|sokcho|gangneung|pohang|gyeongbuk|uljin|donghae/.test(regionId);
+}
 
 /** 보유 도구 중 이 생물에 쓸 수 있는 가장 좋은 도구 (없으면 undefined). 맨손은 항상 후보 */
 export function pickForageTool(c: ShoreCreature, owned: ForageTool[]): ForageTool | undefined {
@@ -140,6 +177,8 @@ export interface RollForageOpts {
   farms: FishFarm[];
   /** 상한 (밀도 계산 결과와 min) */
   maxSpots: number;
+  /** 224차 — 동해 지역이면 생물별 `eastSeaWeight`를 곱한다(0 = 안 나온다) */
+  eastSea?: boolean;
 }
 
 /**
@@ -156,6 +195,8 @@ export function rollForageSpots(candidates: ForageCandidate[], opts: RollForageO
 
   const pool = SHORE_CREATURE_DATABASE.filter((c) => {
     if (c.closedSeasonMonths.includes(opts.month)) return false;
+    if (c.absentMonths?.includes(opts.month)) return false;           // 224차 — 여름잠 · 추위
+    if (opts.eastSea && (c.eastSeaWeight ?? 1) <= 0) return false;     // 224차 — 동해에 없는 종
     if (c.discoveryTime === 'night' && !opts.isNight) return false;
     if (c.discoveryTime === 'day' && opts.isNight) return false;
     if (c.requiredLicense === 'shore_hunting_advanced' && !opts.hasAdvancedLicense) return false;
@@ -181,10 +222,12 @@ export function rollForageSpots(candidates: ForageCandidate[], opts: RollForageO
       if (used.has(`${cand.tx + dc},${cand.ty + dr}`)) { near = true; break; }
     }
     if (near) continue;
-    const fit = pool.filter((c) => creatureSpotKinds(c).includes(cand.kind));
+    // 224차 — 얕은 물은 바닥이 맞아야 한다(모래 속 갯지렁이 · 바위 틈 문어)
+    const fit = pool.filter((c) => creatureSpotKinds(c).includes(cand.kind)
+      && (!c.substrate || !cand.substrate || cand.substrate === 'mixed' || cand.substrate === c.substrate));
     if (fit.length === 0) continue;
-    // 시장가 역가중 — 값비싼 생물일수록 드물게
-    const weights = fit.map((c) => 1 / Math.sqrt(Math.max(3000, c.marketValuePerKg)));
+    // 시장가 역가중 — 값비싼 생물일수록 드물게 · 224차 동해 출현 배율
+    const weights = fit.map((c) => (opts.eastSea ? (c.eastSeaWeight ?? 1) : 1) / Math.sqrt(Math.max(3000, c.marketValuePerKg)));
     const sum = weights.reduce((a, b) => a + b, 0);
     let r = rng() * sum;
     let pick = fit[0]!;
@@ -261,6 +304,45 @@ export function attemptForage(c: ShoreCreature, tool: ForageTool, rng: () => num
     ...base, outcome: 'success', sizeCm: Math.round(sizeCm * 10) / 10, weightG, undersized,
     message: undersized ? `${c.nameKo} ${sizeCm.toFixed(1)}cm — 법정 크기(${legal}cm) 미달, 방류` : `${c.nameKo} ${weightG}g 채집!`,
   };
+}
+
+/**
+ * 224차 — 손놀림 놀이에 이긴 뒤의 수확(크기 · 무게 · 법정 크기 미달). `attemptForage`의 뒷부분을 떼어 냈다.
+ * 갯지렁이처럼 미끼로 들어가는 것은 마리로 센다(크기는 몸길이).
+ */
+export function rollForageHarvest(c: ShoreCreature, rng: () => number): Pick<ForageResult, 'sizeCm' | 'weightG' | 'undersized'> {
+  const legal = c.minLegalSizeCm;
+  const sizeCm = legal > 0 ? legal * (0.8 + rng() * 1.0)
+    : c.category === 'annelid' ? 8 + rng() * 14
+    : c.id === 'ligia_exotica' ? 2.5 + rng() * 2
+    : 4 + rng() * 12;
+  const undersized = legal > 0 && sizeCm < legal;
+  const perCm = c.category === 'cephalopod' ? 60 : c.category === 'annelid' ? 0.6 : c.id === 'ligia_exotica' ? 0.4 : 14;
+  const weightG = Math.max(1, Math.round(sizeCm * perCm + rng() * sizeCm * (perCm < 5 ? 0.3 : 10)));
+  return { sizeCm: Math.round(sizeCm * 10) / 10, weightG, undersized };
+}
+
+/** 224차 — 다침 판정 결과(맨손 · 장갑) */
+export interface ForageInjury {
+  injured: boolean;
+  /** 다쳐서 놓쳤다(성게 가시 · 게 집게에 손을 뗐다) */
+  dropped: boolean;
+  /** 상태이상 — 가시 = 생물중독 · 그 외 = 출혈 */
+  status?: 'bleed' | 'bio_poison';
+}
+
+/**
+ * 224차 — 손으로 잡을 때 다치는가. 장갑을 끼면 덜 다치고, 다쳐도 놓치지 않는다(가시가 긴 성게만 예외).
+ *  - 맨손(장갑 없이) + 다치는 생물: 55% 다침 · 다치면 놓친다.
+ *  - 장갑: 12% 다침 · 성게만 놓친다.
+ *  - 도구(집게 · 갈고리 · 뜰채 · 갈퀴)는 손이 닿지 않는다.
+ */
+export function forageInjuryRoll(c: ShoreCreature, tool: ForageTool, gloves: boolean, rng: () => number, injuryMult = 1): ForageInjury {
+  if (tool !== 'hand' || !c.handInjury) return { injured: false, dropped: false };
+  const p = (gloves ? 0.12 : 0.55) * Math.max(0, injuryMult);
+  if (rng() >= p) return { injured: false, dropped: false };
+  const spiny = c.category === 'echinoderm' && c.id !== 'stichopus_japonicus';
+  return { injured: true, dropped: !gloves || spiny, status: spiny ? 'bio_poison' : 'bleed' };
 }
 
 /** 조례 위반 — 어촌계 어장(마을어장·협동양식장) 안에서 보호 5종 채집 */
