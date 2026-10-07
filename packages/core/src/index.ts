@@ -710,7 +710,7 @@ export { renderNuisanceArt, NUISANCE_ART_KEYS } from './art/NuisanceArt.js';
 // ── 143차 싱글/멀티 플레이 계약 (클라이언트·서버 공용) ──
 export type {
   GameMode, MpPeer, NameValidation,
-  MpCreateSessionRes, MpSessionInfoRes, MpNameCheckRes, MpJoinRes, MpPresenceRes,
+  MpCreateSessionRes, MpSessionInfoRes, MpNameCheckRes, MpJoinRes, MpPresenceRes, MpRetireRes,
 } from './types/Multiplayer.js';
 export {
   SESSION_CODE_LEN, SESSION_CODE_ALPHABET, MP_DEFAULT_SERVER,

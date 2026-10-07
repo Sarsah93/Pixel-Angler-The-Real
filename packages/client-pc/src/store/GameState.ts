@@ -81,6 +81,7 @@ import { ShopStore, type ShopSaveState } from './ShopStore.js';
 import { setAuctionBidMult } from '../data/Consignment.js';
 import { CraftingStore, type CraftingSaveState } from './CraftingStore.js';
 import { TitleStore, type TitleSaveState } from './TitleStore.js';
+import { MultiplayerClient } from '../net/MultiplayerClient.js';
 import { TideLoreStore, type TideLoreSaveState } from './TideLoreStore.js';
 import { DiscoveryStore, DiscoverySaveState } from './DiscoveryStore.js';
 import {
@@ -187,6 +188,11 @@ export interface VitalsSaveState {
 // ─────────────────────────────────────────────
 interface SaveData {
   player: PlayerState;
+  /**
+   * 멀티 재접속 열쇠 (231차) — **캐릭터마다** 하나. 이전엔 브라우저당 하나라 슬롯 1~3이 세션의
+   * 한 자리(위치·통발·미적용 거래)를 나눠 썼다. 구세이브는 브라우저 id를 그대로 물려받는다(이어하기 보존).
+   */
+  mpUserId?: string;
   deployedTraps: DeployedTrap[];
   /** 설치된 화구 + 위에 걸린 조리 세션 (154차 불요리) — 시각은 전부 ms 숫자라 Date 복원 불요 */
   deployedStoves?: DeployedStove[];
@@ -381,6 +387,8 @@ export class GameStateManager {
   /** 파싱된 세이브 데이터를 현재 상태에 적용 */
   private applySaveData(saved: SaveData): void {
     this._player = saved.player;
+    this._mpUserId = saved.mpUserId || MultiplayerClient.legacyUserId;
+    MultiplayerClient.useCharacterId(this._mpUserId);
     this._deployedTraps = saved.deployedTraps ?? [];
     // 207차 한 대(`parkedRod`) → 208차 여러 대. 구세이브 = 거치 없음
     this._parkedRods = saved.parkedRods ?? (saved.parkedRod ? [saved.parkedRod] : []);
@@ -1607,6 +1615,7 @@ export class GameStateManager {
     this._player.lastSavedAt = new Date();
     return {
       player: this._player,
+      mpUserId: this._mpUserId || undefined,
       deployedTraps: this._deployedTraps,
       deployedStoves: this._deployedStoves,
       coolerInventory: this._coolerInventory,
@@ -1683,8 +1692,33 @@ export class GameStateManager {
     return this.saveToSlot(this._activeSlot ?? 1);
   }
 
+  /**
+   * 231차 — 파산한 판. 세이브를 지운 뒤 새 게임을 시작하거나 다른 슬롯을 불러오기 전까지 **어떤 저장도 하지 않는다**
+   * (사용자 지시 「파산하면 저장 파일도 지워서 되돌릴 수 없게」 — 침대 저장 · Tauri 창 닫기 저장 · 슬롯 생성 전부).
+   */
+  private _bankrupt = false;
+  /** 231차 — 이 캐릭터의 멀티 재접속 열쇠(세이브에 남는다) */
+  private _mpUserId = '';
+  get isBankrupt(): boolean { return this._bankrupt; }
+
+  /**
+   * 231차 — 파산 확정. 지금 슬롯의 세이브를 **바로** 지운다(연출이 끝나기 전에 탭을 닫아도 마지막 침대 저장으로 돌아가지 못한다).
+   * @returns 지운 슬롯 번호(새 게임을 그 자리에 연다). 활성 슬롯이 없으면 null
+   */
+  declareBankruptcy(): number | null {
+    const slot = this._activeSlot;
+    if (slot !== null) this.deleteSlot(slot);
+    this._bankrupt = true;
+    this._dirty = false;
+    return slot;
+  }
+
   /** 지정 슬롯(1~3)에 저장. 성공 여부 반환 (위치 게이트 없는 프리미티브 — 슬롯 생성용) */
   saveToSlot(slot: number): boolean {
+    if (this._bankrupt) {
+      console.log('[GameState] Save blocked — 파산한 판은 저장하지 않는다.');
+      return false;
+    }
     const data = this.buildSaveData();
     if (!data) return false;
     try {
@@ -1715,6 +1749,7 @@ export class GameStateManager {
     if (!parsed) return false;
     LedgerStore.suspend(true);
     try { this.applySaveData(parsed); } finally { LedgerStore.suspend(false); }
+    this._bankrupt = false;   // 231차 — 다른 판을 불러왔다
     this._activeSlot = slot;
     this._isInitialized = true;
     // 213차 E — 꺼 둔 사이(실제 시간)에 잤는가. 장부 기록이 다시 켜진 뒤에 한다(잠이 오늘 장을 닫는다)
@@ -1745,6 +1780,7 @@ export class GameStateManager {
   /** 지정 슬롯에서 새 게임 시작 (기존 데이터 덮어씀) */
   startNewGameInSlot(slot: number): void {
     this.newGame();
+    this._bankrupt = false;   // 231차 — 새 판은 저장된다
     this._activeSlot = slot;
     this.saveToSlot(slot);
   }
@@ -1818,6 +1854,9 @@ export class GameStateManager {
 
   newGame(): void {
     LedgerStore.suspend(true);   // 211차 — 시작 장비 · 시드 발견은 하루 기록이 아니다
+    // 231차 — 새 캐릭터 = 새 멀티 신원(옛 자리·통발·거래를 물려받지 않는다)
+    this._mpUserId = MultiplayerClient.newCharacterId();
+    MultiplayerClient.useCharacterId(this._mpUserId);
     this._character = GameStateManager.defaultCharacter('m');
     this._player = createDefaultPlayer();
     this._deployedTraps = [];

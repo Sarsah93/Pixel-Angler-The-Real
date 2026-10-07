@@ -4695,10 +4695,16 @@ export class RegionFieldScene extends Phaser.Scene {
 
   /**
    * 229차 — 파산 엔딩(사용자 지정). 벌금 1천만원을 낼 돈이 없다 → 혼잣말 → 암전 → 「파산했다. 처음부터?」 →
-   * 같은 슬롯에서 새 게임(캐릭터 만들기부터). 저장은 하지 않는다 — 이 판은 여기서 끝난다.
+   * 같은 슬롯에서 새 게임(캐릭터 만들기부터).
+   * 231차 — **연출보다 먼저 세이브를 지운다**(사용자 지시 「되돌릴 수 없게」). 저장은 침대에서만 되므로
+   *   지우지 않으면 탭을 닫고 마지막 침대 저장으로 돌아갈 수 있었다. 지운 뒤로는 새 게임 전까지 저장이 막힌다.
    */
   private beginBankruptcy(fineWon: number): void {
     if (this.collapsing) return;
+    const erasedSlot = GameState.declareBankruptcy();
+    // 231차 — 멀티: 이 캐릭터는 세계에서 사라진다. 자리·이름·통발을 서버에서 걷고(재시도 포함)
+    //   거래는 서버가 취소/정리한다. 연출 동안 남에게 「필드에 서 있는 사람」으로 보이지 않게 바로 끊는다.
+    if (MultiplayerClient.isConnected) MultiplayerClient.retire();
     if (this.interior) this.leaveInterior(true);
     this.collapsing = true;
     this.playerBody.setVelocity(0, 0);
@@ -4712,11 +4718,11 @@ export class RegionFieldScene extends Phaser.Scene {
       '그만한 돈이 없다.',
       '감당할 수 없는 불행에 심장이 빨리 뛰고, 눈앞이 깜깜하다.',
     ];
-    const restartSlot = GameState.activeSlot ?? 1;
+    const restartSlot = erasedSlot ?? 1;
     const askRestart = (): void => {
       this.openPopup((close) => new ConfirmDialog(
         this,
-        '파산했다.\n낚싯대도, 배도, 이 바다에 남을 이유도 없다.\n처음부터 다시 시작할까?',
+        '파산했다.\n낚싯대도, 배도, 이 바다에 남을 이유도 없다.\n지난 기록은 모두 사라졌다. 처음부터 다시 시작할까?',
         () => {
           close();
           GameState.startNewGameInSlot(restartSlot);
@@ -5732,7 +5738,8 @@ export class RegionFieldScene extends Phaser.Scene {
     MultiplayerClient.reportPosition(
       this.region, this.playerBody.x, this.playerBody.y, this.playerFacing,
       Math.hypot(this.playerBody.body.velocity.x, this.playerBody.body.velocity.y) > 4,
-      this.cinematicActive ? 'cinematic' : this.shopPanel ? 'shop' : 'field',
+      // 231차 — 건물 실내(겹층)·기절/파산 연출도 필드로 덮어쓰지 않는다(거래 제안·밀어내기 대상에서 빠진다)
+      this.cinematicActive || this.collapsing ? 'cinematic' : this.interior ? 'indoor' : this.shopPanel ? 'shop' : 'field',
     );
     this.peerSyncAt += delta;
     if (this.peerSyncAt < 200) return;
@@ -5863,6 +5870,8 @@ export class RegionFieldScene extends Phaser.Scene {
    *  proposed(내게 온 것) → 수락/거절 창 · open → 거래 창 · committed → 적용 · cancelled → 사유 한 번.
    */
   private syncTrade(): void {
+    // 231차 — 파산한 캐릭터는 거래를 받지도 적용하지도 않는다(서버 retire가 내 쪽을 적용 완료로 닫는다)
+    if (GameState.isBankrupt) { if (this.tradePanel) this.closeTradePanel(); return; }
     const t = MultiplayerClient.trade;
     if (!t) { if (this.tradePanel) this.closeTradePanel(); return; }
     const { me, other } = MultiplayerClient.tradeSides(t);

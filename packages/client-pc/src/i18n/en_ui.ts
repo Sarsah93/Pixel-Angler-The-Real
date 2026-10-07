@@ -32,7 +32,7 @@ export const EN_UI: Record<string, string> = {
   '물가에 표지판이 서 있다 — 가까이 가서 읽어 본다': 'There is a signboard on the shore — go closer and read it',
   '그만한 돈이 없다.': 'I do not have that kind of money.',
   '감당할 수 없는 불행에 심장이 빨리 뛰고, 눈앞이 깜깜하다.': 'My heart races at a misfortune I cannot bear, and everything goes dark.',
-  '파산했다.\n낚싯대도, 배도, 이 바다에 남을 이유도 없다.\n처음부터 다시 시작할까?': 'Bankrupt.\nNo rod, no boat, no reason left to stay on this sea.\nStart over from the beginning?',
+  '파산했다.\n낚싯대도, 배도, 이 바다에 남을 이유도 없다.\n지난 기록은 모두 사라졌다. 처음부터 다시 시작할까?': 'Bankrupt.\nNo rod, no boat, no reason left to stay on this sea.\nEvery record of that life is gone. Start over from the beginning?',
   '처음부터 다시 시작': 'Start over', '타이틀로': 'To title', '놓아주다': 'Letting go', '알 밴 암컷': 'Berried female',
   '배딱지 밑에 알이 주황빛으로 꽉 차 있다. 이 녀석이 품은 알이 다음 철의 게다.': 'Under the abdomen the eggs are packed in orange. The eggs she carries are next season\'s crabs.',
   '물가에 내려놓자 옆걸음으로 금세 물속으로 사라졌다.': 'Set down at the water\'s edge, she sidled off and vanished into the water in no time.',

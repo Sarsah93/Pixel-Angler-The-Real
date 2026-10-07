@@ -28,7 +28,7 @@ import {
   characterNameKey, validateCharacterName, isFieldActive,
   type MpPeer, type MpActivity, type MpPlacedTrap, type MpChatLine,
   type MpSavedSession, type MpResume,
-  type MpTradeState, type MpTradeOffer, type MpTradeItem, type MpProfile,
+  type MpTradeState, type MpTradeOffer, type MpTradeItem, type MpProfile, type MpRetireRes,
 } from '@tra/core';
 
 interface SessionPlayer extends MpPeer {
@@ -231,6 +231,35 @@ export class SessionRegistry {
     p.lastSeenMs = Date.now();
     s.dirty = true;
     this.save(code, true);
+  }
+
+  /**
+   * 231차 — 캐릭터 소멸(파산). `leave`와 달리 **자리를 남기지 않는다**:
+   * - 이름 선점을 바로 푼다(7일 잠금 없이 — 그 캐릭터는 다시 돌아오지 않는다).
+   * - 그 사람이 놓은 통발을 세계에서 걷는다(주인이 없는 통발은 아무도 못 거둔다).
+   * - 제안·편집 중 거래는 `gone`으로 취소한다. 이미 도장 찍힌 거래는 **소멸한 쪽만 적용 완료로**
+   *   돌린다 — 상대는 받을 것을 그대로 받는다(줄 사람의 인벤토리는 이미 사라졌으니 차감할 것도 없다).
+   * 같은 userId로 다시 들어오면 이어하기가 아니라 **새 사람**이다.
+   */
+  retire(code: string, who: { playerId?: string; userId?: string }): MpRetireRes {
+    const s = this.sessions.get(code.toUpperCase());
+    // 접속 중이면 playerId, 파산 때 서버가 꺼져 있어 나중에 다시 보내는 경우엔 userId로 찾는다
+    const p = s && ((who.playerId ? s.players.get(who.playerId) : undefined)
+      ?? (who.userId ? this.playerByUser(s, who.userId) : undefined));
+    if (!s || !p) return { ok: true, removedTraps: 0 };
+    const before = s.traps.length;
+    s.traps = s.traps.filter((t) => t.ownerId !== p.userId);
+    for (const t of s.trades) {
+      const mine = this.sideOf(t, p.userId);
+      if (!mine) continue;
+      if (t.phase === 'proposed' || t.phase === 'open') this.cancelTrade(t, MP_TRADE_REASON_KO.gone);
+      else if (t.phase === 'committed') { mine.offer.applied = true; t.updatedMs = Date.now(); }
+    }
+    s.players.delete(p.playerId);
+    this.sweepTrades(s);
+    s.dirty = true;
+    this.save(code, true);
+    return { ok: true, removedTraps: before - s.traps.length };
   }
 
   // ═══════════════════════════════════════════════════
@@ -454,7 +483,12 @@ export class SessionRegistry {
           p.offline = true;
           s.dirty = true;
         }
-        if (p.offline && now - p.lastSeenMs > OFFLINE_KEEP_MS) { s.players.delete(id); s.dirty = true; }
+        if (p.offline && now - p.lastSeenMs > OFFLINE_KEEP_MS) {
+          s.players.delete(id);
+          // 231차 — 자리가 사라지면 그 사람의 설치물도 걷는다(주인 없는 통발은 아무도 못 거둔다)
+          s.traps = s.traps.filter((t) => t.ownerId !== p.userId);
+          s.dirty = true;
+        }
         else if (!p.offline) live++;
       }
       if (live === 0 && s.players.size === 0 && now - s.createdMs > EMPTY_SESSION_TTL_MS) {

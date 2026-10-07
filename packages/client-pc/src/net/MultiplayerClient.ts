@@ -16,12 +16,17 @@ import {
   type GameMode, type MpPeer, type MpActivity, type MpPlacedTrap, type MpChatLine, type MpResume,
   type MpProfile, type MpTradeState, type MpTradeItem,
   type MpCreateSessionRes, type MpSessionInfoRes, type MpNameCheckRes, type MpJoinRes, type MpPresenceRes,
+  type MpRetireRes,
 } from '@tra/core';
 
 /** 로비 설정은 브라우저에 남긴다 — 다음에 켤 때 서버 주소를 다시 치지 않게 */
 const STORAGE_KEY = 'pixelAngler_mp';
 
-interface StoredMp { server: string; lastCode: string; userId?: string; applied?: string[] }
+interface StoredMp {
+  server: string; lastCode: string; userId?: string; applied?: string[];
+  /** 231차 — 파산했는데 서버에 알리지 못한 자리(세션 코드 + 그 캐릭터 id). 다음에 그 세션에 들어갈 때 먼저 걷는다 */
+  pendingRetire?: { code: string; userId: string }[];
+}
 
 /** 재접속 열쇠 — 이 브라우저(=이 사람)를 가리키는 고정 id. 한 번 만들면 바뀌지 않는다 */
 function makeUserId(): string {
@@ -59,6 +64,13 @@ class MultiplayerClientImpl {
   trade: MpTradeState | null = null;
   /** 이미 내 인벤토리에 적용한 확정 거래 id (146차 — 이중 적용 방지, localStorage 영속) */
   private appliedTrades = new Set<string>();
+  /** 231차 — 아직 서버에 알리지 못한 캐릭터 소멸 */
+  private pendingRetire: { code: string; userId: string }[] = [];
+  /**
+   * 231차 — 230차까지 쓰던 브라우저 단위 id. 구세이브(캐릭터 id 없음)가 이것을 물려받아
+   * 예전 자리로 이어하기가 끊기지 않게 한다. 새 캐릭터는 `newCharacterId()`로 따로 받는다.
+   */
+  readonly legacyUserId: string;
   /** 남에게 보이는 프로필 — 바뀔 때만 다시 올린다 */
   private profile?: MpProfile;
   private profileKey = '';
@@ -85,9 +97,22 @@ class MultiplayerClientImpl {
         if (v.server) this.server = v.server;
         if (v.userId) this.userId = v.userId;
         if (v.applied) this.appliedTrades = new Set(v.applied);
+        if (Array.isArray(v.pendingRetire)) this.pendingRetire = v.pendingRetire.filter((r) => r && r.code && r.userId);
       }
     } catch (_e) {/* 저장본이 깨졌으면 기본값 */}
     if (!this.userId) { this.userId = makeUserId(); this.persist(); }
+    this.legacyUserId = this.userId;
+  }
+
+  /** 새 캐릭터용 멀티 id (231차) */
+  newCharacterId(): string { return makeUserId(); }
+
+  /**
+   * 지금 플레이하는 캐릭터의 id로 갈아 끼운다 (231차 — 세이브 로드·새 게임 때 GameState가 부른다).
+   * 브라우저 저장의 `userId`(=legacyUserId)는 건드리지 않는다 — 구세이브가 계속 물려받아야 한다.
+   */
+  useCharacterId(id: string): void {
+    if (id) this.userId = id;
   }
 
   get isMulti(): boolean { return this.mode === 'multi'; }
@@ -102,8 +127,9 @@ class MultiplayerClientImpl {
   private persist(): void {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
-        server: this.server, lastCode: this.code, userId: this.userId,
+        server: this.server, lastCode: this.code, userId: this.legacyUserId ?? this.userId,
         applied: [...this.appliedTrades].slice(-50),
+        pendingRetire: this.pendingRetire.slice(-20),
       } satisfies StoredMp));
     } catch (_e) {/* 저장 실패는 무시 */}
   }
@@ -163,6 +189,8 @@ class MultiplayerClientImpl {
    * 서버가 마지막 자리(`resume`)를 돌려주고 필드 씬이 거기서 시작한다.
    */
   async claimName(name: string, look?: MpPeer['look']): Promise<MpJoinRes> {
+    // 231차 — 이 세션에서 파산한 캐릭터가 서버에 남아 있으면 먼저 걷는다(이름이 묶이지 않게)
+    for (const r of this.pendingRetire.filter((x) => x.code === this.code)) await this.flushRetire(r);
     const res = await this.post<MpJoinRes>(`/mp/session/${encodeURIComponent(this.code)}/join`, {
       name, userId: this.userId, look,
     });
@@ -221,6 +249,8 @@ class MultiplayerClientImpl {
         ...(say ? { say } : {}),
         chatSince: this.chatSeq,
       });
+      // 231차 — 응답을 기다리는 사이 나갔다(파산·싱글 전환) — 늦게 온 응답으로 상태를 되살리지 않는다
+      if (!this.isConnected) return;
       if (!res?.ok) { this.peers = []; return; }
       if (sentLook && sentLook === this.look) this.lookSent = true;
       if (sentProfile && sentProfile === this.profile) this.profileSent = true;
@@ -316,6 +346,33 @@ class MultiplayerClientImpl {
   /** 같은 지역에 있는 사람만 (이름표를 띄울 대상) */
   peersInRegion(regionId: string): MpPeer[] {
     return this.peers.filter((p) => p.regionId === regionId);
+  }
+
+  /**
+   * 231차 — 캐릭터 소멸(파산). 세션에서 **자리·이름·통발을 남기지 않고** 나간 뒤 싱글로 돌아간다.
+   * 서버가 응답하지 않아도 게임은 멈추지 않는다 — 코드를 기억해 두었다가 그 세션에 다시 들어갈 때
+   * `claimName` 앞에서 userId로 한 번 더 보낸다.
+   */
+  retire(): void {
+    if (this.isConnected) {
+      const rec = { code: this.code, userId: this.userId };
+      this.pendingRetire.push(rec);
+      this.persist();
+      void this.post<MpRetireRes>('/mp/retire', { code: rec.code, playerId: this.playerId, userId: rec.userId })
+        .then((r) => { if (r?.ok) this.dropRetire(rec); });
+      this.playerId = '';   // leave()가 /mp/leave를 다시 보내 자리를 '오프라인'으로 되살리지 않게
+    }
+    this.leave();
+  }
+
+  private async flushRetire(rec: { code: string; userId: string }): Promise<void> {
+    const r = await this.post<MpRetireRes>('/mp/retire', { code: rec.code, userId: rec.userId });
+    if (r?.ok) this.dropRetire(rec);
+  }
+
+  private dropRetire(rec: { code: string; userId: string }): void {
+    this.pendingRetire = this.pendingRetire.filter((x) => !(x.code === rec.code && x.userId === rec.userId));
+    this.persist();
   }
 
   /** 싱글로 되돌리기 — 세션에서 나가고 폴링을 멈춘다 */

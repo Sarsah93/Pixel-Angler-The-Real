@@ -126,6 +126,16 @@ export interface MpPresenceRes {
   reasonKo?: string;
 }
 
+/**
+ * 캐릭터 소멸(파산) 응답 (231차 — `POST /mp/retire`).
+ * `leave`와 달리 자리·이름·통발을 남기지 않는다. 같은 userId로 다시 오면 새 사람이다.
+ */
+export interface MpRetireRes {
+  ok: boolean;
+  /** 세계에서 걷어 낸 내 통발 수 */
+  removedTraps?: number;
+}
+
 /** 캐릭터 만들기 진행 단계 — 화면에 그대로 띄우는 문구 (사용자 지정) */
 export const MP_PROGRESS_KO = {
   checking: '중복 여부 확인중',

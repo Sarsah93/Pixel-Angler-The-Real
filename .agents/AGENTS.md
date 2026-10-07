@@ -467,7 +467,15 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-10-07 230차) — 「미끼용 크릴」 그림**
+**최근 변경 (2026-10-07 231차) — 파산 = 세이브 삭제 · 멀티 퇴장 · 멀티 전수조사**
+
+- 파산 즉시 활성 슬롯 삭제 + 저장 잠금(`GameState.declareBankruptcy` — `saveToSlot`이 거부) · 새 게임 / 불러오기에서만 풀린다.
+- 서버 `POST /mp/retire`(자리 · 이름 즉시 해제 · 설치물 회수 · 거래 정리 · 무응답 재전송) · 멀티 id는 **캐릭터(세이브)마다**(`mpUserId`).
+- 함정: `retire` 뒤 `leave`가 자리를 되살리지 않게 `playerId`를 먼저 비운다 · 활동 상태는 `syncPeers` 파생식에 넣어야 남는다 ·
+  localStorage `userId`는 구세이브용 `legacyUserId`라 덮어쓰지 않는다. 전수조사 15건 → 백로그 BI.
+  상세: [231차 워크로그](../docs/wiki/03-WORKLOG/2026-10-07-231-bankruptcy-erase-multiplayer-audit.md).
+
+**이전 변경 (2026-10-07 230차) — 「미끼용 크릴」 그림**
 
 - 사용자 그림 1장 → 미끼용 크릴 · 미끼용 백크릴 공통 아이콘 `item_krill_bait`(설명 · 보정은 아이템마다) · 구세이브 백필(`px:krill` · 이모지).
 - 상세보기: 크릴 프로필은 일반 미끼 「입질 보정」 행을 빼서 크릴 행(+2% · 부패 −20%)과 숫자가 어긋나지 않게 했다.
@@ -480,13 +488,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - 놀이 판 바닥 4종 절차 픽셀 · 손 도구 24x24 도트 · 1자형 혼무시 연출 · 말풍선 그림(`TourStep.picture`).
 - 함정: 적발 경로는 `coins < fineWon → bankrupt()` 분기를 같이 둔다 · 독은 `toxin` 필드 하나로 흐른다 · 언 크릴은 `unpack` · `finishChumDrag` 두 곳에서 막는다.
   상세: [229차 워크로그](../docs/wiki/03-WORKLOG/2026-10-07-229-law-feedback-krill-economy-board-art.md).
-
-**이전 변경 (2026-10-07 228차) — 갯지렁이 그림 4장 · 스탯 이름 한국어만**
-
-- 사용자 도트 그림: 청갯지렁이 · 혼무시 「한 갑」 = 상점 묶음 아이콘 · 「한 마리」 = 생미끼 · 도감 · 파기 판 그림(청갯지렁이 판은 새로).
-- 상태 창(S) 스탯 라벨의 영문 병기(`근력 (Strength)`) 제거 — 영어는 i18n 사전이 맡는다.
-- 함정: 그림 원본은 긴 변 720 이하로 정수배 축소(`save_hires`) · 226차 그림은 `max_px=None`으로 원본 크기 유지.
-  상세: [228차 워크로그](../docs/wiki/03-WORKLOG/2026-10-07-228-worm-art-stat-labels.md).
 
 ---
 

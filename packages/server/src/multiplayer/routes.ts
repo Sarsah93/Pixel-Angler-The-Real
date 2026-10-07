@@ -104,3 +104,10 @@ multiplayerRouter.post('/leave', (req, res) => {
   if (b.code && b.playerId) sessionRegistry.leave(b.code, b.playerId);
   res.json({ ok: true });
 });
+
+// 231차 — 캐릭터 소멸(파산): 자리·이름·통발을 남기지 않고 나간다
+multiplayerRouter.post('/retire', (req, res) => {
+  const b = req.body as { code?: string; playerId?: string; userId?: string };
+  if (!b.code || (!b.playerId && !b.userId)) { res.json({ ok: true, removedTraps: 0 }); return; }
+  res.json(sessionRegistry.retire(b.code, { playerId: b.playerId, userId: b.userId }));
+});
