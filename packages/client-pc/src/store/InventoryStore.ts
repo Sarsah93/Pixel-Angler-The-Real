@@ -354,6 +354,11 @@ export interface InvItem {
   trapSpecId?: string;
   /** 채집물(해루질·통발 생물) — 강원 조례상 판매·유통 금지 (상점 매입 거부) */
   forageCatch?: boolean;
+  /**
+   * 229차 — 패류독소 채취 금지 기간에 캔 조개류(홍합 · 바지락 · 굴). 먹으면 익혀도 일정 확률로 식중독.
+   * 슬롯에 보라색 물방울 아이콘 · 상세보기에 경고. 요리에 넣으면 완성 요리로 옮겨 간다.
+   */
+  toxin?: boolean;
 
   /**
    * 손질 부산물 종류 (subCategory '부산물') — 어종명 접두 개별 아이템 (2026-07-29 세분화):
@@ -365,8 +370,10 @@ export interface InvItem {
   /**
    * 신선도 감쇄 프로필 — 기본 그래프 대신 특수 전이를 쓰는 아이템 (viscera:
    * 활어 10분 → 곧바로 나쁨 → 1시간 후 부패. 사용자 지정 2026-07-29)
+   * 229차 — krill_block: 급랭 백크릴(냉동 → 해동 3시간 → 부패). 해동 전엔 밑밥도 못 개고 포장도 못 뜯는다.
+   *          krill_bait: 미끼용 크릴(해동 3시간 → 부패). 부패한 크릴을 끼우면 입질 −20%.
    */
-  condProfile?: 'viscera';
+  condProfile?: 'viscera' | 'krill_block' | 'krill_bait';
 
   // ── 불요리 (154차 — `data/CookItems.ts` 테이블이 정본 · 세이브 백필 공유) ──
   /** 조리 재료 id (core COOK_INGREDIENTS) — 식자재·양념 아이템 */
@@ -603,7 +610,8 @@ function createSeedItems(): InvItem[] {
     { id: 'inv_chum_powder',       name: '감성돔 집어 파우더',   icon: '🧂', category: 'consumable', subCategory: '집어제/밑밥', qty: 3, basePrice: 8000,  equippable: false, chumKind: 'powder' },
     { id: 'inv_chum_powder_heavy', name: '고비중 파우더',        icon: '🧂', category: 'consumable', subCategory: '집어제/밑밥', qty: 2, basePrice: 11000, equippable: false, chumKind: 'powder' },
     { id: 'inv_chum_bread',        name: '빵가루 (밑밥용)',      icon: '🍞', category: 'consumable', subCategory: '집어제/밑밥', qty: 3, basePrice: 4000,  equippable: false, chumKind: 'powder' },
-    { id: 'inv_chum_krill_block',  name: '냉동 크릴 (밑밥 블록)', icon: '🦐', category: 'consumable', subCategory: '집어제/밑밥', qty: 4, basePrice: 7000,  equippable: false, condition: 'frozen', chumKind: 'krill' },
+    // 229차 — 급랭 백크릴 600g: 해동 전엔 밑밥도 못 개고 포장도 못 뜯는다. 해동 후 ① 밑밥통 투입 ② 포장 뜯기 → 미끼용 백크릴 50마리
+    { id: 'inv_chum_krill_block',  name: '급랭 백크릴 600g (밑밥 블록)', icon: '', iconTexture: 'item_krill_block', category: 'consumable', subCategory: '집어제/밑밥', qty: 4, basePrice: 7000,  equippable: false, condition: 'frozen', chumKind: 'krill', condProfile: 'krill_block', unpack: { id: 'inv_krill_bag', qty: 50 } },
     { id: 'inv_chum_apmac',        name: '압맥 (눌린 보리)',     icon: '🌾', category: 'consumable', subCategory: '집어제/밑밥', qty: 3, basePrice: 5000,  equippable: false, chumKind: 'grain' },
     { id: 'inv_chum_corn',         name: '옥수수 캔 (밑밥용)',   icon: '🌽', category: 'consumable', subCategory: '집어제/밑밥', qty: 2, basePrice: 4500,  equippable: false, chumKind: 'grain' },
     // 대용량 각얼음 — 쿨러 '얼음 넣기' 재료 (1회 1개 소모, 2시간 유지)
@@ -627,7 +635,8 @@ function createSeedItems(): InvItem[] {
     { id: 'inv_worm',     name: '지렁이',                   icon: '', iconTexture: 'item_worm', category: 'tackle', subCategory: '생미끼',    qty: 20, basePrice: 5000,  condition: 'live',    equippable: false },
     { id: 'inv_ragworm',  name: '청갯지렁이',               icon: '', iconTexture: 'item_ragworm', category: 'tackle', subCategory: '생미끼',    qty: 15, basePrice: 600,   condition: 'live',    equippable: false },
     { id: 'inv_honmushi', name: '혼무시',                   icon: '', iconTexture: 'item_honmushi', category: 'tackle', subCategory: '생미끼',    qty: 8,  basePrice: 1500,  condition: 'live',    equippable: false },
-    { id: 'inv_krill',    name: '크릴 (냉동)',              icon: '🦐', category: 'tackle', subCategory: '냉동미끼',  qty: 30, basePrice: 4000,  condition: 'frozen',  equippable: false },
+    // 229차 — 미끼용 크릴(곽크릴을 뜯은 것) · 미끼용 백크릴(블록을 뜯은 것 — 입질 +2%). 그림은 같고 설명 · 보너스가 다르다
+    { id: 'inv_krill',    name: '미끼용 크릴',              icon: '', iconTexture: 'px:krill', category: 'tackle', subCategory: '냉동미끼',  qty: 30, basePrice: 200,  condition: 'thawed',  equippable: false, condProfile: 'krill_bait' },
     { id: 'inv_breadbait', name: '빵가루 경단',             icon: '', iconTexture: 'px:it_breadball', category: 'tackle', subCategory: '반죽미끼',  qty: 15, basePrice: 300,   equippable: false },
     { id: 'inv_fishcut',  name: '생선 조각 미끼',           icon: '🦐', category: 'tackle', subCategory: '선어미끼',  qty: 6,  basePrice: 3000,  condition: 'chilled', equippable: false },
     { id: 'inv_pe1',      name: 'AMSTRONG 합사 원줄 1호 · 150m', icon: '', iconTexture: 'line_spool_saiso', category: 'tackle', subCategory: '원줄 스풀', qty: 1,  basePrice: 18000, equippable: false, lineMaterial: 'pe_braid', lineForm: 'sinking', lineLengthM: 150, lineNo: 1, lineDiameterMm: 0.165, lineStrengthLb: 18 },
@@ -799,9 +808,23 @@ const VISCERA_DURATION_MIN: Partial<Record<InvCondition, number>> = {
   live: 10, bad: 60,
 };
 
+// ── 229차 크릴 프로필 — 냉동(무한) → 해동(상온 3시간 · 사용자 지정) → 부패. 해동 크릴은 「나쁨」 단계 없이 바로 상한다.
+//  블록은 냉동 상태로 팔고(해동 전 사용 불가), 미끼용은 뜯는 순간부터 해동 시계가 돈다.
+const KRILL_NEXT: Partial<Record<InvCondition, InvCondition | null>> = {
+  frozen: 'thawed', thawed: 'spoiled',
+};
+const KRILL_DURATION_MIN: Partial<Record<InvCondition, number>> = {
+  frozen: 240, thawed: 180,
+};
+/** 229차 — 크릴 계열 프로필인가(블록 · 미끼용 공통 전이) */
+function isKrillProfile(profile?: InvItem['condProfile']): boolean {
+  return profile === 'krill_block' || profile === 'krill_bait';
+}
+
 /** 프로필 반영 다음 전이 상태 */
 function condNextOf(cond: InvCondition, profile?: InvItem['condProfile']): InvCondition | null {
   if (profile === 'viscera' && cond in VISCERA_NEXT) return VISCERA_NEXT[cond] ?? null;
+  if (isKrillProfile(profile) && cond in KRILL_NEXT) return KRILL_NEXT[cond] ?? null;
   return CONDITION_NEXT[cond];
 }
 /** 222차 — 「보관 요령」 배수(GameState가 주입 — 순환 import 회피). 종착(Infinity)은 그대로 */
@@ -811,6 +834,7 @@ export function setFreshnessMult(fn: () => number): void { freshnessMult = fn; }
 /** 프로필 반영 단계 유지 시간 (분) */
 function condDurationOf(cond: InvCondition, profile?: InvItem['condProfile']): number {
   if (profile === 'viscera' && cond in VISCERA_DURATION_MIN) return VISCERA_DURATION_MIN[cond]! * freshnessMult();
+  if (isKrillProfile(profile) && cond in KRILL_DURATION_MIN) return KRILL_DURATION_MIN[cond]! * freshnessMult();
   return CONDITION_DURATION_MIN[cond] * freshnessMult();
 }
 
@@ -1158,9 +1182,9 @@ class InventoryStoreManager {
     return this._items.find((i) => i.category === cat && i.slot === slot);
   }
 
-  /** 쿨러(아이스박스) 보유 여부 — 어창 보관/밑밥 배합 기능 게이트 */
+  /** 쿨러(아이스박스) 보유 여부 — 어창 보관/밑밥 배합 기능 게이트. 229차 — 살림용 바칸도 같은 구실을 한다 */
   hasCooler(): boolean {
-    return !!this.find('inv_cooler');
+    return !!this.find('inv_cooler') || !!this.find('inv_bakkan');
   }
 
   /**
@@ -1324,7 +1348,13 @@ class InventoryStoreManager {
         sinkerWeightG: i.sinkerWeightG ?? sd?.sinkerWeightG ?? (i.rigPart === 'card_rig' ? ((i.kitHooks ?? 3) >= 7 ? 60 : (i.kitHooks ?? 3) >= 5 ? 45 : 38) : undefined),
         name: (i.id === 'inv_swivel' && i.name === '면도래 8호') ? '핀 도래 8호'
           : (i.id === 'inv_ragworm' && i.name === '갯지렁이') ? '청갯지렁이'   // 225차 — 상점 갑 이름과 맞춘다
+          // 229차 — 크릴 개명(급랭 백크릴 600g · 미끼용 크릴). 구 상점 「냉동 크릴 (각크릴)」도 블록으로 본다
+          : (i.id === 'inv_chum_krill_block' && /^냉동 크릴/.test(i.name)) ? '급랭 백크릴 600g (밑밥 블록)'
+          : (i.id === 'inv_krill' && i.name === '크릴 (냉동)') ? '미끼용 크릴'
           : i.name,
+        // 229차 — 크릴 신선도 프로필 · 포장 뜯기(블록 → 미끼용 백크릴 50)
+        condProfile: i.condProfile ?? sd?.condProfile,
+        unpack: i.unpack ?? sd?.unpack,
         forageTool: i.forageTool ?? sd?.forageTool,
         // 224차 — 장화(신발 칸) · 포장 묶음 — 상점 구매분은 저장된 필드 그대로, 이름 규칙 폴백만
         wading: i.wading ?? sd?.wading ?? (i.subCategory === '신발' && /장화/.test(i.name) ? true : undefined),
@@ -1732,10 +1762,16 @@ class InventoryStoreManager {
   /** 224차 — 시드 카탈로그의 물건 모양(칸 · 수량 제외). 없으면 null */
   seedTemplate(id: string): InvItemTemplate | null {
     const seed = createSeedItems().find((x) => x.id === id);
-    if (!seed) return null;
+    if (!seed) return InventoryStoreManager.UNPACK_TPL[id] ?? null;
     const { slot: _slot, qty: _qty, ...tpl } = seed;
     return tpl;
   }
+
+  /** 229차 — 포장을 뜯으면 나오는 물건 중 시드(시작 가방)에 없는 것. 미끼용 백크릴은 블록을 뜯어야만 생긴다 */
+  private static readonly UNPACK_TPL: Record<string, InvItemTemplate> = {
+    inv_krill_bag: { id: 'inv_krill_bag', name: '미끼용 백크릴', icon: '', iconTexture: 'px:krill', category: 'tackle', subCategory: '냉동미끼',
+      basePrice: 250, condition: 'thawed', equippable: false, condProfile: 'krill_bait' },
+  };
 
   /**
    * 224차 — 포장 뜯기. 묶음 한 개(`unpack` — 빵가루 반죽 200g 등)를 열어 안의 물건으로 바꾼다.
@@ -1746,11 +1782,18 @@ class InventoryStoreManager {
     if (!it?.unpack) return { ok: false, reason: '뜯을 포장이 아니다.' };
     const tpl = this.seedTemplate(it.unpack.id);
     if (!tpl) return { ok: false, reason: '뜯을 포장이 아니다.' };
+    // 229차 — 급랭 블록은 꽁꽁 얼어 있으면 뜯어도 쓸 수 없다(해동 뒤에). 부패한 것은 뜯어 봐야 상한 미끼다
+    refreshCondition(it);
+    if (it.chumKind === 'krill' && it.condition === 'frozen') return { ok: false, reason: '꽁꽁 얼어 있다 — 해동한 뒤 뜯는다.' };
+    if (it.condition === 'spoiled') return { ok: false, reason: '이미 상했다 — 뜯어도 쓸 수 없다.' };
     const freesSlot = it.qty === 1 && it.category === tpl.category;
     if (!this.find(tpl.id) && !freesSlot && this.freeSlotCount(tpl.category) < 1) return { ok: false, reason: '가방에 자리가 없다.' };
     const n = it.unpack.qty;
     if (!this.removeQty(it.id, 1)) return { ok: false, reason: '뜯을 포장이 아니다.' };
-    this.addItem(tpl, n);
+    // 229차 — 안의 물건은 포장의 상태를 잇는다(곽크릴이 얼어 있으면 얼어 있는 크릴 · 해동한 블록이면 해동 크릴). 해동 시계는 뜯은 때부터
+    const carry = tpl.condProfile === 'krill_bait' && it.condition
+      ? { condition: it.condition, conditionSinceMs: Date.now() } : {};
+    this.addItem({ ...tpl, ...carry }, n);
     return { ok: true, name: tpl.name, qty: n };
   }
 
@@ -1986,8 +2029,21 @@ class InventoryStoreManager {
   /** 193차 — 「한 바늘에 두 미끼」 스킬 보유 여부. GameState가 주입한다(순환 import 회피) */
   doubleBaitAllowed: () => boolean = () => false;
 
-  /** 193차 — 채비가 주는 입질 배율 (미끼 수 +2%씩 · 이웃한 같은 미끼 +1% · 두 미끼 바늘마다 +2%) */
-  rigBiteMult(): number { return 1 + this.rigSummary().biteBonus; }
+  /** 193차 — 채비가 주는 입질 배율 (미끼 수 +2%씩 · 이웃한 같은 미끼 +1% · 두 미끼 바늘마다 +2%) × 229차 미끼 상태 배율 */
+  rigBiteMult(): number { return (1 + this.rigSummary().biteBonus) * this.baitStateMult(); }
+
+  /**
+   * 229차 — 끼운 미끼의 상태가 주는 배율. 부패한 미끼가 하나라도 있으면 ×0.8(사용자 지정 −20%) ·
+   * 미끼용 백크릴(블록을 뜯은 것)은 ×1.02. 미끼가 없으면(루어) 1.
+   */
+  baitStateMult(): number {
+    let m = 1;
+    const baits = this.rigBaitItems();
+    for (const it of baits) refreshCondition(it);
+    if (baits.some((it) => it.condition === 'spoiled')) m *= 0.8;
+    if (baits.some((it) => it.id === 'inv_krill_bag')) m *= 1.02;
+    return m;
+  }
 
   /** 이 미끼 칸이 미끼를 몇 개 쓰는가 (두 미끼면 2) */
   private baitUse(n: { slot: string; itemId?: string; double?: boolean }): number {

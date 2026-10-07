@@ -36,6 +36,8 @@ export interface CoolerFish {
   iconTexture?: string;
   /** 어획 경로 (134차) — 인벤 이송 시 승계 */
   catchMethod?: CatchMethod;
+  /** 229차 — 패류독소 채취 금지 기간에 캔 조개류(먹으면 식중독 확률) · 인벤 이송 시 승계 */
+  toxin?: boolean;
   /** 현재 신선도 상태 (매질 규칙에 따라 진행) */
   condition: InvCondition;
   /** 현재 상태에서 누적된 경과 시간 (ms) — 일시정지 구간은 누적되지 않음 */

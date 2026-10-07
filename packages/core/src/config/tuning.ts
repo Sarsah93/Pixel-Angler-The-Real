@@ -601,6 +601,8 @@ export interface TuningConfig {
     /** 적발 벌금 = 보유 재화 × 비율 (상한 fineCapWon) */
     fineRatio: number;
     fineCapWon: number;
+    /** 229차 — 패류독소 표시가 붙은 조개를 먹었을 때 식중독 확률(익혀도 같다) */
+    toxinPoisonChance: number;
   };
   trap: {
     /** 분실 위험 배율 (calculateTrapLossRisk 결과에 곱) */
@@ -1406,8 +1408,8 @@ export const TUNING: TuningConfig = {
     baseSuccess: 0.72, toolMatchBonus: 0.18, octopusEscape: 0.35, handInjuryStamina: 15,
     holdMsBase: 900, lampRadiusPer100lm: 0.55, dayRadiusTiles: 3,
     maxWindMps: 12, maxWaveM: 1.5, slipWaveM: 1.0, slipChanceBase: 0.04, slipChanceSwell: 0.22,
-    // 227차 — 상한 = 비어업인 과태료 최대 80만원(2020.9~ 수산자원관리법 — 사용자 조사)
-    enforcementChance: 0.25, fineRatio: 0.3, fineCapWon: 800_000,
+    // 229차 — 상한 = 강원 조례 「1천만원 이하 벌금」(게임이 실제로 내는 벌금은 어장 조례 위반뿐). 못 내면 파산.
+    enforcementChance: 0.25, fineRatio: 0.3, fineCapWon: 10_000_000, toxinPoisonChance: 0.6,
   },
   trap: { lossRiskMult: 1.0, minSoakHours: 1, maxRangeTiles: 4, maxWaterDistTiles: 3 },
   cook: {
@@ -1827,7 +1829,8 @@ export const TUNING_META: TuningParamMeta[] = [
   { path: 'forage.lampRadiusPer100lm', min: 0.2, max: 1.5, step: 0.05, category: 'feel', label: '랜턴 발견 반경(타일/100lm)' },
   { path: 'forage.enforcementChance', min: 0, max: 1, step: 0.05, category: 'balance', label: '조례 위반 적발 확률' },
   { path: 'forage.fineRatio', min: 0, max: 1, step: 0.05, category: 'balance', label: '벌금 재화 비율' },
-  { path: 'forage.fineCapWon', min: 0, max: 2_000_000, step: 50_000, category: 'balance', label: '벌금 상한(원)' },
+  { path: 'forage.fineCapWon', min: 0, max: 20_000_000, step: 100_000, category: 'balance', label: '벌금 상한(원)' },
+  { path: 'forage.toxinPoisonChance', min: 0, max: 1, step: 0.05, category: 'balance', label: '패류독소 식중독 확률' },
   { path: 'trap.lossRiskMult', min: 0, max: 3, step: 0.1, category: 'balance', label: '통발 분실 위험 배율' },
   { path: 'trap.minSoakHours', min: 0, max: 8, step: 0.5, category: 'balance', label: '통발 최소 침지(h)' },
   // 134차 스토리

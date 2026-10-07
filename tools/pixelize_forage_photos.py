@@ -241,9 +241,15 @@ JOBS = [
 ]
 
 # 228차 — 미끼 한 갑(상점 묶음) 아이콘: (원본, 출력 파일명)
+# 229차 — 사용자 도트 그림 추가: 급랭 백크릴 · 곽크릴 · 다낚스 바칸 · 외포란 암꽃게 · 1자형 혼무시(놀이 연출용)
 PACKS = [
     ('ragworm_pack', 'pack_ragworm'),
     ('honmushi_pack', 'pack_honmushi'),
+    ('krill_block_frozen', 'it_krill_block'),
+    ('krill_box_bait', 'it_krill_box'),
+    ('bakkan_danax', 'it_bakkan_danax'),
+    ('crab_berried_female', 'forage_berried_crab'),
+    ('honmushi_straight', 'honmushi_straight'),
 ]
 
 if __name__ == '__main__':
@@ -251,6 +257,12 @@ if __name__ == '__main__':
         im, rgb, hsv, alpha = load(src)
         save_hires(rgb, mask_alpha(rgb, hsv, alpha), os.path.join(OUT_ICON, f'{name}.png'), pad=0.0)   # 납작한 상자라 여백 없이 꽉 채운다
         print(f'{src}: pack')
+    # 229차 — 1자형 혼무시(놀이 연출용): 긴 축 64px 도트판(파기 판에서 구멍 밖으로 끌려 나오는 그림)
+    im, rgb, hsv, alpha = load('honmushi_straight')
+    m = mask_alpha(rgb, hsv, alpha)
+    px = pixelize(rgb, m, 64, rotate=axis_angle(m))
+    px.save(os.path.join(OUT_ICON, 'honmushi_straight_px.png'))
+    print(f'honmushi_straight: px {px.size}')
     for src, sp, fn, icon_px, board_px, rot, sat, con in JOBS:
         im, rgb, hsv, alpha = load(src)
         m = fn(rgb, hsv, alpha) if fn is mask_alpha else fn(rgb, hsv)

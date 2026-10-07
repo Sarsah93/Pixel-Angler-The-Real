@@ -139,7 +139,7 @@ export function farmAt(farms: FishFarm[], tx: number, ty: number): FishFarm | un
 // ─────────────────────────────────────────────
 
 export const GANGWON_FORAGE_ORDINANCE = {
-  effectiveFrom: '2024-07-26',
+  effectiveFrom: '2025-01-13',   // 229차 — 사용자 조사(강원 조례 시행일)
   /** 어촌계 어장 안 포획 금지 정착성 5종 — ShoreCreatureDatabase id */
   protectedCreatureIds: [
     'haliotis_discus',            // 전복

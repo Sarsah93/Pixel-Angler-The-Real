@@ -314,7 +314,23 @@ export function attemptForage(c: ShoreCreature, tool: ForageTool, rng: () => num
  * 224차 — 손놀림 놀이에 이긴 뒤의 수확(크기 · 무게 · 법정 크기 미달). `attemptForage`의 뒷부분을 떼어 냈다.
  * 갯지렁이처럼 미끼로 들어가는 것은 마리로 센다(크기는 몸길이).
  */
-export function rollForageHarvest(c: ShoreCreature, rng: () => number, regionId?: string): Pick<ForageResult, 'sizeCm' | 'weightG' | 'undersized'> {
+export interface ForageHarvest extends Pick<ForageResult, 'sizeCm' | 'weightG' | 'undersized'> {
+  /** 229차 — 게류는 배딱지로 암수를 가린다(그 밖은 undefined) */
+  sex?: 'M' | 'F';
+  /** 229차 — 알을 밴(외포란) 암컷 — 자동 방생 대상 */
+  berried?: boolean;
+}
+
+/** 229차 — 게류(갑각류 중 게) — 암수 · 외포란이 있는 생물 */
+export function isCrabCreature(c: Pick<ShoreCreature, 'id' | 'category'>): boolean {
+  return c.category === 'crustacean' && /portunus|charybdis|hemigrapsus/.test(c.id);
+}
+
+/** 229차 — 꽃게류 외포란 철(4~9월) · 그 철 암컷의 외포란 확률 */
+export const BERRIED_MONTHS: readonly number[] = [4, 5, 6, 7, 8, 9];
+export const BERRIED_CHANCE = 0.35;
+
+export function rollForageHarvest(c: ShoreCreature, rng: () => number, regionId?: string, month?: number): ForageHarvest {
   const legal = resolveLegal(c, regionId).minLegalSizeCm;   // 227차 — 지역 규정(제주 전복 10cm 등)
   const sizeCm = legal > 0 ? legal * (0.8 + rng() * 1.0)
     : c.category === 'annelid' ? 8 + rng() * 14
@@ -323,7 +339,13 @@ export function rollForageHarvest(c: ShoreCreature, rng: () => number, regionId?
   const undersized = legal > 0 && sizeCm < legal;
   const perCm = c.category === 'cephalopod' ? 60 : c.category === 'annelid' ? 0.6 : c.id === 'ligia_exotica' ? 0.4 : 14;
   const weightG = Math.max(1, Math.round(sizeCm * perCm + rng() * sizeCm * (perCm < 5 ? 0.3 : 10)));
-  return { sizeCm: Math.round(sizeCm * 10) / 10, weightG, undersized };
+  const out: ForageHarvest = { sizeCm: Math.round(sizeCm * 10) / 10, weightG, undersized };
+  if (isCrabCreature(c)) {
+    out.sex = rng() < 0.5 ? 'M' : 'F';
+    // 쫄장게(미끼)는 작아 외포란을 가리지 않는다 — 꽃게 · 민꽃게만
+    out.berried = out.sex === 'F' && c.id !== 'hemigrapsus_sanguineus' && month !== undefined && BERRIED_MONTHS.includes(month) && rng() < BERRIED_CHANCE;
+  }
+  return out;
 }
 
 /** 224차 — 다침 판정 결과(맨손 · 장갑) */
@@ -369,7 +391,10 @@ export interface EnforcementResult {
 export function rollEnforcement(coins: number, rng: () => number, mult = 1): EnforcementResult {
   const t = TUNING.forage;
   if (rng() >= Math.min(1, t.enforcementChance * Math.max(0, mult))) return { caught: false, fineWon: 0 };
-  const fine = Math.min(t.fineCapWon, Math.round(coins * t.fineRatio));
+  // 229차 — 벌금은 정액(사용자 지정 1천만원 = fineCapWon). 비율(fineRatio)은 상한보다 커질 때만 의미가 있어
+  //  사실상 정액이다. 가진 돈이 모자라면 호출부가 「파산」으로 처리한다(여기서는 깎지 않는다).
+  void coins;
+  const fine = Math.max(t.fineCapWon, Math.round(coins * t.fineRatio));
   return { caught: true, fineWon: Math.max(0, fine) };
 }
 

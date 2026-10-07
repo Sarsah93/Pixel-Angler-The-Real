@@ -238,6 +238,8 @@ export interface DeployedStove {
   /** 마지막 시뮬 시각 (wall-clock) */
   lastTickMs: number;
   session: CookSessionState | null;
+  /** 229차 — 패류독소 표시가 붙은 조개가 들어갔다(완성 요리에 그대로 옮겨 간다 · 익혀도 안 사라진다) */
+  toxin?: boolean;
 }
 
 // ─────────────────────────────────────────────

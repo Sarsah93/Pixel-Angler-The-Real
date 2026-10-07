@@ -19,6 +19,13 @@ import { GAME_WIDTH } from '../PhaserConfig.js';
 import { t } from '../i18n/I18n.js';
 import { maybeStartTour, tourSeen, type TourOptions } from './GuideTour.js';
 import { forageSpotTexKey } from '../scenes/field/ForageSystem.js';
+import { ensureForageBed, bedKindFor, toolSpriteKey, addToolSprite, makeForageDemo, DEMO_H } from './ForageBoardArt.js';
+import { InventoryStore } from '../store/InventoryStore.js';
+
+/** 229차 — 손그림 도구 스프라이트의 「끝」이 위를 향하는가(손 · 장갑 = 손가락 위 / 집게 · 갈퀴 · 갈고리 = 끝이 아래) */
+const TIP_UP: Record<string, boolean> = { fg_hand: true, fg_glove: true, fg_tongs: false, fg_rake: false, fg_gaff: false };
+/** 1자형 혼무시 도트(파기 판 · 구멍 속 · 끌려 나오는 연출)를 쓰는 생물 */
+const STRAIGHT_WORM_IDS = new Set(['marphysa_sanguinea', 'perinereis_aibuhitensis']);
 
 const W = 480;
 const BOARD_H = 180;
@@ -62,6 +69,11 @@ export class ForageGamePanel extends DraggablePanel {
   private readonly rng: () => number;
   private readonly g: Phaser.GameObjects.Graphics;
   private readonly img: Phaser.GameObjects.Image | null;
+  /** 229차 — 구운 바닥 그림 · 손 도구 스프라이트 · 1자형 지렁이(파기) */
+  private readonly toolImg: Phaser.GameObjects.Image | null;
+  private readonly toolKey: string;
+  private readonly wormImg: Phaser.GameObjects.Image | null;
+  private closeDelayMs = 0;
   /** 225차 — 사진 도트 판 그림인가(머리 왼쪽) · 필드 도트 16px 대비 배율 · 마지막으로 본 방향 */
   private boardArt = false;
   private imgBase = 1;
@@ -96,9 +108,13 @@ export class ForageGamePanel extends DraggablePanel {
     this.onEnd = onEnd;
     this.underwater = opts.underwater;
     this.boardTop = this.contentTop + 12;
-    for (let i = 0; i < 26; i++) {
-      this.pebbles.push({ x: BX + this.rng() * BW, y: this.boardTop + this.rng() * BOARD_H, r: 1.5 + this.rng() * 3.5, c: this.rng() });
+    for (let i = 0; i < 14; i++) {
+      this.pebbles.push({ x: BX + this.rng() * BW, y: this.boardTop + this.rng() * BOARD_H, r: 1.5 + this.rng() * 3, c: this.rng() });
     }
+    // 229차 — 구운 바닥(갯바위 · 얕은 물 · 파기 단면 · 바위 틈)을 2배로 깐다. 그 위에 그래픽 · 생물 · 손 도구 순
+    const bedKey = ensureForageBed(scene, bedKindFor(state.kind, opts.underwater));
+    const bed = scene.add.image(BX, this.boardTop, bedKey).setOrigin(0, 0).setScale(2);
+    this.add(bed);
     this.g = scene.add.graphics();
     this.add(this.g);
     // 225차 — 사진 도트 판 그림(forageboard_*)이 있으면 그쪽(머리 왼쪽 · 크기는 필드 도트 16px 기준으로 맞춘다)
@@ -111,6 +127,14 @@ export class ForageGamePanel extends DraggablePanel {
       this.imgBase = 16 / Math.max(1, f.width, f.height);
       this.add(this.img);
     }
+    // 229차 — 파기 판의 지렁이는 1자형 도트(구멍 속에 세로로 · 이기면 끌려 나온다)
+    this.wormImg = state.kind === 'dig' && STRAIGHT_WORM_IDS.has(creature.id) && scene.textures.exists('honmushi_straight_px')
+      ? scene.add.image(0, 0, 'honmushi_straight_px').setAngle(-90).setScale(1.5) : null;
+    if (this.wormImg) { this.add(this.wormImg); this.img?.setVisible(false); }
+    // 229차 — 손 도구 스프라이트(맨손 · 장갑 · 집게 · 갈퀴 · 갈고리)
+    this.toolKey = toolSpriteKey(tool, InventoryStore.wearingGloves);
+    this.toolImg = addToolSprite(scene, this.toolKey, 2);
+    if (this.toolImg) { this.toolImg.setVisible(false); this.add(this.toolImg); }
 
     // 입력 — 판 위 누르기 · 움직이기 / Space
     const hit = scene.add.rectangle(BX + BW / 2, this.boardTop + BOARD_H / 2, BW, BOARD_H, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
@@ -151,12 +175,19 @@ export class ForageGamePanel extends DraggablePanel {
 
   private buildTour(id: string): TourOptions {
     const texts = TOUR_TEXT[this.gs.kind];
+    // 229차 — 말풍선마다 그림(바닥 · 생물 · 손 · 화살표)을 넣는다 — 글자만으로 설명하지 않는다
+    const boardKey = `forageboard_${this.creature.id}`;
+    const picKey = this.wormImg ? 'honmushi_straight_px' : this.scene.textures.exists(boardKey) ? boardKey : forageSpotTexKey(this.creature);
+    const tool = this.gs.tool, gloves = InventoryStore.wearingGloves, uw = this.underwater, kind = this.gs.kind;
     return {
       id,
       alive: () => this.active,
       anchor: () => this.localRect(0, 0, W, H),
       onDone: () => { this.paused = false; },
-      steps: texts.map((text) => ({ text, target: () => this.localRect(BX, this.boardTop, BW, BOARD_H) })),
+      steps: texts.map((text) => ({
+        text, target: () => this.localRect(BX, this.boardTop, BW, BOARD_H),
+        picture: () => makeForageDemo(this.scene, kind, picKey, tool, gloves, uw), pictureH: DEMO_H,
+      })),
     };
   }
 
@@ -175,8 +206,28 @@ export class ForageGamePanel extends DraggablePanel {
     if (this.gs.status !== 'play') {
       this.finished = true;
       this.onEnd(this.gs);
+      // 229차 — 파기에서 이기면 1자형 지렁이가 구멍 밖으로 끌려 나오는 연출을 잠깐 보여 준다
+      if (this.gs.status === 'won' && this.wormImg) {
+        this.closeDelayMs = 700;
+        const wy = this.wormImg.y;
+        this.scene.tweens.add({ targets: this.wormImg, y: wy - 70, angle: -70, duration: 520, ease: 'Back.easeOut' });
+        if (this.toolImg) this.scene.tweens.add({ targets: this.toolImg, y: this.toolImg.y - 40, duration: 420, ease: 'Quad.easeOut' });
+        this.scene.time.delayedCall(this.closeDelayMs, () => { if (this.active) this.requestClose(); });
+        return;
+      }
       this.requestClose();
     }
+  }
+
+  /** 229차 — 손 도구 스프라이트를 놓는다. `tipTo`는 끝이 향할 방향(단위 벡터). 안 주면 위를 본다 */
+  private placeTool(x: number, y: number, tipTo?: { x: number; y: number }, scale = 1): void {
+    const t = this.toolImg;
+    if (!t) return;
+    t.setVisible(true).setPosition(x, y).setScale(scale);
+    if (tipTo) {
+      const deg = Math.atan2(tipTo.y, tipTo.x) * 180 / Math.PI;
+      t.setAngle(TIP_UP[this.toolKey] ? deg + 90 : deg - 90);
+    } else t.setAngle(0);
   }
 
   // ═══════════════════════════════════════════════════
@@ -187,16 +238,17 @@ export class ForageGamePanel extends DraggablePanel {
     const g = this.g;
     g.clear();
     const top = this.boardTop;
-    // 바닥 — 물속이면 푸른 물빛 위에, 뭍이면 바위색
-    g.fillStyle(this.underwater ? 0x24506a : 0x4a463e, 1);
-    g.fillRect(BX, top, BW, BOARD_H);
-    for (const p of this.pebbles) {
-      g.fillStyle(this.underwater ? (p.c < 0.5 ? 0x2f6683 : 0x1d4258) : (p.c < 0.5 ? 0x5c574c : 0x3a362f), 1);
-      g.fillCircle(p.x, p.y, p.r);
+    // 바닥은 구운 그림(229차). 여기서는 자갈 몇 개로 깊이감만 더한다(단면 · 틈 판은 그림이 다 그린다)
+    const s = this.gs;
+    if (s.kind !== 'dig' && s.kind !== 'pull') {
+      for (const p of this.pebbles) {
+        g.fillStyle(this.underwater ? (p.c < 0.5 ? 0x2f6683 : 0x1d4258) : (p.c < 0.5 ? 0x5c574c : 0x3a362f), 0.8);
+        g.fillCircle(p.x, p.y, p.r);
+      }
     }
     g.lineStyle(2, 0x0a1628, 1);
     g.strokeRect(BX, top, BW, BOARD_H);
-    const s = this.gs;
+    this.toolImg?.setVisible(false);
     if (s.snatch) this.drawSnatch();
     else if (s.pry) this.drawPry();
     else if (s.dig) this.drawDig();
@@ -242,18 +294,21 @@ export class ForageGamePanel extends DraggablePanel {
     const moving = n.phase === 'dash' || n.phase === 'bolt' || n.phase === 'tell';
     this.setCreature(cx + shake, cy, 3, alarmTint, (n.phase === 'dash' || n.phase === 'bolt') && !this.boardArt ? n.dir * 8 : 0, moving ? n.dir > 0 : this.lastFaceRight);
     if (moving) this.lastFaceRight = n.dir > 0;
-    // 손 — 잡히는 반경 고리 · 덮치는 중이면 그림자가 줄어든다
+    // 손 — 잡히는 반경 고리 · 덮치는 중이면 그림자가 줄어든다. 손 그림은 고리 위에서 따라온다(229차)
     const hx = BX + n.handX * BW;
     const r = n.catchR * BW;
     g.lineStyle(2, 0xffffff, 0.85);
     g.strokeCircle(hx, cy, r);
+    let hoverK = 1;
     if (n.strikeMs > 0) {
       const k = n.strikeMs / Math.max(1, n.strikeTotalMs);
+      hoverK = 1 - k * 0.3;
       g.fillStyle(0x000000, 0.35);
       g.fillCircle(hx, cy, r * (1 + k * 2.2));
       g.lineStyle(3, 0xffe28a, 0.9);
       g.strokeCircle(hx, cy, r * (1 + k * 2.2));
     }
+    this.placeTool(hx, cy - 6, undefined, hoverK);
     // 놓친 횟수 — 손 위 점
     for (let i = 0; i < n.misses; i++) { g.fillStyle(0xff6a5a, 1); g.fillCircle(hx - 8 + i * 8, cy - r - 10, 3); }
   }
@@ -292,23 +347,11 @@ export class ForageGamePanel extends DraggablePanel {
     arc(0, 1, 4, 0xe8d8b8, 0.6);                                    // 가장자리 길
     arc(p.zoneC - p.zoneW / 2, p.zoneC + p.zoneW / 2, 14, 0x0a0e14); // 들린 틈(어둠)
     arc(p.zoneC - p.zoneW / 2, p.zoneC + p.zoneW / 2, 7, flash?.kind === 'hit' ? 0xffffff : 0x4af2a1);
-    // 집게 끝(또는 손끝) — 바깥에서 가장자리로 들이댄다
+    // 집게 끝(또는 손끝) — 바깥에서 가장자리로 들이댄다(229차 — 손그림 스프라이트, 끝이 껍데기 쪽을 본다)
     const q = at(p.needle);
-    const isHand = this.gs.tool === 'hand';
-    const ox = q.nx * 40, oy = q.ny * 40;
-    if (isHand) {
-      g.lineStyle(11, 0x8a5a3a, 1); g.lineBetween(q.x + ox, q.y + oy, q.x + q.nx * 4, q.y + q.ny * 4);
-      g.lineStyle(7, 0xe8b48a, 1); g.lineBetween(q.x + ox, q.y + oy, q.x + q.nx * 4, q.y + q.ny * 4);
-      g.fillStyle(0xf6d8c0, 1); g.fillCircle(q.x + q.nx * 4, q.y + q.ny * 4, 3);
-    } else {
-      const px = -q.ny * 4, py = q.nx * 4;   // 집게 두 갈래 간격
-      g.lineStyle(6, 0x2a3036, 1);
-      g.lineBetween(q.x + ox + px, q.y + oy + py, q.x + px * 0.3, q.y + py * 0.3);
-      g.lineBetween(q.x + ox - px, q.y + oy - py, q.x - px * 0.3, q.y - py * 0.3);
-      g.lineStyle(3, 0xd8e0e8, 1);
-      g.lineBetween(q.x + ox + px, q.y + oy + py, q.x + px * 0.3, q.y + py * 0.3);
-      g.lineBetween(q.x + ox - px, q.y + oy - py, q.x - px * 0.3, q.y - py * 0.3);
-    }
+    const into = { x: -q.nx, y: -q.ny };
+    this.placeTool(q.x + q.nx * 26, q.y + q.ny * 26, into, 1);
+    g.fillStyle(0x000000, 0.25); g.fillCircle(q.x + q.nx * 6, q.y + q.ny * 6, 5);
     if (flash) {
       g.lineStyle(2, flash.kind === 'hit' ? 0x4af2a1 : 0xff6a5a, 1);
       g.strokeCircle(q.x, q.y, 8 + (1 - flash.ms / 320) * 10);
@@ -326,17 +369,28 @@ export class ForageGamePanel extends DraggablePanel {
     const g = this.g;
     const top = this.boardTop;
     const sx = BX + BW / 2 - 70, sw = 140;
-    // 바닥 단면
-    g.fillStyle(0x8a7a5a, 1); g.fillRect(sx, top + 8, sw, BOARD_H - 16);
-    g.fillStyle(0x6e6046, 1);
-    for (let i = 0; i < 4; i++) g.fillRect(sx, top + 8 + (BOARD_H - 16) * (0.25 * i + 0.12), sw, 3);
-    // 판 구멍
+    // 바닥 단면은 구운 그림(229차). 판 구멍만 여기서 — 가장자리는 파낸 모래가 쌓인다
     const depthPx = (BOARD_H - 16) * d.depth;
     g.fillStyle(0x2a2218, 1); g.fillRect(sx + sw / 2 - 18, top + 8, 36, depthPx);
+    g.fillStyle(0x1a140c, 0.6); g.fillRect(sx + sw / 2 - 18, top + 8, 4, depthPx); g.fillRect(sx + sw / 2 + 14, top + 8, 4, depthPx);
+    if (depthPx > 6) {
+      g.fillStyle(0xb8a680, 1);
+      g.fillEllipse(sx + sw / 2 - 30, top + 9, 26, 7); g.fillEllipse(sx + sw / 2 + 30, top + 9, 26, 7);
+    }
     // 녀석
     const wy = top + 8 + (BOARD_H - 16) * Math.min(1, d.prey);
     const wig = Math.sin(this.gs.t * (d.flinch ? 0.05 : 0.012)) * (d.flinch ? 6 : 3);
-    this.setCreature(sx + sw / 2 + wig, wy, 2.6, d.flinch ? 0xffb0a0 : undefined, d.flinch ? wig * 3 : 0);
+    if (this.wormImg && !this.finished) {
+      this.wormImg.setPosition(sx + sw / 2 + wig * 0.5, wy + 20).setAngle(-90 + (d.flinch ? wig * 2 : wig * 0.6));
+      if (d.flinch) this.wormImg.setTint(0xffb0a0); else this.wormImg.clearTint();
+    } else if (!this.wormImg) {
+      this.setCreature(sx + sw / 2 + wig, wy, 2.6, d.flinch ? 0xffb0a0 : undefined, d.flinch ? wig * 3 : 0);
+    }
+    // 갈퀴(손) — 구멍 위에서 파는 만큼 내려간다 · 누르고 있으면 흔들린다
+    if (!this.finished) {
+      const bob = this.holding && !this.paused ? Math.sin(this.gs.t * 0.03) * 4 : 0;
+      this.placeTool(sx + sw / 2 + 2, top + 8 + Math.min(depthPx, BOARD_H - 60) + bob - 6, { x: 0, y: 1 }, 1);
+    }
     // 소란 막대(오른쪽)
     const mx = BX + BW - 46, mh = BOARD_H - 24, my = top + 12;
     g.fillStyle(0x0a1628, 0.9); g.fillRect(mx, my, 18, mh);
@@ -356,14 +410,17 @@ export class ForageGamePanel extends DraggablePanel {
     const p = this.gs.pull!;
     const g = this.g;
     const top = this.boardTop;
-    // 바위 틈
-    g.fillStyle(0x07121c, 1);
-    g.fillTriangle(BX + BW / 2 - 60, top + 20, BX + BW / 2 + 60, top + 20, BX + BW / 2, top + 120);
+    // 바위 틈은 구운 그림(229차). 녀석은 틈 가운데에서 끌려 올라온다 · 손은 그 위에서 당긴다
     const prog = Math.max(0, Math.min(1, p.progress));
     const oy = top + 100 - prog * 70;
     const puff = p.phase === 'tell' ? 1.18 : 1;
     const shake = p.phase === 'surge' ? Math.sin(this.gs.t * 0.1) * 4 : 0;
     this.setCreature(BX + BW / 2 + shake, oy, 3 * puff, p.phase === 'calm' ? undefined : 0xff7a6a);
+    const pullK = this.holding && !this.paused ? 1 : 0;
+    this.placeTool(BX + BW / 2 + 34 + shake * 0.5, oy - 26 - pullK * 6, { x: -0.5, y: 1 }, 1);
+    if (p.phase === 'surge') {   // 먹물 기운 — 틈 위로 번진다
+      g.fillStyle(0x0a0a14, 0.35); g.fillEllipse(BX + BW / 2, oy + 10, 90, 36);
+    }
     // 긴장 막대 — 밝은 칸 = 끌려 나오는 범위
     const by = top + 138, bw = BW - 80, bx = BX + 40, bh = 16;
     g.fillStyle(0x0a1628, 0.9); g.fillRect(bx, by, bw, bh);

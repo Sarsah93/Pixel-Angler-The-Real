@@ -159,6 +159,7 @@ import { ItemDetailPanel } from '../ui/ItemDetailPanel.js';
 import { StatusPanel } from '../ui/StatusPanel.js';
 import { EquipmentPanel } from '../ui/EquipmentPanel.js';
 import { HelpLibraryPanel } from '../ui/HelpLibraryPanel.js';
+import { SignboardPanel } from '../ui/SignboardPanel.js';
 import { UtilizationPanel, UtilizationTab } from '../ui/UtilizationPanel.js';
 import { CoolerPanel } from '../ui/CoolerPanel.js';
 import { BikeComposite, RiderDir } from '../ui/BikeComposite.js';
@@ -4692,6 +4693,53 @@ export class RegionFieldScene extends Phaser.Scene {
     });
   }
 
+  /**
+   * 229차 — 파산 엔딩(사용자 지정). 벌금 1천만원을 낼 돈이 없다 → 혼잣말 → 암전 → 「파산했다. 처음부터?」 →
+   * 같은 슬롯에서 새 게임(캐릭터 만들기부터). 저장은 하지 않는다 — 이 판은 여기서 끝난다.
+   */
+  private beginBankruptcy(fineWon: number): void {
+    if (this.collapsing) return;
+    if (this.interior) this.leaveInterior(true);
+    this.collapsing = true;
+    this.playerBody.setVelocity(0, 0);
+    this.hud?.pushLog(`[파산] 벌금 ${fineWon.toLocaleString()}원 — 그만한 돈이 없다`);
+    // 닫을 수 있는 창은 다 닫는다(파산 위에 인벤이 떠 있으면 안 된다)
+    for (const e of [...this.popupStack]) e.close();
+    const black = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 1)
+      .setScrollFactor(0).setDepth(935).setAlpha(0).setInteractive();
+    this.tweens.add({ targets: black, alpha: 0.55, duration: 900, ease: 'Quad.easeIn' });
+    const paras = [
+      '그만한 돈이 없다.',
+      '감당할 수 없는 불행에 심장이 빨리 뛰고, 눈앞이 깜깜하다.',
+    ];
+    const restartSlot = GameState.activeSlot ?? 1;
+    const askRestart = (): void => {
+      this.openPopup((close) => new ConfirmDialog(
+        this,
+        '파산했다.\n낚싯대도, 배도, 이 바다에 남을 이유도 없다.\n처음부터 다시 시작할까?',
+        () => {
+          close();
+          GameState.startNewGameInSlot(restartSlot);
+          this.collapsing = false;
+          this.scene.start('CharacterCreateScene');
+        },
+        () => {
+          close();
+          this.collapsing = false;
+          this.scene.start('MainMenuScene');
+        },
+        { yes: '처음부터 다시 시작', no: '타이틀로' },
+      ));
+    };
+    this.time.delayedCall(950, () => {
+      this.openPopup((close) => new MonologuePanel(this, paras, () => {
+        close();
+        // 암전 — 완전히 검게 덮고 나서 묻는다
+        this.tweens.add({ targets: black, alpha: 1, duration: 1300, ease: 'Quad.easeIn', onComplete: askRestart });
+      }, '혼잣말'));
+    });
+  }
+
   /** 사망 부활 — 홈타운 집 앞으로 이동(장면 재시작). 요금은 받지 않는다 */
   private goHomeAfterDeath(): void {
     this.collapseCleanup?.();
@@ -6523,6 +6571,14 @@ export class RegionFieldScene extends Phaser.Scene {
         },
       });
     }
+    // 229차 — 어촌계 표지판: 읽어야 그 바다의 규칙을 안다(지도에는 어장을 그리지 않는다)
+    const signFarm = this.forage?.nearSignFarm;
+    if (signFarm) {
+      opts.push({
+        label: '표지판 읽기', note: signFarm.name, hint: '[F] 표지판 읽기',
+        run: () => this.forage?.openSign(signFarm),
+      });
+    }
     // ⑧ 거치대 · 화구 · 통발
     if (this.rodHolder?.hasNearHolder) {
       opts.push({ label: '거치해 둔 낚싯대 잡기', hint: this.rodHolder.nearHintKo ?? undefined, run: () => { this.rodHolder?.onInteractKey(); } });
@@ -6995,6 +7051,17 @@ export class RegionFieldScene extends Phaser.Scene {
       running: () => this.running,
       openForageGame: (c, tool, opts, onEnd) => {
         this.openPopup((close) => new ForageGamePanel(this, c, tool, opts, onEnd, close));
+      },
+      // 229차 — 파산 · 알 밴 암컷 놓아주기 · 어촌계 표지판
+      bankrupt: (fineWon) => this.beginBankruptcy(fineWon),
+      noticeRelease: (lines, portraitKey, name) => {
+        this.openPopup((close) => new MonologuePanel(this, lines, close, '놓아주다', { portraitKey, name }));
+      },
+      openSignboard: (farm) => {
+        this.openPopup((close) => new SignboardPanel(this, {
+          farm, regionId: this.region, onClose: close,
+          onHelp: () => { close(); this.openHelpLibrary('forage-law'); },
+        }));
       },
     }, farms);
     this.trapField = new TrapFieldSystem({

@@ -354,6 +354,10 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
       { id: 'inv_coarse_salt', name: '굵은소금',        icon: '🧂', category: 'consumable', subCategory: '조미/손질', basePrice: 2000, price: 2500, maxPerPurchase: 10, equippable: false, desc: '문어 손질(소금 치대기) 재료 — 점액과 이물을 걷어낸다. 1회 1개 소모.' },
       { id: 'inv_bucket',     name: '낚시용 두레박',    icon: '🪣', category: 'etc', subCategory: '낚시도구', basePrice: 9000, price: 11000, maxPerPurchase: 1, equippable: false, desc: '바다 근처에서 쿨러에 해수를 채우는 도구 (소모되지 않음).' },
       { id: 'inv_cooler',     name: '쿨러 (아이스박스)', icon: '🛅', category: 'etc', subCategory: '낚시도구', basePrice: 45000, price: 55000, maxPerPurchase: 1, equippable: false, desc: '어획 보관(어창 9칸)·밑밥 배합의 필수 장비 — 해수/얼음을 채워 신선도를 유지한다.' },
+      // 229차 — 급랭 백크릴 600g: 해동 전엔 밑밥도 못 개고 포장도 못 뜯는다. 해동 뒤 밑밥통 투입 또는 뜯어서 미끼용 백크릴 50마리
+      { id: 'inv_chum_krill_block', name: '급랭 백크릴 600g (밑밥 블록)', icon: '', iconTexture: 'item_krill_block', category: 'consumable', subCategory: '집어제/밑밥', basePrice: 7000, price: 8000, maxPerPurchase: 10, equippable: false,
+        condition: 'frozen', chumKind: 'krill', condProfile: 'krill_block', unpack: { id: 'inv_krill_bag', qty: 50 },
+        desc: '급랭한 백크릴 한 블록. 녹기 전엔 밑밥에도 못 개고 포장도 못 뜯는다 — 녹으면 밑밥통에 넣거나 뜯어서 미끼로(50마리). 녹은 뒤 세 시간이면 상한다.' },
       // 회칼 (조리도구) — 회뜨기 게이팅용. 등급이 높을수록 수율·슬라이스·등급 상향.
       { id: 'knife_utility',  name: '범용 막칼',        icon: '🔪', category: 'etc', subCategory: '조리도구', basePrice: 12000, price: 15000, maxPerPurchase: 1, equippable: true, tool: 'knife', desc: '손질은 되나 낭비가 많은 막칼 (수율 0.85).' },
       { id: 'knife_sashimi',  name: '회칼 (사시미)',    icon: '🔪', category: 'etc', subCategory: '조리도구', basePrice: 38000, price: 45000, maxPerPurchase: 1, equippable: true, tool: 'knife', desc: '표준 사시미 칼 — 회뜨기·회썰기 가능 (수율 1.0).' },
@@ -394,7 +398,13 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
         desc: '에깅 계열이 열린 사람에게만. 폴링이 다르다.' },
       { id: 'shop_flatfish', name: '광어 (활어)',   icon: '🐟', category: 'food',   subCategory: '어획물',   basePrice: 25000, price: 30000, maxPerPurchase: 3,  condition: 'live',   equippable: false, catchMethod: 'bought', desc: '수조 직송 활어.' },
       { id: 'shop_squid',    name: '오징어 (선어)', icon: '🐟', category: 'food',   subCategory: '어획물',   basePrice: 8000,  price: 10000, maxPerPurchase: 5,  condition: 'chilled', equippable: false, catchMethod: 'bought', desc: '당일 조업 선어.' },
-      { id: 'inv_krill',     name: '크릴 (냉동)',   icon: '🦐', category: 'tackle', subCategory: '냉동미끼', basePrice: 4000,  price: 4500,  maxPerPurchase: 10, condition: 'frozen', equippable: false, desc: '범용 냉동 미끼.' },
+      // 229차 — 미끼용 곽크릴: 낱개가 아니라 곽으로 판다. 뜯으면 미끼용 크릴 20마리(곽이 얼어 있으면 언 채로 나온다)
+      { id: 'pack_krill_box', name: '미끼용 곽크릴 (20마리)', icon: '', iconTexture: 'item_krill_box', category: 'tackle', subCategory: '냉동미끼', basePrice: 4000, price: 4500, maxPerPurchase: 10, condition: 'frozen', equippable: false,
+        condProfile: 'krill_block', unpack: { id: 'inv_krill', qty: 20 },
+        desc: '범용 냉동 미끼 한 곽. 뜯으면 미끼용 크릴 20마리 — 녹은 뒤 세 시간이면 상하니 쓸 만큼만 뜯는다.' },
+      // 229차 — 다낚스 살림용 바칸(브랜드). 쿨러와 같은 구실(어창 · 밑밥 배합)
+      { id: 'inv_bakkan', name: '다낚스 살림용 바칸', icon: '', iconTexture: 'item_bakkan_danax', category: 'etc', subCategory: '낚시도구', basePrice: 38000, price: 46000, maxPerPurchase: 1, equippable: false,
+        desc: '다낚스 살림용 바칸. 쿨러처럼 어획을 담고 밑밥을 갠다 — 해수를 채워 두면 잡은 것이 산다.' },
       { id: 'inv_fishcut',   name: '생선 조각 미끼', icon: '🦐', category: 'tackle', subCategory: '선어미끼', basePrice: 3000,  price: 3500,  maxPerPurchase: 10, condition: 'chilled', equippable: false, desc: '갈치/우럭용 절단 미끼.' },
       // 224차 — 생미끼는 마리가 아니라 「갑」으로 판다. 한 갑을 사면 가방에 마리 수만큼 들어간다(사용자 지시 — 혼무시 1갑 ≈ 15,000원 · 8마리 · 60g).
       { id: 'pack_ragworm', name: '청갯지렁이 1갑 (8마리)', icon: '', iconTexture: 'item_ragworm_pack', category: 'tackle', subCategory: '생미끼', basePrice: 5000, price: 6000, maxPerPurchase: 5, equippable: false,

@@ -305,8 +305,9 @@ export {
   pickForageTool, forageHoldMs, rollForageSpots, attemptForage, isOrdinanceViolation,
   rollEnforcement, trapSeasonViolations,
   forageBehaviorOf, forageGameKindOf, isEastSeaRegion, rollForageHarvest, forageInjuryRoll, shallowWaterDepthM,
+  isCrabCreature, BERRIED_MONTHS, BERRIED_CHANCE,
 } from './simulation/ForagingEngine.js';
-export type { ForageInjury } from './simulation/ForagingEngine.js';
+export type { ForageInjury, ForageHarvest } from './simulation/ForagingEngine.js';
 // 224차 — 채집 손놀림 놀이(덮치기 · 줍기 · 떼기 · 파기 · 당기기)
 export { createForageGame, stepForageGame, forageLossLineKo, FORAGE_GAME } from './simulation/ForageMinigame.js';
 export type {
@@ -655,7 +656,11 @@ export {
 
 // 227차 — 금어기 날짜 단위 · 지역 규정(제주)
 export type { MonthDay, ClosedSeason, LegalRegionKey, RegionalLegalRule, ResolvedLegalRule } from './types/LegalSeason.js';
-export { inSeason, seasonTouchesMonth, isClosedOn, monthsOfSeasons, formatSeasons, legalRegionOf, resolveLegal, closedFor } from './rules/ClosedSeason.js';
+export { inSeason, seasonTouchesMonth, isClosedOn, monthsOfSeasons, formatSeasons, legalRegionOf, resolveLegal, closedFor }
+  from './rules/ClosedSeason.js';
+// 229차 — 봄철 패류독소 채취 금지 발령(연도 × 바다 결정적)
+export { TOXIN_SHELLFISH_IDS, seaZoneOf, toxinBanWindows, toxinBanActive, toxinBanCurrent, toxinBanLabel, isToxinShellfish } from './rules/ShellfishToxin.js';
+export type { ToxinSeaZone } from './rules/ShellfishToxin.js';
 export type { FisheryLawRule } from './rules/FisheryLaw.js';
 export {
   FISHERY_LAW_RULES, getFisheryLawRule, NON_FISHER_GEAR_WHITELIST, VILLAGE_FISHERY_TARGETS,

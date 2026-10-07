@@ -7,7 +7,8 @@
  */
 
 import Phaser from 'phaser';
-import { ensurePixelIcon } from './PixelIcon.js';
+import { ensurePixelIcon, addPixelIcon } from './PixelIcon.js';
+import { getCreatureById, isCrabCreature } from '@tra/core';
 import { getBlueprint, CRAFT_STATION_LABEL, CRAFT_GROUP_LABEL } from '@tra/core';
 import { reelCmPerTurn, rodSpecFor, reelSpecFor, rodLoadState, ROD_USE_LABEL, getRodCatalogEntry, getReelCatalogEntry, getLureSpec, getNuisance, sashimiStarsAt, sashimiNutrition, foodNutritionOf, nutritionLineKo, restoreFromNutrition } from '@tra/core';
 import { FISH_DATABASE, fishImageSizeScale, fishRarity, speciesStandardWeightG,
@@ -36,6 +37,8 @@ export interface ItemDetailRow {
   value: string;
   /** 값 글자색 오버라이드 (희귀도 등급 등) */
   color?: string;
+  /** 229차 — 값 왼쪽에 붙는 16x16 픽셀 아이콘 키(`PixelIconArt` — 독 · 암수) */
+  icon?: string;
 }
 
 export interface ItemDetailData {
@@ -68,9 +71,11 @@ function spoolLeftLabel(total: number, used?: number): string {
   return `${Math.max(0, Math.round((total - u) * 10) / 10)}m / ${total}m`;
 }
 
-export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory' | 'category' | 'qty' | 'basePrice' | 'condition' | 'conditionSinceMs' | 'speciesId' | 'lengthCm' | 'weightG' | 'floatBuoyG' | 'plateWip' | 'fault' | 'useCount' | 'tool' | 'bound' | 'dish' | 'dishInstance' | 'sashimi' | 'cutQuality' | 'hungerRestore' | 'hydrationRestore' | 'hpRestore' | 'fatigueRestore' | 'lineMaterial' | 'lineForm' | 'lineLengthM' | 'lineUsedM' | 'lineNo' | 'lineDiameterMm' | 'lineStrengthLb' | 'sinkerKind' | 'sinkerWeightG' | 'sinkerHo' | 'netReachM' | 'blueprintId' | 'wading'>): ItemDetailData {
+export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory' | 'category' | 'qty' | 'basePrice' | 'condition' | 'conditionSinceMs' | 'speciesId' | 'lengthCm' | 'weightG' | 'floatBuoyG' | 'plateWip' | 'fault' | 'useCount' | 'tool' | 'bound' | 'dish' | 'dishInstance' | 'sashimi' | 'cutQuality' | 'hungerRestore' | 'hydrationRestore' | 'hpRestore' | 'fatigueRestore' | 'lineMaterial' | 'lineForm' | 'lineLengthM' | 'lineUsedM' | 'lineNo' | 'lineDiameterMm' | 'lineStrengthLb' | 'sinkerKind' | 'sinkerWeightG' | 'sinkerHo' | 'netReachM' | 'blueprintId' | 'wading' | 'sex' | 'toxin' | 'condProfile' | 'chumKind' | 'unpack'>): ItemDetailData {
   const rows: ItemDetailRow[] = [];
   let desc = '';
+  // 229차 — 패류독소: 채취 금지 기간에 캔 조개(또는 그것이 들어간 요리). 모든 갈래의 맨 위에 보라 물방울로
+  if (item.toxin) rows.push({ label: '패류독소', value: '금지 기간에 캔 조개 — 익혀도 독이 남는다', color: '#e2a6ff', icon: 'toxin' });
   // 155차 — 완성 사시미 접시: 맛 별 5개(지금 / 담은 직후) — 불요리와 같은 문법
   if (item.sashimi) {
     const m = item.sashimi;
@@ -356,6 +361,16 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
         + '드랙을 원줄 한계 장력보다 낮게 설정해야 줄 터짐 전에 릴이 풀려나갑니다.';
       break;
     case '집어제/밑밥':
+      if (item.chumKind === 'krill' && item.unpack) {
+        // 229차 — 급랭 백크릴 600g
+        rows.push(
+          { label: '용도', value: '밑밥 재료 (녹인 뒤 밑밥통에)' },
+          { label: '포장 뜯기', value: `미끼용 백크릴 ${item.unpack.qty}마리 (녹인 뒤)` },
+          { label: '상온 유지', value: '해동 뒤 3시간 — 그 뒤 부패', color: '#ffb0a4' },
+        );
+        desc = '급랭한 백크릴 600g 한 블록. 꽁꽁 얼어 있을 때는 밑밥도 못 개고 포장도 못 뜯는다 — 가방에서 녹기를 기다린다. 녹으면 밑밥통에 넣거나, 뜯어서 바늘에 끼울 미끼로 쓴다.';
+        break;
+      }
       rows.push(
         { label: '집어 반경', value: '+2.5 m' },
         { label: '지속 시간', value: '90초' },
@@ -420,6 +435,23 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
       }
       break;
     }
+    case '채집물': {
+      // 229차 — 해루질 채집물: 크기 · 무게 · (게는) 암수. 조례상 팔 수 없다
+      const cr = item.speciesId ? getCreatureById(item.speciesId) : undefined;
+      if (item.lengthCm) rows.push({ label: '크기', value: `${item.lengthCm} cm` });
+      if (item.weightG) rows.push({ label: '무게', value: item.weightG >= 1000 ? `${(item.weightG / 1000).toFixed(2)} kg` : `${item.weightG} g` });
+      if (cr && isCrabCreature(cr) && item.sex) {
+        rows.push(item.sex === 'F'
+          ? { label: '암수', value: '암컷 — 배딱지가 둥글고 넓다', color: '#ff9ad0', icon: 'sex_f' }
+          : { label: '암수', value: '수컷 — 배딱지가 좁고 뾰족하다', color: '#8fd4ff', icon: 'sex_m' });
+      }
+      if (cr) {
+        rows.push({ label: '영문명', value: cr.nameEn });
+        rows.push({ label: '판매', value: '불가 — 직접 먹거나 요리한다 (조례)', color: '#8fa3b8' });
+      }
+      desc = cr?.description ?? '직접 캔 갯것. 팔 수는 없고 먹거나 요리에 쓴다.';
+      break;
+    }
     case '어획물': {
       // ── 개체 실측치 — 무게 미저장 시 **어종별 LWR**(W = a·L^b)로 추정 (133차) ──
       const lengthCm = item.lengthCm;
@@ -482,11 +514,25 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
       desc = '살아있는 미끼는 입질 보정이 가장 높지만 신선도 관리가 필요합니다.';
       break;
     case '냉동미끼':
-      rows.push(
-        { label: '집어력', value: 'B (범용)' },
-        { label: '입질 보정', value: '냉동 -50% (해동 후 회복)' },
-      );
-      desc = '보관이 쉬운 범용 미끼입니다. 해동 상태에 따라 입질이 달라집니다.';
+      // 229차 — 미끼용 크릴(곽) · 미끼용 백크릴(블록을 뜯은 것 +2%) · 곽크릴 포장. 그림은 같고 설명이 다르다
+      if (item.unpack) {
+        rows.push({ label: '내용물', value: `뜯으면 미끼용 크릴 ${item.unpack.qty}마리` }, { label: '보관', value: '언 채로 두면 오래 간다' });
+        desc = '미끼용 곽크릴. 쓸 만큼만 뜯는다 — 녹은 크릴은 세 시간이면 상한다.';
+      } else if (item.id === 'inv_krill_bag') {
+        rows.push(
+          { label: '집어력', value: 'B+ (범용 · 밑밥과 같은 냄새)' },
+          { label: '입질 보정', value: '+2% · 부패 -20%', color: '#8affb0' },
+          { label: '상온 유지', value: '해동 뒤 3시간' },
+        );
+        desc = '급랭 백크릴 블록에서 떼어 낸 미끼. 밑밥과 같은 크릴이라 동조가 잘 되고 살이 통통해 바늘에 잘 남는다. 녹은 뒤 세 시간이면 상한다.';
+      } else {
+        rows.push(
+          { label: '집어력', value: 'B (범용)' },
+          { label: '입질 보정', value: '기준 · 부패 -20%' },
+          { label: '상온 유지', value: '해동 뒤 3시간' },
+        );
+        desc = '곽크릴에서 꺼낸 범용 미끼. 벵에돔 · 감성돔 · 잡어 가리지 않는다. 녹은 뒤 세 시간이면 상하니 쓸 만큼만 뜯는다.';
+      }
       break;
     case '선어미끼':
       rows.push({ label: '집어력', value: 'B (갈치/우럭)' }, { label: '입질 보정', value: '냉장 기준 표준' });
@@ -705,8 +751,13 @@ export class ItemDetailPanel extends DraggablePanel {
         fontStyle: row.color ? 'bold' : 'normal',
       }).setOrigin(1, 0);
       // 값이 라벨을 넘어 왼쪽 밖으로 나가지 않게 (154차 실측 — 요리 재료 구성 행이 패널 왼쪽으로 삐져나갔다)
-      clampTextWidth(val, W - 22 - (22 + lbl.width + 8));
+      clampTextWidth(val, W - 22 - (22 + lbl.width + 8) - (row.icon ? 20 : 0));
       body.add([lbl, val]);
+      // 229차 — 값 왼쪽의 픽셀 아이콘(독 물방울 · 암수 배딱지)
+      if (row.icon) {
+        const ic = addPixelIcon(scene, row.icon, W - 22 - val.width - 11, ry + 7, 16);
+        if (ic) body.add(ic);
+      }
     });
 
     // ── 신선도 실시간 블록 — 단일 상태 표기 + 초단위 카운트다운 ──

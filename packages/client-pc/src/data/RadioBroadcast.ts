@@ -9,7 +9,7 @@
  */
 
 import {
-  calculateTideInfo, getLunarDayDisplay, kstParts, WEATHER_LABEL,
+  calculateTideInfo, getLunarDayDisplay, kstParts, WEATHER_LABEL, toxinBanLabel,
   type KmaWeatherInfo, type KmaDailyOutlook, type WeatherKind,
 } from '@tra/core';
 import { ExternalDataStore } from '../store/ExternalDataStore.js';
@@ -108,6 +108,14 @@ export function buildRadioBroadcast(locale: 'ko' | 'en', now = new Date()): stri
       ? (en ? ` Tomorrow, ${tomorrowPart(w.tomorrow, true)}.` : ` 내일은 ${tomorrowPart(w.tomorrow, false)}로 예상됩니다.`)
       : '';
     out.push(head + tail);
+  }
+  // 229차 — 패류독소 채취 금지 발령(해역별 · 봄). 홍합 · 바지락 · 굴
+  for (const sea of SEAS) {
+    const lbl = toxinBanLabel(sea.id, now);
+    if (!lbl) continue;
+    out.push(en
+      ? `Shellfish toxin advisory for ${sea.en} (${lbl}): do not gather or eat mussels, clams or oysters. Cooking does not remove the toxin.`
+      : `${sea.ko} 일대에 패류독소 채취 금지가 내려져 있습니다(${lbl}). 홍합 · 바지락 · 굴은 캐지도, 드시지도 마십시오. 익혀도 독은 없어지지 않습니다.`);
   }
   out.push(en
     ? 'That was the sea weather and tides. Have a safe trip out on the water. (Static…)'

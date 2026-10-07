@@ -170,14 +170,14 @@ class CookingStoreClass {
     if (def.unit === 'g') {
       // 156차 — 주재료 어종은 아이템이 사라진 뒤에도 요리 개체(매운탕 3종 등)가 알아야 한다
       const r = this.addIngredientRaw(st, m.ing, m.units, fresh01, item.id, m.weightG, item.speciesId);
-      if (r.ok) InventoryStore.removeItem(item.id, false);
+      if (r.ok) { InventoryStore.removeItem(item.id, false); if (item.toxin) st.toxin = true; }   // 229차 — 독은 냄비로 옮겨 간다
       return r;
     }
     const perQty = item.cookUnitsPerQty ?? 1;
     const needQty = Math.max(1, Math.ceil(units / perQty - 1e-6));
     if (item.qty < needQty) return { ok: false, message: `${item.name}이(가) 부족합니다 (${needQty}개 필요)` };
     const r = this.addIngredientRaw(st, m.ing, units, fresh01, item.id);
-    if (r.ok) InventoryStore.removeQty(item.id, needQty);
+    if (r.ok) { InventoryStore.removeQty(item.id, needQty); if (item.toxin) st.toxin = true; }
     return r;
   }
 
@@ -236,9 +236,11 @@ class CookingStoreClass {
     const seq = InventoryStore.nextCatchSeq();
     const inst = isVariantRecipe(r.id) ? createDishInstance(r, dish, this.primaryIngredientOf(s.contents, r), seq) : null;
     const tpl = this.dishTemplate(dish, r, seq, inst);
-    if (!InventoryStore.addItem(tpl, 1)) return { ok: false, message: '인벤토리 칸이 없습니다 — 한 칸 비우고 내리세요' };
+    // 229차 — 패류독소가 든 냄비의 요리는 독 표식을 그대로 단다(익혀도 안 사라진다)
+    if (!InventoryStore.addItem({ ...tpl, ...(st.toxin ? { toxin: true } : {}) }, 1)) return { ok: false, message: '인벤토리 칸이 없습니다 — 한 칸 비우고 내리세요' };
     const item = InventoryStore.find(tpl.id)!;
     st.session = null;
+    st.toxin = undefined;
     // XP — 총점 비례(탄 것은 0.3배). 반드시 addActivityXp 경유(progression.md §6 규칙 0 — 숙련도·스토리 이벤트 동반)
     const stars = dishStarsAt(dish, r, Date.now());
     const mult = dish.burnt ? 0.3 : Math.max(0.3, stars.total / TUNING.cook.xpTotalRef);
@@ -255,6 +257,7 @@ class CookingStoreClass {
   discard(st: DeployedStove): CookActionResult {
     if (!st.session) return { ok: false, message: '' };
     st.session = null;
+    st.toxin = undefined;
     GameState.markDirty();
     return { ok: true, message: '내용물을 버렸습니다' };
   }

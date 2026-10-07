@@ -69,6 +69,12 @@ export interface TourStep {
    * 없으면 막지 않는다. 빈 배열이면 세상 행동을 전부 막는다(걷기는 행동이 아니다).
    */
   focus?: string[];
+  /**
+   * 229차 — 말풍선 위쪽에 넣는 그림(글자만으로 설명하지 않는다). 폭은 말풍선 안쪽(272)에 맞추고
+   * 높이는 `pictureH`(기본 76). 단계가 바뀌면 파괴된다.
+   */
+  picture?: () => Phaser.GameObjects.Container | null;
+  pictureH?: number;
 }
 
 export interface TourOptions {
@@ -230,6 +236,9 @@ export class GuideTour {
   private updateFn: (time: number, delta: number) => void;
   private keyFn: (ev: KeyboardEvent) => void;
   private shutdownFn: () => void;
+  /** 229차 — 이 단계의 그림 */
+  private picture?: Phaser.GameObjects.Container;
+  private pictureH = 0;
 
   private constructor(scene: Phaser.Scene, opts: TourOptions) {
     this.scene = scene;
@@ -338,6 +347,20 @@ export class GuideTour {
     this.typed = 0;
     this.typeAcc = 0;
     this.bodyText.setText('');
+    // 229차 — 단계 그림(있으면 글 위에)
+    this.picture?.destroy();
+    this.picture = undefined;
+    this.pictureH = 0;
+    const pic = st.picture?.();
+    if (pic) {
+      this.picture = pic;
+      this.pictureH = (st.pictureH ?? 76) + 10;
+      pic.setPosition(PAD, PAD);
+      this.bubble.addAt(pic, 2);   // 배경 · 본문 히트 위, 글 아래
+      pic.iterate((o: Phaser.GameObjects.GameObject) => (o as unknown as { setScrollFactor?: (v: number) => void }).setScrollFactor?.(0));
+      pic.setScrollFactor(0);
+    }
+    this.bodyText.setY(PAD + this.pictureH);
     const total = this.opts.steps.filter((s) => !s.skipIf?.()).length;
     const pos = this.opts.steps.slice(0, n + 1).filter((s) => !s.skipIf?.()).length;
     this.countText.setText(total > 1 ? `${pos} / ${total}` : '');   // 191차 — 한 단계짜리(프롤로그 코치)는 쪽수 없이
@@ -464,7 +487,7 @@ export class GuideTour {
   }
 
   private layoutBubble(): void {
-    const textH = Math.max(this.bodyText.height, 20);
+    const textH = Math.max(this.bodyText.height, 20) + this.pictureH;
     const st = this.step;
     const btnShown = !st?.wait && this.typed >= this.fullText.length;
     // 191차 — 단추도 쪽수도 없는 말풍선(체험 대기 · 한 단계짜리)은 아래 여백을 줄인다
@@ -538,6 +561,7 @@ export class GuideTour {
     this.shields.forEach((s) => s.destroy());
     this.dimG.destroy();
     this.frameG.destroy();
+    this.picture?.destroy();
     this.bubble.destroy();
     if (done) {
       if (!this.opts.ephemeral) {

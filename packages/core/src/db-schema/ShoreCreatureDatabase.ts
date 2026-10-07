@@ -240,10 +240,10 @@ export const SHORE_CREATURE_DATABASE: ShoreCreature[] = [
     isRestaurantIngredient: true,
     canBeUsedAsBait: false,
     description: '돌 밑을 들추면 튀어나오는 게. 게장용으로 좋다. 장갑 없이 손대지 말 것.',
-    requiredLicense: 'shore_hunting_basic',
-    tools: ['tongs', 'net', 'hand'], spotKinds: ['shallows'],
+    // 229차 — 국가 금어기 · 체장 · 조례 · 패류독소 어디에도 안 걸리는 「입문 채집물」. 허가 없이 갯바위 · 안벽에서도 잡는다(사용자 결정).
+    requiredLicense: null,
+    tools: ['tongs', 'net', 'hand'], spotKinds: ['shallows', 'rock_shore', 'armor_foot', 'harbor_wall'],
     behavior: 'runner',
-    access: 'wade',
     substrate: 'rock',
     agility: 0.55,
     handInjury: true,

@@ -2338,6 +2338,18 @@ export class UtilizationPanel extends DraggablePanel {
     this.chumGhost = ghost;
   }
 
+  /** 229차 — 밑밥 통 위에 잠깐 뜨는 한 줄(언 크릴 · 상한 재료) */
+  private chumNotice(msg: string): void {
+    const { x: bx, y: by, w: bw } = UtilizationPanel.CHUM_BOX;
+    const t = this.scene.add.text(bx + bw / 2, by - 6, msg, {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#ffb0a4', fontStyle: 'bold',
+      backgroundColor: '#1a0b0bdd', padding: { x: 6, y: 3 },
+    }).setOrigin(0.5, 1);
+    this.add(t);
+    this.applyFix();
+    this.scene.tweens.add({ targets: t, alpha: 0, delay: 1600, duration: 400, onComplete: () => t.destroy() });
+  }
+
   /** 드랍 판정 — 통 안이면 재료 1개 소모 + 투입 연출 */
   private finishChumDrag(p: Phaser.Input.Pointer): void {
     const item = this.chumDragItem;
@@ -2351,6 +2363,10 @@ export class UtilizationPanel extends DraggablePanel {
     const lx = p.x - this.x, ly = p.y - this.y;
     if (lx < bx || lx > bx + bw || ly < by || ly > by + bh) return;
     if (CoolerStore.chumMixed || CoolerStore.chumRemaining > 0 || !item.chumKind) return;
+    // 229차 — 급랭 백크릴은 녹기 전엔 밑밥에 못 갠다(사용자 지정). 상한 것도 안 된다
+    refreshCondition(item);
+    if (item.chumKind === 'krill' && item.condition === 'frozen') { this.chumNotice('꽁꽁 얼어 있다 — 녹인 뒤에 갠다'); return; }
+    if (item.condition === 'spoiled') { this.chumNotice('상했다 — 밑밥에 넣을 수 없다'); return; }
     if (!InventoryStore.removeQty(item.id, 1)) return;
 
     CoolerStore.addChumIngredient(item.chumKind, item.name);

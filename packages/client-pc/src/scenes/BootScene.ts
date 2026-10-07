@@ -173,6 +173,13 @@ export class BootScene extends Phaser.Scene {
       // 228차 — 사용자 도트 그림: 미끼 한 갑(상점 묶음) · 한 마리(생미끼 · 도감 · 놀이 판)
       item_ragworm_pack: 'item-icons/pack_ragworm.png',
       item_honmushi_pack: 'item-icons/pack_honmushi.png',
+      // 229차 — 사용자 도트 그림: 급랭 백크릴 600g(밑밥 블록) · 미끼용 곽크릴 · 다낚스 살림용 바칸 · 외포란 암꽃게(방생 안내) · 1자형 혼무시(파기 연출)
+      item_krill_block: 'item-icons/it_krill_block.png',
+      item_krill_box: 'item-icons/it_krill_box.png',
+      item_bakkan_danax: 'item-icons/it_bakkan_danax.png',
+      forage_berried_crab: 'item-icons/forage_berried_crab.png',
+      honmushi_straight: 'item-icons/honmushi_straight.png',
+      honmushi_straight_px: 'item-icons/honmushi_straight_px.png',
       forageboard_perinereis_aibuhitensis: 'forage-board/perinereis_aibuhitensis.png',
       // 225차 — 채집 놀이 판 그림(도트 원래 크기 · 머리 왼쪽). 없으면 필드 도트를 키워 쓴다
       forageboard_marphysa_sanguinea: 'forage-board/marphysa_sanguinea.png',

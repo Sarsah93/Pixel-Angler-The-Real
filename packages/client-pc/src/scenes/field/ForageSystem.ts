@@ -24,7 +24,8 @@ import {
   calculateTideInfo, isNightNow, checkSlipHazard, TUNING,
   tideFlowStateAt, tideWaterLevel01, tideRegionK, forageTideMult, forageFloodWarning,
   forageBehaviorOf, isEastSeaRegion, rollForageHarvest, resolveLegal, forageInjuryRoll, forageLossLineKo, shallowWaterDepthM,
-  type ForageGameState,
+  type ForageGameState, type ForageHarvest,
+  isToxinShellfish, toxinBanActive, toxinBanLabel,
 } from '@tra/core';
 import { GameState } from '../../store/GameState.js';
 import { InventoryStore } from '../../store/InventoryStore.js';
@@ -63,6 +64,12 @@ export interface ForageHost {
   running?: () => boolean;
   /** 224차 — 손놀림 놀이 창을 연다(씬 팝업 스택) */
   openForageGame?: (c: ShoreCreature, tool: ForageTool, opts: { dex: number; underwater: boolean }, onEnd: (s: ForageGameState) => void) => void;
+  /** 229차 — 벌금을 낼 돈이 없다 → 파산 연출(암전 · 처음부터) */
+  bankrupt?: (fineWon: number) => void;
+  /** 229차 — 알 밴 암컷을 놓아주는 혼잣말(초상 = 외포란 꽃게 그림) */
+  noticeRelease?: (lines: string[], portraitKey: string, name: string) => void;
+  /** 229차 — 어촌계 표지판 읽기 창 */
+  openSignboard?: (farm: FishFarm) => void;
 }
 
 /**
@@ -237,13 +244,57 @@ export class ForageSystem {
     return this.playing !== null;
   }
 
+  /** 229차 — 어촌계 표지판(보호 어장마다 뭍에 닿는 곳 하나). [F]로 읽는다 */
+  private signs: { x: number; y: number; farm: FishFarm; img: Phaser.GameObjects.Image }[] = [];
+  private nearSign: FishFarm | null = null;
+  /** 229차 — 가까운 표지판의 어장(없으면 null). 씬의 [F] 선택지가 쓴다 */
+  get nearSignFarm(): FishFarm | null { return this.nearSign; }
+  /** 229차 — 표지판 읽기 창(호스트가 연다) */
+  openSign(farm: FishFarm): void { this.host.openSignboard?.(farm); }
+
   constructor(host: ForageHost, farms: FishFarm[]) {
     this.host = host;
     this.farms = farms;
     this.ensureTextures();
     this.candidates = this.computeCandidates();
     this.drawFarms();
+    this.placeSigns();
     this.refreshSpots(true);
+  }
+
+  /**
+   * 229차 — 보호 어장(마을어장 · 협동양식장)마다 표지판 하나. 외곽 링 꼭짓점에서 가장 가까운 걷는 뭍 칸에 세운다.
+   * 지도에는 어장을 그리지 않는다(사용자 지시 — 표지판만). 읽어야 안다.
+   */
+  private placeSigns(): void {
+    const { tr, terrainAt, cols, rows } = this.host;
+    const walkable = new Set<RegionTerrain>(['land', 'grass', 'road', 'sidewalk', 'sand', 'pier', 'paved', 'dirt', 'rock', 'deck', 'tidal']);
+    const used = new Set<string>();
+    const key = ensureFarmSignTexture(this.host.scene);
+    for (const f of this.farms) {
+      if (!isProtectedFarmKind(f.kind)) continue;
+      const ring = f.rings[0];
+      if (!ring || ring.length < 3) continue;
+      let best: { c: number; r: number; d: number } | null = null;
+      for (const [vx, vy] of ring) {
+        const cx = Math.round(vx), cy = Math.round(vy);
+        for (let rad = 0; rad <= 3 && (!best || best.d > rad); rad++) {
+          for (let dy = -rad; dy <= rad; dy++) for (let dx = -rad; dx <= rad; dx++) {
+            if (Math.max(Math.abs(dx), Math.abs(dy)) !== rad) continue;
+            const c = cx + dx, r = cy + dy;
+            if (c < 1 || r < 1 || c >= cols - 1 || r >= rows - 1) continue;
+            if (!walkable.has(terrainAt(c, r) as RegionTerrain) || used.has(`${c},${r}`)) continue;
+            const d = Math.hypot(c + 0.5 - vx, r + 0.5 - vy);
+            if (!best || d < best.d) best = { c, r, d };
+          }
+        }
+      }
+      if (!best) continue;
+      used.add(`${best.c},${best.r}`);
+      const x = best.c * tr + tr / 2, y = best.r * tr + tr * 0.9;
+      const img = this.host.scene.add.image(x, y, key).setOrigin(0.5, 1).setDepth(6.4).setScale(2);
+      this.signs.push({ x, y, farm: f, img });
+    }
   }
 
   // ═══════════════════════════════════════════════════
@@ -490,6 +541,9 @@ export class ForageSystem {
       this.lastFarmName = fname;
       if (farm && isProtectedFarmKind(farm.kind)) {
         this.host.pushLog(`[어장] ${farm.name} — 어촌계 ${FISH_FARM_KIND_LABEL[farm.kind]} 구역: 전복·해삼·성게·홍합·문어 채취 금지 (강원 조례)`);
+        // 229차 — 파산 힌트: 벌금은 정액 1천만원이고 못 내면 끝이다. 처음 들어왔을 때는 표지판을 가리킨다
+        this.host.pushLog(`[어장] 적발되면 벌금 ${TUNING.forage.fineCapWon.toLocaleString()}원 — 그만한 돈이 없으면 파산이다`);
+        if (!GameState.getFlag('sign.farm_read')) this.host.floatingHint('물가에 표지판이 서 있다 — 가까이 가서 읽어 본다');
       }
     }
 
@@ -515,6 +569,13 @@ export class ForageSystem {
     this.nearHint = null;
     if (nearest && !this.host.blocked() && !this.playing) {
       this.nearHint = this.hintFor(nearest);
+    }
+    // 229차 — 표지판 근접(1.6칸)
+    this.nearSign = null;
+    let sd = tr * 1.6;
+    for (const sg of this.signs) {
+      const d = Math.hypot(sg.x - p.x, sg.y - tr * 0.4 - p.y);
+      if (d < sd) { sd = d; this.nearSign = sg.farm; }
     }
   }
 
@@ -702,18 +763,31 @@ export class ForageSystem {
       this.host.pushLog(`[채집] ${msg}`);
       if (inj.dropped) return;
     }
-    const res = rollForageHarvest(c, Math.random, this.host.regionId);
+    const res = rollForageHarvest(c, Math.random, this.host.regionId, this.env().month);
     if (res.undersized) {
       const msg = `${c.nameKo} ${res.sizeCm}cm — 법정 크기(${resolveLegal(c, this.host.regionId).minLegalSizeCm}cm) 미달, 놓아주었다`;
       this.host.floatingHint(msg);
       this.host.pushLog(`[채집] ${msg}`);
       return;
     }
+    // 229차 — 알 밴 암컷(외포란)은 뒤집어 보고 바로 놓아준다(사용자 지시 — 자동 방생)
+    if (res.berried) {
+      const msg = `${c.nameKo} ${res.sizeCm}cm — 배딱지에 알을 품은 암컷, 놓아주었다`;
+      this.host.pushLog(`[채집] ${msg}`);
+      if (this.host.noticeRelease) {
+        this.host.noticeRelease([
+          `${c.nameKo}를 뒤집어 보니 배딱지가 둥글고 넓다. 암컷이다.`,
+          '배딱지 밑에 알이 주황빛으로 꽉 차 있다. 이 녀석이 품은 알이 다음 철의 게다.',
+          '물가에 내려놓자 옆걸음으로 금세 물속으로 사라졌다.',
+        ], 'forage_berried_crab', '알 밴 암컷');
+      } else this.host.floatingHint(msg);
+      return;
+    }
     this.deliver(h.spot, c, res);
   }
 
   /** 수확물을 넣는다 — 미끼 갯것은 미끼 아이템으로, 그 밖은 쿨러(활어) 우선 · 인벤토리(채집물) */
-  private deliver(spot: ForageSpot, c: ShoreCreature, res: { sizeCm: number; weightG: number }): void {
+  private deliver(spot: ForageSpot, c: ShoreCreature, res: ForageHarvest): void {
     // 224차 — 직접 잡은 미끼(갯지렁이 · 혼무시 · 쫄장게 · 갯강구)는 바로 바늘에 다는 미끼로
     if (c.baitItemId) {
       const seed = InventoryStore.seedTemplate(c.baitItemId);
@@ -734,11 +808,13 @@ export class ForageSystem {
       return;
     }
     const tex = forageTexKey(c);
+    // 229차 — 패류독소: 채취 금지 기간(해역별 발령)에 캔 홍합 · 바지락 · 굴은 독 표식이 붙는다(채취는 되지만 먹으면 식중독 확률)
+    const toxin = isToxinShellfish(c.id) && toxinBanActive(this.host.regionId, new Date());
     let where: 'cooler' | 'inventory' | 'none' = 'none';
     let coolerIdx = -1;
     let invId = '';
     if (InventoryStore.hasCooler() && !CoolerStore.isFull()) {
-      coolerIdx = CoolerStore.add({ speciesId: c.id, nameKo: c.nameKo, lengthCm: res.sizeCm, weightG: res.weightG, sex: 'F', iconTexture: tex });
+      coolerIdx = CoolerStore.add({ speciesId: c.id, nameKo: c.nameKo, lengthCm: res.sizeCm, weightG: res.weightG, sex: res.sex ?? 'F', iconTexture: tex, ...(toxin ? { toxin: true } : {}) });
       if (coolerIdx >= 0) where = 'cooler';
     }
     if (where === 'none') {
@@ -749,6 +825,7 @@ export class ForageSystem {
         basePrice: Math.max(500, Math.round((res.weightG / 1000) * c.marketValuePerKg)),
         condition: 'live', equippable: false,
         speciesId: c.id, lengthCm: res.sizeCm, weightG: res.weightG, forageCatch: true,
+        ...(res.sex ? { sex: res.sex } : {}), ...(toxin ? { toxin: true } : {}),
       }, 1);
       if (ok) where = 'inventory';
     }
@@ -761,6 +838,10 @@ export class ForageSystem {
     this.host.floatingHint(`${c.nameKo} ${res.weightG}g 채집!`);
     this.host.pushLog(`[채집] ${c.nameKo} ${res.weightG}g — ${where === 'cooler' ? '쿨러 보관' : '인벤토리(채집물)'}`);
     this.host.scene.cameras.main.flash(120, 40, 160, 90);
+    if (toxin) {
+      const lbl = toxinBanLabel(this.host.regionId, new Date());
+      this.host.pushLog(`[주의] 패류독소 채취 금지 기간(${lbl ?? '발령 중'})에 캔 ${c.nameKo} — 익혀도 독이 남는다. 먹으면 탈이 날 수 있다`);
+    }
 
     // ── 강원 조례 — 어촌계 어장 안 보호 5종 → 적발 롤 ──
     const farm = farmAt(this.farms, spot.tx + 0.5, spot.ty + 0.5);
@@ -778,10 +859,16 @@ export class ForageSystem {
       if (enf.caught) {
         if (where === 'cooler') CoolerStore.removeAt(coolerIdx);
         else InventoryStore.removeQty(invId, 1);
-        if (enf.fineWon > 0) GameState.addCoins(-enf.fineWon, false, 'fine');
-        GameState.markDirty();
         this.host.scene.cameras.main.flash(260, 200, 40, 40);
         this.host.scene.cameras.main.shake(200, 0.006);
+        // 229차 — 벌금 정액 1천만원. 가진 돈으로 바로 낼 수 있으면 잃고, 모자라면 파산(암전 · 처음부터 — 사용자 지정)
+        const coins = GameState.player.inventory.coins;
+        if (enf.fineWon > 0 && coins < enf.fineWon) {
+          this.host.pushLog(`[단속] ${farm.name}(${FISH_FARM_KIND_LABEL[farm.kind]}) 안 ${c.nameKo} 채취 적발 — 압수 · 벌금 ${enf.fineWon.toLocaleString()}원. 낼 돈이 없다`);
+          if (this.host.bankrupt) { this.host.bankrupt(enf.fineWon); return; }
+        }
+        if (enf.fineWon > 0) GameState.addCoins(-enf.fineWon, false, 'fine');
+        GameState.markDirty();
         this.host.floatingHint(`단속 적발! ${c.nameKo} 압수 · 벌금 ${enf.fineWon.toLocaleString()}원`);
         this.host.pushLog(`[단속] ${farm.name}(${FISH_FARM_KIND_LABEL[farm.kind]}) 안 ${c.nameKo} 채취 적발 — 압수 · 벌금 ${enf.fineWon.toLocaleString()}원 (조례 상한 ${GANGWON_FORAGE_ORDINANCE.fineMaxWon.toLocaleString()}원)`);
       } else {
@@ -822,5 +909,28 @@ export class ForageSystem {
     this.spotSprites.clear();
     this.farmG?.destroy();
     for (const t of this.farmLabels) t.destroy();
+    for (const sg of this.signs) sg.img.destroy();
+    this.signs = [];
   }
+}
+
+/** 229차 — 어촌계 표지판 그림(절차 픽셀 · 24x30). 기둥 + 흰 판 + 붉은 띠 + 글줄 자국 */
+function ensureFarmSignTexture(scene: Phaser.Scene): string {
+  const key = 'px_farm_sign';
+  if (scene.textures.exists(key)) return key;
+  const g = scene.add.graphics();
+  // 기둥
+  g.fillStyle(0x5a3b1e, 1); g.fillRect(10, 14, 4, 16);
+  g.fillStyle(0x3b2612, 1); g.fillRect(13, 14, 1, 16);
+  // 판 테두리 · 면
+  g.fillStyle(0x2b2b2b, 1); g.fillRect(0, 0, 24, 16);
+  g.fillStyle(0xf2efe4, 1); g.fillRect(1, 1, 22, 14);
+  // 붉은 띠(금지)
+  g.fillStyle(0xc8352a, 1); g.fillRect(1, 1, 22, 4);
+  g.fillStyle(0xffffff, 1); g.fillRect(4, 2, 2, 2); g.fillRect(8, 2, 2, 2); g.fillRect(12, 2, 2, 2); g.fillRect(16, 2, 2, 2);
+  // 글줄 자국
+  g.fillStyle(0x3a3a3a, 1); g.fillRect(3, 7, 18, 2); g.fillRect(3, 11, 12, 2);
+  g.generateTexture(key, 24, 30);
+  g.destroy();
+  return key;
 }

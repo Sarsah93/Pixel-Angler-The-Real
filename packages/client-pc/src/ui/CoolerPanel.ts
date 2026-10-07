@@ -560,6 +560,7 @@ export class CoolerPanel extends DraggablePanel {
       basePrice: Math.max(2000, Math.round(f.weightG * 12)),
       condition: f.condition, equippable: false,
       speciesId: f.speciesId, lengthCm: f.lengthCm, weightG: f.weightG, sex: f.sex, catchMethod: f.catchMethod,
+      ...(f.toxin ? { toxin: true } : {}),   // 229차 — 패류독소 표식 승계
     }, 1);
     if (!ok) {
       this.setStatus('인벤토리(음식) 공간이 없습니다 — 자리를 비우고 다시 시도하세요');

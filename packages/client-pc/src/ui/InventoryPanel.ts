@@ -563,6 +563,11 @@ export class InventoryPanel extends DraggablePanel {
         this.gridContainer.add(prTxt);
       }
 
+      // 229차 — 패류독소 배지: **좌하단** 보라 물방울(미완성 접시 %와 같은 자리 — 둘이 겹칠 일은 없다)
+      if (item.toxin && !item.plateWip) {
+        const tx = addPixelIcon(this.scene, 'toxin', sx + 11, sy + SLOT - 23, 12);
+        if (tx) this.gridContainer.add(tx);
+      }
       // 136차 — 고장·파손 배지: **우하단** 빨간 삼각형 안 느낌표 (좌하단 = 미완성 접시 %)
       if (item.fault) {
         const warn = addPixelIcon(this.scene, 'warn_broken', sx + SLOT - 11, sy + SLOT - 24, 12);
@@ -1263,13 +1268,16 @@ export class InventoryPanel extends DraggablePanel {
       parts.push(`${item.fatigueReboundMin}분 뒤 피로 +${item.fatigueRebound}`);
     }
 
-    if (parts.length === 0) {
-      return `${item.name}을(를) ${verb === '사용' ? '사용했습니다' : '맛있게 먹었습니다'}.`;
-    }
-    let msg = `${item.name} — ${parts.join(' · ')}`;
+    let msg = parts.length === 0
+      ? `${item.name}을(를) ${verb === '사용' ? '사용했습니다' : '맛있게 먹었습니다'}.`
+      : `${item.name} — ${parts.join(' · ')}`;
     if (item.category === 'food' && item.condition === 'bad'
       && GameState.rollStatus('food_poison', 0.3)) {
       msg += ' · 배가 아프기 시작한다… (식중독)';
+    } else if (item.toxin && verb === '섭취'
+      && GameState.rollStatus('food_poison', TUNING.forage.toxinPoisonChance)) {
+      // 229차 — 패류독소는 익혀도 남는다(사용자 지정 — 채취는 되지만 먹으면 일정 확률로 식중독)
+      msg += ' · 속이 뒤틀린다… 패류독소다 (식중독)';
     }
     return msg;
   }
