@@ -45,13 +45,13 @@
   맵 확정(육안)·OSM land 14개·조도 재설계·외옹치/대포항 bbox 확장은 사용자 동반 병행 트랙.
 - **재개 지점**: 사용자 실검증(172·173차 타일 조화 규칙 + 178·183~186차 신설분) — 부족하면 규칙 보강,
   괜찮으면 규칙을 켠 채로 새 맵 확장. 차수별 잔여는 PLAN §2-3.
+- **230차**: **「미끼용 크릴」 그림** — 사용자 그림 → 미끼용 크릴 · 미끼용 백크릴 공통 아이콘(`item_krill_bait`) · 구세이브 백필 ·
+  상세보기 보정 행 중복 제거. 상세 `docs/wiki/03-WORKLOG/2026-10-07-230-krill-bait-art.md`.
 - **229차**: **법 반영안 확정 · 크릴 경제 · 놀이 판 그림 고급화** — 패류독소(보라 물방울 · 익혀도 식중독 · 요리 승계) · 벌금 1천만원 · 파산 엔딩 ·
   어촌계 표지판([F] 읽기) · 게 암수 · 외포란 자동 방생 · 급랭 백크릴 600g · 곽크릴 · 바칸 · 놀이 판 바닥 4종 · 손 도구 도트 · 말풍선 그림 ·
-  「미끼용 크릴」 그림 재첨부 대기. 상세 `docs/wiki/03-WORKLOG/2026-10-07-229-law-feedback-krill-economy-board-art.md`.
+  상세 `docs/wiki/03-WORKLOG/2026-10-07-229-law-feedback-krill-economy-board-art.md`.
 - **228차**: **갯지렁이 그림 4장 · 스탯 이름 한국어만** — 청갯지렁이 · 혼무시 한 갑(상점 묶음) · 한 마리(생미끼 · 도감 · 파기 판) ·
   상태 창 스탯 영문 병기 제거 · 법규 반영안 4문항 회신 대기. 상세 `docs/wiki/03-WORKLOG/2026-10-07-228-worm-art-stat-labels.md`.
-- **227차**: **법정 수치 반영** — 날짜 단위 금어기(참문어 5.16~6.30 · 꽃게 6.21~8.20 · 전복 9.1~10.31) · 제주 규정 덮어쓰기 ·
-  대문어 금지체중 600g · 벌금 상한 80만원 · 패류독소 제안은 회신 대기. 상세 `docs/wiki/03-WORKLOG/2026-10-06-227-legal-closed-season-dates.md`.
 - **상시 방침**:
   - 지형 고도(DEM)는 **낚시 확립 후** — B(해안 변형) 우선, 경사로 통행을 막지 않는다
     (`docs/archive/specs/RASTER_UPLIFT_AMENDMENT.md` §4).
@@ -114,7 +114,7 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
 
 - 지역 타일맵 추가/재생성 → **스킬 `add-region`** (`py tools/build_region_maps.py <region>` — 파이프라인·타일 문자·맵 그래프·함정 일체).
 - 차기 과제: 낚시점 전용 상점(루어 판매), 어탐 레이더(SeabedProfile 조회), 타 지역(여수 등) 확장, POI 세분화, 사운드 이펙트 (IMPLEMENTATION_PLAN §6-5l 차기 참고).
-- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages — **최근 65차 배포 2026-10-07 = 229차(법 반영안 · 크릴 경제 · 놀이 판 그림)까지 포함**. 재배포 절차는 **스킬 `deploy-ghpages`**).
+- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages — **최근 66차 배포 2026-10-07 = 230차(「미끼용 크릴」 그림)까지 포함**. 재배포 절차는 **스킬 `deploy-ghpages`**).
   ⚠ **원격 컨테이너에서는 dev 서버(5173)가 사용자 브라우저에 닿지 않는다** — 실플레이 테스트 요청은 이 배포로 답한다.
 
 ## 작업 이어받기 절차

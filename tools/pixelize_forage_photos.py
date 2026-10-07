@@ -250,6 +250,8 @@ PACKS = [
     ('bakkan_danax', 'it_bakkan_danax'),
     ('crab_berried_female', 'forage_berried_crab'),
     ('honmushi_straight', 'honmushi_straight'),
+    # 230차 — 미끼용 크릴 한 마리(미끼용 크릴 · 미끼용 백크릴 공통 그림)
+    ('krill_bait_single', 'it_krill_bait'),
 ]
 
 if __name__ == '__main__':

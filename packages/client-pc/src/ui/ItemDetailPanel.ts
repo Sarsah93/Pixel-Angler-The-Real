@@ -618,7 +618,8 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
   // ── 신선도 부가 정보 (상태/남은 시간은 실시간 갱신 블록에서 별도 렌더 — 단일 상태 표기) ──
   if (item.condition) {
     rows.push({ label: '보관 환경', value: '상온 · 쿨러(해수/얼음)는 규칙별 정지' });
-    if (item.subCategory.includes('미끼') || item.subCategory === '생미끼') {
+    // 230차 — 크릴 계열은 갈래 설명에 자기 보정(+2% · 부패 −20%)을 이미 적었다. 일반 미끼 행을 겹쳐 쓰면 숫자가 서로 어긋난다
+    if ((item.subCategory.includes('미끼') || item.subCategory === '생미끼') && item.condProfile !== 'krill_bait' && item.condProfile !== 'krill_block') {
       rows.push({ label: '입질 보정', value: '활어 +25% · 냉동 -50% · 부패 -85%' });
     } else if (item.subCategory === '어획물') {
       rows.push({ label: '활용 보정', value: '경락 등급·요리 품질에 반영 (활어>신선>냉장>보통)' });

@@ -636,7 +636,7 @@ function createSeedItems(): InvItem[] {
     { id: 'inv_ragworm',  name: '청갯지렁이',               icon: '', iconTexture: 'item_ragworm', category: 'tackle', subCategory: '생미끼',    qty: 15, basePrice: 600,   condition: 'live',    equippable: false },
     { id: 'inv_honmushi', name: '혼무시',                   icon: '', iconTexture: 'item_honmushi', category: 'tackle', subCategory: '생미끼',    qty: 8,  basePrice: 1500,  condition: 'live',    equippable: false },
     // 229차 — 미끼용 크릴(곽크릴을 뜯은 것) · 미끼용 백크릴(블록을 뜯은 것 — 입질 +2%). 그림은 같고 설명 · 보너스가 다르다
-    { id: 'inv_krill',    name: '미끼용 크릴',              icon: '', iconTexture: 'px:krill', category: 'tackle', subCategory: '냉동미끼',  qty: 30, basePrice: 200,  condition: 'thawed',  equippable: false, condProfile: 'krill_bait' },
+    { id: 'inv_krill',    name: '미끼용 크릴',              icon: '', iconTexture: 'item_krill_bait', category: 'tackle', subCategory: '냉동미끼',  qty: 30, basePrice: 200,  condition: 'thawed',  equippable: false, condProfile: 'krill_bait' },
     { id: 'inv_breadbait', name: '빵가루 경단',             icon: '', iconTexture: 'px:it_breadball', category: 'tackle', subCategory: '반죽미끼',  qty: 15, basePrice: 300,   equippable: false },
     { id: 'inv_fishcut',  name: '생선 조각 미끼',           icon: '🦐', category: 'tackle', subCategory: '선어미끼',  qty: 6,  basePrice: 3000,  condition: 'chilled', equippable: false },
     { id: 'inv_pe1',      name: 'AMSTRONG 합사 원줄 1호 · 150m', icon: '', iconTexture: 'line_spool_saiso', category: 'tackle', subCategory: '원줄 스풀', qty: 1,  basePrice: 18000, equippable: false, lineMaterial: 'pe_braid', lineForm: 'sinking', lineLengthM: 150, lineNo: 1, lineDiameterMm: 0.165, lineStrengthLb: 18 },
@@ -1332,8 +1332,10 @@ class InventoryStoreManager {
             // 225차 — 청갯지렁이는 지렁이(육지) 그림을 쓰고 있었다 · 갯강구 생미끼는 필드 도트를 쓰고 있었다 → 사진 도트로
             : (i.id === 'inv_ragworm' && i.iconTexture === 'item_worm') ? 'item_ragworm'
             : (i.id === 'inv_bait_slater' && i.iconTexture === 'forage_dot_ligia_exotica') ? 'forage_ligia_exotica'
+            // 230차 — 미끼용 크릴 · 미끼용 백크릴: 229차 자리표시(px:krill) · 구 이모지 크릴을 사용자 그림으로
+            : ((i.id === 'inv_krill' || i.id === 'inv_krill_bag') && (!i.iconTexture || i.iconTexture === 'px:krill')) ? 'item_krill_bait'
             : (i.iconTexture ?? sd?.iconTexture),
-        icon: (!i.iconTexture && sd?.iconTexture) ? '' : i.icon,
+        icon: ((!i.iconTexture && sd?.iconTexture) || i.id === 'inv_krill' || i.id === 'inv_krill_bag') ? '' : i.icon,
         // 121차 채집·통발 정적 필드 — 시드 백필 + id 규칙 폴백(상점 구매분: inv_trap_<specId>)
         lampLumens: i.lampLumens ?? sd?.lampLumens,
         // 188차 — 상점 집어제는 한동안 `chumKind` 없이 팔렸다(밑밥 배합 칸에 안 뜬다). 시드 백필.
@@ -1769,7 +1771,7 @@ class InventoryStoreManager {
 
   /** 229차 — 포장을 뜯으면 나오는 물건 중 시드(시작 가방)에 없는 것. 미끼용 백크릴은 블록을 뜯어야만 생긴다 */
   private static readonly UNPACK_TPL: Record<string, InvItemTemplate> = {
-    inv_krill_bag: { id: 'inv_krill_bag', name: '미끼용 백크릴', icon: '', iconTexture: 'px:krill', category: 'tackle', subCategory: '냉동미끼',
+    inv_krill_bag: { id: 'inv_krill_bag', name: '미끼용 백크릴', icon: '', iconTexture: 'item_krill_bait', category: 'tackle', subCategory: '냉동미끼',
       basePrice: 250, condition: 'thawed', equippable: false, condProfile: 'krill_bait' },
   };
 

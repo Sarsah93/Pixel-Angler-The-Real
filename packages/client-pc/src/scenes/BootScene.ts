@@ -176,6 +176,7 @@ export class BootScene extends Phaser.Scene {
       // 229차 — 사용자 도트 그림: 급랭 백크릴 600g(밑밥 블록) · 미끼용 곽크릴 · 다낚스 살림용 바칸 · 외포란 암꽃게(방생 안내) · 1자형 혼무시(파기 연출)
       item_krill_block: 'item-icons/it_krill_block.png',
       item_krill_box: 'item-icons/it_krill_box.png',
+      item_krill_bait: 'item-icons/it_krill_bait.png',   // 230차 — 미끼용 크릴 한 마리(크릴 · 백크릴 공통)
       item_bakkan_danax: 'item-icons/it_bakkan_danax.png',
       forage_berried_crab: 'item-icons/forage_berried_crab.png',
       honmushi_straight: 'item-icons/honmushi_straight.png',
