@@ -33,6 +33,8 @@ import { CoolerStore } from '../../store/CoolerStore.js';
 import { DiscoveryStore } from '../../store/DiscoveryStore.js';
 import { ExternalDataStore } from '../../store/ExternalDataStore.js';
 import { MultiplayerClient } from '../../net/MultiplayerClient.js';
+import { WorldDepletionStore } from '../../store/WorldDepletionStore.js';
+import { StoryStore } from '../../store/StoryStore.js';
 
 /** 씬이 넘기는 접근자 — 씬 내부를 직접 만지지 않는다 */
 export interface ForageHost {
@@ -200,11 +202,7 @@ export function ensureForageDotTextures(scene: Phaser.Scene): void {
 const SPOT_MAX_PX = 28;
 
 
-/**
- * 224차 — 놓친 · 잡은 스팟(이번 시간 슬롯 동안 다시 나오지 않는다). 씬을 다시 만들어도(맵 재진입) 남도록 모듈 전역.
- * 키 = `시드|스팟 id`. 시드(시간 슬롯)가 바뀌면 자연히 무효가 된다.
- */
-const GONE = new Set<string>();
+// 233차 — 224차의 모듈 전역 GONE(시간 슬롯 한정)은 `WorldDepletionStore`(세이브 · 기한)로 옮겼다.
 
 /** 224차 — 갯것 미끼 아이템(직접 잡은 쫄장게 · 갯강구). 갯지렁이는 상점 미끼와 같은 물건(inv_ragworm · inv_honmushi)으로 들어간다 */
 const BAIT_TEMPLATES: Record<string, { name: string; iconTexture: string; basePrice: number }> = {
@@ -415,7 +413,7 @@ export class ForageSystem {
       maxSpots: Math.round(TUNING.forage.maxSpots * e.tideMult),
       eastSea: isEastSeaRegion(this.host.regionId),   // 224차 — 동해엔 없는 · 드문 종
       day: Number(kstParts().d), regionId: this.host.regionId,   // 227차 — 금어기 날짜 단위 · 지역 규정
-    }).filter((s) => !this.isGone(seed, s.id)   // 224차 — 놓친 · 잡은 것은 이번 슬롯에 다시 나오지 않는다 · 232차 남이 가져간 것도
+    }).filter((s) => !this.isGone(s.id)   // 224차 놓친 것 · 233차 잡은 자리(1~2일) · 232차 남이 가져간 것
       && (e.hasAdvancedLicense || getCreatureById(s.creatureId)?.requiredLicense !== 'shore_hunting_advanced'));
     this.runners.clear();
     for (const s of this.spots) {
@@ -568,7 +566,9 @@ export class ForageSystem {
       const visible = night ? (lm > 0 && d <= radiusPx) : (s.minLampLumens === 0 && d <= Math.max(radiusPx, tr * 12));
       img.setVisible(visible);
       const baseA = s.kind === 'shallows' ? 0.8 : 1;
-      if (visible) img.setAlpha(baseA * (night ? Phaser.Math.Clamp(1.2 - d / Math.max(1, radiusPx), 0.35, 1) : 1));
+      // 233차 — 남이 채집 중이면 흐리게(손댈 수 없다)
+      const busyA = this.busyBy(s.id) ? 0.35 : 1;
+      if (visible) img.setAlpha(baseA * busyA * (night ? Phaser.Math.Clamp(1.2 - d / Math.max(1, radiusPx), 0.35, 1) : 1));
       if (visible && d < bestD) { bestD = d; nearest = s; }
     }
     this.nearSpot = nearest;
@@ -590,6 +590,8 @@ export class ForageSystem {
   /** 가까운 스팟 안내 문장(허가 · 도구 · 장화 · 수심) */
   private hintFor(s: ForageSpot): string {
     const c = getCreatureById(s.creatureId)!;
+    const by = this.busyBy(s.id);
+    if (by) return `${c.nameKo} — ${by} 님이 채집 중이다`;
     const tool = pickForageTool(c, this.ownedTools());
     const needLic = c.requiredLicense !== null && !GameState.hasLicense('shore_hunting_basic');
     if (needLic) return `${c.nameKo} — 해루질 입문 허가 필요 (L)`;
@@ -658,21 +660,47 @@ export class ForageSystem {
     return true;
   }
 
-  private markGone(s: ForageSpot): void {
-    GONE.add(`${this.lastSeed}|${s.id}`);
-    void MultiplayerClient.takeWorld(this.worldKey(this.lastSeed, s.id));   // 232차 — 다른 사람 화면에서도 사라진다
+  /**
+   * 그 스팟을 사라지게 한다. 233차 — `harvested`(잡음)면 그 **자리**가 1~2일 비고,
+   * 아니면(놓침 · 숨음) 이번 시간 슬롯 끝까지만 사라진다. 기한은 세이브와 멀티 공유 채널에 같이 남긴다.
+   */
+  private markGone(s: ForageSpot, harvested = false): void {
+    const now = Date.now();
+    const f = TUNING.forage;
+    const until = harvested
+      ? now + (f.depleteMinHours + Math.random() * Math.max(0, f.depleteMaxHours - f.depleteMinHours)) * 3_600_000
+      : this.slotEndMs(now);
+    const key = this.worldKey(s.id);
+    WorldDepletionStore.mark(key, until);
+    void MultiplayerClient.takeWorld(key, { ttlMs: until - now });   // 232차 — 다른 사람 화면에서도 사라진다
     this.removeSpot(s.id);
   }
 
-  /** 232차 — 세션 공유 키(`f:시드|스팟`) */
-  private worldKey(seed: number, id: string): string { return `f:${seed}|${id}`; }
-
-  /** 224차 · 232차 — 이번 슬롯에 내가 놓쳤거나 잡았거나, **같은 세션의 누군가 가져간** 스팟 */
-  private isGone(seed: number, id: string): boolean {
-    return GONE.has(`${seed}|${id}`) || MultiplayerClient.isWorldTaken(this.worldKey(seed, id));
+  /** 지금 시간 슬롯(스팟 재롤링 주기)이 끝나는 시각 */
+  private slotEndMs(now: number): number {
+    const slot = TUNING.forage.respawnMinutes * 60_000;
+    return (Math.floor(now / slot) + 1) * slot;
   }
 
-  /** 232차 — 남이 가져간 스팟을 화면에서 걷는다(0.5초마다). 내가 놀이 중인 스팟은 결과에 맡긴다 */
+  /** 232차 · 233차 — 세션 공유 키. **타일 기준**(`f:맵|스팟`) — 잡은 자리는 다음 슬롯에 다른 생물로도 안 뜬다 */
+  private worldKey(id: string): string { return `f:${this.host.mapKey}|${id}`; }
+
+  /** 내가 놓쳤거나 잡은(기한 안), 또는 **같은 세션의 누군가 가져간** 스팟 */
+  private isGone(id: string): boolean {
+    const key = this.worldKey(id);
+    return WorldDepletionStore.isDepleted(key) || MultiplayerClient.isWorldTaken(key);
+  }
+
+  /** 233차 — 남이 지금 채집 중인 스팟(잠금) → 그 사람 이름 */
+  private busyBy(id: string): string | null {
+    const l = MultiplayerClient.worldTakenInfo(this.worldKey(id));
+    return l && l.busy && !l.mine ? (l.by ?? '다른 사람') : null;
+  }
+
+  /** 233차 — 채집 놀이 중인가(멀티 활동 「채집 중」 배지) */
+  get isPlaying(): boolean { return !!this.playing; }
+
+  /** 232차 — 남이 가져간 스팟을 화면에서 걷는다(0.5초마다). 233차 — 남이 채집 중인 스팟은 흐리게 남긴다 */
   private takenAcc = 0;
   private sweepTaken(deltaMs: number): void {
     this.takenAcc += deltaMs;
@@ -680,7 +708,7 @@ export class ForageSystem {
     this.takenAcc = 0;
     for (const s of [...this.spots]) {
       if (this.playing?.spot.id === s.id) continue;
-      if (MultiplayerClient.isWorldTaken(this.worldKey(this.lastSeed, s.id))) this.removeSpot(s.id);
+      if (MultiplayerClient.isWorldTaken(this.worldKey(s.id))) this.removeSpot(s.id);
     }
   }
 
@@ -707,6 +735,9 @@ export class ForageSystem {
     if (!s) return false;
     const c = getCreatureById(s.creatureId);
     if (!c) return false;
+    // 233차 — 남이 채집 중인 생물에는 손댈 수 없다
+    const by = this.busyBy(s.id);
+    if (by) { this.host.floatingHint(`${by} 님이 ${c.nameKo}을(를) 채집 중이다`); return true; }
     if (c.requiredLicense !== null && !GameState.hasLicense('shore_hunting_basic')) {
       this.host.floatingHint('해루질 입문 허가가 필요합니다 — L 면허 창');
       return true;
@@ -756,13 +787,14 @@ export class ForageSystem {
     const dex = Math.max(0, Math.min(1, (GameState.skillMult('forage_speed') - 1) * 2));
     const open = (): void => { this.host.openForageGame?.(c, tool, { dex, underwater: s.kind === 'shallows' }, (st) => this.finishGame(st)); };
     if (!MultiplayerClient.isConnected) { open(); return true; }
-    // 232차 — 멀티: 손대는 순간 「내 것」이라고 먼저 알린다. 거의 동시에 둘이 잡으면 서버에 먼저 닿은 사람이 임자
-    const seed = this.lastSeed;
-    void MultiplayerClient.takeWorld(this.worldKey(seed, s.id)).then((mine) => {
-      if (this.playing?.spot !== s) return;
-      if (mine) { open(); return; }
+    // 232차 — 멀티: 손대는 순간 「내 것」이라고 먼저 알린다. 거의 동시에 둘이 잡으면 서버에 먼저 닿은 사람이 임자.
+    // 233차 — 놀이 동안은 **채집 중 잠금**(2분 — 도중에 튕기면 풀린다). 남 화면에선 흐려지고 손댈 수 없다.
+    const key = this.worldKey(s.id);
+    void MultiplayerClient.takeWorld(key, { ttlMs: 120_000, busy: true }).then((r) => {
+      if (this.playing?.spot !== s) { if (r.mine) void MultiplayerClient.takeWorld(key, { release: true }); return; }
+      if (r.mine) { open(); return; }
       this.playing = null;
-      GONE.add(`${seed}|${s.id}`);
+      if (r.busy) { this.host.floatingHint(`${r.by ?? '다른 사람'} 님이 ${c.nameKo}을(를) 채집 중이다`); return; }
       this.removeSpot(s.id);
       this.host.floatingHint(`다른 사람이 먼저 ${c.nameKo}을(를) 가져갔다`);
     });
@@ -776,12 +808,15 @@ export class ForageSystem {
     if (img) { img.destroy(); this.spotSprites.delete(id); }
   }
 
-  /** 224차 — 놀이가 끝났다(이김 · 놓침 · 포기). 어느 쪽이든 그 생물은 이번 슬롯에서 사라진다 */
+  /**
+   * 224차 — 놀이가 끝났다(이김 · 놓침 · 포기). 어느 쪽이든 그 생물은 사라진다.
+   * 233차 — 잡았으면 그 자리가 1~2일 비고(채집 중 잠금도 이 기한으로 바뀐다), 놓쳤으면 이번 슬롯 끝까지.
+   */
   private finishGame(st: ForageGameState): void {
     const h = this.playing;
     if (!h) return;
     this.playing = null;
-    this.markGone(h.spot);
+    this.markGone(h.spot, st.status === 'won');
     this.maybeFloodWarning();
     const c = h.creature;
     if (st.status !== 'won') {
@@ -789,6 +824,10 @@ export class ForageSystem {
       this.host.floatingHint(line);
       this.host.pushLog(`[채집] ${line}`);
       return;
+    }
+    // 233차 — 갯가를 훑다가 진행 중인 부탁에 쓸 물건을 찾는다(내 화면에서만 · 내 운으로)
+    for (const name of StoryStore.rollQuestDrops({ kind: 'gather', regionId: this.host.regionId, creatureId: c.id })) {
+      this.host.pushLog(`[채집] 돌 틈에서 ${name}을(를) 찾았다`);
     }
     // 손으로 잡았으면 다칠 수 있다 — 장갑이면 덜 다치고 대개 놓치지 않는다
     const inj = forageInjuryRoll(c, h.tool, InventoryStore.wearingGloves, Math.random, GameState.skillMult('hand_injury'));

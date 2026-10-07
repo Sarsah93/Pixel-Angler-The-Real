@@ -134,18 +134,31 @@ export interface MpPresenceRes {
 }
 
 /**
- * 공유 세계 자원 소비 기록 (232차). 같은 시드로 모두에게 같은 자리에 뜨는 것(채집 생물 · 해파리 · 불가사리)을
- * **누가 가져가면 다른 사람 화면에서도 사라지게** 한다. 키는 클라이언트가 정한다:
- * - 채집: `f:<시드>|<스팟 id>` · 과증식: `n:<시드>|<배치 순번>`
- * 시드가 시간 슬롯에 묶여 있어 슬롯이 바뀌면 키가 자연히 무효가 된다 — 서버는 키의 뜻을 모른다.
+ * 공유 세계 자원 소비 기록 (232차 · 233차 확장). 같은 시드로 모두에게 같은 자리에 뜨는 것(채집 생물 · 해파리 ·
+ * 불가사리)을 **누가 가져가면 다른 사람 화면에서도 사라지게** 한다. 키는 클라이언트가 정한다:
+ * - 채집: `f:<맵>|<스팟 id>`(233차 — 타일 기준. 잡으면 1~2일 · 놓치면 그 시간 슬롯 끝까지)
+ * - 과증식: `n:<시드>|<배치 순번>`(대발생 슬롯 끝까지)
+ * 언제 다시 나타나는지(`untilMs`)는 가져간 사람이 정해 알린다 — 서버는 키의 뜻을 모르고 기한만 지킨다.
  */
 export interface MpTakenLine {
   seq: number;
   key: string;
+  /** 이 시각(벽시계 ms)이 지나면 다시 나타난다 (233차) */
+  untilMs: number;
+  /**
+   * 233차 — **채집 중**(놀이 진행 중 잠금). 끝나면 같은 사람이 `busy:false` + 진짜 기한으로 고쳐 쓴다.
+   * 그 사람이 놀이 도중 튕기면 잠금 기한(짧게)이 지나 다시 풀린다.
+   */
+  busy?: boolean;
+  /** 가져간(채집 중인) 사람 이름 — 「○○ 님이 채집 중」 표시용 */
+  by?: string;
 }
-/** 서버가 들고 있는 소비 기록 수 상한 · 보관 시간 (과증식 6시간 슬롯을 덮는다) */
+/** 서버가 들고 있는 소비 기록 수 상한 */
 export const MP_TAKEN_KEEP = 4000;
-export const MP_TAKEN_TTL_MS = 7 * 3_600_000;
+/** 기한 상한 — 클라이언트가 이보다 길게 달라고 해도 자른다(채집 1~2일 + 여유) */
+export const MP_TAKEN_TTL_MAX_MS = 50 * 3_600_000;
+/** 기한 하한 — 잠금처럼 짧은 것도 최소 이만큼은 둔다 */
+export const MP_TAKEN_TTL_MIN_MS = 10_000;
 /** 소비 키 최대 길이 — 아무 문자열이나 쌓이지 않게 */
 export const MP_TAKEN_KEY_MAX = 96;
 
@@ -206,7 +219,7 @@ export interface MpPlacedTrap {
 }
 
 /** 지금 무엇을 하고 있는가 — 이름표 옆 아이콘 + 밀어내기 대상 판정에 쓴다 */
-export type MpActivity = 'field' | 'fishing' | 'shop' | 'indoor' | 'menu' | 'cinematic';
+export type MpActivity = 'field' | 'fishing' | 'shop' | 'indoor' | 'menu' | 'cinematic' | 'foraging';
 
 /** 활동 표시 문구 (툴팁·로그용 — 화면 아이콘은 클라이언트가 고른다) */
 export const MP_ACTIVITY_KO: Record<MpActivity, string> = {
@@ -216,6 +229,7 @@ export const MP_ACTIVITY_KO: Record<MpActivity, string> = {
   indoor: '실내',
   menu: '자리 비움',
   cinematic: '바쁨',
+  foraging: '채집 중',
 };
 
 /** 필드에서 실제로 걸어다니는 상태인가 — 아니면 마지막 자리에 서 있는 껍데기다 */
@@ -325,6 +339,8 @@ export interface MpSavedSession {
   traps: MpPlacedTrap[];
   /** 미적용 확정 거래 (146차 — 한쪽이 적용 전에 튕겨도 이어하기에서 마저 적용한다) */
   trades?: MpTradeState[];
+  /** 공유 자원 소비 기록 (233차 — 채집 고갈이 1~2일이라 서버를 다시 켜도 남아야 한다). 잠금(busy)은 남기지 않는다 */
+  taken?: (MpTakenLine & { owner: string })[];
 }
 
 /** 이어하기 결과 — 서버가 이전 자리를 알고 있으면 돌려준다 */

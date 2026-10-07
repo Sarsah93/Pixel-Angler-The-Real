@@ -336,8 +336,9 @@ export interface InvItem {
    */
   bound?: boolean;
   /**
-   * 거래로 받은 것 (146차). 지금은 표식뿐이지만, 인벤토리를 읽어 닫는 퀘스트 목표가 생기면
-   * 이 표식으로 "남이 준 것"을 걸러야 한다(자가 어획 규칙 §3-4와 같은 취지).
+   * 거래로 받은 것 (146차). 233차 — **계보로 이어진다**: 거래로 받은 원물을 손질한 필렛 · 그 필렛으로 뜬 회 ·
+   * 그 재료로 만든 요리도 이 표식을 단다. 「직접 마련한 것만」 받는 퀘스트 목표(`StoryObjective.ownOnly`)가
+   * 이 표식이 붙은 것으로 한 손질 · 회 · 요리 · 판매는 세지 않는다(다른 퀘스트는 그대로 인정).
    */
   traded?: boolean;
   /**
@@ -1715,10 +1716,19 @@ class InventoryStoreManager {
 
   // ── 획득/구매 ───────────────────────────────────────
   /** 아이템 추가 — 동일 id 존재 시 수량 병합, 없으면 빈 소켓에 배치. 실패 시 false */
+  /**
+   * 233차 — 거래품 계보 모드. 켜져 있는 동안 들어오는 아이템은 `traded`를 단다
+   * (손질 · 회뜨기 창이 거래로 받은 원물로 열렸을 때 그 창이 켜고 닫으며 끈다).
+   */
+  private tradedLineage = false;
+  setTradedLineage(on: boolean): void { this.tradedLineage = on; }
+
   addItem(template: InvItemTemplate, qty: number, opts: { silent?: boolean } = {}): boolean {
+    if (this.tradedLineage && !template.traded) template = { ...template, traded: true };
     const existing = this.find(template.id);
     if (existing) {
       existing.qty += qty;
+      if (template.traded) existing.traded = true;   // 233차 — 섞이면 보수적으로 거래품 쪽으로
       if (!opts.silent) { this.newIds.add(existing.id); this.onGained?.(existing, qty); LedgerStore.gained(existing.name, qty); }
       return true;
     }

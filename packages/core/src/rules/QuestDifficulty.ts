@@ -54,6 +54,8 @@ const ACTION_WEIGHT: Record<StoryObjective['kind'], number> = {
   gather: 2, trap: 2, craft: 2, cook: 2, butcher: 2, sashimi: 2, sell: 2, cull: 2, farm: 2, mine: 2,
   // 낚시 — 이 게임의 본 행위
   catch: 3, release: 3,
+  // 233차 — 개인 전용 물건 찾기: 확률로만 나오고(운) 남이 대신 구해 줄 수 없다(귀속) — 낚시와 같은 무게
+  collect: 3,
   // 관문·구속 계통 — 한 번으로 끝나지 않고 조건이 붙는다
   license: 3, boatTrip: 3, communityWork: 3, holdPosition: 3, survive: 4,
 };
@@ -62,14 +64,14 @@ const ACTION_KO: Partial<Record<StoryObjective['kind'], string>> = {
   catch: '낚시', release: '계측·방생', gather: '채집', trap: '통발', craft: '제작', cook: '요리',
   butcher: '손질', sashimi: '회뜨기', sell: '판매·위판', cull: '구제 수거', farm: '농사', mine: '채광',
   visit: '이동', license: '자격 취득', boatTrip: '출항', communityWork: '공동작업', holdPosition: '자리 지키기',
-  survive: '생존', reachLevel: '레벨 도달', earn: '재화 모으기',
+  survive: '생존', reachLevel: '레벨 도달', earn: '재화 모으기', collect: '찾기',
 };
 const ACTION_EN: Partial<Record<StoryObjective['kind'], string>> = {
   catch: 'Fishing', release: 'Measure & release', gather: 'Foraging', trap: 'Trapping',
   craft: 'Crafting', cook: 'Cooking', butcher: 'Butchery', sashimi: 'Slicing', sell: 'Selling',
   cull: 'Culling', farm: 'Farming', mine: 'Mining', visit: 'Travel', license: 'Licensing', boatTrip: 'Boat trip',
   communityWork: 'Community work', holdPosition: 'Holding the spot', survive: 'Survival',
-  reachLevel: 'Reaching a level', earn: 'Earning',
+  reachLevel: 'Reaching a level', earn: 'Earning', collect: 'Searching',
 };
 
 /**
@@ -108,6 +110,7 @@ function conditionDepth(o: StoryObjective): number {
   if (o.selfCaught) d++;
   if (o.itemId) d++;
   if (o.licenseId) d++;
+  if (o.ownOnly) d++;   // 233차 — 직접 마련한 것만(거래품 불가)
   return d;
 }
 

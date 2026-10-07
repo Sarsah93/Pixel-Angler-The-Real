@@ -139,6 +139,7 @@ export class SashimiPanel extends DraggablePanel {
       onClose: cbs.onClose, dim: true, depth: 910,
     });
     this.source = source;
+    InventoryStore.setTradedLineage(!!source.traded);   // 233차 — 거래품 필렛으로 뜬 회는 거래품
     this.cbs = cbs;
     this.mode = mode;
     this.fam = butcherFamilyOf(source.speciesId ?? '');
@@ -1014,7 +1015,7 @@ export class SashimiPanel extends DraggablePanel {
     const xp = Math.round((this.engawa ? 6 : this.ceph === 'fin' ? 8 : this.ceph === 'mantle' ? 12 : 10) + avg * 20 + (this.mode === 'advanced' ? 8 : 0));
     const lv = GameState.addFilletingXp(xp);
     // 플레이어 레벨 XP (124차 — 손질 숙련과 별개 축. 등급 계수 하0.6/중1.0/상1.5/특2.5)
-    GameState.addActivityXp('sashimi', GRADE_XP_MULT[grade] ?? 1);
+    GameState.addActivityXp('sashimi', GRADE_XP_MULT[grade] ?? 1, { traded: !!this.source.traded });
     GameState.applyVitalsAction('sashimi');   // 125차 — 회뜨기 1건 행동 비용
 
     // 회 조각 지급 + 원물 필렛/엔가와/부산물 소모 (고급 = id 'adv' — 접시/스시 판별)
@@ -1097,6 +1098,7 @@ export class SashimiPanel extends DraggablePanel {
   }
 
   override destroy(fromScene?: boolean): void {
+    InventoryStore.setTradedLineage(false);
     this.scene?.input?.off('pointermove', this.sashimiMoveHandler);
     this.scene?.input?.off('pointerup', this.sashimiUpHandler);
     this.scene?.input?.off('pointerdown', this.sashimiDownHandler);

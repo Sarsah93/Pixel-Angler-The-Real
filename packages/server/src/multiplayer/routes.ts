@@ -89,9 +89,9 @@ multiplayerRouter.post('/trade/applied', (req, res) => {
 
 // ── 232차 공유 세계 자원 소비(채집 자리 · 과증식 개체) ──
 multiplayerRouter.post('/world/take', (req, res) => {
-  const b = req.body as { code?: string; playerId?: string; token?: string; key?: string };
+  const b = req.body as { code?: string; playerId?: string; token?: string; key?: string; ttlMs?: number; busy?: boolean; release?: boolean };
   if (!b.code || !b.playerId || !b.key) { res.json({ ok: false, reasonKo: '요청이 올바르지 않습니다.' }); return; }
-  res.json(sessionRegistry.takeWorld(b.code, b.playerId, b.token, b.key));
+  res.json(sessionRegistry.takeWorld(b.code, b.playerId, b.token, b.key, { ttlMs: b.ttlMs, busy: b.busy, release: b.release }));
 });
 
 // ── 145차 설치물 공유 — 통발은 놓는 순간 남에게도 보인다 ──

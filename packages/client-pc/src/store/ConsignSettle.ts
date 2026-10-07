@@ -42,7 +42,8 @@ export function settleDueConsignments(nowMs = Date.now()): ConsignSettleReport |
     runConsignmentToEnd(session);
     const result = settleConsignment(session);
     const soldIds = new Set(result.perLot.filter((r) => r.status === 'sold').map((r) => r.sourceItemId));
-    for (let i = 0; i < result.soldLots; i++) StoryStore.event({ kind: 'sell' });
+    // 233차 — 낙찰된 것 하나하나가 거래로 받은 것(계보)인지 실어 보낸다 — 「직접 마련한 것만」 위판 목표는 세지 않는다
+    for (const it of b.items) if (soldIds.has(it.id)) StoryStore.event({ kind: 'sell', ...(it.traded ? { traded: true } : {}) });
     returnItems(b.items.filter((it) => !soldIds.has(it.id)));
     if (result.netWon > 0) GameState.addCoins(result.netWon, false, 'auction');
     LedgerStore.life('auctionLots', result.soldLots);

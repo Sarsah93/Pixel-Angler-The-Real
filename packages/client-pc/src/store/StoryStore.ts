@@ -18,7 +18,7 @@ import { LedgerStore } from './LedgerStore.js';
 import {
   STORY_QUESTS, getStoryQuest, lastMainQuestOfChapter, JOURNAL_PAGES, journalCatchMatches, STORY_ARCS, getStoryArc,
   seasonOfMonth, createDefaultReputation, clampHarbor, clampSea, canSell, canConsign, provenanceOf, TUNING,
-  spotKindSatisfies, SPOT_KIND_LABEL,
+  spotKindSatisfies, SPOT_KIND_LABEL, QUEST_ITEM_DROPS, getQuestItem,
   dayJobsOfNpc, getDayJob,
   clampAffinity, affinityRewardMult, affinityJobWageMult, canOfferSubQuest, canOfferJobs, choicesFor, choiceVisible,
   getLicenseByType, getSkillById, getStoryNpc, getRegionById,
@@ -92,15 +92,21 @@ export interface StoryHost {
   addSkillPoints(n: number): void;
   grantProfXp(target: { skillId?: string; category?: SkillCategoryId }, xp: number): string[];
   grantProfLevelUp(skillId: string): boolean;
+  /** 233차 — 개인 전용 퀘스트 아이템 1개를 가방에 넣는다(귀속). 공간이 없으면 false */
+  giveQuestItem?(itemId: string): boolean;
+  /** 233차 — 퀘스트를 마치면 모은 퀘스트 아이템을 의뢰인에게 넘긴다(가방에서 뺀다) */
+  takeQuestItems?(itemId: string, qty: number): void;
 }
 
 export type StoryEvent =
   | { kind: 'catch'; speciesId: string; lengthCm: number; method: CatchMethod; selfCaught: boolean; regionId: string; month: number; spotKind?: StorySpotKind }
   | { kind: 'release'; speciesId: string; lengthCm: number }
-  | { kind: 'activity'; activity: 'butcher' | 'sashimi' | 'forage' | 'craft' | 'cook'; itemId?: string }
+  | { kind: 'activity'; activity: 'butcher' | 'sashimi' | 'forage' | 'craft' | 'cook'; itemId?: string; traded?: boolean }
   | { kind: 'license'; licenseId: string }
   | { kind: 'trap' }
-  | { kind: 'sell' }
+  | { kind: 'sell'; traded?: boolean }
+  /** 233차 — 개인 전용 퀘스트 아이템을 찾았다(`rollQuestDrops`가 낸다) */
+  | { kind: 'questItem'; itemId: string }
   | { kind: 'visit'; placeKey: string }
   | { kind: 'custom'; key: string }
   | { kind: 'action'; key: StoryActionKey; source?: string }
@@ -758,6 +764,8 @@ class StoryStoreManager {
       h?.setFlag(`unlock.${u}`, true);
       if (u === 'trainee' && this.traineeDay == null) this.traineeDay = this.day;
     }
+    // 233차 — 모은 개인 전용 퀘스트 아이템은 의뢰인에게 넘어간다
+    for (const o of q.objectives) if (o.kind === 'collect' && o.itemId) h?.takeQuestItems?.(o.itemId, this.objectiveTarget(o));
     h?.markQuestDone(id);
     h?.markDirty();
     LedgerStore.questDone(q.titleKo);   // 211차
@@ -786,6 +794,29 @@ class StoryStoreManager {
   }
 
   /** 자동 추적 이벤트 — 활성 퀘 전체의 미완 목표와 대조 */
+  /**
+   * 233차 — 개인 전용 퀘스트 아이템 드롭. **내 행동에서만, 내 클라이언트가** 굴린다(멀티에서도 남과 공유하지 않는다).
+   * 그 퀘스트가 진행 중이고 해당 `collect` 목표가 아직 덜 찼을 때만 나온다. 반환 = 이번에 나온 아이템 이름들.
+   */
+  rollQuestDrops(ctx: { kind: 'gather' | 'catch'; regionId: string; creatureId?: string; speciesId?: string }, rng: () => number = Math.random): string[] {
+    const got: string[] = [];
+    for (const d of QUEST_ITEM_DROPS) {
+      if (d.on.kind !== ctx.kind) continue;
+      if (d.on.regionId && d.on.regionId !== ctx.regionId) continue;
+      if (d.on.creatureId && d.on.creatureId !== ctx.creatureId) continue;
+      if (d.on.speciesId && d.on.speciesId !== ctx.speciesId) continue;
+      const q = getStoryQuest(d.questId); const p = this.quests[d.questId];
+      if (!q || !p || p.status !== 'active') continue;
+      const idx = q.objectives.findIndex((o) => o.kind === 'collect' && o.itemId === d.itemId);
+      if (idx < 0 || this.objectiveDone(q, idx) || !this.objectiveReachable(q, idx)) continue;
+      if (rng() >= d.chance) continue;
+      if (!this.host?.giveQuestItem?.(d.itemId)) { this.onNotify?.('[할 일] 무언가 눈에 띄었지만 가방에 자리가 없다'); continue; }
+      got.push(getQuestItem(d.itemId)?.nameKo ?? d.itemId);
+      this.event({ kind: 'questItem', itemId: d.itemId });
+    }
+    return got;
+  }
+
   event(ev: StoryEvent): void {
     TitleStore.onStoryEvent(ev);   // 203차 — 타이틀 업적도 같은 사건을 센다(어획 · 방생)
     let changed = false;
@@ -839,6 +870,11 @@ class StoryStoreManager {
             && this.match({ ...o, spotKind: undefined }, ev) !== null) {
             this.onNotify?.(`[할 일] ${q.titleKo} — ${SPOT_KIND_LABEL[o.spotKind].ko}에서 낚아야 인정됩니다`);
           }
+          // 233차 — 거래품이라서만 빠진 경우도 이유를 알린다
+          if (o.ownOnly && (ev.kind === 'activity' || ev.kind === 'sell') && ev.traded
+            && this.match({ ...o, ownOnly: false }, ev) !== null) {
+            this.onNotify?.(`[할 일] ${q.titleKo} — 거래로 받은 것은 인정되지 않습니다. 직접 마련해야 합니다`);
+          }
           return;
         }
         p.obj[i] = hit === 'set' ? this.setValue(o, ev) : (p.obj[i] ?? 0) + 1;
@@ -886,11 +922,13 @@ class StoryStoreManager {
         const map: Record<string, StoryObjective['kind']> = { butcher: 'butcher', sashimi: 'sashimi', forage: 'gather', craft: 'craft', cook: 'cook' };
         if (o.kind !== map[ev.activity]) return null;
         if (o.itemId && ev.itemId && o.itemId !== ev.itemId) return null;
+        if (o.ownOnly && ev.traded) return null;   // 233차 — 까다로운 퀘스트는 직접 마련한 것만
         return 'inc';
       }
       case 'license': return o.kind === 'license' && (!o.licenseId || o.licenseId === ev.licenseId) ? 'set' : null;
       case 'trap': return o.kind === 'trap' ? 'inc' : null;
-      case 'sell': return o.kind === 'sell' ? 'inc' : null;
+      case 'sell': return o.kind === 'sell' && !(o.ownOnly && ev.traded) ? 'inc' : null;
+      case 'questItem': return o.kind === 'collect' && o.itemId === ev.itemId ? 'inc' : null;
       case 'visit': return o.kind === 'visit' && o.placeKey === ev.placeKey ? 'inc' : null;
       case 'custom':
         if (o.kind === 'custom' && o.placeKey === ev.key) return 'inc';

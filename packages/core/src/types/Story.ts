@@ -193,6 +193,7 @@ export type StoryObjectiveKind =
   | 'furnish'        // 가구 배치·리빙 (138차 — manual)
   | 'reachLevel'     // 레벨 도달
   | 'earn'           // 재화 누적
+  | 'collect'        // 233차 — 개인 전용 퀘스트 아이템 모으기(확률 드롭 · 귀속 · 그 사람에게만)
   | 'custom';        // 그 외 (라벨로만 설명)
 
 /**
@@ -242,13 +243,18 @@ export interface StoryObjective {
   /** 자가어획 필수 — 구매/선물로 대체 불가 (§3-4) */
   selfCaught?: boolean;
   /**
+   * 233차 — **직접 마련한 것만** 인정한다(까다로운 퀘스트). 거래로 받은 것(계보 포함 — 그 원물로 뜬 필렛 · 회 ·
+   * 요리)으로 한 손질 · 회뜨기 · 요리 · 위판은 이 목표를 채우지 않는다. 표시가 없는 목표는 거래품도 인정한다.
+   */
+  ownOnly?: boolean;
+  /**
    * catch 전용 장소 조건 (149차) — "방파제에서 낚기" 같은 라벨을 **실제로 강제**한다.
    * 구멍치기(`hole`)는 `breakwater` 조건도 함께 만족한다(`spotKindSatisfies`).
    */
   spotKind?: StorySpotKind;
   /** talk/deliverFree 전용 — StoryArc npc id */
   npcId?: string;
-  /** craft/deliverFree/cook 전용 */
+  /** craft/deliverFree/cook 전용 · 233차 collect = 모을 퀘스트 아이템 id(`QUEST_ITEMS`) */
   itemId?: string;
   /** license 전용 */
   licenseId?: string;

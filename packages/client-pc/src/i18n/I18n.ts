@@ -26,7 +26,7 @@ import {
   FIRE_RECIPES, COOK_INGREDIENTS, HEAT_SOURCES, COOKWARES, FUELS,
   RECIPE_LORE, DISH_VARIANT_LORE, RECIPE_EFFECTS, FOOD_EFFECT_KIND_KO, DISH_MODIFIER_KO, DISH_MODIFIER_EN,
   fatnessLabel, textureLabel, fishinessLabel, flavorLabel,
-  TITLE_DATABASE, TIDE_PHASE_PREF_GROUPS, TIDE_FLOW_LABEL_KO, TIDE_FLOW_LABEL_EN, TIDE_FLOW_NOTE_KO, TIDE_FLOW_NOTE_EN,
+  TITLE_DATABASE, TIDE_PHASE_PREF_GROUPS, TIDE_FLOW_LABEL_KO, TIDE_FLOW_LABEL_EN, TIDE_FLOW_NOTE_KO, TIDE_FLOW_NOTE_EN, QUEST_ITEMS,
 } from '@tra/core';
 import { EN_PLACES } from './places.js';
 import { EN_POIS } from './en_pois.js';
@@ -96,6 +96,8 @@ function buildRuntimeDict(): void {
   for (const c of SKILL_CATEGORIES) { put(c.nameKo, c.nameEn); put(c.descKo, c.descEn); put(c.lockedNoteKo, c.lockedNoteEn); }
   // 131차 — 제작 도면·그룹 라벨도 데이터(nameEn/descEn)가 정본
   for (const bp of CRAFT_BLUEPRINTS) { put(bp.nameKo, bp.nameEn); put(bp.descKo, bp.descEn); }
+  // 233차 — 개인 전용 퀘스트 아이템
+  for (const q of QUEST_ITEMS) { put(q.nameKo, q.nameEn); put(q.descKo, q.descEn); }
   // 222차 — 잠긴 스킬의 「… 열린다」 조건절
   for (const sk of SKILL_DATABASE) if (sk.pendingSystem) put(sk.pendingSystem.ko, sk.pendingSystem.en);
   for (const g of Object.values(CRAFT_GROUP_LABEL)) put(g.ko, g.en);

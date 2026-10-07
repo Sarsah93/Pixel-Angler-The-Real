@@ -336,6 +336,7 @@ export class ButcheryPanel extends DraggablePanel {
       onClose: cbs.onClose, dim: true, depth: 900,
     });
     this.source = source;
+    InventoryStore.setTradedLineage(!!source.traded);   // 233차 — 거래로 받은 원물이면 산출물도 거래품 계보
     this.cbs = cbs;
 
     const speciesId = source.speciesId ?? this.guessSpecies(source);
@@ -458,6 +459,7 @@ export class ButcheryPanel extends DraggablePanel {
   }
 
   override destroy(fromScene?: boolean): void {
+    InventoryStore.setTradedLineage(false);   // 233차 — 계보 모드는 이 창이 열려 있는 동안만
     // ── 이탈 정산 안전망 (사용자 리포트 2026-07-31 "ESC로 나가면 부산물이 사라짐") ──
     //  씬 ESC → UtilizationPanel.destroy → 이 destroy가 **requestClose를 거치지 않고 직행**하는
     //  경로가 있다(교체 확인·씬 셧다운도 동일). 부산물은 팝업 확인 시점에 이미 지급돼 있으므로:
@@ -4169,7 +4171,7 @@ export class ButcheryPanel extends DraggablePanel {
     const xpGain = Math.round(20 + r.avgCutQuality * 40 + gradeXp);
     const lv = GameState.addFilletingXp(xpGain);
     // 플레이어 레벨 XP (124차 — 손질 숙련과 별개 축. 등급 계수 하0.6/중1.0/상1.5/특2.5)
-    GameState.addActivityXp('butcher', GRADE_XP_MULT[yieldRes.grade] ?? 1);
+    GameState.addActivityXp('butcher', GRADE_XP_MULT[yieldRes.grade] ?? 1, { traded: !!this.source.traded });
     GameState.applyVitalsAction('butcher');   // 125차 — 손질 1마리 행동 비용
 
     // 손질 산출물은 전부 **활어 상태로 새 시계 시작** (사용자 지정 2026-07-29 — "처음은 활어로")

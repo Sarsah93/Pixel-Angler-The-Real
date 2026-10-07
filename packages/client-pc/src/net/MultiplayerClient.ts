@@ -92,7 +92,7 @@ class MultiplayerClientImpl {
    * 232차 — 세션에서 누군가 가져간 세계 자원 키(채집 `f:` · 과증식 `n:`). 내 것도 넣는다.
    * 채집 · 과증식 시스템이 매 프레임 이 집합을 보고 그 개체를 지운다.
    */
-  private worldTaken = new Set<string>();
+  private worldTaken = new Map<string, MpTakenLine & { mine?: boolean }>();
   private takenSeq = 0;
   /** 다음 폴링에 실어 보낼 말 */
   private pendingSay = '';
@@ -269,7 +269,9 @@ class MultiplayerClientImpl {
       this.trade = res.trade ?? null;
       for (const l of (res.taken ?? []) as MpTakenLine[]) {
         if (l.seq > this.takenSeq) this.takenSeq = l.seq;
-        this.worldTaken.add(l.key);
+        // 233차 — 기한 · 잠금을 그대로 둔다. 내가 고쳐 쓴 줄이 돌아와도 mine 표시는 남긴다
+        const prev = this.worldTaken.get(l.key);
+        this.worldTaken.set(l.key, { ...l, mine: prev?.mine && prev.untilMs > Date.now() ? true : undefined });
       }
       for (const line of res.chat ?? []) {
         if (line.seq <= this.chatSeq) continue;
@@ -390,22 +392,41 @@ class MultiplayerClientImpl {
   }
 
   // ── 공유 세계 자원 (232차) ─────────────────────
-  /** 남(또는 내)가 이미 가져간 자원인가 — 싱글이면 늘 false */
-  isWorldTaken(key: string): boolean { return this.worldTaken.has(key); }
+  /**
+   * 233차 — 지금 살아 있는 소비 기록(기한 전). 없으면 undefined.
+   * `busy` = 누가 채집 중 · `mine` = 내가 남긴 것.
+   */
+  worldTakenInfo(key: string): (MpTakenLine & { mine?: boolean }) | undefined {
+    const l = this.worldTaken.get(key);
+    return l && l.untilMs > Date.now() ? l : undefined;
+  }
+
+  /** 남(또는 내)가 이미 가져간 자원인가 — **채집 중 잠금은 아니다**(잠금은 `worldTakenInfo().busy`). 싱글이면 늘 false */
+  isWorldTaken(key: string): boolean {
+    const l = this.worldTakenInfo(key);
+    return !!l && !l.busy;
+  }
 
   /**
-   * 가져갔다고 알린다. 싱글이거나 서버가 없으면 `true`(내가 임자). 서버가 「이미 누가」라고 하면 `false`.
-   * 결과를 기다리지 않아도 되는 호출(놓침 · 수거 완료 알림)은 `void`로 버려도 된다.
+   * 가져갔다(또는 채집을 시작했다)고 알린다. 싱글이거나 서버가 없으면 내가 임자.
+   * 233차 — `ttlMs` = 다시 나타나기까지 · `busy` = 채집 중 잠금 · `release` = 내 잠금 풀기.
+   * 서버가 「이미 남이」라고 하면 `{ mine:false, busy, by }`.
    */
-  async takeWorld(key: string): Promise<boolean> {
-    if (!this.isConnected) return true;
-    const already = this.worldTaken.has(key);
-    this.worldTaken.add(key);
-    if (already) return false;
-    const res = await this.post<{ ok: boolean; already?: boolean }>('/mp/world/take', {
-      code: this.code, playerId: this.playerId, token: this.token, key,
+  async takeWorld(key: string, opts: { ttlMs?: number; busy?: boolean; release?: boolean } = {}): Promise<{ mine: boolean; busy?: boolean; by?: string }> {
+    if (!this.isConnected) return { mine: true };
+    const cur = this.worldTakenInfo(key);
+    if (cur && !cur.mine) return { mine: false, busy: cur.busy, by: cur.by };
+    const now = Date.now();
+    if (opts.release) this.worldTaken.delete(key);
+    else this.worldTaken.set(key, { seq: cur?.seq ?? 0, key, untilMs: now + (opts.ttlMs ?? 3_600_000), busy: opts.busy, by: this.name, mine: true });
+    const res = await this.post<{ ok: boolean; already?: boolean; busy?: boolean; by?: string }>('/mp/world/take', {
+      code: this.code, playerId: this.playerId, token: this.token, key, ...opts,
     });
-    return !(res && !res.ok && res.already);
+    if (res && !res.ok && res.already) {
+      this.worldTaken.set(key, { seq: 0, key, untilMs: now + 120_000, busy: res.busy, by: res.by });
+      return { mine: false, busy: res.busy, by: res.by };
+    }
+    return { mine: true };
   }
 
   /** 싱글로 되돌리기 — 세션에서 나가고 폴링을 멈춘다 */

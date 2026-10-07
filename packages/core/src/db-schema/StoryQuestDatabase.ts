@@ -13,6 +13,7 @@
 
 import type { StoryActionKey, StoryObjective, StoryQuestDef, Season } from '../types/Story.js';
 import { STORY_CHAPTERS } from './StoryChapters.js';
+import { OWN_ONLY_QUEST_IDS, OWN_ONLY_KINDS, QUEST_ITEM_DROPS } from './QuestItemDrops.js';
 
 // ── 헬퍼 ──
 const talk = (npcId: string, ko: string, en: string): StoryObjective => ({ kind: 'talk', npcId, labelKo: ko, labelEn: en, manual: true });
@@ -759,6 +760,8 @@ const SUB: StoryQuestDef[] = [
       '노인이 평생 찾던 것은 방제 봉사 때 단체사진이었다. 주인공은 자기 가족사진을 떠올린다.',
       'What the old man searched for all his life was a group photo from the oil-spill cleanup. You think of your own.',
       [auto('gather', '폐어선 주변을 뒤져 채집 3회', 'Search around the hulk — forage three times', { target: 3 }),
+        // 233차 — 개인 전용 퀘스트 아이템(태안 갯가 채집 때 30% · 귀속 · 그 사람에게만)
+        auto('collect', '갯가에서 물에 젖은 단체사진을 찾는다', 'Find the water-stained group photo on the shore', { itemId: 'qi_cleanup_photo', target: 1 }),
         talk('song_gibaek', '사진 이야기', 'The photograph')]],
   ]),
   ...subRows('N14', [
@@ -875,7 +878,8 @@ const SUB_EXTRA: StoryQuestDef[] = subExtra([
   ['N02-5', 'N02', 1, 17, 350, 'tak_mansu', SOK, '대를 고르는 눈', 'An Eye for Bamboo',
     '세워 둔 대나무 셋 중 쓸 만한 것을 고르라 한다. 두께도 색도 아니고, 마디 간격이 답이다.',
     'Three lengths of bamboo, pick the usable one. Not thickness, not colour — the answer is the spacing of the nodes.',
-    [auto('gather', '쓸 만한 대를 찾아 갯가를 훑는다 2회', 'Comb the shore for usable poles, twice', { target: 2 }),
+    // 233차 — 갯가 2회 → 개인 전용 대나무 토막 2개(속초 갯가 채집 때 40%)
+    [auto('collect', '쓸 만한 대를 찾아 갯가를 훑는다 — 대나무 토막 2개', 'Comb the shore for usable poles — two lengths of bamboo', { itemId: 'qi_bamboo_piece', target: 2 }),
       action('bamboo_selection', '쓸 만한 대나무를 고른다', 'Pick the usable pole'),
       talk('tak_mansu', '왜 그것인지 듣는다', 'Hear why it was that one')],
     ['N02-1']],
@@ -978,7 +982,8 @@ const SUB_EXTRA: StoryQuestDef[] = subExtra([
   ['N18-5', 'N18', 5, 105, 9250, 'hyeonsu', JEJ, '표결 전야', 'The Night Before the Vote',
     '낚시공원 표결을 앞두고 도현수가 반대편 자료를 들고 온다. "네 말이 맞으면 내가 진 거잖아." 그래도 들고 왔다.',
     'The night before the park vote, Hyeon-su brings the other side\'s papers. "If you\'re right, I lose." He brought them anyway.',
-    [auto('gather', '자료에 붙일 조간대 표본 3점', 'Three tideline samples for the file', { target: 3 }),
+    // 233차 — 채집 3회 → 개인 전용 표본 3점(제주 갯가 채집 때 50%)
+    [auto('collect', '자료에 붙일 조간대 표본 3점', 'Three tideline samples for the file', { itemId: 'qi_tide_sample', target: 3 }),
       action('sort_arguments', '찬반 자료를 같이 정리한다', 'Sort the arguments together')],
     ['N18-4']],
   ['N06-4', 'N06', 5, 110, 9250, 'mo_taejo', BUS, '졸업 대결', 'The Graduation Match',
@@ -1228,7 +1233,8 @@ const SUB_138: StoryQuestDef[] = subExtra([
   ['N22-3', 'N22', 3, 66, 3400, 'ha_nui', POH, '돌을 고르다', 'Picking Stone',
     '봉돌을 살 돈이 아까우면 직접 고르면 된다. 어디를 깨야 나오는지는 따로 배우는 것이다.',
     'If sinkers cost too much, pick your own. Where to break the rock is a separate lesson.',
-    [auto('gather', '갯가에서 봉돌로 쓸 돌을 줍는다 3회', 'Pick sinker stones off the shore, three times', { target: 3 }),
+    // 233차 — 채집 3회 → 개인 전용 봉돌감 돌 3개(포항 갯가 채집 때 50%)
+    [auto('collect', '갯가에서 봉돌로 쓸 돌을 줍는다 — 3개', 'Pick sinker stones off the shore — three of them', { itemId: 'qi_sinker_stone', target: 3 }),
       man('mine', '채석 자리에서 돌을 캔다', 'Quarry stone at the seam'),
       talk('ha_nui', '고른 돌을 본다', 'Show her what you picked')],
     ['N22-2'], { teaches: ['mining'] }],
@@ -1294,6 +1300,18 @@ for (const q of [...MAIN, ...SUB, ...SUB_EXTRA, ...SUB_138]) { const p = OFFER_P
 
 export const STORY_QUESTS: StoryQuestDef[] = [...MAIN, ...SUB, ...SUB_EXTRA, ...SUB_138];
 
+// 233차 — 까다로운 퀘스트: 손질 · 회 · 요리 · 위판 목표는 직접 마련한 것만 센다(거래품 · 그 계보 제외).
+//   라벨 끝에 조건을 붙여 일지에서 미리 알 수 있게 한다(사람 말로 — R1).
+for (const q of STORY_QUESTS) {
+  if (!OWN_ONLY_QUEST_IDS.has(q.id)) continue;
+  for (const o of q.objectives) {
+    if (!OWN_ONLY_KINDS.has(o.kind) || o.ownOnly) continue;
+    o.ownOnly = true;
+    o.labelKo = `${o.labelKo} (직접 마련한 것만)`;
+    o.labelEn = `${o.labelEn} (your own only)`;
+  }
+}
+
 const BY_ID = new Map(STORY_QUESTS.map((q) => [q.id, q]));
 export function getStoryQuest(id: string): StoryQuestDef | undefined { return BY_ID.get(id); }
 export function storyQuestsOfChapter(ch: number, kind?: 'main' | 'sub'): StoryQuestDef[] {
@@ -1317,6 +1335,11 @@ export function validateStoryQuests(): string[] {
     ids.add(q.id);
     for (const p of q.prereq) if (!BY_ID.has(p)) issues.push(`${q.id}: prereq ${p} 없음`);
     if (q.objectives.length === 0) issues.push(`${q.id}: 목표 없음`);
+    // 233차 — collect 목표는 드롭 표에 짝이 있어야 한다(없으면 영영 못 모은다)
+    for (const o of q.objectives) {
+      if (o.kind !== 'collect') continue;
+      if (!o.itemId || !QUEST_ITEM_DROPS.some((d) => d.questId === q.id && d.itemId === o.itemId)) issues.push(`${q.id}: collect ${o.itemId ?? '?'} 드롭 없음`);
+    }
   }
   for (const c of STORY_CHAPTERS) {
     const m = storyQuestsOfChapter(c.chapter, 'main'), s = storyQuestsOfChapter(c.chapter, 'sub');

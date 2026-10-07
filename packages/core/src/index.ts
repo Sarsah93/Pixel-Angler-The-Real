@@ -676,6 +676,11 @@ export { DAY_JOBS, dayJobsOfNpc, getDayJob } from './db-schema/DayJobs.js';
 export {
   STORY_QUESTS, getStoryQuest, storyQuestsOfChapter, lastMainQuestOfChapter, validateStoryQuests,
 } from './db-schema/StoryQuestDatabase.js';
+// 233차 — 개인 전용 퀘스트 아이템 · 확률 드롭 · 까다로운 퀘스트(직접 마련한 것만)
+export {
+  QUEST_ITEMS, QUEST_ITEM_DROPS, OWN_ONLY_QUEST_IDS, OWN_ONLY_KINDS, getQuestItem,
+  type QuestItemDef, type QuestItemDrop, type QuestDropTrigger,
+} from './db-schema/QuestItemDrops.js';
 
 // ── 138차 바닐라 베이스 캐릭터 아트 (순수 래스터라이저 — 굽기는 client `ui/CharacterSprite.ts`) ──
 export type {
@@ -724,7 +729,7 @@ export type {
   MpIdentity, MpSavedPlayer, MpSavedSession, MpResume,
 } from './types/Multiplayer.js';
 export {
-  MP_ACTIVITY_KO, MP_SHARED_RNG_KINDS, MP_CHAT_KEEP, MP_CHAT_MAX_LEN, MP_TAKEN_KEEP, MP_TAKEN_TTL_MS, MP_TAKEN_KEY_MAX,
+  MP_ACTIVITY_KO, MP_SHARED_RNG_KINDS, MP_CHAT_KEEP, MP_CHAT_MAX_LEN, MP_TAKEN_KEEP, MP_TAKEN_TTL_MAX_MS, MP_TAKEN_TTL_MIN_MS, MP_TAKEN_KEY_MAX,
   isFieldActive, mpWorldSeed, mpTimeSlot, mpRng,
 } from './types/Multiplayer.js';
 

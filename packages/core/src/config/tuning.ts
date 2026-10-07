@@ -573,6 +573,12 @@ export interface TuningConfig {
     lowTideBonus: number;
     /** 스팟 재롤링 주기(분) — 시간 시드 슬롯 */
     respawnMinutes: number;
+    /**
+     * 233차 — 잡은 자리가 다시 차기까지(시간). 그 타일은 이 사이 어떤 생물도 뜨지 않는다(실제 갯바위처럼 회복에 하루~이틀).
+     * 놓치거나 숨어 버린 것은 그 시간 슬롯(`respawnMinutes`) 끝까지만 사라진다.
+     */
+    depleteMinHours: number;
+    depleteMaxHours: number;
     /** 한 번에 존재하는 스팟 상한 */
     maxSpots: number;
     /** 기본 채집 성공 확률 */
@@ -1405,6 +1411,7 @@ export const TUNING: TuningConfig = {
   // 데이터 테이블 (대표값 — 나머지 어종 동일 형식으로 채움)
   forage: {
     spotsPerHundred: 5, lowTideBonus: 1.6, respawnMinutes: 60, maxSpots: 220,
+    depleteMinHours: 24, depleteMaxHours: 48,
     baseSuccess: 0.72, toolMatchBonus: 0.18, octopusEscape: 0.35, handInjuryStamina: 15,
     holdMsBase: 900, lampRadiusPer100lm: 0.55, dayRadiusTiles: 3,
     maxWindMps: 12, maxWaveM: 1.5, slipWaveM: 1.0, slipChanceBase: 0.04, slipChanceSwell: 0.22,

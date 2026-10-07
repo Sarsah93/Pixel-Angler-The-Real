@@ -116,6 +116,7 @@ import { storyActionScene, storyActionSpec } from '../store/StoryActionRegistry.
 import { questSceneFor, type SceneExtra } from '../data/QuestScenes.js';
 import { loadSettings } from './SettingsScene.js';
 import { MultiplayerClient } from '../net/MultiplayerClient.js';
+import { WorldDepletionStore } from '../store/WorldDepletionStore.js';
 import { ConsignListPanel } from '../ui/ConsignListPanel.js';
 import { STORY_NPC_PLACEMENTS, STORY_PLACES, STORY_FIELD_TRIGGERS, type StoryNpcPlacement, type StoryFieldTrigger } from '../data/StoryNpcs.js';
 import { GroundItemStore, type GroundItem } from '../store/GroundItemStore.js';
@@ -1442,8 +1443,13 @@ export class RegionFieldScene extends Phaser.Scene {
       },
       month: () => Number(kstParts().mo),   // 232차 — KST(시간대가 다른 사람끼리 같은 달)
       // 232차 — 같은 세션에서 누가 거둬 간 개체는 모두의 화면에서 사라진다(`n:` 키)
-      isTaken: (key) => MultiplayerClient.isWorldTaken(`n:${key}`),
-      onTaken: (key) => { void MultiplayerClient.takeWorld(`n:${key}`); },
+      // 233차 — 내가 거둔 것은 세이브의 고갈 기록에 남아 재입장 · 재시작에도 대발생 슬롯 끝까지 안 살아난다
+      isTaken: (key) => WorldDepletionStore.isDepleted(`n:${key}`) || MultiplayerClient.isWorldTaken(`n:${key}`),
+      onTaken: (key) => {
+        const until = (mpTimeSlot(Date.now(), NUISANCE_SLOT_MS) + 1) * NUISANCE_SLOT_MS;
+        WorldDepletionStore.mark(`n:${key}`, until);
+        void MultiplayerClient.takeWorld(`n:${key}`, { ttlMs: until - Date.now() });
+      },
     });
     // 맵마다 결정적 배치 — 같은 맵에 다시 오면 같은 자리에서 시작한다
     // 145차 — 세션 공용 시드 + 6시간 주기 대발생 슬롯. 표류는 슬롯 시작부터 되감아 재생한다.
@@ -3421,9 +3427,10 @@ export class RegionFieldScene extends Phaser.Scene {
     for (const row of result.perLot) {
       if (row.status !== 'sold') continue;
       sold++;
+      const traded = !!InventoryStore.find(row.sourceItemId)?.traded;   // 233차 — 거래품 계보는 「직접 마련한 것만」 위판 목표에서 빠진다
       InventoryStore.removeItem(row.sourceItemId, false);
-      // 위판은 정당한 수입이라 조용히 넣지 않는다 — `earn` 목표에 그대로 잡힌다(146차 quiet는 거래 전용)
-      StoryStore.event({ kind: 'sell' });
+      // 위판은 정당한 수입이라 조용히 넣지 않는다 — `earn` 목표에 그대로 잡힌다
+      StoryStore.event({ kind: 'sell', ...(traded ? { traded: true } : {}) });
     }
     if (result.netWon > 0) GameState.addCoins(result.netWon, false, 'auction');
     LedgerStore.life('auctionLots', sold);   // 211차
@@ -5742,7 +5749,8 @@ export class RegionFieldScene extends Phaser.Scene {
       this.region, this.playerBody.x, this.playerBody.y, this.playerFacing,
       Math.hypot(this.playerBody.body.velocity.x, this.playerBody.body.velocity.y) > 4,
       // 231차 — 건물 실내(겹층)·기절/파산 연출도 필드로 덮어쓰지 않는다(거래 제안·밀어내기 대상에서 빠진다)
-      this.cinematicActive || this.collapsing ? 'cinematic' : this.interior ? 'indoor' : this.shopPanel ? 'shop' : 'field',
+      this.cinematicActive || this.collapsing ? 'cinematic' : this.interior ? 'indoor' : this.shopPanel ? 'shop'
+        : this.forage?.isPlaying ? 'foraging' : 'field',   // 233차 — 채집 놀이 중엔 거래 · 밀어내기 대상이 아니다
     );
     this.peerSyncAt += delta;
     if (this.peerSyncAt < 200) return;
@@ -5813,7 +5821,7 @@ export class RegionFieldScene extends Phaser.Scene {
 
   /** 활동 → 이름표 옆 배지 (필드는 배지 없음 — 늘 붙어 있으면 소음이다) */
   private static readonly ACTIVITY_ICON: Record<MpActivity, string | null> = {
-    field: null, fishing: 'act_fish', shop: 'act_shop', indoor: 'act_home', menu: 'act_away', cinematic: null,
+    field: null, fishing: 'act_fish', shop: 'act_shop', indoor: 'act_home', menu: 'act_away', cinematic: null, foraging: 'act_forage',
   };
 
   // ── 146차 유저 간 거래 · 정보 보기 ──────────────────────────
@@ -5947,7 +5955,8 @@ export class RegionFieldScene extends Phaser.Scene {
     }
     let lost = 0;
     for (const it of other.offer.items) if (!InventoryStore.importTradeItem(it)) lost += it.qty;
-    if (other.offer.coins > 0) GameState.addCoins(other.offer.coins, true, 'trade');
+    // 233차 — 받은 돈도 「재화 모으기」에 센다(사용자 결정: 빌린 돈으로 채우는 것도 멀티의 한 방법)
+    if (other.offer.coins > 0) GameState.addCoins(other.offer.coins, false, 'trade');
     // 232차 — 적용 기록 + 인벤토리 + 돈을 한 번에 저장한 **뒤에** 서버에 「적용함」을 알린다.
     //   (저장 전에 알리면, 그 사이 꺼졌을 때 서버 기록은 지워지고 세이브는 옛 것이라 복제된다)
     const saved = GameState.commitTradeApplied(t.tradeId);

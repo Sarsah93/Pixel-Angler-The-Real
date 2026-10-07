@@ -24,7 +24,7 @@ import { join } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import {
   SESSION_CODE_LEN, SESSION_CODE_ALPHABET, MP_PRESENCE_TIMEOUT_MS,
-  MP_CHAT_KEEP, MP_CHAT_MAX_LEN, MP_TAKEN_KEEP, MP_TAKEN_TTL_MS, MP_TAKEN_KEY_MAX,
+  MP_CHAT_KEEP, MP_CHAT_MAX_LEN, MP_TAKEN_KEEP, MP_TAKEN_TTL_MAX_MS, MP_TAKEN_TTL_MIN_MS, MP_TAKEN_KEY_MAX,
   MP_TRADE_PROPOSE_TIMEOUT_MS, MP_TRADE_RANGE_PX, MP_TRADE_MAX_ITEMS, MP_TRADE_REASON_KO,
   characterNameKey, validateCharacterName, isFieldActive,
   type MpPeer, type MpActivity, type MpPlacedTrap, type MpChatLine,
@@ -65,7 +65,7 @@ interface Session {
    * 공유 세계 자원 소비 기록 (232차 — 채집 자리 · 과증식 개체). 메모리에만 둔다 — 시간 슬롯 키라
    * 서버를 다시 켜면 길어야 한 슬롯 동안 「이미 가져간 것」이 다시 보일 뿐이다.
    */
-  taken: (MpTakenLine & { atMs: number })[];
+  taken: (MpTakenLine & { owner: string })[];
   takenSeq: number;
   /** 마지막으로 디스크에 쓴 시각 — 잦은 쓰기를 막는다 */
   savedMs: number;
@@ -240,7 +240,9 @@ export class SessionRegistry {
     // 232차 — 남의 userId(재접속 열쇠)는 내려보내지 않는다 — 그걸로 남의 자리를 이어받을 수 있었다
     const traps = s.traps.map((t) => (t.ownerId === me.userId ? t : { ...t, ownerId: '' }));
     const ts = opts?.takenSince ?? -1;
-    const taken = ts < 0 ? [] : s.taken.filter((l) => l.seq > ts).map(({ seq, key }) => ({ seq, key }));
+    this.pruneTaken(s);
+    // 233차 — 기한 · 잠금 · 이름을 실어 보낸다. 주인(userId)은 내보내지 않는다(재접속 열쇠)
+    const taken = ts < 0 ? [] : s.taken.filter((l) => l.seq > ts).map(({ seq, key, untilMs, busy, by }) => ({ seq, key, untilMs, busy, by }));
     return { ok: true, peers, traps, chat, trade: this.maskTrade(this.tradeFor(s, me.userId), me.userId), taken };
   }
 
@@ -478,21 +480,49 @@ export class SessionRegistry {
   // ═══════════════════════════════════════════════════
 
   /**
-   * 누군가 가져갔다고 알린다. **먼저 알린 사람이 임자** — 이미 있는 키면 `ok:false`(`already`)로 답해
-   * 거의 동시에 둘이 잡은 경우 늦은 쪽이 「다른 사람이 먼저 가져갔다」를 띄울 수 있게 한다.
+   * 누군가 가져갔다(또는 채집 중이다)고 알린다. **먼저 알린 사람이 임자** — 살아 있는 남의 키면 `already`로 답해
+   * 거의 동시에 둘이 잡은 경우 늦은 쪽이 「다른 사람이 먼저 …」를 띄울 수 있게 한다.
+   * 233차 — 같은 사람은 자기 키를 **고쳐 쓸 수 있다**(채집 중 잠금 → 잡음 1~2일 / 놓침 슬롯 끝). 고치면 새 번호가 붙어
+   * 다른 사람에게 다시 내려간다. `release`면 자기 잠금을 지운다(놀이를 열지 못한 경우).
    */
-  takeWorld(code: string, playerId: string, token: string | undefined, key: string): { ok: boolean; already?: boolean; reasonKo?: string } {
+  takeWorld(
+    code: string, playerId: string, token: string | undefined, key: string,
+    opts: { ttlMs?: number; busy?: boolean; release?: boolean } = {},
+  ): { ok: boolean; already?: boolean; busy?: boolean; by?: string; reasonKo?: string } {
     const s = this.get(code);
     if (!s) return { ok: false, reasonKo: '세션을 찾을 수 없습니다.' };
-    if (!this.authed(s, playerId, token)) return { ok: false, reasonKo: '세션에서 나간 상태입니다.' };
+    const me = this.authed(s, playerId, token);
+    if (!me) return { ok: false, reasonKo: '세션에서 나간 상태입니다.' };
     const k = String(key ?? '').slice(0, MP_TAKEN_KEY_MAX);
     if (!k) return { ok: false, reasonKo: '요청이 올바르지 않습니다.' };
+    this.pruneTaken(s);
     const now = Date.now();
-    s.taken = s.taken.filter((l) => now - l.atMs < MP_TAKEN_TTL_MS);
-    if (s.taken.some((l) => l.key === k)) return { ok: false, already: true };
-    s.taken.push({ seq: ++s.takenSeq, key: k, atMs: now });
+    const cur = s.taken.find((l) => l.key === k);
+    // 기한이 지난 줄(풀린 잠금 · 다시 찬 자리)은 막지 않는다
+    if (cur && cur.untilMs > now && cur.owner !== me.userId) return { ok: false, already: true, busy: !!cur.busy, by: cur.by };
+    if (opts.release) {
+      if (!cur) return { ok: true };
+      // 지운 것도 알려야 남의 화면에서 잠금이 풀린다 — 기한을 지금으로 고친 줄을 새 번호로 남긴다
+      s.taken = s.taken.filter((l) => l !== cur);
+      s.taken.push({ seq: ++s.takenSeq, key: k, untilMs: now, owner: me.userId });
+      s.dirty = true;
+      return { ok: true };
+    }
+    const ttl = Math.max(MP_TAKEN_TTL_MIN_MS, Math.min(MP_TAKEN_TTL_MAX_MS, Math.floor(opts.ttlMs ?? 3_600_000)));
+    if (cur) s.taken = s.taken.filter((l) => l !== cur);
+    s.taken.push({ seq: ++s.takenSeq, key: k, untilMs: now + ttl, busy: !!opts.busy, by: me.name, owner: me.userId });
     if (s.taken.length > MP_TAKEN_KEEP) s.taken.splice(0, s.taken.length - MP_TAKEN_KEEP);
+    s.dirty = true;
+    if (!opts.busy) this.save(code);   // 잠금은 잦다 — 진짜 소비만 디스크로
     return { ok: true };
+  }
+
+  /** 기한이 지난 소비 기록 정리 (지운 줄도 1분은 남겨 남이 「풀렸다」를 받게 한다) */
+  private pruneTaken(s: Session): void {
+    const now = Date.now();
+    const before = s.taken.length;
+    s.taken = s.taken.filter((l) => l.untilMs > now - 60_000);
+    if (s.taken.length !== before) s.dirty = true;
   }
 
   // ═══════════════════════════════════════════════════
@@ -586,6 +616,8 @@ export class SessionRegistry {
       traps: s.traps,
       // 146차 — 미적용 확정 거래는 이어하기 복구용으로 남긴다
       trades: s.trades.filter((t) => t.phase === 'committed'),
+      // 233차 — 채집 고갈(1~2일)은 서버를 다시 켜도 남는다. 잠금은 짧아서 버린다
+      taken: s.taken.filter((l) => !l.busy && l.untilMs > Date.now()),
     };
     try {
       mkdirSync(SESSION_DIR, { recursive: true });
@@ -622,7 +654,8 @@ export class SessionRegistry {
         }
         this.sessions.set(d.code, {
           code: d.code, seed: d.seed >>> 0, createdMs: d.createdMs,
-          players, traps: d.traps ?? [], chat: [], chatSeq: 0, trades: d.trades ?? [], taken: [], takenSeq: 0,
+          players, traps: d.traps ?? [], chat: [], chatSeq: 0, trades: d.trades ?? [],
+          taken: (d.taken ?? []).map((l, i) => ({ ...l, seq: i + 1 })), takenSeq: (d.taken ?? []).length,
           savedMs: d.savedMs, dirty: false,
         });
       } catch (e) {

@@ -40,7 +40,7 @@ import { StoryStore, type StorySaveState } from './StoryStore.js';
 import { playCoin } from '../audio/Sfx.js';
 import { LedgerStore, type LedgerSaveState } from './LedgerStore.js';
 import { ConsignQueue, type ConsignQueueSave } from './ConsignQueue.js';
-import { canSleep, applyPartialSleep, offlineCountsAsSleep, type SleepGate } from '@tra/core';
+import { canSleep, applyPartialSleep, offlineCountsAsSleep, type SleepGate, kstParts, getQuestItem } from '@tra/core';
 import { prologueSquid } from './Prologue.js';
 import { buildItemWikiCatalog } from '../data/WikiCatalog.js';
 import {
@@ -82,6 +82,7 @@ import { setAuctionBidMult } from '../data/Consignment.js';
 import { CraftingStore, type CraftingSaveState } from './CraftingStore.js';
 import { TitleStore, type TitleSaveState } from './TitleStore.js';
 import { MultiplayerClient } from '../net/MultiplayerClient.js';
+import { WorldDepletionStore } from './WorldDepletionStore.js';
 import { TideLoreStore, type TideLoreSaveState } from './TideLoreStore.js';
 import { DiscoveryStore, DiscoverySaveState } from './DiscoveryStore.js';
 import {
@@ -198,6 +199,8 @@ interface SaveData {
    * 한 번에 기록돼야 「물건은 옛 세이브인데 적용 기록만 남는」 엇갈림(복제·소실)이 생기지 않는다.
    */
   mpAppliedTrades?: string[];
+  /** 233차 — 채집 자리 · 과증식 개체 고갈 기한(키 → 다시 나타나는 시각 ms). 없으면 고갈 없음 */
+  worldDepleted?: Record<string, number>;
   deployedTraps: DeployedTrap[];
   /** 설치된 화구 + 위에 걸린 조리 세션 (154차 불요리) — 시각은 전부 ms 숫자라 Date 복원 불요 */
   deployedStoves?: DeployedStove[];
@@ -394,6 +397,7 @@ export class GameStateManager {
     this._player = saved.player;
     this._mpUserId = saved.mpUserId || MultiplayerClient.legacyUserId;
     this._mpAppliedTrades = saved.mpAppliedTrades ?? [];
+    WorldDepletionStore.deserialize(saved.worldDepleted);
     MultiplayerClient.useCharacterId(this._mpUserId);
     this._deployedTraps = saved.deployedTraps ?? [];
     // 207차 한 대(`parkedRod`) → 208차 여러 대. 구세이브 = 거치 없음
@@ -732,8 +736,9 @@ export class GameStateManager {
   }
 
   /** 활동 XP — 손질/회뜨기/채집/제작/요리 완료 시 호출 (mult = 등급·품질 계수). 반환 = 레벨업 수 */
-  addActivityXp(kind: XpActivity, mult = 1): number {
-    StoryStore.event({ kind: 'activity', activity: kind });
+  addActivityXp(kind: XpActivity, mult = 1, src: { traded?: boolean } = {}): number {
+    // 233차 — 거래로 받은 것(계보 포함)으로 한 행동이면 표시해 보낸다 — 「직접 마련한 것만」 목표는 세지 않는다
+    StoryStore.event({ kind: 'activity', activity: kind, ...(src.traded ? { traded: true } : {}) });
     // 140차 — 같은 행위가 숙련도도 채운다(손질·회뜨기·채집·제작·요리)
     const profOf: Partial<Record<XpActivity, ProfActionKey>> = { butcher: 'butcher', sashimi: 'sashimi', forage: 'forage', craft: 'craft', cook: 'cook' };
     const pa = profOf[kind];
@@ -1623,6 +1628,7 @@ export class GameStateManager {
       player: this._player,
       mpUserId: this._mpUserId || undefined,
       mpAppliedTrades: this._mpAppliedTrades.length ? this._mpAppliedTrades : undefined,
+      worldDepleted: WorldDepletionStore.serialize(),
       deployedTraps: this._deployedTraps,
       deployedStoves: this._deployedStoves,
       coolerInventory: this._coolerInventory,
@@ -1880,6 +1886,7 @@ export class GameStateManager {
     // 231차 — 새 캐릭터 = 새 멀티 신원(옛 자리·통발·거래를 물려받지 않는다)
     this._mpUserId = MultiplayerClient.newCharacterId();
     this._mpAppliedTrades = [];
+    WorldDepletionStore.reset();
     MultiplayerClient.useCharacterId(this._mpUserId);
     this._character = GameStateManager.defaultCharacter('m');
     this._player = createDefaultPlayer();
@@ -1953,10 +1960,23 @@ StoryStore.bind({
     return InventoryStore.addItem(bound ? { ...e.tpl, bound: true } : e.tpl, qty);
   },
   itemName: (id) => buildItemWikiCatalog().find((w) => w.id === id)?.name ?? id,
-  month: () => new Date().getMonth() + 1,
+  month: () => Number(kstParts().mo),
   addSkillPoints: (n) => GameState.addBonusSkillPoints(n),
   grantProfXp: (t, xp) => GameState.grantProfXp(t, xp),
   grantProfLevelUp: (id) => GameState.grantProfLevelUp(id),
+  // 233차 — 개인 전용 퀘스트 아이템(귀속 · 남에게 안 보이고 못 넘긴다)
+  giveQuestItem: (id) => {
+    const d = getQuestItem(id);
+    if (!d) return false;
+    return InventoryStore.addItem({
+      id: d.id, name: d.nameKo, icon: '', iconTexture: d.icon, category: 'quest', subCategory: '이야기 물건',
+      basePrice: 0, equippable: false, bound: true,
+    }, 1);
+  },
+  takeQuestItems: (id, qty) => {
+    const held = InventoryStore.find(id)?.qty ?? 0;
+    if (held > 0) InventoryStore.removeQty(id, Math.min(held, qty));
+  },
 });
 
 // 193차 — 채비 「한 바늘에 두 미끼」 스킬 게이트 (InventoryStore가 GameState를 import하면 순환이라 주입)

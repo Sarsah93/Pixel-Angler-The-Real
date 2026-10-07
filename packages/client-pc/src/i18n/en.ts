@@ -601,6 +601,10 @@ const EN_EXTRA: Record<string, string> = {
 
 /** 최종 사전 — 분야별 사전을 먼저 깔고 기본 사전이 덮는다(충돌 시 기본 우선) */
 export const EN_DICT: Record<string, string> = {
+  // 233차 — 퀘스트 전용 물건 · 채집 중
+  '[할 일] 무언가 눈에 띄었지만 가방에 자리가 없다': '[Task] Something caught your eye, but your bag is full',
+  '부탁받은 일에 쓸 물건 — 판매·양도 불가': 'For a task you took on — cannot be sold or traded',
+  '채집 중': 'Gathering', '찾기': 'Searching',
   // 211차 — 하루 결산 · 사운드 설정
   '오늘 하루': 'Today', '지난 하루': 'The Day Before', '확인': 'OK', '조용한 하루였다.': 'A quiet day.',
   '잠들며 마친 하루': 'Ended with sleep', '자정을 넘긴 하루': 'Rolled over at midnight', '아직 이어지는 하루': 'Still going',
@@ -701,6 +705,11 @@ const DOW_EN: Record<string, string> = {
 };
 /** 수치·이름이 끼어 있는 문장 — 정규식 규칙. 캡처 그룹은 그대로 옮긴다(이름은 사전을 다시 타지 않으므로 어종·아이템명은 한국어로 남을 수 있음). */
 export const EN_RULES: Rule[] = [
+  // ── 233차 채집 잠금 · 퀘스트 전용 물건 · 직접 마련 ──
+  [/^(.+) — (.+) 님이 채집 중이다$/, (m, tr) => `${tr(m[1])} — ${m[2]} is gathering it`],
+  [/^(.+) 님이 (.+)을\(를\) 채집 중이다$/, (m, tr) => `${m[1]} is already gathering the ${tr(m[2])}`],
+  [/^\[채집\] 돌 틈에서 (.+)을\(를\) 찾았다$/, (m, tr) => `[Forage] Found a ${tr(m[1])} between the rocks`],
+  [/^\[할 일\] (.+) — 거래로 받은 것은 인정되지 않습니다\. 직접 마련해야 합니다$/, (m, tr) => `[Task] ${tr(m[1])} — traded goods don't count. You have to get these yourself`],
   // ── 232차 멀티 공유 자원 · 거래 자동 저장 ──
   [/^다른 사람이 먼저 (.+)을\(를\) 가져갔다$/, (m, tr) => `Someone else took the ${tr(m[1])} first`],
   [/^\[수거\] 다른 사람이 먼저 (.+)을\(를\) 거둬 갔습니다\.$/, (m, tr) => `[Collect] Someone else hauled in the ${tr(m[1])} first.`],

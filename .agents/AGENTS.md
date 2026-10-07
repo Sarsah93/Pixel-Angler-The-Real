@@ -467,7 +467,14 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-10-07 232차) — 거래 자동 저장 · 서버 인증 · 채집/과증식 공유**
+**최근 변경 (2026-10-07 233차) — 채집 재생 1~2일 · 채집 중 잠금 · 퀘스트 「직접 마련」 · 개인 퀘스트 물건**
+
+- 채집 고갈은 **타일 키**(`f:맵|스팟`) — 잡으면 24~48h(`WorldDepletionStore` 세이브 + 서버 세션 저장) · 놀이 여는 순간 잠금(`busy`) · 활동 「채집 중」.
+- 거래품 꼬리표(`traded`) → `ownOnly` 퀘 10건만 거부 · 귀속 퀘스트 물건 4종은 내 클라이언트가 확률로 굴림 · 거래로 받은 돈 = 돈 모으기 인정.
+- 함정: 공유 소비 키는 주인만 고쳐 쓴다(해제도 새 seq) · `setTradedLineage`는 패널 destroy에서 꼭 끈다 · 받는 돈에 `quiet` 금지.
+  상세: [233차 워크로그](../docs/wiki/03-WORKLOG/2026-10-07-233-forage-respawn-lock-quest-provenance.md).
+
+**이전 변경 (2026-10-07 232차) — 거래 자동 저장 · 서버 인증 · 채집/과증식 공유**
 
 - 거래 적용 직후 슬롯 저장(`GameState.commitTradeApplied` — 적용 id는 세이브 필드) · 순서 = 인벤토리 → 저장 → 서버 「적용함」.
 - join 비밀값 `token`(변경 요청마다 `authed()` 대조) · 남의 `userId` 응답 가리기 · 공유 소비 채널 `/mp/world/take`(채집 `f:` · 과증식 `n:`).
@@ -482,11 +489,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
   localStorage `userId`는 구세이브용 `legacyUserId`라 덮어쓰지 않는다. 전수조사 15건 → 백로그 BI.
   상세: [231차 워크로그](../docs/wiki/03-WORKLOG/2026-10-07-231-bankruptcy-erase-multiplayer-audit.md).
 
-**이전 변경 (2026-10-07 230차) — 「미끼용 크릴」 그림**
-
-- 사용자 그림 1장 → 미끼용 크릴 · 미끼용 백크릴 공통 아이콘 `item_krill_bait`(설명 · 보정은 아이템마다) · 구세이브 백필(`px:krill` · 이모지).
-- 상세보기: 크릴 프로필은 일반 미끼 「입질 보정」 행을 빼서 크릴 행(+2% · 부패 −20%)과 숫자가 어긋나지 않게 했다.
-  상세: [230차 워크로그](../docs/wiki/03-WORKLOG/2026-10-07-230-krill-bait-art.md).
 
 ---
 

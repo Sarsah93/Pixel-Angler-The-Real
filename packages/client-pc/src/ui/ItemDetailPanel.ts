@@ -9,7 +9,7 @@
 import Phaser from 'phaser';
 import { ensurePixelIcon, addPixelIcon } from './PixelIcon.js';
 import { getCreatureById, isCrabCreature } from '@tra/core';
-import { getBlueprint, CRAFT_STATION_LABEL, CRAFT_GROUP_LABEL } from '@tra/core';
+import { getBlueprint, CRAFT_STATION_LABEL, CRAFT_GROUP_LABEL, getQuestItem } from '@tra/core';
 import { reelCmPerTurn, rodSpecFor, reelSpecFor, rodLoadState, ROD_USE_LABEL, getRodCatalogEntry, getReelCatalogEntry, getLureSpec, getNuisance, sashimiStarsAt, sashimiNutrition, foodNutritionOf, nutritionLineKo, restoreFromNutrition } from '@tra/core';
 import { FISH_DATABASE, fishImageSizeScale, fishRarity, speciesStandardWeightG,
   GEAR_FAULTS, gearRepairFee, rodMaxCasts,
@@ -110,6 +110,12 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
     if (item.fatigueRestore) eff.push(`피로 -${item.fatigueRestore}`);
     if (eff.length) rows.push({ label: '섭취 효과', value: eff.join(' · ') });
     rows.push({ label: '열량당 가격', value: `${Math.round(item.basePrice / Math.max(1, nutrition.kcal) * 100).toLocaleString()}원 / 100 kcal` });
+  }
+  // 233차 — 개인 전용 퀘스트 아이템: 내가 찾아낸 것이라 남에게 넘길 수 없다
+  const qi = getQuestItem(item.id);
+  if (qi) {
+    rows.push({ label: '귀속', value: '부탁받은 일에 쓸 물건 — 판매·양도 불가' });
+    return { title: item.name, subtitle: '이야기 물건', rows, desc: qi.descKo };
   }
   // 141차 — 귀속 장비: 이야기가 준 물건. 판매·양도 불가를 맨 위에
   if (item.bound) rows.push({ label: '귀속', value: '이야기가 준 물건 — 판매·양도 불가' });

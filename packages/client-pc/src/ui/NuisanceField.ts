@@ -44,20 +44,14 @@ export interface NuisanceDeps {
   collect(nu: MarineNuisance, sizeCm: number, weightKg: number): boolean;
   month(): number;
   /**
-   * 232차 — 이 개체를 같은 세션의 누군가 이미 가져갔는가(키 = `시드|배치 순번`).
-   * 없으면(싱글) 늘 false.
+   * 232차 — 이 개체가 이미 거둬졌는가(키 = `시드|배치 순번`). 내가 거둔 것(세이브의 고갈 기록)과
+   * 같은 세션의 누군가 거둔 것을 함께 본다(233차 — `WorldDepletionStore`). 맵을 나갔다 들어와도,
+   * 게임을 껐다 켜도 대발생 슬롯이 끝날 때까지 되살아나지 않는다.
    */
   isTaken?(key: string): boolean;
-  /** 232차 — 내가 가져갔다고 알린다 */
+  /** 232차 — 내가 거뒀다고 기록한다(고갈 기록 + 멀티 공유) */
   onTaken?(key: string): void;
 }
-
-/**
- * 232차 — 수거한 개체(이번 배치 슬롯 동안 다시 나오지 않는다). 맵을 나갔다 들어와도 남도록 모듈 전역 —
- * 전엔 재입장하면 같은 시드로 전부 되살아나 혼자서도 무한히 거둘 수 있었다. 키에 시드가 들어 있어
- * 6시간 슬롯이 바뀌면 자연히 무효가 된다(새 대발생).
- */
-const GONE = new Set<string>();
 
 interface Entity {
   nu: MarineNuisance;
@@ -273,7 +267,7 @@ export class NuisanceField {
     if (this.takenAcc >= 500 && this.deps.isTaken) {
       this.takenAcc = 0;
       for (const e of [...this.entities]) {
-        if (GONE.has(e.key) || !this.deps.isTaken(e.key)) continue;
+        if (!this.deps.isTaken(e.key)) continue;
         if (e === this.snag) {
           this.cancelSnag();
           this.deps.log(`[수거] 다른 사람이 먼저 ${e.nu.nameKo}을(를) 거둬 갔습니다.`);
@@ -367,7 +361,6 @@ export class NuisanceField {
   }
 
   private remove(e: Entity): void {
-    GONE.add(e.key);
     this.deps.onTaken?.(e.key);
     this.drop(e);
   }
@@ -379,7 +372,7 @@ export class NuisanceField {
   }
 
   private isGoneKey(key: string): boolean {
-    return GONE.has(key) || (this.deps.isTaken?.(key) ?? false);
+    return this.deps.isTaken?.(key) ?? false;
   }
 
   private drawLine(): void {
