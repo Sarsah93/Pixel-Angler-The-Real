@@ -397,10 +397,10 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
       { id: 'inv_krill',     name: '크릴 (냉동)',   icon: '🦐', category: 'tackle', subCategory: '냉동미끼', basePrice: 4000,  price: 4500,  maxPerPurchase: 10, condition: 'frozen', equippable: false, desc: '범용 냉동 미끼.' },
       { id: 'inv_fishcut',   name: '생선 조각 미끼', icon: '🦐', category: 'tackle', subCategory: '선어미끼', basePrice: 3000,  price: 3500,  maxPerPurchase: 10, condition: 'chilled', equippable: false, desc: '갈치/우럭용 절단 미끼.' },
       // 224차 — 생미끼는 마리가 아니라 「갑」으로 판다. 한 갑을 사면 가방에 마리 수만큼 들어간다(사용자 지시 — 혼무시 1갑 ≈ 15,000원 · 8마리 · 60g).
-      { id: 'pack_ragworm', name: '청갯지렁이 1갑 (8마리)', icon: '', iconTexture: 'item_ragworm', category: 'tackle', subCategory: '생미끼', basePrice: 5000, price: 6000, maxPerPurchase: 5, equippable: false,
+      { id: 'pack_ragworm', name: '청갯지렁이 1갑 (8마리)', icon: '', iconTexture: 'item_ragworm_pack', category: 'tackle', subCategory: '생미끼', basePrice: 5000, price: 6000, maxPerPurchase: 5, equippable: false,
         bundle: [{ tpl: { id: 'inv_ragworm', name: '청갯지렁이', icon: '', iconTexture: 'item_ragworm', category: 'tackle', subCategory: '생미끼', basePrice: 600, condition: 'live', equippable: false }, qty: 8 }],
         desc: '원투·도다리용 생미끼 한 갑. 여덟 마리가 들어 있다.' },
-      { id: 'pack_honmushi', name: '참갯지렁이(혼무시) 1갑 (8마리 · 60g)', icon: '', iconTexture: 'item_honmushi', category: 'tackle', subCategory: '생미끼', basePrice: 12000, price: 15000, maxPerPurchase: 5, equippable: false,
+      { id: 'pack_honmushi', name: '참갯지렁이(혼무시) 1갑 (8마리 · 60g)', icon: '', iconTexture: 'item_honmushi_pack', category: 'tackle', subCategory: '생미끼', basePrice: 12000, price: 15000, maxPerPurchase: 5, equippable: false,
         bundle: [{ tpl: { id: 'inv_honmushi', name: '혼무시', icon: '', iconTexture: 'item_honmushi', category: 'tackle', subCategory: '생미끼', basePrice: 1500, condition: 'live', equippable: false }, qty: 8 }],
         desc: '굵고 냄새가 진한 참갯지렁이 한 갑(8마리 · 60g 남짓). 감성돔 · 참돔 · 대물 원투용.' },
       // 제작 재료 (129차 P7) — 낚시 계열 재료는 직판장이 취급한다.

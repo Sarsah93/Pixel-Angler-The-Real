@@ -28,22 +28,22 @@ export const DEFAULT_ANGLER_STATS: AnglerStats = {
   tideReading: 6,
 };
 
-/** 스탯별 표시 라벨/물리 기여 설명 (Status 창 표시용) */
+/** 스탯별 표시 라벨/물리 기여 설명 (Status 창 표시용) — 228차: 한국어 설정이면 한국어만(영문 병기 금지 · EN은 i18n 사전) */
 export const ANGLER_STAT_INFO: Record<keyof AnglerStats, { label: string; desc: string }> = {
   strength: {
-    label: '근력 (Strength)',
+    label: '근력',
     desc: '캐스팅 초기 힘 벡터를 키워 맞바람을 극복하고, 파이팅 시 최대 장력 허용치를 높입니다.',
   },
   dexterity: {
-    label: '민첩 (Dexterity)',
-    desc: '캐스팅 게이지의 최적 타점(Sweet Spot) 영역을 넓히고, 드랙 미세 조정 완충 시간을 늘립니다.',
+    label: '민첩',
+    desc: '캐스팅 게이지의 최적 타점 영역을 넓히고, 드랙 미세 조정 완충 시간을 늘립니다.',
   },
   equilibrium: {
-    label: '평형감각 (Equilibrium)',
+    label: '평형감각',
     desc: '파고로 발판이 흔들릴 때 캐스팅 조준점이 흐트러지는 요동을 보정합니다.',
   },
   tideReading: {
-    label: '조석 해석력 (Tide Reading)',
+    label: '조석 해석력',
     desc: '물때 사이클과 조류 속도를 해석해 최적 활성 수심대(상/중/하) 힌트를 제공합니다.',
   },
 };

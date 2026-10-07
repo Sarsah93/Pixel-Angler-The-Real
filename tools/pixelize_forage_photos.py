@@ -3,9 +3,11 @@
 
 입력: food assets/forage/{ragworm,honmushi,sea_slater}.png  (사용자 사진 원본 — 수정 금지)
       food assets/forage/{sea_cucumber,purple_urchin}.png  (226차 — 사용자가 그려 온 투명 도트 그림)
+      food assets/forage/{ragworm,honmushi}_{pack,single}.png  (228차 — 사용자 도트 그림: 한 갑 · 한 마리)
 출력:
   packages/client-pc/public/item-icons/forage_<speciesId>.png  — 아이템 아이콘(도트 × 정수배, 투명 여백)
   packages/client-pc/public/forage-board/<speciesId>.png        — 채집 놀이 판 그림(도트 원래 크기 — 게임이 정수배로 키운다)
+  packages/client-pc/public/item-icons/pack_<name>.png          — 228차 미끼 한 갑(상점 묶음) 아이콘
 
 절차: 배경 분리(사진마다 규칙) → 가장 큰 덩어리 + 붙은 다리 → 긴 축 기준 다운샘플(BOX)
       → 색 줄이기(median cut) → 알파 이진화 → 1px 어두운 윤곽선.
@@ -179,8 +181,11 @@ def add_antennae(px, frac=0.5, color=(70, 60, 50)):
     return im.crop(im.getbbox())
 
 
-def save_icon_hires(rgb, mask, species, rotate=0, pad=0.06):
-    """226차 — 원본이 이미 도트 그림이면 다시 굽지 않고 잘라서 정사각 투명 캔버스에 앉힌다(다른 forage_* 아이콘과 같은 꼴)."""
+HIRES_MAX = 720   # 228차 — 2000px 원본을 그대로 실으면 아이콘 한 장이 수 MB다. 긴 변을 이 안으로 정수배 축소
+
+
+def save_hires(rgb, mask, path, rotate=0, pad=0.06, max_px=HIRES_MAX):
+    """원본이 이미 도트 그림이면 다시 굽지 않고 잘라서 정사각 투명 캔버스에 앉힌다(긴 변이 크면 BOX 정수배 축소)."""
     ys, xs = np.where(mask)
     y0, y1, x0, x1 = ys.min(), ys.max() + 1, xs.min(), xs.max() + 1
     rgba = np.zeros((y1 - y0, x1 - x0, 4), np.uint8)
@@ -190,10 +195,25 @@ def save_icon_hires(rgb, mask, species, rotate=0, pad=0.06):
     if rotate:
         im = im.rotate(rotate, expand=True, resample=Image.NEAREST)
         im = im.crop(im.getbbox())
+    k = -(-max(im.size) // max_px) if max_px else 1   # 올림 나눗셈 · None = 줄이지 않음(226차 그림 보존)
+    if k > 1:
+        a = np.asarray(im).astype(np.float32)
+        pre = a.copy(); pre[..., :3] *= a[..., 3:4] / 255
+        sm = np.asarray(Image.fromarray(pre.astype(np.uint8), 'RGBA').resize((im.width // k, im.height // k), Image.BOX)).astype(np.float32)
+        on = sm[..., 3] >= 128
+        out = np.zeros(sm.shape, np.uint8)
+        out[on, :3] = np.clip(sm[on, :3] * 255 / np.maximum(sm[on, 3:4], 1), 0, 255)
+        out[on, 3] = 255
+        im = Image.fromarray(out, 'RGBA')
     side = int(max(im.size) * (1 + pad * 2))
     can = Image.new('RGBA', (side, side), (0, 0, 0, 0))
     can.paste(im, ((side - im.width) // 2, (side - im.height) // 2))
-    can.save(os.path.join(OUT_ICON, f'forage_{species}.png'))
+    can.save(path)
+
+
+def save_icon_hires(rgb, mask, species, rotate=0, pad=0.06, max_px=HIRES_MAX):
+    """226차 — 원본이 이미 도트 그림이면 다시 굽지 않는다(다른 forage_* 아이콘과 같은 꼴). 228차 — `save_hires`로 합침."""
+    save_hires(rgb, mask, os.path.join(OUT_ICON, f'forage_{species}.png'), rotate, pad, max_px)
 
 
 def save_icon(px, species, canvas=96, scale=10):
@@ -211,15 +231,26 @@ def save_board(px, species):
 
 JOBS = [
     # (원본, 종 id, 마스크, 아이콘 긴 축, 판 긴 축(0 = 판 그림 없음), 회전('axis' = 긴 축 가로 · 머리 왼쪽), 채도, 대비)
-    ('ragworm', 'perinereis_aibuhitensis', mask_ragworm, 72, 0, 0, 1.45, 1.2),   # 판 그림은 상자가 아니라 한 마리라 도트 유지
-    ('honmushi', 'marphysa_sanguinea', mask_honmushi, 80, 40, 0, 1.0, 1.05),
+    # 228차 — 갯지렁이 두 종은 사용자 도트 그림(한 마리)으로 바꿈. 옛 사진 원본(ragworm · honmushi.png)은 보존만 한다.
+    ('ragworm_single', 'perinereis_aibuhitensis', mask_alpha, 'hires', 40, 0, 1.0, 1.0),
+    ('honmushi_single', 'marphysa_sanguinea', mask_alpha, 'hires', 40, 0, 1.0, 1.0),
     ('sea_slater', 'ligia_exotica', mask_slater, 72, 30, 'axis', 1.1, 1.15),   # 판에서 옆으로 달린다
     # 226차 — 사용자가 도트 그림으로 그려 온 것(투명 배경): 아이콘은 원본 그대로 · 판 그림만 줄인다
     ('sea_cucumber', 'stichopus_japonicus', mask_alpha, 'hires', 48, 'axis', 1.0, 1.0),
     ('purple_urchin', 'strongylocentrotus_nudus', mask_alpha, 'hires', 44, 0, 1.0, 1.0),
 ]
 
+# 228차 — 미끼 한 갑(상점 묶음) 아이콘: (원본, 출력 파일명)
+PACKS = [
+    ('ragworm_pack', 'pack_ragworm'),
+    ('honmushi_pack', 'pack_honmushi'),
+]
+
 if __name__ == '__main__':
+    for src, name in PACKS:
+        im, rgb, hsv, alpha = load(src)
+        save_hires(rgb, mask_alpha(rgb, hsv, alpha), os.path.join(OUT_ICON, f'{name}.png'), pad=0.0)   # 납작한 상자라 여백 없이 꽉 채운다
+        print(f'{src}: pack')
     for src, sp, fn, icon_px, board_px, rot, sat, con in JOBS:
         im, rgb, hsv, alpha = load(src)
         m = fn(rgb, hsv, alpha) if fn is mask_alpha else fn(rgb, hsv)
@@ -229,7 +260,8 @@ if __name__ == '__main__':
         print(f'{src}: mask {m.mean():.3f}')
         cut = 50 if sp == 'strongylocentrotus_nudus' else 110   # 성게 가시는 가늘어 알파 문턱을 낮춘다
         if icon_px == 'hires':
-            save_icon_hires(rgb, m, sp, rotate=rot)
+            # 226차 그림(해삼 · 보라성게)은 원본 크기 그대로 — 228차 축소는 새 갯지렁이 그림에만
+            save_icon_hires(rgb, m, sp, rotate=rot, max_px=None if src in ('sea_cucumber', 'purple_urchin') else HIRES_MAX)
             icon = None
         else:
             icon = pixelize(rgb, m, icon_px, rotate=rot)

@@ -228,16 +228,16 @@ export const EN_UI: Record<string, string> = {
     'The top and pants are what you start out wearing — you can change them from your bag later.\nPick colours by clicking a swatch.',
 
   // ── 스탯 (상태 창) ──
-  '근력 (Strength)': 'Strength',
+  '근력': 'Strength',
   '캐스팅 초기 힘 벡터를 키워 맞바람을 극복하고, 파이팅 시 최대 장력 허용치를 높입니다.':
     'Puts more force behind the cast so you punch through a headwind, and raises the tension you can hold in a fight.',
-  '민첩 (Dexterity)': 'Dexterity',
-  '캐스팅 게이지의 최적 타점(Sweet Spot) 영역을 넓히고, 드랙 미세 조정 완충 시간을 늘립니다.':
+  '민첩': 'Dexterity',
+  '캐스팅 게이지의 최적 타점 영역을 넓히고, 드랙 미세 조정 완충 시간을 늘립니다.':
     'Widens the sweet spot on the casting gauge and gives you longer to fine-tune the drag.',
-  '평형감각 (Equilibrium)': 'Balance',
+  '평형감각': 'Balance',
   '파고로 발판이 흔들릴 때 캐스팅 조준점이 흐트러지는 요동을 보정합니다.':
     'Steadies your aim when the swell has the ground moving under you.',
-  '조석 해석력 (Tide Reading)': 'Tide reading',
+  '조석 해석력': 'Tide reading',
   '물때 사이클과 조류 속도를 해석해 최적 활성 수심대(상/중/하) 힌트를 제공합니다.':
     'Reads the tide cycle and current speed to hint at the depth band the fish are working.',
 

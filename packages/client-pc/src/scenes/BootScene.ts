@@ -129,7 +129,8 @@ export class BootScene extends Phaser.Scene {
       item_soft_worm: 'item-icons/it_soft_worm.png',
       item_treble: 'item-icons/it_treble_hook.png',
       // 167차 — 사용자 제공 도트: 혼무시(생미끼) · 감성돔 바늘(단일 바늘).
-      item_honmushi: 'item-icons/it_honmushi.png',
+      // 228차 — 혼무시 생미끼는 새 「한 마리」 그림으로(옛 it_honmushi.png는 보존만)
+      item_honmushi: 'item-icons/forage_marphysa_sanguinea.png',
       item_hook_chinu: 'item-icons/it_hook_chinu.png',
       item_minnow: 'item-icons/it_minnow.png',
       item_metal_jig: 'item-icons/it_metal_jig.png',
@@ -164,11 +165,15 @@ export class BootScene extends Phaser.Scene {
       forage_aplysia_kurodai: 'item-icons/forage_aplysia_kurodai.png',
       forage_hemigrapsus_sanguineus: 'item-icons/forage_hemigrapsus_sanguineus.png',
       forage_portunus_trituberculatus: 'item-icons/forage_portunus_trituberculatus.png',
-      // 225차 — 사용자 사진 3장 도트(tools/pixelize_forage_photos.py). 청갯지렁이는 한 갑 상자 모양
+      // 225차 — 사용자 사진 3장 도트(tools/pixelize_forage_photos.py). 228차 — 갯지렁이 두 종은 사용자 그림 「한 마리」로 교체
       forage_perinereis_aibuhitensis: 'item-icons/forage_perinereis_aibuhitensis.png',
       forage_marphysa_sanguinea: 'item-icons/forage_marphysa_sanguinea.png',
       forage_ligia_exotica: 'item-icons/forage_ligia_exotica.png',
       item_ragworm: 'item-icons/forage_perinereis_aibuhitensis.png',
+      // 228차 — 사용자 도트 그림: 미끼 한 갑(상점 묶음) · 한 마리(생미끼 · 도감 · 놀이 판)
+      item_ragworm_pack: 'item-icons/pack_ragworm.png',
+      item_honmushi_pack: 'item-icons/pack_honmushi.png',
+      forageboard_perinereis_aibuhitensis: 'forage-board/perinereis_aibuhitensis.png',
       // 225차 — 채집 놀이 판 그림(도트 원래 크기 · 머리 왼쪽). 없으면 필드 도트를 키워 쓴다
       forageboard_marphysa_sanguinea: 'forage-board/marphysa_sanguinea.png',
       forageboard_ligia_exotica: 'forage-board/ligia_exotica.png',

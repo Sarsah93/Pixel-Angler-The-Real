@@ -59,7 +59,7 @@
 | D2c 안전 판정 배선 | ✅ `forageSafety` — 실데이터 풍속/파고(파고 2.1m 실측 차단) | 121 |
 | D2d 수심·침지 실연동 | ✅ `depthAtWaterTile`(육지 거리×수심 프로필) · `baitDurationHours` | 121 |
 | D3 확률 튜닝 중앙화 | 🔶 신규 시스템은 `TUNING.forage/trap` · 레거시 `NightHuntingEngine` 매직넘버 잔존 | 121 |
-| D4 생물 스프라이트 | 🔶 사진 · 그림 도트 5종(갯강구 · 청갯지렁이 상자 · 혼무시 · 해삼 · 보라성게 — `tools/pixelize_forage_photos.py`) + 놀이 판 그림 4종 · 나머지는 절차 도트 | 225 · 226 — [워크로그](../03-WORKLOG/2026-10-06-226-sea-cucumber-urchin-art.md) |
+| D4 생물 스프라이트 | 🔶 사진 · 그림 도트 7종(갯강구 · 청갯지렁이 · 혼무시 · 해삼 · 보라성게 — `tools/pixelize_forage_photos.py`) + 미끼 한 갑 2종 + 놀이 판 그림 5종 · 나머지는 절차 도트 | 225 · 226 · 228 — [워크로그](../03-WORKLOG/2026-10-07-228-worm-art-stat-labels.md) |
 | D5 RegionFieldScene 진입 동선 | ✅ 인-맵 [F]·T (122차 E→F) — 별도 씬 없음 | 121 |
 | **통발 어획물의 sink(위판)** | ✅ 직판장 위판 창구 — 계원 자격 시 경매 출품 | 147 — [S6](economy-data.md) |
 | 스킬 배율 훅(스팟 반경·균형·맨손 부상·문어 도주·통발 분실) + 어촌계원(`fishery_member`) 조례 면제 | ✅ | 122 — `attemptForage(…, mods)` · `rollTrapLoss(…, riskMult)` 기본값은 종전과 동일 |
@@ -115,3 +115,5 @@
 19. **금어기는 `day`를 넘겨야 날짜로 잰다**(227) — 문맥에 `day`가 없으면 `isClosedOn`이 **그 달에 하루라도 걸치면 닫힘**으로 본다
    (참문어 5.1~5.15도 막힘). 새 호출부는 `day: new Date().getDate()` · `regionId`를 함께 넘긴다.
    판정은 `closedFor` / `resolveLegal`만 쓴다 — `closedSeasonMonths`를 직접 읽으면 날짜 · 지역 규정이 빠진다(비만도 계산만 예외).
+20. **그림 원본은 정수배로만 줄인다**(228) — `save_hires`가 긴 변 720을 넘으면 BOX 정수배 축소. 226차 그림(해삼 · 보라성게)은
+   `max_px=None`으로 원본 크기를 지킨다 — 도구를 다시 돌릴 때 이 예외를 지우면 그 둘의 아이콘이 바뀐다.
