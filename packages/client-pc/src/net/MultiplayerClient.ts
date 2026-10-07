@@ -16,7 +16,7 @@ import {
   type GameMode, type MpPeer, type MpActivity, type MpPlacedTrap, type MpChatLine, type MpResume,
   type MpProfile, type MpTradeState, type MpTradeItem,
   type MpCreateSessionRes, type MpSessionInfoRes, type MpNameCheckRes, type MpJoinRes, type MpPresenceRes,
-  type MpRetireRes,
+  type MpRetireRes, type MpTakenLine,
 } from '@tra/core';
 
 /** 로비 설정은 브라우저에 남긴다 — 다음에 켤 때 서버 주소를 다시 치지 않게 */
@@ -38,8 +38,10 @@ class MultiplayerClientImpl {
   server: string = MP_DEFAULT_SERVER;
   /** 들어와 있는 세션 코드 (멀티일 때만) */
   code = '';
-  /** 서버가 발급한 내 id (이름 선점 성공 시) */
+  /** 서버가 발급한 내 id (이름 선점 성공 시) — 남에게도 보이는 공개 id */
   playerId = '';
+  /** 232차 — 접속 비밀값. 변경 요청마다 같이 보낸다(메모리에만 — 재접속하면 새로 받는다) */
+  private token = '';
   /** 내 캐릭터 이름 */
   name = '';
   /** 같은 세션의 다른 사람들 — 매 폴링마다 갈린다 */
@@ -86,6 +88,12 @@ class MultiplayerClientImpl {
   private lookSent = false;
   /** 마지막으로 받은 채팅 줄 번호 */
   private chatSeq = 0;
+  /**
+   * 232차 — 세션에서 누군가 가져간 세계 자원 키(채집 `f:` · 과증식 `n:`). 내 것도 넣는다.
+   * 채집 · 과증식 시스템이 매 프레임 이 집합을 보고 그 개체를 지운다.
+   */
+  private worldTaken = new Set<string>();
+  private takenSeq = 0;
   /** 다음 폴링에 실어 보낼 말 */
   private pendingSay = '';
 
@@ -196,6 +204,7 @@ class MultiplayerClientImpl {
     });
     if (res?.ok && res.playerId) {
       this.playerId = res.playerId;
+      this.token = res.token ?? '';
       this.name = name.trim();
       this.worldSeed = res.seed ?? 0;
       this.resume = res.resume ?? null;
@@ -243,11 +252,12 @@ class MultiplayerClientImpl {
       const sentLook = this.lookSent ? undefined : this.look;
       const sentProfile = this.profileSent ? undefined : this.profile;
       const res = await this.post<MpPresenceRes>('/mp/presence', {
-        code: this.code, playerId: this.playerId, ...this.pos,
+        code: this.code, playerId: this.playerId, token: this.token, ...this.pos,
         ...(sentLook ? { look: sentLook } : {}),
         ...(sentProfile ? { profile: sentProfile } : {}),
         ...(say ? { say } : {}),
         chatSince: this.chatSeq,
+        takenSince: this.takenSeq,
       });
       // 231차 — 응답을 기다리는 사이 나갔다(파산·싱글 전환) — 늦게 온 응답으로 상태를 되살리지 않는다
       if (!this.isConnected) return;
@@ -257,6 +267,10 @@ class MultiplayerClientImpl {
       this.peers = res.peers ?? [];
       this.traps = res.traps ?? [];
       this.trade = res.trade ?? null;
+      for (const l of (res.taken ?? []) as MpTakenLine[]) {
+        if (l.seq > this.takenSeq) this.takenSeq = l.seq;
+        this.worldTaken.add(l.key);
+      }
       for (const line of res.chat ?? []) {
         if (line.seq <= this.chatSeq) continue;
         this.chatSeq = line.seq;
@@ -292,7 +306,7 @@ class MultiplayerClientImpl {
   // ── 유저 간 거래 (146차) ─────────────────────────────
   private tradePost(path: string, body: Record<string, unknown>): Promise<{ ok: boolean; reasonKo?: string }> {
     if (!this.isConnected) return Promise.resolve({ ok: false, reasonKo: '멀티플레이 중이 아닙니다.' });
-    return this.post<{ ok: boolean; reasonKo?: string }>(path, { code: this.code, playerId: this.playerId, ...body })
+    return this.post<{ ok: boolean; reasonKo?: string }>(path, { code: this.code, playerId: this.playerId, token: this.token, ...body })
       .then((r) => r ?? { ok: false, reasonKo: '서버에 연결할 수 없습니다.' });
   }
   proposeTrade(targetPlayerId: string): Promise<{ ok: boolean; reasonKo?: string }> {
@@ -327,7 +341,7 @@ class MultiplayerClientImpl {
   async placeTrap(trap: Omit<MpPlacedTrap, 'ownerId' | 'ownerName'>): Promise<{ ok: boolean; reasonKo?: string }> {
     if (!this.isConnected) return { ok: true };
     const res = await this.post<{ ok: boolean; reasonKo?: string }>('/mp/trap/place', {
-      code: this.code, playerId: this.playerId, trap,
+      code: this.code, playerId: this.playerId, token: this.token, trap,
     });
     return res ?? { ok: true };
   }
@@ -335,7 +349,7 @@ class MultiplayerClientImpl {
   /** 통발을 거뒀다고 알린다 */
   async removeTrap(instanceId: string): Promise<void> {
     if (!this.isConnected) return;
-    await this.post('/mp/trap/remove', { code: this.code, playerId: this.playerId, instanceId });
+    await this.post('/mp/trap/remove', { code: this.code, playerId: this.playerId, token: this.token, instanceId });
   }
 
   /** 남이 놓은 통발만 (내 것은 내 세이브가 그린다) */
@@ -358,7 +372,7 @@ class MultiplayerClientImpl {
       const rec = { code: this.code, userId: this.userId };
       this.pendingRetire.push(rec);
       this.persist();
-      void this.post<MpRetireRes>('/mp/retire', { code: rec.code, playerId: this.playerId, userId: rec.userId })
+      void this.post<MpRetireRes>('/mp/retire', { code: rec.code, playerId: this.playerId, token: this.token, userId: rec.userId })
         .then((r) => { if (r?.ok) this.dropRetire(rec); });
       this.playerId = '';   // leave()가 /mp/leave를 다시 보내 자리를 '오프라인'으로 되살리지 않게
     }
@@ -375,12 +389,32 @@ class MultiplayerClientImpl {
     this.persist();
   }
 
+  // ── 공유 세계 자원 (232차) ─────────────────────
+  /** 남(또는 내)가 이미 가져간 자원인가 — 싱글이면 늘 false */
+  isWorldTaken(key: string): boolean { return this.worldTaken.has(key); }
+
+  /**
+   * 가져갔다고 알린다. 싱글이거나 서버가 없으면 `true`(내가 임자). 서버가 「이미 누가」라고 하면 `false`.
+   * 결과를 기다리지 않아도 되는 호출(놓침 · 수거 완료 알림)은 `void`로 버려도 된다.
+   */
+  async takeWorld(key: string): Promise<boolean> {
+    if (!this.isConnected) return true;
+    const already = this.worldTaken.has(key);
+    this.worldTaken.add(key);
+    if (already) return false;
+    const res = await this.post<{ ok: boolean; already?: boolean }>('/mp/world/take', {
+      code: this.code, playerId: this.playerId, token: this.token, key,
+    });
+    return !(res && !res.ok && res.already);
+  }
+
   /** 싱글로 되돌리기 — 세션에서 나가고 폴링을 멈춘다 */
   leave(): void {
-    if (this.isConnected) void this.post('/mp/leave', { code: this.code, playerId: this.playerId });
+    if (this.isConnected) void this.post('/mp/leave', { code: this.code, playerId: this.playerId, token: this.token });
     this.stopPresence();
     this.mode = 'single';
-    this.code = ''; this.playerId = ''; this.name = '';
+    this.code = ''; this.playerId = ''; this.name = ''; this.token = '';
+    this.worldTaken.clear(); this.takenSeq = 0;
     this.worldSeed = 0; this.chatSeq = 0; this.chatInbox = []; this.resume = null;
     this.lookSent = false; this.trade = null; this.profileKey = ''; this.profileSent = true;
   }

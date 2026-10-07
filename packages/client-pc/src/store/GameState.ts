@@ -193,6 +193,11 @@ interface SaveData {
    * 한 자리(위치·통발·미적용 거래)를 나눠 썼다. 구세이브는 브라우저 id를 그대로 물려받는다(이어하기 보존).
    */
   mpUserId?: string;
+  /**
+   * 내 인벤토리에 적용한 확정 거래 id (232차 — 최근 50건). **세이브 안에 둔다** — 거래 직후 자동 저장과
+   * 한 번에 기록돼야 「물건은 옛 세이브인데 적용 기록만 남는」 엇갈림(복제·소실)이 생기지 않는다.
+   */
+  mpAppliedTrades?: string[];
   deployedTraps: DeployedTrap[];
   /** 설치된 화구 + 위에 걸린 조리 세션 (154차 불요리) — 시각은 전부 ms 숫자라 Date 복원 불요 */
   deployedStoves?: DeployedStove[];
@@ -388,6 +393,7 @@ export class GameStateManager {
   private applySaveData(saved: SaveData): void {
     this._player = saved.player;
     this._mpUserId = saved.mpUserId || MultiplayerClient.legacyUserId;
+    this._mpAppliedTrades = saved.mpAppliedTrades ?? [];
     MultiplayerClient.useCharacterId(this._mpUserId);
     this._deployedTraps = saved.deployedTraps ?? [];
     // 207차 한 대(`parkedRod`) → 208차 여러 대. 구세이브 = 거치 없음
@@ -1616,6 +1622,7 @@ export class GameStateManager {
     return {
       player: this._player,
       mpUserId: this._mpUserId || undefined,
+      mpAppliedTrades: this._mpAppliedTrades.length ? this._mpAppliedTrades : undefined,
       deployedTraps: this._deployedTraps,
       deployedStoves: this._deployedStoves,
       coolerInventory: this._coolerInventory,
@@ -1699,6 +1706,8 @@ export class GameStateManager {
   private _bankrupt = false;
   /** 231차 — 이 캐릭터의 멀티 재접속 열쇠(세이브에 남는다) */
   private _mpUserId = '';
+  /** 232차 — 적용한 확정 거래 id (세이브 필드) */
+  private _mpAppliedTrades: string[] = [];
   get isBankrupt(): boolean { return this._bankrupt; }
 
   /**
@@ -1714,6 +1723,20 @@ export class GameStateManager {
   }
 
   /** 지정 슬롯(1~3)에 저장. 성공 여부 반환 (위치 게이트 없는 프리미티브 — 슬롯 생성용) */
+  /** 232차 — 이 캐릭터가 이미 적용한 확정 거래인가 */
+  hasAppliedTrade(tradeId: string): boolean { return this._mpAppliedTrades.includes(tradeId); }
+
+  /**
+   * 232차 — 거래를 적용한 직후 **그 자리에서 저장한다**(사용자 결정: 「저장은 침대에서만」의 유일한 예외).
+   * 적용 기록(`tradeId`)과 바뀐 인벤토리 · 돈이 한 번의 쓰기로 같이 남는다 —
+   * 저장 없이 꺼서 준 물건이 세이브에 남는 복제가 막힌다. 활성 슬롯이 없거나 파산 잠금이면 false.
+   */
+  commitTradeApplied(tradeId: string): boolean {
+    this._mpAppliedTrades = [...this._mpAppliedTrades.filter((x) => x !== tradeId), tradeId].slice(-50);
+    this.markDirty();
+    return this._activeSlot !== null ? this.saveToSlot(this._activeSlot) : false;
+  }
+
   saveToSlot(slot: number): boolean {
     if (this._bankrupt) {
       console.log('[GameState] Save blocked — 파산한 판은 저장하지 않는다.');
@@ -1856,6 +1879,7 @@ export class GameStateManager {
     LedgerStore.suspend(true);   // 211차 — 시작 장비 · 시드 발견은 하루 기록이 아니다
     // 231차 — 새 캐릭터 = 새 멀티 신원(옛 자리·통발·거래를 물려받지 않는다)
     this._mpUserId = MultiplayerClient.newCharacterId();
+    this._mpAppliedTrades = [];
     MultiplayerClient.useCharacterId(this._mpUserId);
     this._character = GameStateManager.defaultCharacter('m');
     this._player = createDefaultPlayer();

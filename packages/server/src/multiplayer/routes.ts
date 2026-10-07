@@ -41,73 +41,81 @@ multiplayerRouter.post('/presence', (req, res) => {
     code?: string; playerId?: string; regionId?: string;
     x?: number; y?: number; facing?: MpPeer['facing']; moving?: boolean;
     activity?: MpActivity; look?: MpPeer['look']; profile?: MpProfile;
-    say?: string; chatSince?: number;
+    say?: string; chatSince?: number; takenSince?: number; token?: string;
   };
   if (!b.code || !b.playerId) { res.json({ ok: false, reasonKo: '세션 정보가 없습니다.' }); return; }
-  res.json(sessionRegistry.presence(b.code, b.playerId, {
+  res.json(sessionRegistry.presence(b.code, b.playerId, b.token, {
     regionId: b.regionId ?? '', x: b.x ?? 0, y: b.y ?? 0,
     facing: b.facing ?? 'down', moving: b.moving ?? false,
     activity: b.activity, look: b.look, profile: b.profile,
-  }, { say: b.say, chatSince: b.chatSince }));
+  }, { say: b.say, chatSince: b.chatSince, takenSince: b.takenSince }));
 });
 
 // ── 146차 유저 간 거래 — 서버는 공증인(인벤토리는 각자 로컬) ──
-type TradeBody = { code?: string; playerId?: string; tradeId?: string };
+// 232차 — 모든 변경 요청은 join 때 받은 비밀값(token)을 같이 보낸다
+type TradeBody = { code?: string; playerId?: string; tradeId?: string; token?: string };
 const need = <T extends TradeBody>(b: T): b is T & Required<TradeBody> => !!(b.code && b.playerId && b.tradeId);
 
 multiplayerRouter.post('/trade/propose', (req, res) => {
-  const b = req.body as { code?: string; playerId?: string; targetPlayerId?: string };
+  const b = req.body as { code?: string; playerId?: string; targetPlayerId?: string; token?: string };
   if (!b.code || !b.playerId || !b.targetPlayerId) { res.json({ ok: false, reasonKo: '요청이 올바르지 않습니다.' }); return; }
-  res.json(sessionRegistry.proposeTrade(b.code, b.playerId, b.targetPlayerId));
+  res.json(sessionRegistry.proposeTrade(b.code, b.playerId, b.token, b.targetPlayerId));
 });
 multiplayerRouter.post('/trade/respond', (req, res) => {
   const b = req.body as TradeBody & { accept?: boolean };
   if (!need(b)) { res.json({ ok: false, reasonKo: '요청이 올바르지 않습니다.' }); return; }
-  res.json(sessionRegistry.respondTrade(b.code, b.playerId, b.tradeId, !!b.accept));
+  res.json(sessionRegistry.respondTrade(b.code, b.playerId, b.token, b.tradeId, !!b.accept));
 });
 multiplayerRouter.post('/trade/offer', (req, res) => {
   const b = req.body as TradeBody & { items?: MpTradeItem[]; coins?: number };
   if (!need(b)) { res.json({ ok: false, reasonKo: '요청이 올바르지 않습니다.' }); return; }
-  res.json(sessionRegistry.setTradeOffer(b.code, b.playerId, b.tradeId, b.items ?? [], b.coins ?? 0));
+  res.json(sessionRegistry.setTradeOffer(b.code, b.playerId, b.token, b.tradeId, b.items ?? [], b.coins ?? 0));
 });
 multiplayerRouter.post('/trade/lock', (req, res) => {
   const b = req.body as TradeBody & { confirm?: boolean };
   if (!need(b)) { res.json({ ok: false, reasonKo: '요청이 올바르지 않습니다.' }); return; }
-  res.json(sessionRegistry.lockTrade(b.code, b.playerId, b.tradeId, !!b.confirm));
+  res.json(sessionRegistry.lockTrade(b.code, b.playerId, b.token, b.tradeId, !!b.confirm));
 });
 multiplayerRouter.post('/trade/cancel', (req, res) => {
   const b = req.body as TradeBody;
   if (!need(b)) { res.json({ ok: false, reasonKo: '요청이 올바르지 않습니다.' }); return; }
-  res.json(sessionRegistry.cancelTradeReq(b.code, b.playerId, b.tradeId));
+  res.json(sessionRegistry.cancelTradeReq(b.code, b.playerId, b.token, b.tradeId));
 });
 multiplayerRouter.post('/trade/applied', (req, res) => {
   const b = req.body as TradeBody;
   if (!need(b)) { res.json({ ok: false }); return; }
-  res.json(sessionRegistry.tradeApplied(b.code, b.playerId, b.tradeId));
+  res.json(sessionRegistry.tradeApplied(b.code, b.playerId, b.token, b.tradeId));
+});
+
+// ── 232차 공유 세계 자원 소비(채집 자리 · 과증식 개체) ──
+multiplayerRouter.post('/world/take', (req, res) => {
+  const b = req.body as { code?: string; playerId?: string; token?: string; key?: string };
+  if (!b.code || !b.playerId || !b.key) { res.json({ ok: false, reasonKo: '요청이 올바르지 않습니다.' }); return; }
+  res.json(sessionRegistry.takeWorld(b.code, b.playerId, b.token, b.key));
 });
 
 // ── 145차 설치물 공유 — 통발은 놓는 순간 남에게도 보인다 ──
 multiplayerRouter.post('/trap/place', (req, res) => {
-  const b = req.body as { code?: string; playerId?: string; trap?: Omit<MpPlacedTrap, 'ownerId' | 'ownerName'> };
+  const b = req.body as { code?: string; playerId?: string; token?: string; trap?: Omit<MpPlacedTrap, 'ownerId' | 'ownerName'> };
   if (!b.code || !b.playerId || !b.trap) { res.json({ ok: false, reasonKo: '요청이 올바르지 않습니다.' }); return; }
-  res.json(sessionRegistry.placeTrap(b.code, b.playerId, b.trap));
+  res.json(sessionRegistry.placeTrap(b.code, b.playerId, b.token, b.trap));
 });
 
 multiplayerRouter.post('/trap/remove', (req, res) => {
-  const b = req.body as { code?: string; playerId?: string; instanceId?: string };
+  const b = req.body as { code?: string; playerId?: string; token?: string; instanceId?: string };
   if (!b.code || !b.playerId || !b.instanceId) { res.json({ ok: false, reasonKo: '요청이 올바르지 않습니다.' }); return; }
-  res.json(sessionRegistry.removeTrap(b.code, b.playerId, b.instanceId));
+  res.json(sessionRegistry.removeTrap(b.code, b.playerId, b.token, b.instanceId));
 });
 
 multiplayerRouter.post('/leave', (req, res) => {
-  const b = req.body as { code?: string; playerId?: string };
-  if (b.code && b.playerId) sessionRegistry.leave(b.code, b.playerId);
+  const b = req.body as { code?: string; playerId?: string; token?: string };
+  if (b.code && b.playerId) sessionRegistry.leave(b.code, b.playerId, b.token);
   res.json({ ok: true });
 });
 
 // 231차 — 캐릭터 소멸(파산): 자리·이름·통발을 남기지 않고 나간다
 multiplayerRouter.post('/retire', (req, res) => {
-  const b = req.body as { code?: string; playerId?: string; userId?: string };
+  const b = req.body as { code?: string; playerId?: string; token?: string; userId?: string };
   if (!b.code || (!b.playerId && !b.userId)) { res.json({ ok: true, removedTraps: 0 }); return; }
-  res.json(sessionRegistry.retire(b.code, { playerId: b.playerId, userId: b.userId }));
+  res.json(sessionRegistry.retire(b.code, { playerId: b.playerId, token: b.token, userId: b.userId }));
 });

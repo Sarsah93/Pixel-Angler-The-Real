@@ -1440,7 +1440,10 @@ export class RegionFieldScene extends Phaser.Scene {
         this.onNuisanceCollected(nu);
         return true;
       },
-      month: () => new Date().getMonth() + 1,
+      month: () => Number(kstParts().mo),   // 232차 — KST(시간대가 다른 사람끼리 같은 달)
+      // 232차 — 같은 세션에서 누가 거둬 간 개체는 모두의 화면에서 사라진다(`n:` 키)
+      isTaken: (key) => MultiplayerClient.isWorldTaken(`n:${key}`),
+      onTaken: (key) => { void MultiplayerClient.takeWorld(`n:${key}`); },
     });
     // 맵마다 결정적 배치 — 같은 맵에 다시 오면 같은 자리에서 시작한다
     // 145차 — 세션 공용 시드 + 6시간 주기 대발생 슬롯. 표류는 슬롯 시작부터 되감아 재생한다.
@@ -5899,7 +5902,11 @@ export class RegionFieldScene extends Phaser.Scene {
         return;
       case 'committed':
         this.closeTradePanel();
-        if (!me.offer.applied && !MultiplayerClient.hasAppliedTrade(t.tradeId)) this.applyTrade(t, me, other);
+        if (!me.offer.applied) {
+          // 232차 — 세이브에 적용 기록이 있으면(저장 직후 꺼져 서버에 못 알린 경우) 서버에만 알린다
+          if (GameState.hasAppliedTrade(t.tradeId)) { if (!MultiplayerClient.hasAppliedTrade(t.tradeId)) MultiplayerClient.markTradeApplied(t.tradeId); }
+          else if (!MultiplayerClient.hasAppliedTrade(t.tradeId)) this.applyTrade(t, me, other);
+        }
         return;
       case 'cancelled':
         this.closeTradePanel();
@@ -5924,19 +5931,35 @@ export class RegionFieldScene extends Phaser.Scene {
    * 내가 준 것을 빼고 상대가 준 것을 넣는다. 재화는 `quiet`로 — earn 목표에 세지 않는다.
    */
   private applyTrade(t: MpTradeState, me: MpTradeState['from'], other: MpTradeState['from']): void {
-    MultiplayerClient.markTradeApplied(t.tradeId);
-    for (const it of me.offer.items) InventoryStore.removeQty(it.srcId, it.qty);
-    if (me.offer.coins > 0) GameState.addCoins(-me.offer.coins, true, 'trade');
+    // 232차 — 내 쪽은 **있는 만큼만** 낸다(확정과 적용 사이에 물건 · 돈이 줄었으면 `removeQty`/`addCoins`가
+    //   통째로 실패해 아무것도 안 빠지는데 상대는 받는다 = 생성). 모자란 몫은 로그로 남긴다.
+    let short = 0;
+    for (const it of me.offer.items) {
+      const have = InventoryStore.find(it.srcId)?.qty ?? 0;
+      const take = Math.min(have, it.qty);
+      if (take > 0) InventoryStore.removeQty(it.srcId, take);
+      short += it.qty - take;
+    }
+    if (me.offer.coins > 0) {
+      const pay = Math.min(me.offer.coins, GameState.player.inventory.coins);
+      if (pay > 0) GameState.addCoins(-pay, true, 'trade');
+      if (pay < me.offer.coins) short += 1;
+    }
     let lost = 0;
     for (const it of other.offer.items) if (!InventoryStore.importTradeItem(it)) lost += it.qty;
     if (other.offer.coins > 0) GameState.addCoins(other.offer.coins, true, 'trade');
-    GameState.markDirty();
+    // 232차 — 적용 기록 + 인벤토리 + 돈을 한 번에 저장한 **뒤에** 서버에 「적용함」을 알린다.
+    //   (저장 전에 알리면, 그 사이 꺼졌을 때 서버 기록은 지워지고 세이브는 옛 것이라 복제된다)
+    const saved = GameState.commitTradeApplied(t.tradeId);
+    MultiplayerClient.markTradeApplied(t.tradeId);
     this.events.emit('inventory-changed');
     this.hud?.refreshQuickslots();
     const gave = [...me.offer.items.map((i) => `${i.name} x${i.qty}`), ...(me.offer.coins ? [`${me.offer.coins.toLocaleString()}원`] : [])].join(', ') || '없음';
     const got = [...other.offer.items.map((i) => `${i.name} x${i.qty}`), ...(other.offer.coins ? [`${other.offer.coins.toLocaleString()}원`] : [])].join(', ') || '없음';
     this.hud?.pushLog(`[거래] ${MP_TRADE_REASON_KO.done} 준 것: ${gave} / 받은 것: ${got}`);
+    if (saved) this.hud?.pushLog('[거래] 거래 내용을 저장했습니다');
     if (lost) this.hud?.pushLog(`[경고] 가방이 가득 차 ${lost}개를 받지 못했습니다`);
+    if (short) this.hud?.pushLog('[경고] 건네기로 한 것 중 일부가 이미 없어 다 건네지 못했습니다');
   }
 
   /**

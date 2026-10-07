@@ -116,6 +116,8 @@ const EN_BASE: Record<string, string> = {
   '갯바위 채집은 추후 개방됩니다': 'Rock gathering opens later', '개인 보트 출조는 추후 개방됩니다': 'Private boat trips open later',
   '설치는 홈타운에서만 가능합니다': 'Placement is only possible in your hometown', '여기에는 설치할 수 없습니다': "Can't place here", '아이템이 없습니다': 'No item',
   '회수했습니다 (인벤토리로 반환)': 'Picked up (returned to inventory)',
+  '[거래] 거래 내용을 저장했습니다': '[Trade] Trade saved',
+  '[경고] 건네기로 한 것 중 일부가 이미 없어 다 건네지 못했습니다': '[Warning] Some of what you offered was already gone, so not all of it was handed over',
   '좌클릭 유지 = 조준·차지 → 놓으면 캐스팅 (마우스로 각도 조절)': 'Hold LMB = aim & charge → release to cast (mouse sets the angle)',
   '낚싯대를 손에 착용하세요 (E 장비창)': 'Equip a rod in your hand (E Equipment)',
   '낚싯대를 손에 착용하면 캐스팅할 수 있습니다 (E 장비창)': 'Equip a rod in your hand to cast (E Equipment)',
@@ -699,6 +701,9 @@ const DOW_EN: Record<string, string> = {
 };
 /** 수치·이름이 끼어 있는 문장 — 정규식 규칙. 캡처 그룹은 그대로 옮긴다(이름은 사전을 다시 타지 않으므로 어종·아이템명은 한국어로 남을 수 있음). */
 export const EN_RULES: Rule[] = [
+  // ── 232차 멀티 공유 자원 · 거래 자동 저장 ──
+  [/^다른 사람이 먼저 (.+)을\(를\) 가져갔다$/, (m, tr) => `Someone else took the ${tr(m[1])} first`],
+  [/^\[수거\] 다른 사람이 먼저 (.+)을\(를\) 거둬 갔습니다\.$/, (m, tr) => `[Collect] Someone else hauled in the ${tr(m[1])} first.`],
   // ── 224차 미끼 경제 · 해루질 현실화 ──
   [/^(.+) \(중고\)$/, (m, tr) => `${tr(m[1])} (used)`],
   [/^포장을 뜯었다 — (.+) (\d+)개$/, (m, tr) => `Opened the pack — ${tr(m[1])} ×${m[2]}`],

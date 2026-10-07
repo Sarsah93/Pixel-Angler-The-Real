@@ -110,6 +110,11 @@ export interface MpJoinRes {
   seed?: number;
   /** 이전에 있던 자리 — 이어하기로 들어온 경우에만 (145차) */
   resume?: MpResume;
+  /**
+   * 접속 비밀값 (232차) — 위치 알림 · 거래 · 설치물 · 나가기 요청마다 같이 보낸다.
+   * `playerId`는 남에게 공개되는 id라(이름표 · 거래 대상) 그것만으로는 본인을 증명하지 못한다.
+   */
+  token?: string;
   reasonKo?: string;
 }
 
@@ -123,8 +128,26 @@ export interface MpPresenceRes {
   chat?: MpChatLine[];
   /** 내가 얽힌 거래 (146차) — 없으면 거래 중이 아니다. committed는 양쪽이 applied할 때까지 남는다 */
   trade?: MpTradeState;
+  /** 내가 마지막으로 받은 번호 이후에 누군가 가져간 세계 자원 (232차 — 채집 자리 · 과증식 개체) */
+  taken?: MpTakenLine[];
   reasonKo?: string;
 }
+
+/**
+ * 공유 세계 자원 소비 기록 (232차). 같은 시드로 모두에게 같은 자리에 뜨는 것(채집 생물 · 해파리 · 불가사리)을
+ * **누가 가져가면 다른 사람 화면에서도 사라지게** 한다. 키는 클라이언트가 정한다:
+ * - 채집: `f:<시드>|<스팟 id>` · 과증식: `n:<시드>|<배치 순번>`
+ * 시드가 시간 슬롯에 묶여 있어 슬롯이 바뀌면 키가 자연히 무효가 된다 — 서버는 키의 뜻을 모른다.
+ */
+export interface MpTakenLine {
+  seq: number;
+  key: string;
+}
+/** 서버가 들고 있는 소비 기록 수 상한 · 보관 시간 (과증식 6시간 슬롯을 덮는다) */
+export const MP_TAKEN_KEEP = 4000;
+export const MP_TAKEN_TTL_MS = 7 * 3_600_000;
+/** 소비 키 최대 길이 — 아무 문자열이나 쌓이지 않게 */
+export const MP_TAKEN_KEY_MAX = 96;
 
 /**
  * 캐릭터 소멸(파산) 응답 (231차 — `POST /mp/retire`).

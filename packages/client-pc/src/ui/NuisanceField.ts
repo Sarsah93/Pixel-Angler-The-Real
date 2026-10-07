@@ -43,7 +43,21 @@ export interface NuisanceDeps {
   /** 수거 성공 — false면 인벤토리 공간 부족 */
   collect(nu: MarineNuisance, sizeCm: number, weightKg: number): boolean;
   month(): number;
+  /**
+   * 232차 — 이 개체를 같은 세션의 누군가 이미 가져갔는가(키 = `시드|배치 순번`).
+   * 없으면(싱글) 늘 false.
+   */
+  isTaken?(key: string): boolean;
+  /** 232차 — 내가 가져갔다고 알린다 */
+  onTaken?(key: string): void;
 }
+
+/**
+ * 232차 — 수거한 개체(이번 배치 슬롯 동안 다시 나오지 않는다). 맵을 나갔다 들어와도 남도록 모듈 전역 —
+ * 전엔 재입장하면 같은 시드로 전부 되살아나 혼자서도 무한히 거둘 수 있었다. 키에 시드가 들어 있어
+ * 6시간 슬롯이 바뀌면 자연히 무효가 된다(새 대발생).
+ */
+const GONE = new Set<string>();
 
 interface Entity {
   nu: MarineNuisance;
@@ -61,6 +75,8 @@ interface Entity {
   dy: number;
   /** 해안에 밀려온 개체 = [F] 채집 대상 */
   washedUp: boolean;
+  /** 232차 — 공유 · 재입장 판정 키 (`시드|배치 순번`) */
+  key: string;
 }
 
 /** 필드 동시 출현 상한 — 너무 많으면 바다가 지저분해진다 */
@@ -75,6 +91,7 @@ export class NuisanceField {
   private line?: Phaser.GameObjects.Graphics;
   private snag?: Entity;
   private snagSlack = 0;
+  private takenAcc = 0;
 
   constructor(private readonly scene: Phaser.Scene, private readonly deps: NuisanceDeps) {
     this.ensureTextures();
@@ -137,6 +154,7 @@ export class NuisanceField {
 
     const count = Math.min(MAX_ENTITIES, 10 + Math.round(next() * 12));
     let tries = 0;
+    let ord = 0;   // 232차 — 배치 순번(같은 시드면 모두에게 같은 순서 — 가져간 것을 키로 맞춘다)
     while (this.entities.length < count && tries < count * 60) {
       tries++;
       // 종 추첨
@@ -148,8 +166,14 @@ export class NuisanceField {
       const r = Math.floor(next() * this.deps.rows);
       const spot = this.validSpot(nu, c, r);
       if (!spot) continue;
-      this.add(nu, spot.c, spot.r, spot.washedUp, next, epochMs);
+      // ⚠ 가져간 개체도 **난수는 똑같이 소비한다**(add 안의 rollNuisance · 방향) — 건너뛰면 뒤 개체가 사람마다 달라진다
+      this.add(nu, spot.c, spot.r, spot.washedUp, next, epochMs, `${seed >>> 0}|${ord++}`);
     }
+    this.entities = this.entities.filter((e) => {
+      if (!this.isGoneKey(e.key)) return true;
+      e.img.destroy();
+      return false;
+    });
     this.catchUpDrift(epochMs);
   }
 
@@ -211,7 +235,7 @@ export class NuisanceField {
   }
 
   private add(
-    nu: MarineNuisance, c: number, r: number, washedUp: boolean, rnd: () => number, epochMs: number,
+    nu: MarineNuisance, c: number, r: number, washedUp: boolean, rnd: () => number, epochMs: number, key: string,
   ): void {
     const T = this.deps.tile;
     const roll = rollNuisance(nu, rnd);
@@ -221,7 +245,7 @@ export class NuisanceField {
       .setDepth(nu.kind === 'jellyfish' ? 14 : 11);
     const ang = rnd() * Math.PI * 2;
     this.entities.push({
-      nu, sizeCm: roll.sizeCm, weightKg: roll.weightKg, x, y, img, washedUp,
+      nu, sizeCm: roll.sizeCm, weightKg: roll.weightKg, x, y, img, washedUp, key,
       nextMove: epochMs + (nu.drift ? nu.drift.moveSec * 1000 * rnd() : 0),
       dx: Math.cos(ang), dy: Math.sin(ang),
     });
@@ -242,6 +266,20 @@ export class NuisanceField {
       if (now < e.nextMove) continue;
       e.nextMove += e.nu.drift.moveSec * 1000;
       this.driftOnce(e);
+    }
+
+    // 232차 — 같은 세션의 누군가 거둬 간 개체를 걷는다(0.5초마다). 내가 끌고 오던 것이면 놓친다
+    this.takenAcc += dtMs;
+    if (this.takenAcc >= 500 && this.deps.isTaken) {
+      this.takenAcc = 0;
+      for (const e of [...this.entities]) {
+        if (GONE.has(e.key) || !this.deps.isTaken(e.key)) continue;
+        if (e === this.snag) {
+          this.cancelSnag();
+          this.deps.log(`[수거] 다른 사람이 먼저 ${e.nu.nameKo}을(를) 거둬 갔습니다.`);
+        }
+        this.drop(e);
+      }
     }
 
     // 훌치기 견인
@@ -329,8 +367,19 @@ export class NuisanceField {
   }
 
   private remove(e: Entity): void {
+    GONE.add(e.key);
+    this.deps.onTaken?.(e.key);
+    this.drop(e);
+  }
+
+  /** 화면에서만 걷는다(남이 가져간 개체) */
+  private drop(e: Entity): void {
     e.img.destroy();
     this.entities = this.entities.filter((x) => x !== e);
+  }
+
+  private isGoneKey(key: string): boolean {
+    return GONE.has(key) || (this.deps.isTaken?.(key) ?? false);
   }
 
   private drawLine(): void {

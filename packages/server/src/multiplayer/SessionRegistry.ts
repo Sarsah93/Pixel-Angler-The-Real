@@ -21,14 +21,15 @@
 
 import { mkdirSync, readFileSync, readdirSync, writeFileSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
+import { randomBytes } from 'node:crypto';
 import {
   SESSION_CODE_LEN, SESSION_CODE_ALPHABET, MP_PRESENCE_TIMEOUT_MS,
-  MP_CHAT_KEEP, MP_CHAT_MAX_LEN,
+  MP_CHAT_KEEP, MP_CHAT_MAX_LEN, MP_TAKEN_KEEP, MP_TAKEN_TTL_MS, MP_TAKEN_KEY_MAX,
   MP_TRADE_PROPOSE_TIMEOUT_MS, MP_TRADE_RANGE_PX, MP_TRADE_MAX_ITEMS, MP_TRADE_REASON_KO,
   characterNameKey, validateCharacterName, isFieldActive,
   type MpPeer, type MpActivity, type MpPlacedTrap, type MpChatLine,
   type MpSavedSession, type MpResume,
-  type MpTradeState, type MpTradeOffer, type MpTradeItem, type MpProfile, type MpRetireRes,
+  type MpTradeState, type MpTradeOffer, type MpTradeItem, type MpProfile, type MpRetireRes, type MpTakenLine,
 } from '@tra/core';
 
 interface SessionPlayer extends MpPeer {
@@ -40,6 +41,11 @@ interface SessionPlayer extends MpPeer {
   offline: boolean;
   /** 남에게 보이는 프로필 (146차) */
   profile?: MpProfile;
+  /**
+   * 접속 비밀값 (232차) — join 때 발급, 변경 요청마다 대조한다. 디스크에 남기지 않는다
+   * (서버를 다시 켜면 모두 다시 join한다 — 되살린 자리는 `offline`이라 어차피 join이 깨운다).
+   */
+  token: string;
 }
 
 interface Session {
@@ -55,6 +61,12 @@ interface Session {
    * 이어하기로 돌아오면 서버가 다시 내려주므로 "준 것만 사라지는" 일이 없다.
    */
   trades: MpTradeState[];
+  /**
+   * 공유 세계 자원 소비 기록 (232차 — 채집 자리 · 과증식 개체). 메모리에만 둔다 — 시간 슬롯 키라
+   * 서버를 다시 켜면 길어야 한 슬롯 동안 「이미 가져간 것」이 다시 보일 뿐이다.
+   */
+  taken: (MpTakenLine & { atMs: number })[];
+  takenSeq: number;
   /** 마지막으로 디스크에 쓴 시각 — 잦은 쓰기를 막는다 */
   savedMs: number;
   dirty: boolean;
@@ -68,6 +80,9 @@ const OFFLINE_KEEP_MS = 7 * 24 * 3_600_000;
 const SAVE_THROTTLE_MS = 5_000;
 
 const SESSION_DIR = process.env.MP_SESSION_DIR ?? '.mp-sessions';
+
+/** 232차 — 접속 비밀값 (추측 불가 128비트) */
+function newToken(): string { return randomBytes(16).toString('hex'); }
 
 export class SessionRegistry {
   private sessions = new Map<string, Session>();
@@ -98,7 +113,7 @@ export class SessionRegistry {
     const code = this.newCode();
     this.sessions.set(code, {
       code, seed: (Math.random() * 0xffffffff) >>> 0, createdMs: Date.now(),
-      players: new Map(), traps: [], chat: [], chatSeq: 0, trades: [], savedMs: 0, dirty: true,
+      players: new Map(), traps: [], chat: [], chatSeq: 0, trades: [], taken: [], takenSeq: 0, savedMs: 0, dirty: true,
     });
     this.save(code);
     return code;
@@ -128,7 +143,7 @@ export class SessionRegistry {
    * 같은 자리·같은 이름으로 되살리고 `resume`을 돌려준다.
    */
   join(code: string, name: string, userId: string, look?: MpPeer['look']): {
-    ok: boolean; playerId?: string; duplicate?: boolean; seed?: number; resume?: MpResume; reasonKo?: string;
+    ok: boolean; playerId?: string; duplicate?: boolean; seed?: number; resume?: MpResume; token?: string; reasonKo?: string;
   } {
     const s = this.get(code);
     if (!s) return { ok: false, reasonKo: '세션을 찾을 수 없습니다.' };
@@ -143,24 +158,34 @@ export class SessionRegistry {
       const playerId = this.newPlayerId();
       const revived: SessionPlayer = {
         ...prior, playerId, name: name.trim(), nameKey: characterNameKey(name),
-        look: look ?? prior.look, lastSeenMs: Date.now(), offline: false,
+        look: look ?? prior.look, lastSeenMs: Date.now(), offline: false, token: newToken(),
       };
       s.players.set(playerId, revived);
       s.dirty = true; this.save(code);
       const resume = prior.regionId
         ? { regionId: prior.regionId, x: prior.x, y: prior.y }
         : undefined;
-      return { ok: true, playerId, seed: s.seed, resume };
+      return { ok: true, playerId, seed: s.seed, resume, token: revived.token };
     }
 
     const playerId = this.newPlayerId();
+    const token = newToken();
     s.players.set(playerId, {
       playerId, userId: userId || playerId, name: name.trim(), nameKey: characterNameKey(name),
       regionId: '', x: 0, y: 0, facing: 'down', moving: false, activity: 'field', look,
-      lastSeenMs: Date.now(), offline: false,
+      lastSeenMs: Date.now(), offline: false, token,
     });
     s.dirty = true; this.save(code);
-    return { ok: true, playerId, seed: s.seed };
+    return { ok: true, playerId, seed: s.seed, token };
+  }
+
+  /**
+   * 232차 — 본인 확인. `playerId`는 공개 id(이름표 · 거래 대상)라 **비밀값까지 맞아야** 그 사람이다.
+   * 틀리면 「없는 사람」과 같은 응답을 준다(어느 쪽이 틀렸는지 알려 주지 않는다).
+   */
+  private authed(s: Session, playerId: string, token: string | undefined): SessionPlayer | undefined {
+    const p = s.players.get(playerId);
+    return p && token && p.token === token ? p : undefined;
   }
 
   private newPlayerId(): string {
@@ -172,19 +197,19 @@ export class SessionRegistry {
   // ═══════════════════════════════════════════════════
 
   presence(
-    code: string, playerId: string,
+    code: string, playerId: string, token: string | undefined,
     pos: {
       regionId: string; x: number; y: number; facing: MpPeer['facing'];
       moving: boolean; activity?: MpActivity; look?: MpPeer['look']; profile?: MpProfile;
     },
-    opts?: { say?: string; chatSince?: number },
+    opts?: { say?: string; chatSince?: number; takenSince?: number },
   ): {
     ok: boolean; peers?: MpPeer[]; traps?: MpPlacedTrap[]; chat?: MpChatLine[];
-    trade?: MpTradeState; reasonKo?: string;
+    trade?: MpTradeState; taken?: MpTakenLine[]; reasonKo?: string;
   } {
     const s = this.get(code);
     if (!s) return { ok: false, reasonKo: '세션을 찾을 수 없습니다.' };
-    const me = s.players.get(playerId);
+    const me = this.authed(s, playerId, token);
     if (!me) return { ok: false, reasonKo: '세션에서 나간 상태입니다. 다시 접속하세요.' };
     me.regionId = pos.regionId;
     me.x = pos.x; me.y = pos.y;
@@ -212,20 +237,33 @@ export class SessionRegistry {
     const chat = since < 0 ? [] : s.chat.filter((l) => l.seq > since);
     s.dirty = true;
     this.save(code);
-    return { ok: true, peers, traps: s.traps, chat, trade: this.tradeFor(s, me.userId) };
+    // 232차 — 남의 userId(재접속 열쇠)는 내려보내지 않는다 — 그걸로 남의 자리를 이어받을 수 있었다
+    const traps = s.traps.map((t) => (t.ownerId === me.userId ? t : { ...t, ownerId: '' }));
+    const ts = opts?.takenSince ?? -1;
+    const taken = ts < 0 ? [] : s.taken.filter((l) => l.seq > ts).map(({ seq, key }) => ({ seq, key }));
+    return { ok: true, peers, traps, chat, trade: this.maskTrade(this.tradeFor(s, me.userId), me.userId), taken };
+  }
+
+  /** 232차 — 거래 상태에서 상대의 userId를 지운다(내 쪽 판별에는 내 id만 있으면 된다) */
+  private maskTrade(t: MpTradeState | undefined, myUserId: string): MpTradeState | undefined {
+    if (!t) return t;
+    const mask = (side: MpTradeState['from']): MpTradeState['from'] => (side.userId === myUserId ? side : { ...side, userId: '' });
+    return { ...t, from: mask(t.from), to: mask(t.to) };
   }
 
   private say(s: Session, me: SessionPlayer, textRaw: string): void {
-    const text = textRaw.trim().slice(0, MP_CHAT_MAX_LEN);
+    // 232차 — 줄바꿈 · 제어 문자를 지운다(「이름: 말」 줄 뒤에 가짜 「[단속] …」 줄을 끼워 넣지 못하게)
+    // eslint-disable-next-line no-control-regex
+    const text = textRaw.replace(/[\u0000-\u001f\u007f\u2028\u2029]+/g, ' ').trim().slice(0, MP_CHAT_MAX_LEN);
     if (!text) return;
     s.chat.push({ seq: ++s.chatSeq, playerId: me.playerId, name: me.name, text, atMs: Date.now() });
     if (s.chat.length > MP_CHAT_KEEP) s.chat.splice(0, s.chat.length - MP_CHAT_KEEP);
   }
 
   /** 접속 종료 — 자리는 남겨 둔다(이어하기). 완전 삭제는 `sweep`이 기한으로 한다 */
-  leave(code: string, playerId: string): void {
+  leave(code: string, playerId: string, token: string | undefined): void {
     const s = this.sessions.get(code.toUpperCase());
-    const p = s?.players.get(playerId);
+    const p = s ? this.authed(s, playerId, token) : undefined;
     if (!s || !p) return;
     p.offline = true;
     p.lastSeenMs = Date.now();
@@ -241,10 +279,10 @@ export class SessionRegistry {
    *   돌린다 — 상대는 받을 것을 그대로 받는다(줄 사람의 인벤토리는 이미 사라졌으니 차감할 것도 없다).
    * 같은 userId로 다시 들어오면 이어하기가 아니라 **새 사람**이다.
    */
-  retire(code: string, who: { playerId?: string; userId?: string }): MpRetireRes {
+  retire(code: string, who: { playerId?: string; token?: string; userId?: string }): MpRetireRes {
     const s = this.sessions.get(code.toUpperCase());
-    // 접속 중이면 playerId, 파산 때 서버가 꺼져 있어 나중에 다시 보내는 경우엔 userId로 찾는다
-    const p = s && ((who.playerId ? s.players.get(who.playerId) : undefined)
+    // 접속 중이면 playerId + 비밀값, 파산 때 서버가 꺼져 있어 나중에 다시 보내는 경우엔 userId(재접속 열쇠 — 본인만 안다)로 찾는다
+    const p = s && ((who.playerId ? this.authed(s, who.playerId, who.token) : undefined)
       ?? (who.userId ? this.playerByUser(s, who.userId) : undefined));
     if (!s || !p) return { ok: true, removedTraps: 0 };
     const before = s.traps.length;
@@ -326,19 +364,19 @@ export class SessionRegistry {
     return [...s.players.values()].find((p) => p.userId === userId);
   }
 
-  private tradeCtx(code: string, playerId: string):
+  private tradeCtx(code: string, playerId: string, token: string | undefined):
   { ok: true; s: Session; me: SessionPlayer } | { ok: false; reasonKo: string } {
     const s = this.get(code);
     if (!s) return { ok: false, reasonKo: '세션을 찾을 수 없습니다.' };
-    const me = s.players.get(playerId);
+    const me = this.authed(s, playerId, token);
     if (!me) return { ok: false, reasonKo: '세션에서 나간 상태입니다.' };
     this.sweepTrades(s);
     return { ok: true, s, me };
   }
 
   /** 거래 제안 — 둘 다 필드에 있고, 둘 다 거래 중이 아니고, 한 칸 안일 때만 */
-  proposeTrade(code: string, playerId: string, targetPlayerId: string): { ok: boolean; reasonKo?: string } {
-    const c = this.tradeCtx(code, playerId);
+  proposeTrade(code: string, playerId: string, token: string | undefined, targetPlayerId: string): { ok: boolean; reasonKo?: string } {
+    const c = this.tradeCtx(code, playerId, token);
     if (!c.ok) return c;
     const { s, me } = c;
     const target = s.players.get(targetPlayerId);
@@ -362,8 +400,8 @@ export class SessionRegistry {
   }
 
   /** 받은 쪽의 응답 */
-  respondTrade(code: string, playerId: string, tradeId: string, accept: boolean): { ok: boolean; reasonKo?: string } {
-    const c = this.tradeCtx(code, playerId);
+  respondTrade(code: string, playerId: string, token: string | undefined, tradeId: string, accept: boolean): { ok: boolean; reasonKo?: string } {
+    const c = this.tradeCtx(code, playerId, token);
     if (!c.ok) return c;
     const t = c.s.trades.find((x) => x.tradeId === tradeId);
     if (!t || t.phase !== 'proposed') return { ok: false, reasonKo: MP_TRADE_REASON_KO.cancelled };
@@ -376,9 +414,9 @@ export class SessionRegistry {
 
   /** 내 제안 갱신 — 고치면 **양쪽 잠금이 풀린다**(상대가 본 것과 다른 것에 동의하는 일이 없게) */
   setTradeOffer(
-    code: string, playerId: string, tradeId: string, items: MpTradeItem[], coins: number,
+    code: string, playerId: string, token: string | undefined, tradeId: string, items: MpTradeItem[], coins: number,
   ): { ok: boolean; reasonKo?: string } {
-    const c = this.tradeCtx(code, playerId);
+    const c = this.tradeCtx(code, playerId, token);
     if (!c.ok) return c;
     const t = c.s.trades.find((x) => x.tradeId === tradeId);
     if (!t || t.phase !== 'open') return { ok: false, reasonKo: MP_TRADE_REASON_KO.cancelled };
@@ -395,8 +433,8 @@ export class SessionRegistry {
   }
 
   /** 잠금(1단계) → 양쪽 잠금 뒤 확정(2단계) → 양쪽 확정이면 committed */
-  lockTrade(code: string, playerId: string, tradeId: string, confirm: boolean): { ok: boolean; reasonKo?: string } {
-    const c = this.tradeCtx(code, playerId);
+  lockTrade(code: string, playerId: string, token: string | undefined, tradeId: string, confirm: boolean): { ok: boolean; reasonKo?: string } {
+    const c = this.tradeCtx(code, playerId, token);
     if (!c.ok) return c;
     const t = c.s.trades.find((x) => x.tradeId === tradeId);
     if (!t || t.phase !== 'open') return { ok: false, reasonKo: MP_TRADE_REASON_KO.cancelled };
@@ -414,8 +452,8 @@ export class SessionRegistry {
     return { ok: true };
   }
 
-  cancelTradeReq(code: string, playerId: string, tradeId: string): { ok: boolean; reasonKo?: string } {
-    const c = this.tradeCtx(code, playerId);
+  cancelTradeReq(code: string, playerId: string, token: string | undefined, tradeId: string): { ok: boolean; reasonKo?: string } {
+    const c = this.tradeCtx(code, playerId, token);
     if (!c.ok) return c;
     const t = c.s.trades.find((x) => x.tradeId === tradeId);
     if (!t) return { ok: true };
@@ -426,8 +464,8 @@ export class SessionRegistry {
   }
 
   /** 확정 거래를 내 인벤토리에 적용했다 — 양쪽 다 적용하면 기록이 사라진다 */
-  tradeApplied(code: string, playerId: string, tradeId: string): { ok: boolean } {
-    const c = this.tradeCtx(code, playerId);
+  tradeApplied(code: string, playerId: string, token: string | undefined, tradeId: string): { ok: boolean } {
+    const c = this.tradeCtx(code, playerId, token);
     if (!c.ok) return { ok: false };
     const t = c.s.trades.find((x) => x.tradeId === tradeId);
     const mine = t && t.phase === 'committed' ? this.sideOf(t, c.me.userId) : undefined;
@@ -436,15 +474,37 @@ export class SessionRegistry {
   }
 
   // ═══════════════════════════════════════════════════
+  // 공유 세계 자원 소비 (232차) — 채집 자리 · 과증식 개체
+  // ═══════════════════════════════════════════════════
+
+  /**
+   * 누군가 가져갔다고 알린다. **먼저 알린 사람이 임자** — 이미 있는 키면 `ok:false`(`already`)로 답해
+   * 거의 동시에 둘이 잡은 경우 늦은 쪽이 「다른 사람이 먼저 가져갔다」를 띄울 수 있게 한다.
+   */
+  takeWorld(code: string, playerId: string, token: string | undefined, key: string): { ok: boolean; already?: boolean; reasonKo?: string } {
+    const s = this.get(code);
+    if (!s) return { ok: false, reasonKo: '세션을 찾을 수 없습니다.' };
+    if (!this.authed(s, playerId, token)) return { ok: false, reasonKo: '세션에서 나간 상태입니다.' };
+    const k = String(key ?? '').slice(0, MP_TAKEN_KEY_MAX);
+    if (!k) return { ok: false, reasonKo: '요청이 올바르지 않습니다.' };
+    const now = Date.now();
+    s.taken = s.taken.filter((l) => now - l.atMs < MP_TAKEN_TTL_MS);
+    if (s.taken.some((l) => l.key === k)) return { ok: false, already: true };
+    s.taken.push({ seq: ++s.takenSeq, key: k, atMs: now });
+    if (s.taken.length > MP_TAKEN_KEEP) s.taken.splice(0, s.taken.length - MP_TAKEN_KEEP);
+    return { ok: true };
+  }
+
+  // ═══════════════════════════════════════════════════
   // 설치 통발 — 놓는 순간 남에게도 보인다
   // ═══════════════════════════════════════════════════
 
   /** 통발 설치 알림. 같은 칸에 이미 있으면 거절한다(먼저 놓은 사람이 임자) */
-  placeTrap(code: string, playerId: string, trap: Omit<MpPlacedTrap, 'ownerId' | 'ownerName'>):
+  placeTrap(code: string, playerId: string, token: string | undefined, trap: Omit<MpPlacedTrap, 'ownerId' | 'ownerName'>):
   { ok: boolean; reasonKo?: string } {
     const s = this.get(code);
     if (!s) return { ok: false, reasonKo: '세션을 찾을 수 없습니다.' };
-    const me = s.players.get(playerId);
+    const me = this.authed(s, playerId, token);
     if (!me) return { ok: false, reasonKo: '세션에서 나간 상태입니다.' };
     const taken = s.traps.some((t) =>
       t.mapKey === trap.mapKey && t.tileX === trap.tileX && t.tileY === trap.tileY);
@@ -455,10 +515,10 @@ export class SessionRegistry {
   }
 
   /** 통발 회수 — 놓은 사람만 지울 수 있다 */
-  removeTrap(code: string, playerId: string, instanceId: string): { ok: boolean; reasonKo?: string } {
+  removeTrap(code: string, playerId: string, token: string | undefined, instanceId: string): { ok: boolean; reasonKo?: string } {
     const s = this.get(code);
     if (!s) return { ok: false, reasonKo: '세션을 찾을 수 없습니다.' };
-    const me = s.players.get(playerId);
+    const me = this.authed(s, playerId, token);
     if (!me) return { ok: false, reasonKo: '세션에서 나간 상태입니다.' };
     const i = s.traps.findIndex((t) => t.instanceId === instanceId);
     if (i < 0) return { ok: true };   // 이미 없다 — 조용히 성공
@@ -557,12 +617,12 @@ export class SessionRegistry {
           players.set(playerId, {
             playerId, userId: p.userId, name: p.name, nameKey: p.nameKey,
             regionId: p.regionId, x: p.x, y: p.y, facing: 'down', moving: false,
-            activity: 'menu', lastSeenMs: p.lastSeenMs, offline: true,
+            activity: 'menu', lastSeenMs: p.lastSeenMs, offline: true, token: '',
           });
         }
         this.sessions.set(d.code, {
           code: d.code, seed: d.seed >>> 0, createdMs: d.createdMs,
-          players, traps: d.traps ?? [], chat: [], chatSeq: 0, trades: d.trades ?? [],
+          players, traps: d.traps ?? [], chat: [], chatSeq: 0, trades: d.trades ?? [], taken: [], takenSeq: 0,
           savedMs: d.savedMs, dirty: false,
         });
       } catch (e) {

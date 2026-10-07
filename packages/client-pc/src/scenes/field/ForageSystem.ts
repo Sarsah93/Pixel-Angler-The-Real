@@ -21,7 +21,7 @@ import {
   SHORE_CREATURE_DATABASE, getCreatureById, FISH_FARM_KIND_LABEL, GANGWON_FORAGE_ORDINANCE,
   farmAt, isProtectedFarmKind, forageSeed, rollForageSpots, forageSafety, pickForageTool,
   isOrdinanceViolation, rollEnforcement, creatureTools, FORAGE_TOOL_LABEL,
-  calculateTideInfo, isNightNow, checkSlipHazard, TUNING,
+  calculateTideInfo, isNightNow, checkSlipHazard, TUNING, kstParts,
   tideFlowStateAt, tideWaterLevel01, tideRegionK, forageTideMult, forageFloodWarning,
   forageBehaviorOf, isEastSeaRegion, rollForageHarvest, resolveLegal, forageInjuryRoll, forageLossLineKo, shallowWaterDepthM,
   type ForageGameState, type ForageHarvest,
@@ -32,6 +32,7 @@ import { InventoryStore } from '../../store/InventoryStore.js';
 import { CoolerStore } from '../../store/CoolerStore.js';
 import { DiscoveryStore } from '../../store/DiscoveryStore.js';
 import { ExternalDataStore } from '../../store/ExternalDataStore.js';
+import { MultiplayerClient } from '../../net/MultiplayerClient.js';
 
 /** 씬이 넘기는 접근자 — 씬 내부를 직접 만지지 않는다 */
 export interface ForageHost {
@@ -360,7 +361,8 @@ export class ForageSystem {
     const k = tideRegionK(this.host.regionId);
     const level = 1 - (1 - tideWaterLevel01(flow)) * k;
     return {
-      month: new Date().getMonth() + 1,
+      // 232차 — 월 · 일은 KST(OS 시간대가 다른 사람끼리 금어기 · 스팟 풀이 하루 어긋나지 않게)
+      month: Number(kstParts().mo),
       isNight: isNightNow(),
       windSpeedMs: kma?.windSpeedMs ?? marine?.windSpeedMs ?? 4,
       waveHeightM: ExternalDataStore.getWaveHeightM(this.host.regionId) ?? 0.5,
@@ -402,14 +404,19 @@ export class ForageSystem {
     if (!force && seed === this.lastSeed) return;
     this.lastSeed = seed;
     const e = this.env();
+    // 232차 — 멀티에서 같은 자리에 같은 생물이 뜨도록 **개인 상태(면허)를 추첨에서 뺀다**.
+    //   전엔 면허가 있으면 풀이 달라져 같은 칸에 A는 해삼, B는 홍합이 보였다. 이제 모두 같은 표를 굴리고,
+    //   면허가 없는 사람에게는 그 생물만 **안 보이게** 거른다. (스킬로 늘어나는 스팟 수는 같은 순서의 앞부분이
+    //   겹치므로 그대로 둔다 — 많이 보는 사람만 뒤쪽 몇 개를 더 본다.)
     this.spots = rollForageSpots(this.candidates, {
       seed, month: e.month, isNight: e.isNight, tideLevel01: e.tideLevel01,
-      hasAdvancedLicense: e.hasAdvancedLicense, farms: this.farms,
+      hasAdvancedLicense: true, farms: this.farms,
       // 205차 — 간조 시간창(간조 2시간 전 ~ 1시간 뒤)이면 스팟이 더 드러난다
       maxSpots: Math.round(TUNING.forage.maxSpots * e.tideMult),
       eastSea: isEastSeaRegion(this.host.regionId),   // 224차 — 동해엔 없는 · 드문 종
-      day: new Date().getDate(), regionId: this.host.regionId,   // 227차 — 금어기 날짜 단위 · 지역 규정
-    }).filter((s) => !GONE.has(`${seed}|${s.id}`));   // 224차 — 놓친 · 잡은 것은 이번 슬롯에 다시 나오지 않는다
+      day: Number(kstParts().d), regionId: this.host.regionId,   // 227차 — 금어기 날짜 단위 · 지역 규정
+    }).filter((s) => !this.isGone(seed, s.id)   // 224차 — 놓친 · 잡은 것은 이번 슬롯에 다시 나오지 않는다 · 232차 남이 가져간 것도
+      && (e.hasAdvancedLicense || getCreatureById(s.creatureId)?.requiredLicense !== 'shore_hunting_advanced'));
     this.runners.clear();
     for (const s of this.spots) {
       const c = getCreatureById(s.creatureId);
@@ -524,6 +531,7 @@ export class ForageSystem {
   update(deltaMs: number): void {
     this.refreshAcc += deltaMs;
     if (this.refreshAcc > 30_000) { this.refreshAcc = 0; this.refreshSpots(); }
+    this.sweepTaken(deltaMs);
 
     const p = this.host.player();
     const tr = this.host.tr;
@@ -652,7 +660,28 @@ export class ForageSystem {
 
   private markGone(s: ForageSpot): void {
     GONE.add(`${this.lastSeed}|${s.id}`);
+    void MultiplayerClient.takeWorld(this.worldKey(this.lastSeed, s.id));   // 232차 — 다른 사람 화면에서도 사라진다
     this.removeSpot(s.id);
+  }
+
+  /** 232차 — 세션 공유 키(`f:시드|스팟`) */
+  private worldKey(seed: number, id: string): string { return `f:${seed}|${id}`; }
+
+  /** 224차 · 232차 — 이번 슬롯에 내가 놓쳤거나 잡았거나, **같은 세션의 누군가 가져간** 스팟 */
+  private isGone(seed: number, id: string): boolean {
+    return GONE.has(`${seed}|${id}`) || MultiplayerClient.isWorldTaken(this.worldKey(seed, id));
+  }
+
+  /** 232차 — 남이 가져간 스팟을 화면에서 걷는다(0.5초마다). 내가 놀이 중인 스팟은 결과에 맡긴다 */
+  private takenAcc = 0;
+  private sweepTaken(deltaMs: number): void {
+    this.takenAcc += deltaMs;
+    if (this.takenAcc < 500 || !MultiplayerClient.isConnected) return;
+    this.takenAcc = 0;
+    for (const s of [...this.spots]) {
+      if (this.playing?.spot.id === s.id) continue;
+      if (MultiplayerClient.isWorldTaken(this.worldKey(this.lastSeed, s.id))) this.removeSpot(s.id);
+    }
   }
 
 
@@ -725,7 +754,18 @@ export class ForageSystem {
     this.playing = { spot: s, creature: c, tool };
     // 손재주 — 채집 손놀림 스킬(gath_speed) 배율을 0~1로 펼친다
     const dex = Math.max(0, Math.min(1, (GameState.skillMult('forage_speed') - 1) * 2));
-    this.host.openForageGame(c, tool, { dex, underwater: s.kind === 'shallows' }, (st) => this.finishGame(st));
+    const open = (): void => { this.host.openForageGame?.(c, tool, { dex, underwater: s.kind === 'shallows' }, (st) => this.finishGame(st)); };
+    if (!MultiplayerClient.isConnected) { open(); return true; }
+    // 232차 — 멀티: 손대는 순간 「내 것」이라고 먼저 알린다. 거의 동시에 둘이 잡으면 서버에 먼저 닿은 사람이 임자
+    const seed = this.lastSeed;
+    void MultiplayerClient.takeWorld(this.worldKey(seed, s.id)).then((mine) => {
+      if (this.playing?.spot !== s) return;
+      if (mine) { open(); return; }
+      this.playing = null;
+      GONE.add(`${seed}|${s.id}`);
+      this.removeSpot(s.id);
+      this.host.floatingHint(`다른 사람이 먼저 ${c.nameKo}을(를) 가져갔다`);
+    });
     return true;
   }
 
