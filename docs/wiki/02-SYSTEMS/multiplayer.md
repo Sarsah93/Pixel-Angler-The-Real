@@ -77,6 +77,9 @@
 | POST | `/mp/trade/lock` | 잠금(1단계) / 확정(2단계 — 양쪽이면 committed) |
 | POST | `/mp/trade/cancel` | 취소 (committed는 거절) |
 | POST | `/mp/trade/applied` | 내 인벤에 적용했다 |
+| POST | `/mp/world/take` | 공유 소비 줄 차지 — 채집 자리 · 과증식 개체 · 날씨 카드 (먼저 가져간 사람이 임자) |
+| POST | `/mp/placed/sync` | 내 설치물 목록 대조 — 서버에 없는 것을 다시 올린다 (충돌 검사 없음) |
+| POST | `/mp/retire` | 자리 삭제 — 파산 · 캐릭터 폐기 (토큰 또는 `userId`) |
 
 `/mp/presence`는 **편승 채널**이다 — 위치와 함께 `activity`·`look`·`say`(채팅)를 올리고,
 같은 응답으로 `peers`·`traps`·`chat`을 받는다. 왕복을 늘리지 않는다.

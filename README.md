@@ -245,11 +245,11 @@ npx pnpm --filter @tra/client-pc run typecheck
 ### 데이터 파이프라인 재생성
 
 ```bash
-py tools/fetch_osm.py sokcho            # OSM 원본 수집
-py tools/build_osm_tilemap.py sokcho    # OSM(+래스터 병합) → 심리스 타일맵
-py tools/fetch_region_raster.py sokcho  # Sentinel-2 래스터 (CDSE 자격증명 필요)
-py tools/build_region_maps.py sokcho    # legacy 격자 타일맵 (부산 등)
-py tools/build_depth_profiles.py        # 연안정보도 수심 SHP → 거리별 수심 프로필
+py tools/fetch_region_osm.py sokcho_v2     # OSM 원본 수집 (지역 키는 tools/regions_config.py)
+py tools/build_osm_tilemap.py sokcho_v2    # OSM(+래스터 병합) → 심리스 타일맵
+py tools/fetch_region_raster.py sokcho_v2  # Sentinel-2 래스터 (CDSE 자격증명 필요)
+py tools/build_region_maps.py sokcho       # legacy 격자 타일맵 (부산 등)
+py tools/build_depth_profiles.py           # 연안정보도 수심 SHP → 거리별 수심 프로필
 py tools/gen_pixel_icons.py             # 16x16 픽셀 아이콘 → PixelIconArt.ts
 ```
 

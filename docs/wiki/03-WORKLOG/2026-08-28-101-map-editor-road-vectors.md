@@ -34,13 +34,13 @@
 |---|---|---|
 | 수정 | `tools/build_osm_tilemap.py` | 차도 way → `roads.json`(cls·폭 타일·타일좌표 폴리라인) 동반 출력 |
 | 수정 | `tools/build_region_maps.py` | `patch.json` 타일 오버라이드를 seamless.json에 굽기 · `roads.json`/`patch.json`을 `public/data/<region>/`에 **항상** 복사(빈 패치라도 — SPA 폴백 pageerror 방지) |
-| 수정 | [vite.config.ts](../../packages/client-pc/vite.config.ts) | **dev 미들웨어** `POST /__dev/region-patch?region=` → `pixelazed/<region>/patch.json`(정본) + `public/data/<region>/patch.json`(런타임) 저장 |
-| 수정 | [RegionMap.ts](../../packages/core/src/types/RegionMap.ts) | `RegionRoad` · `RegionProp` · `RegionPatch` 타입 (index export) |
-| 수정 | [SeamlessChunks.ts](../../packages/client-pc/src/scenes/SeamlessChunks.ts) | **벡터 마킹**(`drawRoadMarkings` — 노란 중앙 실선 ≥2타일 · 흰 점선 차선 방향당 2차로↑ ±3.5m · 가장자리 실선 ≥3타일 · 교차부 인셋) · 청크별 도로 인덱스 · **프롭 10종 절차 텍스처**(`PROP_DEFS`: 활엽수 2·침엽수·덤불·바위·벤치·가로등·화단·기념탑·어선) · `setProps`/`setRoofOverrides`/`buildingKeyAt` · **`invalidateTiles`**(수심 BFS·건물 라벨 재계산 + 영향 청크 충돌/프롭 재구성 + 재베이킹 큐 선두) · `rebakeResident`. 구 `roadAxis` 폐기 |
-| 신설 | [dev/MapEditorPanel.ts](../../packages/client-pc/src/dev/MapEditorPanel.ts) | DOM 팔레트(F7) — 모드(지형/프롭 배치/프롭 제거/지붕 색) · 타일 8종 견본 · 브러시 1/3/5 · 프롭 10종 · 저장/되돌리기 |
-| 수정 | [RegionFieldScene.ts](../../packages/client-pc/src/scenes/RegionFieldScene.ts) | roads/patch 로드 + 패치 타일 런타임 적용 · **F7 편집기**(드래그 페인트 → pointerup 스트로크 확정 → `invalidateTiles` · 프롭/지붕 즉시 `rebakeResident` · Ctrl+Z 스트로크 되돌리기 · 패치 = 원본 대비 diff로 재구성) · **Ctrl+좌클릭 순간이동**(맵/미니맵 — `devTeleport`: 청크 즉시 상주) · 저장 POST |
-| 수정 | [RegionHud.ts](../../packages/client-pc/src/ui/RegionHud.ts) | 미니맵 이미지 인터랙티브 → `minimap-click(nx, ny, ctrl)` 이벤트 |
-| 수정 | [DevConsolePanel.ts](../../packages/client-pc/src/dev/DevConsolePanel.ts) | 아이템 지급 행에 **`+최대`(99)** 버튼 — 크리에이티브식 즉시 만재 |
+| 수정 | [vite.config.ts](../../../packages/client-pc/vite.config.ts) | **dev 미들웨어** `POST /__dev/region-patch?region=` → `pixelazed/<region>/patch.json`(정본) + `public/data/<region>/patch.json`(런타임) 저장 |
+| 수정 | [RegionMap.ts](../../../packages/core/src/types/RegionMap.ts) | `RegionRoad` · `RegionProp` · `RegionPatch` 타입 (index export) |
+| 수정 | [SeamlessChunks.ts](../../../packages/client-pc/src/scenes/SeamlessChunks.ts) | **벡터 마킹**(`drawRoadMarkings` — 노란 중앙 실선 ≥2타일 · 흰 점선 차선 방향당 2차로↑ ±3.5m · 가장자리 실선 ≥3타일 · 교차부 인셋) · 청크별 도로 인덱스 · **프롭 10종 절차 텍스처**(`PROP_DEFS`: 활엽수 2·침엽수·덤불·바위·벤치·가로등·화단·기념탑·어선) · `setProps`/`setRoofOverrides`/`buildingKeyAt` · **`invalidateTiles`**(수심 BFS·건물 라벨 재계산 + 영향 청크 충돌/프롭 재구성 + 재베이킹 큐 선두) · `rebakeResident`. 구 `roadAxis` 폐기 |
+| 신설 | [dev/MapEditorPanel.ts](../../../packages/client-pc/src/dev/MapEditorPanel.ts) | DOM 팔레트(F7) — 모드(지형/프롭 배치/프롭 제거/지붕 색) · 타일 8종 견본 · 브러시 1/3/5 · 프롭 10종 · 저장/되돌리기 |
+| 수정 | [RegionFieldScene.ts](../../../packages/client-pc/src/scenes/RegionFieldScene.ts) | roads/patch 로드 + 패치 타일 런타임 적용 · **F7 편집기**(드래그 페인트 → pointerup 스트로크 확정 → `invalidateTiles` · 프롭/지붕 즉시 `rebakeResident` · Ctrl+Z 스트로크 되돌리기 · 패치 = 원본 대비 diff로 재구성) · **Ctrl+좌클릭 순간이동**(맵/미니맵 — `devTeleport`: 청크 즉시 상주) · 저장 POST |
+| 수정 | [RegionHud.ts](../../../packages/client-pc/src/ui/RegionHud.ts) | 미니맵 이미지 인터랙티브 → `minimap-click(nx, ny, ctrl)` 이벤트 |
+| 수정 | [DevConsolePanel.ts](../../../packages/client-pc/src/dev/DevConsolePanel.ts) | 아이템 지급 행에 **`+최대`(99)** 버튼 — 크리에이티브식 즉시 만재 |
 | 산출 | `pixelazed/sokcho_v2/roads.json` · `public/data/sokcho_v2/{roads,patch}.json` | 차도 벡터 821개 · 빈 패치 |
 
 ## 4. 구조상 위치
@@ -104,7 +104,7 @@ dev 도구(편집기 — 프로덕션 데드코드, `import.meta.env.DEV` 가드
   TopDown = 알파 연결요소 검출 → 인덱스 컨택트시트 → 선택 22종 · Kenney = **마젠타 키잉 + 17px 마진
   제거 정규화** → 연결요소 → 차량 12·노점 2(bbox 직접)·나무 6·가로등 2·휴지통.
   ⚠ Kenney `_transparent` 판도 마젠타 배경 + 마진선이다(그대로 자르면 스프라이트 한가운데 빈 줄).
-  산출 → `public/tileset/{gem,td,kn}/` + [TilesetManifest.ts](../../packages/client-pc/src/data/TilesetManifest.ts)
+  산출 → `public/tileset/{gem,td,kn}/` + [TilesetManifest.ts](../../../packages/client-pc/src/data/TilesetManifest.ts)
   (심리스 preload 일괄 로드).
 - **프롭 팔레트 전환**(`PROP_DEFS` — 카테고리 자연/시설물/건물/차량/NPC/해안, 편집기 그룹 렌더):
   절차 도트 → 타일셋(나무·야자·측백·벤치·가로등·신호등·표지판·주택·고층·팝업·횟집·노점·차량·NPC·
