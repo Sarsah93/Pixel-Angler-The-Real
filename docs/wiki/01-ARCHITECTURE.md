@@ -21,7 +21,7 @@ packages/
     ├ ui/      33종  패널·HUD·렌더러 (DraggablePanel 계열)
     ├ store/    7종  세션 상태 싱글톤 (GameState 외)
     └ data/    11종  구운 스프라이트 스냅샷 · 카탈로그 · 텍스처 매핑
-  server      @tra/server     Socket.IO 멀티 (Phase 8 미착수)
+  server      @tra/server     Express REST 멀티 (/mp — 세션 · 위치 · 거래 · 설치물)
   map-builder @tra/map-builder GIS 타일 파이프라인
 tools/        생성기(py/cjs) — 타일맵·수심·픽셀화·스프라이트
 docs/         reference(원본 데이터) · mockups(가이드 SVG) · wiki(이 문서)

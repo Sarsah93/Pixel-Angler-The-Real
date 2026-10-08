@@ -11,7 +11,7 @@
 
 - **장르**: 리얼리즘 낚시 시뮬레이터 + 생활 경영 RPG
 - **플랫폼**: PC (Tauri v2 기반 데스크톱 앱), 추후 Steam 출시 목표
-- **기술 스택**: TypeScript, Phaser 3, Tauri v2, Socket.IO (멀티), Turborepo
+- **기술 스택**: TypeScript, Phaser 3, Tauri v2, Express REST (멀티), Turborepo
 
 ---
 
@@ -22,7 +22,7 @@ the-real-angler/
 ├── packages/
 │   ├── core/          ← 순수 TS 게임 엔진 (렌더링 코드 절대 금지)
 │   ├── client-pc/     ← Phaser 3 + Vite 클라이언트
-│   ├── server/        ← Socket.IO 서버 (멀티플레이)
+│   ├── server/        ← Express REST 서버 (멀티플레이)
 │   └── map-builder/   ← ⚠ deprecated (2026-09-02 워크스페이스 제외 — 빌드 3/3. 정본은 루트 tools/)
 ├── .agents/           ← 에이전트 지침서 (이 파일)
 │   ├── AGENTS.md
@@ -44,8 +44,8 @@ the-real-angler/
 - `packages/client-pc/src/store/GameState.ts` — 전역 싱글톤, 씬 간 데이터 공유
 
 ### `@tra/server`
-- Socket.IO 기반 멀티플레이 서버
-- 낚시터 공유, 토너먼트, 실시간 플레이어 위치 동기화
+- Express REST 기반 멀티플레이 서버(`/mp` — 1초 폴링. 소켓은 쓰지 않는다)
+- 세션(한 세계) · 위치 알림 · 설치물 공유 · 유저 간 거래 공증 · 지역 채팅
 
 ---
 

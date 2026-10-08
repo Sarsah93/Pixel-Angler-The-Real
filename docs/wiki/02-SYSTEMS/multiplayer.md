@@ -22,7 +22,8 @@
 
 - **진행도 동기화**(퀘스트·우호도·인벤·재화·어획) — 서로 진행도와 분기가 다르므로 각자의 것이다
 - 플리마켓·유저 경매 **원장**(계약 `MarketListing`만 있다 — 서버 서명 뒤)
-- 서버 권위 판정(치트 방지) — 공유할 원장이 생기는 시점의 과제
+- 서버 권위 판정(치트 방지) — 공유할 원장이 생기는 시점의 과제.
+  다만 **모양은 본다**: 거래 제안의 수량 · 재화 · 표시 이름은 서버와 받는 쪽이 같은 함수(`sanitizeTradeItems`)로 거른다(§6)
 
 ## 2. 구성
 
@@ -30,7 +31,8 @@
 |---|---|---|
 | 계약 | `packages/core/src/types/Multiplayer.ts` | 코드 규격·이름 정규화/검사·DTO·진행 문구. **클라이언트와 서버가 같이 읽는다** |
 | 서버 | `packages/server/src/multiplayer/SessionRegistry.ts` | 세션(시드·통발·채팅·자리) · 이름 선점 · **디스크 영속** · 자리 비움 정리 |
-| 서버 | `packages/server/src/multiplayer/routes.ts` | `/mp/*` REST |
+| 서버 | `packages/server/src/multiplayer/routes.ts` | `/mp/*` REST · 인증 없는 경로(세션 열기 · 조회 · 참가)의 주소별 빈도 제한 |
+| 서버 | `packages/server/src/http/guards.ts` | CORS 허용 목록(`CORS_ORIGINS`) · 빈도 제한 미들웨어 |
 | 클라 | `packages/client-pc/src/net/MultiplayerClient.ts` | 접속 상태 싱글턴 · 1초 폴링 · `peersInRegion` |
 | 클라 | `packages/client-pc/src/scenes/MultiplayerLobbyScene.ts` | 로비 화면 |
 | 클라 | `scenes/MainMenuScene.ts` | 방식 분기 · 로비 복귀 시 슬롯 직행 |
@@ -142,6 +144,14 @@
 
 ## 6. 함정·불변조건
 
+- **거래 제안은 서버와 받는 쪽이 둘 다 거른다** — `sanitizeTradeItems` · `sanitizeTradeCoins`(core `types/Multiplayer.ts`).
+  수량은 1 이상의 정수, 재화는 0 이상의 정수, `payload.id` = `srcId`. 표시 이름 · 아이콘은 **payload의 값으로 맞춘다**.
+  거래 줄에 새 표시 필드를 더하면 보낸 쪽이 적어 준 값을 그대로 그리지 말고 payload에서 읽는다(신선도 = `tradeNoteOf`).
+  서버는 인벤토리를 모르므로 「그 물건을 정말 갖고 있는가」는 여전히 판단하지 못한다.
+- **서버 상한은 core 상수다** — 세션 100 · 동시 접속 16 · 자리 64(`MP_MAX_*`) · 소비 줄 1인 1,500 · 소비 키 접두사 `f:` `n:` `w:`.
+  공유 소비 키의 종류를 새로 만들면 `MP_TAKEN_KEY_PREFIXES`에 더한다 — 빠지면 서버가 「요청이 올바르지 않습니다」로 거절한다.
+- **서버의 첫 import는 `dotenv/config`다** — 다른 모듈이 불러올 때 `process.env`를 읽으므로 그보다 먼저 실어야 `.env`가 적용된다.
+- **CORS는 허용 목록이다** — 기본은 같은 PC · 사설망 · 테스트 배포본 · 데스크톱 앱. 다른 출처에서 붙이려면 `CORS_ORIGINS`(쉼표 목록 또는 `*`).
 - **설치물 거절은 `conflict`만 되돌린다**(234) — 서버가 「안 된다」고 답한 것(`conflict: true`)만 물건을 돌려준다.
   응답이 없거나 세션 오류면 내 설치물은 그대로 두고 `placedNeedSync`만 세운다(다음 presence 때 대조가 맞춘다). 둘을 섞으면 끊긴 사이 놓은 통발이 사라진다.
 - **세이브가 설치물의 정본이다**(234) — 접속 대조는 서버의 **내 몫**을 세이브 목록과 똑같이 만든다(남의 id는 건드리지 않음).
