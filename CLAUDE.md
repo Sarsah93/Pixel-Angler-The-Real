@@ -89,6 +89,9 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
 
 0. **`git commit`/`git push`는 사용자가 직접** (2026-08-14 지시) — 에이전트는 파일 변경까지만,
    완료 시 변경 목록과 함께 "커밋 대기"로 보고.
+   - **예외(2026-10-08 지시)**: 하모니 일일 점검 예약 작업은 `harmony-state`와 `harmony/`로 시작하는 브랜치에만 푸시하고
+     풀 리퀘스트를 연다. `main` · `gh-pages` 푸시와 병합은 여전히 사용자만 한다. 일반 세션에는 이 예외가 없다.
+     (기록과 절차는 `harmony-state` 브랜치의 `harmony/README.md`)
 1. `@tra/core`에 렌더링/브라우저 코드 금지.
 2. 하위 씬에서 `scene.start('FieldScene')` 금지 — 반드시 `scene.stop()` + `scene.resume('FieldScene')`.
 3. `GameState`(대문자 싱글톤)만 사용, `gameState` 소문자 인스턴스 없음.
