@@ -1,6 +1,6 @@
 {
  "schema": 1,
- "next_id": 84,
+ "next_id": 88,
  "findings": [
   {
    "id": "F-0001",
@@ -1437,6 +1437,64 @@
     "docs/wiki/02-SYSTEMS/multiplayer.md:198"
    ],
    "why": "192차 이후 함정은 시스템 페이지 §6에만 쌓인다(slotShortfall · 거래 적용 id · 데이터 없는 launch 등). 멀티 · 퀘스트를 받을 스킬이 없다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0084",
+   "domain": "05-pipeline",
+   "severity": "보통",
+   "title": "core 채집 테스트 하나가 무작위에 흔들린다 (ForageMinigame 「갯강구는 쫄장게보다…」)",
+   "evidence": [
+    "packages/core/src/simulation/ForageMinigame.test.ts"
+   ],
+   "why": "봇의 손떨림이 Math.random()이라 가끔 0.735 > 0.73으로 실패한다. 검증 명령이 이유 없이 붉어질 수 있다. PR #5에서 시드 난수로 고정했다(병합 전까지 열림).",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0085",
+   "domain": "02-code",
+   "severity": "경미",
+   "title": "097차 문어 손질 검증 하네스가 지금 코드에서 38개 중 12개 실패한다",
+   "evidence": [
+    "scratchpad/verify_octopus97.mjs"
+   ],
+   "why": "097차 뒤 문어 흐름이 바뀌어 하네스가 낡은 것으로 추정한다. 손질 코드의 결함인지는 확인하지 못했다. PR #5가 scratchpad를 지우면 하네스도 사라진다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0086",
+   "domain": "06-tickets-economy",
+   "severity": "경미",
+   "title": "통발 단속에는 정기 지출 연체 적발 배수가 적용되지 않는다",
+   "evidence": [
+    "packages/client-pc/src/scenes/field/TrapFieldSystem.ts:422",
+    "packages/client-pc/src/scenes/field/ForageSystem.ts:937"
+   ],
+   "why": "채집은 upkeepPenalty().enforceMult를 넘기고 통발은 넘기지 않는다. 의도인지 누락인지 문서에 없다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0087",
+   "domain": "06-tickets-economy",
+   "severity": "경미",
+   "title": "바다 평판은 쌓이기만 하고 읽는 곳이 없다 · 평판 변동 튜닝 8종이 연결돼 있지 않다",
+   "evidence": [
+    "packages/client-pc/src/store/StoryStore.ts:234",
+    "packages/core/src/config/tuning.ts:1596"
+   ],
+   "why": "TUNING.rep의 sea* 5종 · harbor* 3종이 정의만 있고 호출이 0이다(평판은 퀘스트 보상으로만 움직인다). 단속의 평판 감소를 정할 때 같이 본다(사용자 결정).",
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",

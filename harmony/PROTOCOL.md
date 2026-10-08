@@ -117,7 +117,8 @@ python3 harmony/tools/collect_metrics.py --repo <점검 폴더> --config harmony
 1. 열린 하모니 PR이 `max_open_harmony_prs`건 이상이면 **새 PR을 만들지 않는다**(보고서에 검토 대기 목록만).
 2. 기본 브랜치 최신에서 `harmony/<날짜>` 브랜치를 만든다.
 3. 도메인별로 커밋을 나눈다. 메시지는 `하모니(<도메인 이름>): <요약>`.
-4. 검증 → 푸시 → PR 생성(하루 `prs_per_day`건).
+4. 검증 → 푸시 → PR 생성. **하루 횟수 한도는 없다**(2026-10-08 사용자 지시 — 예약 실행은 하루 한 번이라 따로 세지 않는다).
+   지키는 것은 1번의 열린 PR 상한과 PR 하나의 크기 한도(`max_changed_lines_per_pr` · `max_changed_files_per_pr`)다.
 5. PR 본문: 한 줄 요약 · 도메인별 전/후 비교 · 검증 결과 · 위험과 되돌리는 법 · 관련 발견 번호.
 6. `ledger/proposals.json`에 `P-NNNN`으로 기록한다(`kind`: `적용` 또는 `제안`, PR 번호, `status`: `열림` 또는 `제안만`).
 

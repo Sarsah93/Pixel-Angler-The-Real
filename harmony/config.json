@@ -19,7 +19,6 @@
     ]
   },
   "limits": {
-    "prs_per_day": 1,
     "max_open_harmony_prs": 3,
     "max_changed_lines_per_pr": 300,
     "max_changed_files_per_pr": 15,
