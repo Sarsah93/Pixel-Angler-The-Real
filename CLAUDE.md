@@ -62,7 +62,7 @@
 
 - `packages/core` (`@tra/core`) — 순수 TS 게임 로직. **Phaser/DOM/브라우저 API 절대 금지.** 새 파일은 반드시 `src/index.ts`에서 export.
 - `packages/client-pc` (`@tra/client-pc`) — Phaser 씬 + UI. 게임 로직은 core에서 import (직접 구현 금지).
-- `packages/server` (`@tra/server`) — Express + Socket.IO 멀티플레이 서버 (Phase 8 예정).
+- `packages/server` (`@tra/server`) — Express 멀티플레이 서버(`/mp` REST — 세션 · 위치 · 거래 · 설치물 공유) + 날씨 프록시.
 - `packages/map-builder` — **deprecated**(2026-09-02, 워크스페이스 제외 — 빌드 미참여). 정본 파이프라인은 루트 `tools/`. 8차 GIS 잔재 보존용.
 - `apps/tauri-wrapper` — Tauri v2 데스크톱 패키징 (Phase 9 예정).
 - `tools/` — 루트 유틸 스크립트 (`build_region_maps.py`, `pixelize.py` 등).

@@ -5984,7 +5984,11 @@ export class RegionFieldScene extends Phaser.Scene {
         this.closeTradePanel();
         if (!me.offer.applied) {
           // 232차 — 세이브에 적용 기록이 있으면(저장 직후 꺼져 서버에 못 알린 경우) 서버에만 알린다
-          if (GameState.hasAppliedTrade(t.tradeId)) { if (!MultiplayerClient.hasAppliedTrade(t.tradeId)) MultiplayerClient.markTradeApplied(t.tradeId); }
+          //   이미 알린 적이 있는데도 서버가 미적용이라고 하면 그 통지가 닿지 못한 것 — 간격을 두고 다시 알린다
+          if (GameState.hasAppliedTrade(t.tradeId)) {
+            if (!MultiplayerClient.hasAppliedTrade(t.tradeId)) MultiplayerClient.markTradeApplied(t.tradeId);
+            else MultiplayerClient.resendTradeApplied(t.tradeId);
+          }
           else if (!MultiplayerClient.hasAppliedTrade(t.tradeId)) this.applyTrade(t, me, other);
         }
         return;
