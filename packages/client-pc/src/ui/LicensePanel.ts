@@ -74,6 +74,7 @@ export class LicensePanel extends DraggablePanel {
 
   constructor(scene: Phaser.Scene, x: number, y: number, onClose: () => void) {
     super(scene, { x, y, width: PANEL_W, height: PANEL_H, title: '면허 · 허가', onClose, depth: 812 });
+    StoryStore.emitActionOrigin('license-open');   // 235차 — 시험 접수 · 안전 점검표 · 관광업 서류(행동 목표 첫 단계)
     const g = scene.add.graphics();
     const top = this.contentTop;
     g.fillStyle(0x0a1b2d, 0.6); g.fillRoundedRect(8, top - 4, LIST_W + 4, PANEL_H - top - 8, 6);

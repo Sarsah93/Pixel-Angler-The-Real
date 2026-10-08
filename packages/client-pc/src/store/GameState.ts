@@ -81,6 +81,7 @@ import { MarketStore, type MarketSaveState } from './MarketStore.js';
 import { ShopStore, type ShopSaveState } from './ShopStore.js';
 import { setAuctionBidMult } from '../data/Consignment.js';
 import { CraftingStore, type CraftingSaveState } from './CraftingStore.js';
+import { FarmStore, type FarmSaveState } from './FarmStore.js';
 import { TitleStore, type TitleSaveState } from './TitleStore.js';
 import { MultiplayerClient } from '../net/MultiplayerClient.js';
 import { WorldDepletionStore } from './WorldDepletionStore.js';
@@ -228,6 +229,8 @@ interface SaveData {
   shops?: ShopSaveState;
   /** 222차 — 제작 큐 · 보관함 · 분야 숙련 */
   crafting?: CraftingSaveState;
+  /** 235차 — 텃밭(마당 구획 · 집 안 선반). 구세이브 = 빈 텃밭 */
+  farm?: FarmSaveState;
   /** 203차 — 타이틀(칭호) 업적: 행동 누적 수 · 얻은 것 · 단 것(구세이브 = 없음) */
   titles?: TitleSaveState;
   /** 205차 — 물때 공략 발견 기록(어종 묶음 id · 구세이브 = 빈 기록) */
@@ -444,6 +447,7 @@ export class GameStateManager {
     MarketStore.deserialize(saved.market);
     ShopStore.deserialize(saved.shops);
     CraftingStore.deserialize(saved.crafting);
+    FarmStore.deserialize(saved.farm);   // 235차 — 꺼 둔 동안 자란 만큼 따라잡는다
     TitleStore.deserialize(saved.titles);   // 203차 — 타이틀 업적(구세이브 = 0부터)
     LedgerStore.deserialize(saved.ledger);   // 211차 — 하루 기록(구세이브 = 빈 장부)
     // 213차 — 잠 · 맡긴 위판(구세이브 = 바로 잘 수 있게 · 빈 큐)
@@ -1652,6 +1656,7 @@ export class GameStateManager {
       market: MarketStore.serialize(),
       shops: ShopStore.serialize(),
       crafting: CraftingStore.serialize(),
+      farm: FarmStore.serialize(),
       titles: TitleStore.serialize(),
       tideLore: TideLoreStore.serialize(),
       parkedRods: this._parkedRods,
@@ -1924,6 +1929,7 @@ export class GameStateManager {
     MarketStore.resetAll();
     ShopStore.resetAll();
     CraftingStore.resetAll();
+    FarmStore.resetAll();
     TitleStore.resetAll();
     TideLoreStore.resetAll();
     DiscoveryStore.resetAll();

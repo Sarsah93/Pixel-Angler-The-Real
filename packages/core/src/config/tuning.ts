@@ -657,6 +657,9 @@ export interface TuningConfig {
     sugarSigmaSpoons: number;
     /** 별 획득 임계 (요소 점수) */
     starThreshold: number;
+    /** 235차 — 가게 채소 요리의 총점 상한(완성도 별이 막힌 만큼 값 · 효과도 5별에 못 미치게) · 반 개 별일 때 */
+    storeProduceTotalCap: number;
+    storeProduceTotalCapHalf: number;
     /** 완성도 게이트 — 다른 요소 중 하나라도 이 아래면 완성도 캡 */
     finishGateMin: number;
     finishCap: number;
@@ -1423,7 +1426,7 @@ export const TUNING: TuningConfig = {
     timeScale: 6, lossWPerK: 9, boilC: 95, panHotC: 150, rateCap: 1.6, rateExp: 2.2,
     burnSec: 120, flipBurnC: 140, dryBurnSec: 180, burntThreshold: 0.6,
     finalStageAfterSec: 90, overcookWarnSec: 240, reduceRatio: 0.55,
-    saltSigmaPct: 0.28, sugarSigmaSpoons: 1.0, starThreshold: 0.72,
+    saltSigmaPct: 0.28, sugarSigmaSpoons: 1.0, starThreshold: 0.72, storeProduceTotalCap: 85, storeProduceTotalCapHalf: 92,
     finishGateMin: 0.6, finishCap: 0.55, skillPerRank: 0.05,
     windCalmMps: 3, windSpanMps: 9, placeRangeTiles: 3, solidVolumeFrac: 0.6, idleWarnMin: 3, xpTotalRef: 70,
     ingredientQuality: { freshnessWeight: 0.2, fatnessWeight: 0.3, brothWeight: 0.3 },

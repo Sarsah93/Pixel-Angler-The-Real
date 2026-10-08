@@ -10,6 +10,11 @@ import Phaser from 'phaser';
 import { ensurePixelIcon, addPixelIcon } from './PixelIcon.js';
 import { getCreatureById, isCrabCreature } from '@tra/core';
 import { getBlueprint, CRAFT_STATION_LABEL, CRAFT_GROUP_LABEL, getQuestItem } from '@tra/core';
+import {
+  cropStartOfItem, cropOfProduce, parseProduceId, monthRangeKo, kstMonthOf, GRADE_KO, supplyOfFacility, getSkillById,
+  type CropDef, type CropStart, type CropRarity,
+} from '@tra/core';
+import { PRODUCE_SUB, SEED_SUB } from '../data/CropItems.js';
 import { reelCmPerTurn, rodSpecFor, reelSpecFor, rodLoadState, ROD_USE_LABEL, getRodCatalogEntry, getReelCatalogEntry, getLureSpec, getNuisance, sashimiStarsAt, sashimiNutrition, foodNutritionOf, nutritionLineKo, restoreFromNutrition } from '@tra/core';
 import { FISH_DATABASE, fishImageSizeScale, fishRarity, speciesStandardWeightG,
   GEAR_FAULTS, gearRepairFee, rodMaxCasts,
@@ -56,6 +61,20 @@ const qualityStars = (value: number): string => {
 
 const scoreStars = (value: number): number => Math.max(0, Math.min(5, Math.round(value / 20)));
 
+/** 235차 — 요리 별점(반 개 포함): 별 다섯 칸 + 반 개면 숫자를 붙인다(「★★★★☆ 4.5」) */
+const ratingStars = (rating: number): string => {
+  const whole = Math.max(0, Math.min(5, Math.floor(rating)));
+  const half = rating - whole >= 0.5;
+  return `${'★'.repeat(whole)}${'☆'.repeat(5 - whole)}${half ? ` ${whole}.5` : ''}`;
+};
+
+/** 235차 — 채소 출처 한 줄(직접 기른 채소 / 가게 채소) — 없으면 null */
+function produceRow(dish: { produce?: 'store' | 'homegrown' | 'none' }): ItemDetailRow | null {
+  if (dish.produce === 'homegrown') return { label: '채소', value: '직접 기른 채소', color: '#8affb0' };
+  if (dish.produce === 'store') return { label: '채소', value: '가게에서 산 채소', color: '#c8d0d8' };
+  return null;
+}
+
 const LINE_MATERIAL_LABEL: Record<NonNullable<InvItem['lineMaterial']>, string> = {
   nylon: '나일론 모노', fluorocarbon: '카본(플루오로카본)', pe_braid: '합사(PE)', monofilament: '모노라인',
 };
@@ -69,6 +88,79 @@ function spoolLeftLabel(total: number, used?: number): string {
   const u = used ?? 0;
   if (u <= 0) return `${total}m`;
   return `${Math.max(0, Math.round((total - u) * 10) / 10)}m / ${total}m`;
+}
+
+/** 235차 — 작물 구하기 어려운 정도(가게 재고 · 출처) */
+const CROP_RARITY: Record<CropRarity, { ko: string; color: string }> = {
+  common: { ko: '흔하다', color: '#c8d0d8' },
+  uncommon: { ko: '드물다', color: '#8fd4ff' },
+  rare: { ko: '귀하다', color: '#d7a6ff' },
+  very_rare: { ko: '아주 귀하다', color: '#ffd257' },
+};
+
+/** 235차 — 기르려면 갖춰야 하는 것(스킬 · 설비 · 시루) — 없으면 null */
+function cropNeedsKo(crop: CropDef): string | null {
+  const parts: string[] = [];
+  const r = crop.requires;
+  if (r?.skill) parts.push(getSkillById(r.skill)?.nameKo ?? '배워야 기른다');
+  if (r?.facility) { const s = supplyOfFacility(r.facility); if (s) parts.push(s.nameKo); }
+  if (crop.category === 'sprout') parts.push(supplyOfFacility('sproutJar')?.nameKo ?? '콩나물 시루');
+  return parts.length ? parts.join(' · ') : null;
+}
+
+/** 235차 — 칸당 거두는 양(본 수확 한 번 · 상 등급) — 반복 수확이면 횟수를 붙인다 */
+function cropYieldKo(crop: CropDef, st: CropStart): string {
+  const h = crop.harvest;
+  const mult = st.qtyMult ?? 1;
+  const [a, b] = [Math.max(1, Math.round(h.qtyPerCell[0] * mult)), Math.max(1, Math.round(h.qtyPerCell[1] * mult))];
+  const qty = a === b ? `${a}개` : `${a}~${b}개`;
+  return h.repeat ? `${qty} · ${h.repeat.everyDays}일마다 ${h.repeat.times}번 더` : qty;
+}
+
+/** 235차 — 씨앗 · 모종 · 종구 상세: 심는 철 · 거두기까지 · 한 칸에 · 싹 트는 비율 · 거두는 것 · 자격 */
+function cropStartDetail(item: Pick<InvItem, 'name' | 'qty' | 'basePrice'>, crop: CropDef, st: CropStart): ItemDetailData {
+  const rows: ItemDetailRow[] = [];
+  const how = st.kind === 'seed' ? '씨앗을 뿌린다' : st.kind === 'seedling' ? '모종을 옮겨 심는다 — 기르는 기간이 짧다' : '덩이 · 줄기 · 배지를 묻는다';
+  rows.push({ label: '심는 방법', value: how });
+  rows.push({ label: '심는 곳', value: crop.site === 'indoor' ? '집 안 선반' : '마당 텃밭' });
+  rows.push({ label: '심는 철', value: crop.site === 'indoor' ? '언제나' : monthRangeKo(st.months) });
+  rows.push({ label: '거두기까지', value: `${st.days}일 안팎` });
+  const per = st.kind === 'seed' ? `${st.perCell}봉` : st.kind === 'seedling' ? `${st.perCell}포기` : `${st.perCell}몫`;
+  rows.push({ label: '한 칸에', value: per });
+  rows.push({ label: st.kind === 'seed' ? '싹 트는 비율' : '뿌리 내리는 비율', value: `${Math.round(st.establish * 100)}% 안팎` });
+  rows.push({ label: '거두는 것', value: `${crop.harvest.nameKo} · 칸당 ${cropYieldKo(crop, st)}` });
+  if (crop.interim && !(crop.interim.seedOnly && st.kind !== 'seed')) rows.push({ label: '자라는 동안', value: crop.interim.labelKo });
+  const need = cropNeedsKo(crop);
+  if (need) rows.push({ label: '갖출 것', value: need, color: '#ffd257' });
+  rows.push({ label: '구하기', value: CROP_RARITY[crop.rarity].ko, color: CROP_RARITY[crop.rarity].color });
+  if (!crop.inMart) rows.push({ label: '마트', value: '팔지 않는 작물 — 직접 길러야 손에 넣는다', color: '#8affb0' });
+  rows.push({ label: '보유 수량', value: `${item.qty}개` });
+  rows.push({ label: '기준가', value: `${item.basePrice.toLocaleString()} 원` });
+  let desc = crop.noteKo;
+  if (crop.site === 'indoor') desc += '\n집 안 선반은 콩나물 시루나 수경 재배기를 들여놓으면 생긴다.';
+  return { title: item.name, subtitle: '씨앗 · 모종', rows, desc };
+}
+
+/** 235차 — 텃밭 수확물 상세: 등급 · 오늘 파는 값 · 값 흐름 · 요리 */
+function produceDetail(item: Pick<InvItem, 'id' | 'name' | 'qty' | 'basePrice' | 'condition'> & Partial<InvItem>, crop: CropDef): ItemDetailData {
+  const rows: ItemDetailRow[] = [];
+  const { grade } = parseProduceId(item.id);
+  const gradeColor = grade === 'special' ? '#ffd257' : grade === 'good' ? '#8fd4ff' : '#c8d0d8';
+  rows.push({ label: '등급', value: GRADE_KO[grade], color: gradeColor });
+  rows.push({ label: '작물', value: crop.nameKo });
+  rows.push({ label: '파는 값 (오늘)', value: `${InventoryStore.getSellPrice({ ...item, qty: 1 } as InvItem).toLocaleString()}원` });
+  const idx = crop.price.season[kstMonthOf(Date.now()) - 1] ?? 1;
+  const trend = idx >= 1.15 ? { v: '귀한 철 — 값이 오른다', c: '#8affb0' } : idx <= 0.88 ? { v: '흔한 철 — 값이 내린다', c: '#ff9a5a' } : { v: '보통', c: undefined };
+  rows.push({ label: '이번 달 시세', value: trend.v, color: trend.c });
+  rows.push({ label: '사 주는 곳', value: '식자재 마트 · 식당' });
+  if (crop.cookIngredient) rows.push({ label: '요리', value: '직접 기른 채소 — 요리 별 다섯 개를 막지 않는다', color: '#8affb0' });
+  if (cropStartOfItem(item.id)) rows.push({ label: '시루', value: '콩나물로 앉힐 수 있다' });
+  rows.push({ label: '구하기', value: CROP_RARITY[crop.rarity].ko, color: CROP_RARITY[crop.rarity].color });
+  if (!crop.inMart) rows.push({ label: '마트', value: '팔지 않는 작물', color: '#8affb0' });
+  rows.push({ label: '보유 수량', value: `${item.qty}개` });
+  let desc = crop.noteKo;
+  if (item.condition) desc += `\n[${CONDITION_LABEL[item.condition]}] ${CONDITION_DESC[item.condition]}`;
+  return { title: item.name, subtitle: '농산물', rows, desc };
 }
 
 export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory' | 'category' | 'qty' | 'basePrice' | 'condition' | 'conditionSinceMs' | 'speciesId' | 'lengthCm' | 'weightG' | 'floatBuoyG' | 'plateWip' | 'fault' | 'useCount' | 'tool' | 'bound' | 'dish' | 'dishInstance' | 'sashimi' | 'cutQuality' | 'hungerRestore' | 'hydrationRestore' | 'hpRestore' | 'fatigueRestore' | 'lineMaterial' | 'lineForm' | 'lineLengthM' | 'lineUsedM' | 'lineNo' | 'lineDiameterMm' | 'lineStrengthLb' | 'sinkerKind' | 'sinkerWeightG' | 'sinkerHo' | 'netReachM' | 'blueprintId' | 'wading' | 'sex' | 'toxin' | 'condProfile' | 'chumKind' | 'unpack'>): ItemDetailData {
@@ -138,6 +230,16 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
       rows.push({ label: '익힘', value: CraftingStore.knows(bp.id) ? '이미 아는 도면' : '아직 모르는 도면' });
       return { title: item.name, subtitle: '도면', rows, desc: bp.descKo };
     }
+  }
+
+  // 235차 — 텃밭: 수확물(등급 꼬리 포함)이 먼저 — 직접 기른 콩은 수확물이면서 콩나물 시루의 씨앗이다
+  if (item.subCategory === PRODUCE_SUB) {
+    const crop = cropOfProduce(item.id);
+    if (crop) return produceDetail(item, crop);
+  }
+  if (item.subCategory === SEED_SUB) {
+    const sown = cropStartOfItem(item.id);
+    if (sown) return cropStartDetail(item, sown.crop, sown.start);
   }
 
   // ── 136차 장비 상태 — 고장·파손과 내구도를 **최상단**에 (슬롯 우하단 경고 배지와 같은 사실) ──
@@ -219,8 +321,10 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
       rows.push({ label: '온도', value: `${qualityStars(scoreStars(q.temperature))} · ${q.temperature}점` });
       rows.push({ label: '식감', value: `${qualityStars(scoreStars(q.texture))} · ${q.texture}점` });
       rows.push({ label: '완성도', value: `${qualityStars(scoreStars(q.completion))} · ${q.completion}점`, color: qColor(q.completion) });
-      rows.push({ label: '종합 완성도', value: `${qualityStars(stars.stars)} · ${Math.round(stars.total)}점`, color: qColor(q.overall) });
-      rows.push({ label: '완성도 (완성 직후)', value: `${qualityStars(baseStars.stars)} · ${Math.round(baseStars.total)}점` });
+      rows.push({ label: '종합 완성도', value: `${ratingStars(stars.rating)} · ${Math.round(stars.total)}점`, color: qColor(q.overall) });
+      rows.push({ label: '완성도 (완성 직후)', value: `${ratingStars(baseStars.rating)} · ${Math.round(baseStars.total)}점` });
+      const pr = produceRow(item.dish);
+      if (pr) rows.push(pr);
       rows.push({ label: '판매가', value: inst.modifier === 'burnt' ? '0원' : `${InventoryStore.getSellPrice({ ...item, qty: 1 } as InvItem).toLocaleString()}원` });
       rows.push({ label: '보유 수량', value: `${item.qty}개` });
       const effKinds = inst.result.effects.map((e) => FOOD_EFFECT_KIND_KO[e.kind]).join(' · ');
@@ -243,8 +347,10 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
       const ok = (i: number): string => stars.earned[i] ? '#8affb0' : '#ff9a5a';
       rows.push({ label: '요리', value: `${recipe.nameKo} · ${dish.servings}인분` });
       if (dish.burnt) rows.push({ label: '상태', value: '탔다 — 가치 없음', color: '#ff5a4a' });
-      rows.push({ label: '완성도 (지금)', value: `${qualityStars(stars.stars)} · ${Math.round(stars.total)}점`, color: stars.stars >= 5 ? '#ffd257' : stars.stars >= 3 ? '#8affb0' : '#ff9a5a' });
-      rows.push({ label: '완성도 (완성 직후)', value: `${qualityStars(baseStars.stars)} · ${Math.round(baseStars.total)}점` });
+      rows.push({ label: '완성도 (지금)', value: `${ratingStars(stars.rating)} · ${Math.round(stars.total)}점`, color: stars.stars >= 5 ? '#ffd257' : stars.stars >= 3 ? '#8affb0' : '#ff9a5a' });
+      rows.push({ label: '완성도 (완성 직후)', value: `${ratingStars(baseStars.rating)} · ${Math.round(baseStars.total)}점` });
+      const pr = produceRow(dish);
+      if (pr) rows.push(pr);
       const salt = SALT_LABEL_KO[dish.saltLabel];
       const sugar = SUGAR_LABEL_KO[dish.sugarLabel];
       rows.push({ label: STAR_NAME_KO[0], value: `${qualityStars(scoreStars(stars.scores.season * 100))} — ${salt}${sugar ? ` · ${sugar}` : ''}`, color: ok(0) });

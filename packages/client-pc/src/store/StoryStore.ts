@@ -25,7 +25,9 @@ import {
   type StoryQuestDef, type StoryObjective, type StoryActionKey, type ReputationState, type CatchMethod, type StorySpotKind, type JournalPageState, type LawVerdict,
   type DayJobDef, type AffinityState, type QuestChoiceDef, type ChoiceOutcome, type ChoiceCtx, type SkillCategoryId,
 } from '@tra/core';
-import { storyActionSpec, type StoryActionChoice, type StoryActionSource } from './StoryActionRegistry.js';
+import {
+  storyActionSpec, originMatches, isChoiceOrigin, DAILY_ACTION_ORIGINS, type StoryActionChoice, type StoryActionSource,
+} from './StoryActionRegistry.js';
 import { TitleStore } from './TitleStore.js';
 
 export interface QuestProgress {
@@ -38,6 +40,8 @@ export interface QuestProgress {
   actionSteps?: Record<string, number>;
   /** 대화·선택 행동에서 단계별로 고른 분기 — 세이브 후에도 결과 맥락을 유지한다 */
   actionChoices?: Record<string, string>;
+  /** 235차 — 하루 한 단계 출처(`DAILY_ACTION_ORIGINS`)가 마지막으로 오른 이야기 일차 (목표 번호 → 일차) */
+  actionDays?: Record<string, number>;
 }
 
 export interface StorySaveState {
@@ -105,6 +109,9 @@ export interface StoryHost {
   roomFor?(items: readonly { id: string; qty: number }[]): string | null;
 }
 
+/** 235차 — N22-7 「씨앗」 수락 때 하늬가 건네는 씨앗 봉투 */
+const N22_7_SEEDS: { id: string; qty: number }[] = [{ id: 'seed_mallow', qty: 2 }, { id: 'seed_chard', qty: 2 }];
+
 export type StoryEvent =
   | { kind: 'catch'; speciesId: string; lengthCm: number; method: CatchMethod; selfCaught: boolean; regionId: string; month: number; spotKind?: StorySpotKind }
   | { kind: 'release'; speciesId: string; lengthCm: number }
@@ -112,6 +119,8 @@ export type StoryEvent =
   | { kind: 'license'; licenseId: string }
   | { kind: 'trap' }
   | { kind: 'sell'; traded?: boolean }
+  /** 235차 — 텃밭: 심었다 · 거뒀다 (목표 `farm`은 심기를 센다) */
+  | { kind: 'farm'; action: 'plant' | 'harvest'; cropId: string }
   /** 233차 — 개인 전용 퀘스트 아이템을 찾았다(`rollQuestDrops`가 낸다) */
   | { kind: 'questItem'; itemId: string }
   | { kind: 'visit'; placeKey: string }
@@ -576,6 +585,8 @@ class StoryStoreManager {
     this.lastRefusal = null;
     const acceptItems = [...(c?.outcome.items ?? [])];
     if (id === 'M1-10' && !(this.host?.countItem?.('inv_bike') ?? 0)) acceptItems.push({ id: 'inv_bike', qty: 1 });
+    // 235차 — N22-7 「씨앗」: 하늬가 건네는 씨앗 봉투(마트에 없는 아욱 · 근대)
+    if (id === 'N22-7') acceptItems.push(...N22_7_SEEDS);
     const lackAccept = this.rewardRoomShortfall(acceptItems);
     if (lackAccept) {
       this.lastRefusal = lackAccept.replace('보상을 받을', '받을 물건이 들어갈');
@@ -598,6 +609,7 @@ class StoryStoreManager {
     //   어촌계의 낡은 자전거를 수락할 때 내준다(구: dev 시드에만 있어 실플레이로는 R·bikeMount 불가).
     //  234차 — 구세이브(시드 자전거)처럼 가방에 이미 있으면 한 대 더 주지 않는다
     if (id === 'M1-10' && !(this.host?.countItem?.('inv_bike') ?? 0)) this.host?.giveItem('inv_bike', 1, false);
+    if (id === 'N22-7') for (const it of N22_7_SEEDS) this.host?.giveItem(it.id, it.qty, false);
     this.lastAction = 'accepted';
     // 140차 — 발주 톤 선택지(우호도 미세 차이)
     if (c) { this.choices[id] = { ...this.choices[id], offer: c.id }; this.applyOutcome(q, c.outcome); }
@@ -652,6 +664,23 @@ class StoryStoreManager {
     if (!o?.actionKey) return null;
     const spec = storyActionSpec(o.actionKey);
     return spec.eventOrigins?.[this.actionStep(id, objIdx)] ?? null;
+  }
+
+  /**
+   * 235차 — 지금 단계가 **의뢰인 앞에서 고르는 단계**인가(대화창 선택 → 장면 → 오름).
+   * 출처를 정하지 않은 옛 정의는 계통(대화 · 선택)으로 판단한다.
+   */
+  actionStepIsChoice(id: string, objIdx: number): boolean {
+    const q = getStoryQuest(id); const o = q?.objectives[objIdx];
+    if (!o?.actionKey) return false;
+    const spec = storyActionSpec(o.actionKey);
+    if (spec.eventOrigins?.length) return isChoiceOrigin(spec.eventOrigins[this.actionStep(id, objIdx)]);
+    return spec.source === 'dialogue' || spec.source === 'selection';
+  }
+
+  /** 235차 — 하루 한 단계 출처를 오늘 이미 썼는가 */
+  actionDoneToday(id: string, objIdx: number): boolean {
+    return this.quests[id]?.actionDays?.[String(objIdx)] === this.day;
   }
 
   /** DEV 전용: 선행 퀘스트를 건너뛰고 actionKey 시나리오만 검증한다. */
@@ -733,7 +762,8 @@ class StoryStoreManager {
     // 선택을 기록한 뒤 실제 시스템 성공 이벤트가 별도로 들어와야 단계가 오른다.
     // 167차 — 대화·선택 계통도 **선택 클릭이 아니라 장면이 끝난 뒤**에 오른다(`deferEmit` — 씬이 장면을
     //  재생하고 `finishActionChoice`를 부른다). 장면을 재생할 수 없는 호출측만 즉시 올린다.
-    if (!deferEmit && (spec.source === 'dialogue' || spec.source === 'selection')) {
+    // 235차 — 계통이 아니라 **지금 단계의 출처**로 판단한다(검사 · 현장 행동도 마지막 단계는 의뢰인 앞 선택이다).
+    if (!deferEmit && this.actionStepIsChoice(id, objIdx)) {
       this.emitAction(o.actionKey, `action-choice:${choice.id}`);
     }
     this.onNotify?.(`[할 일] ${q.titleKo} — ${choice.labelKo}`);
@@ -760,6 +790,25 @@ class StoryStoreManager {
   }
 
   /**
+   * 235차 — 계통 없이 **출처 하나**를 알린다(면허 창 · 장비 창 · 전체 지도 · 제작 갈래 · 좌판 판매).
+   * 출처를 정한 활성 행동 목표만 후보가 되고, 단계 대조는 `event`가 한다.
+   */
+  emitActionOrigin(origin: string): void {
+    const keys = new Set<StoryActionKey>();
+    for (const q of STORY_QUESTS) {
+      const p = this.quests[q.id];
+      if (!p || p.status !== 'active') continue;
+      q.objectives.forEach((o, i) => {
+        if (!o.actionKey || this.objectiveDone(q, i)) return;
+        if (i > 0 && !this.objectiveDone(q, i - 1)) return;
+        const spec = storyActionSpec(o.actionKey);
+        if (spec.eventOrigins?.some((e) => originMatches(e, origin))) keys.add(o.actionKey);
+      });
+    }
+    for (const key of keys) this.emitAction(key, origin);
+  }
+
+  /**
    * 제작·운반·검사·선택·현장·대화 시스템의 성공 지점에서 호출한다.
    * 현재 활성 목표 중 같은 계통의 actionKey만 수집한 뒤 발행하므로,
    * 비활성 퀘스트나 다른 계통의 수동 목표가 함께 진행되지 않는다.
@@ -782,11 +831,12 @@ class StoryStoreManager {
         if (!o.actionKey || this.objectiveDone(q, i)) return;
         if (i > 0 && !this.objectiveDone(q, i - 1)) return;   // 앞 목표가 남았으면 아직 이 행동의 차례가 아니다
         const spec = storyActionSpec(o.actionKey);
-        if (spec.source !== source) return;
+        // 235차 — 출처를 정한 목표는 **계통이 아니라 출처로만** 맞춘다(면허 창 하나가 선택 · 검사 계통 둘 다에 걸린다)
         if (spec.eventOrigins?.length) {
-          if (origin && spec.eventOrigins.includes(origin)) keys.add(o.actionKey);
+          if (origin && spec.eventOrigins.some((e) => originMatches(e, origin))) keys.add(o.actionKey);
           return;
         }
+        if (spec.source !== source) return;
         // 234차 — 출처를 정하지 않은 행동 목표가 엉뚱한 사건에 오르던 것을 막는다(감사 중간-2 —
         //  다른 의뢰를 세 번 수락하면 「선장 필기 합격」이 닫히고, 아무 일감 세 번에 「받침 전달」이 끝났다).
         //  · 대화 · 선택 계통은 의뢰인 앞에서 고른 답 → 장면(`finishActionChoice`)으로만 오른다.
@@ -963,7 +1013,13 @@ class StoryStoreManager {
           if (i > 0 && !this.objectiveDone(q, i - 1)) return;
           const spec = storyActionSpec(o.actionKey);
           const expectedOrigin = spec.eventOrigins?.[p.actionSteps?.[String(i)] ?? p.obj[i] ?? 0];
-          if (expectedOrigin && ev.source !== expectedOrigin) return;
+          if (expectedOrigin && !originMatches(expectedOrigin, ev.source)) return;
+          // 235차 — 「좌판 사흘 운영」처럼 하루에 한 단계만 오르는 출처
+          if (expectedOrigin && DAILY_ACTION_ORIGINS.has(expectedOrigin)) {
+            // 같은 날 두 번째 판매부터는 조용히 넘긴다(물건마다 알림이 쏟아지지 않게 — 추적기가 「다음 날」을 말한다)
+            if (p.actionDays?.[String(i)] === this.day) return;
+            p.actionDays = { ...(p.actionDays ?? {}), [String(i)]: this.day };
+          }
           const stepKey = String(i);
           const step = p.actionSteps?.[stepKey] ?? 0;
           const nextStep = Math.min(step + 1, spec.stepsKo.length);
@@ -1044,6 +1100,8 @@ class StoryStoreManager {
       }
       case 'license': return o.kind === 'license' && (!o.licenseId || o.licenseId === ev.licenseId) ? 'set' : null;
       case 'trap': return o.kind === 'trap' ? 'inc' : null;
+      // 235차 — 「심는다」 목표는 심기를 센다(작물을 정하면 그 작물만)
+      case 'farm': return o.kind === 'farm' && ev.action === 'plant' && (!o.itemId || o.itemId === ev.cropId) ? 'inc' : null;
       case 'sell': return o.kind === 'sell' && !(o.ownOnly && ev.traded) ? 'inc' : null;
       // 234차 — 진행 = 가방 보유 수(`setValue`) — 버리면 줄고 다시 주우면 는다
       case 'questItem': return o.kind === 'collect' && o.itemId === ev.itemId ? (this.host?.countItem ? 'set' : 'inc') : null;

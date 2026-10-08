@@ -185,7 +185,9 @@ export class GuideTour {
       disarm();
       if (GuideTour.active) { enqueue(); return; }
       const opts = build();
-      if (!opts || tourSeen(opts.id) || opts.steps.length === 0) { GuideTour.next(); return; }
+      // 235차 — 요청 ~ 다음 프레임 사이에 창이 닫혔으면 열지 않는다(파괴된 창의 사각형을 읽다가 게임 오류 배너가 떴다 —
+      //   처음 연 가게를 바로 ESC로 닫으면 재현). 다음에 그 창을 다시 열 때 처음부터 다시 안내한다
+      if (!opts || tourSeen(opts.id) || opts.steps.length === 0 || (opts.alive && !opts.alive())) { GuideTour.next(); return; }
       new GuideTour(scene, opts);
     };
     if (GuideTour.active) { enqueue(); return; }

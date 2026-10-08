@@ -1,0 +1,175 @@
+# 235차 — 텃밭(실시간 농사) · 달아나는 생물 멀티 동기화 · M7-04 가족사진 장면 · 행동 목표 출처 · 손질 계보 실렌더
+
+| | |
+|---|---|
+| **날짜** | 2026-10-08 |
+| **시스템** | `홈 · 텃밭` `요리` `경제` `멀티플레이` `채집` `스토리 · 퀘스트` `손질 · 회뜨기` `i18n` `에셋` |
+| **트리거** | 사용자 지시(234차 농사 추천안 2번 진행 + 추가 제안 3건 + 백로그 BJ 3건) |
+| **커밋** | 이 워크로그와 같은 커밋 |
+| **빌드·타입체크** | 3/3 · 0 오류 · core 테스트 110/110 |
+
+---
+
+## 1. 배경 — 왜 했나
+
+사용자 원문(핵심 문장):
+
+> # 달아나는 생물 움직임 동기화
+>
+> # 우선 2번 추천안대로 농사 진행해줘.
+
+추가 제안(원문 그대로):
+
+- 「1) 생산성이 낮고 성장 난이도가 높은 작물, 가치가 높은 작물들은 실제 농수산물 실시간 시세를 따라가도록 하더라도
+  인게임에서는 수량이나 단가 자체를 어느 정도 티 나지 않도록 리밸런싱을 좀 해주고」
+- 「2) 마트에 없는 것 작물 종류를 최대한 많이 찾아서, 추가하면서 동시에 rarity와 qualification을 해줘야 할 것 같아.」
+- 「3) 상점에서 파는 작물들로는 요리 별점 4.5개~5개(만점)를 채울 수 없도록 리밸런싱을 하면 더 좋을 것 같아.
+  (물론 스킬이나 효과 등으로 4.5개까지는 도달 가능할 순 있겠네. 로직상)」
+- 「모종과 수확물이 어느 정도 비율로 나오는 지도 실제 농사 환경과 최대한 조건을 맞춰보자.」
+
+백로그 BJ 3건: 「M7-04 장면에서 가족사진을 실제로 쓰는 연출」 · 「행동 목표마다 진짜 출처 지정」 ·
+「손질 계보 수정은 코드 대조로만 확인했고, 손질을 끝까지 돌리는 실렌더 확인은 아직 하지 않았습니다」.
+
+234차 추천안 2번 = **실제 시간 · 실제 계절 그대로 + 빨리 자라는 작물과 중간 수확으로 매일 할 거리 + 모종은 육묘 기간을 건너뜀 +
+시설 배율은 잎채소 ×2.0 · 철 작물 ×1.4 상한 + 자리를 비워도 벌하지 않음(시들 뿐 죽지 않음)**.
+
+### 사용자 제안 1~3에 대한 판단
+
+| 제안 | 판단 | 반영 |
+|---|---|---|
+| 1) 고가 · 저생산 작물 숨은 재조정 | **찬성** — 실제 값을 그대로 쓰면 산채 · 고추냉이 한 칸이 낚시 하루 벌이를 넘는다 | 작물 21종에 `rebalance` 0.6~0.9(화면에 안 보임) · 칸당 하루 값 상한 1,000원을 시험으로 고정 |
+| 2) 마트에 없는 작물 + 희귀도 · 자격 | **찬성** — 텃밭의 이유가 「살 수 없는 것」이어야 한다 | 조사 96종 중 21종 추가(총 68 · 마트에 없음 39) · 희귀도 4단계 · 자격(스킬 2종 · 설비 3종) |
+| 3) 가게 채소로는 4.5~5별 불가 | **찬성, 단 경계를 하나로** — 「4.5도 못 넘게」보다 「5번째 별만 막고 스킬로 반 개」가 읽기 쉽다 | 가게 채소가 하나라도 들어가면 완성도 별(5번째)이 안 열린다 · 요리 스킬 2단계면 그 자리에 반 개(4.5) · 총점 85(반 개면 92) 상한 |
+
+---
+
+## 2. 원인 — 버그 · 어긋남
+
+1. **달아나는 생물이 사람마다 다른 칸에 있었다**(231차 감사 ③-1) — 어슬렁을 `Math.random`으로 골랐고, 놀람도 **내 캐릭터에게만** 반응했다.
+   같은 세션의 두 사람이 같은 갯강구를 서로 다른 칸에서 봤다.
+2. **영어 설정에서 컷씬 대사가 한국어로 한 글자씩 찍혔다**(165차부터) — `StoryCinematicPanel`이 원문을 찍고 마지막 글자에서야
+   i18n 사전이 영어로 바꿨다. 대화창은 187차에 「찍기 전에 번역」으로 고쳤는데 컷씬은 빠져 있었다. 하네스가 타이핑 중 본문 `"사진 가져와 봐"`(영어 설정)로 확정.
+3. **첫 열기 가이드가 이미 닫힌 창 위에 떴다** — `GuideTour.request`는 다음 프레임에 연다. 그 사이 창(상점)이 닫히면 투어가 빈 자리를 짚었다(오류 띠).
+   `opts.alive()` 검사를 넣어 그 경우 건너뛴다.
+4. **시세 달별 지수의 연평균이 1.0이 아니었다** — 손으로 그린 곡선이라 연평균 1.04~1.18(배추 1.18 · 시금치 1.16 · 상추 1.11).
+   한 해 내내 기준값보다 비싸게 팔렸다. aT 소매 2023~2025 조사값(평균 1.0)으로 바꿨다(찰옥수수만 1.125 — 철 밖 값은 추정).
+
+### 하네스 함정(제품 버그 아님 — 스킬 반영)
+
+- 손질 계보 하네스가 「지급이 사라진다」로 보였다. 기전: 하네스의 `import('/src/store/InventoryStore.ts')`(동일성 검사)가 HMR로 URL이 갈라진 상태에서
+  **모듈을 새로 평가하며 `globalThis.__INV`를 새 인스턴스로 바꿨다**. 이후 하네스는 새 가방을, 게임 손질 창은 원래 가방을 봤다.
+  확정 근거: 스택을 단 `setTradedLineage` 걸이는 「켬」만 찍히는데 `__INV.tradedLineage`는 false · 하네스 가방에 dev 시드 물고기가 가득.
+  dev 서버 재시작 + 동일성은 「처음 값을 잡아 두고 바뀌지 않았는지」로만 본다.
+
+---
+
+## 3. 변경
+
+### A. 달아나는 생물 멀티 동기화
+
+| 구분 | 위치 | 내용 |
+|---|---|---|
+| 신설 | [`core/simulation/ForageRunners.ts`](../../../packages/core/src/simulation/ForageRunners.ts) | 어슬렁 = 공용 시각 + 시드(`advanceRunner` — 앵커 · 갈래 키 · 커서 캐시) · 도망 기록 인코딩(`r:<맵>|<스팟>|<n>`) |
+| 신설 | [`core/simulation/ForageRunners.test.ts`](../../../packages/core/src/simulation/ForageRunners.test.ts) | 같은 앵커 = 같은 칸 · 커서 이어 세기 = 처음부터 세기 · 기록 왕복 |
+| 수정 | [`client/scenes/field/ForageSystem.ts`](../../../packages/client-pc/src/scenes/field/ForageSystem.ts) | 슬롯 시작 공용 시각에서 출발 · 놀라게 한 사람이 도착 칸을 공유 소비 채널에 적음(먼저 쓴 사람이 임자) · 남의 기록 따라 튐 · 늦게 온 사람 따라잡기 · 정적 스팟 칸 피하기 · 도착 시각 정수 ms |
+| 수정 | [`client/net/MultiplayerClient.ts`](../../../packages/client-pc/src/net/MultiplayerClient.ts) | `sharedNow()`(서버 시계 − 내 시계 · 정수 ms) · 짧은 왕복 표본만 따라가는 시계 필터(가장 짧은 왕복 ×2 + 50ms) |
+| 수정 | [`server/multiplayer/SessionRegistry.ts`](../../../packages/server/src/multiplayer/SessionRegistry.ts) · `core/types/Multiplayer.ts` | 프레즌스 응답에 `nowMs` |
+
+### B · C. 텃밭(실시간 농사)
+
+| 구분 | 위치 | 내용 |
+|---|---|---|
+| 신설 | [`core/types/Farming.ts`](../../../packages/core/src/types/Farming.ts) | 작물 · 시작(씨앗 · 모종 · 종구) · 칸 · 구획 · 설비 · 수확 계약 |
+| 신설 | [`core/db-schema/CropDatabase.ts`](../../../packages/core/src/db-schema/CropDatabase.ts) | 작물 68종(실내 6 · 잎 · 산채 · 열매 · 뿌리 · 덩이 · 곡물 · 콩 · 허브) · 달별 시세(연평균 1.0) · 숨은 재조정 · 영어 설명 |
+| 신설 | [`core/simulation/FarmSim.ts`](../../../packages/core/src/simulation/FarmSim.ts) | 시간 단위 성장 · 꺼 둔 동안 따라잡기(최대 400일) · 비 = 물(속초 평년 강수일) · 철 · 하우스 앞뒤 한 달 · 배율 상한 · 시듦(바닥 0.3) · 쇠기 · 병충해 · 등급 · 시세 |
+| 신설 | [`core/simulation/FarmSim.test.ts`](../../../packages/core/src/simulation/FarmSim.test.ts) | 25건 — 모종이 씨앗보다 빠름 · 잎 따기 횟수 · 마늘 월동 · 씨감자 ×10 · 안 죽음 · 배율 상한 · 자격 · 칸당 하루 1,000원 상한 · 별점 상한 |
+| 수정 | `core/simulation/CookingSim.ts` · `core/types/Cooking.ts` · `core/config/tuning.ts` | 채소 출처(`produce`) · 가게 채소면 5번째 별 막힘 · 반 개(`halfStar`) · 총점 상한 85/92 |
+| 수정 | `core/db-schema/SkillDatabase.ts` · `core/types/Skills.ts` | 농사 카테고리 잠금 해제 · 노드 재편(총 20pt 그대로) · 「산채 재배」 · 「수경 재배」 자격 |
+| 수정 | `core/rules/ShopStock.ts` · `core/rules/QuestGuide.ts` · `core/db-schema/StoryQuestDatabase.ts` · `StoryArcs.ts` · `types/Story.ts` | 희귀 재고 배율 · 텃밭 방법 줄 · N22-4/N22-7 목표 자동(심기 이벤트) |
+| 신설 | [`client/store/FarmStore.ts`](../../../packages/client-pc/src/store/FarmStore.ts) | 마당 구획 · 집 안 선반 · 갈기 · 퇴비 · 심기 · 물 · 거두기 · 설비 · 세이브(구세이브 = 빈 텃밭) |
+| 신설 | [`client/ui/FarmPanel.ts`](../../../packages/client-pc/src/ui/FarmPanel.ts) | 4×3 칸 · 실내 4칸 · 심을 것 목록 · 달력(절기 독해) · 설비 · 첫 열기 가이드 2종 |
+| 신설 | [`client/data/CropItems.ts`](../../../packages/client-pc/src/data/CropItems.ts) | 씨앗 · 모종 · 종구 · 수확물(등급 꼬리 `_sp`/`_nm`) 템플릿 · 상점 진열(철 · 스킬 · 희귀) |
+| 신설 | [`client/i18n/en_farm.ts`](../../../packages/client-pc/src/i18n/en_farm.ts) | 텃밭 화면 · 이유 · 도움말 영어 + 규칙(N일 안팎 · 칸당 a~b개 등) |
+| 수정 | `RegionFieldScene` · `HomeInteriorScene` · `HomeFurniture` · `ShopCatalog` · `InventoryStore` · `GameState` · `CookingStore` · `UtilizationPanel` · `ItemDetailPanel` · `HelpContent` · `I18n` · `en.ts` · `WikiCatalog` · `GuideTour` | 마당 설치 · 실내 선반(콩나물 시루 · 수경 재배기) · 식자재마트 · 식당만 농산물 매입 · 그날 시세 × 신선도 × 도매 몫 0.7 · 출처 꼬리 · 상세보기(심는 철 · 비율 · 거두는 것 · 시세) · 도움말 「텃밭」 5토픽 |
+| 수정 | `tools/gen_pixel_icons.py` → `PixelIconArt.ts` · `tools/gen_skill_icons.py` → `SkillIconArt.ts` | 작물 · 씨앗 · 모종 · 종구 · 설비 아이콘(총 281) · 농사 스킬 아이콘 |
+
+### D. M7-04 가족사진 장면
+
+| 구분 | 위치 | 내용 |
+|---|---|---|
+| 수정 | [`client/data/QuestScenes.ts`](../../../packages/client-pc/src/data/QuestScenes.ts) | `M7-04#1` 손글 각본 — 사진을 꺼내 건넴 → 화면 가운데 크게 펼침 → 천막 아래 머릿수건 상인(22년 전의 정옥선) → 돌려받음 · 사진이 없으면 짧은 장면 + 목표 안 닫힘(`noComplete`) |
+| 수정 | [`client/ui/StoryCinematicPanel.ts`](../../../packages/client-pc/src/ui/StoryCinematicPanel.ts) | `photo` 단계(사진 그림 겹층 — 프롤로그 16px 아이콘과 같은 구도) · `give` 물건 사진 · **찍기 전에 번역**(2-2 버그) |
+| 수정 | `client/store/QuestItemGuard.ts` | M7-04 활성인데 사진이 어디에도 없으면 되찾기 |
+
+### E. 행동 목표의 진짜 출처
+
+| 구분 | 위치 | 내용 |
+|---|---|---|
+| 수정 | [`client/store/StoryActionRegistry.ts`](../../../packages/client-pc/src/store/StoryActionRegistry.ts) | 행동 27종 전부 단계별 출처(`eventOrigins`) — 현장 지점 · 창 열기 · 제작 갈래 · 좌판 하루 · 의뢰인 앞 선택 · 방법 한 줄(`actionOriginHowToKo`) |
+| 수정 | [`client/store/StoryStore.ts`](../../../packages/client-pc/src/store/StoryStore.ts) | 출처를 정한 목표는 계통이 아니라 출처로만 오름 · `emitActionOrigin` · 하루 한 단계 출처(`stall-day:okseon`) · N22-7 씨앗 봉투 |
+| 신설 | [`client/data/ActionGuide.ts`](../../../packages/client-pc/src/data/ActionGuide.ts) | 지금 단계 안내(화살표 대상 · 방법) — 일지 · 추적기 · 화살표가 같은 답 |
+| 수정 | [`client/data/StoryNpcs.ts`](../../../packages/client-pc/src/data/StoryNpcs.ts) | 현장 지점 19곳(좌판 상자 · 받침 받기/놓기 · 반찬통 · 자재장 · 선체/기관 · 병실 · 재개관 · 유통 경로 · 난로) · 정옥선 좌판 거래 |
+| 수정 | `LicensePanel` · `EquipmentPanel` · `CoolerPanel` · `CraftingStore` · `AnglerLogScene` · `RegionFieldScene` · `JournalPanel` · `DialoguePanel` | 실제 사건 지점에서 출처를 알림 · 일지 방법 줄 |
+
+### F. 손질 계보 — 코드 변경 없음(실렌더로 확인만)
+
+---
+
+## 4. 구조상 위치
+
+- `S13 홈 → 텃밭(새 세부과제)` — **계약 · 데이터 · 판정(core) + 렌더 · 저장(client)** 전부 새로. 요리(S4) 별점 판정 층에 출처 상한이 걸린다.
+- `S20 멀티플레이 → 공유 세계 자원 → 러너 움직임` — **판정 층**(공용 시각 · 공유 소비 채널). 서버는 시각만 더했다.
+- `S22 스토리 → 행동 목표 → 출처 게이트` — **판정 층**(어떤 사건이 단계를 올리나) + 안내(렌더).
+- `S22 스토리 → 장면 → M7-04` — **렌더 층**(각본 · 사진 겹층).
+
+---
+
+## 5. 검증
+
+| 대상 | 방법 | 결과 |
+|---|---|---|
+| 전체 | `npx pnpm run build` · client typecheck · core vitest | 3/3 · 0 오류 · **110/110** |
+| 텃밭 | `r235farm.cjs` — 상점 진열 · 개간 키트 설치 · 실마우스 갈기→퇴비→심기→물 · 24시간 성장 · 거두기(특 등급) · 등급 3종 값 순서 · 가방 가득 · 상세보기 · 출처 · 설비 · 겹침 0 · 퀘스트 2건 · 실내 선반 · 세이브 왕복 | ko **19/19** · en **20/20** · pageerror 0 |
+| 러너 동기화 | `r235mp.cjs` — 서버 + 두 브라우저(B 시계 **+7초**) · 같은 시각 같은 칸(계산 7시점 · 실화면 8표본) · A가 놀라게 함 → B가 같은 칸 · 같은 앵커 · 도망 뒤 어슬렁 · B 재입장 따라잡기 · 두 번째 도망 · 숨음 → B에서 사라짐 · 같은 화면 점에 그림 | ko **11/11** · en **11/11** · pageerror 0 |
+| 공용 시계 | 위 하네스 — 두 사람의 공용 시각 차 | 5~390ms(헤드리스 왕복 330~1,250ms의 절반 안 — 측정 한계) · 걸음 간격 2~5.5초 |
+| 손질 계보 | `r235lineage.cjs` — 거래품 감성돔을 손질 창에서 11섹션 끝까지(섹션 진행 = 실제 지급 코드) → 필렛 · 부산물 7종 전부 거래품 · 원물 소모 · 창 닫으면 계보 꺼짐 · 직접 잡은 생선은 꼬리표 없음 · 체크포인트 뒤 팝업 열린 채 창 파괴(234차 수정) → 팝업 부산물 거래품 · **회뜨기 14컷 실마우스** → 접시 거래품 | ko **10/10** · en **10/10** · pageerror 0 |
+| M7-04 | `r235de.cjs` — 시계를 낮 11시로 옮겨 정옥선이 시장에 있게 · 사진 없이 → 짧은 장면 · 목표 그대로 · 사진 들고 → 사진 겹층 표시 · 목표 닫힘 · 사진 가방으로 돌아옴 · 영어 타이핑 중 한글 0 | ko **9/9** · en **10/10** · pageerror 0 |
+| 행동 출처 | 같은 하네스 — M4-04 장비 창 먼저 열기 = 0 → 면허 창 = 1 → 다시 면허 = 1 → 장비 = 2 → 마지막은 의뢰인 · N03-5 루어 제작 = 0 · 채비 = 1 · M6-06 같은 날 두 번 = 1 · 남의 좌판 = 1 · 다음 날 = 2 · 현장 지점 19곳 전부 같은 퀘스트 · 목표 · 단계 | 전부 PASS |
+
+재현: 서버 `MP_SESSION_DIR=<임시> SERVER_PORT=4000 node packages/server/dist/index.js` → dev 서버 → `node scratchpad/r235mp.cjs ko|en`.
+그 밖의 하네스는 dev 서버만 있으면 된다(`r235farm` · `r235lineage` · `r235de`).
+
+---
+
+## 6. 잔여
+
+- **실시간 시세 API(KAMIS) 연결** — 정적 배포(gh-pages)에서 KAMIS는 CORS로 막힌다(조사). 지금은 달별 지수 + 주간 출렁임.
+  착수 조건: 하루 1회 스냅샷 JSON을 만드는 GitHub Actions 또는 게임 서버(키 비공개 · 쿼터 무관) · 실패 시 지금 지수로 대체.
+- **조사 96종 중 75종** — 이번엔 칸 단위로 옮길 자료가 갖춰진 21종만. 착수 조건: 품종별 칸당 수량 · 기간 확인.
+- **텃밭 여러 구획 = 자격으로** — 지금 개간 키트 2개(구획 2)까지. 착수 조건: 면허 체계에 `farm_plots`(영농 · 주말농장 분양) 갈래를 둘지 결정.
+- **수경 재배기 전기료** — 정기 지출에 넣을지 사용자 결정. 지금은 기계값만.
+- **날로 먹기** — 농산물을 그대로 먹는 섭취 경로(허기 · 수분)는 없다. 요리 재료와 판매만.
+- **가게 채소 신선도 품목별 차등**(조사 제안: 잎채소 0.72 · 저장 작물 0.95) — 지금은 요리 별 상한으로만 차이를 둔다. 착수 조건: 요리 신선 요소에 출처별 시작 신선도를 넣을지 결정.
+- **회뜨기 창의 조작 안내 문구**(우측 「컷 방향 … 드래그해 썰어냅니다」 · 하단 「ESC / X = 중단」) · **컷씬의 「클릭 = 다음 · [ESC] 건너뛰기」** — R11 위반(기존). 체험 가이드로 옮기는 작업.
+- **손질 창 실마우스 컷** — 이번 손질 검증은 섹션 진행(개발 건너뛰기 = 같은 지급 코드)이다. 회뜨기는 실마우스로 했다.
+
+---
+
+## 7. 위험·부작용
+
+- **세이브** — `farm` 필드가 없으면 빈 텃밭(구세이브 호환). 농사 스킬은 예전에 잠겨 있어 찍은 사람이 없다 → 노드 뜻을 바꿔도 어긋나지 않는다.
+- **시세 곡선 교체** — 텃밭 농산물(`crop_*`)만 쓴다. 기존 상점 물건 값은 그대로.
+- **러너** — 같은 세션에서 걸음 경계 근처면 두 화면이 몇백 ms 어긋날 수 있다(공용 시계 측정 오차). 칸은 같은 계산이라 곧 맞는다.
+  시계 필터는 첫 표본을 그대로 받으므로 접속 직후 첫 몇 초는 오차가 클 수 있다.
+- **컷씬 영어 타이핑** — 목소리 효과가 영어 글자로 소리 난다(대화창과 같음). 읽는 시간은 원문 길이로 잰다(영어가 조금 더 오래 찍힌다).
+- **좌판 하루 판매** — 정옥선 좌판에 거래 선택지를 열었다(M6-06 운영 날 세기). 좌판 상품은 시장 판매처와 같다.
+
+---
+
+## 8. 후속 반영
+
+- [x] 시스템 페이지 — [`home-base.md`](../02-SYSTEMS/home-base.md) · [`story-quests.md`](../02-SYSTEMS/story-quests.md) ·
+  [`multiplayer.md`](../02-SYSTEMS/multiplayer.md) · [`sashimi-cooking.md`](../02-SYSTEMS/sashimi-cooking.md)
+- [x] [`04-BACKLOG.md`](../04-BACKLOG.md) — BJ 3건 닫음 · 위 잔여 추가
+- [x] `AGENTS.md` §9 · `IMPLEMENTATION_PLAN.md` · `CLAUDE.md` 요약
+- [x] 새 함정 → 스킬 `verify-render`(하네스 import가 `__INV`를 갈아 끼움 · 일과 NPC는 시계를 옮겨 검증)

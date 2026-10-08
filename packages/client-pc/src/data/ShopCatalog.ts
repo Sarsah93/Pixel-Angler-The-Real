@@ -10,6 +10,7 @@
 
 import type { InvCategory, InvItemTemplate } from '../store/InventoryStore.js';
 import { COOK_CORNER } from './CookItems.js';
+import { dailyFarmEntries, martFarmEntries, PRODUCE_SUB } from './CropItems.js';
 import { WEIGHT_SINKER_DB, TRAP_DATABASE, getLureSpec, ROD_SHOP, REEL_SHOP, CRAFT_BLUEPRINTS, blueprintPaperId } from '@tra/core';
 import { applyItemVitals } from './ItemVitals.js';
 import type { FurnKind } from './HomeFurniture.js';
@@ -105,6 +106,12 @@ export interface ShopEntry extends InvItemTemplate {
   maxPerPurchase: number;
   /** 224차 — 손님이 판 중고 장비(가게가 되판다). 사면 가게 중고 칸에서 빠진다 */
   usedUid?: string;
+  /** 235차 — 이 달(KST)에만 진열한다(모종 · 종구 — 심는 철) */
+  seasonMonths?: number[];
+  /** 235차 — 이 스킬을 배운 뒤에 진열한다(산채 모종 · 비닐 터널 · 냉수 수조) */
+  requiresSkill?: string;
+  /** 235차 — 하루 재고 배율(희귀할수록 적다 — 1 = 보통) */
+  stockMult?: number;
   desc: string;
 }
 
@@ -115,6 +122,8 @@ export interface ShopDef {
   sells: ShopEntry[];
   /** 매입 대상 카테고리 (비어 있으면 매입 안 함) */
   buysCategories: InvCategory[];
+  /** 235차 — 텃밭 농산물을 사들이는가(식자재마트 · 식당). 직판장은 수산물만 산다 */
+  buysProduce?: boolean;
   /**
    * 위판 창구를 겸하는가 (147차).
    *
@@ -332,6 +341,7 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
     name: '식자재마트',
     greeting: '식자재는 저희가 제일 쌉니다.',
     buysCategories: ['food'],
+    buysProduce: true,   // 235차 — 텃밭 농산물(로컬푸드 코너)
     sells: [
       // 141차 — 메인 해금 품목 (M1-07 부엌의 순서)
       { id: 'knife_yanagiba_pro', name: '야나기바 (장인 단조)', icon: '', category: 'etc', subCategory: '조리도구',
@@ -369,6 +379,8 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
       { id: 'inv_plate_xl', name: '사시미 접시 (특대)', icon: '🍽️', category: 'etc', subCategory: '식기', basePrice: 12000, price: 14000, maxPerPurchase: 3, equippable: false, desc: '방위당 7점 × 4방위 = 28점. 모듬 1.2kg~ / 고급 1.0kg~.' },
       // 요리 코너 (154차 불요리) — 채소·양념·용기·화구·연료. 조리 필드는 CookItems 테이블이 정본
       ...COOK_CORNER,
+      // 235차 — 모종 · 종구 · 버섯 배지(심는 철에만 · 희귀할수록 적게)
+      ...martFarmEntries(),
     ],
   },
   market: {
@@ -433,6 +445,7 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
     name: '항구 식당',
     greeting: '갓 지은 밥이 있어요. 드시고 가세요.',
     buysCategories: ['food'],
+    buysProduce: true,   // 235차 — 텃밭 채소를 들여 쓴다
     sells: [
       { id: 'shop_meal_grilled', name: '생선구이 정식', icon: '🥫', category: 'food', subCategory: '가공품', basePrice: 9000,  price: 11000, maxPerPurchase: 3, equippable: false, desc: '한 끼 정식 — HP +30 · 피로 -20.' },
       { id: 'shop_meal_soup',    name: '매운탕',        icon: '🥫', category: 'food', subCategory: '가공품', basePrice: 10000, price: 12000, maxPerPurchase: 3, equippable: false, desc: '국물 한 그릇 — HP +15 · 피로 -15.' },
@@ -503,6 +516,11 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
         desc: '양철 물뿌리개. 손에 들고 화분 앞에 서면 물을 줄 수 있다.' },
       // 190차 — 집 가구. 사면 집으로 배달되어 「넣어 둔 가구」 칸에 들어간다(가방을 차지하지 않는다)
       ...FURNITURE_SALES,
+      // 235차 — 텃밭: 개간 키트 · 씨앗 봉투 · 호미 · 퇴비 · 설비
+      { id: 'inv_place_farm', name: '텃밭 개간 키트', icon: '', iconTexture: 'px:it_farm_kit', category: 'etc', subCategory: '설치형',
+        basePrice: 8000, price: 8000, maxPerPurchase: 2, equippable: false, placeKey: 'farm_plot',
+        desc: '마당 풀밭에 4×3칸 텃밭 한 구획을 낸다. 칸마다 호미로 일궈야 심을 수 있다.' },
+      ...dailyFarmEntries(),
       { id: 'inv_headlamp', name: '헤드랜턴 (800lm)', icon: '🔦', category: 'etc', subCategory: '해루질 도구',
         basePrice: 25000, price: 26000, maxPerPurchase: 1, equippable: false, lampLumens: 800,
         desc: '야간 채집 필수 — 루멘이 발견 반경. 100lm당 약 0.55타일.' },
@@ -566,9 +584,11 @@ for (const bp of CRAFT_BLUEPRINTS) {
  *  - 그 밖의 갈래(미끼 · 채비 · 소모품 · 재료 · 기타)는 사들이지 않는다.
  */
 export function shopBuysItem(
-  def: Pick<ShopDef, 'buysCategories'>,
+  def: Pick<ShopDef, 'buysCategories' | 'buysProduce'>,
   i: Pick<InvItemTemplate, 'id' | 'category' | 'speciesId' | 'dish' | 'dishInstance' | 'sashimi' | 'byproductKind' | 'subCategory' | 'catchMethod'>,
 ): boolean {
+  // 235차 — 텃밭 농산물은 식자재마트 · 식당만 산다(직판장은 수산물 가게다)
+  if (i.subCategory === PRODUCE_SUB) return !!def.buysProduce;
   if (!def.buysCategories.includes(i.category)) return false;
   if (i.category === 'gear') return true;
   if (i.category === 'food') {

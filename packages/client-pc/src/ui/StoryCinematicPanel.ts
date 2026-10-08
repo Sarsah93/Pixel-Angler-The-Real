@@ -22,6 +22,7 @@ import { paintHudPanel } from './HudPanelStyle.js';
 import { voiceOfNpc, voiceOfPlayer } from '@tra/core';
 import { VoiceTyper } from '../audio/Voice.js';
 import { GameState } from '../store/GameState.js';
+import { getLocale, t } from '../i18n/I18n.js';
 
 export type CineDir = 'up' | 'down' | 'left' | 'right';
 export type CineEmote = 'surprise' | 'think' | 'sad' | 'joy';
@@ -69,7 +70,12 @@ export type CineStep =
   /** 167차 — 무대에서 빠진다(안 보임). 임시 배우는 종료 시 정리된다 */
   | { kind: 'remove'; who: string }
   /** 167차 — 물건을 건넨다(작은 아이콘이 손에서 손으로 — 명부·상자·봉투) */
-  | { kind: 'give'; from: string; to: string; item?: 'book' | 'box' | 'envelope'; ms?: number }
+  | { kind: 'give'; from: string; to: string; item?: 'book' | 'box' | 'envelope' | 'photo'; ms?: number }
+  /**
+   * 235차 — 가족사진을 화면 가운데 크게 펼친다/거둔다(M7-04 「사진 속 천막」). 펼친 채 대사가 이어지고
+   * `show: false`에서 접힌다. 그림은 절차 픽셀(`drawFamilyPhoto`) — 줄무늬 천막 좌판 · 천막 아래 젊은 정옥선 · 네 살의 나와 부모.
+   */
+  | { kind: 'photo'; show: boolean; ms?: number }
   /** 카메라를 배우에게 맞춘다 */
   | { kind: 'focus'; who: string; ms?: number }
   | { kind: 'wait'; ms: number };
@@ -227,6 +233,7 @@ export class StoryCinematicPanel extends Phaser.GameObjects.Container {
       case 'fade': this.runFade(step); return;
       case 'remove': this.runRemove(step); return;
       case 'give': this.runGive(step); return;
+      case 'photo': this.runPhoto(step); return;
       case 'emote': this.runEmote(step); return;
       case 'focus': this.runFocus(step); return;
       case 'wait': this.after(step.ms); return;
@@ -245,7 +252,10 @@ export class StoryCinematicPanel extends Phaser.GameObjects.Container {
       ? voiceOfPlayer(GameState.character.look.sex)
       : voiceOfNpc(actor?.voiceId ?? actor?.nameKo ?? step.who));
     this.speakerText.setColor(step.thought ? '#f0bf6c' : '#ffe9a0');
-    this.startTyping(step.text, step.ms ?? Phaser.Math.Clamp(700 + step.text.length * 62, 1200, 4200));
+    // 235차 — 찍기 **전에** 번역한다(187차 대화창과 같은 이유). 부분 문자열은 사전에 없어서, 영어 설정에서
+    //  한국어가 한 글자씩 찍히다가 마지막 글자에서야 영어로 바뀌었다. 읽는 시간은 원문 길이로 그대로 잰다.
+    const shown = getLocale() === 'en' && step.textEn ? step.textEn : t(step.text);
+    this.startTyping(shown, step.ms ?? Phaser.Math.Clamp(700 + step.text.length * 62, 1200, 4200));
     if (step.thought || !actor) {
       this.bubbleActor = undefined;
       this.bubbleC.setVisible(false);
@@ -421,6 +431,13 @@ export class StoryCinematicPanel extends Phaser.GameObjects.Container {
     } else if (kind === 'box') {
       g.fillStyle(0xb98a4a, 1).fillRect(-7, -5, 14, 10);
       g.lineStyle(1, 0x5a3b1a, 1).strokeRect(-7, -5, 14, 10);
+    } else if (kind === 'photo') {
+      // 235차 — 흰 테두리 사진 한 장(하늘 · 바다 · 천막 줄무늬)
+      g.fillStyle(0xf2ead8, 1).fillRect(-7, -5, 14, 11);
+      g.fillStyle(0x9fd0e8, 1).fillRect(-6, -4, 12, 4);
+      g.fillStyle(0xd84a3a, 1).fillRect(-6, 0, 3, 2).fillRect(-1, 0, 3, 2).fillRect(4, 0, 2, 2);
+      g.fillStyle(0x8a8070, 1).fillRect(-6, 2, 12, 3);
+      g.lineStyle(1, 0x3a2a1c, 1).strokeRect(-7, -5, 14, 11);
     } else {
       g.fillStyle(0xf4f1e6, 1).fillRect(-7, -4, 14, 9);
       g.lineStyle(1, 0x8b7d5a, 1).strokeRect(-7, -4, 14, 9).lineBetween(-7, -4, 0, 1).lineBetween(0, 1, 7, -4);
@@ -433,6 +450,29 @@ export class StoryCinematicPanel extends Phaser.GameObjects.Container {
     this.scene.tweens.add({ targets: g, x: ex, y: ey, duration: ms * 0.7, ease: 'Sine.easeInOut',
       onComplete: () => this.scene.tweens.add({ targets: g, alpha: 0, duration: ms * 0.3 }) });
     this.after(ms + 60);
+  }
+
+  /** 235차 — 펼친 사진(화면 고정). 종료 · 건너뛰기에서 함께 걷힌다 */
+  private photoC?: Phaser.GameObjects.Container;
+
+  private runPhoto(step: Extract<CineStep, { kind: 'photo' }>): void {
+    if (step.show) {
+      if (!this.photoC) {
+        // 대사창(아래)과 레터박스(위) 사이 가운데 — 사진이 대사를 가리지 않게
+        const cy = BAR_TOP + (GAME_HEIGHT - BAR_BOTTOM - BAR_TOP) / 2;
+        const g = this.scene.add.graphics();
+        drawFamilyPhoto(g);
+        this.photoC = this.scene.add.container(GAME_WIDTH / 2, cy, [g]).setAlpha(0).setScale(0.92);
+        this.add(this.photoC);
+      }
+      this.scene.tweens.add({ targets: this.photoC, alpha: 1, scale: 1, duration: 360, ease: 'Sine.easeOut' });
+      this.after(step.ms ?? 700);
+      return;
+    }
+    const c = this.photoC;
+    this.photoC = undefined;
+    if (c) this.scene.tweens.add({ targets: c, alpha: 0, scale: 0.94, duration: 300, ease: 'Sine.easeIn', onComplete: () => c.destroy() });
+    this.after(step.ms ?? 420);
   }
 
   private runFocus(step: Extract<CineStep, { kind: 'focus' }>): void {
@@ -463,6 +503,7 @@ export class StoryCinematicPanel extends Phaser.GameObjects.Container {
   private finish(): void {
     if (this.finished) return;
     this.finished = true;
+    this.photoC?.destroy(); this.photoC = undefined;
     this.timer?.remove(false);
     this.typeTimer?.remove(); this.typeTimer = undefined;
     this.bubbleC.setVisible(false);
@@ -493,4 +534,70 @@ export class StoryCinematicPanel extends Phaser.GameObjects.Container {
     this.removed.clear();
     super.destroy(fromScene);
   }
+}
+
+/**
+ * 235차 — M7-04 「사진 속 천막」의 가족사진(절차 픽셀 · 64×44 논리 픽셀을 ×4로 그린다).
+ * 프롤로그에서 받은 16px 아이콘(`it_photo`)과 같은 구도를 크게 — 하늘 · 바다 · 줄무늬 천막 좌판 ·
+ * 천막 아래 머릿수건을 쓴 젊은 상인(22년 전의 정옥선) · 앞쪽에 부모와 네 살의 나. 낡은 인화지 색감.
+ * 원점 = 사진 가운데.
+ */
+function drawFamilyPhoto(g: Phaser.GameObjects.Graphics): void {
+  const P = 4, W = 64, H = 44;
+  const ox = -(W * P) / 2, oy = -(H * P) / 2;
+  const px = (x: number, y: number, w: number, h: number, c: number): void => {
+    g.fillStyle(c, 1).fillRect(ox + x * P, oy + y * P, w * P, h * P);
+  };
+  // 인화지 테두리 · 그림자
+  g.fillStyle(0x000000, 0.35).fillRect(ox - 14 + 6, oy - 14 + 8, W * P + 28, H * P + 28);
+  g.fillStyle(0xf2ead8, 1).fillRect(ox - 14, oy - 14, W * P + 28, H * P + 28);
+  // 하늘(위가 진하다) · 수평선 · 바다
+  for (let y = 0; y < 14; y++) px(0, y, W, 1, y < 5 ? 0x8cc4e0 : y < 10 ? 0x9fd0e8 : 0xbfe0ee);
+  px(0, 14, W, 1, 0x5f9cc6);
+  for (let y = 15; y < 20; y++) px(0, y, W, 1, y % 2 ? 0x3f7fae : 0x4a8ab8);
+  // 땅(안벽)
+  px(0, 20, W, 24, 0x9a8f7c);
+  for (let x = 0; x < W; x += 9) px(x, 20, 1, 24, 0x8a806e);
+  px(0, 36, W, 1, 0x8a806e);
+  // 천막 지붕 — 빨강 · 흰 줄무늬 + 물결 처마
+  for (let x = 6; x < 42; x++) px(x, 8, 1, 8, Math.floor((x - 6) / 3) % 2 ? 0xf4ecdc : 0xd84a3a);
+  for (let x = 6; x < 42; x += 3) px(x + 1, 16, 1, 1, Math.floor((x - 6) / 3) % 2 ? 0xf4ecdc : 0xd84a3a);
+  px(6, 7, 36, 1, 0x8a2a20);
+  // 간판(글씨는 흐릿한 흰 점 — 읽히지 않는 옛 인화)
+  px(15, 3, 18, 5, 0x2f5a8a);
+  for (const x of [17, 19, 20, 23, 25, 26, 29, 30]) px(x, 5, 1, 1, 0xe8eef2);
+  px(14, 3, 1, 5, 0x1f3a5a); px(33, 3, 1, 5, 0x1f3a5a);
+  // 기둥
+  px(7, 16, 1, 18, 0x4a3a2a); px(40, 16, 1, 18, 0x4a3a2a);
+  // 천막 아래 — 머릿수건을 쓴 젊은 상인(22년 전)
+  px(23, 18, 4, 1, 0xe8d8b0);   // 수건
+  px(23, 19, 4, 3, 0xe8b890);   // 얼굴
+  px(22, 22, 6, 6, 0x6a8a5a);   // 앞치마 위 옷
+  // 좌판 — 나무 판 · 파란 상자 · 은빛 생선
+  px(9, 27, 30, 2, 0xa86a34); px(9, 29, 30, 4, 0x8a5a2a);
+  for (const x of [11, 19, 27]) {
+    px(x, 24, 7, 3, 0x4a8ac8);
+    px(x + 1, 25, 2, 1, 0xd8dee4); px(x + 4, 25, 2, 1, 0xc8d0d8);
+  }
+  // 아버지(왼쪽 · 큰 키)
+  px(46, 18, 4, 1, 0x2a2a2a);   // 머리카락
+  px(46, 19, 4, 3, 0xe8b890);
+  px(45, 22, 6, 11, 0x3a5a7a);  // 잠바
+  px(46, 33, 2, 8, 0x2a2a3a); px(49, 33, 2, 8, 0x2a2a3a);
+  // 어머니(오른쪽 · 긴 머리)
+  px(55, 18, 4, 2, 0x3a2418); px(54, 20, 1, 4, 0x3a2418); px(59, 20, 1, 4, 0x3a2418);
+  px(55, 20, 4, 3, 0xf0c4a0);
+  px(54, 23, 6, 9, 0xc85a6a);
+  px(55, 32, 2, 9, 0x4a4a5a); px(58, 32, 2, 9, 0x4a4a5a);
+  // 네 살의 나(가운데 · 노란 옷 · 부모 손을 잡았다)
+  px(51, 27, 3, 1, 0x2a2a2a);
+  px(51, 28, 3, 2, 0xf0c4a0);
+  px(50, 30, 5, 5, 0xf2c84a);
+  px(51, 35, 1, 5, 0x3a4a6a); px(53, 35, 1, 5, 0x3a4a6a);
+  px(49, 30, 1, 1, 0xf0c4a0); px(55, 30, 1, 1, 0xf0c4a0);   // 맞잡은 손
+  // 바랜 인화 색감 — 옅은 노랑 막 + 모서리 얼룩
+  g.fillStyle(0xf2d8a0, 0.14).fillRect(ox, oy, W * P, H * P);
+  g.fillStyle(0xe0c890, 0.25).fillRect(ox, oy, 10 * P, 3 * P);
+  g.fillStyle(0xe0c890, 0.2).fillRect(ox + (W - 7) * P, oy + (H - 4) * P, 7 * P, 4 * P);
+  g.lineStyle(2, 0x3a2a1c, 0.8).strokeRect(ox - 14, oy - 14, W * P + 28, H * P + 28);
 }

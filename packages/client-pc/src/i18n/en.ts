@@ -23,6 +23,7 @@ import { EN_UI, EN_UI_RULES } from './en_ui.js';
 import { EN_TOUR_PANELS2 } from './en_tour_panels2.js';
 import { EN_HOME, EN_HOME_RULES } from './en_home.js';
 import { EN_RIG, EN_RIG_RULES } from './en_rig.js';
+import { EN_FARM, EN_FARM_RULES } from './en_farm.js';
 
 /** 기본 사전 — 분야별 사전(EN_ITEMS/EN_RIG_COOKING/EN_HELP)보다 우선한다 */
 const EN_BASE: Record<string, string> = {
@@ -672,7 +673,7 @@ export const EN_DICT: Record<string, string> = {
   '물이 들어오는 중': 'Water coming in',
   '물이 빠지는 중': 'Water going out',
   '물이 멈췄다': 'The water has stopped',
-  ...EN_FISH, ...EN_CONTENT, ...EN_ITEMS, ...EN_RIG_COOKING, ...EN_HELP, ...EN_FORAGE, ...EN_PANELS, ...EN_GEAR, ...EN_AUCTION, ...EN_COOK, ...EN_UI, ...EN_EXTRA, ...EN_TOUR, ...EN_TOUR_PANELS, ...EN_TOUR_PANELS2, ...EN_SKILL, ...EN_HOME, ...EN_RIG, ...EN_BASE,
+  ...EN_FISH, ...EN_CONTENT, ...EN_ITEMS, ...EN_RIG_COOKING, ...EN_HELP, ...EN_FORAGE, ...EN_PANELS, ...EN_GEAR, ...EN_AUCTION, ...EN_COOK, ...EN_UI, ...EN_EXTRA, ...EN_TOUR, ...EN_TOUR_PANELS, ...EN_TOUR_PANELS2, ...EN_SKILL, ...EN_HOME, ...EN_RIG, ...EN_FARM, ...EN_BASE,
   // 214차 — 인물의 집 · 문 두드리기
   '정옥선의 집': "Jeong Ok-seon's house", '어촌계 사무실': 'Co-op office', '도현수의 집': "Do Hyeon-su's house",
   '강두철의 집': "Kang Du-cheol's house", '탁씨 죽간 공방': "The Taks' bamboo-rod workshop", '공방 살림채': 'Workshop living quarters',
@@ -742,6 +743,18 @@ const DOW_EN: Record<string, string> = {
 };
 /** 수치·이름이 끼어 있는 문장 — 정규식 규칙. 캡처 그룹은 그대로 옮긴다(이름은 사전을 다시 타지 않으므로 어종·아이템명은 한국어로 남을 수 있음). */
 export const EN_RULES: Rule[] = [
+  // ── 235차 행동 목표의 진짜 출처 — 방법 줄 · 현장 지점 · 심부름 물건 · 대화창 힌트 ──
+  [/^(.+)에게 \[F\] → 「내가 도와줄 수 있는 게 있을까요\?」 → 방식을 고른다 \(이야기 장면\)$/,
+    (m, tr) => `${tr(m[1])} [F] → "Is there anything I can help with?" → choose how (story scene)`],
+  [/^화살표를 따라 「(.+)」에 가서 \[F\]$/, (m, tr) => `Follow the arrow to "${tr(m[1])}" and press [F]`],
+  [/^U 제작 탭에서 (.+) 하나를 완성한다$/, (m, tr) => `Finish one ${tr(m[1])} in the U crafting tab`],
+  [/^\[할 일\] 가방에 자리가 없다 — 한 칸 비우고 다시 「(.+)」$/, (m, tr) => `[Task] No room in your bag — free a slot and try "${tr(m[1])}" again`],
+  [/^\[할 일\] (.+)을\(를\) 다시 챙겼다$/, (m, tr) => `[Task] You picked up ${tr(m[1])} again`],
+  [/^([^「」]+)에게 \[F\] → 「([^「」]+)」$/, (m, tr) => `${tr(m[1])} [F] → "${tr(m[2])}"`],
+  [/^(교차 검증 대화|증거 확인 방식|현장 행동 방식|분기 선택|제작 방식|전달 방식) 선택 완료 · (\d)\/(\d) — (.+)$/,
+    (m, tr) => `${tr(m[1])} chosen · ${m[2]}/${m[3]} — ${tr(m[4])}`],
+  [/^(교차 검증 대화|증거 확인 방식|현장 행동 방식|분기 선택|제작 방식|전달 방식) (\d)\/(\d) · (.+)$/,
+    (m, tr) => `${tr(m[1])} ${m[2]}/${m[3]} · ${tr(m[4])}`],
   // ── 234차 설치물 대조 · 거절 되돌리기 ──
   [/^그 자리에는 이미 (.+) 님의 (통발이|화구가|거치대가) 있습니다\.$/, (m) => `${m[1]} already has a ${m[2] === '통발이' ? 'trap' : m[2] === '화구가' ? 'stove' : 'rod holder'} there.`],
   [/^\[통발\] (.+) — 통발과 미끼를 돌려받았습니다$/, (m, tr) => `[Trap] ${tr(m[1])} — your trap and bait were returned`],
@@ -916,6 +929,7 @@ export const EN_RULES: Rule[] = [
   ...EN_TOUR_RULES,    // 188차 일지 순서형 접기
   ...EN_HOME_RULES,    // 189차 집 실내
   ...EN_RIG_RULES,     // 192차 채비 모딩 트리
+  ...EN_FARM_RULES,    // 235차 텃밭
   // ── 167차 장면 게이트 — 상대가 다른 사람일 때 대화창 안내 ──
   [/^(.+)을\(를\) 직접 찾아가야 한다\.$/, (m, tr) => `You need to go and find ${tr(m[1])} in person.`],
   // ── 165차 「지금 할 일」 메인/서브 배지 · 완료 표기 · 행동 진행 로그 ──
@@ -973,7 +987,7 @@ export const EN_RULES: Rule[] = [
   [/^외 (\d+)종$/, (m) => `+${m[1]} more`],
   [/^(조리 요령|재료 요령) · (.+)$/, (m, tr) => `${tr(m[1])} · ${tr(m[2])}`],
   // ── 154차 불요리 ──
-  [/^(.+) \(별 (\d+)개\)$/, (m, tr) => `${tr(m[1])} (${m[2]} star${m[2] === '1' ? '' : 's'})`],
+  [/^(.+) \(별 (\d+(?:\.5)?)개\)$/, (m, tr) => `${tr(m[1])} (${m[2]} star${m[2] === '1' ? '' : 's'})`],   // 235차 — 반 개(4.5)
   [/^탄 (.+)$/, (m, tr) => `Burnt ${tr(m[1])}`],
   [/^연료 (\d+)분(?: \(강불 기준\))?$/, (m) => `Fuel ${m[1]} min${m[0].includes('강불') ? ' (on high)' : ''}`],
   [/^\[F\] 요리 — (.+) · \[Shift\+F\] 회수$/, (m, tr) => `[F] Cook — ${tr(m[1])} · [Shift+F] pack up`],

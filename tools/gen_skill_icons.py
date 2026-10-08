@@ -3,7 +3,7 @@
 @file gen_skill_icons.py
 @description 스킬 트리 아이콘 아트 -> packages/client-pc/src/data/SkillIconArt.ts 자동 생성
 
-스킬 93종(낚시·채집·경제·이동·생활·농사·제작 + 숨은 시너지 5종)을
+스킬 95종(낚시·채집·경제·이동·생활·농사·제작 + 숨은 시너지 5종)을
 **16x16 손그림 픽셀 매트릭스**로 보관한다. 문자 = 팔레트 키, '.' = 투명.
 여기서 art를 고치고 다시 실행하면 TS가 갱신된다.
 
@@ -1639,6 +1639,46 @@ icon('farm_season', """
 """)
 
 
+# 235차 — 산채 재배 = 차광막 그늘 아래 곰취 잎(넓은 심장꼴)
+icon('farm_wild', """
+................
+.oooooooooooooo.
+.odgdgdgdgdgdgo.
+.oooooooooooooo.
+......oooo......
+....ooEEEEoo....
+...oEEElEEEEo...
+..oEElEEeEEEEo..
+..oElEEEeEEEEo..
+..oEEEEEeEEEeo..
+..oEEEEEeEEeeo..
+...oEEEEeEeeo...
+....ooEEeeoo....
+......ooeo......
+.......eo.......
+................
+""")
+
+# 235차 — 수경 재배 = 찬물 수조 위로 올라온 고추냉이 잎
+icon('farm_hydro', """
+................
+....oo....oo....
+...oEEo..oEEo...
+...oElEo.oElEo..
+....oEEeoeEEo...
+.....ooeeeoo....
+.......ee.......
+..oooooeeooooo..
+..occcUeeUccco..
+..oUUUUeeUUUUo..
+..oUUUUUUUUUUo..
+..ouUUUUUUUUuo..
+..ouuUUUUUUuuo..
+..oggggggggggo..
+..oooooooooooo..
+................
+""")
+
 # ════════════════════════════════════════════════════════
 #  제작 (crafting)
 # ════════════════════════════════════════════════════════
@@ -2044,7 +2084,7 @@ SKILL_IDS = [
     'life_cook', 'life_hunger', 'life_thirst', 'life_sleep', 'life_immune', 'life_firstaid',
     'life_hygiene', 'life_belly', 'life_canteen', 'life_grit', 'life_efficiency',
     'farm_till', 'farm_water', 'farm_yield', 'farm_seed', 'farm_fert', 'farm_green', 'farm_sprout',
-    'farm_pest', 'farm_season',
+    'farm_pest', 'farm_season', 'farm_wild', 'farm_hydro',
     'craft_knot', 'craft_tools', 'craft_sinker', 'craft_chum', 'craft_paint', 'craft_medic',
     'craft_egi', 'craft_trap', 'craft_bp', 'craft_batch', 'craft_rod', 'craft_reel',
     'syn_tidewalker', 'syn_moonlit', 'syn_broker', 'syn_ironbody', 'syn_artisan',

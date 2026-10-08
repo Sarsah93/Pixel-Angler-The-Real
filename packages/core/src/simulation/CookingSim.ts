@@ -99,15 +99,22 @@ type CookIngredientUnit = 'g' | 'ea' | 'spoon' | 'cup';
 
 export function addIngredient(
   s: CookSessionState, ing: string, units: number, freshness01: number, srcItemId?: string, weightG?: number, speciesId?: string,
+  produce?: 'store' | 'homegrown',
 ): void {
   const def = getCookIngredient(ing);
   if (!def) return;
   if (def.waterMlPerUnit) s.waterMl += def.waterMlPerUnit * units;
   // 같은 재료는 같은 단계에 넣었으면 합친다(양념 스테퍼 · 채소 여러 개)
   const same = s.contents.find((c) => c.ing === ing && c.addedStage === s.stageNow && Math.abs(c.addedAtSec - s.elapsedSec) < 20);
-  if (same && def.unit !== 'g') { same.units += units; same.freshness01 = Math.min(same.freshness01, freshness01); }
-  else {
-    s.contents.push({ ing, units, addedAtSec: s.elapsedSec, addedStage: s.stageNow, doneness: 0, burnt: 0, freshness01, srcItemId, weightG, ...(speciesId ? { speciesId } : {}) });
+  if (same && def.unit !== 'g') {
+    same.units += units; same.freshness01 = Math.min(same.freshness01, freshness01);
+    if (produce === 'store') same.produce = 'store';   // 235차 — 섞이면 가게 쪽이 이긴다
+    else if (produce && !same.produce) same.produce = produce;
+  } else {
+    s.contents.push({
+      ing, units, addedAtSec: s.elapsedSec, addedStage: s.stageNow, doneness: 0, burnt: 0, freshness01, srcItemId, weightG,
+      ...(speciesId ? { speciesId } : {}), ...(produce ? { produce } : {}),
+    });
   }
   if (s.status === 'idle') s.status = 'cooking';
   pushEvent(s, `${def.nameKo} ${fmtUnits(def.unit, units)} 투입`);
@@ -418,14 +425,28 @@ export function evaluateSession(s: CookSessionState, recipe: FireRecipeDef, cook
 // 완성 · 별점(시간 감쇠) · 값
 // ─────────────────────────────────────────────
 
+/** 235차 — 이 냄비의 채소 출처 요약(가게 채소가 하나라도 있으면 `store`) */
+export function produceSummary(s: CookSessionState, recipe: FireRecipeDef): 'store' | 'homegrown' | 'none' {
+  let any = false;
+  for (const c of s.contents) {
+    const role = reqFor(recipe, c.ing)?.req.role;
+    if (role !== 'veg' && role !== 'base' && role !== 'finish') continue;
+    if (c.produce === 'store') return 'store';
+    if (c.produce === 'homegrown') any = true;
+  }
+  return any ? 'homegrown' : 'none';
+}
+
 export function finishCook(
   s: CookSessionState, recipe: FireRecipeDef, cookware: CookwareDef,
-  opts: { nowMs: number; skillRank: number; stoveKind: 'home' | 'field' },
+  opts: { nowMs: number; skillRank: number; stoveKind: 'home' | 'field'; halfStar?: boolean },
 ): DishData {
   const ev = evaluateSession(s, recipe, cookware, opts.skillRank);
   const cc = checkComposition(s, recipe, cookware);
   const burnt = s.contents.some((c) => c.burnt >= TUNING.cook.burntThreshold);
+  const produce = produceSummary(s, recipe);
   return {
+    produce, ...(opts.halfStar ? { halfStar: true } : {}),
     recipeId: recipe.id, cookedAtMs: opts.nowMs, tempAtDoneC: s.tempC,
     base: { season: ev.season, temp: ev.temp, texture: ev.texture, fresh: ev.fresh, finish: ev.finish },
     saltLabel: ev.seasonEval.saltLabel, sugarLabel: ev.seasonEval.sugarLabel,
@@ -458,12 +479,18 @@ export function dishStarsAt(dish: DishData, recipe: FireRecipeDef, nowMs: number
   if (Math.min(season, temp, texture, fresh) < TUNING.cook.finishGateMin) finish = Math.min(finish, TUNING.cook.finishCap);
   const th = TUNING.cook.starThreshold;
   const e0 = season >= th, e1 = temp >= th, e2 = texture >= th, e3 = fresh >= th;
-  const e4 = e0 && e1 && e2 && e3 && finish >= th;
+  const finishOk = e0 && e1 && e2 && e3 && finish >= th;
+  // 235차 — 가게에서 산 채소가 들어간 요리는 완성도 별(5번째)이 열리지 않는다. 요리 스킬 2단계면 그 자리에 반 개.
+  //  (사용자 지시 2026-10-08 「상점에서 파는 작물들로는 4.5~5개를 채울 수 없게 — 스킬로 4.5까지는」)
+  const produceCapped = dish.produce === 'store';
+  const e4 = finishOk && !produceCapped;
   const earned: [boolean, boolean, boolean, boolean, boolean] = [e0, e1, e2, e3, e4];
   const stars = earned.filter(Boolean).length;
-  const total = Math.round(100 * (season * STAR_W.season + temp * STAR_W.temp + texture * STAR_W.texture + fresh * STAR_W.fresh + finish * STAR_W.finish));
+  const rating = stars + (produceCapped && finishOk && dish.halfStar ? 0.5 : 0);
+  let total = Math.round(100 * (season * STAR_W.season + temp * STAR_W.temp + texture * STAR_W.texture + fresh * STAR_W.fresh + finish * STAR_W.finish));
+  if (produceCapped) total = Math.min(total, dish.halfStar ? TUNING.cook.storeProduceTotalCapHalf : TUNING.cook.storeProduceTotalCap);
   const tempLabel: DishStars['tempLabel'] = tempC >= recipe.servingC - 5 ? 'hot' : tempC >= 38 ? 'warm' : 'cold';
-  return { scores: { season, temp, texture, fresh, finish }, earned, stars, total, tempC, tempLabel };
+  return { scores: { season, temp, texture, fresh, finish }, earned, stars, rating, produceCapped, total, tempC, tempLabel };
 }
 
 /** 판매가 — 탄 것 0 · 별점 총점 비례 */
@@ -481,7 +508,8 @@ export function dishVitalsMult(dish: DishData, stars: DishStars): number {
 /** 요리 아이템 이름 */
 export function dishItemName(recipe: FireRecipeDef, dish: DishData, stars: DishStars, en = false): string {
   if (dish.burnt) return en ? `Burnt ${recipe.nameEn}` : `탄 ${recipe.nameKo}`;
-  return en ? `${recipe.nameEn} (${stars.stars} star${stars.stars === 1 ? '' : 's'})` : `${recipe.nameKo} (별 ${stars.stars}개)`;
+  const r = stars.rating ?? stars.stars;
+  return en ? `${recipe.nameEn} (${r} star${r === 1 ? '' : 's'})` : `${recipe.nameKo} (별 ${r}개)`;
 }
 
 export const SALT_LABEL_KO: Record<SaltLabel, string> = { bland: '싱겁다', ok: '적당하다', salty: '짜다' };

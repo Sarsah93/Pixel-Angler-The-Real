@@ -28,7 +28,7 @@ import {
 import { planRigLoss, TUNING as TUNING_RL, type RigLossCause, type RigLossPlan } from '@tra/core';
 import { rodSpecFor, reelSpecFor, type RodItemSpec, type ReelItemSpec } from '@tra/core';
 import type { DishData, DishInstance } from '@tra/core';
-import { getFireRecipe, dishStarsAt, dishValueKrw, dishInstanceValueKrw } from '@tra/core';
+import { getFireRecipe, dishStarsAt, dishValueKrw, dishInstanceValueKrw, producePrice } from '@tra/core';
 import type { SashimiSizeTier } from '@tra/core';
 import type { ForageTool, StatusCure, CatchMethod, LineForm } from '@tra/core';
 import { ExternalDataStore } from './ExternalDataStore.js';
@@ -37,6 +37,7 @@ import { isGod } from '../dev/DevMode.js';
 import { resolveFishTexture } from '../data/FishTextures.js';
 import { applyItemVitals, refreshNutritionVitals } from '../data/ItemVitals.js';
 import { applyCookItemFields, COOK_CORNER } from '../data/CookItems.js';
+import { PRODUCE_SUB } from '../data/CropItems.js';
 import { StoryStore } from './StoryStore.js';
 import { migrateCatchItemId, migrateSpeciesId } from '../data/SpeciesMigration.js';
 import { SHOP_CATALOG, CARD_RIG_ENTRIES } from '../data/ShopCatalog.js';
@@ -695,7 +696,7 @@ function createSeedItems(): InvItem[] {
     // 사시미 접시 (소) — 회 조각 플레이팅 (요리 탭 사시미 만들기. 중/대/특대는 식자재마트 판매)
     { id: 'inv_plate_s',   name: '사시미 접시 (소)',        icon: '🍽️', category: 'etc', subCategory: '식기', qty: 1, basePrice: 2500, equippable: false },
     // ── 설치형 (HOMETOWN_HOME_SPEC — 홈타운 칸 단위 자유 배치. placeKey = core PLACEMENT_DEFS) ──
-    { id: 'inv_place_farm',    name: '텃밭 개간 키트',       icon: '🌱', category: 'etc', subCategory: '설치형', qty: 1, basePrice: 8000,  equippable: false, placeKey: 'farm_plot' },
+    { id: 'inv_place_farm',    name: '텃밭 개간 키트',       icon: '', iconTexture: 'px:it_farm_kit', category: 'etc', subCategory: '설치형', qty: 1, basePrice: 8000,  equippable: false, placeKey: 'farm_plot' },
     { id: 'inv_place_fence',   name: '울타리',              icon: '🪵', category: 'etc', subCategory: '설치형', qty: 6, basePrice: 1500,  equippable: false, placeKey: 'fence' },
     { id: 'inv_place_aq_live', name: '활어 수조 (업소용)',   icon: '🐠', category: 'etc', subCategory: '설치형', qty: 1, basePrice: 120000, equippable: false, placeKey: 'aquarium_live' },
     { id: 'inv_place_aq_disp', name: '관상용 수족관',        icon: '🐟', category: 'etc', subCategory: '설치형', qty: 1, basePrice: 60000, equippable: false, placeKey: 'aquarium_display' },
@@ -1508,6 +1509,13 @@ class InventoryStoreManager {
     // 미완성 접시는 판매 불가 (135차 사용자 결정) — 가격표(모듬 고정가·단품 회중량)가
     // 만석을 전제로 세워져 있어 부분 판매를 허용하면 표가 붕괴한다. 섭취·이어담기만 가능.
     if (item.plateWip) return 0;
+    // 235차 — 텃밭 농산물: 그날 시세(달 지수 · 주간 출렁임 · 등급) × 신선도 × 도매가 몫(0.7 — 가게가 되팔 몫을 남긴다)
+    if (item.subCategory === PRODUCE_SUB) {
+      const stateMul = conditionSellMultiplier(item.condition);
+      if (stateMul <= 0) return 0;
+      const unit = producePrice(item.id, Date.now()) ?? item.basePrice;
+      return Math.max(10, Math.round((unit * stateMul * 0.7) / 10) * 10);
+    }
     if (item.subCategory === '어획물') {
       // 상태별 가치 배율 (부패 = 0, 나쁨 10%, 보통 50%, 그 외 시세 그대로)
       const stateMul = conditionSellMultiplier(item.condition);
@@ -1864,7 +1872,7 @@ class InventoryStoreManager {
    * 인스턴스가 남아 있으면 수량 +1, 소멸했으면 템플릿으로 재생성.
    */
   private static readonly PLACEABLE_TPL: Record<string, InvItemTemplate> = {
-    inv_place_farm:    { id: 'inv_place_farm',    name: '텃밭 개간 키트',     icon: '🌱', category: 'etc', subCategory: '설치형', basePrice: 8000,   equippable: false, placeKey: 'farm_plot' },
+    inv_place_farm:    { id: 'inv_place_farm',    name: '텃밭 개간 키트',     icon: '', iconTexture: 'px:it_farm_kit', category: 'etc', subCategory: '설치형', basePrice: 8000,   equippable: false, placeKey: 'farm_plot' },
     inv_place_fence:   { id: 'inv_place_fence',   name: '울타리',            icon: '🪵', category: 'etc', subCategory: '설치형', basePrice: 1500,   equippable: false, placeKey: 'fence' },
     inv_place_aq_live: { id: 'inv_place_aq_live', name: '활어 수조 (업소용)', icon: '🐠', category: 'etc', subCategory: '설치형', basePrice: 120000, equippable: false, placeKey: 'aquarium_live' },
     inv_place_aq_disp: { id: 'inv_place_aq_disp', name: '관상용 수족관',      icon: '🐟', category: 'etc', subCategory: '설치형', basePrice: 60000,  equippable: false, placeKey: 'aquarium_display' },

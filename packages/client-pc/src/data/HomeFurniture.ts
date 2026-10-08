@@ -34,11 +34,15 @@ export const DIR_CYCLE: FurnDir[] = ['down', 'left', 'up', 'right'];
 /** 가구가 하는 일 — 이것이 있는 가구만 [F]가 뜬다(189차 — 「살펴보기」 폐지) */
 export type FurnAction =
   | 'bed' | 'fridge' | 'cook' | 'sofa' | 'chair' | 'wardrobe' | 'shelf' | 'plant' | 'father_box'
-  | 'lamp' | 'radio' | 'aquarium';
+  | 'lamp' | 'radio' | 'aquarium'
+  /** 235차 — 집 안 선반 텃밭(시루 · 수경 재배기) */
+  | 'grow';
 
 export type FurnKind =
   | 'fridge' | 'sink' | 'stove' | 'bed' | 'stand' | 'island' | 'chair' | 'sofa'
-  | 'rug' | 'wardrobe' | 'shelf' | 'plant' | 'father_box' | 'radio' | 'aquarium';
+  | 'rug' | 'wardrobe' | 'shelf' | 'plant' | 'father_box' | 'radio' | 'aquarium'
+  /** 235차 — 콩나물 시루 · 수경 재배기(집 안 텃밭 설비) */
+  | 'sprout_jar' | 'hydro_rack';
 
 export interface FurnDef {
   /** 화면 이름 (한국어 원문 — i18n 키) */
@@ -72,6 +76,8 @@ export const FURN_DEFS: Record<FurnKind, FurnDef> = {
   father_box: { nameKo: '낚시 상자',  w: 1, h: 1, collides: true, storable: true, action: 'father_box' },
   radio:      { nameKo: '라디오',     w: 1, h: 1, collides: true, storable: true, action: 'radio' },
   aquarium:   { nameKo: '관상 수조',  w: 2, h: 1, collides: true, storable: true, action: 'aquarium' },
+  sprout_jar: { nameKo: '콩나물 시루', w: 1, h: 1, collides: true, storable: true, action: 'grow' },
+  hydro_rack: { nameKo: '수경 재배기', w: 1, h: 1, collides: true, storable: true, action: 'grow' },
 };
 
 /**
@@ -348,6 +354,29 @@ export function drawFurnitureArt(
       for (let xx = 14; xx < w - 14; xx += 2) dot(xx, 4, 0x2a1a0e);               // 손잡이
       dot(14, 6, 0x2a1a0e); dot(w - 16, 6, 0x2a1a0e);
       for (let t = 0; t < 14; t += 2) dot(w - 12 + Math.round(t / 4) * 2, 6 - t, 0xa8b0b8);   // 안테나
+      break;
+    }
+    case 'sprout_jar': {
+      // 235차 — 콩나물 시루: 받침 대야 위 옹기 시루 + 덮은 보자기 + 밑으로 떨어지는 물방울
+      shade(8, h - 4, w - 16);
+      slab(8, h - 12, w - 16, 8, [0x8a8a84, 0xa8a8a0, 0x6a6a64]);                       // 물받이 대야
+      for (let yy = 0; yy < 20; yy += 2) for (let xx = 0; xx < w - 24 - Math.abs(yy - 10) / 2; xx += 2) {
+        dot(12 + Math.abs(yy - 10) / 4 * 2 + xx, h - 34 + yy, yy < 4 ? 0xb07a44 : yy > 15 ? 0x6a4424 : 0x8a5a30);   // 옹기 몸통
+      }
+      for (let xx = 0; xx < w - 20; xx += 2) dot(10 + xx, h - 38, 0xf4f4ee);            // 보자기
+      for (let xx = 0; xx < w - 24; xx += 2) dot(12 + xx, h - 36, 0xd8d8d0);
+      for (const dx of [14, 22, 30]) dot(dx, h - 12, 0x7ab4e0);                         // 물방울
+      break;
+    }
+    case 'hydro_rack': {
+      // 235차 — 수경 재배기: 두 층 선반 · 물받이(파랑) · 잎 · 위쪽 생장등
+      shade(4, h - 3, w - 8);
+      for (let yy = 0; yy < h - 6; yy += 2) { dot(6, 2 + yy, 0x6a7078); dot(w - 8, 2 + yy, 0x6a7078); }   // 기둥
+      for (let xx = 6; xx < w - 6; xx += 2) dot(xx, 2, 0xe8e0a8);                       // 생장등
+      for (const sy of [14, 30]) {
+        for (let xx = 8; xx < w - 8; xx += 2) { dot(xx, sy, 0x3a8ac8); dot(xx, sy + 2, 0x2a6aa0); }   // 물받이
+        for (let xx = 10; xx < w - 10; xx += 6) { dot(xx, sy - 2, 0x5cb84a); dot(xx + 2, sy - 4, 0x8fd16a); dot(xx - 2, sy - 4, 0x3f8a34); }
+      }
       break;
     }
     case 'aquarium': {

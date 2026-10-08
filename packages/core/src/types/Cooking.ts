@@ -188,6 +188,11 @@ export interface CookContent {
   weightG?: number;
   /** 주재료 어종 (156차 — 아이템은 투입 때 사라지므로 여기 남긴다) */
   speciesId?: string;
+  /**
+   * 235차 — 채소의 출처. `store` = 가게에서 산 것 · `homegrown` = 텃밭에서 직접 기른 것.
+   * 가게 채소가 하나라도 들어가면 완성도 별(5번째)은 열리지 않는다(요리 스킬 2단계면 반 개).
+   */
+  produce?: 'store' | 'homegrown';
 }
 
 export type CookStatus = 'idle' | 'cooking' | 'done' | 'burnt';
@@ -273,6 +278,10 @@ export interface DishData {
   burnt: boolean;
   servings: number;
   skillRank: number;
+  /** 235차 — 채소 출처 요약: 가게 채소가 하나라도 있으면 `store` */
+  produce?: 'store' | 'homegrown' | 'none';
+  /** 235차 — 요리 스킬 2단계(반 개 별) — 가게 채소 요리가 4.5까지 닿는다 */
+  halfStar?: boolean;
   /** 필수 누락(탄 것과 별개 — 이름을 못 쓰는 경우는 완성이 막히므로 보통 0) */
   missingRequired: number;
 }
@@ -282,6 +291,10 @@ export interface DishStars {
   /** 별 획득 여부 (간·온도·식감·신선·완성 순) */
   earned: [boolean, boolean, boolean, boolean, boolean];
   stars: number;
+  /** 235차 — 표시 별점(반 개 포함 · 4.5). 가게 채소 상한이 걸리면 stars ≤ 4 · rating ≤ 4.5 */
+  rating: number;
+  /** 235차 — 가게 채소 때문에 완성도 별이 막혔는가 */
+  produceCapped: boolean;
   /** 총점 0~100 */
   total: number;
   /** 현재 온도 (°C) */

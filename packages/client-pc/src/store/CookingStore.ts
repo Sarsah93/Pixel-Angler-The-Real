@@ -15,7 +15,7 @@ import {
   TUNING, getHeatSource, getCookware, getFuel, getFireRecipe, getCookIngredient, ingredientOfItem,
   createCookSession, canAddIngredient, addIngredient as coreAddIngredient, setHeat as coreSetHeat, flip as coreFlip,
   stepCook, finishCook, dishStarsAt, dishValueKrw, dishVitalsMult, dishItemName, checkComposition,
-  isVariantRecipe, createDishInstance, FISH_DATABASE, dishDiscoveryId,
+  isVariantRecipe, createDishInstance, FISH_DATABASE, dishDiscoveryId, isFarmProduce,
   type DeployedStove, type HeatLevel, type DishData, type DishInstance, type CookContent, type CookEnv, type FireRecipeDef, type CookwareDef, type PrimaryIngredientInfo,
 } from '@tra/core';
 import { GameState } from './GameState.js';
@@ -26,6 +26,16 @@ import { prologueProtects, PROLOGUE_PROTECT_MSG } from './Prologue.js';
 export const HOME_STOVE_ID = 'home_stove';
 /** 요리 아이템 신선도 배율 — dishStarsAt(condMult) */
 const COND_MULT: Record<string, number> = { live: 1, fresh: 1, chilled: 1, normal: 0.7, frozen: 0.9, thawed: 0.75, bad: 0.25, spoiled: 0 };
+
+/**
+ * 235차 — 채소 아이템의 출처. 텃밭 수확물(`crop_*` · 등급 꼬리 포함) = 직접 기른 것,
+ * 마트 식자재(`cook_*` 채소 · 식자재 묶음) = 가게 것. 양념 · 물 · 쌀 · 생선은 따지지 않는다(undefined).
+ */
+export function produceOrigin(item: Pick<InvItem, 'id' | 'subCategory'>): 'store' | 'homegrown' | undefined {
+  if (isFarmProduce(item.id)) return 'homegrown';
+  if (item.subCategory === '식자재' && (item.id.startsWith('cook_') || item.id === 'inv_veges')) return 'store';
+  return undefined;
+}
 
 export interface CookActionResult { ok: boolean; message: string }
 
@@ -181,7 +191,11 @@ class CookingStoreClass {
     if (!def) return { ok: false, message: '조리 재료가 아닙니다' };
     if (item.condition === 'bad' || item.condition === 'spoiled') return { ok: false, message: `${item.name} — 상해서 넣을 수 없습니다` };
     if (item.condition === 'frozen') return { ok: false, message: `${item.name} — 해동한 뒤 쓰세요` };
-    const fresh01 = item.condition ? ({ live: 1, fresh: 0.92, chilled: 0.9, normal: 0.65, thawed: 0.55 } as Record<string, number>)[item.condition] ?? 0.9 : 0.95;
+    // 235차 — 채소 출처: 텃밭에서 거둔 것(`crop_*`) = 직접 기른 것 · 마트 식자재 = 가게 것.
+    //  가게 채소가 하나라도 들어간 냄비는 별 다섯(완성도)이 막힌다(core `dishStarsAt`). 갓 딴 채소는 신선도도 한 칸 위.
+    const produce = produceOrigin(item);
+    const freshTable: Record<string, number> = { live: 1, fresh: produce === 'homegrown' ? 1 : 0.92, chilled: 0.9, normal: 0.65, thawed: 0.55 };
+    const fresh01 = item.condition ? freshTable[item.condition] ?? 0.9 : 0.95;
     if (def.unit === 'g') {
       // 156차 — 주재료 어종은 아이템이 사라진 뒤에도 요리 개체(매운탕 3종 등)가 알아야 한다
       const r = this.addIngredientRaw(st, m.ing, m.units, fresh01, item.id, m.weightG, item.speciesId);
@@ -191,18 +205,21 @@ class CookingStoreClass {
     const perQty = item.cookUnitsPerQty ?? 1;
     const needQty = Math.max(1, Math.ceil(units / perQty - 1e-6));
     if (item.qty < needQty) return { ok: false, message: `${item.name}이(가) 부족합니다 (${needQty}개 필요)` };
-    const r = this.addIngredientRaw(st, m.ing, units, fresh01, item.id);
+    const r = this.addIngredientRaw(st, m.ing, units, fresh01, item.id, undefined, undefined, produce);
     if (r.ok) { InventoryStore.removeQty(item.id, needQty); if (item.toxin) st.toxin = true; if (item.traded) st.traded = true; }
     return r;
   }
 
-  private addIngredientRaw(st: DeployedStove, ing: string, units: number, fresh01: number, srcItemId?: string, weightG?: number, speciesId?: string): CookActionResult {
+  private addIngredientRaw(
+    st: DeployedStove, ing: string, units: number, fresh01: number, srcItemId?: string, weightG?: number, speciesId?: string,
+    produce?: 'store' | 'homegrown',
+  ): CookActionResult {
     const s = st.session; const r = s ? getFireRecipe(s.recipeId) : undefined; const cw = st.cookwareId ? getCookware(st.cookwareId) : undefined;
     if (!s || !r || !cw) return { ok: false, message: '먼저 요리를 고르세요' };
     this.syncOne(st, Date.now());
     const chk = canAddIngredient(s, r, cw, ing, units);
     if (!chk.ok) return { ok: false, message: chk.reasonKo ?? '넣을 수 없습니다' };
-    coreAddIngredient(s, ing, units, fresh01, srcItemId, weightG, speciesId);
+    coreAddIngredient(s, ing, units, fresh01, srcItemId, weightG, speciesId, produce);
     GameState.markDirty();
     const def = getCookIngredient(ing);
     return { ok: true, message: `${def?.nameKo ?? ing} 투입` };
@@ -246,7 +263,10 @@ class CookingStoreClass {
     const s = st.session!; const r = getFireRecipe(s.recipeId)!; const cw = getCookware(st.cookwareId!)!;
     this.syncOne(st, Date.now());
     const rank = GameState.skillRanks['life_cook'] ?? 0;
-    const dish = finishCook(s, r, cw, { nowMs: Date.now(), skillRank: rank, stoveKind: this.isHome(st) ? 'home' : 'field' });
+    // 235차 — 요리 스킬 2단계부터 가게 채소로도 반 개(4.5)까지 오른다(별 다섯은 직접 기른 채소만)
+    const dish = finishCook(s, r, cw, {
+      nowMs: Date.now(), skillRank: rank, stoveKind: this.isHome(st) ? 'home' : 'field', halfStar: rank >= 2,
+    });
     // 156차 — 변형 레시피(매운탕 …)는 주재료 어종으로 요리 개체를 만든다. 나머지 레시피는 154차 경로 그대로
     const seq = InventoryStore.nextCatchSeq();
     const inst = isVariantRecipe(r.id) ? createDishInstance(r, dish, this.primaryIngredientOf(s.contents, r), seq) : null;

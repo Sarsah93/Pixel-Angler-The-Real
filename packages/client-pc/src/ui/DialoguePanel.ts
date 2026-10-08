@@ -574,13 +574,17 @@ export class DialoguePanel extends DraggablePanel {
         // 모든 actionKey 계통에 세 가지 태도/전략을 제공한다. 단, 검사·현장·
         // 제작·운반은 이 선택만으로 행동 단계가 오르지 않고 실제 시스템 이벤트가
         // 별도로 필요하다. 대화·선택 계통만 선택 자체가 해당 단계의 성공이다.
+        // 235차 — 이 단계가 의뢰인 앞에서 고르는 단계인지는 계통이 아니라 **단계의 출처**가 정한다.
+        //  고르는 단계가 아니면(쿨러 · 면허 창 · 현장 지점 …) 고른 방식은 기록만 되고, 다음 할 일은 그 단계의 이야기 문장이다.
+        const stepChoice = StoryStore.actionStepIsChoice(q.id, idx);
+        const stepLine = spec.stepsKo[Math.min(completed, spec.stepsKo.length - 1)];
         for (const ch of spec.choices) rows.push({
           label: ch.labelKo,
           hint: taken
-            ? `${flowLabel[spec.flow] ?? '행동'} 선택 완료 · ${completed}/${spec.stepsKo.length} — 실제 행동을 진행하세요`
-            : `${flowLabel[spec.flow] ?? '행동'} ${completed}/${spec.stepsKo.length} · ${objective.labelKo}`,
+            ? `${flowLabel[spec.flow] ?? '행동'} 선택 완료 · ${completed}/${spec.stepsKo.length} — ${stepChoice ? '실제 행동을 진행하세요' : stepLine}`
+            : `${flowLabel[spec.flow] ?? '행동'} ${completed}/${spec.stepsKo.length} · ${stepChoice ? objective.labelKo : stepLine}`,
           action: () => {
-            const sceneRun = !!this.onScene && (spec.source === 'dialogue' || spec.source === 'selection');
+            const sceneRun = !!this.onScene && stepChoice;
             const selected = StoryStore.chooseAction(q.id, idx, ch.id, sceneRun);
             if (!selected) return;
             // 167차 — 대화·선택 계통은 선택 직후 **장면이 재생되고 그 끝에서** 단계가 오른다.

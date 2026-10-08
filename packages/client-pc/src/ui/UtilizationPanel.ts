@@ -2283,7 +2283,8 @@ export class UtilizationPanel extends DraggablePanel {
       });
     this.bodyContainer.add(title);
 
-    const items = InventoryStore.getByCategory('consumable').filter((i) => i.chumKind && i.qty > 0);
+    // 235차 — 텃밭에서 거둔 보리 · 옥수수(농산물 · 음식 갈래)도 낟알 밑밥이 된다
+    const items = InventoryStore.items.filter((i) => i.chumKind && i.qty > 0 && (i.category === 'consumable' || i.category === 'food'));
     const cell = 88, gap = 8;
     const kindLabel: Record<ChumIngredientKind, string> = { powder: '파우더', krill: '냉동 크릴', grain: '곡물' };
     items.forEach((item, idx) => {
