@@ -25,8 +25,10 @@ import { randomBytes } from 'node:crypto';
 import {
   SESSION_CODE_LEN, SESSION_CODE_ALPHABET, MP_PRESENCE_TIMEOUT_MS,
   MP_CHAT_KEEP, MP_CHAT_MAX_LEN, MP_TAKEN_KEEP, MP_TAKEN_TTL_MAX_MS, MP_TAKEN_TTL_MIN_MS, MP_TAKEN_KEY_MAX, MP_TAKEN_VAL_MAX,
-  MP_PLACED_MAX_PER_OWNER, mpPlacedClash,
+  MP_PLACED_MAX_PER_OWNER, MP_TAKEN_KEY_PREFIXES, MP_TAKEN_MAX_PER_OWNER, mpPlacedClash,
+  MP_MAX_SESSIONS, MP_MAX_LIVE_PLAYERS, MP_MAX_SEATS,
   MP_TRADE_PROPOSE_TIMEOUT_MS, MP_TRADE_RANGE_PX, MP_TRADE_MAX_ITEMS, MP_TRADE_REASON_KO,
+  sanitizeTradeItems, sanitizeTradeCoins,
   characterNameKey, validateCharacterName, isFieldActive,
   type MpPeer, type MpActivity, type MpPlacedTrap, type MpChatLine,
   type MpSavedSession, type MpResume,
@@ -110,8 +112,10 @@ export class SessionRegistry {
     return `${SESSION_CODE_ALPHABET[0]}${(this.seq++).toString(36).toUpperCase().padStart(SESSION_CODE_LEN - 1, '0')}`;
   }
 
-  create(): string {
+  /** 세션 열기 — 서버가 들고 있는 세션이 상한(`MP_MAX_SESSIONS`)이면 `null` */
+  create(): string | null {
     this.sweep();
+    if (this.sessions.size >= MP_MAX_SESSIONS) return null;
     const code = this.newCode();
     this.sessions.set(code, {
       code, seed: (Math.random() * 0xffffffff) >>> 0, createdMs: Date.now(),
@@ -154,6 +158,14 @@ export class SessionRegistry {
     const chk = this.checkName(code, name, userId);
     if (!chk.ok) return { ok: false, duplicate: chk.duplicate, reasonKo: chk.reasonKo };
 
+    // 인원 상한 — 지금 접속해 있는 사람 수(이미 접속 중인 내가 다시 들어오는 것은 세지 않는다)
+    const live = [...s.players.values()].filter((p) => !p.offline && p !== prior).length;
+    if (live >= MP_MAX_LIVE_PLAYERS) return { ok: false, reasonKo: `세션이 가득 찼습니다(최대 ${MP_MAX_LIVE_PLAYERS}명).` };
+    // 자리 상한 — 새 사람이 앉을 자리가 없으면 가장 오래 비운 자리를 치운다. 비운 자리도 없으면 거절
+    if (!prior && s.players.size >= MP_MAX_SEATS && !this.evictOldestOffline(s)) {
+      return { ok: false, reasonKo: '세션에 남은 자리가 없습니다.' };
+    }
+
     if (prior) {
       // 이어하기 — 자리는 그대로 두고 접속만 되살린다
       s.players.delete(prior.playerId);
@@ -192,6 +204,20 @@ export class SessionRegistry {
 
   private newPlayerId(): string {
     return `p${Date.now().toString(36)}${(this.seq++).toString(36)}`;
+  }
+
+  /** 가장 오래 자리를 비운 사람 한 명을 내보낸다(설치물도 함께 걷는다 — `sweep`의 기한 만료와 같은 처리). 없으면 false */
+  private evictOldestOffline(s: Session): boolean {
+    let oldest: SessionPlayer | undefined;
+    for (const p of s.players.values()) {
+      if (p.offline && (!oldest || p.lastSeenMs < oldest.lastSeenMs)) oldest = p;
+    }
+    if (!oldest) return false;
+    const gone = oldest;
+    s.players.delete(gone.playerId);
+    s.traps = s.traps.filter((t) => t.ownerId !== gone.userId);
+    s.dirty = true;
+    return true;
   }
 
   // ═══════════════════════════════════════════════════
@@ -427,9 +453,14 @@ export class SessionRegistry {
     if (!t || t.phase !== 'open') return { ok: false, reasonKo: MP_TRADE_REASON_KO.cancelled };
     const mine = this.sideOf(t, c.me.userId);
     if (!mine) return { ok: false, reasonKo: '내 거래가 아닙니다.' };
-    if (items.length > MP_TRADE_MAX_ITEMS) return { ok: false, reasonKo: `아이템은 ${MP_TRADE_MAX_ITEMS}줄까지입니다.` };
-    mine.offer.items = items;
-    mine.offer.coins = Math.max(0, Math.floor(coins));
+    if (Array.isArray(items) && items.length > MP_TRADE_MAX_ITEMS) return { ok: false, reasonKo: `아이템은 ${MP_TRADE_MAX_ITEMS}줄까지입니다.` };
+    // 서버는 인벤토리를 모르지만 **모양은 본다** — 수량(1 이상의 정수) · 재화(0 이상의 정수) · 표시 이름 = 실제 내용.
+    // 여기서 걸러 두지 않으면 상대 가방에 그대로 들어가고 거래 자동 저장이 세이브에 굳힌다.
+    const cleanItems = sanitizeTradeItems(items);
+    const cleanCoins = sanitizeTradeCoins(coins);
+    if (!cleanItems || cleanCoins === null) return { ok: false, reasonKo: '거래 내용이 올바르지 않습니다.' };
+    mine.offer.items = cleanItems;
+    mine.offer.coins = cleanCoins;
     t.from.offer.locked = t.to.offer.locked = false;
     t.from.offer.confirmed = t.to.offer.confirmed = false;
     t.updatedMs = Date.now();
@@ -497,7 +528,8 @@ export class SessionRegistry {
     const me = this.authed(s, playerId, token);
     if (!me) return { ok: false, reasonKo: '세션에서 나간 상태입니다.' };
     const k = String(key ?? '').slice(0, MP_TAKEN_KEY_MAX);
-    if (!k) return { ok: false, reasonKo: '요청이 올바르지 않습니다.' };
+    // 아는 종류의 키만 받는다 — 아무 문자열로 줄을 채워 남의 기록을 밀어내지 못하게
+    if (!k || !MP_TAKEN_KEY_PREFIXES.some((p) => k.startsWith(p))) return { ok: false, reasonKo: '요청이 올바르지 않습니다.' };
     this.pruneTaken(s);
     const now = Date.now();
     const cur = s.taken.find((l) => l.key === k);
@@ -521,6 +553,12 @@ export class SessionRegistry {
       seq: ++s.takenSeq, key: k, untilMs: now + ttl, busy: !!opts.busy, by: me.name, owner: me.userId,
       ...(val ? { val } : {}),
     });
+    // 1인 상한 — 넘으면 **내** 오래된 줄부터 버린다(전체 상한에 닿아 남의 고갈 기록이 밀려나는 일을 막는다)
+    const mineLines = s.taken.filter((l) => l.owner === me.userId);
+    if (mineLines.length > MP_TAKEN_MAX_PER_OWNER) {
+      const drop = new Set(mineLines.slice(0, mineLines.length - MP_TAKEN_MAX_PER_OWNER));
+      s.taken = s.taken.filter((l) => !drop.has(l));
+    }
     if (s.taken.length > MP_TAKEN_KEEP) s.taken.splice(0, s.taken.length - MP_TAKEN_KEEP);
     s.dirty = true;
     if (!opts.busy) this.save(code);   // 잠금은 잦다 — 진짜 소비만 디스크로

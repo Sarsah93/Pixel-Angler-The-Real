@@ -12,7 +12,7 @@
  */
 
 import {
-  MP_DEFAULT_SERVER, MP_PRESENCE_INTERVAL_MS,
+  MP_DEFAULT_SERVER, MP_PRESENCE_INTERVAL_MS, sanitizeTradeItems, sanitizeTradeCoins,
   type GameMode, type MpPeer, type MpActivity, type MpPlacedTrap, type MpChatLine, type MpResume,
   type MpProfile, type MpTradeState, type MpTradeItem,
   type MpCreateSessionRes, type MpSessionInfoRes, type MpNameCheckRes, type MpJoinRes, type MpPresenceRes,
@@ -32,6 +32,9 @@ interface StoredMp {
 function makeUserId(): string {
   return `u${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
 }
+
+/** 「적용함」 통지를 다시 보내는 간격 */
+const TRADE_APPLIED_RESEND_MS = 10_000;
 
 class MultiplayerClientImpl {
   mode: GameMode = 'single';
@@ -66,6 +69,8 @@ class MultiplayerClientImpl {
   trade: MpTradeState | null = null;
   /** 이미 내 인벤토리에 적용한 확정 거래 id (146차 — 이중 적용 방지, localStorage 영속) */
   private appliedTrades = new Set<string>();
+  /** 「적용함」을 마지막으로 보낸 시각 — 다시 알리기 간격용(메모리만) */
+  private appliedSentMs = new Map<string, number>();
   /** 231차 — 아직 서버에 알리지 못한 캐릭터 소멸 */
   private pendingRetire: { code: string; userId: string }[] = [];
   /**
@@ -276,7 +281,7 @@ class MultiplayerClientImpl {
       if (sentProfile && sentProfile === this.profile) this.profileSent = true;
       this.peers = res.peers ?? [];
       this.traps = res.traps ?? [];
-      this.trade = res.trade ?? null;
+      this.trade = res.trade ? this.cleanTrade(res.trade) : null;
       for (const l of (res.taken ?? []) as MpTakenLine[]) {
         if (l.seq > this.takenSeq) this.takenSeq = l.seq;
         // 233차 — 기한 · 잠금을 그대로 둔다. 내가 고쳐 쓴 줄이 돌아와도 mine 표시는 남긴다
@@ -340,7 +345,30 @@ class MultiplayerClientImpl {
   markTradeApplied(tradeId: string): void {
     this.appliedTrades.add(tradeId);
     this.persist();
+    this.appliedSentMs.set(tradeId, Date.now());
     void this.tradePost('/mp/trade/applied', { tradeId });
+  }
+  /**
+   * 「적용함」 다시 알리기 — 첫 통지가 서버에 닿지 못하면 서버는 7일 동안 미적용으로 보고 새 거래를 막는다.
+   * 서버가 아직 미적용이라고 내려보내는 동안 `TRADE_APPLIED_RESEND_MS`마다 한 번씩 다시 보낸다.
+   */
+  resendTradeApplied(tradeId: string): void {
+    const last = this.appliedSentMs.get(tradeId) ?? 0;
+    if (Date.now() - last < TRADE_APPLIED_RESEND_MS) return;
+    this.appliedSentMs.set(tradeId, Date.now());
+    void this.tradePost('/mp/trade/applied', { tradeId });
+  }
+  /**
+   * 서버에서 받은 거래 상태를 믿을 수 있는 모양으로 — 서버가 걸러 주지만(`setTradeOffer`) 받는 쪽도 다시 본다
+   * (방을 연 사람의 서버가 옛 판이거나 고쳐진 것일 수 있다). 모양이 틀린 제안은 **빈 제안**으로 본다:
+   * 화면에 보이는 것과 실제로 가방에 들어오는 것이 같은 값에서 나오므로 어긋나지 않는다.
+   */
+  private cleanTrade(t: MpTradeState): MpTradeState {
+    const side = (s: MpTradeState['from']): MpTradeState['from'] => ({
+      ...s,
+      offer: { ...s.offer, items: sanitizeTradeItems(s.offer?.items) ?? [], coins: sanitizeTradeCoins(s.offer?.coins) ?? 0 },
+    });
+    return { ...t, from: side(t.from), to: side(t.to) };
   }
   hasAppliedTrade(tradeId: string): boolean { return this.appliedTrades.has(tradeId); }
   /** 이 거래에서 내 쪽 / 상대 쪽 */

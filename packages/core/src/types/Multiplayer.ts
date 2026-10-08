@@ -173,6 +173,16 @@ export const MP_TAKEN_VAL_MAX = 160;
 export type MpPlaceItem = Omit<MpPlacedTrap, 'ownerId' | 'ownerName'>;
 /** 234차 — 한 사람이 세계에 둘 수 있는 설치물 상한(통발 · 화구 · 거치대 합) */
 export const MP_PLACED_MAX_PER_OWNER = 64;
+/** 공유 소비 키로 받는 접두사 — 채집 자리(`f:`) · 과증식 개체(`n:`) · 세션 날씨 카드(`w:`). 새 종류를 만들면 여기에 더한다 */
+export const MP_TAKEN_KEY_PREFIXES: readonly string[] = ['f:', 'n:', 'w:'];
+/** 한 사람이 들고 있을 수 있는 소비 줄 상한 — 넘으면 **그 사람의** 오래된 줄부터 버린다(남의 기록을 밀어내지 못하게) */
+export const MP_TAKEN_MAX_PER_OWNER = 1_500;
+/** 서버 한 대가 들고 있을 세션 수 상한(저장본에서 되살린 것 포함) */
+export const MP_MAX_SESSIONS = 100;
+/** 한 세션에 동시에 접속할 수 있는 사람 수 상한 */
+export const MP_MAX_LIVE_PLAYERS = 16;
+/** 한 세션이 기억하는 자리 수 상한(접속이 끊겨 이어하기를 기다리는 자리 포함) */
+export const MP_MAX_SEATS = 64;
 
 /**
  * 234차 — 설치물 대조 응답 (`POST /mp/placed/sync`). 접속(재접속)할 때 내 세이브의 설치물 목록을 보내면
@@ -452,6 +462,66 @@ export const MP_TRADE_PROPOSE_TIMEOUT_MS = 30_000;
 export const MP_TRADE_RANGE_PX = 48;
 /** 거래 한 번에 실을 수 있는 아이템 줄 수 */
 export const MP_TRADE_MAX_ITEMS = 8;
+/** 거래 한 줄의 수량 상한 — 이보다 크면 잘못된 요청으로 본다 */
+export const MP_TRADE_MAX_QTY = 9_999;
+/** 한 번에 올릴 수 있는 재화 상한(원) */
+export const MP_TRADE_MAX_COINS = 2_000_000_000;
+/** 한 줄의 `payload`(JSON) 최대 글자 수 — 아이템 한 개 원본은 보통 1~2천 자다(요리 · 채비 묶음은 더 길다) */
+export const MP_TRADE_PAYLOAD_MAX_CHARS = 32_000;
+
+/** 제어 문자 · 줄바꿈 — 표시 문자열에 섞이면 가짜 줄을 만들 수 있다 */
+// eslint-disable-next-line no-control-regex
+const MP_CTRL_RE = /[\u0000-\u001f\u007f\u2028\u2029]+/g;
+
+function mpCleanText(v: unknown, max: number): string | null {
+  if (typeof v !== 'string') return null;
+  const s = v.replace(MP_CTRL_RE, ' ').trim();
+  return s && s.length <= max ? s : null;
+}
+
+/**
+ * 거래 제안의 아이템 줄을 **믿을 수 있는 모양으로** 고른다 — 서버(`setTradeOffer`)와 받는 쪽 클라이언트가 같이 쓴다.
+ * 배열이 아니거나, 줄 수가 넘거나, 한 줄이라도 모양이 틀리면 `null`(통째로 거절)이다.
+ *
+ * - `qty`는 1 이상 `MP_TRADE_MAX_QTY` 이하의 **정수**만.
+ * - `payload`는 평범한 객체이고 `payload.id`가 `srcId`와 같아야 한다. 같은 `srcId`가 두 줄이면 거절.
+ * - 표시용 `name` · `iconTexture`는 **payload의 값으로 맞춘다** — 화면에 보인 것과 실제로 들어오는 것이 달라지지 않게.
+ *
+ * 서버는 인벤토리를 모른다. 「그 물건을 정말 갖고 있는가」는 여기서 판단하지 못하고 모양만 본다.
+ */
+export function sanitizeTradeItems(raw: unknown): MpTradeItem[] | null {
+  if (!Array.isArray(raw) || raw.length > MP_TRADE_MAX_ITEMS) return null;
+  const out: MpTradeItem[] = [];
+  const seen = new Set<string>();
+  for (const line of raw as unknown[]) {
+    if (!line || typeof line !== 'object' || Array.isArray(line)) return null;
+    const r = line as Record<string, unknown>;
+    const srcId = mpCleanText(r.srcId, 96);
+    const qty = r.qty;
+    const payload = r.payload;
+    if (!srcId || seen.has(srcId)) return null;
+    if (typeof qty !== 'number' || !Number.isInteger(qty) || qty < 1 || qty > MP_TRADE_MAX_QTY) return null;
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return null;
+    const p = payload as Record<string, unknown>;
+    const name = mpCleanText(p.name, 80);
+    if (p.id !== srcId || !name) return null;
+    let size = 0;
+    try { size = JSON.stringify(p).length; } catch (_e) { return null; }
+    if (size > MP_TRADE_PAYLOAD_MAX_CHARS) return null;
+    const iconTexture = mpCleanText(p.iconTexture, 96) ?? undefined;
+    const noteKo = mpCleanText(r.noteKo, 40) ?? undefined;
+    seen.add(srcId);
+    out.push({ srcId, name, qty, ...(iconTexture ? { iconTexture } : {}), ...(noteKo ? { noteKo } : {}), payload: p });
+  }
+  return out;
+}
+
+/** 거래 재화를 0 이상 `MP_TRADE_MAX_COINS` 이하의 정수로 — 숫자가 아니거나 범위를 벗어나면 `null` */
+export function sanitizeTradeCoins(raw: unknown): number | null {
+  if (typeof raw !== 'number' || !Number.isFinite(raw)) return null;
+  const n = Math.floor(raw);
+  return n >= 0 && n <= MP_TRADE_MAX_COINS ? n : null;
+}
 
 /** 거래 시작 거절 사유 — 채팅 로그에 그대로 띄운다 */
 export const MP_TRADE_REASON_KO = {

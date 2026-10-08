@@ -731,7 +731,8 @@ export type {
 } from './types/Multiplayer.js';
 export {
   MP_ACTIVITY_KO, MP_SHARED_RNG_KINDS, MP_CHAT_KEEP, MP_CHAT_MAX_LEN, MP_TAKEN_KEEP, MP_TAKEN_TTL_MAX_MS, MP_TAKEN_TTL_MIN_MS, MP_TAKEN_KEY_MAX,
-  MP_TAKEN_VAL_MAX, MP_PLACED_MAX_PER_OWNER,
+  MP_TAKEN_VAL_MAX, MP_PLACED_MAX_PER_OWNER, MP_TAKEN_KEY_PREFIXES, MP_TAKEN_MAX_PER_OWNER,
+  MP_MAX_SESSIONS, MP_MAX_LIVE_PLAYERS, MP_MAX_SEATS,
   isFieldActive, mpWorldSeed, mpTimeSlot, mpRng, mpPlacedClash,
 } from './types/Multiplayer.js';
 
@@ -747,6 +748,7 @@ export type {
 } from './types/Multiplayer.js';
 export {
   MP_TRADE_PROPOSE_TIMEOUT_MS, MP_TRADE_RANGE_PX, MP_TRADE_MAX_ITEMS, MP_TRADE_REASON_KO,
+  MP_TRADE_MAX_QTY, MP_TRADE_MAX_COINS, MP_TRADE_PAYLOAD_MAX_CHARS, sanitizeTradeItems, sanitizeTradeCoins,
 } from './types/Multiplayer.js';
 
 // ── 154차 불요리 (화구·용기·연료 · 재료 · 레시피 · 조리 시뮬 · 맛 별 5개) ──

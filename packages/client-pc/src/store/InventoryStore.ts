@@ -1598,7 +1598,14 @@ class InventoryStoreManager {
    * 카탈로그형(같은 id = 같은 물건)은 그대로 합쳐지는 것이 맞다.
    */
   importTradeItem(t: MpTradeItem): boolean {
-    const tpl = { ...(t.payload as InvItemTemplate) };
+    // 받는 쪽 방어 — 수량은 1 이상의 정수, 원본은 아는 분류의 아이템이어야 한다(상대가 보낸 값을 그대로 믿지 않는다)
+    if (!Number.isInteger(t.qty) || t.qty < 1) return false;
+    const src = t.payload as Partial<InvItemTemplate> | null;
+    if (!src || typeof src !== 'object' || typeof src.id !== 'string' || !src.id || typeof src.name !== 'string') return false;
+    if (typeof src.category !== 'string' || !(src.category in CATEGORY_LABEL)) return false;
+    const tpl = { ...(src as InvItemTemplate) };
+    // 양도된 물건에 붙어 오면 안 되는 상태 — 귀속 · 착용(보내는 쪽은 애초에 올릴 수 없다)
+    delete tpl.bound; delete tpl.equipped; delete tpl.equippedHand;
     tpl.traded = true;
     if (tpl.speciesId || tpl.forageCatch) {
       // ⚠ 내 순번(`nextCatchSeq`)만 붙이면 **내 dev 시드 `inv_fish_1`과 충돌해 한 스택으로 합쳐졌다**(실측).
@@ -1609,6 +1616,12 @@ class InventoryStoreManager {
       tpl.id = id;
     }
     return this.addItem(tpl, t.qty);
+  }
+
+  /** 거래 창에 보일 한 줄 부연(신선도) — 보낸 쪽이 적어 준 글이 아니라 **실제 내용**에서 읽는다 */
+  tradeNoteOf(t: MpTradeItem): string | undefined {
+    const c = (t.payload as { condition?: unknown } | null)?.condition;
+    return typeof c === 'string' ? (CONDITION_LABEL as Record<string, string>)[c] : undefined;
   }
 
   /** 받을 아이템에 필요한 빈 칸 수 (같은 id가 이미 있어 합쳐지는 것은 0) */
