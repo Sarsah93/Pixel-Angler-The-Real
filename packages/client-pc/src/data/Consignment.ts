@@ -62,12 +62,13 @@ export function consignableItems(licenses: readonly string[], regionId: string, 
     && !!i.speciesId
     && !i.bound
     && !consignVerdictOf(i, licenses, regionId, day)
-    && InventoryStore.getSellPrice(i) > 0,
+    && InventoryStore.getMarketValue(i) > 0,
   );
 }
 
 /**
- * 아이템 → 로트 입력. 기준 단가는 `getSellPrice`(경락 시세 캐시 + 신선도 배율)를 kg으로 환산한다.
+ * 아이템 → 로트 입력. 기준 단가는 `getMarketValue`(경락 시세 캐시 + 신선도 배율 — **상점 매입 할인 없음**)를 kg으로 환산한다.
+ * ⚠ `getSellPrice`(상점 매입가 = 시세의 60%)를 쓰지 말 것 — 위판이 상점보다 나을 이유가 사라진다.
  * ⚠ 여기에 `getMarketPriceFactor`를 **또** 곱하지 말 것 — 시세 이중 적용(39차 함정).
  */
 /** 222차 「경매 배짱」 배수 — GameState가 주입(이 파일은 GameState를 import하지 않는다) */
@@ -76,7 +77,7 @@ export function setAuctionBidMult(fn: () => number): void { auctionBidMult = fn;
 
 export function consignInputOf(item: InvItem, reserve: ReserveMode, origin: string, crated: boolean): ConsignInput {
   const weightKg = Math.max(0.01, (item.weightG ?? 0) / 1000);
-  const basePricePerKg = Math.round(InventoryStore.getSellPrice(item) / weightKg);
+  const basePricePerKg = Math.round(InventoryStore.getMarketValue(item) / weightKg);
   return {
     sourceItemId: item.id,
     speciesId: item.speciesId!,
