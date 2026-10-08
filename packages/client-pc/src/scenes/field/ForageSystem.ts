@@ -547,8 +547,9 @@ export class ForageSystem {
       this.lastFarmName = fname;
       if (farm && isProtectedFarmKind(farm.kind)) {
         this.host.pushLog(`[어장] ${farm.name} — 어촌계 ${FISH_FARM_KIND_LABEL[farm.kind]} 구역: 전복·해삼·성게·홍합·문어 채취 금지 (강원 조례)`);
-        // 229차 — 파산 힌트: 벌금은 정액 1천만원이고 못 내면 끝이다. 처음 들어왔을 때는 표지판을 가리킨다
-        this.host.pushLog(`[어장] 적발되면 벌금 ${TUNING.forage.fineCapWon.toLocaleString()}원 — 그만한 돈이 없으면 파산이다`);
+        // 229차 — 파산 힌트: 벌금을 못 내면 끝이다(금액 = TUNING.law.fines.ordinance). 처음 들어왔을 때는 표지판을 가리킨다
+        const fr = TUNING.law.fines.ordinance;
+        this.host.pushLog(`[어장] 적발되면 벌금 ${fr.baseWon.toLocaleString()}~${fr.capWon.toLocaleString()}원 — 낼 돈이 없으면 파산이다`);
         if (!GameState.getFlag('sign.farm_read')) this.host.floatingHint('물가에 표지판이 서 있다 — 가까이 가서 읽어 본다');
       }
     }
@@ -940,13 +941,12 @@ export class ForageSystem {
         else InventoryStore.removeQty(invId, 1);
         this.host.scene.cameras.main.flash(260, 200, 40, 40);
         this.host.scene.cameras.main.shake(200, 0.006);
-        // 229차 — 벌금 정액 1천만원. 가진 돈으로 바로 낼 수 있으면 잃고, 모자라면 파산(암전 · 처음부터 — 사용자 지정)
-        const coins = GameState.player.inventory.coins;
-        if (enf.fineWon > 0 && coins < enf.fineWon) {
+        // 229차 — 가진 돈으로 바로 낼 수 있으면 잃고, 모자라면 파산(암전 · 처음부터 — 사용자 지정).
+        //   금액은 `enforcementFineWon`(기본 금액 · 가진 돈 비율 · 한도). `addCoins`는 모자라면 한 푼도 깎지 않고 false다
+        if (enf.fineWon > 0 && !GameState.addCoins(-enf.fineWon, false, 'fine')) {
           this.host.pushLog(`[단속] ${farm.name}(${FISH_FARM_KIND_LABEL[farm.kind]}) 안 ${c.nameKo} 채취 적발 — 압수 · 벌금 ${enf.fineWon.toLocaleString()}원. 낼 돈이 없다`);
           if (this.host.bankrupt) { this.host.bankrupt(enf.fineWon); return; }
         }
-        if (enf.fineWon > 0) GameState.addCoins(-enf.fineWon, false, 'fine');
         GameState.markDirty();
         this.host.floatingHint(`단속 적발! ${c.nameKo} 압수 · 벌금 ${enf.fineWon.toLocaleString()}원`);
         this.host.pushLog(`[단속] ${farm.name}(${FISH_FARM_KIND_LABEL[farm.kind]}) 안 ${c.nameKo} 채취 적발 — 압수 · 벌금 ${enf.fineWon.toLocaleString()}원 (조례 상한 ${GANGWON_FORAGE_ORDINANCE.fineMaxWon.toLocaleString()}원)`);
