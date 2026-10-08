@@ -85,6 +85,12 @@ export const GRID_CAPACITY_MAX = 37;
  */
 export const SLOT_EQUIPPED = -1;
 
+/**
+ * 상점 매입 비율 — 상점은 시세(통째 어획물 = 경락가 · 그 밖 = 기준가)의 이만큼만 쳐 준다.
+ * 시세대로 받는 길은 위판(경매 · 수수료 3~6%)이고, 값을 올리는 길은 손질 → 회 접시 · 요리다.
+ */
+export const SHOP_BUY_RATE = 0.6;
+
 /** 착용/해제 결과 — 실패 사유를 UI가 그대로 안내한다 (예: 인벤토리 칸 부족) */
 export interface EquipResult {
   ok: boolean;
@@ -1493,16 +1499,31 @@ class InventoryStoreManager {
   }
 
   /**
-   * 상점 매입가 (일반 품목은 기준가의 60%).
+   * 상점 매입가 — 상점은 **시세의 60%**(`SHOP_BUY_RATE`)에 사들인다(일반 품목도 기준가의 60%).
+   * 통째 어획물의 시세(할인 전 값)가 필요하면 `getMarketValue`를 쓴다 — 위판 기준가 · 손질 가치 승계.
+   * 회 접시 · 완성 요리는 책정가 그대로다(노력 가치 보전 — 두 함수가 같은 값을 낸다).
+   */
+  getSellPrice(item: InvItem): number { return this.priceOf(item, true); }
+
+  /**
+   * 시세 평가액 — 통째 어획물은 경락 시세 × 신선도 배율 **그대로**(상점 매입 할인 없음).
+   * 위판장은 이 값을 기준으로 경매에 부치고, 손질은 이 값을 필렛 · 몸통살에 나눠 준다.
+   * 통째 어획물이 아닌 것은 `getSellPrice`와 같은 값이다.
+   */
+  getMarketValue(item: InvItem): number { return this.priceOf(item, false); }
+
+  /**
+   * 값 산정 본체.
    *
    * 어획물은 `evaluateFishSellPrice`(core) 정식 엔진으로 산정한다:
-   *   가격 = kg당 단가(어종별) × 중량 × 등급 배율 × 크기(길이) 배율
+   *   시세 = kg당 단가(어종별) × 중량 × 등급 배율 × 크기(길이) 배율
    * 실시간 경락가 캐시가 있으면 kg당 단가가 당일 시세로 대체되므로,
    * 여기서 별도의 시세 배율을 다시 곱하면 이중 적용이 된다 — 곱하지 말 것.
    *
    * 개체 실측치(speciesId/weightG)가 없는 레거시 어획물은 basePrice 폴백.
+   * @param shop true = 상점 매입가(통째 어획물에 `SHOP_BUY_RATE`) / false = 시세 그대로
    */
-  getSellPrice(item: InvItem): number {
+  private priceOf(item: InvItem, shop: boolean): number {
     // 채집물(해루질·통발 생물)은 판매·유통 금지 — 강원 조례 (121차). 요리·자가 소비 sink 전용
     if (item.forageCatch) return 0;
     // 미완성 접시는 판매 불가 (135차 사용자 결정) — 가격표(모듬 고정가·단품 회중량)가
@@ -1518,11 +1539,12 @@ class InventoryStoreManager {
         const tier = conditionPriceTier(item.condition);
         const cache = ExternalDataStore.getWholesaleCache(speciesId, tier);
         const base = evaluateFishSellPrice(speciesId, item.lengthCm ?? 0, item.weightG, cache).finalPrice;
-        return Math.max(0, Math.round(base * stateMul));
+        // 상점은 시세(경락가)보다 싸게 사들인다 — 시세 그대로 받으려면 위판(수수료 3~6%)
+        return Math.max(0, Math.round(base * stateMul * (shop ? SHOP_BUY_RATE : 1)));
       }
       // 레거시 폴백 — 실측치가 없으면 기존 방식(기준가 × 시세 배율) × 상태 배율
       const factor = speciesId ? ExternalDataStore.getMarketPriceFactor(speciesId) : 1;
-      return Math.max(0, Math.floor(item.basePrice * 0.6 * factor * stateMul));
+      return Math.max(0, Math.floor(item.basePrice * SHOP_BUY_RATE * factor * stateMul));
     }
     // 154차 — 완성 요리: 별점 총점 비례 책정가(`dishValueKrw`)가 basePrice. 시간 감쇠·신선도는 조회 시 다시 계산한다.
     //  탄 것은 0. 0.6 매입 할인 미적용(사시미 접시와 같은 원칙 — 노력 가치 보전).
@@ -1549,7 +1571,7 @@ class InventoryStoreManager {
       const stateMul = conditionSellMultiplier(item.condition);
       return Math.max(0, Math.round(item.basePrice * stateMul));
     }
-    return Math.max(100, Math.floor(item.basePrice * 0.6));
+    return Math.max(100, Math.floor(item.basePrice * SHOP_BUY_RATE));
   }
 
   /**

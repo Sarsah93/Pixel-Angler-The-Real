@@ -20,7 +20,8 @@
 
 ## 3. 동작 구조
 ```
-판매가 = evaluateFishSellPrice(어종, 길이, 등급, 시세캐시) × 상태배율 × 0.6(매입할인)
+시세      = evaluateFishSellPrice(어종, 길이, 등급, 시세캐시) × 상태배율      ← getMarketValue (위판 기준가 · 손질 가치 승계)
+상점 매입가 = 시세 × 0.6(SHOP_BUY_RATE)                                     ← getSellPrice (상점 · 상세보기)
   상태배율: 활어/신선/냉장/냉동 1.0 · 보통 0.5 · 나쁨 0.1 · 부패 0(판매 불가)
   ※ 시세 캐시를 넘기면 kg단가가 대체된다 — getMarketPriceFactor를 또 곱하면 이중 적용
   ※ 완성 사시미 접시(inv_sashimi_plate_)는 0.6 할인 미적용
@@ -88,9 +89,10 @@
 1. **매칭 테이블은 부분 일치 + 선착순** — `MAFRA_ITEM_TO_SPECIES` / `KOSIS_SPECIES_MATCH`는 **긴 이름을 먼저** 둔다(`말쥐치⊃쥐치`, `강도다리⊃도다리`, `잿방어⊃방어`, `한치` 등). 순서가 틀리면 조용히 오매칭.
 2. **API 키는 `.env`(`VITE_*`)** — 소스 하드코딩 금지. 프로덕션 번들엔 인라인되므로 노출을 감안한다.
 3. **프로덕션 배포에는 vite 프록시가 없다** — HTTP 전용(MAFRA·NMPNT)은 서버 프록시 필요. gh-pages에서는 Mock 폴백.
-4. **포화·가게 수요는 상점 매입에만**(196차) — `getSellPrice`는 손대지 않는다(위판 기준가·상세보기·손질 가치가 같이 쓴다).
+4. **포화·가게 수요는 상점 매입에만**(196차) — 값 함수는 둘이다: `getSellPrice` = 상점 매입가(시세 × 0.6 · 상점 · 상세보기),
+   `getMarketValue` = 시세 그대로(위판 기준가 · 손질 가치 승계). 위판 · 손질에 `getSellPrice`를 쓰면 할인이 두 번 걸린다.
    상점 판매가는 `MarketStore.quote(item, base)`, 팔린 뒤 `recordSale`. 상점을 열 때 `MarketStore.open(branch)`, 닫을 때 `close()`.
-   시세 이중 적용 금지(§3 주석). **위판 기준가도 같다** — `getSellPrice`(경락 캐시 반영)를
+   시세 이중 적용 금지(§3 주석). **위판 기준가도 같다** — `getMarketValue`(경락 캐시 반영)를
    kg으로 환산해 쓰고 `getMarketPriceFactor`를 다시 곱하지 않는다.
 5. **경매는 계약이 두 벌이고 방향이 반대다**(147차) — `AuctionEngine` = 플레이어가 **사는 쪽**
    (`calcPlayerAuctionTotal` = 총 *비용*) / `ConsignmentAuction` = 플레이어가 **파는 쪽**.
