@@ -12,10 +12,10 @@ out/
 target/
 src-tauri/target/
 
-# Environment
+# Environment — 예시 파일만 올린다(Vite 모드별 .env.production 등도 막는다)
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
 
 # Turbo cache
 .turbo/
@@ -68,4 +68,8 @@ docs/reference/gis/*/*.dbf
 
 # 전체 위키 아티팩트 파생물 (tools/gen_wiki_images.py · tools/dump_wiki_items.mjs 재생성)
 tools/wiki_img/
+
+# 검증 스크립트 · 스크린샷 같은 세션 임시 산출물 — 저장소에 올리지 않는다.
+#  되풀이해 쓸 검증은 테스트(packages/core/src/**/*.test.ts)나 tools/ 로 옮긴다.
+scratchpad/
 .claude/worktrees/

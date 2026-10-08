@@ -16,6 +16,10 @@ PNG만 바꾸면 되는지, 생성기를 돌려야 하는지부터 판별한다:
 
 주의: `public/sashimi/*.png`는 직접 로드지만 **그 PNG 자체가 생성물** — 원본(`food assets/trimmings/…`)이 바뀌면 `gen_sashimi_fillet.cjs` 재실행.
 
+**공용 부산물 원본은 한 벌만 둔다** — 여러 어군이 같이 쓰는 그림(`fish_skin` · `pin_bone` · `pile_of_fish_guts` ·
+`skinned_pillet_with(out)_ribs`)은 `food assets/trimmings/` 루트에만 두고 어군 폴더에 복제하지 않는다.
+삶은 문어 계열 4장도 도구가 읽는 `butchery/reference/cephalopod/octopus/`에만 둔다(사본은 갈라진다).
+
 ## ① 생성기 목록 (전부 `node tools/<파일>` — Playwright+설치 Chrome, 자동 탐색)
 
 | 도구 | 입력 | 출력 | 용도 |
