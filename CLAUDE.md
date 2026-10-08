@@ -8,6 +8,8 @@
 @.agents/AGENTS.md
 
 - `.agents/AGENTS.md` — 아키텍처·코딩 규칙·금지 사항의 **단일 기준 문서** (위에 자동 임포트됨)
+- `.agents/REFERENCE.md` — **참고 절**(완료된 시스템 표 · 필드 단축키 · `RegionFieldScene` 구조 · 1인칭 낚시 조작).
+  자동으로 읽히지 않는다 — 해당 시스템을 건드릴 때 찾아 읽는다(2026-10-08 `AGENTS.md` §5 · §6에서 분리).
 - `.agents/IMPLEMENTATION_PLAN.md` — 구현 단계 현황과 다음 작업 목록. 작업 완료 시 이 두 문서를 반드시 최신화할 것.
 - `.agents/STORY_SPEC_v4.md` — **스토리·퀘스트 정본**(퀘 186·아크 23·법 5조·id 표·구현 현황). 퀘스트 작업 시 필독.
 - **`docs/wiki/README.md` — 구조화 뷰(위키)**. 시스템별 현황·세부과제·잔여·위험을 한 눈에.
