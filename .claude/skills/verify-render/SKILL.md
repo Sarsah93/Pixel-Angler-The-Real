@@ -64,7 +64,7 @@ const { chromium } = resolvePlaywright();
 | GameState | `globalThis.__GS` (dev 전용) | 위와 동일 함정 (72차 실측) |
 | 1인칭 낚시 씬 | `globalThis.__FP` (dev 전용) — `devForceBite()` / `devForceFight('dive'|'jump'|'lateral'|'none', dir)` · 패턴을 유지하려면 `fight.patternTimer = 9`도 같이 | 입질을 기다리지 말 것 — 강제한다(118차). 캐스팅은 물 쪽(우하)으로 조준: `mouse.move(900,440) → down 400ms → up` |
 | 맵 편집기(F7) 상태 | `globalThis.__MAPEDIT` (dev 전용 — `state`/`rotate`/`flip`/`toggleOverlap`/`isOpen`) | import한 `MapEditorPanel`은 게임과 별개 인스턴스 (106차 실측 — `mapEditorState` 동일성 false) |
-| 채집·통발 필드 시스템 | `globalThis.__FIELD` (dev 전용 — `forage`(`allSpots`/`devForceSpot`/`candidateStats`) · `trapField`(`placing` 주입 → `confirmAt`/`devRewind`/`harvest`) · `cooler` · `tuning`(TUNING 실인스턴스) · `getTrapById`) | **실데이터 파고 ≥1.5m·풍속 ≥12m/s면 [E]가 거부된다**(121차 실측 2.1m) — `__FIELD.tuning.forage.maxWaveM = 9`로 올리고 진행. 적발 확률은 `tuning.forage.enforcementChance = 1`. 씬 진입은 `__GS.startNewGameInSlot(3)` → `scene.start('RegionFieldScene',{region:'gangwon_sokcho'})` |
+| 채집·통발 필드 시스템 | `globalThis.__FIELD` (dev 전용 — `forage`(`allSpots`/`devForceSpot`/`candidateStats`) · `trapField`(`placing` 주입 → `confirmAt`/`devRewind`/`harvest`) · `cooler` · `tuning`(TUNING 실인스턴스) · `getTrapById`) | **실데이터 파고 ≥1.5m·풍속 ≥12m/s면 [F]가 거부된다**(121차 실측 2.1m) — `__FIELD.tuning.forage.maxWaveM = 9`로 올리고 진행. 적발 확률은 `tuning.forage.enforcementChance = 1`. 씬 진입은 `__GS.startNewGameInSlot(3)` → `scene.start('RegionFieldScene',{region:'gangwon_sokcho'})` |
 | 불요리 | `globalThis.__COOK` (dev 전용 — `CookingStore` 실인스턴스) + `__FIELD.stoveField`(`placing` 주입 → `confirmAt` · `placeCheck` · `onInteractKey(shift)`) | 시간은 벽시계라 **`st.lastTickMs -= N·1000` 되감기 후 `__COOK.syncAll()`**(실 10초 = 조리 1분). 패널이 열린 채 스토어를 바꿔도 250ms 틱의 레이아웃 키가 따라온다 |
 | 모듈 함수(렌더러 등) | `await import('/src/…​.ts')` — **`.ts` URL** | `.js` URL은 별개 모듈. 상태 없는 순수 함수 호출에만 사용 |
 
@@ -87,7 +87,7 @@ const { chromium } = resolvePlaywright();
   `waitForTimeout`으로 기다리지 말고 **씬 메서드를 직접 호출**(`s.updateQuestGuide(500)`). 2.5초를 기다려도 null이 나온다.
 - **`update()`가 매 프레임 `nearWater`를 다시 계산한다**(155차) — 캐스팅 게이트를 하네스로 두드릴 때는 `s.nearWater = true`를
   **호출 직전마다** 다시 넣는다(한 번 넣고 두 번째 `tryStartCharge`를 부르면 `charging false`).
-- 필드 화살표·추적기 검증은 `__STORY.setTracked(id)` → `s.updateQuestGuide(500)` → `s.hud.trackerC.list`(Text)·`s.questArrowG.visible`.
+- 필드 화살표·추적기 검증은 `__STORY.setTracked(id)` → `s.updateQuestGuide(500)` → `s.hud.trackerC.list`(Text)·`s.questGuideG.visible`.
 - **모듈 데이터 객체의 동일성(===) 비교 금지** (98차 실측) — 하네스가 import한 레지스트리와 게임/모듈이
   든 레지스트리는 인스턴스가 갈라질 수 있다(서버 재시작 직후에도 재현). 스프라이트 비교는
   **값 시그니처**(`w x h : rows[0]` 등)로 할 것.

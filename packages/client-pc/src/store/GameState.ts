@@ -619,6 +619,7 @@ export class GameStateManager {
    */
   addCoins(amount: number, quiet = false, reason: CoinReason = 'other'): boolean {
     if (!this._player) return false;
+    if (!Number.isFinite(amount)) return false;   // 숫자가 아닌 값이 잔액을 오염시키지 않게(저장하면 null → 0원이 된다)
     const newCoins = this._player.inventory.coins + amount;
     if (newCoins < 0) return false;
     this._player.inventory.coins = newCoins;

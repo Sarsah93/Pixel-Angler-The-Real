@@ -38,7 +38,7 @@ fetch_region_osm / build_osm_tilemap). "손그림 추정 지형 폐기, OpenStre
 |---|---|---|
 | 수정 | `tools/pixelize_butchery.cjs` | `OCTO_SRC` → 픽셀 에셋 0~9 매핑(신규 키 `octo_invert1`) · octo용 KEEP_POLY/BG_TOL 전량 폐기(알파 경로 자동) · `OCTO_TRIM_SRC`에서 octo_live 제거(0.png이 정본) |
 | 수정 | `tools/pixelize_butchery.cjs` | **`CEPH_SRC_DIR` 이동 경로 정정** — 사용자 정리로 오징어 레퍼런스가 `무늬오징어 레퍼런스/` 하위로 이동. 구 경로면 재생성 시 오징어 전 키가 "입력 없음"으로 **소실**되는 함정 |
-| 수정 | [CephalopodFish.ts](../../packages/client-pc/src/ui/CephalopodFish.ts) | `octo_invert` 드래그 3프레임화(`octo_live→invert1→invert2`, 임계 0.35/0.7) · 주석 100차 갱신 |
+| 수정 | [CephalopodFish.ts](../../../packages/client-pc/src/ui/CephalopodFish.ts) | `octo_invert` 드래그 3프레임화(`octo_live→invert1→invert2`, 임계 0.35/0.7) · 주석 100차 갱신 |
 | 수정 | `tools/gen_octo_assets.cjs` | 부리 아이콘 잡 추가 — 7.png → `public/trimmings/octo_beak.png`(구 1078px 원본 직접 복사본 대체) |
 | 재생성 | `data/PixelFishStages.ts` | octo 8키 갱신 + `octo_invert1` 추가 — **타 키(오징어·어류) 바이트 변화 0** (키별 md5 비교 실측) |
 
@@ -54,11 +54,11 @@ fetch_region_osm / build_osm_tilemap). "손그림 추정 지형 폐기, OpenStre
 | 배치 | `.agents/OSM_TILEMAP_SPEC.md` | 스펙 + **§0.5 코드 정합 노트 신설**(TR 20px · 캐스팅 규칙 조정 · POI 개방 범위 · 지역 등록 판정 · worldX 버그) |
 | 산출 | `pixelazed/sokcho_v2/` · `public/data/sokcho_v2/` | fetch(15,030 elements) → build(589×321 · sea 52.96% · POI 310 · 스폰 (263,64) 스냅) → seamless.json + pois.json + meta.json |
 | 수정 | `tools/build_region_maps.py` | **심리스 분기 신설** — `pixelazed/<region>/meta.json` 존재 = OSM 지역. terrain.png(손수정 정본) → 최근접 팔레트 분류 → seamless.json + 걷기 컴포넌트/스폰 검증 리포트 |
-| 수정 | [RegionMap.ts](../../packages/core/src/types/RegionMap.ts) | `RegionTerrain`에 `road/sand/pier` · `TERRAIN_BY_CHAR` r/s/b · `RegionMeta`/`PoiType`/`RegionPoi` · `ACTIVE_REGION_MODE`('seamless') · `SEAMLESS_REGIONS`(gangwon_sokcho→sokcho_v2) · `isWalkableTerrain`/`isFishableStandTerrain`. index.ts export |
-| 신설 | [SeamlessChunks.ts](../../packages/client-pc/src/scenes/SeamlessChunks.ts) | **청크 스트리밍 관리자** — 64타일(1280px) 청크 · RT 풀 12 LRU · 카메라 3×3 상주 · 시각 베이킹 프레임당 1청크 · **충돌 바디는 상주 즉시**(행 병합) · 수심 BFS Uint16 · 청크 로드/언로드 훅 |
-| 수정 | [RegionFieldScene.ts](../../packages/client-pc/src/scenes/RegionFieldScene.ts) | 심리스 분기(init/preload/create) · meta.spawn 스폰 · 엣지 전환 비활성 · OSM POI(문 자동 배치 BFS·청크 상주 마커·거래 매핑 → 기존 [E] 흐름) · shoreKind s/b 반영 · 수심 앵커 위치 휴리스틱 · **`pointerWorld()` 신설**(조준·설치 3곳 getWorldPoint 교체) |
-| 수정 | [RegionHud.ts](../../packages/client-pc/src/ui/RegionHud.ts) | MINI_COL 3색 추가 · 대형 맵(6만 타일+) 미니맵 = CanvasTexture ImageData 직접 기록(Graphics 37만 커맨드 회피) |
-| 수정 | [DataAttributions.ts](../../packages/core/src/db-schema/DataAttributions.ts) | `ODbL` 라이선스 + "© OpenStreetMap contributors" 크레딧 (CreditsScene 자동 반영) |
+| 수정 | [RegionMap.ts](../../../packages/core/src/types/RegionMap.ts) | `RegionTerrain`에 `road/sand/pier` · `TERRAIN_BY_CHAR` r/s/b · `RegionMeta`/`PoiType`/`RegionPoi` · `ACTIVE_REGION_MODE`('seamless') · `SEAMLESS_REGIONS`(gangwon_sokcho→sokcho_v2) · `isWalkableTerrain`/`isFishableStandTerrain`. index.ts export |
+| 신설 | [SeamlessChunks.ts](../../../packages/client-pc/src/scenes/SeamlessChunks.ts) | **청크 스트리밍 관리자** — 64타일(1280px) 청크 · RT 풀 12 LRU · 카메라 3×3 상주 · 시각 베이킹 프레임당 1청크 · **충돌 바디는 상주 즉시**(행 병합) · 수심 BFS Uint16 · 청크 로드/언로드 훅 |
+| 수정 | [RegionFieldScene.ts](../../../packages/client-pc/src/scenes/RegionFieldScene.ts) | 심리스 분기(init/preload/create) · meta.spawn 스폰 · 엣지 전환 비활성 · OSM POI(문 자동 배치 BFS·청크 상주 마커·거래 매핑 → 기존 [E] 흐름) · shoreKind s/b 반영 · 수심 앵커 위치 휴리스틱 · **`pointerWorld()` 신설**(조준·설치 3곳 getWorldPoint 교체) |
+| 수정 | [RegionHud.ts](../../../packages/client-pc/src/ui/RegionHud.ts) | MINI_COL 3색 추가 · 대형 맵(6만 타일+) 미니맵 = CanvasTexture ImageData 직접 기록(Graphics 37만 커맨드 회피) |
+| 수정 | [DataAttributions.ts](../../../packages/core/src/db-schema/DataAttributions.ts) | `ODbL` 라이선스 + "© OpenStreetMap contributors" 크레딧 (CreditsScene 자동 반영) |
 
 ## 4. 구조상 위치
 
@@ -132,7 +132,7 @@ fetch_region_osm / build_osm_tilemap). "손그림 추정 지형 폐기, OpenStre
   해안 포말 · 파도 대시 · 배(결정적 희소) · 젖은 모래 띠 · 잔디↔맨땅 디더 경계 ·
   **건물 = 전맵 연결요소 라벨링 → 박공 2사면 지붕(팔레트 5종 해시)/대형(≥120타일) 패널 지붕 +
   건물 그림자(남·동측)** · **나무 = 청크 수명 스프라이트**(잔디 해시 산포 · 플레이어와 y-sort).
-- **HUD**: 신설 [HudPanelStyle.ts](../../packages/client-pc/src/ui/HudPanelStyle.ts)
+- **HUD**: 신설 [HudPanelStyle.ts](../../../packages/client-pc/src/ui/HudPanelStyle.ts)
   (`paintHudPanel`/`paintHudSlot`/`paintTitlePlate` — 그림자·베벨 프레임·2톤 필·브론즈 스터드) →
   상태/로그/퀵슬롯/미니맵 프레임 + **'속초' 타이틀 명패** + 우하단 힌트 바.
   **야간 발광 수정** — 심리스는 파사드가 없어 창문/네온/대형 글로우가 허공 halo였다(리포트의
