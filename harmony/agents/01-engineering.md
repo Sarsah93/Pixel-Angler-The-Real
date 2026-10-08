@@ -37,4 +37,10 @@
 
 ## 다음 실행 중점
 
-- (조율자가 매일 갱신한다. 첫 실행 전이라 비어 있다.)
+- (2026-10-08) 첫 점검에서 발견 8건(보통 4 · 경미 4). 숙련 25(18/73).
+- 먼저 확인: `FishingScene` 씬 키 · 미사용 Socket.IO 계층 · 서버 상한 — 사용자 결정(P-0004)이 났는지.
+- 아직 읽지 않은 범위: `packages/core/src/types/**`(36개) · `packages/core/src/config/tuning.ts` · `packages/core/src/index.ts`(대조만 함) ·
+  각 패키지 `tsconfig*.json` · `apps/tauri-wrapper/**` · `packages/server/src/socket/**`.
+- 변경분 점검 때: 새 core 파일 · 새 심볼의 `index.ts` export, `extends Phaser.Scene` 수와 `super({ key:` 수 대조(지금 20 대 19).
+- 확인할 것: core `clean` 뒤 재빌드에서 출력이 비는지(`tsconfig.build.tsbuildinfo`가 남는다) — 점검 폴더의 사본에서만 재현한다.
+- 테스트 추가 후보 1순위는 `rules/SessionWeather.ts`와 `types/Multiplayer.ts`의 순수 함수다(학습 노트의 우선순위 표).

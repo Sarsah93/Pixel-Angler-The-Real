@@ -1,26 +1,26 @@
 {
  "date": "2026-10-08",
- "audited_commit": "825bba5d2b9b6cc1720612754390f2cbe603ece1",
+ "audited_commit": "4b86d71ef292a69c9fb71817e0b8add53ea33ddc",
  "summary": {
-  "harmony_index": null,
-  "balance": null,
-  "weakest": null,
-  "measured_domains": 0
+  "harmony_index": 59.8,
+  "balance": 52.5,
+  "weakest": "08-notes-memory",
+  "measured_domains": 9
  },
  "domains": {
   "01-engineering": {
    "name": "1 엔지니어링",
-   "health": null,
-   "mastery": 0.0,
+   "health": 68.0,
+   "mastery": 24.7,
    "agency": null,
-   "overall": null,
-   "scope_files": 72,
-   "reviewed_current": 0,
+   "overall": 51.8,
+   "scope_files": 73,
+   "reviewed_current": 18,
    "reviewed_stale": 0,
    "open_findings": {
     "심각": 0,
-    "보통": 0,
-    "경미": 0
+    "보통": 4,
+    "경미": 4
    },
    "decisions": {
     "merged": 0,
@@ -30,17 +30,17 @@
   },
   "02-code": {
    "name": "2 코드",
-   "health": null,
-   "mastery": 0.0,
+   "health": 70.0,
+   "mastery": 10.6,
    "agency": null,
-   "overall": null,
-   "scope_files": 356,
-   "reviewed_current": 0,
+   "overall": 47.7,
+   "scope_files": 360,
+   "reviewed_current": 38,
    "reviewed_stale": 0,
    "open_findings": {
     "심각": 0,
-    "보통": 0,
-    "경미": 0
+    "보통": 3,
+    "경미": 6
    },
    "decisions": {
     "merged": 0,
@@ -50,17 +50,17 @@
   },
   "03-files-docs": {
    "name": "3 파일·문서",
-   "health": null,
-   "mastery": 0.0,
+   "health": 86.0,
+   "mastery": 82.6,
    "agency": null,
-   "overall": null,
+   "overall": 84.7,
    "scope_files": 564,
-   "reviewed_current": 0,
+   "reviewed_current": 466,
    "reviewed_stale": 0,
    "open_findings": {
     "심각": 0,
     "보통": 0,
-    "경미": 0
+    "경미": 7
    },
    "decisions": {
     "merged": 0,
@@ -70,17 +70,17 @@
   },
   "04-design-media": {
    "name": "4 디자인·미디어",
-   "health": null,
-   "mastery": 0.0,
+   "health": 70.0,
+   "mastery": 99.9,
    "agency": null,
-   "overall": null,
-   "scope_files": 755,
-   "reviewed_current": 0,
+   "overall": 81.2,
+   "scope_files": 759,
+   "reviewed_current": 758,
    "reviewed_stale": 0,
    "open_findings": {
     "심각": 0,
-    "보통": 0,
-    "경미": 0
+    "보통": 3,
+    "경미": 6
    },
    "decisions": {
     "merged": 0,
@@ -90,17 +90,17 @@
   },
   "05-pipeline": {
    "name": "5 파이프라인",
-   "health": null,
-   "mastery": 0.0,
+   "health": 70.0,
+   "mastery": 17.8,
    "agency": null,
-   "overall": null,
+   "overall": 50.4,
    "scope_files": 73,
-   "reviewed_current": 0,
+   "reviewed_current": 13,
    "reviewed_stale": 0,
    "open_findings": {
     "심각": 0,
-    "보통": 0,
-    "경미": 0
+    "보통": 3,
+    "경미": 6
    },
    "decisions": {
     "merged": 0,
@@ -110,17 +110,17 @@
   },
   "06-tickets-economy": {
    "name": "6 티켓·경제",
-   "health": null,
-   "mastery": 0.0,
+   "health": 47.0,
+   "mastery": 32.0,
    "agency": null,
-   "overall": null,
+   "overall": 41.4,
    "scope_files": 50,
-   "reviewed_current": 0,
+   "reviewed_current": 16,
    "reviewed_stale": 0,
    "open_findings": {
-    "심각": 0,
-    "보통": 0,
-    "경미": 0
+    "심각": 1,
+    "보통": 5,
+    "경미": 4
    },
    "decisions": {
     "merged": 0,
@@ -130,17 +130,17 @@
   },
   "07-api-env": {
    "name": "7 API·환경 설정",
-   "health": null,
-   "mastery": 0.0,
+   "health": 54.0,
+   "mastery": 65.2,
    "agency": null,
-   "overall": null,
-   "scope_files": 22,
-   "reviewed_current": 0,
+   "overall": 58.2,
+   "scope_files": 23,
+   "reviewed_current": 15,
    "reviewed_stale": 0,
    "open_findings": {
     "심각": 0,
-    "보통": 0,
-    "경미": 0
+    "보통": 6,
+    "경미": 5
    },
    "decisions": {
     "merged": 0,
@@ -150,17 +150,17 @@
   },
   "08-notes-memory": {
    "name": "8 노트·메모리",
-   "health": null,
-   "mastery": 0.0,
+   "health": 56.0,
+   "mastery": 6.8,
    "agency": null,
-   "overall": null,
-   "scope_files": 191,
-   "reviewed_current": 0,
+   "overall": 37.5,
+   "scope_files": 192,
+   "reviewed_current": 13,
    "reviewed_stale": 0,
    "open_findings": {
     "심각": 0,
-    "보통": 0,
-    "경미": 0
+    "보통": 5,
+    "경미": 7
    },
    "decisions": {
     "merged": 0,
@@ -170,17 +170,17 @@
   },
   "09-skills": {
    "name": "9 스킬",
-   "health": null,
-   "mastery": 0.0,
+   "health": 76.0,
+   "mastery": 100.0,
    "agency": null,
-   "overall": null,
+   "overall": 85.0,
    "scope_files": 12,
-   "reviewed_current": 0,
+   "reviewed_current": 12,
    "reviewed_stale": 0,
    "open_findings": {
     "심각": 0,
-    "보통": 0,
-    "경미": 0
+    "보통": 2,
+    "경미": 6
    },
    "decisions": {
     "merged": 0,

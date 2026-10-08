@@ -1,5 +1,1446 @@
 {
  "schema": 1,
- "next_id": 1,
- "findings": []
+ "next_id": 84,
+ "findings": [
+  {
+   "id": "F-0001",
+   "domain": "01-engineering",
+   "severity": "보통",
+   "title": "FishingScene에 씬 키가 없어 Phaser가 default로 등록한다",
+   "evidence": [
+    "packages/client-pc/src/scenes/FishingScene.ts:48",
+    "packages/client-pc/src/game.ts:86",
+    "packages/client-pc/src/scenes/FieldScene.ts:1014",
+    "packages/client-pc/src/scenes/FieldScene.ts:1471"
+   ],
+   "why": "launch('FishingScene')가 키를 찾지 못한다. 지금은 dev 빌드 전용 레거시 필드에서만 닿는다. 씬 20개 중 키 선언 19개.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null,
+   "rule": "AGENTS §8-6 (씬 키 = 파일명)"
+  },
+  {
+   "id": "F-0002",
+   "domain": "01-engineering",
+   "severity": "보통",
+   "title": "쓰이지 않는 Socket.IO 계층이 인증 · 입력 검증 없이 열려 있다",
+   "evidence": [
+    "packages/server/src/index.ts:42",
+    "packages/server/src/socket/PlayerSync.ts:19",
+    "packages/server/src/socket/PlayerSync.ts:44",
+    "packages/server/src/socket/PlayerSync.ts:61",
+    "packages/server/src/types/SocketEvents.ts:16"
+   ],
+   "why": "클라이언트는 socket.io를 쓰지 않는다(import 0). 실제 멀티는 /mp REST인데 미사용 표면이 origin 전체 허용으로 남아 있다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0003",
+   "domain": "01-engineering",
+   "severity": "보통",
+   "title": "서버에 세션 수 · 인원 · 요청 빈도 상한이 없고 CORS가 전체 허용이다",
+   "evidence": [
+    "packages/server/src/index.ts:25",
+    "packages/server/src/index.ts:29",
+    "packages/server/src/multiplayer/routes.ts:19",
+    "packages/server/src/multiplayer/SessionRegistry.ts:113",
+    "packages/server/src/multiplayer/SessionRegistry.ts:173",
+    "packages/server/src/multiplayer/SessionRegistry.ts:644"
+   ],
+   "why": "인증 없는 세션 생성 · 참가 경로로 파일과 메모리가 한도 없이 늘 수 있다. 공개 호스팅 전에 정해야 한다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0004",
+   "domain": "01-engineering",
+   "severity": "보통",
+   "title": "구조 문서 01-ARCHITECTURE.md가 2026-08-06 기준에 멈춰 실제와 크게 다르다",
+   "evidence": [
+    "docs/wiki/01-ARCHITECTURE.md:3",
+    "docs/wiki/01-ARCHITECTURE.md:13",
+    "docs/wiki/01-ARCHITECTURE.md:24",
+    "docs/wiki/01-ARCHITECTURE.md:51",
+    "docs/wiki/01-ARCHITECTURE.md:157"
+   ],
+   "why": "파일 수(ui 33 → 87 · store 7 → 27 등) · 빠진 폴더 12개 · 서버 미착수 서술 · 저장 시점이 낡았다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0005",
+   "domain": "01-engineering",
+   "severity": "경미",
+   "title": "@types/express 5.x와 express 4.x의 주 버전이 어긋난다",
+   "evidence": [
+    "packages/server/package.json:18",
+    "packages/server/package.json:23"
+   ],
+   "why": "타입 선언과 런타임의 주 버전이 달라 타입이 실제 동작을 보장하지 못한다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0006",
+   "domain": "01-engineering",
+   "severity": "경미",
+   "title": "Tauri 패키징 설정이 실제 경로 · v2 방식과 어긋난다 (Phase 9 미착수)",
+   "evidence": [
+    "apps/tauri-wrapper/src-tauri/tauri.conf.json:10",
+    "packages/client-pc/src/main.ts:25",
+    "apps/tauri-wrapper/package.json:11"
+   ],
+   "why": "frontendDist가 없는 폴더(apps/client-pc/dist)를 가리키고 '__TAURI__' 판정에 필요한 withGlobalTauri 설정이 없다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0007",
+   "domain": "01-engineering",
+   "severity": "경미",
+   "title": "core 판정 로직이 실행 기기의 시간대에 의존한다",
+   "evidence": [
+    "packages/core/src/utils/LunarCalendar.ts:14",
+    "packages/core/src/simulation/TideCalculator.ts:23",
+    "packages/core/src/rules/ShellfishToxin.ts:64",
+    "packages/core/src/simulation/FishBiteEngine.ts:71",
+    "packages/core/src/db-schema/FishBehaviorDatabase.ts:553"
+   ],
+   "why": "KST 브라우저와 UTC 서버 · 테스트의 결과가 달라질 수 있다. 음력 기점 근사 로직도 2벌이다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null,
+   "rule": "AGENTS §10 (모든 날짜는 KST)"
+  },
+  {
+   "id": "F-0008",
+   "domain": "01-engineering",
+   "severity": "경미",
+   "title": "client-pc 스토어 5개가 값 import 순환을 이룬다",
+   "evidence": [
+    "packages/client-pc/src/store/GameState.ts:44",
+    "packages/client-pc/src/store/GameState.ts:77",
+    "packages/client-pc/src/store/Prologue.ts:25",
+    "packages/client-pc/src/store/CraftingStore.ts:36",
+    "packages/client-pc/src/store/ShopStore.ts:15",
+    "packages/client-pc/src/store/QuestItemGuard.ts:26"
+   ],
+   "why": "지금은 정상이지만 모듈 최상위에서 서로의 값을 건드리면 초기화 순서 오류가 난다. 234차 신규 파일이 묶음에 들어왔다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0009",
+   "domain": "02-code",
+   "severity": "보통",
+   "title": "넣다 실패하면 물건이 사라지는 반환 경로가 남아 있다 (화구 회수 · 통발 반환 · 맡은 물건 되살리기)",
+   "evidence": [
+    "packages/client-pc/src/store/CookingStore.ts:90",
+    "packages/client-pc/src/store/CookingStore.ts:112",
+    "packages/client-pc/src/scenes/field/TrapFieldSystem.ts:246",
+    "packages/client-pc/src/scenes/field/TrapFieldSystem.ts:363",
+    "packages/client-pc/src/store/QuestItemGuard.ts:93",
+    "packages/client-pc/src/store/QuestItemGuard.ts:102"
+   ],
+   "why": "가방이 가득이면 화구 · 통발이 사라지고, 맡은 물건은 바닥에서 먼저 쓸려 칸이 빌 때까지 없어진다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null,
+   "rule": "234차 함정 「넣다 실패하면 사라지는 지급 금지」"
+  },
+  {
+   "id": "F-0010",
+   "domain": "02-code",
+   "severity": "보통",
+   "title": "세이브 백필 · 어종 id 이전이 가방 밖 아이템에는 적용되지 않는다",
+   "evidence": [
+    "packages/client-pc/src/store/InventoryStore.ts:1304",
+    "packages/client-pc/src/store/HomeStore.ts:395",
+    "packages/client-pc/src/store/FridgeStore.ts:91",
+    "packages/client-pc/src/store/GroundItemStore.ts:100",
+    "packages/client-pc/src/store/GameState.ts:405"
+   ],
+   "why": "집 보관함 · 냉장고 · 바닥 · 거치대에 둔 구세이브 물건은 새 정적 필드 없이 그대로 복사된다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null,
+   "rule": "스킬 save-migration"
+  },
+  {
+   "id": "F-0011",
+   "domain": "02-code",
+   "severity": "보통",
+   "title": "통발 내구도가 설치마다 새로 시작해 누적되지 않는다",
+   "evidence": [
+    "packages/client-pc/src/scenes/field/TrapFieldSystem.ts:234",
+    "packages/client-pc/src/scenes/field/TrapFieldSystem.ts:407",
+    "packages/core/src/simulation/TrapSystem.ts:78",
+    "packages/core/src/simulation/TrapSystem.ts:240"
+   ],
+   "why": "수거 때 깎은 값이 아이템에 기록되지 않아 「내구도 0 = 파손」에 사실상 도달하지 못한다. 수정은 밸런스에 닿아 제안만.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0012",
+   "domain": "02-code",
+   "severity": "경미",
+   "title": "주석 없는 any 6줄",
+   "evidence": [
+    "packages/core/src/simulation/FishBiteEngine.ts:179",
+    "packages/client-pc/src/ui/InfoOverlayPanel.ts:11",
+    "packages/client-pc/src/ui/InfoOverlayPanel.ts:150",
+    "packages/client-pc/src/scenes/AnglerLogScene.ts:837",
+    "packages/client-pc/src/scenes/NightHuntingScene.ts:142",
+    "packages/client-pc/src/scenes/CondoScene.ts:285"
+   ],
+   "why": "규칙 적중 26건 중 진짜 위반은 이 6줄이다(오탐 1 · 주석 있는 예외 19).",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null,
+   "rule": "AGENTS §4 (any 금지 · 불가피하면 주석 필수)"
+  },
+  {
+   "id": "F-0013",
+   "domain": "02-code",
+   "severity": "경미",
+   "title": "어디서도 불리지 않는 모듈 · 씬 · 메서드",
+   "evidence": [
+    "packages/client-pc/src/assets/AssetManifest.ts:8",
+    "packages/client-pc/src/entities/Player.ts:1",
+    "packages/client-pc/src/input/KeyboardInput.ts:1",
+    "packages/client-pc/src/ui/EnvironmentHUD.ts:1",
+    "packages/client-pc/src/ui/TideWidget.ts:1",
+    "packages/client-pc/src/game.ts:88",
+    "packages/client-pc/src/game.ts:92",
+    "packages/client-pc/src/ui/ForageGamePanel.ts:195",
+    "packages/client-pc/src/store/ConsignQueue.ts:60",
+    "packages/client-pc/src/net/MultiplayerClient.ts:225"
+   ],
+   "why": "미임포트 모듈 11개(약 790줄), 등록만 된 씬 2개, 호출 0인 메서드 3개. 레거시 FieldScene 스택(약 5,000줄)은 dev 단추로만 들어간다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0014",
+   "domain": "02-code",
+   "severity": "경미",
+   "title": "같은 로직이 여러 곳에 복사돼 있다 (어획물 템플릿 가격 식 5곳 · 필드 시스템 3종의 피어 표시)",
+   "evidence": [
+    "packages/client-pc/src/ui/CoolerPanel.ts:438",
+    "packages/client-pc/src/ui/CoolerPanel.ts:561",
+    "packages/client-pc/src/ui/AquariumPanel.ts:274",
+    "packages/client-pc/src/scenes/FirstPersonFishingScene.ts:3619",
+    "packages/client-pc/src/scenes/FirstPersonFishingScene.ts:3912",
+    "packages/client-pc/src/scenes/field/TrapFieldSystem.ts:336",
+    "packages/client-pc/src/scenes/field/StoveFieldSystem.ts:175",
+    "packages/client-pc/src/scenes/field/RodHolderSystem.ts:397"
+   ],
+   "why": "한 곳만 고치면 서로 어긋난다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0015",
+   "domain": "02-code",
+   "severity": "경미",
+   "title": "멀티 클라이언트 견고성: 채팅 유실 · 시간 초과 없음 · 폴링 겹침",
+   "evidence": [
+    "packages/client-pc/src/net/MultiplayerClient.ts:256",
+    "packages/client-pc/src/net/MultiplayerClient.ts:272",
+    "packages/client-pc/src/net/MultiplayerClient.ts:155",
+    "packages/client-pc/src/net/MultiplayerClient.ts:293"
+   ],
+   "why": "보내기 전에 입력을 비워 실패하면 말이 사라지고, 느린 서버에서 요청이 겹친다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0016",
+   "domain": "02-code",
+   "severity": "경미",
+   "title": "세이브 파싱 실패가 로그 없이 빈 슬롯으로 보인다",
+   "evidence": [
+    "packages/client-pc/src/store/GameState.ts:1807",
+    "packages/client-pc/src/store/GameState.ts:1860"
+   ],
+   "why": "깨진 세이브를 빈 칸으로 보고 덮어쓸 수 있다(메뉴 흐름은 미확인).",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0017",
+   "domain": "02-code",
+   "severity": "경미",
+   "title": "남은 디버그 출력 · 낡은 주석 · 하드코딩 값",
+   "evidence": [
+    "packages/client-pc/src/scenes/CookScene.ts:396",
+    "packages/client-pc/src/scenes/FishingScene.ts:254",
+    "packages/client-pc/src/scenes/field/TrapFieldSystem.ts:465",
+    "packages/client-pc/src/scenes/field/TrapFieldSystem.ts:3",
+    "packages/client-pc/src/scenes/field/StoveFieldSystem.ts:303"
+   ],
+   "why": "console.log 36건이 전부 dev 폴더 밖이고, 쿨러 칸 수 9가 COOLER_CAPACITY 대신 하드코딩돼 있으며, 주석이 [E] 수거라고 적는다(실제 F).",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0018",
+   "domain": "03-files-docs",
+   "severity": "경미",
+   "title": "워크로그가 적은 scratchpad 재현 경로 85종 중 81종이 저장소에 없다",
+   "evidence": [
+    "docs/wiki/03-WORKLOG/2026-10-08-234-quest-items-placed-sync-session-weather.md:124",
+    "docs/wiki/03-WORKLOG/2026-09-14-134-story-quests-law.md:81",
+    "docs/wiki/03-WORKLOG/2026-08-10-088-blackscreen-guards-squid-balance.md:117"
+   ],
+   "why": "저장소 scratchpad/는 091~097차 잔재 83개뿐이라 「재현 절차」를 실행할 수 없다. 보존 정책이 없다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0019",
+   "domain": "03-files-docs",
+   "severity": "경미",
+   "title": "food assets/ 안에 같은 파일이 여러 벌 있다 (23묶음 · 18.4 MB)",
+   "evidence": [
+    "tools/gen_sashimi_fillet.cjs:43",
+    "tools/pixelize_butchery.cjs:569",
+    "tools/gen_octo_assets.cjs:33"
+   ],
+   "why": "도구가 읽지 않는 사본이 15.3 MB다. 이름 변경 금지 폴더라 정리는 제안만.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0020",
+   "domain": "03-files-docs",
+   "severity": "경미",
+   "title": "쓰이지 않는 외부 팩과 고아 파일",
+   "evidence": [
+    "pixelazed/tileset/RPG_Icons_Pack_OwlishMedia/",
+    "pixelazed/busan_2_pixelazed -pin.png"
+   ],
+   "why": "아이콘 팩 108개는 참조 0 · 라이선스 파일 없음 · 출처 표기 없음. 핀 지도는 참조 0.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0021",
+   "domain": "03-files-docs",
+   "severity": "경미",
+   "title": "생성물 tools/wiki_items.json(224 KB)이 추적 중인데 .gitignore 주석은 재생성 파생물로 적는다",
+   "evidence": [
+    ".gitignore:69",
+    "tools/dump_wiki_items.mjs:43",
+    "tools/gen_game_wiki_data.mjs:40"
+   ],
+   "why": "주석과 무시 규칙이 어긋나 추적 여부가 의도인지 알 수 없다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0022",
+   "domain": "03-files-docs",
+   "severity": "경미",
+   "title": "파일 이름 규칙 불일치 (오탈자 18 · 공백 · 대문자 · 한글 혼용)",
+   "evidence": [
+    "tools/gen_sashimi_fillet.cjs:43",
+    "tools/pixelize_butchery.cjs:459",
+    "packages/client-pc/src/scenes/BootScene.ts:221"
+   ],
+   "why": "pillet · hailbut 같은 오탈자가 도구와 로드 코드에 글자 그대로 묶여 있다. 변경은 제안만.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0023",
+   "domain": "03-files-docs",
+   "severity": "경미",
+   "title": "옮긴 파일을 옛 위치로 적은 주석",
+   "evidence": [
+    "packages/core/src/api-client/AuctionPriceApiClient.ts:5"
+   ],
+   "why": "경락가 CSV를 「루트」라고 적지만 실제는 docs/reference/ 다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0024",
+   "domain": "03-files-docs",
+   "severity": "경미",
+   "title": "docs/reference/에 참조 0인 원본 3개가 있고 상위 색인이 없다",
+   "evidence": [
+    "docs/reference/격자3단계_격자번호.xlsx",
+    "docs/reference/gis/README.md:9"
+   ],
+   "why": "무엇이 어느 도구의 입력인지 gis/ 밖에서는 알 수 없다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0025",
+   "domain": "04-design-media",
+   "severity": "보통",
+   "title": "상시 HUD 날씨 배지가 OS 글꼴 글리프(☀ ⛅ ☁ ☂ ❄)를 글자로 그린다",
+   "evidence": [
+    "packages/client-pc/src/ui/RegionHud.ts:301",
+    "packages/client-pc/src/ui/RegionHud.ts:1156",
+    "packages/client-pc/src/ui/RegionHud.ts:1220",
+    "packages/client-pc/src/ui/RegionHud.ts:1231"
+   ],
+   "why": "프로덕션 필드에 늘 떠 있는 배지인데 규칙 정규식 범위 밖이라 303건에 안 잡혔다. 실렌더는 확인하지 못했다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null,
+   "rule": "AGENTS §8-8"
+  },
+  {
+   "id": "F-0026",
+   "domain": "04-design-media",
+   "severity": "보통",
+   "title": "아이콘이 아예 없는 아이템 6건 (icon 빈 문자열 · iconTexture 없음)",
+   "evidence": [
+    "packages/client-pc/src/data/ShopCatalog.ts:337",
+    "packages/client-pc/src/data/ShopCatalog.ts:383",
+    "packages/client-pc/src/data/ShopCatalog.ts:485",
+    "packages/client-pc/src/data/QuestRewardItems.ts:29",
+    "packages/client-pc/src/data/QuestRewardItems.ts:31",
+    "packages/client-pc/src/data/QuestRewardItems.ts:52",
+    "packages/client-pc/src/ui/ItemIcon.ts:115"
+   ],
+   "why": "메인 해금 품목과 퀘스트 보상이 빈 칸으로 그려지는 코드 경로다. 실렌더는 확인하지 못했다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0027",
+   "domain": "04-design-media",
+   "severity": "보통",
+   "title": "부트에서 그림 약 106 MB를 한꺼번에 받는다",
+   "evidence": [
+    "packages/client-pc/src/scenes/BootScene.ts:95",
+    "packages/client-pc/src/scenes/BootScene.ts:98",
+    "packages/client-pc/src/scenes/BootScene.ts:121",
+    "packages/client-pc/src/scenes/BootScene.ts:354"
+   ],
+   "why": "영어판 도움말 48장을 언어와 무관하게 로드하고, 아이콘 30장이 1254×1254다. 테스트 배포의 첫 로딩에 그대로 실린다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0028",
+   "domain": "04-design-media",
+   "severity": "경미",
+   "title": "이모지 폴백이 실제로 그려지는 아이템 정의 87건 + 화면 문자열 1건",
+   "evidence": [
+    "packages/client-pc/src/data/ShopCatalog.ts:278",
+    "packages/client-pc/src/store/InventoryStore.ts:601",
+    "packages/client-pc/src/scenes/field/TrapFieldSystem.ts:365",
+    "packages/client-pc/src/ui/GuidePanel.ts:127",
+    "packages/client-pc/src/data/ShopCatalog.ts:185"
+   ],
+   "why": "규칙 적중 303건 중 프로덕션에 보이는 것은 이것뿐이다(dev 전용 레거시 133 · 미사용 파일 26 · 텍스처 있는 폴백 44 · 오탐 12). 백로그에 등재된 레거시.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null,
+   "rule": "AGENTS §8-8"
+  },
+  {
+   "id": "F-0029",
+   "domain": "04-design-media",
+   "severity": "경미",
+   "title": "규칙 정규식 밖의 장식 글리프가 프로덕션 화면에 있다 (★ ✓ ♪ 등)",
+   "evidence": [
+    "packages/client-pc/src/ui/SashimiPanel.ts:966",
+    "packages/client-pc/src/ui/ButcheryPanel.ts:4293",
+    "packages/client-pc/src/ui/ItemDetailPanel.ts:54",
+    "packages/client-pc/src/scenes/SettingsScene.ts:674",
+    "packages/client-pc/src/ui/StoryCinematicPanel.ts:449"
+   ],
+   "why": "같은 파일의 주석이 「✔ 글리프 금지」라고 적은 기준과 어긋난다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null,
+   "rule": "AGENTS §8-8"
+  },
+  {
+   "id": "F-0030",
+   "domain": "04-design-media",
+   "severity": "경미",
+   "title": "로드만 하고 쓰지 않거나 로드조차 안 하는 그림",
+   "evidence": [
+    "packages/client-pc/src/scenes/BootScene.ts:369",
+    "packages/client-pc/src/data/TilesetManifest.ts:29",
+    "packages/client-pc/src/scenes/BootScene.ts:132"
+   ],
+   "why": "여자 캐릭터 12장은 키 사용처 0, 남자 12장은 dev 레거시만 사용, 타일셋 NPC 5장과 아이콘 1장은 로드 코드가 없다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0031",
+   "domain": "04-design-media",
+   "severity": "경미",
+   "title": "상투 머리가 격자 위로 잘린다",
+   "evidence": [
+    "packages/core/src/art/CharacterArt.ts:772",
+    "packages/core/src/art/CharacterArt.ts:206",
+    "packages/core/src/art/FacePortrait.ts:342"
+   ],
+   "why": "음수 행이 버려져 대기와 걷기 프레임의 상투 높이가 다르다. 눈으로는 확인하지 못했다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0032",
+   "domain": "04-design-media",
+   "severity": "경미",
+   "title": "조작 안내 문구 변형 3곳과 원문이 사라진 번역 키",
+   "evidence": [
+    "packages/client-pc/src/ui/ButcheryPanel.ts:3967",
+    "packages/client-pc/src/scenes/RegionFieldScene.ts:7053",
+    "packages/client-pc/src/ui/SashimiPanel.ts:413",
+    "packages/client-pc/src/i18n/en.ts:148",
+    "packages/client-pc/src/i18n/en_panels.ts:161"
+   ],
+   "why": "창 제목 · 로그에 조작 설명이 남아 있고, 쓰이지 않는 번역 키가 있다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null,
+   "rule": "AGENTS §8-13 (R11)"
+  },
+  {
+   "id": "F-0033",
+   "domain": "04-design-media",
+   "severity": "경미",
+   "title": "사실과 다른 에셋 주석",
+   "evidence": [
+    "packages/client-pc/src/scenes/BootScene.ts:64",
+    "packages/client-pc/src/scenes/BootScene.ts:105",
+    "packages/client-pc/src/data/PixelIconArt.ts:6"
+   ],
+   "why": "없다고 적은 지도 파일이 있고, 규격 설명이 실제 크기와 다르다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0034",
+   "domain": "05-pipeline",
+   "severity": "보통",
+   "title": "생성기 6개가 한 환경에서만 돈다 (브라우저 · Playwright 경로 고정)",
+   "evidence": [
+    "tools/pixelize_butchery.cjs:33",
+    "tools/gen_octo_assets.cjs:24",
+    "tools/gen_sashimi_fillet.cjs:33",
+    "tools/dump_quest_scenes.cjs:10",
+    "tools/gen_flatfish_sprites.cjs:18",
+    "tools/gen_species_sprites.cjs:24"
+   ],
+   "why": "손질 · 회 · 문어 에셋은 Windows에서만, 위키 장면 덤프는 컨테이너에서만 다시 구울 수 있다. 본보기는 tools/capture_help_images.cjs:39.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null,
+   "rule": "스킬 asset-pipeline (자동 탐색 · 하드코딩 금지)"
+  },
+  {
+   "id": "F-0035",
+   "domain": "05-pipeline",
+   "severity": "보통",
+   "title": "seamless.json의 「패치 반영 여부」 전제가 도구끼리 다르다",
+   "evidence": [
+    "tools/author_sokcho_coast.py:6",
+    "tools/build_region_maps.py:369",
+    "tools/pixelize_islet.py:155",
+    "packages/client-pc/src/scenes/RegionFieldScene.ts:820"
+   ],
+   "why": "커밋본은 패치 2,633타일 중 271타일만 구운 상태다. 지금 다시 구우면 1,611타일이 바뀌고(런타임 결과는 같음) 저작 스크립트의 멱등 전제가 깨진다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0036",
+   "domain": "05-pipeline",
+   "severity": "보통",
+   "title": "구운 스냅샷의 생성기가 저장소에 없다",
+   "evidence": [
+    "packages/client-pc/src/data/PixelFishSprites.ts:8",
+    "packages/client-pc/src/data/PixelFishSprites.ts:206",
+    "tools/build_region_maps.py:257",
+    ".claude/skills/asset-pipeline/SKILL.md:15"
+   ],
+   "why": "extract_fish.js · extract_amberjack.cjs · gen_hometown_png.py가 없어 원본이 바뀌어도 다시 구울 수 없다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0037",
+   "domain": "05-pipeline",
+   "severity": "경미",
+   "title": "바이트코드가 커밋돼 있다",
+   "evidence": [
+    "tools/__pycache__/build_region_maps.cpython-314.pyc",
+    ".gitignore:27"
+   ],
+   "why": "무시 규칙이 생기기 전에 올라간 파일이 추적 중이다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0038",
+   "domain": "05-pipeline",
+   "severity": "경미",
+   "title": "turbo.json 작업과 패키지 스크립트가 어긋난다 (lint는 빈 실행 · test는 core만)",
+   "evidence": [
+    "turbo.json:22",
+    "turbo.json:8",
+    "package.json:11",
+    "packages/core/package.json:18"
+   ],
+   "why": "pnpm run lint는 0개 작업으로 성공한다. ESLint가 없어 eslint-disable 주석 22건과 any 금지가 기계 검증되지 않는다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0039",
+   "domain": "05-pipeline",
+   "severity": "경미",
+   "title": "수동 검증 루틴이 core 테스트 파일의 타입 검사를 건너뛴다",
+   "evidence": [
+    "packages/core/tsconfig.build.json:1",
+    "CLAUDE.md:85"
+   ],
+   "why": "빌드는 테스트를 빼고 vitest는 타입을 보지 않아, 테스트 10개 파일의 타입 오류는 루트 typecheck에서만 드러난다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0040",
+   "domain": "05-pipeline",
+   "severity": "경미",
+   "title": "고아 도구 3개",
+   "evidence": [
+    "tools/pixelize.py:11",
+    "tools/build_map.py:11",
+    "tools/gen_char_base.py:413",
+    "CLAUDE.md:68"
+   ],
+   "why": "입력이 없거나 폐기 패키지 래퍼이거나 출력 폴더가 없다. CLAUDE.md는 pixelize.py를 대표 도구로 든다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0041",
+   "domain": "05-pipeline",
+   "severity": "경미",
+   "title": "레거시 속초 2맵이 현재 생성기 출력과 8타일 다르다",
+   "evidence": [
+    "packages/client-pc/public/data/sokcho/sokcho_dongmyeonghang_1.json",
+    "packages/client-pc/public/data/sokcho/sokcho_dongmyeonghang_2.json",
+    "CLAUDE.md:82"
+   ],
+   "why": "문서의 예시 명령을 돌리면 조용히 바뀐다. 지금은 폴백 전용 데이터다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0042",
+   "domain": "05-pipeline",
+   "severity": "경미",
+   "title": "도구 의존성이 고정돼 있지 않다",
+   "evidence": [
+    "tools/dump_wiki_items.mjs:18",
+    "tools/fetch_region_raster.py:1"
+   ],
+   "why": "requirements 파일이 없고(Pillow · numpy · pyproj · scipy · tifffile), playwright는 어느 package.json에도 없다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0043",
+   "domain": "06-tickets-economy",
+   "severity": "심각",
+   "title": "거래 제안의 물건 · 수량 · 재화 값이 서버와 받는 쪽 어디서도 검증되지 않는다",
+   "evidence": [
+    "packages/server/src/multiplayer/SessionRegistry.ts:430",
+    "packages/client-pc/src/store/InventoryStore.ts:1600",
+    "packages/client-pc/src/store/InventoryStore.ts:1738",
+    "packages/client-pc/src/ui/TradePanel.ts:204"
+   ],
+   "why": "같은 세션의 상대가 보낸 값이 받는 사람 가방에 그대로 들어가고 거래 자동 저장이 세이브에 굳힌다. 표시(name · qty)와 실제 지급(payload)이 다른 필드다. 세션 코드를 아는 참가자에 한한다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0044",
+   "domain": "06-tickets-economy",
+   "severity": "보통",
+   "title": "거래 「적용함」 통지가 한 번뿐이고 저장이 실패해도 보낸다",
+   "evidence": [
+    "packages/client-pc/src/net/MultiplayerClient.ts:340",
+    "packages/client-pc/src/scenes/RegionFieldScene.ts:5985",
+    "packages/client-pc/src/scenes/RegionFieldScene.ts:6034",
+    "packages/server/src/multiplayer/SessionRegistry.ts:319"
+   ],
+   "why": "통지가 한 번 실패하면 7일간 새 거래를 못 열고, 저장 실패 뒤 통지되면 232차가 막으려던 복제 창이 남는다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0045",
+   "domain": "06-tickets-economy",
+   "severity": "보통",
+   "title": "서버를 다시 켜면 접속 중이던 사람이 안내 없이 고립된다",
+   "evidence": [
+    "packages/server/src/multiplayer/SessionRegistry.ts:730",
+    "packages/server/src/multiplayer/SessionRegistry.ts:188",
+    "packages/client-pc/src/net/MultiplayerClient.ts:273"
+   ],
+   "why": "접속 비밀값이 메모리 전용이라 재시작 뒤 다시 불러오기 전까지 설치 알림 · 거래 적용이 전부 거절된다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0046",
+   "domain": "06-tickets-economy",
+   "severity": "보통",
+   "title": "공유 소비 채널에 1인 상한과 키 제한이 없다",
+   "evidence": [
+    "packages/server/src/multiplayer/SessionRegistry.ts:499",
+    "packages/server/src/multiplayer/SessionRegistry.ts:515",
+    "packages/server/src/multiplayer/SessionRegistry.ts:524"
+   ],
+   "why": "한 참가자가 줄을 채우면 남의 채집 고갈 기록이 밀려나고, 미래 시간대의 날씨 카드나 가 보지 않은 자리를 선점할 수 있다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0047",
+   "domain": "06-tickets-economy",
+   "severity": "보통",
+   "title": "통발 단속 벌금이 잔액이 모자라면 부과되지 않는다",
+   "evidence": [
+    "packages/client-pc/src/scenes/field/TrapFieldSystem.ts:427",
+    "packages/client-pc/src/scenes/field/ForageSystem.ts:942"
+   ],
+   "why": "같은 정액 벌금인데 채집 쪽은 파산으로 잇고 통발 쪽은 addCoins 반환을 무시해 무료가 된다. 처리 방식은 사용자 결정.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0048",
+   "domain": "06-tickets-economy",
+   "severity": "보통",
+   "title": "위판 유찰 · 찾아오기 반환이 가방이 차면 사라진다",
+   "evidence": [
+    "packages/client-pc/src/store/ConsignSettle.ts:65",
+    "packages/client-pc/src/store/ConsignSettle.ts:74",
+    "packages/client-pc/src/ui/ConsignListPanel.ts:152"
+   ],
+   "why": "addItem 반환을 보지 않고 자리 확인도 없다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null,
+   "rule": "234차 함정 「넣다 실패하면 사라지는 지급 금지」"
+  },
+  {
+   "id": "F-0049",
+   "domain": "06-tickets-economy",
+   "severity": "경미",
+   "title": "addCoins에 유한수 방어가 없고 반환값을 무시하는 차감이 여럿이다",
+   "evidence": [
+    "packages/client-pc/src/store/GameState.ts:620",
+    "packages/client-pc/src/store/GameState.ts:1571",
+    "packages/client-pc/src/ui/LicensePanel.ts:365",
+    "packages/client-pc/src/store/StoryStore.ts:532"
+   ],
+   "why": "NaN이 들어가면 저장 때 null이 되어 불러오면 0원이 되고, 잔액 부족 차감은 조용히 공짜가 된다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0050",
+   "domain": "06-tickets-economy",
+   "severity": "경미",
+   "title": "재접속 열쇠의 약한 고리",
+   "evidence": [
+    "packages/server/src/multiplayer/SessionRegistry.ts:176",
+    "packages/client-pc/src/net/MultiplayerClient.ts:33"
+   ],
+   "why": "userId가 비면 공개 값으로 대체되고, 열쇠를 Math.random으로 만든다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0051",
+   "domain": "06-tickets-economy",
+   "severity": "경미",
+   "title": "프롤로그 장보기 비상금이 반복 지급된다",
+   "evidence": [
+    "packages/client-pc/src/scenes/RegionFieldScene.ts:3343",
+    "packages/client-pc/src/scenes/RegionFieldScene.ts:3336",
+    "packages/client-pc/src/scenes/RegionFieldScene.ts:3518"
+   ],
+   "why": "1회 표시나 총액 상한이 없어 필수 채비 아닌 것을 사면 다시 채워진다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0052",
+   "domain": "06-tickets-economy",
+   "severity": "경미",
+   "title": "백로그 · 계획서 · 경제 문서가 코드보다 뒤처져 있다",
+   "evidence": [
+    "docs/wiki/04-BACKLOG.md:52",
+    "docs/wiki/04-BACKLOG.md:21",
+    "docs/wiki/04-BACKLOG.md:315",
+    "docs/wiki/04-BACKLOG.md:360",
+    ".agents/IMPLEMENTATION_PLAN.md:55",
+    ".agents/IMPLEMENTATION_PLAN.md:89",
+    "docs/wiki/02-SYSTEMS/economy-data.md:23"
+   ],
+   "why": "이미 배선 · 구현된 항목(행사료 · 되팔기 · 143차 잔여 6건)이 미완으로 남아 있고, 판매가 공식의 × 0.6이 실측 어획물 경로와 다르다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0053",
+   "domain": "07-api-env",
+   "severity": "보통",
+   "title": "서버가 .env를 읽기 전에 환경 변수를 꺼낸다 (import 순서)",
+   "evidence": [
+    "packages/server/src/index.ts:14",
+    "packages/server/src/index.ts:19",
+    "packages/server/src/api/WeatherProxy.ts:11",
+    "packages/server/src/multiplayer/SessionRegistry.ts:84"
+   ],
+   "why": ".env의 KMA_API_KEY · KHOA_API_KEY · MP_SESSION_DIR가 적용되지 않는다(셸 환경 변수만 통한다).",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0054",
+   "domain": "07-api-env",
+   "severity": "보통",
+   "title": "모든 외부 호출에 시간 초과가 없다",
+   "evidence": [
+    "packages/core/src/api-client/KmaVilageFcstApiClient.ts:278",
+    "packages/core/src/api-client/MarineWeatherApiClient.ts:175",
+    "packages/core/src/api-client/MafraAuctionApiClient.ts:201",
+    "packages/core/src/api-client/FishingIndexApiClient.ts:104",
+    "packages/core/src/api-client/KosisCatchApiClient.ts:88",
+    "packages/client-pc/src/store/ExternalDataStore.ts:222"
+   ],
+   "why": "응답이 멈추면 메인 메뉴가 「수집 중」에 머물고 1시간 갱신도 막힌다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0055",
+   "domain": "07-api-env",
+   "severity": "보통",
+   "title": "갱신 실패 때 만든 값(mock)이 지난 실데이터를 덮는다",
+   "evidence": [
+    "packages/client-pc/src/store/ExternalDataStore.ts:251",
+    "packages/client-pc/src/store/ExternalDataStore.ts:439",
+    "packages/core/src/api-client/KmaVilageFcstApiClient.ts:322",
+    "packages/core/src/api-client/MarineWeatherApiClient.ts:229"
+   ],
+   "why": "클라이언트가 실패해도 던지지 않고 mock을 돌려줘 일시 장애 한 번에 날씨가 mock으로 바뀐다. 해양기상에는 mock 표식이 없어 세션 날씨 카드에 실릴 수 있다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null,
+   "rule": "234차 함정 「날씨 카드는 신선한 실황만」"
+  },
+  {
+   "id": "F-0056",
+   "domain": "07-api-env",
+   "severity": "보통",
+   "title": "연동 상태 패널이 mock을 실데이터로 표시한다",
+   "evidence": [
+    "packages/client-pc/src/store/ExternalDataStore.ts:696",
+    "packages/client-pc/src/store/ExternalDataStore.ts:702",
+    "packages/client-pc/src/scenes/MainMenuScene.ts:800"
+   ],
+   "why": "키가 없어도 「76개 관측소」 · 「11/11개 지역」이 초록으로 나온다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0057",
+   "domain": "07-api-env",
+   "severity": "보통",
+   "title": ".env.example이 코드가 읽는 이름 · 위치와 어긋난다",
+   "evidence": [
+    ".env.example:3",
+    ".env.example:11",
+    ".env.example:38",
+    ".env.example:44",
+    ".env.example:51",
+    "packages/client-pc/src/store/ExternalDataStore.ts:155",
+    "packages/client-pc/src/store/ExternalDataStore.ts:164"
+   ],
+   "why": "실연동 키 이름 3개가 빠져 있고 코드가 읽지 않는 항목이 7개다. 예시대로 하면 조용히 mock으로 떨어진다. 둘 곳(클라이언트 폴더 · 루트 · 서버) 안내도 없다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0058",
+   "domain": "07-api-env",
+   "severity": "보통",
+   "title": "국립해양조사원 어장정보의 출처 표기가 없다",
+   "evidence": [
+    "tools/extract_fishfarms.py:9",
+    "docs/reference/gis/README.md:9",
+    "packages/client-pc/src/scenes/RegionFieldScene.ts:709",
+    "packages/core/src/db-schema/DataAttributions.ts:9"
+   ],
+   "why": "파생물 fishfarms.json이 배포본에 들어가는데 크레딧 목록에 원본이 없다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null,
+   "rule": "DataAttributions.ts 머리말 (출처 미표기는 약관 위반)"
+  },
+  {
+   "id": "F-0059",
+   "domain": "07-api-env",
+   "severity": "경미",
+   "title": "기상청 발표 시각을 PC 현지 시각으로 계산한다",
+   "evidence": [
+    "packages/core/src/api-client/KmaVilageFcstApiClient.ts:221",
+    "packages/core/src/api-client/KmaVilageFcstApiClient.ts:242",
+    "packages/core/src/api-client/KmaVilageFcstApiClient.ts:370"
+   ],
+   "why": "KST가 아닌 PC에서는 틀린 base_time으로 실패해 mock이 된다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null,
+   "rule": "AGENTS §10 (모든 날짜는 KST)"
+  },
+  {
+   "id": "F-0060",
+   "domain": "07-api-env",
+   "severity": "경미",
+   "title": "쓰이지 않는 연동 코드",
+   "evidence": [
+    "packages/core/src/api-client/AuctionPriceApiClient.ts:21",
+    "packages/core/src/api-client/ExternalApiService.ts:73",
+    "packages/client-pc/src/store/EnvironmentStore.ts:25",
+    "packages/client-pc/src/store/EnvironmentStore.ts:47",
+    "packages/core/src/api-client/OceanApiClient.ts:40"
+   ],
+   "why": "생성 지점 0인 클라이언트, 호출 0인 단건 조회 3종, 죽은 환경 변수 3개. 조위 클라이언트는 호출한 뒤 응답을 버린다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0061",
+   "domain": "07-api-env",
+   "severity": "경미",
+   "title": ".gitignore가 Vite 모드별 환경 파일을 막지 않는다",
+   "evidence": [
+    ".gitignore:16"
+   ],
+   "why": ".env.production · .env.development는 무시되지 않아 실수로 커밋될 수 있다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0062",
+   "domain": "07-api-env",
+   "severity": "경미",
+   "title": "출처 문구가 실제와 다르다 (경락가 「실시간 시세」)",
+   "evidence": [
+    "packages/core/src/db-schema/DataAttributions.ts:115",
+    "packages/core/src/api-client/MafraAuctionApiClient.ts:11"
+   ],
+   "why": "실제로는 2023년 같은 날의 이력 시세다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0063",
+   "domain": "07-api-env",
+   "severity": "경미",
+   "title": "날씨 프록시의 입력 검증 · 주석",
+   "evidence": [
+    "packages/server/src/api/WeatherProxy.ts:3",
+    "packages/server/src/api/WeatherProxy.ts:16",
+    "packages/server/src/api/WeatherProxy.ts:23"
+   ],
+   "why": "범위 검증이 없고 상위 오류 메시지를 그대로 돌려준다. 주석의 「키 암호화 보호」는 실제와 다르다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0064",
+   "domain": "08-notes-memory",
+   "severity": "보통",
+   "title": "위키 대시보드 「지금 위치」가 2026-09-17에 멈춰 있고 차수가 131줄 쌓여 있다",
+   "evidence": [
+    "docs/wiki/README.md:5",
+    "docs/wiki/README.md:69",
+    "docs/wiki/README.md:71",
+    "docs/wiki/README.md:194"
+   ],
+   "why": "새 세션이 읽으라고 안내받는 절에 187~234차가 통째로 빠져 있다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null,
+   "rule": "스킬 work-log · doc-readability"
+  },
+  {
+   "id": "F-0065",
+   "domain": "08-notes-memory",
+   "severity": "보통",
+   "title": "대시보드와 시스템 색인의 상태가 실제와 반대다",
+   "evidence": [
+    "docs/wiki/README.md:56",
+    "docs/wiki/02-SYSTEMS/README.md:16",
+    "docs/wiki/02-SYSTEMS/README.md:18",
+    "docs/wiki/02-SYSTEMS/README.md:28",
+    "docs/wiki/02-SYSTEMS/README.md:31"
+   ],
+   "why": "끝난 불요리를 미착수로, 공유되는 세계 상태를 「아직 각자」로 적는다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0066",
+   "domain": "08-notes-memory",
+   "severity": "보통",
+   "title": "루트 README.md가 사실과 어긋난다",
+   "evidence": [
+    "README.md:10",
+    "README.md:248",
+    "README.md:249",
+    "README.md:97",
+    "README.md:161",
+    "README.md:309"
+   ],
+   "why": "최근 배포 날짜가 한 달 전이고, 없는 도구 파일(fetch_osm.py)과 거부되는 지역 키(sokcho)를 안내한다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0067",
+   "domain": "08-notes-memory",
+   "severity": "보통",
+   "title": "워크로그 3건의 깨진 링크 21개",
+   "evidence": [
+    "docs/wiki/03-WORKLOG/2026-08-11-090-squid-guide-coords-stage-trim.md:37",
+    "docs/wiki/03-WORKLOG/2026-08-27-100-octo-pixel-osm-seamless.md:41",
+    "docs/wiki/03-WORKLOG/2026-08-28-101-map-editor-road-vectors.md:37"
+   ],
+   "why": "../../packages/ 로 한 단계 모자란다. ../../../ 로 고치면 21개 대상이 모두 있다(조율자 재확인).",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0068",
+   "domain": "08-notes-memory",
+   "severity": "보통",
+   "title": "멀티 시스템 페이지의 REST 목록에 경로 3개가 빠져 있다",
+   "evidence": [
+    "docs/wiki/02-SYSTEMS/multiplayer.md:64",
+    "packages/server/src/multiplayer/routes.ts:91",
+    "packages/server/src/multiplayer/routes.ts:105",
+    "packages/server/src/multiplayer/routes.ts:124"
+   ],
+   "why": "/world/take · /placed/sync · /retire가 표에 없다(실제 17개 · 표 14행).",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0069",
+   "domain": "08-notes-memory",
+   "severity": "경미",
+   "title": "워크로그 색인에 159차 행이 없고 8절 양식을 안 지킨 워크로그가 4건이다",
+   "evidence": [
+    "docs/wiki/03-WORKLOG/README.md:93",
+    "docs/wiki/03-WORKLOG/2026-09-19-159-canvas-render-audit.md:1"
+   ],
+   "why": "파일은 있는데 색인에서 찾을 수 없다(094 · 095 · 096 · 159는 절 수 부족).",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0070",
+   "domain": "08-notes-memory",
+   "severity": "경미",
+   "title": "「저장은 집 침대뿐」 서술 5곳에 232차 예외(거래 직후 자동 저장)가 빠져 있다",
+   "evidence": [
+    "docs/wiki/02-SYSTEMS/inventory-equipment.md:41",
+    "docs/wiki/02-SYSTEMS/home-base.md:10",
+    "docs/wiki/02-SYSTEMS/home-base.md:120",
+    "docs/wiki/README.md:53",
+    "README.md:157"
+   ],
+   "why": "계획서와 코드는 예외를 적는데 시스템 페이지는 옛 서술이다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0071",
+   "domain": "08-notes-memory",
+   "severity": "경미",
+   "title": "세션에 자동으로 들어가는 지침의 낡은 사실",
+   "evidence": [
+    "CLAUDE.md:65",
+    ".agents/AGENTS.md:21",
+    ".agents/AGENTS.md:46",
+    ".agents/AGENTS.md:206",
+    ".agents/AGENTS.md:260",
+    ".agents/AGENTS.md:277",
+    ".agents/AGENTS.md:307",
+    ".agents/AGENTS.md:461"
+   ],
+   "why": "서버 「Phase 8 예정 · Socket.IO」, 「수정 금지」 표의 파일을 234차에도 고침, 씬 등록 위치 main.ts(실제 game.ts) 등. 규칙 문서라 제안만.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0072",
+   "domain": "08-notes-memory",
+   "severity": "경미",
+   "title": "없는 절 · 파일을 가리키는 참조",
+   "evidence": [
+    "CLAUDE.md:116",
+    ".agents/AGENTS.md:149",
+    "docs/wiki/03-WORKLOG/README.md:15",
+    "docs/wiki/03-WORKLOG/README.md:242",
+    ".agents/PROGRESSION_SURVIVAL_SPEC.md:423",
+    "docs/wiki/04-BACKLOG.md:55",
+    "docs/wiki/03-WORKLOG/_TEMPLATE.md:9"
+   ],
+   "why": "계획서 §6-5l · AGENTS §8-비정수 배율 · HELP_AUDIT.md 등이 지금은 없다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0073",
+   "domain": "08-notes-memory",
+   "severity": "경미",
+   "title": "가독성 규칙 위반 (200자 초과 27줄 · 목록을 블록인용으로 · 표를 끊는 빈 줄 3곳)",
+   "evidence": [
+    "CLAUDE.md:102",
+    ".agents/CEPHALOPOD_BUTCHERY_SPEC.md:18",
+    "docs/wiki/02-SYSTEMS/fishing-loop.md:138",
+    "docs/wiki/04-BACKLOG.md:48",
+    "docs/wiki/02-SYSTEMS/inventory-equipment.md:73",
+    "docs/wiki/02-SYSTEMS/story-quests.md:100",
+    "docs/wiki/02-SYSTEMS/home-base.md:126"
+   ],
+   "why": "표 셀 예외 때문에 지표에는 12개 문서만 잡히지만 색인 · 백로그에는 1,000자가 넘는 행도 있다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null,
+   "rule": "스킬 doc-readability"
+  },
+  {
+   "id": "F-0074",
+   "domain": "08-notes-memory",
+   "severity": "경미",
+   "title": "갱신형 문서에 차수가 쌓인다",
+   "evidence": [
+    "docs/wiki/02-SYSTEMS/fishing-loop.md:138",
+    "docs/wiki/04-BACKLOG.md:257",
+    ".agents/IMPLEMENTATION_PLAN.md:49",
+    "docs/wiki/03-WORKLOG/README.md:99"
+   ],
+   "why": "「최근 3개 차수」 규칙이 없는 곳(계획서 §2-3 · 백로그 차수별 절 · 색인 행)이 불어난다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0075",
+   "domain": "08-notes-memory",
+   "severity": "경미",
+   "title": "요약 문서 사이의 작은 어긋남",
+   "evidence": [
+    "CLAUDE.md:52",
+    ".agents/IMPLEMENTATION_PLAN.md:121",
+    "docs/wiki/02-SYSTEMS/inventory-equipment.md:70",
+    "docs/wiki/02-SYSTEMS/home-base.md:16"
+   ],
+   "why": "「빌린 돈 인정」 대 「거래로 받은 돈」, 5종이라 쓰고 6개 나열, [E](현 F).",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0076",
+   "domain": "09-skills",
+   "severity": "보통",
+   "title": "스킬 add-species가 폐기된 오라클 필드(weightFactor)를 가르친다",
+   "evidence": [
+    ".claude/skills/add-species/SKILL.md:16",
+    "packages/core/src/simulation/FishSpawningOracle.ts:93",
+    "packages/core/src/simulation/FishSpawningOracle.ts:111"
+   ],
+   "why": "스킬대로 어종을 넣으면 필수 필드 lwrA · bodyForm이 빠져 타입 오류가 나고, 금어기 · 금지체중 필드는 조용히 누락된다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0077",
+   "domain": "09-skills",
+   "severity": "보통",
+   "title": "스킬 verify-render의 표준 틀이 원격 컨테이너에서 브라우저를 못 찾는다",
+   "evidence": [
+    ".claude/skills/verify-render/SKILL.md:30",
+    "tools/capture_help_images.cjs:42",
+    ".claude/skills/doc-readability/SKILL.md:64"
+   ],
+   "why": "탐색 경로가 Windows 전용이다. 실제 도구 하나는 이미 두 환경을 처리한다. 다른 스킬의 py · PowerShell 명령도 같다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0078",
+   "domain": "09-skills",
+   "severity": "경미",
+   "title": "스킬 안의 깨진 · 바뀐 참조 묶음",
+   "evidence": [
+    ".claude/skills/verify-render/SKILL.md:90",
+    ".claude/skills/verify-render/SKILL.md:67",
+    ".claude/skills/save-migration/SKILL.md:12",
+    ".claude/skills/add-region/SKILL.md:42",
+    ".claude/skills/asset-pipeline/SKILL.md:110",
+    ".claude/skills/add-tuning/SKILL.md:38",
+    ".claude/skills/add-species/SKILL.md:50",
+    ".claude/skills/deploy-ghpages/SKILL.md:17",
+    ".claude/skills/doc-readability/SKILL.md:48"
+   ],
+   "why": "questArrowG(현 questGuideG) · [E](현 F) · 청크 64(현 32) · 빌드 4/4(현 3/3) 등.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0079",
+   "domain": "09-skills",
+   "severity": "경미",
+   "title": "스킬 f9-guide-coords의 반영 위치가 좁다",
+   "evidence": [
+    ".claude/skills/f9-guide-coords/SKILL.md:12",
+    "packages/core/src/db-schema/CephalopodGuides.ts:18",
+    "packages/core/src/db-schema/SashimiSlicing.ts:221"
+   ],
+   "why": "두족류 · 회썰기 좌표는 다른 파일에 있는데 스킬은 한 파일만 가리킨다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0080",
+   "domain": "09-skills",
+   "severity": "경미",
+   "title": "스킬 add-region의 등대 문단이 엉뚱한 절에 붙어 있다",
+   "evidence": [
+    ".claude/skills/add-region/SKILL.md:111",
+    ".claude/skills/add-region/SKILL.md:73"
+   ],
+   "why": "등대 절만 읽으면 플래그 켜기와 폴백 함정을 놓친다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0081",
+   "domain": "09-skills",
+   "severity": "경미",
+   "title": "스킬끼리 겹치거나 어긋나는 지시",
+   "evidence": [
+    ".claude/skills/add-region/SKILL.md:127",
+    ".claude/skills/asset-pipeline/SKILL.md:135",
+    ".claude/skills/ui-panel/SKILL.md:91",
+    ".claude/skills/verify-render/SKILL.md:104",
+    ".claude/skills/doc-readability/SKILL.md:44",
+    ".claude/skills/work-log/SKILL.md:28"
+   ],
+   "why": "12줄 복제 절, 키보드 경로 권장 대 금지, 차수 요약 양식이 실제 계획서와 다름, work-log 절차에 CLAUDE.md 갱신 누락.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0082",
+   "domain": "09-skills",
+   "severity": "경미",
+   "title": "지침 문서의 스킬 요약이 스킬 본문과 어긋난다",
+   "evidence": [
+    ".claude/skills/scene-transition/SKILL.md:39",
+    "CLAUDE.md:95",
+    ".agents/AGENTS.md:443",
+    ".claude/skills/add-region/SKILL.md:3",
+    ".claude/skills/ui-panel/SKILL.md:3"
+   ],
+   "why": "씬 등록 위치는 스킬(game.ts)이 맞고 지침(main.ts)이 낡았다. 설명문이 본문의 기본 경로 · 키워드를 못 따라간다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0083",
+   "domain": "09-skills",
+   "severity": "경미",
+   "title": "최근 차수의 절차성 함정이 스킬에 올라가지 않았다",
+   "evidence": [
+    ".claude/skills/save-migration/SKILL.md:1",
+    ".claude/skills/scene-transition/SKILL.md:35",
+    ".claude/skills/verify-render/SKILL.md:136",
+    "docs/wiki/02-SYSTEMS/ui-framework.md:120",
+    "docs/wiki/02-SYSTEMS/multiplayer.md:198"
+   ],
+   "why": "192차 이후 함정은 시스템 페이지 §6에만 쌓인다(slotShortfall · 거래 적용 id · 데이터 없는 launch 등). 멀티 · 퀘스트를 받을 스킬이 없다.",
+   "status": "열림",
+   "first_seen": "2026-10-08",
+   "last_seen": "2026-10-08",
+   "resolved_at": null
+  }
+ ]
 }

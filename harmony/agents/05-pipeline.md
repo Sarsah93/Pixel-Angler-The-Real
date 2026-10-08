@@ -36,4 +36,10 @@
 
 ## 다음 실행 중점
 
-- (조율자가 매일 갱신한다. 첫 실행 전이라 비어 있다.)
+- (2026-10-08) 첫 점검에서 발견 9건(보통 3 · 경미 6). 숙련 18(13/73).
+- 다음에 읽을 것: `tools/build_osm_tilemap.py` · `tools/merge_capture_pois.py` · `tools/extract_tileset_assets.py` ·
+  `tools/gen_pixel_icons.py`(머리와 출력부) · `tools/capture_help_images.cjs`(브라우저 탐색 본보기) · `tools/pixelize_butchery.cjs`.
+- 질문: 생성물(`src/data/*Art.ts` · `PixelFish*.ts`)이 생성기 출력과 지금도 같은지(읽기 전용 대조법은 학습 노트),
+  `tools/wiki_items.json` · `quest_scenes.json`이 234차 데이터와 같은지.
+- 생성기 브라우저 탐색 통일은 생성물 diff 0줄을 확인해야 하므로, 이 컨테이너에서 도구가 실제로 도는지부터 본다(재생성 결과는 커밋하지 않는다).
+- CI 워크플로 · lint 정리 · 재생성은 제안만 한다(P-0006).

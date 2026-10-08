@@ -1,14 +1,17 @@
 {
  "schema": 1,
  "git": {
-  "head": "825bba5d2b9b6cc1720612754390f2cbe603ece1",
-  "head_date": "2026-10-07T15:59:52+00:00"
+  "head": "4b86d71ef292a69c9fb71817e0b8add53ea33ddc",
+  "head_date": "2026-10-08T02:13:56+00:00",
+  "since": "825bba5d2b9b6cc1720612754390f2cbe603ece1",
+  "commits_since": 1,
+  "files_changed_since": 44
  },
  "totals": {
-  "files": 2018,
-  "bytes": 266987126,
-  "code_files": 472,
-  "code_lines": 178221
+  "files": 2023,
+  "bytes": 267090864,
+  "code_files": 476,
+  "code_lines": 179386
  },
  "by_ext": {
   "png": {
@@ -16,12 +19,12 @@
    "bytes": 235138436
   },
   "ts": {
-   "files": 417,
-   "bytes": 9579728
+   "files": 421,
+   "bytes": 9654946
   },
   "md": {
-   "files": 209,
-   "bytes": 3332958
+   "files": 210,
+   "bytes": 3361478
   },
   "json": {
    "files": 50,
@@ -113,11 +116,11 @@
   }
  },
  "code_lines_by_area": {
-  "packages/client-pc": 113273,
-  "packages/core": 46973,
+  "packages/client-pc": 114188,
+  "packages/core": 47138,
   "tools": 15005,
   "scratchpad": 1218,
-  "packages/server": 1132,
+  "packages/server": 1217,
   "packages/map-builder": 609,
   "apps/tauri-wrapper": 11
  },
@@ -206,7 +209,7 @@
  "longest_code_files": [
   {
    "path": "packages/client-pc/src/scenes/RegionFieldScene.ts",
-   "lines": 7819
+   "lines": 7921
   },
   {
    "path": "packages/client-pc/src/scenes/SeamlessChunks.ts",
@@ -222,7 +225,7 @@
   },
   {
    "path": "packages/client-pc/src/ui/ButcheryPanel.ts",
-   "lines": 4325
+   "lines": 4327
   },
   {
    "path": "packages/client-pc/src/data/PixelFishViews.ts",
@@ -230,7 +233,7 @@
   },
   {
    "path": "packages/client-pc/src/store/InventoryStore.ts",
-   "lines": 2637
+   "lines": 2670
   },
   {
    "path": "packages/client-pc/src/ui/UtilizationPanel.ts",
@@ -262,7 +265,7 @@
   },
   {
    "path": "packages/client-pc/src/store/GameState.ts",
-   "lines": 1997
+   "lines": 2034
   },
   {
    "path": "packages/client-pc/src/scenes/HomeInteriorScene.ts",
@@ -530,16 +533,16 @@
   "any_usage": 28,
   "ts_suppress": 0,
   "eslint_disable": 22,
-  "console_log": 35
+  "console_log": 36
  },
  "tests": {
   "test_files": 10,
-  "source_files": 462,
-  "ratio": 0.0216
+  "source_files": 466,
+  "ratio": 0.0215
  },
  "docs": {
-  "md_files": 209,
-  "md_lines": 35383,
+  "md_files": 210,
+  "md_lines": 35616,
   "md_long_line_limit": 200,
   "md_files_with_long_lines": 12,
   "md_long_line_samples": [
@@ -758,7 +761,7 @@
    "count": 3,
    "samples": [
     "packages/client-pc/src/scenes/MainMenuScene.ts:633",
-    "packages/client-pc/src/scenes/RegionFieldScene.ts:7600",
+    "packages/client-pc/src/scenes/RegionFieldScene.ts:7702",
     "packages/client-pc/src/scenes/WorldMapScene.ts:1248"
    ]
   },
@@ -772,9 +775,9 @@
     "packages/client-pc/src/scenes/AnglerLogScene.ts:837",
     "packages/client-pc/src/scenes/CondoScene.ts:285",
     "packages/client-pc/src/scenes/NightHuntingScene.ts:142",
-    "packages/client-pc/src/scenes/RegionFieldScene.ts:3126",
-    "packages/client-pc/src/scenes/RegionFieldScene.ts:7150",
-    "packages/client-pc/src/store/CookingStore.ts:392",
+    "packages/client-pc/src/scenes/RegionFieldScene.ts:3142",
+    "packages/client-pc/src/scenes/RegionFieldScene.ts:7252",
+    "packages/client-pc/src/store/CookingStore.ts:407",
     "packages/client-pc/src/ui/InfoOverlayPanel.ts:11",
     "packages/client-pc/src/ui/InfoOverlayPanel.ts:150",
     "packages/core/src/api-client/AuctionPriceApiClient.ts:90",

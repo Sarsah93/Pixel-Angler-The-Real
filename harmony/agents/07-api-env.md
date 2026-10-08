@@ -39,4 +39,10 @@
 
 ## 다음 실행 중점
 
-- (조율자가 매일 갱신한다. 첫 실행 전이라 비어 있다.)
+- (2026-10-08) 첫 점검에서 발견 11건(보통 6 · 경미 5). 숙련 65(15/23).
+- **2026-10-12(월)에 외부 서비스 공지를 처음 확인한다**(기상청 단기예보 · 해양측위정보원 · 해양조사원 낚시지수 · 농정원 경락가 · 통계청 KOSIS).
+  확인하지 못하면 그렇게 적는다.
+- 아직 읽지 않은 범위: `WeatherApiClient.ts` · `OceanApiClient.ts` · `PublicDataClient.ts` · `api-client/mock/*` · `MarineStations.ts` ·
+  `KmaGridPoints.ts` · `store/EnvironmentStore.ts` · `tools/fetch_*.py`의 나머지.
+- 대기열에 있는 수정: `.env.example` 이름 보강(값은 비운다). 시간 초과 방어와 mock 덮어쓰기 방지는 동작이 바뀌므로 제안(P-0005).
+- 환경 변수는 이름만 적는다. 지표의 `env` 목록은 오탐이 섞이므로 grep으로 다시 대조한다(학습 노트의 분류).

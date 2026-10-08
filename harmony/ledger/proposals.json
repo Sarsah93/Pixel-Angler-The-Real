@@ -1,6 +1,6 @@
 {
  "schema": 1,
- "next_id": 2,
+ "next_id": 12,
  "proposals": [
   {
    "id": "P-0001",
@@ -13,6 +13,166 @@
    "status": "열림",
    "decided_at": null,
    "findings": []
+  },
+  {
+   "id": "P-0002",
+   "date": "2026-10-08",
+   "domain": "06-tickets-economy",
+   "kind": "제안",
+   "title": "거래 제안을 서버에서 정제하고(줄 수 · 수량 · 재화) 받는 쪽 수량 검증 + 거래 창 표시를 지급 내용 기준으로",
+   "pr": null,
+   "branch": null,
+   "status": "제안만",
+   "decided_at": null,
+   "findings": [
+    "F-0043",
+    "F-0044"
+   ]
+  },
+  {
+   "id": "P-0003",
+   "date": "2026-10-08",
+   "domain": "06-tickets-economy",
+   "kind": "제안",
+   "title": "통발 단속 벌금: 잔액이 모자랄 때의 처리 방식 결정(파산 연결 · 있는 만큼 · 평판 감점) + 위판 반환 전 자리 확인",
+   "pr": null,
+   "branch": null,
+   "status": "제안만",
+   "decided_at": null,
+   "findings": [
+    "F-0047",
+    "F-0048"
+   ]
+  },
+  {
+   "id": "P-0004",
+   "date": "2026-10-08",
+   "domain": "01-engineering",
+   "kind": "제안",
+   "title": "FishingScene에 씬 키 부여(완료 시스템 파일) 또는 레거시 FieldScene 스택 폐기 결정 · 미사용 Socket.IO 계층 정리 · 서버 상한",
+   "pr": null,
+   "branch": null,
+   "status": "제안만",
+   "decided_at": null,
+   "findings": [
+    "F-0001",
+    "F-0002",
+    "F-0003"
+   ]
+  },
+  {
+   "id": "P-0005",
+   "date": "2026-10-08",
+   "domain": "07-api-env",
+   "kind": "제안",
+   "title": "서버 dotenv 읽기 순서 고치기 · 외부 호출 시간 초과 공용 함수 · mock이 실데이터를 덮지 않게 · 상태 패널 판정",
+   "pr": null,
+   "branch": null,
+   "status": "제안만",
+   "decided_at": null,
+   "findings": [
+    "F-0053",
+    "F-0054",
+    "F-0055",
+    "F-0056"
+   ]
+  },
+  {
+   "id": "P-0006",
+   "date": "2026-10-08",
+   "domain": "05-pipeline",
+   "kind": "제안",
+   "title": "검증 자동화(CI 워크플로 초안) + lint 작업 정리 + 생성기 브라우저 탐색 통일 + 도구 의존성 고정",
+   "pr": null,
+   "branch": null,
+   "status": "제안만",
+   "decided_at": null,
+   "findings": [
+    "F-0038",
+    "F-0034",
+    "F-0042"
+   ]
+  },
+  {
+   "id": "P-0007",
+   "date": "2026-10-08",
+   "domain": "03-files-docs",
+   "kind": "제안",
+   "title": "food assets 내부 사본 15.3 MB 정리 · 저장소 scratchpad 보존 정책 · 커밋된 바이트코드 추적 해제 · 미사용 팩 삭제",
+   "pr": null,
+   "branch": null,
+   "status": "제안만",
+   "decided_at": null,
+   "findings": [
+    "F-0019",
+    "F-0018",
+    "F-0037",
+    "F-0020"
+   ]
+  },
+  {
+   "id": "P-0008",
+   "date": "2026-10-08",
+   "domain": "04-design-media",
+   "kind": "제안",
+   "title": "날씨 배지 픽셀 아이콘 9종 · 빈 아이콘 6건(칼 · 헤드랜턴 새 16×16) · 이모지 폴백 재사용 11건 · 부트 로드 다이어트",
+   "pr": null,
+   "branch": null,
+   "status": "제안만",
+   "decided_at": null,
+   "findings": [
+    "F-0025",
+    "F-0026",
+    "F-0028",
+    "F-0027"
+   ]
+  },
+  {
+   "id": "P-0009",
+   "date": "2026-10-08",
+   "domain": "08-notes-memory",
+   "kind": "제안",
+   "title": "위키 대시보드 「지금 위치」를 포인터로 바꾸기 · 지침 문서 다이어트(AGENTS §5 · §6을 위키로) · 규칙 문서의 낡은 사실 정정",
+   "pr": null,
+   "branch": null,
+   "status": "제안만",
+   "decided_at": null,
+   "findings": [
+    "F-0064",
+    "F-0071",
+    "F-0065"
+   ]
+  },
+  {
+   "id": "P-0010",
+   "date": "2026-10-08",
+   "domain": "09-skills",
+   "kind": "제안",
+   "title": "새 스킬 3종 후보(멀티 엔드포인트 · 퀘스트 추가 · 체험 가이드) · verify-render 표준 틀 교체 · 배포 커밋 예외 한 줄",
+   "pr": null,
+   "branch": null,
+   "status": "제안만",
+   "decided_at": null,
+   "findings": [
+    "F-0077",
+    "F-0083"
+   ]
+  },
+  {
+   "id": "P-0011",
+   "date": "2026-10-08",
+   "domain": "02-code",
+   "kind": "제안",
+   "title": "화구 회수 · 통발 반환의 유실 방지 · 세이브 아이템 마이그레이션 공통화 · 통발 내구도 누적 · 대형 파일 분할 경계",
+   "pr": null,
+   "branch": null,
+   "status": "제안만",
+   "decided_at": null,
+   "findings": [
+    "F-0009",
+    "F-0010",
+    "F-0011"
+   ]
   }
  ]
 }

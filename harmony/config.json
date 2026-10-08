@@ -94,6 +94,10 @@
         "packages/client-pc/public/**/*.svg",
         "packages/client-pc/src/data/PixelIconArt.ts",
         "packages/client-pc/src/ui/PixelIcon.ts",
+        "packages/client-pc/src/ui/ItemIcon.ts",
+        "packages/client-pc/src/scenes/BootScene.ts",
+        "packages/client-pc/src/data/TilesetManifest.ts",
+        "packages/client-pc/src/data/FishTextures.ts",
         "packages/core/src/art/**/*.ts",
         "apps/**/icons/**"
       ],
@@ -157,6 +161,7 @@
         "packages/core/src/db-schema/MarineStations.ts",
         "packages/core/src/db-schema/KmaGridPoints.ts",
         "packages/client-pc/src/store/ExternalDataStore.ts",
+        "packages/client-pc/src/store/EnvironmentStore.ts",
         "packages/client-pc/vite.config.ts",
         "packages/server/src/api/**",
         "tools/fetch_*.py"

@@ -40,4 +40,11 @@
 
 ## 다음 실행 중점
 
-- (조율자가 매일 갱신한다. 첫 실행 전이라 비어 있다.)
+- (2026-10-08) 첫 점검에서 발견 9건(보통 3 · 경미 6). 숙련 11(38/360) — 범위가 가장 넓다.
+- 고정 오탐은 학습 노트에 적었다. 규칙 적중 수가 그대로면 다시 열어 보지 않는다(늘었을 때만 본다).
+- 다음에 읽을 것(작은 파일부터): `store/CookingStore.ts` · `store/FridgeStore.ts` · `store/CoolerStore.ts` · `store/ShopStore.ts` ·
+  `scenes/field/`의 나머지 4개 시스템(`ForageSystem` 등) · `store/StoryStore.ts`.
+- 질문: 「넣다 실패하면 사라지는」 경로가 더 있는지(`addItem` · `recoverPlaceable` · `giveBack`의 반환을 무시하는 호출 전수),
+  세이브 `deserialize`마다 구세이브 폴백이 있는지.
+- 대기열에 있는 작은 수정: `TrapFieldSystem.ts`의 하드코딩 9와 낡은 주석. `any` 6줄은 전부 「완료 시스템」 파일이라 타입만 바꾸는 선에서 후보로 둔다.
+- 대형 파일은 읽지 않고 섹션 경계만 본다. 분할은 제안만 한다.

@@ -34,4 +34,8 @@
 
 ## 다음 실행 중점
 
-- (조율자가 매일 갱신한다. 첫 실행 전이라 비어 있다.)
+- (2026-10-08) 첫 점검에서 발견 7건(전부 경미). 숙련 83(466/564 — 바이너리 455개는 목록 · 중복 · 참조 검사 확인 뒤 일괄 기록).
+- 아직 확인하지 않은 폴더: `pixelazed/{sokcho,busan,hometown,sokcho_v2}/` · `pixelazed/tileset/`의 Kenney 등 다른 팩(라이선스 파일 포함) ·
+  `assets/guide/` · `docs/archive/`의 본문 9개 · `packages/map-builder/python/`의 나머지.
+- 질문: `pixelazed/busan_2_pixelazed.png`와 `public/pixelazed/`의 소비본이 다른 까닭, 타일셋 팩마다 재배포 조건과 출처 표기가 있는지.
+- 삭제 · 이동 · 이름 변경은 전부 제안만 한다(P-0007). 사용자 결정이 나기 전에는 같은 제안을 되풀이하지 않고 변화만 본다.
