@@ -1131,6 +1131,8 @@ export interface TuningConfig {
     harborCommunityWork: number;
     harborFreeDelivery: number;
     harborAbandonedRequest: number;
+    /** 단속에 걸렸을 때 일하는 항구의 신뢰 변동(바다 평판은 `seaVillageFisheryViolation`) */
+    harborEnforcementCaught: number;
   };
   law: {
     /**
@@ -1155,6 +1157,11 @@ export interface TuningConfig {
      *  - `unlicensed` 무허가 조업(어업인) — 실제 법 「3천만 원 이하 벌금」. ⚠ 지금은 설치 · 판매가 막힐 뿐 **적발 지점이 없다**.
      */
     fines: Record<ViolationKind, FineRule>;
+    /**
+     * 재범 가중 — 바다 평판이 바닥(`rep.seaMin`)일 때 적발 확률에 곱하는 배수.
+     * 평판 0 이상이면 1배, 0 아래로 내려갈수록 이 값까지 곧게 오른다(`enforcementRepeatMult`).
+     */
+    repeatMaxMult: number;
   };
   /**
    * 스풀·베일 (136차) — 전유동/흘림 낚시와 "줄 주기"의 물리 상수.
@@ -1594,7 +1601,7 @@ export const TUNING: TuningConfig = {
   rep: {
     harborMax: 100, seaMin: -10, seaMax: 10,
     seaReleaseUndersize: 0.5, seaRescue: 1, seaIllegalKeep: -1, seaRestrictedEntry: -0.5, seaVillageFisheryViolation: -2,
-    harborCommunityWork: 3, harborFreeDelivery: 2, harborAbandonedRequest: -5,
+    harborCommunityWork: 3, harborFreeDelivery: 2, harborAbandonedRequest: -5, harborEnforcementCaught: -5,
   },
   law: {
     enforceRodSell: 2,   // 2 = 법(M1-06)을 배운 뒤부터 강제 (135차 — 구세이브·테스터 회귀 0)
@@ -1604,6 +1611,7 @@ export const TUNING: TuningConfig = {
       sizeSeason: { baseWon: 800_000, ratio: 0, capWon: 800_000 },
       unlicensed: { baseWon: 3_000_000, ratio: 0.3, capWon: 30_000_000 },
     },
+    repeatMaxMult: 2,
   },
   spool: {
     openFrictionKg: 0.06, payoutGainMpsPerKg: 2.2, maxPayoutMps: 3.5, idlePayoutMps: 0.25,
@@ -1865,6 +1873,9 @@ export const TUNING_META: TuningParamMeta[] = [
   { path: 'law.fines.ordinance.baseWon', min: 0, max: 10_000_000, step: 100_000, category: 'balance', label: '조례 위반 벌금 — 기본(원)' },
   { path: 'law.fines.ordinance.ratio', min: 0, max: 1, step: 0.05, category: 'balance', label: '조례 위반 벌금 — 가진 돈 비율' },
   { path: 'law.fines.ordinance.capWon', min: 0, max: 30_000_000, step: 500_000, category: 'balance', label: '조례 위반 벌금 — 한도(원)' },
+  { path: 'law.repeatMaxMult', min: 1, max: 4, step: 0.1, category: 'balance', label: '재범 가중 — 바다 평판 바닥일 때 적발 배수' },
+  { path: 'rep.seaVillageFisheryViolation', min: -5, max: 0, step: 0.5, category: 'balance', label: '바다 평판 −/단속 적발' },
+  { path: 'rep.harborEnforcementCaught', min: -20, max: 0, step: 1, category: 'balance', label: '항구 신뢰 −/단속 적발' },
   { path: 'forage.toxinPoisonChance', min: 0, max: 1, step: 0.05, category: 'balance', label: '패류독소 식중독 확률' },
   { path: 'trap.lossRiskMult', min: 0, max: 3, step: 0.1, category: 'balance', label: '통발 분실 위험 배율' },
   { path: 'trap.minSoakHours', min: 0, max: 8, step: 0.5, category: 'balance', label: '통발 최소 침지(h)' },

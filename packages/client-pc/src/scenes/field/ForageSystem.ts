@@ -934,8 +934,9 @@ export class ForageSystem {
     }
     // 수협 조합원증(어업인 등록)은 조례 면제 (122차 면허)
     if (farm && !GameState.hasLicense('fishery_member') && isOrdinanceViolation(c.id, farm)) {
-      // 171차 — 자격 갱신 연체 중이면 단속이 더 붙는다
-      const enf = rollEnforcement(GameState.player.inventory.coins, Math.random, GameState.upkeepPenalty().enforceMult);
+      // 171차 — 자격 갱신 연체 중이면 단속이 더 붙는다. 바다 평판이 나쁘면(전에 걸린 적이 있으면) 또 더 붙는다
+      const enf = rollEnforcement(GameState.player.inventory.coins, Math.random,
+        GameState.upkeepPenalty().enforceMult * GameState.repeatOffenderMult());
       if (enf.caught) {
         if (where === 'cooler') CoolerStore.removeAt(coolerIdx);
         else InventoryStore.removeQty(invId, 1);
@@ -947,9 +948,11 @@ export class ForageSystem {
           this.host.pushLog(`[단속] ${farm.name}(${FISH_FARM_KIND_LABEL[farm.kind]}) 안 ${c.nameKo} 채취 적발 — 압수 · 벌금 ${enf.fineWon.toLocaleString()}원. 낼 돈이 없다`);
           if (this.host.bankrupt) { this.host.bankrupt(enf.fineWon); return; }
         }
+        const repLine = GameState.applyEnforcementRep();
         GameState.markDirty();
         this.host.floatingHint(`단속 적발! ${c.nameKo} 압수 · 벌금 ${enf.fineWon.toLocaleString()}원`);
         this.host.pushLog(`[단속] ${farm.name}(${FISH_FARM_KIND_LABEL[farm.kind]}) 안 ${c.nameKo} 채취 적발 — 압수 · 벌금 ${enf.fineWon.toLocaleString()}원 (조례 상한 ${GANGWON_FORAGE_ORDINANCE.fineMaxWon.toLocaleString()}원)`);
+        this.host.pushLog(repLine);
       } else {
         this.host.pushLog(`[주의] ${farm.name} 안 ${c.nameKo} 채취 — 강원 조례 위반 (적발 시 압수·벌금)`);
       }

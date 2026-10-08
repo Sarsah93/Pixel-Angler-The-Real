@@ -303,7 +303,7 @@ export {
 export {
   mulberry32, forageSeed, forageSafety, creatureSpotKinds, creatureTools, FORAGE_TOOL_LABEL,
   pickForageTool, forageHoldMs, rollForageSpots, attemptForage, isOrdinanceViolation,
-  rollEnforcement, enforcementFineWon, trapSeasonViolations,
+  rollEnforcement, enforcementFineWon, enforcementRepeatMult, trapSeasonViolations,
   forageBehaviorOf, forageGameKindOf, isEastSeaRegion, rollForageHarvest, forageInjuryRoll, shallowWaterDepthM,
   isCrabCreature, BERRIED_MONTHS, BERRIED_CHANCE,
 } from './simulation/ForagingEngine.js';

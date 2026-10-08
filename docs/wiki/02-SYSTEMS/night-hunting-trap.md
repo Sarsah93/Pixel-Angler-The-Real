@@ -129,6 +129,9 @@
    적발 경로를 새로 만들면 `GameState.addCoins(-fineWon, false, 'fine')`가 false일 때 `host.bankrupt()`로 잇는다
    (채집 · 통발이 같은 꼴이다 — 반환값을 버리면 벌금이 안 빠진 채 「벌금 N원」만 찍힌다).
    `sizeSeason` · `unlicensed` 줄은 표만 있고 **적발 지점이 아직 없다**(금어기 · 금지체장은 잡는 즉시 자동 방생).
+   벌금을 낸 뒤에는 `GameState.applyEnforcementRep()`으로 평판을 깎는다(바다 평판 −2 · 일하는 항구의 신뢰 −5).
+   바다 평판이 0 아래면 `enforcementRepeatMult`가 적발 확률을 올린다(바닥에서 2배) — 적발 롤의 배수에 곱해 넘긴다.
+   통발 단속에는 정기 지출 연체 배수(`upkeepPenalty().enforceMult`)가 아직 붙지 않는다(채집만).
 22. **독 표식은 아이템 필드 하나로 흐른다**(229) — `toxin`이 쿨러(`CoolerFish.toxin`) · 냄비(`DeployedStove.toxin`) · 완성 요리까지 승계된다.
    새 보관 · 변환 경로(수조 · 건조 등)를 만들면 그 필드를 잇지 않는 한 독이 사라진다.
 23. **언 크릴은 두 군데서 막는다**(229) — `InventoryStore.unpack`(포장 뜯기)과 `UtilizationPanel.finishChumDrag`(밑밥 투입).

@@ -395,6 +395,18 @@ export function enforcementFineWon(coins: number, kind: ViolationKind = 'ordinan
 }
 
 /**
+ * 재범 가중 — 바다 평판이 0 아래면 적발 확률이 오른다(0 이상 = 1배, 바닥 = `TUNING.law.repeatMaxMult`배).
+ * 단속에 걸릴 때마다 바다 평판이 깎이므로(`TUNING.rep.seaVillageFisheryViolation`) 되풀이할수록 더 자주 걸린다.
+ * `rollEnforcement`의 `mult`에 곱해 넘긴다.
+ */
+export function enforcementRepeatMult(seaRep: number): number {
+  const max = Math.max(1, TUNING.law.repeatMaxMult);
+  const floor = TUNING.rep.seaMin;
+  if (!Number.isFinite(seaRep) || seaRep >= 0 || floor >= 0) return 1;
+  return 1 + (max - 1) * Math.min(1, seaRep / floor);
+}
+
+/**
  * 위반 회차마다 적발 롤 — 적발 시 압수 + 벌금(`enforcementFineWon`).
  * 가진 돈이 모자라면 호출부가 「파산」으로 잇는다(`GameState.addCoins`가 false → `host.bankrupt`).
  * @param mult 적발 확률 배수 (171차 — 자격 갱신을 연체 중이면 더 자주 걸린다)

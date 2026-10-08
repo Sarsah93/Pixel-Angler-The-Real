@@ -322,6 +322,7 @@ export const EN_UI_RULES: [RegExp, (m: RegExpMatchArray, tr: (s: string) => stri
   [/^(.+)를 뒤집어 보니 배딱지가 둥글고 넓다\. 암컷이다\.$/, (m, tr) => `Turning the ${tr(m[1])} over, the abdomen is round and wide. A female.`],
   [/^(.+) ([\d.]+)cm — 배딱지에 알을 품은 암컷, 놓아주었다$/, (m, tr) => `${tr(m[1])} ${m[2]}cm — a female carrying eggs under her abdomen, released`],
   [/^\[파산\] 벌금 ([\d,]+)원 — 그만한 돈이 없다$/, (m) => `[Bankrupt] Fine ${m[1]} won — I do not have that kind of money`],
+  [/^\[단속\] 소문이 돈다 — 바다 평판 (-?[\d.]+) · 항구 신뢰 (-?[\d.]+)$/, (m) => `[Patrol] Word gets around — sea standing ${m[1]} · harbour trust ${m[2]}`],
   [/^\[어장\] 적발되면 벌금 ([\d,]+)~([\d,]+)원 — 낼 돈이 없으면 파산이다$/, (m) => `[Fishery] If caught, the fine is ${m[1]}–${m[2]} won — if you cannot pay you are bankrupt`],
   [/^\[주의\] 패류독소 채취 금지 기간\((.+)\)에 캔 (.+) — 익혀도 독이 남는다\. 먹으면 탈이 날 수 있다$/, (m, tr) => `[Caution] ${tr(m[2])} gathered during the shellfish-toxin ban (${m[1]}) — toxin survives cooking. Eating it may make you sick`],
   [/^(.+) ([\d.]+)cm — 법정 크기\(([\d.]+)cm\) 미달, 놓아주었다$/, (m, tr) => `${tr(m[1])} ${m[2]}cm — under the legal size (${m[3]}cm), released`],

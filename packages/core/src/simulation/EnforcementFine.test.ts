@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { enforcementFineWon, rollEnforcement } from './ForagingEngine.js';
+import { enforcementFineWon, enforcementRepeatMult, rollEnforcement } from './ForagingEngine.js';
 import { TUNING } from '../config/tuning.js';
 
 describe('단속 벌금 — min(한도, max(기본 금액, 가진 돈 × 비율))', () => {
@@ -56,5 +56,39 @@ describe('단속 벌금 — min(한도, max(기본 금액, 가진 돈 × 비율)
     expect(rollEnforcement(5_000_000, () => 0, 1, 'sizeSeason').fineWon).toBe(TUNING.law.fines.sizeSeason.capWon);
     // 배수 0이면 걸리지 않는다
     expect(rollEnforcement(5_000_000, () => 0, 0).caught).toBe(false);
+  });
+});
+
+describe('재범 가중 — 바다 평판이 0 아래면 적발 확률이 오른다', () => {
+  const max = TUNING.law.repeatMaxMult;
+  const floor = TUNING.rep.seaMin;
+
+  it('평판이 0 이상이면 1배', () => {
+    expect(enforcementRepeatMult(0)).toBe(1);
+    expect(enforcementRepeatMult(3)).toBe(1);
+    expect(enforcementRepeatMult(TUNING.rep.seaMax)).toBe(1);
+  });
+
+  it('0 아래로 내려갈수록 곧게 올라 바닥에서 최대 배수', () => {
+    expect(enforcementRepeatMult(floor / 2)).toBeCloseTo(1 + (max - 1) / 2, 6);
+    expect(enforcementRepeatMult(floor)).toBeCloseTo(max, 6);
+    expect(enforcementRepeatMult(floor * 3)).toBeCloseTo(max, 6);
+  });
+
+  it('한 번 걸리면(평판 감점 한 번) 다음 적발 확률이 조금 오른다', () => {
+    const after = enforcementRepeatMult(TUNING.rep.seaVillageFisheryViolation);
+    expect(after).toBeGreaterThan(1);
+    expect(after).toBeLessThan(max);
+  });
+
+  it('깨진 값에는 1배', () => {
+    for (const bad of [NaN, Infinity, -Infinity]) expect(enforcementRepeatMult(bad)).toBe(1);
+  });
+
+  it('배수는 적발 롤의 확률에 곱해진다', () => {
+    const base = TUNING.forage.enforcementChance;
+    const roll = base * 1.5;   // 1배면 안 걸리고 2배면 걸리는 값
+    expect(rollEnforcement(5_000_000, () => roll, 1).caught).toBe(false);
+    expect(rollEnforcement(5_000_000, () => roll, enforcementRepeatMult(floor)).caught).toBe(max * base > roll);
   });
 });
