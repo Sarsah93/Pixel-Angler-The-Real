@@ -57,8 +57,8 @@
 
 ## 사용자 결정 대기
 
-- `deploy-ghpages`는 에이전트가 gh-pages worktree에 commit · push 하도록 적는다(「사용자 확인 후 push」).
-  `AGENTS.md` §8-12와 `CLAUDE.md` 절대 규칙 0은 에이전트 commit · push를 금지한다. 배포 커밋이 예외인지 한 줄로 정해야 한다.
+- (해소 2026-10-08) 배포 커밋 규칙 — 사용자가 수동 실행 워크플로 안을 골랐다. PR #8이 `.github/workflows/deploy-pages.yml`을 더하고
+  `deploy-ghpages` 스킬에서 에이전트의 gh-pages commit · push 절차를 뺐다. 저장소 비밀값 `VITE_DATA_GO_KR_API_KEY`(이름만) 등록은 사용자 몫.
 
 ## 닫힌 수정안에서 배운 것
 

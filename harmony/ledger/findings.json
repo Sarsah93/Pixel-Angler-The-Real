@@ -438,7 +438,8 @@
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
    "resolved_at": null,
-   "rule": "AGENTS §8-8"
+   "rule": "AGENTS §8-8",
+   "note": "PR #9에서 아이콘 10종으로 교체 — 병합 뒤 다시 확인해 닫는다."
   },
   {
    "id": "F-0026",
@@ -458,7 +459,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "note": "PR #9에서 그림 배정 — 병합 뒤 다시 확인해 닫는다."
   },
   {
    "id": "F-0027",
@@ -494,7 +496,8 @@
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
    "resolved_at": null,
-   "rule": "AGENTS §8-8"
+   "rule": "AGENTS §8-8",
+   "note": "PR #9에서 비어획 아이템 그림 + 활성 화면 폴백 이모지 비움. 레거시 FieldScene · HUD 몫은 PR #4가 삭제."
   },
   {
    "id": "F-0029",
@@ -810,7 +813,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "note": "PR #6에서 통발도 못 내면 파산(사용자 확정)."
   },
   {
    "id": "F-0048",
@@ -1483,7 +1487,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "note": "PR #6: 통발에는 상습 배수만 적용, 연체 배수는 채집 전용으로 둠(정기 지출은 채집 장비 기준) — 사용자 확인 전."
   },
   {
    "id": "F-0087",
@@ -1498,7 +1503,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "note": "PR #6에서 단속 때 바다 평판 · 항구 신뢰 감소를 연결(사용자 확정). 나머지 튜닝 6종은 여전히 미연결."
   }
  ]
 }

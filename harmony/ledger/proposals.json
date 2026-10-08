@@ -1,6 +1,6 @@
 {
  "schema": 1,
- "next_id": 17,
+ "next_id": 20,
  "proposals": [
   {
    "id": "P-0001",
@@ -233,7 +233,7 @@
    "date": "2026-10-08",
    "domain": "01-engineering",
    "kind": "적용",
-   "title": "레거시 FieldScene 스택 삭제(씬 9 · 전용 UI · 고아 모듈 — 72파일 −8,992줄)",
+   "title": "레거시 FieldScene 스택 삭제(씬 9 · 전용 UI · 고아 모듈 — 72파일 −8,992줄) + AGENTS §5 · §6 참고 절을 .agents/REFERENCE.md로 분리",
    "pr": 4,
    "branch": "harmony/2026-10-08-legacy-removal",
    "status": "열림",
@@ -268,15 +268,61 @@
    "date": "2026-10-08",
    "domain": "06-tickets-economy",
    "kind": "적용",
-   "title": "단속 벌금 — 위반 종류별 기본 금액 · 가진 돈 비율 · 한도, 통발 단속도 못 내면 파산",
+   "title": "단속 벌금 — 위반 종류별 기본 금액 · 가진 돈 비율 · 한도, 통발 단속도 못 내면 파산 + 단속 평판 감소(바다 −2 · 항구 −5 · 바다 평판이 낮을수록 적발 배수 최대 2배)",
    "pr": 6,
    "branch": "harmony/2026-10-08-fines",
    "status": "열림",
    "decided_at": null,
    "findings": [
-    "F-0047"
+    "F-0047",
+    "F-0087"
    ],
    "origin": "사용자 직접 지시(같은 날 후속)"
+  },
+  {
+   "id": "P-0017",
+   "date": "2026-10-08",
+   "domain": "06-tickets-economy",
+   "kind": "적용",
+   "title": "상점 매입가를 시세의 60%로 — 위판 · 손질 가치는 시세 그대로(값 함수 둘로 분리)",
+   "pr": 7,
+   "branch": "harmony/2026-10-08-shop-buy-rate",
+   "status": "열림",
+   "decided_at": null,
+   "findings": [],
+   "origin": "사용자 직접 지시(같은 날 후속 2)"
+  },
+  {
+   "id": "P-0018",
+   "date": "2026-10-08",
+   "domain": "09-skills",
+   "kind": "적용",
+   "title": "gh-pages 배포를 수동 실행 워크플로로 옮기고 에이전트의 gh-pages 커밋 절차를 없앤다",
+   "pr": 8,
+   "branch": "harmony/2026-10-08-deploy-workflow",
+   "status": "열림",
+   "decided_at": null,
+   "findings": [
+    "F-0083"
+   ],
+   "origin": "사용자 직접 지시(같은 날 후속 2)"
+  },
+  {
+   "id": "P-0019",
+   "date": "2026-10-08",
+   "domain": "04-design-media",
+   "kind": "적용",
+   "title": "아이템 · 해산물 그림 166장(코드로 그림) + 날씨 배지 아이콘 10종 + 아이템 id 기반 그림 해석",
+   "pr": 9,
+   "branch": "harmony/2026-10-08-item-art",
+   "status": "열림",
+   "decided_at": null,
+   "findings": [
+    "F-0025",
+    "F-0026",
+    "F-0028"
+   ],
+   "origin": "사용자 직접 지시(같은 날 후속 2)"
   }
  ]
 }
