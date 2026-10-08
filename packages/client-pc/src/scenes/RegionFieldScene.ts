@@ -4773,7 +4773,7 @@ export class RegionFieldScene extends Phaser.Scene {
   }
 
   /**
-   * 229차 — 파산 엔딩(사용자 지정). 벌금 1천만원을 낼 돈이 없다 → 혼잣말 → 암전 → 「파산했다. 처음부터?」 →
+   * 229차 — 파산 엔딩(사용자 지정). 단속 벌금을 낼 돈이 없다 → 혼잣말 → 암전 → 「파산했다. 처음부터?」 →
    * 같은 슬롯에서 새 게임(캐릭터 만들기부터).
    * 231차 — **연출보다 먼저 세이브를 지운다**(사용자 지시 「되돌릴 수 없게」). 저장은 침대에서만 되므로
    *   지우지 않으면 탭을 닫고 마지막 침대 저장으로 돌아갈 수 있었다. 지운 뒤로는 새 게임 전까지 저장이 막힌다.
@@ -7211,6 +7211,7 @@ export class RegionFieldScene extends Phaser.Scene {
       openDeployPanel: (onPick) => {
         this.openPopup((close) => new TrapDeployPanel(this, GAME_WIDTH / 2 - 210, 110, { onClose: close, onPick }));
       },
+      bankrupt: (fineWon) => this.beginBankruptcy(fineWon),
     });
     // 154차 불요리 — 화구 설치물. 뭍 위(막힌 칸 제외) · 놓는 순간 남에게도 보인다(통발 채널 kind:'stove').
     CookingStore.windProvider = () => {

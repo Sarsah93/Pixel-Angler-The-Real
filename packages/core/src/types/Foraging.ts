@@ -152,7 +152,7 @@ export const GANGWON_FORAGE_ORDINANCE = {
     //   판정(`isOrdinanceViolation`)은 이 표만 본다 — DB 플래그와 이 표를 같이 맞출 것.
     'haliotis_diversicolor',      // 오분자기 (소형 전복류 — 전복과 같은 정착성 자원)
   ] as readonly string[],
-  /** 법정 벌금 상한 (안내문 표기용 — 게임 벌금은 TUNING.forage.fineRatio/fineCapWon) */
+  /** 법정 벌금 상한 (참고값 — 게임 벌금은 `TUNING.law.fines` · `enforcementFineWon`) */
   fineMaxWon: 10_000_000,
   saleFineMaxWon: 2_000_000,
   /** 도내 전 수역 — 산란기 도루묵 (통발 등 포획 제한) */

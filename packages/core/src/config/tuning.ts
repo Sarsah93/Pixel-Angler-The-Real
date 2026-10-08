@@ -14,6 +14,18 @@
 // ────────────────────────────────────────────────────────────
 // 타입
 // ────────────────────────────────────────────────────────────
+/** 단속 위반 종류 — 실제 법의 벌칙 등급(`TUNING.law.fines`) */
+export type ViolationKind = 'ordinance' | 'sizeSeason' | 'unlicensed';
+/** 벌금 규칙 한 줄 — 벌금 = min(capWon, max(baseWon, 가진 돈 × ratio)) */
+export interface FineRule {
+  /** 기본 금액(원) — 가진 돈이 적어도 이만큼은 문다 */
+  baseWon: number;
+  /** 가진 돈에 곱하는 비율(0~1) — 0이면 정액 */
+  ratio: number;
+  /** 한도(원) — 아무리 많이 가져도 이보다 많이 물지 않는다 */
+  capWon: number;
+}
+
 /** 밑밥 종류별 물리 특성 (침강/확산/조류 친화) */
 export interface ChumTypeSpec {
   /** 침강 속도 (m/s) */
@@ -602,11 +614,8 @@ export interface TuningConfig {
     slipWaveM: number;
     slipChanceBase: number;
     slipChanceSwell: number;
-    /** 조례 위반 채집 회차당 적발 확률 */
+    /** 조례 위반 채집 회차당 적발 확률 (벌금액은 `law.fines`) */
     enforcementChance: number;
-    /** 적발 벌금 = 보유 재화 × 비율 (상한 fineCapWon) */
-    fineRatio: number;
-    fineCapWon: number;
     /** 229차 — 패류독소 표시가 붙은 조개를 먹었을 때 식중독 확률(익혀도 같다) */
     toxinPoisonChance: number;
   };
@@ -1122,6 +1131,8 @@ export interface TuningConfig {
     harborCommunityWork: number;
     harborFreeDelivery: number;
     harborAbandonedRequest: number;
+    /** 단속에 걸렸을 때 일하는 항구의 신뢰 변동(바다 평판은 `seaVillageFisheryViolation`) */
+    harborEnforcementCaught: number;
   };
   law: {
     /**
@@ -1135,6 +1146,22 @@ export interface TuningConfig {
      *   ③ M1-02에서 이미 품삯(DAY_JOBS)이 열려 있어 그 시점엔 대체 수입원이 존재한다.
      */
     enforceRodSell: number;
+    /**
+     * 단속 벌금 — 위반 종류마다 「기본 금액 · 가진 돈 비율 · 한도」 (2026-10-08 사용자 지시 · **mockup — 실플레이 조율 대기**).
+     *
+     *   벌금 = min(한도, max(기본 금액, 가진 돈 × 비율))
+     *
+     * 낼 돈이 모자라면 호출부가 파산으로 잇는다(여기서는 금액만 정한다). 종류는 실제 법의 벌칙 등급을 따른다.
+     *  - `ordinance`  조례 위반 채취 · 포획 — 어촌계 어장 보호종, 산란기 도루묵 통발. 실제 법 「1천만 원 이하 벌금」.
+     *  - `sizeSeason` 금어기 · 금지체장 위반 — 실제 법 「과태료 80만 원」(정액). ⚠ 지금은 잡는 즉시 자동 방생이라 **적발 지점이 없다**.
+     *  - `unlicensed` 무허가 조업(어업인) — 실제 법 「3천만 원 이하 벌금」. ⚠ 지금은 설치 · 판매가 막힐 뿐 **적발 지점이 없다**.
+     */
+    fines: Record<ViolationKind, FineRule>;
+    /**
+     * 재범 가중 — 바다 평판이 바닥(`rep.seaMin`)일 때 적발 확률에 곱하는 배수.
+     * 평판 0 이상이면 1배, 0 아래로 내려갈수록 이 값까지 곧게 오른다(`enforcementRepeatMult`).
+     */
+    repeatMaxMult: number;
   };
   /**
    * 스풀·베일 (136차) — 전유동/흘림 낚시와 "줄 주기"의 물리 상수.
@@ -1415,8 +1442,7 @@ export const TUNING: TuningConfig = {
     baseSuccess: 0.72, toolMatchBonus: 0.18, octopusEscape: 0.35, handInjuryStamina: 15,
     holdMsBase: 900, lampRadiusPer100lm: 0.55, dayRadiusTiles: 3,
     maxWindMps: 12, maxWaveM: 1.5, slipWaveM: 1.0, slipChanceBase: 0.04, slipChanceSwell: 0.22,
-    // 229차 — 상한 = 강원 조례 「1천만원 이하 벌금」(게임이 실제로 내는 벌금은 어장 조례 위반뿐). 못 내면 파산.
-    enforcementChance: 0.25, fineRatio: 0.3, fineCapWon: 10_000_000, toxinPoisonChance: 0.6,
+    enforcementChance: 0.25, toxinPoisonChance: 0.6,
   },
   trap: { lossRiskMult: 1.0, minSoakHours: 1, maxRangeTiles: 4, maxWaterDistTiles: 3 },
   cook: {
@@ -1575,9 +1601,18 @@ export const TUNING: TuningConfig = {
   rep: {
     harborMax: 100, seaMin: -10, seaMax: 10,
     seaReleaseUndersize: 0.5, seaRescue: 1, seaIllegalKeep: -1, seaRestrictedEntry: -0.5, seaVillageFisheryViolation: -2,
-    harborCommunityWork: 3, harborFreeDelivery: 2, harborAbandonedRequest: -5,
+    harborCommunityWork: 3, harborFreeDelivery: 2, harborAbandonedRequest: -5, harborEnforcementCaught: -5,
   },
-  law: { enforceRodSell: 2 },   // 2 = 법(M1-06)을 배운 뒤부터 강제 (135차 — 구세이브·테스터 회귀 0)
+  law: {
+    enforceRodSell: 2,   // 2 = 법(M1-06)을 배운 뒤부터 강제 (135차 — 구세이브·테스터 회귀 0)
+    // 벌금 = min(한도, max(기본, 가진 돈 × 비율)). 229차의 「정액 1천만원」을 종류별 · 재산 비례로 바꿨다(mockup)
+    fines: {
+      ordinance: { baseWon: 1_000_000, ratio: 0.3, capWon: 10_000_000 },
+      sizeSeason: { baseWon: 800_000, ratio: 0, capWon: 800_000 },
+      unlicensed: { baseWon: 3_000_000, ratio: 0.3, capWon: 30_000_000 },
+    },
+    repeatMaxMult: 2,
+  },
   spool: {
     openFrictionKg: 0.06, payoutGainMpsPerKg: 2.2, maxPayoutMps: 3.5, idlePayoutMps: 0.25,
     dragSlipMpsPerKg: 1.4, bailLeakMps: 0.06,
@@ -1835,8 +1870,12 @@ export const TUNING_META: TuningParamMeta[] = [
   { path: 'forage.holdMsBase', min: 300, max: 2500, step: 50, category: 'feel', label: '채집 홀드(ms)' },
   { path: 'forage.lampRadiusPer100lm', min: 0.2, max: 1.5, step: 0.05, category: 'feel', label: '랜턴 발견 반경(타일/100lm)' },
   { path: 'forage.enforcementChance', min: 0, max: 1, step: 0.05, category: 'balance', label: '조례 위반 적발 확률' },
-  { path: 'forage.fineRatio', min: 0, max: 1, step: 0.05, category: 'balance', label: '벌금 재화 비율' },
-  { path: 'forage.fineCapWon', min: 0, max: 20_000_000, step: 100_000, category: 'balance', label: '벌금 상한(원)' },
+  { path: 'law.fines.ordinance.baseWon', min: 0, max: 10_000_000, step: 100_000, category: 'balance', label: '조례 위반 벌금 — 기본(원)' },
+  { path: 'law.fines.ordinance.ratio', min: 0, max: 1, step: 0.05, category: 'balance', label: '조례 위반 벌금 — 가진 돈 비율' },
+  { path: 'law.fines.ordinance.capWon', min: 0, max: 30_000_000, step: 500_000, category: 'balance', label: '조례 위반 벌금 — 한도(원)' },
+  { path: 'law.repeatMaxMult', min: 1, max: 4, step: 0.1, category: 'balance', label: '재범 가중 — 바다 평판 바닥일 때 적발 배수' },
+  { path: 'rep.seaVillageFisheryViolation', min: -5, max: 0, step: 0.5, category: 'balance', label: '바다 평판 −/단속 적발' },
+  { path: 'rep.harborEnforcementCaught', min: -20, max: 0, step: 1, category: 'balance', label: '항구 신뢰 −/단속 적발' },
   { path: 'forage.toxinPoisonChance', min: 0, max: 1, step: 0.05, category: 'balance', label: '패류독소 식중독 확률' },
   { path: 'trap.lossRiskMult', min: 0, max: 3, step: 0.1, category: 'balance', label: '통발 분실 위험 배율' },
   { path: 'trap.minSoakHours', min: 0, max: 8, step: 0.5, category: 'balance', label: '통발 최소 침지(h)' },

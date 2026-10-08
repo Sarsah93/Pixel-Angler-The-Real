@@ -303,7 +303,7 @@ export {
 export {
   mulberry32, forageSeed, forageSafety, creatureSpotKinds, creatureTools, FORAGE_TOOL_LABEL,
   pickForageTool, forageHoldMs, rollForageSpots, attemptForage, isOrdinanceViolation,
-  rollEnforcement, trapSeasonViolations,
+  rollEnforcement, enforcementFineWon, enforcementRepeatMult, trapSeasonViolations,
   forageBehaviorOf, forageGameKindOf, isEastSeaRegion, rollForageHarvest, forageInjuryRoll, shallowWaterDepthM,
   isCrabCreature, BERRIED_MONTHS, BERRIED_CHANCE,
 } from './simulation/ForagingEngine.js';
@@ -482,7 +482,7 @@ export {
 // 튜닝값 단일 소스 (feel=dev 패널 / balance=시뮬) — 매직넘버 중앙화
 export type {
   TuningConfig, TuningParamMeta, ChumTypeSpec, ChumTypeKey, SinkBodyType,
-  BodyFormKey, BodyFormFight,
+  BodyFormKey, BodyFormFight, ViolationKind, FineRule,
 } from './config/tuning.js';
 export { TUNING, TUNING_META, getTuning, setTuning } from './config/tuning.js';
 export type { BiteContext, BiteTickResult } from './simulation/BiteProbabilityEngine.js';

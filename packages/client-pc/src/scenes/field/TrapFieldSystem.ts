@@ -48,6 +48,8 @@ export interface TrapHost {
   confirm: (message: string, onYes: () => void) => void;
   /** 통발 설치 패널 열기 — 씬의 openPopup 경유 */
   openDeployPanel: (onPick: (trapItem: InvItem, baitItem: InvItem) => void) => void;
+  /** 벌금을 낼 돈이 없을 때 — 씬의 파산 연출(채집 단속과 같은 길) */
+  bankrupt?: (fineWon: number) => void;
 }
 
 export class TrapFieldSystem {
@@ -419,16 +421,23 @@ export class TrapFieldSystem {
     // 강원 조례 — 산란기 도루묵
     const viol = trapSeasonViolations(result.items, new Date().getMonth() + 1);
     if (viol.length) {
-      const enf = rollEnforcement(GameState.player.inventory.coins, Math.random);
+      // 바다 평판이 나쁘면(전에 걸린 적이 있으면) 더 자주 걸린다
+      const enf = rollEnforcement(GameState.player.inventory.coins, Math.random, GameState.repeatOffenderMult());
       const names = viol.map((id) => FISH_DATABASE.find((f) => f.id === id)?.nameKo ?? id).join(', ');
       if (enf.caught) {
         // 압수 — 쿨러/인벤에서 해당 어종 제거
         for (const id of viol) this.confiscate(id);
-        if (enf.fineWon > 0) GameState.addCoins(-enf.fineWon, false, 'fine');
-        GameState.markDirty();
         this.host.scene.cameras.main.flash(260, 200, 40, 40);
+        // 벌금을 다 낼 수 있을 때만 깎인다. 모자라면 파산(채집 단속과 같은 길) — 전에는 깎이지 않은 채 「벌금 N원」만 찍혔다
+        if (enf.fineWon > 0 && !GameState.addCoins(-enf.fineWon, false, 'fine')) {
+          this.host.pushLog(`[단속] 산란기 ${names} 통발 포획 적발 — 압수 · 벌금 ${enf.fineWon.toLocaleString()}원. 낼 돈이 없다`);
+          if (this.host.bankrupt) { this.host.bankrupt(enf.fineWon); return; }
+        }
+        const repLine = GameState.applyEnforcementRep();
+        GameState.markDirty();
         this.host.floatingHint(`단속 적발! 산란기 ${names} 압수 · 벌금 ${enf.fineWon.toLocaleString()}원`);
         this.host.pushLog(`[단속] 산란기(${GANGWON_FORAGE_ORDINANCE.sandfishSpawnMonths.join('·')}월) ${names} 통발 포획 적발 — 압수 · 벌금 ${enf.fineWon.toLocaleString()}원`);
+        this.host.pushLog(repLine);
       } else {
         this.host.pushLog(`[주의] 산란기 ${names} 통발 포획 — 강원 조례 위반 (적발 시 압수·벌금)`);
       }

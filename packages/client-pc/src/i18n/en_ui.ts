@@ -22,8 +22,8 @@ export const EN_UI: Record<string, string> = {
   '어촌계장 · 강원특별자치도': 'Village Fishery Chief · Gangwon State', '도움말에서 더 보기': 'More in the Help library',
   '어촌계 표지판이다. 지도에는 어장이 그려지지 않는다 — 물가에 선 표지판을 읽어야 어디가 남의 앞마당인지 안다.':
     'A village signboard. Fishing grounds are not drawn on the map — you have to read the signs on the shore to know whose front yard this is.',
-  '벌금은 천만 원이다. 낼 돈이 없으면 파산이고, 이야기를 처음부터 다시 시작하게 된다. 어장 안에서는 손을 대지 않는 게 낫다.':
-    'The fine is ten million won. If you cannot pay, you are bankrupt and the story starts over from the beginning. Better keep your hands off inside the grounds.',
+  '벌금은 가진 돈이 많을수록 무겁다. 낼 돈이 없으면 파산이고, 이야기를 처음부터 다시 시작하게 된다. 어장 안에서는 손을 대지 않는 게 낫다.':
+    'The more money you hold, the heavier the fine. If you cannot pay, you are bankrupt and the story starts over from the beginning. Better keep your hands off inside the grounds.',
   '허가 없이 잡아도 되는 것도 적혀 있다. 알 밴 암컷 게는 잡아도 저절로 놓아준다.':
     'It also lists what you may take without a permit. A berried female crab is released on its own even if you catch it.',
   '봄에는 패류독소가 돈다. 금지 기간에 캔 홍합 · 바지락 · 굴은 가방에서 보랏빛 물방울 표시가 붙고, 먹으면 탈이 난다.':
@@ -317,12 +317,13 @@ function shopFailEn(list: string, tr: (s: string) => string): string {
 
 export const EN_UI_RULES: [RegExp, (m: RegExpMatchArray, tr: (s: string) => string) => string][] = [
   // 229차 — 표지판 · 패류독소 · 알 밴 암컷 · 벌금
-  [/^어기면 잡은 것을 빼앗기고 벌금 ([\d,]+)원을 뭅니다\. 벌금을 내지 못하면 더는 이 바다에 설 수 없습니다\.$/, (m) => `Break it and your catch is seized with a fine of ${m[1]} won. If you cannot pay the fine, you can no longer stand on this sea.`],
+  [/^어기면 잡은 것을 빼앗기고 벌금을 뭅니다 — 적게는 ([\d,]+)원, 가진 것이 많으면 ([\d,]+)원까지입니다\. 벌금을 내지 못하면 더는 이 바다에 설 수 없습니다\.$/, (m) => `Break it and your catch is seized and you are fined — at least ${m[1]} won, up to ${m[2]} won if you hold a lot. If you cannot pay the fine, you can no longer stand on this sea.`],
   [/^패류독소 채취 금지 발령 중\((.+)\) — 홍합 · 바지락 · 굴을 먹지 마십시오\. 익혀도 독은 남습니다\.$/, (m) => `Shellfish-toxin ban in force (${m[1]}) — do not eat mussels · clams · oysters. Cooking does not remove the toxin.`],
   [/^(.+)를 뒤집어 보니 배딱지가 둥글고 넓다\. 암컷이다\.$/, (m, tr) => `Turning the ${tr(m[1])} over, the abdomen is round and wide. A female.`],
   [/^(.+) ([\d.]+)cm — 배딱지에 알을 품은 암컷, 놓아주었다$/, (m, tr) => `${tr(m[1])} ${m[2]}cm — a female carrying eggs under her abdomen, released`],
   [/^\[파산\] 벌금 ([\d,]+)원 — 그만한 돈이 없다$/, (m) => `[Bankrupt] Fine ${m[1]} won — I do not have that kind of money`],
-  [/^\[어장\] 적발되면 벌금 ([\d,]+)원 — 그만한 돈이 없으면 파산이다$/, (m) => `[Fishery] If caught, the fine is ${m[1]} won — without that money you are bankrupt`],
+  [/^\[단속\] 소문이 돈다 — 바다 평판 (-?[\d.]+) · 항구 신뢰 (-?[\d.]+)$/, (m) => `[Patrol] Word gets around — sea standing ${m[1]} · harbour trust ${m[2]}`],
+  [/^\[어장\] 적발되면 벌금 ([\d,]+)~([\d,]+)원 — 낼 돈이 없으면 파산이다$/, (m) => `[Fishery] If caught, the fine is ${m[1]}–${m[2]} won — if you cannot pay you are bankrupt`],
   [/^\[주의\] 패류독소 채취 금지 기간\((.+)\)에 캔 (.+) — 익혀도 독이 남는다\. 먹으면 탈이 날 수 있다$/, (m, tr) => `[Caution] ${tr(m[2])} gathered during the shellfish-toxin ban (${m[1]}) — toxin survives cooking. Eating it may make you sick`],
   [/^(.+) ([\d.]+)cm — 법정 크기\(([\d.]+)cm\) 미달, 놓아주었다$/, (m, tr) => `${tr(m[1])} ${m[2]}cm — under the legal size (${m[3]}cm), released`],
   [/^뜯으면 미끼용 크릴 (\d+)마리$/, (m) => `Opens into ${m[1]} bait krill`],
