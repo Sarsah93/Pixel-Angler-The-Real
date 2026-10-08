@@ -3,11 +3,15 @@
  * @description 텃밭 작물 DB (235차) — 실제 재배 자료를 칸(1㎡) 단위로 옮긴 표
  *
  * 환산 규칙
- *  - **칸 = 1㎡**(주말농장 한 구획 12㎡ = 텃밭 4×3칸). 10a(1,000㎡) 수량은 고랑 · 통로를 뺀 순면적 비율(≈0.6)을
- *    감안해 칸당 수량으로 옮겼다(예: 시금치 10a 975kg → 칸당 약 1kg = 200g 단 3~5개).
+ *  - **칸 = 1㎡**(주말농장 한 구획 12㎡ = 텃밭 4×3칸). **칸당 수량 = 10a(1,000㎡) 수량 ÷ 1,000** — 통계의 10a는
+ *    고랑 · 통로까지 포함한 면적이라 칸과 같은 기준이다(예: 시금치 10a 975kg → 칸당 약 1kg = 200g 단 3~5개).
+ *    통계는 2024 농산물소득조사 · 생산량조사를 우선하고, 없으면 시험 · 재배 자료의 포기 수 × 포기당 수량으로 채웠다.
  *  - **씨앗 「1칸 분」** = 그 칸에 뿌리는 양(상추 1봉 ≈ 1,000립 중 한 이랑 몫). 섬 = 발아율(종자관리요강 · 봉투 표기:
- *    상추 60% · 시금치 65% · 무 70% · 고추 65%). 모종은 활착률 0.95 안팎 — **모종 = 육묘 기간(3~6주)을 건너뛴다**.
- *  - 종구 · 종서 대비 수확: 씨감자 1 → 약 10배 · 마늘 종구 1 → 6~7배 · 고구마순 1 → 1~1.2kg · 콩나물 콩 100g → 600~800g.
+ *    상추 60% · 시금치 65% · 무 70% · 고추 65%). 실험실 발아율 기준(일본 가정원예 표준 · 미국 연방 기준)을 넘지 않는다
+ *    (당근 55% · 옥수수 · 풋콩 75%). 모종은 활착률 0.95 안팎, 맨뿌리로 옮기는 양파 · 대파는 0.88
+ *    — **모종 = 육묘 기간(3~6주)을 건너뛴다**.
+ *  - 종구 · 종서 대비 수확: 씨감자 1 → 약 10배 · 마늘 종구 1 → 6~7배 · 고구마순 1 → 0.4~0.5kg(전국 평균) ·
+ *    콩나물 콩 100g → 400~600g · 녹두 100g → 숙주 800g~1kg · 느타리 배지 1.5kg → 두 번에 약 400g.
  *  - 기간(days)은 **적온 · 물 충분 · 노지** 기준. 실제 계절 밖이면 자라지 않는다(겨울나기 작물은 휴면).
  *  - 값은 2023~2025 도매 · 소매 평균을 단위 값으로(원). 달별 지수는 같은 기간의 계절 흐름(금배추 · 여름 상추).
  *  - **희귀 · 고가 · 저생산 작물**(산채 · 고추냉이 · 두릅)은 실제 값 흐름을 따르되 `rebalance`로 단가를 살짝 누른다
@@ -64,24 +68,25 @@ export const CROP_DATABASE: CropDef[] = [
   {
     id: 'bean_sprout', nameKo: '콩나물', nameEn: 'Soybean sprouts', category: 'sprout', speedClass: 'leafy', rarity: 'common',
     inMart: true, site: 'indoor', growMonths: ALL, water: 'high',
-    // 나물콩 100g → 콩나물 600~800g(5~7일) · 직접 키운 백태 200g으로도 앉힌다(1.8배)
+    // 나물콩 100g → 콩나물 400~600g(5~8일 · 재래 나물콩 시험 121~695%) · 직접 키운 백태 200g으로도 앉힌다(1.8배)
     starts: [
       seed('bean_sprout', ALL, 0.92, 6, 1200, { labelKo: '나물콩 100g (시루 한 번)', labelEn: 'Sprouting soybeans 100g (one jar)' }),
       { kind: 'seed', itemId: 'crop_soybean', perCell: 1, establish: 0.85, days: 6, months: ALL, cost: 0, qtyMult: 1.8 },
     ],
-    harvest: { itemId: 'crop_bean_sprout', nameKo: '콩나물 한 줌 (100g)', nameEn: 'Bean sprouts, a handful (100g)', qtyPerCell: [6, 8], holdDays: 2 },
+    harvest: { itemId: 'crop_bean_sprout', nameKo: '콩나물 한 줌 (100g)', nameEn: 'Bean sprouts, a handful (100g)', qtyPerCell: [4, 6], holdDays: 2 },
     price: { base: 330, season: P_FLAT, volatility: 0.08 }, cookIngredient: 'bean_sprout',
-    noteKo: '나물콩 100g이 시루에서 6~8배로 불어난다. 하루에 여러 번 물을 줘야 곧게 자란다.',
-    noteEn: '100g of sprouting soybeans swells six- to eightfold in the jar. Water them several times a day or they grow crooked.',
+    noteKo: '나물콩 100g이 시루에서 4~6배로 불어난다. 하루에 여러 번 물을 줘야 곧게 자란다.',
+    noteEn: '100g of sprouting soybeans swells four- to sixfold in the jar. Water them several times a day or they grow crooked.',
   },
   {
     id: 'mung_sprout', nameKo: '숙주', nameEn: 'Mung bean sprouts', category: 'sprout', speedClass: 'leafy', rarity: 'common',
     inMart: true, site: 'indoor', growMonths: ALL, water: 'high',
+    // 녹두 100g → 숙주 760~1,110g(5일 · 농진청 「채흔」 762% · 산포 1,110%)
     starts: [seed('mung_sprout', ALL, 0.9, 5, 900, { labelKo: '녹두 100g (시루 한 번)', labelEn: 'Mung beans 100g (one jar)' })],
-    harvest: { itemId: 'crop_mung_sprout', nameKo: '숙주 한 줌 (100g)', nameEn: 'Mung bean sprouts, a handful (100g)', qtyPerCell: [5, 6], holdDays: 2 },
+    harvest: { itemId: 'crop_mung_sprout', nameKo: '숙주 한 줌 (100g)', nameEn: 'Mung bean sprouts, a handful (100g)', qtyPerCell: [8, 10], holdDays: 2 },
     price: { base: 300, season: P_FLAT, volatility: 0.08 },
-    noteKo: '녹두 100g → 숙주 500~600g, 닷새. 빛을 가리면 하얗게 자란다.',
-    noteEn: '100g of mung beans becomes 500-600g of sprouts in five days. Keep the light off and they stay white.',
+    noteKo: '녹두 100g → 숙주 800g~1kg, 닷새. 빛을 가리면 하얗게 자란다.',
+    noteEn: '100g of mung beans becomes 800g to 1kg of sprouts in five days. Keep the light off and they stay white.',
   },
   {
     id: 'microgreens', nameKo: '새싹채소', nameEn: 'Microgreens', category: 'sprout', speedClass: 'leafy', rarity: 'common',
@@ -95,12 +100,13 @@ export const CROP_DATABASE: CropDef[] = [
   {
     id: 'oyster_mushroom', nameKo: '느타리버섯', nameEn: 'Oyster mushroom', category: 'mushroom', speedClass: 'leafy', rarity: 'common',
     inMart: true, site: 'indoor', growMonths: ALL, water: 'high',
-    // 균이 다 자란 배지를 사 온다 → 7~12일에 첫 발생 · 열흘 간격 2번 더
+    // 균이 다 자란 배지를 사 온다 → 7~12일에 첫 발생 · 12일쯤 뒤 한 번 더
+    //  배지 1kg → 첫물 155~161g · 수량의 94%가 1 · 2주기(경기도 시험) → 1.5kg 배지 두 번에 약 400g
     starts: [setOf('oyster_mushroom', ALL, 0.95, 11, 5000, '느타리 배지 (1.5kg)', 'Oyster mushroom block (1.5kg)')],
-    harvest: { itemId: 'crop_oyster_mushroom', nameKo: '느타리 한 팩 (200g)', nameEn: 'Oyster mushrooms, a pack (200g)', qtyPerCell: [1, 2], repeat: { everyDays: 10, times: 2 }, holdDays: 2 },
+    harvest: { itemId: 'crop_oyster_mushroom', nameKo: '느타리 한 팩 (200g)', nameEn: 'Oyster mushrooms, a pack (200g)', qtyPerCell: [1, 1], repeat: { everyDays: 12, times: 1 }, holdDays: 2 },
     price: { base: 2000, season: P_MUSHROOM, volatility: 0.1 },
-    noteKo: '배지 1.5kg에서 세 번 돋는다. 첫물이 가장 굵다.',
-    noteEn: 'A 1.5kg block fruits three times. The first flush is the thickest.',
+    noteKo: '배지 1.5kg에서 두 번 돋는다. 세 번째는 거의 나지 않는다. 첫물이 가장 굵다.',
+    noteEn: 'A 1.5kg block fruits twice; a third flush hardly comes. The first flush is the thickest.',
   },
 
   // ═════ 잎채소 (시설 상한 ×2.0) ═════
@@ -108,7 +114,7 @@ export const CROP_DATABASE: CropDef[] = [
     id: 'lettuce', nameKo: '상추', nameEn: 'Lettuce', category: 'leaf', speedClass: 'leafy', rarity: 'common',
     inMart: true, site: 'plot', growMonths: [3, 4, 5, 6, 9, 10, 11], water: 'high',
     // 포기간 25~30cm → 칸당 9포기 · 잎 따기 4일마다 포기당 25g 안팎 · 한여름은 꽃대가 올라 멈춘다
-    starts: [seed('lettuce', [3, 4, 5, 8, 9], 0.62, 45, 200), seedling('lettuce', [4, 5, 9, 10], 9, 25, 300)],
+    starts: [seed('lettuce', [3, 4, 5, 8, 9], 0.62, 55, 200), seedling('lettuce', [4, 5, 9, 10], 9, 25, 300)],
     harvest: { itemId: 'crop_lettuce', nameKo: '상추 한 줌 (100g)', nameEn: 'Lettuce, a handful (100g)', qtyPerCell: [2, 3], repeat: { everyDays: 4, times: 10 }, holdDays: 6 },
     price: { base: 1200, season: P_LETTUCE, volatility: 0.3 },
     noteKo: '겉잎부터 따면 속에서 계속 올라온다. 여름 더위에는 꽃대가 서서 잎이 쓰다.',
@@ -200,7 +206,7 @@ export const CROP_DATABASE: CropDef[] = [
     id: 'chard', nameKo: '근대', nameEn: 'Swiss chard', category: 'leaf', speedClass: 'leafy', rarity: 'uncommon',
     inMart: false, site: 'plot', growMonths: [4, 5, 6, 7, 8, 9, 10], water: 'mid',
     starts: [seed('chard', [3, 4, 5, 8, 9], 0.7, 50, 250)],
-    harvest: { itemId: 'crop_chard', nameKo: '근대 한 단 (300g)', nameEn: 'Chard, a bunch (300g)', qtyPerCell: [2, 3], repeat: { everyDays: 10, times: 6 }, holdDays: 7 },
+    harvest: { itemId: 'crop_chard', nameKo: '근대 한 단 (300g)', nameEn: 'Chard, a bunch (300g)', qtyPerCell: [2, 3], repeat: { everyDays: 7, times: 6 }, holdDays: 7 },
     price: { base: 2000, season: P_LETTUCE, volatility: 0.15 },
     noteKo: '더위에 강해 여름 내내 겉잎을 딴다. 된장국 거리.',
     noteEn: 'Takes the heat well, so you pick outer leaves all summer. For soybean-paste soup.',
@@ -327,7 +333,7 @@ export const CROP_DATABASE: CropDef[] = [
     id: 'cherry_tomato', nameKo: '방울토마토', nameEn: 'Cherry tomato', category: 'fruit', speedClass: 'seasonal', rarity: 'common',
     inMart: true, site: 'plot', growMonths: [5, 6, 7, 8, 9], water: 'mid',
     starts: [seedling('cherry_tomato', [4, 5], 2, 60, 1000)],
-    harvest: { itemId: 'crop_cherry_tomato', nameKo: '방울토마토 한 팩 (250g)', nameEn: 'Cherry tomatoes, a pack (250g)', qtyPerCell: [3, 5], repeat: { everyDays: 6, times: 10 }, holdDays: 5 },
+    harvest: { itemId: 'crop_cherry_tomato', nameKo: '방울토마토 한 팩 (250g)', nameEn: 'Cherry tomatoes, a pack (250g)', qtyPerCell: [2, 4], repeat: { everyDays: 6, times: 10 }, holdDays: 5 },
     price: { base: 2500, season: P_CHERRY_TOMATO, volatility: 0.2 },
     noteKo: '곁순을 따 주면 열매가 굵다. 한 포기 3~4kg.',
     noteEn: 'Pinch out the side shoots and the fruit grows bigger. 3-4kg per plant.',
@@ -367,9 +373,9 @@ export const CROP_DATABASE: CropDef[] = [
   {
     id: 'corn', nameKo: '찰옥수수', nameEn: 'Waxy corn', category: 'grain', speedClass: 'seasonal', rarity: 'common',
     inMart: true, site: 'plot', growMonths: [5, 6, 7, 8, 9], water: 'mid',
-    // 70×30cm → 칸당 4~5포기 · 포기당 1~1.5자루 · 미끼(감성돔 옥수수)로도 쓴다
-    starts: [seed('corn', [4, 5, 6], 0.85, 90, 400), seedling('corn', [5], 4, 70, 300)],
-    harvest: { itemId: 'crop_corn', nameKo: '찰옥수수 (1자루)', nameEn: 'Waxy corn (one ear)', qtyPerCell: [4, 6], holdDays: 7 },
+    // 70×30cm → 칸당 4~5포기 · 상품 이삭은 포기의 6할 남짓(10a 2,796이삭 — 2024 소득조사) · 미끼(감성돔 옥수수)로도 쓴다
+    starts: [seed('corn', [4, 5, 6], 0.75, 90, 400), seedling('corn', [5], 4, 70, 300)],
+    harvest: { itemId: 'crop_corn', nameKo: '찰옥수수 (1자루)', nameEn: 'Waxy corn (one ear)', qtyPerCell: [2, 4], holdDays: 7 },
     price: { base: 1000, season: P_CORN, volatility: 0.2 },
     noteKo: '수염이 갈색으로 마르면 거둔다. 삶은 알갱이는 감성돔 미끼가 된다.',
     noteEn: 'Harvest when the silk dries brown. Boiled kernels make bait for black sea bream.',
@@ -407,9 +413,9 @@ export const CROP_DATABASE: CropDef[] = [
   {
     id: 'sweet_potato', nameKo: '고구마', nameEn: 'Sweet potato', category: 'tuber', speedClass: 'seasonal', rarity: 'common',
     inMart: true, site: 'plot', growMonths: [5, 6, 7, 8, 9, 10], water: 'low',
-    // 순 1개 → 1~1.2kg · 한여름에 순을 끊어 고구마순 나물(본 수확 조금 준다)
+    // 순 1개 → 0.4~0.5kg(10a 1,686kg — 2024 소득조사) · 한여름에 순을 끊어 고구마순 나물(본 수확 조금 준다)
     starts: [setOf('sweet_potato', [5, 6], 0.9, 120, 1200, '고구마순 (1칸 분 · 4줄기)', 'Sweet potato slips (one cell, 4)')],
-    harvest: { itemId: 'crop_sweet_potato', nameKo: '고구마 1kg', nameEn: 'Sweet potatoes 1kg', qtyPerCell: [3, 5], holdDays: 20 },
+    harvest: { itemId: 'crop_sweet_potato', nameKo: '고구마 1kg', nameEn: 'Sweet potatoes 1kg', qtyPerCell: [1, 3], holdDays: 20 },
     interim: {
       itemId: 'crop_sweetpotato_stem', labelKo: '고구마순 한 단 (300g)', labelEn: 'Sweet potato stems, a bunch (300g)',
       window: [0.4, 0.8], qtyPerCell: [2, 3], mainYieldMult: 0.95, price: 2500, inMart: false,
@@ -422,7 +428,7 @@ export const CROP_DATABASE: CropDef[] = [
     id: 'radish', nameKo: '김장무', nameEn: 'Autumn radish', category: 'root', speedClass: 'seasonal', rarity: 'common',
     inMart: true, site: 'plot', growMonths: [8, 9, 10, 11], water: 'mid',
     // 한 구멍 3~4알 → 솎아 한 포기 · 10a 5~6t → 칸당 1.2kg 무 4~6개
-    starts: [seed('radish', [8, 9], 0.7, 65, 300)],
+    starts: [seed('radish', [8, 9], 0.7, 75, 300)],
     harvest: { itemId: 'crop_radish', nameKo: '무 (1개 · 약 1.2kg)', nameEn: 'Radish (one, about 1.2kg)', qtyPerCell: [4, 6], holdDays: 20 },
     interim: {
       itemId: 'crop_thinned_radish', labelKo: '솎음무 한 줌 (300g)', labelEn: 'Thinned radish, a handful (300g)',
@@ -436,7 +442,7 @@ export const CROP_DATABASE: CropDef[] = [
     id: 'napa_cabbage', nameKo: '김장배추', nameEn: 'Napa cabbage', category: 'leaf', speedClass: 'seasonal', rarity: 'common',
     inMart: true, site: 'plot', growMonths: [8, 9, 10, 11], water: 'high',
     // 60×40cm → 칸당 3포기 · 포기 2~3kg · 2024 가을 금배추(도매 1만원대)
-    starts: [seed('napa_cabbage', [8], 0.75, 85, 300), seedling('napa_cabbage', [8, 9], 3, 60, 500)],
+    starts: [seed('napa_cabbage', [8], 0.75, 95, 300), seedling('napa_cabbage', [8, 9], 3, 70, 500)],
     harvest: { itemId: 'crop_napa_cabbage', nameKo: '배추 (1통 · 약 2.5kg)', nameEn: 'Napa cabbage (one head, about 2.5kg)', qtyPerCell: [2, 3], holdDays: 25 },
     interim: {
       itemId: 'crop_thinned_cabbage', labelKo: '솎음배추 한 줌 (300g)', labelEn: 'Thinned cabbage, a handful (300g)',
@@ -449,7 +455,7 @@ export const CROP_DATABASE: CropDef[] = [
   {
     id: 'carrot', nameKo: '당근', nameEn: 'Carrot', category: 'root', speedClass: 'seasonal', rarity: 'common',
     inMart: true, site: 'plot', growMonths: [7, 8, 9, 10, 11], water: 'mid',
-    starts: [seed('carrot', [7, 8], 0.6, 100, 300)],
+    starts: [seed('carrot', [7, 8], 0.55, 100, 300)],
     harvest: { itemId: 'crop_carrot', nameKo: '당근 (1개 · 약 200g)', nameEn: 'Carrot (one, about 200g)', qtyPerCell: [14, 20], holdDays: 25 },
     price: { base: 600, season: P_CARROT, volatility: 0.25 }, cookIngredient: 'carrot',
     noteKo: '발아가 더디다 — 흙이 마르지 않게 덮어 둔다.',
@@ -472,8 +478,8 @@ export const CROP_DATABASE: CropDef[] = [
   {
     id: 'onion', nameKo: '양파', nameEn: 'Onion', category: 'bulb', speedClass: 'seasonal', rarity: 'common',
     inMart: true, site: 'plot', growMonths: [3, 4, 5, 6, 10, 11], overwinter: true, water: 'mid',
-    starts: [seedling('onion', [10, 11], 25, 160, 80, { labelKo: '양파 모종 (1포기)', labelEn: 'Onion seedling (one)' })],
-    harvest: { itemId: 'crop_onion', nameKo: '양파 (1개 · 약 250g)', nameEn: 'Onion (one, about 250g)', qtyPerCell: [18, 22], holdDays: 25 },
+    starts: [seedling('onion', [10, 11], 25, 160, 80, { establish: 0.88, labelKo: '양파 모종 (1포기)', labelEn: 'Onion seedling (one)' })],
+    harvest: { itemId: 'crop_onion', nameKo: '양파 (1개 · 약 250g)', nameEn: 'Onion (one, about 250g)', qtyPerCell: [22, 26], holdDays: 25 },
     price: { base: 600, season: P_ONION, volatility: 0.25 }, cookIngredient: 'onion',
     noteKo: '늦가을 모종을 내 겨울을 나게 한다. 잎이 쓰러지면 거둘 때.',
     noteEn: 'Set out seedlings in late autumn to winter over. When the tops fall over, it is ready.',
@@ -481,7 +487,7 @@ export const CROP_DATABASE: CropDef[] = [
   {
     id: 'leek', nameKo: '대파', nameEn: 'Green onion', category: 'bulb', speedClass: 'seasonal', rarity: 'common',
     inMart: true, site: 'plot', growMonths: [4, 5, 6, 7, 8, 9, 10, 11], water: 'mid',
-    starts: [seedling('leek', [4, 5, 6], 15, 110, 100, { labelKo: '대파 모종 (1포기)', labelEn: 'Green onion seedling (one)' })],
+    starts: [seedling('leek', [4, 5, 6], 15, 90, 100, { establish: 0.88, labelKo: '대파 모종 (1포기)', labelEn: 'Green onion seedling (one)' })],
     harvest: { itemId: 'crop_leek', nameKo: '대파 (1대)', nameEn: 'Green onion (one stalk)', qtyPerCell: [12, 15], holdDays: 40 },
     price: { base: 400, season: P_LEEK, volatility: 0.35 }, cookIngredient: 'leek',
     noteKo: '흙을 북돋워 흰 대를 길게 키운다. 2021년 「파테크」 때는 한 단 7천원.',
@@ -528,8 +534,9 @@ export const CROP_DATABASE: CropDef[] = [
   {
     id: 'ginger', nameKo: '생강', nameEn: 'Ginger', category: 'tuber', speedClass: 'seasonal', rarity: 'common',
     inMart: true, site: 'plot', growMonths: [5, 6, 7, 8, 9, 10], water: 'mid',
+    // 60×25cm → 칸당 6~7포기 · 10a 1,873kg(2024 소득조사) → 칸당 약 1.9kg
     starts: [setOf('ginger', [4, 5], 0.8, 170, 2500, '종강 (1칸 분)', 'Seed ginger (one cell)')],
-    harvest: { itemId: 'crop_ginger', nameKo: '생강 500g', nameEn: 'Ginger 500g', qtyPerCell: [1, 2], holdDays: 25 },
+    harvest: { itemId: 'crop_ginger', nameKo: '생강 500g', nameEn: 'Ginger 500g', qtyPerCell: [3, 5], holdDays: 25 },
     price: { base: 5000, season: P_GINGER, volatility: 0.15 }, cookIngredient: 'ginger',
     noteKo: '따뜻해야 싹이 튼다. 서리 전에 캔다.',
     noteEn: 'Needs warmth to sprout. Dig it before the frost.',
@@ -550,8 +557,8 @@ export const CROP_DATABASE: CropDef[] = [
     id: 'soybean', nameKo: '콩', nameEn: 'Soybean', category: 'legume', speedClass: 'seasonal', rarity: 'common',
     inMart: true, site: 'plot', growMonths: [6, 7, 8, 9, 10], water: 'low',
     // 10a 200~250kg → 칸당 약 220g · 직접 키운 백태로 콩나물을 앉힐 수 있다
-    starts: [seed('soybean', [5, 6], 0.8, 120, 300)],
-    harvest: { itemId: 'crop_soybean', nameKo: '콩 (백태) 200g', nameEn: 'Soybeans 200g', qtyPerCell: [1, 2], holdDays: 20 },
+    starts: [seed('soybean', [5, 6], 0.75, 120, 300)],
+    harvest: { itemId: 'crop_soybean', nameKo: '콩 (백태) 200g', nameEn: 'Soybeans 200g', qtyPerCell: [1, 1], holdDays: 20 },
     price: { base: 1600, season: P_PULSE, volatility: 0.1 },
     noteKo: '꼬투리가 누렇게 마르면 거둔다. 콩나물 시루에도 앉힌다.',
     noteEn: 'Harvest when the pods dry yellow. They also go into the sprouting jar.',

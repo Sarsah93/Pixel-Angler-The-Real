@@ -42,7 +42,9 @@ describe('FarmSim — 실제 시간대로 자란다', () => {
     advanceCell(b, 0, t0 + 26 * DAY, alwaysRain);
     expect(cellReady(a.cells[0])).toBe(true);
     expect(cellReady(b.cells[0])).toBe(false);
-    expect(b.cells[0].growth).toBeGreaterThan(0.5);
+    // 씨앗 55일(정식 후 25~30일 + 육묘 약 4주 — 농진청 웹진) → 26일이면 절반 가까이
+    expect(b.cells[0].growth).toBeGreaterThan(0.4);
+    expect(b.cells[0].growth).toBeLessThan(0.6);
   });
 
   it('잎 따기는 정해진 횟수만큼 다시 자라고, 그 뒤 칸이 빈다', () => {
