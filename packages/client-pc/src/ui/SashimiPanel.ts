@@ -944,14 +944,14 @@ export class SashimiPanel extends DraggablePanel {
     if (this.ceph === 'arms') {
       const seqA = InventoryStore.nextCatchSeq();
       InventoryStore.addItem({
-        id: 'inv_ceph_ceph_tentacle', name: '촉완(긴 다리)', icon: '🦑',
+        id: 'inv_ceph_ceph_tentacle', name: '촉완(긴 다리)', icon: '',
         iconTexture: cephByproductIcon('ceph_tentacle', speciesId),
         category: 'food', subCategory: '부산물', basePrice: 700,
         condition: 'live', conditionSinceMs: Date.now(), equippable: false, speciesId,
       }, 2);
       InventoryStore.addItem({
         id: `inv_ceph_arms_only_${speciesId}_${seqA}`,
-        name: `촉완이 제거된 ${nameKo} 다리부`, icon: '🦑',
+        name: `촉완이 제거된 ${nameKo} 다리부`, icon: '',
         iconTexture: cephByproductIcon('ceph_arms', speciesId, { tentacleRemoved: true }),
         category: 'food', subCategory: '부산물',
         basePrice: Math.max(1200, Math.round((this.source.basePrice || 1800) * 0.8)),
@@ -976,14 +976,14 @@ export class SashimiPanel extends DraggablePanel {
       const legG = Math.max(1, Math.round((gW - headG) / 8));
       const basePrice = this.source.basePrice || 2500;
       InventoryStore.addItem({
-        id: 'inv_octo_boiled_head', name: '삶은 문어 머리', icon: '🐙',
+        id: 'inv_octo_boiled_head', name: '삶은 문어 머리', icon: '',
         iconTexture: 'trim_octo_boiled_head',
         category: 'food', subCategory: '요리(숙회)',
         basePrice: Math.max(500, Math.round(basePrice * 0.2)),
         condition: 'fresh', conditionSinceMs: Date.now(), equippable: false, weightG: headG,
       }, 1);
       InventoryStore.addItem({
-        id: 'inv_octo_boiled_leg', name: '삶은 문어 다리', icon: '🐙',
+        id: 'inv_octo_boiled_leg', name: '삶은 문어 다리', icon: '',
         iconTexture: 'trim_octo_boiled_leg',
         category: 'food', subCategory: '요리(숙회)',
         basePrice: Math.max(400, Math.round(basePrice * 0.8 / 8)),
@@ -1033,7 +1033,7 @@ export class SashimiPanel extends DraggablePanel {
     InventoryStore.addItem({
       id: grantedId,
       name: grantedName,
-      icon: '🍣',
+      icon: '',
       iconTexture: octoLeg ? 'sashimi_piece_octopus'
         : this.ceph ? this.texKey : this.engawa ? 'trim_engawa' : `sashimi_piece_${this.fam}`,
       category: 'food', subCategory: '요리(회)',

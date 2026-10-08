@@ -362,7 +362,7 @@ export class TrapFieldSystem {
     const id = `inv_trap_${spec.id}`;
     if (!InventoryStore.recoverPlaceable(id)) {
       InventoryStore.addItem({
-        id, name: spec.nameKo, icon: '🪤', category: 'etc', subCategory: '통발',
+        id, name: spec.nameKo, icon: '', iconTexture: `art_${spec.id}`, category: 'etc', subCategory: '통발',
         basePrice: Math.round(spec.priceWon * 0.8), equippable: false, trapSpecId: spec.id,
       }, 1);
     }

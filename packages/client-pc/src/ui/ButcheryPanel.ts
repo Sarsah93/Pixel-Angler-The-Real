@@ -1051,7 +1051,7 @@ export class ButcheryPanel extends DraggablePanel {
             // 스택 가능한 폐기물(부리·연골 등)은 어종 무관 공유 id, 식용 부산물은 개체별 id
             id: def.stack > 1 ? `inv_ceph_${def.id}` : `inv_ceph_${def.id}_${speciesId}_${seq}`,
             name: def.stack > 1 ? def.nameKo : `${nameKo} ${def.nameKo} ${g}g`,
-            icon: '🦑', iconTexture: cephByproductIcon(def.id, speciesId),
+            icon: '', iconTexture: cephByproductIcon(def.id, speciesId),
             // ⚠ 'viscera'는 **내장류에만** — 전 부산물에 박으면 몸통살·통마리에 인벤 우클릭
             //   '만들기'(내장→밑밥 전환)가 떠서 메인 수율이 밑밥으로 갈리는 함정 (098차 정정)
             byproductKind: def.id === 'octo_viscera' || def.id === 'octo_ink_sac' || def.id === 'ceph_gonad'
@@ -1064,25 +1064,25 @@ export class ButcheryPanel extends DraggablePanel {
       }
       switch (y) {
         case 'head':
-          rows.push({ key: 'head', qty: 1, tpl: { ...base, id: `inv_byp_head_${speciesId}_${seq}`, name: `${nameKo} 머리 ${wts.headG}g`, icon: '🐟', iconTexture: this.trimHeadKey(speciesId), byproductKind: 'head', basePrice: Math.max(200, wts.headG * 3), speciesId, weightG: wts.headG } });
+          rows.push({ key: 'head', qty: 1, tpl: { ...base, id: `inv_byp_head_${speciesId}_${seq}`, name: `${nameKo} 머리 ${wts.headG}g`, icon: '', iconTexture: this.trimHeadKey(speciesId), byproductKind: 'head', basePrice: Math.max(200, wts.headG * 3), speciesId, weightG: wts.headG } });
           break;
         case 'viscera':
-          rows.push({ key: 'viscera', qty: 1, tpl: { ...base, id: 'inv_byp_guts', name: '생선 내장', icon: '🫀', iconTexture: 'trim_guts', byproductKind: 'viscera', basePrice: 300, condProfile: 'viscera' } });
+          rows.push({ key: 'viscera', qty: 1, tpl: { ...base, id: 'inv_byp_guts', name: '생선 내장', icon: '', iconTexture: 'trim_guts', byproductKind: 'viscera', basePrice: 300, condProfile: 'viscera' } });
           break;
         case 'filletA':
         case 'filletB':
-          rows.push({ key: y, qty: 1, tpl: { ...base, subCategory: '손질 필렛', id: `inv_filletribs_${speciesId}_${seq}_${y === 'filletA' ? 'a' : 'b'}`, name: `껍질과 갈빗대가 붙어있는 ${nameKo} 필렛 ${wts.filletG}g`, icon: '🍣', iconTexture: 'trim_fillet_ribs', basePrice: Math.max(1000, wts.filletG * 6), speciesId, weightG: wts.filletG, lengthCm: this.source.lengthCm } });
+          rows.push({ key: y, qty: 1, tpl: { ...base, subCategory: '손질 필렛', id: `inv_filletribs_${speciesId}_${seq}_${y === 'filletA' ? 'a' : 'b'}`, name: `껍질과 갈빗대가 붙어있는 ${nameKo} 필렛 ${wts.filletG}g`, icon: '', iconTexture: 'trim_fillet_ribs', basePrice: Math.max(1000, wts.filletG * 6), speciesId, weightG: wts.filletG, lengthCm: this.source.lengthCm } });
           break;
         case 'spine':
-          rows.push({ key: 'spine', qty: 1, tpl: { ...base, id: `inv_byp_spine_${speciesId}_${seq}`, name: `${nameKo} 척추뼈 ${wts.spineG}g`, icon: '🦴', iconTexture: `trim_spine_${fam}`, byproductKind: 'spine', basePrice: Math.max(200, wts.spineG * 3), speciesId, weightG: wts.spineG } });
+          rows.push({ key: 'spine', qty: 1, tpl: { ...base, id: `inv_byp_spine_${speciesId}_${seq}`, name: `${nameKo} 척추뼈 ${wts.spineG}g`, icon: '', iconTexture: `trim_spine_${fam}`, byproductKind: 'spine', basePrice: Math.max(200, wts.spineG * 3), speciesId, weightG: wts.spineG } });
           break;
         case 'rib':
           // 필렛 A/B 각각의 갈빗대 → **2개** (사용자 지시 2026-07-31)
           // 재장착 = 필렛 1장 세션 → 갈빗대 1개 / 원물 통짜 = 2개
-          rows.push({ key: 'rib', qty: this.resumed ? 1 : 2, tpl: { ...base, id: `inv_byp_rib_${speciesId}_${seq}`, name: `${nameKo} 갈빗대뼈 ${Math.max(1, Math.round(wts.ribG / 2))}g`, icon: '🍖', iconTexture: `trim_rib_${fam}`, byproductKind: 'rib', basePrice: Math.max(200, wts.ribG * 2), speciesId, weightG: Math.max(1, Math.round(wts.ribG / 2)) } });
+          rows.push({ key: 'rib', qty: this.resumed ? 1 : 2, tpl: { ...base, id: `inv_byp_rib_${speciesId}_${seq}`, name: `${nameKo} 갈빗대뼈 ${Math.max(1, Math.round(wts.ribG / 2))}g`, icon: '', iconTexture: `trim_rib_${fam}`, byproductKind: 'rib', basePrice: Math.max(200, wts.ribG * 2), speciesId, weightG: Math.max(1, Math.round(wts.ribG / 2)) } });
           break;
         case 'pin':
-          rows.push({ key: 'pin', qty: this.resumed ? 1 : 2, tpl: { ...base, id: 'inv_byp_pin', name: '생선 지아이뼈', icon: '🦴', iconTexture: 'trim_pin', byproductKind: 'pin', basePrice: 200 } });
+          rows.push({ key: 'pin', qty: this.resumed ? 1 : 2, tpl: { ...base, id: 'inv_byp_pin', name: '생선 지아이뼈', icon: '', iconTexture: 'trim_pin', byproductKind: 'pin', basePrice: 200 } });
           break;
         case 'skinFillet': {
           // 지아이 분리 후 = 1·2면에서 각 2장 → **껍질 붙은 순살 필렛 4장**.
@@ -1107,7 +1107,7 @@ export class ButcheryPanel extends DraggablePanel {
               ...base, subCategory: '손질 필렛',
               id: `inv_filletskin_${speciesId}_${seq}`,
               name: `껍질이 붙어있는 ${nameKo} 순살 필렛 ${sw}g`,
-              icon: '🍣', iconTexture: `trim_fillet_skinonly_${fam}`,
+              icon: '', iconTexture: `trim_fillet_skinonly_${fam}`,
               basePrice: price,
               speciesId, weightG: sw, lengthCm: this.source.lengthCm,
             },
@@ -1116,7 +1116,7 @@ export class ButcheryPanel extends DraggablePanel {
         }
         case 'skin':
           // 박피는 **필렛 1장** 처리 → 껍질 1장 (사용자 지시 2026-07-31)
-          rows.push({ key: 'skin', qty: 1, tpl: { ...base, id: 'inv_byp_skin', name: '생선 껍질', icon: '🫓', iconTexture: 'trim_skin', byproductKind: 'skin', basePrice: 250 } });
+          rows.push({ key: 'skin', qty: 1, tpl: { ...base, id: 'inv_byp_skin', name: '생선 껍질', icon: '', iconTexture: 'trim_skin', byproductKind: 'skin', basePrice: 250 } });
           break;
         // ── 넙치류 다섯장뜨기 전용 (2026-08-05) ──
         case 'flatFillet': {
@@ -1134,7 +1134,7 @@ export class ButcheryPanel extends DraggablePanel {
               ...base, subCategory: '손질 필렛',
               id: `inv_filletengw_${speciesId}_${seq}_${n}`,
               name: `껍질과 엔가와가 붙어있는 ${nameKo} 필렛 ${wts.filletG}g`,
-              icon: '🍣', iconTexture: tex,
+              icon: '', iconTexture: tex,
               basePrice: Math.max(1000, wts.filletG * 6),
               speciesId, weightG: wts.filletG, lengthCm: this.source.lengthCm,
             },
@@ -1149,7 +1149,7 @@ export class ButcheryPanel extends DraggablePanel {
               ...base, subCategory: '손질 필렛',
               id: `inv_engwskin_${speciesId}_${seq}_${InventoryStore.nextCatchSeq()}`,
               name: `껍질이 붙어있는 ${nameKo} 엔가와 ${wts.engawaG}g`,
-              icon: '🍣', iconTexture: 'trim_engawa_skin',
+              icon: '', iconTexture: 'trim_engawa_skin',
               basePrice: Math.max(400, wts.engawaG * 20),   // 엔가와 = 지느러미살 프리미엄
               speciesId, weightG: wts.engawaG, lengthCm: this.source.lengthCm,
             },
@@ -1174,7 +1174,7 @@ export class ButcheryPanel extends DraggablePanel {
               ...base, subCategory: '손질 필렛',
               id: `inv_filletskin_${speciesId}_${seq}`,
               name: `껍질이 붙어있는 ${nameKo} 순살 필렛 ${fw}g`,
-              icon: '🍣', iconTexture: 'trim_fillet_skinonly_halibut',
+              icon: '', iconTexture: 'trim_fillet_skinonly_halibut',
               basePrice: price,
               speciesId, weightG: fw, lengthCm: this.source.lengthCm,
             },
@@ -1210,7 +1210,7 @@ export class ButcheryPanel extends DraggablePanel {
       const tpl = {
         id: `inv_filletpin_${speciesId}_${InventoryStore.nextCatchSeq()}`,
         name: `껍질이 붙어있는 ${nameKo} 필렛 ${w}g`,
-        icon: '🍣', iconTexture: 'trim_fillet_skin',
+        icon: '', iconTexture: 'trim_fillet_skin',
         category: 'food' as const, subCategory: '손질 필렛',
         basePrice: Math.max(500, Math.round(this.source.basePrice)),
         condition: 'live' as const, conditionSinceMs: Date.now(),
@@ -2002,7 +2002,7 @@ export class ButcheryPanel extends DraggablePanel {
     InventoryStore.addItem({
       id: `inv_dressed_${speciesId}_${seq}`,
       name: `${nameKo} 손질 (통마리)`,
-      icon: '🐟', iconTexture: this.source.iconTexture,
+      icon: '', iconTexture: this.source.iconTexture,
       category: 'food', subCategory: '손질 통마리',
       basePrice: price, condition: this.source.condition ?? 'fresh',
       equippable: false, speciesId, lengthCm: this.source.lengthCm, weightG: this.source.weightG,
@@ -4200,7 +4200,7 @@ export class ButcheryPanel extends DraggablePanel {
       name: engawaSrc
         ? `${nameKo} 순수 엔가와 (${yieldRes.grade}) ${outWeight}g`
         : `${nameKo} 순수 필렛 (${yieldRes.grade}) ${outWeight}g`,
-      icon: '🍣', iconTexture: engawaSrc ? 'trim_engawa_icon' : this.trimFilletKey(speciesId),
+      icon: '', iconTexture: engawaSrc ? 'trim_engawa_icon' : this.trimFilletKey(speciesId),
       category: 'food', subCategory: engawaSrc ? '엔가와' : '손질 필렛',
       // 재장착(1장 세션)은 원물 필렛의 기존 몫을 승계 — 이중 분할 방지
       basePrice: single ? Math.max(500, Math.round(this.source.basePrice)) : perFillet,
@@ -4216,7 +4216,7 @@ export class ButcheryPanel extends DraggablePanel {
       InventoryStore.addItem({
         id: `inv_engawa_${speciesId}_${seq}`,
         name: `${nameKo} 순수 엔가와 (${yieldRes.grade}) ${engW}g`,
-        icon: '🍣', iconTexture: 'trim_engawa_icon',
+        icon: '', iconTexture: 'trim_engawa_icon',
         category: 'food', subCategory: '엔가와',
         basePrice: Math.max(400, engW * 25),
         condition: outCond, conditionSinceMs: outSince,

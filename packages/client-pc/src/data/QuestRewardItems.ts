@@ -16,54 +16,54 @@ const gear = (id: string, name: string, sub: string, basePrice: number, extra: P
   ({ id, name, icon: '', category: 'gear', subCategory: sub, basePrice, equippable: true, bound: true, ...extra });
 
 export const QUEST_REWARD_ITEMS: InvItemTemplate[] = [
-  { id: 'quest_ice_crate', name: '정옥선의 심부름용 얼음 상자', icon: '', iconTexture: 'px:it_ice_crate', category: 'quest', subCategory: '심부름',
+  { id: 'quest_ice_crate', name: '정옥선의 심부름용 얼음 상자', icon: '', iconTexture: 'art_ice_crate', category: 'quest', subCategory: '심부름',
     basePrice: 0, equippable: false, bound: true },
   // 188차 — 프롤로그(M1-01): 아버지의 낚시 상자에서 나온 가족사진. 뒷면(상세보기)에 「영금정」
-  { id: 'quest_family_photo', name: '가족사진', icon: '', iconTexture: 'px:it_photo', category: 'quest', subCategory: '이야기 물건',
+  { id: 'quest_family_photo', name: '가족사진', icon: '', iconTexture: 'art_family_photo', category: 'quest', subCategory: '이야기 물건',
     basePrice: 0, equippable: false, bound: true },
   // ── Ch1 — 실습생 ──
-  { id: 'qr_tackle_pouch', name: '옛 계원의 채비 주머니', icon: '', category: 'gear', subCategory: '가방', basePrice: 15000,
-    equippable: true, bound: true, bagSlots: 3, iconTexture: 'px:it_backpack' },
+  { id: 'qr_tackle_pouch', name: '옛 계원의 채비 주머니', icon: '', iconTexture: 'art_tackle_pouch', category: 'gear', subCategory: '가방', basePrice: 15000,
+    equippable: true, bound: true, bagSlots: 3 },
   gear('qr_rod_heirloom', '아버지의 릴대 (손에 맞춘 것)', '손도구', 210000, { tool: 'rod', iconTexture: 'px:it_rod' }),
   gear('qr_reel_heirloom', '아버지의 릴 (드랙 재조정)', '릴', 120000, { iconTexture: 'px:it_reel' }),
-  { id: 'qr_knife_okseon', name: '정옥선의 손질 칼', icon: '', category: 'etc', subCategory: '조리도구', basePrice: 60000,
+  { id: 'qr_knife_okseon', name: '정옥선의 손질 칼', icon: '', iconTexture: 'art_knife_okseon', category: 'etc', subCategory: '조리도구', basePrice: 60000,
     equippable: true, bound: true, tool: 'knife' },
-  { id: 'qr_headlamp_trainee', name: '어촌계 실습생 헤드랜턴 (1,000lm)', icon: '', category: 'etc', subCategory: '해루질 도구',
+  { id: 'qr_headlamp_trainee', name: '어촌계 실습생 헤드랜턴 (1,000lm)', icon: '', iconTexture: 'art_headlamp_trainee', category: 'etc', subCategory: '해루질 도구',
     basePrice: 40000, equippable: false, bound: true, lampLumens: 1000 },
   // ── Ch2 — 위판 ──
   gear('qr_rod_gamcheon', '도현수의 감천 튜닝 대', '손도구', 260000, { tool: 'rod', iconTexture: 'px:it_rod' }),
-  { id: 'qr_bag_field', name: '촬영 스태프 필드백', icon: '', category: 'gear', subCategory: '가방', basePrice: 45000,
-    equippable: true, bound: true, bagSlots: 5, iconTexture: 'px:it_backpack' },
+  { id: 'qr_bag_field', name: '촬영 스태프 필드백', icon: '', iconTexture: 'art_bag_field', category: 'gear', subCategory: '가방', basePrice: 45000,
+    equippable: true, bound: true, bagSlots: 5 },
   gear('qr_reel_winter', '겨울 바다용 스피닝릴 (동결 드랙)', '릴', 180000, { iconTexture: 'px:it_reel' }),
   // ── Ch3 — 배 ──
   gear('qr_rod_jig', '고래마루 지깅 로드', '손도구', 320000, { tool: 'rod', iconTexture: 'px:it_rod' }),
-  { id: 'qr_bag_expedition', name: '어촌계 원정 가방', icon: '', category: 'gear', subCategory: '가방', basePrice: 70000,
-    equippable: true, bound: true, bagSlots: 8, iconTexture: 'px:it_backpack' },
+  { id: 'qr_bag_expedition', name: '어촌계 원정 가방', icon: '', iconTexture: 'art_bag_expedition', category: 'gear', subCategory: '가방', basePrice: 70000,
+    equippable: true, bound: true, bagSlots: 8 },
   gear('qr_rod_bamboo', '탁만수의 새 죽간', '손도구', 450000, { tool: 'rod', iconTexture: 'px:it_rod' }),
   // ── Ch4 — 손님 ──
   gear('qr_reel_captain', '선장용 스피닝릴 (고속 기어)', '릴', 260000, { iconTexture: 'px:it_reel' }),
   gear('qr_rod_surf', '탁새벽의 서프 대', '손도구', 380000, { tool: 'rod', iconTexture: 'px:it_rod' }),
   // ── Ch5 — 제주 ──
-  { id: 'qr_bag_guide', name: '가이드 가방 (구명조끼·멀미약·계측자)', icon: '', category: 'gear', subCategory: '가방', basePrice: 90000,
-    equippable: true, bound: true, bagSlots: 10, iconTexture: 'px:it_backpack' },
+  { id: 'qr_bag_guide', name: '가이드 가방 (구명조끼·멀미약·계측자)', icon: '', iconTexture: 'art_bag_guide', category: 'gear', subCategory: '가방', basePrice: 90000,
+    equippable: true, bound: true, bagSlots: 10 },
   gear('qr_rod_tournament', '제주 대회 부상 로드 (각인)', '손도구', 620000, { tool: 'rod', iconTexture: 'px:it_rod' }),
   gear('qr_reel_tournament', '제주 대회 부상 릴 (각인)', '릴', 380000, { iconTexture: 'px:it_reel' }),
   // ── Ch6 — 돌아오는 길 ──
-  { id: 'qr_headlamp_keeper', name: '등대지기의 랜턴 (1,400lm)', icon: '', category: 'etc', subCategory: '해루질 도구',
+  { id: 'qr_headlamp_keeper', name: '등대지기의 랜턴 (1,400lm)', icon: '', iconTexture: 'art_lantern_keeper', category: 'etc', subCategory: '해루질 도구',
     basePrice: 90000, equippable: false, bound: true, lampLumens: 1400 },
-  { id: 'qr_bag_voyage', name: '원거리 항해 가방', icon: '', category: 'gear', subCategory: '가방', basePrice: 120000,
-    equippable: true, bound: true, bagSlots: 12, iconTexture: 'px:it_backpack' },
+  { id: 'qr_bag_voyage', name: '원거리 항해 가방', icon: '', iconTexture: 'art_bag_voyage', category: 'gear', subCategory: '가방', basePrice: 120000,
+    equippable: true, bound: true, bagSlots: 12 },
   // ── Ch7 — 조행록 ──
   gear('qr_rod_final', '탁새벽의 대 (마지막 캐스팅)', '손도구', 900000, { tool: 'rod', iconTexture: 'px:it_rod' }),
   gear('qr_reel_final', '탁새벽의 릴 (마지막 캐스팅)', '릴', 520000, { iconTexture: 'px:it_reel' }),
 
   // ── 서브 아크 가방 (귀속 아님 — 137차 이후 참조만 있던 id를 실물화) ──
-  { id: 'inv_bag_mountain', name: '바람의 마운틴 백팩', icon: '', category: 'gear', subCategory: '가방', basePrice: 85000,
-    equippable: true, bagSlots: 8, iconTexture: 'px:it_backpack' },
-  { id: 'inv_bag_tackle_vest', name: '씨바스터즈 태클 베스트', icon: '', category: 'gear', subCategory: '가방', basePrice: 60000,
-    equippable: true, bagSlots: 5, iconTexture: 'px:it_backpack' },
-  { id: 'inv_bag_dry', name: '채파도의 드라이백', icon: '', category: 'gear', subCategory: '가방', basePrice: 40000,
-    equippable: true, bagSlots: 5, iconTexture: 'px:it_backpack' },
+  { id: 'inv_bag_mountain', name: '바람의 마운틴 백팩', icon: '', iconTexture: 'art_bag_mountain', category: 'gear', subCategory: '가방', basePrice: 85000,
+    equippable: true, bagSlots: 8 },
+  { id: 'inv_bag_tackle_vest', name: '씨바스터즈 태클 베스트', icon: '', iconTexture: 'art_tackle_vest', category: 'gear', subCategory: '가방', basePrice: 60000,
+    equippable: true, bagSlots: 5 },
+  { id: 'inv_bag_dry', name: '채파도의 드라이백', icon: '', iconTexture: 'art_dry_bag', category: 'gear', subCategory: '가방', basePrice: 40000,
+    equippable: true, bagSlots: 5 },
 ];
 
 /** id → 이름 (일지·대화창 보상 표기용) */

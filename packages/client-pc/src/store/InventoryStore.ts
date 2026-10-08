@@ -582,7 +582,7 @@ function createDevFishDefs(): Omit<InvItem, 'slot'>[] {
     const weightG = Math.max(1, Math.round(speciesStandardWeightG(f.sp, lengthCm)));
     const sex: 'M' | 'F' = Math.random() < 0.5 ? 'M' : 'F';
     return {
-      id: `inv_devfish_${f.sp}`, name: `${f.nameKo} (${lengthCm}cm)`, icon: '🐟',
+      id: `inv_devfish_${f.sp}`, name: `${f.nameKo} (${lengthCm}cm)`, icon: '',
       iconTexture: resolveFishTexture(f.sp, lengthCm, sex),
       category: 'food' as InvCategory, subCategory: '어획물', qty: 1,
       basePrice: 12000, condition: 'live' as InvCondition, equippable: false,
@@ -597,41 +597,41 @@ function createSeedItems(): InvItem[] {
     // ── 장비 (손/의류) ──
     { id: 'inv_rod',      name: '용상 파조기 1.5호 5.3m',   icon: '', iconTexture: 'item_spinning_rod', category: 'gear', subCategory: '손도구', qty: 1, basePrice: 185000, equippable: true, equipped: true, tool: 'rod', equippedHand: 'R' },
     { id: 'inv_reel',     name: '다이오 2500L 스피닝릴',    icon: '', iconTexture: 'item_spinning_reel', category: 'gear', subCategory: '릴',     qty: 1, basePrice: 95000,  equippable: true, equipped: true },
-    { id: 'inv_net',      name: '뜰채 5m',                  icon: '', iconTexture: 'px:it_net', category: 'gear', subCategory: '손도구', qty: 1, basePrice: 30000, equippable: true, tool: 'net', netReachM: 5 },
-    { id: 'inv_cap',      name: '낚시 모자',                icon: '🧢', category: 'gear', subCategory: '모자',   qty: 1, basePrice: 12000, equippable: true },
-    { id: 'inv_glasses',  name: '편광 안경',                icon: '🕶️', category: 'gear', subCategory: '안경',   qty: 1, basePrice: 45000, equippable: true },
-    { id: 'inv_top',      name: '낚시 조끼',                icon: '👕', category: 'gear', subCategory: '상의',   qty: 1, basePrice: 25000, equippable: true },
-    { id: 'inv_gloves',   name: '기모 장갑',                icon: '🧤', category: 'gear', subCategory: '장갑',   qty: 1, basePrice: 8000,  equippable: true },
-    { id: 'inv_watch',    name: '조과 기록 시계',           icon: '⌚', category: 'gear', subCategory: '시계',   qty: 1, basePrice: 60000, equippable: true },
-    { id: 'inv_pants',    name: '방수 바지',                icon: '👖', category: 'gear', subCategory: '하의',   qty: 1, basePrice: 22000, equippable: true },
-    { id: 'inv_shoes',    name: '갯바위 단화',              icon: '👟', category: 'gear', subCategory: '신발',   qty: 1, basePrice: 30000, equippable: true },
+    { id: 'inv_net',      name: '뜰채 5m',                  icon: '', iconTexture: 'art_landing_net', category: 'gear', subCategory: '손도구', qty: 1, basePrice: 30000, equippable: true, tool: 'net', netReachM: 5 },
+    { id: 'inv_cap',      name: '낚시 모자',                icon: '', iconTexture: 'art_cap', category: 'gear', subCategory: '모자',   qty: 1, basePrice: 12000, equippable: true },
+    { id: 'inv_glasses',  name: '편광 안경',                icon: '', iconTexture: 'art_glasses', category: 'gear', subCategory: '안경',   qty: 1, basePrice: 45000, equippable: true },
+    { id: 'inv_top',      name: '낚시 조끼',                icon: '', iconTexture: 'art_vest', category: 'gear', subCategory: '상의',   qty: 1, basePrice: 25000, equippable: true },
+    { id: 'inv_gloves',   name: '기모 장갑',                icon: '', iconTexture: 'art_gloves_fleece', category: 'gear', subCategory: '장갑',   qty: 1, basePrice: 8000,  equippable: true },
+    { id: 'inv_watch',    name: '조과 기록 시계',           icon: '', iconTexture: 'art_watch', category: 'gear', subCategory: '시계',   qty: 1, basePrice: 60000, equippable: true },
+    { id: 'inv_pants',    name: '방수 바지',                icon: '', iconTexture: 'art_pants', category: 'gear', subCategory: '하의',   qty: 1, basePrice: 22000, equippable: true },
+    { id: 'inv_shoes',    name: '갯바위 단화',              icon: '', iconTexture: 'art_shoes', category: 'gear', subCategory: '신발',   qty: 1, basePrice: 30000, equippable: true },
 
     // ── 소모품 ──
-    { id: 'inv_chum',     name: '집어제 (크릴 배합)',       icon: '🧂', category: 'consumable', subCategory: '집어제/밑밥',   qty: 5, basePrice: 6000,  equippable: false, chumKind: 'powder' },
+    { id: 'inv_chum',     name: '집어제 (크릴 배합)',       icon: '', iconTexture: 'art_chum_mix', category: 'consumable', subCategory: '집어제/밑밥',   qty: 5, basePrice: 6000,  equippable: false, chumKind: 'powder' },
     // 밑밥 배합 재료 (U 밑밥 품질 탭 — 드래그 앤 드랍 투입)
-    { id: 'inv_chum_powder',       name: '감성돔 집어 파우더',   icon: '🧂', category: 'consumable', subCategory: '집어제/밑밥', qty: 3, basePrice: 8000,  equippable: false, chumKind: 'powder' },
-    { id: 'inv_chum_powder_heavy', name: '고비중 파우더',        icon: '🧂', category: 'consumable', subCategory: '집어제/밑밥', qty: 2, basePrice: 11000, equippable: false, chumKind: 'powder' },
-    { id: 'inv_chum_bread',        name: '빵가루 (밑밥용)',      icon: '🍞', category: 'consumable', subCategory: '집어제/밑밥', qty: 3, basePrice: 4000,  equippable: false, chumKind: 'powder' },
+    { id: 'inv_chum_powder',       name: '감성돔 집어 파우더',   icon: '', iconTexture: 'art_chum_powder', category: 'consumable', subCategory: '집어제/밑밥', qty: 3, basePrice: 8000,  equippable: false, chumKind: 'powder' },
+    { id: 'inv_chum_powder_heavy', name: '고비중 파우더',        icon: '', iconTexture: 'art_chum_powder_heavy', category: 'consumable', subCategory: '집어제/밑밥', qty: 2, basePrice: 11000, equippable: false, chumKind: 'powder' },
+    { id: 'inv_chum_bread',        name: '빵가루 (밑밥용)',      icon: '', iconTexture: 'art_chum_bread', category: 'consumable', subCategory: '집어제/밑밥', qty: 3, basePrice: 4000,  equippable: false, chumKind: 'powder' },
     // 229차 — 급랭 백크릴 600g: 해동 전엔 밑밥도 못 개고 포장도 못 뜯는다. 해동 후 ① 밑밥통 투입 ② 포장 뜯기 → 미끼용 백크릴 50마리
     { id: 'inv_chum_krill_block',  name: '급랭 백크릴 600g (밑밥 블록)', icon: '', iconTexture: 'item_krill_block', category: 'consumable', subCategory: '집어제/밑밥', qty: 4, basePrice: 7000,  equippable: false, condition: 'frozen', chumKind: 'krill', condProfile: 'krill_block', unpack: { id: 'inv_krill_bag', qty: 50 } },
-    { id: 'inv_chum_apmac',        name: '압맥 (눌린 보리)',     icon: '🌾', category: 'consumable', subCategory: '집어제/밑밥', qty: 3, basePrice: 5000,  equippable: false, chumKind: 'grain' },
-    { id: 'inv_chum_corn',         name: '옥수수 캔 (밑밥용)',   icon: '🌽', category: 'consumable', subCategory: '집어제/밑밥', qty: 2, basePrice: 4500,  equippable: false, chumKind: 'grain' },
+    { id: 'inv_chum_apmac',        name: '압맥 (눌린 보리)',     icon: '', iconTexture: 'art_chum_apmac', category: 'consumable', subCategory: '집어제/밑밥', qty: 3, basePrice: 5000,  equippable: false, chumKind: 'grain' },
+    { id: 'inv_chum_corn',         name: '옥수수 캔 (밑밥용)',   icon: '', iconTexture: 'art_chum_corn', category: 'consumable', subCategory: '집어제/밑밥', qty: 2, basePrice: 4500,  equippable: false, chumKind: 'grain' },
     // 대용량 각얼음 — 쿨러 '얼음 넣기' 재료 (1회 1개 소모, 2시간 유지)
-    { id: 'inv_ice_bulk', name: '대용량 각얼음',            icon: '🧊', category: 'consumable', subCategory: '보냉',          qty: 2, basePrice: 4000,  equippable: false },
+    { id: 'inv_ice_bulk', name: '대용량 각얼음',            icon: '', iconTexture: 'art_ice_bag', category: 'consumable', subCategory: '보냉',          qty: 2, basePrice: 4000,  equippable: false },
     // 굵은소금 — 문어 손질 '소금 치대기' 재료 (1회 1개 소모 — 097차)
-    { id: 'inv_coarse_salt', name: '굵은소금',              icon: '🧂', category: 'consumable', subCategory: '조미/손질',     qty: 3, basePrice: 2000,  equippable: false },
-    { id: 'inv_spray',    name: '기능성 스프레이',          icon: '🧴', category: 'consumable', subCategory: '스프레이/오일', qty: 2, basePrice: 9000,  equippable: false },
-    { id: 'inv_oil',      name: '릴 오일',                  icon: '🧴', category: 'consumable', subCategory: '스프레이/오일', qty: 1, basePrice: 7000,  equippable: false },
-    { id: 'inv_carekit',  name: '도구 케어 세트',           icon: '🧰', category: 'consumable', subCategory: '장비 수리',     qty: 1, basePrice: 15000, equippable: false },
-    { id: 'inv_bandage',  name: '상처 연고',                icon: '💊', category: 'consumable', subCategory: '의약품',        qty: 3, basePrice: 3000,  equippable: false },
-    { id: 'inv_potion',   name: 'HP 회복 드링크',           icon: '💊', category: 'consumable', subCategory: '의약품',        qty: 2, basePrice: 5000,  equippable: false },
-    { id: 'inv_seasick',  name: '멀미약',                   icon: '💊', category: 'consumable', subCategory: '의약품',        qty: 2, basePrice: 4000,  equippable: false },
-    { id: 'inv_mosquito', name: '모기향',                   icon: '🌀', category: 'consumable', subCategory: '야간 대비',     qty: 4, basePrice: 2500,  equippable: false },
+    { id: 'inv_coarse_salt', name: '굵은소금',              icon: '', iconTexture: 'art_coarse_salt', category: 'consumable', subCategory: '조미/손질',     qty: 3, basePrice: 2000,  equippable: false },
+    { id: 'inv_spray',    name: '기능성 스프레이',          icon: '', iconTexture: 'art_spray', category: 'consumable', subCategory: '스프레이/오일', qty: 2, basePrice: 9000,  equippable: false },
+    { id: 'inv_oil',      name: '릴 오일',                  icon: '', iconTexture: 'art_reel_oil', category: 'consumable', subCategory: '스프레이/오일', qty: 1, basePrice: 7000,  equippable: false },
+    { id: 'inv_carekit',  name: '도구 케어 세트',           icon: '', iconTexture: 'art_carekit', category: 'consumable', subCategory: '장비 수리',     qty: 1, basePrice: 15000, equippable: false },
+    { id: 'inv_bandage',  name: '상처 연고',                icon: '', iconTexture: 'art_ointment', category: 'consumable', subCategory: '의약품',        qty: 3, basePrice: 3000,  equippable: false },
+    { id: 'inv_potion',   name: 'HP 회복 드링크',           icon: '', iconTexture: 'art_tonic_drink', category: 'consumable', subCategory: '의약품',        qty: 2, basePrice: 5000,  equippable: false },
+    { id: 'inv_seasick',  name: '멀미약',                   icon: '', iconTexture: 'art_pill_seasick', category: 'consumable', subCategory: '의약품',        qty: 2, basePrice: 4000,  equippable: false },
+    { id: 'inv_mosquito', name: '모기향',                   icon: '', iconTexture: 'art_mosquito_coil', category: 'consumable', subCategory: '야간 대비',     qty: 4, basePrice: 2500,  equippable: false },
 
     // ── 음식 ──
-    { id: 'inv_can',      name: '참치 통조림',              icon: '🥫', category: 'food', subCategory: '가공품', qty: 3, basePrice: 2000,  equippable: false },
-    { id: 'inv_fish_1',   name: '감성돔 (38cm)',            icon: '🐟', iconTexture: 'fish_black_sea_bream', category: 'food', subCategory: '어획물', qty: 1, basePrice: 15000, condition: 'fresh', equippable: false, speciesId: 'black_seabream', lengthCm: 38, weightG: 900 },
-    { id: 'inv_veges',    name: '식자재 묶음 (대파/양파)',  icon: '🥬', category: 'food', subCategory: '식자재', qty: 2, basePrice: 5000,  condition: 'fresh', equippable: false },
+    { id: 'inv_can',      name: '참치 통조림',              icon: '', iconTexture: 'art_can_tuna', category: 'food', subCategory: '가공품', qty: 3, basePrice: 2000,  equippable: false },
+    { id: 'inv_fish_1',   name: '감성돔 (38cm)',            icon: '', iconTexture: 'fish_black_sea_bream', category: 'food', subCategory: '어획물', qty: 1, basePrice: 15000, condition: 'fresh', equippable: false, speciesId: 'black_seabream', lengthCm: 38, weightG: 900 },
+    { id: 'inv_veges',    name: '식자재 묶음 (대파/양파)',  icon: '', iconTexture: 'art_veges', category: 'food', subCategory: '식자재', qty: 2, basePrice: 5000,  condition: 'fresh', equippable: false },
 
     // ── 낚시용품 ──
     { id: 'inv_worm',     name: '지렁이',                   icon: '', iconTexture: 'item_worm', category: 'tackle', subCategory: '생미끼',    qty: 20, basePrice: 5000,  condition: 'live',    equippable: false },
@@ -639,8 +639,8 @@ function createSeedItems(): InvItem[] {
     { id: 'inv_honmushi', name: '혼무시',                   icon: '', iconTexture: 'item_honmushi', category: 'tackle', subCategory: '생미끼',    qty: 8,  basePrice: 1500,  condition: 'live',    equippable: false },
     // 229차 — 미끼용 크릴(곽크릴을 뜯은 것) · 미끼용 백크릴(블록을 뜯은 것 — 입질 +2%). 그림은 같고 설명 · 보너스가 다르다
     { id: 'inv_krill',    name: '미끼용 크릴',              icon: '', iconTexture: 'item_krill_bait', category: 'tackle', subCategory: '냉동미끼',  qty: 30, basePrice: 200,  condition: 'thawed',  equippable: false, condProfile: 'krill_bait' },
-    { id: 'inv_breadbait', name: '빵가루 경단',             icon: '', iconTexture: 'px:it_breadball', category: 'tackle', subCategory: '반죽미끼',  qty: 15, basePrice: 300,   equippable: false },
-    { id: 'inv_fishcut',  name: '생선 조각 미끼',           icon: '🦐', category: 'tackle', subCategory: '선어미끼',  qty: 6,  basePrice: 3000,  condition: 'chilled', equippable: false },
+    { id: 'inv_breadbait', name: '빵가루 경단',             icon: '', iconTexture: 'art_breadball', category: 'tackle', subCategory: '반죽미끼',  qty: 15, basePrice: 300,   equippable: false },
+    { id: 'inv_fishcut',  name: '생선 조각 미끼',           icon: '', iconTexture: 'art_fishcut', category: 'tackle', subCategory: '선어미끼',  qty: 6,  basePrice: 3000,  condition: 'chilled', equippable: false },
     { id: 'inv_pe1',      name: 'AMSTRONG 합사 원줄 1호 · 150m', icon: '', iconTexture: 'line_spool_saiso', category: 'tackle', subCategory: '원줄 스풀', qty: 1,  basePrice: 18000, equippable: false, lineMaterial: 'pe_braid', lineForm: 'sinking', lineLengthM: 150, lineNo: 1, lineDiameterMm: 0.165, lineStrengthLb: 18 },
     { id: 'inv_carbon15', name: 'AMSTRONG 카본 목줄 3호 · 150m', icon: '', iconTexture: 'line_spool_saiso', category: 'tackle', subCategory: '목줄 스풀', qty: 1,  basePrice: 9000,  equippable: false, lineMaterial: 'fluorocarbon', lineForm: 'suspend', lineLengthM: 150, lineNo: 3, lineDiameterMm: 0.285, lineStrengthLb: 10.5 },
     { id: 'inv_nylon2',   name: 'AMSTRONG 나일론 목줄 2호 · 200m', icon: '', iconTexture: 'line_spool_saiso', category: 'tackle', subCategory: '목줄 스풀', qty: 1,  basePrice: 6000,  equippable: false, lineMaterial: 'nylon', lineForm: 'float', lineLengthM: 200, lineNo: 2, lineDiameterMm: 0.235, lineStrengthLb: 8 },
@@ -678,36 +678,36 @@ function createSeedItems(): InvItem[] {
     { id: 'inv_tairaba_necktie_orange', name: '타이라바 넥타이 (주황)', icon: '', iconTexture: 'tairaba_necktie_orange', category: 'tackle', subCategory: '채비 부속', qty: 3, basePrice: 2500, equippable: false, rigPart: 'tairaba_necktie' },
 
     // ── 기타 ──
-    { id: 'inv_junk',     name: '낡은 릴 부품',             icon: '📦', category: 'etc', subCategory: '잡동사니', qty: 1, basePrice: 500, equippable: false },
+    { id: 'inv_junk',     name: '낡은 릴 부품',             icon: '', iconTexture: 'art_junk_parts', category: 'etc', subCategory: '잡동사니', qty: 1, basePrice: 500, equippable: false },
     // 자전거 — 보유 시 필드에서 R 키로 승·하차 (이동 속도 2배)
-    { id: 'inv_bike',     name: '자전거',                   icon: '🚲', category: 'etc', subCategory: '탈것', qty: 1, basePrice: 120000, equippable: false },
+    { id: 'inv_bike',     name: '자전거',                   icon: '', iconTexture: 'art_bike', category: 'etc', subCategory: '탈것', qty: 1, basePrice: 120000, equippable: false },
     // 회칼 (조리도구) — 보유 시 회뜨기(장 뜨기/박피) 활성. 미보유 시 손질까지만 (마트에서 등급 구매).
     // 회칼 = 손 도구 (2026-07-30 자유 손질 개편 — 왼손/오른손 장착해야 손질 가능)
-    { id: 'knife_sashimi', name: '회칼 (사시미)',           icon: '🔪', category: 'etc', subCategory: '조리도구', qty: 1, basePrice: 38000, equippable: true, tool: 'knife' },
+    { id: 'knife_sashimi', name: '회칼 (사시미)',           icon: '', iconTexture: 'art_knife_sashimi', category: 'etc', subCategory: '조리도구', qty: 1, basePrice: 38000, equippable: true, tool: 'knife' },
     // 낚시용 두레박 — 보유 + 바다 근처일 때 쿨러 '해수 넣기' 가능 (소모되지 않는 도구)
-    { id: 'inv_bucket',    name: '낚시용 두레박',           icon: '🪣', category: 'etc', subCategory: '낚시도구', qty: 1, basePrice: 9000, equippable: false },
+    { id: 'inv_bucket',    name: '낚시용 두레박',           icon: '', iconTexture: 'art_bucket', category: 'etc', subCategory: '낚시도구', qty: 1, basePrice: 9000, equippable: false },
     // 쿨러 (아이스박스) — 보유해야 어창 보관/밑밥 배합 기능 사용 가능 (들고 다니는 개념)
-    { id: 'inv_cooler',    name: '쿨러 (아이스박스)',        icon: '🛅', category: 'etc', subCategory: '낚시도구', qty: 1, basePrice: 45000, equippable: false },
+    { id: 'inv_cooler',    name: '쿨러 (아이스박스)',        icon: '', iconTexture: 'art_cooler', category: 'etc', subCategory: '낚시도구', qty: 1, basePrice: 45000, equippable: false },
     // ── 인-맵 채집·통발 (121차) — 헤드랜턴(야간 발견 반경)·집게·기본 게 통발. 갈고리·나머지 통발은 직판장 ──
-    { id: 'inv_headlamp',  name: '헤드랜턴 (800lm)',         icon: '🔦', category: 'etc', subCategory: '해루질 도구', qty: 1, basePrice: 25000, equippable: false, lampLumens: 800 },
-    { id: 'inv_tongs',     name: '채집 집게',                icon: '🥢', category: 'etc', subCategory: '해루질 도구', qty: 1, basePrice: 8000,  equippable: false, forageTool: 'tongs' },
-    { id: 'inv_trap_trap_crab_basic', name: '기본 게 통발',   icon: '🪤', category: 'etc', subCategory: '통발', qty: 1, basePrice: 14000, equippable: false, trapSpecId: 'trap_crab_basic' },
+    { id: 'inv_headlamp',  name: '헤드랜턴 (800lm)',         icon: '', iconTexture: 'art_headlamp', category: 'etc', subCategory: '해루질 도구', qty: 1, basePrice: 25000, equippable: false, lampLumens: 800 },
+    { id: 'inv_tongs',     name: '채집 집게',                icon: '', iconTexture: 'art_tongs', category: 'etc', subCategory: '해루질 도구', qty: 1, basePrice: 8000,  equippable: false, forageTool: 'tongs' },
+    { id: 'inv_trap_trap_crab_basic', name: '기본 게 통발',   icon: '', iconTexture: 'art_trap_crab_basic', category: 'etc', subCategory: '통발', qty: 1, basePrice: 14000, equippable: false, trapSpecId: 'trap_crab_basic' },
     // 사시미 접시 (소) — 회 조각 플레이팅 (요리 탭 사시미 만들기. 중/대/특대는 식자재마트 판매)
-    { id: 'inv_plate_s',   name: '사시미 접시 (소)',        icon: '🍽️', category: 'etc', subCategory: '식기', qty: 1, basePrice: 2500, equippable: false },
+    { id: 'inv_plate_s',   name: '사시미 접시 (소)',        icon: '', iconTexture: 'art_plate_s', category: 'etc', subCategory: '식기', qty: 1, basePrice: 2500, equippable: false },
     // ── 설치형 (HOMETOWN_HOME_SPEC — 홈타운 칸 단위 자유 배치. placeKey = core PLACEMENT_DEFS) ──
-    { id: 'inv_place_farm',    name: '텃밭 개간 키트',       icon: '🌱', category: 'etc', subCategory: '설치형', qty: 1, basePrice: 8000,  equippable: false, placeKey: 'farm_plot' },
-    { id: 'inv_place_fence',   name: '울타리',              icon: '🪵', category: 'etc', subCategory: '설치형', qty: 6, basePrice: 1500,  equippable: false, placeKey: 'fence' },
-    { id: 'inv_place_aq_live', name: '활어 수조 (업소용)',   icon: '🐠', category: 'etc', subCategory: '설치형', qty: 1, basePrice: 120000, equippable: false, placeKey: 'aquarium_live' },
-    { id: 'inv_place_aq_disp', name: '관상용 수족관',        icon: '🐟', category: 'etc', subCategory: '설치형', qty: 1, basePrice: 60000, equippable: false, placeKey: 'aquarium_display' },
+    { id: 'inv_place_farm',    name: '텃밭 개간 키트',       icon: '', iconTexture: 'art_farm_kit', category: 'etc', subCategory: '설치형', qty: 1, basePrice: 8000,  equippable: false, placeKey: 'farm_plot' },
+    { id: 'inv_place_fence',   name: '울타리',              icon: '', iconTexture: 'art_fence', category: 'etc', subCategory: '설치형', qty: 6, basePrice: 1500,  equippable: false, placeKey: 'fence' },
+    { id: 'inv_place_aq_live', name: '활어 수조 (업소용)',   icon: '', iconTexture: 'art_aquarium_live', category: 'etc', subCategory: '설치형', qty: 1, basePrice: 120000, equippable: false, placeKey: 'aquarium_live' },
+    { id: 'inv_place_aq_disp', name: '관상용 수족관',        icon: '', iconTexture: 'art_aquarium_display', category: 'etc', subCategory: '설치형', qty: 1, basePrice: 60000, equippable: false, placeKey: 'aquarium_display' },
     // ── 불요리 (154차) — 코펠 1 + 스토브 1 + 캐니스터 2 + 양념·채소 한 벌 (조리 필드는 CookItems 테이블이 채운다) ──
-    { id: 'cook_pot_camp', name: '코펠 냄비 (1.8L)', icon: '', iconTexture: 'px:it_pot', category: 'etc', subCategory: '조리도구', qty: 1, basePrice: 18000, equippable: false },
-    { id: 'cook_stove_portable', name: '휴대용 가스스토브', icon: '', iconTexture: 'px:it_stove', category: 'etc', subCategory: '화구', qty: 1, basePrice: 32000, equippable: false },
-    { id: 'cook_butane_can', name: '부탄 캐니스터', icon: '', iconTexture: 'px:it_gascan', category: 'consumable', subCategory: '연료', qty: 2, basePrice: 1500, equippable: false },
-    { id: 'cook_salt', name: '소금', icon: '', iconTexture: 'px:it_spice', category: 'consumable', subCategory: '양념', qty: 6, basePrice: 100, equippable: false },
-    { id: 'cook_gochugaru', name: '고춧가루', icon: '', iconTexture: 'px:it_spice', category: 'consumable', subCategory: '양념', qty: 4, basePrice: 400, equippable: false },
-    { id: 'cook_garlic', name: '다진마늘', icon: '', iconTexture: 'px:it_spice', category: 'consumable', subCategory: '양념', qty: 3, basePrice: 300, equippable: false },
-    { id: 'cook_radish', name: '무', icon: '', iconTexture: 'px:it_veg', category: 'food', subCategory: '식자재', qty: 2, basePrice: 1200, condition: 'fresh', equippable: false },
-    { id: 'cook_leek', name: '대파', icon: '', iconTexture: 'px:it_veg', category: 'food', subCategory: '식자재', qty: 3, basePrice: 500, condition: 'fresh', equippable: false },
+    { id: 'cook_pot_camp', name: '코펠 냄비 (1.8L)', icon: '', iconTexture: 'art_pot_camp', category: 'etc', subCategory: '조리도구', qty: 1, basePrice: 18000, equippable: false },
+    { id: 'cook_stove_portable', name: '휴대용 가스스토브', icon: '', iconTexture: 'art_stove_portable', category: 'etc', subCategory: '화구', qty: 1, basePrice: 32000, equippable: false },
+    { id: 'cook_butane_can', name: '부탄 캐니스터', icon: '', iconTexture: 'art_gascan', category: 'consumable', subCategory: '연료', qty: 2, basePrice: 1500, equippable: false },
+    { id: 'cook_salt', name: '소금', icon: '', iconTexture: 'art_salt', category: 'consumable', subCategory: '양념', qty: 6, basePrice: 100, equippable: false },
+    { id: 'cook_gochugaru', name: '고춧가루', icon: '', iconTexture: 'art_gochugaru', category: 'consumable', subCategory: '양념', qty: 4, basePrice: 400, equippable: false },
+    { id: 'cook_garlic', name: '다진마늘', icon: '', iconTexture: 'art_garlic_minced', category: 'consumable', subCategory: '양념', qty: 3, basePrice: 300, equippable: false },
+    { id: 'cook_radish', name: '무', icon: '', iconTexture: 'art_radish', category: 'food', subCategory: '식자재', qty: 2, basePrice: 1200, condition: 'fresh', equippable: false },
+    { id: 'cook_leek', name: '대파', icon: '', iconTexture: 'art_leek', category: 'food', subCategory: '식자재', qty: 3, basePrice: 500, condition: 'fresh', equippable: false },
   ];
 
   // ── 원투 메인 싱커(무게추 봉돌) — SinkerDatabase(core)에서 생성 ──
@@ -723,16 +723,14 @@ function createSeedItems(): InvItem[] {
   }
 
   // ── 루어 카탈로그 전종 + 지그헤드 (루어 카테고리 — 종류별 제원 수동 검증용) ──
-  const lureIcon: Record<string, string> = {
-    worm_grub: '🪱', soft_jerkbait: '🐟', plug_minnow: '🐟',
-    spoon: '🥄', spinner: '🌀', egi: '🦑', metal_jig: '🔩', tairaba: '🔴',
-  };
+  // 루어 8종 전부 그림이 있다(사용자 도트 4 + 코드로 그린 그림 4 — `ItemArtManifest`). 이모지 폴백은 없앴다
   const lureTexture: Record<string, string> = {
     worm_grub: 'item_soft_worm', soft_jerkbait: 'item_soft_worm', plug_minnow: 'item_minnow', metal_jig: 'item_metal_jig',
+    spoon: 'art_lure_spoon', spinner: 'art_lure_spinner', egi: 'art_lure_egi', tairaba: 'art_lure_tairaba',
   };
   for (const lure of LURES_CATALOG_DB) {
     defs.push({
-      id: lure.id, name: `${lure.nameKo} (${lure.weightG}g)`, icon: lureIcon[lure.kind] ?? '🎣', iconTexture: lureTexture[lure.kind],
+      id: lure.id, name: `${lure.nameKo} (${lure.weightG}g)`, icon: '', iconTexture: lureTexture[lure.kind],
       category: 'lure', subCategory: '루어', qty: lure.family === 'soft' ? 8 : 3,
       basePrice: Math.round(400 + lure.weightG * 220), equippable: false,
     });
@@ -1214,7 +1212,7 @@ class InventoryStoreManager {
     this.addItem({
       id: `inv_chum_viscera_${item.speciesId ?? 'fish'}`,
       name: chumName,
-      icon: '🫙', category: 'consumable', subCategory: '집어제/밑밥',
+      icon: '', iconTexture: 'art_chum_viscera', category: 'consumable', subCategory: '집어제/밑밥',
       basePrice: 1500, equippable: false, chumKind: 'krill',
       speciesId: item.speciesId,
     }, 1);
@@ -1262,7 +1260,7 @@ class InventoryStoreManager {
     const g = Math.max(1, Math.round((item.weightG ?? 800) * 0.8));   // 삶으면 수분이 빠져 ~20% 감량
     const ok = this.addItem({
       id: `inv_octo_boiled_${item.speciesId ?? 'octopus'}_${seq}`,
-      name: `삶은 문어 ${g}g`, icon: '🐙', iconTexture: 'trim_octo_boiled',
+      name: `삶은 문어 ${g}g`, icon: '', iconTexture: 'trim_octo_boiled',
       category: 'food', subCategory: '요리(숙회)',
       basePrice: Math.max(1000, Math.round((item.basePrice || 2000) * 1.15)),
       condition: 'fresh', conditionSinceMs: Date.now(),
@@ -1452,7 +1450,7 @@ class InventoryStoreManager {
       //  구세이브에도 없으면 3개 주입 — dev 전용, 프로덕션은 식자재마트 구매)
       if (!this.find('inv_coarse_salt')) {
         this.addItem({
-          id: 'inv_coarse_salt', name: '굵은소금', icon: '🧂',
+          id: 'inv_coarse_salt', name: '굵은소금', icon: '', iconTexture: 'art_coarse_salt',
           category: 'consumable', subCategory: '조미/손질', basePrice: 2000, equippable: false,
         }, 3);
       }
@@ -1716,7 +1714,7 @@ class InventoryStoreManager {
     const seq = this.nextCatchSeq();
     const ok = this.addItem({
       id: `inv_catch_${speciesId}_${seq}`,
-      name: `${f.nameKo} (${lengthCm}cm)`, icon: '🐟',
+      name: `${f.nameKo} (${lengthCm}cm)`, icon: '',
       iconTexture: resolveFishTexture(speciesId, lengthCm, sex),
       category: 'food', subCategory: '어획물',
       basePrice: 12000, condition: 'live', conditionSinceMs: Date.now(),
@@ -1864,11 +1862,11 @@ class InventoryStoreManager {
    * 인스턴스가 남아 있으면 수량 +1, 소멸했으면 템플릿으로 재생성.
    */
   private static readonly PLACEABLE_TPL: Record<string, InvItemTemplate> = {
-    inv_place_farm:    { id: 'inv_place_farm',    name: '텃밭 개간 키트',     icon: '🌱', category: 'etc', subCategory: '설치형', basePrice: 8000,   equippable: false, placeKey: 'farm_plot' },
-    inv_place_fence:   { id: 'inv_place_fence',   name: '울타리',            icon: '🪵', category: 'etc', subCategory: '설치형', basePrice: 1500,   equippable: false, placeKey: 'fence' },
-    inv_place_aq_live: { id: 'inv_place_aq_live', name: '활어 수조 (업소용)', icon: '🐠', category: 'etc', subCategory: '설치형', basePrice: 120000, equippable: false, placeKey: 'aquarium_live' },
-    inv_place_aq_disp: { id: 'inv_place_aq_disp', name: '관상용 수족관',      icon: '🐟', category: 'etc', subCategory: '설치형', basePrice: 60000,  equippable: false, placeKey: 'aquarium_display' },
-    inv_place_workbench: { id: 'inv_place_workbench', name: '작업대', icon: '', iconTexture: 'px:it_workbench', category: 'etc', subCategory: '설치형', basePrice: 180000, equippable: false, placeKey: 'workbench' },
+    inv_place_farm:    { id: 'inv_place_farm',    name: '텃밭 개간 키트',     icon: '', iconTexture: 'art_farm_kit', category: 'etc', subCategory: '설치형', basePrice: 8000,   equippable: false, placeKey: 'farm_plot' },
+    inv_place_fence:   { id: 'inv_place_fence',   name: '울타리',            icon: '', iconTexture: 'art_fence', category: 'etc', subCategory: '설치형', basePrice: 1500,   equippable: false, placeKey: 'fence' },
+    inv_place_aq_live: { id: 'inv_place_aq_live', name: '활어 수조 (업소용)', icon: '', iconTexture: 'art_aquarium_live', category: 'etc', subCategory: '설치형', basePrice: 120000, equippable: false, placeKey: 'aquarium_live' },
+    inv_place_aq_disp: { id: 'inv_place_aq_disp', name: '관상용 수족관',      icon: '', iconTexture: 'art_aquarium_display', category: 'etc', subCategory: '설치형', basePrice: 60000,  equippable: false, placeKey: 'aquarium_display' },
+    inv_place_workbench: { id: 'inv_place_workbench', name: '작업대', icon: '', iconTexture: 'art_workbench', category: 'etc', subCategory: '설치형', basePrice: 180000, equippable: false, placeKey: 'workbench' },
   };
 
   /**
