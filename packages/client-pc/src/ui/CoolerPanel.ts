@@ -438,6 +438,7 @@ export class CoolerPanel extends DraggablePanel {
       basePrice: Math.max(2000, Math.round(f.weightG * 12)),
       condition: f.condition, equippable: false,
       speciesId: f.speciesId, lengthCm: f.lengthCm, weightG: f.weightG, sex: f.sex, catchMethod: f.catchMethod,
+      ...(f.toxin ? { toxin: true } : {}),   // 234차 — 상세보기에도 패류독소 행이 뜨게
     };
   }
 

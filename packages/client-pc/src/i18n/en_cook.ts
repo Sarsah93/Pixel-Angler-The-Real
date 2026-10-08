@@ -16,6 +16,7 @@ export const EN_COOK: Record<string, string> = {
   '없음 — 식자재마트': 'None — grocery mart',
   '없음 — 나중에 올려도 된다': 'None — you can add one later',
   '냄비': 'Pot', '팬': 'Pan', '석쇠': 'Grate',
+  '코펠 냄비': 'Camp pot', '양수 냄비': 'Stock pot',   // 234차 — 화구 설치 로그 · 용기 이름(크기 표기 없는 core 이름)
   '설치 위치 고르기': 'Pick a spot',
   '캐니스터는 끼우는 순간 소모된다 — 화구를 회수해도 남은 연료는 돌아오지 않는다.': 'A canister is used up the moment you fit it — packing up the stove does not return the leftover fuel.',
   '약불은 보온(끓지도 졸지도 않음) · 중불은 끓이기 · 강불은 빨리 끓이되 방치하면 졸아붙어 탄다.': 'Low keeps it warm (no boil, no reduction) · Medium simmers · High boils fast but burns if left alone.',

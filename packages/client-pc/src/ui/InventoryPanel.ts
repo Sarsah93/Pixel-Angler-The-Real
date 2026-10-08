@@ -37,6 +37,7 @@ import { playEatSfx } from '../audio/Sfx.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { maybeStartTour, type TourOptions } from './GuideTour.js';
 import { prologueProtects, PROLOGUE_PROTECT_MSG } from '../store/Prologue.js';
+import { itemKeepReason } from '../store/ItemKeepGuard.js';
 import { CraftingStore } from '../store/CraftingStore.js';
 
 /** 190차 — 식탁 식사 보너스 (허기 회복량의 25% 추가) */
@@ -962,11 +963,13 @@ export class InventoryPanel extends DraggablePanel {
     // 178차 — 「내려놓기」: 할 일이 물건을 **어딘가에 두라고** 할 때 쓰는 행동.
     //  버리기(소멸)와 달리 바닥에 남고 [F]로 회수할 수 있다. 심부름 칸 물건과
     //  이야기가 준 물건에만 붙인다 — 일반 아이템까지 열면 '버리기'와 뜻이 겹친다.
-    if (item.category === 'quest' || item.bound) {
+    // 234차 — 퀘스트 칸의 나머지(모으는 물건 · 가족사진)는 바닥에 두지 않는다 — 끝난 뒤에도 바닥에 남아
+    //  쓸모없는 퀘스트 물건이 되거나(감사 낮음-2) 진행과 엇갈렸다. 심부름 물건 + 이야기가 준 장비만.
+    if (item.subCategory === '심부름' || (item.bound && item.category !== 'quest')) {
       actions.push({
         label: '내려놓기',
         run: () => {
-          if (this.protectedNow(item)) return;
+          if (this.protectedNow(item, 'place')) return;
           const res = { ok: false, message: '여기서는 내려놓을 수 없습니다.' };
           this.scene.events.emit('inventory-place', item, res);
           this.setStatus(res.message);
@@ -1158,10 +1161,17 @@ export class InventoryPanel extends DraggablePanel {
     this.contextMenu = undefined;
   }
 
-  /** 219차 — 프롤로그에 아직 필요한 물건(대 · 릴 · 사진 · 오징어)은 버리기 · 먹기 · 내려놓기를 막는다(진행 막힘 방지) */
-  private protectedNow(item: InvItem): boolean {
-    if (!prologueProtects(item.id)) return false;
-    this.setStatus(PROLOGUE_PROTECT_MSG);
+  /**
+   * 219차 — 프롤로그에 아직 필요한 물건(대 · 릴 · 사진 · 오징어)은 버리기 · 먹기 · 내려놓기를 막는다(진행 막힘 방지).
+   * 234차 — 이야기 전체로 넓혔다(`QuestItemGuard` — 맡은 얼음 상자 · 타 보기 전의 어촌계 자전거 · 가족사진).
+   *  내려놓기(`place`)는 프롤로그만 본다 — 맡은 물건을 정해진 자리에 내려놓는 것이 바로 그 일이라 장면이 판단한다.
+   */
+  private protectedNow(item: InvItem, action: 'place' | 'lose' = 'lose'): boolean {
+    const why = action === 'place'
+      ? (prologueProtects(item.id) ? PROLOGUE_PROTECT_MSG : null)
+      : itemKeepReason(item.id);
+    if (!why) return false;
+    this.setStatus(why);
     return true;
   }
 
@@ -1174,9 +1184,13 @@ export class InventoryPanel extends DraggablePanel {
       return;
     }
     const detail = all && item.qty > 1 ? ` (전체 ${item.qty}개)` : all ? '' : ' 1개';
+    // 234차 — 이야기가 준 귀속 물건(`qr_*` 장비 등)은 다시 얻을 길이 없다 — 그 사실을 적고 버튼도 행동 이름으로(198차 규칙)
+    const once = !!item.bound;
     const dlg = new ConfirmDialog(
       this.scene,
-      `정말 버리시겠습니까?\n${item.name}${detail}`,
+      once
+        ? `${item.name}${detail}\n이야기에서 받은 물건이라 버리면 다시 얻을 수 없습니다.`
+        : `정말 버리시겠습니까?\n${item.name}${detail}`,
       () => {
         InventoryStore.removeItem(item.id, all);
         this.setStatus(all
@@ -1187,6 +1201,7 @@ export class InventoryPanel extends DraggablePanel {
         this.scene.events.emit('inventory-changed');
       },
       () => dlg.destroy(),
+      once ? { yes: '버리기', no: '취소', danger: true } : undefined,
     );
     this.scene.add.existing(dlg);
   }

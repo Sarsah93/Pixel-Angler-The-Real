@@ -73,7 +73,8 @@ import { EnvironmentStore } from './EnvironmentStore.js';
 import { ExternalDataStore } from './ExternalDataStore.js';
 import { CoolerStore, CoolerSaveState } from './CoolerStore.js';
 import { GroundItemStore, type GroundItemSaveState } from './GroundItemStore.js';
-import { InventoryStore, InventorySaveState, setFreshnessMult } from './InventoryStore.js';
+import { InventoryStore, InventorySaveState, setFreshnessMult, CATEGORY_LABEL, type InvCategory } from './InventoryStore.js';
+import { repairQuestItems } from './QuestItemGuard.js';
 import { FridgeStore, FridgeSaveState } from './FridgeStore.js';
 import { HomeStore, type HomeSaveState } from './HomeStore.js';
 import { MarketStore, type MarketSaveState } from './MarketStore.js';
@@ -1784,6 +1785,8 @@ export class GameStateManager {
     // 213차 E — 꺼 둔 사이(실제 시간)에 잤는가. 장부 기록이 다시 켜진 뒤에 한다(잠이 오늘 장을 닫는다)
     const savedAt = parsed.player?.lastSavedAt ? new Date(parsed.player.lastSavedAt).getTime() : 0;
     if (savedAt > 0) this.applyOfflineSleep(Date.now() - savedAt);
+    // 234차 — 맡은 물건(얼음 상자 · 어촌계 자전거)이 사라진 세이브 · 목표 구성이 바뀐 구세이브를 바로잡는다
+    for (const line of repairQuestItems()) console.log(`[GameState] ${line}`);
     console.log(`[GameState] Loaded from slot ${slot}.`);
     return true;
   }
@@ -1976,8 +1979,42 @@ StoryStore.bind({
   takeQuestItems: (id, qty) => {
     const held = InventoryStore.find(id)?.qty ?? 0;
     if (held > 0) InventoryStore.removeQty(id, Math.min(held, qty));
+    // 234차 — 바닥에 놓아 둔 것도 거둔다(끝난 퀘스트의 물건이 쓸모없이 남지 않게)
+    for (const g of [...GroundItemStore.all]) if (g.tpl.id === id) GroundItemStore.take(g.uid);
+  },
+  // 234차 — 모으기 목표 진행 = 가방 보유 수 · 보상을 주기 전에 가방 자리 확인
+  countItem: (id) => InventoryStore.find(id)?.qty ?? 0,
+  roomFor: (items) => {
+    const cat = buildItemWikiCatalog();
+    const parts = items.flatMap((it) => {
+      const tpl = cat.find((w) => w.id === it.id)?.tpl;
+      return tpl ? [{ tpl, qty: it.qty }] : [];
+    });
+    const lack = InventoryStore.slotShortfall(parts);
+    const lines = Object.entries(lack).map(([c, n]) => `${CATEGORY_LABEL[c as InvCategory]} 칸 ${n}개`);
+    return lines.length ? lines.join(' · ') : null;
   },
 });
+
+// 234차 — 멀티 설치물 대조: 세이브에 든 내 설치물(통발 · 화구 · 거치대)을 서버로 보낼 목록.
+//   접속(재접속)할 때마다 서버의 내 몫을 이 목록과 똑같이 맞춘다(유령 지우기 · 빠진 것 다시 올리기).
+//   집 가스레인지는 세계 설치물이 아니다.
+MultiplayerClient.setPlacedProvider(() => [
+  ...GameState.deployedTraps.map((t) => ({
+    instanceId: t.instanceId, mapKey: t.mapId ?? t.spotId, tileX: t.tileX, tileY: t.tileY,
+    trapSpecId: t.trapSpecId, deployedAtMs: new Date(t.deployedAt).getTime(),
+  })),
+  ...GameState.deployedStoves.filter((st) => st.instanceId !== 'home_stove' && st.mapId !== 'home').map((st) => ({
+    instanceId: st.instanceId, mapKey: st.mapId, tileX: st.tileX, tileY: st.tileY,
+    trapSpecId: st.heatSourceId, deployedAtMs: st.placedAtMs, kind: 'stove' as const,
+  })),
+  ...GameState.parkedRods.map((p) => ({
+    instanceId: p.id, mapKey: p.mapKey,
+    // 구세이브(칸 기록 없음)는 심리스 칸(32px)으로 어림한다 — 남의 화면에 보일 자리일 뿐이다
+    tileX: p.tileX ?? Math.floor(p.x / 32), tileY: p.tileY ?? Math.floor(p.y / 32),
+    trapSpecId: 'rod_holder', deployedAtMs: p.parkedAtMs, kind: 'rod_holder' as const,
+  })),
+]);
 
 // 193차 — 채비 「한 바늘에 두 미끼」 스킬 게이트 (InventoryStore가 GameState를 import하면 순환이라 주입)
 InventoryStore.doubleBaitAllowed = () => GameState.skillBonus('double_bait') > 0;

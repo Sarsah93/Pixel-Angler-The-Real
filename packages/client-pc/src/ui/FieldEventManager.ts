@@ -314,6 +314,14 @@ export class FieldEventManager {
     return undefined;
   }
 
+  /**
+   * 234차 — 스케줄 캐시를 비운다(세션 정본 날씨가 도착했을 때). 다음 갱신에서 같은 칸 · 슬롯을 새 날씨로 다시 굴린다.
+   * 이미 떠 있는 패치는 그대로 둔다(수명이 끝나면 사라진다).
+   */
+  resetSchedule(): void {
+    this.schedule.clear();
+  }
+
   destroy(): void {
     this.patches.forEach((p) => p.container.destroy());
     this.patches = [];

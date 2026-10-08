@@ -154,7 +154,9 @@ export function repairPrologue(): boolean {
       if (photo) { InventoryStore.addItem(takeFromFridge(PROLOGUE_PHOTO_ID) ?? { ...photo, bound: true }, 1); fixed = true; }
     }
     if (GameState.getFlag(flagKey('squid')) && !prologueStepDone('sell') && !InventoryStore.find(PROLOGUE_SQUID_ID)) {
-      InventoryStore.addItem(takeFromFridge(PROLOGUE_SQUID_ID) ?? prologueSquid(), 1);
+      // 234차 — 냉장고에서 꺼낸 묶음은 그 수량 그대로(구: 2마리를 꺼내 1마리만 넣었다)
+      const back = takeFromFridge(PROLOGUE_SQUID_ID);
+      InventoryStore.addItem(back ?? prologueSquid(), back?.qty ?? 1);
       fixed = true;
     }
     if (fixed) GameState.markDirty();

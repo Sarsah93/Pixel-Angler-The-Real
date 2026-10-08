@@ -77,6 +77,7 @@ import { RegionLight,
   seamBetween,
   getStatusEffect,
   computeCastWeather, castScatterRadius, applyCastScatter, castWeatherLabelKo, kstParts,
+  sharedWeatherKind, quantizeShared,
   rodCastDistanceMult, rodLoadState, rodTipSnapChance, reelFitsRod, rodFitsHole,
   type CastWeatherEffect,
   type VitalsActivity,
@@ -109,6 +110,7 @@ import {
   noteProloguePurchase, notePrologueSale, PROLOGUE_PHOTO_ID,
   inPrologue, PROLOGUE_BUY_KINDS, prologueProtects, buyKindOf,
 } from '../store/Prologue.js';
+import { repairQuestItems, iceCrateNeeded } from '../store/QuestItemGuard.js';
 import { DialoguePanel, type DialogueSceneRequest } from '../ui/DialoguePanel.js';
 import { GeneralMeetingPanel } from '../ui/GeneralMeetingPanel.js';
 import { StoryStore } from '../store/StoryStore.js';
@@ -117,6 +119,7 @@ import { questSceneFor, type SceneExtra } from '../data/QuestScenes.js';
 import { loadSettings } from './SettingsScene.js';
 import { MultiplayerClient } from '../net/MultiplayerClient.js';
 import { WorldDepletionStore } from '../store/WorldDepletionStore.js';
+import { WeatherSync } from '../net/WeatherSync.js';
 import { ConsignListPanel } from '../ui/ConsignListPanel.js';
 import { STORY_NPC_PLACEMENTS, STORY_PLACES, STORY_FIELD_TRIGGERS, type StoryNpcPlacement, type StoryFieldTrigger } from '../data/StoryNpcs.js';
 import { GroundItemStore, type GroundItem } from '../store/GroundItemStore.js';
@@ -268,6 +271,8 @@ export class RegionFieldScene extends Phaser.Scene {
   /** 이 지역이 심리스 모드로 열렸는가 (seamlessRegionOf 등록 + ACTIVE_REGION_MODE) */
   private seamlessDef?: SeamlessRegionDef;
   private get seamless(): boolean { return !!this.seamlessDef; }
+  /** 234차 — 바닥 물건의 맵 구분(레거시 다중 맵 지역만 — 심리스는 지역 하나가 맵 하나다) */
+  private get groundMapKey(): string | undefined { return this.seamless ? undefined : this.mapId; }
   /** 청크 스트리밍 베이킹 + 근접 충돌 관리자 */
   private chunks?: SeamlessChunks;
   /** 주행 차량 (심리스 전용) */
@@ -580,6 +585,9 @@ export class RegionFieldScene extends Phaser.Scene {
     this.poiObjects = new Map();
     this.occludersByChunk = new Map();
     this.faded = new Set();
+    // 234차 — 장소 도착은 「들어선 순간」만 본다. 새 게임 · 다른 슬롯 · 지역 이동 때 비운다(구 `firedPlaces`는 세션 내내 남았다)
+    this.insidePlaces.clear();
+    this.placeActionSent.clear();
     // 상태 초기화 (scene.restart 대비)
     this.isTransitioning = false;
     // 쓰러짐 연출은 씬을 넘어가지 않는다 — 재진입 시 남아 있으면 조작이 영구히 잠긴다
@@ -657,6 +665,8 @@ export class RegionFieldScene extends Phaser.Scene {
     this.hailStones = [];
     this.rainSplashAcc = 0;
     this.precipKind = 'none';
+    this.weatherFxObjs = [];   // 234차 — 지난 세대 연출은 씬 종료 때 이미 파괴됐다
+    this.fxWeather = null;
   }
 
   preload(): void {
@@ -778,11 +788,9 @@ export class RegionFieldScene extends Phaser.Scene {
     TitleStore.enterRegion(this.region, this.region !== 'hometown');
     // 홈타운은 실데이터 지역이 아니므로 날씨를 방문마다 랜덤 추첨 (HUD/조명/날씨효과 공유)
     // 145차 — 홈타운 날씨도 세션 공용(1시간 슬롯). 날씨는 피딩 활성도를 통해 이벤트 스케줄까지 좌우한다.
-    if (this.region === 'hometown') {
-      ExternalDataStore.rerollHometownWeather(mpWorldSeed(
-        MultiplayerClient.worldSeed, 'weather', 'hometown', mpTimeSlot(Date.now(), 3_600_000),
-      ));
-    }
+    // 234차 — 연출을 그리기 전에 날씨를 맞춘다: 홈타운은 지금 슬롯으로 굴리고, 실지역은 이미 와 있는
+    //   세션 정본 카드가 있으면 따른다. 머무는 동안의 변화는 아래 5초 타이머(`WeatherSync.tick`)가 잇는다.
+    WeatherSync.enter(this.region);
 
     if (this.seamlessDef) {
       const dr = this.seamlessDef.dataRegion;
@@ -949,8 +957,14 @@ export class RegionFieldScene extends Phaser.Scene {
       // 145차 공용 시드 — 같은 세션이면 같은 자리에 같은 보일링이 뜬다
       mapKey: `${this.region}:${this.mapId}`,
       worldSeed: () => MultiplayerClient.worldSeed,
-      feedingAt: (atMs) => this.feedingAt(atMs),
+      feedingAt: (atMs) => this.sharedFeedingAt(atMs),
     });
+    // 234차 — 날씨 맞추기: 5초마다 실황(한 시간에 한 번) · 세션 정본 · 홈타운 시간 바뀜을 확인하고,
+    //   바뀌었으면 보일링 스케줄과 비 · 안개 연출을 다시 그린다. 핸들러는 이 세대 것만 지운다(아래 주석과 같은 이유).
+    const onWx = (r: string): void => { if (r === this.region && this.playerBody?.active) this.onWeatherChanged(); };
+    WeatherSync.onChange = onWx;
+    this.time.addEvent({ delay: 5_000, loop: true, callback: () => WeatherSync.tick(this.region) });
+    this.events.once('shutdown', () => { if (WeatherSync.onChange === onWx) WeatherSync.onChange = null; });
     // shutdown 콜백은 다음 restart의 create보다 늦게 실행될 수 있다. 현재 필드를
     // 참조하면 이전 세대의 정리 코드가 새 세대 시스템을 파괴할 수 있으므로,
     // 생성 시점의 객체만 소유·정리한다.
@@ -970,6 +984,7 @@ export class RegionFieldScene extends Phaser.Scene {
       // 151차 — 착용이 바뀌면 페이퍼돌도 바뀐다(모자·조끼·가방·손에 든 대).
       this.refreshCharacterLook();
       syncPrologue();   // 188차 — 대·릴 착용·오징어 챙김은 가방 상태로 판정한다
+      this.repairQuestItemsNow();   // 234차 — 맡은 물건이 사라졌으면 되살린다 · 모으기 진행은 보유 수로
     });
 
     // 1인칭 낚시 뷰(pause+launch)에서 복귀 시: 페이드인 + 캐스팅 상태 정리
@@ -1372,6 +1387,7 @@ export class RegionFieldScene extends Phaser.Scene {
     // 188차 — 프롤로그: 홈타운 밖(속초)에 내리면 「막차를 타고 속초로 간다」
     // 219차 — 프롤로그 목적지는 속초뿐(다른 지역에 내려도 「속초에 도착」으로 닫지 않는다)
     if (this.region === 'gangwon_sokcho') markPrologue('arrive'); else syncPrologue();
+    this.repairQuestItemsNow();   // 234차
     MapPinStore.onChange = () => this.refreshQuestMarkers(true);
     this.events.once('shutdown', () => { MapPinStore.onChange = null; });
     StoryStore.onNotify = (m) => {
@@ -3977,7 +3993,7 @@ export class RegionFieldScene extends Phaser.Scene {
     const tide = calculateTideInfo(d);
     return computeFeedingActivity({
       hour: kstHour(d) + d.getMinutes() / 60,
-      month: d.getMonth() + 1,
+      month: Number(kstParts(d).mo),   // 234차 — KST(시간대가 다른 사람끼리 같은 달 · 공용 스케줄)
       tidePhase: tide.tidePhase,
       minutesToNextTide: tide.minutesToNextTide,
       nextTideType: tide.nextTideType,
@@ -3986,6 +4002,38 @@ export class RegionFieldScene extends Phaser.Scene {
       // 204차 — 물때 흐름 8단계(보일링·스쿨링 이벤트 발생률도 같은 물때를 탄다)
       flowPhase: this.region === 'hometown' ? undefined : tideFlowStateAt(d).phase,
     }).activity;
+  }
+
+  /**
+   * 234차 — 공용 추첨(보일링 · 스쿨링 스케줄)용 피딩 활성도. 같은 세션이면 **누가 계산해도 같은 값**이어야 한다:
+   * - 날씨는 그 슬롯의 **세션 정본 카드**(없으면 지금 날씨)를 피딩 판정이 구분하는 갈래로 접는다(`sharedWeatherKind`).
+   * - 결과는 0.01 단위로 구간화한다(엔진마다 다른 부동소수 끝자리가 문턱을 넘나들지 않게).
+   */
+  private sharedFeedingAt(atMs: number): number {
+    const d = new Date(atMs);
+    const tide = calculateTideInfo(d);
+    const f = computeFeedingActivity({
+      hour: kstHour(d) + d.getMinutes() / 60,
+      month: Number(kstParts(d).mo),
+      tidePhase: tide.tidePhase,
+      minutesToNextTide: tide.minutesToNextTide,
+      nextTideType: tide.nextTideType,
+      weatherKind: sharedWeatherKind(ExternalDataStore.weatherKindAt(this.region, atMs)),
+      regionProfile: feedingRegionProfileOf(this.region),
+      flowPhase: this.region === 'hometown' ? undefined : tideFlowStateAt(d).phase,
+    }).activity;
+    return quantizeShared(f);
+  }
+
+  /**
+   * 234차 — 날씨가 바뀌었다(세션 정본 도착 · 새 시간 실황 · 홈타운 재추첨). 보일링 스케줄을 새 날씨로 다시 굴리고,
+   * 비 · 안개 · 눈 연출이 지금 날씨와 다르면 다시 그린다(구: 지역에 다시 들어와야 바뀌었다).
+   */
+  private onWeatherChanged(): void {
+    this.fieldEvents?.resetSchedule();
+    this.refreshFieldFeeding();
+    const kind = ExternalDataStore.getWeatherKind(this.region);
+    if (kind !== this.fxWeather) this.applyWeatherFx(kind);
   }
 
   /** 캐스팅 강제 회수 — 찌/그림자를 플레이어 쪽으로 되감고 비행 상태 정리 */
@@ -4201,6 +4249,32 @@ export class RegionFieldScene extends Phaser.Scene {
         .setScrollFactor(0).setDepth(40);
     }
 
+    // 건물 조명 + 네온사인 (밤 점등, 황혼은 약하게)
+    if (isNight || isDusk) this.lightBuildings(isNight);
+
+    // 날씨 명암 · 파티클 (234차 — 머무는 동안 날씨가 바뀌면 이것만 다시 그린다)
+    this.applyWeatherFx(weather);
+  }
+
+  /** 234차 — 지금 그려 둔 날씨 연출의 종류 · 그 오브젝트(다시 그릴 때 지운다) */
+  private fxWeather: string | null = null;
+  private weatherFxObjs: Phaser.GameObjects.GameObject[] = [];
+
+  /**
+   * 날씨 명암 + 파티클을 그린다(있던 것은 지우고). 종류·강도별 —
+   * 비 2레이어+물파문 / 소나기 강우 / 진눈깨비 = 비+눈+우박 / 눈 / 안개.
+   */
+  private applyWeatherFx(weather: string): void {
+    for (const o of this.weatherFxObjs) o.destroy();
+    this.weatherFxObjs = [];
+    for (const d of this.rainDrops) d.obj.destroy();
+    for (const f of this.snowFlakes) f.obj.destroy();
+    for (const h of this.hailStones) h.obj.destroy();
+    for (const b of this.fogBlobs) b.obj.destroy();
+    this.rainDrops = []; this.snowFlakes = []; this.hailStones = []; this.fogBlobs = [];
+    this.precipKind = 'none';
+    this.fxWeather = weather;
+
     // 날씨 추가 명암 (흐림/강수 시 전체 톤 다운)
     const weatherDim: Partial<Record<string, [number, number]>> = {
       cloudy: [0x66788a, 0.12],
@@ -4211,14 +4285,9 @@ export class RegionFieldScene extends Phaser.Scene {
     };
     const dim = weatherDim[weather];
     if (dim) {
-      this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, dim[0], dim[1])
-        .setScrollFactor(0).setDepth(40);
+      this.weatherFxObjs.push(this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, dim[0], dim[1])
+        .setScrollFactor(0).setDepth(40));
     }
-
-    // 건물 조명 + 네온사인 (밤 점등, 황혼은 약하게)
-    if (isNight || isDusk) this.lightBuildings(isNight);
-
-    // 날씨 파티클 — 종류·강도별 (비 2레이어+물파문 / 소나기 강우 / 진눈깨비 = 비+눈+우박 / 눈)
     if (weather === 'rain') { this.spawnRain(70); this.precipKind = 'rain'; }
     else if (weather === 'shower') { this.spawnRain(150); this.precipKind = 'shower'; }
     else if (weather === 'sleet') {
@@ -4407,8 +4476,8 @@ export class RegionFieldScene extends Phaser.Scene {
   /** 안개 — 전체 헤이즈 + 드리프트하는 픽셀 구름 (구 단순 타원 블롭 폐기 — 101차) */
   private spawnFog(): void {
     this.ensureCloudTextures();
-    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0xc8d4dc, 0.12)
-      .setScrollFactor(0).setDepth(45);
+    this.weatherFxObjs.push(this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0xc8d4dc, 0.12)
+      .setScrollFactor(0).setDepth(45));
     for (let i = 0; i < 6; i++) {
       const obj = this.add.image(
         Math.random() * GAME_WIDTH, Math.random() * GAME_HEIGHT, `fx_cloud_${i % 2}`,
@@ -5099,7 +5168,10 @@ export class RegionFieldScene extends Phaser.Scene {
   private suppressActionScene = false;
   private nearStoryTrigger: StoryFieldTrigger | null = null;
   private storyProxAt = 0;
-  private firedPlaces = new Set<string>();
+  /** 234차 — 지금 반경 안에 서 있고 그 진입에서 도착을 이미 알린 장소(나가면 지운다) */
+  private insidePlaces = new Set<string>();
+  /** 234차 — 이번 진입에서 현장 행동 사건(`place:*`)을 이미 보낸 장소(나가면 지운다) */
+  private placeActionSent = new Set<string>();
   private nearIceDrop = false;
   private iceDropMarker?: Phaser.GameObjects.Container;
 
@@ -6478,25 +6550,35 @@ export class RegionFieldScene extends Phaser.Scene {
       }
       else hintFor(`[F] 상호작용 — ${opts.length}가지`, '#b9f2ff');
     }
-    // 방문 장소
+    // 방문 장소 — 234차: 반경에 **들어선 진입마다** 보고, 그 장소를 기다리는 목표가 있을 때만 「도착」을 알린다.
+    //   구: 세션 내내 남는 `firedPlaces` — 퀘스트를 받기 전에 지나간 자리(경매장 하역 표시 등)는 그 세션 동안
+    //   다시 잡히지 않아 진행이 막혔고, 파산 · 새 게임 · 다른 슬롯을 불러와도 지워지지 않았다(감사 치명-4).
     for (const pl of STORY_PLACES) {
-      if (pl.regionId !== this.region || this.firedPlaces.has(pl.key)) continue;
+      if (pl.regionId !== this.region) continue;
       const cx = pl.tx * TR + TR / 2, cy = pl.ty * TR + TR / 2;
-      if (Math.hypot(cx - px, cy - py) <= pl.radiusTiles * TR) {
-        // 188차 — M1-01은 순서형(프롤로그 14목표 뒤)이라 목표 번호를 placeKey로 찾는다.
-        //   앞 목표(직판장 구매·판매 등)가 남았으면 아직 도착으로 치지 않는다 — 다시 지나갈 때 잡힌다.
+      if (Math.hypot(cx - px, cy - py) > pl.radiusTiles * TR) {
+        this.insidePlaces.delete(pl.key);
+        this.placeActionSent.delete(pl.key);
+        continue;
+      }
+      // 기다리는 목표가 지금 생겨도(앞 목표를 이 자리에서 마쳤다) 같은 진입 안에서 잡힌다 — 순서형 M1-01 포함
+      if (!this.insidePlaces.has(pl.key) && StoryStore.wantsVisit(pl.key)) {
         const m101q = getStoryQuest('M1-01');
         const m101i = m101q ? m101q.objectives.findIndex((o) => o.kind === 'visit' && o.placeKey === pl.key) : -1;
-        if (m101q && m101i >= 0 && StoryStore.isActive('M1-01') && !StoryStore.objectiveReachable(m101q, m101i)) continue;
         const arrivalScene = m101q && m101i >= 0 && StoryStore.isActive('M1-01') && !StoryStore.objectiveDone(m101q, m101i);
-        this.firedPlaces.add(pl.key);
+        this.insidePlaces.add(pl.key);
         StoryStore.event({ kind: 'visit', placeKey: pl.key });
-        // 장소 도착 뒤 이어지는 수동 목표의 현장 행동을 실제 이동/도착 이벤트에 연결한다.
-        StoryStore.emitActionSource('field', `place:${pl.key}`);
+        this.placeActionSent.delete(pl.key);   // 도착 뒤에 이어지는 현장 행동이 이 도착을 받게 아래에서 다시 보낸다
         this.hud?.pushLog(`[장소] ${pl.labelKo}에 도착했습니다`);
         if (arrivalScene && (pl.key === 'poi:yeonggeumjeong' || pl.key === 'poi:okseon-stall')) {
           this.startSokchoArrivalCinematic(pl.key);
         }
+      }
+      // 장소 도착 뒤 이어지는 수동 목표의 현장 행동을 실제 이동/도착 이벤트에 연결한다(진입마다 한 번 —
+      //  의뢰인에게 방식을 고른 목표만 받는다: `StoryStore.emitActionSource`).
+      if (!this.placeActionSent.has(pl.key)) {
+        this.placeActionSent.add(pl.key);
+        StoryStore.emitActionSource('field', `place:${pl.key}`);
       }
     }
     const icePlace = STORY_PLACES.find((p) => p.key === 'poi:auction-ice-drop' && p.regionId === this.region);
@@ -6577,7 +6659,7 @@ export class RegionFieldScene extends Phaser.Scene {
     }
     // ⑥ 바닥의 물건 — 여러 개면 우측으로 한 겹 더 펼친다 (사용자 지시)
     const tile = this.playerTile();
-    const ground = GroundItemStore.at(this.region, tile.c, tile.r, 1);
+    const ground = GroundItemStore.at(this.region, tile.c, tile.r, 1, this.groundMapKey);
     if (ground.length) {
       const allPlaced = ground.every((g) => g.placed);
       const label = allPlaced ? '놓아둔 물건 회수하기' : '아이템 줍기';
@@ -6590,7 +6672,7 @@ export class RegionFieldScene extends Phaser.Scene {
       } else {
         opts.push({
           label, note: `${ground.length}가지`,
-          sub: () => GroundItemStore.at(this.region, tile.c, tile.r, 1).map((g) => ({
+          sub: () => GroundItemStore.at(this.region, tile.c, tile.r, 1, this.groundMapKey).map((g) => ({
             label: `${g.tpl.name}${g.qty > 1 ? ` ×${g.qty}` : ''}`,
             note: g.placed ? '내가 놓아둔 물건' : undefined,
             icon: g.tpl,
@@ -6683,22 +6765,34 @@ export class RegionFieldScene extends Phaser.Scene {
     this.hud?.pushLog(`[획득] ${g.tpl.name}${g.qty > 1 ? ` ×${g.qty}` : ''}을(를) 집었습니다.`);
   }
 
+  /** 234차 — 맡은 물건 되살리기(`QuestItemGuard`) + 모으기 진행 맞추기. 고친 것은 로그로 남기고 바닥 그림을 다시 그린다 */
+  private repairQuestItemsNow(): void {
+    const lines = repairQuestItems();
+    StoryStore.syncHeldQuestItems();
+    if (!lines.length) return;
+    for (const l of lines) this.hud?.pushLog(l);
+    this.renderGroundItems();
+    this.hud?.refreshQuickslots();
+  }
+
   /**
    * 인벤토리 '내려놓기' → 캐릭터가 서 있는 자리에 놓는다 (178차 사용자 지시).
    * 지정 하역 위치에 서 있고 그 물건이 얼음 상자면 곧바로 하역으로 넘긴다.
    */
   private placeItemFromInventory(item: InvItem): { ok: boolean; message: string } {
-    if (this.nearIceDrop && item.id === 'quest_ice_crate') {
-      this.tryPlaceQuestIceCrate();
-      return { ok: true, message: '얼음 상자를 하역 위치에 내려놓았습니다.' };
+    if (item.id === 'quest_ice_crate') {
+      // 234차 — 인벤토리 창이 열려 있어도(`uiBlocked`) 하역은 된다 — 구: 창이 열린 채로는 「내려놓았습니다」만 뜨고
+      //  실제로는 아무 일도 없었다(감사 낮음-1). 맡은 상자는 정해진 하역 자리 말고는 바닥에 두지 않는다.
+      if (this.nearIceDrop && this.tryPlaceQuestIceCrate(true)) return { ok: true, message: '얼음 상자를 하역 위치에 내려놓았습니다.' };
+      if (iceCrateNeeded()) return { ok: false, message: '맡은 얼음 상자는 경매장 옆 하역 표시 위에 내려놓아야 한다.' };
     }
     const { c, r } = this.playerTile();
     if (this.blocked[r]?.[c]) return { ok: false, message: '여기에는 내려놓을 수 없습니다.' };
-    if (GroundItemStore.countAt(this.region, c, r) >= 8) {
+    if (GroundItemStore.countAt(this.region, c, r, this.groundMapKey) >= 8) {
       return { ok: false, message: '이 자리에 물건이 너무 많습니다 — 한 칸 옮겨서 놓으세요.' };
     }
     if (!InventoryStore.removeQty(item.id, 1)) return { ok: false, message: '아이템이 없습니다.' };
-    GroundItemStore.drop(this.region, c, r, item, 1, true);
+    GroundItemStore.drop(this.region, c, r, item, 1, true, this.groundMapKey);
     GameState.markDirty();
     this.renderGroundItems();
     this.events.emit('inventory-changed');
@@ -6710,7 +6804,7 @@ export class RegionFieldScene extends Phaser.Scene {
   private renderGroundItems(): void {
     this.groundSprites.forEach((objs) => objs.forEach((o) => o.destroy()));
     this.groundSprites.clear();
-    for (const g of GroundItemStore.inRegion(this.region)) this.renderGroundItem(g);
+    for (const g of GroundItemStore.inRegion(this.region, this.groundMapKey)) this.renderGroundItem(g);
   }
 
   private renderGroundItem(g: GroundItem): void {
@@ -6728,9 +6822,12 @@ export class RegionFieldScene extends Phaser.Scene {
     this.groundSprites.set(g.uid, objs);
   }
 
-  /** M1-02의 하역은 인벤토리 아이템을 실제 필드 지정 위치에 내려놓는 행동이다. */
-  private tryPlaceQuestIceCrate(): boolean {
-    if (!this.nearIceDrop || this.uiBlocked) return false;
+  /**
+   * M1-02의 하역은 인벤토리 아이템을 실제 필드 지정 위치에 내려놓는 행동이다.
+   * @param fromUi 인벤토리 창의 「내려놓기」에서 불렀다(창이 열려 있어 `uiBlocked`여도 진행한다 — 234차)
+   */
+  private tryPlaceQuestIceCrate(fromUi = false): boolean {
+    if (!this.nearIceDrop || (!fromUi && this.uiBlocked)) return false;
     if (!InventoryStore.find('quest_ice_crate')) {
       this.floatingHint('정옥선의 심부름용 얼음 상자가 없습니다');
       return true;
@@ -7140,6 +7237,11 @@ export class RegionFieldScene extends Phaser.Scene {
       scene: this, tr: TR, regionId: this.region, mapKey: common.mapKey,
       player: common.player, blocked: common.blocked, pushLog: common.pushLog, floatingHint: common.floatingHint,
       pickUp: (rod: ParkedRodSave) => this.pickUpParkedRod(rod),
+      dropAtFeet: (item, qty) => {
+        const { c, r } = this.playerTile();
+        GroundItemStore.drop(this.region, c, r, item, qty, true, this.groundMapKey);
+        this.renderGroundItems();
+      },
     });
     // 209차 — 1인칭 동안 필드는 멈춘다. 다른 거치대는 1인칭이 이 함수를 불러 대신 굴린다(파이팅 중 엉킴 포함)
     this.registry.set('rodHolderTick', (ms: number, tanglePerSec: number) => this.rodHolder?.simulate(ms, tanglePerSec) ?? []);

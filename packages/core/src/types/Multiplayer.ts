@@ -152,6 +152,11 @@ export interface MpTakenLine {
   busy?: boolean;
   /** 가져간(채집 중인) 사람 이름 — 「○○ 님이 채집 중」 표시용 */
   by?: string;
+  /**
+   * 234차 — 줄에 붙는 짧은 값(`MP_TAKEN_VAL_MAX`자). 키처럼 서버는 뜻을 모른다.
+   * 지금은 세션 정본 날씨(`w:<지역>|<1시간 슬롯>` → `encodeWeatherCard`)만 쓴다 — 먼저 알린 사람의 값이 그 슬롯의 날씨다.
+   */
+  val?: string;
 }
 /** 서버가 들고 있는 소비 기록 수 상한 */
 export const MP_TAKEN_KEEP = 4000;
@@ -161,6 +166,41 @@ export const MP_TAKEN_TTL_MAX_MS = 50 * 3_600_000;
 export const MP_TAKEN_TTL_MIN_MS = 10_000;
 /** 소비 키 최대 길이 — 아무 문자열이나 쌓이지 않게 */
 export const MP_TAKEN_KEY_MAX = 96;
+/** 234차 — 줄에 붙는 값 최대 길이 */
+export const MP_TAKEN_VAL_MAX = 160;
+
+/** 234차 — 설치물을 알릴 때 보내는 모양(주인 · 이름은 서버가 채운다) */
+export type MpPlaceItem = Omit<MpPlacedTrap, 'ownerId' | 'ownerName'>;
+/** 234차 — 한 사람이 세계에 둘 수 있는 설치물 상한(통발 · 화구 · 거치대 합) */
+export const MP_PLACED_MAX_PER_OWNER = 64;
+
+/**
+ * 234차 — 설치물 대조 응답 (`POST /mp/placed/sync`). 접속(재접속)할 때 내 세이브의 설치물 목록을 보내면
+ * 서버는 **내 것만** 그 목록과 똑같이 맞춘다 — 세이브에 없는 유령은 지우고, 서버가 놓친 것은 다시 올린다.
+ */
+export interface MpPlacedSyncRes {
+  ok: boolean;
+  /** 서버에 새로 올린 수 */
+  added?: number;
+  /** 세이브에 없어 지운 유령 수 */
+  removed?: number;
+  reasonKo?: string;
+}
+
+/**
+ * 234차 — 두 설치물이 **같은 칸을 다투는가**. 종류가 같을 때만 다툰다(물 위 통발 · 뭍 위 화구 · 물가 거치대는
+ * 서로 다른 자리 개념). 거치대는 내 것끼리 한 칸에 붙어 서도 된다(삼발이를 나란히 세운다).
+ */
+export function mpPlacedClash(
+  a: Pick<MpPlacedTrap, 'mapKey' | 'tileX' | 'tileY' | 'kind'>,
+  b: Pick<MpPlacedTrap, 'mapKey' | 'tileX' | 'tileY' | 'kind'>,
+  sameOwner: boolean,
+): boolean {
+  if (a.mapKey !== b.mapKey || a.tileX !== b.tileX || a.tileY !== b.tileY) return false;
+  const ka = a.kind ?? 'trap', kb = b.kind ?? 'trap';
+  if (ka !== kb) return false;
+  return !(ka === 'rod_holder' && sameOwner);
+}
 
 /**
  * 캐릭터 소멸(파산) 응답 (231차 — `POST /mp/retire`).

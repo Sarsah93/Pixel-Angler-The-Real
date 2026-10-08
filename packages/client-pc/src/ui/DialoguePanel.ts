@@ -644,7 +644,8 @@ export class DialoguePanel extends DraggablePanel {
       label: ch.labelKo,
       action: () => {
         const ok = stage === 'offer' ? StoryStore.accept(q.id, ch.id) : StoryStore.complete(q.id, ch.id);
-        if (!ok) { this.lastWorkMsg = '지금은 진행할 수 없습니다.'; this.enterMenu(false); return; }
+        // 234차 — 거절 까닭(가방 자리 부족 등)이 있으면 그것을 보여 준다
+        if (!ok) { this.lastWorkMsg = StoryStore.lastRefusal ?? '지금은 진행할 수 없습니다.'; this.enterMenu(false); return; }
         if (stage === 'offer') StoryStore.emitActionSource('selection', `choice:${ch.id}`);
         const done = stage === 'complete';
         this.reply = {

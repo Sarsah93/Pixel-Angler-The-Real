@@ -23,7 +23,7 @@ import {
   KmaVilageFcstApiClient, KmaWeatherInfo, KMA_GRID_BY_REGION, WeatherKind,
   ORACLE_FISH_DB, calculateTideInfo,
   WORLD_NODE_DATABASE, REGION_AREA_NODES,
-  mpRng,
+  mpRng, mpTimeSlot, SESSION_WEATHER_SLOT_MS, encodeWeatherCard, type SessionWeatherCard,
 } from '@tra/core';
 
 /**
@@ -147,6 +147,9 @@ const REGION_TO_MMSI: Record<string, string> = {
  */
 const PROXY_ORIGIN = import.meta.env.DEV ? window.location.origin : undefined;
 
+/** 홈타운 날씨 후보(실데이터가 없는 동네 — 세션 공용 시드 × 1시간 슬롯으로 고른다) */
+const HOMETOWN_WEATHER_OPTS: WeatherKind[] = ['clear', 'partly', 'cloudy', 'rain', 'shower', 'fog'];
+
 class ExternalDataStoreManager {
   private service = new ExternalApiService({
     dataGoKrKey: envKey('VITE_DATA_GO_KR_API_KEY'),
@@ -173,6 +176,16 @@ class ExternalDataStoreManager {
   private _kma = new Map<string, KmaWeatherInfo>();
   /** 홈타운 랜덤 날씨 캐시 — 실데이터가 없는 홈타운은 방문마다 무작위(방문 중 안정) */
   private _hometownWeather?: WeatherKind;
+  /**
+   * 234차 — 세션 정본 날씨(지역 → 1시간 슬롯 → 카드). 멀티에서 그 슬롯에 먼저 실데이터를 받은 사람의 카드다.
+   * 있으면 아래 날씨 조회가 **내 실데이터 대신 이 카드**를 돌려준다 — 모두가 같은 하늘 · 같은 보일링 스케줄.
+   * 직전 슬롯 것도 남긴다(보일링 스케줄이 직전 슬롯까지 계산한다).
+   */
+  private _sessionWx = new Map<string, Map<number, SessionWeatherCard>>();
+  /** 234차 — 실황(기상청 · 해양기상)을 마지막으로 **받아 낸** 1시간 슬롯 / 받으러 간 슬롯(실패해도 그 시간엔 다시 안 간다) */
+  private _liveSlot = -1;
+  private _liveTriedSlot = -1;
+  private _liveFetching: Promise<boolean> | null = null;
 
   /**
    * 홈타운 날씨 재추첨 — RegionFieldScene(hometown) 진입 시 1회 호출.
@@ -182,10 +195,15 @@ class ExternalDataStoreManager {
    * 시드를 주지 않으면(싱글) 종전대로 무작위.
    */
   rerollHometownWeather(seed?: number): void {
-    const opts: WeatherKind[] = ['clear', 'partly', 'cloudy', 'rain', 'shower', 'fog'];
     const r = seed === undefined ? Math.random() : mpRng(seed)();
-    this._hometownWeather = opts[Math.floor(r * opts.length)];
+    this._hometownWeather = HOMETOWN_WEATHER_OPTS[Math.floor(r * HOMETOWN_WEATHER_OPTS.length)];
   }
+
+  /**
+   * 234차 — 홈타운 날씨 시드(1시간 슬롯 → 시드). `WeatherSync`가 세운다(세션 공용 시드).
+   * 있으면 지난 슬롯의 홈타운 날씨도 다시 계산할 수 있다 — 보일링 스케줄이 직전 슬롯까지 본다.
+   */
+  hometownSeedFor: ((slot: number) => number) | null = null;
 
   get snapshot(): ExternalDataSnapshot | null {
     return this._snapshot;
@@ -199,6 +217,8 @@ class ExternalDataStoreManager {
     if (this._snapshot) return Promise.resolve();
     if (this._promise) return this._promise;
     // 해양기상은 독립 API — 실패해도 나머지 수집을 막지 않도록 분리해서 병행
+    const liveSlot = mpTimeSlot(Date.now(), SESSION_WEATHER_SLOT_MS);   // 234차 — 이 시간의 실황이다
+    this._liveTriedSlot = liveSlot;
     this._promise = Promise.all([
       this.service.fetchAll().then((snap) => {
         this._snapshot = snap;
@@ -213,21 +233,24 @@ class ExternalDataStoreManager {
         })
         .catch((e) => { console.warn('[ExternalDataStore] 해양기상 수집 실패 — 건너뜀', e); }),
       this.fetchKmaAll()
+        .then((n) => { if (n > 0) this._liveSlot = liveSlot; })
         .catch((e) => { console.warn('[ExternalDataStore] 기상청 수집 실패 — 건너뜀', e); }),
     ]).then(() => undefined)
       .finally(() => { this._promise = null; });
     return this._promise;
   }
 
-  /** 전 지역 기상청 현재 기상 수집 — 지역별 실패는 무시하고 나머지를 살린다 */
-  private async fetchKmaAll(): Promise<void> {
+  /** 전 지역 기상청 현재 기상 수집 — 지역별 실패는 무시하고 나머지를 살린다. 받아 낸 지역 수를 돌려준다(234차) */
+  private async fetchKmaAll(): Promise<number> {
     const ids = Object.keys(KMA_GRID_BY_REGION);
     const settled = await Promise.allSettled(ids.map(async (id) => {
       const g = KMA_GRID_BY_REGION[id];
       return [id, await this.kmaClient.fetchCurrent({ nx: g.nx, ny: g.ny })] as const;
     }));
-    for (const r of settled) if (r.status === 'fulfilled') this._kma.set(r.value[0], r.value[1]);
-    console.log(`[ExternalDataStore] 기상청 ${this._kma.size}/${ids.length}개 지역 수집`);
+    let got = 0;
+    for (const r of settled) if (r.status === 'fulfilled') { this._kma.set(r.value[0], r.value[1]); if (!r.value[1].mock) got++; }
+    console.log(`[ExternalDataStore] 기상청 ${got}/${ids.length}개 지역 수집`);
+    return got;
   }
 
   // ── 4) 해양기상 (국립해양측위정보원 76개 관측소) ────────
@@ -246,6 +269,17 @@ class ExternalDataStoreManager {
    * 매핑이 없는 지역은 undefined — 맵 개발 진행에 따라 매핑을 확장할 것.
    */
   getRegionMarineWeather(regionId: string): MarineWeatherInfo | undefined {
+    const base = this.rawMarine(regionId);
+    const c = this.sessionCard(regionId);
+    if (!base || !c) return base;
+    // 234차 — 정본 카드가 있으면 바람 · 기온 · 수온 · 시정은 카드 값(관측소 고유 값은 그대로)
+    return {
+      ...base, windSpeedMs: c.windMs, windDirectionDeg: c.windDeg, airTempC: c.airC ?? base.airTempC,
+      waterTempC: c.waterC, visibilityM: c.visM,
+    };
+  }
+
+  private rawMarine(regionId: string): MarineWeatherInfo | undefined {
     const mmsi = REGION_TO_MMSI[regionId];
     return mmsi ? this._marine.get(mmsi) : undefined;
   }
@@ -261,9 +295,18 @@ class ExternalDataStoreManager {
   }
 
   // ── 5) 기상청 단기예보 (하늘상태·강수·파고) ────────────
-  /** 지역 ID의 기상청 현재 기상 */
+  /** 지역 ID의 기상청 현재 기상 — 234차: 세션 정본 카드가 있으면 그 값(기온 · 바람 · 강수 · 파고 · 날씨 종류)이 이긴다 */
   getKmaWeather(regionId: string): KmaWeatherInfo | undefined {
-    return this._kma.get(regionId);
+    const base = this._kma.get(regionId);
+    const c = this.sessionCard(regionId);
+    if (!c) return base;
+    return {
+      ...(base ?? {}),
+      grid: base?.grid ?? { nx: KMA_GRID_BY_REGION[regionId]?.nx ?? 0, ny: KMA_GRID_BY_REGION[regionId]?.ny ?? 0 },
+      observedAt: base?.observedAt ?? new Date(),
+      kind: c.kind, tempC: c.airC, windSpeedMs: c.windMs, windDirectionDeg: c.windDeg,
+      rain1hMm: c.rainMm, waveHeightM: c.waveM,
+    };
   }
 
   /**
@@ -279,11 +322,34 @@ class ExternalDataStoreManager {
       if (!this._hometownWeather) this.rerollHometownWeather();
       return this._hometownWeather!;
     }
+    // 234차 — 세션 정본 카드가 이긴다
+    const c = this.sessionCard(regionId);
+    if (c) return c.kind;
+    return this.localWeatherKind(regionId);
+  }
+
+  /**
+   * 234차 — 그 시각(슬롯)의 날씨 종류. 정본 카드가 그 슬롯에 있으면 그것, 없으면 지금 날씨.
+   * 보일링 스케줄처럼 「슬롯 시작 시각의 값」을 물어야 하는 공용 추첨이 쓴다.
+   */
+  weatherKindAt(regionId: string, atMs: number): WeatherKind {
+    if (regionId === 'hometown') {
+      const seed = this.hometownSeedFor?.(mpTimeSlot(atMs, SESSION_WEATHER_SLOT_MS));
+      if (seed !== undefined) return HOMETOWN_WEATHER_OPTS[Math.floor(mpRng(seed)() * HOMETOWN_WEATHER_OPTS.length)];
+      return this.getWeatherKind(regionId);
+    }
+    const c = this.sessionCard(regionId, atMs);
+    if (c) return c.kind;
+    return this.getWeatherKind(regionId);
+  }
+
+  /** 내 실데이터만으로 본 날씨 종류(정본 카드 무시) — 카드를 만들 때 · 카드가 없을 때 */
+  private localWeatherKind(regionId: string): WeatherKind {
     const kma = this._kma.get(regionId);
     const kind = kma?.kind ?? 'clear';
     // 비/눈이 오는 중이면 안개보다 강수 표시가 우선
     if (kind !== 'clear' && kind !== 'partly' && kind !== 'cloudy') return kind;
-    const marine = this.getRegionMarineWeather(regionId);
+    const marine = this.rawMarine(regionId);
     if (marine?.visibilityM !== undefined && marine.visibilityM < 1000) return 'fog';
     return kind;
   }
@@ -293,6 +359,8 @@ class ExternalDataStoreManager {
    * 해양기상 API는 파고를 **전 관측소 미관측(0/76)** 이므로 기상청 단기예보(WAV)만이 소스다.
    */
   getWaveHeightM(regionId: string): number | undefined {
+    const c = this.sessionCard(regionId);
+    if (c) return c.waveM;
     return this._kma.get(regionId)?.waveHeightM;
   }
 
@@ -302,7 +370,82 @@ class ExternalDataStoreManager {
    * (수온 관측은 전국 11/76개소뿐 — 동해청(속초)은 전무).
    */
   getWaterTempC(regionId: string): number | undefined {
-    return this.getRegionMarineWeather(regionId)?.waterTempC;
+    const c = this.sessionCard(regionId);
+    if (c) return c.waterC;
+    return this.rawMarine(regionId)?.waterTempC;
+  }
+
+  // ── 234차 세션 정본 날씨 ─────────────────────────────
+  /** 그 시각(슬롯)의 정본 카드 */
+  private sessionCard(regionId: string, atMs = Date.now()): SessionWeatherCard | undefined {
+    return this._sessionWx.get(regionId)?.get(mpTimeSlot(atMs, SESSION_WEATHER_SLOT_MS));
+  }
+
+  /** 정본 카드를 받아 둔다 — 바뀌었으면 true(필드가 연출 · 스케줄을 다시 그린다) */
+  setSessionWeather(regionId: string, slot: number, card: SessionWeatherCard): boolean {
+    let m = this._sessionWx.get(regionId);
+    if (!m) { m = new Map(); this._sessionWx.set(regionId, m); }
+    const prev = m.get(slot);
+    m.set(slot, card);
+    for (const k of [...m.keys()]) if (k < slot - 2) m.delete(k);
+    return !prev || encodeWeatherCard(prev) !== encodeWeatherCard(card);
+  }
+
+  /** 멀티를 떠나면 정본을 걷는다 — 있었으면 true */
+  clearSessionWeather(): boolean {
+    const had = this._sessionWx.size > 0;
+    this._sessionWx.clear();
+    return had;
+  }
+
+  /**
+   * 내 실데이터로 만든 카드 — **이번 시간에 받은 기상청 실황이 있을 때만**(낡은 값 · 빈 값으로 남의 하늘을 덮지 않게).
+   * 바람 · 기온은 기상청이 없으면 관측소 값으로 메운다(조회 쪽과 같은 순서).
+   */
+  localWeatherCard(regionId: string, now = Date.now()): SessionWeatherCard | null {
+    if (regionId === 'hometown' || !this.liveIsFresh(now)) return null;
+    const kma = this._kma.get(regionId);
+    if (!kma || kma.mock) return null;   // 만든 값(키 없음 · 실패)은 남의 실데이터를 덮지 않는다
+    const marine = this.rawMarine(regionId);
+    return {
+      kind: this.localWeatherKind(regionId),
+      windMs: kma.windSpeedMs ?? marine?.windSpeedMs,
+      windDeg: kma.windDirectionDeg ?? marine?.windDirectionDeg,
+      waveM: kma.waveHeightM,
+      airC: kma.tempC ?? marine?.airTempC,
+      rainMm: kma.rain1hMm,
+      waterC: marine?.waterTempC,
+      visM: marine?.visibilityM,
+    };
+  }
+
+  /** 실황이 이번 1시간 것인가 */
+  liveIsFresh(now = Date.now()): boolean {
+    return this._liveSlot === mpTimeSlot(now, SESSION_WEATHER_SLOT_MS);
+  }
+
+  /**
+   * 234차 — 실황(기상청 · 해양기상)을 **한 시간에 한 번** 다시 받는다(싱글도 — 구: 켤 때 한 번뿐이라 몇 시간 놀면 낡은 날씨).
+   * 시세 · 어획량 · 지수는 그대로 둔다. 내 실데이터 날씨 종류가 바뀌었으면 true.
+   */
+  refreshLiveWeather(now = Date.now()): Promise<boolean> {
+    const slot = mpTimeSlot(now, SESSION_WEATHER_SLOT_MS);
+    if (this._liveTriedSlot === slot || this._promise) return Promise.resolve(false);
+    if (this._liveFetching) return this._liveFetching;
+    this._liveTriedSlot = slot;
+    const before = new Map([...this._kma.keys()].map((id) => [id, this.localWeatherKind(id)]));
+    let gotKma = false;
+    this._liveFetching = Promise.all([
+      this.marineClient.fetchAllStations()
+        .then((list) => { if (list.length) this._marine = new Map(list.map((m) => [m.mmsi, m])); })
+        .catch(() => { /* 지난 값을 그대로 쓴다 */ }),
+      this.fetchKmaAll().then((n) => { gotKma = n > 0; }).catch(() => { /* 지난 값을 그대로 쓴다 */ }),
+    ]).then(() => {
+      // 받아 낸 시간만 「이번 시간 실황」이다 — 실패하면 이 시간엔 정본을 올리지 않는다(남의 것을 따른다)
+      if (gotKma) this._liveSlot = slot;
+      return [...this._kma.keys()].some((id) => before.get(id) !== this.localWeatherKind(id));
+    }).finally(() => { this._liveFetching = null; });
+    return this._liveFetching;
   }
 
   // ── 1) 바다낚시지수 → 입질 확률 보정 ─────────────────
@@ -564,3 +707,5 @@ class ExternalDataStoreManager {
 }
 
 export const ExternalDataStore = new ExternalDataStoreManager();
+// 234차 — dev 하네스용(정본 날씨 · 실황 갱신 검증). 배포 빌드에는 붙지 않는다
+if (import.meta.env.DEV) (globalThis as unknown as { __EXT?: unknown }).__EXT = ExternalDataStore;

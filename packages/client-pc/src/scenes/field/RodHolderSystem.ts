@@ -25,7 +25,8 @@ import {
   type ParkedRodLaunch, type ParkedRigSnapshot, type ParkedRodEvent, type RodItemSpec,
 } from '@tra/core';
 import { GameState, type ParkedRodSave } from '../../store/GameState.js';
-import { InventoryStore } from '../../store/InventoryStore.js';
+import { InventoryStore, type ParkedGear, type InvItem } from '../../store/InventoryStore.js';
+import { GroundItemStore } from '../../store/GroundItemStore.js';
 import { ExternalDataStore } from '../../store/ExternalDataStore.js';
 import { MultiplayerClient } from '../../net/MultiplayerClient.js';
 
@@ -40,6 +41,8 @@ export interface RodHolderHost {
   floatingHint: (msg: string) => void;
   /** 걸어 둔 낚싯대를 집어 1인칭으로 */
   pickUp: (rod: ParkedRodSave) => void;
+  /** 234차 — 가방이 차서 못 돌려받은 대 · 릴을 발밑에 내려놓는다(씬이 맵 구분 · 바닥 그림을 맡는다) */
+  dropAtFeet?: (item: InvItem, qty: number) => void;
 }
 
 /** 1인칭이 넘긴 거치 스냅샷(registry `fp_park`) */
@@ -88,11 +91,27 @@ export class RodHolderSystem {
     for (const p of [...GameState.parkedRods]) {
       if (p.regionId === host.regionId) continue;
       GameState.removeParkedRod(p.id);
-      if (p.gear) InventoryStore.returnParkedGear(p.gear);
+      if (p.gear) this.returnGear(p.gear);
       void MultiplayerClient.removeTrap(p.id);
       host.pushLog('[거치대] 두고 온 낚싯대를 거둬 왔다');
     }
     this.render();
+  }
+
+  /**
+   * 234차 — 거치대의 낚싯대 한 벌을 가방에 돌려놓는다. 자리가 없어 못 들어간 것은 **발밑에 내려놓는다**
+   * (지역을 옮기며 자동으로 거둘 때 · 서버가 거치를 거절했을 때 — 손으로 거둘 때는 미리 자리를 본다).
+   */
+  private returnGear(gear: ParkedGear): void {
+    const left = InventoryStore.returnParkedGear(gear);
+    if (!left.length) return;
+    for (const { item, qty } of left) {
+      if (this.host.dropAtFeet) { this.host.dropAtFeet(item, qty); continue; }
+      const p = this.host.player();
+      GroundItemStore.drop(this.host.regionId, Math.floor(p.x / this.host.tr), Math.floor(p.y / this.host.tr), item, qty, true);
+    }
+    GameState.markDirty();
+    this.host.pushLog(`[거치대] 가방에 자리가 없어 ${left.map((l) => l.item.name).join(', ')}을(를) 발밑에 내려놓았다 — [F]로 주울 수 있다`);
   }
 
   /** 이 맵에 걸어 둔 내 낚싯대(놓은 순서) */
@@ -139,13 +158,20 @@ export class RodHolderSystem {
       parkedAtMs: now, launch: req.launch, rig: req.rig,
       biteProbPerSec: req.biteProbPerSec, onReef: req.onReef, snagRisk: req.snagRisk, sinkerG: req.sinkerG,
       phase: 'waiting', phaseAtMs: now, gear,
+      tileX: Math.floor(at.x / this.host.tr), tileY: Math.floor(at.y / this.host.tr),
     };
     GameState.addParkedRod(rod);
-    const tr = this.host.tr;
     void MultiplayerClient.placeTrap({
       instanceId: rod.id, mapKey: this.host.mapKey,
-      tileX: Math.floor(at.x / tr), tileY: Math.floor(at.y / tr),
+      tileX: rod.tileX ?? 0, tileY: rod.tileY ?? 0,
       trapSpecId: 'rod_holder', deployedAtMs: now, kind: 'rod_holder',
+    }).then((r) => {
+      // 234차 — 서버가 거절(남의 거치대가 그 칸에 먼저)하면 거치를 되돌리고 낚싯대 한 벌을 가방으로
+      if (r.ok || !GameState.parkedRods.some((p) => p.id === rod.id)) return;
+      GameState.removeParkedRod(rod.id);
+      if (rod.gear) this.returnGear(rod.gear);
+      this.host.pushLog(`[거치대] ${r.reasonKo ?? '그 자리에는 세울 수 없습니다.'} — 낚싯대를 거둬 왔다`);
+      this.render();
     });
     this.holdCheckAt = 0;
     this.render();
@@ -407,9 +433,14 @@ export class RodHolderSystem {
   onInteractKey(): boolean {
     const rod = this.nearId ? this.mine().find((r) => r.id === this.nearId) : undefined;
     if (rod) {
+      // 234차 — 가방에 낚싯대 한 벌이 들어갈 자리가 없으면 거두지 않는다(구: 대 · 릴이 조용히 사라졌다 — 감사 높음-2)
+      if (rod.gear && !InventoryStore.parkedGearFits(rod.gear)) {
+        this.host.floatingHint('가방에 자리가 없다 — 낚싯대 한 벌이 들어갈 칸을 비운 뒤 거둔다');
+        return true;
+      }
       GameState.removeParkedRod(rod.id);
       void MultiplayerClient.removeTrap(rod.id);
-      if (rod.gear) InventoryStore.returnParkedGear(rod.gear);
+      if (rod.gear) this.returnGear(rod.gear);
       const old = this.views.get(rod.id); if (old) this.dropView(old); this.views.delete(rod.id);
       this.nearId = null; this.nearHint = null;
       this.render();   // 남은 거치대 번호를 다시 매긴다

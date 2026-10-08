@@ -106,6 +106,8 @@ export interface KmaWeatherInfo {
   waveHeightM?: number;
   /** 내일 하루 요약 (190차 — 집 라디오 「내일 날씨」). 단기예보가 내일 슬롯을 주지 않으면 없다 */
   tomorrow?: KmaDailyOutlook;
+  /** 234차 — 실데이터를 못 받아 만든 값(키 없음 · 네트워크 실패). 세션 정본 날씨로 올리지 않는다 */
+  mock?: boolean;
 }
 
 /** 하루 예보 요약 (190차) — 단기예보 슬롯들을 하루 단위로 접은 것 */
@@ -394,6 +396,7 @@ export class KmaVilageFcstApiClient {
       popPct: r(100),
       waveHeightM: r(30) / 10,
       tomorrow: this.mockOutlook(grid, new Date(now.getTime() + 24 * 3600 * 1000)),
+      mock: true,
     };
   }
 

@@ -235,11 +235,22 @@ export class TrapFieldSystem {
     };
     GameState.deployTrap(trap);
     GameState.markDirty();
-    // 145차 — 세션에 알린다. 실패해도(싱글·서버 없음) 내 통발은 그대로다.
+    // 145차 — 세션에 알린다. 닿지 못해도(싱글·서버 없음) 내 통발은 그대로다(다음 접속 때 대조가 맞춘다).
+    // 234차 — 서버가 **거절**하면(같은 칸에 남의 통발이 먼저 · 상한) 설치를 되돌리고 통발 · 미끼를 돌려준다.
     void MultiplayerClient.placeTrap({
       instanceId: trap.instanceId, mapKey: this.host.mapKey,
       tileX: tx, tileY: ty, trapSpecId: spec.id, deployedAtMs: now.getTime(),
-    }).then((r) => { if (!r.ok && r.reasonKo) this.host.floatingHint(r.reasonKo); });
+    }).then((r) => {
+      if (r.ok || !GameState.deployedTraps.some((x) => x.instanceId === trap.instanceId)) return;
+      GameState.removeTrap(trap.instanceId);
+      InventoryStore.giveBack(trapItem, 1);
+      InventoryStore.giveBack(baitItem, 1);
+      GameState.markDirty();
+      this.renderAll();
+      const why = r.reasonKo ?? '그 자리에는 놓을 수 없습니다.';
+      this.host.floatingHint(why);
+      this.host.pushLog(`[통발] ${why} — 통발과 미끼를 돌려받았습니다`);
+    });
     this.host.pushLog(`[통발] ${spec.nameKo} 설치 — 수심 ${depthM.toFixed(1)}m · 미끼 ${baitItem.name} · 최적 수거 ${getNextOptimalHarvestTime(trap).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`);
     this.host.floatingHint(`${spec.nameKo}을(를) 놓았습니다`);
     this.renderAll();

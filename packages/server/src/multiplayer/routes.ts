@@ -10,7 +10,7 @@
 
 import { Router } from 'express';
 import { SessionRegistry } from './SessionRegistry.js';
-import type { MpPeer, MpActivity, MpPlacedTrap, MpProfile, MpTradeItem } from '@tra/core';
+import type { MpPeer, MpActivity, MpPlaceItem, MpProfile, MpTradeItem } from '@tra/core';
 
 export const sessionRegistry = new SessionRegistry();
 
@@ -87,18 +87,25 @@ multiplayerRouter.post('/trade/applied', (req, res) => {
   res.json(sessionRegistry.tradeApplied(b.code, b.playerId, b.token, b.tradeId));
 });
 
-// ── 232차 공유 세계 자원 소비(채집 자리 · 과증식 개체) ──
+// ── 232차 공유 세계 기록(채집 자리 · 과증식 개체 · 234차 정본 날씨) ──
 multiplayerRouter.post('/world/take', (req, res) => {
-  const b = req.body as { code?: string; playerId?: string; token?: string; key?: string; ttlMs?: number; busy?: boolean; release?: boolean };
+  const b = req.body as { code?: string; playerId?: string; token?: string; key?: string; ttlMs?: number; busy?: boolean; release?: boolean; val?: string };
   if (!b.code || !b.playerId || !b.key) { res.json({ ok: false, reasonKo: '요청이 올바르지 않습니다.' }); return; }
-  res.json(sessionRegistry.takeWorld(b.code, b.playerId, b.token, b.key, { ttlMs: b.ttlMs, busy: b.busy, release: b.release }));
+  res.json(sessionRegistry.takeWorld(b.code, b.playerId, b.token, b.key, { ttlMs: b.ttlMs, busy: b.busy, release: b.release, val: b.val }));
 });
 
 // ── 145차 설치물 공유 — 통발은 놓는 순간 남에게도 보인다 ──
 multiplayerRouter.post('/trap/place', (req, res) => {
-  const b = req.body as { code?: string; playerId?: string; token?: string; trap?: Omit<MpPlacedTrap, 'ownerId' | 'ownerName'> };
+  const b = req.body as { code?: string; playerId?: string; token?: string; trap?: MpPlaceItem };
   if (!b.code || !b.playerId || !b.trap) { res.json({ ok: false, reasonKo: '요청이 올바르지 않습니다.' }); return; }
   res.json(sessionRegistry.placeTrap(b.code, b.playerId, b.token, b.trap));
+});
+
+// 234차 — 설치물 대조(접속 · 재접속 때 세이브의 내 설치물 목록으로 서버를 맞춘다)
+multiplayerRouter.post('/placed/sync', (req, res) => {
+  const b = req.body as { code?: string; playerId?: string; token?: string; items?: MpPlaceItem[] };
+  if (!b.code || !b.playerId) { res.json({ ok: false, reasonKo: '요청이 올바르지 않습니다.' }); return; }
+  res.json(sessionRegistry.syncPlaced(b.code, b.playerId, b.token, b.items ?? []));
 });
 
 multiplayerRouter.post('/trap/remove', (req, res) => {

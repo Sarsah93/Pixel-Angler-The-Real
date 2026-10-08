@@ -16,7 +16,7 @@ import {
   type GameMode, type MpPeer, type MpActivity, type MpPlacedTrap, type MpChatLine, type MpResume,
   type MpProfile, type MpTradeState, type MpTradeItem,
   type MpCreateSessionRes, type MpSessionInfoRes, type MpNameCheckRes, type MpJoinRes, type MpPresenceRes,
-  type MpRetireRes, type MpTakenLine,
+  type MpRetireRes, type MpTakenLine, type MpPlaceItem, type MpPlacedSyncRes,
 } from '@tra/core';
 
 /** 로비 설정은 브라우저에 남긴다 — 다음에 켤 때 서버 주소를 다시 치지 않게 */
@@ -96,6 +96,14 @@ class MultiplayerClientImpl {
   private takenSeq = 0;
   /** 다음 폴링에 실어 보낼 말 */
   private pendingSay = '';
+  /**
+   * 234차 — 설치물 대조. 내 세이브의 설치물 목록을 주는 함수(`GameState`가 세운다).
+   * 접속(새 비밀값)마다 한 번, 그리고 알림이 서버에 닿지 못한 뒤(`placedNeedSync`) 다시 맞춘다.
+   */
+  private placedProvider: (() => MpPlaceItem[]) | null = null;
+  private placedSyncToken = '';
+  private placedNeedSync = false;
+  private placedSyncing = false;
 
   constructor() {
     try {
@@ -262,6 +270,8 @@ class MultiplayerClientImpl {
       // 231차 — 응답을 기다리는 사이 나갔다(파산·싱글 전환) — 늦게 온 응답으로 상태를 되살리지 않는다
       if (!this.isConnected) return;
       if (!res?.ok) { this.peers = []; return; }
+      // 234차 — 이 접속에서 아직 설치물을 맞추지 않았거나, 알림이 서버에 닿지 못한 적이 있으면 맞춘다
+      if (this.placedProvider && (this.placedSyncToken !== this.token || this.placedNeedSync)) void this.syncPlaced();
       if (sentLook && sentLook === this.look) this.lookSent = true;
       if (sentProfile && sentProfile === this.profile) this.profileSent = true;
       this.peers = res.peers ?? [];
@@ -338,20 +348,49 @@ class MultiplayerClientImpl {
     return t.from.userId === this.userId ? { me: t.from, other: t.to } : { me: t.to, other: t.from };
   }
 
-  // ── 설치물 (통발) ─────────────────────────────────
-  /** 통발을 놓았다고 알린다 — 실패해도 내 통발은 로컬에 남는다(싱글과 같은 상태) */
-  async placeTrap(trap: Omit<MpPlacedTrap, 'ownerId' | 'ownerName'>): Promise<{ ok: boolean; reasonKo?: string }> {
+  // ── 설치물 (통발 · 화구 · 거치대) ──────────────────
+  /**
+   * 설치물을 놓았다고 알린다.
+   * - `ok:false` = **서버가 거절**(같은 칸에 남의 것이 먼저 · 상한) → 놓은 쪽이 설치를 되돌리고 아이템을 돌려준다(234차).
+   * - 서버에 닿지 못하면 내 설치물은 그대로 두고(`unreachable`) 다음 폴링 때 대조로 맞춘다.
+   */
+  async placeTrap(trap: MpPlaceItem): Promise<{ ok: boolean; reasonKo?: string; unreachable?: boolean }> {
     if (!this.isConnected) return { ok: true };
-    const res = await this.post<{ ok: boolean; reasonKo?: string }>('/mp/trap/place', {
+    const res = await this.post<{ ok: boolean; conflict?: boolean; reasonKo?: string }>('/mp/trap/place', {
       code: this.code, playerId: this.playerId, token: this.token, trap,
     });
-    return res ?? { ok: true };
+    // 닿지 못했거나 세션 쪽 사정(비밀값이 낡음 등)은 「거절」이 아니다 — 되돌리지 않고 대조에 맡긴다
+    if (!res || (!res.ok && !res.conflict)) { this.placedNeedSync = true; return { ok: true, unreachable: true }; }
+    return { ok: res.ok, reasonKo: res.reasonKo };
   }
 
-  /** 통발을 거뒀다고 알린다 */
+  /** 설치물을 거뒀다고 알린다 — 닿지 못하면 다음 폴링 때 대조가 지운다 */
   async removeTrap(instanceId: string): Promise<void> {
     if (!this.isConnected) return;
-    await this.post('/mp/trap/remove', { code: this.code, playerId: this.playerId, token: this.token, instanceId });
+    const res = await this.post('/mp/trap/remove', { code: this.code, playerId: this.playerId, token: this.token, instanceId });
+    if (!res) this.placedNeedSync = true;
+  }
+
+  /** 234차 — 내 세이브의 설치물 목록을 주는 함수를 세운다(`GameState` 모듈 초기화 때 한 번) */
+  setPlacedProvider(fn: () => MpPlaceItem[]): void { this.placedProvider = fn; }
+
+  /**
+   * 234차 — 서버의 내 설치물을 세이브와 똑같이 맞춘다(유령 지우기 · 빠진 것 다시 올리기).
+   * 같은 접속(비밀값)에서는 한 번만 — 알림이 서버에 닿지 못한 적이 있으면 다시.
+   */
+  async syncPlaced(): Promise<MpPlacedSyncRes | null> {
+    if (!this.isConnected || !this.placedProvider || this.placedSyncing) return null;
+    this.placedSyncing = true;
+    const token = this.token;
+    try {
+      const res = await this.post<MpPlacedSyncRes>('/mp/placed/sync', {
+        code: this.code, playerId: this.playerId, token, items: this.placedProvider(),
+      });
+      if (res?.ok && token === this.token) { this.placedSyncToken = token; this.placedNeedSync = false; }
+      return res;
+    } finally {
+      this.placedSyncing = false;
+    }
   }
 
   /** 남이 놓은 통발만 (내 것은 내 세이브가 그린다) */
@@ -412,21 +451,29 @@ class MultiplayerClientImpl {
    * 233차 — `ttlMs` = 다시 나타나기까지 · `busy` = 채집 중 잠금 · `release` = 내 잠금 풀기.
    * 서버가 「이미 남이」라고 하면 `{ mine:false, busy, by }`.
    */
-  async takeWorld(key: string, opts: { ttlMs?: number; busy?: boolean; release?: boolean } = {}): Promise<{ mine: boolean; busy?: boolean; by?: string }> {
-    if (!this.isConnected) return { mine: true };
+  async takeWorld(
+    key: string, opts: { ttlMs?: number; busy?: boolean; release?: boolean; val?: string } = {},
+  ): Promise<{ mine: boolean; busy?: boolean; by?: string; val?: string }> {
+    if (!this.isConnected) return { mine: true, val: opts.val };
     const cur = this.worldTakenInfo(key);
-    if (cur && !cur.mine) return { mine: false, busy: cur.busy, by: cur.by };
+    if (cur && !cur.mine) return { mine: false, busy: cur.busy, by: cur.by, val: cur.val };
     const now = Date.now();
     if (opts.release) this.worldTaken.delete(key);
-    else this.worldTaken.set(key, { seq: cur?.seq ?? 0, key, untilMs: now + (opts.ttlMs ?? 3_600_000), busy: opts.busy, by: this.name, mine: true });
-    const res = await this.post<{ ok: boolean; already?: boolean; busy?: boolean; by?: string }>('/mp/world/take', {
+    else {
+      this.worldTaken.set(key, {
+        seq: cur?.seq ?? 0, key, untilMs: now + (opts.ttlMs ?? 3_600_000), busy: opts.busy, by: this.name, mine: true,
+        ...(opts.val ?? cur?.val ? { val: opts.val ?? cur?.val } : {}),
+      });
+    }
+    const res = await this.post<{ ok: boolean; already?: boolean; busy?: boolean; by?: string; val?: string }>('/mp/world/take', {
       code: this.code, playerId: this.playerId, token: this.token, key, ...opts,
     });
     if (res && !res.ok && res.already) {
-      this.worldTaken.set(key, { seq: 0, key, untilMs: now + 120_000, busy: res.busy, by: res.by });
-      return { mine: false, busy: res.busy, by: res.by };
+      // 234차 — 먼저 쓴 사람의 값(정본 날씨)을 받아 둔다. 진짜 기한은 다음 폴링이 고친다
+      this.worldTaken.set(key, { seq: 0, key, untilMs: now + 120_000, busy: res.busy, by: res.by, ...(res.val ? { val: res.val } : {}) });
+      return { mine: false, busy: res.busy, by: res.by, val: res.val };
     }
-    return { mine: true };
+    return { mine: true, val: opts.val ?? cur?.val };
   }
 
   /** 싱글로 되돌리기 — 세션에서 나가고 폴링을 멈춘다 */

@@ -459,7 +459,6 @@ export class ButcheryPanel extends DraggablePanel {
   }
 
   override destroy(fromScene?: boolean): void {
-    InventoryStore.setTradedLineage(false);   // 233차 — 계보 모드는 이 창이 열려 있는 동안만
     // ── 이탈 정산 안전망 (사용자 리포트 2026-07-31 "ESC로 나가면 부산물이 사라짐") ──
     //  씬 ESC → UtilizationPanel.destroy → 이 destroy가 **requestClose를 거치지 않고 직행**하는
     //  경로가 있다(교체 확인·씬 셧다운도 동일). 부산물은 팝업 확인 시점에 이미 지급돼 있으므로:
@@ -473,6 +472,9 @@ export class ButcheryPanel extends DraggablePanel {
     } else if (!this.done) {
       this.revokeGranted();
     }
+    // 233차 — 계보 모드는 이 창이 열려 있는 동안만. 234차 — 이탈 정산(부산물 지급) **뒤에** 끈다:
+    //  먼저 끄면 거래로 받은 원물에서 나온 부산물이 「직접 마련한 것」으로 남았다(감사 낮음-6)
+    InventoryStore.setTradedLineage(false);
     this.closeSheetViewer();
     this.closeByproductPopup();
     this.editDrawG?.destroy();

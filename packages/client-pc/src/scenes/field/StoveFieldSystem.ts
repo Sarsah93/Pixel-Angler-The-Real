@@ -243,10 +243,17 @@ export class StoveFieldSystem {
     const { stove, fuel, cookware } = this.placing;
     const st = CookingStore.place(stove, fuel, cookware, this.host.mapKey, tx, ty);
     if (!st) { this.host.floatingHint('설치할 수 없습니다'); this.cancelPlacement(); return; }
-    // 145차 규칙 — 설치물은 세션에 알린다(통발 채널 · kind 'stove'). 실패해도 내 화구는 그대로다.
+    // 145차 규칙 — 설치물은 세션에 알린다(통발 채널 · kind 'stove'). 닿지 못해도 내 화구는 그대로다.
+    // 234차 — 서버가 거절하면(그 칸에 남의 화구가 먼저) 설치를 되돌리고 스토브 · 캐니스터 · 용기를 돌려준다.
     void MultiplayerClient.placeTrap({
       instanceId: st.instanceId, mapKey: this.host.mapKey, tileX: tx, tileY: ty,
       trapSpecId: st.heatSourceId, deployedAtMs: st.placedAtMs, kind: 'stove',
+    }).then((r) => {
+      if (r.ok || !CookingStore.undoPlace(st, fuel)) return;
+      this.renderAll();
+      const why = r.reasonKo ?? '그 자리에는 놓을 수 없습니다.';
+      this.host.floatingHint(why);
+      this.host.pushLog(`[요리] ${why} — 화구를 거둬 들였습니다`);
     });
     this.host.pushLog(`[요리] 화구 설치 — 연료 ${Math.round(st.fuelRemainMin)}분${st.cookwareId ? ` · ${getCookware(st.cookwareId)?.nameKo ?? ''} 장착` : ' · 용기 없음'}`);
     this.host.floatingHint('화구를 놓았습니다 — [F] 요리');

@@ -29,7 +29,15 @@ export interface GroundItem {
   placed?: boolean;
   /** 놓인 시각 (wall-clock) — 신선도 재시작 기준 */
   droppedAtMs: number;
+  /**
+   * 234차 — 맵이 여러 장인 레거시 지역(부산 8장)에서 **어느 맵**에 놓였나. 심리스 지역은 비워 둔다.
+   * 없으면(구세이브 · 심리스) 그 지역 모든 맵에서 보인다 — 구: 같은 칸 번호면 8장 전부에 떠 있었다(감사 낮음-4).
+   */
+  mapKey?: string;
 }
+
+/** 이 물건이 지금 맵에 보이는가 — 둘 중 하나라도 맵을 모르면 보인다(구세이브 · 심리스) */
+const onMap = (g: GroundItem, mapKey?: string): boolean => !g.mapKey || !mapKey || g.mapKey === mapKey;
 
 export interface GroundItemSaveState {
   items: GroundItem[];
@@ -41,29 +49,29 @@ class GroundItemStoreClass {
 
   get all(): readonly GroundItem[] { return this._items; }
 
-  /** 이 지역에 놓인 것만 */
-  inRegion(regionId: string): GroundItem[] {
-    return this._items.filter((g) => g.regionId === regionId);
+  /** 이 지역에 놓인 것만 (`mapKey` — 레거시 다중 맵 지역의 지금 맵) */
+  inRegion(regionId: string, mapKey?: string): GroundItem[] {
+    return this._items.filter((g) => g.regionId === regionId && onMap(g, mapKey));
   }
 
   /**
    * 캐릭터가 서 있는 범위에 걸리는 물건 (사용자 지시 — "필드 타일의 캐릭터 서있는 범위 내").
    * `radiusTiles`는 체비쇼프 거리(정사각 범위)로 센다 — 타일 격자에서 직관적이다.
    */
-  at(regionId: string, tx: number, ty: number, radiusTiles = 1): GroundItem[] {
-    return this._items.filter((g) => g.regionId === regionId
+  at(regionId: string, tx: number, ty: number, radiusTiles = 1, mapKey?: string): GroundItem[] {
+    return this._items.filter((g) => g.regionId === regionId && onMap(g, mapKey)
       && Math.abs(g.tx - tx) <= radiusTiles && Math.abs(g.ty - ty) <= radiusTiles);
   }
 
   /** 한 칸에 몇 개나 놓여 있는지 (과밀 방지 게이트용) */
-  countAt(regionId: string, tx: number, ty: number): number {
-    return this._items.filter((g) => g.regionId === regionId && g.tx === tx && g.ty === ty).length;
+  countAt(regionId: string, tx: number, ty: number, mapKey?: string): number {
+    return this._items.filter((g) => g.regionId === regionId && onMap(g, mapKey) && g.tx === tx && g.ty === ty).length;
   }
 
   /** 바닥에 놓기 — 같은 칸에 같은 아이템이 있으면 수량을 합친다 */
-  drop(regionId: string, tx: number, ty: number, item: InvItem | InvItemTemplate, qty: number, placed = false): GroundItem {
+  drop(regionId: string, tx: number, ty: number, item: InvItem | InvItemTemplate, qty: number, placed = false, mapKey?: string): GroundItem {
     const { qty: _q, slot: _s, ...tpl } = item as InvItem;
-    const same = this._items.find((g) => g.regionId === regionId && g.tx === tx && g.ty === ty && g.tpl.id === tpl.id);
+    const same = this._items.find((g) => g.regionId === regionId && g.mapKey === mapKey && g.tx === tx && g.ty === ty && g.tpl.id === tpl.id);
     if (same) {
       same.qty += qty;
       same.placed = same.placed || placed;
@@ -72,6 +80,7 @@ class GroundItemStoreClass {
     const g: GroundItem = {
       uid: `gi_${Date.now().toString(36)}_${this.seq++}`,
       regionId, tx, ty, tpl: tpl as InvItemTemplate, qty, placed, droppedAtMs: Date.now(),
+      ...(mapKey ? { mapKey } : {}),
     };
     this._items.push(g);
     return g;

@@ -14,6 +14,7 @@ import Phaser from 'phaser';
 import { getCreatureById } from '@tra/core';
 import { DraggablePanel } from './DraggablePanel.js';
 import { createItemIcon } from './ItemIcon.js';
+import { addPixelIcon } from './PixelIcon.js';
 import { maybeStartTour, type TourOptions } from './GuideTour.js';
 import { enforceTextBounds } from './TextFit.js';
 import { GameState } from '../store/GameState.js';
@@ -113,7 +114,10 @@ export class AquariumPanel extends DraggablePanel {
       if (!f || f.condition !== 'live') return;
       out.push({
         from: 'cooler', ref: idx,
-        fish: { speciesId: f.speciesId, nameKo: f.nameKo, lengthCm: f.lengthCm, weightG: f.weightG, sex: f.sex, iconTexture: f.iconTexture, catchMethod: f.catchMethod },
+        fish: {
+          speciesId: f.speciesId, nameKo: f.nameKo, lengthCm: f.lengthCm, weightG: f.weightG, sex: f.sex, iconTexture: f.iconTexture, catchMethod: f.catchMethod,
+          ...(f.toxin ? { toxin: true } : {}),   // 234차 — 표지는 수조를 거쳐도 남는다
+        },
       });
     });
     return out;
@@ -124,6 +128,8 @@ export class AquariumPanel extends DraggablePanel {
     return {
       speciesId: it.speciesId!, nameKo, lengthCm: it.lengthCm ?? 0, weightG: it.weightG ?? 0,
       sex: it.sex ?? 'M', iconTexture: it.iconTexture, catchMethod: it.catchMethod,
+      // 234차 — 패류독소 · 거래품 표지를 수조로 옮긴다(꺼낼 때 그대로 돌려준다)
+      ...(it.toxin ? { toxin: true } : {}), ...(it.traded ? { traded: true } : {}),
     };
   }
 
@@ -181,6 +187,9 @@ export class AquariumPanel extends DraggablePanel {
       const f = tank[i];
       if (!f) continue;
       this.content.add(createItemIcon(scene, cx + cw / 2, cy + 26, { icon: '', iconTexture: tankFishTexture(f, scene), name: f.nameKo }, 40));
+      // 234차 — 패류독소 표지(가방 칸과 같은 그림)
+      const tx12 = f.toxin ? addPixelIcon(scene, 'toxin', cx + cw - 12, cy + 12, 12) : null;
+      if (tx12) this.content.add(tx12);
       this.content.add(scene.add.text(cx + cw / 2, cy + 52, f.nameKo, { fontFamily: FONT, fontSize: '11px', color: '#e8f2fa' }).setOrigin(0.5, 0));
       this.content.add(scene.add.text(cx + cw / 2, cy + 67, `${f.lengthCm} cm`, { fontFamily: FONT, fontSize: '10px', color: '#9fd0e4' }).setOrigin(0.5, 0));
       const hit = scene.add.rectangle(cx + cw / 2, cy + 42, cw, 84, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
@@ -211,6 +220,9 @@ export class AquariumPanel extends DraggablePanel {
       const hit = scene.add.rectangle(this.listX + (LIST_W - 10) / 2, ry + (ROW_H - 4) / 2, LIST_W - 10, ROW_H - 4, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
       hit.on('pointerdown', () => this.putIn(c));
       this.content.add([bg, icon, name, len, src, hit]);
+      // 234차 — 패류독소 표지(가방 칸과 같은 그림) — 줄 배경 위에
+      const tx10 = c.fish.toxin ? addPixelIcon(scene, 'toxin', this.listX + 27, ry + 8, 10) : null;
+      if (tx10) this.content.add(tx10);
     });
     if (list.length > rows) {
       this.content.add(scene.add.text(this.listX + LIST_W - 10, this.contentTop + 10,
@@ -262,6 +274,7 @@ export class AquariumPanel extends DraggablePanel {
       basePrice: Math.max(2000, Math.round(f.weightG * 12)),
       condition: 'live', conditionSinceMs: Date.now(), equippable: false,
       speciesId: f.speciesId, lengthCm: f.lengthCm, weightG: f.weightG, sex: f.sex, catchMethod: f.catchMethod,
+      ...(f.toxin ? { toxin: true } : {}), ...(f.traded ? { traded: true } : {}),
     }, 1, { silent: true });
     if (!ok) { this.setStatus('가방(음식)에 빈 칸이 없다', '#ff9a7a'); return; }
     HomeStore.takeFromTank(this.tankId, i);

@@ -41,6 +41,7 @@ import { StoryStore } from './StoryStore.js';
 import { migrateCatchItemId, migrateSpeciesId } from '../data/SpeciesMigration.js';
 import { SHOP_CATALOG, CARD_RIG_ENTRIES } from '../data/ShopCatalog.js';
 import { rigViewOf } from './RigParts.js';
+import { itemKeepReason } from './ItemKeepGuard.js';
 
 /** 인벤토리 카테고리 탭 */
 export type InvCategory = 'gear' | 'consumable' | 'food' | 'tackle' | 'lure' | 'quest' | 'etc';
@@ -1164,19 +1165,27 @@ class InventoryStoreManager {
    * 208차 — 거치대의 낚싯대를 다시 잡는다: 옮겼던 것을 가방에 돌려놓고, 그 낚싯대의 채비 트리로 바꾼 뒤
    * 낚싯대 · 릴을 손에 든다(들고 있던 다른 낚싯대는 가방으로).
    */
-  returnParkedGear(g: ParkedGear): void {
+  returnParkedGear(g: ParkedGear): ParkedGear['items'] {
     let rodId: string | null = null;
     let reelId: string | null = null;
+    // 234차 — 가방이 차서 못 들어간 것은 돌려준다(호출측이 발밑에 내려놓는다 — 조용히 사라지던 대 · 릴 · 귀속 대)
+    const left: ParkedGear['items'] = [];
     for (const { item, qty } of g.items) {
       const { slot: _slot, qty: _q, ...tpl } = item;
+      if (!this.addItem({ ...tpl, equipped: false, equippedHand: undefined }, qty, { silent: true })) { left.push({ item, qty }); continue; }
       if (item.tool === 'rod') rodId = item.id;
       if (item.subCategory === '릴') reelId = item.id;
-      this.addItem({ ...tpl, equipped: false, equippedHand: undefined }, qty, { silent: true });
     }
     this._tree = { nodes: g.tree.nodes.map((n) => ({ ...n })) };
     this.syncTreeWithItems();
     if (rodId) this.equipHand(rodId, 'R');
     if (reelId) this.equipItem(reelId);
+    return left;
+  }
+
+  /** 234차 — 거치대의 낚싯대 한 벌이 지금 가방에 다 들어가는가(손으로 거둘 때 미리 본다) */
+  parkedGearFits(g: ParkedGear): boolean {
+    return Object.keys(this.slotShortfall(g.items.map(({ item, qty }) => ({ tpl: item, qty })))).length === 0;
   }
 
   itemAtSlot(cat: InvCategory, slot: number): InvItem | undefined {
@@ -1562,6 +1571,9 @@ class InventoryStoreManager {
    */
   tradeBlockReason(item: InvItem): string | null {
     if (item.bound) return '귀속 아이템은 양도할 수 없습니다';
+    // 234차 — 맡은 물건(어촌계 자전거 등) · 프롤로그에 아직 필요한 물건은 넘기지 못한다(넘기면 그 일이 막힌다)
+    const keep = itemKeepReason(item.id);
+    if (keep) return keep;
     if (item.equipped || item.equippedHand) return '착용 중인 장비는 먼저 벗어야 합니다';
     if (item.plateWip) return '미완성 접시는 양도할 수 없습니다';
     if (item.qty <= 0) return '수량이 없습니다';
@@ -1752,18 +1764,30 @@ class InventoryStoreManager {
    * 이미 가진 id는 수량만 늘어 칸이 필요 없고, 새 id만 분류별 빈 칸을 센다.
    */
   addBundle(parts: readonly { tpl: InvItemTemplate; qty: number }[], times = 1): boolean {
+    if (Object.keys(this.slotShortfall(parts)).length) return false;
+    for (const p of parts) this.addItem(p.tpl, p.qty * Math.max(1, times));
+    return true;
+  }
+
+  /**
+   * 234차 — 이 물건들을 다 넣으려면 분류별로 몇 칸이 **모자라는가**(다 들어가면 빈 객체).
+   * 이미 가진 id는 수량만 늘어 칸이 필요 없고, 새 id만 분류별 빈 칸을 센다(`addBundle`과 같은 셈).
+   * 퀘스트 보상 · 거치대 낚싯대처럼 「못 받으면 사라지는」 지급 앞에서 묻는다.
+   */
+  slotShortfall(parts: readonly { tpl: Pick<InvItemTemplate, 'id' | 'category'>; qty: number }[]): Partial<Record<InvCategory, number>> {
     const need: Partial<Record<InvCategory, number>> = {};
     const seen = new Set<string>();
     for (const p of parts) {
-      if (this.find(p.tpl.id) || seen.has(p.tpl.id)) continue;
+      if (p.qty <= 0 || this.find(p.tpl.id) || seen.has(p.tpl.id)) continue;
       seen.add(p.tpl.id);
       need[p.tpl.category] = (need[p.tpl.category] ?? 0) + 1;
     }
+    const lack: Partial<Record<InvCategory, number>> = {};
     for (const [cat, n] of Object.entries(need) as [InvCategory, number][]) {
-      if (this.freeSlotCount(cat) < n) return false;
+      const short = n - this.freeSlotCount(cat);
+      if (short > 0) lack[cat] = short;
     }
-    for (const p of parts) this.addItem(p.tpl, p.qty * Math.max(1, times));
-    return true;
+    return lack;
   }
 
   /** 224차 — 장화를 신고 있는가(신발 칸) */
@@ -1846,6 +1870,15 @@ class InventoryStoreManager {
     inv_place_aq_disp: { id: 'inv_place_aq_disp', name: '관상용 수족관',      icon: '🐟', category: 'etc', subCategory: '설치형', basePrice: 60000,  equippable: false, placeKey: 'aquarium_display' },
     inv_place_workbench: { id: 'inv_place_workbench', name: '작업대', icon: '', iconTexture: 'px:it_workbench', category: 'etc', subCategory: '설치형', basePrice: 180000, equippable: false, placeKey: 'workbench' },
   };
+
+  /**
+   * 234차 — 방금 꺼내 쓴 물건을 **그 모양 그대로** 돌려준다(멀티에서 설치가 거절됐을 때).
+   * 같은 id 칸이 남아 있으면 수량만 늘고, 없으면 신선도 시계 · 표지를 그대로 단 채 빈 칸에 들어간다.
+   */
+  giveBack(item: InvItem, qty = 1): boolean {
+    const { slot: _slot, qty: _qty, equipped: _eq, equippedHand: _hand, ...tpl } = item;
+    return this.addItem(tpl as InvItemTemplate, qty, { silent: true });
+  }
 
   recoverPlaceable(itemId: string): boolean {
     const existing = this.find(itemId);

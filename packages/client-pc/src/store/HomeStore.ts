@@ -15,6 +15,7 @@
  */
 
 import type { InvItem, InvCategory } from './InventoryStore.js';
+import { itemKeepReason } from './ItemKeepGuard.js';
 import {
   DEFAULT_LAYOUT, FURN_DEFS, DOOR_MAT, WALL_DECOR, footprint, inFloor, onDoorMat, wallDecorCols, ROOM_W, ROOM_H, FLOOR_TOP,
   type FurnInstance, type FurnKind, type FurnDir,
@@ -45,6 +46,13 @@ export interface TankFish {
   sex: 'M' | 'F';
   iconTexture?: string;
   catchMethod?: CatchMethod;
+  /**
+   * 234차 — 패류독소 채취 금지 기간에 캔 조개(229차 표지). 수조를 거쳐도 **그대로 남는다**
+   * (구: 수조에 넣었다 빼면 표지가 사라져 먹어도 탈이 안 나는 「세탁」이 됐다).
+   */
+  toxin?: boolean;
+  /** 234차 — 거래로 받은 개체(233차 계보 표지) — 수조를 거쳐도 「직접 마련한 것만」 퀘스트에서 빠진다 */
+  traded?: boolean;
   /** 넣은 시각 (ms) */
   addedMs: number;
 }
@@ -303,7 +311,10 @@ class HomeStoreManager {
   }
 
   accepts(kind: HomeStorageKind, item: InvItem): boolean {
-    if (item.equipped || item.bound) return false;
+    // 234차 — 귀속(이야기가 준 장비)도 집에는 둘 수 있다(구: 가방 말고 둘 곳이 없어 가방이 차고, 보상을 못 받는 일이 잦았다 — 감사 중간-1).
+    //  집 보관함은 내 것이라 판매 · 양도 금지와 부딪치지 않는다.
+    if (item.equipped) return false;
+    if (itemKeepReason(item.id)) return false;   // 234차 — 맡은 물건 · 프롤로그 물건은 집에 넣어 두지 않는다(그 일이 막힌다)
     return HOME_STORAGE[kind].accepts.includes(item.category);
   }
 

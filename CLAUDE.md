@@ -33,7 +33,7 @@
 - **`work-log`** — **작업 기록·문서 체계** (docs/wiki 4층·8절 양식·갱신 체크리스트). **모든 작업 완료 시 필수**
 - **`doc-readability`** — **문서 가독성 규칙** (빈 줄·줄 길이 상한·블록인용 제한·차수 요약 양식). **문서 기록·갱신 시 `work-log`와 함께 로드**
 
-## 현재 진행 상황 (2026-10-07) — 이어받기 요약
+## 현재 진행 상황 (2026-10-08) — 이어받기 요약
 
 > 로드맵·다음 착수·잔여는 **`.agents/IMPLEMENTATION_PLAN.md`**, 차수 본문은 **`docs/wiki/03-WORKLOG/`**
 > (색인 `03-WORKLOG/README.md` §3.1). 이 절에는 **최근 3개 차수만** 둔다 — 새 차수를 넣으면 가장 오래된 것을 지운다.
@@ -45,12 +45,13 @@
   맵 확정(육안)·OSM land 14개·조도 재설계·외옹치/대포항 bbox 확장은 사용자 동반 병행 트랙.
 - **재개 지점**: 사용자 실검증(172·173차 타일 조화 규칙 + 178·183~186차 신설분) — 부족하면 규칙 보강,
   괜찮으면 규칙을 켠 채로 새 맵 확장. 차수별 잔여는 PLAN §2-3.
+- **234차**: **퀘스트 물건 지키기 · 설치물 재동기화 · 세션 날씨 · 수조 꼬리표** — 맡은 물건 3종 버리기 · 거래 · 보관 불가 + 잃으면 재지급 ·
+  모으는 물건은 가방 개수가 진행 · 보상 전 가방 자리 확인 · `/mp/placed/sync` · 지역 × 1시간 날씨 카드 · 농사 시간 추천안(사용자 결정 대기).
+  상세 `docs/wiki/03-WORKLOG/2026-10-08-234-quest-items-placed-sync-session-weather.md`.
 - **233차**: **채집 재생 1~2일 · 채집 중 잠금 · 퀘스트 「직접 마련」** — 잡은 자리 24~48h 고갈(세이브 + 서버) · 놀이 잠금(활동 「채집 중」) ·
   거래품 꼬리표 → 까다로운 퀘 10건 거부 · 귀속 퀘스트 물건 확률 드롭 · 빌린 돈 인정. 상세 `docs/wiki/03-WORKLOG/2026-10-07-233-forage-respawn-lock-quest-provenance.md`.
 - **232차**: **거래 자동 저장 · 서버 인증 · 채집/과증식 공유** — 거래 직후 슬롯 저장 · join 비밀값 + `userId` 가리기 ·
   공유 소비 채널(채집 스팟 · 해파리) · 과증식 재입장 리스폰 차단. 상세 `docs/wiki/03-WORKLOG/2026-10-07-232-trade-autosave-auth-shared-world.md`.
-- **231차**: **파산 = 세이브 삭제 · 멀티 퇴장 · 멀티 전수조사** — 파산 즉시 슬롯 삭제 + 저장 잠금 · 서버 `/mp/retire` ·
-  캐릭터별 멀티 id(`mpUserId`) · 감사 15건(거래 복제 · 인증 · 채집 공유 등) → 백로그 BI. 상세 `docs/wiki/03-WORKLOG/2026-10-07-231-bankruptcy-erase-multiplayer-audit.md`.
 - **상시 방침**:
   - 지형 고도(DEM)는 **낚시 확립 후** — B(해안 변형) 우선, 경사로 통행을 막지 않는다
     (`docs/archive/specs/RASTER_UPLIFT_AMENDMENT.md` §4).
@@ -113,7 +114,7 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
 
 - 지역 타일맵 추가/재생성 → **스킬 `add-region`** (`py tools/build_region_maps.py <region>` — 파이프라인·타일 문자·맵 그래프·함정 일체).
 - 차기 과제: 낚시점 전용 상점(루어 판매), 어탐 레이더(SeabedProfile 조회), 타 지역(여수 등) 확장, POI 세분화, 사운드 이펙트 (IMPLEMENTATION_PLAN §6-5l 차기 참고).
-- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages — **최근 69차 배포 2026-10-07 = 233차(채집 재생 · 채집 중 잠금 · 퀘스트 직접 마련)까지 포함**. 재배포 절차는 **스킬 `deploy-ghpages`**).
+- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages — **최근 70차 배포 2026-10-08 = 234차(퀘스트 물건 지키기 · 설치물 재동기화 · 세션 날씨 · 수조 꼬리표)까지 포함**. 재배포 절차는 **스킬 `deploy-ghpages`**).
   ⚠ **원격 컨테이너에서는 dev 서버(5173)가 사용자 브라우저에 닿지 않는다** — 실플레이 테스트 요청은 이 배포로 답한다.
 
 ## 작업 이어받기 절차

@@ -80,6 +80,21 @@ class CookingStoreClass {
     return st;
   }
 
+  /**
+   * 234차 — 방금 놓은 화구를 **없던 일로** 되돌린다(멀티에서 서버가 그 자리를 거절했을 때).
+   * 회수와 달리 끼운 캐니스터도 그대로 돌려준다(아직 불을 붙이지 않았다). 조리를 시작했으면 되돌리지 않는다.
+   */
+  undoPlace(st: DeployedStove, fuelItem: InvItem): boolean {
+    const idx = GameState.deployedStoves.indexOf(st);
+    if (idx < 0 || this.isHome(st) || (st.session && st.session.contents.length > 0)) return false;
+    if (st.stoveItemId) InventoryStore.recoverPlaceable(st.stoveItemId);
+    if (st.cookwareItemId) InventoryStore.recoverPlaceable(st.cookwareItemId);
+    InventoryStore.giveBack(fuelItem, 1);
+    GameState.deployedStoves.splice(idx, 1);
+    GameState.markDirty();
+    return true;
+  }
+
   /** 회수 가능 사유 — 조리 중·완성 얹힘이면 거부 */
   recoverBlockReason(st: DeployedStove): string | null {
     if (this.isHome(st)) return '집 가스레인지는 회수할 수 없습니다';

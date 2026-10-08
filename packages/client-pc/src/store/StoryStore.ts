@@ -94,8 +94,15 @@ export interface StoryHost {
   grantProfLevelUp(skillId: string): boolean;
   /** 233차 — 개인 전용 퀘스트 아이템 1개를 가방에 넣는다(귀속). 공간이 없으면 false */
   giveQuestItem?(itemId: string): boolean;
-  /** 233차 — 퀘스트를 마치면 모은 퀘스트 아이템을 의뢰인에게 넘긴다(가방에서 뺀다) */
+  /** 233차 — 퀘스트를 마치면 모은 퀘스트 아이템을 의뢰인에게 넘긴다(가방에서 뺀다 · 234차 바닥에 둔 것도 거둔다) */
   takeQuestItems?(itemId: string, qty: number): void;
+  /** 234차 — 가방에 든 그 아이템 수(`collect` 목표 진행 = 보유 수) */
+  countItem?(itemId: string): number;
+  /**
+   * 234차 — 이 물건들이 가방에 다 들어가는가. 모자라면 「장비 칸 1개」 같은 한 줄, 다 들어가면 null.
+   * 완료 · 수락 보상을 주기 **전에** 묻는다(가방이 차서 못 받은 보상은 다시 얻을 길이 없다).
+   */
+  roomFor?(items: readonly { id: string; qty: number }[]): string | null;
 }
 
 export type StoryEvent =
@@ -136,6 +143,11 @@ export function catchMethodOfItem(item: SellableLike): CatchMethod {
   if (item.catchMethod) return item.catchMethod;
   return item.id?.startsWith('shop_') ? 'bought' : 'rod';
 }
+
+/** 234차 — `collect`(개인 퀘스트 물건 모으기) 목표가 있는 퀘스트 — 진행을 가방 보유 수로 맞출 대상 */
+const COLLECT_QUEST_IDS: ReadonlySet<string> = new Set(
+  STORY_QUESTS.filter((q) => q.objectives.some((o) => o.kind === 'collect' && !!o.itemId)).map((q) => q.id),
+);
 
 class StoryStoreManager {
   private host: StoryHost | null = null;
@@ -221,7 +233,69 @@ class StoryStoreManager {
   harborRep(regionId: string): number { return this.rep.harbor[regionId] ?? 0; }
   get seaRep(): number { return this.rep.sea; }
 
-  progress(id: string): QuestProgress | undefined { return this.quests[id]; }
+  progress(id: string): QuestProgress | undefined {
+    if (COLLECT_QUEST_IDS.has(id)) this.syncHeldQuestItems(id);   // 234차 — 모으는 목표는 가방 보유 수로
+    return this.quests[id];
+  }
+
+  /**
+   * 234차 — `collect` 목표의 진행 = **지금 가방에 든 그 물건 수**(주운 횟수 누적이 아니다).
+   * 버리면 물건은 소멸하고 진행도 같이 내려가 다시 모으면 된다(드롭도 다시 굴러간다).
+   * 「다 모았다」고 적혀 있는데 가방은 비어 의뢰인에게 넘길 게 없는 상태가 생기지 않는다.
+   * @param only 이 퀘스트만 맞춘다(없으면 진행 중인 모으기 퀘스트 전부)
+   * @returns 바뀐 것이 있었는가
+   */
+  syncHeldQuestItems(only?: string): boolean {
+    const h = this.host;
+    if (!h?.countItem) return false;
+    let changed = false;
+    for (const id of only ? [only] : COLLECT_QUEST_IDS) {
+      const p = this.quests[id];
+      const q = p?.status === 'active' ? getStoryQuest(id) : undefined;
+      if (!q || !p) continue;
+      q.objectives.forEach((o, i) => {
+        if (o.kind !== 'collect' || !o.itemId) return;
+        const v = Math.min(this.objectiveTarget(o), h.countItem!(o.itemId));
+        if ((p.obj[i] ?? 0) !== v) { p.obj[i] = v; changed = true; }
+      });
+    }
+    if (changed) h.markDirty();
+    return changed;
+  }
+
+  /**
+   * 234차 — 목표 구성이 바뀐 퀘스트의 구세이브 진행을 처음부터 다시 잡는다(목표 배열 길이가 다르면).
+   * M1-02 「얼음 나르기」가 2목표(일감 · 상점)에서 4목표(상자 확인 · 운반 · 하역 · 보고)로 바뀌어,
+   * 옛 진행값이 엉뚱한 목표 자리에 앉아 상자 없이 막혔다(감사 치명-5).
+   * @returns 다시 잡았는가
+   */
+  resetIfLayoutChanged(id: string): boolean {
+    const q = getStoryQuest(id); const p = this.quests[id];
+    if (!q || !p || p.status !== 'active' || p.obj.length === q.objectives.length) return false;
+    p.obj = q.objectives.map(() => 0);
+    p.actionSteps = {}; p.actionChoices = {};
+    this.host?.markDirty();
+    return true;
+  }
+
+  /**
+   * 234차 — 지금 이 장소에 닿기를 기다리는 목표가 있는가(진행 중 · 미완 · 차례가 온 `visit`).
+   * 필드는 기다리는 목표가 있을 때만 「도착했다」를 알리고 사건을 보낸다 — 퀘스트를 받기 전에 지나간
+   * 자리가 그 세션 동안 영영 안 잡히던 문제(감사 치명-4)를 없앤다.
+   */
+  wantsVisit(placeKey: string): boolean {
+    for (const [id, p] of Object.entries(this.quests)) {
+      if (p.status !== 'active') continue;
+      const q = getStoryQuest(id);
+      if (!q) continue;
+      for (let i = 0; i < q.objectives.length; i++) {
+        const o = q.objectives[i];
+        if (o.kind !== 'visit' || o.placeKey !== placeKey || o.manual) continue;
+        if (!this.objectiveDone(q, i) && this.objectiveReachable(q, i)) return true;
+      }
+    }
+    return false;
+  }
   isDone(id: string): boolean { return this.quests[id]?.status === 'done'; }
   isActive(id: string): boolean { return this.quests[id]?.status === 'active'; }
 
@@ -457,7 +531,7 @@ class StoryStoreManager {
     const h = this.host; const out: string[] = [];
     if (o.coins) { h?.addCoins(o.coins); out.push(`${o.coins > 0 ? '+' : ''}${o.coins.toLocaleString()}원`); this.onCoins?.(o.coins, q.titleKo); }
     for (const it of o.items ?? []) {
-      const ok = h?.giveItem(it.id, it.qty) ?? false;
+      const ok = h?.giveItem(it.id, it.qty, it.bound) ?? false;   // 234차 — 귀속 표지도 싣는다
       // 188차 — 내부 id(`inv_rod_budget`) 대신 아이템 이름 (R1)
       const name = h?.itemName(it.id) ?? it.id;
       out.push(ok ? `${name} ×${it.qty}` : `${name} (인벤토리 공간 부족 — 미지급)`);
@@ -498,6 +572,16 @@ class StoryStoreManager {
       this.onNotify?.(`[할 일] ${q.titleKo} — ${q.offerPolicy === 'once' ? '거절 (다시 오지 않습니다)' : '미룸'}`);
       return true;
     }
+    // 234차 — 수락하며 받는 물건(답에 딸린 물건 · M1-10 자전거)이 가방에 들어갈 자리부터 본다(못 받으면 다시 얻을 길이 없다)
+    this.lastRefusal = null;
+    const acceptItems = [...(c?.outcome.items ?? [])];
+    if (id === 'M1-10' && !(this.host?.countItem?.('inv_bike') ?? 0)) acceptItems.push({ id: 'inv_bike', qty: 1 });
+    const lackAccept = this.rewardRoomShortfall(acceptItems);
+    if (lackAccept) {
+      this.lastRefusal = lackAccept.replace('보상을 받을', '받을 물건이 들어갈');
+      this.onNotify?.(`[할 일] ${this.lastRefusal}`);
+      return false;
+    }
     this.quests[id] = { status: 'active', obj: q.objectives.map(() => 0), day: this.day };
     // M1-02는 별도 일감 클릭이 아니라 의뢰를 수락하는 순간 실제 퀘스트
     // 오브젝트를 받는다. 이후 확인→운반→하역→보고 순서를 밟아야 한다.
@@ -512,7 +596,8 @@ class StoryStoreManager {
     }
     // 188차 — 새 게임은 자전거가 없다(빈손 시작). 「공동작업」의 자전거 수리·탑승 목표에 쓸
     //   어촌계의 낡은 자전거를 수락할 때 내준다(구: dev 시드에만 있어 실플레이로는 R·bikeMount 불가).
-    if (id === 'M1-10') this.host?.giveItem('inv_bike', 1, false);
+    //  234차 — 구세이브(시드 자전거)처럼 가방에 이미 있으면 한 대 더 주지 않는다
+    if (id === 'M1-10' && !(this.host?.countItem?.('inv_bike') ?? 0)) this.host?.giveItem('inv_bike', 1, false);
     this.lastAction = 'accepted';
     // 140차 — 발주 톤 선택지(우호도 미세 차이)
     if (c) { this.choices[id] = { ...this.choices[id], offer: c.id }; this.applyOutcome(q, c.outcome); }
@@ -663,6 +748,11 @@ class StoryStoreManager {
     this.emitAction(o.actionKey, `action-choice:${choiceId}`);
   }
 
+  /** 234차 — 이 행동 목표의 방식을 의뢰인에게 한 번이라도 골랐는가(단계 무관) */
+  private actionEngaged(p: QuestProgress, objIdx: number): boolean {
+    return Object.keys(p.actionChoices ?? {}).some((k) => k.startsWith(`${objIdx}:`));
+  }
+
   /** 현재 action 단계에서 이미 전략/대화 선택을 기록했는지 */
   actionChoiceTaken(id: string, objIdx: number): boolean {
     const p = this.quests[id];
@@ -695,7 +785,15 @@ class StoryStoreManager {
         if (spec.source !== source) return;
         if (spec.eventOrigins?.length) {
           if (origin && spec.eventOrigins.includes(origin)) keys.add(o.actionKey);
-        } else generic.push(o.actionKey);
+          return;
+        }
+        // 234차 — 출처를 정하지 않은 행동 목표가 엉뚱한 사건에 오르던 것을 막는다(감사 중간-2 —
+        //  다른 의뢰를 세 번 수락하면 「선장 필기 합격」이 닫히고, 아무 일감 세 번에 「받침 전달」이 끝났다).
+        //  · 대화 · 선택 계통은 의뢰인 앞에서 고른 답 → 장면(`finishActionChoice`)으로만 오른다.
+        //  · 제작 · 운반 · 검사 · 현장 계통은 의뢰인에게 그 목표의 방식을 고른 뒤의 사건만 센다.
+        if (spec.source === 'dialogue' || spec.source === 'selection') return;
+        if (!this.actionEngaged(p, i)) return;
+        generic.push(o.actionKey);
       });
     }
     if (generic.length) keys.add(generic[0]);
@@ -708,6 +806,18 @@ class StoryStoreManager {
   lastRewardLines: string[] = [];
   /** 직전 accept/complete가 무엇이었나 (대화창 응답 화면 분기) */
   lastAction: 'accepted' | 'declined' | 'completed' | null = null;
+  /** 234차 — 직전 accept/complete가 거절된 까닭(가방 자리 부족 등). 대화창이 「지금은 진행할 수 없습니다」 대신 보여 준다 */
+  lastRefusal: string | null = null;
+
+  /**
+   * 234차 — 이 보상들이 가방에 다 들어가는가. 모자라면 까닭 한 줄(대화창 · 알림용), 다 들어가면 null.
+   * 받지 못한 보상은 다시 얻을 길이 없으므로 **주기 전에** 막는다(감사 높음-1).
+   */
+  private rewardRoomShortfall(items: readonly { id: string; qty: number }[]): string | null {
+    if (!items.length || !this.host?.roomFor) return null;
+    const lack = this.host.roomFor(items);
+    return lack ? `보상을 받을 가방 자리가 없습니다 — ${lack}를 비운 뒤 다시 말을 거세요` : null;   // lack은 늘 「…칸 N개」로 끝난다
+  }
 
   /** 고르지 않은 답들 — 보상은 `???`로 감춘다(재도전 동기). 대화창 응답·일지 공용 */
   otherChoices(q: StoryQuestDef, stage: 'offer' | 'complete', chosenId?: string): { label: string; reply?: string }[] {
@@ -721,12 +831,17 @@ class StoryStoreManager {
    */
   complete(id: string, choiceId?: string): boolean {
     const q = getStoryQuest(id); const p = this.quests[id];
+    this.lastRefusal = null;
+    if (q && COLLECT_QUEST_IDS.has(id)) this.syncHeldQuestItems(id);   // 234차 — 모은 물건은 지금 가방에 든 수로
     if (!q || !p || p.status !== 'active' || !this.allObjectivesDone(q)) return false;
+    const choice = choiceId ? this.visibleChoices(q, 'complete').find((c) => c.id === choiceId) : undefined;
+    // 234차 — 보상 물건(고정 보상 + 고른 답의 물건)이 가방에 다 들어가야 완료한다. 모자라면 완료하지 않고 까닭을 알린다
+    const lack = this.rewardRoomShortfall([...(q.rewards?.items ?? []), ...(choice?.outcome.items ?? [])]);
+    if (lack) { this.lastRefusal = lack; this.onNotify?.(`[할 일] ${lack}`); return false; }
     p.status = 'done'; p.day = this.day;
     this.everDone.add(id);
     const h = this.host;
     const aff = this.affinityOf(q.giver);
-    const choice = choiceId ? this.visibleChoices(q, 'complete').find((c) => c.id === choiceId) : undefined;
     const xpMult = affinityRewardMult(aff, q.kind, 'xp') * (q.kind === 'sub' ? (choice?.outcome.xpMult ?? 1) : 1);
     const coinMult = affinityRewardMult(aff, q.kind, 'coins');
     const xp = Math.round(q.xp * xpMult);
@@ -765,7 +880,8 @@ class StoryStoreManager {
       if (u === 'trainee' && this.traineeDay == null) this.traineeDay = this.day;
     }
     // 233차 — 모은 개인 전용 퀘스트 아이템은 의뢰인에게 넘어간다
-    for (const o of q.objectives) if (o.kind === 'collect' && o.itemId) h?.takeQuestItems?.(o.itemId, this.objectiveTarget(o));
+    //  234차 — 목표 수를 넘게 쥔 것 · 바닥에 둔 것까지 전부 거둔다(끝난 퀘스트의 물건이 쓸모없이 남지 않게)
+    for (const o of q.objectives) if (o.kind === 'collect' && o.itemId) h?.takeQuestItems?.(o.itemId, Number.POSITIVE_INFINITY);
     h?.markQuestDone(id);
     h?.markDirty();
     LedgerStore.questDone(q.titleKo);   // 211차
@@ -807,6 +923,7 @@ class StoryStoreManager {
       if (d.on.speciesId && d.on.speciesId !== ctx.speciesId) continue;
       const q = getStoryQuest(d.questId); const p = this.quests[d.questId];
       if (!q || !p || p.status !== 'active') continue;
+      this.syncHeldQuestItems(d.questId);   // 234차 — 버려서 줄었으면 다시 굴린다
       const idx = q.objectives.findIndex((o) => o.kind === 'collect' && o.itemId === d.itemId);
       if (idx < 0 || this.objectiveDone(q, idx) || !this.objectiveReachable(q, idx)) continue;
       if (rng() >= d.chance) continue;
@@ -928,7 +1045,8 @@ class StoryStoreManager {
       case 'license': return o.kind === 'license' && (!o.licenseId || o.licenseId === ev.licenseId) ? 'set' : null;
       case 'trap': return o.kind === 'trap' ? 'inc' : null;
       case 'sell': return o.kind === 'sell' && !(o.ownOnly && ev.traded) ? 'inc' : null;
-      case 'questItem': return o.kind === 'collect' && o.itemId === ev.itemId ? 'inc' : null;
+      // 234차 — 진행 = 가방 보유 수(`setValue`) — 버리면 줄고 다시 주우면 는다
+      case 'questItem': return o.kind === 'collect' && o.itemId === ev.itemId ? (this.host?.countItem ? 'set' : 'inc') : null;
       case 'visit': return o.kind === 'visit' && o.placeKey === ev.placeKey ? 'inc' : null;
       case 'custom':
         if (o.kind === 'custom' && o.placeKey === ev.key) return 'inc';
@@ -950,6 +1068,7 @@ class StoryStoreManager {
   private setValue(o: StoryObjective, ev: StoryEvent): number {
     if (ev.kind === 'level') return ev.level;
     if (ev.kind === 'coins') return ev.coins;
+    if (ev.kind === 'questItem') return Math.min(this.objectiveTarget(o), this.host?.countItem?.(ev.itemId) ?? 0);
     return this.objectiveTarget(o);
   }
 

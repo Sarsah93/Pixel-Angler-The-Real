@@ -116,4 +116,7 @@ export interface ParkedRodState {
   phaseAtMs: number;
   /** 209차 — 지금 상태로 굴린 시간(초). 입질 창을 벽시계가 아니라 이 값으로 잰다(구세이브 = 없음 → 0) */
   phaseAgeSec?: number;
+  /** 234차 — 세운 칸(멀티 설치물 대조용). 구세이브는 없다 → 월드 px ÷ 32(심리스 칸)로 어림한다 */
+  tileX?: number;
+  tileY?: number;
 }

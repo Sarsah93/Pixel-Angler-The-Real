@@ -716,6 +716,7 @@ export { renderNuisanceArt, NUISANCE_ART_KEYS } from './art/NuisanceArt.js';
 export type {
   GameMode, MpPeer, NameValidation,
   MpCreateSessionRes, MpSessionInfoRes, MpNameCheckRes, MpJoinRes, MpPresenceRes, MpRetireRes, MpTakenLine,
+  MpPlaceItem, MpPlacedSyncRes,
 } from './types/Multiplayer.js';
 export {
   SESSION_CODE_LEN, SESSION_CODE_ALPHABET, MP_DEFAULT_SERVER,
@@ -730,8 +731,15 @@ export type {
 } from './types/Multiplayer.js';
 export {
   MP_ACTIVITY_KO, MP_SHARED_RNG_KINDS, MP_CHAT_KEEP, MP_CHAT_MAX_LEN, MP_TAKEN_KEEP, MP_TAKEN_TTL_MAX_MS, MP_TAKEN_TTL_MIN_MS, MP_TAKEN_KEY_MAX,
-  isFieldActive, mpWorldSeed, mpTimeSlot, mpRng,
+  MP_TAKEN_VAL_MAX, MP_PLACED_MAX_PER_OWNER,
+  isFieldActive, mpWorldSeed, mpTimeSlot, mpRng, mpPlacedClash,
 } from './types/Multiplayer.js';
+
+// ── 234차 세션 정본 날씨 (지역 × 1시간 카드 · 공용 추첨 구간화) ──
+export type { SessionWeatherCard } from './rules/SessionWeather.js';
+export {
+  SESSION_WEATHER_SLOT_MS, sessionWeatherKey, encodeWeatherCard, decodeWeatherCard, sharedWeatherKind, quantizeShared,
+} from './rules/SessionWeather.js';
 
 // ── 146차 유저 간 거래(공증) · 정보 보기 · 플리마켓 계약 ──
 export type {

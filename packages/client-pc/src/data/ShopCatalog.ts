@@ -531,6 +531,8 @@ for (const def of Object.values(SHOP_CATALOG)) {
 }
 
 /** 224차 — 가게가 파는 물건 id(산 물건 되사기 판정 — `shopBuysItem`). 번들 구성품 id도 넣는다 */
+/** 프롤로그 냉동 오징어 id — `store/Prologue.ts`와 같은 값(스토어 import는 순환이라 값만 둔다) */
+const PROLOGUE_SQUID_ITEM_ID = 'inv_frozen_squid';
 const SHOP_ITEM_IDS = new Set<string>();
 for (const def of Object.values(SHOP_CATALOG)) for (const e of def.sells) {
   SHOP_ITEM_IDS.add(e.id);
@@ -570,6 +572,9 @@ export function shopBuysItem(
   if (!def.buysCategories.includes(i.category)) return false;
   if (i.category === 'gear') return true;
   if (i.category === 'food') {
+    // 234차 — 프롤로그 「얼린 오징어를 직판장에 판다」의 그 오징어(아버지 냉동고 몫 — 가게에서 산 것이 아니다).
+    //  224차 매입 규칙이 이 오징어를 빼먹어 새 게임이 프롤로그 판매 단계에서 멈췄다(`store/Prologue.ts` PROLOGUE_SQUID_ID).
+    if (i.id === PROLOGUE_SQUID_ITEM_ID) return true;
     if (SHOP_ITEM_IDS.has(i.id) || i.catchMethod === 'bought') return false;
     return !!(i.speciesId || i.dish || i.dishInstance || i.sashimi || i.byproductKind)
       || ['어획물', '손질 필렛', '손질 통마리', '부산물', '요리'].includes(i.subCategory);

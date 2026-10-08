@@ -467,7 +467,16 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-10-07 233차) — 채집 재생 1~2일 · 채집 중 잠금 · 퀘스트 「직접 마련」 · 개인 퀘스트 물건**
+**최근 변경 (2026-10-08 234차) — 퀘스트 물건 지키기 · 설치물 재동기화 · 세션 날씨 · 수조 꼬리표**
+
+- 맡은 물건(얼음 상자 · 어촌계 자전거 · 가족사진)은 버리기 · 팔기 · 거래 · 보관을 막고(`ItemKeepGuard` ← `QuestItemGuard`), 잃었으면 되돌려 준다(`repairQuestItems`).
+- 모으기 진행 = 가방 개수(버리면 내려감) · 보상 · 수락 전에 가방 자리 확인(`roomFor`) · 장소 도착은 들어갈 때 한 번 · 행동 목표는 방식을 고른 뒤 사건만.
+  프롤로그 냉동 오징어를 마트가 안 사 주던 회귀도 고쳤다.
+- 멀티: 설치물 `/mp/placed/sync`(새 토큰마다 · 되돌림은 `conflict`일 때만) · 날씨 = 지역 × 1시간 칸 카드 하나(`w:` · `WeatherSync`) · 수조가 독소 · 거래 꼬리표 보존.
+- 함정: 「넣다 실패하면 사라지는」 지급 금지(`slotShortfall` · 거치대 넘침은 발밑) · 날씨 카드는 신선한 실황만 올린다 · 거절과 못 닿음을 구분한다.
+  상세: [234차 워크로그](../docs/wiki/03-WORKLOG/2026-10-08-234-quest-items-placed-sync-session-weather.md).
+
+**이전 변경 (2026-10-07 233차) — 채집 재생 1~2일 · 채집 중 잠금 · 퀘스트 「직접 마련」 · 개인 퀘스트 물건**
 
 - 채집 고갈은 **타일 키**(`f:맵|스팟`) — 잡으면 24~48h(`WorldDepletionStore` 세이브 + 서버 세션 저장) · 놀이 여는 순간 잠금(`busy`) · 활동 「채집 중」.
 - 거래품 꼬리표(`traded`) → `ownOnly` 퀘 10건만 거부 · 귀속 퀘스트 물건 4종은 내 클라이언트가 확률로 굴림 · 거래로 받은 돈 = 돈 모으기 인정.
@@ -480,14 +489,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - join 비밀값 `token`(변경 요청마다 `authed()` 대조) · 남의 `userId` 응답 가리기 · 공유 소비 채널 `/mp/world/take`(채집 `f:` · 과증식 `n:`).
 - 함정: 공유 추첨에 면허 · 스킬을 넣지 않는다 · 가져간 과증식 개체도 난수는 똑같이 소비한다 · 새 엔드포인트는 `playerId`만으로 본인 판단 금지.
   상세: [232차 워크로그](../docs/wiki/03-WORKLOG/2026-10-07-232-trade-autosave-auth-shared-world.md).
-
-**이전 변경 (2026-10-07 231차) — 파산 = 세이브 삭제 · 멀티 퇴장 · 멀티 전수조사**
-
-- 파산 즉시 활성 슬롯 삭제 + 저장 잠금(`GameState.declareBankruptcy` — `saveToSlot`이 거부) · 새 게임 / 불러오기에서만 풀린다.
-- 서버 `POST /mp/retire`(자리 · 이름 즉시 해제 · 설치물 회수 · 거래 정리 · 무응답 재전송) · 멀티 id는 **캐릭터(세이브)마다**(`mpUserId`).
-- 함정: `retire` 뒤 `leave`가 자리를 되살리지 않게 `playerId`를 먼저 비운다 · 활동 상태는 `syncPeers` 파생식에 넣어야 남는다 ·
-  localStorage `userId`는 구세이브용 `legacyUserId`라 덮어쓰지 않는다. 전수조사 15건 → 백로그 BI.
-  상세: [231차 워크로그](../docs/wiki/03-WORKLOG/2026-10-07-231-bankruptcy-erase-multiplayer-audit.md).
 
 
 ---

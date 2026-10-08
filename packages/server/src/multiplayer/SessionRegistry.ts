@@ -24,12 +24,14 @@ import { join } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import {
   SESSION_CODE_LEN, SESSION_CODE_ALPHABET, MP_PRESENCE_TIMEOUT_MS,
-  MP_CHAT_KEEP, MP_CHAT_MAX_LEN, MP_TAKEN_KEEP, MP_TAKEN_TTL_MAX_MS, MP_TAKEN_TTL_MIN_MS, MP_TAKEN_KEY_MAX,
+  MP_CHAT_KEEP, MP_CHAT_MAX_LEN, MP_TAKEN_KEEP, MP_TAKEN_TTL_MAX_MS, MP_TAKEN_TTL_MIN_MS, MP_TAKEN_KEY_MAX, MP_TAKEN_VAL_MAX,
+  MP_PLACED_MAX_PER_OWNER, mpPlacedClash,
   MP_TRADE_PROPOSE_TIMEOUT_MS, MP_TRADE_RANGE_PX, MP_TRADE_MAX_ITEMS, MP_TRADE_REASON_KO,
   characterNameKey, validateCharacterName, isFieldActive,
   type MpPeer, type MpActivity, type MpPlacedTrap, type MpChatLine,
   type MpSavedSession, type MpResume,
   type MpTradeState, type MpTradeOffer, type MpTradeItem, type MpProfile, type MpRetireRes, type MpTakenLine,
+  type MpPlaceItem, type MpPlacedSyncRes,
 } from '@tra/core';
 
 interface SessionPlayer extends MpPeer {
@@ -62,8 +64,8 @@ interface Session {
    */
   trades: MpTradeState[];
   /**
-   * 공유 세계 자원 소비 기록 (232차 — 채집 자리 · 과증식 개체). 메모리에만 둔다 — 시간 슬롯 키라
-   * 서버를 다시 켜면 길어야 한 슬롯 동안 「이미 가져간 것」이 다시 보일 뿐이다.
+   * 공유 세계 기록 (232차 — 채집 자리 · 과증식 개체 / 234차 — 세션 정본 날씨 카드). 먼저 알린 사람이 임자.
+   * 233차부터 잠금(busy)이 아닌 줄은 세션 파일에 남는다 — 채집 고갈(1~2일)이 서버 재시작을 넘어간다.
    */
   taken: (MpTakenLine & { owner: string })[];
   takenSeq: number;
@@ -242,7 +244,8 @@ export class SessionRegistry {
     const ts = opts?.takenSince ?? -1;
     this.pruneTaken(s);
     // 233차 — 기한 · 잠금 · 이름을 실어 보낸다. 주인(userId)은 내보내지 않는다(재접속 열쇠)
-    const taken = ts < 0 ? [] : s.taken.filter((l) => l.seq > ts).map(({ seq, key, untilMs, busy, by }) => ({ seq, key, untilMs, busy, by }));
+    const taken = ts < 0 ? [] : s.taken.filter((l) => l.seq > ts)
+      .map(({ seq, key, untilMs, busy, by, val }) => ({ seq, key, untilMs, busy, by, ...(val ? { val } : {}) }));
     return { ok: true, peers, traps, chat, trade: this.maskTrade(this.tradeFor(s, me.userId), me.userId), taken };
   }
 
@@ -487,8 +490,8 @@ export class SessionRegistry {
    */
   takeWorld(
     code: string, playerId: string, token: string | undefined, key: string,
-    opts: { ttlMs?: number; busy?: boolean; release?: boolean } = {},
-  ): { ok: boolean; already?: boolean; busy?: boolean; by?: string; reasonKo?: string } {
+    opts: { ttlMs?: number; busy?: boolean; release?: boolean; val?: string } = {},
+  ): { ok: boolean; already?: boolean; busy?: boolean; by?: string; val?: string; reasonKo?: string } {
     const s = this.get(code);
     if (!s) return { ok: false, reasonKo: '세션을 찾을 수 없습니다.' };
     const me = this.authed(s, playerId, token);
@@ -499,7 +502,8 @@ export class SessionRegistry {
     const now = Date.now();
     const cur = s.taken.find((l) => l.key === k);
     // 기한이 지난 줄(풀린 잠금 · 다시 찬 자리)은 막지 않는다
-    if (cur && cur.untilMs > now && cur.owner !== me.userId) return { ok: false, already: true, busy: !!cur.busy, by: cur.by };
+    // 234차 — 먼저 쓴 사람의 값(정본 날씨 등)을 돌려준다 — 늦은 사람은 그 값을 따른다
+    if (cur && cur.untilMs > now && cur.owner !== me.userId) return { ok: false, already: true, busy: !!cur.busy, by: cur.by, val: cur.val };
     if (opts.release) {
       if (!cur) return { ok: true };
       // 지운 것도 알려야 남의 화면에서 잠금이 풀린다 — 기한을 지금으로 고친 줄을 새 번호로 남긴다
@@ -509,12 +513,18 @@ export class SessionRegistry {
       return { ok: true };
     }
     const ttl = Math.max(MP_TAKEN_TTL_MIN_MS, Math.min(MP_TAKEN_TTL_MAX_MS, Math.floor(opts.ttlMs ?? 3_600_000)));
+    // 값을 안 보내고 고쳐 쓰면(잠금 → 확정) 내 이전 값을 이어 간다
+    const val = typeof opts.val === 'string' ? opts.val.slice(0, MP_TAKEN_VAL_MAX)
+      : cur?.owner === me.userId ? cur.val : undefined;
     if (cur) s.taken = s.taken.filter((l) => l !== cur);
-    s.taken.push({ seq: ++s.takenSeq, key: k, untilMs: now + ttl, busy: !!opts.busy, by: me.name, owner: me.userId });
+    s.taken.push({
+      seq: ++s.takenSeq, key: k, untilMs: now + ttl, busy: !!opts.busy, by: me.name, owner: me.userId,
+      ...(val ? { val } : {}),
+    });
     if (s.taken.length > MP_TAKEN_KEEP) s.taken.splice(0, s.taken.length - MP_TAKEN_KEEP);
     s.dirty = true;
     if (!opts.busy) this.save(code);   // 잠금은 잦다 — 진짜 소비만 디스크로
-    return { ok: true };
+    return { ok: true, ...(val ? { val } : {}) };
   }
 
   /** 기한이 지난 소비 기록 정리 (지운 줄도 1분은 남겨 남이 「풀렸다」를 받게 한다) */
@@ -529,19 +539,87 @@ export class SessionRegistry {
   // 설치 통발 — 놓는 순간 남에게도 보인다
   // ═══════════════════════════════════════════════════
 
-  /** 통발 설치 알림. 같은 칸에 이미 있으면 거절한다(먼저 놓은 사람이 임자) */
-  placeTrap(code: string, playerId: string, token: string | undefined, trap: Omit<MpPlacedTrap, 'ownerId' | 'ownerName'>):
-  { ok: boolean; reasonKo?: string } {
+  /**
+   * 설치물 알림(통발 · 화구 · 거치대). 같은 칸을 **같은 종류**가 먼저 차지했으면 거절한다(먼저 놓은 사람이 임자).
+   * 234차 — 같은 id를 다시 보내면(응답을 못 받아 재전송) 그대로 성공 · 종류별 충돌 · 1인 상한.
+   * 거절 사유는 그대로 화면에 뜬다 — 놓은 쪽 클라이언트가 설치를 되돌리고 아이템을 돌려준다.
+   */
+  placeTrap(code: string, playerId: string, token: string | undefined, raw: MpPlaceItem):
+  { ok: boolean; conflict?: boolean; reasonKo?: string } {
     const s = this.get(code);
     if (!s) return { ok: false, reasonKo: '세션을 찾을 수 없습니다.' };
     const me = this.authed(s, playerId, token);
     if (!me) return { ok: false, reasonKo: '세션에서 나간 상태입니다.' };
-    const taken = s.traps.some((t) =>
-      t.mapKey === trap.mapKey && t.tileX === trap.tileX && t.tileY === trap.tileY);
-    if (taken) return { ok: false, reasonKo: '그 자리에는 이미 통발이 있습니다.' };
+    const trap = this.cleanPlaced(raw);
+    if (!trap) return { ok: false, reasonKo: '요청이 올바르지 않습니다.' };
+    const same = s.traps.find((t) => t.instanceId === trap.instanceId);
+    if (same) {
+      if (same.ownerId !== me.userId) return { ok: false, conflict: true, reasonKo: '요청이 올바르지 않습니다.' };
+      return { ok: true };   // 재전송 — 이미 받았다
+    }
+    const clash = s.traps.find((t) => mpPlacedClash(t, trap, t.ownerId === me.userId));
+    if (clash) {
+      const what = (trap.kind ?? 'trap') === 'stove' ? '화구가' : trap.kind === 'rod_holder' ? '거치대가' : '통발이';
+      return { ok: false, conflict: true, reasonKo: `그 자리에는 이미 ${clash.ownerName} 님의 ${what} 있습니다.` };
+    }
+    if (s.traps.filter((t) => t.ownerId === me.userId).length >= MP_PLACED_MAX_PER_OWNER) {
+      return { ok: false, conflict: true, reasonKo: '세계에 둔 설치물이 너무 많습니다 — 몇 개를 먼저 거두세요.' };
+    }
     s.traps.push({ ...trap, ownerId: me.userId, ownerName: me.name });
     s.dirty = true; this.save(code, true);
     return { ok: true };
+  }
+
+  /**
+   * 234차 — 설치물 대조. 접속(재접속)한 사람이 **세이브에 든 자기 설치물 전부**를 보내면 서버의 내 몫을 그대로 맞춘다.
+   * - 서버에만 있는 내 것(세이브 전에 꺼졌다 · 다른 기기에서 지웠다) = 유령 → 지운다.
+   * - 세이브에만 있는 것(알림이 서버에 닿지 못했다 · 서버를 새로 켰다) → 다시 올린다.
+   *   이미 남의 같은 종류가 그 칸에 있어도 올린다 — 둘 다 각자의 세이브에 실제로 있는 물건이라 지울 근거가 없다.
+   */
+  syncPlaced(code: string, playerId: string, token: string | undefined, items: MpPlaceItem[]): MpPlacedSyncRes {
+    const s = this.get(code);
+    if (!s) return { ok: false, reasonKo: '세션을 찾을 수 없습니다.' };
+    const me = this.authed(s, playerId, token);
+    if (!me) return { ok: false, reasonKo: '세션에서 나간 상태입니다.' };
+    const mine = new Map<string, MpPlaceItem>();
+    for (const raw of Array.isArray(items) ? items : []) {
+      const t = this.cleanPlaced(raw);
+      if (t && !mine.has(t.instanceId) && mine.size < MP_PLACED_MAX_PER_OWNER) mine.set(t.instanceId, t);
+    }
+    let removed = 0, added = 0;
+    s.traps = s.traps.filter((t) => {
+      if (t.ownerId !== me.userId) return true;
+      const keep = mine.get(t.instanceId);
+      if (!keep) { removed++; return false; }
+      mine.delete(t.instanceId);   // 이미 있다 — 자리 · 종류는 세이브 쪽으로 맞춘다
+      Object.assign(t, keep, { ownerId: me.userId, ownerName: me.name });
+      return true;
+    });
+    for (const t of mine.values()) {
+      // 남의 id와 겹치면(사실상 없음) 건너뛴다 — 남의 설치물을 덮어쓰지 않는다
+      if (s.traps.some((x) => x.instanceId === t.instanceId)) continue;
+      s.traps.push({ ...t, ownerId: me.userId, ownerName: me.name });
+      added++;
+    }
+    s.dirty = true; this.save(code, true);
+    return { ok: true, added, removed };
+  }
+
+  /** 클라이언트가 보낸 설치물 한 개를 믿을 수 있는 모양으로 — 아니면 null */
+  private cleanPlaced(raw: unknown): MpPlaceItem | null {
+    if (!raw || typeof raw !== 'object') return null;
+    const r = raw as Record<string, unknown>;
+    const str = (v: unknown, max: number): string => (typeof v === 'string' ? v.slice(0, max) : '');
+    const int = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? Math.floor(v) : null);
+    const instanceId = str(r.instanceId, 64), mapKey = str(r.mapKey, 64), trapSpecId = str(r.trapSpecId, 64);
+    const tileX = int(r.tileX), tileY = int(r.tileY);
+    if (!instanceId || !mapKey || tileX === null || tileY === null) return null;
+    const kind = r.kind === 'stove' || r.kind === 'rod_holder' ? r.kind : 'trap';
+    return {
+      instanceId, mapKey, tileX, tileY, trapSpecId,
+      deployedAtMs: int(r.deployedAtMs) ?? Date.now(),
+      ...(kind !== 'trap' ? { kind } : {}),
+    };
   }
 
   /** 통발 회수 — 놓은 사람만 지울 수 있다 */

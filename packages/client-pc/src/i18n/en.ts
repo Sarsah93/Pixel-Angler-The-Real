@@ -601,6 +601,43 @@ const EN_EXTRA: Record<string, string> = {
 
 /** 최종 사전 — 분야별 사전을 먼저 깔고 기본 사전이 덮는다(충돌 시 기본 우선) */
 export const EN_DICT: Record<string, string> = {
+  // 234차 — 설치물 · 수조
+  '세계에 둔 설치물이 너무 많습니다 — 몇 개를 먼저 거두세요.': 'You have too many things set out in the world — pick some up first.',
+  '그 자리에는 놓을 수 없습니다.': "You can't place it there.",
+  // 234차 — 이야기 보상 장비 · 서브 아크 가방 이름(141차부터 영어 사전이 비어 영어 화면에 한국어로 남았다)
+  '옛 계원의 채비 주머니': "An old member's tackle pouch",
+  '아버지의 릴대 (손에 맞춘 것)': "Dad's rod (fitted to your hand)",
+  '아버지의 릴 (드랙 재조정)': "Dad's reel (drag retuned)",
+  '정옥선의 손질 칼': "Ok-seon's fish knife",
+  '어촌계 실습생 헤드랜턴 (1,000lm)': 'Co-op trainee headlamp (1,000 lm)',
+  '도현수의 감천 튜닝 대': "Hyeon-su's Gamcheon-tuned rod",
+  '촬영 스태프 필드백': 'Film crew field bag',
+  '겨울 바다용 스피닝릴 (동결 드랙)': 'Winter-sea spinning reel (freeze-proof drag)',
+  '고래마루 지깅 로드': 'Goraemaru jigging rod',
+  '어촌계 원정 가방': 'Co-op expedition bag',
+  '탁만수의 새 죽간': "Tak Man-su's new bamboo rod",
+  '선장용 스피닝릴 (고속 기어)': "Captain's spinning reel (high-speed gear)",
+  '탁새벽의 서프 대': "Tak Sae-byeok's surf rod",
+  '가이드 가방 (구명조끼·멀미약·계측자)': 'Guide bag (life vest · seasickness pills · measuring board)',
+  '제주 대회 부상 로드 (각인)': 'Jeju tournament prize rod (engraved)',
+  '제주 대회 부상 릴 (각인)': 'Jeju tournament prize reel (engraved)',
+  '등대지기의 랜턴 (1,400lm)': "Lighthouse keeper's lantern (1,400 lm)",
+  '원거리 항해 가방': 'Long-voyage bag',
+  '탁새벽의 대 (마지막 캐스팅)': "Tak Sae-byeok's rod (the last cast)",
+  '탁새벽의 릴 (마지막 캐스팅)': "Tak Sae-byeok's reel (the last cast)",
+  '바람의 마운틴 백팩': "Baram's mountain backpack",
+  '씨바스터즈 태클 베스트': 'Seabusters tackle vest',
+  '채파도의 드라이백': "Chae Pa-do's dry bag",
+  // 234차 — 퀘스트 물건 지키기 · 되살리기 · 보상 자리
+  '정옥선에게 맡은 얼음 상자다. 경매장에 내려놓을 때까지 지니고 있자.': "Ok-seon trusted me with this ice crate. I'll hold on to it until it's set down at the auction hall.",
+  '어촌계에서 내준 자전거다. 한 번 타 볼 때까지는 지니고 있자.': "The co-op lent me this bicycle. I'll keep it at least until I've ridden it once.",
+  '아버지가 남긴 가족사진이다. 버릴 수 없다.': "It's the family photo Dad left behind. I can't throw it away.",
+  '[할 일] 얼음 나르기 — 바뀐 순서에 맞춰 처음부터 다시 진행합니다': '[Task] Ice Run — the steps changed, so it starts over from the beginning',
+  '[할 일] 정옥선의 얼음 상자를 다시 챙겼다': "[Task] You picked Ok-seon's ice crate back up",
+  '[할 일] 어촌계 자전거를 다시 끌고 왔다': "[Task] You wheeled the co-op's bicycle back",
+  '[할 일] 어촌계에서 자전거를 다시 내주었다': '[Task] The co-op lent you a bicycle again',
+  '맡은 얼음 상자는 경매장 옆 하역 표시 위에 내려놓아야 한다.': 'The ice crate has to be set down on the unloading mark by the auction hall.',
+  '가방에 자리가 없다 — 낚싯대 한 벌이 들어갈 칸을 비운 뒤 거둔다': 'No room in the bag — free up space for the whole rod set first',
   // 233차 — 퀘스트 전용 물건 · 채집 중
   '[할 일] 무언가 눈에 띄었지만 가방에 자리가 없다': '[Task] Something caught your eye, but your bag is full',
   '부탁받은 일에 쓸 물건 — 판매·양도 불가': 'For a task you took on — cannot be sold or traded',
@@ -705,6 +742,21 @@ const DOW_EN: Record<string, string> = {
 };
 /** 수치·이름이 끼어 있는 문장 — 정규식 규칙. 캡처 그룹은 그대로 옮긴다(이름은 사전을 다시 타지 않으므로 어종·아이템명은 한국어로 남을 수 있음). */
 export const EN_RULES: Rule[] = [
+  // ── 234차 설치물 대조 · 거절 되돌리기 ──
+  [/^그 자리에는 이미 (.+) 님의 (통발이|화구가|거치대가) 있습니다\.$/, (m) => `${m[1]} already has a ${m[2] === '통발이' ? 'trap' : m[2] === '화구가' ? 'stove' : 'rod holder'} there.`],
+  [/^\[통발\] (.+) — 통발과 미끼를 돌려받았습니다$/, (m, tr) => `[Trap] ${tr(m[1])} — your trap and bait were returned`],
+  [/^\[요리\] (.+) — 화구를 거둬 들였습니다$/, (m, tr) => `[Cooking] ${tr(m[1])} — you packed the stove back up`],
+  [/^\[거치대\] (.+) — 낚싯대를 거둬 왔다$/, (m, tr) => `[Rod holder] ${tr(m[1])} — you took the rod back`],
+  // 154차 화구 설치 로그(234차 — 영어 화면에 「Stove 설치 — 연료 55분」처럼 반쯤 남아 있었다)
+  [/^\[요리\] 화구 설치 — 연료 (\d+)분 · (.+) 장착$/, (m, tr) => `[Cooking] Stove set up — ${m[1]} min of fuel · ${tr(m[2])} fitted`],
+  [/^\[요리\] 화구 설치 — 연료 (\d+)분 · 용기 없음$/, '[Cooking] Stove set up — $1 min of fuel · no cookware'],
+  // ── 234차 퀘스트 물건 · 보상 자리 · 거치대 넘침 ──
+  [/^(.+) 칸 (\d+)개$/, (m, tr) => `${m[2]} ${tr(m[1])} slot${m[2] === '1' ? '' : 's'}`],
+  [/^(\[할 일\] )?(보상을 받을|받을 물건이 들어갈) 가방 자리가 없습니다 — (.+)를 비운 뒤 다시 말을 거세요$/,
+    (m, tr) => `${m[1] ? '[Task] ' : ''}No room in your bag for ${m[2] === '보상을 받을' ? 'the reward' : 'what you would receive'} — free up ${m[3].split(' · ').map(tr).join(', ')} and talk again`],
+  [/^\[거치대\] 가방에 자리가 없어 (.+)을\(를\) 발밑에 내려놓았다 — \[F\]로 주울 수 있다$/,
+    (m, tr) => `[Rod holder] No room in the bag, so you set ${m[1].split(', ').map(tr).join(', ')} down at your feet — pick them up with [F]`],
+  [/^(.+)\n이야기에서 받은 물건이라 버리면 다시 얻을 수 없습니다\.$/, (m, tr) => `${tr(m[1])}\nThis came from the story — once discarded, it can never be obtained again.`],
   // ── 233차 채집 잠금 · 퀘스트 전용 물건 · 직접 마련 ──
   [/^(.+) — (.+) 님이 채집 중이다$/, (m, tr) => `${tr(m[1])} — ${m[2]} is gathering it`],
   [/^(.+) 님이 (.+)을\(를\) 채집 중이다$/, (m, tr) => `${m[1]} is already gathering the ${tr(m[2])}`],
