@@ -201,7 +201,7 @@ export class TradePanel extends DraggablePanel {
     items.forEach((it, i) => {
       const ry = y + 28 + i * ROW_H;
       const tex = it.iconTexture;
-      const icon = createItemIcon(this.scene, x + 18, ry + ROW_H / 2, { icon: '', iconTexture: tex, name: it.name, category: 'etc', subCategory: '' } as unknown as InvItem, 16);
+      const icon = createItemIcon(this.scene, x + 18, ry + ROW_H / 2, { id: it.srcId, icon: '', iconTexture: tex, name: it.name, category: 'etc', subCategory: '' } as unknown as InvItem, 16);
       if (icon) b.add(icon);
       const t = this.scene.add.text(x + 34, ry + ROW_H / 2, `${it.name}  x${it.qty}${it.noteKo ? `  · ${it.noteKo}` : ''}`, { fontFamily: FONT, fontSize: '11px', color: '#d0e8f5' }).setOrigin(0, 0.5);
       clampTextWidth(t, COL_W - 70);

@@ -10,6 +10,7 @@
  */
 
 import type { InvItemTemplate } from '../store/InventoryStore.js';
+import { ITEM_ART_BY_ID } from './ItemArtManifest.js';
 
 export interface CookItemDef {
   /** core 재료 id */
@@ -77,12 +78,13 @@ export function applyCookItemFields<T extends { id: string }>(item: T): T {
 /** 식자재마트 요리 코너 — 상점 카탈로그가 스프레드한다 */
 const F = (id: string, name: string, icon: string, basePrice: number, price: number, maxPerPurchase: number, desc: string,
   extra: Partial<InvItemTemplate> = {}): InvItemTemplate & { price: number; maxPerPurchase: number; desc: string } => ({
-  id, name, icon: '', iconTexture: `px:${icon}`, category: 'food', subCategory: '식자재', basePrice, price, maxPerPurchase,
+  // 재료마다 그림이 따로 있으면 그것을(`ItemArtManifest`), 없으면 16x16 공용 아이콘을 쓴다
+  id, name, icon: '', iconTexture: ITEM_ART_BY_ID[id] ?? `px:${icon}`, category: 'food', subCategory: '식자재', basePrice, price, maxPerPurchase,
   equippable: false, desc, ...extra, ...COOK_ITEMS[id],
 });
 const S = (id: string, name: string, basePrice: number, price: number, maxPerPurchase: number, desc: string,
   extra: Partial<InvItemTemplate> = {}): InvItemTemplate & { price: number; maxPerPurchase: number; desc: string } => ({
-  id, name, icon: '', iconTexture: 'px:it_spice', category: 'consumable', subCategory: '양념', basePrice, price, maxPerPurchase,
+  id, name, icon: '', iconTexture: ITEM_ART_BY_ID[id] ?? 'px:it_spice', category: 'consumable', subCategory: '양념', basePrice, price, maxPerPurchase,
   equippable: false, desc, ...extra, ...COOK_ITEMS[id],
 });
 
@@ -112,16 +114,16 @@ export const COOK_CORNER = [
   S('cook_sesame_oil', '참기름', 500, 600, 20, '죽을 볶고 볶음을 마무리한다. 1큰술.'),
   S('cook_cooking_oil', '식용유', 200, 250, 30, '팬 구이·볶음. 1큰술.'),
   // 용기 · 화구 · 연료 (기타)
-  { id: 'cook_pot_camp', name: '코펠 냄비 (1.8L)', icon: '', iconTexture: 'px:it_pot', category: 'etc', subCategory: '조리도구', basePrice: 18000, price: 22000, maxPerPurchase: 2, equippable: false,
+  { id: 'cook_pot_camp', name: '코펠 냄비 (1.8L)', icon: '', iconTexture: 'art_pot_camp', category: 'etc', subCategory: '조리도구', basePrice: 18000, price: 22000, maxPerPurchase: 2, equippable: false,
     desc: '가볍고 얇다 — 빨리 끓고 빨리 식는다. 탕·조림·죽.', ...COOK_ITEMS.cook_pot_camp },
-  { id: 'cook_pot_home', name: '양수 냄비 (3.5L)', icon: '', iconTexture: 'px:it_pot', category: 'etc', subCategory: '조리도구', basePrice: 38000, price: 45000, maxPerPurchase: 1, equippable: false,
+  { id: 'cook_pot_home', name: '양수 냄비 (3.5L)', icon: '', iconTexture: 'art_pot_home', category: 'etc', subCategory: '조리도구', basePrice: 38000, price: 45000, maxPerPurchase: 1, equippable: false,
     desc: '두껍고 크다 — 온도가 천천히 움직여 실수 여유가 있다. 탕·조림·죽.', ...COOK_ITEMS.cook_pot_home },
-  { id: 'cook_pan', name: '프라이팬', icon: '', iconTexture: 'px:it_pan', category: 'etc', subCategory: '조리도구', basePrice: 22000, price: 26000, maxPerPurchase: 1, equippable: false,
+  { id: 'cook_pan', name: '프라이팬', icon: '', iconTexture: 'art_pan', category: 'etc', subCategory: '조리도구', basePrice: 22000, price: 26000, maxPerPurchase: 1, equippable: false,
     desc: '구이·볶음. 중불이 적정, 강불은 탄다.', ...COOK_ITEMS.cook_pan },
-  { id: 'cook_grate', name: '석쇠', icon: '', iconTexture: 'px:it_grate', category: 'etc', subCategory: '조리도구', basePrice: 9000, price: 11000, maxPerPurchase: 1, equippable: false,
+  { id: 'cook_grate', name: '석쇠', icon: '', iconTexture: 'art_grate', category: 'etc', subCategory: '조리도구', basePrice: 9000, price: 11000, maxPerPurchase: 1, equippable: false,
     desc: '직화 구이. 기름 없이 굽는다.', ...COOK_ITEMS.cook_grate },
-  { id: 'cook_stove_portable', name: '휴대용 가스스토브', icon: '', iconTexture: 'px:it_stove', category: 'etc', subCategory: '화구', basePrice: 32000, price: 38000, maxPerPurchase: 1, equippable: false,
+  { id: 'cook_stove_portable', name: '휴대용 가스스토브', icon: '', iconTexture: 'art_stove_portable', category: 'etc', subCategory: '화구', basePrice: 32000, price: 38000, maxPerPurchase: 1, equippable: false,
     desc: '현장 화구. 인벤토리에서 [화구 설치] — 캐니스터를 끼워야 불이 켜진다. 바람이 세면 화력이 준다.', ...COOK_ITEMS.cook_stove_portable },
-  { id: 'cook_butane_can', name: '부탄 캐니스터', icon: '', iconTexture: 'px:it_gascan', category: 'consumable', subCategory: '연료', basePrice: 1500, price: 2000, maxPerPurchase: 10, equippable: false,
+  { id: 'cook_butane_can', name: '부탄 캐니스터', icon: '', iconTexture: 'art_gascan', category: 'consumable', subCategory: '연료', basePrice: 1500, price: 2000, maxPerPurchase: 10, equippable: false,
     desc: '강불 기준 55분. 끼우면 되돌릴 수 없다.', ...COOK_ITEMS.cook_butane_can },
 ] as const;
