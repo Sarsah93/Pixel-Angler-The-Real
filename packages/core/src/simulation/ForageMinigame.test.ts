@@ -16,12 +16,12 @@ const DT = 16;
 type Bot = (s: ForageGameState, mem: { last: number; t: number; aim: number }, rng: () => number) => ForageGameInput;
 
 /** 조심스러운 사람 — 반응 지연 약 0.2초를 흉내 내려고 판단을 0.2초마다만 바꾼다 */
-const careful: Bot = (s, mem) => {
+const careful: Bot = (s, mem, rng) => {
   const inp: ForageGameInput = { aimX: mem.aim, press: false, hold: false };
   if (s.snatch) {
     const n = s.snatch;
     // 예측 — 멈칫(예고)이면 튈 자리로, 아니면 지금 자리로. 손은 천천히(놀라지 않게)
-    const goal = (n.phase === 'tell' || n.phase === 'dash' ? n.targetX : n.x) + (Math.random() - 0.5) * 0.04;
+    const goal = (n.phase === 'tell' || n.phase === 'dash' ? n.targetX : n.x) + (rng() - 0.5) * 0.04;
     const step = 0.7 * DT / 1000;
     mem.aim = Math.abs(goal - mem.aim) <= step ? goal : mem.aim + Math.sign(goal - mem.aim) * step;
     inp.aimX = mem.aim;
@@ -59,6 +59,9 @@ const LAG_STEPS = 12;
 
 function play(c: ShoreCreature, tool: ForageTool, bot: Bot, seed: number, lag = LAG_STEPS): ForageGameState {
   const rng = mulberry32(seed);
+  // 손떨림(봇의 조준 흔들림)은 **따로 시드를 준다** — `Math.random()`을 쓰면 승률이 실행마다 달라져
+  // 「갯강구 < 쫄장게 − 0.12」 같은 경계 비교가 가끔 실패했다. 놀이 쪽 난수열(`rng`)은 건드리지 않는다.
+  const jitter = mulberry32((seed ^ 0x9e3779b9) >>> 0);
   const s = createForageGame(c, tool, rng, 0);
   const mem = { last: -9999, t: 0, aim: s.snatch?.handX ?? 0 };
   const seen: ForageGameState[] = [];
@@ -69,7 +72,7 @@ function play(c: ShoreCreature, tool: ForageTool, bot: Bot, seed: number, lag = 
     const lagNow = Math.min(seen.length - 1, Math.floor(lag * 0.75 + rng() * lag * 0.7));
     const view = seen[seen.length - 1 - lagNow]!;
     view.t = s.t;   // 판단 간격(누름 쿨다운)은 지금 시각으로 센다
-    const inp = bot(view, mem, rng);
+    const inp = bot(view, mem, jitter);
     stepForageGame(s, inp, DT, rng, c);
   }
   return s;
