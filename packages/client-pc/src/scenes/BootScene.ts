@@ -349,38 +349,8 @@ export class BootScene extends Phaser.Scene {
     this.load.image('fish_silver_pomfret', 'fish/silver_pomfret.png');                // 병어 — 2026-09-23 픽셀아트 교체
     this.load.image('fish_korean_pomfret', 'fish/korean_pomfret.png');                // 덕대 — 2026-09-23 픽셀아트 교체
 
-    // ─── 남자 캐릭터 스프라이트 (12장) ───
-    // 정지 4방향
-    this.load.image('man-idle-front', 'characters/man/man-idle-front.png');
-    this.load.image('man-idle-back',  'characters/man/man-idle-back.png');
-    this.load.image('man-idle-left',  'characters/man/man-idle-left.png');
-    this.load.image('man-idle-right', 'characters/man/man-idle-right.png');
-    // 이동 4방향 × 2프레임
-    this.load.image('man-move-front-1', 'characters/man/man-move-front-1.png');
-    this.load.image('man-move-front-2', 'characters/man/man-move-front-2.png');
-    this.load.image('man-move-back-1',  'characters/man/man-move-back-1.png');
-    this.load.image('man-move-back-2',  'characters/man/man-move-back-2.png');
-    this.load.image('man-move-left-1',  'characters/man/man-move-left-1.png');
-    this.load.image('man-move-left-2',  'characters/man/man-move-left-2.png');
-    this.load.image('man-move-right-1', 'characters/man/man-move-right-1.png');
-    this.load.image('man-move-right-2', 'characters/man/man-move-right-2.png');
-
-    // ─── 여자 캐릭터 스프라이트 (12장, 향후 캐릭터 선택 시 사용) ───
-    this.load.image('girl-idle-front', 'characters/girl/girl-idle-front.png');
-    this.load.image('girl-idle-back',  'characters/girl/girl-idle-back.png');
-    this.load.image('girl-idle-left',  'characters/girl/girl-idle-left.png');
-    this.load.image('girl-idle-right', 'characters/girl/girl-idle-right.png');
-    this.load.image('girl-move-front-1', 'characters/girl/girl-move-front-1.png');
-    this.load.image('girl-move-front-2', 'characters/girl/girl-move-front-2.png');
-    this.load.image('girl-move-back-1',  'characters/girl/girl-move-back-1.png');
-    this.load.image('girl-move-back-2',  'characters/girl/girl-move-back-2.png');
-    this.load.image('girl-move-left-1',  'characters/girl/girl-move-left-1.png');
-    this.load.image('girl-move-left-2',  'characters/girl/girl-move-left-2.png');
-    this.load.image('girl-move-right-1', 'characters/girl/girl-move-right-1.png');
-    this.load.image('girl-move-right-2', 'characters/girl/girl-move-right-2.png');
-
     this.load.on('complete', () => {
-      console.log('[BootScene] 에셋 로드 완료 — 픽셀 지도 + 캐릭터 스프라이트');
+      console.log('[BootScene] 에셋 로드 완료');
     });
   }
 }
