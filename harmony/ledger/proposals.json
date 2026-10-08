@@ -1,5 +1,18 @@
 {
  "schema": 1,
- "next_id": 1,
- "proposals": []
+ "next_id": 2,
+ "proposals": [
+  {
+   "id": "P-0001",
+   "date": "2026-10-08",
+   "domain": "08-notes-memory",
+   "kind": "적용",
+   "title": "커밋·푸시 금지 규칙에 일일 점검 예외 명시 (CLAUDE.md 규칙 0 · AGENTS.md §8-12)",
+   "pr": 1,
+   "branch": "harmony/2026-10-08",
+   "status": "열림",
+   "decided_at": null,
+   "findings": []
+  }
+ ]
 }
