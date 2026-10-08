@@ -68,7 +68,7 @@
 - `tools/` — 루트 유틸 스크립트 (`build_region_maps.py`, `pixelize.py` 등).
 - `pixelazed/` — 지역 실지형 픽셀 지도 원본 PNG (타일맵 파이프라인 입력).
 - `food assets/` — 어종/손질/부산물 실사 원본 (파이프라인 입력 — **이름 변경 금지**, 도구 경로 참조 다수).
-- `assets/` — 기타 원본 (2026-08-05 정리): `branding/`(타이틀·아이콘 소스) · `characters/`(man/girl 원본 — 소비본은 `public/characters/`) · `guide/`(sashimi_pixel_guide.svg — pixelize_butchery 입력).
+- `assets/` — 기타 원본 (2026-08-05 정리): `branding/`(타이틀·아이콘 소스) · `characters/`(man/girl 옛 캐릭터 원본 — 보존만. 소비본과 로드는 레거시 필드와 함께 삭제) · `guide/`(sashimi_pixel_guide.svg — pixelize_butchery 입력).
 - `docs/` — `reference/`(공공 API 활용가이드·09.수심.zip·경락 CSV 등 외부 데이터 원본) · `mockups/`(UI 목업 — game_guide_hub.html = 가이드 삽화 19장 재렌더 소스).
 
 ## 자주 쓰는 명령어 (Windows, 레포 루트 기준)
@@ -93,7 +93,7 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
      풀 리퀘스트를 연다. `main` · `gh-pages` 푸시와 병합은 여전히 사용자만 한다. 일반 세션에는 이 예외가 없다.
      (기록과 절차는 `harmony-state` 브랜치의 `harmony/README.md`)
 1. `@tra/core`에 렌더링/브라우저 코드 금지.
-2. 하위 씬에서 `scene.start('FieldScene')` 금지 — 반드시 `scene.stop()` + `scene.resume('FieldScene')`.
+2. 필드에서 연 하위 씬에서 `scene.start('RegionFieldScene')` 금지 — 반드시 `scene.stop()` + `scene.resume('RegionFieldScene')`.
 3. `GameState`(대문자 싱글톤)만 사용, `gameState` 소문자 인스턴스 없음.
 4. 씬 키 = 파일명. 변경 시 `main.ts` 동시 수정.
 5. `TideInfo`·`SpotType` 등 확정 타입 임의 변경 금지.

@@ -81,7 +81,7 @@ the-real-angler/
 - `gameState` (소문자) 인스턴스는 존재하지 않음 — 항상 `GameState` (대문자) 사용
 
 ### 씬 전환 패턴 (중요 — 반드시 준수) → 상세는 **스킬 `scene-transition`**
-- 필드 → 하위 씬 = `pause` + `launch` / 복귀 = `this.scene.stop()`(인자 없이) + `resume`. **하위 씬에서 `scene.start('FieldScene')` 절대 금지**(필드 재생성 = 상태 초기화). 필드 create()에 `on('resume', fadeIn)` 필수.
+- 필드 → 하위 씬 = `pause` + `launch` / 복귀 = `this.scene.stop()`(인자 없이) + `resume`. **하위 씬에서 `scene.start('RegionFieldScene')` 절대 금지**(필드 재생성 = 상태 초기화). 필드 create()에 `on('resume', fadeIn)` 필수.
 - 페이드아웃 대기는 bare `camerafadeoutcomplete` 금지 — **`scenes/SceneFade.ts`의 `fadeOutThen`**(폴백 타이머+이중 실행 가드) 경유 (73차 전수 적용. 대형 씬 3곳은 자체 fadeOutThen 유지).
 - 재진입 가드(`isTransitioning`)는 **create()에서 리셋** + 비용 차감은 가드 통과 후.
 
@@ -227,22 +227,8 @@ OSM 실측 기반이라도 **도로 위에 선 건물·간판은 틀린 그림**
 | Phaser 씬: MainMenu | `client-pc/src/scenes/MainMenuScene.ts` |
 | Phaser 씬: WorldMap | `client-pc/src/scenes/WorldMapScene.ts` |
 | Phaser 씬: RegionField (실지형 타일맵) | `client-pc/src/scenes/RegionFieldScene.ts` |
-| Phaser 씬: Field (탑다운 재작성) | `client-pc/src/scenes/FieldScene.ts` |
-| Phaser 씬: Fishing | `client-pc/src/scenes/FishingScene.ts` |
-| Phaser 씬: TackleRoom | `client-pc/src/scenes/TackleRoomScene.ts` |
-| Phaser 씬: TideChart | `client-pc/src/scenes/TideChartScene.ts` |
 | Phaser 씬: AnglerLog | `client-pc/src/scenes/AnglerLogScene.ts` |
-| Phaser 씬: NightHunting | `client-pc/src/scenes/NightHuntingScene.ts` |
-| Phaser 씬: Trap | `client-pc/src/scenes/TrapScene.ts` |
-| Phaser 씬: Restaurant | `client-pc/src/scenes/RestaurantScene.ts` |
-| Phaser 씬: Condo | `client-pc/src/scenes/CondoScene.ts` |
-| Phaser 씬: Cook | `client-pc/src/scenes/CookScene.ts` |
-| UI: TackleSetupPanel | `client-pc/src/ui/TackleSetupPanel.ts` |
 | UI: LicensePanel | `client-pc/src/ui/LicensePanel.ts` |
-| UI: CoolingBoxPanel | `client-pc/src/ui/CoolingBoxPanel.ts` |
-| UI: HUD (퀵슬롯+STATUS+커뮤니티) | `client-pc/src/ui/HUD.ts` |
-| UI: MiniMap (3단계 크기 토글) | `client-pc/src/ui/MiniMap.ts` |
-| UI: InfoOverlayPanel (인벤토리/퀘스트) | `client-pc/src/ui/InfoOverlayPanel.ts` |
 | 퀘스트 DB | `core/src/db-schema/QuestDatabase.ts` |
 | 경매 엔진 (AuctionEngine) | `core/src/simulation/AuctionEngine.ts` |
 | 수산물 경락 시세 타입 + 어종 매핑 | `core/src/types/Economy.ts` |
@@ -265,12 +251,8 @@ OSM 실측 기반이라도 **도로 위에 선 건물·간판은 틀린 그림**
 | 피딩타임 계산기 (계절 시간창×조류×날씨) | `core/src/simulation/FeedingTimeCalculator.ts` |
 | 보일링/스쿨링 필드 이벤트 (발생 롤·연출·착수 판정) | `client-pc/src/ui/FieldEventManager.ts` |
 | 루어 채비 연산 (총중량/Cd/침강 프로파일) | `core/src/simulation/LureRig.ts` |
-| 영역기반 라이브 필드 레이아웃 엔진 | `client-pc/src/data/SpotFieldLayouts.ts` |
-| 포항 영일만 픽셀 지형 맵 데이터 | `client-pc/src/data/YoilBayFieldMap.ts` |
-| 조류/수심 픽셀 시각화 렌더러 | `client-pc/src/ui/HydroCurrentRenderer.ts` |
 | 월드맵 핀포인트 노드 타입 + DB | `core/src/types/WorldMap.ts` |
 | WorldMapScene 전면 개편 (픽셀 지도 + 동적 핀 + 툴팁) | `client-pc/src/scenes/WorldMapScene.ts` |
-| FieldScene 캐릭터 스프라이트 교체 (man/girl 에셋) | `client-pc/src/scenes/FieldScene.ts` |
 | 에셋 이미지 공개 디렉토리 구성 | `client-pc/public/` |
 | 지역 상세 타일맵 타입 + 맵 그래프 | `core/src/types/RegionMap.ts` |
 | 실지형 지도 → 타일/콜리전 변환 도구 | `tools/build_region_maps.py` |
@@ -312,44 +294,31 @@ OSM 실측 기반이라도 **도로 위에 선 건물·간판은 틀린 그림**
 
 ---
 
-## 6. FieldScene 탑다운 월드 구조 (2026-07-07 재설계)
+## 6. 필드 단축키 (`RegionFieldScene`)
 
-FieldScene은 **바람의나라 스타일** 탑다운 4방향 이동 씬으로 전면 재설계됨:
+> 2026-07-07에 재설계했던 레거시 `FieldScene`(탑다운 2048 × 1536 월드)과 그 하위 씬 묶음(Fishing · Trap · NightHunting ·
+> Cook · Condo · TackleRoom · Restaurant · TideChart)은 **삭제했다**(2026-10-08 사용자 결정). 필드는 6b의 `RegionFieldScene` 하나다.
 
-- **월드 크기**: 2048 × 1536 픽셀 (TILE 16px 기준)
-- **이동**: **방향키 전용** (WASD는 이동에서 분리 — 향후 별도 단축키 바인딩 예약)
-- **카메라**: `startFollow(playerBody)` + `setBounds(0, 0, 2048, 1536)`
-- **플레이어**: `physics.add.image` (충돌 바디) + `add.image` (실제 man 스프라이트 교체 방식)
-- **구역 배치** (`ZONES` 상수):
-  - 심해(상단), 낚시 포인트 3개, 통발 수역, 방파제 수평띠, 마을, 갯벌
-- **건물** (`BUILDINGS` 상수): 낚시점/마트/식당/면허사무소/민박/어판장
-- **근접 상호작용**: 건물에 60px 이내 접근 시 `[E]` 힌트 팝업 표시 (레거시 FieldScene — 심리스 `RegionFieldScene`은 `[F]`, 122차)
-- **씬 전환**: `pause + launch` 방식 (위 씬 전환 패턴 참고)
-
-### FieldScene 단축키 전체 목록
+아래는 `RegionFieldScene.setupInput()` 기준이다.
 
 | 키 | 기능 |
 |---|---|
-| `방향키` | 캐릭터 이동 (이동 **전용**) |
-| `WASD` | 예약 — 향후 별도 기능 (`on('keydown-W', ...)` 이벤트 방식으로 추가) |
-| `SPACE` / `ENTER` | 낚시 포인트 진입 |
-| `F` | **상호작용**(122차 E→F) — 오브젝트 > 건물 거래 > 채집 스팟(길게) > 통발 수거 |
-| `E` | 장비창 토글 (122차 — 상호작용에서 분리) |
-| `H` | (레거시 FieldScene) 해루질 씬 — 심리스 필드는 인-맵 채집 `F` |
-| `T` | 통발 설치(121차 인-맵) / 레거시 FieldScene은 TrapScene |
-| `C` | 요리 (CookScene) |
-| `U` | 제작대 (CraftScene 예정; 현재 CookScene 임시 연결) |
-| `L` | 면허 · 허가 패널 (122차 재작성) |
-| `K` | 스킬 트리 (122차) |
-| `J` | 일지 — 스토리 · 메인/서브 퀘스트 (122차) |
-| `I` | 인벤토리 패널 토글 |
-| `Q` | (레거시 FieldScene) 퀘스트 저널 — 심리스 필드는 `J` |
-| `M` | 미니맵 크기 순환 (150 → 250 → 350px) |
-| `V` | 조류/수심 오버레이 토글 (HydroCurrentRenderer) |
-| `R` | 자전거 승·하차 (탑승 시 이동 속도 2배 — RegionFieldScene 공통, 낚시/상점 진입 시 자동 하차) |
+| `방향키` | 캐릭터 이동 (일시정지 메뉴에서는 ↑↓ = 항목 이동) |
+| `F` | **상호작용**(122차 E→F) — 오브젝트 > 건물 거래 > 채집 스팟(길게) > 통발 수거. 겹치면 고르는 창(178차) · `Shift+F` = 회수 |
+| `E` | 장비창 (122차 — 상호작용에서 분리) |
+| `I` | 인벤토리 |
+| `S` | 상태 창 |
+| `U` | 활용 창 (`UtilizationPanel` — 채비 조립 등) |
+| `B` | 쿨러 |
+| `T` | 통발 놓기 (121차 인-맵) |
+| `L` / `K` / `J` | 면허 · 허가 / 스킬 트리 / 일지 (122차) |
+| `N` | 도감 · 조과첩 (`AnglerLogScene` — `pause + launch`) |
+| `M` | 전체 지도 오버레이 (155차 — 미니맵 크기는 타이틀바 단추) |
+| `R` | 자전거 승·하차 (탑승 시 이동 속도 2배 — 낚시/상점 진입 시 자동 하차) |
 | `1`~`8` | 퀵슬롯 선택 (상단 숫자키) |
-| `ESC` | 열린 팝업 LIFO 닫기 → 마지막은 월드맵 복귀 |
-| 마우스 클릭 | 클릭 위치로 자동 이동 |
+| `Enter` | 지역 채널 채팅 (145차) · 일시정지 메뉴에서는 선택 |
+| `F1` | 도움말 라이브러리 |
+| `ESC` | 설치 취소 → 맨 위 팝업 닫기 → 실내면 밖으로 → 일시정지 메뉴 |
 
 ---
 
@@ -372,11 +341,11 @@ packages/client-pc/public/data/<region>/<mapId>.json
 - 지형 분류 규칙/색 팔레트를 바꾸려면 `tools/build_region_maps.py`의 `classify()` 수정 후 재생성.
 
 ### 씬 구조 (`RegionFieldScene.ts`)
-- **top-level 씬** — FieldScene의 하위 씬이 아님. WorldMapScene에서 `scene.start('RegionFieldScene', { region })`로 진입, `ESC` → `scene.start('WorldMapScene')`.
+- **top-level 씬**. WorldMapScene에서 `scene.start('RegionFieldScene', { region })`로 진입, `ESC` → `scene.start('WorldMapScene')`.
 - **맵 간 이동**: `scene.restart({ region, mapId, entryEdge, entryT })` — 지형 그래프(`SOKCHO_MAP_GRAPH`)의 링크 방향으로 엣지 접근 시 인접 맵 로드. 진입 엣지 반대편에서 스폰.
 - **충돌**: 바다·건물 타일을 행 단위로 병합한 정적 바디 + `physics.add.collider`.
 - **렌더**: 타일을 `generateTexture`로 1회 베이킹 후 이미지 배치(맵당 텍스처 캐시).
-- **낚시 캐스팅**: 바다 인접 + 낚싯대(퀵슬롯 0) 상태에서 좌클릭 유지 → 차지 → 릴리즈 시 찌 캐스팅 연출(현재 미니게임 핸드오프 없음, 추후 FishingScene 연동 예정).
+- **낚시 캐스팅**: 바다 인접 + 낚싯대(퀵슬롯 0) 상태에서 좌클릭 유지 → 차지 → 릴리즈 시 찌 캐스팅 → 착수하면 `FirstPersonFishingScene`(6c)을 `pause + launch`.
 
 ### 속초 맵 체인 (7개)
 ```
@@ -441,7 +410,7 @@ npx pnpm --filter @tra/client-pc run dev
 4. **SpotType 타입 임의 제거 금지** — `tidal_flat` 포함 전체 유지
 5. **`@tra/core/src/index.ts` export 누락 금지** — 새 파일 추가 시 반드시 export 추가
 6. **씬 키 변경 금지** — 씬 키는 파일명과 동일, 변경 시 main.ts도 함께 변경
-7. **하위 씬에서 `scene.start('FieldScene')` 사용 금지** — 반드시 `scene.stop()` + `scene.resume('FieldScene')` 사용
+7. **필드에서 연 하위 씬에서 `scene.start('RegionFieldScene')` 사용 금지** — 반드시 `scene.stop()` + `scene.resume('RegionFieldScene')` 사용
 8. **UI에 이모지·장식용 특수문자 금지 · 텍스트 약어 배지 금지** (2026-09-10 · 128차 정정) — 아이콘은 **16x16 손그림 픽셀 아이콘**(`PixelIconArt`) / 절차 픽셀 그래픽 / 스프라이트 텍스처로. 상세·예외는 §4 「UI 특수문자·이모지 금지 / 픽셀 아이콘 원칙」.
 9. **개발 내부 용어·ID를 UI에 노출 금지** (2026-09-17 · 150차 R1) — `자격 사다리`·`서브 아크`·`N04` 같은 구조 명칭/내부 id는 주석에만.
 10. **진행하지 않은 퀘스트·장·인물 정보 노출 금지** (150차 R2) — 회색으로 보여줘도 스포일러다.

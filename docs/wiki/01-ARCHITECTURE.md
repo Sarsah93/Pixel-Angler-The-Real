@@ -17,8 +17,8 @@ packages/
     ├ config/       tuning.ts (TUNING / TUNING_META — F8 슬라이더 원천)
     └ index.ts             ★ 신규 파일은 반드시 여기서 export
   client-pc   @tra/client-pc  Phaser 3 씬 + UI. 로직은 core에서 import만
-    ├ scenes/  19종  씬 (+ SceneFade 공용 안전망)
-    ├ ui/      33종  패널·HUD·렌더러 (DraggablePanel 계열)
+    ├ scenes/  11종  씬 (+ SceneFade 등 보조 4 · field/ 필드 시스템 7)
+    ├ ui/      76종  패널·HUD·렌더러 (DraggablePanel 계열)
     ├ store/    7종  세션 상태 싱글톤 (GameState 외)
     └ data/    11종  구운 스프라이트 스냅샷 · 카탈로그 · 텍스처 매핑
   server      @tra/server     Socket.IO 멀티 (Phase 8 미착수)
@@ -66,13 +66,10 @@ RegionFieldScene(hometown) ──[E] 버스정류장──► WorldMapScene ─�
         ├──[E] 집 문──► HomeInteriorScene      (pause + launch / stop + resume)
         ├──캐스팅 착수──► FirstPersonFishingScene (pause + launch / stop + resume)
         └──ESC──► 일시정지 메뉴(계속·저장·집으로 가기·타이틀)
-
-[레거시 경로] FieldScene ─► FishingScene / TackleRoom / TideChart / NightHunting / Trap /
-                            Restaurant / Condo / Cook      (탑다운 구버전 — 유지만)
 ```
 
 **전환 규칙**(위반 시 상태 초기화·검은 화면) → 스킬 `scene-transition`
-- 하위 씬에서 `scene.start('FieldScene')` **금지** — `scene.stop()` + `scene.resume()`.
+- 필드에서 연 하위 씬에서 `scene.start('RegionFieldScene')` **금지** — `scene.stop()` + `scene.resume()`.
 - 페이드아웃 대기는 `scenes/SceneFade.ts`의 `fadeOutThen()` 경유(폴백 타이머 + 이중 실행 가드).
 - 재진입 가드(`isTransitioning`)는 **create()에서 리셋**, 비용 차감은 가드 통과 후.
 
@@ -91,12 +88,6 @@ RegionFieldScene(hometown) ──[E] 버스정류장──► WorldMapScene ─�
 | `AnglerLogScene` | 도감(어종 12종/페이지) · 조과 기록 | 메인 메뉴 | returnScene | 페이징·실사 카드 | 🟢 |
 | `SettingsScene` | 조작/낚시 탭(로드·릴 방향) | 메인 메뉴 | fadeOutThen | 섹션 2열 단축키표 | 🟢 |
 | `CreditsScene` | 공공데이터 출처·저작권 | 메인 메뉴 | fadeOutThen | — | ✅ |
-| `FieldScene` | 레거시 탑다운 월드 | 레거시 | — | `HUD`/`MiniMap`/`InfoOverlayPanel` | 🔶 유지 |
-| `FishingScene` | 레거시 찌 낚시 + 파이트 | FieldScene | stop+resume | `FishingFocusWindow` | 🔶 유지 |
-| `NightHuntingScene` | 해루질 | FieldScene `H` | stop+resume | — | ⬜ 확장 예정 |
-| `TrapScene` | 통발 | FieldScene `T` | stop+resume | — | ⬜ |
-| `CookScene` | 요리(현재 안내 + 진행 버튼) | FieldScene `C` | stop+resume | — | ⬜ 실조리 미구현 |
-| `RestaurantScene` / `CondoScene` / `TackleRoomScene` / `TideChartScene` | 레거시 건물 | FieldScene | stop+resume | — | 🔶 |
 
 ### 주요 팝업(패널) — z-order 밴드
 | 밴드 | depth | 대상 | 규칙 |

@@ -7,9 +7,9 @@ description: Pixel Angler Phaser 씬 전환·페이드 규칙 (SceneFade 안전�
 
 ## 전환 패턴 (절대 규칙 — AGENTS §4·§8)
 
-**FieldScene/RegionFieldScene → 하위 씬 진입**: `pause` + `launch` (start 금지)
-**하위 씬 → 복귀**: `this.scene.stop()`(인자 없이) + `this.scene.resume('FieldScene')`
-**절대 금지**: 하위 씬에서 `scene.start('FieldScene')` — 필드가 재생성돼 플레이어 위치·상태 전부 초기화.
+**RegionFieldScene → 하위 씬 진입**: `pause` + `launch` (start 금지)
+**하위 씬 → 복귀**: `this.scene.stop()`(인자 없이) + `this.scene.resume('RegionFieldScene')`
+**절대 금지**: 하위 씬에서 `scene.start('RegionFieldScene')` — 필드가 재생성돼 플레이어 위치·상태 전부 초기화.
 **필드 씬 create()**: `this.events.on('resume', () => fadeIn)` 필수 + resume 핸들러에서 `isTransitioning = false` 안전망.
 
 ## 페이드아웃 대기는 반드시 안전망 경유 (73차 전수 적용)
