@@ -1,0 +1,50 @@
+{
+ "schema": 1,
+ "domains": {
+  "01-engineering": {
+   "passes": [],
+   "deep_dives": [],
+   "files": {}
+  },
+  "02-code": {
+   "passes": [],
+   "deep_dives": [],
+   "files": {}
+  },
+  "03-files-docs": {
+   "passes": [],
+   "deep_dives": [],
+   "files": {}
+  },
+  "04-design-media": {
+   "passes": [],
+   "deep_dives": [],
+   "files": {}
+  },
+  "05-pipeline": {
+   "passes": [],
+   "deep_dives": [],
+   "files": {}
+  },
+  "06-tickets-economy": {
+   "passes": [],
+   "deep_dives": [],
+   "files": {}
+  },
+  "07-api-env": {
+   "passes": [],
+   "deep_dives": [],
+   "files": {}
+  },
+  "08-notes-memory": {
+   "passes": [],
+   "deep_dives": [],
+   "files": {}
+  },
+  "09-skills": {
+   "passes": [],
+   "deep_dives": [],
+   "files": {}
+  }
+ }
+}
