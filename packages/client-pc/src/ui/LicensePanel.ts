@@ -444,9 +444,6 @@ export class LicensePanel extends DraggablePanel {
     };
   }
 
-  /** 레거시 FieldScene 호환 — 외부에서 닫기 요청 */
-  close(): void { this.requestClose(); }
-
   private reqContext(): Parameters<typeof checkUnlockRequirements>[1] {
     return {
       totalTrips: GameState.player.totalTrips,

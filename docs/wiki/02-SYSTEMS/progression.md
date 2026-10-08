@@ -146,7 +146,7 @@ learnSkill(id): ranks[id]++ · markDirty   (세이브 `skillTree`)
 - **패널 세로 수용은 8노드까지** — 9노드부터 높이 하한(46px)에 걸려 다시 겹친다(열 스크롤 필요).
 - 음식 회복치는 **155차부터 `FoodNutrition.ts` 테이블에서 파생**(`ItemVitals`의 `nut(id)`). 새 음식은 g·kcal·ml 한 줄.
   도움말 「음식」 토픽 예시 수치는 129차 값일 수 있다 — 다음 도움말 현행화 때 재캡처.
-- 요리(cook) 활동 XP — `activityXp('cook')` 산식만 존재, CookScene 실조리(불요리) 구현 시 배선.
+- 요리(cook) 활동 XP — `activityXp('cook')` 산식만 존재, 불요리 쪽에 배선할 것(레거시 `CookScene`은 삭제).
 - 스킬 툴팁 실효과 수치 표기(현재 설명 문구만) · 리스펙 아이템의 퀘스트 보상 지급 경로(`rewards.items` 지급 — S22 §5).
 - **131차 신규 캡처 4장의 한국어 콜아웃 라벨** — 작업 환경에 한글 폰트가 없어 축소본만 저장했다(영문판은 정상).
   한글 폰트가 있는 곳에서 `py tools/annotate_help_images.py <raw> --only craft_tab workbench skill_tree vitals_panel` 재실행.

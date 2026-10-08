@@ -17,7 +17,7 @@
 | `scenes/SceneFade.ts` | `fadeOutThen` — 폴백 타이머 + WeakSet 이중 실행 가드 |
 | `ui/GuidePanel.ts` · `data/GuideContent.ts` | 가이드 허브(4카테고리 19페이지, 데이터 추가만으로 확장) |
 | `core/config/tuning.ts` · `dev/DevTuningPanel.ts` | TUNING/META → **F8 슬라이더** + 스냅샷 복사 |
-| `ui/RegionHud.ts` · `HUD.ts` · `MiniMap.ts` | HUD 계열 — 상태/채널 **크기 3단·투명 4단**(117차, `GameSettings.hud*`) |
+| `ui/RegionHud.ts` | HUD 계열 — 상태/채널 **크기 3단·투명 4단**(117차, `GameSettings.hud*`) |
 | `ui/GuideTour.ts` | **체험 가이드**(188차) — 창을 처음 열 때 말풍선(좌/우 자동 · 191차 `side`·`alignTo`·`dockY`)·타이핑·금색 하이라이트·허용 구멍 입력 방패·`wait()` 직접 해 보기·`passive` 세상 안 단계(짚을 대상이 없으면 꼬리 없음) · 키 게이트 `GuideTour.blocksKey` · 세상 정지 판정 `GuideTour.blocking` · 대기열(씬 shutdown에 정리) · 플래그 `tour.<id>`(`ephemeral`이면 없음) · 14개 창 |
 | `ui/PrologueCoach.ts` | **프롤로그 말풍선 코치**(191차) — 씬이 매 프레임 넘기는 「지금 단계」(`CoachStage`)의 말풍선 하나 · 단계가 바뀌면 접고 새로 · 다른 가이드가 있으면 대기(`GuideTour.busy`) · 씬 pause에 접힘 · 집(`HomeInteriorScene.coachStage`)·필드(`RegionFieldScene.coachStage`) |
 | `ui/SlotLabel.ts` | 슬롯 이름표 **10px 고정 + 약어**(188차 — 글씨 축소 금지) |

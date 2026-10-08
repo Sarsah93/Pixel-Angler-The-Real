@@ -23,16 +23,7 @@ import { WorldMapScene } from './scenes/WorldMapScene.js';
 import { RegionFieldScene } from './scenes/RegionFieldScene.js';
 import { HomeInteriorScene } from './scenes/HomeInteriorScene.js';
 import { FirstPersonFishingScene } from './scenes/FirstPersonFishingScene.js';
-import { FieldScene } from './scenes/FieldScene.js';
-import { FishingScene } from './scenes/FishingScene.js';
-import { TackleRoomScene } from './scenes/TackleRoomScene.js';
-import { TideChartScene } from './scenes/TideChartScene.js';
 import { AnglerLogScene } from './scenes/AnglerLogScene.js';
-import { NightHuntingScene } from './scenes/NightHuntingScene.js';
-import { TrapScene } from './scenes/TrapScene.js';
-import { RestaurantScene } from './scenes/RestaurantScene.js';
-import { CondoScene } from './scenes/CondoScene.js';
-import { CookScene } from './scenes/CookScene.js';
 import { SettingsScene } from './scenes/SettingsScene.js';
 import { CreditsScene } from './scenes/CreditsScene.js';
 import { GameState } from './store/GameState.js';
@@ -82,16 +73,7 @@ export function createGame(): Phaser.Game {
       RegionFieldScene,
       HomeInteriorScene,
       FirstPersonFishingScene,
-      FieldScene,
-      FishingScene,
-      TackleRoomScene,
-      TideChartScene,
       AnglerLogScene,
-      NightHuntingScene,
-      TrapScene,
-      RestaurantScene,
-      CondoScene,
-      CookScene,
       SettingsScene,
       CreditsScene,
     ],

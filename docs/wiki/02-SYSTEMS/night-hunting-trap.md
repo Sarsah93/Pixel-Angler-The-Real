@@ -1,7 +1,7 @@
 # S14. 해루질 · 통발
 
 > 상태 **🟢 운영(인-맵 1차)** — 121차에 **속초 심리스 맵 위에서** 채집·어장 규제·통발이 동작한다.
-> 레거시 별도 씬(`NightHuntingScene`/`TrapScene`)은 FieldScene 경로에만 남아 있고 폐기 후보.
+> 레거시 별도 씬(`NightHuntingScene`/`TrapScene`)은 레거시 필드와 함께 삭제했다(2026-10-08).
 > 관련 차수 099(조사·결함 2건) · **121(인-맵 채집·어장·조례·통발)** · **224(현실화 1차 — 얕은 물 · 장화 · 손놀림 놀이 5종 · 갯것 미끼)** — 세부 로드맵은 §5.
 
 ---
@@ -29,7 +29,7 @@
 | client | `SeamlessChunks.computeWade` · `RegionFieldScene.updateWading` | 얕은 물 칸 · 따로 굽는 충돌(`wadeWalls`) · 장화면 그 collider만 끔 · 1m · 물결 | ✅ 224 |
 | client | `scenes/field/TrapFieldSystem.ts` · `ui/TrapDeployPanel.ts` | 통발 선택 → 물 위 설치 · 부표 · [F] 수거 · 반환 | ✅ 121 |
 | client | `RegionFieldScene` 배선 | E 우선순위 · T 키 · 설치 클릭/ESC · `depthAtWaterTile` · `__FIELD`(dev) | ✅ 121 |
-| client(legacy) | `scenes/NightHuntingScene.ts` · `TrapScene.ts` · `GameState.addHarvestToCooler` | 별도 씬(이모지 클릭) · 화면에 없는 legacy 쿨러 | ⚠ 폐기 후보 |
+| client(legacy) | `GameState.addHarvestToCooler` · `coolerInventory` | 레거시 씬은 삭제. legacy 쿨러 필드만 세이브 호환으로 남아 있다(쓰는 곳 없음) | ⚠ 필드 정리 후보 |
 
 ## 3. 동작 구조
 
@@ -85,7 +85,7 @@
 1. **야간 검증 + F8 조율**(밀도·성공·적발·벌금) — 야간 세션 또는 시각 오버라이드 dev 훅.
 2. **D4 실사 스프라이트** 12종(스킬 `asset-pipeline`) — 키 `forage_<id>` 교체만.
 3. **dive 접근** — 수경/스노클·스쿠버 + 스쿠버 = 조례상 비어업인 금지라 면허/어업인 루트 설계 필요(wade는 224 ✅).
-4. 레거시 씬·legacy 쿨러 폐기(사용자 결정) · HUD 로그 영어 규칙 재수집(120차 전수 하네스) · 미니맵 스팟/어장 표시.
+4. legacy 쿨러 필드 정리(세이브 구조에 닿는다 — 스킬 `save-migration`) · HUD 로그 영어 규칙 재수집(120차 전수 하네스) · 미니맵 스팟/어장 표시.
 5. 채집물 sink = 불요리 대과제(S15) — 섭국·보말죽·성게알 등 레시피.
 6. **해루질 현실화 남은 것** — 단서 보기 · 생물 그림(놀이 판용 큰 몸 — 224 §6) · ~~패류독소 봄철 금지 · 꽃게 외포란(성별)~~ 229 ✅ ·
    생물별 크기 밴드 · 「조용한 걸음」(`drv_nightride`) 자물쇠를 풀어 달아나기 놀람 반경에 연결.
@@ -106,7 +106,7 @@
 5. **실데이터 파고가 채집을 막는다** — 파고 ≥1.5m·풍속 ≥12m/s면 `[F]`가 거부된다(정상). 하네스는 `__FIELD.tuning.forage.maxWaveM`을 올려 진행(121차 실측 2.1m).
 6. **채집물 판매 금지는 3경로** — `InventoryStore.getSellPrice`(0) · `ShopPanel` 필터 · `CoolerPanel` 이송(`forageCatch`). 새 판매 경로엔 `forageCatch` 확인.
 7. `TrapSpec.licenseTier/priceWon` **필수** — 통발 추가 시 누락하면 typecheck 오류(의도). 상점 아이템 id = `inv_trap_<specId>`(구세이브 백필도 이 규칙).
-8. 구세이브 통발은 `mapId`가 없어 `mapId ?? spotId`로 비교 — 심리스 맵에 부표가 안 뜬다(레거시 TrapScene에서만).
+8. 구세이브 통발은 `mapId`가 없어 `mapId ?? spotId`로 비교 — 심리스 맵에 부표가 안 뜬다. 레거시 `TrapScene`을 삭제해 그런 통발은 세이브에 남은 채 거둘 길이 없다(dev 전용 경로였다).
 9. **스팟 상한이 작으면 맵에 흩어져 안 보인다** — 후보 3,836타일에 40개면 조도 화면에 0개(실측). 상한 220·밀도 5/100.
 10. i18n 규칙은 `(m, tr)`의 **`tr()`로 캡처를 재번역**해야 런타임 사전(생물 `nameEn`·지명)이 먹는다 — `EN_DICT[...]` 직접 조회는 정적 사전만.
 11. **홀드 폴링 키 = 시작 키** — 122차 E→F 전환 때 `keyE.isDown` 폴링이 남아 F 홀드가 다음 프레임에 취소됐다(하네스 실측). 키를 바꾸면 `addKey`도 함께.

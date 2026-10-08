@@ -64,14 +64,14 @@ export class AnglerLogScene extends Phaser.Scene {
   private tabBtnBgs: Partial<Record<LogTab, Phaser.GameObjects.Rectangle>> = {};
 
   /** 나가기 시 resume할 씬 (메인 메뉴/필드 어디서든 진입 가능) */
-  private returnScene = 'FieldScene';
+  private returnScene = 'MainMenuScene';
 
   constructor() {
     super({ key: 'AnglerLogScene' });
   }
 
   init(data?: { returnScene?: string }): void {
-    this.returnScene = data?.returnScene ?? 'FieldScene';
+    this.returnScene = data?.returnScene ?? 'MainMenuScene';
   }
 
   create(): void {
