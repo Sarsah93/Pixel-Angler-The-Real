@@ -13,8 +13,8 @@ description: Pixel Angler 신규 어종 등록 절차 (4계층 — 오라클/도
 스폰·입질 가중의 단일 소스. 필드 관례:
 - `habitat`(HabitatTerrain[]) · `minDepthM/maxDepthM` · `preferredLayers`(surface/mid/bottom — 인접층 불일치 0.15 / 두 층 어긋남 0.03 페널티)
 - `baitPreference`: **BaitKey 체계**(0~100). ⚠ BaitKey(`krill`)와 BaitCategory(`krill_frozen`)는 **별개 타입** — 혼동 금지
-- 크기: `minCm/maxCm/meanCm/sdCm/weightFactor`(W≈wf·L³) · `maleRatio`/`sexRule`(성전환 어종)
-- 규제: `legalMinCm`(**전장 기준** — 법정 항문장이면 전장 환산: 갈치 18→47 사례) · `closedMonths`
+- 크기: `minCm/maxCm/meanCm/sdCm` · `lwrA`/`lwrB`(체장-체중 W(g) = lwrA × L(cm)^lwrB — `lwrA` 필수) · `bodyForm`(필수) · `maleRatio`/`sexRule`(성전환 어종)
+- 규제: `legalMinCm`(**전장 기준** — 법정 항문장이면 전장 환산: 갈치 18→47 사례) · `closedMonths` · `closedSeasons`(날짜 금어기) · `legalMinWeightG`(금지체중)
 - `nightBonus`(야행성 >1 / 주행성 억제 <1 — 실생태 리서치 후 부여) · `tideActivity`(sariPeak/flatTide 헬퍼)
 - `fight`: basePower · patternWeights{jump/dive/lateral} · intervalMult · mouthFragility · `lineCutter`(복어·이빨 어종)
 - 두족류 = `egiOnly: true` (에기 spawnBinding 필터에 있을 때만 스폰)
@@ -47,4 +47,4 @@ description: Pixel Angler 신규 어종 등록 절차 (4계층 — 오라클/도
 1. 스폰 가능 확인: `weightedCandidates` 기반 분포 시뮬(주/야·지형·수심층 케이스) — 신규 종 weight > 0.
 2. 판매가 산정: `evaluateFishSellPrice`로 소/중/대 3점 가격이 실측 시세대와 정합하는지 (폭증 시 weightExp 조정).
 3. 도감 카드 렌더(이미지·제철 행) + 어획 팝업 실사 이미지 — verify-render 스킬로 실렌더 확인.
-4. `npx pnpm run build` 4/4 + client typecheck 0.
+4. `npx pnpm run build` 3/3 + client typecheck 0.

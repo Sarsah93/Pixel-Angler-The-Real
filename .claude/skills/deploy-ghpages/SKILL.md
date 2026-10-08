@@ -14,7 +14,7 @@ description: Pixel Angler 테스트 빌드 gh-pages 배포 절차. GitHub Pages 
 ## 절차
 
 ```bash
-npx pnpm run build                                  # 4/4 성공 확인
+npx pnpm run build                                  # 3/3 성공 확인
 git -C ../pixel-angler-gh-pages fetch origin        # ⚠ 로컬 worktree가 origin/gh-pages보다
 git -C ../pixel-angler-gh-pages status              #    뒤처져 있을 수 있음 — 먼저 동기화 (73차 노트)
 # dist → worktree 루트로 복사 (소스맵 제외!)

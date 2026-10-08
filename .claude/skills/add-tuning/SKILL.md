@@ -35,4 +35,4 @@ npx pnpm --filter @tra/core run build    # 이걸로 해소 — client 검증 �
 
 - dev에서 F8 열고 실플레이 조율 → 패널의 **스냅샷 복사** 버튼(클립보드) → 확정값을 `tuning.ts` 기본값으로 반영.
 - F8 조정은 런타임 전용(세이브 안 됨) — 코드 반영 없이는 휘발.
-- 수치 캘리브레이션이 필요한 물리 값은 core 시뮬 스크립트(예: `scripts/chumSyncSim.ts` 패턴 — **실게임 함수를 직접 소비**, 인라인 근사 재구현 금지)로 스윕 검증.
+- 수치 캘리브레이션이 필요한 물리 값은 core 시뮬 스크립트(예: `packages/core/src/scripts/chumSyncSim.ts` 패턴 — **실게임 함수를 직접 소비**, 인라인 근사 재구현 금지)로 스윕 검증.
