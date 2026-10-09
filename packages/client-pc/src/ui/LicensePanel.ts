@@ -23,6 +23,7 @@ import { DraggablePanel, applyScreenFixed, restoreHandCursor } from './Draggable
 import type { UpkeepItem } from '@tra/core';
 import { GameState } from '../store/GameState.js';
 import { StoryStore } from '../store/StoryStore.js';
+import { FarmStore } from '../store/FarmStore.js';
 import { clampTextWidth, enforceTextBounds } from './TextFit.js';
 import { maybeStartTour, type TourOptions } from './GuideTour.js';
 
@@ -32,7 +33,7 @@ const FEATURE_KO: Record<UnlockableFeature, string> = {
   restaurant_open: '식당 개업', condo_operation: '선상콘도 운영', tournament_entry: '토너먼트 참가',
   tournament_hosting: '토너먼트 주최', boat_rental: '보트 대여', protected_area_access: '보호구역 출입',
   abalone_hunting: '전복 채취', eel_trapping: '장어 통발', catch_and_cook_advanced: '고급 손질·요리',
-  home_expansion: '집 증축·마당 시설', farm_plots: '농지 경작', boat_operation: '개인 보트 운항',
+  home_expansion: '집 증축·마당 시설', farm_plots: '마을 농지 텃밭 다섯 구획', boat_operation: '개인 보트 운항',
   village_fishery_gathering: '어촌계 어장 채취', restricted_port_fishing: '항만 제한구역 낚시',
 };
 
@@ -74,6 +75,7 @@ export class LicensePanel extends DraggablePanel {
 
   constructor(scene: Phaser.Scene, x: number, y: number, onClose: () => void) {
     super(scene, { x, y, width: PANEL_W, height: PANEL_H, title: '면허 · 허가', onClose, depth: 812 });
+    StoryStore.emitActionOrigin('license-open');   // 235차 — 시험 접수 · 안전 점검표 · 관광업 서류(행동 목표 첫 단계)
     const g = scene.add.graphics();
     const top = this.contentTop;
     g.fillStyle(0x0a1b2d, 0.6); g.fillRoundedRect(8, top - 4, LIST_W + 4, PANEL_H - top - 8, 6);
@@ -291,6 +293,7 @@ export class LicensePanel extends DraggablePanel {
       // 153차 — 내부 id를 화면에 흘리지 않는다(§8-9 R1). 스토리 임무 → 구 퀘스트 DB 순으로 이름을 찾는다.
       else if (req.type === 'quest_completed') s = `• 할 일 완료: ${questTitleOf(req.questId)}`;
       else if (req.type === 'min_reputation') s = `• 평판 ${req.value} 이상`;
+      else if (req.type === 'min_harvests') s = `• 텃밭에서 거두기: ${req.value}번 이상 (현재 ${ctx.farmHarvests ?? 0}번)`;
       else if (req.type === 'specific_fish_caught') s = `• 특정 어종 포획: ${getFishById(req.fishId)?.nameKo ?? req.fishId}`;
       const t = this.scene.add.text(0, y, s, { fontFamily: FONT, fontSize: '11px', color: '#ffaa66', wordWrap: { width: DETAIL_W }, lineSpacing: 2 });
       y += Math.max(16, t.height + 3); c.add(t);
@@ -390,11 +393,19 @@ export class LicensePanel extends DraggablePanel {
       coop_dues: '수협 조합원으로서 내는 몫입니다. 밀리지 않으면 위판 수수료를 조금 깎아 줍니다.',
       vessel_upkeep: '보험과 정기검사, 계류비를 한 번에 치릅니다. 배를 가진 사람의 고정비입니다.',
       hygiene_inspection: '영업장 위생 점검입니다. 그동안 항구에서 쌓은 신뢰가 합격률을 좌우하고, 불합격하면 재검사료를 물고 다시 받아야 합니다.',
+      // 236차 — 집에 놓은 수경 재배기(가정용 재배기 한 대 한 달 약 42kWh). 밀리면 평판이 아니라 전기가 끊긴다
+      electricity: '집에 놓은 수경 재배기가 쓰는 전기입니다. 한 대가 한 달에 40kWh 남짓을 씁니다. 밀리면 전기가 끊겨 재배기가 멈추고, 내면 다시 켜집니다. 항구 신뢰와는 상관없습니다.',
+      // 236차 — 마당 두 구획을 넘는 텃밭(주말농장 분양 — 한 구획 경작 약 12㎡). 밀리면 빌린 밭에 새로 못 심는다
+      farm_rent: '마당 두 구획을 넘는 텃밭은 마을 농지를 빌린 것입니다. 한 구획(경작 약 12㎡)마다 사용료를 냅니다. 밀리면 빌린 밭에는 새로 심을 수 없고, 내면 바로 풀립니다. 항구 신뢰와는 상관없습니다.',
     };
     const rows = [
       `납부액  ₩${item.costKrw.toLocaleString()}`,
       `주기    ${item.intervalDays}일마다`,
-      item.overdue ? `상태    ${item.overdueDays}일 연체 중 — 하루마다 항구 신뢰가 깎입니다` : `상태    다음 납부까지 ${item.daysLeft}일`,
+      item.overdue
+        ? (item.kind === 'electricity' ? `상태    ${item.overdueDays}일 연체 중 — 전기가 끊겨 재배기가 멈췄습니다`
+          : item.kind === 'farm_rent' ? `상태    ${item.overdueDays}일 연체 중 — 빌린 텃밭에 새로 심을 수 없습니다`
+          : `상태    ${item.overdueDays}일 연체 중 — 하루마다 항구 신뢰가 깎입니다`)
+        : `상태    다음 납부까지 ${item.daysLeft}일`,
     ];
     for (const r of rows) {
       const t = this.scene.add.text(0, y, r, { fontFamily: 'monospace', fontSize: '11px', color: '#ccddee' });
@@ -457,6 +468,7 @@ export class LicensePanel extends DraggablePanel {
       completedQuests: GameState.completedQuestIds,
       visitedSpots: GameState.visitedSpotIds,
       reputationScore: GameState.restaurant?.reputationScore ?? 0,
+      farmHarvests: FarmStore.harvestCount,   // 236차 — 농지 이용권
     };
   }
 

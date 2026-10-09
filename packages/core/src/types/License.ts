@@ -88,7 +88,8 @@ export type UnlockRequirement =
   | { type: 'license_held'; licenseType: LicenseType }        // 특정 라이선스 보유
   | { type: 'quest_completed'; questId: string }              // 특정 퀘스트 완료
   | { type: 'spot_visited'; spotId: string }                  // 특정 스팟 방문
-  | { type: 'min_reputation'; value: number };                // 식당/콘도 평판
+  | { type: 'min_reputation'; value: number }                 // 식당/콘도 평판
+  | { type: 'min_harvests'; value: number };                  // 236차 — 텃밭에서 거둔 횟수
 
 // ─────────────────────────────────────────────
 // 활성화되는 기능 목록
@@ -315,13 +316,16 @@ export const LICENSE_DATABASE: LicenseDef[] = [
     requiresRenewal: false, unlocksFeatures: ['home_expansion'],
     plannedNote: '하우스 Tier 1~3 확장 도입 시 소비 — 현재는 게이트만',
   },
+  // 236차 — 마당 텃밭(2구획)은 내 땅이라 자격 없이 낸다. 그 너머는 마을 농지를 빌린다(주말농장 분양과 같은 방식).
+  //   실제 주말농장은 신청만 하면 되지만, 게임에서는 「직접 길러 거둬 본 사람」에게 분양한다.
+  //   되풀이 비용은 갱신료가 아니라 **빌린 구획마다 내는 사용료**(정기 지출 `farm_rent`)다 — 갱신료까지 받으면 이중 청구.
   {
     type: 'farmland_use', category: 'land',
     nameKo: '농지 이용권', nameEn: 'Farmland Use Right',
-    description: '홈타운 농지(텃밭 확장·경작)를 이용할 수 있습니다.', descriptionEn: 'Use of hometown farmland (garden expansion and cultivation).',
-    costCoins: 25000, prerequisites: ['land_home_lot'], requirements: [{ type: 'min_angling_trips', value: 10 }],
-    requiresRenewal: true, renewalIntervalDays: 365, unlocksFeatures: ['farm_plots'],
-    plannedNote: '농장 경영(S8) 착수 시 텃밭 확장 게이트 — 현재는 게이트만',
+    description: '마을 농지를 빌려 텃밭을 다섯 구획까지 더 낼 수 있습니다. 빌린 구획마다 한 달 사용료를 냅니다.',
+    descriptionEn: 'Rent village farmland for up to five more garden plots. Each rented plot carries a monthly fee.',
+    costCoins: 25000, prerequisites: ['basic_angling'], requirements: [{ type: 'min_harvests', value: 3 }],
+    requiresRenewal: false, unlocksFeatures: ['farm_plots'],
   },
   {
     type: 'boat_operator', category: 'vessel',
@@ -398,6 +402,8 @@ export function checkUnlockRequirements(
     completedQuests: string[];
     visitedSpots: string[];
     reputationScore: number;
+    /** 236차 — 텃밭에서 거둔 횟수(없으면 0) */
+    farmHarvests?: number;
   }
 ): { met: boolean; failedReqs: UnlockRequirement[] } {
   const failedReqs: UnlockRequirement[] = [];
@@ -428,6 +434,9 @@ export function checkUnlockRequirements(
         break;
       case 'min_reputation':
         met = context.reputationScore >= req.value;
+        break;
+      case 'min_harvests':
+        met = (context.farmHarvests ?? 0) >= req.value;
         break;
     }
     if (!met) failedReqs.push(req);

@@ -54,6 +54,8 @@ export interface QuestSceneDef {
   /** 각본 배우 키 → 실제 인물 id(`'player'` 포함). 임시 배우는 `extras`의 key와 같다 */
   roles: Record<string, string>;
   extras: SceneExtra[];
+  /** 235차 — 장면이 끝나도 목표를 닫지 않는다(필요한 물건을 안 들고 왔을 때 — 가지러 다녀오게 한다) */
+  noComplete?: boolean;
 }
 
 export interface QuestSceneCtx {
@@ -63,7 +65,15 @@ export interface QuestSceneCtx {
   regionId: string;
   /** 이 필드에 실제로 서 있는 스토리 인물 */
   fieldNpcIds: readonly string[];
+  /** 235차 — 그 물건을 가방에 갖고 있는가(장면이 실제 물건을 쓸 때). 없으면 갖고 있다고 본다(사전 수집용) */
+  has?: (itemId: string) => boolean;
 }
+
+/** 235차 — M7-04 사진을 안 들고 왔을 때의 짧은 장면(목표는 닫히지 않는다) */
+const M7_04_NO_PHOTO: [string, string][] = [
+  ['사진 가져와 봐. 그 사진.', 'Bring me that photo. That one.'],
+  ['아버지의 상자에서 나온 사진은 집에 두고 왔다. 가지러 다녀와야 한다.', 'I left the photo from Father\'s box at home. I need to go and get it.'],
+];
 
 /** 각본 손글 우선 — 키 `${questId}#${objectiveIndex}` */
 export const QUEST_SCENE_OVERRIDES: Record<string, (q: StoryQuestDef, idx: number, ctx: QuestSceneCtx) => QuestSceneDef> = {
@@ -104,6 +114,49 @@ export const QUEST_SCENE_OVERRIDES: Record<string, (q: StoryQuestDef, idx: numbe
         { kind: 'say', who: 'npc', bubble: '...', text: '탁 영감이 주던가?', textEn: 'Did old Tak give you this?' },
         { kind: 'say', who: 'player', bubble: '...', text: '…모르겠어요.', textEn: '…I would not know.' },
         { kind: 'say', who: 'player', thought: true, text: '두 노인 사이에 무슨 일이 있었는지 나는 모른다. 심부름꾼은 모르는 게 낫다.', textEn: 'Whatever passed between those two, I do not know. An errand boy is better off not knowing.' },
+      ],
+    };
+    return base;
+  },
+
+  // M7-04 ② 정옥선과 네 살 사진을 함께 본다 — 235차: 가족사진을 **실제로 꺼내** 건네고, 화면 가운데 크게 펼친다.
+  //  사진 속 천막 아래에 머릿수건을 쓴 젊은 상인이 서 있다(22년 전의 정옥선). 사진을 안 들고 왔으면 목표는 닫히지 않는다.
+  'M7-04#1': (q, idx, ctx) => {
+    const base = generatedScene(q, idx, ctx);
+    const held = ctx.has ? ctx.has('quest_family_photo') : true;
+    if (!held) {
+      base.noComplete = true;
+      base.script = {
+        id: base.script.id, placeKo: base.script.placeKo, placeEn: base.script.placeEn,
+        steps: [
+          { kind: 'focus', who: 'npc', ms: 440 },
+          { kind: 'faceTo', who: 'npc', target: 'player' },
+          { kind: 'say', who: 'npc', bubble: '...', text: M7_04_NO_PHOTO[0][0], textEn: M7_04_NO_PHOTO[0][1] },
+          { kind: 'say', who: 'player', thought: true, text: M7_04_NO_PHOTO[1][0], textEn: M7_04_NO_PHOTO[1][1] },
+        ],
+      };
+      return base;
+    }
+    base.script = {
+      id: base.script.id, placeKo: base.script.placeKo, placeEn: base.script.placeEn,
+      steps: [
+        { kind: 'focus', who: 'npc', ms: 480 },
+        { kind: 'faceTo', who: 'npc', target: 'player' },
+        { kind: 'faceTo', who: 'player', target: 'npc' },
+        { kind: 'say', who: 'npc', bubble: '...', text: '사진 가져와 봐. 그 사진.', textEn: 'Bring me that photo. That one.' },
+        { kind: 'say', who: 'player', thought: true, text: '가방 안쪽에서 아버지의 상자에 있던 사진을 꺼낸다.', textEn: 'From the inside of my bag I take out the photo from Father\'s box.' },
+        { kind: 'give', from: 'player', to: 'npc', item: 'photo', ms: 900 },
+        { kind: 'photo', show: true, ms: 900 },
+        { kind: 'say', who: 'player', thought: true, text: '네 살의 내가 부모님 사이에 서 있다. 뒤로 빨간 줄무늬 천막이 보인다.', textEn: 'Four-year-old me stands between my parents. Behind us is a red-striped tent.' },
+        { kind: 'say', who: 'player', thought: true, text: '천막 아래, 머릿수건을 쓴 사람이 상자를 고르다 고개를 들고 있다.', textEn: 'Under the tent, someone in a headscarf has looked up from sorting a crate.' },
+        { kind: 'wait', ms: 900 },
+        { kind: 'say', who: 'npc', bubble: '...', text: '…그 천막, 내 거다.', textEn: '…That tent is mine.' },
+        { kind: 'emote', who: 'player', emote: 'surprise', ms: 800 },
+        { kind: 'say', who: 'npc', bubble: '...', text: '22년 전. 네가 거기 서 있었어. 저 손 잡고.', textEn: 'Twenty-two years ago. You stood right there. Holding those hands.' },
+        { kind: 'photo', show: false },
+        { kind: 'say', who: 'npc', bubble: '...', text: '울 거면 얼음부터 나르고 울라고 했지. 그 말이 왜 그렇게 빨리 나왔는지, 이제 알겠냐.', textEn: 'I told you to haul the ice first if you were going to cry. Now you know why it came out so fast.' },
+        { kind: 'say', who: 'player', thought: true, text: '할머니가 나를 처음 본 날이 22년 전이었다. 나는 몰랐고, 할머니는 알았다.', textEn: 'The first time she saw me was twenty-two years ago. I did not know. She did.' },
+        { kind: 'give', from: 'npc', to: 'player', item: 'photo', ms: 800 },
       ],
     };
     return base;
@@ -318,7 +371,7 @@ export function allQuestSceneLines(): [string, string][] {
     for (const st of def.script.steps) if (st.kind === 'say' && st.textEn) out.push([st.text, st.textEn]);
   }
   // 생성 장면의 짧은 응답 — 이 파일이 원문을 갖는다
-  out.push(...ACK_TASK, ...ACK_DONE);
+  out.push(...ACK_TASK, ...ACK_DONE, ...M7_04_NO_PHOTO);
   // 장소 자막은 지역명이라 이미 사전에 있다(120차 `places.ts`).
   return out;
 }

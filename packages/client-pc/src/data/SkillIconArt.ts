@@ -3,7 +3,7 @@
  * @description 스킬 트리 아이콘 아트 (자동 생성 — 수동 편집 금지)
  *
  * 생성기: `py tools/gen_skill_icons.py` (아트 원본도 그 안에 있다)
- * 스킬 93종 × 16x16 손그림 매트릭스 — 키 = 스킬 id, 문자 = 팔레트 키, `.` = 투명.
+ * 스킬 95종 × 16x16 손그림 매트릭스 — 키 = 스킬 id, 문자 = 팔레트 키, `.` = 투명.
  * 숨은 시너지(syn_*)는 공용 금테 엠블럼 위에 그림을 얹는다.
  * 굽기·렌더는 `ui/PixelIcon.ts`와 같은 방식으로 한다(여기는 순수 데이터).
  */
@@ -1681,6 +1681,50 @@ export const SKILL_ICON_ART: Record<string, PixelIconArt> = {
       '..oMMMMMMMMMMo..',
       '..oooooooooooo..',
       '................',
+      '................',
+    ],
+  },
+  farm_wild: {
+    w: 16, h: 16,
+    pal: { 'E': 0x5cb84a, 'd': 0x4c5864, 'e': 0x2e7a34, 'g': 0x8c98a4, 'l': 0xb4e47a, 'o': 0x1a1c24 },
+    rows: [
+      '................',
+      '.oooooooooooooo.',
+      '.odgdgdgdgdgdgo.',
+      '.oooooooooooooo.',
+      '......oooo......',
+      '....ooEEEEoo....',
+      '...oEEElEEEEo...',
+      '..oEElEEeEEEEo..',
+      '..oElEEEeEEEEo..',
+      '..oEEEEEeEEEeo..',
+      '..oEEEEEeEEeeo..',
+      '...oEEEEeEeeo...',
+      '....ooEEeeoo....',
+      '......ooeo......',
+      '.......eo.......',
+      '................',
+    ],
+  },
+  farm_hydro: {
+    w: 16, h: 16,
+    pal: { 'E': 0x5cb84a, 'U': 0x4aa0e0, 'c': 0xa8e0f8, 'e': 0x2e7a34, 'g': 0x8c98a4, 'l': 0xb4e47a, 'o': 0x1a1c24, 'u': 0x2464a8 },
+    rows: [
+      '................',
+      '....oo....oo....',
+      '...oEEo..oEEo...',
+      '...oElEo.oElEo..',
+      '....oEEeoeEEo...',
+      '.....ooeeeoo....',
+      '.......ee.......',
+      '..oooooeeooooo..',
+      '..occcUeeUccco..',
+      '..oUUUUeeUUUUo..',
+      '..oUUUUUUUUUUo..',
+      '..ouUUUUUUUUuo..',
+      '..ouuUUUUUUuuo..',
+      '..oggggggggggo..',
+      '..oooooooooooo..',
       '................',
     ],
   },

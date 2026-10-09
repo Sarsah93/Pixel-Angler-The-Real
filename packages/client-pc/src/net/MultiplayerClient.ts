@@ -94,6 +94,14 @@ class MultiplayerClientImpl {
    */
   private worldTaken = new Map<string, MpTakenLine & { mine?: boolean }>();
   private takenSeq = 0;
+  /**
+   * 235차 — 서버 시계 − 내 시계(ms). 프레즌스 응답의 `nowMs`를 왕복 시간 가운데로 재서 부드럽게 맞춘다.
+   * 시각만으로 정해지는 공용 움직임(달아나는 채집 생물의 어슬렁)을 사람마다 같은 칸에 두려고 쓴다.
+   */
+  private clockOffsetMs = 0;
+  private clockSamples = 0;
+  /** 235차 — 지금까지 본 가장 짧은 왕복(ms). 왕복이 짧은 표본일수록 오차(±왕복/2)가 작다 */
+  private clockBestRttMs = Infinity;
   /** 다음 폴링에 실어 보낼 말 */
   private pendingSay = '';
   /**
@@ -132,6 +140,30 @@ class MultiplayerClientImpl {
   }
 
   get isMulti(): boolean { return this.mode === 'multi'; }
+
+  /**
+   * 235차 — 공용 시각(ms). 세션에 들어와 있으면 서버 시계에 맞춘 값, 아니면 내 시계 그대로.
+   * 시각으로만 정해지는 공용 움직임은 반드시 이 값을 쓴다(사람마다 시계가 몇 초씩 다르다).
+   */
+  sharedNow(): number {
+    // 정수 ms — 도망 기록(`encodeRunnerFlee`)이 반올림한 값과 내 앵커가 어긋나지 않게
+    return this.isConnected && this.clockSamples > 0 ? Math.round(Date.now() + this.clockOffsetMs) : Date.now();
+  }
+
+  /**
+   * 왕복 시간이 짧은 표본일수록 믿는다. 첫 표본은 그대로, 다음부터는 **가장 짧은 왕복의 2배 + 50ms 안쪽**
+   * 표본만 20%씩 따라간다 — 탭이 뒤로 가 늦게 처리된 응답(왕복 수 초)이 시계를 끌고 가지 않게.
+   * 기준 왕복은 표본마다 조금씩 느슨해져, 망이 바뀌어 왕복이 늘 길어져도 결국 다시 받아들인다.
+   */
+  private sampleClock(serverNowMs: number, t0: number, t1: number): void {
+    const rtt = t1 - t0;
+    if (rtt < 0 || rtt > 3_000) return;
+    this.clockBestRttMs = Math.min(this.clockBestRttMs * 1.02 + 2, rtt);
+    if (this.clockSamples > 0 && rtt > this.clockBestRttMs * 2 + 50) return;
+    const off = serverNowMs - (t0 + t1) / 2;
+    this.clockOffsetMs = this.clockSamples === 0 ? off : this.clockOffsetMs * 0.8 + off * 0.2;
+    this.clockSamples += 1;
+  }
   /** 세션에 실제로 들어와 있는 상태 (이름 선점까지 끝남) */
   get isConnected(): boolean { return this.mode === 'multi' && this.code !== '' && this.playerId !== ''; }
 
@@ -259,6 +291,7 @@ class MultiplayerClientImpl {
       //   첫 틱의 응답이 늦게 처리되는 동안 setProfile이 먼저 돌았다).
       const sentLook = this.lookSent ? undefined : this.look;
       const sentProfile = this.profileSent ? undefined : this.profile;
+      const t0 = Date.now();
       const res = await this.post<MpPresenceRes>('/mp/presence', {
         code: this.code, playerId: this.playerId, token: this.token, ...this.pos,
         ...(sentLook ? { look: sentLook } : {}),
@@ -270,6 +303,7 @@ class MultiplayerClientImpl {
       // 231차 — 응답을 기다리는 사이 나갔다(파산·싱글 전환) — 늦게 온 응답으로 상태를 되살리지 않는다
       if (!this.isConnected) return;
       if (!res?.ok) { this.peers = []; return; }
+      if (typeof res.nowMs === 'number') this.sampleClock(res.nowMs, t0, Date.now());
       // 234차 — 이 접속에서 아직 설치물을 맞추지 않았거나, 알림이 서버에 닿지 못한 적이 있으면 맞춘다
       if (this.placedProvider && (this.placedSyncToken !== this.token || this.placedNeedSync)) void this.syncPlaced();
       if (sentLook && sentLook === this.look) this.lookSent = true;
@@ -483,6 +517,7 @@ class MultiplayerClientImpl {
     this.mode = 'single';
     this.code = ''; this.playerId = ''; this.name = ''; this.token = '';
     this.worldTaken.clear(); this.takenSeq = 0;
+    this.clockOffsetMs = 0; this.clockSamples = 0; this.clockBestRttMs = Infinity;
     this.worldSeed = 0; this.chatSeq = 0; this.chatInbox = []; this.resume = null;
     this.lookSent = false; this.trade = null; this.profileKey = ''; this.profileSent = true;
   }

@@ -11,7 +11,8 @@ import type { StoryArcDef, StoryNpcDef } from '../types/Story.js';
 /** 메인 3인 — 발주 NPC (아크 아님) */
 export const STORY_MAIN_NPCS: StoryNpcDef[] = [
   { id: 'player', nameKo: '한여름', nameEn: 'Han Yeoreum', roleKo: '22세 · 주인공 (이름·성별 변경 가능)', roleEn: '22 · the player (name and gender editable)' },
-  { id: 'okseon', nameKo: '정옥선', nameEn: 'Jeong Ok-seon', roleKo: '71세 · 동명동 직판장 좌판 「만복상회」', roleEn: '71 · stall "Manbok Store" at the Dongmyeong fish market' },
+  // 235차 — 좌판 「만복상회」를 하는 사람이라 거래 선택지를 연다(M6-06 「좌판을 맡다」 — 이 좌판에서 판 날을 센다)
+  { id: 'okseon', nameKo: '정옥선', nameEn: 'Jeong Ok-seon', roleKo: '71세 · 동명동 직판장 좌판 「만복상회」', roleEn: '71 · stall "Manbok Store" at the Dongmyeong fish market', shopId: 'market' },
   { id: 'hyeonsu', nameKo: '도현수', nameEn: 'Do Hyeon-su', roleKo: '24세 · 어촌계장 손자, 라이벌', roleEn: '24 · the co-op chief\'s grandson, rival' },
   { id: 'coop', nameKo: '동명항 어촌계', nameEn: 'Dongmyeong Fishing Co-op', roleKo: '실습 · 공동작업 · 총회', roleEn: 'Training · community work · general meeting' },
 ];

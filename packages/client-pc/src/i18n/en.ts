@@ -23,6 +23,7 @@ import { EN_UI, EN_UI_RULES } from './en_ui.js';
 import { EN_TOUR_PANELS2 } from './en_tour_panels2.js';
 import { EN_HOME, EN_HOME_RULES } from './en_home.js';
 import { EN_RIG, EN_RIG_RULES } from './en_rig.js';
+import { EN_FARM, EN_FARM_RULES } from './en_farm.js';
 
 /** 기본 사전 — 분야별 사전(EN_ITEMS/EN_RIG_COOKING/EN_HELP)보다 우선한다 */
 const EN_BASE: Record<string, string> = {
@@ -180,7 +181,7 @@ const EN_BASE: Record<string, string> = {
   '냉동 재료가 상온에서 습기를 머금으며 해동된 상태.': 'Thawed from frozen at room temperature.',
   '상온에 오래 방치된 상태. 회/직접 섭취 불가, 조리에 사용해도 문제가 생길 수 있음.': 'Left out too long. Not for raw eating; risky even cooked.',
   '조리/요리에 사용하면 안 되며 질병이 발생할 수 있는 상태. 빨리 처분 권장.': 'Unsafe to cook or eat. Dispose of it soon.',
-  '미끼': 'Bait', '생미끼': 'Live Bait', '바늘/훅': 'Hooks', '좁쌀': 'Split Shot', '봉돌': 'Sinker', '채비 부속': 'Rig Parts', '수중찌': 'Sub-float', '찌': 'Float', '지그헤드': 'Jighead',
+  '미끼': 'Bait', '원투 봉돌': 'Bottom-rig sinker', '생미끼': 'Live Bait', '바늘/훅': 'Hooks', '좁쌀': 'Split Shot', '봉돌': 'Sinker', '채비 부속': 'Rig Parts', '수중찌': 'Sub-float', '찌': 'Float', '지그헤드': 'Jighead',
   '단일 봉돌+바늘': 'Single sinker + hook', 'T자 천평': 'T-bar spreader', 'T자 천평 편대': 'T-bar spreader rig', '카드 채비': 'Sabiki rig', '학꽁치 던질찌': 'Halfbeak casting float', '갈치 와이어': 'Hairtail wire',
   '열기 (7단)': 'Rockfish (7 hooks)', '고등어 (5단)': 'Mackerel (5 hooks)', '전갱이 (3단)': 'Horse mackerel (3 hooks)',
   '손도구': 'Hand Tool', '릴': 'Reel', '모자': 'Hat', '안경': 'Glasses', '상의': 'Top', '장갑': 'Gloves', '시계': 'Watch', '하의': 'Pants', '신발': 'Shoes',
@@ -252,7 +253,7 @@ const EN_BASE: Record<string, string> = {
   // 187차 — 추천 배너 미끼 이름
   '청갯지렁이': 'Blue lugworm', '참갯지렁이': 'King ragworm', '게·소라': 'Crab / turban shell', '조개살': 'Clam meat', '생선 살': 'Fish meat',
   // 187차 — 면허가 여는 기능(구: 내부 id 노출)
-  '통발 설치': 'Trap placement', '상업용 통발': 'Commercial traps', '식당 개업': 'Open a restaurant', '선상콘도 운영': 'Run a floating condo', '토너먼트 참가': 'Tournament entry', '토너먼트 주최': 'Host tournaments', '보트 대여': 'Boat rental', '보호구역 출입': 'Protected-area access', '전복 채취': 'Abalone gathering', '장어 통발': 'Eel traps', '고급 손질·요리': 'Advanced prep & cooking', '집 증축·마당 시설': 'House extension & yard facilities', '농지 경작': 'Farmland cultivation', '개인 보트 운항': 'Private boat operation', '어촌계 어장 채취': 'Gathering in fishery-cooperative grounds', '항만 제한구역 낚시': 'Fishing in restricted port areas',
+  '통발 설치': 'Trap placement', '상업용 통발': 'Commercial traps', '식당 개업': 'Open a restaurant', '선상콘도 운영': 'Run a floating condo', '토너먼트 참가': 'Tournament entry', '토너먼트 주최': 'Host tournaments', '보트 대여': 'Boat rental', '보호구역 출입': 'Protected-area access', '전복 채취': 'Abalone gathering', '장어 통발': 'Eel traps', '고급 손질·요리': 'Advanced prep & cooking', '집 증축·마당 시설': 'House extension & yard facilities', '마을 농지 텃밭 다섯 구획': 'Five garden patches on village farmland', '개인 보트 운항': 'Private boat operation', '어촌계 어장 채취': 'Gathering in fishery-cooperative grounds', '항만 제한구역 낚시': 'Fishing in restricted port areas',
   // 187차 — 설정 단축키 탭 현행화
   '캐릭터 이동 (Shift = 달리기 1.55배)': 'Move (Shift = run, 1.55×)', '좌클릭(짧게)': 'LMB (short)', '테트라포드·사석 위 구멍치기': 'Hole fishing on tetrapods / riprap',
   '상호작용 (대화·거래·채집·통발·줍기)': 'Interact (talk · trade · forage · traps · pick up)', '설치물 회수': 'Pick up placed object', '지역 채널 대화': 'Region channel chat',
@@ -672,7 +673,7 @@ export const EN_DICT: Record<string, string> = {
   '물이 들어오는 중': 'Water coming in',
   '물이 빠지는 중': 'Water going out',
   '물이 멈췄다': 'The water has stopped',
-  ...EN_FISH, ...EN_CONTENT, ...EN_ITEMS, ...EN_RIG_COOKING, ...EN_HELP, ...EN_FORAGE, ...EN_PANELS, ...EN_GEAR, ...EN_AUCTION, ...EN_COOK, ...EN_UI, ...EN_EXTRA, ...EN_TOUR, ...EN_TOUR_PANELS, ...EN_TOUR_PANELS2, ...EN_SKILL, ...EN_HOME, ...EN_RIG, ...EN_BASE,
+  ...EN_FISH, ...EN_CONTENT, ...EN_ITEMS, ...EN_RIG_COOKING, ...EN_HELP, ...EN_FORAGE, ...EN_PANELS, ...EN_GEAR, ...EN_AUCTION, ...EN_COOK, ...EN_UI, ...EN_EXTRA, ...EN_TOUR, ...EN_TOUR_PANELS, ...EN_TOUR_PANELS2, ...EN_SKILL, ...EN_HOME, ...EN_RIG, ...EN_FARM, ...EN_BASE,
   // 214차 — 인물의 집 · 문 두드리기
   '정옥선의 집': "Jeong Ok-seon's house", '어촌계 사무실': 'Co-op office', '도현수의 집': "Do Hyeon-su's house",
   '강두철의 집': "Kang Du-cheol's house", '탁씨 죽간 공방': "The Taks' bamboo-rod workshop", '공방 살림채': 'Workshop living quarters',
@@ -742,6 +743,18 @@ const DOW_EN: Record<string, string> = {
 };
 /** 수치·이름이 끼어 있는 문장 — 정규식 규칙. 캡처 그룹은 그대로 옮긴다(이름은 사전을 다시 타지 않으므로 어종·아이템명은 한국어로 남을 수 있음). */
 export const EN_RULES: Rule[] = [
+  // ── 235차 행동 목표의 진짜 출처 — 방법 줄 · 현장 지점 · 심부름 물건 · 대화창 힌트 ──
+  [/^(.+)에게 \[F\] → 「내가 도와줄 수 있는 게 있을까요\?」 → 방식을 고른다 \(이야기 장면\)$/,
+    (m, tr) => `${tr(m[1])} [F] → "Is there anything I can help with?" → choose how (story scene)`],
+  [/^화살표를 따라 「(.+)」에 가서 \[F\]$/, (m, tr) => `Follow the arrow to "${tr(m[1])}" and press [F]`],
+  [/^U 제작 탭에서 (.+) 하나를 완성한다$/, (m, tr) => `Finish one ${tr(m[1])} in the U crafting tab`],
+  [/^\[할 일\] 가방에 자리가 없다 — 한 칸 비우고 다시 「(.+)」$/, (m, tr) => `[Task] No room in your bag — free a slot and try "${tr(m[1])}" again`],
+  [/^\[할 일\] (.+)을\(를\) 다시 챙겼다$/, (m, tr) => `[Task] You picked up ${tr(m[1])} again`],
+  [/^([^「」]+)에게 \[F\] → 「([^「」]+)」$/, (m, tr) => `${tr(m[1])} [F] → "${tr(m[2])}"`],
+  [/^(교차 검증 대화|증거 확인 방식|현장 행동 방식|분기 선택|제작 방식|전달 방식) 선택 완료 · (\d)\/(\d) — (.+)$/,
+    (m, tr) => `${tr(m[1])} chosen · ${m[2]}/${m[3]} — ${tr(m[4])}`],
+  [/^(교차 검증 대화|증거 확인 방식|현장 행동 방식|분기 선택|제작 방식|전달 방식) (\d)\/(\d) · (.+)$/,
+    (m, tr) => `${tr(m[1])} ${m[2]}/${m[3]} · ${tr(m[4])}`],
   // ── 234차 설치물 대조 · 거절 되돌리기 ──
   [/^그 자리에는 이미 (.+) 님의 (통발이|화구가|거치대가) 있습니다\.$/, (m) => `${m[1]} already has a ${m[2] === '통발이' ? 'trap' : m[2] === '화구가' ? 'stove' : 'rod holder'} there.`],
   [/^\[통발\] (.+) — 통발과 미끼를 돌려받았습니다$/, (m, tr) => `[Trap] ${tr(m[1])} — your trap and bait were returned`],
@@ -839,7 +852,7 @@ export const EN_RULES: Rule[] = [
   [/^([^·›]+) — 물건 보기$/, (m, tr) => `${tr(m[1])} — Browse`],
   [/^([^·›]+) — 들어가기$/, (m, tr) => `${tr(m[1])} — Enter`],
   [/^직판장 안이다\. 계산대 앞에 서서 \[F\]를 눌러 주인에게 물건을 보자\. \((.+)\)$/, (m, tr) => `Inside the fish market. Stand at the counter and press [F] to see the goods. (${m[1].split(' · ').map((x) => tr(x)).join(' · ')})`],
-  [/^속초에 왔다\. 수산물 직판장 앞에서 \[F\]를 눌러 안으로 들어가자\. 기본 채비를 하나씩 사야 한다\. \((.+)\)$/, (m, tr) => `Here in Sokcho. Press [F] at the fish market to go inside. I need one of each basic item. (${m[1].split(' · ').map((x) => tr(x)).join(' · ')})`],
+  [/^속초에 왔다\. 수산물 직판장 앞에서 \[F\]를 눌러 안으로 들어가자\. 원투 채비를 하나씩 사야 한다\. \((.+)\)$/, (m, tr) => `Here in Sokcho. Press [F] at the fish market to go inside. I need one of each part for a bottom rig. (${m[1].split(' · ').map((x) => tr(x)).join(' · ')})`],
   [/^(활어|선어) 경매는 지금 서고 있다\.$/, (m) => `The ${m[1] === '활어' ? 'live-fish' : 'fresh-fish'} auction is on right now.`],
   [/^(활어|선어) 경매는 당분간 없다\.$/, (m) => `No ${m[1] === '활어' ? 'live-fish' : 'fresh-fish'} auction for a while.`],
   [/^(활어|선어) 경매는 (오늘|내일|모레) (\d\d:\d\d)에 선다\.$/, (m) => `The ${m[1] === '활어' ? 'live-fish' : 'fresh-fish'} auction is ${({ '오늘': 'today', '내일': 'tomorrow', '모레': 'the day after tomorrow' } as Record<string, string>)[m[2]!]} at ${m[3]}.`],
@@ -910,12 +923,15 @@ export const EN_RULES: Rule[] = [
   [/^(.+?) ([\d.]+)cm \/ ([\d.]+)kg \/ (.+)\n\n(.+) 개체입니다\. 규정에 따라 방생합니다\.$/,
     (m, tr) => `${tr(m[1])} ${m[2]}cm / ${m[3]}kg / ${tr(m[4])}\n\n${tr(m[5])} — released by regulation.`],
   [/^재료 넣기 — (.+)$/, (m, tr) => `Add ingredients — ${tr(m[1])}`],
+  // 236차 — 「칸당 1개」(텃밭 상세 · 단수)가 아래 재료 규칙에 먼저 걸려 「칸당 1」로 남았다(복수 범위만 텃밭 규칙에 닿았다)
+  [/^칸당 (\d+)(?:~(\d+))?개$/, (m) => `${m[1]}${m[2] ? `–${m[2]}` : ''} per cell`],
   [/^([^·›]+?) ([\d.]+)(개|컵|큰술)$/, (m, tr) => `${tr(m[1])} ${tr(m[2] + m[3])}`],   // `·`/`›` = 합성 문장(도움말 경로 줄) — 쪼개기에 맡긴다
   ...EN_UI_RULES,
   ...EN_SKILL_RULES,   // 188차 스킬 창 (호버 팝업 · 다음 레벨)
   ...EN_TOUR_RULES,    // 188차 일지 순서형 접기
   ...EN_HOME_RULES,    // 189차 집 실내
   ...EN_RIG_RULES,     // 192차 채비 모딩 트리
+  ...EN_FARM_RULES,    // 235차 텃밭
   // ── 167차 장면 게이트 — 상대가 다른 사람일 때 대화창 안내 ──
   [/^(.+)을\(를\) 직접 찾아가야 한다\.$/, (m, tr) => `You need to go and find ${tr(m[1])} in person.`],
   // ── 165차 「지금 할 일」 메인/서브 배지 · 완료 표기 · 행동 진행 로그 ──
@@ -973,7 +989,7 @@ export const EN_RULES: Rule[] = [
   [/^외 (\d+)종$/, (m) => `+${m[1]} more`],
   [/^(조리 요령|재료 요령) · (.+)$/, (m, tr) => `${tr(m[1])} · ${tr(m[2])}`],
   // ── 154차 불요리 ──
-  [/^(.+) \(별 (\d+)개\)$/, (m, tr) => `${tr(m[1])} (${m[2]} star${m[2] === '1' ? '' : 's'})`],
+  [/^(.+) \(별 (\d+(?:\.5)?)개\)$/, (m, tr) => `${tr(m[1])} (${m[2]} star${m[2] === '1' ? '' : 's'})`],   // 235차 — 반 개(4.5)
   [/^탄 (.+)$/, (m, tr) => `Burnt ${tr(m[1])}`],
   [/^연료 (\d+)분(?: \(강불 기준\))?$/, (m) => `Fuel ${m[1]} min${m[0].includes('강불') ? ' (on high)' : ''}`],
   [/^\[F\] 요리 — (.+) · \[Shift\+F\] 회수$/, (m, tr) => `[F] Cook — ${tr(m[1])} · [Shift+F] pack up`],
@@ -1131,6 +1147,27 @@ export const EN_RULES: Rule[] = [
   [/^수리점 ([\d,]+)원$/, (m) => `₩${m[1]} at a repair shop`],
   [/^다음 갱신까지 (\d+)일 · (\d+)일마다$/, (m) => `Next renewal in ${m[1]} days · every ${m[2]} days`],
   [/^갱신하기 \(₩([\d,]+)\)$/, (m) => `Renew (₩${m[1]})`],
+  // 236차 — 정기 지출 상세(171차부터 영어가 빠져 있던 줄) · 수경 재배기 전기료
+  [/^납부하기 \(₩([\d,]+)\)$/, (m) => `Pay (₩${m[1]})`],
+  [/^납부액 {2}₩([\d,]+)$/, (m) => `Amount  ₩${m[1]}`],
+  [/^주기 {4}(\d+)일마다$/, (m) => `Cycle   every ${m[1]} days`],
+  [/^상태 {4}다음 납부까지 (\d+)일$/, (m) => `Status  next payment in ${m[1]} days`],
+  [/^상태 {4}(\d+)일 연체 중 — 하루마다 항구 신뢰가 깎입니다$/, (m) => `Status  ${m[1]} days overdue — harbour trust drops each day`],
+  [/^상태 {4}(\d+)일 연체 중 — 전기가 끊겨 재배기가 멈췄습니다$/, (m) => `Status  ${m[1]} days overdue — the power is cut and the unit has stopped`],
+  [/^(\d+)일 연체$/, (m) => `${m[1]} days overdue`],
+  [/^수경 재배기 전기료 \((\d+)대\)$/, (m) => `Hydroponic unit electricity (${m[1]} units)`],
+  [/^(.+) — 전기가 끊겨 멈췄다$/, (m, tr) => `${tr(m[1])} — stopped, the power is cut`],
+  // 236차 — 텃밭 구획 상한 · 농지 이용권 · 사용료
+  [/^상태 {4}(\d+)일 연체 중 — 빌린 텃밭에 새로 심을 수 없습니다$/, (m) => `Status  ${m[1]} days overdue — nothing new can be planted on rented patches`],
+  [/^농지 사용료 \((\d+)구획\)$/, (m) => `Farmland rent (${m[1]} plot${m[1] === '1' ? '' : 's'})`],
+  [/^• 텃밭에서 거두기: (\d+)번 이상 \(현재 (\d+)번\)$/, (m) => `• Garden harvests: ${m[1]}+ (now ${m[2]})`],
+  [/^빌릴 수 있는 마을 농지는 (\d+)구획까지다$/, (m) => `You can rent at most ${m[1]} patches of village farmland`],
+  [/^마당 텃밭은 (\d+)구획까지다 — 더 내려면 농지 이용권으로 마을 농지를 빌린다$/, (m) => `Your yard holds ${m[1]} garden patches — for more, rent village farmland with the Farmland Use Right`],
+  [/^마을 농지 한 구획을 빌렸다 \(한 달 사용료 ₩([\d,]+)\)$/, (m) => `Rented one patch of village farmland (₩${m[1]} a month)`],
+  // 236차 — 농산물 실제 소매가(평년 대비)
+  [/^평년보다 (\d+)% 비싸다 \((\d+)\/(\d+) 소매가\)$/, (m) => `${m[1]}% above the usual (retail, ${m[2]}/${m[3]})`],
+  [/^평년보다 (\d+)% 싸다 \((\d+)\/(\d+) 소매가\)$/, (m) => `${m[1]}% below the usual (retail, ${m[2]}/${m[3]})`],
+  [/^평년과 비슷하다 \((\d+)\/(\d+) 소매가\)$/, (m) => `About the usual (retail, ${m[1]}/${m[2]})`],
   [/^숙련도 Lv\.(\d+)\/(\d+) · (\d+)(?: \/ (\d+)| \(만숙\)) · 현재 효과 ×([\d.]+) · 채우기: (.+)$/,
     (m, tr) => `Proficiency Lv.${m[1]}/${m[2]} · ${m[3]}${m[4] ? ` / ${m[4]}` : ' (mastered)'} · effect ×${m[5]} · raised by: ${tr(m[6])}`],
   [/^\[숙련\] (.+) 숙련도 Lv\.(\d+) — 효과 ×([\d.]+)$/, (m, tr) => `[Proficiency] ${tr(m[1])} proficiency Lv.${m[2]} — effect ×${m[3]}`],

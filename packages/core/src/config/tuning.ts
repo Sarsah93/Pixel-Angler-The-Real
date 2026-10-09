@@ -657,6 +657,9 @@ export interface TuningConfig {
     sugarSigmaSpoons: number;
     /** 별 획득 임계 (요소 점수) */
     starThreshold: number;
+    /** 235차 — 가게 채소 요리의 총점 상한(완성도 별이 막힌 만큼 값 · 효과도 5별에 못 미치게) · 반 개 별일 때 */
+    storeProduceTotalCap: number;
+    storeProduceTotalCapHalf: number;
     /** 완성도 게이트 — 다른 요소 중 하나라도 이 아래면 완성도 캡 */
     finishGateMin: number;
     finishCap: number;
@@ -1107,6 +1110,18 @@ export interface TuningConfig {
     /** 어장 행사료(원) — 계원 / 외부인 (채취 1회당) */
     groundFeeMemberKrw: number;
     groundFeeOutsiderKrw: number;
+    /**
+     * 236차 — 수경 재배기 전기료(원 · 대당) / 주기(일). 가정용 식물재배기(LG 틔운 오브제 월 42.5kWh 공식 표기) ×
+     * 주택용 1단계 120원 + 기후환경 9원 + 연료비조정 5원 → 부가세 10% · 전력기금 2.7% = 약 6,400원 → 6,500원.
+     */
+    hydroPowerKrw: number;
+    hydroPowerDays: number;
+    /**
+     * 236차 — 농지 사용료(원 · 빌린 구획당) / 주기(일). 서울시 「동행서울 친환경농장」(2025) 1구획 16.5㎡
+     * (배수로 빼면 경작 약 12㎡ = 게임 한 구획 4×3칸) 한 철(4~11월) 임차료 4~7만 원 → 달로 나눠 약 5,000원.
+     */
+    farmRentKrw: number;
+    farmRentDays: number;
   };
   rep: {
     harborMax: number;
@@ -1423,7 +1438,7 @@ export const TUNING: TuningConfig = {
     timeScale: 6, lossWPerK: 9, boilC: 95, panHotC: 150, rateCap: 1.6, rateExp: 2.2,
     burnSec: 120, flipBurnC: 140, dryBurnSec: 180, burntThreshold: 0.6,
     finalStageAfterSec: 90, overcookWarnSec: 240, reduceRatio: 0.55,
-    saltSigmaPct: 0.28, sugarSigmaSpoons: 1.0, starThreshold: 0.72,
+    saltSigmaPct: 0.28, sugarSigmaSpoons: 1.0, starThreshold: 0.72, storeProduceTotalCap: 85, storeProduceTotalCapHalf: 92,
     finishGateMin: 0.6, finishCap: 0.55, skillPerRank: 0.05,
     windCalmMps: 3, windSpanMps: 9, placeRangeTiles: 3, solidVolumeFrac: 0.6, idleWarnMin: 3, xpTotalRef: 70,
     ingredientQuality: { freshnessWeight: 0.2, fatnessWeight: 0.3, brothWeight: 0.3 },
@@ -1571,6 +1586,8 @@ export const TUNING: TuningConfig = {
     vesselUpkeepKrw: 180_000, vesselUpkeepDays: 90,
     hygieneFeeKrw: 45_000, hygieneDays: 120, hygieneRetestKrw: 30_000,
     groundFeeMemberKrw: 1_000, groundFeeOutsiderKrw: 5_000,
+    hydroPowerKrw: 6_500, hydroPowerDays: 30,
+    farmRentKrw: 5_000, farmRentDays: 30,
   },
   rep: {
     harborMax: 100, seaMin: -10, seaMax: 10,

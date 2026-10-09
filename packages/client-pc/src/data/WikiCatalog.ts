@@ -11,6 +11,8 @@
 import type { InvCategory, InvItemTemplate } from '../store/InventoryStore.js';
 import { LINE_DATABASE } from '@tra/core';
 import { QUEST_REWARD_ITEMS } from './QuestRewardItems.js';
+import { CROP_ITEM_TEMPLATES, PRODUCE_SUB } from './CropItems.js';
+import { cropOfProduce } from '@tra/core';
 import { InventoryStore } from '../store/InventoryStore.js';
 import { SHOP_CATALOG, BUILDING_LABEL } from './ShopCatalog.js';
 
@@ -83,6 +85,18 @@ export function buildItemWikiCatalog(): WikiItemEntry[] {
       category: t.category, subCategory: t.subCategory, basePrice: t.basePrice,
       desc: t.bound ? '귀속 — 스토리 보상. 판매·양도 불가.' : '스토리 보상.', soldAt: [], isSeed: false,
       tpl: { ...t, equipped: false, equippedHand: undefined },
+    });
+  }
+
+  // 4b) 235차 — 텃밭 아이템(수확물 3등급 · 가게에 안 나온 씨앗 · 모종). 수확물 설명은 작물 메모
+  for (const t of CROP_ITEM_TEMPLATES) {
+    if (map.has(t.id)) continue;
+    const crop = t.subCategory === PRODUCE_SUB ? cropOfProduce(t.id) : undefined;
+    map.set(t.id, {
+      id: t.id, name: t.name, icon: t.icon, iconTexture: t.iconTexture,
+      category: t.category, subCategory: t.subCategory, basePrice: t.basePrice,
+      desc: crop?.noteKo ?? '', soldAt: [], isSeed: false,
+      tpl: { ...t },
     });
   }
 

@@ -313,6 +313,12 @@ export { createForageGame, stepForageGame, forageLossLineKo, FORAGE_GAME } from 
 export type {
   ForageGameInput, ForageGameState, ForageGameLoss, SnatchState, PryState, DigState, PullState,
 } from './simulation/ForageMinigame.js';
+// 235차 — 달아나는 채집 생물의 멀티 공용 움직임(시드 어슬렁 + 공유 도망 기록)
+export {
+  advanceRunner, runnerStepIntervalMs, runnerHash, encodeRunnerFlee, decodeRunnerFlee, runnerFleeKey, runnerEpoch,
+  RUNNER_STEP_MIN_MS, RUNNER_STEP_SPAN_MS,
+} from './simulation/ForageRunners.js';
+export type { RunnerAnchor, RunnerCursor, RunnerFlee } from './simulation/ForageRunners.js';
 export type { TrapDeploymentContext } from './simulation/TrapSystem.js';
 export { evaluateFishSellPrice } from './simulation/MarketPriceEvaluator.js';
 export type { PriceEvaluationResult } from './simulation/MarketPriceEvaluator.js';
@@ -645,7 +651,7 @@ export {
 export type { UpkeepKind, UpkeepItem, UpkeepLedger, UpkeepContext, UpkeepPenalty } from './rules/Upkeep.js';
 export {
   licenseRenewalFee, licenseRenewalDays, listUpkeep, upkeepAlerts,
-  upkeepPenalty, fisheryGroundFee, coopDuesFeeCut, upkeepKeysOfLicense,
+  upkeepPenalty, fisheryGroundFee, coopDuesFeeCut, upkeepKeysOfLicense, POWER_UPKEEP_KEY, FARM_RENT_UPKEEP_KEY,
 } from './rules/Upkeep.js';
 
 // ── 상점 진열 재고 — 221차 ──
@@ -777,7 +783,7 @@ export type { AddCheck, CookEnv, CookStepResult, CompositionCheck, SeasonEval, F
 export {
   createCookSession, reqFor, unitsOf, canAddIngredient, fmtUnits, addIngredient, setHeat, flip,
   effectiveHeatW, stepCook, isReady, checkComposition, evalSeason, evalTexture, evalFresh, evalTempAt, evalFinish,
-  evaluateSession, finishCook, dishStarsAt, dishValueKrw, dishVitalsMult, dishItemName,
+  evaluateSession, finishCook, dishStarsAt, dishValueKrw, dishVitalsMult, dishItemName, produceSummary,
   SALT_LABEL_KO, SALT_LABEL_EN, SUGAR_LABEL_KO, SUGAR_LABEL_EN, STAR_NAME_KO, STAR_NAME_EN,
 } from './simulation/CookingSim.js';
 export { sashimiStarsAt, sashimiStarPriceMult, sashimiPlateName, sashimiFreshScore, quadBalanceOf,
@@ -814,3 +820,28 @@ export { canSleep, sleepFraction, applyPartialSleep, offlineCountsAsSleep, dayPa
 export type { NpcRoutineKind, NpcShift, NpcRoutineDef, NpcWhere, NpcHomeReason, NpcWhereabouts } from './types/NpcRoutine.js';
 export { NPC_ROUTINES, STORY_NPC_ROUTINE, routineOfNpc } from './db-schema/NpcRoutines.js';
 export { npcWhereabouts, routinePostMinutes } from './simulation/NpcRoutine.js';
+
+// 235차 — 텃밭 농사(실제 시간 · 실제 계절 · 시설 상한 · 시들 뿐 죽지 않는다)
+export type {
+  CropCategory, CropSpeedClass, CropRarity, CropGrade, CropStartKind, FarmSite, FarmFacility, CropStart, CropHarvest,
+  CropInterim, CropRequirement, CropPrice, CropDef, FarmCellState, FarmPlotState, FarmEnv, FarmPlantCtx, FarmHarvestResult,
+} from './types/Farming.js';
+export {
+  CROP_DATABASE, getCrop, cropStartOfItem, cropOfProduce, isFarmProduce,
+  PRODUCE_GRADE_SUFFIX, produceItemId, parseProduceId,
+  FARM_SUPPLIES, getFarmSupply, supplyOfFacility,
+} from './db-schema/CropDatabase.js';
+export type { FarmSupplyDef } from './db-schema/CropDatabase.js';
+export {
+  FARM_COLS, FARM_ROWS, FARM_CELLS, INDOOR_SLOTS, FARM_TUNING, kstMonthOf, kstDayIndex, climateRainAt, newFarmCell, newFarmPlot,
+  startOf, gradeOf, GRADE_KO, GRADE_EN, cellReady, interimOpen, seasonFactor, speedMultOf, cellDays, advanceCell, advancePlot,
+  tillCell, compostCell, waterCell, monthRangeKo, canPlant, plantCell, clearCell, harvestCell, interimHarvestCell, cellStage,
+  daysToNextHarvest, producePriceShock, producePrice, cropDailyValue, farmPlotCap, rentedPlotCount,
+} from './simulation/FarmSim.js';
+export type { PlantCheck, HarvestSkills, FarmCellStage } from './simulation/FarmSim.js';
+// ── 농산물 실시간 시세(KAMIS 하루치 스냅샷) — 236차 ──
+export type { KamisPriceRow, ProduceMarketSnapshot } from './rules/ProduceMarket.js';
+export {
+  KAMIS_CROP_ITEMS, PRODUCE_MARKET_TUNING, isProduceMarketSnapshot, snapshotAgeDays, kamisRatioOf,
+  setProduceMarket, produceMarketRatio, produceMarketInfo,
+} from './rules/ProduceMarket.js';

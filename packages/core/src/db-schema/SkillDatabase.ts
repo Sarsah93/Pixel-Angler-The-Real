@@ -1,7 +1,7 @@
 /**
  * @file SkillDatabase.ts
  * @description 스킬 트리 데이터 (122차 골격 · 124차 증설 · **130차 확장**) —
- * 7카테고리 **93노드**(유료 88 + 시너지 히든 5) · **Σ(유료) = 정확히 216pt**(193차 — 한 바늘에 두 미끼 +1 · 시작 보너스 +1).
+ * 7카테고리 **95노드**(유료 88 + 시너지 히든 5) · **Σ(유료) = 정확히 216pt**(193차 — 한 바늘에 두 미끼 +1 · 시작 보너스 +1).
  *
  * **215 등식(130차 재정의)**: 레벨당 1SP × MAX_LEVEL 200 **+ 면허 보너스 15** = 215SP = 유료 노드 총 비용 —
  * **"만렙 + 전 면허 취득 = 전 스킬 마스터"**. 124차 등식(200)은 (a)(c) 노드를 넣으면서 우변을 늘려 갱신했다
@@ -16,7 +16,7 @@
  *  - 경제: 루트 = 흥정. → 대량 구매 덤 / 단골 어판장. 토지·주식·식당 마진은 상위(시스템 예정).
  *  - 운전: 루트 = 달리기. → 자전거 속도 → 자동차 해금(예정) / 자전거 지구력 / 맨발 달리기(독립).
  *  - 생활: 루트 = 체력 · 힘(병렬). 체력 → 추위 내성 / 피로 회복 / 평형감각(미끄러짐) / 손질·요리 손.
- *  - 농사: 카테고리 잠금(농장 경영 S8 착수 시 활성) — 트리는 열람만.
+ *  - 농사(235차 — 텃밭과 함께 잠금 해제): 루트 = 개간 · 물주기. 산채 재배 · 수경 재배 = 희귀 작물 자격.
  *  - 제작(124차): 카테고리 잠금(U '제작' 탭 — P7 구현 시 활성) — 트리는 열람만.
  *
  * ⚠ 배치 제약(SkillTreePanel): 티어는 0~3(열 4개 고정 — 패널 폭 788px에 5열이 안 들어간다) ·
@@ -37,10 +37,8 @@ export const SKILL_CATEGORIES: SkillCategoryDef[] = [
   { id: 'economy', nameKo: '경제', nameEn: 'Economy', descKo: '흥정·거래·시세·토지·주식', descEn: 'Haggling, trade, markets, land and stocks' },
   { id: 'driving', nameKo: '운전 · 이동', nameEn: 'Driving · Travel', descKo: '달리기·자전거·자동차·보트', descEn: 'Running, bicycle, car and boat' },
   { id: 'life', nameKo: '생활', nameEn: 'Life', descKo: '체력·힘·피로·평형·손질·요리', descEn: 'Stamina, strength, fatigue, balance, filleting and cooking' },
-  {
-    id: 'farming', nameKo: '농사', nameEn: 'Farming', descKo: '개간·작물·물·비료·온실', descEn: 'Tilling, crops, water, fertilizer and greenhouse',
-    locked: true, lockedNoteKo: '농장 경영(홈타운 텃밭) 착수 시 활성화됩니다 — 지금은 열람만', lockedNoteEn: 'Unlocks when farm management (home garden) arrives — view only for now',
-  },
+  // 235차 — 홈타운 텃밭이 들어와 잠금 해제
+  { id: 'farming', nameKo: '농사', nameEn: 'Farming', descKo: '개간·작물·물·비료·온실·산채·수경', descEn: 'Tilling, crops, water, fertilizer, greenhouse, mountain greens and hydroponics' },
   {
     // 129차 P7 — U 창 '제작' 탭 + 고급 제작대가 들어오면서 잠금 해제.
     id: 'crafting', nameKo: '제작', nameEn: 'Crafting', descKo: '채비·루어·통발·구급품·로드 빌딩', descEn: 'Rigs, lures, traps, first-aid supplies and rod building',
@@ -138,17 +136,21 @@ export const SKILL_DATABASE: SkillDef[] = [
   { id: 'life_grit', category: 'life', nameKo: '강단', nameEn: 'Grit', descKo: '피로 최대치 +10/랭크 — 기절까지의 여유', descEn: 'Max fatigue +10 per rank — more room before collapse', tier: 2, maxRank: 2, costPerRank: 2, requires: [{ id: 'life_recover', rank: 2 }], effect: add('fatigue_max', 10), wired: true },
   { id: 'life_efficiency', category: 'life', nameKo: '요령', nameEn: 'Efficiency', descKo: '행동 1회가 행동력을 아예 안 쓸 확률 +4%p/랭크', descEn: '+4%p chance an action costs no stamina at all', tier: 3, maxRank: 5, costPerRank: 1, requires: [{ id: 'life_recover', rank: 3 }], effect: add('action_free', 0.04), wired: true, unlock: [{ kind: 'level', value: 30 }] },
 
-  // ───────────── 농사 (카테고리 잠금) ─────────────
-  { id: 'farm_till', category: 'farming', nameKo: '개간', nameEn: 'Tilling', descKo: '개간·밭갈이 속도 +15%/랭크', descEn: 'Tilling speed +15% per rank', tier: 0, maxRank: 2, costPerRank: 1, requires: [], effect: mult('till_speed', 0.15), wired: false },
-  { id: 'farm_water', category: 'farming', nameKo: '물주기', nameEn: 'Watering', descKo: '물주기 효율 +20%/랭크', descEn: 'Watering efficiency +20% per rank', tier: 0, maxRank: 2, costPerRank: 1, requires: [], effect: mult('water_efficiency', 0.20), wired: false },
-  { id: 'farm_yield', category: 'farming', nameKo: '수확량', nameEn: 'Harvest Yield', descKo: '작물 수확량 +10%/랭크', descEn: 'Crop yield +10% per rank', tier: 1, maxRank: 3, costPerRank: 1, requires: [{ id: 'farm_till', rank: 1 }], effect: mult('crop_yield', 0.10), wired: false },
-  { id: 'farm_seed', category: 'farming', nameKo: '씨앗 회수', nameEn: 'Seed Saver', descKo: '수확 시 씨앗 회수 확률 +15%/랭크', descEn: 'Seed recovery chance on harvest +15% per rank', tier: 1, maxRank: 2, costPerRank: 1, requires: [{ id: 'farm_water', rank: 1 }], effect: add('seed_saver', 0.15), wired: false },
-  { id: 'farm_fert', category: 'farming', nameKo: '비료 효율', nameEn: 'Fertilizer', descKo: '비료 효과 +20%/랭크', descEn: 'Fertilizer effect +20% per rank', tier: 2, maxRank: 2, costPerRank: 1, requires: [{ id: 'farm_yield', rank: 1 }], effect: mult('fertilizer', 0.20), wired: false },
-  { id: 'farm_green', category: 'farming', nameKo: '온실', nameEn: 'Greenhouse', descKo: '온실 해금 — 계절 무관 재배', descEn: 'Unlocks the greenhouse — grow in any season', tier: 3, maxRank: 1, costPerRank: 3, requires: [{ id: 'farm_fert', rank: 1 }, { id: 'farm_seed', rank: 1 }], effect: add('greenhouse', 1), wired: false, unlock: [{ kind: 'license', value: 'farmland_use' }, { kind: 'categoryRanks', category: 'farming', value: 8 }] },
-  // ── 농사 124차 증설 (+3노드 6pt — 농장 경영(S8) 착수 시 배선·해제) ──
-  { id: 'farm_sprout', category: 'farming', nameKo: '파종 감각', nameEn: 'Sowing Sense', descKo: '발아율 +8%/랭크', descEn: 'Germination rate +8% per rank', tier: 1, maxRank: 2, costPerRank: 1, requires: [{ id: 'farm_till', rank: 1 }], effect: mult('sprout_rate', 0.08), wired: false },
-  { id: 'farm_pest', category: 'farming', nameKo: '해충 방제', nameEn: 'Pest Control', descKo: '병충해 확률 -15%/랭크', descEn: 'Pest/disease chance -15% per rank', tier: 2, maxRank: 2, costPerRank: 1, requires: [{ id: 'farm_yield', rank: 1 }], effect: mult('pest_resist', -0.15), wired: false },
-  { id: 'farm_season', category: 'farming', nameKo: '절기 독해', nameEn: 'Almanac Reading', descKo: '파종 적기 캘린더 표시', descEn: 'Shows the sowing-season calendar', tier: 2, maxRank: 2, costPerRank: 1, requires: [{ id: 'farm_sprout', rank: 1 }], effect: add('farm_calendar', 1), wired: false },
+  // ───────────── 농사 (235차 — 텃밭이 들어와 카테고리 잠금 해제 · 노드 재편 · 총 20pt 그대로) ─────────────
+  //  구 노드는 카테고리 잠금이라 아무도 찍지 못했다 → 뜻을 고쳐도 세이브가 어긋나지 않는다.
+  //  개간 2랭크(속도 — 이 텃밭에선 갈기가 한 번이라 뜻이 없다)와 절기 2랭크를 1랭크씩 줄이고,
+  //  그 2pt로 「산채 재배」 · 「수경 재배」 자격을 만들었다(희귀 작물의 자격 — 사용자 지시 2026-10-08).
+  { id: 'farm_till', category: 'farming', nameKo: '개간', nameEn: 'Tilling', descKo: '호미질 한 번에 한 줄(4칸)을 간다', descEn: 'One pass of the hoe tills a whole row (4 cells)', tier: 0, maxRank: 1, costPerRank: 1, requires: [], effect: add('till_speed', 1), wired: true },
+  { id: 'farm_water', category: 'farming', nameKo: '물주기', nameEn: 'Watering', descKo: '흙이 마르는 속도 -20%/랭크', descEn: 'Soil dries 20% slower per rank', tier: 0, maxRank: 2, costPerRank: 1, requires: [], effect: mult('water_efficiency', 0.20), wired: true },
+  { id: 'farm_yield', category: 'farming', nameKo: '수확량', nameEn: 'Harvest Yield', descKo: '작물 수확량 +10%/랭크', descEn: 'Crop yield +10% per rank', tier: 1, maxRank: 3, costPerRank: 1, requires: [{ id: 'farm_till', rank: 1 }], effect: mult('crop_yield', 0.10), wired: true },
+  { id: 'farm_seed', category: 'farming', nameKo: '씨앗 회수', nameEn: 'Seed Saver', descKo: '거둘 때 씨앗 한 봉을 받을 확률 +15%/랭크', descEn: '+15% chance per rank to save a packet of seed at harvest', tier: 1, maxRank: 2, costPerRank: 1, requires: [{ id: 'farm_water', rank: 1 }], effect: add('seed_saver', 0.15), wired: true },
+  { id: 'farm_fert', category: 'farming', nameKo: '비료 효율', nameEn: 'Fertilizer', descKo: '퇴비 효과 +20%/랭크', descEn: 'Compost effect +20% per rank', tier: 2, maxRank: 2, costPerRank: 1, requires: [{ id: 'farm_yield', rank: 1 }], effect: mult('fertilizer', 0.20), wired: true },
+  { id: 'farm_green', category: 'farming', nameKo: '온실', nameEn: 'Greenhouse', descKo: '비닐 터널을 세울 수 있다 — 철 앞뒤 한 달 · 추운 달에 빨리 자란다', descEn: 'Lets you raise a plastic tunnel — one extra month each side of the season, faster in cold months', tier: 3, maxRank: 1, costPerRank: 3, requires: [{ id: 'farm_fert', rank: 1 }, { id: 'farm_seed', rank: 1 }], effect: add('greenhouse', 1), wired: true, unlock: [{ kind: 'license', value: 'farmland_use' }, { kind: 'categoryRanks', category: 'farming', value: 8 }] },
+  { id: 'farm_sprout', category: 'farming', nameKo: '파종 감각', nameEn: 'Sowing Sense', descKo: '발아율 +8%/랭크', descEn: 'Germination rate +8% per rank', tier: 1, maxRank: 2, costPerRank: 1, requires: [{ id: 'farm_till', rank: 1 }], effect: mult('sprout_rate', 0.08), wired: true },
+  { id: 'farm_pest', category: 'farming', nameKo: '해충 방제', nameEn: 'Pest Control', descKo: '병충해 확률 -15%/랭크', descEn: 'Pest/disease chance -15% per rank', tier: 2, maxRank: 2, costPerRank: 1, requires: [{ id: 'farm_yield', rank: 1 }], effect: mult('pest_resist', -0.15), wired: true },
+  { id: 'farm_season', category: 'farming', nameKo: '절기 독해', nameEn: 'Almanac Reading', descKo: '텃밭 창에 심을 철 · 거둘 철 달력이 열린다', descEn: 'Opens the sowing and harvest calendar in the garden window', tier: 2, maxRank: 1, costPerRank: 1, requires: [{ id: 'farm_sprout', rank: 1 }], effect: add('farm_calendar', 1), wired: true },
+  { id: 'farm_wild', category: 'farming', nameKo: '산채 재배', nameEn: 'Mountain Greens', descKo: '곰취 · 산마늘 · 눈개승마 · 두릅 같은 산나물을 기를 줄 안다', descEn: 'Know how to grow mountain greens — gomchwi, alpine leek, goat\'s beard, fatsia shoots', tier: 2, maxRank: 1, costPerRank: 1, requires: [{ id: 'farm_season', rank: 1 }], effect: add('farm_wild', 1), wired: true },
+  { id: 'farm_hydro', category: 'farming', nameKo: '수경 재배', nameEn: 'Hydroponics', descKo: '찬물 수조를 다룰 줄 안다 — 고추냉이를 기를 수 있다', descEn: 'Know how to run a cold-water tank — makes wasabi possible', tier: 2, maxRank: 1, costPerRank: 1, requires: [{ id: 'farm_water', rank: 1 }], effect: add('farm_hydro', 1), wired: true },
 
   // ───────────── 제작 (124차 신설 — 카테고리 잠금: U '제작' 탭(P7) 구현 시 활성) ─────────────
   { id: 'craft_knot', category: 'crafting', nameKo: '매듭 숙련', nameEn: 'Knot Mastery', descKo: '채비 제작 성공률 +6%/랭크 · 강도 +4%', descEn: 'Rig crafting success +6% per rank · strength +4%', tier: 0, maxRank: 3, costPerRank: 1, requires: [], effect: mult('craft_success', 0.06), wired: true },

@@ -27,6 +27,8 @@ import {
   holeKindOfBreakwaterClass, evaluateHoleSpot, holeSlipChance, holeGearWarning,
   STAIR_DIR_LABEL,
   getTitleById,
+  // 235차 — 텃밭 칸 그림
+  FARM_CELLS, FARM_COLS, cellStage, getCrop,
 } from '@tra/core';
 import { openContextMenu } from '../ui/ContextMenu.js';
 import { PeerInfoPanel } from '../ui/PeerInfoPanel.js';
@@ -79,6 +81,7 @@ import { RegionLight,
   computeCastWeather, castScatterRadius, applyCastScatter, castWeatherLabelKo, kstParts,
   sharedWeatherKind, quantizeShared,
   rodCastDistanceMult, rodLoadState, rodTipSnapChance, reelFitsRod, rodFitsHole,
+  FARM_TUNING,
   type CastWeatherEffect,
   type VitalsActivity,
 } from '@tra/core';
@@ -100,6 +103,8 @@ import { LicensePanel } from '../ui/LicensePanel.js';
 import { SkillTreePanel } from '../ui/SkillTreePanel.js';
 import { JournalPanel } from '../ui/JournalPanel.js';
 import { addPixelIcon } from '../ui/PixelIcon.js';
+import { FarmPanel } from '../ui/FarmPanel.js';
+import { FarmStore } from '../store/FarmStore.js';
 import type { MiniMarker, QuestTrackerEntry } from '../ui/RegionHud.js';
 import { TextInput } from '../ui/TextInput.js';
 import { MonologuePanel, OPENING_MONOLOGUE } from '../ui/MonologuePanel.js';
@@ -108,13 +113,15 @@ import { PrologueCoach, type CoachStage } from '../ui/PrologueCoach.js';
 import {
   prologueKeyAllowed, markPrologue, syncPrologue, prologueRunning, prologueStepDone,
   noteProloguePurchase, notePrologueSale, PROLOGUE_PHOTO_ID,
-  inPrologue, PROLOGUE_BUY_KINDS, prologueProtects, buyKindOf,
+  inPrologue, PROLOGUE_BUY_KINDS, PROLOGUE_BUY_LABEL, prologueProtects, buyKindOf,
 } from '../store/Prologue.js';
 import { repairQuestItems, iceCrateNeeded } from '../store/QuestItemGuard.js';
 import { DialoguePanel, type DialogueSceneRequest } from '../ui/DialoguePanel.js';
 import { GeneralMeetingPanel } from '../ui/GeneralMeetingPanel.js';
 import { StoryStore } from '../store/StoryStore.js';
-import { storyActionScene, storyActionSpec } from '../store/StoryActionRegistry.js';
+import { storyActionScene, storyActionSpec, auditStoryActionOrigins } from '../store/StoryActionRegistry.js';
+import { actionStepGuide } from '../data/ActionGuide.js';
+import { QUEST_REWARD_ITEMS } from '../data/QuestRewardItems.js';
 import { questSceneFor, type SceneExtra } from '../data/QuestScenes.js';
 import { loadSettings } from './SettingsScene.js';
 import { MultiplayerClient } from '../net/MultiplayerClient.js';
@@ -949,6 +956,8 @@ export class RegionFieldScene extends Phaser.Scene {
     // ── 보일링/스쿨링 필드 이벤트 (피딩타임 활성도 기반 발생 롤) ──
     this.refreshFieldFeeding();
     this.time.addEvent({ delay: 60_000, loop: true, callback: () => this.refreshFieldFeeding() });
+    // 235차 — 텃밭: 30초마다 자람을 따라잡고 바뀐 칸만 다시 그린다
+    this.time.addEvent({ delay: 30_000, loop: true, callback: () => this.refreshFarmOverlays(true) });
     this.fieldEvents = new FieldEventManager(this, {
       isWaterAt: (c, r) => this.terrainAt(c, r) === 'water',
       tileSize: TR,
@@ -2883,6 +2892,7 @@ export class RegionFieldScene extends Phaser.Scene {
       this.popupStack = this.popupStack.filter((e) => e.panel !== panel);
       panel.destroy();
       onClosed?.();
+      this.flushPendingProgressScene();   // 235차 — 마지막 창이 닫히면 미뤄 둔 행동 결과 장면
       this.hud?.refreshQuickslots();
       // 닫기 클릭이 씬 pointerdown으로 이어져 캐스팅을 시도하지 않도록 유예
       this.suppressClickUntil = this.time.now + 250;
@@ -3337,8 +3347,8 @@ export class RegionFieldScene extends Phaser.Scene {
   }
 
   /**
-   * 219차 — 프롤로그 장보기 안전망. 비싼 물건을 먼저 사 버려 남은 기본 채비(원줄 · 바늘 · 봉돌 · 찌 · 미끼)를
-   * 살 돈이 모자라면 진행이 막힌다(벌 길이 없다) → 그 차액만 채워 준다(비상금).
+   * 219차 — 프롤로그 장보기 안전망. 비싼 물건을 먼저 사 버려 남은 첫 채비(236차부터 원투 — 원줄 · 목줄 · 봉돌 · 바늘 · 미끼)를
+   * 살 돈이 모자라면 진행이 막힌다(벌 길이 없다) → 그 차액만 채워 준다(비상금). 봉돌은 아버지 대가 견디는 가벼운 것만 센다.
    */
   private prologueBuyAid(): void {
     if (!inPrologue() || prologueStepDone('buy')) return;
@@ -3546,6 +3556,8 @@ export class RegionFieldScene extends Phaser.Scene {
     if (got > 0) {
       GameState.addCoins(got, false, 'sell');
       TitleStore.recordTrade(MarketStore.branch?.key);   // 203차 — 「단골」
+      // 235차 — 정옥선 좌판(만복상회)에서 판 날 = 「좌판 하루 운영」(이야기 하루 한 번만 오른다 — StoryStore가 센다)
+      if (MarketStore.branch?.key.endsWith(':npc:okseon')) StoryStore.emitActionOrigin('stall-day:okseon');
       GameState.addProficiency('haggle');   // 188차 — 흥정 숙련
     }
     this.events.emit('inventory-changed');
@@ -4678,12 +4690,15 @@ export class RegionFieldScene extends Phaser.Scene {
     }
     if (!prologueStepDone('buy')) {
       const left = PROLOGUE_BUY_KINDS.filter((k) => !GameState.getFlag(`prologue.buy.${k}`));
-      const ko: Record<string, string> = { line: '원줄', hook: '바늘', sinker: '봉돌', float: '찌', bait: '미끼' };
-      const names = left.map((k) => ko[k]).join(' · ');
-      if (this.shopPanel) return this.coachShopDock(`buy_${left.join('_')}`, `기본 채비를 하나씩 사 보자. 아직 사지 않은 것: ${names}`);
+      const names = left.map((k) => PROLOGUE_BUY_LABEL[k]).join(' · ');
+      // 236차 — 첫 채비는 원투. 무거운 봉돌을 샀으면 아버지 대가 견디는 무게를 먼저 일러 준다
+      if (this.shopPanel && left.includes('sinker') && GameState.getFlag('prologue.heavySinker')) {
+        return this.coachShopDock(`buy_heavy_${left.join('_')}`, `그 봉돌은 아버지 대에 너무 무겁다. 대가 견디는 3호 봉돌을 고르자. 아직 사지 않은 것: ${names}`);
+      }
+      if (this.shopPanel) return this.coachShopDock(`buy_${left.join('_')}`, `원투 채비를 하나씩 사 보자. 아직 사지 않은 것: ${names}`);
       // 215차 — 직판장 안: 계산대로
       if (this.interior) return this.coachDock('buy_in', `직판장 안이다. 계산대 앞에 서서 [F]를 눌러 주인에게 물건을 보자. (${names})`);
-      return this.coachDock('buy', `속초에 왔다. 수산물 직판장 앞에서 [F]를 눌러 안으로 들어가자. 기본 채비를 하나씩 사야 한다. (${names})`, ['shop:market', 'quest', 'npc']);
+      return this.coachDock('buy', `속초에 왔다. 수산물 직판장 앞에서 [F]를 눌러 안으로 들어가자. 원투 채비를 하나씩 사야 한다. (${names})`, ['shop:market', 'quest', 'npc']);
     }
     if (!prologueStepDone('sell')) {
       if (this.shopPanel) return this.coachShopDock('sell_tab', '「판매하기」로 바꿔 얼린 오징어를 팔아 보자. 노잣돈에 보탬이 된다.');
@@ -4875,7 +4890,67 @@ export class RegionFieldScene extends Phaser.Scene {
   private renderHomeObjects(): void {
     this.homeObjSprites.forEach((objs) => objs.forEach((s) => s.destroy()));
     this.homeObjSprites.clear();
+    this.clearFarmOverlays();
     for (const o of this.homeObjects) this.renderHomeObject(o);
+  }
+
+  // ── 235차 — 텃밭 칸 그림(설치물 위 — 일구지 않은 땅 · 젖은 흙 · 생육 단계 · 다 익은 수확물) ──
+  private farmOverlays = new Map<string, { sig: string; objs: Phaser.GameObjects.GameObject[] }>();
+
+  private clearFarmOverlays(): void {
+    this.farmOverlays.forEach((v) => v.objs.forEach((x) => x.destroy()));
+    this.farmOverlays.clear();
+  }
+
+  /** 모든 텃밭 칸 그림을 다시 맞춘다(advance = 자람부터 따라잡기) */
+  private refreshFarmOverlays(advance = false): void {
+    if (advance) FarmStore.advanceAll();
+    for (const o of this.homeObjects) if (o.type === 'farmPlot') this.renderFarmOverlay(o);
+  }
+
+  private renderFarmOverlay(o: MapObject): void {
+    const plot = FarmStore.has(o.instanceId) ? FarmStore.plot(o.instanceId) : null;
+    const sig = plot
+      ? plot.cells.map((c) => `${c.tilled ? 1 : 0}${c.cropId ?? ''}${cellStage(c)}${c.moisture >= 0.6 ? 'w' : ''}`).join('|')
+      : 'none';
+    const prev = this.farmOverlays.get(o.instanceId);
+    if (prev && prev.sig === sig) return;
+    prev?.objs.forEach((x) => x.destroy());
+    const objs: Phaser.GameObjects.GameObject[] = [];
+    const iconPx = TR >= 32 ? 32 : 16;
+    for (let i = 0; i < FARM_CELLS; i++) {
+      const c = plot?.cells[i];
+      const x = (o.tx + (i % FARM_COLS)) * TR + TR / 2;
+      const y = (o.ty + Math.floor(i / FARM_COLS)) * TR + TR / 2;
+      if (!c?.tilled) {
+        objs.push(this.add.rectangle(x, y, TR - 2, TR - 2, 0x4f6a34, 0.9).setDepth(6.05));
+        continue;
+      }
+      if (c.moisture >= 0.6) objs.push(this.add.rectangle(x, y, TR - 2, TR - 2, 0x24160c, 0.28).setDepth(6.05));
+      const stage = cellStage(c);
+      const key = stage === 'seeded' ? 'farm_seeded' : stage === 'young' ? 'farm_young'
+        : stage === 'growing' || stage === 'ready' ? 'farm_growing' : stage === 'resting' ? 'farm_resting' : null;
+      if (key) { const ic = addPixelIcon(this, key, x, y - 2, iconPx); if (ic) objs.push(ic.setDepth(6.1 + y * 0.0001)); }
+      const crop = c.cropId ? getCrop(c.cropId) : undefined;
+      if (stage === 'ready' && crop) {
+        const ic = addPixelIcon(this, crop.harvest.itemId, x + TR * 0.22, y - TR * 0.28, 16);
+        if (ic) objs.push(ic.setDepth(6.2 + y * 0.0001));
+      }
+    }
+    this.farmOverlays.set(o.instanceId, { sig, objs });
+  }
+
+  /** 235차 — 텃밭 창 */
+  private openFarm(o: MapObject): void {
+    this.openPopup((close) => new FarmPanel(this, GAME_WIDTH / 2 - 390, 60, {
+      plotId: o.instanceId,
+      onClose: close,
+      onChanged: () => { this.events.emit('inventory-changed'); this.renderFarmOverlay(o); },
+      log: (line) => this.hud?.pushLog(line),
+      confirm: (msg, yes, labels) => {
+        this.openPopup((c2) => new ConfirmDialog(this, msg, () => { c2(); yes(); }, c2, labels));
+      },
+    }), () => this.renderFarmOverlay(o));
   }
 
   private renderHomeObject(o: MapObject): void {
@@ -4895,6 +4970,7 @@ export class RegionFieldScene extends Phaser.Scene {
       objs.push(lbl);
     }
     this.homeObjSprites.set(o.instanceId, objs);
+    if (o.type === 'farmPlot') this.renderFarmOverlay(o);   // 235차 — 칸마다 자라는 것
   }
 
   private objTexKey(type: string, o: MapObject): string {
@@ -5177,6 +5253,10 @@ export class RegionFieldScene extends Phaser.Scene {
 
   private placeStoryTriggers(): void {
     this.storyTriggers = [];
+    if (import.meta.env.DEV) {   // 235차 — 행동 27종의 출처 수 · 지점 짝 대조(어긋나면 콘솔 경고)
+      const bad = auditStoryActionOrigins(STORY_FIELD_TRIGGERS);
+      if (bad.length) console.warn('[StoryActionOrigins]', bad);
+    }
     for (const def of STORY_FIELD_TRIGGERS) {
       if (def.regionId !== this.region || def.viaNpc) continue;   // viaNpc = 대화창 행으로만 닿는다
       const { col, row } = this.nearestWalkable(def.tx, def.ty);
@@ -5310,6 +5390,8 @@ export class RegionFieldScene extends Phaser.Scene {
 
   private startStoryTrigger(t: StoryFieldTrigger): void {
     if (!this.storyTriggerAvailable(t)) return;
+    // 235차 — N18-6 사용자 각본 지점 외에는 공용 지점 장면(혼잣말 두 줄 + 심부름 물건 주고받기)
+    if (!t.id.startsWith('n18-6-')) { this.startGenericTrigger(t); return; }
     const suffix = t.id.replace('n18-6-', '');
     const source = `n18-6:${suffix === 'origin-watch' ? 'watch-cinematic' : suffix}`;
     const done = (): void => {
@@ -5344,6 +5426,44 @@ export class RegionFieldScene extends Phaser.Scene {
     }
     const script = t.phase === 1 ? CINE_N186_LEDGER : CINE_N186_REPORT;
     this.playCinematic(script, { player: 'player', watcher: 'hyeonsu' }, done);
+  }
+
+  /**
+   * 235차 — 일반 현장 지점(행동 목표마다 진짜 출처). 혼잣말 장면이 끝나면(ESC로 건너뛰어도) 물건을 주고받고
+   * `trigger:<id>` 출처로 단계가 오른다. 받는 물건은 **장면 전에** 가방 자리부터 본다(다 보고 「자리가 없다」면 허탈하다).
+   */
+  private startGenericTrigger(t: StoryFieldTrigger): void {
+    const tpl = t.give ? QUEST_REWARD_ITEMS.find((i) => i.id === t.give) : undefined;
+    const noRoom = (): boolean => !!tpl && !InventoryStore.find(tpl.id)
+      && Object.keys(InventoryStore.slotShortfall([{ tpl, qty: 1 }])).length > 0;
+    if (noRoom()) { this.hud?.pushLog(`[할 일] 가방에 자리가 없다 — 한 칸 비우고 다시 「${t.labelKo}」`); return; }
+    const lines = t.linesKo ?? [t.labelKo, t.labelKo];
+    const script: CineScript = {
+      id: `trigger-${t.id}`, placeKo: this.node.name, placeEn: this.node.nameEn,
+      steps: [
+        { kind: 'focus', who: 'player', ms: 380 },
+        { kind: 'say', who: 'player', thought: true, text: lines[0] },
+        { kind: 'say', who: 'player', thought: true, text: lines[1] },
+      ],
+    };
+    const done = (): void => {
+      if (!this.storyTriggerAvailable(t)) return;   // 장면 사이 다른 경로로 이미 올랐다
+      if (tpl && !InventoryStore.find(tpl.id)) {
+        if (noRoom() || !InventoryStore.addItem({ ...tpl, bound: true }, 1)) {
+          this.hud?.pushLog(`[할 일] 가방에 자리가 없다 — 한 칸 비우고 다시 「${t.labelKo}」`);
+          return;
+        }
+      }
+      // 들고 온 물건을 내려놓는다(없으면 QuestItemGuard가 이미 되살려 두었다 — 그래도 없으면 진행은 막지 않는다)
+      if (t.take) InventoryStore.removeQty(t.take, 1);
+      this.events.emit('inventory-changed');
+      this.suppressActionScene = true;   // 지점 장면이 곧 결과 장면이다 — 같은 내용을 두 번 틀지 않는다
+      StoryStore.emitAction(t.actionKey as import('@tra/core').StoryActionKey, `trigger:${t.id}`);
+      this.suppressActionScene = false;
+      this.hud?.pushLog(`[할 일] ${t.labelKo} — 진행 ${StoryStore.actionStep(t.questId, t.objectiveIndex)}/3`);
+      this.refreshQuestMarkers(true);
+    };
+    if (!this.playCinematic(script, { player: 'player' }, done)) done();
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -5401,6 +5521,7 @@ export class RegionFieldScene extends Phaser.Scene {
       regionId: this.region, fieldNpcIds: this.storyNpcs.map((n) => n.def.npcId),
       // 장소 자막은 지금 서 있는 곳 — 퀘스트가 적어 둔 무대(병실·부산)를 쓰면 화면과 어긋난다(168차)
       placeKo: this.node.name, placeEn: this.node.nameEn,
+      has: (itemId) => !!InventoryStore.find(itemId),   // 235차 — 실제 물건을 쓰는 장면(M7-04 가족사진)
     });
     if (!def) return;
     this.clearSceneExtras();
@@ -5410,7 +5531,7 @@ export class RegionFieldScene extends Phaser.Scene {
     for (const [k, v] of Object.entries(def.roles)) if (!extras[k]) roles[k] = v;
     const ok = this.playCinematic(def.script, roles, () => {
       this.clearSceneExtras();
-      StoryStore.event({ kind: 'scene', questId, objectiveIndex });
+      if (!def.noComplete) StoryStore.event({ kind: 'scene', questId, objectiveIndex });   // 235차 — 물건을 안 들고 왔으면 닫지 않는다
       this.refreshQuestMarkers(true);
     }, extras);
     if (!ok) this.clearSceneExtras();
@@ -5454,6 +5575,8 @@ export class RegionFieldScene extends Phaser.Scene {
   /** N18-6 전용 3부작 외의 행동도 성공 직후 결과를 짧게 보여준다. */
   private showActionProgressScene(key: import('@tra/core').StoryActionKey, step: number): void {
     if (key === 'label_violation_review' || this.suppressActionScene || !this.scene.isActive()) return;
+    // 235차 — 창(면허 · 장비 · 쿨러 · 지도)을 연 채 오른 단계는 창을 다 닫은 뒤에 장면을 튼다(창 위로 컷씬이 덮이지 않게)
+    if (this.popupStack.length > 0 || this.cinematicActive) { this.pendingProgressScene = { key, step }; return; }
     const sc = storyActionScene(key);
     if (!sc || step < 1 || step > 3) return;
     const partner = this.actionActorNpcId(key);
@@ -5472,6 +5595,16 @@ export class RegionFieldScene extends Phaser.Scene {
     this.playCinematic(script, roles, () => {
       this.hud?.pushLog(`[할 일] ${sc.titleKo} — 진행 ${step}/3`);
     });
+  }
+
+  /** 235차 — 창이 열린 채 오른 행동 단계의 결과 장면(마지막 창이 닫히면 튼다) */
+  private pendingProgressScene: { key: import('@tra/core').StoryActionKey; step: number } | null = null;
+
+  private flushPendingProgressScene(): void {
+    const p = this.pendingProgressScene;
+    if (!p || this.popupStack.length > 0 || this.cinematicActive) return;
+    this.pendingProgressScene = null;
+    this.showActionProgressScene(p.key, p.step);
   }
 
   /** 현재 행동의 발주 인물을 이 지역의 실제 배우로 찾는다. */
@@ -6313,6 +6446,13 @@ export class RegionFieldScene extends Phaser.Scene {
     }
   }
 
+  /** 235차 — 행동 목표의 현장 지점 → 이 지역의 좌표 / 다른 지역이면 `away` */
+  private resolveTriggerTarget(def: StoryFieldTrigger): { x: number; y: number; label: string } | { away: string } | null {
+    if (def.regionId !== this.region) return { away: this.regionNameKo(def.regionId) };
+    const tr = this.storyTriggers.find((x) => x.def.id === def.id);
+    return tr ? { x: tr.x, y: tr.y - 12, label: def.labelKo } : null;
+  }
+
   /** 400ms마다 목표를 다시 고르고, 매 프레임 화살표를 그린다 */
   private updateQuestGuide(delta: number): void {
     this.questGuideAt += delta;
@@ -6343,6 +6483,7 @@ export class RegionFieldScene extends Phaser.Scene {
     const names = this.guideNames();
     const { q, idx, kind } = pick;
     let target: QuestGuideTarget; let objective: string; let howTo: string;
+    let stepTrigger: StoryFieldTrigger | undefined;
     if (kind === 'offer') {
       target = { kind: 'npc', npcId: q.giver, regionId: q.region };
       objective = `새 할 일 — ${names.npcName(q.giver)}에게 말을 건다`;
@@ -6361,8 +6502,16 @@ export class RegionFieldScene extends Phaser.Scene {
       objective = (narrativeOf(q.id)?.objectives?.[idx] ?? o.labelKo)
         + (o.actionKey || tgt > 1 ? ` (${cur}/${tgt}${o.actionKey && cur >= tgt ? ' · 준비 완료!' : ''})` : '');
       howTo = objectiveHowToKo(q, o, names);
+      // 235차 — 행동 목표는 **지금 단계의 출처**가 어디로 · 어떻게를 정한다(현장 지점 · 의뢰인 · 좌판 주인 · 창)
+      const ag = actionStepGuide(q, idx, names.npcName);
+      if (ag) {
+        howTo = ag.howToKo;
+        stepTrigger = ag.trigger;
+        target = ag.npcId ? { kind: 'npc', npcId: ag.npcId, regionId: q.region }
+          : ag.market ? { kind: 'shop', shopHint: 'market' } : { kind: 'none' };
+      }
     }
-    const res = this.resolveGuideTarget(target);
+    const res = stepTrigger ? this.resolveTriggerTarget(stepTrigger) : this.resolveGuideTarget(target);
     let distance: string | undefined;
     let tookArrow = false;
     if (res && 'away' in res) {
@@ -6473,6 +6622,7 @@ export class RegionFieldScene extends Phaser.Scene {
     const mapTex = `rhud_mini_${this.mapId}`;
     if (!this.textures.exists(mapTex)) return;
     markPrologue('map');   // 188차 — 프롤로그 「지도(M)를 펼쳐 버스 정류장을 찾는다」
+    StoryStore.emitActionOrigin('map-open');   // 235차 — 「항로와 기상 예보를 확인한다」(M6-07 항해 계획)
     this.openPopup((close) => {
       this.fullMapClose = close;
       return new FullMapPanel(this, {
@@ -6917,6 +7067,7 @@ export class RegionFieldScene extends Phaser.Scene {
       case 'board': return '[F] 보트';
       case 'clinic': return '[F] 보건소 들어가기';
       case 'craft': return o.placedByPlayer ? '[F] 작업대 · [Shift+F] 회수' : '[F] 작업대';
+      case 'till': return o.placedByPlayer ? '[F] 텃밭 · [Shift+F] 회수' : '[F] 텃밭';
       default: return '[F]';
     }
   }
@@ -6925,6 +7076,11 @@ export class RegionFieldScene extends Phaser.Scene {
     // 플레이어 설치물 회수 (설치의 역방향 — 아이템 반환 + 충돌 재베이크).
     // 기능이 있는 설치물은 **Shift+F 로만** 회수한다(그냥 [F]는 기능을 연다).
     if (o.placedByPlayer && o.removable && (recover || !this.hasFunction(o))) {
+      // 235차 — 텃밭은 심은 것을 다 거둔 뒤에 걷는다(설비는 가방으로 돌려준다)
+      if (o.type === 'farmPlot') {
+        const r = FarmStore.removePlot(o.instanceId);
+        if (!r.ok) { this.floatingHint(r.message ?? '아직 걷을 수 없다'); return; }
+      }
       this.recoverPlacedObject(o); return;
     }
     switch (o.interact) {
@@ -6944,6 +7100,7 @@ export class RegionFieldScene extends Phaser.Scene {
       case 'board': this.floatingHint('개인 보트 출조는 추후 개방됩니다'); break;
       case 'clinic': this.enterInterior(null, undefined, '보건소'); break;   // 215차 — 안에 들어가 접수대에서 진료
       case 'craft': this.openAdvancedCraft(); break;
+      case 'till': this.openFarm(o); break;   // 235차
       default: break;
     }
   }
@@ -7048,6 +7205,9 @@ export class RegionFieldScene extends Phaser.Scene {
       this.floatingHint(`${def.label}은(는) 집 안에서만 놓을 수 있습니다.`);
       return;
     }
+    // 236차 — 텃밭은 마당 두 구획까지, 그 너머는 농지 이용권으로 빌린다
+    const farmWhy = def.key === 'farm_plot' ? this.farmPlotBlock() : null;
+    if (farmWhy) { this.floatingHint(farmWhy); return; }
     this.placing = { def, itemId: item.id };
     if (!this.placeG) this.placeG = this.add.graphics().setDepth(48);
     this.hud?.pushLog(`[설치] ${def.label} — 클릭 = 설치 · 우클릭/ESC = 취소`);
@@ -7110,6 +7270,8 @@ export class RegionFieldScene extends Phaser.Scene {
     const tx = Math.floor(pw.x / TR), ty = Math.floor(pw.y / TR);
     const check = canPlaceAt(tx, ty, def.rule, this.placementWorld());
     if (!check.ok) { this.floatingHint('여기에는 설치할 수 없습니다'); return; }
+    const farmWhy = def.key === 'farm_plot' ? this.farmPlotBlock() : null;
+    if (farmWhy) { this.floatingHint(farmWhy); this.cancelPlacement(); return; }
 
     // 인벤토리 1개 소모 → placed 등록 → 충돌/렌더 재베이크
     if (!InventoryStore.removeQty(this.placing.itemId, 1)) {
@@ -7131,9 +7293,27 @@ export class RegionFieldScene extends Phaser.Scene {
     this.rebuildCollision();
     this.renderHomeObjects();
     this.hud?.pushLog(`[설치] ${def.label} 설치 완료 (${tx}, ${ty})`);
-    // 같은 아이템이 남아 있으면 설치 모드 유지, 없으면 종료
+    if (def.key === 'farm_plot' && GameState.isRentedPlot(obj.instanceId)) {
+      const rent = Math.round(TUNING.upkeep.farmRentKrw * GameState.skillMult('ledger_fees'));   // 정기 지출과 같은 값(「장부 정리」)
+      this.floatingHint(`마을 농지 한 구획을 빌렸다 (한 달 사용료 ₩${rent.toLocaleString()})`);
+    }
+    // 같은 아이템이 남아 있으면 설치 모드 유지, 없으면 종료(텃밭은 상한에 닿아도 종료)
     const remain = InventoryStore.find(this.placing.itemId);
-    if (!remain || remain.qty <= 0) this.cancelPlacement();
+    if (!remain || remain.qty <= 0 || (def.key === 'farm_plot' && this.farmPlotBlock())) this.cancelPlacement();
+  }
+
+  /**
+   * 236차 — 텃밭 구획을 더 낼 수 없는 이유(낼 수 있으면 null).
+   * 마당(내 땅)은 자격 없이 `FARM_TUNING.yardPlots`구획, 그 너머는 농지 이용권으로 마을 농지를 빌린다.
+   */
+  private farmPlotBlock(): string | null {
+    const n = GameState.farmPlotIds().length;
+    if (n < GameState.farmPlotCap()) {
+      return n >= FARM_TUNING.yardPlots && GameState.farmRentOverdue() ? '밀린 농지 사용료부터 내야 더 빌릴 수 있다' : null;
+    }
+    return GameState.hasLicense('farmland_use')
+      ? `빌릴 수 있는 마을 농지는 ${FARM_TUNING.rentPlotsMax}구획까지다`
+      : `마당 텃밭은 ${FARM_TUNING.yardPlots}구획까지다 — 더 내려면 농지 이용권으로 마을 농지를 빌린다`;
   }
 
   private cancelPlacement(): void {

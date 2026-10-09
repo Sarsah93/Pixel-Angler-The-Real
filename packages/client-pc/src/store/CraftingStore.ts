@@ -537,6 +537,7 @@ class CraftingStoreManager {
       // XP는 activityXp 경유(숙련도 · 하루 기록 · activity 이벤트 — 153차)
       GameState.addActivityXp('craft', xp / TUNING.xp.craftBase);
       StoryStore.emitActionSource('craft', 'craft-complete');
+      StoryStore.emitActionOrigin(`craft:${bp.group}`);   // 235차 — 「채비를 스무 번 묶어 보인다」 = 채비 갈래 완성
     } else {
       // 실패 — 재료 하나하나를 lossChance로 잃고 나머지는 돌려받는다
       const loss = this.lossChance(bp);

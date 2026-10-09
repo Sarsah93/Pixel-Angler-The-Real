@@ -46,7 +46,7 @@
 | S5 | [인벤토리·장비·보관](02-SYSTEMS/inventory-equipment.md) | 🟢 | `InventoryStore` · `CoolerStore` · `FridgeStore` · **`InventoryPanel` 윈도우드 스크롤(148차)** | **148차 가방 사다리 5단계 실효화**(25 → 28/30/33/35/37 · 용량 밖 '잠긴 칸') — 예약 슬롯 6종 아이템 대기 · 탭별 용량 차등(core `Backpack.ts`) 미배선 · **155 획득 토스트·NEW 점·채비 잠금 세이브** |
 | S6 | [경제·상점·시세](02-SYSTEMS/economy-data.md) | 🟢 | `MarketPriceEvaluator` · `ShopPanel` · **`ConsignmentAuction`(147차 위판)** · `AuctionHousePanel` | **147차 위판 개통**(직판장 창구 겸용 · 평판 = 수수료) — `TUNING.auction` F8 조율 · 경매 **구매자 측** 미개방 · 낚시점 전용 상점 |
 | S7 | [월드맵·지역 타일맵](02-SYSTEMS/world-field.md) | 🔶 | `WorldMapScene` · **OSM 파이프라인 3종** · `build_region_maps.py` | 속초(심리스 v2)·부산·홈타운 개방 — OSM 16개 지역 확장 잔여 |
-| S8 | [홈베이스 (집)](02-SYSTEMS/home-base.md) | 🔶 | `HomeInteriorScene` · `types/HomeBase.ts` | 하우스 Tier 1~3, 수조 패널, 농사 |
+| S8 | [홈베이스 (집)](02-SYSTEMS/home-base.md) | 🔶 | `HomeInteriorScene` · `types/HomeBase.ts` · `FarmSim` · `FarmStore` | 하우스 Tier 1~3, 상업 수조, 텃밭 잔여(시세 API · 구획 자격 — 백로그 BK) |
 | S9 | [외부 실데이터](02-SYSTEMS/economy-data.md#외부-api) | 🟢⚠ | `core/api-client/*` | **배포 시 CORS 프록시 필수** |
 | S10 | [UI 프레임워크](02-SYSTEMS/ui-framework.md) | 🟢 | `DraggablePanel` · `TextFit` · `SceneFade` · `HelpLibraryPanel`(**14카테고리 76토픽**) · `i18n/*` | 저순위 팝업 검수 잔여 · **187차 도움말 전면 개정**(실캡처 38장 ko/en · 번호 콜아웃) |
 | S11 | [가이드·온보딩](02-SYSTEMS/ui-framework.md#가이드-허브) | 🟢 | `GuidePanel` · `GuideContent` | 삽화 실게임 스크린샷 교체 |

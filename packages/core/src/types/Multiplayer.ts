@@ -130,6 +130,11 @@ export interface MpPresenceRes {
   trade?: MpTradeState;
   /** 내가 마지막으로 받은 번호 이후에 누군가 가져간 세계 자원 (232차 — 채집 자리 · 과증식 개체) */
   taken?: MpTakenLine[];
+  /**
+   * 235차 — 서버 벽시계(ms). 클라이언트가 왕복 시간 가운데로 시계 차이를 재서 **공용 시각**을 만든다
+   * (달아나는 채집 생물의 어슬렁처럼 시각만으로 정해지는 것을 사람마다 같게 보이게).
+   */
+  nowMs?: number;
   reasonKo?: string;
 }
 

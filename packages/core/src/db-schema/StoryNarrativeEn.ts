@@ -57,8 +57,8 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
       done: "...well, you caught it. Don't throw away the Saiso receipt. Fishing starts with counting what your gear costs.",
       obj: ["Buy a cheap reel rod at Saiso", "Bring up one fish from a tetrapod gap"] }),
   'M1-05': E(
-    "I unfold my father's reel rod for the first time. Twelve guide rings, one of them slightly bent. Do Hyeonsu nags me from behind under the pretext of fixing my casting stance. The float stands, sinks, and the tip trembles. My wrist moved before I did. The weight of the first hookset travels up my arm. Today I think I am learning, for the first time, whose hand this rod remembers.",
-    { offer: "Unfold it. Learn casting again from the start. Watch the float go under, count three, then strike.",
+    "I unfold my father's reel rod for the first time. Twelve guide rings, one of them slightly bent. Do Hyeonsu nags me from behind under the pretext of fixing my casting stance. The sinker touches bottom, the line draws tight, and the tip trembles. My wrist moved before I did. The weight of the first hookset travels up my arm. Today I think I am learning, for the first time, whose hand this rod remembers.",
+    { offer: "Unfold it. Learn casting again from the start. Watch the rod tip bend hard, and strike on the third.",
       progress: "Two fish. One is luck, two is skill.",
       done: "...the rod fits your hand. I'll give you that. Loosen the drag a bit. It's your father's rod, isn't it? Crank it down like that and it snaps.",
       obj: ["Cast with your father's reel rod and land two fish"],

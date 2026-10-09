@@ -188,7 +188,7 @@ export type StoryObjectiveKind =
   | 'survive'        // 생존 이벤트 통과 (밀물 고립·해무·오한)
   | 'communityWork'  // 공동작업 참여
   | 'cull'           // 과증식 생물 수거 (138차 — 해파리·불가사리)
-  | 'farm'           // 농사 (138차 — 시스템 도착 전까지 manual)
+  | 'farm'           // 농사 (235차 — 텃밭 심기 이벤트로 진행)
   | 'mine'           // 광질 (138차 — manual)
   | 'furnish'        // 가구 배치·리빙 (138차 — manual)
   | 'reachLevel'     // 레벨 도달
