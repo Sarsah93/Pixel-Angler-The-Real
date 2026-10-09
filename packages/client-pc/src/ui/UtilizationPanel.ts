@@ -237,7 +237,7 @@ export class UtilizationPanel extends DraggablePanel {
           wait: () => !this.chooser && !!InventoryStore.rig.mainLine,
         },
         {
-          text: '아직 달 부품이 없다. 가게에서 원줄 · 바늘 · 봉돌 · 찌 · 미끼를 사 오면 여기서 골라 단다.',
+          text: '아직 달 부품이 없다. 가게에서 원줄 · 목줄 · 봉돌 · 바늘 · 미끼를 사 오면 여기서 골라 단다.',
           target: () => chooserScreen() ?? this.socketChainRect(),
           skipIf: () => !tackles() || hasLine(),
         },

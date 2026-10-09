@@ -291,3 +291,59 @@ describe('CookingSim — 가게 채소 별점 상한(235차)', () => {
     expect(st.rating).toBe(4.5);
   });
 });
+
+describe('236차 — 버섯 덤 · 단전', () => {
+  /** 정해 둔 순서대로 내놓는 난수 */
+  const seq = (...v: number[]): (() => number) => { let i = 0; return () => v[Math.min(i++, v.length - 1)]; };
+
+  it('느타리는 거둘 때 0~30% 덤을 굴린다 — 30%가 나오면 그 확률로 한 팩 더', () => {
+    const t0 = kst(2026, 10, 1);
+    const plot = planted('oyster_mushroom', 'set', t0, 'indoor');
+    plot.cells[0].growth = 1;
+    // 수량 0.5 → 1팩 · 덤 단계 0.99 → 3단계(30%) · 나머지 0.1 < 0.3 → 한 팩 더
+    const r = harvestCell(plot.cells[0], seq(0.5, 0.99, 0.1))!;
+    expect(r.qty).toBe(2);
+    expect(r.bonusQty).toBe(1);
+    expect(r.bonusPct).toBe(30);
+  });
+
+  it('덤 0단계면 그대로 · 덤이 없는 작물은 굴리지 않는다', () => {
+    const t0 = kst(2026, 10, 1);
+    const plot = planted('oyster_mushroom', 'set', t0, 'indoor');
+    plot.cells[0].growth = 1;
+    const r = harvestCell(plot.cells[0], seq(0.5, 0.1, 0.0))!;
+    expect(r.qty).toBe(1);
+    expect(r.bonusQty).toBeUndefined();
+    const sp = planted('spinach', 'seed', kst(2026, 4, 1));
+    sp.cells[0].growth = 1;
+    expect(harvestCell(sp.cells[0], seq(0.5, 0.0, 0.0))!.bonusQty).toBeUndefined();
+  });
+
+  it('느타리 배지 한 개의 기대 수확은 약 2.3팩(460g) — 덤 평균 +15%', () => {
+    let total = 0; const N = 4000;
+    for (let k = 0; k < N; k++) {
+      const plot = planted('oyster_mushroom', 'set', kst(2026, 10, 1), 'indoor');
+      const c = plot.cells[0];
+      for (let flush = 0; flush < 2; flush++) {
+        if (flush > 0) { c.regrow = 1; }
+        c.growth = 1;
+        total += harvestCell(c, Math.random)!.qty;
+      }
+    }
+    const mean = total / N;
+    expect(mean).toBeGreaterThan(2.15);
+    expect(mean).toBeLessThan(2.45);
+  });
+
+  it('실내 잎채소는 수경 재배기 불빛으로만 자란다 — 단전이면 멈추고 시들지 않는다', () => {
+    const t0 = kst(2026, 10, 1);
+    const plot = planted('lettuce', 'seedling', t0, 'indoor');
+    plot.facilities = ['hydroRack'];
+    const lit = JSON.parse(JSON.stringify(plot)) as FarmPlotState;
+    advanceCell(lit, 0, t0 + 5 * DAY, neverRain);
+    expect(lit.cells[0].growth).toBeGreaterThan(0.2);
+    advanceCell(plot, 0, t0 + 5 * DAY, { rainAt: () => false, powerOff: true });
+    expect(plot.cells[0].growth).toBe(0);
+    expect(plot.cells[0].quality).toBeGreaterThanOrEqual(0.7);
+  });
+});

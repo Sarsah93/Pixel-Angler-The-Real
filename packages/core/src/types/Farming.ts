@@ -90,6 +90,11 @@ export interface CropHarvest {
   repeat?: { everyDays: number; times: number };
   /** 다 익은 뒤 품질이 떨어지기 시작할 때까지(일) — 추대 · 과숙 · 쇠기 */
   holdDays: number;
+  /**
+   * 236차 — 수확 덤(사용자 제안 「수확 때 랜덤으로 +10%씩」). 거둘 때마다 0~`bonusSteps`단계(10%씩)를
+   * 고르게 굴려 그만큼 더 준다 — 버섯처럼 송이 크기가 들쭉날쭉한 작물. 3이면 0 · 10 · 20 · 30%(평균 +15%).
+   */
+  bonusSteps?: number;
 }
 
 /** 중간 수확 — 솎음 · 마늘종 · 고구마순 · 고춧잎 · 호박잎 */
@@ -213,6 +218,8 @@ export interface FarmPlotState {
 export interface FarmEnv {
   /** 그 시각에 비가 오는가(실황이 없으면 기후 통계) */
   rainAt: (ms: number) => boolean;
+  /** 236차 — 전기료가 밀려 단전됐는가(수경 재배기 불 · 펌프가 꺼진다) */
+  powerOff?: boolean;
   /** 스킬 배율 — 없으면 0랭크 */
   skill?: {
     /** 물 마름 감소(0.2/랭크 → 0.8배) */
@@ -242,4 +249,7 @@ export interface FarmHarvestResult {
   seedBack?: { itemId: string; qty: number };
   /** 반복 수확이 남았는가(아니면 칸이 비거나 쉰다) */
   more: boolean;
+  /** 236차 — 덤으로 더 거둔 수(수량에 이미 들어 있다)와 그 회차의 덤 비율(%) */
+  bonusQty?: number;
+  bonusPct?: number;
 }

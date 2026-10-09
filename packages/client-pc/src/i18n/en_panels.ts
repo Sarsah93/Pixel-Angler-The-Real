@@ -289,6 +289,12 @@ export const EN_PANELS: Record<string, string> = {
   '수협 조합비': 'Cooperative dues',
   '선박 보험 · 정기검사 · 계류비': 'Vessel insurance, inspection and mooring',
   '식품위생 정기 점검': 'Food hygiene inspection',
+  '수경 재배기 전기료': 'Hydroponic unit electricity',
+  '농지 사용료': 'Farmland rent',
+  '마당 두 구획을 넘는 텃밭은 마을 농지를 빌린 것입니다. 한 구획(경작 약 12㎡)마다 사용료를 냅니다. 밀리면 빌린 밭에는 새로 심을 수 없고, 내면 바로 풀립니다. 항구 신뢰와는 상관없습니다.':
+    'Garden patches beyond the two in your yard sit on rented village farmland. Each patch (about 12㎡ of growing space) carries a rent. If it falls overdue nothing new can be planted on rented patches; paying frees them at once. Harbour trust is not affected.',
+  '집에 놓은 수경 재배기가 쓰는 전기입니다. 한 대가 한 달에 40kWh 남짓을 씁니다. 밀리면 전기가 끊겨 재배기가 멈추고, 내면 다시 켜집니다. 항구 신뢰와는 상관없습니다.':
+    'Electricity used by the hydroponic units at home. One unit uses a little over 40kWh a month. If the bill falls overdue the power is cut and the unit stops; paying turns it back on. Harbour trust is not affected.',
   '연체': 'Overdue',
   '정상': 'Current',
   '아직 납부일이 아닙니다': 'Not due yet',

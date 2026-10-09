@@ -85,9 +85,10 @@ const MAIN: StoryQuestDef[] = mainRows([
         placeKey: 'prologue:map', guidePlaceKey: 'home:bus', howToKo: 'M — 지도를 펼친다', howToEn: 'M — open the map' }),
       auto('custom', '막차를 타고 속초로 간다', 'Take the last bus to Sokcho', { placeKey: 'prologue:arrive', guidePlaceKey: 'home:bus',
         howToKo: '버스 정류장 [F] → 전국 지도에서 속초', howToEn: 'Bus stop [F] → pick Sokcho on the national map' }),
-      auto('custom', '직판장에서 기본 채비를 하나씩 산다 (원줄·바늘·봉돌·찌·미끼)', 'Buy basic tackle at the fish market, one of each (line, hook, sinker, float, bait)', {
+      // 236차 — 첫 채비는 원투(사용자 지시): 원줄 → 3호 봉돌 → 목줄 → 바늘 → 미끼 = 바로 던질 수 있는 한 벌
+      auto('custom', '직판장에서 원투 채비를 하나씩 산다 (원줄·목줄·봉돌·바늘·미끼)', 'Buy a bottom rig at the fish market, one part at a time (main line, leader, sinker, hook, bait)', {
         placeKey: 'prologue:buy', target: 5,
-        howToKo: '수산물 직판장 [F] → 원줄·바늘·봉돌·찌·미끼를 하나씩 산다', howToEn: 'Fish market [F] → buy a line, a hook, a sinker, a float and some bait' }),
+        howToKo: '수산물 직판장 [F] → 원줄·목줄·3호 봉돌·바늘·미끼를 하나씩 산다', howToEn: 'Fish market [F] → buy a main line, a leader, a #3 sinker, a hook and some bait' }),
       auto('custom', '얼린 오징어를 직판장에 판다', 'Sell the frozen squid at the fish market', { placeKey: 'prologue:sell',
         howToKo: '직판장 [F] → 「판매하기」 → 오징어', howToEn: 'Fish market [F] → "Sell" → the squid' }),
       auto('visit', '영금정에 도착한다', 'Arrive at Yeonggeumjeong', { placeKey: 'poi:yeonggeumjeong' }),
@@ -130,10 +131,10 @@ const MAIN: StoryQuestDef[] = mainRows([
       fish(undefined, '방파제에서 물고기 1마리 낚기', 'Catch one fish at the breakwater', { spotKind: 'breakwater' })],
     { teaches: ['budgetGear', 'holeFishing', 'tetrapodSafety'] }],
   ['M1-05', 1, 5, 360, 'hyeonsu', SOK, '첫 캐스팅', 'First Cast',
-    '아버지의 릴대를 처음 편다. 캐스팅 · 찌 채비 · 입질 → 챔질 → 파이팅 → 랜딩 전 구간.',
-    'You extend your father\'s rod for the first time. Casting, the float rig, bite → hookset → fight → landing.',
+    '아버지의 릴대를 처음 편다. 캐스팅 · 원투 채비 · 초릿대 입질 → 챔질 → 파이팅 → 랜딩 전 구간.',
+    'You extend your father\'s rod for the first time. Casting, the bottom rig, a bite on the rod tip → hookset → fight → landing.',
     [fish(undefined, '캐스팅으로 물고기 2마리 낚기', 'Catch two fish by casting', { target: 2 })],
-    { teaches: ['casting', 'floatRig', 'bite', 'fight'], rewards: { items: [{ id: 'qr_rod_heirloom', qty: 1, bound: true }, { id: 'qr_reel_heirloom', qty: 1, bound: true }] } }],
+    { teaches: ['casting', 'surf', 'bite', 'fight'], rewards: { items: [{ id: 'qr_rod_heirloom', qty: 1, bound: true }, { id: 'qr_reel_heirloom', qty: 1, bound: true }] } }],
   ['M1-06', 1, 7, 390, 'okseon', SOK, '팔 수 없는 물고기', 'The Fish You Cannot Sell',
     '"네가 잡은 건 네가 먹어라. 그게 법이다. 계원이 돼도 낚싯대로 잡은 건 못 판다." 법 규칙 5조 · 준법 방생.',
     '"What you catch, you eat. That is the law. Even as a member, rod-caught fish cannot be sold." The five rules · lawful release.',

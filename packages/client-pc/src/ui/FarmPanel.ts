@@ -81,7 +81,9 @@ export class FarmPanel extends DraggablePanel {
 
   constructor(scene: Phaser.Scene, x: number, y: number, opts: FarmPanelOpts) {
     const indoor = opts.plotId === INDOOR_PLOT;
-    super(scene, { x, y, width: PANEL_W, height: indoor ? PANEL_H_INDOOR : PANEL_H, title: indoor ? '집 안 선반' : '텃밭', onClose: opts.onClose, depth: 846 });
+    // 236차 — 마당 두 구획을 넘는 텃밭은 마을 농지를 빌린 것이다(사용료 · 밀리면 새로 못 심음)
+    const title = indoor ? '집 안 선반' : GameState.isRentedPlot(opts.plotId) ? '빌린 텃밭' : '텃밭';
+    super(scene, { x, y, width: PANEL_W, height: indoor ? PANEL_H_INDOOR : PANEL_H, title, onClose: opts.onClose, depth: 846 });
     this.opts = opts;
     FarmStore.advanceAll();
     // 처음 열면 무엇이 자라는 첫 칸을 고른다(없으면 첫 칸)
@@ -170,14 +172,16 @@ export class FarmPanel extends DraggablePanel {
     const p = this.plot();
     let x = GRID_X;
     for (const f of p.facilities) {
+      // 236차 — 전기료가 밀려 단전이면 재배기 칩을 붉은 테 · 흐린 그림으로(멈췄다는 표시)
+      const off = f === 'hydroRack' && GameState.powerCut();
       const chip = scene.add.graphics();
-      chip.fillStyle(0x10233a, 0.95); chip.fillRoundedRect(x, y, 26, 26, 4);
-      chip.lineStyle(1, 0x2f5a80, 0.9); chip.strokeRoundedRect(x, y, 26, 26, 4);
+      chip.fillStyle(off ? 0x2a1414 : 0x10233a, 0.95); chip.fillRoundedRect(x, y, 26, 26, 4);
+      chip.lineStyle(1, off ? 0xd65a4a : 0x2f5a80, 0.9); chip.strokeRoundedRect(x, y, 26, 26, 4);
       this.content.add(chip);
       const ic = addPixelIcon(scene, FACILITY_ICON[f], x + 13, y + 13, 16);
-      if (ic) this.content.add(ic);
+      if (ic) { if (off) ic.setAlpha(0.35); this.content.add(ic); }
       const hit = scene.add.rectangle(x + 13, y + 13, 26, 26, 0xffffff, 0.001).setInteractive();
-      const name = supplyOfFacility(f)?.nameKo ?? '';
+      const name = off ? `${supplyOfFacility(f)?.nameKo ?? ''} — 전기가 끊겨 멈췄다` : (supplyOfFacility(f)?.nameKo ?? '');
       hit.on('pointerover', () => this.setStatus(name));
       this.content.add(hit);
       x += 30;
@@ -513,7 +517,7 @@ export class FarmPanel extends DraggablePanel {
         { text: '칸을 누르면 오른쪽에 자라는 정도와 거둘 때가 보인다.', target: () => this.paneRect() },
         { text: '시루는 자주 물을 줘야 곧게 자란다. 물을 한 번 줘 보자.', target: () => this.buttonRect('water'), wait: () => this.did.water > 0 },
       ] : [
-        { text: '텃밭 한 구획이다. 한 칸이 한 평 남짓 — 실제 시간대로, 실제 계절대로 자란다. 꺼 둔 동안에도 자란다.', target: () => this.gridRect() },
+        { text: '텃밭 한 구획이다. 한 칸이 1㎡ 남짓 — 실제 시간대로, 실제 계절대로 자란다. 꺼 둔 동안에도 자란다.', target: () => this.gridRect() },
         {
           text: '먼저 호미로 흙을 일군다. 칸을 고르고 「일구기」를 눌러 보자.',
           target: () => this.buttonRect('till') ?? this.paneRect(),

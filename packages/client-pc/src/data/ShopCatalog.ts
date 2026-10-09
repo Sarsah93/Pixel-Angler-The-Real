@@ -180,7 +180,10 @@ function sinkerShopEntry(id: string): ShopEntry {
     id: s.id, name: `${s.nameKo} (${s.weightG}g)`, icon: '', iconTexture: s.kind === 'ring' ? 'sinker_ring' : s.kind === 'hole' ? 'sinker_pillar' : s.kind === 'bundle' ? 'sinker_bundle' : undefined,
     category: 'tackle', subCategory: '채비 부속', basePrice: s.price,
     price: Math.round(s.price * 1.2), maxPerPurchase: 10, equippable: false,
-    desc: `${s.brand} ${s.ho}호 원투 메인 싱커.${s.kind === 'hole' ? ' 이물감↓(예신 피드백 +15%).' : s.kind === 'bundle' ? ' 비거리 페널티(C_d 0.58).' : ''}`,
+    // 236차 — 3호(11g)는 찌낚시대 · 민물대로 던지는 가벼운 처박기 원투용(프롤로그 첫 장보기)
+    desc: s.ho <= 5
+      ? `${s.brand} ${s.ho}호 가벼운 원투 봉돌. 찌낚시대 · 민물대로도 던질 수 있는 무게.${s.kind === 'hole' ? ' 이물감↓(예신 피드백 +15%).' : ''}`
+      : `${s.brand} ${s.ho}호 원투 메인 싱커.${s.kind === 'hole' ? ' 이물감↓(예신 피드백 +15%).' : s.kind === 'bundle' ? ' 비거리 페널티(C_d 0.58).' : ''}`,
     sinkerKind: s.kind, sinkerWeightG: s.weightG, sinkerHo: s.ho,
   };
 }
@@ -255,11 +258,13 @@ const TACKLE_CORNER: ShopEntry[] = [
   // 줄·바늘은 줄터짐/밑걸림으로 잃는 소모품인데 어디서도 다시 살 수 없었다(외부 테스터 — 목줄을 잃고
   //   채비를 못 채움). 호수 → 인장강도는 core lineStrengthKg 규칙(카본 1.8kg/호 · PE 9kg/호).
   { id: 'inv_pe1',      name: 'AMSTRONG 합사 원줄 1호 · 150m', icon: '', iconTexture: 'line_spool_saiso', category: 'tackle', subCategory: '원줄 스풀', basePrice: 18000, price: 21000, maxPerPurchase: 3, equippable: false, lineMaterial: 'pe_braid', lineForm: 'sinking', lineLengthM: 150, lineNo: 1, lineDiameterMm: 0.165, lineStrengthLb: 18, desc: 'SAISO AMSTRONG 합사 원줄. 직경 0.165mm · 인장 18lb.' },
+  // 236차 — 값싼 나일론 원줄(처박기 원투 · 찌낚시 원줄). 프롤로그 첫 장보기가 합사 대신 이걸 살 수 있게
+  { id: 'shop_nylon3_main', name: 'AMSTRONG 나일론 원줄 3호 · 150m', icon: '', iconTexture: 'line_spool_saiso', category: 'tackle', subCategory: '원줄 스풀', basePrice: 5000, price: 6000, maxPerPurchase: 3, equippable: false, lineMaterial: 'nylon', lineForm: 'float', lineLengthM: 150, lineNo: 3, lineDiameterMm: 0.285, lineStrengthLb: 12, desc: '값싼 나일론 원줄. 늘어나는 성질이 충격을 받아 줘 가벼운 원투 · 찌낚시 원줄로 무난하다. 직경 0.285mm · 인장 12lb.' },
   { id: 'inv_carbon15', name: 'AMSTRONG 카본 목줄 3호 · 150m', icon: '', iconTexture: 'line_spool_saiso', category: 'tackle', subCategory: '목줄 스풀', basePrice: 9000, price: 10500, maxPerPurchase: 5, equippable: false, lineMaterial: 'fluorocarbon', lineForm: 'suspend', lineLengthM: 150, lineNo: 3, lineDiameterMm: 0.285, lineStrengthLb: 10.5, desc: '카본 쇼크리더. 직경 0.285mm · 인장 10.5lb · 나일론보다 강하고 합사보다 쓸림에 유리한 목줄.' },
   { id: 'inv_nylon2',   name: 'AMSTRONG 나일론 목줄 2호 · 200m', icon: '', iconTexture: 'line_spool_saiso', category: 'tackle', subCategory: '목줄 스풀', basePrice: 6000, price: 7000, maxPerPurchase: 5, equippable: false, lineMaterial: 'nylon', lineForm: 'float', lineLengthM: 200, lineNo: 2, lineDiameterMm: 0.235, lineStrengthLb: 8, desc: '나일론 모노라인. 신축성과 쓸림 내성이 있어 찌낚시에 적합.' },
   { id: 'shop_carbon3', name: 'AMSTRONG 카본 목줄 3호 · 150m', icon: '', iconTexture: 'line_spool_saiso', category: 'tackle', subCategory: '목줄 스풀', basePrice: 12000, price: 14000, maxPerPurchase: 5, equippable: false, lineMaterial: 'fluorocarbon', lineForm: 'suspend', lineLengthM: 150, lineNo: 3, lineDiameterMm: 0.285, lineStrengthLb: 10.5, desc: '카본 쇼크리더. 직경 0.285mm · 인장 10.5lb.' },
   { id: 'inv_chinu3',   name: '감성돔 바늘 3호',   icon: '', iconTexture: 'item_hook_chinu', category: 'tackle', subCategory: '바늘/훅',   basePrice: 3000,  price: 3500,  maxPerPurchase: 20, equippable: false, desc: '범용 바늘 (미끼 채비).' },
-  ...['inv_sinker_ring_20', 'inv_sinker_ring_25', 'inv_sinker_hole_15', 'inv_sinker_hole_20',
+  ...['inv_sinker_ring_3', 'inv_sinker_hole_3', 'inv_sinker_ring_20', 'inv_sinker_ring_25', 'inv_sinker_hole_15', 'inv_sinker_hole_20',
     'inv_sinker_hole_25', 'inv_sinker_bundle_25'].map(sinkerShopEntry),
   { id: 'inv_float08', name: '구멍찌 0.8호', icon: '', iconTexture: 'float_hole', category: 'tackle', subCategory: '채비 부속', basePrice: 8000, price: 9000, maxPerPurchase: 10, equippable: false, desc: '얕은 수심·약한 조류용 저부력 구멍찌.', floatBuoyG: 8 },
   { id: 'shop_float10', name: '구멍찌 1.0호', icon: '', iconTexture: 'float_hole', category: 'tackle', subCategory: '채비 부속', basePrice: 8500, price: 9500, maxPerPurchase: 10, equippable: false, desc: '중간 수심·조류용 구멍찌.', floatBuoyG: 10 },

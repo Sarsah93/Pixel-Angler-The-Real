@@ -61,10 +61,15 @@ export interface WeightSinkerSpec {
   price: number;
 }
 
-/** 종류별 취급 호수 목록 (제원 표 기준) */
+/**
+ * 종류별 취급 호수 목록 (제원 표 기준)
+ *  - 236차: 고리 · 구멍 **3호(11g)** — 찌낚시대 · 민물대로 가볍게 던지는 처박기 원투용.
+ *    아버지 대(1.5호 갯바위대)의 적합 채비 무게는 3~15g이라 10호(38g)부터는 초릿대가 버거워한다.
+ *    프롤로그 첫 장보기가 이 무게를 산다(사용자 지시 — 첫 채비는 찌가 아니라 원투).
+ */
 const KIND_HOS: Record<WeightSinkerKind, number[]> = {
-  ring: [16, 20, 25, 30],
-  hole: [10, 15, 20, 25, 30],
+  ring: [3, 16, 20, 25, 30],
+  hole: [3, 10, 15, 20, 25, 30],
   bundle: [16, 20, 25, 30],
 };
 
@@ -88,7 +93,7 @@ function buildSinkerDb(): WeightSinkerSpec[] {
   return out;
 }
 
-/** 무게추 봉돌 전체 목록 (고리 4 + 구멍 5 + 묶음추 4 = 13종) */
+/** 무게추 봉돌 전체 목록 (고리 5 + 구멍 6 + 묶음추 4 = 15종) */
 export const WEIGHT_SINKER_DB: WeightSinkerSpec[] = buildSinkerDb();
 
 /** 아이템 id로 무게추 봉돌 제원 조회 */

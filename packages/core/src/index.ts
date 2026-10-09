@@ -651,7 +651,7 @@ export {
 export type { UpkeepKind, UpkeepItem, UpkeepLedger, UpkeepContext, UpkeepPenalty } from './rules/Upkeep.js';
 export {
   licenseRenewalFee, licenseRenewalDays, listUpkeep, upkeepAlerts,
-  upkeepPenalty, fisheryGroundFee, coopDuesFeeCut, upkeepKeysOfLicense,
+  upkeepPenalty, fisheryGroundFee, coopDuesFeeCut, upkeepKeysOfLicense, POWER_UPKEEP_KEY, FARM_RENT_UPKEEP_KEY,
 } from './rules/Upkeep.js';
 
 // ── 상점 진열 재고 — 221차 ──
@@ -836,6 +836,12 @@ export {
   FARM_COLS, FARM_ROWS, FARM_CELLS, INDOOR_SLOTS, FARM_TUNING, kstMonthOf, kstDayIndex, climateRainAt, newFarmCell, newFarmPlot,
   startOf, gradeOf, GRADE_KO, GRADE_EN, cellReady, interimOpen, seasonFactor, speedMultOf, cellDays, advanceCell, advancePlot,
   tillCell, compostCell, waterCell, monthRangeKo, canPlant, plantCell, clearCell, harvestCell, interimHarvestCell, cellStage,
-  daysToNextHarvest, producePriceShock, producePrice, cropDailyValue,
+  daysToNextHarvest, producePriceShock, producePrice, cropDailyValue, farmPlotCap, rentedPlotCount,
 } from './simulation/FarmSim.js';
 export type { PlantCheck, HarvestSkills, FarmCellStage } from './simulation/FarmSim.js';
+// ── 농산물 실시간 시세(KAMIS 하루치 스냅샷) — 236차 ──
+export type { KamisPriceRow, ProduceMarketSnapshot } from './rules/ProduceMarket.js';
+export {
+  KAMIS_CROP_ITEMS, PRODUCE_MARKET_TUNING, isProduceMarketSnapshot, snapshotAgeDays, kamisRatioOf,
+  setProduceMarket, produceMarketRatio, produceMarketInfo,
+} from './rules/ProduceMarket.js';

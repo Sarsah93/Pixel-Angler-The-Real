@@ -67,7 +67,7 @@ import {
 } from '@tra/core';
 import {
   getLicenseByType, getCurrentGameMinute, calculateTideInfo, getFishById,
-  createEmptyWorldObjectState, TUNING,
+  createEmptyWorldObjectState, TUNING, HOMETOWN_MAP_GRAPH, FARM_TUNING, farmPlotCap as coreFarmPlotCap, rentedPlotCount,
 } from '@tra/core';
 import { EnvironmentStore } from './EnvironmentStore.js';
 import { ExternalDataStore } from './ExternalDataStore.js';
@@ -88,8 +88,8 @@ import { WorldDepletionStore } from './WorldDepletionStore.js';
 import { TideLoreStore, type TideLoreSaveState } from './TideLoreStore.js';
 import { DiscoveryStore, DiscoverySaveState } from './DiscoveryStore.js';
 import {
-  listUpkeep, upkeepAlerts, upkeepPenalty, licenseRenewalFee, fisheryGroundFee, upkeepKeysOfLicense,
-  type UpkeepItem, type UpkeepLedger, type UpkeepPenalty,
+  listUpkeep, upkeepAlerts, upkeepPenalty, licenseRenewalFee, fisheryGroundFee, upkeepKeysOfLicense, POWER_UPKEEP_KEY,
+  FARM_RENT_UPKEEP_KEY, type UpkeepItem, type UpkeepLedger, type UpkeepPenalty,
 } from '@tra/core';
 
 // ─────────────────────────────────────────────
@@ -1520,13 +1520,61 @@ export class GameStateManager {
   upkeepItems(): UpkeepItem[] {
     // 222차 「장부 정리」 — 정기 지출 −8%/랭크(표시 · 납부가 같은 값을 쓴다)
     const m = this.skillMult('ledger_fees');
+    const racks = this.syncMeteredLedger(POWER_UPKEEP_KEY, HomeStore.placed.filter((f) => f.kind === 'hydro_rack').length,
+      TUNING.upkeep.hydroPowerDays);
+    const rented = this.syncMeteredLedger(FARM_RENT_UPKEEP_KEY, rentedPlotCount(this.farmPlotIds().length),
+      TUNING.upkeep.farmRentDays);
     return listUpkeep({
       day: StoryStore.storyDay,
       heldLicenses: this._licenses.map((l) => l.type),
       licenseDef: (t) => getLicenseByType(t),
       ledger: this._upkeepLedger,
+      hydroRacks: racks,
+      rentedPlots: rented,
     }).map((i) => (m === 1 ? i : { ...i, costKrw: Math.round(i.costKrw * m) }));
   }
+
+  /**
+   * 236차 — 쓴 만큼 내는 정기 지출(수경 재배기 전기료 · 농지 사용료)의 장부. 대수 · 구획 수를 받아 기산일을 맞춘다.
+   *  - 처음 생긴 날이 기산일이다(이력이 없으면 `dueDayOf`가 납부일을 영영 미룬다 — 171차 함정).
+   *  - 모두 치운 날을 적어 두고(`<키>_off`), 다시 생겼을 때 그사이 납부일이 지나 있었으면
+   *    다시 생긴 날부터 새로 센다(꺼 둔 · 돌려준 동안은 쓰지 않았다). 납부일 전에 다시 생겼으면 그대로.
+   * @returns 받은 수 그대로(0이면 청구하지 않는다)
+   */
+  private syncMeteredLedger(key: string, count: number, intervalDays: number): number {
+    const L = this._upkeepLedger, day = StoryStore.storyDay, offKey = `${key}_off`;
+    if (count <= 0) {
+      if (L[key] !== undefined && L[offKey] === undefined) { L[offKey] = day; this.markDirty(); }
+      return 0;
+    }
+    if (L[key] === undefined) { L[key] = day; delete L[offKey]; this.markDirty(); }
+    else if (L[offKey] !== undefined) {
+      if (L[key] + intervalDays <= day) L[key] = day;
+      delete L[offKey];
+      this.markDirty();
+    }
+    return count;
+  }
+
+  /** 236차 — 전기료가 밀려 단전 중인가(수경 재배기가 꺼진다 — 텃밭이 묻는다) */
+  powerCut(): boolean { return this.upkeepPenalty().powerCut; }
+
+  // ─── 텃밭 구획 — 236차 ───────────────────────
+
+  /** 마당에 낸 텃밭 구획 id(설치한 순서 — 앞의 `FARM_TUNING.yardPlots`개가 마당, 나머지는 빌린 농지) */
+  farmPlotIds(): string[] {
+    return this.getWorldObjects(HOMETOWN_MAP_GRAPH.entryMapId).placed
+      .filter((o) => o.type === 'farmPlot').map((o) => o.instanceId);
+  }
+
+  /** 낼 수 있는 구획 수(마당 2 + 농지 이용권이 있으면 빌릴 수 있는 5) */
+  farmPlotCap(): number { return coreFarmPlotCap(this.hasLicense('farmland_use')); }
+
+  /** 이 구획이 빌린 농지인가(마당 구획 수를 넘는 순서) */
+  isRentedPlot(id: string): boolean { return this.farmPlotIds().indexOf(id) >= FARM_TUNING.yardPlots; }
+
+  /** 농지 사용료가 밀렸는가(빌린 텃밭에 새로 심을 수 없다 — 내면 바로 풀린다) */
+  farmRentOverdue(): boolean { return this.upkeepPenalty().rentOverdue; }
 
   /** 222차 「장부 정리」 — 위판 수수료율에서 덜어 낼 몫(기본 수수료율 × 할인율) */
   ledgerFeeCut(): number {

@@ -122,6 +122,7 @@ export const EN_FARM: Record<string, string> = {
     'You get an indoor shelf by bringing a sprouting jar or a hydroponic rack into the house.',
   '등급': 'Grade', '작물': 'Crop', '파는 값 (오늘)': 'Sells for (today)', '이번 달 시세': "This month's market",
   '귀한 철 — 값이 오른다': 'Scarce season — prices up', '흔한 철 — 값이 내린다': 'Glut season — prices down',
+  '올해 시세': "This year's market",
   '사 주는 곳': 'Buyers', '식자재 마트 · 식당': 'Grocery mart · restaurant',
   '직접 기른 채소 — 요리 별 다섯 개를 막지 않는다': 'Homegrown — never holds a dish back from five stars',
   '시루': 'Sprouting jar', '콩나물로 앉힐 수 있다': 'Can go into the sprouting jar',
@@ -135,7 +136,11 @@ export const EN_FARM: Record<string, string> = {
     'The indoor shelf. The jar grows bean sprouts, mung sprouts and microgreens; the hydroponic rack grows leafy greens. No seasons indoors.',
   '칸을 누르면 오른쪽에 자라는 정도와 거둘 때가 보인다.': 'Click a cell to see on the right how far it has grown and when it is ready.',
   '시루는 자주 물을 줘야 곧게 자란다. 물을 한 번 줘 보자.': 'The jar needs frequent watering to grow straight. Try watering once.',
-  '텃밭 한 구획이다. 한 칸이 한 평 남짓 — 실제 시간대로, 실제 계절대로 자란다. 꺼 둔 동안에도 자란다.':
+  // 236차 — 텃밭 구획 상한 · 농지 이용권 · 사용료
+  '빌린 텃밭': 'Rented patch',
+  '농지 사용료가 밀려 빌린 텃밭에는 새로 심을 수 없다': 'The farmland rent is overdue — nothing new can be planted on a rented patch',
+  '밀린 농지 사용료부터 내야 더 빌릴 수 있다': 'Pay the overdue farmland rent before renting more',
+  '텃밭 한 구획이다. 한 칸이 1㎡ 남짓 — 실제 시간대로, 실제 계절대로 자란다. 꺼 둔 동안에도 자란다.':
     'One vegetable patch. Each cell is about a square metre — it grows on real time and real seasons, even while the game is off.',
   '먼저 호미로 흙을 일군다. 칸을 고르고 「일구기」를 눌러 보자.': 'First, till the soil with the homi. Pick a cell and press "Till".',
   '일군 칸에 씨앗이나 모종을 심는다. 모종은 비싸지만 싹 틔우는 몇 주를 건너뛴다.':
@@ -151,8 +156,10 @@ export const EN_FARM: Record<string, string> = {
   '키트 · 호미 · 씨앗': 'Kit, homi and seeds', '꺼 둔 동안에도 자란다': 'It grows while the game is off',
   '특 · 상 · 보통': 'Prime, High, Normal', '요리와 별 다섯': 'Cooking and the fifth star', '시루 · 수경 재배기': 'Sprouting jar and hydroponic rack',
   '스킬 트리 「농사」': 'Skill tree: Farming',
-  '생활용품점에서 텃밭 개간 키트를 사서 홈타운 마당의 풀밭에 놓으면 4×3칸 텃밭 한 구획이 생깁니다. 한 칸은 한 평 남짓입니다. 텃밭 앞에서 [F]를 누르면 텃밭 창이 열리고, [Shift+F]는 심어 둔 것이 없을 때만 텃밭을 거둡니다.':
-    'Buy a Garden Plot Kit at the general store and place it on the grass of your hometown yard to lay out a 4×3-cell vegetable patch. Each cell is about a square metre. Press [F] in front of it to open the patch window; [Shift+F] packs the patch up, but only when nothing is planted.',
+  '생활용품점에서 텃밭 개간 키트를 사서 홈타운 마당의 풀밭에 놓으면 4×3칸 텃밭 한 구획이 생깁니다. 한 칸은 1㎡ 남짓이고, 한 구획(약 12㎡)은 주말농장 한 구획만 합니다. 텃밭 앞에서 [F]를 누르면 텃밭 창이 열리고, [Shift+F]는 심어 둔 것이 없을 때만 텃밭을 거둡니다.':
+    'Buy a Garden Plot Kit at the general store and place it on the grass of your hometown yard to lay out a 4×3-cell vegetable patch. Each cell is about a square metre, so a whole patch (about 12㎡) is the size of one allotment plot. Press [F] in front of it to open the patch window; [Shift+F] packs the patch up, but only when nothing is planted.',
+  '마당(내 땅)에는 텃밭을 두 구획까지 냅니다. 더 내려면 면허 · 허가(L)의 농지 이용권으로 마을 농지를 빌립니다 — 텃밭에서 세 번 거둬 본 뒤에 받을 수 있고, 다섯 구획까지 더 내며, 빌린 구획마다 한 달 사용료 5,000원을 냅니다. 사용료가 밀리면 빌린 밭에는 새로 심을 수 없고(거두기 · 물 주기는 됩니다), 내면 바로 풀립니다.':
+    'Your own yard holds up to two patches. For more, rent village farmland with the Farmland Use Right under Licences · Permits (L) — it is issued once you have harvested from your garden three times, adds up to five more patches, and each rented patch costs 5,000 won a month. If the rent falls overdue you cannot plant anything new on rented patches (harvesting and watering still work); paying frees them at once.',
   '칸마다 먼저 호미로 흙을 일궈야 심을 수 있습니다. 호미 · 퇴비 · 씨앗 봉투는 생활용품점, 모종과 씨감자 · 마늘 종구 같은 덩이는 식자재마트가 팝니다. 모종과 덩이는 심을 철에만 진열됩니다.':
     'Each cell must be tilled with a homi before you can plant it. The general store sells the homi, compost and seed packets; the grocery mart sells seedlings and sets such as seed potatoes and garlic bulbs. Seedlings and sets are only on the shelf in their planting months.',
   '씨앗은 싸지만 싹이 트는 비율만큼만 서고 오래 걸립니다. 모종은 비싸지만 싹 틔우는 몇 주를 건너뛰고 거의 다 뿌리를 내립니다. 씨앗 · 모종을 우클릭 [상세보기]하면 심는 철 · 거두기까지 · 한 칸에 드는 양 · 칸당 거두는 양이 나옵니다.':
@@ -173,6 +180,8 @@ export const EN_FARM: Record<string, string> = {
     'Long crops give an in-between harvest while growing — thinned young radish, garlic scapes, sweet-potato stems, pepper leaves and pumpkin leaves. In cells sown from seed, thinning makes the remaining plants grow bigger.',
   '거둔 채소는 식자재마트와 식당이 삽니다(수산물 직판장은 사지 않습니다). 값은 달마다의 철과 그 주의 날씨 · 작황을 따라 오르내리고, 상세보기의 「이번 달 시세」가 귀한 철인지 흔한 철인지 알려 줍니다.':
     'The grocery mart and restaurants buy your produce (the fish market does not). Prices move with the month\'s season and that week\'s weather and harvests; "This month\'s market" in Details tells you whether it is a scarce or a glut season.',
+  '배추 · 무 · 양파 · 상추 같은 흔한 채소는 실제 소매가(전국 평균)를 하루 한 번 받아 와, 그 주의 출렁임 대신 「오늘 값이 같은 날 평년보다 얼마나 비싼지」를 그대로 따릅니다. 상세보기의 「올해 시세」에 나옵니다. 받지 못한 날은 종전대로 움직입니다.':
+    'Common vegetables such as napa cabbage, radish, onion and lettuce follow real retail prices (national average), fetched once a day: instead of the weekly swing, they track how far today\'s price sits above or below the usual for the same date. Details shows it as "This year\'s market". On days the prices could not be fetched, they move as before.',
   '직접 기른 채소는 갓 거둔 신선함 그대로 요리에 들어갑니다. 가게에서 산 채소가 하나라도 들어간 요리는 다섯째 별이 켜지지 않습니다 — 요리 스킬 「요리 손」을 끝까지 올리면 반 개를 더해 4.5개까지 받습니다.':
     'Homegrown vegetables go into a dish as fresh as the day you picked them. A dish with even one store-bought vegetable never lights its fifth star — max out the Cook\'s Hands skill and it gets half a star more, up to 4.5.',
   '마트에서 팔지 않는 작물(아욱 · 근대 · 차조기 · 방아 · 양하 · 박 · 딜 · 산나물 · 고추냉이 · 노루궁뎅이 같은 것)은 직접 길러야만 손에 넣습니다. 귀한 씨앗일수록 가게에 들어오는 수가 적습니다.':
@@ -213,6 +222,10 @@ export const EN_FARM_RULES: [RegExp, (m: RegExpMatchArray, tr: (s: string) => st
   [/^(\d+)개가 있어야 한 칸을 채운다 \((\d+)개\)$/, (m) => `Need ${m[1]} to fill one cell (you have ${m[2]})`],
   [/^(.+)을\(를\) 심었다$/, (m, tr) => `Planted ${tr(m[1])}`],
   [/^(.+) (\d+)개를 거뒀다$/, (m, tr) => `Harvested ${tr(m[1])} ×${m[2]}`],
+  // 236차 — 수확 덤
+  [/^(.+) (\d+)개를 거뒀다 — 송이가 굵어 (\d+)개 더$/, (m, tr) => `Harvested ${tr(m[1])} ×${m[2]} — the caps came up thick, ${m[3]} extra`],
+  [/^(.+) · 거둘 때마다 덤 0~(\d+)%$/, (m, tr) => `${tr(m[1])} · up to ${m[2]}% extra each harvest`],
+  [/^거둘 때마다 덤 0~(\d+)%$/, (m) => `up to ${m[1]}% extra each harvest`],
   [/^(.+)을\(를\) 걷어 냈다$/, (m, tr) => `Cleared the ${tr(m[1])}`],
   [/^(.+)이\(가\) 없다$/, (m, tr) => `You have no ${tr(m[1])}`],
   [/^(.+)을\(를\) 놓았다$/, (m, tr) => `Set up the ${tr(m[1])}`],

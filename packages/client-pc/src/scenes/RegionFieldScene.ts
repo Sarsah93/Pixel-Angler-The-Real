@@ -81,6 +81,7 @@ import { RegionLight,
   computeCastWeather, castScatterRadius, applyCastScatter, castWeatherLabelKo, kstParts,
   sharedWeatherKind, quantizeShared,
   rodCastDistanceMult, rodLoadState, rodTipSnapChance, reelFitsRod, rodFitsHole,
+  FARM_TUNING,
   type CastWeatherEffect,
   type VitalsActivity,
 } from '@tra/core';
@@ -112,7 +113,7 @@ import { PrologueCoach, type CoachStage } from '../ui/PrologueCoach.js';
 import {
   prologueKeyAllowed, markPrologue, syncPrologue, prologueRunning, prologueStepDone,
   noteProloguePurchase, notePrologueSale, PROLOGUE_PHOTO_ID,
-  inPrologue, PROLOGUE_BUY_KINDS, prologueProtects, buyKindOf,
+  inPrologue, PROLOGUE_BUY_KINDS, PROLOGUE_BUY_LABEL, prologueProtects, buyKindOf,
 } from '../store/Prologue.js';
 import { repairQuestItems, iceCrateNeeded } from '../store/QuestItemGuard.js';
 import { DialoguePanel, type DialogueSceneRequest } from '../ui/DialoguePanel.js';
@@ -3346,8 +3347,8 @@ export class RegionFieldScene extends Phaser.Scene {
   }
 
   /**
-   * 219차 — 프롤로그 장보기 안전망. 비싼 물건을 먼저 사 버려 남은 기본 채비(원줄 · 바늘 · 봉돌 · 찌 · 미끼)를
-   * 살 돈이 모자라면 진행이 막힌다(벌 길이 없다) → 그 차액만 채워 준다(비상금).
+   * 219차 — 프롤로그 장보기 안전망. 비싼 물건을 먼저 사 버려 남은 첫 채비(236차부터 원투 — 원줄 · 목줄 · 봉돌 · 바늘 · 미끼)를
+   * 살 돈이 모자라면 진행이 막힌다(벌 길이 없다) → 그 차액만 채워 준다(비상금). 봉돌은 아버지 대가 견디는 가벼운 것만 센다.
    */
   private prologueBuyAid(): void {
     if (!inPrologue() || prologueStepDone('buy')) return;
@@ -4689,12 +4690,15 @@ export class RegionFieldScene extends Phaser.Scene {
     }
     if (!prologueStepDone('buy')) {
       const left = PROLOGUE_BUY_KINDS.filter((k) => !GameState.getFlag(`prologue.buy.${k}`));
-      const ko: Record<string, string> = { line: '원줄', hook: '바늘', sinker: '봉돌', float: '찌', bait: '미끼' };
-      const names = left.map((k) => ko[k]).join(' · ');
-      if (this.shopPanel) return this.coachShopDock(`buy_${left.join('_')}`, `기본 채비를 하나씩 사 보자. 아직 사지 않은 것: ${names}`);
+      const names = left.map((k) => PROLOGUE_BUY_LABEL[k]).join(' · ');
+      // 236차 — 첫 채비는 원투. 무거운 봉돌을 샀으면 아버지 대가 견디는 무게를 먼저 일러 준다
+      if (this.shopPanel && left.includes('sinker') && GameState.getFlag('prologue.heavySinker')) {
+        return this.coachShopDock(`buy_heavy_${left.join('_')}`, `그 봉돌은 아버지 대에 너무 무겁다. 대가 견디는 3호 봉돌을 고르자. 아직 사지 않은 것: ${names}`);
+      }
+      if (this.shopPanel) return this.coachShopDock(`buy_${left.join('_')}`, `원투 채비를 하나씩 사 보자. 아직 사지 않은 것: ${names}`);
       // 215차 — 직판장 안: 계산대로
       if (this.interior) return this.coachDock('buy_in', `직판장 안이다. 계산대 앞에 서서 [F]를 눌러 주인에게 물건을 보자. (${names})`);
-      return this.coachDock('buy', `속초에 왔다. 수산물 직판장 앞에서 [F]를 눌러 안으로 들어가자. 기본 채비를 하나씩 사야 한다. (${names})`, ['shop:market', 'quest', 'npc']);
+      return this.coachDock('buy', `속초에 왔다. 수산물 직판장 앞에서 [F]를 눌러 안으로 들어가자. 원투 채비를 하나씩 사야 한다. (${names})`, ['shop:market', 'quest', 'npc']);
     }
     if (!prologueStepDone('sell')) {
       if (this.shopPanel) return this.coachShopDock('sell_tab', '「판매하기」로 바꿔 얼린 오징어를 팔아 보자. 노잣돈에 보탬이 된다.');
@@ -7201,6 +7205,9 @@ export class RegionFieldScene extends Phaser.Scene {
       this.floatingHint(`${def.label}은(는) 집 안에서만 놓을 수 있습니다.`);
       return;
     }
+    // 236차 — 텃밭은 마당 두 구획까지, 그 너머는 농지 이용권으로 빌린다
+    const farmWhy = def.key === 'farm_plot' ? this.farmPlotBlock() : null;
+    if (farmWhy) { this.floatingHint(farmWhy); return; }
     this.placing = { def, itemId: item.id };
     if (!this.placeG) this.placeG = this.add.graphics().setDepth(48);
     this.hud?.pushLog(`[설치] ${def.label} — 클릭 = 설치 · 우클릭/ESC = 취소`);
@@ -7263,6 +7270,8 @@ export class RegionFieldScene extends Phaser.Scene {
     const tx = Math.floor(pw.x / TR), ty = Math.floor(pw.y / TR);
     const check = canPlaceAt(tx, ty, def.rule, this.placementWorld());
     if (!check.ok) { this.floatingHint('여기에는 설치할 수 없습니다'); return; }
+    const farmWhy = def.key === 'farm_plot' ? this.farmPlotBlock() : null;
+    if (farmWhy) { this.floatingHint(farmWhy); this.cancelPlacement(); return; }
 
     // 인벤토리 1개 소모 → placed 등록 → 충돌/렌더 재베이크
     if (!InventoryStore.removeQty(this.placing.itemId, 1)) {
@@ -7284,9 +7293,27 @@ export class RegionFieldScene extends Phaser.Scene {
     this.rebuildCollision();
     this.renderHomeObjects();
     this.hud?.pushLog(`[설치] ${def.label} 설치 완료 (${tx}, ${ty})`);
-    // 같은 아이템이 남아 있으면 설치 모드 유지, 없으면 종료
+    if (def.key === 'farm_plot' && GameState.isRentedPlot(obj.instanceId)) {
+      const rent = Math.round(TUNING.upkeep.farmRentKrw * GameState.skillMult('ledger_fees'));   // 정기 지출과 같은 값(「장부 정리」)
+      this.floatingHint(`마을 농지 한 구획을 빌렸다 (한 달 사용료 ₩${rent.toLocaleString()})`);
+    }
+    // 같은 아이템이 남아 있으면 설치 모드 유지, 없으면 종료(텃밭은 상한에 닿아도 종료)
     const remain = InventoryStore.find(this.placing.itemId);
-    if (!remain || remain.qty <= 0) this.cancelPlacement();
+    if (!remain || remain.qty <= 0 || (def.key === 'farm_plot' && this.farmPlotBlock())) this.cancelPlacement();
+  }
+
+  /**
+   * 236차 — 텃밭 구획을 더 낼 수 없는 이유(낼 수 있으면 null).
+   * 마당(내 땅)은 자격 없이 `FARM_TUNING.yardPlots`구획, 그 너머는 농지 이용권으로 마을 농지를 빌린다.
+   */
+  private farmPlotBlock(): string | null {
+    const n = GameState.farmPlotIds().length;
+    if (n < GameState.farmPlotCap()) {
+      return n >= FARM_TUNING.yardPlots && GameState.farmRentOverdue() ? '밀린 농지 사용료부터 내야 더 빌릴 수 있다' : null;
+    }
+    return GameState.hasLicense('farmland_use')
+      ? `빌릴 수 있는 마을 농지는 ${FARM_TUNING.rentPlotsMax}구획까지다`
+      : `마당 텃밭은 ${FARM_TUNING.yardPlots}구획까지다 — 더 내려면 농지 이용권으로 마을 농지를 빌린다`;
   }
 
   private cancelPlacement(): void {

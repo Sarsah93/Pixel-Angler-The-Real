@@ -103,8 +103,9 @@ export const CROP_DATABASE: CropDef[] = [
     // 균이 다 자란 배지를 사 온다 → 7~12일에 첫 발생 · 12일쯤 뒤 한 번 더
     //  배지 1kg → 첫물 155~161g · 수량의 94%가 1 · 2주기(경기도 시험) → 1.5kg 배지 두 번에 약 400g
     starts: [setOf('oyster_mushroom', ALL, 0.95, 11, 5000, '느타리 배지 (1.5kg)', 'Oyster mushroom block (1.5kg)')],
-    harvest: { itemId: 'crop_oyster_mushroom', nameKo: '느타리 한 팩 (200g)', nameEn: 'Oyster mushrooms, a pack (200g)', qtyPerCell: [1, 1], repeat: { everyDays: 12, times: 1 }, holdDays: 2 },
+    harvest: { itemId: 'crop_oyster_mushroom', nameKo: '느타리 한 팩 (200g)', nameEn: 'Oyster mushrooms, a pack (200g)', qtyPerCell: [1, 1], repeat: { everyDays: 12, times: 1 }, holdDays: 2, bonusSteps: 3 },
     price: { base: 2000, season: P_MUSHROOM, volatility: 0.1 },
+    // 236차 — 송이 크기는 들쭉날쭉하다: 거둘 때마다 0~30% 덤(bonusSteps 3 · 평균 +15%)
     noteKo: '배지 1.5kg에서 두 번 돋는다. 세 번째는 거의 나지 않는다. 첫물이 가장 굵다.',
     noteEn: 'A 1.5kg block fruits twice; a third flush hardly comes. The first flush is the thickest.',
   },
@@ -698,7 +699,7 @@ export const CROP_DATABASE: CropDef[] = [
     inMart: false, site: 'indoor', growMonths: ALL, water: 'high',
     // 참나무 톱밥 배지 · 습도 95% 이상 · 접종 후 40~45일 · 배지 1kg당 150~250g
     starts: [setOf('lions_mane', ALL, 0.9, 40, 7000, '노루궁뎅이 배지 (1kg)', 'Lion\'s mane block (1kg)')],
-    harvest: { itemId: 'crop_lions_mane', nameKo: '노루궁뎅이 한 송이 (200g)', nameEn: 'Lion\'s mane, one head (200g)', qtyPerCell: [1, 2], repeat: { everyDays: 20, times: 1 }, holdDays: 2 },
+    harvest: { itemId: 'crop_lions_mane', nameKo: '노루궁뎅이 한 송이 (200g)', nameEn: 'Lion\'s mane, one head (200g)', qtyPerCell: [1, 2], repeat: { everyDays: 20, times: 1 }, holdDays: 2, bonusSteps: 3 },
     price: { base: 5000, season: P_SHIITAKE, volatility: 0.1 }, rebalance: 0.85,
     noteKo: '흰 털이 늘어진 공 모양 버섯. 습도를 높게 지켜야 돋는다 — 전복 · 관자 버터구이에 곁들인다.',
     noteEn: 'A ball of hanging white spines that only fruits in steady high humidity. Serve it with abalone or scallops seared in butter.',
@@ -707,7 +708,7 @@ export const CROP_DATABASE: CropDef[] = [
     id: 'wood_ear', nameKo: '목이버섯', nameEn: 'Wood ear mushroom', category: 'mushroom', speedClass: 'leafy', rarity: 'uncommon',
     inMart: false, site: 'indoor', growMonths: ALL, water: 'high',
     starts: [setOf('wood_ear', ALL, 0.9, 60, 4000, '목이 배지 (1봉)', 'Wood ear block (one bag)')],
-    harvest: { itemId: 'crop_wood_ear', nameKo: '생목이 한 팩 (150g)', nameEn: 'Fresh wood ear, a pack (150g)', qtyPerCell: [2, 3], repeat: { everyDays: 15, times: 2 }, holdDays: 3 },
+    harvest: { itemId: 'crop_wood_ear', nameKo: '생목이 한 팩 (150g)', nameEn: 'Fresh wood ear, a pack (150g)', qtyPerCell: [2, 3], repeat: { everyDays: 15, times: 2 }, holdDays: 3, bonusSteps: 3 },
     price: { base: 1500, season: P_SHIITAKE, volatility: 0.1 },
     noteKo: '국산 생목이는 귀하다. 탱글한 식감을 해파리냉채 · 해물볶음에.',
     noteEn: 'Fresh domestic wood ear is hard to find. Its bouncy bite suits jellyfish salad and seafood stir-fries.',

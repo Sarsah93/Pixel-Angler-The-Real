@@ -12,6 +12,7 @@ import { getCreatureById, isCrabCreature } from '@tra/core';
 import { getBlueprint, CRAFT_STATION_LABEL, CRAFT_GROUP_LABEL, getQuestItem } from '@tra/core';
 import {
   cropStartOfItem, cropOfProduce, parseProduceId, monthRangeKo, kstMonthOf, GRADE_KO, supplyOfFacility, getSkillById,
+  produceMarketRatio, produceMarketInfo,
   type CropDef, type CropStart, type CropRarity,
 } from '@tra/core';
 import { PRODUCE_SUB, SEED_SUB } from '../data/CropItems.js';
@@ -114,7 +115,9 @@ function cropYieldKo(crop: CropDef, st: CropStart): string {
   const mult = st.qtyMult ?? 1;
   const [a, b] = [Math.max(1, Math.round(h.qtyPerCell[0] * mult)), Math.max(1, Math.round(h.qtyPerCell[1] * mult))];
   const qty = a === b ? `${a}개` : `${a}~${b}개`;
-  return h.repeat ? `${qty} · ${h.repeat.everyDays}일마다 ${h.repeat.times}번 더` : qty;
+  const base = h.repeat ? `${qty} · ${h.repeat.everyDays}일마다 ${h.repeat.times}번 더` : qty;
+  // 236차 — 덤(버섯): 거둘 때마다 0~N0% 더
+  return h.bonusSteps ? `${base} · 거둘 때마다 덤 0~${h.bonusSteps * 10}%` : base;
 }
 
 /** 235차 — 씨앗 · 모종 · 종구 상세: 심는 철 · 거두기까지 · 한 칸에 · 싹 트는 비율 · 거두는 것 · 자격 */
@@ -152,6 +155,14 @@ function produceDetail(item: Pick<InvItem, 'id' | 'name' | 'qty' | 'basePrice' |
   const idx = crop.price.season[kstMonthOf(Date.now()) - 1] ?? 1;
   const trend = idx >= 1.15 ? { v: '귀한 철 — 값이 오른다', c: '#8affb0' } : idx <= 0.88 ? { v: '흔한 철 — 값이 내린다', c: '#ff9a5a' } : { v: '보통', c: undefined };
   rows.push({ label: '이번 달 시세', value: trend.v, color: trend.c });
+  // 236차 — 하루 한 번 받아 둔 실제 소매가(전국 평균)가 같은 날 평년보다 얼마나 비싼지 · 싼지
+  const mr = produceMarketRatio(crop.id), mi = produceMarketInfo();
+  if (mr !== null && mi) {
+    const pct = Math.round(Math.abs(mr - 1) * 100);
+    const [, mm, dd] = mi.regday.split('-').map(Number);
+    const v = pct < 5 ? '평년과 비슷하다' : mr > 1 ? `평년보다 ${pct}% 비싸다` : `평년보다 ${pct}% 싸다`;
+    rows.push({ label: '올해 시세', value: `${v} (${mm}/${dd} 소매가)`, color: pct < 5 ? undefined : mr > 1 ? '#8affb0' : '#ff9a5a' });
+  }
   rows.push({ label: '사 주는 곳', value: '식자재 마트 · 식당' });
   if (crop.cookIngredient) rows.push({ label: '요리', value: '직접 기른 채소 — 요리 별 다섯 개를 막지 않는다', color: '#8affb0' });
   if (cropStartOfItem(item.id)) rows.push({ label: '시루', value: '콩나물로 앉힐 수 있다' });

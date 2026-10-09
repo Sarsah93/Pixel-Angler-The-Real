@@ -85,8 +85,8 @@ export const EN_TOUR_PANELS2: Record<string, string> = {
   '첫 칸 「원줄」을 눌러 보자. 가방 속에서 그 칸에 달 수 있는 것만 골라 보여 준다.':
     'Click the first slot, "Main line". It shows only the things in your bag that fit that slot.',
   '목록에서 원줄 하나를 골라 달아 보자.': 'Pick a main line from the list to attach it.',
-  '아직 달 부품이 없다. 가게에서 원줄 · 바늘 · 봉돌 · 찌 · 미끼를 사 오면 여기서 골라 단다.':
-    'You have no parts to attach yet. Buy main line · hooks · sinkers · floats · bait at a shop and you can attach them here.',
+  '아직 달 부품이 없다. 가게에서 원줄 · 목줄 · 봉돌 · 바늘 · 미끼를 사 오면 여기서 골라 단다.':
+    'You have no parts to attach yet. Buy main line · leader · sinkers · hooks · bait at a shop and you can attach them here.',
   '부품을 달 때마다 아래 상자에서 채비 무게와 가라앉는 속도, 닿는 수심이 다시 계산된다.':
     'Every time you attach a part, the box below recalculates the rig weight, sink speed and the depth it reaches.',
   '채비를 다 꾸몄으면 「채비 고정」으로 잠근다. 고정한 채비는 던질 때 미끼 같은 소모품만 줄어들고, 실수로 바뀌지 않는다.':

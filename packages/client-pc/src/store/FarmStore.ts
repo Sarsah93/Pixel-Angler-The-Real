@@ -34,6 +34,8 @@ export const WATERING_CAN_ID = 'inv_watering_can';
 export interface FarmSaveState {
   v: 1;
   plots: Record<string, FarmPlotState>;
+  /** 236차 — 텃밭에서 거둔 횟수(본 수확 + 중간 수확). 농지 이용권 요건 — 구세이브는 0 */
+  harvests?: number;
 }
 
 export interface FarmActionResult {
@@ -47,6 +49,11 @@ const fail = (message: string): FarmActionResult => ({ ok: false, message });
 
 class FarmStoreImpl {
   private plots = new Map<string, FarmPlotState>();
+  /** 236차 — 거둔 횟수(농지 이용권 요건) */
+  private harvests = 0;
+
+  /** 236차 — 텃밭에서 거둔 횟수(본 수확 + 중간 수확) */
+  get harvestCount(): number { return this.harvests; }
 
   // ── 구획 ──────────────────────────────────
 
@@ -98,6 +105,7 @@ class FarmStoreImpl {
     const liveRain = this.liveRaining();
     return {
       rainAt: (ms) => (liveRain !== null && Math.abs(ms - nowMs) < 3_600_000 ? liveRain : climateRainAt(ms)),
+      powerOff: GameState.powerCut(),   // 236차 — 전기료가 밀리면 수경 재배기가 꺼진다
       skill: {
         waterEff: GameState.skillMult('water_efficiency') - 1,
         fertilizer: GameState.skillMult('fertilizer') - 1,
@@ -178,6 +186,10 @@ class FarmStoreImpl {
     const found = cropStartOfItem(startItemId);
     if (!found) return { ok: false, reasonKo: '심을 수 있는 것이 아니다' };
     const { crop, start } = found;
+    // 236차 — 농지 사용료가 밀리면 빌린 텃밭에는 새로 심지 못한다(거두기 · 물주기는 된다)
+    if (plotId !== INDOOR_PLOT && GameState.isRentedPlot(plotId) && GameState.farmRentOverdue()) {
+      return { ok: false, reasonKo: '농지 사용료가 밀려 빌린 텃밭에는 새로 심을 수 없다', crop };
+    }
     const p = this.plot(plotId);
     const cell = p.cells[idx];
     if (!cell) return { ok: false, reasonKo: '칸이 없다' };
@@ -248,9 +260,12 @@ class FarmStoreImpl {
       const st = cropItemTemplate(r.seedBack.itemId);
       if (st && InventoryStore.addItem(st, r.seedBack.qty)) harvested.push({ itemId: st.id, qty: r.seedBack.qty, name: st.name });
     }
+    this.harvests++;
     GameState.markDirty();
     StoryStore.event({ kind: 'farm', action: 'harvest', cropId: crop.id });
-    return { ok: true, message: `${tpl.name} ${r.qty}개를 거뒀다`, harvested };
+    // 236차 — 덤(버섯 송이가 굵게 올라온 회차)은 따로 말해 준다
+    const bonus = r.bonusQty ? ` — 송이가 굵어 ${r.bonusQty}개 더` : '';
+    return { ok: true, message: `${tpl.name} ${r.qty}개를 거뒀다${bonus}`, harvested };
   }
 
   /** 걷어 낸다(자라던 것을 버린다 — 일군 땅은 남는다) */
@@ -297,12 +312,13 @@ class FarmStoreImpl {
   serialize(): FarmSaveState {
     const plots: Record<string, FarmPlotState> = {};
     for (const [k, p] of this.plots) plots[k] = p;
-    return { v: 1, plots };
+    return { v: 1, plots, harvests: this.harvests };
   }
 
   /** 로드 — 칸 수가 어긋난(구조가 바뀐) 구획은 빈 칸으로 채워 맞춘다(유저 상태는 그대로) */
   deserialize(s: FarmSaveState | undefined | null): void {
     this.plots.clear();
+    this.harvests = Math.max(0, Math.floor(s?.harvests ?? 0));
     if (!s?.plots) return;
     for (const [k, p] of Object.entries(s.plots)) {
       if (!p || !Array.isArray(p.cells)) continue;
@@ -314,7 +330,7 @@ class FarmStoreImpl {
     this.advanceAll();
   }
 
-  resetAll(): void { this.plots.clear(); }
+  resetAll(): void { this.plots.clear(); this.harvests = 0; }
 }
 
 export const FarmStore = new FarmStoreImpl();

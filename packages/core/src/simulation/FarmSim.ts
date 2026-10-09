@@ -19,6 +19,7 @@ import type {
   FarmPlantCtx, FarmPlotState, FarmSite,
 } from '../types/Farming.js';
 import { getCrop, cropOfProduce, parseProduceId } from '../db-schema/CropDatabase.js';
+import { produceMarketRatio } from '../rules/ProduceMarket.js';
 
 /** 텃밭 한 구획 = 4×3칸(설치물 `farm_plot` footprint와 같다) */
 export const FARM_COLS = 4;
@@ -59,7 +60,24 @@ export const FARM_TUNING = {
   gradePrice: { special: 1.3, good: 1.0, normal: 0.72 } as Record<CropGrade, number>,
   /** 실내 시루 · 배지 흙(물) 마름 — 시간당 */
   indoorEvap: 0.015,
+  /**
+   * 236차 — 마당(내 땅) 텃밭 구획 수. 자격 없이 낸다 — 2구획 = 경작 24㎡(약 7평), 집 마당 텃밭 크기.
+   * 이보다 많은 구획은 마을 농지를 빌린 것이다(농지 이용권 · 구획마다 사용료).
+   */
+  yardPlots: 2,
+  /** 236차 — 농지 이용권으로 더 빌리는 구획 수 상한(서울시 주말농장 1인 최대 5구획 — 2025 모집 공고) */
+  rentPlotsMax: 5,
 };
+
+/** 236차 — 마당에 낼 수 있는 텃밭 구획 수(마당 + 빌린 농지) */
+export function farmPlotCap(hasFarmland: boolean): number {
+  return FARM_TUNING.yardPlots + (hasFarmland ? FARM_TUNING.rentPlotsMax : 0);
+}
+
+/** 236차 — 낸 구획 중 빌린 것(마당 구획을 넘는 수) */
+export function rentedPlotCount(plots: number): number {
+  return Math.max(0, Math.floor(plots) - FARM_TUNING.yardPlots);
+}
 
 const H = 3_600_000;
 const KST = 9 * H;
@@ -192,8 +210,11 @@ function stepHour(cell: FarmCellState, crop: CropDef, plot: FarmPlotState, ms: n
   const month = kstMonthOf(ms);
   const indoor = plot.site === 'indoor';
   const hydro = indoor && crop.site === 'plot';
-  // 1) 흙 수분
-  if (hydro) cell.moisture = 1;
+  // 236차 — 실내에 들인 텃밭 작물(잎채소 등)은 수경 재배기 불빛으로만 자란다. 재배기를 치웠거나
+  //   전기료가 밀려 단전되면 멈춘다(시들지는 않는다 — 철 밖과 같은 취급). 시루 · 버섯은 어두워도 큰다
+  const lightOff = hydro && (!!env.powerOff || !plot.facilities.includes('hydroRack'));
+  // 1) 흙 수분(재배기 펌프가 돌면 늘 젖어 있다)
+  if (hydro && !lightOff) cell.moisture = 1;
   else {
     const rain = !indoor && !plot.facilities.includes('greenhouse') && env.rainAt(ms);
     if (rain) cell.moisture = 1;
@@ -203,7 +224,7 @@ function stepHour(cell: FarmCellState, crop: CropDef, plot: FarmPlotState, ms: n
       if (!indoor && plot.facilities.includes('rainBarrel')) cell.moisture = Math.max(cell.moisture, FARM_TUNING.rainBarrelFloor);
     }
   }
-  const season = seasonFactor(crop, month, plot);
+  const season = lightOff ? 0 : seasonFactor(crop, month, plot);
   // 2) 다 거두고 쉬는 여러해살이 — 철이 끝나면(겨울) 뿌리가 자리 잡고 다음 철에 다시 올라온다
   if (cell.resting) {
     if (season === 0) {
@@ -375,7 +396,17 @@ export function harvestCell(cell: FarmCellState, rand01: () => number, skills: H
   const st = startOf(crop, cell.start);
   const raw = (lo + (hi - lo) * rand01()) * cell.stand * (1 + (skills.yieldBonus ?? 0)) * (st?.qtyMult ?? 1)
     * (cell.interimDone ? (crop.interim?.mainYieldMult ?? 1) : 1);
-  const qty = Math.max(1, Math.round(raw));
+  const base = Math.max(1, Math.round(raw));
+  // 236차 — 덤: 0~bonusSteps단계(10%씩)를 고르게. 한 팩짜리의 10~30%는 반올림하면 사라지므로
+  //   남는 몫은 그 확률로 한 개 더 준다 — 기대값이 정확히 「수량 × 덤%」가 된다
+  const steps = crop.harvest.bonusSteps ?? 0;
+  const bonusPct = steps > 0 ? 10 * Math.min(steps, Math.floor(rand01() * (steps + 1))) : 0;
+  let bonusQty = 0;
+  if (bonusPct > 0) {
+    const e = base * bonusPct / 100;
+    bonusQty = Math.floor(e) + (rand01() < e - Math.floor(e) ? 1 : 0);
+  }
+  const qty = base + bonusQty;
   const ripened = !!crop.harvest.ripenTo && cell.ripeH > crop.harvest.ripenTo.afterDays * 24;
   const itemId = ripened ? crop.harvest.ripenTo!.itemId : crop.harvest.itemId;
   const quality = cell.quality;
@@ -393,7 +424,7 @@ export function harvestCell(cell: FarmCellState, rand01: () => number, skills: H
   } else {
     clearCell(cell);
   }
-  return { itemId, qty, grade, quality, ...(seedBack ? { seedBack } : {}), more };
+  return { itemId, qty, grade, quality, ...(seedBack ? { seedBack } : {}), more, ...(bonusQty > 0 ? { bonusQty, bonusPct } : {}) };
 }
 
 /** 중간 수확(솎음 · 마늘종 · 고구마순 · 고춧잎 · 호박잎 · 고추냉이 잎) */
@@ -454,6 +485,8 @@ export function producePriceShock(cropId: string, nowMs: number, volatility: num
 /**
  * 수확물 한 단위 값(원) — 단가 × 달 지수 × 출렁임 × 등급 × 숨은 재조정. 수확물이 아니면 null.
  * 등급은 아이템 id 꼬리(`_sp` 특 · `_nm` 보통)에서 읽는다 — `grade`를 넘기면 그쪽이 이긴다.
+ * 236차 — 출렁임은 **실제 소매가가 평년보다 얼마나 비싼지**(KAMIS 하루치 스냅샷 · `produceMarketRatio`)가 있으면
+ *   그것을, 없으면(매핑 없는 작물 · 못 받은 날) 주간 출렁임을 쓴다.
  */
 export function producePrice(itemId: string, nowMs: number, grade?: CropGrade): number | null {
   const crop = cropOfProduce(itemId);
@@ -466,7 +499,7 @@ export function producePrice(itemId: string, nowMs: number, grade?: CropGrade): 
     : id === crop.harvest.ripenTo?.itemId ? crop.harvest.ripenTo.price
       : crop.interim?.price ?? crop.price.base;
   const season = crop.price.season[kstMonthOf(nowMs) - 1] ?? 1;
-  const shock = producePriceShock(crop.id, nowMs, crop.price.volatility);
+  const shock = produceMarketRatio(crop.id) ?? producePriceShock(crop.id, nowMs, crop.price.volatility);
   return Math.max(10, Math.round((base * season * shock * FARM_TUNING.gradePrice[grade] * (crop.rebalance ?? 1)) / 10) * 10);
 }
 

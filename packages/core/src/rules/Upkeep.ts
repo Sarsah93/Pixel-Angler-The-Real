@@ -13,6 +13,8 @@
  *   ③ 어장 행사료 — 어촌계 어장에서 채취할 때 건당
  *   ④ 선박 유지비 — 보험·정기검사·계류비
  *   ⑤ 위생 점검 — 식당 영업의 정기 점검(불합격 시 재검사료)
+ *   ⑥ 수경 재배기 전기료 — 집에 놓은 대수만큼(236차). 밀리면 단전 — 평판이 아니라 재배기가 멈춘다
+ *   ⑦ 농지 사용료 — 마당 두 구획을 넘는(빌린) 텃밭 구획마다(236차). 밀리면 빌린 밭에 새로 못 심는다
  *
  * ⚖ **시계는 인게임 일자(StoryStore.day)** 다. 구현되어 있던 `HeldLicense.expiresAt`은
  *   실제 벽시계 365일이라 플레이 중 단 한 번도 만료될 수 없었다(사문). 침대 수면이
@@ -34,7 +36,9 @@ export type UpkeepKind =
   | 'license_renewal'      // 자격 갱신료
   | 'coop_dues'            // 수협 조합비
   | 'vessel_upkeep'        // 선박 보험·정기검사·계류비
-  | 'hygiene_inspection';  // 식품위생 정기 점검
+  | 'hygiene_inspection'   // 식품위생 정기 점검
+  | 'electricity'          // 236차 — 수경 재배기 전기료
+  | 'farm_rent';           // 236차 — 빌린 텃밭 구획 사용료
 
 /** 정기 지출 1건의 상태 (인게임 일자 기준) */
 export interface UpkeepItem {
@@ -98,7 +102,16 @@ export interface UpkeepContext {
   licenseDef: (t: LicenseType) => LicenseDef | undefined;
   /** 납부 이력 */
   ledger: UpkeepLedger;
+  /** 236차 — 집에 놓인 수경 재배기 대수(없으면 0) */
+  hydroRacks?: number;
+  /** 236차 — 빌린 텃밭 구획 수(마당 구획을 넘는 것 — 없으면 0) */
+  rentedPlots?: number;
 }
+
+/** 236차 — 전기료 장부 키 */
+export const POWER_UPKEEP_KEY = 'electricity';
+/** 236차 — 농지 사용료 장부 키 */
+export const FARM_RENT_UPKEEP_KEY = 'farm_rent';
 
 /**
  * 자격 → 그 자격이 거는 **자격 외 정기 지출** 키 (188차 — AG ①e).
@@ -171,6 +184,21 @@ export function listUpkeep(ctx: UpkeepContext): UpkeepItem[] {
       u.hygieneFeeKrw, u.hygieneDays, dueDayOf(ctx.ledger, 'hygiene_inspection', ctx.day, u.hygieneDays), ctx.day));
   }
 
+  // ⑤ 수경 재배기 전기료 — 놓인 대수만큼(236차). 기산일은 처음 놓은 날(GameState가 찍는다)
+  const racks = Math.max(0, Math.floor(ctx.hydroRacks ?? 0));
+  if (racks > 0) {
+    out.push(mk('electricity', POWER_UPKEEP_KEY, racks > 1 ? `수경 재배기 전기료 (${racks}대)` : '수경 재배기 전기료',
+      racks > 1 ? `Hydroponic unit electricity (${racks} units)` : 'Hydroponic unit electricity',
+      u.hydroPowerKrw * racks, u.hydroPowerDays, dueDayOf(ctx.ledger, POWER_UPKEEP_KEY, ctx.day, u.hydroPowerDays), ctx.day));
+  }
+
+  // ⑥ 농지 사용료 — 빌린 구획마다(236차). 기산일은 처음 빌린 날(GameState가 찍는다)
+  const rented = Math.max(0, Math.floor(ctx.rentedPlots ?? 0));
+  if (rented > 0) {
+    out.push(mk('farm_rent', FARM_RENT_UPKEEP_KEY, `농지 사용료 (${rented}구획)`, `Farmland rent (${rented} plot${rented > 1 ? 's' : ''})`,
+      u.farmRentKrw * rented, u.farmRentDays, dueDayOf(ctx.ledger, FARM_RENT_UPKEEP_KEY, ctx.day, u.farmRentDays), ctx.day));
+  }
+
   out.sort((a, b) => a.dueDay - b.dueDay);
   return out;
 }
@@ -195,23 +223,31 @@ export interface UpkeepPenalty {
   enforceMult: number;
   /** 연체 중인 항목 이름 (안내문용) */
   overdueNames: string[];
+  /** 236차 — 전기료가 밀려 수경 재배기가 꺼졌는가 */
+  powerCut: boolean;
+  /** 236차 — 농지 사용료가 밀려 빌린 텃밭에 새로 심을 수 없는가 */
+  rentOverdue: boolean;
 }
 
 export function upkeepPenalty(items: UpkeepItem[]): UpkeepPenalty {
   const u = TUNING.upkeep;
   const over = items.filter((i) => i.overdue);
   if (!over.length) {
-    return { blockConsign: false, repPerDay: 0, enforceMult: 1, overdueNames: [] };
+    return { blockConsign: false, repPerDay: 0, enforceMult: 1, overdueNames: [], powerCut: false, rentOverdue: false };
   }
   // 자격 갱신 연체만 위판을 막는다 — 조합비·유지비는 평판과 단속으로 벌한다.
   const licenseOverdue = over.some((i) => i.kind === 'license_renewal');
+  // 236차 — 전기료 · 농지 사용료는 항구 평판과 무관하다. 밀리면 단전 · 빌린 밭 묶임으로만 벌한다
+  const repOver = over.filter((i) => i.kind !== 'electricity' && i.kind !== 'farm_rent');
   return {
     blockConsign: licenseOverdue,
     // 여러 건이 한꺼번에 밀려도 하루 감점에는 상한을 둔다 — 한 번 무너진 사람이
     // 평판만으로 회복 불가능해지지 않게 한다.
-    repPerDay: Math.min(u.overdueRepCap, u.overdueRepPerDay * over.length),
+    repPerDay: Math.min(u.overdueRepCap, u.overdueRepPerDay * repOver.length),
     enforceMult: licenseOverdue ? u.overdueEnforceMult : 1,
     overdueNames: over.map((i) => i.nameKo),
+    powerCut: over.some((i) => i.kind === 'electricity'),
+    rentOverdue: over.some((i) => i.kind === 'farm_rent'),
   };
 }
 
