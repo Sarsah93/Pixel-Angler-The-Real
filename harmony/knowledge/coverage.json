@@ -3,7 +3,8 @@
  "domains": {
   "01-engineering": {
    "passes": [
-    "2026-10-08"
+    "2026-10-08",
+    "2026-10-11"
    ],
    "deep_dives": [],
    "files": {
@@ -29,7 +30,8 @@
   },
   "02-code": {
    "passes": [
-    "2026-10-08"
+    "2026-10-08",
+    "2026-10-11"
    ],
    "deep_dives": [],
    "files": {
@@ -75,7 +77,8 @@
   },
   "03-files-docs": {
    "passes": [
-    "2026-10-08"
+    "2026-10-08",
+    "2026-10-11"
    ],
    "deep_dives": [],
    "files": {
@@ -549,7 +552,8 @@
   },
   "04-design-media": {
    "passes": [
-    "2026-10-08"
+    "2026-10-08",
+    "2026-10-11"
    ],
    "deep_dives": [],
    "files": {
@@ -1315,7 +1319,8 @@
   },
   "05-pipeline": {
    "passes": [
-    "2026-10-08"
+    "2026-10-08",
+    "2026-10-11"
    ],
    "deep_dives": [],
    "files": {
@@ -1336,7 +1341,8 @@
   },
   "06-tickets-economy": {
    "passes": [
-    "2026-10-08"
+    "2026-10-08",
+    "2026-10-11"
    ],
    "deep_dives": [],
    "files": {
@@ -1360,7 +1366,8 @@
   },
   "07-api-env": {
    "passes": [
-    "2026-10-08"
+    "2026-10-08",
+    "2026-10-11"
    ],
    "deep_dives": [],
    "files": {
@@ -1383,13 +1390,16 @@
   },
   "08-notes-memory": {
    "passes": [
-    "2026-10-08"
+    "2026-10-08",
+    "2026-10-11"
    ],
-   "deep_dives": [],
+   "deep_dives": [
+    "2026-10-11"
+   ],
    "files": {
-    ".agents/AGENTS.md": "cf7dbf6084a9",
+    ".agents/AGENTS.md": "67d2fb8ff64d",
     ".agents/IMPLEMENTATION_PLAN.md": "5150cfed06a5",
-    "CLAUDE.md": "65d6a36d0cd7",
+    "CLAUDE.md": "8087fd23f547",
     "README.md": "8cac50745eb2",
     "docs/wiki/01-ARCHITECTURE.md": "dc54be2a5248",
     "docs/wiki/02-SYSTEMS/README.md": "2f3f85688521",
@@ -1399,12 +1409,49 @@
     "docs/wiki/03-WORKLOG/2026-10-08-234-quest-items-placed-sync-session-weather.md": "07d3fcf15a54",
     "docs/wiki/03-WORKLOG/_TEMPLATE.md": "cc3b066926a3",
     "docs/wiki/04-BACKLOG.md": "7450cb44b311",
-    "docs/wiki/README.md": "931125bd3a98"
+    "docs/wiki/README.md": "931125bd3a98",
+    ".agents/CEPHALOPOD_BUTCHERY_SPEC.md": "7a36e19fab01",
+    ".agents/CRAFTING_EXPANSION_SPEC.md": "8181c23811b3",
+    ".agents/FIRE_COOKING_EXPANSION_SPEC.md": "86a94599a636",
+    ".agents/FIRE_COOKING_SPEC.md": "8da18e624101",
+    ".agents/FORAGING_REALISM_SPEC.md": "b3af16519ee9",
+    ".agents/OSM_TILEMAP_SPEC.md": "69db24df67c9",
+    ".agents/PLAYER_SCENARIO.md": "ed5b702799c1",
+    ".agents/PROGRESSION_SURVIVAL_SPEC.md": "09f8849414e2",
+    ".agents/STORY_SPEC_v4.md": "a39b8f46dcc6",
+    ".agents/TIDE_PHASE_STRATEGY_SPEC.md": "a567c017f92f",
+    "docs/wiki/02-SYSTEMS/butchery.md": "0c40b00f247d",
+    "docs/wiki/02-SYSTEMS/character-art.md": "3b9681508be3",
+    "docs/wiki/02-SYSTEMS/discovery-wiki.md": "c95a03a575d2",
+    "docs/wiki/02-SYSTEMS/economy-data.md": "03acf01e9171",
+    "docs/wiki/02-SYSTEMS/fishing-loop.md": "957e644bef18",
+    "docs/wiki/02-SYSTEMS/night-hunting-trap.md": "52d02d4b98c7",
+    "docs/wiki/02-SYSTEMS/progression.md": "6a33cb8c5415",
+    "docs/wiki/02-SYSTEMS/sashimi-cooking.md": "10d5745cab72",
+    "docs/wiki/02-SYSTEMS/story-quests.md": "6e6959fbb48a",
+    "docs/wiki/02-SYSTEMS/ui-framework.md": "fb1f79de7fa9",
+    "docs/wiki/02-SYSTEMS/world-field.md": "31a8cedede17",
+    "docs/wiki/03-WORKLOG/2026-10-06-220-shop-cart-categories-search.md": "7029992f8aca",
+    "docs/wiki/03-WORKLOG/2026-10-06-221-shop-stock-favorites-sell-qty.md": "a6e398494aae",
+    "docs/wiki/03-WORKLOG/2026-10-06-222-timed-crafting-skill-overhaul.md": "8c5bec0010e0",
+    "docs/wiki/03-WORKLOG/2026-10-06-223-blueprint-learning-scrap.md": "4e35ba1263ad",
+    "docs/wiki/03-WORKLOG/2026-10-06-224-foraging-realism-bait-economy.md": "6e0b0801f8a0",
+    "docs/wiki/03-WORKLOG/2026-10-06-225-forage-feedback-pry-board-photo-icons.md": "de4a9d6238cb",
+    "docs/wiki/03-WORKLOG/2026-10-06-226-sea-cucumber-urchin-art.md": "9910fcc3921a",
+    "docs/wiki/03-WORKLOG/2026-10-06-227-legal-closed-season-dates.md": "a1a3bc9ba663",
+    "docs/wiki/03-WORKLOG/2026-10-07-228-worm-art-stat-labels.md": "a8c31dfb9594",
+    "docs/wiki/03-WORKLOG/2026-10-07-229-law-feedback-krill-economy-board-art.md": "26b34817c8e1",
+    "docs/wiki/03-WORKLOG/2026-10-07-230-krill-bait-art.md": "09b202ae8364",
+    "docs/wiki/03-WORKLOG/2026-10-07-231-bankruptcy-erase-multiplayer-audit.md": "bcb41504e26d",
+    "docs/wiki/03-WORKLOG/2026-10-07-232-trade-autosave-auth-shared-world.md": "6f6bd1201451",
+    "docs/wiki/03-WORKLOG/2026-10-07-233-forage-respawn-lock-quest-provenance.md": "e79701656611",
+    "docs/wiki/03-WORKLOG/README.md": "248c9ab3d0d6"
    }
   },
   "09-skills": {
    "passes": [
-    "2026-10-08"
+    "2026-10-08",
+    "2026-10-11"
    ],
    "deep_dives": [],
    "files": {

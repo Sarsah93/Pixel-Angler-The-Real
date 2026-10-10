@@ -1,6 +1,6 @@
 {
  "schema": 1,
- "next_id": 88,
+ "next_id": 99,
  "findings": [
   {
    "id": "F-0001",
@@ -1157,7 +1157,7 @@
    "why": "../../packages/ 로 한 단계 모자란다. ../../../ 로 고치면 21개 대상이 모두 있다(조율자 재확인).",
    "status": "열림",
    "first_seen": "2026-10-08",
-   "last_seen": "2026-10-08",
+   "last_seen": "2026-10-11",
    "resolved_at": null
   },
   {
@@ -1174,7 +1174,7 @@
    "why": "/world/take · /placed/sync · /retire가 표에 없다(실제 17개 · 표 14행).",
    "status": "열림",
    "first_seen": "2026-10-08",
-   "last_seen": "2026-10-08",
+   "last_seen": "2026-10-11",
    "resolved_at": null
   },
   {
@@ -1189,25 +1189,26 @@
    "why": "파일은 있는데 색인에서 찾을 수 없다(094 · 095 · 096 · 159는 절 수 부족).",
    "status": "열림",
    "first_seen": "2026-10-08",
-   "last_seen": "2026-10-08",
+   "last_seen": "2026-10-11",
    "resolved_at": null
   },
   {
    "id": "F-0070",
    "domain": "08-notes-memory",
    "severity": "경미",
-   "title": "「저장은 집 침대뿐」 서술 5곳에 232차 예외(거래 직후 자동 저장)가 빠져 있다",
+   "title": "「저장은 집 침대뿐」 서술 6곳에 232차 예외(거래 직후 자동 저장)가 빠져 있다",
    "evidence": [
     "docs/wiki/02-SYSTEMS/inventory-equipment.md:41",
     "docs/wiki/02-SYSTEMS/home-base.md:10",
     "docs/wiki/02-SYSTEMS/home-base.md:120",
     "docs/wiki/README.md:53",
-    "README.md:157"
+    "README.md:157",
+    "docs/wiki/02-SYSTEMS/progression.md:194"
    ],
    "why": "계획서와 코드는 예외를 적는데 시스템 페이지는 옛 서술이다.",
    "status": "열림",
    "first_seen": "2026-10-08",
-   "last_seen": "2026-10-08",
+   "last_seen": "2026-10-11",
    "resolved_at": null
   },
   {
@@ -1243,12 +1244,20 @@
     "docs/wiki/03-WORKLOG/README.md:242",
     ".agents/PROGRESSION_SURVIVAL_SPEC.md:423",
     "docs/wiki/04-BACKLOG.md:55",
-    "docs/wiki/03-WORKLOG/_TEMPLATE.md:9"
+    "docs/wiki/03-WORKLOG/_TEMPLATE.md:9",
+    ".agents/PROGRESSION_SURVIVAL_SPEC.md:13",
+    ".agents/OSM_TILEMAP_SPEC.md:125",
+    ".agents/OSM_TILEMAP_SPEC.md:256",
+    "docs/wiki/02-SYSTEMS/world-field.md:184",
+    "docs/wiki/02-SYSTEMS/butchery.md:39",
+    "docs/wiki/02-SYSTEMS/story-quests.md:26",
+    "docs/wiki/02-SYSTEMS/character-art.md:4",
+    "docs/wiki/02-SYSTEMS/discovery-wiki.md:22"
    ],
-   "why": "계획서 §6-5l · AGENTS §8-비정수 배율 · HELP_AUDIT.md 등이 지금은 없다.",
+   "why": "계획서 §6-5l · AGENTS §8-비정수 배율 · HELP_AUDIT.md 등이 지금은 없다. 2026-10-11 심화: 위키 · 스펙에서 없는 파일(bwlist.cjs · BICYCLE_SYSTEM_SPEC · mock PNG 2종) · 틀린 접두(client/src) · 뭉친 경로 · 틀린 절(§8-8 → §8-12)을 더 찾았다.",
    "status": "열림",
    "first_seen": "2026-10-08",
-   "last_seen": "2026-10-08",
+   "last_seen": "2026-10-11",
    "resolved_at": null
   },
   {
@@ -1263,12 +1272,17 @@
     "docs/wiki/04-BACKLOG.md:48",
     "docs/wiki/02-SYSTEMS/inventory-equipment.md:73",
     "docs/wiki/02-SYSTEMS/story-quests.md:100",
-    "docs/wiki/02-SYSTEMS/home-base.md:126"
+    "docs/wiki/02-SYSTEMS/home-base.md:126",
+    "docs/wiki/02-SYSTEMS/progression.md:3",
+    ".agents/PROGRESSION_SURVIVAL_SPEC.md:3",
+    ".agents/STORY_SPEC_v4.md:3",
+    ".agents/CEPHALOPOD_BUTCHERY_SPEC.md:3",
+    ".agents/OSM_TILEMAP_SPEC.md:56"
    ],
    "why": "표 셀 예외 때문에 지표에는 12개 문서만 잡히지만 색인 · 백로그에는 1,000자가 넘는 행도 있다.",
    "status": "열림",
    "first_seen": "2026-10-08",
-   "last_seen": "2026-10-08",
+   "last_seen": "2026-10-11",
    "resolved_at": null,
    "rule": "스킬 doc-readability"
   },
@@ -1281,12 +1295,16 @@
     "docs/wiki/02-SYSTEMS/fishing-loop.md:138",
     "docs/wiki/04-BACKLOG.md:257",
     ".agents/IMPLEMENTATION_PLAN.md:49",
-    "docs/wiki/03-WORKLOG/README.md:99"
+    "docs/wiki/03-WORKLOG/README.md:99",
+    "docs/wiki/02-SYSTEMS/ui-framework.md:120",
+    "docs/wiki/02-SYSTEMS/story-quests.md:413",
+    "docs/wiki/02-SYSTEMS/economy-data.md:60",
+    "docs/wiki/02-SYSTEMS/world-field.md:136"
    ],
-   "why": "「최근 3개 차수」 규칙이 없는 곳(계획서 §2-3 · 백로그 차수별 절 · 색인 행)이 불어난다.",
+   "why": "「최근 3개 차수」 규칙이 없는 곳(계획서 §2-3 · 백로그 차수별 절 · 색인 행)이 불어난다. 2026-10-11 심화: 시스템 페이지 §6의 번호 목록이 차수 머리글 아래로 흘러 번호 중복 · 역순이 7쪽(ui-framework 머리글 28개 등)에 있다.",
    "status": "열림",
    "first_seen": "2026-10-08",
-   "last_seen": "2026-10-08",
+   "last_seen": "2026-10-11",
    "resolved_at": null
   },
   {
@@ -1505,6 +1523,193 @@
    "last_seen": "2026-10-08",
    "resolved_at": null,
    "note": "PR #6에서 단속 때 바다 평판 · 항구 신뢰 감소를 연결(사용자 확정). 나머지 튜닝 6종은 여전히 미연결."
+  },
+  {
+   "id": "F-0088",
+   "domain": "08-notes-memory",
+   "severity": "보통",
+   "title": "스킬 예산 수치가 문서 3곳에서 코드와 다르다(215 · 92노드 · 200 → 코드 216 · 93노드)",
+   "evidence": [
+    "docs/wiki/02-SYSTEMS/progression.md:5",
+    "docs/wiki/02-SYSTEMS/progression.md:9",
+    "docs/wiki/02-SYSTEMS/progression.md:85",
+    "docs/wiki/02-SYSTEMS/story-quests.md:75",
+    ".agents/PROGRESSION_SURVIVAL_SPEC.md:107",
+    "packages/core/src/db-schema/SkillDatabase.ts:223"
+   ],
+   "why": "등식이 정본이라고 적힌 문서를 따르면 무결성 검사가 깨진다. progression.md 안에서도 215와 216이 섞여 있다.",
+   "status": "열림",
+   "first_seen": "2026-10-11",
+   "last_seen": "2026-10-11",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0089",
+   "domain": "08-notes-memory",
+   "severity": "보통",
+   "title": "시스템 페이지끼리 · 페이지 안에서 상태가 반대로 적힌 곳 6건",
+   "evidence": [
+    "docs/wiki/02-SYSTEMS/sashimi-cooking.md:67",
+    "docs/wiki/02-SYSTEMS/sashimi-cooking.md:72",
+    "docs/wiki/02-SYSTEMS/butchery.md:3",
+    "docs/wiki/02-SYSTEMS/butchery.md:107",
+    "docs/wiki/02-SYSTEMS/fishing-loop.md:124",
+    "docs/wiki/02-SYSTEMS/world-field.md:404",
+    "docs/wiki/02-SYSTEMS/ui-framework.md:24"
+   ],
+   "why": "두족류 슬라이싱 ⬜(실제 ✅) · 회썰기 오버라이드 「비어 있음」(엔가와 실측 있음) · 두족류 개방 범위 · 도움말 3토픽 미반영(실제 있음) · 217차에 없앤 노란 점 · 도움말 그림 38장(코드 48).",
+   "status": "열림",
+   "first_seen": "2026-10-11",
+   "last_seen": "2026-10-11",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0090",
+   "domain": "08-notes-memory",
+   "severity": "보통",
+   "title": "233차 퀘스트 「직접 마련」 규칙이 story-quests.md에 없고 페이지 제목 · §1 수치가 낡았다",
+   "evidence": [
+    "docs/wiki/02-SYSTEMS/story-quests.md:1",
+    "docs/wiki/02-SYSTEMS/story-quests.md:11",
+    "docs/wiki/03-WORKLOG/2026-10-07-233-forage-respawn-lock-quest-provenance.md:113",
+    "docs/wiki/02-SYSTEMS/night-hunting-trap.md:62"
+   ],
+   "why": "ownOnly 10건 · traded 꼬리표가 시스템 페이지에 없다(233 갱신 체크리스트에서 빠짐). 제목 17아크 · 65+55퀘 → 실제 23아크 · 186퀘. 230차가 체크한 S14 §4 D4 행 갱신도 빠졌다.",
+   "status": "열림",
+   "first_seen": "2026-10-11",
+   "last_seen": "2026-10-11",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0091",
+   "domain": "08-notes-memory",
+   "severity": "보통",
+   "title": ".agents 스펙 머리의 상태 표시가 없거나 틀리다(5종)",
+   "evidence": [
+    ".agents/CRAFTING_EXPANSION_SPEC.md:3",
+    ".agents/FORAGING_REALISM_SPEC.md:1",
+    ".agents/PROGRESSION_SURVIVAL_SPEC.md:478",
+    ".agents/STORY_SPEC_v4.md:446",
+    ".agents/FIRE_COOKING_SPEC.md:47"
+   ],
+   "why": "제작 스펙은 222 · 223차에 구현됐는데 「제안 · 구현 금지」, 성장 스펙은 「다음 = P7」, v4 §13은 147~149차 완료분이 ⬜. 머리만 읽으면 거꾸로 판단한다.",
+   "status": "열림",
+   "first_seen": "2026-10-11",
+   "last_seen": "2026-10-11",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0092",
+   "domain": "08-notes-memory",
+   "severity": "보통",
+   "title": "PLAYER_SCENARIO가 정본 STORY_SPEC_v4 · 코드와 모순된다",
+   "evidence": [
+    ".agents/PLAYER_SCENARIO.md:159",
+    ".agents/PLAYER_SCENARIO.md:192",
+    "packages/core/src/config/tuning.ts:1580",
+    ".agents/STORY_SPEC_v4.md:224"
+   ],
+   "why": "법 강제를 「현재 OFF」라고 적지만 코드 기본값은 2(법을 배운 뒤 강제). 120퀘 · 17아크 · 보관된 v3의 §0.5-n 참조가 남아 있다.",
+   "status": "열림",
+   "first_seen": "2026-10-11",
+   "last_seen": "2026-10-11",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0093",
+   "domain": "08-notes-memory",
+   "severity": "보통",
+   "title": "두족류 손질 스펙이 097차 이후 구현과 다르다(스테이지 수 · 한치 트리 공유 · §11 없는 파일 20여 개)",
+   "evidence": [
+    ".agents/CEPHALOPOD_BUTCHERY_SPEC.md:418",
+    ".agents/CEPHALOPOD_BUTCHERY_SPEC.md:832",
+    "packages/core/src/db-schema/CephalopodStages.ts:222"
+   ],
+   "why": "CLAUDE.md가 필독으로 지정한 문서다. 그대로 따르면 사용자 결정(한치는 무늬오징어 트리 공유)을 거슬러 전용 트리를 다시 만들게 된다.",
+   "status": "열림",
+   "first_seen": "2026-10-11",
+   "last_seen": "2026-10-11",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0094",
+   "domain": "08-notes-memory",
+   "severity": "보통",
+   "title": "시스템 페이지에서 링크되지 않는 스펙 2종 · 스펙 전체 목록이 없다",
+   "evidence": [
+    ".agents/FORAGING_REALISM_SPEC.md:1",
+    ".agents/TIDE_PHASE_STRATEGY_SPEC.md:1",
+    "docs/wiki/02-SYSTEMS/night-hunting-trap.md:76",
+    "docs/wiki/02-SYSTEMS/fishing-loop.md:1"
+   ],
+   "why": "해루질 · 물때 공략 스펙은 워크로그에서만 언급된다. CLAUDE.md는 스펙 4종, AGENTS.md는 0종만 가리킨다.",
+   "status": "열림",
+   "first_seen": "2026-10-11",
+   "last_seen": "2026-10-11",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0095",
+   "domain": "08-notes-memory",
+   "severity": "경미",
+   "title": "122차 E → F 전환 뒤 낡은 키 표기 [E]",
+   "evidence": [
+    "docs/wiki/02-SYSTEMS/night-hunting-trap.md:31",
+    "docs/wiki/02-SYSTEMS/night-hunting-trap.md:45",
+    "docs/wiki/02-SYSTEMS/world-field.md:46"
+   ],
+   "why": "조작 키가 F로 바뀌었는데 문서와 코드 JSDoc(TrapFieldSystem.ts:3)이 [E]로 남아 있다.",
+   "status": "열림",
+   "first_seen": "2026-10-11",
+   "last_seen": "2026-10-11",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0096",
+   "domain": "08-notes-memory",
+   "severity": "경미",
+   "title": "워크로그 · 시스템 페이지의 이름 · 수치가 화면 문구와 다르다",
+   "evidence": [
+    "docs/wiki/03-WORKLOG/2026-10-07-233-forage-respawn-lock-quest-provenance.md:57",
+    "packages/core/src/rules/QuestDifficulty.ts:96",
+    "docs/wiki/02-SYSTEMS/progression.md:30",
+    "packages/core/src/rules/CraftRules.ts:28",
+    "docs/wiki/03-WORKLOG/2026-10-06-222-timed-crafting-skill-overhaul.md:36"
+   ],
+   "why": "난이도 이름(가벼움 → 수월 · 까다로움 · 고난도) · 제작 품질(아주 좋음 → 훌륭함) · 222차 도면 수 계산이 코드와 다르다.",
+   "status": "열림",
+   "first_seen": "2026-10-11",
+   "last_seen": "2026-10-11",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0097",
+   "domain": "08-notes-memory",
+   "severity": "경미",
+   "title": "워크로그 양식(_TEMPLATE)이 낡았고 태그 어휘가 관리되지 않는다",
+   "evidence": [
+    "docs/wiki/03-WORKLOG/_TEMPLATE.md:8",
+    "docs/wiki/03-WORKLOG/README.md:14"
+   ],
+   "why": "커밋 칸은 해시를 요구하지만 에이전트는 커밋하지 않아 전부 「같은 커밋」이다. 색인 선언 태그 14개 · 실제 사용 75종(동의어 혼용).",
+   "status": "열림",
+   "first_seen": "2026-10-11",
+   "last_seen": "2026-10-11",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0098",
+   "domain": "08-notes-memory",
+   "severity": "경미",
+   "title": "워크로그 색인이 한 번에 읽히지 않을 만큼 크다(약 6만 토큰 · 800자 넘는 행 24개)",
+   "evidence": [
+    "docs/wiki/03-WORKLOG/README.md:105"
+   ],
+   "why": "표 셀이라 200자 규칙 예외지만 읽기 도구 상한을 넘어 앞부분만 보고 판단할 위험이 있다. 긴 행은 140~180차대에 몰려 있다.",
+   "status": "열림",
+   "first_seen": "2026-10-11",
+   "last_seen": "2026-10-11",
+   "resolved_at": null
   }
  ]
 }
