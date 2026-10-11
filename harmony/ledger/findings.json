@@ -1473,10 +1473,11 @@
     "packages/core/src/simulation/ForageMinigame.test.ts"
    ],
    "why": "봇의 손떨림이 Math.random()이라 가끔 0.735 > 0.73으로 실패한다. 검증 명령이 이유 없이 붉어질 수 있다. PR #5에서 시드 난수로 고정했다(병합 전까지 열림).",
-   "status": "열림",
+   "status": "해소",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": "2026-10-11",
+   "note": "PR #5 병합(2026-10-11). 병합 뒤 브랜치 5개에서 core 테스트를 다시 돌려 모두 통과."
   },
   {
    "id": "F-0085",
