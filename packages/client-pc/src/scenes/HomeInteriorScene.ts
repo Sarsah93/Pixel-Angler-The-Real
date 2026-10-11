@@ -70,6 +70,10 @@ import { HomeAmbience, type AmbienceLight } from '../ui/HomeAmbience.js';
 import { HomeCat, CAT_FULL_MS } from '../ui/HomeCat.js';
 import { TideTablePanel, CalendarPanel, FishRecordPanel } from '../ui/HomeInfoPanels.js';
 import { AquariumPanel, tankFishTexture } from '../ui/AquariumPanel.js';
+import { FarmPanel } from '../ui/FarmPanel.js';
+import { FarmStore, INDOOR_PLOT } from '../store/FarmStore.js';
+import { ConfirmDialog } from '../ui/Dialogs.js';
+import type { FarmFacility } from '@tra/core';
 import { buildRadioBroadcast } from '../data/RadioBroadcast.js';
 import { resolveFishTexture } from '../data/FishTextures.js';
 import { fieldReserved, overlapsReserved, assertClear } from '../ui/ScreenReserve.js';
@@ -165,6 +169,7 @@ const ACTION_LABEL: Record<FurnAction, string> = {
   lamp: '[F] 스탠드 켜기',
   radio: '[F] 라디오 켜기',
   aquarium: '[F] 수조 보기',
+  grow: '[F] 기르는 것 보기',
 };
 const WALL_LABEL: Record<WallDecorId, string> = {
   books: '[F] 책 보기',
@@ -1264,7 +1269,26 @@ export class HomeInteriorScene extends Phaser.Scene {
       case 'shelf': this.openStorage('shelf'); break;
       case 'plant': this.waterPlant(f); break;
       case 'father_box': this.openFatherBox(); break;
+      case 'grow': this.openGrow(); break;
     }
+  }
+
+  /** 235차 — 집 안 선반 텃밭(시루 · 수경 재배기). 설비는 집에 놓인 가구로 정한다 */
+  private openGrow(): void {
+    if (this.popups.some((e) => e.panel instanceof FarmPanel)) return;
+    const fac: FarmFacility[] = [];
+    for (const f of HomeStore.placed) {
+      if (f.kind === 'sprout_jar') fac.push('sproutJar');
+      if (f.kind === 'hydro_rack') fac.push('hydroRack');
+    }
+    FarmStore.setIndoorFacilities(fac);
+    this.openPopup((close) => new FarmPanel(this, GAME_WIDTH / 2 - 390, 50, {
+      plotId: INDOOR_PLOT, onClose: close,
+      onChanged: () => this.events.emit('inventory-changed'),
+      confirm: (msg, yes, labels) => {
+        this.openPopup((c2) => new ConfirmDialog(this, msg, () => { c2(); yes(); }, c2, labels));
+      },
+    }));
   }
 
   // ── 확장 패널 (189차) — 침대 메뉴 · 앉은 자리 고를 거리 ──

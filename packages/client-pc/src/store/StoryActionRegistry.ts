@@ -5,6 +5,13 @@
  * 각 목표는 세 번의 실제 성공 이벤트를 요구한다. 대화 계통은 명시적인
  * 대화 행동 선택에서, 나머지는 제작·운반·검사·선택·현장 시스템의 성공 지점에서
  * 같은 actionKey 이벤트를 발행한다. 대화창을 열거나 대사를 넘기는 것만으로는 진행하지 않는다.
+ *
+ * 235차 — **27개 행동 전부 단계마다 진짜 출처(`eventOrigins`)를 정했다**(백로그 BJ 「행동 목표마다 진짜 출처」).
+ *  - 시스템 출처: `cooler-open` · `cooler-detail` · `license-open` · `equip-open` · `map-open` · `auction-open` ·
+ *    `codex-open` · `codex-40` · `craft:<제작 갈래>` · `stall-day:<인물>`(이야기 하루 한 번).
+ *  - 현장 출처: `trigger:<지점 id>` — `STORY_FIELD_TRIGGERS`의 금색 지점에서 [F](심부름 물건은 실제로 들고 간다).
+ *  - 의뢰인 앞 선택: `action-choice:*`(접두 일치) — 대화창에서 방식을 고르고 장면이 끝나야 오른다.
+ *  - 출처를 정하지 않은 행동은 더 없다. 새 행동을 더하면 `auditStoryActionOrigins`(DEV)가 길이 · 지점을 대조한다.
  */
 
 import type { StoryActionKey } from '@tra/core';
@@ -47,6 +54,24 @@ export interface StoryActionChoice {
   /** 선택 직후 발주 NPC 우호도 변화 */
   affinityDelta: number;
 }
+
+/** 235차 — 의뢰인 앞에서 방식을 고른 뒤 장면이 끝나면 오르는 단계. 끝의 `*`는 접두 일치(고른 답 id가 붙는다) */
+export const CHOICE_ORIGIN = 'action-choice:*';
+const C = CHOICE_ORIGIN;
+
+/** 출처 하나가 기대 출처와 맞는가 — 끝이 `*`이면 접두 일치 */
+export function originMatches(expected: string, actual: string | undefined | null): boolean {
+  if (!actual) return false;
+  return expected.endsWith('*') ? actual.startsWith(expected.slice(0, -1)) : actual === expected;
+}
+
+/** 대화창 선택으로 오르는 단계인가 */
+export function isChoiceOrigin(origin: string | null | undefined): boolean {
+  return origin === CHOICE_ORIGIN;
+}
+
+/** 235차 — 이야기 하루에 한 단계만 오르는 출처(좌판 사흘 운영) */
+export const DAILY_ACTION_ORIGINS: ReadonlySet<string> = new Set(['stall-day:okseon']);
 
 const DIALOGUE_CHOICES: StoryActionChoice[] = [
   { id: 'challenge', labelKo: '의심하고 교차 확인한다', labelEn: 'Challenge and cross-check', replyKo: '제가 알고 있는 정보와 다릅니다. 누구의 말이 맞는지 확인해 보겠습니다.', replyEn: 'That differs from what I know. I will check whose account is right.', affinityDelta: -0.03 },
@@ -110,35 +135,35 @@ const s = (source: StoryActionSpec['source'], stepsKo: string[], stepsEn: string
 };
 
 export const STORY_ACTIONS: Record<StoryActionKey, StoryActionSpec> = {
-  cooler_ice_review: s('inspection', ['쿨러를 열어 얼음 상태를 확인한다', '선도와 보관 기록을 대조한다', '유찰 원인을 기록한다'], ['Open the cooler and check the ice', 'Compare freshness with the storage log', 'Record the reason for the failed sale'], ['cooler-open', 'cooler-open', 'cooler-open']),
-  quality_course: s('dialogue', ['품질관리 교육 자료를 펼친다', '위생·선도 확인 항목을 읽는다', '교육 이수를 확인한다'], ['Open the quality course', 'Read the hygiene and freshness checklist', 'Confirm course completion']),
-  legal_route_choice: s('selection', ['세 가지 합법 경로를 비교한다', '하나의 경로를 선택한다', '선택한 경로를 알린다'], ['Compare the three legal routes', 'Choose one route', 'Tell the chief which route you chose']),
-  stall_display_rebuild: s('field', ['부산 상자 규격을 확인한다', '좌판 진열을 다시 배치한다', '정옥선에게 진열 상태를 보여 준다'], ['Check the Busan crate standard', 'Rebuild the stall display', 'Show Ok-seon the finished display']),
-  vessel_exam: s('selection', ['필기시험 접수를 확인한다', '안전·항해 문제를 푼다', '합격 결과를 확인한다'], ['Confirm written-exam registration', 'Answer the safety and navigation questions', 'Confirm the passing result']),
-  oral_history: s('dialogue', ['채록할 사람의 허락을 구한다', '이야기를 듣고 기록한다', '기록 내용을 저장한다'], ['Ask permission to record', 'Listen and write the account', 'Save the entry']),
-  vessel_safety_inspection: s('inspection', ['안전 점검표를 펼친다', '부족한 장비를 대조한다', '검사관에게 점검을 신청한다'], ['Open the safety checklist', 'Check the missing equipment', 'Request the inspection']),
-  marine_tourism_registration: s('selection', ['관광업 등록 서류를 제출한다', '안전교육을 수강한다', '등록 완료를 확인한다'], ['Submit the tourism registration', 'Take the safety course', 'Confirm registration']),
-  stall_operation_day: s('field', ['오늘의 재고와 가격을 정한다', '손님에게 물건을 건넨다', '하루 운영을 마감한다'], ['Set today\'s stock and prices', 'Serve a customer', 'Close the day\'s operation']),
-  long_voyage_plan: s('selection', ['항로와 기상 예보를 확인한다', '비상 보급품을 계획에 넣는다', '항해 계획 승인을 신청한다'], ['Check the route and forecast', 'Add emergency stores to the plan', 'Submit the voyage plan']),
-  tray_delivery: s('delivery', ['대나무 받침을 챙긴다', '만복상회 좌판에 놓는다', '전달 사실을 알린다'], ['Take the bamboo tray', 'Place it at the Manbok stall', 'Confirm the delivery']),
-  rig_tying: s('craft', ['첫 채비를 묶는다', '매듭을 확인하고 다시 묶는다', '스무 번째 채비를 보여 준다'], ['Tie the first rig', 'Check and retie the knot', 'Show the twentieth rig']),
-  bamboo_selection: s('field', ['대나무의 마디 간격을 살핀다', '쓸 만한 대를 고른다', '고른 이유를 표시한다'], ['Inspect the bamboo node spacing', 'Choose a usable pole', 'Mark why you chose it']),
-  auction_price_review: s('inspection', ['경매 낙찰 목록을 연다', '두 건의 낙찰가를 확인한다', '도현수와 가격을 대조한다'], ['Open the auction results', 'Check the hammer prices', 'Compare them with Hyeon-su'], ['auction-open', 'auction-open', 'auction-open']),
-  food_container_delivery: s('delivery', ['반찬통을 챙긴다', '죽간 공방에 전달한다', '받는 사람의 확인을 받는다'], ['Take the food container', 'Deliver it to the workshop', 'Get delivery confirmation']),
-  oral_history_entry: s('dialogue', ['채록 준비를 한다', '한 건의 구술을 받아 적는다', '기록을 함께 검토한다'], ['Prepare the recording', 'Write down one account', 'Review the entry together']),
-  second_tray_delivery: s('delivery', ['두 번째 받침을 챙긴다', '좌판에 전달한다', '전달 완료를 확인한다'], ['Take the second tray', 'Deliver it to the stall', 'Confirm delivery']),
-  hull_inspection: s('inspection', ['중고 선체 점검표를 연다', '선체와 기관을 직접 확인한다', '검수 결과를 기록한다'], ['Open the used-boat checklist', 'Inspect the hull and engine', 'Record the inspection result']),
-  reconcile_okseon_tak: s('selection', ['두 사람의 자리를 준비한다', '두 사람을 같은 자리에 부른다', '대화를 끝까지 지켜본다'], ['Prepare seats for both', 'Bring them to the same place', 'Stay until they finish talking']),
-  sort_arguments: s('selection', ['찬성 자료와 반대 자료를 나눈다', '근거를 항목별로 정리한다', '정리한 자료를 함께 확인한다'], ['Separate the supporting and opposing papers', 'Sort the evidence by topic', 'Review the organized file together']),
-  stove_repair: s('field', ['고장 난 부분을 확인한다', '난로를 수리한다', '불이 붙는지 확인한다'], ['Find the broken part', 'Repair the stove', 'Check that it lights']),
+  cooler_ice_review: s('inspection', ['쿨러를 열어 얼음 상태를 확인한다', '선도와 보관 기록을 대조한다', '유찰 원인을 기록한다'], ['Open the cooler and check the ice', 'Compare freshness with the storage log', 'Record the reason for the failed sale'], ['cooler-open', 'cooler-detail', C]),
+  quality_course: s('dialogue', ['품질관리 교육 자료를 펼친다', '위생·선도 확인 항목을 읽는다', '교육 이수를 확인한다'], ['Open the quality course', 'Read the hygiene and freshness checklist', 'Confirm course completion'], [C, C, C]),
+  legal_route_choice: s('selection', ['세 가지 합법 경로를 비교한다', '하나의 경로를 선택한다', '선택한 경로를 알린다'], ['Compare the three legal routes', 'Choose one route', 'Tell the chief which route you chose'], [C, C, C]),
+  stall_display_rebuild: s('field', ['부산 상자 규격을 확인한다', '좌판 진열을 다시 배치한다', '정옥선에게 진열 상태를 보여 준다'], ['Check the Busan crate standard', 'Rebuild the stall display', 'Show Ok-seon the finished display'], ['trigger:m2-11-crates', 'trigger:m2-11-display', C]),
+  vessel_exam: s('selection', ['필기시험 접수를 확인한다', '안전·항해 문제를 푼다', '합격 결과를 확인한다'], ['Confirm written-exam registration', 'Answer the safety and navigation questions', 'Confirm the passing result'], ['license-open', C, C]),
+  oral_history: s('dialogue', ['채록할 사람의 허락을 구한다', '이야기를 듣고 기록한다', '기록 내용을 저장한다'], ['Ask permission to record', 'Listen and write the account', 'Save the entry'], [C, C, C]),
+  vessel_safety_inspection: s('inspection', ['안전 점검표를 펼친다', '부족한 장비를 대조한다', '검사관에게 점검을 신청한다'], ['Open the safety checklist', 'Check the missing equipment', 'Request the inspection'], ['license-open', 'equip-open', C]),
+  marine_tourism_registration: s('selection', ['관광업 등록 서류를 제출한다', '안전교육을 수강한다', '등록 완료를 확인한다'], ['Submit the tourism registration', 'Take the safety course', 'Confirm registration'], ['license-open', C, C]),
+  stall_operation_day: s('field', ['오늘의 재고와 가격을 정한다', '손님에게 물건을 건넨다', '하루 운영을 마감한다'], ['Set today\'s stock and prices', 'Serve a customer', 'Close the day\'s operation'], ['stall-day:okseon', 'stall-day:okseon', 'stall-day:okseon']),
+  long_voyage_plan: s('selection', ['항로와 기상 예보를 확인한다', '비상 보급품을 계획에 넣는다', '항해 계획 승인을 신청한다'], ['Check the route and forecast', 'Add emergency stores to the plan', 'Submit the voyage plan'], ['map-open', C, C]),
+  tray_delivery: s('delivery', ['대나무 받침을 챙긴다', '만복상회 좌판에 놓는다', '전달 사실을 알린다'], ['Take the bamboo tray', 'Place it at the Manbok stall', 'Confirm the delivery'], ['trigger:n19-1-take', 'trigger:n19-1-place', C]),
+  rig_tying: s('craft', ['첫 채비를 묶는다', '매듭을 확인하고 다시 묶는다', '스무 번째 채비를 보여 준다'], ['Tie the first rig', 'Check and retie the knot', 'Show the twentieth rig'], ['craft:rig', 'craft:rig', C]),
+  bamboo_selection: s('field', ['대나무의 마디 간격을 살핀다', '쓸 만한 대를 고른다', '고른 이유를 표시한다'], ['Inspect the bamboo node spacing', 'Choose a usable pole', 'Mark why you chose it'], ['trigger:n02-5-yard', 'trigger:n02-5-pick', C]),
+  auction_price_review: s('inspection', ['경매 낙찰 목록을 연다', '두 건의 낙찰가를 확인한다', '도현수와 가격을 대조한다'], ['Open the auction results', 'Check the hammer prices', 'Compare them with Hyeon-su'], ['auction-open', 'auction-open', C]),
+  food_container_delivery: s('delivery', ['반찬통을 챙긴다', '죽간 공방에 전달한다', '받는 사람의 확인을 받는다'], ['Take the food container', 'Deliver it to the workshop', 'Get delivery confirmation'], ['trigger:n19-2-take', 'trigger:n19-2-give', C]),
+  oral_history_entry: s('dialogue', ['채록 준비를 한다', '한 건의 구술을 받아 적는다', '기록을 함께 검토한다'], ['Prepare the recording', 'Write down one account', 'Review the entry together'], [C, C, C]),
+  second_tray_delivery: s('delivery', ['두 번째 받침을 챙긴다', '좌판에 전달한다', '전달 완료를 확인한다'], ['Take the second tray', 'Deliver it to the stall', 'Confirm delivery'], ['trigger:n19-3-take', 'trigger:n19-3-place', C]),
+  hull_inspection: s('inspection', ['중고 선체 점검표를 연다', '선체와 기관을 직접 확인한다', '검수 결과를 기록한다'], ['Open the used-boat checklist', 'Inspect the hull and engine', 'Record the inspection result'], ['trigger:n18-4-hull', 'trigger:n18-4-engine', C]),
+  reconcile_okseon_tak: s('selection', ['두 사람의 자리를 준비한다', '두 사람을 같은 자리에 부른다', '대화를 끝까지 지켜본다'], ['Prepare seats for both', 'Bring them to the same place', 'Stay until they finish talking'], [C, C, C]),
+  sort_arguments: s('selection', ['찬성 자료와 반대 자료를 나눈다', '근거를 항목별로 정리한다', '정리한 자료를 함께 확인한다'], ['Separate the supporting and opposing papers', 'Sort the evidence by topic', 'Review the organized file together'], [C, C, C]),
+  stove_repair: s('field', ['고장 난 부분을 확인한다', '난로를 수리한다', '불이 붙는지 확인한다'], ['Find the broken part', 'Repair the stove', 'Check that it lights'], ['trigger:n13-3-flue', 'trigger:n13-3-light', C]),
   label_violation_review: s('inspection', ['원산지 표기를 확인한다', '위반 표시를 기록한다', '담당자에게 신고 내용을 보여 준다'], ['Check the origin label', 'Record the violation', 'Show the report to the inspector'], [
     'n18-6:watch-cinematic', 'n18-6:ledger-inspect', 'n18-6:report',
   ]),
-  hospital_assistance: s('field', ['병실 출입을 확인한다', '노인의 이동을 돕는다', '병실 안까지 동행한다'], ['Check the ward entrance', 'Help the elder move', 'Walk him into the ward']),
-  distribution_route_explain: s('inspection', ['유통 경로 자료를 연다', '한 경로를 순서대로 설명한다', '강두철의 질문에 답한다'], ['Open the distribution records', 'Explain one route in order', 'Answer Du-cheol\'s questions']),
-  reopening_preparation: s('field', ['재개관식 준비 목록을 확인한다', '필요한 비품을 배치한다', '준비 완료를 함께 확인한다'], ['Check the reopening list', 'Set out the required fittings', 'Confirm the setup together']),
-  codex_species_review: s('inspection', ['도감의 미등록 종을 확인한다', '마흔 종 이상 기록을 검토한다', '조사표에 반영한다'], ['Check the uncatalogued species', 'Review forty or more records', 'Add them to the survey sheet'], ['codex-open', 'codex-open', 'codex-open']),
-  video_frame_selection: s('selection', ['촬영본을 연다', '사용할 장면을 비교한다', '한 컷을 선택해 저장한다'], ['Open the footage', 'Compare the usable shots', 'Save one selected frame']),
+  hospital_assistance: s('field', ['병실 출입을 확인한다', '노인의 이동을 돕는다', '병실 안까지 동행한다'], ['Check the ward entrance', 'Help the elder move', 'Walk him into the ward'], ['trigger:n19-5-ward', 'trigger:n19-5-walk', C]),
+  distribution_route_explain: s('inspection', ['유통 경로 자료를 연다', '한 경로를 순서대로 설명한다', '강두철의 질문에 답한다'], ['Open the distribution records', 'Explain one route in order', 'Answer Du-cheol\'s questions'], ['auction-open', 'trigger:n03-7-route', C]),
+  reopening_preparation: s('field', ['재개관식 준비 목록을 확인한다', '필요한 비품을 배치한다', '준비 완료를 함께 확인한다'], ['Check the reopening list', 'Set out the required fittings', 'Confirm the setup together'], ['trigger:n18-7-list', 'trigger:n18-7-set', C]),
+  codex_species_review: s('inspection', ['도감의 미등록 종을 확인한다', '마흔 종 이상 기록을 검토한다', '조사표에 반영한다'], ['Check the uncatalogued species', 'Review forty or more records', 'Add them to the survey sheet'], ['codex-open', 'codex-40', C]),
+  video_frame_selection: s('selection', ['촬영본을 연다', '사용할 장면을 비교한다', '한 컷을 선택해 저장한다'], ['Open the footage', 'Compare the usable shots', 'Save one selected frame'], [C, C, C]),
 };
 
 /**
@@ -174,6 +199,54 @@ export const STORY_ACTION_SCENES: Record<StoryActionKey, StoryActionScene> = {
   codex_species_review: { titleEn: 'Reviewing unlisted species', placeEn: 'Log reading room', linesEn: ['I overlay similar fins one sheet at a time.', 'I left the unnamed box empty and pinned an observation note.'], titleKo: '미등록 종 검토', placeKo: '조행록 열람실', linesKo: ['비슷한 지느러미를 한 장씩 겹쳐 본다.', '아직 이름 없는 칸을 비워 둔 채 관찰 메모를 붙였다.'] },
   video_frame_selection: { titleEn: 'Choosing the frame', placeEn: 'Harbour video editing room', linesEn: ['I split frames hidden by waves from frames showing hands.', 'I chose the one shot that holds evidence, not the prettiest one.'], titleKo: '기록 장면 선택', placeKo: '항구 영상 편집실', linesKo: ['파도에 가려진 프레임과 사람의 손이 보이는 프레임을 나눈다.', '가장 예쁜 장면 대신 증거가 남는 한 컷을 골랐다.'] },
 };
+
+/** 제작 갈래 → 화면 이름(제작 창 탭과 같은 말) */
+const CRAFT_GROUP_KO: Record<string, string> = {
+  rig: '채비', lure: '루어', sinker: '봉돌', bait: '미끼', trap: '통발', gear: '장비', medic: '응급 처치', life: '생활',
+};
+
+/**
+ * 235차 — 지금 단계의 출처 → 「방법」 한 줄(일지 · 필드 추적기 · 대화창이 같은 말을 쓴다).
+ * `trigger:` 출처는 지점 이름(`triggerLabel`)을 받는다. 모르는 출처면 빈 문자열.
+ */
+export function actionOriginHowToKo(origin: string, giverName: string, triggerLabel?: string): string {
+  if (isChoiceOrigin(origin)) return `${giverName}에게 [F] → 「내가 도와줄 수 있는 게 있을까요?」 → 방식을 고른다 (이야기 장면)`;
+  if (origin.startsWith('trigger:')) return `화살표를 따라 「${triggerLabel ?? '표시된 곳'}」에 가서 [F]`;
+  if (origin.startsWith('craft:')) return `U 제작 탭에서 ${CRAFT_GROUP_KO[origin.slice(6)] ?? '도면'} 하나를 완성한다`;
+  if (origin.startsWith('stall-day:')) return '정옥선 좌판에서 [F] → 물건 하나를 판다 (이야기 하루에 한 번 인정)';
+  switch (origin) {
+    case 'cooler-open': return 'B로 쿨러를 열어 얼음 상태를 본다';
+    case 'cooler-detail': return '쿨러 속 어획물을 우클릭 → [상세보기]로 선도를 본다';
+    case 'license-open': return 'L로 면허 창을 연다';
+    case 'equip-open': return 'E로 장비 창을 열어 갖춘 것을 본다';
+    case 'map-open': return 'M으로 전체 지도를 열어 항로를 본다';
+    case 'auction-open': return '위판장 창구에서 경매 시간에 물건을 올린다 (경매 현장이 열린다)';
+    case 'codex-open': return 'N으로 도감을 연다';
+    case 'codex-40': return '도감에 마흔 종 이상을 채운 뒤 N으로 도감을 연다';
+    default: return '';
+  }
+}
+
+/**
+ * 235차 — DEV 검사: 모든 행동이 단계 수만큼 출처를 갖고, `trigger:` 출처마다 같은 행동 · 같은 단계의 지점이 있는가.
+ * 지점 표는 순환 import를 피하려고 인자로 받는다. 어긋난 줄 목록을 돌려준다(빈 배열 = 통과).
+ */
+export function auditStoryActionOrigins(
+  triggers: readonly { id: string; actionKey: string; phase: number }[],
+): string[] {
+  const bad: string[] = [];
+  for (const [key, spec] of Object.entries(STORY_ACTIONS) as [StoryActionKey, StoryActionSpec][]) {
+    const o = spec.eventOrigins;
+    if (!o || o.length !== spec.stepsKo.length) { bad.push(`${key}: 출처 ${o?.length ?? 0}개 ≠ 단계 ${spec.stepsKo.length}개`); continue; }
+    o.forEach((origin, step) => {
+      if (!origin.startsWith('trigger:')) return;
+      const t = triggers.find((x) => x.id === origin.slice('trigger:'.length));
+      if (!t) bad.push(`${key}#${step}: 지점 ${origin} 없음`);
+      else if (t.actionKey !== key || t.phase !== step) bad.push(`${key}#${step}: 지점 ${t.id}의 행동/단계(${t.actionKey}#${t.phase}) 불일치`);
+    });
+  }
+  return bad;
+}
 
 export function storyActionSpec(key: StoryActionKey): StoryActionSpec {
   return STORY_ACTIONS[key];

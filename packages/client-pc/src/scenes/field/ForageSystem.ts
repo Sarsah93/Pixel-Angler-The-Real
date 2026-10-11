@@ -26,6 +26,8 @@ import {
   forageBehaviorOf, isEastSeaRegion, rollForageHarvest, resolveLegal, forageInjuryRoll, forageLossLineKo, shallowWaterDepthM,
   type ForageGameState, type ForageHarvest,
   isToxinShellfish, toxinBanActive, toxinBanLabel,
+  advanceRunner, decodeRunnerFlee, encodeRunnerFlee, runnerEpoch, runnerFleeKey,
+  type RunnerAnchor, type RunnerCursor,
 } from '@tra/core';
 import { GameState } from '../../store/GameState.js';
 import { InventoryStore } from '../../store/InventoryStore.js';
@@ -210,15 +212,24 @@ const BAIT_TEMPLATES: Record<string, { name: string; iconTexture: string; basePr
   inv_bait_slater: { name: '갯강구 (생미끼)', iconTexture: 'forage_ligia_exotica', basePrice: 200 },
 };
 
-/** 달아나는 녀석 상태(스팟별 — 세션 메모리) */
+/**
+ * 달아나는 녀석 상태(스팟별 — 세션 메모리).
+ * 235차 — 어슬렁은 공용 시계 + 시드(`advanceRunner`)로, 도망은 공유 기록(`r:` 키)으로 정해진다.
+ * 그래서 같은 세션의 모두가 같은 녀석을 같은 칸에서 본다. 놀람(`nerve`)만 내 화면의 일이다.
+ */
 interface RunnerState {
   /** 남은 도망 횟수 — 다 쓰면 바위 틈으로 숨어 사라진다 */
   flees: number;
-  /** 다음 어슬렁 이동까지(ms) */
-  roamMs: number;
   /** 다가가 있는 동안 놀람이 쌓인다 */
   nerve: number;
+  /** 어슬렁 출발점(슬롯 시작 칸 또는 마지막 도망 도착 칸) */
+  anchor: RunnerAnchor;
+  /** 어슬렁 계산 캐시 */
+  cursor: RunnerCursor | null;
 }
+
+/** 235차 — 한 슬롯에서 녀석이 도망치는 최대 횟수(224차 그대로) */
+const RUNNER_FLEES = 2;
 
 export class ForageSystem {
   private host: ForageHost;
@@ -227,6 +238,10 @@ export class ForageSystem {
   private spots: ForageSpot[] = [];
   private spotSprites = new Map<string, Phaser.GameObjects.Image>();
   private runners = new Map<string, RunnerState>();
+  /** 235차 — 어슬렁이 피하는 칸(움직이지 않는 스팟 자리). 면허로 걸러지기 **전** 목록에서 만든다(모두에게 같게) */
+  private staticTiles = new Set<string>();
+  /** 235차 — 지금 슬롯의 시드(러너 갈래 키) */
+  private slotSeed = 0;
   private farmG?: Phaser.GameObjects.Graphics;
   private farmLabels: Phaser.GameObjects.Text[] = [];
   private lastSeed = -1;
@@ -398,7 +413,8 @@ export class ForageSystem {
   // ═══════════════════════════════════════════════════
 
   refreshSpots(force = false): void {
-    const seed = forageSeed(this.host.mapKey, Date.now());
+    // 235차 — 공용 시각(멀티면 서버 시계)으로 슬롯을 센다. 사람마다 시계가 몇 초 달라도 같은 슬롯을 굴린다
+    const seed = forageSeed(this.host.mapKey, MultiplayerClient.sharedNow());
     if (!force && seed === this.lastSeed) return;
     this.lastSeed = seed;
     const e = this.env();
@@ -406,21 +422,39 @@ export class ForageSystem {
     //   전엔 면허가 있으면 풀이 달라져 같은 칸에 A는 해삼, B는 홍합이 보였다. 이제 모두 같은 표를 굴리고,
     //   면허가 없는 사람에게는 그 생물만 **안 보이게** 거른다. (스킬로 늘어나는 스팟 수는 같은 순서의 앞부분이
     //   겹치므로 그대로 둔다 — 많이 보는 사람만 뒤쪽 몇 개를 더 본다.)
-    this.spots = rollForageSpots(this.candidates, {
+    const rolled = rollForageSpots(this.candidates, {
       seed, month: e.month, isNight: e.isNight, tideLevel01: e.tideLevel01,
       hasAdvancedLicense: true, farms: this.farms,
       // 205차 — 간조 시간창(간조 2시간 전 ~ 1시간 뒤)이면 스팟이 더 드러난다
       maxSpots: Math.round(TUNING.forage.maxSpots * e.tideMult),
       eastSea: isEastSeaRegion(this.host.regionId),   // 224차 — 동해엔 없는 · 드문 종
       day: Number(kstParts().d), regionId: this.host.regionId,   // 227차 — 금어기 날짜 단위 · 지역 규정
-    }).filter((s) => !this.isGone(s.id)   // 224차 놓친 것 · 233차 잡은 자리(1~2일) · 232차 남이 가져간 것
+    });
+    this.spots = rolled.filter((s) => !this.isGone(s.id)   // 224차 놓친 것 · 233차 잡은 자리(1~2일) · 232차 남이 가져간 것
       && (e.hasAdvancedLicense || getCreatureById(s.creatureId)?.requiredLicense !== 'shore_hunting_advanced'));
+    // 235차 — 러너 앵커: 슬롯이 시작된 공용 시각에 굴린 칸에서 출발한다(늦게 들어온 사람도 같은 걸음을 따라 센다)
+    this.slotSeed = seed;
+    this.staticTiles.clear();
+    for (const s of rolled) {
+      const c = getCreatureById(s.creatureId);
+      if (!c || forageBehaviorOf(c) !== 'runner') this.staticTiles.add(`${s.tx},${s.ty}`);
+    }
+    const slotStart = this.slotEndMs(MultiplayerClient.sharedNow()) - TUNING.forage.respawnMinutes * 60_000;
     this.runners.clear();
     for (const s of this.spots) {
       const c = getCreatureById(s.creatureId);
-      if (c && forageBehaviorOf(c) === 'runner') this.runners.set(s.id, { flees: 2, roamMs: 1500 + Math.random() * 3000, nerve: 0 });
+      if (!c || forageBehaviorOf(c) !== 'runner') continue;
+      this.runners.set(s.id, {
+        flees: RUNNER_FLEES, nerve: 0, cursor: null,
+        anchor: { tx: s.tx, ty: s.ty, atMs: slotStart, epoch: runnerEpoch(seed, s.id, 0) },
+      });
     }
     this.renderSpots();
+    // 이미 누가 놀라게 해 둔 녀석은 그 도착 칸에서 이어 간다
+    for (const s of this.spots) {
+      const st = this.runners.get(s.id);
+      if (st) this.catchUpFlees(s, st, false);
+    }
   }
 
   private renderSpots(): void {
@@ -608,56 +642,125 @@ export class ForageSystem {
    * 224차 — 달아나는 녀석(쫄장게 · 갯강구 · 게). 몇 초마다 이웃 칸으로 어슬렁 옮기고,
    * 뛰어서 3칸 안으로 오거나 1.7칸 안에 오래 서 있으면 2~5칸 떨어진 같은 종류 자리로 튄다.
    * 두 번 튀고 나면 바위 틈으로 숨어 사라진다(이번 시간 슬롯 동안).
+   *
+   * 235차 — 멀티 공용 움직임:
+   *  - 어슬렁 = `advanceRunner`(공용 시각 · 시드) — 모두가 같은 시각에 같은 칸을 본다.
+   *  - 도망 = 놀라게 한 사람이 도착 칸을 `r:` 기록으로 남긴다(먼저 쓴 사람이 임자). 남의 기록이 오면 따라 튄다.
+   *  - 누가 채집 중(잠금)이면 그 녀석은 멈춘다 — 끝나면 어차피 사라진다.
    */
   private updateRunners(deltaMs: number, p: { x: number; y: number }): void {
     const tr = this.host.tr;
     const running = this.host.running?.() ?? false;
+    const now = MultiplayerClient.sharedNow();
     for (const s of [...this.spots]) {
       const st = this.runners.get(s.id);
       if (!st) continue;
       const img = this.spotSprites.get(s.id);
       if (!img) continue;
+      // 남이 남긴 도망 기록 — 받으면 그 칸으로 튄다
+      if (this.catchUpFlees(s, st, true)) continue;
+      if (this.busyBy(s.id) || this.playing?.spot.id === s.id) continue;
       const d = Math.hypot(img.x - p.x, img.y - p.y) / tr;
       const spooked = (running && d < 3) || (d < 1.7 && (st.nerve += deltaMs) > 2200);
       if (d >= 1.7) st.nerve = Math.max(0, st.nerve - deltaMs);
       if (spooked) {
         st.nerve = 0;
-        if (st.flees <= 0 || !this.hopSpot(s, p, 2, 5)) {
+        if (st.flees <= 0 || !this.fleeFrom(s, st, p, now)) {
           this.markGone(s);
           if (img.visible) this.host.floatingHint(`${getCreatureById(s.creatureId)?.nameKo ?? ''}이(가) 바위 틈으로 숨어 버렸다`);
-          continue;
         }
-        st.flees -= 1;
         continue;
       }
-      st.roamMs -= deltaMs;
-      if (st.roamMs <= 0) {
-        st.roamMs = 2000 + Math.random() * 3500;
-        this.hopSpot(s, null, 1, 1);
-      }
+      // 어슬렁 — 공용 시각까지 걸음을 센다
+      const cur = advanceRunner(st.anchor, st.cursor, now, (tx, ty) => this.runnerNeighbors(s, tx, ty));
+      st.cursor = cur;
+      if (cur.tx !== s.tx || cur.ty !== s.ty) this.moveSpot(s, cur.tx, cur.ty, false);
     }
   }
 
-  /** 같은 종류 후보 칸으로 스팟을 옮긴다(멀어지는 쪽 우선). 옮겼으면 true */
-  private hopSpot(s: ForageSpot, away: { x: number; y: number } | null, minT: number, maxT: number): boolean {
+  /** 어슬렁 이웃 칸 — 같은 종류 후보 중 체비쇼프 거리 1, 정적 스팟 자리는 피한다. **정렬된 순서**(모두에게 같게) */
+  private runnerNeighbors(s: ForageSpot, tx: number, ty: number): { tx: number; ty: number }[] {
+    const out: { tx: number; ty: number }[] = [];
+    for (const c of this.candidates) {
+      if (c.kind !== s.kind) continue;
+      const dd = Math.max(Math.abs(c.tx - tx), Math.abs(c.ty - ty));
+      if (dd !== 1 || this.staticTiles.has(`${c.tx},${c.ty}`)) continue;
+      out.push({ tx: c.tx, ty: c.ty });
+    }
+    out.sort((a, b) => (a.ty - b.ty) || (a.tx - b.tx));
+    return out;
+  }
+
+  /**
+   * 내가 놀라게 했다 — 2~5칸 떨어진 같은 종류 자리 중 나에게서 가장 먼 칸으로 튄다.
+   * 기록을 남겨 다른 사람도 같은 칸으로 튀게 하고, 먼저 누가 남겼으면 그 칸을 따른다. 갈 곳이 없으면 false.
+   */
+  private fleeFrom(s: ForageSpot, st: RunnerState, p: { x: number; y: number }, now: number): boolean {
     const tr = this.host.tr;
     const taken = new Set(this.spots.map((x) => `${x.tx},${x.ty}`));
     const opts = this.candidates.filter((c) => c.kind === s.kind && !taken.has(`${c.tx},${c.ty}`)
-      && Math.max(Math.abs(c.tx - s.tx), Math.abs(c.ty - s.ty)) >= minT
-      && Math.max(Math.abs(c.tx - s.tx), Math.abs(c.ty - s.ty)) <= maxT);
+      && Math.max(Math.abs(c.tx - s.tx), Math.abs(c.ty - s.ty)) >= 2
+      && Math.max(Math.abs(c.tx - s.tx), Math.abs(c.ty - s.ty)) <= 5);
     if (!opts.length) return false;
-    let pick = opts[Math.floor(Math.random() * opts.length)]!;
-    if (away) {
-      const dist = (c: ForageCandidate): number => Math.hypot(c.tx * tr - away.x, c.ty * tr - away.y);
-      pick = opts.reduce((a, b) => (dist(b) > dist(a) ? b : a));
-    }
-    s.tx = pick.tx; s.ty = pick.ty;
-    const img = this.spotSprites.get(s.id);
-    if (img) {
-      this.host.scene.tweens.killTweensOf(img);
-      this.host.scene.tweens.add({ targets: img, x: s.tx * tr + tr / 2, y: s.ty * tr + tr * 0.72, duration: away ? 220 : 600, ease: away ? 'Quad.easeOut' : 'Sine.easeInOut' });
+    const dist = (c: ForageCandidate): number => Math.hypot(c.tx * tr - p.x, c.ty * tr - p.y);
+    const pick = opts.reduce((a, b) => (dist(b) > dist(a) ? b : a));
+    const n = RUNNER_FLEES - st.flees + 1;
+    // 기록에 적히는 값(정수 ms)과 내 앵커가 똑같아야 이후 어슬렁 걸음이 남과 같다
+    const flee = { tx: pick.tx, ty: pick.ty, atMs: Math.round(now) };
+    this.applyFlee(s, st, flee, n);
+    if (MultiplayerClient.isConnected) {
+      const key = runnerFleeKey(this.host.mapKey, s.id, n);
+      const ttlMs = Math.max(60_000, this.slotEndMs(now) - now);
+      void MultiplayerClient.takeWorld(key, { ttlMs, val: encodeRunnerFlee(flee) }).then((r) => {
+        if (r.mine) return;
+        // 거의 같은 순간 남도 놀라게 했다 — 먼저 쓴 사람의 칸으로 고친다
+        const f = decodeRunnerFlee(r.val);
+        const cur = this.runners.get(s.id);
+        if (f && cur && this.spots.includes(s)) this.applyFlee(s, cur, f, n, true);
+      });
     }
     return true;
+  }
+
+  /**
+   * 공유 채널에 남은 도망 기록을 차례로 반영한다(n = 아직 반영 안 한 번호부터). 반영했으면 true.
+   * `animate` false면 칸만 옮긴다(스팟을 막 굴린 직후 — 늦게 들어온 사람이 따라잡을 때).
+   */
+  private catchUpFlees(s: ForageSpot, st: RunnerState, animate: boolean): boolean {
+    if (!MultiplayerClient.isConnected) return false;
+    let moved = false;
+    while (st.flees > 0) {
+      const n = RUNNER_FLEES - st.flees + 1;
+      const l = MultiplayerClient.worldTakenInfo(runnerFleeKey(this.host.mapKey, s.id, n));
+      const f = l ? decodeRunnerFlee(l.val) : null;
+      if (!f) break;
+      this.applyFlee(s, st, f, n, false, animate);
+      moved = true;
+    }
+    return moved;
+  }
+
+  /** n번째 도망을 반영 — 앵커를 도착 칸으로 바꾸고 칸을 옮긴다. `correct`면 이미 반영한 n을 고쳐 쓴다 */
+  private applyFlee(
+    s: ForageSpot, st: RunnerState, f: { tx: number; ty: number; atMs: number }, n: number, correct = false, animate = true,
+  ): void {
+    st.anchor = { tx: f.tx, ty: f.ty, atMs: f.atMs, epoch: runnerEpoch(this.slotSeed, s.id, n) };
+    st.cursor = null;
+    st.nerve = 0;
+    if (!correct) st.flees = Math.max(0, RUNNER_FLEES - n);
+    this.moveSpot(s, f.tx, f.ty, true, animate);
+  }
+
+  /** 스팟을 칸으로 옮긴다(도망은 빠르게, 어슬렁은 천천히) */
+  private moveSpot(s: ForageSpot, tx: number, ty: number, fleeing: boolean, animate = true): void {
+    const tr = this.host.tr;
+    s.tx = tx; s.ty = ty;
+    const img = this.spotSprites.get(s.id);
+    if (!img) return;
+    this.host.scene.tweens.killTweensOf(img);
+    const x = s.tx * tr + tr / 2, y = s.ty * tr + tr * 0.72;
+    if (!animate) { img.setPosition(x, y); return; }
+    this.host.scene.tweens.add({ targets: img, x, y, duration: fleeing ? 220 : 600, ease: fleeing ? 'Quad.easeOut' : 'Sine.easeInOut' });
   }
 
   /**
@@ -963,14 +1066,20 @@ export class ForageSystem {
   /** 현재 스팟 목록 (검증 하네스용) */
   allSpots(): ForageSpot[] { return this.spots.slice(); }
   farmsList(): FishFarm[] { return this.farms; }
-  /** dev: 특정 스팟을 강제로 지정 생물로 바꿔 검증 (조례 판정 재현) */
-  devForceSpot(spotId: string, creatureId: string): void {
+  /**
+   * dev: 특정 스팟을 강제로 지정 생물로 바꿔 검증 (조례 판정 재현).
+   * 235차 — 러너는 기본으로 **멈춰 둔다**(앵커를 하루 뒤로) · `roam`이면 슬롯 시작부터 공용 어슬렁을 탄다.
+   */
+  devForceSpot(spotId: string, creatureId: string, roam = false): void {
     const s = this.spots.find((x) => x.id === spotId);
     const c = getCreatureById(creatureId);
     if (!s || !c) return;
     s.creatureId = c.id; s.minLampLumens = c.minLampLumens;
-    if (forageBehaviorOf(c) === 'runner') this.runners.set(s.id, { flees: 2, roamMs: 99_999, nerve: 0 });
-    else this.runners.delete(s.id);
+    if (forageBehaviorOf(c) === 'runner') {
+      const now = MultiplayerClient.sharedNow();
+      const atMs = roam ? this.slotEndMs(now) - TUNING.forage.respawnMinutes * 60_000 : now + 86_400_000;
+      this.runners.set(s.id, { flees: RUNNER_FLEES, nerve: 0, cursor: null, anchor: { tx: s.tx, ty: s.ty, atMs, epoch: runnerEpoch(this.slotSeed, s.id, 0) } });
+    } else this.runners.delete(s.id);
     const img = this.spotSprites.get(s.id);
     if (img) img.setTexture(forageSpotTexKey(c));
   }

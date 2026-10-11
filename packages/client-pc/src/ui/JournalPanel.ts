@@ -29,6 +29,7 @@ import {
   JOURNAL_PAGES, ORACLE_FISH_DB, FISH_DATABASE,
 } from '@tra/core';
 import { GUIDE_NAMES as JOURNAL_GUIDE_NAMES } from '../data/QuestGuideNames.js';
+import { actionStepGuide } from '../data/ActionGuide.js';
 import { DraggablePanel, applyScreenFixed, restoreHandCursor } from './DraggablePanel.js';
 import { StoryStore } from '../store/StoryStore.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
@@ -1210,7 +1211,9 @@ export class JournalPanel extends DraggablePanel {
       clampTextWidth(t, DET_W - 110);
       c.add(t);
       if (showHow) {
-        const how = this.scene.add.text(DET_X + 16, y + 30, `방법 · ${objectiveHowToKo(q, o, JOURNAL_GUIDE_NAMES)}`, {
+        // 235차 — 행동 목표는 지금 단계의 출처가 방법을 정한다(현장 지점 · 의뢰인 · 창)
+        const howKo = actionStepGuide(q, i, JOURNAL_GUIDE_NAMES.npcName)?.howToKo ?? objectiveHowToKo(q, o, JOURNAL_GUIDE_NAMES);
+        const how = this.scene.add.text(DET_X + 16, y + 30, `방법 · ${howKo}`, {
           fontFamily: FONT, fontSize: '10px', color: '#9fc0d4',
         }).setOrigin(0, 0);
         clampTextWidth(how, DET_W - 30);

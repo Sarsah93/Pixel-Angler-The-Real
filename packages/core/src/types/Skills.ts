@@ -44,7 +44,7 @@ export type SkillEffectKey =
   // 농사
   | 'till_speed' | 'crop_yield' | 'water_efficiency' | 'seed_saver' | 'greenhouse' | 'fertilizer'
   // 농사 — 124차 증설 (발아·병충해·절기 캘린더)
-  | 'sprout_rate' | 'pest_resist' | 'farm_calendar'
+  | 'sprout_rate' | 'pest_resist' | 'farm_calendar' | 'farm_wild' | 'farm_hydro'
   // 제작 — 124차 신설 카테고리 (P7 제작 시스템 소비 예정)
   | 'craft_success' | 'sinker_material' | 'lure_tuning' | 'egi_tuning' | 'trap_durability' | 'medic_quality'
   | 'chum_slots' | 'rod_building' | 'reel_tuning' | 'craft_material' | 'blueprint_grade' | 'craft_batch';

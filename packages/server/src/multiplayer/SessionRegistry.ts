@@ -207,7 +207,7 @@ export class SessionRegistry {
     opts?: { say?: string; chatSince?: number; takenSince?: number },
   ): {
     ok: boolean; peers?: MpPeer[]; traps?: MpPlacedTrap[]; chat?: MpChatLine[];
-    trade?: MpTradeState; taken?: MpTakenLine[]; reasonKo?: string;
+    trade?: MpTradeState; taken?: MpTakenLine[]; nowMs?: number; reasonKo?: string;
   } {
     const s = this.get(code);
     if (!s) return { ok: false, reasonKo: '세션을 찾을 수 없습니다.' };
@@ -246,7 +246,8 @@ export class SessionRegistry {
     // 233차 — 기한 · 잠금 · 이름을 실어 보낸다. 주인(userId)은 내보내지 않는다(재접속 열쇠)
     const taken = ts < 0 ? [] : s.taken.filter((l) => l.seq > ts)
       .map(({ seq, key, untilMs, busy, by, val }) => ({ seq, key, untilMs, busy, by, ...(val ? { val } : {}) }));
-    return { ok: true, peers, traps, chat, trade: this.maskTrade(this.tradeFor(s, me.userId), me.userId), taken };
+    // 235차 — 서버 시각을 실어 보낸다(클라이언트가 공용 시각을 맞춘다 — 달아나는 생물 어슬렁)
+    return { ok: true, peers, traps, chat, trade: this.maskTrade(this.tradeFor(s, me.userId), me.userId), taken, nowMs: Date.now() };
   }
 
   /** 232차 — 거래 상태에서 상대의 userId를 지운다(내 쪽 판별에는 내 id만 있으면 된다) */
