@@ -1,0 +1,53 @@
+# 빌드 · 타입 검사 · 테스트 — 손으로 돌리던 검증 루틴(CLAUDE.md 「자주 쓰는 명령어」)을 그대로 돌린다.
+# 배포는 하지 않는다(gh-pages는 수동 절차 — 스킬 deploy-ghpages).
+name: 검증
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: 빌드 · 타입 검사 · 테스트
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      # pnpm 버전은 package.json 의 packageManager 필드(pnpm@9.15.0)를 따른다
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: 의존성 설치
+        run: pnpm install --frozen-lockfile
+
+      - name: 빌드 (core · client-pc · server)
+        run: pnpm run build
+
+      # core 는 테스트 파일까지, server 도 함께 본다(빌드는 테스트 파일을 빼고, vitest 는 타입을 보지 않는다)
+      - name: 타입 검사
+        run: pnpm run typecheck
+
+      - name: 테스트 (core)
+        run: pnpm --filter @tra/core run test
+
+      # @tra/core 에는 렌더링 · 브라우저 코드를 두지 않는다 (AGENTS §8-1)
+      - name: core 경계 확인
+        run: |
+          if grep -rnE "from ['\"]phaser['\"]|\bdocument\.(getElementById|querySelector|createElement|body)|\bwindow\.(innerWidth|innerHeight|addEventListener|localStorage)" \
+               packages/core/src --include='*.ts' --exclude='*.test.ts' | grep -vE "^\S+:[0-9]+:\s*(//|\*|/\*)"; then
+            echo "::error::@tra/core 에 Phaser · DOM · 브라우저 코드가 있습니다"
+            exit 1
+          fi

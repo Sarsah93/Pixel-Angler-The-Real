@@ -13,6 +13,7 @@
  *    바닥에 둔 것을 거둬 오거나 다시 준다 — 같은 물건이 둘이 되지 않게 가방 · 바닥 · 집 선반을 먼저 본다.
  *  - **이야기 기념품**(가족사진): 다시 얻을 길이 없고 뒤 장(M7-04 「사진 속 천막」)이 다시 꺼낸다 — 버리지 않는다.
  *  - **귀속 보상 장비**(`qr_*`): 버릴 수는 있되 「다시 얻을 수 없다」고 한 번 더 묻는다(`InventoryPanel`).
+ *  - **심부름 물건**(`qd_*` — 235차 · 현장 지점에서 받아 들고 가는 받침 · 반찬통): 받은 뒤 내려놓을 때까지 맡은 물건과 같다.
  *
  * 저장소(인벤토리 · 집 보관함)는 이 파일을 import하지 않고 `ItemKeepGuard`로만 묻는다(순환 import 회피).
  */
@@ -39,6 +40,26 @@ function pending(questId: string, placeKey: string): boolean {
   return !!q && i >= 0 && !StoryStore.objectiveDone(q, i);
 }
 
+/**
+ * 235차 — 심부름 지점에서 받아 든 물건(받은 단계 1 → 내려놓는 단계 2 사이).
+ * 받침은 N19-1 · N19-3 두 의뢰가 같은 물건을 쓴다(동시에 둘이 열리지 않는다 — 아크 순서).
+ */
+const DELIVERY_CARRY: readonly { itemId: string; questId: string; keepKo: string }[] = [
+  { itemId: 'qd_bamboo_tray', questId: 'N19-1', keepKo: '탁만수가 깎은 대나무 받침이다. 만복상회 좌판에 놓을 때까지 지니고 있자.' },
+  { itemId: 'qd_bamboo_tray', questId: 'N19-3', keepKo: '탁만수가 다시 깎은 받침이다. 만복상회 수조 옆에 놓을 때까지 지니고 있자.' },
+  { itemId: 'qd_food_box', questId: 'N19-2', keepKo: '정옥선이 싸 준 반찬통이다. 죽간 공방에 건넬 때까지 지니고 있자.' },
+];
+
+/** 그 심부름 물건을 지금 들고 가는 중인가(받았고 아직 내려놓지 않았다) — 맞으면 그 줄 */
+function carrying(itemId: string): (typeof DELIVERY_CARRY)[number] | undefined {
+  return DELIVERY_CARRY.find((d) => {
+    if (d.itemId !== itemId || !StoryStore.isActive(d.questId)) return false;
+    const q = getStoryQuest(d.questId);
+    const i = q ? q.objectives.findIndex((o) => !!o.actionKey) : -1;
+    return !!q && i >= 0 && !StoryStore.objectiveDone(q, i) && StoryStore.actionStep(d.questId, i) === 1;
+  });
+}
+
 /** 얼음 상자가 아직 필요한가 — 경매장에 내려놓을 때까지 */
 export function iceCrateNeeded(): boolean { return pending('M1-02', 'ice:auction-drop'); }
 /** 어촌계 자전거가 아직 필요한가 — 한 번 타 볼 때까지 */
@@ -53,6 +74,8 @@ export function questKeepReason(itemId: string): string | null {
   if (itemId === ICE_CRATE_ID && iceCrateNeeded()) return '정옥선에게 맡은 얼음 상자다. 경매장에 내려놓을 때까지 지니고 있자.';
   if (itemId === COOP_BIKE_ID && coopBikeNeeded()) return '어촌계에서 내준 자전거다. 한 번 타 볼 때까지는 지니고 있자.';
   if (itemId === PROLOGUE_PHOTO_ID) return '아버지가 남긴 가족사진이다. 버릴 수 없다.';
+  const carry = carrying(itemId);
+  if (carry) return carry.keepKo;
   return null;
 }
 
@@ -97,6 +120,19 @@ export function repairQuestItems(): string[] {
         // 상자 확인 목표가 남아 있으면(구세이브 재배치 직후) 지금 가방에 들어온 것으로 닫는다
         StoryStore.event({ kind: 'custom', key: 'quest:ice-crate-check' });
       }
+    }
+    // 235차 — 받아 든 심부름 물건이 사라졌으면(구세이브 · 예외 경로) 바닥에서 거두거나 다시 쥐여 준다
+    for (const id of new Set(DELIVERY_CARRY.map((d) => d.itemId))) {
+      if (!carrying(id) || InventoryStore.find(id)) continue;
+      sweepGround(id);
+      const tpl = QUEST_REWARD_ITEMS.find((i) => i.id === id);
+      if (tpl && InventoryStore.addItem({ ...tpl, bound: true }, 1, { silent: true })) fixed.push(`[할 일] ${tpl.name}을(를) 다시 챙겼다`);
+    }
+    // 235차 — M7-04 「사진 속 천막」은 사진을 꺼내 보여야 닫힌다. 어디에도 없으면(구세이브에서 잃은 경우) 되찾는다
+    if (StoryStore.isActive('M7-04') && !heldAnywhere(PROLOGUE_PHOTO_ID)) {
+      sweepGround(PROLOGUE_PHOTO_ID);
+      const tpl = QUEST_REWARD_ITEMS.find((i) => i.id === PROLOGUE_PHOTO_ID);
+      if (tpl && InventoryStore.addItem({ ...tpl, bound: true }, 1, { silent: true })) fixed.push('[할 일] 아버지의 상자 밑에서 가족사진을 다시 찾았다');
     }
     if (coopBikeNeeded() && !heldAnywhere(COOP_BIKE_ID)) {
       const back = sweepGround(COOP_BIKE_ID) > 0;

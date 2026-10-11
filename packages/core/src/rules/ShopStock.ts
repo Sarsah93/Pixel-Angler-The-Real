@@ -82,6 +82,8 @@ export interface StockEntryInput {
   furnKind?: string;
   /** 판매가 — 비싼 물건(낚싯대 등)은 한두 개씩 들여놓는다 */
   price?: number;
+  /** 235차 — 희귀도 배율(희귀 씨앗 · 모종은 하루에 몇 봉만 — 1 = 보통) */
+  stockMult?: number;
 }
 
 /** 이 값 이상이면 큰 물건으로 친다(낚싯대 · 릴 · 공구 — 소모품 묶음은 이보다 싸다) */
@@ -116,5 +118,5 @@ export function shopStockCap(scale: ShopScale, e: StockEntryInput, shopKey: stri
   if (stockUnlimited(e)) return null;
   const base = SHOP_STOCK_BASE[scale][stockBucketOf(e)];
   const k = 0.75 + 0.5 * hash01(`${shopKey}#${entryKey}`);
-  return Math.max(1, Math.round(base * k));
+  return Math.max(1, Math.round(base * k * (e.stockMult ?? 1)));
 }

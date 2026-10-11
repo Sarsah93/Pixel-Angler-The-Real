@@ -28,7 +28,7 @@ import {
 import { planRigLoss, TUNING as TUNING_RL, type RigLossCause, type RigLossPlan } from '@tra/core';
 import { rodSpecFor, reelSpecFor, type RodItemSpec, type ReelItemSpec } from '@tra/core';
 import type { DishData, DishInstance } from '@tra/core';
-import { getFireRecipe, dishStarsAt, dishValueKrw, dishInstanceValueKrw } from '@tra/core';
+import { getFireRecipe, dishStarsAt, dishValueKrw, dishInstanceValueKrw, producePrice } from '@tra/core';
 import type { SashimiSizeTier } from '@tra/core';
 import type { ForageTool, StatusCure, CatchMethod, LineForm } from '@tra/core';
 import { ExternalDataStore } from './ExternalDataStore.js';
@@ -37,6 +37,7 @@ import { isGod } from '../dev/DevMode.js';
 import { resolveFishTexture } from '../data/FishTextures.js';
 import { applyItemVitals, refreshNutritionVitals } from '../data/ItemVitals.js';
 import { applyCookItemFields, COOK_CORNER } from '../data/CookItems.js';
+import { PRODUCE_SUB } from '../data/CropItems.js';
 import { StoryStore } from './StoryStore.js';
 import { migrateCatchItemId, migrateSpeciesId } from '../data/SpeciesMigration.js';
 import { SHOP_CATALOG, CARD_RIG_ENTRIES } from '../data/ShopCatalog.js';
@@ -84,6 +85,12 @@ export const GRID_CAPACITY_MAX = 37;
  * `itemAtSlot`은 0~24만 조회하므로 -1은 어떤 소켓에도 잡히지 않는다.
  */
 export const SLOT_EQUIPPED = -1;
+
+/**
+ * 상점 매입 비율 — 상점은 시세(통째 어획물 = 경락가 · 그 밖 = 기준가)의 이만큼만 쳐 준다.
+ * 시세대로 받는 길은 위판(경매 · 수수료 3~6%)이고, 값을 올리는 길은 손질 → 회 접시 · 요리다.
+ */
+export const SHOP_BUY_RATE = 0.6;
 
 /** 착용/해제 결과 — 실패 사유를 UI가 그대로 안내한다 (예: 인벤토리 칸 부족) */
 export interface EquipResult {
@@ -695,7 +702,7 @@ function createSeedItems(): InvItem[] {
     // 사시미 접시 (소) — 회 조각 플레이팅 (요리 탭 사시미 만들기. 중/대/특대는 식자재마트 판매)
     { id: 'inv_plate_s',   name: '사시미 접시 (소)',        icon: '🍽️', category: 'etc', subCategory: '식기', qty: 1, basePrice: 2500, equippable: false },
     // ── 설치형 (HOMETOWN_HOME_SPEC — 홈타운 칸 단위 자유 배치. placeKey = core PLACEMENT_DEFS) ──
-    { id: 'inv_place_farm',    name: '텃밭 개간 키트',       icon: '🌱', category: 'etc', subCategory: '설치형', qty: 1, basePrice: 8000,  equippable: false, placeKey: 'farm_plot' },
+    { id: 'inv_place_farm',    name: '텃밭 개간 키트',       icon: '', iconTexture: 'px:it_farm_kit', category: 'etc', subCategory: '설치형', qty: 1, basePrice: 8000,  equippable: false, placeKey: 'farm_plot' },
     { id: 'inv_place_fence',   name: '울타리',              icon: '🪵', category: 'etc', subCategory: '설치형', qty: 6, basePrice: 1500,  equippable: false, placeKey: 'fence' },
     { id: 'inv_place_aq_live', name: '활어 수조 (업소용)',   icon: '🐠', category: 'etc', subCategory: '설치형', qty: 1, basePrice: 120000, equippable: false, placeKey: 'aquarium_live' },
     { id: 'inv_place_aq_disp', name: '관상용 수족관',        icon: '🐟', category: 'etc', subCategory: '설치형', qty: 1, basePrice: 60000, equippable: false, placeKey: 'aquarium_display' },
@@ -1493,21 +1500,43 @@ class InventoryStoreManager {
   }
 
   /**
-   * 상점 매입가 (일반 품목은 기준가의 60%).
+   * 상점 매입가 — 상점은 **시세의 60%**(`SHOP_BUY_RATE`)에 사들인다(일반 품목도 기준가의 60%).
+   * 통째 어획물의 시세(할인 전 값)가 필요하면 `getMarketValue`를 쓴다 — 위판 기준가 · 손질 가치 승계.
+   * 회 접시 · 완성 요리는 책정가 그대로다(노력 가치 보전 — 두 함수가 같은 값을 낸다).
+   */
+  getSellPrice(item: InvItem): number { return this.priceOf(item, true); }
+
+  /**
+   * 시세 평가액 — 통째 어획물은 경락 시세 × 신선도 배율 **그대로**(상점 매입 할인 없음).
+   * 위판장은 이 값을 기준으로 경매에 부치고, 손질은 이 값을 필렛 · 몸통살에 나눠 준다.
+   * 통째 어획물이 아닌 것은 `getSellPrice`와 같은 값이다.
+   */
+  getMarketValue(item: InvItem): number { return this.priceOf(item, false); }
+
+  /**
+   * 값 산정 본체.
    *
    * 어획물은 `evaluateFishSellPrice`(core) 정식 엔진으로 산정한다:
-   *   가격 = kg당 단가(어종별) × 중량 × 등급 배율 × 크기(길이) 배율
+   *   시세 = kg당 단가(어종별) × 중량 × 등급 배율 × 크기(길이) 배율
    * 실시간 경락가 캐시가 있으면 kg당 단가가 당일 시세로 대체되므로,
    * 여기서 별도의 시세 배율을 다시 곱하면 이중 적용이 된다 — 곱하지 말 것.
    *
    * 개체 실측치(speciesId/weightG)가 없는 레거시 어획물은 basePrice 폴백.
+   * @param shop true = 상점 매입가(통째 어획물에 `SHOP_BUY_RATE`) / false = 시세 그대로
    */
-  getSellPrice(item: InvItem): number {
+  private priceOf(item: InvItem, shop: boolean): number {
     // 채집물(해루질·통발 생물)은 판매·유통 금지 — 강원 조례 (121차). 요리·자가 소비 sink 전용
     if (item.forageCatch) return 0;
     // 미완성 접시는 판매 불가 (135차 사용자 결정) — 가격표(모듬 고정가·단품 회중량)가
     // 만석을 전제로 세워져 있어 부분 판매를 허용하면 표가 붕괴한다. 섭취·이어담기만 가능.
     if (item.plateWip) return 0;
+    // 235차 — 텃밭 농산물: 그날 시세(달 지수 · 주간 출렁임 · 등급) × 신선도 × 도매가 몫(0.7 — 가게가 되팔 몫을 남긴다)
+    if (item.subCategory === PRODUCE_SUB) {
+      const stateMul = conditionSellMultiplier(item.condition);
+      if (stateMul <= 0) return 0;
+      const unit = producePrice(item.id, Date.now()) ?? item.basePrice;
+      return Math.max(10, Math.round((unit * stateMul * 0.7) / 10) * 10);
+    }
     if (item.subCategory === '어획물') {
       // 상태별 가치 배율 (부패 = 0, 나쁨 10%, 보통 50%, 그 외 시세 그대로)
       const stateMul = conditionSellMultiplier(item.condition);
@@ -1518,11 +1547,12 @@ class InventoryStoreManager {
         const tier = conditionPriceTier(item.condition);
         const cache = ExternalDataStore.getWholesaleCache(speciesId, tier);
         const base = evaluateFishSellPrice(speciesId, item.lengthCm ?? 0, item.weightG, cache).finalPrice;
-        return Math.max(0, Math.round(base * stateMul));
+        // 상점은 시세(경락가)보다 싸게 사들인다 — 시세 그대로 받으려면 위판(수수료 3~6%)
+        return Math.max(0, Math.round(base * stateMul * (shop ? SHOP_BUY_RATE : 1)));
       }
       // 레거시 폴백 — 실측치가 없으면 기존 방식(기준가 × 시세 배율) × 상태 배율
       const factor = speciesId ? ExternalDataStore.getMarketPriceFactor(speciesId) : 1;
-      return Math.max(0, Math.floor(item.basePrice * 0.6 * factor * stateMul));
+      return Math.max(0, Math.floor(item.basePrice * SHOP_BUY_RATE * factor * stateMul));
     }
     // 154차 — 완성 요리: 별점 총점 비례 책정가(`dishValueKrw`)가 basePrice. 시간 감쇠·신선도는 조회 시 다시 계산한다.
     //  탄 것은 0. 0.6 매입 할인 미적용(사시미 접시와 같은 원칙 — 노력 가치 보전).
@@ -1549,7 +1579,7 @@ class InventoryStoreManager {
       const stateMul = conditionSellMultiplier(item.condition);
       return Math.max(0, Math.round(item.basePrice * stateMul));
     }
-    return Math.max(100, Math.floor(item.basePrice * 0.6));
+    return Math.max(100, Math.floor(item.basePrice * SHOP_BUY_RATE));
   }
 
   /**
@@ -1864,7 +1894,7 @@ class InventoryStoreManager {
    * 인스턴스가 남아 있으면 수량 +1, 소멸했으면 템플릿으로 재생성.
    */
   private static readonly PLACEABLE_TPL: Record<string, InvItemTemplate> = {
-    inv_place_farm:    { id: 'inv_place_farm',    name: '텃밭 개간 키트',     icon: '🌱', category: 'etc', subCategory: '설치형', basePrice: 8000,   equippable: false, placeKey: 'farm_plot' },
+    inv_place_farm:    { id: 'inv_place_farm',    name: '텃밭 개간 키트',     icon: '', iconTexture: 'px:it_farm_kit', category: 'etc', subCategory: '설치형', basePrice: 8000,   equippable: false, placeKey: 'farm_plot' },
     inv_place_fence:   { id: 'inv_place_fence',   name: '울타리',            icon: '🪵', category: 'etc', subCategory: '설치형', basePrice: 1500,   equippable: false, placeKey: 'fence' },
     inv_place_aq_live: { id: 'inv_place_aq_live', name: '활어 수조 (업소용)', icon: '🐠', category: 'etc', subCategory: '설치형', basePrice: 120000, equippable: false, placeKey: 'aquarium_live' },
     inv_place_aq_disp: { id: 'inv_place_aq_disp', name: '관상용 수족관',      icon: '🐟', category: 'etc', subCategory: '설치형', basePrice: 60000,  equippable: false, placeKey: 'aquarium_display' },
