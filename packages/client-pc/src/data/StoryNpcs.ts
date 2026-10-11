@@ -75,6 +75,15 @@ export interface StoryFieldTrigger {
   actor?: { actorKey: string; nameKo: string; nameEn?: string; role: CharRole; sex?: CharSex; age?: CharAge; facing?: 'down' | 'left' | 'right' | 'up' };
   /** 167차 — 이 사람에게 말을 걸면(대화창 행) 진행되는 단계. 점·배우 없이 대화로만 닿는다 */
   viaNpc?: string;
+  /** 235차 — 영어 이름표(i18n 짝) */
+  labelEn?: string;
+  /** 235차 — 일반 지점: [F]를 누르면 흐르는 혼잣말 두 줄. 장면이 끝나야 단계가 오른다(건너뛰어도 같다) */
+  linesKo?: readonly [string, string];
+  linesEn?: readonly [string, string];
+  /** 235차 — 이 지점에서 받아 드는 심부름 물건(가방 자리가 없으면 단계가 오르지 않는다) */
+  give?: string;
+  /** 235차 — 이 지점에 내려놓는 심부름 물건(가방에서 빠진다) */
+  take?: string;
 }
 
 export const STORY_NPC_PLACEMENTS: StoryNpcPlacement[] = [
@@ -163,5 +172,154 @@ export const STORY_FIELD_TRIGGERS: StoryFieldTrigger[] = [
     id: 'n18-6-report', regionId: 'gangwon_sokcho', tx: 534, ty: 151,
     labelKo: '도현수에게 증거 보고', actionKey: 'label_violation_review', questId: 'N18-6', objectiveIndex: 1, phase: 2,
     viaNpc: 'hyeonsu',
+  },
+
+  // ── 235차 — 행동 목표마다 진짜 출처: 현장 지점 ─────────────────────────────
+  //  단계가 그 지점의 차례일 때만 금색 점이 보이고, [F] → 혼잣말 장면 → 단계가 오른다.
+  //  심부름(give/take)은 물건을 실제로 받아 들고 가서 내려놓는다(QuestItemGuard가 지키고 되살린다).
+  //  ⚠ 인천 · 거제 · 태안 필드가 아직 없어 인천 · 거제 무대는 속초의 비슷한 자리(하역장 · 옛 조선소)에 둔다.
+  //    그 지역 필드가 열리면 좌표 · 지역만 옮긴다(세이브 계약은 지점 id라 그대로다). 태안은 필드가 생길 때 보인다.
+  // M2-11 「되돌아온 상자」 — 정옥선 좌판
+  {
+    id: 'm2-11-crates', regionId: 'gangwon_sokcho', tx: 588, ty: 157,
+    labelKo: '부산에서 돌아온 상자', labelEn: 'Crates back from Busan',
+    actionKey: 'stall_display_rebuild', questId: 'M2-11', objectiveIndex: 1, phase: 0,
+    linesKo: ['상자 옆면에 찍힌 부산 위판장 규격 도장을 손끝으로 읽는다.', '높이가 두 치 낮다. 얼음이 덮여야 할 자리가 모자랐던 것이다.'],
+    linesEn: ['I read the Busan grading stamp on the side of the crate with a fingertip.', 'It sits two finger-widths low. That is where the ice ran short.'],
+  },
+  {
+    id: 'm2-11-display', regionId: 'gangwon_sokcho', tx: 582, ty: 160,
+    labelKo: '만복상회 진열대', labelEn: 'Manbok Store display',
+    actionKey: 'stall_display_rebuild', questId: 'M2-11', objectiveIndex: 1, phase: 1,
+    linesKo: ['큰 놈은 뒤로, 눈이 맑은 놈은 앞으로 — 상자 규격에 맞춰 다시 놓는다.', '얼음을 한 줌 더 덮자 진열대 끝까지 물기가 고르게 번졌다.'],
+    linesEn: ['Big fish to the back, clear-eyed ones to the front — rebuilt to the crate standard.', 'One more handful of ice and the wet sheen spread evenly to the end of the display.'],
+  },
+  // N19-1 「얼음과 대나무」 — 공방 앞 평상 → 만복상회 좌판
+  {
+    id: 'n19-1-take', regionId: 'gangwon_sokcho', tx: 544, ty: 147,
+    labelKo: '공방 앞 평상의 대나무 받침', labelEn: 'Bamboo tray on the workshop bench',
+    actionKey: 'tray_delivery', questId: 'N19-1', objectiveIndex: 1, phase: 0, give: 'qd_bamboo_tray',
+    linesKo: ['평상 위에 받침이 하나 놓여 있다. 마디를 맞춰 엮은 손이 꼼꼼하다.', '"내가 줬다고는 하지 말고." 그 말을 떠올리며 받침을 챙긴다.'],
+    linesEn: ['A tray sits on the bench, woven with every node lined up.', '"Don\'t say it was me." I remember that and pick up the tray.'],
+  },
+  {
+    id: 'n19-1-place', regionId: 'gangwon_sokcho', tx: 585, ty: 160,
+    labelKo: '만복상회 좌판에 받침 놓기', labelEn: 'Set the tray at the Manbok stall',
+    actionKey: 'tray_delivery', questId: 'N19-1', objectiveIndex: 1, phase: 1, take: 'qd_bamboo_tray',
+    linesKo: ['좌판 얼음통 아래에 받침을 밀어 넣자 젖은 상자가 수평을 찾는다.', '누가 두고 갔는지는 말하지 않았다. 할머니가 모서리를 한 번 쓸어 보았다.'],
+    linesEn: ['I slide the tray under the ice tub and the wet crate finds level.', 'I did not say who left it. She ran a hand once along its edge.'],
+  },
+  // N19-3 「대를 다시 깎는 손」 — 두 번째 받침
+  {
+    id: 'n19-3-take', regionId: 'gangwon_sokcho', tx: 545, ty: 146,
+    labelKo: '공방 앞의 두 번째 받침', labelEn: 'Second tray at the workshop',
+    actionKey: 'second_tray_delivery', questId: 'N19-3', objectiveIndex: 1, phase: 0, give: 'qd_bamboo_tray',
+    linesKo: ['이번 받침은 물이 빠지도록 틈을 넓혀 깎았다. 지난번 얘기를 들은 모양이다.', '천을 한 겹 둘러 챙긴다. 이번에는 물기가 덜 묻을 것이다.'],
+    linesEn: ['This tray has wider gaps so the water drains. He must have heard about last time.', 'I wrap it in a cloth. Less water will soak through this time.'],
+  },
+  {
+    id: 'n19-3-place', regionId: 'gangwon_sokcho', tx: 587, ty: 159,
+    labelKo: '만복상회 수조 옆', labelEn: 'Beside the Manbok Store tank',
+    actionKey: 'second_tray_delivery', questId: 'N19-3', objectiveIndex: 1, phase: 1, take: 'qd_bamboo_tray',
+    linesKo: ['수조 옆 자리에 받침을 내려놓는다. 물이 틈으로 곧게 빠진다.', '할머니가 아무 말 없이 받침 위에 제일 좋은 상자를 올렸다.'],
+    linesEn: ['I set the tray beside the tank. Water drains straight through the gaps.', 'Without a word, she set her best crate on top of it.'],
+  },
+  // N19-2 「부고 아닌 편지」 — 정옥선의 반찬통 → 죽간 공방
+  {
+    id: 'n19-2-take', regionId: 'gangwon_sokcho', tx: 582, ty: 157,
+    labelKo: '정옥선의 반찬통', labelEn: 'Ok-seon\'s side-dish container',
+    actionKey: 'food_container_delivery', questId: 'N19-2', objectiveIndex: 1, phase: 0, give: 'qd_food_box',
+    linesKo: ['보자기로 싼 반찬통이 아직 따뜻하다. 뚜껑 위에 쪽지는 없다.', '할머니는 "가는 길에"라고만 했다. 길이 정해져 있다는 뜻이다.'],
+    linesEn: ['The wrapped container is still warm. There is no note on the lid.', 'She only said "on your way". That means the way is already decided.'],
+  },
+  {
+    id: 'n19-2-give', regionId: 'gangwon_sokcho', tx: 546, ty: 147,
+    labelKo: '죽간 공방 문간', labelEn: 'Bamboo workshop doorway',
+    actionKey: 'food_container_delivery', questId: 'N19-2', objectiveIndex: 1, phase: 1, take: 'qd_food_box',
+    linesKo: ['뚜껑을 열지 않은 채 손잡이만 문간에 건넨다.', '안쪽에서 젓가락 놓는 소리가 났다. 오늘은 그걸로 충분하다.'],
+    linesEn: ['I hand over the handle at the doorway without opening the lid.', 'Chopsticks clinked somewhere inside. That is enough for today.'],
+  },
+  // N02-5 「대를 고르는 눈」 — 방파제 옆 자재장
+  {
+    id: 'n02-5-yard', regionId: 'gangwon_sokcho', tx: 537, ty: 153,
+    labelKo: '자재장 대나무 더미', labelEn: 'Bamboo pile in the yard',
+    actionKey: 'bamboo_selection', questId: 'N02-5', objectiveIndex: 1, phase: 0,
+    linesKo: ['세워 둔 대 사이를 손바닥으로 훑으며 마디 간격을 잰다.', '휘어진 대, 갈라진 대를 하나씩 옆으로 밀어낸다.'],
+    linesEn: ['I run my palm down the standing poles, measuring the node spacing.', 'One by one I push aside the warped ones and the split ones.'],
+  },
+  {
+    id: 'n02-5-pick', regionId: 'gangwon_sokcho', tx: 539, ty: 154,
+    labelKo: '골라 둔 대', labelEn: 'The chosen pole',
+    actionKey: 'bamboo_selection', questId: 'N02-5', objectiveIndex: 1, phase: 1,
+    linesKo: ['마디가 고르고 껍질이 단단한 한 대를 들어 본다. 손에 감기는 무게가 맞다.', '왜 이 대인지 끈으로 표시해 둔다 — 마디, 곧음, 껍질.'],
+    linesEn: ['I lift one with even nodes and hard skin. The weight settles right in the hand.', 'I tie a mark on it for why — the nodes, the straightness, the skin.'],
+  },
+  // N18-4 「같은 배를 보는 눈」 — (거제 대신) 청초호 옛 조선소 수리장
+  {
+    id: 'n18-4-hull', regionId: 'gangwon_sokcho', tx: 268, ty: 424,
+    labelKo: '옛 조선소 수리장의 선체', labelEn: 'Hull in the old boatyard',
+    actionKey: 'hull_inspection', questId: 'N18-4', objectiveIndex: 1, phase: 0,
+    linesKo: ['망치로 선체를 두드리자 도장 아래로 번진 녹이 둔하게 울린다.', '같은 자리를 한 번 더 두드려 본다. 소리가 다른 곳보다 낮다.'],
+    linesEn: ['I tap the hull with a hammer and the rust under the paint rings dull.', 'I tap the same spot again. It sounds lower than anywhere else.'],
+  },
+  {
+    id: 'n18-4-engine', regionId: 'gangwon_sokcho', tx: 270, ty: 426,
+    labelKo: '선체 기관실', labelEn: 'Engine bay',
+    actionKey: 'hull_inspection', questId: 'N18-4', objectiveIndex: 1, phase: 1,
+    linesKo: ['기관실 바닥에 손전등을 비추자 안쪽 보강재가 겉보다 오래돼 보인다.', '기름때 아래 새겨진 연식을 수첩에 옮겨 적는다.'],
+    linesEn: ['Under the torch, the inner bracing looks older than the skin.', 'I copy the year stamped under the grease into my notebook.'],
+  },
+  // N19-5 「병실 앞 복도」 — 항구 보건지소
+  {
+    id: 'n19-5-ward', regionId: 'gangwon_sokcho', tx: 526, ty: 134,
+    labelKo: '보건지소 출입구', labelEn: 'Clinic entrance',
+    actionKey: 'hospital_assistance', questId: 'N19-5', objectiveIndex: 1, phase: 0,
+    linesKo: ['출입구 안내판에서 병실 층과 면회 시간을 확인한다.', '노인은 문 앞에서 걸음을 멈추고 지팡이 끝만 내려다보았다.'],
+    linesEn: ['I check the ward floor and visiting hours on the entrance board.', 'At the door he stopped and looked down at the tip of his cane.'],
+  },
+  {
+    id: 'n19-5-walk', regionId: 'gangwon_sokcho', tx: 524, ty: 132,
+    labelKo: '병실 가는 복도', labelEn: 'Corridor to the ward',
+    actionKey: 'hospital_assistance', questId: 'N19-5', objectiveIndex: 1, phase: 1,
+    linesKo: ['걸음이 멈출 때마다 난간 쪽으로 반 발 먼저 간다.', '"천천히 가도 됩니다." 노인이 고개를 한 번 끄덕였다.'],
+    linesEn: ['Each time he stops, I move half a step ahead toward the rail.', '"We can go slowly." He nodded once.'],
+  },
+  // N18-7 「나란히 서서」 — 속초등대 전시관
+  {
+    id: 'n18-7-list', regionId: 'gangwon_sokcho', tx: 566, ty: 88,
+    labelKo: '등대 전시관 준비 목록', labelEn: 'Lighthouse hall checklist',
+    actionKey: 'reopening_preparation', questId: 'N18-7', objectiveIndex: 1, phase: 0,
+    linesKo: ['문에 붙은 준비 목록을 읽는다. 의자 스무 개, 안내판 셋, 리본 하나.', '목록 끝에 연필로 한 줄을 더 적는다 — 「바람막이」.'],
+    linesEn: ['I read the list taped to the door. Twenty chairs, three signs, one ribbon.', 'I pencil one more line at the end — "windbreak".'],
+  },
+  {
+    id: 'n18-7-set', regionId: 'gangwon_sokcho', tx: 568, ty: 90,
+    labelKo: '전시관 안내판', labelEn: 'Exhibition sign',
+    actionKey: 'reopening_preparation', questId: 'N18-7', objectiveIndex: 1, phase: 1,
+    linesKo: ['먼지 쌓인 안내판의 나사를 다시 조인다.', '의자를 줄 맞춰 놓고 나니, 문을 열기 전부터 사람이 앉을 자리가 보였다.'],
+    linesEn: ['I tighten the screws on the dusty sign again.', 'With the chairs in rows, I can already see where people will sit.'],
+  },
+  // N03-7 「조합장의 출장」 — (인천 대신) 동명항 하역장 유통 표지
+  {
+    id: 'n03-7-route', regionId: 'gangwon_sokcho', tx: 595, ty: 156,
+    labelKo: '하역장 유통 경로 표지', labelEn: 'Route board at the unloading bay',
+    actionKey: 'distribution_route_explain', questId: 'N03-7', objectiveIndex: 1, phase: 1,
+    linesKo: ['배에서 내린 상자가 경매 · 중도매 · 소매로 갈라지는 길을 표지에서 짚는다.', '단계마다 책임지는 사람이 바뀐다 — 그 이름을 순서대로 외운다.'],
+    linesEn: ['On the board I trace how a crate splits from the boat into auction, wholesale and retail.', 'Who answers for it changes at every step — I learn the names in order.'],
+  },
+  // N13-3 「폐어선의 겨울」 — 태안 (필드가 열리면 보인다)
+  {
+    id: 'n13-3-flue', regionId: 'chungnam_taean', tx: 40, ty: 40,
+    labelKo: '폐어선 선실 연통', labelEn: 'Cabin flue of the old boat',
+    actionKey: 'stove_repair', questId: 'N13-3', objectiveIndex: 1, phase: 0,
+    linesKo: ['막힌 연통을 두드리자 그을음이 한 줌 떨어진다.', '이음새의 녹을 긁어내고 연통을 다시 끼운다.'],
+    linesEn: ['I knock on the blocked flue and a handful of soot drops.', 'I scrape the rust from the joint and fit the pipe back.'],
+  },
+  {
+    id: 'n13-3-light', regionId: 'chungnam_taean', tx: 41, ty: 40,
+    labelKo: '선실 난로', labelEn: 'Cabin stove',
+    actionKey: 'stove_repair', questId: 'N13-3', objectiveIndex: 1, phase: 1,
+    linesKo: ['불씨를 넣자 바람이 연통으로 곧게 빠진다.', '불꽃이 다시 붙자 방 안의 손들이 움직이기 시작했다.'],
+    linesEn: ['I feed in the spark and the draught pulls straight up the flue.', 'When the flame caught, the hands in the room began to move.'],
   },
 ];

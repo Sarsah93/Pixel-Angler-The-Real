@@ -15,12 +15,14 @@
 | core | `simulation/AuctionEngine.ts` | 경매 |
 | core | `api-client/` | 낚시지수 · **MAFRA 경락가** · KOSIS 어획량 · NMPNT 해양기상 · 기상청 단기예보 (+ Mock 폴백) |
 | client | `store/ExternalDataStore.ts` | 스타트업 1회 `fetchAll()` 캐시 — 인게임 루프는 캐시만 참조 |
+| core · tools · CI | `rules/ProduceMarket.ts` · `tools/kamis_snapshot.mjs` · `.github/workflows/kamis-snapshot.yml` | **농산물 실제 시세**(236) — 액션이 하루 한 번 KAMIS 소매가를 `data-snapshots` 브랜치에 올리고, 클라이언트가 읽어 「오늘 ÷ 평년」을 넣는다 |
 | client | `ui/ShopPanel.ts` · `data/ShopCatalog.ts` | 상점 6종(편의점·마트·직판장·식당·카페·주점) |
 | core · client | `simulation/MarketSaturation.ts` · `store/MarketStore.ts` · `ui/MarketTrendIcon.ts` | 판매처별 시세 하락 장부(196) · 가게 수요 · 시세 화살표 |
 
 ## 3. 동작 구조
 ```
-판매가 = evaluateFishSellPrice(어종, 길이, 등급, 시세캐시) × 상태배율 × 0.6(매입할인)
+시세      = evaluateFishSellPrice(어종, 길이, 등급, 시세캐시) × 상태배율      ← getMarketValue (위판 기준가 · 손질 가치 승계)
+상점 매입가 = 시세 × 0.6(SHOP_BUY_RATE)                                     ← getSellPrice (상점 · 상세보기)
   상태배율: 활어/신선/냉장/냉동 1.0 · 보통 0.5 · 나쁨 0.1 · 부패 0(판매 불가)
   ※ 시세 캐시를 넘기면 kg단가가 대체된다 — getMarketPriceFactor를 또 곱하면 이중 적용
   ※ 완성 사시미 접시(inv_sashimi_plate_)는 0.6 할인 미적용
@@ -50,6 +52,8 @@
 | 위판 수수료 = 평판 소비처 | ✅ 평판 0 = 6% → 100 = 3%(하한). **낙찰가에는 평판을 걸지 않는다** | 147 |
 | 경매 **구매자 측**(경매장에서 사기) | ⬜ `AuctionEngine`(`placeBid`·`calcPlayerAuctionTotal`)이 자리만 서 있다 | — |
 | **정기 지출(유지비)** — 자격 갱신료 · 수협 조합비(월 12,000원 → 위판 수수료 −0.5%p) · 선박 유지비 · 위생 점검 · 어장 행사료(계원 1,000 / 비계원 5,000원) | ✅ | **171** — `core/rules/Upkeep.ts` · 인게임 일자 기준 |
+| **농산물 실제 시세(KAMIS 하루치)** — 오늘 소매가 ÷ 평년 → 텃밭 수확물 값의 주간 출렁임 자리 · 28종 매핑 · 0.5~2.0 · 열흘 넘으면 버림 · 받은 것 저장(못 받은 날) · 수확물 상세 「올해 시세」 | ✅ | **236** — 실연결은 사용자 키 · `main` 병합 대기 |
+| 정기 지출 추가 — 수경 전기료 · 농지 사용료 | ✅ | **236** |
 | **판매처별 시세 하락**(판 수 · 지점마다 · 반감기 6h · 기준 마릿수 15/10/7/5 · −3%/마리 최대 −40% · 활어·대물 ½ · 위판 무관) + 가게 수요 ±8% + 화살표 5단계(인벤·판매 칸 우상단) | ✅ | **196** — [196](../03-WORKLOG/2026-10-02-196-landing-drop-cooler-swap-market.md) |
 | **낚시점 전용 상점**(루어 판매) | ⬜ | 그리드 오버플로 회피로 보류 중 |
 | 식당 납품·경영 | ⬜ | Phase 6 잔여 |
@@ -71,6 +75,8 @@
 - **⚠ 정기 지출이 재화 곡선을 아래로 옮긴다**(171차) — 전 자격 보유 시 반년마다 187,000원.
   153차가 올린 것과 방향이 반대라 합산 결과는 실플레이 확인 대상.
 - 낚시점 상점 · 경영(납품/가격 협상) · 신규 해양 API 5종.
+- **KAMIS 첫 실행 확인**(236) — 사용자가 키 · 비밀값 · `main` 병합을 마친 뒤 Actions 수동 실행. 요약의 「열 찾기」가 `label`인지,
+  매핑했는데 빠진 품목명(쑥갓 · 부추 · 가지 · 콩나물 · 숙주)이 있는지 본다.
 - 가게 규모 덮어쓰기 표(상호에 신호가 없는 대형 낚시점). 되팔기는 224차에 장비만 중고 칸으로 들어갔다(같은 날 되사기 · 재고 보탬은 하지 않음).
 
 ## 6. 함정·불변조건
@@ -88,9 +94,10 @@
 1. **매칭 테이블은 부분 일치 + 선착순** — `MAFRA_ITEM_TO_SPECIES` / `KOSIS_SPECIES_MATCH`는 **긴 이름을 먼저** 둔다(`말쥐치⊃쥐치`, `강도다리⊃도다리`, `잿방어⊃방어`, `한치` 등). 순서가 틀리면 조용히 오매칭.
 2. **API 키는 `.env`(`VITE_*`)** — 소스 하드코딩 금지. 프로덕션 번들엔 인라인되므로 노출을 감안한다.
 3. **프로덕션 배포에는 vite 프록시가 없다** — HTTP 전용(MAFRA·NMPNT)은 서버 프록시 필요. gh-pages에서는 Mock 폴백.
-4. **포화·가게 수요는 상점 매입에만**(196차) — `getSellPrice`는 손대지 않는다(위판 기준가·상세보기·손질 가치가 같이 쓴다).
+4. **포화·가게 수요는 상점 매입에만**(196차) — 값 함수는 둘이다: `getSellPrice` = 상점 매입가(시세 × 0.6 · 상점 · 상세보기),
+   `getMarketValue` = 시세 그대로(위판 기준가 · 손질 가치 승계). 위판 · 손질에 `getSellPrice`를 쓰면 할인이 두 번 걸린다.
    상점 판매가는 `MarketStore.quote(item, base)`, 팔린 뒤 `recordSale`. 상점을 열 때 `MarketStore.open(branch)`, 닫을 때 `close()`.
-   시세 이중 적용 금지(§3 주석). **위판 기준가도 같다** — `getSellPrice`(경락 캐시 반영)를
+   시세 이중 적용 금지(§3 주석). **위판 기준가도 같다** — `getMarketValue`(경락 캐시 반영)를
    kg으로 환산해 쓰고 `getMarketPriceFactor`를 다시 곱하지 않는다.
 5. **경매는 계약이 두 벌이고 방향이 반대다**(147차) — `AuctionEngine` = 플레이어가 **사는 쪽**
    (`calcPlayerAuctionTotal` = 총 *비용*) / `ConsignmentAuction` = 플레이어가 **파는 쪽**.
@@ -104,4 +111,6 @@
    무게식은 `W = weightFactor × L³` 단일이므로 **기준(전장/외투장)과 wf를 반드시 한 쌍으로** 정한다 —
    87차 dev 지급처럼 라벨(외투장)과 wf(전장 어림)가 엇갈리면 ×9 과소/+46% 과대가 조용히 생긴다.
 - **가게에서 판 먹을거리는 되사지 않는다**(224) — 판정은 id(`SHOP_ITEM_IDS` — 번들 구성품 · 포장 안의 물건까지)와 `catchMethod: 'bought'`.
+- **정적 배포의 브라우저는 KAMIS를 직접 부를 수 없다**(CORS · 236) — 값은 액션이 하루 한 번 받아 둔 파일(`data-snapshots/kamis/produce.json`)로만 들어온다.
+  값 열(dpr1~7)은 **열 제목으로 찾는다**(번호 순서는 확인 전 추정 — 스냅샷 `columns.mode`). 데이터 브랜치가 생기기 전 이 주소의 404는 정상이다.
   새 먹을거리를 가게에 올리면 자동으로 막힌다. 시드에만 있는 먹을거리(주먹밥 등)는 `subCategory`가 어획물 · 손질 · 부산물 · 요리가 아니라 막힌다.

@@ -1,0 +1,92 @@
+# 농산물 시세 스냅샷 — KAMIS(농산물유통정보) 소매가를 하루 한 번 받아 `data-snapshots` 브랜치에 JSON 으로 올린다.
+#
+# 왜: 정적 배포(gh-pages)에서는 브라우저가 KAMIS 를 직접 부를 수 없다(CORS 차단).
+#     게임은 이 브랜치의 kamis/produce.json 을 raw.githubusercontent.com 으로 읽는다.
+#     못 읽으면(아직 첫 실행 전 · 망 문제) 내장 시세 곡선과 주간 출렁임으로 돌아간다 — 오류가 아니다.
+#
+# 한 번만 해 둘 것:
+#   ① KAMIS 누리집(www.kamis.or.kr) → 고객센터 → Open-API → 이용 신청 → 인증키(p_cert_key)와 요청자 ID(p_cert_id)
+#   ② 저장소 Settings → Secrets and variables → Actions → New repository secret
+#      이름 KAMIS_CERT_KEY = 인증키, KAMIS_CERT_ID = 요청자 ID
+#   ③ 이 파일이 기본 브랜치(main)에 있어야 예약 실행이 돈다(GitHub 규칙).
+#      들어간 뒤 Actions → 「농산물 시세 스냅샷」 → Run workflow 로 바로 한 번 돌려 볼 수 있다.
+name: 농산물 시세 스냅샷
+
+on:
+  schedule:
+    # 매일 19:23 KST(10:23 UTC) — 그날 조사값이 올라온 뒤. 정각 근처는 예약 실행이 밀리기 쉬워 피한다
+    - cron: '23 10 * * *'
+  workflow_dispatch:
+    inputs:
+      regday:
+        description: 조사일 YYYY-MM-DD (비우면 오늘부터 거꾸로 값이 찬 날을 찾는다)
+        required: false
+        default: ''
+
+# data-snapshots 브랜치에 커밋하려면 쓰기 권한이 필요하다
+permissions:
+  contents: write
+
+concurrency:
+  group: kamis-snapshot
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    name: 받기 · 데이터 브랜치 반영
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: 스크립트 받기
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: tools
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # 받은 값이 모자란 날(주말 · 공휴일)이면 하루씩 앞으로 가며 찾는다. 끝내 없으면 실패로 끝나고
+      # 지난 스냅샷이 그대로 남는다(게임은 조사일이 열흘을 넘긴 스냅샷은 쓰지 않는다).
+      - name: KAMIS 소매가 받기
+        id: fetch
+        env:
+          KAMIS_CERT_KEY: ${{ secrets.KAMIS_CERT_KEY }}
+          KAMIS_CERT_ID: ${{ secrets.KAMIS_CERT_ID }}
+          REGDAY: ${{ inputs.regday }}
+        run: |
+          set -euo pipefail
+          args=(--out "$RUNNER_TEMP/kamis/produce.json")
+          if [ -n "${REGDAY:-}" ]; then args+=(--regday "$REGDAY"); fi
+          node tools/kamis_snapshot.mjs "${args[@]}"
+
+      - name: data-snapshots 브랜치에 올리기
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REGDAY: ${{ steps.fetch.outputs.regday }}
+        run: |
+          set -euo pipefail
+          dir="$RUNNER_TEMP/data"
+          git init -q "$dir"
+          cd "$dir"
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          if git fetch -q --depth=1 origin data-snapshots 2>/dev/null; then
+            git checkout -q -b data-snapshots FETCH_HEAD
+          else
+            git checkout -q --orphan data-snapshots
+          fi
+          mkdir -p kamis
+          cp "$RUNNER_TEMP/kamis/produce.json" kamis/produce.json
+          printf '%s\n' \
+            '# 데이터 스냅샷' '' \
+            '워크플로 「농산물 시세 스냅샷」(.github/workflows/kamis-snapshot.yml)이 하루 한 번 쓴다. 손으로 고치지 않는다.' '' \
+            '- `kamis/produce.json` — KAMIS 일별 부류별 소매가격(전국 평균) 하루치. 출처: 한국농수산식품유통공사(aT) KAMIS' \
+            > README.md
+          git add -A
+          if git diff --cached --quiet; then
+            echo "바뀐 것 없음 — 커밋하지 않는다"
+            exit 0
+          fi
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+            commit -q -m "농산물 시세 스냅샷 ${REGDAY}"
+          git push -q origin HEAD:data-snapshots

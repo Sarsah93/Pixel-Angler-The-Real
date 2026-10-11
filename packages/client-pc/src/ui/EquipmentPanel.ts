@@ -32,6 +32,7 @@ import { ensureCharSheet, charFrameName } from './CharacterSprite.js';
 import { characterLook } from '../data/EquipOutfit.js';
 import { CHAR_CELL, CHAR_FOOT_Y } from '@tra/core';
 import { maybeStartTour, type TourOptions } from './GuideTour.js';
+import { StoryStore } from '../store/StoryStore.js';
 
 // ── 지오메트리 ──────────────────────────────────────
 const S = 52;              // 소켓 한 변 (퀵슬롯과 동급)
@@ -134,6 +135,7 @@ export class EquipmentPanel extends DraggablePanel {
   constructor(scene: Phaser.Scene, x: number, y: number, onClose: () => void, onChanged: () => void) {
     super(scene, { x, y, width: PANEL_W, height: PANEL_H, title: '장비', onClose, depth: 810 });
     this.onChanged = onChanged;
+    StoryStore.emitActionOrigin('equip-open');   // 235차 — 「부족한 장비를 대조한다」(M4-04 안전 검사)
 
     // 188차 — 타이틀바의 조작 안내 글(「인벤토리에서 드래그 = 장착 · 우클릭 = 해제」)은 지웠다.
     //   기능을 글로 적지 않는다 — 처음 열 때 체험 가이드가 직접 해 보게 한다.
