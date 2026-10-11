@@ -18,6 +18,11 @@ const gear = (id: string, name: string, sub: string, basePrice: number, extra: P
 export const QUEST_REWARD_ITEMS: InvItemTemplate[] = [
   { id: 'quest_ice_crate', name: '정옥선의 심부름용 얼음 상자', icon: '', iconTexture: 'px:it_ice_crate', category: 'quest', subCategory: '심부름',
     basePrice: 0, equippable: false, bound: true },
+  // 235차 — 심부름 지점에서 받아 드는 물건(N19-1 · N19-3 받침 / N19-2 반찬통). 내려놓으면 가방에서 빠진다
+  { id: 'qd_bamboo_tray', name: '탁만수의 대나무 얼음 받침', icon: '', iconTexture: 'px:it_bamboo_tray', category: 'quest', subCategory: '심부름',
+    basePrice: 0, equippable: false, bound: true },
+  { id: 'qd_food_box', name: '정옥선의 반찬통', icon: '', iconTexture: 'px:it_food_box', category: 'quest', subCategory: '심부름',
+    basePrice: 0, equippable: false, bound: true },
   // 188차 — 프롤로그(M1-01): 아버지의 낚시 상자에서 나온 가족사진. 뒷면(상세보기)에 「영금정」
   { id: 'quest_family_photo', name: '가족사진', icon: '', iconTexture: 'px:it_photo', category: 'quest', subCategory: '이야기 물건',
     basePrice: 0, equippable: false, bound: true },

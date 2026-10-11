@@ -88,6 +88,15 @@ const { chromium } = resolvePlaywright();
 - **`update()`가 매 프레임 `nearWater`를 다시 계산한다**(155차) — 캐스팅 게이트를 하네스로 두드릴 때는 `s.nearWater = true`를
   **호출 직전마다** 다시 넣는다(한 번 넣고 두 번째 `tryStartCharge`를 부르면 `charging false`).
 - 필드 화살표·추적기 검증은 `__STORY.setTracked(id)` → `s.updateQuestGuide(500)` → `s.hud.trackerC.list`(Text)·`s.questArrowG.visible`.
+- ⚠ **하네스의 `import('/src/store/…ts')`가 게임 전역을 갈아 끼울 수 있다**(235차 실측) — HMR로 게임 쪽 URL에 `?t=`가 붙은 상태면
+  하네스 import가 **모듈을 새로 평가**하고, 모듈 끝의 `globalThis.__INV = InventoryStore`가 **새 인스턴스로 덮어쓴다**.
+  이후 하네스(`__INV`)는 빈/시드 가방을, 게임 창은 원래 가방을 본다 — 「지급이 사라진다」로 보인다. `X === __INV` 동일성 검사 자체가 이 함정을 부른다.
+  규칙: ① 소스를 고친 뒤 하네스 전 dev 서버 재시작 ② 시작할 때 `__INV0 = __INV`를 잡아 두고 끝에 `__INV === __INV0`만 확인(`r235lineage.cjs`)
+  ③ 스토어는 import하지 말고 전역(`__INV` · `__STORY` · `__FARM`)만 쓴다.
+- **일과가 있는 NPC(214차 — 정옥선 시장 03~19시 등)는 밤에 필드에 없다** — 낮 장면을 검증하려면 `addInitScript`에서 `Date`를 하위 클래스로 바꿔
+  시계를 옮긴다(`new Date()` · `Date.now()` 둘 다 — `r235de.cjs`). `Date.now`만 바꾸면 KST 시각 계산(`new Date()`)이 어긋난다.
+- **두 사람 하네스의 시계 검증**: B 탭 `Date.now`를 +7초 어긋나게 하고 `__MP.sharedNow() - Date.now()`가 서버 기준으로 맞는지 본다(`r235mp.cjs`).
+  헤드리스는 왕복이 330~1,250ms라 두 탭의 공용 시각 차가 수백 ms까지 난다(측정 한계 — 기준을 300ms 아래로 잡지 말 것).
 - **모듈 데이터 객체의 동일성(===) 비교 금지** (98차 실측) — 하네스가 import한 레지스트리와 게임/모듈이
   든 레지스트리는 인스턴스가 갈라질 수 있다(서버 재시작 직후에도 재현). 스프라이트 비교는
   **값 시그니처**(`w x h : rows[0]` 등)로 할 것.

@@ -1042,7 +1042,7 @@ export class ButcheryPanel extends DraggablePanel {
         //  (원물가 분할 · 가치 상승은 회뜨기/접시에서 실현. 097차)
         const mainYield = def.id === 'ceph_mantle_fillet' || def.id === 'octo_whole';
         const price = mainYield
-          ? Math.max(def.price, Math.round(Math.max(1000, InventoryStore.getSellPrice(this.source)) * 0.75))
+          ? Math.max(def.price, Math.round(Math.max(1000, InventoryStore.getMarketValue(this.source)) * 0.75))
           : def.price;
         rows.push({
           key: def.id, qty: def.id === 'ceph_gill' ? 2 : 1,
@@ -4165,7 +4165,8 @@ export class ButcheryPanel extends DraggablePanel {
     // 필렛 가격 — **원물에 적용되던 판매가를 그대로 필렛 수로 분할** (사용자 가격 개편 2026-08-03:
     //  "필렛 덩어리 합가격 = 원물 가격" — 구 kg당 횟값×수율 방식은 350g 필렛이 헐값이 됐다.
     //  가치 상승은 사시미 접시 완성(모듬/단품 가격표)에서 발생).
-    const totalValue = Math.max(1000, InventoryStore.getSellPrice(this.source));
+    // 원물 시세(`getMarketValue`)를 나눈다 — 상점 매입 할인은 필렛을 팔 때 한 번만 걸린다(여기서 또 걸면 이중 할인)
+    const totalValue = Math.max(1000, InventoryStore.getMarketValue(this.source));
     const perFillet = Math.max(500, Math.round(totalValue / yieldRes.filletCount));
 
     // 손질 스킬 XP 지급 (정확도·등급 비례)
