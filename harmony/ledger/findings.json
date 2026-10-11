@@ -14,10 +14,10 @@
     "packages/client-pc/src/scenes/FieldScene.ts:1471"
    ],
    "why": "launch('FishingScene')가 키를 찾지 못한다. 지금은 dev 빌드 전용 레거시 필드에서만 닿는다. 씬 20개 중 키 선언 19개.",
-   "status": "열림",
+   "status": "해소",
    "first_seen": "2026-10-08",
-   "last_seen": "2026-10-08",
-   "resolved_at": null,
+   "last_seen": "2026-10-12",
+   "resolved_at": "2026-10-12",
    "rule": "AGENTS §8-6 (씬 키 = 파일명)"
   },
   {
@@ -33,10 +33,10 @@
     "packages/server/src/types/SocketEvents.ts:16"
    ],
    "why": "클라이언트는 socket.io를 쓰지 않는다(import 0). 실제 멀티는 /mp REST인데 미사용 표면이 origin 전체 허용으로 남아 있다.",
-   "status": "열림",
+   "status": "해소",
    "first_seen": "2026-10-08",
-   "last_seen": "2026-10-08",
-   "resolved_at": null
+   "last_seen": "2026-10-12",
+   "resolved_at": "2026-10-12"
   },
   {
    "id": "F-0003",
@@ -1459,10 +1459,10 @@
     "docs/wiki/02-SYSTEMS/multiplayer.md:198"
    ],
    "why": "192차 이후 함정은 시스템 페이지 §6에만 쌓인다(slotShortfall · 거래 적용 id · 데이터 없는 launch 등). 멀티 · 퀘스트를 받을 스킬이 없다.",
-   "status": "열림",
+   "status": "해소",
    "first_seen": "2026-10-08",
-   "last_seen": "2026-10-08",
-   "resolved_at": null
+   "last_seen": "2026-10-12",
+   "resolved_at": "2026-10-12"
   },
   {
    "id": "F-0084",

@@ -193,8 +193,8 @@
    "title": "첫 점검 대기열 8묶음 — 워크로그 링크 21건 · 159차 색인 · 스킬 참조 · .env.example · REST 표 · addCoins 유한수 방어",
    "pr": 2,
    "branch": "harmony/2026-10-08-fixes",
-   "status": "열림",
-   "decided_at": null,
+   "status": "병합",
+   "decided_at": "2026-10-11",
    "findings": [
     "F-0067",
     "F-0069",
@@ -217,8 +217,8 @@
    "title": "거래 제안 정제(서버 · 받는 쪽) + 적용 통지 재전송 + 서버 상한 · CORS 허용 목록 · 빈도 제한 · 미사용 Socket.IO 삭제 · dotenv 순서 + 공유 소비 키 r:(235차 달아나는 생물) 허용",
    "pr": 3,
    "branch": "harmony/2026-10-08-trade-server",
-   "status": "열림",
-   "decided_at": null,
+   "status": "병합",
+   "decided_at": "2026-10-11",
    "findings": [
     "F-0043",
     "F-0044",
@@ -236,8 +236,8 @@
    "title": "레거시 FieldScene 스택 삭제(씬 9 · 전용 UI · 고아 모듈 — 72파일 −8,992줄) + AGENTS §5 · §6 참고 절을 .agents/REFERENCE.md로 분리",
    "pr": 4,
    "branch": "harmony/2026-10-08-legacy-removal",
-   "status": "열림",
-   "decided_at": null,
+   "status": "병합",
+   "decided_at": "2026-10-11",
    "findings": [
     "F-0001",
     "F-0013"
@@ -271,8 +271,8 @@
    "title": "단속 벌금 — 위반 종류별 기본 금액 · 가진 돈 비율 · 한도, 통발 단속도 못 내면 파산 + 단속 평판 감소(바다 −2 · 항구 −5 · 바다 평판이 낮을수록 적발 배수 최대 2배)",
    "pr": 6,
    "branch": "harmony/2026-10-08-fines",
-   "status": "열림",
-   "decided_at": null,
+   "status": "병합",
+   "decided_at": "2026-10-11",
    "findings": [
     "F-0047",
     "F-0087"
@@ -315,8 +315,8 @@
    "title": "아이템 · 해산물 그림 166장(코드로 그림) + 날씨 배지 아이콘 10종 + 아이템 id 기반 그림 해석",
    "pr": 9,
    "branch": "harmony/2026-10-08-item-art",
-   "status": "열림",
-   "decided_at": null,
+   "status": "병합",
+   "decided_at": "2026-10-11",
    "findings": [
     "F-0025",
     "F-0026",
