@@ -1,10 +1,10 @@
 /**
  * @file TrapFieldSystem.ts
- * @description 인-맵 통발 필드 시스템 (121차) — 설치(아이템 소모·미끼 소모·실측 수심) · 부표 렌더 · 수거([E]) · 분실 · 반환.
+ * @description 인-맵 통발 필드 시스템 (121차) — 설치(아이템 소모·미끼 소모·실측 수심) · 부표 렌더 · 수거([F]) · 분실 · 반환.
  *
  * 레거시 TrapScene(별도 씬·추상 지도)을 대체한다. 통발은 **아이템으로 소유**(직판장 구매) → 물가에서 T 또는
  * 인벤 '통발 놓기' → 던질 수 있는 물 타일(플레이어 4타일 이내 · 육지 거리 ≤ 3타일)에 설치 → wall-clock 침지
- * (S14 §6 불변조건 — 게임 시계가 실시간) → [E] 수거. 수거 시 분실 롤(조류·침지·내구도 — core `rollTrapLoss`)
+ * (S14 §6 불변조건 — 게임 시계가 실시간) → [F] 수거. 수거 시 분실 롤(조류·침지·내구도 — core `rollTrapLoss`)
  * 1회, 살아 있으면 포획물을 쿨러/인벤으로 보내고 통발 아이템을 되돌려 준다(내구도 0이면 파손).
  * 산란기 도루묵(10~12월) 포획은 강원 조례 위반 → 적발 롤(채집과 같은 규칙).
  */
@@ -22,7 +22,7 @@ import { GameState } from '../../store/GameState.js';
 import { MultiplayerClient } from '../../net/MultiplayerClient.js';
 import { StoryStore } from '../../store/StoryStore.js';
 import { InventoryStore, type InvItem } from '../../store/InventoryStore.js';
-import { CoolerStore } from '../../store/CoolerStore.js';
+import { CoolerStore, COOLER_CAPACITY } from '../../store/CoolerStore.js';
 import { DiscoveryStore } from '../../store/DiscoveryStore.js';
 import { resolveFishTexture } from '../../data/FishTextures.js';
 import { forageTexKey } from './ForageSystem.js';
@@ -462,7 +462,7 @@ export class TrapFieldSystem {
     for (let i = all.length - 1; i >= 0; i--) {
       if (all[i]?.speciesId === speciesId) {
         // 인덱스 = 슬롯 순서가 아니므로 슬롯을 순회해 제거
-        for (let k = 0; k < 9; k++) { const f = CoolerStore.get(k); if (f && f.speciesId === speciesId) { CoolerStore.removeAt(k); break; } }
+        for (let k = 0; k < COOLER_CAPACITY; k++) { const f = CoolerStore.get(k); if (f && f.speciesId === speciesId) { CoolerStore.removeAt(k); break; } }
       }
     }
     for (const i of InventoryStore.items.slice()) if (i.speciesId === speciesId && i.subCategory === '어획물') InventoryStore.removeQty(i.id, i.qty);
