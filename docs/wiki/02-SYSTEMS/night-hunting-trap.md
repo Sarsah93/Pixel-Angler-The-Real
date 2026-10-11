@@ -69,9 +69,9 @@
 | 물때 시간창 · 물살 | ✅ 해루질 = 간조 2시간 전 ~ 1시간 뒤 스팟·성공 가산 + 들물 경고(동해 제외) · 수위 = 물때 흐름 기반 · 통발 = 침지 평균 물살 0.85~1.15 · 동해 감쇠 | 205 — [워크로그](../03-WORKLOG/2026-10-04-205-tide-species-genre.md) |
 | F4 접근 확장 — wade | ✅ 장화 · 완만한 물가 한 칸 · 1m · 물 생물은 그곳만 (dive는 ⬜) | 224 — [워크로그](../03-WORKLOG/2026-10-06-224-foraging-realism-bait-economy.md) |
 | 현실화 P1 — 갈래 · 놀이 5종 · 놓침 = 사라짐 · 달아나기 · 다침(장갑) · 갯것 미끼 · 웹 조사 반영 | ✅ — 225 피드백: 갯강구 > 쫄장게 난이도 · 성게 맨손 75% · 떼기 판 위에서 본 껍데기 그림 | 224 · 225 |
-| 법정 수치(금어기 · 금지체장 · 금지체중) 정본 대조 | ✅ 날짜 단위 금어기(`ClosedSeason`) · 제주 덮어쓰기(`resolveLegal`) · 대문어 600g · 벌금은 229차에 정액 1천만원 | 227 — [워크로그](../03-WORKLOG/2026-10-06-227-legal-closed-season-dates.md) |
+| 법정 수치(금어기 · 금지체장 · 금지체중) 정본 대조 | ✅ 날짜 단위 금어기(`ClosedSeason`) · 제주 덮어쓰기(`resolveLegal`) · 대문어 600g · 벌금은 위반 종류별 「기본 금액 · 가진 돈 비율 · 한도」(`TUNING.law.fines`) | 227 — [워크로그](../03-WORKLOG/2026-10-06-227-legal-closed-season-dates.md) |
 | 패류독소 봄철 채취 금지 → 식중독 | ✅ 해역별 봄 발령(`ShellfishToxin`) · 아이템 `toxin` 보라 물방울 · 익혀도 식중독 60% · 냄비 · 요리 승계 · 라디오 · 표지판 · 채널 고지 | 229 — [워크로그](../03-WORKLOG/2026-10-07-229-law-feedback-krill-economy-board-art.md) |
-| 벌금 1천만원 · 파산 엔딩 · 어촌계 표지판 · 게 암수 · 외포란 자동 방생 | ✅ `rollEnforcement` 정액 · `beginBankruptcy`(혼잣말 → 암전 → 처음부터) · 보호 어장마다 표지판([F] 읽기 · 첫 읽기 가이드 · `sign.farm_read`) · `ForageHarvest.sex/berried` | 229 |
+| 벌금 · 파산 엔딩 · 어촌계 표지판 · 게 암수 · 외포란 자동 방생 | ✅ `enforcementFineWon`(조례 위반 = 기본 100만 · 가진 돈 30% · 한도 1천만 — mockup) · `beginBankruptcy`(혼잣말 → 암전 → 처음부터) · 보호 어장마다 표지판([F] 읽기 · 첫 읽기 가이드 · `sign.farm_read`) · `ForageHarvest.sex/berried` | 229 |
 | 놀이 판 그림 고급화 · 그림 가이드 | ✅ 구운 바닥 4종(`ForageBoardArt`) · 손 도구 24x24 도트 5종 · 1자형 혼무시 · 이김 연출 · `TourStep.picture` | 229 |
 | 단서 보기(숨구멍 · 배설 둔덕) | ⬜ 기획 §2 A — 동해엔 갯벌이 거의 없어 후순위 | — |
 
@@ -124,8 +124,14 @@
    판정은 `closedFor` / `resolveLegal`만 쓴다 — `closedSeasonMonths`를 직접 읽으면 날짜 · 지역 규정이 빠진다(비만도 계산만 예외).
 20. **그림 원본은 정수배로만 줄인다**(228) — `save_hires`가 긴 변 720을 넘으면 BOX 정수배 축소. 226차 그림(해삼 · 보라성게)은
    `max_px=None`으로 원본 크기를 지킨다 — 도구를 다시 돌릴 때 이 예외를 지우면 그 둘의 아이콘이 바뀐다.
-21. **벌금은 정액이고 호출부가 파산을 가른다**(229) — `rollEnforcement`는 돈을 깎지 않는다. 적발 경로를 새로 만들면
-   `coins < fineWon` → `host.bankrupt()` 분기를 같이 둬야 한다(안 두면 재화가 음수로 내려간다).
+21. **벌금액은 core가 정하고 호출부가 파산을 가른다**(229 · 하모니 2026-10-08) — `rollEnforcement`는 돈을 깎지 않는다.
+   금액은 `enforcementFineWon` = min(한도, max(기본 금액, 가진 돈 × 비율))이고 위반 종류(`ViolationKind`)마다 줄이 다르다.
+   적발 경로를 새로 만들면 `GameState.addCoins(-fineWon, false, 'fine')`가 false일 때 `host.bankrupt()`로 잇는다
+   (채집 · 통발이 같은 꼴이다 — 반환값을 버리면 벌금이 안 빠진 채 「벌금 N원」만 찍힌다).
+   `sizeSeason` · `unlicensed` 줄은 표만 있고 **적발 지점이 아직 없다**(금어기 · 금지체장은 잡는 즉시 자동 방생).
+   벌금을 낸 뒤에는 `GameState.applyEnforcementRep()`으로 평판을 깎는다(바다 평판 −2 · 일하는 항구의 신뢰 −5).
+   바다 평판이 0 아래면 `enforcementRepeatMult`가 적발 확률을 올린다(바닥에서 2배) — 적발 롤의 배수에 곱해 넘긴다.
+   통발 단속에는 정기 지출 연체 배수(`upkeepPenalty().enforceMult`)가 아직 붙지 않는다(채집만).
 22. **독 표식은 아이템 필드 하나로 흐른다**(229) — `toxin`이 쿨러(`CoolerFish.toxin`) · 냄비(`DeployedStove.toxin`) · 완성 요리까지 승계된다.
    새 보관 · 변환 경로(수조 · 건조 등)를 만들면 그 필드를 잇지 않는 한 독이 사라진다.
 23. **언 크릴은 두 군데서 막는다**(229) — `InventoryStore.unpack`(포장 뜯기)과 `UtilizationPanel.finishChumDrag`(밑밥 투입).
