@@ -178,8 +178,8 @@ export const MP_TAKEN_VAL_MAX = 160;
 export type MpPlaceItem = Omit<MpPlacedTrap, 'ownerId' | 'ownerName'>;
 /** 234차 — 한 사람이 세계에 둘 수 있는 설치물 상한(통발 · 화구 · 거치대 합) */
 export const MP_PLACED_MAX_PER_OWNER = 64;
-/** 공유 소비 키로 받는 접두사 — 채집 자리(`f:`) · 과증식 개체(`n:`) · 세션 날씨 카드(`w:`). 새 종류를 만들면 여기에 더한다 */
-export const MP_TAKEN_KEY_PREFIXES: readonly string[] = ['f:', 'n:', 'w:'];
+/** 공유 소비 키로 받는 접두사 — 채집 자리(`f:`) · 과증식 개체(`n:`) · 세션 날씨 카드(`w:`) · 달아나는 생물(`r:` — 235차). 새 종류를 만들면 여기에 더한다 */
+export const MP_TAKEN_KEY_PREFIXES: readonly string[] = ['f:', 'n:', 'w:', 'r:'];
 /** 한 사람이 들고 있을 수 있는 소비 줄 상한 — 넘으면 **그 사람의** 오래된 줄부터 버린다(남의 기록을 밀어내지 못하게) */
 export const MP_TAKEN_MAX_PER_OWNER = 1_500;
 /** 서버 한 대가 들고 있을 세션 수 상한(저장본에서 되살린 것 포함) */
