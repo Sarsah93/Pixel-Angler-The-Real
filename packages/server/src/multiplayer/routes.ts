@@ -5,35 +5,44 @@
  * 로비(세션 열기·참가·이름 중복 검사)와 위치 알림을 **평범한 HTTP 요청**으로 처리한다.
  * 소켓을 쓰지 않는 이유: 로비는 전부 "묻고 답하기"라 요청/응답이면 충분하고,
  * 위치 공유도 1초 주기 폴링이면 이름표를 띄우기에 모자라지 않는다.
- * (부드러운 실시간 이동 보간이 필요해지면 Socket.IO 경로로 올린다 — 그때 이 계약을 그대로 쓴다.)
+ * (부드러운 실시간 이동 보간이 필요해지면 소켓 경로를 새로 올린다 — 그때 이 계약을 그대로 쓴다.)
  */
 
 import { Router } from 'express';
 import { SessionRegistry } from './SessionRegistry.js';
+import { rateLimit } from '../http/guards.js';
 import type { MpPeer, MpActivity, MpPlaceItem, MpProfile, MpTradeItem } from '@tra/core';
 
 export const sessionRegistry = new SessionRegistry();
 
 export const multiplayerRouter: Router = Router();
 
-multiplayerRouter.post('/session', (_req, res) => {
-  res.json({ ok: true, code: sessionRegistry.create() });
+// 인증 없이 열려 있는 경로(세션 열기 · 조회 · 이름 확인 · 참가)에는 주소별 빈도 제한을 건다.
+// 그 밖의 경로는 join 때 받은 비밀값으로 본인을 확인하므로 걸지 않는다(위치 알림은 1초마다 온다).
+const limitCreate = rateLimit({ windowMs: 10 * 60_000, max: 20 });
+const limitLobby = rateLimit({ windowMs: 60_000, max: 120 });
+
+multiplayerRouter.post('/session', limitCreate, (_req, res) => {
+  const code = sessionRegistry.create();
+  if (!code) { res.json({ ok: false, reasonKo: '지금은 세션을 더 열 수 없습니다 — 잠시 뒤 다시 시도하세요.' }); return; }
+  res.json({ ok: true, code });
 });
 
-multiplayerRouter.get('/session/:code', (req, res) => {
-  const info = sessionRegistry.info(req.params.code);
+multiplayerRouter.get('/session/:code', limitLobby, (req, res) => {
+  const code = String(req.params.code);
+  const info = sessionRegistry.info(code);
   if (!info) { res.json({ ok: false, reasonKo: '세션을 찾을 수 없습니다.' }); return; }
-  res.json({ ok: true, code: req.params.code.toUpperCase(), playerCount: info.playerCount, names: info.names });
+  res.json({ ok: true, code: code.toUpperCase(), playerCount: info.playerCount, names: info.names });
 });
 
-multiplayerRouter.post('/session/:code/name-check', (req, res) => {
+multiplayerRouter.post('/session/:code/name-check', limitLobby, (req, res) => {
   const b = req.body as { name?: string; userId?: string };
-  res.json(sessionRegistry.checkName(req.params.code, String(b.name ?? ''), b.userId));
+  res.json(sessionRegistry.checkName(String(req.params.code), String(b.name ?? ''), b.userId));
 });
 
-multiplayerRouter.post('/session/:code/join', (req, res) => {
+multiplayerRouter.post('/session/:code/join', limitLobby, (req, res) => {
   const b = req.body as { name?: string; userId?: string; look?: MpPeer['look'] };
-  res.json(sessionRegistry.join(req.params.code, String(b.name ?? ''), String(b.userId ?? ''), b.look));
+  res.json(sessionRegistry.join(String(req.params.code), String(b.name ?? ''), String(b.userId ?? ''), b.look));
 });
 
 multiplayerRouter.post('/presence', (req, res) => {
