@@ -53,7 +53,7 @@
 | S12 | [세이브·슬롯](02-SYSTEMS/inventory-equipment.md#세이브) | 🟢 | `GameState` | 저장은 집 침대 전용 |
 | S13 | [튜닝·dev 도구](02-SYSTEMS/ui-framework.md#dev-도구) | 🟢 | `config/tuning.ts` · `DevTuningPanel`(F8) | fight/rod/yield 테이블 소비 전환 |
 | S14 | [해루질·통발](02-SYSTEMS/night-hunting-trap.md) | 🟢 | `ForagingEngine` · `ForageMinigame` · `ForageSystem` · `ForageGamePanel` · `TrapFieldSystem` · `extract_fishfarms.py` | **121차 인-맵 1차 완료**(채집 스팟·어장 실폴리곤·강원 조례·통발 아이템) · **224차 현실화 1차**(얕은 물·장화·손놀림 놀이 5종·놓치면 사라짐·갯것 미끼) · **225차 피드백**(갯강구 난이도·성게 75%·떼기 그림·사진 도트) — 야간 실검증·실사 스프라이트·dive 잔여 · **122차 상호작용 F 키 + 스킬 배율 훅** · ⚠ **"D2"는 이미 끝난 라벨**(147차 확인) · 어획물 sink는 **147차 위판**으로 해소 |
-| S15 | 요리(불요리)·CookScene | ⬜ | `CookScene` · `RecipeDatabase` | 화구·용기 시스템부터 |
+| S15 | ~~요리(불요리)·CookScene~~ | — | (레거시 `CookScene` 삭제 — 불요리는 S4) | — |
 | S16 | [제작](02-SYSTEMS/progression.md) | 🔶 | `CraftingDatabase` · `CraftRules` · `CraftingStore`(손 · 작업대 대기열) · `CraftBoard` · `AdvancedCraftPanel` · `CraftResultDialog` | 129차 구현 · **222차 시간 · 대기열 · 오프라인 · 취소 · 품질** · **223차 도면 얻기 · 분해 · 40종** — 재료 체인 · 광질 · 작업대 업그레이드 잔여 |
 | S17 | 퀘스트·스토리(레거시) | ⬜ | `QuestDatabase` | 레거시 16퀘 — 면허 요구조건 참조로 보존. 본편은 **S22** |
 | S18 | 멀티플레이(구 항목) | — | | **S24로 이관**(143차) |
