@@ -7,7 +7,7 @@
  *
  *   상자 열기 → 대 손에 들기(I) → 릴 달기(E) → 사진 뒷면(상세보기) → 일지(J) → 냉동고 오징어 →
  *   침대 저장 → 집 나서기 → 우물 → 상태 창(S) → 지도(M) → 막차(속초 도착) →
- *   직판장에서 기본 채비 하나씩 사기(원줄·바늘·봉돌·찌·미끼) → 오징어 팔기
+ *   직판장에서 원투 채비 하나씩 사기(원줄·목줄·봉돌·바늘·미끼 — 236차, 구: 찌 채비) → 오징어 팔기
  *
  * 설계:
  *  - 각 단계는 **행동 플래그**(`prologue.<key>`) 또는 **현재 상태**(대·릴 착용)로 판정한다.
@@ -21,7 +21,7 @@
  *    ② 그래도 사라졌으면 `syncPrologue()`가 되살린다 — 냉장고에 있으면 꺼내 오고, 없으면 다시 준다(`repairPrologue`).
  */
 
-import { getStoryQuest } from '@tra/core';
+import { getStoryQuest, ROD_SPEC_BY_ID } from '@tra/core';
 import { GameState } from './GameState.js';
 import { StoryStore } from './StoryStore.js';
 import { InventoryStore, FATHER_BOX_ITEMS, type InvItem } from './InventoryStore.js';
@@ -34,9 +34,24 @@ export type PrologueKey =
   | 'box' | 'rod' | 'reel' | 'photo' | 'journal' | 'squid' | 'save' | 'leave'
   | 'well' | 'status' | 'map' | 'arrive' | 'buy' | 'sell';
 
-/** 기본 채비 다섯 갈래 — 하나씩 사 보게 한다 */
-export const PROLOGUE_BUY_KINDS = ['line', 'hook', 'sinker', 'float', 'bait'] as const;
+/**
+ * 첫 장보기 다섯 갈래 — 하나씩 사 보게 한다.
+ * 236차(사용자 지시): 찌 채비가 아니라 **원투 채비**다 — 원줄 → 유동 봉돌 → 직결 매듭 → 목줄 → 바늘 → 미끼.
+ * 다섯 가지를 다 사면 그 자리에서 던질 수 있는 한 벌이 된다(구 찌 채비는 원줄 · 목줄 중 하나만 사서 덜 갖춰졌다).
+ */
+export const PROLOGUE_BUY_KINDS = ['line', 'leader', 'sinker', 'hook', 'bait'] as const;
 export type PrologueBuyKind = typeof PROLOGUE_BUY_KINDS[number];
+
+/** 갈래 표시 이름 — 말풍선 · 도움말이 같은 말을 쓴다 */
+export const PROLOGUE_BUY_LABEL: Record<PrologueBuyKind, string> = {
+  line: '원줄', leader: '목줄', sinker: '원투 봉돌', hook: '바늘', bait: '미끼',
+};
+
+/**
+ * 236차 — 아버지 대(1.5호 갯바위대)가 견디는 채비 무게 상한(g). 이보다 무거운 원투 봉돌(10호 38g~)을
+ * 세게 던지면 초릿대가 부러질 수 있다(`rodTipSnapChance`) → 첫 장보기로 치지 않고 말풍선이 바로잡는다.
+ */
+export const PROLOGUE_SINKER_MAX_G = ROD_SPEC_BY_ID.inv_rod?.loadG[1] ?? 15;
 
 export const PROLOGUE_PHOTO_ID = 'quest_family_photo';
 export const PROLOGUE_SQUID_ID = 'inv_frozen_squid';
@@ -195,20 +210,32 @@ export function prologueKeyAllowed(code: string): boolean {
   return need ? prologueStepDone(need) : false;
 }
 
-/** 산 물건이 기본 채비 다섯 갈래 중 무엇인가 */
-export function buyKindOf(e: Pick<InvItem, 'id' | 'subCategory'> & { floatBuoyG?: number; sinkerKind?: string }): PrologueBuyKind | null {
+type BuyView = Pick<InvItem, 'id' | 'subCategory'> & { sinkerKind?: string; sinkerWeightG?: number };
+
+/** 236차 — 아버지 대에 너무 무거운 원투 봉돌인가 */
+export function prologueHeavySinker(e: BuyView): boolean {
+  return !!e.sinkerKind && (e.sinkerWeightG ?? 0) > PROLOGUE_SINKER_MAX_G;
+}
+
+/** 산 물건이 첫 장보기 다섯 갈래 중 무엇인가 (찌 · 좁쌀봉돌은 원투 채비가 아니다) */
+export function buyKindOf(e: BuyView): PrologueBuyKind | null {
   const sub = e.subCategory ?? '';
-  if (sub === '원줄 스풀' || sub === '목줄 스풀') return 'line';
+  if (sub === '원줄 스풀') return 'line';
+  if (sub === '목줄 스풀') return 'leader';
   if (sub === '바늘/훅') return 'hook';
-  if (e.sinkerKind || e.id === 'inv_sinkerG2') return 'sinker';
-  if ((e.floatBuoyG ?? 0) > 0) return 'float';
+  if (e.sinkerKind) return prologueHeavySinker(e) ? null : 'sinker';
   if (sub === '냉동미끼' || sub === '선어미끼' || sub === '생미끼') return 'bait';
   return null;
 }
 
 /** 직판장 구매 기록 (RegionFieldScene.handleBuy) */
-export function noteProloguePurchase(e: Parameters<typeof buyKindOf>[0]): void {
+export function noteProloguePurchase(e: BuyView): void {
   if (!inPrologue()) return;
+  // 236차 — 무거운 원투 봉돌은 치지 않는다. 말풍선이 「대가 견디는 무게」를 일러 준다(한 번 켜 두면 남는다)
+  if (prologueHeavySinker(e) && !GameState.getFlag('prologue.buy.sinker')) {
+    GameState.setFlag('prologue.heavySinker');
+    GameState.markDirty();
+  }
   const k = buyKindOf(e);
   if (!k) return;
   GameState.setFlag(`prologue.buy.${k}`);

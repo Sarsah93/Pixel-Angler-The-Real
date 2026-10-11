@@ -128,6 +128,17 @@ export const DATA_ATTRIBUTIONS: DataAttribution[] = [
     url: 'https://kosis.kr',
   },
   {
+    // 236차 — 하루 한 번 GitHub Actions가 받아 둔 스냅샷을 읽는다(정적 배포는 KAMIS를 직접 못 부른다 — CORS)
+    provider: '한국농수산식품유통공사 (aT)',
+    providerEn: 'Korea Agro-Fisheries & Food Trade Corporation (aT)',
+    service: 'KAMIS 농산물유통정보 — 일별 부류별 소매가격',
+    serviceEn: 'KAMIS agricultural market information — daily retail prices by category',
+    usage: '텃밭 수확물 시세 — 오늘 소매가가 평년보다 얼마나 비싼지 · 싼지',
+    usageEn: "Garden produce prices — how far today's retail price sits above or below the usual for the date",
+    license: 'Custom',
+    url: 'https://www.kamis.or.kr',
+  },
+  {
     provider: '© OpenStreetMap contributors',
     service: 'OpenStreetMap 지도 데이터 (Overpass API)',
     serviceEn: 'OpenStreetMap map data (Overpass API)',

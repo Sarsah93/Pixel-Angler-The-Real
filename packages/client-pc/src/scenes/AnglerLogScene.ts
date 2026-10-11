@@ -77,6 +77,8 @@ export class AnglerLogScene extends Phaser.Scene {
   create(): void {
     const { width, height } = this.scale;
     StoryStore.emitActionSource('inspection', 'codex-open');
+    // 235차 — 「마흔 종 이상 기록을 검토한다」: 실제로 마흔 종(어종 + 갯것)을 채운 도감을 열어야 오른다
+    if (DiscoveryStore.countByKind('fish') + DiscoveryStore.countByKind('creature') >= 40) StoryStore.emitActionOrigin('codex-40');
 
     // 전체 다크 배경
     this.add.rectangle(0, 0, width, height, 0x050b14).setOrigin(0, 0);

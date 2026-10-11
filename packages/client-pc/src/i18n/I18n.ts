@@ -27,7 +27,9 @@ import {
   RECIPE_LORE, DISH_VARIANT_LORE, RECIPE_EFFECTS, FOOD_EFFECT_KIND_KO, DISH_MODIFIER_KO, DISH_MODIFIER_EN,
   fatnessLabel, textureLabel, fishinessLabel, flavorLabel,
   TITLE_DATABASE, TIDE_PHASE_PREF_GROUPS, TIDE_FLOW_LABEL_KO, TIDE_FLOW_LABEL_EN, TIDE_FLOW_NOTE_KO, TIDE_FLOW_NOTE_EN, QUEST_ITEMS,
+  CROP_DATABASE, FARM_SUPPLIES,
 } from '@tra/core';
+import { startItemName, startItemNameEn } from '../data/CropItems.js';
 import { EN_PLACES } from './places.js';
 import { EN_POIS } from './en_pois.js';
 import { EN_DICT, EN_RULES } from './en.js';
@@ -98,6 +100,16 @@ function buildRuntimeDict(): void {
   for (const bp of CRAFT_BLUEPRINTS) { put(bp.nameKo, bp.nameEn); put(bp.descKo, bp.descEn); }
   // 233차 — 개인 전용 퀘스트 아이템
   for (const q of QUEST_ITEMS) { put(q.nameKo, q.nameEn); put(q.descKo, q.descEn); }
+  // 235차 — 텃밭: 작물 · 수확물 · 붉어진 것 · 중간 수확 · 씨앗/모종/종구 · 메모 · 농자재(데이터 Ko/En 쌍이 정본)
+  //   수확물 아이템 이름은 「상추 한 줌 (100g) · 특」 — 구분자 분해가 앞부분과 등급(EN_DICT 특 · 상 · 보통)을 따로 찾는다
+  for (const c of CROP_DATABASE) {
+    put(c.nameKo, c.nameEn); put(c.noteKo, c.noteEn);
+    put(c.harvest.nameKo, c.harvest.nameEn);
+    if (c.harvest.ripenTo) put(c.harvest.ripenTo.nameKo, c.harvest.ripenTo.nameEn);
+    if (c.interim) put(c.interim.labelKo, c.interim.labelEn);
+    for (const st of c.starts) put(startItemName(c, st), startItemNameEn(c, st));
+  }
+  for (const sp of FARM_SUPPLIES) { put(sp.nameKo, sp.nameEn); put(sp.descKo, sp.descEn); }
   // 222차 — 잠긴 스킬의 「… 열린다」 조건절
   for (const sk of SKILL_DATABASE) if (sk.pendingSystem) put(sk.pendingSystem.ko, sk.pendingSystem.en);
   for (const g of Object.values(CRAFT_GROUP_LABEL)) put(g.ko, g.en);
@@ -162,7 +174,11 @@ function buildRuntimeDict(): void {
   for (const [ko, en] of allNarrativeLines()) put(ko, en);   // 151차 — 퀘스트 나레이션 186편
   for (const [ko, en] of allCinematicLines()) put(ko, en);   // 165차 — 컷씬 각본
   for (const [ko, en] of allQuestSceneLines()) put(ko, en);   // 167차 — 퀘스트 장면 손글 각본
-  for (const t of STORY_FIELD_TRIGGERS) if (t.actor?.nameEn) put(t.actor.nameKo, t.actor.nameEn);
+  for (const t of STORY_FIELD_TRIGGERS) {
+    if (t.actor?.nameEn) put(t.actor.nameKo, t.actor.nameEn);
+    put(t.labelKo, t.labelEn);   // 235차 — 현장 지점 이름 · 혼잣말(데이터 Ko/En 쌍)
+    t.linesKo?.forEach((k, i) => put(k, t.linesEn?.[i]));
+  }
   // 164차 행동 절차·전략 선택지 · 165차 행동 장면 — 데이터 Ko/En 쌍이 정본
   for (const a of Object.values(STORY_ACTIONS)) {
     a.stepsKo.forEach((k, i) => put(k, a.stepsEn[i]));
