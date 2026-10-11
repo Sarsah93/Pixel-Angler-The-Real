@@ -237,7 +237,7 @@ export class UtilizationPanel extends DraggablePanel {
           wait: () => !this.chooser && !!InventoryStore.rig.mainLine,
         },
         {
-          text: '아직 달 부품이 없다. 가게에서 원줄 · 바늘 · 봉돌 · 찌 · 미끼를 사 오면 여기서 골라 단다.',
+          text: '아직 달 부품이 없다. 가게에서 원줄 · 목줄 · 봉돌 · 바늘 · 미끼를 사 오면 여기서 골라 단다.',
           target: () => chooserScreen() ?? this.socketChainRect(),
           skipIf: () => !tackles() || hasLine(),
         },
@@ -2283,7 +2283,8 @@ export class UtilizationPanel extends DraggablePanel {
       });
     this.bodyContainer.add(title);
 
-    const items = InventoryStore.getByCategory('consumable').filter((i) => i.chumKind && i.qty > 0);
+    // 235차 — 텃밭에서 거둔 보리 · 옥수수(농산물 · 음식 갈래)도 낟알 밑밥이 된다
+    const items = InventoryStore.items.filter((i) => i.chumKind && i.qty > 0 && (i.category === 'consumable' || i.category === 'food'));
     const cell = 88, gap = 8;
     const kindLabel: Record<ChumIngredientKind, string> = { powder: '파우더', krill: '냉동 크릴', grain: '곡물' };
     items.forEach((item, idx) => {

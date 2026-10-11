@@ -575,6 +575,7 @@ export class CoolerPanel extends DraggablePanel {
 
   private openDetail(idx: number, fish: CoolerFish): void {
     this.childPopup?.destroy();
+    StoryStore.emitActionOrigin('cooler-detail');   // 235차 — 「선도와 보관 기록을 대조한다」(M2-02 유찰 복기)
     const panel = new ItemDetailPanel(
       this.scene, this.toInvItem(idx, fish),
       this.x + 60, this.y + 40,

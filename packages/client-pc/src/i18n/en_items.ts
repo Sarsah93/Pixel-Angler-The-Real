@@ -62,12 +62,16 @@ export const EN_ITEMS: Record<string, string> = {
 
   // ── 무게추 봉돌 (SinkerDatabase) ──
   '고리 봉돌': 'Ring Sinker', '구멍 봉돌': 'Hole Sinker', '묶음추 봉돌': 'Bundle Sinker', '좁쌀 봉돌': 'Split Shot',
+  '고리봉돌 3호': 'Ring Sinker #3', '구멍봉돌 3호': 'Hole Sinker #3',
   '고리봉돌 16호': 'Ring Sinker #16', '고리봉돌 20호': 'Ring Sinker #20',
   '고리봉돌 25호': 'Ring Sinker #25', '고리봉돌 30호': 'Ring Sinker #30',
   '구멍봉돌 10호': 'Hole Sinker #10', '구멍봉돌 15호': 'Hole Sinker #15', '구멍봉돌 20호': 'Hole Sinker #20',
   '구멍봉돌 25호': 'Hole Sinker #25', '구멍봉돌 30호': 'Hole Sinker #30',
   '묶음추봉돌 16호': 'Bundle Sinker #16', '묶음추봉돌 20호': 'Bundle Sinker #20',
   '묶음추봉돌 25호': 'Bundle Sinker #25', '묶음추봉돌 30호': 'Bundle Sinker #30',
+  'HaeDong 3호 가벼운 원투 봉돌. 찌낚시대 · 민물대로도 던질 수 있는 무게.': 'HaeDong #3 light bottom-rig sinker. Light enough to cast on a float rod or a budget rod.',
+  'BaekKyung 3호 가벼운 원투 봉돌. 찌낚시대 · 민물대로도 던질 수 있는 무게. 이물감↓(예신 피드백 +15%).': 'BaekKyung #3 light bottom-rig sinker. Light enough to cast on a float rod or a budget rod. Less felt resistance (+15% pre-bite feedback).',
+  '값싼 나일론 원줄. 늘어나는 성질이 충격을 받아 줘 가벼운 원투 · 찌낚시 원줄로 무난하다. 직경 0.285mm · 인장 12lb.': 'Cheap nylon main line. Its stretch soaks up shocks, so it serves well on light bottom rigs and float rigs. 0.285mm · 12lb.',
   'HaeDong 20호 원투 메인 싱커.': 'HaeDong #20 surf main sinker.',
   'HaeDong 25호 원투 메인 싱커.': 'HaeDong #25 surf main sinker.',
   'BaekKyung 15호 원투 메인 싱커. 이물감↓(예신 피드백 +15%).': 'BaekKyung #15 surf main sinker. Less felt resistance (+15% pre-bite feedback).',

@@ -24,6 +24,7 @@ import {
   ORACLE_FISH_DB, calculateTideInfo,
   WORLD_NODE_DATABASE, REGION_AREA_NODES,
   mpRng, mpTimeSlot, SESSION_WEATHER_SLOT_MS, encodeWeatherCard, type SessionWeatherCard,
+  isProduceMarketSnapshot, setProduceMarket,
 } from '@tra/core';
 
 /**
@@ -147,6 +148,16 @@ const REGION_TO_MMSI: Record<string, string> = {
  */
 const PROXY_ORIGIN = import.meta.env.DEV ? window.location.origin : undefined;
 
+/**
+ * 236차 — 농산물 시세 스냅샷 주소. GitHub Actions(「농산물 시세 스냅샷」)가 하루 한 번 KAMIS 소매가를 받아
+ * `data-snapshots` 브랜치에 올린다(정적 배포의 브라우저는 KAMIS를 직접 못 부른다 — CORS). `.env`로 바꿀 수 있다.
+ * 첫 실행 전에는 404 — 내장 시세 곡선으로 돌아간다(오류 아님).
+ */
+const PRODUCE_MARKET_URL = envKey('VITE_PRODUCE_MARKET_URL')
+  ?? 'https://raw.githubusercontent.com/Sarsah93/Pixel-Angler-The-Real/data-snapshots/kamis/produce.json';
+/** 마지막으로 받은 스냅샷(못 받은 날 · 오프라인에 쓴다 — 조사일이 열흘을 넘기면 core가 버린다) */
+const PRODUCE_MARKET_CACHE_KEY = 'tra_produce_market_v1';
+
 /** 홈타운 날씨 후보(실데이터가 없는 동네 — 세션 공용 시드 × 1시간 슬롯으로 고른다) */
 const HOMETOWN_WEATHER_OPTS: WeatherKind[] = ['clear', 'partly', 'cloudy', 'rain', 'shower', 'fog'];
 
@@ -170,6 +181,8 @@ class ExternalDataStoreManager {
 
   private _snapshot: ExternalDataSnapshot | null = null;
   private _promise: Promise<void> | null = null;
+  /** 236차 — 농산물 시세는 세션에 한 번만 받는다(시작을 기다리게 하지 않는다) */
+  private _marketTried = false;
   /** 전국 관측소 최신 해양기상 (지점코드 → 관측값) */
   private _marine = new Map<string, MarineWeatherInfo>();
   /** 지역별 기상청 현재 기상 (지역 ID → 기상) */
@@ -214,6 +227,7 @@ class ExternalDataStoreManager {
    * 어느 씬에서든 안전하게 await 가능. 실패해도 Mock 스냅샷 확보.
    */
   fetchAll(): Promise<void> {
+    if (!this._marketTried) { this._marketTried = true; void this.fetchProduceMarket(); }   // 236차 — 기다리지 않는다
     if (this._snapshot) return Promise.resolve();
     if (this._promise) return this._promise;
     // 해양기상은 독립 API — 실패해도 나머지 수집을 막지 않도록 분리해서 병행
@@ -238,6 +252,28 @@ class ExternalDataStoreManager {
     ]).then(() => undefined)
       .finally(() => { this._promise = null; });
     return this._promise;
+  }
+
+  /**
+   * 236차 — 농산물 시세 스냅샷(KAMIS 소매가 하루치)을 받아 core에 넣는다.
+   * 못 받으면 지난번 받아 둔 것을 쓰고, 그것도 없거나 오래됐으면 내장 시세 곡선(주간 출렁임)으로 돈다.
+   */
+  private async fetchProduceMarket(): Promise<void> {
+    let snap: unknown = null;
+    try {
+      const res = await fetch(PRODUCE_MARKET_URL, { cache: 'no-cache', signal: AbortSignal.timeout(8000) });
+      if (res.ok) snap = await res.json();
+    } catch { /* 망 문제 · 첫 실행 전 — 아래 저장분으로 */ }
+    if (isProduceMarketSnapshot(snap)) {
+      try { localStorage.setItem(PRODUCE_MARKET_CACHE_KEY, JSON.stringify(snap)); } catch { /* 저장 공간 없음 — 이번 세션만 쓴다 */ }
+    } else {
+      try {
+        const raw = localStorage.getItem(PRODUCE_MARKET_CACHE_KEY);
+        snap = raw ? JSON.parse(raw) : null;
+      } catch { snap = null; }
+    }
+    const n = setProduceMarket(isProduceMarketSnapshot(snap) ? snap : null, Date.now());
+    console.log(`[ExternalDataStore] 농산물 시세 — ${n > 0 && isProduceMarketSnapshot(snap) ? `${snap.regday} 소매가로 ${n}개 작물` : '없음(내장 시세 곡선)'}`);
   }
 
   /** 전 지역 기상청 현재 기상 수집 — 지역별 실패는 무시하고 나머지를 살린다. 받아 낸 지역 수를 돌려준다(234차) */
