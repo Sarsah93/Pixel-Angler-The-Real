@@ -2,15 +2,17 @@
  * @file ItemIcon.ts
  * @description 아이템 아이콘 렌더 헬퍼
  *
- * 우선순위: ① `iconTexture: 'px:<키>'` = **16x16 손그림 픽셀 아이콘**(PixelIconArt — 신규 아이템 표준)
- *  ② 실사/절차 텍스처 키 ③ 어획물 speciesId 폴백 ④ 레거시 이모지 문자열.
- * ⚠ ④는 구 아이템이 남겨둔 폴백일 뿐이다 — **새 아이템에는 이모지를 넣지 않는다**(AGENTS §4).
+ * 우선순위: ① 실사 · 도트 텍스처 키(사용자가 넣은 그림 — 언제나 먼저)
+ *  ② 코드로 그린 아이템 그림(`ItemArtManifest` — **아이템 id** 로 찾는다. 세이브에 `iconTexture`가 없어도 나온다)
+ *  ③ `iconTexture: 'px:<키>'` = 16x16 손그림 픽셀 아이콘 ④ 어획물 speciesId 폴백 ⑤ 레거시 이모지 문자열.
+ * ⚠ ⑤는 구 아이템이 남겨둔 폴백일 뿐이다 — **새 아이템에는 이모지를 넣지 않는다**(AGENTS §4).
  * (인벤토리 소켓 / 상점 셀 / 퀵슬롯 / 상세보기 공용)
  */
 
 import Phaser from 'phaser';
 import { addPixelIcon } from './PixelIcon.js';
 import { resolveFishTexture } from '../data/FishTextures.js';
+import { ITEM_ART_BY_ID, ITEM_ART_BY_PREFIX, ITEM_ART_BY_PX } from '../data/ItemArtManifest.js';
 
 /**
  * 구세이브·기존 카탈로그가 가진 픽셀 아이콘 키를 실제 투명 PNG 자산으로
@@ -27,6 +29,8 @@ const RASTER_ICON_ALIASES: Record<string, string> = {
 };
 
 export interface ItemIconLike {
+  /** 아이템 id — 코드로 그린 그림(`ItemArtManifest`)을 찾는 열쇠. 없으면 `iconTexture`만으로 해석한다 */
+  id?: string;
   /** 레거시 이모지 아이콘 (최후 폴백 — 신규 아이템은 쓰지 않는다) */
   icon: string;
   /** 텍스처 키. `px:` 접두사면 픽셀 아이콘 아트 키 (예: 'px:it_bandage') */
@@ -61,6 +65,23 @@ export function iconWeightScale(item: ItemIconLike): number {
   return Math.max(0.55, Math.min(1, Math.cbrt(g / ref)));
 }
 
+/**
+ * 코드로 그린 아이템 그림의 텍스처 키(없으면 undefined).
+ * 사용자가 넣은 실사 · 도트(`px:` 가 아닌 텍스처 키)가 있으면 건드리지 않는다 — 그쪽이 언제나 먼저다.
+ * 찾는 순서: 아이템 id → id 접두사(뒤에 번호 · 어종이 붙는 것) → 16x16 아이콘 키의 대체 그림.
+ * 세이브에 든 옛 아이템(`iconTexture` 없음 · 이모지뿐 · `px:` 키)도 id 로 그림을 찾는다.
+ */
+export function itemArtKeyOf(item: { id?: string; iconTexture?: string }): string | undefined {
+  const t = item.iconTexture;
+  if (t && !t.startsWith('px:')) return undefined;
+  if (item.id) {
+    const byId = ITEM_ART_BY_ID[item.id];
+    if (byId) return byId;
+    for (const [prefix, key] of ITEM_ART_BY_PREFIX) if (item.id.startsWith(prefix)) return key;
+  }
+  return t ? ITEM_ART_BY_PX[t] : undefined;
+}
+
 export function createItemIcon(
   scene: Phaser.Scene,
   x: number,
@@ -69,7 +90,10 @@ export function createItemIcon(
   sizePx: number,
 ): Phaser.GameObjects.Image | Phaser.GameObjects.Text | Phaser.GameObjects.Container {
   sizePx *= iconWeightScale(item);
-  const rasterKey = item.iconTexture ? RASTER_ICON_ALIASES[item.iconTexture] ?? item.iconTexture : undefined;
+  const artKey = itemArtKeyOf(item);
+  const rasterKey = artKey && scene.textures.exists(artKey)
+    ? artKey
+    : item.iconTexture ? RASTER_ICON_ALIASES[item.iconTexture] ?? item.iconTexture : undefined;
   if (rasterKey && scene.textures.exists(rasterKey)) {
     const img = scene.add.image(0, 0, rasterKey).setOrigin(0.5);
     const src = scene.textures.get(rasterKey).getSourceImage() as HTMLImageElement;

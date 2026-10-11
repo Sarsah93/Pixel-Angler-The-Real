@@ -3614,7 +3614,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     const invTpl = (x: SpawnedFish) => ({
       id: `inv_catch_${x.speciesId}_${InventoryStore.nextCatchSeq()}`,
       name: `${x.nameKo} (${x.lengthCm}cm)`,
-      icon: '🐟', iconTexture: texOf(x),
+      icon: '', iconTexture: texOf(x),
       category: 'food' as const, subCategory: '어획물',
       basePrice: Math.max(2000, Math.round(x.weightG * 12)),
       condition: 'live' as const, equippable: false,
@@ -3907,7 +3907,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
           const ok = InventoryStore.addItem({
             id: `inv_catch_${ef.speciesId}_${InventoryStore.nextCatchSeq()}`,
             name: `${ef.nameKo} (${ef.lengthCm}cm)`,
-            icon: '🐟', iconTexture: efTexture,
+            icon: '', iconTexture: efTexture,
             category: 'food', subCategory: '어획물',
             basePrice: Math.max(2000, Math.round(ef.weightG * 12)),
             condition: 'live', equippable: false,

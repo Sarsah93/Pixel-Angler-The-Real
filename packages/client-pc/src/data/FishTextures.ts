@@ -68,6 +68,11 @@ export const FISH_TEXTURE: Record<string, string> = {
   frog_flounder: 'fish_frog_flounder',               // 도다리
   silver_pomfret: 'fish_silver_pomfret',             // 병어
   korean_pomfret: 'fish_korean_pomfret',             // 덕대
+  // 2026-10-08 하모니 — 그림이 없던 4종은 코드로 그린 그림(tools/item_art/icons_sealife.py · ItemArtManifest가 로드)
+  round_herring: 'fish_round_herring',               // 눈퉁멸
+  sandfish: 'fish_sandfish',                         // 도루묵
+  tonguefish: 'fish_tonguefish',                     // 개서대
+  black_scraper: 'fish_black_scraper',               // 말쥐치
 };
 
 /**

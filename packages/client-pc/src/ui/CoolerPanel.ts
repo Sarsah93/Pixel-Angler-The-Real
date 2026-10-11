@@ -433,7 +433,7 @@ export class CoolerPanel extends DraggablePanel {
     return {
       id: `cooler_view_${idx}`,
       name: `${f.nameKo} (${f.lengthCm}cm)`,
-      icon: '🐟', iconTexture: f.iconTexture,
+      icon: '', iconTexture: f.iconTexture,
       category: 'food', subCategory: '어획물', slot: 0, qty: 1,
       basePrice: Math.max(2000, Math.round(f.weightG * 12)),
       condition: f.condition, equippable: false,

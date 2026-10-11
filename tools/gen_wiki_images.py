@@ -27,6 +27,8 @@ BOOT = os.path.join(ROOT, 'packages/client-pc/src/scenes/BootScene.ts')
 ICON_ART = os.path.join(ROOT, 'packages/client-pc/src/data/PixelIconArt.ts')
 # 197차 — 스킬 아이콘(16x16 · 같은 형식). 위키 「스킬」 탭 카드에 쓴다 → `sk_<id>.png` · manifest 키 `sk:<id>`
 SKILL_ART = os.path.join(ROOT, 'packages/client-pc/src/data/SkillIconArt.ts')
+# 코드로 그린 아이템 그림(`tools/item_art/build.py` 생성) — BootScene이 이 표를 돌며 로드한다
+ITEM_ART = os.path.join(ROOT, 'packages/client-pc/src/data/ItemArtManifest.ts')
 
 # 위키에 싣지 않는 계열 (캐릭터 시트·타일셋·가이드 시트 등 — 카드에 쓸 그림이 아니다)
 SKIP_PREFIX = ('man-', 'girl-', 'ts_', 'tile_', 'help_', 'guide_', 'kn_', 'smx_', 'sg_')
@@ -42,6 +44,13 @@ def parse_boot_map() -> dict:
     # `KEY: 'path.png',` 형태의 맵 리터럴 (ITEM_ICON_ASSETS 등)
     for m in re.finditer(r"^\s{4,}([A-Za-z_][A-Za-z0-9_]*)\s*:\s*'([^']+\.png)'\s*,", src, re.M):
         out.setdefault(m.group(1), m.group(2))
+    # 코드로 그린 아이템 그림(ITEM_ART_ASSETS 블록) — `art_<이름>` · `forage_<생물>` · `fish_<어종>` 키
+    if os.path.isfile(ITEM_ART):
+        art = open(ITEM_ART, encoding='utf-8').read()
+        art = art[art.index('ITEM_ART_ASSETS'):]
+        art = art[:art.index('};')]
+        for m in re.finditer(r"^\s+([A-Za-z_][A-Za-z0-9_]*)\s*:\s*'([^']+\.png)'\s*,", art, re.M):
+            out.setdefault(m.group(1), m.group(2))
     return out
 
 
