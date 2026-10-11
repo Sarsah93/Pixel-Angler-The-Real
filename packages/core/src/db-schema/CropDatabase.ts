@@ -20,7 +20,7 @@
  * ⚠ 아이템 id 규칙: 씨앗 `seed_*` · 모종 `sdl_*` · 종구/종서/배지 `set_*` · 수확물 `crop_*`(클라이언트 `CropItems`가 템플릿을 만든다).
  */
 
-import type { CropDef, CropGrade, CropStart, FarmFacility, FarmSite } from '../types/Farming.js';
+import type { CropCare, CropDef, CropDifficulty, CropGrade, CropStart, FarmFacility, FarmSite } from '../types/Farming.js';
 
 const ALL = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
@@ -773,6 +773,95 @@ export const CROP_DATABASE: CropDef[] = [
     noteEn: 'A yellow root from the tropics. Grow it under plastic and dig it at the first frost; it colours and scents fish curry and frying batter.',
   },
 ];
+
+// ─────────────────────────────────────────────
+// 237차 — 기르기 어려운 정도 · 까다로운 점 (사용자 제안 「작물별 난이도에 따라 자격 요건 차등」)
+//
+// 기준(농촌진흥청 텃밭 재배 분류 — 병과 벌레가 많은 작물 · 지주 · 육묘를 어렵게 본다):
+//   쉬움 = 상추 · 시금치 · 쑥갓 · 배추 · 당근 · 무 · 고구마 · 감자 / 보통 = 토마토 · 호박 · 고추 · 가지 / 어려움 = 오이(· 수박 · 참외).
+// 분류에 없는 작물은 까다로운 점으로 견준다 — 지주 · 덩굴 · 반년 재배 · 월동이면 보통,
+// 시설(차광 · 비닐) · 고온 긴 재배(생강)면 까다로움, 산채 · 고추냉이(기술 + 시설)는 아주 까다로움.
+// 씨앗 · 모종 · 키트(배지 · 시루)는 같은 작물이라도 다르다 — `nursery`가 붙은 작물은 씨앗으로 시작하면 한 단계 위.
+// ─────────────────────────────────────────────
+export const CROP_DIFFICULTY: Readonly<Record<string, { tier: CropDifficulty; care: CropCare[] }>> = {
+  // ── 쉬움 — 누구나 ──
+  bean_sprout: { tier: 1, care: [] },
+  mung_sprout: { tier: 1, care: [] },
+  microgreens: { tier: 1, care: [] },
+  oyster_mushroom: { tier: 1, care: [] },              // 균이 다 자란 배지(키트)를 사 온다
+  lettuce: { tier: 1, care: [] },                      // 농진청 「쉬움」
+  perilla: { tier: 1, care: [] },
+  spinach: { tier: 1, care: ['overwinter'] },          // 농진청 「쉬움」
+  crown_daisy: { tier: 1, care: [] },                  // 농진청 「쉬움」
+  young_radish: { tier: 1, care: ['pests'] },          // 벼룩잎벌레
+  ugeolgari: { tier: 1, care: ['pests'] },
+  chive: { tier: 1, care: ['nursery'] },               // 씨앗은 80일 · 포기 모종이 쉽다
+  scallion: { tier: 1, care: [] },
+  water_parsley: { tier: 1, care: ['water'] },
+  mallow: { tier: 1, care: [] },
+  chard: { tier: 1, care: [] },
+  potato: { tier: 1, care: [] },                       // 농진청 「쉬움」
+  sweet_potato: { tier: 1, care: [] },                 // 농진청 「쉬움」
+  radish: { tier: 1, care: ['pests'] },                // 농진청 「쉬움」
+  napa_cabbage: { tier: 1, care: ['pests', 'nursery'] }, // 농진청 「쉬움」(모종) · 씨앗은 육묘
+  carrot: { tier: 1, care: ['germination'] },          // 농진청 「쉬움」 · 싹 틔우기만 까다롭다
+  soybean: { tier: 1, care: [] },
+  cowpea: { tier: 1, care: [] },
+  amaranth: { tier: 1, care: [] },
+  arugula: { tier: 1, care: [] },
+  basil: { tier: 1, care: [] },
+  shiso: { tier: 1, care: [] },
+  banga: { tier: 1, care: [] },
+  dill: { tier: 1, care: [] },
+  kangkong: { tier: 1, care: ['heat'] },
+  turnip: { tier: 1, care: ['pests'] },
+  meowi: { tier: 1, care: ['water'] },
+  jerusalem: { tier: 1, care: [] },                    // 한 번 심으면 퍼질 만큼 억세다
+  // ── 보통 — 레벨 ──
+  chili: { tier: 2, care: ['pests', 'support', 'nursery'] }, // 농진청 「보통」 · 씨앗 육묘 70~80일
+  cherry_tomato: { tier: 2, care: ['pests', 'support'] },    // 농진청 「보통」(토마토)
+  zucchini: { tier: 2, care: ['pests'] },                    // 농진청 「보통」(호박) — 흰가루병
+  eggplant: { tier: 2, care: ['pests', 'support'] },         // 농진청 「보통」
+  corn: { tier: 2, care: ['pests'] },                        // 조명나방 · 새
+  leek: { tier: 2, care: ['soil'] },                         // 북주기
+  onion: { tier: 2, care: ['overwinter', 'longSeason'] },
+  garlic: { tier: 2, care: ['overwinter', 'longSeason'] },
+  barley: { tier: 2, care: ['overwinter'] },
+  taro: { tier: 2, care: ['water', 'longSeason'] },
+  yacon: { tier: 2, care: ['longSeason'] },
+  choseokjam: { tier: 2, care: ['longSeason'] },
+  peanut: { tier: 2, care: ['soil'] },                       // 모래흙 · 씨앗을 새가 판다
+  lions_mane: { tier: 2, care: ['humidity'] },
+  wood_ear: { tier: 2, care: ['humidity'] },
+  godeulppaegi: { tier: 2, care: ['overwinter', 'germination'] },
+  bangpung: { tier: 2, care: ['soil'] },
+  gondre: { tier: 2, care: ['nursery', 'shade'] },
+  danggui: { tier: 2, care: ['nursery'] },                   // 씨앗 싹이 잘 안 튼다
+  fennel: { tier: 2, care: ['soil'] },                       // 알뿌리를 굵히려면 북을 준다 · 꽃대
+  gourd: { tier: 2, care: ['support'] },
+  bitter_melon: { tier: 2, care: ['support', 'heat'] },
+  okra: { tier: 2, care: ['heat'] },
+  // ── 까다로움 — 레벨 + 유기농업기능사 ──
+  cucumber: { tier: 3, care: ['pests', 'support', 'water'] }, // 농진청 「어려움」 — 노균병 · 흰가루병 · 덩굴 3~4m
+  ginger: { tier: 3, care: ['heat', 'soil', 'longSeason'] },  // 땅이 데워져야 싹이 트고 종강이 잘 썩는다
+  myoga: { tier: 3, care: ['shade', 'longSeason'] },
+  turmeric: { tier: 3, care: ['heat', 'longSeason'] },
+  // ── 아주 까다로움 — 레벨 + 유기농업기능사 + 그 작물의 기술(산채 재배 · 수경 재배) ──
+  gomchwi: { tier: 4, care: ['shade', 'water'] },
+  myeongi: { tier: 4, care: ['shade', 'longSeason'] },        // 씨앗부터면 수확까지 5년
+  samnamul: { tier: 4, care: ['shade', 'longSeason'] },
+  eosuri: { tier: 4, care: ['shade'] },
+  bujigaengi: { tier: 4, care: ['shade'] },
+  dureup: { tier: 4, care: ['longSeason'] },                  // 나무
+  eomnamu: { tier: 4, care: ['longSeason'] },                 // 나무
+  chopi: { tier: 4, care: ['longSeason'] },                   // 나무
+  wasabi: { tier: 4, care: ['water', 'longSeason'] },         // 찬물 · 1년 반
+};
+
+for (const c of CROP_DATABASE) {
+  const d = CROP_DIFFICULTY[c.id];
+  if (d) { c.difficulty = d.tier; c.care = d.care; }
+}
 
 const BY_ID = new Map(CROP_DATABASE.map((c) => [c.id, c]));
 export function getCrop(id: string): CropDef | undefined {

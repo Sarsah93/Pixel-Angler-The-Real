@@ -21,7 +21,7 @@ export const STORY_CHAPTERS: StoryChapterDef[] = [
       onMissKo: '실습 재신청 퀘 1개 추가 · 숙소 임대료 발생', onMissEn: 'One extra re-application quest · lodging rent starts',
       unlocksKo: '위판·경매, 부산 출조', unlocksEn: 'Auctions, Busan trips',
     },
-    contract: { mainCount: 11, mainXp: 4400, subCount: 11, subXp: 3850 },
+    contract: { mainCount: 11, mainXp: 4400, subCount: 13, subXp: 4550 },   // 237차 서브 +2(N19-7 · N19-8 — 텃밭)
   },
   {
     chapter: 2, part: 2, partTitleKo: '위판', partTitleEn: 'The Auction',

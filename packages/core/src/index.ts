@@ -793,6 +793,8 @@ export { FOOD_NUTRITION, DAILY_KCAL, DAILY_WATER_ML, restoreFromNutrition, foodN
   type FoodNutrition } from './db-schema/FoodNutrition.js';
 export { objectiveTarget, objectiveHowToKo, nextObjectiveIndex,
   type QuestGuideTarget, type QuestGuideTargetKind, type GuideNames } from './rules/QuestGuide.js';
+// 237차 — 철 따라 다른 퀘스트 선물(N19-7 정옥선의 남는 모종 · 씨앗)
+export { okseonSpareGift, type OkseonSpareGift, type OkseonSpareHave, type QuestGiftItem } from './rules/QuestGifts.js';
 
 // 192차 — 채비 모딩 트리 (원줄 → 매듭 → … 좌→우 확장 · 앞 노드 변경 시 자손 해제)
 export type {
@@ -825,9 +827,10 @@ export { npcWhereabouts, routinePostMinutes } from './simulation/NpcRoutine.js';
 export type {
   CropCategory, CropSpeedClass, CropRarity, CropGrade, CropStartKind, FarmSite, FarmFacility, CropStart, CropHarvest,
   CropInterim, CropRequirement, CropPrice, CropDef, FarmCellState, FarmPlotState, FarmEnv, FarmPlantCtx, FarmHarvestResult,
+  CropDifficulty, CropCare,
 } from './types/Farming.js';
 export {
-  CROP_DATABASE, getCrop, cropStartOfItem, cropOfProduce, isFarmProduce,
+  CROP_DATABASE, CROP_DIFFICULTY, getCrop, cropStartOfItem, cropOfProduce, isFarmProduce,
   PRODUCE_GRADE_SUFFIX, produceItemId, parseProduceId,
   FARM_SUPPLIES, getFarmSupply, supplyOfFacility,
 } from './db-schema/CropDatabase.js';
@@ -837,6 +840,7 @@ export {
   startOf, gradeOf, GRADE_KO, GRADE_EN, cellReady, interimOpen, seasonFactor, speedMultOf, cellDays, advanceCell, advancePlot,
   tillCell, compostCell, waterCell, monthRangeKo, canPlant, plantCell, clearCell, harvestCell, interimHarvestCell, cellStage,
   daysToNextHarvest, producePriceShock, producePrice, cropDailyValue, farmPlotCap, rentedPlotCount,
+  CROP_TIER_KO, CROP_TIER_EN, CROP_CARE_KO, CROP_CARE_EN, cropTier, tierGate, cropGate, cropGateBlock,
 } from './simulation/FarmSim.js';
 export type { PlantCheck, HarvestSkills, FarmCellStage } from './simulation/FarmSim.js';
 // ── 농산물 실시간 시세(KAMIS 하루치 스냅샷) — 236차 ──

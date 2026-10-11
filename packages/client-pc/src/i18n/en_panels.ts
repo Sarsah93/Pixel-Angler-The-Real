@@ -56,6 +56,7 @@ export const EN_PANELS: Record<string, string> = {
   '낚시': 'Fishing',
   '해루질': 'Gleaning',
   '토지 · 주거': 'Land · Housing',
+  '농업': 'Farming',
   '선박 · 어업': 'Vessel · Fishery',
   '사업': 'Business',
   '스킬': 'Skills',

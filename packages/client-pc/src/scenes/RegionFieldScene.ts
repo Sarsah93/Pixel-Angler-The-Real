@@ -123,6 +123,7 @@ import { storyActionScene, storyActionSpec, auditStoryActionOrigins } from '../s
 import { actionStepGuide } from '../data/ActionGuide.js';
 import { QUEST_REWARD_ITEMS } from '../data/QuestRewardItems.js';
 import { questSceneFor, type SceneExtra } from '../data/QuestScenes.js';
+import { isProduceItem, farmTierNoticeKo } from '../data/CropItems.js';
 import { loadSettings } from './SettingsScene.js';
 import { MultiplayerClient } from '../net/MultiplayerClient.js';
 import { WorldDepletionStore } from '../store/WorldDepletionStore.js';
@@ -4226,13 +4227,20 @@ export class RegionFieldScene extends Phaser.Scene {
     }).setOrigin(0.5).setScrollFactor(0).setDepth(100).setVisible(false);
   }
 
+  /** 237차 — 떠 있는 안내(같은 순간에 여럿 뜨면 위로 쌓는다 — 한 자리에 겹쳐 그려지던 것) */
+  private liveHints: Phaser.GameObjects.Text[] = [];
+
   private floatingHint(msg: string): void {
     // 215차 — 실내에서는 머리 위(세상 좌표)가 방에 가려진다 → 방 안 알림 줄
     if (this.interior) { this.interior.flash(msg); return; }
-    const t = this.add.text(this.playerBody.x, this.playerHintY, msg, {
+    // 237차 — 아직 떠 있는 안내가 있으면 그중 가장 높은 것의 위로(2px 띄움)
+    this.liveHints = this.liveHints.filter((h) => h.active);
+    const y = Math.min(this.playerHintY, ...this.liveHints.map((h) => h.y - h.height - 2));
+    const t = this.add.text(this.playerBody.x, y, msg, {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#fff',
       backgroundColor: '#0a1628cc', padding: { x: 8, y: 4 },
     }).setOrigin(0.5, 1).setDepth(60);
+    this.liveHints.push(t);
     this.tweens.add({ targets: t, y: t.y - 22, alpha: 0, duration: 1200, onComplete: () => t.destroy() });
   }
 
@@ -4742,6 +4750,12 @@ export class RegionFieldScene extends Phaser.Scene {
     //   (스킬 패널 밖에서 열리는 경로가 있어서 큐를 씬이 비운다)
     for (const d of GameState.takeRecentHiddenUnlocks()) {
       this.hud?.pushLog(`[시너지] ${d.nameKo} 해금 — ${d.descKo}`);
+    }
+    // 237차 — 레벨이 올라 새 작물 단계가 열렸다(15 · 25 · 40)
+    for (const tier of GameState.takeRecentFarmTiers()) {
+      const m = farmTierNoticeKo(tier, GameState.hasLicense('organic_farming'));
+      this.hud?.pushLog(m);
+      this.floatingHint(m.replace(/^\[텃밭\]\s*/, ''));
     }
     // 140차 — 숙련도 레벨업(캐스팅·손질·제작 … 행위로 오른 것)도 같은 자리에서 알린다
     for (const g of GameState.takeRecentProfUps()) {
@@ -5522,6 +5536,8 @@ export class RegionFieldScene extends Phaser.Scene {
       // 장소 자막은 지금 서 있는 곳 — 퀘스트가 적어 둔 무대(병실·부산)를 쓰면 화면과 어긋난다(168차)
       placeKo: this.node.name, placeEn: this.node.nameEn,
       has: (itemId) => !!InventoryStore.find(itemId),   // 235차 — 실제 물건을 쓰는 장면(M7-04 가족사진)
+      // 237차 — N19-8 첫물: 가방(보관함 아님)에 든 텃밭 수확물 하나
+      produce: () => InventoryStore.items.find((i) => i.slot >= 0 && i.qty > 0 && isProduceItem(i))?.id ?? null,
     });
     if (!def) return;
     this.clearSceneExtras();
@@ -5531,7 +5547,11 @@ export class RegionFieldScene extends Phaser.Scene {
     for (const [k, v] of Object.entries(def.roles)) if (!extras[k]) roles[k] = v;
     const ok = this.playCinematic(def.script, roles, () => {
       this.clearSceneExtras();
-      if (!def.noComplete) StoryStore.event({ kind: 'scene', questId, objectiveIndex });   // 235차 — 물건을 안 들고 왔으면 닫지 않는다
+      if (!def.noComplete) {   // 235차 — 물건을 안 들고 왔으면 닫지 않는다
+        // 237차 — 장면에서 건넨 물건은 실제로 가방에서 빠진다(N19-8 첫물)
+        if (def.consumeItemId && InventoryStore.find(def.consumeItemId)) InventoryStore.removeQty(def.consumeItemId, 1);
+        StoryStore.event({ kind: 'scene', questId, objectiveIndex });
+      }
       this.refreshQuestMarkers(true);
     }, extras);
     if (!ok) this.clearSceneExtras();

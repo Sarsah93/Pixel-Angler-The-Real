@@ -71,6 +71,7 @@ export function selfCompleteChoices(): QuestChoiceDef[] {
 export function lessonCategoryOf(q: StoryQuestDef): SkillCategoryId {
   const kinds = new Set(q.objectives.map((o) => o.kind));
   if (kinds.has('craft')) return 'crafting';
+  if (kinds.has('farm')) return 'farming';   // 237차 — 텃밭 목표(구: 낚시로 떨어졌다)
   if (kinds.has('gather') || kinds.has('trap') || kinds.has('cull')) return 'gathering';
   if (kinds.has('butcher') || kinds.has('sashimi') || kinds.has('cook')) return 'life';
   if (kinds.has('sell') || kinds.has('earn')) return 'economy';

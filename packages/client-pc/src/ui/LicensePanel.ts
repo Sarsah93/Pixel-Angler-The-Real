@@ -33,7 +33,7 @@ const FEATURE_KO: Record<UnlockableFeature, string> = {
   restaurant_open: '식당 개업', condo_operation: '선상콘도 운영', tournament_entry: '토너먼트 참가',
   tournament_hosting: '토너먼트 주최', boat_rental: '보트 대여', protected_area_access: '보호구역 출입',
   abalone_hunting: '전복 채취', eel_trapping: '장어 통발', catch_and_cook_advanced: '고급 손질·요리',
-  home_expansion: '집 증축·마당 시설', farm_plots: '마을 농지 텃밭 다섯 구획', boat_operation: '개인 보트 운항',
+  home_expansion: '집 증축·마당 시설', farm_plots: '마을 농지 텃밭 다섯 구획', farm_hard_crops: '까다로운 작물 재배', boat_operation: '개인 보트 운항',
   village_fishery_gathering: '어촌계 어장 채취', restricted_port_fishing: '항만 제한구역 낚시',
 };
 

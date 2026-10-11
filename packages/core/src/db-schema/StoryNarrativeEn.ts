@@ -151,6 +151,19 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
     { offer: "Take this to Manbok Store on your way past. It's a rest for the ice box. Don't tell her it came from me.",
       progress: "Did you leave it? What did she say.",
       done: "...she did? I see. (The hand carving the rod stops.) I may ask you again. Sorry to keep bothering you." }),
+  // 237차 — 할머니 밭(텃밭 입문)
+  'N19-7': E(
+    "There is always a small basket at the corner of Jeong Okseon's stall. A few lettuce leaves, a handful of green chilies. It is not for sale. She picks them from the plot in front of her house and drops a handful into her regulars' bags. Today the basket is pushed towards me. She has some to spare, she says, so I should plant them. I think of the yard at home. Nothing but weeds. There is something you wait for in the ground, not only what you haul out of the sea. I have never done it. That is why I want to.",
+    { offer: "This basket? It comes from the plot in front of my house. It's not for sale. Every season there's some left over. You've got a yard at home, haven't you. I'll give you the spares — plant two cells. You can't do sea work for long living on bought food.",
+      progress: "Planted them? Two cells will do. Just covering them with soil is half the job. If there's no plot in your yard, they sell the kit for digging one at Saiso.",
+      done: "Planted? Good. From here on it's half the sky and half you. The rain waters them and you pull the weeds. When they're grown, let me taste the first picking.",
+      epi: "There is soil under my fingernails. Seawater doesn't get it out." }),
+  'N19-8': E(
+    "While the things I planted were growing, she asked a few times in passing. How many leaves now, was I watering. When they are grown and I pick the first of them, she wants a taste. The first picking goes to someone else, she says. At sea I taste my own catch first; the ground, it seems, is different. I decide to put the first picking in a bag and bring it to the stall. I am a little afraid of what she will say.",
+    { offer: "When they're grown, let me taste the first picking. The first of anything goes to someone else. That's how the next lot comes in well, my mother used to say.",
+      progress: "Not yet? Hurrying a field doesn't make it grow faster. Just keep watering.",
+      done: "So this is what you grew. ...The soil tastes good in it. Not bad for a first time. You're someone with a field now too.",
+      epi: "The first picking goes to someone else. That is why you find yourself waiting for the next one." }),
   'N21-1': E(
     "Starfish are scattered under the breakwater. Oh Sechan, a marine environment monitor, asks me to tell two species apart. The bat star with short broad arms, and the northern seastar with long arms curled up at the tips. I pick up three and lay them on my palm. They feel different. The monitor writes down numbers. How many, and where. I am seeing for the first time that the sea has counting work in it, not only catching.",
     { offer: "Could you pick up some starfish? Two species. Short and broad arms is the bat star, long with upturned tips is the northern seastar. Sort them.",

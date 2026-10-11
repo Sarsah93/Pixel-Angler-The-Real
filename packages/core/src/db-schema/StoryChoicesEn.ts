@@ -209,6 +209,13 @@ export const STORY_CHOICES_EN: Record<string, [string, string]> = {
   'N19-1/c/relay_true': ['She held the bamboo section for a long while.', '……She did? I see. (He says nothing for a time. That evening a new rest appeared on her stall.)'],
   'N19-1/c/relay_soft': ['She didn\'t say much.', '…Of course not. What would she say. (He goes back to shaping. The sound is a little rougher.)'],
   'N19-1/c/lesson': ['May I watch you cut the rests?', 'If you stay quiet. (I learn to tell the sound of the saw from the sound of the cane.)'],
+  // 237차 — 할머니 밭
+  'N19-7/c/compost': ['When does the compost go in?', 'Before you plant. Straight after you turn the soil. Put it in once they\'re grown and you\'re too late. (She scoops three lumps of compost out of a sack in the shed for me.)'],
+  'N19-7/c/pay': ['I\'ll take the wage. Digging a plot cost me a bit.', 'Right, take it. A field isn\'t free either. (She hands me the envelope.)'],
+  'N19-7/c/quiet': ['I never knew handling soil could be so calming.', 'Isn\'t it? The sea hounds you; a field waits for you. (She takes a handful of green chilies from the basket and drops them in my bag.)'],
+  'N19-8/c/more': ['Next I\'d like to try chilies.', 'Chilies take a lot of looking after. They need stakes, and the bugs come. Do a bit more first. (Still, she spends a long while telling me how to pick chili seedlings.)'],
+  'N19-8/c/share': ['Put mine in the stall basket too, please.', 'Yours as well? …All right, in it goes. When the regulars ask who grew it, I\'ll give them your name. (A corner of the basket is mine now.)'],
+  'N19-8/c/pay': ['I\'ll take the wage.', 'Of course. (She hands me the envelope. There\'s a packet of lettuce seed inside too.)'],
   'N04-3/c/teach': ['Would you mind if I kept an eye on that one a while longer?', 'Club-coaching adult member! Then we learn too. (Teaching tidies up my own casting.)'],
   'N04-3/c/pay': ['Does the club budget run to a wage?', 'Budget… about the price of ramyeon. (She makes up an envelope, seriously.)'],
   'N04-3/c/decline': ['The club surviving is enough for me.', '…The captain\'s crying. Long live the adult member. (Students greet me when I pass the school.)'],

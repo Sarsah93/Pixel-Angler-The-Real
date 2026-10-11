@@ -8,10 +8,12 @@
  * - 아이콘 = `px:<기본 id>`(작물 갈래 원형 + 작물 팔레트 — `tools/gen_pixel_icons.py`).
  * - 가게: 생활용품점 = 씨앗 · 호미 · 퇴비 · 설비 / 식자재마트 = 모종 · 종구(심는 철에만 진열).
  *   희귀할수록 하루 재고가 적다(`stockMult`) · 배워야 쓰는 자격 물건은 배운 뒤에 진열된다(`requiresSkill`).
+ * - 237차 — 작물 난이도 단계(`cropGate`)가 레벨 · 자격을 요구하면 갖춘 뒤에 진열된다(`minLevel` · `requiresLicense`).
+ *   씨앗으로 키우면 육묘가 긴 작물은 한 단계 위라, 같은 작물이라도 모종이 먼저 나온다.
  */
 
 import {
-  CROP_DATABASE, FARM_SUPPLIES, FARM_TUNING, GRADE_KO, cropOfProduce, parseProduceId, produceItemId,
+  CROP_DATABASE, FARM_SUPPLIES, FARM_TUNING, GRADE_KO, cropOfProduce, parseProduceId, produceItemId, cropGate, getCrop,
   type CropDef, type CropGrade, type CropRarity, type CropStart,
 } from '@tra/core';
 import type { InvItemTemplate } from '../store/InventoryStore.js';
@@ -184,6 +186,35 @@ export interface CropShopEntry extends InvItemTemplate {
   stockMult?: number;
   /** 집 가구로 배달(시루 · 수경 재배기) */
   furnKind?: FurnKind;
+  /** 237차 — 이 레벨부터 진열(작물 난이도 단계) */
+  minLevel?: number;
+  /** 237차 — 이 자격을 가진 뒤에 진열(까다로운 작물 — 유기농업기능사) */
+  requiresLicense?: string;
+}
+
+/** 237차 — 단계가 열릴 때 예로 드는 작물(이름은 작물 DB에서 읽는다) */
+const TIER_EXAMPLES: Record<number, string[]> = {
+  2: ['chili', 'cherry_tomato', 'garlic'],
+  3: ['cucumber', 'ginger', 'myoga', 'turmeric'],
+  4: ['gomchwi', 'dureup', 'wasabi'],
+};
+const TIER_PHRASE: Record<number, string> = { 2: '보통 난이도 작물', 3: '까다로운 작물', 4: '아주 까다로운 작물' };
+
+/**
+ * 237차 — 레벨이 올라 작물 단계가 열렸을 때의 한 줄(채널 로그 · 떠오르는 안내).
+ * 3단계부터는 유기농업기능사도 있어야 한다 — 아직 없으면 그 조건을 붙인다.
+ */
+export function farmTierNoticeKo(tier: number, hasCert: boolean): string {
+  const lv = FARM_TUNING.tierLevels[tier - 1] ?? 1;
+  const names = (TIER_EXAMPLES[tier] ?? []).map((id) => getCrop(id)?.nameKo).filter((x): x is string => !!x).join(' · ');
+  const cond = tier >= FARM_TUNING.certTier && !hasCert ? '유기농업기능사가 있으면' : '이제';
+  return `[텃밭] 레벨 ${lv} — ${cond} ${TIER_PHRASE[tier] ?? '작물'}도 기를 수 있다 (${names})`;
+}
+
+/** 237차 — 씨앗 · 모종의 난이도 단계 요건 → 진열 조건 */
+function gateFields(crop: CropDef, st: CropStart): Pick<CropShopEntry, 'minLevel' | 'requiresLicense'> {
+  const g = cropGate(crop, st);
+  return { ...(g.level > 1 ? { minLevel: g.level } : {}), ...(g.license ? { requiresLicense: g.license } : {}) };
 }
 
 /** 집 안 설비 → 가구 종류 */
@@ -197,6 +228,7 @@ export function dailyFarmEntries(): CropShopEntry[] {
     out.push({
       ...startTemplate(crop, st), price: st.cost, maxPerPurchase: 12, desc: startDesc(crop, st),
       stockMult: RARITY_STOCK[crop.rarity], ...(crop.requires?.skill ? { requiresSkill: crop.requires.skill } : {}),
+      ...gateFields(crop, st),
     });
   }
   for (const s of FARM_SUPPLIES) {
@@ -223,6 +255,7 @@ export function martFarmEntries(): CropShopEntry[] {
       desc: startDesc(crop, st), stockMult: RARITY_STOCK[crop.rarity],
       ...(allYear ? {} : { seasonMonths: st.months }),
       ...(crop.requires?.skill ? { requiresSkill: crop.requires.skill } : {}),
+      ...gateFields(crop, st),
     });
   }
   return out;

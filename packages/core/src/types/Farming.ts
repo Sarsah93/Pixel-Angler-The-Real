@@ -116,6 +116,31 @@ export interface CropInterim {
   cookIngredient?: string;
 }
 
+/**
+ * 237차 — 기르기 어려운 정도(사용자 제안 「작물별 난이도에 따라 자격 요건 차등」).
+ * 1 쉬움 · 2 보통 · 3 까다로움 · 4 아주 까다로움. 단계마다 요건은 `FARM_TUNING.tierLevels` · `certTier`.
+ * 기준은 농촌진흥청 텃밭 분류(쉬움 = 상추 · 시금치 · 쑥갓 · 배추 · 당근 · 무 · 고구마 · 감자 / 보통 = 토마토 · 호박 · 고추 · 가지 /
+ * 어려움 = 오이 · 수박 · 참외 — 병과 벌레 · 지주 · 육묘)이고, 분류에 없는 작물은 「까다로운 점」으로 견준다.
+ */
+export type CropDifficulty = 1 | 2 | 3 | 4;
+
+/**
+ * 237차 — 까다로운 점(왜 어려운가 — 상세 보기에 그대로 나간다).
+ * `nursery`는 **씨앗으로 시작할 때만** 한 단계를 올린다(모종이 쉽다 — 고추 육묘 70~80일).
+ */
+export type CropCare =
+  | 'pests'        // 병해충이 잘 온다
+  | 'support'      // 지주 · 유인 · 곁순
+  | 'nursery'      // 씨앗이면 육묘가 길고 까다롭다
+  | 'germination'  // 싹 틔우기가 까다롭다
+  | 'overwinter'   // 겨울을 나야 한다
+  | 'longSeason'   // 반년 가까이 · 여러 해 걸린다
+  | 'soil'         // 흙을 가린다(깊은 흙 · 모래 · 북주기)
+  | 'heat'         // 더위 · 땅 온도를 맞춰야 한다
+  | 'shade'        // 반그늘 · 숲 흙
+  | 'water'        // 물을 가린다(습지 · 찬물)
+  | 'humidity';    // 습도를 맞춰야 한다(버섯)
+
 /** 재배 자격 — 스킬 · 시설 · 면허 */
 export interface CropRequirement {
   skill?: string;
@@ -156,6 +181,10 @@ export interface CropDef {
   water: 'low' | 'mid' | 'high';
   /** 재배 자격 */
   requires?: CropRequirement;
+  /** 237차 — 기르기 어려운 정도(`CROP_DIFFICULTY` 표에서 채운다 — 단계 요건은 `cropGate`) */
+  difficulty?: CropDifficulty;
+  /** 237차 — 까다로운 점 */
+  care?: CropCare[];
   price: CropPrice;
   /**
    * 숨은 재조정(희귀 · 고가 · 저생산 작물) — 실제 시세를 따르되 칸 · 날 수익이 낚시를 넘지 않게 단가를 살짝 누른다.
@@ -236,6 +265,10 @@ export interface FarmPlantCtx {
   hasSkill: (skillId: string) => boolean;
   /** 파종 감각(발아율 +8%/랭크) */
   sproutBonus?: number;
+  /** 237차 — 플레이어 레벨(난이도 단계 요건). 없으면 단계 요건을 보지 않는다(시험 · 구 호출) */
+  level?: number;
+  /** 237차 — 면허 보유(유기농업기능사 — 까다로운 작물). 없으면 보지 않는다 */
+  hasLicense?: (licenseType: string) => boolean;
 }
 
 /** 수확 결과 */

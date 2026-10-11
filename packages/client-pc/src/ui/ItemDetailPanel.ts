@@ -12,9 +12,10 @@ import { getCreatureById, isCrabCreature } from '@tra/core';
 import { getBlueprint, CRAFT_STATION_LABEL, CRAFT_GROUP_LABEL, getQuestItem } from '@tra/core';
 import {
   cropStartOfItem, cropOfProduce, parseProduceId, monthRangeKo, kstMonthOf, GRADE_KO, supplyOfFacility, getSkillById,
-  produceMarketRatio, produceMarketInfo,
-  type CropDef, type CropStart, type CropRarity,
+  produceMarketRatio, produceMarketInfo, cropGate, CROP_TIER_KO, CROP_CARE_KO,
+  type CropDef, type CropStart, type CropRarity, type CropDifficulty, type LicenseType,
 } from '@tra/core';
+import { GameState } from '../store/GameState.js';
 import { PRODUCE_SUB, SEED_SUB } from '../data/CropItems.js';
 import { reelCmPerTurn, rodSpecFor, reelSpecFor, rodLoadState, ROD_USE_LABEL, getRodCatalogEntry, getReelCatalogEntry, getLureSpec, getNuisance, sashimiStarsAt, sashimiNutrition, foodNutritionOf, nutritionLineKo, restoreFromNutrition } from '@tra/core';
 import { FISH_DATABASE, fishImageSizeScale, fishRarity, speciesStandardWeightG,
@@ -109,6 +110,30 @@ function cropNeedsKo(crop: CropDef): string | null {
   return parts.length ? parts.join(' · ') : null;
 }
 
+/** 237차 — 난이도 단계 색(쉬움 초록 → 아주 까다로움 주황) */
+const TIER_COLOR: Record<CropDifficulty, string> = { 1: '#8affb0', 2: '#8fd4ff', 3: '#ffd257', 4: '#ff9a5a' };
+
+/**
+ * 237차 — 난이도 · 기를 자격 · 까다로운 점 줄.
+ *  씨앗으로 키우면 육묘가 긴 작물은 한 단계 위다 — 모종이 있으면 「모종이면 ○○」을 붙인다.
+ *  「씨앗이면 육묘」는 씨앗 봉투에만 보인다(모종을 산 사람에게는 이미 지난 일이다).
+ */
+function cropTierRows(crop: CropDef, st: CropStart): ItemDetailRow[] {
+  const rows: ItemDetailRow[] = [];
+  const g = cropGate(crop, st);
+  const base = (crop.difficulty ?? 1) as CropDifficulty;
+  const viaSeedling = g.tier > base && crop.starts.some((x) => x.kind === 'seedling');
+  rows.push({ label: '난이도', value: viaSeedling ? `${CROP_TIER_KO[g.tier]} — 모종이면 ${CROP_TIER_KO[base]}` : CROP_TIER_KO[g.tier], color: TIER_COLOR[g.tier] });
+  if (g.level > 1 || g.license) {
+    const req = g.license ? `레벨 ${g.level} · 유기농업기능사` : `레벨 ${g.level}부터`;
+    const ok = (GameState.player.level ?? 1) >= g.level && (!g.license || GameState.hasLicense(g.license as LicenseType));
+    rows.push({ label: '기를 자격', value: ok ? `${req} — 갖췄다` : req, color: ok ? '#8affb0' : '#ff9a5a' });
+  }
+  const care = (crop.care ?? []).filter((c) => c !== 'nursery' || st.kind === 'seed').map((c) => CROP_CARE_KO[c]);
+  if (care.length) rows.push({ label: '까다로운 점', value: care.join(' · ') });
+  return rows;
+}
+
 /** 235차 — 칸당 거두는 양(본 수확 한 번 · 상 등급) — 반복 수확이면 횟수를 붙인다 */
 function cropYieldKo(crop: CropDef, st: CropStart): string {
   const h = crop.harvest;
@@ -133,6 +158,7 @@ function cropStartDetail(item: Pick<InvItem, 'name' | 'qty' | 'basePrice'>, crop
   rows.push({ label: st.kind === 'seed' ? '싹 트는 비율' : '뿌리 내리는 비율', value: `${Math.round(st.establish * 100)}% 안팎` });
   rows.push({ label: '거두는 것', value: `${crop.harvest.nameKo} · 칸당 ${cropYieldKo(crop, st)}` });
   if (crop.interim && !(crop.interim.seedOnly && st.kind !== 'seed')) rows.push({ label: '자라는 동안', value: crop.interim.labelKo });
+  rows.push(...cropTierRows(crop, st));   // 237차
   const need = cropNeedsKo(crop);
   if (need) rows.push({ label: '갖출 것', value: need, color: '#ffd257' });
   rows.push({ label: '구하기', value: CROP_RARITY[crop.rarity].ko, color: CROP_RARITY[crop.rarity].color });

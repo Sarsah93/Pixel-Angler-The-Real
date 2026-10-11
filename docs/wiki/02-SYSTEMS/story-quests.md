@@ -18,7 +18,7 @@
 | `core/src/types/Story.ts` | 계약 타입 — `StoryQuestDef`·`StoryObjective(manual/actionKey)`·`JournalPageDef`·`StoryArcDef`·`CatchProvenance`·`LawVerdict`·`ReputationState` |
 | `core/src/rules/FisheryLaw.ts` (+`.test.ts`) | 법 규칙 5조 순수 함수 `canSell/canKeep/canUseGear/canGather/requiredLicenseFor` · 거부 시 대안 ≥ 1 |
 | `core/src/db-schema/StoryChapters.ts` | 5부 7챕터 · 자격 사다리 · **§8-1 수치 계약** |
-| `core/src/db-schema/StoryQuestDatabase.ts` | **186퀘**(메인 68 · 서브 118) + `validateStoryQuests()` · 137차 증설분은 `SUB_EXTRA`(선행 조건 명시) |
+| `core/src/db-schema/StoryQuestDatabase.ts` | **188퀘**(메인 68 · 서브 120 — 237차 +2) + `validateStoryQuests()` · 137차 증설분은 `SUB_EXTRA`(선행 조건 명시) |
 | `core/src/db-schema/JournalPages.ts` | 조행록 17장(어종 id 정합) + `journalCatchMatches` |
 | `core/src/db-schema/StoryArcs.ts` | 메인 3인 + **19아크** NPC (137차 +N18 도현수 · N19 정옥선·탁만수) |
 | `core/src/inventory/Backpack.ts` | 가방 사다리 모델(§8-3) — UI 미배선 |
@@ -108,7 +108,7 @@ STORY_ARCS ────┘     traineeDay (D-180)                └─ RegionHu
 | **미니맵 상점 카테고리 아이콘 8종** | ✅ | 136 — 셀 중복 제거 + 크기 단계별 표시 하한 |
 | **퀘스트 증설 38편** — 메인 3(M2-11·M4-11·M6-09) + 서브 35(챕터당 5) | ✅ | 137 — 총 **186퀘** · 계약 7챕터 갱신 |
 | **회귀 고리 13편** — 새 자격을 들고 옛 항구로 돌아간다 | ✅ | 137 — 챕터 무대 밖 편 20 → **33** |
-| **신규 아크 N18 도현수 · N19 정옥선·탁만수** | ✅ | 137 — 라이벌 7챕터 전편 / 오십 년 심부름 6편 |
+| **신규 아크 N18 도현수 · N19 정옥선·탁만수** | ✅ | 137 — 라이벌 7챕터 전편 / 오십 년 심부름 6편 · **237 할머니 밭 2편**(N19-7 귀퉁이 바구니 · N19-8 첫물 — 텃밭 입문 · Lv12) |
 | **인물 연결**(강두철↔고만석 · 배누리 진로 · 이수연 식당) | ✅ | 137 |
 | 일지 서브 트랙 **윈도우드 렌더 + 휠 스크롤** | ✅ | 137 — 12아크 15편 수용 |
 | ~~신규 퀘스트 전용 대사(`StoryDialogue`)~~ → **나레이션 층 `StoryNarrative.ts` 186편**(서두·NPC 대사·완료 선택지·에필로그) | ✅ | 141 — `StoryDialogue`는 Ch1 폴백 |
@@ -191,6 +191,15 @@ STORY_ARCS ────┘     traineeDay (D-180)                └─ RegionHu
 - dev 콘솔(F10)에 퀘 점프/완료 명령(구세이브 고레벨 테스터용).
 
 ## 6. 함정·불변조건
+
+### [237차] 철 따라 달라지는 선물 · 장면이 건넨 물건은 실제로 빠진다
+
+- 수락 때 주는 물건이 철을 타면 **그달 바로 심을(쓸) 수 있는 것**만 준다(core `okseonSpareGift` — 시험이 12달을 다 대조한다).
+  받고 나서 철이 막혀 못 쓰면 막힌 문이다(R12와 같은 뜻). 목표도 작물을 가리지 않는다(`farm` · `itemId` 없음).
+- 가방이 아닌 곳으로 가는 선물(겨울 콩나물 시루 → 집 「넣어 둔 가구」)은 가방 자리 검사(`rewardRoomShortfall`)에 넣지 않는다 — host `giveFurniture`.
+- 장면이 물건을 건네는 편은 `QuestSceneDef.consumeItemId` — **목표가 닫힐 때만** 하나 뺀다. 안 들고 왔으면 `noComplete`(M7-04와 같은 규칙).
+- `farm` 목표 기본은 심기다 — 거두기를 세려면 `farmAction: 'harvest'`(솎음 · 잎 따기 같은 중간 수확도 센다).
+- 떠오르는 안내(`floatingHint`)는 같은 순간에 여럿 오면 위로 쌓인다(237 — 전엔 한 자리에 겹쳤다). 수락 알림 앞에 한 줄을 더 띄워도 된다.
 
 ### [235차] 행동 목표는 출처로만 오른다 · 컷씬은 찍기 전에 번역한다
 
@@ -434,7 +443,7 @@ manual 목표를 점수에 넣으면 표기가 곧바로 거짓말이 된다.
 
 ## 138차 갱신 (2026-09-16)
 
-- **186퀘 (메인 68 · 서브 118) · 23아크.** 138차에 서브 28편 + 아크 4개 증설.
+- **188퀘 (메인 68 · 서브 120) · 23아크.** 138차에 서브 28편 + 아크 4개 증설 · 237차 텃밭 입문 서브 2편(N19-7 · N19-8).
 - 신규 아크: **N20 유하랑**(낚시 버튜버 — 콘텐츠 제작 · 7편) · **N21 오세찬**(해양환경 감시원 — 과증식 대응 · 7편) ·
   **N22 하늬**(생활공방 — 제작/농사/광질/리빙 · 8편) · **N23 채수림**(수산질병·양식 관리사 — 어종 관리 · 6편).
 - 신규 목표 종류: `cull`(과증식 수거 — 자동 추적) · `farm`·`mine`·`furnish`(시스템 도착 전까지 `manual`).

@@ -58,6 +58,9 @@ export function objectiveTarget(q: StoryQuestDef, o: StoryObjective): QuestGuide
       return { kind: 'npc', npcId: q.giver, regionId: q.region };
     case 'sell':
       return { kind: 'shop', shopHint: 'market' };
+    // 237차 — 텃밭 · 집 안 선반은 집에 있다(집에 있으면 화살표 없음)
+    case 'farm':
+      return { kind: 'region', regionId: 'hometown' };
     default:
       return { kind: 'none' };
   }
@@ -100,7 +103,9 @@ export function objectiveHowToKo(q: StoryQuestDef, o: StoryObjective, n: GuideNa
     case 'license': return 'L 면허 창에서 조건을 채우고 취득한다';
     case 'earn': return `재화를 ${(o.target ?? 0).toLocaleString()}원까지 모은다`;
     case 'communityWork': return `${giver}에게 [F] → 일감 「공동작업」`;
-    case 'farm': return '집 마당 텃밭 [F] → 칸을 호미로 일구고 씨앗 · 모종을 심는다';
+    case 'farm': return o.farmAction === 'harvest'
+      ? '집 마당 텃밭 · 집 안 선반 [F] → 다 자란 칸을 골라 「거두기」'
+      : '집 마당 텃밭 [F] → 칸을 호미로 일구고 씨앗 · 모종을 심는다';
     default: return '진행 중인 이야기 — 해당 NPC에게 말을 건다';
   }
 }

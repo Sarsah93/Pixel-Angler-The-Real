@@ -56,6 +56,8 @@ export interface QuestSceneDef {
   extras: SceneExtra[];
   /** 235차 — 장면이 끝나도 목표를 닫지 않는다(필요한 물건을 안 들고 왔을 때 — 가지러 다녀오게 한다) */
   noComplete?: boolean;
+  /** 237차 — 장면에서 건넨 물건. 목표가 닫힐 때 가방에서 1개 뺀다(N19-8 처음 거둔 것) */
+  consumeItemId?: string;
 }
 
 export interface QuestSceneCtx {
@@ -67,12 +69,20 @@ export interface QuestSceneCtx {
   fieldNpcIds: readonly string[];
   /** 235차 — 그 물건을 가방에 갖고 있는가(장면이 실제 물건을 쓸 때). 없으면 갖고 있다고 본다(사전 수집용) */
   has?: (itemId: string) => boolean;
+  /** 237차 — 가방에 든 텃밭 수확물 하나의 id(없으면 null). 없으면 갖고 있다고 본다(사전 수집용) */
+  produce?: () => string | null;
 }
 
 /** 235차 — M7-04 사진을 안 들고 왔을 때의 짧은 장면(목표는 닫히지 않는다) */
 const M7_04_NO_PHOTO: [string, string][] = [
   ['사진 가져와 봐. 그 사진.', 'Bring me that photo. That one.'],
   ['아버지의 상자에서 나온 사진은 집에 두고 왔다. 가지러 다녀와야 한다.', 'I left the photo from Father\'s box at home. I need to go and get it.'],
+];
+
+/** 237차 — N19-8 처음 거둔 것을 안 들고 왔을 때(목표는 닫히지 않는다) */
+const N19_8_NO_PRODUCE: [string, string][] = [
+  ['거둔 거 가져와 봐. 맛 좀 보자.', 'Bring me what you picked. Let me have a taste.'],
+  ['거둔 것은 집에 두고 왔다. 한 줌 챙겨 와야 한다.', 'I left what I picked at home. I need to go and bring a handful.'],
 ];
 
 /** 각본 손글 우선 — 키 `${questId}#${objectiveIndex}` */
@@ -157,6 +167,45 @@ export const QUEST_SCENE_OVERRIDES: Record<string, (q: StoryQuestDef, idx: numbe
         { kind: 'say', who: 'npc', bubble: '...', text: '울 거면 얼음부터 나르고 울라고 했지. 그 말이 왜 그렇게 빨리 나왔는지, 이제 알겠냐.', textEn: 'I told you to haul the ice first if you were going to cry. Now you know why it came out so fast.' },
         { kind: 'say', who: 'player', thought: true, text: '할머니가 나를 처음 본 날이 22년 전이었다. 나는 몰랐고, 할머니는 알았다.', textEn: 'The first time she saw me was twenty-two years ago. I did not know. She did.' },
         { kind: 'give', from: 'npc', to: 'player', item: 'photo', ms: 800 },
+      ],
+    };
+    return base;
+  },
+
+  // N19-8 ② 처음 거둔 것을 할머니께 맛보인다 — 237차: 가방의 수확물을 **실제로 건넨다**(장면이 끝나면 하나 빠진다).
+  //  안 들고 왔으면 목표는 닫히지 않는다(M7-04 사진과 같은 규칙). 작물은 철마다 달라 글은 작물을 가리키지 않는다.
+  'N19-8#1': (q, idx, ctx) => {
+    const base = generatedScene(q, idx, ctx);
+    const item = ctx.produce ? ctx.produce() : 'crop_lettuce';
+    if (!item) {
+      base.noComplete = true;
+      base.script = {
+        id: base.script.id, placeKo: base.script.placeKo, placeEn: base.script.placeEn,
+        steps: [
+          { kind: 'focus', who: 'npc', ms: 440 },
+          { kind: 'faceTo', who: 'npc', target: 'player' },
+          { kind: 'say', who: 'npc', bubble: '...', text: N19_8_NO_PRODUCE[0][0], textEn: N19_8_NO_PRODUCE[0][1] },
+          { kind: 'say', who: 'player', thought: true, text: N19_8_NO_PRODUCE[1][0], textEn: N19_8_NO_PRODUCE[1][1] },
+        ],
+      };
+      return base;
+    }
+    base.consumeItemId = item;
+    base.script = {
+      id: base.script.id, placeKo: base.script.placeKo, placeEn: base.script.placeEn,
+      steps: [
+        { kind: 'focus', who: 'npc', ms: 480 },
+        { kind: 'faceTo', who: 'npc', target: 'player' },
+        { kind: 'faceTo', who: 'player', target: 'npc' },
+        { kind: 'say', who: 'player', thought: true, text: '처음 거둔 것을 봉지째 내민다. 모양도 크기도 들쭉날쭉하다.', textEn: 'I hold out the bag with the first picking in it. Uneven in shape and size.' },
+        { kind: 'give', from: 'player', to: 'npc', item: 'greens', ms: 900 },
+        { kind: 'emote', who: 'npc', emote: 'think', ms: 900 },
+        { kind: 'say', who: 'player', thought: true, text: '할머니는 봉지에서 하나를 집어 흙을 털고 입에 넣는다. 한참을 씹는다.', textEn: 'She takes one out, brushes off the soil and puts it in her mouth. She chews for a long time.' },
+        { kind: 'wait', ms: 900 },
+        { kind: 'say', who: 'npc', bubble: '...', text: '…흙 맛이 좋다. 처음 치고는 잘했다.', textEn: '…The soil tastes good in it. Not bad for a first time.' },
+        { kind: 'emote', who: 'player', emote: 'joy', ms: 800 },
+        { kind: 'say', who: 'npc', bubble: '...', text: '나머지는 네가 먹어. 네가 기른 건 네 몸에 제일 잘 맞는다.', textEn: 'Eat the rest yourself. What you grow suits your own body best.' },
+        { kind: 'say', who: 'player', thought: true, text: '첫물은 남 주는 거라고 했다. 받는 사람 얼굴을 보니 왜 그런지 알 것 같다.', textEn: 'The first picking goes to someone else, she said. Watching her face, I think I see why.' },
       ],
     };
     return base;

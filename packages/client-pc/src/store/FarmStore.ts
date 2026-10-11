@@ -16,7 +16,7 @@ import {
   FARM_CELLS, FARM_COLS, INDOOR_SLOTS, advancePlot, canPlant, cellReady, clearCell, climateRainAt, compostCell,
   cropStartOfItem, getCrop, getFarmSupply, harvestCell, interimHarvestCell, interimOpen, kstMonthOf, newFarmPlot,
   plantCell, produceItemId, supplyOfFacility, tillCell, waterCell, newFarmCell, gradeOf,
-  type CropDef, type FarmEnv, type FarmFacility, type FarmHarvestResult, type FarmPlantCtx, type FarmPlotState,
+  type CropDef, type FarmEnv, type FarmFacility, type FarmHarvestResult, type FarmPlantCtx, type FarmPlotState, type LicenseType,
 } from '@tra/core';
 import { GameState } from './GameState.js';
 import { InventoryStore, type InvCategory } from './InventoryStore.js';
@@ -133,6 +133,9 @@ class FarmStoreImpl {
     return {
       hasSkill: (id) => GameState.skillRank(id) > 0,
       sproutBonus: GameState.skillMult('sprout_rate') - 1,
+      // 237차 — 작물 난이도 단계 요건(레벨 · 유기농업기능사)
+      level: GameState.player.level ?? 1,
+      hasLicense: (t) => GameState.hasLicense(t as LicenseType),
     };
   }
 

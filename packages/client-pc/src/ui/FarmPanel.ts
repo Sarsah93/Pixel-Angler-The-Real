@@ -12,8 +12,8 @@
 import Phaser from 'phaser';
 import {
   CROP_DATABASE, FARM_COLS, GRADE_KO, cellReady, cellStage, cropStartOfItem, daysToNextHarvest, getCrop, supplyOfFacility,
-  gradeOf, interimOpen, kstMonthOf, seasonFactor, startOf, FARM_SUPPLIES,
-  type FarmCellState, type FarmFacility, type FarmPlotState,
+  gradeOf, interimOpen, kstMonthOf, seasonFactor, startOf, FARM_SUPPLIES, cropGate,
+  type FarmCellState, type FarmFacility, type FarmPlotState, type LicenseType,
 } from '@tra/core';
 import { DraggablePanel, restoreHandCursor } from './DraggablePanel.js';
 import { addPixelIcon } from './PixelIcon.js';
@@ -459,9 +459,15 @@ export class FarmPanel extends DraggablePanel {
         fontFamily: FONT, fontSize: '11px', color: '#7f93a3',
       }).setOrigin(1, 0));
     }
+    // 237차 — 아직 못 기르는 단계(레벨 · 유기농업기능사)는 이름을 흐리게(가장 쉬운 심는 방법 기준)
+    const lv = GameState.player.level ?? 1;
+    const growable = (c: typeof crops[number]): boolean => c.starts.some((st) => {
+      const g = cropGate(c, st);
+      return lv >= g.level && (!g.license || GameState.hasLicense(g.license as LicenseType));
+    });
     crops.slice(this.scroll, this.scroll + rows).forEach((c, k) => {
       const ry = y + k * 20;
-      const nm = scene.add.text(PANE_X, ry + 2, c.nameKo, { fontFamily: FONT, fontSize: '11px', color: '#c8dceb' });
+      const nm = scene.add.text(PANE_X, ry + 2, c.nameKo, { fontFamily: FONT, fontSize: '11px', color: growable(c) ? '#c8dceb' : '#5f7080' });
       clampTextWidth(nm, nameW - 4);
       this.content.add(nm);
       const sow = new Set(c.starts.flatMap((s) => s.months));

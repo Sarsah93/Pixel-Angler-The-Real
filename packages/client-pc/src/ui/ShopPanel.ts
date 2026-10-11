@@ -33,7 +33,7 @@ import { createItemIcon } from './ItemIcon.js';
 import { drawTrendIcon, TREND_ICON_PX } from './MarketTrendIcon.js';
 import { MarketStore } from '../store/MarketStore.js';
 import { clampTextWidth } from './TextFit.js';
-import { SHOP_STOCK_PLENTY, kstMonthOf, type MarketTrend } from '@tra/core';
+import { SHOP_STOCK_PLENTY, kstMonthOf, type MarketTrend, type LicenseType } from '@tra/core';
 import { maybeStartTour, tourSeen, type TourOptions } from './GuideTour.js';
 import { StoryStore } from '../store/StoryStore.js';
 import {
@@ -713,7 +713,10 @@ export class ShopPanel extends DraggablePanel {
     return this.shop.sells.filter((e) => (!e.unlockKey || GameState.getFlag(`unlock.shop.${e.unlockKey}`))
       && !(e.blueprintId && CraftingStore.knows(e.blueprintId))   // 223차 — 아는 도면 종이는 안 판다
       && (!e.seasonMonths || e.seasonMonths.includes(month))      // 235차 — 모종 · 종구는 심는 철에만
-      && (!e.requiresSkill || GameState.skillRank(e.requiresSkill) > 0))   // 235차 — 배워야 쓰는 것은 배운 뒤에
+      && (!e.requiresSkill || GameState.skillRank(e.requiresSkill) > 0)   // 235차 — 배워야 쓰는 것은 배운 뒤에
+      // 237차 — 작물 난이도 단계: 레벨 · 자격을 갖춘 뒤에(잠금 표시 없음 — 레벨 알림 · 면허 창 · 도움말이 알려 준다)
+      && (!e.minLevel || (GameState.player.level ?? 1) >= e.minLevel)
+      && (!e.requiresLicense || GameState.hasLicense(e.requiresLicense as LicenseType)))
       .concat(ShopStore.usedGoods(this.ctx.key).map(usedShopEntry));   // 224차 — 손님이 판 장비(중고)
   }
 

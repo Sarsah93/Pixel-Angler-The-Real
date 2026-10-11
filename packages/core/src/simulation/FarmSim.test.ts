@@ -6,10 +6,14 @@ import { describe, expect, it } from 'vitest';
 import {
   newFarmPlot, plantCell, advanceCell, harvestCell, interimHarvestCell, interimOpen, cellReady, canPlant, speedMultOf,
   producePrice, cropDailyValue, climateRainAt, kstMonthOf, waterCell, compostCell, gradeOf, FARM_TUNING,
+  cropTier, cropGate, cropGateBlock, CROP_CARE_KO,
 } from './FarmSim.js';
 import {
-  CROP_DATABASE, getCrop, produceItemId, parseProduceId, cropOfProduce, cropStartOfItem, FARM_SUPPLIES, supplyOfFacility,
+  CROP_DATABASE, CROP_DIFFICULTY, getCrop, produceItemId, parseProduceId, cropOfProduce, cropStartOfItem, FARM_SUPPLIES, supplyOfFacility,
 } from '../db-schema/CropDatabase.js';
+import { LICENSE_DATABASE } from '../types/License.js';
+import { SKILL_BONUS_EXCLUDED_LICENSES, skillPointsFromLicenses } from '../types/Skills.js';
+import { SKILL_LICENSE_BONUS_TOTAL_PT } from '../db-schema/SkillDatabase.js';
 import { dishStarsAt } from './CookingSim.js';
 import { getFireRecipe } from '../db-schema/FireRecipeDatabase.js';
 import type { FarmEnv, FarmPlotState } from '../types/Farming.js';
@@ -345,5 +349,70 @@ describe('236차 — 버섯 덤 · 단전', () => {
     advanceCell(plot, 0, t0 + 5 * DAY, { rainAt: () => false, powerOff: true });
     expect(plot.cells[0].growth).toBe(0);
     expect(plot.cells[0].quality).toBeGreaterThanOrEqual(0.7);
+  });
+});
+
+describe('237차 — 작물 난이도 단계 · 기를 자격', () => {
+  const start = (id: string, kind: 'seed' | 'seedling' | 'set') => getCrop(id)!.starts.find((x) => x.kind === kind)!;
+
+  it('작물 68종 전부 난이도가 있고, 표에 없는 id가 없다', () => {
+    for (const c of CROP_DATABASE) expect(c.difficulty, c.id).toBeGreaterThanOrEqual(1);
+    const ids = new Set(CROP_DATABASE.map((c) => c.id));
+    for (const id of Object.keys(CROP_DIFFICULTY)) expect(ids.has(id), id).toBe(true);
+    const n = [1, 2, 3, 4].map((t) => CROP_DATABASE.filter((c) => c.difficulty === t).length);
+    expect(n).toEqual([32, 23, 4, 9]);
+  });
+
+  it('단계 문턱 — 쉬움 1 · 보통 15 · 까다로움 25 + 유기농업기능사 · 아주 까다로움 40 + 유기농업기능사', () => {
+    expect(cropGate(getCrop('lettuce')!, start('lettuce', 'seedling'))).toEqual({ tier: 1, level: 1 });
+    expect(cropGate(getCrop('eggplant')!, start('eggplant', 'seedling'))).toEqual({ tier: 2, level: 15 });
+    expect(cropGate(getCrop('cucumber')!, start('cucumber', 'seedling'))).toEqual({ tier: 3, level: 25, license: 'organic_farming' });
+    expect(cropGate(getCrop('wasabi')!, getCrop('wasabi')!.starts[0])).toEqual({ tier: 4, level: 40, license: 'organic_farming' });
+  });
+
+  it('육묘가 긴 작물은 씨앗부터면 한 단계 위 — 모종이 먼저 열린다', () => {
+    expect(cropTier(getCrop('chili')!, start('chili', 'seedling'))).toBe(2);
+    expect(cropTier(getCrop('chili')!, start('chili', 'seed'))).toBe(3);
+    expect(cropTier(getCrop('napa_cabbage')!, start('napa_cabbage', 'seedling'))).toBe(1);
+    expect(cropTier(getCrop('napa_cabbage')!, start('napa_cabbage', 'seed'))).toBe(2);
+    // 육묘 표시가 없는 작물은 씨앗이어도 그대로
+    expect(cropTier(getCrop('lettuce')!, start('lettuce', 'seed'))).toBe(1);
+  });
+
+  it('못 기르는 이유 문장 — 레벨만 · 자격만 · 둘 다', () => {
+    const lic = (has: boolean) => () => has;
+    expect(cropGateBlock(getCrop('eggplant')!, start('eggplant', 'seedling'), { level: 10, hasLicense: lic(false) }))
+      .toBe('레벨 15부터 기를 수 있는 작물이다');
+    expect(cropGateBlock(getCrop('cucumber')!, start('cucumber', 'seedling'), { level: 30, hasLicense: lic(false) }))
+      .toBe('까다로운 작물이다 — 유기농업기능사가 있어야 기를 수 있다');
+    expect(cropGateBlock(getCrop('cucumber')!, start('cucumber', 'seedling'), { level: 20, hasLicense: lic(true) }))
+      .toBe('레벨 25부터 기를 수 있는 작물이다');
+    expect(cropGateBlock(getCrop('wasabi')!, getCrop('wasabi')!.starts[0], { level: 20, hasLicense: lic(false) }))
+      .toBe('아주 까다로운 작물이다 — 레벨 40 · 유기농업기능사가 있어야 기를 수 있다');
+    expect(cropGateBlock(getCrop('cucumber')!, start('cucumber', 'seedling'), { level: 25, hasLicense: lic(true) })).toBeNull();
+  });
+
+  it('심기 판정이 단계 요건을 본다 — 문맥에 레벨이 없으면(구 호출) 막지 않는다', () => {
+    const plot = newFarmPlot('plot', kst(2026, 5, 1));
+    const cell = plot.cells[0]; cell.tilled = true;
+    const crop = getCrop('eggplant')!; const st = start('eggplant', 'seedling');
+    const m = st.months[0];
+    expect(canPlant(crop, st, plot, cell, m, { hasSkill: () => true, level: 12, hasLicense: () => false }))
+      .toEqual({ ok: false, reasonKo: '레벨 15부터 기를 수 있는 작물이다' });
+    expect(canPlant(crop, st, plot, cell, m, { hasSkill: () => true, level: 15, hasLicense: () => false }).ok).toBe(true);
+    expect(canPlant(crop, st, plot, cell, m, { hasSkill: () => true }).ok).toBe(true);
+  });
+
+  it('까다로운 점 이름에는 목록 구분자(\u00b7)가 없다', () => {
+    for (const v of Object.values(CROP_CARE_KO)) expect(v.includes(' · '), v).toBe(false);
+  });
+
+  it('유기농업기능사 — 농업 갈래 · 텃밭 10번 · 스킬 보너스 제외(면허 보너스 총량 15 불변)', () => {
+    const def = LICENSE_DATABASE.find((l) => l.type === 'organic_farming')!;
+    expect(def.category).toBe('farming');
+    expect(def.requirements).toContainEqual({ type: 'min_harvests', value: 10 });
+    expect(LICENSE_DATABASE.find((l) => l.type === 'farmland_use')!.category).toBe('farming');
+    expect(SKILL_BONUS_EXCLUDED_LICENSES).toContain('organic_farming');
+    expect(skillPointsFromLicenses(LICENSE_DATABASE.map((l) => l.type))).toBe(SKILL_LICENSE_BONUS_TOTAL_PT);
   });
 });

@@ -6,7 +6,16 @@
  * Ko/En 쌍이 정본이다(`I18n.buildRuntimeDict`). 여기는 화면 문구만 둔다.
  */
 
+import { CROP_CARE_KO, CROP_CARE_EN, type CropCare } from '@tra/core';
+
 const MONTH_EN = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** 237차 — 까다로운 점 이름(ko → en) · 상세 보기의 「병해충 · 지주 세우기」 같은 목록을 통째로 옮긴다 */
+const CARE_EN_BY_KO: Record<string, string> = Object.fromEntries(
+  (Object.keys(CROP_CARE_KO) as CropCare[]).map((k) => [CROP_CARE_KO[k], CROP_CARE_EN[k]]),
+);
+const CARE_ALT = Object.keys(CARE_EN_BY_KO).map((x) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+const CARE_LIST_RE = new RegExp(`^(?:${CARE_ALT})(?: · (?:${CARE_ALT}))*$`);
 
 /** 「3~4월 · 8~9월」 → 「Mar–Apr, Aug–Sep」 (`monthRangeKo` 출력) */
 export function monthRangeEn(ko: string): string {
@@ -126,6 +135,10 @@ export const EN_FARM: Record<string, string> = {
   '사 주는 곳': 'Buyers', '식자재 마트 · 식당': 'Grocery mart · restaurant',
   '직접 기른 채소 — 요리 별 다섯 개를 막지 않는다': 'Homegrown — never holds a dish back from five stars',
   '시루': 'Sprouting jar', '콩나물로 앉힐 수 있다': 'Can go into the sprouting jar',
+  // 237차 — 작물 난이도
+  '난이도': 'Difficulty', '기를 자격': 'To grow it', '까다로운 점': 'Fussy about',
+  '쉬움': 'Easy', '아주 까다로움': 'Very demanding',
+  '콩나물 시루(집으로 배달)': 'Sprouting jar (delivered home)',
 
   // ── 퀘스트 방법 한 줄(core QuestGuide) ──
   '집 마당 텃밭 [F] → 칸을 호미로 일구고 씨앗 · 모종을 심는다':
@@ -195,6 +208,17 @@ export const EN_FARM: Record<string, string> = {
     'Tilling (a whole row at once), Watering (soil dries slower), Harvest Yield, Seed Saver (a packet of seed at harvest), Sowing Sense (germination), Fertilizer, Pest Control, Almanac Reading (a planting calendar in the patch window), Greenhouse, Mountain Greens and Hydroponics.',
   '산채 재배를 배우면 곰취 · 산마늘 · 눈개승마 · 두릅 같은 산나물 모종이 식자재마트에 들어오고, 수경 재배를 배우면 냉수 순환 수조와 고추냉이 모종을 다룰 수 있습니다.':
     'Learn Mountain Greens and the grocery mart starts stocking mountain-green seedlings such as gomchwi, alpine leek, goat\'s beard and fatsia shoots; learn Hydroponics and you can run a cold-water tank and grow wasabi seedlings.',
+  // 237차 — 도움말 「작물 난이도 · 기를 자격」
+  '작물 난이도 · 기를 자격': 'Crop difficulty and who can grow what',
+  '쉬움 · 보통 · 까다로움 · 아주 까다로움': 'Easy, Normal, Demanding, Very demanding',
+  '작물마다 기르기 까다로운 정도가 넷으로 나뉩니다. 농촌진흥청이 도시농업 작물을 쉬운 작물과 어려운 작물로 나눈 것을 바탕으로, 병해충 · 지주 세우기 · 육묘 · 겨울나기 · 재배 기간 · 흙 · 온도 · 그늘 · 물을 보고 정했습니다. 씨앗 · 모종을 우클릭 [상세보기]하면 「난이도」와 「까다로운 점」이 나옵니다.':
+    'Every crop falls into one of four difficulty levels. They follow the Rural Development Administration\'s split of urban-farming crops into easy and hard ones, weighing pests, staking, raising seedlings, overwintering, season length, soil, temperature, shade and water. Right-click a seed or seedling → [Details] to see its Difficulty and what it is fussy about.',
+  '쉬운 작물(상추 · 깻잎 · 열무 · 감자 · 콩나물 같은 것)은 처음부터 기릅니다. 보통 작물(고추 · 방울토마토 · 가지 · 마늘 · 양파 같은 것)은 레벨 15부터 기릅니다. 까다로운 작물(오이 · 생강 · 양하 · 울금)은 레벨 25에 유기농업기능사가, 아주 까다로운 작물(산나물 · 고추냉이)은 레벨 40에 유기농업기능사가 있어야 기릅니다. 산나물 · 고추냉이는 산채 재배 · 수경 재배 기술도 함께 있어야 합니다.':
+    'Easy crops (lettuce, perilla, young radish, potato, bean sprouts and the like) can be grown from the start. Normal crops (chili, cherry tomato, eggplant, garlic, onion and the like) open at level 15. Demanding crops (cucumber, ginger, myoga, turmeric) need level 25 and the Craftsman Organic Agriculture certificate; very demanding crops (mountain greens, wasabi) need level 40 and the same certificate. Mountain greens and wasabi also need the Mountain Greens or Hydroponics skill.',
+  '씨앗부터 키우면 육묘가 긴 작물(고추 · 배추 · 부추 같은 것)은 한 단계 위로 칩니다 — 같은 작물이라도 모종이면 먼저 기를 수 있습니다. 아직 못 기르는 단계의 씨앗 · 모종은 가게에 나오지 않고, 레벨이 문턱을 넘으면 지역 채널에 알림이 뜹니다.':
+    'Crops with a long nursery stage (chili, napa cabbage, garlic chives and the like) count one level harder when you start them from seed — you can grow the same crop sooner from a seedling. Seeds and seedlings above your level stay off the shop shelves, and the region channel tells you when a level threshold opens new ones.',
+  '유기농업기능사는 면허 · 허가(L)의 「농업」에 있습니다. 텃밭에서 열 번 거둬 본 뒤 받을 수 있고 발급비는 35,000원입니다. 실제 국가기술자격(필기 · 실기)을 본뜬 것이라 스킬 포인트는 들어오지 않습니다.':
+    'Craftsman Organic Agriculture is under Farming in Licences · Permits (L). It is issued once you have harvested from your garden ten times, for a fee of 35,000 won. It is modelled on the real national technical qualification (written and practical exams), so it gives no skill point.',
   '광질 · 벌목': 'Mining & logging', '광질 · 벌목 (계획)': 'Mining & logging (planned)',
   '초지 · 암반에서 광물을 캐 요리와 제작 · 건축 재료로 씁니다. 홈타운의 나무 · 바위(벌목 · 채굴)도 이때 열립니다.':
     'Dig minerals from grassland and bedrock for cooking, crafting and building. Hometown trees and rocks (logging, quarrying) open up then too.',
@@ -203,6 +227,27 @@ export const EN_FARM: Record<string, string> = {
 };
 
 export const EN_FARM_RULES: [RegExp, (m: RegExpMatchArray, tr: (s: string) => string) => string][] = [
+  // 237차 — 작물 난이도 · 기를 자격 · 까다로운 점 · 심기 거부(core `cropGateBlock`)
+  [/^(쉬움|보통|까다로움|아주 까다로움) — 모종이면 (쉬움|보통|까다로움|아주 까다로움)$/, (m, tr) => `${tr(m[1])} — ${tr(m[2])} as a seedling`],
+  [/^레벨 (\d+) · 유기농업기능사( — 갖췄다)?$/, (m) => `Level ${m[1]} + Craftsman Organic Agriculture${m[2] ? ' — met' : ''}`],
+  [/^레벨 (\d+)부터( — 갖췄다)?$/, (m) => `From level ${m[1]}${m[2] ? ' — met' : ''}`],
+  [/^레벨 (\d+)부터 기를 수 있는 작물이다$/, (m) => `You can grow this from level ${m[1]}`],
+  [/^(아주 )?까다로운 작물이다 — (?:레벨 (\d+) · )?유기농업기능사가 있어야 기를 수 있다$/,
+    (m) => `A ${m[1] ? 'very ' : ''}demanding crop — needs ${m[2] ? `level ${m[2]} and ` : ''}the Craftsman Organic Agriculture certificate`],
+  [CARE_LIST_RE, (m) => m[0].split(' · ').map((x) => CARE_EN_BY_KO[x] ?? x).join(' · ')],
+  // 237차 — N19-7 정옥선의 선물(「[할 일] 정옥선이 건넨 것 — 상추 모종 (1포기) ×18 · 호미」)
+  //  떠오르는 안내는 태그를 떼고 보낸다 — 태그 없는 꼴도 받는다
+  [/^(\[할 일\] )?정옥선이 건넨 것 — (.+)$/, (m, tr) => `${m[1] ? '[Task] ' : ''}Ok-seon gave you: ${m[2].split(' · ').map((x) => {
+    const q = /^(.+) ×(\d+)$/.exec(x);
+    return q ? `${tr(q[1])} ×${q[2]}` : tr(x);
+  }).join(' · ')}`],
+  // 237차 — 레벨이 올라 작물 단계가 열림(태그 「[텃밭]」은 I18n이 따로 옮긴다)
+  [/^레벨 (\d+) — (이제|유기농업기능사가 있으면) (보통 난이도 작물|까다로운 작물|아주 까다로운 작물)도 기를 수 있다 \((.+)\)$/,
+    (m, tr) => {
+      const what = m[3] === '보통 난이도 작물' ? 'normal-difficulty crops' : m[3] === '까다로운 작물' ? 'demanding crops' : 'very demanding crops';
+      const lead = m[2] === '이제' ? 'you can now grow' : 'with the Craftsman Organic Agriculture certificate you can grow';
+      return `Level ${m[1]} — ${lead} ${what} too (${m[4].split(' · ').map((x) => tr(x)).join(', ')})`;
+    }],
   // 칸 자세히 · 상세 보기 — 날 수 · 비율
   [/^(\d+)일 전$/, (m) => `${m[1]} day${m[1] === '1' ? '' : 's'} ago`],
   [/^약 (\d+)일 뒤$/, (m) => `In about ${m[1]} day${m[1] === '1' ? '' : 's'}`],

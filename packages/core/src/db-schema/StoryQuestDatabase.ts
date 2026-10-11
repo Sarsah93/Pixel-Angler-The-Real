@@ -885,6 +885,30 @@ const SUB_EXTRA: StoryQuestDef[] = subExtra([
       talk('tak_mansu', '왜 그것인지 듣는다', 'Hear why it was that one')],
     ['N02-1']],
 
+  // 237차 — 사용자 제안 「농사를 초반 서브 퀘스트로 자연스레 접하게(메인 아님 · 어느 정도 레벨 뒤)」.
+  //   정옥선 좌판 귀퉁이의 바구니는 할머니 집 앞 밭에서 온다. 남는 것을 나눠 주고(철마다 다르다 — core `okseonSpareGift`),
+  //   첫물을 맛보인다. 심기 · 거두기 목표는 작물을 가리지 않는다 — 철이 지나도 막히지 않게(R12).
+  ['N19-7', 'N19', 1, 12, 350, 'okseon', SOK, '귀퉁이 바구니', 'The Corner Basket',
+    '좌판 귀퉁이 바구니의 상추 · 고추는 할머니 집 앞 밭에서 온다. 마당이 있으면 남는 것을 심어 보라고 한다 — 먹을 건 직접 키우는 게 제일이라며.',
+    'The lettuce and chilies in the basket at the corner of her stall come from Ok-seon\'s own garden. If you have a yard, she says, plant her spares — what you eat is best grown yourself.',
+    [auto('farm', '받은 것을 텃밭이나 집 안 선반에 두 칸 심는다', 'Plant what she gave you — two cells in the garden or on the indoor shelf', {
+      target: 2,
+      howToKo: '집 마당 텃밭 [F] → 호미로 칸을 일구고 심는다 (콩나물은 방에 둔 시루 앞 [F]) · 텃밭이 없으면 생활용품점의 개간 키트',
+      howToEn: 'Garden plot at home [F] → till a cell with the homi and plant (bean sprouts: [F] at the jar in your room) · no plot yet? Garden Plot Kit at the general store',
+    }),
+      talk('okseon', '심었다고 할머니께 알린다', 'Tell her you have planted them')],
+    ['M1-02'], { teaches: ['farming'] }],
+  ['N19-8', 'N19', 1, 12, 350, 'okseon', SOK, '첫물', 'The First Picking',
+    '다 자라 처음 거두면 맛 좀 보여 달라고 했다. "첫물은 남 주는 거야." 거둔 것을 챙겨 좌판으로 간다.',
+    'She asked to taste the first picking once it was grown. "The first of anything goes to someone else." You bring what you picked to the stall.',
+    [auto('farm', '직접 기른 것을 처음 거둔다', 'Harvest something you grew yourself', {
+      farmAction: 'harvest',
+      howToKo: '집 마당 텃밭 · 집 안 선반 [F] → 다 자란 칸을 골라 「거두기」 (솎음 · 잎 따기도 된다)',
+      howToEn: 'Garden plot or indoor shelf at home [F] → pick a ripe cell and press Harvest (thinning and leaf-picking count too)',
+    }),
+      talk('okseon', '거둔 것을 할머니께 맛보인다', 'Let her taste what you grew')],
+    ['N19-7'], { teaches: ['farming'] }],
+
   // ── Ch2 부산 — 두 편은 속초로 되돌아간다 ──
   ['N18-2', 'N18', 2, 25, 1450, 'hyeonsu', BUS, '경매장 뒷줄', 'Back Row at the Auction',
     '도현수가 부산 경매장 뒷줄에 서 있다. 계원 아들이 아니라 한 사람의 중개인으로서. "여기선 네 이름 아무도 몰라."',

@@ -70,7 +70,7 @@ export type CineStep =
   /** 167차 — 무대에서 빠진다(안 보임). 임시 배우는 종료 시 정리된다 */
   | { kind: 'remove'; who: string }
   /** 167차 — 물건을 건넨다(작은 아이콘이 손에서 손으로 — 명부·상자·봉투) */
-  | { kind: 'give'; from: string; to: string; item?: 'book' | 'box' | 'envelope' | 'photo'; ms?: number }
+  | { kind: 'give'; from: string; to: string; item?: 'book' | 'box' | 'envelope' | 'photo' | 'greens'; ms?: number }
   /**
    * 235차 — 가족사진을 화면 가운데 크게 펼친다/거둔다(M7-04 「사진 속 천막」). 펼친 채 대사가 이어지고
    * `show: false`에서 접힌다. 그림은 절차 픽셀(`drawFamilyPhoto`) — 줄무늬 천막 좌판 · 천막 아래 젊은 정옥선 · 네 살의 나와 부모.
@@ -438,6 +438,13 @@ export class StoryCinematicPanel extends Phaser.GameObjects.Container {
       g.fillStyle(0xd84a3a, 1).fillRect(-6, 0, 3, 2).fillRect(-1, 0, 3, 2).fillRect(4, 0, 2, 2);
       g.fillStyle(0x8a8070, 1).fillRect(-6, 2, 12, 3);
       g.lineStyle(1, 0x3a2a1c, 1).strokeRect(-7, -5, 14, 11);
+    } else if (kind === 'greens') {
+      // 237차 — 처음 거둔 것 한 봉지(누런 종이봉지 위로 푸른 잎)
+      g.fillStyle(0x3f8a3a, 1).fillRect(-5, -8, 3, 5).fillRect(-1, -9, 3, 6).fillRect(3, -7, 3, 4);
+      g.fillStyle(0x7cc95a, 1).fillRect(-4, -7, 1, 3).fillRect(0, -8, 1, 4).fillRect(4, -6, 1, 2);
+      g.fillStyle(0xc9a46a, 1).fillRect(-6, -4, 13, 10);
+      g.fillStyle(0xa8834c, 1).fillRect(-6, -4, 13, 2);
+      g.lineStyle(1, 0x6e5028, 1).strokeRect(-6, -4, 13, 10);
     } else {
       g.fillStyle(0xf4f1e6, 1).fillRect(-7, -4, 14, 9);
       g.lineStyle(1, 0x8b7d5a, 1).strokeRect(-7, -4, 14, 9).lineBetween(-7, -4, 0, 1).lineBetween(0, 1, 7, -4);

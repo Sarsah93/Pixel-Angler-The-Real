@@ -21,9 +21,10 @@ import {
   spotKindSatisfies, SPOT_KIND_LABEL, QUEST_ITEM_DROPS, getQuestItem,
   dayJobsOfNpc, getDayJob,
   clampAffinity, affinityRewardMult, affinityJobWageMult, canOfferSubQuest, canOfferJobs, choicesFor, choiceVisible,
-  getLicenseByType, getSkillById, getStoryNpc, getRegionById,
+  getLicenseByType, getSkillById, getStoryNpc, getRegionById, okseonSpareGift,
   type StoryQuestDef, type StoryObjective, type StoryActionKey, type ReputationState, type CatchMethod, type StorySpotKind, type JournalPageState, type LawVerdict,
   type DayJobDef, type AffinityState, type QuestChoiceDef, type ChoiceOutcome, type ChoiceCtx, type SkillCategoryId,
+  type OkseonSpareGift,
 } from '@tra/core';
 import {
   storyActionSpec, originMatches, isChoiceOrigin, DAILY_ACTION_ORIGINS, type StoryActionChoice, type StoryActionSource,
@@ -107,6 +108,10 @@ export interface StoryHost {
    * 완료 · 수락 보상을 주기 **전에** 묻는다(가방이 차서 못 받은 보상은 다시 얻을 길이 없다).
    */
   roomFor?(items: readonly { id: string; qty: number }[]): string | null;
+  /** 237차 — 집 가구(놓인 것 · 넣어 둔 것 포함)를 이미 갖고 있는가 */
+  hasFurniture?(kind: string): boolean;
+  /** 237차 — 집 「넣어 둔 가구」로 보낸다(가방 자리를 차지하지 않는다) */
+  giveFurniture?(kind: string): boolean;
 }
 
 /** 235차 — N22-7 「씨앗」 수락 때 하늬가 건네는 씨앗 봉투 */
@@ -587,6 +592,9 @@ class StoryStoreManager {
     if (id === 'M1-10' && !(this.host?.countItem?.('inv_bike') ?? 0)) acceptItems.push({ id: 'inv_bike', qty: 1 });
     // 235차 — N22-7 「씨앗」: 하늬가 건네는 씨앗 봉투(마트에 없는 아욱 · 근대)
     if (id === 'N22-7') acceptItems.push(...N22_7_SEEDS);
+    // 237차 — N19-7 「귀퉁이 바구니」: 정옥선의 남는 모종 · 씨앗(그달 심을 수 있는 것 · 겨울은 콩나물 시루까지)
+    const okseonGift = id === 'N19-7' ? this.okseonGiftNow() : null;
+    if (okseonGift) acceptItems.push(...okseonGift.items);
     const lackAccept = this.rewardRoomShortfall(acceptItems);
     if (lackAccept) {
       this.lastRefusal = lackAccept.replace('보상을 받을', '받을 물건이 들어갈');
@@ -610,6 +618,7 @@ class StoryStoreManager {
     //  234차 — 구세이브(시드 자전거)처럼 가방에 이미 있으면 한 대 더 주지 않는다
     if (id === 'M1-10' && !(this.host?.countItem?.('inv_bike') ?? 0)) this.host?.giveItem('inv_bike', 1, false);
     if (id === 'N22-7') for (const it of N22_7_SEEDS) this.host?.giveItem(it.id, it.qty, false);
+    if (okseonGift) this.giveOkseonGift(okseonGift);
     this.lastAction = 'accepted';
     // 140차 — 발주 톤 선택지(우호도 미세 차이)
     if (c) { this.choices[id] = { ...this.choices[id], offer: c.id }; this.applyOutcome(q, c.outcome); }
@@ -619,6 +628,25 @@ class StoryStoreManager {
     this.onNotify?.(`[할 일] ${q.titleKo} 수락`);
     LedgerStore.questAccepted(q.titleKo);   // 211차
     return true;
+  }
+
+  /** 237차 — N19-7 수락 때 정옥선이 건넬 것(이달 · 지금 가진 것 기준) */
+  private okseonGiftNow(): OkseonSpareGift {
+    const h = this.host;
+    return okseonSpareGift(h?.month() ?? 4, {
+      homi: (h?.countItem?.('farm_homi') ?? 0) > 0,
+      sproutJar: h?.hasFurniture?.('sprout_jar') ?? false,
+    });
+  }
+
+  /** 237차 — 건넨 것을 실제로 지급하고 한 줄로 알린다(가방 자리는 수락 전에 이미 봤다) */
+  private giveOkseonGift(g: OkseonSpareGift): void {
+    const h = this.host;
+    if (!h) return;
+    const names: string[] = [];
+    for (const it of g.items) if (h.giveItem(it.id, it.qty, false)) names.push(it.qty > 1 ? `${h.itemName(it.id)} ×${it.qty}` : h.itemName(it.id));
+    if (g.furniture && h.giveFurniture?.(g.furniture)) names.push('콩나물 시루(집으로 배달)');
+    if (names.length) this.onNotify?.(`[할 일] 정옥선이 건넨 것 — ${names.join(' · ')}`);
   }
 
   /** manual 목표를 한 단계 진행 (장면 끝·행동 이벤트가 부른다 — 구 대화 패널 [다음 단계] 버튼은 167차 폐기) */
@@ -1100,8 +1128,8 @@ class StoryStoreManager {
       }
       case 'license': return o.kind === 'license' && (!o.licenseId || o.licenseId === ev.licenseId) ? 'set' : null;
       case 'trap': return o.kind === 'trap' ? 'inc' : null;
-      // 235차 — 「심는다」 목표는 심기를 센다(작물을 정하면 그 작물만)
-      case 'farm': return o.kind === 'farm' && ev.action === 'plant' && (!o.itemId || o.itemId === ev.cropId) ? 'inc' : null;
+      // 235차 — 「심는다」 목표는 심기를 센다(작물을 정하면 그 작물만) · 237차 `farmAction: 'harvest'`는 거두기를 센다
+      case 'farm': return o.kind === 'farm' && ev.action === (o.farmAction ?? 'plant') && (!o.itemId || o.itemId === ev.cropId) ? 'inc' : null;
       case 'sell': return o.kind === 'sell' && !(o.ownOnly && ev.traded) ? 'inc' : null;
       // 234차 — 진행 = 가방 보유 수(`setValue`) — 버리면 줄고 다시 주우면 는다
       case 'questItem': return o.kind === 'collect' && o.itemId === ev.itemId ? (this.host?.countItem ? 'set' : 'inc') : null;

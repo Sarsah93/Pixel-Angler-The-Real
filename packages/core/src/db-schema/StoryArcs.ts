@@ -133,7 +133,7 @@ export const STORY_ARCS: StoryArcDef[] = [
     relationKo: '서로를 향한 마음을 끝내 말하지 못한 두 노인 — 심부름꾼은 늘 나다',
     relationEn: 'Two old people who never said it — and you are always the errand runner',
     angleKo: '속초를 계속 돌아오게 만드는 이유', angleEn: 'The reason you keep coming back to Sokcho',
-    questIds: ['N19-1', 'N19-2', 'N19-3', 'N19-4', 'N19-5', 'N19-6'] },
+    questIds: ['N19-1', 'N19-7', 'N19-8', 'N19-2', 'N19-3', 'N19-4', 'N19-5', 'N19-6'] },   // 237차 — 7 · 8 = 할머니 밭(Ch1)
   // ── 138차 증설 4아크 — 과증식 대응 · 어종 관리 · 콘텐츠 제작 · 생활 기반 ──
   { id: 'N20', titleKo: '유하랑 — 카메라를 든 사람', titleEn: 'Yu Ha-rang — the one with the camera', regionId: 'busan',
     npcs: [{ id: 'yu_harang', nameKo: '유하랑', nameEn: 'Yu Ha-rang', roleKo: '27세 · 구독자 300명의 낚시 방송인', roleEn: '27 · a fishing streamer with 300 subscribers' }],

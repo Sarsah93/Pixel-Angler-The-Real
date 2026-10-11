@@ -112,6 +112,10 @@ export interface ShopEntry extends InvItemTemplate {
   requiresSkill?: string;
   /** 235차 — 하루 재고 배율(희귀할수록 적다 — 1 = 보통) */
   stockMult?: number;
+  /** 237차 — 이 레벨부터 진열한다(작물 난이도 단계 — 보통 15 · 까다로움 25 · 아주 까다로움 40) */
+  minLevel?: number;
+  /** 237차 — 이 자격을 가진 뒤에 진열한다(까다로운 작물 — 유기농업기능사) */
+  requiresLicense?: string;
   desc: string;
 }
 

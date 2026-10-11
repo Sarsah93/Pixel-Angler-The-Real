@@ -25,6 +25,8 @@ export type LicenseType =
   // 토지·주거 (122차)
   | 'land_home_lot'         // 주택 부지 이용 허가 (집 증축·마당 시설)
   | 'farmland_use'          // 농지 이용권 (텃밭 확장·경작)
+  // 농업 (237차)
+  | 'organic_farming'       // 유기농업기능사 (국가기술자격 — 까다로운 작물)
   // 선박·어업 (122차)
   | 'boat_operator'         // 소형 선박 조종 면허 (개인 보트 운항)
   | 'fishery_member'        // 수협 조합원증 (어업인 등록 — 어촌계 어장 채취 허용)
@@ -46,10 +48,10 @@ export type LicenseType =
 // ─────────────────────────────────────────────
 
 /** 면허 분류 (122차) — 패널 그룹·순서 */
-export type LicenseCategory = 'fishing' | 'gathering' | 'trap' | 'land' | 'vessel' | 'business';
-export const LICENSE_CATEGORY_ORDER: LicenseCategory[] = ['fishing', 'gathering', 'trap', 'land', 'vessel', 'business'];
+export type LicenseCategory = 'fishing' | 'gathering' | 'trap' | 'land' | 'farming' | 'vessel' | 'business';
+export const LICENSE_CATEGORY_ORDER: LicenseCategory[] = ['fishing', 'gathering', 'trap', 'land', 'farming', 'vessel', 'business'];
 export const LICENSE_CATEGORY_LABEL: Record<LicenseCategory, string> = {
-  fishing: '낚시', gathering: '해루질', trap: '통발', land: '토지 · 주거', vessel: '선박 · 어업', business: '사업',
+  fishing: '낚시', gathering: '해루질', trap: '통발', land: '토지 · 주거', farming: '농업', vessel: '선박 · 어업', business: '사업',
 };
 
 export interface LicenseDef {
@@ -111,6 +113,7 @@ export type UnlockableFeature =
   // 122차 — 토지·주거 / 선박·어업
   | 'home_expansion'          // 집 증축·마당 시설 확장
   | 'farm_plots'              // 농지(텃밭) 확장·경작
+  | 'farm_hard_crops'         // 237차 — 까다로운 작물 재배(난이도 3 · 4단계)
   | 'boat_operation'          // 개인 보트 운항
   | 'village_fishery_gathering' // 어촌계 어장 안 정착성 수산물 채취 (조례 면제 — 어업인)
   | 'restricted_port_fishing';  // 항만 제한구역 낚시
@@ -320,12 +323,24 @@ export const LICENSE_DATABASE: LicenseDef[] = [
   //   실제 주말농장은 신청만 하면 되지만, 게임에서는 「직접 길러 거둬 본 사람」에게 분양한다.
   //   되풀이 비용은 갱신료가 아니라 **빌린 구획마다 내는 사용료**(정기 지출 `farm_rent`)다 — 갱신료까지 받으면 이중 청구.
   {
-    type: 'farmland_use', category: 'land',
+    type: 'farmland_use', category: 'farming',   // 237차 — 농업 갈래로(토지/주거에서 옮김)
     nameKo: '농지 이용권', nameEn: 'Farmland Use Right',
     description: '마을 농지를 빌려 텃밭을 다섯 구획까지 더 낼 수 있습니다. 빌린 구획마다 한 달 사용료를 냅니다.',
     descriptionEn: 'Rent village farmland for up to five more garden plots. Each rented plot carries a monthly fee.',
     costCoins: 25000, prerequisites: ['basic_angling'], requirements: [{ type: 'min_harvests', value: 3 }],
     requiresRenewal: false, unlocksFeatures: ['farm_plots'],
+  },
+  // 237차 — 작물 난이도 3 · 4단계(까다로움 · 아주 까다로움)의 자격. 실제로는 누구나 무엇이든 심을 수 있지만,
+  //   병해충 · 지주 · 육묘 · 시설이 까다로운 작물을 「제대로 기를 줄 안다」는 증명으로 쓴다(필기 = 작물재배 · 토양관리 ·
+  //   유기농업일반, 실기 = 작업형 — 응시 자격 제한 없음). 실기 연습 = 텃밭에서 10번 거두기.
+  //   스킬 포인트 보너스에서 뺀다(`SKILL_BONUS_EXCLUDED_LICENSES` — 스킬 예산 Σ 216 불변).
+  {
+    type: 'organic_farming', category: 'farming',
+    nameKo: '유기농업기능사', nameEn: 'Craftsman Organic Agriculture',
+    description: '작물재배 · 토양관리 · 유기농업 필기와 작업형 실기를 거친 국가기술자격입니다. 오이 · 생강 같은 까다로운 작물과 산나물 · 고추냉이를 기를 줄 압니다.',
+    descriptionEn: 'A national technical qualification: written papers in crop cultivation, soil management and organic farming, plus a practical. Lets you grow demanding crops such as cucumber and ginger, and mountain greens and wasabi.',
+    costCoins: 35000, prerequisites: ['basic_angling'], requirements: [{ type: 'min_harvests', value: 10 }],
+    requiresRenewal: false, unlocksFeatures: ['farm_hard_crops'],
   },
   {
     type: 'boat_operator', category: 'vessel',

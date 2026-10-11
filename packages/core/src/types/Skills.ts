@@ -216,6 +216,8 @@ export const SKILL_BONUS_EXCLUDED_LICENSES: readonly string[] = [
   'basic_angling',
   // 134차 — 스토리 자격 사다리 4종은 서사 관문이지 스킬 예산이 아니다(Σ 215 = 만렙 200 + 면허 15 불변)
   'reported_fishery', 'coop_member', 'angling_boat_biz', 'marine_tourism',
+  // 237차 — 유기농업기능사는 작물 난이도 관문이지 스킬 예산이 아니다(Σ 216 불변)
+  'organic_farming',
 ];
 
 /** 보유 면허 → 보너스 포인트 (만료 면허는 호출측이 걸러서 넘긴다) */

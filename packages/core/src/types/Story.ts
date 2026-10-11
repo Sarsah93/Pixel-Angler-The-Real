@@ -188,7 +188,7 @@ export type StoryObjectiveKind =
   | 'survive'        // 생존 이벤트 통과 (밀물 고립·해무·오한)
   | 'communityWork'  // 공동작업 참여
   | 'cull'           // 과증식 생물 수거 (138차 — 해파리·불가사리)
-  | 'farm'           // 농사 (235차 — 텃밭 심기 이벤트로 진행)
+  | 'farm'           // 농사 (235차 — 텃밭 심기 이벤트로 진행 · 237차 `farmAction: 'harvest'`면 거두기)
   | 'mine'           // 광질 (138차 — manual)
   | 'furnish'        // 가구 배치·리빙 (138차 — manual)
   | 'reachLevel'     // 레벨 도달
@@ -258,6 +258,8 @@ export interface StoryObjective {
   itemId?: string;
   /** license 전용 */
   licenseId?: string;
+  /** 237차 — farm 전용: 무엇을 세나(기본 `plant` = 심기 · `harvest` = 거두기 — 본 수확 · 중간 수확 모두) */
+  farmAction?: 'plant' | 'harvest';
   /** visit 전용 — 지역 id 또는 장소 키(`poi:영금정`) */
   placeKey?: string;
   /** custom 목표를 실제 행동 이벤트에 연결하는 키 */

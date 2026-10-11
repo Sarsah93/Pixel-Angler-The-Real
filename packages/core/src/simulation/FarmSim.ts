@@ -15,7 +15,7 @@
  */
 
 import type {
-  CropDef, CropGrade, CropStart, CropStartKind, FarmCellState, FarmEnv, FarmHarvestResult,
+  CropCare, CropDef, CropDifficulty, CropGrade, CropStart, CropStartKind, FarmCellState, FarmEnv, FarmHarvestResult,
   FarmPlantCtx, FarmPlotState, FarmSite,
 } from '../types/Farming.js';
 import { getCrop, cropOfProduce, parseProduceId } from '../db-schema/CropDatabase.js';
@@ -67,7 +67,63 @@ export const FARM_TUNING = {
   yardPlots: 2,
   /** 236차 — 농지 이용권으로 더 빌리는 구획 수 상한(서울시 주말농장 1인 최대 5구획 — 2025 모집 공고) */
   rentPlotsMax: 5,
+  /**
+   * 237차 — 난이도 단계별 레벨 요건(쉬움 · 보통 · 까다로움 · 아주 까다로움). 챕터 레벨대에 맞췄다 —
+   * 보통 = 속초 후반(Ch1 1~20) · 까다로움 = 부산 초입(Ch2 20~45) · 아주 까다로움 = 부산 끝.
+   */
+  tierLevels: [1, 15, 25, 40] as readonly number[],
+  /** 237차 — 이 단계부터 자격증(유기농업기능사)이 있어야 한다 */
+  certTier: 3,
+  certLicense: 'organic_farming',
 };
+
+/** 237차 — 난이도 이름 */
+export const CROP_TIER_KO: Record<CropDifficulty, string> = { 1: '쉬움', 2: '보통', 3: '까다로움', 4: '아주 까다로움' };
+export const CROP_TIER_EN: Record<CropDifficulty, string> = { 1: 'Easy', 2: 'Normal', 3: 'Demanding', 4: 'Very demanding' };
+/**
+ * 237차 — 까다로운 점 이름. 화면은 ` · `로 잇는다 — 이름 안에 ` · `를 넣지 않는다(한 항목이 둘로 읽힌다).
+ */
+export const CROP_CARE_KO: Record<CropCare, string> = {
+  pests: '병해충', support: '지주 세우기', nursery: '씨앗이면 육묘', germination: '싹 틔우기', overwinter: '겨울나기',
+  longSeason: '긴 재배', soil: '흙을 가림', heat: '더위와 땅 온도', shade: '반그늘', water: '물을 가림', humidity: '습도',
+};
+export const CROP_CARE_EN: Record<CropCare, string> = {
+  pests: 'Pests', support: 'Staking', nursery: 'Long nursery from seed', germination: 'Germination', overwinter: 'Overwintering',
+  longSeason: 'Long season', soil: 'Fussy about soil', heat: 'Heat and soil warmth', shade: 'Part shade', water: 'Fussy about water', humidity: 'Humidity',
+};
+
+/** 237차 — 이 작물 · 이 심는 방법의 난이도. `nursery`가 붙은 작물은 씨앗으로 시작하면 한 단계 위(최대 4) */
+export function cropTier(crop: CropDef, start?: CropStart): CropDifficulty {
+  const base = crop.difficulty ?? 1;
+  const up = start?.kind === 'seed' && crop.care?.includes('nursery') ? 1 : 0;
+  return Math.min(4, base + up) as CropDifficulty;
+}
+
+/** 237차 — 단계 요건(레벨 · 자격증) */
+export function tierGate(tier: CropDifficulty): { level: number; license?: string } {
+  const level = FARM_TUNING.tierLevels[tier - 1] ?? 1;
+  return tier >= FARM_TUNING.certTier ? { level, license: FARM_TUNING.certLicense } : { level };
+}
+
+/** 237차 — 이 작물 · 심는 방법의 난이도와 요건 */
+export function cropGate(crop: CropDef, start?: CropStart): { tier: CropDifficulty; level: number; license?: string } {
+  const tier = cropTier(crop, start);
+  return { tier, ...tierGate(tier) };
+}
+
+/**
+ * 237차 — 지금 이 작물을 못 기르는 이유(되면 null). 문맥에 레벨 · 면허 판정이 없으면 그 요건은 보지 않는다.
+ * 기술(산채 재배 · 수경 재배) · 설비 요건은 `canPlant`가 따로 본다.
+ */
+export function cropGateBlock(crop: CropDef, start: CropStart | undefined, ctx: Pick<FarmPlantCtx, 'level' | 'hasLicense'>): string | null {
+  const g = cropGate(crop, start);
+  const needLv = ctx.level !== undefined && ctx.level < g.level;
+  const needLic = !!g.license && !!ctx.hasLicense && !ctx.hasLicense(g.license);
+  if (!needLv && !needLic) return null;
+  if (!needLic) return `레벨 ${g.level}부터 기를 수 있는 작물이다`;
+  const who = g.tier >= 4 ? '아주 까다로운 작물이다' : '까다로운 작물이다';
+  return needLv ? `${who} — 레벨 ${g.level} · 유기농업기능사가 있어야 기를 수 있다` : `${who} — 유기농업기능사가 있어야 기를 수 있다`;
+}
 
 /** 236차 — 마당에 낼 수 있는 텃밭 구획 수(마당 + 빌린 농지) */
 export function farmPlotCap(hasFarmland: boolean): number {
@@ -340,6 +396,9 @@ export function canPlant(crop: CropDef, start: CropStart, plot: FarmPlotState, c
     const inMonth = start.months.includes(month) || (plot.facilities.includes('greenhouse') && adjacent(start.months, month));
     if (!inMonth) return { ok: false, reasonKo: `지금은 심을 철이 아니다 — ${monthRangeKo(start.months)}에 심는다` };
   }
+  // 237차 — 난이도 단계 요건(레벨 · 유기농업기능사)
+  const gate = cropGateBlock(crop, start, ctx);
+  if (gate) return { ok: false, reasonKo: gate };
   const req = crop.requires;
   if (req?.skill && !ctx.hasSkill(req.skill)) {
     return { ok: false, reasonKo: req.skill === 'farm_wild' ? '산채 재배를 배워야 기를 수 있다' : req.skill === 'farm_hydro' ? '수경 재배를 배워야 기를 수 있다' : '이 작물을 기를 줄 모른다' };

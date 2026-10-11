@@ -77,6 +77,7 @@ import { InventoryStore, InventorySaveState, setFreshnessMult, CATEGORY_LABEL, t
 import { repairQuestItems } from './QuestItemGuard.js';
 import { FridgeStore, FridgeSaveState } from './FridgeStore.js';
 import { HomeStore, type HomeSaveState } from './HomeStore.js';
+import type { FurnKind } from '../data/HomeFurniture.js';
 import { MarketStore, type MarketSaveState } from './MarketStore.js';
 import { ShopStore, type ShopSaveState } from './ShopStore.js';
 import { setAuctionBidMult } from '../data/Consignment.js';
@@ -330,6 +331,8 @@ export class GameStateManager {
   private _drainBuff: { leftMs: number; mult: number } | null = null;
   /** 아직 안내하지 않은 히든 시너지 해금 (130차 (e)) — UI가 `takeRecentHiddenUnlocks`로 꺼낸다 */
   private _recentHidden: SkillDef[] = [];
+  /** 237차 — 레벨이 올라 새로 열린 작물 난이도 단계(2~4). UI가 `takeRecentFarmTiers`로 꺼내 한 번 알린다 */
+  private _recentFarmTiers: number[] = [];
   /** 1회성 안내 플래그 (세이브 대상) — 예: chumGuideSeen */
   private _flags: Record<string, boolean> = {};
   /** 맵별 오브젝트 월드 상태 (세이브 대상) — key = mapId */
@@ -708,6 +711,7 @@ export class GameStateManager {
     p.experience = (p.experience ?? 0) + add;
     if ((p.level ?? 1) >= MAX_LEVEL) { LedgerStore.xp(add, 0); return 0; }
     let ups = 0;
+    const before = p.level ?? 1;
     while ((p.level ?? 1) < MAX_LEVEL && p.experience >= xpToNext(p.level ?? 1)) {
       p.experience -= xpToNext(p.level ?? 1);
       p.level = (p.level ?? 1) + 1;
@@ -715,6 +719,8 @@ export class GameStateManager {
     }
     LedgerStore.xp(add, ups);   // 211차
     if (ups > 0) {
+      // 237차 — 작물 난이도 단계 문턱(15 · 25 · 40)을 넘었으면 한 번 알린다
+      FARM_TUNING.tierLevels.forEach((lv, i) => { if (i > 0 && before < lv && (p.level ?? 1) >= lv) this._recentFarmTiers.push(i + 1); });
       console.log(`[GameState] Level Up! Lv.${(p.level ?? 1) - ups} -> Lv.${p.level} (스킬 포인트 +${ups})`);
       this.commitVitals(this.vitals);   // maxHp가 레벨에 비례하므로 상한 재계산
       this.refreshHiddenSkills();       // 130차 (d) — 레벨 조건 히든이 열릴 수 있다
@@ -1309,6 +1315,13 @@ export class GameStateManager {
    * 해금은 학습·레벨업·면허 취득·세이브 로드 등 여러 지점에서 일어나는데, 그 전부에
    * 안내를 배선하는 대신 여기에 모아 두고 **UI가 편할 때 꺼내 쓴다**(HUD 로그·패널 배너).
    */
+  /** 237차 — 레벨이 올라 새로 열린 작물 난이도 단계(꺼내면 비운다) */
+  takeRecentFarmTiers(): number[] {
+    const out = this._recentFarmTiers;
+    this._recentFarmTiers = [];
+    return out;
+  }
+
   takeRecentHiddenUnlocks(): SkillDef[] {
     const out = this._recentHidden;
     this._recentHidden = [];
@@ -2048,6 +2061,9 @@ StoryStore.bind({
     const lines = Object.entries(lack).map(([c, n]) => `${CATEGORY_LABEL[c as InvCategory]} 칸 ${n}개`);
     return lines.length ? lines.join(' · ') : null;
   },
+  // 237차 — N19-7 겨울 선물(콩나물 시루)은 가방이 아니라 집 「넣어 둔 가구」로 간다
+  hasFurniture: (kind) => HomeStore.placed.concat(HomeStore.stored).some((f) => f.kind === kind),
+  giveFurniture: (kind) => { HomeStore.addStored(kind as FurnKind); GameState.markDirty(); return true; },
 });
 
 // 234차 — 멀티 설치물 대조: 세이브에 든 내 설치물(통발 · 화구 · 거치대)을 서버로 보낼 목록.
