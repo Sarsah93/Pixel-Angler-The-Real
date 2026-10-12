@@ -1,3 +1,4 @@
 {"run": 1, "date": "2026-10-08", "budget": null, "left": null, "used": null, "pct": null, "measures": [], "note": "미측정(기록 도입 전)"}
 {"run": 2, "date": "2026-10-11", "budget": null, "left": null, "used": null, "pct": null, "measures": [], "note": "미측정(기록 도입 전)"}
 {"run": 3, "date": "2026-10-12", "budget": 15000000, "left": 14891424, "used": 108576, "pct": 0.724, "measures": [], "note": "사후 계산 · 심화 생략 · 수정안 없음"}
+{"run": 4, "date": "2026-10-13", "budget": 15000000, "left": 14893134, "sub": 0, "used": 106866, "pct": 0.712, "measures": ["T1", "T3"], "note": "main 변화 없음 · 심화 생략 · 하위 에이전트 없음"}
