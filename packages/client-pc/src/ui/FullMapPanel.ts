@@ -140,7 +140,7 @@ export class FullMapPanel extends Phaser.GameObjects.Container {
     legendBg.lineStyle(1, 0x2a5a8a, 1); legendBg.strokeRoundedRect(PAD, legendY, GAME_WIDTH - PAD * 2, 52, 4);
     this.add(legendBg);
     const LEGEND: { icon?: string; dot?: number; ring?: number; pin?: boolean; label: string }[] = [
-      { icon: 'mm_market', label: '직판장' }, { icon: 'mm_mart', label: '식자재마트' }, { icon: 'mm_daily', label: '생활용품점' },
+      { icon: 'mm_market', label: '직판장' }, { icon: 'mm_mart', label: '식자재마트' }, { icon: 'mm_daily', label: '생활용품점' }, { icon: 'mm_nursery', label: '종묘사' },
       { icon: 'mm_conv', label: '편의점' }, { icon: 'mm_pharm', label: '약국' }, { icon: 'mm_food', label: '음식점' },
       { icon: 'mm_cafe', label: '카페' }, { icon: 'mm_pub', label: '주점' }, { icon: 'mm_poi', label: '장소' },
       { icon: 'mm_npc', label: '인물' }, { icon: 'mm_quest', label: '새 의뢰' }, { icon: 'mm_ready', label: '해결 가능' },

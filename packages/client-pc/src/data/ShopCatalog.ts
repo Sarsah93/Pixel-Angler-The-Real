@@ -10,14 +10,14 @@
 
 import type { InvCategory, InvItemTemplate } from '../store/InventoryStore.js';
 import { COOK_CORNER } from './CookItems.js';
-import { dailyFarmEntries, martFarmEntries, PRODUCE_SUB } from './CropItems.js';
+import { dailyFarmEntries, nurseryFarmEntries, PRODUCE_SUB } from './CropItems.js';
 import { WEIGHT_SINKER_DB, TRAP_DATABASE, getLureSpec, ROD_SHOP, REEL_SHOP, CRAFT_BLUEPRINTS, blueprintPaperId } from '@tra/core';
 import { applyItemVitals } from './ItemVitals.js';
 import type { FurnKind } from './HomeFurniture.js';
 
 /** 건물(상점) 종류 */
 export type BuildingKind =
-  | 'convenience' | 'mart' | 'market' | 'restaurant' | 'cafe' | 'pub' | 'pharmacy' | 'daily';
+  | 'convenience' | 'mart' | 'market' | 'restaurant' | 'cafe' | 'pub' | 'pharmacy' | 'daily' | 'nursery';
 
 export const BUILDING_LABEL: Record<BuildingKind, string> = {
   convenience: '편의점',
@@ -28,6 +28,7 @@ export const BUILDING_LABEL: Record<BuildingKind, string> = {
   pub: '주점',
   pharmacy: '약국',
   daily: '생활용품점',
+  nursery: '종묘사',   // 238차 — 모종 · 씨앗 · 농자재 · 농약
 };
 
 /**
@@ -38,6 +39,7 @@ export const BUILDING_GOODS: Record<BuildingKind, string> = {
   market: '미끼 · 채비 · 줄 · 잡은 고기 매입',
   mart: '식재료 · 양념 · 조리도구 · 밑밥 · 쿨러',
   daily: '낚싯대 · 릴 · 원줄 · 손도구 · 가구',
+  nursery: '모종 · 씨앗 · 종구 · 지주대 · 비료 · 농약',
   convenience: '간식 · 생수 · 각얼음 · 상비약',
   pharmacy: '붕대 · 구급품 · 약',
   restaurant: '식사 · 매운탕 · 회',
@@ -59,6 +61,7 @@ export const BUILDING_HOURS: Record<BuildingKind, ShopHours> = {
   convenience: 'always',
   mart: { open: 10, close: 22 },
   daily: { open: 10, close: 22 },
+  nursery: { open: 8, close: 19 },   // 238차 — 종묘사는 아침 일찍 열고 저녁에 닫는다
   pharmacy: { open: 10, close: 22 },
   restaurant: { open: 10, close: 22 },
   cafe: { open: 10, close: 22 },
@@ -389,7 +392,7 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
       // 요리 코너 (154차 불요리) — 채소·양념·용기·화구·연료. 조리 필드는 CookItems 테이블이 정본
       ...COOK_CORNER,
       // 235차 — 모종 · 종구 · 버섯 배지(심는 철에만 · 희귀할수록 적게)
-      ...martFarmEntries(),
+      // 238차 — 모종 · 종구 · 배지는 종묘사로 옮겼다(실제로 마트는 모종을 팔지 않는다)
     ],
   },
   market: {
@@ -535,6 +538,19 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
         desc: '야간 채집 필수 — 루멘이 발견 반경. 100lm당 약 0.55타일.' },
     ],
     buysCategories: ['gear'],   // 224차 — 파는 장비(대 · 릴 · 장갑)는 사서 되판다
+  },
+  /**
+   * 종묘사(238차) — 모종 · 씨앗 · 종구 · 배지와 관리 작업 자재(육묘 트레이 · 지주대 · 유인끈 · 멀칭 비닐 · 복합비료 · 살균제 ·
+   * 아인산 · 칼슘액비 · 살충제). 실제 종묘사 · 화원 · 농협 자재센터가 모종과 농약을 함께 판다. 모종은 심는 철에만.
+   */
+  nursery: {
+    kind: 'nursery',
+    name: '설악종묘사',
+    greeting: '모종은 철 봐 가며 들여요. 고추는 늦서리 지나고 심으세요.',
+    sells: [
+      ...nurseryFarmEntries(),
+    ],
+    buysCategories: [],
   },
   pub: {
     kind: 'pub',

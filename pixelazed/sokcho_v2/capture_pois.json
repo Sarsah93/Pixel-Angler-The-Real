@@ -3688,6 +3688,19 @@
     1160
    ],
    "nameEn": "Chilseongjoseonso Cafe"
+  },
+  {
+   "name": "설악종묘사",
+   "cat": "S",
+   "lat": 38.20422,
+   "lon": 128.58961,
+   "capture": 83,
+   "px": [
+    0,
+    0
+   ],
+   "nameEn": "Seorak Seed & Seedling",
+   "_note": "238차 — 게임용 종묘사(모종 · 씨앗 · 농자재 · 농약). 실제 가게 위치는 사용자 캡처 확인 대기"
   }
  ]
 }

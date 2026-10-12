@@ -113,6 +113,8 @@ const STORE_VARIANT: Record<string, { accent: number; goods: number[]; cooler: b
   mart: { accent: 0xd0702a, goods: [0x7ab84a, 0xe0b040, 0xc8503a, 0xe8d8b0, 0x8a5a3a, 0x4a9ad0], cooler: true, greet: '어서 오세요. 오늘 생선 좋아요.' },
   daily: { accent: 0xc83a4a, goods: [0x5a8ac8, 0xe8a030, 0x6ab08a, 0xd8d0c0, 0x9a6ac0, 0x3a4a5a], cooler: false, greet: '어서 오세요. 천천히 보세요.' },
   pharmacy: { accent: 0x2a9a8a, goods: [0xf0f0e8, 0x58b0d8, 0xe86a6a, 0x9ad070, 0xf0d070, 0xc8c8d8], cooler: false, greet: '어디가 불편하세요?' },
+  // 238차 — 종묘사: 초록 모종판 · 흙 포대 · 약병
+  nursery: { accent: 0x4a8a3a, goods: [0x5cb84a, 0x8fd16a, 0x5c3f24, 0xd8b878, 0x3a8ad0, 0xe8d040], cooler: false, greet: '모종은 철 봐 가며 들여요. 뭐 찾으세요?' },
 };
 
 const FOOD_VARIANT: Record<string, { floor: FloorStyle; wall: WallStyle; accent: number; decor: InteriorLayout['wallDecor']; role: CharRole; greet: string }> = {
@@ -523,7 +525,7 @@ export function interiorLayoutOf(kind: BuildingKind | null, name: string): Inter
 
 /** 개발 · 검증용 — 다섯 틀의 대표 배치 */
 export const SAMPLE_LAYOUTS = (): InteriorLayout[] => [
-  storeLayout('convenience'), storeLayout('mart'), storeLayout('daily'), storeLayout('pharmacy'),
+  storeLayout('convenience'), storeLayout('mart'), storeLayout('daily'), storeLayout('pharmacy'), storeLayout('nursery'),
   foodLayout('restaurant'), foodLayout('cafe'), foodLayout('pub'),
   tackleLayout(), clinicLayout(), auctionLayout(),
   ...Object.entries(HOME_LAYOUTS).map(([id, f]) => f(id)),

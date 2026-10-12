@@ -125,7 +125,7 @@ export type StoryEvent =
   | { kind: 'trap' }
   | { kind: 'sell'; traded?: boolean }
   /** 235차 — 텃밭: 심었다 · 거뒀다 (목표 `farm`은 심기를 센다) */
-  | { kind: 'farm'; action: 'plant' | 'harvest'; cropId: string }
+  | { kind: 'farm'; action: 'plant' | 'harvest' | 'care'; cropId: string }
   /** 233차 — 개인 전용 퀘스트 아이템을 찾았다(`rollQuestDrops`가 낸다) */
   | { kind: 'questItem'; itemId: string }
   | { kind: 'visit'; placeKey: string }

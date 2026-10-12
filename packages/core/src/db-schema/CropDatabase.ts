@@ -316,19 +316,24 @@ export const CROP_DATABASE: CropDef[] = [
   {
     id: 'chili', nameKo: '고추', nameEn: 'Chili pepper', category: 'fruit', speedClass: 'seasonal', rarity: 'common',
     inMart: true, site: 'plot', growMonths: [5, 6, 7, 8, 9, 10], water: 'mid',
-    // 주간 40cm 안팎 → 칸당 3포기 · 7~9월 일주일마다 · 따지 않고 두면 붉어진다
-    starts: [seed('chili', [3], 0.65, 120, 300), seedling('chili', [5], 3, 60, 500)],
+    // 주간 40cm 안팎 → 칸당 3포기 · 7~9월 일주일마다 · 따지 않고 두면 붉어진다(4일부터 검붉게 · 10일이면 홍고추)
+    // 238차 — 씨앗은 밭에 바로 뿌리지 않는다: 2~3월 따뜻한 실내 육묘 트레이에 뿌려 70~90일(75일) 기르면 모종 20~30포기 ·
+    //   모종은 늦서리 뒤 4월 하순~5월 상순에 옮겨 심는다(`frostBlockKo`). 포기당 한 번에 6~9개.
+    starts: [
+      seed('chili', [2, 3], 0.65, 75, 300, { nursery: { seedlings: [20, 30], seedlingItemId: 'sdl_chili' } }),
+      seedling('chili', [4, 5], 3, 60, 500),
+    ],
     harvest: {
       itemId: 'crop_chili_green', nameKo: '풋고추 (1개)', nameEn: 'Green chili (one)', qtyPerCell: [18, 28], repeat: { everyDays: 7, times: 10 }, holdDays: 10,
-      ripenTo: { itemId: 'crop_chili_red', nameKo: '홍고추 (1개)', nameEn: 'Red chili (one)', afterDays: 10, price: 140, cookIngredient: 'chili_red' },
+      ripenTo: { itemId: 'crop_chili_red', nameKo: '홍고추 (1개)', nameEn: 'Red chili (one)', afterDays: 10, price: 140, cookIngredient: 'chili_red', turningDays: 4 },
     },
     interim: {
       itemId: 'crop_pepper_leaf', labelKo: '고춧잎 한 줌 (100g)', labelEn: 'Chili leaves, a handful (100g)',
       window: [0.5, 1.0], qtyPerCell: [2, 3], mainYieldMult: 0.97, price: 1200, inMart: false,
     },
     price: { base: 120, season: P_CHILI, volatility: 0.25 }, cookIngredient: 'chili_green',
-    noteKo: '모종은 늦서리가 끝난 5월에. 끝물에 잎을 훑어 고춧잎 나물을 한다.',
-    noteEn: 'Plant seedlings in May after the last frost. At the end of the season, strip the leaves for seasoned pepper greens.',
+    noteKo: '씨앗은 2월 따뜻한 실내 트레이에 뿌려 모종을 키우고, 모종은 늦서리가 끝난 4월 하순~5월 상순에 옮겨 심는다. 끝물에 잎을 훑어 고춧잎 나물을 한다.',
+    noteEn: 'Sow seed in a warm indoor tray in February to raise seedlings; transplant after the last frost, late April to early May. Strip the leaves at season end for seasoned pepper greens.',
   },
   {
     id: 'cherry_tomato', nameKo: '방울토마토', nameEn: 'Cherry tomato', category: 'fruit', speedClass: 'seasonal', rarity: 'common',
@@ -941,6 +946,10 @@ export interface FarmSupplyDef {
   requiresSkill?: string;
   /** 희귀도 — 가게 재고 */
   rarity?: 'common' | 'uncommon' | 'rare';
+  /** 238차 — 파는 가게(없으면 생활용품점). 종묘사 = 육묘 트레이 · 지주대 · 유인끈 · 멀칭 비닐 · 비료 · 농약 */
+  shop?: 'daily' | 'nursery';
+  /** 238차 — 아이콘 키(없으면 `it_<id 꼬리>`) */
+  icon?: string;
   descKo: string;
   descEn: string;
 }
@@ -969,6 +978,27 @@ export const FARM_SUPPLIES: FarmSupplyDef[] = [
     descKo: '구멍 뚫린 옹기 시루. 집 안에 두고 콩나물 · 숙주 · 새싹을 기른다.', descEn: 'A clay jar with holes in the bottom. Keep it indoors to grow bean sprouts, mung sprouts and microgreens.' },
   { itemId: 'farm_hydro_rack', nameKo: '수경 재배기', nameEn: 'Hydroponic rack', price: 89000, kind: 'facility', facility: 'hydroRack', site: 'indoor', rarity: 'uncommon',
     descKo: '불빛과 물이 도는 두 칸 선반. 잎채소를 철과 상관없이 집 안에서 기른다.', descEn: 'A two-shelf rack with grow lights and circulating water. Grows leafy greens indoors in any season.' },
+  // ── 238차 — 종묘사 자재(관리 작업에 쓴다). 값은 소매 시세를 칸 한 번 분으로 나눈 게임 값
+  //   (50구 트레이 2~3천 · 지주대 1.5m 5~7백 · 유인끈 1타래 1천 · 멀칭 비닐 1m 5백 · 복합비료 20kg 1.5만 → 1칸 분 4백 ·
+  //    살균제 500ml 1~2만 · 아인산 1kg 1.5만 · 칼슘액비 1L 1만 · 살충제 250ml 1.5만 → 1칸 한 번 분 5~8백)
+  { itemId: 'farm_tray', nameKo: '육묘 트레이 (50구)', nameEn: 'Seedling tray (50 cells)', price: 2500, kind: 'tool', shop: 'nursery', icon: 'it_tray',
+    descKo: '씨앗을 뿌려 모종을 키우는 트레이. 집 안 선반에서 쓴다 — 2월 따뜻한 창가에서 싹을 틔운다.', descEn: 'Tray for raising seedlings from seed. Used on the indoor shelf — a warm February windowsill gets them going.' },
+  { itemId: 'farm_stake', nameKo: '지주대 (1.5m)', nameEn: 'Stake (1.5m)', price: 600, kind: 'consumable', shop: 'nursery', icon: 'it_stake',
+    descKo: '고추 · 토마토 · 가지처럼 쓰러지는 작물 옆에 세운다. 포기마다 하나.', descEn: 'Driven beside crops that blow over — chili, tomato, eggplant. One per plant.' },
+  { itemId: 'farm_twine', nameKo: '유인끈 (1타래)', nameEn: 'Tying twine (one hank)', price: 1000, kind: 'consumable', shop: 'nursery', icon: 'it_twine',
+    descKo: '줄기를 지주에 묶는다. 지주 세울 때 한 타래, 유인할 때마다 한 타래.', descEn: 'Ties stems to stakes. One hank when staking, one per tying round.' },
+  { itemId: 'farm_mulch', nameKo: '멀칭 비닐 (1칸 분)', nameEn: 'Black mulch film (one cell)', price: 500, kind: 'consumable', shop: 'nursery', icon: 'it_mulch',
+    descKo: '두둑을 덮는 검은 비닐. 흙이 튀지 않아 탄저병 · 역병이 덜 들고 물이 덜 마른다.', descEn: 'Black film over the ridge. No soil splash — less anthracnose and blight, and the soil dries slower.' },
+  { itemId: 'farm_fert', nameKo: '복합비료 (1칸 한 번 분)', nameEn: 'Compound fertilizer (one application)', price: 400, kind: 'consumable', shop: 'nursery', icon: 'it_fert',
+    descKo: '웃거름. 정식 15일 뒤부터 15~20일 간격으로 포기 사이에 준다. 안 주면 수확이 준다.', descEn: 'Top-dressing. From 15 days after transplanting, every 15–20 days between plants. Skip it and the harvest shrinks.' },
+  { itemId: 'farm_fungicide', nameKo: '살균제 (1칸 한 번 분)', nameEn: 'Fungicide (one application)', price: 800, kind: 'consumable', shop: 'nursery', icon: 'it_fungicide',
+    descKo: '탄저병 · 역병 예방. 장마철 비 전후 7~10일 간격으로 친다. 열흘 동안 든다.', descEn: 'Prevents anthracnose and blight. Spray every 7–10 days around rain in the wet season. Lasts ten days.' },
+  { itemId: 'farm_phosphite', nameKo: '아인산 (1칸 한 번 분)', nameEn: 'Phosphite (one application)', price: 700, kind: 'consumable', shop: 'nursery', icon: 'it_phosphite',
+    descKo: '역병 예방. 7~14일 간격. 두 주 동안 든다.', descEn: 'Blight prevention. Every 7–14 days. Lasts two weeks.' },
+  { itemId: 'farm_calcium', nameKo: '칼슘액비 (1칸 한 번 분)', nameEn: 'Calcium foliar feed (one application)', price: 500, kind: 'consumable', shop: 'nursery', icon: 'it_calcium',
+    descKo: '잎에 뿌리는 칼슘. 열매 껍질이 단단해져 탄저병이 덜 들고 품질이 오른다.', descEn: 'Foliar calcium. Firmer fruit skin — less anthracnose, better quality.' },
+  { itemId: 'farm_insecticide', nameKo: '살충제 (1칸 한 번 분)', nameEn: 'Insecticide (one application)', price: 700, kind: 'consumable', shop: 'nursery', icon: 'it_insecticide',
+    descKo: '총채벌레 · 진딧물을 막는다 — 바이러스병을 옮기는 벌레다. 열이틀 동안 든다.', descEn: 'Keeps off thrips and aphids — the insects that carry the viruses. Lasts twelve days.' },
 ];
 
 const SUPPLY_BY_ID = new Map(FARM_SUPPLIES.map((s) => [s.itemId, s]));

@@ -1288,6 +1288,7 @@ export class HomeInteriorScene extends Phaser.Scene {
       confirm: (msg, yes, labels) => {
         this.openPopup((c2) => new ConfirmDialog(this, msg, () => { c2(); yes(); }, c2, labels));
       },
+      openPopup: (build) => { this.openPopup(build); },   // 238차 — 가식 작업 장면
     }));
   }
 

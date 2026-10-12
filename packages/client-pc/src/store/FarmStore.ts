@@ -10,13 +10,18 @@
  *   `farm_yield` 수확량 · `farm_seed` 씨앗 회수 · `farm_till` 한 줄 갈기).
  * - 행동은 가방을 고친다(씨앗 · 모종 · 퇴비 소모 · 수확물 지급). 가방에 자리가 없으면 거두기 전에 막는다
  *   (234차 규칙 — 「넣다 실패하면 사라지는」 지급 금지).
+ * - 238차 — 관리 작업(`careRows` · `doCare`): 작업 장면 점수를 받아 core `doCare`를 부르고 자재를 가방에서 뺀 뒤 품(피로)을 쓴다.
+ *   새로 열린 할 일 · 든 병 · 쓰러짐 · 서리는 `advanceAll`이 알아채 `takeNotices`로 필드 HUD에 올린다.
+ *   육묘 트레이 칸의 거두기는 모종(`sdl_*`)을 등급 꼬리 없이 준다.
  */
 
 import {
   FARM_CELLS, FARM_COLS, INDOOR_SLOTS, advancePlot, canPlant, cellReady, clearCell, climateRainAt, compostCell,
   cropStartOfItem, getCrop, getFarmSupply, harvestCell, interimHarvestCell, interimOpen, kstMonthOf, newFarmPlot,
-  plantCell, produceItemId, supplyOfFacility, tillCell, waterCell, newFarmCell, gradeOf,
+  plantCell, produceItemId, supplyOfFacility, tillCell, waterCell, newFarmCell, gradeOf, harvestPreview,
+  careStatusList, careDue, doCare as coreDoCare, inEstablishment, cellDiseases, CARE_TASK_KO, DISEASE_KO, DISEASE_CONTROL_KO, TRAY_ID,
   type CropDef, type FarmEnv, type FarmFacility, type FarmHarvestResult, type FarmPlantCtx, type FarmPlotState, type LicenseType,
+  type CareStatus, type CareTaskId, type CropDisease,
 } from '@tra/core';
 import { GameState } from './GameState.js';
 import { InventoryStore, type InvCategory } from './InventoryStore.js';
@@ -47,10 +52,19 @@ export interface FarmActionResult {
 
 const fail = (message: string): FarmActionResult => ({ ok: false, message });
 
+/** 238차 — 텃밭 창의 할 일 한 줄: 상태 + 모자란 자재 */
+export interface FarmCareRow {
+  st: CareStatus;
+  missing: { itemId: string; name: string; need: number; have: number }[];
+}
+
 class FarmStoreImpl {
   private plots = new Map<string, FarmPlotState>();
   /** 236차 — 거둔 횟수(농지 이용권 요건) */
   private harvests = 0;
+  /** 238차 — 이미 알린 할 일 · 병 · 쓰러짐 · 서리(키) · 아직 안 올린 알림 */
+  private noticed = new Set<string>();
+  private notices: string[] = [];
 
   /** 236차 — 텃밭에서 거둔 횟수(본 수확 + 중간 수확) */
   get harvestCount(): number { return this.harvests; }
@@ -121,10 +135,102 @@ class FarmStoreImpl {
     return k === 'rain' || k === 'shower' || k === 'sleet' || k === 'snow';
   }
 
-  /** 모든 구획을 지금까지 굴린다(창을 열 때 · 필드 틱 · 로드 직후) */
+  /** 모든 구획을 지금까지 굴린다(창을 열 때 · 필드 틱 · 로드 직후) — 굴린 뒤 새 할 일 · 병 · 쓰러짐 · 서리를 알림 줄로 모은다 */
   advanceAll(nowMs = Date.now()): void {
     const env = this.env(nowMs);
     for (const p of this.plots.values()) advancePlot(p, nowMs, env);
+    this.scanNotices(nowMs);
+  }
+
+  /** 238차 — 새로 열린 할 일 · 든 병 · 쓰러짐 · 서리를 한 번씩만 알림으로 */
+  private scanNotices(nowMs: number): void {
+    for (const [pid, p] of this.plots) {
+      p.cells.forEach((c, i) => {
+        if (!c.cropId) return;
+        const crop = getCrop(c.cropId);
+        if (!crop) return;
+        const where = `${pid === INDOOR_PLOT ? '집 안 선반' : '텃밭'} ${i + 1}번 칸`;
+        const push = (key: string, line: string): void => {
+          if (this.noticed.has(key)) return;
+          this.noticed.add(key);
+          this.notices.push(line);
+        };
+        for (const st of careDue(c, crop, nowMs)) {
+          push(`${pid}:${i}:${st.def.id}:${st.round}:${c.plantedAt ?? 0}`, `[텃밭] ${crop.nameKo} — ${CARE_TASK_KO[st.def.id]} 할 때 (${where})`);
+        }
+        for (const d of cellDiseases(c)) {
+          push(`${pid}:${i}:dz:${d.id}:${d.sinceMs}`, `[텃밭] ${crop.nameKo}에 ${DISEASE_KO[d.id]}이 생겼다 — ${DISEASE_CONTROL_KO[d.id]} (${where})`);
+        }
+        if (c.lodged) push(`${pid}:${i}:lodged:${c.plantedAt ?? 0}`, `[텃밭] ${crop.nameKo}가 비바람에 쓰러졌다 — 지주를 세웠어야 했다 (${where})`);
+        if (c.frostedAt) push(`${pid}:${i}:frost:${c.frostedAt}`, `[텃밭] 서리가 내렸다 — ${crop.nameKo} 남은 것을 사흘 안에 거둔다 (${where})`);
+      });
+    }
+  }
+
+  /** 238차 — 모아 둔 알림을 꺼낸다(필드 HUD 로그 · 떠오르는 안내) */
+  takeNotices(max = 3): string[] {
+    return this.notices.splice(0, max);
+  }
+
+  /** 238차 — 이 칸의 할 일 전부(상태 · 모자란 자재) */
+  careRows(plotId: string, idx: number): FarmCareRow[] {
+    this.advanceAll();
+    const cell = this.plot(plotId).cells[idx];
+    const crop = cell?.cropId ? getCrop(cell.cropId) : undefined;
+    if (!cell || !crop) return [];
+    return careStatusList(cell, crop, Date.now()).map((st) => ({ st, missing: this.missingFor(st.def.needs) }));
+  }
+
+  private missingFor(needs?: { itemId: string; qty: number }[]): FarmCareRow['missing'] {
+    const out: FarmCareRow['missing'] = [];
+    for (const n of needs ?? []) {
+      const have = InventoryStore.find(n.itemId)?.qty ?? 0;
+      if (have < n.qty) out.push({ itemId: n.itemId, name: cropItemTemplate(n.itemId)?.name ?? n.itemId, need: n.qty, have });
+    }
+    return out;
+  }
+
+  /** 238차 — 지금 이 작업을 할 수 있는가(할 때 · 자재) */
+  careCheck(plotId: string, idx: number, id: CareTaskId): { ok: boolean; reasonKo?: string; row?: FarmCareRow } {
+    const row = this.careRows(plotId, idx).find((r) => r.st.def.id === id);
+    if (!row) return { ok: false, reasonKo: '지금 할 일이 아니다' };
+    if (row.st.status !== 'due') return { ok: false, reasonKo: row.st.status === 'upcoming' ? `아직 때가 아니다 — ${row.st.daysLeft}일 뒤` : '이번 차례는 했다', row };
+    if (row.missing.length) return { ok: false, reasonKo: `${row.missing.map((m) => `${m.name} ${m.need}개(${m.have}개)`).join(' · ')}가 있어야 한다 — 종묘사에서 판다`, row };
+    return { ok: true, row };
+  }
+
+  /**
+   * 238차 — 작업을 한다(작업 장면이 끝난 뒤 점수와 함께). 자재를 가방에서 빼고 품(허기 · 수분 · 피로)을 쓴다.
+   * 서툴면(점수 낮음) 효과가 절반이다 — 자재는 그대로 든다.
+   */
+  doCare(plotId: string, idx: number, id: CareTaskId, score = 1): FarmActionResult {
+    const chk = this.careCheck(plotId, idx, id);
+    if (!chk.ok) return fail(chk.reasonKo ?? '지금 할 수 없다');
+    const cell = this.plot(plotId).cells[idx];
+    const crop = cell?.cropId ? getCrop(cell.cropId) : undefined;
+    if (!cell || !crop) return fail('거둘 것이 없다');
+    const r = coreDoCare(cell, crop, id, Date.now(), score);
+    if (!r.ok) return fail(r.reasonKo ?? '지금 할 수 없다');
+    for (const n of r.needs) InventoryStore.removeQty(n.itemId, n.qty);
+    const def = chk.row!.st.def;
+    GameState.spendLabor(Math.round(def.fatigue * 0.5), Math.round(def.fatigue * 0.7), def.fatigue);
+    GameState.markDirty();
+    StoryStore.event({ kind: 'farm', action: 'care', cropId: crop.id });
+    return { ok: true, message: r.messageKo };
+  }
+
+  /** 238차 — 활착기(모종 심은 뒤 2주 — 흙을 촉촉하게) */
+  establishment(plotId: string, idx: number): { daysLeft: number } | null {
+    const cell = this.plot(plotId).cells[idx];
+    const crop = cell?.cropId ? getCrop(cell.cropId) : undefined;
+    return cell && crop ? inEstablishment(cell, crop, Date.now()) : null;
+  }
+
+  /** 238차 — 이 칸에 든 병(이름 · 심한 정도 · 막는 법) */
+  diseases(plotId: string, idx: number): { id: CropDisease; severity: number; name: string; control: string }[] {
+    const cell = this.plot(plotId).cells[idx];
+    if (!cell) return [];
+    return cellDiseases(cell).map((d) => ({ id: d.id, severity: d.severity, name: DISEASE_KO[d.id], control: DISEASE_CONTROL_KO[d.id] }));
   }
 
   // ── 자격 · 문맥 ───────────────────────────
@@ -136,6 +242,9 @@ class FarmStoreImpl {
       // 237차 — 작물 난이도 단계 요건(레벨 · 유기농업기능사)
       level: GameState.player.level ?? 1,
       hasLicense: (t) => GameState.hasLicense(t as LicenseType),
+      // 238차 — 육묘 트레이(씨앗 → 모종) · 지금 기온(늦서리 뒤 4월 정식)
+      hasTray: !!InventoryStore.find(TRAY_ID),
+      tempC: ExternalDataStore.getKmaWeather('hometown')?.tempC,
     };
   }
 
@@ -196,7 +305,7 @@ class FarmStoreImpl {
     const p = this.plot(plotId);
     const cell = p.cells[idx];
     if (!cell) return { ok: false, reasonKo: '칸이 없다' };
-    const chk = canPlant(crop, start, p, cell, kstMonthOf(Date.now()), this.plantCtx());
+    const chk = canPlant(crop, start, p, cell, kstMonthOf(Date.now()), this.plantCtx(), Date.now());
     if (!chk.ok) return { ok: false, reasonKo: chk.reasonKo, crop };
     const need = Math.max(1, start.perCell);
     const have = InventoryStore.find(startItemId)?.qty ?? 0;
@@ -224,10 +333,10 @@ class FarmStoreImpl {
     if (!cell || !cellReady(cell)) return fail('아직 거둘 때가 아니다');
     const crop = cell.cropId ? getCrop(cell.cropId) : undefined;
     if (!crop) return fail('거둘 것이 없다');
-    // 가방 자리 — 거둘 아이템은 미리 안다(등급 = 지금 품질 · 붉어졌는가 = 익은 뒤 흐른 시간)
-    const ripened = !!crop.harvest.ripenTo && cell.ripeH > crop.harvest.ripenTo.afterDays * 24;
-    const outId = produceItemId(ripened ? crop.harvest.ripenTo!.itemId : crop.harvest.itemId, gradeOf(cell.quality));
-    if (!this.roomFor(outId, crop)) return fail('가방에 자리가 없다 — 한 칸 비우고 거둔다');
+    // 가방 자리 — 거둘 아이템은 미리 안다(등급 = 지금 품질 · 붉어졌는가 = 익은 뒤 흐른 시간 · 육묘 칸이면 모종)
+    const pv = harvestPreview(cell, crop);
+    const outId = pv.seedling ? pv.itemId : produceItemId(pv.itemId, gradeOf(cell.quality));
+    if (!this.roomFor(outId, pv.seedling ? null : crop, pv.seedling)) return fail('가방에 자리가 없다 — 한 칸 비우고 거둔다');
     const r = harvestCell(cell, Math.random, this.harvestSkills());
     if (!r) return fail('아직 거둘 때가 아니다');
     return this.giveHarvest(r, crop);
@@ -246,19 +355,24 @@ class FarmStoreImpl {
   }
 
   /** 거둘 것(+ 씨앗 회수를 배웠으면 씨앗 봉투)이 가방에 들어가는가 */
-  private roomFor(outId: string, crop: CropDef | null): boolean {
-    const parts: { tpl: { id: string; category: InvCategory }; qty: number }[] = [{ tpl: { id: outId, category: 'food' }, qty: 1 }];
+  private roomFor(outId: string, crop: CropDef | null, seedling = false): boolean {
+    const parts: { tpl: { id: string; category: InvCategory }; qty: number }[] = [{ tpl: { id: outId, category: seedling ? 'consumable' : 'food' }, qty: 1 }];
     const seed = crop?.starts.find((st) => st.kind === 'seed' && st.cost > 0);
     if (seed && GameState.skillBonus('seed_saver') > 0) parts.push({ tpl: { id: seed.itemId, category: 'consumable' }, qty: 1 });
     return Object.keys(InventoryStore.slotShortfall(parts)).length === 0;
   }
 
   private giveHarvest(r: FarmHarvestResult, crop: CropDef): FarmActionResult {
-    const id = produceItemId(r.itemId, r.grade);
+    const id = r.seedling ? r.itemId : produceItemId(r.itemId, r.grade);
     const tpl = cropItemTemplate(id);
     if (!tpl) return fail('거둔 것을 담을 수 없다');
     InventoryStore.addItem(tpl, r.qty);
     const harvested = [{ itemId: id, qty: r.qty, name: tpl.name }];
+    // 238차 — 육묘 트레이: 모종은 수확이 아니다(거둔 횟수 · 퀘스트에 세지 않는다)
+    if (r.seedling) {
+      GameState.markDirty();
+      return { ok: true, message: `${tpl.name} ${r.qty}포기를 길러 냈다 — 늦서리 뒤 밭에 옮겨 심는다`, harvested };
+    }
     if (r.seedBack) {
       const st = cropItemTemplate(r.seedBack.itemId);
       if (st && InventoryStore.addItem(st, r.seedBack.qty)) harvested.push({ itemId: st.id, qty: r.seedBack.qty, name: st.name });
@@ -266,9 +380,12 @@ class FarmStoreImpl {
     this.harvests++;
     GameState.markDirty();
     StoryStore.event({ kind: 'farm', action: 'harvest', cropId: crop.id });
-    // 236차 — 덤(버섯 송이가 굵게 올라온 회차)은 따로 말해 준다
+    // 236차 — 덤(버섯 송이가 굵게 올라온 회차)은 따로 말해 준다 · 238차 — 검붉은 고추 · 서리 끝물 · 병으로 준 것
     const bonus = r.bonusQty ? ` — 송이가 굵어 ${r.bonusQty}개 더` : '';
-    return { ok: true, message: `${tpl.name} ${r.qty}개를 거뒀다${bonus}`, harvested };
+    const turning = r.turning ? ' — 검붉게 덜 익은 것이라 품질이 떨어진다' : '';
+    const frosted = r.frosted ? ' — 서리 맞은 끝물, 이 칸은 끝났다' : '';
+    const sick = (r.diseaseMult ?? 1) < 0.85 ? ` — 병으로 ${Math.round((1 - (r.diseaseMult ?? 1)) * 100)}% 줄었다` : '';
+    return { ok: true, message: `${tpl.name} ${r.qty}개를 거뒀다${bonus}${turning}${frosted}${sick}`, harvested };
   }
 
   /** 걷어 낸다(자라던 것을 버린다 — 일군 땅은 남는다) */

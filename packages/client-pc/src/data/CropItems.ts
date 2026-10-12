@@ -6,7 +6,8 @@
  *   (한 칸에 섞이면 값이 뭉개진다). 이름 꼬리(「· 특」)가 등급을 말한다.
  * - 값은 팔 때 다시 센다(`producePrice` — 달 지수 · 주간 출렁임 · 등급 · 숨은 재조정). `basePrice`는 기준값이다.
  * - 아이콘 = `px:<기본 id>`(작물 갈래 원형 + 작물 팔레트 — `tools/gen_pixel_icons.py`).
- * - 가게: 생활용품점 = 씨앗 · 호미 · 퇴비 · 설비 / 식자재마트 = 모종 · 종구(심는 철에만 진열).
+ * - 가게: 생활용품점 = 씨앗 · 호미 · 퇴비 · 설비 / 종묘사(238차) = 씨앗 · 모종 · 종구 · 배지(심는 철에만 진열) · 육묘 트레이 · 지주대 ·
+ *   유인끈 · 멀칭 비닐 · 비료 · 농약(`FarmSupplyDef.shop === 'nursery'`). 식자재마트는 모종을 팔지 않는다.
  *   희귀할수록 하루 재고가 적다(`stockMult`) · 배워야 쓰는 자격 물건은 배운 뒤에 진열된다(`requiresSkill`).
  * - 237차 — 작물 난이도 단계(`cropGate`)가 레벨 · 자격을 요구하면 갖춘 뒤에 진열된다(`minLevel` · `requiresLicense`).
  *   씨앗으로 키우면 육묘가 긴 작물은 한 단계 위라, 같은 작물이라도 모종이 먼저 나온다.
@@ -132,7 +133,7 @@ const SUPPLY_ICON: Record<string, string> = {
 
 function supplyTemplate(s: (typeof FARM_SUPPLIES)[number]): InvItemTemplate {
   return {
-    id: s.itemId, name: s.nameKo, icon: '', iconTexture: SUPPLY_ICON[s.itemId] ?? 'px:it_farm_kit',
+    id: s.itemId, name: s.nameKo, icon: '', iconTexture: s.icon ? `px:${s.icon}` : (SUPPLY_ICON[s.itemId] ?? 'px:it_farm_kit'),
     category: s.kind === 'consumable' ? 'consumable' : 'etc', subCategory: FARM_SUB, basePrice: s.price, equippable: false,
   };
 }
@@ -232,6 +233,7 @@ export function dailyFarmEntries(): CropShopEntry[] {
     });
   }
   for (const s of FARM_SUPPLIES) {
+    if (s.shop === 'nursery') continue;   // 238차 — 종묘사 자재
     const furn = INDOOR_FURN[s.itemId];
     out.push({
       ...supplyTemplate(s), price: s.price, maxPerPurchase: s.kind === 'consumable' ? 12 : 1,
@@ -244,19 +246,26 @@ export function dailyFarmEntries(): CropShopEntry[] {
   return out;
 }
 
-/** 식자재마트 — 모종 · 종구 · 배지(심는 철에만 진열 · 산채 모종은 배운 뒤에) */
-export function martFarmEntries(): CropShopEntry[] {
+/**
+ * 종묘사(238차 — 식자재마트에서 옮겨 왔다) — 씨앗 · 모종 · 종구 · 배지(모종 · 종구는 심는 철에만 진열 · 산채 모종은 배운 뒤에)
+ * + 관리 작업 자재(육묘 트레이 · 지주대 · 유인끈 · 멀칭 비닐 · 복합비료 · 살균제 · 아인산 · 칼슘액비 · 살충제).
+ */
+export function nurseryFarmEntries(): CropShopEntry[] {
   const out: CropShopEntry[] = [];
   for (const crop of CROP_DATABASE) for (const st of crop.starts) {
-    if (st.kind === 'seed' || st.itemId.startsWith('crop_')) continue;
+    if (st.itemId.startsWith('crop_')) continue;
     const allYear = st.months.length >= 12;
     out.push({
-      ...startTemplate(crop, st), price: st.cost, maxPerPurchase: st.kind === 'seedling' ? Math.max(10, st.perCell * 4) : 8,
+      ...startTemplate(crop, st), price: st.cost, maxPerPurchase: st.kind === 'seedling' ? Math.max(10, st.perCell * 4) : st.kind === 'seed' ? 12 : 8,
       desc: startDesc(crop, st), stockMult: RARITY_STOCK[crop.rarity],
-      ...(allYear ? {} : { seasonMonths: st.months }),
+      ...(allYear || st.kind === 'seed' ? {} : { seasonMonths: st.months }),
       ...(crop.requires?.skill ? { requiresSkill: crop.requires.skill } : {}),
       ...gateFields(crop, st),
     });
+  }
+  for (const s of FARM_SUPPLIES) {
+    if (s.shop !== 'nursery') continue;
+    out.push({ ...supplyTemplate(s), price: s.price, maxPerPurchase: s.kind === 'consumable' ? 24 : 1, desc: s.descKo });
   }
   return out;
 }

@@ -12,7 +12,7 @@ import { getCreatureById, isCrabCreature } from '@tra/core';
 import { getBlueprint, CRAFT_STATION_LABEL, CRAFT_GROUP_LABEL, getQuestItem } from '@tra/core';
 import {
   cropStartOfItem, cropOfProduce, parseProduceId, monthRangeKo, kstMonthOf, GRADE_KO, supplyOfFacility, getSkillById,
-  produceMarketRatio, produceMarketInfo, cropGate, CROP_TIER_KO, CROP_CARE_KO,
+  produceMarketRatio, produceMarketInfo, cropGate, CROP_TIER_KO, CROP_CARE_KO, hasCarePlan, carePlanSummaryKo,
   type CropDef, type CropStart, type CropRarity, type CropDifficulty, type LicenseType,
 } from '@tra/core';
 import { GameState } from '../store/GameState.js';
@@ -149,14 +149,17 @@ function cropYieldKo(crop: CropDef, st: CropStart): string {
 function cropStartDetail(item: Pick<InvItem, 'name' | 'qty' | 'basePrice'>, crop: CropDef, st: CropStart): ItemDetailData {
   const rows: ItemDetailRow[] = [];
   const how = st.kind === 'seed' ? '씨앗을 뿌린다' : st.kind === 'seedling' ? '모종을 옮겨 심는다 — 기르는 기간이 짧다' : '덩이 · 줄기 · 배지를 묻는다';
-  rows.push({ label: '심는 방법', value: how });
-  rows.push({ label: '심는 곳', value: crop.site === 'indoor' ? '집 안 선반' : '마당 텃밭' });
+  rows.push({ label: '심는 방법', value: st.nursery ? '따뜻한 실내 육묘 트레이에 뿌려 모종을 키운다' : how });
+  rows.push({ label: '심는 곳', value: st.nursery ? '집 안 선반 (육묘 트레이)' : crop.site === 'indoor' ? '집 안 선반' : '마당 텃밭' });
   rows.push({ label: '심는 철', value: crop.site === 'indoor' ? '언제나' : monthRangeKo(st.months) });
-  rows.push({ label: '거두기까지', value: `${st.days}일 안팎` });
+  rows.push({ label: st.nursery ? '모종까지' : '거두기까지', value: `${st.days}일 안팎` });
   const per = st.kind === 'seed' ? `${st.perCell}봉` : st.kind === 'seedling' ? `${st.perCell}포기` : `${st.perCell}몫`;
   rows.push({ label: '한 칸에', value: per });
   rows.push({ label: st.kind === 'seed' ? '싹 트는 비율' : '뿌리 내리는 비율', value: `${Math.round(st.establish * 100)}% 안팎` });
-  rows.push({ label: '거두는 것', value: `${crop.harvest.nameKo} · 칸당 ${cropYieldKo(crop, st)}` });
+  if (st.nursery) rows.push({ label: '거두는 것', value: `${crop.nameKo} 모종 ${st.nursery.seedlings[0]}~${st.nursery.seedlings[1]}포기 — 가식을 거르면 준다` });
+  else rows.push({ label: '거두는 것', value: `${crop.harvest.nameKo} · 칸당 ${cropYieldKo(crop, st)}` });
+  // 238차 — 손이 가는 일(관리 작업 · 병해)
+  if (hasCarePlan(crop) && !st.nursery) rows.push({ label: '손이 가는 일', value: carePlanSummaryKo(crop) });
   if (crop.interim && !(crop.interim.seedOnly && st.kind !== 'seed')) rows.push({ label: '자라는 동안', value: crop.interim.labelKo });
   rows.push(...cropTierRows(crop, st));   // 237차
   const need = cropNeedsKo(crop);

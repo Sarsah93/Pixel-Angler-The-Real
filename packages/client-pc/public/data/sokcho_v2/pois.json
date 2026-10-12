@@ -4861,5 +4861,15 @@
   "ty": 416,
   "osmId": -89026,
   "src": "capture"
+ },
+ {
+  "type": "shop",
+  "shopKind": "garden_centre",
+  "name": "설악종묘사",
+  "nameEn": "Seorak Seed & Seedling",
+  "tx": 380,
+  "ty": 294,
+  "osmId": -83067,
+  "src": "capture"
  }
 ]

@@ -1690,6 +1690,7 @@ export class RegionFieldScene extends Phaser.Scene {
       cafe:        [0xe3d5bd, 0x8a6a44, 0xc8a060, 0x6f523a],  // 베이지 카페
       pub:         [0x5c4a6e, 0x33263f, 0x7b5cd6, 0xffd24a],  // 어두운 주점 + 등불
       pharmacy:    [0xeceff2, 0x2f7f5e, 0x4fc38a, 0xff6b6b],  // 흰 벽 + 초록 십자 간판 약국
+      nursery:     [0xe4e8d6, 0x4a8a3a, 0x6fb84a, 0xd8b878],  // 238차 — 연두 간판 종묘사(모종판 · 흙 포대)
       daily:       [0xdfe0d4, 0x2e5f9e, 0x3f86d8, 0xffd257],  // 파란 간판 생활용품점(사이소)
     };
     const [wall, roof, sign, accent] = palette[kind];
@@ -1771,6 +1772,8 @@ export class RegionFieldScene extends Phaser.Scene {
       // 135차 — 생활용품점(사이소): Ch1 저가 장비 한 벌. 속초 실데이터 general 12 · variety_store 5
       if (k === 'general' || k === 'variety_store' || k === 'houseware' || k === 'hardware'
         || k === 'department_store' || k === 'kiosk') return 'daily';
+      // 238차 — 종묘사 · 화원 · 농자재(OSM shop=garden_centre · florist · agrarian · farm): 모종 · 씨앗 · 농약
+      if (k === 'garden_centre' || k === 'florist' || k === 'agrarian' || k === 'farm') return 'nursery';
       return null;
     }
     return null;
@@ -2022,7 +2025,7 @@ export class RegionFieldScene extends Phaser.Scene {
     if (!this.textures.exists(base)) {
       const col: Record<BuildingKind, number> = {
         convenience: 0x2f8a57, mart: 0xc8662a, market: 0x2a6aa8, restaurant: 0xa8402a,
-        cafe: 0x6a4a2a, pub: 0x7a2a3a, pharmacy: 0x2a8a7a, daily: 0xb83a4a,
+        cafe: 0x6a4a2a, pub: 0x7a2a3a, pharmacy: 0x2a8a7a, daily: 0xb83a4a, nursery: 0x4a8a3a,
       };
       const g = this.add.graphics();
       g.fillStyle(0x3a2616, 1); g.fillRect(10, 18, 4, 12);            // 기둥
@@ -4398,7 +4401,7 @@ export class RegionFieldScene extends Phaser.Scene {
     const NEON: Record<BuildingKind, number> = {
       convenience: 0x35ff7a, mart: 0xffa040, market: 0xff5555,
       restaurant: 0xffcf6b, cafe: 0xffe2a8, pub: 0xc27cff, pharmacy: 0x4fffb0,
-      daily: 0x6ab8ff,
+      daily: 0x6ab8ff, nursery: 0x9aff6a,
     };
     for (const b of this.buildings) {
       const facadeDepth = 16 + b.y * 0.001;
@@ -4728,6 +4731,9 @@ export class RegionFieldScene extends Phaser.Scene {
    * 생존 지표 드레인 (125차 — SPEC §4). **활동 시간만** 진행하므로
    * `update()`의 일시정지·모달 가드(`uiBlocked`/`isTransitioning`) 뒤에서만 호출한다.
    */
+  /** 238차 — 텃밭 알림용 마지막 굴림 시각 */
+  private lastFarmSyncMs = 0;
+
   private tickVitals(delta: number): void {
     const body = this.playerBody.body as Phaser.Physics.Arcade.Body | undefined;
     const moving = !!body && Math.hypot(body.velocity.x, body.velocity.y) > 4;
@@ -4756,6 +4762,14 @@ export class RegionFieldScene extends Phaser.Scene {
       const m = farmTierNoticeKo(tier, GameState.hasLicense('organic_farming'));
       this.hud?.pushLog(m);
       this.floatingHint(m.replace(/^\[텃밭\]\s*/, ''));
+    }
+    // 238차 — 텃밭 할 일 · 병 · 쓰러짐 · 서리 알림(20초마다 굴려서 새로 생긴 것만). 첫 줄만 떠오르고 나머지는 로그로
+    const nowMs = Date.now();
+    if (nowMs - this.lastFarmSyncMs > 20_000) {
+      this.lastFarmSyncMs = nowMs;
+      FarmStore.advanceAll(nowMs);
+      const lines = FarmStore.takeNotices(3);
+      lines.forEach((m, i) => { this.hud?.pushLog(m); if (i === 0) this.floatingHint(m.replace(/^\[텃밭\]\s*/, '').replace(/\s*\([^)]*\)$/, '')); });
     }
     // 140차 — 숙련도 레벨업(캐스팅·손질·제작 … 행위로 오른 것)도 같은 자리에서 알린다
     for (const g of GameState.takeRecentProfUps()) {
@@ -4964,6 +4978,7 @@ export class RegionFieldScene extends Phaser.Scene {
       confirm: (msg, yes, labels) => {
         this.openPopup((c2) => new ConfirmDialog(this, msg, () => { c2(); yes(); }, c2, labels));
       },
+      openPopup: (build) => { this.openPopup(build); },   // 238차 — 작업 장면
     }), () => this.renderFarmOverlay(o));
   }
 
@@ -5855,7 +5870,7 @@ export class RegionFieldScene extends Phaser.Scene {
   /** 상점 카테고리 → 미니맵 아이콘 키 */
   private static readonly MINI_SHOP_ICON: Record<BuildingKind, string> = {
     convenience: 'mm_conv', mart: 'mm_mart', market: 'mm_market', restaurant: 'mm_food',
-    cafe: 'mm_cafe', pub: 'mm_pub', pharmacy: 'mm_pharm', daily: 'mm_daily',
+    cafe: 'mm_cafe', pub: 'mm_pub', pharmacy: 'mm_pharm', daily: 'mm_daily', nursery: 'mm_nursery',
   };
 
   /** 상점 POI 마커 (create 1회 — 위치·종류가 고정) */

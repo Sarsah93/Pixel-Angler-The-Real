@@ -177,11 +177,12 @@ describe('FarmSim — 자격 · 철', () => {
     plot.cells[0].tilled = true;
     const crop = getCrop('chili')!;
     const st = crop.starts.find((s) => s.kind === 'seedling')!;
-    const no = canPlant(crop, st, plot, plot.cells[0], 4, ctxAll);
+    // 238차 — 고추 모종은 4월 하순~5월 상순(늦서리 뒤)에 심는다. 3월은 철이 아니고, 하우스면 앞 달(3월)이 열린다
+    const no = canPlant(crop, st, plot, plot.cells[0], 3, ctxAll);
     expect(no.ok).toBe(false);
-    expect(no.reasonKo).toContain('5월');
+    expect(no.reasonKo).toContain('4~5월');
     plot.facilities.push('greenhouse');
-    expect(canPlant(crop, st, plot, plot.cells[0], 4, ctxAll).ok).toBe(true);
+    expect(canPlant(crop, st, plot, plot.cells[0], 3, ctxAll).ok).toBe(true);
   });
   it('시루 작물은 실내 선반에만 — 시루가 있어야 한다', () => {
     const plot = newFarmPlot('indoor', 0);

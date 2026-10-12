@@ -6,7 +6,11 @@
  * Ko/En 쌍이 정본이다(`I18n.buildRuntimeDict`). 여기는 화면 문구만 둔다.
  */
 
-import { CROP_CARE_KO, CROP_CARE_EN, type CropCare } from '@tra/core';
+import {
+  CROP_CARE_KO, CROP_CARE_EN, CARE_TASK_KO, CARE_TASK_EN, CARE_WORK_KO, CARE_WORK_EN, DISEASE_KO, DISEASE_EN, DISEASE_SYMPTOM_KO, DISEASE_SYMPTOM_EN,
+  DISEASE_CONTROL_KO, DISEASE_CONTROL_EN, RIPE_STAGE_KO, RIPE_STAGE_EN, CROP_CARE_PLANS, NURSERY_PLAN,
+  type CropCare, type CareTaskId, type CareWorkKind, type CropDisease, type RipeStage,
+} from '@tra/core';
 
 const MONTH_EN = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -27,7 +31,65 @@ export function monthRangeEn(ko: string): string {
   }).join(', ');
 }
 
+/** 238차 — 작업 · 병 · 익는 단계 이름(ko → en) · 작업 방법 한 줄(표에서 그대로) */
+const CARE_TASK_PAIRS: Record<string, string> = Object.fromEntries([
+  ...(Object.keys(CARE_TASK_KO) as CareTaskId[]).map((k) => [CARE_TASK_KO[k], CARE_TASK_EN[k]]),
+  ...(Object.keys(CARE_WORK_KO) as CareWorkKind[]).map((k) => [CARE_WORK_KO[k], CARE_WORK_EN[k]]),
+  ...(Object.keys(DISEASE_KO) as CropDisease[]).flatMap((k) => [[DISEASE_KO[k], DISEASE_EN[k]], [DISEASE_SYMPTOM_KO[k], DISEASE_SYMPTOM_EN[k]], [DISEASE_CONTROL_KO[k], DISEASE_CONTROL_EN[k]]]),
+  ...(Object.keys(RIPE_STAGE_KO) as RipeStage[]).map((k) => [RIPE_STAGE_KO[k], RIPE_STAGE_EN[k]]),
+  ...[...Object.values(CROP_CARE_PLANS), NURSERY_PLAN].flatMap((p) => p.tasks.map((t) => [t.howKo, t.howEn])),
+]);
+const TASK_ALT = Object.values(CARE_TASK_KO).map((x) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+const TASK_EN = (ko: string): string => CARE_TASK_EN[(Object.keys(CARE_TASK_KO) as CareTaskId[]).find((k) => CARE_TASK_KO[k] === ko) ?? 'stake'] ?? ko;
+const DZ_ALT = Object.values(DISEASE_KO).join('|');
+const DZ_EN = (ko: string): string => DISEASE_EN[(Object.keys(DISEASE_KO) as CropDisease[]).find((k) => DISEASE_KO[k] === ko) ?? 'blight'];
+
 export const EN_FARM: Record<string, string> = {
+  ...CARE_TASK_PAIRS,
+  // ── 238차 — 관리 작업 · 작업 장면 · 병 · 육묘 · 종묘사 ──
+  '단계': 'Stage', '익음': 'Ripeness', '포기당': 'Per plant', '쓰러짐': 'Lodged', '활착기': 'Establishing', '할 일': 'To do',
+  '지금은 없다': 'Nothing right now', '쓰는 것': 'Uses', '걸리는 시간': 'Time it takes', '초': 's', '그만두기': 'Stop',
+  '남은 것': 'Left', '차례': 'Next', '묶은 포기': 'Tied', '친 포기': 'Sprayed', '남은 자리': 'Spots left', '옮길 싹': 'Seedlings to move',
+  '다 세웠다': 'All staked', '다 묶었다': 'All tied', '고르게 쳤다': 'Even coverage', '손은 끝났다 — 마무리하는 중': 'Hands are done — finishing up',
+  '차례가 아니다 — 표시된 자리부터': 'Not that one — start with the marked spot',
+  '줄기를 건드렸다 — 표시된 것만 딴다': 'You caught the stem — pick only the marked ones',
+  '빗나갔다 — 표시된 자리에': 'Missed — aim for the marked spot',
+  '너무 적게 쳤다 — 띠 안에서 뗀다': 'Too little — release inside the band',
+  '너무 많이 쳤다 — 잎이 상한다': 'Too much — that scorches the leaves',
+  '띠를 벗어났다 — 표시가 띠 안에 들어올 때': 'Outside the band — press when the marker is inside',
+  '지금 할 일이 아니다': 'Not something to do right now', '이번 차례는 했다': 'This round is done', '지금 할 수 없다': 'Cannot do that now',
+  '이 작물에는 없는 일이다': 'This crop has no such job',
+  '육묘 중 — 집 안 트레이에서 모종을 키운다': 'In the nursery — raising seedlings in the indoor tray',
+  '서리 — 끝물': 'Frost — last of the season', '수확기 — 익는 대로 거둔다': 'Harvest season — pick as they ripen',
+  '활착기 — 뿌리를 내리는 2주': 'Establishing — the two weeks the roots take hold',
+  '초기 생장 — 방아다리가 갈라진다': 'Early growth — the first fork is forming',
+  '개화 · 착과 — 꽃이 피고 열매가 든다': 'Flowering and fruit set',
+  '모종이 됐다 — 거둬서 밭에 옮겨 심는다': 'Seedlings are ready — harvest and transplant to the bed',
+  '서리 맞은 끝물 — 지금 거두면 끝': 'Frost-hit — harvesting now ends this cell',
+  '서리를 맞았다 — 더 자라지 않는다': 'Hit by frost — no more growth',
+  '검붉게 익는 중 — 꼭지 끝까지 빨개지면 홍고추': 'Turning dark red — fully red once the shoulder colors',
+  '비바람에 쓰러졌다 — 수확이 준다': 'Blown over in wind and rain — a smaller harvest',
+  '초기': 'Early', '번지는 중': 'Spreading', '심하다': 'Severe',
+  '가방에 심을 것이 없다 — 씨앗은 생활용품점 · 종묘사, 모종은 종묘사에서 판다':
+    'Nothing to plant in your bag — seeds at the general store or the seed shop, seedlings at the seed shop',
+  '일군 칸에 씨앗이나 모종을 심는다. 모종은 비싸지만 싹 틔우는 몇 주를 건너뛴다. 모종과 농자재는 종묘사가 판다.':
+    'Plant seed or seedlings in a tilled cell. Seedlings cost more but skip the weeks of sprouting. The seed shop sells seedlings and supplies.',
+  '텃밭 손일은 그 일을 흉내 내는 짧은 손놀림이다. 왼쪽 포기 그림에서 표시된 것을 누르거나, 누르고 있다가 띠 안에서 뗀다.':
+    'Garden work is a short hands-on imitation of the real job. Click the marked spots on the plant at left, or hold and release inside the band.',
+  '손이 끝나도 걸리는 시간이 다 차야 끝난다 — 일에는 시간이 든다. 서툴면(실수가 많으면) 효과가 절반이다.':
+    'Even when your hands are done, the job ends only when its time is up — work takes time. Clumsy work (many mistakes) has half the effect.',
+  '따뜻한 실내 육묘 트레이에 뿌려 모종을 키운다': 'Sown in a warm indoor tray to raise seedlings',
+  '집 안 선반 (육묘 트레이)': 'Indoor shelf (seedling tray)', '모종까지': 'To seedlings', '손이 가는 일': 'Work it takes',
+  '고추를 기르는 여섯 단계': 'The six stages of growing chili', '작업 장면 — 손놀림과 시간': 'Work scenes — hands and time',
+  '손이 가는 일 · 작업 장면': 'Work it takes · work scenes', '병해 3종 · 방제': 'Three diseases and control',
+  '역병 · 탄저병 · 바이러스병': 'Blight, anthracnose and virus', '약 — 살균제 · 아인산 · 칼슘액비 · 살충제': 'Sprays — fungicide, phosphite, calcium, insecticide',
+  '육묘 · 종묘사 · 풋고추와 홍고추': 'Nursery, seed shop, green and red chili', '씨앗에서 모종으로': 'From seed to seedling',
+  '풋고추 · 검붉은 고추 · 홍고추 · 첫서리': 'Green, turning and red chili, and the first frost',
+  '늦서리가 끝나지 않았다 — 최저 기온이 10℃ 넘게 안정되면 옮겨 심는다(4월 하순~5월 상순)':
+    'The last frost has not passed — transplant once lows stay above 10℃ (late April to early May)',
+  '지금은 너무 춥다 — 기온이 10℃를 넘을 때 옮겨 심는다(냉해를 입는다)': 'Too cold right now — transplant when it is above 10℃ (cold injury otherwise)',
+  '육묘 트레이가 있어야 씨앗을 뿌려 모종을 키운다 — 종묘사에서 판다': 'You need a seedling tray to sow seed for seedlings — the seed shop sells them',
+  '밭에 바로 뿌리지 않는다 — 집 안 선반 육묘 트레이에 뿌려 모종을 키운다': 'Not sown straight in the bed — sow in the indoor seedling tray to raise seedlings',
   // ── 창 제목 · 위 단추 ──
   '텃밭': 'Vegetable patch', '집 안 선반': 'Indoor shelf',
   '칸 보기': 'Cells', '설비': 'Equipment', '물 주기': 'Water',
@@ -248,6 +310,40 @@ export const EN_FARM_RULES: [RegExp, (m: RegExpMatchArray, tr: (s: string) => st
       const lead = m[2] === '이제' ? 'you can now grow' : 'with the Craftsman Organic Agriculture certificate you can grow';
       return `Level ${m[1]} — ${lead} ${what} too (${m[4].split(' · ').map((x) => tr(x)).join(', ')})`;
     }],
+  // 238차 — 관리 작업 · 병 · 육묘 · 작업 장면(동적 문장)
+  [new RegExp(`^(${TASK_ALT}) — (\\d+)일 뒤$`), (m) => `${TASK_EN(m[1])} — in ${m[2]} day${m[2] === '1' ? '' : 's'}`],
+  [new RegExp(`^다음: (${TASK_ALT}) — (\\d+)일 뒤$`), (m) => `Next: ${TASK_EN(m[1])} — in ${m[2]} day${m[2] === '1' ? '' : 's'}`],
+  [new RegExp(`^(${TASK_ALT}) (\\d+)/(\\d+)$`), (m) => `${TASK_EN(m[1])} ${m[2]}/${m[3]}`],
+  // 상세 「손이 가는 일」 요약 조각 — 「웃거름 5회」 · 「살균제 치기(철마다)」 · 「병해 — 역병 · 탄저병」
+  [new RegExp(`^(${TASK_ALT}) (\\d+)회$`), (m) => `${TASK_EN(m[1])} ×${m[2]}`],
+  [new RegExp(`^(${TASK_ALT})\\(철마다\\)$`), (m) => `${TASK_EN(m[1])} (in season)`],
+  [new RegExp(`^병해 — ((?:${DZ_ALT})(?: · (?:${DZ_ALT}))*)$`), (m) => `Diseases — ${m[1].split(' · ').map((x) => DZ_EN(x)).join(', ')}`],
+  [new RegExp(`^(${TASK_ALT})( \\(\\d+/\\d+\\))? — (했다|서툴러서 효과가 절반이다)$`),
+    (m) => `${TASK_EN(m[1])}${m[2] ?? ''} — ${m[3] === '했다' ? 'done' : 'clumsy, half the effect'}`],
+  [/^아직 때가 아니다 — (\d+)일 뒤$/, (m) => `Not yet — in ${m[1]} day${m[1] === '1' ? '' : 's'}`],
+  [/^(.+)가 있어야 한다 — 종묘사에서 판다$/, (m, tr) => `You need ${m[1].split(' · ').map((x) => {
+    const q = /^(.+) (\d+)개\((\d+)개\)$/.exec(x);
+    return q ? `${tr(q[1])} ×${q[2]} (have ${q[3]})` : tr(x);
+  }).join(', ')} — the seed shop sells them`],
+  [/^(.+) — 종묘사에서 판다$/, (m, tr) => `${m[1].split(' · ').map((x) => {
+    const q = /^(.+) (\d+)개\((\d+)개\)$/.exec(x);
+    return q ? `${tr(q[1])} ×${q[2]} (have ${q[3]})` : tr(x);
+  }).join(', ')} — the seed shop sells them`],
+  [/^한 번에 (\d+)~(\d+)개 × (\d+)포기$/, (m) => `${m[1]}–${m[2]} each per picking × ${m[3]} plant${m[3] === '1' ? '' : 's'}`],
+  [/^(\d+)일 더 흙을 촉촉하게 — 마르면 뿌리를 못 내린다$/, (m) => `${m[1]} more day${m[1] === '1' ? '' : 's'} of moist soil — dry soil keeps the roots from taking`],
+  [/^(.+) 모종 (\d+)~(\d+)포기 — 가식을 거르면 준다$/, (m, tr) => `${tr(m[1])} seedlings, ${m[2]}–${m[3]} plants — fewer if you skip pricking out`],
+  [/^(.+) (\d+)포기를 길러 냈다 — 늦서리 뒤 밭에 옮겨 심는다$/, (m, tr) => `Raised ${m[2]} ${tr(m[1])} — transplant to the bed after the last frost`],
+  [/^(\d+)~(\d+)월에 뿌려 모종을 키운다 — 늦으면 옮겨 심을 철을 놓친다$/, (m) => `Sow in ${MONTH_EN[Number(m[1])]}–${MONTH_EN[Number(m[2])]} to raise seedlings — later and you miss the transplanting window`],
+  [new RegExp(`^(.+) — (${TASK_ALT}) 할 때 \\((.+)\\)$`), (m, tr) => `${tr(m[1])} — time to ${TASK_EN(m[2]).toLowerCase()} (${tr(m[3])})`],
+  [new RegExp(`^(.+)에 (${DZ_ALT})이 생겼다 — (.+) \\((.+)\\)$`), (m, tr) => `${DZ_EN(m[2])} on your ${tr(m[1])} — ${tr(m[3])} (${tr(m[4])})`],
+  [/^(.+)가 비바람에 쓰러졌다 — 지주를 세웠어야 했다 \((.+)\)$/, (m, tr) => `Your ${tr(m[1])} blew over — it needed staking (${tr(m[2])})`],
+  [/^서리가 내렸다 — (.+) 남은 것을 사흘 안에 거둔다 \((.+)\)$/, (m, tr) => `Frost — harvest the last ${tr(m[1])} within three days (${tr(m[2])})`],
+  [/^(텃밭|집 안 선반) (\d+)번 칸$/, (m) => `${m[1] === '텃밭' ? 'patch' : 'indoor shelf'} cell ${m[2]}`],
+  [/^(.+) (\d+)개를 거뒀다(.*)$/, (m, tr) => `Harvested ${m[2]} ${tr(m[1])}${m[3]
+    .replace(' — 검붉게 덜 익은 것이라 품질이 떨어진다', ' — picked while turning, so lower quality')
+    .replace(' — 서리 맞은 끝물, 이 칸은 끝났다', ' — frost-hit last picking, this cell is done')
+    .replace(/ — 병으로 (\d+)% 줄었다/, ' — disease cut it by $1%')
+    .replace(/ — 송이가 굵어 (\d+)개 더/, ' — thick clusters, $1 extra')}`],
   // 칸 자세히 · 상세 보기 — 날 수 · 비율
   [/^(\d+)일 전$/, (m) => `${m[1]} day${m[1] === '1' ? '' : 's'} ago`],
   [/^약 (\d+)일 뒤$/, (m) => `In about ${m[1]} day${m[1] === '1' ? '' : 's'}`],

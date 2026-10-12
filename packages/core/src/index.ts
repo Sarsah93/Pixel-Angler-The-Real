@@ -828,6 +828,7 @@ export type {
   CropCategory, CropSpeedClass, CropRarity, CropGrade, CropStartKind, FarmSite, FarmFacility, CropStart, CropHarvest,
   CropInterim, CropRequirement, CropPrice, CropDef, FarmCellState, FarmPlotState, FarmEnv, FarmPlantCtx, FarmHarvestResult,
   CropDifficulty, CropCare,
+  CropDisease, CropDiseaseState, CareTaskId, CareWorkKind, CareTaskDef, CropCarePlan,
 } from './types/Farming.js';
 export {
   CROP_DATABASE, CROP_DIFFICULTY, getCrop, cropStartOfItem, cropOfProduce, isFarmProduce,
@@ -843,6 +844,19 @@ export {
   CROP_TIER_KO, CROP_TIER_EN, CROP_CARE_KO, CROP_CARE_EN, cropTier, tierGate, cropGate, cropGateBlock,
 } from './simulation/FarmSim.js';
 export type { PlantCheck, HarvestSkills, FarmCellStage } from './simulation/FarmSim.js';
+export { harvestPreview } from './simulation/FarmSim.js';
+// 238차 — 관리 작업 · 병해 3종 · 육묘 · 서리 · 익는 단계
+export {
+  CARE_TASK_KO, CARE_TASK_EN, CARE_WORK_KO, CARE_WORK_EN, DISEASE_KO, DISEASE_EN, DISEASE_SYMPTOM_KO, DISEASE_SYMPTOM_EN,
+  DISEASE_CONTROL_KO, DISEASE_CONTROL_EN, TRAY_ID, STAKE_ID, TWINE_ID, MULCH_ID, FERT_ID, FUNGICIDE_ID, PHOSPHITE_ID, CALCIUM_ID, INSECTICIDE_ID,
+  NURSERY_PLAN, CROP_CARE_PLANS, DISEASE_SEASON, RISK_SEASON, carePlanOf, hasCarePlan, carePlanSummaryKo,
+} from './db-schema/CropCareDatabase.js';
+export {
+  CARE_TUNING, lastFrostDayIndex, firstFrostDayIndex, isRiskSeason, frostBlockKo, planOfCell, cellDay, cellDiseases, careStatusOf,
+  careStatusList, careDue, inEstablishment, doCare, skipExpiredRounds, dailyCare, establishHour, diseaseYieldMult, ripeStageOf,
+  RIPE_STAGE_KO, RIPE_STAGE_EN, perPlantYield,
+} from './simulation/CropCareSim.js';
+export type { CareStatusKind, CareStatus, CareResult, DailyCareReport, RipeStage } from './simulation/CropCareSim.js';
 // ── 농산물 실시간 시세(KAMIS 하루치 스냅샷) — 236차 ──
 export type { KamisPriceRow, ProduceMarketSnapshot } from './rules/ProduceMarket.js';
 export {

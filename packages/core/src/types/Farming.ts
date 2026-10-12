@@ -73,6 +73,12 @@ export interface CropStart {
   labelEn?: string;
   /** 수확량 배수 — 같은 작물을 다른 재료로 앉힐 때(키운 백태 200g으로 콩나물 = 1.8배) */
   qtyMult?: number;
+  /**
+   * 238차 — 육묘 트레이 파종. 이 씨앗은 밭에 바로 뿌리지 않고 **집 안 선반의 육묘 트레이**에 뿌려 모종을 키운다
+   * (고추 — 2월 따뜻한 실내에서 싹 틔워 70~90일 기른 뒤 4월 하순~5월 상순 밭에 옮겨 심는다).
+   * 다 자라면 거두기가 **모종 아이템**(`sdl_<작물>`)을 준다 — 포기 수 [최소, 최대] · 가식(`prick_out`)을 거르면 줄어든다.
+   */
+  nursery?: { seedlings: [number, number]; seedlingItemId: string };
 }
 
 /** 본 수확 */
@@ -82,8 +88,12 @@ export interface CropHarvest {
   /** 수확물 이름(단위 포함 — 「상추 한 줌 (100g)」) */
   nameKo: string;
   nameEn: string;
-  /** 다 익고 이만큼 지나면 다른 것으로 바뀐다(풋고추 → 홍고추) — 품질은 그대로 */
-  ripenTo?: { itemId: string; nameKo: string; nameEn: string; afterDays: number; price: number; cookIngredient?: string };
+  /**
+   * 다 익고 이만큼 지나면 다른 것으로 바뀐다(풋고추 → 홍고추) — 품질은 그대로.
+   * 238차 — `turningDays`부터 `afterDays`까지는 **검붉은 고추**(덜 익음): 이때 거두면 홍고추로 치되 품질이 깎인다
+   * (꼭지 끝까지 빨갛게 익어야 말렸을 때 빛깔이 좋다).
+   */
+  ripenTo?: { itemId: string; nameKo: string; nameEn: string; afterDays: number; price: number; cookIngredient?: string; turningDays?: number };
   /** 칸당 한 번 거두는 수(섬 1.0 · 상 등급 기준) [최소, 최대] */
   qtyPerCell: [number, number];
   /** 잎 따기 · 베기 — 첫 수확 뒤 간격(일)과 남은 횟수 */
@@ -140,6 +150,89 @@ export type CropCare =
   | 'shade'        // 반그늘 · 숲 흙
   | 'water'        // 물을 가린다(습지 · 찬물)
   | 'humidity';    // 습도를 맞춰야 한다(버섯)
+
+/**
+ * 238차 — 병해(사용자 조사 · 농진청 농사로): 역병(줄기 밑이 썩고 포기가 시든다 — 장마 · 다습) ·
+ * 탄저병(열매가 썩는다 — 6~9월 고온다습 · 빗물로 번진다 · 수량 손실 15~60%) ·
+ * 바이러스병(잎 모자이크 · 위축 — 총채벌레 · 진딧물이 옮긴다). 고추 · 토마토 · 가지 · 오이 같은 열매 작물에 든다.
+ */
+export type CropDisease = 'blight' | 'anthracnose' | 'virus';
+
+/** 칸 하나에 든 병 — 심한 정도 0..1(1 = 다 번졌다) */
+export interface CropDiseaseState {
+  severity: number;
+  /** 처음 든 시각(ms) */
+  sinceMs: number;
+}
+
+/**
+ * 238차 — 관리 작업(사용자 제안 「까다로움을 딸깍이 아니라 실제 동작 · 과정 · 시간으로」).
+ * 고추 6단계(파종 · 육묘 · 정식 · 초기 생장 · 개화 착과 · 수확)를 작업으로 쪼갰다 — 다른 작물은 까다로운 점에서 뽑는다.
+ */
+export type CareTaskId =
+  | 'prick_out'          // 가식 — 본잎이 나오면 넓은 트레이로 옮겨 심는다(육묘 칸)
+  | 'ridge_mulch'        // 두둑 · 멀칭 — 물빠짐 좋게 두둑을 높이고 검은 비닐을 씌운다
+  | 'stake'              // 지주 세우기 — 심은 즉시 1.5m 지주를 세우고 끈으로 묶는다
+  | 'tie'                // 유인 — 자라는 대로 줄을 더 묶는다(2회)
+  | 'water_establish'    // 활착기 물 — 심은 뒤 2주간 흙을 촉촉하게(지속 — 작업 장면은 없다)
+  | 'pinch_flower'       // 방아다리 첫 꽃 따기
+  | 'remove_suckers'     // 방아다리 아래 곁순 제거
+  | 'topdress'           // 웃거름 — 정식 15일 뒤 1차, 이후 15~20일 간격
+  | 'spray_fungicide'    // 살균제 — 탄저 · 역병(비 전후 · 7~10일)
+  | 'spray_phosphite'    // 아인산 — 역병(7~14일)
+  | 'spray_calcium'      // 칼슘액비 — 탄저 예방 보조 · 열매 품질
+  | 'spray_insecticide'  // 살충제 — 총채벌레 · 진딧물(바이러스 매개충)
+  | 'cull_diseased';     // 병든 열매 · 포기 걷어 내기
+
+/** 작업 장면 모양 — 클라이언트 미니게임이 이 값으로 그림 · 조작을 고른다 */
+export type CareWorkKind =
+  | 'targets'    // 포기 그림에서 표시된 것(곁순 · 첫 꽃 · 병든 열매)을 하나씩 누른다
+  | 'place'      // 표시된 자리에 차례로 박는다 · 씌운다(지주 · 멀칭)
+  | 'tie'        // 지시된 높이에 맞춰 묶는다(흔들리는 표시가 띠 안에 올 때 누른다)
+  | 'hold'       // 누르고 있어 게이지를 띠 안에 맞춘다(약 치기)
+  | 'sprinkle'   // 포기 사이 표시된 자리에 뿌린다(웃거름)
+  | 'tray';      // 트레이의 싹을 넓은 트레이로 옮긴다(가식)
+
+export interface CareTaskDef {
+  id: CareTaskId;
+  /** 열리는 때 — 심은 날부터 [부터, 까지](일). 육묘 칸은 파종 기준 · 밭은 정식 기준 */
+  dayWindow: [number, number];
+  /** 반복 — 한 번 한 뒤 며칠마다 · 몇 번 더(추비 · 방제) */
+  repeat?: { everyDays: number; times: number };
+  /** 칸마다 쓰는 물건 */
+  needs?: { itemId: string; qty: number }[];
+  work: CareWorkKind;
+  /** 걸리는 시간(초 — 실제 시간) · 품(피로) */
+  seconds: number;
+  fatigue: number;
+  /**
+   * 한 뒤 효과 — 수확량 배수(누적) · 품질 · 병 보호(며칠 동안 그 병이 들 확률 × mult — 살균제 0.25 · 아인산 0.15 · 살충제 0.2 · 칼슘 0.7) ·
+   * 한 번 해 두면 작기 내내 병이 덜 드는 배수(두둑 · 멀칭)
+   */
+  effect?: {
+    yieldMult?: number; quality?: number;
+    protect?: { disease: CropDisease; days: number; mult: number }[];
+    diseaseMult?: Partial<Record<CropDisease, number>>;
+  };
+  /** 안 하고 창이 닫히면 — 수확량 · 품질 · 병 잘 듦 · 쓰러짐 위험 */
+  missed?: { yieldMult?: number; quality?: number; diseaseMult?: Partial<Record<CropDisease, number>>; lodging?: boolean };
+  /** 보이는 조건 — 병이 들었을 때만(걷어 내기) · 위험한 철(6~9월)에만(방제) */
+  only?: 'diseased' | 'riskSeason';
+  /** 방법 한 줄(작업 장면 머리말 · 상세) */
+  howKo: string;
+  howEn: string;
+}
+
+/** 작물 하나의 관리 표 */
+export interface CropCarePlan {
+  tasks: CareTaskDef[];
+  /** 이 작물에 드는 병 */
+  diseases: CropDisease[];
+  /** 활착기(심은 뒤 며칠) — 흙이 마르면 뿌리를 못 내려 섬이 준다 */
+  establishDays?: number;
+  /** 서리에 끝나는 작물(가을 첫서리 → 남은 것을 거두면 끝) */
+  frostEnds?: boolean;
+}
 
 /** 재배 자격 — 스킬 · 시설 · 면허 */
 export interface CropRequirement {
@@ -232,6 +325,25 @@ export interface FarmCellState {
   resting?: boolean;
   /** 여러해살이: 한 해를 넘긴 뿌리(다음 철은 절반 기간에 다시 올라온다) */
   established?: boolean;
+  // ── 238차 — 관리 작업 · 병해 ──
+  /** 한 작업 — 작업별 한 횟수 · 마지막 시각 · 창이 닫혀 놓친 횟수(차례는 done + skipped) */
+  care?: Partial<Record<CareTaskId, { done: number; lastMs: number; skipped: number }>>;
+  /** 든 병 */
+  diseases?: Partial<Record<CropDisease, CropDiseaseState>>;
+  /** 병 보호 — 약을 친 뒤 끝나는 시각(ms)과 그동안 걸릴 확률 배수 */
+  protect?: Partial<Record<CropDisease, { untilMs: number; mult: number }>>;
+  /** 비를 맞은 뒤 젖어 있는 시간(h) — 역병 · 탄저병이 잘 번진다 */
+  wetH?: number;
+  /** 지주를 안 세워 비바람에 쓰러졌다(수확 ×0.75 · 품질 −) */
+  lodged?: boolean;
+  /** 가을 첫서리를 맞은 시각(ms) — 더 자라지 않고, 남은 것을 거두면 끝 */
+  frostedAt?: number;
+  /** 심은 뒤 수확량 배수 누적(작업 효과 · 놓친 벌) — 1에서 시작 */
+  careYield?: number;
+  /** 육묘 트레이 칸(씨앗 → 모종) */
+  nursery?: boolean;
+  /** 활착기에 흙이 말라 뿌리를 못 내린 시간(h) */
+  establishDryH?: number;
 }
 
 /** 텃밭 하나(설치물 하나 — 4×3칸) */
@@ -249,6 +361,8 @@ export interface FarmEnv {
   rainAt: (ms: number) => boolean;
   /** 236차 — 전기료가 밀려 단전됐는가(수경 재배기 불 · 펌프가 꺼진다) */
   powerOff?: boolean;
+  /** 238차 — 지금 이 시각의 기온(℃ · 실황이 있을 때) — 서리 판정 보조. 없으면 기후 통계 */
+  tempC?: number;
   /** 스킬 배율 — 없으면 0랭크 */
   skill?: {
     /** 물 마름 감소(0.2/랭크 → 0.8배) */
@@ -269,6 +383,10 @@ export interface FarmPlantCtx {
   level?: number;
   /** 237차 — 면허 보유(유기농업기능사 — 까다로운 작물). 없으면 보지 않는다 */
   hasLicense?: (licenseType: string) => boolean;
+  /** 238차 — 육묘 트레이가 있는가(트레이 파종 씨앗). 없으면 보지 않는다 */
+  hasTray?: boolean;
+  /** 238차 — 지금 기온(℃ · 실황) — 늦서리 전 정식을 막는다. 없으면 기후 통계만 */
+  tempC?: number;
 }
 
 /** 수확 결과 */
@@ -285,4 +403,13 @@ export interface FarmHarvestResult {
   /** 236차 — 덤으로 더 거둔 수(수량에 이미 들어 있다)와 그 회차의 덤 비율(%) */
   bonusQty?: number;
   bonusPct?: number;
+  /** 238차 — 모종을 거뒀다(육묘 트레이 — 등급 꼬리 없이 `sdl_*` 그대로) */
+  seedling?: boolean;
+  /** 238차 — 병 · 관리로 줄거나 는 배수(1 = 그대로) — 화면 설명용 */
+  careMult?: number;
+  diseaseMult?: number;
+  /** 238차 — 덜 익은(검붉은) 고추를 거뒀다 */
+  turning?: boolean;
+  /** 238차 — 서리 맞은 끝물 */
+  frosted?: boolean;
 }

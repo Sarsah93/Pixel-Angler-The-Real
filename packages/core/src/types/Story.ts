@@ -259,7 +259,7 @@ export interface StoryObjective {
   /** license 전용 */
   licenseId?: string;
   /** 237차 — farm 전용: 무엇을 세나(기본 `plant` = 심기 · `harvest` = 거두기 — 본 수확 · 중간 수확 모두) */
-  farmAction?: 'plant' | 'harvest';
+  farmAction?: 'plant' | 'harvest' | 'care';   // 238차 — `care` = 관리 작업(지주 · 곁순 · 웃거름 · 방제 …)
   /** visit 전용 — 지역 id 또는 장소 키(`poi:영금정`) */
   placeKey?: string;
   /** custom 목표를 실제 행동 이벤트에 연결하는 키 */
