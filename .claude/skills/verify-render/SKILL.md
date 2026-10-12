@@ -74,6 +74,8 @@ const { chromium } = resolvePlaywright();
 - ⚠ **vite dev는 `@tra/core`를 `@fs` 소스로 직접 서빙한다**(154차 실측) — core `tsc` 빌드가 **실패해도** 브라우저는 새 소스를
   그대로 돌린다. 타입 오류로 빠진 `TUNING` 키는 `undefined`가 되어 비교문이 조용히 통과한다(용량 판정이 그렇게 통과했다).
   하네스 전에 반드시 `npx pnpm --filter @tra/core run build`의 **오류 0**을 확인할 것.
+- **`pnpm run build`를 돌리면 dev 서버가 죽는다**(240차 두 번 실측 — ECONNREFUSED) — 빌드 뒤 하네스 전에 dev 재시작.
+- 도감(N) 하네스: 첫 열기 가이드가 ESC를 막는다 — `__GS.setFlag('tour.codex', true)` 뒤에 `scene.start('AnglerLogScene')`. 아이템 카드는 `Zone`(발견한 것만) · 상세는 `log.detailPanel`.
 - **dev 서버를 `| head`로 파이프하지 말 것**(122차) — head가 닫히면 vite가 SIGPIPE로 죽어 하네스가 ECONNREFUSED. 로그는 `> vite.log 2>&1`로.
 - **core 데이터가 하네스에 필요하면 `await import('/@id/@tra/core')`**(122차 — `REGION_DATABASE`·`FISH_DATABASE` 등. 상태 없는 데이터 전용).
 - 도감 카드 전부 채우기 = `__DISC.devUnlockAll('fish', ids)` / `('creature', ids)` — **(kind, ids) 2인자**(122차).

@@ -20,7 +20,9 @@ import { DiscoveryStore } from '../store/DiscoveryStore.js';
 import { GuideTour, maybeStartTour, type TourOptions } from '../ui/GuideTour.js';
 import { StoryStore } from '../store/StoryStore.js';
 import { FISH_TEXTURE, resolveFishTexture } from '../data/FishTextures.js';
-import { itemWikiByCategory } from '../data/WikiCatalog.js';
+import { itemWikiByCategory, type WikiItemEntry } from '../data/WikiCatalog.js';
+import { ItemDetailPanel } from '../ui/ItemDetailPanel.js';
+import type { InvItem } from '../store/InventoryStore.js';
 import { createItemIcon } from '../ui/ItemIcon.js';
 import { CATEGORY_LABEL } from '../store/InventoryStore.js';
 import type { InvCategory } from '../store/InventoryStore.js';
@@ -59,6 +61,8 @@ export class AnglerLogScene extends Phaser.Scene {
   private itemCatFilter: InvCategory = 'gear';
   /** 요리 도감 — 선택한 레시피 (156차) */
   private dishRecipeSel: string = 'stew_red';
+  /** 240차 — 아이템 위키 카드 클릭 상세(가방 [상세보기]와 같은 창) */
+  private detailPanel?: ItemDetailPanel;
 
   // 탭 버튼 배경 참조 (활성 하이라이트)
   private tabBtnBgs: Partial<Record<LogTab, Phaser.GameObjects.Rectangle>> = {};
@@ -143,6 +147,7 @@ export class AnglerLogScene extends Phaser.Scene {
     // ESC 설정
     this.input.keyboard?.on('keydown-ESC', () => {
       if (GuideTour.blocksKey('Escape')) return;   // 188차 — 가이드 중에는 닫지 않는다
+      if (this.detailPanel) { this.closeItemDetail(); return; }   // 240차 — 상세가 열려 있으면 그것부터(LIFO)
       this.onBack();
     });
 
@@ -206,7 +211,29 @@ export class AnglerLogScene extends Phaser.Scene {
     }, 220);
   }
 
+  /**
+   * 240차 — 아이템 위키 카드 → 상세(사용자 지시 「아이템 클릭 시 해당되는 모든 상세정보」).
+   * 카탈로그 템플릿을 1개짜리 가방 물건으로 보고 `ItemDetailPanel`을 연다 — 씨앗 · 수확물 · 농자재 줄(235~238차)이 그대로 나온다.
+   * 발견한 카드만 열린다(R2 — 미발견은 힌트뿐).
+   */
+  private openItemDetail(entry: WikiItemEntry): void {
+    this.closeItemDetail();
+    const item: InvItem = { ...entry.tpl, slot: -1, qty: 1 };
+    const { width, height } = this.scale;
+    const panel = new ItemDetailPanel(this, item, Math.round(width / 2 - 160), Math.max(60, Math.round(height / 2 - 220)), () => this.closeItemDetail());
+    this.add.existing(panel);
+    this.detailPanel = panel;
+  }
+
+  private closeItemDetail(): void {
+    if (!this.detailPanel) return;
+    const p = this.detailPanel;
+    this.detailPanel = undefined;
+    p.destroy();
+  }
+
   private switchTab(tab: LogTab): void {
+    this.closeItemDetail();   // 240차 — 탭을 바꾸면 상세는 닫는다
     if (this.currentTab !== tab) this.currentPage = 0;   // 탭마다 페이지 수가 달라 초기화
     this.currentTab = tab;
 
@@ -575,6 +602,12 @@ export class AnglerLogScene extends Phaser.Scene {
       this.tabContainer?.add(card);
 
       if (DiscoveryStore.isDiscovered('item', entry.id)) {
+        // 240차 — 카드 전체가 단추: 누르면 상세(가방 [상세보기]와 같은 창)
+        const hit = this.add.zone(x, y, itemW, itemH).setOrigin(0, 0).setInteractive({ useHandCursor: true });
+        hit.on('pointerdown', () => this.openItemDetail(entry));
+        hit.on('pointerover', () => { card.clear(); card.fillStyle(0x16304a); card.fillRoundedRect(x, y, itemW, itemH, 4); card.lineStyle(1, 0x4af2a1, 0.9); card.strokeRoundedRect(x, y, itemW, itemH, 4); });
+        hit.on('pointerout', () => { card.clear(); card.fillStyle(0x0e1c2d); card.fillRoundedRect(x, y, itemW, itemH, 4); card.lineStyle(1, 0x1f3d5a, 0.9); card.strokeRoundedRect(x, y, itemW, itemH, 4); });
+        this.tabContainer?.add(hit);
         // 아이콘 (이미지 아이콘 있으면 이미지, 없으면 이모지)
         const icon = createItemIcon(this, x + 26, y + 26, entry, 30);
         this.tabContainer?.add(icon);

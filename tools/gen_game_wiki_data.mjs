@@ -693,6 +693,161 @@ const guide = {
 };
 
 // ─────────────────────────────────────────────
+// 240차 — 농사(텃밭): 작물 68종 · 심는 방법 · 거두기 · 손이 가는 일 · 병해 · 값 · 쓰임 · 농자재
+//   사용자 지시 「wiki에 농사 반영 시, 아이템 클릭 시 해당되는 모든 상세정보 같이 나오도록」 — 다른 게임 위키(Stardew · Terraria · Mistria)의
+//   항목 구조(한눈에 정보 → 얻는 법 → 쓰이는 곳 → 교차 링크)를 따른다. 숫자는 전부 core에서 읽는다.
+// ─────────────────────────────────────────────
+const CROP_CAT_KO = {
+  leaf: '잎채소', fruit: '열매채소', root: '뿌리채소', tuber: '덩이', bulb: '마늘 · 파', grain: '곡식', legume: '콩',
+  wild: '산나물', herb: '향채', mushroom: '버섯', sprout: '시루 · 새싹',
+};
+const CROP_RARITY_KO = { common: '흔하다', uncommon: '드물다', rare: '귀하다', very_rare: '아주 귀하다' };
+const WATER_KO = { low: '적게', mid: '보통', high: '많이' };
+const START_KIND_KO = { seed: '씨앗', seedling: '모종', set: '종구 · 종서 · 배지' };
+const itemById = new Map(itemCatalog.map((it) => [it.id, it]));
+const itemNameOf = (id) => itemById.get(id)?.name ?? id;
+const itemImgOf = (id) => imgOf(itemById.get(id)?.iconTexture) ?? imgOf(`px:${id}`);
+const monthsKoList = (ms) => (ms?.length ? (core.monthRangeKo?.(ms) ?? ms.join('·') + '월') : '—');
+const licenseKo = (t) => core.getLicenseByType?.(t)?.nameKo ?? core.getLicenseByType?.(t)?.name ?? t;
+const supplyNameOf = (id) => core.getFarmSupply?.(id)?.nameKo ?? itemNameOf(id);
+
+/** 관리 작업 한 줄들 — 때(심은 날 기준 · 철 · 병들면) · 반복 · 준비물 · 손놀림 · 효과 · 놓치면 */
+const careTaskRow = (t) => {
+  const when = t.only === 'riskSeason' ? `${monthsKoList([...core.RISK_SEASON])}(철마다)`
+    : t.only === 'diseased' ? '병이 들었을 때'
+      : t.dayWindow[0] === 0 ? `심은 날부터 ${t.dayWindow[1]}일 안` : `심은 뒤 ${t.dayWindow[0]}~${t.dayWindow[1]}일`;
+  const rep = t.repeat ? `${t.repeat.everyDays}일마다 ${t.repeat.times}번 더 (모두 ${1 + t.repeat.times}회)` : '한 번';
+  const needs = (t.needs ?? []).map((n) => `${supplyNameOf(n.itemId)} ×${n.qty}`).join(' · ');
+  const eff = [];
+  if (t.effect?.yieldMult) eff.push(`수확 ×${t.effect.yieldMult}`);
+  if (t.effect?.quality) eff.push(`품질 +${Math.round(t.effect.quality * 100)}%p`);
+  for (const pr of t.effect?.protect ?? []) eff.push(`${core.DISEASE_KO[pr.disease]} ${pr.days}일 동안 ×${pr.mult}`);
+  if (t.effect?.diseaseMult) eff.push(Object.entries(t.effect.diseaseMult).map(([d, m]) => `${core.DISEASE_KO[d]} ×${m}`).join(' · '));
+  const miss = [];
+  if (t.missed?.yieldMult) miss.push(`수확 ×${t.missed.yieldMult}`);
+  if (t.missed?.quality) miss.push(`품질 ${t.missed.quality > 0 ? '+' : ''}${Math.round(t.missed.quality * 100)}%p`);
+  if (t.missed?.lodging) miss.push('비바람에 쓰러진다');
+  if (t.missed?.diseaseMult) miss.push(Object.entries(t.missed.diseaseMult).map(([d, m]) => `${core.DISEASE_KO[d]} ×${m}`).join(' · '));
+  return {
+    id: t.id, name: core.CARE_TASK_KO[t.id] ?? t.id, when, rep, needs, needIds: (t.needs ?? []).map((n) => n.itemId),
+    work: `${core.CARE_WORK_KO[t.work] ?? t.work} · 약 ${t.seconds}초 · 품 ${t.fatigue}`,
+    effect: eff.join(' · '), missed: miss.join(' · '), how: t.howKo,
+  };
+};
+
+const questsUsing = (names) => {
+  const keys = names.filter((n) => n && n.length >= 2);
+  const hit = [];
+  for (const q of quests.quests ?? []) {
+    const inObj = (q.obj ?? []).some((o) => keys.some((k) => (o.label ?? '').includes(k)));
+    const inRw = ((q.rw && q.rw.items) ?? []).some((it) => keys.some((k) => (it.name ?? '').includes(k)));
+    if (inObj || inRw) hit.push({ id: q.id, title: q.title, how: inRw && !inObj ? '받는다' : '쓴다' });
+  }
+  return hit;
+};
+const recipesUsing = (ingId) => (ingId ? core.FIRE_RECIPES.filter((r) => [...r.required, ...r.optional]
+  .some((q) => (Array.isArray(q.ing) ? q.ing : [q.ing]).includes(ingId))).map((r) => ({ id: r.id, name: r.nameKo })) : []);
+const baseName = (s) => (s ?? '').replace(/\s*\(.*?\)\s*/g, '').replace(/\s*·\s*(특|상|보통)$/, '').trim();
+const CHUM_GRAIN = new Set(['crop_barley', 'crop_corn']);
+
+const farmCrops = core.CROP_DATABASE.map((c) => {
+  const plan = core.carePlanOf(c);
+  const baseStart = c.starts.find((s) => s.kind === 'seedling') ?? c.starts[0];
+  const gateBase = core.cropGate(c, baseStart);
+  const starts = c.starts.map((st) => {
+    const g = core.cropGate(c, st);
+    return {
+      kind: st.kind, kindLabel: START_KIND_KO[st.kind], itemId: st.itemId, itemName: itemNameOf(st.itemId), img: itemImgOf(st.itemId),
+      cost: st.cost, perCell: st.perCell, establish: Math.round(st.establish * 100), days: st.days,
+      months: c.site === 'indoor' ? '언제나' : monthsKoList(st.months), qtyMult: st.qtyMult ?? 1,
+      nursery: st.nursery ? `집 안 육묘 트레이에 뿌려 모종 ${st.nursery.seedlings[0]}~${st.nursery.seedlings[1]}포기 (가식 한 번)` : '',
+      tier: g.tier, tierLabel: core.CROP_TIER_KO[g.tier], level: g.level, license: g.license ? licenseKo(g.license) : '',
+      soldAt: itemById.get(st.itemId)?.soldAt ?? [],
+    };
+  });
+  const h = c.harvest;
+  const harvestItems = [h.itemId, h.ripenTo?.itemId, c.interim?.itemId].filter(Boolean);
+  const ing = c.cookIngredient ? core.getCookIngredient?.(c.cookIngredient) : null;
+  const ingRed = h.ripenTo?.cookIngredient ? core.getCookIngredient?.(h.ripenTo.cookIngredient) : null;
+  const ingInterim = c.interim?.cookIngredient ? core.getCookIngredient?.(c.interim.cookIngredient) : null;
+  const sproutable = !!core.cropStartOfItem?.(h.itemId);
+  const perPlant = baseStart?.kind === 'seedling' && core.perPlantYield ? core.perPlantYield(c, baseStart.perCell) : null;
+  const needs = [];
+  if (c.requires?.skill) needs.push(`스킬 「${core.getSkillById(c.requires.skill)?.nameKo ?? c.requires.skill}」`);
+  if (c.requires?.facility) needs.push(core.supplyOfFacility(c.requires.facility)?.nameKo ?? c.requires.facility);
+  if (c.category === 'sprout') needs.push(core.supplyOfFacility('sproutJar')?.nameKo ?? '콩나물 시루');
+  if (c.requires?.license) needs.push(licenseKo(c.requires.license));
+  const kamis = !!core.KAMIS_CROP_ITEMS?.[c.id];
+  return {
+    id: c.id, name: c.nameKo, nameEn: c.nameEn, cat: c.category, catLabel: CROP_CAT_KO[c.category] ?? c.category,
+    site: c.site === 'indoor' ? '집 안 선반' : '마당 텃밭', speed: c.speedClass === 'leafy' ? '빨리 자라는 잎채소 (설비 ×2.0까지)' : '철 작물 (설비 ×1.4까지)',
+    rarity: CROP_RARITY_KO[c.rarity] ?? c.rarity, rarityId: c.rarity, inMart: c.inMart, water: WATER_KO[c.water] ?? c.water,
+    growMonths: c.site === 'indoor' ? '언제나' : monthsKoList(c.growMonths), overwinter: !!c.overwinter, perennial: !!c.perennial,
+    tier: gateBase.tier, tierLabel: core.CROP_TIER_KO[gateBase.tier], level: gateBase.level, license: gateBase.license ? licenseKo(gateBase.license) : '',
+    care: (c.care ?? []).map((k) => core.CROP_CARE_KO[k] ?? k), needs,
+    img: itemImgOf(h.itemId), note: c.noteKo ?? '',
+    starts,
+    harvest: {
+      itemId: h.itemId, name: h.nameKo, qty: h.qtyPerCell, repeat: h.repeat ? `${h.repeat.everyDays}일마다 ${h.repeat.times}번 더` : '',
+      holdDays: h.holdDays, bonus: h.bonusSteps ? `거둘 때마다 덤 0~${h.bonusSteps * 10}%` : '',
+      ripen: h.ripenTo ? { itemId: h.ripenTo.itemId, name: h.ripenTo.nameKo, after: h.ripenTo.afterDays, turning: h.ripenTo.turningDays ?? 0, price: h.ripenTo.price } : null,
+      perPlant: perPlant ? `${perPlant[0]}~${perPlant[1]}개 (칸당 ${baseStart.perCell}포기)` : '',
+      interim: c.interim ? { itemId: c.interim.itemId, name: c.interim.labelKo, window: `자람 ${Math.round(c.interim.window[0] * 100)}~${Math.round(c.interim.window[1] * 100)}%`, qty: c.interim.qtyPerCell, price: c.interim.price, mainMult: c.interim.mainYieldMult, seedOnly: !!c.interim.seedOnly, inMart: c.interim.inMart } : null,
+      items: harvestItems.map((id) => ({ id, name: itemNameOf(id) })),
+    },
+    carePlan: {
+      tasks: plan.tasks.map(careTaskRow),
+      diseases: plan.diseases.map((d) => ({ id: d, name: core.DISEASE_KO[d], season: monthsKoList([...core.DISEASE_SEASON[d]]), symptom: core.DISEASE_SYMPTOM_KO[d], control: core.DISEASE_CONTROL_KO[d] })),
+      establishDays: plan.establishDays ?? 0, frostEnds: !!plan.frostEnds,
+      nursery: c.starts.some((s) => s.nursery) ? core.NURSERY_PLAN.tasks.map(careTaskRow) : [],
+      summary: core.hasCarePlan(c) ? core.carePlanSummaryKo(c) : '',
+    },
+    price: {
+      base: c.price.base, season: c.price.season.map((v) => +v.toFixed(2)), volatility: c.price.volatility, kamis,
+      grade: core.FARM_TUNING.gradePrice, buyers: '식자재 마트 · 식당 (수산물 직판장은 사지 않는다)',
+    },
+    uses: {
+      cook: ing ? { ing: ing.nameKo, recipes: recipesUsing(ing.id) } : null,
+      cookRed: ingRed ? { ing: ingRed.nameKo, recipes: recipesUsing(ingRed.id) } : null,
+      cookInterim: ingInterim ? { ing: ingInterim.nameKo, recipes: recipesUsing(ingInterim.id) } : null,
+      chum: CHUM_GRAIN.has(h.itemId), sproutable,
+      quests: questsUsing([c.nameKo, baseName(h.nameKo), baseName(h.ripenTo?.nameKo), baseName(c.interim?.labelKo)]),
+    },
+  };
+});
+const farmSupplies = core.FARM_SUPPLIES.map((sp) => ({
+  id: sp.itemId, name: sp.nameKo, nameEn: sp.nameEn, price: sp.price,
+  kind: sp.kind === 'tool' ? '도구 (닳지 않는다)' : sp.kind === 'consumable' ? '소모품 (쓰면 사라진다)' : '설비 (텃밭 · 집 안에 놓는다)',
+  site: sp.site ? (sp.site === 'indoor' ? '집 안' : '마당 텃밭') : '', shop: sp.shop === 'nursery' ? '종묘사' : '생활용품점',
+  skill: sp.requiresSkill ? core.getSkillById(sp.requiresSkill)?.nameKo ?? sp.requiresSkill : '', rarity: sp.rarity ?? 'common',
+  desc: sp.descKo, img: itemImgOf(sp.itemId),
+  usedBy: farmCrops.filter((fc) => fc.carePlan.tasks.some((t) => t.needIds.includes(sp.itemId)) || fc.carePlan.nursery.some((t) => t.needIds.includes(sp.itemId)))
+    .map((fc) => ({ id: fc.id, name: fc.name })),
+  grows: farmCrops.filter((fc) => fc.needs.includes(sp.nameKo)).map((fc) => ({ id: fc.id, name: fc.name })),
+}));
+/** 아이템 id → 농사 항목(아이템 탭 상세에 「농사」 절을 붙이고 작물 카드로 잇는다) */
+const farmByItem = {};
+for (const fc of farmCrops) {
+  for (const st of fc.starts) farmByItem[st.itemId] = { crop: fc.id, role: 'start' };
+  for (const it of fc.harvest.items) {
+    farmByItem[it.id] = { crop: fc.id, role: it.id === fc.harvest.interim?.itemId ? 'interim' : 'produce' };
+    for (const sfx of ['_sp', '_nm']) farmByItem[it.id + sfx] = { crop: fc.id, role: it.id === fc.harvest.interim?.itemId ? 'interim' : 'produce' };
+  }
+}
+for (const sp of farmSupplies) farmByItem[sp.id] = { supply: sp.id, role: 'supply' };
+const farming = {
+  groups: Object.entries(CROP_CAT_KO).map(([id, label]) => ({ id, label, count: farmCrops.filter((c) => c.cat === id).length })).filter((g) => g.count > 0),
+  tiers: [1, 2, 3, 4].map((t) => ({ id: String(t), label: core.CROP_TIER_KO[t], level: core.FARM_TUNING.tierLevels[t - 1], license: t >= core.FARM_TUNING.certTier ? licenseKo(core.FARM_TUNING.certLicense) : '' })),
+  crops: farmCrops, supplies: farmSupplies, byItem: farmByItem,
+  rules: {
+    plotCells: '한 구획 = 4×3칸 · 한 칸 = 1㎡', plots: '마당 2구획 + 농지 이용권 5구획(빌린 구획 5,000원/30일)',
+    grade: Object.entries(core.FARM_TUNING.gradePrice).map(([g, m]) => `${core.GRADE_KO[g]} ×${m}`).join(' · '),
+    kamis: '배추 · 무 · 양파 · 상추 같은 흔한 채소는 하루 한 번 실제 소매가(전국 평균)를 받아 「오늘 ÷ 평년」으로 값을 움직인다',
+    noInput: '비료 · 약을 하나도 안 써도 거두기는 된다 — 웃거름을 다 거르면 ×0.7, 세 병이 다 번지면 한 번에 한 개 날까 말까',
+  },
+};
+
+// ─────────────────────────────────────────────
 // 업데이트 이력 — 워크로그 색인(§3.1) 표를 그대로 읽는다
 // ─────────────────────────────────────────────
 const updates = fs.readFileSync(path.join(ROOT, 'docs/wiki/03-WORKLOG/README.md'), 'utf8')
@@ -716,6 +871,7 @@ const out = {
     species: speciesList.length, crafting: core.CRAFT_BLUEPRINTS.length,
     items: items.length, images: Object.keys(manifest).length,
     rules: rules.length, updates: updates.length, skills: skillList.length, titles: guide.titles.length,
+    crops: farmCrops.length, supplies: farmSupplies.length,
   },
   quests,
   cooking: {
@@ -751,6 +907,7 @@ const out = {
   updates,
   skills,
   guide,
+  farming,
 };
 
 // 발행용 — 카드·상세가 실제로 참조하는 그림만 추려 둔다(아티팩트 파일 수 절약)
@@ -759,6 +916,8 @@ for (const r of recipes) { if (r.img) used.add(r.img); for (const v of r.variant
 for (const s of speciesList) { if (s.img) used.add(s.img); for (const v of s.imgs ?? []) if (v.src) used.add(v.src); }
 for (const i of items) if (i.img) used.add(i.img);
 for (const k of skillList) if (k.img) used.add(k.img);
+for (const c of farmCrops) { if (c.img) used.add(c.img); for (const st of c.starts) if (st.img) used.add(st.img); }
+for (const sp of farmSupplies) if (sp.img) used.add(sp.img);
 if (Object.keys(manifest).length) {
   fs.writeFileSync(path.join(IMG_DIR, 'used.txt'), [...used].sort().join('\n') + '\n');
 }

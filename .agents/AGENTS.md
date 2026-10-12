@@ -477,7 +477,20 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-10-12 239차) — 벡터 건물(OSM 윤곽 · 2.5D 벽 · 종류별 지붕) · 간판 자리 규칙**
+**최근 변경 (2026-10-12 240차) — 알림 가이드 · 위키 「농사」 탭(아이템 상세 전부 · 교차 링크) · 도감 카드 상세 · 71차 배포**
+
+- 도움말(F1): 「알림 — 무엇이 언제 뜨나」 토픽 신설(알림 자리 셋 · 텃밭 · 레벨 문턱 · 정기 지출 · 거치대 · 항구 신뢰 ·
+  위판 · 도감 · 숙련 · 업적) ·
+  설치물 낡은 문구 현행화 · 239 건물 · 간판 · 도감 카드 클릭 · 영어 14건.
+- 위키 아티팩트 Version 39: 「농사」 탭(작물 68 · 농자재 17 — 한눈에 · 심는 법 표 · 거두기 · 관리 작업 표 · 병 ·
+  달별 값 막대 · 쓰이는 요리/할 일) ·
+  아이템 상세 「농사」 절(`byItem` 326) · **교차 링크 `a.xl[data-open]` → `openByKey`** · 그림 177장(Pillow 없이 순수 파이썬 PNG).
+  타 게임 위키(Stardew · Terraria · Mistria · Minecraft) 항목 구조 「한눈에 → 얻는 법 → 쓰임 → 교차 링크」를 따랐다.
+- 인게임 도감(N) 아이템 위키 카드 클릭 → `ItemDetailPanel`(발견한 것만 · ESC LIFO).
+- gh-pages **71차**(`3bf5f41` — 235~240차). ⚠ 컨테이너 프록시가 github.io를 막아 라이브 검증은 사용자 몫. 빌드가 dev 서버를 죽인다(재시작 필수).
+  상세: [240차 워크로그](../docs/wiki/03-WORKLOG/2026-10-12-240-help-notices-wiki-farming-tab-deploy71.md).
+
+**이전 변경 (2026-10-12 239차) — 벡터 건물(OSM 윤곽 · 2.5D 벽 · 종류별 지붕) · 간판 자리 규칙**
 
 - 사용자 지시 「건물과 길이 명확히 구분 · 짓다만 블럭 더미 금지」 → 타일 지붕 키트(`bakeRoofTexture` · `buildKitRoof`)를 버리고
   `tools/extract_osm_buildings.py` → `buildings.json`(속초 546채 · 종류 7 · 층수) 위에 `scenes/field/BuildingArt.ts`가 건물을 세운다 —
@@ -497,16 +510,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - 고추 씨앗 = 집 안 트레이 파종(2~3월 · 75일 → 모종 20~30 · 가식) · 종묘사(`BuildingKind 'nursery'` · 모종 · 씨앗 · 자재 9종 — 마트 모종 제거) · POI 「설악종묘사」(위치는 사용자 확인 대기).
 - 함정: 작업 · 자재 이름에 ` · ` 금지 · 날 기준 차례는 겨울나기 · 여러해살이에 못 붙인다 · 방제는 자람 15%부터 · 하네스는 `devSkipTime`/`devFinish`.
   상세: [238차 워크로그](../docs/wiki/03-WORKLOG/2026-10-12-238-farm-care-tasks-diseases-nursery-shop.md).
-
-**이전 변경 (2026-10-11 237차) — 텃밭 입문 서브 퀘스트(정옥선 · Lv12) · 작물 난이도 4단계 · 단계별 자격(레벨 · 유기농업기능사)**
-
-- N19-7 「귀퉁이 바구니」(Ch1 · Lv12 · 철 따라 다른 선물 `okseonSpareGift` · 두 칸 심기) · N19-8 「첫물」(`farmAction: 'harvest'` ·
-  장면이 수확물을 실제로 건넨다 — `consumeItemId` · 없으면 `noComplete`) · 188퀘(서브 120 · Ch1 서브 13/4,550).
-- 작물 68종 = 쉬움 32 · 보통 23(Lv15) · 까다로움 4(Lv25 + 유기농업기능사) · 아주 까다로움 9(Lv40 + 자격) — 농진청 분류 + 까다로운 점 11종 ·
-  씨앗부터면 육묘 작물 +1단계(`cropGate(crop, start)`) · 갖춘 뒤 진열 · 문턱 알림 · 상세 「난이도 / 기를 자격 / 까다로운 점」.
-- 면허 농업 갈래(농지 이용권 이동 + 유기농업기능사 — 텃밭 10번 · 35,000원 · **스킬 보너스 제외 · Σ 216 불변**) · 떠오르는 안내 쌓기.
-- 함정: 단계 요건은 `FarmPlantCtx.level/hasLicense`가 있을 때만 — 새 심기 경로는 `FarmStore.plantCtx()` · 까다로운 점 이름에 ` · ` 금지.
-  상세: [237차 워크로그](../docs/wiki/03-WORKLOG/2026-10-11-237-farm-intro-quests-crop-tiers-organic-cert.md).
 
 ---
 

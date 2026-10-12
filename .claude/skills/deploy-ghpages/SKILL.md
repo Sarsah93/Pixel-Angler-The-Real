@@ -30,6 +30,14 @@ git -C ../pixel-angler-gh-pages push origin gh-pages
 - **소스맵(`*.map`) 절대 포함 금지** — 복사 단계에서 제외.
 - 배포는 외부 공개 행위 — **사용자 확인 후 push**.
 
+## 원격 컨테이너 함정 (240차 실측)
+
+- worktree가 없다 — `git fetch origin gh-pages && git worktree add ../pixel-angler-gh-pages gh-pages` 로 먼저 만든다.
+- **`pnpm run build`가 dev 서버(5173)를 죽인다**(두 번 실측) — 배포 뒤 하네스를 돌리려면 dev를 다시 띄운다.
+- **컨테이너 프록시가 `sarsah93.github.io` CONNECT를 403으로 막는다** — 라이브 검증(404 · pageerror)을 여기서는 못 한다.
+  배포 커밋 · 푸시까지 하고 「라이브 검증은 사용자 몫」으로 보고한다(우회하지 않는다).
+- 커밋은 `-c user.name/-c user.email`로 저장소 마지막 커밋 작성자를 쓴다(컨테이너에 전역 git 사용자 없음).
+
 ## 경로·API 제약 (재배포 시 재확인)
 
 - `vite base: './'` + 전 에셋 상대 경로 전제 — **새 에셋 로드에 선행 `/`가 있으면 배포에서만 404** (dev에서는 멀쩡히 동작하므로 조용히 깨진다). 배포 전 `grep`으로 `load.image('…', '/` 패턴 검사 권장.

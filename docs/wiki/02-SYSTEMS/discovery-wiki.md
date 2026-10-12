@@ -21,7 +21,7 @@
 | client | `data/WikiCatalog.ts` | 아이템 위키 정적 카탈로그 — 시드+상점 dedup·판매처 힌트·`tpl`(실지급용) |
 | client | `core/db-schema/DishDiscovery.ts` | 요리 도감 id·이름·변형 후보(`discovery_<레시피>_<어종>`) |
 | client | `scenes/AnglerLogScene.ts` | 5탭 도감 — 미발견 실루엣/???/힌트 · 발견 카드(경로·일시) |
-| tools | `gen_game_wiki_data.mjs` · `game_wiki_template.html` | 퀘스트·요리·어종·제작·아이템·시스템 문서를 합친 `Pixel Angler The Real Wiki` 발행본 |
+| tools | `gen_game_wiki_data.mjs` · `game_wiki_template.html` | 퀘스트·요리·어종·아이템·**농사(240)**·스킬·공략·시스템 문서를 합친 `Pixel Angler The Real Wiki` 발행본 — https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c · 상세 안 밑줄 = 교차 링크(`openByKey`) |
 | client | `dev/DevMode.ts` · `dev/DevConsolePanel.ts` | god 상태 + F10 콘솔 |
 
 ## 3. 동작 구조
@@ -60,7 +60,8 @@ god 가드 소비처 = `refreshCondition`·`loseRigParts`·`loseLureRig`·`consu
 | **어종 픽셀아트 6종 교체 + 참복어 신규** — 병어·덕대·참복어·농어·대구·대문어 | ✅ | **176** — 신규 4장은 실알파 보유(매트 제거 불요) · **참복어는 부재였다**(DB에만 있고 텍스처 0) · 대문어만 흰 매트(참문어 정상). `FISH_TEXTURE` 49 → **50** · 그림 **231**장 |
 | **표시명·에셋 정정 3건** — 문치가자미 표준명 · 대구 흰 배경 · 갈치 픽셀아트 | ✅ | **175** — 갈치는 파일명 대소문자 불일치(`Cutlassfish.png`)로 교체가 빗나가 있었다 |
 | **어종 실사 7종 추가** — 눈볼대·문절망둑·문치가자미·강도다리·도다리·병어·덕대 | ✅ | **174** — 병어·덕대는 체커보드 배경을 벗겨 진짜 알파로. `FISH_TEXTURE` 42 → **49** · 그림 **230**장 |
-| 인게임 도감 카드 상세 팝업(클릭 확대) | ⬜ | — (아티팩트에는 169차에 섰다) |
+| **위키 「농사」 탭 + 아이템 상세 「농사」 절 + 교차 링크** — 작물 68 · 농자재 17 · 심는 법 · 거두기 · 관리 작업 표 · 병 · 달별 값 막대 · 쓰이는 요리/할 일 · `byItem` 역참조 326 · 그림 177장(순수 파이썬 PNG) | ✅ | **240** — Version 39 |
+| 인게임 도감 카드 상세 팝업(클릭 확대) | 🔶 | **240** — 아이템 위키 카드 → `ItemDetailPanel`(발견한 것만). 어종 · 해양생물 · 요리 카드는 ⬜ |
 | FP 씬 발견 토스트 (현재 RegionField HUD만) | ⬜ | — |
 | 해양생물 전용 스프라이트 (현재 이모지 — S14 D4와 공유) | ⬜ | 에셋 대기 |
 
@@ -75,7 +76,9 @@ god 가드 소비처 = `refreshCondition`·`loseRigParts`·`loseLureRig`·`consu
 - **표시명 확인 1건** — `flounder`를 DB는 「참도다리(문치가자미)」, 사용자는 「문치가자미(참가자미)」로
   부른다. 학명(*Pseudopleuronectes yokohamae*)이 일치하므로 매핑은 정확 — 표기만 확인 대기.
 - **제작 탭** — 사용자 지시로 169차에 제외(미구현). `blueprints` 데이터는 실려 있어 실구현 시 탭 한 줄.
-- **아티팩트 → 인게임 역이식** — 분류 칩·상세 시트 구조를 `AnglerLogScene` 도감에도 적용할지 검토.
+- **아티팩트 → 인게임 역이식** — 분류 칩·상세 시트 구조를 `AnglerLogScene` 도감에도 적용할지 검토(240차에 아이템 카드 클릭 상세까지).
+- **240차 잔여** — 위키 「할 일」 교차 참조는 목표 글 · 보상 이름 매칭뿐(서사 선택지 보상은 안 잡힘) · `gen_wiki_images.py`는 Pillow 필요(이 컨테이너는 순수 파이썬으로 아이콘만) ·
+  도감 어종 · 해양생물 · 요리 카드 클릭 상세 — 상세 [240 §6](../03-WORKLOG/2026-10-12-240-help-notices-wiki-farming-tab-deploy71.md).
 - 위키 확장 후보: 통발/장비 스펙 페이지 · 지역/스팟 도감.
 - 발견 통계(전체 진행률 %)를 메인 메뉴/저장 슬롯에 표기.
 
