@@ -17,17 +17,16 @@
  */
 
 import Phaser from 'phaser';
-import type { RegionRoad, RegionProp, RegionTileTex, RegionLight, RegionStair, RegionArmor, TileEdge, LevelCell } from '@tra/core';
+import type { RegionRoad, RegionProp, RegionTileTex, RegionLight, RegionStair, RegionArmor, TileEdge, LevelCell, RegionBuilding } from '@tra/core';
+import { planBuildingUnits, drawBuildingUnit, packUnits, pointInPoly, type BuildingUnit } from './field/BuildingArt.js';
 import { COAST_OBJECTS } from '../data/TileCatalog.js';
 import {
   seamBetween, terrainClass, terrainPaint, terrainGroup, reliefHeight, castsReliefShadow, terrainDef, isRockTerrain,
   canStep, stairHighEdges,
 } from '@tra/core';
 import { GRASS_EDGE_SUFFIXES, PAVED_EDGE_SUFFIXES, KENNEY_ROOF_COLORS, KENNEY_ROOF_PARTS, TTP_EDGE_TILES, TTP_UNITS, COAST_DECKS, COAST_RUBBLE, COAST_EDGE_SRC, COAST_ROCK_COUNT } from '../data/TilesetManifest.js';
-import { hasUsableTexture } from '../ui/CanvasTextureGuard.js';
 import { SURFACES, SPECKS, paintSurfaceAtlas, paintSpeckAtlas, paintWaterAtlas, paintRockAtlas, paintTetrapod, paintStone, stoneCanvasSize, TETRA_ART, type SurfaceName, type SpeckName, type TetraTone, type StoneTone } from './SurfaceArt.js';
 
-let seamlessTextureSerial = 0;
 
 export interface PropDef {
   id: string;
@@ -189,6 +188,8 @@ export interface SeamlessChunksConfig {
   armor?: RegionArmor[];
   /** 건물 지붕 팔레트 오버라이드 — 컴포넌트 좌상단 "c,r" → 인덱스 */
   roofOverrides?: Record<string, number>;
+  /** 239차 — OSM 건물 윤곽 · 종류 · 층수(buildings.json). 없으면 '#' 타일 윤곽만으로 그린다 */
+  buildings?: RegionBuilding[];
   /** 고층 프리팹 자동 배치에서 제외할 건물 컴포넌트 키(씬이 POI 건물 스프라이트를 붙인 곳) */
   reservedBuildingKeys?: Set<string>;
   cols: number;
@@ -212,8 +213,9 @@ interface ChunkSlot {
   baked: boolean;
   /** 충돌·장식(지붕·프롭)을 만들었는가 — 선행 굽기 슬롯은 굽기만 하고 장식은 다음 기회에(182차) */
   decoBuilt: boolean;
-  /** 이 청크가 소유한 건물 지붕을 모두 담은 아틀라스(182차 — 표시 목록 밖). 지붕 이미지가 프레임으로 쓴다 */
+  /** 이 청크가 소유한 건물 지붕을 모두 담은 아틀라스(182차 — 표시 목록 밖). 지붕 이미지가 프레임으로 쓴다. 239차 — 높이 상한을 넘기면 여러 장 */
   roofAtlas?: Phaser.GameObjects.RenderTexture;
+  roofAtlases?: Phaser.GameObjects.RenderTexture[];
   /** 이 청크의 충돌 바디(투명 사각형) 목록 — 언로드 시 파괴 */
   bodies: Phaser.GameObjects.Rectangle[];
   /** 이 청크의 프롭 스프라이트(나무·지붕·차량 — y-sort) */
@@ -340,8 +342,6 @@ const ROOFS: [number, number, number, number][] = [
   [0x5f8d7d, 0x4a7263, 0x7aa694, 0x567262],   // 청록
   [0x8a6f4d, 0x6d5639, 0xa08862, 0x6a5540],   // 갈색
 ];
-/** 대형(industrial) 지붕 — 패널 + 이음 */
-const ROOF_BIG: [number, number, number] = [0x64788c, 0x596c80, 0x4a5b6d];
 
 /** 결정적 해시 (0~1) */
 function hash2(seed: number, x: number, y: number): number {
@@ -420,7 +420,6 @@ export class SeamlessChunks {
   /** 씬 shutdown 뒤 늦게 들어온 update/rebake 호출이 파괴된 CanvasTexture를 만지지 않게 한다. */
   private disposed = false;
   /** 씬 인스턴스별 생성 텍스처 namespace — 전환 중 키 재사용/폐기 Frame 충돌 방지 */
-  private readonly textureNamespace = ++seamlessTextureSerial;
 
   /** 충돌 그룹 — 씬이 playerBody와 collider를 1회 등록한다 */
   readonly walls: Phaser.Physics.Arcade.StaticGroup;
@@ -463,6 +462,8 @@ export class SeamlessChunks {
   /** 건물 타일 → 컴포넌트 id (-1 = 비건물) — 지붕 렌더의 기준 */
   private compOf: Int32Array;
   private comps: BuildingComp[] = [];
+  /** 239차 — 건물 그림 단위(OSM 폴리곤 · 타일 윤곽) — 청크가 소유해 아틀라스에 그린다 */
+  private units: BuildingUnit[] = [];
   /** 청크 idx → 그 청크에 걸치는 차도 벡터 인덱스 (마킹 렌더 시 전수 순회 회피) */
   private roadsByChunk = new Map<number, number[]>();
   /** 청크 idx → 수동 프롭 */
@@ -513,6 +514,7 @@ export class SeamlessChunks {
     this.wade = this.computeWade();                  // 224차 — bwClass · harbor · islet 뒤
     this.compOf = new Int32Array(cfg.cols * cfg.rows).fill(-1);
     this.labelBuildings();
+    this.planUnits();
     this.indexRoads();
     // ⚠ 주차장 검출은 **indexRoads 뒤**여야 한다(113차 실측) — roadBand가 roadsByChunk를 쓰므로
     //   앞에 두면 접근성 판정이 전부 false가 되어 구역이 0개가 된다(차량 전멸).
@@ -700,7 +702,6 @@ export class SeamlessChunks {
         bake(`ts_kn_wall_${wall}`, `kit_wall_${wall}_${i}`, tr, tr, undefined, (i % 4) * 16, Math.floor(i / 4) * 16);
       }
     }
-    this.kitReady = tm.exists('kit_roof_red_in') && tm.exists('kit_wall_brick_red_0');
     this.ensureWaterTextures();
   }
 
@@ -1680,7 +1681,6 @@ export class SeamlessChunks {
   private ttpReady = false;
 
   /** Kenney 건물 키트(지붕 오토타일·벽 모듈) 재베이크 완료 여부 — 없으면 절차 지붕 폴백 */
-  private kitReady = false;
 
   /** 물 타일 수심 버킷(+암초 융기) — L1 물 타일 선택과 절차 오버레이 패스가 공유.
    *  188차 — 타일 중심의 **연속 수심장**(`waterCellBucket`) 값이다. 구 구현은 타일마다 해시 지터(±1.1)를
@@ -2008,6 +2008,28 @@ export class SeamlessChunks {
     return { x: px, y: py, moved: false };
   }
 
+  /** 239차 — 월드 px 점이 차도 벡터 밴드 안인가(반폭 + 여유 타일) — 간판 · 소품을 아스팔트에 세우지 않기 위해 */
+  onRoadBand(px: number, py: number, marginTiles = 0.35): boolean {
+    const tr = this.cfg.tr;
+    const x = px / tr, y = py / tr;
+    const N = this.cfg.chunkTiles;
+    const idx = Math.floor(y / N) * this.chunkCols + Math.floor(x / N);
+    const b = this.roadBand(x, y, idx);
+    return !!b && b.d < b.halfW + marginTiles;
+  }
+
+  /**
+   * 239차 — 월드 px 점이 건물 그림에 가려지는가 — 발자국 안이거나, 벽 높이만큼 위로 올라간 **지붕 아래**.
+   * 지붕은 발자국을 `wallH`만큼 위로 든 모양이라 건물 북쪽 한 타일 반까지 덮는다(간판이 그 뒤에 서면 안 보인다).
+   */
+  coveredByBuilding(px: number, py: number): boolean {
+    for (const u of this.units) {
+      if (px < u.x0 || px > u.x1 || py < u.y0 || py > u.y1) continue;
+      if (pointInPoly(px, py, u.poly) || pointInPoly(px, py + u.wallH, u.poly)) return true;
+    }
+    return false;
+  }
+
   /** 지붕 오버라이드 교체 (편집기) */
   setRoofOverrides(roofs: Record<string, number>): void {
     this.cfg.roofOverrides = roofs;
@@ -2092,6 +2114,7 @@ export class SeamlessChunks {
     this.compOf.fill(-1);
     this.comps = [];
     this.labelBuildings();
+    this.planUnits();
     const N = this.cfg.chunkTiles;
     const affected = new Set<number>();
     for (const { c, r } of tiles) {
@@ -3475,6 +3498,19 @@ export class SeamlessChunks {
     }
   }
 
+  /**
+   * 239차 — 건물 그림 단위 계획(OSM 폴리곤 우선 · 나머지 '#'은 타일 윤곽).
+   * ⚠ 타일 단위 에이프런('#' 둘레 '.'을 포장 셀로)은 실렌더에서 **건물보다 큰 회색 직사각형 할로**가 되어 뺐다 —
+   *   대각선 건물에 격자 포장이 붙으면 다시 「블럭 더미」가 된다. 포장 띠는 `drawBuildingUnit`이 윤곽을 따라 그린다.
+   */
+  private planUnits(): void {
+    const { cols, rows } = this.cfg;
+    this.units = planBuildingUnits({
+      terrainRows: this.cfg.terrainRows, cols, rows, tr: this.cfg.tr, seed: this.cfg.seed,
+      comps: this.comps, compOf: this.compOf, buildings: this.cfg.buildings ?? [], roofOverrides: this.cfg.roofOverrides,
+    });
+  }
+
   /** 프롭 텍스처 1회 베이킹 — 나무 2종 + 편집기 프롭 8종 (전부 절차 도트, 발밑 그림자 포함) */
   private ensureDecoTextures(): void {
     const tex = this.scene.textures;
@@ -3895,6 +3931,8 @@ export class SeamlessChunks {
     // 지붕 이미지를 모두 파괴한 **뒤에** 아틀라스를 버린다(프레임을 쥔 이미지가 남지 않게)
     slot.roofAtlas?.destroy();
     slot.roofAtlas = undefined;
+    for (const a of slot.roofAtlases ?? []) a.destroy();
+    slot.roofAtlases = undefined;
     // 인스턴스별 namespace를 사용하므로 삭제하지 않는다. display list와
     // WebGL 배치가 완전히 비워진 뒤에도 stale Frame을 참조하지 않게 한다.
     slot.roofKeys = [];
@@ -3964,252 +4002,40 @@ export class SeamlessChunks {
   // ═══════════════════════════════════════════════════
   // 지붕 — 건물 컴포넌트 단위 스프라이트 (y-sort — 캐릭터가 위쪽 줄로 들어가면 가려진다)
   // ═══════════════════════════════════════════════════
-  /** 컴포넌트 지붕 텍스처 베이크 (세대별 고유 키 — 씬 전환 중 삭제하지 않음) */
-  private bakeRoofTexture(compId: number): string {
-    const comp = this.comps[compId];
-    const key = `roof_${this.textureNamespace}_${comp.c0}_${comp.r0}`;
-    if (hasUsableTexture(this.scene, key)) return key;
-    const tr = this.cfg.tr;
-    const cols = this.cfg.cols;
-    const W = (comp.c1 - comp.c0 + 1) * tr, H = (comp.r1 - comp.r0 + 1) * tr;
-    const g = this.scene.add.graphics();
-    const ov = this.cfg.roofOverrides?.[`${comp.c0},${comp.r0}`];
-    const [lightC, darkC, ridgeC, wallC] = ROOFS[(ov ?? comp.palIdx) % ROOFS.length];
-    const wide = (comp.c1 - comp.c0) >= (comp.r1 - comp.r0);
-    const mid = wide ? (comp.r0 + comp.r1) / 2 : (comp.c0 + comp.c1) / 2;
-    const isMine = (c: number, r: number): boolean =>
-      c >= 0 && c < cols && r >= 0 && r < this.cfg.rows && this.compOf[r * cols + c] === compId;
-    for (let r = comp.r0; r <= comp.r1; r++) {
-      for (let c = comp.c0; c <= comp.c1; c++) {
-        if (!isMine(c, r)) continue;
-        const lx = (c - comp.c0) * tr, ly = (r - comp.r0) * tr;
-        const checker = (c + r) % 2 === 0;
-        if (comp.big) {
-          const [pa, pb, seam] = ROOF_BIG;
-          g.fillStyle((wide ? r % 2 : c % 2) === 0 ? pa : pb, 1);
-          g.fillRect(lx, ly, tr, tr);
-          g.fillStyle(seam, 0.8);
-          if (wide) { if ((c - comp.c0) % 3 === 0) g.fillRect(lx, ly, 2, tr); }
-          else if ((r - comp.r0) % 3 === 0) g.fillRect(lx, ly, tr, 2);
-          if (hash2(this.cfg.seed, c, r) > 0.96) { g.fillStyle(0xa8c4d8, 0.9); g.fillRect(lx + 8, ly + 9, 12, 9); }
-        } else {
-          const pos = wide ? r : c;
-          g.fillStyle(pos <= mid ? lightC : darkC, 1);
-          g.fillRect(lx, ly, tr, tr);
-          g.fillStyle(pos <= mid ? darkC : lightC, 0.25);
-          if (wide) { g.fillRect(lx, ly + (checker ? 8 : 20), tr, 2); }
-          else g.fillRect(lx + (checker ? 8 : 20), ly, 2, tr);
-          g.fillStyle(ridgeC, 1);
-          if (wide) { if (Math.abs(pos - mid) < 0.6) g.fillRect(lx, ly + tr / 2 - 2, tr, 5); }
-          else if (Math.abs(pos - mid) < 0.6) g.fillRect(lx + tr / 2 - 2, ly, 5, tr);
-        }
-        // 하단 줄 = 외벽 띠 (정면 벽 — 문/창 힌트)
-        if (!isMine(c, r + 1)) {
-          g.fillStyle(wallC, 1);
-          g.fillRect(lx, ly + tr - 10, tr, 10);
-          g.fillStyle(0x2a2f36, 0.9);
-          g.fillRect(lx, ly + tr - 10, tr, 2);
-          if ((c + r) % 3 === 0) { g.fillStyle(0x9fd0e4, 0.8); g.fillRect(lx + 10, ly + tr - 7, 10, 5); }
-        }
-        // 처마 외곽선
-        g.lineStyle(2, COL.buildEdge, 1);
-        if (!isMine(c - 1, r)) g.lineBetween(lx + 1, ly, lx + 1, ly + tr);
-        if (!isMine(c + 1, r)) g.lineBetween(lx + tr - 1, ly, lx + tr - 1, ly + tr);
-        if (!isMine(c, r - 1)) g.lineBetween(lx, ly + 1, lx + tr, ly + 1);
-        if (!isMine(c, r + 1)) g.lineBetween(lx, ly + tr - 1, lx + tr, ly + tr - 1);
-      }
-    }
-    g.generateTexture(key, W, H);
-    g.destroy();
-    return key;
-  }
+  // 239차 — 타일 단위 Kenney 지붕(bakeRoofTexture · buildKitRoof)은 벡터 건물(`field/BuildingArt.ts`)로 대체했다.
 
   /**
-   * Kenney 건물 키트로 컴포넌트를 채운 RenderTexture (101차 후속 4 — "건물 타일을 지붕 있는 건물처럼").
-   *  위쪽 줄 = 지붕 오토타일(3×3 부위 — 이웃 소속으로 nw/n/ne/w/in/e/sw/s/se) + 환기구 변형
-   *  하단 2줄(= 충돌 줄) = 벽 모듈(창문 포함, 4칸 반복) + 중앙 하단 문
-   *  색 = palIdx % 4 → red/gray/light/tan, 벽은 지붕색 정합. 대형(big)은 light 지붕 + 유리벽.
+   * 청크가 소유하는(윤곽 좌상단 타일이 이 청크인) 건물 단위의 그림 생성 — 239차 벡터 건물.
+   * 182차 규칙 그대로 청크당 아틀라스(높이 상한을 넘기면 여러 장)에 **한 번에** 그리고, 건물은 그 프레임 이미지다.
+   * 깊이 = 윤곽 최대 y(바닥선) — 플레이어와 y-sort. 뒤로 들어가면 반투명(occluder).
    */
-  /**
-   * 건물 하나의 지붕·벽 모듈을 `rt`의 (ox, oy)에 그린다. ⚠ 호출측이 `beginDraw`/`endDraw`로 감싼다(182차 —
-   * 청크의 모든 지붕을 한 번의 배치로). 문·대각 처마선은 호출측 Graphics `g`에 얹고 끝에 한 번 그린다.
-   */
-  private buildKitRoof(compId: number, rt: Phaser.GameObjects.RenderTexture, ox: number, oy: number, g: Phaser.GameObjects.Graphics): void {
-    const comp = this.comps[compId];
-    const tr = this.cfg.tr, cols = this.cfg.cols;
-    const W = (comp.c1 - comp.c0 + 1) * tr, H = (comp.r1 - comp.r0 + 1) * tr;
-    const ov = this.cfg.roofOverrides?.[`${comp.c0},${comp.r0}`];
-    const colorIdx = comp.big ? 2 : (ov ?? comp.palIdx) % 4;
-    const color = ['red', 'gray', 'light', 'tan'][colorIdx];
-    const wall = comp.big ? 'glass' : ['brick_red', 'brick_gray', 'white', 'brick_tan'][colorIdx];
-    const isMine = (c: number, r: number): boolean =>
-      c >= 0 && c < cols && r >= 0 && r < this.cfg.rows && this.compOf[r * cols + c] === compId;
-    void W; void H;
-    let doorCol = -1;
-    // 소형 컴포넌트(높이 ≤ 2줄 또는 ≤ 3타일) = 창고/헛간 — 벽 모듈·문 없이 지붕만 (리포트 5.2 "깨진 건물")
-    const tiny = (comp.r1 - comp.r0 + 1) <= 2 || comp.n <= 3;
-    /** 대각 스텝의 45° 컷 처마선 (endDraw 후 Graphics로 긋는다) */
-    const cutLines: [number, number, number, number][] = [];
-    /**
-     * 대각 스텝 코너 = 사각 코너 셀 대신 45° 클립 'in' 셀 (101차 잔여 "대각 건물 지붕 코너 셀").
-     * 런 판정: 코너의 능선 방향 양쪽 대각 이웃이 **모두 지붕**이면 계단형(대각 벽) 스텝이다 —
-     * 직사각형 모서리는 양쪽 대각이 밖이라 사각 코너를 유지한다. 남쪽 코너(sw/se)는 벽 모듈
-     * 줄과 얽히는 일반 건물에선 컷하지 않는다(tiny만 허용).
-     */
-    const diagCut = (part: string, c: number, r: number, lx: number, ly: number, allowS: boolean): boolean => {
-      const tm = this.scene.textures;
-      if (part === 'ne' || part === 'sw') {
-        if (part === 'sw' && !allowS) return false;
-        if (!isMine(c - 1, r - 1) || !isMine(c + 1, r + 1)) return false;
-        const tk = `kit_roof_${color}_tri_${part === 'ne' ? 'sw' : 'ne'}`;
-        if (!tm.exists(tk)) return false;
-        rt.batchDraw(tk, lx, ly);
-        cutLines.push([lx, ly, lx + tr, ly + tr]);
-        return true;
-      }
-      if (part === 'nw' || part === 'se') {
-        if (part === 'se' && !allowS) return false;
-        if (!isMine(c + 1, r - 1) || !isMine(c - 1, r + 1)) return false;
-        const tk = `kit_roof_${color}_tri_${part === 'nw' ? 'se' : 'nw'}`;
-        if (!tm.exists(tk)) return false;
-        rt.batchDraw(tk, lx, ly);
-        cutLines.push([lx + tr, ly, lx, ly + tr]);
-        return true;
-      }
-      return false;
-    };
-    for (let r = comp.r0; r <= comp.r1; r++) {
-      for (let c = comp.c0; c <= comp.c1; c++) {
-        if (!isMine(c, r)) continue;
-        const lx = ox + (c - comp.c0) * tr, ly = oy + (r - comp.r0) * tr;
-        const below1 = isMine(c, r + 1) && !tiny, below2 = isMine(c, r + 2) && !tiny;
-        if (tiny) {
-          const n = !isMine(c, r - 1), w = !isMine(c - 1, r), e = !isMine(c + 1, r), s = !isMine(c, r + 1);
-          let part = 'in';
-          if (n && w) part = 'nw'; else if (n && e) part = 'ne'; else if (s && w) part = 'sw'; else if (s && e) part = 'se';
-          else if (n) part = 'n'; else if (s) part = 's'; else if (w) part = 'w'; else if (e) part = 'e';
-          if (!diagCut(part, c, r, lx, ly, true)) rt.batchDraw(`kit_roof_${color}_${part}`, lx, ly);
-          continue;
-        }
-        // 벽 모듈은 **컴포넌트 bbox 최하단 2줄**에만 — 계단형(대각) 풋프린트에서 열마다 벽을 깔면
-        // 벽돌이 계단을 따라 번진다(실렌더 확인). 위쪽 계단은 지붕 남쪽 가장자리 부위로.
-        if (!below1 && r === comp.r1) {                        // 벽 아래 행
-          rt.batchDraw(`kit_wall_${wall}_${4 + ((c - comp.c0) % 4)}`, lx, ly);
-          if (doorCol < 0 && c >= (comp.c0 + comp.c1) / 2) doorCol = c;
-          continue;
-        }
-        if (r === comp.r1 - 1 && below1 && !below2) {           // 벽 위 행 (2줄 벽 — 충돌 줄과 일치)
-          rt.batchDraw(`kit_wall_${wall}_${(c - comp.c0) % 4}`, lx, ly);
-          continue;
-        }
-        const n = !isMine(c, r - 1), w = !isMine(c - 1, r), e = !isMine(c + 1, r);
-        const s = !below1 || (r === comp.r1 - 2 && below1 && !isMine(c, r + 3));   // 벽 위 = 지붕 남쪽 가장자리
-        let part = 'in';
-        if (n && w) part = 'nw'; else if (n && e) part = 'ne'; else if (s && w) part = 'sw'; else if (s && e) part = 'se';
-        else if (n) part = 'n'; else if (s) part = 's'; else if (w) part = 'w'; else if (e) part = 'e';
-        else if (hash2(this.cfg.seed ^ 0x9e, c, r) > 0.93) part = 'vent';
-        // 인테리어 = 2×2 옥상 패널 타일링 (101차 잔여 "지붕 Kenney 타일링") — 완전 내부 블록에만 성기게.
-        //  블록 4타일이 전부 내부(사방 지붕 + 벽/남쪽 가장자리 줄 밖)여야 조각나지 않는다.
-        if (part === 'in' || part === 'vent') {
-          const pc = c & ~1, pr = r & ~1;
-          const ph = hash2(this.cfg.seed ^ 0x50a1, pc, pr);
-          if (ph > 0.7) {
-            let ok = true;
-            for (let rr = pr; rr < pr + 2 && ok; rr++) {
-              for (let cc = pc; cc < pc + 2 && ok; cc++) {
-                ok = rr < comp.r1 - 2 && isMine(cc, rr) && isMine(cc, rr - 1) && isMine(cc, rr + 1)
-                  && isMine(cc - 1, rr) && isMine(cc + 1, rr);
-              }
-            }
-            if (ok) {
-              const pk = ph > 0.85 ? 'p2' : 'p1';
-              part = `${pk}_${r === pr ? (c === pc ? 'nw' : 'ne') : (c === pc ? 'sw' : 'se')}`;
-            }
-          }
-        }
-        if (!diagCut(part, c, r, lx, ly, false)) rt.batchDraw(`kit_roof_${color}_${part}`, lx, ly);
-      }
-    }
-    // 문(중앙 하단) + 대각 컷 처마선 — 호출측 Graphics에 모았다가 한 번에 그린다
-    if (doorCol >= 0 && !tiny) {
-      const lx = ox + (doorCol - comp.c0) * tr, ly = oy + (comp.r1 - comp.r0) * tr;
-      g.fillStyle(0x2a2f36, 1); g.fillRect(lx + 9, ly + 10, 14, tr - 10);
-      g.fillStyle(0x6b4a30, 1); g.fillRect(lx + 10, ly + 11, 12, tr - 12);
-      g.fillStyle(0xe8c86a, 1); g.fillRect(lx + 19, ly + 22, 2, 2);
-    }
-    g.lineStyle(2, COL.buildEdge, 1);
-    for (const [x1, y1, x2, y2] of cutLines) g.lineBetween(x1, y1, x2, y2);
-  }
-
-  /** 청크가 소유하는(좌상단 포함) 컴포넌트의 지붕 스프라이트 생성 */
   private buildChunkRoofs(cc: number, cr: number, slot: ChunkSlot): void {
     const N = this.cfg.chunkTiles, tr = this.cfg.tr;
-    const owned: number[] = [];
-    for (let id = 0; id < this.comps.length; id++) {
-      const comp = this.comps[id];
-      if (Math.floor(comp.c0 / N) === cc && Math.floor(comp.r0 / N) === cr) owned.push(id);
-    }
-    // 182차 — 지붕 아틀라스: 건물마다 RenderTexture를 새로 만들던 것(청크 한 장에 수십 개 — 로드 끊김의 99%)을
-    //  청크당 **한 장**으로. 선반 패킹(높이순)으로 자리를 잡고, 건물 지붕은 그 프레임을 쓰는 이미지다.
-    //  건물마다 따로 y-정렬·반투명(occluder)되는 성질은 그대로다.
-    const place = new Map<number, [number, number]>();
-    let atlas: Phaser.GameObjects.RenderTexture | undefined;
-    if (this.kitReady && owned.length > 0) {
-      const dims = owned.map((id) => {
-        const c = this.comps[id];
-        return { id, w: (c.c1 - c.c0 + 1) * tr, h: (c.r1 - c.r0 + 1) * tr };
-      }).sort((a, b) => b.h - a.h);
-      const AW = Math.max(this.chunkPx, ...dims.map((d) => d.w));
-      let x = 0, y = 0, rowH = 0;
-      for (const d of dims) {
-        if (x + d.w > AW) { x = 0; y += rowH + 2; rowH = 0; }
-        place.set(d.id, [x, y]);
-        x += d.w + 2; rowH = Math.max(rowH, d.h);
+    const owned = this.units.filter((u) => {
+      const b = u.poly.reduce((m, [x, y]) => [Math.min(m[0], x), Math.min(m[1], y)], [Infinity, Infinity]);
+      return Math.floor(b[0] / tr / N) === cc && Math.floor(b[1] / tr / N) === cr;
+    });
+    if (owned.length === 0) return;
+    const MAX_W = Math.max(this.chunkPx, ...owned.map((u) => u.x1 - u.x0));
+    const sheets = packUnits(owned, MAX_W, 4096);
+    slot.roofAtlases = [];
+    for (const sheet of sheets) {
+      const atlas = this.scene.make.renderTexture({ x: 0, y: 0, width: sheet.w, height: Math.max(16, sheet.h) }, false);
+      slot.roofAtlases.push(atlas);
+      const g = this.scene.make.graphics({ x: 0, y: 0 }, false);
+      for (const { u, x, y } of sheet.items) drawBuildingUnit(g, u, x - u.x0, y - u.y0);
+      atlas.draw(g, 0, 0);
+      g.destroy();
+      for (const { u, x, y } of sheet.items) {
+        const w = u.x1 - u.x0, h = u.y1 - u.y0;
+        const fname = `b_${u.id}`;
+        atlas.texture.add(fname, 0, x, y, w, h);
+        const depth = 20 + u.bottomY * 0.001;
+        const img = this.scene.add.image(u.x0, u.y0, atlas.texture, fname).setOrigin(0, 0).setDepth(depth);
+        // 바닥선 — 가림 판정이 "그림 틀 안"이 아니라 **건물 뒤(y < 바닥선)** 일 때만 비치게(틀에는 그림자 · 벽 높이가 든다)
+        img.setData('bottomY', u.bottomY);
+        slot.deco.push(img); slot.occluders.push(img);
       }
-      const AH = y + rowH;
-      atlas = this.scene.make.renderTexture({ x: 0, y: 0, width: AW, height: AH }, false);
-      slot.roofAtlas = atlas;
-    }
-    const roofG = atlas ? this.scene.make.graphics({ x: 0, y: 0 }, false) : null;
-    atlas?.beginDraw();
-    for (const id of owned) {
-      const comp = this.comps[id];
-      const bottomY = (comp.r1 + 1) * tr;
-      const depth = 20 + bottomY * 0.001;   // 플레이어(20 + y·0.001)와 y-sort — 위쪽 줄 진입 시 가림
-      // 150차 — 지붕은 캐릭터를 덮는다. 뒤로 들어가면 반투명해지도록 occluder로 등록한다.
-      if (atlas) {
-        const [ox, oy] = place.get(id)!;
-        const w = (comp.c1 - comp.c0 + 1) * tr, h = (comp.r1 - comp.r0 + 1) * tr;
-        this.buildKitRoof(id, atlas, ox, oy, roofG!);
-        const fname = `r${id}`;
-        atlas.texture.add(fname, 0, ox, oy, w, h);
-        const roof = this.scene.add.image(comp.c0 * tr, comp.r0 * tr, atlas.texture, fname).setOrigin(0, 0).setDepth(depth);
-        slot.deco.push(roof); slot.occluders.push(roof);
-      } else {
-        const key = this.bakeRoofTexture(id);
-        const roof = this.scene.add.image(comp.c0 * tr, comp.r0 * tr, key).setOrigin(0, 0).setDepth(depth);
-        slot.deco.push(roof); slot.occluders.push(roof);
-        slot.roofKeys.push(key);
-      }
-      // 소형 주거 풋프린트(4~6 × 5~8) = TopDown 주택 오브젝트(×2 = 140×168) 얹기 — POI 예약 제외
-      const w = comp.c1 - comp.c0 + 1, h = comp.r1 - comp.r0 + 1;
-      const key = `${comp.c0},${comp.r0}`;
-      if (!comp.big && w >= 4 && w <= 6 && h >= 5 && h <= 8 && !this.cfg.reservedBuildingKeys?.has(key)) {
-        const hv = hash2(this.cfg.seed ^ 0x40e, comp.c0, comp.r0);
-        if (hv < 0.6) {
-          const tex = hv < 0.3 ? 'ts_td_house_red' : 'ts_td_house_blue';
-          if (this.scene.textures.exists(tex)) {
-            const x = ((comp.c0 + comp.c1 + 1) / 2) * tr;
-            const house = this.scene.add.image(x, bottomY, tex).setOrigin(0.5, 1).setScale(2).setDepth(depth + 0.0003);
-            slot.deco.push(house); slot.occluders.push(house);
-          }
-        }
-      }
-    }
-    if (atlas && roofG) {
-      atlas.endDraw();
-      atlas.draw(roofG, 0, 0);
-      roofG.destroy();
     }
   }
 
@@ -5980,9 +5806,10 @@ export class SeamlessChunks {
             g.fillRect(bx + 1, by + 1, 3, 2);
           }
         } else if (ch === '#') {
-          // ── 건물 바닥 — 지붕은 컴포넌트 스프라이트(buildChunkRoofs, y-sort)가 그린다.
-          //    여기는 지붕 아래 바닥(캐릭터가 위쪽 줄로 들어갔을 때 가려지는 면)만 어둡게 ──
-          g.fillStyle(0x2f333a, 1);
+          // ── 건물 바닥 — 건물 그림(buildChunkRoofs · 벡터 윤곽 · y-sort)이 발자국을 전부 덮는다.
+          //    239차: 구 짙은 바닥(0x2f333a)은 윤곽을 편 자리의 틈새마다 **검은 계단**으로 비쳤다(시장 옆 차양 띠).
+          //    포장 톤으로 깔아 틈새가 보여도 건물 둘레 콘크리트로 읽히게 한다 ──
+          g.fillStyle(COL.plazaJoint, 1);
           g.fillRect(lx, ly, tr, tr);
         }
 
@@ -5991,16 +5818,7 @@ export class SeamlessChunks {
         //  따라가므로 결국 **격자 윤곽**이 되어 "안쪽 지형에 타일 경계선이 보인다"(사용자 리포트)의 원인이었다.
         //  재질 차이는 색·질감 차이만으로 읽히고, 45° 삼각형·알갱이 띠가 계단을 녹인다.
 
-        // ── 건물 그림자 — 남·동측 지면에 드리움 (해가 북서) ──
-        if (ch !== '#' && ch !== '~') {
-          const shN = at(c, r - 1) === '#';
-          const shW = at(c - 1, r) === '#';
-          if (shN || shW) {
-            g.fillStyle(COL.shadow, 0.16);
-            if (shN) g.fillRect(lx, ly, tr, 7);
-            if (shW) g.fillRect(lx, ly, 7, tr);
-          }
-        }
+        // ── 건물 그림자 — 239차부터 건물 그림이 윤곽을 따라 드리운다(구 타일 띠 그림자는 계단형 할로였다) ──
       }
     }
 

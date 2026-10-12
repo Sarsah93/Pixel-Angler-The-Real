@@ -67,6 +67,7 @@ const { chromium } = resolvePlaywright();
 | 채집·통발 필드 시스템 | `globalThis.__FIELD` (dev 전용 — `forage`(`allSpots`/`devForceSpot`/`candidateStats`) · `trapField`(`placing` 주입 → `confirmAt`/`devRewind`/`harvest`) · `cooler` · `tuning`(TUNING 실인스턴스) · `getTrapById`) | **실데이터 파고 ≥1.5m·풍속 ≥12m/s면 [E]가 거부된다**(121차 실측 2.1m) — `__FIELD.tuning.forage.maxWaveM = 9`로 올리고 진행. 적발 확률은 `tuning.forage.enforcementChance = 1`. 씬 진입은 `__GS.startNewGameInSlot(3)` → `scene.start('RegionFieldScene',{region:'gangwon_sokcho'})` |
 | 불요리 | `globalThis.__COOK` (dev 전용 — `CookingStore` 실인스턴스) + `__FIELD.stoveField`(`placing` 주입 → `confirmAt` · `placeCheck` · `onInteractKey(shift)`) | 시간은 벽시계라 **`st.lastTickMs -= N·1000` 되감기 후 `__COOK.syncAll()`**(실 10초 = 조리 1분). 패널이 열린 채 스토어를 바꿔도 250ms 틱의 레이아웃 키가 따라온다 |
 | 모듈 함수(렌더러 등) | `await import('/src/…​.ts')` — **`.ts` URL** | `.js` URL은 별개 모듈. 상태 없는 순수 함수 호출에만 사용 |
+| 건물 그림 단위(239차) | `s.chunks.units`(`id` · `kind` · `wallH` · `poly` · `bottomY`) · `s.chunks.onRoadBand(x,y)` · `s.chunks.coveredByBuilding(x,y)` · 간판 자리 `s.shopSignSpot(door, seed, new Set())` | 단위는 **윤곽 좌상단 타일의 청크**가 소유 — 화면에 보여도 그 청크가 안 올라왔으면 이미지가 없다. 건물 뒤 가림은 `s.updateOccluders(130)`를 직접 돌리고 이미지 `alpha`(0.38)를 읽는다 |
 
 - **패널 직접 생성 시** `scene.add.existing(panel)` 필수 — DraggablePanel(Container)은 자동 등록되지 않는다 (7차).
 - HMR 후에는 `?t=` 버전 분화 가능 — 이상하면 dev 서버 재시작 후 검증.

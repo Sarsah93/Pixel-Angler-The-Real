@@ -235,6 +235,23 @@ export interface SeamlessRegionDef {
   hasLights?: boolean;
   /** `fishfarms.json`(어촌계 어장 폴리곤 — `tools/extract_fishfarms.py`) 보유 여부. 같은 SPA 폴백 함정 */
   hasFishFarms?: boolean;
+  /** 239차 — `buildings.json`(OSM 건물 윤곽 · 종류 · 층수 — `tools/extract_osm_buildings.py`) 보유 여부. 같은 SPA 폴백 함정 */
+  hasBuildings?: boolean;
+}
+
+/**
+ * 239차 — OSM 건물 하나(buildings.json · `tools/extract_osm_buildings.py`). '#' 타일은 걷기 · 충돌 정본이고,
+ * 이 폴리곤은 **그림**(벽 · 지붕 · 종류)의 정본이다 — 대각선 건물도 타일 계단이 아니라 기울어진 윤곽으로 그린다.
+ */
+export interface RegionBuilding {
+  id: string;
+  /** 종류 — OSM building=*를 묶은 것 */
+  kind: 'apartments' | 'commercial' | 'house' | 'public' | 'industrial' | 'roof' | 'yes';
+  /** 층수(building:levels) — 없으면 종류 · 면적으로 어림 */
+  levels?: number;
+  name?: string;
+  /** 윤곽(타일 좌표 · 소수 · 시계 방향 · 닫지 않음) */
+  pts: [number, number][];
 }
 
 /** 항로표지(등대·등주) — `lights.json` 1건 (114차). OSM `seamark` 노드에서 추출 */
@@ -252,7 +269,7 @@ export interface RegionLight {
 
 /** WorldMap 지역 ID → 심리스 지역 정의 (등록 = 심리스 개방) */
 export const SEAMLESS_REGIONS: Record<string, SeamlessRegionDef> = {
-  gangwon_sokcho: { dataRegion: 'sokcho_v2', dataDir: 'data/sokcho_v2', name: '속초', nameEn: 'Sokcho', hasLights: true, hasFishFarms: true },
+  gangwon_sokcho: { dataRegion: 'sokcho_v2', dataDir: 'data/sokcho_v2', name: '속초', nameEn: 'Sokcho', hasLights: true, hasFishFarms: true, hasBuildings: true },
 };
 
 /** 현재 모드에서 이 지역이 심리스로 열리는가 (아니면 undefined = legacy 경로) */

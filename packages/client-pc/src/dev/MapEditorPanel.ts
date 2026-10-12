@@ -380,7 +380,7 @@ export function openMapEditor(region: string, propDefs: MapEditorPropEntry[], ho
   actions.appendChild(close);
   const note = document.createElement('div');
   note.innerHTML = '오브젝트는 풋프린트(타일 수)만큼 자리를 차지하고 <b>겹쳐 놓을 수 없다</b>.<br>' +
-    '건물 타일(#)은 자동으로 지붕+벽 키트가 채워진다 — 지붕 색은 지형 탭에서 순환.';
+    '건물 타일(#)은 OSM 윤곽(buildings.json) 위에 벽·지붕이 자동으로 선다(없으면 타일 윤곽) — 박공 색은 지형 탭에서 순환.';
   Object.assign(note.style, { color: '#7fa8c4', fontSize: '10px', lineHeight: '1.5', marginTop: '8px' });
   pages.tools.appendChild(note);
 

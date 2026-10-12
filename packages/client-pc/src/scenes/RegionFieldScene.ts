@@ -37,7 +37,7 @@ import { CharacterSprite, ensureCharSheet, charFrameName } from '../ui/Character
 import { NuisanceField } from '../ui/NuisanceField.js';
 import { ensureBuildingVariant } from '../ui/BuildingVariant.js';
 import type { MarineNuisance } from '@tra/core';
-import { RegionLight,
+import { RegionLight, RegionBuilding,
   REGION_MAP_GRAPHS,
   getRegionMapNode,
   OPPOSITE_EDGE,
@@ -715,6 +715,8 @@ export class RegionFieldScene extends Phaser.Scene {
         if (this.seamlessDef.hasLights) this.load.json(`rlights_${dr}`, `${this.seamlessDef.dataDir}/lights.json`);
         // 어촌계 어장 폴리곤 (121차) — hasFishFarms 지역만 (없는 URL = SPA 폴백 pageerror 함정)
         if (this.seamlessDef.hasFishFarms) this.load.json(`rfarms_${dr}`, `${this.seamlessDef.dataDir}/fishfarms.json`);
+        // 239차 — OSM 건물 윤곽 · 종류 · 층수(벡터 건물 그림) — hasBuildings 지역만
+        if (this.seamlessDef.hasBuildings) this.load.json(`rbuildings_${dr}`, `${this.seamlessDef.dataDir}/buildings.json`);
       }
       // 타일셋 스프라이트 (건물 프리팹·프롭·차량·NPC) — 심리스 전용, 1회 로드
       for (const e of TILESET_MANIFEST) {
@@ -859,6 +861,10 @@ export class RegionFieldScene extends Phaser.Scene {
           ? ((this.cache.json.get(`rlights_${this.seamlessDef.dataRegion}`) as RegionLight[] | undefined) ?? [])
           : [],
         roofOverrides: this.regionPatch.roofs,
+        // 239차 — 벡터 건물(윤곽 · 종류 · 층수). 없는 지역은 '#' 타일 윤곽만으로 그린다
+        buildings: this.seamlessDef.hasBuildings
+          ? ((this.cache.json.get(`rbuildings_${this.seamlessDef.dataRegion}`) as RegionBuilding[] | undefined) ?? [])
+          : [],
         levels: this.regionPatch.levels ?? [], stairs: this.regionPatch.stairs ?? [], armor: this.regionPatch.armor ?? [],
         cols: this.cols, rows: this.rows, tr: TR, seed: mapSeed >>> 0,
         chunkTiles: RegionFieldScene.SEAMLESS_CHUNK_TILES,
@@ -1948,6 +1954,7 @@ export class RegionFieldScene extends Phaser.Scene {
     if (!list) return;
     const objs: Phaser.GameObjects.GameObject[] = [];
     const occluders: Phaser.GameObjects.Image[] = [];
+    const signDoors = new Set<string>();   // 239차 — 같은 문을 쓰는 가게는 간판 하나
     for (const i of list) {
       const poi = this.regionPois[i];
       const door = this.poiDoors[i];
@@ -2010,17 +2017,75 @@ export class RegionFieldScene extends Phaser.Scene {
       // 217차 — 바닥의 점(「o」)과 이름표를 걷었다(사용자 지적 「날 것의 o 표시와 상호명」).
       //  그림이 없는 가게는 문 옆에 **작은 간판**(기둥 + 판 + 종류 아이콘)이 선다 — 상호는 다가가면 [F] 안내가 말한다.
       //  거래가 없는 장소(정류장 · 여객터미널 …)는 땅에 아무것도 없고 지도(미니맵 · M)에만 핀이 있다.
-      if (kind && !hasSprite) objs.push(...this.addShopSign(door.x, door.y, kind, poi.osmId | 0));
+      if (kind && !hasSprite) {
+        const at = this.shopSignSpot(door, poi.osmId | 0, signDoors);
+        if (at) objs.push(...this.addShopSign(at.x, at.y, kind));
+      }
     }
     this.poiObjects.set(key, objs);
     if (occluders.length) this.occludersByChunk.set(key, occluders);
   }
 
   /**
-   * 217차 — 가게 간판(문 옆 땅에 박힌 기둥 + 판 + 종류 아이콘). 판은 종류마다 색이 다르다.
-   * 문을 가리지 않게 문 옆(osmId로 좌우를 고른다)에 서고, y 정렬로 사람 앞뒤가 맞는다.
+   * 239차 — 간판 자리 규칙(사용자 확정): ① 문 양옆 가운데 **차도 · 건물이 아닌 쪽**에 선다(둘 다 되면 osmId로 좌우).
+   * ② 문이 차도를 못 벗어났으면(양옆이 다 아스팔트) 문에서 가장 가까운 **보도 · 땅**(≤ 5타일)으로 옮긴다.
+   * ③ 그런 자리도 없으면 세우지 않는다. 지붕 위(건물 타일 · 지붕 그림 아래)도 같은 규칙으로 내려온다.
+   * ④ 같은 문(타일)을 쓰는 가게들은 간판 하나로 묶는다 — 217차의 문 옆 간판이 상가 한 채에 여섯 개씩 서서 밀도가 부담이었다.
+   * 반환 = 기둥 밑 월드 px, 없으면 null.
    */
-  private addShopSign(dx: number, dy: number, kind: BuildingKind, seed: number): Phaser.GameObjects.GameObject[] {
+  private shopSignSpot(door: { x: number; y: number }, seed: number, used: Set<string>): { x: number; y: number } | null {
+    const dkey = `${Math.floor(door.x / TR)},${Math.floor(door.y / TR)}`;
+    if (used.has(dkey)) return null;
+    const ok = (x: number, y: number): boolean => {
+      const c = Math.floor(x / TR), r = Math.floor(y / TR);
+      const t = this.terrainAt(c, r);
+      if (t === undefined || t === 'building' || t === 'water' || t === 'road') return false;
+      if (this.chunks?.onRoadBand(x, y)) return false;
+      if (this.chunks?.coveredByBuilding(x, y - 10)) return false;   // 판(기둥 위 20px)이 지붕에 가리지 않게
+      return true;
+    };
+    const pref = (seed & 2) === 0 ? 1 : -1;
+    for (const side of [pref, -pref]) {
+      const x = door.x + side * 20, y = door.y + 10;
+      if (ok(x, y)) { used.add(dkey); return { x, y }; }
+    }
+    // 가장 가까운 보도 · 땅 — 문 타일에서 BFS ≤ 5
+    const c0 = Math.floor(door.x / TR), r0 = Math.floor(door.y / TR);
+    const seen = new Set<number>([r0 * this.cols + c0]);
+    const queue: [number, number, number][] = [[c0, r0, 0]];
+    let best: { x: number; y: number; d2: number } | null = null;
+    while (queue.length > 0) {
+      const [c, r, d] = queue.shift()!;
+      if (d > 5) break;
+      const t = this.terrainAt(c, r);
+      if (d > 0 && (t === 'sidewalk' || t === 'land' || t === 'grass')) {
+        const x = c * TR + TR / 2, y = r * TR + TR / 2 + 8;
+        if (ok(x, y)) {
+          const d2 = (x - door.x) ** 2 + (y - door.y) ** 2;
+          if (!best || d2 < best.d2) best = { x, y, d2 };
+        }
+      }
+      if (best && d >= 2) break;   // 가까운 고리에서 찾았으면 더 멀리 안 본다
+      for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+        const nc = c + dc, nr = r + dr;
+        if (nc < 0 || nc >= this.cols || nr < 0 || nr >= this.rows) continue;
+        const k = nr * this.cols + nc;
+        if (!seen.has(k)) { seen.add(k); queue.push([nc, nr, d + 1]); }
+      }
+    }
+    if (!best) { this.signsDropped++; return null; }
+    used.add(dkey);
+    return { x: best.x, y: best.y };
+  }
+
+  /** 세울 자리가 없어 뺀 간판 수(dev 계측) */
+  private signsDropped = 0;
+
+  /**
+   * 217차 — 가게 간판(땅에 박힌 기둥 + 판 + 종류 아이콘). 판은 종류마다 색이 다르다.
+   * 자리는 `shopSignSpot`(239차 규칙)이 정하고, y 정렬로 사람 앞뒤가 맞는다. `sx, sy` = 기둥 밑.
+   */
+  private addShopSign(sx: number, sy: number, kind: BuildingKind): Phaser.GameObjects.GameObject[] {
     const base = `poi_sign_${kind}`;
     if (!this.textures.exists(base)) {
       const col: Record<BuildingKind, number> = {
@@ -2036,8 +2101,6 @@ export class RegionFieldScene extends Phaser.Scene {
       g.generateTexture(base, 24, 32);
       g.destroy();
     }
-    const side = (seed & 2) === 0 ? 1 : -1;
-    const sx = dx + side * 20, sy = dy + 10;   // 발 = 기둥 밑
     const depth = 20 + sy * 0.001 + 0.0004;
     const board = this.add.image(sx, sy, base).setOrigin(0.5, 30 / 32).setDepth(depth);
     const out: Phaser.GameObjects.GameObject[] = [board];
@@ -6297,8 +6360,10 @@ export class RegionFieldScene extends Phaser.Scene {
       const on = this.faded.has(img);
       const pad = on ? RegionFieldScene.OCCLUDE_HYSTERESIS : 0;
       // ⚠ 원점이 제각각이다(프리팹 0.5/1 · 지붕 RT 0/0) → **경계 상자**로 판정한다.
+      //  239차 — 벡터 건물은 틀에 벽 높이 · 그림자가 들어 틀 아래쪽은 건물 **앞**이다. 바닥선(`bottomY`)이 있으면 그 위만 "뒤"로 본다.
       const b = img.getBounds();
-      const inside = py < b.bottom + pad && py > b.top - pad
+      const bottom = (img.getData('bottomY') as number | undefined) ?? b.bottom;
+      const inside = py < bottom + pad && py > b.top - pad
         && px > b.left - pad && px < b.right + pad;
       if (inside === on) continue;
       if (inside) this.faded.add(img); else this.faded.delete(img);

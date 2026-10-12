@@ -112,6 +112,20 @@ py tools/merge_capture_pois.py <region>   # 캡처 POI 병합 + 게임 상호 �
 index.html을 돌려줘 JSON 파싱 pageerror(함정 — depthProfileUrl과 동일). 방파제 단면(테트라포드/사석/
 상판)은 `computeBreakwaters`가 지형에서 자동 산출하므로 별도 데이터가 없다.
 
+## 건물 윤곽 · 종류 · 층수 (239차 — 필수)
+
+건물 그림은 `'#'` 타일이 아니라 **OSM 폴리곤**으로 선다(`scenes/field/BuildingArt.ts`). 지형 빌드 뒤 따로 뽑는다:
+
+```bash
+py tools/extract_osm_buildings.py <region>   # → public/data/<region>/buildings.json + pixelazed/<region>/buildings.json
+```
+
+- core `SEAMLESS_REGIONS[<id>].hasBuildings = true` — `hasLights`와 같은 SPA 폴백 함정(파일 없이 플래그만 켜면 pageerror).
+- 폴리곤이 `'#'`을 하나도 안 덮으면(지형 패치로 지워진 자리) 그리지 않는다 · 폴리곤이 없는 `'#'` 성분은 타일 윤곽(DP 0.85타일)으로 선다 —
+  `trimBuildingsOnRoads`가 깎은 자리도 폴리곤 범위 안이면 그림은 폴리곤을 따른다(걷기는 타일).
+- 종류 매핑은 `KIND_OF`(apartments · commercial · house · public · industrial · roof · yes) — 새 OSM 값은 거기에 더한다. `amenity=shelter`는 프롭(정자)이라 뺀다.
+- 지역 캐시(`pixelazed/_osmcache/<region>*.json`)가 있어야 한다 — `fetch_region_osm.py` 산출.
+
 ## 어촌계 어장 폴리곤 (121차)
 
 ```bash
