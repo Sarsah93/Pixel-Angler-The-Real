@@ -20,7 +20,7 @@
  * ⚠ 아이템 id 규칙: 씨앗 `seed_*` · 모종 `sdl_*` · 종구/종서/배지 `set_*` · 수확물 `crop_*`(클라이언트 `CropItems`가 템플릿을 만든다).
  */
 
-import type { CropCare, CropDef, CropDifficulty, CropGrade, CropStart, FarmFacility, FarmSite } from '../types/Farming.js';
+import type { CropCare, CropDef, CropDifficulty, CropGrade, CropStart, FarmFacility, FarmSite, CropPack } from '../types/Farming.js';
 
 const ALL = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
@@ -98,8 +98,10 @@ export const CROP_DATABASE: CropDef[] = [
     id: 'microgreens', nameKo: '새싹채소', nameEn: 'Microgreens', category: 'sprout', speedClass: 'leafy', rarity: 'common',
     inMart: true, site: 'indoor', growMonths: ALL, water: 'high',
     starts: [seed('microgreens', ALL, 0.85, 8, 1500, { labelKo: '새싹채소 씨앗 (한 판 분)', labelEn: 'Microgreen seeds (one tray)' })],
-    harvest: { itemId: 'crop_microgreens', nameKo: '새싹채소 한 팩 (50g)', nameEn: 'Microgreens, a pack (50g)', qtyPerCell: [2, 3], holdDays: 2 },
-    price: { base: 1500, season: P_FLAT, volatility: 0.1 },
+    // 243차 — 판에서 한 줌씩 벤다(25g) · 두 줌을 용기에 담으면 한 팩(50g)
+    harvest: { itemId: 'crop_microgreens', nameKo: '새싹채소 한 줌 (25g)', nameEn: 'Microgreens, a handful (25g)', qtyPerCell: [4, 6], holdDays: 2,
+      pack: { itemId: 'crop_microgreens_pack', nameKo: '새싹채소 한 팩 (50g)', nameEn: 'Microgreens, a pack (50g)', units: 2 } },
+    price: { base: 750, season: P_FLAT, volatility: 0.1 },
     noteKo: '무순 · 브로콜리 · 적양배추 새싹. 씨앗 10g이 일주일 남짓이면 100~150g.',
     noteEn: 'Radish, broccoli and red cabbage shoots. 10g of seed gives 100-150g in a little over a week.',
   },
@@ -109,8 +111,10 @@ export const CROP_DATABASE: CropDef[] = [
     // 균이 다 자란 배지를 사 온다 → 7~12일에 첫 발생 · 12일쯤 뒤 한 번 더
     //  배지 1kg → 첫물 155~161g · 수량의 94%가 1 · 2주기(경기도 시험) → 1.5kg 배지 두 번에 약 400g
     starts: [setOf('oyster_mushroom', ALL, 0.95, 11, 5000, '느타리 배지 (1.5kg)', 'Oyster mushroom block (1.5kg)')],
-    harvest: { itemId: 'crop_oyster_mushroom', nameKo: '느타리 한 팩 (200g)', nameEn: 'Oyster mushrooms, a pack (200g)', qtyPerCell: [1, 1], repeat: { everyDays: 12, times: 1 }, holdDays: 2, bonusSteps: 3 },
-    price: { base: 2000, season: P_MUSHROOM, volatility: 0.1 },
+    // 243차 — 송이째 딴다(약 100g) · 두 송이를 용기에 담으면 한 팩(200g)
+    harvest: { itemId: 'crop_oyster_mushroom', nameKo: '느타리 (1송이 · 약 100g)', nameEn: 'Oyster mushroom (one cluster, about 100g)', qtyPerCell: [2, 2], repeat: { everyDays: 12, times: 1 }, holdDays: 2, bonusSteps: 3,
+      pack: { itemId: 'crop_oyster_mushroom_pack', nameKo: '느타리 한 팩 (200g)', nameEn: 'Oyster mushrooms, a pack (200g)', units: 2 } },
+    price: { base: 1000, season: P_MUSHROOM, volatility: 0.1 },
     // 236차 — 송이 크기는 들쭉날쭉하다: 거둘 때마다 0~30% 덤(bonusSteps 3 · 평균 +15%)
     noteKo: '배지 1.5kg에서 두 번 돋는다. 세 번째는 거의 나지 않는다. 첫물이 가장 굵다.',
     noteEn: 'A 1.5kg block fruits twice; a third flush hardly comes. The first flush is the thickest.',
@@ -421,8 +425,10 @@ export const CROP_DATABASE: CropDef[] = [
     id: 'cherry_tomato', nameKo: '방울토마토', nameEn: 'Cherry tomato', category: 'fruit', speedClass: 'seasonal', rarity: 'common',
     inMart: true, site: 'plot', growMonths: [5, 6, 7, 8, 9], water: 'mid',
     starts: [seedling('cherry_tomato', [4, 5], 2, 60, 1000)],
-    harvest: { itemId: 'crop_cherry_tomato', nameKo: '방울토마토 한 팩 (250g)', nameEn: 'Cherry tomatoes, a pack (250g)', qtyPerCell: [2, 4], repeat: { everyDays: 6, times: 10 }, holdDays: 5 },
-    price: { base: 2500, season: P_CHERRY_TOMATO, volatility: 0.2 },
+    // 243차 — 한 알씩 딴다(약 12.5g) · 스무 알을 용기에 담으면 한 팩(250g)
+    harvest: { itemId: 'crop_cherry_tomato', nameKo: '방울토마토 (1개)', nameEn: 'Cherry tomato (one)', qtyPerCell: [40, 80], repeat: { everyDays: 6, times: 10 }, holdDays: 5,
+      pack: { itemId: 'crop_cherry_tomato_pack', nameKo: '방울토마토 한 팩 (250g)', nameEn: 'Cherry tomatoes, a pack (250g)', units: 20 } },
+    price: { base: 125, season: P_CHERRY_TOMATO, volatility: 0.2 },
     noteKo: '곁순을 따 주면 열매가 굵다. 한 포기 3~4kg.',
     noteEn: 'Pinch out the side shoots and the fruit grows bigger. 3-4kg per plant.',
   },
@@ -795,8 +801,10 @@ export const CROP_DATABASE: CropDef[] = [
     id: 'wood_ear', nameKo: '목이버섯', nameEn: 'Wood ear mushroom', category: 'mushroom', speedClass: 'leafy', rarity: 'uncommon',
     inMart: false, site: 'indoor', growMonths: ALL, water: 'high',
     starts: [setOf('wood_ear', ALL, 0.9, 60, 4000, '목이 배지 (1봉)', 'Wood ear block (one bag)')],
-    harvest: { itemId: 'crop_wood_ear', nameKo: '생목이 한 팩 (150g)', nameEn: 'Fresh wood ear, a pack (150g)', qtyPerCell: [2, 3], repeat: { everyDays: 15, times: 2 }, holdDays: 3, bonusSteps: 3 },
-    price: { base: 1500, season: P_SHIITAKE, volatility: 0.1 },
+    // 243차 — 한 장씩 뗀다(약 15g) · 열 개를 용기에 담으면 한 팩(150g)
+    harvest: { itemId: 'crop_wood_ear', nameKo: '생목이 (1개)', nameEn: 'Fresh wood ear (one)', qtyPerCell: [20, 30], repeat: { everyDays: 15, times: 2 }, holdDays: 3, bonusSteps: 3,
+      pack: { itemId: 'crop_wood_ear_pack', nameKo: '생목이 한 팩 (150g)', nameEn: 'Fresh wood ear, a pack (150g)', units: 10 } },
+    price: { base: 150, season: P_SHIITAKE, volatility: 0.1 },
     noteKo: '국산 생목이는 귀하다. 탱글한 식감을 해파리냉채 · 해물볶음에.',
     noteEn: 'Fresh domestic wood ear is hard to find. Its bouncy bite suits jellyfish salad and seafood stir-fries.',
   },
@@ -889,8 +897,10 @@ export const CROP_DATABASE: CropDef[] = [
     // 3년생 묘목 1주/칸(포기 사이 1~1.5m → 사실상 한 칸) · 심은 해 6~7월 소량 · 이듬해부터 제대로(여러해살이 — 다음 철은 절반 기간) ·
     //   pH 4.5 산성 흙(피트모스 · 소나무 껍질) · 물을 많이 먹고 뿌리가 얕다 · 익는 3~4주 동안 5일마다 · 봄 · 가을 식재
     starts: [seedling('blueberry', [3, 4, 10, 11], 1, 95, 15000, { labelKo: '블루베리 묘목 (3년생 · 1주)', labelEn: 'Blueberry bush (3-year, 1 plant)' })],
-    harvest: { itemId: 'crop_blueberry', nameKo: '블루베리 한 팩 (100g)', nameEn: 'Blueberries, a pack (100g)', qtyPerCell: [2, 4], repeat: { everyDays: 5, times: 4 }, holdDays: 3 },
-    price: { base: 3000, season: P_BLUEBERRY, volatility: 0.2 },
+    // 243차 — 익은 알만 하나씩 딴다(약 2g) · 쉰 알을 용기에 담으면 한 팩(100g)
+    harvest: { itemId: 'crop_blueberry', nameKo: '블루베리 (1알)', nameEn: 'Blueberry (one berry)', qtyPerCell: [100, 200], repeat: { everyDays: 5, times: 4 }, holdDays: 3,
+      pack: { itemId: 'crop_blueberry_pack', nameKo: '블루베리 한 팩 (100g)', nameEn: 'Blueberries, a pack (100g)', units: 50 } },
+    price: { base: 60, season: P_BLUEBERRY, volatility: 0.2 },
     noteKo: '피트모스를 섞어 산성 흙을 만들어야 자란다. 한 번 심으면 해마다 돌아오고, 묘목 값은 이듬해부터 뽑는다.',
     noteEn: 'Needs acid soil — mix in peat moss. Plant once and it comes back every year; the bush pays for itself from the second season.',
   },
@@ -914,8 +924,10 @@ export const CROP_DATABASE: CropDef[] = [
     // 노지 딸기(설향) · 9월 중하순 런너 묘 정식 · 포기 25cm × 두 줄 → 칸당 6포기 · 겨울을 나고 4월 하순~5월 수확 · 포기당 300~400g(500g 팩 4~5개/칸) ·
     //   자라는 날만 세면 9~11월 70일 + 3~4월 60일 = 130일 · 꽃이 피면 멀칭 · 탄저 · 흰가루
     starts: [seedling('strawberry', [9, 10], 6, 130, 600, { labelKo: '딸기 모종 (런너 묘 · 1포기)', labelEn: 'Strawberry runner plant (1)' })],
-    harvest: { itemId: 'crop_strawberry', nameKo: '딸기 한 팩 (500g)', nameEn: 'Strawberries, a pack (500g)', qtyPerCell: [1, 1], repeat: { everyDays: 5, times: 4 }, holdDays: 2 },
-    price: { base: 8000, season: P_STRAWBERRY, volatility: 0.25 },
+    // 243차 — 한 알씩 딴다(약 20g) · 스물다섯 알을 용기에 담으면 한 팩(500g)
+    harvest: { itemId: 'crop_strawberry', nameKo: '딸기 (1개)', nameEn: 'Strawberry (one)', qtyPerCell: [22, 28], repeat: { everyDays: 5, times: 4 }, holdDays: 2,
+      pack: { itemId: 'crop_strawberry_pack', nameKo: '딸기 한 팩 (500g)', nameEn: 'Strawberries, a pack (500g)', units: 25 } },
+    price: { base: 320, season: P_STRAWBERRY, volatility: 0.25 },
     noteKo: '가을에 심어 겨울을 나고 봄에 딴다. 꽃이 피면 짚이나 비닐을 깔아 열매가 흙에 닿지 않게 한다.',
     noteEn: 'Plant in autumn, overwinter, pick in spring. Once it flowers, lay straw or film so the fruit never touches the soil.',
   },
@@ -1105,11 +1117,48 @@ for (const c of CROP_DATABASE) {
   PRODUCE_BASE_IDS.set(c.harvest.itemId, c);
   if (c.harvest.ripenTo) PRODUCE_BASE_IDS.set(c.harvest.ripenTo.itemId, c);
   if (c.interim) PRODUCE_BASE_IDS.set(c.interim.itemId, c);
+  if (c.harvest.pack) PRODUCE_BASE_IDS.set(c.harvest.pack.itemId, c);   // 243차 — 포장한 팩
 }
 
-/** 수확물 아이템(등급 꼬리 포함) → 작물(본 수확 · 붉어진 것 · 중간 수확 모두) */
+/** 수확물 아이템(등급 꼬리 포함) → 작물(본 수확 · 붉어진 것 · 중간 수확 · 243차 팩 모두) */
 export function cropOfProduce(itemId: string): CropDef | undefined {
   return PRODUCE_BASE_IDS.get(itemId) ?? PRODUCE_BASE_IDS.get(parseProduceId(itemId).baseId);
+}
+
+/** 243차 — 포장 용기(생활용품점 · 낱개로 산다). 「포장하기」 한 번에 하나 든다 */
+export const FARM_PACK_CONTAINER = 'farm_pack_tray';
+
+/** 243차 — 포장한 팩인가(등급 꼬리 포함) */
+export function isProducePack(itemId: string): boolean {
+  const c = cropOfProduce(itemId);
+  return !!c?.harvest.pack && parseProduceId(itemId).baseId === c.harvest.pack.itemId;
+}
+
+/** 243차 — 낱개(등급 꼬리 포함) → 담을 팩 id(같은 등급) · 포장 단위. 포장 단위가 없는 수확물이면 null */
+export function packOfLoose(itemId: string): { crop: CropDef; pack: CropPack; packItemId: string; grade: CropGrade } | null {
+  const c = cropOfProduce(itemId);
+  const { baseId, grade } = parseProduceId(itemId);
+  if (!c?.harvest.pack || baseId !== c.harvest.itemId) return null;
+  return { crop: c, pack: c.harvest.pack, packItemId: produceItemId(c.harvest.pack.itemId, grade), grade };
+}
+
+/** 243차 — 팩(등급 꼬리 포함) → 뜯으면 나오는 낱개 id(같은 등급) · 수. 팩이 아니면 null */
+export function looseOfPack(itemId: string): { crop: CropDef; looseItemId: string; units: number; grade: CropGrade } | null {
+  const c = cropOfProduce(itemId);
+  const { baseId, grade } = parseProduceId(itemId);
+  if (!c?.harvest.pack || baseId !== c.harvest.pack.itemId) return null;
+  return { crop: c, looseItemId: produceItemId(c.harvest.itemId, grade), units: c.harvest.pack.units, grade };
+}
+
+/**
+ * 243차 — 구세이브 이전: 242차까지 「한 팩」 단위로 거둔 수확물(`crop_strawberry` 「딸기 한 팩 (500g) · 상」)을 팩 id로 옮긴다.
+ * 낱개 id인데 저장된 이름이 그 작물의 팩 이름으로 시작하면 팩이다(새 낱개 이름은 「(1개)」 · 「한 줌」이라 겹치지 않는다).
+ * @returns 옮길 팩 id(같은 등급) · 아니면 null
+ */
+export function legacyPackItemId(itemId: string, savedName: string | undefined): string | null {
+  const p = packOfLoose(itemId);
+  if (!p || !savedName) return null;
+  return savedName.startsWith(p.pack.nameKo) ? p.packItemId : null;
 }
 
 /** 텃밭에서 거둔 것인가(등급 꼬리 포함) */
@@ -1141,6 +1190,8 @@ export interface FarmSupplyDef {
   shop?: 'daily' | 'nursery';
   /** 238차 — 아이콘 키(없으면 `it_<id 꼬리>`) */
   icon?: string;
+  /** 243차 — 한 번에 살 수 있는 수(없으면 가게 기본 — 소모품 12 · 종묘사 24) */
+  buyMax?: number;
   descKo: string;
   descEn: string;
 }
@@ -1190,6 +1241,10 @@ export const FARM_SUPPLIES: FarmSupplyDef[] = [
     descKo: '잎에 뿌리는 칼슘. 열매 껍질이 단단해져 탄저병이 덜 들고 품질이 오른다.', descEn: 'Foliar calcium. Firmer fruit skin — less anthracnose, better quality.' },
   { itemId: 'farm_insecticide', nameKo: '살충제 (1칸 한 번 분)', nameEn: 'Insecticide (one application)', price: 700, kind: 'consumable', shop: 'nursery', icon: 'it_insecticide',
     descKo: '총채벌레 · 진딧물을 막는다 — 바이러스병을 옮기는 벌레다. 열이틀 동안 든다.', descEn: 'Keeps off thrips and aphids — the insects that carry the viruses. Lasts twelve days.' },
+  // ── 243차 — 포장(사용자 결정 「한 팩 단위는 패키징을 별도로」) · PET 투명 용기 낱개 100원 안팎(생활용품점)
+  { itemId: 'farm_pack_tray', nameKo: '농산물 포장 용기', nameEn: 'Produce clamshell', price: 100, kind: 'consumable', icon: 'it_pack_tray', buyMax: 50,
+    descKo: '뚜껑 달린 투명 용기. 낱개로 거둔 딸기 · 방울토마토 · 블루베리 · 버섯 · 새싹채소를 가방에서 「포장하기」로 한 팩씩 담는다. 팩은 제값을 받는다.',
+    descEn: 'A clear lidded tub. Use "Pack" in your bag to put loose strawberries, cherry tomatoes, blueberries, mushrooms or microgreens into packs. Packs fetch the full price.' },
   // ── 241차 — 스테비아 농법(스테비아 토마토) · 1L 1.5만 → 1칸 한 번 분 1,200원
   { itemId: 'farm_stevia', nameKo: '스테비아 발효액 (1칸 한 번 분)', nameEn: 'Stevia ferment (one application)', price: 1200, kind: 'consumable', shop: 'nursery', icon: 'it_stevia',
     descKo: '스테비아 잎을 삭힌 액. 포기 둘레 흙에 붓고 잎에 뿌리면 토마토가 달아진다 — 스테비아 토마토 모종에만 쓴다.', descEn: 'Fermented stevia leaf. Poured round the plant and misted on the leaves it sweetens the fruit — only for stevia tomato plants.' },

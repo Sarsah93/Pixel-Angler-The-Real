@@ -105,6 +105,24 @@ export interface CropHarvest {
    * 고르게 굴려 그만큼 더 준다 — 버섯처럼 송이 크기가 들쭉날쭉한 작물. 3이면 0 · 10 · 20 · 30%(평균 +15%).
    */
   bonusSteps?: number;
+  /**
+   * 243차 — 포장 단위(사용자 결정 「한 팩 단위는 패키징을 별도로 해야 — 수확할 때는 1개씩 따니까」).
+   * 거두면 낱개(`itemId`)가 나오고, 가방의 「포장하기」가 낱개 `units`개 + 포장 용기(`FARM_PACK_CONTAINER`) 1개를 팩 1개로 묶는다.
+   * 팩 등급은 담은 낱개 등급 그대로 · 「포장 뜯기」로 낱개로 되돌린다(용기는 버린다).
+   * 값: 팩 = 낱개 기준가 × `units`(제값) · 낱개로 팔면 `FARM_TUNING.looseSellMult`만 쳐준다(가게가 다시 담는다).
+   */
+  pack?: CropPack;
+}
+
+/** 243차 — 포장 단위(팩) */
+export interface CropPack {
+  /** 팩 아이템 기본 id(`crop_strawberry_pack`) — 등급 꼬리(`_sp` · `_nm`)는 낱개와 같은 규칙 */
+  itemId: string;
+  /** 팩 이름(단위 포함) — 242차까지의 수확물 이름 그대로라 구세이브의 「한 팩」 아이템 이름과 맞는다 */
+  nameKo: string;
+  nameEn: string;
+  /** 한 팩에 담는 낱개 수 */
+  units: number;
 }
 
 /** 중간 수확 — 솎음 · 마늘종 · 고구마순 · 고춧잎 · 호박잎 */

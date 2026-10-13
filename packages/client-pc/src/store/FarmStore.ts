@@ -27,7 +27,7 @@ import { GameState } from './GameState.js';
 import { InventoryStore, type InvCategory } from './InventoryStore.js';
 import { StoryStore } from './StoryStore.js';
 import { ExternalDataStore } from './ExternalDataStore.js';
-import { cropItemTemplate, variantNoticeKo } from '../data/CropItems.js';
+import { cropItemTemplate, variantNoticeKo, looseCountKo } from '../data/CropItems.js';
 
 /** 집 안 선반 구획 키 */
 export const INDOOR_PLOT = 'indoor';
@@ -388,6 +388,13 @@ class FarmStoreImpl {
     this.harvestsBy[crop.id] = nth;
     const opened = variantsOf(crop.id).filter((v) => v.variant?.afterHarvests === nth);
     if (opened.length) this.notices.push(variantNoticeKo(crop, opened));
+    // 243차 — 낱개로 거두는 작물을 처음 거두면 포장을 한 번 알려 준다(팩 = 낱개 n + 포장 용기 1 · 제값)
+    const pack = crop.harvest.pack;
+    const packTip = !!pack && !GameState.getFlag('tip.farm.pack');
+    if (pack && packTip) {
+      GameState.setFlag('tip.farm.pack', true);
+      this.notices.push(`[텃밭] 가방에서 [포장하기] — ${looseCountKo(crop.harvest.itemId, pack.units)} + 포장 용기 1개 = ${pack.nameKo} (팩은 제값 · 용기는 생활용품점)`);
+    }
     GameState.markDirty();
     StoryStore.event({ kind: 'farm', action: 'harvest', cropId: crop.id });
     // 236차 — 덤(버섯 송이가 굵게 올라온 회차)은 따로 말해 준다 · 238차 — 검붉은 고추 · 서리 끝물 · 병으로 준 것

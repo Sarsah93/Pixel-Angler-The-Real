@@ -22,6 +22,9 @@
  *     가중치: 크기 > 첫 규격 > 첫 단어(어종·재질) > 브랜드 > 기타 수식어 > 둘째 이후 규격 > 약한 수식어(수제·고급·…의).
  *     머리말이 범용어(`세트`·`정식`·`Set`·`Bar`)면 첫 단어가 대신 필수다(`생선구이 정식` → `생선구이`).
  *  5. 그래도 안 들어가면 머리말을 `clampTextWidth`로 말줄임.
+ *  6. (243차) 농산물 이름(등급 꼬리 `· 특`/`· 상`/`· 보통`)은 등급을 머리말로 보지 않는다.
+ *     한국어는 첫 단어(작물)가 필수이고, 가중치는 등급 > 단위(`팩`·`줌`) > 이름 단어 > 괄호 속 양이다.
+ *     `한 팩`의 `한` · `a pack`의 `a`는 뺀다(`딸기 한 팩 (500g) · 특` → `딸기·팩·특`).
  *
  * 전체 이름은 각 패널의 호버 상태줄·툴팁·상세보기(우클릭)에서 그대로 보인다.
  */
@@ -34,7 +37,7 @@ import { t as translate } from '../i18n/I18n.js';
 export const SLOT_LABEL_PX = 10;
 
 /** 토큰 종류 */
-type TokKind = 'word' | 'spec' | 'size' | 'note' | 'brand' | 'weak';
+type TokKind = 'word' | 'spec' | 'size' | 'note' | 'brand' | 'weak' | 'unit';
 /** 토큰 — `paren`이면 원문에서 괄호 안에 있던 말 */
 interface Tok { text: string; kind: TokKind; paren?: boolean }
 
@@ -70,6 +73,18 @@ const SIZE_SHORT: Record<string, string> = {
   small: 'S', medium: 'M', large: 'L', 'x-large': 'XL', 'extra large': 'XL', 'extra-large': 'XL',
 };
 const SIZE_WORD = /^(소|중|대|특대|소형|중형|대형|S|M|L|XL|small|medium|large|x-large|extra[- ]large)$/i;
+/**
+ * 243차 — 농산물 이름 꼬리 등급(「딸기 (1개) · 특」 · 영어 「· Prime」).
+ * 같은 작물끼리 가르는 말이라 크기 토큰처럼 무겁게 남긴다. 머리말로 잡히면 작물 이름이 빠졌다
+ * (「블루베리 (1알) · 상」 → 「1알·상」, 「딸기 한 팩 (500g) · 특」 → 「한·500…」).
+ */
+const GRADE_TAIL = /\s·\s(특|상|보통|Prime|High|Normal)$/;
+/**
+ * 243차 — 「한 팩」 · 「한 줌」 · 「한 단」(영어 「a pack」 · 「a handful」) 같은 단위 말.
+ * 「한」 · 「a」는 빼고 단위는 남긴다(낱개와 팩을 가른다).
+ */
+const UNIT_KO = new Set(['팩', '줌', '단', '봉', '묶음']);
+const UNIT_EN = new Set(['pack', 'handful', 'bunch', 'bundle']);
 const HAS_DIGIT = /\d/;
 /** 라틴 대문자 브랜드(4자 이상) → 앞 3자 */
 const BRAND = /^[A-Z]{4,}$/;
@@ -84,10 +99,16 @@ function classify(raw: string): Tok {
 }
 
 /** 표시 문자열 → 토큰 열 (괄호는 note/spec/size 토큰으로, 나머지는 공백·`·`·`/`로 나눈다) */
-function tokenize(display: string): Tok[] {
+/**
+ * 표시 문자열 → 토큰 열. `produce` = 등급 꼬리가 붙은 농산물 이름(축약 가중치가 다르다 —
+ * 작물 이름이 반드시 남고, 괄호 속 양(「(1개)」 「(100g)」)은 가장 먼저 빠진다).
+ */
+function tokenize(display: string): { toks: Tok[]; produce: boolean } {
   let s = display;
   for (const [re, rep] of SHORTEN) s = s.replace(re, rep);
   const toks: Tok[] = [];
+  const grade = GRADE_TAIL.exec(s);
+  if (grade) s = s.slice(0, grade.index);
   const re = /\(([^()]*)\)|([^\s·/()]+)/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(s)) !== null) {
@@ -99,18 +120,28 @@ function tokenize(display: string): Tok[] {
       else toks.push({ text: inner, kind: 'note', paren: true });
       continue;
     }
-    const w = m[2];
-    if (w === '-' || w === '—' || w === ',') continue;
+    const w = m[2].replace(/,$/, '');   // 영어 「Crown daisy, a handful」의 쉼표는 이름표에 남기지 않는다
+    if (w === '-' || w === '—' || w === ',' || !w) continue;
     toks.push(classify(w));
   }
+  // 「한 팩」 · 「a pack」 — 「한」 · 「a」는 빼고 단위는 단위 토큰
+  for (let i = toks.length - 2; i >= 0; i--) {
+    const unit = toks[i + 1].text;
+    if ((toks[i].text === '한' && UNIT_KO.has(unit)) || (/^an?$/i.test(toks[i].text) && UNIT_EN.has(unit.toLowerCase()))) {
+      toks[i + 1] = { text: unit, kind: 'unit' };
+      toks.splice(i, 1);
+    }
+  }
+  if (grade) toks.push({ text: grade[1], kind: 'size' });
   // 재질 바로 뒤 `원줄/목줄` 제거 (KO) + 같은 말 중복 제거(`러버 45g (45g)`)
   const seen = new Set<string>();
-  return toks.filter((tk, i) => {
+  const out = toks.filter((tk, i) => {
     if (LINE_GENERIC_KO.test(tk.text) && i > 0 && MATERIAL_KO.test(toks[i - 1].text)) return false;
     if (seen.has(tk.text)) return false;
     seen.add(tk.text);
     return true;
   });
+  return { toks: out, produce: !!grade };
 }
 
 /** 토큰 열 → 문자열. `parenStyle`이면 괄호 토큰을 `(…)`로 앞 토큰에 붙인다 */
@@ -133,7 +164,7 @@ const MAX_OPTIONAL = 12;
  * @param measure 문자열 → 렌더 폭(px). 토큰별 폭의 합으로 후보를 고른 뒤, 고른 후보는 통째로 다시 잰다
  */
 export function abbreviateSlotName(display: string, maxW: number, measure: (s: string) => number): string | null {
-  const toks = tokenize(display);
+  const { toks, produce } = tokenize(display);
   if (toks.length === 0) return null;
 
   // 괄호째 이은 전체 (가장 정보가 많은 축약)
@@ -148,14 +179,28 @@ export function abbreviateSlotName(display: string, maxW: number, measure: (s: s
   const firstSpec = cur.findIndex((tk) => tk.kind === 'spec');
   // 머리말이 범용어(세트·Set…)면 첫 단어가 대신 필수 토큰이 되고, 범용 머리말은 선택 토큰으로 내려간다
   const genericHead = head >= 0 && firstWord >= 0 && firstWord !== head && GENERIC_HEAD.has(cur[head].text.toLowerCase());
-  const must = genericHead ? firstWord : head;
+  // 243차 — 한국어 농산물은 첫 단어가 작물 이름이다(「펜넬 구근」 · 「스테비아 토마토」 · 「양하 꽃봉오리」).
+  //   영어는 머리말이 뒤라(「Cherry tomatoes」) 종전 규칙을 따른다.
+  const produceKo = produce && firstWord >= 0 && /[가-힣]/.test(cur[firstWord].text);
+  const must = produceKo || genericHead ? firstWord : head;
   // 가중치: 크기 > 첫 규격 > 첫 단어 > 브랜드 > 기타 수식어 > 둘째 이후 규격 > 약한 수식어
   //   (첫 단어 + 둘째 규격 < 첫 규격 — 같은 계열(그럽 2인치/3인치)이 한 규칙으로 줄어들게)
   const weight = (i: number): number => {
     const tk = cur[i];
+    if (produce) {
+      // 농산물: 등급 > 단위(팩 · 줌) > 이름 단어 > 괄호 속 양
+      switch (tk.kind) {
+        case 'size': return 45;
+        case 'unit': return 42;
+        case 'spec': return 10;
+        case 'weak': return 3;
+        default: return 30;
+      }
+    }
     if (genericHead && i === head) return 60;
     switch (tk.kind) {
       case 'size': return 45;
+      case 'unit': return 42;   // 243차 — 「팩」(낱개와 가른다)이 무게 괄호(500g)보다 앞선다
       case 'spec': return i === firstSpec ? 40 : 5;
       case 'brand': return 25;
       case 'weak': return 3;
@@ -192,8 +237,10 @@ export function abbreviateSlotName(display: string, maxW: number, measure: (s: s
 
 /** 축약도 안 들어갈 때 말줄임할 마지막 후보 — 머리말(범용 머리말이면 첫 단어, 단어가 없으면 첫 토큰) */
 function lastResort(display: string): string {
-  const toks = tokenize(display).filter((tk) => tk.kind !== 'note');
+  const { toks: all, produce } = tokenize(display);
+  const toks = all.filter((tk) => tk.kind !== 'note');
   const words = toks.filter((tk) => tk.kind === 'word');
+  if (produce && words[0] && /[가-힣]/.test(words[0].text)) return words[0].text;
   const head = words[words.length - 1];
   if (head && words.length > 1 && GENERIC_HEAD.has(head.text.toLowerCase())) return words[0].text;
   return head?.text ?? toks[0]?.text ?? display;

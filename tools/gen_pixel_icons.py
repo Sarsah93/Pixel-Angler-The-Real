@@ -3032,6 +3032,46 @@ template('berries', """
 ......11111.....
 ................
 """)
+# 243차 — 포장한 팩(투명 용기 · 위에서 본 모습) — 담긴 것 = 5 꼭지 · 6 주색 · 7 빛 · 4 그늘(작물 팔레트) · a 윤곽 · b 투명 · c 용기 바닥
+#   열매에 윤곽선을 두르면 16px에서 격자 무늬로 읽힌다(1차 시안) — 윤곽 없이 둥근 알을 엇갈려 담는다
+template('pack', """
+................
+................
+.aaaaaaaaaaaaaa.
+.ab56bb56bb56ba.
+.a676667666766a.
+.a666466646664a.
+.ab44bb44bb44ba.
+.abbb56bb56bbba.
+.abb67666766bba.
+.abb66646664bba.
+.abbb44bb44bbba.
+.abbbbbbbbbbbba.
+.acccccccccccca.
+.aaaaaaaaaaaaaa.
+................
+................
+""")
+# 243차 — 빈 포장 용기 두 개를 포갠 것(생활용품점)
+template('packtray', """
+................
+................
+...aaaaaaaaaa...
+...abbbbbbbba...
+...abbbbbbbba...
+...acccccccca...
+.aaaaaaaaaaaaaa.
+.abbbbbbbbbbbba.
+.abbbbbbbbbbbba.
+.abbbbbbbbbbbba.
+.abbbbbbbbbbbba.
+.abbbbbbbbbbbba.
+.acccccccccccca.
+.aaaaaaaaaaaaaa.
+................
+................
+""")
+
 PAL_KMELON     = P(c1=0x4a3a10, c2=0xf4f0d0, c4=0xc89a1a, c5=0x5a9a3a, c6=0xf0c830, c7=0xfff0a0)
 PAL_WATERMELON = P(c1=0x1a3a18, c2=0x2a6a2a, c4=0x3a7a34, c5=0x7ab84a, c6=0x8ad068, c7=0xc8f0a0)
 PAL_BIGTOMATO  = P(c1=0x5a1410, c4=0xa82a1a, c5=0x3f8a34, c6=0xe0402a, c7=0xff9a80)
@@ -3589,6 +3629,22 @@ icon('mm_nursery',
 ...1111...
 ..........
 """, size=10)
+
+
+# ── 243차 — 포장한 팩 6종 + 포장 용기(사용자 결정 「한 팩 단위는 패키징을 별도로」) ─────────────
+PACK_BOX = {'a': 0x5a6b78, 'b': 0xd8e4ec, 'c': 0x9aaab6}
+def pack_pal(top, shade, main, light):
+    return {'5': top, '4': shade, '6': main, '7': light, **PACK_BOX}
+for _key, _pal in [
+    ('crop_strawberry_pack',      pack_pal(0x3f8a34, 0xa81a30, 0xe8243a, 0xff8aa0)),   # 꼭지 초록
+    ('crop_cherry_tomato_pack',   pack_pal(0x3f8a34, 0xa82a1a, 0xe0402a, 0xff9a80)),
+    ('crop_blueberry_pack',       pack_pal(0x2a2a4a, 0x2a3470, 0x4a58b8, 0xb0b8ee)),   # 꼭지 = 짙은 꽃받침
+    ('crop_microgreens_pack',     pack_pal(0xe8f4d8, 0x3a8a30, 0x5ab040, 0xa8e070)),   # 흰 줄기 끝
+    ('crop_oyster_mushroom_pack', pack_pal(0xd8d0c0, 0x7a7060, 0xa8a090, 0xe8e4d8)),
+    ('crop_wood_ear_pack',        pack_pal(0x6a4a38, 0x2a1a14, 0x4a3024, 0x8a6a58)),
+]:
+    icon_t(_key, 'pack', _pal)
+icon_t('it_pack_tray', 'packtray', dict(PACK_BOX))
 
 out = io.StringIO()
 out.write('/**\n')

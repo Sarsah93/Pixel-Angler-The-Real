@@ -45,6 +45,23 @@ const DZ_ALT = Object.values(DISEASE_KO).join('|');
 const DZ_EN = (ko: string): string => DISEASE_EN[(Object.keys(DISEASE_KO) as CropDisease[]).find((k) => DISEASE_KO[k] === ko) ?? 'blight'];
 
 export const EN_FARM: Record<string, string> = {
+  // 243차 — 포장(낱개 → 팩)
+  '포장하기': 'Pack',
+  '포장': 'Packing',
+  '들어 있는 것': 'Contents',
+  '포장하기 (낱개 → 팩)': 'Packing (loose → pack)',
+  '거둘 때는 낱개, 팔 때는 팩': 'Harvest loose, sell in packs',
+  '포장을 뜯어 낱개로 먹는다': 'Open the pack and eat it loose',
+  '포장 용기가 없다 — 생활용품점에서 판다.': 'No produce tubs — the general store sells them.',
+  '상한 것은 담지 않는다.': 'Spoiled produce can’t be packed.',
+  '포장할 수 있는 수확물이 아니다.': 'This produce can’t be packed.',
+  '포장할 수 없습니다': 'Can’t pack this',
+  '[포장] 낱개로 팔면 가게가 다시 담아야 해서 20%를 깎는다. 포장 용기(생활용품점)에 담아 팩으로 팔면 제값이다.': '[Packing] Sold loose, shops take 20% off because they must pack it. Put it into produce tubs (general store) and packs fetch the full price.',
+  '[포장] 「포장 뜯기」로 같은 등급 낱개가 된다 — 용기는 버린다.': '[Packing] [Open pack] turns it back into loose produce of the same grade — the tub is thrown away.',
+  '딸기 · 방울토마토 · 블루베리 · 느타리 · 생목이 · 새싹채소는 거둘 때 한 알 · 한 송이 · 한 줌씩 나옵니다. 가방에서 우클릭 [포장하기]를 누르면 낱개 여러 개와 포장 용기 1개가 팩 하나가 됩니다 — 딸기 25개 · 방울토마토 20개 · 블루베리 50알 · 생목이 10개 · 느타리 2송이 · 새싹채소 2줌이 한 팩입니다.': 'Strawberries, cherry tomatoes, blueberries, oyster mushrooms, fresh wood ear and microgreens come off one berry, cluster or handful at a time. Right-click [Pack] in the bag to put several of them and 1 produce tub into one pack — 25 strawberries, 20 cherry tomatoes, 50 blueberries, 10 wood ears, 2 oyster clusters or 2 handfuls of microgreens make a pack.',
+  '포장 용기는 생활용품점에서 하나에 100원입니다. 두 팩 이상 담을 수 있으면 몇 팩을 담을지 고르는 창이 뜹니다. 팩의 등급은 담은 낱개의 등급 그대로이고, 신선도도 낱개에서 이어집니다.': 'Produce tubs cost 100 won each at the general store. If you have enough for two or more packs, a window asks how many to make. A pack keeps the grade of the produce inside, and its freshness carries over too.',
+  '낱개로 팔면 가게가 다시 담아야 해서 값의 20%를 깎습니다. 팩으로 팔면 제값입니다. 팩은 우클릭 [포장 뜯기]로 다시 낱개가 됩니다(용기는 버립니다).': 'Sold loose, shops take 20% off because they have to pack it themselves. Packs fetch the full price. Right-click [Open pack] turns a pack back into loose produce (the tub is thrown away).',
+  '작은 낱개는 [사용하기] 한 번에 여러 개를 먹습니다 — 딸기 5개 · 방울토마토 8개 · 블루베리 한 줌(25알). 팩은 뜯어야 먹습니다.': 'Small produce is eaten several at a time with [Use] — 5 strawberries, 8 cherry tomatoes or a handful of blueberries (25). Packs must be opened first.',
   ...CARE_TASK_PAIRS,
   // ── 238차 — 관리 작업 · 작업 장면 · 병 · 육묘 · 종묘사 ──
   '단계': 'Stage', '익음': 'Ripeness', '포기당': 'Per plant', '쓰러짐': 'Lodged', '활착기': 'Establishing', '할 일': 'To do',
@@ -405,4 +422,13 @@ export const EN_FARM_RULES: [RegExp, (m: RegExpMatchArray, tr: (s: string) => st
     return i > 0 ? `[Variety] ${tr(m[1].slice(0, i))} — ${tr(m[1].slice(i + 3))}` : `[Variety] ${whole}`;
   }],
   [/^나눴다 — (.+) (\d+)개$/, (m, tr) => `Split — ${tr(m[1])} ×${m[2]}`],
+  // 243차 — 포장(낱개 → 팩) · 낱개 수 말(「딸기 25개」 · 「블루베리 50알」 · 「느타리 2송이」 · 「새싹채소 2줌」)
+  [/^(.+) (\d+)(?:개|알|송이|줌) \+ 용기 1개 → (.+)$/, (m, tr) => `${tr(m[1])} ×${m[2]} + 1 tub → ${tr(m[3])}`],
+  [/^포장했습니다 — (.+) (\d+)개 \((.+) (\d+)(?:개|알|송이|줌) · 용기 (\d+)개\)$/, (m, tr) => `Packed — ${tr(m[1])} ×${m[2]} (${tr(m[3])} ×${m[4]}, ${m[5]} tub${m[5] === '1' ? '' : 's'})`],
+  [/^포장 용기가 없습니다 — 생활용품점에서 팝니다 \(한 팩에 (.+) (\d+)(?:개|알|송이|줌) \+ 용기 1개\)$/, (m, tr) => `No produce tubs — the general store sells them (a pack takes ${tr(m[1])} ×${m[2]} + 1 tub)`],
+  [/^한 팩을 채우려면 (.+) (\d+)(?:개|알|송이|줌) 필요 \(지금 (.+) (\d+)(?:개|알|송이|줌)\)$/, (m, tr) => `A pack needs ${tr(m[1])} ×${m[2]} (you have ${m[4]})`],
+  [/^한 팩 = (.+) (\d+)(?:개|알|송이|줌) \+ 용기 1개 · 최대 (\d+)팩$/, (m, tr) => `1 pack = ${tr(m[1])} ×${m[2]} + 1 tub · up to ${m[3]}`],
+  [/^(.+) (\d+)(?:개|알|송이|줌) · 용기 (\d+)개를 씁니다$/, (m, tr) => `Uses ${tr(m[1])} ×${m[2]} and ${m[3]} tub${m[3] === '1' ? '' : 's'}`],
+  [/^\[텃밭\] 가방에서 \[포장하기\] — (.+) (\d+)(?:개|알|송이|줌) \+ 포장 용기 1개 = (.+) \(팩은 제값 · 용기는 생활용품점\)$/, (m, tr) => `[Garden] In the bag, [Pack] — ${tr(m[1])} ×${m[2]} + 1 produce tub = ${tr(m[3])} (packs fetch the full price · tubs at the general store)`],
+  [/^뜯어도 (.+) 날것은 먹지 않는다\.$/, (m, tr) => `Even opened, ${tr(m[1])} isn’t eaten raw.`],   // 앞의 「[익혀야] (.+)」 규칙이 꼬리를 이 규칙으로 넘긴다
 ];

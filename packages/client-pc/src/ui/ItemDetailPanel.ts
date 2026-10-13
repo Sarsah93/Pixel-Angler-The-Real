@@ -14,10 +14,11 @@ import {
   cropStartOfItem, cropOfProduce, parseProduceId, monthRangeKo, kstMonthOf, GRADE_KO, supplyOfFacility, getSkillById,
   produceMarketRatio, produceMarketInfo, cropGate, CROP_TIER_KO, CROP_CARE_KO, hasCarePlan, carePlanSummaryKo,
   rawEatStatus, rawEatLineKo, variantsOf, baseCropOf, variantUnlockKo, cropOfProduce as cropOfProduceId, type RawEatDef,
+  packOfLoose, looseOfPack, FARM_TUNING as FARM_TUNING_243,
   type CropDef, type CropStart, type CropRarity, type CropDifficulty, type LicenseType,
 } from '@tra/core';
 import { GameState } from '../store/GameState.js';
-import { PRODUCE_SUB, SEED_SUB, PIECE_SUB } from '../data/CropItems.js';
+import { PRODUCE_SUB, SEED_SUB, PIECE_SUB, produceBaseName, looseShortName, looseCountKo } from '../data/CropItems.js';
 import { FarmStore } from '../store/FarmStore.js';
 import { reelCmPerTurn, rodSpecFor, reelSpecFor, rodLoadState, ROD_USE_LABEL, getRodCatalogEntry, getReelCatalogEntry, getLureSpec, getNuisance, sashimiStarsAt, sashimiNutrition, foodNutritionOf, nutritionLineKo, restoreFromNutrition } from '@tra/core';
 import { FISH_DATABASE, fishImageSizeScale, fishRarity, speciesStandardWeightG,
@@ -211,6 +212,13 @@ function rawEatRow(itemId: string): { row: ItemDetailRow | null; desc: string } 
     const p = raw.def.pieces!;
     return { row: { label: '날로 먹기', value: `나눠서 먹는다 (${p.count}조각)`, color: '#8fd4ff' }, desc: `\n[날로 먹기] 「나누기」로 ${p.labelKo} ${p.count}개 — ${raw.def.noteKo}` };
   }
+  // 243차 — 포장한 팩: 뜯어야 먹는다(뜯으면 같은 등급 낱개 · 용기는 버린다)
+  if (raw.kind === 'pack') {
+    const loose = produceBaseName(raw.looseBaseId);
+    return raw.edible
+      ? { row: { label: '날로 먹기', value: '포장을 뜯어 낱개로 먹는다', color: '#8fd4ff' }, desc: '' }
+      : { row: { label: '날로 먹기', value: '못 먹는다 — 익혀야', color: '#ff9a5a' }, desc: `\n[익혀야] 뜯어도 ${looseShortName(loose)} 날것은 먹지 않는다.` };
+  }
   return { row: { label: '날로 먹기', value: '못 먹는다 — 익혀야', color: '#ff9a5a' }, desc: `\n[익혀야] ${raw.why.whyKo}` };
 }
 
@@ -257,10 +265,33 @@ function produceDetail(item: Pick<InvItem, 'id' | 'name' | 'qty' | 'basePrice' |
   if (cropStartOfItem(item.id)) rows.push({ label: '시루', value: '콩나물로 앉힐 수 있다' });
   rows.push({ label: '구하기', value: CROP_RARITY[crop.rarity].ko, color: CROP_RARITY[crop.rarity].color });
   if (!crop.inMart) rows.push({ label: '마트', value: '팔지 않는 작물', color: '#8affb0' });
+  // 243차 — 포장: 낱개는 「포장하기」로 팩이 되고(용기 1개), 팩은 「포장 뜯기」로 낱개가 된다
+  const pk = packRows(item.id);
+  rows.push(...pk.rows);
   rows.push({ label: '보유 수량', value: `${item.qty}개` });
-  let desc = crop.noteKo + variantDesc(crop) + raw.desc;
+  let desc = crop.noteKo + variantDesc(crop) + raw.desc + pk.desc;
   if (item.condition) desc += `\n[${CONDITION_LABEL[item.condition]}] ${CONDITION_DESC[item.condition]}`;
   return { title: item.name, subtitle: '농산물', rows, desc };
+}
+
+/** 243차 — 포장 줄(낱개 · 팩) + 본문 꼬리 */
+function packRows(itemId: string): { rows: ItemDetailRow[]; desc: string } {
+  const p = packOfLoose(itemId);
+  if (p) {
+    const cut = Math.round((1 - FARM_TUNING_243.looseSellMult) * 100);
+    return {
+      rows: [{ label: '포장', value: `${looseCountKo(itemId, p.pack.units)} + 용기 1개 → ${p.pack.nameKo}`, color: '#8fd4ff' }],
+      desc: `\n[포장] 낱개로 팔면 가게가 다시 담아야 해서 ${cut}%를 깎는다. 포장 용기(생활용품점)에 담아 팩으로 팔면 제값이다.`,
+    };
+  }
+  const lp = looseOfPack(itemId);
+  if (lp) {
+    return {
+      rows: [{ label: '들어 있는 것', value: `낱개 ${looseCountKo(lp.looseItemId, lp.units)}` }],
+      desc: `\n[포장] 「포장 뜯기」로 같은 등급 낱개가 된다 — 용기는 버린다.`,
+    };
+  }
+  return { rows: [], desc: '' };
 }
 
 export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory' | 'category' | 'qty' | 'basePrice' | 'condition' | 'conditionSinceMs' | 'speciesId' | 'lengthCm' | 'weightG' | 'floatBuoyG' | 'plateWip' | 'fault' | 'useCount' | 'tool' | 'bound' | 'dish' | 'dishInstance' | 'sashimi' | 'cutQuality' | 'hungerRestore' | 'hydrationRestore' | 'hpRestore' | 'fatigueRestore' | 'lineMaterial' | 'lineForm' | 'lineLengthM' | 'lineUsedM' | 'lineNo' | 'lineDiameterMm' | 'lineStrengthLb' | 'sinkerKind' | 'sinkerWeightG' | 'sinkerHo' | 'netReachM' | 'blueprintId' | 'wading' | 'sex' | 'toxin' | 'condProfile' | 'chumKind' | 'unpack'>): ItemDetailData {

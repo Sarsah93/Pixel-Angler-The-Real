@@ -26,14 +26,14 @@ import {
 } from '../store/InventoryStore.js';
 import { CoolerStore } from '../store/CoolerStore.js';
 import { DraggablePanel, applyScreenFixed } from './DraggablePanel.js';
-import { ConfirmDialog } from './Dialogs.js';
+import { ConfirmDialog, QuantityDialog } from './Dialogs.js';
 import { createItemIcon } from './ItemIcon.js';
 import { drawTrendIcon, TREND_ICON_PX } from './MarketTrendIcon.js';
 import { MarketStore, isMarketFish } from '../store/MarketStore.js';
 import { setSlotLabel, SLOT_LABEL_PX } from './SlotLabel.js';
 import { addPixelIcon } from './PixelIcon.js';
-import { GEAR_FAULTS, TUNING, rawEatStatus } from '@tra/core';
-import { PRODUCE_SUB, PIECE_SUB } from '../data/CropItems.js';
+import { GEAR_FAULTS, TUNING, rawEatStatus, packOfLoose, isProducePack, biteNutrition, restoreFromNutrition, FARM_PACK_CONTAINER } from '@tra/core';
+import { PRODUCE_SUB, PIECE_SUB, SEED_SUB, FARM_SUB, looseCountKo } from '../data/CropItems.js';
 import { playEatSfx } from '../audio/Sfx.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { maybeStartTour, type TourOptions } from './GuideTour.js';
@@ -724,9 +724,11 @@ export class InventoryPanel extends DraggablePanel {
     const rawFishSubCats = ['어획물', '손질 필렛', '손질 통마리', '부산물'];
     // 241차 — 농산물은 날로 먹을 수 있는 것만(큰 단위는 「나누기」 뒤의 조각) · 못 먹는 것(생감자 · 토란 · 생콩 · 버섯 · 두릅 …)은 날생선처럼 사용하기 자체가 없다
     const raw = (item.subCategory === PRODUCE_SUB || item.subCategory === PIECE_SUB) ? rawEatStatus(item.id) : null;
-    const usable = item.category === 'consumable'
+    // 243차 — 씨앗 · 모종 · 농자재(퇴비 · 지주대 · 포장 용기 …)는 텃밭 창에서 쓴다 — 가방 「사용하기」는 효과 없이 하나를 없앴다
+    const farmGoods = item.subCategory === SEED_SUB || item.subCategory === FARM_SUB;
+    const usable = !farmGoods && (item.category === 'consumable'
       || item.skillReset === true
-      || (item.category === 'food' && !rawFishSubCats.includes(item.subCategory) && (raw === null || raw.kind === 'eat'));
+      || (item.category === 'food' && !rawFishSubCats.includes(item.subCategory) && (raw === null || raw.kind === 'eat')));
     if (usable) {
       actions.push({
         label: '사용하기',
@@ -760,6 +762,19 @@ export class InventoryPanel extends DraggablePanel {
               return;
             }
             playEatSfx();
+            // 243차 — 작은 낱개(딸기 · 방울토마토 · 블루베리)는 한 번에 여러 개(가진 만큼까지) — 허기 · 수분은 그만큼의 영양으로
+            const eatDef = raw?.kind === 'eat' ? raw.def : undefined;
+            const bite = eatDef?.bite;
+            if (eatDef && bite && bite.units > 1) {
+              const n = Math.min(item.qty, bite.units);
+              const r = restoreFromNutrition(biteNutrition(eatDef, n));
+              InventoryStore.removeQty(item.id, n);
+              const label = n === bite.units ? bite.labelKo : looseCountKo(item.id, n);
+              this.setStatus(this.applyIntakeOf({ ...item, name: label, hungerRestore: r.hungerRestore, hydrationRestore: r.hydrationRestore }));
+              this.renderGrid();
+              this.scene.events.emit('inventory-changed');
+              return;
+            }
             // 미완성 접시를 먹으면 담긴 회만 먹는 것이다 — 식기(접시)는 돌려준다.
             // (칸이 없으면 접시가 사라지므로 먹기 자체를 막고 안내한다 — 135차)
             const wipPlate = item.plateWip?.plate;
@@ -779,9 +794,18 @@ export class InventoryPanel extends DraggablePanel {
         },
       });
     }
+    // 243차 — 포장하기: 낱개로 거둔 딸기 · 방울토마토 · 블루베리 · 버섯 · 새싹채소 → 팩(포장 용기 1개)
+    const pk = item.subCategory === PRODUCE_SUB ? packOfLoose(item.id) : null;
+    if (pk) {
+      actions.push({
+        label: '포장하기',
+        color: '#4af2a1', hoverColor: '#8dffce',
+        run: () => this.askPack(item),
+      });
+    }
     // 224차 — 포장 뜯기(빵가루 반죽 200g → 경단 10개 등)
     if (item.unpack) {
-      const split = item.subCategory === PRODUCE_SUB;   // 241차 — 수박 한 통 · 무 한 개처럼 큰 수확물은 「나누기」
+      const split = item.subCategory === PRODUCE_SUB && !isProducePack(item.id);   // 241차 — 수박 한 통 · 무 한 개처럼 큰 수확물은 「나누기」 · 243차 팩은 「포장 뜯기」
       actions.push({
         label: split ? '나누기' : '포장 뜯기',
         color: '#4af2a1', hoverColor: '#8dffce',
@@ -1207,6 +1231,35 @@ export class InventoryPanel extends DraggablePanel {
       () => dlg.destroy(),
       once ? { yes: '버리기', no: '취소', danger: true } : undefined,
     );
+    this.scene.add.existing(dlg);
+  }
+
+  /**
+   * 243차 — 포장하기: 낱개 `units`개 + 포장 용기 1개 → 팩 1개. 두 팩 이상 담을 수 있으면 몇 팩을 담을지 묻는다.
+   * 용기가 없거나 낱개가 모자라면 까닭만 알린다(메뉴는 늘 보인다 — 「팩으로 담을 수 있다」는 것을 보여 주려고).
+   */
+  private askPack(item: InvItem): void {
+    const p = packOfLoose(item.id);
+    if (!p) return;
+    const trays = InventoryStore.find(FARM_PACK_CONTAINER)?.qty ?? 0;
+    const max = Math.floor(Math.min(item.qty / p.pack.units, trays));
+    const perPack = looseCountKo(item.id, p.pack.units);
+    if (trays < 1) { this.setStatus(`포장 용기가 없습니다 — 생활용품점에서 팝니다 (한 팩에 ${perPack} + 용기 1개)`); return; }
+    if (max < 1) { this.setStatus(`한 팩을 채우려면 ${perPack} 필요 (지금 ${looseCountKo(item.id, item.qty)})`); return; }
+    const done = (n: number): void => {
+      const r = InventoryStore.packProduce(item.id, n);
+      this.setStatus(r.ok ? `포장했습니다 — ${r.name} ${r.qty}개 (${looseCountKo(item.id, r.used ?? 0)} · 용기 ${r.qty}개)` : (r.reason ?? '포장할 수 없습니다'));
+      if (r.ok) { this.renderGrid(); this.scene.events.emit('inventory-changed'); }
+    };
+    if (max === 1) { done(1); return; }
+    const dlg = new QuantityDialog(this.scene, {
+      itemName: p.pack.nameKo, unitPrice: 0, maxQty: max, initialQty: max,
+      actionLabel: '포장', confirmLabel: '포장하기',
+      subText: `한 팩 = ${perPack} + 용기 1개 · 최대 ${max}팩`,
+      totalFor: (q) => `${looseCountKo(item.id, q * p.pack.units)} · 용기 ${q}개를 씁니다`,
+      onConfirm: (q) => { dlg.destroy(); done(q); },
+      onCancel: () => dlg.destroy(),
+    });
     this.scene.add.existing(dlg);
   }
 

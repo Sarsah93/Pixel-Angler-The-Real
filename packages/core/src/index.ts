@@ -827,26 +827,29 @@ export { npcWhereabouts, routinePostMinutes } from './simulation/NpcRoutine.js';
 export type {
   CropCategory, CropSpeedClass, CropRarity, CropGrade, CropStartKind, FarmSite, FarmFacility, CropStart, CropHarvest,
   CropInterim, CropRequirement, CropPrice, CropDef, FarmCellState, FarmPlotState, FarmEnv, FarmPlantCtx, FarmHarvestResult,
-  CropDifficulty, CropCare, CropVariant,
+  CropDifficulty, CropCare, CropVariant, CropPack,
   CropDisease, CropDiseaseState, CareTaskId, CareWorkKind, CareTaskDef, CropCarePlan,
 } from './types/Farming.js';
 export {
   CROP_DATABASE, CROP_DIFFICULTY, getCrop, cropStartOfItem, cropOfProduce, isFarmProduce,
   PRODUCE_GRADE_SUFFIX, produceItemId, parseProduceId,
   FARM_SUPPLIES, getFarmSupply, supplyOfFacility,
+  // 243차 — 포장(낱개 → 팩)
+  FARM_PACK_CONTAINER, isProducePack, packOfLoose, looseOfPack, legacyPackItemId,
 } from './db-schema/CropDatabase.js';
 export type { FarmSupplyDef } from './db-schema/CropDatabase.js';
 export { variantsOf, baseCropOf, variantUnlockKo } from './db-schema/CropDatabase.js';
 // 241차 — 날로 먹기(수확물 · 조각 · 영양)
 export {
   CROP_RAW_EAT, CROP_NO_RAW, PIECE_SUFFIX, pieceItemId, rawEatStatus, isPieceItemId, RAW_EAT_ITEM_IDS, allProduceBaseIds, rawEatLineKo,
+  biteNutrition,
 } from './db-schema/CropRawEatDatabase.js';
 export type { RawEatDef, NoRawDef, RawEatStatus } from './db-schema/CropRawEatDatabase.js';
 export {
   FARM_COLS, FARM_ROWS, FARM_CELLS, INDOOR_SLOTS, FARM_TUNING, kstMonthOf, kstDayIndex, climateRainAt, newFarmCell, newFarmPlot,
   startOf, gradeOf, GRADE_KO, GRADE_EN, cellReady, interimOpen, seasonFactor, speedMultOf, cellDays, advanceCell, advancePlot,
   tillCell, compostCell, waterCell, monthRangeKo, canPlant, plantCell, clearCell, harvestCell, interimHarvestCell, cellStage,
-  daysToNextHarvest, producePriceShock, producePrice, cropDailyValue, farmPlotCap, rentedPlotCount,
+  daysToNextHarvest, producePriceShock, producePrice, cropDailyValue, farmPlotCap, rentedPlotCount, producePriceBase, roundWon,
   CROP_TIER_KO, CROP_TIER_EN, CROP_CARE_KO, CROP_CARE_EN, cropTier, tierGate, cropGate, cropGateBlock,
 } from './simulation/FarmSim.js';
 export type { PlantCheck, HarvestSkills, FarmCellStage } from './simulation/FarmSim.js';

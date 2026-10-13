@@ -13,6 +13,7 @@
  * 저장은 `SaveData.groundItems` — 지역 id별 목록. 좌표는 **월드 타일**.
  */
 import type { InvItem, InvItemTemplate } from './InventoryStore.js';
+import { migrateLegacyPackItem } from '../data/CropItems.js';
 
 export interface GroundItem {
   uid: string;
@@ -97,7 +98,8 @@ class GroundItemStoreClass {
 
   deserialize(s: GroundItemSaveState | undefined | null): void {
     // 구세이브에는 이 필드가 없다 — 빈 목록으로 시작한다(§세이브 하위호환)
-    this._items = (s?.items ?? []).map((g) => ({ ...g }));
+    // 243차 — 242차까지 「한 팩」으로 거둔 수확물은 팩 id로(가방과 같은 이전)
+    this._items = (s?.items ?? []).map((g) => ({ ...g, tpl: migrateLegacyPackItem({ ...g.tpl }) }));
     this.seq = this._items.length;
   }
 

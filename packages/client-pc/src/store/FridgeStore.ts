@@ -9,6 +9,7 @@
  */
 
 import type { InvItem } from './InventoryStore.js';
+import { migrateLegacyPackItem } from '../data/CropItems.js';
 
 export type FridgeSection = 'freezer' | 'fridge';
 
@@ -89,8 +90,9 @@ class FridgeStoreManager {
     this.freezer = new Array(FREEZER_SLOTS).fill(null);
     this.fridge = new Array(FRIDGE_SLOTS).fill(null);
     if (!s) return;
-    (s.freezer ?? []).forEach((it, i) => { if (i < FREEZER_SLOTS) this.freezer[i] = it ? { ...it } : null; });
-    (s.fridge ?? []).forEach((it, i) => { if (i < FRIDGE_SLOTS) this.fridge[i] = it ? { ...it } : null; });
+    // 243차 — 242차까지 「한 팩」으로 거둔 수확물은 팩 id로(가방과 같은 이전)
+    (s.freezer ?? []).forEach((it, i) => { if (i < FREEZER_SLOTS) this.freezer[i] = it ? migrateLegacyPackItem({ ...it }) : null; });
+    (s.fridge ?? []).forEach((it, i) => { if (i < FRIDGE_SLOTS) this.fridge[i] = it ? migrateLegacyPackItem({ ...it }) : null; });
   }
 
   resetAll(): void {

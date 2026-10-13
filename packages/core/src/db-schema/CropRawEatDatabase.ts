@@ -16,7 +16,7 @@
 
 import type { FoodNutrition } from './FoodNutrition.js';
 import { FOOD_NUTRITION } from './FoodNutrition.js';
-import { CROP_DATABASE, parseProduceId, PRODUCE_GRADE_SUFFIX } from './CropDatabase.js';
+import { CROP_DATABASE, parseProduceId, PRODUCE_GRADE_SUFFIX, looseOfPack } from './CropDatabase.js';
 
 /** 날로 먹을 수 있는 수확물 — 영양은 단위 하나(조각이 있으면 조각 하나) */
 export interface RawEatDef extends FoodNutrition {
@@ -25,6 +25,12 @@ export interface RawEatDef extends FoodNutrition {
   noteEn: string;
   /** 큰 단위를 나눠 먹는다 — 「나누기」로 조각 `count`개(조각 이름은 단위 포함) */
   pieces?: { count: number; labelKo: string; labelEn: string };
+  /**
+   * 243차 — 작은 낱개(딸기 한 알 · 방울토마토 한 개 · 블루베리 한 알)는 **한 번에 여러 개**를 먹는다.
+   * 가방 「사용하기」 한 번이 `units`개를 먹고(가진 게 적으면 가진 만큼), 허기 · 수분은 그만큼의 영양으로 센다.
+   * 영양(`g` · `kcal` · `ml`)은 여전히 낱개 하나 기준이다.
+   */
+  bite?: { units: number; labelKo: string; labelEn: string };
 }
 
 /** 날로 못 먹는 수확물 — 이유 한 줄 */
@@ -44,7 +50,7 @@ const pc = (count: number, labelKo: string, labelEn: string): RawEatDef['pieces'
 export const CROP_RAW_EAT: Readonly<Record<string, RawEatDef>> = {
   // ── 시루 · 새싹 ──
   crop_mung_sprout: { g: 100, kcal: 15, ml: 92, noteKo: '아삭하고 살짝 풋내 — 월남쌈처럼 날로도 먹는다', noteEn: 'Crisp with a faint green taste — eaten raw in spring rolls' },
-  crop_microgreens: { g: 50, kcal: 12, ml: 46, noteKo: '알싸한 무순 맛 — 그대로 샐러드', noteEn: 'Peppery radish-shoot taste — straight into a salad' },
+  crop_microgreens: { g: 25, kcal: 6, ml: 23, noteKo: '알싸한 무순 맛 — 그대로 샐러드', noteEn: 'Peppery radish-shoot taste — straight into a salad' },   // 243차 — 한 줌 25g
   // ── 잎채소 ──
   crop_lettuce: { g: 100, kcal: 15, ml: 95, noteKo: '쌈 그대로 — 배는 안 부르고 물기만 찬다', noteEn: 'Wrap leaves as they are — hardly filling, mostly water' },
   // 242차 상추 품종 — 잎 따기형은 한 줌 100g, 포기형은 포기째(300g · 250g)
@@ -76,7 +82,7 @@ export const CROP_RAW_EAT: Readonly<Record<string, RawEatDef>> = {
   // ── 열매 ──
   crop_chili_green: { g: 10, kcal: 3, ml: 9, noteKo: '아삭하고 약간 맵다 — 된장에 찍어 먹는 그것', noteEn: 'Crisp and mildly hot — the one you dip in soybean paste' },
   crop_chili_red: { g: 10, kcal: 4, ml: 8, mlNet: -20, noteKo: '맵다 — 물을 찾게 된다', noteEn: 'Hot — you will want water' },
-  crop_cherry_tomato: { g: 250, kcal: 45, ml: 235, noteKo: '달고 신선하다 — 한 팩이 간식', noteEn: 'Sweet and fresh — a pack makes a snack' },
+  crop_cherry_tomato: { g: 12.5, kcal: 2.25, ml: 11.75, bite: { units: 8, labelKo: '방울토마토 8개', labelEn: '8 cherry tomatoes' }, noteKo: '달고 신선하다 — 한 줌이 간식', noteEn: 'Sweet and fresh — a handful makes a snack' },   // 243차 — 한 개 12.5g
   crop_cucumber: { g: 200, kcal: 30, ml: 192, noteKo: '시원하고 수분이 많다', noteEn: 'Cool and watery' },
   crop_zucchini: { g: 300, kcal: 51, ml: 282, noteKo: '맹맹하다 — 볶거나 전으로 먹는 게 보통', noteEn: 'Bland raw — usually fried or made into pancakes' },
   crop_bitter_melon: { g: 250, kcal: 42, ml: 235, noteKo: '몹시 쓰다 — 속을 긁는다', noteEn: 'Very bitter — rough on the stomach' },
@@ -111,9 +117,9 @@ export const CROP_RAW_EAT: Readonly<Record<string, RawEatDef>> = {
   // ── 241차 새 작물 · 개량종 ──
   crop_korean_melon: { g: 400, kcal: 84, ml: 365, noteKo: '달고 아삭하다 — 껍질째 먹어도 된다', noteEn: 'Sweet and crunchy — the skin is edible too' },
   crop_watermelon: { g: 800, kcal: 240, ml: 730, noteKo: '한 쪽이면 갈증이 가신다', noteEn: 'One slice and the thirst is gone', pieces: pc(8, '수박 한 쪽 (800g)', 'Watermelon, a slice (800g)') },
-  crop_blueberry: { g: 100, kcal: 57, ml: 84, noteKo: '새콤달콤 — 한 팩이 간식', noteEn: 'Sweet-tart — a pack makes a snack' },
+  crop_blueberry: { g: 2, kcal: 1.14, ml: 1.68, bite: { units: 25, labelKo: '블루베리 한 줌 (25알)', labelEn: 'a handful of blueberries (25)' }, noteKo: '새콤달콤 — 한 줌씩 털어 넣는다', noteEn: 'Sweet-tart — tossed in by the handful' },   // 243차 — 한 알 2g
   crop_tomato: { g: 200, kcal: 36, ml: 188, noteKo: '소금 조금 뿌려 그대로', noteEn: 'A pinch of salt and eat as is', pieces: pc(5, '토마토 1개 (200g)', 'Tomato (one, 200g)') },
-  crop_strawberry: { g: 500, kcal: 160, ml: 455, noteKo: '달고 물기가 많다 — 한 팩을 앉은 자리에서', noteEn: 'Sweet and juicy — a pack goes in one sitting' },
+  crop_strawberry: { g: 20, kcal: 6.4, ml: 18.2, bite: { units: 5, labelKo: '딸기 5개', labelEn: '5 strawberries' }, noteKo: '달고 물기가 많다 — 다섯 알씩 집어 먹는다', noteEn: 'Sweet and juicy — five at a time' },   // 243차 — 한 알 20g
   crop_stevia_tomato: { g: 200, kcal: 40, ml: 186, noteKo: '설탕을 뿌린 듯 달다', noteEn: 'Sweet as if sugared', pieces: pc(5, '스테비아 토마토 1개 (200g)', 'Stevia tomato (one, 200g)') },
   crop_pumpkin_sweet_potato: { g: 200, kcal: 240, ml: 145, noteKo: '속이 노랗고 촉촉하다 — 생으로도 달다', noteEn: 'Yellow, moist flesh — sweet even raw', pieces: pc(5, '호박고구마 1개 (200g)', 'Pumpkin sweet potato (one, 200g)') },
   crop_cheongyang: { g: 10, kcal: 3, ml: 8, mlNet: -40, noteKo: '몹시 맵다 — 물을 찾게 된다', noteEn: 'Very hot — you will reach for water' },
@@ -147,15 +153,24 @@ export const CROP_NO_RAW: Readonly<Record<string, NoRawDef>> = {
   crop_turmeric: { whyKo: '향신료다 — 쓰고 흙내가 난다', whyEn: 'A spice — bitter and earthy raw' },
 };
 
-/** 날로 먹기 판정 — 먹을 수 있다 · 나눠야 한다 · 못 먹는다 · 수확물이 아니다(null) */
+/** 날로 먹기 판정 — 먹을 수 있다 · 나눠야 한다 · 못 먹는다 · 243차 포장한 팩(뜯어야 한다) · 수확물이 아니다(null) */
 export type RawEatStatus =
   | { kind: 'eat'; def: RawEatDef; baseId: string }
   | { kind: 'split'; def: RawEatDef; baseId: string }
-  | { kind: 'no'; why: NoRawDef; baseId: string };
+  | { kind: 'no'; why: NoRawDef; baseId: string }
+  | { kind: 'pack'; baseId: string; looseBaseId: string; units: number; edible: boolean };
 
 /** 가방 아이템 id(등급 꼬리 · 조각 꼬리 포함) → 날로 먹기 상태 */
 export function rawEatStatus(itemId: string): RawEatStatus | null {
   const isPiece = itemId.endsWith(PIECE_SUFFIX);
+  // 243차 — 포장한 팩은 뜯어야 먹는다(뜯으면 낱개 — 날로 먹을 수 있는지는 낱개 쪽 판정)
+  if (!isPiece) {
+    const lp = looseOfPack(itemId);
+    if (lp) {
+      const looseBaseId = lp.crop.harvest.itemId;
+      return { kind: 'pack', baseId: parseProduceId(itemId).baseId, looseBaseId, units: lp.units, edible: !!CROP_RAW_EAT[looseBaseId] };
+    }
+  }
   const baseId = isPiece ? itemId.slice(0, -PIECE_SUFFIX.length) : parseProduceId(itemId).baseId;
   const def = CROP_RAW_EAT[baseId];
   if (def) {
@@ -204,10 +219,24 @@ export function allProduceBaseIds(): string[] {
   return [...new Set(ids)];
 }
 
-/** 상세 보기 「날로 먹기」 줄 — 「허기 +11 · 수분 +7 — 아삭하다」 (조각이면 조각 하나 기준) */
+/** 243차 — 한 번 먹는 양의 영양(작은 낱개는 `bite.units`개 · 나머지는 단위 하나) */
+export function biteNutrition(def: RawEatDef, units = def.bite?.units ?? 1): FoodNutrition {
+  const n = Math.max(1, units);
+  return {
+    g: def.g * n, kcal: def.kcal * n, ml: def.ml * n,
+    ...(def.mlNet !== undefined ? { mlNet: def.mlNet * n } : {}),
+  };
+}
+
+/**
+ * 상세 보기 「날로 먹기」 줄 — 「허기 +11 · 수분 +7 — 아삭하다」 (조각이면 조각 하나 기준).
+ * 243차 — 작은 낱개는 한 번에 먹는 양 기준: 「딸기 5개에 허기 +1 · 수분 +5 — …」.
+ */
 export function rawEatLineKo(def: RawEatDef): string {
-  const hunger = Math.round((def.kcal / 2400) * 100);
-  const water = Math.round(((def.mlNet ?? def.ml) / 2000) * 100);
+  const n = biteNutrition(def);
+  const hunger = Math.round((n.kcal / 2400) * 100);
+  const water = Math.round(((n.mlNet ?? n.ml) / 2000) * 100);
   const w = water < 0 ? `수분 −${Math.abs(water)}` : `수분 +${water}`;
-  return `허기 +${hunger} · ${w} — ${def.noteKo}`;
+  const lead = def.bite ? `${def.bite.labelKo}에 ` : '';
+  return `${lead}허기 +${hunger} · ${w} — ${def.noteKo}`;
 }

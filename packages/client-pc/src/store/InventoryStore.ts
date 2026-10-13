@@ -28,7 +28,7 @@ import {
 import { planRigLoss, TUNING as TUNING_RL, type RigLossCause, type RigLossPlan } from '@tra/core';
 import { rodSpecFor, reelSpecFor, type RodItemSpec, type ReelItemSpec } from '@tra/core';
 import type { DishData, DishInstance } from '@tra/core';
-import { getFireRecipe, dishStarsAt, dishValueKrw, dishInstanceValueKrw, producePrice } from '@tra/core';
+import { getFireRecipe, dishStarsAt, dishValueKrw, dishInstanceValueKrw, producePrice, packOfLoose, FARM_PACK_CONTAINER } from '@tra/core';
 import type { SashimiSizeTier } from '@tra/core';
 import type { ForageTool, StatusCure, CatchMethod, LineForm } from '@tra/core';
 import { ExternalDataStore } from './ExternalDataStore.js';
@@ -37,7 +37,7 @@ import { isGod } from '../dev/DevMode.js';
 import { resolveFishTexture } from '../data/FishTextures.js';
 import { applyItemVitals, refreshNutritionVitals } from '../data/ItemVitals.js';
 import { applyCookItemFields, COOK_CORNER } from '../data/CookItems.js';
-import { PRODUCE_SUB, cropItemTemplate } from '../data/CropItems.js';
+import { PRODUCE_SUB, cropItemTemplate, migrateLegacyPackItem } from '../data/CropItems.js';
 import { StoryStore } from './StoryStore.js';
 import { migrateCatchItemId, migrateSpeciesId } from '../data/SpeciesMigration.js';
 import { SHOP_CATALOG, CARD_RIG_ENTRIES } from '../data/ShopCatalog.js';
@@ -1317,9 +1317,12 @@ class InventoryStoreManager {
     this._items = s.items.map((i0) => {
       const newId = migrateCatchItemId(i0.id);
       if (newId !== i0.id) idRemap.set(i0.id, newId);
-      const i = (newId !== i0.id || i0.speciesId !== migrateSpeciesId(i0.speciesId))
+      const i1 = (newId !== i0.id || i0.speciesId !== migrateSpeciesId(i0.speciesId))
         ? { ...i0, id: newId, speciesId: migrateSpeciesId(i0.speciesId) }
         : i0;
+      // 243차 — 242차까지 「한 팩」 단위로 거둔 수확물은 팩 id로(수량 · 신선도 · 칸은 그대로 · 낱개 id는 이제 한 알이다)
+      const i = migrateLegacyPackItem(i1);
+      if (i.id !== i1.id) idRemap.set(i0.id, i.id);
       const sd = seedById.get(i.id);
       // 정적 기능 게이트 필드 — 구세이브에 누락됐으면 복원.
       //  tool/equippable = 손 도구(회칼/낚싯대/뜰채) 착용 게이트 · placeKey = 설치형 배치 게이트.
@@ -1835,10 +1838,40 @@ class InventoryStoreManager {
     const n = it.unpack.qty;
     if (!this.removeQty(it.id, 1)) return { ok: false, reason: '뜯을 포장이 아니다.' };
     // 229차 — 안의 물건은 포장의 상태를 잇는다(곽크릴이 얼어 있으면 얼어 있는 크릴 · 해동한 블록이면 해동 크릴). 해동 시계는 뜯은 때부터
+    //  243차 — 수확물 팩 · 큰 수확물 조각은 신선도 시계를 그대로 잇는다(뜯었다고 새것이 되지 않는다)
     const carry = tpl.condProfile === 'krill_bait' && it.condition
-      ? { condition: it.condition, conditionSinceMs: Date.now() } : {};
+      ? { condition: it.condition, conditionSinceMs: Date.now() }
+      : it.subCategory === PRODUCE_SUB && it.condition ? { condition: it.condition, conditionSinceMs: it.conditionSinceMs } : {};
     this.addItem({ ...tpl, ...carry }, n);
     return { ok: true, name: tpl.name, qty: n };
+  }
+
+  /**
+   * 243차 — 포장하기(사용자 결정 「한 팩 단위는 패키징을 별도로 — 수확할 때는 1개씩 따니까」).
+   * 같은 등급 낱개 `units`개 + 포장 용기 1개 → 팩 1개를 `packs`번(낱개 · 용기가 모자라면 되는 만큼). 팩은 낱개의 신선도 시계를 잇는다.
+   * 상한 낱개는 담지 않는다. 하루 기록(쓴 것 · 얻은 것)에는 남기지 않는다 — 모양만 바뀐 같은 물건이다.
+   */
+  packProduce(itemId: string, packs: number): { ok: boolean; name?: string; qty?: number; used?: number; reason?: string } {
+    const it = this.find(itemId);
+    const p = it ? packOfLoose(it.id) : null;
+    if (!it || !p) return { ok: false, reason: '포장할 수 있는 수확물이 아니다.' };
+    refreshCondition(it);
+    if (it.condition === 'spoiled') return { ok: false, reason: '상한 것은 담지 않는다.' };
+    const tray = this.find(FARM_PACK_CONTAINER);
+    if (!tray || tray.qty < 1) return { ok: false, reason: '포장 용기가 없다 — 생활용품점에서 판다.' };
+    const n = Math.floor(Math.min(packs, it.qty / p.pack.units, tray.qty));
+    if (n < 1) return { ok: false, reason: `${p.pack.units}개가 있어야 한 팩이다.` };
+    const tpl = cropItemTemplate(p.packItemId);
+    if (!tpl) return { ok: false, reason: '포장할 수 있는 수확물이 아니다.' };
+    const used = n * p.pack.units;
+    const freesSlot = it.qty === used && it.category === tpl.category;
+    if (!this.find(tpl.id) && !freesSlot && this.freeSlotCount(tpl.category) < 1) return { ok: false, reason: '가방에 자리가 없다.' };
+    const carry = it.condition ? { condition: it.condition, conditionSinceMs: it.conditionSinceMs } : {};
+    const take = (x: InvItem, q: number): void => { x.qty -= q; if (x.qty <= 0) this.deleteInstance(x.id); };
+    take(it, used);
+    take(tray, n);
+    this.addItem({ ...tpl, ...carry }, n, { silent: true });
+    return { ok: true, name: tpl.name, qty: n, used };
   }
 
   /**

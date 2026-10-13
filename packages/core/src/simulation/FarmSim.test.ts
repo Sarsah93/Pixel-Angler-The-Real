@@ -301,13 +301,13 @@ describe('236차 — 버섯 덤 · 단전', () => {
   /** 정해 둔 순서대로 내놓는 난수 */
   const seq = (...v: number[]): (() => number) => { let i = 0; return () => v[Math.min(i++, v.length - 1)]; };
 
-  it('느타리는 거둘 때 0~30% 덤을 굴린다 — 30%가 나오면 그 확률로 한 팩 더', () => {
+  it('느타리는 거둘 때 0~30% 덤을 굴린다 — 30%가 나오면 그 확률로 한 송이 더', () => {
     const t0 = kst(2026, 10, 1);
     const plot = planted('oyster_mushroom', 'set', t0, 'indoor');
     plot.cells[0].growth = 1;
-    // 수량 0.5 → 1팩 · 덤 단계 0.99 → 3단계(30%) · 나머지 0.1 < 0.3 → 한 팩 더
+    // 243차 — 송이 단위: 수량 → 2송이 · 덤 단계 0.99 → 3단계(30% = 0.6송이) · 나머지 0.1 < 0.6 → 한 송이 더
     const r = harvestCell(plot.cells[0], seq(0.5, 0.99, 0.1))!;
-    expect(r.qty).toBe(2);
+    expect(r.qty).toBe(3);
     expect(r.bonusQty).toBe(1);
     expect(r.bonusPct).toBe(30);
   });
@@ -317,14 +317,14 @@ describe('236차 — 버섯 덤 · 단전', () => {
     const plot = planted('oyster_mushroom', 'set', t0, 'indoor');
     plot.cells[0].growth = 1;
     const r = harvestCell(plot.cells[0], seq(0.5, 0.1, 0.0))!;
-    expect(r.qty).toBe(1);
+    expect(r.qty).toBe(2);   // 243차 — 두 송이(한 팩 분)
     expect(r.bonusQty).toBeUndefined();
     const sp = planted('spinach', 'seed', kst(2026, 4, 1));
     sp.cells[0].growth = 1;
     expect(harvestCell(sp.cells[0], seq(0.5, 0.0, 0.0))!.bonusQty).toBeUndefined();
   });
 
-  it('느타리 배지 한 개의 기대 수확은 약 2.3팩(460g) — 덤 평균 +15%', () => {
+  it('느타리 배지 한 개의 기대 수확은 약 4.6송이(460g · 2.3팩) — 덤 평균 +15%', () => {
     let total = 0; const N = 4000;
     for (let k = 0; k < N; k++) {
       const plot = planted('oyster_mushroom', 'set', kst(2026, 10, 1), 'indoor');
@@ -336,8 +336,8 @@ describe('236차 — 버섯 덤 · 단전', () => {
       }
     }
     const mean = total / N;
-    expect(mean).toBeGreaterThan(2.15);
-    expect(mean).toBeLessThan(2.45);
+    expect(mean).toBeGreaterThan(4.3);   // 243차 — 송이 단위(한 팩 = 두 송이)
+    expect(mean).toBeLessThan(4.9);
   });
 
   it('실내 잎채소는 수경 재배기 불빛으로만 자란다 — 단전이면 멈추고 시들지 않는다', () => {

@@ -415,6 +415,42 @@ const TPL_POT: string[] = [
   '.....111111.....',
   '................',
 ];
+const TPL_PACK: string[] = [
+  '................',
+  '................',
+  '.aaaaaaaaaaaaaa.',
+  '.ab56bb56bb56ba.',
+  '.a676667666766a.',
+  '.a666466646664a.',
+  '.ab44bb44bb44ba.',
+  '.abbb56bb56bbba.',
+  '.abb67666766bba.',
+  '.abb66646664bba.',
+  '.abbb44bb44bbba.',
+  '.abbbbbbbbbbbba.',
+  '.acccccccccccca.',
+  '.aaaaaaaaaaaaaa.',
+  '................',
+  '................',
+];
+const TPL_PACKTRAY: string[] = [
+  '................',
+  '................',
+  '...aaaaaaaaaa...',
+  '...abbbbbbbba...',
+  '...abbbbbbbba...',
+  '...acccccccca...',
+  '.aaaaaaaaaaaaaa.',
+  '.abbbbbbbbbbbba.',
+  '.abbbbbbbbbbbba.',
+  '.abbbbbbbbbbbba.',
+  '.abbbbbbbbbbbba.',
+  '.abbbbbbbbbbbba.',
+  '.acccccccccccca.',
+  '.aaaaaaaaaaaaaa.',
+  '................',
+  '................',
+];
 
 export const PIXEL_ICON_ART: Record<string, PixelIconArt> = {
   hunger: {
@@ -4341,6 +4377,41 @@ export const PIXEL_ICON_ART: Record<string, PixelIconArt> = {
       '...1111...',
       '..........',
     ],
+  },
+  crop_strawberry_pack: {
+    w: 16, h: 16,
+    pal: { '5': 0x3f8a34, '4': 0xa81a30, '6': 0xe8243a, '7': 0xff8aa0, 'a': 0x5a6b78, 'b': 0xd8e4ec, 'c': 0x9aaab6 },
+    rows: TPL_PACK,
+  },
+  crop_cherry_tomato_pack: {
+    w: 16, h: 16,
+    pal: { '5': 0x3f8a34, '4': 0xa82a1a, '6': 0xe0402a, '7': 0xff9a80, 'a': 0x5a6b78, 'b': 0xd8e4ec, 'c': 0x9aaab6 },
+    rows: TPL_PACK,
+  },
+  crop_blueberry_pack: {
+    w: 16, h: 16,
+    pal: { '5': 0x2a2a4a, '4': 0x2a3470, '6': 0x4a58b8, '7': 0xb0b8ee, 'a': 0x5a6b78, 'b': 0xd8e4ec, 'c': 0x9aaab6 },
+    rows: TPL_PACK,
+  },
+  crop_microgreens_pack: {
+    w: 16, h: 16,
+    pal: { '5': 0xe8f4d8, '4': 0x3a8a30, '6': 0x5ab040, '7': 0xa8e070, 'a': 0x5a6b78, 'b': 0xd8e4ec, 'c': 0x9aaab6 },
+    rows: TPL_PACK,
+  },
+  crop_oyster_mushroom_pack: {
+    w: 16, h: 16,
+    pal: { '5': 0xd8d0c0, '4': 0x7a7060, '6': 0xa8a090, '7': 0xe8e4d8, 'a': 0x5a6b78, 'b': 0xd8e4ec, 'c': 0x9aaab6 },
+    rows: TPL_PACK,
+  },
+  crop_wood_ear_pack: {
+    w: 16, h: 16,
+    pal: { '5': 0x6a4a38, '4': 0x2a1a14, '6': 0x4a3024, '7': 0x8a6a58, 'a': 0x5a6b78, 'b': 0xd8e4ec, 'c': 0x9aaab6 },
+    rows: TPL_PACK,
+  },
+  it_pack_tray: {
+    w: 16, h: 16,
+    pal: { 'a': 0x5a6b78, 'b': 0xd8e4ec, 'c': 0x9aaab6 },
+    rows: TPL_PACKTRAY,
   },
 };
 

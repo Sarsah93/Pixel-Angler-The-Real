@@ -15,7 +15,7 @@
 
 import {
   CROP_DATABASE, FARM_SUPPLIES, FARM_TUNING, GRADE_KO, cropOfProduce, parseProduceId, produceItemId, cropGate, getCrop,
-  CROP_RAW_EAT, pieceItemId,
+  CROP_RAW_EAT, pieceItemId, producePriceBase, roundWon, looseOfPack, legacyPackItemId,
   type CropDef, type CropGrade, type CropRarity, type CropStart,
 } from '@tra/core';
 import type { InvItemTemplate } from '../store/InventoryStore.js';
@@ -87,16 +87,34 @@ export function produceBaseName(baseId: string): string {
   const crop = cropOfProduce(baseId);
   if (!crop) return baseId;
   if (baseId === crop.harvest.itemId) return crop.harvest.nameKo;
+  if (baseId === crop.harvest.pack?.itemId) return crop.harvest.pack.nameKo;   // 243차 — 포장한 팩
   if (baseId === crop.harvest.ripenTo?.itemId) return crop.harvest.ripenTo.nameKo;
   return crop.interim?.labelKo ?? crop.nameKo;
 }
 
-/** 등급 1의 기준 값(원) — 달 지수 · 출렁임 없이(카탈로그용). 실제 판매가는 `producePrice` */
+/** 243차 — 낱개 단위 말(이름의 「(1개)」 · 「(1알)」 · 「(1송이 …)」 · 「한 줌」에서 읽는다) */
+function looseCounter(name: string): string {
+  const m = /\((\d+)\s*(개|알|송이)/.exec(name);
+  return m ? m[2] : /한 줌/.test(name) ? '줌' : '개';
+}
+/** 243차 — 낱개 이름에서 단위를 뗀 것(「딸기 (1개)」 → 딸기 · 「새싹채소 한 줌 (25g)」 → 새싹채소) */
+export function looseShortName(name: string): string {
+  return name.replace(/\s*\(.*\)\s*$/, '').replace(/\s*한 (줌|팩|단|묶음)$/, '').trim();
+}
+/** 243차 — 낱개 n개를 사람 말로(「딸기 25개」 · 「블루베리 50알」 · 「느타리 2송이」 · 「새싹채소 2줌」) */
+export function looseCountKo(baseId: string, n: number): string {
+  const name = produceBaseName(parseProduceId(baseId).baseId);
+  return `${looseShortName(name)} ${n}${looseCounter(name)}`;
+}
+/** 243차 — 영어 사전용: 포장 단위가 있는 낱개의 짧은 이름 쌍(「딸기」 ↔ 「Strawberry」) */
+export function looseShortNamePairs(): [string, string][] {
+  return CROP_DATABASE.filter((c) => c.harvest.pack).map((c) => [looseShortName(c.harvest.nameKo),
+    c.harvest.nameEn.replace(/\s*\(.*\)\s*$/, '').replace(/,\s*a (handful|pack)$/, '').trim()]);
+}
+
+/** 등급 1의 기준 값(원) — 달 지수 · 출렁임 없이(카탈로그용). 실제 판매가는 `producePrice` · 243차 팩 · 낱개 8할은 core 식 그대로 */
 function produceBaseValue(crop: CropDef, baseId: string, grade: CropGrade): number {
-  const unit = baseId === crop.harvest.itemId ? crop.price.base
-    : baseId === crop.harvest.ripenTo?.itemId ? crop.harvest.ripenTo.price
-      : crop.interim?.price ?? crop.price.base;
-  return Math.max(10, Math.round((unit * FARM_TUNING.gradePrice[grade] * (crop.rebalance ?? 1)) / 10) * 10);
+  return roundWon(producePriceBase(crop, baseId) * FARM_TUNING.gradePrice[grade] * (crop.rebalance ?? 1));
 }
 
 function produceCookIngredient(crop: CropDef, baseId: string): string | undefined {
@@ -122,7 +140,27 @@ export function produceTemplate(itemId: string): InvItemTemplate | null {
     ...(CHUM_GRAIN.has(base) ? { chumKind: 'grain' as const } : {}),
     // 241차 — 한 번에 먹기엔 큰 단위는 「나누기」(224차 포장 뜯기와 같은 unpack)로 조각을 낸다
     ...(CROP_RAW_EAT[base]?.pieces ? { unpack: { id: pieceItemId(base), qty: CROP_RAW_EAT[base].pieces.count } } : {}),
+    // 243차 — 포장한 팩은 「포장 뜯기」로 같은 등급 낱개가 된다(용기는 버린다)
+    ...packUnpackOf(produceItemId(base, g)),
   };
+}
+
+/** 243차 — 팩 → 뜯으면 나오는 낱개(같은 등급) */
+function packUnpackOf(itemId: string): Pick<InvItemTemplate, 'unpack'> {
+  const lp = looseOfPack(itemId);
+  return lp ? { unpack: { id: lp.looseItemId, qty: lp.units } } : {};
+}
+
+/**
+ * 243차 — 구세이브 이전: 242차까지 「한 팩」 단위로 거둔 수확물(`crop_strawberry` 「딸기 한 팩 (500g) · 상」)을 팩 id로 옮긴다.
+ * 수량 · 신선도 · 칸은 그대로 두고 id · 그림 · 기준값 · 뜯기만 팩 것으로 바꾼다. 해당이 없으면 그대로 돌려준다.
+ */
+export function migrateLegacyPackItem<T extends { id: string; name?: string; iconTexture?: string; basePrice?: number; unpack?: { id: string; qty: number } }>(i: T): T {
+  const packId = legacyPackItemId(i.id, i.name);
+  if (!packId) return i;
+  const tpl = produceTemplate(packId);
+  if (!tpl) return i;
+  return { ...i, id: packId, iconTexture: tpl.iconTexture, basePrice: tpl.basePrice, unpack: tpl.unpack };
 }
 
 /** 241차 — 조각 템플릿(수확물 기본 id → `<id>_pc`): 같은 아이콘 · 값은 단위 값 ÷ 조각 수 · 등급 없음 */
@@ -138,9 +176,10 @@ export function pieceTemplate(baseId: string): InvItemTemplate | null {
   };
 }
 
-/** 한 작물의 수확물 기본 id들(본 · 붉어진 것 · 중간) */
+/** 한 작물의 수확물 기본 id들(본 · 붉어진 것 · 중간 · 243차 팩) */
 function produceBaseIds(crop: CropDef): string[] {
-  return [crop.harvest.itemId, ...(crop.harvest.ripenTo ? [crop.harvest.ripenTo.itemId] : []), ...(crop.interim ? [crop.interim.itemId] : [])];
+  return [crop.harvest.itemId, ...(crop.harvest.ripenTo ? [crop.harvest.ripenTo.itemId] : []), ...(crop.interim ? [crop.interim.itemId] : []),
+    ...(crop.harvest.pack ? [crop.harvest.pack.itemId] : [])];
 }
 
 // ─────────────────────────────────────────────
@@ -270,7 +309,7 @@ export function dailyFarmEntries(): CropShopEntry[] {
     if (s.shop === 'nursery') continue;   // 238차 — 종묘사 자재
     const furn = INDOOR_FURN[s.itemId];
     out.push({
-      ...supplyTemplate(s), price: s.price, maxPerPurchase: s.kind === 'consumable' ? 12 : 1,
+      ...supplyTemplate(s), price: s.price, maxPerPurchase: s.buyMax ?? (s.kind === 'consumable' ? 12 : 1),
       desc: furn ? `${s.descKo}\n집으로 배달되어 「넣어 둔 가구」 칸에 들어간다.` : s.descKo,
       ...(furn ? { furnKind: furn, category: 'etc' as const, subCategory: '가구' } : {}),
       ...(s.requiresSkill ? { requiresSkill: s.requiresSkill } : {}),
@@ -299,7 +338,7 @@ export function nurseryFarmEntries(): CropShopEntry[] {
   }
   for (const s of FARM_SUPPLIES) {
     if (s.shop !== 'nursery') continue;
-    out.push({ ...supplyTemplate(s), price: s.price, maxPerPurchase: s.kind === 'consumable' ? 24 : 1, desc: s.descKo });
+    out.push({ ...supplyTemplate(s), price: s.price, maxPerPurchase: s.buyMax ?? (s.kind === 'consumable' ? 24 : 1), desc: s.descKo });
   }
   return out;
 }

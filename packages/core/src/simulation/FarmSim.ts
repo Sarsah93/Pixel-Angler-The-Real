@@ -63,6 +63,11 @@ export const FARM_TUNING = {
   perennialRegrow: 0.5,
   /** 등급별 값 */
   gradePrice: { special: 1.3, good: 1.0, normal: 0.72 } as Record<CropGrade, number>,
+  /**
+   * 243차 — 포장 단위가 있는 수확물(딸기 · 방울토마토 · 블루베리 · 버섯 · 새싹채소)을 **낱개로** 팔 때 받는 몫.
+   * 가게가 다시 담아야 해서 8할만 쳐준다 — 「포장하기」로 팩을 만들면 제값(낱개 기준가 × 팩 낱개 수).
+   */
+  looseSellMult: 0.8,
   /** 실내 시루 · 배지 흙(물) 마름 — 시간당 */
   indoorEvap: 0.015,
   /**
@@ -612,15 +617,31 @@ export function producePrice(itemId: string, nowMs: number, grade?: CropGrade): 
   const crop = cropOfProduce(itemId);
   if (!crop) return null;
   const parsed = parseProduceId(itemId);
-  const id = crop.harvest.itemId === itemId || crop.harvest.ripenTo?.itemId === itemId || crop.interim?.itemId === itemId
+  const pack = crop.harvest.pack;
+  const id = crop.harvest.itemId === itemId || crop.harvest.ripenTo?.itemId === itemId || crop.interim?.itemId === itemId || pack?.itemId === itemId
     ? itemId : parsed.baseId;
   grade = grade ?? (id === itemId ? 'good' : parsed.grade);
-  const base = id === crop.harvest.itemId ? crop.price.base
-    : id === crop.harvest.ripenTo?.itemId ? crop.harvest.ripenTo.price
-      : crop.interim?.price ?? crop.price.base;
+  const base = producePriceBase(crop, id);
   const season = crop.price.season[kstMonthOf(nowMs) - 1] ?? 1;
   const shock = produceMarketRatio(crop.id) ?? producePriceShock(crop.id, nowMs, crop.price.volatility);
-  return Math.max(10, Math.round((base * season * shock * FARM_TUNING.gradePrice[grade] * (crop.rebalance ?? 1)) / 10) * 10);
+  return roundWon(base * season * shock * FARM_TUNING.gradePrice[grade] * (crop.rebalance ?? 1));
+}
+
+/**
+ * 243차 — 수확물 기본 id 하나의 기준가(원 · 상 등급 · 달 지수 · 출렁임 전). 본 · 붉어진 것 · 중간 · 팩 · 낱개(포장 단위가 있으면 8할).
+ * 가게 카탈로그(`CropItems.produceBaseValue`)와 오늘 값(`producePrice`)이 같은 식을 쓴다.
+ */
+export function producePriceBase(crop: CropDef, baseId: string): number {
+  const pack = crop.harvest.pack;
+  if (pack && baseId === pack.itemId) return crop.price.base * pack.units;
+  if (baseId === crop.harvest.itemId) return crop.price.base * (pack ? FARM_TUNING.looseSellMult : 1);
+  if (baseId === crop.harvest.ripenTo?.itemId) return crop.harvest.ripenTo.price;
+  return crop.interim?.price ?? crop.price.base;
+}
+
+/** 243차 — 값 반올림: 100원 이상은 10원 단위 · 그 아래(블루베리 한 알 · 방울토마토 한 개)는 1원 단위(10원 반올림이 15%까지 틀어진다) */
+export function roundWon(v: number): number {
+  return v >= 100 ? Math.round(v / 10) * 10 : Math.max(1, Math.round(v));
 }
 
 /**

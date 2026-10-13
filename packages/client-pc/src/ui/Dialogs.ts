@@ -74,6 +74,10 @@ export interface QuantityDialogConfig {
   initialQty?: number;
   /** 221차 — 확인 단추 글자(없으면 「{actionLabel} 확인」) */
   confirmLabel?: string;
+  /** 243차 — 이름 아래 줄(없으면 「개당 N 원 · 최대 M개」) — 값이 없는 수량 고르기(포장하기)용 */
+  subText?: string;
+  /** 243차 — 합계 줄(없으면 「합계: N 원」) */
+  totalFor?: (qty: number) => string;
   onConfirm: (qty: number) => void;
   onCancel: () => void;
 }
@@ -99,7 +103,7 @@ export class QuantityDialog extends DraggablePanel {
     const name = scene.add.text(w / 2, this.contentTop + 12, cfg.itemName, {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '14px', color: '#4af2a1', fontStyle: 'bold',
     }).setOrigin(0.5);
-    const sub = scene.add.text(w / 2, this.contentTop + 34, `개당 ${cfg.unitPrice.toLocaleString()} 원 · 최대 ${cfg.maxQty}개`, {
+    const sub = scene.add.text(w / 2, this.contentTop + 34, cfg.subText ?? `개당 ${cfg.unitPrice.toLocaleString()} 원 · 최대 ${cfg.maxQty}개`, {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#8faabf',
     }).setOrigin(0.5);
     this.add([name, sub]);
@@ -203,7 +207,7 @@ export class QuantityDialog extends DraggablePanel {
 
   private refresh(): void {
     this.qtyText.setText(String(this.qty));
-    this.totalText.setText(`합계: ${(this.qty * this.cfg.unitPrice).toLocaleString()} 원`);
+    this.totalText.setText(this.cfg.totalFor ? this.cfg.totalFor(this.qty) : `합계: ${(this.qty * this.cfg.unitPrice).toLocaleString()} 원`);
   }
 
   override destroy(fromScene?: boolean): void {

@@ -173,3 +173,6 @@ node tools/check_art_quality.cjs packages/client-pc/public/crops     # 5기준 �
 - 작은 사진(긴 변 < 200px)은 키워도 질감이 없다 — **한 물건당 400px 이상**을 받는다. 키우는 리샘플은 `resample`(쌍선형)이지 `areaResize`가 아니다(격자 구멍).
 - 위키 그림: 초상을 다시 구우면 `node tools/wiki_crop_img.cjs`(1/3 면적 평균 → `tools/wiki_img/px_crop_*.png` + manifest w/h) → `node tools/gen_game_wiki_data.mjs --html > …/index.html` → 아티팩트 재발행.
 - 시험용 `--out` 폴더로 돌리면 `CropPortraits.ts`는 그대로 둔다(기본 폴더일 때만 목록 재생성).
+- **그림 한 장 = 수확물 한 단위(가방 칸 하나)**(243) — 「딸기 (1개)」는 한 알, 「한 줌」은 한 줌. 포장한 팩은 별도 id(`crop_<x>_pack`)라
+  팩 초상은 `crop_<x>_pack.png`로 넣는다(목록 정규식이 잡고, 팩 아이콘 키 `px:crop_<x>_pack`이 그 초상을 찾는다). 없으면 16px 손그림(투명 용기).
+  남은 파일 이름 전부는 `docs/wiki/02-SYSTEMS/photo-pixel-art.md` §5.1.

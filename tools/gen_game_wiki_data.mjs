@@ -752,9 +752,19 @@ const baseName = (s) => (s ?? '').replace(/\s*\(.*?\)\s*/g, '').replace(/\s*·\s
 const rawEatOf = (itemId) => {
   const st = core.rawEatStatus?.(itemId); if (!st) return null;
   if (st.kind === 'no') return { kind: 'no', why: st.why.whyKo };
-  const n = core.restoreFromNutrition({ g: st.def.g, kcal: st.def.kcal, ml: st.def.ml, mlNet: st.def.mlNet });
-  return { kind: st.kind, hunger: n.hungerRestore, hydration: n.hydrationRestore, g: st.def.g, kcal: st.def.kcal, ml: st.def.mlNet ?? st.def.ml, note: st.def.noteKo,
+  if (st.kind === 'pack') return { kind: 'pack', units: st.units, edible: st.edible };   // 243차 — 포장한 팩은 뜯어야
+  // 243차 — 작은 낱개(딸기 · 방울토마토 · 블루베리)는 한 번에 먹는 양(bite) 기준
+  const nut = core.biteNutrition ? core.biteNutrition(st.def) : { g: st.def.g, kcal: st.def.kcal, ml: st.def.ml, mlNet: st.def.mlNet };
+  const n = core.restoreFromNutrition(nut);
+  return { kind: st.kind, hunger: n.hungerRestore, hydration: n.hydrationRestore, g: +nut.g.toFixed(1), kcal: +nut.kcal.toFixed(1), ml: +(nut.mlNet ?? nut.ml).toFixed(1), note: st.def.noteKo,
+    bite: st.def.bite ? { units: st.def.bite.units, label: st.def.bite.labelKo } : null,
     pieces: st.def.pieces ? { count: st.def.pieces.count, label: st.def.pieces.labelKo, id: core.pieceItemId(itemId) } : null };
+};
+/** 243차 — 낱개 n개를 사람 말로(클라이언트 `looseCountKo`와 같은 규칙) */
+const looseCountKo = (nameKo, n) => {
+  const m = /\((\d+)\s*(개|알|송이)/.exec(nameKo);
+  const counter = m ? m[2] : /한 줌/.test(nameKo) ? '줌' : '개';
+  return `${nameKo.replace(/\s*\(.*\)\s*$/, '').replace(/\s*한 (줌|팩|단|묶음)$/, '').trim()} ${n}${counter}`;
 };
 const CHUM_GRAIN = new Set(['crop_barley', 'crop_corn']);
 
@@ -804,6 +814,9 @@ const farmCrops = core.CROP_DATABASE.map((c) => {
     harvest: {
       itemId: h.itemId, name: h.nameKo, qty: h.qtyPerCell, repeat: h.repeat ? `${h.repeat.everyDays}일마다 ${h.repeat.times}번 더` : '',
       holdDays: h.holdDays, bonus: h.bonusSteps ? `거둘 때마다 덤 0~${h.bonusSteps * 10}%` : '',
+      // 243차 — 낱개로 거두고 가방에서 포장한다(팩 = 낱개 n + 포장 용기 1 · 낱개 판매는 8할)
+      pack: h.pack ? { itemId: h.pack.itemId, name: h.pack.nameKo, units: h.pack.units, perPack: looseCountKo(h.nameKo, h.pack.units),
+        price: Math.round(c.price.base * h.pack.units), loose: Math.round(core.FARM_TUNING.looseSellMult * 100) } : null,
       ripen: h.ripenTo ? { itemId: h.ripenTo.itemId, name: h.ripenTo.nameKo, after: h.ripenTo.afterDays, turning: h.ripenTo.turningDays ?? 0, price: h.ripenTo.price } : null,
       perPlant: perPlant ? `${perPlant[0]}~${perPlant[1]}개 (칸당 ${baseStart.perCell}포기)` : '',
       interim: c.interim ? { itemId: c.interim.itemId, name: c.interim.labelKo, window: `자람 ${Math.round(c.interim.window[0] * 100)}~${Math.round(c.interim.window[1] * 100)}%`, qty: c.interim.qtyPerCell, price: c.interim.price, mainMult: c.interim.mainYieldMult, seedOnly: !!c.interim.seedOnly, inMart: c.interim.inMart } : null,
@@ -849,6 +862,8 @@ for (const fc of farmCrops) {
   }
 }
 for (const sp of farmSupplies) farmByItem[sp.id] = { supply: sp.id, role: 'supply' };
+// 243차 — 포장한 팩도 작물로 잇는다
+for (const fc of farmCrops) if (fc.harvest.pack) for (const sfx of ['', '_sp', '_nm']) farmByItem[fc.harvest.pack.itemId + sfx] = { crop: fc.id, role: 'pack' };
 // 241차 — 조각(나눈 것)도 작물로 잇는다
 for (const fc of farmCrops) for (const r of fc.rawEat) if (r.pieces) farmByItem[r.pieces.id] = { crop: fc.id, role: 'piece' };
 const farming = {
@@ -856,7 +871,8 @@ const farming = {
   tiers: [1, 2, 3, 4].map((t) => ({ id: String(t), label: core.CROP_TIER_KO[t], level: core.FARM_TUNING.tierLevels[t - 1], license: t >= core.FARM_TUNING.certTier ? licenseKo(core.FARM_TUNING.certLicense) : '' })),
   crops: farmCrops, supplies: farmSupplies, byItem: farmByItem,
   rules: {
-    rawEat: '날로 먹을 수 있는 수확물은 가방에서 우클릭 [사용하기]로 먹는다 — 허기 · 수분은 실제 영양(열량 ÷ 2,400 · 수분 ÷ 2,000)에서 센다. 수박 한 통 · 무 한 개 · 배추 한 통 · 1kg 덩이 · 생땅콩 500g · 생강은 [나누기]로 조각을 낸 뒤 먹는다(조각은 등급이 없고 가게가 사지 않는다). 매운 것(청양고추 · 홍고추 · 생마늘 · 생강 · 고추냉이)은 수분을 조금 깎는다. 날로 못 먹는 것(생감자 · 토란 · 생콩 · 버섯 · 두릅 …)은 [사용하기]가 없다 — 익혀 먹는다.',
+    rawEat: '날로 먹을 수 있는 수확물은 가방에서 우클릭 [사용하기]로 먹는다(딸기 · 방울토마토 · 블루베리처럼 작은 낱개는 한 번에 여러 개) — 허기 · 수분은 실제 영양(열량 ÷ 2,400 · 수분 ÷ 2,000)에서 센다. 수박 한 통 · 무 한 개 · 배추 한 통 · 1kg 덩이 · 생땅콩 500g · 생강은 [나누기]로 조각을 낸 뒤 먹는다(조각은 등급이 없고 가게가 사지 않는다). 매운 것(청양고추 · 홍고추 · 생마늘 · 생강 · 고추냉이)은 수분을 조금 깎는다. 날로 못 먹는 것(생감자 · 토란 · 생콩 · 버섯 · 두릅 …)은 [사용하기]가 없다 — 익혀 먹는다.',
+    pack: '딸기 · 방울토마토 · 블루베리 · 느타리 · 생목이 · 새싹채소는 낱개(한 알 · 한 송이 · 한 줌)로 거둔다. 가방에서 [포장하기]로 낱개 여러 개와 포장 용기(생활용품점 100원) 1개를 팩 하나로 담는다 — 팩은 제값, 낱개로 팔면 가게가 다시 담아야 해서 8할. 팩은 [포장 뜯기]로 낱개가 된다(용기는 버린다).',
     variant: '개량종(스테비아 토마토 · 호박고구마 · 청양고추)은 원종을 텃밭에서 세 번 거두면 종묘사에 들어온다. 씨앗 · 모종 · 수확물 상세의 「원종」 · 「개량종」 줄이 알려 준다.',
     plotCells: '한 구획 = 4×3칸 · 한 칸 = 1㎡', plots: '마당 2구획 + 농지 이용권 5구획(빌린 구획 5,000원/30일)',
     grade: Object.entries(core.FARM_TUNING.gradePrice).map(([g, m]) => `${core.GRADE_KO[g]} ×${m}`).join(' · '),

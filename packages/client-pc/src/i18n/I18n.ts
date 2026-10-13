@@ -29,7 +29,7 @@ import {
   TITLE_DATABASE, TIDE_PHASE_PREF_GROUPS, TIDE_FLOW_LABEL_KO, TIDE_FLOW_LABEL_EN, TIDE_FLOW_NOTE_KO, TIDE_FLOW_NOTE_EN, QUEST_ITEMS,
   CROP_DATABASE, FARM_SUPPLIES, CROP_RAW_EAT, CROP_NO_RAW,
 } from '@tra/core';
-import { startItemName, startItemNameEn } from '../data/CropItems.js';
+import { startItemName, startItemNameEn, looseShortNamePairs } from '../data/CropItems.js';
 import { EN_PLACES } from './places.js';
 import { EN_POIS } from './en_pois.js';
 import { EN_DICT, EN_RULES } from './en.js';
@@ -107,11 +107,13 @@ function buildRuntimeDict(): void {
     put(c.harvest.nameKo, c.harvest.nameEn);
     if (c.harvest.ripenTo) put(c.harvest.ripenTo.nameKo, c.harvest.ripenTo.nameEn);
     if (c.interim) put(c.interim.labelKo, c.interim.labelEn);
+    if (c.harvest.pack) put(c.harvest.pack.nameKo, c.harvest.pack.nameEn);   // 243차 — 포장한 팩
     for (const st of c.starts) put(startItemName(c, st), startItemNameEn(c, st));
   }
+  for (const [ko, en] of looseShortNamePairs()) put(ko, en);   // 243차 — 「딸기 25개」의 앞부분
   for (const sp of FARM_SUPPLIES) { put(sp.nameKo, sp.nameEn); put(sp.descKo, sp.descEn); }
   // 241차 — 날로 먹기 메모 · 못 먹는 이유 · 조각 이름 · 개량종 다른 점
-  for (const d of Object.values(CROP_RAW_EAT)) { put(d.noteKo, d.noteEn); if (d.pieces) put(d.pieces.labelKo, d.pieces.labelEn); }
+  for (const d of Object.values(CROP_RAW_EAT)) { put(d.noteKo, d.noteEn); if (d.pieces) put(d.pieces.labelKo, d.pieces.labelEn); if (d.bite) put(d.bite.labelKo, d.bite.labelEn); }
   for (const d of Object.values(CROP_NO_RAW)) put(d.whyKo, d.whyEn);
   for (const c of CROP_DATABASE) if (c.variant) put(c.variant.diffKo, c.variant.diffEn);
   // 222차 — 잠긴 스킬의 「… 열린다」 조건절

@@ -1024,6 +1024,7 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
       ['자라는 동안', h.interim ? xl('items', h.interim.itemId, h.interim.name) + ' — ' + esc(h.interim.window) + ' · 칸당 ' + h.interim.qty[0] + '~' + h.interim.qty[1] + ' · 기준 ' + nfw(h.interim.price) + (h.interim.seedOnly ? ' · 씨앗으로 뿌린 칸만' : '') + ' <span class="dim">(본 수확 ×' + h.interim.mainMult + ')</span>' : null],
       ['둘 수 있는 날', h.holdDays + '일 — 넘기면 품질이 내려간다'],
       ['덤', h.bonus || null],
+      ['포장', h.pack ? '[포장하기] ' + esc(h.pack.perPack) + ' + 포장 용기 1개 → ' + xl('items', h.pack.itemId, h.pack.name) + ' <span class="dim">(팩 기준 ' + nfw(h.pack.price) + ' · 낱개로 팔면 ' + h.pack.loose + '%)</span>' : null],
       ['등급 값', esc(G.farming.rules.grade)],
     ];
     const cp = c.carePlan;
@@ -1050,7 +1051,7 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
     useRows.push(['사 주는 곳', esc(c.price.buyers)]);
     // 241차 — 날로 먹기 · 개량종
     const rawRows = (c.rawEat || []).map(r => [xl('items', r.id, r.name),
-      r.kind === 'eat' ? '<b>먹는다</b> — 허기 +' + r.hunger + ' · 수분 ' + (r.hydration < 0 ? '−' + Math.abs(r.hydration) : '+' + r.hydration) + ' <span class="dim">(' + r.g + 'g · ' + r.kcal + ' kcal)</span> — ' + esc(r.note)
+      r.kind === 'eat' ? '<b>먹는다</b> — ' + (r.bite ? esc(r.bite.label) + '에 ' : '') + '허기 +' + r.hunger + ' · 수분 ' + (r.hydration < 0 ? '−' + Math.abs(r.hydration) : '+' + r.hydration) + ' <span class="dim">(' + r.g + 'g · ' + r.kcal + ' kcal)</span> — ' + esc(r.note)
       : r.kind === 'split' ? '<b>나눠서</b> — [나누기] ' + r.pieces.count + '개 → ' + xl('items', r.pieces.id, r.pieces.label) + ' (조각 하나 허기 +' + r.hunger + ' · 수분 ' + (r.hydration < 0 ? '−' + Math.abs(r.hydration) : '+' + r.hydration) + ') — ' + esc(r.note)
       : r.kind === 'no' ? '<b class="warn">못 먹는다</b> — ' + esc(r.why) : '<span class="dim">—</span>']);
     const rawSec = rawRows.length ? '<div class="ssec"><h3>날로 먹을 수 있나</h3>' + kvRows(rawRows) + '<p class="note">' + esc(G.farming.rules.rawEat) + '</p></div>' : '';
@@ -1132,7 +1133,7 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
       if (c.care.length) rows.push(['까다로운 점', esc(c.care.join(' · '))]);
       if (c.variant) rows.push(['개량종', xl('farming', c.variant.of, c.variant.ofName) + '에서 — ' + esc(c.variant.unlock)]);
     } else {
-      rows.push(['거둔 뒤', ref.role === 'piece' ? '큰 수확물을 [나누기]한 조각 — 등급 없음 · 가게는 안 산다' : ref.role === 'interim' ? '자라는 동안 거두는 중간 수확물' : '본 수확물 — ' + esc(G.farming.rules.grade)]);
+      rows.push(['거둔 뒤', ref.role === 'pack' ? '낱개를 [포장하기]로 담은 팩 — 제값 · [포장 뜯기]로 다시 낱개 (' + esc(c.harvest.pack ? c.harvest.pack.perPack : '') + ')' : ref.role === 'piece' ? '큰 수확물을 [나누기]한 조각 — 등급 없음 · 가게는 안 산다' : ref.role === 'interim' ? '자라는 동안 거두는 중간 수확물' : '본 수확물 — ' + esc(G.farming.rules.grade)]);
       // 241차 — 날로 먹기(이 아이템 기준 · 조각이면 조각 하나)
       const rr = (c.rawEat || []).find(r => r.id === itemId.replace(/_(sp|nm)$/, '') || (r.pieces && r.pieces.id === itemId));
       if (rr) rows.push(['날로 먹기', rr.kind === 'no' ? '못 먹는다 — ' + esc(rr.why) : (rr.kind === 'split' && rr.pieces.id !== itemId) ? '나눠서 — [나누기] ' + rr.pieces.count + '개 → ' + xl('items', rr.pieces.id, rr.pieces.label) : '먹는다 — 허기 +' + rr.hunger + ' · 수분 ' + (rr.hydration < 0 ? '−' + Math.abs(rr.hydration) : '+' + rr.hydration) + ' — ' + esc(rr.note)]);
