@@ -118,14 +118,90 @@ export const CROP_DATABASE: CropDef[] = [
 
   // ═════ 잎채소 (시설 상한 ×2.0) ═════
   {
-    id: 'lettuce', nameKo: '상추', nameEn: 'Lettuce', category: 'leaf', speedClass: 'leafy', rarity: 'common',
+    // 242차 — 상추는 품종별로 따로 기른다(사용자 지시 「상추-적로메인 (X) · 적로메인 (O)」). id `lettuce`는 세이브 · 퀘스트(정옥선 모종) 호환으로 두고 이름만 「청치마」.
+    //   잎 따기형(청치마 · 적치마 · 꽃상추 · 청축면 · 적축면 · 생채)은 겉잎을 4일마다, 포기형(청로메인 · 적로메인 · 버터헤드)은 포기째 한 번.
+    id: 'lettuce', nameKo: '청치마', nameEn: 'Green leaf lettuce (Cheongchima)', category: 'leaf', speedClass: 'leafy', rarity: 'common',
     inMart: true, site: 'plot', growMonths: [3, 4, 5, 6, 9, 10, 11], water: 'high',
     // 포기간 25~30cm → 칸당 9포기 · 잎 따기 4일마다 포기당 25g 안팎 · 한여름은 꽃대가 올라 멈춘다
     starts: [seed('lettuce', [3, 4, 5, 8, 9], 0.62, 55, 200), seedling('lettuce', [4, 5, 9, 10], 9, 25, 300)],
-    harvest: { itemId: 'crop_lettuce', nameKo: '상추 한 줌 (100g)', nameEn: 'Lettuce, a handful (100g)', qtyPerCell: [2, 3], repeat: { everyDays: 4, times: 10 }, holdDays: 6 },
+    harvest: { itemId: 'crop_lettuce', nameKo: '청치마 한 줌 (100g)', nameEn: 'Cheongchima, a handful (100g)', qtyPerCell: [2, 3], repeat: { everyDays: 4, times: 10 }, holdDays: 6 },
     price: { base: 1200, season: P_LETTUCE, volatility: 0.3 },
-    noteKo: '겉잎부터 따면 속에서 계속 올라온다. 여름 더위에는 꽃대가 서서 잎이 쓰다.',
-    noteEn: 'Pick the outer leaves and new ones keep coming from the centre. In summer heat it bolts and the leaves turn bitter.',
+    noteKo: '흔히 「상추」라 부르는 청상추. 겉잎부터 따면 속에서 계속 올라온다. 여름 더위에는 꽃대가 서서 잎이 쓰다.',
+    noteEn: 'The everyday green "sangchu". Pick the outer leaves and new ones keep coming from the centre. In summer heat it bolts and the leaves turn bitter.',
+  },
+  {
+    id: 'jeokchima', nameKo: '적치마', nameEn: 'Red leaf lettuce (Jeokchima)', category: 'leaf', speedClass: 'leafy', rarity: 'common',
+    inMart: true, site: 'plot', growMonths: [3, 4, 5, 6, 9, 10, 11], water: 'high',
+    starts: [seed('jeokchima', [3, 4, 5, 8, 9], 0.62, 55, 200), seedling('jeokchima', [4, 5, 9, 10], 9, 25, 300)],
+    harvest: { itemId: 'crop_jeokchima', nameKo: '적치마 한 줌 (100g)', nameEn: 'Jeokchima, a handful (100g)', qtyPerCell: [2, 3], repeat: { everyDays: 4, times: 10 }, holdDays: 6 },
+    price: { base: 1300, season: P_LETTUCE, volatility: 0.3 },
+    noteKo: '잎끝이 자주색으로 물드는 적상추. 햇빛을 많이 받을수록 붉다. 쌈에 가장 많이 오르는 품종.',
+    noteEn: 'Red-tipped leaf lettuce — the more sun, the redder. The variety most often on a ssam table.',
+  },
+  {
+    id: 'kkot_lettuce', nameKo: '꽃상추', nameEn: 'Red oak-style lettuce (Kkot-sangchu)', category: 'leaf', speedClass: 'leafy', rarity: 'common',
+    inMart: true, site: 'plot', growMonths: [3, 4, 5, 6, 9, 10, 11], water: 'high',
+    starts: [seed('kkot_lettuce', [3, 4, 5, 8, 9], 0.6, 55, 220), seedling('kkot_lettuce', [4, 5, 9, 10], 9, 25, 320)],
+    harvest: { itemId: 'crop_kkot_lettuce', nameKo: '꽃상추 한 줌 (100g)', nameEn: 'Kkot-sangchu, a handful (100g)', qtyPerCell: [2, 3], repeat: { everyDays: 4, times: 10 }, holdDays: 5 },
+    price: { base: 1400, season: P_LETTUCE, volatility: 0.3 },
+    noteKo: '잎 가장자리가 꽃잎처럼 갈라지고 끝이 붉다. 잎이 얇아 더위에 약하고 하루만 지나도 시든다.',
+    noteEn: 'Leaves split like petals with red tips. Thin leaves — dislikes heat and wilts within a day.',
+  },
+  {
+    id: 'cheongchukmyeon', nameKo: '청축면', nameEn: 'Green frilly lettuce (Cheongchukmyeon)', category: 'leaf', speedClass: 'leafy', rarity: 'common',
+    inMart: true, site: 'plot', growMonths: [3, 4, 5, 6, 9, 10, 11], water: 'high',
+    starts: [seed('cheongchukmyeon', [3, 4, 5, 8, 9], 0.62, 55, 200), seedling('cheongchukmyeon', [4, 5, 9, 10], 9, 25, 300)],
+    harvest: { itemId: 'crop_cheongchukmyeon', nameKo: '청축면 한 줌 (100g)', nameEn: 'Cheongchukmyeon, a handful (100g)', qtyPerCell: [2, 3], repeat: { everyDays: 4, times: 10 }, holdDays: 6 },
+    price: { base: 1300, season: P_LETTUCE, volatility: 0.3 },
+    noteKo: '잎이 곱슬곱슬 오그라드는(축면) 청상추. 포기가 둥글게 차서 한 번에 따는 양이 많다.',
+    noteEn: 'Crinkled ("chukmyeon") green lettuce. Forms a round bush, so each picking is generous.',
+  },
+  {
+    id: 'jeokchukmyeon', nameKo: '적축면', nameEn: 'Red frilly lettuce (Jeokchukmyeon)', category: 'leaf', speedClass: 'leafy', rarity: 'common',
+    inMart: true, site: 'plot', growMonths: [3, 4, 5, 6, 9, 10, 11], water: 'high',
+    starts: [seed('jeokchukmyeon', [3, 4, 5, 8, 9], 0.6, 55, 220), seedling('jeokchukmyeon', [4, 5, 9, 10], 9, 25, 320)],
+    harvest: { itemId: 'crop_jeokchukmyeon', nameKo: '적축면 한 줌 (100g)', nameEn: 'Jeokchukmyeon, a handful (100g)', qtyPerCell: [2, 3], repeat: { everyDays: 4, times: 10 }, holdDays: 6 },
+    price: { base: 1400, season: P_LETTUCE, volatility: 0.3 },
+    noteKo: '곱슬잎이 자줏빛으로 물드는 적상추. 색이 진할수록 값을 더 쳐준다.',
+    noteEn: 'Crinkled red lettuce. Deeper colour fetches a better price.',
+  },
+  {
+    id: 'saengchae', nameKo: '생채', nameEn: 'Saengchae lettuce', category: 'leaf', speedClass: 'leafy', rarity: 'common',
+    inMart: true, site: 'plot', growMonths: [3, 4, 5, 6, 9, 10, 11], water: 'high',
+    starts: [seed('saengchae', [3, 4, 5, 8, 9], 0.62, 55, 200), seedling('saengchae', [4, 5, 9, 10], 9, 25, 300)],
+    harvest: { itemId: 'crop_saengchae', nameKo: '생채 한 줌 (100g)', nameEn: 'Saengchae, a handful (100g)', qtyPerCell: [2, 3], repeat: { everyDays: 4, times: 10 }, holdDays: 6 },
+    price: { base: 1300, season: P_LETTUCE, volatility: 0.3 },
+    noteKo: '연한 잎이 속부터 겹겹이 차는 잎상추. 쌉쌀한 맛이 적어 무침 · 겉절이로 쓴다.',
+    noteEn: 'Loose-leaf lettuce that fills from the centre. Little bitterness — used for salads and quick kimchi.',
+  },
+  {
+    id: 'cheongromaine', nameKo: '청로메인', nameEn: 'Green romaine (Cheongromaine)', category: 'leaf', speedClass: 'leafy', rarity: 'uncommon',
+    inMart: true, site: 'plot', growMonths: [3, 4, 5, 6, 9, 10, 11], water: 'high',
+    // 포기째 한 번 — 정식 뒤 35~40일 · 포기 300g 안팎 · 칸당 9포기
+    starts: [seed('cheongromaine', [3, 4, 5, 8, 9], 0.6, 65, 260), seedling('cheongromaine', [4, 5, 9, 10], 9, 40, 400)],
+    harvest: { itemId: 'crop_cheongromaine', nameKo: '청로메인 (1포기 · 약 300g)', nameEn: 'Green romaine (1 head, about 300g)', qtyPerCell: [8, 9], holdDays: 5 },
+    price: { base: 1500, season: P_LETTUCE, volatility: 0.2 },
+    noteKo: '잎이 곧게 서서 포기를 이룬다. 겉잎을 따지 않고 포기째 벤다. 아삭하고 단맛이 있어 샐러드용.',
+    noteEn: 'Upright leaves form a head; cut whole rather than picking leaves. Crisp and slightly sweet — a salad lettuce.',
+  },
+  {
+    id: 'jeokromaine', nameKo: '적로메인', nameEn: 'Red romaine (Jeokromaine)', category: 'leaf', speedClass: 'leafy', rarity: 'uncommon',
+    inMart: true, site: 'plot', growMonths: [3, 4, 5, 6, 9, 10, 11], water: 'high',
+    starts: [seed('jeokromaine', [3, 4, 5, 8, 9], 0.58, 65, 280), seedling('jeokromaine', [4, 5, 9, 10], 9, 40, 420)],
+    harvest: { itemId: 'crop_jeokromaine', nameKo: '적로메인 (1포기 · 약 300g)', nameEn: 'Red romaine (1 head, about 300g)', qtyPerCell: [8, 9], holdDays: 5 },
+    price: { base: 1700, season: P_LETTUCE, volatility: 0.2 },
+    noteKo: '잎이 적갈색으로 물든 로메인. 서늘할수록 색이 깊고, 더우면 녹색으로 돌아온다.',
+    noteEn: 'Romaine with reddish-brown leaves. Cool weather deepens the colour; heat turns it back to green.',
+  },
+  {
+    id: 'butterhead', nameKo: '버터헤드', nameEn: 'Butterhead lettuce', category: 'leaf', speedClass: 'leafy', rarity: 'uncommon',
+    inMart: true, site: 'plot', growMonths: [3, 4, 5, 6, 9, 10, 11], water: 'high',
+    // 반결구 — 속잎이 버터처럼 부드럽다 · 포기 250g 안팎
+    starts: [seed('butterhead', [3, 4, 5, 8, 9], 0.58, 65, 280), seedling('butterhead', [4, 5, 9, 10], 9, 40, 420)],
+    harvest: { itemId: 'crop_butterhead', nameKo: '버터헤드 (1포기 · 약 250g)', nameEn: 'Butterhead (1 head, about 250g)', qtyPerCell: [8, 9], holdDays: 4 },
+    price: { base: 1800, season: P_LETTUCE, volatility: 0.2 },
+    noteKo: '속잎이 버터처럼 부드럽게 겹치는 반결구 상추. 잎이 연해 상하기 쉽고, 포기째 거둬 바로 판다.',
+    noteEn: 'Semi-heading lettuce with soft, buttery inner leaves. Bruises easily — cut whole and sell soon.',
   },
   {
     id: 'perilla', nameKo: '깻잎', nameEn: 'Perilla leaves', category: 'leaf', speedClass: 'leafy', rarity: 'common',
@@ -899,6 +975,8 @@ export const CROP_DIFFICULTY: Readonly<Record<string, { tier: CropDifficulty; ca
   microgreens: { tier: 1, care: [] },
   oyster_mushroom: { tier: 1, care: [] },              // 균이 다 자란 배지(키트)를 사 온다
   lettuce: { tier: 1, care: [] },                      // 농진청 「쉬움」
+  jeokchima: { tier: 1, care: [] }, kkot_lettuce: { tier: 1, care: [] }, cheongchukmyeon: { tier: 1, care: [] }, jeokchukmyeon: { tier: 1, care: [] },  // 242차 상추 품종 — 전부 「쉬움」
+  saengchae: { tier: 1, care: [] }, cheongromaine: { tier: 1, care: [] }, jeokromaine: { tier: 1, care: [] }, butterhead: { tier: 1, care: [] },
   perilla: { tier: 1, care: [] },
   spinach: { tier: 1, care: ['overwinter'] },          // 농진청 「쉬움」
   crown_daisy: { tier: 1, care: [] },                  // 농진청 「쉬움」

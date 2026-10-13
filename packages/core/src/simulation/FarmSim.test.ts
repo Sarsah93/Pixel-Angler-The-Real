@@ -356,12 +356,12 @@ describe('236차 — 버섯 덤 · 단전', () => {
 describe('237차 — 작물 난이도 단계 · 기를 자격', () => {
   const start = (id: string, kind: 'seed' | 'seedling' | 'set') => getCrop(id)!.starts.find((x) => x.kind === kind)!;
 
-  it('작물 76종 전부 난이도가 있고, 표에 없는 id가 없다', () => {
+  it('작물 84종 전부 난이도가 있고, 표에 없는 id가 없다', () => {
     for (const c of CROP_DATABASE) expect(c.difficulty, c.id).toBeGreaterThanOrEqual(1);
     const ids = new Set(CROP_DATABASE.map((c) => c.id));
     for (const id of Object.keys(CROP_DIFFICULTY)) expect(ids.has(id), id).toBe(true);
     const n = [1, 2, 3, 4].map((t) => CROP_DATABASE.filter((c) => c.difficulty === t).length);
-    expect(n).toEqual([33, 28, 6, 9]);   // 241차 — 새 작물 5 · 개량종 3(쉬움 +1 · 보통 +5 · 까다로움 +2)
+    expect(n).toEqual([41, 28, 6, 9]);   // 241차 — 새 작물 5 · 개량종 3(쉬움 +1 · 보통 +5 · 까다로움 +2) · 242차 상추 품종 8(쉬움 +8)
   });
 
   it('단계 문턱 — 쉬움 1 · 보통 15 · 까다로움 25 + 유기농업기능사 · 아주 까다로움 40 + 유기농업기능사', () => {

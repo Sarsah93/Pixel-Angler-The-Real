@@ -5,7 +5,16 @@
  *  목록에 없는 작물은 16px 손그림 픽셀 아이콘(`px:<id>`)을 그대로 쓴다. 손으로 고치지 말 것.
  */
 export const CROP_PORTRAITS: readonly string[] = [
+  'crop_butterhead',
+  'crop_cheongchukmyeon',
+  'crop_cheongromaine',
+  'crop_jeokchima',
+  'crop_jeokchukmyeon',
+  'crop_jeokromaine',
+  'crop_kkot_lettuce',
   'crop_lettuce',
   'crop_peanut',
+  'crop_potato',
+  'crop_saengchae',
   'crop_strawberry',
 ];

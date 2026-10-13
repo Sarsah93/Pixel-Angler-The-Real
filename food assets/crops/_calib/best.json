@@ -1,0 +1,9 @@
+{
+ "loss": 17.612,
+ "P": {
+  "shadow": 0.18,
+  "levels": 8,
+  "dog": 1.4,
+  "outlineDark": 0.55
+ }
+}

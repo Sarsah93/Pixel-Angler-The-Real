@@ -153,8 +153,8 @@ py tools/pixelize_islet.py <photo.png> --region <region> --name <islet> --grid 3
 ```bash
 # 입력: food assets/crops/<수확물 기본 id>.(png|jpg|webp)  — 흰(단색) 배경 사진 또는 투명 PNG · 파일명 = crop_peanut 같은 기본 id
 node tools/pixelize_crops.cjs                 # 전부 · --only crop_peanut · --tol 30(배경 허용) · --close 4(파인 홈 닫기) · --cells 192 · --cell 6
-#   기본 --style pixelart = 툰 추상화(5단 φ5 → DoG 먹선 → 셀 → 윤곽 = 안쪽 이웃 70%) — 팔레트 · 평활 없음(241 3차 보정 · 12쌍 손실 62.8 → 17.7)
-#   손잡이: --levels 5 · --phi 5 · --sat 1.25 · --contrast 0.95 · --edge 3(선 진하기) · --dog 1.0(선 굵기) · --colors 0 · --outlineDark 0.7 · --shadow 0.25 · --bilateral 0 · --outline 1(2 = 안쪽 먹선 추가)
+#   기본 --style pixelart = 툰 추상화(8단 φ5 → DoG 먹선 → 셀 → 윤곽 = 안쪽 이웃 55%) — 팔레트 · 평활 없음(241 3차 + 242 감자 · 13쌍 손실 62.8 → 17.9)
+#   손잡이: --levels 8 · --phi 5 · --sat 1.25 · --contrast 0.95 · --edge 3(선 진하기) · --dog 1.4(선 굵기) · --colors 0 · --outlineDark 0.55 · --shadow 0.25 · --bilateral 0 · --outline 1(2 = 안쪽 먹선 추가)
 #   --style photo = 사진 블록(어종 PixelOE 느낌 · 픽셀 아트 grade 아님) · --style kuwahara = v2(얼룩 — 비교용)
 node tools/check_art_quality.cjs packages/client-pc/public/crops     # 5기준 재측정 — 긴 변 · 셀 · 색 · sdL · 노이즈 · 깃발
 ```

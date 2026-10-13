@@ -47,6 +47,15 @@ export const CROP_RAW_EAT: Readonly<Record<string, RawEatDef>> = {
   crop_microgreens: { g: 50, kcal: 12, ml: 46, noteKo: '알싸한 무순 맛 — 그대로 샐러드', noteEn: 'Peppery radish-shoot taste — straight into a salad' },
   // ── 잎채소 ──
   crop_lettuce: { g: 100, kcal: 15, ml: 95, noteKo: '쌈 그대로 — 배는 안 부르고 물기만 찬다', noteEn: 'Wrap leaves as they are — hardly filling, mostly water' },
+  // 242차 상추 품종 — 잎 따기형은 한 줌 100g, 포기형은 포기째(300g · 250g)
+  crop_jeokchima: { g: 100, kcal: 15, ml: 95, noteKo: '쌈 그대로 — 적상추는 조금 더 쌉쌀하다', noteEn: 'Wrap leaves as they are — red lettuce is a touch more bitter' },
+  crop_kkot_lettuce: { g: 100, kcal: 14, ml: 95, noteKo: '쌈 그대로 — 잎이 얇아 금세 숨이 죽는다', noteEn: 'Wrap leaves as they are — thin leaves wilt fast' },
+  crop_cheongchukmyeon: { g: 100, kcal: 15, ml: 95, noteKo: '쌈 그대로 — 곱슬잎이라 양념이 잘 묻는다', noteEn: 'Wrap leaves as they are — crinkles hold the sauce' },
+  crop_jeokchukmyeon: { g: 100, kcal: 15, ml: 95, noteKo: '쌈 그대로 — 곱슬 적상추', noteEn: 'Wrap leaves as they are — crinkled red lettuce' },
+  crop_saengchae: { g: 100, kcal: 15, ml: 95, noteKo: '무침 · 겉절이로 — 쓴맛이 적다', noteEn: 'Dress it or make quick kimchi — little bitterness' },
+  crop_cheongromaine: { g: 300, kcal: 50, ml: 280, noteKo: '포기째 뜯어 먹는다 — 아삭하고 물이 많다', noteEn: 'Tear the head apart and eat — crisp and watery' },
+  crop_jeokromaine: { g: 300, kcal: 50, ml: 280, noteKo: '포기째 뜯어 먹는다 — 아삭하고 살짝 쌉쌀하다', noteEn: 'Tear the head apart and eat — crisp, slightly bitter' },
+  crop_butterhead: { g: 250, kcal: 35, ml: 235, noteKo: '포기째 — 속잎이 부드럽고 달다', noteEn: 'Whole head — soft, sweet inner leaves' },
   crop_perilla: { g: 40, kcal: 16, ml: 34, noteKo: '향이 강한 쌈 잎', noteEn: 'Strongly scented wrap leaves' },
   crop_spinach: { g: 200, kcal: 46, ml: 182, noteKo: '날로 먹으면 떫다(옥살산) — 데쳐 먹는 게 보통', noteEn: 'Astringent raw (oxalic acid) — usually blanched' },
   crop_crown_daisy: { g: 100, kcal: 20, ml: 93, noteKo: '쑥 향이 진하다 — 생으로 무쳐도 먹는다', noteEn: 'Strong herbal scent — also eaten raw, dressed' },

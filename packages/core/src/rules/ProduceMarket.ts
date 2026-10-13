@@ -51,6 +51,9 @@ export interface ProduceMarketSnapshot {
  */
 export const KAMIS_CROP_ITEMS: Readonly<Record<string, { items: readonly string[]; kind?: string }>> = {
   lettuce: { items: ['상추'] },
+  // 242차 상추 품종 9종 — KAMIS 소매 조사는 「상추」 한 품목뿐이라 전부 같은 줄을 본다(청 · 적 구분 없음)
+  jeokchima: { items: ['상추'] }, kkot_lettuce: { items: ['상추'] }, cheongchukmyeon: { items: ['상추'] }, jeokchukmyeon: { items: ['상추'] },
+  saengchae: { items: ['상추'] }, cheongromaine: { items: ['상추'] }, jeokromaine: { items: ['상추'] }, butterhead: { items: ['상추'] },
   perilla: { items: ['깻잎'] },
   spinach: { items: ['시금치'] },
   crown_daisy: { items: ['쑥갓'] },

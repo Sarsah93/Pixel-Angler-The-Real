@@ -2784,6 +2784,15 @@ def P(**kw):
 
 # 잎채소 — 원형 leaf / bunch
 PAL_LETTUCE  = P(c1=0x1f4a1c, c2=0x5aa83e, c3=0x9ad870, c4=0x347a2c, c5=0xe0f4c0, c6=0x6fb84a, c7=0xe8ffd0)
+# 242차 상추 품종 8 — 같은 leaf 원형에 색만(적상추 = 자주 잎 + 녹색 밑동 · 로메인 = 짙은 녹 · 버터헤드 = 연노랑 녹)
+PAL_JEOKCHIMA = P(c1=0x3a1a2a, c2=0x8a3a4a, c3=0xc06a6a, c4=0x5a2a3a, c5=0xe8c8c0, c6=0x6a8a3a, c7=0xf0e0d8)
+PAL_KKOT      = P(c1=0x2a3a1a, c2=0x7aa84a, c3=0xc87a7a, c4=0x4a6a2a, c5=0xf0e8c0, c6=0xa04a5a, c7=0xf8f0d0)
+PAL_CHEONGCHUK = P(c1=0x1f4a1c, c2=0x62b848, c3=0xb0e880, c4=0x3a8a30, c5=0xe8f8c8, c6=0x80c858, c7=0xf0ffd8)
+PAL_JEOKCHUK  = P(c1=0x3a1a30, c2=0x8a3a5a, c3=0xd08090, c4=0x5a2a40, c5=0xf0d0d8, c6=0x7a9a4a, c7=0xf8e8e8)
+PAL_SAENGCHAE = P(c1=0x2a4a1a, c2=0x7ab84a, c3=0xc0e890, c4=0x4a8a30, c5=0xf0f8d0, c6=0x90c860, c7=0xf8ffe0)
+PAL_CHEONGROM = P(c1=0x1a3a1a, c2=0x3f8a34, c3=0x80c860, c4=0x2a6a28, c5=0xd8f0b8, c6=0x58a840, c7=0xe8f8d0)
+PAL_JEOKROM   = P(c1=0x2a1a18, c2=0x6a3a30, c3=0xa06a50, c4=0x4a2a22, c5=0xd8b8a8, c6=0x8a5a40, c7=0xe8d0c0)
+PAL_BUTTERHEAD = P(c1=0x2a4a1a, c2=0x8ac050, c3=0xd0f0a0, c4=0x5a9a38, c5=0xf0f8d8, c6=0xa8d870, c7=0xf8ffe8)
 PAL_PERILLA  = P(c1=0x1a3a18, c2=0x2f7a34, c3=0x5aa850, c4=0x5a3a5a, c5=0xb8d8a0, c6=0x3f8a3a, c7=0xd0f0c0)
 PAL_MALLOW   = P(c1=0x1f4a1c, c2=0x4a9a3a, c3=0x84c860, c4=0x2f6a28, c5=0xc8e8a8, c6=0x5aa848, c7=0xe0ffd0)
 PAL_CHARD    = P(c1=0x1f3a18, c2=0x3a8a34, c3=0x70c058, c4=0x2a6026, c5=0xd8483a, c6=0x5aa848, c7=0xe0ffd0)
@@ -2906,6 +2915,8 @@ for key, tname, pal in [
     ('crop_bean_sprout', 'sprout', PAL_BEANSPR), ('crop_mung_sprout', 'sprout', PAL_MUNGSPR),
     ('crop_microgreens', 'sprout', PAL_MICRO), ('crop_oyster_mushroom', 'mushroom', PAL_OYSTER),
     ('crop_lettuce', 'leaf', PAL_LETTUCE), ('crop_perilla', 'leaf', PAL_PERILLA),
+    ('crop_jeokchima', 'leaf', PAL_JEOKCHIMA), ('crop_kkot_lettuce', 'leaf', PAL_KKOT), ('crop_cheongchukmyeon', 'leaf', PAL_CHEONGCHUK), ('crop_jeokchukmyeon', 'leaf', PAL_JEOKCHUK),
+    ('crop_saengchae', 'leaf', PAL_SAENGCHAE), ('crop_cheongromaine', 'leaf', PAL_CHEONGROM), ('crop_jeokromaine', 'leaf', PAL_JEOKROM), ('crop_butterhead', 'leaf', PAL_BUTTERHEAD),
     ('crop_spinach', 'bunch', PAL_SPINACH), ('crop_crown_daisy', 'bunch', PAL_DAISY),
     ('crop_young_radish', 'bunch', PAL_YRADISH), ('crop_ugeolgari', 'bunch', PAL_UGEOL),
     ('crop_chive', 'stalk', PAL_CHIVE), ('crop_scallion', 'stalk', PAL_SCALLION),
@@ -3040,6 +3051,10 @@ for key, tname, pal in [
 # ── 씨앗(봉투 · 콩 자루) ──
 for key, pal in [
     ('seed_lettuce', packet(0x5aa83e, 0x9ad870, BAND_LEAF)), ('seed_perilla', packet(0x2f7a34, 0x5aa850, BAND_LEAF)),
+    ('seed_jeokchima', packet(0x8a3a4a, 0x6a8a3a, BAND_LEAF)), ('seed_kkot_lettuce', packet(0x7aa84a, 0xc87a7a, BAND_LEAF)),
+    ('seed_cheongchukmyeon', packet(0x62b848, 0xb0e880, BAND_LEAF)), ('seed_jeokchukmyeon', packet(0x8a3a5a, 0x7a9a4a, BAND_LEAF)),
+    ('seed_saengchae', packet(0x7ab84a, 0xc0e890, BAND_LEAF)), ('seed_cheongromaine', packet(0x3f8a34, 0x80c860, BAND_LEAF)),
+    ('seed_jeokromaine', packet(0x6a3a30, 0xa06a50, BAND_LEAF)), ('seed_butterhead', packet(0x8ac050, 0xd0f0a0, BAND_LEAF)),
     ('seed_spinach', packet(0x2a7a2e, 0x5aaa4a, BAND_LEAF)), ('seed_crown_daisy', packet(0x4a9a40, 0x88d070, BAND_LEAF)),
     ('seed_young_radish', packet(0x4f9a3a, 0xf0f0e8, BAND_LEAF)), ('seed_ugeolgari', packet(0x78b848, 0xe8f0c8, BAND_LEAF)),
     ('seed_chive', packet(0x3a8a30, 0x7ac858, BAND_LEAF)), ('seed_mallow', packet(0x4a9a3a, 0x84c860, BAND_LEAF)),
@@ -3068,6 +3083,8 @@ icon_t('seed_mung_sprout', 'sack', PAL_MUNGBEAN)
 # ── 모종(화분) ──
 for key, pal in [
     ('sdl_lettuce', POT_GREEN), ('sdl_perilla', POT_DEEP), ('sdl_chive', POT_GREEN), ('sdl_bangpung', POT_BLUE),
+    ('sdl_jeokchima', POT_DEEP), ('sdl_kkot_lettuce', POT_DEEP), ('sdl_cheongchukmyeon', POT_GREEN), ('sdl_jeokchukmyeon', POT_DEEP),
+    ('sdl_saengchae', POT_GREEN), ('sdl_cheongromaine', POT_GREEN), ('sdl_jeokromaine', POT_DEEP), ('sdl_butterhead', POT_YELLOW),
     ('sdl_gomchwi', POT_DEEP), ('sdl_myeongi', POT_YELLOW), ('sdl_samnamul', POT_GREEN), ('sdl_eosuri', POT_GREEN),
     ('sdl_bujigaengi', POT_DEEP), ('sdl_wasabi', POT_BLUE), ('sdl_chili', POT_GREEN), ('sdl_cherry_tomato', POT_GREEN),
     ('sdl_cucumber', POT_YELLOW), ('sdl_zucchini', POT_YELLOW), ('sdl_eggplant', POT_DEEP), ('sdl_corn', POT_YELLOW),

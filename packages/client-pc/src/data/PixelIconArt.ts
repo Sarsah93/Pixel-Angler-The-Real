@@ -2823,6 +2823,46 @@ export const PIXEL_ICON_ART: Record<string, PixelIconArt> = {
     pal: { '1': 0x1a3a18, '2': 0x2f7a34, '3': 0x5aa850, '4': 0x5a3a5a, '5': 0xb8d8a0 },
     rows: TPL_LEAF,
   },
+  crop_jeokchima: {
+    w: 16, h: 16,
+    pal: { '1': 0x3a1a2a, '2': 0x8a3a4a, '3': 0xc06a6a, '4': 0x5a2a3a, '5': 0xe8c8c0 },
+    rows: TPL_LEAF,
+  },
+  crop_kkot_lettuce: {
+    w: 16, h: 16,
+    pal: { '1': 0x2a3a1a, '2': 0x7aa84a, '3': 0xc87a7a, '4': 0x4a6a2a, '5': 0xf0e8c0 },
+    rows: TPL_LEAF,
+  },
+  crop_cheongchukmyeon: {
+    w: 16, h: 16,
+    pal: { '1': 0x1f4a1c, '2': 0x62b848, '3': 0xb0e880, '4': 0x3a8a30, '5': 0xe8f8c8 },
+    rows: TPL_LEAF,
+  },
+  crop_jeokchukmyeon: {
+    w: 16, h: 16,
+    pal: { '1': 0x3a1a30, '2': 0x8a3a5a, '3': 0xd08090, '4': 0x5a2a40, '5': 0xf0d0d8 },
+    rows: TPL_LEAF,
+  },
+  crop_saengchae: {
+    w: 16, h: 16,
+    pal: { '1': 0x2a4a1a, '2': 0x7ab84a, '3': 0xc0e890, '4': 0x4a8a30, '5': 0xf0f8d0 },
+    rows: TPL_LEAF,
+  },
+  crop_cheongromaine: {
+    w: 16, h: 16,
+    pal: { '1': 0x1a3a1a, '2': 0x3f8a34, '3': 0x80c860, '4': 0x2a6a28, '5': 0xd8f0b8 },
+    rows: TPL_LEAF,
+  },
+  crop_jeokromaine: {
+    w: 16, h: 16,
+    pal: { '1': 0x2a1a18, '2': 0x6a3a30, '3': 0xa06a50, '4': 0x4a2a22, '5': 0xd8b8a8 },
+    rows: TPL_LEAF,
+  },
+  crop_butterhead: {
+    w: 16, h: 16,
+    pal: { '1': 0x2a4a1a, '2': 0x8ac050, '3': 0xd0f0a0, '4': 0x5a9a38, '5': 0xf0f8d8 },
+    rows: TPL_LEAF,
+  },
   crop_spinach: {
     w: 16, h: 16,
     pal: { '1': 0x163a16, '2': 0x2a7a2e, '3': 0x5aaa4a, '4': 0xc85a78, '5': 0xe8d8a0, '6': 0xa88a50, '7': 0xc8e0a0 },
@@ -3223,6 +3263,46 @@ export const PIXEL_ICON_ART: Record<string, PixelIconArt> = {
     pal: { '1': 0x3a3a3a, '2': 0x2f7a34, '3': 0x5aa850, '5': 0xe8d8b0, '6': 0xf4ecd8, '7': 0x5a9a3a },
     rows: TPL_PACKET,
   },
+  seed_jeokchima: {
+    w: 16, h: 16,
+    pal: { '1': 0x3a3a3a, '2': 0x8a3a4a, '3': 0x6a8a3a, '5': 0xe8d8b0, '6': 0xf4ecd8, '7': 0x5a9a3a },
+    rows: TPL_PACKET,
+  },
+  seed_kkot_lettuce: {
+    w: 16, h: 16,
+    pal: { '1': 0x3a3a3a, '2': 0x7aa84a, '3': 0xc87a7a, '5': 0xe8d8b0, '6': 0xf4ecd8, '7': 0x5a9a3a },
+    rows: TPL_PACKET,
+  },
+  seed_cheongchukmyeon: {
+    w: 16, h: 16,
+    pal: { '1': 0x3a3a3a, '2': 0x62b848, '3': 0xb0e880, '5': 0xe8d8b0, '6': 0xf4ecd8, '7': 0x5a9a3a },
+    rows: TPL_PACKET,
+  },
+  seed_jeokchukmyeon: {
+    w: 16, h: 16,
+    pal: { '1': 0x3a3a3a, '2': 0x8a3a5a, '3': 0x7a9a4a, '5': 0xe8d8b0, '6': 0xf4ecd8, '7': 0x5a9a3a },
+    rows: TPL_PACKET,
+  },
+  seed_saengchae: {
+    w: 16, h: 16,
+    pal: { '1': 0x3a3a3a, '2': 0x7ab84a, '3': 0xc0e890, '5': 0xe8d8b0, '6': 0xf4ecd8, '7': 0x5a9a3a },
+    rows: TPL_PACKET,
+  },
+  seed_cheongromaine: {
+    w: 16, h: 16,
+    pal: { '1': 0x3a3a3a, '2': 0x3f8a34, '3': 0x80c860, '5': 0xe8d8b0, '6': 0xf4ecd8, '7': 0x5a9a3a },
+    rows: TPL_PACKET,
+  },
+  seed_jeokromaine: {
+    w: 16, h: 16,
+    pal: { '1': 0x3a3a3a, '2': 0x6a3a30, '3': 0xa06a50, '5': 0xe8d8b0, '6': 0xf4ecd8, '7': 0x5a9a3a },
+    rows: TPL_PACKET,
+  },
+  seed_butterhead: {
+    w: 16, h: 16,
+    pal: { '1': 0x3a3a3a, '2': 0x8ac050, '3': 0xd0f0a0, '5': 0xe8d8b0, '6': 0xf4ecd8, '7': 0x5a9a3a },
+    rows: TPL_PACKET,
+  },
   seed_spinach: {
     w: 16, h: 16,
     pal: { '1': 0x3a3a3a, '2': 0x2a7a2e, '3': 0x5aaa4a, '5': 0xe8d8b0, '6': 0xf4ecd8, '7': 0x5a9a3a },
@@ -3416,6 +3496,46 @@ export const PIXEL_ICON_ART: Record<string, PixelIconArt> = {
   sdl_bangpung: {
     w: 16, h: 16,
     pal: { '1': 0x3a2a1a, '2': 0x4a8a6a, '3': 0x80b898, '5': 0x8a4020, '6': 0xb05a30, '7': 0xd8804a },
+    rows: TPL_POT,
+  },
+  sdl_jeokchima: {
+    w: 16, h: 16,
+    pal: { '1': 0x3a2a1a, '2': 0x2f7a34, '3': 0x5aa850, '5': 0x8a4020, '6': 0xb05a30, '7': 0xd8804a },
+    rows: TPL_POT,
+  },
+  sdl_kkot_lettuce: {
+    w: 16, h: 16,
+    pal: { '1': 0x3a2a1a, '2': 0x2f7a34, '3': 0x5aa850, '5': 0x8a4020, '6': 0xb05a30, '7': 0xd8804a },
+    rows: TPL_POT,
+  },
+  sdl_cheongchukmyeon: {
+    w: 16, h: 16,
+    pal: { '1': 0x3a2a1a, '2': 0x4f9a3a, '3': 0x8fd16a, '5': 0x8a4020, '6': 0xb05a30, '7': 0xd8804a },
+    rows: TPL_POT,
+  },
+  sdl_jeokchukmyeon: {
+    w: 16, h: 16,
+    pal: { '1': 0x3a2a1a, '2': 0x2f7a34, '3': 0x5aa850, '5': 0x8a4020, '6': 0xb05a30, '7': 0xd8804a },
+    rows: TPL_POT,
+  },
+  sdl_saengchae: {
+    w: 16, h: 16,
+    pal: { '1': 0x3a2a1a, '2': 0x4f9a3a, '3': 0x8fd16a, '5': 0x8a4020, '6': 0xb05a30, '7': 0xd8804a },
+    rows: TPL_POT,
+  },
+  sdl_cheongromaine: {
+    w: 16, h: 16,
+    pal: { '1': 0x3a2a1a, '2': 0x4f9a3a, '3': 0x8fd16a, '5': 0x8a4020, '6': 0xb05a30, '7': 0xd8804a },
+    rows: TPL_POT,
+  },
+  sdl_jeokromaine: {
+    w: 16, h: 16,
+    pal: { '1': 0x3a2a1a, '2': 0x2f7a34, '3': 0x5aa850, '5': 0x8a4020, '6': 0xb05a30, '7': 0xd8804a },
+    rows: TPL_POT,
+  },
+  sdl_butterhead: {
+    w: 16, h: 16,
+    pal: { '1': 0x3a2a1a, '2': 0x78b83a, '3': 0xb8e070, '5': 0x8a4020, '6': 0xb05a30, '7': 0xd8804a },
     rows: TPL_POT,
   },
   sdl_gomchwi: {
