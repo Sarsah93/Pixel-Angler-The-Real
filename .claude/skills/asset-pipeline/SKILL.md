@@ -161,8 +161,15 @@ node tools/check_art_quality.cjs packages/client-pc/public/crops     # 5기준 �
 
 - 출력 `public/crops/<id>.png`(초상 · 상세 · 도감) + `<id>_icon.png`(64px · 가방 칸) + `src/data/CropPortraits.ts`(자동 목록 — 손으로 고치지 않는다).
 - 배선은 `ui/ItemIcon.ts` `cropPortraitTexture` — `px:crop_*` 키에 초상이 있으면 그것, 없으면 16px 손그림. 등급 꼬리 · 조각도 같은 키를 쓴다.
-- 위키 그림: `tools/wiki_img/px_<id>.png`를 초상 축소본(3셀/px)으로 덮고 `manifest.json`의 w/h를 맞춘다(241차 땅콩 392×344).
 - JPEG · WebP는 Playwright 크롬 캔버스로 디코드한다(`/opt/node-tools` 또는 npx 캐시). 16비트 · 인터레이스 PNG도 그 경로.
 - 어종 점검 깃발: 「알파 전면 <255」(252~253 — `--fix-alpha`로 `.fixed.png` 사본) · 「셀 없음」(사진 그대로) · 「셀 굵음 ≥ 12」 · 「대문자 파일명」. 교체는 사용자 결정 뒤.
-- ⚠ **사진을 셀로 내려 찍기만 한 것은 픽셀 아트 grade가 아니다**(241 사용자 지적) — 주력 물건은 사용자 변환 흐름(AI 변환 → piskel), 도구는 정규화 · 대체본. 비교 시트는 `scratchpad/art/sheet.cjs`.
+- ⚠ **사진을 셀로 내려 찍기만 한 것은 픽셀 아트 grade가 아니다**(241 사용자 지적) — 주력 물건은 사용자 변환 흐름(AI 변환 → piskel), 도구는 정규화 · 대체본.
+- **사용자 변환본은 `food assets/crops/asis/<id>.png`에 넣는다** — 양식화 없이 192셀로 리샘플만(`--style asis`). 같은 id가 사진에도 있으면 asis가 이긴다.
+  자동 판정은 없다(AI 변환본은 격자 점수 1.1~1.3 · 같은 색 런 2~56%로 사진과 겹친다 — 241 3차 실측).
+- **보정(참고본 쌍으로 손잡이 맞추기)**: 쌍은 `food assets/crops/_calib/{photo,ref}/<id>.png`(사진 ↔ 변환본).
+  `node tools/crop_calib.cjs --eval`(쌍별 표 · 가중 손실) · `--sweep --rounds 2`(좌표 하강 → `_calib/best.json`) · `--render <폴더>`(출력 + 시트).
+  통계 자 = `tools/crop_grade.cjs`(192셀 면적 평균 셀 그림에서 채도 · 밝기 편차 · k90 · 윤곽 비 · 질감 · 먹점 · 밝은 점 · 같은 이웃 + 유사도 corr/rgb/iou).
+  best.json은 기본값에 **손으로** 옮긴다(`DEFAULTS`) — 근거를 `photo-pixel-art.md` §3.6~3.7에 남긴다. 상추 격자처럼 한 장에 여러 품종이면 `tools/lettuce_grid_split.cjs` 패턴으로 먼저 가른다.
+- 작은 사진(긴 변 < 200px)은 키워도 질감이 없다 — **한 물건당 400px 이상**을 받는다. 키우는 리샘플은 `resample`(쌍선형)이지 `areaResize`가 아니다(격자 구멍).
+- 위키 그림: 초상을 다시 구우면 `node tools/wiki_crop_img.cjs`(1/3 면적 평균 → `tools/wiki_img/px_crop_*.png` + manifest w/h) → `node tools/gen_game_wiki_data.mjs --html > …/index.html` → 아티팩트 재발행.
 - 시험용 `--out` 폴더로 돌리면 `CropPortraits.ts`는 그대로 둔다(기본 폴더일 때만 목록 재생성).
