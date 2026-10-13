@@ -61,6 +61,20 @@ export function iconWeightScale(item: ItemIconLike): number {
   return Math.max(0.55, Math.min(1, Math.cbrt(g / ref)));
 }
 
+/**
+ * 241차 — 작물 초상(사진 → 도트 · `public/crops/`)이 있으면 16px 손그림(`px:crop_*`) 대신 그것을 쓴다.
+ *  칸(≤ 72px)은 64px 아이콘 판(`cropicon_*` — 면적 평균이라 축소 떨림이 없다), 상세 · 도감은 초상(`cropimg_*`).
+ *  어종 에셋과 같은 출처 한 장에서 두 크기를 내므로 가방과 상세가 같은 그림을 보인다.
+ */
+export function cropPortraitTexture(scene: Phaser.Scene, iconTexture: string | undefined, sizePx: number): string | undefined {
+  if (!iconTexture?.startsWith('px:crop_')) return undefined;
+  const id = iconTexture.slice(3);
+  const key = sizePx > 72 ? `cropimg_${id}` : `cropicon_${id}`;
+  if (scene.textures.exists(key)) return key;
+  const alt = sizePx > 72 ? `cropicon_${id}` : `cropimg_${id}`;
+  return scene.textures.exists(alt) ? alt : undefined;
+}
+
 export function createItemIcon(
   scene: Phaser.Scene,
   x: number,
@@ -69,7 +83,8 @@ export function createItemIcon(
   sizePx: number,
 ): Phaser.GameObjects.Image | Phaser.GameObjects.Text | Phaser.GameObjects.Container {
   sizePx *= iconWeightScale(item);
-  const rasterKey = item.iconTexture ? RASTER_ICON_ALIASES[item.iconTexture] ?? item.iconTexture : undefined;
+  const rasterKey = cropPortraitTexture(scene, item.iconTexture, sizePx)
+    ?? (item.iconTexture ? RASTER_ICON_ALIASES[item.iconTexture] ?? item.iconTexture : undefined);
   if (rasterKey && scene.textures.exists(rasterKey)) {
     const img = scene.add.image(0, 0, rasterKey).setOrigin(0.5);
     const src = scene.textures.get(rasterKey).getSourceImage() as HTMLImageElement;

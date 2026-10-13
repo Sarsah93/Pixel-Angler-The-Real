@@ -37,7 +37,7 @@ import { isGod } from '../dev/DevMode.js';
 import { resolveFishTexture } from '../data/FishTextures.js';
 import { applyItemVitals, refreshNutritionVitals } from '../data/ItemVitals.js';
 import { applyCookItemFields, COOK_CORNER } from '../data/CookItems.js';
-import { PRODUCE_SUB } from '../data/CropItems.js';
+import { PRODUCE_SUB, cropItemTemplate } from '../data/CropItems.js';
 import { StoryStore } from './StoryStore.js';
 import { migrateCatchItemId, migrateSpeciesId } from '../data/SpeciesMigration.js';
 import { SHOP_CATALOG, CARD_RIG_ENTRIES } from '../data/ShopCatalog.js';
@@ -1367,7 +1367,7 @@ class InventoryStoreManager {
           : i.name,
         // 229차 — 크릴 신선도 프로필 · 포장 뜯기(블록 → 미끼용 백크릴 50)
         condProfile: i.condProfile ?? sd?.condProfile,
-        unpack: i.unpack ?? sd?.unpack,
+        unpack: i.unpack ?? sd?.unpack ?? cropItemTemplate(i.id)?.unpack,   // 241차 — 구세이브 큰 수확물에 「나누기」를 붙인다
         forageTool: i.forageTool ?? sd?.forageTool,
         // 224차 — 장화(신발 칸) · 포장 묶음 — 상점 구매분은 저장된 필드 그대로, 이름 규칙 폴백만
         wading: i.wading ?? sd?.wading ?? (i.subCategory === '신발' && /장화/.test(i.name) ? true : undefined),
@@ -1806,7 +1806,7 @@ class InventoryStoreManager {
   /** 224차 — 시드 카탈로그의 물건 모양(칸 · 수량 제외). 없으면 null */
   seedTemplate(id: string): InvItemTemplate | null {
     const seed = createSeedItems().find((x) => x.id === id);
-    if (!seed) return InventoryStoreManager.UNPACK_TPL[id] ?? null;
+    if (!seed) return InventoryStoreManager.UNPACK_TPL[id] ?? cropItemTemplate(id) ?? null;   // 241차 — 농산물 조각
     const { slot: _slot, qty: _qty, ...tpl } = seed;
     return tpl;
   }

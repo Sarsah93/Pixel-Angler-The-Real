@@ -19,7 +19,7 @@ import {
   FARM_CELLS, FARM_COLS, INDOOR_SLOTS, advancePlot, canPlant, cellReady, clearCell, climateRainAt, compostCell,
   cropStartOfItem, getCrop, getFarmSupply, harvestCell, interimHarvestCell, interimOpen, kstMonthOf, newFarmPlot,
   plantCell, produceItemId, supplyOfFacility, tillCell, waterCell, newFarmCell, gradeOf, harvestPreview,
-  careStatusList, careDue, doCare as coreDoCare, inEstablishment, cellDiseases, CARE_TASK_KO, DISEASE_KO, DISEASE_CONTROL_KO, TRAY_ID,
+  careStatusList, careDue, doCare as coreDoCare, inEstablishment, cellDiseases, CARE_TASK_KO, DISEASE_KO, DISEASE_CONTROL_KO, TRAY_ID, variantsOf,
   type CropDef, type FarmEnv, type FarmFacility, type FarmHarvestResult, type FarmPlantCtx, type FarmPlotState, type LicenseType,
   type CareStatus, type CareTaskId, type CropDisease,
 } from '@tra/core';
@@ -27,7 +27,7 @@ import { GameState } from './GameState.js';
 import { InventoryStore, type InvCategory } from './InventoryStore.js';
 import { StoryStore } from './StoryStore.js';
 import { ExternalDataStore } from './ExternalDataStore.js';
-import { cropItemTemplate } from '../data/CropItems.js';
+import { cropItemTemplate, variantNoticeKo } from '../data/CropItems.js';
 
 /** 집 안 선반 구획 키 */
 export const INDOOR_PLOT = 'indoor';
@@ -41,6 +41,8 @@ export interface FarmSaveState {
   plots: Record<string, FarmPlotState>;
   /** 236차 — 텃밭에서 거둔 횟수(본 수확 + 중간 수확). 농지 이용권 요건 — 구세이브는 0 */
   harvests?: number;
+  /** 241차 — 작물별 거둔 횟수(개량종 해금 — 원종 3번). 구세이브는 빈 표(그 전에 거둔 것은 세지 않는다) */
+  harvestsBy?: Record<string, number>;
 }
 
 export interface FarmActionResult {
@@ -62,12 +64,15 @@ class FarmStoreImpl {
   private plots = new Map<string, FarmPlotState>();
   /** 236차 — 거둔 횟수(농지 이용권 요건) */
   private harvests = 0;
+  private harvestsBy: Record<string, number> = {};
   /** 238차 — 이미 알린 할 일 · 병 · 쓰러짐 · 서리(키) · 아직 안 올린 알림 */
   private noticed = new Set<string>();
   private notices: string[] = [];
 
   /** 236차 — 텃밭에서 거둔 횟수(본 수확 + 중간 수확) */
   get harvestCount(): number { return this.harvests; }
+  /** 241차 — 이 작물을 거둔 횟수(본 수확 + 중간 수확) — 개량종 진열 · 상세 보기 */
+  harvestsOf(cropId: string): number { return this.harvestsBy[cropId] ?? 0; }
 
   // ── 구획 ──────────────────────────────────
 
@@ -378,6 +383,11 @@ class FarmStoreImpl {
       if (st && InventoryStore.addItem(st, r.seedBack.qty)) harvested.push({ itemId: st.id, qty: r.seedBack.qty, name: st.name });
     }
     this.harvests++;
+    // 241차 — 작물별 횟수 · 원종을 딱 n번째 거둔 순간 개량종이 종묘사에 들어온다(알림은 20초 주기 큐 + 이 메시지 꼬리)
+    const nth = (this.harvestsBy[crop.id] ?? 0) + 1;
+    this.harvestsBy[crop.id] = nth;
+    const opened = variantsOf(crop.id).filter((v) => v.variant?.afterHarvests === nth);
+    if (opened.length) this.notices.push(variantNoticeKo(crop, opened));
     GameState.markDirty();
     StoryStore.event({ kind: 'farm', action: 'harvest', cropId: crop.id });
     // 236차 — 덤(버섯 송이가 굵게 올라온 회차)은 따로 말해 준다 · 238차 — 검붉은 고추 · 서리 끝물 · 병으로 준 것
@@ -385,7 +395,8 @@ class FarmStoreImpl {
     const turning = r.turning ? ' — 검붉게 덜 익은 것이라 품질이 떨어진다' : '';
     const frosted = r.frosted ? ' — 서리 맞은 끝물, 이 칸은 끝났다' : '';
     const sick = (r.diseaseMult ?? 1) < 0.85 ? ` — 병으로 ${Math.round((1 - (r.diseaseMult ?? 1)) * 100)}% 줄었다` : '';
-    return { ok: true, message: `${tpl.name} ${r.qty}개를 거뒀다${bonus}${turning}${frosted}${sick}`, harvested };
+    const variant = opened.length ? ` — 종묘사에 ${opened.map((v) => v.nameKo).join(' · ')}이 들어온다` : '';
+    return { ok: true, message: `${tpl.name} ${r.qty}개를 거뒀다${bonus}${turning}${frosted}${sick}${variant}`, harvested };
   }
 
   /** 걷어 낸다(자라던 것을 버린다 — 일군 땅은 남는다) */
@@ -432,13 +443,17 @@ class FarmStoreImpl {
   serialize(): FarmSaveState {
     const plots: Record<string, FarmPlotState> = {};
     for (const [k, p] of this.plots) plots[k] = p;
-    return { v: 1, plots, harvests: this.harvests };
+    return { v: 1, plots, harvests: this.harvests, harvestsBy: { ...this.harvestsBy } };
   }
 
   /** 로드 — 칸 수가 어긋난(구조가 바뀐) 구획은 빈 칸으로 채워 맞춘다(유저 상태는 그대로) */
   deserialize(s: FarmSaveState | undefined | null): void {
     this.plots.clear();
     this.harvests = Math.max(0, Math.floor(s?.harvests ?? 0));
+    this.harvestsBy = {};
+    if (s?.harvestsBy && typeof s.harvestsBy === 'object') {
+      for (const [k, v] of Object.entries(s.harvestsBy)) if (typeof v === 'number' && v > 0) this.harvestsBy[k] = Math.floor(v);
+    }
     if (!s?.plots) return;
     for (const [k, p] of Object.entries(s.plots)) {
       if (!p || !Array.isArray(p.cells)) continue;
@@ -450,7 +465,7 @@ class FarmStoreImpl {
     this.advanceAll();
   }
 
-  resetAll(): void { this.plots.clear(); this.harvests = 0; }
+  resetAll(): void { this.plots.clear(); this.harvests = 0; this.harvestsBy = {}; }
 }
 
 export const FarmStore = new FarmStoreImpl();

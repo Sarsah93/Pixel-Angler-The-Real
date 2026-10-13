@@ -119,6 +119,8 @@ export interface ShopEntry extends InvItemTemplate {
   minLevel?: number;
   /** 237차 — 이 자격을 가진 뒤에 진열한다(까다로운 작물 — 유기농업기능사) */
   requiresLicense?: string;
+  /** 241차 — 개량종: 원종(`cropId`)을 `count`번 거둔 뒤에 진열한다(`FarmStore.harvestsOf`) */
+  requiresHarvests?: { cropId: string; count: number };
   desc: string;
 }
 

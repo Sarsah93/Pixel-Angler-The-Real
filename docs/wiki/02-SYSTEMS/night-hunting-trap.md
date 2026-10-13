@@ -28,7 +28,7 @@
 | client | `ui/ForageGamePanel.ts` | 놀이 판 그리기 · 마우스/Space · ESC = 포기 · 갈래별 첫 열기 가이드 | ✅ 224 |
 | client | `SeamlessChunks.computeWade` · `RegionFieldScene.updateWading` | 얕은 물 칸 · 따로 굽는 충돌(`wadeWalls`) · 장화면 그 collider만 끔 · 1m · 물결 | ✅ 224 |
 | client | `scenes/field/TrapFieldSystem.ts` · `ui/TrapDeployPanel.ts` | 통발 선택 → 물 위 설치 · 부표 · [F] 수거 · 반환 | ✅ 121 |
-| client | `RegionFieldScene` 배선 | E 우선순위 · T 키 · 설치 클릭/ESC · `depthAtWaterTile` · `__FIELD`(dev) | ✅ 121 |
+| client | `RegionFieldScene` 배선 | F 우선순위(122차 E → F) · T 키 · 설치 클릭/ESC · `depthAtWaterTile` · `__FIELD`(dev) | ✅ 121 |
 | client(legacy) | `scenes/NightHuntingScene.ts` · `TrapScene.ts` · `GameState.addHarvestToCooler` | 별도 씬(이모지 클릭) · 화면에 없는 legacy 쿨러 | ⚠ 폐기 후보 |
 
 ## 3. 동작 구조
@@ -42,7 +42,7 @@
       → 도감 → 어장 안 보호종이면 rollEnforcement → 압수+벌금
 통발: T / 인벤 '통발 놓기' → TrapDeployPanel(통발×미끼) → 물 타일(플레이어 4타일·육지 거리 ≤3) 클릭
       → validateTrapDeployment(면허 등급·개수·수심) → 통발 1 + 미끼 1 소모 → DeployedTrap(mapId·depthM·durability)
-      → wall-clock 침지 → [E] 확인 → rollTrapLoss 1회 → harvestTrap → 쿨러/인벤 → 통발 반환(내구도 0 = 파손)
+      → wall-clock 침지 → [F] 확인 → rollTrapLoss 1회 → harvestTrap → 쿨러/인벤 → 통발 반환(내구도 0 = 파손)
 ```
 
 - 어장 폴리곤은 실데이터(마을어업속초9·협동양식속초5·6). 조례 보호 5종 = 전복·해삼·성게·홍합·문어.

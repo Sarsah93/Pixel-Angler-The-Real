@@ -139,6 +139,12 @@ const { chromium } = resolvePlaywright();
   settle 루프에서 `if (panel.byproductPopup) panel.confirmByproductPopup(false)`(확인 후 계속)를 태울 것.
 - `process.jumpTo` 직접 호출은 `renderedOrientation`/`renderedRotation`을 스냅하지 않는다 — 하네스 점프는 `panel.devJumpToTask(secIdx, taskId)` 사용(둘 다 스냅).
 
+- **가방(I) 단축키는 프롤로그 게이트(`hotkeyOk`)에 막힌다**(241차) — 새 게임 직후 하네스는 `scene.toggleInventory()`를 직접 부른다.
+  탭은 `invPanel.currentTab = 'food'; invPanel.renderGrid()`, 칸 좌표 = `panel.x + gridX0 + col*73 + 33` / `panel.y + gridY0 + row*73 + 33`
+  (그 탭의 아이템을 slot 순으로 센 인덱스). 메뉴 닫기는 ESC가 아니라 `invPanel.closeContextMenu()`(ESC는 가방까지 닫는다).
+- 텃밭 지급은 `(await import('/src/data/CropItems.ts')).cropItemTemplate(id)` → `__INV.addItem(tpl, n)` · 작물별 거둔 횟수는 `__FARM.harvestsOf('tomato')` ·
+  상세 데이터는 `buildItemDetail({...tpl, slot: -1, qty: 1})`.
+
 ## 검증 종료 기준
 
 1. 시나리오별 수치 어서션(depth·좌표·아이템 수량 등) 콘솔 출력 → PASS 판정.

@@ -144,3 +144,20 @@ py tools/pixelize_islet.py <photo.png> --region <region> --name <islet> --grid 3
   `--center` = 인게임 성분 무게중심 · `--islet-max` = 그 성분 타일 수 이상(래스터 `'r'` 섞인 섬은 600을 넘는다).
 - ⚠ 섬 위치는 `islet` 플래그가 아니라 **`lights.json`·POI 좌표**로 확정한다(116차 — 엉뚱한 섬에 적용한 전례).
 - 램프는 휘도 **순위 균등화** — 분위 정규화는 밝은 사진에서 너무 밝다.
+
+## ⑤ 작물 초상 — 사진 → 어종 기준 도트 (241차)
+
+어종(`public/fish/`)은 셀 6px · 가로 약 192셀 · 8비트 RGBA · 팔레트 양자화 없음(실측 `node tools/check_art_quality.cjs packages/client-pc/public/fish`).
+작물 초상은 같은 기준으로 굽는다 — Pillow · numpy 없이(순수 Node `tools/lib_png.cjs`).
+
+```bash
+# 입력: food assets/crops/<수확물 기본 id>.(png|jpg|webp)  — 흰(단색) 배경 사진 또는 투명 PNG · 파일명 = crop_peanut 같은 기본 id
+node tools/pixelize_crops.cjs                 # 전부 · --only crop_peanut · --tol 30(배경 허용) · --close 4(파인 홈 닫기) · --cells 192 · --cell 6
+node tools/check_art_quality.cjs packages/client-pc/public/crops     # 5기준 재측정 — 긴 변 · 셀 · 색 · sdL · 노이즈 · 깃발
+```
+
+- 출력 `public/crops/<id>.png`(초상 · 상세 · 도감) + `<id>_icon.png`(64px · 가방 칸) + `src/data/CropPortraits.ts`(자동 목록 — 손으로 고치지 않는다).
+- 배선은 `ui/ItemIcon.ts` `cropPortraitTexture` — `px:crop_*` 키에 초상이 있으면 그것, 없으면 16px 손그림. 등급 꼬리 · 조각도 같은 키를 쓴다.
+- 위키 그림: `tools/wiki_img/px_<id>.png`를 초상 축소본(3셀/px)으로 덮고 `manifest.json`의 w/h를 맞춘다(241차 땅콩 392×344).
+- JPEG · WebP는 Playwright 크롬 캔버스로 디코드한다(`/opt/node-tools` 또는 npx 캐시). 16비트 · 인터레이스 PNG도 그 경로.
+- 어종 점검 깃발: 「알파 전면 <255」(252~253 — `--fix-alpha`로 `.fixed.png` 사본) · 「셀 없음」(사진 그대로) · 「셀 굵음 ≥ 12」 · 「대문자 파일명」. 교체는 사용자 결정 뒤.

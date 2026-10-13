@@ -34,11 +34,13 @@ export const CARE_TASK_KO: Record<CareTaskId, string> = {
   prick_out: '가식', ridge_mulch: '두둑과 멀칭', stake: '지주 세우기', tie: '유인줄 묶기', water_establish: '활착기 물 주기',
   pinch_flower: '첫 꽃 따기', remove_suckers: '곁순 따기', topdress: '웃거름', spray_fungicide: '살균제 치기',
   spray_phosphite: '아인산 치기', spray_calcium: '칼슘액비 치기', spray_insecticide: '살충제 치기', cull_diseased: '병든 것 걷어 내기',
+  stevia_feed: '스테비아 발효액 주기',
 };
 export const CARE_TASK_EN: Record<CareTaskId, string> = {
   prick_out: 'Prick out', ridge_mulch: 'Ridge and mulch', stake: 'Stake', tie: 'Tie up', water_establish: 'Water in (establishment)',
   pinch_flower: 'Pinch first flower', remove_suckers: 'Remove suckers', topdress: 'Top-dress', spray_fungicide: 'Spray fungicide',
   spray_phosphite: 'Spray phosphite', spray_calcium: 'Spray calcium', spray_insecticide: 'Spray insecticide', cull_diseased: 'Cull diseased',
+  stevia_feed: 'Feed stevia ferment',
 };
 
 /** 작업 장면 모양 → 사람 말(머리말) */
@@ -89,6 +91,8 @@ export const FUNGICIDE_ID = 'farm_fungicide';
 export const PHOSPHITE_ID = 'farm_phosphite';
 export const CALCIUM_ID = 'farm_calcium';
 export const INSECTICIDE_ID = 'farm_insecticide';
+/** 241차 — 스테비아 발효액(스테비아 토마토 전용) */
+export const STEVIA_ID = 'farm_stevia';
 
 // ─────────────────────────────────────────────
 // 작업 정의(공용 조각)
@@ -156,6 +160,14 @@ const mulch: CareTaskDef = {
   howKo: '물빠짐이 좋게 두둑을 높이고 검은 비닐로 덮는다 — 흙이 튀지 않아 탄저병 · 역병이 덜 든다.',
   howEn: 'Raise the ridge for drainage and cover with black plastic — no soil splash, less anthracnose and blight.',
 };
+/** 241차 — 스테비아 발효액(정식 3주 뒤부터 2주 간격 4회 — 거르면 단맛이 오르지 않아 등급이 내려간다) */
+const steviaFeed: CareTaskDef = {
+  id: 'stevia_feed', dayWindow: [20, 34], repeat: { everyDays: 14, times: 3 }, needs: [{ itemId: STEVIA_ID, qty: 1 }],
+  work: 'sprinkle', seconds: 7, fatigue: 3,
+  effect: { quality: 0.03 }, missed: { quality: 0.08 },
+  howKo: '정식 3주 뒤부터 2주 간격으로 스테비아 발효액을 포기 둘레 흙에 붓고 잎에도 뿌린다 — 거르면 단맛이 오르지 않는다.',
+  howEn: 'From three weeks after transplanting, every two weeks pour stevia ferment round the plant and mist the leaves — skip it and the fruit never sweetens.',
+};
 const suckers = (window: [number, number]): CareTaskDef => ({
   id: 'remove_suckers', dayWindow: window, repeat: { everyDays: 10, times: 1 },
   work: 'targets', seconds: 8, fatigue: 3,
@@ -200,8 +212,21 @@ const CHILI_PLAN: CropCarePlan = {
   ],
 };
 
+/** 241차 — 토마토(완숙 · 모종 2포기/칸) — 고추와 같은 뼈대에서 첫 꽃 따기만 뺀다(토마토는 첫 화방을 둔다) · 곁순은 작기 내내 */
+const TOMATO_PLAN: CropCarePlan = {
+  diseases: ['blight', 'anthracnose', 'virus'],
+  establishDays: 14,
+  frostEnds: true,
+  tasks: [mulch, stake(2), suckers([14, 50]), tie, topdress(4), fungicide, phosphite, calcium, insecticide, cull],
+};
+/** 241차 — 스테비아 토마토 = 토마토 표 + 스테비아 발효액 4회 */
+const STEVIA_TOMATO_PLAN: CropCarePlan = { ...TOMATO_PLAN, tasks: [...TOMATO_PLAN.tasks, steviaFeed] };
+
 export const CROP_CARE_PLANS: Readonly<Record<string, CropCarePlan>> = {
   chili: CHILI_PLAN,
+  cheongyang: CHILI_PLAN,          // 241차 — 개량종은 원종과 같은 일
+  tomato: TOMATO_PLAN,
+  stevia_tomato: STEVIA_TOMATO_PLAN,
 };
 
 /** 병해가 드는 철(월) — 역병 · 탄저병은 장마 · 고온다습(6~9월), 바이러스는 매개충이 느는 5~9월 */

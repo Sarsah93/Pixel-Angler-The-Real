@@ -78,6 +78,13 @@ export const KAMIS_CROP_ITEMS: Readonly<Record<string, { items: readonly string[
   oyster_mushroom: { items: ['느타리버섯'] },
   bean_sprout: { items: ['콩나물'] },
   mung_sprout: { items: ['숙주나물', '숙주'] },
+  // 241차 — 새 작물 · 개량종(블루베리 · 스테비아 토마토는 KAMIS 품목이 아니다)
+  korean_melon: { items: ['참외'] },
+  watermelon: { items: ['수박'] },
+  tomato: { items: ['토마토'] },
+  strawberry: { items: ['딸기'] },
+  pumpkin_sweet_potato: { items: ['고구마'], kind: '호박' },
+  cheongyang: { items: ['풋고추'], kind: '청양' },
 };
 
 export const PRODUCE_MARKET_TUNING = {

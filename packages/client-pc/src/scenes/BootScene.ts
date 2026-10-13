@@ -6,6 +6,7 @@
  * 모든 에셋을 로드하고 MainMenuScene으로 이동합니다.
  */
 
+import { CROP_PORTRAITS } from '../data/CropPortraits.js';
 import { FURNITURE_SALES } from '../data/ShopCatalog.js';
 import { ensureFurnitureIcon } from '../data/HomeFurniture.js';
 import Phaser from 'phaser';
@@ -249,6 +250,11 @@ export class BootScene extends Phaser.Scene {
     // 손질 연출 — 사시미칼(야나기바) 픽셀 스프라이트 (포 뜨기 칼 팔로우 연출.
     //  ref5 실사 비례를 따라 자체 제작 — 규약: 가로·칼끝 오른쪽·칼날 아래쪽. 84차)
     this.load.image('butchery_knife', 'butchery/knife_sashimi.png');
+    // 241차 — 작물 초상(사진 → 도트 · tools/pixelize_crops.cjs) — 있는 것만(CropPortraits.ts 자동 목록). 없으면 16px 손그림(px:) 그대로
+    for (const id of CROP_PORTRAITS) {
+      this.load.image(`cropimg_${id}`, `crops/${id}.png`);
+      this.load.image(`cropicon_${id}`, `crops/${id}_icon.png`);
+    }
     this.load.image('fish_black_sea_bream', 'fish/black_sea_bream.png');
     // ── 두족류 부산물 (2026-08-05 — food assets/trimmings/{squid,octopus}) ──
     //  squid 폴더: 이름에 어종이 없으면 오징어류 3종 공용 / '무늬오징어, 한치' = 갑오징어 제외 /

@@ -827,7 +827,7 @@ export { npcWhereabouts, routinePostMinutes } from './simulation/NpcRoutine.js';
 export type {
   CropCategory, CropSpeedClass, CropRarity, CropGrade, CropStartKind, FarmSite, FarmFacility, CropStart, CropHarvest,
   CropInterim, CropRequirement, CropPrice, CropDef, FarmCellState, FarmPlotState, FarmEnv, FarmPlantCtx, FarmHarvestResult,
-  CropDifficulty, CropCare,
+  CropDifficulty, CropCare, CropVariant,
   CropDisease, CropDiseaseState, CareTaskId, CareWorkKind, CareTaskDef, CropCarePlan,
 } from './types/Farming.js';
 export {
@@ -836,6 +836,12 @@ export {
   FARM_SUPPLIES, getFarmSupply, supplyOfFacility,
 } from './db-schema/CropDatabase.js';
 export type { FarmSupplyDef } from './db-schema/CropDatabase.js';
+export { variantsOf, baseCropOf, variantUnlockKo } from './db-schema/CropDatabase.js';
+// 241차 — 날로 먹기(수확물 · 조각 · 영양)
+export {
+  CROP_RAW_EAT, CROP_NO_RAW, PIECE_SUFFIX, pieceItemId, rawEatStatus, isPieceItemId, RAW_EAT_ITEM_IDS, allProduceBaseIds, rawEatLineKo,
+} from './db-schema/CropRawEatDatabase.js';
+export type { RawEatDef, NoRawDef, RawEatStatus } from './db-schema/CropRawEatDatabase.js';
 export {
   FARM_COLS, FARM_ROWS, FARM_CELLS, INDOOR_SLOTS, FARM_TUNING, kstMonthOf, kstDayIndex, climateRainAt, newFarmCell, newFarmPlot,
   startOf, gradeOf, GRADE_KO, GRADE_EN, cellReady, interimOpen, seasonFactor, speedMultOf, cellDays, advanceCell, advancePlot,

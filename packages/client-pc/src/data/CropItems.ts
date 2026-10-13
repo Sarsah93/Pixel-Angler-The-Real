@@ -15,10 +15,12 @@
 
 import {
   CROP_DATABASE, FARM_SUPPLIES, FARM_TUNING, GRADE_KO, cropOfProduce, parseProduceId, produceItemId, cropGate, getCrop,
+  CROP_RAW_EAT, pieceItemId,
   type CropDef, type CropGrade, type CropRarity, type CropStart,
 } from '@tra/core';
 import type { InvItemTemplate } from '../store/InventoryStore.js';
 import type { FurnKind } from './HomeFurniture.js';
+import { itemVitalsOf } from './ItemVitals.js';
 
 /** 수확물 소분류 — 가게 매입(`shopBuysItem`)과 요리 출처가 이 이름으로 알아본다 */
 export const PRODUCE_SUB = '농산물';
@@ -26,6 +28,8 @@ export const PRODUCE_SUB = '농산물';
 export const SEED_SUB = '씨앗 · 모종';
 /** 호미 · 퇴비 · 설비 */
 export const FARM_SUB = '농사 도구';
+/** 241차 — 큰 수확물을 「나누기」한 조각(수박 한 쪽 · 무 한 토막 …) — 먹기용 · 등급 없음 · 가게는 안 산다 */
+export const PIECE_SUB = '농산물 조각';
 
 const GRADES: CropGrade[] = ['special', 'good', 'normal'];
 
@@ -112,8 +116,25 @@ export function produceTemplate(itemId: string): InvItemTemplate | null {
   return {
     id: produceItemId(base, g), name: `${produceBaseName(base)} · ${GRADE_KO[g]}`, icon: '', iconTexture: `px:${base}`,
     category: 'food', subCategory: PRODUCE_SUB, basePrice: produceBaseValue(crop, base, g), condition: 'fresh', equippable: false,
+    // 241차 — 날로 먹는 수확물은 거둘 때부터 허기 · 수분이 붙는다(세이브 백필을 기다리지 않는다 — `ITEM_VITALS`가 표)
+    ...(itemVitalsOf(produceItemId(base, g)) ?? {}),
     ...(cook ? { cookIngredient: cook, ...(COOK_UNITS[base] ? { cookUnitsPerQty: COOK_UNITS[base] } : {}) } : {}),
     ...(CHUM_GRAIN.has(base) ? { chumKind: 'grain' as const } : {}),
+    // 241차 — 한 번에 먹기엔 큰 단위는 「나누기」(224차 포장 뜯기와 같은 unpack)로 조각을 낸다
+    ...(CROP_RAW_EAT[base]?.pieces ? { unpack: { id: pieceItemId(base), qty: CROP_RAW_EAT[base].pieces.count } } : {}),
+  };
+}
+
+/** 241차 — 조각 템플릿(수확물 기본 id → `<id>_pc`): 같은 아이콘 · 값은 단위 값 ÷ 조각 수 · 등급 없음 */
+export function pieceTemplate(baseId: string): InvItemTemplate | null {
+  const crop = cropOfProduce(baseId);
+  const def = CROP_RAW_EAT[baseId];
+  if (!crop || !def?.pieces) return null;
+  return {
+    id: pieceItemId(baseId), name: def.pieces.labelKo, icon: '', iconTexture: `px:${baseId}`,
+    category: 'food', subCategory: PIECE_SUB, basePrice: Math.max(10, Math.round(produceBaseValue(crop, baseId, 'good') / def.pieces.count / 10) * 10),
+    condition: 'fresh', equippable: false,
+    ...(itemVitalsOf(pieceItemId(baseId)) ?? {}),
   };
 }
 
@@ -153,6 +174,8 @@ export const CROP_ITEM_TEMPLATES: InvItemTemplate[] = (() => {
   for (const crop of CROP_DATABASE) {
     for (const base of produceBaseIds(crop)) for (const g of GRADES) push(produceTemplate(produceItemId(base, g)));
   }
+  // 241차 — 조각(나눈 것)
+  for (const crop of CROP_DATABASE) for (const base of produceBaseIds(crop)) push(pieceTemplate(base));
   // 집 안 설비(시루 · 수경 재배기)는 가방 물건이 아니라 가구다(집 「넣어 둔 가구」로 배달)
   for (const s of FARM_SUPPLIES) if (s.site !== 'indoor') push(supplyTemplate(s));
   return out;
@@ -191,6 +214,8 @@ export interface CropShopEntry extends InvItemTemplate {
   minLevel?: number;
   /** 237차 — 이 자격을 가진 뒤에 진열(까다로운 작물 — 유기농업기능사) */
   requiresLicense?: string;
+  /** 241차 — 개량종: 원종을 이만큼 거둔 뒤에 진열 */
+  requiresHarvests?: { cropId: string; count: number };
 }
 
 /** 237차 — 단계가 열릴 때 예로 드는 작물(이름은 작물 DB에서 읽는다) */
@@ -212,10 +237,19 @@ export function farmTierNoticeKo(tier: number, hasCert: boolean): string {
   return `[텃밭] 레벨 ${lv} — ${cond} ${TIER_PHRASE[tier] ?? '작물'}도 기를 수 있다 (${names})`;
 }
 
-/** 237차 — 씨앗 · 모종의 난이도 단계 요건 → 진열 조건 */
-function gateFields(crop: CropDef, st: CropStart): Pick<CropShopEntry, 'minLevel' | 'requiresLicense'> {
+/** 237차 — 씨앗 · 모종의 난이도 단계 요건 → 진열 조건 · 241차 — 개량종은 원종을 거둔 횟수도 */
+function gateFields(crop: CropDef, st: CropStart): Pick<CropShopEntry, 'minLevel' | 'requiresLicense' | 'requiresHarvests'> {
   const g = cropGate(crop, st);
-  return { ...(g.level > 1 ? { minLevel: g.level } : {}), ...(g.license ? { requiresLicense: g.license } : {}) };
+  return {
+    ...(g.level > 1 ? { minLevel: g.level } : {}), ...(g.license ? { requiresLicense: g.license } : {}),
+    ...(crop.variant ? { requiresHarvests: { cropId: crop.variant.of, count: crop.variant.afterHarvests } } : {}),
+  };
+}
+
+/** 241차 — 원종을 거둬 개량종이 열렸을 때 한 줄(채널 로그 · 떠오르는 안내) */
+export function variantNoticeKo(base: CropDef, opened: CropDef[]): string {
+  const names = opened.map((v) => v.nameKo).join(' · ');
+  return `[텃밭] ${base.nameKo}를 ${opened[0]?.variant?.afterHarvests ?? 3}번 거뒀다 — 종묘사에 ${names}이 들어온다`;
 }
 
 /** 집 안 설비 → 가구 종류 */

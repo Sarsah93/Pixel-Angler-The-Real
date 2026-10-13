@@ -1048,10 +1048,21 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
     if (u.sproutable) useRows.push(['시루', '거둔 것을 콩나물 시루에 앉힐 수 있다']);
     useRows.push(['할 일', u.quests.length ? xlist(u.quests.map(q => xl('quests', q.id, q.title) + ' <span class="dim">(' + q.how + ')</span>')) : '<span class="dim">쓰이는 할 일이 없습니다.</span>']);
     useRows.push(['사 주는 곳', esc(c.price.buyers)]);
+    // 241차 — 날로 먹기 · 개량종
+    const rawRows = (c.rawEat || []).map(r => [xl('items', r.id, r.name),
+      r.kind === 'eat' ? '<b>먹는다</b> — 허기 +' + r.hunger + ' · 수분 ' + (r.hydration < 0 ? '−' + Math.abs(r.hydration) : '+' + r.hydration) + ' <span class="dim">(' + r.g + 'g · ' + r.kcal + ' kcal)</span> — ' + esc(r.note)
+      : r.kind === 'split' ? '<b>나눠서</b> — [나누기] ' + r.pieces.count + '개 → ' + xl('items', r.pieces.id, r.pieces.label) + ' (조각 하나 허기 +' + r.hunger + ' · 수분 ' + (r.hydration < 0 ? '−' + Math.abs(r.hydration) : '+' + r.hydration) + ') — ' + esc(r.note)
+      : r.kind === 'no' ? '<b class="warn">못 먹는다</b> — ' + esc(r.why) : '<span class="dim">—</span>']);
+    const rawSec = rawRows.length ? '<div class="ssec"><h3>날로 먹을 수 있나</h3>' + kvRows(rawRows) + '<p class="note">' + esc(G.farming.rules.rawEat) + '</p></div>' : '';
+    const varRows = [];
+    if (c.variant) varRows.push(['원종', xl('farming', c.variant.of, c.variant.ofName) + ' — ' + esc(c.variant.unlock)], ['다른 점', esc(c.variant.diff)]);
+    for (const v of (c.variants || [])) varRows.push(['개량종', xl('farming', v.id, v.name) + ' — 이 작물을 ' + v.after + '번 거두면 종묘사에 · ' + esc(v.diff)]);
+    const varSec = varRows.length ? '<div class="ssec"><h3>개량종</h3>' + kvRows(varRows) + '<p class="note">' + esc(G.farming.rules.variant) + '</p></div>' : '';
     return {
       title: c.name, sub: c.nameEn + ' · ' + c.catLabel, lede: c.note, img: c.img,
       tags: [c.catLabel, c.site, c.tierLabel + (c.level > 1 ? ' (레벨 ' + c.level + (c.license ? ' · ' + c.license : '') + ')' : ''), c.rarity]
-        .concat(c.inMart ? [] : ['마트에 없음 — 직접 길러야']).concat(c.overwinter ? ['겨울나기'] : []).concat(c.perennial ? ['여러해살이'] : []),
+        .concat(c.inMart ? [] : ['마트에 없음 — 직접 길러야']).concat(c.overwinter ? ['겨울나기'] : []).concat(c.perennial ? ['여러해살이'] : [])
+        .concat(c.variant ? ['개량종 — ' + c.variant.ofName + '에서'] : []).concat((c.rawEat || []).some(r => r.kind === 'eat' || r.kind === 'split') ? ['날로 먹을 수 있음'] : ['익혀야']),
       body:
         '<div class="ssec"><h3>한눈에</h3>' + kvRows([
           ['자라는 달', esc(c.growMonths) + (c.overwinter ? ' — 겨울에 쉬었다가 봄에 잇는다' : '')],
@@ -1063,7 +1074,7 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
         ]) + '</div>' +
         '<div class="ssec"><h3>심는 법</h3>' + startTable + '<p class="note">' + esc(G.farming.rules.plotCells) + ' · ' + esc(G.farming.rules.plots) + '</p></div>' +
         '<div class="ssec"><h3>거두기</h3>' + kvRows(harvestRows) + '</div>' +
-        careSec + disSec +
+        careSec + disSec + rawSec + varSec +
         '<div class="ssec"><h3>값</h3>' + kvRows([
           ['기준값', '<b>' + nfw(c.price.base) + '</b> <span class="dim">— 상 등급 · 달 지수 · 주간 출렁임(±' + Math.round(c.price.volatility * 100) + '%) 전</span>'],
           ['실제 시세', c.price.kamis ? '하루 한 번 실제 소매가를 받아 「오늘 ÷ 평년」으로 움직인다' : '달 지수 + 주간 출렁임'],
@@ -1119,8 +1130,14 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
       rows.push(['거두는 것', xl('items', c.harvest.itemId, c.harvest.name) + ' · 칸당 ' + c.harvest.qty[0] + '~' + c.harvest.qty[1] + '개' + (c.harvest.repeat ? ' · ' + esc(c.harvest.repeat) : '')]);
       if (c.carePlan.summary) rows.push(['손이 가는 일', esc(c.carePlan.summary)]);
       if (c.care.length) rows.push(['까다로운 점', esc(c.care.join(' · '))]);
+      if (c.variant) rows.push(['개량종', xl('farming', c.variant.of, c.variant.ofName) + '에서 — ' + esc(c.variant.unlock)]);
     } else {
-      rows.push(['거둔 뒤', ref.role === 'interim' ? '자라는 동안 거두는 중간 수확물' : '본 수확물 — ' + esc(G.farming.rules.grade)]);
+      rows.push(['거둔 뒤', ref.role === 'piece' ? '큰 수확물을 [나누기]한 조각 — 등급 없음 · 가게는 안 산다' : ref.role === 'interim' ? '자라는 동안 거두는 중간 수확물' : '본 수확물 — ' + esc(G.farming.rules.grade)]);
+      // 241차 — 날로 먹기(이 아이템 기준 · 조각이면 조각 하나)
+      const rr = (c.rawEat || []).find(r => r.id === itemId.replace(/_(sp|nm)$/, '') || (r.pieces && r.pieces.id === itemId));
+      if (rr) rows.push(['날로 먹기', rr.kind === 'no' ? '못 먹는다 — ' + esc(rr.why) : (rr.kind === 'split' && rr.pieces.id !== itemId) ? '나눠서 — [나누기] ' + rr.pieces.count + '개 → ' + xl('items', rr.pieces.id, rr.pieces.label) : '먹는다 — 허기 +' + rr.hunger + ' · 수분 ' + (rr.hydration < 0 ? '−' + Math.abs(rr.hydration) : '+' + rr.hydration) + ' — ' + esc(rr.note)]);
+      if (c.variant) rows.push(['원종', xl('farming', c.variant.of, c.variant.ofName)]);
+      if ((c.variants || []).length) rows.push(['개량종', xlist(c.variants.map(v => xl('farming', v.id, v.name)))]);
       rows.push(['값 흐름', c.price.kamis ? '실제 소매가 연동 · ' : '' + '달 지수 — 작물 카드에서 12달 막대를 본다']);
       rows.push(['사 주는 곳', esc(c.price.buyers)]);
       if (c.uses.cook) rows.push(['요리 재료', '「' + esc(c.uses.cook.ing) + '」 — ' + xlist(c.uses.cook.recipes.map(r => xl('cooking', r.id, r.name)))]);

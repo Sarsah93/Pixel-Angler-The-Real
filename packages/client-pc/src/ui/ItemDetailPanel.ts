@@ -13,10 +13,12 @@ import { getBlueprint, CRAFT_STATION_LABEL, CRAFT_GROUP_LABEL, getQuestItem } fr
 import {
   cropStartOfItem, cropOfProduce, parseProduceId, monthRangeKo, kstMonthOf, GRADE_KO, supplyOfFacility, getSkillById,
   produceMarketRatio, produceMarketInfo, cropGate, CROP_TIER_KO, CROP_CARE_KO, hasCarePlan, carePlanSummaryKo,
+  rawEatStatus, rawEatLineKo, variantsOf, baseCropOf, variantUnlockKo, cropOfProduce as cropOfProduceId, type RawEatDef,
   type CropDef, type CropStart, type CropRarity, type CropDifficulty, type LicenseType,
 } from '@tra/core';
 import { GameState } from '../store/GameState.js';
-import { PRODUCE_SUB, SEED_SUB } from '../data/CropItems.js';
+import { PRODUCE_SUB, SEED_SUB, PIECE_SUB } from '../data/CropItems.js';
+import { FarmStore } from '../store/FarmStore.js';
 import { reelCmPerTurn, rodSpecFor, reelSpecFor, rodLoadState, ROD_USE_LABEL, getRodCatalogEntry, getReelCatalogEntry, getLureSpec, getNuisance, sashimiStarsAt, sashimiNutrition, foodNutritionOf, nutritionLineKo, restoreFromNutrition } from '@tra/core';
 import { FISH_DATABASE, fishImageSizeScale, fishRarity, speciesStandardWeightG,
   GEAR_FAULTS, gearRepairFee, rodMaxCasts,
@@ -27,7 +29,7 @@ import { CraftingStore } from '../store/CraftingStore.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { DraggablePanel } from './DraggablePanel.js';
 import { clampTextWidth } from './TextFit.js';
-import { createItemIcon } from './ItemIcon.js';
+import { createItemIcon, cropPortraitTexture } from './ItemIcon.js';
 import { resolveFishTexture } from '../data/FishTextures.js';
 import { netReachFromName,
   InvItem, InventoryStore, CONDITION_LABEL, CONDITION_COLOR, CONDITION_DESC,
@@ -162,6 +164,7 @@ function cropStartDetail(item: Pick<InvItem, 'name' | 'qty' | 'basePrice'>, crop
   if (hasCarePlan(crop) && !st.nursery) rows.push({ label: '손이 가는 일', value: carePlanSummaryKo(crop) });
   if (crop.interim && !(crop.interim.seedOnly && st.kind !== 'seed')) rows.push({ label: '자라는 동안', value: crop.interim.labelKo });
   rows.push(...cropTierRows(crop, st));   // 237차
+  rows.push(...variantRows(crop));        // 241차
   const need = cropNeedsKo(crop);
   if (need) rows.push({ label: '갖출 것', value: need, color: '#ffd257' });
   rows.push({ label: '구하기', value: CROP_RARITY[crop.rarity].ko, color: CROP_RARITY[crop.rarity].color });
@@ -169,8 +172,62 @@ function cropStartDetail(item: Pick<InvItem, 'name' | 'qty' | 'basePrice'>, crop
   rows.push({ label: '보유 수량', value: `${item.qty}개` });
   rows.push({ label: '기준가', value: `${item.basePrice.toLocaleString()} 원` });
   let desc = crop.noteKo;
+  desc += variantDesc(crop);   // 241차
   if (crop.site === 'indoor') desc += '\n집 안 선반은 콩나물 시루나 수경 재배기를 들여놓으면 생긴다.';
   return { title: item.name, subtitle: '씨앗 · 모종', rows, desc };
+}
+
+/**
+ * 241차 — 개량종 줄: 개량종이면 「원종」, 원종이면 「개량종 — 지금 n/3번」(열렸으면 「종묘사에 있다」).
+ * 다른 점 · 해금 조건 같은 긴 글은 본문(`variantDesc`)에 둔다 — 행 값은 한 줄이라 넘친다.
+ */
+function variantRows(crop: CropDef): ItemDetailRow[] {
+  const rows: ItemDetailRow[] = [];
+  const base = baseCropOf(crop);
+  if (base) rows.push({ label: '원종', value: base.nameKo, color: '#8fd4ff' });
+  const vs = variantsOf(crop.id);
+  if (vs.length) {
+    const n = FarmStore.harvestsOf(crop.id);
+    rows.push({ label: '개량종', value: vs.map((v) => n >= (v.variant?.afterHarvests ?? 3) ? `${v.nameKo} — 종묘사에 있다` : `${v.nameKo} — 지금 ${n}/${v.variant?.afterHarvests ?? 3}번`).join(' · '), color: '#8fd4ff' });
+  }
+  return rows;
+}
+function variantDesc(crop: CropDef): string {
+  let s = '';
+  if (crop.variant) {
+    const base = baseCropOf(crop);
+    s += `\n[개량종] ${crop.variant.diffKo}\n${variantUnlockKo(crop, base ? FarmStore.harvestsOf(base.id) : undefined)}`;
+  }
+  for (const v of variantsOf(crop.id)) s += `\n[개량종] ${v.nameKo} — ${v.variant?.diffKo ?? ''}`;
+  return s;
+}
+
+/** 241차 — 날로 먹기 줄(짧게) + 본문 꼬리(맛 · 나누기 · 익혀야 하는 이유) */
+function rawEatRow(itemId: string): { row: ItemDetailRow | null; desc: string } {
+  const raw = rawEatStatus(itemId);
+  if (!raw) return { row: null, desc: '' };
+  if (raw.kind === 'eat') return { row: { label: '날로 먹기', value: rawEatLineKo(raw.def).split(' — ')[0], color: '#8affb0' }, desc: `\n[날로 먹기] ${raw.def.noteKo}` };
+  if (raw.kind === 'split') {
+    const p = raw.def.pieces!;
+    return { row: { label: '날로 먹기', value: `나눠서 먹는다 (${p.count}조각)`, color: '#8fd4ff' }, desc: `\n[날로 먹기] 「나누기」로 ${p.labelKo} ${p.count}개 — ${raw.def.noteKo}` };
+  }
+  return { row: { label: '날로 먹기', value: '못 먹는다 — 익혀야', color: '#ff9a5a' }, desc: `\n[익혀야] ${raw.why.whyKo}` };
+}
+
+/** 241차 — 농산물 조각(나눈 것) 상세: 작물 · 영양 · 날로 먹기 */
+function pieceDetail(item: Pick<InvItem, 'id' | 'name' | 'qty' | 'condition'> & Partial<InvItem>, crop: CropDef, def: RawEatDef): ItemDetailData {
+  const rows: ItemDetailRow[] = [];
+  rows.push({ label: '작물', value: crop.nameKo });
+  rows.push({ label: '나눈 것', value: `${def.pieces?.count ?? 1}조각 중 하나` });
+  const nut = foodNutritionOf(item.id);
+  if (nut) {
+    rows.push({ label: '영양', value: nutritionLineKo(nut) });
+    rows.push({ label: '날로 먹기', value: rawEatLineKo(def).split(' — ')[0], color: '#8affb0' });
+  }
+  rows.push({ label: '보유 수량', value: `${item.qty}개` });
+  let desc = `[날로 먹기] ${def.noteKo}\n조각은 등급이 없고 가게가 사지 않는다 — 먹거나 요리에 쓴다.`;
+  if (item.condition) desc += `\n[${CONDITION_LABEL[item.condition]}] ${CONDITION_DESC[item.condition]}`;
+  return { title: item.name, subtitle: '농산물 조각', rows, desc };
 }
 
 /** 235차 — 텃밭 수확물 상세: 등급 · 오늘 파는 값 · 값 흐름 · 요리 */
@@ -180,6 +237,9 @@ function produceDetail(item: Pick<InvItem, 'id' | 'name' | 'qty' | 'basePrice' |
   const gradeColor = grade === 'special' ? '#ffd257' : grade === 'good' ? '#8fd4ff' : '#c8d0d8';
   rows.push({ label: '등급', value: GRADE_KO[grade], color: gradeColor });
   rows.push({ label: '작물', value: crop.nameKo });
+  rows.push(...variantRows(crop));   // 241차
+  const raw = rawEatRow(item.id);   // 241차
+  if (raw.row) rows.push(raw.row);
   rows.push({ label: '파는 값 (오늘)', value: `${InventoryStore.getSellPrice({ ...item, qty: 1 } as InvItem).toLocaleString()}원` });
   const idx = crop.price.season[kstMonthOf(Date.now()) - 1] ?? 1;
   const trend = idx >= 1.15 ? { v: '귀한 철 — 값이 오른다', c: '#8affb0' } : idx <= 0.88 ? { v: '흔한 철 — 값이 내린다', c: '#ff9a5a' } : { v: '보통', c: undefined };
@@ -198,7 +258,7 @@ function produceDetail(item: Pick<InvItem, 'id' | 'name' | 'qty' | 'basePrice' |
   rows.push({ label: '구하기', value: CROP_RARITY[crop.rarity].ko, color: CROP_RARITY[crop.rarity].color });
   if (!crop.inMart) rows.push({ label: '마트', value: '팔지 않는 작물', color: '#8affb0' });
   rows.push({ label: '보유 수량', value: `${item.qty}개` });
-  let desc = crop.noteKo;
+  let desc = crop.noteKo + variantDesc(crop) + raw.desc;
   if (item.condition) desc += `\n[${CONDITION_LABEL[item.condition]}] ${CONDITION_DESC[item.condition]}`;
   return { title: item.name, subtitle: '농산물', rows, desc };
 }
@@ -272,6 +332,12 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
     }
   }
 
+  // 241차 — 농산물 조각(나눈 것)
+  if (item.subCategory === PIECE_SUB) {
+    const st = rawEatStatus(item.id);
+    const crop = st ? cropOfProduceId(st.baseId) : undefined;
+    if (st?.kind === 'eat' && crop) return pieceDetail(item, crop, st.def);
+  }
   // 235차 — 텃밭: 수확물(등급 꼬리 포함)이 먼저 — 직접 기른 콩은 수확물이면서 콩나물 시루의 씨앗이다
   if (item.subCategory === PRODUCE_SUB) {
     const crop = cropOfProduce(item.id);
@@ -817,6 +883,9 @@ export class ItemDetailPanel extends DraggablePanel {
     //  어획물 실사 생선뿐 아니라 손질 부산물(trim_*)·필렛·가공식품 등 iconTexture 보유 전체).
     //  어획물은 iconTexture가 비어도(구세이브) speciesId로 텍스처를 폴백 해소.
     const fishTexKey: string | undefined = (() => {
+      // 241차 — 작물 초상(사진 → 도트)이 있으면 어종처럼 크게(cropimg_*)
+      const portrait = cropPortraitTexture(scene, item.iconTexture, 999);
+      if (portrait) return portrait;
       // 129차 — `px:` 픽셀 아이콘은 상세 확대용으로 크게 구워 쓴다(스케일 5 = 80px).
       if (item.iconTexture?.startsWith('px:')) {
         return ensurePixelIcon(scene, item.iconTexture.slice(3), 5) ?? undefined;

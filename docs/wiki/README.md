@@ -2,7 +2,7 @@
 
 > **이 위키의 목적**: 날짜·차수 순으로만 쌓이던 작업 기록을 **구조(시스템) 기준**으로 다시 배열해,
 > "지금 무엇이 어디까지 되어 있고 / 무엇이 남았고 / 어디가 위험한가"를 한 화면에서 판별한다.
-> 최종 업데이트: 2026-10-12 (240차 반영 — 알림 가이드 · 위키 농사 탭 · 도감 상세는 `02-SYSTEMS/discovery-wiki.md` · `ui-framework.md` · 239차 반영 — 벡터 건물 · 간판 자리 규칙은 `02-SYSTEMS/world-field.md` · 209차 반영 — 낚싯대 · 릴 제원 라인업 · 파이팅 중 다른 거치대는 `02-SYSTEMS/fishing-loop.md` · 차수 목록은 `03-WORKLOG/README.md`)
+> 최종 업데이트: 2026-10-13 (241차 반영 — 새 작물 5 · 개량종 3 · 날로 먹기는 `02-SYSTEMS/home-base.md` · 실사 도트 에셋 기준(작물 초상 · 어종 점검)은 `02-SYSTEMS/photo-pixel-art.md` · 240차 반영 — 알림 가이드 · 위키 농사 탭 · 도감 상세는 `02-SYSTEMS/discovery-wiki.md` · `ui-framework.md` · 239차 반영 — 벡터 건물 · 간판 자리 규칙은 `02-SYSTEMS/world-field.md` · 209차 반영 — 낚싯대 · 릴 제원 라인업 · 파이팅 중 다른 거치대는 `02-SYSTEMS/fishing-loop.md` · 차수 목록은 `03-WORKLOG/README.md`)
 
 ---
 
@@ -46,7 +46,7 @@
 | S5 | [인벤토리·장비·보관](02-SYSTEMS/inventory-equipment.md) | 🟢 | `InventoryStore` · `CoolerStore` · `FridgeStore` · **`InventoryPanel` 윈도우드 스크롤(148차)** | **148차 가방 사다리 5단계 실효화**(25 → 28/30/33/35/37 · 용량 밖 '잠긴 칸') — 예약 슬롯 6종 아이템 대기 · 탭별 용량 차등(core `Backpack.ts`) 미배선 · **155 획득 토스트·NEW 점·채비 잠금 세이브** |
 | S6 | [경제·상점·시세](02-SYSTEMS/economy-data.md) | 🟢 | `MarketPriceEvaluator` · `ShopPanel` · **`ConsignmentAuction`(147차 위판)** · `AuctionHousePanel` | **147차 위판 개통**(직판장 창구 겸용 · 평판 = 수수료) — `TUNING.auction` F8 조율 · 경매 **구매자 측** 미개방 · 낚시점 전용 상점 |
 | S7 | [월드맵·지역 타일맵](02-SYSTEMS/world-field.md) | 🔶 | `WorldMapScene` · **OSM 파이프라인 3종** · `build_region_maps.py` | 속초(심리스 v2)·부산·홈타운 개방 — OSM 16개 지역 확장 잔여 |
-| S8 | [홈베이스 (집)](02-SYSTEMS/home-base.md) | 🔶 | `HomeInteriorScene` · `types/HomeBase.ts` · `FarmSim` · `CropCareSim` · `FarmStore` · `FarmWorkPanel` | 하우스 Tier 1~3, 상업 수조, 텃밭 잔여(시세 실연결 · 난이도 문턱 · 종묘사 실제 위치 · 새 작물 — 백로그 BL · BM · BN) |
+| S8 | [홈베이스 (집)](02-SYSTEMS/home-base.md) | 🔶 | `HomeInteriorScene` · `types/HomeBase.ts` · `FarmSim` · `CropCareSim` · **`CropRawEatDatabase`**(241) · `FarmStore` · `FarmWorkPanel` | 하우스 Tier 1~3, 상업 수조, 텃밭 잔여(시세 실연결 · 난이도 문턱 · 종묘사 실제 위치 · 작물 사진 73장 · 개량종 구세이브 완화 — 백로그 BL · BM · BN · BQ) |
 | S9 | [외부 실데이터](02-SYSTEMS/economy-data.md#외부-api) | 🟢⚠ | `core/api-client/*` | **배포 시 CORS 프록시 필수** |
 | S10 | [UI 프레임워크](02-SYSTEMS/ui-framework.md) | 🟢 | `DraggablePanel` · `TextFit` · `SceneFade` · `HelpLibraryPanel`(**14카테고리 76토픽**) · `i18n/*` | 저순위 팝업 검수 잔여 · **187차 도움말 전면 개정**(실캡처 38장 ko/en · 번호 콜아웃) |
 | S11 | [가이드·온보딩](02-SYSTEMS/ui-framework.md#가이드-허브) | 🟢 | `GuidePanel` · `GuideContent` | 삽화 실게임 스크린샷 교체 |
@@ -59,10 +59,11 @@
 | S18 | 멀티플레이(구 항목) | — | | **S24로 이관**(143차) |
 | S19 | Tauri 패키징 | ⬜ | `apps/tauri-wrapper` | Phase 9 (아이콘만 준비됨) |
 | S20 | [도감·발견·dev 도구](02-SYSTEMS/discovery-wiki.md) | 🟢 | `DiscoveryStore` · `AnglerLogScene` · F10 콘솔 | 위키 상세 팝업 · FP 토스트 |
-| S21 | [진행 — 레벨·스킬·생존·면허·일지](02-SYSTEMS/progression.md) | 🔶 | `Progression.ts` · `Vitals.ts`·`StatusEffects.ts` · `SkillDatabase`(**92노드 Σ=215**) · `CraftingDatabase` · `License.ts` · 패널 3종 · `CollapseOverlay` | **열린 스킬 65/65 배선 · 미구현 시스템 14 자물쇠**(222차) · 신규 면허 효과 1/7 · 농사 카테고리 잠김 · **P1~P9 완료**(P8 = 134차 S22) · 스토리 면허 4종 추가(보너스 제외) · 눕기 스프라이트 대기 · **155 드레인 하루 3끼 기준 + `FoodNutrition` 테이블** |
+| S21 | [진행 — 레벨·스킬·생존·면허·일지](02-SYSTEMS/progression.md) | 🔶 | `Progression.ts` · `Vitals.ts`·`StatusEffects.ts` · `SkillDatabase`(**95노드 Σ=216** — 유료 90 + 히든 5) · `CraftingDatabase` · `License.ts` · 패널 3종 · `CollapseOverlay` | **열린 스킬 65/65 배선 · 미구현 시스템 14 자물쇠**(222차) · 신규 면허 효과 1/7 · 농사 카테고리 235차 해제 · **P1~P9 완료**(P8 = 134차 S22) · 스토리 면허 4종 추가(보너스 제외) · 눕기 스프라이트 대기 · **155 드레인 하루 3끼 기준 + `FoodNutrition` 테이블** |
 | S22 | [스토리·퀘스트](02-SYSTEMS/story-quests.md) | 🔶 | **정본 [`STORY_SPEC_v4`](../../.agents/STORY_SPEC_v4.md)** · `Story.ts` · `FisheryLaw.ts` · `StoryQuestDatabase`(**188퀘 · 아크 23**) · `DayJobs`(품삯 3) · `JournalPages` · `StoryArcs` · `StoryStore` · `DialoguePanel`(**140차 재작성 — 선택지·우호도**) · `JournalPanel` · `StoryChoices` · `Affinity.ts` | **134차 데이터·엔진 + 135차 Ch1 실시스템 + 140차 선택지 분기·우호도** — 배 출조·좌판 등 계통 · Ch2+ 대사 · NPC 스프라이트 잔여 · **147차 위판 UI(M2-01)·총회 연출(M1-11)·`onMiss` 평판 감점 완료** · ~~남은 manual = 구멍치기(1-4)~~ **✅149차 — 조법 구현 + `spotKind` 장소 게이트** · **148차 가방 2~5단계 실효화 완료** · **155 혼잣말 퀘 선택지·검증기(데이터 오류 3건) · 목표 「방법」 힌트 · 추적기·점멸 화살표** · **165 컷씬 런타임(실제 필드) · M1-02 실플레이 · 메인/서브 추적기 · 일지 고정 · 지도 툴팁** · **166 NPC 자유 행동(낚시·좌판·순찰·배회 — `StoryNpcs.behavior`)** · **167 장면 게이트 — talk·수동 목표는 컷씬이 끝나야 닫힘(`QuestScenes.ts`) · N18-6 각본** · **168 생성기 재작성(혼잣말/NPC/응답 분리) + 전체 위키 아티팩트** |
 | S23 | [캐릭터 아트](02-SYSTEMS/character-art.md) | 🟢 | `art/CharacterArt.ts`(셀 32x32 · 레이어 14) · `art/CharacterCast.ts`(41인) · `ui/CharacterSprite.ts`(**144차 `paceMult`**) · `CharacterCreateScene`(139차 UI · 140차 얼굴형 · **144차 회전·동작 버튼**) | **140차 머리 9×10·얼굴형 3종·측면 재작업 완료** · 사용자 GPT 스타일 실험 대기(`CHARACTER_SPRITE_PROMPT_SPEC`) · ~~대화창 초상 아트~~ 152 → **155 초상↔필드 문법 정합** · 눕기 프레임 · **달리기 전용 프레임**(현재는 걷기 가속) · **166 마을 사람 `amb_*` 120인 결정적 분화** |
 | S24 | [싱글/멀티플레이](02-SYSTEMS/multiplayer.md) | 🔶 | `types/Multiplayer.ts`(공용 계약) · `server/multiplayer/`(`/mp/*` REST · 세션 · 디스크 영속) · `net/MultiplayerClient.ts` · `MultiplayerLobbyScene` · `FieldEventManager` | **143차 신설 · 145차 세션 세계** — 통발 공유 · 공용 시드 · 외형/활동 · 밀어내기 · 건물 반투명 · 채팅 · 이어하기 · **유저 간 거래(공증)·정보 보기(146차)**. 진행도는 **설계상 각자**. 남은 것은 NAT 통과·서버 권위·마켓 원장 |
+| S25 | [실사 도트 에셋 — 어종 · 작물 초상](02-SYSTEMS/photo-pixel-art.md) | 🔶 | `tools/check_art_quality.cjs` · `tools/pixelize_crops.cjs` · `data/CropPortraits.ts` · `ItemIcon.cropPortraitTexture` | **241 기준 · 도구 · 배선 완료** · 작물 초상 1/74(땅콩 시연) — 사진 투입은 사용자 · 어종 알파 정규화 10장 · 셀 재굽기 7장 = 사용자 결정 |
 
 ---
 

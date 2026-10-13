@@ -1906,7 +1906,7 @@ export class RegionFieldScene extends Phaser.Scene {
       const list = this.poiByChunk.get(key);
       if (list) list.push(i);
       else this.poiByChunk.set(key, [i]);
-      // 거래 가능 POI = 기존 건물 근접([E] 거래) 흐름에 그대로 편입
+      // 거래 가능 POI = 기존 건물 근접([F] 거래) 흐름에 그대로 편입
       const kind = this.poiBuildingKind(poi);
       if (kind) {
         this.buildings.push({
@@ -4939,7 +4939,7 @@ export class RegionFieldScene extends Phaser.Scene {
     this.scene.start('RegionFieldScene', { region: 'hometown' });
   }
 
-  /** 건물 입구 근접 감지 → [E] 거래 힌트 */
+  /** 건물 입구 근접 감지 → [F] 거래 힌트 */
   private updateBuildingProximity(): void {
     const px = this.playerBody.x, py = this.playerBody.y;
     let nearest: { x: number; y: number; kind: BuildingKind; branch: MarketBranch } | null = null;
@@ -7930,7 +7930,7 @@ export class RegionFieldScene extends Phaser.Scene {
     // 심리스 단일 맵 = 엣지 전환 없음 (legacy 그래프 폴백용으로 코드는 보존 — 스펙 §6-4)
     if (this.seamless) return;
     if (this.isTransitioning || this.castBusy) return;
-    // 건물 근접 중에는 전환 억제 — 엣지 부근 건물과의 상호작용([E])이 우선
+    // 건물 근접 중에는 전환 억제 — 엣지 부근 건물과의 상호작용([F])이 우선
     if (this.nearBuilding) return;
     const c = Math.floor(this.playerBody.x / TR);
     const r = Math.floor(this.playerBody.y / TR);

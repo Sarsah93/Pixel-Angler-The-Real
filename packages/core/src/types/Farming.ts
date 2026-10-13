@@ -182,7 +182,8 @@ export type CareTaskId =
   | 'spray_phosphite'    // 아인산 — 역병(7~14일)
   | 'spray_calcium'      // 칼슘액비 — 탄저 예방 보조 · 열매 품질
   | 'spray_insecticide'  // 살충제 — 총채벌레 · 진딧물(바이러스 매개충)
-  | 'cull_diseased';     // 병든 열매 · 포기 걷어 내기
+  | 'cull_diseased'      // 병든 열매 · 포기 걷어 내기
+  | 'stevia_feed';       // 241차 — 스테비아 발효액 주기(스테비아 토마토 — 거르면 단맛이 오르지 않는다)
 
 /** 작업 장면 모양 — 클라이언트 미니게임이 이 값으로 그림 · 조작을 고른다 */
 export type CareWorkKind =
@@ -234,6 +235,21 @@ export interface CropCarePlan {
   frostEnds?: boolean;
 }
 
+/**
+ * 241차 — 개량종(품종 · 농법). 원종을 거둬 본 사람에게만 종묘사가 권한다 — 「원종 n번 거두기」가 열쇠.
+ *  - 품종: 호박고구마(베니하루카 계통) · 청양고추 — 원종과 다른 작물로 심고 거둔다.
+ *  - 농법: 스테비아 토마토 — 토마토에 스테비아 발효액을 주는 재배법(관리 작업 `stevia_feed`).
+ */
+export interface CropVariant {
+  /** 원종 작물 id */
+  of: string;
+  /** 원종을 이만큼 거둔 뒤(본 수확 · 중간 수확 합 — `FarmStore.harvestsOf`) 종묘사에 진열 */
+  afterHarvests: number;
+  /** 원종과 다른 점 한 줄(상세 보기 · 위키) */
+  diffKo: string;
+  diffEn: string;
+}
+
 /** 재배 자격 — 스킬 · 시설 · 면허 */
 export interface CropRequirement {
   skill?: string;
@@ -278,6 +294,8 @@ export interface CropDef {
   difficulty?: CropDifficulty;
   /** 237차 — 까다로운 점 */
   care?: CropCare[];
+  /** 241차 — 개량종이면 원종 · 해금 조건 · 다른 점 */
+  variant?: CropVariant;
   price: CropPrice;
   /**
    * 숨은 재조정(희귀 · 고가 · 저생산 작물) — 실제 시세를 따르되 칸 · 날 수익이 낚시를 넘지 않게 단가를 살짝 누른다.

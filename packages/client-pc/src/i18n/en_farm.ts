@@ -200,6 +200,18 @@ export const EN_FARM: Record<string, string> = {
   // 237차 — 작물 난이도
   '난이도': 'Difficulty', '기를 자격': 'To grow it', '까다로운 점': 'Fussy about',
   '쉬움': 'Easy', '아주 까다로움': 'Very demanding',
+  // 241차 — 날로 먹기 · 개량종 · 나누기
+  '날로 먹기': 'Eaten raw', '원종': 'Parent crop', '개량종': 'Variety', '나누기': 'Split', '농산물 조각': 'Produce piece', '나눈 것': 'Split from',
+  '못 먹는다 — 익혀야': 'Not raw — cook it', '조각은 등급이 없고 가게가 사지 않는다 — 먹거나 요리에 쓴다.': 'Pieces have no grade and shops do not buy them — eat them or cook with them.',
+  '날로 먹기 · 개량종': 'Eating raw · Varieties',
+  '익히지 않고 먹을 수 있는 것': 'What you can eat uncooked',
+  '거둔 채소 · 과일 가운데 날로 먹을 수 있는 것은 가방에서 우클릭 [사용하기]로 바로 먹습니다 — 상추 · 깻잎 · 오이 · 방울토마토 · 참외 · 딸기 · 당근 · 풋고추 · 산마늘 · 생땅콩 같은 것입니다. 허기와 수분은 실제 영양(열량 · 수분)에서 셉니다. 잎채소는 배가 거의 안 부르고 물기만 찹니다.': 'Harvested vegetables and fruit that can be eaten raw are eaten straight from the bag with right-click [Use] — lettuce, perilla, cucumber, cherry tomatoes, Korean melon, strawberries, carrots, green chili, alpine leek, raw peanuts and the like. Hunger and water come from the real nutrition (calories and water content). Leafy greens hardly fill you up; they mostly top up water.',
+  '수박 한 통 · 무 한 개 · 배추 한 통 · 1kg 덩이(고구마 · 토마토 · 야콘 · 돼지감자) · 생땅콩 500g · 생강은 한 번에 먹기엔 큽니다 — 우클릭 [나누기]로 조각을 낸 뒤 조각을 먹습니다. 조각은 등급이 없고 가게가 사지 않습니다.': 'A whole watermelon, a whole radish, a head of napa cabbage, 1kg lots (sweet potato, tomato, yacon, Jerusalem artichoke), 500g of raw peanuts and ginger are too big for one sitting — right-click [Split] to cut them into pieces, then eat the pieces. Pieces have no grade and shops do not buy them.',
+  '생감자 · 토란 · 생콩 · 버섯 · 두릅 · 눈개승마 · 머위 · 가지 · 옥수수처럼 날로는 못 먹는 것은 [사용하기]가 아예 없습니다 — 익혀서(불 요리 · 요리) 먹습니다. 상세보기의 「날로 먹기」 줄과 본문 끝 [익혀야]가 이유를 말해 줍니다.': 'Things that cannot be eaten raw — raw potatoes, taro, raw soybeans, mushrooms, aralia shoots, goat\'s beard, butterbur, eggplant, corn — have no [Use] at all; cook them (fire cooking · cooking). The "Eaten raw" line in Details and the [Cook it] note at the end explain why.',
+  '매운 것(청양고추 · 홍고추 · 생마늘 · 생강 · 고추냉이)은 먹으면 수분이 조금 줄어듭니다 — 물을 찾게 됩니다. 그 밖의 상태이상은 날로 먹어도 생기지 않습니다(상한 음식은 여전히 식중독을 굴립니다).': 'Hot things (Cheongyang chili, red chili, raw garlic, ginger, wasabi) take a little water off when eaten — you reach for a drink. No other status effect comes from eating raw produce (spoiled food still rolls for food poisoning).',
+  '개량종 — 원종을 세 번 거두면': 'Varieties — after three harvests of the parent',
+  '토마토 · 고구마 · 고추에는 개량종이 있습니다 — 스테비아 토마토 · 호박고구마 · 청양고추. 원종을 텃밭에서 세 번 거두면 종묘사에 그 개량종의 모종 · 순 · 씨앗이 들어옵니다(채널에 「종묘사에 … 들어온다」가 뜹니다). 씨앗 · 모종 · 수확물을 우클릭 [상세보기]하면 「원종」 · 「개량종」 줄과 다른 점이 보입니다.': 'Tomatoes, sweet potatoes and chili have varieties — stevia tomato, pumpkin sweet potato and Cheongyang chili. Harvest the parent crop three times in your patch and the seed shop starts stocking that variety\'s seedlings, slips or seeds (the channel says "… now at the seed shop"). Right-click [Details] on a seed, seedling or harvest to see the "Parent crop" / "Variety" lines and what differs.',
+  '호박고구마는 속이 노랗고 촉촉해 값이 1.3배지만 조금 덜 나오고 열이틀이면 상합니다. 청양고추는 훨씬 맵고 값이 1.3배이며, 손 가는 일은 고추와 같습니다. 스테비아 토마토는 토마토 모종에 스테비아 발효액(종묘사)을 정식 3주 뒤부터 2주 간격으로 네 번 주어 기르는 농법입니다 — 거르면 단맛이 오르지 않아 등급이 내려가고, 값은 토마토의 1.8배입니다.': 'Pumpkin sweet potato has yellow, moist flesh and sells for 1.3× but yields a little less and spoils in twelve days. Cheongyang chili is far hotter and sells for 1.3×; the work is the same as ordinary chili. Stevia tomato is a method: tomato plants fed stevia ferment (seed shop) four times, every two weeks from three weeks after transplanting — skip the feeds and the fruit never sweetens, so the grade drops; it sells for 1.8× a plain tomato.',
   '콩나물 시루(집으로 배달)': 'Sprouting jar (delivered home)',
 
   // ── 퀘스트 방법 한 줄(core QuestGuide) ──
@@ -343,7 +355,8 @@ export const EN_FARM_RULES: [RegExp, (m: RegExpMatchArray, tr: (s: string) => st
     .replace(' — 검붉게 덜 익은 것이라 품질이 떨어진다', ' — picked while turning, so lower quality')
     .replace(' — 서리 맞은 끝물, 이 칸은 끝났다', ' — frost-hit last picking, this cell is done')
     .replace(/ — 병으로 (\d+)% 줄었다/, ' — disease cut it by $1%')
-    .replace(/ — 송이가 굵어 (\d+)개 더/, ' — thick clusters, $1 extra')}`],
+    .replace(/ — 송이가 굵어 (\d+)개 더/, ' — thick clusters, $1 extra')
+    .replace(/ — 종묘사에 (.+)이 들어온다/, (_s: string, x: string) => ` — ${x.split(' · ').map((y) => tr(y)).join(', ')} now at the seed shop`)}`],
   // 칸 자세히 · 상세 보기 — 날 수 · 비율
   [/^(\d+)일 전$/, (m) => `${m[1]} day${m[1] === '1' ? '' : 's'} ago`],
   [/^약 (\d+)일 뒤$/, (m) => `In about ${m[1]} day${m[1] === '1' ? '' : 's'}`],
@@ -373,4 +386,23 @@ export const EN_FARM_RULES: [RegExp, (m: RegExpMatchArray, tr: (s: string) => st
   [/^(.+)을\(를\) 걷었다$/, (m, tr) => `Took down the ${tr(m[1])}`],
   // 채널 로그 「[텃밭] 상추 한 줌 (100g) · 특 ×3」 — 등급 꼬리 뒤 수량
   [/^(.+ · (?:특|상|보통)) ×(\d+)$/, (m, tr) => `${tr(m[1])} ×${m[2]}`],
+  // 241차 — 날로 먹기 · 개량종 · 나누기
+  [/^허기 \+(\d+) · 수분 ([+−])(\d+)$/, (m) => `Hunger +${m[1]} · Water ${m[2]}${m[3]}`],
+  [/^나눠서 먹는다 \((\d+)조각\)$/, (m) => `Split it first (${m[1]} pieces)`],
+  [/^(\d+)조각 중 하나$/, (m) => `One of ${m[1]} pieces`],
+  [/^(.+) — 지금 (\d+)\/(\d+)번$/, (m, tr) => `${tr(m[1])} — ${m[2]}/${m[3]} harvests so far`],
+  [/^(.+) — 종묘사에 있다$/, (m, tr) => `${tr(m[1])} — at the seed shop now`],
+  [/^(.+)를 (\d+)번 거두면 종묘사에 들어온다(?: — 열렸다| \(지금 (\d+)번\))?$/,
+    (m, tr) => `Comes to the seed shop after you harvest ${tr(m[1])} ${m[2]} times${m[0].endsWith('열렸다') ? ' — open now' : m[3] !== undefined ? ` (${m[3]} so far)` : ''}`],
+  [/^(.+)를 (\d+)번 거뒀다 — 종묘사에 (.+)이 들어온다$/, (m, tr) => `Harvested ${tr(m[1])} ${m[2]} times — ${m[3].split(' · ').map((x) => tr(x)).join(', ')} now at the seed shop`],
+  [/^\[날로 먹기\] 「나누기」로 (.+) (\d+)개 — (.+)$/, (m, tr) => `[Raw] "Split" gives ${m[2]} × ${tr(m[1])} — ${tr(m[3])}`],
+  [/^\[날로 먹기\] (.+)$/, (m, tr) => `[Raw] ${tr(m[1])}`],
+  [/^\[익혀야\] (.+)$/, (m, tr) => `[Cook it] ${tr(m[1])}`],
+  [/^\[개량종\] (.+)$/, (m, tr) => {
+    const whole = tr(m[1]);
+    if (whole !== m[1]) return `[Variety] ${whole}`;
+    const i = m[1].indexOf(' — ');
+    return i > 0 ? `[Variety] ${tr(m[1].slice(0, i))} — ${tr(m[1].slice(i + 3))}` : `[Variety] ${whole}`;
+  }],
+  [/^나눴다 — (.+) (\d+)개$/, (m, tr) => `Split — ${tr(m[1])} ×${m[2]}`],
 ];

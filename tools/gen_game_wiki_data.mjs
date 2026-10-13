@@ -748,6 +748,14 @@ const questsUsing = (names) => {
 const recipesUsing = (ingId) => (ingId ? core.FIRE_RECIPES.filter((r) => [...r.required, ...r.optional]
   .some((q) => (Array.isArray(q.ing) ? q.ing : [q.ing]).includes(ingId))).map((r) => ({ id: r.id, name: r.nameKo })) : []);
 const baseName = (s) => (s ?? '').replace(/\s*\(.*?\)\s*/g, '').replace(/\s*·\s*(특|상|보통)$/, '').trim();
+/** 241차 — 날로 먹기(수확물 기본 id) — 먹는다 · 나눠서 · 못 먹는다 */
+const rawEatOf = (itemId) => {
+  const st = core.rawEatStatus?.(itemId); if (!st) return null;
+  if (st.kind === 'no') return { kind: 'no', why: st.why.whyKo };
+  const n = core.restoreFromNutrition({ g: st.def.g, kcal: st.def.kcal, ml: st.def.ml, mlNet: st.def.mlNet });
+  return { kind: st.kind, hunger: n.hungerRestore, hydration: n.hydrationRestore, g: st.def.g, kcal: st.def.kcal, ml: st.def.mlNet ?? st.def.ml, note: st.def.noteKo,
+    pieces: st.def.pieces ? { count: st.def.pieces.count, label: st.def.pieces.labelKo, id: core.pieceItemId(itemId) } : null };
+};
 const CHUM_GRAIN = new Set(['crop_barley', 'crop_corn']);
 
 const farmCrops = core.CROP_DATABASE.map((c) => {
@@ -778,8 +786,14 @@ const farmCrops = core.CROP_DATABASE.map((c) => {
   if (c.category === 'sprout') needs.push(core.supplyOfFacility('sproutJar')?.nameKo ?? '콩나물 시루');
   if (c.requires?.license) needs.push(licenseKo(c.requires.license));
   const kamis = !!core.KAMIS_CROP_ITEMS?.[c.id];
+  // 241차 — 개량종(원종 ↔ 개량종) · 날로 먹기(본 · 붉어진 것 · 중간)
+  const baseCrop = core.baseCropOf?.(c);
+  const variant = c.variant ? { of: c.variant.of, ofName: baseCrop?.nameKo ?? c.variant.of, after: c.variant.afterHarvests, diff: c.variant.diffKo, unlock: core.variantUnlockKo(c) } : null;
+  const variants = (core.variantsOf?.(c.id) ?? []).map((v) => ({ id: v.id, name: v.nameKo, after: v.variant.afterHarvests, diff: v.variant.diffKo }));
+  const rawEat = harvestItems.map((id) => ({ id, name: itemNameOf(id), ...(rawEatOf(id) ?? { kind: 'unknown' }) }));
   return {
     id: c.id, name: c.nameKo, nameEn: c.nameEn, cat: c.category, catLabel: CROP_CAT_KO[c.category] ?? c.category,
+    variant, variants, rawEat,
     site: c.site === 'indoor' ? '집 안 선반' : '마당 텃밭', speed: c.speedClass === 'leafy' ? '빨리 자라는 잎채소 (설비 ×2.0까지)' : '철 작물 (설비 ×1.4까지)',
     rarity: CROP_RARITY_KO[c.rarity] ?? c.rarity, rarityId: c.rarity, inMart: c.inMart, water: WATER_KO[c.water] ?? c.water,
     growMonths: c.site === 'indoor' ? '언제나' : monthsKoList(c.growMonths), overwinter: !!c.overwinter, perennial: !!c.perennial,
@@ -835,11 +849,15 @@ for (const fc of farmCrops) {
   }
 }
 for (const sp of farmSupplies) farmByItem[sp.id] = { supply: sp.id, role: 'supply' };
+// 241차 — 조각(나눈 것)도 작물로 잇는다
+for (const fc of farmCrops) for (const r of fc.rawEat) if (r.pieces) farmByItem[r.pieces.id] = { crop: fc.id, role: 'piece' };
 const farming = {
   groups: Object.entries(CROP_CAT_KO).map(([id, label]) => ({ id, label, count: farmCrops.filter((c) => c.cat === id).length })).filter((g) => g.count > 0),
   tiers: [1, 2, 3, 4].map((t) => ({ id: String(t), label: core.CROP_TIER_KO[t], level: core.FARM_TUNING.tierLevels[t - 1], license: t >= core.FARM_TUNING.certTier ? licenseKo(core.FARM_TUNING.certLicense) : '' })),
   crops: farmCrops, supplies: farmSupplies, byItem: farmByItem,
   rules: {
+    rawEat: '날로 먹을 수 있는 수확물은 가방에서 우클릭 [사용하기]로 먹는다 — 허기 · 수분은 실제 영양(열량 ÷ 2,400 · 수분 ÷ 2,000)에서 센다. 수박 한 통 · 무 한 개 · 배추 한 통 · 1kg 덩이 · 생땅콩 500g · 생강은 [나누기]로 조각을 낸 뒤 먹는다(조각은 등급이 없고 가게가 사지 않는다). 매운 것(청양고추 · 홍고추 · 생마늘 · 생강 · 고추냉이)은 수분을 조금 깎는다. 날로 못 먹는 것(생감자 · 토란 · 생콩 · 버섯 · 두릅 …)은 [사용하기]가 없다 — 익혀 먹는다.',
+    variant: '개량종(스테비아 토마토 · 호박고구마 · 청양고추)은 원종을 텃밭에서 세 번 거두면 종묘사에 들어온다. 씨앗 · 모종 · 수확물 상세의 「원종」 · 「개량종」 줄이 알려 준다.',
     plotCells: '한 구획 = 4×3칸 · 한 칸 = 1㎡', plots: '마당 2구획 + 농지 이용권 5구획(빌린 구획 5,000원/30일)',
     grade: Object.entries(core.FARM_TUNING.gradePrice).map(([g, m]) => `${core.GRADE_KO[g]} ×${m}`).join(' · '),
     kamis: '배추 · 무 · 양파 · 상추 같은 흔한 채소는 하루 한 번 실제 소매가(전국 평균)를 받아 「오늘 ÷ 평년」으로 값을 움직인다',

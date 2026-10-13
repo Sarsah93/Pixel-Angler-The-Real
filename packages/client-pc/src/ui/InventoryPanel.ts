@@ -32,7 +32,8 @@ import { drawTrendIcon, TREND_ICON_PX } from './MarketTrendIcon.js';
 import { MarketStore, isMarketFish } from '../store/MarketStore.js';
 import { setSlotLabel, SLOT_LABEL_PX } from './SlotLabel.js';
 import { addPixelIcon } from './PixelIcon.js';
-import { GEAR_FAULTS, TUNING } from '@tra/core';
+import { GEAR_FAULTS, TUNING, rawEatStatus } from '@tra/core';
+import { PRODUCE_SUB, PIECE_SUB } from '../data/CropItems.js';
 import { playEatSfx } from '../audio/Sfx.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { maybeStartTour, type TourOptions } from './GuideTour.js';
@@ -721,9 +722,11 @@ export class InventoryPanel extends DraggablePanel {
     // 손질되지 않은 활어(어획물)·손질 필렛·통마리·부산물은 날것이라 섭취 불가 —
     // 조리(요리) 후에만 먹을 수 있으므로 사용하기 자체를 제공하지 않는다.
     const rawFishSubCats = ['어획물', '손질 필렛', '손질 통마리', '부산물'];
+    // 241차 — 농산물은 날로 먹을 수 있는 것만(큰 단위는 「나누기」 뒤의 조각) · 못 먹는 것(생감자 · 토란 · 생콩 · 버섯 · 두릅 …)은 날생선처럼 사용하기 자체가 없다
+    const raw = (item.subCategory === PRODUCE_SUB || item.subCategory === PIECE_SUB) ? rawEatStatus(item.id) : null;
     const usable = item.category === 'consumable'
       || item.skillReset === true
-      || (item.category === 'food' && !rawFishSubCats.includes(item.subCategory));
+      || (item.category === 'food' && !rawFishSubCats.includes(item.subCategory) && (raw === null || raw.kind === 'eat'));
     if (usable) {
       actions.push({
         label: '사용하기',
@@ -778,12 +781,13 @@ export class InventoryPanel extends DraggablePanel {
     }
     // 224차 — 포장 뜯기(빵가루 반죽 200g → 경단 10개 등)
     if (item.unpack) {
+      const split = item.subCategory === PRODUCE_SUB;   // 241차 — 수박 한 통 · 무 한 개처럼 큰 수확물은 「나누기」
       actions.push({
-        label: '포장 뜯기',
+        label: split ? '나누기' : '포장 뜯기',
         color: '#4af2a1', hoverColor: '#8dffce',
         run: () => {
           const r = InventoryStore.unpack(item.id);
-          this.setStatus(r.ok ? `포장을 뜯었다 — ${r.name} ${r.qty}개` : (r.reason ?? '뜯을 수 없다'));
+          this.setStatus(r.ok ? `${split ? '나눴다' : '포장을 뜯었다'} — ${r.name} ${r.qty}개` : (r.reason ?? '뜯을 수 없다'));
           if (r.ok) { this.renderGrid(); this.scene.events.emit('inventory-changed'); }
         },
       });

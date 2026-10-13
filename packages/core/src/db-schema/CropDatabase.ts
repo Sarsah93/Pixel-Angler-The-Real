@@ -55,6 +55,12 @@ const P_PULSE = [0.98, 0.99, 1.0, 1.01, 1.02, 1.02, 1.03, 1.03, 1.02, 0.97, 0.96
 // 산나물 — 조사 자료가 없다. 봄 제철이 가장 싸고 철 밖은 말린 · 저장품 값(추정 · 연평균 1.0으로 맞춤)
 const P_WILD = [1.17, 1.17, 1.03, 0.85, 0.76, 0.81, 0.9, 0.99, 0.99, 1.08, 1.17, 1.17];
 const P_FLAT = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
+// 241차 — 새 작물 곡선(aT 소매 2023~2025 흐름을 손으로 옮긴 뒤 연평균 1.00으로 맞춘다)
+const norm = (a: number[]): number[] => { const m = a.reduce((x, y) => x + y, 0) / a.length; return a.map((v) => Math.round((v / m) * 100) / 100); };
+const P_MELON = norm([1.35, 1.35, 1.3, 1.25, 1.05, 0.8, 0.7, 0.72, 0.85, 1.05, 1.3, 1.35]);          // 참외 — 초물 4~5월 비싸고 7~8월 싸다 · 철 밖은 저장 · 수입
+const P_WATERMELON = norm([1.4, 1.4, 1.4, 1.3, 1.1, 0.85, 0.7, 0.72, 0.9, 1.2, 1.4, 1.4]);          // 수박 — 7~8월 성수기
+const P_BLUEBERRY = norm([1.15, 1.15, 1.15, 1.15, 1.05, 0.78, 0.72, 0.85, 1.0, 1.15, 1.15, 1.15]); // 블루베리 — 국산 6~7월
+const P_STRAWBERRY = norm([0.85, 0.8, 0.75, 0.72, 0.8, 1.1, 1.3, 1.3, 1.3, 1.3, 1.2, 0.95]);        // 딸기 — 겨울~봄 제철(시설) · 여름엔 거의 없다
 
 const seed = (crop: string, months: number[], establish: number, days: number, cost: number, extra: Partial<CropStart> = {}): CropStart =>
   ({ kind: 'seed', itemId: `seed_${crop}`, perCell: 1, establish, days, months, cost, ...extra });
@@ -777,6 +783,104 @@ export const CROP_DATABASE: CropDef[] = [
     noteKo: '열대에서 온 노란 뿌리. 비닐 안에서 길러 서리 무렵 캔다 — 생선 카레 · 튀김옷에 색과 향을 낸다.',
     noteEn: 'A yellow root from the tropics. Grow it under plastic and dig it at the first frost; it colours and scents fish curry and frying batter.',
   },
+
+  // ═════ 241차 — 새 작물 5종(참외 · 수박 · 블루베리 · 토마토 · 딸기 — 고구마는 235차부터 있다) ═════
+  {
+    id: 'korean_melon', nameKo: '참외', nameEn: 'Korean melon', category: 'fruit', speedClass: 'seasonal', rarity: 'common',
+    inMart: true, site: 'plot', growMonths: [5, 6, 7, 8, 9], water: 'mid',
+    // 성주 노지 기준 정식 4월 하순~5월 · 포기 사이 60cm × 이랑 2m → 칸당 1포기(덩굴이 옆 칸으로 뻗는다) · 포기당 6~10개(400g) ·
+    //   어미덩굴 4~5마디 적심 → 아들덩굴 3~4개 → 손자덩굴에 달린다 · 7월 상순부터 5일마다 · 농진청 「어려움」(병 · 벌레 · 적심)
+    starts: [seedling('korean_melon', [4, 5], 1, 70, 1500)],
+    harvest: { itemId: 'crop_korean_melon', nameKo: '참외 (1개 · 약 400g)', nameEn: 'Korean melon (one, about 400g)', qtyPerCell: [1, 2], repeat: { everyDays: 5, times: 5 }, holdDays: 5 },
+    price: { base: 2000, season: P_MELON, volatility: 0.25 },
+    noteKo: '어미덩굴을 4~5마디에서 끊어 아들덩굴 서넛을 키우면 손자덩굴에 달린다. 꼭지가 떨어지려 할 때 딴다.',
+    noteEn: 'Pinch the mother vine at 4-5 nodes and let three or four side vines run; the fruit sets on the grandchild vines. Pick when the stem begins to slip.',
+  },
+  {
+    id: 'watermelon', nameKo: '수박', nameEn: 'Watermelon', category: 'fruit', speedClass: 'seasonal', rarity: 'common',
+    inMart: true, site: 'plot', growMonths: [5, 6, 7, 8, 9], water: 'mid',
+    // 접목 모종 정식 5월 상순(지온 15℃ 이상) · 이랑 2.5~3m × 포기 70cm → 칸당 1포기(덩굴 3~4m) · 포기당 1~2통(6~8kg) ·
+    //   어미덩굴 적심 · 아들덩굴 3개 · 15~20마디 암꽃에 인공수분 · 수분 뒤 35~40일 · 농진청 「어려움」
+    starts: [seedling('watermelon', [5], 1, 85, 2500, { labelKo: '수박 접목 모종 (1포기)', labelEn: 'Grafted watermelon seedling (1 plant)' })],
+    harvest: { itemId: 'crop_watermelon', nameKo: '수박 (1통 · 약 7kg)', nameEn: 'Watermelon (one, about 7kg)', qtyPerCell: [1, 2], holdDays: 7 },
+    price: { base: 18000, season: P_WATERMELON, volatility: 0.3 },
+    noteKo: '한 포기에 한두 통만 남기고 나머지는 딴다. 두드려 둔탁한 소리가 나고 꼭지 옆 덩굴손이 마르면 익은 것이다.',
+    noteEn: 'Leave only one or two fruits per plant and remove the rest. Ripe when it sounds dull to a knock and the tendril by the stem has dried.',
+  },
+  {
+    id: 'blueberry', nameKo: '블루베리', nameEn: 'Blueberry', category: 'fruit', speedClass: 'seasonal', rarity: 'uncommon',
+    inMart: true, site: 'plot', growMonths: [3, 4, 5, 6, 7, 8, 9, 10, 11], water: 'high', perennial: true,
+    // 3년생 묘목 1주/칸(포기 사이 1~1.5m → 사실상 한 칸) · 심은 해 6~7월 소량 · 이듬해부터 제대로(여러해살이 — 다음 철은 절반 기간) ·
+    //   pH 4.5 산성 흙(피트모스 · 소나무 껍질) · 물을 많이 먹고 뿌리가 얕다 · 익는 3~4주 동안 5일마다 · 봄 · 가을 식재
+    starts: [seedling('blueberry', [3, 4, 10, 11], 1, 95, 15000, { labelKo: '블루베리 묘목 (3년생 · 1주)', labelEn: 'Blueberry bush (3-year, 1 plant)' })],
+    harvest: { itemId: 'crop_blueberry', nameKo: '블루베리 한 팩 (100g)', nameEn: 'Blueberries, a pack (100g)', qtyPerCell: [2, 4], repeat: { everyDays: 5, times: 4 }, holdDays: 3 },
+    price: { base: 3000, season: P_BLUEBERRY, volatility: 0.2 },
+    noteKo: '피트모스를 섞어 산성 흙을 만들어야 자란다. 한 번 심으면 해마다 돌아오고, 묘목 값은 이듬해부터 뽑는다.',
+    noteEn: 'Needs acid soil — mix in peat moss. Plant once and it comes back every year; the bush pays for itself from the second season.',
+  },
+  {
+    id: 'tomato', nameKo: '토마토', nameEn: 'Tomato', category: 'fruit', speedClass: 'seasonal', rarity: 'common',
+    inMart: true, site: 'plot', growMonths: [5, 6, 7, 8, 9], water: 'mid',
+    // 완숙 토마토(대과) · 포기 사이 45cm → 칸당 2포기 · 포기당 3~4kg · 정식 60일 뒤 첫 수확 · 7일마다 ·
+    //   씨앗은 고추처럼 2~3월 실내 트레이(60일 · 모종 20~30) · 곁순 · 지주 · 역병 · 탄저 · 바이러스 · 농진청 「보통」
+    starts: [
+      seed('tomato', [2, 3], 0.8, 60, 400, { nursery: { seedlings: [20, 30], seedlingItemId: 'sdl_tomato' } }),
+      seedling('tomato', [4, 5], 2, 60, 1200),
+    ],
+    harvest: { itemId: 'crop_tomato', nameKo: '토마토 1kg', nameEn: 'Tomatoes 1kg', qtyPerCell: [1, 1], repeat: { everyDays: 7, times: 6 }, holdDays: 4 },
+    price: { base: 4500, season: P_CHERRY_TOMATO, volatility: 0.25 },
+    noteKo: '곁순은 보이는 대로 따고 한 줄기로 키운다. 꼭지 쪽까지 붉게 익은 것을 딴다 — 덜 익은 것은 창가에서 후숙.',
+    noteEn: 'Pinch every sucker and train to a single stem. Pick when red right up to the shoulder; underripe fruit finishes on a windowsill.',
+  },
+  {
+    id: 'strawberry', nameKo: '딸기', nameEn: 'Strawberry', category: 'fruit', speedClass: 'seasonal', rarity: 'common',
+    inMart: true, site: 'plot', growMonths: [3, 4, 5, 6, 9, 10, 11], water: 'mid', overwinter: true,
+    // 노지 딸기(설향) · 9월 중하순 런너 묘 정식 · 포기 25cm × 두 줄 → 칸당 6포기 · 겨울을 나고 4월 하순~5월 수확 · 포기당 300~400g(500g 팩 4~5개/칸) ·
+    //   자라는 날만 세면 9~11월 70일 + 3~4월 60일 = 130일 · 꽃이 피면 멀칭 · 탄저 · 흰가루
+    starts: [seedling('strawberry', [9, 10], 6, 130, 600, { labelKo: '딸기 모종 (런너 묘 · 1포기)', labelEn: 'Strawberry runner plant (1)' })],
+    harvest: { itemId: 'crop_strawberry', nameKo: '딸기 한 팩 (500g)', nameEn: 'Strawberries, a pack (500g)', qtyPerCell: [1, 1], repeat: { everyDays: 5, times: 4 }, holdDays: 2 },
+    price: { base: 8000, season: P_STRAWBERRY, volatility: 0.25 },
+    noteKo: '가을에 심어 겨울을 나고 봄에 딴다. 꽃이 피면 짚이나 비닐을 깔아 열매가 흙에 닿지 않게 한다.',
+    noteEn: 'Plant in autumn, overwinter, pick in spring. Once it flowers, lay straw or film so the fruit never touches the soil.',
+  },
+
+  // ═════ 241차 — 개량종 3종(원종을 세 번 거두면 종묘사에 들어온다 — `variant`) ═════
+  {
+    id: 'stevia_tomato', nameKo: '스테비아 토마토', nameEn: 'Stevia tomato', category: 'fruit', speedClass: 'seasonal', rarity: 'uncommon',
+    inMart: true, site: 'plot', growMonths: [5, 6, 7, 8, 9], water: 'mid',
+    variant: { of: 'tomato', afterHarvests: 3, diffKo: '스테비아 발효액을 네 번 주어 당도를 올린다 — 값은 토마토의 1.8배, 거르면 보통 토마토 맛', diffEn: 'Fed four times with stevia ferment for sweetness — 1.8× the price of plain tomatoes; skip the feeds and you get ordinary tomatoes' },
+    // 토마토와 같은 재배 + 정식 3주 뒤부터 2주 간격 스테비아 발효액 4회(관리 작업 `stevia_feed` — 거르면 품질이 깎인다) · 소매 1kg 7,000~10,000원
+    starts: [seedling('stevia_tomato', [4, 5], 2, 60, 1500, { labelKo: '스테비아 토마토 모종 (1포기)', labelEn: 'Stevia tomato seedling (1 plant)' })],
+    harvest: { itemId: 'crop_stevia_tomato', nameKo: '스테비아 토마토 1kg', nameEn: 'Stevia tomatoes 1kg', qtyPerCell: [1, 1], repeat: { everyDays: 7, times: 6 }, holdDays: 4 },
+    price: { base: 8000, season: P_CHERRY_TOMATO, volatility: 0.25 },
+    noteKo: '가게의 스테비아 토마토는 거둔 뒤 담근 것이 많지만, 여기서는 스테비아 발효액을 땅과 잎에 주어 기른다(스테비아 농법). 당도가 두 배 가까이 오른다.',
+    noteEn: 'Shop "stevia tomatoes" are often dipped after harvest; here they are grown with stevia ferment fed to soil and leaf (the stevia method). Sugar content nearly doubles.',
+  },
+  {
+    id: 'pumpkin_sweet_potato', nameKo: '호박고구마', nameEn: 'Pumpkin sweet potato', category: 'tuber', speedClass: 'seasonal', rarity: 'uncommon',
+    inMart: true, site: 'plot', growMonths: [5, 6, 7, 8, 9, 10], water: 'low',
+    variant: { of: 'sweet_potato', afterHarvests: 3, diffKo: '속이 노랗고 촉촉하다 — 값은 1.3배, 칸당 조금 덜 나오고 저장성이 짧다(12일)', diffEn: 'Yellow, moist flesh — 1.3× the price, slightly lower yield per cell and keeps less well (12 days)' },
+    // 베니하루카 계통 · 밤고구마보다 수량이 조금 적고(10a 1,400kg 안팎) 저장성이 짧다 · 소매 1kg 5,500~7,500원 · 순은 두는 편이 좋아 중간 수확이 없다
+    starts: [setOf('pumpkin_sweet_potato', [5, 6], 0.9, 120, 1500, '호박고구마순 (1칸 분 · 4줄기)', 'Pumpkin sweet potato slips (one cell, 4)')],
+    harvest: { itemId: 'crop_pumpkin_sweet_potato', nameKo: '호박고구마 1kg', nameEn: 'Pumpkin sweet potatoes 1kg', qtyPerCell: [1, 2], holdDays: 12 },
+    price: { base: 6500, season: P_SWEETPOTATO, volatility: 0.2 },
+    noteKo: '베니하루카 계통. 밤고구마보다 수분이 많아 캐서 열흘쯤 말려야 단맛이 오르고, 오래 두면 상한다.',
+    noteEn: 'Beniharuka type. Moister than chestnut sweet potatoes — cure for about ten days after digging to bring up the sugar; it does not store long.',
+  },
+  {
+    id: 'cheongyang', nameKo: '청양고추', nameEn: 'Cheongyang chili', category: 'fruit', speedClass: 'seasonal', rarity: 'uncommon',
+    inMart: true, site: 'plot', growMonths: [5, 6, 7, 8, 9, 10], water: 'mid',
+    variant: { of: 'chili', afterHarvests: 3, diffKo: '훨씬 맵다 — 값은 1.3배, 한 번에 달리는 수는 조금 적다. 손 가는 일은 고추와 같다', diffEn: 'Far hotter — 1.3× the price, a few less fruit per picking. Same work as ordinary chili' },
+    // 고추와 같은 재배(트레이 육묘 · 지주 · 곁순 · 웃거름 · 방제) · 열매가 가늘어 포기당 조금 덜 달린다 · 소매 100g 1,500원 → 개당 150원
+    starts: [
+      seed('cheongyang', [2, 3], 0.65, 75, 400, { nursery: { seedlings: [20, 30], seedlingItemId: 'sdl_cheongyang' } }),
+      seedling('cheongyang', [4, 5], 3, 60, 700),
+    ],
+    harvest: { itemId: 'crop_cheongyang', nameKo: '청양고추 (1개)', nameEn: 'Cheongyang chili (one)', qtyPerCell: [15, 24], repeat: { everyDays: 7, times: 10 }, holdDays: 10 },
+    price: { base: 150, season: P_CHILI, volatility: 0.25 }, cookIngredient: 'chili_green',
+    noteKo: '청양 · 음성에서 나온 매운 품종. 열매는 가늘고 날씨가 더울수록 맵다. 날로 먹으면 물을 찾게 된다.',
+    noteEn: 'The hot cultivar bred in Cheongyang and Eumseong. Slender pods, hotter in hot weather. Eat one raw and you will reach for water.',
+  },
 ];
 
 // ─────────────────────────────────────────────
@@ -861,6 +965,15 @@ export const CROP_DIFFICULTY: Readonly<Record<string, { tier: CropDifficulty; ca
   eomnamu: { tier: 4, care: ['longSeason'] },                 // 나무
   chopi: { tier: 4, care: ['longSeason'] },                   // 나무
   wasabi: { tier: 4, care: ['water', 'longSeason'] },         // 찬물 · 1년 반
+  // ── 241차 — 새 작물 · 개량종 ──
+  korean_melon: { tier: 3, care: ['pests', 'heat'] },         // 농진청 「어려움」 — 흰가루 · 덩굴쪼김 · 적심
+  watermelon: { tier: 3, care: ['pests', 'heat'] },           // 농진청 「어려움」 — 접목묘 · 인공수분 · 덩굴 3~4m
+  blueberry: { tier: 2, care: ['soil', 'longSeason', 'water'] }, // 산성 흙 · 묘목 · 얕은 뿌리
+  tomato: { tier: 2, care: ['pests', 'support', 'nursery'] }, // 농진청 「보통」 · 씨앗 육묘 60일
+  strawberry: { tier: 2, care: ['pests', 'overwinter'] },     // 탄저 · 흰가루 · 가을 정식 → 봄 수확
+  stevia_tomato: { tier: 2, care: ['pests', 'support'] },     // 토마토 + 발효액 4회
+  pumpkin_sweet_potato: { tier: 1, care: [] },               // 고구마와 같다
+  cheongyang: { tier: 2, care: ['pests', 'support', 'nursery'] }, // 고추와 같다
 };
 
 for (const c of CROP_DATABASE) {
@@ -999,6 +1112,9 @@ export const FARM_SUPPLIES: FarmSupplyDef[] = [
     descKo: '잎에 뿌리는 칼슘. 열매 껍질이 단단해져 탄저병이 덜 들고 품질이 오른다.', descEn: 'Foliar calcium. Firmer fruit skin — less anthracnose, better quality.' },
   { itemId: 'farm_insecticide', nameKo: '살충제 (1칸 한 번 분)', nameEn: 'Insecticide (one application)', price: 700, kind: 'consumable', shop: 'nursery', icon: 'it_insecticide',
     descKo: '총채벌레 · 진딧물을 막는다 — 바이러스병을 옮기는 벌레다. 열이틀 동안 든다.', descEn: 'Keeps off thrips and aphids — the insects that carry the viruses. Lasts twelve days.' },
+  // ── 241차 — 스테비아 농법(스테비아 토마토) · 1L 1.5만 → 1칸 한 번 분 1,200원
+  { itemId: 'farm_stevia', nameKo: '스테비아 발효액 (1칸 한 번 분)', nameEn: 'Stevia ferment (one application)', price: 1200, kind: 'consumable', shop: 'nursery', icon: 'it_stevia',
+    descKo: '스테비아 잎을 삭힌 액. 포기 둘레 흙에 붓고 잎에 뿌리면 토마토가 달아진다 — 스테비아 토마토 모종에만 쓴다.', descEn: 'Fermented stevia leaf. Poured round the plant and misted on the leaves it sweetens the fruit — only for stevia tomato plants.' },
 ];
 
 const SUPPLY_BY_ID = new Map(FARM_SUPPLIES.map((s) => [s.itemId, s]));
@@ -1009,4 +1125,31 @@ export function getFarmSupply(itemId: string): FarmSupplyDef | undefined {
 /** 설비 → 농자재 아이템(걷어 내면 돌려준다) */
 export function supplyOfFacility(f: FarmFacility): FarmSupplyDef | undefined {
   return FARM_SUPPLIES.find((s) => s.facility === f);
+}
+
+// ─────────────────────────────────────────────
+// 241차 — 개량종 조회(원종 ↔ 개량종)
+// ─────────────────────────────────────────────
+
+/** 이 작물(원종)의 개량종들 — 없으면 빈 배열 */
+export function variantsOf(baseId: string): CropDef[] {
+  return CROP_DATABASE.filter((c) => c.variant?.of === baseId);
+}
+
+/** 개량종의 원종(개량종이 아니면 undefined) */
+export function baseCropOf(crop: CropDef): CropDef | undefined {
+  return crop.variant ? BY_ID.get(crop.variant.of) : undefined;
+}
+
+/**
+ * 개량종이 종묘사에 들어올 조건 한 줄 — 「토마토를 3번 거두면 종묘사에 들어온다 (지금 1번)」.
+ * `harvestsOf`는 그 원종을 거둔 횟수(없으면 조건만).
+ */
+export function variantUnlockKo(crop: CropDef, harvestsOf?: number): string {
+  const v = crop.variant;
+  if (!v) return '';
+  const base = BY_ID.get(v.of)?.nameKo ?? v.of;
+  const head = `${base}를 ${v.afterHarvests}번 거두면 종묘사에 들어온다`;
+  if (harvestsOf === undefined) return head;
+  return harvestsOf >= v.afterHarvests ? `${head} — 열렸다` : `${head} (지금 ${harvestsOf}번)`;
 }

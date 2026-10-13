@@ -589,7 +589,7 @@ export interface TuningConfig {
     octopusEscape: number;
     /** 맨손 부상(성게·굴) 스태미나 손실 */
     handInjuryStamina: number;
-    /** [E] 홀드 기본 시간(ms) */
+    /** [F] 홀드 기본 시간(ms) — 122차 E → F */
     holdMsBase: number;
     /** 랜턴 100루멘당 야간 발견 반경(타일) */
     lampRadiusPer100lm: number;

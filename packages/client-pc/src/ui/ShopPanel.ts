@@ -36,6 +36,7 @@ import { clampTextWidth } from './TextFit.js';
 import { SHOP_STOCK_PLENTY, kstMonthOf, type MarketTrend, type LicenseType } from '@tra/core';
 import { maybeStartTour, tourSeen, type TourOptions } from './GuideTour.js';
 import { StoryStore } from '../store/StoryStore.js';
+import { FarmStore } from '../store/FarmStore.js';
 import {
   consignableItems, consignGradeOf, consignInputOf, hasCrate,
   ReserveMode, RESERVE_LABEL,
@@ -716,7 +717,9 @@ export class ShopPanel extends DraggablePanel {
       && (!e.requiresSkill || GameState.skillRank(e.requiresSkill) > 0)   // 235차 — 배워야 쓰는 것은 배운 뒤에
       // 237차 — 작물 난이도 단계: 레벨 · 자격을 갖춘 뒤에(잠금 표시 없음 — 레벨 알림 · 면허 창 · 도움말이 알려 준다)
       && (!e.minLevel || (GameState.player.level ?? 1) >= e.minLevel)
-      && (!e.requiresLicense || GameState.hasLicense(e.requiresLicense as LicenseType)))
+      && (!e.requiresLicense || GameState.hasLicense(e.requiresLicense as LicenseType))
+      // 241차 — 개량종은 원종을 거둬 본 뒤에(스테비아 토마토 · 호박고구마 · 청양고추 — 원종 3번)
+      && (!e.requiresHarvests || FarmStore.harvestsOf(e.requiresHarvests.cropId) >= e.requiresHarvests.count))
       .concat(ShopStore.usedGoods(this.ctx.key).map(usedShopEntry));   // 224차 — 손님이 판 장비(중고)
   }
 
