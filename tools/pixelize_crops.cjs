@@ -22,6 +22,7 @@
  *      셀 수도 그대로, 아니면 192셀로) · 아니면 **`pixelart`**(툰 추상화 = 양방향 평활 → 밝기 단 → DoG 먹선 → 셀 → 미세 질감 되살리기 →
  *      언샤프 → 팔레트 → 실루엣 윤곽(그 색의 짙은 톤)).
  *      `--style photo` = 235~241차 초기의 사진 블록화(언샤프만 — 픽셀 아트 grade 아님) · `kuwahara` = v2(얼룩 · 비교용).
+ *      보정(241 3차): 팔레트를 줄이지 않고(colors 0) · 양방향 평활 없이(질감 유지) · 5단(φ 5) · 채도 1.25 · 대비 0.95 · 윤곽 = 안쪽 이웃 색의 70% · 바닥 그림자 걷기 — 참고본 12쌍 가중 손실 62.8 → 17.8.
  *   ⑤ 최근접 ×cell 확대 = 초상 · 셀 그림을 64px로 면적 평균 = 아이콘 ⑥ 결과를 재측정해 표로 찍는다(색 수 · 윤곽 어둡기).
  * 모듈로도 쓴다: `require('./pixelize_crops.cjs').processImage(img, { ...DEFAULTS, ...덮어쓸 값 })` → 셀 그림(보정 스윕 `scratchpad/art/calib.cjs`).
  * ⚠ Pillow · numpy 없이 돈다(원격 컨테이너).
@@ -30,28 +31,29 @@ const fs = require('fs');
 const path = require('path');
 const { decode, encode } = require('./lib_png.cjs');
 
-/** 기본값 — 2026-10-13 참고본 쌍(딸기 · 상추 9종 · 바칸 · 곽크릴)으로 보정한 값. 근거는 docs/wiki/02-SYSTEMS/photo-pixel-art.md §3.5 */
+/** 기본값 — 2026-10-13 참고본 12쌍(딸기 · 상추 9종 · 바칸 · 곽크릴)으로 보정한 값(tools/crop_calib.cjs --sweep · 가중 손실 62.8 → 17.4).
+ *  근거 · 전후 수치는 docs/wiki/02-SYSTEMS/photo-pixel-art.md §3.6~3.7. 보정 전 값은 주석의 (구 …). */
 const DEFAULTS = {
   cells: 192, cell: 6, tol: 30, close: 4, icon: 64,
   style: 'pixelart',    // pixelart(툰 추상화) | asis(이미 도트인 그림 — 리샘플만 · 입력 폴더의 asis/ 하위는 자동) | kuwahara | photo
-  colors: 32,           // k-평균 팔레트 크기(0 = 줄이지 않음)
+  colors: 0,            // k-평균 팔레트 크기(0 = 줄이지 않음 — 참고본은 90%를 덮는 색이 수백 개 · 구 32가 손실의 절반이었다)
   smooth: 2, passes: 2, // kuwahara(비교용)
   outline: 1,           // 0 없음 · 1 실루엣 · 2 실루엣 + 안쪽 먹선(밝기 차)
-  outlineDark: 0.22,    // 실루엣 셀 색 배율(0.22 = 거의 검정 · 0.6 = 그 색의 짙은 톤)
+  outlineDark: 0.7,     // 실루엣 셀 = 안쪽 이웃 색 × 이 값(참고본 테두리는 안쪽의 51~73% · 구 0.22 = 제 색을 거의 검정으로)
   contour: 40,          // 안쪽 먹선 밝기 차 문턱(outline 2)
-  levels: 6,            // 툰: 밝기 단 수(0 = 단 없음)
-  phi: 3,               // 툰: 단 문턱 경사(클수록 띠 경계가 딱 떨어진다)
-  bilateral: 3,         // 툰: 양방향 필터 반복(0 = 끔)
+  levels: 5,            // 툰: 밝기 단 수(0 = 단 없음 · 구 6)
+  phi: 5,               // 툰: 단 문턱 경사(클수록 띠 경계가 딱 떨어진다 · 구 3)
+  bilateral: 0,         // 툰: 양방향 필터 반복(0 = 끔 — 참고본은 질감을 지우지 않는다 · 구 3)
   sigr: 22,             // 툰: 양방향 필터 색 폭(0~255)
   dog: 1.0,             // 툰: DoG 선 굵기(σ · 셀 단위 비례)
   edge: 3,              // 툰: 선 진하기(φ) · 0 = 선 없음
   workx: 2,             // 툰 작업 해상도 = 셀 × 이 배수
-  sat: 1.15,            // 툰: 채도 배율
-  contrast: 1.1,        // 툰: 밝기 대비(128 기준)
+  sat: 1.25,            // 툰: 채도 배율(구 1.15)
+  contrast: 0.95,       // 툰: 밝기 대비(128 기준 — 참고본은 대비를 올리지 않는다 · 구 1.1)
   detail: 0,            // 셀 단계 미세 질감 되살리기 — 평활 전 밝기 잔차(|L − 3×3 평균|)가 이 값(0~255)을 넘는 셀을 한 단 어둡게/밝게 · 0 = 끔
   detailStep: 0.12,     // 그 한 단의 배율
   unsharp: 0,           // 셀 단계 언샤프 세기(0 = 끔)
-  shadow: 0.18,         // 배경에 닿은 밝고 채도 낮은(< 이 값) 픽셀 덩어리 = 그림자로 보고 걷는다(0 = 끔 · 전경 15% 초과면 되돌림)
+  shadow: 0.25,         // 배경에 닿은 밝고 채도 낮은(< 이 값) 픽셀 덩어리가 전경 bbox 아래 30%에 있으면 바닥 그림자로 보고 걷는다(0 = 끔 · 전경 15% 초과면 되돌림)
   nocut: false,         // 배경 벗기기 생략(시험용)
 };
 
@@ -254,13 +256,18 @@ function quantize(buf, w, h, K) {
   return { buf: out, palette: pal };
 }
 
-/** 윤곽선 — 실루엣 셀은 그 색을 darkF 배로(0.22 = 거의 검정 · 0.6 = 짙은 톤), 안쪽은 밝기 차 > contour인 경계의 어두운 쪽을 60%로 */
+/** 윤곽선 — 실루엣 셀은 **안쪽 이웃 셀**의 평균색을 darkF 배로(0.22 = 거의 검정 · 0.45 = 짙은 톤 · 안쪽 이웃이 없으면 제 색).
+ *  제 색을 어둡게 하면 흰 배경이 섞인 가장자리 셀이 회색 테가 된다(241 3차 상추 실측). 안쪽은 밝기 차 > contour인 경계의 어두운 쪽을 60%로(mode 2). */
 function outline(buf, w, h, mode, contour, darkF = 0.22) {
   const out = Buffer.from(buf); const op = (i) => buf[i * 4 + 3] >= 128;
   const sil = new Uint8Array(w * h);
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = y * w + x; if (!op(i)) continue;
-    const edge = x === 0 || y === 0 || x === w - 1 || y === h - 1 || !op(i - 1) || !op(i + 1) || !op(i - w) || !op(i + w);
-    if (edge) { sil[i] = 1; const o = i * 4; out[o] = Math.round(buf[o] * darkF); out[o + 1] = Math.round(buf[o + 1] * darkF); out[o + 2] = Math.round(buf[o + 2] * darkF); out[o + 3] = 255; } }
+  const isEdge = (i) => { const x = i % w, y = (i / w) | 0; return x === 0 || y === 0 || x === w - 1 || y === h - 1 || !op(i - 1) || !op(i + 1) || !op(i - w) || !op(i + w); };
+  for (let i = 0; i < w * h; i++) if (op(i) && isEdge(i)) sil[i] = 1;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = y * w + x; if (!sil[i]) continue;
+    let r = 0, g = 0, b = 0, n = 0;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const xx = x + dx, yy = y + dy; if ((!dx && !dy) || xx < 0 || yy < 0 || xx >= w || yy >= h) continue; const j = yy * w + xx; if (!op(j) || sil[j]) continue; r += buf[j * 4]; g += buf[j * 4 + 1]; b += buf[j * 4 + 2]; n++; }
+    const o = i * 4; const src = n ? [r / n, g / n, b / n] : [buf[o], buf[o + 1], buf[o + 2]];
+    out[o] = Math.round(src[0] * darkF); out[o + 1] = Math.round(src[1] * darkF); out[o + 2] = Math.round(src[2] * darkF); out[o + 3] = 255; }
   if (mode < 2) return out;
   const inked = new Uint8Array(w * h);
   const ink = (i) => { if (inked[i] || sil[i]) return; inked[i] = 1; const o = i * 4; out[o] = Math.round(buf[o] * 0.6); out[o + 1] = Math.round(buf[o + 1] * 0.6); out[o + 2] = Math.round(buf[o + 2] * 0.6); };

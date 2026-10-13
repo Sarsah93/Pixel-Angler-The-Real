@@ -484,6 +484,8 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
   상세 「날로 먹기 · 원종 · 개량종」 · 도움말 · 위키 Version 40.
 - 작물 그림: 어종 53장 5기준 실측(`tools/check_art_quality.cjs`) → `tools/pixelize_crops.cjs`(사진 → **툰 추상화 = 픽셀 아트 grade** · 셀 6px 초상 + 64px 아이콘 · `CropPortraits.ts`) ·
   가방 · 상세 배선 · 땅콩 시연 · 새 페이지 `photo-pixel-art.md`(§3.5 사용자 참고본 바칸 · 곽크릴 실측 — 사진 블록화는 grade가 아니다).
+- 3차 보정(사용자 쌍 딸기 · 상추 9종 · 바칸 · 곽크릴 12쌍 — `food assets/crops/_calib/`): `tools/crop_grade.cjs` · `crop_calib.cjs` 좌표 하강 → 기본값(팔레트 없음 · 평활 없음 · 5단 ·
+  채도 1.25 · 대비 0.95 · 윤곽 = 안쪽 이웃 70% · 바닥 그림자) 손실 **62.8 → 17.7** · 확대 격자 구멍 · 그림자 버그 · `asis/` 변환본 경로 · 딸기 · 상추 초상(asis) · 위키 Version 42.
 - 스킬 수치 정본 = 코드 **95노드(유료 90 + 히든 5) · Σ 216**(193차 시작 보너스 +1 · 235차 농사 +2에서 문서가 어긋났다) — 문서 8곳 · [E] → [F] 7곳 정정.
 - 함정: 수확물 템플릿에 효과 필드가 없으면 거둔 직후 먹어도 효과 없음 · 날로 먹기 표 전수 시험 · `harvestsBy`는 전체 `harvests`와 다른 수.
   상세: [241차 워크로그](../docs/wiki/03-WORKLOG/2026-10-13-241-new-crops-varieties-raw-eating-crop-art.md).
