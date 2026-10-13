@@ -54,9 +54,9 @@
 | 수정 | [`ui/ItemDetailPanel.ts`](../../../packages/client-pc/src/ui/ItemDetailPanel.ts) | 줄 「날로 먹기」 · 「원종」 · 「개량종 — 지금 n/3번」 · 본문 꼬리 [날로 먹기] · [익혀야] · [개량종] · 조각 상세 · **작물 초상** |
 | 수정 | `i18n/I18n.ts` · `i18n/en_farm.ts` · `data/HelpContent.ts` | 런타임 사전(메모 · 이유 · 다른 점 · 조각 이름) · 라벨 · 규칙 14 · 도움말 「날로 먹기 · 개량종」 2쪽 + 영어 |
 | 수정 | [`tools/gen_pixel_icons.py`](../../../tools/gen_pixel_icons.py) | 원형 5(둥근 열매 · 줄무늬 · 참외 · 딸기 · 블루베리 송이) · 아이콘 19(작물 8 · 씨앗 2 · 모종 7 · 순 1 · 발효액) |
-| 신설 | [`tools/pixelize_crops.cjs`](../../../tools/pixelize_crops.cjs) · [`tools/lib_png.cjs`](../../../tools/lib_png.cjs) | **작물 사진 → 어종 기준 도트 초상**(배경 벗기기 · 닫힘 · 셀 6px · 긴 변 192셀 · 언샤프 · 64px 아이콘 · `CropPortraits.ts` 자동 목록) — Pillow 없이 |
+| 신설 | [`tools/pixelize_crops.cjs`](../../../tools/pixelize_crops.cjs) · [`tools/lib_png.cjs`](../../../tools/lib_png.cjs) | **작물 사진 → 픽셀 아트 grade 초상**(배경 벗기기 · 닫힘 · 셀 6px · 긴 변 192셀 · **툰 추상화** = 양방향 필터 → 6단 양자화 → DoG 먹선 → 32색 · 실루엣 윤곽 · 64px 아이콘 · `CropPortraits.ts`) — Pillow 없이. `--style photo`(1차 사진 블록) · `kuwahara`(v2) 보존 |
 | 신설 | [`tools/check_art_quality.cjs`](../../../tools/check_art_quality.cjs) | 실사 도트 에셋 **5기준 실측기**(셀 주기 · 알파 · 색 수 · 대비 · 경계 · 질감 · 노이즈 · 깃발 · `--fix-alpha`) |
-| 신설 | `public/crops/crop_peanut.png` · `_icon.png` · `food assets/crops/crop_peanut.png` · `data/CropPortraits.ts` | 땅콩 시연(사용자 사진) — 1176×1032 · 셀 6 · 196셀 · 밝기 158±62 |
+| 신설 | `public/crops/crop_peanut.png` · `_icon.png` · `food assets/crops/crop_peanut.png` · `data/CropPortraits.ts` | 땅콩 시연(사용자 사진) — 1176×1032 · 셀 6 · 196셀. **1차본은 사진 블록화라 사용자 지적 → 2차 툰 추상화**(팔레트 30 · 색 52 · 테두리 어두움 100%) |
 | 수정 | `scenes/BootScene.ts` · `ui/ItemIcon.ts` | 초상 로드(`cropimg_*` · `cropicon_*`) · 칸 ≤ 72px은 아이콘 판, 그 위는 초상 |
 | 수정 | `tools/gen_game_wiki_data.mjs` · `tools/game_wiki_template.html` · `tools/wiki_img/` | 작물 상세 「날로 먹을 수 있나」 · 「개량종」 절 · 태그 · 아이템 「농사」 절 줄 · 조각 역참조 · 그림 20장 |
 | 수정 | 스킬 수치 · [E] 문서 8 + 7곳 | §2 |
@@ -89,8 +89,20 @@
 재현: `node scratchpad/r241.cjs`(지급 · 상세 · 게이트 · 초상) · `r241b.cjs`(우클릭 메뉴 — 가방은 `toggleInventory()` 직접 호출 · `currentTab = 'food'`) ·
 `wiki241.cjs`(file:// 위키) · 스크린샷 `scratchpad/shots/241_*.png`.
 
+### 5.1 2차 지시 — 「픽셀 아트 grade」 대조(2026-10-13)
+
+사용자: 「생땅콩 이미지를 내가 전달해준 걸 그대로 복붙한거야…? 픽셀 아트 grade로 어느 정도는 조정해야지」 + 참고 두 쌍(바칸 사진 ↔ 변환본 · 곽크릴 사진 ↔ 변환본).
+
+| 대상 | 방법 | 결과 |
+|---|---|---|
+| 참고본 실측 | `scratchpad/art/palette_measure.cjs` · `check_art_quality.cjs` | 바칸 변환본: 1024px · 셀 3~4px · 실루엣 테두리 어두움 94% · 밝기 양봉(검정 48% · 흰 30%) · 90% 덮는 색 1,550 / 곽크릴: 테두리 66~75% |
+| v2 쿠와하라 + 24색 + 밝기 차 먹선 | 같은 사진 3장 | 실패 — 바칸 끈 · 빨간 테 · 로고 소실, 땅콩은 갈색 얼룩(`cmp_bakkan.png` · `cmp_peanut.png`) |
+| v3 툰 추상화(양방향 3회 · 6단 · DoG 선 · 32색 · 윤곽) | 같은 사진 3장 + 변형 3종(채도 · 대비 · 단) | 바칸 끈 · 테 · 로고 · 라벨 유지, 땅콩 그물 = 먹선 · 면 띠(`cmp_bakkan3.png` · `cmp_peanut3.png` · `sweep_*.png`). 기본값 = B(채도 1.15 · 대비 1.1 · 6단 · φ 3) |
+| 최종 땅콩 | `node tools/pixelize_crops.cjs --only crop_peanut` | 팔레트 30 · 색 52 · 테두리 어두움 100% · 위키 그림 392×344 교체 |
+
 ## 6. 잔여 — 이번에 안 한 것
 
+- **픽셀 아트 grade 보정** — 고전 필터는 구조를 새로 그리지 못한다(참고본은 생성 모델 + piskel). 질감 많은 농산물 사진 ↔ 변환본 2~3쌍과 변환 도구 · 설정을 받아 기본값을 맞춘다(사용자 제안 「에셋이 더 필요하면 첨부」).
 - **작물 사진 73장**(땅콩 빼고) — 컨테이너가 이미지를 받아 오지 못한다(프록시 차단). 사용자가 `food assets/crops/<수확물 기본 id>.png|jpg`로 넣으면
   `node tools/pixelize_crops.cjs` 한 번으로 초상 · 아이콘 · 목록이 생긴다(저작권이 깨끗한 사진 — 어종처럼).
 - **어종 에셋 정합(알파 정규화 · 셀 굵기 통일)** — `check_art_quality.cjs --fix-alpha`가 사본(`.fixed.png`)을 만든다. 10장 교체 · 셀 2px 7장의 재굽기는

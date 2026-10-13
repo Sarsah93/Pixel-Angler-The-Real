@@ -482,8 +482,8 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - 작물 76종(참외 · 수박 · 블루베리 · 토마토 · 딸기 + 개량종 스테비아 토마토 · 호박고구마 · 청양고추 — `CropDef.variant` · 원종 3번 거두면 종묘사 `requiresHarvests` · `FarmStore.harvestsBy`).
 - 날로 먹기 `CropRawEatDatabase`(84종 전수 — 먹는다 · 나눠서(조각 `_pc` · 「나누기」) · 못 먹는다) · 영양 파생 · 매운 것 수분 − · 못 먹는 것은 「사용하기」 없음 ·
   상세 「날로 먹기 · 원종 · 개량종」 · 도움말 · 위키 Version 40.
-- 작물 그림: 어종 53장 5기준 실측(`tools/check_art_quality.cjs`) → `tools/pixelize_crops.cjs`(사진 → 셀 6px 초상 + 64px 아이콘 · `CropPortraits.ts`) · 가방 · 상세 배선 ·
-  땅콩 시연 · 새 페이지 `photo-pixel-art.md`.
+- 작물 그림: 어종 53장 5기준 실측(`tools/check_art_quality.cjs`) → `tools/pixelize_crops.cjs`(사진 → **툰 추상화 = 픽셀 아트 grade** · 셀 6px 초상 + 64px 아이콘 · `CropPortraits.ts`) ·
+  가방 · 상세 배선 · 땅콩 시연 · 새 페이지 `photo-pixel-art.md`(§3.5 사용자 참고본 바칸 · 곽크릴 실측 — 사진 블록화는 grade가 아니다).
 - 스킬 수치 정본 = 코드 **95노드(유료 90 + 히든 5) · Σ 216**(193차 시작 보너스 +1 · 235차 농사 +2에서 문서가 어긋났다) — 문서 8곳 · [E] → [F] 7곳 정정.
 - 함정: 수확물 템플릿에 효과 필드가 없으면 거둔 직후 먹어도 효과 없음 · 날로 먹기 표 전수 시험 · `harvestsBy`는 전체 `harvests`와 다른 수.
   상세: [241차 워크로그](../docs/wiki/03-WORKLOG/2026-10-13-241-new-crops-varieties-raw-eating-crop-art.md).

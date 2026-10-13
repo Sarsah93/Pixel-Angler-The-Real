@@ -153,6 +153,9 @@ py tools/pixelize_islet.py <photo.png> --region <region> --name <islet> --grid 3
 ```bash
 # 입력: food assets/crops/<수확물 기본 id>.(png|jpg|webp)  — 흰(단색) 배경 사진 또는 투명 PNG · 파일명 = crop_peanut 같은 기본 id
 node tools/pixelize_crops.cjs                 # 전부 · --only crop_peanut · --tol 30(배경 허용) · --close 4(파인 홈 닫기) · --cells 192 · --cell 6
+#   기본 --style pixelart = 툰 추상화(양방향 3회 → 6단 → DoG 먹선 → 32색 → 실루엣 윤곽) — 「픽셀 아트 grade」(사용자 참고본 바칸 · 곽크릴 기준)
+#   손잡이: --levels 6 · --sat 1.15 · --contrast 1.1 · --edge 3(선 진하기) · --dog 1.0(선 굵기) · --colors 32 · --outline 1(2 = 안쪽 먹선 추가)
+#   --style photo = 사진 블록(어종 PixelOE 느낌 · 픽셀 아트 grade 아님) · --style kuwahara = v2(얼룩 — 비교용)
 node tools/check_art_quality.cjs packages/client-pc/public/crops     # 5기준 재측정 — 긴 변 · 셀 · 색 · sdL · 노이즈 · 깃발
 ```
 
@@ -161,3 +164,5 @@ node tools/check_art_quality.cjs packages/client-pc/public/crops     # 5기준 �
 - 위키 그림: `tools/wiki_img/px_<id>.png`를 초상 축소본(3셀/px)으로 덮고 `manifest.json`의 w/h를 맞춘다(241차 땅콩 392×344).
 - JPEG · WebP는 Playwright 크롬 캔버스로 디코드한다(`/opt/node-tools` 또는 npx 캐시). 16비트 · 인터레이스 PNG도 그 경로.
 - 어종 점검 깃발: 「알파 전면 <255」(252~253 — `--fix-alpha`로 `.fixed.png` 사본) · 「셀 없음」(사진 그대로) · 「셀 굵음 ≥ 12」 · 「대문자 파일명」. 교체는 사용자 결정 뒤.
+- ⚠ **사진을 셀로 내려 찍기만 한 것은 픽셀 아트 grade가 아니다**(241 사용자 지적) — 주력 물건은 사용자 변환 흐름(AI 변환 → piskel), 도구는 정규화 · 대체본. 비교 시트는 `scratchpad/art/sheet.cjs`.
+- 시험용 `--out` 폴더로 돌리면 `CropPortraits.ts`는 그대로 둔다(기본 폴더일 때만 목록 재생성).
