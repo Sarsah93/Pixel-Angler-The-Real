@@ -171,7 +171,10 @@
 - **자동 변환 경로(243 조사)**: Claude는 그림을 출력하지 못하고, 세션 안에서 스스로 학습(가중치 갱신)하지도 않는다.
   자동화는 **그림 생성 API를 도구로 붙이는 것**이다. 컨테이너에서 Gemini API(`generativelanguage.googleapis.com`)는 닿고 키만 없다(403 「unregistered callers」).
   OpenAI(`api.openai.com`) · Replicate(`api.replicate.com`)는 프록시가 막는다. 커넥터 목록에는 그림 생성용이 없다.
-  환경 설정에 `GEMINI_API_KEY`를 비밀값으로 넣으면 새 세션에서 「사진(또는 이름) → 변환 → `asis/` → 5기준 · 보정 지표 채점 → 재시도」를 스크립트로 돌릴 수 있다.
+  키는 환경의 **네트워크 시크릿**으로 넣는다(유형 Bearer 그대로 · 허용된 웹사이트 `generativelanguage.googleapis.com` · 경로 접두사 비움 ·
+  헤더 이름 `x-goog-api-key` · 접두사 지움 · 값 = AI Studio 키). 에이전트 프록시가 그 호스트로 가는 요청에만 헤더를 붙이므로
+  세션에는 환경 변수가 생기지 않는다 — 스크립트는 키 없이 호출한다(키가 붙었는지는 `GET /v1beta/models`로 확인).
+  그 뒤 「사진(또는 이름) → 변환 → `asis/` → 5기준 · 보정 지표 채점 → 재시도」를 스크립트로 돌린다.
 
 ### 5.1 남은 초상 — 파일 이름표(243차 기준)
 
