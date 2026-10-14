@@ -8,6 +8,8 @@
 @.agents/AGENTS.md
 
 - `.agents/AGENTS.md` — 아키텍처·코딩 규칙·금지 사항의 **단일 기준 문서** (위에 자동 임포트됨)
+- `.agents/REFERENCE.md` — **참고 절**(완료된 시스템 표 · 필드 단축키 · `RegionFieldScene` 구조 · 1인칭 낚시 조작).
+  자동으로 읽히지 않는다 — 해당 시스템을 건드릴 때 찾아 읽는다(2026-10-08 `AGENTS.md` §5 · §6에서 분리).
 - `.agents/IMPLEMENTATION_PLAN.md` — 구현 단계 현황과 다음 작업 목록. 작업 완료 시 이 두 문서를 반드시 최신화할 것.
 - `.agents/STORY_SPEC_v4.md` — **스토리·퀘스트 정본**(퀘 188·아크 23·법 5조·id 표·구현 현황). 퀘스트 작업 시 필독.
 - **`docs/wiki/README.md` — 구조화 뷰(위키)**. 시스템별 현황·세부과제·잔여·위험을 한 눈에.
@@ -25,7 +27,7 @@
 - **`add-species`** — 신규 어종 4계층 등록 (오라클/도감/텍스처/경락 — 매칭 테이블 순서 함정)
 - **`ui-panel`** — 팝업/패널 작성·검수 (z-order 밴드·윈도우드 렌더 vs 마스크·커스텀 드래그·텍스트 오버플로)
 - **`save-migration`** — 세이브 하위호환 (시드 백필·유저 상태 보존·폴백 3단계·오프라인 신선도 정지)
-- **`deploy-ghpages`** — 테스트 빌드 배포 (worktree 절차·소스맵 제외·상대경로·라이브 검증)
+- **`deploy-ghpages`** — 테스트 빌드 배포 (수동 실행 워크플로 「테스트 배포」·소스맵 제외·상대경로·라이브 검증)
 - **`f9-guide-coords`** — 손질 가이드 좌표 실측 반영 (opts 보존·core 리빌드·cov 1.00 검증)
 - **`add-region`** — 신규 지역 타일맵 (파이프라인·맵 그래프·4-연결 규칙·depthProfile 함정)
 - **`add-tuning`** — 튜닝 값 추가 (TUNING/META 슬라이더·stale dist 함정·스냅샷 확정 흐름)
@@ -74,14 +76,14 @@
 
 - `packages/core` (`@tra/core`) — 순수 TS 게임 로직. **Phaser/DOM/브라우저 API 절대 금지.** 새 파일은 반드시 `src/index.ts`에서 export.
 - `packages/client-pc` (`@tra/client-pc`) — Phaser 씬 + UI. 게임 로직은 core에서 import (직접 구현 금지).
-- `packages/server` (`@tra/server`) — Express + Socket.IO 멀티플레이 서버 (Phase 8 예정).
+- `packages/server` (`@tra/server`) — Express 멀티플레이 서버(`/mp` REST — 세션 · 위치 · 거래 · 설치물 공유) + 날씨 프록시.
 - `packages/map-builder` — **deprecated**(2026-09-02, 워크스페이스 제외 — 빌드 미참여). 정본 파이프라인은 루트 `tools/`. 8차 GIS 잔재 보존용.
 - `apps/tauri-wrapper` — Tauri v2 데스크톱 패키징 (Phase 9 예정).
 - `tools/` — 루트 유틸 스크립트 (`build_region_maps.py`, `pixelize.py` 등).
 - `pixelazed/` — 지역 실지형 픽셀 지도 원본 PNG (타일맵 파이프라인 입력).
 - `food assets/` — 어종/손질/부산물 실사 원본 (파이프라인 입력 — **이름 변경 금지**, 도구 경로 참조 다수).
   `food assets/fish/` = 어종 원본 57장(246) — 게임은 `node tools/fish_cards.cjs`가 굽는 `public/fish/` 카드 · 아이콘만 싣는다.
-- `assets/` — 기타 원본 (2026-08-05 정리): `branding/`(타이틀·아이콘 소스) · `characters/`(man/girl 원본 — 소비본은 `public/characters/`) · `guide/`(sashimi_pixel_guide.svg — pixelize_butchery 입력).
+- `assets/` — 기타 원본 (2026-08-05 정리): `branding/`(타이틀·아이콘 소스) · `characters/`(man/girl 옛 캐릭터 원본 — 보존만. 소비본과 로드는 레거시 필드와 함께 삭제) · `guide/`(sashimi_pixel_guide.svg — pixelize_butchery 입력).
 - `docs/` — `reference/`(공공 API 활용가이드·09.수심.zip·경락 CSV 등 외부 데이터 원본) · `mockups/`(UI 목업 — game_guide_hub.html = 가이드 삽화 19장 재렌더 소스).
 
 ## 자주 쓰는 명령어 (Windows, 레포 루트 기준)
@@ -106,7 +108,7 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
      풀 리퀘스트를 연다. `main` · `gh-pages` 푸시와 병합은 여전히 사용자만 한다. 일반 세션에는 이 예외가 없다.
      (기록과 절차는 `harmony-state` 브랜치의 `harmony/README.md`)
 1. `@tra/core`에 렌더링/브라우저 코드 금지.
-2. 하위 씬에서 `scene.start('FieldScene')` 금지 — 반드시 `scene.stop()` + `scene.resume('FieldScene')`.
+2. 필드에서 연 하위 씬에서 `scene.start('RegionFieldScene')` 금지 — 반드시 `scene.stop()` + `scene.resume('RegionFieldScene')`.
 3. `GameState`(대문자 싱글톤)만 사용, `gameState` 소문자 인스턴스 없음.
 4. 씬 키 = 파일명. 변경 시 `main.ts` 동시 수정.
 5. `TideInfo`·`SpotType` 등 확정 타입 임의 변경 금지.

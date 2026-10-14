@@ -1,6 +1,6 @@
 /**
  * @file TrapFieldSystem.ts
- * @description 인-맵 통발 필드 시스템 (121차) — 설치(아이템 소모·미끼 소모·실측 수심) · 부표 렌더 · 수거([F] — 122차 E → F) · 분실 · 반환.
+ * @description 인-맵 통발 필드 시스템 (121차) — 설치(아이템 소모·미끼 소모·실측 수심) · 부표 렌더 · 수거([F]) · 분실 · 반환.
  *
  * 레거시 TrapScene(별도 씬·추상 지도)을 대체한다. 통발은 **아이템으로 소유**(직판장 구매) → 물가에서 T 또는
  * 인벤 '통발 놓기' → 던질 수 있는 물 타일(플레이어 4타일 이내 · 육지 거리 ≤ 3타일)에 설치 → wall-clock 침지
@@ -22,7 +22,7 @@ import { GameState } from '../../store/GameState.js';
 import { MultiplayerClient } from '../../net/MultiplayerClient.js';
 import { StoryStore } from '../../store/StoryStore.js';
 import { InventoryStore, type InvItem } from '../../store/InventoryStore.js';
-import { CoolerStore } from '../../store/CoolerStore.js';
+import { CoolerStore, COOLER_CAPACITY } from '../../store/CoolerStore.js';
 import { DiscoveryStore } from '../../store/DiscoveryStore.js';
 import { resolveFishTexture } from '../../data/FishTextures.js';
 import { forageTexKey } from './ForageSystem.js';
@@ -48,6 +48,8 @@ export interface TrapHost {
   confirm: (message: string, onYes: () => void) => void;
   /** 통발 설치 패널 열기 — 씬의 openPopup 경유 */
   openDeployPanel: (onPick: (trapItem: InvItem, baitItem: InvItem) => void) => void;
+  /** 벌금을 낼 돈이 없을 때 — 씬의 파산 연출(채집 단속과 같은 길) */
+  bankrupt?: (fineWon: number) => void;
 }
 
 export class TrapFieldSystem {
@@ -362,7 +364,7 @@ export class TrapFieldSystem {
     const id = `inv_trap_${spec.id}`;
     if (!InventoryStore.recoverPlaceable(id)) {
       InventoryStore.addItem({
-        id, name: spec.nameKo, icon: '🪤', category: 'etc', subCategory: '통발',
+        id, name: spec.nameKo, icon: '', iconTexture: `art_${spec.id}`, category: 'etc', subCategory: '통발',
         basePrice: Math.round(spec.priceWon * 0.8), equippable: false, trapSpecId: spec.id,
       }, 1);
     }
@@ -419,16 +421,23 @@ export class TrapFieldSystem {
     // 강원 조례 — 산란기 도루묵
     const viol = trapSeasonViolations(result.items, new Date().getMonth() + 1);
     if (viol.length) {
-      const enf = rollEnforcement(GameState.player.inventory.coins, Math.random);
+      // 바다 평판이 나쁘면(전에 걸린 적이 있으면) 더 자주 걸린다
+      const enf = rollEnforcement(GameState.player.inventory.coins, Math.random, GameState.repeatOffenderMult());
       const names = viol.map((id) => FISH_DATABASE.find((f) => f.id === id)?.nameKo ?? id).join(', ');
       if (enf.caught) {
         // 압수 — 쿨러/인벤에서 해당 어종 제거
         for (const id of viol) this.confiscate(id);
-        if (enf.fineWon > 0) GameState.addCoins(-enf.fineWon, false, 'fine');
-        GameState.markDirty();
         this.host.scene.cameras.main.flash(260, 200, 40, 40);
+        // 벌금을 다 낼 수 있을 때만 깎인다. 모자라면 파산(채집 단속과 같은 길) — 전에는 깎이지 않은 채 「벌금 N원」만 찍혔다
+        if (enf.fineWon > 0 && !GameState.addCoins(-enf.fineWon, false, 'fine')) {
+          this.host.pushLog(`[단속] 산란기 ${names} 통발 포획 적발 — 압수 · 벌금 ${enf.fineWon.toLocaleString()}원. 낼 돈이 없다`);
+          if (this.host.bankrupt) { this.host.bankrupt(enf.fineWon); return; }
+        }
+        const repLine = GameState.applyEnforcementRep();
+        GameState.markDirty();
         this.host.floatingHint(`단속 적발! 산란기 ${names} 압수 · 벌금 ${enf.fineWon.toLocaleString()}원`);
         this.host.pushLog(`[단속] 산란기(${GANGWON_FORAGE_ORDINANCE.sandfishSpawnMonths.join('·')}월) ${names} 통발 포획 적발 — 압수 · 벌금 ${enf.fineWon.toLocaleString()}원`);
+        this.host.pushLog(repLine);
       } else {
         this.host.pushLog(`[주의] 산란기 ${names} 통발 포획 — 강원 조례 위반 (적발 시 압수·벌금)`);
       }
@@ -462,7 +471,7 @@ export class TrapFieldSystem {
     for (let i = all.length - 1; i >= 0; i--) {
       if (all[i]?.speciesId === speciesId) {
         // 인덱스 = 슬롯 순서가 아니므로 슬롯을 순회해 제거
-        for (let k = 0; k < 9; k++) { const f = CoolerStore.get(k); if (f && f.speciesId === speciesId) { CoolerStore.removeAt(k); break; } }
+        for (let k = 0; k < COOLER_CAPACITY; k++) { const f = CoolerStore.get(k); if (f && f.speciesId === speciesId) { CoolerStore.removeAt(k); break; } }
       }
     }
     for (const i of InventoryStore.items.slice()) if (i.speciesId === speciesId && i.subCategory === '어획물') InventoryStore.removeQty(i.id, i.qty);

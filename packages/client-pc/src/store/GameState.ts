@@ -90,7 +90,7 @@ import { TideLoreStore, type TideLoreSaveState } from './TideLoreStore.js';
 import { DiscoveryStore, DiscoverySaveState } from './DiscoveryStore.js';
 import {
   listUpkeep, upkeepAlerts, upkeepPenalty, licenseRenewalFee, fisheryGroundFee, upkeepKeysOfLicense, POWER_UPKEEP_KEY,
-  FARM_RENT_UPKEEP_KEY, type UpkeepItem, type UpkeepLedger, type UpkeepPenalty,
+  FARM_RENT_UPKEEP_KEY, enforcementRepeatMult, type UpkeepItem, type UpkeepLedger, type UpkeepPenalty,
 } from '@tra/core';
 
 // ─────────────────────────────────────────────
@@ -626,6 +626,7 @@ export class GameStateManager {
    */
   addCoins(amount: number, quiet = false, reason: CoinReason = 'other'): boolean {
     if (!this._player) return false;
+    if (!Number.isFinite(amount)) return false;   // 숫자가 아닌 값이 잔액을 오염시키지 않게(저장하면 null → 0원이 된다)
     const newCoins = this._player.inventory.coins + amount;
     if (newCoins < 0) return false;
     this._player.inventory.coins = newCoins;
@@ -1658,6 +1659,22 @@ export class GameStateManager {
     if (pen.repPerDay <= 0) return;
     // 188차 — 수면은 홈타운에서 일어난다. 지금 위치('hometown')가 아니라 일하는 항구에 건다.
     StoryStore.addHarborRep(this.harborRegionId, -pen.repPerDay);
+  }
+
+  /** 재범 가중 — 바다 평판이 0 아래면 단속에 더 자주 걸린다(적발 롤의 배수에 곱한다) */
+  repeatOffenderMult(): number { return enforcementRepeatMult(StoryStore.seaRep); }
+
+  /**
+   * 단속에 걸려 벌금을 낸 뒤의 평판 감소 — 바다 평판과 일하는 항구의 신뢰가 함께 깎인다.
+   * ⚖ 평판은 가격에 걸지 않는다(기존 원칙). 바다 평판은 재범 가중으로, 항구 신뢰는 위판 수수료 · 총회 · 위생 점검으로 돌아온다.
+   * @returns 지역 채널에 띄울 한 줄
+   */
+  applyEnforcementRep(): string {
+    const sea = TUNING.rep.seaVillageFisheryViolation;
+    const harbor = TUNING.rep.harborEnforcementCaught;
+    if (sea) StoryStore.addSeaRep(sea);
+    if (harbor) StoryStore.addHarborRep(this.harborRegionId, harbor);
+    return `[단속] 소문이 돈다 — 바다 평판 ${sea} · 항구 신뢰 ${harbor}`;
   }
 
   // ─── 식당/콘도 조작 ─────────────────────────

@@ -11,7 +11,7 @@ import type { ShoreCreature } from '../db-schema/ShoreCreatureDatabase.js';
 import { SHORE_CREATURE_DATABASE } from '../db-schema/ShoreCreatureDatabase.js';
 import type { ForageCandidate, ForageSpot, ForageSpotKind, ForageTool, FishFarm, ForageBehavior, ForageGameKind } from '../types/Foraging.js';
 import { GANGWON_FORAGE_ORDINANCE, farmAt, isProtectedFarmKind } from '../types/Foraging.js';
-import { TUNING } from '../config/tuning.js';
+import { TUNING, type ViolationKind } from '../config/tuning.js';
 import { closedFor, resolveLegal } from '../rules/ClosedSeason.js';
 
 // ─────────────────────────────────────────────
@@ -385,17 +385,36 @@ export interface EnforcementResult {
 }
 
 /**
- * 위반 회차마다 적발 롤 — 적발 시 압수 + 벌금(보유 재화 비율·상한).
- * @param mult 적발 확률 배수 (171차 — 자격 갱신을 연체 중이면 더 자주 걸린다)
+ * 위반 종류별 벌금 — **min(한도, max(기본 금액, 가진 돈 × 비율))** (`TUNING.law.fines`).
+ * 가진 돈이 적으면 기본 금액, 많으면 비율만큼, 아무리 많아도 한도까지. 돈은 여기서 깎지 않는다.
  */
-export function rollEnforcement(coins: number, rng: () => number, mult = 1): EnforcementResult {
-  const t = TUNING.forage;
-  if (rng() >= Math.min(1, t.enforcementChance * Math.max(0, mult))) return { caught: false, fineWon: 0 };
-  // 229차 — 벌금은 정액(사용자 지정 1천만원 = fineCapWon). 비율(fineRatio)은 상한보다 커질 때만 의미가 있어
-  //  사실상 정액이다. 가진 돈이 모자라면 호출부가 「파산」으로 처리한다(여기서는 깎지 않는다).
-  void coins;
-  const fine = Math.max(t.fineCapWon, Math.round(coins * t.fineRatio));
-  return { caught: true, fineWon: Math.max(0, fine) };
+export function enforcementFineWon(coins: number, kind: ViolationKind = 'ordinance'): number {
+  const r = TUNING.law.fines[kind];
+  const have = Number.isFinite(coins) ? Math.max(0, coins) : 0;
+  return Math.max(0, Math.round(Math.min(r.capWon, Math.max(r.baseWon, have * r.ratio))));
+}
+
+/**
+ * 재범 가중 — 바다 평판이 0 아래면 적발 확률이 오른다(0 이상 = 1배, 바닥 = `TUNING.law.repeatMaxMult`배).
+ * 단속에 걸릴 때마다 바다 평판이 깎이므로(`TUNING.rep.seaVillageFisheryViolation`) 되풀이할수록 더 자주 걸린다.
+ * `rollEnforcement`의 `mult`에 곱해 넘긴다.
+ */
+export function enforcementRepeatMult(seaRep: number): number {
+  const max = Math.max(1, TUNING.law.repeatMaxMult);
+  const floor = TUNING.rep.seaMin;
+  if (!Number.isFinite(seaRep) || seaRep >= 0 || floor >= 0) return 1;
+  return 1 + (max - 1) * Math.min(1, seaRep / floor);
+}
+
+/**
+ * 위반 회차마다 적발 롤 — 적발 시 압수 + 벌금(`enforcementFineWon`).
+ * 가진 돈이 모자라면 호출부가 「파산」으로 잇는다(`GameState.addCoins`가 false → `host.bankrupt`).
+ * @param mult 적발 확률 배수 (171차 — 자격 갱신을 연체 중이면 더 자주 걸린다)
+ * @param kind 위반 종류 — 벌금 등급을 고른다(기본 = 조례 위반 채취 · 포획)
+ */
+export function rollEnforcement(coins: number, rng: () => number, mult = 1, kind: ViolationKind = 'ordinance'): EnforcementResult {
+  if (rng() >= Math.min(1, TUNING.forage.enforcementChance * Math.max(0, mult))) return { caught: false, fineWon: 0 };
+  return { caught: true, fineWon: enforcementFineWon(coins, kind) };
 }
 
 /** 통발 포획물의 산란기 규제 — 도루묵 10~12월 (도내 전 수역) */

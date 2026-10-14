@@ -9,7 +9,7 @@ description: Pixel Angler 세이브 하위호환 규칙. 아이템/스토어에 
 
 ## 아이템에 정적 기능 필드를 추가하면 (tool/equippable/placeKey/게이트 플래그 등)
 
-`InventoryStore.deserialize`의 시드 백필 마이그레이션에 그 필드를 추가한다 (InventoryStore.ts ~755행):
+`InventoryStore.deserialize`의 시드 백필 마이그레이션에 그 필드를 추가한다 (`InventoryStore.ts`의 `deserialize` — `seedById`를 만드는 곳):
 
 ```ts
 const seedById = new Map(createSeedItems().map((sd) => [sd.id, sd]));

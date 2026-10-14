@@ -28,11 +28,13 @@ export interface SignboardPanelConfig {
 
 /** 본문 줄 — 읽기 창과 높이 측정이 같은 목록을 쓴다 */
 function bodyLines(regionId: string): { text: string; color: string }[] {
-  const fine = TUNING.forage.fineCapWon.toLocaleString();
+  const fr = TUNING.law.fines.ordinance;
+  const base = fr.baseWon.toLocaleString();
+  const cap = fr.capWon.toLocaleString();
   const toxin = toxinBanLabel(regionId, new Date());
   return [
     { text: '이 바다는 어촌계가 가꾸는 마을어장입니다. 어업인이 아닌 분은 전복 · 해삼 · 성게 · 홍합 · 문어를 잡을 수 없습니다.', color: '#e8f4fd' },
-    { text: `어기면 잡은 것을 빼앗기고 벌금 ${fine}원을 뭅니다. 벌금을 내지 못하면 더는 이 바다에 설 수 없습니다.`, color: '#ffb0a4' },
+    { text: `어기면 잡은 것을 빼앗기고 벌금을 뭅니다 — 적게는 ${base}원, 가진 것이 많으면 ${cap}원까지입니다. 벌금을 내지 못하면 더는 이 바다에 설 수 없습니다.`, color: '#ffb0a4' },
     { text: '민꽃게(돌게) · 보말 · 거북손 · 갯지렁이 · 갯강구는 허가 없이 잡아도 됩니다. 알을 품은 암컷 게는 놓아주십시오.', color: '#cfe3f2' },
     {
       text: toxin
@@ -137,7 +139,7 @@ export class SignboardPanel extends DraggablePanel {
       steps: [
         { text: '어촌계 표지판이다. 지도에는 어장이 그려지지 않는다 — 물가에 선 표지판을 읽어야 어디가 남의 앞마당인지 안다.',
           target: () => rr[0] ? this.screenRect(rr[0]) : null },
-        { text: '벌금은 천만 원이다. 낼 돈이 없으면 파산이고, 이야기를 처음부터 다시 시작하게 된다. 어장 안에서는 손을 대지 않는 게 낫다.',
+        { text: '벌금은 가진 돈이 많을수록 무겁다. 낼 돈이 없으면 파산이고, 이야기를 처음부터 다시 시작하게 된다. 어장 안에서는 손을 대지 않는 게 낫다.',
           target: () => rr[1] ? this.screenRect(rr[1]) : null },
         { text: '허가 없이 잡아도 되는 것도 적혀 있다. 알 밴 암컷 게는 잡아도 저절로 놓아준다.',
           target: () => rr[2] ? this.screenRect(rr[2]) : null },

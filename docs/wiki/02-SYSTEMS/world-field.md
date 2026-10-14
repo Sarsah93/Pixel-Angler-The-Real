@@ -19,7 +19,7 @@
 | client | `RegionFieldScene` | legacy 전맵 베이킹 / **심리스 분기**(meta 스폰·OSM POI·엣지 비활성) · 캐스팅 · 조명/날씨 · 설치 모드 |
 | client | `scenes/SeamlessChunks.ts` | **청크 스트리밍** — 64타일 청크 · RT 풀 12 LRU · 3×3 상주 · 프레임당 1베이킹 · 근접 충돌 · 벡터 차선 마킹 · 프롭 10종 · `invalidateTiles`(편집 반영) |
 | client(dev) | `dev/MapEditorPanel.ts` + `vite.config.ts` 미들웨어 | **맵 편집기(F7)** — 지형/프롭/지붕 페인트 · Ctrl+Z · `patch.json` 저장 · Ctrl+클릭 순간이동(맵·미니맵) |
-| client | `RegionHud` · `MiniMap` · `FieldEventManager` · `HydroCurrentRenderer` | HUD·미니맵(대형 맵 = CanvasTexture)·이벤트·조류 시각화 |
+| client | `RegionHud` · `FieldEventManager` | HUD·미니맵(대형 맵 = CanvasTexture)·이벤트 |
 
 ## 3. 동작 구조
 

@@ -30,7 +30,7 @@ import { CraftingStore } from '../store/CraftingStore.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { DraggablePanel } from './DraggablePanel.js';
 import { clampTextWidth } from './TextFit.js';
-import { createItemIcon, cropPortraitTexture } from './ItemIcon.js';
+import { createItemIcon, cropPortraitTexture, itemArtKeyOf } from './ItemIcon.js';
 import { resolveFishTexture } from '../data/FishTextures.js';
 import { netReachFromName,
   InvItem, InventoryStore, CONDITION_LABEL, CONDITION_COLOR, CONDITION_DESC,
@@ -917,6 +917,9 @@ export class ItemDetailPanel extends DraggablePanel {
       // 241차 — 작물 초상(사진 → 도트)이 있으면 어종처럼 크게(cropimg_*)
       const portrait = cropPortraitTexture(scene, item.iconTexture, 999);
       if (portrait) return portrait;
+      // 코드로 그린 아이템 그림이 있으면 그것을 크게 보인다(아이템 id 로 찾는다 — `px:` 키 · 이모지뿐인 옛 아이템 포함)
+      const art = itemArtKeyOf(item);
+      if (art && scene.textures.exists(art)) return art;
       // 129차 — `px:` 픽셀 아이콘은 상세 확대용으로 크게 구워 쓴다(스케일 5 = 80px).
       if (item.iconTexture?.startsWith('px:')) {
         return ensurePixelIcon(scene, item.iconTexture.slice(3), 5) ?? undefined;

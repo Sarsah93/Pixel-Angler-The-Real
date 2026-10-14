@@ -34,7 +34,7 @@
 
 ## 3. 변경
 
-### A. 좌표 실측 반영 — [CephalopodGuides.ts](../../packages/core/src/db-schema/CephalopodGuides.ts)
+### A. 좌표 실측 반영 — [CephalopodGuides.ts](../../../packages/core/src/db-schema/CephalopodGuides.ts)
 
 | 상수 | 값 (F9 실측 · 피사체 rect 기준) | 측정 뷰 |
 |---|---|---|
@@ -51,14 +51,14 @@
 
 | 구분 | 위치 | 내용 |
 |---|---|---|
-| 삭제 | [CephalopodStages.ts](../../packages/core/src/db-schema/CephalopodStages.ts) | `ceph_mantle_spread`(펼치기) — 개복 완료 화면이 곧 펼쳐진 화면. 개복 성공 시 뷰 자동 스냅으로 바로 펼침 그림 + 내장 유도선이 뜬다 |
+| 삭제 | [CephalopodStages.ts](../../../packages/core/src/db-schema/CephalopodStages.ts) | `ceph_mantle_spread`(펼치기) — 개복 완료 화면이 곧 펼쳐진 화면. 개복 성공 시 뷰 자동 스냅으로 바로 펼침 그림 + 내장 유도선이 뜬다 |
 | 삭제 | 〃 | `ceph_split_check`(분리 결과 확인 — result 스테이지) — 결과는 부산물 팝업(머리+다리+내장 덩어리 174g · 전용 실사 아이콘)이 보여준다 |
 | 수정 | 〃 | `ceph_viscera_pull` guide 문구 = "머리·다리 덩어리를 잡고 내장과 함께 위로 뜯어내세요" |
-| 수정 | [ButcherySections.ts](../../packages/core/src/db-schema/ButcherySections.ts) | `sec_ceph_open` 작업 4→2 (`t_ceph_spread`·`t_ceph_split_check` 삭제) · **`ceph_head_mass` yields를 `t_ceph_viscera`로 이동** |
-| 수정 | [CephalopodFish.ts](../../packages/client-pc/src/ui/CephalopodFish.ts) | `SQUID_STAGE_SPRITE`에서 제거 스테이지 2키 삭제 |
-| 수정 | [ButcheryPanel.ts](../../packages/client-pc/src/ui/ButcheryPanel.ts) | `cephState().spread` 파생을 `ceph_mantle_open` 완료로 변경 (파라메트릭 폴백용) |
+| 수정 | [ButcherySections.ts](../../../packages/core/src/db-schema/ButcherySections.ts) | `sec_ceph_open` 작업 4→2 (`t_ceph_spread`·`t_ceph_split_check` 삭제) · **`ceph_head_mass` yields를 `t_ceph_viscera`로 이동** |
+| 수정 | [CephalopodFish.ts](../../../packages/client-pc/src/ui/CephalopodFish.ts) | `SQUID_STAGE_SPRITE`에서 제거 스테이지 2키 삭제 |
+| 수정 | [ButcheryPanel.ts](../../../packages/client-pc/src/ui/ButcheryPanel.ts) | `cephState().spread` 파생을 `ceph_mantle_open` 완료로 변경 (파라메트릭 폴백용) |
 
-### C. 판정 — `evalNerveCut` 재작성 ([ButcheryProcess.ts](../../packages/core/src/simulation/ButcheryProcess.ts))
+### C. 판정 — `evalNerveCut` 재작성 ([ButcheryProcess.ts](../../../packages/core/src/simulation/ButcheryProcess.ts))
 
 - 시작 정확도 = **유도선까지의 거리**(`distToPath`) — 선 위 아무 지점에서 시작해도 된다
   (끝점 시작이 자연스럽다. 구: 중점 고정).

@@ -15,6 +15,7 @@ import { GUIDES } from '../data/GuideContent.js';
 import { HELP_IMAGE_KEYS } from '../data/HelpContent.js';
 import { SASHIMI_GUIDE_TEXTURE, registerSashimiGuideFrames } from '../data/SashimiGuideFrames.js';
 import { hideLoadingAfterRender, setLoadingProgress, setLoadingStage, showLoading, stageForFile } from '../ui/LoadingOverlay.js';
+import { ITEM_ART_ASSETS } from '../data/ItemArtManifest.js';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -181,6 +182,7 @@ export class BootScene extends Phaser.Scene {
       item_krill_bait: 'item-icons/it_krill_bait.png',   // 230차 — 미끼용 크릴 한 마리(크릴 · 백크릴 공통)
       item_bakkan_danax: 'item-icons/it_bakkan_danax.png',
       forage_berried_crab: 'item-icons/forage_berried_crab.png',
+      forage_octopus_vulgaris: 'fish/common_octopus.png',   // 하모니 — 채집한 돌문어도 낚은 참문어와 같은 그림
       honmushi_straight: 'item-icons/honmushi_straight.png',
       honmushi_straight_px: 'item-icons/honmushi_straight_px.png',
       forageboard_perinereis_aibuhitensis: 'forage-board/perinereis_aibuhitensis.png',
@@ -194,6 +196,9 @@ export class BootScene extends Phaser.Scene {
       forageboard_strongylocentrotus_nudus: 'forage-board/strongylocentrotus_nudus.png',
     };
     for (const [key, path] of Object.entries(ITEM_ICON_ASSETS)) this.load.image(key, path);
+    // 코드로 그린 아이템 그림(`tools/item_art/build.py` → `data/ItemArtManifest.ts`) — 사진 · 도트가 없는 아이템의 그림.
+    // 아이템 id 로 찾으므로(`ui/ItemIcon.itemArtKeyOf`) 세이브에 든 옛 아이템에도 바로 적용된다.
+    for (const [key, path] of Object.entries(ITEM_ART_ASSETS)) this.load.image(key, path);
     // 회썰기(사시미) 미니게임 — 필렛 2뷰 (tools/gen_sashimi_fillet.cjs 생성, 원본 실사 리매핑)
     //  탑뷰 = 일반 회뜨기(위에서 본 필렛) / 측면 = 고급 회뜨기(완만한 슬랩)
     this.load.image('sashimi_fillet_top_bream', 'sashimi/fillet_top_bream.png');
@@ -292,38 +297,8 @@ export class BootScene extends Phaser.Scene {
       this.load.image(fishIconKey(key), `fish/icon/${file}`);
     }
 
-    // ─── 남자 캐릭터 스프라이트 (12장) ───
-    // 정지 4방향
-    this.load.image('man-idle-front', 'characters/man/man-idle-front.png');
-    this.load.image('man-idle-back',  'characters/man/man-idle-back.png');
-    this.load.image('man-idle-left',  'characters/man/man-idle-left.png');
-    this.load.image('man-idle-right', 'characters/man/man-idle-right.png');
-    // 이동 4방향 × 2프레임
-    this.load.image('man-move-front-1', 'characters/man/man-move-front-1.png');
-    this.load.image('man-move-front-2', 'characters/man/man-move-front-2.png');
-    this.load.image('man-move-back-1',  'characters/man/man-move-back-1.png');
-    this.load.image('man-move-back-2',  'characters/man/man-move-back-2.png');
-    this.load.image('man-move-left-1',  'characters/man/man-move-left-1.png');
-    this.load.image('man-move-left-2',  'characters/man/man-move-left-2.png');
-    this.load.image('man-move-right-1', 'characters/man/man-move-right-1.png');
-    this.load.image('man-move-right-2', 'characters/man/man-move-right-2.png');
-
-    // ─── 여자 캐릭터 스프라이트 (12장, 향후 캐릭터 선택 시 사용) ───
-    this.load.image('girl-idle-front', 'characters/girl/girl-idle-front.png');
-    this.load.image('girl-idle-back',  'characters/girl/girl-idle-back.png');
-    this.load.image('girl-idle-left',  'characters/girl/girl-idle-left.png');
-    this.load.image('girl-idle-right', 'characters/girl/girl-idle-right.png');
-    this.load.image('girl-move-front-1', 'characters/girl/girl-move-front-1.png');
-    this.load.image('girl-move-front-2', 'characters/girl/girl-move-front-2.png');
-    this.load.image('girl-move-back-1',  'characters/girl/girl-move-back-1.png');
-    this.load.image('girl-move-back-2',  'characters/girl/girl-move-back-2.png');
-    this.load.image('girl-move-left-1',  'characters/girl/girl-move-left-1.png');
-    this.load.image('girl-move-left-2',  'characters/girl/girl-move-left-2.png');
-    this.load.image('girl-move-right-1', 'characters/girl/girl-move-right-1.png');
-    this.load.image('girl-move-right-2', 'characters/girl/girl-move-right-2.png');
-
     this.load.on('complete', () => {
-      console.log('[BootScene] 에셋 로드 완료 — 픽셀 지도 + 캐릭터 스프라이트');
+      console.log('[BootScene] 에셋 로드 완료');
     });
   }
 }

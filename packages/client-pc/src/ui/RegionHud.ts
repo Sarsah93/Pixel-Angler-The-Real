@@ -28,7 +28,7 @@ import { applyScreenFixed, restoreHandCursor } from './DraggablePanel.js';
 import { createItemIcon } from './ItemIcon.js';
 import { setSlotLabel, SLOT_LABEL_PX } from './SlotLabel.js';
 import { clampTextWidth } from './TextFit.js';
-import { addPixelIcon } from './PixelIcon.js';
+import { addPixelIcon, ensurePixelIcon } from './PixelIcon.js';
 import { paintHudPanel, paintHudSlot } from './HudPanelStyle.js';
 import { buildMarkerTip, placeTip, tipSignature, tipHolds, tipItems, isPinnedAt } from './MapMarkerTip.js';
 import type { ShopHours } from '../data/ShopCatalog.js';
@@ -296,12 +296,15 @@ function badgePos(layout: StatusLayout, idx: number): { x: number; y: number } {
   };
 }
 
-// ── 날씨 종류 → 원형 배지 픽토그램/색/라벨 ─────────────
+// ── 날씨 종류 → 원형 배지 아이콘/색/라벨 ─────────────
 // 기상청 SKY/PTY 코드에서 정규화된 WeatherKind 기준 (@tra/core)
-const KIND_GLYPH: Record<WeatherKind, string> = {
-  clear: '☀', partly: '⛅', cloudy: '☁', rain: '☂',
-  sleet: '☂', snow: '❄', shower: '☂', fog: '≋',
+// 아이콘은 16x16 손그림 픽셀 아이콘(`PixelIconArt`의 `wx_*`) — OS 글꼴 글리프(☀ ☁ ☂ …)는 기기마다 모양이 달라 쓰지 않는다
+const KIND_ICON: Record<WeatherKind, string> = {
+  clear: 'wx_clear', partly: 'wx_partly', cloudy: 'wx_cloudy', rain: 'wx_rain',
+  sleet: 'wx_sleet', snow: 'wx_snow', shower: 'wx_shower', fog: 'wx_fog',
 };
+/** 배지 아이콘 한 변(px) — 16x16 아트를 1배로 얹는다(배지 지름 26) */
+const BADGE_ICON = 16;
 const KIND_COLOR: Record<WeatherKind, number> = {
   clear: 0xffcc44, partly: 0xc8d8e8, cloudy: 0x8fa4b8, rain: 0x4a9fe0,
   sleet: 0x7ab8e0, snow: 0xdfe9ff, shower: 0x3d8fd0, fog: 0x9aa8b0,
@@ -320,14 +323,14 @@ export class RegionHud extends Phaser.GameObjects.Container {
   private dayNightText!: Phaser.GameObjects.Text;
   /** 원형 배지 그래픽 (아이콘 원/테두리) */
   private badgeG!: Phaser.GameObjects.Graphics;
-  /** 배지 글리프 텍스트 (주야간/날씨/안개/바람) */
-  private badgeGlyphs: Phaser.GameObjects.Text[] = [];
+  /** 배지 아이콘 (주야간/날씨/안개/바람 — 16x16 픽셀 아이콘) */
+  private badgeGlyphs: Phaser.GameObjects.Image[] = [];
   /** 배지 하단 캡션 */
   private badgeCaptions: Phaser.GameObjects.Text[] = [];
   /** 배지 호버 히트 영역 (아이콘 단계) */
   private badgeHits: Phaser.GameObjects.Rectangle[] = [];
   /** 최신 배지 내용 — 축소 단계의 호버 툴팁이 이 값을 그린다 */
-  private badgeData: { glyph: string; caption: string; color: number; active: boolean }[] = [];
+  private badgeData: { icon: string; caption: string; color: number; active: boolean }[] = [];
   /** 호버 툴팁 (커서 우측 하단) */
   private weatherTip?: Phaser.GameObjects.Container;
   /** 현재 상태 패널 레이아웃 */
@@ -573,11 +576,12 @@ export class RegionHud extends Phaser.GameObjects.Container {
     if (L.badges !== 'none') {
       for (let i = 0; i < 4; i++) {
         const { x: bx, y: by } = badgePos(L, i);
-        const glyph = this.scene.add.text(bx, by, '', {
-          fontFamily: 'sans-serif', fontSize: '14px', color: '#ffffff',
-        }).setOrigin(0.5);
-        this.badgeGlyphs.push(glyph);
-        this.statusC.add(glyph);
+        // 아이콘은 갱신 때 텍스처만 바꾼다(`drawBadge`). 처음에는 맑음으로 자리만 잡는다
+        const glyph = addPixelIcon(this.scene, 'wx_clear', bx, by, BADGE_ICON);
+        if (glyph) {
+          this.badgeGlyphs[i] = glyph;
+          this.statusC.add(glyph);
+        }
         if (L.badges === 'full') {
           // wordWrap으로 슬롯 폭을 넘지 못하게 한다 (maxLines는 쓰지 않는다 —
           // 값이 잘려 '맑음 25.9°C'가 '맑음'이 되어버린다)
@@ -1085,20 +1089,19 @@ export class RegionHud extends Phaser.GameObjects.Container {
     if (rows.length === 0) return;
 
     const c = this.scene.add.container(0, 0);
-    const padX = 10, padY = 8, rowH = 22, r = 9;
+    const padX = 10, padY = 8, rowH = 26, r = 11;   // 원 지름 22 — 16px 아이콘이 원 안에 든다
     const g = this.scene.add.graphics();
     c.add(g);
     let maxTextW = 0;
     rows.forEach((row, idx) => {
       const cy = padY + rowH / 2 + idx * rowH;
-      const glyph = this.scene.add.text(padX + r, cy, row.glyph, {
-        fontFamily: 'sans-serif', fontSize: '12px', color: row.active ? '#ffffff' : '#5d6f7e',
-      }).setOrigin(0.5);
+      const glyph = addPixelIcon(this.scene, row.icon, padX + r, cy, BADGE_ICON);
+      glyph?.setAlpha(row.active ? 1 : 0.4);
       const cap = this.scene.add.text(padX + r * 2 + 6, cy, row.caption, {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: row.active ? '#cfe3f2' : '#7d8f9e',
       }).setOrigin(0, 0.5);
       maxTextW = Math.max(maxTextW, cap.width);
-      c.add([glyph, cap]);
+      c.add(glyph ? [glyph, cap] : [cap]);
     });
     const w = padX * 2 + r * 2 + 6 + maxTextW;
     const h = padY * 2 + rows.length * rowH;
@@ -1141,9 +1144,9 @@ export class RegionHud extends Phaser.GameObjects.Container {
    * 원형 배지 1개 렌더.
    * @param active 비활성이면 어둡게 (해당 기상 현상이 없음)
    */
-  private drawBadge(idx: number, glyph: string, caption: string, color: number, active: boolean): void {
+  private drawBadge(idx: number, icon: string, caption: string, color: number, active: boolean): void {
     // 내용은 단계와 무관하게 항상 기록한다 — 축소 단계의 호버 툴팁이 이 값을 그린다
-    this.badgeData[idx] = { glyph, caption, color, active };
+    this.badgeData[idx] = { icon, caption, color, active };
     if (this.statusLayout.badges === 'none') return;
 
     const { x: bx, y: by } = badgePos(this.statusLayout, idx);
@@ -1152,7 +1155,8 @@ export class RegionHud extends Phaser.GameObjects.Container {
     this.badgeG.lineStyle(1.5, active ? color : 0x3a4a58, active ? 0.95 : 0.7);
     this.badgeG.strokeCircle(bx, by, BADGE_R);
 
-    this.badgeGlyphs[idx]?.setText(glyph).setColor(active ? '#ffffff' : '#5d6f7e');
+    const tex = ensurePixelIcon(this.scene, icon, 1);
+    if (tex) this.badgeGlyphs[idx]?.setTexture(tex).setAlpha(active ? 1 : 0.4);
     this.badgeCaptions[idx]?.setText(caption).setColor(active ? '#cfe3f2' : '#5d6f7e');
   }
 
@@ -1217,25 +1221,25 @@ export class RegionHud extends Phaser.GameObjects.Container {
     this.badgeG.clear();
 
     // 1) 주간/야간
-    this.drawBadge(0, night ? '☾' : '☀', night ? '어두움' : '밝음',
+    this.drawBadge(0, night ? 'wx_night' : 'wx_clear', night ? '어두움' : '밝음',
       night ? 0x8fa9d0 : 0xffcc44, true);
 
     // 2) 날씨 (기상청 SKY/PTY)
     const tempC = kma?.tempC ?? marine?.airTempC;
-    this.drawBadge(1, KIND_GLYPH[kind], tempC !== undefined ? `${WEATHER_LABEL[kind]} ${tempC.toFixed(1)}°C` : WEATHER_LABEL[kind],
+    this.drawBadge(1, KIND_ICON[kind], tempC !== undefined ? `${WEATHER_LABEL[kind]} ${tempC.toFixed(1)}°C` : WEATHER_LABEL[kind],
       KIND_COLOR[kind], true);
 
     // 3) 안개 — 해양기상 시정(HORIZON_VISIBL) 기반. 시정 관측소가 없으면 비활성.
     const vis = marine?.visibilityM;
     const foggy = kind === 'fog' || (vis !== undefined && vis < 1000);
-    this.drawBadge(2, '≋',
+    this.drawBadge(2, 'wx_fog',
       vis !== undefined ? (foggy ? `안개 ${(vis / 1000).toFixed(1)}km` : `시정 ${(vis / 1000).toFixed(1)}km`) : '안개 —',
       0x9aa8b0, foggy);
 
     // 4) 바람 — 기상청 풍속 우선, 없으면 해양기상 실측
     const wind = kma?.windSpeedMs ?? marine?.windSpeedMs;
     const windy = wind !== undefined && wind >= 4;
-    this.drawBadge(3, '≈', wind !== undefined ? `바람 ${wind.toFixed(1)}m/s` : '바람 —',
+    this.drawBadge(3, 'wx_wind', wind !== undefined ? `바람 ${wind.toFixed(1)}m/s` : '바람 —',
       windy ? 0x6fd3e0 : 0x4a86b0, wind !== undefined);
   };
 

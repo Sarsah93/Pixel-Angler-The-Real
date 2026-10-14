@@ -21,39 +21,39 @@ import { applyItemVitals } from './ItemVitals.js';
 const CRAFT_ONLY: Record<string, InvItemTemplate> = {
   // ── 채비 묶음 (완성 채비 — 바늘 소켓에 그대로 장착) ──
   craft_rig_chinu: {
-    id: 'craft_rig_chinu', name: '감성돔 묶음 채비 (수제)', icon: '', iconTexture: 'px:it_rig',
+    id: 'craft_rig_chinu', name: '감성돔 묶음 채비 (수제)', icon: '', iconTexture: 'art_rig_card',
     category: 'tackle', subCategory: '바늘', basePrice: 2200, equippable: false,
   },
   craft_rig_blackfish: {
-    id: 'craft_rig_blackfish', name: '벵에돔 목줄 채비 (수제)', icon: '', iconTexture: 'px:it_rig',
+    id: 'craft_rig_blackfish', name: '벵에돔 목줄 채비 (수제)', icon: '', iconTexture: 'art_rig_card',
     category: 'tackle', subCategory: '바늘', basePrice: 2600, equippable: false,
   },
   craft_rig_surf: {
-    id: 'craft_rig_surf', name: '원투 카드 채비 3단 (수제)', icon: '', iconTexture: 'px:it_rig',
+    id: 'craft_rig_surf', name: '원투 카드 채비 3단 (수제)', icon: '', iconTexture: 'art_rig_card',
     category: 'tackle', subCategory: '편대', basePrice: 5200, equippable: false,
   },
 
   // ── 구급품 (효과 수치는 data/ItemVitals.ts 가 단일 소스) ──
   craft_bandage: {
-    id: 'craft_bandage', name: '수제 붕대', icon: '', iconTexture: 'px:it_bandage',
+    id: 'craft_bandage', name: '수제 붕대', icon: '', iconTexture: 'art_bandage',
     category: 'consumable', subCategory: '구급품', basePrice: 3000, equippable: false,
   },
   craft_splint: {
-    id: 'craft_splint', name: '수제 부목', icon: '', iconTexture: 'px:it_splint',
+    id: 'craft_splint', name: '수제 부목', icon: '', iconTexture: 'art_splint',
     category: 'consumable', subCategory: '구급품', basePrice: 7000, equippable: false,
   },
   craft_medicine: {
-    id: 'craft_medicine', name: '수제 상비약', icon: '', iconTexture: 'px:it_medicine',
+    id: 'craft_medicine', name: '수제 상비약', icon: '', iconTexture: 'art_medicine',
     category: 'consumable', subCategory: '구급품', basePrice: 6000, equippable: false,
   },
 
   // ── 고급 제작대 ──
   craft_lure_custom: {
-    id: 'craft_lure_custom', name: '커스텀 미노우 (자개 도색)', icon: '', iconTexture: 'px:it_lure',
+    id: 'craft_lure_custom', name: '커스텀 미노우 (자개 도색)', icon: '', iconTexture: 'item_minnow',
     category: 'tackle', subCategory: '루어', basePrice: 24000, equippable: false,
   },
   craft_egi_tuned: {
-    id: 'craft_egi_tuned', name: '튜닝 에기 3.5호', icon: '', iconTexture: 'px:it_lure',
+    id: 'craft_egi_tuned', name: '튜닝 에기 3.5호', icon: '', iconTexture: 'art_lure_egi',
     category: 'tackle', subCategory: '루어', basePrice: 21000, equippable: false,
   },
   craft_rod_custom: {
@@ -62,7 +62,7 @@ const CRAFT_ONLY: Record<string, InvItemTemplate> = {
     equippable: true, tool: 'rod',
   },
   craft_backpack_rough: {
-    id: 'craft_backpack_rough', name: '간이 백팩', icon: '', iconTexture: 'px:it_backpack',
+    id: 'craft_backpack_rough', name: '간이 백팩', icon: '', iconTexture: 'art_backpack_rough',
     category: 'gear', subCategory: '가방', basePrice: 24000, equippable: true, bagSlots: 5,
   },
   craft_reel_custom: {

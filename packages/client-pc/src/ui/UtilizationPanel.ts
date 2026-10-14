@@ -1767,7 +1767,7 @@ export class UtilizationPanel extends DraggablePanel {
     const seq = InventoryStore.nextCatchSeq();
     InventoryStore.addItem({
       id: `inv_sashimi_plate_${adv ? 'adv' : 'std'}_${seq}`,
-      name, icon: '🍣', iconTexture: 'food_assorted_sashimi',
+      name, icon: '', iconTexture: 'food_assorted_sashimi',
       category: 'food', subCategory: '요리(회)',
       basePrice: price,
       sashimi: meta,
@@ -1818,7 +1818,7 @@ export class UtilizationPanel extends DraggablePanel {
     const ok = InventoryStore.addItem({
       id: `inv_sashimi_wip_${seq}`,
       name: `${adv ? '고급 ' : ''}사시미 접시 (${st.size} · 미완성 ${pr.placed}/${pr.total})`,
-      icon: '🍽', iconTexture: 'food_assorted_sashimi',
+      icon: '', iconTexture: 'food_assorted_sashimi',
       category: 'food', subCategory: '요리(회)',
       basePrice: 0,
       condition: worst?.condition ?? 'fresh',

@@ -17,6 +17,10 @@ PNG만 바꾸면 되는지, 생성기를 돌려야 하는지부터 판별한다:
 
 주의: `public/sashimi/*.png`는 직접 로드지만 **그 PNG 자체가 생성물** — 원본(`food assets/trimmings/…`)이 바뀌면 `gen_sashimi_fillet.cjs` 재실행.
 
+**공용 부산물 원본은 한 벌만 둔다** — 여러 어군이 같이 쓰는 그림(`fish_skin` · `pin_bone` · `pile_of_fish_guts` ·
+`skinned_pillet_with(out)_ribs`)은 `food assets/trimmings/` 루트에만 두고 어군 폴더에 복제하지 않는다.
+삶은 문어 계열 4장도 도구가 읽는 `butchery/reference/cephalopod/octopus/`에만 둔다(사본은 갈라진다).
+
 ## ① 생성기 목록 (전부 `node tools/<파일>` — Playwright+설치 Chrome, 자동 탐색)
 
 | 도구 | 입력 | 출력 | 용도 |
@@ -27,6 +31,7 @@ PNG만 바꾸면 되는지, 생성기를 돌려야 하는지부터 판별한다:
 | `fish_cards.cjs` (246) | `food assets/fish/*.png` · 표 `FishTextures.ts` `FISH_IMAGE_FILES` | `public/fish/<파일>`(카드 · 410×166 안) · `public/fish/icon/<파일>`(64px) | 어종 그림 게임판 — Playwright 불필요(순수 Node). `--check` = 표 ↔ 원본 ↔ 출력 대조 |
 | `gen_butchery_views.cjs` | (파라메트릭 — 입력 없음) | `data/PixelFishViews.ts` | 복면/체강/장뜨기 뷰 |
 | `gen_octo_assets.cjs` | `reference/cephalopod/octopus/` 투명 PNG 4종 + `octo_clean` 도트 | `public/trimmings/octo_boiled{,_head,_leg}.png` · `public/sashimi/piece_octopus.png` · `public/trimmings/octo_whole.png` | 삶은 문어 계열 직접 로드 아이콘 (098차) |
+| `py tools/item_art/build.py` | `tools/item_art/icons_*.py` | `public/item-icons/drawn/*.png` + `data/ItemArtManifest.ts` | 코드로 그린 아이템 그림(2026-10-08). 아이템 id로 고른다(`itemArtKeyOf`) — 백필 불필요 · PNG 손편집 금지 |
 | `py tools/build_region_maps.py <region>` | `pixelazed/<region>/*.png` | `public/data/<region>/*.json` | 지역 타일맵 |
 | `py tools/extract_tileset_assets.py survey\|build\|contact` | `pixelazed/tileset/` (Gemini 개별 PNG · TopDown 시트 · Kenney 시트) | `public/tileset/{gem,td,kn}/*.png` + `_survey/` 컨택트시트 | 심리스 프리팹·프롭·차량·NPC (101차). survey로 인덱스 컨택트 → 표(`TOPDOWN_PICK`/`KENNEY_PICK`) 갱신 → build → contact로 검수. 새 키는 `data/TilesetManifest.ts`에 등록 |
 | `py tools/extract_tileset_assets.py ttp` | `pixelazed/tileset/1.png`·`2.png` (사용자 제작 TTP 목업 시트) | `public/tileset/ttp/*.png` (25장) | 테트라포드·해안 접경 (104차). ⚠ **목업 스크린샷이라 격자가 아니다** — 셀 경계 실측표(`TTP_SHEET1/2`) → area 리샘플 → k-means 양자화. 접경 셀은 `cut_water`로 바다를 투명으로 판다(게임 물 색과 다름). 타일은 **32px = TR 1:1** |
@@ -128,11 +133,12 @@ im = im.convert('RGBA'); px = im.load()
 4. 어종 실사는 원본을 `food assets/fish/`에 두고 `data/FishTextures.ts`의 **`FISH_IMAGE_FILES`(키 → 파일)** · **`FISH_TEXTURE`(어종 id → 키)** 에 등록 →
    `node tools/fish_cards.cjs`(키 규칙 `fish_<speciesId>` — 성별/체장 분기는 `resolveFishTexture`). 상세는 ⑦.
 5. 어종군 판정은 `PixelButcherFish.butcherFamilyOf(speciesId)` 단일 소스 — 로컬 셋 중복 생성 금지.
-6. 재생성 후 `git diff --stat`으로 생성물 변화 확인 → **실렌더 스크린샷 검증** (verify-render 스킬) → 빌드 4/4 · typecheck 0.
+6. 재생성 후 `git diff --stat`으로 생성물 변화 확인 → **실렌더 스크린샷 검증** (verify-render 스킬) → 빌드 3/3 · typecheck 0.
 
 ## ④ 아이콘/렌더 배선 참고
 
 - 아이템 아이콘 = `InvItem.iconTexture` (createItemIcon 8개 호출처 공용, speciesId 폴백 있음).
+- 코드로 그린 아이템 그림은 **아이템 id → `ITEM_ART_BY_ID`/접두사/`px:` 키** 순으로 고른다(사용자 래스터 `iconTexture`가 있으면 그쪽이 이긴다).
 - 어종별 색 변형(머리 틴트 등)은 캔버스 베이크(`bakeTintedTrim` 패턴) — 원본 1장 + 런타임 합성.
 - 도마 단계 스프라이트 조회 = `stageSpr('키')` (PixelFishStages 레지스트리, 없으면 파라메트릭 폴백).
 

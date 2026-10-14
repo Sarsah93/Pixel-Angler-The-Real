@@ -45,7 +45,7 @@ description: Pixel Angler 문서 가독성 규칙 (AGENTS/PLAN/워크로그/위�
 
 - 핵심 변경 1 (1~2줄)
 - 핵심 변경 2
-- 검증: … · 빌드 4/4 · typecheck 0
+- 검증: … · 빌드 3/3 · typecheck 0
 - 상세: [워크로그 NNN](../docs/wiki/03-WORKLOG/….md)
 ```
 

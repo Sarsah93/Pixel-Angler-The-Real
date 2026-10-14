@@ -245,11 +245,11 @@ npx pnpm --filter @tra/client-pc run typecheck
 ### 데이터 파이프라인 재생성
 
 ```bash
-py tools/fetch_osm.py sokcho            # OSM 원본 수집
-py tools/build_osm_tilemap.py sokcho    # OSM(+래스터 병합) → 심리스 타일맵
-py tools/fetch_region_raster.py sokcho  # Sentinel-2 래스터 (CDSE 자격증명 필요)
-py tools/build_region_maps.py sokcho    # legacy 격자 타일맵 (부산 등)
-py tools/build_depth_profiles.py        # 연안정보도 수심 SHP → 거리별 수심 프로필
+py tools/fetch_region_osm.py sokcho_v2     # OSM 원본 수집 (지역 키는 tools/regions_config.py)
+py tools/build_osm_tilemap.py sokcho_v2    # OSM(+래스터 병합) → 심리스 타일맵
+py tools/fetch_region_raster.py sokcho_v2  # Sentinel-2 래스터 (CDSE 자격증명 필요)
+py tools/build_region_maps.py sokcho       # legacy 격자 타일맵 (부산 등)
+py tools/build_depth_profiles.py           # 연안정보도 수심 SHP → 거리별 수심 프로필
 py tools/gen_pixel_icons.py             # 16x16 픽셀 아이콘 → PixelIconArt.ts
 ```
 
@@ -309,7 +309,7 @@ Boot → MainMenu (저장 슬롯) → WorldMap (전국 → 지역 줌인 → 구
 - [ ] 통발 심화(D2) → **불요리**(화구·용기) → **농장**
 - [ ] 맵 확정(사용자 육안) · OSM 지역 14개 확장 · 두족류 가이드 좌표 수동 검증
 - [ ] 지형 고도(DEM) 반영 — 해안 지형 변형 우선(경사로 통행은 막지 않는다)
-- [ ] 채집·광질 자원 태그 · CookScene 실조리 · 경영(식당 납품/판매/경매)
+- [ ] 채집·광질 자원 태그 · 경영(식당 납품/판매/경매)
 - [ ] 추가 해양 API(어초정보·해수유동·수치조류도·조석예보) · 낚시점 전용 상점 · 어탐 레이더
 - [ ] 사운드 에셋 · Tauri 패키징 → Steam(Phase 9)
 

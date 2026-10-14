@@ -3,8 +3,8 @@
  * @description 한국 지도 출조지 선택 씬 — 픽셀 지도 배경 + 동적 핀포인트 노드
  *
  * 상태 머신:
- *  REGION_SELECT → 지역 핀/리스트 클릭 → 줌인 애니메이션 → SPOT_SELECT
- *                                                            → 스팟 클릭 → CONFIRM_MODAL
+ *  REGION_SELECT → 지역 핀/리스트 클릭 → 줌인 애니메이션 → 지역 지도(출조 구역 선택)
+ *                                                            → 구역 클릭 → 출조 확인 → RegionFieldScene
  *                              ← ESC / [뒤로가기] ←
  *
  * 구조 원칙:
@@ -20,13 +20,8 @@ import { TitleStore } from '../store/TitleStore.js';
 import { showLoadingThen } from '../ui/LoadingOverlay.js';
 import { inPrologue } from '../store/Prologue.js';
 import {
-  SPOT_DATABASE,
   REGION_DATABASE,
   RegionDef,
-  FishingSpotInfo,
-  calculateTideInfo,
-  FISH_DATABASE,
-  LicenseType,
   WORLD_NODE_DATABASE,
   FishingSpotNode,
   RegionAreaNode,
@@ -36,16 +31,13 @@ import {
   computeTravelFare,
 } from '@tra/core';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
-import { ConfirmTripModal } from '../ui/ConfirmTripModal.js';
 import { GuideTour, maybeStartTour, type TourOptions } from '../ui/GuideTour.js';
 
 // ── 뷰 상태 머신 ────────────────────────────────────────
 // region    : 전국 지도 + 지역 핀/리스트 선택
-// regionmap : 지역 클릭 후 해당 지역 픽셀 지도로 줌인 진입 (포인트는 추후 구현)
-// spot      : (임시) 위경도 기반 낚시터 리스트 — regionmap에서 임시 진입
-// confirm   : 출조 확인 모달
+// regionmap : 지역 클릭 후 해당 지역 픽셀 지도로 줌인 진입 (출조 구역 선택)
 // areaconfirm: 지역 구역 출조 확인 팝업 (예/아니오)
-type ViewState = 'region' | 'regionmap' | 'spot' | 'confirm' | 'areaconfirm';
+type ViewState = 'region' | 'regionmap' | 'areaconfirm';
 
 // ── 범례 설정 ────────────────────────────────────────────
 const LEGEND_ITEMS: { type: string; color: number; label: string }[] = [
@@ -81,7 +73,6 @@ export class WorldMapScene extends Phaser.Scene {
   private regionContainer!: Phaser.GameObjects.Container;
   private spotContainer!: Phaser.GameObjects.Container;
   private pinContainer!: Phaser.GameObjects.Container;   // 지도 핀포인트 레이어
-  private confirmModal: ConfirmTripModal | null = null;
 
   // ── 툴팁 ─────────────────────────────────────────────
   private tooltipContainer?: Phaser.GameObjects.Container;
@@ -103,9 +94,6 @@ export class WorldMapScene extends Phaser.Scene {
 
   // ── 지역 구역 출조 확인 팝업 ──────────────────────────
   private areaConfirmContainer?: Phaser.GameObjects.Container;
-
-  // ── 현재 진입한 지역 (regionmap/spot 뷰 컨텍스트) ────────
-  private _currentRegion?: RegionDef;
 
   // ── 핀 편집 모드 (개발자 도구: P 키 토글) ────────────
   private _pinEditMode = false;
@@ -538,19 +526,6 @@ export class WorldMapScene extends Phaser.Scene {
       case 'areaconfirm':
         this.closeAreaConfirm();
         break;
-      case 'confirm':
-        this.closeConfirmModal();
-        break;
-      case 'spot': {
-        // 임시 낚시터 리스트 → 지역 지도로 복귀
-        const region = this._currentRegion;
-        const node = region
-          ? WORLD_NODE_DATABASE.find((n: FishingSpotNode) => n.regionDatabaseId === region.id)
-          : undefined;
-        if (region) this.renderRegionMapView(region, node);
-        else this.switchToRegionView();
-        break;
-      }
       case 'regionmap':
         this.switchToRegionView();
         break;
@@ -827,7 +802,6 @@ export class WorldMapScene extends Phaser.Scene {
   private renderRegionMapView(region: RegionDef, node: FishingSpotNode | undefined): void {
     this.viewState = 'regionmap';
     this.setHomeBtnVisible(false);
-    this._currentRegion = region;
     this.regionContainer.removeAll(true);
     this.spotContainer.removeAll(true);
     this.pinContainer.removeAll(true);
@@ -970,26 +944,6 @@ export class WorldMapScene extends Phaser.Scene {
       aBtn.add(aHit);
       this.spotContainer.add(aBtn);
     });
-
-    // 위경도 기반 낚시터 목록 — **구 낚시 루프(FieldScene) 회귀 확인용 보조 경로**.
-    // ⚠ 179차: 플레이어에게 `낚시터 목록 (임시)`라는 개발 용어를 그대로 보여 주고 있었고(§8-9),
-    //   그 버튼이 심리스 필드가 아니라 **레거시 씬 스택**으로 들어갔다 → dev 빌드 전용으로 내린다.
-    if (!import.meta.env.DEV) return;
-    const tbY = GAME_HEIGHT - 52;
-    const tempBg = this.add.graphics();
-    tempBg.fillStyle(0x11202c, 0.9);
-    tempBg.fillRoundedRect(16, tbY, 330, 36, 5);
-    tempBg.lineStyle(1, 0x2f5a6d, 0.8);
-    tempBg.strokeRoundedRect(16, tbY, 330, 36, 5);
-    const tempText = this.add.text(181, tbY + 18, '[dev] 낚시터 목록 (구 필드)', {
-      fontFamily: '"Noto Sans KR", sans-serif',
-      fontSize: '12px', color: '#6fa2b8',
-    }).setOrigin(0.5);
-    const tempHit = this.add.rectangle(181, tbY + 18, 330, 36, 0xffffff, 0).setInteractive({ useHandCursor: true });
-    tempHit.on('pointerover', () => tempText.setColor('#9fd0e4'));
-    tempHit.on('pointerout', () => tempText.setColor('#6fa2b8'));
-    tempHit.on('pointerdown', () => this.renderSpotView(region));
-    this.spotContainer.add([tempBg, tempText, tempHit]);
   }
 
   // ═══════════════════════════════════════════════════════
@@ -1268,142 +1222,6 @@ export class WorldMapScene extends Phaser.Scene {
     }, 280);
   }
 
-  // ═══════════════════════════════════════════════════════
-  // 스팟 뷰 (SPOT_SELECT)
-  // ═══════════════════════════════════════════════════════
-  private renderSpotView(region: RegionDef): void {
-    this.viewState = 'spot';
-    this.setHomeBtnVisible(false);
-    this.regionContainer.removeAll(true);
-    this.spotContainer.removeAll(true);
-    this.pinContainer.removeAll(true);
-    this.pinMarkerMap.clear();
-    this.hideTooltip();
-
-    // ── 뒤로가기 버튼 ────────────────────────────────────
-    const backBtn = this.add.container(0, 0);
-    const backBg = this.add.graphics();
-    backBg.fillStyle(0x1f3045, 0.9);
-    backBg.fillRoundedRect(16, 14, 120, 30, 4);
-    backBg.lineStyle(1, 0x2a5a8a, 0.8);
-    backBg.strokeRoundedRect(16, 14, 120, 30, 4);
-    const backText = this.add.text(76, 29, '← 지역 지도', {
-      fontFamily: '"Noto Sans KR", sans-serif',
-      fontSize: '11px', color: '#8faabf', fontStyle: 'bold',
-    }).setOrigin(0.5);
-    backBtn.add([backBg, backText]);
-
-    const backNode = WORLD_NODE_DATABASE.find((n: FishingSpotNode) => n.regionDatabaseId === region.id);
-    const backHit = this.add.rectangle(76, 29, 120, 30, 0xffffff, 0).setInteractive({ useHandCursor: true });
-    backHit.on('pointerdown', () => this.renderRegionMapView(region, backNode));
-    backHit.on('pointerover', () => backText.setColor('#4af2a1'));
-    backHit.on('pointerout', () => backText.setColor('#8faabf'));
-    backBtn.add(backHit);
-    this.spotContainer.add(backBtn);
-
-    const title = this.add.text(152, 20, region.nameKo, {
-      fontFamily: '"Noto Sans KR", sans-serif',
-      fontSize: '18px', color: '#4af2a1', fontStyle: 'bold',
-    });
-    // 188차 — 조작 안내 줄('포인트 클릭 → 이동 확인  [ESC] 지역 지도로')은 지웠다
-    this.spotContainer.add([title]);
-
-    // ── 해당 지역 스팟 목록 ──────────────────────────────
-    const spots = region.subSpotIds
-      .map((id) => SPOT_DATABASE.find((s) => s.id === id))
-      .filter((s): s is FishingSpotInfo => s !== undefined);
-
-    spots.forEach((spot, idx) => {
-      const itemY = 70 + idx * 54;
-      const reqLicense = this.getRequiredLicense(spot.spotType);
-      const hasLicense = GameState.hasLicense(reqLicense);
-      const spotColor = this.getMarkerColor(spot.spotType);
-
-      const itemBg = this.add.graphics();
-      itemBg.fillStyle(hasLicense ? 0x0e1c2d : 0x111111, 0.9);
-      itemBg.fillRoundedRect(16, itemY, 340, 46, 4);
-      itemBg.lineStyle(1.5, hasLicense ? 0x2a5a8a : 0x333333, 0.8);
-      itemBg.strokeRoundedRect(16, itemY, 340, 46, 4);
-
-      const typeDot = this.add.circle(40, itemY + 23, 5, hasLicense ? spotColor : 0x444444);
-      const nameText = this.add.text(54, itemY + 6, spot.name, {
-        fontFamily: '"Noto Sans KR", sans-serif',
-        fontSize: '13px', color: hasLicense ? '#e8f4fd' : '#555555', fontStyle: 'bold',
-      });
-      const speciesStr = spot.mainSpeciesIds.slice(0, 3)
-        .map((id) => FISH_DATABASE.find((f) => f.id === id)?.nameKo ?? id).join(' / ');
-      const subInfo = this.add.text(54, itemY + 25, `${this.getSpotTypeLabel(spot.spotType)}  ·  ${speciesStr}`, {
-        fontFamily: '"Noto Sans KR", sans-serif',
-        fontSize: '9px', color: hasLicense ? '#8faabf' : '#444444',
-      });
-
-      if (!hasLicense) {
-        this.spotContainer.add(this.makeLockGlyph(334, itemY + 14, 0x6b7680));
-      }
-
-      const hit = this.add.rectangle(186, itemY + 23, 340, 46, 0xffffff, 0)
-        .setInteractive({ useHandCursor: true });
-
-      hit.on('pointerover', () => {
-        itemBg.clear();
-        itemBg.fillStyle(hasLicense ? 0x162a40 : 0x111111, 0.95);
-        itemBg.fillRoundedRect(16, itemY, 340, 46, 4);
-        itemBg.lineStyle(1.5, hasLicense ? 0x4af2a1 : 0x333333, 1);
-        itemBg.strokeRoundedRect(16, itemY, 340, 46, 4);
-        this.showSpotTooltip(spot, 370, itemY);
-      });
-      hit.on('pointerout', () => {
-        itemBg.clear();
-        itemBg.fillStyle(hasLicense ? 0x0e1c2d : 0x111111, 0.9);
-        itemBg.fillRoundedRect(16, itemY, 340, 46, 4);
-        itemBg.lineStyle(1.5, hasLicense ? 0x2a5a8a : 0x333333, 0.8);
-        itemBg.strokeRoundedRect(16, itemY, 340, 46, 4);
-        this.hideTooltip();
-      });
-      hit.on('pointerdown', () => {
-        if (!hasLicense) { this.showLicenseBlockAlert(); return; }
-        this.showConfirmModal(spot);
-      });
-
-      this.spotContainer.add([itemBg, typeDot, nameText, subInfo, hit]);
-
-      // 지도 위 스팟 마커 (위경도 기반)
-      this.drawSpotPinFromLatLon(spot, hasLicense);
-    });
-  }
-
-  // ── 스팟 핀 (위경도 → 화면 좌표 변환) ──────────────
-  private drawSpotPinFromLatLon(spot: FishingSpotInfo, hasLicense: boolean): void {
-    // 한반도 위경도 범위 → 지도 이미지 상의 픽셀 좌표로 변환
-    // 한반도 대략 범위: lat 33~38.5°, lon 124.5~130°
-    const LAT_MIN = 33.0, LAT_MAX = 38.8;
-    const LON_MIN = 124.3, LON_MAX = 130.5;
-    const rx = (spot.longitude - LON_MIN) / (LON_MAX - LON_MIN);
-    const ry = 1 - (spot.latitude - LAT_MIN) / (LAT_MAX - LAT_MIN);
-    const x = MAP_DISPLAY_X + rx * MAP_DISPLAY_W;
-    const y = MAP_DISPLAY_Y + ry * MAP_DISPLAY_H;
-
-    const color = hasLicense ? this.getMarkerColor(spot.spotType) : 0x444444;
-    const dot = this.add.circle(x, y, 5, color);
-    const ring = this.add.circle(x, y, 10, color, 0);
-    ring.setStrokeStyle(1.2, color);
-    this.tweens.add({ targets: ring, scaleX: 1.8, scaleY: 1.8, alpha: 0, duration: 1200, repeat: -1 });
-
-    const label = this.add.text(x, y + 12, spot.name, {
-      fontFamily: '"Noto Sans KR", sans-serif',
-      fontSize: '8px', color: hasLicense ? '#c8e8ff' : '#555555',
-      backgroundColor: '#060f1ecc', padding: { x: 2, y: 1 },
-    }).setOrigin(0.5, 0);
-
-    dot.setInteractive(new Phaser.Geom.Circle(0, 0, 12), Phaser.Geom.Circle.Contains);
-    dot.on('pointerdown', () => {
-      if (!hasLicense) { this.showLicenseBlockAlert(); return; }
-      this.showConfirmModal(spot);
-    });
-
-    this.pinContainer.add([dot, ring, label]);
-  }
-
   /**
    * 잠금 표시 자물쇠 — 2px 격자 절차 픽셀(§8-8: 이모지 금지 / 절차 픽셀 그래픽은 허용).
    * 고리(위 아치) + 몸통 + 열쇠구멍.
@@ -1418,37 +1236,6 @@ export class WorldMapScene extends Phaser.Scene {
     g.fillStyle(0x0d1620, 1);
     g.fillRect(5, 7, 2, 3);                                    // 열쇠구멍
     return g;
-  }
-
-  // ═══════════════════════════════════════════════════════
-  // 확인 모달 (CONFIRM_MODAL)
-  // ═══════════════════════════════════════════════════════
-  private showConfirmModal(spot: FishingSpotInfo): void {
-    this.viewState = 'confirm';
-    this.closeConfirmModal();
-
-    this.confirmModal = new ConfirmTripModal(this, spot, {
-      onConfirm: () => {
-        this.closeConfirmModal();
-        GameState.setCurrentSpot(spot.id);
-        this.fadeOutThen(() => this.scene.start('FieldScene', { spotId: spot.id }));
-      },
-      onCancel: () => {
-        this.closeConfirmModal();
-      },
-    });
-    this.add.existing(this.confirmModal);
-  }
-
-  private closeConfirmModal(): void {
-    if (this.confirmModal) {
-      this.confirmModal.destroy();
-      this.confirmModal = null;
-    }
-    if (this.viewState === 'confirm') {
-      this.viewState = 'spot';
-      this.setHomeBtnVisible(false);
-    }
   }
 
   private switchToRegionView(): void {
@@ -1540,88 +1327,8 @@ export class WorldMapScene extends Phaser.Scene {
     this.tooltipContainer.setVisible(true);
   }
 
-  private showSpotTooltip(spot: FishingSpotInfo, x: number, y: number): void {
-    if (!this.tooltipContainer) return;
-
-    const date = new Date();
-    const tide = calculateTideInfo(date);
-    const mockTempC = 14 + Math.sin(((date.getMonth() + 1) / 6) * Math.PI) * 9;
-
-    let px = x;
-    let py = y - 10;
-    if (px + 230 > GAME_WIDTH) px = x - 248;
-    if (py < 10) py = 10;
-
-    this.tooltipContainer.setPosition(px, py);
-
-    const bg = this.tooltipContainer.getAt(0) as Phaser.GameObjects.Graphics;
-    bg.clear();
-    bg.fillStyle(0x050f1e, 0.96);
-    bg.fillRoundedRect(0, 0, 230, 115, 4);
-    bg.lineStyle(1.5, 0x4af2a1, 0.9);
-    bg.strokeRoundedRect(0, 0, 230, 115, 4);
-
-    (this.tooltipContainer.getAt(1) as Phaser.GameObjects.Text).setText(spot.name);
-
-    const speciesNames = spot.mainSpeciesIds.slice(0, 3)
-      .map((id) => FISH_DATABASE.find((f) => f.id === id)?.nameKo ?? id).join(', ');
-    (this.tooltipContainer.getAt(2) as Phaser.GameObjects.Text).setText(
-      `물때: ${tide.tidePhaseLabel}\n수온: ${(mockTempC - 1.2).toFixed(1)}°C\n주요 어종: ${speciesNames}`
-    );
-    const bodyT = this.tooltipContainer.getAt(2) as Phaser.GameObjects.Text;
-    const typeT = this.tooltipContainer.getAt(3) as Phaser.GameObjects.Text;
-    typeT.setText(`[${this.getSpotTypeLabel(spot.spotType)}]`);
-    // 본문 아래로 흘려 배치 + 배경 높이를 실측에 맞춘다 (고정 y=76이면 3줄부터 겹쳤다)
-    typeT.setY(bodyT.y + bodyT.height + 6);
-    bg.clear();
-    bg.fillStyle(0x081422, 0.96);
-    bg.fillRoundedRect(0, 0, 230, typeT.y + typeT.height + 10, 4);
-    bg.lineStyle(1, 0x33b0e0, 0.9);
-    bg.strokeRoundedRect(0, 0, 230, typeT.y + typeT.height + 10, 4);
-
-    this.tooltipContainer.setVisible(true);
-  }
-
   private hideTooltip(): void {
     this.tooltipContainer?.setVisible(false);
-  }
-
-  private showLicenseBlockAlert(): void {
-    const alertTxt = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 56,
-      '면허가 없어 이동할 수 없습니다. 필드에서 면허사무소를 이용해 주세요.', {
-        fontFamily: '"Noto Sans KR", sans-serif',
-        fontSize: '12px', color: '#ff4444',
-        backgroundColor: '#050f1ecc', padding: { x: 12, y: 6 }, fontStyle: 'bold',
-      }).setOrigin(0.5).setDepth(400);
-    this.time.delayedCall(2800, () => alertTxt.destroy());
-  }
-
-  // ═══════════════════════════════════════════════════════
-  // 유틸
-  // ═══════════════════════════════════════════════════════
-  private getMarkerColor(spotType: string): number {
-    switch (spotType) {
-      case 'breakwater':    return 0x00d2ff;
-      case 'rocky_shore':   return 0xff6b6b;
-      case 'boat_fishing':  return 0xffd700;
-      case 'tidal_flat':    return 0x78e08f;
-      case 'beach':         return 0xffe066;
-      default:              return 0xffffff;
-    }
-  }
-
-  private getSpotTypeLabel(spotType: string): string {
-    const labels: Record<string, string> = {
-      breakwater: '방파제', rocky_shore: '갯바위',
-      boat_fishing: '선상', tidal_flat: '갯벌', beach: '해수욕장',
-    };
-    return labels[spotType] ?? spotType;
-  }
-
-  private getRequiredLicense(spotType: string): LicenseType {
-    if (spotType === 'boat_fishing' || spotType === 'overnight_boat') return 'boat_angling';
-    if (spotType === 'tidal_flat') return 'shore_hunting_basic';
-    return 'basic_angling';
   }
 
   // ── 개발자 도구 진입 버튼 관련 ────────────────────────
