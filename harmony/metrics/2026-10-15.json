@@ -1,0 +1,853 @@
+{
+ "schema": 1,
+ "git": {
+  "head": "6c1716696c46e185c39662acd507c332ce829680",
+  "head_date": "2026-10-14T15:32:38+00:00",
+  "since": "39b7b81ba67afca1f3766052ff0f32c684df2d14",
+  "commits_since": 27,
+  "files_changed_since": 894
+ },
+ "totals": {
+  "files": 2754,
+  "bytes": 311396553,
+  "code_files": 504,
+  "code_lines": 199165
+ },
+ "by_ext": {
+  "png": {
+   "files": 1915,
+   "bytes": 277144479
+  },
+  "ts": {
+   "files": 430,
+   "bytes": 10677191
+  },
+  "md": {
+   "files": 226,
+   "bytes": 3729349
+  },
+  "json": {
+   "files": 53,
+   "bytes": 4021858
+  },
+  "py": {
+   "files": 45,
+   "bytes": 687229
+  },
+  "cjs": {
+   "files": 21,
+   "bytes": 351004
+  },
+  "jpg": {
+   "files": 11,
+   "bytes": 650060
+  },
+  "svg": {
+   "files": 7,
+   "bytes": 2798463
+  },
+  "txt": {
+   "files": 7,
+   "bytes": 1523958
+  },
+  "mjs": {
+   "files": 5,
+   "bytes": 101036
+  },
+  "html": {
+   "files": 4,
+   "bytes": 149516
+  },
+  "yml": {
+   "files": 3,
+   "bytes": 10533
+  },
+  "xlsx": {
+   "files": 3,
+   "bytes": 1088437
+  },
+  "url": {
+   "files": 3,
+   "bytes": 166
+  },
+  "rs": {
+   "files": 2,
+   "bytes": 326
+  },
+  "patch": {
+   "files": 2,
+   "bytes": 120536
+  },
+  "hwp": {
+   "files": 2,
+   "bytes": 121344
+  },
+  "yaml": {
+   "files": 2,
+   "bytes": 70641
+  },
+  "example": {
+   "files": 1,
+   "bytes": 4378
+  },
+  "gitignore": {
+   "files": 1,
+   "bytes": 1631
+  },
+  "toml": {
+   "files": 1,
+   "bytes": 606
+  },
+  "icns": {
+   "files": 1,
+   "bytes": 1009220
+  },
+  "ico": {
+   "files": 1,
+   "bytes": 45125
+  },
+  "pdf": {
+   "files": 1,
+   "bytes": 612144
+  },
+  "zip": {
+   "files": 1,
+   "bytes": 1577166
+  }
+ },
+ "code_lines_by_area": {
+  "packages/client-pc": 117291,
+  "packages/core": 56515,
+  "tools": 23662,
+  "packages/server": 1077,
+  "packages/map-builder": 609,
+  "apps/tauri-wrapper": 11
+ },
+ "largest_files": [
+  {
+   "path": "food assets/butchery/reference/cephalopod/무늬오징어 레퍼런스/껍질벗기기.mp4",
+   "bytes": 3824223
+  },
+  {
+   "path": "food assets/forage/honmushi_pack.png",
+   "bytes": 2799442
+  },
+  {
+   "path": "food assets/forage/ragworm_pack.png",
+   "bytes": 2605349
+  },
+  {
+   "path": "food assets/forage/krill_block_frozen.png",
+   "bytes": 2333903
+  },
+  {
+   "path": "food assets/crops/_calib/raw/lettuce_grid_px.png",
+   "bytes": 1833555
+  },
+  {
+   "path": "food assets/butchery/reference/halibuts/halibut_ref_3_open_cross.png",
+   "bytes": 1771905
+  },
+  {
+   "path": "pixelazed/_osmcache/sokcho_v2.part_0_0.json",
+   "bytes": 1754197
+  },
+  {
+   "path": "docs/reference/09.수심.zip",
+   "bytes": 1577166
+  },
+  {
+   "path": "food assets/multicolorfin_rainbowfish_female.png",
+   "bytes": 1563476
+  },
+  {
+   "path": "food assets/trimmings/halibut/main_spine_bone_halibut.png",
+   "bytes": 1546934
+  },
+  {
+   "path": "packages/client-pc/public/trimmings/main_spine_bone_halibut.png",
+   "bytes": 1546934
+  },
+  {
+   "path": "assets/guide/sashimi_pixel_guide.svg",
+   "bytes": 1505206
+  },
+  {
+   "path": "food assets/fish/blackthroat_seaperch.png",
+   "bytes": 1470578
+  },
+  {
+   "path": "food assets/assorted_sashimi.png",
+   "bytes": 1470466
+  },
+  {
+   "path": "food assets/fish/flounder.png",
+   "bytes": 1431614
+  },
+  {
+   "path": "food assets/forage/crab_berried_female.png",
+   "bytes": 1416250
+  },
+  {
+   "path": "food assets/butchery/pure_fillet_bream.png",
+   "bytes": 1386657
+  },
+  {
+   "path": "food assets/trimmings/bream/pure_pillet_bream.png",
+   "bytes": 1386657
+  },
+  {
+   "path": "packages/client-pc/public/trimmings/pure_pillet_bream.png",
+   "bytes": 1386657
+  },
+  {
+   "path": "food assets/forage/art/portunus_trituberculatus.png",
+   "bytes": 1350703
+  }
+ ],
+ "longest_code_files": [
+  {
+   "path": "packages/client-pc/src/scenes/RegionFieldScene.ts",
+   "lines": 8224
+  },
+  {
+   "path": "packages/client-pc/src/scenes/SeamlessChunks.ts",
+   "lines": 5896
+  },
+  {
+   "path": "packages/client-pc/src/data/PixelFishStages.ts",
+   "lines": 5309
+  },
+  {
+   "path": "packages/client-pc/src/data/PixelIconArt.ts",
+   "lines": 5258
+  },
+  {
+   "path": "packages/client-pc/src/scenes/FirstPersonFishingScene.ts",
+   "lines": 5235
+  },
+  {
+   "path": "tools/gen_pixel_icons.py",
+   "lines": 4506
+  },
+  {
+   "path": "packages/client-pc/src/ui/ButcheryPanel.ts",
+   "lines": 4328
+  },
+  {
+   "path": "packages/client-pc/src/data/PixelFishViews.ts",
+   "lines": 3026
+  },
+  {
+   "path": "packages/client-pc/src/store/InventoryStore.ts",
+   "lines": 2744
+  },
+  {
+   "path": "packages/client-pc/src/ui/UtilizationPanel.ts",
+   "lines": 2583
+  },
+  {
+   "path": "packages/client-pc/src/ui/RegionHud.ts",
+   "lines": 2259
+  },
+  {
+   "path": "tools/gen_skill_icons.py",
+   "lines": 2148
+  },
+  {
+   "path": "packages/core/src/db-schema/StoryNarrative.ts",
+   "lines": 2124
+  },
+  {
+   "path": "packages/client-pc/src/store/GameState.ts",
+   "lines": 2121
+  },
+  {
+   "path": "packages/client-pc/src/data/SkillIconArt.ts",
+   "lines": 2105
+  },
+  {
+   "path": "packages/core/src/config/tuning.ts",
+   "lines": 1942
+  },
+  {
+   "path": "packages/client-pc/src/scenes/HomeInteriorScene.ts",
+   "lines": 1911
+  },
+  {
+   "path": "packages/client-pc/src/i18n/en.ts",
+   "lines": 1449
+  },
+  {
+   "path": "packages/client-pc/src/ui/ShopPanel.ts",
+   "lines": 1449
+  },
+  {
+   "path": "packages/client-pc/src/ui/InventoryPanel.ts",
+   "lines": 1411
+  }
+ ],
+ "code_files_over_limit": {
+  "limit": 1500,
+  "count": 17
+ },
+ "duplicates": {
+  "groups": 102,
+  "wasted_bytes": 51233216,
+  "top": [
+   {
+    "bytes_each": 1386657,
+    "paths": [
+     "food assets/butchery/pure_fillet_bream.png",
+     "food assets/trimmings/bream/pure_pillet_bream.png",
+     "packages/client-pc/public/trimmings/pure_pillet_bream.png"
+    ]
+   },
+   {
+    "bytes_each": 951076,
+    "paths": [
+     "food assets/butchery/pure_fillet_amberjack.png",
+     "food assets/trimmings/amberjack/pure_pillet_amberjack.png",
+     "packages/client-pc/public/trimmings/pure_pillet_amberjack.png"
+    ]
+   },
+   {
+    "bytes_each": 826561,
+    "paths": [
+     "food assets/butchery/pure_fillet_halibut.png",
+     "food assets/trimmings/halibut/skinned_pillet_without_engawa_halibut.png",
+     "packages/client-pc/public/trimmings/skinned_pillet_without_engawa_halibut.png"
+    ]
+   },
+   {
+    "bytes_each": 1546934,
+    "paths": [
+     "food assets/trimmings/halibut/main_spine_bone_halibut.png",
+     "packages/client-pc/public/trimmings/main_spine_bone_halibut.png"
+    ]
+   },
+   {
+    "bytes_each": 513009,
+    "paths": [
+     "food assets/trimmings/bream/rib_bone_bream.png",
+     "food assets/trimmings/halibut/rib_bone_hailbut.png",
+     "packages/client-pc/public/trimmings/rib_bone_bream.png",
+     "packages/client-pc/public/trimmings/rib_bone_halibut.png"
+    ]
+   },
+   {
+    "bytes_each": 1213011,
+    "paths": [
+     "food assets/fish/greater_amberjack.png",
+     "food assets/greater_amberjack.png"
+    ]
+   },
+   {
+    "bytes_each": 1212443,
+    "paths": [
+     "food assets/crops/_calib/ref/crop_strawberry.png",
+     "food assets/crops/asis/crop_strawberry.png"
+    ]
+   },
+   {
+    "bytes_each": 1203603,
+    "paths": [
+     "food assets/trimmings/amberjack/head_amberjack.png",
+     "packages/client-pc/public/trimmings/head_amberjack.png"
+    ]
+   },
+   {
+    "bytes_each": 1179034,
+    "paths": [
+     "food assets/trimmings/halibut/head_halibut.png",
+     "packages/client-pc/public/trimmings/head_halibut.png"
+    ]
+   },
+   {
+    "bytes_each": 1128635,
+    "paths": [
+     "food assets/trimmings/amberjack/rests_main_spine_amberjack.png",
+     "packages/client-pc/public/trimmings/rests_main_spine_amberjack.png"
+    ]
+   },
+   {
+    "bytes_each": 1049927,
+    "paths": [
+     "food assets/trimmings/squid/무늬오징어, 한치 몸통살 (mantle, body tube).png",
+     "packages/client-pc/public/trimmings/ceph_mantle_squid.png"
+    ]
+   },
+   {
+    "bytes_each": 1036823,
+    "paths": [
+     "food assets/fish/large_scale_blackfish.png",
+     "food assets/large_scale_blackfish.png"
+    ]
+   },
+   {
+    "bytes_each": 512066,
+    "paths": [
+     "food assets/butchery/skin_fillet_amberjack.png",
+     "food assets/trimmings/amberjack/skinned_pillet_amberjack.png",
+     "packages/client-pc/public/trimmings/skinned_pillet_amberjack.png"
+    ]
+   },
+   {
+    "bytes_each": 945645,
+    "paths": [
+     "food assets/trimmings/fish_skin.png",
+     "packages/client-pc/public/trimmings/fish_skin.png"
+    ]
+   },
+   {
+    "bytes_each": 943769,
+    "paths": [
+     "food assets/butchery/halibut_lift_done.png",
+     "food assets/butchery/reference/halibuts/halibut_ref_1_one_side_lifted_transparent.png"
+    ]
+   },
+   {
+    "bytes_each": 941296,
+    "paths": [
+     "food assets/trimmings/squid/껍질이 붙어있는 오징어 몸통(bodytube with skin).png",
+     "packages/client-pc/public/trimmings/ceph_mantle_skin.png"
+    ]
+   },
+   {
+    "bytes_each": 933916,
+    "paths": [
+     "food assets/trimmings/squid/무늬오징어, 한치 날개 (fin, wing).png",
+     "packages/client-pc/public/trimmings/ceph_fin_squid.png"
+    ]
+   },
+   {
+    "bytes_each": 931007,
+    "paths": [
+     "food assets/Yellowfin puffer.png",
+     "food assets/fish/yellowfin_puffer.png"
+    ]
+   },
+   {
+    "bytes_each": 926607,
+    "paths": [
+     "food assets/fat_greenling.png",
+     "food assets/fish/fat_greenling.png"
+    ]
+   },
+   {
+    "bytes_each": 917275,
+    "paths": [
+     "food assets/trimmings/squid/갑오징어 뼈(cuttlefish_bone).png",
+     "packages/client-pc/public/trimmings/ceph_cuttlebone.png"
+    ]
+   },
+   {
+    "bytes_each": 863740,
+    "paths": [
+     "food assets/fish/saury.png",
+     "food assets/saury.png"
+    ]
+   },
+   {
+    "bytes_each": 792070,
+    "paths": [
+     "food assets/trimmings/bream/rests_main_spine_bream.png",
+     "packages/client-pc/public/trimmings/rests_main_spine_bream.png"
+    ]
+   },
+   {
+    "bytes_each": 788429,
+    "paths": [
+     "food assets/trimmings/squid/촉완이 붙어있는 다리부와 머리부.png",
+     "packages/client-pc/public/trimmings/ceph_head_mass.png"
+    ]
+   },
+   {
+    "bytes_each": 762755,
+    "paths": [
+     "food assets/trimmings/squid/촉완이 제거된 다리부(tentacles_removed_feedings).png",
+     "packages/client-pc/public/trimmings/ceph_arms_only.png"
+    ]
+   },
+   {
+    "bytes_each": 734478,
+    "paths": [
+     "food assets/trimmings/halibut/engawa_halibut_inventory icon.png",
+     "packages/client-pc/public/trimmings/engawa_halibut_icon.png"
+    ]
+   },
+   {
+    "bytes_each": 680766,
+    "paths": [
+     "food assets/trimmings/squid/다리(tentacles, arms).png",
+     "packages/client-pc/public/trimmings/ceph_arms.png"
+    ]
+   },
+   {
+    "bytes_each": 678351,
+    "paths": [
+     "food assets/trimmings/squid/무늬오징어 연골(gladius).png",
+     "packages/client-pc/public/trimmings/ceph_pen.png"
+    ]
+   },
+   {
+    "bytes_each": 655860,
+    "paths": [
+     "food assets/trimmings/bream/head_black_sea_bream.png",
+     "packages/client-pc/public/trimmings/head_black_sea_bream.png"
+    ]
+   },
+   {
+    "bytes_each": 647690,
+    "paths": [
+     "food assets/fish/grass_puffer.png",
+     "food assets/grass_puffer.png"
+    ]
+   },
+   {
+    "bytes_each": 613057,
+    "paths": [
+     "food assets/trimmings/squid/갑오징어 몸통살(cuttlefish body tube).png",
+     "packages/client-pc/public/trimmings/ceph_mantle_cuttlefish.png"
+    ]
+   }
+  ]
+ },
+ "markers": {
+  "XXX": 3,
+  "TODO": 8
+ },
+ "ts_hygiene": {
+  "any_usage": 21,
+  "ts_suppress": 0,
+  "eslint_disable": 22,
+  "console_log": 30
+ },
+ "tests": {
+  "test_files": 24,
+  "source_files": 480,
+  "ratio": 0.05
+ },
+ "docs": {
+  "md_files": 226,
+  "md_lines": 38503,
+  "md_long_line_limit": 200,
+  "md_files_with_long_lines": 12,
+  "md_long_line_samples": [
+   ".agents/CEPHALOPOD_BUTCHERY_SPEC.md",
+   ".agents/TIDE_PHASE_STRATEGY_SPEC.md",
+   ".claude/skills/doc-readability/SKILL.md",
+   ".claude/skills/scene-transition/SKILL.md",
+   ".claude/skills/verify-render/SKILL.md",
+   ".claude/skills/work-log/SKILL.md",
+   "CLAUDE.md",
+   "docs/archive/AGENTS-LEDGER-001-186.md",
+   "docs/archive/IMPLEMENTATION_PLAN-to-186.md",
+   "docs/wiki/03-WORKLOG/2026-08-09-087-cephalopod-squid-tree.md",
+   "docs/wiki/03-WORKLOG/2026-09-19-157-wiki-cooking-dialogue.md",
+   "docs/wiki/03-WORKLOG/2026-09-20-163-map-quest-shore-scope.md"
+  ]
+ },
+ "skills": {
+  "count": 12,
+  "names": [
+   "add-region",
+   "add-species",
+   "add-tuning",
+   "asset-pipeline",
+   "deploy-ghpages",
+   "doc-readability",
+   "f9-guide-coords",
+   "save-migration",
+   "scene-transition",
+   "ui-panel",
+   "verify-render",
+   "work-log"
+  ],
+  "not_listed_in_claude_md": [],
+  "listed_but_missing": []
+ },
+ "env": {
+  "template_files": [
+   ".env.example"
+  ],
+  "defined": [
+   "CDSE_CLIENT_ID",
+   "CDSE_CLIENT_SECRET",
+   "KHOA_API_KEY",
+   "KMA_API_KEY",
+   "SERVER_PORT",
+   "VITE_DATA_GO_KR_API_KEY",
+   "VITE_KOSIS_API_KEY",
+   "VITE_MAFRA_API_KEY",
+   "VITE_NMPNT_API_KEY",
+   "VITE_PRODUCE_MARKET_URL"
+  ],
+  "used_in_code": [
+   "CORS_ORIGINS",
+   "GITHUB_OUTPUT",
+   "GITHUB_STEP_SUMMARY",
+   "KAMIS_CERT_ID",
+   "KAMIS_CERT_KEY",
+   "KHOA_API_KEY",
+   "KMA_API_KEY",
+   "LOCALAPPDATA",
+   "MP_SESSION_DIR",
+   "RATES",
+   "SERVER_PORT",
+   "VITE_KHOA_API_KEY",
+   "VITE_KMA_API_KEY",
+   "VITE_PUBLIC_DATA_API_KEY",
+   "VWORLD_API_KEY"
+  ],
+  "defined_not_used": [
+   "CDSE_CLIENT_ID",
+   "CDSE_CLIENT_SECRET",
+   "VITE_DATA_GO_KR_API_KEY",
+   "VITE_KOSIS_API_KEY",
+   "VITE_MAFRA_API_KEY",
+   "VITE_NMPNT_API_KEY",
+   "VITE_PRODUCE_MARKET_URL"
+  ],
+  "used_not_defined": [
+   "CORS_ORIGINS",
+   "GITHUB_OUTPUT",
+   "GITHUB_STEP_SUMMARY",
+   "KAMIS_CERT_ID",
+   "KAMIS_CERT_KEY",
+   "LOCALAPPDATA",
+   "MP_SESSION_DIR",
+   "RATES",
+   "VITE_KHOA_API_KEY",
+   "VITE_KMA_API_KEY",
+   "VITE_PUBLIC_DATA_API_KEY",
+   "VWORLD_API_KEY"
+  ],
+  "tracked_secret_files": []
+ },
+ "secret_suspects": {
+  "count": 0
+ },
+ "images": {
+  "files": 1933,
+  "bytes": 280593002,
+  "by_area": {
+   "food assets": {
+    "files": 391,
+    "bytes": 186554674
+   },
+   "packages/client-pc": {
+    "files": 1291,
+    "bytes": 79577895
+   },
+   "pixelazed": {
+    "files": 198,
+    "bytes": 7650793
+   },
+   "assets": {
+    "files": 29,
+    "bytes": 3962439
+   },
+   "docs": {
+    "files": 9,
+    "bytes": 2512781
+   },
+   "apps/tauri-wrapper": {
+    "files": 15,
+    "bytes": 334420
+   }
+  },
+  "png_dimensions_top": {
+   "32x32": 235,
+   "512x512": 153,
+   "16x16": 149,
+   "688x387": 96,
+   "640x640": 88,
+   "1254x1254": 32,
+   "256x256": 27,
+   "64x64": 21,
+   "640x300": 21,
+   "359x330": 18,
+   "185x171": 10,
+   "64x63": 10,
+   "90x90": 10,
+   "160x160": 10,
+   "1536x1024": 8
+  },
+  "consumed_total": 1291,
+  "possibly_unreferenced": {
+   "count": 397,
+   "samples": [
+    "packages/client-pc/public/crops/crop_amaranth_card.png",
+    "packages/client-pc/public/crops/crop_amaranth_icon.png",
+    "packages/client-pc/public/crops/crop_arugula_card.png",
+    "packages/client-pc/public/crops/crop_arugula_icon.png",
+    "packages/client-pc/public/crops/crop_banga_card.png",
+    "packages/client-pc/public/crops/crop_banga_icon.png",
+    "packages/client-pc/public/crops/crop_bangpung_card.png",
+    "packages/client-pc/public/crops/crop_bangpung_icon.png",
+    "packages/client-pc/public/crops/crop_barley_card.png",
+    "packages/client-pc/public/crops/crop_barley_icon.png",
+    "packages/client-pc/public/crops/crop_basil_card.png",
+    "packages/client-pc/public/crops/crop_basil_icon.png",
+    "packages/client-pc/public/crops/crop_bean_sprout_card.png",
+    "packages/client-pc/public/crops/crop_bean_sprout_icon.png",
+    "packages/client-pc/public/crops/crop_bitter_melon_card.png",
+    "packages/client-pc/public/crops/crop_bitter_melon_icon.png",
+    "packages/client-pc/public/crops/crop_blueberry_card.png",
+    "packages/client-pc/public/crops/crop_blueberry_icon.png",
+    "packages/client-pc/public/crops/crop_blueberry_pack_card.png",
+    "packages/client-pc/public/crops/crop_blueberry_pack_icon.png",
+    "packages/client-pc/public/crops/crop_bujigaengi_card.png",
+    "packages/client-pc/public/crops/crop_bujigaengi_icon.png",
+    "packages/client-pc/public/crops/crop_butterhead_card.png",
+    "packages/client-pc/public/crops/crop_butterhead_icon.png",
+    "packages/client-pc/public/crops/crop_carrot_card.png",
+    "packages/client-pc/public/crops/crop_carrot_icon.png",
+    "packages/client-pc/public/crops/crop_chamkkae_card.png",
+    "packages/client-pc/public/crops/crop_chamkkae_icon.png",
+    "packages/client-pc/public/crops/crop_chard_card.png",
+    "packages/client-pc/public/crops/crop_chard_icon.png"
+   ],
+   "note": "파일 이름이 코드·데이터에 글자로 없을 때만 잡는다. 키를 조립해 쓰는 에셋은 오탐일 수 있다."
+  }
+ },
+ "rules": [
+  {
+   "id": "core-no-render",
+   "domain": "01-engineering",
+   "desc": "@tra/core 에 Phaser·DOM·브라우저 코드 금지 (AGENTS §8-1)",
+   "severity": "심각",
+   "count": 0,
+   "samples": []
+  },
+  {
+   "id": "no-lowercase-gamestate",
+   "domain": "02-code",
+   "desc": "gameState(소문자) 인스턴스 사용 금지 (AGENTS §8-2)",
+   "severity": "보통",
+   "count": 1,
+   "samples": [
+    "packages/client-pc/src/ui/ForageGamePanel.ts:195"
+   ]
+  },
+  {
+   "id": "no-scene-start-field",
+   "domain": "02-code",
+   "desc": "하위 씬에서 scene.start('FieldScene') 금지 (AGENTS §8-7)",
+   "severity": "심각",
+   "count": 0,
+   "samples": []
+  },
+  {
+   "id": "no-bare-fadeout-wait",
+   "domain": "02-code",
+   "desc": "bare camerafadeoutcomplete 대기 금지 — SceneFade.fadeOutThen 경유 (AGENTS §4)",
+   "severity": "보통",
+   "count": 3,
+   "samples": [
+    "packages/client-pc/src/scenes/MainMenuScene.ts:633",
+    "packages/client-pc/src/scenes/RegionFieldScene.ts:8005",
+    "packages/client-pc/src/scenes/WorldMapScene.ts:1202"
+   ]
+  },
+  {
+   "id": "no-any",
+   "domain": "02-code",
+   "desc": "any 타입 금지 (AGENTS §4 TypeScript)",
+   "severity": "경미",
+   "count": 21,
+   "samples": [
+    "packages/client-pc/src/scenes/AnglerLogScene.ts:874",
+    "packages/client-pc/src/scenes/RegionFieldScene.ts:3222",
+    "packages/client-pc/src/scenes/RegionFieldScene.ts:7555",
+    "packages/client-pc/src/store/CookingStore.ts:427",
+    "packages/client-pc/src/store/FarmStore.ts:999",
+    "packages/core/src/api-client/AuctionPriceApiClient.ts:90",
+    "packages/core/src/api-client/FishingIndexApiClient.ts:107",
+    "packages/core/src/api-client/FishingIndexApiClient.ts:129",
+    "packages/core/src/api-client/FishingIndexApiClient.ts:181",
+    "packages/core/src/api-client/KosisCatchApiClient.ts:91"
+   ]
+  },
+  {
+   "id": "no-ui-emoji",
+   "domain": "04-design-media",
+   "desc": "UI 이모지 금지 (AGENTS §8-8) — 주석은 제외, 레거시 icon 폴백은 백로그 대상",
+   "severity": "경미",
+   "count": 24,
+   "samples": [
+    "packages/client-pc/src/i18n/en.ts:236",
+    "packages/client-pc/src/i18n/en.ts:244",
+    "packages/client-pc/src/scenes/RegionFieldScene.ts:2354",
+    "packages/client-pc/src/scenes/WorldMapScene.ts:232",
+    "packages/client-pc/src/scenes/WorldMapScene.ts:254",
+    "packages/client-pc/src/scenes/WorldMapScene.ts:309",
+    "packages/client-pc/src/scenes/WorldMapScene.ts:328",
+    "packages/client-pc/src/scenes/WorldMapScene.ts:373",
+    "packages/client-pc/src/scenes/WorldMapScene.ts:384",
+    "packages/client-pc/src/scenes/WorldMapScene.ts:407"
+   ]
+  },
+  {
+   "id": "no-keydown-text-input",
+   "domain": "02-code",
+   "desc": "ev.key.length === 1 로 글자를 모으는 텍스트 입력 금지 — ui/TextInput.ts 사용 (AGENTS §8-11)",
+   "severity": "보통",
+   "count": 0,
+   "samples": []
+  },
+  {
+   "id": "no-screen-edge-anchor",
+   "domain": "04-design-media",
+   "desc": "화면 끝 상수(GAME_WIDTH - 16 - w)로 상시 UI 를 놓지 않기 (AGENTS §8-14)",
+   "severity": "경미",
+   "count": 5,
+   "samples": [
+    "packages/client-pc/src/ui/HomeDecorMode.ts:159",
+    "packages/client-pc/src/ui/HomeDecorMode.ts:168",
+    "packages/client-pc/src/ui/RegionHud.ts:1503",
+    "packages/client-pc/src/ui/RegionHud.ts:1544",
+    "packages/client-pc/src/ui/RegionHud.ts:1578"
+   ]
+  }
+ ],
+ "packages": {
+  "apps/tauri-wrapper/package.json": {
+   "name": "@tra/tauri-wrapper",
+   "version": "0.1.0",
+   "dependencies": 1,
+   "devDependencies": 1
+  },
+  "package.json": {
+   "name": "the-real-angler",
+   "version": "0.1.0",
+   "dependencies": 0,
+   "devDependencies": 3
+  },
+  "packages/client-pc/package.json": {
+   "name": "@tra/client-pc",
+   "version": "0.1.0",
+   "dependencies": 2,
+   "devDependencies": 4
+  },
+  "packages/core/package.json": {
+   "name": "@tra/core",
+   "version": "0.1.0",
+   "dependencies": 0,
+   "devDependencies": 3
+  },
+  "packages/map-builder/package.json": {
+   "name": "@tra/map-builder",
+   "version": "0.1.0",
+   "dependencies": 0,
+   "devDependencies": 2
+  },
+  "packages/server/package.json": {
+   "name": "@tra/server",
+   "version": "0.1.0",
+   "dependencies": 4,
+   "devDependencies": 6
+  }
+ }
+}
