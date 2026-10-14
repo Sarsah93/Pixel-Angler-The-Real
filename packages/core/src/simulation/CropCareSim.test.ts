@@ -79,15 +79,15 @@ describe('238차 — 고추 관리 표 · 종묘사 자재', () => {
     expect(carePlanSummaryKo(chili)).toContain(DISEASE_KO.anthracnose);
   });
 
-  it('표가 없는 작물은 까다로운 점에서 뽑는다 — 토마토(지주 · 곁순 · 병해 3종) · 상추(없음)', () => {
+  it('방울토마토는 238 뼈대 그대로(지주 · 곁순 · 병해 3종) · 245차 — 상추도 표가 있다(솎기 · 웃거름 · 진딧물)', () => {
     const tomato = carePlanOf(getCrop('cherry_tomato')!);
     expect(tomato.tasks.map((t) => t.id)).toEqual(['stake', 'tie', 'remove_suckers', 'spray_fungicide', 'spray_insecticide', 'cull_diseased', 'topdress']);
     expect(tomato.diseases).toEqual(['blight', 'anthracnose', 'virus']);
     expect(tomato.frostEnds).toBe(true);
     const lettuce = carePlanOf(getCrop('lettuce')!);
-    expect(lettuce.tasks).toEqual([]);
-    expect(lettuce.diseases).toEqual([]);
-    expect(hasCarePlan(getCrop('lettuce')!)).toBe(false);
+    expect(lettuce.tasks.map((t) => t.id)).toEqual(['thin', 'topdress', 'pick_pests']);
+    expect(lettuce.diseases).toEqual(['aphid']);
+    expect(hasCarePlan(getCrop('lettuce')!)).toBe(true);
     expect(hasCarePlan(getCrop('eggplant')!)).toBe(true);
     // 모든 작업 이름이 있다
     for (const t of [...CROP_CARE_PLANS.chili.tasks, ...NURSERY_PLAN.tasks]) expect(CARE_TASK_KO[t.id]).toBeTruthy();

@@ -711,27 +711,47 @@ const monthsKoList = (ms) => (ms?.length ? (core.monthRangeKo?.(ms) ?? ms.join('
 const licenseKo = (t) => core.getLicenseByType?.(t)?.nameKo ?? core.getLicenseByType?.(t)?.name ?? t;
 const supplyNameOf = (id) => core.getFarmSupply?.(id)?.nameKo ?? itemNameOf(id);
 
-/** 관리 작업 한 줄들 — 때(심은 날 기준 · 철 · 병들면) · 반복 · 준비물 · 손놀림 · 효과 · 놓치면 */
-const careTaskRow = (t) => {
-  const when = t.only === 'riskSeason' ? `${monthsKoList([...core.RISK_SEASON])}(철마다)`
-    : t.only === 'diseased' ? '병이 들었을 때'
-      : t.dayWindow[0] === 0 ? `심은 날부터 ${t.dayWindow[1]}일 안` : `심은 뒤 ${t.dayWindow[0]}~${t.dayWindow[1]}일`;
-  const rep = t.repeat ? `${t.repeat.everyDays}일마다 ${t.repeat.times}번 더 (모두 ${1 + t.repeat.times}회)` : '한 번';
+/**
+ * 관리 작업 한 줄들 — 때(심은 날 · 달력 · 자람 · 거둔 뒤 · 철 · 병들면) · 반복 · 준비물(자재 · 도구) · 손놀림 · 효과 · 놓치면
+ * 245차 — 때는 core `taskWhenKo`(작물마다 철이 다르다) · 놓친 품질은 깎이는 값(옛 표는 「+」로 잘못 찍었다)
+ */
+const careTaskRow = (t, plan) => {
+  const when = core.taskWhenKo(plan, t);
+  const rep = t.only === 'riskSeason' ? `철 동안 ${t.repeat?.everyDays ?? 10}일마다`
+    : t.only === 'diseased' ? `든 동안 ${t.repeat?.everyDays ?? 3}일마다`
+      : t.months ? '해마다 그 철에 한 번'
+        : t.afterPick ? '거둘 때마다 한 번'
+          : t.repeat ? `${t.repeat.everyDays}일마다 ${t.repeat.times}번 더 (모두 ${1 + t.repeat.times}회)` : '한 번';
   const needs = (t.needs ?? []).map((n) => `${supplyNameOf(n.itemId)} ×${n.qty}`).join(' · ');
+  const tools = (t.tools ?? []).map((id) => supplyNameOf(id)).join(' · ');
   const eff = [];
   if (t.effect?.yieldMult) eff.push(`수확 ×${t.effect.yieldMult}`);
   if (t.effect?.quality) eff.push(`품질 +${Math.round(t.effect.quality * 100)}%p`);
+  if (t.effect?.water) eff.push(t.id === 'mist' ? '배지가 촉촉해진다' : '흙이 흠뻑 젖는다');
   for (const pr of t.effect?.protect ?? []) eff.push(`${core.DISEASE_KO[pr.disease]} ${pr.days}일 동안 ×${pr.mult}`);
   if (t.effect?.diseaseMult) eff.push(Object.entries(t.effect.diseaseMult).map(([d, m]) => `${core.DISEASE_KO[d]} ×${m}`).join(' · '));
+  if (t.only === 'diseased') eff.push(`${(t.onlyFor ?? plan.diseases).map((d) => core.DISEASE_KO[d]).join(' · ')}의 심한 정도가 준다`);
   const miss = [];
   if (t.missed?.yieldMult) miss.push(`수확 ×${t.missed.yieldMult}`);
-  if (t.missed?.quality) miss.push(`품질 ${t.missed.quality > 0 ? '+' : ''}${Math.round(t.missed.quality * 100)}%p`);
+  if (t.missed?.quality) miss.push(`품질 −${Math.round(t.missed.quality * 100)}%p`);
   if (t.missed?.lodging) miss.push('비바람에 쓰러진다');
   if (t.missed?.diseaseMult) miss.push(Object.entries(t.missed.diseaseMult).map(([d, m]) => `${core.DISEASE_KO[d]} ×${m}`).join(' · '));
   return {
     id: t.id, name: core.CARE_TASK_KO[t.id] ?? t.id, when, rep, needs, needIds: (t.needs ?? []).map((n) => n.itemId),
+    tools, toolIds: [...(t.tools ?? [])],
     work: `${core.CARE_WORK_KO[t.work] ?? t.work} · 약 ${t.seconds}초 · 품 ${t.fatigue}`,
     effect: eff.join(' · '), missed: miss.join(' · '), how: t.howKo,
+  };
+};
+const DISEASE_KIND_KO = { disease: '병', pest: '벌레', bird: '새' };
+/** 245차 — 드는 병 · 벌레 · 새 한 줄(철 · 증상 · 막는 법 · 다 번지면 잃는 몫) */
+const diseaseRow = (d) => {
+  const def = core.DISEASE_DEFS[d];
+  return {
+    id: d, name: core.DISEASE_KO[d], kind: def.kind, kindLabel: DISEASE_KIND_KO[def.kind] ?? def.kind,
+    season: monthsKoList([...def.season]), symptom: core.DISEASE_SYMPTOM_KO[d], control: core.DISEASE_CONTROL_KO[d],
+    loss: [def.yieldLoss > 0 ? `다 번지면 수확 −${Math.round(def.yieldLoss * 100)}%` : '', def.standLoss ? '포기가 죽어 나간다' : '',
+      def.indoor ? '집 안에서도 든다' : '', def.ripeOnly ? '익을 무렵에만 온다' : ''].filter(Boolean).join(' · '),
   };
 };
 
@@ -767,6 +787,44 @@ const looseCountKo = (nameKo, n) => {
   return `${nameKo.replace(/\s*\(.*\)\s*$/, '').replace(/\s*한 (줌|팩|단|묶음)$/, '').trim()} ${n}${counter}`;
 };
 const CHUM_GRAIN = new Set(['crop_barley', 'crop_corn']);
+
+/**
+ * 245차 — 손 가는 정도 어림. 한 작기(여러해살이는 2년 남짓)를 「날마다 물 · 사흘에 한 번 비」로 두 번 돌려
+ * 할 일을 다 했을 때와 손을 놓았을 때 거두는 양을 견준다(게임과 같은 core 규칙 · 결정적 해시라 돌릴 때마다 같다).
+ */
+const DAY_MS = 86400000;
+const careEffort = (crop, plan) => {
+  const start = crop.starts.find((s) => !s.nursery) ?? crop.starts[0];
+  const run = (managed) => {
+    const site = crop.site === 'indoor' || start.nursery ? 'indoor' : 'plot';
+    const plot = core.newFarmPlot(site, 0);
+    if (site === 'indoor') plot.facilities = ['sproutJar'];
+    const cell = plot.cells[0];
+    cell.tilled = true;
+    let t = Date.UTC(2026, start.months[0] - 1, 10) - 9 * 3600000;
+    core.plantCell(cell, crop, start, t, () => 0.5, { hasSkill: () => true, hasTray: true });
+    let n = 0, secs = 0, total = 0;
+    for (let d = 0; d < 700 && cell.cropId; d++) {
+      t += DAY_MS;
+      core.waterCell(cell);
+      core.advanceCell(plot, 0, t, { rainAt: () => d % 3 === 0 });
+      if (!cell.cropId) break;
+      if (managed) for (const st of core.careDue(cell, crop, t)) if (core.doCare(cell, crop, st.def.id, t, 1).ok) { n++; secs += st.def.seconds; }
+      if (core.cellReady(cell)) {
+        const raw = (cell.careYield ?? 1) * core.diseaseYieldMult(cell) * cell.stand * (crop.harvest.qtyPerCell[0] + crop.harvest.qtyPerCell[1]) / 2;
+        const h = core.harvestCell(cell, () => 0.5);
+        if (h) { total += raw; if (h.seedling) break; }
+        if (!h?.more) break;
+      }
+    }
+    return { n, secs, total };
+  };
+  const a = run(true), b = run(false);
+  return {
+    kinds: plan.tasks.filter((t) => t.only !== 'diseased').length, times: a.n, secs: a.secs,
+    neglectPct: a.total > 0 ? Math.round((b.total / a.total) * 100) : 100,
+  };
+};
 
 const farmCrops = core.CROP_DATABASE.map((c) => {
   const plan = core.carePlanOf(c);
@@ -823,11 +881,12 @@ const farmCrops = core.CROP_DATABASE.map((c) => {
       items: harvestItems.map((id) => ({ id, name: itemNameOf(id) })),
     },
     carePlan: {
-      tasks: plan.tasks.map(careTaskRow),
-      diseases: plan.diseases.map((d) => ({ id: d, name: core.DISEASE_KO[d], season: monthsKoList([...core.DISEASE_SEASON[d]]), symptom: core.DISEASE_SYMPTOM_KO[d], control: core.DISEASE_CONTROL_KO[d] })),
+      tasks: plan.tasks.map((t) => careTaskRow(t, plan)),
+      diseases: plan.diseases.map(diseaseRow),
       establishDays: plan.establishDays ?? 0, frostEnds: !!plan.frostEnds,
-      nursery: c.starts.some((s) => s.nursery) ? core.NURSERY_PLAN.tasks.map(careTaskRow) : [],
+      nursery: c.starts.some((s) => s.nursery) ? core.NURSERY_PLAN.tasks.map((t) => careTaskRow(t, core.NURSERY_PLAN)) : [],
       summary: core.hasCarePlan(c) ? core.carePlanSummaryKo(c) : '',
+      effort: careEffort(c, plan),
     },
     price: {
       base: c.price.base, season: c.price.season.map((v) => +v.toFixed(2)), volatility: c.price.volatility, kamis,
@@ -848,7 +907,7 @@ const farmSupplies = core.FARM_SUPPLIES.map((sp) => ({
   site: sp.site ? (sp.site === 'indoor' ? '집 안' : '마당 텃밭') : '', shop: sp.shop === 'nursery' ? '종묘사' : '생활용품점',
   skill: sp.requiresSkill ? core.getSkillById(sp.requiresSkill)?.nameKo ?? sp.requiresSkill : '', rarity: sp.rarity ?? 'common',
   desc: sp.descKo, img: itemImgOf(sp.itemId),
-  usedBy: farmCrops.filter((fc) => fc.carePlan.tasks.some((t) => t.needIds.includes(sp.itemId)) || fc.carePlan.nursery.some((t) => t.needIds.includes(sp.itemId)))
+  usedBy: farmCrops.filter((fc) => [...fc.carePlan.tasks, ...fc.carePlan.nursery].some((t) => t.needIds.includes(sp.itemId) || t.toolIds.includes(sp.itemId)))
     .map((fc) => ({ id: fc.id, name: fc.name })),
   grows: farmCrops.filter((fc) => fc.needs.includes(sp.nameKo)).map((fc) => ({ id: fc.id, name: fc.name })),
 }));
@@ -877,7 +936,11 @@ const farming = {
     plotCells: '한 구획 = 4×3칸 · 한 칸 = 1㎡', plots: '마당 2구획 + 농지 이용권 5구획(빌린 구획 5,000원/30일)',
     grade: Object.entries(core.FARM_TUNING.gradePrice).map(([g, m]) => `${core.GRADE_KO[g]} ×${m}`).join(' · '),
     kamis: '배추 · 무 · 양파 · 상추 같은 흔한 채소는 하루 한 번 실제 소매가(전국 평균)를 받아 「오늘 ÷ 평년」으로 값을 움직인다',
-    noInput: '비료 · 약을 하나도 안 써도 거두기는 된다 — 웃거름을 다 거르면 ×0.7, 세 병이 다 번지면 한 번에 한 개 날까 말까',
+    noInput: '비료 · 약을 하나도 안 써도 거두기는 된다 — 다만 놓친 일마다 수확 · 품질이 깎이고, 병 · 벌레가 다 번지면 그 몫만큼 덜 난다. 「쉬움」 작물은 놓친 손해가 절반 · 병이 드는 확률 0.6배 · 번짐 0.7배라 손을 놓아도 대개 8할은 거둔다.',
+    // 245차 — 작물마다 다른 일 · 같은 작물 여러 칸 한꺼번에
+    careTier: '난이도가 오를수록 손 가는 일이 늘어난다 — 「쉬움」은 한 작기에 서너 번(솎기 · 김매기 · 웃거름), 「보통」 · 「까다로움」은 열 번 넘게(지주 · 순지르기 · 방제 · 열매 솎기). 「아주 까다로움」 산채는 일은 적지만 고추냉이 · 초피처럼 놓치면 크게 주는 것이 있다.',
+    careWhen: '때는 네 가지로 센다 — 심은 날부터 며칠(대부분), 달력(마늘 짚 덮기 11~12월 · 보리밟기 2~3월 · 가지치기 겨울), 자람(배추 묶기 · 열매 솎기), 거둔 뒤(부추 · 미나리 · 공심채는 벨 때마다 웃거름). 여러해살이는 해마다 다시 센다.',
+    careGroup: '같은 작물을 여러 칸에 심었으면 한 번에 한다 — 한 칸 더할 때마다 시간은 한 칸 몫의 0.45씩(모두 4칸 몫까지), 품은 0.6씩 늘어난다. 자재는 칸마다 든다.',
   },
 };
 

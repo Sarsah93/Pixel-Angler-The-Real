@@ -64,7 +64,7 @@ describe('241차 — 개량종', () => {
     expect(getCrop('stevia_tomato')!.price.base / getCrop('tomato')!.price.base).toBeCloseTo(1.78, 1);
     expect(getCrop('pumpkin_sweet_potato')!.price.base / getCrop('sweet_potato')!.price.base).toBeCloseTo(1.3, 1);
     expect(getCrop('cheongyang')!.price.base / getCrop('chili')!.price.base).toBeCloseTo(1.25, 1);
-    expect(carePlanOf(getCrop('cheongyang')!)).toBe(carePlanOf(getCrop('chili')!));
+    expect(carePlanOf(getCrop('cheongyang')!)).toEqual(carePlanOf(getCrop('chili')!));
     const stevia = carePlanOf(getCrop('stevia_tomato')!).tasks.find((t) => t.id === 'stevia_feed')!;
     expect(stevia.repeat?.times).toBe(3);
     expect(stevia.needs?.[0].itemId).toBe(STEVIA_ID);

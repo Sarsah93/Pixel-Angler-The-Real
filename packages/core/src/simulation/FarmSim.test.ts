@@ -15,6 +15,7 @@ import { LICENSE_DATABASE } from '../types/License.js';
 import { SKILL_BONUS_EXCLUDED_LICENSES, skillPointsFromLicenses } from '../types/Skills.js';
 import { SKILL_LICENSE_BONUS_TOTAL_PT } from '../db-schema/SkillDatabase.js';
 import { dishStarsAt } from './CookingSim.js';
+import { careDue, doCare } from './CropCareSim.js';
 import { getFireRecipe } from '../db-schema/FireRecipeDatabase.js';
 import type { FarmEnv, FarmPlotState } from '../types/Farming.js';
 import type { DishData } from '../types/Cooking.js';
@@ -35,6 +36,18 @@ function planted(cropId: string, kind: 'seed' | 'seedling' | 'set', atMs: number
   const start = crop.starts.find((s) => s.kind === kind)!;
   plantCell(cell, crop, start, atMs, half, ctxAll);
   return plot;
+}
+
+/** 245차 — 날마다 물을 주며 굴린다(사흘에 하루 비). `managed`면 그날 할 일을 다 한다(작업 점수 1) */
+function grow(plot: FarmPlotState, from: number, to: number, managed: boolean): void {
+  const cell = plot.cells[0];
+  let d = 0;
+  for (let t = from + DAY; t <= to; t += DAY, d++) {
+    waterCell(cell);
+    advanceCell(plot, 0, t, d % 3 === 0 ? alwaysRain : neverRain);
+    const crop = cell.cropId ? getCrop(cell.cropId) : undefined;
+    if (managed && crop) for (const s of careDue(cell, crop, t)) doCare(cell, crop, s.def.id, t, 1);
+  }
 }
 
 describe('FarmSim — 실제 시간대로 자란다', () => {
@@ -67,31 +80,38 @@ describe('FarmSim — 실제 시간대로 자란다', () => {
     expect(plot.cells[0].cropId).toBeNull();
   });
 
-  it('마늘은 가을에 심어 겨울을 쉬고 이듬해 6월에 거둔다 · 5월에는 마늘종', () => {
-    const t0 = kst(2026, 10, 10);
-    const plot = planted('garlic', 'set', t0);
-    advanceCell(plot, 0, kst(2027, 1, 15), alwaysRain);
-    const winter = plot.cells[0].growth;
-    const winterQ = plot.cells[0].quality;
-    advanceCell(plot, 0, kst(2027, 2, 25), alwaysRain);
-    expect(plot.cells[0].growth).toBeCloseTo(winter, 5);   // 휴면 — 자라지 않는다
-    expect(plot.cells[0].quality).toBeCloseTo(winterQ, 5); // 겨울나기 작물은 추위에 상하지 않는다(휴면 중엔 병충해도 없다)
-    advanceCell(plot, 0, kst(2027, 5, 20), alwaysRain);
-    expect(interimOpen(plot.cells[0], getCrop('garlic')!)).toBe(true);
-    const scape = interimHarvestCell(plot.cells[0], half);
-    expect(scape?.itemId).toBe('crop_garlic_scape');
-    advanceCell(plot, 0, kst(2027, 6, 25), alwaysRain);
-    expect(cellReady(plot.cells[0])).toBe(true);
-    const bulbs = harvestCell(plot.cells[0], half)!;
-    // 종구 40쪽 → 30~36통 × 섬 × 마늘종 효과(1.05)
-    expect(bulbs.qty).toBeGreaterThanOrEqual(27);
-    expect(bulbs.qty).toBeLessThanOrEqual(38);
+  it('마늘은 가을에 심어 겨울을 쉬고 이듬해 6월에 거둔다 · 5월에는 마늘종 · 245차 — 짚 · 이른 봄 웃거름 · 김매기 · 녹병을 챙기면 제 수량', () => {
+    const run = (managed: boolean): number => {
+      const t0 = kst(2026, 10, 10);
+      const plot = planted('garlic', 'set', t0);
+      grow(plot, t0, kst(2027, 1, 15), managed);
+      const winter = plot.cells[0].growth;
+      const winterQ = plot.cells[0].quality;
+      advanceCell(plot, 0, kst(2027, 2, 25), neverRain);
+      expect(plot.cells[0].growth).toBeCloseTo(winter, 5);   // 휴면 — 자라지 않는다
+      expect(plot.cells[0].quality).toBeCloseTo(winterQ, 5); // 겨울나기 작물은 추위에 상하지 않는다(휴면 중엔 병충해도 없다)
+      grow(plot, kst(2027, 2, 25), kst(2027, 5, 20), managed);
+      expect(interimOpen(plot.cells[0], getCrop('garlic')!)).toBe(true);
+      const scape = interimHarvestCell(plot.cells[0], half);
+      expect(scape?.itemId).toBe('crop_garlic_scape');
+      grow(plot, kst(2027, 5, 20), kst(2027, 6, 25), managed);
+      expect(cellReady(plot.cells[0])).toBe(true);
+      return harvestCell(plot.cells[0], half)!.qty;
+    };
+    // 종구 40쪽 → 30~36통 × 섬 × 마늘종 효과(1.05) — 일을 다 하면 제 수량
+    const kept = run(true);
+    expect(kept).toBeGreaterThanOrEqual(27);
+    expect(kept).toBeLessThanOrEqual(38);
+    // 손을 놓으면(겨울 짚 · 웃거름 · 김매기를 거르고 녹병을 두면) 덜 나지만 거둔다
+    const bare = run(false);
+    expect(bare).toBeGreaterThanOrEqual(1);
+    expect(bare).toBeLessThan(kept);
   });
 
-  it('씨감자 1칸 분(200g) → 2~3kg — 약 10배', () => {
+  it('씨감자 1칸 분(200g) → 2~3kg — 약 10배(245차 — 싹 정리 · 북주기 두 번을 하면)', () => {
     const t0 = kst(2026, 3, 20);
     const plot = planted('potato', 'set', t0);
-    advanceCell(plot, 0, t0 + 110 * DAY, alwaysRain);
+    grow(plot, t0, t0 + 110 * DAY, true);
     const r = harvestCell(plot.cells[0], half)!;
     expect(r.itemId).toBe('crop_potato');
     expect(r.qty).toBeGreaterThanOrEqual(2);

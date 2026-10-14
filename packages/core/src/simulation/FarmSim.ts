@@ -10,8 +10,9 @@
  *  4. 배율 — 퇴비 ×1.15(+비료 스킬) · 하우스 추운 달 ×1.25 · 수경 랙 ×1.8 → **잎채소 ×2.0 · 철 작물 ×1.4 상한**.
  *  5. 다 익은 뒤 — `holdDays`를 넘기면 쇤다(품질 감소). 풋고추는 붉어진다(`ripenTo`).
  *  6. 병충해 — 노지 하루 한 번 판정(여름 ↑ · 방제 스킬 ↓) — 품질만 깎는다.
- *  7. 238차 — 관리 표가 있는 작물(고추 · 토마토 · 가지 · 오이 …)은 `CropCareSim`이 날마다 놓친 작업 · 병(역병 · 탄저병 · 바이러스병) ·
+ *  7. 238차 — 관리 표가 있는 작물(245차부터 84종 전부)은 `CropCareSim`이 날마다 놓친 작업 · 병 · 벌레 · 새 ·
  *     쓰러짐 · 첫서리를 굴리고, 시간마다 활착기 마름을 본다. 거둘 때 관리 · 병 배수가 곱해지고, 검붉은 고추는 품질이 깎인다.
+ *     여러해살이는 겨울을 나고 다시 올라올 때 날로 세는 일 · 병을 새 작기로 돌린다(`resetCareCycle`).
  *     씨앗을 육묘 트레이에 뿌린 칸(`nursery`)은 다 자라면 **모종**을 준다.
  *
  * 순수 함수 + 상태 객체 변경. 난수는 호출 쪽이 주입한다(`rand01`) — 세이브 재현 · 시험 고정.
@@ -24,7 +25,7 @@ import type {
 import { getCrop, cropOfProduce, parseProduceId } from '../db-schema/CropDatabase.js';
 import { produceMarketRatio } from '../rules/ProduceMarket.js';
 import { carePlanOf } from '../db-schema/CropCareDatabase.js';
-import { CARE_TUNING, dailyCare, diseaseYieldMult, establishHour, frostBlockKo, ripeStageOf } from './CropCareSim.js';
+import { CARE_TUNING, dailyCare, diseaseYieldMult, establishHour, frostBlockKo, ripeStageOf, resetCareCycle } from './CropCareSim.js';
 
 /** 텃밭 한 구획 = 4×3칸(설치물 `farm_plot` footprint와 같다) */
 export const FARM_COLS = 4;
@@ -302,9 +303,12 @@ function stepHour(cell: FarmCellState, crop: CropDef, plot: FarmPlotState, ms: n
     if (season === 0) {
       cell.resting = false; cell.growth = 0; cell.picks = 0; cell.regrow = 0; cell.ripeH = 0;
       cell.interimDone = false; cell.established = true;
+      resetCareCycle(cell, crop);   // 245차 — 날로 세는 일 · 병 · 관리 배수는 새 작기로(달력 일 기록은 이어진다)
     }
     return;
   }
+  // 245차 — 다시 올라오기를 기다리던 여러해살이: 철이 와 자라기 시작한 때가 올해 일의 기준
+  if (cell.cycleAt === 0 && season > 0) cell.cycleAt = ms;
   // 3) 물
   const water = cell.moisture >= 0.25 ? 1 : cell.moisture >= 0.1 ? 0.55 : 0;
   if (water === 0 && season > 0) {
@@ -468,6 +472,7 @@ export function plantCell(cell: FarmCellState, crop: CropDef, start: CropStart, 
   cell.care = {}; cell.diseases = {}; cell.protect = {};
   cell.lodged = false; cell.frostedAt = undefined; cell.careYield = 1; cell.establishDryH = 0; cell.wetH = 0;
   cell.nursery = !!start.nursery;
+  cell.cycleAt = undefined;
 }
 
 /** 걷어 낸다(작물만 — 갈아 둔 땅은 남는다) */
@@ -479,7 +484,7 @@ export function clearCell(cell: FarmCellState): void {
   cell.interimDone = false; cell.resting = false; cell.established = false; cell.compost = false;
   cell.stand = 0;
   cell.care = undefined; cell.diseases = undefined; cell.protect = undefined; cell.lodged = false; cell.frostedAt = undefined;
-  cell.careYield = undefined; cell.nursery = false; cell.establishDryH = 0; cell.wetH = 0;
+  cell.careYield = undefined; cell.nursery = false; cell.establishDryH = 0; cell.wetH = 0; cell.cycleAt = undefined;
 }
 
 export interface HarvestSkills { yieldBonus?: number; seedSaver?: number }

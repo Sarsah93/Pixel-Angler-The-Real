@@ -1002,7 +1002,10 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
     '</div><div class="mlab">' + season.map((v, i) => '<span>' + (i + 1) + '<br>' + (v >= 1 ? '+' : '') + Math.round((v - 1) * 100) + '%</span>').join('') + '</div>';
   const careTable = rows => '<div class="tablewrap"><table class="wk"><thead><tr><th>일</th><th>때</th><th>반복</th><th>준비물</th><th>손놀림 · 시간 · 품</th><th>효과 / 놓치면</th></tr></thead><tbody>' +
     rows.map(t => '<tr><td><b>' + esc(t.name) + '</b><br><span class="dim">' + esc(t.how) + '</span></td><td>' + esc(t.when) + '</td><td>' + esc(t.rep) + '</td>' +
-      '<td>' + (t.needs ? t.needIds.map((id, k) => xl('items', id, t.needs.split(' · ')[k] || id)).join('<br>') : '<span class="dim">없음</span>') + '</td>' +
+      '<td>' + ((t.needs || t.tools) ? [
+        ...(t.needs ? t.needIds.map((id, k) => xl('items', id, t.needs.split(' · ')[k] || id)) : []),
+        ...(t.tools ? (t.toolIds || []).map((id, k) => xl('items', id, t.tools.split(' · ')[k] || id) + ' <span class="dim">(도구)</span>') : []),
+      ].join('<br>') : '<span class="dim">없음</span>') + '</td>' +
       '<td>' + esc(t.work) + '</td><td>' + (t.effect ? esc(t.effect) : '') + (t.missed ? (t.effect ? '<br>' : '') + '<span class="dim">놓치면 ' + esc(t.missed) + '</span>' : '') + '</td></tr>').join('') +
     '</tbody></table></div>';
 
@@ -1033,11 +1036,14 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
         (cp.summary ? '<p class="note">' + esc(cp.summary) + (cp.establishDays ? ' · 모종을 심은 뒤 ' + cp.establishDays + '일 활착기(흙이 마르면 포기가 준다)' : '') + (cp.frostEnds ? ' · 첫서리에 끝난다' : '') + '</p>' : '') +
         (cp.tasks.length ? careTable(cp.tasks) : '') +
         (cp.nursery.length ? '<h4 style="margin:14px 0 6px">씨앗부터 — 집 안 육묘 트레이</h4>' + careTable(cp.nursery) : '') +
+        (G.farming.rules.careWhen ? '<p class="note">' + esc(G.farming.rules.careWhen) + ' ' + esc(G.farming.rules.careGroup || '') + '</p>' : '') +
         '</div>'
       : '<div class="ssec"><h3>손이 가는 일</h3><p class="note">특별히 손 갈 일은 없다 — 물 · 퇴비 · 거두기만.</p></div>';
+    // 245차 — 병 · 벌레 · 새를 한 표에(종류 칸 · 다 번지면 잃는 몫)
+    const disKinds = [...new Set(cp.diseases.map(d => d.kindLabel || '병'))];
     const disSec = cp.diseases.length
-      ? '<div class="ssec"><h3>드는 병</h3><div class="tablewrap"><table class="wk"><thead><tr><th>병</th><th>드는 철</th><th>증상</th><th>막는 법</th></tr></thead><tbody>' +
-        cp.diseases.map(d => '<tr><td><b>' + esc(d.name) + '</b></td><td>' + esc(d.season) + '</td><td>' + esc(d.symptom) + '</td><td>' + esc(d.control) + '</td></tr>').join('') +
+      ? '<div class="ssec"><h3>드는 ' + esc(disKinds.join(' · ')) + '</h3><div class="tablewrap"><table class="wk"><thead><tr><th>이름</th><th>종류</th><th>드는 철</th><th>증상</th><th>막는 법</th></tr></thead><tbody>' +
+        cp.diseases.map(d => '<tr><td><b>' + esc(d.name) + '</b></td><td>' + esc(d.kindLabel || '병') + '</td><td>' + esc(d.season) + '</td><td>' + esc(d.symptom) + (d.loss ? '<br><span class="dim">' + esc(d.loss) + '</span>' : '') + '</td><td>' + esc(d.control) + '</td></tr>').join('') +
         '</tbody></table></div><p class="note">' + esc(G.farming.rules.noInput) + '</p></div>'
       : '';
     const u = c.uses;
@@ -1070,6 +1076,11 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
           ['물', esc(c.water)],
           ['빠르기', esc(c.speed)],
           ['까다로운 점', c.care.length ? esc(c.care.join(' · ')) : '<span class="dim">없음</span>'],
+          // 245차 — 손 가는 정도(난이도만큼 일이 는다 · 손을 놓으면 얼마나 줄어드나 어림)
+          ['손 가는 정도', c.carePlan.effort ? (c.carePlan.effort.times
+            ? '일 ' + c.carePlan.effort.kinds + '가지 · 한 작기에 약 <b>' + c.carePlan.effort.times + '번</b> (' + c.carePlan.effort.secs + '초 남짓) · 손을 놓으면 거두는 양이 다 한 것의 약 <b>' + c.carePlan.effort.neglectPct + '%</b>'
+              + ' <span class="dim">(어림 — 날마다 물 · 사흘에 한 번 비)</span>'
+            : '<span class="dim">특별히 손 갈 일이 없다</span>') + (G.farming.rules.careTier ? '<br><span class="dim">' + esc(G.farming.rules.careTier) + '</span>' : '') : null],
           ['갖출 것', c.needs.length ? esc(c.needs.join(' · ')) : null],
           ['구하기', esc(c.rarity) + ' <span class="dim">(귀할수록 가게 하루 재고가 적다)</span>'],
         ]) + '</div>' +

@@ -199,3 +199,9 @@ node tools/pixelize_crops.cjs                                                   
 - 검수는 시트로 한다(12장씩 · 칸 아래 id): `montage -label '%t' … -tile 4x -geometry 230x230+4+4`. 틀린 모양은 `LOOKS`를 고쳐 `--tag`로 다시 뽑고, 고른 판을 `<id>.png`로 바꿔 둔다.
 - 값: 2.1은 1K 한 장 약 0.034달러(72장 ≈ 2.5달러). 결제가 꺼져 있으면 429 「free_tier … limit: 0」.
 - 게임은 **카드 판**(`crops/<id>_card.png` · 상세 창 칸 228×90에 맞춘 면적 평균)과 64px 아이콘만 싣는다. 셀 6px 원본(1,170px)은 위키 재료다.
+- **중간 수확물 · 팩은 `--set extra` · `--set pack`**(245 — 14장). 팩은 용기가 그림의 일부라 도구가 `kind: 'pack'`이면 조건 문구를 바꾼다
+  (「포장한 한 팩 · 비스듬히 위에서 · 라벨 · 가격표 · 글자 없음」). 일반 조건(「한 단위만 · 바구니 없음」)으로 부르면 용기를 빼고 그린다.
+- **잎 · 줄기 사이에 갇힌 흰 배경**(245)은 테두리 BFS가 못 닿아 어두운 창에서 흰 점이 된다 — `pixelize_crops.cjs`의 `holes`(기본 180)가
+  둘레가 어두운 흰 섬만 뺀다(흰 작물 하이라이트는 둘레가 밝아 남는다). 초상을 다시 구우면 전부에 걸리므로 `git diff --stat`으로 바뀐 수를 본다(245 = 71장).
+- 초상을 다시 구운 뒤 위키: `python3.13 tools/gen_wiki_images.py`(Pillow는 3.13에만 있다) → `node tools/wiki_crop_img.cjs` → `node tools/dump_wiki_items.mjs`(새 아이템이 있으면)
+  → `node tools/gen_game_wiki_data.mjs --html`. 아티팩트에는 바뀐 그림만 `files`로 올린다(245 = 105장).

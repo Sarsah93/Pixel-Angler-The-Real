@@ -9,6 +9,8 @@
  * - 조작 안내 문구는 창에 넣지 않는다(R11) — 처음 열 때 체험 가이드가 짚는다(`buildTour`).
  * - 238차 — 관리 표가 있는 작물(고추 · 토마토 · 가지 · 오이 …)은 칸 자세히에 「단계 · 포기당 · 익음 · 병 · 할 일」이 붙는다.
  *   할 일 단추는 작업 장면(`FarmWorkPanel`)을 열고, 끝나면 점수와 함께 `FarmStore.doCare`. 육묘 트레이 칸은 모종을 거둔다.
+ * - 245차 — 84종 모두 할 일이 있다. 같은 구획의 같은 작물 칸에 같은 일이 떠 있으면 단추에 「(n칸)」이 붙고 한 번에 한다
+ *   (`FarmStore.careGroup` · `doCareGroup`). 「다음:」 줄은 날 · 달력(「n일 뒤」)과 거둔 뒤 일(「거둔 뒤」)을 가린다.
  */
 
 import Phaser from 'phaser';
@@ -23,7 +25,7 @@ import { addPixelIcon } from './PixelIcon.js';
 import { createItemIcon } from './ItemIcon.js';
 import { clampTextWidth, enforceTextBounds } from './TextFit.js';
 import { maybeStartTour, type TourOptions } from './GuideTour.js';
-import { FarmStore, INDOOR_PLOT, HOMI_ID, COMPOST_ID, WATERING_CAN_ID, type FarmActionResult, type FarmCareRow } from '../store/FarmStore.js';
+import { FarmStore, INDOOR_PLOT, HOMI_ID, COMPOST_ID, WATERING_CAN_ID, careGroupSeconds, type FarmActionResult, type FarmCareRow } from '../store/FarmStore.js';
 import { FarmWorkPanel, careTaskIcon } from './FarmWorkPanel.js';
 import { InventoryStore, type InvItem } from '../store/InventoryStore.js';
 import { GameState } from '../store/GameState.js';
@@ -335,7 +337,7 @@ export class FarmPanel extends DraggablePanel {
       else row('뿌리 내림', `${Math.round(c.stand * 100)}%`);
       if (crop.harvest.repeat && !c.nursery) row('딴 횟수', `${c.picks} / ${crop.harvest.repeat.times + 1}`);
       // 238차 — 포기당 거두는 수(모종 칸) · 병 · 쓰러짐
-      if (st?.kind === 'seedling' && hasCarePlan(crop)) {
+      if (st?.kind === 'seedling' && crop.category === 'fruit' && hasCarePlan(crop)) {
         const [a, b] = perPlantYield(crop, st.perCell);
         row('포기당', `한 번에 ${a}~${b}개 × ${st.perCell}포기`);
       }
@@ -389,17 +391,28 @@ export class FarmPanel extends DraggablePanel {
     }
   }
 
-  /** 238차 — 단계 한 줄(육묘 · 활착기 · 초기 생장 · 개화 착과 · 수확기 · 서리) */
+  /**
+   * 238차 — 단계 한 줄(육묘 · 활착기 · 초기 생장 · 개화 착과 · 수확기 · 서리).
+   * 245차 — 방아다리 · 착과는 열매 작물 말이다. 잎 · 뿌리 · 버섯 · 시루는 「자라는 중」 · 「수확기」로만.
+   */
   private stageLine(c: FarmCellState, crop: ReturnType<typeof getCrop> & object): { text: string; color: string } | null {
     if (c.nursery) return { text: '육묘 중 — 집 안 트레이에서 모종을 키운다', color: '#8fd4ff' };
     if (!hasCarePlan(crop)) return null;
     if (c.frostedAt) return { text: '서리 — 끝물', color: '#9fb8ff' };
     if (c.resting) return null;
-    const d = cellDay(c, Date.now());
-    if (cellReady(c) || c.picks > 0) return { text: '수확기 — 익는 대로 거둔다', color: '#8affb0' };
-    if (d < 14) return { text: '활착기 — 뿌리를 내리는 2주', color: '#9fd0e4' };
-    if (c.growth < 0.55) return { text: '초기 생장 — 방아다리가 갈라진다', color: '#c8dceb' };
+    const ready = cellReady(c) || c.picks > 0;
+    if (FarmStore.establishment(this.opts.plotId, this.sel)) return { text: '활착기 — 뿌리를 내리는 2주', color: '#9fd0e4' };
+    if (crop.category !== 'fruit') return ready ? { text: '수확기 — 다 자란 것부터 거둔다', color: '#8affb0' } : null;
+    if (ready) return { text: '수확기 — 익는 대로 거둔다', color: '#8affb0' };
+    // 「방아다리」(첫 Y자 갈림)는 고추 말 — 다른 열매 작물은 줄기 · 잎을 키우는 때로
+    const pepper = crop.id === 'chili' || crop.variant?.of === 'chili';
+    if (cellDay(c, Date.now()) < 14 || c.growth < 0.55) return { text: pepper ? '초기 생장 — 방아다리가 갈라진다' : '초기 생장 — 줄기와 잎을 키운다', color: '#c8dceb' };
     return { text: '개화 · 착과 — 꽃이 피고 열매가 든다', color: '#ffe28a' };
+  }
+
+  /** 245차 — 다음 할 일 꼬리: 날 · 달력은 「n일 뒤」, 거둔 뒤 일은 「거둔 뒤」 */
+  private nextWhen(r: FarmCareRow): string {
+    return r.st.daysLeft < 0 ? '거둔 뒤' : `${r.st.daysLeft}일 뒤`;
   }
 
   /** 238차 — 할 일 줄(작업 장면으로) */
@@ -408,10 +421,12 @@ export class FarmPanel extends DraggablePanel {
     const rows = FarmStore.careRows(this.opts.plotId, this.sel);
     if (!rows.length) return y;
     const due = rows.filter((r) => r.st.status === 'due');
-    const next = rows.filter((r) => r.st.status === 'upcoming').sort((a, b) => a.st.daysLeft - b.st.daysLeft)[0];
+    // 245차 — 「다음」은 날 · 달력 일 중 가장 가까운 것, 없으면 거둔 뒤 일
+    const upcoming = rows.filter((r) => r.st.status === 'upcoming');
+    const next = upcoming.filter((r) => r.st.daysLeft >= 0).sort((a, b) => a.st.daysLeft - b.st.daysLeft)[0] ?? upcoming[0];
     this.content.add(scene.add.text(PANE_X, y, t('할 일'), { fontFamily: FONT, fontSize: '12px', color: '#8fb4cc' }));
     if (!due.length) {
-      const msg = next ? `${CARE_TASK_KO[next.st.def.id]} — ${next.st.daysLeft}일 뒤` : '지금은 없다';
+      const msg = next ? `${CARE_TASK_KO[next.st.def.id]} — ${this.nextWhen(next)}` : '지금은 없다';
       this.content.add(scene.add.text(PANE_X + 92, y, t(msg), { fontFamily: FONT, fontSize: '12px', color: '#c8dceb' }));
       return y + 22;
     }
@@ -419,38 +434,42 @@ export class FarmPanel extends DraggablePanel {
     let ry = y - 4;
     for (const r of due) {
       // 차례가 있는 일(웃거름 · 유인 · 곁순)만 「n/N」 — 철 따라 치는 약 · 걷어 내기는 이름만
-      const label = r.st.def.repeat && !r.st.def.only ? `${CARE_TASK_KO[r.st.def.id]} ${r.st.round + 1}/${r.st.total}` : CARE_TASK_KO[r.st.def.id];
+      const name = r.st.def.repeat && !r.st.def.only ? `${CARE_TASK_KO[r.st.def.id]} ${r.st.round + 1}/${r.st.total}` : CARE_TASK_KO[r.st.def.id];
+      // 245차 — 같은 작물 칸 여럿에 같은 일이 떠 있으면 한 번에(「(n칸)」)
+      const group = r.missing.length === 0 ? FarmStore.careGroup(this.opts.plotId, this.sel, r.st.def.id) : [this.sel];
+      const label = group.length > 1 ? `${name} (${group.length}칸)` : name;
       const w = Math.max(96, labelW(label) + 44);
       if (bx + w > PANE_X + PANE_W) { bx = PANE_X + 92; ry += 34; }
       const on = r.missing.length === 0;
       this.button(`care_${r.st.def.id}`, bx, ry, w, 28, label, () => this.openWork(crop, r), on);
-      const ic = careTaskIcon(scene, r.st, bx + 14, ry + 14, 16);
+      const ic = careTaskIcon(scene, r.st, bx + 14, ry + 14, 16, crop);
       if (ic) { if (!on) ic.setAlpha(0.4); this.content.add(ic); }
       if (!on) {
         const hit = scene.add.rectangle(bx + w / 2, ry + 14, w, 28, 0xffffff, 0.001).setInteractive();
-        hit.on('pointerover', () => this.setStatus(`${r.missing.map((m) => `${m.name} ${m.need}개(${m.have}개)`).join(' · ')} — 종묘사에서 판다`, false));
+        hit.on('pointerover', () => this.setStatus(FarmStore.missingLineKo(r.missing), false));
         this.content.add(hit);
       }
       bx += w + 8;
     }
     ry += 34;
     if (next) {
-      this.content.add(scene.add.text(PANE_X + 92, ry, t(`다음: ${CARE_TASK_KO[next.st.def.id]} — ${next.st.daysLeft}일 뒤`), { fontFamily: FONT, fontSize: '11px', color: '#7f93a3' }));
+      this.content.add(scene.add.text(PANE_X + 92, ry, t(`다음: ${CARE_TASK_KO[next.st.def.id]} — ${this.nextWhen(next)}`), { fontFamily: FONT, fontSize: '11px', color: '#7f93a3' }));
       ry += 18;
     }
     return ry + 4;
   }
 
-  /** 238차 — 작업 장면을 연다. 끝나면 점수와 함께 작업을 한다 */
+  /** 238차 — 작업 장면을 연다. 끝나면 점수와 함께 작업을 한다 · 245차 같은 작물 칸 여럿이면 한 번에 */
   private openWork(crop: NonNullable<ReturnType<typeof getCrop>>, r: FarmCareRow): void {
     const chk = FarmStore.careCheck(this.opts.plotId, this.sel, r.st.def.id);
     if (!chk.ok) { this.setStatus(chk.reasonKo ?? '지금 할 수 없다', false); return; }
     const c = this.plot().cells[this.sel];
     const st = startOf(crop, c.start);
     const plants = c.nursery ? 1 : Math.max(1, Math.min(4, st?.kind === 'seedling' ? st.perCell : 3));
+    const group = FarmStore.careGroup(this.opts.plotId, this.sel, r.st.def.id);
     const build = (close: () => void): DraggablePanel => new FarmWorkPanel(this.scene, this.x + 90, this.y + 40, {
-      crop, status: r.st, plants,
-      onDone: (score) => { const res = FarmStore.doCare(this.opts.plotId, this.sel, r.st.def.id, score); if (res.ok) this.did.care++; this.after(res); },
+      crop, status: r.st, plants, cells: group.length, seconds: careGroupSeconds(r.st.def.seconds, group.length),
+      onDone: (score) => { const res = FarmStore.doCareGroup(this.opts.plotId, group, r.st.def.id, score); if (res.ok) this.did.care += group.length; this.after(res); },
       onClose: close,
     });
     if (this.opts.openPopup) this.opts.openPopup(build);

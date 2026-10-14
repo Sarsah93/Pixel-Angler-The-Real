@@ -828,7 +828,7 @@ export type {
   CropCategory, CropSpeedClass, CropRarity, CropGrade, CropStartKind, FarmSite, FarmFacility, CropStart, CropHarvest,
   CropInterim, CropRequirement, CropPrice, CropDef, FarmCellState, FarmPlotState, FarmEnv, FarmPlantCtx, FarmHarvestResult,
   CropDifficulty, CropCare, CropVariant, CropPack,
-  CropDisease, CropDiseaseState, CareTaskId, CareWorkKind, CareTaskDef, CropCarePlan,
+  CropDisease, CropDiseaseState, CareTaskId, CareWorkKind, CareTaskDef, CropCarePlan, DiseaseDef,
 } from './types/Farming.js';
 export {
   CROP_DATABASE, CROP_DIFFICULTY, getCrop, cropStartOfItem, cropOfProduce, isFarmProduce,
@@ -854,16 +854,21 @@ export {
 } from './simulation/FarmSim.js';
 export type { PlantCheck, HarvestSkills, FarmCellStage } from './simulation/FarmSim.js';
 export { harvestPreview } from './simulation/FarmSim.js';
-// 238차 — 관리 작업 · 병해 3종 · 육묘 · 서리 · 익는 단계
+// 238차 — 관리 작업 · 병해 3종 · 육묘 · 서리 · 익는 단계 / 245차 — 작물 84종 · 병해충 16종
 export {
   CARE_TASK_KO, CARE_TASK_EN, CARE_WORK_KO, CARE_WORK_EN, DISEASE_KO, DISEASE_EN, DISEASE_SYMPTOM_KO, DISEASE_SYMPTOM_EN,
   DISEASE_CONTROL_KO, DISEASE_CONTROL_EN, TRAY_ID, STAKE_ID, TWINE_ID, MULCH_ID, FERT_ID, FUNGICIDE_ID, PHOSPHITE_ID, CALCIUM_ID, INSECTICIDE_ID,
   NURSERY_PLAN, CROP_CARE_PLANS, DISEASE_SEASON, RISK_SEASON, carePlanOf, hasCarePlan, carePlanSummaryKo,
+  // 245차 — 작물 84종의 일 · 병해충 16종 · 새 자재
+  DISEASE_DEFS, PREVENT_LEAD_MONTHS, carePlanSummaryEn, riskMonthsOf, taskWhenKo, taskWhenEn, monthRuns, monthsKo, monthsEn, diseaseOnsetKo,
+  STEVIA_ID, FARM_HOMI_ID, NET_ID, BIRD_NET_ID, FLEECE_ID, STRAW_ID, TRELLIS_ID, PEAT_ID, SHEARS_ID,
 } from './db-schema/CropCareDatabase.js';
 export {
   CARE_TUNING, lastFrostDayIndex, firstFrostDayIndex, isRiskSeason, frostBlockKo, planOfCell, cellDay, cellDiseases, careStatusOf,
   careStatusList, careDue, inEstablishment, doCare, skipExpiredRounds, dailyCare, establishHour, diseaseYieldMult, ripeStageOf,
   RIPE_STAGE_KO, RIPE_STAGE_EN, perPlantYield,
+  // 245차 — 달력 구간 · 여러해살이 작기
+  windowKeyAt, lastEndedWindow, daysUntilWindow, resetCareCycle, careTierScale, settleCareRounds,
 } from './simulation/CropCareSim.js';
 export type { CareStatusKind, CareStatus, CareResult, DailyCareReport, RipeStage } from './simulation/CropCareSim.js';
 // ── 농산물 실시간 시세(KAMIS 하루치 스냅샷) — 236차 ──

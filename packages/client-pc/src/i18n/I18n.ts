@@ -27,7 +27,7 @@ import {
   RECIPE_LORE, DISH_VARIANT_LORE, RECIPE_EFFECTS, FOOD_EFFECT_KIND_KO, DISH_MODIFIER_KO, DISH_MODIFIER_EN,
   fatnessLabel, textureLabel, fishinessLabel, flavorLabel,
   TITLE_DATABASE, TIDE_PHASE_PREF_GROUPS, TIDE_FLOW_LABEL_KO, TIDE_FLOW_LABEL_EN, TIDE_FLOW_NOTE_KO, TIDE_FLOW_NOTE_EN, QUEST_ITEMS,
-  CROP_DATABASE, FARM_SUPPLIES, CROP_RAW_EAT, CROP_NO_RAW,
+  CROP_DATABASE, FARM_SUPPLIES, CROP_RAW_EAT, CROP_NO_RAW, carePlanSummaryKo, carePlanSummaryEn,
 } from '@tra/core';
 import { startItemName, startItemNameEn, looseShortNamePairs } from '../data/CropItems.js';
 import { EN_PLACES } from './places.js';
@@ -116,6 +116,8 @@ function buildRuntimeDict(): void {
   for (const d of Object.values(CROP_RAW_EAT)) { put(d.noteKo, d.noteEn); if (d.pieces) put(d.pieces.labelKo, d.pieces.labelEn); if (d.bite) put(d.bite.labelKo, d.bite.labelEn); }
   for (const d of Object.values(CROP_NO_RAW)) put(d.whyKo, d.whyEn);
   for (const c of CROP_DATABASE) if (c.variant) put(c.variant.diffKo, c.variant.diffEn);
+  // 245차 — 상세 「손이 가는 일」 요약 한 줄(작물마다 일 · 병 · 벌레가 달라 통째로 짝을 둔다)
+  for (const c of CROP_DATABASE) put(carePlanSummaryKo(c), carePlanSummaryEn(c));
   // 222차 — 잠긴 스킬의 「… 열린다」 조건절
   for (const sk of SKILL_DATABASE) if (sk.pendingSystem) put(sk.pendingSystem.ko, sk.pendingSystem.en);
   for (const g of Object.values(CRAFT_GROUP_LABEL)) put(g.ko, g.en);

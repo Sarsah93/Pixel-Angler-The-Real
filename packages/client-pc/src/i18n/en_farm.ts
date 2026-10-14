@@ -8,7 +8,7 @@
 
 import {
   CROP_CARE_KO, CROP_CARE_EN, CARE_TASK_KO, CARE_TASK_EN, CARE_WORK_KO, CARE_WORK_EN, DISEASE_KO, DISEASE_EN, DISEASE_SYMPTOM_KO, DISEASE_SYMPTOM_EN,
-  DISEASE_CONTROL_KO, DISEASE_CONTROL_EN, RIPE_STAGE_KO, RIPE_STAGE_EN, CROP_CARE_PLANS, NURSERY_PLAN,
+  DISEASE_CONTROL_KO, DISEASE_CONTROL_EN, RIPE_STAGE_KO, RIPE_STAGE_EN, CROP_CARE_PLANS, NURSERY_PLAN, CROP_DATABASE, carePlanOf,
   type CropCare, type CareTaskId, type CareWorkKind, type CropDisease, type RipeStage,
 } from '@tra/core';
 
@@ -38,7 +38,14 @@ const CARE_TASK_PAIRS: Record<string, string> = Object.fromEntries([
   ...(Object.keys(DISEASE_KO) as CropDisease[]).flatMap((k) => [[DISEASE_KO[k], DISEASE_EN[k]], [DISEASE_SYMPTOM_KO[k], DISEASE_SYMPTOM_EN[k]], [DISEASE_CONTROL_KO[k], DISEASE_CONTROL_EN[k]]]),
   ...(Object.keys(RIPE_STAGE_KO) as RipeStage[]).map((k) => [RIPE_STAGE_KO[k], RIPE_STAGE_EN[k]]),
   ...[...Object.values(CROP_CARE_PLANS), NURSERY_PLAN].flatMap((p) => p.tasks.map((t) => [t.howKo, t.howEn])),
+  // 245차 — 작물 84종의 일(표가 작물마다 말을 따로 둔다)
+  ...CROP_DATABASE.flatMap((c) => carePlanOf(c).tasks.map((t) => [t.howKo, t.howEn])),
 ]);
+/** 245차 — 텃밭 알림의 앞 꼬리표 · 뒤 칸 꼴(로그 줄에만 붙는다) */
+const PATCH_TAG = '(\\[텃밭\\] )?';
+const WHERE_TAIL = '(?: \\(((?:텃밭|집 안 선반) \\d+번 칸(?: 외 \\d+칸)?)\\))?';
+const patchTag = (p?: string): string => (p ? '[Vegetable patch] ' : '');
+const whereEn = (w: string | undefined, tr: (s: string) => string): string => (w ? ` (${tr(w)})` : '');
 const TASK_ALT = Object.values(CARE_TASK_KO).map((x) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
 const TASK_EN = (ko: string): string => CARE_TASK_EN[(Object.keys(CARE_TASK_KO) as CareTaskId[]).find((k) => CARE_TASK_KO[k] === ko) ?? 'stake'] ?? ko;
 const DZ_ALT = Object.values(DISEASE_KO).join('|');
@@ -63,6 +70,16 @@ export const EN_FARM: Record<string, string> = {
   '낱개로 팔면 가게가 다시 담아야 해서 값의 20%를 깎습니다. 팩으로 팔면 제값입니다. 팩은 우클릭 [포장 뜯기]로 다시 낱개가 됩니다(용기는 버립니다).': 'Sold loose, shops take 20% off because they have to pack it themselves. Packs fetch the full price. Right-click [Open pack] turns a pack back into loose produce (the tub is thrown away).',
   '작은 낱개는 [사용하기] 한 번에 여러 개를 먹습니다 — 딸기 5개 · 방울토마토 8개 · 블루베리 한 줌(25알). 팩은 뜯어야 먹습니다.': 'Small produce is eaten several at a time with [Use] — 5 strawberries, 8 cherry tomatoes or a handful of blueberries (25). Packs must be opened first.',
   ...CARE_TASK_PAIRS,
+  // ── 245차 — 작물별 일 · 묶음 작업 · 끌어 올리기 · 짝 맞추기 ──
+  '함께 하는 칸': 'Cells together', '북준 포기': 'Hilled', '맺어 준 꽃': 'Pollinated', '다 했다': 'All done',
+  '꽃을 눌러야 한다': 'Click a flower', '먼저 수꽃을 딴다': 'Pick a male flower first',
+  '수꽃을 땄다 — 암꽃 암술에 묻힌다': 'Male flower picked — now dab it on a female flower',
+  '밑동까지 끌어 올린다': 'Drag it all the way up to the base of the plant',
+  '아직 때가 아니다 — 거둔 뒤에 한다': 'Not yet — do it after the next harvest',
+  '수확기 — 다 자란 것부터 거둔다': 'Harvest season — pick whatever is grown',
+  '거둔 뒤': 'after the next harvest',
+  '새 피해': 'Bird damage',
+  '초기 생장 — 줄기와 잎을 키운다': 'Early growth — building stems and leaves',
   // ── 238차 — 관리 작업 · 작업 장면 · 병 · 육묘 · 종묘사 ──
   '단계': 'Stage', '익음': 'Ripeness', '포기당': 'Per plant', '쓰러짐': 'Lodged', '활착기': 'Establishing', '할 일': 'To do',
   '지금은 없다': 'Nothing right now', '쓰는 것': 'Uses', '걸리는 시간': 'Time it takes', '초': 's', '그만두기': 'Stop',
@@ -98,7 +115,7 @@ export const EN_FARM: Record<string, string> = {
   '따뜻한 실내 육묘 트레이에 뿌려 모종을 키운다': 'Sown in a warm indoor tray to raise seedlings',
   '집 안 선반 (육묘 트레이)': 'Indoor shelf (seedling tray)', '모종까지': 'To seedlings', '손이 가는 일': 'Work it takes',
   '고추를 기르는 여섯 단계': 'The six stages of growing chili', '작업 장면 — 손놀림과 시간': 'Work scenes — hands and time',
-  '손이 가는 일 · 작업 장면': 'Work it takes · work scenes', '병해 3종 · 방제': 'Three diseases and control',
+  '손이 가는 일 · 작업 장면': 'Work it takes · work scenes', '고추 · 토마토 병해 · 약': 'Pepper and tomato diseases · sprays',
   '역병 · 탄저병 · 바이러스병': 'Blight, anthracnose and virus', '약 — 살균제 · 아인산 · 칼슘액비 · 살충제': 'Sprays — fungicide, phosphite, calcium, insecticide',
   '육묘 · 종묘사 · 풋고추와 홍고추': 'Nursery, seed shop, green and red chili', '씨앗에서 모종으로': 'From seed to seedling',
   '풋고추 · 검붉은 고추 · 홍고추 · 첫서리': 'Green, turning and red chili, and the first frost',
@@ -264,16 +281,16 @@ export const EN_FARM: Record<string, string> = {
     'Buy a Garden Plot Kit at the general store and place it on the grass of your hometown yard to lay out a 4×3-cell vegetable patch. Each cell is about a square metre, so a whole patch (about 12㎡) is the size of one allotment plot. Press [F] in front of it to open the patch window; [Shift+F] packs the patch up, but only when nothing is planted.',
   '마당(내 땅)에는 텃밭을 두 구획까지 냅니다. 더 내려면 면허 · 허가(L)의 농지 이용권으로 마을 농지를 빌립니다 — 텃밭에서 세 번 거둬 본 뒤에 받을 수 있고, 다섯 구획까지 더 내며, 빌린 구획마다 한 달 사용료 5,000원을 냅니다. 사용료가 밀리면 빌린 밭에는 새로 심을 수 없고(거두기 · 물 주기는 됩니다), 내면 바로 풀립니다.':
     'Your own yard holds up to two patches. For more, rent village farmland with the Farmland Use Right under Licences · Permits (L) — it is issued once you have harvested from your garden three times, adds up to five more patches, and each rented patch costs 5,000 won a month. If the rent falls overdue you cannot plant anything new on rented patches (harvesting and watering still work); paying frees them at once.',
-  '칸마다 먼저 호미로 흙을 일궈야 심을 수 있습니다. 호미 · 퇴비 · 씨앗 봉투는 생활용품점, 모종과 씨감자 · 마늘 종구 같은 덩이는 식자재마트가 팝니다. 모종과 덩이는 심을 철에만 진열됩니다.':
-    'Each cell must be tilled with a homi before you can plant it. The general store sells the homi, compost and seed packets; the grocery mart sells seedlings and sets such as seed potatoes and garlic bulbs. Seedlings and sets are only on the shelf in their planting months.',
+  '칸마다 먼저 호미로 흙을 일궈야 심을 수 있습니다. 호미 · 퇴비 · 씨앗 봉투는 생활용품점, 모종과 씨감자 · 마늘 종구 같은 덩이, 지주대 · 비료 · 농약 같은 농자재는 종묘사가 팝니다. 모종과 덩이는 심을 철에만 진열됩니다.':
+    'Each cell must be tilled with a homi before you can plant it. The general store sells the homi, compost and seed packets; the seed shop sells seedlings, tubers such as seed potatoes and seed garlic, and supplies such as stakes, fertilizer and sprays. Seedlings and tubers are only on the shelves in planting season.',
   '씨앗은 싸지만 싹이 트는 비율만큼만 서고 오래 걸립니다. 모종은 비싸지만 싹 틔우는 몇 주를 건너뛰고 거의 다 뿌리를 내립니다. 씨앗 · 모종을 우클릭 [상세보기]하면 심는 철 · 거두기까지 · 한 칸에 드는 양 · 칸당 거두는 양이 나옵니다.':
     'Seeds are cheap, but only as many come up as germinate, and they take longer. Seedlings cost more, skip the weeks of raising them, and nearly all take root. Right-click a seed or seedling → [Details] for its planting months, days to harvest, how much one cell takes and how much one cell yields.',
   '작물은 실제 시간대로 자라고, 게임을 꺼 둔 동안에도 자랍니다. 철도 실제 달을 따릅니다 — 자라는 달 밖에서는 멈추고, 겨울을 나는 작물(마늘 · 양파 · 보리 · 시금치)은 겨울에 쉬었다가 봄에 이어 자랍니다.':
     'Crops grow on real time, even while the game is off. Seasons follow the real month too — outside their growing months crops stop, and crops that winter over (garlic, onion, barley, spinach) rest through winter and carry on in spring.',
   '비가 오면 저절로 물이 듭니다(화면에 보이는 그 비입니다). 흙이 마르면 자람이 멈추고 품질이 조금씩 떨어질 뿐, 시들어도 죽지는 않습니다. 물은 물뿌리개를 가방에 두고 텃밭 창의 [물 주기]로 줍니다. 퇴비는 심기 전에 넣으면 이번 작기에 더 빨리 자라고 품질이 오릅니다.':
     'Rain waters the patch for you (the same rain you see on screen). Dry soil only pauses growth and slowly lowers quality — plants wilt, but they never die. To water, keep a watering can in your bag and press [Water] in the patch window. Compost worked in before planting speeds up this season and raises quality.',
-  '여름에는 병충해로 품질이 가끔 떨어지고, 다 익은 뒤 오래 두면 꽃대가 서거나 쇠어 품질이 내려갑니다. 겨울을 나지 못하는 작물을 서리 내리는 달에 밭에 두면 조금씩 상합니다.':
-    'In summer, pests now and then knock quality down, and crops left long after they ripen bolt or turn tough and lose quality. Crops that cannot winter over slowly suffer if left out in the frost months.',
+  '여름에는 병충해로 품질이 가끔 떨어지고, 다 익은 뒤 오래 두면 꽃대가 서거나 쇠어 품질이 내려갑니다. 겨울을 나지 못하는 작물을 서리 내리는 달에 밭에 두면 조금씩 상합니다. 작물마다 드는 병 · 벌레 · 새는 「병 · 벌레 · 새」 항목에 있습니다.':
+    'In summer, pests now and then knock quality down, and crops left long after they ripen bolt or turn tough and lose quality. Crops that cannot winter over slowly spoil if left in the bed in the frost months. The diseases, pests and birds each crop gets are in the "Diseases, pests and birds" topic.',
   '빗물통은 자리를 비운 동안에도 흙이 바짝 마르지 않게 합니다. 차광막 아래에서는 그늘을 좋아하는 산나물을 기릅니다. 비닐 터널(온실 스킬)은 철 앞뒤로 한 달씩 더 기르고 추운 달에 빨리 자라게 하지만 비를 막습니다. 냉수 순환 수조(수경 재배 스킬)가 있어야 고추냉이를 기릅니다.':
     'A rain barrel keeps the soil from going bone-dry while you are away. Shade-loving mountain greens grow under a shade net. A plastic tunnel (Greenhouse skill) adds a month on each side of the season and speeds up cold months, but it keeps the rain off. Wasabi needs a cold-water circulation tank (Hydroponics skill).',
   '설비는 텃밭 창 위쪽 [설비]에서 놓고 걷습니다. 퇴비 · 설비로 빨라지는 데에는 상한이 있습니다 — 잎채소는 두 배, 열매 · 뿌리 · 곡식은 1.4배까지입니다.':
@@ -297,8 +314,8 @@ export const EN_FARM: Record<string, string> = {
   '텃밭에서 거둔 콩은 시루에 앉혀 콩나물로 기를 수 있습니다.': 'Soybeans from your patch can go into the jar to become bean sprouts.',
   '개간(한 번에 한 줄을 간다) · 물주기(흙이 덜 마른다) · 수확량 · 씨앗 회수(거둘 때 씨앗 한 봉) · 파종 감각(싹 트는 비율) · 비료 효율 · 해충 방제 · 절기 독해(텃밭 창에 심는 달 달력) · 온실 · 산채 재배 · 수경 재배.':
     'Tilling (a whole row at once), Watering (soil dries slower), Harvest Yield, Seed Saver (a packet of seed at harvest), Sowing Sense (germination), Fertilizer, Pest Control, Almanac Reading (a planting calendar in the patch window), Greenhouse, Mountain Greens and Hydroponics.',
-  '산채 재배를 배우면 곰취 · 산마늘 · 눈개승마 · 두릅 같은 산나물 모종이 식자재마트에 들어오고, 수경 재배를 배우면 냉수 순환 수조와 고추냉이 모종을 다룰 수 있습니다.':
-    'Learn Mountain Greens and the grocery mart starts stocking mountain-green seedlings such as gomchwi, alpine leek, goat\'s beard and fatsia shoots; learn Hydroponics and you can run a cold-water tank and grow wasabi seedlings.',
+  '산채 재배를 배우면 곰취 · 산마늘 · 눈개승마 · 두릅 같은 산나물 모종이 종묘사에 들어오고, 수경 재배를 배우면 냉수 순환 수조와 고추냉이 모종을 다룰 수 있습니다.':
+    'Learn Mountain Greens and the seed shop starts stocking mountain-green seedlings such as gomchwi, alpine leek, goat\'s beard and fatsia shoots; learn Hydroponics and you can run a cold-water tank and grow wasabi seedlings.',
   // 237차 — 도움말 「작물 난이도 · 기를 자격」
   '작물 난이도 · 기를 자격': 'Crop difficulty and who can grow what',
   '쉬움 · 보통 · 까다로움 · 아주 까다로움': 'Easy, Normal, Demanding, Very demanding',
@@ -310,6 +327,66 @@ export const EN_FARM: Record<string, string> = {
     'Crops with a long nursery stage (chili, napa cabbage, garlic chives and the like) count one level harder when you start them from seed — you can grow the same crop sooner from a seedling. Seeds and seedlings above your level stay off the shop shelves, and the region channel tells you when a level threshold opens new ones.',
   '유기농업기능사는 면허 · 허가(L)의 「농업」에 있습니다. 텃밭에서 열 번 거둬 본 뒤 받을 수 있고 발급비는 35,000원입니다. 실제 국가기술자격(필기 · 실기)을 본뜬 것이라 스킬 포인트는 들어오지 않습니다.':
     'Craftsman Organic Agriculture is under Farming in Licences · Permits (L). It is issued once you have harvested from your garden ten times, for a fee of 35,000 won. It is modelled on the real national technical qualification (written and practical exams), so it gives no skill point.',
+  // 245차 — 도움말 「작물마다 다른 일」 · 「병 · 벌레 · 새」
+  // 238차 도움말(고추 기르기 · 고추 · 토마토 병해 · 육묘) — 245차에 영어가 빠진 것을 메움
+  '고추 · 토마토 · 가지 · 오이처럼 손이 가는 작물은 심어 놓고 기다리기만 해서는 안 됩니다. 실제 재배 순서를 따라 할 일이 열립니다 — 두둑을 높이고 검은 비닐을 씌우는 멀칭, 심은 즉시 세우는 1.5m 지주, 자라는 대로 두 번 묶는 유인줄, 방아다리(줄기가 처음 Y자로 갈라지는 곳)의 첫 꽃 따기와 그 아래 곁순 따기, 정식 15일 뒤부터 15~20일 간격의 웃거름 다섯 번, 그리고 장마철 방제입니다.':
+    'Fussy crops like chili peppers, tomatoes, eggplants and cucumbers cannot just be planted and left. Jobs open in the real growing order — raising the ridge and laying black mulch film, a 1.5 m stake set right after planting, two rounds of tying to the training line as it grows, picking the first flower at the first fork (where the stem first splits into a Y) and the suckers below it, five top-dressings every 15–20 days from 15 days after transplanting, and spraying in the rainy season.',
+  '할 일은 텃밭 창의 칸 자세히 아래 「할 일」 단추로 뜨고, 열리기 전에는 「다음: 무엇 — 며칠 뒤」로 보입니다. 할 일이 열리면 지역 채널에도 알립니다. 때를 놓치면 그 차례는 넘어가고 수확이 조금 줍니다(첫 꽃 · 곁순 · 유인 · 웃거름). 지주를 안 세우면 비바람에 쓰러져 수확이 크게 줍니다. 비료 · 약을 하나도 안 써도 거두기는 됩니다 — 다만 웃거름을 다 거르면 0.7배입니다.':
+    'Jobs appear as buttons under "To do" in the cell details of the patch window; before they open you see "Next: job — in N days". When a job opens you are also told in the Local Channel. Miss the window and that round is skipped and the harvest shrinks a little (first flower, suckers, tying, top-dressing). Skip the stake and the plants blow over in wind and rain, and the harvest drops sharply. You can still harvest without using any fertilizer or sprays — but skipping every top-dressing leaves you with 0.7×.',
+  '모종을 심은 뒤 2주는 활착기입니다. 흙이 마르면 뿌리를 못 내려 포기가 줍니다 — 비가 오지 않으면 물뿌리개로 자주 줍니다. 씨앗 · 모종을 우클릭 [상세보기]하면 「손이 가는 일」 줄에 그 작물의 일이 다 나옵니다.':
+    'For two weeks after a seedling goes in, it is taking root. If the soil dries out the roots cannot take and plants are lost — water often with the watering can when it does not rain. Right-click a seed or seedling and choose [Details]: the "Work it takes" line lists every job for that crop.',
+  '할 일 단추를 누르면 그 일을 흉내 내는 짧은 작업 장면이 열립니다. 곁순 · 첫 꽃 · 병든 열매는 포기 그림에서 표시된 것을 하나씩 누르고(줄기를 누르면 실수), 지주 · 멀칭은 표시된 자리에 차례로 박고, 유인줄은 흔들리는 표시가 띠 안에 들어올 때 누르고, 약 치기는 누르고 있다가 게이지가 띠 안에 있을 때 떼고, 웃거름은 포기 사이 표시된 자리에 뿌리고, 가식은 작은 트레이의 싹을 눌러 넓은 트레이로 옮깁니다.':
+    'Pressing a job button opens a short work scene that mimics the job. For suckers, first flowers and diseased fruit, tap each marked one on the plant (touching the stem is a mistake); stakes and mulch go into the marked spots in order; for tying, press when the swaying marker is inside the band; for spraying, hold and release while the gauge is inside the band; top-dressing is scattered on the marked spots between plants; pricking out moves each sprout from the small tray to the wide tray.',
+  '손이 끝나도 「걸리는 시간」이 다 차야 끝납니다 — 일에는 시간이 듭니다(지주 세우기 10초쯤). 허기 · 수분 · 피로도 조금 듭니다. 실수가 많거나 타이밍을 자주 놓치면 서툴러서 효과가 절반이 됩니다(자재는 그대로 듭니다). 자재가 모자라면 단추가 흐리고, 올려 보면 무엇이 몇 개 모자란지 나옵니다.':
+    'Even when your hands are done, the job only ends once "Time it takes" fills up — work takes time (about 10 seconds to stake). It also costs a little hunger, thirst and fatigue. Too many mistakes or missed timings make you clumsy and halve the effect (the materials are used up all the same). If you are short of materials the button is dimmed; hover over it to see what you are missing and how many.',
+  '고추 · 토마토에는 세 가지 병이 듭니다(수박도 탄저병, 오이 · 애호박 · 가지 · 참외도 바이러스병). 역병은 장마철처럼 다습할 때 줄기 밑이 물에 데인 듯 썩고 포기가 시들어 죽습니다 — 포기가 줄어 수확이 줍니다. 탄저병은 6~9월 고온다습한 때 열매에 둥근 반점이 생겨 썩고, 빗물로 거의 다 번집니다 — 심하면 수확의 60%까지 잃습니다. 바이러스병은 잎에 모자이크 무늬 · 위축이 생기고 총채벌레 · 진딧물이 옮깁니다 — 수확의 절반까지 잃습니다.':
+    'Chili peppers and tomatoes get three diseases (watermelon gets anthracnose too, and cucumber, zucchini, eggplant and Korean melon get the virus as well). Phytophthora blight strikes in muggy weather like the rainy season — the base of the stem rots as if scalded and the plant wilts and dies, so fewer plants means a smaller harvest. Anthracnose comes in the hot, humid months of June–September — round spots appear on the fruit and it rots, spreading almost everywhere with rain splash; at worst you lose 60% of the harvest. The virus causes mosaic patterns and stunting on the leaves and is carried by thrips and aphids — up to half the harvest is lost.',
+  '병은 하루 한 번 듭니다. 비 온 뒤 하루는 두 배로 잘 들고, 두둑 · 멀칭을 했으면 덜 들고, 비닐 터널 안이면 빗물을 안 맞아 탄저병이 훨씬 덜 듭니다. 곁순을 안 따면 바람이 안 통해 탄저병이 더 듭니다. 스킬 「해충 방제」가 전체를 낮춥니다.':
+    'Disease strikes once a day. The day after rain it is twice as likely; a ridge with mulch lowers it, and inside a plastic tunnel the plants stay out of the rain, so anthracnose is much rarer. Leaving the suckers on blocks the air and invites more anthracnose. The Pest Control skill lowers all of it.',
+  '든 병은 날마다 번집니다. 텃밭 창의 칸에 병 표식이 뜨고, 칸 자세히에 이름 · 심한 정도 · 막는 법이 나옵니다. 「병든 것 걷어 내기」로 병든 열매 · 포기를 걷으면 심한 정도가 줄고(사흘에 한 번), 약을 치면 번짐이 느려집니다. 세 병이 다 번지면 한 번에 한 개 날까 말까로 떨어지지만 0은 아닙니다.':
+    'Disease spreads every day. A disease mark appears on the cell in the patch window, and the cell details show its name, severity and how to stop it. "Cull diseased" takes off diseased fruit and plants and lowers the severity (once every three days), and spraying slows the spread. If all three diseases spread fully you may get barely one fruit per picking — but never zero.',
+  '방제는 병이 드는 철보다 한 달 앞서 「할 일」로 뜹니다(고추는 살균제 5~9월 · 살충제 4~9월 — 병이 들기 전에 미리 치는 것입니다). 살균제는 탄저병 · 역병을 열흘 동안 막아 줍니다 — 장마철에 비 전후로 7~10일 간격. 아인산은 역병을 두 주 동안 거의 막습니다 — 7~14일 간격. 칼슘액비는 열매 껍질을 단단하게 해 탄저병을 덜 들게 하고 품질을 올립니다. 살충제는 바이러스를 옮기는 총채벌레 · 진딧물을 열이틀 동안 막습니다.':
+    'Spraying shows up as a job one month before the disease season (for chili: fungicide May–September, insecticide April–September — it prevents rather than cures). Fungicide holds off anthracnose and blight for ten days — every 7–10 days around the rains in the rainy season. Phosphite keeps blight almost entirely away for two weeks — every 7–14 days. Calcium foliar feed hardens the fruit skin, so there is less anthracnose and better quality. Insecticide keeps off the thrips and aphids that carry the virus for twelve days.',
+  '약 · 비료 · 지주대 · 유인끈 · 멀칭 비닐 · 육묘 트레이는 종묘사에서 팝니다. 값은 한 칸 한 번 분입니다. 약을 안 치면 벌은 없습니다 — 벌은 병 그 자체입니다.':
+    'Sprays, fertilizer, stakes, twine, mulch film and seedling trays are sold at the seed shop. Prices are for one cell, one application. Skipping sprays carries no penalty in itself — the penalty is the disease.',
+  '고추 씨앗은 밭에 바로 뿌리지 않습니다. 2~3월 따뜻한 실내(25~30℃)에서 싹을 틔워야 하니 집 안 선반의 육묘 트레이(종묘사)에 뿌립니다. 파종 2주쯤 본잎이 나오면 「가식」 — 넓은 트레이로 한 포기씩 옮겨 심습니다(거르면 모종이 0.6배). 70~90일 기르면 「거두기」가 모종 20~30포기를 줍니다.':
+    'Chili seeds are not sown straight into the bed. They have to sprout indoors in the warmth (25–30℃) in February–March, so sow them in a seedling tray (seed shop) on the indoor shelf. About two weeks after sowing, when the true leaves appear, "Prick out" — move each one into the wide tray (skip it and you get 0.6× the seedlings). After 70–90 days, "Harvest" gives you 20–30 seedlings.',
+  '모종은 늦서리가 끝나고 최저 기온이 10℃ 넘게 안정될 때(속초는 4월 하순~5월 상순) 밭에 옮겨 심습니다 — 그 전에는 심기가 막힙니다. 초보라면 육묘를 건너뛰고 종묘사에서 모종을 사는 게 훨씬 수월합니다. 종묘사는 아침 8시에 열고 저녁 7시에 닫습니다.':
+    'Seedlings go into the bed once the late frosts are over and the lows stay above 10℃ (late April to early May in Sokcho) — planting is blocked before then. If you are new to this, skipping the nursery and buying seedlings at the seed shop is much easier. The seed shop opens at 8 a.m. and closes at 7 p.m.',
+  '고추는 익은 뒤 나흘까지 풋고추, 그 뒤 열흘까지는 검붉게 익는 중, 열흘이 지나면 홍고추입니다. 칸 자세히의 「익음」 줄이 알려 줍니다. 검붉은 채로 거두면 홍고추로 치지만 품질이 깎입니다 — 꼭지 끝까지 완전히 빨갛게 익었을 때 거둬야 말렸을 때 빛깔이 좋습니다.':
+    'Chili peppers are green peppers for four days after ripening, turn dark red until day ten, and are red peppers after that. The "Ripeness" line in the cell details tells you. Picked while dark red they count as red peppers but lose quality — pick them when they are fully red right up to the stem for the best colour when dried.',
+  '한 포기에서 한 번에 6~9개가 나오고(칸당 3포기 · 일주일마다 열 번), 병 · 관리에 따라 줄거나 늡니다. 가을 첫서리(속초는 10월 하순, 해마다 조금 다릅니다)가 내리면 고추는 더 자라지 못합니다 — 사흘 안에 남은 것을 다 거두면 그 칸은 끝나고, 안 거두면 칸이 빕니다. 비닐 터널 안이면 서리를 맞지 않습니다.':
+    'One plant gives 6–9 peppers per picking (3 plants per cell, ten pickings a week apart), more or fewer depending on disease and care. When the first autumn frost falls (late October in Sokcho, a little different each year) the peppers stop growing — pick what is left within three days and the cell is done; leave it and the cell empties. Inside a plastic tunnel there is no frost.',
+  '작물마다 다른 일': 'Every crop has its own jobs', '난이도만큼 손이 간다': 'The harder the crop, the more work',
+  '때를 세는 네 가지': 'Four ways jobs come due', '도구 · 새 자재 · 새 손놀림': 'Tools, new supplies, new hand motions',
+  '병 · 벌레 · 새': 'Diseases, pests and birds', '작물마다 드는 병 · 벌레': 'Each crop’s diseases and pests', '막는 법': 'How to keep them off',
+  '이제 84종 작물 모두 그 작물의 일이 있습니다. 쉬운 작물은 한두 가지(상추 = 솎아 주기 · 웃거름 · 벌레 잡기, 콩나물 = 검은 천 덮기)이고, 까다로운 작물일수록 일이 늘고 병 · 벌레가 붙습니다(오이 = 유인망 · 곁순 · 순지르기 · 웃거름 · 약 · 흰가루병 · 노균병). 씨앗 · 모종을 우클릭 [상세보기]하면 「손이 가는 일」 줄에 다 나옵니다.':
+    'Now every one of the 84 crops has its own jobs. Easy crops have one or two (lettuce: thinning, top-dressing and picking off pests; bean sprouts: covering from light), and the more demanding a crop, the more jobs it has and the more diseases and pests it attracts (cucumber: trellis net, side shoots, pinching out, top-dressing, sprays, powdery and downy mildew). Right-click a seed or seedling → [Details] and the Work it takes line lists them all.',
+  '쉬운 작물은 일을 놓쳐도 덜 잃습니다 — 놓친 벌이 절반이고 병 · 벌레도 덜 듭니다. 보통 이상은 놓친 만큼 그대로 잃습니다. 아무것도 안 해도 거두기는 됩니다.':
+    'Easy crops lose less when you miss a job — missed jobs cost half as much and diseases and pests strike less often. From Normal up, you lose the full amount. You can still harvest if you do nothing at all.',
+  '같은 텃밭에 같은 작물을 여러 칸 심었으면 단추에 「(n칸)」이 붙고 한 번에 합니다. 자재는 칸마다 들고, 걸리는 시간과 품은 칸이 늘수록 덜 늘어납니다.':
+    'If you planted the same crop in several cells of one patch, the button shows "(n cells)" and does them all at once. Supplies are used per cell; the time and effort grow more slowly than the number of cells.',
+  '심은 날로 세는 일(솎아 주기 · 웃거름 · 북주기)은 심은 뒤 며칠째에 열립니다. 여러해살이(부추 · 산나물 · 블루베리)는 겨울을 나고 다시 올라온 날부터 다시 셉니다.':
+    'Jobs counted from planting (thinning, top-dressing, hilling up) open a set number of days after planting. Perennials (garlic chives, mountain greens, blueberries) start counting again from the day they come back up after winter.',
+  '달력으로 세는 일은 해마다 그 달에 한 번입니다 — 마늘 · 양파 짚 덮기(11~12월), 이른 봄 웃거름(2~3월), 보리밟기(2~3월), 블루베리 · 두릅 가지치기(2~3월), 딸기 부직포 덮기(12~1월). 그 달이 다 가도록 안 하면 놓칩니다.':
+    'Calendar jobs come once a year in their months — straw over garlic and onions (Nov–Dec), early-spring top-dressing (Feb–Mar), treading the barley (Feb–Mar), pruning blueberry and fatsia (Feb–Mar), fleece over strawberries (Dec–Jan). Let the months run out and you miss it.',
+  '자람으로 세는 일은 다 자라 갈 무렵 한 번입니다 — 배추 묶기, 수박 · 참외 열매 솎기, 옥수수 이삭 솎기와 이삭 망. 거둘 때마다 하는 일(부추 · 미나리 · 공심채를 벤 뒤 웃거름)은 다시 자람이 60%를 넘기 전에 합니다.':
+    'Growth jobs come once as the crop nears maturity — tying the cabbage heads, thinning watermelons and melons, thinning the corn ears and bagging them. Jobs done after every picking (top-dressing garlic chives, water dropwort and water spinach after a cut) must be done before regrowth passes 60%.',
+  '솎아 주기는 씨앗으로 뿌린 칸에만 뜹니다(모종은 이미 한 포기씩입니다). 고구마 두둑에 검은 비닐을 덮었으면 김매기가 없습니다.':
+    'Thinning only shows on cells sown from seed (seedlings are already one per spot). If you covered a sweet potato ridge with black plastic, there is no weeding.',
+  '김매기 · 북주기는 호미, 가지치기는 전정가위(종묘사)가 가방에 있어야 합니다 — 닳지 않습니다. 방충망(한랭사) · 새 그물 · 부직포 · 볏짚 · 오이망 · 피트모스는 종묘사가 한 칸 한 번 분씩 팝니다.':
+    'Weeding and hilling up need a homi in your bag, pruning needs pruning shears (seed shop) — they never wear out. The seed shop sells insect mesh, bird netting, frost fleece, rice straw, trellis net and peat moss, each enough for one cell once.',
+  '새 손놀림이 둘 있습니다. 북주기는 고랑의 흙 표시를 눌러 포기 밑동 띠까지 끌어 올립니다. 인공수분은 수꽃을 누른 뒤 암꽃을 누릅니다 — 암꽃부터 누르면 실수입니다.':
+    'There are two new hand motions. Hilling up: press the soil mark in the furrow and drag it up to the band at the base of the plant. Hand-pollinating: click a male flower, then a female one — clicking the female first is a mistake.',
+  '열매 작물의 역병 · 탄저병 · 바이러스병 말고도 작물마다 실제로 문제 되는 것이 듭니다. 흰가루병(오이 · 호박 · 참외 · 수박 · 박 · 여주 · 딸기), 노균병(오이 · 참외 · 양파 · 시금치), 녹병(마늘 · 대파), 잿빛곰팡이병(딸기), 뿌리썩음병(생강 · 울금), 무름병(고추냉이), 푸른곰팡이병(버섯 배지 — 집 안에서도 듭니다)입니다.':
+    'Beyond blight, anthracnose and virus on fruiting crops, each crop gets the troubles it really has: powdery mildew (cucumber, zucchini, melon, watermelon, gourd, bitter melon, strawberry), downy mildew (cucumber, melon, onion, spinach), rust (garlic, leek), gray mold (strawberry), root rot (ginger, turmeric), soft rot (wasabi) and green mold (mushroom blocks — it strikes indoors too).',
+  '벌레는 애벌레(배추 · 무 · 열무 · 얼갈이 · 순무 · 초피), 벼룩잎벌레(배추 무리 · 루꼴라), 진딧물(상추 · 쑥갓 · 가지 · 오크라 · 동부 · 초피), 노린재(콩), 조명나방(옥수수)이 있습니다. 새는 익어 가는 블루베리와 옥수수 이삭을 쪼아 먹습니다.':
+    'The pests are caterpillars (cabbage, radish, young radish, ugeolgari, turnip, Korean pepper), flea beetles (the cabbage family and rocket), aphids (lettuce, crown daisy, eggplant, okra, cowpea, Korean pepper), stink bugs (soybeans) and corn borers (corn). Birds peck at ripening blueberries and corn ears.',
+  '병은 「병든 것 걷어 내기」와 살균제, 벌레는 「벌레 잡기」 · 방충망 · 살충제, 새는 새 그물로 막습니다. 배추 무리는 씨 뿌린 날 방충망을 씌우면 작기 내내 애벌레 · 벼룩잎벌레가 거의 들지 않습니다.':
+    'Diseases are fought with Cull diseased and fungicide, pests with Pick off pests, insect mesh and insecticide, birds with a bird net. Mesh the cabbage family on sowing day and caterpillars and flea beetles hardly get in all season.',
+  '약 치기는 그 작물에 드는 병 · 벌레의 철보다 한 달 앞서 「할 일」로 뜹니다(미리 막는 약입니다). 안 쳐도 벌은 없습니다 — 벌은 병 · 벌레 그 자체입니다.':
+    'Spraying shows up as a job one month before the season of the diseases and pests that crop gets (it is preventive). Skipping it costs nothing in itself — the cost is the disease or pest.',
+  '작물마다 드는 병 · 벌레 · 새는 「병 · 벌레 · 새」 항목에 있습니다.': 'Each crop’s diseases, pests and birds are under Diseases, pests and birds.',
   '광질 · 벌목': 'Mining & logging', '광질 · 벌목 (계획)': 'Mining & logging (planned)',
   '초지 · 암반에서 광물을 캐 요리와 제작 · 건축 재료로 씁니다. 홈타운의 나무 · 바위(벌목 · 채굴)도 이때 열립니다.':
     'Dig minerals from grassland and bedrock for cooking, crafting and building. Hometown trees and rocks (logging, quarrying) open up then too.',
@@ -343,6 +420,16 @@ export const EN_FARM_RULES: [RegExp, (m: RegExpMatchArray, tr: (s: string) => st
   [new RegExp(`^(${TASK_ALT}) — (\\d+)일 뒤$`), (m) => `${TASK_EN(m[1])} — in ${m[2]} day${m[2] === '1' ? '' : 's'}`],
   [new RegExp(`^다음: (${TASK_ALT}) — (\\d+)일 뒤$`), (m) => `Next: ${TASK_EN(m[1])} — in ${m[2]} day${m[2] === '1' ? '' : 's'}`],
   [new RegExp(`^(${TASK_ALT}) (\\d+)/(\\d+)$`), (m) => `${TASK_EN(m[1])} ${m[2]}/${m[3]}`],
+  // 245차 — 묶음 단추 「웃거름 2/5 (3칸)」 · 결과 「웃거름 3칸 — 했다」 · 거둔 뒤 일
+  [new RegExp(`^(${TASK_ALT})(?: (\\d+)/(\\d+))? \\((\\d+)칸\\)$`), (m) => `${TASK_EN(m[1])}${m[2] ? ` ${m[2]}/${m[3]}` : ''} (${m[4]} cells)`],
+  [new RegExp(`^(${TASK_ALT}) (\\d+)칸 — (했다|서툴러서 효과가 절반이다)$`), (m) => `${TASK_EN(m[1])} on ${m[2]} cells — ${m[3] === '했다' ? 'done' : 'clumsy, half the effect'}`],
+  [new RegExp(`^(${TASK_ALT}) — 거둔 뒤$`), (m) => `${TASK_EN(m[1])} — after the next harvest`],
+  [new RegExp(`^다음: (${TASK_ALT}) — 거둔 뒤$`), (m) => `Next: ${TASK_EN(m[1])} — after the next harvest`],
+  // 245차 — 요약 조각 「짚 덮기(11~12월)」 · 「웃거름(벨 때마다)」 · 「솎아 주기(씨앗)」 · 「벌레 — 애벌레 · 벼룩잎벌레」
+  [new RegExp(`^(${TASK_ALT})\\((\\d+(?:~\\d+)?월(?: · \\d+(?:~\\d+)?월)*)\\)$`), (m) => `${TASK_EN(m[1])} (${monthRangeEn(m[2])})`],
+  [new RegExp(`^(${TASK_ALT})\\(벨 때마다\\)$`), (m) => `${TASK_EN(m[1])} (after each cut)`],
+  [new RegExp(`^(${TASK_ALT})\\(씨앗\\)$`), (m) => `${TASK_EN(m[1])} (from seed)`],
+  [new RegExp(`^벌레 — ((?:${DZ_ALT})(?: · (?:${DZ_ALT}))*)$`), (m) => `Pests — ${m[1].split(' · ').map((x) => DZ_EN(x)).join(', ')}`],
   // 상세 「손이 가는 일」 요약 조각 — 「웃거름 5회」 · 「살균제 치기(철마다)」 · 「병해 — 역병 · 탄저병」
   [new RegExp(`^(${TASK_ALT}) (\\d+)회$`), (m) => `${TASK_EN(m[1])} ×${m[2]}`],
   [new RegExp(`^(${TASK_ALT})\\(철마다\\)$`), (m) => `${TASK_EN(m[1])} (in season)`],
@@ -350,10 +437,11 @@ export const EN_FARM_RULES: [RegExp, (m: RegExpMatchArray, tr: (s: string) => st
   [new RegExp(`^(${TASK_ALT})( \\(\\d+/\\d+\\))? — (했다|서툴러서 효과가 절반이다)$`),
     (m) => `${TASK_EN(m[1])}${m[2] ?? ''} — ${m[3] === '했다' ? 'done' : 'clumsy, half the effect'}`],
   [/^아직 때가 아니다 — (\d+)일 뒤$/, (m) => `Not yet — in ${m[1]} day${m[1] === '1' ? '' : 's'}`],
-  [/^(.+)가 있어야 한다 — 종묘사에서 판다$/, (m, tr) => `You need ${m[1].split(' · ').map((x) => {
+  // 245차 — 자재 · 도구가 모자라다(「복합비료 2개(1개) · 호미가 있어야 한다 — 종묘사 · 생활용품점에서 판다」)
+  [/^(.+)(?:이|가) 있어야 한다 — ((?:종묘사|생활용품점)(?: · (?:종묘사|생활용품점))*)에서 판다$/, (m, tr) => `You need ${m[1].split(' · ').map((x) => {
     const q = /^(.+) (\d+)개\((\d+)개\)$/.exec(x);
-    return q ? `${tr(q[1])} ×${q[2]} (have ${q[3]})` : tr(x);
-  }).join(', ')} — the seed shop sells them`],
+    return q ? `${tr(q[1])} ×${q[2]} (have ${q[3]})` : `a ${tr(x).toLowerCase()}`;
+  }).join(', ')} — ${m[2].split(' · ').map((x) => (x === '종묘사' ? 'the seed shop' : 'the general store')).join(' or ')} sells ${m[1].includes(' · ') ? 'them' : 'it'}`],
   [/^(.+) — 종묘사에서 판다$/, (m, tr) => `${m[1].split(' · ').map((x) => {
     const q = /^(.+) (\d+)개\((\d+)개\)$/.exec(x);
     return q ? `${tr(q[1])} ×${q[2]} (have ${q[3]})` : tr(x);
@@ -363,10 +451,17 @@ export const EN_FARM_RULES: [RegExp, (m: RegExpMatchArray, tr: (s: string) => st
   [/^(.+) 모종 (\d+)~(\d+)포기 — 가식을 거르면 준다$/, (m, tr) => `${tr(m[1])} seedlings, ${m[2]}–${m[3]} plants — fewer if you skip pricking out`],
   [/^(.+) (\d+)포기를 길러 냈다 — 늦서리 뒤 밭에 옮겨 심는다$/, (m, tr) => `Raised ${m[2]} ${tr(m[1])} — transplant to the bed after the last frost`],
   [/^(\d+)~(\d+)월에 뿌려 모종을 키운다 — 늦으면 옮겨 심을 철을 놓친다$/, (m) => `Sow in ${MONTH_EN[Number(m[1])]}–${MONTH_EN[Number(m[2])]} to raise seedlings — later and you miss the transplanting window`],
-  [new RegExp(`^(.+) — (${TASK_ALT}) 할 때 \\((.+)\\)$`), (m, tr) => `${tr(m[1])} — time to ${TASK_EN(m[2]).toLowerCase()} (${tr(m[3])})`],
-  [new RegExp(`^(.+)에 (${DZ_ALT})이 생겼다 — (.+) \\((.+)\\)$`), (m, tr) => `${DZ_EN(m[2])} on your ${tr(m[1])} — ${tr(m[3])} (${tr(m[4])})`],
-  [/^(.+)가 비바람에 쓰러졌다 — 지주를 세웠어야 했다 \((.+)\)$/, (m, tr) => `Your ${tr(m[1])} blew over — it needed staking (${tr(m[2])})`],
-  [/^서리가 내렸다 — (.+) 남은 것을 사흘 안에 거둔다 \((.+)\)$/, (m, tr) => `Frost — harvest the last ${tr(m[1])} within three days (${tr(m[2])})`],
+  // 텃밭 알림 — 로그 줄(「[텃밭] … (텃밭 1번 칸 외 2칸)」)과 떠오르는 줄(꼬리표 · 칸을 뗀 것)을 같은 규칙으로.
+  // 꼬리표는 맨 앞에 두고(「[Vegetable patch] Aphids on your …」) 칸은 정해진 꼴만 칸으로 읽는다(막는 법 글 안의 괄호와 섞이지 않게)
+  [new RegExp(`^${PATCH_TAG}(.+) — (${TASK_ALT}) 할 때${WHERE_TAIL}$`), (m, tr) => `${patchTag(m[1])}${tr(m[2])} — time to ${TASK_EN(m[3]).toLowerCase()}${whereEn(m[4], tr)}`],
+  [new RegExp(`^${PATCH_TAG}(.+)에 (${DZ_ALT})(?:이|가) (생겼다|붙었다) — (.+?)${WHERE_TAIL}$`), (m, tr) => `${patchTag(m[1])}${DZ_EN(m[3])} on your ${tr(m[2])} — ${tr(m[5])}${whereEn(m[6], tr)}`],
+  [new RegExp(`^${PATCH_TAG}(.+)(?:을|를) 새가 쪼아 먹기 시작했다 — (.+?)${WHERE_TAIL}$`), (m, tr) => `${patchTag(m[1])}Birds are pecking at your ${tr(m[2])} — ${tr(m[3])}${whereEn(m[4], tr)}`],
+  [new RegExp(`^${PATCH_TAG}(.+)(?:이|가) 비바람에 쓰러졌다 — 지주를 세웠어야 했다${WHERE_TAIL}$`), (m, tr) => `${patchTag(m[1])}Your ${tr(m[2])} blew over — it needed staking${whereEn(m[3], tr)}`],
+  [/^(텃밭|집 안 선반) (\d+)번 칸 외 (\d+)칸$/, (m) => `${m[1] === '텃밭' ? 'patch' : 'indoor shelf'} cell ${m[2]} and ${m[3]} more`],
+  [new RegExp(`^${PATCH_TAG}서리가 내렸다 — (.+) 남은 것을 사흘 안에 거둔다${WHERE_TAIL}$`), (m, tr) => `${patchTag(m[1])}Frost — harvest the last ${tr(m[2])} within three days${whereEn(m[3], tr)}`],
+  // 245차 — 「심은 것」 줄: 이름 안에 「·」가 든 것(씨감자 (1칸 분 · 200g))도 통째로
+  [/^(.+) · (\d+)일 전$/, (m, tr) => `${tr(m[1])} · ${m[2]} day${m[2] === '1' ? '' : 's'} ago`],
+  [/^(.+) · 오늘$/, (m, tr) => `${tr(m[1])} · today`],
   [/^(텃밭|집 안 선반) (\d+)번 칸$/, (m) => `${m[1] === '텃밭' ? 'patch' : 'indoor shelf'} cell ${m[2]}`],
   [/^(.+) (\d+)개를 거뒀다(.*)$/, (m, tr) => `Harvested ${m[2]} ${tr(m[1])}${m[3]
     .replace(' — 검붉게 덜 익은 것이라 품질이 떨어진다', ' — picked while turning, so lower quality')

@@ -1,23 +1,24 @@
 /**
  * @file FarmWorkPanel.ts
  * @description 238차 — 텃밭 작업 장면(사용자 제안 「까다로움을 딸깍이 아니라 실제 동작 · 과정 · 시간으로」)
+ *              245차 — 작물 84종의 일(사용자 「고추처럼 각 농작물에 대한 난이도를 추가」): 작물 모양별 그림 · 일별 표시 · 끌어 올리기 · 짝 맞추기
  *
- * 관리 작업 하나(지주 세우기 · 유인 · 첫 꽃 · 곁순 · 웃거름 · 약 치기 · 가식 · 멀칭 · 병든 것 걷어 내기)를
- * 작업 종류(`CareWorkKind`)에 맞는 짧은 손놀림으로 한다. 왼쪽은 포기 그림(절차 픽셀 그래픽), 오른쪽은 방법 · 걸리는 시간.
- *  - targets: 포기 그림의 표시(곁순 · 첫 꽃 · 병든 열매)를 하나씩 누른다. 줄기를 누르면 실수.
- *  - place: 표시된 자리에 차례로(지주 3개 · 멀칭 띠 4칸).
- *  - tie: 흔들리는 표시가 띠 안에 들어올 때 누른다(포기 3).
- *  - hold: 누르고 있으면 게이지가 차고, 띠 안에서 떼야 제대로(포기 2).
- *  - sprinkle: 포기 사이 표시된 자리 4곳.
- *  - tray: 작은 트레이의 싹 6개를 눌러 넓은 트레이로.
- * 작업은 손놀림이 끝나고 **걸리는 시간(초 — 실제 시간)** 이 다 차야 끝난다 — 시간이 든다는 뜻이다. 점수(0..1)는 실수 · 타이밍으로 깎이고,
- * 낮으면 효과가 절반(core `doCare`). 조작 안내 글자는 창에 두지 않는다(R11) — 처음 열 때 가이드가 한 번 짚는다.
- * 시간 · 게이지 · 흔들림은 **벽시계**(`performance.now`)로 센다 — Phaser delta는 프레임이 늘어지면 목표값으로 잘려(헤드리스 · 백그라운드 탭)
- *   10초가 몇 분이 된다(149 · 155차 함정).
+ * 관리 작업 하나를 작업 종류(`CareWorkKind`)에 맞는 짧은 손놀림으로 한다. 왼쪽은 그 작물의 그림(절차 픽셀 그래픽), 오른쪽은 방법 · 걸리는 시간.
+ *  - targets: 그림의 표시(곁순 · 첫 꽃 · 병든 열매 · 솎을 싹 · 잡초 · 순 · 꽃대 · 런너 · 벌레 · 칼집 자리 · 자를 가지)를 하나씩 누른다. 빈 곳을 누르면 실수.
+ *  - place: 표시된 자리에 차례로(지주 · 멀칭 · 방충망 · 부직포 · 짚 · 유인망 · 밟을 자리 · 덮개).
+ *  - tie: 흔들리는 표시가 띠 안에 들어올 때 누른다(유인줄 · 배추 묶기).
+ *  - hold: 누르고 있으면 게이지가 차고, 띠 안에서 떼야 제대로(약 치기 · 분무 · 물 대기).
+ *  - sprinkle: 포기 사이 표시된 자리(웃거름 · 피트모스).
+ *  - tray: 작은 트레이의 싹 6개를 눌러 넓은 트레이로(가식).
+ *  - drag(245): 고랑의 흙 표시를 눌러 포기 밑동까지 끌어 올린다(북주기) — 밑동 띠 밖에서 놓으면 실수.
+ *  - pair(245): 수꽃을 누른 뒤 암꽃을 누른다(인공수분) — 암꽃부터 누르면 실수.
+ * 작업은 손놀림이 끝나고 **걸리는 시간(초 — 실제 시간)** 이 다 차야 끝난다. 같은 작물 칸 여럿을 한 번에 하면 시간이 늘어난다(`FarmStore.careGroupSeconds`).
+ * 점수(0..1)는 실수 · 타이밍으로 깎이고 낮으면 효과가 절반(core `doCare`). 조작 안내 글자는 창에 두지 않는다(R11) — 처음 열 때 가이드가 짚는다.
+ * 시간 · 게이지 · 흔들림은 **벽시계**(`performance.now`)로 센다 — Phaser delta는 프레임이 늘어지면 목표값으로 잘린다(149 · 155차 함정).
  */
 
 import Phaser from 'phaser';
-import { CARE_TASK_KO, CARE_WORK_KO, type CareStatus, type CareWorkKind, type CropDef } from '@tra/core';
+import { CARE_TASK_KO, CARE_WORK_KO, carePlanOf, DISEASE_DEFS, type CareStatus, type CareWorkKind, type CropDef, type CropDisease } from '@tra/core';
 import { DraggablePanel, restoreHandCursor } from './DraggablePanel.js';
 import { enforceTextBounds } from './TextFit.js';
 import { addPixelIcon } from './PixelIcon.js';
@@ -39,16 +40,55 @@ export interface FarmWorkOpts {
   status: CareStatus;
   /** 포기 수(그림에 세운다) */
   plants: number;
+  /** 245차 — 함께 하는 칸 수(같은 작물 · 같은 일) */
+  cells?: number;
+  /** 245차 — 걸리는 시간(초) — 묶음이면 늘어난다. 없으면 작업 정의 그대로 */
+  seconds?: number;
   /** 다 했다 — 점수(0..1) */
   onDone: (score: number) => void;
   onClose: () => void;
 }
 
-interface Target { x: number; y: number; r: number; done: boolean; obj: Phaser.GameObjects.GameObject[] }
+/** 245차 — 작물 그림 모양 */
+type Shape = 'upright' | 'rosette' | 'root' | 'allium' | 'bush' | 'vine' | 'corn' | 'grass' | 'shrub' | 'strawberry' | 'jar' | 'tray' | 'bag';
+
+const SHAPE_BY_ID: Record<string, Shape> = {
+  bean_sprout: 'jar', mung_sprout: 'jar', microgreens: 'tray',
+  oyster_mushroom: 'bag', lions_mane: 'bag', wood_ear: 'bag',
+  cucumber: 'vine', zucchini: 'vine', korean_melon: 'vine', watermelon: 'vine', gourd: 'vine', bitter_melon: 'vine',
+  sweet_potato: 'vine', pumpkin_sweet_potato: 'vine',
+  strawberry: 'strawberry', blueberry: 'shrub', dureup: 'shrub', eomnamu: 'shrub', chopi: 'shrub',
+  radish: 'root', turnip: 'root', carrot: 'root',
+  garlic: 'allium', onion: 'allium', leek: 'allium', scallion: 'allium', chive: 'allium',
+  corn: 'corn', barley: 'grass',
+  potato: 'bush', taro: 'bush', yacon: 'bush', choseokjam: 'bush', jerusalem: 'bush', ginger: 'bush', turmeric: 'bush',
+  soybean: 'bush', peanut: 'bush', cowpea: 'bush',
+  perilla: 'upright', basil: 'upright', shiso: 'upright', banga: 'upright', amaranth: 'upright', okra: 'upright', eggplant: 'upright',
+};
+function shapeOf(crop: CropDef): Shape {
+  return SHAPE_BY_ID[crop.id] ?? (crop.category === 'fruit' ? 'upright' : 'rosette');
+}
+/** 그릇 하나에 담긴 작물(시루 · 새싹 판 · 버섯 배지) — 포기가 아니라 그릇을 그린다 */
+const CONTAINER: ReadonlySet<Shape> = new Set(['jar', 'tray', 'bag']);
+
+interface P { x: number; y: number }
+/** 그림이 돌려주는 자리 — 꼭대기 · 갈래 · 잎 · 열매 · 가지 끝 */
+interface Anchors { top: P; fork: P; base: P; leaves: P[]; fruit: P[]; tips: P[] }
+
+type TargetShape = 'bud' | 'flower' | 'fruit' | 'spot' | 'stake' | 'band' | 'cell' | 'weed' | 'sprout' | 'stalk' | 'small' | 'cut' | 'slit' | 'pest' | 'step' | 'male' | 'female' | 'soil' | 'leaf' | 'runner';
+
+interface Target {
+  x: number; y: number; r: number; done: boolean; obj: Phaser.GameObjects.GameObject[];
+  /** 245차 — 인공수분 수꽃 · 암꽃 */
+  role?: 'male' | 'female';
+  /** 245차 — 북주기: 끌어 올려 놓을 밑동 띠 */
+  dest?: { x: number; y: number; r: number };
+}
 
 export class FarmWorkPanel extends DraggablePanel {
   private opts: FarmWorkOpts;
   private stage!: Phaser.GameObjects.Container;
+  private stageTop = 0;
   private timeBar!: Phaser.GameObjects.Graphics;
   private timeText!: Phaser.GameObjects.Text;
   private statusText!: Phaser.GameObjects.Text;
@@ -72,20 +112,39 @@ export class FarmWorkPanel extends DraggablePanel {
   private round = 0;
   private roundsNeeded = 1;
   private stageHit?: Phaser.GameObjects.Rectangle;
+  /** 245차 — 작물 모양 · 걸리는 시간 · 끌어 올리기 · 짝 맞추기 */
+  private readonly shape: Shape;
+  private readonly total: number;
+  private dragFrom?: Target;
+  private dragLine?: Phaser.GameObjects.Graphics;
+  private pairSel?: Target;
+  private pairRing?: Phaser.GameObjects.Graphics;
+  private moveFn?: (p: Phaser.Input.Pointer) => void;
+  private upFn?: (p: Phaser.Input.Pointer) => void;
 
   constructor(scene: Phaser.Scene, x: number, y: number, opts: FarmWorkOpts) {
     super(scene, { x, y, width: PANEL_W, height: PANEL_H, title: CARE_TASK_KO[opts.status.def.id], onClose: opts.onClose, dim: true, depth: 930 });
     this.opts = opts;
+    this.shape = shapeOf(opts.crop);
+    this.total = Math.max(1, opts.seconds ?? opts.status.def.seconds);
     this.build();
     this.updateFn = (_t, delta) => this.tick(delta);
     this.startMs = performance.now();
     this.lastTickMs = this.startMs;
     scene.events.on('update', this.updateFn);
+    if (this.def.work === 'drag') {
+      this.moveFn = (p) => this.onDragMove(p);
+      this.upFn = (p) => this.onDragUp(p);
+      scene.input.on('pointermove', this.moveFn);
+      scene.input.on('pointerup', this.upFn);
+    }
     maybeStartTour(scene, () => this.buildTour());
   }
 
   override destroy(fromScene?: boolean): void {
     this.scene?.events.off('update', this.updateFn);
+    if (this.moveFn) this.scene?.input.off('pointermove', this.moveFn);
+    if (this.upFn) this.scene?.input.off('pointerup', this.upFn);
     super.destroy(fromScene);
   }
 
@@ -96,10 +155,12 @@ export class FarmWorkPanel extends DraggablePanel {
   private build(): void {
     const scene = this.scene;
     const top = this.contentTop + 8;
+    this.stageTop = top;
     // 왼쪽 — 작업 무대
     const bg = scene.add.graphics();
-    bg.fillStyle(0x0b1a10, 1); bg.fillRoundedRect(STAGE_X, top, STAGE_W, STAGE_H, 6);
-    bg.lineStyle(1, 0x2f5a3a, 1); bg.strokeRoundedRect(STAGE_X, top, STAGE_W, STAGE_H, 6);
+    const indoor = CONTAINER.has(this.shape);
+    bg.fillStyle(indoor ? 0x161a20 : 0x0b1a10, 1); bg.fillRoundedRect(STAGE_X, top, STAGE_W, STAGE_H, 6);
+    bg.lineStyle(1, indoor ? 0x3a4a5a : 0x2f5a3a, 1); bg.strokeRoundedRect(STAGE_X, top, STAGE_W, STAGE_H, 6);
     this.add(bg);
     this.stage = scene.add.container(STAGE_X, top);
     this.add(this.stage);
@@ -111,13 +172,22 @@ export class FarmWorkPanel extends DraggablePanel {
     const how = scene.add.text(INFO_X, y, t(this.def.howKo), { fontFamily: FONT, fontSize: '12px', color: '#c8dceb', wordWrap: { width: INFO_W }, lineSpacing: 3 });
     this.add(how);
     y += how.height + 10;
-    if (this.def.needs?.length) {
-      const needs = scene.add.text(INFO_X, y, `${t('쓰는 것')}: ${this.def.needs.map((n) => `${t(cropItemTemplate(n.itemId)?.name ?? n.itemId)} ×${n.qty}`).join(' · ')}`, {
-        fontFamily: FONT, fontSize: '11px', color: '#9fb8c8', wordWrap: { width: INFO_W },
-      });
+    const cells = Math.max(1, this.opts.cells ?? 1);
+    const uses = [
+      ...(this.def.needs ?? []).map((n) => `${t(cropItemTemplate(n.itemId)?.name ?? n.itemId)} ×${n.qty * cells}`),
+      ...(this.def.tools ?? []).map((id) => t(cropItemTemplate(id)?.name ?? id)),
+    ];
+    if (uses.length) {
+      const needs = scene.add.text(INFO_X, y, `${t('쓰는 것')}: ${uses.join(' · ')}`, { fontFamily: FONT, fontSize: '11px', color: '#9fb8c8', wordWrap: { width: INFO_W } });
       this.add(needs);
-      y += needs.height + 10;
+      y += needs.height + 6;
     }
+    if (cells > 1) {
+      const together = scene.add.text(INFO_X, y, `${t('함께 하는 칸')}: ${cells}`, { fontFamily: FONT, fontSize: '11px', color: '#9fd0e4', wordWrap: { width: INFO_W } });
+      this.add(together);
+      y += together.height + 6;
+    }
+    y += 4;
     this.add(scene.add.text(INFO_X, y, t('걸리는 시간'), { fontFamily: FONT, fontSize: '12px', color: '#8fb4cc' }));
     y += 18;
     this.timeBar = scene.add.graphics();
@@ -142,40 +212,161 @@ export class FarmWorkPanel extends DraggablePanel {
     const g = this.timeBar;
     g.clear();
     const w = INFO_W;
-    const k = Math.min(1, this.elapsed / Math.max(0.1, this.def.seconds));
+    const k = Math.min(1, this.elapsed / Math.max(0.1, this.total));
     g.fillStyle(0x0d1a28, 1); g.fillRect(INFO_X, this.timeBarY, w, 10);
     g.fillStyle(k >= 1 ? 0x4af2a1 : 0x6ac46a, 1); g.fillRect(INFO_X, this.timeBarY, Math.round(w * k), 10);
     g.lineStyle(1, 0x2a4a66, 1); g.strokeRect(INFO_X, this.timeBarY, w, 10);
-    this.timeText.setText(`${Math.min(this.def.seconds, Math.floor(this.elapsed))} / ${this.def.seconds}${t('초')}`);
+    this.timeText.setText(`${Math.min(this.total, Math.floor(this.elapsed))} / ${this.total}${t('초')}`);
   }
 
   private setStatus(msg: string, ok = true): void {
     this.statusText.setColor(ok ? '#9fd0e4' : '#ff9a7a').setText(t(msg));
   }
 
-  // ── 무대 — 포기 그림 ───────────────────────
+  // ── 무대 — 작물 그림(245차 — 모양별) ─────────
 
   /** 포기 하나(줄기 · Y자 방아다리 · 잎 · 열매)를 그린다 — 밑동 (x, baseY) */
-  private drawPlant(g: Phaser.GameObjects.Graphics, x: number, baseY: number, h: number, fruits: number, stake = false): { forkY: number } {
+  private drawUpright(g: Phaser.GameObjects.Graphics, x: number, baseY: number, h: number, fruits: number, stake = false): Anchors {
     const forkY = baseY - h * 0.45;
     if (stake) { g.fillStyle(0x8a6038, 1); g.fillRect(x + 9, baseY - h - 14, 3, h + 14); }
     g.fillStyle(0x3a6a2a, 1); g.fillRect(x - 2, forkY, 4, baseY - forkY);
-    // Y자 가지
     g.lineStyle(4, 0x3a6a2a, 1);
     g.beginPath(); g.moveTo(x, forkY); g.lineTo(x - 14, baseY - h); g.strokePath();
     g.beginPath(); g.moveTo(x, forkY); g.lineTo(x + 14, baseY - h); g.strokePath();
-    // 잎
     g.fillStyle(0x5cb84a, 1);
+    const leaves: P[] = [];
     for (const [dx, dy] of [[-10, 0.3], [10, 0.3], [-16, 0.7], [16, 0.7], [-6, 0.95], [6, 0.95]] as const) {
       g.fillEllipse(x + dx, baseY - h * dy, 12, 7);
+      leaves.push({ x: x + dx, y: baseY - h * dy });
     }
-    // 열매
     g.fillStyle(0x3f9a3a, 1);
-    for (let i = 0; i < fruits; i++) g.fillRect(x - 12 + i * 8, baseY - h * 0.6 + (i % 2) * 6, 3, 9);
-    return { forkY };
+    const fruit: P[] = [];
+    for (let i = 0; i < fruits; i++) { g.fillRect(x - 12 + i * 8, baseY - h * 0.6 + (i % 2) * 6, 3, 9); fruit.push({ x: x - 11 + i * 8, y: baseY - h * 0.6 + 4 }); }
+    return { top: { x, y: baseY - h }, fork: { x, y: forkY }, base: { x, y: baseY }, leaves, fruit, tips: [{ x: x - 14, y: baseY - h }, { x: x + 14, y: baseY - h }] };
   }
 
-  private addTarget(x: number, y: number, r: number, color: number, shape: 'bud' | 'flower' | 'fruit' | 'spot' | 'stake' | 'band' | 'cell'): Target {
+  private drawRosette(g: Phaser.GameObjects.Graphics, x: number, baseY: number, k = 1, color = 0x5cb84a): Anchors {
+    const dark = 0x3f8a34;
+    const L: [number, number, number, number][] = [[-14, -10, 18, 10], [14, -10, 18, 10], [-8, -22, 14, 16], [8, -22, 14, 16], [0, -30, 12, 18]];
+    const leaves: P[] = [];
+    for (const [dx, dy, w, h] of L) {
+      g.fillStyle(color, 1); g.fillEllipse(x + dx * k, baseY + dy * k, w * k, h * k);
+      g.fillStyle(dark, 1); g.fillRect(x + dx * k - 0.5, baseY + dy * k - h * k * 0.3, 1, h * k * 0.6);
+      leaves.push({ x: x + dx * k, y: baseY + dy * k });
+    }
+    return { top: { x, y: baseY - 38 * k }, fork: { x, y: baseY - 12 * k }, base: { x, y: baseY }, leaves, fruit: [], tips: [{ x, y: baseY - 38 * k }] };
+  }
+
+  private drawCrop(g: Phaser.GameObjects.Graphics, x: number, baseY: number, opt: { h?: number; fruits?: number; stake?: boolean; young?: boolean } = {}): Anchors {
+    const crop = this.opts.crop;
+    const young = !!opt.young;
+    switch (this.shape) {
+      case 'upright': return this.drawUpright(g, x, baseY, young ? 70 : (opt.h ?? 150), young ? 0 : opt.fruits ?? 2, opt.stake);
+      case 'rosette': {
+        const big = crop.id === 'napa_cabbage';
+        return this.drawRosette(g, x, baseY, young ? 0.55 : big ? 1.5 : 1.1, crop.id.startsWith('jeok') ? 0xb04a5a : 0x5cb84a);
+      }
+      case 'root': {
+        const a = this.drawRosette(g, x, baseY - 6, young ? 0.5 : 0.9);
+        if (!young) {
+          const c = crop.id === 'carrot' ? 0xe8802a : 0xeef0e8;
+          g.fillStyle(c, 1); g.fillEllipse(x, baseY + 2, 16, 14);
+          if (crop.id === 'turnip') { g.fillStyle(0x9a50b8, 1); g.fillEllipse(x, baseY - 1, 16, 7); }
+        }
+        return a;
+      }
+      case 'allium': {
+        const hs = young ? [16, 22, 26, 22, 18] : [34, 44, 52, 44, 36];
+        g.fillStyle(0x4aa040, 1);
+        hs.forEach((h, i) => g.fillRect(x + (i - 2) * 4 - 1, baseY - h, 2, h));
+        if (crop.id === 'leek') { g.fillStyle(0xeef0e8, 1); g.fillRect(x - 4, baseY - 22, 8, 22); }
+        if (crop.id === 'onion' || crop.id === 'garlic') { g.fillStyle(0xd8c8a0, 1); g.fillEllipse(x, baseY - 3, 16, 10); }
+        const tips = hs.map((h, i) => ({ x: x + (i - 2) * 4, y: baseY - h }));
+        return { top: { x, y: baseY - Math.max(...hs) }, fork: { x, y: baseY - 14 }, base: { x, y: baseY }, leaves: tips, fruit: [], tips };
+      }
+      case 'bush': {
+        const k = young ? 0.6 : 1;
+        g.fillStyle(0x3a6a2a, 1); g.fillRect(x - 2, baseY - 20 * k, 4, 20 * k);
+        g.fillStyle(0x4aa040, 1);
+        const L: [number, number, number, number][] = [[0, -30, 30, 26], [-12, -18, 20, 16], [12, -18, 20, 16], [0, -44, 18, 14]];
+        const leaves: P[] = [];
+        for (const [dx, dy, w, h] of L) { g.fillEllipse(x + dx * k, baseY + dy * k, w * k, h * k); leaves.push({ x: x + dx * k, y: baseY + dy * k }); }
+        g.fillStyle(0x6ac85a, 1); g.fillEllipse(x - 4 * k, baseY - 34 * k, 8 * k, 5 * k);
+        return { top: { x, y: baseY - 52 * k }, fork: { x, y: baseY - 20 * k }, base: { x, y: baseY }, leaves, fruit: [], tips: [{ x, y: baseY - 52 * k }] };
+      }
+      case 'vine': {
+        g.lineStyle(3, 0x3a6a2a, 1);
+        g.beginPath(); g.moveTo(x - 30, baseY - 6);
+        for (let i = 1; i <= 6; i++) g.lineTo(x - 30 + i * 10, baseY - 6 - (i % 2 ? 4 : 0));
+        g.strokePath();
+        const leaves: P[] = [];
+        for (const dx of [-20, 0, 20]) { g.fillStyle(0x4aa040, 1); g.fillCircle(x + dx, baseY - 16, young ? 6 : 9); g.fillStyle(0x3a8a30, 1); g.fillRect(x + dx - 0.5, baseY - 22, 1, 10); leaves.push({ x: x + dx, y: baseY - 16 }); }
+        const fc = crop.id === 'watermelon' ? 0x2a6a2a : crop.id === 'korean_melon' ? 0xf0d040 : crop.id === 'gourd' ? 0xc8e8a0 : 0x6ab04a;
+        const fruit: P[] = young ? [] : [{ x: x - 10, y: baseY - 5 }, { x: x + 12, y: baseY - 5 }];
+        g.fillStyle(fc, 1); for (const f of fruit) g.fillEllipse(f.x, f.y, 12, 8);
+        return { top: { x: x + 30, y: baseY - 6 }, fork: { x: x - 26, y: baseY - 6 }, base: { x, y: baseY }, leaves, fruit, tips: [{ x: x + 30, y: baseY - 8 }] };
+      }
+      case 'corn': {
+        const h = young ? 80 : 170;
+        g.fillStyle(0x4a8a2a, 1); g.fillRect(x - 2, baseY - h, 4, h);
+        g.fillStyle(0x5cb84a, 1);
+        for (let i = 0; i < 5; i++) { const yy = baseY - 20 - i * (h / 6); g.fillEllipse(x + (i % 2 ? 14 : -14), yy, 28, 5); }
+        const fruit: P[] = [];
+        if (!young) {
+          g.fillStyle(0xe8d070, 1); for (let i = -2; i <= 2; i++) g.fillRect(x + i * 3, baseY - h - 10, 1, 10);
+          for (const yy of [baseY - 86, baseY - 64]) { g.fillStyle(0x8ac860, 1); g.fillEllipse(x + 8, yy, 8, 22); g.fillStyle(0xb8864a, 1); g.fillRect(x + 8, yy - 14, 2, 5); fruit.push({ x: x + 8, y: yy }); }
+        }
+        return { top: { x, y: baseY - h }, fork: { x, y: baseY - 10 }, base: { x, y: baseY }, leaves: [], fruit, tips: [{ x, y: baseY - h }] };
+      }
+      case 'grass': {
+        g.fillStyle(0x6ab04a, 1);
+        const tips: P[] = [];
+        for (let i = -3; i <= 3; i++) { const h = 36 + ((i * 7 + 21) % 5) * 4; g.fillRect(x + i * 3, baseY - h, 2, h); tips.push({ x: x + i * 3, y: baseY - h }); }
+        return { top: { x, y: baseY - 52 }, fork: { x, y: baseY - 10 }, base: { x, y: baseY }, leaves: tips, fruit: [], tips };
+      }
+      case 'shrub': {
+        g.fillStyle(0x6a4a2c, 1); g.fillRect(x - 2, baseY - 60, 4, 60);
+        g.lineStyle(3, 0x6a4a2c, 1);
+        const tips: P[] = [{ x: x - 20, y: baseY - 92 }, { x: x + 20, y: baseY - 92 }, { x: x - 10, y: baseY - 114 }, { x: x + 10, y: baseY - 114 }];
+        for (const tp of tips) { g.beginPath(); g.moveTo(x, baseY - 60); g.lineTo(tp.x, tp.y); g.strokePath(); }
+        g.fillStyle(0x4aa040, 1);
+        for (const tp of tips) { g.fillEllipse(tp.x - 5, tp.y + 4, 8, 5); g.fillEllipse(tp.x + 5, tp.y + 8, 8, 5); }
+        const fruit: P[] = [];
+        if (crop.id === 'blueberry') { g.fillStyle(0x3a4aa8, 1); for (const tp of tips) { g.fillCircle(tp.x + 2, tp.y + 14, 3); fruit.push({ x: tp.x + 2, y: tp.y + 14 }); } }
+        return { top: { x, y: baseY - 114 }, fork: { x, y: baseY - 60 }, base: { x, y: baseY }, leaves: tips, fruit, tips };
+      }
+      case 'strawberry': {
+        g.fillStyle(0x3f8a34, 1);
+        for (const [dx, dy] of [[-8, -14], [0, -18], [8, -14], [-5, -8], [5, -8]] as const) g.fillEllipse(x + dx, baseY + dy, 10, 8);
+        const fruit: P[] = young ? [] : [{ x: x - 10, y: baseY - 3 }, { x: x + 10, y: baseY - 3 }];
+        g.fillStyle(0xe8243a, 1); for (const f of fruit) g.fillTriangle(f.x - 4, f.y - 3, f.x + 4, f.y - 3, f.x, f.y + 5);
+        return { top: { x, y: baseY - 22 }, fork: { x, y: baseY - 6 }, base: { x, y: baseY }, leaves: [{ x: x - 8, y: baseY - 14 }, { x: x + 8, y: baseY - 14 }], fruit, tips: [] };
+      }
+      case 'jar': {
+        g.fillStyle(0x7a4a2a, 1); g.fillRoundedRect(x - 34, baseY - 90, 68, 90, 10);
+        g.fillStyle(0x5a3420, 1); g.fillRect(x - 36, baseY - 92, 72, 6);
+        g.fillStyle(0xe8d070, 1); for (let i = -4; i <= 4; i++) g.fillCircle(x + i * 7, baseY - 96, 3);
+        return { top: { x, y: baseY - 96 }, fork: { x, y: baseY - 60 }, base: { x, y: baseY }, leaves: [], fruit: [], tips: [{ x: x - 30, y: baseY - 94 }, { x: x + 30, y: baseY - 94 }] };
+      }
+      case 'tray': {
+        g.fillStyle(0x2a3036, 1); g.fillRect(x - 70, baseY - 18, 140, 18);
+        g.fillStyle(0x7ac85a, 1); for (let i = -16; i <= 16; i++) g.fillRect(x + i * 4, baseY - 30 - (i % 3) * 3, 1, 12 + (i % 3) * 3);
+        g.fillStyle(0xa060c0, 1); for (let i = -15; i <= 15; i += 4) g.fillRect(x + i * 4, baseY - 32, 2, 2);
+        return { top: { x, y: baseY - 34 }, fork: { x, y: baseY - 18 }, base: { x, y: baseY }, leaves: [], fruit: [], tips: [{ x: x - 60, y: baseY - 40 }, { x: x + 60, y: baseY - 40 }] };
+      }
+      case 'bag': {
+        g.fillStyle(0xd8ccb0, 1); g.fillRoundedRect(x - 32, baseY - 110, 64, 110, 8);
+        g.fillStyle(0xeee6d4, 0.6); g.fillRect(x - 26, baseY - 104, 8, 96);
+        const mc = crop.id === 'wood_ear' ? 0x5a3424 : crop.id === 'lions_mane' ? 0xf4f0e6 : 0x8a8478;
+        const fruit: P[] = [{ x: x + 30, y: baseY - 70 }, { x: x - 30, y: baseY - 44 }];
+        g.fillStyle(mc, 1);
+        for (const f of fruit) { if (crop.id === 'lions_mane') g.fillCircle(f.x, f.y, 10); else { g.fillEllipse(f.x, f.y, 18, 10); g.fillEllipse(f.x + (f.x > x ? 4 : -4), f.y + 8, 14, 8); } }
+        return { top: { x, y: baseY - 110 }, fork: { x, y: baseY - 60 }, base: { x, y: baseY }, leaves: [], fruit, tips: [] };
+      }
+    }
+  }
+
+  private addTarget(x: number, y: number, r: number, color: number, shape: TargetShape, extra: Partial<Target> = {}): Target {
     const scene = this.scene;
     const objs: Phaser.GameObjects.GameObject[] = [];
     const g = scene.add.graphics();
@@ -185,16 +376,35 @@ export class FarmWorkPanel extends DraggablePanel {
     else if (shape === 'spot') { g.fillStyle(color, 0.55); g.fillCircle(x, y, r); g.lineStyle(1, 0xffd257, 0.9); g.strokeCircle(x, y, r); }
     else if (shape === 'stake') { g.lineStyle(1, 0xffd257, 0.9); g.strokeRect(x - 3, y - r, 6, r * 2); }
     else if (shape === 'band') { g.fillStyle(color, 0.35); g.fillRect(x - r, y - 6, r * 2, 12); g.lineStyle(1, 0xffd257, 0.8); g.strokeRect(x - r, y - 6, r * 2, 12); }
+    else if (shape === 'weed') { g.fillStyle(0x2f6a24, 1); for (let i = -2; i <= 2; i++) g.fillTriangle(x + i * 3 - 2, y, x + i * 3 + 2, y, x + i * 3, y - 8 - (i % 2 ? 0 : 4)); g.lineStyle(1, 0xffd257, 0.7); g.strokeCircle(x, y - 5, r); }
+    else if (shape === 'sprout') { g.fillStyle(0x7a8a3a, 1); g.fillRect(x - 1, y - 8, 2, 8); g.fillStyle(color, 1); g.fillEllipse(x - 3, y - 9, 6, 4); g.fillEllipse(x + 3, y - 9, 6, 4); g.lineStyle(1, 0xffd257, 0.7); g.strokeCircle(x, y - 6, r); }
+    else if (shape === 'stalk') { g.fillStyle(0x4a8a2a, 1); g.fillRect(x - 1, y, 2, 18); g.fillStyle(color, 1); g.fillCircle(x, y, r * 0.7); g.lineStyle(1, 0xffd257, 0.8); g.strokeCircle(x, y, r); }
+    else if (shape === 'small') { g.fillStyle(color, 1); g.fillEllipse(x, y, r * 1.4, r); g.lineStyle(1, 0xffd257, 0.8); g.strokeCircle(x, y, r); }
+    else if (shape === 'cut') { g.lineStyle(2, 0xffd257, 0.9); g.lineBetween(x - r, y - r, x + r, y + r); g.lineStyle(1, 0xffd257, 0.6); g.strokeCircle(x, y, r + 2); }
+    else if (shape === 'slit') { g.lineStyle(1, 0xffd257, 0.9); g.lineBetween(x - r, y - r, x + r, y + r); g.lineBetween(x - r, y + r, x + r, y - r); }
+    else if (shape === 'pest') { g.fillStyle(color, 1); g.fillEllipse(x, y, r * 1.6, r * 0.9); g.fillStyle(0x101010, 1); g.fillRect(x + r * 0.6, y - 1, 2, 2); g.lineStyle(1, 0xffd257, 0.7); g.strokeCircle(x, y, r + 2); }
+    else if (shape === 'step') { g.fillStyle(0x3a2616, 0.6); g.fillEllipse(x, y, r, r * 1.8); g.lineStyle(1, 0xffd257, 0.8); g.strokeEllipse(x, y, r + 4, r * 1.8 + 4); }
+    else if (shape === 'male') { g.fillStyle(0xf0c830, 1); g.fillCircle(x, y, r); g.fillStyle(0xf8e070, 1); g.fillCircle(x, y, r * 0.45); g.fillStyle(0x4a8a2a, 1); g.fillRect(x - 1, y + r, 2, 10); }
+    else if (shape === 'female') { g.fillStyle(0xf0c830, 1); g.fillCircle(x, y, r); g.fillStyle(0x8a7a20, 1); g.fillCircle(x, y, r * 0.35); g.fillStyle(0x6ab04a, 1); g.fillEllipse(x, y + r + 4, 8, 7); }
+    else if (shape === 'soil') { g.fillStyle(0x6a4a2c, 1); g.fillEllipse(x, y, r * 2, r); g.lineStyle(1, 0xffd257, 0.8); g.strokeEllipse(x, y, r * 2 + 4, r + 4); }
+    else if (shape === 'leaf') { g.fillStyle(color, 1); g.fillEllipse(x, y, r * 2, r); g.lineStyle(1, 0xffd257, 0.7); g.strokeEllipse(x, y, r * 2 + 3, r + 3); }
+    else if (shape === 'runner') { g.lineStyle(1, 0x5a8a3a, 1); g.lineBetween(x - 18, y + 2, x, y); g.fillStyle(0x3f8a34, 1); g.fillEllipse(x + 2, y - 2, 8, 6); g.lineStyle(1, 0xffd257, 0.8); g.strokeCircle(x, y, r); }
     else { g.lineStyle(1, 0xffd257, 0.9); g.strokeRect(x - r, y - r, r * 2, r * 2); }
     this.stage.add(g);
     objs.push(g);
     const hit = scene.add.rectangle(x, y, Math.max(18, r * 2.2), Math.max(18, r * 2.2), 0xffffff, 0.001).setInteractive({ useHandCursor: true });
     this.stage.add(hit);
     objs.push(hit);
-    const tg: Target = { x, y, r, done: false, obj: objs };
+    const tg: Target = { x, y, r, done: false, obj: objs, ...extra };
     hit.on('pointerdown', () => this.onTarget(tg));
     this.targets.push(tg);
     return tg;
+  }
+
+  /** 이 일이 다루는 벌레 · 병(벌레 잡기 · 걷어 내기 표시 색) */
+  private troubleOf(): CropDisease | undefined {
+    const ds = carePlanOf(this.opts.crop).diseases;
+    return this.def.onlyFor?.[0] ?? ds.find((d) => (this.def.id === 'pick_pests') === (DISEASE_DEFS[d].kind !== 'disease'));
   }
 
   private buildStage(): void {
@@ -202,65 +412,153 @@ export class FarmWorkPanel extends DraggablePanel {
     const g = scene.add.graphics();
     this.stage.add(g);
     const kind: CareWorkKind = this.def.work;
+    const id = this.def.id;
     const baseY = STAGE_H - 36;
-    // 흙
-    g.fillStyle(0x4a3220, 1); g.fillRect(8, baseY, STAGE_W - 16, 22);
-    g.fillStyle(0x3a2616, 1); for (let x = 12; x < STAGE_W - 12; x += 14) g.fillRect(x, baseY + 10, 8, 3);
-    const plants = Math.max(1, Math.min(4, this.opts.plants));
+    const container = CONTAINER.has(this.shape);
+    if (container) { g.fillStyle(0x3a2e24, 1); g.fillRect(8, baseY, STAGE_W - 16, 10); g.fillStyle(0x2a2018, 1); g.fillRect(8, baseY + 10, STAGE_W - 16, 4); }
+    else {
+      g.fillStyle(0x4a3220, 1); g.fillRect(8, baseY, STAGE_W - 16, 22);
+      g.fillStyle(0x3a2616, 1); for (let x = 12; x < STAGE_W - 12; x += 14) g.fillRect(x, baseY + 10, 8, 3);
+    }
+    const plants = container ? 1 : Math.max(1, Math.min(4, this.opts.plants));
     const gap = (STAGE_W - 40) / plants;
-    const px = (i: number): number => 20 + gap * (i + 0.5);
+    const px = (i: number): number => (container ? STAGE_W / 2 : 20 + gap * (i + 0.5));
     // 무대 전체 — 빗나간 클릭(실수) 판정
     this.stageHit = scene.add.rectangle(STAGE_W / 2, STAGE_H / 2, STAGE_W, STAGE_H, 0xffffff, 0.001).setInteractive();
     this.stage.add(this.stageHit);
     this.stageHit.on('pointerdown', () => this.onStageMiss());
     this.stageHit.on('pointerup', () => this.onStageRelease());
-    const staked = this.def.id !== 'stake' && this.def.id !== 'ridge_mulch' && this.def.id !== 'prick_out';
+    const staked = this.shape === 'upright' && !['stake', 'ridge_mulch', 'prick_out', 'thin', 'weed'].includes(id) && !!carePlanOf(this.opts.crop).tasks.find((x) => x.id === 'stake');
+    const young = ['thin', 'weed', 'net_cover', 'bird_net', 'ridge_mulch', 'slit_bag', 'cover_dark', 'trellis', 'stake', 'straw_mulch'].includes(id)
+      && !(this.shape === 'shrub' || this.shape === 'corn' && id === 'bird_net');
+    const anchors: Anchors[] = [];
+    const drawAll = (opt: Parameters<FarmWorkPanel['drawCrop']>[3] = {}): void => {
+      for (let i = 0; i < plants; i++) anchors.push(this.drawCrop(g, px(i), baseY, { stake: staked, young, ...opt }));
+    };
 
     if (kind === 'targets') {
-      const id = this.def.id;
-      for (let i = 0; i < plants; i++) {
-        const { forkY } = this.drawPlant(g, px(i), baseY, 150, id === 'cull_diseased' ? 3 : 2, staked);
-        if (id === 'pinch_flower') this.addTarget(px(i), forkY - 2, 6, 0xffffff, 'flower');
+      drawAll({ fruits: id === 'cull_diseased' ? 3 : 2 });
+      const trouble = this.troubleOf();
+      anchors.forEach((a, i) => {
+        const x = px(i);
+        if (id === 'pinch_flower') this.addTarget(a.fork.x, a.fork.y - 2, 6, 0xffffff, 'flower');
         else if (id === 'remove_suckers') {
-          for (const [dx, dy] of [[-7, 18], [7, 34], [-7, 50]] as const) this.addTarget(px(i) + dx, forkY + dy, 5, 0x8fd16a, 'bud');
+          if (this.shape === 'upright') for (const [dx, dy] of [[-7, 18], [7, 34], [-7, 50]] as const) this.addTarget(x + dx, a.fork.y + dy, 5, 0x8fd16a, 'bud');
+          else if (this.shape === 'corn') { this.addTarget(x - 10, baseY - 8, 6, 0x8fd16a, 'bud'); this.addTarget(x + 10, baseY - 10, 6, 0x8fd16a, 'bud'); }
+          else { this.addTarget(a.fork.x + 4, a.fork.y - 8, 5, 0x8fd16a, 'bud'); this.addTarget(x + 4, baseY - 22, 5, 0x8fd16a, 'bud'); }
+        } else if (id === 'thin') {
+          for (const dx of [-12, 12]) this.addTarget(x + dx, baseY - 2, 7, 0xd8c860, 'sprout');
+        } else if (id === 'weed') {
+          for (const dx of [-gap * 0.32, gap * 0.32]) this.addTarget(x + dx, baseY - 1, 8, 0, 'weed');
+        } else if (id === 'pinch_tip') {
+          for (const tp of a.tips.slice(0, 2)) this.addTarget(tp.x, tp.y - 2, 6, 0xa8e070, 'bud');
+        } else if (id === 'remove_flower') {
+          this.addTarget(a.top.x + 4, a.top.y - 18, 7, 0xf4f0e0, 'stalk');
+        } else if (id === 'thin_fruit') {
+          const f = a.fruit[0] ?? { x: x + 6, y: baseY - 6 };
+          this.addTarget(f.x + 10, f.y - 6, 6, 0x9ad070, 'small');
+        } else if (id === 'prune') {
+          for (const tp of a.tips.slice(0, 3)) this.addTarget((tp.x + a.fork.x) / 2, (tp.y + a.fork.y) / 2, 6, 0, 'cut');
+        } else if (id === 'remove_runner') {
+          this.addTarget(x + 26, baseY - 4, 7, 0, 'runner');
+        } else if (id === 'strip_leaves') {
+          for (const dx of [-12, 12]) this.addTarget(x + dx, baseY - 24, 7, 0xc8c050, 'leaf');
+        } else if (id === 'slit_bag') {
+          for (const [dx, dy] of [[-10, -76], [12, -50], [-6, -28]] as const) this.addTarget(x + dx, baseY + dy, 6, 0, 'slit');
+        } else if (id === 'pick_pests') {
+          const col = trouble === 'aphid' ? 0xc8f080 : trouble === 'stink_bug' ? 0x8a6a3a : trouble === 'flea_beetle' ? 0x202024 : 0x6ac040;
+          for (const lf of a.leaves.slice(0, 2)) this.addTarget(lf.x, lf.y - 2, 5, col, 'pest');
         } else {
-          for (const [dx, dy] of [[-10, 30], [12, 22]] as const) this.addTarget(px(i) + dx, forkY - dy, 6, 0xd0382a, 'fruit');
+          // 병든 것 걷어 내기 — 열매 작물은 병든 열매, 잎 · 뿌리는 병든 잎, 배지는 곰팡이 자리
+          if (this.shape === 'upright') for (const [dx, dy] of [[-10, 30], [12, 22]] as const) this.addTarget(x + dx, a.fork.y - dy, 6, 0xd0382a, 'fruit');
+          else if (this.shape === 'bag') { this.addTarget(x - 8, baseY - 80, 8, 0x2a8a4a, 'spot'); this.addTarget(x + 10, baseY - 36, 8, 0x2a8a4a, 'spot'); }
+          else {
+            const col = trouble === 'powdery_mildew' ? 0xf4f6f0 : trouble === 'rust' ? 0xe8781a : 0x8a6a3a;
+            for (const lf of (a.leaves.length ? a.leaves : [a.top]).slice(0, 2)) this.addTarget(lf.x, lf.y, 6, col, 'spot');
+          }
         }
-      }
+      });
       this.setStatus(`${t('남은 것')} ${this.targets.length}`);
     } else if (kind === 'place') {
-      if (this.def.id === 'stake') {
-        for (let i = 0; i < plants; i++) {
-          this.drawPlant(g, px(i), baseY, 90, 0, false);
-          this.addTarget(px(i) + 10, baseY - 60, 60, 0xffd257, 'stake');
-        }
+      if (id === 'stake' || id === 'trellis') {
+        drawAll({ h: 90, fruits: 0 });
+        anchors.forEach((_a, i) => this.addTarget(px(i) + 10, baseY - 60, 60, 0xffd257, 'stake'));
+      } else if (id === 'tread') {
+        drawAll();
+        for (let i = 0; i < 5; i++) this.addTarget(30 + (STAGE_W - 60) * (i / 4), baseY - 6, 8, 0, 'step');
+      } else if (id === 'cover_dark' || id === 'uncover_light') {
+        const a = this.drawCrop(g, px(0), baseY, {});
+        if (id === 'uncover_light') { g.fillStyle(0xe8eef4, 0.55); g.fillRect(px(0) - 74, baseY - 52, 148, 30); }
+        for (const tp of a.tips) this.addTarget(tp.x, tp.y, 9, 0, 'cell');
+      } else if (id === 'bird_net' && this.shape === 'corn') {
+        drawAll();
+        for (const a of anchors) for (const f of a.fruit) this.addTarget(f.x, f.y, 9, 0, 'cell');
       } else {
-        // 멀칭 — 두둑 띠 4칸
-        g.fillStyle(0x6a4a2c, 1); g.fillRoundedRect(20, baseY - 40, STAGE_W - 40, 34, 6);
+        // 두둑 · 덮개 띠 4칸(멀칭 · 방충망 · 새 그물 · 부직포 · 짚)
+        drawAll({ fruits: 0 });
+        g.fillStyle(0x6a4a2c, 0.5); g.fillRoundedRect(20, baseY - 40, STAGE_W - 40, 34, 6);
         const n = 4, cw = (STAGE_W - 48) / n;
         for (let i = 0; i < n; i++) this.addTarget(24 + cw * (i + 0.5), baseY - 23, cw / 2 - 2, 0x101010, 'cell');
       }
       this.setStatus(`${t('차례')} 1 / ${this.targets.length}`);
     } else if (kind === 'tie') {
       this.roundsNeeded = plants;
-      for (let i = 0; i < plants; i++) this.drawPlant(g, px(i), baseY, 160, 2, true);
-      // 띠 = 지주의 중간 높이. 표시가 위아래로 흔들린다
-      this.addTarget(px(0) + 10, baseY - 100, 14, 0x4af2a1, 'band');
+      const head = id === 'tie_head';
+      drawAll({ h: 160, fruits: 2 });
+      // 띠 = 지주의 중간 높이(배추는 포기 허리). 표시가 위아래로 흔들린다
+      this.addTarget(px(0) + (head ? 0 : 10), head ? baseY - 24 : baseY - 100, 14, 0x4af2a1, 'band');
       this.marker = scene.add.graphics();
       this.stage.add(this.marker);
       this.setStatus(`${t('묶은 포기')} 0 / ${plants}`);
     } else if (kind === 'hold') {
       this.roundsNeeded = Math.min(2, plants);
-      for (let i = 0; i < plants; i++) this.drawPlant(g, px(i), baseY, 150, 2, staked);
+      drawAll({ fruits: 2 });
+      if (id === 'water_flood') { g.fillStyle(0x3a7ac8, 0.45); g.fillRect(8, baseY + 4, STAGE_W - 16, 8); }
       this.gaugeG = scene.add.graphics();
       this.stage.add(this.gaugeG);
       this.drawGauge();
       this.setStatus(`${t('친 포기')} 0 / ${this.roundsNeeded}`);
     } else if (kind === 'sprinkle') {
-      for (let i = 0; i < plants; i++) this.drawPlant(g, px(i), baseY, 130, 2, staked);
+      drawAll({ fruits: 2, h: 130 });
       const spots = plants + 1;
-      for (let i = 0; i < spots; i++) this.addTarget(20 + gap * i, baseY + 8, 9, 0xd8b878, 'spot');
+      for (let i = 0; i < spots; i++) this.addTarget(20 + gap * i, baseY + 8, 9, id === 'acidify' ? 0x8a6440 : 0xd8b878, 'spot');
       this.setStatus(`${t('남은 자리')} ${this.targets.length}`);
+    } else if (kind === 'drag') {
+      // 245차 — 북주기: 고랑의 흙(표시)을 눌러 포기 밑동 띠까지 끌어 올린다
+      drawAll({ fruits: 0 });
+      anchors.forEach((a, i) => {
+        const dest = { x: a.base.x, y: baseY - 6, r: 14 };
+        const gg = scene.add.graphics();
+        gg.lineStyle(1, 0x4af2a1, 0.7); gg.strokeEllipse(dest.x, dest.y, dest.r * 2, 12);
+        this.stage.add(gg);
+        this.addTarget(px(i) + Math.min(28, gap * 0.36), baseY + 14, 7, 0, 'soil', { dest });
+      });
+      this.dragLine = scene.add.graphics();
+      this.stage.add(this.dragLine);
+      this.setStatus(`${t('북준 포기')} 0 / ${this.targets.length}`);
+    } else if (kind === 'pair') {
+      // 245차 — 인공수분: 수꽃(꽃만) · 암꽃(꽃 밑에 어린 열매)
+      drawAll({ fruits: 0 });
+      const pairs = Math.max(2, Math.min(3, plants + 1));
+      // 꽃이 공중에 뜨지 않게 — 땅을 기는 덩굴 마디에서 수꽃 · 암꽃 꽃대가 올라온다
+      const vg = scene.add.graphics();
+      for (let i = 0; i < pairs; i++) {
+        const x = 40 + (STAGE_W - 80) * (i / Math.max(1, pairs - 1));
+        vg.lineStyle(3, 0x3a6a2a, 1); vg.lineBetween(x - 34, baseY - 6, x + 34, baseY - 8);
+        vg.lineStyle(2, 0x4a8a2a, 1); vg.lineBetween(x - 14, baseY - 8, x - 14, baseY - 56); vg.lineBetween(x + 14, baseY - 8, x + 14, baseY - 36);
+        vg.fillStyle(0x4aa040, 1); vg.fillCircle(x - 28, baseY - 16, 8); vg.fillCircle(x + 30, baseY - 18, 9);
+        vg.fillStyle(0x3a8a30, 1); vg.fillRect(x - 28.5, baseY - 22, 1, 10); vg.fillRect(x + 29.5, baseY - 25, 1, 11);
+      }
+      this.stage.add(vg);
+      for (let i = 0; i < pairs; i++) {
+        const x = 40 + (STAGE_W - 80) * (i / Math.max(1, pairs - 1));
+        this.addTarget(x - 14, baseY - 64, 7, 0, 'male', { role: 'male' });
+        this.addTarget(x + 14, baseY - 44, 7, 0, 'female', { role: 'female' });
+      }
+      this.pairRing = scene.add.graphics();
+      this.stage.add(this.pairRing);
+      this.roundsNeeded = pairs;
+      this.setStatus(`${t('맺어 준 꽃')} 0 / ${pairs}`);
     } else {
       // tray — 왼쪽 작은 트레이(싹 6) → 오른쪽 넓은 트레이
       g.fillStyle(0x14181c, 1); g.fillRoundedRect(16, 60, 120, 150, 4);
@@ -276,6 +574,8 @@ export class FarmWorkPanel extends DraggablePanel {
 
   private onTarget(tg: Target): void {
     if (this.finished || tg.done) return;
+    // 마지막 표시에서 시간이 이미 다 됐으면 handFinished가 창을 닫는다(this.scene이 사라진다) — 씬을 먼저 잡아 둔다
+    const scene = this.scene;
     const kind = this.def.work;
     if (kind === 'place') {
       const next = this.targets.find((x) => !x.done);
@@ -283,6 +583,8 @@ export class FarmWorkPanel extends DraggablePanel {
     }
     if (kind === 'tie') { this.onTieClick(); return; }
     if (kind === 'hold') return;
+    if (kind === 'drag') { this.dragFrom = tg; return; }
+    if (kind === 'pair') { this.onPairClick(tg); return; }
     tg.done = true;
     this.hits++;
     for (const o of tg.obj) o.destroy();
@@ -296,31 +598,56 @@ export class FarmWorkPanel extends DraggablePanel {
       this.stage.add(g);
       this.setStatus(`${t('옮길 싹')} ${left}`);
     } else if (kind === 'place') {
-      const g = this.scene.add.graphics();
-      if (this.def.id === 'stake') { g.fillStyle(0x8a6038, 1); g.fillRect(tg.x - 2, tg.y - tg.r - 10, 4, tg.r * 2 + 10); g.fillStyle(0xe8d8a0, 1); g.fillRect(tg.x - 8, tg.y + 10, 14, 2); }
-      else { g.fillStyle(0x101010, 1); g.fillRect(tg.x - tg.r, tg.y - tg.r + 2, tg.r * 2, tg.r * 2 - 4); }
-      this.stage.add(g);
-      this.setStatus(left > 0 ? `${t('차례')} ${this.hits + 1} / ${this.targets.length}` : '다 세웠다');
+      this.stage.add(this.placedGraphic(tg));
+      this.setStatus(left > 0 ? `${t('차례')} ${this.hits + 1} / ${this.targets.length}` : '다 했다');
     } else if (kind === 'sprinkle') {
       const g = this.scene.add.graphics();
-      g.fillStyle(0xd8dce4, 1); for (let i = 0; i < 6; i++) g.fillRect(tg.x - 8 + (i * 5) % 16, tg.y - 4 + (i * 3) % 8, 2, 2);
+      g.fillStyle(this.def.id === 'acidify' ? 0x6a4a2c : 0xd8dce4, 1); for (let i = 0; i < 6; i++) g.fillRect(tg.x - 8 + (i * 5) % 16, tg.y - 4 + (i * 3) % 8, 2, 2);
       this.stage.add(g);
       this.setStatus(`${t('남은 자리')} ${left}`);
     } else {
       this.setStatus(`${t('남은 것')} ${left}`);
     }
     if (left === 0) this.handFinished();
-    restoreHandCursor(this.scene);
+    restoreHandCursor(scene);
   }
 
-  /** 표시 밖을 눌렀다 — targets · place · sprinkle · tray는 실수 · hold는 누르기 시작 · tie는 빗나감 */
+  /** 245차 — 놓은 것의 그림(지주 · 멀칭 · 방충망 · 새 그물 · 부직포 · 짚 · 유인망 · 발자국 · 덮개) */
+  private placedGraphic(tg: Target): Phaser.GameObjects.Graphics {
+    const g = this.scene.add.graphics();
+    const id = this.def.id;
+    if (id === 'stake' || id === 'trellis') {
+      g.fillStyle(0x8a6038, 1); g.fillRect(tg.x - 2, tg.y - tg.r - 10, 4, tg.r * 2 + 10); g.fillStyle(0xe8d8a0, 1); g.fillRect(tg.x - 8, tg.y + 10, 14, 2);
+      if (id === 'trellis') { g.lineStyle(1, 0x4aa04a, 0.9); for (let k = 0; k < 6; k++) g.lineBetween(tg.x - 30, tg.y - tg.r + k * 18, tg.x + 30, tg.y - tg.r + k * 18); }
+    } else if (id === 'tread') {
+      g.fillStyle(0x2a1a10, 0.8); g.fillEllipse(tg.x, tg.y, tg.r, tg.r * 1.8);
+    } else if (id === 'cover_dark') {
+      g.fillStyle(0x15151a, 0.95); g.fillRect(tg.x - 20, tg.y - 6, 40, 14);
+    } else if (id === 'uncover_light') {
+      g.fillStyle(0xfff4c0, 0.35); g.fillCircle(tg.x, tg.y - 10, 12);
+    } else if (id === 'bird_net' && this.shape === 'corn') {
+      g.lineStyle(1, 0x202024, 1); g.strokeEllipse(tg.x, tg.y, 14, 28); g.lineBetween(tg.x - 7, tg.y, tg.x + 7, tg.y);
+    } else {
+      const fill: Record<string, [number, number]> = {
+        ridge_mulch: [0x101010, 1], net_cover: [0xe8f0f4, 0.55], bird_net: [0x202024, 0.6], frost_cover: [0xf4f6f8, 0.75], straw_mulch: [0xe0c060, 0.9],
+      };
+      const [c, a] = fill[id] ?? [0x101010, 1];
+      g.fillStyle(c, a); g.fillRect(tg.x - tg.r, tg.y - tg.r + 2, tg.r * 2, tg.r * 2 - 4);
+      if (id === 'net_cover' || id === 'bird_net' || id === 'frost_cover') { g.lineStyle(1, 0x9aa8b4, 0.9); g.strokeEllipse(tg.x, tg.y - tg.r, tg.r * 2, tg.r * 2); }
+      if (id === 'straw_mulch') { g.lineStyle(1, 0xb08a30, 1); for (let k = -2; k <= 2; k++) g.lineBetween(tg.x + k * 6 - 4, tg.y + 4, tg.x + k * 6 + 4, tg.y - 4); }
+    }
+    return g;
+  }
+
+  /** 표시 밖을 눌렀다 — targets · place · sprinkle · tray · pair는 실수 · hold는 누르기 시작 · tie는 빗나감 · drag는 무시 */
   private onStageMiss(): void {
     if (this.finished || this.handDone) return;
     const kind = this.def.work;
     if (kind === 'hold') { this.holding = true; return; }
     if (kind === 'tie') { this.onTieClick(); return; }
+    if (kind === 'drag') return;
     this.wrong++;
-    this.setStatus(kind === 'targets' ? '줄기를 건드렸다 — 표시된 것만 딴다' : '빗나갔다 — 표시된 자리에', false);
+    this.setStatus(kind === 'targets' ? '줄기를 건드렸다 — 표시된 것만 딴다' : kind === 'pair' ? '꽃을 눌러야 한다' : '빗나갔다 — 표시된 자리에', false);
   }
 
   private onStageRelease(): void {
@@ -348,12 +675,12 @@ export class FarmWorkPanel extends DraggablePanel {
       const g = this.scene.add.graphics();
       const gap = (STAGE_W - 40) / Math.max(1, Math.min(4, this.opts.plants));
       const x = 20 + gap * (this.round - 0.5);
-      g.fillStyle(0xe8d8a0, 1); g.fillRect(x - 6, band.y - 1, 18, 2);
+      g.fillStyle(0xe8d8a0, 1); g.fillRect(x - (this.def.id === 'tie_head' ? 14 : 6), band.y - 1, this.def.id === 'tie_head' ? 28 : 18, 2);
       this.stage.add(g);
       if (this.round >= this.roundsNeeded) { this.setStatus('다 묶었다'); this.handFinished(); }
       else {
         this.setStatus(`${t('묶은 포기')} ${this.round} / ${this.roundsNeeded}`);
-        band.x = x + gap + 10;
+        band.x = x + gap + (this.def.id === 'tie_head' ? 0 : 10);
         for (const o of band.obj) o.destroy();
         band.obj = [];
         const ng = this.scene.add.graphics();
@@ -366,6 +693,72 @@ export class FarmWorkPanel extends DraggablePanel {
       this.wrong++;
       this.setStatus('띠를 벗어났다 — 표시가 띠 안에 들어올 때', false);
     }
+  }
+
+  /** 245차 — 인공수분: 수꽃을 고른 뒤 암꽃 */
+  private onPairClick(tg: Target): void {
+    if (this.finished || this.handDone) return;
+    const scene = this.scene;
+    if (tg.role === 'male') {
+      this.pairSel = tg;
+      this.pairRing?.clear();
+      this.pairRing?.lineStyle(2, 0x4af2a1, 1).strokeCircle(tg.x, tg.y, tg.r + 4);
+      this.setStatus('수꽃을 땄다 — 암꽃 암술에 묻힌다');
+      return;
+    }
+    if (!this.pairSel) { this.wrong++; this.setStatus('먼저 수꽃을 딴다', false); return; }
+    // 짝을 맺었다 — 수꽃은 쓰고 암꽃에 꽃가루 점
+    this.pairSel.done = true;
+    for (const o of this.pairSel.obj) o.destroy();
+    this.pairSel = undefined;
+    this.pairRing?.clear();
+    tg.done = true;
+    const g = this.scene.add.graphics();
+    g.fillStyle(0xf8e070, 1); for (let i = 0; i < 5; i++) g.fillRect(tg.x - 3 + (i * 3) % 7, tg.y - 3 + (i * 2) % 6, 2, 2);
+    this.stage.add(g);
+    this.hits++;
+    this.round++;
+    this.setStatus(`${t('맺어 준 꽃')} ${this.round} / ${this.roundsNeeded}`);
+    if (this.round >= this.roundsNeeded) this.handFinished();
+    restoreHandCursor(scene);
+  }
+
+  /** 245차 — 북주기 끌기: 화면 좌표 → 무대 좌표 */
+  private toStage(p: Phaser.Input.Pointer): P {
+    return { x: p.x - this.x - STAGE_X, y: p.y - this.y - this.stageTop };
+  }
+
+  private onDragMove(p: Phaser.Input.Pointer): void {
+    if (!this.dragFrom || this.finished) return;
+    const s = this.toStage(p);
+    const g = this.dragLine!;
+    g.clear();
+    g.lineStyle(4, 0x6a4a2c, 0.9); g.lineBetween(this.dragFrom.x, this.dragFrom.y, s.x, s.y);
+  }
+
+  private onDragUp(p: Phaser.Input.Pointer): void {
+    const tg = this.dragFrom;
+    if (!tg || this.finished) return;
+    const scene = this.scene;
+    this.dragFrom = undefined;
+    this.dragLine?.clear();
+    const s = this.toStage(p);
+    const d = tg.dest!;
+    if (Math.abs(s.x - d.x) <= d.r + 6 && Math.abs(s.y - d.y) <= 14) {
+      tg.done = true;
+      this.hits++;
+      for (const o of tg.obj) o.destroy();
+      const g = this.scene.add.graphics();
+      g.fillStyle(0x6a4a2c, 1); g.fillTriangle(d.x - d.r - 4, d.y + 8, d.x + d.r + 4, d.y + 8, d.x, d.y - 6);
+      this.stage.add(g);
+      const left = this.targets.filter((x) => !x.done).length;
+      this.setStatus(`${t('북준 포기')} ${this.hits} / ${this.targets.length}`);
+      if (left === 0) this.handFinished();
+    } else {
+      this.wrong++;
+      this.setStatus('밑동까지 끌어 올린다', false);
+    }
+    restoreHandCursor(scene);
   }
 
   private markerY(): number {
@@ -409,12 +802,12 @@ export class FarmWorkPanel extends DraggablePanel {
       this.drawGauge();
       if (this.gauge >= 1) this.onStageRelease();
     }
-    if (this.handDone && this.elapsed >= this.def.seconds) this.tryFinish();
+    if (this.handDone && this.elapsed >= this.total) this.tryFinish();
     else if (this.handDone) this.setStatus('손은 끝났다 — 마무리하는 중');
   }
 
   private tryFinish(): void {
-    if (this.finished || !this.handDone || this.elapsed < this.def.seconds) return;
+    if (this.finished || !this.handDone || this.elapsed < this.total) return;
     this.finished = true;
     this.opts.onDone(this.score());
     this.opts.onClose();
@@ -429,7 +822,7 @@ export class FarmWorkPanel extends DraggablePanel {
 
   // ── dev 하네스 ──
   /** 하네스: 걸리는 시간을 다 지난 것으로 */
-  devSkipTime(): void { this.startMs = performance.now() - (this.def.seconds + 1) * 1000; }
+  devSkipTime(): void { this.startMs = performance.now() - (this.total + 1) * 1000; }
 
   /** 하네스: 손놀림과 시간을 건너뛰고 점수로 끝낸다 */
   devFinish(score = 1): void {
@@ -437,6 +830,16 @@ export class FarmWorkPanel extends DraggablePanel {
     this.finished = true;
     this.opts.onDone(score);
     this.opts.onClose();
+  }
+
+  /** 하네스: 표시(무대 좌표 · 역할 · 끌어 놓을 곳)를 본다 */
+  devTargets(): { x: number; y: number; done: boolean; role?: string; dest?: { x: number; y: number } }[] {
+    return this.targets.map((tg) => ({ x: tg.x, y: tg.y, done: tg.done, role: tg.role, dest: tg.dest ? { x: tg.dest.x, y: tg.dest.y } : undefined }));
+  }
+
+  /** 하네스: 무대 좌표 → 화면 좌표 */
+  devStageToScreen(x: number, y: number): { x: number; y: number } {
+    return { x: this.x + STAGE_X + x, y: this.y + this.stageTop + y };
   }
 
   // ── 단추 ──
@@ -460,16 +863,22 @@ export class FarmWorkPanel extends DraggablePanel {
       anchor: () => this.panelBounds(),
       alive: () => this.active,
       steps: [
-        { text: '텃밭 손일은 그 일을 흉내 내는 짧은 손놀림이다. 왼쪽 포기 그림에서 표시된 것을 누르거나, 누르고 있다가 띠 안에서 뗀다.', target: () => this.localRect(STAGE_X, this.contentTop + 8, STAGE_W, STAGE_H) },
+        { text: '텃밭 손일은 그 일을 흉내 내는 짧은 손놀림이다. 왼쪽 그림에서 표시된 것을 누르거나, 누르고 있다가 띠 안에서 뗀다.', target: () => this.localRect(STAGE_X, this.contentTop + 8, STAGE_W, STAGE_H) },
         { text: '손이 끝나도 걸리는 시간이 다 차야 끝난다 — 일에는 시간이 든다. 서툴면(실수가 많으면) 효과가 절반이다.', target: () => this.localRect(INFO_X, this.timeBarY - 20, INFO_W, 36) },
       ],
     };
   }
 }
 
-/** 텃밭 창이 작업 장면을 열 때 쓰는 아이콘(작업별 자재 아이콘 — 없으면 작물 그림) */
-export function careTaskIcon(scene: Phaser.Scene, st: CareStatus, x: number, y: number, size = 16): Phaser.GameObjects.Image | null {
-  const need = st.def.needs?.[0]?.itemId;
-  const key = need ? `it_${need.replace(/^farm_/, '')}` : st.def.id === 'cull_diseased' ? 'dz_anthracnose' : st.def.id === 'prick_out' ? 'it_tray' : 'farm_young';
+/** 텃밭 창이 작업 장면을 열 때 쓰는 아이콘(작업별 자재 · 도구 아이콘 — 벌레 잡기 · 걷어 내기는 그 병해충 표식 · 없으면 싹) */
+export function careTaskIcon(scene: Phaser.Scene, st: CareStatus, x: number, y: number, size = 16, crop?: CropDef): Phaser.GameObjects.Image | null {
+  const need = st.def.needs?.[0]?.itemId ?? st.def.tools?.[0];
+  let key = 'farm_young';
+  if (need) key = `it_${need.replace(/^farm_/, '')}`;
+  else if (st.def.id === 'cull_diseased' || st.def.id === 'pick_pests') {
+    const ds = crop ? carePlanOf(crop).diseases : [];
+    const d = st.def.onlyFor?.[0] ?? ds.find((x) => (st.def.id === 'pick_pests') === (DISEASE_DEFS[x].kind !== 'disease')) ?? 'anthracnose';
+    key = `dz_${d}`;
+  } else if (st.def.id === 'prick_out') key = 'it_tray';
   return addPixelIcon(scene, key, x, y, size);
 }

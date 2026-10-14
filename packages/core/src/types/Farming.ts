@@ -173,8 +173,55 @@ export type CropCare =
  * 238차 — 병해(사용자 조사 · 농진청 농사로): 역병(줄기 밑이 썩고 포기가 시든다 — 장마 · 다습) ·
  * 탄저병(열매가 썩는다 — 6~9월 고온다습 · 빗물로 번진다 · 수량 손실 15~60%) ·
  * 바이러스병(잎 모자이크 · 위축 — 총채벌레 · 진딧물이 옮긴다). 고추 · 토마토 · 가지 · 오이 같은 열매 작물에 든다.
+ * 245차 — 작물마다 실제로 문제 되는 병 · 벌레 · 새를 더했다(사용자 「고추처럼 각 농작물에 대한 난이도를 추가」).
+ *   병은 걷어 내기 · 살균제, 벌레는 벌레 잡기 · 방충망 · 살충제, 새는 새 그물로 막는다. 수치는 `DISEASE_DEFS`.
  */
-export type CropDisease = 'blight' | 'anthracnose' | 'virus';
+export type CropDisease =
+  | 'blight' | 'anthracnose' | 'virus'
+  | 'powdery_mildew'   // 흰가루병 — 박과(오이 · 호박 · 참외 · 수박 · 박 · 여주) · 딸기
+  | 'downy_mildew'     // 노균병 — 오이 · 참외 · 양파 · 시금치
+  | 'soft_rot'         // 무름병 — 고추냉이
+  | 'gray_mold'        // 잿빛곰팡이병 — 딸기
+  | 'rust'             // 녹병 — 마늘 · 대파 · 부추
+  | 'root_rot'         // 뿌리썩음병 — 생강 · 울금
+  | 'green_mold'       // 푸른곰팡이병 — 버섯 배지(집 안에서도 든다)
+  | 'caterpillar'      // 애벌레 — 배추흰나비 · 배추좀나방 · 호랑나비
+  | 'flea_beetle'      // 벼룩잎벌레 — 배추 · 무 · 열무 · 얼갈이 · 순무 · 루꼴라
+  | 'aphid'            // 진딧물 — 상추 · 쑥갓 · 가지 · 오크라 · 동부 · 초피
+  | 'stink_bug'        // 노린재 — 콩
+  | 'corn_borer'       // 조명나방 — 옥수수
+  | 'birds';           // 새 — 블루베리 · 옥수수(익을 무렵)
+
+/** 245차 — 병 · 벌레 · 새 하나의 수치(드는 철 · 확률 · 번짐 · 피해 · 막는 손) */
+export interface DiseaseDef {
+  /** 병 · 벌레 · 새 — 알림 문장 · 아이콘 · 위키 묶음이 달라진다 */
+  kind: 'disease' | 'pest' | 'bird';
+  /** 드는 철(달) */
+  season: readonly number[];
+  /** 하루에 들 확률 — 철 안 · 철 밖 */
+  daily: { on: number; off: number };
+  /** 든 뒤 하루에 번지는 양(심한 정도 0..1) */
+  spread: number;
+  /** 젖은 날(비 뒤 하루) — 드는 확률 배수(번짐은 그 80%만큼). 1 = 상관없음 · 1 미만 = 비에 씻긴다 */
+  wet: number;
+  /** 거둘 때 수량 손실(심한 정도 1일 때) */
+  yieldLoss: number;
+  /** 날마다 포기(섬)를 죽인다 — 이 값 × 심한 정도(바닥 0.25) */
+  standLoss?: number;
+  /** 하루 품질 손실 × 심한 정도 */
+  qualityLoss: number;
+  /** 비닐 터널 안 배수(비를 막고 습하다) */
+  greenhouse: number;
+  /** 걷어 내기 · 벌레 잡기 한 번에 줄이는 심한 정도 · 뽑아 내는 포기(섬) */
+  cull: number;
+  cullStand: number;
+  /** 집 안 선반에서도 든다(버섯 배지) */
+  indoor?: boolean;
+  /** 열매 · 이삭이 익을 무렵(자람 75% 이상 · 수확기)에만 온다(새) */
+  ripeOnly?: boolean;
+  /** 흙이 흠뻑 젖어 있으면(수분 0.85 넘게) 드는 확률 배수 */
+  soggy?: number;
+}
 
 /** 칸 하나에 든 병 — 심한 정도 0..1(1 = 다 번졌다) */
 export interface CropDiseaseState {
@@ -201,7 +248,32 @@ export type CareTaskId =
   | 'spray_calcium'      // 칼슘액비 — 탄저 예방 보조 · 열매 품질
   | 'spray_insecticide'  // 살충제 — 총채벌레 · 진딧물(바이러스 매개충)
   | 'cull_diseased'      // 병든 열매 · 포기 걷어 내기
-  | 'stevia_feed';       // 241차 — 스테비아 발효액 주기(스테비아 토마토 — 거르면 단맛이 오르지 않는다)
+  | 'stevia_feed'        // 241차 — 스테비아 발효액 주기(스테비아 토마토 — 거르면 단맛이 오르지 않는다)
+  // ── 245차 — 작물별 일(사용자 「고추처럼 각 농작물에 대한 난이도를 추가」) ──
+  | 'thin'               // 솎아 주기(씨앗 칸 — 촘촘한 싹을 솎는다 · 감자는 싹 정리)
+  | 'weed'               // 김매기(호미)
+  | 'hill_up'            // 북주기(호미 — 감자 · 대파 · 땅콩 · 생강 · 토란 …)
+  | 'net_cover'          // 방충망 씌우기(배추과 — 애벌레 · 벼룩잎벌레)
+  | 'bird_net'           // 새 그물 치기(블루베리 · 옥수수 이삭 · 콩 · 땅콩 싹)
+  | 'frost_cover'        // 부직포 덮기(겨울나기)
+  | 'straw_mulch'        // 짚 덮기(마늘 · 양파 겨울 · 딸기 · 생강 · 산채)
+  | 'pinch_tip'          // 순지르기(깻잎 · 콩 · 바질 · 박과 어미덩굴)
+  | 'remove_flower'      // 꽃대 따기(바질 · 부추 · 양파 추대 · 당귀 · 고추냉이)
+  | 'pollinate'          // 인공수분(애호박 · 수박 · 박)
+  | 'thin_fruit'         // 열매 솎기(수박 · 참외 · 옥수수 이삭)
+  | 'trellis'            // 유인망 치기(오이 · 여주 · 박)
+  | 'prune'              // 가지치기(전정가위 — 블루베리 · 두릅 · 엄나무 · 초피)
+  | 'acidify'            // 산도 맞추기(블루베리 — 피트모스)
+  | 'tread'              // 보리밟기
+  | 'tie_head'           // 배추 묶기
+  | 'remove_runner'      // 런너 따기(딸기)
+  | 'cover_dark'         // 검은 천 덮기(콩나물 · 숙주)
+  | 'uncover_light'      // 빛 쬐기(새싹채소)
+  | 'mist'               // 분무(버섯 — 습도)
+  | 'slit_bag'           // 배지 칼집 내기(버섯)
+  | 'water_flood'        // 물 대기(미나리 · 토란)
+  | 'pick_pests'         // 벌레 잡기(애벌레 · 진딧물 · 노린재 — 들었을 때만)
+  | 'strip_leaves';      // 아랫잎 따기(오크라)
 
 /** 작업 장면 모양 — 클라이언트 미니게임이 이 값으로 그림 · 조작을 고른다 */
 export type CareWorkKind =
@@ -210,33 +282,53 @@ export type CareWorkKind =
   | 'tie'        // 지시된 높이에 맞춰 묶는다(흔들리는 표시가 띠 안에 올 때 누른다)
   | 'hold'       // 누르고 있어 게이지를 띠 안에 맞춘다(약 치기)
   | 'sprinkle'   // 포기 사이 표시된 자리에 뿌린다(웃거름)
-  | 'tray';      // 트레이의 싹을 넓은 트레이로 옮긴다(가식)
+  | 'tray'       // 트레이의 싹을 넓은 트레이로 옮긴다(가식)
+  | 'drag'       // 245차 — 고랑의 표시에서 포기 밑동까지 끌어 올린다(북주기)
+  | 'pair';      // 245차 — 수꽃을 누른 뒤 암꽃을 누른다(인공수분)
 
 export interface CareTaskDef {
   id: CareTaskId;
-  /** 열리는 때 — 심은 날부터 [부터, 까지](일). 육묘 칸은 파종 기준 · 밭은 정식 기준 */
+  /** 열리는 때 — 심은 날부터 [부터, 까지](일). 육묘 칸은 파종 기준 · 밭은 정식 기준. 245차 — 여러해살이는 올해 다시 올라온 날 기준 */
   dayWindow: [number, number];
   /** 반복 — 한 번 한 뒤 며칠마다 · 몇 번 더(추비 · 방제) */
   repeat?: { everyDays: number; times: number };
   /** 칸마다 쓰는 물건 */
   needs?: { itemId: string; qty: number }[];
+  /** 245차 — 가방에 있어야 하는 도구(닳지 않는다 — 호미 · 전정가위) */
+  tools?: string[];
   work: CareWorkKind;
   /** 걸리는 시간(초 — 실제 시간) · 품(피로) */
   seconds: number;
   fatigue: number;
   /**
    * 한 뒤 효과 — 수확량 배수(누적) · 품질 · 병 보호(며칠 동안 그 병이 들 확률 × mult — 살균제 0.25 · 아인산 0.15 · 살충제 0.2 · 칼슘 0.7) ·
-   * 한 번 해 두면 작기 내내 병이 덜 드는 배수(두둑 · 멀칭)
+   * 한 번 해 두면 작기 내내 병이 덜 드는 배수(두둑 · 멀칭 · 방충망 · 새 그물) · 245차 `water` = 흙(배지)을 적신다(분무 · 물 대기)
    */
   effect?: {
     yieldMult?: number; quality?: number;
     protect?: { disease: CropDisease; days: number; mult: number }[];
     diseaseMult?: Partial<Record<CropDisease, number>>;
+    water?: boolean;
   };
   /** 안 하고 창이 닫히면 — 수확량 · 품질 · 병 잘 듦 · 쓰러짐 위험 */
   missed?: { yieldMult?: number; quality?: number; diseaseMult?: Partial<Record<CropDisease, number>>; lodging?: boolean };
-  /** 보이는 조건 — 병이 들었을 때만(걷어 내기) · 위험한 철(6~9월)에만(방제) */
+  /** 보이는 조건 — 병이 들었을 때만(걷어 내기 · 벌레 잡기) · 그 병이 드는 철에만(방제) */
   only?: 'diseased' | 'riskSeason';
+  /** 245차 — `only: 'diseased'`일 때 이 병 · 벌레가 들었을 때만(없으면 아무 병이나). 하면 그것의 심한 정도가 준다 */
+  onlyFor?: CropDisease[];
+  /** 245차 — 이렇게 심은 칸에만(솎아 주기 = 씨앗) */
+  startKinds?: CropStartKind[];
+  /**
+   * 245차 — 차례를 심은 날이 아니라 **달력**으로: 해마다 이 달들(이어진 한 구간 · 12→1 넘어가도 된다)에 한 번.
+   * 겨울 덮기 · 이른 봄 웃거름 · 가지치기 · 보리밟기처럼 철에 묶인 일. 구간이 끝날 때까지 안 하면 놓침(벌).
+   */
+  months?: number[];
+  /** 245차 — 자람(0..1)이 이 구간일 때 한 번(배추 묶기 · 열매 솎기 · 이삭 망) — 씨앗 · 모종 어느 쪽이든 같은 때 */
+  growth?: [number, number];
+  /** 245차 — 거둘 때마다 한 번(벤 뒤 웃거름) — 다시 자람이 60%를 넘기 전까지 */
+  afterPick?: boolean;
+  /** 245차 — 이 일을 해 두었으면 할 필요가 없다(검은 비닐을 덮은 고구마 밭은 김매기가 없다) */
+  waivedBy?: CareTaskId;
   /** 방법 한 줄(작업 장면 머리말 · 상세) */
   howKo: string;
   howEn: string;
@@ -362,8 +454,13 @@ export interface FarmCellState {
   /** 여러해살이: 한 해를 넘긴 뿌리(다음 철은 절반 기간에 다시 올라온다) */
   established?: boolean;
   // ── 238차 — 관리 작업 · 병해 ──
-  /** 한 작업 — 작업별 한 횟수 · 마지막 시각 · 창이 닫혀 놓친 횟수(차례는 done + skipped) */
-  care?: Partial<Record<CareTaskId, { done: number; lastMs: number; skipped: number }>>;
+  /**
+   * 한 작업 — 작업별 한 횟수 · 마지막 시각 · 창이 닫혀 놓친 횟수(차례는 done + skipped).
+   * 245차 `win` = 달력 일(`months`)의 마지막으로 매듭지은 구간 번호(한 · 놓침 어느 쪽이든 — 한 구간에 한 번만 센다)
+   */
+  care?: Partial<Record<CareTaskId, { done: number; lastMs: number; skipped: number; win?: number }>>;
+  /** 245차 — 여러해살이가 올해 다시 올라온 시각(ms) — 날 수로 세는 일의 기준(없으면 심은 시각) */
+  cycleAt?: number;
   /** 든 병 */
   diseases?: Partial<Record<CropDisease, CropDiseaseState>>;
   /** 병 보호 — 약을 친 뒤 끝나는 시각(ms)과 그동안 걸릴 확률 배수 */

@@ -145,6 +145,14 @@ const { chromium } = resolvePlaywright();
 - 텃밭 지급은 `(await import('/src/data/CropItems.ts')).cropItemTemplate(id)` → `__INV.addItem(tpl, n)` · 작물별 거둔 횟수는 `__FARM.harvestsOf('tomato')` ·
   상세 데이터는 `buildItemDetail({...tpl, slot: -1, qty: 1})`.
 
+- **텃밭 작업 장면**(245): `FarmWorkPanel.devTargets()`(무대 좌표 · `role` 수꽃/암꽃 · 끌기 `dest`) → `devStageToScreen(x, y)`로 화면 좌표 → 실마우스.
+  손이 끝난 뒤 `devSkipTime()`을 부르고 창이 닫힐 때까지 기다린다(시간이 다 차야 `onDone`). 텃밭 창 단추는 `buttonRect('care_<id>')`.
+  칸 상태는 `__FARM.plot(id).cells[i]`(심기 = core `plantCell`을 과거 시각으로 → `__FARM.advanceAll(now)`). 묶음 단추 라벨은 「일 (n칸)」.
+- ⚠ **`popupStack` 항목의 `close()`는 아무것도 돌려주지 않는다**(245) — 하네스에서 `top.close?.() ?? stack.pop().panel.destroy()` 꼴로 쓰면
+  `??`가 늘 오른쪽까지 돌아 창을 하나 더 닫는다. 닫기는 `s.popupStack[s.popupStack.length - 1].close()` 한 줄로.
+- **영어 남은 한글 검사는 Text의 `__i18nSrc`로 원문을 함께 뽑는다**(245) — 번역 키는 원문과 글자 하나까지 같아야 해서, 원문을 그대로 받아
+  `en_*.ts` 키와 앞 14자로 견주면 「키 없음」과 「원문만 바뀐 옛 키」가 갈린다(도움말 전 항목은 `openHelpLibrary(topicId)`로 돈다).
+
 ## 검증 종료 기준
 
 1. 시나리오별 수치 어서션(depth·좌표·아이템 수량 등) 콘솔 출력 → PASS 판정.

@@ -1248,6 +1248,30 @@ export const FARM_SUPPLIES: FarmSupplyDef[] = [
   // ── 241차 — 스테비아 농법(스테비아 토마토) · 1L 1.5만 → 1칸 한 번 분 1,200원
   { itemId: 'farm_stevia', nameKo: '스테비아 발효액 (1칸 한 번 분)', nameEn: 'Stevia ferment (one application)', price: 1200, kind: 'consumable', shop: 'nursery', icon: 'it_stevia',
     descKo: '스테비아 잎을 삭힌 액. 포기 둘레 흙에 붓고 잎에 뿌리면 토마토가 달아진다 — 스테비아 토마토 모종에만 쓴다.', descEn: 'Fermented stevia leaf. Poured round the plant and misted on the leaves it sweetens the fruit — only for stevia tomato plants.' },
+  // ── 245차 — 작물별 일의 자재(사용자 「고추처럼 각 농작물에 대한 난이도를 추가」). 값 = 소매 시세를 칸 한 번 분으로 나눈 게임 값
+  //   (한랭사 1.8×10m + 활대 1.5만 → 1칸 1,200 · 조류 방지망 2×10m 1만 → 800 · 부직포 1.5×10m 8천 → 600 · 볏짚 한 단 2천 → 500 ·
+  //    오이망 2×10m 5천 → 600 · 피트모스 50L 2만 → 1,500 · 전정가위 1~2만)
+  { itemId: 'farm_insect_net', nameKo: '방충망 (한랭사 · 1칸 분)', nameEn: 'Insect mesh (one cell)', price: 1200, kind: 'consumable', shop: 'nursery', icon: 'it_insect_net',
+    descKo: '활대에 씌우는 고운 망. 배추 · 무 · 열무 · 순무 · 루꼴라를 씨 뿌린 날 덮으면 나비 · 벼룩잎벌레가 들어오지 못한다.',
+    descEn: 'Fine mesh drawn over hoops. Laid over cabbage, radish, young radish, turnip or rocket on sowing day, it keeps butterflies and flea beetles out.' },
+  { itemId: 'farm_bird_net', nameKo: '새 그물 (1칸 분)', nameEn: 'Bird netting (one cell)', price: 800, kind: 'consumable', shop: 'nursery', icon: 'it_bird_net',
+    descKo: '눈이 굵은 검은 그물. 익어 가는 블루베리 · 옥수수 이삭과 막 뿌린 콩 · 땅콩을 새에게서 지킨다.',
+    descEn: 'Wide black netting. Guards ripening blueberries and corn ears — and freshly sown beans and peanuts — from birds.' },
+  { itemId: 'farm_fleece', nameKo: '부직포 (1칸 분)', nameEn: 'Frost fleece (one cell)', price: 600, kind: 'consumable', shop: 'nursery', icon: 'it_fleece',
+    descKo: '숨을 쉬는 흰 덮개. 겨울을 나는 시금치 · 딸기 · 양하를 덮으면 잎과 뿌리줄기가 얼지 않는다.',
+    descEn: 'A breathable white cover. Over overwintering spinach, strawberries or myoga it keeps leaves and rhizomes from freezing.' },
+  { itemId: 'farm_straw', nameKo: '볏짚 (1칸 분)', nameEn: 'Rice straw (one cell)', price: 500, kind: 'consumable', shop: 'nursery', icon: 'it_straw',
+    descKo: '흙을 덮는 볏짚. 마늘 · 양파의 겨울 이불, 딸기 열매 받침, 생강 · 산나물의 마름 막기로 쓴다.',
+    descEn: 'Straw for covering soil. A winter blanket for garlic and onions, a bed under strawberries, and a moisture keeper for ginger and wild greens.' },
+  { itemId: 'farm_trellis_net', nameKo: '오이망 (1칸 분)', nameEn: 'Trellis net (one cell)', price: 600, kind: 'consumable', shop: 'nursery', icon: 'it_trellis_net',
+    descKo: '지주 사이에 치는 유인망. 오이 · 여주 · 박 덩굴이 감고 올라간다. 지주대와 함께 쓴다.',
+    descEn: 'A climbing net strung between stakes. Cucumber, bitter melon and gourd vines wind up it. Used with stakes.' },
+  { itemId: 'farm_peat', nameKo: '피트모스 (1칸 한 번 분)', nameEn: 'Peat moss (one application)', price: 1500, kind: 'consumable', shop: 'nursery', icon: 'it_peat',
+    descKo: '산성 이끼 흙. 봄마다 블루베리 포기 둘레에 섞어 흙을 산성으로 맞춘다.',
+    descEn: 'Acidic moss compost. Worked round blueberry bushes each spring to keep the soil acid.' },
+  { itemId: 'farm_shears', nameKo: '전정가위', nameEn: 'Pruning shears', price: 12000, kind: 'tool', shop: 'nursery', icon: 'it_shears',
+    descKo: '가지를 자르는 가위. 블루베리 · 두릅 · 엄나무 · 초피의 가지치기에 쓴다. 닳지 않는다.',
+    descEn: 'Shears for cutting branches. Used to prune blueberry, fatsia (dureup), castor aralia and Korean pepper. They don’t wear out.' },
 ];
 
 const SUPPLY_BY_ID = new Map(FARM_SUPPLIES.map((s) => [s.itemId, s]));

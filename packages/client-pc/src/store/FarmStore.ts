@@ -13,6 +13,9 @@
  * - 238차 — 관리 작업(`careRows` · `doCare`): 작업 장면 점수를 받아 core `doCare`를 부르고 자재를 가방에서 뺀 뒤 품(피로)을 쓴다.
  *   새로 열린 할 일 · 든 병 · 쓰러짐 · 서리는 `advanceAll`이 알아채 `takeNotices`로 필드 HUD에 올린다.
  *   육묘 트레이 칸의 거두기는 모종(`sdl_*`)을 등급 꼬리 없이 준다.
+ * - 245차 — 작물 84종 모두 일이 있다. 같은 구획의 같은 작물 · 같은 일은 **한 번에**(`careGroup` · `doCareGroup` — 자재는 칸마다,
+ *   시간 · 품은 칸이 늘수록 덜 늘어난다). 도구(호미 · 전정가위)는 가방에 있어야 하고 닳지 않는다. 알림은 구획 · 작물 · 일로 묶는다.
+ *   구세이브(`careV` < 245)는 로드할 때 지나간 차례를 벌 없이 넘긴다(`settleCareRounds` — 자라던 작물이 한꺼번에 깎이지 않게).
  */
 
 import {
@@ -20,6 +23,7 @@ import {
   cropStartOfItem, getCrop, getFarmSupply, harvestCell, interimHarvestCell, interimOpen, kstMonthOf, newFarmPlot,
   plantCell, produceItemId, supplyOfFacility, tillCell, waterCell, newFarmCell, gradeOf, harvestPreview,
   careStatusList, careDue, doCare as coreDoCare, inEstablishment, cellDiseases, CARE_TASK_KO, DISEASE_KO, DISEASE_CONTROL_KO, TRAY_ID, variantsOf,
+  planOfCell, settleCareRounds, diseaseOnsetKo, DISEASE_DEFS,
   type CropDef, type FarmEnv, type FarmFacility, type FarmHarvestResult, type FarmPlantCtx, type FarmPlotState, type LicenseType,
   type CareStatus, type CareTaskId, type CropDisease,
 } from '@tra/core';
@@ -38,6 +42,8 @@ export const WATERING_CAN_ID = 'inv_watering_can';
 
 export interface FarmSaveState {
   v: 1;
+  /** 245차 — 관리 표 판(245 = 작물 84종 표). 없거나 작으면 로드 때 지난 차례를 벌 없이 넘긴다 */
+  careV?: number;
   plots: Record<string, FarmPlotState>;
   /** 236차 — 텃밭에서 거둔 횟수(본 수확 + 중간 수확). 농지 이용권 요건 — 구세이브는 0 */
   harvests?: number;
@@ -54,10 +60,31 @@ export interface FarmActionResult {
 
 const fail = (message: string): FarmActionResult => ({ ok: false, message });
 
-/** 238차 — 텃밭 창의 할 일 한 줄: 상태 + 모자란 자재 */
+/** 238차 — 텃밭 창의 할 일 한 줄: 상태 + 모자란 자재(245차 — 도구도) */
 export interface FarmCareRow {
   st: CareStatus;
-  missing: { itemId: string; name: string; need: number; have: number }[];
+  missing: { itemId: string; name: string; need: number; have: number; tool?: boolean }[];
+}
+
+/** 245차 — 관리 표 판 */
+const CARE_V = 245;
+/** 245차 — 묶음 작업: 칸이 하나 늘 때마다 걸리는 시간 · 품이 이만큼 는다(혼자 12칸을 해도 12배가 아니다) */
+export const CARE_GROUP_STEP = { seconds: 0.45, fatigue: 0.6 };
+/** 245차 — 묶음 작업에 걸리는 시간(초) */
+export function careGroupSeconds(base: number, cells: number): number {
+  return Math.round(base * Math.min(4, 1 + CARE_GROUP_STEP.seconds * Math.max(0, cells - 1)));
+}
+
+/** 받침이 있으면 앞 조사, 없으면 뒤 조사(을/를 · 이/가) */
+function josa(word: string, withB: string, withoutB: string): string {
+  const c = word.charCodeAt(word.length - 1);
+  const b = c >= 0xac00 && c <= 0xd7a3 && (c - 0xac00) % 28 !== 0;
+  return `${word}${b ? withB : withoutB}`;
+}
+
+/** 자재 · 도구를 파는 곳 */
+function shopOfSupply(itemId: string): string {
+  return getFarmSupply(itemId)?.shop === 'nursery' ? '종묘사' : '생활용품점';
 }
 
 class FarmStoreImpl {
@@ -147,28 +174,41 @@ class FarmStoreImpl {
     this.scanNotices(nowMs);
   }
 
-  /** 238차 — 새로 열린 할 일 · 든 병 · 쓰러짐 · 서리를 한 번씩만 알림으로 */
+  /**
+   * 238차 — 새로 열린 할 일 · 든 병 · 쓰러짐 · 서리를 한 번씩만 알림으로.
+   * 245차 — 같은 구획 · 같은 작물 · 같은 일(같은 병)은 한 줄로 묶는다(「텃밭 2번 칸 외 5칸」).
+   */
   private scanNotices(nowMs: number): void {
     for (const [pid, p] of this.plots) {
+      const place = pid === INDOOR_PLOT ? '집 안 선반' : '텃밭';
+      const groups = new Map<string, { cells: number[]; line: (where: string) => string }>();
+      const add = (key: string, gkey: string, cell: number, line: (where: string) => string): void => {
+        if (this.noticed.has(key)) return;
+        this.noticed.add(key);
+        const g = groups.get(gkey);
+        if (g) g.cells.push(cell); else groups.set(gkey, { cells: [cell], line });
+      };
       p.cells.forEach((c, i) => {
         if (!c.cropId) return;
         const crop = getCrop(c.cropId);
         if (!crop) return;
-        const where = `${pid === INDOOR_PLOT ? '집 안 선반' : '텃밭'} ${i + 1}번 칸`;
-        const push = (key: string, line: string): void => {
-          if (this.noticed.has(key)) return;
-          this.noticed.add(key);
-          this.notices.push(line);
-        };
         for (const st of careDue(c, crop, nowMs)) {
-          push(`${pid}:${i}:${st.def.id}:${st.round}:${c.plantedAt ?? 0}`, `[텃밭] ${crop.nameKo} — ${CARE_TASK_KO[st.def.id]} 할 때 (${where})`);
+          add(`${pid}:${i}:${st.def.id}:${st.round}:${c.plantedAt ?? 0}`, `t:${crop.id}:${st.def.id}`, i,
+            (where) => `[텃밭] ${crop.nameKo} — ${CARE_TASK_KO[st.def.id]} 할 때 (${where})`);
         }
         for (const d of cellDiseases(c)) {
-          push(`${pid}:${i}:dz:${d.id}:${d.sinceMs}`, `[텃밭] ${crop.nameKo}에 ${DISEASE_KO[d.id]}이 생겼다 — ${DISEASE_CONTROL_KO[d.id]} (${where})`);
+          const line = DISEASE_DEFS[d.id].kind === 'bird'
+            ? (where: string) => `[텃밭] ${josa(crop.nameKo, '을', '를')} 새가 쪼아 먹기 시작했다 — ${DISEASE_CONTROL_KO[d.id]} (${where})`
+            : (where: string) => `[텃밭] ${crop.nameKo}에 ${diseaseOnsetKo(d.id)} — ${DISEASE_CONTROL_KO[d.id]} (${where})`;
+          add(`${pid}:${i}:dz:${d.id}:${d.sinceMs}`, `d:${crop.id}:${d.id}`, i, line);
         }
-        if (c.lodged) push(`${pid}:${i}:lodged:${c.plantedAt ?? 0}`, `[텃밭] ${crop.nameKo}가 비바람에 쓰러졌다 — 지주를 세웠어야 했다 (${where})`);
-        if (c.frostedAt) push(`${pid}:${i}:frost:${c.frostedAt}`, `[텃밭] 서리가 내렸다 — ${crop.nameKo} 남은 것을 사흘 안에 거둔다 (${where})`);
+        if (c.lodged) add(`${pid}:${i}:lodged:${c.plantedAt ?? 0}`, `l:${crop.id}`, i, (where) => `[텃밭] ${josa(crop.nameKo, '이', '가')} 비바람에 쓰러졌다 — 지주를 세웠어야 했다 (${where})`);
+        if (c.frostedAt) add(`${pid}:${i}:frost:${c.frostedAt}`, `f:${crop.id}`, i, (where) => `[텃밭] 서리가 내렸다 — ${crop.nameKo} 남은 것을 사흘 안에 거둔다 (${where})`);
       });
+      for (const g of groups.values()) {
+        const where = g.cells.length > 1 ? `${place} ${g.cells[0] + 1}번 칸 외 ${g.cells.length - 1}칸` : `${place} ${g.cells[0] + 1}번 칸`;
+        this.notices.push(g.line(where));
+      }
     }
   }
 
@@ -183,25 +223,61 @@ class FarmStoreImpl {
     const cell = this.plot(plotId).cells[idx];
     const crop = cell?.cropId ? getCrop(cell.cropId) : undefined;
     if (!cell || !crop) return [];
-    return careStatusList(cell, crop, Date.now()).map((st) => ({ st, missing: this.missingFor(st.def.needs) }));
+    return careStatusList(cell, crop, Date.now()).map((st) => ({ st, missing: this.missingFor(st.def.needs, st.def.tools) }));
   }
 
-  private missingFor(needs?: { itemId: string; qty: number }[]): FarmCareRow['missing'] {
+  private missingFor(needs?: { itemId: string; qty: number }[], tools?: string[]): FarmCareRow['missing'] {
     const out: FarmCareRow['missing'] = [];
     for (const n of needs ?? []) {
       const have = InventoryStore.find(n.itemId)?.qty ?? 0;
       if (have < n.qty) out.push({ itemId: n.itemId, name: cropItemTemplate(n.itemId)?.name ?? n.itemId, need: n.qty, have });
     }
+    // 245차 — 도구(호미 · 전정가위)는 가방에 하나 있으면 된다 · 닳지 않는다
+    for (const t of tools ?? []) {
+      if (!InventoryStore.find(t)) out.push({ itemId: t, name: cropItemTemplate(t)?.name ?? t, need: 1, have: 0, tool: true });
+    }
     return out;
   }
 
-  /** 238차 — 지금 이 작업을 할 수 있는가(할 때 · 자재) */
+  /** 245차 — 모자란 것 한 줄(「복합비료 2개(1개)가 있어야 한다 — 종묘사에서 판다」 · 도구는 「호미가 있어야 한다 — 생활용품점에서 판다」) */
+  missingLineKo(missing: FarmCareRow['missing']): string {
+    const shops = [...new Set(missing.map((m) => shopOfSupply(m.itemId)))];
+    const parts = missing.map((m) => (m.tool ? m.name : `${m.name} ${m.need}개(${m.have}개)`));
+    return `${josa(parts.join(' · '), '이', '가')} 있어야 한다 — ${shops.join(' · ')}에서 판다`;
+  }
+
+  /** 238차 — 지금 이 작업을 할 수 있는가(할 때 · 자재 · 245차 도구) */
   careCheck(plotId: string, idx: number, id: CareTaskId): { ok: boolean; reasonKo?: string; row?: FarmCareRow } {
     const row = this.careRows(plotId, idx).find((r) => r.st.def.id === id);
     if (!row) return { ok: false, reasonKo: '지금 할 일이 아니다' };
-    if (row.st.status !== 'due') return { ok: false, reasonKo: row.st.status === 'upcoming' ? `아직 때가 아니다 — ${row.st.daysLeft}일 뒤` : '이번 차례는 했다', row };
-    if (row.missing.length) return { ok: false, reasonKo: `${row.missing.map((m) => `${m.name} ${m.need}개(${m.have}개)`).join(' · ')}가 있어야 한다 — 종묘사에서 판다`, row };
+    if (row.st.status !== 'due') {
+      const why = row.st.status === 'upcoming' ? (row.st.daysLeft < 0 ? '아직 때가 아니다 — 거둔 뒤에 한다' : `아직 때가 아니다 — ${row.st.daysLeft}일 뒤`) : '이번 차례는 했다';
+      return { ok: false, reasonKo: why, row };
+    }
+    if (row.missing.length) return { ok: false, reasonKo: this.missingLineKo(row.missing), row };
     return { ok: true, row };
+  }
+
+  /**
+   * 245차 — 같은 구획에서 같은 작물 · 같은 일이 지금 「할 일」인 칸들(고른 칸이 맨 앞). 자재가 모자라면 되는 칸까지만.
+   * 육묘 트레이 칸은 육묘 칸끼리만 묶는다.
+   */
+  careGroup(plotId: string, idx: number, id: CareTaskId): number[] {
+    const p = this.plot(plotId);
+    const base = p.cells[idx];
+    const crop = base?.cropId ? getCrop(base.cropId) : undefined;
+    if (!base || !crop) return [idx];
+    const now = Date.now();
+    const order = [idx, ...p.cells.map((_, i) => i).filter((i) => i !== idx)];
+    const cells = order.filter((i) => {
+      const c = p.cells[i];
+      if (!c?.cropId || c.cropId !== base.cropId || !!c.nursery !== !!base.nursery) return false;
+      return careStatusList(c, crop, now).some((st) => st.def.id === id && st.status === 'due');
+    });
+    const def = planOfCell(base, crop).tasks.find((t) => t.id === id);
+    let k = cells.length;
+    for (const n of def?.needs ?? []) k = Math.min(k, Math.floor((InventoryStore.find(n.itemId)?.qty ?? 0) / Math.max(1, n.qty)));
+    return cells.length ? cells.slice(0, Math.max(1, k)) : [idx];
   }
 
   /**
@@ -209,19 +285,44 @@ class FarmStoreImpl {
    * 서툴면(점수 낮음) 효과가 절반이다 — 자재는 그대로 든다.
    */
   doCare(plotId: string, idx: number, id: CareTaskId, score = 1): FarmActionResult {
-    const chk = this.careCheck(plotId, idx, id);
+    return this.doCareGroup(plotId, [idx], id, score);
+  }
+
+  /**
+   * 245차 — 같은 일을 여러 칸에 한 번에(작업 장면 한 번 · 점수 하나). 자재는 칸마다 들고, 품은 칸이 늘수록 덜 는다.
+   * 첫 칸이 안 되면 아무것도 하지 않는다. 뒤 칸은 그사이 자재가 떨어지면 거기서 멈춘다.
+   */
+  doCareGroup(plotId: string, cells: number[], id: CareTaskId, score = 1): FarmActionResult {
+    const first = cells[0] ?? 0;
+    const chk = this.careCheck(plotId, first, id);
     if (!chk.ok) return fail(chk.reasonKo ?? '지금 할 수 없다');
-    const cell = this.plot(plotId).cells[idx];
-    const crop = cell?.cropId ? getCrop(cell.cropId) : undefined;
-    if (!cell || !crop) return fail('거둘 것이 없다');
-    const r = coreDoCare(cell, crop, id, Date.now(), score);
-    if (!r.ok) return fail(r.reasonKo ?? '지금 할 수 없다');
-    for (const n of r.needs) InventoryStore.removeQty(n.itemId, n.qty);
+    const p = this.plot(plotId);
     const def = chk.row!.st.def;
-    GameState.spendLabor(Math.round(def.fatigue * 0.5), Math.round(def.fatigue * 0.7), def.fatigue);
+    let done = 0;
+    let clumsy = false;
+    let lastMsg = '';
+    let cropId = '';
+    for (const i of cells) {
+      const cell = p.cells[i];
+      const crop = cell?.cropId ? getCrop(cell.cropId) : undefined;
+      if (!cell || !crop) continue;
+      if (i !== first && !this.careCheck(plotId, i, id).ok) continue;
+      const r = coreDoCare(cell, crop, id, Date.now(), score);
+      if (!r.ok) continue;
+      for (const n of r.needs) InventoryStore.removeQty(n.itemId, n.qty);
+      done++;
+      clumsy ||= !!r.clumsy;
+      lastMsg = r.messageKo;
+      cropId = crop.id;
+    }
+    if (done === 0) return fail('지금 할 수 없다');
+    const k = 1 + CARE_GROUP_STEP.fatigue * (done - 1);
+    GameState.spendLabor(Math.round(def.fatigue * 0.5 * k), Math.round(def.fatigue * 0.7 * k), Math.round(def.fatigue * k));
     GameState.markDirty();
-    StoryStore.event({ kind: 'farm', action: 'care', cropId: crop.id });
-    return { ok: true, message: r.messageKo };
+    StoryStore.event({ kind: 'farm', action: 'care', cropId });
+    const name = CARE_TASK_KO[id];
+    const message = done > 1 ? (clumsy ? `${name} ${done}칸 — 서툴러서 효과가 절반이다` : `${name} ${done}칸 — 했다`) : lastMsg;
+    return { ok: true, message };
   }
 
   /** 238차 — 활착기(모종 심은 뒤 2주 — 흙을 촉촉하게) */
@@ -231,11 +332,11 @@ class FarmStoreImpl {
     return cell && crop ? inEstablishment(cell, crop, Date.now()) : null;
   }
 
-  /** 238차 — 이 칸에 든 병(이름 · 심한 정도 · 막는 법) */
-  diseases(plotId: string, idx: number): { id: CropDisease; severity: number; name: string; control: string }[] {
+  /** 238차 — 이 칸에 든 병(이름 · 심한 정도 · 막는 법) · 245차 병 · 벌레 · 새 */
+  diseases(plotId: string, idx: number): { id: CropDisease; severity: number; name: string; control: string; kind: 'disease' | 'pest' | 'bird' }[] {
     const cell = this.plot(plotId).cells[idx];
     if (!cell) return [];
-    return cellDiseases(cell).map((d) => ({ id: d.id, severity: d.severity, name: DISEASE_KO[d.id], control: DISEASE_CONTROL_KO[d.id] }));
+    return cellDiseases(cell).map((d) => ({ id: d.id, severity: d.severity, name: DISEASE_KO[d.id], control: DISEASE_CONTROL_KO[d.id], kind: DISEASE_DEFS[d.id].kind }));
   }
 
   // ── 자격 · 문맥 ───────────────────────────
@@ -450,7 +551,7 @@ class FarmStoreImpl {
   serialize(): FarmSaveState {
     const plots: Record<string, FarmPlotState> = {};
     for (const [k, p] of this.plots) plots[k] = p;
-    return { v: 1, plots, harvests: this.harvests, harvestsBy: { ...this.harvestsBy } };
+    return { v: 1, careV: CARE_V, plots, harvests: this.harvests, harvestsBy: { ...this.harvestsBy } };
   }
 
   /** 로드 — 칸 수가 어긋난(구조가 바뀐) 구획은 빈 칸으로 채워 맞춘다(유저 상태는 그대로) */
@@ -468,6 +569,14 @@ class FarmStoreImpl {
       const cells = p.cells.slice(0, want);
       while (cells.length < want) cells.push({ ...newFarmCell(Date.now()), tilled: k === INDOOR_PLOT });
       this.plots.set(k, { site: k === INDOOR_PLOT ? 'indoor' : 'plot', cells, facilities: Array.isArray(p.facilities) ? p.facilities : [] });
+    }
+    // 245차 — 구세이브: 245차에 생긴 일 때문에 자라던 작물이 로드 직후 「놓친 일」로 한꺼번에 깎이지 않게 지난 차례를 벌 없이 넘긴다
+    if ((s.careV ?? 0) < CARE_V) {
+      const now = Date.now();
+      for (const p of this.plots.values()) for (const c of p.cells) {
+        const crop = c.cropId ? getCrop(c.cropId) : undefined;
+        if (crop) settleCareRounds(c, crop, now);
+      }
     }
     this.advanceAll();
   }
