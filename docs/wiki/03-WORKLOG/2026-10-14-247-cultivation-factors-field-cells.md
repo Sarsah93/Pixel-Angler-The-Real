@@ -168,6 +168,8 @@
 | 영어 문장 표본 | 동적 문장 47개 `t()` | 실제 이름으로 전부 영어 |
 | 위키 | 로컬 열기 — 농사 → 들깨 상세 | 「기르는 법」 칸 · 초상 392px · pageerror 0 · 요청 실패 0 |
 | pageerror | 하네스 전부 | 0(콘솔 404 1건 = `data-snapshots/kamis/produce.json` — 이전부터 · 폴백 동작) |
+| 배포(72차) | Actions 「테스트 배포」(ref `main` · run 38581963898) → gh-pages `c9a6f2d` · 그 파일 그대로를 `/Pixel-Angler-The-Real/` 하위 경로로 띄워 기동 | 성공(1분 30초) · 파일 1,268 · 소스맵 0 · 4xx 0 · pageerror 0 · 메뉴 → 플레이 방식 · 들깨/참깨 카드 · 아이콘 200 |
+| 라이브 URL | `https://sarsah93.github.io/Pixel-Angler-The-Real/` | **컨테이너 프록시가 github.io를 막는다(CONNECT 403)** — 라이브 접속 확인은 사용자 |
 
 ## 6. 잔여 — 이번에 안 한 것
 
