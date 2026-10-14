@@ -57,6 +57,7 @@ const DEFAULTS = {
   detailStep: 0.12,     // 그 한 단의 배율
   unsharp: 0,           // 셀 단계 언샤프 세기(0 = 끔)
   shadow: 0.25,         // 배경에 닿은 밝고 채도 낮은(< 이 값) 픽셀 덩어리가 전경 bbox 아래 30%에 있으면 바닥 그림자로 보고 걷는다(0 = 끔 · 전경 15% 초과면 되돌림 · 스윕은 0.18이나 차 0.06 — 딸기 바닥 잔상 때문에 0.25 유지)
+  holes: 180,           // 245차 — 잎 사이에 갇힌 흰 배경 섬을 뺀다: 둘레 평균 밝기가 이 값보다 어두운 무채 흰 섬(0 = 끔 · 흰 피사체 하이라이트는 둘레가 184 이상)
   nocut: false,         // 배경 벗기기 생략(시험용)
 };
 
@@ -155,6 +156,25 @@ function cutout(img, P) {
       if (sy / mem.length >= fy0 + 0.7 * (fy1 - fy0)) { for (const i of mem) cut[i] = 1; removed += mem.length; } else kept += mem.length; }
     if (removed > 0 && removed < 0.15 * fgTotal) { for (let i = 0; i < w * h; i++) if (cut[i]) fgMask[i] = 0; shadowNote = ` · 그림자 ${removed}px 걷음${kept ? `(위쪽 밝은 가장자리 ${kept}px는 둠)` : ''}`; }
     else if (removed > 0) shadowNote = ` · 그림자 후보 ${removed}px(전경 15% 초과 — 둠)`; else if (n > 0) shadowNote = ` · 밝은 가장자리 ${n}px(바닥 아님 — 둠)`; }
+  // 245차 — 갇힌 배경 섬: 잎 · 줄기 사이에 갇혀 테두리 BFS가 못 닿은 흰 배경(고춧잎 7.3% · 마늘종 5.2% — 어두운 상세 창에서 흰 얼룩).
+  //   흰 피사체의 하이라이트(무 · 배추 · 노루궁뎅이)와 가르는 기준 = 둘레 밝기: 배경 섬은 윤곽 · 잎 가장자리에 둘러싸여 둘레 평균 124~172,
+  //   하이라이트는 밝은 그늘에 둘러싸여 184~251(244 생성본 98장 실측). 섬 색도 배경과 같은 무채 흰색(최소 채널 평균 ≥ 248)일 때만 뺀다.
+  let holeNote = '';
+  if (P.holes > 0 && lightBg) {
+    const whiteish = (o) => sat(o) < 0.06 && (0.2126 * data[o] + 0.7152 * data[o + 1] + 0.0722 * data[o + 2]) > 235;
+    const seen = new Uint8Array(w * h); let nh = 0, px = 0;
+    for (let s0 = 0; s0 < w * h; s0++) {
+      if (!fgMask[s0] || seen[s0] || !whiteish(s0 * 4)) continue;
+      const st4 = [s0]; seen[s0] = 1; const mem = []; const ring = new Set(); let minSum = 0;
+      while (st4.length) { const i = st4.pop(); mem.push(i); const o = i * 4; minSum += Math.min(data[o], data[o + 1], data[o + 2]); const x = i % w, y = (i / w) | 0;
+        for (const j of [x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1, y > 0 ? i - w : -1, y < h - 1 ? i + w : -1]) {
+          if (j < 0) continue; if (fgMask[j] && whiteish(j * 4)) { if (!seen[j]) { seen[j] = 1; st4.push(j); } } else ring.add(j); } }
+      if (mem.length < 12) continue;
+      let ringL = 0; for (const j of ring) ringL += 0.2126 * data[j * 4] + 0.7152 * data[j * 4 + 1] + 0.0722 * data[j * 4 + 2];
+      if (ringL / ring.size < P.holes && minSum / mem.length >= 248) { for (const i of mem) fgMask[i] = 0; nh++; px += mem.length; }
+    }
+    if (nh) holeNote = ` · 갇힌 배경 ${nh}곳 ${px}px 뺌`;
+  }
   const out = Buffer.from(data);
   let fg = 0;
   for (let i = 0; i < w * h; i++) {
@@ -168,7 +188,7 @@ function cutout(img, P) {
     for (const j of [x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1, y > 0 ? i - w : -1, y < h - 1 ? i + w : -1]) if (j >= 0 && fgMask[j]) { near = true; break; }
     if (!near) continue; const d = dist(i * 4); if (d > TOL * 0.35) out[i * 4 + 3] = Math.min(200, Math.round(255 * Math.min(1, d / TOL)));
   }
-  return { data: out, note: `배경 ${bg.join(',')} · 전경 ${(100 * fg / (w * h)).toFixed(0)}% · 덩어리 ${nc}${shadowNote}` };
+  return { data: out, note: `배경 ${bg.join(',')} · 전경 ${(100 * fg / (w * h)).toFixed(0)}% · 덩어리 ${nc}${shadowNote}${holeNote}` };
 }
 
 /** 면적 평균 다운샘플(프리멀티플라이드) */
