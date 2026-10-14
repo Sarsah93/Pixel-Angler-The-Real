@@ -31,6 +31,15 @@ export const FARM_SUB = '농사 도구';
 /** 241차 — 큰 수확물을 「나누기」한 조각(수박 한 쪽 · 무 한 토막 …) — 먹기용 · 등급 없음 · 가게는 안 산다 */
 export const PIECE_SUB = '농산물 조각';
 
+/** 248차 — 텃밭에서 주운 땅지렁이(생미끼 — 바다낚시에서도 쓴다 · 어종 선호는 core `baitPrefOf` · 바닷물에서 늘어짐 `earthwormSeaFade`) */
+export const EARTHWORM_ID = 'inv_earthworm';
+export const EARTHWORM_TEMPLATE: InvItemTemplate = {
+  id: EARTHWORM_ID, name: '땅지렁이', icon: '', iconTexture: 'item_earthworm', category: 'tackle', subCategory: '생미끼',
+  basePrice: 100, condition: 'live', equippable: false,
+};
+/** 위키 · 상세 창 한 줄 설명 */
+export const EARTHWORM_DESC = '텃밭 흙에서 주운 땅지렁이. 바닷물에 넣으면 몇 분 만에 늘어져 갯지렁이만은 못하지만 망둥어 · 숭어 · 가자미류는 곧잘 문다. 오래 담가 두었으면 새로 끼운다.';
+
 const GRADES: CropGrade[] = ['special', 'good', 'normal'];
 
 /** 희귀도 → 하루 재고 배율(가게 규모 × 이 값) */

@@ -21,6 +21,7 @@ import { isGiantOctopusSpawnProtected } from '../types/Foraging.js';
 import { TUNING, type BodyFormKey } from '../config/tuning.js';
 import type { ClosedSeason } from '../types/LegalSeason.js';
 import { isClosedOn } from '../rules/ClosedSeason.js';
+import { earthwormSeaPref } from './EarthwormRules.js';
 
 /**
  * 체형 분류 (133차) — **같은 체중이라도 파이트에서 내는 힘·압력이 다르다.**
@@ -51,6 +52,7 @@ export type BaitKey =
   | 'fishcut'     // 생선·오징어 살
   | 'livefish'    // 살아있는 생미끼 (전갱이/미꾸라지 등)
   | 'slater'      // 224차 — 갯강구(갯바위에서 직접 잡는 생미끼 · 망상어 · 벵에돔 · 감성돔)
+  | 'earthworm'   // 248차 — 땅지렁이(텃밭에서 줍는다 · 바닷물에서 금방 늘어진다 — 표에 없으면 청갯지렁이의 4할)
   | 'lure';       // 루어류
 
 /** 서식 지형 분류 */
@@ -226,7 +228,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
   {
     speciesId: 'rainbow_wrasse', nameKo: '용치놀래기', nameEn: 'Multicolorfin Rainbow Wrasse',
     habitat: ['reef'], minDepthM: 2, maxDepthM: 15, preferredLayers: ['bottom'],
-    baitPreference: { worm_blue: 50, slater: 45, krill: 40, shellfish: 10 },   // 225차 — 갯강구는 잡어가 다 좋아한다
+    baitPreference: { worm_blue: 50, slater: 45, krill: 40, shellfish: 10, earthworm: 30 },   // 225차 — 갯강구는 잡어가 다 좋아한다
     minCm: 10, maxCm: 26, meanCm: 18, sdCm: 3, lwrA: 0.0105, lwrB: 3.05, bodyForm: 'roundish',
     maleRatio: 0.3,
     sexRule: (len) => (len > 22 ? 0.85 : 0.3),
@@ -269,7 +271,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
   {
     speciesId: 'yellowfin_goby', nameKo: '문절망둑', nameEn: 'Yellowfin Goby',
     habitat: ['mud', 'sand'], minDepthM: 0.5, maxDepthM: 5, preferredLayers: ['bottom'],
-    baitPreference: { worm_blue: 70, slater: 30, krill: 20, lure: 10 },
+    baitPreference: { worm_blue: 70, slater: 30, krill: 20, lure: 10, earthworm: 60 },
     minCm: 8, maxCm: 25, meanCm: 15, sdCm: 3, lwrA: 0.0095, lwrB: 3.05, bodyForm: 'roundish', maleRatio: 0.5,
     sexNote: '1년생 — 식탐이 강해 미끼를 넣자마자 삼킴',
     // 낮 생활낚시 대표 어종 — 밤엔 활성 저하
@@ -363,7 +365,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     speciesId: 'flounder', nameKo: '문치가자미', nameEn: 'Marbled Flounder',
     // 모래·뻘 10~100m, 대한민국 전 해역 (실측 데이터 2026-07-16)
     habitat: ['sand', 'mud'], minDepthM: 10, maxDepthM: 100, preferredLayers: ['bottom'],
-    baitPreference: { worm_blue: 70, worm_king: 20, krill: 10 },
+    baitPreference: { worm_blue: 70, worm_king: 20, krill: 10, earthworm: 40 },
     minCm: 15, maxCm: 50, meanCm: 30, sdCm: 6, lwrA: 0.0145, lwrB: 3, bodyForm: 'flat', maleRatio: 0.5,
     sexNote: '두 눈이 오른쪽 — 입이 작고 예민해 소형 바늘에 잘 잡힘. 시장에서 흔히 도다리로 유통',
     // 주행성 가자미류
@@ -375,7 +377,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     speciesId: 'frog_flounder', nameKo: '도다리', nameEn: 'Frog Flounder',
     // 표준명 도다리 — 모래·뻘 50~100m, 군산/목포/여수/마산/진해/부산 분포
     habitat: ['sand', 'mud'], minDepthM: 50, maxDepthM: 100, preferredLayers: ['bottom'],
-    baitPreference: { worm_blue: 70, worm_king: 20, krill: 10 },
+    baitPreference: { worm_blue: 70, worm_king: 20, krill: 10, earthworm: 40 },
     minCm: 15, maxCm: 40, meanCm: 27, sdCm: 5, lwrA: 0.0145, lwrB: 3, bodyForm: 'flat', maleRatio: 0.5,
     sexNote: '눈 사이에 가시가 솟은 표준명 도다리 — 문치가자미와 달리 남해 서부에 국지 분포',
     // 주행성 가자미류
@@ -386,7 +388,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     speciesId: 'starry_flounder', nameKo: '강도다리', nameEn: 'Starry Flounder',
     // 모래·뻘 20~250m — 20~40cm급은 전 해역 기수역(주로 울산 강 하구)
     habitat: ['sand', 'mud'], minDepthM: 20, maxDepthM: 250, preferredLayers: ['bottom'],
-    baitPreference: { worm_blue: 65, worm_king: 20, krill: 15 },
+    baitPreference: { worm_blue: 65, worm_king: 20, krill: 15, earthworm: 40 },
     minCm: 18, maxCm: 70, meanCm: 30, sdCm: 7, lwrA: 0.0125, lwrB: 3.02, bodyForm: 'flat', maleRatio: 0.5,
     sexNote: '지느러미의 검은 줄무늬가 선명한 냉수성 가자미 — 금지체장 없음(14cm 미만 자율 방생 권장)',
     // 주행성 가자미류
@@ -397,7 +399,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     speciesId: 'tonguefish', nameKo: '개서대', nameEn: 'Robust Tonguefish',
     // 진흙·갯벌·모래 20~100m, 회유 4~6월 제주/서해 → 7~10월 서해/남해
     habitat: ['mud', 'sand'], minDepthM: 20, maxDepthM: 100, preferredLayers: ['bottom'],
-    baitPreference: { worm_blue: 70, shellfish: 20, krill: 10 },
+    baitPreference: { worm_blue: 70, shellfish: 20, krill: 10, earthworm: 40 },
     minCm: 18, maxCm: 60, meanCm: 32, sdCm: 6, lwrA: 0.0075, lwrB: 3, bodyForm: 'flat', maleRatio: 0.5,
     sexNote: '혓바닥처럼 길쭉한 서대류 — 입이 작아 미끼를 빨아들이듯 삼킨다',
     nightBonus: 1.8, tideActivity: flatTide(0.6),
@@ -562,7 +564,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     speciesId: 'striped_mullet', nameKo: '숭어(보리숭어)', nameEn: 'Flathead Grey Mullet',
     // 물 흐름 있는 연안 암초/내만, 표층 회유성 (실측 데이터 2026-07-16 — 방언: 개숭어/보리숭어)
     habitat: ['structure', 'open', 'mud'], minDepthM: 0.5, maxDepthM: 10, preferredLayers: ['surface', 'mid'],
-    baitPreference: { worm_blue: 55, krill: 25, worm_king: 10, bread: 10 },
+    baitPreference: { worm_blue: 55, krill: 25, worm_king: 10, bread: 10, earthworm: 35 },
     minCm: 25, maxCm: 80, meanCm: 50, sdCm: 9, lwrA: 0.0105, lwrB: 3.05, bodyForm: 'fusiform', maleRatio: 0.5,
     sexNote: '꼬리가 V자로 깊게 갈라짐. 겨울엔 눈에 기름눈꺼풀(백태). 보리 익을 무렵(3~5월)이 제철 보리숭어',
     // 낮 표층 회유 — 밤엔 활성 저하
@@ -573,7 +575,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     speciesId: 'redlip_mullet', nameKo: '가숭어(참숭어)', nameEn: 'So-iuy Mullet',
     // 진흙/모래 연안·강 하구(기수역), 숭어류 중 가장 크게 성장 (실측 데이터 2026-07-16)
     habitat: ['mud', 'sand'], minDepthM: 1, maxDepthM: 15, preferredLayers: ['surface', 'mid'],
-    baitPreference: { worm_blue: 50, krill: 30, bread: 20 },
+    baitPreference: { worm_blue: 50, krill: 30, bread: 20, earthworm: 30 },
     minCm: 35, maxCm: 100, meanCm: 65, sdCm: 12, lwrA: 0.0105, lwrB: 3.05, bodyForm: 'fusiform', maleRatio: 0.5,
     sexNote: '눈 테두리가 선명한 노란색, 꼬리 끝이 일직선. 산란기 5~6월, 겨울(11~2월) 밀치회가 별미',
     // 낮 표층 회유 — 밤엔 활성 저하
@@ -594,7 +596,7 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
   {
     speciesId: 'black_seabream', nameKo: '감성돔', nameEn: 'Black Seabream',
     habitat: ['reef'], minDepthM: 10, maxDepthM: 40, preferredLayers: ['bottom'],
-    baitPreference: { crab: 40, corn: 30, slater: 25, krill: 20, worm_blue: 10 },
+    baitPreference: { crab: 40, corn: 30, slater: 25, krill: 20, worm_blue: 10, earthworm: 15 },
     minCm: 18, maxCm: 72, meanCm: 40, sdCm: 8, lwrA: 0.0179, lwrB: 2.95, bodyForm: 'deepBody',
     maleRatio: 0.5,
     sexRule: (len) => (len < 30 ? 0.9 : len < 40 ? 0.6 : 0.25),
@@ -923,7 +925,7 @@ function intrinsicWeight(spec: FishMasterSpec, ctx: SpawnContext): number {
   // 지형 적합
   const terrW = terrainFit(spec, ctx.inReef);
   // 미끼 선호도 (미정의 미끼는 기본 5)
-  const baitW = Math.max(0.03, (spec.baitPreference[ctx.baitKey] ?? 5) / 50);
+  const baitW = Math.max(0.03, baitPrefOf(spec, ctx.baitKey) / 50);
   // 물때 활성도
   const tideW = Math.max(0.05, spec.tideActivity[tideIdx] ?? 0.5);
   // 주야간 — 야간엔 nightBonus 그대로 (야행성 증폭 / 주행성 nb<1 억제),
@@ -938,6 +940,16 @@ function intrinsicWeight(spec: FishMasterSpec, ctx: SpawnContext): number {
 }
 
 /** 후보 어종 + 가중치 계산 (스폰/미끼 친화도 공용) */
+/**
+ * 248차 — 이 어종의 미끼 선호(0~100). 표에 없으면 기본 5 — 땅지렁이만은 표에 없을 때 청갯지렁이 선호의 4할
+ * (바닷물에 넣으면 금방 늘어진다 — `EarthwormRules.earthwormSeaPref`).
+ */
+export function baitPrefOf(spec: Pick<FishMasterSpec, 'baitPreference'>, key: BaitKey): number {
+  const v = spec.baitPreference[key];
+  if (v !== undefined) return v;
+  return key === 'earthworm' ? earthwormSeaPref(spec.baitPreference.worm_blue) : 5;
+}
+
 function weightedCandidates(ctx: SpawnContext): { spec: FishMasterSpec; weight: number }[] {
   const filterSet = ctx.speciesFilter && ctx.speciesFilter.length > 0 ? new Set(ctx.speciesFilter) : null;
 
@@ -1007,7 +1019,7 @@ export function getBaitAffinity(ctx: SpawnContext): number {
   const totalW = candidates.reduce((a, c) => a + c.weight, 0);
   // 가중 평균 미끼 선호도
   const avgPref = candidates.reduce(
-    (a, c) => a + (c.spec.baitPreference[ctx.baitKey] ?? 5) * c.weight, 0,
+    (a, c) => a + baitPrefOf(c.spec, ctx.baitKey) * c.weight, 0,
   ) / totalW;
   return Math.min(1.6, Math.max(0.25, avgPref / 40));
 }

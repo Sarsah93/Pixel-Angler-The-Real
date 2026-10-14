@@ -267,12 +267,15 @@ export class AnglerLogScene extends Phaser.Scene {
   private creaturePic(cr: ShoreCreature, x: number, y: number, box: number): Phaser.GameObjects.Image {
     ensureForageDotTextures(this);
     const photo = forageTexKey(cr);
-    const key = this.textures.exists(photo) ? photo : forageSpotTexKey(cr);
-    const img = this.add.image(x, y, key).setOrigin(0.5);
+    if (this.textures.exists(photo)) {
+      // 248차 — 카드(300×160 안) · 64px 아이콘 중 상자에 맞는 판(`fitFishTexture` — 72px 이하면 아이콘)
+      const fit = fitFishTexture(this.textures, photo, box, box);
+      return this.add.image(x, y, fit.key).setOrigin(0.5).setDisplaySize(fit.w, fit.h);
+    }
+    const img = this.add.image(x, y, forageSpotTexKey(cr)).setOrigin(0.5);
     const raw = Math.max(1, img.width, img.height);
-    // 도트는 정수 배율(§8 비정수 배율 금지), 큰 실사는 상자에 맞춘다
-    const scale = raw <= 32 ? Math.max(1, Math.floor(box / raw)) : box / raw;
-    return img.setScale(scale);
+    // 도트는 정수 배율(§8 비정수 배율 금지)
+    return img.setScale(Math.max(1, Math.floor(box / raw)));
   }
 
   /**

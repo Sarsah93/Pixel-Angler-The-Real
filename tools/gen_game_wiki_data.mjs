@@ -430,7 +430,7 @@ const fishKo = (id) => core.getFishById?.(id)?.nameKo
 const BAIT_KO = {
   worm_king: '혼무시·참갯지렁이', worm_blue: '청갯지렁이', krill: '크릴', fishcut: '생선·오징어살',
   bread: '빵·떡밥', corn: '옥수수', crab: '게·소라', urchin: '성게', shellfish: '조개·개불',
-  livefish: '살아 있는 작은 고기', lure: '루어',
+  livefish: '살아 있는 작은 고기', lure: '루어', slater: '갯강구', earthworm: '땅지렁이',
 };
 const monthsKo = (ms) => (ms?.length ? ms.join('·') + '월' : '—');
 const bestBaitOf = (id) => {

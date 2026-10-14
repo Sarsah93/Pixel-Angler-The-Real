@@ -11,7 +11,7 @@
 import type { InvCategory, InvItemTemplate } from '../store/InventoryStore.js';
 import { LINE_DATABASE } from '@tra/core';
 import { QUEST_REWARD_ITEMS } from './QuestRewardItems.js';
-import { CROP_ITEM_TEMPLATES, PRODUCE_SUB } from './CropItems.js';
+import { CROP_ITEM_TEMPLATES, PRODUCE_SUB, EARTHWORM_TEMPLATE, EARTHWORM_DESC } from './CropItems.js';
 import { cropOfProduce } from '@tra/core';
 import { InventoryStore } from '../store/InventoryStore.js';
 import { SHOP_CATALOG, BUILDING_LABEL } from './ShopCatalog.js';
@@ -97,6 +97,16 @@ export function buildItemWikiCatalog(): WikiItemEntry[] {
       category: t.category, subCategory: t.subCategory, basePrice: t.basePrice,
       desc: crop?.noteKo ?? '', soldAt: [], isSeed: false,
       tpl: { ...t },
+    });
+  }
+
+  // 4c) 248차 — 텃밭에서 줍는 땅지렁이(상점에 없다)
+  if (!map.has(EARTHWORM_TEMPLATE.id)) {
+    const t = EARTHWORM_TEMPLATE;
+    map.set(t.id, {
+      id: t.id, name: t.name, icon: t.icon, iconTexture: t.iconTexture,
+      category: t.category, subCategory: t.subCategory, basePrice: t.basePrice,
+      desc: EARTHWORM_DESC, soldAt: [], isSeed: false, tpl: { ...t },
     });
   }
 

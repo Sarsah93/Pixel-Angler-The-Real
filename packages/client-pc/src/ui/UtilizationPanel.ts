@@ -61,6 +61,7 @@ import { t } from '../i18n/I18n.js';
 const BAIT_KEY_KO: Record<string, string> = {
   krill: '크릴', worm_blue: '청갯지렁이', worm_king: '참갯지렁이', crab: '게·소라', shellfish: '조개살',
   urchin: '성게', corn: '옥수수', bread: '빵가루 경단', fishcut: '생선 살', livefish: '생미끼', slater: '갯강구', lure: '루어',
+  earthworm: '땅지렁이',
 };
 
 export type UtilizationTab = 'cooking' | 'tackles' | 'chum' | 'craft';

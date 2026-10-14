@@ -20,12 +20,16 @@
  *  칸 오른쪽 위에는 지금 할 것 하나(거둘 것 · 털 때 · 할 일의 자재 · 목마름)가 16px 아이콘으로 떠 있다.
  * ── 연출 ──
  *  흙 튐(일구기 · 캐기) · 물줄기 · 씨앗이 떨어짐 · 모종이 날아와 꽂힘 · 반짝임(작업 끝) · 거둔 것이 튀어 올라 가방으로 · 베어 눕힘.
+ * ── 248차 — 땅지렁이 ──
+ *  일구기 · 캐기 · 김매기 · 북주기 · 칸 비우기 뒤(그리고 비 오는 동안 텃밭 가까이에서) 흙 위로 드러난 지렁이가
+ *  그 칸에서 꿈틀거린다(맵과 같은 2px 입자 · 칸마다 최대 3마리). 그 칸에서 [F](또는 손 닿는 칸 클릭)는 손에 든 것보다 먼저
+ *  「지렁이 줍기」다 — 가방 생미끼 「땅지렁이」. 90초 안에 줍지 않으면 흐려지며 다시 파고든다.
  */
 
 import Phaser from 'phaser';
 import {
   FARM_COLS, FARM_CELLS, getCrop, cellStage, cellReady, ripeStageOf, startOf, cultivationOf, cropStartOfItem, wildUnknown,
-  CARE_TASK_KO, PROCESS_LAST_KO, WATER_AMOUNT_KO, SICKLE_ID, HARVEST_SCISSORS_ID, FORK_ID, DISEASE_DEFS,
+  CARE_TASK_KO, PROCESS_LAST_KO, WATER_AMOUNT_KO, SICKLE_ID, HARVEST_SCISSORS_ID, FORK_ID, DISEASE_DEFS, EARTHWORM_TUNING,
   type CropDef, type FarmCellState, type MapObject, type WaterAmount, type CareTaskId,
 } from '@tra/core';
 import { FarmStore, HOMI_ID, WATERING_CAN_ID, type FarmActionResult, type FarmCareRow } from '../../store/FarmStore.js';
@@ -38,6 +42,7 @@ import { openCareTask, openProcess, type FarmActionHost, type FarmActionWhat } f
 import { careTaskIcon } from '../../ui/FarmWorkPanel.js';
 import { maybeStartTour, type TourOptions } from '../../ui/GuideTour.js';
 import { shapeOf, type Shape } from '../../data/CropShapes.js';
+import { FARM_WORM_TEX } from '../../data/ForageTextures.js';
 import { GAME_WIDTH } from '../../PhaserConfig.js';
 import { t as tl } from '../../i18n/I18n.js';
 import type { InteractOption } from '../../ui/InteractChoicePanel.js';
@@ -78,6 +83,12 @@ interface CellView {
   ind?: Phaser.GameObjects.Image;
   indKey?: string;
 }
+
+/** 248차 — 흙 위로 드러난 땅지렁이 한 마리(2px 입자 그림 · 꿈틀거림) */
+interface WormSprite { g: Phaser.GameObjects.Graphics; phase: number; dir: 1 | -1 }
+
+/** 248차 — 지렁이 색(머리 · 몸 · 환대 · 그림자) */
+const WORM = { head: 0x9a3442, body: 0xd8707c, band: 0xf4b8c0, shadow: 0x1c100a };
 
 /** 손에 들면 칸에 쓰는 도구 */
 const HARVEST_TOOLS = new Set([SICKLE_ID, HARVEST_SCISSORS_ID, FORK_ID]);
@@ -157,7 +168,10 @@ export class FarmFieldSystem {
   /** 밟고 선 칸이라 잠시 감춘 「지금 할 것」 아이콘 */
   private hiddenInd?: Phaser.GameObjects.Image;
   /** 하네스 · 가이드 판정 — 이 세션에서 칸에 한 일 */
-  readonly did = { till: 0, water: 0, plant: 0, harvest: 0, care: 0 };
+  readonly did = { till: 0, water: 0, plant: 0, harvest: 0, care: 0, worms: 0 };
+  /** 248차 — 드러난 지렁이 그림(`구획:칸` → 그 칸의 지렁이들) · 비 오는 날 확인 시계 */
+  private wormViews = new Map<string, WormSprite[]>();
+  private rainCheckAt = 0;
 
   constructor(host: FarmFieldHost) {
     this.host = host;
@@ -174,6 +188,8 @@ export class FarmFieldSystem {
   destroy(): void {
     this.host.scene.input.keyboard?.off('keyup-F', this.keyUp);
     this.clearAll();
+    this.wormViews.forEach((ws) => ws.forEach((w) => w.g.destroy()));
+    this.wormViews.clear();
     this.targetG.destroy();
     this.pourG.destroy();
     this.pourText.destroy();
@@ -599,6 +615,19 @@ export class FarmFieldSystem {
     // 시간이 흐르면 자람 · 흙이 바뀐다 — 2초마다 다시 맞춘다(바뀐 칸만)
     this.refreshAt += delta;
     if (this.refreshAt > 2000) { this.refreshAt = 0; for (const o of this.host.plots()) this.renderPlot(o); }
+    // 248차 — 비가 오면 일군 칸에서 지렁이가 기어 나온다(가까이 있을 때만) · 드러난 지렁이는 꿈틀거린다
+    this.rainCheckAt += delta;
+    if (this.rainCheckAt > EARTHWORM_TUNING.rainCheckMs) {
+      this.rainCheckAt = 0;
+      if (!this.host.blocked()) {
+        for (const o of this.host.plots()) {
+          if (!this.playerNear(o, 6)) continue;
+          const found = FarmStore.rainWorms(o.instanceId);
+          if (found.length) this.host.floatingHint('빗물에 지렁이가 기어 나왔다');
+        }
+      }
+    }
+    this.syncWorms(delta);
     if (this.pour) { this.drawPour(); return; }
     const t = this.host.blocked() ? null : this.computeTarget();
     this.target = t;
@@ -633,6 +662,8 @@ export class FarmFieldSystem {
 
   /** 손에 든 것으로 이 칸에 할 일(없으면 null) — 테두리 색 · [F] · 왼쪽 클릭 */
   private heldAction(t: FarmTarget): InteractOption | null {
+    // 248차 — 드러난 지렁이가 있으면 손에 든 것보다 먼저 줍는다(곧 다시 파고든다)
+    if (FarmStore.wormsAt(t.o.instanceId, t.idx) > 0) return { label: '지렁이 줍기', run: () => this.pickWorms(t), action: 'farm' };
     const held = this.held();
     if (!held || held.qty <= 0) return null;
     const plotId = t.o.instanceId;
@@ -715,7 +746,7 @@ export class FarmFieldSystem {
     const flash = this.host.scene.add.graphics().setDepth(6.46);
     this.drawCellBorder(flash, hit, true);
     this.host.scene.tweens.add({ targets: flash, alpha: 0, duration: 420, onComplete: () => flash.destroy() });
-    if (this.held()?.id === WATERING_CAN_ID) { this.beginPour(hit, true); return true; }
+    if (this.held()?.id === WATERING_CAN_ID && FarmStore.wormsAt(hit.o.instanceId, hit.idx) <= 0) { this.beginPour(hit, true); return true; }
     act.run?.();
     return true;
   }
@@ -734,6 +765,87 @@ export class FarmFieldSystem {
       for (const h of r.harvested ?? []) this.host.pushLog(`[텃밭] ${h.name} ×${h.qty}`);
       this.host.inventoryChanged();
     }
+    // 248차 — 드러난 지렁이는 다음 프레임에 그 칸에 그려진다(흙 튐을 한 번 더)
+    if (r.worms?.length) this.syncWorms(0);
+  }
+
+  // ── 248차 — 땅지렁이 ──
+
+  /** 드러난 지렁이 그림을 스토어와 맞추고 꿈틀거리게 한다(파고들기 8초 전부터 흐려진다) */
+  private syncWorms(delta: number): void {
+    const now = Date.now();
+    const live = FarmStore.exposedWorms(now);
+    const keep = new Set<string>();
+    const plots = this.host.plots();
+    for (const w of live) {
+      const o = plots.find((p) => p.instanceId === w.plotId);
+      if (!o) continue;
+      const key = `${w.plotId}:${w.idx}`;
+      keep.add(key);
+      const want = Math.min(3, w.n);
+      let ws = this.wormViews.get(key);
+      if (!ws || ws.length !== want) {
+        ws?.forEach((x) => x.g.destroy());
+        ws = this.spawnWorms(o, w.idx, want);
+        this.wormViews.set(key, ws);
+      }
+      const left = w.untilMs - now;
+      const alpha = left < 8000 ? Math.max(0.2, left / 8000) : 1;
+      for (const x of ws) { x.phase += delta * 0.007; this.drawWorm(x, alpha); }
+    }
+    for (const [k, ws] of this.wormViews) if (!keep.has(k)) { ws.forEach((x) => x.g.destroy()); this.wormViews.delete(k); }
+  }
+
+  /** 한 칸에 지렁이 n마리 — 칸 아래쪽 흙 위(포기 밑동 양옆) · 흙이 튀며 나온다 */
+  private spawnWorms(o: MapObject, idx: number, n: number): WormSprite[] {
+    const scene = this.host.scene;
+    const r = this.cellRect(o, idx);
+    const spots: [number, number][] = [[0.28, 0.7], [0.72, 0.6], [0.5, 0.86]];
+    const depth = 20 + (r.y + r.s - FEET_OFFSET) * 0.001 + 0.0002;   // 그 칸 포기보다 조금 앞(잎에 묻히지 않게)
+    const out: WormSprite[] = [];
+    for (let k = 0; k < n; k++) {
+      const [fx, fy] = spots[k];
+      // 2px 격자에 맞춘다(맵 입자)
+      const x = Math.round((r.x + r.s * fx) / 2) * 2, y = Math.round((r.y + r.s * fy) / 2) * 2;
+      const g = scene.add.graphics().setPosition(x, y).setDepth(depth);
+      out.push({ g, phase: Math.random() * Math.PI * 2, dir: k % 2 ? -1 : 1 });
+      this.fxDirt(x, y, 0x6a4a2c, 4);
+      scene.tweens.add({ targets: g, scaleY: { from: 0, to: 1 }, duration: 220, delay: k * 90, ease: 'Back.easeOut' });
+    }
+    return out;
+  }
+
+  /** 지렁이 한 마리 — 2px 마디 7개가 사인 물결로 꿈틀(머리 짙게 · 환대 밝게 · 아래 그림자) */
+  private drawWorm(w: WormSprite, alpha: number): void {
+    const g = w.g;
+    g.clear();
+    for (let i = 0; i < 7; i++) {
+      const x = (i * 2 - 6) * w.dir;
+      const y = Math.round(Math.sin(w.phase + i * 0.95)) * 2;
+      g.fillStyle(WORM.shadow, 0.4 * alpha); g.fillRect(x, y + 2, 2, 2);
+      g.fillStyle(i === 0 ? WORM.head : i === 2 || i === 3 ? WORM.band : WORM.body, alpha);
+      g.fillRect(x, y, 2, 2);
+    }
+  }
+
+  /** 드러난 지렁이를 줍는다 — 가방으로 날아간다 */
+  private pickWorms(t: FarmTarget): void {
+    const key = `${t.o.instanceId}:${t.idx}`;
+    const views = this.wormViews.get(key) ?? [];
+    const r = FarmStore.pickWorms(t.o.instanceId, t.idx);
+    if (!r.ok) { this.host.floatingHint(r.message); return; }
+    this.did.worms++;
+    const f = this.host.feet();
+    const scene = this.host.scene;
+    for (const [k, v] of views.entries()) {
+      const { x, y } = v.g;
+      v.g.destroy();
+      if (!scene.textures.exists(FARM_WORM_TEX)) continue;
+      const img = scene.add.image(x, y, FARM_WORM_TEX).setDepth(21).setScale(0.5);
+      scene.tweens.add({ targets: img, x: f.x, y: f.y - 26, scale: 0.3, alpha: 0.4, duration: 420, delay: k * 90, ease: 'Sine.easeIn', onComplete: () => img.destroy() });
+    }
+    this.wormViews.delete(key);
+    this.report(r);
   }
 
   private till(t: FarmTarget): void {
@@ -993,6 +1105,12 @@ export class FarmFieldSystem {
   devSig(plotId: string, idx: number): { sig: string; deco: string; ind?: string } | null {
     const v = this.views.get(plotId)?.[idx];
     return v ? { sig: v.sig, deco: v.decoSig, ind: v.indKey } : null;
+  }
+  /** 하네스: 드러난 지렁이 그림 수(칸 키별) */
+  devWormViews(): Record<string, number> {
+    const out: Record<string, number> = {};
+    for (const [k, ws] of this.wormViews) out[k] = ws.length;
+    return out;
   }
   /** 하네스: 물 붓기(ms 만큼 누른 것으로) */
   devPour(ms: number): void {

@@ -21,6 +21,8 @@
  *   거두는 손에 따라 도구가 있어야(낫 · 호미나 쇠스랑) 하거나 도움(수확 가위 · 쇠스랑 · 모종삽 · 도리깨 · 키) ·
  *   깨 · 콩 · 보리 · 땅콩 · 마늘 · 양파는 거두면 칸에서 말린 뒤 턴다(`finishProcess`) · 가시 작물은 장갑 · 아침에 딴 잎 · 열매는 조금 더 좋다 ·
  *   육묘 트레이는 꺼낸 만큼만 모종이 된다(`pullSeedlings`) · 한 해를 넘긴 산채는 포기를 나눈다(`divide`) · 묵힌 칸의 저절로 난 싹 알림.
+ * - 248차 — 땅지렁이: 일구기 · 캐기 · 김매기 · 북주기 · 칸 비우기 뒤(그리고 비 오는 동안) 흙 위로 드러난다(core `rollEarthworms`).
+ *   드러난 지렁이는 세이브하지 않는다 — 90초 안에 줍지 않으면 다시 파고든다(`pickWorms` → 가방 생미끼 「땅지렁이」).
  */
 
 import {
@@ -34,6 +36,8 @@ import {
   startFieldProcess, finishFieldProcess, processHoursLeft, pullSeedlings as corePullSeedlings, divideBlockKo, divideCell, wildUnknown,
   WATER_AMOUNT_KO, TOOL_NAME_KO, OFF_TIMING_KO, PROCESS_LAST_KO, waterBandOf, cellDays, startOf, offTimingOf, moistureStateOf,
   TROWEL_ID, GLOVES_ID, WINNOW_ID, WILD_SPROUTS,
+  // 248차 — 땅지렁이
+  rollEarthworms, EARTHWORM_TUNING, type EarthwormAct,
   type CropDef, type FarmEnv, type FarmFacility, type FarmHarvestResult, type FarmPlantCtx, type FarmPlotState, type LicenseType,
   type CareStatus, type CareTaskId, type CropDisease, type FarmCellState, type WaterAmount, type CropCultivation, type MoistureState,
 } from '@tra/core';
@@ -41,7 +45,7 @@ import { GameState } from './GameState.js';
 import { InventoryStore, type InvCategory } from './InventoryStore.js';
 import { StoryStore } from './StoryStore.js';
 import { ExternalDataStore } from './ExternalDataStore.js';
-import { cropItemTemplate, variantNoticeKo, looseCountKo } from '../data/CropItems.js';
+import { cropItemTemplate, variantNoticeKo, looseCountKo, EARTHWORM_ID, EARTHWORM_TEMPLATE } from '../data/CropItems.js';
 
 /** 집 안 선반 구획 키 */
 export const INDOOR_PLOT = 'indoor';
@@ -68,7 +72,15 @@ export interface FarmActionResult {
   message: string;
   /** 거둔 것(토스트 · 로그) */
   harvested?: { itemId: string; qty: number; name: string }[];
+  /** 248차 — 이 일로 흙 위에 드러난 땅지렁이(칸 · 마리 수) — 필드가 그 칸에 그림을 띄운다 */
+  worms?: { idx: number; n: number }[];
 }
+
+/** 248차 — 땅지렁이 아이템(정의는 `data/CropItems.ts` — 위키 카탈로그도 쓴다) */
+export { EARTHWORM_ID, EARTHWORM_TEMPLATE };
+
+/** 248차 — 흙 위로 드러난 땅지렁이 한 무리 */
+export interface ExposedWorms { plotId: string; idx: number; n: number; untilMs: number }
 
 const fail = (message: string): FarmActionResult => ({ ok: false, message });
 
@@ -192,6 +204,82 @@ class FarmStoreImpl {
     if (GameState.currentRegionId !== 'hometown') return null;
     const k = ExternalDataStore.getWeatherKind('hometown');
     return k === 'rain' || k === 'shower' || k === 'sleet' || k === 'snow';
+  }
+
+  // ── 248차 — 땅지렁이 ─────────────────────────
+
+  /** 흙 위로 드러난 땅지렁이(세이브하지 않는다 — `exposeMs` 안에 줍지 않으면 다시 파고든다). 키 = `구획:칸` */
+  private worms = new Map<string, ExposedWorms>();
+
+  /** 지금 비가 오는가(홈타운 화면 날씨 → 기후 통계) */
+  rainingNow(nowMs = Date.now()): boolean {
+    return this.liveRaining() ?? climateRainAt(nowMs);
+  }
+
+  /** 이 일 뒤 이 칸에서 지렁이가 드러났나(마리 수 · 0 = 없음). 이미 드러나 있으면 더해지고 시계가 새로 간다 */
+  private surfaceWorms(plotId: string, idx: number, act: EarthwormAct, nowMs = Date.now()): number {
+    const p = this.plot(plotId);
+    const cell = p.cells[idx];
+    if (!cell) return 0;
+    const n = rollEarthworms(act, {
+      month: kstMonthOf(nowMs), moisture: cell.moisture, compost: !!cell.compost, raining: this.rainingNow(nowMs), site: p.site,
+    }, Math.random);
+    if (n <= 0) return 0;
+    const key = `${plotId}:${idx}`;
+    const prev = this.worms.get(key);
+    const had = prev && prev.untilMs > nowMs ? prev.n : 0;
+    this.worms.set(key, { plotId, idx, n: Math.min(9, had + n), untilMs: nowMs + EARTHWORM_TUNING.exposeMs });
+    return n;
+  }
+
+  /** 일 결과에 드러난 지렁이를 붙인다(한 줄 꼬리 + 칸 목록) */
+  private withWorms(r: FarmActionResult, plotId: string, cells: number[], act: EarthwormAct): FarmActionResult {
+    if (!r.ok) return r;
+    const found = cells.map((idx) => ({ idx, n: this.surfaceWorms(plotId, idx, act) })).filter((w) => w.n > 0);
+    const total = found.reduce((a, w) => a + w.n, 0);
+    if (total <= 0) return r;
+    return { ...r, message: `${r.message} · 지렁이 ${total}마리가 꿈틀거린다`, worms: found };
+  }
+
+  /** 드러나 있는 지렁이 전부(파고든 것은 걷어 낸다) */
+  exposedWorms(nowMs = Date.now()): ExposedWorms[] {
+    for (const [k, w] of this.worms) if (w.untilMs <= nowMs) this.worms.delete(k);
+    return [...this.worms.values()];
+  }
+
+  /** 이 칸에 드러난 지렁이 수 */
+  wormsAt(plotId: string, idx: number, nowMs = Date.now()): number {
+    const w = this.worms.get(`${plotId}:${idx}`);
+    return w && w.untilMs > nowMs ? w.n : 0;
+  }
+
+  /** 드러난 지렁이를 줍는다 → 가방 생미끼 「땅지렁이」 */
+  pickWorms(plotId: string, idx: number): FarmActionResult {
+    const key = `${plotId}:${idx}`;
+    const w = this.worms.get(key);
+    if (!w || w.untilMs <= Date.now()) { this.worms.delete(key); return fail('지렁이가 흙 속으로 들어가 버렸다'); }
+    if (!InventoryStore.addItem(EARTHWORM_TEMPLATE, w.n)) return fail('가방에 자리가 없다 — 한 칸 비우고 줍는다');
+    this.worms.delete(key);
+    GameState.markDirty();
+    return { ok: true, message: `땅지렁이 ${w.n}마리를 주웠다`, harvested: [{ itemId: EARTHWORM_ID, qty: w.n, name: EARTHWORM_TEMPLATE.name }] };
+  }
+
+  /** 비 오는 동안 일군 칸에서 지렁이가 기어 나온다(필드가 텃밭 가까이 있을 때 `rainCheckMs`마다 부른다) */
+  rainWorms(plotId: string, nowMs = Date.now()): { idx: number; n: number }[] {
+    if (!this.plots.has(plotId) || !this.rainingNow(nowMs)) return [];
+    const p = this.plot(plotId);
+    const out: { idx: number; n: number }[] = [];
+    p.cells.forEach((c, idx) => {
+      if (!c?.tilled || this.wormsAt(plotId, idx, nowMs) > 0) return;
+      const n = this.surfaceWorms(plotId, idx, 'rain', nowMs);
+      if (n > 0) out.push({ idx, n });
+    });
+    return out;
+  }
+
+  /** 하네스 — 이 칸에 지렁이를 드러낸다 */
+  devWorms(plotId: string, idx: number, n = 2): void {
+    this.worms.set(`${plotId}:${idx}`, { plotId, idx, n, untilMs: Date.now() + EARTHWORM_TUNING.exposeMs });
   }
 
   /** 247차 — 마지막으로 굴린 시각(필드 칸 그림이 칸마다 할 일을 물어도 1초에 한 번만 굴린다) */
@@ -346,6 +434,7 @@ class FarmStoreImpl {
     const p = this.plot(plotId);
     const def = chk.row!.st.def;
     let done = 0;
+    const doneCells: number[] = [];
     let clumsy = false;
     let lastMsg = '';
     let cropId = '';
@@ -358,6 +447,7 @@ class FarmStoreImpl {
       if (!r.ok) continue;
       for (const n of r.needs) InventoryStore.removeQty(n.itemId, n.qty);
       done++;
+      doneCells.push(i);
       clumsy ||= !!r.clumsy;
       lastMsg = r.messageKo;
       cropId = crop.id;
@@ -369,6 +459,8 @@ class FarmStoreImpl {
     StoryStore.event({ kind: 'farm', action: 'care', cropId });
     const name = CARE_TASK_KO[id];
     const message = done > 1 ? (clumsy ? `${name} ${done}칸 — 서툴러서 효과가 절반이다` : `${name} ${done}칸 — 했다`) : lastMsg;
+    // 248차 — 김매기 · 북주기는 호미로 겉흙을 긁는다 — 지렁이가 드러날 수 있다
+    if (id === 'weed' || id === 'hill_up') return this.withWorms({ ok: true, message }, plotId, doneCells, id);
     return { ok: true, message };
   }
 
@@ -433,12 +525,14 @@ class FarmStoreImpl {
     const targets = GameState.skillBonus('till_speed') >= 1 && p.site === 'plot'
       ? Array.from({ length: FARM_COLS }, (_, c) => Math.floor(idx / FARM_COLS) * FARM_COLS + c)
       : [idx];
-    let n = 0;
-    for (const i of targets) { const c = p.cells[i]; if (c && tillCell(c)) n++; }
+    const tilled: number[] = [];
+    for (const i of targets) { const c = p.cells[i]; if (c && tillCell(c)) tilled.push(i); }
+    const n = tilled.length;
     if (n === 0) return fail('이미 일군 땅이다');
     this.spend(laborOf('till').fatigue * n);   // 247차 — 호미질은 품이 든다
     GameState.markDirty();
-    return { ok: true, message: n > 1 ? `${n}칸을 일궜다` : '흙을 일궜다' };
+    // 248차 — 뒤집은 흙에서 지렁이가 드러난다
+    return this.withWorms({ ok: true, message: n > 1 ? `${n}칸을 일궜다` : '흙을 일궜다' }, plotId, tilled, 'till');
   }
 
   /** 퇴비를 넣는다(칸 하나 · 퇴비 1) */
@@ -602,7 +696,8 @@ class FarmStoreImpl {
       this.spend(laborOf(act, crop, { tool }).fatigue);
       GameState.markDirty();
       const verb = cv.process.first === 'cut' ? '베어' : cv.process.first === 'dig' ? '캐어' : '뽑아';
-      return { ok: true, message: `${josa(crop.nameKo, '을', '를')} ${verb} 밭에 눕혔다 — ${cv.process.dryDays}일 말린 뒤 ${PROCESS_LAST_KO[cv.process.last]}` };
+      const laid: FarmActionResult = { ok: true, message: `${josa(crop.nameKo, '을', '를')} ${verb} 밭에 눕혔다 — ${cv.process.dryDays}일 말린 뒤 ${PROCESS_LAST_KO[cv.process.last]}` };
+      return act === 'dig' ? this.withWorms(laid, plotId, [idx], 'dig') : laid;
     }
     // 가방 자리 — 거둘 아이템은 미리 안다(등급 = 지금 품질 · 붉어졌는가 = 익은 뒤 흐른 시간)
     const bonus = tool.quality + this.morningBonus(crop);
@@ -625,7 +720,8 @@ class FarmStoreImpl {
     }
     if (tool.helper && res.ok) res.message += ` — ${josa(TOOL_NAME_KO[tool.helper] ?? '', '으로', '로')} ${tool.quality < 0 ? '빨리 캤지만 몇 개 찍혔다' : '빨리 거뒀다'}`;
     if (thorn) res.message += ' — 가시에 손을 찔렸다(장갑을 끼면 안 다친다)';
-    return res;
+    // 248차 — 캐는 작물(감자 · 고구마 · 무 …)은 흙을 파 뒤집는다
+    return cv.harvestBy === 'dig' ? this.withWorms(res, plotId, [idx], 'dig') : res;
   }
 
   /** 247차 — 도구가 없어 못 할 때 한 줄(「낫이 있어야 벤다 — 생활용품점에서 판다」) */
@@ -820,7 +916,7 @@ class FarmStoreImpl {
     const name = getCrop(cell.cropId)?.nameKo ?? '';
     clearCell(cell);
     GameState.markDirty();
-    return { ok: true, message: `${name}을(를) 걷어 냈다` };
+    return this.withWorms({ ok: true, message: `${name}을(를) 걷어 냈다` }, plotId, [idx], 'clear');
   }
 
   // ── 설비 ──────────────────────────────────

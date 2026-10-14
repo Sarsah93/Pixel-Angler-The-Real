@@ -8,6 +8,8 @@
 
 import { CROP_PORTRAITS } from '../data/CropPortraits.js';
 import { FISH_IMAGE_FILES, fishIconKey } from '../data/FishTextures.js';
+import { FORAGE_IMAGE_FILES, FARM_WORM_TEX } from '../data/ForageTextures.js';
+import { SHORE_CREATURE_DATABASE } from '@tra/core';
 import { FURNITURE_SALES } from '../data/ShopCatalog.js';
 import { ensureFurnitureIcon } from '../data/HomeFurniture.js';
 import Phaser from 'phaser';
@@ -131,9 +133,7 @@ export class BootScene extends Phaser.Scene {
       item_worm: 'item-icons/it_worm.png',
       item_soft_worm: 'item-icons/it_soft_worm.png',
       item_treble: 'item-icons/it_treble_hook.png',
-      // 167차 — 사용자 제공 도트: 혼무시(생미끼) · 감성돔 바늘(단일 바늘).
-      // 228차 — 혼무시 생미끼는 새 「한 마리」 그림으로(옛 it_honmushi.png는 보존만)
-      item_honmushi: 'item-icons/forage_marphysa_sanguinea.png',
+      // 167차 — 사용자 제공 도트: 감성돔 바늘(단일 바늘). 혼무시 · 청갯지렁이 생미끼 그림은 248차부터 `FORAGE_IMAGE_FILES`(카드)
       item_hook_chinu: 'item-icons/it_hook_chinu.png',
       item_minnow: 'item-icons/it_minnow.png',
       item_metal_jig: 'item-icons/it_metal_jig.png',
@@ -163,17 +163,7 @@ export class BootScene extends Phaser.Scene {
       // 196차 — 카드 채비 포장 사진 도트(열기 빨간 깃 · 전갱이 녹색 깃 — tools/gen_card_rig_icons.py)
       card_rig_yeolgi: 'item-icons/it_card_rig_yeolgi.png',
       card_rig_jeongaengi: 'item-icons/it_card_rig_jeongaengi.png',
-      forage_haliotis_diversicolor: 'item-icons/forage_haliotis_diversicolor.png',
-      forage_heliocidaris_crassispina: 'item-icons/forage_heliocidaris_crassispina.png',
-      forage_aplysia_kurodai: 'item-icons/forage_aplysia_kurodai.png',
-      forage_hemigrapsus_sanguineus: 'item-icons/forage_hemigrapsus_sanguineus.png',
-      forage_portunus_trituberculatus: 'item-icons/forage_portunus_trituberculatus.png',
-      // 225차 — 사용자 사진 3장 도트(tools/pixelize_forage_photos.py). 228차 — 갯지렁이 두 종은 사용자 그림 「한 마리」로 교체
-      forage_perinereis_aibuhitensis: 'item-icons/forage_perinereis_aibuhitensis.png',
-      forage_marphysa_sanguinea: 'item-icons/forage_marphysa_sanguinea.png',
-      forage_ligia_exotica: 'item-icons/forage_ligia_exotica.png',
-      item_ragworm: 'item-icons/forage_perinereis_aibuhitensis.png',
-      // 228차 — 사용자 도트 그림: 미끼 한 갑(상점 묶음) · 한 마리(생미끼 · 도감 · 놀이 판)
+      // 228차 — 사용자 도트 그림: 미끼 한 갑(상점 묶음)
       item_ragworm_pack: 'item-icons/pack_ragworm.png',
       item_honmushi_pack: 'item-icons/pack_honmushi.png',
       // 229차 — 사용자 도트 그림: 급랭 백크릴 600g(밑밥 블록) · 미끼용 곽크릴 · 다낚스 살림용 바칸 · 외포란 암꽃게(방생 안내) · 1자형 혼무시(파기 연출)
@@ -181,21 +171,23 @@ export class BootScene extends Phaser.Scene {
       item_krill_box: 'item-icons/it_krill_box.png',
       item_krill_bait: 'item-icons/it_krill_bait.png',   // 230차 — 미끼용 크릴 한 마리(크릴 · 백크릴 공통)
       item_bakkan_danax: 'item-icons/it_bakkan_danax.png',
-      forage_berried_crab: 'item-icons/forage_berried_crab.png',
       forage_octopus_vulgaris: 'fish/common_octopus.png',   // 하모니 — 채집한 돌문어도 낚은 참문어와 같은 그림
+      [fishIconKey('forage_octopus_vulgaris')]: 'fish/icon/common_octopus.png',   // 248차 — 가방 칸은 64px 아이콘
       honmushi_straight: 'item-icons/honmushi_straight.png',
       honmushi_straight_px: 'item-icons/honmushi_straight_px.png',
-      forageboard_perinereis_aibuhitensis: 'forage-board/perinereis_aibuhitensis.png',
-      // 225차 — 채집 놀이 판 그림(도트 원래 크기 · 머리 왼쪽). 없으면 필드 도트를 키워 쓴다
-      forageboard_marphysa_sanguinea: 'forage-board/marphysa_sanguinea.png',
-      forageboard_ligia_exotica: 'forage-board/ligia_exotica.png',
-      // 226차 — 사용자가 그려 온 도트 그림(해삼 · 보라성게) — 아이콘은 원본 그대로, 판 그림은 줄인 것
-      forage_stichopus_japonicus: 'item-icons/forage_stichopus_japonicus.png',
-      forage_strongylocentrotus_nudus: 'item-icons/forage_strongylocentrotus_nudus.png',
-      forageboard_stichopus_japonicus: 'forage-board/stichopus_japonicus.png',
-      forageboard_strongylocentrotus_nudus: 'forage-board/strongylocentrotus_nudus.png',
     };
     for (const [key, path] of Object.entries(ITEM_ICON_ASSETS)) this.load.image(key, path);
+    // 248차 — 갯것 · 생미끼 그림은 카드(300×160 안) + 64px 아이콘만 싣는다(`tools/forage_cards.cjs` — 원본은 food assets/forage/)
+    for (const [key, file] of Object.entries(FORAGE_IMAGE_FILES)) {
+      this.load.image(key, `forage/${file}`);
+      this.load.image(fishIconKey(key), `forage/icon/${file}`);
+    }
+    // 248차 — 해루질 생물 전부의 채집 놀이 판 그림(44px · 머리 왼쪽)과 필드 점 그림(24px). 텃밭 땅지렁이도 같은 굽기
+    for (const c of SHORE_CREATURE_DATABASE) {
+      this.load.image(`forageboard_${c.id}`, `forage-board/${c.id}.png`);
+      this.load.image(`forage_dot_${c.id}`, `forage-dot/${c.id}.png`);
+    }
+    this.load.image(FARM_WORM_TEX, 'forage-dot/earthworm.png');
     // 코드로 그린 아이템 그림(`tools/item_art/build.py` → `data/ItemArtManifest.ts`) — 사진 · 도트가 없는 아이템의 그림.
     // 아이템 id 로 찾으므로(`ui/ItemIcon.itemArtKeyOf`) 세이브에 든 옛 아이템에도 바로 적용된다.
     for (const [key, path] of Object.entries(ITEM_ART_ASSETS)) this.load.image(key, path);

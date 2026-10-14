@@ -374,5 +374,6 @@ async function main() {
   console.log(`끝: 성공 ${done} · 실패 ${fail}${failed.length ? ` (${failed.join(', ')})` : ''}`);
 }
 
-module.exports = { LOOKS, REDRAW, STYLE_INTRO, taskText };
+// 248차 — 갯것 그림 도구(`gemini_forage_art.cjs`)가 번짐 벗기기 · 격자 정규화를 같이 쓴다
+module.exports = { LOOKS, REDRAW, STYLE_INTRO, taskText, peelFringe, regrid };
 if (require.main === module) main().catch((e) => { console.error(e.message ?? e); process.exit(1); });

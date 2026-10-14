@@ -563,6 +563,26 @@ export const EN_FARM: Record<string, string> = {
     'Dig minerals from grassland and bedrock for cooking, crafting and building. Hometown trees and rocks (logging, quarrying) open up then too.',
   '텃밭은 열렸습니다 — 「텃밭」 카테고리를 보세요. 바다 채집(해루질)은 「채집 · 통발」에 있습니다.':
     'The vegetable patch is open — see the Vegetable patch category. Sea foraging is under Gathering · Traps.',
+  // 248차 — 땅지렁이
+  '땅지렁이 · 바다 미끼': 'Earthworms · sea bait', '흙을 뒤집으면 나온다': 'Turning the soil brings them up', '바다에서는 금방 늘어진다': 'They go limp fast in the sea',
+  '호미로 일구거나 감자 · 고구마 같은 것을 캐면, 그리고 김매기 · 북주기 · 칸 비우기를 하면 가끔 흙 위로 땅지렁이가 드러나 꿈틀거립니다. 그 칸을 밟고 [F](또는 손 닿는 칸을 눌러) 주우면 가방 생미끼 칸에 「땅지렁이」로 들어갑니다. 1분 반쯤 지나면 다시 흙 속으로 파고듭니다.':
+    'Tilling with the homi, digging up potatoes or sweet potatoes, weeding, earthing up or clearing a cell sometimes brings an earthworm wriggling to the surface. Stand on that cell and press [F] (or click a cell within reach) to pick it up — it goes into the live-bait part of your bag as Earthworm. After about a minute and a half it burrows back into the soil.',
+  '퇴비를 넣은 칸 · 촉촉한 흙에 많고 마른 흙에는 드뭅니다. 봄 · 가을에 가장 많고 한여름 · 한겨울에는 깊이 들어가 잘 안 보입니다. 비가 오는 동안에는 일하지 않아도 일군 칸에서 지렁이가 기어 나옵니다.':
+    'They are plentiful in composted cells and moist soil, and scarce in dry soil. Spring and autumn are best; in midsummer and midwinter they go deep and rarely show. While it rains they crawl up out of tilled cells even without any work.',
+  '땅지렁이도 바다낚시 미끼로 씁니다 — 망둥어 · 숭어 · 가자미 · 도다리 · 서대는 곧잘 물고, 감성돔도 가끔 뭅니다. 다른 어종은 청갯지렁이만큼 좋아하지 않습니다.':
+    'Earthworms work as sea bait too — gobies, mullet, flounder, frog flounder and tonguefish take them readily, and black seabream now and then. Other fish like them less than blue lugworms.',
+  '바닷물에 넣으면 1분쯤 뒤부터 힘이 빠져 늘어지고, 4분이면 입질이 3분의 1로 줄어듭니다. 오래 담가 두었으면 다시 던집니다.':
+    'In seawater they start to go limp after about a minute, and by four minutes they draw only a third of the bites. Recast after a long soak.',
+  '지렁이 줍기': 'Pick up earthworms',
+  '빗물에 지렁이가 기어 나왔다': 'Earthworms crawled up in the rain',
+  '지렁이가 흙 속으로 들어가 버렸다': 'The earthworms burrowed back into the soil',
+  '가방에 자리가 없다 — 한 칸 비우고 줍는다': 'No room in the bag — free a slot to pick them up',
+  '바닷물': 'In seawater', '얻는 곳': 'Where to get',
+  '1분 뒤부터 늘어져 4분이면 입질이 3분의 1': 'Goes limp after a minute — draws a third of the bites by 4 minutes',
+  'C (망둥어 · 숭어 · 가자미류)': 'C (gobies · mullet · flatfish)',
+  '텃밭 — 일구기 · 캐기 · 김매기 · 비 오는 날': 'Vegetable patch — tilling · digging · weeding · rainy days',
+  '텃밭 흙에서 주운 땅지렁이. 바닷물에 넣으면 몇 분 만에 늘어져 갯지렁이만은 못하지만 망둥어 · 숭어 · 가자미류는 곧잘 문다. 오래 담가 두었으면 새로 끼운다.':
+    'An earthworm picked up from the vegetable patch. In seawater it goes limp within minutes, so it is no match for a ragworm — but gobies, mullet and flatfish take it readily. Re-bait after a long soak.',
 };
 
 export const EN_FARM_RULES: [RegExp, (m: RegExpMatchArray, tr: (s: string) => string) => string][] = [
@@ -742,5 +762,8 @@ export const EN_FARM_RULES: [RegExp, (m: RegExpMatchArray, tr: (s: string) => st
     (m, tr) => `Rare seedlings and seeds come in about once every ten days — next: ${tr(m[1])} in ${m[2]} day${m[2] === '1' ? '' : 's'}`],
   // 채널 로그 「[텃밭] 들깨 (100g) ×2」 · 거두는 것 「고추냉이 근경 (1뿌리 · 약 80g) · 칸당 6~9개」(이름 안의 「·」 때문에 통째로)
   [/^\[텃밭\] (.+) ×(\d+)$/, (m, tr) => `[Vegetable patch] ${tr(m[1])} ×${m[2]}`],
+  // 248차 — 땅지렁이(일 메시지 꼬리 · 줍기)
+  [/^지렁이 (\d+)마리가 꿈틀거린다$/, (m) => `${m[1]} earthworm${m[1] === '1' ? '' : 's'} wriggling in the soil`],
+  [/^땅지렁이 (\d+)마리를 주웠다$/, (m) => `Picked up ${m[1]} earthworm${m[1] === '1' ? '' : 's'}`],
   [/^(.+) · 칸당 (\d+)(?:~(\d+))?개$/, (m, tr) => `${tr(m[1])} · ${m[2]}${m[3] ? `–${m[3]}` : ''} per cell`],
 ];

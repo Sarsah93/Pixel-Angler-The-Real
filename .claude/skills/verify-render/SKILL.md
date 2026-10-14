@@ -90,6 +90,10 @@ const { chromium } = resolvePlaywright();
   `waitForTimeout`으로 기다리지 말고 **씬 메서드를 직접 호출**(`s.updateQuestGuide(500)`). 2.5초를 기다려도 null이 나온다.
 - **`update()`가 매 프레임 `nearWater`를 다시 계산한다**(155차) — 캐스팅 게이트를 하네스로 두드릴 때는 `s.nearWater = true`를
   **호출 직전마다** 다시 넣는다(한 번 넣고 두 번째 `tryStartCharge`를 부르면 `charging false`).
+- **텃밭 땅지렁이**(248): `__FARM.till(plotId, idx)` 앞뒤로 `Math.random = () => 0.01`을 걸었다 풀면 반드시 드러난다 · 비는 `__FARM.rainingNow = () => true` 후 `rainWorms(plotId)` ·
+  그림 수는 `__FIELD.farmField.devWormViews()` · 줍기는 `farmField.devAim(plotId, idx)` → `update(16)` → `options()[0].run()`(라벨 「지렁이 줍기」).
+  바로 드러내기는 `__FARM.devWorms(plotId, idx, n)`.
+- **채집 놀이 판 열기**: `__FIELD.forage.host.openForageGame(creature, 'hand', { dex: 1, underwater: false }, () => {})` — 팝업 스택은 `{ panel, close }` 묶음이다(`s.popupStack.map((e) => e.panel)` · 닫기는 `e.close()`).
 - 필드 화살표·추적기 검증은 `__STORY.setTracked(id)` → `s.updateQuestGuide(500)` → `s.hud.trackerC.list`(Text)·`s.questGuideG.visible`.
 - ⚠ **하네스의 `import('/src/store/…ts')`가 게임 전역을 갈아 끼울 수 있다**(235차 실측) — HMR로 게임 쪽 URL에 `?t=`가 붙은 상태면
   하네스 import가 **모듈을 새로 평가**하고, 모듈 끝의 `globalThis.__INV = InventoryStore`가 **새 인스턴스로 덮어쓴다**.

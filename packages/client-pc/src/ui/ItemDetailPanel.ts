@@ -19,7 +19,7 @@ import {
   type CropDef, type CropStart, type CropRarity, type CropDifficulty, type LicenseType,
 } from '@tra/core';
 import { GameState } from '../store/GameState.js';
-import { PRODUCE_SUB, SEED_SUB, PIECE_SUB, produceBaseName, looseShortName, looseCountKo } from '../data/CropItems.js';
+import { PRODUCE_SUB, SEED_SUB, PIECE_SUB, produceBaseName, looseShortName, looseCountKo, EARTHWORM_ID, EARTHWORM_DESC } from '../data/CropItems.js';
 import { FarmStore } from '../store/FarmStore.js';
 import { reelCmPerTurn, rodSpecFor, reelSpecFor, rodLoadState, ROD_USE_LABEL, getRodCatalogEntry, getReelCatalogEntry, getLureSpec, getNuisance, sashimiStarsAt, sashimiNutrition, foodNutritionOf, nutritionLineKo, restoreFromNutrition } from '@tra/core';
 import { FISH_DATABASE, fishImageSizeScale, fishRarity, speciesStandardWeightG,
@@ -772,6 +772,16 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
       desc = '요리하기(U)에서 어획물과 조합해 사용합니다.';
       break;
     case '생미끼':
+      if (item.id === EARTHWORM_ID) {
+        // 248차 — 텃밭 땅지렁이(바다에서는 금방 늘어진다 — core `earthwormSeaFade` · 어종 선호 `baitPrefOf`)
+        rows.push(
+          { label: '집어력', value: 'C (망둥어 · 숭어 · 가자미류)' },
+          { label: '바닷물', value: '1분 뒤부터 늘어져 4분이면 입질이 3분의 1' },
+          { label: '얻는 곳', value: '텃밭 — 일구기 · 캐기 · 김매기 · 비 오는 날' },
+        );
+        desc = EARTHWORM_DESC;
+        break;
+      }
       rows.push(
         { label: '집어력', value: 'A (감성돔/노래미)' },
         { label: '신선도 감쇄', value: '분당 -1 (활성 유지 시 입질 +25%)' },

@@ -499,8 +499,13 @@ export type {
 } from './simulation/FishSpawningOracle.js';
 export {
   ORACLE_FISH_DB, spawnFish, classifyLayer, getBaitAffinity, candidateCount, speciesBiteShare, speciesBiteReadiness,
-  standardWeightG, speciesStandardWeightG, conditionFactorFor,
+  standardWeightG, speciesStandardWeightG, conditionFactorFor, baitPrefOf,
 } from './simulation/FishSpawningOracle.js';
+// 248차 — 땅지렁이(텃밭에서 드러난다 · 바다 미끼로는 금방 늘어진다)
+export type { EarthwormAct, EarthwormCtx } from './simulation/EarthwormRules.js';
+export {
+  EARTHWORM_TUNING, earthwormChance, rollEarthworms, earthwormSeaFade, earthwormSeaPref,
+} from './simulation/EarthwormRules.js';
 
 // 195차 — 무리 걸림(열기·전갱이 · 제철 + 입질 확률(활성도) 50% 이상 → 두 마리 10% · 세 마리 2.5%)
 export type { SchoolCount } from './simulation/SchoolHookup.js';

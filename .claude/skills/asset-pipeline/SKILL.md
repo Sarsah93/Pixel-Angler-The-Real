@@ -254,3 +254,25 @@ node tools/fish_cards.cjs --only <파일>
   원본을 보내면 굵은 도트를 베끼는 종(감성돔)은 생김새 설명만으로 새로 그린 판을 고른다. **그림자 걷기를 끈다**(은빛 배 가장자리를 지운다) ·
   JPEG 번짐(윤곽선 바깥 1px 회색 띠 · 계단 모서리 흰 삼각형)을 `peelFringe`로 걷는다. 검수는 어두운 바탕(0x1a1c22)에 가장자리 6배 확대.
 - 투입 뒤: `FISH_IMAGE_FILES` · `FISH_TEXTURE`에 한 줄씩 → `fish_cards.cjs` → 위키 `python3.13 tools/gen_wiki_images.py` → `node tools/wiki_crop_img.cjs`(manifest 복원) → `gen_game_wiki_data.mjs --html`.
+
+## ⑦ 갯것 · 땅지렁이 그림 — Gemini + 카드 방식 (248차)
+
+해루질 생물(21종)과 생미끼 그림도 어종처럼 **원본은 `food assets/`, 게임은 굽는 것만** 싣는다.
+
+```bash
+NODE_USE_ENV_PROXY=1 node tools/gemini_forage_art.cjs --out <스테이징> --dry                 # 프롬프트만
+NODE_USE_ENV_PROXY=1 node tools/gemini_forage_art.cjs --out <스테이징> [--view portrait|top|both] [--only id] [--tag v2 --force]
+node tools/gemini_forage_art.cjs --out <스테이징> --install [--force]                        # 검수 뒤(고른 판은 태그 없는 이름으로)
+node tools/forage_cards.cjs [--sheet <png>]                                                  # 카드 · 아이콘 · 판 · 점 그림
+node tools/forage_cards.cjs --check                                                          # 표 ↔ 원본 ↔ 출력 대조
+```
+
+- 생김새 설명표 `LOOKS`(생물 id → 이름 · 학명 · 비율 · 화풍 참고 · `look` · 위에서 본 그림 `top`) — 화풍 참고는 **사용자가 그려 온 갯것 그림**(`food assets/forage/art/`).
+  이웃 종과 다른 점(전복 ↔ 오분자기 · 낙지 ↔ 주꾸미 · 민꽃게 ↔ 꽃게 · 땅지렁이 ↔ 갯지렁이)을 설명에 적는다.
+- 위에서 본 그림은 **모양이 바뀌는 것만**(소라 · 전복 · 낙지 · 보말 · 삿갓조개). 위에서 보면 읽히지 않는 것(거북손)은 초상을 쓴다.
+- 설치: 초상 = 격자 정규화(192칸 · 셀 6px) → `food assets/forage/art/<id>.png` · 위에서 본 그림 = 긴 변 640px → `food assets/forage/top/<id>.png`.
+- 굽기 출력: 카드 `public/forage/<파일>`(300×160 안) · 아이콘 `public/forage/icon/<파일>`(64px · 키 `<카드 키>__icon`) ·
+  판 `public/forage-board/<id>.png`(44px · 머리 왼쪽 · 사용자 손질 5장 `KEEP_BOARD`는 건너뜀) · 점 `public/forage-dot/<id>.png`(24px · 필드 1배).
+  판 · 점은 면적 평균 → 알파 0.45 끊기 → 채도 · 대비 조금 → **바깥 윤곽 1px**(작게 줄이면 원본 윤곽선이 녹는다).
+- 표 = `packages/client-pc/src/data/ForageTextures.ts` `FORAGE_IMAGE_FILES`(새 생물 · 생미끼는 원본 + 한 줄). BootScene은 표 · `SHORE_CREATURE_DATABASE`를 돌며 싣는다.
+- 위키 그림은 `gen_wiki_images.py`가 같은 표로 원본을 읽는다. ⚠ 시트를 만들 때 `grep -v top`으로 거르지 않는다 — 「octopus」에 「top」이 들어 있다.

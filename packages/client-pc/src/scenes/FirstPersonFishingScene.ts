@@ -37,7 +37,7 @@ import {
   ChumParcel, createChumParcel, stepChum, maxChumSync, predictChumPath,
   isChumExpired, chumAlpha01, chumEllipseRadii,
   spawnFish, SpawnedFish, FightingPhase, FightStatus,
-  calculateTideInfo, getBaitAffinity, candidateCount, BaitKey, SpawnContext,
+  calculateTideInfo, getBaitAffinity, candidateCount, BaitKey, SpawnContext, earthwormSeaFade,
   speciesBiteReadiness, rollSchoolHookup, schoolKitMult, SCHOOL_FIGHT_MULT, type SchoolCount,
   FLASHER_ONLY_BITE_MULT, FLASHER_TARGET_SPECIES,
   getAreaSnagRiskMult,
@@ -513,6 +513,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   init(data: FirstPersonFishingInit): void {
     this.cfg = data;
     this.fpState = 'drift';
+    this.soakSec = 0;
     this.fight = null;
     this.dragSlipping = false;
     this.hookedFish = null;
@@ -2167,7 +2168,16 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   }
 
   // ── 흘림(드리프트) 상태 ──────────────────────────────
+  /** 248차 — 이번 캐스팅에서 미끼가 물에 든 시간(초) — 땅지렁이는 바닷물에서 늘어진다 */
+  private soakSec = 0;
+
+  /** 248차 — 땅지렁이 미끼는 1분 뒤부터 매력이 줄어 4분이면 바닥(core `earthwormSeaFade`). 다른 미끼 · 루어는 1 */
+  private baitSoakMult(): number {
+    return !this.lureMode && this.currentBaitKey() === 'earthworm' ? earthwormSeaFade(this.soakSec) : 1;
+  }
+
   private updateDrift(dt: number, tide: TideVector, influence: TidalInfluence): void {
+    this.soakSec += dt;
     // 207차 — 걸린 채 멈춘 상태: 물리 대신 「살짝 잠긴 찌 · 휜 초릿대」만 그린다(입질도 없다)
     // 대처 창을 고르는 동안은 채비도 시간도 멈춘다(창 뒤에서 또 걸리거나 입질이 오지 않게)
     if (this.snagChoice) return;
@@ -2462,7 +2472,9 @@ export class FirstPersonFishingScene extends Phaser.Scene {
         * gearBiteMult(this.lureMode ? InventoryStore.rigLure?.fault : undefined)
         * this.feeding.activity * (this.cfg.fieldEvent?.biteMult ?? 1) * this.skillBiteMult()
         // 193차 — 미끼 수(+2%씩) · 이웃한 같은 미끼(+1%) · 한 바늘에 두 미끼(바늘마다 +2%) · 반짝이 단독(전갱이 10%)
-        * InventoryStore.rigBiteMult() * flasherMult * tideGenreBite,
+        * InventoryStore.rigBiteMult() * flasherMult * tideGenreBite
+        // 248차 — 땅지렁이는 바닷물에서 늘어진다
+        * this.baitSoakMult(),
       inReefZone: inReef,
       isHold: hold,
       alignmentIndex: this.lineTension.alignmentIndex,
@@ -4405,7 +4417,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   private currentIconKind(): RigIconKind {
     if (this.lureMode && this.lureSpec) return { t: 'lure', kind: this.lureSpec.kind };
     const key = this.currentBaitKey();
-    if (key === 'worm_king' || key === 'worm_blue') return { t: 'bait', kind: 'worm' };
+    if (key === 'worm_king' || key === 'worm_blue' || key === 'earthworm') return { t: 'bait', kind: 'worm' };
     if (key === 'bread' || key === 'corn') return { t: 'chum' };
     if (key === 'fishcut') return { t: 'bait', kind: 'strip' };
     return { t: 'bait', kind: 'shrimp' };

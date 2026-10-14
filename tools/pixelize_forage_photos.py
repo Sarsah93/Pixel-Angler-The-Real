@@ -5,7 +5,9 @@
       food assets/forage/{sea_cucumber,purple_urchin}.png  (226차 — 사용자가 그려 온 투명 도트 그림)
       food assets/forage/{ragworm,honmushi}_{pack,single}.png  (228차 — 사용자 도트 그림: 한 갑 · 한 마리)
 출력:
-  packages/client-pc/public/item-icons/forage_<speciesId>.png  — 아이템 아이콘(도트 × 정수배, 투명 여백)
+  food assets/forage/art/<speciesId>.png                        — 아이템 그림 원본(도트 × 정수배, 투명 여백)
+                                                                 248차 — 게임은 이것을 싣지 않는다. 다시 구운 뒤 `node tools/forage_cards.cjs`
+                                                                 (카드 · 64px 아이콘 · 필드 점 그림)
   packages/client-pc/public/forage-board/<speciesId>.png        — 채집 놀이 판 그림(도트 원래 크기 — 게임이 정수배로 키운다)
   packages/client-pc/public/item-icons/pack_<name>.png          — 228차 미끼 한 갑(상점 묶음) 아이콘
 
@@ -21,6 +23,8 @@ from scipy import ndimage as ndi
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(ROOT, 'food assets', 'forage')
 OUT_ICON = os.path.join(ROOT, 'packages', 'client-pc', 'public', 'item-icons')
+# 248차 — 생물 그림 원본은 food assets(게임은 forage_cards.cjs가 굽는 카드 · 아이콘만 싣는다)
+OUT_ART = os.path.join(ROOT, 'food assets', 'forage', 'art')
 OUT_BOARD = os.path.join(ROOT, 'packages', 'client-pc', 'public', 'forage-board')
 
 
@@ -213,7 +217,7 @@ def save_hires(rgb, mask, path, rotate=0, pad=0.06, max_px=HIRES_MAX):
 
 def save_icon_hires(rgb, mask, species, rotate=0, pad=0.06, max_px=HIRES_MAX):
     """226차 — 원본이 이미 도트 그림이면 다시 굽지 않는다(다른 forage_* 아이콘과 같은 꼴). 228차 — `save_hires`로 합침."""
-    save_hires(rgb, mask, os.path.join(OUT_ICON, f'forage_{species}.png'), rotate, pad, max_px)
+    save_hires(rgb, mask, os.path.join(OUT_ART, f'{species}.png'), rotate, pad, max_px)
 
 
 def save_icon(px, species, canvas=96, scale=10):
@@ -221,7 +225,7 @@ def save_icon(px, species, canvas=96, scale=10):
     can = Image.new('RGBA', (canvas, canvas), (0, 0, 0, 0))
     can.paste(px, ((canvas - w) // 2, (canvas - h) // 2))
     big = can.resize((canvas * scale, canvas * scale), Image.NEAREST)
-    big.save(os.path.join(OUT_ICON, f'forage_{species}.png'))
+    big.save(os.path.join(OUT_ART, f'{species}.png'))
 
 
 def save_board(px, species):

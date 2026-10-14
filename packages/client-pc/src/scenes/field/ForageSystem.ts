@@ -467,7 +467,9 @@ export class ForageSystem {
       const c = getCreatureById(s.creatureId);
       if (!c) continue;
       const img = this.host.scene.add.image(s.tx * tr + tr / 2, s.ty * tr + tr * 0.72, forageSpotTexKey(c))
-        .setOrigin(0.5, 1).setDepth(6.5).setScale(1.5).setVisible(false);
+        .setOrigin(0.5, 1).setDepth(6.5).setVisible(false);
+      // 248차 — 그림으로 구운 점 그림(24px · `forage-dot/`)은 1배, 절차 도트(16px 폴백)는 1.5배
+      img.setScale(Math.max(img.width, img.height) > 16 ? 1 : 1.5);
       // 안전망 — 어떤 이유로든 큰 텍스처가 들어오면 스팟 크기로 줄인다(화면 덮기 방지)
       const raw = Math.max(img.width, img.height);
       if (raw > SPOT_MAX_PX) img.setScale(SPOT_MAX_PX / raw);

@@ -8,6 +8,7 @@
    `packages/client-pc/public/<path>` 를 읽고 긴 축 기준 축소(기본 360px) + 256색 양자화.
  - 어종 그림(246차): 게임은 카드(410×166)만 싣으므로 `FishTextures.ts`의 `FISH_IMAGE_FILES` 표로
    원본 `food assets/fish/<file>`을 읽는다(세로가 긴 어종도 360px을 채운다).
+ - 갯것 · 생미끼 그림(248차): 같은 까닭으로 `ForageTextures.ts`의 `FORAGE_IMAGE_FILES` 표 → `food assets/forage/art/<file>`.
  - 절차 픽셀 아이콘(`px:<key>`): `data/PixelIconArt.ts`의 팔레트·행 매트릭스를 읽어
    정수 배율(기본 6배)로 렌더. 게임 런타임(PixelIcon.ts)과 같은 도트를 쓴다.
 
@@ -28,6 +29,9 @@ PUBLIC = os.path.join(ROOT, 'packages/client-pc/public')
 BOOT = os.path.join(ROOT, 'packages/client-pc/src/scenes/BootScene.ts')
 FISH_TEX = os.path.join(ROOT, 'packages/client-pc/src/data/FishTextures.ts')
 FISH_SRC = os.path.join(ROOT, 'food assets/fish')
+# 248차 — 갯것 · 생미끼 그림도 카드만 싣는다 → 원본 표(`ForageTextures.ts` FORAGE_IMAGE_FILES)로 food assets/forage/art/를 읽는다
+FORAGE_TEX = os.path.join(ROOT, 'packages/client-pc/src/data/ForageTextures.ts')
+FORAGE_SRC = os.path.join(ROOT, 'food assets/forage/art')
 ICON_ART = os.path.join(ROOT, 'packages/client-pc/src/data/PixelIconArt.ts')
 # 197차 — 스킬 아이콘(16x16 · 같은 형식). 위키 「스킬」 탭 카드에 쓴다 → `sk_<id>.png` · manifest 키 `sk:<id>`
 SKILL_ART = os.path.join(ROOT, 'packages/client-pc/src/data/SkillIconArt.ts')
@@ -65,6 +69,15 @@ def parse_fish_files() -> dict:
     body = body[:body.index('};')]
     return {m.group(1): os.path.join(FISH_SRC, m.group(2))
             for m in re.finditer(r"^\s+(fish_[a-z0-9_]+):\s*'([^']+\.png)'", body, re.M)}
+
+
+def parse_forage_files() -> dict:
+    """248차 — ForageTextures.ts `FORAGE_IMAGE_FILES`(텍스처 키 → 원본 파일). 값은 `food assets/forage/art/` 기준 절대 경로."""
+    src = open(FORAGE_TEX, encoding='utf-8').read()
+    body = src[src.index('export const FORAGE_IMAGE_FILES'):]
+    body = body[:body.index('};')]
+    return {m.group(1): os.path.join(FORAGE_SRC, m.group(2))
+            for m in re.finditer(r"^\s+([a-z_]+):\s*'([^']+\.png)'", body, re.M)}
 
 
 def parse_icon_art(path: str = ICON_ART, marker: str = 'PIXEL_ICON_ART') -> dict:
@@ -130,6 +143,7 @@ def main() -> int:
 
     sources = {k: os.path.join(PUBLIC, rel) for k, rel in parse_boot_map().items()}
     sources.update(parse_fish_files())
+    sources.update(parse_forage_files())
     for key, src in sorted(sources.items()):
         if key in SKIP_KEYS or key.startswith(SKIP_PREFIX):
             continue

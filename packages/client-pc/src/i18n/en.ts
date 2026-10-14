@@ -254,7 +254,7 @@ const EN_BASE: Record<string, string> = {
   '밑밥 투척 (동조율)': 'Throw chum (sync)', '다시 캐스팅 (결과 화면)': 'Cast again (result screen)', '도움말 가이드': 'Help guide', '종료 (인벤→쿨러→나가기 LIFO)': 'Exit (inventory → cooler → leave)',
   '1인칭 파이팅': 'First-person fight', '릴링 (거리 좁힘)': 'Reel (close distance)', '로드 스티어 (+릴링 = 물고기 횡 견인)': 'Rod steer (+reel = pull fish sideways)', '버티기 (홀드 — 구 H)': 'Hold (was H)',
   // 187차 — 추천 배너 미끼 이름
-  '청갯지렁이': 'Blue lugworm', '참갯지렁이': 'King ragworm', '게·소라': 'Crab / turban shell', '조개살': 'Clam meat', '생선 살': 'Fish meat',
+  '청갯지렁이': 'Blue lugworm', '땅지렁이': 'Earthworm', '참갯지렁이': 'King ragworm', '게·소라': 'Crab / turban shell', '조개살': 'Clam meat', '생선 살': 'Fish meat',
   // 187차 — 면허가 여는 기능(구: 내부 id 노출)
   '통발 설치': 'Trap placement', '상업용 통발': 'Commercial traps', '식당 개업': 'Open a restaurant', '선상콘도 운영': 'Run a floating condo', '토너먼트 참가': 'Tournament entry', '토너먼트 주최': 'Host tournaments', '보트 대여': 'Boat rental', '보호구역 출입': 'Protected-area access', '전복 채취': 'Abalone gathering', '장어 통발': 'Eel traps', '고급 손질·요리': 'Advanced prep & cooking', '집 증축·마당 시설': 'House extension & yard facilities', '마을 농지 텃밭 다섯 구획': 'Five garden patches on village farmland', '까다로운 작물 재배': 'Growing demanding crops', '개인 보트 운항': 'Private boat operation', '어촌계 어장 채취': 'Gathering in fishery-cooperative grounds', '항만 제한구역 낚시': 'Fishing in restricted port areas',
   // 187차 — 설정 단축키 탭 현행화

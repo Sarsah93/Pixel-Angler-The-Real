@@ -11,6 +11,8 @@
  *  (`node tools/fish_cards.cjs`). 원본 53장을 그대로 싣던 때 부팅 텍스처 ≈ 181MB.
  */
 
+import { FORAGE_IMAGE_FILES } from './ForageTextures.js';
+
 /** 어종 ID → 실사 픽셀 생선 이미지 텍스처 키 */
 export const FISH_TEXTURE: Record<string, string> = {
   black_seabream: 'fish_black_sea_bream',
@@ -150,9 +152,14 @@ export const FISH_IMAGE_FILES: Record<string, string> = {
   fish_black_scraper: 'black_scraper.png',                // 말쥐치
 };
 
-/** 246차 — 카드 키(`fish_<…>`) → 64px 아이콘 키(`fishicon_<…>`) */
+/**
+ * 246차 — 카드 키(`fish_<…>`) → 64px 아이콘 키(`fishicon_<…>`).
+ * 248차 — 갯것 · 생미끼 카드(`FORAGE_IMAGE_FILES` · 돌문어)도 같은 방식이다 → `<카드 키>__icon`.
+ */
 export function fishIconKey(cardKey: string): string {
-  return cardKey.startsWith('fish_') ? `fishicon_${cardKey.slice(5)}` : cardKey;
+  if (cardKey.startsWith('fish_')) return `fishicon_${cardKey.slice(5)}`;
+  if (cardKey in FORAGE_IMAGE_FILES || cardKey === 'forage_octopus_vulgaris') return `${cardKey}__icon`;
+  return cardKey;
 }
 
 /** 246차 — 이 크기(긴 변 px) 이하로 그리면 카드 대신 64px 아이콘을 쓴다(NEAREST 축소가 칸을 건너뛰어 떨린다) */
