@@ -169,7 +169,7 @@ function cropStartDetail(item: Pick<InvItem, 'name' | 'qty' | 'basePrice'>, crop
     const w = cultivationOf(crop).water;
     rows.push({ label: '물', value: `${WATER_AMOUNT_KO[w.amount]}씩 · 알맞은 흙 ${Math.round(w.band[0] * 100)}~${Math.round(w.band[1] * 100)}%${w.over !== 'none' ? ` · 넘치면 ${OVERWATER_KO[w.over]}` : ''}`, color: '#8fd4ff' });
     const proc = processLineKo(crop);
-    if (proc) rows.push({ label: '거둔 뒤', value: proc, color: '#ffd257' });
+    if (proc) rows.push({ label: '거둔 뒤 손질', value: proc, color: '#ffd257' });
   }
   if (crop.interim && !(crop.interim.seedOnly && st.kind !== 'seed')) rows.push({ label: '자라는 동안', value: crop.interim.labelKo });
   rows.push(...cropTierRows(crop, st));   // 237차

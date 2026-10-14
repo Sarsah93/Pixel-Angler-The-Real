@@ -536,7 +536,7 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
       // 235차 — 텃밭: 개간 키트 · 씨앗 봉투 · 호미 · 퇴비 · 설비
       { id: 'inv_place_farm', name: '텃밭 개간 키트', icon: '', iconTexture: 'art_farm_kit', category: 'etc', subCategory: '설치형',
         basePrice: 8000, price: 8000, maxPerPurchase: 2, equippable: false, placeKey: 'farm_plot',
-        desc: '마당 풀밭에 4×3칸 텃밭 한 구획을 낸다. 칸마다 호미로 일궈야 심을 수 있다.' },
+        desc: '마당 풀밭에 4×3칸 텃밭 한 구획을 낸다(한 칸 = 2×2 타일). 칸마다 호미로 일궈야 심을 수 있다.' },
       ...dailyFarmEntries(),
       { id: 'inv_headlamp', name: '헤드랜턴 (800lm)', icon: '', iconTexture: 'art_headlamp', category: 'etc', subCategory: '해루질 도구',
         basePrice: 25000, price: 26000, maxPerPurchase: 1, equippable: false, lampLumens: 800,

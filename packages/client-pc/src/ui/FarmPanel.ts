@@ -24,7 +24,7 @@ import {
   CARE_TASK_KO, RIPE_STAGE_KO, ripeStageOf, perPlantYield, hasCarePlan, cellDay, harvestPreview,
   // 247차 — 재배 요소
   cultivationOf, waterLineKo, toolLineKo, processLineKo, timingLineKo, laborLineKo, propagateLineKo, OFF_TIMING_KO, MOISTURE_STATE_KO,
-  processHoursLeft, wildUnknown, WATER_AMOUNT_KO,
+  processHoursLeft, wildUnknown, WATER_AMOUNT_KO, WATER_AMOUNT_EN,
   type FarmCellState, type FarmFacility, type FarmPlotState, type LicenseType, type WaterAmount,
 } from '@tra/core';
 import { DraggablePanel, restoreHandCursor } from './DraggablePanel.js';
@@ -38,7 +38,7 @@ import { openCareTask, openProcess, openTray, type FarmActionHost } from './Farm
 import { InventoryStore, type InvItem } from '../store/InventoryStore.js';
 import { GameState } from '../store/GameState.js';
 import { startItemName } from '../data/CropItems.js';
-import { t } from '../i18n/I18n.js';
+import { t, getLocale } from '../i18n/I18n.js';
 
 const PANEL_W = 780;
 /** 238차 — 관리 작업 줄(단계 · 병 · 할 일)이 붙어 조금 높다 · 247차 이 칸 물 주기 줄 */
@@ -378,7 +378,7 @@ export class FarmPanel extends DraggablePanel {
       if (!c.process.dryAt) {
         const left = processHoursLeft(c);
         const total = (def?.dryDays ?? 1) * 24;
-        bar('말리는 중', 1 - left / total, 0xd8b860, `${Math.max(1, Math.ceil(left / 24))}${t('일')}`);
+        bar('말리는 중', 1 - left / total, 0xd8b860, `${Math.max(1, Math.ceil(left / 24))}일 남음`);
         row('지금', '밭에 눕혀 말린다 — 비 오는 동안은 마르지 않는다', '#c8dceb');
       } else {
         const overDays = (Date.now() - c.process.dryAt) / 86_400_000;
@@ -460,8 +460,10 @@ export class FarmPanel extends DraggablePanel {
         let wx = PANE_X + 92;
         const can = this.indoor || !!InventoryStore.find(WATERING_CAN_ID);
         for (const a of ['light', 'normal', 'deep'] as WaterAmount[]) {
-          const w = Math.max(56, labelW(WATER_AMOUNT_KO[a]) + 20);
-          this.button(`cell_water_${a}`, wx, y, w, 26, WATER_AMOUNT_KO[a], () => this.water(a, this.sel), can);
+          // 「조금 · 보통 · 흠뻑」 낱말은 영어 사전에 두지 않는다(「조금」 물때 · 등급 「보통」과 겹친다) — 언어별 표에서 바로
+          const lb = getLocale() === 'en' ? WATER_AMOUNT_EN[a] : WATER_AMOUNT_KO[a];
+          const w = Math.max(56, labelW(lb) + 20);
+          this.button(`cell_water_${a}`, wx, y, w, 26, lb, () => this.water(a, this.sel), can);
           wx += w + 6;
         }
         y += 32;
@@ -687,16 +689,18 @@ export class FarmPanel extends DraggablePanel {
       ['물', waterLineKo(crop)],
       ['품 · 거름', laborLineKo(crop)],
       ['도구', toolLineKo(crop)],
-      ['거둔 뒤', processLineKo(crop)],
+      ['거둔 뒤 손질', processLineKo(crop)],
       ['알맞은 철', timingLineKo(crop)],
       ['늘리기', propagateLineKo(crop)],
     ];
     for (const [label, value] of lines) {
       if (!value) continue;
-      this.content.add(scene.add.text(PANE_X, y, t(label), { fontFamily: FONT, fontSize: '12px', color: '#8fb4cc' }));
+      // 이름 칸은 70px — 영어 이름이 길면 줄을 바꾸고, 줄 높이는 이름 · 값 가운데 큰 쪽(겹침 방지)
+      const k = scene.add.text(PANE_X, y, t(label), { fontFamily: FONT, fontSize: '12px', color: '#8fb4cc', wordWrap: { width: 70 } });
+      this.content.add(k);
       const v = scene.add.text(PANE_X + 76, y, value, { fontFamily: FONT, fontSize: '12px', color: '#e8f2fa', wordWrap: { width: PANE_W - 80 }, lineSpacing: 2 });
       this.content.add(v);
-      y += v.height + 8;
+      y += Math.max(k.height, v.height) + 8;
     }
     y += 4;
     const note = scene.add.text(PANE_X, y, crop.noteKo, { fontFamily: FONT, fontSize: '12px', color: '#9fb8c8', wordWrap: { width: PANE_W }, lineSpacing: 3 });

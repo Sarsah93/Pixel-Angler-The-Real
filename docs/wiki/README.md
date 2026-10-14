@@ -2,8 +2,8 @@
 
 > **이 위키의 목적**: 날짜·차수 순으로만 쌓이던 작업 기록을 **구조(시스템) 기준**으로 다시 배열해,
 > "지금 무엇이 어디까지 되어 있고 / 무엇이 남았고 / 어디가 위험한가"를 한 화면에서 판별한다.
-> 최종 업데이트: 2026-10-14 (246차 반영 — 그림 없던 어종 4종(Gemini) · 어종 그림 카드 방식(부팅 텍스처 194MB → 12MB)은 `02-SYSTEMS/photo-pixel-art.md` ·
-> 245차 작물 관리 작업(난이도)은 `home-base.md` · 차수 목록은 `03-WORKLOG/README.md`)
+> 최종 업데이트: 2026-10-14 (247차 반영 — 작물별 재배 요소 · 텃밭 칸 2×2 · 칸에서 손에 든 것으로 일하기는 `02-SYSTEMS/home-base.md` ·
+> 필드 글자 흰 테(R14)는 `ui-framework.md` · 어종 원본 재굽기 · 들깨/참깨 초상은 `photo-pixel-art.md` · 차수 목록은 `03-WORKLOG/README.md`)
 
 ---
 
@@ -47,7 +47,7 @@
 | S5 | [인벤토리·장비·보관](02-SYSTEMS/inventory-equipment.md) | 🟢 | `InventoryStore` · `CoolerStore` · `FridgeStore` · **`InventoryPanel` 윈도우드 스크롤(148차)** | **148차 가방 사다리 5단계 실효화**(25 → 28/30/33/35/37 · 용량 밖 '잠긴 칸') — 예약 슬롯 6종 아이템 대기 · 탭별 용량 차등(core `Backpack.ts`) 미배선 · **155 획득 토스트·NEW 점·채비 잠금 세이브** |
 | S6 | [경제·상점·시세](02-SYSTEMS/economy-data.md) | 🟢 | `MarketPriceEvaluator` · `ShopPanel` · **`ConsignmentAuction`(147차 위판)** · `AuctionHousePanel` | **147차 위판 개통**(직판장 창구 겸용 · 평판 = 수수료) — `TUNING.auction` F8 조율 · 경매 **구매자 측** 미개방 · 낚시점 전용 상점 |
 | S7 | [월드맵·지역 타일맵](02-SYSTEMS/world-field.md) | 🔶 | `WorldMapScene` · **OSM 파이프라인 3종** · `build_region_maps.py` | 속초(심리스 v2)·부산·홈타운 개방 — OSM 16개 지역 확장 잔여 |
-| S8 | [홈베이스 (집)](02-SYSTEMS/home-base.md) | 🔶 | `HomeInteriorScene` · `types/HomeBase.ts` · `FarmSim` · `CropCareSim`(245 — 84종 관리 표 · 병해충 16) · **`CropRawEatDatabase`**(241) · `FarmStore` · `FarmWorkPanel` | 하우스 Tier 1~3, 상업 수조, 텃밭 잔여(시세 실연결 · 난이도 문턱 · 종묘사 실제 위치 · 개량종 구세이브 완화 · 243 포장 잔여 — 백로그 BL · BM · BN · BQ) |
+| S8 | [홈베이스 (집)](02-SYSTEMS/home-base.md) | 🔶 | `HomeInteriorScene` · `types/HomeBase.ts` · `FarmSim` · `CropCareSim`(245 — 84종 관리 표 · 병해충 16) · `CropCultivationDatabase` · `FarmFieldSystem`(247 — 재배 요소 86종 · 칸 2×2 · 칸 그림) · **`CropRawEatDatabase`**(241) · `FarmStore` · `FarmWorkPanel` | 하우스 Tier 1~3, 상업 수조, 텃밭 잔여(시세 실연결 · 난이도 문턱 · 종묘사 실제 위치 · 개량종 구세이브 완화 · 243 포장 잔여 — 백로그 BL · BM · BN · BQ) |
 | S9 | [외부 실데이터](02-SYSTEMS/economy-data.md#외부-api) | 🟢⚠ | `core/api-client/*` | **배포 시 CORS 프록시 필수** |
 | S10 | [UI 프레임워크](02-SYSTEMS/ui-framework.md) | 🟢 | `DraggablePanel` · `TextFit` · `SceneFade` · `HelpLibraryPanel`(**14카테고리 76토픽**) · `i18n/*` | 저순위 팝업 검수 잔여 · **187차 도움말 전면 개정**(실캡처 38장 ko/en · 번호 콜아웃) |
 | S11 | [가이드·온보딩](02-SYSTEMS/ui-framework.md#가이드-허브) | 🟢 | `GuidePanel` · `GuideContent` | 삽화 실게임 스크린샷 교체 |

@@ -746,7 +746,7 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
   const thumb = (file, ph) => '<div class="thumb">' + (file ? img(file) : '<span class="ph">' + esc(ph) + '</span>') + '</div>';
   const kvRows = pairs => '<table class="kv"><tbody>' + pairs
     .filter(([, v]) => v !== null && v !== undefined && v !== '')
-    .map(([k, v]) => '<tr><th>' + esc(k) + '</th><td>' + v + '</td></tr>').join('') + '</tbody></table>';
+    .map(([k, v]) => '<tr><th>' + (k && typeof k === 'object' ? k.html : esc(k)) + '</th><td>' + v + '</td></tr>').join('') + '</tbody></table>';   // 247차 — 키가 링크면 {html}
   const stars = n => '<span class="star">' + '★'.repeat(n) + '<span class="dim">' + '☆'.repeat(5 - n) + '</span></span>';
 
   /** 탭 정의 — 목록·분류·카드·상세를 한 곳에서 (새 탭 = 여기에 한 항목) */
@@ -1039,6 +1039,13 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
         (G.farming.rules.careWhen ? '<p class="note">' + esc(G.farming.rules.careWhen) + ' ' + esc(G.farming.rules.careGroup || '') + '</p>' : '') +
         '</div>'
       : '<div class="ssec"><h3>손이 가는 일</h3><p class="note">특별히 손 갈 일은 없다 — 물 · 퇴비 · 거두기만.</p></div>';
+    // 247차 — 기르는 법(물의 양 · 품 · 도구 · 거둔 뒤 손질 · 알맞은 철 · 늘리기 · 귀한 작물 · 저절로 나는 싹)
+    const cv = c.cultivation;
+    const cultSec = cv ? '<div class="ssec"><h3>기르는 법</h3>' + kvRows([
+      ['물', esc(cv.water)], ['품 · 거름', esc(cv.labor)], ['도구', cv.tools ? esc(cv.tools) : null],
+      ['거둔 뒤 손질', cv.process ? esc(cv.process) : null], ['알맞은 철', cv.timing ? esc(cv.timing) : null],
+      ['늘리기', cv.propagate ? esc(cv.propagate) : null], ['구하기', cv.rare ? esc(cv.rare) : null], ['저절로', cv.wild ? esc(cv.wild) : null],
+    ]) + (cv.note ? '<p class="note">' + esc(cv.note) + '</p>' : '') + (G.farming.rules.cultivate ? '<p class="note">' + esc(G.farming.rules.cultivate) + '</p>' : '') + '</div>' : '';
     // 245차 — 병 · 벌레 · 새를 한 표에(종류 칸 · 다 번지면 잃는 몫)
     const disKinds = [...new Set(cp.diseases.map(d => d.kindLabel || '병'))];
     const disSec = cp.diseases.length
@@ -1056,7 +1063,7 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
     useRows.push(['할 일', u.quests.length ? xlist(u.quests.map(q => xl('quests', q.id, q.title) + ' <span class="dim">(' + q.how + ')</span>')) : '<span class="dim">쓰이는 할 일이 없습니다.</span>']);
     useRows.push(['사 주는 곳', esc(c.price.buyers)]);
     // 241차 — 날로 먹기 · 개량종
-    const rawRows = (c.rawEat || []).map(r => [xl('items', r.id, r.name),
+    const rawRows = (c.rawEat || []).map(r => [{ html: xl('items', r.id, r.name) },
       r.kind === 'eat' ? '<b>먹는다</b> — ' + (r.bite ? esc(r.bite.label) + '에 ' : '') + '허기 +' + r.hunger + ' · 수분 ' + (r.hydration < 0 ? '−' + Math.abs(r.hydration) : '+' + r.hydration) + ' <span class="dim">(' + r.g + 'g · ' + r.kcal + ' kcal)</span> — ' + esc(r.note)
       : r.kind === 'split' ? '<b>나눠서</b> — [나누기] ' + r.pieces.count + '개 → ' + xl('items', r.pieces.id, r.pieces.label) + ' (조각 하나 허기 +' + r.hunger + ' · 수분 ' + (r.hydration < 0 ? '−' + Math.abs(r.hydration) : '+' + r.hydration) + ') — ' + esc(r.note)
       : r.kind === 'no' ? '<b class="warn">못 먹는다</b> — ' + esc(r.why) : '<span class="dim">—</span>']);
@@ -1086,7 +1093,7 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
         ]) + '</div>' +
         '<div class="ssec"><h3>심는 법</h3>' + startTable + '<p class="note">' + esc(G.farming.rules.plotCells) + ' · ' + esc(G.farming.rules.plots) + '</p></div>' +
         '<div class="ssec"><h3>거두기</h3>' + kvRows(harvestRows) + '</div>' +
-        careSec + disSec + rawSec + varSec +
+        cultSec + careSec + disSec + rawSec + varSec +
         '<div class="ssec"><h3>값</h3>' + kvRows([
           ['기준값', '<b>' + nfw(c.price.base) + '</b> <span class="dim">— 상 등급 · 달 지수 · 주간 출렁임(±' + Math.round(c.price.volatility * 100) + '%) 전</span>'],
           ['실제 시세', c.price.kamis ? '하루 한 번 실제 소매가를 받아 「오늘 ÷ 평년」으로 움직인다' : '달 지수 + 주간 출렁임'],
@@ -1098,7 +1105,7 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
     return {
       key: c.id, name: c.name, meta: c.catLabel + ' · ' + c.tierLabel + ' · ' + c.growMonths, img: c.img,
       price: nfw(c.price.base) + ' 기준',
-      search: [c.name, c.nameEn, c.catLabel, c.tierLabel, c.care.join(' '), c.note, c.harvest.name].join(' '),
+      search: [c.name, c.nameEn, c.catLabel, c.tierLabel, c.care.join(' '), c.note, c.harvest.name, c.cultivation ? c.cultivation.process : ''].join(' '),
       detail: () => cropDetail(c),
     };
   }

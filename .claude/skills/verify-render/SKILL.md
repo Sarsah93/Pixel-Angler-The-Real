@@ -104,6 +104,19 @@ const { chromium } = resolvePlaywright();
   든 레지스트리는 인스턴스가 갈라질 수 있다(서버 재시작 직후에도 재현). 스프라이트 비교는
   **값 시그니처**(`w x h : rows[0]` 등)로 할 것.
 
+## 텃밭 필드 하네스 (247차)
+
+- 구획 놓기: `s.startPlacement(INV.find('inv_place_farm'))` → `s.pointerWorld = () => ({x, y})` → `s.confirmPlacement({x:0,y:0})` → `delete s.pointerWorld` · `s.cancelPlacement()`.
+  자리는 `core.canPlaceAt(tx, ty, PLACEMENT_DEFS.farm_plot.rule, s.placementWorld()).ok`로 찾는다(구획 8×6 타일).
+- 칸 상태는 `__FARM.plot(plotId).cells[i]`를 직접 세팅 + `core.plantCell(...)` → `__FARM.advanceAll(Date.now())`.
+- **칸에 서기**: 발 = `o.tx*20 + (i%4)*40 + 20`, `o.ty*20 + ⌊i/4⌋*40 + 26` → `s.playerBody.setPosition(x, y - s.PLAYER_FOOT_OFFSET)` · `s.updateSpriteAndShadow()`
+  → `F = __FIELD.farmField` · `F.host.pointer = () => null`(마우스가 겨눔을 바꾸지 않게) · `F.refreshAll(); F.update(16)`
+  → 머리 위 안내는 `s.storyProxAt = 999; s.updateStoryProximity(16)` 뒤 `s.npcHintText.text`. 선택지는 `F.options()`, 겨눈 칸은 `F.devTarget()`.
+- 손에 든 것 = `INV.assignQuickslot(1, id)` + `GS.updatePlayer({ activeQuickslotIndex: 1 })`. 물 붓기 양은 `F.devPour(ms)`.
+- 창을 지울 때 `popupStack.pop()` + `destroy()`는 씬이 쥔 참조(`s.helpPanel` 등)를 안 지운다 — 다음 `openHelpLibrary`가 죽은 창에 `showTopic`을 불러
+  오류가 난다(하네스 탓). 씬 참조가 있는 창은 `popupStack[...].close()`로 닫는다.
+- 작업 장면은 `top.devFinish(1)`로 끝내고, 털기 → 키질처럼 이어 뜨는 장면은 그 뒤 수백 ms 기다려 다음 `popupStack` 꼭대기를 본다.
+
 ## 자주 틀리는 시그니처·측정
 
 - 맵 편집 하네스: `s.toggleMapEditor()` → `__MAPEDIT.state` 설정 → `s.editBeginStroke(ptr)`/`s.editFinishStroke()`.

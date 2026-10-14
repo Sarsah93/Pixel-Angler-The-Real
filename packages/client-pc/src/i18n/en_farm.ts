@@ -9,6 +9,12 @@
 import {
   CROP_CARE_KO, CROP_CARE_EN, CARE_TASK_KO, CARE_TASK_EN, CARE_WORK_KO, CARE_WORK_EN, DISEASE_KO, DISEASE_EN, DISEASE_SYMPTOM_KO, DISEASE_SYMPTOM_EN,
   DISEASE_CONTROL_KO, DISEASE_CONTROL_EN, RIPE_STAGE_KO, RIPE_STAGE_EN, CROP_CARE_PLANS, NURSERY_PLAN, CROP_DATABASE, carePlanOf,
+  // 247차 — 재배 요소(표의 Ko/En 쌍 · 작물별 한 줄)
+  PROCESS_WORK_DEFS, WATER_AMOUNT_EN, OVERWATER_KO, OVERWATER_EN, HARVEST_BY_KO, HARVEST_BY_EN,
+  OFF_TIMING_KO, OFF_TIMING_EN, PROCESS_FIRST_KO, PROCESS_FIRST_EN, PROCESS_LAST_KO, PROCESS_LAST_EN,
+  MOISTURE_STATE_KO, MOISTURE_STATE_EN, TOOL_NAME_KO, TOOL_NAME_EN, cultivationOf,
+  waterLineKo, waterLineEn, toolLineKo, toolLineEn, processLineKo, processLineEn, timingLineKo, timingLineEn, laborLineKo, laborLineEn,
+  propagateLineKo, propagateLineEn,
   type CropCare, type CareTaskId, type CareWorkKind, type CropDisease, type RipeStage,
 } from '@tra/core';
 
@@ -31,6 +37,11 @@ export function monthRangeEn(ko: string): string {
   }).join(', ');
 }
 
+/** 247차 — Ko/En 표 두 벌을 짝으로 */
+function pairsOf<K extends string>(ko: Record<K, string>, en: Record<K, string>): [string, string][] {
+  return (Object.keys(ko) as K[]).filter((k) => !!ko[k] && !!en[k]).map((k) => [ko[k], en[k]]);
+}
+
 /** 238차 — 작업 · 병 · 익는 단계 이름(ko → en) · 작업 방법 한 줄(표에서 그대로) */
 const CARE_TASK_PAIRS: Record<string, string> = Object.fromEntries([
   ...(Object.keys(CARE_TASK_KO) as CareTaskId[]).map((k) => [CARE_TASK_KO[k], CARE_TASK_EN[k]]),
@@ -40,6 +51,18 @@ const CARE_TASK_PAIRS: Record<string, string> = Object.fromEntries([
   ...[...Object.values(CROP_CARE_PLANS), NURSERY_PLAN].flatMap((p) => p.tasks.map((t) => [t.howKo, t.howEn])),
   // 245차 — 작물 84종의 일(표가 작물마다 말을 따로 둔다)
   ...CROP_DATABASE.flatMap((c) => carePlanOf(c).tasks.map((t) => [t.howKo, t.howEn])),
+  // 247차 — 거둔 뒤 손질 장면 · 재배 요소 표 · 작물별 한 줄(물 · 도구 · 거둔 뒤 · 철 · 품 · 늘리기)
+  ...Object.values(PROCESS_WORK_DEFS).map((t) => [t.howKo, t.howEn]),
+  //  짧은 낱말 표(물 양 「조금 · 보통 · 흠뻑」 · 거름 · 품 · 도구 이름)는 사전에 넣지 않는다 — 「조금」(조금 물때) · 「보통」(등급) ·
+  //  「호미」 · 「키」(가방 아이템 이름)를 덮는다. 그 낱말이 든 문장은 아래 규칙이 통째로 옮긴다.
+  ...pairsOf(OVERWATER_KO, OVERWATER_EN), ...pairsOf(HARVEST_BY_KO, HARVEST_BY_EN), ...pairsOf(OFF_TIMING_KO, OFF_TIMING_EN),
+  ...pairsOf(PROCESS_FIRST_KO, PROCESS_FIRST_EN), ...pairsOf(PROCESS_LAST_KO, PROCESS_LAST_EN), ...pairsOf(MOISTURE_STATE_KO, MOISTURE_STATE_EN),
+  // 작물별 「기르는 법」 메모(표의 noteKo/noteEn)
+  ...CROP_DATABASE.map((c) => { const cv = cultivationOf(c); return [cv.noteKo, cv.noteEn]; }).filter(([k, e]) => !!k && !!e),
+  ...CROP_DATABASE.flatMap((c) => [
+    [waterLineKo(c), waterLineEn(c)], [toolLineKo(c), toolLineEn(c)], [processLineKo(c), processLineEn(c)],
+    [timingLineKo(c), timingLineEn(c)], [laborLineKo(c), laborLineEn(c)], [propagateLineKo(c), propagateLineEn(c)],
+  ].filter(([k]) => !!k)),
 ]);
 /** 245차 — 텃밭 알림의 앞 꼬리표 · 뒤 칸 꼴(로그 줄에만 붙는다) */
 const PATCH_TAG = '(\\[텃밭\\] )?';
@@ -49,6 +72,30 @@ const whereEn = (w: string | undefined, tr: (s: string) => string): string => (w
 const TASK_ALT = Object.values(CARE_TASK_KO).map((x) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
 const TASK_EN = (ko: string): string => CARE_TASK_EN[(Object.keys(CARE_TASK_KO) as CareTaskId[]).find((k) => CARE_TASK_KO[k] === ko) ?? 'stake'] ?? ko;
 const DZ_ALT = Object.values(DISEASE_KO).join('|');
+/** 247차 — 물의 양 · 밭 손질 · 도구(문장 규칙 전용 — 사전에 두면 「조금」 물때 · 등급 「보통」 · 아이템 이름을 덮는다) */
+const AMT_EN: Record<string, string> = { 조금: WATER_AMOUNT_EN.light, 보통: WATER_AMOUNT_EN.normal, 흠뻑: WATER_AMOUNT_EN.deep };
+const AMT_EACH_EN: Record<string, string> = { 조금: 'give it a little at a time', 보통: 'give it a normal amount', 흠뻑: 'give it a good soak each time' };
+const WATERED_EN: Record<string, (what: string) => string> = {
+  조금: (w) => `Gave ${w} a little water`, 보통: (w) => `Watered ${w}`, 흠뻑: (w) => `Gave ${w} a good soak`,
+};
+const FIRST_EN: Record<string, string> = { 베어: 'Cut', 캐어: 'Dug up', 뽑아: 'Pulled' };
+const LAST_EN: Record<string, string> = { 털기: 'thresh', '꼬투리 따기': 'pick the pods', '묶어 거두기': 'bundle and gather it' };
+const DRY_WHEN_EN: Record<string, string> = { '털 때다': 'time to thresh', '꼬투리를 딸 때다': 'time to pick the pods', '거둘 때다': 'time to gather it' };
+const TOOL_EN_BY_KO: Record<string, string> = Object.fromEntries(Object.keys(TOOL_NAME_KO).map((id) => [TOOL_NAME_KO[id], TOOL_NAME_EN[id] ?? TOOL_NAME_KO[id]]));
+const toolEn = (ko: string): string => TOOL_EN_BY_KO[ko] ?? ko;
+const lc1 = (x: string): string => x.charAt(0).toLowerCase() + x.slice(1);
+/** 거둔 문장 꼬리 한 조각 */
+function harvestTailEn(seg: string, tr: (s: string) => string): string {
+  if (seg === '검붉게 덜 익은 것이라 품질이 떨어진다') return 'picked while turning, so lower quality';
+  if (seg === '서리 맞은 끝물, 이 칸은 끝났다') return 'frost-hit last picking, this cell is done';
+  let q = /^병으로 (\d+)% 줄었다$/.exec(seg);
+  if (q) return `disease cut it by ${q[1]}%`;
+  q = /^송이가 굵어 (\d+)개 더$/.exec(seg);
+  if (q) return `thick clusters, ${q[1]} extra`;
+  q = /^종묘사에 (.+)이 들어온다$/.exec(seg);
+  if (q) return `${q[1].split(' · ').map((y) => tr(y)).join(', ')} now at the seed shop`;
+  return tr(seg);
+}
 const DZ_EN = (ko: string): string => DISEASE_EN[(Object.keys(DISEASE_KO) as CropDisease[]).find((k) => DISEASE_KO[k] === ko) ?? 'blight'];
 
 export const EN_FARM: Record<string, string> = {
@@ -206,8 +253,8 @@ export const EN_FARM: Record<string, string> = {
 
   // ── 아이템 · 가게 ──
   '농산물': 'Produce', '씨앗 · 모종': 'Seeds & seedlings', '농사 도구': 'Farm tools',
-  '마당 풀밭에 4×3칸 텃밭 한 구획을 낸다. 칸마다 호미로 일궈야 심을 수 있다.':
-    'Lays out a 4×3-cell vegetable patch on the yard lawn. Till each cell with a homi before planting.',
+  '마당 풀밭에 4×3칸 텃밭 한 구획을 낸다(한 칸 = 2×2 타일). 칸마다 호미로 일궈야 심을 수 있다.':
+    'Lays out a 4×3-cell vegetable patch on the yard lawn (each cell is 2×2 tiles). Till each cell with a homi before planting.',
   '집으로 배달되어 「넣어 둔 가구」 칸에 들어간다.': 'Delivered to your home, into Stored furniture.',
 
   // ── 상세 보기(씨앗 · 모종 / 수확물) ──
@@ -387,6 +434,130 @@ export const EN_FARM: Record<string, string> = {
   '약 치기는 그 작물에 드는 병 · 벌레의 철보다 한 달 앞서 「할 일」로 뜹니다(미리 막는 약입니다). 안 쳐도 벌은 없습니다 — 벌은 병 · 벌레 그 자체입니다.':
     'Spraying shows up as a job one month before the season of the diseases and pests that crop gets (it is preventive). Skipping it costs nothing in itself — the cost is the disease or pest.',
   '작물마다 드는 병 · 벌레 · 새는 「병 · 벌레 · 새」 항목에 있습니다.': 'Each crop’s diseases, pests and birds are under Diseases, pests and birds.',
+  // ── 247차 — 재배 요소 · 밭에서 직접 · 거둔 뒤 손질 · 귀한 작물 · 모종 꺼내기 ──
+  '기르는 법': 'How to grow', '물 조금': 'Water a little', '물 보통': 'Water normally', '물 흠뻑': 'Soak',
+  '이 칸 물': 'Water this cell', '물 끊기': 'Stop watering', '거두기 전이다 — 물을 끊어야 맛이 들고 오래 간다': 'Harvest is near — stop watering so it sweetens and keeps',
+  '철': 'Season', '알맞은 철': 'Best season', '도구': 'Tools', '늘리기': 'Propagation', '품 · 거름': 'Work · feed', '물': 'Water',
+  '거둔 뒤 손질': 'After harvest', '무엇인가': 'What is it', '이름 모를 싹': 'Unknown sprout', '조금 더 자라면 잎 모양으로 알아본다': 'Once it grows a little you will know it by its leaves',
+  '말리는 중': 'Drying', '밭에 눕혀 말린다 — 비 오는 동안은 마르지 않는다': 'Laid in the field to dry — it does not dry while it rains',
+  '다 말랐는데 너무 오래 뒀다 — 꼬투리가 터져 알이 쏟아진다': 'Dry, but left too long — the pods are splitting and spilling seed',
+  '말리는 동안 비를 맞았다 — 품질이 조금 떨어졌다': 'It got rained on while drying — quality dropped a little',
+  '다 말랐다 — 털 때': 'Dry — time to thresh', '다 말랐다 — 꼬투리를 딸 때': 'Dry — time to pick the pods', '다 말랐다 — 거둘 때': 'Dry — time to gather',
+  '포기 나누기': 'Divide', '뿌리 꺾꽂이': 'Root cuttings', '모종 꺼내기': 'Take out seedlings', '텃밭 창 열기': 'Open the patch window',
+  '호미로 일구기': 'Till with the homi', '호미로 캐기': 'Dig with the homi', '먼저 땅을 일군다': 'Till the ground first',
+  '거름을 많이 먹는다 — 퇴비를 넣으면 더 난다': 'A heavy feeder — compost gives a bigger crop',
+  '퇴비를 넣은 칸 — 이 작물은 거름이 많으면 잎만 무성하다': 'Composted cell — too much feed gives this crop only leaves',
+  '퇴비를 넣은 칸 — 거름이 많으면 잎만 무성해진다': 'Composted cell — too much feed gives only leaves',
+  '말리는 칸이 아니다': 'This cell is not drying anything', '지금은 벨 수 없다': 'You cannot cut it now', '지금은 털 수 없다': 'You cannot thresh it now',
+  '아직 모종이 덜 자랐다': 'The seedlings are not ready yet', '꺼낼 모종이 없다': 'No seedlings to take out',
+  '가방에 자리가 없다 — 한 칸 비우고 꺼낸다': 'Your bag is full — free a slot, then take them out',
+  '가방에 자리가 없다 — 한 칸 비우고 나눈다': 'Your bag is full — free a slot, then divide',
+  '나누어 늘리는 작물이 아니다': 'This crop is not propagated by dividing', '지금은 나눌 수 없다': 'You cannot divide it now', '나눌 포기가 없다': 'Nothing to divide',
+  '나눌 수 없다': 'Cannot divide', '한 해를 넘겨 뿌리가 자리 잡은 포기라야 나눈다': 'Only a plant that has rooted in over a year can be divided',
+  '올해는 이미 나눴다 — 포기가 힘을 되찾게 둔다': 'Already divided this year — let the plant recover',
+  '호미가 있어야 포기를 나눈다': 'You need a homi to divide plants', '할 일이 없다': 'Nothing to do',
+  '포기를 나눴다': 'divided the plant', '뿌리를 잘라 꺾꽂이 감을 얻었다': 'cut root pieces for cuttings',
+  '지난해 흙에 떨어져 있던 씨가 올라왔다': 'Seed that fell into the soil last year came up',
+  '새가 열매를 먹고 떨군 씨가 났다': 'A bird ate the fruit and dropped the seed here',
+  '숲에서 바람에 날아든 씨앗이 그늘 아래 텄다': 'A seed blown in from the woods sprouted in the shade',
+  '바람에 날아든 씨앗이 텄다': 'A wind-blown seed sprouted',
+  '가시에 손을 찔렸다(장갑을 끼면 안 다친다)': 'Pricked your hand on the thorns (gloves prevent it)',
+  '도리깨로 털었다': 'threshed with a flail', '키로 까불러 검불을 날렸다': 'winnowed the chaff away',
+  '키가 없어 검불이 섞였다': 'no winnowing basket — chaff stayed in', '키질이 서툴러 검불이 섞였다': 'clumsy winnowing — chaff stayed in',
+  '말리는 동안 비를 맞았다': 'got rained on while drying',
+  '귀한 모종 · 씨앗은 열흘에 한 번꼴로 들어온다': 'Rare seedlings and seeds come in about once every ten days',
+  '설악종묘사': 'Seorak Seed Shop', '알맞은 철 밖': 'Out of season', '수량 −15%': 'yield −15%', '알맞은 철을 벗어났다': 'Out of its season', '수량이 준다': 'the yield drops',
+  '묵힌 흙에서 저절로 싹이 텄다': 'Came up by itself in fallow soil', '저절로 난 싹': 'Volunteer sprout',
+  '거두기 전에는 물을 끊는다': 'stop watering before harvest', '거둘 때 곁눈': 'Offsets at harvest',
+  // 도구 한 줄 조각(작물별 한 줄은 표에서 통째로 — 조각은 남는 조합 대비)
+  '벨 때 낫이 있어야 한다': 'needs a sickle to cut', '낫이나 수확 가위로 베면 품이 준다': 'a sickle or snips makes cutting easier',
+  '호미나 쇠스랑으로 캔다 — 쇠스랑은 빠르지만 몇 개 찍힌다': 'dug with a homi or a digging fork — the fork is faster but spears a few',
+  '호미나 쇠스랑으로 캔다 — 쇠스랑이 빠르다': 'dug with a homi or a digging fork — the fork is faster',
+  '캐기 전 덩굴은 낫으로 걷는다': 'clear the vines with a sickle first', '수확 가위가 있으면 빠르고 조금 더 좋다': 'harvest snips are quicker and a touch better',
+  '털 때 도리깨가 도움': 'a flail helps with threshing', '키로 까부르면 값을 더 받는다': 'winnowing fetches a better price',
+  '가시 — 장갑을 낀다': 'thorny — wear gloves', '모종삽이 있으면 심는 품이 준다': 'a trowel eases planting',
+  // 작업 장면
+  '마른 단을 서너 번씩 내리친다': 'Beat each dry sheaf three or four times', '여문 꼬투리만 딴다': 'Pick only the filled pods',
+  '마른 알뿌리를 주워 묶는다': 'Gather the dried bulbs and tie them', '표시가 띠 높이일 때 까부른다': 'Toss when the marker is at the band',
+  '그늘 → 반그늘 → 볕 차례로 내놓는다': 'Set it out in shade → part shade → sun, in order',
+  '남은 단': 'Sheaves left', '남은 꼬투리': 'Pods left', '까부른 번': 'Tosses', '다 털었다': 'All threshed', '여문 것은 다 땄다': 'All the filled pods are picked',
+  '다 묶어 매달았다': 'All tied and hung', '검불이 다 날아갔다': 'The chaff has all blown away', '덜 여문 꼬투리는 남긴다': 'Leave the unfilled pods',
+  '너무 높이 까불렀다 — 알이 넘쳐 쏟아졌다': 'Tossed too high — grain spilled over', '너무 낮다 — 검불이 날지 않는다': 'Too low — the chaff will not fly',
+  '깔개를 쳤다 — 마른 단을 친다': 'You hit the tarp — strike the dry sheaves', '꼬투리를 눌러야 한다': 'Click the pods', '마른 알뿌리를 줍는다': 'Pick up the dried bulbs',
+  // 모종 꺼내기 창
+  '가방에': 'In bag', '다 꺼내기': 'Take all', '트레이에 남은 모종': 'Seedlings left in the tray', '트레이가 비었다': 'The tray is empty',
+  '이 줄은 비었다': 'This row is empty',
+  '다 자란 모종을 트레이에서 꺼낸다. 모종 하나를 누르면 그 포기만 뿌리 흙째 뽑혀 가방에 들어간다 — 하나 꺼내 보자.':
+    'Take grown seedlings out of the tray. Click one and just that plant comes out with its root ball and goes into your bag — take one out.',
+  '줄 머리를 누르면 트레이를 잘라 그 줄을 통째로 떼어 낸다. 꺼내지 않은 모종은 트레이에서 그대로 자란다.':
+    'Click a row handle to cut the tray and take that whole row. Seedlings you leave keep growing in the tray.',
+  '꺼낸 모종은 텃밭 칸에 옮겨 심는다 — 늦서리가 지난 뒤에.': 'Plant the seedlings out in the patch — after the last frost.',
+  // 필드 가이드
+  '텃밭 한 칸(2×2)을 밟고 서면 그 칸 테두리가 약하게 빛난다. [F]는 그 칸에 한다.':
+    'Stand on a patch cell (2×2) and its border glows softly. [F] works on that cell.',
+  '퀵슬롯에 든 것에 따라 [F]로 하는 일이 바뀐다 — 호미는 일구기, 물뿌리개는 물(누르고 있을수록 많이), 씨앗 · 모종은 심기, 지주대 · 끈 · 약은 그 일. 손 닿는 이웃 칸은 눌러서 해도 된다.':
+    'What [F] does depends on your quickslot item — the homi tills, the watering can waters (hold longer for more), seeds and seedlings plant, stakes, twine and sprays do their job. You can also click a neighbouring cell within reach.',
+  '칸 오른쪽 위 그림은 지금 할 것이다 — 거둘 것 · 털 때 · 할 일의 자재 · 목마름. 손에 맞는 것이 없으면 [F]로 그 칸의 일을 고르거나 텃밭 창을 연다.':
+    'The picture at a cell’s top right is what it needs now — something to harvest, threshing, a job’s material, or water. With nothing suitable in hand, [F] lets you pick the cell’s job or open the patch window.',
+  // 도움말 — 247차
+  '밭에서 직접 — 칸 밟고 일하기': 'In the field — working the cells', '칸을 밟고 손에 든 것으로': 'Stand on a cell, use what you hold',
+  '마당 텃밭 한 구획은 4×3칸이고, 한 칸은 2×2 타일입니다. 칸마다 그려집니다 — 일군 이랑 · 젖은 흙 · 자라는 포기 · 익은 열매 · 세운 지주와 묶은 끈 · 덮은 방충망 · 검은 비닐 · 짚 · 북준 흙 · 베어 말리는 단이 그 칸에 그대로 보입니다.':
+    'A yard patch is 4×3 cells, and each cell is 2×2 tiles. Every cell is drawn as it is — tilled ridges, wet soil, growing plants, ripe fruit, stakes and ties, insect mesh, black film, straw, hilled-up soil and sheaves drying where they were cut.',
+  '칸을 밟고 서면 그 칸 테두리가 약하게 빛나고, 머리 위에 [F]로 할 것이 뜹니다. 손 닿는 이웃 칸은 왼쪽 클릭으로 해도 됩니다.':
+    'Stand on a cell and its border glows softly, with what [F] will do shown above your head. Neighbouring cells within reach can be worked with a left click.',
+  '[F]나 그 칸 왼쪽 클릭은 퀵슬롯에 든 것을 씁니다 — 호미는 일구기(김매기 · 북주기 · 캐기), 물뿌리개는 물 주기, 씨앗 · 모종 · 종구는 심기, 낫 · 수확 가위 · 쇠스랑은 거두기, 지주대 · 끈 · 비료 · 약 · 망은 그 칸의 할 일입니다. 할 일은 작업 장면이 그 칸에서 바로 열리고, 끝나면 칸 그림이 바뀝니다(지주를 세우면 지주가, 망을 씌우면 망이 섭니다).':
+    '[F] or a left click on the cell uses your quickslot item — the homi tills (and weeds, hills up and digs), the watering can waters, seeds, seedlings and sets plant, the sickle, snips and fork harvest, and stakes, twine, fertiliser, sprays and nets do that cell’s job. Jobs open their work scene right there, and when you finish the cell changes (stakes stand up, nets go on).',
+  '손에 맞는 것이 없으면 [F]로 그 칸에서 할 수 있는 일(털기 · 거두기 · 할 일 · 텃밭 창 열기)을 고릅니다. 칸 오른쪽 위 그림은 지금 할 것입니다 — 거둘 수확물 · 털 때(도리깨) · 할 일의 자재 · 목마름(물방울).':
+    'With nothing suitable in hand, [F] lets you choose what the cell allows (thresh, harvest, a job, open the patch window). The picture at a cell’s top right is what it needs — the crop to harvest, threshing (flail), a job’s material, or thirst (water drop).',
+  '물의 양 · 알맞은 흙': 'How much water · the right soil', '조금 · 보통 · 흠뻑': 'A little · normal · soak',
+  '작물마다 좋아하는 흙의 젖은 정도가 다릅니다. 고구마 · 땅콩 · 참깨처럼 메마른 땅을 좋아하는 것은 조금씩, 오이 · 토란 · 미나리처럼 물을 많이 먹는 것은 흠뻑 줍니다. 텃밭 창의 흙 막대와 칸 정보에 그 작물의 알맞은 띠(초록 테)가 그려집니다.':
+    'Each crop likes its soil a different degree of wet. Dry-ground lovers like sweet potato, peanut and sesame get a little at a time; thirsty ones like cucumber, taro and water dropwort get a soaking. The soil bar in the patch window shows each crop’s right band (green outline).',
+  '물뿌리개로 밭에서 줄 때는 누르고 있는 시간이 양입니다 — 짧게 누르면 조금, 조금 더 누르면 보통, 오래 누르면 흠뻑입니다. 텃밭 창에서는 위 줄 [물 조금 · 보통 · 흠뻑]이 구획 전체, 칸 자세히의 [이 칸 물]이 그 칸만 줍니다.':
+    'In the field, how long you hold the watering can is how much you pour — a tap gives a little, a bit longer is normal, a long hold soaks. In the patch window, the top row [Water a little · normally · Soak] waters the whole plot and [Water this cell] just that cell.',
+  '띠 아래(조금 마름)면 더디게 자라고, 바짝 마르면 멈춥니다. 띠 위로 며칠씩 잇달아 젖어 있으면 탈이 납니다 — 덩이 · 뿌리가 썩고(고구마 · 감자 · 생강), 익은 열매가 터지고(토마토 · 수박), 맛이 묽어지고(참외 · 딸기), 웃자랍니다. 하루 한 번 주는 물이나 비 한 번은 견딥니다.':
+    'Below the band (a little dry) it grows slowly; bone dry, it stops. Days on end above the band cause trouble — roots and tubers rot (sweet potato, potato, ginger), ripe fruit splits (tomato, watermelon), flavour goes watery (melon, strawberry) or plants grow leggy. One watering a day or a single shower does no harm.',
+  '고구마 · 양파 · 마늘 · 수박 · 참외는 거두기 전 며칠 동안 물을 끊어야 맛이 들고 오래 갑니다 — 그때가 되면 흙 줄에 「물 끊기」가 뜹니다.':
+    'Sweet potato, onion, garlic, watermelon and Korean melon need water stopped for some days before harvest to sweeten and keep — the soil row shows "Stop watering" when it is time.',
+  '품 · 도구 · 철': 'Labour · tools · timing', '일에는 품이 든다': 'Work takes effort',
+  '일구기 · 퇴비 · 물 주기 · 심기 · 거두기 · 털기에는 품이 듭니다 — 피로가 쌓이고 배가 고프고 목이 마릅니다. 씨 뿌리기 · 잎 따기는 가볍고, 덩이 캐기 · 베기 · 털기는 무겁습니다. 피로가 88을 넘으면 쉬어야 일할 수 있습니다.':
+    'Tilling, composting, watering, planting, harvesting and threshing take effort — fatigue builds and you get hungry and thirsty. Sowing and picking leaves are light; digging tubers, cutting and threshing are heavy. Above 88 fatigue you must rest before working.',
+  '거두는 손이 작물마다 다릅니다 — 따기 · 꼭지 자르기 · 베기 · 캐기 · 뽑기. 깨 · 콩 · 보리를 베려면 낫이 있어야 하고, 덩이를 캐려면 호미나 쇠스랑이 있어야 합니다. 수확 가위(고추 가위) · 쇠스랑 · 모종삽 · 도리깨 · 키는 있으면 품이 줄고 조금 더 좋게 거둡니다 — 쇠스랑은 빠르지만 고구마 · 감자를 몇 개 찍습니다.':
+    'Each crop is harvested its own way — picked, clipped, cut, dug or pulled. Cutting sesame, beans or barley needs a sickle; digging tubers needs a homi or a digging fork. Harvest snips, a fork, a trowel, a flail and a winnowing basket save effort and give a slightly better crop — the fork is fast but spears a few sweet potatoes and potatoes.',
+  '두릅 · 엄나무 · 초피는 가시가 있어 장갑(코팅 장갑 · 목장갑) 없이 거두면 손을 찔립니다. 잎채소 · 열매 · 향채 · 산나물은 아침(5~10시)에 거두면 조금 더 좋습니다.':
+    'Fatsia shoots, kalopanax and Korean pepper are thorny — harvest them without gloves (coated or cotton) and you get pricked. Leaves, fruit, herbs and wild greens are a little better picked in the morning (5–10 am).',
+  '알맞은 철 · 거름': 'Timing · feeding',
+  '심을 수 있는 달 가운데 알맞은 달이 따로 있습니다. 그 밖에 심으면 수량이 15% 줄고 까닭이 붙습니다 — 꽃대가 일찍 선다 · 냉해로 몸살을 앓는다 · 더위에 지친다 · 자랄 철이 짧다. 심기 목록에 미리 주황 글씨로 알려 줍니다.':
+    'Among the months you can plant, some are best. Planting outside them cuts the yield by 15%, with a reason — it bolts early, suffers cold injury, wilts in the heat, or runs out of season. The planting list warns you in orange beforehand.',
+  '거름도 작물마다 다릅니다. 콩 · 땅콩 · 고구마는 거름이 많으면 잎 · 덩굴만 무성해져 퇴비 칸에서 8% 덜 나고, 배추 · 고추 · 오이 · 수박처럼 많이 먹는 작물은 퇴비 칸에서 8% 더 납니다.':
+    'Feeding differs too. Beans, peanuts and sweet potatoes run to leaves and vines when overfed and yield 8% less in a composted cell; heavy feeders like napa cabbage, peppers, cucumber and watermelon yield 8% more there.',
+  '베고 · 말리고 · 털기': 'Cut · dry · thresh', '깨 · 콩 · 보리 · 땅콩 · 마늘 · 양파': 'Sesame · beans · barley · peanuts · garlic · onions',
+  '깻잎을 따는 들깨와 참깨 · 콩 · 보리는 다 익으면 [베기]로 베어 그 칸에 눕혀 말립니다(낫이 있어야 합니다). 땅콩 · 마늘은 캐어, 양파는 뽑아 밭에서 말립니다. 말리는 동안 칸에 단이 누워 있고, 비 오는 동안은 마르지 않으며 비를 맞으면 품질이 조금 떨어집니다.':
+    'Perilla (the same plant you pick leaves from), sesame, beans and barley are cut with [Cut] when ripe and laid in the cell to dry (you need a sickle). Peanuts and garlic are dug and onions pulled, then dried in the field. The sheaves lie in the cell while they dry; they do not dry while it rains, and rain lowers the quality a little.',
+  '다 마르면 칸이 누렇게 바뀌고 [털기](땅콩은 꼬투리 따기, 마늘 · 양파는 묶어 거두기)를 합니다. 털기는 깔개 위 마른 단을 단마다 서너 번씩 내리치는 작업 장면이고, 도리깨가 있으면 빨리 끝납니다.':
+    'When dry the cell turns golden and you [Thresh] (peanuts: pick the pods; garlic and onions: bundle and gather). Threshing is a work scene where you beat each dry sheaf on a tarp three or four times; a flail makes it quicker.',
+  '깨 · 콩 · 보리는 털고 나서 키질을 합니다 — 키가 있으면 표시가 띠 높이일 때 까불러 검불을 날려 보내고, 잘 까부르면 값이 오릅니다. 키가 없거나 서툴면 검불이 섞여 품질이 조금 떨어집니다.':
+    'Sesame, beans and barley are winnowed after threshing — with a winnowing basket, toss when the marker is at the band to blow the chaff away; good winnowing raises the price. Without a basket, or done clumsily, chaff stays in and quality drops a little.',
+  '다 마른 뒤 너무 오래 두면 꼬투리가 터져 알이 쏟아집니다(참깨 · 들깨는 사흘 · 나흘, 콩은 일주일) — 하루에 2%씩 줄어 바닥은 60%입니다.':
+    'Left too long after drying, pods split and spill their seed (sesame and perilla after three or four days, beans after a week) — 2% is lost a day, down to 60%.',
+  '귀한 작물 구하기 · 저절로 나는 싹': 'Finding rare crops · volunteer sprouts', '종묘사에 늘 있지 않다': 'Not always at the nursery',
+  '아주 까다로운 작물(산나물 · 고추냉이 · 두릅 · 엄나무 · 초피)의 모종은 종묘사에 늘 있지 않고 열흘에 한 번꼴로 들어옵니다 — 작물마다 들어오는 날이 다릅니다. 가게에 들어가면 주인이 다음에 들어오는 것과 남은 날을 귀띔합니다(기를 자격을 갖춘 뒤에만).':
+    'Seedlings of very demanding crops (wild greens, wasabi, fatsia, kalopanax, Korean pepper) are not always stocked — they come in about once every ten days, each on its own day. The keeper tells you what comes next and in how many days (once you are qualified to grow them).',
+  '한 해를 넘겨 자리 잡은 산채는 늘려서 씁니다 — 곰취 · 삼나물 · 어수리 · 명이 · 부지갱이는 포기 나누기, 두릅 · 엄나무는 뿌리 꺾꽂이(그 달에 한 해 한 번), 고추냉이는 거둘 때 곁눈을 떼어 냅니다. 텃밭 창 칸 자세히에 단추가 뜹니다(호미가 있어야 합니다).':
+    'Wild greens that have settled in for a year can be multiplied — gomchwi, goat’s beard, eosuri, myeongi and bujigaengi by division, fatsia and kalopanax by root cuttings (once a year, in their month), and wasabi by splitting off offsets at harvest. The button appears in the patch window’s cell view (you need a homi).',
+  '묵힌 칸에 저절로': 'Sprouting in fallow cells',
+  '일군 채 두 주 넘게 비워 둔 칸에는 가끔 저절로 싹이 납니다. 차광막 아래 축축한 칸에는 숲에서 바람에 날아든 산나물 씨가, 볕 드는 칸에는 새가 열매를 먹고 떨군 초피 · 두릅 · 엄나무 씨나 여름 비름이 납니다. 한 구획에 한 번에 하나만, 드물게 납니다.':
+    'A tilled cell left empty for over two weeks sometimes sprouts on its own. Under a shade net in damp soil, wild-green seed blown from the woods comes up; in sunny cells, Korean pepper, fatsia or kalopanax dropped by birds, or summer amaranth. Only one per plot at a time, and rarely.',
+  '처음에는 「이름 모를 싹」입니다 — 조금 자라 잎 모양이 드러나면 무엇인지 알게 되고 채널에 알립니다. 기른 깨 · 들깨 · 비름 · 상추 같은 작물을 거두지 않고 씨가 여물도록 두면 씨가 흙에 떨어져, 이듬해 그 텃밭에 저절로 다시 날 수 있습니다.':
+    'At first it is an "Unknown sprout" — once its leaves show you learn what it is, and the channel tells you. Leave crops like sesame, perilla, amaranth or lettuce unharvested until they set seed and the seed drops into the soil, so they may come up again by themselves next year.',
+  '트레이에서 모종 꺼내기': 'Taking seedlings out of the tray',
+  '집 안 육묘 트레이에서 다 자란 모종은 [모종 꺼내기]로 꺼냅니다. 모종 하나를 누르면 그 포기만 뿌리 흙째 뽑혀 가방에 「모종」으로 들어가고, 줄 머리를 누르면 트레이를 잘라 그 줄을 통째로 떼어 냅니다. 꺼내지 않은 모종은 트레이에서 그대로 자랍니다.':
+    'Grown seedlings in the indoor tray come out with [Take out seedlings]. Click one and just that plant comes out with its root ball as a seedling item; click a row handle to cut the tray and take the whole row. Seedlings you leave keep growing in the tray.',
+  '모종을 밭에 옮겨 심기 한 주 전부터는 「모종 굳히기」 — 트레이를 낮에 바깥 그늘 → 반그늘 → 볕으로 차례로 내놓아 바깥 공기에 길들입니다. 거르면 밭에 나가 몸살로 몇 포기가 죽습니다.':
+    'From a week before planting out comes "Harden off seedlings" — set the tray out by day in shade → part shade → sun to get them used to outdoor air. Skip it and a few plants die of transplant shock in the field.',
+  '칸마다 먼저 호미로 흙을 일궈야 심을 수 있습니다(밭에서 호미를 들고 칸을 밟고 [F] — 「밭에서 직접 — 칸 밟고 일하기」). 호미 · 퇴비 · 씨앗 봉투는 생활용품점, 모종과 씨감자 · 마늘 종구 같은 덩이, 지주대 · 비료 · 농약 같은 농자재는 종묘사가 팝니다. 모종과 덩이는 심을 철에만 진열됩니다.':
+    'Each cell must be tilled with a homi before planting (hold the homi, stand on the cell and press [F] — see In the field — working the cells). The homi, compost and seed packets are sold at the household goods store; seedlings, seed potatoes, garlic sets and supplies like stakes, fertiliser and sprays at the nursery. Seedlings and sets are only stocked in planting season.',
+  '비가 오면 저절로 물이 듭니다(화면에 보이는 그 비입니다). 흙이 마르면 자람이 멈추고 품질이 조금씩 떨어질 뿐, 시들어도 죽지는 않습니다. 물은 물뿌리개로 줍니다 — 밭에서 칸을 밟고 [F]를 누르고 있거나, 텃밭 창의 [물 조금 · 보통 · 흠뻑]으로 줍니다(「물의 양 · 알맞은 흙」). 퇴비는 심기 전에 넣으면 이번 작기에 더 빨리 자라고 품질이 오릅니다.':
+    'Rain waters the patch by itself (the rain you see on screen). When the soil dries, growth stops and quality slips a little — plants wilt but never die. Water with the watering can — stand on a cell and hold [F], or use [Water a little · normally · Soak] in the patch window (see How much water · the right soil). Compost worked in before planting speeds growth and raises quality for that crop.',
   '광질 · 벌목': 'Mining & logging', '광질 · 벌목 (계획)': 'Mining & logging (planned)',
   '초지 · 암반에서 광물을 캐 요리와 제작 · 건축 재료로 씁니다. 홈타운의 나무 · 바위(벌목 · 채굴)도 이때 열립니다.':
     'Dig minerals from grassland and bedrock for cooking, crafting and building. Hometown trees and rocks (logging, quarrying) open up then too.',
@@ -463,12 +634,8 @@ export const EN_FARM_RULES: [RegExp, (m: RegExpMatchArray, tr: (s: string) => st
   [/^(.+) · (\d+)일 전$/, (m, tr) => `${tr(m[1])} · ${m[2]} day${m[2] === '1' ? '' : 's'} ago`],
   [/^(.+) · 오늘$/, (m, tr) => `${tr(m[1])} · today`],
   [/^(텃밭|집 안 선반) (\d+)번 칸$/, (m) => `${m[1] === '텃밭' ? 'patch' : 'indoor shelf'} cell ${m[2]}`],
-  [/^(.+) (\d+)개를 거뒀다(.*)$/, (m, tr) => `Harvested ${m[2]} ${tr(m[1])}${m[3]
-    .replace(' — 검붉게 덜 익은 것이라 품질이 떨어진다', ' — picked while turning, so lower quality')
-    .replace(' — 서리 맞은 끝물, 이 칸은 끝났다', ' — frost-hit last picking, this cell is done')
-    .replace(/ — 병으로 (\d+)% 줄었다/, ' — disease cut it by $1%')
-    .replace(/ — 송이가 굵어 (\d+)개 더/, ' — thick clusters, $1 extra')
-    .replace(/ — 종묘사에 (.+)이 들어온다/, (_s: string, x: string) => ` — ${x.split(' · ').map((y) => tr(y)).join(', ')} now at the seed shop`)}`],
+  //  꼬리(「 — 」로 이은 메모)는 조각마다 옮긴다 — 247차부터 도구 · 가시 · 곁눈 · 털기 · 키질 메모가 붙는다
+  [/^(.+?) (\d+)개를 거뒀다((?: — .+)?)$/, (m, tr) => `Harvested ${m[2]} ${tr(m[1])}${m[3] ? m[3].slice(3).split(' — ').map((seg) => ` — ${harvestTailEn(seg, tr)}`).join('') : ''}`],
   // 칸 자세히 · 상세 보기 — 날 수 · 비율
   [/^(\d+)일 전$/, (m) => `${m[1]} day${m[1] === '1' ? '' : 's'} ago`],
   [/^약 (\d+)일 뒤$/, (m) => `In about ${m[1]} day${m[1] === '1' ? '' : 's'}`],
@@ -482,7 +649,9 @@ export const EN_FARM_RULES: [RegExp, (m: RegExpMatchArray, tr: (s: string) => st
   [/^한 칸에 (\d+)포기를 심는다\.$/, (m) => `Plant ${m[1]} per cell.`],
   // 달 묶음(「3~4월 · 8~9월」) · 심기 거부
   [/^(\d+(?:~\d+)?월(?: · \d+(?:~\d+)?월)*)$/, (m) => monthRangeEn(m[1])],
-  [/^(.+)에 심는다$/, (m) => `plant in ${monthRangeEn(m[1])}`],
+  // 247차 — 심기 거부 「지금은 심을 철이 아니다 — 3~5월 · 8~9월에 심는다」(달 묶음 안의 「·」 때문에 통째로) · 달 묶음만 받는 꼴로 좁혔다
+  [/^지금은 심을 철이 아니다 — (\d+(?:~\d+)?월(?: · \d+(?:~\d+)?월)*)에 심는다$/, (m) => `Not planting season now — plant in ${monthRangeEn(m[1])}`],
+  [/^(\d+(?:~\d+)?월(?: · \d+(?:~\d+)?월)*)에 심는다$/, (m) => `plant in ${monthRangeEn(m[1])}`],
   // 텃밭 결과
   [/^(\d+)칸을 일궜다$/, (m) => `Tilled ${m[1]} cells`],
   [/^(\d+)개가 있어야 한 칸을 채운다 \((\d+)개\)$/, (m) => `Need ${m[1]} to fill one cell (you have ${m[2]})`],
@@ -526,4 +695,52 @@ export const EN_FARM_RULES: [RegExp, (m: RegExpMatchArray, tr: (s: string) => st
   [/^(.+) (\d+)(?:개|알|송이|줌) · 용기 (\d+)개를 씁니다$/, (m, tr) => `Uses ${tr(m[1])} ×${m[2]} and ${m[3]} tub${m[3] === '1' ? '' : 's'}`],
   [/^\[텃밭\] 가방에서 \[포장하기\] — (.+) (\d+)(?:개|알|송이|줌) \+ 포장 용기 1개 = (.+) \(팩은 제값 · 용기는 생활용품점\)$/, (m, tr) => `[Garden] In the bag, [Pack] — ${tr(m[1])} ×${m[2]} + 1 produce tub = ${tr(m[3])} (packs fetch the full price · tubs at the general store)`],
   [/^뜯어도 (.+) 날것은 먹지 않는다\.$/, (m, tr) => `Even opened, ${tr(m[1])} isn’t eaten raw.`],   // 앞의 「[익혀야] (.+)」 규칙이 꼬리를 이 규칙으로 넘긴다
+  // ── 247차 — 물의 양 · 심기 · 밭 말리기 · 털기 · 모종 꺼내기 · 저절로 난 싹 · 포기 나누기 · 도구 · 지침 ──
+  //  「조금 · 보통 · 흠뻑」 · 도구 이름은 사전에 두지 않는다(조금 물때 · 등급 「보통」 · 가방 아이템 이름을 덮는다) — 문장째 옮긴다.
+  [/^물을 (조금|보통|흠뻑) 줬다$/, (m) => WATERED_EN[m[1]]('it')],
+  [/^(\d+)칸에 물을 (조금|보통|흠뻑) 줬다$/, (m) => WATERED_EN[m[2]](`${m[1]} cells`)],
+  [/^((?:\d+칸에 )?물을 (?:조금|보통|흠뻑) 줬다) — (.+)$/, (m, tr) => `${tr(m[1])} — ${tr(m[2])}`],
+  [/^(.+) — 거두기 전에는 물을 끊는다$/, (m, tr) => `${tr(m[1])} — stop watering before harvest`],
+  [/^(.+)에는 많다 — (조금|보통|흠뻑)씩 준다$/, (m, tr) => `Too much for ${tr(m[1])} — ${AMT_EACH_EN[m[2]]}`],
+  [/^(조금|보통|흠뻑)씩 · 알맞은 흙 (\d+)~(\d+)%(?: · 넘치면 (.+))?$/,
+    (m, tr) => `${AMT_EN[m[1]]} each time · soil ${m[2]}–${m[3]}% moist${m[4] ? ` · too much: ${lc1(tr(m[4]))}` : ''}`],
+  [/^(.+) (조금|보통|흠뻑)씩$/, (m, tr) => `${tr(m[1])}: ${AMT_EN[m[2]].toLowerCase()} each time`],
+  [/^(\d+)일 남음$/, (m) => `${m[1]} day${m[1] === '1' ? '' : 's'} left`],
+  [/^(\d+)일 뒤$/, (m) => `in ${m[1]} day${m[1] === '1' ? '' : 's'}`],
+  [/^(.+?)(?:을|를) 심었다(?: — (.+))?$/, (m, tr) => `Planted ${tr(m[1])}${m[2] ? ` — ${tr(m[2])}` : ''}`],
+  [/^지금 심으면 (.+)$/, (m, tr) => `Plant now and it ${tr(m[1])}`],
+  [/^(.+?)(?:을|를) (베어|캐어|뽑아) 밭에 눕혔다 — (\d+)일 말린 뒤 (털기|꼬투리 따기|묶어 거두기)$/,
+    (m, tr) => `${FIRST_EN[m[2]]} the ${tr(m[1])} and laid it in the field — dry it ${m[3]} day${m[3] === '1' ? '' : 's'}, then ${LAST_EN[m[4]]}`],
+  [/^아직 마르는 중이다 — (\d+)일 남짓 \(비 오는 동안은 마르지 않는다\)$/,
+    (m) => `Still drying — about ${m[1]} more day${m[1] === '1' ? '' : 's'} (it does not dry while it rains)`],
+  [/^너무 오래 두어 (\d+)%가 쏟아졌다$/, (m) => `left too long — ${m[1]}% spilled`],
+  [new RegExp(`^${PATCH_TAG}(.+?)(?:이|가) 다 말랐다 — (털 때다|꼬투리를 딸 때다|거둘 때다)${WHERE_TAIL}$`),
+    (m, tr) => `${patchTag(m[1])}Your ${tr(m[2])} is dry — ${DRY_WHEN_EN[m[3]]}${whereEn(m[4], tr)}`],
+  [new RegExp(`^${PATCH_TAG}묵힌 칸에 이름 모를 싹이 올라왔다${WHERE_TAIL}$`), (m, tr) => `${patchTag(m[1])}An unknown sprout came up in a fallow cell${whereEn(m[2], tr)}`],
+  [new RegExp(`^${PATCH_TAG}이름 모를 싹은 (.+?)(?:이었다|였다) — (.+?)${WHERE_TAIL}$`),
+    (m, tr) => `${patchTag(m[1])}The unknown sprout was ${tr(m[2])} — ${tr(m[3])}${whereEn(m[4], tr)}`],
+  [new RegExp(`^${PATCH_TAG}텃밭 (\\d+)구획의 칸을 넓혔다 — 이제 한 칸이 2×2다$`),
+    (m) => `${patchTag(m[1])}Widened the cells of ${m[2]} patch${m[2] === '1' ? '' : 'es'} — one cell is now 2×2 tiles`],
+  [new RegExp(`^${PATCH_TAG}텃밭 (\\d+)구획은 둘레에 자리가 없어 예전 크기 그대로다 — 걷고 넓은 풀밭에 다시 내면 넓어진다$`),
+    (m) => `${patchTag(m[1])}${m[2]} patch${m[2] === '1' ? ' has' : 'es have'} no room around ${m[2] === '1' ? 'it' : 'them'} and kept the old size — take it up and lay it again on open grass to widen it`],
+  [/^(.+) 모종 (\d+)포기를 트레이에서 꺼냈다(?: — (.+))?$/,
+    (m, tr) => `Took ${m[2]} ${tr(m[1])} seedling${m[2] === '1' ? '' : 's'} out of the tray${m[3] ? ` — ${tr(m[3])}` : ''}`],
+  [/^(\d+)포기가 트레이에 남았다$/, (m) => `${m[1]} left in the tray`],
+  [/^곁눈 (\d+)개를 떼어 냈다$/, (m) => `took off ${m[1]} offset${m[1] === '1' ? '' : 's'}`],
+  [/^(.+?)(?:으로|로) 빨리 캤지만 몇 개 찍혔다$/, (m) => `quick digging with the ${toolEn(m[1])}, but a few got speared`],
+  [/^(.+?)(?:으로|로) 빨리 거뒀다$/, (m) => `quick work with the ${toolEn(m[1])}`],
+  [/^(.+?)(?:이|가) 있어야 (벤다|캔다) — (.+)에서 판다$/, (m) => {
+    const names = m[1].split(/(?:이나|나) /).map((x) => toolEn(x));
+    const shops = m[3].split(' · ').map((x) => (x === '종묘사' ? 'the seed shop' : 'the general store'));
+    return `You need ${names.map((x) => (/s$/.test(x) ? x : `a ${x}`)).join(' or ')} to ${m[2] === '벤다' ? 'cut' : 'dig'} — ${shops.join(' or ')} sells ${names.length > 1 ? 'them' : 'one'}`;
+  }],
+  [/^(.+) 포기를 나눴다$/, (m, tr) => `Divided the ${tr(m[1])}`],
+  [/^(.+) 뿌리를 잘라 꺾꽂이 감을 얻었다$/, (m, tr) => `Cut root pieces from the ${tr(m[1])} for cuttings`],
+  [/^(\d+(?:~\d+)?월(?: · \d+(?:~\d+)?월)*)에 나눈다$/, (m) => `Divide in ${monthRangeEn(m[1])}`],
+  [/^너무 지쳤다 \(피로 (\d+)\) — 쉬고 나서 한다$/, (m) => `Too tired (fatigue ${m[1]}) — rest first`],
+  [/^귀한 모종 · 씨앗은 열흘에 한 번꼴로 들어온다 — 다음은 (.+) — (\d+)일 뒤$/,
+    (m, tr) => `Rare seedlings and seeds come in about once every ten days — next: ${tr(m[1])} in ${m[2]} day${m[2] === '1' ? '' : 's'}`],
+  // 채널 로그 「[텃밭] 들깨 (100g) ×2」 · 거두는 것 「고추냉이 근경 (1뿌리 · 약 80g) · 칸당 6~9개」(이름 안의 「·」 때문에 통째로)
+  [/^\[텃밭\] (.+) ×(\d+)$/, (m, tr) => `[Vegetable patch] ${tr(m[1])} ×${m[2]}`],
+  [/^(.+) · 칸당 (\d+)(?:~(\d+))?개$/, (m, tr) => `${tr(m[1])} · ${m[2]}${m[3] ? `–${m[3]}` : ''} per cell`],
 ];

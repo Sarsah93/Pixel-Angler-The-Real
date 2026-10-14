@@ -244,7 +244,7 @@ export class ShopPanel extends DraggablePanel {
     this.paintTabs();   // 215차 — 첫 탭이 구매가 아닐 수 있다(하단 단추 글자까지)
     // 247차 — 아주 까다로운 모종 · 씨앗은 늘 있지 않다 — 다음에 들어오는 것을 주인이 귀띔한다
     const rare = this.nextRareArrival();
-    if (rare) this.setStatus(`${t('귀한 모종 · 씨앗은 열흘에 한 번꼴로 들어온다')} — ${t(rare.name)} ${rare.days}${t('일 뒤')}`);
+    if (rare) this.setStatus(`귀한 모종 · 씨앗은 열흘에 한 번꼴로 들어온다 — 다음은 ${rare.name} — ${rare.days}일 뒤`);
 
     scene.events.on('inventory-changed', this.onInventoryChanged, this);
     // 221차 — 가방에서 이 창으로 끌어 놓으면 판매 목록(위판 탭이면 출품 목록)에 담는다

@@ -778,7 +778,7 @@ export class FarmFieldSystem {
     // 물줄기
     g.fillStyle(0x8ddcf5, 0.9);
     for (let i = 0; i < 4; i++) g.fillRect(cc.x - 4 + i * 3, cc.y - 10 + ((Math.floor(ms / 60) + i * 3) % 8), 1, 2);
-    this.pourText.setText(`${tl('물')} ${tl({ light: '조금', normal: '보통', deep: '흠뻑' }[this.pourAmount()])}`).setPosition(cc.x, y - 2);
+    this.pourText.setText(tl(`물 ${WATER_AMOUNT_KO[this.pourAmount()]}`)).setPosition(cc.x, y - 2);
   }
 
   private finishPour(viaMouse: boolean): void {

@@ -243,7 +243,7 @@ class FarmStoreImpl {
         if (c.wild) {
           if (wildUnknown(c)) add(`${pid}:${i}:wild:${c.plantedAt ?? 0}`, 'w:new', i, (where) => `[텃밭] 묵힌 칸에 이름 모를 싹이 올라왔다 (${where})`);
           else add(`${pid}:${i}:wildname:${c.plantedAt ?? 0}`, `w:${crop.id}`, i,
-            (where) => `[텃밭] 이름 모를 싹은 ${crop.nameKo}였다 — ${wildOriginKo(crop.id, !WILD_SPROUTS.some((w) => w.cropId === crop.id))} (${where})`);
+            (where) => `[텃밭] 이름 모를 싹은 ${josa(crop.nameKo, '이었다', '였다')} — ${wildOriginKo(crop.id, !WILD_SPROUTS.some((w) => w.cropId === crop.id))} (${where})`);
         }
         if (c.process?.dryAt) {
           const last = cultivationOf(crop).process?.last ?? 'thresh';
@@ -623,7 +623,7 @@ class FarmStoreImpl {
         res.message += ` — 곁눈 ${r.offsets.qty}개를 떼어 냈다`;
       }
     }
-    if (tool.helper && res.ok) res.message += ` — ${TOOL_NAME_KO[tool.helper] ?? ''}${tool.quality < 0 ? '로 빨리 캤지만 몇 개 찍혔다' : '로 빨리 거뒀다'}`;
+    if (tool.helper && res.ok) res.message += ` — ${josa(TOOL_NAME_KO[tool.helper] ?? '', '으로', '로')} ${tool.quality < 0 ? '빨리 캤지만 몇 개 찍혔다' : '빨리 거뒀다'}`;
     if (thorn) res.message += ' — 가시에 손을 찔렸다(장갑을 끼면 안 다친다)';
     return res;
   }
@@ -706,8 +706,7 @@ class FarmStoreImpl {
     this.spend(FARM_LABOR.pull_seedlings * r.qty);
     const res = this.giveHarvest(r, crop);
     if (res.ok) {
-      const name = res.harvested?.[0]?.name ?? crop.nameKo;
-      res.message = `${name} ${r.qty}포기를 트레이에서 꺼냈다${r.more ? ` — ${cell.trayLeft}포기가 트레이에 남았다` : ' — 트레이가 비었다'}`;
+      res.message = `${crop.nameKo} 모종 ${r.qty}포기를 트레이에서 꺼냈다${r.more ? ` — ${cell.trayLeft}포기가 트레이에 남았다` : ' — 트레이가 비었다'}`;
     }
     return res;
   }

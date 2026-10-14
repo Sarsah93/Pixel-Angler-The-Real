@@ -887,6 +887,15 @@ const farmCrops = core.CROP_DATABASE.map((c) => {
       interim: c.interim ? { itemId: c.interim.itemId, name: c.interim.labelKo, window: `자람 ${Math.round(c.interim.window[0] * 100)}~${Math.round(c.interim.window[1] * 100)}%`, qty: c.interim.qtyPerCell, price: c.interim.price, mainMult: c.interim.mainYieldMult, seedOnly: !!c.interim.seedOnly, inMart: c.interim.inMart } : null,
       items: harvestItems.map((id) => ({ id, name: itemNameOf(id) })),
     },
+    // 247차 — 기르는 법(물의 양 · 품 · 거름 · 도구 · 거둔 뒤 손질 · 알맞은 철 · 늘리기 · 귀한 작물 구하기 · 저절로 나는 싹)
+    cultivation: {
+      water: core.waterLineKo(c), labor: core.laborLineKo(c), tools: core.toolLineKo(c), process: core.processLineKo(c),
+      timing: core.timingLineKo(c), propagate: core.propagateLineKo(c), note: core.cultivationOf(c).noteKo,
+      rare: gateBase.tier >= 4 ? `종묘사에 늘 있지 않다 — 열흘에 한 번꼴로 들어온다(작물마다 날이 다르다)` : '',
+      wild: core.WILD_SPROUTS.some((w) => w.cropId === c.id)
+        ? `묵힌 칸에 저절로 날 수 있다${core.WILD_SPROUTS.find((w) => w.cropId === c.id)?.shade ? '(차광막 그늘 아래)' : ''} — 처음엔 「이름 모를 싹」, 자라면 이름이 드러난다`
+        : '',
+    },
     carePlan: {
       tasks: plan.tasks.map((t) => careTaskRow(t, plan)),
       diseases: plan.diseases.map(diseaseRow),
@@ -940,7 +949,9 @@ const farming = {
     rawEat: '날로 먹을 수 있는 수확물은 가방에서 우클릭 [사용하기]로 먹는다(딸기 · 방울토마토 · 블루베리처럼 작은 낱개는 한 번에 여러 개) — 허기 · 수분은 실제 영양(열량 ÷ 2,400 · 수분 ÷ 2,000)에서 센다. 수박 한 통 · 무 한 개 · 배추 한 통 · 1kg 덩이 · 생땅콩 500g · 생강은 [나누기]로 조각을 낸 뒤 먹는다(조각은 등급이 없고 가게가 사지 않는다). 매운 것(청양고추 · 홍고추 · 생마늘 · 생강 · 고추냉이)은 수분을 조금 깎는다. 날로 못 먹는 것(생감자 · 토란 · 생콩 · 버섯 · 두릅 …)은 [사용하기]가 없다 — 익혀 먹는다.',
     pack: '딸기 · 방울토마토 · 블루베리 · 느타리 · 생목이 · 새싹채소는 낱개(한 알 · 한 송이 · 한 줌)로 거둔다. 가방에서 [포장하기]로 낱개 여러 개와 포장 용기(생활용품점 100원) 1개를 팩 하나로 담는다 — 팩은 제값, 낱개로 팔면 가게가 다시 담아야 해서 8할. 팩은 [포장 뜯기]로 낱개가 된다(용기는 버린다).',
     variant: '개량종(스테비아 토마토 · 호박고구마 · 청양고추)은 원종을 텃밭에서 세 번 거두면 종묘사에 들어온다. 씨앗 · 모종 · 수확물 상세의 「원종」 · 「개량종」 줄이 알려 준다.',
-    plotCells: '한 구획 = 4×3칸 · 한 칸 = 1㎡', plots: '마당 2구획 + 농지 이용권 5구획(빌린 구획 5,000원/30일)',
+    plotCells: '한 구획 = 4×3칸 · 한 칸 = 2×2 타일(1㎡ 남짓)',
+    // 247차 — 기르는 법 공통
+    cultivate: '물은 조금 · 보통 · 흠뻑 세 가지로 준다(밭에서 [F]를 누르고 있는 만큼) — 흙 수분이 그 작물의 알맞은 띠 안에 있어야 잘 자라고, 넘치면 작물마다 탈이 다르다. 일구기 · 심기 · 거두기 · 털기는 피로가 쌓이고(배고픔 · 목마름도 조금) 피로가 차면 쉬어야 한다 — 낫 · 수확 가위 · 쇠스랑 · 모종삽 · 도리깨는 품을 줄인다. 깨 · 콩 · 보리는 베어 밭에서 말린 뒤 털고 키질한다(늦으면 쏟아지고, 비를 맞으면 품질이 준다). 알맞은 철 밖에 심으면 수량이 15% 준다.', plots: '마당 2구획 + 농지 이용권 5구획(빌린 구획 5,000원/30일)',
     grade: Object.entries(core.FARM_TUNING.gradePrice).map(([g, m]) => `${core.GRADE_KO[g]} ×${m}`).join(' · '),
     kamis: '배추 · 무 · 양파 · 상추 같은 흔한 채소는 하루 한 번 실제 소매가(전국 평균)를 받아 「오늘 ÷ 평년」으로 값을 움직인다',
     noInput: '비료 · 약을 하나도 안 써도 거두기는 된다 — 다만 놓친 일마다 수확 · 품질이 깎이고, 병 · 벌레가 다 번지면 그 몫만큼 덜 난다. 「쉬움」 작물은 놓친 손해가 절반 · 병이 드는 확률 0.6배 · 번짐 0.7배라 손을 놓아도 대개 8할은 거둔다.',

@@ -659,7 +659,7 @@ export const CROP_DATABASE: CropDef[] = [
   },
   // 247차 — 깨(사용자 「깻잎 수확과 별도로 '깨'는 베고, 말리고, 털어야 함」) — 거두면 칸에 베어 말린 뒤 털고 키질한다(`CropCultivation.process`)
   {
-    id: 'deulkkae', nameKo: '들깨', nameEn: 'Perilla seed (deulkkae)', category: 'grain', speedClass: 'seasonal', rarity: 'common',
+    id: 'deulkkae', nameKo: '들깨', nameEn: 'Perilla (deulkkae)', category: 'grain', speedClass: 'seasonal', rarity: 'common',
     inMart: true, site: 'plot', growMonths: [6, 7, 8, 9, 10], water: 'mid',
     // 씨용 들깨 — 6월 중순 파종 · 이식(적기 — 너무 이르면 웃자라 쓰러진다) → 10월 초중순 베기. 10a 70~100kg → 칸당 약 100g
     starts: [seed('deulkkae', [6], 0.75, 115, 300), seedling('deulkkae', [6, 7], 4, 95, 200)],
