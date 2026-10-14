@@ -40,7 +40,7 @@ for(const f of files){
   const cell=best>0.25?bestLag:1;
   // 셀 내부 노이즈: 셀 크기로 블록 나눠 블록 내 분산 평균(격자 그림이면 낮다) · 질감: 블록 평균들의 분산
   let inVar=0,blocks=0; const bm=[];
-  if(cell>1){for(let by=0;by+cell<=h;by+=cell)for(let bx=0;bx+cell<=w;bx+=cell){let s=0,s2=0,c=0;for(let y=by;y<by+cell;y++)for(let x=bx;x<bx+cell;x++){const i=y*w+x; if(data[i*4+3]<128)continue; s+=L[i];s2+=L[i]*L[i];c++;} if(c<cell*cell*0.9)continue; const m=s/c; inVar+=s2/c-m*m; blocks++; bm.push(m);} }
+  if(cell>1){for(let by=0;by+cell<=h;by+=cell)for(let bx=0;bx+cell<=w;bx+=cell){let s=0,s2=0,c=0;for(let y=by;y<by+cell;y++)for(let x=bx;x<bx+cell;x++){const i=y*w+x; if(data[i*4+3]<128)continue; s+=L[i];s2+=L[i]*L[i];c++;} if(c<cell*cell*0.9)continue; const m=s/c; inVar+=Math.max(0,s2/c-m*m); blocks++; bm.push(m);} }
   const noise=blocks?Math.sqrt(inVar/blocks):NaN; const tm=bm.length?bm.reduce((a,b)=>a+b,0)/bm.length:0; const texture=bm.length?Math.sqrt(bm.reduce((a,b)=>a+(b-tm)*(b-tm),0)/bm.length):NaN;
   // 경계 품질: 반투명 테두리 두께 추정 = semi / (둘레 추정)
   rows.push({file:f,w,h,long:Math.max(w,h),cell,cellY:bestLagY,cellsW:Math.round(w/cell),opaquePct:+(100*opaque/N).toFixed(0),semiPct:+(100*semi/Math.max(1,opaque)).toFixed(1),colors:colors.size,meanL:+meanL.toFixed(0),sdL:+sdL.toFixed(0),grad:+meanGrad.toFixed(1),noise:+noise.toFixed(1),texture:+texture.toFixed(1),bytes:fs.statSync(path.join(dir,f)).size});

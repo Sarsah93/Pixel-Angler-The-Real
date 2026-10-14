@@ -83,7 +83,7 @@ export const FISH_TEXTURE: Record<string, string> = {
  *  - `fish/icon/<파일>` → `fishicon_<…>` = 긴 변 64px 아이콘(가방 칸 · 쿨러 칸처럼 72px 이하로 그리는 곳)
  * 원본은 `food assets/fish/<파일>`(셀 6px 전후 · 긴 변 500~2,200px) — `node tools/fish_cards.cjs`가 카드 · 아이콘을 굽는다.
  * 새 어종 그림 = 원본을 `food assets/fish/`에 넣고 → 이 표에 한 줄 → `FISH_TEXTURE`에 어종 id 연결 → `fish_cards.cjs`.
- * 파일 이름은 소문자(gh-pages는 대소문자를 가린다) — `So-iuy_mullet.png` 하나만 예전 이름 그대로다(정리는 사용자 결정).
+ * 파일 이름은 소문자(gh-pages는 대소문자를 가린다) — 247차에 마지막 대문자 파일(`So-iuy_mullet.png`)을 `so-iuy_mullet.png`로 바꿨다.
  */
 export const FISH_IMAGE_FILES: Record<string, string> = {
   fish_black_sea_bream: 'black_sea_bream.png',            // 감성돔
@@ -100,7 +100,7 @@ export const FISH_IMAGE_FILES: Record<string, string> = {
   fish_amberjack: 'yellowtail_amberjack.png',             // 부시리
   fish_yellowtail: 'yellowtail_fish.png',                 // 방어
   fish_striped_mullet: 'flathead_grey_mullet.png',        // 숭어
-  fish_redlip_mullet: 'So-iuy_mullet.png',                // 가숭어
+  fish_redlip_mullet: 'so-iuy_mullet.png',                // 가숭어 (247 — 대문자 S → 소문자)
   fish_spotted_knifejaw: 'spotted_knifejaw.png',          // 강담돔
   fish_red_seabream: 'red_sea_bream.png',                 // 참돔 (야간 참돔 night_seabream 공용)
   fish_horse_mackerel: 'jack_mackerel.png',               // 전갱이
