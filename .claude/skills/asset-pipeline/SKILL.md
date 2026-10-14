@@ -159,7 +159,8 @@ node tools/pixelize_crops.cjs                 # 전부 · --only crop_peanut · 
 node tools/check_art_quality.cjs packages/client-pc/public/crops     # 5기준 재측정 — 긴 변 · 셀 · 색 · sdL · 노이즈 · 깃발
 ```
 
-- 출력 `public/crops/<id>.png`(초상 · 상세 · 도감) + `<id>_icon.png`(64px · 가방 칸) + `src/data/CropPortraits.ts`(자동 목록 — 손으로 고치지 않는다).
+- 출력 `public/crops/<id>.png`(셀 6px 원본 · 위키 재료) + `<id>_card.png`(244 — 상세 창 카드 · 게임이 `cropimg_`로 싣는다)
+  + `<id>_icon.png`(64px · 가방 칸) + `src/data/CropPortraits.ts`(자동 목록 — 손으로 고치지 않는다).
 - 배선은 `ui/ItemIcon.ts` `cropPortraitTexture` — `px:crop_*` 키에 초상이 있으면 그것, 없으면 16px 손그림. 등급 꼬리 · 조각도 같은 키를 쓴다.
 - JPEG · WebP는 Playwright 크롬 캔버스로 디코드한다(`/opt/node-tools` 또는 npx 캐시). 16비트 · 인터레이스 PNG도 그 경로.
 - 어종 점검 깃발: 「알파 전면 <255」(252~253 — `--fix-alpha`로 `.fixed.png` 사본) · 「셀 없음」(사진 그대로) · 「셀 굵음 ≥ 12」 · 「대문자 파일명」. 교체는 사용자 결정 뒤.
@@ -176,3 +177,25 @@ node tools/check_art_quality.cjs packages/client-pc/public/crops     # 5기준 �
 - **그림 한 장 = 수확물 한 단위(가방 칸 하나)**(243) — 「딸기 (1개)」는 한 알, 「한 줌」은 한 줌. 포장한 팩은 별도 id(`crop_<x>_pack`)라
   팩 초상은 `crop_<x>_pack.png`로 넣는다(목록 정규식이 잡고, 팩 아이콘 키 `px:crop_<x>_pack`이 그 초상을 찾는다). 없으면 16px 손그림(투명 용기).
   남은 파일 이름 전부는 `docs/wiki/02-SYSTEMS/photo-pixel-art.md` §5.1.
+
+## ⑥ 작물 초상 — 사진 없이 Gemini로 그리기 (244차)
+
+사진이 없는 작물은 Gemini 그림 모델(기본 `gemini-nano-banana-2.1`)에 「생김새 설명 + 화풍 참고 그림 3장(딸기 · 청치마 · 감자 변환본)」을 보내 그린다.
+
+```bash
+# 키는 환경의 네트워크 시크릿이 붙인다(호스트 generativelanguage.googleapis.com · 헤더 x-goog-api-key · 접두사 없음)
+# ⚠ Node 내장 fetch는 프록시를 안 탄다 — NODE_USE_ENV_PROXY=1 필수(빼먹으면 403 「unregistered callers」)
+NODE_USE_ENV_PROXY=1 node tools/gemini_crop_art.cjs --out <스테이징 폴더> --dry          # 프롬프트만 본다
+NODE_USE_ENV_PROXY=1 node tools/gemini_crop_art.cjs --out <스테이징 폴더> --jobs 4       # 초상 없는 작물 전부(이미 뽑은 것은 건너뜀)
+NODE_USE_ENV_PROXY=1 node tools/gemini_crop_art.cjs --out <폴더> --only crop_a --tag v2 --force   # 다시 뽑기(다른 판)
+node tools/gemini_crop_art.cjs --out <스테이징 폴더> --install                          # 검수 뒤 640px로 asis/에
+node tools/pixelize_crops.cjs                                                           # 초상 · 카드 · 아이콘 · CropPortraits.ts
+```
+
+- **생김새 설명은 `LOOKS` 표**(수확물 기본 id → 한 줄)에 있다. 새 작물을 넣으면 여기에 한 줄을 더한다 — 없으면 경고와 함께 건너뛴다.
+  우리 산나물(곰취 · 어수리 · 눈개승마 등)은 모델이 모를 수 있어 **잎 모양 · 줄기 색 · 묶음 형태**를 구체적으로 쓴다.
+- 그림 한 장 = 수확물 한 단위: 「한 줌」은 한 줌, 「(1개)」는 한 개, 「1kg」은 서너 개 무더기, 「한 단」은 끈으로 묶은 다발.
+- 응답은 1024px **JPEG**다 — 도구가 `convert`로 PNG32로 바꾼다. 저장소 `asis/`에는 **긴 변 640px**만 넣는다(1,024px 원본과 초상 결과 corr 0.99 · 용량 절반).
+- 검수는 시트로 한다(12장씩 · 칸 아래 id): `montage -label '%t' … -tile 4x -geometry 230x230+4+4`. 틀린 모양은 `LOOKS`를 고쳐 `--tag`로 다시 뽑고, 고른 판을 `<id>.png`로 바꿔 둔다.
+- 값: 2.1은 1K 한 장 약 0.034달러(72장 ≈ 2.5달러). 결제가 꺼져 있으면 429 「free_tier … limit: 0」.
+- 게임은 **카드 판**(`crops/<id>_card.png` · 상세 창 칸 228×90에 맞춘 면적 평균)과 64px 아이콘만 싣는다. 셀 6px 원본(1,170px)은 위키 재료다.

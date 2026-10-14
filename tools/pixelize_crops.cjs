@@ -35,6 +35,9 @@ const { decode, encode } = require('./lib_png.cjs');
  *  근거 · 전후 수치는 docs/wiki/02-SYSTEMS/photo-pixel-art.md §3.6~3.7. 보정 전 값은 주석의 (구 …). */
 const DEFAULTS = {
   cells: 192, cell: 6, tol: 30, close: 4, icon: 64,
+  // 244차 — 게임이 싣는 「카드」 판: 상세 창이 초상을 228×90 칸에 맞춰 그리므로(ItemDetailPanel fitRef) 그 크기로 면적 평균한다.
+  //   1,170px 원본(셀 6px)을 그대로 싣으면 장당 텍스처 5MB · 84장 440MB이고, 90px로 줄일 때 NEAREST 표본이 셀을 건너뛴다.
+  cardW: 228, cardH: 90,
   style: 'pixelart',    // pixelart(툰 추상화) | asis(이미 도트인 그림 — 리샘플만 · 입력 폴더의 asis/ 하위는 자동) | kuwahara | photo
   colors: 0,            // k-평균 팔레트 크기(0 = 줄이지 않음 — 참고본은 90%를 덮는 색이 수백 개 · 구 32가 손실의 절반이었다)
   smooth: 2, passes: 2, // kuwahara(비교용)
@@ -455,13 +458,16 @@ async function main() {
     const is = P.icon / Math.max(gw, gh); const iw2 = Math.max(1, Math.round(gw * is)), ih2 = Math.max(1, Math.round(gh * is));
     const icon = areaResize(sharp, gw, gh, iw2, ih2);
     encode(iw2, ih2, icon, path.join(OUT, `${id}_icon.png`));
+    // 카드 — 셀 그림을 상세 창 칸(cardW × cardH)에 맞춰 면적 평균(게임은 이것을 `cropimg_`로 싣는다)
+    const cs = Math.min(P.cardW / gw, P.cardH / gh); const cw = Math.max(1, Math.round(gw * cs)), ch = Math.max(1, Math.round(gh * cs));
+    encode(cw, ch, areaResize(sharp, gw, gh, cw, ch), path.join(OUT, `${id}_card.png`));
     const mm = measure(portrait, pw, ph); const gs = gradeStats(sharp, gw, gh);
     console.log(`${id}${style === 'asis' ? '(asis)' : ''}: ${img.w}x${img.h} → 셀 ${gw}x${gh} · 초상 ${pw}x${ph}(${(bytes / 1024).toFixed(0)}KB) · 아이콘 ${iw2}x${ih2} | ${r.note} | ${r.style}${r.palN ? ` 팔레트 ${r.palN}` : ''}${r.detail ? ` · 질감 어둡게 ${r.detail.dark} 밝게 ${r.detail.light}` : ''} · 색 ${gs.colors} · 테두리 어두움 ${gs.edgeDark}% · 불투명 ${mm.opaquePct}% · 밝기 ${mm.meanL}±${mm.sdL}`);
   }
   // 목록 TS — BootScene이 읽는다(기본 출력 폴더일 때만 — 시험용 --out 폴더로 돌릴 때 목록을 덮지 않는다)
   if (path.resolve(OUT) !== path.resolve('packages/client-pc/public/crops')) { console.log('시험 출력 폴더 — CropPortraits.ts는 건드리지 않는다'); return; }
-  const have = fs.readdirSync(OUT).filter((f) => /^crop_[a-z_]+\.png$/.test(f) && !f.endsWith('_icon.png')).map((f) => f.slice(0, -4)).sort();
-  const ts = `/**\n * @file CropPortraits.ts\n * @description 241차 — 작물 초상이 있는 수확물 기본 id 목록(자동 생성 — \`node tools/pixelize_crops.cjs\`).\n *  BootScene이 \`crops/<id>.png\`(초상) · \`crops/<id>_icon.png\`(64px 아이콘)를 \`cropimg_<id>\` · \`cropicon_<id>\`로 싣는다.\n *  목록에 없는 작물은 16px 손그림 픽셀 아이콘(\`px:<id>\`)을 그대로 쓴다. 손으로 고치지 말 것.\n */\nexport const CROP_PORTRAITS: readonly string[] = [\n${have.map((x) => `  '${x}',`).join('\n')}\n];\n`;
+  const have = fs.readdirSync(OUT).filter((f) => /^crop_[a-z_]+\.png$/.test(f) && !f.endsWith('_icon.png') && !f.endsWith('_card.png')).map((f) => f.slice(0, -4)).sort();
+  const ts = `/**\n * @file CropPortraits.ts\n * @description 241차 — 작물 초상이 있는 수확물 기본 id 목록(자동 생성 — \`node tools/pixelize_crops.cjs\`).\n *  BootScene이 \`crops/<id>_card.png\`(상세 창 카드 · 244차) · \`crops/<id>_icon.png\`(64px 아이콘)를 \`cropimg_<id>\` · \`cropicon_<id>\`로 싣는다.\n *  \`crops/<id>.png\`(셀 6px 원본)는 위키 그림 재료다 — 게임은 싣지 않는다.\n *  목록에 없는 작물은 16px 손그림 픽셀 아이콘(\`px:<id>\`)을 그대로 쓴다. 손으로 고치지 말 것.\n */\nexport const CROP_PORTRAITS: readonly string[] = [\n${have.map((x) => `  '${x}',`).join('\n')}\n];\n`;
   fs.writeFileSync('packages/client-pc/src/data/CropPortraits.ts', ts);
   console.log(`초상 ${have.length}장 → CropPortraits.ts`);
 }

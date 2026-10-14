@@ -94,6 +94,12 @@ export class DraggablePanel extends Phaser.GameObjects.Container {
   private moveHandler: (p: Phaser.Input.Pointer) => void;
   private upHandler: () => void;
   private focusDownHandler: (p: Phaser.Input.Pointer) => void;
+  /**
+   * 244차 — 이 클릭(pointerdown의 `downTime`)으로 새로 연 창이 있으면 그 값. 같은 클릭을 받은 다른 창이
+   * 「눌린 창은 맨 위로」로 포커스를 되가져가지 않게 한다 — 가방 우클릭 「상세보기」가 연 상세 창이
+   * 곧바로 가방 창 아래로 깔려 반쯤 가려졌다(실측 상세 881 · 가방 882).
+   */
+  private static openedOnDown = -1;
 
   constructor(scene: Phaser.Scene, cfg: DraggablePanelConfig) {
     super(scene, cfg.x, cfg.y);
@@ -170,6 +176,7 @@ export class DraggablePanel extends Phaser.GameObjects.Container {
     //  (우클릭 컨텍스트 메뉴 등 자식 팝업이 다른 패널에 가려지는 문제의 근본 해결.)
     this.focusDownHandler = (p: Phaser.Input.Pointer) => {
       if (!this.containsPoint(p.x, p.y)) return;
+      if (p.downTime === DraggablePanel.openedOnDown) return;   // 이 클릭으로 연 창이 맨 위를 지킨다
       const blocked = this.scene.children.list.some((o) =>
         o instanceof DraggablePanel && o !== this && o.depth > this.depth
         && (o.dimRect !== undefined || o.containsPoint(p.x, p.y)));
@@ -215,7 +222,11 @@ export class DraggablePanel extends Phaser.GameObjects.Container {
    * 완전히 무력했다 — "클릭 시 최상단"이 사실상 사문이던 원인.
    */
   /** 열리는 순간 같은 밴드 최상단으로 (122차 — 새 팝업이 먼저 열린 큰 패널 아래로 깔리지 않게. ESC LIFO와 정합) */
-  raiseToTop(): void { this.bringSelfToTop(); }
+  raiseToTop(): void {
+    this.bringSelfToTop();
+    const ptr = this.scene?.input?.activePointer;
+    if (ptr?.isDown) DraggablePanel.openedOnDown = ptr.downTime;
+  }
 
   /** 화면 좌표의 패널 외곽 (188차 — 가이드 투어 말풍선 배치 기준) */
   panelBounds(): Phaser.Geom.Rectangle {

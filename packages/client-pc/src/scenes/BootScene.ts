@@ -252,7 +252,8 @@ export class BootScene extends Phaser.Scene {
     this.load.image('butchery_knife', 'butchery/knife_sashimi.png');
     // 241차 — 작물 초상(사진 → 도트 · tools/pixelize_crops.cjs) — 있는 것만(CropPortraits.ts 자동 목록). 없으면 16px 손그림(px:) 그대로
     for (const id of CROP_PORTRAITS) {
-      this.load.image(`cropimg_${id}`, `crops/${id}.png`);
+      // 244차 — 상세 창 카드(≤ 228×90)를 싣는다. 셀 6px 원본(1,170px · 장당 텍스처 5MB)은 위키 재료라 싣지 않는다
+      this.load.image(`cropimg_${id}`, `crops/${id}_card.png`);
       this.load.image(`cropicon_${id}`, `crops/${id}_icon.png`);
     }
     this.load.image('fish_black_sea_bream', 'fish/black_sea_bream.png');

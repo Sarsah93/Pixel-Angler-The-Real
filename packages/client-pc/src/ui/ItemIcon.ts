@@ -64,6 +64,7 @@ export function iconWeightScale(item: ItemIconLike): number {
 /**
  * 241차 — 작물 초상(사진 → 도트 · `public/crops/`)이 있으면 16px 손그림(`px:crop_*`) 대신 그것을 쓴다.
  *  칸(≤ 72px)은 64px 아이콘 판(`cropicon_*` — 면적 평균이라 축소 떨림이 없다), 상세 · 도감은 초상(`cropimg_*`).
+ *  244차 — `cropimg_*`는 상세 창 칸(228×90)에 맞춘 카드 판(`crops/<id>_card.png`)이다. 셀 6px 원본은 싣지 않는다.
  *  어종 에셋과 같은 출처 한 장에서 두 크기를 내므로 가방과 상세가 같은 그림을 보인다.
  */
 export function cropPortraitTexture(scene: Phaser.Scene, iconTexture: string | undefined, sizePx: number): string | undefined {
