@@ -176,6 +176,10 @@
   세션에는 환경 변수가 생기지 않는다 — 스크립트는 키 없이 호출한다(키가 붙었는지는 `GET /v1beta/models`로 확인).
   **2026-10-14 확인**: 키 붙음(모델 63 · 그림 모델 `gemini-3.1-flash-image` · `gemini-3.1-flash-lite-image` · `gemini-nano-banana-2.1` ·
   `gemini-2.5-flash-image` · `gemini-3-pro-image`). 그림 생성은 **무료 등급 한도 0**(429 `free_tier_requests, limit: 0`) — AI Studio에서 결제를 켜야 한다.
+  **대안 Stability AI(10-14 검토)**: `api.stability.ai`는 지금 프록시가 막는다(CONNECT 403) — 네트워크 시크릿을 더하면 열린다
+  (헤더는 기본값 `Authorization: Bearer` 그대로). 새 계정 무료 25크레딧 · Core 3 · Style Transfer 8크레딧(1크레딧 = 0.01달러).
+  사진 + 참고 그림(기존 Gemini 변환본)으로 화풍을 옮기는 Style Transfer가 우리 일에 맞는 기능이다. 사용자 화면의 SDXL 1.0(VERSION 1)은 옛 API.
+  판단: 기존 12장이 Gemini라 주력은 Gemini, Stability는 무료 크레딧으로 딸기 1장 비교 후 결정.
   그 뒤 「사진(또는 이름) → 변환 → `asis/` → 5기준 · 보정 지표 채점 → 재시도」를 스크립트로 돌린다.
 
 ### 5.1 남은 초상 — 파일 이름표(243차 기준)
