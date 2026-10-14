@@ -9,6 +9,7 @@
  */
 
 import type { InvCategory, InvItemTemplate } from '../store/InventoryStore.js';
+import { reelArtKey, rodArtKey } from './TackleTextures.js';
 import { COOK_CORNER } from './CookItems.js';
 import { dailyFarmEntries, nurseryFarmEntries, PRODUCE_SUB } from './CropItems.js';
 import { WEIGHT_SINKER_DB, TRAP_DATABASE, getLureSpec, ROD_SHOP, REEL_SHOP, CRAFT_BLUEPRINTS, blueprintPaperId } from '@tra/core';
@@ -173,7 +174,7 @@ export const FURNITURE_SALES: ShopEntry[] = [
 ];
 
 const LURE_KIND_TEXTURE: Record<string, string> = {
-  worm_grub: 'item_soft_worm', soft_jerkbait: 'item_soft_worm', plug_minnow: 'item_minnow', metal_jig: 'item_metal_jig',
+  worm_grub: 'item_soft_worm', soft_jerkbait: 'item_lure_shad', plug_minnow: 'item_minnow', metal_jig: 'item_metal_jig',
   spoon: 'art_lure_spoon', spinner: 'art_lure_spinner', egi: 'art_lure_egi', tairaba: 'art_lure_tairaba',
 };
 function lureTemplate(lureId: string): InvItemTemplate {
@@ -269,12 +270,12 @@ function tairabaHeadEntry(g: number): ShopEntry {
 const TACKLE_CORNER: ShopEntry[] = [
   // 줄·바늘은 줄터짐/밑걸림으로 잃는 소모품인데 어디서도 다시 살 수 없었다(외부 테스터 — 목줄을 잃고
   //   채비를 못 채움). 호수 → 인장강도는 core lineStrengthKg 규칙(카본 1.8kg/호 · PE 9kg/호).
-  { id: 'inv_pe1',      name: 'AMSTRONG 합사 원줄 1호 · 150m', icon: '', iconTexture: 'line_spool_saiso', category: 'tackle', subCategory: '원줄 스풀', basePrice: 18000, price: 21000, maxPerPurchase: 3, equippable: false, lineMaterial: 'pe_braid', lineForm: 'sinking', lineLengthM: 150, lineNo: 1, lineDiameterMm: 0.165, lineStrengthLb: 18, desc: 'SAISO AMSTRONG 합사 원줄. 직경 0.165mm · 인장 18lb.' },
+  { id: 'inv_pe1',      name: 'AMSTRONG 합사 원줄 1호 · 150m', icon: '', iconTexture: 'item_line_pe', category: 'tackle', subCategory: '원줄 스풀', basePrice: 18000, price: 21000, maxPerPurchase: 3, equippable: false, lineMaterial: 'pe_braid', lineForm: 'sinking', lineLengthM: 150, lineNo: 1, lineDiameterMm: 0.165, lineStrengthLb: 18, desc: 'SAISO AMSTRONG 합사 원줄. 직경 0.165mm · 인장 18lb.' },
   // 236차 — 값싼 나일론 원줄(처박기 원투 · 찌낚시 원줄). 프롤로그 첫 장보기가 합사 대신 이걸 살 수 있게
   { id: 'shop_nylon3_main', name: 'AMSTRONG 나일론 원줄 3호 · 150m', icon: '', iconTexture: 'line_spool_saiso', category: 'tackle', subCategory: '원줄 스풀', basePrice: 5000, price: 6000, maxPerPurchase: 3, equippable: false, lineMaterial: 'nylon', lineForm: 'float', lineLengthM: 150, lineNo: 3, lineDiameterMm: 0.285, lineStrengthLb: 12, desc: '값싼 나일론 원줄. 늘어나는 성질이 충격을 받아 줘 가벼운 원투 · 찌낚시 원줄로 무난하다. 직경 0.285mm · 인장 12lb.' },
-  { id: 'inv_carbon15', name: 'AMSTRONG 카본 목줄 3호 · 150m', icon: '', iconTexture: 'line_spool_saiso', category: 'tackle', subCategory: '목줄 스풀', basePrice: 9000, price: 10500, maxPerPurchase: 5, equippable: false, lineMaterial: 'fluorocarbon', lineForm: 'suspend', lineLengthM: 150, lineNo: 3, lineDiameterMm: 0.285, lineStrengthLb: 10.5, desc: '카본 쇼크리더. 직경 0.285mm · 인장 10.5lb · 나일론보다 강하고 합사보다 쓸림에 유리한 목줄.' },
-  { id: 'inv_nylon2',   name: 'AMSTRONG 나일론 목줄 2호 · 200m', icon: '', iconTexture: 'line_spool_saiso', category: 'tackle', subCategory: '목줄 스풀', basePrice: 6000, price: 7000, maxPerPurchase: 5, equippable: false, lineMaterial: 'nylon', lineForm: 'float', lineLengthM: 200, lineNo: 2, lineDiameterMm: 0.235, lineStrengthLb: 8, desc: '나일론 모노라인. 신축성과 쓸림 내성이 있어 찌낚시에 적합.' },
-  { id: 'shop_carbon3', name: 'AMSTRONG 카본 목줄 3호 · 150m', icon: '', iconTexture: 'line_spool_saiso', category: 'tackle', subCategory: '목줄 스풀', basePrice: 12000, price: 14000, maxPerPurchase: 5, equippable: false, lineMaterial: 'fluorocarbon', lineForm: 'suspend', lineLengthM: 150, lineNo: 3, lineDiameterMm: 0.285, lineStrengthLb: 10.5, desc: '카본 쇼크리더. 직경 0.285mm · 인장 10.5lb.' },
+  { id: 'inv_carbon15', name: 'AMSTRONG 카본 목줄 3호 · 150m', icon: '', iconTexture: 'item_line_leader', category: 'tackle', subCategory: '목줄 스풀', basePrice: 9000, price: 10500, maxPerPurchase: 5, equippable: false, lineMaterial: 'fluorocarbon', lineForm: 'suspend', lineLengthM: 150, lineNo: 3, lineDiameterMm: 0.285, lineStrengthLb: 10.5, desc: '카본 쇼크리더. 직경 0.285mm · 인장 10.5lb · 나일론보다 강하고 합사보다 쓸림에 유리한 목줄.' },
+  { id: 'inv_nylon2',   name: 'AMSTRONG 나일론 목줄 2호 · 200m', icon: '', iconTexture: 'item_line_leader', category: 'tackle', subCategory: '목줄 스풀', basePrice: 6000, price: 7000, maxPerPurchase: 5, equippable: false, lineMaterial: 'nylon', lineForm: 'float', lineLengthM: 200, lineNo: 2, lineDiameterMm: 0.235, lineStrengthLb: 8, desc: '나일론 모노라인. 신축성과 쓸림 내성이 있어 찌낚시에 적합.' },
+  { id: 'shop_carbon3', name: 'AMSTRONG 카본 목줄 3호 · 150m', icon: '', iconTexture: 'item_line_leader', category: 'tackle', subCategory: '목줄 스풀', basePrice: 12000, price: 14000, maxPerPurchase: 5, equippable: false, lineMaterial: 'fluorocarbon', lineForm: 'suspend', lineLengthM: 150, lineNo: 3, lineDiameterMm: 0.285, lineStrengthLb: 10.5, desc: '카본 쇼크리더. 직경 0.285mm · 인장 10.5lb.' },
   { id: 'inv_chinu3',   name: '감성돔 바늘 3호',   icon: '', iconTexture: 'item_hook_chinu', category: 'tackle', subCategory: '바늘/훅',   basePrice: 3000,  price: 3500,  maxPerPurchase: 20, equippable: false, desc: '범용 바늘 (미끼 채비).' },
   ...['inv_sinker_ring_3', 'inv_sinker_hole_3', 'inv_sinker_ring_20', 'inv_sinker_ring_25', 'inv_sinker_hole_15', 'inv_sinker_hole_20',
     'inv_sinker_hole_25', 'inv_sinker_bundle_25'].map(sinkerShopEntry),
@@ -319,13 +320,14 @@ const FORAGE_CORNER: ShopEntry[] = [
   { id: 'shop_rod_holder', name: '원투 거치대 (삼발이)', icon: '', iconTexture: 'art_rod_holder', category: 'etc', subCategory: '낚시 도구', basePrice: 16000, price: 19000, maxPerPurchase: 3, equippable: false, desc: '원투 낚싯대를 걸어 두는 삼발이 받침. 봉돌을 바닥에 내려 두고 기다리는 동안 초릿대 끝으로 입질을 본다.' },
   // 209차 — 용도별 낚싯대 14자루 · 릴 6개(제원은 core `RodCatalog` — id로 조회). 그림은 릴 종류로 가른다:
   //  스피닝대 = item_spinning_rod · 베이트대 = item_bait_rod (사이소 민물대가 베이트대 그림을 쓰던 것도 정정)
+  //  249차 — 대 종류(원투 · 쇼어지깅 · 라이트 · 에깅 · 구멍치기 · 싸구려 짧은 대)마다 제 그림(`rodArtKey`) · 릴도 종류별(`reelArtKey`)
   ...ROD_SHOP.map((r): ShopEntry => ({
-    id: r.id, name: r.nameKo, icon: '', iconTexture: r.spec.reel === 'bait' ? 'item_bait_rod' : 'item_spinning_rod',
+    id: r.id, name: r.nameKo, icon: '', iconTexture: rodArtKey(r.id, r.nameKo),
     category: 'gear', subCategory: '손도구', basePrice: Math.round(r.priceWon * 0.85 / 1000) * 1000, price: r.priceWon,
     maxPerPurchase: 3, equippable: true, tool: 'rod', desc: r.descKo,
   })),
   ...REEL_SHOP.map((r): ShopEntry => ({
-    id: r.id, name: r.nameKo, icon: '', iconTexture: r.spec.kind === 'bait' ? 'item_bait_reel' : 'item_spinning_reel',
+    id: r.id, name: r.nameKo, icon: '', iconTexture: reelArtKey(r.id, r.nameKo),
     category: 'gear', subCategory: '릴', basePrice: Math.round(r.priceWon * 0.85 / 1000) * 1000, price: r.priceWon,
     maxPerPurchase: 3, equippable: true, desc: r.descKo,
   })),
@@ -515,10 +517,10 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
       { id: 'workshop_pro_tools', name: '로드 빌딩 공구 세트', icon: '', iconTexture: 'art_toolset_rod', category: 'etc', subCategory: '재료',
         basePrice: 150000, price: 150000, maxPerPurchase: 1, equippable: false, craftMaterial: true, unlockKey: 'daily_workshop_pro',
         desc: '탁만수가 말해 둔 물건. 대를 깎는 사람에게만.' },
-      { id: 'inv_rod_budget', name: '사이소 민물대 2.4m', icon: '', iconTexture: 'item_spinning_rod', category: 'gear', subCategory: '손도구',
+      { id: 'inv_rod_budget', name: '사이소 민물대 2.4m', icon: '', iconTexture: rodArtKey('inv_rod_budget'), category: 'gear', subCategory: '손도구',
         basePrice: 12000, price: 12000, maxPerPurchase: 1, equippable: true, tool: 'rod',
         desc: '싸구려 짧은 대. 테트라포드 구멍치기 전용 — 밑걸림으로 부러져도 아깝지 않다.' },
-      { id: 'inv_reel_budget', name: '사이소 소형 스피닝릴', icon: '', iconTexture: 'item_spinning_reel', category: 'gear', subCategory: '릴',
+      { id: 'inv_reel_budget', name: '사이소 소형 스피닝릴', icon: '', iconTexture: reelArtKey('inv_reel_budget'), category: 'gear', subCategory: '릴',
         basePrice: 8000, price: 8000, maxPerPurchase: 1, equippable: true,
         desc: '드랙이 거칠다. 구멍치기처럼 짧게 감아 올리는 조법에는 충분하다.' },
       { id: 'inv_line_nylon3', name: '나일론 원줄 3호 100m', icon: '', iconTexture: 'line_spool_saiso', category: 'tackle', subCategory: '원줄 스풀',

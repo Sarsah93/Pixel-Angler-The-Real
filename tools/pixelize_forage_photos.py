@@ -9,7 +9,7 @@
                                                                  248차 — 게임은 이것을 싣지 않는다. 다시 구운 뒤 `node tools/forage_cards.cjs`
                                                                  (카드 · 64px 아이콘 · 필드 점 그림)
   packages/client-pc/public/forage-board/<speciesId>.png        — 채집 놀이 판 그림(도트 원래 크기 — 게임이 정수배로 키운다)
-  packages/client-pc/public/item-icons/pack_<name>.png          — 228차 미끼 한 갑(상점 묶음) 아이콘
+  food assets/tackle/pack_<name>.png                            — 228차 미끼 한 갑(상점 묶음) 아이콘 원본(249차부터 — 카드는 tackle_cards.cjs)
 
 절차: 배경 분리(사진마다 규칙) → 가장 큰 덩어리 + 붙은 다리 → 긴 축 기준 다운샘플(BOX)
       → 색 줄이기(median cut) → 알파 이진화 → 1px 어두운 윤곽선.
@@ -258,10 +258,16 @@ PACKS = [
     ('krill_bait_single', 'it_krill_bait'),
 ]
 
+# 249차 — 미끼 갑 · 크릴 · 바칸 · 1자형 혼무시 원본은 `food assets/tackle/`(게임은 tools/tackle_cards.cjs 카드만 싣는다),
+#   알 밴 암꽃게는 248차부터 갯것 원본 `food assets/forage/art/berried_crab.png`(tools/forage_cards.cjs)
+OUT_TACKLE = os.path.join(ROOT, 'food assets', 'tackle')
+PACK_OUT = {'forage_berried_crab': os.path.join(OUT_ART, 'berried_crab.png')}
+
 if __name__ == '__main__':
     for src, name in PACKS:
         im, rgb, hsv, alpha = load(src)
-        save_hires(rgb, mask_alpha(rgb, hsv, alpha), os.path.join(OUT_ICON, f'{name}.png'), pad=0.0)   # 납작한 상자라 여백 없이 꽉 채운다
+        dst = PACK_OUT.get(name, os.path.join(OUT_TACKLE, f'{name}.png'))
+        save_hires(rgb, mask_alpha(rgb, hsv, alpha), dst, pad=0.0)   # 납작한 상자라 여백 없이 꽉 채운다
         print(f'{src}: pack')
     # 229차 — 1자형 혼무시(놀이 연출용): 긴 축 64px 도트판(파기 판에서 구멍 밖으로 끌려 나오는 그림)
     im, rgb, hsv, alpha = load('honmushi_straight')

@@ -18,6 +18,7 @@ import { HELP_IMAGE_KEYS } from '../data/HelpContent.js';
 import { SASHIMI_GUIDE_TEXTURE, registerSashimiGuideFrames } from '../data/SashimiGuideFrames.js';
 import { hideLoadingAfterRender, setLoadingProgress, setLoadingStage, showLoading, stageForFile } from '../ui/LoadingOverlay.js';
 import { ITEM_ART_ASSETS } from '../data/ItemArtManifest.js';
+import { TACKLE_IMAGE_FILES } from '../data/TackleTextures.js';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -123,60 +124,18 @@ export class BootScene extends Phaser.Scene {
 
     // ─── 어종 외 아이템·해루질 자원 투명 도트 아이콘 ───
     // 인벤토리 슬롯과 상세보기에서 같은 키를 공유한다. 누락 시 기존 px/절차 아이콘으로 폴백.
+    // 249차 — 낚시 장비 그림(사용자 그림 · Gemini 그림)은 카드(228×90 안) + 64px 아이콘만 싣는다(`TACKLE_IMAGE_FILES` · `tools/tackle_cards.cjs`).
+    //   원본(1,000px 안팎 — 장당 텍스처 6MB)은 `food assets/tackle/`에 있다. 아래 표에는 장비 밖의 것만 남았다.
     const ITEM_ICON_ASSETS: Record<string, string> = {
-      // v2: 베이트로드와 같은 방향·해상도, 릴이 제거된 순수 스피닝로드
-      item_spinning_rod: 'item-icons/it_spinning_rod_v2.png',
-      item_bait_rod: 'item-icons/it_bait_rod.png',
-      item_spinning_reel: 'item-icons/it_spinning_reel.png',
-      item_bait_reel: 'item-icons/it_bait_reel.png',
-      item_jighead: 'item-icons/it_jighead.png',
-      item_worm: 'item-icons/it_worm.png',
-      item_soft_worm: 'item-icons/it_soft_worm.png',
-      item_treble: 'item-icons/it_treble_hook.png',
-      // 167차 — 사용자 제공 도트: 감성돔 바늘(단일 바늘). 혼무시 · 청갯지렁이 생미끼 그림은 248차부터 `FORAGE_IMAGE_FILES`(카드)
-      item_hook_chinu: 'item-icons/it_hook_chinu.png',
-      item_minnow: 'item-icons/it_minnow.png',
-      item_metal_jig: 'item-icons/it_metal_jig.png',
-      line_spool_saiso: 'item-icons/line_spool_saiso.png',
-      sinker_ring: 'item-icons/sinker_ring.png',
-      sinker_pillar: 'item-icons/sinker_pillar.png',
-      sinker_bundle: 'item-icons/it_sinker_bundle_v2.png',
-      // 166차 — 제로찌 전용 도트(몸통에 '00' 각인). 런타임 호수 라벨은 붙이지 않는다(ItemIcon labelKeys 제외).
-      float_zero: 'item-icons/it_float_zero_v2.png',
-      float_hole: 'item-icons/it_float_hole_v2.png',
-      float_tilt: 'item-icons/it_float_tilt_v2.png',
-      subfloat_light: 'item-icons/it_subfloat_light_v2.png',
-      subfloat_heavy: 'item-icons/it_subfloat_heavy_v2.png',
-      splitshot: 'item-icons/it_splitshot_v2.png',
-      swivel: 'item-icons/it_swivel_v2.png',
-      cushion_bell: 'item-icons/it_cushion_bell_v2.png',
-      cushion_round: 'item-icons/it_cushion_round_v2.png',
-      bead_halfmoon: 'item-icons/it_bead_halfmoon_v2.png',
-      // 192차 — 채비 모딩: 사용자 제공 타이라바 도트 3종 + 절차 생성 바렐형 도래(tools/gen_tackle_icons.py)
-      tairaba_head_red: 'item-icons/it_tairaba_head_red.png',
-      tairaba_skirt_red: 'item-icons/it_tairaba_skirt_red.png',
-      tairaba_necktie_orange: 'item-icons/it_tairaba_necktie_orange.png',
-      swivel_barrel: 'item-icons/it_swivel_barrel.png',
-      // 193차 — 카드 채비(반짝이 깃 / 민바늘) 절차 생성
-      card_rig_flasher: 'item-icons/it_card_rig_flasher.png',
-      card_rig_plain: 'item-icons/it_card_rig_plain.png',
-      // 196차 — 카드 채비 포장 사진 도트(열기 빨간 깃 · 전갱이 녹색 깃 — tools/gen_card_rig_icons.py)
-      card_rig_yeolgi: 'item-icons/it_card_rig_yeolgi.png',
-      card_rig_jeongaengi: 'item-icons/it_card_rig_jeongaengi.png',
-      // 228차 — 사용자 도트 그림: 미끼 한 갑(상점 묶음)
-      item_ragworm_pack: 'item-icons/pack_ragworm.png',
-      item_honmushi_pack: 'item-icons/pack_honmushi.png',
-      // 229차 — 사용자 도트 그림: 급랭 백크릴 600g(밑밥 블록) · 미끼용 곽크릴 · 다낚스 살림용 바칸 · 외포란 암꽃게(방생 안내) · 1자형 혼무시(파기 연출)
-      item_krill_block: 'item-icons/it_krill_block.png',
-      item_krill_box: 'item-icons/it_krill_box.png',
-      item_krill_bait: 'item-icons/it_krill_bait.png',   // 230차 — 미끼용 크릴 한 마리(크릴 · 백크릴 공통)
-      item_bakkan_danax: 'item-icons/it_bakkan_danax.png',
       forage_octopus_vulgaris: 'fish/common_octopus.png',   // 하모니 — 채집한 돌문어도 낚은 참문어와 같은 그림
       [fishIconKey('forage_octopus_vulgaris')]: 'fish/icon/common_octopus.png',   // 248차 — 가방 칸은 64px 아이콘
-      honmushi_straight: 'item-icons/honmushi_straight.png',
-      honmushi_straight_px: 'item-icons/honmushi_straight_px.png',
+      honmushi_straight_px: 'item-icons/honmushi_straight_px.png',   // 229차 — 파기 판에서 끌려 나오는 1자형 혼무시(원본은 food assets/tackle/)
     };
     for (const [key, path] of Object.entries(ITEM_ICON_ASSETS)) this.load.image(key, path);
+    for (const [key, file] of Object.entries(TACKLE_IMAGE_FILES)) {
+      this.load.image(key, `tackle/${file}`);
+      this.load.image(fishIconKey(key), `tackle/icon/${file}`);
+    }
     // 248차 — 갯것 · 생미끼 그림은 카드(300×160 안) + 64px 아이콘만 싣는다(`tools/forage_cards.cjs` — 원본은 food assets/forage/)
     for (const [key, file] of Object.entries(FORAGE_IMAGE_FILES)) {
       this.load.image(key, `forage/${file}`);

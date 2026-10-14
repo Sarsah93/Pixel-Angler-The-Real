@@ -12,6 +12,7 @@
  */
 
 import { FORAGE_IMAGE_FILES } from './ForageTextures.js';
+import { TACKLE_IMAGE_FILES } from './TackleTextures.js';
 
 /** 어종 ID → 실사 픽셀 생선 이미지 텍스처 키 */
 export const FISH_TEXTURE: Record<string, string> = {
@@ -155,10 +156,11 @@ export const FISH_IMAGE_FILES: Record<string, string> = {
 /**
  * 246차 — 카드 키(`fish_<…>`) → 64px 아이콘 키(`fishicon_<…>`).
  * 248차 — 갯것 · 생미끼 카드(`FORAGE_IMAGE_FILES` · 돌문어)도 같은 방식이다 → `<카드 키>__icon`.
+ * 249차 — 낚시 장비 카드(`TACKLE_IMAGE_FILES`)도 → `<카드 키>__icon`.
  */
 export function fishIconKey(cardKey: string): string {
   if (cardKey.startsWith('fish_')) return `fishicon_${cardKey.slice(5)}`;
-  if (cardKey in FORAGE_IMAGE_FILES || cardKey === 'forage_octopus_vulgaris') return `${cardKey}__icon`;
+  if (cardKey in FORAGE_IMAGE_FILES || cardKey in TACKLE_IMAGE_FILES || cardKey === 'forage_octopus_vulgaris') return `${cardKey}__icon`;
   return cardKey;
 }
 

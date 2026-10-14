@@ -34,6 +34,7 @@ import type { ForageTool, StatusCure, CatchMethod, LineForm } from '@tra/core';
 import { ExternalDataStore } from './ExternalDataStore.js';
 import { DiscoveryStore } from './DiscoveryStore.js';
 import { isGod } from '../dev/DevMode.js';
+import { refreshTackleArtKey } from '../data/TackleTextures.js';
 import { resolveFishTexture } from '../data/FishTextures.js';
 import { applyItemVitals, refreshNutritionVitals } from '../data/ItemVitals.js';
 import { applyCookItemFields, COOK_CORNER } from '../data/CookItems.js';
@@ -517,6 +518,15 @@ function refreshCardRigIdentity(i: InvItem): InvItem {
   };
 }
 
+/**
+ * 249차 — 대 · 릴 · 낚싯줄 스풀 · 섀드 웜 · 잠길찌가 다른 종류 그림(스피닝대 · 사이소 스풀 · 그럽 웜 · 수중찌)을 빌려 쓰던 것을
+ * 종류별 그림으로 바꾼다(`TackleTextures.refreshTackleArtKey` — 빌려 쓰던 키일 때만). 정적 제품 정보라 덮는다 — 수량 · 칸 · 장착은 그대로.
+ */
+function refreshTackleArt(i: InvItem): InvItem {
+  const t = refreshTackleArtKey(i);
+  return t === i.iconTexture ? i : { ...i, iconTexture: t, icon: '' };
+}
+
 export const CARD_RIG_INFO: Record<CardRigType, { label: string; hooks: number; gapM: number }> = {
   yeolgi:     { label: '열기 (7단)',   hooks: 7, gapM: 0.3 },
   godeungeo:  { label: '고등어 (5단)', hooks: 5, gapM: 0.5 },
@@ -603,7 +613,7 @@ function createSeedItems(): InvItem[] {
   const defs: Omit<InvItem, 'slot'>[] = [
     // ── 장비 (손/의류) ──
     { id: 'inv_rod',      name: '용상 파조기 1.5호 5.3m',   icon: '', iconTexture: 'item_spinning_rod', category: 'gear', subCategory: '손도구', qty: 1, basePrice: 185000, equippable: true, equipped: true, tool: 'rod', equippedHand: 'R' },
-    { id: 'inv_reel',     name: '다이오 2500L 스피닝릴',    icon: '', iconTexture: 'item_spinning_reel', category: 'gear', subCategory: '릴',     qty: 1, basePrice: 95000,  equippable: true, equipped: true },
+    { id: 'inv_reel',     name: '다이오 2500L 스피닝릴',    icon: '', iconTexture: 'item_reel_lever', category: 'gear', subCategory: '릴',     qty: 1, basePrice: 95000,  equippable: true, equipped: true },
     { id: 'inv_net',      name: '뜰채 5m',                  icon: '', iconTexture: 'art_landing_net', category: 'gear', subCategory: '손도구', qty: 1, basePrice: 30000, equippable: true, tool: 'net', netReachM: 5 },
     { id: 'inv_cap',      name: '낚시 모자',                icon: '', iconTexture: 'art_cap', category: 'gear', subCategory: '모자',   qty: 1, basePrice: 12000, equippable: true },
     { id: 'inv_glasses',  name: '편광 안경',                icon: '', iconTexture: 'art_glasses', category: 'gear', subCategory: '안경',   qty: 1, basePrice: 45000, equippable: true },
@@ -648,9 +658,9 @@ function createSeedItems(): InvItem[] {
     { id: 'inv_krill',    name: '미끼용 크릴',              icon: '', iconTexture: 'item_krill_bait', category: 'tackle', subCategory: '냉동미끼',  qty: 30, basePrice: 200,  condition: 'thawed',  equippable: false, condProfile: 'krill_bait' },
     { id: 'inv_breadbait', name: '빵가루 경단',             icon: '', iconTexture: 'art_breadball', category: 'tackle', subCategory: '반죽미끼',  qty: 15, basePrice: 300,   equippable: false },
     { id: 'inv_fishcut',  name: '생선 조각 미끼',           icon: '', iconTexture: 'art_fishcut', category: 'tackle', subCategory: '선어미끼',  qty: 6,  basePrice: 3000,  condition: 'chilled', equippable: false },
-    { id: 'inv_pe1',      name: 'AMSTRONG 합사 원줄 1호 · 150m', icon: '', iconTexture: 'line_spool_saiso', category: 'tackle', subCategory: '원줄 스풀', qty: 1,  basePrice: 18000, equippable: false, lineMaterial: 'pe_braid', lineForm: 'sinking', lineLengthM: 150, lineNo: 1, lineDiameterMm: 0.165, lineStrengthLb: 18 },
-    { id: 'inv_carbon15', name: 'AMSTRONG 카본 목줄 3호 · 150m', icon: '', iconTexture: 'line_spool_saiso', category: 'tackle', subCategory: '목줄 스풀', qty: 1,  basePrice: 9000,  equippable: false, lineMaterial: 'fluorocarbon', lineForm: 'suspend', lineLengthM: 150, lineNo: 3, lineDiameterMm: 0.285, lineStrengthLb: 10.5 },
-    { id: 'inv_nylon2',   name: 'AMSTRONG 나일론 목줄 2호 · 200m', icon: '', iconTexture: 'line_spool_saiso', category: 'tackle', subCategory: '목줄 스풀', qty: 1,  basePrice: 6000,  equippable: false, lineMaterial: 'nylon', lineForm: 'float', lineLengthM: 200, lineNo: 2, lineDiameterMm: 0.235, lineStrengthLb: 8 },
+    { id: 'inv_pe1',      name: 'AMSTRONG 합사 원줄 1호 · 150m', icon: '', iconTexture: 'item_line_pe', category: 'tackle', subCategory: '원줄 스풀', qty: 1,  basePrice: 18000, equippable: false, lineMaterial: 'pe_braid', lineForm: 'sinking', lineLengthM: 150, lineNo: 1, lineDiameterMm: 0.165, lineStrengthLb: 18 },
+    { id: 'inv_carbon15', name: 'AMSTRONG 카본 목줄 3호 · 150m', icon: '', iconTexture: 'item_line_leader', category: 'tackle', subCategory: '목줄 스풀', qty: 1,  basePrice: 9000,  equippable: false, lineMaterial: 'fluorocarbon', lineForm: 'suspend', lineLengthM: 150, lineNo: 3, lineDiameterMm: 0.285, lineStrengthLb: 10.5 },
+    { id: 'inv_nylon2',   name: 'AMSTRONG 나일론 목줄 2호 · 200m', icon: '', iconTexture: 'item_line_leader', category: 'tackle', subCategory: '목줄 스풀', qty: 1,  basePrice: 6000,  equippable: false, lineMaterial: 'nylon', lineForm: 'float', lineLengthM: 200, lineNo: 2, lineDiameterMm: 0.235, lineStrengthLb: 8 },
     { id: 'inv_chinu3',   name: '감성돔 바늘 3호',          icon: '', iconTexture: 'item_hook_chinu', category: 'tackle', subCategory: '바늘/훅',   qty: 12, basePrice: 3000,  equippable: false },
     { id: 'inv_treble',   name: '루어용 트레블 훅',         icon: '', iconTexture: 'item_treble', category: 'tackle', subCategory: '바늘/훅',   qty: 6,  basePrice: 4000,  equippable: false },
     { id: 'inv_jighead',  name: '지그헤드 3g',              icon: '', iconTexture: 'item_jighead', category: 'tackle', subCategory: '바늘/훅',   qty: 8,  basePrice: 3500,  equippable: false },
@@ -663,7 +673,7 @@ function createSeedItems(): InvItem[] {
     { id: 'inv_float08',  name: '구멍찌 0.8호',             icon: '', iconTexture: 'float_hole', category: 'tackle', subCategory: '채비 부속', qty: 3,  basePrice: 8000,  equippable: false, floatBuoyG: 8 },
     { id: 'inv_float10',  name: '구멍찌 1.0호',             icon: '', iconTexture: 'float_hole', category: 'tackle', subCategory: '채비 부속', qty: 2,  basePrice: 8500,  equippable: false, floatBuoyG: 10 },
     { id: 'inv_float_tilt', name: '기울찌 G2',              icon: '', iconTexture: 'float_tilt', category: 'tackle', subCategory: '채비 부속', qty: 2,  basePrice: 9500,  equippable: false, floatBuoyG: 5 },
-    { id: 'inv_float_sink', name: '잠길찌 (-0.5호)',        icon: '', iconTexture: 'subfloat_heavy', category: 'tackle', subCategory: '채비 부속', qty: 2,  basePrice: 9000,  equippable: false, floatBuoyG: -1.5 },
+    { id: 'inv_float_sink', name: '잠길찌 (-0.5호)',        icon: '', iconTexture: 'item_float_sink', category: 'tackle', subCategory: '채비 부속', qty: 2,  basePrice: 9000,  equippable: false, floatBuoyG: -1.5 },
     // 수중찌 (subFloat 소켓 — 선택) : floatBuoyG 음수 = 침력. 찌는 수면에 세우고 채비만 내린다.
     { id: 'inv_subfloat05', name: '수중찌 -0.5호',          icon: '', iconTexture: 'subfloat_light', category: 'tackle', subCategory: '채비 부속', qty: 2,  basePrice: 5500,  equippable: false, floatBuoyG: -5 },
     { id: 'inv_subfloat', name: '수중찌 -0.8호',            icon: '', iconTexture: 'subfloat_heavy', category: 'tackle', subCategory: '채비 부속', qty: 3,  basePrice: 6000,  equippable: false, floatBuoyG: -8 },
@@ -732,7 +742,7 @@ function createSeedItems(): InvItem[] {
   // ── 루어 카탈로그 전종 + 지그헤드 (루어 카테고리 — 종류별 제원 수동 검증용) ──
   // 루어 8종 전부 그림이 있다(사용자 도트 4 + 코드로 그린 그림 4 — `ItemArtManifest`). 이모지 폴백은 없앴다
   const lureTexture: Record<string, string> = {
-    worm_grub: 'item_soft_worm', soft_jerkbait: 'item_soft_worm', plug_minnow: 'item_minnow', metal_jig: 'item_metal_jig',
+    worm_grub: 'item_soft_worm', soft_jerkbait: 'item_lure_shad', plug_minnow: 'item_minnow', metal_jig: 'item_metal_jig',
     spoon: 'art_lure_spoon', spinner: 'art_lure_spinner', egi: 'art_lure_egi', tairaba: 'art_lure_tairaba',
   };
   for (const lure of LURES_CATALOG_DB) {
@@ -993,7 +1003,7 @@ export function formatRemain(ms: number): string {
  */
 export const FATHER_BOX_ITEMS: InvItemTemplate[] = [
   { id: 'inv_rod',  name: '용상 파조기 1.5호 5.3m', icon: '', iconTexture: 'item_spinning_rod', category: 'gear', subCategory: '손도구', basePrice: 185000, equippable: true, tool: 'rod' },
-  { id: 'inv_reel', name: '다이오 2500L 스피닝릴',  icon: '', iconTexture: 'item_spinning_reel', category: 'gear', subCategory: '릴', basePrice: 95000, equippable: true },
+  { id: 'inv_reel', name: '다이오 2500L 스피닝릴',  icon: '', iconTexture: 'item_reel_lever', category: 'gear', subCategory: '릴', basePrice: 95000, equippable: true },
 ];
 
 /** 새 게임 퀵슬롯 — 비어 있다(188차) */
@@ -1386,7 +1396,7 @@ class InventoryStoreManager {
         slot: i.equipped ? SLOT_EQUIPPED : i.slot,
         conditionSinceMs: i.conditionSinceMs !== undefined ? i.conditionSinceMs + offlineGap : undefined,
       };
-    }).map((i) => refreshCardRigIdentity(refreshNetIcon(i)))
+    }).map((i) => refreshTackleArt(refreshCardRigIdentity(refreshNetIcon(i))))
       .map((i) => applyCookItemFields(applyItemVitals(refreshNutritionVitals(i))));   // 154차 — 조리 필드도 테이블 백필 · 188차 영양표 재정합
     this._catchSeq = s.catchSeq ?? 0;
     const valid = new Set(this._items.map((i) => i.id));

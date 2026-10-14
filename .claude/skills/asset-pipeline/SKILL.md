@@ -276,3 +276,26 @@ node tools/forage_cards.cjs --check                                             
   판 · 점은 면적 평균 → 알파 0.45 끊기 → 채도 · 대비 조금 → **바깥 윤곽 1px**(작게 줄이면 원본 윤곽선이 녹는다).
 - 표 = `packages/client-pc/src/data/ForageTextures.ts` `FORAGE_IMAGE_FILES`(새 생물 · 생미끼는 원본 + 한 줄). BootScene은 표 · `SHORE_CREATURE_DATABASE`를 돌며 싣는다.
 - 위키 그림은 `gen_wiki_images.py`가 같은 표로 원본을 읽는다. ⚠ 시트를 만들 때 `grep -v top`으로 거르지 않는다 — 「octopus」에 「top」이 들어 있다.
+
+## ⑧ 낚시 장비 그림 — 카드 방식 · 대체 그림 Gemini (249차)
+
+장비 그림(대 · 릴 · 찌 · 봉돌 · 루어 · 미끼 갑 · 옷 · 가방 · 해루질 도구 · 통발)도 **원본은 `food assets/tackle/`, 게임은 굽는 것만** 싣는다.
+
+```bash
+NODE_USE_ENV_PROXY=1 node tools/gemini_tackle_art.cjs --out <스테이징> --dry                 # 프롬프트만
+NODE_USE_ENV_PROXY=1 node tools/gemini_tackle_art.cjs --out <스테이징> [--group rod|reel|lure|line|bait|chum|tool|wear|bag|gather|trap|care] [--only 키] [--tag v2 --force]
+node tools/gemini_tackle_art.cjs --out <스테이징> --install [--force]                        # 검수 뒤(고른 판은 태그 없는 이름 <키>.png로)
+node tools/tackle_cards.cjs [--sheet <png>] [--only 파일]                                    # 카드(228×90 안) · 아이콘(64px)
+node tools/tackle_cards.cjs --check                                                          # 표 ↔ 원본 ↔ 출력 대조
+python3.13 tools/item_art/build.py --only __none__                                           # 표에 오른 art_* 코드 그림 빼기 · 매니페스트
+```
+
+- **표 하나**: `packages/client-pc/src/data/TackleTextures.ts` `TACKLE_IMAGE_FILES`(텍스처 키 → 파일). BootScene · 카드 굽기 · 위키 그림 · `build.py`가 함께 읽는다.
+- **`art_*` 키**(코드로 그린 임시 그림이던 장비)는 키를 그대로 두고 그림만 바꾼다 — 표에 오르면 `build.py`가 drawn PNG를 지우고 id 연결만 남긴다.
+- **대 · 릴 · 줄 그림 키는 손으로 적지 않는다** — `rodArtKey`(core `rodSpecFor().use`) · `reelArtKey` · `lineArtKey`. 옛 세이브는 `refreshTackleArtKey`가 빌려 쓰던 키일 때만 바꾼다.
+- 생성 화풍 참고 = 사용자 장비 그림 3장(묶음 `REF_*`). 대는 참고처럼 **초릿대 끝 왼쪽 위 · 손잡이 오른쪽 아래 · 릴 없음**, 릴은 참고 스피닝릴과 같은 각도.
+- 설치: 흰 배경 벗기기는 **떨어진 조각도 남긴다**(장갑 한 켤레 · 경단) · 윤곽선에 갇힌 순백 배경을 뺀다 · 그물 장비는 `mesh: true` · 격자 정규화(192칸 · 셀 6px).
+  흰 물건(쿨러 · 목장갑 · 위판 상자)이 비지 않는지 **어두운 바탕 시트**로 본다(`montage -background '#2a3440'`).
+- 굽기: 면적 평균 + **불투명도 보존**(대 · 바늘 선이 30px 칸에서 끊기지 않게) · 사용자 그림은 캔버스(작은 부속 여백) 그대로.
+- 위키: `gen_wiki_images.py`가 같은 표로 원본을 읽는다. **아티팩트 한 판 파일 상한 511 · 한 번 발행 255** — `gen_game_wiki_data.mjs`가 8KB 이하 그림을
+  HTML 안에 넣고(`tools/wiki_img/inlined.txt`) 파일로 둘 것만 `used.txt`에 적는다. 발행은 바뀐 · 새 그림만 올리고, 아티팩트에 있는데 `used.txt`에 없는 것은 `null`.

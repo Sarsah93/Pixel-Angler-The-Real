@@ -1033,8 +1033,24 @@ for (const i of items) if (i.img) used.add(i.img);
 for (const k of skillList) if (k.img) used.add(k.img);
 for (const c of farmCrops) { if (c.img) used.add(c.img); for (const st of c.starts) if (st.img) used.add(st.img); }
 for (const sp of farmSupplies) if (sp.img) used.add(sp.img);
+// 249차 — 아티팩트 한 판에는 파일이 511개까지만 들어간다(위키가 쓰는 그림 512장 + index.html — 그 전까지 코드 그림 141장이 빠진 채였다).
+//   작은 그림(INLINE_MAX 이하 — 16px 아이콘 · 스킬 아이콘 · 코드 그림 섬네일)은 HTML 안에 data URI로 넣고, 나머지만 img/ 파일로 둔다.
+const INLINE_MAX = 8192;
+const inlined = new Set();
+const inlineSmall = (v) => {
+  if (!v || typeof v !== 'object') return;
+  for (const [k, x] of Object.entries(v)) {
+    if ((k === 'img' || k === 'src') && typeof x === 'string' && x.endsWith('.png') && used.has(x)) {
+      const p = path.join(IMG_DIR, x);
+      if (fs.existsSync(p) && fs.statSync(p).size <= INLINE_MAX) { v[k] = `data:image/png;base64,${fs.readFileSync(p).toString('base64')}`; inlined.add(x); }
+    } else if (x && typeof x === 'object') inlineSmall(x);
+  }
+};
 if (Object.keys(manifest).length) {
-  fs.writeFileSync(path.join(IMG_DIR, 'used.txt'), [...used].sort().join('\n') + '\n');
+  inlineSmall(out);
+  fs.writeFileSync(path.join(IMG_DIR, 'used.txt'), [...used].filter((f) => !inlined.has(f)).sort().join('\n') + '\n');
+  fs.writeFileSync(path.join(IMG_DIR, 'inlined.txt'), [...inlined].sort().join('\n') + '\n');
+  process.stderr.write(`위키 그림: 파일 ${used.size - inlined.size}장(img/) · HTML 안 ${inlined.size}장(≤ ${INLINE_MAX}B)\n`);
 }
 
 const json = JSON.stringify(out);

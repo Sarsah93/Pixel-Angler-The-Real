@@ -153,6 +153,11 @@ const LINE_FORM_LABEL: Record<LineForm, string> = {
   float: 'Float', 'semi-float': 'Semi-Float', suspend: 'Suspend', sinking: 'Sinking',
 };
 
+/** 249차 — 스풀 그림 키(클라이언트 `TackleTextures`): 나일론 = 사이소 스풀 · 카본 = 목줄 스풀 · 합사 = 5색 합사 스풀 */
+const LINE_SPOOL_ICON: Partial<Record<LineSpec['material'], string>> = {
+  nylon: 'line_spool_saiso', fluorocarbon: 'item_line_leader', pe_braid: 'item_line_pe',
+};
+
 function buildSaisoLineDatabase(): LineSpec[] {
   const out: LineSpec[] = [];
   for (const family of SAISO_LINE_FORMS) {
@@ -173,7 +178,7 @@ function buildSaisoLineDatabase(): LineSpec[] {
             priceKRW: Math.round((family.material === 'pe_braid' ? 26000 : family.material === 'fluorocarbon' ? 21000 : 9000) * spoolLengthM / 200),
             spoolLengthM,
             lineForm: form,
-            iconTexture: 'line_spool_saiso',
+            iconTexture: LINE_SPOOL_ICON[family.material] ?? 'line_spool_saiso',
           });
         }
       }

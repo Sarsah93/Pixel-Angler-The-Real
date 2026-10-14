@@ -277,7 +277,7 @@ npx pnpm --filter @tra/client-pc run dev
 ## 9. 빌드 상태 · 최근 변경
 
 ```
-npx pnpm run build → ✅ 3/3 패키지 성공 (2026-10-14 248차 · map-builder 워크스페이스 제외)
+npx pnpm run build → ✅ 3/3 패키지 성공 (2026-10-14 249차 · map-builder 워크스페이스 제외)
 npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 ```
 
@@ -286,7 +286,18 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-10-14 248차) — 갯것 10종 · 땅지렁이 그림(Gemini) · 갯것 카드 방식 · 텃밭 땅지렁이 → 바다 미끼**
+**최근 변경 (2026-10-14 249차) — 낚시 장비 그림 카드 방식 · 대체 · 없는 장비 그림 74장(Gemini) · 위키 그림 상한 정리 · F-0088 판정**
+
+- 사용자 「낚시 장비 그림 … 카드방식으로 줄이고, 현재 이미지 대체중이거나 없는 것들 다 gemini로」: 사용자 장비 그림 41장 원본 → `food assets/tackle/` ·
+  게임은 카드(228×90 안) + 64px 아이콘만(`tools/tackle_cards.cjs` — 불투명도 보존 축소 · 표 `TackleTextures.ts` 113키) · 부팅 텍스처 653.0MB → 401.2MB · 배포 84.0 → 72.7MB.
+- Gemini 74장(`tools/gemini_tackle_art.cjs` · 실패 0): 코드 그림 임시 그림 59(`art_*` 키 유지 — `build.py`가 바깥 그림으로 빼고 id 연결만 남김) +
+  빌려 쓰던 15(대 종류 7 · 릴 4 · 합사 · 카본 목줄 · 섀드 웜 · 잠길찌 — `rodArtKey` · `reelArtKey` · `lineArtKey` · 옛 세이브 `refreshTackleArt`).
+- 위키: 아티팩트 파일 상한(511)에 막혀 코드 그림 141장이 빠져 있던 것 — 8KB 이하 그림 219장을 HTML 안에 · Version 51.
+  F-0088: 날짜 대조로 정본 = 코드 216(193 · 235) · 남은 옛 값 4곳 정정. 포인터 시안은 `docs/mockups/pointer_drafts/`.
+- 검증: core 259/259 · 빌드 3/3 · typecheck 0 · 실렌더(장비 키 226 빠짐 0 · 가방 · 상세 · 옛 세이브 보정 · 4xx 0 · pageerror 0).
+  상세: [249차 워크로그](../docs/wiki/03-WORKLOG/2026-10-14-249-tackle-cards-gemini-74.md).
+
+**이전 변경 (2026-10-14 248차) — 갯것 10종 · 땅지렁이 그림(Gemini) · 갯것 카드 방식 · 텃밭 땅지렁이 → 바다 미끼**
 
 - 사용자 「바지락 … 삿갓조개(배말) 얘네 이미지 없는 걸로 확인되네. 이미지 작업 gemini로 … 탑다운 뷰에서 보여질 아이콘 이미지가 필요한 개체들」:
   초상 11(10종 + 땅지렁이 · `tools/gemini_forage_art.cjs` — 사용자 갯것 그림 3장 화풍 참고) + 위에서 본 그림 5(소라 · 전복 · 낙지 · 보말 · 삿갓조개) · 바지락 다시 1 · 실패 0.
@@ -306,16 +317,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
   필드 글자 검정 + 흰 테(R14 · `WorldLabel`) · 포인터 시안 6(사용자 선택 대기) · 어종 원본 14장 재굽기 · 초상 100/100.
 - 검증: core 250/250 · 빌드 3/3 · typecheck 0 · 실렌더 한/영(247 문구 영어 한글 0) · 텃밭 창 넘침 0 · 위키 Version 48 · gh-pages 72차.
   상세: [247차 워크로그](../docs/wiki/03-WORKLOG/2026-10-14-247-cultivation-factors-field-cells.md).
-
-**이전 변경 (2026-10-14 246차) — 그림 없던 어종 4종(Gemini) · 어종 그림 카드 방식(부팅 텍스처 194MB → 12MB)**
-
-- 사용자 「어종 그림 53장도 카드 방식으로 … 이미지가 없는 어종 그림부터」: 개서대 · 눈퉁멸 · 도루묵 · 말쥐치를 `tools/gemini_fish_art.cjs`(기존 어종 3장 화풍 참고)로 그렸다 —
-  8장(개서대 v4 · 눈퉁멸 v2) · 원본은 생성 해상도 그대로 + JPEG 번짐 벗기기(`peelFringe`) · 그림자 걷기 끔(은빛 배) · 도감 「이미지 없음」 0.
-- 원본 57장은 `food assets/fish/`(53장 git mv) · 게임은 카드(410×166 안 · 손질 도마 칸) + 64px 아이콘만(`tools/fish_cards.cjs` · 표 `FISH_IMAGE_FILES` 하나).
-  72px 이하 칸은 아이콘(`fitFishTexture`) · 부팅 텍스처 194.4MB → 11.9MB · 배포 36.5MB → 4.4MB · 알파 252~253 · 유령 픽셀이 카드에서 정리.
-- 도마 스냅숏 생성기 2개 · 위키 그림 생성기의 원본 경로를 바꿨다(스냅숏 데이터는 그대로 — 컨테이너 크로뮴은 픽셀이 달라 머리 주석만).
-- 검증: 실렌더(카드 57 + 아이콘 57 · `/fish/` 404 0 · 도마 1:1 · 가방 아이콘 · 도감 5쪽 · pageerror 0) · 빌드 3/3 · typecheck 0 · core 197/197 · 위키 Version 47.
-  상세: [246차 워크로그](../docs/wiki/03-WORKLOG/2026-10-14-246-fish-cards-gemini-4-species.md).
 
 ---
 

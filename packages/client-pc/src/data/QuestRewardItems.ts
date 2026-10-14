@@ -10,6 +10,7 @@
  * - `WikiCatalog.buildItemWikiCatalog`가 네 번째 소스로 합류시킨다(도감·`GameState.giveItem` 조회 경로).
  */
 
+import { reelArtKey, rodArtKey } from './TackleTextures.js';
 import type { InvItemTemplate } from '../store/InventoryStore.js';
 
 const gear = (id: string, name: string, sub: string, basePrice: number, extra: Partial<InvItemTemplate> = {}): InvItemTemplate =>
@@ -29,38 +30,38 @@ export const QUEST_REWARD_ITEMS: InvItemTemplate[] = [
   // ── Ch1 — 실습생 ──
   { id: 'qr_tackle_pouch', name: '옛 계원의 채비 주머니', icon: '', iconTexture: 'art_tackle_pouch', category: 'gear', subCategory: '가방', basePrice: 15000,
     equippable: true, bound: true, bagSlots: 3 },
-  gear('qr_rod_heirloom', '아버지의 릴대 (손에 맞춘 것)', '손도구', 210000, { tool: 'rod', iconTexture: 'px:it_rod' }),
-  gear('qr_reel_heirloom', '아버지의 릴 (드랙 재조정)', '릴', 120000, { iconTexture: 'px:it_reel' }),
+  gear('qr_rod_heirloom', '아버지의 릴대 (손에 맞춘 것)', '손도구', 210000, { tool: 'rod', iconTexture: rodArtKey('qr_rod_heirloom') }),
+  gear('qr_reel_heirloom', '아버지의 릴 (드랙 재조정)', '릴', 120000, { iconTexture: reelArtKey('qr_reel_heirloom') }),
   { id: 'qr_knife_okseon', name: '정옥선의 손질 칼', icon: '', iconTexture: 'art_knife_okseon', category: 'etc', subCategory: '조리도구', basePrice: 60000,
     equippable: true, bound: true, tool: 'knife' },
   { id: 'qr_headlamp_trainee', name: '어촌계 실습생 헤드랜턴 (1,000lm)', icon: '', iconTexture: 'art_headlamp_trainee', category: 'etc', subCategory: '해루질 도구',
     basePrice: 40000, equippable: false, bound: true, lampLumens: 1000 },
   // ── Ch2 — 위판 ──
-  gear('qr_rod_gamcheon', '도현수의 감천 튜닝 대', '손도구', 260000, { tool: 'rod', iconTexture: 'px:it_rod' }),
+  gear('qr_rod_gamcheon', '도현수의 감천 튜닝 대', '손도구', 260000, { tool: 'rod', iconTexture: rodArtKey('qr_rod_gamcheon') }),
   { id: 'qr_bag_field', name: '촬영 스태프 필드백', icon: '', iconTexture: 'art_bag_field', category: 'gear', subCategory: '가방', basePrice: 45000,
     equippable: true, bound: true, bagSlots: 5 },
-  gear('qr_reel_winter', '겨울 바다용 스피닝릴 (동결 드랙)', '릴', 180000, { iconTexture: 'px:it_reel' }),
+  gear('qr_reel_winter', '겨울 바다용 스피닝릴 (동결 드랙)', '릴', 180000, { iconTexture: reelArtKey('qr_reel_winter') }),
   // ── Ch3 — 배 ──
-  gear('qr_rod_jig', '고래마루 지깅 로드', '손도구', 320000, { tool: 'rod', iconTexture: 'px:it_rod' }),
+  gear('qr_rod_jig', '고래마루 지깅 로드', '손도구', 320000, { tool: 'rod', iconTexture: rodArtKey('qr_rod_jig') }),
   { id: 'qr_bag_expedition', name: '어촌계 원정 가방', icon: '', iconTexture: 'art_bag_expedition', category: 'gear', subCategory: '가방', basePrice: 70000,
     equippable: true, bound: true, bagSlots: 8 },
-  gear('qr_rod_bamboo', '탁만수의 새 죽간', '손도구', 450000, { tool: 'rod', iconTexture: 'px:it_rod' }),
+  gear('qr_rod_bamboo', '탁만수의 새 죽간', '손도구', 450000, { tool: 'rod', iconTexture: rodArtKey('qr_rod_bamboo') }),
   // ── Ch4 — 손님 ──
-  gear('qr_reel_captain', '선장용 스피닝릴 (고속 기어)', '릴', 260000, { iconTexture: 'px:it_reel' }),
-  gear('qr_rod_surf', '탁새벽의 서프 대', '손도구', 380000, { tool: 'rod', iconTexture: 'px:it_rod' }),
+  gear('qr_reel_captain', '선장용 스피닝릴 (고속 기어)', '릴', 260000, { iconTexture: reelArtKey('qr_reel_captain') }),
+  gear('qr_rod_surf', '탁새벽의 서프 대', '손도구', 380000, { tool: 'rod', iconTexture: rodArtKey('qr_rod_surf') }),
   // ── Ch5 — 제주 ──
   { id: 'qr_bag_guide', name: '가이드 가방 (구명조끼·멀미약·계측자)', icon: '', iconTexture: 'art_bag_guide', category: 'gear', subCategory: '가방', basePrice: 90000,
     equippable: true, bound: true, bagSlots: 10 },
-  gear('qr_rod_tournament', '제주 대회 부상 로드 (각인)', '손도구', 620000, { tool: 'rod', iconTexture: 'px:it_rod' }),
-  gear('qr_reel_tournament', '제주 대회 부상 릴 (각인)', '릴', 380000, { iconTexture: 'px:it_reel' }),
+  gear('qr_rod_tournament', '제주 대회 부상 로드 (각인)', '손도구', 620000, { tool: 'rod', iconTexture: rodArtKey('qr_rod_tournament') }),
+  gear('qr_reel_tournament', '제주 대회 부상 릴 (각인)', '릴', 380000, { iconTexture: reelArtKey('qr_reel_tournament') }),
   // ── Ch6 — 돌아오는 길 ──
   { id: 'qr_headlamp_keeper', name: '등대지기의 랜턴 (1,400lm)', icon: '', iconTexture: 'art_lantern_keeper', category: 'etc', subCategory: '해루질 도구',
     basePrice: 90000, equippable: false, bound: true, lampLumens: 1400 },
   { id: 'qr_bag_voyage', name: '원거리 항해 가방', icon: '', iconTexture: 'art_bag_voyage', category: 'gear', subCategory: '가방', basePrice: 120000,
     equippable: true, bound: true, bagSlots: 12 },
   // ── Ch7 — 조행록 ──
-  gear('qr_rod_final', '탁새벽의 대 (마지막 캐스팅)', '손도구', 900000, { tool: 'rod', iconTexture: 'px:it_rod' }),
-  gear('qr_reel_final', '탁새벽의 릴 (마지막 캐스팅)', '릴', 520000, { iconTexture: 'px:it_reel' }),
+  gear('qr_rod_final', '탁새벽의 대 (마지막 캐스팅)', '손도구', 900000, { tool: 'rod', iconTexture: rodArtKey('qr_rod_final') }),
+  gear('qr_reel_final', '탁새벽의 릴 (마지막 캐스팅)', '릴', 520000, { iconTexture: reelArtKey('qr_reel_final') }),
 
   // ── 서브 아크 가방 (귀속 아님 — 137차 이후 참조만 있던 id를 실물화) ──
   { id: 'inv_bag_mountain', name: '바람의 마운틴 백팩', icon: '', iconTexture: 'art_bag_mountain', category: 'gear', subCategory: '가방', basePrice: 85000,

@@ -12,6 +12,10 @@
   packages/client-pc/src/data/ItemArtManifest.ts             자동 생성 — 수동 편집 금지
 
 그림을 고치려면 icons_*.py 의 함수를 고치고 다시 돌린다. PNG 를 손으로 고치지 않는다(다시 구우면 덮인다).
+
+249차 — 낚시 장비 그림 표(`src/data/TackleTextures.ts` TACKLE_IMAGE_FILES)에 오른 키는 「바깥 그림」이다(Gemini 그림 카드).
+  그 그림은 굽지 않고 drawn/ PNG 를 지우며 ITEM_ART_ASSETS 에서도 뺀다(BootScene 이 tackle/ 카드로 싣는다).
+  아이템 id · 접두사 · 16px 키 연결(BY_ID · BY_PREFIX · BY_PX)은 그대로 남긴다 — `iconTexture` 없는 옛 세이브도 새 그림이 나온다.
 """
 import argparse
 import glob
@@ -25,6 +29,18 @@ OUT_DIR = os.path.join(ROOT, 'packages', 'client-pc', 'public', 'item-icons', 'd
 BOARD_DIR = os.path.join(ROOT, 'packages', 'client-pc', 'public', 'forage-board')
 BOARD_PX = 44   # 판 그림 긴 변 — 게임이 16px 기준으로 맞춰 3배로 그린다(ForageGamePanel)
 MANIFEST = os.path.join(ROOT, 'packages', 'client-pc', 'src', 'data', 'ItemArtManifest.ts')
+TACKLE_TS = os.path.join(ROOT, 'packages', 'client-pc', 'src', 'data', 'TackleTextures.ts')
+
+
+def external_keys():
+    """249차 — 낚시 장비 그림 표에 오른 텍스처 키(바깥 그림 — 여기서 굽지 않는다)"""
+    import re
+    if not os.path.isfile(TACKLE_TS):
+        return set()
+    src = open(TACKLE_TS, encoding='utf-8').read()
+    body = src[src.index('export const TACKLE_IMAGE_FILES'):]
+    body = body[:body.index('};')]
+    return set(re.findall(r"^\s+([a-z0-9_]+):\s*'[^']+\.png'", body, re.M))
 sys.path.insert(0, HERE)
 
 import kit  # noqa: E402
@@ -90,7 +106,10 @@ def write_manifest(reg):
         '/** 텍스처 키 → `public/` 기준 상대 경로 (선행 `/` 금지 — 서브패스 배포) */',
         'export const ITEM_ART_ASSETS: Record<string, string> = {',
     ]
+    ext = external_keys()
     for r in reg:
+        if r['key'] in ext:
+            continue   # 249차 — 바깥 그림(tackle/ 카드)
         lines.append(f"  {r['key']}: 'item-icons/drawn/{r['name']}.png',")
         if board_name(r):
             lines.append(f"  forageboard_{board_name(r)}: 'forage-board/{board_name(r)}.png',")
@@ -157,8 +176,17 @@ def main():
     reg = load_all()
     only = {s for s in a.only.split(',') if s}
     os.makedirs(OUT_DIR, exist_ok=True)
+    ext = external_keys()
     done = []
+    gone = 0
     for rec in reg:
+        if rec['key'] in ext:
+            # 249차 — 바깥 그림: 굽지 않고, 예전에 구운 drawn/ PNG 는 지운다(id 연결은 매니페스트에 남는다)
+            old = os.path.join(OUT_DIR, rec['name'] + '.png')
+            if not a.no_write and os.path.isfile(old):
+                os.remove(old)
+                gone += 1
+            continue
         if only and rec['name'] not in only and not any(rec['name'].startswith(o.rstrip('*')) for o in only if o.endswith('*')):
             continue
         small, big = render(rec)
@@ -171,7 +199,8 @@ def main():
         write_manifest(reg)
     if a.sheet:
         write_sheet(a.sheet, done)
-    print(f'그림 {len(done)}장 구움 (등록 {len(reg)}장)' + ('' if a.no_write else f' → {os.path.relpath(OUT_DIR, ROOT)}'))
+    print(f'그림 {len(done)}장 구움 (등록 {len(reg)}장 · 바깥 그림 {len(ext & {r["key"] for r in reg})}장 · 지운 drawn PNG {gone}장)'
+          + ('' if a.no_write else f' → {os.path.relpath(OUT_DIR, ROOT)}'))
 
 
 if __name__ == '__main__':

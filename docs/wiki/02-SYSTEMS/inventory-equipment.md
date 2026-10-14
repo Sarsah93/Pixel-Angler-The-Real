@@ -1,6 +1,6 @@
 # S5·S12. 인벤토리 · 장비 · 보관(신선도) · 세이브
 
-> 상태 **🟢 운영**. 관련 차수 10·21·22·23·39·44·46·53·72·76·117·135·136·**148**
+> 상태 **🟢 운영**. 관련 차수 10·21·22·23·39·44·46·53·72·76·117·135·136·148·**249**
 
 ---
 
@@ -79,6 +79,7 @@
 | **획득 훅 + NEW 표시**(`onGained` → HUD 토스트 · `newIds`/`markSeen`/`hasNewIn` → 탭 금점·셀 NEW 점(호버 해제)·귀속 금테) | ✅ | **155** |
 | **채비 고정**(`rigLocked` · `lockRig`(트리 필수 칸 누락이면 거부)/`unlockRig` · 세이브 · `setRigNode` 가드(192 — 구 `setRigPart`·`setLure`·`setJigHead`·`setRigMode` 폐기) — `consumeRigItem`·`loseRigParts`는 `_rig` 직접 갱신이라 영향 없음) | ✅ | 155 — [S1](fishing-loop.md) |
 | **사시미 접시 메타**(`InvItem.sashimi`·`cutQuality`·`knifeTier`) + 음식 영양 상세(`FoodNutrition` 파생) | ✅ | 155 — [S4](sashimi-cooking.md) |
+| **장비 그림 종류별 키**(`TackleTextures` — `rodArtKey`(대 종류 8 + 죽간) · `reelArtKey`(베이트 · 레버 · 번수) · `lineArtKey`(목줄 · 합사 · 나일론)) · 옛 세이브 보정(`refreshTackleArt` — 빌려 쓰던 키일 때만) | ✅ | **249** — [S25](photo-pixel-art.md) |
 
 ## 5. 잔여·차기
 
@@ -93,6 +94,9 @@
   두 모델을 합칠지 core 쪽을 걷어낼지는 별도 결정.
 
 ## 6. 함정·불변조건
+
+- **장비 그림 키는 아이템 정의에 손으로 적지 않는다**(249) — 대 · 릴 · 줄은 `rodArtKey(id, name)` · `reelArtKey` · `lineArtKey`로 고른다.
+  새 낚싯대는 core `rodSpecFor().use`가 맞으면 그림이 따라온다. 옛 세이브는 불러올 때 빌려 쓰던 키(`item_spinning_rod` · `px:it_rod` · `line_spool_saiso` 등)일 때만 바꾼다.
 
 - **[234] 「넣다 실패하면 사라지는」 지급을 만들지 않는다** — `addItem`이 false를 돌려줄 수 있는 모든 지급(퀘스트 보상 · 거치대 회수 · 거래 반환)은
   ① 미리 `slotShortfall`로 자리를 보고 거절하거나 ② 넘친 것을 발밑(`GroundItemStore.drop`)에 둔다. 반환값을 버리는 `addItem` 호출을 새로 쓰지 않는다.

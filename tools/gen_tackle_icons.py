@@ -5,12 +5,13 @@
   - 바렐형 도래(it_swivel_barrel.png): 고리 2개 + 코일 + 통(바렐) — 스냅 없는 일반 도래.
   - 카드 채비(it_card_rig_flasher.png / it_card_rig_plain.png · 193차): 판지 카드 + 가지바늘 3단(반짝이 깃 유무).
   작은 격자(48x78)에 픽셀 단위로 그린 뒤 NEAREST로 16배 확대해 기존 item-icons(≈1254px)와 같은 해상도로 저장한다.
-  실행: py tools/gen_tackle_icons.py  →  packages/client-pc/public/item-icons/it_swivel_barrel.png
+  실행: py tools/gen_tackle_icons.py  →  food assets/tackle/it_swivel_barrel.png
+  249차 — 원본은 food assets/tackle/에 두고, 게임용 카드 · 아이콘은 node tools/tackle_cards.cjs가 굽는다.
 """
 import os
 from PIL import Image, ImageDraw
 
-OUT_DIR = os.path.join(os.path.dirname(__file__), '..', 'packages', 'client-pc', 'public', 'item-icons')
+OUT_DIR = os.path.join(os.path.dirname(__file__), '..', 'food assets', 'tackle')   # 249차 — 원본 폴더(카드는 tackle_cards.cjs)
 
 # 기존 도래(it_swivel_v2)와 같은 강철 톤
 OUTLINE = (26, 28, 36, 255)

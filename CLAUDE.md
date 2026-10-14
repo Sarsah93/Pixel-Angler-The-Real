@@ -48,17 +48,25 @@
   → **242 상추 품종 9종 · 감자 쌍 보정(13쌍) · 초상 12** → **243 낱개 수확 · 포장하기 · 농산물 칸 이름표 · 말투 규칙** → **244 작물 초상 84/84(Gemini 자동 생성) · 카드 초상**
   → **245 작물 84종 전부 관리 작업(난이도) · 병해충 16 · 묶음 작업 · 초상 98/98** → **246 그림 없던 어종 4종(Gemini) · 어종 그림 카드 방식**
   → **247 작물별 재배 요소 · 텃밭 칸 2×2 · 칸에서 손에 든 것으로 일하기 · 필드 글자 흰 테 · main 반영 · 72차 배포**
-  → **248 갯것 10종 · 땅지렁이 그림(Gemini) · 갯것 카드 방식 · 텃밭 땅지렁이 → 바다 미끼 · 73차 배포**.
+  → **248 갯것 10종 · 땅지렁이 그림(Gemini) · 갯것 카드 방식 · 텃밭 땅지렁이 → 바다 미끼 · 73차 배포**
+  → **249 낚시 장비 그림 카드 방식 · 대체 · 없는 장비 그림 74장(Gemini) · 위키 그림 상한 정리 · F-0088 판정**.
 - **로드맵(사용자 확정 2026-09-17)**: **요리 개체화 2단계 — 나머지 7개 레시피 변형(사용자 확인 대기)** → **농장**(E1 텃밭 ✅235 · 남은 것 E2~E5 · 백로그 BK).
   맵 확정(육안)·OSM land 14개·조도 재설계·외옹치/대포항 bbox 확장은 사용자 동반 병행 트랙.
 - **재개 지점**: 사용자 실검증(172·173차 타일 조화 규칙 + 178·183~186차 신설분 + **239차 건물 그림**) — 부족하면 규칙 보강,
   괜찮으면 규칙을 켠 채로 새 맵 확장. 차수별 잔여는 PLAN §2-3.
+- **249차**: **낚시 장비 그림 카드 방식 · 대체 · 없는 장비 그림 74장(Gemini) · 위키 그림 상한 정리 · F-0088 판정** — 사용자 「낚시 장비 그림 … 카드방식으로 줄이고,
+  현재 이미지 대체중이거나 없는 것들 다 gemini로」 → 사용자 장비 그림 41장 원본 `food assets/tackle/` · 게임은 카드(228×90 안) + 64px 아이콘(`tools/tackle_cards.cjs` · 표 `TackleTextures.ts` 113키 · 불투명도 보존 축소) ·
+  Gemini 74장(`tools/gemini_tackle_art.cjs` · 실패 0 — 코드 그림 임시 그림 59는 `art_*` 키 유지 · 빌려 쓰던 15는 `rodArtKey` · `reelArtKey` · `lineArtKey` · 옛 세이브 `refreshTackleArt`) ·
+  부팅 텍스처 653.0MB → 401.2MB · 배포 84.0 → 72.7MB · 위키 Version 51(작은 그림 219장 HTML 안 — 빠져 있던 코드 그림 141장 해결) ·
+  F-0088 정본 = 코드 216(193 · 235 날짜 대조) · 포인터 시안 `docs/mockups/pointer_drafts/`.
+  **다음 = 장비 밖 임시 그림 Gemini 교체 여부(사용자) · 하모니 원장 F-0088 닫기 · 손질 부산물 그림 카드 방식 · 마우스 포인터 선택(사용자)**.
+  상세 `docs/wiki/03-WORKLOG/2026-10-14-249-tackle-cards-gemini-74.md`.
 - **248차**: **갯것 10종 · 땅지렁이 그림(Gemini) · 갯것 카드 방식 · 텃밭 땅지렁이 → 바다 미끼** — 사용자 「바지락 … 삿갓조개(배말) 얘네 이미지 없는 걸로 확인되네 … gemini로 …
   탑다운 뷰에서 보여질 아이콘 이미지」 · 「농사하다가 지렁이 … 바다낚시 미끼로」 → 초상 11 + 위에서 본 그림 5(`tools/gemini_forage_art.cjs` — 사용자 갯것 그림 3장 화풍 참고) ·
   갯것 카드 방식(`tools/forage_cards.cjs` · 표 `ForageTextures.ts` — 카드 300×160 · 64px 아이콘 · 판 44px · 필드 점 24px 21종 전부 · 원본 `food assets/forage/`) · 부팅 텍스처 61MB → 3.2MB ·
   땅지렁이(core `EarthwormRules` — 일구기 · 캐기 · 김매기 · 북주기 · 비우기 · 비 · 90초 · 칸에서 2px 꿈틀 · [F] 줍기) · 미끼 키 `earthworm` · `baitPrefOf`(표 밖 청갯지렁이의 4할) ·
   바닷물 1분 뒤 늘어져 4분이면 0.35배 · core 259 · 위키 Version 49 · **main 반영 · gh-pages 73차**.
-  **다음 = 곤충 미끼(민물) · 시작 「지렁이」 이름(사용자) · 장비 그림 카드 방식(약 40장) · 마우스 포인터 시안 선택(사용자)**.
+  **다음 = 곤충 미끼(민물) · 시작 「지렁이」 이름(사용자) · ~~장비 그림 카드 방식~~ ✅249 · 마우스 포인터 시안 선택(사용자)**.
   상세 `docs/wiki/03-WORKLOG/2026-10-14-248-forage-art-earthworm.md`.
 - **247차**: **작물별 재배 요소 · 텃밭 칸 2×2 · 칸에서 손에 든 것으로 일하기 · 필드 글자 흰 테** — 사용자 「심기부터 재배까지 고려되는 모든 환경/요소 …
   웹검색 등을 통해 찾고, 구현」 → 작물 86종 재배 표(`CropCultivationData.ts` — 물 조금 · 보통 · 흠뻑 · 알맞은 흙 띠 · 과습 탈 · 거름 · 품과 피로 · 도구 · 철 밖) ·
@@ -67,12 +75,6 @@
   어종 원본 14장 재굽기 · 초상 100/100 · 위키 Version 48 · **main 반영 · gh-pages 72차**.
   **다음 = 마우스 포인터 시안 선택(사용자 — 6종 · 추천 1번 찌 화살) · 재배 수치 실플레이 조정**.
   상세 `docs/wiki/03-WORKLOG/2026-10-14-247-cultivation-factors-field-cells.md`.
-- **246차**: **그림 없던 어종 4종(Gemini) · 어종 그림 카드 방식** — 사용자 「어종 그림 53장도 카드 방식으로 … 이미지가 없는 어종 그림부터」 →
-  개서대 · 눈퉁멸 · 도루묵 · 말쥐치를 `tools/gemini_fish_art.cjs`(기존 어종 3장 화풍 참고 · 생성 해상도 그대로 + JPEG 번짐 벗기기) · 도감 「이미지 없음」 0 ·
-  원본 57장 `food assets/fish/` · 게임은 카드(410×166 안) + 64px 아이콘만(`tools/fish_cards.cjs` · 표 `FISH_IMAGE_FILES` · 72px 이하 `fitFishTexture`) ·
-  부팅 텍스처 194MB → 12MB · 배포 36.5MB → 4.4MB · 알파 252~253 · 유령 픽셀 카드에서 정리 · 위키 Version 47.
-  **다음 = 새 4종 손질 편입 · 어종 원본 셀 재굽기 결정(사용자) · 난이도 수치 실플레이 조정 · 질감 다른 쌍 2~3(사용자)**.
-  상세 `docs/wiki/03-WORKLOG/2026-10-14-246-fish-cards-gemini-4-species.md`.
 - **상시 방침**:
   - 지형 고도(DEM)는 **낚시 확립 후** — B(해안 변형) 우선, 경사로 통행을 막지 않는다
     (`docs/archive/specs/RASTER_UPLIFT_AMENDMENT.md` §4).
@@ -91,6 +93,7 @@
 - `food assets/` — 어종/손질/부산물 실사 원본 (파이프라인 입력 — **이름 변경 금지**, 도구 경로 참조 다수).
   `food assets/fish/` = 어종 원본 57장(246) — 게임은 `node tools/fish_cards.cjs`가 굽는 `public/fish/` 카드 · 아이콘만 싣는다.
   `food assets/forage/art/` · `top/` = 갯것 · 땅지렁이 원본(248) — 게임은 `node tools/forage_cards.cjs`가 굽는 카드 · 아이콘 · 판 · 점 그림만 싣는다.
+  `food assets/tackle/` = 낚시 장비 원본 115장(249 — 사용자 그림 41 · Gemini 74) — 게임은 `node tools/tackle_cards.cjs`가 굽는 `public/tackle/` 카드 · 아이콘만 싣는다.
 - `assets/` — 기타 원본 (2026-08-05 정리): `branding/`(타이틀·아이콘 소스) · `characters/`(man/girl 옛 캐릭터 원본 — 보존만. 소비본과 로드는 레거시 필드와 함께 삭제) · `guide/`(sashimi_pixel_guide.svg — pixelize_butchery 입력).
 - `docs/` — `reference/`(공공 API 활용가이드·09.수심.zip·경락 CSV 등 외부 데이터 원본) · `mockups/`(UI 목업 — game_guide_hub.html = 가이드 삽화 19장 재렌더 소스).
 
@@ -148,7 +151,7 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
 - 지역 타일맵 추가/재생성 → **스킬 `add-region`** (`py tools/build_region_maps.py <region>` — 파이프라인·타일 문자·맵 그래프·함정 일체).
 - 차기 과제: 낚시점 전용 상점(루어 판매), 어탐 레이더(SeabedProfile 조회), 타 지역(여수 등) 확장, POI 세분화, 사운드 이펙트 (IMPLEMENTATION_PLAN §6-5l 차기 참고).
 - 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages — **최근 73차 배포 2026-10-14 = 248차(갯것 그림 · 땅지렁이)까지 포함**. 재배포는 Actions 「테스트 배포」(ref `main`) — 절차 **스킬 `deploy-ghpages`**).
-  전체 위키(농사 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 49 = 248차**(생성기 `tools/gen_game_wiki_data.mjs --html`).
+  전체 위키(농사 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 51 = 249차**(생성기 `tools/gen_game_wiki_data.mjs --html` — 8KB 이하 그림은 HTML 안 · 아티팩트 한 판 파일 상한 511).
   ⚠ **원격 컨테이너에서는 dev 서버(5173)가 사용자 브라우저에 닿지 않는다** — 실플레이 테스트 요청은 이 배포로 답한다.
 
 ## 작업 이어받기 절차

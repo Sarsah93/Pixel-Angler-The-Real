@@ -13,7 +13,7 @@ from PIL import Image
 
 ROOT = os.path.join(os.path.dirname(__file__), '..')
 SRC_DIR = os.path.join(ROOT, 'assets', 'items', 'card_rig')
-OUT_DIR = os.path.join(ROOT, 'packages', 'client-pc', 'public', 'item-icons')
+OUT_DIR = os.path.join(ROOT, 'food assets', 'tackle')   # 249차 — 원본 폴더(게임용 카드 · 아이콘은 node tools/tackle_cards.cjs)
 JOBS = [
     ('card_rig_yeolgi_red.png', 'it_card_rig_yeolgi.png'),
     ('card_rig_jeongaengi_green.png', 'it_card_rig_jeongaengi.png'),

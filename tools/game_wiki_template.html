@@ -741,7 +741,7 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
   let tab = 'quests', cterm = '', group = '', sub = '';
   const nfw = n => nf(Math.round(n)) + '원';
   const img = (file, cls) => file
-    ? '<img src="img/' + esc(file) + '" alt="" loading="lazy"' + (cls ? ' class="' + cls + '"' : '') + '>'
+    ? '<img src="' + (String(file).startsWith('data:') ? '' : 'img/') + esc(file) + '" alt="" loading="lazy"' + (cls ? ' class="' + cls + '"' : '') + '>'
     : '';
   const thumb = (file, ph) => '<div class="thumb">' + (file ? img(file) : '<span class="ph">' + esc(ph) + '</span>') + '</div>';
   const kvRows = pairs => '<table class="kv"><tbody>' + pairs
