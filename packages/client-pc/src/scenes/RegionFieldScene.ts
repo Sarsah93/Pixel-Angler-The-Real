@@ -27,8 +27,6 @@ import {
   holeKindOfBreakwaterClass, evaluateHoleSpot, holeSlipChance, holeGearWarning,
   STAIR_DIR_LABEL,
   getTitleById,
-  // 235차 — 텃밭 칸 그림
-  FARM_CELLS, FARM_COLS, cellStage, getCrop,
 } from '@tra/core';
 import { openContextMenu } from '../ui/ContextMenu.js';
 import { PeerInfoPanel } from '../ui/PeerInfoPanel.js';
@@ -104,6 +102,8 @@ import { SkillTreePanel } from '../ui/SkillTreePanel.js';
 import { JournalPanel } from '../ui/JournalPanel.js';
 import { addPixelIcon } from '../ui/PixelIcon.js';
 import { FarmPanel } from '../ui/FarmPanel.js';
+import { FarmFieldSystem } from './field/FarmFieldSystem.js';
+import { worldLabelStyle } from '../ui/WorldLabel.js';
 import { FarmStore } from '../store/FarmStore.js';
 import type { MiniMarker, QuestTrackerEntry } from '../ui/RegionHud.js';
 import { TextInput } from '../ui/TextInput.js';
@@ -843,7 +843,7 @@ export class RegionFieldScene extends Phaser.Scene {
     if (this.seamlessDef) this.trimBuildingsOnRoads();
     this.buildTerrainGrid();
     // 홈타운 오브젝트 유효 상태 산출 → 충돌 타일 선반영 (병합 충돌/걷기 판정 공유)
-    if (this.region === 'hometown') this.computeHomeObjects();
+    if (this.region === 'hometown') { this.computeHomeObjects(); this.upgradeFarmPlots(); }
     if (this.seamlessDef) {
       // ── 심리스: 전맵 베이킹·전맵 충돌 대신 청크 스트리밍 (스펙 §6) ──
       let mapSeed = 2166136261;
@@ -911,6 +911,7 @@ export class RegionFieldScene extends Phaser.Scene {
       this.spawnPlayer();
       this.drawPois();
     }
+    this.initFarmField();   // 247차 — 텃밭 칸 그림은 이 시스템이 그린다(홈타운 그림보다 먼저)
     if (this.region === 'hometown') this.renderHomeObjects();
     // 178차 — 바닥에 놓아둔 물건은 지역과 무관하게 그린다(세이브에서 복원)
     this.renderGroundItems();
@@ -2928,9 +2929,11 @@ export class RegionFieldScene extends Phaser.Scene {
       }
       if (this.uiBlocked || this.isPaused || this.time.now < this.suppressClickUntil) return;
       if (this.interior) return;   // 215차 — 실내에서는 캐스팅하지 않는다
+      // 247차 — 손 닿는 텃밭 칸을 누르면 손에 든 것을 그 칸에 쓴다(물뿌리개는 누르는 동안 붓는다)
+      if (p.leftButtonDown() && this.farmField?.pointerDown()) return;
       if (p.leftButtonDown()) this.tryStartCharge();
     });
-    this.input.on('pointerup', () => this.releaseCast());
+    this.input.on('pointerup', () => { this.farmField?.pointerUp(); this.releaseCast(); });
 
     // 인벤토리 '설치하기' → 설치 모드 진입 (홈타운 전용 — InvItem.placeKey)
     this.events.off('placement-request');
@@ -4302,10 +4305,8 @@ export class RegionFieldScene extends Phaser.Scene {
     // 237차 — 아직 떠 있는 안내가 있으면 그중 가장 높은 것의 위로(2px 띄움)
     this.liveHints = this.liveHints.filter((h) => h.active);
     const y = Math.min(this.playerHintY, ...this.liveHints.map((h) => h.y - h.height - 2));
-    const t = this.add.text(this.playerBody.x, y, msg, {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#fff',
-      backgroundColor: '#0a1628cc', padding: { x: 8, y: 4 },
-    }).setOrigin(0.5, 1).setDepth(60);
+    // 247차 — 필드 글자는 배경 상자 없이 검은 글자 · 흰 테(사용자 지시 · `ui/WorldLabel`)
+    const t = this.add.text(this.playerBody.x, y, msg, worldLabelStyle(12)).setOrigin(0.5, 1).setDepth(63);
     this.liveHints.push(t);
     this.tweens.add({ targets: t, y: t.y - 22, alpha: 0, duration: 1200, onComplete: () => t.destroy() });
   }
@@ -4703,7 +4704,7 @@ export class RegionFieldScene extends Phaser.Scene {
       if (!this.isTransitioning && !this.uiBlocked) this.tickVitals(delta);
       return;
     }
-    if (this.isTransitioning || this.uiBlocked) { this.playerBody.setVelocity(0, 0); return; }
+    if (this.isTransitioning || this.uiBlocked) { this.playerBody.setVelocity(0, 0); this.farmField?.idle(); return; }
     if (this.placing) {
       // 설치 모드 — 이동은 허용, 프리뷰는 커서 추적 (클릭=설치 / 우클릭·ESC=취소)
       this.updatePlacementPreview();
@@ -4724,6 +4725,7 @@ export class RegionFieldScene extends Phaser.Scene {
     this.updateBuildingProximity();
     this.updateObjectProximity();
     this.updateWaterProximity();
+    this.farmField?.update(delta);   // 247차 — 텃밭 칸 겨누기 · 칸 정보 · 물 붓기
     this.forage?.update(delta);
     this.trapField?.update(delta);
     this.stoveField?.update(delta);
@@ -4985,56 +4987,84 @@ export class RegionFieldScene extends Phaser.Scene {
     for (const o of this.homeObjects) this.renderHomeObject(o);
   }
 
-  // ── 235차 — 텃밭 칸 그림(설치물 위 — 일구지 않은 땅 · 젖은 흙 · 생육 단계 · 다 익은 수확물) ──
-  private farmOverlays = new Map<string, { sig: string; objs: Phaser.GameObjects.GameObject[] }>();
+  // ── 235차 — 텃밭 칸 그림 · 247차 칸마다 그리고 손에 든 것으로 일하는 필드 시스템(`FarmFieldSystem`) ──
+  private farmField?: FarmFieldSystem;
 
   private clearFarmOverlays(): void {
-    this.farmOverlays.forEach((v) => v.objs.forEach((x) => x.destroy()));
-    this.farmOverlays.clear();
+    this.farmField?.clearAll();
   }
 
-  /** 모든 텃밭 칸 그림을 다시 맞춘다(advance = 자람부터 따라잡기) */
+  /** 모든 텃밭 칸 그림을 다시 맞춘다(advance = 자람부터 따라잡기 · 바뀐 칸만 다시 그린다) */
   private refreshFarmOverlays(advance = false): void {
     if (advance) FarmStore.advanceAll();
-    for (const o of this.homeObjects) if (o.type === 'farmPlot') this.renderFarmOverlay(o);
+    this.farmField?.refreshAll();
   }
 
   private renderFarmOverlay(o: MapObject): void {
-    const plot = FarmStore.has(o.instanceId) ? FarmStore.plot(o.instanceId) : null;
-    const sig = plot
-      ? plot.cells.map((c) => `${c.tilled ? 1 : 0}${c.cropId ?? ''}${cellStage(c)}${c.moisture >= 0.6 ? 'w' : ''}`).join('|')
-      : 'none';
-    const prev = this.farmOverlays.get(o.instanceId);
-    if (prev && prev.sig === sig) return;
-    prev?.objs.forEach((x) => x.destroy());
-    const objs: Phaser.GameObjects.GameObject[] = [];
-    const iconPx = TR >= 32 ? 32 : 16;
-    for (let i = 0; i < FARM_CELLS; i++) {
-      const c = plot?.cells[i];
-      const x = (o.tx + (i % FARM_COLS)) * TR + TR / 2;
-      const y = (o.ty + Math.floor(i / FARM_COLS)) * TR + TR / 2;
-      if (!c?.tilled) {
-        objs.push(this.add.rectangle(x, y, TR - 2, TR - 2, 0x4f6a34, 0.9).setDepth(6.05));
-        continue;
+    this.farmField?.renderPlot(o);
+  }
+
+  /**
+   * 247차 — 구세이브의 4×3 타일 텃밭(한 칸 = 1타일)을 8×6 타일(한 칸 = 2×2 타일)로 넓힌다
+   * (사용자 「한 칸이 캐릭터 머리보다 작다 — 2×2를 한 칸으로」). 옛 자리를 품는 원점들 가운데 놓을 수 있는 첫 자리로 옮긴다
+   * — 칸 상태(심은 것)는 칸 번호로 그대로 따라간다. 자리가 없으면 그대로 두고 1배로 그린다(`FarmFieldSystem.cellPx`).
+   */
+  private upgradeFarmPlots(): void {
+    const placed = GameState.getWorldObjects(this.mapId).placed;
+    const rule = PLACEMENT_DEFS.farm_plot.rule;
+    const W = rule.footprint.w, H = rule.footprint.h;
+    let grown = 0, kept = 0;
+    for (const o of placed) {
+      const fw = o.fw ?? 4, fh = o.fh ?? 3;
+      if (o.type !== 'farmPlot' || (fw >= W && fh >= H)) continue;
+      const world = this.placementWorld();
+      const others = { ...world, objects: world.objects.filter((x) => x.instanceId !== o.instanceId) };
+      let at: { tx: number; ty: number } | null = null;
+      for (let dy = 0; dy <= H - fh && !at; dy++) {
+        for (let dx = 0; dx <= W - fw && !at; dx++) {
+          if (canPlaceAt(o.tx - dx, o.ty - dy, rule, others).ok) at = { tx: o.tx - dx, ty: o.ty - dy };
+        }
       }
-      if (c.moisture >= 0.6) objs.push(this.add.rectangle(x, y, TR - 2, TR - 2, 0x24160c, 0.28).setDepth(6.05));
-      const stage = cellStage(c);
-      const key = stage === 'seeded' ? 'farm_seeded' : stage === 'young' ? 'farm_young'
-        : stage === 'growing' || stage === 'ready' ? 'farm_growing' : stage === 'resting' ? 'farm_resting' : null;
-      if (key) { const ic = addPixelIcon(this, key, x, y - 2, iconPx); if (ic) objs.push(ic.setDepth(6.1 + y * 0.0001)); }
-      const crop = c.cropId ? getCrop(c.cropId) : undefined;
-      if (stage === 'ready' && crop) {
-        const ic = addPixelIcon(this, crop.harvest.itemId, x + TR * 0.22, y - TR * 0.28, 16);
-        if (ic) objs.push(ic.setDepth(6.2 + y * 0.0001));
-      }
+      if (!at) { kept++; continue; }
+      o.tx = at.tx; o.ty = at.ty; o.fw = W; o.fh = H;
+      grown++;
+      this.computeHomeObjects();
     }
-    this.farmOverlays.set(o.instanceId, { sig, objs });
+    if (grown) {
+      GameState.markDirty();
+      this.time.delayedCall(800, () => this.hud?.pushLog(`[텃밭] 텃밭 ${grown}구획의 칸을 넓혔다 — 이제 한 칸이 2×2다`));
+    }
+    if (kept) this.time.delayedCall(900, () => this.hud?.pushLog(`[텃밭] 텃밭 ${kept}구획은 둘레에 자리가 없어 예전 크기 그대로다 — 걷고 넓은 풀밭에 다시 내면 넓어진다`));
+  }
+
+  /** 247차 — 텃밭 필드 시스템(홈타운) — 칸 그림 · 겨누기 · 손에 든 것 · 연출 */
+  private initFarmField(): void {
+    if (this.region !== 'hometown') return;
+    const field = new FarmFieldSystem({
+      scene: this, tr: TR,
+      plots: () => this.homeObjects.filter((o) => o.type === 'farmPlot'),
+      feet: () => ({ x: this.playerBody.x, y: this.playerBody.y + this.PLAYER_FOOT_OFFSET }),
+      facing: () => this.playerFacing,
+      pointer: () => {
+        const p = this.input.activePointer;
+        if (!p || p.x < 0 || p.y < 0) return null;
+        return this.pointerWorld(p);
+      },
+      floatingHint: (m) => this.floatingHint(m),
+      pushLog: (m) => this.hud?.pushLog(m),
+      openPanel: (o, cell) => this.openFarm(o, cell),
+      openPopup: (build) => { this.openPopup(build); },
+      inventoryChanged: () => this.events.emit('inventory-changed'),
+      blocked: () => this.uiBlocked || this.isPaused || this.isTransitioning || !!this.interior || !!this.placing,
+    });
+    this.farmField = field;
+    this.events.once('shutdown', () => { field.destroy(); if (this.farmField === field) this.farmField = undefined; });
   }
 
   /** 235차 — 텃밭 창 */
-  private openFarm(o: MapObject): void {
+  private openFarm(o: MapObject, cell?: number): void {
     this.openPopup((close) => new FarmPanel(this, GAME_WIDTH / 2 - 390, 60, {
-      plotId: o.instanceId,
+      plotId: o.instanceId, cell,
       onClose: close,
       onChanged: () => { this.events.emit('inventory-changed'); this.renderFarmOverlay(o); },
       log: (line) => this.hud?.pushLog(line),
@@ -5055,10 +5085,7 @@ export class RegionFieldScene extends Phaser.Scene {
       .setDepth(o.type === 'pier' || o.type === 'farmPlot' || o.type === 'tidalRock' ? 6 : 14 + bottomY * 0.001);
     const objs: Phaser.GameObjects.GameObject[] = [img];
     if (o.type === 'busStop') {
-      const lbl = this.add.text(cx, bottomY + 2, '출조 버스', {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#aee8ff', fontStyle: 'bold',
-        backgroundColor: '#0a1628cc', padding: { x: 4, y: 1 },
-      }).setOrigin(0.5, 0).setDepth(15);
+      const lbl = this.add.text(cx, bottomY + 2, '출조 버스', worldLabelStyle(10)).setOrigin(0.5, 0).setDepth(15);
       objs.push(lbl);
     }
     this.homeObjSprites.set(o.instanceId, objs);
@@ -5586,8 +5613,7 @@ export class RegionFieldScene extends Phaser.Scene {
     spr.image.setPosition(x, y + spr.footPad).setDepth(20 + y * 0.001 + 0.0006).setAlpha(extra.alpha ?? 1);
     spr.setDir(extra.facing ?? 'down');
     const label = this.add.text(x, y + this.charTopFromFeet - RegionFieldScene.LABEL_GAP, extra.nameKo, {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#ffe9a0',
-      backgroundColor: '#0a1628cc', padding: { x: 3, y: 1 },
+      ...worldLabelStyle(10),
     }).setOrigin(0.5, 1).setDepth(20 + y * 0.001 + 0.0007).setAlpha(extra.alpha ?? 1);
     const rec = { key: extra.key, spr, label, walking: false };
     this.sceneExtras.push(rec);
@@ -5738,8 +5764,7 @@ export class RegionFieldScene extends Phaser.Scene {
       const actor = ai.image;
       const npc = getStoryNpc(def.npcId);
       const label = this.add.text(x, y + this.charTopFromFeet - RegionFieldScene.LABEL_GAP, npc?.nameKo ?? def.npcId, {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#ffe9a0',
-        backgroundColor: '#0a1628cc', padding: { x: 3, y: 1 },
+        ...worldLabelStyle(10),
       }).setOrigin(0.5, 1).setDepth(20 + y * 0.001 + 0.0007);
       if (import.meta.env.DEV && def.behavior === 'fishing' && !ai.fishingSpotFound) {
         console.warn(`[FieldNpc] ${def.npcId}: 앵커 5x5 안에 물가가 없어 낚시 대신 배회한다 (${col},${row})`);
@@ -6080,8 +6105,7 @@ export class RegionFieldScene extends Phaser.Scene {
         const pid = peer.playerId;
         img.on('pointerdown', (p: Phaser.Input.Pointer) => { if (p.rightButtonDown()) this.onPeerRightClick(pid, p); });
         const tag = this.add.text(peer.x, tagY, peer.name, {
-          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#9fe8ff',
-          backgroundColor: '#0a1628cc', padding: { x: 3, y: 1 },
+          ...worldLabelStyle(10),
         }).setOrigin(0.5, 1);
         o = { img, tag };
         this.peerObjs.set(peer.playerId, o);
@@ -6653,15 +6677,9 @@ export class RegionFieldScene extends Phaser.Scene {
     const t = this.questTargetPos;
     if (!this.questGuideG) {
       this.questGuideG = this.add.graphics().setDepth(62);
-      this.questGuideLbl = this.add.text(0, 0, '', {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#ffe9a0',
-        backgroundColor: '#0a1628cc', padding: { x: 4, y: 2 },
-      }).setOrigin(0.5, 0.5).setDepth(62);
+      this.questGuideLbl = this.add.text(0, 0, '', worldLabelStyle(10)).setOrigin(0.5, 0.5).setDepth(62);
       this.pinArrowG = this.add.graphics().setDepth(62);
-      this.pinArrowLbl = this.add.text(0, 0, '', {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#9fe8ff',
-        backgroundColor: '#0a1628cc', padding: { x: 4, y: 2 },
-      }).setOrigin(0.5, 0.5).setDepth(62);
+      this.pinArrowLbl = this.add.text(0, 0, '', worldLabelStyle(10)).setOrigin(0.5, 0.5).setDepth(62);
     }
     const blink = 0.55 + 0.45 * Math.abs(Math.sin(this.time.now / 260));
     // 178차 — 설정에서 끄면 할 일 화살표만 사라진다(직접 찍은 지도 핀 화살표는 그대로).
@@ -6775,13 +6793,11 @@ export class RegionFieldScene extends Phaser.Scene {
     //  각본 게이트(스토리 현장 지점)는 선택지로 내리지 않으므로 그것만 따로 먼저 알린다.
     const hintFor = (text: string, color: string): void => {
       if (!this.npcHintText) {
-        this.npcHintText = this.add.text(0, 0, '', {
-          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color,
-          backgroundColor: '#0a1628dd', padding: { x: 6, y: 3 },
-        }).setOrigin(0.5, 1).setDepth(60);
+        // 63 — 할 일 화살표(62)가 머리 위를 지나도 글자가 위에 온다
+        this.npcHintText = this.add.text(0, 0, '', worldLabelStyle(12)).setOrigin(0.5, 1).setDepth(63);
       }
       try {
-        this.npcHintText.setColor(color);
+        void color;   // 247차 — 색으로 나누던 것(각본 · 여럿)은 글로 말한다 — 글자는 늘 검정 · 흰 테
         this.npcHintText.setText(text).setPosition(px, this.playerHintY).setVisible(true);
       } catch (e) {
         console.warn('[RegionFieldScene] 오래된 상호작용 힌트 텍스트 폐기', e);
@@ -6890,8 +6906,10 @@ export class RegionFieldScene extends Phaser.Scene {
       else if (home) opts.push({ label: `${home.def.home?.labelKo ?? nm} — 문 두드리기`, note, run: () => this.knockDoor(id), action: 'npc' });
       else opts.push({ label: `${nm}${gwa} 대화하기`, note, run: () => this.openDialogue(id), action: 'npc' });
     }
-    // ③ 오브젝트(문·버스·설치물)
-    if (this.nearObject) {
+    // ③ 오브젝트(문·버스·설치물) — 247차 텃밭 칸을 겨누고 있으면 그 칸의 일(손에 든 것 · 할 일 · 텃밭 창)이 대신한다
+    const farmOpts = this.farmField?.options() ?? [];
+    opts.push(...farmOpts);
+    if (this.nearObject && !(farmOpts.length && this.nearObject.type === 'farmPlot')) {
       const o = this.nearObject;
       opts.push({ label: this.objInteractLabel(o).replace(/^\[F\]\s*/, '').split(' · ')[0], run: () => this.interactWithObject(o, false), action: `obj:${o.interact ?? 'other'}` });
     }
@@ -7534,7 +7552,7 @@ export class RegionFieldScene extends Phaser.Scene {
       const st = this.forage.candidateStats();
       this.hud?.pushLog(`[dev] 채집 후보 갯바위 ${st.rock_shore} · 사석/TTP ${st.armor_foot} · 웅덩이 ${st.tidepool} · 안벽 ${st.harbor_wall} · 스팟 ${this.forage.allSpots().length} · 어장 ${farms.length}`);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (globalThis as any).__FIELD = { forage: this.forage, trapField: this.trapField, stoveField: this.stoveField, rodHolder: this.rodHolder, scene: this, cooler: CoolerStore, tuning: TUNING, getTrapById };
+      (globalThis as any).__FIELD = { forage: this.forage, trapField: this.trapField, stoveField: this.stoveField, rodHolder: this.rodHolder, farmField: this.farmField, scene: this, cooler: CoolerStore, tuning: TUNING, getTrapById };
     }
     const ownedForage = this.forage;
     const ownedTrapField = this.trapField;

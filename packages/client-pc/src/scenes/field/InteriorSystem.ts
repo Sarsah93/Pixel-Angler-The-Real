@@ -21,6 +21,7 @@ import {
   CHAR_CELL, CHAR_FOOT_Y, CHAR_HEAD_TOP, CHAR_SCALE, TUNING, characterOf, type CharDir,
 } from '@tra/core';
 import { GAME_WIDTH, GAME_HEIGHT } from '../../PhaserConfig.js';
+import { worldLabelStyle } from '../../ui/WorldLabel.js';
 import { CharacterSprite, ensureCharSheet, charFrameName } from '../../ui/CharacterSprite.js';
 import { characterLook } from '../../data/EquipOutfit.js';
 import { restoreHandCursor } from '../../ui/DraggablePanel.js';
@@ -135,10 +136,7 @@ export class InteriorSystem {
     const bodyH = this.char.bodyHeight;
     this.shadow = scene.add.ellipse(this.px, this.py, bodyH * 0.42, bodyH * 0.12, 0x000000, 0.28);
     this.keep(this.shadow, D_OBJ - 0.5);
-    this.hint = scene.add.text(0, 0, '', {
-      fontFamily: FONT, fontSize: '11px', color: '#ffe9b0', fontStyle: 'bold',
-      backgroundColor: '#0a1628cc', padding: { x: 6, y: 2 },
-    }).setOrigin(0.5, 1).setVisible(false);
+    this.hint = scene.add.text(0, 0, '', worldLabelStyle(12)).setOrigin(0.5, 1).setVisible(false);
     this.keep(this.hint, D_HINT);
     this.placeSelf();
     this.greet();
@@ -497,10 +495,7 @@ export class InteriorSystem {
   flash(msg: string): void {
     this.flashMsg?.destroy();
     const L = this.layout;
-    const t = this.scene.add.text(this.ox + (L.cols * L.it) / 2, this.oy + L.rows * L.it - L.it - 16, msg, {
-      fontFamily: FONT, fontSize: '13px', color: '#7fe6b0', fontStyle: 'bold',
-      backgroundColor: '#0a1628dd', padding: { x: 10, y: 5 }, align: 'center',
-    }).setOrigin(0.5);
+    const t = this.scene.add.text(this.ox + (L.cols * L.it) / 2, this.oy + L.rows * L.it - L.it - 16, msg, worldLabelStyle(13, { align: 'center' })).setOrigin(0.5);
     this.keep(t, D_HINT + 1);
     this.flashMsg = t;
     this.scene.tweens.add({ targets: t, alpha: 0, delay: 2200, duration: 500, onComplete: () => { if (this.flashMsg === t) this.flashMsg = undefined; } });

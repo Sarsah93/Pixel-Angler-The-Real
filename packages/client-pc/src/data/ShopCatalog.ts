@@ -121,6 +121,8 @@ export interface ShopEntry extends InvItemTemplate {
   requiresLicense?: string;
   /** 241차 — 개량종: 원종(`cropId`)을 `count`번 거둔 뒤에 진열한다(`FarmStore.harvestsOf`) */
   requiresHarvests?: { cropId: string; count: number };
+  /** 247차 — 아주 까다로운 작물: 늘 진열하지 않고 열흘에 한 번꼴 들어오는 날에만(`rareArrivalInDays` = 0) */
+  rareArrival?: boolean;
   desc: string;
 }
 

@@ -30,6 +30,7 @@ import {
   type RunnerAnchor, type RunnerCursor,
 } from '@tra/core';
 import { GameState } from '../../store/GameState.js';
+import { worldLabelStyle } from '../../ui/WorldLabel.js';
 import { InventoryStore } from '../../store/InventoryStore.js';
 import { CoolerStore } from '../../store/CoolerStore.js';
 import { DiscoveryStore } from '../../store/DiscoveryStore.js';
@@ -527,10 +528,7 @@ export class ForageSystem {
         const label = protectedKind
           ? `${f.name} — ${FISH_FARM_KIND_LABEL[f.kind]} (채취 금지)`
           : `${f.name} — ${FISH_FARM_KIND_LABEL[f.kind]}`;
-        const t = this.host.scene.add.text(cx * tr, cy * tr, label, {
-          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', fontStyle: 'bold',
-          color: protectedKind ? '#ffc07a' : '#a8c8e8', backgroundColor: '#0a162899', padding: { x: 5, y: 2 },
-        }).setOrigin(0.5).setDepth(5.7).setAlpha(0.85);
+        const t = this.host.scene.add.text(cx * tr, cy * tr, label, worldLabelStyle(11)).setOrigin(0.5).setDepth(5.7).setAlpha(0.85);
         this.farmLabels.push(t);
       }
     }

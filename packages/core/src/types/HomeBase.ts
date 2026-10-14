@@ -164,9 +164,13 @@ export interface PlacementDef {
 }
 
 export const PLACEMENT_DEFS: Record<string, PlacementDef> = {
+  /**
+   * 텃밭 한 구획 = 4×3칸. 247차 — 한 칸 = 2×2 타일(사용자 「한 칸이 캐릭터 머리보다 작아 어느 칸인지 알기 어렵다 — 2×2를 한 칸으로」)
+   * → 발자국 8×6 타일. 칸 수(`FARM_CELLS`)와 자람 계산은 그대로다. 구세이브의 4×3 구획은 씬이 자리가 나면 넓힌다.
+   */
   farm_plot: {
     key: 'farm_plot', label: '텃밭 (개간)', objectType: 'farmPlot',
-    rule: { footprint: { w: 4, h: 3 }, allowedTerrain: ['grass'], scope: ['exterior'] },
+    rule: { footprint: { w: 8, h: 6 }, allowedTerrain: ['grass'], scope: ['exterior'] },
     collides: false, interact: 'till',
   },
   /**

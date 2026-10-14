@@ -17,7 +17,7 @@
  */
 
 import Phaser from 'phaser';
-import { GEAR_FAULTS, gearRepairFee } from '@tra/core';
+import { rareArrivalInDays, GEAR_FAULTS, gearRepairFee } from '@tra/core';
 import { GameState } from '../store/GameState.js';
 import { InventoryStore, InvItem, CONDITION_LABEL, CATEGORY_LABEL, type InvCategory } from '../store/InventoryStore.js';
 import { TitleStore } from '../store/TitleStore.js';
@@ -242,6 +242,9 @@ export class ShopPanel extends DraggablePanel {
     this.buildTooltip();
     this.renderGrid();
     this.paintTabs();   // 215차 — 첫 탭이 구매가 아닐 수 있다(하단 단추 글자까지)
+    // 247차 — 아주 까다로운 모종 · 씨앗은 늘 있지 않다 — 다음에 들어오는 것을 주인이 귀띔한다
+    const rare = this.nextRareArrival();
+    if (rare) this.setStatus(`${t('귀한 모종 · 씨앗은 열흘에 한 번꼴로 들어온다')} — ${t(rare.name)} ${rare.days}${t('일 뒤')}`);
 
     scene.events.on('inventory-changed', this.onInventoryChanged, this);
     // 221차 — 가방에서 이 창으로 끌어 놓으면 판매 목록(위판 탭이면 출품 목록)에 담는다
@@ -710,6 +713,26 @@ export class ShopPanel extends DraggablePanel {
 
   /** 141차 — 메인 퀘스트가 열기 전엔 목록에 없다(잠금 표시도 없음: 이야기가 알려 준다) */
   private buyables(): ShopEntry[] {
+    const now = Date.now();
+    // 247차 — 아주 까다로운 작물은 들어오는 날(열흘에 한 번꼴)에만
+    return this.gated().filter((e) => !e.rareArrival || rareArrivalInDays(e.id, now) === 0)
+      .concat(ShopStore.usedGoods(this.ctx.key).map(usedShopEntry));   // 224차 — 손님이 판 장비(중고)
+  }
+
+  /** 247차 — 아직 안 들어온 아주 까다로운 작물 가운데 가장 빨리 오는 것(이름 · 남은 날) — 자격을 갖춘 것만(R2) */
+  private nextRareArrival(): { name: string; days: number } | null {
+    const now = Date.now();
+    let best: { name: string; days: number } | null = null;
+    for (const e of this.gated()) {
+      if (!e.rareArrival) continue;
+      const d = rareArrivalInDays(e.id, now);
+      if (d > 0 && (!best || d < best.days)) best = { name: e.name, days: d };
+    }
+    return best;
+  }
+
+  /** 진열 조건(해금 · 철 · 기술 · 레벨 · 자격 · 개량종) — 들어오는 날은 따로 본다 */
+  private gated(): ShopEntry[] {
     const month = kstMonthOf(Date.now());
     return this.shop.sells.filter((e) => (!e.unlockKey || GameState.getFlag(`unlock.shop.${e.unlockKey}`))
       && !(e.blueprintId && CraftingStore.knows(e.blueprintId))   // 223차 — 아는 도면 종이는 안 판다
@@ -719,8 +742,7 @@ export class ShopPanel extends DraggablePanel {
       && (!e.minLevel || (GameState.player.level ?? 1) >= e.minLevel)
       && (!e.requiresLicense || GameState.hasLicense(e.requiresLicense as LicenseType))
       // 241차 — 개량종은 원종을 거둬 본 뒤에(스테비아 토마토 · 호박고구마 · 청양고추 — 원종 3번)
-      && (!e.requiresHarvests || FarmStore.harvestsOf(e.requiresHarvests.cropId) >= e.requiresHarvests.count))
-      .concat(ShopStore.usedGoods(this.ctx.key).map(usedShopEntry));   // 224차 — 손님이 판 장비(중고)
+      && (!e.requiresHarvests || FarmStore.harvestsOf(e.requiresHarvests.cropId) >= e.requiresHarvests.count));
   }
 
   /** 221차 — 즐겨찾기 탭 머리줄(개수 · 「모두 담기」). 그리드 시작 y를 돌려준다 */

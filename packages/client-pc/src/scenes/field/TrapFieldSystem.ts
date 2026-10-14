@@ -10,6 +10,7 @@
  */
 
 import { LedgerStore } from '../../store/LedgerStore.js';
+import { worldLabelStyle } from '../../ui/WorldLabel.js';
 import Phaser from 'phaser';
 import {
   type DeployedTrap, type RegionTerrain, type SpotType, type TrapSpec, type TrapCatchItem,
@@ -115,10 +116,7 @@ export class TrapFieldSystem {
       const rope = this.host.scene.add.graphics();
       rope.lineStyle(1, 0xe8e0c8, 0.55); rope.lineBetween(0, 0, 0, 10);
       const img = this.host.scene.add.image(0, 0, 'trap_buoy').setOrigin(0.5, 0.5);
-      const label = this.host.scene.add.text(0, -10, '', {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#ffe0a8',
-        backgroundColor: '#0a162899', padding: { x: 3, y: 1 },
-      }).setOrigin(0.5, 1);
+      const label = this.host.scene.add.text(0, -10, '', worldLabelStyle(10)).setOrigin(0.5, 1);
       c.add([rope, img, label]);
       this.host.scene.tweens.add({ targets: img, y: { from: -1, to: 1 }, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
       this.buoys.set(t.instanceId, { c, label });
@@ -347,10 +345,7 @@ export class TrapFieldSystem {
       const rope = this.host.scene.add.graphics();
       rope.lineStyle(1, 0xe8e0c8, 0.4); rope.lineBetween(0, 0, 0, 10);
       const img = this.host.scene.add.image(0, 0, 'trap_buoy').setOrigin(0.5, 0.5).setAlpha(0.72).setTint(0x9fd8ff);
-      const label = this.host.scene.add.text(0, -10, t.ownerName, {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#9fe8ff',
-        backgroundColor: '#0a162899', padding: { x: 3, y: 1 },
-      }).setOrigin(0.5, 1);
+      const label = this.host.scene.add.text(0, -10, t.ownerName, worldLabelStyle(10)).setOrigin(0.5, 1);
       c.add([rope, img, label]);
       this.host.scene.tweens.add({ targets: img, y: { from: -1, to: 1 }, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
       this.peerBuoys.set(t.instanceId, { c });

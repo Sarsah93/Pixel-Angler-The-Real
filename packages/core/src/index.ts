@@ -850,7 +850,7 @@ export {
 } from './db-schema/CropRawEatDatabase.js';
 export type { RawEatDef, NoRawDef, RawEatStatus } from './db-schema/CropRawEatDatabase.js';
 export {
-  FARM_COLS, FARM_ROWS, FARM_CELLS, INDOOR_SLOTS, FARM_TUNING, kstMonthOf, kstDayIndex, climateRainAt, newFarmCell, newFarmPlot,
+  FARM_COLS, FARM_ROWS, FARM_CELLS, FARM_CELL_TILES, INDOOR_SLOTS, FARM_TUNING, kstMonthOf, kstDayIndex, climateRainAt, newFarmCell, newFarmPlot,
   startOf, gradeOf, GRADE_KO, GRADE_EN, cellReady, interimOpen, seasonFactor, speedMultOf, cellDays, advanceCell, advancePlot,
   tillCell, compostCell, waterCell, monthRangeKo, canPlant, plantCell, clearCell, harvestCell, interimHarvestCell, cellStage,
   daysToNextHarvest, producePriceShock, producePrice, cropDailyValue, farmPlotCap, rentedPlotCount, producePriceBase, roundWon,

@@ -32,10 +32,10 @@ import {
   // 247차 — 재배 요소
   cultivationOf, harvestToolEval, plantToolEval, processLastToolEval, laborOf, laborVector, tooTiredKo, CULTIVATION_TUNING, FARM_LABOR,
   startFieldProcess, finishFieldProcess, processHoursLeft, pullSeedlings as corePullSeedlings, divideBlockKo, divideCell, wildUnknown,
-  WATER_AMOUNT_KO, TOOL_NAME_KO, OFF_TIMING_KO, PROCESS_LAST_KO, waterBandOf, cellDays, startOf, offTimingOf,
+  WATER_AMOUNT_KO, TOOL_NAME_KO, OFF_TIMING_KO, PROCESS_LAST_KO, waterBandOf, cellDays, startOf, offTimingOf, moistureStateOf,
   TROWEL_ID, GLOVES_ID, WINNOW_ID, WILD_SPROUTS,
   type CropDef, type FarmEnv, type FarmFacility, type FarmHarvestResult, type FarmPlantCtx, type FarmPlotState, type LicenseType,
-  type CareStatus, type CareTaskId, type CropDisease, type FarmCellState, type WaterAmount, type CropCultivation,
+  type CareStatus, type CareTaskId, type CropDisease, type FarmCellState, type WaterAmount, type CropCultivation, type MoistureState,
 } from '@tra/core';
 import { GameState } from './GameState.js';
 import { InventoryStore, type InvCategory } from './InventoryStore.js';
@@ -49,6 +49,8 @@ export const INDOOR_PLOT = 'indoor';
 export const HOMI_ID = 'farm_homi';
 export const COMPOST_ID = 'farm_compost';
 export const WATERING_CAN_ID = 'inv_watering_can';
+/** 247차 — 목장갑(장비 가게) — 가시 작물을 거둘 때 코팅 장갑 대신 */
+export const WORK_GLOVES_ID = 'inv_gloves_work';
 
 export interface FarmSaveState {
   v: 1;
@@ -192,8 +194,17 @@ class FarmStoreImpl {
     return k === 'rain' || k === 'shower' || k === 'sleet' || k === 'snow';
   }
 
-  /** 모든 구획을 지금까지 굴린다(창을 열 때 · 필드 틱 · 로드 직후) — 굴린 뒤 새 할 일 · 병 · 쓰러짐 · 서리를 알림 줄로 모은다 */
-  advanceAll(nowMs = Date.now()): void {
+  /** 247차 — 마지막으로 굴린 시각(필드 칸 그림이 칸마다 할 일을 물어도 1초에 한 번만 굴린다) */
+  private lastAdvanceMs = 0;
+
+  /**
+   * 모든 구획을 지금까지 굴린다(창을 열 때 · 필드 틱 · 로드 직후) — 굴린 뒤 새 할 일 · 병 · 쓰러짐 · 서리를 알림 줄로 모은다.
+   * 247차 — 시각을 주지 않은 부름은 1초 안에 다시 굴리지 않는다(시간 단위로만 자라니 1초 늦어도 같다).
+   */
+  advanceAll(at?: number): void {
+    const nowMs = at ?? Date.now();
+    if (at === undefined && nowMs - this.lastAdvanceMs < 1000) return;
+    this.lastAdvanceMs = nowMs;
     const env = this.env(nowMs);
     for (const p of this.plots.values()) advancePlot(p, nowMs, env);
     this.scanNotices(nowMs);
@@ -217,7 +228,7 @@ class FarmStoreImpl {
         if (!c.cropId) return;
         const crop = getCrop(c.cropId);
         if (!crop) return;
-        for (const st of careDue(c, crop, nowMs)) {
+        for (const st of c.process ? [] : careDue(c, crop, nowMs)) {   // 247차 — 베어 말리는 칸은 할 일이 없다
           add(`${pid}:${i}:${st.def.id}:${st.round}:${c.plantedAt ?? 0}`, `t:${crop.id}:${st.def.id}`, i,
             (where) => `[텃밭] ${crop.nameKo} — ${CARE_TASK_KO[st.def.id]} 할 때 (${where})`);
         }
@@ -234,7 +245,11 @@ class FarmStoreImpl {
           else add(`${pid}:${i}:wildname:${c.plantedAt ?? 0}`, `w:${crop.id}`, i,
             (where) => `[텃밭] 이름 모를 싹은 ${crop.nameKo}였다 — ${wildOriginKo(crop.id, !WILD_SPROUTS.some((w) => w.cropId === crop.id))} (${where})`);
         }
-        if (c.process?.dryAt) add(`${pid}:${i}:dry:${c.process.cutAt}`, `dry:${crop.id}`, i, (where) => `[텃밭] ${josa(crop.nameKo, '이', '가')} 다 말랐다 — 털 때다 (${where})`);
+        if (c.process?.dryAt) {
+          const last = cultivationOf(crop).process?.last ?? 'thresh';
+          const when = last === 'thresh' ? '털 때다' : last === 'pick' ? '꼬투리를 딸 때다' : '거둘 때다';
+          add(`${pid}:${i}:dry:${c.process.cutAt}`, `dry:${crop.id}`, i, (where) => `[텃밭] ${josa(crop.nameKo, '이', '가')} 다 말랐다 — ${when} (${where})`);
+        }
         if (c.frostedAt) add(`${pid}:${i}:frost:${c.frostedAt}`, `f:${crop.id}`, i, (where) => `[텃밭] 서리가 내렸다 — ${crop.nameKo} 남은 것을 사흘 안에 거둔다 (${where})`);
       });
       for (const g of groups.values()) {
@@ -254,7 +269,7 @@ class FarmStoreImpl {
     this.advanceAll();
     const cell = this.plot(plotId).cells[idx];
     const crop = cell?.cropId ? getCrop(cell.cropId) : undefined;
-    if (!cell || !crop) return [];
+    if (!cell || !crop || cell.process) return [];   // 247차 — 베어 말리는 칸은 할 일이 없다(털기만)
     return careStatusList(cell, crop, Date.now()).map((st) => ({ st, missing: this.missingFor(st.def.needs, st.def.tools) }));
   }
 
@@ -478,6 +493,20 @@ class FarmStoreImpl {
     return { ok: true, message: warn ? `${base} — ${warn}` : base };
   }
 
+  /**
+   * 247차 — 이 칸의 알맞은 흙 수분 · 지금 상태(텃밭 창 흙 막대 · 필드 칸 표시). 일구지 않은 칸은 null.
+   * 작물이 없거나 말리는 · 육묘 칸은 「마르지만 않으면 된다」(0.25 위).
+   */
+  waterState(plotId: string, idx: number): { band: [number, number]; stopping: boolean; state: MoistureState } | null {
+    const c = this.plot(plotId).cells[idx];
+    if (!c?.tilled) return null;
+    const crop = c.cropId ? getCrop(c.cropId) : undefined;
+    // 작물이 없거나 말리는 · 육묘 칸 · 이름 모를 싹(무엇인지 모르니 띠도 모른다)은 「마르지만 않으면」
+    if (!crop || c.nursery || c.process || wildUnknown(c)) return { band: [0.25, 1], stopping: false, state: c.moisture < 0.25 ? 'dry' : 'ok' };
+    const wb = waterBandOf(crop, this.daysToFirst(c, crop));
+    return { ...wb, state: moistureStateOf(c.moisture, wb.band) };
+  }
+
   /** 247차 — 첫 수확까지 남은 날(물 끊기 판정) */
   private daysToFirst(c: FarmCellState, crop: CropDef): number | undefined {
     return c.picks === 0 && c.growth < 1 ? (1 - c.growth) * cellDays(crop, c) : undefined;
@@ -520,7 +549,7 @@ class FarmStoreImpl {
     GameState.markDirty();
     StoryStore.event({ kind: 'farm', action: 'plant', cropId: found.crop.id });
     const note = this.plantedNoteKo(cell, found.crop);
-    return { ok: true, message: `${found.crop.nameKo}을(를) 심었다${note ? ` — ${note}` : ''}` };
+    return { ok: true, message: `${josa(found.crop.nameKo, '을', '를')} 심었다${note ? ` — ${note}` : ''}` };
   }
 
   /** 247차 — 심은 뒤 한 줄(철 밖 · 퇴비 칸의 적게 먹는 작물) */
@@ -583,7 +612,8 @@ class FarmStoreImpl {
     const r = harvestCell(cell, Math.random, { ...this.harvestSkills(), qualityBonus: bonus });
     if (!r) return fail('아직 거둘 때가 아니다');
     this.spend(laborOf('harvest', crop, { tool }).fatigue);
-    const thorn = !!cv.thorny && !this.hasItem(GLOVES_ID);
+    // 가시 — 코팅 장갑이나 목장갑(장비 가게)을 가방에 두면 안 찔린다
+    const thorn = !!cv.thorny && !this.hasItem(GLOVES_ID) && !this.hasItem(WORK_GLOVES_ID);
     if (thorn) GameState.applyIntake(0, 0, -CULTIVATION_TUNING.thornHp);
     const res = this.giveHarvest(r, crop);
     if (r.offsets) {
@@ -614,22 +644,32 @@ class FarmStoreImpl {
     return h >= a && h < b ? CULTIVATION_TUNING.morningQuality : 0;
   }
 
-  /**
-   * 247차 — 다 마른 칸의 마지막 손(털기 · 꼬투리 따기 · 묶어 거두기) — 도리깨가 있으면 품이 줄고, 키가 있으면 키질까지(품질 +).
-   * `score` = 털기 작업 장면 점수(서툴면 품질 −0.03).
-   */
-  finishProcess(plotId: string, idx: number, score = 1): FarmActionResult {
+  /** 247차 — 마지막 손(털기 · 꼬투리 따기 · 묶어 거두기)을 지금 못 하는 까닭(되면 null) — 작업 장면을 열기 전에 본다 */
+  processBlock(plotId: string, idx: number): string | null {
     this.advanceAll();
     const cell = this.plot(plotId).cells[idx];
     const crop = cell?.cropId ? getCrop(cell.cropId) : undefined;
     const def = crop ? cultivationOf(crop).process : undefined;
-    if (!cell || !crop || !def || !cell.process) return fail('말리는 칸이 아니다');
-    if (!cell.process.dryAt) return fail(`아직 마르는 중이다 — ${Math.max(1, Math.ceil(processHoursLeft(cell) / 24))}일 남짓 (비 오는 동안은 마르지 않는다)`);
+    if (!cell || !crop || !def || !cell.process) return '말리는 칸이 아니다';
+    if (!cell.process.dryAt) return `아직 마르는 중이다 — ${Math.max(1, Math.ceil(processHoursLeft(cell) / 24))}일 남짓 (비 오는 동안은 마르지 않는다)`;
     const tired = this.tiredBlock();
-    if (tired) return fail(tired);
-    if (!this.roomFor(produceItemId(crop.harvest.itemId, gradeOf(cell.quality)), crop)) return fail('가방에 자리가 없다 — 한 칸 비우고 거둔다');
+    if (tired) return tired;
+    if (!this.roomFor(produceItemId(crop.harvest.itemId, gradeOf(cell.quality)), crop)) return '가방에 자리가 없다 — 한 칸 비우고 거둔다';
+    return null;
+  }
+
+  /**
+   * 247차 — 다 마른 칸의 마지막 손(털기 · 꼬투리 따기 · 묶어 거두기) — 도리깨가 있으면 품이 줄고, 키가 있으면 키질까지(품질 +).
+   * `score` = 털기 작업 장면 점수(서툴면 품질 −0.03) · `winnowScore` = 키질 장면 점수(절반 밑이면 검불이 남는다 — 없으면 키만 보고 한 것으로).
+   */
+  finishProcess(plotId: string, idx: number, score = 1, winnowScore?: number): FarmActionResult {
+    const why = this.processBlock(plotId, idx);
+    if (why) return fail(why);
+    const cell = this.plot(plotId).cells[idx];
+    const crop = getCrop(cell.cropId!)!;
+    const def = cultivationOf(crop).process!;
     const tool = processLastToolEval(def, this.hasItem);
-    const winnowed = !!def.winnow && this.hasItem(WINNOW_ID);
+    const winnowed = !!def.winnow && this.hasItem(WINNOW_ID) && (winnowScore === undefined || winnowScore >= 0.5);
     const r = finishFieldProcess(cell, Math.random, { ...this.harvestSkills(), qualityBonus: score < 0.5 ? -0.03 : 0 }, { winnowed }, Date.now());
     if (!r) return fail('지금은 털 수 없다');
     const act = def.last === 'thresh' ? 'thresh' : def.last === 'pick' ? 'pick_pods' : 'gather';
@@ -637,7 +677,7 @@ class FarmStoreImpl {
     const res = this.giveHarvest(r, crop);
     const notes: string[] = [];
     if (tool.helper) notes.push('도리깨로 털었다');
-    if (def.winnow) notes.push(winnowed ? '키로 까불러 검불을 날렸다' : '키가 없어 검불이 섞였다');
+    if (def.winnow) notes.push(winnowed ? '키로 까불러 검불을 날렸다' : this.hasItem(WINNOW_ID) ? '키질이 서툴러 검불이 섞였다' : '키가 없어 검불이 섞였다');
     const sh = r.processNote?.shatterLoss ?? 0;
     if (sh > 0.04) notes.push(`너무 오래 두어 ${Math.round(sh * 100)}%가 쏟아졌다`);
     if ((r.processNote?.rainLoss ?? 0) > 0.02) notes.push('말리는 동안 비를 맞았다');
@@ -850,7 +890,7 @@ class FarmStoreImpl {
         if (crop) settleCareRounds(c, crop, now);
       }
     }
-    this.advanceAll();
+    this.advanceAll(Date.now());   // 로드 직후는 늘 굴린다(1초 건너뛰기 없이)
   }
 
   resetAll(): void { this.plots.clear(); this.harvests = 0; this.harvestsBy = {}; }

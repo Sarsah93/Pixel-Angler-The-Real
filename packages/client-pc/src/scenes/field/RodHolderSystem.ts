@@ -25,6 +25,7 @@ import {
   type ParkedRodLaunch, type ParkedRigSnapshot, type ParkedRodEvent, type RodItemSpec,
 } from '@tra/core';
 import { GameState, type ParkedRodSave } from '../../store/GameState.js';
+import { worldLabelStyle } from '../../ui/WorldLabel.js';
 import { InventoryStore, type ParkedGear, type InvItem } from '../../store/InventoryStore.js';
 import { GroundItemStore } from '../../store/GroundItemStore.js';
 import { ExternalDataStore } from '../../store/ExternalDataStore.js';
@@ -197,10 +198,7 @@ export class RodHolderSystem {
   private setNumber(v: HolderView, n: number): void {
     if (n <= 0) { v.num?.destroy(); v.num = undefined; return; }
     if (!v.num) {
-      v.num = this.host.scene.add.text(0, 12, '', {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#e8f4ff',
-        backgroundColor: '#0a1628aa', padding: { x: 3, y: 0 },
-      }).setOrigin(0.5, 0);
+      v.num = this.host.scene.add.text(0, 12, '', worldLabelStyle(10)).setOrigin(0.5, 0);
       v.c.add(v.num);
     }
     v.num.setText(String(n));
@@ -404,10 +402,7 @@ export class RodHolderSystem {
       const x = t.tileX * tr + tr / 2, y = t.tileY * tr + tr / 2;
       const v = this.buildView(x, y, true);
       this.drawRod(v, { x, y, landX: x, landY: y + tr * 3 }, 0);
-      v.label = this.host.scene.add.text(0, -34, t.ownerName, {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#9fe8ff',
-        backgroundColor: '#0a162899', padding: { x: 3, y: 1 },
-      }).setOrigin(0.5, 1);
+      v.label = this.host.scene.add.text(0, -34, t.ownerName, worldLabelStyle(10)).setOrigin(0.5, 1);
       v.c.add(v.label);
       this.peerViews.set(t.instanceId, v);
     }

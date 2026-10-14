@@ -12,6 +12,7 @@
 import Phaser from 'phaser';
 import { TUNING, getCookware, HEAT_FRAC, type DeployedStove, type RegionTerrain } from '@tra/core';
 import { CookingStore } from '../../store/CookingStore.js';
+import { worldLabelStyle } from '../../ui/WorldLabel.js';
 import { MultiplayerClient } from '../../net/MultiplayerClient.js';
 import { InventoryStore, type InvItem } from '../../store/InventoryStore.js';
 import { GameState } from '../../store/GameState.js';
@@ -96,10 +97,7 @@ export class StoveFieldSystem {
       const flame = this.host.scene.add.graphics();
       const ware = this.host.scene.add.graphics();
       const steam = this.host.scene.add.graphics();
-      const label = this.host.scene.add.text(0, -22, '', {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#ffe0a8',
-        backgroundColor: '#0a162899', padding: { x: 3, y: 1 },
-      }).setOrigin(0.5, 1);
+      const label = this.host.scene.add.text(0, -22, '', worldLabelStyle(10)).setOrigin(0.5, 1);
       c.add([flame, body, ware, steam, label]);
       this.views.set(st.instanceId, { c, flame, steam, ware, label, phase: Math.random() * 6 });
     }
@@ -181,10 +179,7 @@ export class StoveFieldSystem {
       if (this.peerViews.has(t.instanceId)) continue;
       const c = this.host.scene.add.container(t.tileX * tr + tr / 2, t.tileY * tr + tr / 2).setDepth(19.9);
       const img = this.host.scene.add.image(0, 2, 'stove_body').setOrigin(0.5).setAlpha(0.72).setTint(0x9fd8ff);
-      const label = this.host.scene.add.text(0, -14, t.ownerName, {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#9fe8ff',
-        backgroundColor: '#0a162899', padding: { x: 3, y: 1 },
-      }).setOrigin(0.5, 1);
+      const label = this.host.scene.add.text(0, -14, t.ownerName, worldLabelStyle(10)).setOrigin(0.5, 1);
       c.add([img, label]);
       this.peerViews.set(t.instanceId, c);
     }

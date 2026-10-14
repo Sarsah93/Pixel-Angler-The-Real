@@ -255,6 +255,8 @@ export interface CropShopEntry extends InvItemTemplate {
   requiresLicense?: string;
   /** 241차 — 개량종: 원종을 이만큼 거둔 뒤에 진열 */
   requiresHarvests?: { cropId: string; count: number };
+  /** 247차 — 아주 까다로운 작물은 열흘에 한 번꼴 들어오는 날에만 진열 */
+  rareArrival?: boolean;
 }
 
 /** 237차 — 단계가 열릴 때 예로 드는 작물(이름은 작물 DB에서 읽는다) */
@@ -276,11 +278,13 @@ export function farmTierNoticeKo(tier: number, hasCert: boolean): string {
   return `[텃밭] 레벨 ${lv} — ${cond} ${TIER_PHRASE[tier] ?? '작물'}도 기를 수 있다 (${names})`;
 }
 
-/** 237차 — 씨앗 · 모종의 난이도 단계 요건 → 진열 조건 · 241차 — 개량종은 원종을 거둔 횟수도 */
-function gateFields(crop: CropDef, st: CropStart): Pick<CropShopEntry, 'minLevel' | 'requiresLicense' | 'requiresHarvests'> {
+/** 237차 — 씨앗 · 모종의 난이도 단계 요건 → 진열 조건 · 241차 — 개량종은 원종을 거둔 횟수도 · 247차 아주 까다로움은 들어오는 날에만 */
+function gateFields(crop: CropDef, st: CropStart): Pick<CropShopEntry, 'minLevel' | 'requiresLicense' | 'requiresHarvests' | 'rareArrival'> {
   const g = cropGate(crop, st);
   return {
     ...(g.level > 1 ? { minLevel: g.level } : {}), ...(g.license ? { requiresLicense: g.license } : {}),
+    // 247차 — 아주 까다로운 작물(사용자 「씨앗을 일반 종묘사에서 구하기 힘들게」) — 늘 있지 않고 들어오는 날에만
+    ...(g.tier >= 4 ? { rareArrival: true } : {}),
     ...(crop.variant ? { requiresHarvests: { cropId: crop.variant.of, count: crop.variant.afterHarvests } } : {}),
   };
 }

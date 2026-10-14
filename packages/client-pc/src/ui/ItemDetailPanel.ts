@@ -14,6 +14,7 @@ import {
   cropStartOfItem, cropOfProduce, parseProduceId, monthRangeKo, kstMonthOf, GRADE_KO, supplyOfFacility, getSkillById,
   produceMarketRatio, produceMarketInfo, cropGate, CROP_TIER_KO, CROP_CARE_KO, hasCarePlan, carePlanSummaryKo,
   rawEatStatus, rawEatLineKo, variantsOf, baseCropOf, variantUnlockKo, cropOfProduce as cropOfProduceId, type RawEatDef,
+  cultivationOf, WATER_AMOUNT_KO, OVERWATER_KO, processLineKo, toolLineKo, timingLineKo, laborLineKo, propagateLineKo,
   packOfLoose, looseOfPack, FARM_TUNING as FARM_TUNING_243,
   type CropDef, type CropStart, type CropRarity, type CropDifficulty, type LicenseType,
 } from '@tra/core';
@@ -163,6 +164,13 @@ function cropStartDetail(item: Pick<InvItem, 'name' | 'qty' | 'basePrice'>, crop
   else rows.push({ label: '거두는 것', value: `${crop.harvest.nameKo} · 칸당 ${cropYieldKo(crop, st)}` });
   // 238차 — 손이 가는 일(관리 작업 · 병해)
   if (hasCarePlan(crop) && !st.nursery) rows.push({ label: '손이 가는 일', value: carePlanSummaryKo(crop) });
+  // 247차 — 재배 요소: 물의 양 · 알맞은 흙 · 넘치면 · 거둔 뒤 손질(긴 설명은 본문 [기르는 법])
+  if (!st.nursery && crop.site === 'plot') {
+    const w = cultivationOf(crop).water;
+    rows.push({ label: '물', value: `${WATER_AMOUNT_KO[w.amount]}씩 · 알맞은 흙 ${Math.round(w.band[0] * 100)}~${Math.round(w.band[1] * 100)}%${w.over !== 'none' ? ` · 넘치면 ${OVERWATER_KO[w.over]}` : ''}`, color: '#8fd4ff' });
+    const proc = processLineKo(crop);
+    if (proc) rows.push({ label: '거둔 뒤', value: proc, color: '#ffd257' });
+  }
   if (crop.interim && !(crop.interim.seedOnly && st.kind !== 'seed')) rows.push({ label: '자라는 동안', value: crop.interim.labelKo });
   rows.push(...cropTierRows(crop, st));   // 237차
   rows.push(...variantRows(crop));        // 241차
@@ -175,7 +183,15 @@ function cropStartDetail(item: Pick<InvItem, 'name' | 'qty' | 'basePrice'>, crop
   let desc = crop.noteKo;
   desc += variantDesc(crop);   // 241차
   if (crop.site === 'indoor') desc += '\n집 안 선반은 콩나물 시루나 수경 재배기를 들여놓으면 생긴다.';
+  desc += cultivationDesc(crop, st);   // 247차
   return { title: item.name, subtitle: '씨앗 · 모종', rows, desc };
+}
+
+/** 247차 — 기르는 법(품 · 도구 · 알맞은 철 · 늘리기) — 상세 본문 꼬리 */
+function cultivationDesc(crop: CropDef, st: CropStart): string {
+  if (st.nursery || crop.site !== 'plot') return '';
+  const lines = [laborLineKo(crop), toolLineKo(crop), timingLineKo(crop), propagateLineKo(crop)].filter((x) => !!x);
+  return lines.length ? `\n${lines.map((x) => `[기르는 법] ${x}`).join('\n')}` : '';
 }
 
 /**

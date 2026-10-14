@@ -30,10 +30,12 @@ import {
   CULTIVATION_TUNING, RARE_ARRIVAL_EVERY, WILD_TUNING, cultivationOf, offTimingOf, pickWildSprout, waterBandOf, wateredMoisture,
 } from '../db-schema/CropCultivationDatabase.js';
 
-/** 텃밭 한 구획 = 4×3칸(설치물 `farm_plot` footprint와 같다) */
+/** 텃밭 한 구획 = 4×3칸(247차 — 설치물 `farm_plot` 발자국은 칸마다 `FARM_CELL_TILES`×`FARM_CELL_TILES` 타일) */
 export const FARM_COLS = 4;
 export const FARM_ROWS = 3;
 export const FARM_CELLS = FARM_COLS * FARM_ROWS;
+/** 247차 — 마당 텃밭 한 칸이 차지하는 타일(가로 = 세로). 설치물 발자국 = 칸 수 × 이것(4×3칸 → 8×6 타일) */
+export const FARM_CELL_TILES = 2;
 /** 실내 선반 칸 수(시루 · 배지 · 수경) */
 export const INDOOR_SLOTS = 4;
 

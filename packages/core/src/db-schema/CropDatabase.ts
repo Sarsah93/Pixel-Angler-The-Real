@@ -1315,7 +1315,7 @@ export const FARM_SUPPLIES: FarmSupplyDef[] = [
   { itemId: 'farm_winnow', nameKo: '키', nameEn: 'Winnowing basket', price: 15000, kind: 'tool', icon: 'it_winnow',
     descKo: '대나무로 엮은 키. 턴 알곡을 까불러 검불 · 쭉정이를 날린다 — 없으면 검불이 섞여 값을 덜 받는다.',
     descEn: 'A woven bamboo basket. Toss threshed grain in it to blow away chaff and empty husks — without it, chaff stays in and the grain sells for less.' },
-  { itemId: 'farm_gloves', nameKo: '코팅 장갑', nameEn: 'Coated work gloves', price: 2000, kind: 'tool', icon: 'it_gloves',
+  { itemId: 'farm_gloves', nameKo: '코팅 장갑', nameEn: 'Coated work gloves', price: 2000, kind: 'tool', icon: 'it_farm_gloves',
     descKo: '손바닥에 고무를 입힌 장갑. 가시 돋친 두릅 · 엄나무순 · 초피를 딸 때 손을 지킨다.',
     descEn: 'Gloves with rubber-coated palms. Protect your hands when picking thorny fatsia shoots, castor aralia and Korean pepper.' },
 ];
