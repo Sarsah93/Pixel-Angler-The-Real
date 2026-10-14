@@ -16,6 +16,11 @@
  * - 245차 — 작물 84종 모두 일이 있다. 같은 구획의 같은 작물 · 같은 일은 **한 번에**(`careGroup` · `doCareGroup` — 자재는 칸마다,
  *   시간 · 품은 칸이 늘수록 덜 늘어난다). 도구(호미 · 전정가위)는 가방에 있어야 하고 닳지 않는다. 알림은 구획 · 작물 · 일로 묶는다.
  *   구세이브(`careV` < 245)는 로드할 때 지나간 차례를 벌 없이 넘긴다(`settleCareRounds` — 자라던 작물이 한꺼번에 깎이지 않게).
+ * - 247차 — 재배 요소(사용자 「시기 · 노동 피로 · 도구 · 행위의 정도」): 물은 양(조금 · 보통 · 흠뻑)을 골라 칸마다 준다 ·
+ *   일구기 · 퇴비 · 물 · 심기 · 거두기 · 털기에 품(피로 → 허기 · 수분)이 들고, 피로 88부터는 쉬어야 한다 ·
+ *   거두는 손에 따라 도구가 있어야(낫 · 호미나 쇠스랑) 하거나 도움(수확 가위 · 쇠스랑 · 모종삽 · 도리깨 · 키) ·
+ *   깨 · 콩 · 보리 · 땅콩 · 마늘 · 양파는 거두면 칸에서 말린 뒤 턴다(`finishProcess`) · 가시 작물은 장갑 · 아침에 딴 잎 · 열매는 조금 더 좋다 ·
+ *   육묘 트레이는 꺼낸 만큼만 모종이 된다(`pullSeedlings`) · 한 해를 넘긴 산채는 포기를 나눈다(`divide`) · 묵힌 칸의 저절로 난 싹 알림.
  */
 
 import {
@@ -24,8 +29,13 @@ import {
   plantCell, produceItemId, supplyOfFacility, tillCell, waterCell, newFarmCell, gradeOf, harvestPreview,
   careStatusList, careDue, doCare as coreDoCare, inEstablishment, cellDiseases, CARE_TASK_KO, DISEASE_KO, DISEASE_CONTROL_KO, TRAY_ID, variantsOf,
   planOfCell, settleCareRounds, diseaseOnsetKo, DISEASE_DEFS,
+  // 247차 — 재배 요소
+  cultivationOf, harvestToolEval, plantToolEval, processLastToolEval, laborOf, laborVector, tooTiredKo, CULTIVATION_TUNING, FARM_LABOR,
+  startFieldProcess, finishFieldProcess, processHoursLeft, pullSeedlings as corePullSeedlings, divideBlockKo, divideCell, wildUnknown,
+  WATER_AMOUNT_KO, TOOL_NAME_KO, OFF_TIMING_KO, PROCESS_LAST_KO, waterBandOf, cellDays, startOf, offTimingOf,
+  TROWEL_ID, GLOVES_ID, WINNOW_ID, WILD_SPROUTS,
   type CropDef, type FarmEnv, type FarmFacility, type FarmHarvestResult, type FarmPlantCtx, type FarmPlotState, type LicenseType,
-  type CareStatus, type CareTaskId, type CropDisease,
+  type CareStatus, type CareTaskId, type CropDisease, type FarmCellState, type WaterAmount, type CropCultivation,
 } from '@tra/core';
 import { GameState } from './GameState.js';
 import { InventoryStore, type InvCategory } from './InventoryStore.js';
@@ -66,8 +76,10 @@ export interface FarmCareRow {
   missing: { itemId: string; name: string; need: number; have: number; tool?: boolean }[];
 }
 
-/** 245차 — 관리 표 판 */
-const CARE_V = 245;
+/** 245차 — 관리 표 판 · 247차 육묘 칸 「모종 굳히기」가 생겨 247 */
+const CARE_V = 247;
+/** 247차 — 아침(KST 5~10시)에 따면 품질이 조금 좋은 갈래(잎 · 열매 · 향채 · 산채) */
+const MORNING_CATS = new Set(['leaf', 'fruit', 'herb', 'wild']);
 /** 245차 — 묶음 작업: 칸이 하나 늘 때마다 걸리는 시간 · 품이 이만큼 는다(혼자 12칸을 해도 12배가 아니다) */
 export const CARE_GROUP_STEP = { seconds: 0.45, fatigue: 0.6 };
 /** 245차 — 묶음 작업에 걸리는 시간(초) */
@@ -85,6 +97,19 @@ function josa(word: string, withB: string, withoutB: string): string {
 /** 자재 · 도구를 파는 곳 */
 function shopOfSupply(itemId: string): string {
   return getFarmSupply(itemId)?.shop === 'nursery' ? '종묘사' : '생활용품점';
+}
+
+/** 247차 — 「호미나 쇠스랑」처럼 고르는 말로 잇는다(받침이 있으면 「이나」) */
+function orList(names: string[]): string {
+  return names.map((n, k) => (k < names.length - 1 ? josa(n, '이나', '나') : n)).join(' ');
+}
+
+/** 247차 — 저절로 난 싹이 어디서 왔나(이름이 드러날 때 한 줄) */
+function wildOriginKo(cropId: string, banked: boolean): string {
+  if (banked) return '지난해 흙에 떨어져 있던 씨가 올라왔다';
+  const def = WILD_SPROUTS.find((w) => w.cropId === cropId);
+  if (cropId === 'chopi' || cropId === 'eomnamu' || cropId === 'dureup') return '새가 열매를 먹고 떨군 씨가 났다';
+  return def?.shade ? '숲에서 바람에 날아든 씨앗이 그늘 아래 텄다' : '바람에 날아든 씨앗이 텄다';
 }
 
 class FarmStoreImpl {
@@ -203,6 +228,13 @@ class FarmStoreImpl {
           add(`${pid}:${i}:dz:${d.id}:${d.sinceMs}`, `d:${crop.id}:${d.id}`, i, line);
         }
         if (c.lodged) add(`${pid}:${i}:lodged:${c.plantedAt ?? 0}`, `l:${crop.id}`, i, (where) => `[텃밭] ${josa(crop.nameKo, '이', '가')} 비바람에 쓰러졌다 — 지주를 세웠어야 했다 (${where})`);
+        // 247차 — 저절로 난 싹(이름 모름 → 자라면 드러난다) · 다 마른 깨 · 콩 · 보리
+        if (c.wild) {
+          if (wildUnknown(c)) add(`${pid}:${i}:wild:${c.plantedAt ?? 0}`, 'w:new', i, (where) => `[텃밭] 묵힌 칸에 이름 모를 싹이 올라왔다 (${where})`);
+          else add(`${pid}:${i}:wildname:${c.plantedAt ?? 0}`, `w:${crop.id}`, i,
+            (where) => `[텃밭] 이름 모를 싹은 ${crop.nameKo}였다 — ${wildOriginKo(crop.id, !WILD_SPROUTS.some((w) => w.cropId === crop.id))} (${where})`);
+        }
+        if (c.process?.dryAt) add(`${pid}:${i}:dry:${c.process.cutAt}`, `dry:${crop.id}`, i, (where) => `[텃밭] ${josa(crop.nameKo, '이', '가')} 다 말랐다 — 털 때다 (${where})`);
         if (c.frostedAt) add(`${pid}:${i}:frost:${c.frostedAt}`, `f:${crop.id}`, i, (where) => `[텃밭] 서리가 내렸다 — ${crop.nameKo} 남은 것을 사흘 안에 거둔다 (${where})`);
       });
       for (const g of groups.values()) {
@@ -339,6 +371,23 @@ class FarmStoreImpl {
     return cellDiseases(cell).map((d) => ({ id: d.id, severity: d.severity, name: DISEASE_KO[d.id], control: DISEASE_CONTROL_KO[d.id], kind: DISEASE_DEFS[d.id].kind }));
   }
 
+  // ── 247차 — 품 · 도구 ───────────────────────
+
+  /** 도구 · 물건이 가방에 있는가 */
+  readonly hasItem = (id: string): boolean => !!InventoryStore.find(id);
+
+  /** 지쳐서 일을 못 하는가(피로 88 — 일하기와 같은 상한) */
+  tiredBlock(): string | null {
+    return tooTiredKo(GameState.vitals.fatigue);
+  }
+
+  /** 품을 쓴다 — 피로 → 허기 · 수분 · 피로(관리 작업과 같은 비) */
+  private spend(fatigue: number): void {
+    if (!(fatigue > 0)) return;
+    const v = laborVector(fatigue);
+    GameState.spendLabor(v.hunger, v.hydration, v.fatigue);
+  }
+
   // ── 자격 · 문맥 ───────────────────────────
 
   plantCtx(): FarmPlantCtx {
@@ -363,6 +412,8 @@ class FarmStoreImpl {
   /** 호미로 간다 — 「개간」을 배웠으면 그 칸이 든 한 줄(4칸)을 한 번에 */
   till(plotId: string, idx: number): FarmActionResult {
     if (!InventoryStore.find(HOMI_ID)) return fail('호미가 있어야 땅을 일굴 수 있다');
+    const tired = this.tiredBlock();
+    if (tired) return fail(tired);
     const p = this.plot(plotId);
     const targets = GameState.skillBonus('till_speed') >= 1 && p.site === 'plot'
       ? Array.from({ length: FARM_COLS }, (_, c) => Math.floor(idx / FARM_COLS) * FARM_COLS + c)
@@ -370,6 +421,7 @@ class FarmStoreImpl {
     let n = 0;
     for (const i of targets) { const c = p.cells[i]; if (c && tillCell(c)) n++; }
     if (n === 0) return fail('이미 일군 땅이다');
+    this.spend(laborOf('till').fatigue * n);   // 247차 — 호미질은 품이 든다
     GameState.markDirty();
     return { ok: true, message: n > 1 ? `${n}칸을 일궜다` : '흙을 일궜다' };
   }
@@ -381,22 +433,54 @@ class FarmStoreImpl {
     const c = this.plot(plotId).cells[idx];
     if (!c?.tilled) return fail('먼저 땅을 일궈야 한다');
     if (c.compost) return fail('이번 작기에는 이미 퇴비를 넣었다');
+    const tired = this.tiredBlock();
+    if (tired) return fail(tired);
     if (!compostCell(c)) return fail('퇴비를 넣을 수 없다');
     InventoryStore.removeQty(COMPOST_ID, 1);
+    this.spend(laborOf('compost').fatigue);
     GameState.markDirty();
     return { ok: true, message: '퇴비를 넣었다' };
   }
 
-  /** 물을 준다 — 물뿌리개로 구획 전체(일군 칸) */
-  waterAll(plotId: string): FarmActionResult {
+  /** 물을 준다 — 물뿌리개로 구획 전체(일군 칸) · 247차 양을 고른다(기본 보통) */
+  waterAll(plotId: string, amount: WaterAmount = 'normal'): FarmActionResult {
+    return this.water(plotId, amount);
+  }
+
+  /**
+   * 247차 — 물을 준다: 고른 칸(없으면 일군 칸 전부) · 양(조금 · 보통 · 흠뻑). 마당은 물뿌리개가 있어야 하고 칸마다 품이 든다.
+   * 그 작물에게 많은 양이면(알맞은 수분 위 · 거두기 전 물 끊기) 한 줄로 알려 준다 — 막지는 않는다(물을 줄지는 사람이 정한다).
+   */
+  water(plotId: string, amount: WaterAmount, cells?: number[]): FarmActionResult {
     const p = this.plot(plotId);
     if (p.site === 'plot' && !InventoryStore.find(WATERING_CAN_ID)) return fail('물뿌리개가 있어야 물을 줄 수 있다');
+    const tired = this.tiredBlock();
+    if (tired) return fail(tired);
     this.advanceAll();
+    const list = cells ?? p.cells.map((_, i) => i);
     let n = 0;
-    for (const c of p.cells) if (c.tilled && waterCell(c)) n++;
+    let warn = '';
+    for (const i of list) {
+      const c = p.cells[i];
+      if (!c?.tilled || !waterCell(c, amount)) continue;
+      n++;
+      const crop = c.cropId ? getCrop(c.cropId) : undefined;
+      if (warn || !crop || c.nursery || p.site !== 'plot' || c.process) continue;
+      const wb = waterBandOf(crop, this.daysToFirst(c, crop));
+      const cv = cultivationOf(crop);
+      if (wb.stopping) warn = `${crop.nameKo} — 거두기 전에는 물을 끊는다`;
+      else if (c.moisture > wb.band[1] && cv.water.over !== 'none') warn = `${crop.nameKo}에는 많다 — ${WATER_AMOUNT_KO[cv.water.amount]}씩 준다`;
+    }
     if (n === 0) return fail('물을 줄 칸이 없다 — 먼저 땅을 일군다');
+    if (p.site === 'plot') this.spend(laborOf('water', undefined, { amount }).fatigue * n);
     GameState.markDirty();
-    return { ok: true, message: '흙이 촉촉해졌다' };
+    const base = n > 1 ? `${n}칸에 물을 ${WATER_AMOUNT_KO[amount]} 줬다` : `물을 ${WATER_AMOUNT_KO[amount]} 줬다`;
+    return { ok: true, message: warn ? `${base} — ${warn}` : base };
+  }
+
+  /** 247차 — 첫 수확까지 남은 날(물 끊기 판정) */
+  private daysToFirst(c: FarmCellState, crop: CropDef): number | undefined {
+    return c.picks === 0 && c.growth < 1 ? (1 - c.growth) * cellDays(crop, c) : undefined;
   }
 
   /** 이 칸에 이 씨앗 · 모종으로 지금 심을 수 있는가 */
@@ -419,33 +503,216 @@ class FarmStoreImpl {
     return { ok: true, crop, need };
   }
 
-  /** 심는다 — 씨앗 · 모종 · 종구를 칸 몫만큼 쓴다 */
+  /** 심는다 — 씨앗 · 모종 · 종구를 칸 몫만큼 쓴다 · 247차 품 · 모종삽 · 철 · 밑거름 */
   plant(plotId: string, idx: number, startItemId: string): FarmActionResult {
     const chk = this.plantCheck(plotId, idx, startItemId);
     if (!chk.ok || !chk.crop) return fail(chk.reasonKo ?? '심을 수 없다');
+    const tired = this.tiredBlock();
+    if (tired) return fail(tired);
     const found = cropStartOfItem(startItemId)!;
-    const cell = this.plot(plotId).cells[idx];
-    plantCell(cell, found.crop, found.start, Date.now(), Math.random, this.plantCtx());
+    const p = this.plot(plotId);
+    const cell = p.cells[idx];
+    const tool = plantToolEval(found.start.kind, this.hasItem);
+    plantCell(cell, found.crop, found.start, Date.now(), Math.random, this.plantCtx(),
+      { greenhouse: p.facilities.includes('greenhouse'), trowel: tool.helpers.includes(TROWEL_ID) });
     InventoryStore.removeQty(startItemId, chk.need ?? 1);
+    if (p.site === 'plot') this.spend(laborOf('plant', found.crop, { tool }).fatigue);
     GameState.markDirty();
     StoryStore.event({ kind: 'farm', action: 'plant', cropId: found.crop.id });
-    return { ok: true, message: `${found.crop.nameKo}을(를) 심었다` };
+    const note = this.plantedNoteKo(cell, found.crop);
+    return { ok: true, message: `${found.crop.nameKo}을(를) 심었다${note ? ` — ${note}` : ''}` };
   }
 
-  /** 거둔다(본 수확) — 가방 자리부터 본다 */
+  /** 247차 — 심은 뒤 한 줄(철 밖 · 퇴비 칸의 적게 먹는 작물) */
+  private plantedNoteKo(cell: FarmCellState, crop: CropDef): string {
+    if (cell.offTiming) return `알맞은 철을 벗어났다 — ${OFF_TIMING_KO[cell.offTiming]}`;
+    if (cell.fedAtPlant && cultivationOf(crop).feed === 'low') return '퇴비를 넣은 칸 — 거름이 많으면 잎만 무성해진다';
+    return '';
+  }
+
+  /**
+   * 247차 — 심기 전에 알려 줄 것(심을 수는 있다): 알맞은 철 밖 · 퇴비 칸의 적게 먹는 작물 · 많이 먹는 작물인데 퇴비가 없다.
+   * 텃밭 창 심기 목록 · 필드 칸 안내가 쓴다.
+   */
+  plantNoteKo(plotId: string, idx: number, startItemId: string): string | null {
+    const found = cropStartOfItem(startItemId);
+    const p = this.plot(plotId);
+    const c = p.cells[idx];
+    if (!found || !c || found.start.nursery || p.site !== 'plot') return null;
+    const off = offTimingOf(found.crop, kstMonthOf(Date.now()), found.start.months);
+    if (off && !(off === 'cold' && p.facilities.includes('greenhouse'))) return `지금 심으면 ${OFF_TIMING_KO[off]} — 수량이 준다`;
+    const feed = cultivationOf(found.crop).feed;
+    if (c.compost && feed === 'low') return '퇴비를 넣은 칸 — 이 작물은 거름이 많으면 잎만 무성하다';
+    if (!c.compost && feed === 'high') return '거름을 많이 먹는다 — 퇴비를 넣으면 더 난다';
+    return null;
+  }
+
+  /**
+   * 거둔다(본 수확) — 가방 자리부터 본다.
+   * 247차 — 거두는 손에 따라 도구가 있어야 한다(낫 · 호미나 쇠스랑) · 도움 도구는 품을 줄이고 조금 좋아진다 · 아침에 딴 잎 · 열매 +품질 ·
+   * 가시 작물은 장갑 · 밭 손질 작물(깨 · 콩 · 보리 · 땅콩 · 마늘 · 양파)은 베어(캐어) 칸에서 말린다 → 다 마르면 `finishProcess` ·
+   * 육묘 트레이는 모종을 다 꺼낸다(골라 꺼내기는 `pullSeedlings`).
+   */
   harvest(plotId: string, idx: number): FarmActionResult {
     this.advanceAll();
     const cell = this.plot(plotId).cells[idx];
-    if (!cell || !cellReady(cell)) return fail('아직 거둘 때가 아니다');
-    const crop = cell.cropId ? getCrop(cell.cropId) : undefined;
-    if (!crop) return fail('거둘 것이 없다');
-    // 가방 자리 — 거둘 아이템은 미리 안다(등급 = 지금 품질 · 붉어졌는가 = 익은 뒤 흐른 시간 · 육묘 칸이면 모종)
+    const crop = cell?.cropId ? getCrop(cell.cropId) : undefined;
+    if (!cell || !crop) return fail('거둘 것이 없다');
+    if (cell.process) return this.finishProcess(plotId, idx);
+    if (!cellReady(cell)) return fail('아직 거둘 때가 아니다');
+    const tired = this.tiredBlock();
+    if (tired) return fail(tired);
+    if (cell.nursery) return this.pullSeedlings(plotId, idx);
+    const cv = cultivationOf(crop);
+    const tool = harvestToolEval(crop, this.hasItem);
+    if (tool.needsAny.length && !tool.needsAny.some(this.hasItem)) return fail(this.needToolKo(tool.needsAny, cv));
+    // 밭 손질 작물 — 첫 손만 하고 칸에서 말린다(가방에 넣지 않는다)
+    if (cv.process) {
+      if (!startFieldProcess(cell, Date.now())) return fail('지금은 벨 수 없다');
+      const act = cv.process.first === 'cut' ? 'cut' : cv.process.first === 'dig' ? 'dig' : 'pull';
+      this.spend(laborOf(act, crop, { tool }).fatigue);
+      GameState.markDirty();
+      const verb = cv.process.first === 'cut' ? '베어' : cv.process.first === 'dig' ? '캐어' : '뽑아';
+      return { ok: true, message: `${josa(crop.nameKo, '을', '를')} ${verb} 밭에 눕혔다 — ${cv.process.dryDays}일 말린 뒤 ${PROCESS_LAST_KO[cv.process.last]}` };
+    }
+    // 가방 자리 — 거둘 아이템은 미리 안다(등급 = 지금 품질 · 붉어졌는가 = 익은 뒤 흐른 시간)
+    const bonus = tool.quality + this.morningBonus(crop);
     const pv = harvestPreview(cell, crop);
-    const outId = pv.seedling ? pv.itemId : produceItemId(pv.itemId, gradeOf(cell.quality));
-    if (!this.roomFor(outId, pv.seedling ? null : crop, pv.seedling)) return fail('가방에 자리가 없다 — 한 칸 비우고 거둔다');
-    const r = harvestCell(cell, Math.random, this.harvestSkills());
+    const outId = produceItemId(pv.itemId, gradeOf(Math.min(1, cell.quality + bonus)));
+    if (!this.roomFor(outId, crop)) return fail('가방에 자리가 없다 — 한 칸 비우고 거둔다');
+    const r = harvestCell(cell, Math.random, { ...this.harvestSkills(), qualityBonus: bonus });
     if (!r) return fail('아직 거둘 때가 아니다');
-    return this.giveHarvest(r, crop);
+    this.spend(laborOf('harvest', crop, { tool }).fatigue);
+    const thorn = !!cv.thorny && !this.hasItem(GLOVES_ID);
+    if (thorn) GameState.applyIntake(0, 0, -CULTIVATION_TUNING.thornHp);
+    const res = this.giveHarvest(r, crop);
+    if (r.offsets) {
+      const tpl = cropItemTemplate(r.offsets.itemId);
+      if (tpl && InventoryStore.addItem(tpl, r.offsets.qty)) {
+        res.harvested?.push({ itemId: tpl.id, qty: r.offsets.qty, name: tpl.name });
+        res.message += ` — 곁눈 ${r.offsets.qty}개를 떼어 냈다`;
+      }
+    }
+    if (tool.helper && res.ok) res.message += ` — ${TOOL_NAME_KO[tool.helper] ?? ''}${tool.quality < 0 ? '로 빨리 캤지만 몇 개 찍혔다' : '로 빨리 거뒀다'}`;
+    if (thorn) res.message += ' — 가시에 손을 찔렸다(장갑을 끼면 안 다친다)';
+    return res;
+  }
+
+  /** 247차 — 도구가 없어 못 할 때 한 줄(「낫이 있어야 벤다 — 생활용품점에서 판다」) */
+  private needToolKo(ids: string[], cv: CropCultivation): string {
+    const names = ids.map((i) => TOOL_NAME_KO[i] ?? cropItemTemplate(i)?.name ?? i);
+    const verb = (cv.process?.first ?? cv.harvestBy) === 'cut' ? '벤다' : '캔다';
+    const shops = [...new Set(ids.map((i) => shopOfSupply(i)))];
+    return `${josa(orList(names), '이', '가')} 있어야 ${verb} — ${shops.join(' · ')}에서 판다`;
+  }
+
+  /** 247차 — 아침(5~10시 KST)에 딴 잎 · 열매는 조금 더 좋다(이슬이 마른 서늘한 때) */
+  private morningBonus(crop: CropDef): number {
+    if (!MORNING_CATS.has(crop.category)) return 0;
+    const h = new Date(Date.now() + 9 * 3_600_000).getUTCHours();
+    const [a, b] = CULTIVATION_TUNING.morningHours;
+    return h >= a && h < b ? CULTIVATION_TUNING.morningQuality : 0;
+  }
+
+  /**
+   * 247차 — 다 마른 칸의 마지막 손(털기 · 꼬투리 따기 · 묶어 거두기) — 도리깨가 있으면 품이 줄고, 키가 있으면 키질까지(품질 +).
+   * `score` = 털기 작업 장면 점수(서툴면 품질 −0.03).
+   */
+  finishProcess(plotId: string, idx: number, score = 1): FarmActionResult {
+    this.advanceAll();
+    const cell = this.plot(plotId).cells[idx];
+    const crop = cell?.cropId ? getCrop(cell.cropId) : undefined;
+    const def = crop ? cultivationOf(crop).process : undefined;
+    if (!cell || !crop || !def || !cell.process) return fail('말리는 칸이 아니다');
+    if (!cell.process.dryAt) return fail(`아직 마르는 중이다 — ${Math.max(1, Math.ceil(processHoursLeft(cell) / 24))}일 남짓 (비 오는 동안은 마르지 않는다)`);
+    const tired = this.tiredBlock();
+    if (tired) return fail(tired);
+    if (!this.roomFor(produceItemId(crop.harvest.itemId, gradeOf(cell.quality)), crop)) return fail('가방에 자리가 없다 — 한 칸 비우고 거둔다');
+    const tool = processLastToolEval(def, this.hasItem);
+    const winnowed = !!def.winnow && this.hasItem(WINNOW_ID);
+    const r = finishFieldProcess(cell, Math.random, { ...this.harvestSkills(), qualityBonus: score < 0.5 ? -0.03 : 0 }, { winnowed }, Date.now());
+    if (!r) return fail('지금은 털 수 없다');
+    const act = def.last === 'thresh' ? 'thresh' : def.last === 'pick' ? 'pick_pods' : 'gather';
+    this.spend(laborOf(act, crop, { tool }).fatigue + (winnowed ? laborOf('winnow').fatigue : 0));
+    const res = this.giveHarvest(r, crop);
+    const notes: string[] = [];
+    if (tool.helper) notes.push('도리깨로 털었다');
+    if (def.winnow) notes.push(winnowed ? '키로 까불러 검불을 날렸다' : '키가 없어 검불이 섞였다');
+    const sh = r.processNote?.shatterLoss ?? 0;
+    if (sh > 0.04) notes.push(`너무 오래 두어 ${Math.round(sh * 100)}%가 쏟아졌다`);
+    if ((r.processNote?.rainLoss ?? 0) > 0.02) notes.push('말리는 동안 비를 맞았다');
+    if (notes.length) res.message += ` — ${notes.join(' · ')}`;
+    return res;
+  }
+
+  /** 247차 — 육묘 트레이에 남은 모종 수(아직 안 셌으면 센다 — 꺼내기 창이 쓴다) */
+  trayLeft(plotId: string, idx: number): number {
+    const cell = this.plot(plotId).cells[idx];
+    if (!cell?.nursery || !cellReady(cell)) return 0;
+    if (cell.trayLeft === undefined) corePullSeedlings(cell, Math.random, 0);
+    return cell.trayLeft ?? 0;
+  }
+
+  /** 247차 — 육묘 트레이에서 모종을 꺼낸다(n포기 · 없으면 다) — 꺼낸 만큼만 모종 아이템이 되고 남은 것은 트레이에 그대로 */
+  pullSeedlings(plotId: string, idx: number, n?: number): FarmActionResult {
+    const cell = this.plot(plotId).cells[idx];
+    const crop = cell?.cropId ? getCrop(cell.cropId) : undefined;
+    if (!cell || !crop || !cell.nursery || !cellReady(cell)) return fail('아직 모종이 덜 자랐다');
+    const id = startOf(crop, cell.start)?.nursery?.seedlingItemId;
+    if (!id) return fail('꺼낼 모종이 없다');
+    if (!this.roomFor(id, null, true)) return fail('가방에 자리가 없다 — 한 칸 비우고 꺼낸다');
+    const r = corePullSeedlings(cell, Math.random, n ?? Infinity);
+    if (!r) return fail('꺼낼 모종이 없다');
+    this.spend(FARM_LABOR.pull_seedlings * r.qty);
+    const res = this.giveHarvest(r, crop);
+    if (res.ok) {
+      const name = res.harvested?.[0]?.name ?? crop.nameKo;
+      res.message = `${name} ${r.qty}포기를 트레이에서 꺼냈다${r.more ? ` — ${cell.trayLeft}포기가 트레이에 남았다` : ' — 트레이가 비었다'}`;
+    }
+    return res;
+  }
+
+  /** 247차 — 포기 나누기 · 뿌리 꺾꽂이를 지금 못 하는 까닭(되면 null) */
+  divideBlock(plotId: string, idx: number): string | null {
+    const cell = this.plot(plotId).cells[idx];
+    const crop = cell?.cropId ? getCrop(cell.cropId) : undefined;
+    if (!cell || !crop) return '나눌 포기가 없다';
+    return divideBlockKo(cell, crop, Date.now());
+  }
+
+  /** 247차 — 포기를 나눈다(호미) — 심는 물건(모종 · 종구)을 얻고 포기는 조금 성겨진다 */
+  divide(plotId: string, idx: number): FarmActionResult {
+    const cell = this.plot(plotId).cells[idx];
+    const crop = cell?.cropId ? getCrop(cell.cropId) : undefined;
+    if (!cell || !crop) return fail('나눌 포기가 없다');
+    const why = divideBlockKo(cell, crop, Date.now());
+    if (why) return fail(why);
+    if (!this.hasItem(HOMI_ID)) return fail('호미가 있어야 포기를 나눈다');
+    const tired = this.tiredBlock();
+    if (tired) return fail(tired);
+    const st = crop.starts.find((x) => x.kind !== 'seed') ?? crop.starts[0];
+    if (!st || !this.roomFor(st.itemId, null, true)) return fail('가방에 자리가 없다 — 한 칸 비우고 나눈다');
+    const r = divideCell(cell, crop, Date.now(), Math.random);
+    const tpl = r ? cropItemTemplate(r.itemId) : null;
+    if (!r || !tpl) return fail('나눌 수 없다');
+    InventoryStore.addItem(tpl, r.qty);
+    this.spend(laborOf('divide').fatigue);
+    GameState.markDirty();
+    const how = cultivationOf(crop).propagate?.by === 'cutting' ? '뿌리를 잘라 꺾꽂이 감을 얻었다' : '포기를 나눴다';
+    return { ok: true, message: `${crop.nameKo} ${how} — ${tpl.name} ${r.qty}개`, harvested: [{ itemId: tpl.id, qty: r.qty, name: tpl.name }] };
+  }
+
+  /** 247차 — 이 칸 거두기 단추 이름(따기 · 베기 · 캐기 · 뽑기 · 털기 · 꼬투리 따기 · 묶어 거두기 · 모종 꺼내기) — 거둘 때가 아니면 null */
+  harvestLabel(plotId: string, idx: number): string | null {
+    const cell = this.plot(plotId).cells[idx];
+    const crop = cell?.cropId ? getCrop(cell.cropId) : undefined;
+    if (!cell || !crop) return null;
+    const cv = cultivationOf(crop);
+    if (cell.process) return cell.process.dryAt && cv.process ? PROCESS_LAST_KO[cv.process.last] : null;
+    if (!cellReady(cell)) return null;
+    if (cell.nursery) return '모종 꺼내기';
+    const by = cv.process?.first ?? cv.harvestBy;
+    return by === 'cut' ? '베기' : by === 'dig' ? '캐기' : by === 'pull' ? '뽑기' : '따기';
   }
 
   /** 중간 수확(솎음 · 마늘종 · 고구마순 · 고춧잎 · 호박잎) */
@@ -568,7 +835,12 @@ class FarmStoreImpl {
       const want = k === INDOOR_PLOT ? INDOOR_SLOTS : FARM_CELLS;
       const cells = p.cells.slice(0, want);
       while (cells.length < want) cells.push({ ...newFarmCell(Date.now()), tilled: k === INDOOR_PLOT });
-      this.plots.set(k, { site: k === INDOOR_PLOT ? 'indoor' : 'plot', cells, facilities: Array.isArray(p.facilities) ? p.facilities : [] });
+      this.plots.set(k, {
+        site: k === INDOOR_PLOT ? 'indoor' : 'plot', cells, facilities: Array.isArray(p.facilities) ? p.facilities : [],
+        // 247차 — 구획 난수 씨 · 흙에 떨어진 씨(구세이브는 없다 — 0 · 빈 은행)
+        ...(typeof p.salt === 'number' ? { salt: p.salt } : {}),
+        ...(Array.isArray(p.seedBank) ? { seedBank: p.seedBank.filter((x): x is string => typeof x === 'string').slice(-6) } : {}),
+      });
     }
     // 245차 — 구세이브: 245차에 생긴 일 때문에 자라던 작물이 로드 직후 「놓친 일」로 한꺼번에 깎이지 않게 지난 차례를 벌 없이 넘긴다
     if ((s.careV ?? 0) < CARE_V) {

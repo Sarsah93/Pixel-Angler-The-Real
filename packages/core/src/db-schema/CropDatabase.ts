@@ -657,6 +657,27 @@ export const CROP_DATABASE: CropDef[] = [
     noteKo: '꼬투리가 누렇게 마르면 거둔다. 콩나물 시루에도 앉힌다.',
     noteEn: 'Harvest when the pods dry yellow. They also go into the sprouting jar.',
   },
+  // 247차 — 깨(사용자 「깻잎 수확과 별도로 '깨'는 베고, 말리고, 털어야 함」) — 거두면 칸에 베어 말린 뒤 털고 키질한다(`CropCultivation.process`)
+  {
+    id: 'deulkkae', nameKo: '들깨', nameEn: 'Perilla seed (deulkkae)', category: 'grain', speedClass: 'seasonal', rarity: 'common',
+    inMart: true, site: 'plot', growMonths: [6, 7, 8, 9, 10], water: 'mid',
+    // 씨용 들깨 — 6월 중순 파종 · 이식(적기 — 너무 이르면 웃자라 쓰러진다) → 10월 초중순 베기. 10a 70~100kg → 칸당 약 100g
+    starts: [seed('deulkkae', [6], 0.75, 115, 300), seedling('deulkkae', [6, 7], 4, 95, 200)],
+    harvest: { itemId: 'crop_deulkkae', nameKo: '들깨 (100g)', nameEn: 'Perilla seeds (100g)', qtyPerCell: [1, 1], holdDays: 10 },
+    price: { base: 1800, season: P_PULSE, volatility: 0.12 },
+    noteKo: '깻잎을 따는 그 들깨 — 씨를 받으려면 6월에 심어 10월에 벤다. 베어 말려 털고 키질해야 들깨가 된다.',
+    noteEn: 'The same plant that gives perilla leaves — for seed, plant in June and cut in October. Cut, dry, thresh and winnow before it becomes perilla seed.',
+  },
+  {
+    id: 'chamkkae', nameKo: '참깨', nameEn: 'Sesame', category: 'grain', speedClass: 'seasonal', rarity: 'uncommon',
+    inMart: true, site: 'plot', growMonths: [5, 6, 7, 8, 9], water: 'low',
+    // 5월 상중순 파종 → 8월 하순~9월 베기(아래 꼬투리가 벌어질 때). 10a 40~60kg → 칸당 약 50g · 습해 · 역병에 약하다
+    starts: [seed('chamkkae', [5, 6], 0.7, 100, 300)],
+    harvest: { itemId: 'crop_chamkkae', nameKo: '참깨 (50g)', nameEn: 'Sesame seeds (50g)', qtyPerCell: [1, 1], holdDays: 7 },
+    price: { base: 1800, season: P_PULSE, volatility: 0.12 },
+    noteKo: '물 빠짐 좋은 밭에서 기른다 — 장마에 물이 고이면 역병으로 쓰러진다. 베어 세워 말린 뒤 거꾸로 들고 턴다.',
+    noteEn: 'Grow it in free-draining ground — water pooling in the monsoon brings blight. Cut, stand to dry, then hold upside down and shake out the seed.',
+  },
 
   // ═════ 235차 추가 — 마트에 없는 작물(조사 96종 중 텃밭 · 바다 요리와 이어지는 21종) ═════
   //  값 · 수량은 산지 판매글 · 시험 수량을 칸(1㎡) 단위로 옮긴 출발값이다(조사 문서의 「추정」 표기 포함).
@@ -1005,6 +1026,8 @@ export const CROP_DIFFICULTY: Readonly<Record<string, { tier: CropDifficulty; ca
   napa_cabbage: { tier: 1, care: ['pests', 'nursery'] }, // 농진청 「쉬움」(모종) · 씨앗은 육묘
   carrot: { tier: 1, care: ['germination'] },          // 농진청 「쉬움」 · 싹 틔우기만 까다롭다
   soybean: { tier: 1, care: [] },
+  deulkkae: { tier: 1, care: [] },                     // 247차 — 기르기는 쉽고 베고 말리고 터는 손이 많다
+  chamkkae: { tier: 2, care: ['pests', 'water'] },     // 247차 — 습해 · 역병
   cowpea: { tier: 1, care: [] },
   amaranth: { tier: 1, care: [] },
   arugula: { tier: 1, care: [] },
@@ -1272,6 +1295,29 @@ export const FARM_SUPPLIES: FarmSupplyDef[] = [
   { itemId: 'farm_shears', nameKo: '전정가위', nameEn: 'Pruning shears', price: 12000, kind: 'tool', shop: 'nursery', icon: 'it_shears',
     descKo: '가지를 자르는 가위. 블루베리 · 두릅 · 엄나무 · 초피의 가지치기에 쓴다. 닳지 않는다.',
     descEn: 'Shears for cutting branches. Used to prune blueberry, fatsia (dureup), castor aralia and Korean pepper. They don’t wear out.' },
+  // ── 247차 — 거두기 · 심기 · 손질 도구(사용자 「고추 가위 사용 시 더 빠르고 아주 조금 더 좋은 고추 수확」).
+  //   값 = 2025 소매 시세(낫 5~9천 · 수확 가위 6~1만 · 쇠스랑 1.2~2만 · 모종삽 2~4천 · 도리깨 2~3만 · 대나무 키 1.5~3만 · 코팅 장갑 1~2천)
+  { itemId: 'farm_sickle', nameKo: '낫', nameEn: 'Sickle', price: 7000, kind: 'tool', icon: 'it_sickle',
+    descKo: '깨 · 콩 · 보리를 벨 때 꼭 있어야 한다. 부추 · 미나리 · 공심채도 낫으로 베면 그루터기가 깔끔하다. 닳지 않는다.',
+    descEn: 'You cannot cut sesame, perilla, beans or barley without one. Chives, water parsley and water spinach cut with a sickle leave clean stubble. Never wears out.' },
+  { itemId: 'farm_harvest_scissors', nameKo: '수확 가위', nameEn: 'Harvest snips', price: 8000, kind: 'tool', shop: 'nursery', icon: 'it_harvest_scissors',
+    descKo: '고추 가위. 고추 · 토마토 · 가지 · 오이 · 참외 · 수박의 꼭지를 자른다 — 손으로 비틀어 따는 것보다 빠르고, 상처가 없어 조금 더 좋은 것을 거둔다.',
+    descEn: 'Pepper snips. Clip the stems of chili, tomato, eggplant, cucumber, melon and watermelon — quicker than twisting them off by hand, and no torn stems, so a slightly better harvest.' },
+  { itemId: 'farm_fork', nameKo: '쇠스랑', nameEn: 'Digging fork', price: 15000, kind: 'tool', icon: 'it_fork',
+    descKo: '감자 · 고구마 · 토란 · 생강 · 땅콩을 캘 때 흙을 크게 들어 올린다. 호미보다 훨씬 빠르지만 감자 · 고구마는 날에 몇 개 찍힌다.',
+    descEn: 'Lifts big clods when digging potatoes, sweet potatoes, taro, ginger and peanuts. Much faster than a homi, though a few potatoes and sweet potatoes get speared.' },
+  { itemId: 'farm_trowel', nameKo: '모종삽', nameEn: 'Hand trowel', price: 3000, kind: 'tool', icon: 'it_trowel',
+    descKo: '모종 심을 구덩이를 판다. 뿌리 흙이 덜 깨져 모종이 잘 산다 — 심는 품도 준다.',
+    descEn: 'Digs planting holes for seedlings. The root ball stays whole so more of them take, and planting is less work.' },
+  { itemId: 'farm_flail', nameKo: '도리깨', nameEn: 'Threshing flail', price: 25000, kind: 'tool', shop: 'nursery', icon: 'it_flail',
+    descKo: '말린 콩대 · 깻단 · 보릿단을 내리쳐 알을 턴다. 없으면 막대기로 두드려야 해 품이 훨씬 든다.',
+    descEn: 'Beats dried bean, sesame and barley sheaves to knock the grain out. Without one you thrash them with a stick — far more work.' },
+  { itemId: 'farm_winnow', nameKo: '키', nameEn: 'Winnowing basket', price: 15000, kind: 'tool', icon: 'it_winnow',
+    descKo: '대나무로 엮은 키. 턴 알곡을 까불러 검불 · 쭉정이를 날린다 — 없으면 검불이 섞여 값을 덜 받는다.',
+    descEn: 'A woven bamboo basket. Toss threshed grain in it to blow away chaff and empty husks — without it, chaff stays in and the grain sells for less.' },
+  { itemId: 'farm_gloves', nameKo: '코팅 장갑', nameEn: 'Coated work gloves', price: 2000, kind: 'tool', icon: 'it_gloves',
+    descKo: '손바닥에 고무를 입힌 장갑. 가시 돋친 두릅 · 엄나무순 · 초피를 딸 때 손을 지킨다.',
+    descEn: 'Gloves with rubber-coated palms. Protect your hands when picking thorny fatsia shoots, castor aralia and Korean pepper.' },
 ];
 
 const SUPPLY_BY_ID = new Map(FARM_SUPPLIES.map((s) => [s.itemId, s]));

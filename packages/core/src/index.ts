@@ -831,6 +831,8 @@ export type {
   CropInterim, CropRequirement, CropPrice, CropDef, FarmCellState, FarmPlotState, FarmEnv, FarmPlantCtx, FarmHarvestResult,
   CropDifficulty, CropCare, CropVariant, CropPack,
   CropDisease, CropDiseaseState, CareTaskId, CareWorkKind, CareTaskDef, CropCarePlan, DiseaseDef,
+  // 247차 — 재배 요소(물 양 · 품 · 도구 · 거둔 뒤 밭 손질 · 철 · 늘리기)
+  WaterAmount, OverwaterHarm, HarvestBy, FieldProcessDef, OffTimingKind, CropPropagation, CropCultivation, FieldProcessStage, FarmLaborAction,
 } from './types/Farming.js';
 export {
   CROP_DATABASE, CROP_DIFFICULTY, getCrop, cropStartOfItem, cropOfProduce, isFarmProduce,
@@ -856,6 +858,20 @@ export {
 } from './simulation/FarmSim.js';
 export type { PlantCheck, HarvestSkills, FarmCellStage } from './simulation/FarmSim.js';
 export { harvestPreview } from './simulation/FarmSim.js';
+// 247차 — 재배 요소: 저절로 난 싹 · 모종 꺼내기 · 밭 손질 · 포기 나누기 · 산채 모종 들어오는 날
+export {
+  wildUnknown, pullSeedlings, processStageOf, processHoursLeft, startFieldProcess, finishFieldProcess, divideBlockKo, divideCell, rareArrivalInDays,
+} from './simulation/FarmSim.js';
+export {
+  SICKLE_ID, HARVEST_SCISSORS_ID, FORK_ID, TROWEL_ID, FLAIL_ID, WINNOW_ID, GLOVES_ID, CULTIVATION_TUNING, FARM_LABOR, FARM_SECONDS,
+  WATER_AMOUNT_KO, WATER_AMOUNT_EN, OVERWATER_KO, OVERWATER_EN, FEED_KO, FEED_EN, HARVEST_BY_KO, HARVEST_BY_EN, OFF_TIMING_KO, OFF_TIMING_EN,
+  PROCESS_FIRST_KO, PROCESS_FIRST_EN, PROCESS_LAST_KO, PROCESS_LAST_EN, LABOR_KO, LABOR_EN, CROP_CULTIVATION, cultivationOf,
+  harvestToolEval, plantToolEval, processLastToolEval, laborOf, laborVector, tooTiredKo, wateredMoisture, waterBandOf, moistureStateOf,
+  MOISTURE_STATE_KO, MOISTURE_STATE_EN, offTimingOf, WILD_SPROUTS, WILD_TUNING, pickWildSprout, RARE_ARRIVAL_EVERY, TOOL_NAME_KO, TOOL_NAME_EN,
+  waterLineKo, waterLineEn, toolLineKo, toolLineEn, processLineKo, processLineEn, timingLineKo, timingLineEn, laborLineKo, laborLineEn,
+  propagateLineKo, propagateLineEn,
+} from './db-schema/CropCultivationDatabase.js';
+export type { ToolEval, WildSproutDef, MoistureState } from './db-schema/CropCultivationDatabase.js';
 // 238차 — 관리 작업 · 병해 3종 · 육묘 · 서리 · 익는 단계 / 245차 — 작물 84종 · 병해충 16종
 export {
   CARE_TASK_KO, CARE_TASK_EN, CARE_WORK_KO, CARE_WORK_EN, DISEASE_KO, DISEASE_EN, DISEASE_SYMPTOM_KO, DISEASE_SYMPTOM_EN,
@@ -864,6 +880,8 @@ export {
   // 245차 — 작물 84종의 일 · 병해충 16종 · 새 자재
   DISEASE_DEFS, PREVENT_LEAD_MONTHS, carePlanSummaryEn, riskMonthsOf, taskWhenKo, taskWhenEn, monthRuns, monthsKo, monthsEn, diseaseOnsetKo,
   STEVIA_ID, FARM_HOMI_ID, NET_ID, BIRD_NET_ID, FLEECE_ID, STRAW_ID, TRELLIS_ID, PEAT_ID, SHEARS_ID,
+  // 247차 — 거둔 뒤 밭 손질의 작업 장면
+  PROCESS_WORK_DEFS,
 } from './db-schema/CropCareDatabase.js';
 export {
   CARE_TUNING, lastFrostDayIndex, firstFrostDayIndex, isRiskSeason, frostBlockKo, planOfCell, cellDay, cellDiseases, careStatusOf,

@@ -45,6 +45,8 @@ export const CARE_TASK_KO: Record<CareTaskId, string> = {
   trellis: '유인망 치기', prune: '가지치기', acidify: '산도 맞추기', tread: '보리밟기', tie_head: '배추 묶기', remove_runner: '런너 따기',
   cover_dark: '검은 천 덮기', uncover_light: '빛 쬐기', mist: '분무', slit_bag: '배지 칼집 내기', water_flood: '물 대기',
   pick_pests: '벌레 잡기', strip_leaves: '아랫잎 따기',
+  harden_off: '모종 굳히기',
+  thresh: '털기', pick_pods: '꼬투리 따기', gather_bundle: '묶어 거두기', winnow: '키질',
 };
 export const CARE_TASK_EN: Record<CareTaskId, string> = {
   prick_out: 'Prick out', ridge_mulch: 'Ridge and mulch', stake: 'Stake', tie: 'Tie up', water_establish: 'Water in (establishment)',
@@ -56,6 +58,8 @@ export const CARE_TASK_EN: Record<CareTaskId, string> = {
   trellis: 'Put up trellis net', prune: 'Prune', acidify: 'Acidify the soil', tread: 'Tread the barley', tie_head: 'Tie the heads', remove_runner: 'Remove runners',
   cover_dark: 'Cover from light', uncover_light: 'Uncover to light', mist: 'Mist', slit_bag: 'Slit the bag', water_flood: 'Flood the furrows',
   pick_pests: 'Pick off pests', strip_leaves: 'Strip lower leaves',
+  harden_off: 'Harden off seedlings',
+  thresh: 'Thresh', pick_pods: 'Pick the pods', gather_bundle: 'Bundle and gather', winnow: 'Winnow',
 };
 
 /** 작업 장면 모양 → 사람 말(머리말) */
@@ -482,10 +486,38 @@ const stripLeaves: CareTaskDef = {
 };
 
 // ─────────────────────────────────────────────
+// 247차 — 거둔 뒤 밭 손질의 작업 장면(관리 표 밖 — 말린 칸에서 연다)
+// ─────────────────────────────────────────────
+
+/** 털기 · 꼬투리 따기 · 묶어 거두기 · 키질 — 작업 장면이 쓰는 정의(품은 `FARM_LABOR`가 따로 센다 · 여기 fatigue는 0) */
+export const PROCESS_WORK_DEFS: Readonly<Record<'thresh' | 'pick_pods' | 'gather_bundle' | 'winnow', CareTaskDef>> = {
+  thresh: {
+    id: 'thresh', dayWindow: [0, 0], work: 'targets', seconds: 8, fatigue: 0,
+    howKo: '깔개 위에 마른 단을 눕히고 도리깨 · 막대로 내리친다 — 단마다 서너 번 쳐야 알이 다 떨어진다.',
+    howEn: 'Lay the dry sheaves on a tarp and beat them with a flail or stick — three or four blows per sheaf shake all the grain out.',
+  },
+  pick_pods: {
+    id: 'pick_pods', dayWindow: [0, 0], work: 'targets', seconds: 8, fatigue: 0,
+    howKo: '뒤집어 말린 포기에서 여문 꼬투리를 하나씩 딴다 — 덜 여문 것은 남긴다.',
+    howEn: 'Pick the filled pods one by one off the plants you dried upside down — leave the empty ones.',
+  },
+  gather_bundle: {
+    id: 'gather_bundle', dayWindow: [0, 0], work: 'targets', seconds: 6, fatigue: 0,
+    howKo: '밭에서 말린 것을 주워 흙을 털고 줄기째 묶는다 — 바람 드는 그늘에 매달아 둔다.',
+    howEn: 'Gather what dried in the field, knock off the soil and tie them by the stems — hang them in an airy, shady spot.',
+  },
+  winnow: {
+    id: 'winnow', dayWindow: [0, 0], work: 'tie', seconds: 6, fatigue: 0,
+    howKo: '키에 담아 위로 까부른다 — 가벼운 검불 · 쭉정이는 바람에 날아가고 무거운 알만 남는다.',
+    howEn: 'Toss the grain up from the basket — the light chaff and empty husks blow away and only the heavy seed falls back.',
+  },
+};
+
+// ─────────────────────────────────────────────
 // 작물별 표
 // ─────────────────────────────────────────────
 
-/** 육묘 트레이 칸(씨앗 → 모종)의 표 — 가식 한 번 */
+/** 육묘 트레이 칸(씨앗 → 모종)의 표 — 가식 한 번 · 247차 모종 굳히기(옮겨 심기 전 한 주) */
 export const NURSERY_PLAN: CropCarePlan = {
   diseases: [],
   tasks: [{
@@ -493,6 +525,11 @@ export const NURSERY_PLAN: CropCarePlan = {
     effect: { quality: 0.05 }, missed: { yieldMult: 0.6, quality: 0.1 },
     howKo: '파종 2주쯤 본잎이 나오면 50구 트레이로 한 포기씩 옮겨 심는다. 낮 22~30℃ · 밤 15℃ 이상을 지킨다.',
     howEn: 'About two weeks after sowing, when true leaves show, move each seedling to a 50-cell tray. Keep 22–30℃ by day, above 15℃ at night.',
+  }, {
+    id: 'harden_off', dayWindow: [0, 0], growth: [0.85, 0.98], work: 'place', seconds: 6, fatigue: 2,
+    effect: { quality: 0.03 }, missed: { yieldMult: 0.85 },
+    howKo: '옮겨 심기 한 주 전부터 트레이를 낮에는 바깥 그늘에 내놓고 물을 조금 줄인다 — 실내에서만 큰 모종은 밭에 나가면 몸살로 몇 포기가 죽는다.',
+    howEn: 'From a week before planting out, set the tray outside in light shade by day and water a little less — seedlings raised only indoors sulk in the field, and some die.',
   }],
 };
 
@@ -840,6 +877,19 @@ export const CROP_CARE_PLANS: Readonly<Record<string, CropCarePlan>> = {
     birdNet({ growth: [0.75, 0.95], effect: { diseaseMult: { birds: 0.1 } }, how: ['수염이 마르기 시작하면 이삭을 망으로 감싼다 — 까치가 익은 알을 쪼아 먹는다.', 'When the silks start to dry, bag the ears in mesh — magpies peck out the ripe kernels.'] }),
   ] },
   gondre: { diseases: [], tasks: [thin([15, 25]), weed({ window: [10, 30] })] },
+  // ── 247차 — 깨(들깨 · 참깨) ──
+  deulkkae: { diseases: [], tasks: [
+    thin([10, 20], ['한 구멍에 두세 포기만 남기고 솎는다 — 배게 서면 웃자라 쓰러진다.', 'Thin to two or three plants a hole — crowded plants grow leggy and fall over.']),
+    pinchTip([30, 45], ['키가 30~40cm 되면 원줄기 끝을 순지른다 — 곁가지가 늘고 키가 낮아져 쓰러지지 않는다.',
+      'At 30–40cm, pinch out the leading tip — more side branches, a shorter plant, and it will not lodge.'], 0.9),
+    weed({ window: [15, 35] }),
+  ] },
+  chamkkae: { diseases: ['blight'], tasks: [
+    thin([10, 20], ['본잎 2~3장 때 솎아 한 구멍에 한두 포기만 둔다.', 'At two or three true leaves, thin to one or two plants a hole.']),
+    weed({ window: [15, 35] }),
+    pinchTip([60, 75], ['꽃이 위까지 피면 순 끝을 잘라 준다 — 아래 꼬투리가 고르게 여문다.', 'Once flowers reach the top, nip out the tip — the lower pods ripen evenly.'], 0.94),
+    fungicide, cullFor(['blight'], ['줄기 밑이 물러 쓰러진 포기는 뽑아 낸다 — 물이 고인 곳부터 번진다.', 'Pull plants that rot at the base and fall — it spreads from wherever water pools.']),
+  ] },
 };
 
 const planCache = new Map<string, CropCarePlan>();

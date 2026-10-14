@@ -17,7 +17,7 @@ describe('241차 — 새 작물 5종', () => {
       expect(c, id).toBeDefined();
       for (const st of c.starts) expect(cropDailyValue(c, st.kind), `${id}/${st.kind}`).toBeLessThanOrEqual(1000);
     }
-    expect(CROP_DATABASE.length).toBe(84);   // 242차 — 상추 품종 8 추가
+    expect(CROP_DATABASE.length).toBe(86);   // 242차 — 상추 품종 8 추가 · 247차 — 들깨 · 참깨
   });
   it('241차 곡선은 연평균 1.00(±0.02) — 옥수수(P_CORN · 철 밖 추정)는 235차 그대로 1.12', () => {
     for (const c of CROP_DATABASE.filter((x) => ['korean_melon', 'watermelon', 'blueberry', 'tomato', 'strawberry', 'stevia_tomato', 'pumpkin_sweet_potato', 'cheongyang'].includes(x.id))) {

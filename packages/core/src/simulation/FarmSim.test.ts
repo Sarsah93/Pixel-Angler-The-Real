@@ -6,8 +6,9 @@ import { describe, expect, it } from 'vitest';
 import {
   newFarmPlot, plantCell, advanceCell, harvestCell, interimHarvestCell, interimOpen, cellReady, canPlant, speedMultOf,
   producePrice, cropDailyValue, climateRainAt, kstMonthOf, waterCell, compostCell, gradeOf, FARM_TUNING,
-  cropTier, cropGate, cropGateBlock, CROP_CARE_KO,
+  cropTier, cropGate, cropGateBlock, CROP_CARE_KO, cellDays,
 } from './FarmSim.js';
+import { cultivationOf, waterBandOf } from '../db-schema/CropCultivationDatabase.js';
 import {
   CROP_DATABASE, CROP_DIFFICULTY, getCrop, produceItemId, parseProduceId, cropOfProduce, cropStartOfItem, FARM_SUPPLIES, supplyOfFacility,
 } from '../db-schema/CropDatabase.js';
@@ -38,13 +39,25 @@ function planted(cropId: string, kind: 'seed' | 'seedling' | 'set', atMs: number
   return plot;
 }
 
-/** 245차 — 날마다 물을 주며 굴린다(사흘에 하루 비). `managed`면 그날 할 일을 다 한다(작업 점수 1) */
+/** 247차 — 사흘에 하루 아침 세 시간 비(하루 내내 오는 비는 흙이 마를 틈이 없어 과습 탈이 난다) */
+const morningRain: FarmEnv = { rainAt: (ms) => { const h = Math.floor(((ms + 9 * 3_600_000) % DAY) / 3_600_000); return h >= 6 && h < 9; } };
+
+/**
+ * 245차 — 날마다 물을 주며 굴린다(사흘에 하루 비). `managed`면 그날 할 일을 다 한다(작업 점수 1)
+ * 247차 — 물은 작물에 알맞게: 흙이 알맞은 구간 아래로 마르면 그 작물의 한 번 양만큼 · 거두기 전 물 끊기 동안은 바짝 마를 때만 조금
+ */
 function grow(plot: FarmPlotState, from: number, to: number, managed: boolean): void {
   const cell = plot.cells[0];
   let d = 0;
   for (let t = from + DAY; t <= to; t += DAY, d++) {
-    waterCell(cell);
-    advanceCell(plot, 0, t, d % 3 === 0 ? alwaysRain : neverRain);
+    const c0 = cell.cropId ? getCrop(cell.cropId) : undefined;
+    if (c0) {
+      const left = cell.picks === 0 && cell.growth < 1 ? (1 - cell.growth) * cellDays(c0, cell) : undefined;
+      const { band, stopping } = waterBandOf(c0, left);
+      if (stopping) { if (cell.moisture < 0.25) waterCell(cell, 'light'); }
+      else if (cell.moisture < band[0] + 0.05) waterCell(cell, cultivationOf(c0).water.amount);
+    }
+    advanceCell(plot, 0, t, d % 3 === 0 ? morningRain : neverRain);
     const crop = cell.cropId ? getCrop(cell.cropId) : undefined;
     if (managed && crop) for (const s of careDue(cell, crop, t)) doCare(cell, crop, s.def.id, t, 1);
   }
@@ -381,7 +394,7 @@ describe('237차 — 작물 난이도 단계 · 기를 자격', () => {
     const ids = new Set(CROP_DATABASE.map((c) => c.id));
     for (const id of Object.keys(CROP_DIFFICULTY)) expect(ids.has(id), id).toBe(true);
     const n = [1, 2, 3, 4].map((t) => CROP_DATABASE.filter((c) => c.difficulty === t).length);
-    expect(n).toEqual([41, 28, 6, 9]);   // 241차 — 새 작물 5 · 개량종 3(쉬움 +1 · 보통 +5 · 까다로움 +2) · 242차 상추 품종 8(쉬움 +8)
+    expect(n).toEqual([42, 29, 6, 9]);   // 241차 — 새 작물 5 · 개량종 3(쉬움 +1 · 보통 +5 · 까다로움 +2) · 242차 상추 품종 8(쉬움 +8) · 247차 들깨(쉬움) · 참깨(보통)
   });
 
   it('단계 문턱 — 쉬움 1 · 보통 15 · 까다로움 25 + 유기농업기능사 · 아주 까다로움 40 + 유기농업기능사', () => {

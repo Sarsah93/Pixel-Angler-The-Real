@@ -141,6 +141,9 @@ export const CROP_NO_RAW: Readonly<Record<string, NoRawDef>> = {
   crop_taro: { whyKo: '생토란은 입과 목이 아리고 독성이 있다 — 반드시 익힌다', whyEn: 'Raw taro stings the mouth and throat and is toxic — always cook' },
   crop_barley: { whyKo: '낟알 — 삶아야 먹는다', whyEn: 'Grain — must be boiled' },
   crop_soybean: { whyKo: '생콩은 소화를 막는 성분이 있어 배탈이 난다 — 삶는다', whyEn: 'Raw soybeans block digestion and upset the stomach — boil them' },
+  // 247차 — 깨는 볶아야 고소하다(날깨는 비리고 껍질이 질기다)
+  crop_deulkkae: { whyKo: '날깨는 비리고 껍질이 질기다 — 볶거나 들기름으로 짠다', whyEn: 'Raw perilla seed tastes grassy and the hulls are tough — toast it or press it for oil' },
+  crop_chamkkae: { whyKo: '날깨는 비리다 — 볶아서 깨소금으로 쓰거나 참기름을 짠다', whyEn: 'Raw sesame tastes flat and grassy — toast it for seasoning or press it for oil' },
   crop_gondre: { whyKo: '데쳐서 나물 · 밥에 넣는다', whyEn: 'Blanched as greens or cooked with rice' },
   crop_gourd: { whyKo: '생박은 쓰고 설사를 부른다 — 익힌다', whyEn: 'Raw gourd is bitter and brings on diarrhoea — cook it' },
   crop_chopi: { whyKo: '양념이다 — 그대로 먹으면 입이 얼얼하다', whyEn: 'A spice — eaten as is it numbs the mouth' },

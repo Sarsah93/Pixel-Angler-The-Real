@@ -20,12 +20,15 @@
 
 import type {
   CropCare, CropDef, CropDifficulty, CropGrade, CropStart, CropStartKind, FarmCellState, FarmEnv, FarmHarvestResult,
-  FarmPlantCtx, FarmPlotState, FarmSite,
+  FarmPlantCtx, FarmPlotState, FarmSite, FieldProcessStage, WaterAmount,
 } from '../types/Farming.js';
 import { getCrop, cropOfProduce, parseProduceId } from '../db-schema/CropDatabase.js';
 import { produceMarketRatio } from '../rules/ProduceMarket.js';
 import { carePlanOf } from '../db-schema/CropCareDatabase.js';
 import { CARE_TUNING, dailyCare, diseaseYieldMult, establishHour, frostBlockKo, ripeStageOf, resetCareCycle } from './CropCareSim.js';
+import {
+  CULTIVATION_TUNING, RARE_ARRIVAL_EVERY, WILD_TUNING, cultivationOf, offTimingOf, pickWildSprout, waterBandOf, wateredMoisture,
+} from '../db-schema/CropCultivationDatabase.js';
 
 /** 텃밭 한 구획 = 4×3칸(설치물 `farm_plot` footprint와 같다) */
 export const FARM_COLS = 4;
@@ -212,7 +215,8 @@ export function newFarmCell(nowMs = 0): FarmCellState {
 
 export function newFarmPlot(site: FarmSite, nowMs = 0): FarmPlotState {
   const n = site === 'indoor' ? INDOOR_SLOTS : FARM_CELLS;
-  return { site, cells: Array.from({ length: n }, () => ({ ...newFarmCell(nowMs), tilled: site === 'indoor' })), facilities: [] };
+  // 247차 — 구획마다 다른 난수 씨(저절로 나는 싹)
+  return { site, cells: Array.from({ length: n }, () => ({ ...newFarmCell(nowMs), tilled: site === 'indoor' })), facilities: [], salt: Math.floor(nowMs / 1000) >>> 0 };
 }
 
 export function startOf(crop: CropDef, kind: CropStartKind | undefined, itemId?: string): CropStart | undefined {
@@ -274,6 +278,74 @@ export function cellDays(crop: CropDef, cell: FarmCellState): number {
 // 시간 흐름
 // ─────────────────────────────────────────────
 
+/** 247차 — 첫 수확까지 남은 날(적온 기준 · 물 끊기 판정용). 이미 거둔 적이 있거나 다 자랐으면 undefined */
+function daysToFirstHarvest(cell: FarmCellState, crop: CropDef): number | undefined {
+  if (cell.picks > 0 || cell.growth >= 1 - 1e-6) return undefined;
+  return (1 - cell.growth) * cellDays(crop, cell);
+}
+
+/**
+ * 247차 — 알맞은 흙 수분: 구간 아래(0.25 이상)면 더디게(×0.85), 구간 위로 오래(36시간 넘게) 젖어 있으면 작물마다 탈 —
+ * 썩음(섬 · 품질) · 열과(익을 무렵 품질) · 맛 묽어짐(익을 무렵 품질) · 웃자람(품질). 물 끊기 기간에는 구간 위가 낮아진다.
+ * 돌려주는 값 = 이번 시간의 물 배율.
+ */
+function soggyHour(cell: FarmCellState, crop: CropDef, water: number, month: number): number {
+  const cv = cultivationOf(crop);
+  const { band } = waterBandOf(crop, daysToFirstHarvest(cell, crop));
+  const T = CULTIVATION_TUNING;
+  if (cell.moisture > band[1]) cell.soggyH = (cell.soggyH ?? 0) + 1;
+  else if ((cell.soggyH ?? 0) > 0) cell.soggyH = Math.max(0, (cell.soggyH ?? 0) - T.soggyDryRate);
+  // 서늘한 달은 흙이 늦게 마르고 뿌리도 숨을 덜 쉰다 — 견디는 시간이 길다(한여름 36시간 · 최대 3배)
+  const grace = T.soggyGraceH * Math.min(3, Math.max(1, T.soggyRefEvap / EVAP[month - 1]));
+  if ((cell.soggyH ?? 0) > grace) {
+    const fruiting = cell.picks > 0 || cell.growth >= 0.8;
+    switch (cv.water.over) {
+      case 'rot':
+        cell.stand = Math.max(Math.min(cell.stand, T.harm.rot.standFloor), cell.stand - T.harm.rot.stand);
+        cell.quality = Math.max(FARM_TUNING.qualityFloor, cell.quality - T.harm.rot.quality);
+        break;
+      case 'crack':
+        if (fruiting) cell.quality = Math.max(FARM_TUNING.qualityFloor, cell.quality - T.harm.crack.quality);
+        break;
+      case 'bland':
+        if (fruiting) cell.quality = Math.max(FARM_TUNING.qualityFloor, cell.quality - T.harm.bland.quality);
+        break;
+      case 'leggy':
+        cell.quality = Math.max(FARM_TUNING.qualityFloor, cell.quality - T.harm.leggy.quality);
+        break;
+      default: break;
+    }
+  }
+  return water === 1 && cell.moisture < band[0] ? T.belowBandGrowth : water;
+}
+
+/** 247차 — 씨가 여물어 흙에 떨어졌다(떨어진 씨로 이듬해 저절로 나는 작물) — 텃밭의 씨앗 은행에 적는다 */
+function dropSeeds(plot: FarmPlotState, crop: CropDef): void {
+  if (!cultivationOf(crop).selfSeeds || plot.site !== 'plot') return;
+  plot.seedBank ??= [];
+  if (plot.seedBank.includes(crop.id)) return;
+  plot.seedBank.push(crop.id);
+  while (plot.seedBank.length > WILD_TUNING.seedBankMax) plot.seedBank.shift();
+}
+
+/** 247차 — 밭에서 말리기 한 시간: 비가 오면 세지 않고 품질이 준다 · 다 마르면 그 시각을 적는다 · 너무 오래 두면 깨 · 콩이 쏟아진다 */
+function processHour(cell: FarmCellState, crop: CropDef, plot: FarmPlotState, ms: number, rain: boolean): void {
+  const pr = cell.process;
+  const def = cultivationOf(crop).process;
+  if (!pr || !def) return;
+  if (pr.dryAt) {
+    if (def.shatterDays !== undefined && ms - pr.dryAt > def.shatterDays * 86_400_000) dropSeeds(plot, crop);
+    return;
+  }
+  if (rain) {
+    pr.rainH += 1;
+    cell.quality = Math.max(FARM_TUNING.qualityFloor, cell.quality - CULTIVATION_TUNING.dryRainLoss);
+    return;
+  }
+  pr.dryH += 1;
+  if (pr.dryH >= def.dryDays * 24) pr.dryAt = ms;
+}
+
 function stepHour(cell: FarmCellState, crop: CropDef, plot: FarmPlotState, ms: number, env: FarmEnv, cellIdx: number): void {
   const month = kstMonthOf(ms);
   const indoor = plot.site === 'indoor';
@@ -292,11 +364,13 @@ function stepHour(cell: FarmCellState, crop: CropDef, plot: FarmPlotState, ms: n
       if (!indoor && plot.facilities.includes('rainBarrel')) cell.moisture = Math.max(cell.moisture, FARM_TUNING.rainBarrelFloor);
     }
   }
+  if (!rain && (cell.wetH ?? 0) > 0) cell.wetH = Math.max(0, (cell.wetH ?? 0) - 1);
+  // 247차 — 베어(캐어) 밭에 말리는 칸: 자라지도 병들지도 않는다. 비 오는 시간은 세지 않고 품질이 조금 준다
+  if (cell.process) { processHour(cell, crop, plot, ms, rain); return; }
   // 238차 — 첫서리를 맞은 작물은 더 자라지 않는다. 사흘 안에 거두지 않으면 끝(칸이 빈다)
   if (cell.frostedAt) {
     if (ms - cell.frostedAt > CARE_TUNING.frostGraceH * H) { clearCell(cell); return; }
   }
-  if (!rain && (cell.wetH ?? 0) > 0) cell.wetH = Math.max(0, (cell.wetH ?? 0) - 1);
   const season = lightOff || cell.frostedAt ? 0 : seasonFactor(crop, month, plot);
   // 2) 다 거두고 쉬는 여러해살이 — 철이 끝나면(겨울) 뿌리가 자리 잡고 다음 철에 다시 올라온다
   if (cell.resting) {
@@ -310,11 +384,13 @@ function stepHour(cell: FarmCellState, crop: CropDef, plot: FarmPlotState, ms: n
   // 245차 — 다시 올라오기를 기다리던 여러해살이: 철이 와 자라기 시작한 때가 올해 일의 기준
   if (cell.cycleAt === 0 && season > 0) cell.cycleAt = ms;
   // 3) 물
-  const water = cell.moisture >= 0.25 ? 1 : cell.moisture >= 0.1 ? 0.55 : 0;
+  let water = cell.moisture >= 0.25 ? 1 : cell.moisture >= 0.1 ? 0.55 : 0;
   if (water === 0 && season > 0) {
     cell.dryH += 1;
     cell.quality = Math.max(FARM_TUNING.qualityFloor, cell.quality - FARM_TUNING.dryLoss);
   }
+  // 247차 — 작물마다 알맞은 흙 수분(조금 마르면 더디고 · 오래 젖어 있으면 탈) — 육묘 · 수경 · 시루는 따로 본다
+  if (!cell.nursery && !hydro && season > 0) water = soggyHour(cell, crop, water, month);
   // 238차 — 활착기(모종 심은 뒤 2주)에 마르면 뿌리를 못 내려 섬이 준다
   establishHour(cell, crop, ms, water, season);
   // 4) 노지 겨울 추위 — 겨울나기 · 여러해살이가 아니면 철 밖 서리 달에 조금씩 상한다(죽지는 않는다)
@@ -328,8 +404,12 @@ function stepHour(cell: FarmCellState, crop: CropDef, plot: FarmPlotState, ms: n
     else cell.regrow = Math.min(1, cell.regrow + (season * water * mult) / ((crop.harvest.repeat?.everyDays ?? 7) * 24));
   } else {
     cell.ripeH += 1;
-    const hold = (crop.harvest.holdDays + (crop.harvest.ripenTo?.afterDays ?? 0)) * 24;
+    // 247차 — 철 밖에 심어 꽃대가 일찍 선 것은 빨리 쇤다
+    const bolt = cell.offTiming === 'bolt' ? CULTIVATION_TUNING.boltHoldMult : 1;
+    const hold = (crop.harvest.holdDays * bolt + (crop.harvest.ripenTo?.afterDays ?? 0)) * 24;
     if (cell.ripeH > hold) cell.quality = Math.max(FARM_TUNING.overripeFloor, cell.quality - FARM_TUNING.overripeLoss);
+    // 247차 — 거두지 않고 두면 꽃이 피어 씨가 떨어진다(비름 · 차조기 · 방아 · 딜 · 깨 …)
+    if (cell.ripeH > hold + 24 * 7) dropSeeds(plot, crop);
   }
   // 7) 238차 — 관리 작업 · 병해 · 쓰러짐 · 첫서리(하루 한 번 · KST 자정 시간) — 표가 있는 작물 · 육묘 칸
   const midnight = Math.floor(((ms + KST) % 86_400_000) / H) === 0;
@@ -346,12 +426,60 @@ function stepHour(cell: FarmCellState, crop: CropDef, plot: FarmPlotState, ms: n
 }
 
 /**
+ * 247차 — 묵힌 칸에 저절로 나는 싹(사용자 「우연히 자라게 하거나 — 실제처럼」). 일군 채 2주 넘게 비어 있는 노지 칸에서
+ * 날마다(KST 자정) 굴린다 — 그늘(차광막) 아래면 산나물이 잘 트고, 그 밖은 새가 떨군 씨 · 바람에 날린 씨 · 여름 비름.
+ * 한 구획에 저절로 난 싹은 한 번에 하나만(드물게). 났으면 칸을 심은 상태로 만들고 `lastMs`를 그 시각으로 둔다.
+ */
+function rollWildSprout(plot: FarmPlotState, idx: number, toMs: number): boolean {
+  const cell = plot.cells[idx];
+  if (!cell || cell.cropId || !cell.tilled || plot.site !== 'plot') return false;
+  if (cell.fallowSince === undefined) { cell.fallowSince = cell.lastMs > 0 ? cell.lastMs : toMs; return false; }
+  if (plot.cells.some((c) => c.wild && c.cropId)) return false;
+  const shade = plot.facilities.includes('shade');
+  const from = Math.max(kstDayIndex(Math.max(cell.lastMs, cell.fallowSince)) + 1, kstDayIndex(cell.fallowSince) + WILD_TUNING.fallowDays);
+  const to = kstDayIndex(toMs);
+  const salt = ((plot.salt ?? 0) ^ Math.imul(idx + 1, 0x2545f491)) >>> 0;
+  // 흙에 떨어진 씨 — 그 작물이 씨로 심기는 달에 올라온다
+  const bank = (plot.seedBank ?? []).flatMap((id) => {
+    const c = getCrop(id);
+    const st = c?.starts.find((x) => x.kind === 'seed') ?? c?.starts[0];
+    return c && st ? [{ cropId: id, shade: false, months: st.months, weight: WILD_TUNING.seedBankWeight }] : [];
+  });
+  for (let d = Math.max(from, to - 400); d <= to; d++) {
+    const dayMs = d * 86_400_000 - KST;
+    const month = kstMonthOf(dayMs + 12 * H);
+    const banked = bank.some((b) => b.months.includes(month));
+    const p = Math.max(shade ? WILD_TUNING.dailyShade : WILD_TUNING.dailyOpen, banked ? WILD_TUNING.dailySeedBank : 0);
+    if (u01(hash32(d, salt ^ 0x77e1)) >= p) continue;
+    const def = pickWildSprout(month, shade, u01(hash32(d, salt ^ 0x1b873593)), bank);
+    const crop = def ? getCrop(def.cropId) : undefined;
+    const st = crop?.starts[0];
+    if (!crop || !st) continue;
+    const at = Math.min(toMs, dayMs + 6 * H);
+    plantCell(cell, crop, st, at, () => 0.5, { hasSkill: () => true });
+    cell.stand = WILD_TUNING.stand;
+    cell.quality = WILD_TUNING.quality;
+    cell.wild = true;
+    cell.lastMs = at;
+    return true;
+  }
+  return false;
+}
+
+/** 247차 — 저절로 난 싹이 아직 이름을 모르는 때인가(자람 25% 전) */
+export function wildUnknown(cell: Pick<FarmCellState, 'wild' | 'growth' | 'picks' | 'cropId'>): boolean {
+  return !!cell.wild && !!cell.cropId && cell.picks === 0 && cell.growth < WILD_TUNING.revealGrowth;
+}
+
+/**
  * 칸 하나를 `toMs`까지 굴린다. 시간 단위로만 진행하고 남은 조각은 다음 호출로 넘긴다(시간을 잃지 않는다).
  * 빈 칸은 시각만 맞춘다.
  */
 export function advanceCell(plot: FarmPlotState, idx: number, toMs: number, env: FarmEnv): void {
   const cell = plot.cells[idx];
   if (!cell) return;
+  // 247차 — 빈 칸: 오래 묵히면 저절로 싹이 난다(났으면 그 시각부터 이어서 굴린다)
+  if (!cell.cropId && !rollWildSprout(plot, idx, toMs)) { cell.lastMs = Math.max(cell.lastMs, toMs); return; }
   const crop = cell.cropId ? getCrop(cell.cropId) : undefined;
   if (!crop) { cell.lastMs = Math.max(cell.lastMs, toMs); return; }
   if (cell.lastMs <= 0 || cell.lastMs > toMs) cell.lastMs = Math.min(toMs, cell.lastMs > 0 ? cell.lastMs : toMs);
@@ -378,6 +506,7 @@ export function advancePlot(plot: FarmPlotState, toMs: number, env: FarmEnv): vo
 export function tillCell(cell: FarmCellState): boolean {
   if (cell.tilled || cell.cropId) return false;
   cell.tilled = true;
+  cell.fallowSince = undefined;   // 247차 — 묵힌 날은 일군 뒤부터 센다
   return true;
 }
 
@@ -388,9 +517,10 @@ export function compostCell(cell: FarmCellState): boolean {
   return true;
 }
 
-export function waterCell(cell: FarmCellState): boolean {
+export function waterCell(cell: FarmCellState, amount: WaterAmount = 'deep'): boolean {
   if (!cell.tilled) return false;
-  cell.moisture = 1;
+  // 247차 — 조금 · 보통 · 흠뻑(기본 = 흠뻑 — 235차 그대로). 작물마다 알맞은 양이 다르다(`CropCultivation.water`)
+  cell.moisture = wateredMoisture(cell.moisture, amount);
   return true;
 }
 
@@ -445,7 +575,10 @@ export function canPlant(crop: CropDef, start: CropStart, plot: FarmPlotState, c
 }
 
 /** 심는다 — 섬(발아 · 활착)을 정하고 칸을 초기화한다 */
-export function plantCell(cell: FarmCellState, crop: CropDef, start: CropStart, nowMs: number, rand01: () => number, ctx: FarmPlantCtx): void {
+export function plantCell(
+  cell: FarmCellState, crop: CropDef, start: CropStart, nowMs: number, rand01: () => number, ctx: FarmPlantCtx,
+  opts: { greenhouse?: boolean; trowel?: boolean } = {},
+): void {
   let stand: number;
   if (start.kind === 'seed') {
     const g = Math.min(0.98, start.establish * (1 + (ctx.sproutBonus ?? 0)));
@@ -473,6 +606,15 @@ export function plantCell(cell: FarmCellState, crop: CropDef, start: CropStart, 
   cell.lodged = false; cell.frostedAt = undefined; cell.careYield = 1; cell.establishDryH = 0; cell.wetH = 0;
   cell.nursery = !!start.nursery;
   cell.cycleAt = undefined;
+  // 247차 — 재배 요소: 철(알맞은 달 밖 — 냉해 · 더위는 섬이 준다) · 밑거름(퇴비 칸) · 모종삽 · 저절로 난 싹 표시
+  cell.soggyH = 0; cell.process = undefined; cell.wild = false; cell.dividedYear = undefined; cell.fallowSince = undefined;
+  cell.fedAtPlant = !!cell.compost;
+  const off = start.nursery ? null : offTimingOf(crop, kstMonthOf(nowMs), start.months);
+  cell.offTiming = off === 'cold' && opts.greenhouse ? undefined : off ?? undefined;
+  const T = CULTIVATION_TUNING;
+  if (cell.offTiming === 'cold') cell.stand = Math.max(0.2, cell.stand - T.coldStand);
+  if (cell.offTiming === 'heat') { cell.stand = Math.max(0.2, cell.stand - T.heatStand); cell.quality = Math.max(FARM_TUNING.qualityFloor, cell.quality - T.heatQuality); }
+  if (opts.trowel && start.kind === 'seedling') cell.stand = Math.min(1, cell.stand + T.toolQuality);
 }
 
 /** 걷어 낸다(작물만 — 갈아 둔 땅은 남는다) */
@@ -485,29 +627,60 @@ export function clearCell(cell: FarmCellState): void {
   cell.stand = 0;
   cell.care = undefined; cell.diseases = undefined; cell.protect = undefined; cell.lodged = false; cell.frostedAt = undefined;
   cell.careYield = undefined; cell.nursery = false; cell.establishDryH = 0; cell.wetH = 0; cell.cycleAt = undefined;
+  // 247차 — 재배 요소(묵힌 날은 다음 굴림에서 지금부터 센다)
+  cell.soggyH = 0; cell.offTiming = undefined; cell.process = undefined; cell.wild = false; cell.dividedYear = undefined;
+  cell.fedAtPlant = undefined; cell.fallowSince = undefined; cell.trayLeft = undefined;
 }
 
-export interface HarvestSkills { yieldBonus?: number; seedSaver?: number }
+export interface HarvestSkills {
+  yieldBonus?: number;
+  seedSaver?: number;
+  /** 247차 — 도구(수확 가위 · 쇠스랑 · 낫) · 아침 수확 · 키질로 오르내리는 품질(호출 쪽이 정한다) */
+  qualityBonus?: number;
+  /** 247차 — 그 밖의 수량 배수(밭 손질 — 꼬투리 터짐) */
+  yieldMult?: number;
+}
+
+/**
+ * 247차 — 육묘 트레이에서 모종을 꺼낸다(사용자 「트레이에서 걷어내기 → 옮기는 개체만 별도의 아이템으로」).
+ * 처음 꺼낼 때 트레이의 모종 수를 정하고(`trayLeft`), 꺼낸 만큼만 모종 아이템이 된다 — 남은 것은 트레이에 그대로 있다.
+ * 다 꺼내면 칸이 빈다. `n`이 없으면 다 꺼낸다.
+ */
+export function pullSeedlings(cell: FarmCellState, rand01: () => number, n = Infinity): FarmHarvestResult | null {
+  const crop = cell.cropId ? getCrop(cell.cropId) : undefined;
+  if (!crop || !cellReady(cell) || !cell.nursery) return null;
+  const st = startOf(crop, cell.start);
+  if (!st?.nursery) return null;
+  if (cell.trayLeft === undefined) {
+    const [a, b] = st.nursery.seedlings;
+    cell.trayLeft = Math.max(1, Math.round((a + (b - a) * rand01()) * cell.stand * (cell.careYield ?? 1)));
+  }
+  const qty = Math.max(0, Math.min(cell.trayLeft, Math.floor(n)));
+  if (qty <= 0) return null;
+  const quality = cell.quality;
+  cell.trayLeft -= qty;
+  const more = cell.trayLeft > 0;
+  if (!more) clearCell(cell);
+  return { itemId: st.nursery.seedlingItemId, qty, grade: gradeOf(quality), quality, more, seedling: true };
+}
 
 /** 거둔다 — 반복 수확이면 다시 자라고, 여러해살이는 쉬고, 나머지는 칸이 빈다 */
 export function harvestCell(cell: FarmCellState, rand01: () => number, skills: HarvestSkills = {}): FarmHarvestResult | null {
   const crop = cell.cropId ? getCrop(cell.cropId) : undefined;
   if (!crop || !cellReady(cell)) return null;
   const st = startOf(crop, cell.start);
-  // 238차 — 육묘 트레이 칸: 다 자라면 모종을 준다(가식을 거르면 줄어든다 — careYield)
-  if (cell.nursery && st?.nursery) {
-    const [a, b] = st.nursery.seedlings;
-    const qty = Math.max(1, Math.round((a + (b - a) * rand01()) * cell.stand * (cell.careYield ?? 1)));
-    const quality = cell.quality;
-    clearCell(cell);
-    return { itemId: st.nursery.seedlingItemId, qty, grade: gradeOf(quality), quality, more: false, seedling: true };
-  }
+  // 238차 — 육묘 트레이 칸: 다 자라면 모종을 준다(가식을 거르면 줄어든다 — careYield) · 247차 남은 것을 다 꺼낸다
+  if (cell.nursery && st?.nursery) return pullSeedlings(cell, rand01);
   const [lo, hi] = crop.harvest.qtyPerCell;
   const careMult = cell.careYield ?? 1;
   const diseaseMult = diseaseYieldMult(cell);
   const stage = ripeStageOf(cell, crop);
+  // 247차 — 거름(퇴비 칸에 심었으면 적게 먹는 작물 −8% · 많이 먹는 작물 +8%) · 알맞은 철 밖(−15%) · 밭 손질(꼬투리 터짐)
+  const cv = cultivationOf(crop);
+  const feedMult = cell.fedAtPlant ? CULTIVATION_TUNING.feedYield[cv.feed] : 1;
+  const timingMult = cell.offTiming ? CULTIVATION_TUNING.offTimingYield : 1;
   const raw = (lo + (hi - lo) * rand01()) * cell.stand * (1 + (skills.yieldBonus ?? 0)) * (st?.qtyMult ?? 1)
-    * (cell.interimDone ? (crop.interim?.mainYieldMult ?? 1) : 1) * careMult * diseaseMult;
+    * (cell.interimDone ? (crop.interim?.mainYieldMult ?? 1) : 1) * careMult * diseaseMult * feedMult * timingMult * (skills.yieldMult ?? 1);
   const base = Math.max(1, Math.round(raw));
   // 236차 — 덤: 0~bonusSteps단계(10%씩)를 고르게. 한 팩짜리의 10~30%는 반올림하면 사라지므로
   //   남는 몫은 그 확률로 한 개 더 준다 — 기대값이 정확히 「수량 × 덤%」가 된다
@@ -523,12 +696,17 @@ export function harvestCell(cell: FarmCellState, rand01: () => number, skills: H
   const ripened = stage === 'red' || stage === 'turning';
   const turning = stage === 'turning';
   const itemId = ripened ? crop.harvest.ripenTo!.itemId : crop.harvest.itemId;
-  const quality = Math.max(FARM_TUNING.qualityFloor, cell.quality - (turning ? CARE_TUNING.turningQuality : 0));
+  const quality = Math.min(1, Math.max(FARM_TUNING.qualityFloor, cell.quality - (turning ? CARE_TUNING.turningQuality : 0) + (skills.qualityBonus ?? 0)));
   const grade = gradeOf(quality);
   const frosted = !!cell.frostedAt;
   const seedStart = crop.starts.find((s) => s.kind === 'seed' && s.cost > 0);
   const seedBack = seedStart && (skills.seedSaver ?? 0) > 0 && rand01() < (skills.seedSaver ?? 0)
     ? { itemId: seedStart.itemId, qty: 1 } : undefined;
+  // 247차 — 곁눈(고추냉이): 거둘 때 뿌리줄기 옆에 붙은 어린 포기를 떼어 다시 심는다
+  const prop = cv.propagate;
+  const offsetStart = prop?.by === 'offset' ? crop.starts.find((s) => s.kind !== 'seed') ?? crop.starts[0] : undefined;
+  const offsets = offsetStart && prop
+    ? { itemId: offsetStart.itemId, qty: prop.qty[0] + Math.floor(rand01() * (prop.qty[1] - prop.qty[0] + 1)) } : undefined;
   const rep = crop.harvest.repeat;
   cell.picks += 1;
   let more = false;
@@ -544,7 +722,96 @@ export function harvestCell(cell: FarmCellState, rand01: () => number, skills: H
   return {
     itemId, qty, grade, quality, ...(seedBack ? { seedBack } : {}), more, ...(bonusQty > 0 ? { bonusQty, bonusPct } : {}),
     careMult, diseaseMult, ...(turning ? { turning } : {}), ...(frosted ? { frosted } : {}),
+    ...(offsets && offsets.qty > 0 ? { offsets } : {}),
   };
+}
+
+// ─────────────────────────────────────────────
+// 247차 — 거둔 뒤 밭 손질(베기 → 말리기 → 털기 · 키질)
+// ─────────────────────────────────────────────
+
+const DAY_MS = 86_400_000;
+
+/** 밭 손질 단계 — 베기 전이면 null */
+export function processStageOf(cell: Pick<FarmCellState, 'process'>): FieldProcessStage | null {
+  if (!cell.process) return null;
+  return cell.process.dryAt ? 'dry' : 'drying';
+}
+
+/** 다 마르기까지 남은 시간(h — 비 오는 시간은 세지 않는다). 다 말랐거나 손질 중이 아니면 0 */
+export function processHoursLeft(cell: FarmCellState): number {
+  const crop = cell.cropId ? getCrop(cell.cropId) : undefined;
+  const def = crop ? cultivationOf(crop).process : undefined;
+  if (!def || !cell.process || cell.process.dryAt) return 0;
+  return Math.max(0, def.dryDays * 24 - cell.process.dryH);
+}
+
+/** 첫 손(베기 · 캐기 · 뽑기) — 다 익은 칸만 · 밭 손질이 있는 작물만. 칸은 그대로 두고 말리기가 시작된다 */
+export function startFieldProcess(cell: FarmCellState, nowMs: number): boolean {
+  const crop = cell.cropId ? getCrop(cell.cropId) : undefined;
+  if (!crop || !cellReady(cell) || cell.process || cell.nursery) return false;
+  if (!cultivationOf(crop).process) return false;
+  cell.process = { cutAt: nowMs, dryH: 0, rainH: 0 };
+  return true;
+}
+
+/**
+ * 마지막 손(털기 · 꼬투리 따기 · 묶어 거두기) — 다 마른 칸만. 수량 · 등급은 거두기와 같은 식에
+ * 꼬투리 터짐(다 마른 뒤 `shatterDays`가 지나면 하루 2% · 바닥 60%)과 키질(± 품질)을 더한다. 칸이 빈다.
+ */
+export function finishFieldProcess(
+  cell: FarmCellState, rand01: () => number, skills: HarvestSkills, opts: { winnowed: boolean }, nowMs: number,
+): FarmHarvestResult | null {
+  const crop = cell.cropId ? getCrop(cell.cropId) : undefined;
+  const def = crop ? cultivationOf(crop).process : undefined;
+  if (!crop || !def || !cell.process?.dryAt) return null;
+  const T = CULTIVATION_TUNING;
+  const over = def.shatterDays !== undefined ? Math.max(0, (nowMs - cell.process.dryAt) / DAY_MS - def.shatterDays) : 0;
+  const shatter = over > 0 ? Math.max(T.shatterFloor, 1 - T.shatterDaily * over) : 1;
+  const winnowQ = def.winnow ? (opts.winnowed ? T.winnowQuality : -T.winnowQuality) : 0;
+  const rainLoss = cell.process.rainH * T.dryRainLoss;
+  const r = harvestCell(cell, rand01, { ...skills, yieldMult: (skills.yieldMult ?? 1) * shatter, qualityBonus: (skills.qualityBonus ?? 0) + winnowQ });
+  if (r) r.processNote = { ...(def.winnow ? { winnowed: opts.winnowed } : {}), rainLoss, shatterLoss: 1 - shatter };
+  return r;
+}
+
+// ─────────────────────────────────────────────
+// 247차 — 포기 나누기 · 뿌리 꺾꽂이(아주 까다로운 산채를 늘리는 법)
+// ─────────────────────────────────────────────
+
+const kstYearOf = (ms: number): number => new Date(ms + KST).getUTCFullYear();
+
+/** 지금 이 칸을 나눌 수 없는 까닭(되면 null) */
+export function divideBlockKo(cell: FarmCellState, crop: CropDef, nowMs: number): string | null {
+  const p = cultivationOf(crop).propagate;
+  if (!p || p.by === 'offset') return '나누어 늘리는 작물이 아니다';
+  if (cell.process || cell.nursery) return '지금은 나눌 수 없다';
+  if (!cell.established) return '한 해를 넘겨 뿌리가 자리 잡은 포기라야 나눈다';
+  if (!p.months.includes(kstMonthOf(nowMs))) return `${monthRangeKo(p.months)}에 나눈다`;
+  if (cell.dividedYear === kstYearOf(nowMs)) return '올해는 이미 나눴다 — 포기가 힘을 되찾게 둔다';
+  return null;
+}
+
+/** 나눈다 — 심는 물건(모종 · 종구)을 돌려준다. 포기는 조금 성겨진다(섬 −0.15 · 바닥 0.5) */
+export function divideCell(cell: FarmCellState, crop: CropDef, nowMs: number, rand01: () => number): { itemId: string; qty: number } | null {
+  if (divideBlockKo(cell, crop, nowMs)) return null;
+  const p = cultivationOf(crop).propagate!;
+  const st = crop.starts.find((s) => s.kind !== 'seed') ?? crop.starts[0];
+  if (!st) return null;
+  const qty = p.qty[0] + Math.floor(rand01() * (p.qty[1] - p.qty[0] + 1));
+  cell.stand = Math.max(Math.min(cell.stand, 0.5), cell.stand - 0.15);
+  cell.dividedYear = kstYearOf(nowMs);
+  return { itemId: st.itemId, qty };
+}
+
+/**
+ * 247차 — 아주 까다로운 작물의 모종 · 종근은 종묘사에 늘 있지 않다(사용자 「일반 묘종사에서 구하기 힘들거나」).
+ * 산채 농원에서 열흘에 한 번꼴 들어온다 — 작물마다 다른 날(결정적). 들어오는 날까지 남은 날(오늘이면 0).
+ */
+export function rareArrivalInDays(itemId: string, nowMs: number): number {
+  const d = kstDayIndex(nowMs);
+  const off = hashStr(itemId) % RARE_ARRIVAL_EVERY;
+  return (RARE_ARRIVAL_EVERY - ((d + off) % RARE_ARRIVAL_EVERY)) % RARE_ARRIVAL_EVERY;
 }
 
 /** 238차 — 지금 거두면 나오는 아이템 id(등급 꼬리 없이) · 모종인가 — 가방 자리 확인용 */
@@ -570,12 +837,13 @@ export function interimHarvestCell(cell: FarmCellState, rand01: () => number, sk
 // 그림 단계 · 남은 기간
 // ─────────────────────────────────────────────
 
-export type FarmCellStage = 'untilled' | 'tilled' | 'seeded' | 'young' | 'growing' | 'ready' | 'resting';
+export type FarmCellStage = 'untilled' | 'tilled' | 'seeded' | 'young' | 'growing' | 'ready' | 'resting' | 'drying' | 'dried';
 
 export function cellStage(cell: FarmCellState): FarmCellStage {
   if (!cell.tilled) return 'untilled';
   if (!cell.cropId) return 'tilled';
   if (cell.resting) return 'resting';
+  if (cell.process) return cell.process.dryAt ? 'dried' : 'drying';   // 247차 — 베어(캐어) 말리는 칸
   if (cellReady(cell)) return 'ready';
   const g = cell.picks > 0 ? 0.7 + 0.3 * cell.regrow : cell.growth;
   return g < 0.15 ? 'seeded' : g < 0.5 ? 'young' : 'growing';

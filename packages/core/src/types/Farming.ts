@@ -273,7 +273,14 @@ export type CareTaskId =
   | 'slit_bag'           // 배지 칼집 내기(버섯)
   | 'water_flood'        // 물 대기(미나리 · 토란)
   | 'pick_pests'         // 벌레 잡기(애벌레 · 진딧물 · 노린재 — 들었을 때만)
-  | 'strip_leaves';      // 아랫잎 따기(오크라)
+  | 'strip_leaves'       // 아랫잎 따기(오크라)
+  // ── 247차 ──
+  | 'harden_off'         // 모종 굳히기(순화 — 옮겨 심기 전 한 주 바깥 바람 · 볕에 길들인다)
+  // ── 247차 — 거둔 뒤 밭 손질의 작업 장면(관리 표에는 없다 — 텃밭 창 · 필드가 말린 칸에서 연다) ──
+  | 'thresh'             // 털기(깨 · 콩 · 보리 — 마른 단을 내리쳐 알을 떨군다)
+  | 'pick_pods'          // 꼬투리 따기(땅콩 — 뒤집어 말린 포기에서)
+  | 'gather_bundle'      // 묶어 거두기(마늘 · 양파 — 말린 것을 주워 단으로)
+  | 'winnow';            // 키질(턴 알곡을 까불러 검불을 날린다)
 
 /** 작업 장면 모양 — 클라이언트 미니게임이 이 값으로 그림 · 조작을 고른다 */
 export type CareWorkKind =
@@ -333,6 +340,101 @@ export interface CareTaskDef {
   howKo: string;
   howEn: string;
 }
+
+// ─────────────────────────────────────────────
+// 247차 — 재배 요소(사용자 「심기부터 재배까지 고려되는 모든 환경 · 요소 — 시기 · 노동 피로 · 도구 · 행위의 정도」)
+// ─────────────────────────────────────────────
+
+/** 247차 — 물 주는 양(조금 · 보통 · 흠뻑) */
+export type WaterAmount = 'light' | 'normal' | 'deep';
+
+/**
+ * 247차 — 흙이 알맞은 수분보다 오래 젖어 있을 때 생기는 탈.
+ * rot = 뿌리 · 덩이가 썩는다(섬 · 품질) · crack = 열매가 갈라진다(열과 — 익을 무렵) ·
+ * bland = 맛이 묽어진다(수박 · 참외 · 토마토 — 익을 무렵) · leggy = 웃자라 연약해진다 · none = 물을 좋아한다(미나리 · 토란)
+ */
+export type OverwaterHarm = 'rot' | 'crack' | 'bland' | 'leggy' | 'none';
+
+/** 247차 — 거두는 손 — 맨손으로 따기 · 가위로 꼭지 자르기 · 낫으로 베기 · 호미 · 쇠스랑으로 캐기 · 뽑기 */
+export type HarvestBy = 'pick' | 'snip' | 'cut' | 'dig' | 'pull';
+
+/**
+ * 247차 — 거둔 뒤 밭에서 하는 손질(깨 · 콩 · 보리 = 베어 말려 턴다 · 땅콩 = 캐어 말려 꼬투리를 딴다 · 마늘 · 양파 = 캐어 말려 거둔다).
+ * 베어 둔 칸은 그 자리에서 마른다 — 비 오는 시간은 세지 않고 품질이 조금 준다.
+ */
+export interface FieldProcessDef {
+  /** 첫 손 — 베기(낫) · 캐기(호미 · 쇠스랑) · 뽑기(맨손) */
+  first: 'cut' | 'dig' | 'pull';
+  /** 밭에서 말리는 날(실제 시간) */
+  dryDays: number;
+  /** 다 마른 뒤 — 털기(도리깨 · 막대) · 꼬투리 따기 · 묶어 거두기 */
+  last: 'thresh' | 'pick' | 'gather';
+  /** 키질 — 키가 있으면 검불을 날려 품질 +, 없으면 섞여 − */
+  winnow?: boolean;
+  /** 다 마른 뒤 이 날 수가 지나면 꼬투리가 터져 알이 쏟아진다(깨 · 콩 — 하루에 2%씩 · 바닥 60%) */
+  shatterDays?: number;
+}
+
+/** 247차 — 알맞은 철 밖에 심었을 때의 까닭 — 꽃대가 일찍 선다 · 냉해 · 더위 · 철이 짧다 */
+export type OffTimingKind = 'bolt' | 'cold' | 'heat' | 'short';
+
+/** 247차 — 늘리는 법(아주 까다로운 작물 — 「씨앗을 구하기 어렵다」의 실제 대안) */
+export interface CropPropagation {
+  /** 포기 나누기 · 뿌리 꺾꽂이(두릅 · 엄나무) · 곁눈(고추냉이 — 거둘 때) */
+  by: 'division' | 'cutting' | 'offset';
+  /** 나누는 달(곁눈은 거둘 때라 비운다) */
+  months: number[];
+  /** 한 번에 얻는 수 [최소, 최대] — 심는 물건(`starts`의 첫 모종 · 종구) */
+  qty: [number, number];
+}
+
+/** 247차 — 작물마다 다른 재배 요소 한 벌 */
+export interface CropCultivation {
+  /** 물 — 알맞은 흙 수분 · 한 번에 줄 양 · 넘칠 때의 탈 · 거두기 전 끊기 */
+  water: {
+    /** 알맞은 흙 수분 [아래, 위](0..1) — 아래보다 마르면 더디고, 위보다 오래 젖어 있으면 탈이 난다 */
+    band: [number, number];
+    /** 알맞은 한 번 양 */
+    amount: WaterAmount;
+    over: OverwaterHarm;
+    /** 거두기 이만큼 앞(일)부터는 물을 끊는다 — 그동안은 알맞은 수분의 위가 낮아진다(고구마 · 양파 · 수박 · 참외) */
+    stopDays?: number;
+  };
+  /**
+   * 거름 — low = 적게(콩 · 땅콩 · 고구마: 퇴비가 많으면 잎 · 덩굴만 무성 → 수량 −8%) ·
+   * mid = 보통 · high = 많이(배추 · 고추 · 오이 · 수박: 퇴비를 넣으면 수량 +8%)
+   */
+  feed: 'low' | 'mid' | 'high';
+  /** 품(한 칸) — 심기 · 거두기(1 가볍다 · 2 보통 · 3 무겁다) */
+  labor: { plant: 1 | 2 | 3; harvest: 1 | 2 | 3 };
+  /** 거두는 손 — 도구가 반드시인지(낫 · 호미) · 도움인지(수확 가위 · 쇠스랑)를 정한다 */
+  harvestBy: HarvestBy;
+  /** 거둔 뒤 밭 손질 */
+  process?: FieldProcessDef;
+  /** 알맞은 심는 달(심을 수 있는 달 가운데) — 밖이면 수량이 줄고 까닭이 붙는다(달마다 다르면 `offMonths`) */
+  timing?: { best: number[]; off: OffTimingKind; offMonths?: Partial<Record<number, OffTimingKind>> };
+  /** 가시가 있다(두릅 · 엄나무 · 초피) — 장갑 없이 거두면 손을 찔린다 */
+  thorny?: boolean;
+  /** 쇠스랑으로 캐면 빠르지만 날에 몇 개 찍힌다(감자 · 고구마 · 야콘 · 생강 — 품질 −0.02). 호미는 느리지만 덜 상한다 */
+  forkSpears?: boolean;
+  /** 캐기 전에 덩굴 · 줄기를 먼저 걷는다(고구마 · 토란 · 야콘 · 울금 · 돼지감자) — 낫이 있으면 품이 준다(×0.8) */
+  vines?: boolean;
+  /** 떨어진 씨로 이듬해 저절로 난다(비름 · 차조기 · 방아 · 딜 · 깨 …) — 씨가 여물도록 두면 그 텃밭의 씨앗 은행에 든다 */
+  selfSeeds?: boolean;
+  /** 늘리는 법(포기 나누기 · 뿌리 꺾꽂이 · 곁눈) */
+  propagate?: CropPropagation;
+  /** 한 줄(상세 · 위키 · 텃밭 창) */
+  noteKo: string;
+  noteEn: string;
+}
+
+/** 247차 — 밭 손질의 단계 — 베어 말리는 중 · 다 말랐다 */
+export type FieldProcessStage = 'drying' | 'dry';
+
+/** 247차 — 품이 드는 텃밭 일 */
+export type FarmLaborAction =
+  | 'till' | 'compost' | 'water' | 'plant' | 'harvest' | 'interim'
+  | 'cut' | 'dig' | 'pull' | 'thresh' | 'pick_pods' | 'gather' | 'winnow' | 'divide' | 'pull_seedlings';
 
 /** 작물 하나의 관리 표 */
 export interface CropCarePlan {
@@ -477,6 +579,23 @@ export interface FarmCellState {
   nursery?: boolean;
   /** 활착기에 흙이 말라 뿌리를 못 내린 시간(h) */
   establishDryH?: number;
+  // ── 247차 — 재배 요소 ──
+  /** 흙이 알맞은 수분보다 젖어 있던 시간(h — 마르면 두 배로 줄어든다). 길어지면 탈(`CropCultivation.water.over`) */
+  soggyH?: number;
+  /** 알맞은 철 밖에 심었다 — 까닭(수량 −15% · 꽃대는 빨리 쇤다) */
+  offTiming?: OffTimingKind;
+  /** 거둔 뒤 밭 손질 — 벤(캔) 시각 · 마른 시간 · 비 맞은 시간 · 다 마른 시각 */
+  process?: { cutAt: number; dryH: number; rainH: number; dryAt?: number };
+  /** 저절로 올라온 싹(산에서 날아든 씨앗 · 새가 떨군 씨) — 자람 25% 전까지는 이름을 모른다 */
+  wild?: boolean;
+  /** 포기 나누기 · 뿌리 꺾꽂이를 한 해(한 해 한 번) */
+  dividedYear?: number;
+  /** 일군 채 비어 있기 시작한 시각(ms) — 오래 묵힌 칸에 저절로 싹이 난다 */
+  fallowSince?: number;
+  /** 퇴비를 넣은 칸에 심었다(거름 요구에 따라 수량 ±8% — 심을 때 정한다) */
+  fedAtPlant?: boolean;
+  /** 육묘 트레이: 꺼내기 시작한 뒤 트레이에 남은 모종 수(다 꺼내면 칸이 빈다) */
+  trayLeft?: number;
 }
 
 /** 텃밭 하나(설치물 하나 — 4×3칸) */
@@ -486,6 +605,10 @@ export interface FarmPlotState {
   cells: FarmCellState[];
   /** 설비(텃밭 — 빗물통 · 하우스 · 차광막 · 냉수 수조 / 실내 — 시루 · 수경 랙) */
   facilities: FarmFacility[];
+  /** 247차 — 구획마다 다른 난수 씨(저절로 나는 싹이 구획마다 다르게). 구세이브는 0 */
+  salt?: number;
+  /** 247차 — 이 텃밭 흙에 떨어진 씨(씨가 여문 작물 id · 최근 6개) — 묵힌 칸에 저절로 난다 */
+  seedBank?: string[];
 }
 
 /** 성장 계산 환경 — 클라이언트가 주입한다(날씨 · 스킬) */
@@ -545,4 +668,8 @@ export interface FarmHarvestResult {
   turning?: boolean;
   /** 238차 — 서리 맞은 끝물 */
   frosted?: boolean;
+  /** 247차 — 거둘 때 얻은 곁눈(고추냉이) — 심는 물건 */
+  offsets?: { itemId: string; qty: number };
+  /** 247차 — 밭 손질 결과(키질 · 비 맞음 · 꼬투리 터짐 — 화면 설명용) */
+  processNote?: { winnowed?: boolean; rainLoss?: number; shatterLoss?: number };
 }

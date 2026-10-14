@@ -359,7 +359,7 @@ describe('238차 — 풋고추 · 검붉은 고추 · 홍고추', () => {
   it('익은 뒤 4일까지 풋고추 · 10일까지 검붉게 · 그 뒤 홍고추 — 검붉은 채로 거두면 홍고추지만 품질이 깎인다', () => {
     const mk = (ripeDays: number): FarmCellState => {
       const plot = plantedAt('chili', 'seedling', MAY1);
-      runDays(plot, MAY1, 60, alwaysRain);
+      runDays(plot, MAY1, 60, neverRain);   // 247차 — 날마다 물(60일 내내 비는 과습 탈로 품질이 바닥에 닿는다)
       const cell = plot.cells[0];
       expect(cellReady(cell)).toBe(true);
       cell.ripeH = ripeDays * 24;
