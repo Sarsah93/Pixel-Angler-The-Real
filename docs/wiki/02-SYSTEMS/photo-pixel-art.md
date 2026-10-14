@@ -176,6 +176,10 @@
   세션에는 환경 변수가 생기지 않는다 — 스크립트는 키 없이 호출한다(키가 붙었는지는 `GET /v1beta/models`로 확인).
   **2026-10-14 확인**: 키 붙음(모델 63 · 그림 모델 `gemini-3.1-flash-image` · `gemini-3.1-flash-lite-image` · `gemini-nano-banana-2.1` ·
   `gemini-2.5-flash-image` · `gemini-3-pro-image`). 그림 생성은 **무료 등급 한도 0**(429 `free_tier_requests, limit: 0`) — AI Studio에서 결제를 켜야 한다.
+  **딸기 시험(10-14 · 결제 뒤)**: 사진 1장 + 「픽셀아트로 변환해줘」 → 세 모델 모두 성공(8~16초 · 출력 1024×1038 JPEG — Gemini 앱 변환본과 같은 크기).
+  사용자 변환본 대비(`crop_grade.cjs --vs`): Nano Banana 2 corr 0.67 · RGB 차 21.9 · IoU 0.96 / **2.1 corr 0.68 · 23.8 · 0.97** / Pro corr 0.18 · 32.7 · 0.92(굵은 도트 · 다른 화풍).
+  2는 진짜 9px 격자(색 2.5k), 2.1은 질감 통계가 기존본에 더 가깝다(색 13.9k · 윤곽 비 0.76). 값은 1K 한 장 2 ≈ 0.067 · 2.1 ≈ 0.034 · Pro ≈ 0.134달러.
+  JPEG 출력이라 `convert … PNG32:`로 바꿔 `asis/`에 넣는다. 시트 `scratchpad/gemini/strawberry_portraits.png` · `strawberry_icons.png`.
   **대안 Stability AI(10-14 검토)**: `api.stability.ai`는 지금 프록시가 막는다(CONNECT 403) — 네트워크 시크릿을 더하면 열린다
   (헤더는 기본값 `Authorization: Bearer` 그대로). 새 계정 무료 25크레딧 · Core 3 · Style Transfer 8크레딧(1크레딧 = 0.01달러).
   사진 + 참고 그림(기존 Gemini 변환본)으로 화풍을 옮기는 Style Transfer가 우리 일에 맞는 기능이다. 사용자 화면의 SDXL 1.0(VERSION 1)은 옛 API.
