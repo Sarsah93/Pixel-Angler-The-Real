@@ -180,6 +180,10 @@
   (헤더는 기본값 `Authorization: Bearer` 그대로). 새 계정 무료 25크레딧 · Core 3 · Style Transfer 8크레딧(1크레딧 = 0.01달러).
   사진 + 참고 그림(기존 Gemini 변환본)으로 화풍을 옮기는 Style Transfer가 우리 일에 맞는 기능이다. 사용자 화면의 SDXL 1.0(VERSION 1)은 옛 API.
   판단: 기존 12장이 Gemini라 주력은 Gemini, Stability는 무료 크레딧으로 딸기 1장 비교 후 결정.
+  **대안 OpenAI(10-14 검토)**: ChatGPT 업무용 요금제(Business · Enterprise)에는 API가 들어 있지 않다 — platform.openai.com에 따로 결제.
+  `api.openai.com`은 프록시가 막고(시크릿을 더하면 열림 · `Authorization: Bearer` 기본값), GPT Image 모델은 조직 인증(신분 확인)을 요구할 수 있다.
+  토큰 과금이라 한 장 값이 크기 · 품질 · 입력 그림에 따라 달라진다. 투명 배경 출력은 미리보기. 커넥터 없음.
+  판단: 결제할 곳 하나를 고르면 이미 키가 붙은 Gemini — ChatGPT 앱 수동 변환 → `asis/` 투입은 가능(사용자 몫).
   그 뒤 「사진(또는 이름) → 변환 → `asis/` → 5기준 · 보정 지표 채점 → 재시도」를 스크립트로 돌린다.
 
 ### 5.1 남은 초상 — 파일 이름표(243차 기준)
