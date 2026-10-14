@@ -18,7 +18,7 @@ import {
 import { DraggablePanel } from './DraggablePanel.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { clampTextWidth, enforceTextBounds } from './TextFit.js';
-import { resolveFishTexture } from '../data/FishTextures.js';
+import { fitFishTexture, resolveFishTexture } from '../data/FishTextures.js';
 import { maybeStartTour, type TourOptions } from './GuideTour.js';
 import { playDayChime, playPageFlip, playUiClick } from '../audio/Sfx.js';
 import { buildNextDayHint, type NextDayHint } from '../data/NextDayHint.js';
@@ -257,9 +257,8 @@ export class DayReportPanel extends DraggablePanel {
     if (c.fishSpeciesId) {
       const tex = resolveFishTexture(c.fishSpeciesId, 40, 'M');
       if (tex && this.scene.textures.exists(tex)) {
-        const img = this.scene.add.image(CARD_W - 62, 38 + (CARD_H - 44) / 2, tex);
-        const k = Math.min(96 / img.width, (CARD_H - 50) / img.height);
-        img.setScale(k);
+        const fit = fitFishTexture(this.scene.textures, tex, 96, CARD_H - 50);
+        const img = this.scene.add.image(CARD_W - 62, 38 + (CARD_H - 44) / 2, fit.key).setDisplaySize(fit.w, fit.h);
         box.add(img);
         lineEdge = CARD_W - 120;
       }

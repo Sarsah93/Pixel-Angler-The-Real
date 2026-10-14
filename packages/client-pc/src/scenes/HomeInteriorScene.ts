@@ -75,7 +75,7 @@ import { FarmStore, INDOOR_PLOT } from '../store/FarmStore.js';
 import { ConfirmDialog } from '../ui/Dialogs.js';
 import type { FarmFacility } from '@tra/core';
 import { buildRadioBroadcast } from '../data/RadioBroadcast.js';
-import { resolveFishTexture } from '../data/FishTextures.js';
+import { fitFishTexture, resolveFishTexture } from '../data/FishTextures.js';
 import { fieldReserved, overlapsReserved, assertClear } from '../ui/ScreenReserve.js';
 import {
   markPrologue, syncPrologue, prologueKeyAllowed, prologueRunning, prologueStepDone, PROLOGUE_PHOTO_ID,
@@ -963,10 +963,10 @@ export class HomeInteriorScene extends Phaser.Scene {
     HomeStore.tank(f.id).forEach((fish, i) => {
       const key = tankFishTexture(fish, this);
       if (!key || !this.textures.exists(key)) return;
-      const img = this.add.image(gx0 + 12 + ((i * 23) % (gx1 - gx0 - 24)), top + ((i * 7) % Math.max(1, bottom - top)), key);
-      const src = this.textures.get(key).getSourceImage() as HTMLImageElement;
       const len = Phaser.Math.Clamp(8 + fish.lengthCm * 0.4, 10, 22);
-      img.setDisplaySize(len, Math.max(4, (src.height / src.width) * len)).setDepth(this.furnDepth(f) + 0.0001);
+      const fit = fitFishTexture(this.textures, key, len, 999);
+      const img = this.add.image(gx0 + 12 + ((i * 23) % (gx1 - gx0 - 24)), top + ((i * 7) % Math.max(1, bottom - top)), fit.key);
+      img.setDisplaySize(len, Math.max(4, fit.h)).setDepth(this.furnDepth(f) + 0.0001);
       this.tankSwim.push({ img, x0: gx0, x1: gx1, vx: (i % 2 ? -1 : 1) * (0.01 + (i % 3) * 0.004), y0: img.y, ph: i * 1.3 });
     });
   }

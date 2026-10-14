@@ -13,7 +13,7 @@
 
 import Phaser from 'phaser';
 import { getButcheryProfile, ButcheryProfile, OrientationState } from '@tra/core';
-import { resolveFishTexture } from '../data/FishTextures.js';
+import { fitFishTexture, resolveFishTexture } from '../data/FishTextures.js';
 
 /** 어종별 몸통 팔레트 (파라메트릭 템플릿 주입값) */
 export const FISH_COLORS: Record<string, { body: number; belly: number; fin: number }> = {
@@ -191,9 +191,8 @@ export function makeFishPreview(
     if (r && scene.textures.exists(r)) texKey = r;
   }
   if (texKey) {
-    const src = scene.textures.get(texKey).getSourceImage() as HTMLImageElement;
-    const sc = Math.min(boxW / src.width, boxH / src.height);
-    c.add(scene.add.image(0, 0, texKey).setDisplaySize(src.width * sc, src.height * sc));
+    const fit = fitFishTexture(scene.textures, texKey, boxW, boxH);
+    c.add(scene.add.image(0, 0, fit.key).setDisplaySize(fit.w, fit.h));
     return c;
   }
 

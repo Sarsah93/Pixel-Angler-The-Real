@@ -2,7 +2,7 @@
  * @file PixelFishSpecies.ts
  * @description 손질 도마 **어종별 온마리** 픽셀 스프라이트 — **자동 생성 (수동 편집 금지)**
  *
- * 소스: packages/client-pc/public/fish/*.png (어획 팝업·도감과 같은 실사 이미지)
+ * 소스: food assets/fish/*.png (어획 팝업·도감 카드의 원본 실사 이미지)
  * 재생성: node tools/gen_species_sprites.cjs
  *
  * 적용 = **개복 전 측면 뷰**(시메·방혈·머리따기·비늘치기·지느러미 제거·꼬리 칼집).

@@ -257,6 +257,13 @@ const fishLegalTraits = (id) => {
   return out;
 };
 
+// 246차 — 어종 「선호 미끼」(BaitCategory 키)를 사람 말로. 구 판은 sandworm · prawn 같은 키를 그대로 찍었다(R1).
+const BAIT_CATEGORY_KO = {
+  earthworm: '지렁이', sandworm: '갯지렁이', squid: '오징어 조각', mussel: '홍합', barnacle: '거북손', crab: '게',
+  prawn: '새우', fish_strip: '생선 살점', artificial_lure: '루어', artificial_worm: '인조 웜', ground_bait: '집어제',
+  dry_ground_bait: '건식 집어제', wet_ground_bait: '습식 집어제', krill_frozen: '냉동 크릴', boiled_barley: '보리 압맥',
+  corn: '옥수수', live_fish: '살아 있는 작은 고기', chilled_fish_strip: '선어 조각', organic_liquid_attractant: '내장 액기스', bread: '빵',
+};
 const speciesList = [];
 for (const f of core.FISH_DATABASE) {
   const group = CEPH_FISH.has(f.id) ? 'cephalopod' : 'fish';
@@ -281,7 +288,7 @@ for (const f of core.FISH_DATABASE) {
       ['금지 체장', f.minLegalSizeCm ? `${f.minLegalSizeCm} cm 미만 방류` : '없음'],
       // 227차 — 금어기 · 금지체중은 스폰 오라클이 정본(날짜 구간이 있으면 그쪽)
       ...fishLegalTraits(f.id),
-      ['선호 미끼', (f.preferredBaits ?? []).join(', ') || '—'],
+      ['선호 미끼', (f.preferredBaits ?? []).map((b) => BAIT_CATEGORY_KO[b] ?? b).join(', ') || '—'],
     ],
   });
 }

@@ -22,10 +22,13 @@ description: Pixel Angler 신규 어종 등록 절차 (4계층 — 오라클/도
 ### 2. 도감 — `packages/core/src/db-schema/FishDatabase.ts` (`FISH_DATABASE`)
 학명·영문명·제철·서식 설명. 오라클과 수치 정합 필수. ⚠ SpotType에 `'boat'` 없음 → `'boat_fishing'`.
 
-### 3. 텍스처 — `public/fish/*.png` + BootScene + `data/FishTextures.ts`
-- BootScene `load.image('fish_<id>', 'fish/<파일>.png')` — 상대경로(선행 `/` 금지).
+### 3. 텍스처 — 원본 `food assets/fish/*.png` + `data/FishTextures.ts` 표 + 카드 굽기 (246차)
+- 원본(파일명 **소문자** 영어 통칭)을 `food assets/fish/`에 둔다. 사진 · 그림이 없으면 `tools/gemini_fish_art.cjs`의 `LOOKS`에 한 줄 → 생성 → `--install`(스킬 `asset-pipeline` ⑦).
+- `FISH_IMAGE_FILES`에 `fish_<id>: '<파일>.png'` — BootScene이 이 표로 카드(`fish_<id>`)와 64px 아이콘(`fishicon_<id>`)을 싣는다(BootScene은 고치지 않는다).
+- **`node tools/fish_cards.cjs --only <파일>`** → `--check` — 안 돌리면 BootScene 404(카드가 없다).
 - `FISH_TEXTURE` 맵에 `<speciesId>: 'fish_<id>'` 등록 — 어획 팝업/인벤/도감/도마 프리뷰가 speciesId 폴백으로 공유.
 - 성별·체장 분기(돌돔 암수 등)는 `resolveFishTexture`에 규칙 추가.
+- 새 화면에서 어종 그림을 72px 이하로 그리면 `fitFishTexture`(아이콘 판)를 거친다. 410×166보다 크게 그리면 `fish_cards.cjs` 카드 크기도 키운다.
 - 에셋이 없으면 스킵 가능(도감 '이미지 없음' 표기·파라메트릭 폴백) — 단 어디까지 미배선인지 명시.
 
 ### 4. 경락/판매가 — 3곳

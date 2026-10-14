@@ -1,7 +1,7 @@
 /**
  * gen_flatfish_sprites.cjs — 넙치류(광어) 도마 픽셀 스프라이트 생성기 (2026-08-05).
  *
- * `packages/client-pc/public/fish/halibut.png`(선명한 픽셀아트 — 머리 왼쪽·등면)에서:
+ * `food assets/fish/halibut.png`(선명한 픽셀아트 — 머리 왼쪽·등면 · 246차에 `public/fish/`에서 옮김)에서:
  *  ① HALIBUT_DARK  — 등면(어두운 면) 도트 매트릭스 (bbox 크롭 + 박스평균 다운샘플 + 팔레트 양자화)
  *  ② HALIBUT_WHITE — 배면(흰 면) 파생: 실루엣 테두리(지느러미 프린지)는 갈색 톤 유지,
  *     안쪽 몸통은 원본 명암을 3단 크림색으로 리매핑 (사용자 캡처 3 — 흰 뱃면 + 갈색 프린지)
@@ -25,7 +25,7 @@ function resolvePlaywright() {
 const { chromium } = resolvePlaywright();
 
 const ROOT = path.resolve(__dirname, '..');
-const SRC = path.join(ROOT, 'packages', 'client-pc', 'public', 'fish', 'halibut.png');
+const SRC = path.join(ROOT, 'food assets', 'fish', 'halibut.png');
 const OUT_TS = path.join(ROOT, 'packages', 'client-pc', 'src', 'data', 'PixelFishFlat.ts');
 
 const TARGET_W = 100;         // 도마 프레임(560×210) 기준 셀 3 → 300px 폭
@@ -156,7 +156,7 @@ const AB = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+/';
  * @file PixelFishFlat.ts
  * @description 넙치류(광어) 도마 픽셀 스프라이트 — **자동 생성 (수동 편집 금지)**
  *
- * 소스: public/fish/halibut.png (선명 픽셀아트 — 머리 왼쪽·등면)
+ * 소스: food assets/fish/halibut.png (선명 픽셀아트 — 머리 왼쪽·등면)
  * 재생성: node tools/gen_flatfish_sprites.cjs
  *  - HALIBUT_DARK  = 등면(눈 있는 어두운 면)
  *  - HALIBUT_WHITE = 배면(흰 면 — 프린지 갈색 톤 유지) 파생

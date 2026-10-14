@@ -6,6 +6,8 @@
 게임이 쓰는 텍스처 키를 그대로 파일명으로 삼아, 위키 카드/상세에 붙일 축소본을 굽는다.
  - 실사/도트 PNG: `BootScene.ts`의 `load.image('key','path')` + `KEY: 'path'` 맵을 파싱해
    `packages/client-pc/public/<path>` 를 읽고 긴 축 기준 축소(기본 360px) + 256색 양자화.
+ - 어종 그림(246차): 게임은 카드(410×166)만 싣으므로 `FishTextures.ts`의 `FISH_IMAGE_FILES` 표로
+   원본 `food assets/fish/<file>`을 읽는다(세로가 긴 어종도 360px을 채운다).
  - 절차 픽셀 아이콘(`px:<key>`): `data/PixelIconArt.ts`의 팔레트·행 매트릭스를 읽어
    정수 배율(기본 6배)로 렌더. 게임 런타임(PixelIcon.ts)과 같은 도트를 쓴다.
 
@@ -24,6 +26,8 @@ from PIL import Image
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PUBLIC = os.path.join(ROOT, 'packages/client-pc/public')
 BOOT = os.path.join(ROOT, 'packages/client-pc/src/scenes/BootScene.ts')
+FISH_TEX = os.path.join(ROOT, 'packages/client-pc/src/data/FishTextures.ts')
+FISH_SRC = os.path.join(ROOT, 'food assets/fish')
 ICON_ART = os.path.join(ROOT, 'packages/client-pc/src/data/PixelIconArt.ts')
 # 197차 — 스킬 아이콘(16x16 · 같은 형식). 위키 「스킬」 탭 카드에 쓴다 → `sk_<id>.png` · manifest 키 `sk:<id>`
 SKILL_ART = os.path.join(ROOT, 'packages/client-pc/src/data/SkillIconArt.ts')
@@ -43,6 +47,15 @@ def parse_boot_map() -> dict:
     for m in re.finditer(r"^\s{4,}([A-Za-z_][A-Za-z0-9_]*)\s*:\s*'([^']+\.png)'\s*,", src, re.M):
         out.setdefault(m.group(1), m.group(2))
     return out
+
+
+def parse_fish_files() -> dict:
+    """246차 — FishTextures.ts `FISH_IMAGE_FILES`(텍스처 키 → 원본 파일). 값은 `food assets/fish/` 기준 절대 경로."""
+    src = open(FISH_TEX, encoding='utf-8').read()
+    body = src[src.index('export const FISH_IMAGE_FILES'):]
+    body = body[:body.index('};')]
+    return {m.group(1): os.path.join(FISH_SRC, m.group(2))
+            for m in re.finditer(r"^\s+(fish_[a-z0-9_]+):\s*'([^']+\.png)'", body, re.M)}
 
 
 def parse_icon_art(path: str = ICON_ART, marker: str = 'PIXEL_ICON_ART') -> dict:
@@ -106,10 +119,11 @@ def main() -> int:
 
     manifest, total, missing = {}, 0, []
 
-    for key, rel in sorted(parse_boot_map().items()):
+    sources = {k: os.path.join(PUBLIC, rel) for k, rel in parse_boot_map().items()}
+    sources.update(parse_fish_files())
+    for key, src in sorted(sources.items()):
         if key in SKIP_KEYS or key.startswith(SKIP_PREFIX):
             continue
-        src = os.path.join(PUBLIC, rel)
         if not os.path.isfile(src):
             missing.append(key)
             continue

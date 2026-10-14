@@ -25,7 +25,7 @@ import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { CoolerStore, COOLER_CAPACITY, type CoolerFish } from '../store/CoolerStore.js';
 import { CONDITION_LABEL, CONDITION_COLOR } from '../store/InventoryStore.js';
 import { applyScreenFixed } from './DraggablePanel.js';
-import { resolveFishTexture } from '../data/FishTextures.js';
+import { fitFishTexture, resolveFishTexture } from '../data/FishTextures.js';
 import { maybeStartTour, type TourRect } from './GuideTour.js';
 import { ConfirmDialog } from './Dialogs.js';
 
@@ -386,9 +386,8 @@ export class CoolerSwapPanel extends Phaser.GameObjects.Container {
     paint(false);
     this.add(g);
     if (tex && sc.textures.exists(tex)) {
-      const src = sc.textures.get(tex).getSourceImage() as HTMLImageElement;
-      const k = Math.min((CARD - 10) / src.width, 26 / src.height);
-      this.add(sc.add.image(x + CARD / 2, y + 20, tex).setDisplaySize(src.width * k, src.height * k));
+      const fit = fitFishTexture(sc.textures, tex, CARD - 10, 26);
+      this.add(sc.add.image(x + CARD / 2, y + 20, fit.key).setDisplaySize(fit.w, fit.h));
     }
     const t = sc.add.text(x + CARD / 2, y + CARD - 4, sub, {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', fontStyle: 'bold', color: subColor,

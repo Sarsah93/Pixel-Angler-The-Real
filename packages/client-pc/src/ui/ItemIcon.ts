@@ -10,7 +10,7 @@
 
 import Phaser from 'phaser';
 import { addPixelIcon } from './PixelIcon.js';
-import { resolveFishTexture } from '../data/FishTextures.js';
+import { fitFishTexture, resolveFishTexture } from '../data/FishTextures.js';
 
 /**
  * 구세이브·기존 카탈로그가 가진 픽셀 아이콘 키를 실제 투명 PNG 자산으로
@@ -87,10 +87,10 @@ export function createItemIcon(
   const rasterKey = cropPortraitTexture(scene, item.iconTexture, sizePx)
     ?? (item.iconTexture ? RASTER_ICON_ALIASES[item.iconTexture] ?? item.iconTexture : undefined);
   if (rasterKey && scene.textures.exists(rasterKey)) {
-    const img = scene.add.image(0, 0, rasterKey).setOrigin(0.5);
-    const src = scene.textures.get(rasterKey).getSourceImage() as HTMLImageElement;
-    const scale = sizePx / Math.max(src.width, src.height);
-    img.setDisplaySize(src.width * scale, src.height * scale);
+    // 246차 — 어종 그림은 칸(≤ 72px)이면 64px 아이콘 판, 크면 카드 판(fitFishTexture — 다른 텍스처는 그대로 맞춘다)
+    const fit = fitFishTexture(scene.textures, rasterKey, sizePx, sizePx);
+    const img = scene.add.image(0, 0, fit.key).setOrigin(0.5);
+    img.setDisplaySize(fit.w, fit.h);
     // 166차 — 제로찌(`float_zero`)는 도트에 '00'이 각인돼 있어 라벨을 겹치지 않는다
     const labelKeys = new Set(['float_hole', 'float_tilt', 'subfloat_light', 'subfloat_heavy']);
     if (item.iconTexture && labelKeys.has(item.iconTexture) && item.name) {
@@ -122,11 +122,8 @@ export function createItemIcon(
     else if (scene.textures.exists(`forage_dot_${item.speciesId}`)) texKey = `forage_dot_${item.speciesId}`;
   }
   if (texKey) {
-    const img = scene.add.image(x, y, texKey).setOrigin(0.5);
-    const src = scene.textures.get(texKey).getSourceImage() as HTMLImageElement;
-    const scale = sizePx / Math.max(src.width, src.height);
-    img.setDisplaySize(src.width * scale, src.height * scale);
-    return img;
+    const fit = fitFishTexture(scene.textures, texKey, sizePx, sizePx);
+    return scene.add.image(x, y, fit.key).setOrigin(0.5).setDisplaySize(fit.w, fit.h);
   }
   return scene.add.text(x, y, item.icon, { fontSize: `${Math.round(sizePx * 0.85)}px` }).setOrigin(0.5);
 }

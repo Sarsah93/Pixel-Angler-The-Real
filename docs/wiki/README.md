@@ -2,8 +2,8 @@
 
 > **이 위키의 목적**: 날짜·차수 순으로만 쌓이던 작업 기록을 **구조(시스템) 기준**으로 다시 배열해,
 > "지금 무엇이 어디까지 되어 있고 / 무엇이 남았고 / 어디가 위험한가"를 한 화면에서 판별한다.
-> 최종 업데이트: 2026-10-14 (245차 반영 — 작물 84종 전부 관리 작업(난이도) · 병해충 16 · 묶음 작업은 `02-SYSTEMS/home-base.md` ·
-> 초상 98/98 · 갇힌 흰 배경 섬은 `photo-pixel-art.md` · 차수 목록은 `03-WORKLOG/README.md`)
+> 최종 업데이트: 2026-10-14 (246차 반영 — 그림 없던 어종 4종(Gemini) · 어종 그림 카드 방식(부팅 텍스처 194MB → 12MB)은 `02-SYSTEMS/photo-pixel-art.md` ·
+> 245차 작물 관리 작업(난이도)은 `home-base.md` · 차수 목록은 `03-WORKLOG/README.md`)
 
 ---
 
@@ -64,7 +64,7 @@
 | S22 | [스토리·퀘스트](02-SYSTEMS/story-quests.md) | 🔶 | **정본 [`STORY_SPEC_v4`](../../.agents/STORY_SPEC_v4.md)** · `Story.ts` · `FisheryLaw.ts` · `StoryQuestDatabase`(**188퀘 · 아크 23**) · `DayJobs`(품삯 3) · `JournalPages` · `StoryArcs` · `StoryStore` · `DialoguePanel`(**140차 재작성 — 선택지·우호도**) · `JournalPanel` · `StoryChoices` · `Affinity.ts` | **134차 데이터·엔진 + 135차 Ch1 실시스템 + 140차 선택지 분기·우호도** — 배 출조·좌판 등 계통 · Ch2+ 대사 · NPC 스프라이트 잔여 · **147차 위판 UI(M2-01)·총회 연출(M1-11)·`onMiss` 평판 감점 완료** · ~~남은 manual = 구멍치기(1-4)~~ **✅149차 — 조법 구현 + `spotKind` 장소 게이트** · **148차 가방 2~5단계 실효화 완료** · **155 혼잣말 퀘 선택지·검증기(데이터 오류 3건) · 목표 「방법」 힌트 · 추적기·점멸 화살표** · **165 컷씬 런타임(실제 필드) · M1-02 실플레이 · 메인/서브 추적기 · 일지 고정 · 지도 툴팁** · **166 NPC 자유 행동(낚시·좌판·순찰·배회 — `StoryNpcs.behavior`)** · **167 장면 게이트 — talk·수동 목표는 컷씬이 끝나야 닫힘(`QuestScenes.ts`) · N18-6 각본** · **168 생성기 재작성(혼잣말/NPC/응답 분리) + 전체 위키 아티팩트** |
 | S23 | [캐릭터 아트](02-SYSTEMS/character-art.md) | 🟢 | `art/CharacterArt.ts`(셀 32x32 · 레이어 14) · `art/CharacterCast.ts`(41인) · `ui/CharacterSprite.ts`(**144차 `paceMult`**) · `CharacterCreateScene`(139차 UI · 140차 얼굴형 · **144차 회전·동작 버튼**) | **140차 머리 9×10·얼굴형 3종·측면 재작업 완료** · 사용자 GPT 스타일 실험 대기(`CHARACTER_SPRITE_PROMPT_SPEC`) · ~~대화창 초상 아트~~ 152 → **155 초상↔필드 문법 정합** · 눕기 프레임 · **달리기 전용 프레임**(현재는 걷기 가속) · **166 마을 사람 `amb_*` 120인 결정적 분화** |
 | S24 | [싱글/멀티플레이](02-SYSTEMS/multiplayer.md) | 🔶 | `types/Multiplayer.ts`(공용 계약) · `server/multiplayer/`(`/mp/*` REST · 세션 · 디스크 영속) · `net/MultiplayerClient.ts` · `MultiplayerLobbyScene` · `FieldEventManager` | **143차 신설 · 145차 세션 세계** — 통발 공유 · 공용 시드 · 외형/활동 · 밀어내기 · 건물 반투명 · 채팅 · 이어하기 · **유저 간 거래(공증)·정보 보기(146차)**. 진행도는 **설계상 각자**. 남은 것은 NAT 통과·서버 권위·마켓 원장 |
-| S25 | [실사 도트 에셋 — 어종 · 작물 초상](02-SYSTEMS/photo-pixel-art.md) | 🔶 | `tools/check_art_quality.cjs` · `tools/pixelize_crops.cjs` · `data/CropPortraits.ts` · `ItemIcon.cropPortraitTexture` | **작물 초상 98/98**(244 · 245 — 86장 Gemini 자동 생성 · `tools/gemini_crop_art.cjs`) · 게임은 카드 초상만 · 남은 것은 어종 알파 정규화 10장 · 셀 재굽기 7장 = 사용자 결정 |
+| S25 | [실사 도트 에셋 — 어종 · 작물 초상](02-SYSTEMS/photo-pixel-art.md) | 🔶 | `tools/check_art_quality.cjs` · `tools/pixelize_crops.cjs` · `tools/fish_cards.cjs` · `data/CropPortraits.ts` · `FishTextures.FISH_IMAGE_FILES` · `ItemIcon.cropPortraitTexture` · `fitFishTexture` | **작물 초상 98/98**(244 · 245 — 86장 Gemini) · **어종 57/57**(246 — 그림 없던 4종 Gemini · 원본 `food assets/fish/`) · 게임은 작물 · 어종 모두 카드 + 64px 아이콘만 · 남은 것은 어종 원본 셀 재굽기 = 사용자 결정 |
 
 ---
 

@@ -7,6 +7,7 @@
  */
 
 import { CROP_PORTRAITS } from '../data/CropPortraits.js';
+import { FISH_IMAGE_FILES, fishIconKey } from '../data/FishTextures.js';
 import { FURNITURE_SALES } from '../data/ShopCatalog.js';
 import { ensureFurnitureIcon } from '../data/HomeFurniture.js';
 import Phaser from 'phaser';
@@ -256,7 +257,7 @@ export class BootScene extends Phaser.Scene {
       this.load.image(`cropimg_${id}`, `crops/${id}_card.png`);
       this.load.image(`cropicon_${id}`, `crops/${id}_icon.png`);
     }
-    this.load.image('fish_black_sea_bream', 'fish/black_sea_bream.png');
+    // 246차 — 어종 그림은 표(`data/FishTextures.ts` FISH_IMAGE_FILES) 하나로 싣는다(아래 「어종 그림」)
     // ── 두족류 부산물 (2026-08-05 — food assets/trimmings/{squid,octopus}) ──
     //  squid 폴더: 이름에 어종이 없으면 오징어류 3종 공용 / '무늬오징어, 한치' = 갑오징어 제외 /
     //  '갑오징어' = 갑오징어 전용. 한글 파일명은 복사 시 ASCII 키명으로 정규화했다.
@@ -282,79 +283,14 @@ export class BootScene extends Phaser.Scene {
     this.load.image('trim_octo_boiled_leg', 'trimmings/octo_boiled_leg.png');               // 삶은 문어 다리 — 아이콘·회뜨기 도마
     this.load.image('sashimi_piece_octopus', 'sashimi/piece_octopus.png');                  // 문어 숙회 한 점 (접시 조각)
 
-    this.load.image('fish_halibut', 'fish/halibut.png');
-    this.load.image('fish_largescale_blackfish', 'fish/large_scale_blackfish.png');   // 벵에돔
-    this.load.image('fish_longtail_blackfish', 'fish/small_scale_blackfish.png');     // 긴꼬리벵에돔
-
-    // 어종별 실사 픽셀 생선 이미지 (2026-07-22 추가 — food assets/).
-    // 텍스처 키는 어종 ID(오라클/FISH_DATABASE 표준) 기준 — 파일명(영문 통칭)과 분리해
-    // 매핑은 FISH_TEXTURE(FirstPersonFishingScene)에서 일원화한다.
-    this.load.image('fish_squid', 'fish/bigfin_reef_squid.png');            // 무늬오징어
-    this.load.image('fish_hairtail', 'fish/cutlassfish.png');               // 갈치 — 2026-09-23 픽셀아트 교체(구 대문자 파일명 폐기)
-    this.load.image('fish_cuttlefish', 'fish/cuttlefish.png');              // 갑오징어
-    this.load.image('fish_blue_rockfish', 'fish/dark-banded_rockfish.png');  // 청볼락 (171차 사용자 확인)
-    this.load.image('fish_filefish', 'fish/filefish.png');                  // 쥐치
-    this.load.image('fish_golden_rockfish', 'fish/owstons_rockfish.png');   // 황볼락
-    this.load.image('fish_sea_bass', 'fish/sea_bass.png');                  // 농어 — 2026-09-23 픽셀아트 교체
-    this.load.image('fish_amberjack', 'fish/yellowtail_amberjack.png');     // 부시리
-    this.load.image('fish_yellowtail', 'fish/yellowtail_fish.png');         // 방어
-    this.load.image('fish_striped_mullet', 'fish/flathead_grey_mullet.png');// 숭어
-    this.load.image('fish_redlip_mullet', 'fish/So-iuy_mullet.png');        // 가숭어
-    this.load.image('fish_spotted_knifejaw', 'fish/spotted_knifejaw.png');  // 강담돔
-    this.load.image('fish_red_seabream', 'fish/red_sea_bream.png');         // 참돔 (야간 참돔 night_seabream 공용)
-    this.load.image('fish_horse_mackerel', 'fish/jack_mackerel.png');       // 전갱이
-    this.load.image('fish_chub_mackerel', 'fish/mackerel.png');             // 고등어
-    // 돌돔 — 30cm↑ 수컷은 무늬 소실(수컷 이미지), 그 외(30cm↓ 전부 + 30cm↑ 암컷)는 무늬 유지(암컷 이미지)
-    this.load.image('fish_stone_beakperch_female', 'fish/barred_knifejaw_female.png');
-    this.load.image('fish_stone_beakperch_male', 'fish/barred_knifejaw_male.png');
-    // DB 미등록 어종 — 어종 추가 시 FISH_TEXTURE에 매핑만 연결하면 됨 (에셋은 선(先)로드)
-    // ⚠ 170차에 "두 파일이 바이트 동일한 중복"이라고 적었던 것은 **public 사본이 덮어써져 있었기**
-    //   때문이다(171차 정정). `food assets/` 원본은 서로 다른 사진이고, 사용자 확인대로
-    //   spotbelly_greenling = 쏨뱅이 · spotbelly_rockfish = 놀래미다.
-    this.load.image('fish_scorpionfish', 'fish/spotbelly_greenling.png');      // 쏨뱅이
-    this.load.image('fish_swordtip_squid', 'fish/swordtip_squid.png');         // 한치(창꼴뚜기) — 2026-08-05 DB 등록 완료 (FISH_TEXTURE 배선됨)
-    // 2026-07-22 2차 추가 (놀래미/쥐노래미/망상어 + 용치놀래기 암/수)
-    this.load.image('fish_greenling', 'fish/spotbelly_rockfish.png');          // 놀래미(노래미)
-    this.load.image('fish_fat_greenling', 'fish/fat_greenling.png');           // 쥐노래미
-    this.load.image('fish_surfperch', 'fish/surf_perch.png');                  // 망상어
-    // 용치놀래기 — 암컷→수컷 성전환 어종 (수컷 = 화려한 녹색 혼인색) — 성별별 이미지 분기
-    this.load.image('fish_rainbow_wrasse_female', 'fish/multicolorfin_rainbowfish_female.png');
-    this.load.image('fish_rainbow_wrasse_male', 'fish/multicolorfin_rainbowfish_male.png');
-
-    // 2026-07-25 추가 — 신규 어종 이미지 11종 (기존 4종 텍스처 + 복섬 개명 + 신규 6종)
-    this.load.image('fish_spanish_mackerel', 'fish/spanish_mackerel.png');            // 삼치
-    this.load.image('fish_conger_eel', 'fish/conger_eel.png');                        // 붕장어
-    this.load.image('fish_pike_conger', 'fish/daggertooth_pike_conger.png');          // 갯장어(하모)
-    this.load.image('fish_pacific_saury', 'fish/saury.png');                          // 꽁치
-    this.load.image('fish_grass_puffer', 'fish/grass_puffer.png');                    // 복섬 (구 졸복)
-    this.load.image('fish_yellowfin_puffer', 'fish/yellowfin_puffer.png');            // 까치복
-    this.load.image('fish_tiger_puffer', 'fish/tiger_puffer.png');                    // 참복어(자주복) — 2026-09-23 신규
-    this.load.image('fish_bartail_flathead', 'fish/bartail_flathead.png');            // 양태
-    this.load.image('fish_bluefin_searobin', 'fish/bluefin_searobin.png');            // 성대
-    this.load.image('fish_hagfish', 'fish/hagfish.png');                              // 먹장어(곰장어)
-    this.load.image('fish_halfbeak', 'fish/halfbeak.png');                            // 학꽁치
-    this.load.image('fish_northern_whiting', 'fish/northern_whiting.png');            // 보리멸
-
-    // 2026-07-28 추가 — 대구·잿방어 텍스처 + 문어 2종 분화(대문어/참문어)
-    this.load.image('fish_pacific_cod', 'fish/pacific_cod.png');                      // 태평양 대구 — 2026-09-23 픽셀아트 교체
-    this.load.image('fish_greater_amberjack', 'fish/greater_amberjack.png');          // 잿방어
-    // ⚠ 문어 파일명↔어종: 이미지 내용 기준 매칭 (사용자 메시지의 영문 파일명은 뒤바뀜 —
-    //   설명("대문어=동해·대형", "참문어=소형")과 이미지 내용이 일치하는 쪽으로 연결)
-    this.load.image('fish_octopus', 'fish/common_octopus.png');                       // 참문어(돌문어) — 얼룩덜룩 소형
-    this.load.image('fish_giant_octopus', 'fish/giant_pacific_octopus.png');          // 대문어(피문어) — 흰 매트 제거(2026-09-23)
-
-    // 2026-09-22 추가 (170차) — 볼락류 어종별 실사
-    this.load.image('fish_red_snapper_rockfish', 'fish/red_snapper_rockfish.png');    // 열기(불볼락)
-    this.load.image('fish_black_rockfish', 'fish/black_rockfish.png');                // 조피볼락(우럭)
-
-    // 2026-09-22 추가 (174차) — 사용자 제공 실사 7종
-    this.load.image('fish_blackthroat_seaperch', 'fish/blackthroat_seaperch.png');    // 눈볼대(금태)
-    this.load.image('fish_yellowfin_goby', 'fish/yellowfin_goby.png');                // 문절망둑
-    this.load.image('fish_flounder', 'fish/flounder.png');                            // 문치가자미
-    this.load.image('fish_starry_flounder', 'fish/starry_flounder.png');              // 강도다리
-    this.load.image('fish_frog_flounder', 'fish/frog_flounder.png');                  // 도다리
-    this.load.image('fish_silver_pomfret', 'fish/silver_pomfret.png');                // 병어 — 2026-09-23 픽셀아트 교체
-    this.load.image('fish_korean_pomfret', 'fish/korean_pomfret.png');                // 덕대 — 2026-09-23 픽셀아트 교체
+    // ── 어종 그림 (246차 — 표 하나: `data/FishTextures.ts` FISH_IMAGE_FILES) ──
+    //  카드 `fish/<파일>`(가장 큰 칸 410×166에 맞춘 면적 평균 — 어획 결과 창 · 상세 · 도마 미리보기 · 도감)과
+    //  64px 아이콘 `fish/icon/<파일>`(가방 · 쿨러 칸)만 싣는다. 원본은 `food assets/fish/` — `node tools/fish_cards.cjs`가 굽는다.
+    //  어종 id → 텍스처 키는 FISH_TEXTURE · resolveFishTexture(돌돔 · 용치놀래기 분기). 원본 53장을 그대로 싣던 때 텍스처 ≈ 181MB.
+    for (const [key, file] of Object.entries(FISH_IMAGE_FILES)) {
+      this.load.image(key, `fish/${file}`);
+      this.load.image(fishIconKey(key), `fish/icon/${file}`);
+    }
 
     // ─── 남자 캐릭터 스프라이트 (12장) ───
     // 정지 4방향

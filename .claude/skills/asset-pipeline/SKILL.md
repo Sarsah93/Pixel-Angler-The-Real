@@ -11,7 +11,8 @@ PNG만 바꾸면 되는지, 생성기를 돌려야 하는지부터 판별한다:
 
 | 소비 형태 | 대상 | PNG 교체 시 |
 |---|---|---|
-| **PNG 직접 로드** (BootScene `load.image`) | `public/fish/`(어획 팝업·인벤·도감) · `public/trimmings/`(부산물 아이콘) · `public/food/` · `public/guide/` · `public/sashimi/*.png` · `public/ui/` | 교체만으로 자동 반영 (브라우저 F5) |
+| **PNG 직접 로드** (BootScene `load.image`) | `public/trimmings/`(부산물 아이콘) · `public/food/` · `public/guide/` · `public/sashimi/*.png` · `public/ui/` | 교체만으로 자동 반영 (브라우저 F5) |
+| **구운 카드 · 아이콘** (246 — 원본은 `food assets/fish/` · 작물은 `food assets/crops/`) | `public/fish/` · `public/fish/icon/`(어획 팝업 · 인벤 · 도감 · 도마 미리보기) · `public/crops/<id>_card.png` · `_icon.png` | **`node tools/fish_cards.cjs`**(어종) · `pixelize_crops.cjs`(작물) 재실행 — `public/fish/`를 직접 고치지 않는다(다음 굽기에 덮인다) |
 | **구운 TS 스냅샷** (생성기가 도트 매트릭스로 인코딩) | `data/PixelFishStages.ts` · `data/PixelFishFlat.ts` · `data/PixelFishViews.ts` · `data/PixelFishSprites.ts` · `data/SashimiFilletProfiles.ts` | **생성기 재실행 필수** — PNG만 바꾸면 옛 그림이 계속 나온다 (76차 광어 사례) |
 
 주의: `public/sashimi/*.png`는 직접 로드지만 **그 PNG 자체가 생성물** — 원본(`food assets/trimmings/…`)이 바뀌면 `gen_sashimi_fillet.cjs` 재실행.
@@ -22,7 +23,8 @@ PNG만 바꾸면 되는지, 생성기를 돌려야 하는지부터 판별한다:
 |---|---|---|---|
 | `pixelize_butchery.cjs` | `food assets/butchery/*.png` (**파일명 = 키**) | `data/PixelFishStages.ts` | 손질 단계 실사 → 도트 (누끼 BFS + 128폭 다운샘플 + 44색) |
 | `gen_sashimi_fillet.cjs` | `food assets/trimmings/{fam}/pure_pillet_*` 등 (FAMILIES 배열) | `public/sashimi/fillet_{top,side}_{fam}.png` + `piece_{fam}.png` + `SashimiFilletProfiles.ts` | 회썰기 필렛 3뷰 |
-| `gen_flatfish_sprites.cjs` | `public/fish/halibut.png` | `data/PixelFishFlat.ts` | 광어 도마 온마리 (등면 + 배면 파생) |
+| `gen_flatfish_sprites.cjs` | `food assets/fish/halibut.png` | `data/PixelFishFlat.ts` | 광어 도마 온마리 (등면 + 배면 파생) |
+| `fish_cards.cjs` (246) | `food assets/fish/*.png` · 표 `FishTextures.ts` `FISH_IMAGE_FILES` | `public/fish/<파일>`(카드 · 410×166 안) · `public/fish/icon/<파일>`(64px) | 어종 그림 게임판 — Playwright 불필요(순수 Node). `--check` = 표 ↔ 원본 ↔ 출력 대조 |
 | `gen_butchery_views.cjs` | (파라메트릭 — 입력 없음) | `data/PixelFishViews.ts` | 복면/체강/장뜨기 뷰 |
 | `gen_octo_assets.cjs` | `reference/cephalopod/octopus/` 투명 PNG 4종 + `octo_clean` 도트 | `public/trimmings/octo_boiled{,_head,_leg}.png` · `public/sashimi/piece_octopus.png` · `public/trimmings/octo_whole.png` | 삶은 문어 계열 직접 로드 아이콘 (098차) |
 | `py tools/build_region_maps.py <region>` | `pixelazed/<region>/*.png` | `public/data/<region>/*.json` | 지역 타일맵 |
@@ -113,16 +115,18 @@ im = im.convert('RGBA'); px = im.load()
 - 이걸 모르고 어종 id(`hairtail.png`)나 소문자 통칭으로 파일을 쓰면
   **게임이 한 번도 읽지 않는 새 파일이 생기고 구 이미지가 그대로 남는다.**
   빌드도 통과하고 에러도 없어서 "교체했는데 안 바뀐다"로만 나타난다.
-- 절차: 교체 전에 `BootScene.ts`에서 **해당 `load.image` 줄을 grep**해 경로를 확인하고, 그 파일을 덮어쓴다.
+- 절차: 교체 전에 **실제 파일명**을 확인하고 그 파일을 덮어쓴다. 어종은 246차부터 `FishTextures.ts`의 **`FISH_IMAGE_FILES` 표**가 정본이고
+  (BootScene은 그 표를 반복해 싣는다), 원본은 `food assets/fish/<파일>` — 덮어쓴 뒤 `node tools/fish_cards.cjs --only <파일>`. 그 밖의 에셋은 `BootScene.ts`의 `load.image` 줄을 grep.
 - gh-pages는 **대소문자를 구분**한다. 새 파일은 **소문자로 통일**하고,
-  기존 대문자 파일을 정리하면 `BootScene` 경로도 같이 고친다.
+  기존 대문자 파일을 정리하면 표(`FISH_IMAGE_FILES`) · `BootScene` 경로도 같이 고친다(`So-iuy_mullet.png` 하나 남음 — 사용자 결정).
 
 ## ③ 투입 체크리스트
 
 1. **테두리 불투명 검사**: 투명 배경 전제 에셋에 흰/근백색 배경이 구워져 있는지 확인 (65차 — skinned_pillet 2장 사례). 불투명이면 테두리 BFS 누끼 후 `public/`에 배치. **원본(`food assets/`)은 수정하지 않는다** — 재복사 시 재적용 필요함을 인지.
 2. 원본은 `food assets/`(어종군 하위 폴더: `trimmings/{bream,amberjack,halibut}/`)에 보존, 게임 소비본은 `packages/client-pc/public/`에 복사.
 3. BootScene `load.image('키', '상대/경로.png')` — **선행 `/` 절대 금지** (gh-pages 서브패스에서 404).
-4. 어종 실사는 `data/FishTextures.ts`의 `FISH_TEXTURE` 맵에도 등록 (키 규칙 `fish_<speciesId>` — 성별/체장 분기는 `resolveFishTexture`).
+4. 어종 실사는 원본을 `food assets/fish/`에 두고 `data/FishTextures.ts`의 **`FISH_IMAGE_FILES`(키 → 파일)** · **`FISH_TEXTURE`(어종 id → 키)** 에 등록 →
+   `node tools/fish_cards.cjs`(키 규칙 `fish_<speciesId>` — 성별/체장 분기는 `resolveFishTexture`). 상세는 ⑦.
 5. 어종군 판정은 `PixelButcherFish.butcherFamilyOf(speciesId)` 단일 소스 — 로컬 셋 중복 생성 금지.
 6. 재생성 후 `git diff --stat`으로 생성물 변화 확인 → **실렌더 스크린샷 검증** (verify-render 스킬) → 빌드 4/4 · typecheck 0.
 
@@ -147,7 +151,7 @@ py tools/pixelize_islet.py <photo.png> --region <region> --name <islet> --grid 3
 
 ## ⑤ 작물 초상 — 사진 → 어종 기준 도트 (241차)
 
-어종(`public/fish/`)은 셀 6px · 가로 약 192셀 · 8비트 RGBA · 팔레트 양자화 없음(실측 `node tools/check_art_quality.cjs packages/client-pc/public/fish`).
+어종 원본(`food assets/fish/` — 246차에 `public/fish/`에서 옮김)은 셀 6px · 가로 약 192셀 · 8비트 RGBA · 팔레트 양자화 없음(실측 `node tools/check_art_quality.cjs "food assets/fish"`).
 작물 초상은 같은 기준으로 굽는다 — Pillow · numpy 없이(순수 Node `tools/lib_png.cjs`).
 
 ```bash
@@ -205,3 +209,38 @@ node tools/pixelize_crops.cjs                                                   
   둘레가 어두운 흰 섬만 뺀다(흰 작물 하이라이트는 둘레가 밝아 남는다). 초상을 다시 구우면 전부에 걸리므로 `git diff --stat`으로 바뀐 수를 본다(245 = 71장).
 - 초상을 다시 구운 뒤 위키: `python3.13 tools/gen_wiki_images.py`(Pillow는 3.13에만 있다) → `node tools/wiki_crop_img.cjs` → `node tools/dump_wiki_items.mjs`(새 아이템이 있으면)
   → `node tools/gen_game_wiki_data.mjs --html`. 아티팩트에는 바뀐 그림만 `files`로 올린다(245 = 105장).
+
+## ⑦ 어종 그림 — 원본 · 카드 · 아이콘 · 사진 없는 어종 Gemini (246차)
+
+게임은 어종 원본(511~2,172px)을 싣지 않는다 — 원본 53장을 싣던 때 부팅 텍스처가 약 181MB였다.
+
+```bash
+node tools/fish_cards.cjs                         # 표에 있는 전부 → public/fish/<파일>(카드) + public/fish/icon/<파일>(64px)
+node tools/fish_cards.cjs --only black_scraper.png
+node tools/fish_cards.cjs --check                 # 표 ↔ 원본 ↔ 출력 대조(빠진 카드가 있으면 exit 1)
+```
+
+- **표 하나**: `data/FishTextures.ts`의 `FISH_IMAGE_FILES`(텍스처 키 `fish_<…>` → 파일). BootScene 로드 · 카드 굽기 · 위키 그림(`gen_wiki_images.py`)이 함께 읽는다.
+  BootScene은 카드를 `fish_<…>`, 아이콘을 `fishicon_<…>`로 싣는다(`fishIconKey`).
+- **카드 = 410×166 안**(가장 큰 칸 = 손질 도마 미리보기 · 도마 480×240 − 70 · 74)에 비율대로 면적 평균. 어획 결과 창(360×146) · 상세(300×120) · 도감(84×66)은 줄여 그린다.
+  비율이 원본 그대로라 화면마다 그려지는 크기는 원본 때와 같다. 칸을 키우면 `CARD_W` · `CARD_H`도 키운다.
+- **72px 이하 칸은 아이콘** — 화면 코드는 `fitFishTexture(scene.textures, key, boxW, boxH)`로 판과 크기를 함께 받는다(가방 · 쿨러 교체 · 수조 · 세로 긴 어종 도감 칸).
+  어종 키가 아니면 받은 키 그대로라 아이콘 공용 경로(`createItemIcon` · `makeFishPreview`)에 넣어도 안전하다.
+- 면적 평균이 알파를 문턱(0.3 · 0.85)으로 굳혀, 원본의 전면 알파 252~253 · 유령 픽셀이 카드에서 사라진다(원본은 그대로).
+- 도마 스냅숏(`gen_species_sprites.cjs` · `gen_flatfish_sprites.cjs`)은 원본(`food assets/fish/`)을 읽는다 — **이 컨테이너 크로뮴으로 돌리면 사용자 PC 크롬과 픽셀이 달라진다**
+  (246 실측 — 벵에돔 64줄). 다시 굽기는 사용자 PC에서, 컨테이너에서는 데이터 diff를 되돌린다.
+
+**사진 없는 어종 → Gemini**(`tools/gemini_fish_art.cjs` · 작물 ⑥과 같은 키 · `NODE_USE_ENV_PROXY=1`):
+
+```bash
+NODE_USE_ENV_PROXY=1 node tools/gemini_fish_art.cjs --out <스테이징> --dry            # 프롬프트만
+NODE_USE_ENV_PROXY=1 node tools/gemini_fish_art.cjs --out <스테이징> --only sandfish  # 생성(원본 없는 것만 · --tag v2 --force로 다른 판)
+node tools/gemini_fish_art.cjs --out <스테이징> --install [--force]                   # 고른 판(<id>.png) → food assets/fish/<파일>
+node tools/fish_cards.cjs --only <파일>
+```
+
+- `LOOKS`에 어종 id → 파일 이름(영어 통칭 · 소문자) · 비율(긴 몸 21:9) · 화풍 참고 3장(체형이 가까운 기존 원본) · 생김새를 적는다. 이웃 종과 다른 점을 쓴다(쥐치 ↔ 말쥐치).
+- 모델은 몸 비율을 넙치 · 정어리 쪽으로 끌어간다 — 「몸 폭 ≤ 길이의 4분의 1」 같은 **숫자 비율**을 적어야 따른다(개서대 v4 · 눈퉁멸 v2).
+- `--install`은 **192셀로 다시 맞추지 않는다**(격자가 고르지 않아 윤곽이 흐려진다) · **그림자 걷기를 끈다**(은빛 배 가장자리를 지운다) ·
+  JPEG 번짐(윤곽선 바깥 1px 회색 띠 · 계단 모서리 흰 삼각형)을 `peelFringe`로 걷는다. 검수는 어두운 바탕(0x1a1c22)에 가장자리 6배 확대.
+- 투입 뒤: `FISH_IMAGE_FILES` · `FISH_TEXTURE`에 한 줄씩 → `fish_cards.cjs` → 위키 `python3.13 tools/gen_wiki_images.py` → `node tools/wiki_crop_img.cjs`(manifest 복원) → `gen_game_wiki_data.mjs --html`.

@@ -21,7 +21,7 @@ import { GameState } from '../store/GameState.js';
 import { InventoryStore, type InvItem } from '../store/InventoryStore.js';
 import { CoolerStore } from '../store/CoolerStore.js';
 import { HomeStore, TANK_SLOTS, type TankFish } from '../store/HomeStore.js';
-import { resolveFishTexture } from '../data/FishTextures.js';
+import { fitFishTexture, resolveFishTexture } from '../data/FishTextures.js';
 
 const PANEL_W = 680;
 const PANEL_H = 450;
@@ -165,10 +165,10 @@ export class AquariumPanel extends DraggablePanel {
     tank.forEach((f, i) => {
       const key = tankFishTexture(f, scene);
       if (!key || !scene.textures.exists(key)) return;
-      const img = scene.add.image(tx + 60 + i * 60, ty + 40 + (i % 2) * 50, key);
-      const src = scene.textures.get(key).getSourceImage() as HTMLImageElement;
       const len = Phaser.Math.Clamp(40 + f.lengthCm * 2.2, 46, 120);
-      img.setDisplaySize(len, (src.height / src.width) * len);
+      const fit = fitFishTexture(scene.textures, key, len, 999);
+      const img = scene.add.image(tx + 60 + i * 60, ty + 40 + (i % 2) * 50, fit.key);
+      img.setDisplaySize(fit.w, fit.h);
       this.content.add(img);
       this.swim.push({ img, vx: (i % 2 ? -1 : 1) * (0.02 + (i % 3) * 0.008), y0: img.y, ph: i * 1.7 });
     });

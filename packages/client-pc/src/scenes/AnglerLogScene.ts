@@ -19,7 +19,7 @@ import { TideLoreStore } from '../store/TideLoreStore.js';
 import { DiscoveryStore } from '../store/DiscoveryStore.js';
 import { GuideTour, maybeStartTour, type TourOptions } from '../ui/GuideTour.js';
 import { StoryStore } from '../store/StoryStore.js';
-import { FISH_TEXTURE, resolveFishTexture } from '../data/FishTextures.js';
+import { FISH_TEXTURE, fitFishTexture, resolveFishTexture } from '../data/FishTextures.js';
 import { itemWikiByCategory, type WikiItemEntry } from '../data/WikiCatalog.js';
 import { ItemDetailPanel } from '../ui/ItemDetailPanel.js';
 import type { InvItem } from '../store/InventoryStore.js';
@@ -367,10 +367,9 @@ export class AnglerLogScene extends Phaser.Scene {
         const IMG_X = x + 12, IMG_Y = y + 48, IMG_W = 84, IMG_H = 66;
         const texKey = codexFishTexture(fish.id);
         if (texKey && this.textures.exists(texKey)) {
-          const src = this.textures.get(texKey).getSourceImage() as { width: number; height: number };
-          const k = Math.min(IMG_W / src.width, IMG_H / src.height);
-          const img = this.add.image(IMG_X + IMG_W / 2, IMG_Y + IMG_H / 2, texKey)
-            .setDisplaySize(Math.round(src.width * k), Math.round(src.height * k));
+          const fit = fitFishTexture(this.textures, texKey, IMG_W, IMG_H);
+          const img = this.add.image(IMG_X + IMG_W / 2, IMG_Y + IMG_H / 2, fit.key)
+            .setDisplaySize(Math.round(fit.w), Math.round(fit.h));
           this.tabContainer?.add(img);
         } else {
           const noImg = this.add.text(IMG_X + IMG_W / 2, IMG_Y + IMG_H / 2, '이미지 없음', {

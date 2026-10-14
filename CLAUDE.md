@@ -44,24 +44,26 @@
   → 183~186차 속초 맵 트랙(고도 층 · 위성 대조 · 금강대교 고가) → **239 벡터 건물(OSM 윤곽 · 2.5D 벽 · 지붕) · 간판 자리 규칙**
   → **240 알림 가이드 · 위키 농사 탭 · 도감 상세 · 71차 배포** → **241 새 작물 5 · 개량종 3 · 날로 먹기 · 작물 초상 기준(사진 → 도트)**
   → **242 상추 품종 9종 · 감자 쌍 보정(13쌍) · 초상 12** → **243 낱개 수확 · 포장하기 · 농산물 칸 이름표 · 말투 규칙** → **244 작물 초상 84/84(Gemini 자동 생성) · 카드 초상**
-  → **245 작물 84종 전부 관리 작업(난이도) · 병해충 16 · 묶음 작업 · 초상 98/98**.
+  → **245 작물 84종 전부 관리 작업(난이도) · 병해충 16 · 묶음 작업 · 초상 98/98** → **246 그림 없던 어종 4종(Gemini) · 어종 그림 카드 방식**.
 - **로드맵(사용자 확정 2026-09-17)**: **요리 개체화 2단계 — 나머지 7개 레시피 변형(사용자 확인 대기)** → **농장**(E1 텃밭 ✅235 · 남은 것 E2~E5 · 백로그 BK).
   맵 확정(육안)·OSM land 14개·조도 재설계·외옹치/대포항 bbox 확장은 사용자 동반 병행 트랙.
 - **재개 지점**: 사용자 실검증(172·173차 타일 조화 규칙 + 178·183~186차 신설분 + **239차 건물 그림**) — 부족하면 규칙 보강,
   괜찮으면 규칙을 켠 채로 새 맵 확장. 차수별 잔여는 PLAN §2-3.
+- **246차**: **그림 없던 어종 4종(Gemini) · 어종 그림 카드 방식** — 사용자 「어종 그림 53장도 카드 방식으로 … 이미지가 없는 어종 그림부터」 →
+  개서대 · 눈퉁멸 · 도루묵 · 말쥐치를 `tools/gemini_fish_art.cjs`(기존 어종 3장 화풍 참고 · 생성 해상도 그대로 + JPEG 번짐 벗기기) · 도감 「이미지 없음」 0 ·
+  원본 57장 `food assets/fish/` · 게임은 카드(410×166 안) + 64px 아이콘만(`tools/fish_cards.cjs` · 표 `FISH_IMAGE_FILES` · 72px 이하 `fitFishTexture`) ·
+  부팅 텍스처 194MB → 12MB · 배포 36.5MB → 4.4MB · 알파 252~253 · 유령 픽셀 카드에서 정리 · 위키 Version 47.
+  **다음 = 새 4종 손질 편입 · 어종 원본 셀 재굽기 결정(사용자) · 난이도 수치 실플레이 조정 · 질감 다른 쌍 2~3(사용자)**.
+  상세 `docs/wiki/03-WORKLOG/2026-10-14-246-fish-cards-gemini-4-species.md`.
 - **245차**: **작물 84종 전부 관리 작업(난이도) · 병해충 16 · 묶음 작업 · 초상 98/98** — 사용자 「고추처럼 각 농작물에 대한 난이도를 추가해줘」 →
   84종 전부 그 작물의 실제 일(`CROP_CARE_PLANS` · 일 36종 · 때 네 가지 = 날 · 달력 `months` · 자람 `growth` · 거둔 뒤 `afterPick`) · 병 10 · 벌레 5 · 새(`DISEASE_DEFS`) ·
   쉬움 작물은 벌 ½ · 병 0.6 · 번짐 0.7 · 새 자재 7 · 같은 작물 여러 칸 한 번에 · 끌기 · 짝 맞추기 · 구세이브 `careV` 정리 · 중간 8 · 팩 6 초상 · 위키 Version 46.
-  **다음 = 난이도 수치 실플레이 조정 · 「아주 까다로움」 산채 일 수(사용자) · 질감 다른 쌍 2~3(사용자) · 어종 알파 정규화 결정(사용자) · 어종 그림 181MB 카드화**.
+  **다음 = 난이도 수치 실플레이 조정 · 「아주 까다로움」 산채 일 수(사용자) · 질감 다른 쌍 2~3(사용자)**.
   상세 `docs/wiki/03-WORKLOG/2026-10-14-245-crop-care-difficulty-84.md`.
 - **244차**: **작물 초상 72장(Gemini 자동 생성) · 카드 초상 · 새 창 포커스** — `tools/gemini_crop_art.cjs`(생김새 설명 `LOOKS` + 화풍 참고 3장 · Nano Banana 2.1 ·
   `NODE_USE_ENV_PROXY=1` 필수) → 74장(다시 2) · `asis/` 640px · 초상 84/84 · 게임은 상세 창 크기 카드(`<id>_card.png`)와 64px 아이콘만 싣는다(작물 텍스처 59MB → 3.9MB) ·
   가방 「상세보기」 창이 가방 아래로 깔리던 것(`DraggablePanel.openedOnDown`) · 위키 Version 45.
   상세 `docs/wiki/03-WORKLOG/2026-10-14-244-gemini-crop-portraits-72.md`.
-- **243차**: **낱개 수확 · 포장하기(팩 6종) · 농산물 칸 이름표 · 말투 규칙 · 그림 생성 경로** — 「한 팩」 6종을 낱개로 거두고(원래 id) ·
-  가방 「포장하기」 = 낱개 n + 포장 용기(`farm_pack_tray` 100원) → 팩(`<id>_pack` · 예전 팩 값) · 낱개 판매 −20% · 「포장 뜯기」 · 구세이브 이름으로 이전 ·
-  한 번에 먹기(딸기 5 · 블루베리 25) · 칸 이름표 「1알·상」 → 「블루베리·상」 · 규칙 12에 **합니다체** · Gemini API는 닿고 키만 없다 · 남은 초상 표 72 + 8 + 6 · 위키 Version 44.
-  상세 `docs/wiki/03-WORKLOG/2026-10-13-243-produce-packing-loose-units.md`.
 - **상시 방침**:
   - 지형 고도(DEM)는 **낚시 확립 후** — B(해안 변형) 우선, 경사로 통행을 막지 않는다
     (`docs/archive/specs/RASTER_UPLIFT_AMENDMENT.md` §4).
@@ -78,6 +80,7 @@
 - `tools/` — 루트 유틸 스크립트 (`build_region_maps.py`, `pixelize.py` 등).
 - `pixelazed/` — 지역 실지형 픽셀 지도 원본 PNG (타일맵 파이프라인 입력).
 - `food assets/` — 어종/손질/부산물 실사 원본 (파이프라인 입력 — **이름 변경 금지**, 도구 경로 참조 다수).
+  `food assets/fish/` = 어종 원본 57장(246) — 게임은 `node tools/fish_cards.cjs`가 굽는 `public/fish/` 카드 · 아이콘만 싣는다.
 - `assets/` — 기타 원본 (2026-08-05 정리): `branding/`(타이틀·아이콘 소스) · `characters/`(man/girl 원본 — 소비본은 `public/characters/`) · `guide/`(sashimi_pixel_guide.svg — pixelize_butchery 입력).
 - `docs/` — `reference/`(공공 API 활용가이드·09.수심.zip·경락 CSV 등 외부 데이터 원본) · `mockups/`(UI 목업 — game_guide_hub.html = 가이드 삽화 19장 재렌더 소스).
 
@@ -133,8 +136,8 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
 - 지역 타일맵 추가/재생성 → **스킬 `add-region`** (`py tools/build_region_maps.py <region>` — 파이프라인·타일 문자·맵 그래프·함정 일체).
 - 차기 과제: 낚시점 전용 상점(루어 판매), 어탐 레이더(SeabedProfile 조회), 타 지역(여수 등) 확장, POI 세분화, 사운드 이펙트 (IMPLEMENTATION_PLAN §6-5l 차기 참고).
 - 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages — **최근 71차 배포 2026-10-12 = 240차(텃밭 235~238 · 벡터 건물 239 · 알림 가이드 · 도감 상세 240)까지 포함**. 재배포 절차는 **스킬 `deploy-ghpages`**).
-  전체 위키(농사 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 46 = 245차**(생성기 `tools/gen_game_wiki_data.mjs --html`).
-  241~245차는 gh-pages 미배포(사용자 요청 없음).
+  전체 위키(농사 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 47 = 246차**(생성기 `tools/gen_game_wiki_data.mjs --html`).
+  241~246차는 gh-pages 미배포(사용자 요청 없음).
   ⚠ **원격 컨테이너에서는 dev 서버(5173)가 사용자 브라우저에 닿지 않는다** — 실플레이 테스트 요청은 이 배포로 답한다.
 
 ## 작업 이어받기 절차

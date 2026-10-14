@@ -3,7 +3,7 @@
  *
  * 배경: 도마 온마리 그림이 어종군 대표 1장(돔류=감성돔 가이드 SVG 추출 / 방어류=잿방어)으로
  *  통일돼 있어 해상도·형태가 실제 어종과 달랐다. 각 어종의 **실사 픽셀 이미지**
- *  (`public/fish/*.png` — 어획 팝업·도감이 쓰는 그 이미지)에서 도마용 도트를 굽는다.
+ *  (`food assets/fish/*.png` — 어획 팝업·도감 카드의 원본. 246차에 `public/fish/`에서 옮겼다 — 게임은 카드만 싣는다)에서 도마용 도트를 굽는다.
  *
  * 적용 범위 = **개복 전 측면 뷰**(시메·방혈·머리따기·비늘치기·지느러미 제거·꼬리 칼집).
  *  개복 이후 전용 뷰(복면/체강/장뜨기/박피)는 기존 어종군 공용 스프라이트 유지.
@@ -31,7 +31,7 @@ function resolvePlaywright() {
 const { chromium } = resolvePlaywright();
 
 const ROOT = path.resolve(__dirname, '..');
-const FISH_DIR = path.join(ROOT, 'packages', 'client-pc', 'public', 'fish');
+const FISH_DIR = path.join(ROOT, 'food assets', 'fish');
 const OUT_TS = path.join(ROOT, 'packages', 'client-pc', 'src', 'data', 'PixelFishSpecies.ts');
 
 const TARGET_W = 128;         // 기존 FISH_WHOLE(128×66)과 같은 도트 밀도
@@ -206,7 +206,7 @@ function quantize(cells) {
  * @file PixelFishSpecies.ts
  * @description 손질 도마 **어종별 온마리** 픽셀 스프라이트 — **자동 생성 (수동 편집 금지)**
  *
- * 소스: packages/client-pc/public/fish/*.png (어획 팝업·도감과 같은 실사 이미지)
+ * 소스: food assets/fish/*.png (어획 팝업·도감 카드의 원본 실사 이미지)
  * 재생성: node tools/gen_species_sprites.cjs
  *
  * 적용 = **개복 전 측면 뷰**(시메·방혈·머리따기·비늘치기·지느러미 제거·꼬리 칼집).

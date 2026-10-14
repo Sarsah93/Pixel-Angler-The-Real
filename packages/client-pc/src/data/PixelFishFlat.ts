@@ -2,7 +2,7 @@
  * @file PixelFishFlat.ts
  * @description 넙치류(광어) 도마 픽셀 스프라이트 — **자동 생성 (수동 편집 금지)**
  *
- * 소스: public/fish/halibut.png (선명 픽셀아트 — 머리 왼쪽·등면)
+ * 소스: food assets/fish/halibut.png (선명 픽셀아트 — 머리 왼쪽·등면)
  * 재생성: node tools/gen_flatfish_sprites.cjs
  *  - HALIBUT_DARK  = 등면(눈 있는 어두운 면)
  *  - HALIBUT_WHITE = 배면(흰 면 — 프린지 갈색 톤 유지) 파생

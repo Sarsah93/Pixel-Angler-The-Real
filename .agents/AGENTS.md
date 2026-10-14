@@ -263,7 +263,7 @@ OSM 실측 기반이라도 **도로 위에 선 건물·간판은 틀린 그림**
 | 회 뜨기 손질 FSM + 컷 판정 + 등급 | `core/src/simulation/ButcheryProcess.ts` · `core/src/db-schema/ButcheryProfiles.ts` · `core/src/types/Butchery.ts` |
 | 회뜨기 수율 산출 (computeFilletYield — 양) + 회칼 3등급 DB | `core/src/simulation/ButcheryProcess.ts` · `core/src/db-schema/KnifeDatabase.ts` |
 | UI: 회 뜨기 미니게임 패널 (방향 렌더·가이드 트레이스·회칼 게이팅·수율 결과) | `client-pc/src/ui/ButcheryPanel.ts` |
-| 어종 실사 픽셀 이미지 에셋 (돌돔·용치놀래기 암/수 분기 포함 24종) | `client-pc/public/fish/` · BootScene 텍스처 등록 |
+| 어종 실사 픽셀 이미지 에셋 (돌돔·용치놀래기 암/수 분기 포함 · 246차 57장 — 원본 `food assets/fish/` → 카드 · 아이콘) | `client-pc/public/fish/`(`tools/fish_cards.cjs` 생성물) · `data/FishTextures.ts` `FISH_IMAGE_FILES` · BootScene 표 반복 |
 | 쿨러 스토어 — 매질(해수/얼음)·개체별 신선도 엔진·세이브 직렬화 | `client-pc/src/store/CoolerStore.ts` |
 | 인벤토리 스토어 — 신선도 상태 그래프(8단계)·세이브 직렬화 | `client-pc/src/store/InventoryStore.ts` |
 | UI: 쿨러 패널 (매질 3버튼·실시간 타이틀·드래그 이송·인벤토리로 넣기) | `client-pc/src/ui/CoolerPanel.ts` |
@@ -477,7 +477,17 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-10-14 245차) — 작물 84종 전부 관리 작업(난이도) · 병해충 16 · 묶음 작업 · 초상 98/98**
+**최근 변경 (2026-10-14 246차) — 그림 없던 어종 4종(Gemini) · 어종 그림 카드 방식(부팅 텍스처 194MB → 12MB)**
+
+- 사용자 「어종 그림 53장도 카드 방식으로 … 이미지가 없는 어종 그림부터」: 개서대 · 눈퉁멸 · 도루묵 · 말쥐치를 `tools/gemini_fish_art.cjs`(기존 어종 3장 화풍 참고)로 그렸다 —
+  8장(개서대 v4 · 눈퉁멸 v2) · 원본은 생성 해상도 그대로 + JPEG 번짐 벗기기(`peelFringe`) · 그림자 걷기 끔(은빛 배) · 도감 「이미지 없음」 0.
+- 원본 57장은 `food assets/fish/`(53장 git mv) · 게임은 카드(410×166 안 · 손질 도마 칸) + 64px 아이콘만(`tools/fish_cards.cjs` · 표 `FISH_IMAGE_FILES` 하나).
+  72px 이하 칸은 아이콘(`fitFishTexture`) · 부팅 텍스처 194.4MB → 11.9MB · 배포 36.5MB → 4.4MB · 알파 252~253 · 유령 픽셀이 카드에서 정리.
+- 도마 스냅숏 생성기 2개 · 위키 그림 생성기의 원본 경로를 바꿨다(스냅숏 데이터는 그대로 — 컨테이너 크로뮴은 픽셀이 달라 머리 주석만).
+- 검증: 실렌더(카드 57 + 아이콘 57 · `/fish/` 404 0 · 도마 1:1 · 가방 아이콘 · 도감 5쪽 · pageerror 0) · 빌드 3/3 · typecheck 0 · core 197/197 · 위키 Version 47.
+  상세: [246차 워크로그](../docs/wiki/03-WORKLOG/2026-10-14-246-fish-cards-gemini-4-species.md).
+
+**이전 변경 (2026-10-14 245차) — 작물 84종 전부 관리 작업(난이도) · 병해충 16 · 묶음 작업 · 초상 98/98**
 
 - 사용자 「고추처럼 각 농작물에 대한 난이도를 추가해줘」: 84종 전부 그 작물의 실제 일(`CROP_CARE_PLANS` · 일 36종) · 때 네 가지(날 · 달력 `months` · 자람 `growth` · 거둔 뒤 `afterPick`) ·
   면제 · 도구(호미 · 전정가위) · 병 10 · 벌레 5 · 새(`DISEASE_DEFS` · 약은 그 작물 병만 · 한 달 앞서) · 쉬움 작물은 벌 ½ · 병 0.6 · 번짐 0.7 · 새 자재 7.
@@ -494,15 +504,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - 곁가지: 가방 「상세보기」 창이 같은 클릭에 가방 아래로 깔렸다 → `DraggablePanel.openedOnDown`(같은 클릭으로 연 창이 맨 위 유지).
 - 검증: 실렌더(카드 · 아이콘 168건 404 0 · 상세 1:1 · 깊이 881 > 803) · 빌드 3/3 · typecheck 0 · core 182/182.
   상세: [244차 워크로그](../docs/wiki/03-WORKLOG/2026-10-14-244-gemini-crop-portraits-72.md).
-
-**이전 변경 (2026-10-13 243차) — 낱개 수확 · 포장하기(팩 6종) · 농산물 칸 이름표 · 말투 규칙 · 그림 생성 경로 조사**
-
-- 사용자 「수확할 때는 1개씩 따니까 한 팩은 패키징을 별도로」: 6종(새싹채소 · 느타리 · 방울토마토 · 생목이 · 블루베리 · 딸기)을 낱개로 거두고(원래 id) ·
-  팩은 `<id>_pack`(낱개 2~50 + 포장 용기 `farm_pack_tray` 100원) · 팩 값 = 예전 팩 값 · 낱개 판매 × 0.8(`looseSellMult`) · 가방 「포장하기」 · 「포장 뜯기」 · 구세이브 이름으로 이전.
-- 한 번에 먹기(`bite` — 딸기 5 · 블루베리 25 · 방울토마토 8) · 농사 물건 「사용하기」 버그 · 먹기 결과 줄 영어 · 농산물 칸 이름표(등급 꼬리 · 「한 팩」 · 작물 이름 필수).
-- 말투: 사용자에게 하는 말은 합니다체(`CLAUDE.md` 규칙 12). 그림 API: Gemini는 컨테이너에서 닿고 키만 없다 · OpenAI · Replicate 차단 · 남은 초상 표 72 + 8 + 6.
-- 검증: core 182/182 · 빌드 3/3 · typecheck 0 · 실렌더(포장 · 뜯기 · 먹기 · 구세이브 · 영어 15 · 이름표 전후 825 · pageerror 0) · 위키 Version 44.
-  상세: [243차 워크로그](../docs/wiki/03-WORKLOG/2026-10-13-243-produce-packing-loose-units.md).
 
 ---
 
