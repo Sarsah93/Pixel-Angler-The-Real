@@ -293,6 +293,7 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - 시세 띠 내부 id → 도감 이름(`ExternalDataStore.speciesDisplayName`) · 어획량 꼬리 `mock` 숨김 · 영어 「플레이 방식」 창 · 슬롯 제목 · 시세 띠 네 줄(규칙) — 백로그 BY 해소.
 - 효과음: Gemini에 효과음 모델이 없어(TTS · Lyria 음악 · Veo) WebAudio 합성 레시피 63종(`audio/SfxBank.ts`) · 29파일 164곳 배선 ·
   창 열기/닫기(`DraggablePanel` — 다시 만들기는 조용) · 단추 딸깍(`audio/UiClickHook` — 손 커서로 판정) · 경고 줄 알림음 · GainNode 시작값 1 튐 수정(0.86 → 0.05).
+- main 빨리 감기(`f509ebc..a5b535c`) · 「테스트 배포」 76차(gh-pages `22228cf` · 배포본 하위 경로 기동 점검 한 · 영 · 4xx 0 · pageerror 0).
 - 검증: core 259/259 · 빌드 3/3 · typecheck 0 · 실렌더(로고 낮 · 저녁 · 밤 · 시세 띠 한 · 영 잔존 0 · `__SFX.log` 단추 · 창 · 레벨 업 · 경고 · 면허 · pageerror 0).
   상세: [252차 워크로그](../docs/wiki/03-WORKLOG/2026-10-15-252-title-logo-ticker-sfx.md).
 

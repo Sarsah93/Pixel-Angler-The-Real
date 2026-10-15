@@ -143,6 +143,7 @@ Phase 9:   Tauri v2 통합 & Steam 패키징                    ⬜ 대기
   남색 테 · 입체 · 흰 물보라 → 청록 · `i` 점 = 찌 · `g` 끝 = 바늘 · 떠다니기 · 찌 까딱. 낮 · 저녁 · 밤 하늘에서 확인.
 - 시세 띠 내부 id → 도감 이름(`ExternalDataStore.speciesDisplayName`) · 영어 「플레이 방식」 창 · 슬롯 제목 · 시세 띠 네 줄 — 백로그 BY 해소.
 - 효과음 63종(`audio/SfxBank.ts` — Gemini에 효과음 모델이 없어 WebAudio 합성) · 29파일 164곳 · 창 열기/닫기 · 단추 딸깍(손 커서) · 경고 알림음 · GainNode 시작값 수정.
+- main 빨리 감기 · 「테스트 배포」 76차(gh-pages `22228cf` · 배포본 하위 경로 기동 점검 한 · 영 · 4xx 0 · pageerror 0).
 - 검증: core 259/259 · 빌드 3/3 · typecheck 0 · 실렌더(로고 3하늘 · 시세 띠 한 · 영 잔존 0 · `__SFX.log` · pageerror 0) · 미리 듣기 WAV 6개.
 - 상세: [워크로그 252](../docs/wiki/03-WORKLOG/2026-10-15-252-title-logo-ticker-sfx.md)
 

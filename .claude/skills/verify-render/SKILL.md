@@ -83,6 +83,8 @@ const { chromium } = resolvePlaywright();
   HMR 분화로 **게임과 다른 인스턴스**(locale 기본 `ko`)를 잡아 `t()`가 전부 원문을 돌려준다.
   "고쳤는데 전 항목 미번역"으로 보인다(120차에 두 번). **i18n 수정 → dev 서버 재시작 → 스캔.**
   게임의 Text 객체를 직접 훑는 방식(`__i18nSrc` vs `text` 비교)은 이 함정이 없다 — 그쪽을 우선한다.
+  ⚠ **데이터 배열은 번역 전 원문이다**(252차) — 예: `MainMenuScene.tickerMsgs`는 한국어 원문 그대로이고 번역은 `setText` 훅에서 일어난다.
+  영어 잔존을 배열로 세면 전부 「남았다」로 나온다. 화면 글(`Text.text`)을 읽거나, 임시 `scene.add.text`에 `setText(원문)` 뒤 `.text`를 읽는다.
 - **대화창은 단락이 여럿이면 `▼`에서 멈춘다**(167차) — 선택지 행(`panel.rows`)이 뜰 때까지 `panel.advance()`를 반복 호출한다.
   컷씬은 `cinematicActive`가 풀릴 때까지 폴링하되, 헤드리스는 fps 13·delta 16.7 고정이라 **벽시계로 약 4배** 걸린다(43초 각본 = 실 3분).
   퀘스트 상태는 `globalThis.__STORY`(dev 전용 — `devActivateQuest`·`devActivateAction`·`devSetActionStep`).
