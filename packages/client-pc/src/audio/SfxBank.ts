@@ -9,6 +9,8 @@
  *   매번 음높이를 살짝 흔들어(`jitter`) 같은 소리가 기계처럼 반복되지 않게 한다.
  * - `renderSfx(ctx, dest, name)` — 어떤 컨텍스트에도 그린다(하네스가 OfflineAudioContext로 WAV를 뽑아 들려준다).
  * - 낚시 손맛 소리(캐스팅 · 입질 · 챔질 · 릴 · 드랙 · 줄터짐 · 랜딩)와 돈 · 줍기 · 퀘스트는 `Sfx.ts`(211차)에 그대로 있다.
+ * - 253차 — 목소리 결: 음 층이 세 점 높이(`f0 → f1 → f2` · 꺾이는 곳 `split`) · 입 모양 거르개(`formant` — 열리고 닫히는 모음)
+ *   · 세기 떨림(`am` — 굴리는 「르르」)을 받는다. 집 고양이 소리 8가지가 이것으로 만든다. `playSfx`는 좌우(`pan`)도 받는다.
  *
  * 왜 합성인가: Gemini API에는 효과음 모델이 없다(252차 확인 — 음성 TTS · 음악 Lyria · 영상 Veo뿐).
  * 합성음은 파일이 없어 배포 크기가 늘지 않고, 손맛을 고칠 때 숫자만 바꾸면 된다.
@@ -35,6 +37,17 @@ interface ToneLayer {
   hold?: number;
   /** 떨림 [빠르기 Hz, 깊이 Hz] */
   vib?: readonly [number, number];
+  /** 253차 — 셋째 높이(Hz). 있으면 f0 → f1(길이의 `split` 지점) → f2(끝)로 오르내린다(「야옹」의 올라갔다 내려오는 높이) */
+  f2?: number;
+  /** f1에 닿는 지점(길이 비율 0~1 · 기본 0.4) — 입 모양 거르개도 같은 지점에서 꺾인다 */
+  split?: number;
+  /** 253차 — 입 모양 거르개 중심(Hz) [시작, 꺾임, 끝?] — 모음이 열리고 닫히는 결(목소리 높이와 따로 움직인다) */
+  formant?: readonly [number, number, number?];
+  /** 입 모양 거르개 종류(기본 대역) · 공명(기본 2.5) */
+  ftype?: BiquadFilterType;
+  fq?: number;
+  /** 253차 — 세기 떨림 [빠르기 Hz, 깊이 0~1] — 굴리는 「르르」 · 골골 */
+  am?: readonly [number, number];
 }
 
 /** 잡음 층 */
@@ -218,6 +231,52 @@ export const SFX_RECIPES = {
   skill_learn: { layers: [tone(1047, 0.12, 0.05, { wave: 'sine' }), tone(1568, 0.12, 0.05, { wave: 'sine', at: 0.06 }), tone(2093, 0.4, 0.05, { wave: 'sine', at: 0.12 }), noise('highpass', 7000, 0.5, 0.012, { am: [20, 0.6], at: 0.06 })], minGapMs: 400 },
   /** 면허 받기 — 도장 쿵 + 두 음 */
   license: { layers: [tone(120, 0.1, 0.12, { wave: 'sine', f1: 70, attack: 0.002 }), noise('lowpass', 1200, 0.08, 0.07), tone(784, 0.12, 0.06, { wave: 'triangle', at: 0.15 }), tone(1175, 0.35, 0.06, { wave: 'triangle', at: 0.25 })], minGapMs: 800 },
+
+  // ── 집 고양이(253차) ─────────────────────────────────────
+  //   목소리 = 톱니파(배음이 많은 성대) → 입 모양 거르개(「ㅁ」 닫힘 → 「아」 열림 → 「옹」 닫힘) + 같은 높이의 세모파(몸통 울림).
+  //   높이는 올라갔다 내려온다(f0 → f1 → f2). 부를 때마다 높이를 크게 흔들어(jitter) 같은 「야옹」이 되풀이되지 않게 한다.
+  //   거리 · 좌우는 `HomeCat`이 정한다(멀면 작게 · 화면 왼쪽이면 왼쪽에서).
+  /** 「야옹」 — 보통 울음(평소 가끔) */
+  cat_meow: { layers: [
+    tone(520, 0.56, 0.053, { wave: 'sawtooth', f1: 760, f2: 470, split: 0.38, formant: [700, 1900, 850], fq: 2.2, attack: 0.06, hold: 0.2, vib: [6, 12] }),
+    tone(520, 0.56, 0.024, { wave: 'triangle', f1: 760, f2: 470, split: 0.38, attack: 0.06, hold: 0.2, vib: [6, 12] }),
+    noise('bandpass', 1400, 0.12, 0.006, { q: 1.5, attack: 0.03 }),
+  ], jitter: 0.08, minGapMs: 900 },
+  /** 「냥」 — 짧고 높은 대답(다가가 [F] · 평소 가끔) */
+  cat_mew: { layers: [
+    tone(700, 0.26, 0.057, { wave: 'sawtooth', f1: 950, f2: 760, split: 0.45, formant: [1000, 2200, 1300], fq: 2.5, attack: 0.03, hold: 0.08, vib: [8, 15] }),
+    tone(700, 0.26, 0.026, { wave: 'triangle', f1: 950, f2: 760, split: 0.45, attack: 0.03, hold: 0.08 }),
+  ], jitter: 0.08, minGapMs: 700 },
+  /** 「냐아아옹」 — 배고파 조르는 길고 끈질긴 울음 */
+  cat_beg: { layers: [
+    tone(480, 0.85, 0.05, { wave: 'sawtooth', f1: 820, f2: 400, split: 0.5, formant: [800, 2100, 700], fq: 2.0, attack: 0.08, hold: 0.42, vib: [5.5, 18] }),
+    tone(480, 0.85, 0.023, { wave: 'triangle', f1: 820, f2: 400, split: 0.5, attack: 0.08, hold: 0.42, vib: [5.5, 18] }),
+    noise('bandpass', 1300, 0.15, 0.005, { q: 1.4, attack: 0.04 }),
+  ], jitter: 0.06, minGapMs: 1500 },
+  /** 「브르릅」 — 반가워 굴리는 소리(곁에 와 앉을 때 · 평소 가끔) */
+  cat_trill: { layers: [
+    tone(380, 0.32, 0.09, { wave: 'sawtooth', f1: 620, formant: [800, 1500], fq: 1.8, attack: 0.02, hold: 0.14, am: [24, 0.9] }),
+    tone(380, 0.32, 0.038, { wave: 'triangle', f1: 620, attack: 0.02, hold: 0.14, am: [24, 0.9] }),
+  ], jitter: 0.06, minGapMs: 900 },
+  /** 골골 — 쓰다듬을 때(숨 들이쉬고 내쉬는 세 번) · 잠결에 작게 */
+  cat_purr: { layers: [
+    tone(27, 1.0, 0.1, { wave: 'sawtooth', formant: [600, 480], ftype: 'lowpass', fq: 0.8, attack: 0.25, hold: 0.4 }),
+    noise('bandpass', 420, 1.0, 0.036, { q: 0.8, attack: 0.25, hold: 0.4, am: [27, 0.95] }),
+  ], repeat: { n: 3, every: 1.15, decay: 0.9, pitchStep: -0.04 }, jitter: 0.05, minGapMs: 3000 },
+  /** 오도독 — 밥 먹는 소리(씹을 때마다 바삭 두 번 + 낮은 쩝) */
+  cat_eat: { layers: [
+    noise('bandpass', 3200, 0.04, 0.22, { q: 1.2, attack: 0.002 }),
+    noise('bandpass', 2400, 0.035, 0.16, { q: 1.4, at: 0.07, attack: 0.002 }),
+    noise('lowpass', 700, 0.07, 0.11, { at: 0.02 }),
+  ], repeat: { n: 6, every: 0.42, decay: 0.93 }, jitter: 0.12, minGapMs: 2000 },
+  /** 킁킁 — 배불러 냄새만 맡고 돌아앉을 때 */
+  cat_sniff: { layers: [noise('bandpass', 2600, 0.06, 0.11, { q: 0.9, attack: 0.012 })], repeat: { n: 3, every: 0.11, decay: 0.85 }, jitter: 0.1, minGapMs: 1200 },
+  /** 하품 — 자다 깨어 기지개 켤 때(높게 끽 올라갔다 길게 내려온다) */
+  cat_yawn: { layers: [
+    tone(820, 0.95, 0.045, { wave: 'sawtooth', f1: 1050, f2: 380, split: 0.25, formant: [1200, 2600, 600], fq: 1.8, attack: 0.05, hold: 0.3, vib: [4, 10] }),
+    tone(820, 0.95, 0.02, { wave: 'triangle', f1: 1050, f2: 380, split: 0.25, attack: 0.05, hold: 0.3 }),
+    noise('bandpass', 1600, 0.9, 0.0075, { q: 0.8, attack: 0.1, hold: 0.4 }),
+  ], jitter: 0.05, minGapMs: 4000 },
 } satisfies Record<string, Recipe>;
 
 export type SfxName = keyof typeof SFX_RECIPES;
@@ -255,8 +314,13 @@ function renderLayer(ctx: BaseAudioContext, dest: AudioNode, L: Layer, t0: numbe
   if (L.k === 'tone') {
     const osc = ctx.createOscillator();
     osc.type = L.wave ?? 'triangle';
+    const tSplit = t + L.dur * (L.split ?? 0.4);
     osc.frequency.setValueAtTime(L.f0 * pitch, t);
-    if (L.f1) osc.frequency.exponentialRampToValueAtTime(Math.max(20, L.f1 * pitch), t + L.dur);
+    if (L.f1 && L.f2) {
+      // 253차 — 세 점 높이(올라갔다 내려온다)
+      osc.frequency.exponentialRampToValueAtTime(Math.max(20, L.f1 * pitch), tSplit);
+      osc.frequency.exponentialRampToValueAtTime(Math.max(20, L.f2 * pitch), t + L.dur);
+    } else if (L.f1) osc.frequency.exponentialRampToValueAtTime(Math.max(20, L.f1 * pitch), t + L.dur);
     if (L.vib) {
       const lfo = ctx.createOscillator();
       const depth = ctx.createGain();
@@ -266,7 +330,36 @@ function renderLayer(ctx: BaseAudioContext, dest: AudioNode, L: Layer, t0: numbe
       lfo.start(t);
       lfo.stop(t + L.dur + 0.02);
     }
-    osc.connect(g).connect(dest);
+    let tail: AudioNode = osc;
+    if (L.formant) {
+      // 253차 — 입 모양 거르개: 목소리 높이와 따로, 모음이 열리고(꺾임) 닫힌다(끝)
+      const [fa, fb, fc] = L.formant;
+      const bq = ctx.createBiquadFilter();
+      bq.type = L.ftype ?? 'bandpass';
+      bq.Q.value = L.fq ?? 2.5;
+      bq.frequency.setValueAtTime(fa, t);
+      if (fc !== undefined) {
+        bq.frequency.exponentialRampToValueAtTime(fb, tSplit);
+        bq.frequency.exponentialRampToValueAtTime(fc, t + L.dur);
+      } else bq.frequency.exponentialRampToValueAtTime(fb, t + L.dur);
+      osc.connect(bq);
+      tail = bq;
+    }
+    if (L.am) {
+      // 253차 — 세기 떨림(굴리는 소리) — 1 - depth/2 ± depth/2
+      const trem = ctx.createGain();
+      trem.gain.value = 1 - L.am[1] / 2;
+      const lfo = ctx.createOscillator();
+      const depth = ctx.createGain();
+      lfo.frequency.value = L.am[0];
+      depth.gain.value = L.am[1] / 2;
+      lfo.connect(depth).connect(trem.gain);
+      lfo.start(t);
+      lfo.stop(t + L.dur + 0.02);
+      tail.connect(trem);
+      tail = trem;
+    }
+    tail.connect(g).connect(dest);
     osc.start(t);
     osc.stop(t + L.dur + 0.02);
     return;
@@ -324,8 +417,11 @@ export const SFX_NAMES = Object.keys(SFX_RECIPES) as SfxName[];
 
 const lastAt = new Map<SfxName, number>();
 
-/** 효과음 하나 — 설정 「효과음」 볼륨 버스로. 같은 소리가 너무 촘촘하면 거른다 */
-export function playSfx(name: SfxName, opts?: { pitch?: number; gain?: number }): void {
+/**
+ * 효과음 하나 — 설정 「효과음」 볼륨 버스로. 같은 소리가 너무 촘촘하면 거른다.
+ * `pan`(253차) — 좌우 -1~1(소리 나는 것이 화면 어느 쪽인가 · 집 고양이).
+ */
+export function playSfx(name: SfxName, opts?: { pitch?: number; gain?: number; pan?: number }): void {
   const ac = audioContext();
   if (!ac) return;
   const r: Recipe = SFX_RECIPES[name];
@@ -335,5 +431,12 @@ export function playSfx(name: SfxName, opts?: { pitch?: number; gain?: number })
   noteSfx(name);
   const jit = r.jitter ?? 0.04;
   const pitch = (opts?.pitch ?? 1) * (1 + (Math.random() * 2 - 1) * jit);
-  renderSfx(ac, busOf('sfx') ?? ac.destination, name, ac.currentTime + 0.005, pitch, opts?.gain ?? 1);
+  let dest: AudioNode = busOf('sfx') ?? ac.destination;
+  if (opts?.pan && typeof ac.createStereoPanner === 'function') {
+    const p = ac.createStereoPanner();
+    p.pan.value = Math.max(-1, Math.min(1, opts.pan));
+    p.connect(dest);
+    dest = p;
+  }
+  renderSfx(ac, dest, name, ac.currentTime + 0.005, pitch, opts?.gain ?? 1);
 }

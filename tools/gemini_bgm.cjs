@@ -7,7 +7,7 @@
  *  - 값(253차 확인 기준 · 바뀔 수 있다): 클립 한 곡 약 0.04달러 · Pro 한 곡 약 0.08달러. 선불 크레딧이 바닥나면 402 「prepayment credits are depleted」.
  *  - 키는 환경의 네트워크 시크릿을 에이전트 프록시가 붙인다(이 스크립트 · 저장소에는 키가 없다).
  *    ⚠ Node 내장 fetch는 HTTPS_PROXY를 읽지 않는다 — 반드시 `NODE_USE_ENV_PROXY=1`로 돌린다.
- *  - 곡 표(`TRACKS`)는 장면 하나에 한 줄 — 영어 프롬프트(모델용)와 한국어 설명(문서 · 보고용). 반복 재생을 전제로
+ *  - 곡 표(`TRACKS`)는 장면 하나에 한 줄(253차 2판 — 사용자 의견 반영 · `rain` 뺌 · 집 · 시장은 두 판) — 영어 프롬프트(모델용)와 한국어 설명(문서 · 보고용). 반복 재생을 전제로
  *    「보컬 없음 · 시작과 끝이 같은 분위기 · 큰 클라이맥스 없음」을 공통 꼬리(`COMMON`)로 붙인다.
  *
  *  사용:
@@ -27,7 +27,12 @@ const API = 'https://generativelanguage.googleapis.com/v1beta/models';
 const COMMON = ' Instrumental only, absolutely no vocals or choir words. Designed as looping background music for a cozy pixel-art game: '
   + 'steady energy from start to end, no big climax, no abrupt stop, ending in the same mood it began so it can loop. Clean mix, not loud.';
 
-/** 장면별 후보 — key · 한국어 설명 · 프롬프트 */
+/**
+ * 장면별 후보 — key · 한국어 설명 · 프롬프트.
+ * 253차 사용자 의견(1판 → 2판): menu · field_day_chip · field_night 「괜찮아 보임」(그대로) ·
+ *  field_day 「너무 신남 → 산뜻하게 절제」 · fishing_wait 「더 느리게」 · home 「카페 노래 같음 → 주인공 집이라는 설정」 ·
+ *  farm 「조금 더 느긋하게」 · market 「중국풍 · 신남 → 절제」(두 판) · rain 「필요 없음 — 빗소리는 효과음으로」(뺐다).
+ */
 const TRACKS = {
   menu: {
     ko: '메인 메뉴 — 새벽 항구 · 따뜻한 칩튠 아르페지오 · 잔잔한 파도 · 그리움',
@@ -35,9 +40,10 @@ const TRACKS = {
       + 'a gentle pulse bass, a simple memorable lead melody, light seagull-like synth chirps, distant ocean wave texture. 82 BPM, major key with a hint of longing.',
   },
   field_day: {
-    ko: '낮 항구 필드(속초) — 어쿠스틱 기타 · 우쿨렐레 · 가벼운 퍼커션 · 느긋하고 밝게',
-    prompt: 'Daytime harbor town exploration music for a fishing life-sim set in Sokcho, Korea. Relaxed acoustic guitar picking, ukulele strums, '
-      + 'soft shaker and light hand percussion, warm upright bass, a breezy whistle-like synth melody. 96 BPM, sunny, easygoing, unhurried.',
+    ko: '낮 항구 필드(속초) 2판 — 산뜻하되 절제 · 손가락으로 뜯는 기타 · 목관 선율 · 타악 거의 없음 · 84BPM',
+    prompt: 'Daytime harbor town exploration music for a fishing life-sim set in Sokcho, Korea. Fresh and airy but restrained: gentle fingerpicked acoustic guitar, '
+      + 'soft glockenspiel accents, warm upright bass, a clear simple woodwind melody (flute or clarinet), very light brushed percussion or none at all. '
+      + 'No strumming, no driving beat, not dance-like, not energetic. 84 BPM, laid-back, breezy morning sea air, calm and pleasant.',
   },
   field_day_chip: {
     ko: '낮 항구 필드 · 다른 결 — 16비트 콘솔 풍(마림바 · 플루트 신스 · 통통 튀는 베이스)',
@@ -50,29 +56,40 @@ const TRACKS = {
       + 'faint waves and wind texture, distant lighthouse feeling. 70 BPM, calm, a little lonely but comforting, very spacious.',
   },
   fishing_wait: {
-    ko: '1인칭 낚시(기다림) — 미니멀 · 맑은 벨 · 물결 같은 아르페지오 · 집중',
-    prompt: 'Calm focus music for waiting for a bite while fishing from a breakwater. Minimal and hypnotic: gentle rippling arpeggio on a clean '
-      + 'electric piano, glassy bell tones, soft pad underneath, very light pulse. 76 BPM, patient, meditative, never distracting.',
+    ko: '1인칭 낚시(기다림) 2판 — 더 느리게 · 박자 없음 · 넓은 패드 · 띄엄띄엄 피아노 · 물결 반짝임',
+    prompt: 'Very slow, calm focus music for waiting for a bite on a breakwater. Ambient and spacious: slowly evolving warm pads, '
+      + 'a sparse soft piano or clean electric piano motif with long gaps between phrases, a gentle water-like shimmer, no percussion and no pulse. '
+      + 'Around 56 BPM feel, patient and meditative, like watching a float bob on calm water at sunset.',
   },
   home: {
-    ko: '집 · 실내 — 로파이 피아노 · 테이프 질감 · 포근하게',
-    prompt: 'Cozy indoor home theme for a small seaside room at evening. Lo-fi hip hop feel: warm felt piano chords, mellow muted guitar, '
-      + 'soft dusty drum loop with gentle vinyl crackle, round bass. 74 BPM, peaceful, safe, a little sleepy.',
+    ko: '집 2판(가) — 아버지가 남긴 옛집 · 가까이서 녹음한 업라이트 피아노 · 나일론 기타 · 오르골 · 드럼 없음',
+    prompt: "Theme for the main character's home: an old family house left by their late father in a quiet Korean country hometown. "
+      + 'Intimate solo upright piano recorded close with soft felt, playing a simple tender melody; gentle nylon-string guitar arpeggios underneath; '
+      + 'a faint music-box (celesta) motif like a childhood memory; very soft strings. No drums, no hip-hop beat, no jazz chords, no vinyl crackle — not cafe music. '
+      + '72 BPM, warm lamplight in a small wooden room, nostalgic and a little bittersweet, but safe and comforting: a place to rest after a day at sea.',
+  },
+  home_b: {
+    ko: '집 2판(나) — 시골 마을 옛 목조집의 저녁 · 기타 아르페지오 · 풍금 긴 화음 · 클라리넷 · 드럼 없음',
+    prompt: "Quiet evening theme for an old wooden house in a quiet Korean village, the home the main character inherited from their late father. "
+      + 'Soft acoustic guitar fingerpicking and a gentle reed organ holding long simple chords, a lonely clarinet melody that comes and goes, faint room ambience. '
+      + 'Plain folk harmony; no drums, not jazz, not lo-fi, not cafe-like. 72 BPM, tender, reflective, homely and safe.',
   },
   farm: {
-    ko: '텃밭 — 목가풍 포크 · 어쿠스틱 기타 · 리코더 · 한낮의 여유',
-    prompt: 'Pastoral garden farming theme for a small vegetable plot by the sea. Folk instrumentation: fingerpicked acoustic guitar, soft recorder '
-      + 'or wooden flute melody, light glockenspiel, gentle hand drum. 90 BPM, sunny afternoon, humble and content.',
+    ko: '텃밭 2판 — 더 느긋하게 · 손가락 기타 · 나무 피리 · 글로켄슈필 · 손북 아주 드물게 · 76BPM',
+    prompt: 'Pastoral garden farming theme for a small vegetable plot by the sea, slow and unhurried. Fingerpicked acoustic guitar, '
+      + 'soft wooden flute or recorder melody, light glockenspiel, a gentle hand drum played very sparsely. 76 BPM, lazy sunny afternoon, humble, content, relaxed.',
   },
   market: {
-    ko: '시장 · 마을 — 가야금 · 대금 느낌 + 칩튠 · 활기 있게(한국 색)',
-    prompt: 'Lively traditional fish market theme with a Korean flavor: plucked gayageum-like zither melody, a breathy daegeum-like bamboo flute, '
-      + 'janggu-style hand drum pattern blended with soft chiptune bass and claps. 104 BPM, busy morning market, friendly and warm.',
+    ko: '시장 · 마을 2판(가) — 절제 · 나일론 기타 · 아코디언 · 비브라폰 · 서양 포크 화성(5음계 · 중국풍 악기 없음) · 88BPM',
+    prompt: 'Restrained morning fish-market theme for a Korean seaside town, gentle and warm rather than festive. Nylon-string guitar and a soft accordion melody, '
+      + 'warm upright bass, light brushed snare and shaker, a little vibraphone. Major key with simple Western folk harmony; '
+      + 'avoid pentatonic or Chinese-sounding melodies; no gongs, no erhu, no guzheng, no taiko, no festival drums. 88 BPM, friendly background bustle, calm and unhurried.',
   },
-  rain: {
-    ko: '비 오는 날 — 잔잔한 피아노 · 첼로 · 빗소리 질감 · 쓸쓸하지만 따뜻하게',
-    prompt: 'Rainy day theme in a coastal town. Gentle solo piano with a soft cello line, light rain texture, sparse warm pad, '
-      + 'no drums. 68 BPM, melancholic but tender, reflective, quiet.',
+  market_b: {
+    ko: '시장 · 마을 2판(나) — 절제 · 부드러운 칩튠 선율 + 어쿠스틱 기타 · 가벼운 손 타악 · 장조 · 86BPM',
+    prompt: 'Calm harbor market theme for a cozy pixel-art fishing game: a soft chiptune square-wave lead blended with acoustic guitar and piano, '
+      + 'round bass, light hand percussion (shaker, soft claps far in the background). Major key, simple diatonic melody; '
+      + 'no Asian pentatonic clichés, no gongs or traditional festival drums. 86 BPM, everyday life at the harbor, warm, restrained.',
   },
 };
 

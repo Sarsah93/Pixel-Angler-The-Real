@@ -91,7 +91,7 @@ export const QUEST_SCENE_OVERRIDES: Record<string, (q: StoryQuestDef, idx: numbe
   'M1-01#16': (q, idx, ctx) => {   // 188차 — 프롤로그 14목표가 앞에 붙어 #2 → #16
     const base = generatedScene(q, idx, ctx);
     base.script = {
-      id: base.script.id, placeKo: '동명항 · 정옥선 좌판', placeEn: 'Dongmyeong Harbour · Ok-seon\'s stall',
+      id: base.script.id, placeKo: '동명항 · 정옥선 좌판', placeEn: 'Dongmyeong Harbour · Okseon\'s stall',
       steps: [
         { kind: 'focus', who: 'npc', ms: 480 },
         { kind: 'faceTo', who: 'npc', target: 'player' },
@@ -221,7 +221,7 @@ export const QUEST_SCENE_OVERRIDES: Record<string, (q: StoryQuestDef, idx: numbe
     base.script = {
       id: base.script.id, placeKo: base.script.placeKo, placeEn: base.script.placeEn,
       steps: [
-        { kind: 'say', who: 'player', thought: true, text: '동해안을 따라 하루 반. 부두에 강두철 조합장과 탁만수 노인이 서 있었다.', textEn: 'A day and a half up the coast. Kang Du-cheol and old Tak were standing on the pier.' },
+        { kind: 'say', who: 'player', thought: true, text: '동해안을 따라 하루 반. 부두에 강두철 조합장과 탁만수 노인이 서 있었다.', textEn: 'A day and a half up the coast. Kang Ducheol and old Tak were standing on the pier.' },
         { kind: 'fade', who: 'tak', alpha: 1, ms: 360 },
         { kind: 'faceTo', who: 'npc', target: 'player' },
         { kind: 'faceTo', who: 'tak', target: 'player' },

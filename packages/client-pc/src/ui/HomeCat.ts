@@ -9,15 +9,21 @@
  *    배가 고프면(마지막 밥 20시간 이상) 플레이어 곁으로 와서 운다. 소파에 앉으면 정이 든 고양이는 옆으로 온다.
  *  - 상호작용은 씬이 맡는다(닿는 거리 판정 → 확장 패널 「쓰다듬기 · 밥 주기」). 이 모듈은 반응 연출과 상태만.
  *  - 상태(밥 먹은 시각 · 정)는 `HomeStore.cat` — 세이브된다.
+ *  - 소리(253차 사용자 지시 「집 내 고양이 관련 상호작용 시, 혹은 평상 시 가끔 소리내기」 — 합성 `audio/SfxBank` `cat_*`):
+ *    다가가 [F] = 「냥」(자고 있으면 잠결에 골골) · 쓰다듬기 = 골골 · 밥 = 오도독 · 배불러 거절 = 킁킁 · 배고파 조르기 = 「냐아아옹」 ·
+ *    자다 깨면 하품 · 곁에 와 앉으면 「브르릅」 · 평소 40~90초마다 한 번쯤(잠든 때는 가끔 골골).
+ *    주인과 멀수록 작게, 화면 왼쪽에 있으면 왼쪽에서 들린다.
  */
 
 import Phaser from 'phaser';
 import { IT, ROOM_W, ROOM_H, FLOOR_TOP } from '../data/HomeFurniture.js';
 import { HomeStore } from '../store/HomeStore.js';
+import { playSfx, type SfxName } from '../audio/SfxBank.js';
 
 type CatPose = 'side0' | 'side1' | 'eat' | 'front' | 'back' | 'sit' | 'sleep';
 type CatDir = 'down' | 'up' | 'left' | 'right';
 type CatState = 'sleep' | 'sit' | 'walk' | 'eat' | 'beg';
+type CatSound = Extract<SfxName, `cat_${string}`>;
 
 /** 마지막 밥 이후 이만큼 지나면 배고파한다 */
 export const CAT_HUNGRY_MS = 20 * 3600 * 1000;
@@ -127,6 +133,10 @@ export class HomeCat {
   private hidden = false;
   /** 다음 걷기가 끝나면 할 일 */
   private after: CatState = 'sit';
+  /** 253차 — 곁에 와 앉으면 반가운 소리를 낸다(소파 곁으로 불려 왔을 때) */
+  private greet = false;
+  /** 253차 — 다음 혼잣소리까지(ms) — 들어오자마자 울지 않게 15~35초 뒤부터 */
+  private idleVoiceT = 15000 + Math.random() * 20000;
 
   constructor(scene: Phaser.Scene, host: CatHost) {
     this.scene = scene;
@@ -167,12 +177,14 @@ export class HomeCat {
 
   // ── 반응 ─────────────────────────────────────────────
 
-  /** 주인이 다가와 [F] — 자리에 앉아 쳐다본다 */
+  /** 주인이 다가와 [F] — 자리에 앉아 쳐다본다(자고 있으면 잠결에 골골) */
   attend(): void {
     this.path = [];
     if (this.state !== 'sleep') this.state = 'sit';
     this.timer = 8000;
     this.faceTo(this.host.player());
+    if (this.state === 'sleep') this.voice('cat_purr', 0.5);
+    else this.voice(this.hungry() ? 'cat_beg' : 'cat_mew');
   }
 
   /** 쓰다듬기 — 플레이어를 보고 앉아 골골댄다 */
@@ -182,6 +194,7 @@ export class HomeCat {
     this.timer = 6000;
     this.faceTo(this.host.player());
     this.hearts(3);
+    this.voice('cat_purr');
   }
 
   /** 밥 먹기 — 3초 동안 고개를 숙이고 먹는다 */
@@ -192,6 +205,7 @@ export class HomeCat {
     const p = this.host.player();
     this.dir = p.x < this.x ? 'left' : 'right';
     this.hearts(1);
+    this.voice('cat_eat');
   }
 
   /** 배불러 냄새만 맡고 돌아앉는다 */
@@ -201,13 +215,14 @@ export class HomeCat {
     this.timer = 3000;
     const p = this.host.player();
     this.dir = p.y < this.y ? 'up' : 'down';
+    this.voice('cat_sniff', 0.8);
   }
 
   /** 소파에 앉은 주인 곁으로 */
   comeSitNear(px: number, py: number): void {
     const target = this.nearestFreeCell(px, py);
     if (!target) return;
-    this.walkTo(target.c, target.r, 'sit');
+    this.greet = this.walkTo(target.c, target.r, 'sit');
   }
 
   /** 가구 배치가 바뀐 뒤 — 가구 칸 위에 갇혔으면 가까운 빈칸으로 옮긴다 */
@@ -232,7 +247,21 @@ export class HomeCat {
     // 배고프면 곁에서 운다
     if (this.state === 'beg' || (this.hungry() && this.state === 'sit')) {
       const p = this.host.player();
-      if (Math.hypot(p.x - this.x, p.y - this.y) < 90 && this.scene.time.now - this.bubbleAt > 7000) this.say('야옹');
+      if (Math.hypot(p.x - this.x, p.y - this.y) < 90 && this.scene.time.now - this.bubbleAt > 7000) {
+        this.say('야옹');
+        this.voice('cat_beg');
+        this.idleVoiceT = Math.max(this.idleVoiceT, 20000);
+      }
+    }
+    // 253차 — 평소에도 가끔 소리를 낸다(잠든 때는 가끔 골골 · 밥 먹는 중은 조용)
+    this.idleVoiceT -= delta;
+    if (this.idleVoiceT <= 0) {
+      this.idleVoiceT = 40000 + Math.random() * 50000;
+      if (this.state === 'sleep') { if (Math.random() < 0.5) this.voice('cat_purr', 0.4); }
+      else if (this.state !== 'eat') {
+        const r = Math.random();
+        this.voice(r < 0.4 ? 'cat_trill' : r < 0.75 ? 'cat_mew' : 'cat_meow', 0.75);
+      }
     }
     this.sync();
   }
@@ -251,6 +280,7 @@ export class HomeCat {
     const roll = Math.random();
     if (this.state === 'sleep') {   // 기지개 켜고 일어나 앉는다
       this.state = 'sit'; this.timer = 3000 + Math.random() * 3000;
+      if (Math.random() < 0.6) this.voice('cat_yawn', 0.7);
       return;
     }
     const bed = this.host.bedSpot();
@@ -271,6 +301,8 @@ export class HomeCat {
       this.state = this.after;
       this.timer = this.after === 'sleep' ? 25000 + Math.random() * 35000 : this.after === 'beg' ? 3000 : 5000 + Math.random() * 7000;
       if (this.after === 'beg' || this.after === 'sit') this.faceTo(this.host.player());
+      if (this.greet && this.after === 'sit') this.voice('cat_trill');
+      this.greet = false;
       return;
     }
     const dx = next.x - this.x, dy = next.y - this.y;
@@ -297,6 +329,19 @@ export class HomeCat {
     this.image.setTexture(`cat_${pose}`).setFlipX(flip).setPosition(Math.round(this.x), Math.round(this.y) + 2).setDepth(20 + this.y * 0.001);
     this.shadow.setPosition(this.x, this.y + 1);
     if (this.bubble) this.bubble.setPosition(this.x, this.y - TEX_H - 2);
+  }
+
+  /**
+   * 253차 — 고양이 소리. 주인(플레이어)과 멀수록 작게(가까우면 1 · 420px 밖이면 0.3) ·
+   * 주인보다 왼쪽에 있으면 왼쪽에서(좌우 ±0.6). 숨겨진 동안(가구 배치 등)은 조용하다.
+   */
+  private voice(name: CatSound, gainMul = 1): void {
+    if (this.hidden) return;
+    const p = this.host.player();
+    const d = Math.hypot(p.x - this.x, p.y - this.y);
+    const gain = Math.max(0.3, Math.min(1, 1.15 - d / 420)) * gainMul;
+    const pan = Math.max(-0.6, Math.min(0.6, (this.x - p.x) / 320));
+    playSfx(name, { gain, pan });
   }
 
   private faceTo(p: { x: number; y: number }): void {

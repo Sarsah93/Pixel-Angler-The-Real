@@ -553,7 +553,7 @@ export class SettingsScene extends Phaser.Scene {
 
     const audioItems: { key: keyof GameSettings; label: string; desc: string }[] = [
       { key: 'sfxVolume', label: '효과음 볼륨 (SFX)', desc: '캐스팅 · 입질 · 릴 · 드랙 · 돈 · 버튼 같은 효과음 음량' },
-      { key: 'bgmVolume', label: '배경음 볼륨 (BGM)', desc: '파도 · 빗소리 같은 배경음 음량' },
+      { key: 'bgmVolume', label: '배경음 볼륨 (BGM)', desc: '파도 · 비 · 바람 · 천둥 같은 배경음 음량' },
       { key: 'voiceVolume', label: '대사 소리', desc: '대화 글자가 찍힐 때 나는 인물 목소리 음량' },
     ];
 

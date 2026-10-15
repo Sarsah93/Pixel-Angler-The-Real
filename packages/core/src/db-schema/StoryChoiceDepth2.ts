@@ -41,7 +41,7 @@ export const CHOICE_DEPTH_2: Record<string, ChoiceDepthEntry> = {
     completeReply: {
       seasick: [
         '다시 탄다는 놈은 괜찮아진다. 멀미약은 배에 있다. (다음 항차 명부에 내 이름이 먼저 적힌다.)\n\n멀미는 속이 아니라 눈이 하는 거다. 다음엔 발밑 말고 수평선을 봐. 그리고 빈속으로 타지 마라. 빈속이 먼저 뒤집힌다.',
-        "A lad who goes out again gets over it. The tablets are on the boat. (My name goes first on the next sailing list.)\n\nSeasickness starts in the eyes, not the gut. Next time look at the horizon, not your feet. And don't come aboard on an empty stomach. An empty one turns first.",
+        "Anyone who goes out again gets over it. The tablets are on the boat. (My name goes first on the next sailing list.)\n\nSeasickness starts in the eyes, not the gut. Next time look at the horizon, not your feet. And don't come aboard on an empty stomach. An empty one turns first.",
       ],
       horizon: [
         '…그걸 봤으면 됐다. 배는 그거 보려고 타는 거야. (짧게, 처음으로 내 눈을 본다.)\n\n육지에선 수평선이 가만히 있지. 배에선 수평선이 아니라 네가 움직이는 거다. 그걸 몸이 알면 멀미도 반은 간다.',
@@ -192,7 +192,7 @@ export const CHOICE_DEPTH_2: Record<string, ChoiceDepthEntry> = {
     ],
     completeReply: {
       return: [
-        '그게 선장이다. 아직 배는 없어도. (그날부터 선장이 나를 부를 때 목소리가 달라졋다.)\n\n배는 다시 사도 사람은 못 산다. 그걸 아는 놈이 키를 잡는 거야. 오늘 빈손은 손님들한테 내가 말한다. 너는 그 판단만 기억해.',
+        '그게 선장이다. 아직 배는 없어도. (그날부터 선장이 나를 부를 때 목소리가 달라졌다.)\n\n배는 다시 사도 사람은 못 산다. 그걸 아는 놈이 키를 잡는 거야. 오늘 빈손은 손님들한테 내가 말한다. 너는 그 판단만 기억해.',
         "That's a skipper. Even without a boat yet. (From that day his voice changes when he calls my name.)\n\nYou can buy another boat. You can't buy another person. Whoever knows that is the one who takes the wheel. I'll explain the empty hold to the customers. You just remember the call you made.",
       ],
       regret: [
@@ -302,7 +302,7 @@ export const CHOICE_DEPTH_2: Record<string, ChoiceDepthEntry> = {
     ],
     completeReply: {
       caught: [
-        '그게 낚시꾼이지. 대보다 고기를 먼저 세는. …그래도 대는 챙겨 가. (마디를 챠근차근 주워 준다.)\n\n고기 먼저 센 건 잘한 거다. 대는 다시 깎으면 되지만 오늘 그 참돔은 다시 안 와. 그래도 오늘 밤엔 대 옆에 앉아 있어라. 그 대도 수고했다.',
+        '그게 낚시꾼이지. 대보다 고기를 먼저 세는. …그래도 대는 챙겨 가. (마디를 차근차근 주워 준다.)\n\n고기 먼저 센 건 잘한 거다. 대는 다시 깎으면 되지만 오늘 그 참돔은 다시 안 와. 그래도 오늘 밤엔 대 옆에 앉아 있어라. 그 대도 수고했다.',
         "That's an angler for you — counting fish before rods. …Take the rod with you all the same. (He gathers the pieces up, one by one.)\n\nCounting the fish first was right. A rod can be cut again, but that seabream won't come twice. Still, sit by the rod tonight. It did its work too.",
       ],
     },

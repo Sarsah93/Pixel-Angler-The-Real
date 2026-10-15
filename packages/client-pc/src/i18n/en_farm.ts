@@ -596,7 +596,7 @@ export const EN_FARM_RULES: [RegExp, (m: RegExpMatchArray, tr: (s: string) => st
   [CARE_LIST_RE, (m) => m[0].split(' · ').map((x) => CARE_EN_BY_KO[x] ?? x).join(' · ')],
   // 237차 — N19-7 정옥선의 선물(「[할 일] 정옥선이 건넨 것 — 상추 모종 (1포기) ×18 · 호미」)
   //  떠오르는 안내는 태그를 떼고 보낸다 — 태그 없는 꼴도 받는다
-  [/^(\[할 일\] )?정옥선이 건넨 것 — (.+)$/, (m, tr) => `${m[1] ? '[Task] ' : ''}Ok-seon gave you: ${m[2].split(' · ').map((x) => {
+  [/^(\[할 일\] )?정옥선이 건넨 것 — (.+)$/, (m, tr) => `${m[1] ? '[Task] ' : ''}Okseon gave you: ${m[2].split(' · ').map((x) => {
     const q = /^(.+) ×(\d+)$/.exec(x);
     return q ? `${tr(q[1])} ×${q[2]}` : tr(x);
   }).join(' · ')}`],

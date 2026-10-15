@@ -123,7 +123,7 @@ export const CHOICE_DEPTH_1: Record<string, ChoiceDepthEntry> = {
       ],
       ask_more: [
         '쓸 만하면. 손이 얼어서 상자 떨어뜨리는 놈은 안 쓴다. (내일 몫 얼음값이라며 동전 몇 개를 더 준다.)\n\n배 들어오는 새벽에 얼음이 제일 많이 나간다. 그때 와. 늦게 오면 할 일 없다. 장갑은 네 걸로 챙기고.',
-        "If you're any use. I've no work for a lad who drops crates once his hands go numb. (She hands over a few more coins — tomorrow's ice money, she calls it.)\n\nThe ice goes fastest at dawn, when the boats come in. Come then. Turn up late and there's nothing left to do. Bring your own gloves.",
+        "If you're any use. I've no work for anyone who drops crates once their hands go numb. (She hands over a few more coins — tomorrow's ice money, she calls it.)\n\nThe ice goes fastest at dawn, when the boats come in. Come then. Turn up late and there's nothing left to do. Bring your own gloves.",
       ],
     },
   },
@@ -500,7 +500,7 @@ export const CHOICE_DEPTH_1: Record<string, ChoiceDepthEntry> = {
     completeReply: {
       own: [
         '그렇게 말하는 놈은 다음 상자를 안 잃는다. (다음 얼음값을 계에서 대 준다는 말을 덧붙인다.)\n\n남 탓 하는 사람은 같은 데서 또 넘어진다. 제 탓 하는 사람은 넘어진 자리를 기억하고. 이번 한 번은 계가 대 준다. 다음은 없다.',
-        "A lad who says that doesn't lose the next crate. (He adds that the guild will cover the ice next time.)\n\nPeople who blame others trip in the same place again. People who blame themselves remember where they fell. The guild covers it this once. There won't be a next time.",
+        "Anyone who says that doesn't lose the next crate. (He adds that the guild will cover the ice next time.)\n\nPeople who blame others trip in the same place again. People who blame themselves remember where they fell. The guild covers it this once. There won't be a next time.",
       ],
       excuse: [
         '거리는 네가 잰 거지. 얼음도 네가 넣은 거고. 다음엔 둘 다 네 몫이다.\n\n멀면 얼음을 더 넣으면 된다. 거리는 못 바꿔도 얼음은 바꿀 수 있어. 못 바꾸는 걸 핑계로 대면 배우는 게 없다.',

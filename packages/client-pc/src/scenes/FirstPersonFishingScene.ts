@@ -70,6 +70,7 @@ import {
   playCatchFanfare, playRelease,
 } from '../audio/Sfx.js';
 import { setAmbience } from '../audio/Ambience.js';
+import { weatherSoundLevels } from '../audio/WeatherSound.js';
 import {
   snagDragChance, snagHazardPerM, sinkerHoldsBottom,
   type SnagRigKind, type SinkerHoldResult, type ParkedRigSnapshot, type ParkedRodPhase, type ParkedRodEvent,
@@ -573,8 +574,9 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.reelSoundAccM = 0; this.dragZingT = 0;
     playSplash(Math.min(1, InventoryStore.getRigTotalWeightG() / 120));
     {
-      const kind = ExternalDataStore.getWeatherKind(this.cfg.region);
-      setAmbience({ sea: 0.9, rain: kind === 'rain' ? 0.8 : kind === 'shower' ? 0.5 : 0 });
+      // 253차 — 비 · 바람 · 천둥도 기상 실데이터로(센 바람은 파도를 키운다)
+      const w = weatherSoundLevels(this.cfg.region);
+      setAmbience({ sea: Math.min(1, 0.9 * (1 + 0.2 * w.wind)), ...w });
     }
     // 207차 — 끌림 거리 · 걸림 상태 · 봉돌 굴림도 캐스팅마다 새로
     this.dragPrev = null; this.snagStuck = null; this.snagChoice = false; this.parkTourAsked = false; this.parkChipAcc = 0; this.parkToastUntil = 0; this.snagHazardNow = 0; this.sinkerHold = SINKER_HOLDS;

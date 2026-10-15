@@ -233,8 +233,8 @@ export const STORY_DIALOGUE: Record<string, QuestDialogue> = {
     done: [['됐지? 한 마리가 사람 사이를 잇는 거야.', 'See? One fish connects people.']],
   },
   'N02-1': {
-    offer: [['그 대, 손잡이가 삭았어. 손 볼 동안 우리 새벽이랑 학꽁치 내기나 해.', 'The grip on that rod has rotted. While I fix it, have a halfbeak bet with my Sae-byeok.']],
-    progress: ['새벽이가 이겼대? 학꽁치는 표층이야.', 'Sae-byeok won? Halfbeak are on the surface.'],
+    offer: [['그 대, 손잡이가 삭았어. 손 볼 동안 우리 새벽이랑 학꽁치 내기나 해.', 'The grip on that rod has rotted. While I fix it, have a halfbeak bet with my Saebyeok.']],
+    progress: ['새벽이가 이겼대? 학꽁치는 표층이야.', 'Saebyeok won? Halfbeak are on the surface.'],
     done: [['대는 고쳤다. 오래 못 갈 거다. 그래도 네 대야.', 'The rod\'s fixed. It won\'t last long. Still yours.']],
   },
   'N03-1': {

@@ -30,6 +30,7 @@ import { LedgerStore } from '../store/LedgerStore.js';
 import { DayReportPanel, type DayReportMode } from '../ui/DayReportPanel.js';
 import { ConsignListPanel } from '../ui/ConsignListPanel.js';
 import { setAmbience } from '../audio/Ambience.js';
+import { weatherSoundFrom } from '../audio/WeatherSound.js';
 import { wakeLine, offlineWakeLines } from '../data/WakeLines.js';
 import { settleDueConsignments } from '../store/ConsignSettle.js';
 import { playCoin, playUiClick } from '../audio/Sfx.js';
@@ -274,7 +275,7 @@ export class HomeInteriorScene extends Phaser.Scene {
   }
 
   create(): void {
-    setAmbience({ sea: 0.12, rain: 0 });   // 211차 — 집 안 — 창 너머 먼 파도
+    setAmbience({ sea: 0.12, indoor: true });   // 211차 — 집 안 — 창 너머 먼 파도(253차 — 날씨는 창이 생긴 뒤 `syncWeatherSound`)
     this.time.delayedCall(1200, () => this.maybeShowUnseenDay(0));   // 211차 — 자는 사이 넘어간 하루
     this.homeTitle = undefined;   // 204차 — 재진입 시 파괴된 Text를 다시 쓰지 않게
     this.homeTitleKey = '';
@@ -318,6 +319,7 @@ export class HomeInteriorScene extends Phaser.Scene {
       lights: () => this.litSources(),
       dimMul: () => (this.decor ? 0.45 : 1),
     });
+    this.syncWeatherSound();
     // 190차 — 고양이
     this.cat = new HomeCat(this, {
       ox: OX, oy: OY,
@@ -337,7 +339,7 @@ export class HomeInteriorScene extends Phaser.Scene {
       GameState.mealAtTable = false;
     });
     // 190차 — 도감(AnglerLogScene)에서 돌아오면 페이드인 + 하늘·불빛 다시 읽기
-    const onResume = (): void => { this.cameras.main.fadeIn(220, 0, 10, 20); this.ambience?.refresh(); };
+    const onResume = (): void => { this.cameras.main.fadeIn(220, 0, 10, 20); this.ambience?.refresh(); this.syncWeatherSound(); };
     this.events.on('resume', onResume);
     this.events.once('shutdown', () => this.events.off('resume', onResume));
 
@@ -990,6 +992,15 @@ export class HomeInteriorScene extends Phaser.Scene {
       const b = this.add.rectangle(bx, OY + f.ty * IT + IT - 28, 2, 2, 0xe8f6ff, 0.9).setDepth(this.furnDepth(f) + 0.0002);
       this.tweens.add({ targets: b, y: OY + f.ty * IT + 8, alpha: 0.2, duration: 1400, onComplete: () => b.destroy() });
     }
+  }
+
+  /**
+   * 253차 — 창밖 날씨(홈타운 · 창 그림과 같은 값)를 벽 너머 소리로 — 비 · 바람 · 천둥이 먹먹하게 들린다.
+   * 홈타운은 관측이 없어 날씨 종류로 굵기를 가늠한다(`weatherSoundFrom`).
+   */
+  private syncWeatherSound(): void {
+    const kind = this.ambience?.weather ?? 'clear';
+    setAmbience({ sea: 0.12, ...weatherSoundFrom(kind), indoor: true });
   }
 
   /** 지금 켜져 있는 불빛 — 스탠드(따뜻한 노랑) · 수조(푸른빛) */

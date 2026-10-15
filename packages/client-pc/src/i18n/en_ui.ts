@@ -65,7 +65,7 @@ export const EN_UI: Record<string, string> = {
 
   // ── 심부름(얼음 나르기) ──
   '얼음 상자를 하역 위치에 내려놓았습니다.': 'You set the ice crate down on the unloading mark.',
-  '얼음 상자를 내려놓았습니다 — 정옥선에게 돌아가세요': 'Ice crate delivered — head back to Jeong Ok-seon',
+  '얼음 상자를 내려놓았습니다 — 정옥선에게 돌아가세요': 'Ice crate delivered — head back to Jeong Okseon',
 
   // ── 보건소 ──
   '지금은 진료가 필요하지 않습니다': 'You have nothing that needs treating right now',

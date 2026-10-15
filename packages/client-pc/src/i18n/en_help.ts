@@ -62,8 +62,8 @@ export const EN_HELP: Record<string, string> = {
     "Radio [F] (or \"Listen to the radio\" from the sofa): today's and tomorrow's tides with high and low water times, plus current weather and tomorrow's forecast off Sokcho and Busan.",
   '식탁을 바라보는 의자에 앉으면 「식사하기」가 뜹니다. 앉은 채로 먹으면 허기가 25% 더 찹니다.':
     'Sit on a chair facing the table and "Have a meal" appears. Eating while seated fills Hunger 25% more.',
-  '고양이 [F]: 쓰다듬기(30분에 한 번 피로가 조금 풀립니다) · 밥 주기(가방의 손질 부산물 하나 — 배가 부르면 먹지 않습니다). 오래 굶으면 곁에 와서 울고, 정이 들면 소파에 앉을 때 곁으로 옵니다.':
-    "Cat [F]: Pet (eases a little fatigue, once every 30 minutes) · Feed (one butchering trimming from your bag — it won't eat when full). A hungry cat comes and meows at you; a cat that's grown fond of you joins you on the sofa.",
+  '고양이 [F]: 쓰다듬기(30분에 한 번 피로가 조금 풀립니다) · 밥 주기(가방의 손질 부산물 하나 — 배가 부르면 먹지 않습니다). 오래 굶으면 곁에 와서 울고, 정이 들면 소파에 앉을 때 곁으로 옵니다. 쓰다듬으면 골골거리고, 밥을 먹을 때는 오도독 소리를 내고, 평소에도 가끔 웁니다.':
+    "Cat [F]: Pet (eases a little fatigue, once every 30 minutes) · Feed (one butchering trimming from your bag — it won't eat when full). A hungry cat comes and meows at you; a cat that's grown fond of you joins you on the sofa. It purrs when petted, crunches as it eats, and meows now and then on its own.",
   '벽 장식은 바로 아래에서 [F]: 책(어류 도감 · 이레 치 물때표) · 달력(이번 달과 다가오는 납부일) · 어탁(가장 큰 고기와 어종별 최대어).':
     "Wall decor — press [F] right below: books (fish guide · a week's tide table) · calendar (this month and upcoming payments) · fish print (your biggest fish and the biggest of each species).",
   '관상 수조 [F]: 살아 있는(활어) 고기를 45cm까지 4마리 넣어 둡니다. 수조 안에서는 상하지 않고, 꺼내면 활어로 가방에 들어옵니다. 갓 낚은 고기나 해수 쿨러로 살려 온 고기만 넣을 수 있습니다. 패류독소 표시와 거래로 받은 표시는 수조에 넣었다 꺼내도 그대로 남습니다.':
@@ -103,7 +103,7 @@ export const EN_HELP: Record<string, string> = {
   '환경설정 — ① 탭(단축키 · 화면 · 낚시 · 음향 · 언어 · 접근성) ② 장소 핀 ③ 할 일 위치 안내': 'Settings — ① Tabs (Keys · Display · Fishing · Sound · Language · Accessibility) ② Place pins ③ Task direction guide',
   '필드의 일시정지 메뉴(환경설정)나 메인 메뉴(설정)에서 엽니다. 탭은 단축키 · 화면 · 낚시 · 음향 · 언어 · 접근성입니다.': 'Open it from the field pause menu (Settings) or the main menu (Settings). The tabs are Keys · Display · Fishing · Sound · Language · Accessibility.',
   '화면: 「장소 핀」(미니맵에 정류장 · 여객터미널 같은 장소 핀, 기본 끔)과 「할 일 위치 안내」(노란 목표 화살표, 기본 켬). 전체 지도(M)에는 장소 핀이 늘 보입니다.': 'Display: "Place pins" (pins for places such as bus stops and ferry terminals on the minimap, off by default) and "Task direction guide" (the yellow objective arrow, on by default). The Full Map (M) always shows place pins.',
-  '낚시: 1인칭 화면의 로드 위치 좌/우(기본 우)와 릴 핸들 좌/우(기본 좌). 음향: 효과음 · 배경음 · 대사 소리(사람마다 다른 말소리) 크기. 언어: 한국어 / English — 바로 적용됩니다.': 'Fishing: rod position left/right on the first-person screen (default right) and reel handle left/right (default left). Sound: SFX · BGM · voice blips (each person has their own voice) volume. Language: Korean / English — applies immediately.',
+  '낚시: 1인칭 화면의 로드 위치 좌/우(기본 우)와 릴 핸들 좌/우(기본 좌). 음향: 효과음 · 배경음(파도 · 비 · 바람 · 천둥 — 그 지역의 실제 날씨를 따르고, 집 안에서는 벽 너머로 먹먹하게 들립니다) · 대사 소리(사람마다 다른 말소리) 크기. 언어: 한국어 / English — 바로 적용됩니다.': 'Fishing: rod position left/right on the first-person screen (default right) and reel handle left/right (default left). Sound: SFX · BGM (waves · rain · wind · thunder — they follow the real weather of the region, and sound muffled through the walls indoors) · voice blips (each person has their own voice) volume. Language: Korean / English — applies immediately.',
   // 251차 — 접근성 탭
   '접근성 — 포인터 · 색 구분': 'Accessibility — pointer and colours',
   '접근성 — ① 마우스 포인터(색 · 흰 테 · 크기) ② 포인터 미리보기(밝은 곳 · 어두운 곳) ③ 색 구분 보정 · 모양으로도 표시 ④ 신호 미리보기': 'Accessibility — ① Mouse pointer (colour · white outline · size) ② Pointer preview (light and dark ground) ③ Colour-blind palette · Shapes as well as colour ④ Signal preview',

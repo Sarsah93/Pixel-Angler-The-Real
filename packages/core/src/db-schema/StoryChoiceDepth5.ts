@@ -5,8 +5,7 @@
  *              집필 기준 · 합치는 순서는 `StoryChoiceDepth.ts` 머리 주석.
  *
  *  - 편 순서는 문맥(`tools/story_choice_context.mjs --batch 5`) 순서다.
- *  - N08-2 `support` · N09-2 `decline`은 원래 응답(나레이션)에 「우호도」가 들어 있어 늘리지 않았다 —
- *    원문을 앞에 그대로 두면 개발 용어 검사에 걸린다. 원문을 고친 뒤 각 편 주석의 단락을 잇는다.
+ *  - N08-2 `support` · N09-2 `decline`은 원래 응답에 「우호도」(R1 개발 용어)가 있었다 — 원문 지문을 장면으로 고친 뒤(253차) 단락을 이었다.
  */
 
 import type { ChoiceDepthEntry } from '../types/Story.js';
@@ -90,7 +89,7 @@ export const CHOICE_DEPTH_5: Record<string, ChoiceDepthEntry> = {
     completeReply: {
       rule: [
         '네. 약속. (동의서 첫 줄에 내 이름을 쓴다. 그 뒤로 하린의 영상에서 사람들이 편해졌다.)\n\n동의서는 세 줄이에요. 찍어도 되는지, 얼굴이 나와도 되는지, 내려 달라고 하면 내리는지. 마지막 줄은 그쪽 덕분에 넣었어요. 싫다고 하면 언제든 내릴게요.',
-        "Yes. Promise. (She writes my name on the first line of the consent form. After that, people are easier in Harang's videos.)\n\nThe form has three lines. Can I film you, can your face be shown, and will I take it down if you ask. The last line is there because of you. Say the word and it comes down, any time.",
+        "Yes. Promise. (She writes my name on the first line of the consent form. After that, people are easier in Harin's videos.)\n\nThe form has three lines. Can I film you, can your face be shown, and will I take it down if you ask. The last line is there because of you. Say the word and it comes down, any time.",
       ],
       pay: [
         '아… 네. 맞아요. 그게 규칙이죠. (통장에서 이체한다. 표정이 조금 굳는다.)\n\n…아니에요, 굳은 거 아니에요. 맞는 말이니까요. 얼굴은 그 사람 거잖아요. 쓰려면 값을 내야죠. 다음부터는 찍기 전에 그 얘기부터 할게요.',
@@ -132,7 +131,7 @@ export const CHOICE_DEPTH_5: Record<string, ChoiceDepthEntry> = {
     completeReply: {
       support: [
         '…형. (하린이 그 말을 듣고 카메라를 다시 들었다. 이번엔 기범을 찍기 위해.)\n\n…하린이 카메라가 이쪽을 보네요. 저는 늘 등 돌리고 있었는데. (이번엔 돌아앉지 않는다.) 형이 그렇게 말해 줘서요. 낚시로 살 수 있다고. 그 말 오래 갖고 있을게요. 칼 쥘 때마다요.',
-        "…Hyeong. (Harang heard it and picked the camera up again. To film Gibeom this time.)\n\n…Her camera's pointing this way. I always kept my back to it. (This time he doesn't turn away.) Because you said it. That I can live off fishing. I'll keep those words a long time. Every time I pick up the knife.",
+        "…Hyeong. (Harin heard it and picked the camera up again. To film Gibeom this time.)\n\n…Her camera's pointing this way. I always kept my back to it. (This time he doesn't turn away.) Because you said it. That I can live off fishing. I'll keep those words a long time. Every time I pick up the knife.",
       ],
       caution: [
         '…생각했어요. 천 번. (그래도 웃는다. 말려 준 사람이 있어서.)\n\n말려 주는 사람이 있으니까 오히려 알겠어요. 제가 이걸 얼마나 하고 싶은지. 천한 번째로 생각해도 답은 같아요. …그래도 고마워요. 말려 줘서.',
@@ -224,7 +223,7 @@ export const CHOICE_DEPTH_5: Record<string, ChoiceDepthEntry> = {
       ],
       pay: [
         '팁! 당연하죠! (하린이 봉투에 팁을 더 넣는다. 첫 손님이니까.)\n\n(나기범이 봉투를 한 번 더 확인하고 고개를 끄덕인다.) 정가에 팁. 맞아요. 회가 맛있으면 팁을 주는 거래요, 하린이 말로는. 오늘 회는 제가 떴지만요. …그래도 배가 좋았으니까요.',
-        "A tip! Of course! (Harang adds a tip to the envelope. First customers, after all.)\n\n(Na Gibeom checks the envelope once more and nods.) Full rate and a tip. Right. You tip when the sashimi's good, Harin says. I cut today's sashimi myself, but… the boat was good, so.",
+        "A tip! Of course! (Harin adds a tip to the envelope. First customers, after all.)\n\n(Na Gibeom checks the envelope once more and nods.) Full rate and a tip. Right. You tip when the sashimi's good, Harin says. I cut today's sashimi myself, but… the boat was good, so.",
       ],
     },
   },
@@ -593,10 +592,11 @@ export const CHOICE_DEPTH_5: Record<string, ChoiceDepthEntry> = {
         "…Two bowls says enough. I like that. (She sets the yellowtail head aside. It's Dad's share.)\n\nThen instead of paying, I'll just say thank you. Today's yellowtail was my first table for a customer. Even if the customer was Dad. (Word of that table goes around the Bangeojin docks.)",
         { affinity: 0.08, harborRep: 2 }),
     ],
-    // support — 원래 응답에 「우호도」가 있어 늘리지 않았다(파일 머리 주석). 원문을 고친 뒤 이을 단락:
-    //   한) 아빠 앞에서 그 말 하면, 아빠는 아무 말도 안 할 거예요. 그래도 두 그릇은 먹었잖아요. 그게 아빠 대답이었으면 좋겠어요.
-    //   영) If you say that in front of him, he won't say a thing. But he did have two bowls. I hope that was his answer.
     completeReply: {
+      support: [
+        '…고마워요. 그 말 아빠 앞에서 해 줄래요? 아니, 제가 할게요. (선장이 먼 데를 보며 헛기침을 한다. 듣고 있었다.)\n\n아빠 앞에서 그 말 하면, 아빠는 아무 말도 안 할 거예요. 그래도 두 그릇은 먹었잖아요. 그게 아빠 대답이었으면 좋겠어요.',
+        "…Thank you. Would you say that in front of him? No — I'll say it. (The skipper clears his throat, looking out to sea. He was listening.)\n\nIf you say that in front of him, he won't say a thing. But he did have two bowls. I hope that was his answer.",
+      ],
       lesson: [
         '제가요? 그럼 요리학교 안 가도 되는 건가요? 농담이에요. (회 뜨는 각도가 달라진다.)\n\n방어는 뱃살부터 떠요. 기름이 칼에 붙으면 결이 뭉개지니까 한 번 뜨고 한 번 닦아요. 아빠 배에서 혼자 익힌 거예요. 학교 가면 이게 맞는지 물어볼래요.',
         "From me? Then I don't need cooking school after all? Joking. (The angle of my slicing changes.)\n\nWith yellowtail you cut the belly first. Fat sticks to the blade and smears the grain, so cut once, wipe once. I taught myself on Dad's boat. At school I want to ask whether I've got it right.",
@@ -613,7 +613,7 @@ export const CHOICE_DEPTH_5: Record<string, ChoiceDepthEntry> = {
     offer: [
       d('worry', '다친 데는 없습니까? 갯바위는 젖은 데가 제일 미끄럽습니다.', "Are you hurt? Wet rock is the slipperiest.",
         '없어요! 손목이 좀 놀란 것 같은데 괜찮아요. (손목을 돌려 보인다. 멀쩡하다.)\n\n젖은 데가 미끄러운 건 알았는데, 초록색 낀 데가 더 미끄러운 건 몰랐어요. 이제 아저씨 발 디딘 데만 따라 밟을게요. 같이 한 마리만 낚아요!',
-        "Nope! My wrist got a fright, but it's fine. (She rolls her wrist to show me. It's fine.)\n\nI knew wet rock was slippery, but I didn't know the green slimy bits were worse. From now on I'll only step where you step. Let's catch just one together!",
+        "Nope! My wrist got a fright, but it's fine. (She rolls her wrist to show me. Not a scratch on it.)\n\nI knew wet rock was slippery, but I didn't know the green slimy bits were worse. From now on I'll only step where you step. Let's catch just one together!",
         { affinity: 0.05 }),
       d('ask_fly', '언니 아버님 털바늘을, 왜 봄 씨가 들고 있습니까?', "Why are you the one carrying your sister's father's fly?",
         '…그게, 얘기가 좀 길어요. (털바늘을 손바닥에 꼭 쥔다.)\n\n언니 얘기는 낚시하면서 할게요. 한 번에 하면 제가 울 것 같아서요. 일단 한 마리만 같이 낚아요. 이 바늘로는 말고요. 이건 아까워서 못 던져요.',
@@ -676,10 +676,11 @@ export const CHOICE_DEPTH_5: Record<string, ChoiceDepthEntry> = {
         "Soup? A clear broth! (She holds the bones up to the light.) There's not a scrap of meat left on these. But they'll still make stock. Bones alone will.\n\nWe'll share it, the three of us. Your fee for the dressing is one bowl of soup. (That evening the smell of clear broth drifts down the Guryongpo alleys. People ask who did the dressing.)",
         { affinity: 0.06, harborRep: 2 }),
     ],
-    // decline — 원래 응답에 「우호도」가 있어 늘리지 않았다(파일 머리 주석). 원문을 고친 뒤 이을 단락:
-    //   한) 언니가 웃는 거, 저도 자주 못 봐요. 소리 없이 입꼬리만요. 밥값이라고 해 줘서 그런 것 같아요. 일 말고 밥으로 쳐 준 거니까요.
-    //   영) I don't get to see her smile often either. No sound, just the corners of her mouth. I think it's because you called it the price of a meal. You counted it as a meal, not a job.
     completeReply: {
+      decline: [
+        '…언니가 웃었어요. 방금. 봤어요? (수연이 처음으로 이쪽을 똑바로 본다.)\n\n언니가 웃는 거, 저도 자주 못 봐요. 소리 없이 입꼬리만요. 밥값이라고 해 줘서 그런 것 같아요. 일 말고 밥으로 쳐 준 거니까요.',
+        "…My sister smiled. Just now. Did you see? (For the first time, Suyeon looks straight at me.)\n\nI don't get to see her smile often either. No sound, just the corners of her mouth. I think it's because you called it the price of a meal. You counted it as a meal, not a job.",
+      ],
       lesson: [
         '맞아요! 배 쪽 살을 남겨야 해요! (손질 등급이 오른다.)\n\n뱃살은 기름이 제일 많아서, 굽든 조리든 맛이 거기서 나와요. 근데 손질할 때 제일 많이 버려지는 데도 거기예요. 아깝잖아요. 이제 아저씨는 안 버리겠네요.',
         "Yes! You have to leave the belly meat! (My butchery grade rises.)\n\nThe belly has the most fat, so grilled or braised, that's where the flavour comes from. And it's the part that gets thrown out most when people dress fish. Such a waste. You won't be throwing it out now.",
@@ -729,6 +730,258 @@ export const CHOICE_DEPTH_5: Record<string, ChoiceDepthEntry> = {
       pay: [
         '…네. 맞아요. (수연이 봉투를 내민다. 얼굴이 조금 굳는다.)\n\n…아빠 바늘 값이에요. 정해진 값이 없어서 제가 정했어요. 모자라면 말해요. (봄이 수연의 소매를 잡아당긴다. 수연은 봉투를 거두지 않는다.)',
         "…Yes. Of course. (She holds out an envelope. Her face stiffens a little.)\n\n…It's for Dad's flies. There's no set price, so I set one. Tell me if it's short. (Bom tugs at Suyeon's sleeve. Suyeon doesn't take the envelope back.)",
+      ],
+    },
+  },
+
+  // ── N05-6 「구독자 없는 방송」 · 서하린 (「재미없어도 진짜면 돼」는 끝낼 때 하린이 전한다 — 받는 자리에서는 아끼다) ──
+  'N05-6': {
+    offer: [
+      d('for_three', '보여 드리죠. 시청자가 셋이면, 셋한테 제대로요.', "I'll show them. If there are three viewers, I'll do it properly for three.",
+        '…그 말 좋네요. 셋한테 제대로. (화면 구석에 그 말을 자막으로 띄운다.)\n\n칼 잡으시면 바로 켤게요. 오늘 방송 제목도 정했어요. 셋을 위한 손질. 시작해요.',
+        "…I love that. Properly, for three. (She puts the line up as a caption in the corner of the screen.)\n\nI'll go live the moment you pick up the knife. I've even got today's title. Dressing for Three. Let's start.",
+        { affinity: 0.05 }),
+      d('ask_back', '기범 씨는 왜 카메라를 등지고 앉습니까?', "Why does Gibeom sit with his back to the camera?",
+        '몰라요. 물어보면 그냥 이게 편하대요. (등 돌린 나기범 쪽을 턱으로 가리킨다. 칼 소리도 거의 안 난다.)\n\n오빠는 원래 말로 설명 안 해요. 대신 손이 해요. 그쪽 손질도 그렇게 보여 주면 돼요. 말 안 해도 돼요, 진짜로.',
+        "No idea. When I ask, he just says it's comfier. (She nods toward Na Gibeom's turned back. His knife barely makes a sound.)\n\nHe never explains with words. His hands do it. Just show your dressing the same way. You don't have to talk, honestly.",
+        { affinity: 0.03, flag: 'choice.n05_6_asked_back' }),
+      d('nervous', '카메라 앞에서는 손이 떨릴 것 같습니다.', "I think my hands will shake in front of the camera.",
+        '떨려도 돼요! 보는 사람 셋이에요. 그중 둘은 여기 있고요. (휴대폰 화면을 보여 준다. 시청자 수 3.)\n\n떨리는 것도 진짜잖아요. 저는 그게 더 좋아요. 천천히 해요. 생선은 이미 잡혔으니까 도망 안 가요.',
+        "Shaking is fine! There are three viewers. Two of them are right here. (She shows me her phone. Viewers: 3.)\n\nShaking is real too. I like that better. Take it slow. The fish is already caught, it isn't going anywhere.",
+        { affinity: 0.02 }),
+      d('hands_only', '얼굴은 빼고 손만 나오게 해 주십시오.', "Keep my face out of it. Hands only.",
+        '당연하죠! 이번엔 먼저 물어보려고 했어요. 진짜예요. (카메라 각도를 도마 쪽으로 낮춘다.)\n\n손이랑 도마만 나와요. 원하면 끝나고 다시 보기도 먼저 보여 드릴게요. 그럼 시작할까요? 셋이 기다려요.',
+        "Of course! I was going to ask first this time. Really. (She lowers the camera angle toward the board.)\n\nJust hands and the board. If you want, I'll show you the replay before anyone else. Shall we start? Three people are waiting.",
+        { affinity: 0.03, flag: 'choice.n05_6_hands_only' }),
+    ],
+    completeAdd: [
+      d('quiet_knife', '솔직히 방송보다 기범 씨 조용한 칼이 더 볼 만했습니다.', "Honestly, Gibeom's quiet knife was better viewing than the stream.",
+        '오빠! 들었어요? …못 들은 척하네. (나기범의 칼이 잠깐 멈췄다가 다시 움직인다. 아까보다 조금 느리게.)\n\n저도 알아요. 오빠 칼은 소리가 작아서 마이크에 안 잡혀요. 다음엔 마이크를 도마 옆에 둘까 봐요. 시청자 다섯이 그 소리 들으러 올지도 몰라요.',
+        "Oppa! Did you hear that? …He's pretending he didn't. (Na Gibeom's knife stops for a moment, then moves again. A little slower than before.)\n\nI know. His knife is so quiet the mic doesn't pick it up. Maybe next time I'll put the mic by the board. The five viewers might come back just to hear it.",
+        { affinity: 0.02, affinityOther: [{ npcId: 'na_gibeom', delta: 0.08 }], flag: 'choice.n05_6_quiet_knife' }),
+    ],
+    completeReply: {
+      lesson: [
+        '오빠, 이분이 봤대요! (나기범이 처음으로 돌아앉아 칼을 잡는 법을 보여 준다.)\n\n방금 돌아앉은 거 봤어요? 방송 중에요! (화면을 확인한다. 다행히 손만 찍혔다.) 오빠는 칼을 짧게 잡아요. 뼈를 따라갈 땐 손목 말고 팔꿈치로 민대요. 저는 아직 무슨 말인지 모르겠어요.',
+        "Oppa, he was watching! (For the first time Na Gibeom turns round and shows me how to hold the knife.)\n\nDid you see him turn round? On air! (She checks the screen. Luckily only his hands made it in.) He holds the knife short. Along the bone he pushes from the elbow, not the wrist, he says. I still don't get what that means.",
+      ],
+      pay: [
+        '네… 시청자 다섯 명분… (진지하게 계산한다.)\n\n…계산대로 드리면 그쪽이 손해예요. 다섯 명이 한 시간 본 값이면 커피 한 잔도 안 돼요. 그러니까 계산 말고 제 지갑 사정대로 드릴게요. 손질 값은 손질 값이니까요.',
+        "Yes… five viewers' worth… (She works it out, seriously.)\n\n…If I pay by the numbers, you lose out. Five people watching for an hour won't buy a coffee. So forget the numbers, I'll pay what my wallet can. Dressing is dressing.",
+      ],
+      decline: [
+        '다섯이에요! 두 명 늘었어요! (다음 방송 제목에 내 손질이 올라간다.)\n\n두 명이 누군지는 몰라요. 근데 손질하는 동안 한 명도 안 나갔어요. 끝까지 봤어요. 그게 제일 신기해요. 재미없는데도요.',
+        "Five! Up by two! (My butchery makes the next video's title.)\n\nI don't know who the two are. But not one person left while you were dressing it. They watched to the end. That's the strangest part. Even though it's dull.",
+      ],
+    },
+  },
+
+  // ── N05-7 「겨울 가게」 · 나기범 ──
+  'N05-7': {
+    offer: [
+      d('congrats', '개업 축하합니다. 첫 회는 제가 뜨겠습니다.', "Congratulations on opening. I'll cut the first sashimi.",
+        '…고마워요. 축하는 하린이 말고는 처음 들어요. (수조 뚜껑을 연다. 물소리가 난다.)\n\n수조에 있는 걸로 떠 주세요. 칼은 제 거 써요. 손에 맞을 거예요. 손님 없어도, 오늘은 가게예요.',
+        "…Thank you. You're the first besides Harin to say congratulations. (He lifts the lid of the tank. Water sloshes.)\n\nCut from what's in the tank. Use my knife. It'll fit your hand. No customers, but today it's a shop.",
+        { affinity: 0.05 }),
+      d('ask_shop', '수조만 돌아가는데, 어떤 가게입니까?', "Only the tank's running. What kind of shop is this?",
+        '횟집이요. 카운터 하나 있는 작은 데요. (손님 없는 의자를 하나씩 바로 놓는다.)\n\n수조 물은 매일 갈아요. 손님이 없어도요. 그거라도 해야 가게 같아서요. 회 떠 주면 그거 저희가 먹어요. 첫 장사예요.',
+        "A sashimi place. A small one with just a counter. (He straightens the empty stools one by one.)\n\nI change the tank water every day. Even with no customers. Doing that much makes it feel like a shop. If you cut some sashimi, we'll eat it ourselves. First day of trade.",
+        { affinity: 0.03, flag: 'choice.n05_7_asked_shop' }),
+      d('hesitate', '남의 가게에서 제가 칼을 잡아도 되겠습니까?', "Is it all right for me to take up a knife in someone else's shop?",
+        '…남의 가게 아니에요. 오늘은요. (새 앞치마 하나를 내민다.)\n\n손님이 없어서 제 칼도 요즘 쉬었어요. 형이 잡아 주면 칼도 반가워할 거예요. 수조에 있는 걸로 떠 줘요.',
+        "…It's not someone else's shop. Not today. (He holds out a new apron.)\n\nWith no customers, my knife's been resting lately. If you take it up, the knife will be glad. Cut from what's in the tank.",
+        { affinity: 0.02 }),
+      d('ask_harin', '하린 씨는 왜 카메라 대신 설거지를 합니까?', "Why is Harin washing dishes instead of filming?",
+        '…모르겠어요. 아침부터 저래요. 찍을 게 없대요. (주방 쪽에서 물소리가 난다. 그릇은 이미 다 깨끗하다.)\n\n저는 그게 더 고마워요. 말은 안 했어요. 형이 회 뜨면 하린이도 와서 앉을 거예요. 그때 같이 먹어요.',
+        "…No idea. She's been like that since morning. Says there's nothing to film. (Water runs in the kitchen. The dishes are already all clean.)\n\nI'm more grateful for that. I haven't told her. When you cut the sashimi, she'll come and sit too. We'll eat together then.",
+        { affinity: 0.04, flag: 'choice.n05_7_asked_harin' }),
+    ],
+    completeAdd: [
+      d('soup_advice', '남는 뼈로 매운탕도 내 보십시오. 버리기 아깝습니다.', "Serve a spicy stew from the leftover bones too. Shame to waste them.",
+        '…매운탕. (오래 생각하다가 수조 옆에서 냄비를 꺼낸다.) 뼈는 매일 버렸어요. 아까웠는데 방법을 몰랐어요.\n\n내일부터 끓여 볼게요. 하린이가 맛을 볼 거예요. 손님 없으면 저희가 먹으면 돼요. 오늘처럼요.',
+        "…Maeuntang. (He thinks for a long time, then takes a pot out from beside the tank.) I've been throwing the bones out every day. It felt like a waste, but I didn't know what else to do.\n\nI'll start boiling them tomorrow. Harin can taste it. If there are no customers, we'll eat it ourselves. Like today.",
+        { affinity: 0.06, flag: 'choice.n05_7_soup_advice' }),
+    ],
+    completeReply: {
+      lesson: [
+        '…수조? 그건 저도 배우는 중이에요. 같이 봐요. (활어 신선도를 읽는 눈이 생긴다.)\n\n아가미 색부터 봐요. 빨가면 괜찮아요. 그다음은 지느러미. 힘없이 접혀 있으면 오래 못 가요. 손님 없을 때 하루 종일 이것만 봤어요. 그래서 이건 좀 알아요.',
+        "…The tank? I'm still learning that myself. Let's look together. (I get an eye for reading live fish.)\n\nStart with the gill colour. Red is good. Then the fins. If they're folded down with no strength, it won't last. With no customers I spent whole days just watching this. So this much I know.",
+      ],
+      pay: [
+        '…네. 첫 매출이에요. (장부 첫 줄에 내 이름이 적힌다.)\n\n이상하네요. 돈이 나가는데 첫 매출이래요. 하린이가 그렇게 적으래요. 회가 떠졌으니까 가게가 일한 거래요. …저는 아직 잘 모르겠어요.',
+        "…Yes. It's my first sale. (My name goes on the first line of the ledger.)\n\nStrange. Money's going out, and she calls it my first sale. Harin told me to write it that way. Sashimi got cut, so the shop did some work, she says. …I still don't really get it.",
+      ],
+      decline: [
+        '…첫 손님. (하린이 결국 사진 한 장을 찍었다. 카운터 셋.)\n\n하린이가 안 찍는다더니 찍었네요. 괜찮아요. 올리는 사진은 아니래요. 가게 벽에 붙인대요. 첫 손님 자리에요. …형 자리예요.',
+        "…First customer. (Harin took a photo in the end. Three at the counter.)\n\nShe said she wouldn't film, and then she took one. That's fine. It's not for posting, she says. It goes on the shop wall. Where the first customer sits. …That's your seat, hyeong.",
+      ],
+    },
+  },
+
+  // ── N08-3 「조타실의 딸」 · 고해나 (배를 내놓는 이야기는 N08-4 — 여기서는 해나의 걱정까지만) ──
+  'N08-3': {
+    offer: [
+      d('ask_why', '요리학교 얘기하던 분이 조타 연습은 왜 합니까?', "You were talking about cooking school. Why helm practice?",
+        '둘 다 하면 안 돼요? (웃는다.) 칼도 키도 다 아빠 배에서 본 거예요.\n\n그리고… 아빠가 키를 못 잡는 날이 언젠가 오잖아요. 그날 누가 잡아요. 요즘 그 생각이 자꾸 나요. 그러니까 한 항차만요.',
+        "Can't I do both? (She laughs.) The knife and the wheel, I saw both on Dad's boat.\n\nAnd… someday there'll be a day Dad can't take the wheel. Who takes it then? I keep thinking about that lately. So just one trip.",
+        { affinity: 0.03, flag: 'choice.n08_3_asked_why' }),
+      d('ask_secret', '선장님이 아실 거라면서, 왜 몰래 하십니까?', "If your father will know anyway, why do it behind his back?",
+        '알아도 모른 척하는 게 아빠 방식이에요. 대놓고 하면 아빠는 말려야 하잖아요. 선장이니까. (조타실 쪽을 힐끔 본다.)\n\n몰래 하면 아빠는 안 본 걸로 할 수 있어요. 그게 아빠가 허락하는 방법이에요. 이상하죠. 그래서 한 항차만 옆에 있어 줘요.',
+        "Knowing and pretending not to is Dad's way. If I did it openly, he'd have to stop me. He's the skipper. (She glances toward the wheelhouse.)\n\nIf I do it behind his back, he can act like he never saw. That's how he says yes. Strange, right? So stay beside me for one trip.",
+        { affinity: 0.04, flag: 'choice.n08_3_asked_secret' }),
+      d('worry', '승객도 타는데, 연습해도 괜찮겠습니까?', "There'll be passengers aboard. Is it safe to practise?",
+        '그래서 옆에 있어 달라는 거예요. 혼자면 안 하죠. (구명조끼를 두 개 꺼내 하나를 내민다.)\n\n속도는 안 낼게요. 물 잔잔한 데서만 돌려요. 위험하면 바로 아빠 불러요. 아빠는 뱃머리에 있을 거예요. 등 돌리고요.',
+        "That's exactly why I'm asking you to stay beside me. I wouldn't do it alone. (She takes out two life jackets and hands me one.)\n\nI won't push the speed. Only turns in calm water. If it gets dangerous, we call Dad straight away. He'll be at the bow. With his back turned.",
+        { affinity: 0.02 }),
+      d('accept', '옆에 있겠습니다. 키는 해나 씨가 잡으십시오.', "I'll be right beside you. The wheel's yours, Haena.",
+        '…고마워요. 그 말 듣고 싶었어요. 키는 제가, 낚시는 그쪽이요. (키 손잡이를 한 번 쓰다듬는다.)\n\n방어 있는 자리에 세워 볼게요. 제가 세운 자리에서 그쪽이 올리면, 그게 오늘 제 시험이에요.',
+        "…Thank you. I wanted to hear that. I take the wheel, you take the fishing. (She runs a hand over the wheel once.)\n\nI'll try to hold us over the yellowtail. If you bring one up where I put us, that's my test passed for today.",
+        { affinity: 0.05 }),
+    ],
+    completeAdd: [
+      d('straight', '동승비는 됐습니다. 곧게 간 배에 탔으면 됐습니다.', "No fare needed. I rode a boat that ran straight. That's enough.",
+        '…곧게 갔죠? 그 말 한 번 더 해 줘요. (키를 잡았던 손을 펴 본다. 아직 조금 떨린다.)\n\n처음엔 배가 제 말을 안 들었어요. 힘을 빼니까 그제야 듣더라고요. 옆에 누가 있어서 힘을 뺄 수 있었어요. (그날 사진이 방어진 부두에 돈다. 사진 구석에 내가 있다.)',
+        "…It ran straight, didn't it? Say that one more time. (She opens the hand that held the wheel. It still trembles a little.)\n\nAt first the boat wouldn't listen to me. Only when I loosened my grip did it listen. I could loosen it because someone was beside me. (The photo from that day goes round the Bangeojin docks. I'm in the corner of it.)",
+        { affinity: 0.08, harborRep: 2 }),
+    ],
+    completeReply: {
+      lesson: [
+        '진짜요? 그럼 저 선장 해도 되겠다. (배를 읽는 감각이 다르다.)\n\n변침은 키보다 눈이 먼저예요. 뱃머리 앞에 점 하나를 정해 두고 그걸 보면서 돌려요. 키만 보면 배가 뱀처럼 가요. 아빠 등 보고 배운 거예요.',
+        "Really? Then maybe I could skipper after all. (My feel for reading the boat changes.)\n\nWith a course change, your eyes go before the wheel. Pick a point ahead of the bow and turn while you watch it. Watch only the wheel and the boat snakes. I learned it from watching Dad's back.",
+      ],
+      photo: [
+        '…안 돼요. 아니, 돼요. 보여 줘요. (선장이 사진을 오래 봤다. 아무 말도 안 했다.)\n\n아무 말도 안 했죠? 그게 아빠예요. 싫으면 바로 말해요. 말 안 하는 건… 좋다는 거예요. 저 그거 스물네 해 걸려서 배웠어요.',
+        "…No. No — yes. Show him. (The skipper looked at it a long time. He said nothing.)\n\nHe didn't say anything, right? That's Dad. If he hates something he says so straight away. Saying nothing means… he likes it. It took me twenty-four years to learn that.",
+      ],
+      pay: [
+        '아… 네. (자기 용돈으로 준다.)\n\n…옆에 있어 달라고 한 건 저니까 맞아요. 부탁하면 값을 내는 거래요. 아빠가 늘 그렇게 말해요. 이게 제 첫 값이네요. 용돈이라 좀 가볍지만요.',
+        "Ah… right. (She pays out of her pocket money.)\n\n…I'm the one who asked you to stay beside me, so you're right. Ask a favour, pay for it. Dad always says so. This is the first time I've paid for one. It's pocket money, so it's a bit light.",
+      ],
+    },
+  },
+
+  // ── N09-4 「구룡포의 봄」 · 이수연 (식당 이름은 끝낼 때 처음 나온다 — 받는 자리에서는 말하지 않는다) ──
+  'N09-4': {
+    offer: [
+      d('ask_boat', '아버님 배를 파셨다니… 괜찮으십니까?', "You sold your father's boat… are you all right?",
+        '…모르겠어요. (대답하기 전에 오래 바다를 본다.) 묶어 두기만 하는 것보다는 나아요.\n\n그 돈으로 부엌을 해요. 봄이 말대로요. 첫 상은 아빠 칼로 차리고 싶어요. 손질해 줘요.',
+        "…I don't know. (She looks at the sea a long time before answering.) It's better than leaving it tied up.\n\nWe're making a kitchen with the money. Like Bom said. I want the first table set with Dad's knife. Please dress the fish.",
+        { affinity: 0.03, flag: 'choice.n09_4_asked_boat' }),
+      d('ask_restaurant', '식당이요? 두 분이서 하시는 겁니까?', "A restaurant? The two of you will run it?",
+        '…네. 봄이는 요리, 저는… 아직 몰라요. 봄이가 그러는데, 저는 생선 고르는 거래요. (고개를 조금 끄덕인다. 마음에 드는 모양이다.)\n\n개업 상에는 원물 한 마리가 올라가야 한대요. 그건 부탁해요. 아빠 칼로요.',
+        "…Yes. Bom cooks, and me… I don't know yet. Bom says my job is picking the fish. (She nods slightly. She seems to like that.)\n\nShe says the opening table needs a whole fish on it. That part I'm asking you for. With Dad's knife.",
+        { affinity: 0.04, flag: 'choice.n09_4_asked_restaurant' }),
+      d('unsure', '아버님 칼을 제가 써도 되겠습니까?', "Is it all right for me to use your father's knife?",
+        '…써야 해요. 서랍에만 있으면 칼이 아니에요. (천에 싼 칼을 내민다. 손잡이가 닳아 반들거린다.)\n\n저는 아직 손이 떨려요. 그래서 부탁해요. 첫 상은 그 칼로요.',
+        "…It has to be used. Kept in a drawer, it isn't a knife. (She holds out a knife wrapped in cloth. The handle is worn smooth.)\n\nMy hands still shake. That's why I'm asking. The first table, with that knife.",
+        { affinity: 0.03 }),
+      d('accept', '개업 상이라면 제가 맡겠습니다. 제일 좋은 놈으로요.', "If it's for the opening table, leave it to me. The best one there is.",
+        '…고마워요. (짧게 말하고, 이번에는 조금 웃는다.)\n\n봄이가 벌써 상 차릴 자리를 닦고 있어요. 세 번째 닦는 거예요. 원물만 오면 돼요. 아빠 칼은 여기 있어요.',
+        "…Thank you. (She says it briefly, and this time smiles a little.)\n\nBom's already wiping down the spot for the table. That's the third time. All we need is the fish. Dad's knife is right here.",
+        { affinity: 0.05 }),
+    ],
+    completeAdd: [
+      d('ask_name', '구룡포의 봄. 봄 씨 이름에서 딴 겁니까?', "Spring in Guryongpo. Is that from Bom's name?",
+        '…봄이는 아니래요. 계절 봄이래요. (봄 쪽을 본다. 봄은 딴청을 피운다.)\n\n저는 둘 다라고 생각해요. 그래서 반대 안 했어요. 이름 하나에 뜻이 둘이면, 안 잊어버리잖아요.',
+        "…Bom says no. She says it's spring, the season. (She looks at Bom. Bom pretends to be busy.)\n\nI think it's both. That's why I didn't object. When one name means two things, you don't forget it.",
+        { affinity: 0.06, flag: 'choice.n09_4_asked_name' }),
+    ],
+    completeReply: {
+      lesson: [
+        '무거운 칼이에요. 힘을 빼야 해요. (손질 등급이 오른다. 그 칼로.)\n\n칼 무게로 자르는 거예요. 손은 방향만 잡아요. 힘을 주면 칼이 아니라 손이 무거워져요. …오늘 손은 가벼워 보였어요.',
+        "It's a heavy knife. You have to take the strength out. (My butchery grade rises. With that knife.)\n\nThe weight of the knife does the cutting. Your hand only sets the direction. Push hard and it's your hand that gets heavy, not the knife. …Your hand looked light today.",
+      ],
+      pay: [
+        '…네. 첫 지출이네요. (장부 첫 줄에 손질비라고 적는다.)\n\n장부는 제가 써요. 첫 줄이 손질비라서 좋아요. 이 식당은 손질부터 시작한 거니까요. 잊어버리지 않게요.',
+        "…Yes. Our first outgoing. (She writes 'butchery' on the ledger's first line.)\n\nI keep the books. I'm glad the first line says butchery. This restaurant started with the dressing. So we won't forget.",
+      ],
+      decline: [
+        '…봄이 울어요. 저도요, 조금. (식당 벽에 내 이름이 걸린다. 첫 손님.)\n\n울면서 웃는 건 처음이에요. 이상하네요. …첫 손님 이름은 벽에서 안 내려요. 식당이 있는 동안은요.',
+        "…Bom's crying. So am I, a little. (My name goes on the restaurant wall. First customer.)\n\nThis is the first time I've cried and laughed at once. Strange. …The first customer's name never comes down off that wall. Not while the restaurant stands.",
+      ],
+    },
+  },
+
+  // ── N06-4 「졸업 대결」 · 모태조 ──
+  'N06-4': {
+    offer: [
+      d('no_mercy', '마지막이라면 제대로 붙겠습니다. 봐 드리지 않습니다.', "If it's the last, I'll give it everything. No going easy.",
+        '그래야지. 봐주면 내가 화낸다. 졸업 대결은 봐주는 게 아니야. (손가락 두 개를 편다.)\n\n두 마리. 먼저 올리는 쪽이 아니라 물을 읽고 올리는 쪽이 이기는 거야. 실측 기억나지? 그거 마지막으로 보자.',
+        "Good. Go easy and I'll be angry. A graduation match isn't for going easy. (He holds up two fingers.)\n\nTwo fish. It's not whoever lands first, it's whoever reads the water and lands. Remember measuring? Let's see it one last time.",
+        { affinity: 0.05 }),
+      d('ask_disband', '해산이라니요. 동아리가 아예 없어지는 겁니까?', "Disbanding? The club's really going away?",
+        '말 그대로야. 졸업하면 다 흩어져. 이름만 남겨 두는 건 우리 식이 아니야. (어깨를 으쓱한다.)\n\n그래서 마지막 대결이야. 흩어지기 전에 다 같이 한 번 던지는 거. 그 상대가 너고. 부산으로 와.',
+        "Just what it sounds like. Once we graduate, everyone scatters. Keeping only the name alive isn't our style. (He shrugs.)\n\nSo it's the last match. One cast together before we scatter. And you're the opponent. Come to Busan.",
+        { affinity: 0.03, flag: 'choice.n06_4_asked_disband' }),
+      d('ask_why_me', '왜 하필 제가 상대입니까? 동아리 사람도 아닌데요.', "Why me, of all people? I'm not even in the club.",
+        '명예 회원이잖아. 그리고 동아리 사람이 아니라서야. 우리끼리 붙으면 다 아는 수라 재미없어. (웃는다. 광기가 조금 보인다.)\n\n밖에서 온 사람한테 지면 그게 진짜 졸업이야. 이기면 더 좋고. 봐주지 마. 두 마리.',
+        "You're an honorary member. And it's because you're not in the club. Against each other we know every trick, it's boring. (He grins. A little of the madness shows.)\n\nLose to someone from outside and that's a real graduation. Win, even better. Don't go easy. Two fish.",
+        { affinity: 0.04, flag: 'choice.n06_4_asked_why_me' }),
+      d('hosu_ball', '호수는 아직도 농구공을 들고 다닙니까?', "Hosu still carries that basketball around?",
+        '다녀. 이제 아무도 안 말려. 해산하는 날에도 들고 올 거야. (한숨인지 웃음인지 모를 소리를 낸다.)\n\n호수 말로는 그 공을 옆에 두면 잘 잡힌대. 미신이지. 근데 실측해 보니 틀린 말도 아니더라. 대결 날 공 굴러가면 네가 주워.',
+        "He does. Nobody stops him anymore. He'll bring it on the day we disband too. (He makes a noise that could be a sigh or a laugh.)\n\nHosu says fish bite better with the ball beside you. Superstition. But I measured it, and it's not entirely wrong. If the ball rolls off on match day, you fetch it.",
+        { affinity: 0.03 }),
+    ],
+    completeAdd: [
+      d('give_hosu', '제 몫은 호수한테 주십시오. 그 녀석은 계속 던질 겁니다.', "Give my share to Hosu. He'll keep on casting.",
+        '…호수한테? (농구공을 든 고호수를 본다.) 그래. 저 녀석은 계속 던지겠지. 공은 안 내려놓고.\n\n네 몫이었으니 네 손으로 줘. 내가 주면 졸업 선물이고, 네가 주면 형이 주는 거야. (고호수가 농구공을 떨어뜨릴 뻔한다. 부산 방파제에 그 얘기가 돈다.)',
+        "…To Hosu? (He looks at Go Hosu, basketball in hand.) Right. That kid will keep casting. Without ever putting the ball down.\n\nIt was your share, so give it with your own hands. From me it's a graduation present. From you it's from a big brother. (Go Hosu nearly drops the basketball. The story goes round the Busan breakwaters.)",
+        { affinity: 0.06, harborRep: 2, affinityOther: [{ npcId: 'go_hosu', delta: 0.1 }], flag: 'choice.n06_4_gave_hosu' }),
+    ],
+    completeReply: {
+      honor: [
+        '써. 던지라고 주는 거야. (루어 상자 안에 씨바스터즈 스티커가 붙어 있다.)\n\n상자에서 하나씩 꺼내 쓸 때마다 이 동아리 생각해. 그거면 돼. 해산해도 루어는 물에 들어가잖아. 그게 우리 식 졸업이야.',
+        "Use it. It's given to be cast. (There's a Seabusters sticker inside the lure box.)\n\nEvery time you take one out, think of this club. That's all. We disband, but the lures still go in the water. That's our kind of graduation.",
+      ],
+      lesson: [
+        '광기? …이거야. 탁수에서 컬러 고르는 법. (루어 컬러 선택이 몸에 붙는다.)\n\n표에 없는 거 하나 줄게. 흙탕물까지 가면 밝은 색도 안 보여. 그땐 검은색이야. 윤곽만 남거든. 이건 아무한테도 안 알려 줬어. 마지막이니까.',
+        "Madness? …This. Picking colour in dirty water. (Lure colour choice settles into my body.)\n\nHere's one that's not on the chart. Once it turns to proper mud, even bright colours vanish. Then it's black. Only the outline's left. I never told anyone that. It's the last time, so.",
+      ],
+      pay: [
+        '있지. 회비 남은 거 전부. (동전이 많다. 그래도 전부다.)\n\n해산하면 남은 회비는 쓸 데가 없어. 다들 라면값 아껴서 넣은 동전이야. 함부로 쓰지 마. 그 동전들 다 농어 냄새 나.',
+        "There is. Everything left in the dues. (Mostly coins. But all of it.)\n\nOnce we disband, leftover dues are no use to anyone. These are coins everyone saved off ramyeon money. Don't spend them carelessly. Every one of them smells of sea bass.",
+      ],
+    },
+  },
+
+  // ── N08-4 「배를 내놓을까 한다」 · 고만석 (결정은 아직 — 끝까지 열어 둔다) ──
+  'N08-4': {
+    offer: [
+      d('listen', '가겠습니다. 끝까지 듣겠습니다.', "I'll come. I'll hear you out to the end.",
+        '…끝까지 들을 만큼 긴 얘기는 아니다. 배를 내놓을까 한다. 그게 다야. (말해 놓고 주머니만 뒤진다. 찾는 게 없다.)\n\n그래도 와. 혼자 하면 혼잣말이고, 들은 놈이 있으면 말이 된다. 바다 나가서 하자. 오늘 물이 좋을 것 같다.',
+        "…It's not long enough to need hearing out. I'm thinking of putting the boat up. That's all. (Having said it, he only rummages through his pockets. He isn't looking for anything.)\n\nCome anyway. Said alone it's talking to yourself. With someone who heard, it's been said. We'll talk out at sea. The water looks good today.",
+        { affinity: 0.05 }),
+      d('ask_why', '왜 갑자기 그런 생각을 하셨습니까?', "What made you think of that all of a sudden?",
+        '갑자기 아니다. 오래 했다. 말을 안 했을 뿐이지. (손바닥을 펴 본다. 굳은살이 두껍다.)\n\n이유는 와서 들어. 여기서 말하면 반만 말하게 된다. 배 위에서 말해야 다 나와. 그래서 부르는 거다.',
+        "It's not sudden. I've thought it a long time. I just never said it. (He opens his palm and looks at it. The calluses are thick.)\n\nCome and hear the reasons. Say it here and I'll only say half. On the boat it all comes out. That's why I'm calling you.",
+        { affinity: 0.04, flag: 'choice.n08_4_asked_why' }),
+      d('ask_haena', '해나 씨가 정말 모를까요?', "Does Haena really not know?",
+        '…알 거다. 그 애는 내 등만 봐도 안다. (조타실 쪽을 한 번 본다.)\n\n그래서 아직 말을 못 했다. 아는 사람한테 하는 말이 제일 어렵다. 일단 너한테 먼저 해 보는 거다. 와.',
+        "…She'll know. She can read me from my back alone. (He glances once toward the wheelhouse.)\n\nThat's why I haven't told her yet. The hardest thing is telling someone who already knows. So I'm trying it on you first. Come.",
+        { affinity: 0.03, flag: 'choice.n08_4_asked_haena' }),
+      d('oppose', '고래마루를 파신다니, 저는 반대입니다.', "Sell the Goraemaru? I'm against it.",
+        '반대? (험상궂은 눈이 조금 풀린다.) 반대하는 놈이 하나 있으니 좋네. 아직 정한 거 없다.\n\n반대든 찬성이든 다 듣고 나서 해. 그게 순서다. 오늘 와서 들어. 반대는 그다음에 해.',
+        "Against it? (His fierce eyes ease a little.) Good to have one person against it. Nothing's decided yet.\n\nFor or against, do it after you've heard everything. That's the order. Come and listen today. Be against it after.",
+        { affinity: 0.03, flag: 'choice.n08_4_opposed' }),
+    ],
+    completeAdd: [
+      d('leave_for_boat', '오늘 몫은 배에 두겠습니다. 이 배를 위해 쓰십시오.', "Leave my share with the boat. Spend it on her.",
+        '…배에 둔다라. (한참 말이 없다.) 이 배한테 뭘 두고 가는 놈은 오랜만이다.\n\n기름값으로는 안 쓴다. 갑판 판자 하나 갈 때 쓰지. 그럼 네가 밟고 간 자리가 남는다. (그 뒤로 방어진 부두 사람들이 나를 고래마루 사람이라고 부른다.)',
+        "…With the boat. (He says nothing for a long while.) Been a long time since anyone left something for her.\n\nIt won't go on fuel. It'll go on a new deck plank. Then the spot where you stood stays. (After that, the people on the Bangeojin docks call me one of the Goraemaru's.)",
+        { affinity: 0.1, harborRep: 3 }),
+    ],
+    completeReply: {
+      haena: [
+        '…알아. 네가 있으면 말이 나올 것 같아서 불렀다. (그날 저녁 세 사람이 조타실에 앉았다.)\n\n해나는 끝까지 아무 말도 안 했다. 대신 내 컵에 물을 채웠다. 두 번. …그 애 대답은 늘 그런 식이다. 나를 닮아서.',
+        "…I know. I called you because I thought I could say it with you here. (That evening the three of us sat in the wheelhouse.)\n\nHaena didn't say a word, start to finish. She filled my cup instead. Twice. …That's how she always answers. She takes after me.",
+      ],
+      lesson: [
+        '…배는 눈으로 보는 게 아니야. 발로 봐. (배를 읽는 감각이 생긴다.)\n\n갑판에 서서 무릎을 풀어. 배가 어디로 기우는지 발바닥이 먼저 안다. 눈은 늦어. 이 배는 왼쪽으로 조금 기운다. 그것까지 알면 다 본 거다.',
+        "…You don't look at a boat with your eyes. You look with your feet. (A feel for reading boats settles in.)\n\nStand on the deck and loosen your knees. The soles of your feet know which way she leans before anything else. Eyes are slow. This one lists a little to port. Know that too and you've seen her whole.",
+      ],
+      pay: [
+        '그래. 그 해 최고 조황이니 몫도 크다. (봉투가 두껍다.)\n\n…이런 날 배를 내놓는다는 말을 했으니 우습지. 바다가 붙잡는 건지 놓아주는 건지 모르겠다. 받아. 좋은 날 몫은 좋은 날 받는 거다.',
+        "You will. Best haul of the year, so it's a big share. (The envelope is thick.)\n\n…Funny, saying I'll put her up on a day like this. Can't tell if the sea's holding on to me or letting me go. Take it. A good day's share gets taken on the good day.",
       ],
     },
   },

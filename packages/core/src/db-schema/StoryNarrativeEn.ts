@@ -41,7 +41,7 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
     { offer: "You came looking for the memory in that photo. Cry if you need to. But could you carry one ice box from behind the stall to the auction hall? Start with something you can do.",
       progress: "There are still boxes left. Come back when they're all moved.",
       done: "Your wages. At least this much is your own money. The shop inside the market sells ice and bait. Prices move every day, so learn them with your eyes.",
-      obj: ["Check Ok-seon's errand ice crate in the inventory", "Carry the ice crate to the marked place near the auction hall", "Place the ice crate at the marked location", "Report the ice crate delivery to Ok-seon"],
+      obj: ["Check Okseon's errand ice crate in the inventory", "Carry the ice crate to the marked place near the auction hall", "Place the ice crate at the marked location", "Report the ice crate delivery to Okseon"],
       epi: "The envelope was thin. Still, it is the first money with my name on it." }),
   'M1-03': E(
     "They said there was an old fishery cooperative dormitory behind the stall. When I opened the door, dust and mildew came out first. One bed, one refrigerator, one window. The old woman held out a trainee card. Nobody here becomes a member on their first day, she said. One hundred and eighty days. The moment I took that number I understood I no longer had a place to go back to, I had a place to stay.",
@@ -308,7 +308,7 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
       progress: "Three. Look at the condition factor in the detail view. Abnormally high means farmed.",
       done: "This one is farmed. Well sorted. I'll put it in the table." }),
   'N20-1': E(
-    "There is a man talking to himself with a tripod set up. Yu Harang, three hundred subscribers. He asks whether I could just catch one for him. Because the shot isn't working. I cast in front of the camera. Strangely my hands stiffen. Still, one came up. After the stream he said, three hundred people saw that. No, twelve of the three hundred.",
+    "There is a woman talking to herself with a tripod set up. Yu Harang, three hundred subscribers. She asks whether I could just catch one for her. Because the shot isn't working. I cast in front of the camera. Strangely my hands stiffen. Still, one came up. After the stream she said, three hundred people saw that. No, twelve of the three hundred.",
     { offer: "Um... could you just catch one? The shot isn't working. I have three hundred subscribers and twelve are watching now.",
       progress: "It's the camera, isn't it? Same for me. Just one.",
       done: "Got it! Did you see, all twelve! Thank you. Really." }),
@@ -454,7 +454,7 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
       progress: "Did you stand in that spot? The tide has to match.",
       done: "Not white after all. Record it anyway. The rumour became a record." }),
   'N20-2': E(
-    "Yu Harang said he needed a shot of the sun going down. No catch necessary, just hold the spot until sunset. I sat on the Bangeojin breakwater and watched the sun come down. It is the first time I have gone out to fish and not fished. The camera runs behind my back. We watched the footage together. My back was smaller than I expected.",
+    "Yu Harang said she needed a shot of the sun going down. No catch necessary, just hold the spot until sunset. I sat on the Bangeojin breakwater and watched the sun come down. It is the first time I have gone out to fish and not fished. The camera runs behind my back. We watched the footage together. My back was smaller than I expected.",
     { offer: "I need a sunset shot. No catch needed. Just sit until the sun's down.",
       progress: "Sun's not down yet. A bit longer.",
       done: "Look at this. Your back is... good. I'm using this for the thumbnail." }),
@@ -622,7 +622,7 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
       progress: "Top grade. Second grade doesn't count. Start again from the spike.",
       done: "...top. Good. The plate said it." }),
   'N20-3': E(
-    "Yu Harang asked for a joint stream. He said he would come to my home ground instead. The camera followed me all the way to Sokcho. We set up in front of Manbok Store and landed two side by side. We watched the edit together. There was a shot of the old woman from the stall walking past behind us. Harang said he would keep that cut.",
+    "Yu Harang asked for a joint stream. She said she would come to my home ground instead. The camera followed me all the way to Sokcho. We set up in front of Manbok Store and landed two side by side. We watched the edit together. There was a shot of the old woman from the stall walking past behind us. Harang said she would keep that cut.",
     { offer: "Let's stream together! I'll come to your home ground instead. Sokcho! And film the stall. Oh, with permission.",
       progress: "I'm in Sokcho. Found a spot? Two fish between us.",
       done: "You saw the edit? The cut with the old lady walking past, I'm keeping it. That was the best part." }),
@@ -833,8 +833,8 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
       done: "Approved. The last qualification. All that's left is the survey escort permit.",
       obj: ["Put together three items of emergency stores", "Get the long passage plan documents approved"] }),
   'M6-08': E(
-    "The survey escort permit. Three gates. Level 160, marine tourism registration, Part 6 complete. Escorting the Dokdo academic survey team. The last gate opened. The chief handed me a voyage bag. This is the last thing the cooperative gives you. From now on you are the one giving to the cooperative.",
-    { offer: "Survey escort permit. Three gates. Level, marine tourism, Part 6 complete. Fill all three and it's Dokdo.",
+    "The survey escort permit. Three gates. Level 160, marine tourism registration, Chapter 6 complete. Escorting the Dokdo academic survey team. The last gate opened. The chief handed me a voyage bag. This is the last thing the cooperative gives you. From now on you are the one giving to the cooperative.",
+    { offer: "Survey escort permit. Three gates. Level, marine tourism, Chapter 6 complete. Fill all three and it's Dokdo.",
       progress: "Your level isn't there yet. Get out on the water. Come back when it is.",
       done: "Permit granted. Dokdo. This bag is the last thing the cooperative gives you. From now on you're the one giving.",
       obj: ["Reach level 160 and meet the survey escort requirement"] }),
@@ -926,11 +926,11 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
 
   // ── Ch7 Dokdo ──
   'M7-01': E(
-    "Dokdo. Berthing at the east islet. The farthest sea. The weather gate closed twice and opened on the third. Three hours ashore. Old Seok Daeyang gave the berthing signal by radio from the lighthouse. I tie up and set foot on the rock. The end of the sea my father passed twenty-two years ago. I came this far.",
-    { offer: "Berthing at Dokdo. A weather gate. Go when it opens. Three hours ashore. I'll signal from the lighthouse.",
-      progress: "The gate's closed. Wait. Until the sea opens it.",
+    "Dokdo. Berthing at the east islet. The farthest sea. The weather shut the way twice and opened it on the third try. Three hours ashore. Old Seok Daeyang gave the berthing signal by radio from the lighthouse. I tie up and set foot on the rock. The end of the sea my father passed twenty-two years ago. I came this far.",
+    { offer: "Berthing at Dokdo. The weather is the door. Go when it opens. Three hours ashore. I'll signal from the lighthouse.",
+      progress: "The door's shut. Wait. Until the sea opens it.",
       done: "You berthed. Three hours. It's the end of the sea your father passed. Look at it properly.",
-      obj: ["Berth at Dokdo's east islet when the weather gate opens"] }),
+      obj: ["Berth at Dokdo's east islet when the weather opens the way"] }),
   'M7-02': E(
     "The survey boat. The first fishing where catching is not the point. Measure the specimen and release it at once. Three fish. Measure with a rule, photograph, let go. A student from the survey team records it. Fishing where the angler does not fish. My hand was strangely light letting the third one go. I still do not know how to write this day in the log.",
     { offer: "This is a survey boat. Not catching. Measure and release. Three fish. The team records them.",
@@ -953,7 +953,7 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
     "The second floor. The cooperative's communal workshop has been in ruins for a long time. Restoration. Materials, labour, donations. Thirty million won. Looking at the balance I worked out what to sell, what to burn and what to accept. The members each put in a little. Do Hyeonsu first. When thirty million was gathered the chief said, now you are the one giving.",
     { offer: "Restoring the second floor. Materials, labour, donations. Thirty million. You gather it. The members will help. As much as you gave.",
       progress: "Not thirty million yet. Get on the boat. Take customers. The members are watching.",
-      done: "Thirty million. Good. Now you're the one giving. You remember what I said in Part 6.",
+      done: "Thirty million. Good. Now you're the one giving. You remember what I said the day you got the permit.",
       obj: ["Raise thirty million won for the restoration fund"] }),
   'M7-06': E(
     "Reopening. An archive and a tackle room in one. Jeong Okseon finished her convalescence and attended in a wheelchair. I put the scissors for the ribbon in her hand. Her hand shook. She cut it. Applause. Old Tak stood at the back. Three bamboo rests sit at the entrance to the archive. There was the sound of a cello and a harmonica.",
@@ -1010,7 +1010,7 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
     "Jeong Okseon finished her convalescence and came out to the stall in a wheelchair. The three bamboo rests are lined up. Old Tak sits in the next seat. I made a place for the two of them. Two chairs, between the ice boxes. Neither said anything. Fifty years to hold a hand. I pretended not to see that hand.",
     { offer: "...I'm out at the stall. They say Tak is coming. A place, could you. No, never mind. Make a place for us.",
       progress: "Did you make it? Two. Between the ice boxes.",
-      done: "...we sat. We held hands. You pretended not to see. Good lad." }),
+      done: "...we sat. We held hands. You pretended not to see. Good kid." }),
   'N04-6': E(
     "The graduated members. Bae Nuri is in her final year at the fisheries high school, Ha Sua at university, Mo Jinju works a boat. The three of them came to the reopening carrying the club flag. Cheongcho High Breakwater Club. Catch it and eat it. We hung the flag on the second floor. Jinju spoke to me first for the first time. I'm on a boat. Not yours, though.",
     { offer: "Hey! We're here! With the flag! Hang it on the second floor. Jinju's on a boat. Not yours, she says.",
@@ -1037,12 +1037,12 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
       progress: "The plate? A plate to eat. Not a survey.",
       done: "I pasted the photo. I left the last page empty. It's yours." }),
   'N20-6': E(
-    "The last live stream. Yu Harang said he would broadcast from Dokdo. Knowing the signal drops there and nobody will watch. I went along on the Dokdo trip. One fish during the stream. Zero viewers. Harang spoke to the camera anyway. You do it even when nobody sees. That was my channel.",
+    "The last live stream. Yu Harang said she would broadcast from Dokdo. Knowing the signal drops there and nobody will watch. I went along on the Dokdo trip. One fish during the stream. Zero viewers. Harang spoke to the camera anyway. You do it even when nobody sees. That was my channel.",
     { offer: "I want to go live from Dokdo. The signal drops. Nobody will watch. I know. Even so. Come with me.",
       progress: "We're live. Zero viewers. One fish.",
       done: "Zero. You saw. I did it anyway. You do it even when nobody sees. That was my channel." }),
   'N20-7': E(
-    "A video with no subtitles. The one uploaded with no editing and no subtitles lasted the longest. Harang is going to the next harbour. He asked me to pick one cut for the video. I picked it. That moment at Dokdo with zero viewers. Harang put that cut at the end. I heard about the next harbour. He has not decided where it is.",
+    "A video with no subtitles. The one uploaded with no editing and no subtitles lasted the longest. Harang is going to the next harbour. She asked me to pick one cut for the video. I picked it. That moment at Dokdo with zero viewers. Harang put that cut at the end. I heard about the next harbour. She has not decided where it is.",
     { offer: "I'm going to the next harbour. I haven't decided where. Pick one cut for the last video. I'll upload it with no subtitles.",
       progress: "Picked a cut? Just one.",
       done: "That cut. Zero viewers. I put it at the end. At the next harbour... no, I won't say." }),

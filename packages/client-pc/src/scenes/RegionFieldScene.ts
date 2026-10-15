@@ -198,6 +198,7 @@ import { interiorLayoutOf, interiorTemplateOf, homeLayoutOf, type InteriorAction
 import { homeLineOf } from '../data/StoryDialogue.js';
 import { hideLoadingAfterRender, isLoadingShown, setLoadingProgress, setLoadingStage, stageForFile } from '../ui/LoadingOverlay.js';
 import { setAmbience } from '../audio/Ambience.js';
+import { weatherSoundLevels } from '../audio/WeatherSound.js';
 import { BuildingKind, BUILDING_LABEL, BUILDING_GOODS, BUILDING_HOURS, shopHoursState, BUILDING_KIND_CYCLE, SHOP_CATALOG, ShopEntry } from '../data/ShopCatalog.js';
 import { playSfx } from '../audio/SfxBank.js';
 
@@ -4642,14 +4643,15 @@ export class RegionFieldScene extends Phaser.Scene {
     LedgerStore.playTick(delta);   // 211차 — 하루 기록 놀던 시간
     GameState.noteAwake(delta);   // 213차 — 잠 가부(깨어 논 시간)
     // 211차 — 배경음: 물가에 서면 파도가 커지고, 비가 오면 빗소리(1초마다 목표만 갱신)
+    //   253차 — 날씨 환경음: 비 굵기 · 바람(센 바람은 파도도 키운다) · 천둥을 기상 실데이터로(`WeatherSound`)
     this.ambienceT -= delta;
     if (this.ambienceT <= 0) {
       this.ambienceT = 1000;
-      const kind = ExternalDataStore.getWeatherKind(this.region);
-      const rain = kind === 'rain' ? 0.8 : kind === 'shower' ? 0.5 : 0;
+      const w = weatherSoundLevels(this.region);
+      const sea = this.region === 'hometown' ? 0.2 : this.nearWater ? 0.85 : 0.4;
       setAmbience(this.interior
-        ? { sea: 0.08, rain: rain * 0.3 }   // 215차 — 실내: 문 너머로 먼 소리만
-        : { sea: this.region === 'hometown' ? 0.2 : this.nearWater ? 0.85 : 0.4, rain });
+        ? { sea: 0.08, ...w, indoor: true }   // 215차 — 실내: 문 너머로 먼 소리만(253차 — 벽 너머 먹먹하게)
+        : { sea: Math.min(1, sea * (1 + 0.3 * w.wind)), ...w });
       this.settleConsignments();   // 213차 — 맡겨 둔 위판(회차가 열렸으면 정산)
     }
     // init → create 사이 또는 shutdown 직전의 stale update 차단.

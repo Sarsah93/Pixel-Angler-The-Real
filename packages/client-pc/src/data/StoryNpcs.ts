@@ -227,7 +227,7 @@ export const STORY_FIELD_TRIGGERS: StoryFieldTrigger[] = [
   // N19-2 「부고 아닌 편지」 — 정옥선의 반찬통 → 죽간 공방
   {
     id: 'n19-2-take', regionId: 'gangwon_sokcho', tx: 582, ty: 157,
-    labelKo: '정옥선의 반찬통', labelEn: 'Ok-seon\'s side-dish container',
+    labelKo: '정옥선의 반찬통', labelEn: 'Okseon\'s side-dish container',
     actionKey: 'food_container_delivery', questId: 'N19-2', objectiveIndex: 1, phase: 0, give: 'qd_food_box',
     linesKo: ['보자기로 싼 반찬통이 아직 따뜻하다. 뚜껑 위에 쪽지는 없다.', '할머니는 "가는 길에"라고만 했다. 길이 정해져 있다는 뜻이다.'],
     linesEn: ['The wrapped container is still warm. There is no note on the lid.', 'She only said "on your way". That means the way is already decided.'],

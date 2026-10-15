@@ -277,7 +277,7 @@ npx pnpm --filter @tra/client-pc run dev
 ## 9. 빌드 상태 · 최근 변경
 
 ```
-npx pnpm run build → ✅ 3/3 패키지 성공 (2026-10-15 252차 · map-builder 워크스페이스 제외)
+npx pnpm run build → ✅ 3/3 패키지 성공 (2026-10-15 253차 · map-builder 워크스페이스 제외)
 npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 ```
 
@@ -286,7 +286,18 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-10-15 252차) — 타이틀 로고(코드로 굽는 픽셀 로고) · 시세 띠 도감 이름 · 영어 · 행동 효과음 63종 · main 반영 · 76차 배포**
+**최근 변경 (2026-10-15 253차) — 배경음 후보(Lyria 1 · 2판) · 받는 자리 답 3개 이상 · 긴 응답 · 물어보기(킹덤컴식 조사 대화) · 고양이 · 날씨 효과음**
+
+- 사용자 「선택지 3개 이상 · 선택에 따른 더 긴 대사」 「꼬리에 꼬리를 무는 대화(킹덤컴처럼)」: 188편 전부 받는 자리 3~4개(톤 답 0 · 응답 평균 14.2 → 114.9자) ·
+  끝내는 자리 3~5개(2개뿐인 편 62 → 0) · 원래 응답은 앞에 두고 단락을 잇는다(`StoryChoiceDepth1~8` · 새 답 905) · 물어보기 — 화제 64 · 물음 184(꼬리 39 · 열쇠 11) ·
+  진행 전/후로 갈리는 답(R2) · 조사 편 5개는 열쇠 물음이 단계를 연다 · 일지 「수첩」 · 대화창 452 · 세이브 `story.inquiry` · 강두철 직함 가리기(`veil`).
+- 배경음 Lyria 1판 9곡 → 사용자 의견으로 2판 7곡(절제 · 느리게 · 집 두 판 · 시장 두 판) · rain 곡 대신 날씨 환경음(`Ambience` · `WeatherSound` — 비 굵기 · 바람 · 천둥을
+  기상 실데이터로 · 집 안은 650Hz 먹먹하게 · A 가중 크기 맞춤) · 집 고양이 8소리(`SfxBank` 입 모양 거르개 · `HomeCat` 거리 · 좌우).
+- 원문 정리 — 오타 55곳 · 대사 속 「우호도」 3 · 메타 표현(「다음 편이 열린다」 · 「7부」 · 「기상 게이트」) · 영어 대명사 · 이름 붙임표 164곳 · 남은 모순은 백로그 CA.
+- 검증: core 275/275 · 빌드 3/3 · typecheck 0 · 답 깊이 · 물어보기 검사 오류 0 · 경고 0 · 실렌더(대화창 한 · 영 · 조사 대화 · 소리 배선 · pageerror 0) · 위키 Version 52.
+  상세: [253차 워크로그](../docs/wiki/03-WORKLOG/2026-10-15-253-bgm-choice-depth-inquiry.md).
+
+**이전 변경 (2026-10-15 252차) — 타이틀 로고(코드로 굽는 픽셀 로고) · 시세 띠 도감 이름 · 영어 · 행동 효과음 63종 · main 반영 · 76차 배포**
 
 - 사용자 「타이틀 로고를 … 새로 만들고 싶어(가시성 문제 + 통 이미지 의존성) … 코드로도 괜찮은 디자인이 나온다면」: 옛 `ui/title_logo.png` 삭제 →
   글자 격자 데이터(`data/TitleLogoArt.ts`)를 캔버스로 굽는 로고(`ui/TitleLogo.ts` — 남색 테 · 아래로 민 입체 · 흰 물보라 → 청록 · `i` 점 = 찌 · `g` 끝 = 바늘) · 떠다니기 · 찌 까딱.
@@ -307,15 +318,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
   main 빨리 감기(`cb93a9e..332150f`) · 「테스트 배포」 75차(gh-pages `084703f` · 배포본 하위 경로 기동 점검 4xx 0 · pageerror 0).
 - 검증: core 259/259 · 빌드 3/3 · typecheck 0 · 실렌더(탭 한 · 영 넘침 0 · 겹침 0 · 포인터 저장 · 필드 보정 · 장력 막대 · 가이드 문장 · 4xx 0 · pageerror 0).
   상세: [251차 워크로그](../docs/wiki/03-WORKLOG/2026-10-15-251-accessibility-tab-color-assist.md).
-
-**이전 변경 (2026-10-15 250차) — 마우스 포인터 「찌 화살」 · main 반영 · 74차 배포**
-
-- 사용자 「마우스 포인터는 1번 찌 화살로 하고, main 반영과 gh-pages 74차 「테스트 배포」진행해줘」: 기본 = 시안 그대로(23px) ·
-  누를 수 있는 곳 = 같은 그림 + 흰 테 1px(4방향) — `ui/GameCursor.ts`가 Phaser `InputManager.setCursor`의 `'pointer'`만 대체 · `restoreHandCursor` → `handCursorCss()`.
-- 글자 격자(`tools/gen_game_cursor.cjs` → `data/GameCursorArt.ts` · 원본 `assets/cursor/`)를 1 · 2 · 3배로 구운 data URI `image-set`(고해상도 선명) ·
-  CSS 23px 고정(32px를 넘으면 크롬이 브라우저 화면 근처에서 숨긴다) · main 빨리 감기(249 · 250) · 「테스트 배포」 74차.
-- 검증: core 259/259 · 빌드 3/3 · typecheck 0 · 실렌더(부팅 · 메뉴 · 필드 HUD · 가방 단추 손 ↔ 기본 · `restoreHandCursor` · 4xx 0 · pageerror 0).
-  상세: [250차 워크로그](../docs/wiki/03-WORKLOG/2026-10-15-250-game-cursor-float-deploy74.md).
 
 ---
 
