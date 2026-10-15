@@ -250,6 +250,14 @@ export const EN_PANELS: Record<string, string> = {
   '도현수에게 증거 보고': 'Report the evidence to Hyeonsu',
   // 167차 — 장면 게이트(대화창 행·트리거 배우)
   '이야기가 이어집니다': 'The story continues',
+  '의뢰를 받지 않았습니다.': 'You did not take the job.',
+  // 254차 — 인물 가게 머리줄 · 사이 단계
+  '값을 깎아 주지 않는다': 'no haggling', '귀한 물건을 들이지 않는다': 'no rare stock', '귀한 물건을 늘 들여놓는다': 'rare stock always in',
+  '적대': 'Hostile', '냉담': 'Cold', '호의': 'Warm', '친밀': 'Close',
+  '이 대화는 내가 고르는 말에 따라 흘러간다. 상대의 대답도, 마음도 달라진다. 초상 아래 막대를 보자.':
+    'This conversation follows the words you choose. Their answers change, and so does how they feel about you. Watch the bar under the portrait.',
+  '어떤 말은 그 자리에 없는 사람에게도 전해진다. 한 번 한 말은 되돌릴 수 없고, 뒤의 이야기가 그것을 기억한다.':
+    'Some words reach people who are not even here. What you say cannot be taken back, and the story later remembers it.',
   '지금은 진행할 수 없습니다': 'Cannot proceed right now',
   '수상한 사람에게 말을 건다': 'Speak to the suspicious person',
   '수상해 보이는 사람 1': 'Suspicious person 1',

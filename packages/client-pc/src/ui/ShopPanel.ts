@@ -18,14 +18,14 @@
 
 import { cv, cvText } from './ColorAssist.js';
 import Phaser from 'phaser';
-import { rareArrivalInDays, GEAR_FAULTS, gearRepairFee } from '@tra/core';
+import { rareArrivalInDays, GEAR_FAULTS, gearRepairFee, affinityTier, AFFINITY_TIER_LABEL, getStoryNpc, type AffinityTier, type NpcShopTerms } from '@tra/core';
 import { GameState } from '../store/GameState.js';
 import { InventoryStore, InvItem, CONDITION_LABEL, CATEGORY_LABEL, type InvCategory } from '../store/InventoryStore.js';
 import { TitleStore } from '../store/TitleStore.js';
 import { ShopCartDialog, type CartLine } from './ShopCartDialog.js';
 import { TextInput } from './TextInput.js';
 import { RecommendationStore } from '../store/RecommendationStore.js';
-import { ShopDef, ShopEntry, shopBuysItem } from '../data/ShopCatalog.js';
+import { ShopDef, ShopEntry, shopBuysItem, NPC_SHOP_EXTRAS } from '../data/ShopCatalog.js';
 import { DraggablePanel } from './DraggablePanel.js';
 import { ConfirmDialog, QuantityDialog } from './Dialogs.js';
 import { ShopStore, type ShopContext, type UsedGood } from '../store/ShopStore.js';
@@ -66,21 +66,77 @@ const CAT_ORDER: InvCategory[] = ['gear', 'consumable', 'food', 'tackle', 'lure'
 const FONT = '"Noto Sans KR", sans-serif';
 const SEARCH_W = 150;
 
+/** 254차 — 인물 가게(`<지역>:npc:<인물 id>`)면 그 사람 id */
+export function npcOfShopKey(key: string | undefined): string | null {
+  const i = key ? key.indexOf(':npc:') : -1;
+  return key && i >= 0 ? key.slice(i + 5) : null;
+}
+
+/** 254차 — 인물 가게의 사이별 값(사는 값 · 파는 값 배율) — 친밀 −6% · 호의 −3% · 보통 · 냉담 +5% · 적대 +10% */
+const NPC_TIER_PRICE: Record<AffinityTier, { buy: number; sell: number }> = {
+  close: { buy: 0.94, sell: 1.04 }, warm: { buy: 0.97, sell: 1.02 }, neutral: { buy: 1, sell: 1 },
+  cold: { buy: 1.05, sell: 0.97 }, hostile: { buy: 1.1, sell: 0.93 },
+};
+
 /**
- * 220차 — 상점 구매 단가(장바구니 · 실제 결제 공용). 스킬 흥정(랭크당 -3% · 122차) × 단 타이틀 할인(203차).
- * 창이 보여 주는 값과 씬이 받는 값이 한 함수에서 나온다(구: 창은 타이틀 할인을 빼고 보여 줬다).
+ * 254차 — 인물 가게의 값 조건(사용자 지시 「해당 인물과 물건을 사고 팔 때 값을 깎는 것이 제한 …」).
+ * 그 사람과의 사이(우호도 단계)가 값을 움직이고, 이야기 결말이 「값을 깎아 주지 않는다」를 걸면
+ * 흥정 기술 · 타이틀 할인 · 사이 할인이 이 가게에서 듣지 않는다(웃돈 · 덜 쳐 주는 것은 그대로 남는다).
  */
-export function shopBuyUnitPrice(entry: { price: number }): number {
-  return Math.round(entry.price * (1 - 0.03 * GameState.skillRank('eco_haggle')) * TitleStore.modifiers().buyMult);
+export function npcShopMods(key: string | undefined = MarketStore.branch?.key): {
+  npcId: string | null; buy: number; sell: number; noHaggle: boolean; terms: NpcShopTerms; tier: AffinityTier;
+} {
+  const npcId = npcOfShopKey(key);
+  if (!npcId) return { npcId: null, buy: 1, sell: 1, noHaggle: false, terms: {}, tier: 'neutral' };
+  const tier = affinityTier(StoryStore.affinityOf(npcId));
+  const terms = StoryStore.shopTermsOf(npcId);
+  const m = NPC_TIER_PRICE[tier];
+  const noHaggle = !!terms.noHaggle;
+  return { npcId, tier, terms, noHaggle, buy: noHaggle ? Math.max(1, m.buy) : m.buy, sell: noHaggle ? Math.min(1, m.sell) : m.sell };
 }
 
 /**
- * 221차 — 상점 매입 단가(판매 칸 · 판매 목록 · 실제 정산 공용). 흥정 · 단골 스킬 × 단 타이틀 판매가 × 지점 수요 · 시세 하락.
+ * 220차 — 상점 구매 단가(장바구니 · 실제 결제 공용). 스킬 흥정(랭크당 -3% · 122차) × 단 타이틀 할인(203차) × 인물 가게 사이(254차).
+ * 창이 보여 주는 값과 씬이 받는 값이 한 함수에서 나온다(구: 창은 타이틀 할인을 빼고 보여 줬다).
+ */
+export function shopBuyUnitPrice(entry: { price: number }): number {
+  const n = npcShopMods();
+  const haggle = n.noHaggle ? 0 : GameState.skillRank('eco_haggle');
+  const title = n.noHaggle ? Math.max(1, TitleStore.modifiers().buyMult) : TitleStore.modifiers().buyMult;
+  return Math.round(entry.price * (1 - 0.03 * haggle) * title * n.buy);
+}
+
+/**
+ * 221차 — 상점 매입 단가(판매 칸 · 판매 목록 · 실제 정산 공용). 흥정 · 단골 스킬 × 단 타이틀 판매가 × 인물 가게 사이(254차) × 지점 수요 · 시세 하락.
  * 구: 창은 타이틀 판매가를 빼고 보여 주고 씬은 넣고 줬다(220차 구매가와 같은 어긋남).
  */
 export function shopSellUnitPrice(item: InvItem): number {
-  const base = Math.round(InventoryStore.getSellPrice(item) * GameState.skillMult('sell_price') * TitleStore.modifiers().sellMult);
+  const n = npcShopMods();
+  const skill = n.noHaggle ? Math.min(1, GameState.skillMult('sell_price')) : GameState.skillMult('sell_price');
+  const title = n.noHaggle ? Math.min(1, TitleStore.modifiers().sellMult) : TitleStore.modifiers().sellMult;
+  const base = Math.round(InventoryStore.getSellPrice(item) * skill * title * n.sell);
   return MarketStore.quote(item, base)?.unit ?? base;   // 196차 — 지점 수요 × 시세 하락
+}
+
+// 254차 — dev 하네스: 지금 열린 가게 기준 단가 · 인물 가게 조건(사이 · 결말)
+if (import.meta.env.DEV) (globalThis as unknown as { __SHOP_PRICE?: unknown }).__SHOP_PRICE = { buy: shopBuyUnitPrice, sell: shopSellUnitPrice, mods: npcShopMods };
+
+/** 254차 — 이름 뒤 「과/와」(받침이 있으면 과) */
+function withGwa(name: string): string {
+  const c = name.charCodeAt(name.length - 1);
+  return c >= 0xac00 && c <= 0xd7a3 && (c - 0xac00) % 28 !== 0 ? `${name}과` : `${name}와`;
+}
+
+/** 254차 — 인물 가게 머리줄: 그 사람과의 사이와 거래 조건(값 · 귀한 물건) */
+export function npcShopLine(n: ReturnType<typeof npcShopMods>): string {
+  const name = n.npcId ? getStoryNpc(n.npcId)?.nameKo ?? '' : '';
+  const parts = [AFFINITY_TIER_LABEL[n.tier].ko];
+  if (n.noHaggle) parts.push('값을 깎아 주지 않는다');
+  else if (n.buy < 1) parts.push(`값을 ${Math.round((1 - n.buy) * 100)}% 깎아 준다`);
+  else if (n.buy > 1) parts.push(`값을 ${Math.round((n.buy - 1) * 100)}% 더 받는다`);
+  if (n.terms.rare === 'none') parts.push('귀한 물건을 들이지 않는다');
+  else if (n.terms.rare === 'more' && NPC_SHOP_EXTRAS[n.npcId ?? '']) parts.push('귀한 물건을 늘 들여놓는다');
+  return `${withGwa(name)}의 사이 — ${parts.join(' · ')}`;
 }
 
 /** 5꼭지 별 꼭짓점(절차 그림 — 이모지 · 글리프 금지) */
@@ -230,9 +286,13 @@ export class ShopPanel extends DraggablePanel {
     };
     scene.input.on('pointerdown', this.downOutside);
 
-    const greeting = scene.add.text(14, this.contentTop + 2, shop.greeting, {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#8faabf',
+    // 254차 — 인물 가게는 인사말 대신 그 사람과의 사이 · 거래 조건(값 · 귀한 물건)
+    const npcMods = npcShopMods(this.ctx.key);
+    const greeting = scene.add.text(14, this.contentTop + 2, npcMods.npcId ? npcShopLine(npcMods) : shop.greeting, {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px',
+      color: npcMods.noHaggle || npcMods.terms.rare === 'none' ? '#ffb45a' : '#8faabf',
     });
+    clampTextWidth(greeting, PANEL_W - 28);
     this.add(greeting);
 
     this.buildTabs();
@@ -717,7 +777,22 @@ export class ShopPanel extends DraggablePanel {
     const now = Date.now();
     // 247차 — 아주 까다로운 작물은 들어오는 날(열흘에 한 번꼴)에만
     return this.gated().filter((e) => !e.rareArrival || rareArrivalInDays(e.id, now) === 0)
+      .concat(this.npcExtras(now))   // 254차 — 인물 가게만 들이는 귀한 물건
       .concat(ShopStore.usedGoods(this.ctx.key).map(usedShopEntry));   // 224차 — 손님이 판 장비(중고)
+  }
+
+  /**
+   * 254차 — 인물 가게의 귀한 물건. 들어오는 날에만(열흘에 나흘꼴) · 결말이 늘 진열(`more`) 또는 끊음(`none`)을 정한다.
+   * 해금 표시(`unlockKey`)가 걸린 것은 그 표시가 선 뒤에만(화해 결말의 합작 찌).
+   */
+  private npcExtras(now: number): ShopEntry[] {
+    const npcId = npcOfShopKey(this.ctx.key);
+    const list = npcId ? NPC_SHOP_EXTRAS[npcId] : undefined;
+    if (!npcId || !list) return [];
+    const terms = StoryStore.shopTermsOf(npcId);
+    if (terms.rare === 'none') return [];
+    return list.filter((e) => (!e.unlockKey || GameState.getFlag(`unlock.shop.${e.unlockKey}`))
+      && (terms.rare === 'more' || rareArrivalInDays(e.id, now) % 3 === 0));
   }
 
   /** 247차 — 아직 안 들어온 아주 까다로운 작물 가운데 가장 빨리 오는 것(이름 · 남은 날) — 자격을 갖춘 것만(R2) */

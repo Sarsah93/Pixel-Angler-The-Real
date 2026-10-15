@@ -646,6 +646,20 @@ export {
   inquiryNodeOpen, inquiryTopicsFor, inquiryFollowUps, inquiryNodesForQuest, inquiryDrivesAction, allInquiryLines, validateInquiry,
   type InquiryCtx, type InquiryQuestState, type InquiryTopicEntry,
 } from './rules/Inquiry.js';
+// 254차 — 이어지는 대화(갈래 · 여러 사람 우호도 · 표시) · 이야기 결말(1~3 — 하나로 모이는 · 갈라지는 · 이도 저도 아닌)
+export type {
+  TalkStance, TalkGate, TalkEndDef, TalkChoiceDef, TalkNodeDef, StoryTalkDef,
+  StoryEndingKind, NpcShopTerms, StoryEndingEffects, StoryEndingDef,
+} from './types/Story.js';
+export { STORY_TALKS } from './db-schema/StoryTalks.js';
+export { STORY_ENDINGS } from './db-schema/StoryEndings.js';
+export { opt as talkOpt, say as talkSay, endTalk, type OptExtra as TalkOptExtra } from './db-schema/StoryTalkKit.js';
+export {
+  talkById, talksOfQuest, offerTalkOf, completeTalkOf, objectiveTalkOf, actionTalkOf, progressTalksOfNpc,
+  talkNode, talkGateOk, talkVisibleChoices, endingById, endingsOfArc, canonEndingOf, endingArcOfQuest,
+  npcShopTerms, npcAffinityCap, npcEndingRole, allTalkLines, validateTalks, validateEndings, TALK_AFFINITY_MAX,
+  type TalkCtx,
+} from './rules/StoryTalk.js';
 // ── 지형 전이 규칙 — 172차 ──
 export type { TerrainClass, TerrainDef, SeamKind, SeamRule, BreakwaterClass } from './rules/TerrainTransition.js';
 export {

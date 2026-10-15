@@ -27,6 +27,9 @@ import {
   type OkseonSpareGift,
   inquiryTopicsFor, inquiryFollowUps, inquiryNodesForQuest, inquiryKnownTopics, inquiryNode, inquiryDrivesAction,
   type InquiryCtx, type InquiryTopicEntry, type InquiryNodeDef, type InquiryTopicDef,
+  offerTalkOf, completeTalkOf, objectiveTalkOf, actionTalkOf, talkNode, talkGateOk, talkVisibleChoices,
+  endingById, endingsOfArc, endingArcOfQuest, npcShopTerms, npcAffinityCap, npcEndingRole,
+  type TalkCtx, type StoryTalkDef, type TalkChoiceDef, type TalkEndDef, type NpcShopTerms, type StoryEndingDef,
 } from '@tra/core';
 import {
   storyActionSpec, originMatches, isChoiceOrigin, DAILY_ACTION_ORIGINS, type StoryActionChoice, type StoryActionSource,
@@ -74,6 +77,25 @@ export interface StorySaveState {
   offerCooldown?: Record<string, number>;
   /** 253차 — 물어보기: 누군가의 답에서 알게 된 화제 · 들은 물음(구세이브는 없다 — 빈 채로 시작) */
   inquiry?: { learned: string[]; asked: string[] };
+  /**
+   * 254차 — 이어지는 대화. `seen` = 한 번이라도 고른 말(「대화/단계/말」 — 우호도는 처음 한 번만 센다) ·
+   * `at` = 하다 만 대화의 지금 단계(창을 닫았다 다시 열면 거기서 잇는다) · `path` = 고른 길(일지 · 검증용).
+   */
+  talk?: { seen: string[]; at: Record<string, string>; path: Record<string, string[]> };
+  /** 254차 — 다다른 이야기 결말 — 이야기 id → 결말 id(영구 — 결말의 효과는 이 표에서 매번 다시 읽는다) */
+  endings?: Record<string, string>;
+}
+
+/** 254차 — 이어지는 대화에서 말 하나를 고른 결과(대화창이 그린다) */
+export interface TalkStepResult {
+  /** 끝의 일이 거절됐다(가방 자리 등) — 대화는 그 단계에 머문다 */
+  ok: boolean;
+  next?: string;
+  end?: TalkEndDef;
+  /** 실제로 움직인 우호도(처음 고른 말만 · 상한에 걸리면 덜 움직인다) */
+  moved: { npcId: string; delta: number }[];
+  /** 끝내는 자리 — 이 대화로 다다른 결말 */
+  ending?: StoryEndingDef;
 }
 
 export interface StoryHost {
@@ -182,6 +204,11 @@ class StoryStoreManager {
   private choices: Record<string, { offer?: string; complete?: string }> = {};
   /** 206차 — 한 번이라도 끝낸 퀘스트 id(퀘스트 첫 진행 밑걸림 완화 판정) */
   private everDone = new Set<string>();
+  /** 254차 — 이어지는 대화 · 결말(세이브 `talk` · `endings`) */
+  private talkSeen = new Set<string>();
+  private talkAt: Record<string, string> = {};
+  private talkPath: Record<string, string[]> = {};
+  private endings: Record<string, string> = {};
   /** 253차 — 물어보기: 들어서 알게 된 화제 · 들은 물음 */
   private inqLearned = new Set<string>();
   private inqAsked = new Set<string>();
@@ -207,6 +234,8 @@ class StoryStoreManager {
       affinity: this.affinity, choices: this.choices, tracked: this.pinned.main, pinned: { ...this.pinned },
       declined: [...this.declined], offerCooldown: this.offerCooldown, everDone: [...this.everDone],
       inquiry: { learned: [...this.inqLearned], asked: [...this.inqAsked] },
+      talk: { seen: [...this.talkSeen], at: { ...this.talkAt }, path: { ...this.talkPath } },
+      endings: { ...this.endings },
     };
   }
   deserialize(s?: StorySaveState): void {
@@ -233,6 +262,12 @@ class StoryStoreManager {
     // 253차 — 물어보기 상태(구세이브는 없다 — 진행으로 저절로 아는 화제는 `learnWhen`이 채운다)
     this.inqLearned = new Set(s?.inquiry?.learned ?? []);
     this.inqAsked = new Set(s?.inquiry?.asked ?? []);
+    // 254차 — 이어지는 대화 · 결말(구세이브는 없다 — 빈 채로. 정본 결말은 이미 마친 편에서 채운다)
+    this.talkSeen = new Set(s?.talk?.seen ?? []);
+    this.talkAt = { ...(s?.talk?.at ?? {}) };
+    this.talkPath = { ...(s?.talk?.path ?? {}) };
+    this.endings = { ...(s?.endings ?? {}) };
+    this.backfillCanonEndings();
     this.refreshAutoQuests();
   }
   resetAll(): void { this.deserialize(undefined); }
@@ -515,6 +550,9 @@ class StoryStoreManager {
     if (!n) return { ko: '', en: '' };
     const v = n.veil;
     if (v && !this.quests[v.untilSeen] && !this.everDone.has(v.untilSeen)) return { ko: v.roleKo, en: v.roleEn };
+    // 254차 — 결말이 바꾼 한 줄(가게를 접었다 등 — 영구 피해)
+    const r = npcEndingRole(npcId, this.reachedEndings());
+    if (r) return r;
     return { ko: n.roleKo, en: n.roleEn };
   }
 
@@ -585,7 +623,10 @@ class StoryStoreManager {
   }
   addAffinity(npcId: string, d: number): number {
     const before = this.affinityOf(npcId);
-    const v = clampAffinity(before + d);
+    let v = clampAffinity(before + d);
+    // 254차 — 결말이 건 영영 상한(사이가 영구히 상했다) — 오르는 쪽만 막는다
+    const cap = npcAffinityCap(npcId, this.reachedEndings());
+    if (cap !== undefined && d > 0) v = Math.min(v, Math.max(before, cap));
     LedgerStore.affinity(npcId, v - before);   // 211차 — 실제로 바뀐 만큼
     if (v !== 0) this.affinity[npcId] = v; else delete this.affinity[npcId];
     this.host?.markDirty();
@@ -655,11 +696,176 @@ class StoryStoreManager {
     return out;
   }
 
+  // ── 254차 이어지는 대화(갈래) · 결말 ──
+  /** 판정 문맥 — 표시 · 우호도 */
+  talkCtx(): TalkCtx {
+    return { hasFlag: (k) => this.host?.hasFlag(k) ?? false, affinity: (n) => this.affinityOf(n) };
+  }
+  /** 받는 자리 대화(있으면 표준 답 대신 돈다) */
+  offerTalk(q: StoryQuestDef): StoryTalkDef | undefined { return offerTalkOf(q.id); }
+  /** 끝내는 자리 대화 */
+  completeTalk(q: StoryQuestDef): StoryTalkDef | undefined { return completeTalkOf(q.id); }
+  /** 장면으로 닫히는 목표의 대화 — 지금 차례이고 이 사람과 하는 것만 */
+  objectiveTalk(questId: string, objIdx: number, npcId: string): StoryTalkDef | undefined {
+    const t = objectiveTalkOf(questId, objIdx);
+    return t && t.npcId === npcId ? t : undefined;
+  }
+  /** 행동 목표의 지금 단계가 의뢰인 앞에서 고르는 단계이고 그 단계의 대화가 있으면 */
+  actionTalk(questId: string, objIdx: number): StoryTalkDef | undefined {
+    const step = this.actionStep(questId, objIdx);
+    if (!this.canPerformAction(questId, objIdx, step) || !this.actionStepIsChoice(questId, objIdx)) return undefined;
+    return actionTalkOf(questId, objIdx, step);
+  }
+  /** 이어 할 단계(하다 만 대화면 그 단계 · 아니면 처음) */
+  talkResume(t: StoryTalkDef): string {
+    const at = this.talkAt[t.id];
+    return at && t.nodes[at] ? at : t.start;
+  }
+  /** 이 단계에서 지금 보이는 말 */
+  talkChoices(t: StoryTalkDef, nodeId: string): TalkChoiceDef[] {
+    const n = talkNode(t, nodeId);
+    return n ? talkVisibleChoices(n, this.talkCtx()) : [];
+  }
+  /** 이 말을 전에 골라 본 적이 있는가(우호도는 처음 한 번만 — 일지 · 검증용) */
+  talkChosenBefore(t: StoryTalkDef, nodeId: string, choiceId: string): boolean {
+    return this.talkSeen.has(`${t.id}/${nodeId}/${choiceId}`);
+  }
+  /** 고른 길(일지 · 검증용) */
+  talkPathOf(talkId: string): readonly string[] { return this.talkPath[talkId] ?? []; }
+
+  /**
+   * 말 하나를 고른다. 표시를 남기고(늘) · 우호도는 이 말을 처음 고를 때만 움직이고 · 다음 단계를 기억한다.
+   * 끝이면 대화가 열린 자리의 일을 한다 — 받기/미루기 · 목표 닫기 · 행동 단계 올리기 · 마침(보상 답 · 결말).
+   * 끝의 일이 거절되면(가방 자리 등) 대화는 이 단계에 머물러 다시 고를 수 있다.
+   */
+  talkChoose(t: StoryTalkDef, nodeId: string, choiceId: string): TalkStepResult | null {
+    const node = talkNode(t, nodeId);
+    const c = node?.choices.find((x) => x.id === choiceId);
+    if (!node || !c || !talkGateOk(c.requires, this.talkCtx())) return null;
+    const q = getStoryQuest(t.questId);
+    if (!q) return null;
+    const key = `${t.id}/${nodeId}/${c.id}`;
+    const first = !this.talkSeen.has(key);
+    this.talkSeen.add(key);
+    for (const f of c.flags ?? []) this.host?.setFlag(f, true);
+    const moved: { npcId: string; delta: number }[] = [];
+    if (first) {
+      for (const [npc, d] of Object.entries(c.affinity ?? {})) {
+        const before = this.affinityOf(npc);
+        const after = this.addAffinity(npc, d);
+        if (Math.abs(after - before) > 1e-9) moved.push({ npcId: npc, delta: Math.round((after - before) * 100) / 100 });
+      }
+    }
+    // 일지 · 검증용 길 — 처음 단계에서 다시 시작하면 새로 적는다
+    const path = nodeId === t.start ? [] : [...(this.talkPath[t.id] ?? [])];
+    path.push(`${nodeId}/${c.id}`);
+    this.talkPath[t.id] = path.slice(-24);
+    if (c.next) {
+      this.talkAt[t.id] = c.next;
+      this.host?.markDirty();
+      return { ok: true, next: c.next, moved };
+    }
+    const end = c.end ?? {};
+    const ok = this.talkEnd(t, q, end);
+    if (ok) delete this.talkAt[t.id]; else this.talkAt[t.id] = nodeId;
+    const ending = ok && t.at === 'complete' ? this.endingOfQuestRun : undefined;
+    this.endingOfQuestRun = undefined;
+    this.host?.markDirty();
+    return { ok, end, moved, ending };
+  }
+  /** `talkEnd`가 이번 마침에서 다다른 결말(결과에 실어 준다) */
+  private endingOfQuestRun: StoryEndingDef | undefined;
+
+  /** 대화의 끝 — 대화가 열린 자리마다 할 일 */
+  private talkEnd(t: StoryTalkDef, q: StoryQuestDef, end: TalkEndDef): boolean {
+    switch (t.at) {
+      case 'offer':
+        if (end.decline && q.kind === 'sub') { this.declineOffer(q); return true; }
+        return this.accept(q.id, undefined, true);
+      case 'objective':
+        if (t.objectiveIndex === undefined || this.objectiveDone(q, t.objectiveIndex)) return false;
+        this.event({ kind: 'scene', questId: q.id, objectiveIndex: t.objectiveIndex });
+        return this.objectiveDone(q, t.objectiveIndex);
+      case 'action': {
+        const idx = t.objectiveIndex ?? -1; const o = q.objectives[idx]; const p = this.quests[q.id];
+        if (!o?.actionKey || !p) return false;
+        const step = this.actionStep(q.id, idx);
+        p.actionChoices = { ...(p.actionChoices ?? {}), [`${idx}:${step}`]: `talk:${t.id}` };
+        this.emitAction(o.actionKey, 'action-choice:talk');
+        return this.actionStep(q.id, idx) > step || this.objectiveDone(q, idx);
+      }
+      case 'complete': {
+        const ok = this.complete(q.id, end.complete);
+        if (!ok) return false;
+        // 결말 — 대화가 고른 결말, 없으면 그 이야기의 결말이 하나뿐일 때 그것(정본)
+        const arcId = endingArcOfQuest(q.id);
+        const pick = end.ending ? endingById(end.ending) : (arcId && endingsOfArc(arcId).length === 1 ? endingsOfArc(arcId)[0] : undefined);
+        if (pick) this.endingOfQuestRun = this.applyEnding(pick.id) ?? undefined;
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /** 받는 자리에서 미룬다(서브만) — 표준 미루기 답과 같은 규칙(once = 영영 · event = 쿨다운 · standard = 다음에 다시) */
+  private declineOffer(q: StoryQuestDef): void {
+    if (q.offerPolicy === 'once') this.declined.add(q.id);
+    else if (q.offerPolicy === 'event') this.offerCooldown[q.id] = this.day + (q.event?.cooldownDays ?? 30);
+    this.lastAction = 'declined';
+    this.host?.markDirty();
+    this.onNotify?.(`[할 일] ${q.titleKo} — ${q.offerPolicy === 'once' ? '거절 (다시 오지 않습니다)' : '미룸'}`);
+  }
+
+  /**
+   * 결말에 다다른다(이야기마다 한 번 — 이미 정해졌으면 그대로). 효과: 우호도 더하기 · 정하기 · 표시.
+   * 영영 상한 · 가게 조건 · 직업 한 줄은 저장하지 않고 다다른 결말 표에서 매번 다시 읽는다(`npcShopTerms` 등).
+   */
+  applyEnding(endingId: string): StoryEndingDef | null {
+    const e = endingById(endingId);
+    if (!e) return null;
+    if (this.endings[e.arcId]) return endingById(this.endings[e.arcId]) ?? null;
+    this.endings[e.arcId] = e.id;
+    const fx = e.effects ?? {};
+    for (const [npc, v] of Object.entries(fx.affinitySet ?? {})) {
+      const before = this.affinityOf(npc);
+      const after = clampAffinity(v);
+      LedgerStore.affinity(npc, after - before);
+      if (after !== 0) this.affinity[npc] = after; else delete this.affinity[npc];
+    }
+    for (const [npc, d] of Object.entries(fx.affinity ?? {})) this.addAffinity(npc, d);
+    for (const f of fx.flags ?? []) this.host?.setFlag(f, true);
+    this.host?.markDirty();
+    this.onNotify?.(`[이야기] 결말 — 「${e.titleKo}」`);
+    return e;
+  }
+  /** 다다른 결말 id들 */
+  reachedEndings(): string[] { return Object.values(this.endings); }
+  /** 이 이야기의 결말(없으면 undefined) */
+  endingOf(arcId: string): StoryEndingDef | undefined {
+    const id = this.endings[arcId];
+    return id ? endingById(id) : undefined;
+  }
+  /** 이 사람 가게 조건(결말이 정한 것 — 값 깎기 막힘 · 귀한 물건) */
+  shopTermsOf(npcId: string): NpcShopTerms { return npcShopTerms(npcId, this.reachedEndings()); }
+  /**
+   * 구세이브 — 결말이 하나뿐인 이야기(정본)를 이미 마친 세이브는 결말을 채운다(효과 없는 정본만 — 우호도를 다시 주지 않는다).
+   */
+  private backfillCanonEndings(): void {
+    for (const q of STORY_QUESTS) {
+      const arcId = endingArcOfQuest(q.id);
+      if (!arcId || this.endings[arcId] || !this.everDone.has(q.id)) continue;
+      const list = endingsOfArc(arcId);
+      if (list.length === 1 && !list[0].effects) this.endings[arcId] = list[0].id;
+    }
+  }
+
   // ── 진행 ──
-  accept(id: string, choiceId?: string): boolean {
+  accept(id: string, choiceId?: string, fromTalk = false): boolean {
     const q = getStoryQuest(id);
     if (!q || this.status(q) !== 'available') return false;
-    if (q.kind === 'sub' && q.giver && !canOfferSubQuest(this.affinityOf(q.giver))) return false;   // 140차 — 우호도 게이트
+    // 140차 — 우호도 게이트. 254차 — 받는 자리 대화가 「받는다」로 끝났으면 다시 묻지 않는다
+    //  (대화 도중 고른 말로 언짢아졌어도 의뢰인이 일을 건네는 대사로 끝났다 — 게이트는 대화를 열 때 이미 봤다)
+    if (!fromTalk && q.kind === 'sub' && q.giver && !canOfferSubQuest(this.affinityOf(q.giver))) return false;
     const c = choiceId ? this.visibleChoices(q, 'offer').find((x) => x.id === choiceId) : undefined;
     // 141차 — 거절 답: once = 영구 소멸 · event = 쿨다운 · standard = 다음 대화에 다시
     if (c?.outcome.decline) {

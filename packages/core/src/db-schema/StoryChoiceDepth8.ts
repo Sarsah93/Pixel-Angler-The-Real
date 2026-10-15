@@ -1,6 +1,6 @@
 /**
  * @file StoryChoiceDepth8.ts
- * @description 253차 — 받는 자리 · 끝내는 자리 답 깊이 8묶음: 서브 아크 N21 ~ N23(N21 오세찬 · N23 채수림 · N22 하늬).
+ * @description 253차 — 받는 자리 · 끝내는 자리 답 깊이 8묶음: 서브 아크 N21 ~ N24(N21 오세찬 · N23 채수림 · N22 하늬 · 254차 N24 건너편 가게).
  *              집필 기준 · 합치는 순서는 `StoryChoiceDepth.ts` 머리 주석.
  */
 
@@ -890,5 +890,66 @@ export const CHOICE_DEPTH_8: Record<string, ChoiceDepthEntry> = {
         "Accept them. Manners next time. (The gifts pile up. Mostly food.)\n\nHousewarming gifts aren't meant to be repaid. They give you a reason to visit that person's place next time. So take them all.",
       ],
     },
+  },
+  // ── 254차 — N24 「건너편 가게」 · 문필구 · 차영배 · 어촌계 ──
+  //   받는 자리는 이어지는 대화(`StoryTalkN24.ts`)가 맡는다. 아래 답은 대화가 없을 때의 받침(폴백)이다.
+  'N24-1': {
+    offer: [
+      d('stand_it', '세워 보겠습니다. 어떻게 서는지 보고 오죠.', "I'll stand it in the water and come back and tell you.",
+        '그래. 서는 걸 보면 너도 안다. (찌를 손바닥에 쥐여 준다.)\n\n파도가 칠 때 봐라. 잔잔할 땐 아무 찌나 선다. 찌는 궂은날 실력이 드러나는 물건이다.',
+        "Good. Once you see it stand, you'll know. (He presses the float into my palm.)\n\nWatch it when the waves come. Any float stands in flat water. A float shows what it's made of on a rough day.",
+        { affinity: 0.03 }),
+      d('who_first', '두 개가 정말 똑같네요. 어느 쪽이 먼저입니까?', 'They really are identical. Which came first?',
+        '먼저? (코웃음을 친다.) 이 골목에서 찌 깎은 지 사십 년이다. 건너편 간판은 십 년도 안 됐어.\n\n누가 먼저인지는 간판 날짜가 말해 준다. 서는 건 물이 말해 주고. 세워 봐.',
+        "First? (He snorts.) I've been carving floats in this alley for forty years. That sign across the street isn't ten years old.\n\nThe date on the sign tells you who came first. The water tells you which one stands. Stand it.",
+        { affinity: 0 }),
+      d('same_same', '싸서 샀을 뿐입니다. 찌가 다 거기서 거기 아닙니까?', "I only bought it because it was cheap. Aren't floats all much the same?",
+        '거기서 거기? (찌를 도로 빼앗듯 집어 든다.) 너 같은 손님 때문에 건너편이 장사가 되는 거다.\n\n찌는 물속 고기가 보는 게 아니라 물 위 사람이 보는 거야. 기울면 입질을 못 본다. 한 번만 세워 보고 다시 말해.',
+        "Much the same? (He all but snatches the float back.) It's customers like you that keep that place across the street in business.\n\nA float isn't for the fish to see — it's for the person above the water. If it leans, you miss the bite. Stand it once, then say that again.",
+        { affinity: -0.04 }),
+      dNo('가게 싸움에 끼고 싶진 않은데요.', "I'd rather not get caught up in a shop feud.",
+        '…누가 싸운대. 찌 얘기 하는 거다. 됐다, 가 봐라.\n\n(진열장 문을 닫는다. 그래도 내 채비 통에서 집어 든 건너편 찌는 돌려주지 않는다.)',
+        "...Who said anything about a feud? We're talking about floats. Fine, off you go.\n\n(He shuts the display case. He still doesn't give back the float from across the street that he picked out of my box.)"),
+    ],
+  },
+  'N24-2': {
+    offer: [
+      d('help_him', '그건 너무했네요. 무엇을 하면 되겠습니까?', "That's going too far. What would you like me to do?",
+        '그놈 찌로 한 마리 낚아 봐라. 파도에 어떻게 눕는지 네 눈으로 보는 거다. (목소리를 낮춘다.)\n\n그다음에 그놈 가게에 가서 물어. 원조라면서 왜 눕느냐고. 그 얼굴만 보고 와. 그거면 된다.',
+        "Catch one on his float. See with your own eyes how it lies down in the waves. (He lowers his voice.)\n\nThen go to his shop and ask him. If it's the original, why does it lie down? Just see his face. That's all.",
+        { affinity: 0.04, flag: 'choice.n24_mission_provoke' }),
+      d('hear_more', '두 분 사이에 무슨 일이 있었는지 더 듣고 싶습니다.', "I'd like to hear more about what happened between you two.",
+        '들어서 뭐 하게. …아홉 해다. 손이 빨랐어. 내가 깎은 걸 한 번 보면 그대로 깎았지. (한숨을 쉰다.)\n\n그런 놈이 어느 날 내 수첩을 들고 나갔다. 그 얘긴 나중에 하자. 일단 그놈 찌부터 세워 봐라.',
+        "What good will hearing do? ...Nine years. Quick hands. Show him something I'd carved once and he'd carve it the same. (He sighs.)\n\nThen one day he walked out with my notebook. Let's leave that for later. First, stand his float in the water.",
+        { affinity: -0.01, flag: 'choice.n24_heard_notebook' }),
+      d('my_way', '가 보겠습니다. 다만 무슨 말을 할지는 제가 정하겠습니다.', "I'll go. But I'll decide what to say myself.",
+        '(눈을 가늘게 뜬다.) …네 입이니 네가 정하겠지. 대신 빈손으로는 오지 마라.\n\n그놈 찌로 한 마리는 낚아 와. 눕는 걸 봐 둬야 무슨 말이든 할 수 있다.',
+        "(His eyes narrow.) ...It's your mouth, so I suppose you'll decide. Just don't come back empty-handed.\n\nCatch one on his float. You need to have seen it lie down before you can say anything at all.",
+        { affinity: -0.02, flag: 'choice.n24_mission_own' }),
+      dNo('남의 가게 싸움에 끼고 싶지 않습니다.', "I don't want to get caught up in someone else's shop feud.",
+        '…싸움이라. 그래, 너한텐 싸움으로 보이겠지. 가 봐라.\n\n(유리문의 종이를 손바닥으로 한 번 쓸어 편다. 내 쪽은 보지 않는다.)',
+        "...A feud. Right, I suppose that's how it looks to you. Off you go.\n\n(He smooths the notice on the glass door flat with his palm. He doesn't look my way.)",
+        -0.04),
+    ],
+  },
+  'N24-3': {
+    offer: [
+      d('as_seen', '본 대로 말씀드리겠습니다.', "I'll tell it as I saw it.",
+        '그래. 본 대로. 그게 제일 어렵지. (안건 종이를 내 앞으로 민다.)\n\n회의 전에 두 사람을 다시 만나 보게. 문 사장은 수첩 얘기를 할 거고, 차 사장은 찢긴 장 얘기를 할 걸세. 둘 다 들어 두게.',
+        "Right. As you saw it. That's the hardest thing of all. (He slides the agenda sheet over to me.)\n\nSee both of them again before the meeting. Mr. Mun will talk about his notebook, and Mr. Cha about a torn-out page. Hear both.",
+        { affinity: 0.03 }),
+      d('side_a', '저는 필구 사장님 편입니다. 그건 미리 말씀드리지요.', "I'm on Mr. Mun's side. I'll say that up front.",
+        '(안경을 고쳐 쓴다.) 편이 있는 증인이라. 정직해서 좋군.\n\n회의에서는 그 편을 잠깐 내려놓고 말해 주게. 어촌계는 편을 세는 데가 아니라 사실을 적는 데니까.',
+        "(He adjusts his glasses.) A witness with a side. Honest of you, at least.\n\nAt the meeting, set that side down for a moment when you speak. The co-op doesn't count sides. It writes down facts.",
+        { affinity: -0.03, flag: 'choice.n24_declared_a' }),
+      d('side_b', '차영배 사장님 쪽 얘기가 더 맞는 것 같습니다.', "I think Mr. Cha's side of the story is closer to the truth.",
+        '(고개를 끄덕인다.) 그렇게 생각한다면 회의에서 그 까닭을 말하게. 마음 말고 까닭을.\n\n문 사장은 사십 년을 이 골목에 있었네. 까닭 없이 그 사람을 꺾을 수는 없어.',
+        "(He nods.) If that's what you think, give your reasons at the meeting. Reasons, not feelings.\n\nMr. Mun has been in this alley forty years. Nobody brings a man like that down without reasons.",
+        { affinity: -0.03, flag: 'choice.n24_declared_b' }),
+      dNo('두 분 일은 두 분이 푸셔야지요.', 'The two of them should settle it between themselves.',
+        '(종이를 접는다.) 그 말이 맞지. 그런데 이십 년을 못 풀었다네.\n\n마음 바뀌면 오게. 회의는 자네가 올 때까지 미뤄 두지.',
+        "(He folds the sheet.) You're right. But they haven't managed it in twenty years.\n\nCome back if you change your mind. We'll hold the meeting until you do.",
+        -0.02),
+    ],
   },
 };

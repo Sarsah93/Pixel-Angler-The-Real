@@ -12,7 +12,7 @@ const HANGUL = /[가-힣]/;
 const len = (s: string): number => [...s].length;
 
 describe('253차 — 답 깊이', () => {
-  it('모든 편에 답 깊이 데이터가 있다(188편)', () => {
+  it('모든 편에 답 깊이 데이터가 있다(191편)', () => {
     const missing = STORY_QUESTS.filter((q) => !STORY_CHOICE_DEPTH[q.id]).map((q) => q.id);
     expect(missing).toEqual([]);
     expect(Object.keys(STORY_CHOICE_DEPTH).every((id) => STORY_QUESTS.some((q) => q.id === id))).toBe(true);

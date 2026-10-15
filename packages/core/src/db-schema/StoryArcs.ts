@@ -1,6 +1,6 @@
 /**
  * @file StoryArcs.ts
- * @description NPC 23아크 + 메인 3인 (134차 17 → 137차 +N18·N19 → 138차 +N20~N23)
+ * @description NPC 24아크 + 메인 3인 (134차 17 → 137차 +N18·N19 → 138차 +N20~N23 → 254차 +N24)
  *
  * 29편 원작에서 가져온 것은 관계 원형 한 줄뿐 — 인물명·고유 설정·장면은 옮기지 않는다(원칙 §1-5).
  * 아크 완주 = `questIds` 전부 완료. 조행록 장의 두 번째 조건이 이것이다.
@@ -156,6 +156,16 @@ export const STORY_ARCS: StoryArcDef[] = [
     relationKo: '몇 마리가 아니라 몇 종을 적는 사람', relationEn: 'Someone who records species, not numbers',
     angleKo: '잡은 것을 세는 눈', angleEn: 'The eye that counts what was caught',
     questIds: ['N23-1', 'N23-2', 'N23-3', 'N23-4', 'N23-5', 'N23-6'] },
+  // ── 254차 — 원한 의뢰(A → B)와 결말 셋. 길 하나를 사이에 둔 두 찌 가게 · 어촌계가 가린다 ──
+  { id: 'N24', titleKo: '문필구 · 차영배 — 건너편 가게', titleEn: 'Mun Pilgu & Cha Yeongbae — the shop across the street', regionId: 'gangwon_sokcho',
+    npcs: [
+      { id: 'mun_pilgu', nameKo: '문필구', nameEn: 'Mun Pilgu', roleKo: '64세 · 동명항 골목 찌 가게 「필구 찌방」', roleEn: '64 · Pilgu Floats, a float shop in the Dongmyeong alley', shopId: 'market' },
+      { id: 'cha_yeongbae', nameKo: '차영배', nameEn: 'Cha Yeongbae', roleKo: '52세 · 「필구 찌방」 옛 제자 · 길 건너 「영배 낚시」', roleEn: '52 · once Mun Pilgu\'s apprentice · Yeongbae Tackle across the street',
+        veil: { untilSeen: 'N24-2', roleKo: '52세 · 길 건너 찌 가게 「영배 낚시」', roleEn: '52 · Yeongbae Tackle, the float shop across the street' }, shopId: 'market' },
+    ],
+    relationKo: '스승과 떠난 제자 — 같은 찌 두 간판', relationEn: 'A master and the apprentice who left — one float, two signs',
+    angleKo: '누구 편을 드느냐가 길 하나의 이쪽저쪽을 바꾼다', angleEn: 'Which side you take decides which side of the street you stand on',
+    questIds: ['N24-1', 'N24-2', 'N24-3'] },
 ];
 
 export function getStoryArc(id: string): StoryArcDef | undefined {

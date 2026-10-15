@@ -876,4 +876,16 @@ export const EN_HELP: Record<string, string> = {
     'As the story moves on, the same person answers differently — nobody tells you about things that have not happened yet. While an investigation task is underway, questions about it appear in front of the client, and the step moves on when you find the thread.',
   '알게 된 것은 일지(J)의 「수첩」에 모입니다. 하나를 고르면 그것이 무엇인지와 누가 무엇이라고 했는지를 다시 볼 수 있습니다.':
     'What you learn gathers in the Journal (J) under "Notebook". Pick one to see again what it is and who said what about it.',
+  // 254차 — 이어지는 대화 · 결말 · 인물 가게
+  '이어지는 대화 · 결말': 'Branching talks · endings',
+  '어떤 할 일은 받을 때 · 하는 중에 · 끝낼 때 대화가 이어집니다. 상대가 말하면 내가 할 말을 고르고, 그 말에 상대가 다시 반응합니다. 고른 말에 따라 대화가 다른 길로 갈라집니다.':
+    'Some tasks turn into a running conversation when you take them, while you work on them, or when you finish them. They speak, you pick what to say, and they react to it. The conversation branches depending on what you choose.',
+  '고른 말은 사람의 마음을 움직입니다. 대화창에 「이 말로 — 이름 우호도 +0.05」처럼 바로 알려 주고 초상 아래 막대도 바뀝니다. 그 자리에 없는 사람에게 전해지는 말도 있습니다 — 한쪽 편을 들면 다른 쪽이 듣습니다. 같은 말을 다시 골라도 마음은 한 번만 움직입니다.':
+    'What you say moves people. The dialogue window tells you right away, like "What you said — Name affinity +0.05", and the bar under the portrait changes too. Some words reach people who are not there — take one side and the other side hears of it. Choosing the same line again only moves them once.',
+  '대화는 무엇을 골랐는지 기억합니다. 앞에서 한 말 때문에 뒤의 대화에 새 말이 열리거나 닫히고, 사이가 틀어진 사람은 끝내 털어놓지 않는 이야기도 있습니다. 대화 도중 창을 닫으면 다음에 그 자리부터 이어집니다.':
+    'Conversations remember what you chose. What you said earlier opens or closes lines in later talks, and someone you have fallen out with may never tell you some things. If you close the window mid-conversation, it picks up from the same place next time.',
+  '이야기에는 결말이 있습니다. 뒤의 이야기가 기대는 이야기는 결말이 하나로 모이고, 갈림길이 있는 이야기는 결말이 둘이나 셋입니다. 한쪽이 영영 무너지는 결말이면 그 사람과의 거래가 바뀝니다 — 값을 깎아 주지 않고, 귀한 물건을 들이지 않습니다. 다다른 결말은 일지의 그 할 일에 남습니다.':
+    'Stories have endings. A story that later stories rely on always comes to the same ending; a story with a fork has two or three. If an ending leaves someone ruined for good, trading with that person changes — no haggling, and no rare stock. The ending you reached stays on that task in the journal.',
+  '물건을 파는 사람과의 사이는 값에도 묻어납니다. 친밀하면 6%, 호의면 3% 싸게 팔고, 냉담하면 5%, 적대면 10% 더 받습니다. 그 사람 가게 창 맨 위 줄에 지금 사이와 조건이 나옵니다.':
+    'How you get on with a shopkeeper shows in the prices too. Close: 6% cheaper, Warm: 3% cheaper, Cold: 5% more, Hostile: 10% more. The top line of their shop window shows where you stand and the terms.',
 };

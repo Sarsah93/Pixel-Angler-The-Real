@@ -338,6 +338,39 @@ const FORAGE_CORNER: ShopEntry[] = [
   })),
 ];
 
+/**
+ * 254차 — 인물 가게만 들이는 귀한 물건(손으로 깎은 찌 등). 늘 있지 않고 들어오는 날에만 진열한다(열흘에 나흘꼴).
+ * 이야기의 결말이 가게 조건을 바꾼다 — `rare: 'more'` = 늘 진열 · `rare: 'none'` = 더는 들이지 않는다(`StoryStore.shopTermsOf`).
+ * 인물 가게 = 대화창 「물건을 볼 수 있을까요?」로 여는 `<지역>:npc:<인물 id>` 가게(그 사람의 `shopId` 카탈로그 + 이 목록).
+ */
+const JOINT_FLOAT: ShopEntry = {
+  id: 'shop_float_joint', name: '문차 합작 찌 1.0호', icon: '', iconTexture: 'float_hole', category: 'tackle', subCategory: '채비 부속',
+  basePrice: 20000, price: 24000, maxPerPurchase: 2, equippable: false, stockMult: 0.4, unlockKey: 'n24_joint_float', floatBuoyG: 10,
+  desc: '찌톱은 문필구, 몸통은 차영배. 길 하나를 사이에 둔 두 가게가 같이 깎는다. 파도 속에서도 고개를 들고, 입질에 바로 잠긴다.',
+};
+export const NPC_SHOP_EXTRAS: Record<string, ShopEntry[]> = {
+  mun_pilgu: [
+    { id: 'shop_float_mun', name: '문찌 1.0호 (오동 손찌)', icon: '', iconTexture: 'float_hole', category: 'tackle', subCategory: '채비 부속',
+      basePrice: 15000, price: 18000, maxPerPurchase: 3, equippable: false, stockMult: 0.4, floatBuoyG: 10,
+      desc: '삼 년 말린 오동나무를 손으로 깎은 구멍찌. 찌톱이 굵어 파도 속에서도 고개를 든다.' },
+    { id: 'shop_float_mun05', name: '문찌 0.5호 (저부력 손찌)', icon: '', iconTexture: 'float_hole', category: 'tackle', subCategory: '채비 부속',
+      basePrice: 14000, price: 17000, maxPerPurchase: 3, equippable: false, stockMult: 0.4, floatBuoyG: 5,
+      desc: '얕은 물 · 예민한 입질에 쓰는 저부력 손찌. 직판장에는 없는 호수다.' },
+    JOINT_FLOAT,
+  ],
+  cha_yeongbae: [
+    { id: 'shop_float_cha', name: '영배 손찌 1.0호 (물방울 몸통)', icon: '', iconTexture: 'float_hole', category: 'tackle', subCategory: '채비 부속',
+      basePrice: 13000, price: 16000, maxPerPurchase: 3, equippable: false, stockMult: 0.4, floatBuoyG: 10,
+      desc: '차영배가 직접 깎은 물방울 몸통 찌. 공장 몸통과 달리 파도에 눕지 않는다.' },
+    { id: 'shop_float_cha20', name: '영배 원투 막대찌 2.0호', icon: '', iconTexture: 'float_hole', category: 'tackle', subCategory: '채비 부속',
+      basePrice: 8000, price: 9500, maxPerPurchase: 5, equippable: false, stockMult: 0.6, floatBuoyG: 20,
+      desc: '길쭉한 막대 몸통의 고부력 찌. 센 조류 · 먼 거리에서도 잘 보인다. 직판장에는 없는 호수다.' },
+    JOINT_FLOAT,
+  ],
+};
+/** 인물 가게 이름(도감 「파는 곳」) */
+export const NPC_SHOP_LABEL: Record<string, string> = { mun_pilgu: '필구 찌방', cha_yeongbae: '영배 낚시' };
+
 export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
   convenience: {
     kind: 'convenience',

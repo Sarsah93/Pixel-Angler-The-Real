@@ -32,6 +32,9 @@ export const NPC_IDLE: Record<string, Line> = {
   kang_ducheol: ['이 매듭이… 자꾸 풀리는데 말이지.', 'This knot… it keeps coming undone.'],
   bae_nuri: ['낚으면 먹는다! 그게 우리 부 모토예요.', 'Catch it, eat it! That\'s our club motto.'],
   baram: ['바람 부는 쪽으로 가면 돼.', 'Just go where the wind blows.'],
+  // 254차 — N24 찌 가게 두 집
+  mun_pilgu: ['찌는 물에 세워 봐야 안다. 가게에서 들여다봐서는 몰라.', 'You only know a float once it\'s standing in the water. Peering at it in a shop tells you nothing.'],
+  cha_yeongbae: ['어서 와요. 찌는 잃어버리는 물건이니까, 싸고 잘 보이면 돼요.', 'Come on in. Floats are things you lose, so cheap and easy to see is what counts.'],
 };
 
 /**

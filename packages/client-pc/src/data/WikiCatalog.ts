@@ -14,7 +14,7 @@ import { QUEST_REWARD_ITEMS } from './QuestRewardItems.js';
 import { CROP_ITEM_TEMPLATES, PRODUCE_SUB, EARTHWORM_TEMPLATE, EARTHWORM_DESC } from './CropItems.js';
 import { cropOfProduce } from '@tra/core';
 import { InventoryStore } from '../store/InventoryStore.js';
-import { SHOP_CATALOG, BUILDING_LABEL } from './ShopCatalog.js';
+import { SHOP_CATALOG, BUILDING_LABEL, NPC_SHOP_EXTRAS, NPC_SHOP_LABEL } from './ShopCatalog.js';
 
 export interface WikiItemEntry {
   id: string;
@@ -74,6 +74,20 @@ export function buildItemWikiCatalog(): WikiItemEntry[] {
           tpl: e,
         });
       }
+    }
+  }
+
+  // 2b) 254차 — 인물 가게만 들이는 귀한 물건(손찌 등) — 이야기 보상으로도 나간다(`giveItem`이 이 표에서 찾는다)
+  for (const [npc, list] of Object.entries(NPC_SHOP_EXTRAS)) {
+    const where = NPC_SHOP_LABEL[npc] ?? '';
+    for (const e of list) {
+      const prev = map.get(e.id);
+      if (prev) { if (where && !prev.soldAt.includes(where)) prev.soldAt.push(where); continue; }
+      map.set(e.id, {
+        id: e.id, name: e.name, icon: e.icon, iconTexture: e.iconTexture,
+        category: e.category, subCategory: e.subCategory, basePrice: e.basePrice,
+        desc: e.desc, soldAt: where ? [where] : [], isSeed: false, tpl: e,
+      });
     }
   }
 

@@ -41,6 +41,9 @@ export const STORY_NPC_ROUTINE: Record<string, NpcRoutineKind> = {
   bae_nuri: 'visitor',
   baram: 'always',
   oh_sechan: 'always',
+  // 254차 — 찌 가게 두 집(가게는 장 서는 시간과 같다 — 집 문은 없다: 일과 밖에는 가게 안에 있다)
+  mun_pilgu: 'always',
+  cha_yeongbae: 'always',
 };
 
 export function routineOfNpc(npcId: string): NpcRoutineDef {

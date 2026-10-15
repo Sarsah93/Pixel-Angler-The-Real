@@ -1056,4 +1056,23 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
     { offer: "Finish the house. If it's a place to come back to, that's a housewarming. I'll come. Call everyone.",
       progress: "Finished it? What about the shelf. For the log.",
       done: "It's a home. A room you only slept in. Did you see the fourth rest? From Tak." }),
+  // 254차 — N24 The Shop Across the Street
+  'N24-1': E(
+    "Two float shops face each other at the mouth of the Dongmyeong alley. Pilgu Floats on one side, Yeongbae Tackle across the street. Even the float painted on the signs is the same. The owner of Pilgu Floats looks into my tackle box and clicks his tongue. A float from across the street must have got mixed in. He presses one of his own into my hand and tells me to stand it in the sea. Watch how it stands in the water, he says, and I'll know.",
+    { offer: "That float — you bought it across the street, didn't you? Only the shape is mine. Not what's inside. I'll give you one of mine. Stand it in the sea. Once you see how it stands in the water, you'll know too.",
+      progress: "Not yet? You only know a float once it's standing in the water. Peering at it in a shop tells you nothing.",
+      done: "Well? It stood, didn't it? Straight up? ...And you stopped in across the street?",
+      epi: "With one street between them, the two shops light up at the same hour." }),
+  'N24-2': E(
+    "The same notice hangs on both glass doors. Across the street at Yeongbae Tackle: \"The original Mun float.\" At Pilgu Floats: \"There is only one original, and it is here.\" Mr. Mun sits me down. Today it is not about floats, he says, but about people. A story twenty years old. He has the face of a man who will ask for something once he has told it. Whatever he asks, someone lives across the street too.",
+    { offer: "Now he's put up 'the original.' Nine years he learned under me. This time I won't let it go. You'll have to do something for me.",
+      progress: "Have you caught one on his float yet? You need to see how it lies down in the waves before you've got anything to say to his face.",
+      done: "I saw. I saw it all through the glass door. So — what did his face look like?",
+      epi: "Two notices face each other across one street. The wind lifts the corners of both." }),
+  'N24-3': E(
+    "A notice has gone up on the co-op board. \"Re: sign wording, Dongmyeong float shops.\" The two owners have each filed against the other. The chief calls me in. I am the only one who went between both shops, so he wants me at the meeting to say what I saw. What I saw. What did I see? Before the meeting, I decide to see both men again.",
+    { offer: "The two float shops at Dongmyeong have each filed with the co-op, both claiming to be the original. They tell me you're the only one who went between the two. Come to the meeting and just say what you saw.",
+      progress: "Have you seen the two of them? The meeting date is set. To say what you saw, you have to see it first.",
+      done: "Then let's begin the meeting. Witness, take a seat.",
+      epi: "Only after the meeting room door closes do the lights of the two shops in the alley go out." }),
 };

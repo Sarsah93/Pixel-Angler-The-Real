@@ -67,6 +67,50 @@ for (const q of core.STORY_QUESTS) for (const p of q.prereq ?? []) (nextOf[p] ??
 const byGiver = {};
 for (const q of core.STORY_QUESTS) (byGiver[q.giver] ??= []).push(q.id);
 
+/** 254차 — 이어지는 대화 한 벌을 위키용으로(사람 이름 · 우호도 증감 · 조건 · 다음/끝) */
+const npcName = (id) => (id === '' ? '지문' : core.getStoryNpc(id)?.nameKo ?? id);
+const AT_LABEL = { offer: '받는 자리', objective: '진행 중', action: '진행 중(단계)', complete: '끝내는 자리' };
+const STANCE_LABEL = { giver: '의뢰인 편', other: '맞은편', mid: '가운데', self: '제 생각' };
+function gateText(g) {
+  if (!g) return '';
+  const out = [];
+  if (g.flag) out.push('앞에서 고른 말이 있을 때');
+  if (g.notFlag) out.push('앞에서 그 말을 고르지 않았을 때');
+  if (g.affinityMin) out.push(`${npcName(g.affinityMin[0])} 우호도 ${g.affinityMin[1]} 이상`);
+  if (g.affinityMax) out.push(`${npcName(g.affinityMax[0])} 우호도 ${g.affinityMax[1]} 이하`);
+  return out.join(' · ');
+}
+function talkView(t) {
+  return {
+    id: t.id, at: AT_LABEL[t.at] ?? t.at, npc: npcName(t.npcId), start: t.start,
+    nodes: Object.entries(t.nodes).map(([id, n]) => ({
+      id, who: n.speaker === undefined ? npcName(t.npcId) : npcName(n.speaker), line: n.lineKo,
+      choices: n.choices.map((c) => ({
+        label: c.labelKo, stance: STANCE_LABEL[c.stance] ?? '',
+        aff: Object.entries(c.affinity ?? {}).map(([k, v]) => `${npcName(k)} ${v > 0 ? '+' : ''}${v}`).join(' · '),
+        gate: gateText(c.requires), next: c.next ?? null,
+        end: c.end ? (c.end.accept ? '받는다' : c.end.decline ? '미룬다' : c.end.ending ? `결말 「${core.endingById(c.end.ending)?.titleKo ?? ''}」` : c.end.complete ? '마친다' : '끝') : null,
+        endLine: c.end?.lineKo ?? '',
+      })),
+    })),
+  };
+}
+const ENDING_KIND = { canon: '하나로 모이는 결말', rupture: '갈라지는 결말', neutral: '이도 저도 아닌 결말' };
+function endingView(e) {
+  const fx = e.effects ?? {};
+  const lines = [];
+  for (const [k, v] of Object.entries(fx.affinity ?? {})) lines.push(`${npcName(k)} 우호도 ${v > 0 ? '+' : ''}${v}`);
+  for (const [k, v] of Object.entries(fx.affinitySet ?? {})) lines.push(`${npcName(k)} 우호도 ${v}로`);
+  for (const [k, v] of Object.entries(fx.affinityCap ?? {})) lines.push(`${npcName(k)} 우호도가 영영 ${v}를 넘지 않는다`);
+  for (const [k, v] of Object.entries(fx.shop ?? {})) {
+    if (v.noHaggle) lines.push(`${npcName(k)} 가게 — 값을 깎아 주지 않는다`);
+    if (v.rare === 'none') lines.push(`${npcName(k)} 가게 — 귀한 물건을 들이지 않는다`);
+    if (v.rare === 'more') lines.push(`${npcName(k)} 가게 — 귀한 물건을 늘 들여놓는다`);
+  }
+  for (const [k, v] of Object.entries(fx.role ?? {})) lines.push(`${npcName(k)} — ${v.ko}`);
+  return { kind: ENDING_KIND[e.kind] ?? e.kind, title: e.titleKo, summary: e.summaryKo, effects: lines };
+}
+
 const quests = core.STORY_QUESTS.map((q) => {
   const n = core.narrativeOf(q.id);
   const ch = core.choicesFor(q);
@@ -104,6 +148,9 @@ const quests = core.STORY_QUESTS.map((q) => {
     nar: n ? { intro: n.intro, offer: n.offer, progress: n.progress, done: n.done, epi: n.epilogue } : null,
     offerChoices: (ch.offer ?? []).map((c) => ({ label: c.labelKo, reply: c.replyKo, decline: !!c.outcome?.decline, out: core.describeOutcomeKo(c.outcome) })),
     complete: (ch.complete ?? []).map((c) => ({ label: c.labelKo, reply: c.replyKo, out: core.describeOutcomeKo(c.outcome) })),
+    // 254차 — 이어지는 대화(갈래) · 이 편이 정하는 결말
+    talks: (core.talksOfQuest?.(q.id) ?? []).map(talkView),
+    endings: core.STORY_ENDINGS ? core.STORY_ENDINGS.filter((e) => e.questId === q.id).map(endingView) : [],
   };
 });
 
@@ -133,6 +180,7 @@ const out = {
     id: a.id, title: a.titleKo, region: regionName(a.regionId),
     npcs: a.npcs.map((n) => ({ name: n.nameKo, role: n.roleKo })),
     relation: a.relationKo, angle: a.angleKo, questIds: a.questIds,
+    endings: core.endingsOfArc ? core.endingsOfArc(a.id).map(endingView) : [],
   })),
   npcs: npcIndex,
   quests,

@@ -26,7 +26,7 @@ import Phaser from 'phaser';
 import {
   STORY_CHAPTERS, STORY_QUESTS, getStoryNpc, getLicenseByType, narrativeOf, getSkillById,
   characterOf, questDifficulty, objectiveHowToKo, type StoryQuestDef, type QuestDifficultyTier,
-  JOURNAL_PAGES, ORACLE_FISH_DB, FISH_DATABASE, INQUIRY_NODES, INQUIRY_KIND_LABEL,
+  JOURNAL_PAGES, ORACLE_FISH_DB, FISH_DATABASE, INQUIRY_NODES, INQUIRY_KIND_LABEL, endingArcOfQuest,
 } from '@tra/core';
 import { GUIDE_NAMES as JOURNAL_GUIDE_NAMES } from '../data/QuestGuideNames.js';
 import { actionStepGuide } from '../data/ActionGuide.js';
@@ -1381,6 +1381,12 @@ export class JournalPanel extends DraggablePanel {
     if (n?.intro) parts.push(n.intro);
     const line = st === 'done' ? n?.epilogue ?? n?.done : st === 'active' ? n?.progress ?? n?.offer : n?.offer;
     if (line) parts.push(`"${line}"`);
+    // 254차 — 이 편이 이야기의 결말을 정한 편이면 다다른 결말(제목 · 한두 문장)
+    if (st === 'done') {
+      const arcId = endingArcOfQuest(q.id);
+      const e = arcId ? StoryStore.endingOf(arcId) : undefined;
+      if (e) parts.push(`결말 — 「${e.titleKo}」`, e.summaryKo);
+    }
     if (parts.length === 0) parts.push(q.descKo);
     const note = StoryStore.offerNoteKo(q);
     if (note) parts.push(note);

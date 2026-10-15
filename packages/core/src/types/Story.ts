@@ -515,6 +515,134 @@ export interface InquiryNodeDef {
 }
 
 // ─────────────────────────────────────────────
+// 254차 — 이어지는 대화(갈래) · 결말
+//   사용자 지시: 「선택지에 따라 대화 대상에 대한 우호도가 감소하거나 증가 … 상대가 반응하고 대화가 이어진다 …
+//   A에게 한 말이 B에게도 미친다」 · 「이야기의 결말은 1~3개 — 하나로 모이는 결말 · 흐름이 갈라지는 결말 · 이도 저도 아닌 결말」
+// ─────────────────────────────────────────────
+
+/**
+ * 답의 입장(검사 · 일지 표기용) — 대사 자체가 입장을 드러낸다. 양 끝 사이에 가운데가 있다.
+ *  giver = 의뢰인(A) 편 · other = 맞은편(B) 편 · mid = 가운데(중재 · 양쪽 다 듣기) · self = 어느 편도 아닌 제 생각 · 물러섬
+ */
+export type TalkStance = 'giver' | 'other' | 'mid' | 'self';
+
+/** 답이 보일 조건 — 앞에서 고른 것(표시) · 그 사람과의 사이 */
+export interface TalkGate {
+  /** 이 표시가 켜져 있다 */
+  flag?: string;
+  /** 이 표시가 꺼져 있다 */
+  notFlag?: string;
+  /** 이 사람과의 우호도가 이 이상 [npcId, 값] */
+  affinityMin?: readonly [string, number];
+  /** 이 사람과의 우호도가 이 이하 [npcId, 값] */
+  affinityMax?: readonly [string, number];
+}
+
+/** 대화가 끝날 때 — 대화가 열린 자리마다 뜻이 다르다 */
+export interface TalkEndDef {
+  /** 받는 자리 — 받는다 */
+  accept?: boolean;
+  /** 받는 자리 — 미룬다(서브만 · 메인은 늘 받는 쪽으로 끝난다) */
+  decline?: boolean;
+  /** 끝내는 자리 — 이 답 id로 마친다(그 답의 보상 · 기록). 없으면 보상 답 없이 마친다 */
+  complete?: string;
+  /** 끝내는 자리 — 이 결말로 이야기를 맺는다(`StoryEndingDef.id`) */
+  ending?: string;
+  /** 끝나며 상대가 하는 마지막 말 · 지문(단락은 빈 줄) */
+  lineKo?: string;
+  lineEn?: string;
+}
+
+export interface TalkChoiceDef {
+  /** 그 단계 안에서 유일 */
+  id: string;
+  /** 주인공이 하는 말(대화창 줄) */
+  labelKo: string;
+  labelEn: string;
+  stance?: TalkStance;
+  /** 사람마다 우호도 증감 — 대화 상대만이 아니라 그 자리에 없는 사람도(소문 · 전해 듣기) */
+  affinity?: Readonly<Record<string, number>>;
+  /** 남길 표시(`choice.`로 시작) — 뒤 대화 · 결말이 읽는다 */
+  flags?: readonly string[];
+  requires?: TalkGate;
+  /** 다음 단계 id — 없으면 `end`로 끝난다(둘 중 하나만) */
+  next?: string;
+  end?: TalkEndDef;
+}
+
+export interface TalkNodeDef {
+  /** 말하는 사람 — 없으면 대화 상대 · `''` = 지문(괄호 서술) */
+  speaker?: string;
+  /** 상대의 말(단락은 빈 줄 · 한 · 영 단락 수 같게) */
+  lineKo: string;
+  lineEn: string;
+  /** 고를 말 1~4개 */
+  choices: readonly TalkChoiceDef[];
+}
+
+/**
+ * 이어지는 대화 하나. 대화창이 열린 자리(`at`)에서 표준 답 · 방식 고르기 · 장면 대신 이 대화가 돈다.
+ *  - offer: 받는 자리 — 끝은 받기/미루기
+ *  - objective: 장면으로 닫히는 목표(대화 · 수동) — 끝나면 그 목표가 닫힌다
+ *  - action: 행동 목표의 「의뢰인 앞 선택」 단계(`step`) — 끝나면 그 단계가 오른다
+ *  - complete: 끝내는 자리 — 끝은 보상 답(`complete`) · 결말(`ending`)
+ */
+export interface StoryTalkDef {
+  id: string;
+  questId: string;
+  at: 'offer' | 'objective' | 'action' | 'complete';
+  /** objective · action 전용 — 목표 번호 */
+  objectiveIndex?: number;
+  /** action 전용 — 행동 단계 번호(0부터) */
+  step?: number;
+  /** 대화 상대 */
+  npcId: string;
+  /** 첫 단계 id */
+  start: string;
+  nodes: Readonly<Record<string, TalkNodeDef>>;
+}
+
+/** 결말 종류 — 1 하나로 모이는 결말(뒤 이야기가 기대는 정본) · 2 흐름이 갈라지는 결말 · 3 이도 저도 아닌 결말 */
+export type StoryEndingKind = 'canon' | 'rupture' | 'neutral';
+
+/** 그 사람 가게의 조건(결말이 바꾼다) */
+export interface NpcShopTerms {
+  /** 값을 깎아 주지 않는다 — 흥정 기술 · 단골 인심이 이 가게에서 듣지 않는다 */
+  noHaggle?: boolean;
+  /** 귀한 물건 — none = 더는 들이지 않는다 · more = 늘 진열한다 */
+  rare?: 'none' | 'more';
+}
+
+export interface StoryEndingEffects {
+  /** 우호도 더하기 */
+  affinity?: Readonly<Record<string, number>>;
+  /** 우호도를 이 값으로 */
+  affinitySet?: Readonly<Record<string, number>>;
+  /** 앞으로 우호도가 이 값을 넘지 않는다(영영 상한 — 사이가 영구히 상했다) */
+  affinityCap?: Readonly<Record<string, number>>;
+  /** 그 사람 가게 조건 */
+  shop?: Readonly<Record<string, NpcShopTerms>>;
+  /** 그 사람의 나이 · 직업 한 줄이 바뀐다(영구 피해 — 가게를 접었다 등) */
+  role?: Readonly<Record<string, { ko: string; en: string }>>;
+  flags?: readonly string[];
+}
+
+export interface StoryEndingDef {
+  id: string;
+  /** 어느 이야기(서브 아크 id)의 결말인가 — 이야기 하나에 1~3개 */
+  arcId: string;
+  kind: StoryEndingKind;
+  /** 결말을 정하는 편 — 이 편의 끝내는 자리 대화가 고른다(정본만 있는 이야기는 이 편을 마치면 그것) */
+  questId: string;
+  titleKo: string;
+  titleEn: string;
+  /** 일지에 남는 한두 문장 */
+  summaryKo: string;
+  summaryEn: string;
+  effects?: StoryEndingEffects;
+}
+
+// ─────────────────────────────────────────────
 // NPC 우호도 (140차) — −1(최저) ~ 0(기본) ~ +1(최고)
 // ─────────────────────────────────────────────
 

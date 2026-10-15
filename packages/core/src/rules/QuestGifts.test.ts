@@ -37,8 +37,8 @@ describe('237차 — 정옥선의 남는 모종 · 씨앗(철마다 다르다)',
 });
 
 describe('237차 — 텃밭 입문 서브 퀘스트(N19-7 귀퉁이 바구니 · N19-8 첫물)', () => {
-  it('무결성 검사가 깨끗하다(퀘스트 188편 · 선택지)', () => {
-    expect(STORY_QUESTS.length).toBe(188);
+  it('무결성 검사가 깨끗하다(퀘스트 191편 · 선택지)', () => {
+    expect(STORY_QUESTS.length).toBe(191);
     expect(validateStoryQuests()).toEqual([]);
     expect(validateStoryChoices()).toEqual([]);
   });

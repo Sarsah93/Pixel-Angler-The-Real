@@ -22,7 +22,7 @@ import {
   REGION_DATABASE, WORLD_NODE_DATABASE, REGION_AREA_NODES, REGION_MAP_GRAPHS, SEAMLESS_REGIONS,
   DATA_ATTRIBUTIONS, LICENSE_LABEL, LICENSE_LABEL_EN,
   CRAFT_BLUEPRINTS, CRAFT_GROUP_LABEL, CRAFT_STATION_LABEL, CRAFT_QUALITY_LABEL,
-  allChoiceLines, allNarrativeLines, allInquiryLines,
+  allChoiceLines, allNarrativeLines, allInquiryLines, allTalkLines,
   FIRE_RECIPES, COOK_INGREDIENTS, HEAT_SOURCES, COOKWARES, FUELS,
   RECIPE_LORE, DISH_VARIANT_LORE, RECIPE_EFFECTS, FOOD_EFFECT_KIND_KO, DISH_MODIFIER_KO, DISH_MODIFIER_EN,
   fatnessLabel, textureLabel, fishinessLabel, flavorLabel,
@@ -180,6 +180,7 @@ function buildRuntimeDict(): void {
   for (const [ko, en] of allDialogueLines()) put(ko, en);
   for (const [ko, en] of allChoiceLines()) put(ko, en);   // 140차 — 선택지·응답
   for (const [ko, en] of allInquiryLines()) put(ko, en);   // 253차 — 물어보기(화제 · 물음 · 답 · 단락)
+  for (const [ko, en] of allTalkLines()) put(ko, en);   // 254차 — 이어지는 대화 · 결말(단락 짝 포함)
   for (const [ko, en] of allNarrativeLines()) put(ko, en);   // 151차 — 퀘스트 나레이션 186편
   for (const [ko, en] of allCinematicLines()) put(ko, en);   // 165차 — 컷씬 각본
   for (const [ko, en] of allQuestSceneLines()) put(ko, en);   // 167차 — 퀘스트 장면 손글 각본
@@ -274,6 +275,13 @@ function translateOnce(s: string, depth: number): string | null {
 /** 재귀 번역 본체 — 정확 일치 → 규칙 → 줄 분해 → 구분자 분해 → 태그 접두 분해 */
 function translateDeep(s: string, depth: number): string {
   if (!HANGUL.test(s)) return s;
+  // 254차 — 따옴표로 감싼 대사는 규칙보다 먼저 **안쪽을 사전에서** 찾는다. 「…로 만든 …」 같은 넓은 규칙이
+  //   대사 한 단락을 통째로 가로채 「Made with "…"」로 깨뜨렸다(이어지는 대화 실렌더 실측).
+  const q0 = /^(["“「『])([\s\S]+)(["”」』])$/.exec(s);
+  if (q0) {
+    const d0 = EN_DICT[q0[2]] ?? runtimeDict.get(q0[2]);
+    if (d0 !== undefined) return q0[1] + d0 + q0[3];
+  }
   const hit = translateOnce(s, depth);
   if (hit !== null) return hit;
   if (depth > 3) return s;

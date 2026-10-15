@@ -1302,6 +1302,35 @@ const SUB_138: StoryQuestDef[] = subExtra([
 ]);
 
 
+/**
+ * 254차 — N24 「건너편 가게」(문필구 · 차영배). 원한 의뢰(A → B) · 이어지는 대화 · 결말 셋(`StoryEndings`).
+ *  사용자 예시 그대로: A가 B에게 복수하려 의뢰 → B를 감싸면 A의 마음이 식고 「누구 편을 드는 거냐」 → 「둘 다 같은 사람」 →
+ *  「나를 도울 생각이 없는 거지?」 → 「그건 아닙니다만…」(B를 자극하라) / 「B에게도 물어봐야」(다 내가 시킨 일이라고 해라!) →
+ *  B 앞에서 사실대로 말하거나 감추고 자극하거나 — 어느 쪽이든 B의 마음도 식는다(「너도 매한가지로구나!」). 중도도 있다.
+ *  마지막 편(어촌계 회의)의 말이 결말을 고른다 — 화해(정본) · 한쪽이 영영 무너지는 결말 · 아무도 가리지 못한 결말.
+ *  대화는 `StoryTalkN24.ts`. 목표는 대화 · 낚시만 — 갈래가 목표를 바꾸지 않는다(어느 길로 가도 막히지 않게).
+ */
+const SUB_254: StoryQuestDef[] = subExtra([
+  ['N24-1', 'N24', 1, 9, 350, 'mun_pilgu', SOK, '건너편 찌', 'The Float From Across the Street',
+    '찌 가게 주인 문필구가 내 채비 통에서 건너편 가게 찌를 집어 든다. 모양만 자기 것이라며 제 찌를 쥐여 준다. 바다에 세워 보고 오라고.',
+    'Mun Pilgu, the float maker, picks a float from across the street out of my tackle box. Only the shape is his, he says, and hands me one of his own. Stand it in the sea and see.',
+    [fish(undefined, '문필구의 찌로 1마리', 'Catch one on Mun Pilgu\'s float'),
+      talk('cha_yeongbae', '길 건너 「영배 낚시」에 들러 본다', 'Drop in at Yeongbae Tackle across the street')],
+    ['M1-06']],
+  ['N24-2', 'N24', 1, 13, 350, 'mun_pilgu', SOK, '원조', 'The Original',
+    '두 가게 유리문에 같은 종이가 붙었다. 「원조」. 문필구가 이십 년 묵은 얘기를 꺼내고, 건너편 차영배를 혼내 주라고 한다.',
+    'The same notice hangs on both glass doors: "The Original." Mun Pilgu brings up a twenty-year-old grudge and wants me to put Cha Yeongbae in his place.',
+    [fish(undefined, '건너편 찌로 1마리 — 서는지 눕는지 본다', 'Catch one on the float from across the street — see if it stands or lies down'),
+      talk('cha_yeongbae', '차영배를 찾아간다', 'Go and see Cha Yeongbae')],
+    ['N24-1']],
+  ['N24-3', 'N24', 1, 17, 400, 'coop', SOK, '작업 수첩', 'The Workshop Notebook',
+    '원조 시비가 어촌계 안건으로 올라왔다. 두 집을 오간 사람은 나뿐이라, 회의에서 본 대로 말해 달라고 한다. 그 전에 두 사람을 다시 만나 본다.',
+    'The quarrel over "the original" has gone to the co-op. I am the only one who went between the two shops, so they want me to say what I saw at the meeting. First I see both men again.',
+    [talk('mun_pilgu', '문필구에게 작업 수첩 얘기를 청한다', 'Ask Mun Pilgu about his workshop notebook'),
+      talk('cha_yeongbae', '차영배에게 찢겨 나간 장을 묻는다', 'Ask Cha Yeongbae about the torn-out page')],
+    ['N24-2']],
+]);
+
 // ─────────────────────────────────────────────
 // 141차 — 발주 정책(once / event) 후처리. 행 형식이 3종이라 조립 뒤에 입힌다.
 // ─────────────────────────────────────────────
@@ -1321,9 +1350,9 @@ const OFFER_POLICY: Record<string, Pick<StoryQuestDef, 'offerPolicy' | 'event'>>
   'N16-1': { offerPolicy: 'event', event: { levelBand: [132, 150], cooldownDays: 10 } },
   'N23-1': { offerPolicy: 'event', event: { seasons: ['summer', 'autumn'], cooldownDays: 30 } },
 };
-for (const q of [...MAIN, ...SUB, ...SUB_EXTRA, ...SUB_138]) { const p = OFFER_POLICY[q.id]; if (p) Object.assign(q, p); }
+for (const q of [...MAIN, ...SUB, ...SUB_EXTRA, ...SUB_138, ...SUB_254]) { const p = OFFER_POLICY[q.id]; if (p) Object.assign(q, p); }
 
-export const STORY_QUESTS: StoryQuestDef[] = [...MAIN, ...SUB, ...SUB_EXTRA, ...SUB_138];
+export const STORY_QUESTS: StoryQuestDef[] = [...MAIN, ...SUB, ...SUB_EXTRA, ...SUB_138, ...SUB_254];
 
 // 233차 — 까다로운 퀘스트: 손질 · 회 · 요리 · 위판 목표는 직접 마련한 것만 센다(거래품 · 그 계보 제외).
 //   라벨 끝에 조건을 붙여 일지에서 미리 알 수 있게 한다(사람 말로 — R1).

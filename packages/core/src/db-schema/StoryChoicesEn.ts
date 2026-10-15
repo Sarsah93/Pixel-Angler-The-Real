@@ -552,4 +552,14 @@ export const STORY_CHOICES_EN: Record<string, [string, string]> = {
   'M2-07/c/boat': ['I\'ll go out on a boat. I\'ve been wanting to.', '…Boats are a later chapter. Still, I\'ll note that you asked.'],
   'M2-08/c/ask_rod': ['Why does this reel rod interest you?', '…I\'ve seen hands like that before. Another time. (He presses a lure into my hand. An old one.)'],
   'M2-08/c/just_fish': ['Three rockfish. That\'s enough for today.', 'The anglers who talk like that keep at it longest. (He gives me a little money — for the lamp battery, he says.)'],
+  // 254차 — N24 The Shop Across the Street
+  'N24-1/c/float': ['Could I take a couple more floats?', '(He takes two hand-carved floats from the case and puts them in a bag.) These aren\'t for sale. Use them at sea. You only know by using them.'],
+  'N24-1/c/pay': ['I\'ll take the fee, thank you.', 'Right, take it. Standing a float in the sea is work too. (He hands me an envelope.)'],
+  'N24-1/c/learn': ['I want to know what decides whether a float stands or lies down.', 'The body. Where the weight sits. (He balances a float on his finger to show me the lean. I start to have an eye for floats.)'],
+  'N24-2/c/pay': ['I\'ll take the fee, thank you.', 'Right. It was my errand. I pay for my own work. (He hands me an envelope.)'],
+  'N24-2/c/nopay': ['No fee, please. I don\'t think this is something to be paid for.', '(The hand holding the envelope stops.) ...Not something to be paid for. Maybe you\'re right. (He puts the envelope back in the drawer.)'],
+  'N24-2/c/float': ['Instead of money, just give me one float.', '(He holds out a hand-carved float.) Fine. Carry this and set it beside his float. Stand them up and you\'ll see.'],
+  'N24-3/c/witness': ['I\'ll take the witness fee, thank you.', 'As you should. You gave up your time for co-op business. (The chief writes it in the ledger and hands me an envelope.)'],
+  'N24-3/c/nofee': ['Please spend my fee on floats from both shops.', '(The chief looks at me over his glasses.) First witness I\'ve heard say that. The co-op will buy floats from both shops in its own name. (My name gets around among the members.)'],
+  'N24-3/c/learn': ['I\'d like to learn how the co-op settles a quarrel like this.', 'We set apart what was seen, what was heard and what was written. What\'s written weighs the most. (He spends a long while showing me how to keep minutes.)'],
 };

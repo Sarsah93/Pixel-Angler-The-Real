@@ -1,4 +1,4 @@
-# S22 스토리·퀘스트 — 「조행록」 7챕터 · NPC 17아크 · 법 규칙 5조
+# S22 스토리·퀘스트 — 「조행록」 7챕터 · NPC 24아크 · 법 규칙 5조 · 이어지는 대화 · 결말
 
 > 상태: 🔶 **데이터·엔진·일지·대화 완비 / 27개 수동 custom 행동 계약·계통 이벤트 배선 진행 중** — 164차.
 > 정본 스펙: [`.agents/STORY_SPEC_v4.md`](../../../.agents/STORY_SPEC_v4.md) (v3는 [원안 산문 보관본](../../archive/specs/STORY_SPEC_v3.md)) ·
@@ -18,9 +18,9 @@
 | `core/src/types/Story.ts` | 계약 타입 — `StoryQuestDef`·`StoryObjective(manual/actionKey)`·`JournalPageDef`·`StoryArcDef`·`CatchProvenance`·`LawVerdict`·`ReputationState` |
 | `core/src/rules/FisheryLaw.ts` (+`.test.ts`) | 법 규칙 5조 순수 함수 `canSell/canKeep/canUseGear/canGather/requiredLicenseFor` · 거부 시 대안 ≥ 1 |
 | `core/src/db-schema/StoryChapters.ts` | 5부 7챕터 · 자격 사다리 · **§8-1 수치 계약** |
-| `core/src/db-schema/StoryQuestDatabase.ts` | **188퀘**(메인 68 · 서브 120 — 237차 +2) + `validateStoryQuests()` · 137차 증설분은 `SUB_EXTRA`(선행 조건 명시) |
+| `core/src/db-schema/StoryQuestDatabase.ts` | **191퀘**(메인 68 · 서브 123 — 237차 +2 · 254차 +3 `SUB_254`) + `validateStoryQuests()` · 137차 증설분은 `SUB_EXTRA`(선행 조건 명시) |
 | `core/src/db-schema/JournalPages.ts` | 조행록 17장(어종 id 정합) + `journalCatchMatches` |
-| `core/src/db-schema/StoryArcs.ts` | 메인 3인 + **19아크** NPC (137차 +N18 도현수 · N19 정옥선·탁만수) |
+| `core/src/db-schema/StoryArcs.ts` | 메인 3인 + **24아크** NPC (137차 +N18 도현수 · N19 정옥선·탁만수 · 138차 N20~N23 · 254차 N24 문필구 · 차영배) |
 | `core/src/inventory/Backpack.ts` | 가방 사다리 모델(§8-3) — UI 미배선 |
 | `core/src/config/tuning.ts` | `story`·`rep`·`law.enforceRodSell`·`inventory` |
 | `client/src/store/StoryStore.ts` | **진행 엔진** — 상태·이벤트 매칭·행동 단계·완료/보상·D-day·평판·조행록·판매 판정·세이브 |
@@ -30,6 +30,9 @@
 | `client/src/ui/DialoguePanel.ts` | 발주/진행/완료 대화 · **253 답 3~5개 · 단락마다 ▼ · 「물어보기」(화제 → 물음 → 꼬리) · 조사 물음** |
 | `core/src/db-schema/StoryChoiceDepth*.ts` · `StoryChoiceDepthKit.ts` | **253** — 편마다 받는 자리 답(`offer`/`offerAdd`) · 끝내는 자리 더하기(`completeAdd`) · 응답 늘리기(`*Reply`) — 8묶음 |
 | `core/src/db-schema/StoryInquiry*.ts` · `rules/Inquiry.ts` | **253** — 물어보기: 화제(사람 · 곳 · 물건 · 낱말 · 단서) · 물음 · 꼬리 · 진행 조건 · 조사 열쇠 물음(`effect.action`) · 판정 · 무결성 |
+| `core/src/db-schema/StoryTalks.ts` · `StoryTalk<묶음>.ts` · `StoryTalkKit.ts` · `rules/StoryTalk.ts` | **254** — 이어지는 대화(갈래): 단계 그래프 · 여러 사람 우호도 · 표시 · 조건 · 자리별 끝 · 판정 · 무결성(`validateTalks`) · 쓰는 규칙(머리 주석) |
+| `core/src/db-schema/StoryEndings.ts` | **254** — 이야기 결말 1~3(정본 · 갈라짐 · 이도 저도) · 효과(우호도 · 영영 상한 · 가게 조건 · 직업 한 줄) · `validateEndings` |
+| `client/src/ui/ShopPanel.ts`(`npcShopMods`) · `data/ShopCatalog.ts`(`NPC_SHOP_EXTRAS`) | **254** — 인물 가게: 사이별 값 · 결말의 값 깎기 막힘 · 그 사람만 들이는 귀한 물건 |
 | `client/src/ui/JournalPanel.ts` | 일지 — 조행록·자격 사다리·부/챕터/퀘 트리(윈도우드 + 휠) |
 | 훅 | `GameState.addCaughtFish/addLawfulReleaseXp/addActivityXp/acquireLicense/grantXp/addCoins/sleepRecover` · `RegionFieldScene`(방문·NPC·자전거) · `TrapFieldSystem`(통발) · `HomeInteriorScene`(침대 저장) · `ShopPanel`(판매 판정) · `RegionHud`(D-day) |
 
@@ -66,6 +69,10 @@ STORY_ARCS ────┘     traineeDay (D-180)                └─ RegionHu
 | **받는 자리 · 끝내는 자리 답 3개 이상 + 긴 응답**(전 188편 — 표준 톤 두 줄 대체 · 되묻기 답 · 미루기는 서브만 · 응답 단락마다 ▼ · 원래 응답은 앞에 그대로) | ✅ | **253** — `StoryChoiceDepth*` · 검증기 「3개 미만」 · 단락 짝 |
 | **물어보기(조사 대화 · 킹덤컴식)** — 아는 화제를 아무에게나 · 사람마다 다른 답 · 답에서 화제가 열리고 꼬리 질문이 이어짐 · 진행 전/후로 갈리는 답(R2) · 일지 「수첩」 · 조사 편 5개는 진행 중 물음이 단계를 연다 | ✅ | **253** — 속초 9인 · 세이브 `story.inquiry` |
 | **밝혀지기 전 직함 가리기**(`StoryNpcDef.veil` — 강두철 N03-2 전 「방파제의 초보 낚시꾼」) · 대화창 제목 · 미니맵 정보 카드 | ✅ | **253** |
+| **이어지는 대화(갈래)** — 받는 자리 · 진행 중(장면 목표 · 행동 단계) · 끝내는 자리 · 여러 사람 우호도(처음 한 번) · 표시를 뒤 대화가 읽는다 · 하다 만 단계에서 잇기 · 「나 — "…"」 · 「이 말로 — …」 · 초상 막대 즉시 · 첫 체험 가이드 | ✅ | **254** — 세이브 `story.talk` |
+| **이야기 결말 1~3**(정본 · 갈라짐 · 이도 저도) — 마지막 편 끝내는 자리 대화가 고른다 · 갈라짐은 영구 손해 강제 · 일지 서두 칸에 결말 · 구세이브 정본 채우기 | ✅ | **254** — 세이브 `story.endings` · 결말 6(N24 셋 · N19 · N02 · N03 정본) |
+| **인물 가게 조건** — 사이별 값(친밀 −6% ~ 적대 +10%) · 결말의 값 깎기 막힘 · 귀한 물건 진열(열흘에 나흘꼴 · 늘 · 끊김) · 가게 머리줄 | ✅ | **254** |
+| **새 이야기 N24 「건너편 가게」**(문필구 · 차영배 · 서브 3편 · 사용자 A/B 예시 그대로) + **기존 이야기 다시 쓰기**(N19 · N02 · N03 · 총회) | ✅ | **254** |
 | **프롤로그 「떠나는 날 아침」** — M1-01 17목표(`prologue:*` 14 + 기존 3) · `ordered` · `store/Prologue.ts`(행동 플래그·착용 상태 순서 동기화 · 단축키 단계 해금 · 직판장 5갈래 구매 · 오징어 판매) · 집 안 기상 · 아버지 낚시 상자 · 구세이브 재배치 · 191차 말풍선 코치(상단 띠 폐지) · 상자 = 가방(연 뒤 방에서 치움 · `HomeStore.discarded`) · 저장 전 집 밖 금지 · 219차 막힘 안전망(물건 보호 · 되살리기 · 비상금 · 차비 · 단계 밖 행동 회색) | ✅ | **188 · 191 · 219** |
 | **첫 장보기 = 원투 채비**(구 찌 채비) — 원줄 · 목줄 · 원투 봉돌 · 바늘 · 미끼 5갈래 = 그 자리에서 던질 한 벌 · 아버지 대 상한(15g) 넘는 봉돌은 안 셈 + 말풍선 · 3호 봉돌 · 나일론 원줄 3호 입고 · M1-05 원투 입질 문장 | ✅ | **236** — 첫 값 22,196원(구 약 26,500원) |
 | **장소 좌표 전수조사** — `poi:*` 3종 · 현장 지점 3곳 · 인물 배치 9곳 걷기 가능성 검사 → 결함 2건 교정 | ✅ | 178 |
@@ -151,6 +158,10 @@ STORY_ARCS ────┘     traineeDay (D-180)                └─ RegionHu
 
 ## 5. 잔여·차기
 
+- **254 잔여(이어지는 대화 · 결말)** — ① 갈등이 있는 다른 이야기(N05 · N08 · N12 …)는 인물이 필드에 서지 않아 대화를 열 곳이 없다 — 무대가 열리면 같은 엔진으로
+  ② 일지에 「내가 한 말」 다시 보기(세이브 `talk.path`는 있다) ③ 갈라지는 결말을 되돌리는 길은 두지 않았다(「영구적」 — 사용자가 원하면 긴 서브로).
+  상세 [254](../03-WORKLOG/2026-10-15-254-branching-talks-endings.md) §6.
+
 - **253 잔여(답 깊이 · 물어보기)** — ① 물어보기는 **속초 9인**만(다른 지역 인물은 필드 배치가 없어 대화창이 열리지 않는다 — 지역 맵이 서면 그 사람 물음을 더한다)
   ② 조사 물음은 5편(M2-02 · M2-05 · M3-06 · N18-2 · N18-3)만 — 나머지 대화 · 검사 행동은 「방식 고르기」 그대로(N03-7은 상대가 묻는 장면이라 제외 · N18-6은 현장 출처)
   ③ 새 `choice.*` 플래그 다수(받는 자리 되묻기 등)를 읽는 후속 대사는 아직 없다 ④ 일지 「수첩」의 답 첫머리는 120자에서 자른다(전문은 대화창에서 다시 듣는다)
@@ -203,6 +214,21 @@ STORY_ARCS ────┘     traineeDay (D-180)                └─ RegionHu
 - dev 콘솔(F10)에 퀘 점프/완료 명령(구세이브 고레벨 테스터용).
 
 ## 6. 함정·불변조건
+
+### [254차] 이어지는 대화 · 결말
+
+- **같은 말의 우호도는 처음 한 번만** — 받는 자리를 미루고 다시 받거나 창을 닫았다 열면 대화가 처음부터 돈다. 키 「대화/단계/말」(`talkSeen`)로 막지 않으면
+  좋은 말을 반복해 우호도를 쌓을 수 있다. 표시는 매번 세워도 된다(멱등).
+- **끝의 일이 거절되면 대화는 그 단계에 머문다** — 가방 자리가 모자라 마침이 거절되면 `talkAt`을 그 단계로 남긴다(처음부터 다시 돌면 길이 바뀐다).
+- **받는 자리 대화가 「받는다」로 끝나면 우호도 게이트를 다시 묻지 않는다**(`accept(id, undefined, true)`) — 대화 도중 고른 말로
+  의뢰인 우호도가 서브 게이트(−0.40) 밑으로 내려가도, 끝 대사가 일을 건네는 말이면 일은 넘어온다. 게이트는 대화를 열 때 이미 봤다.
+- **행동 단계 대화는 의뢰인만** — 「고르는 단계」는 의뢰인 대화창의 진행 중 화면에서만 열린다(검사기가 막는다). 그 단계가 의뢰인 앞 선택(`C` 출처)이 아니면 대화는 뜨지 않는다.
+- **손글 각본 · 표결이 있는 목표에 목표 대화를 붙이지 않는다**(N19-1#2 · N19-8#1 · M4-11#1 · M6-05#1 · M7-04#1 · 총회 표결) — 대화가 장면을 대신해 각본이 사라진다.
+- **갈라지는 결말은 영구 손해를 반드시 갖는다 · 이도 저도 아닌 결말은 효과가 없다** — `validateEndings`가 강제한다. 상한 · 가게 조건 · 직업 한 줄은
+  세이브하지 않고 다다른 결말 표에서 매번 다시 읽는다(데이터를 고치면 기존 세이브에도 그대로 반영된다).
+- **남긴 표시는 누군가 읽어야 한다** — 읽히지 않는 표시는 253차에 지적받은 결함이다. `node tools/check_talks.mjs`가 「아무 대화도 읽지 않는다」 경고를 낸다.
+- **i18n — 따옴표 대사는 사전 먼저**: 넓은 정규식 규칙(「…로 만든 …」 → `Made with …`)이 대사 한 단락을 통째로 가로챘다.
+  `translateDeep` 맨 앞에서 따옴표 안쪽을 사전에서 먼저 찾는다. 대화 단락은 `allTalkLines`가 한 · 영 단락 수가 같을 때만 짝을 싣는다.
 
 ### [253차] 답 깊이 · 물어보기
 

@@ -106,6 +106,12 @@ export const STORY_NPC_PLACEMENTS: StoryNpcPlacement[] = [
   { npcId: 'oh_sechan', regionId: 'gangwon_sokcho', tx: 594, ty: 159, behavior: 'patrol' },
   // 탁새벽 — 탁만수의 손녀. 할아버지 좌판 근처 보도에서 서성인다 (178차 신규)
   { npcId: 'tak_saebyeok', regionId: 'gangwon_sokcho', tx: 556, ty: 148, behavior: 'wander', home: { tx: 539, ty: 144, labelKo: '공방 살림채' } },
+  // 254차 — N24 「건너편 가게」: 동명항 대게 거리 어귀, 비스듬한 길을 사이에 두고 마주 보는 찌 가게 두 집
+  //  (가게 앞을 지킨다 · 집 문 없음 — 늘 가게에). 자리는 실측 — 둘 다 이름 없는 건물 앞 보도 · 가게 문에서 2칸 넘게 떨어진 칸:
+  //  문필구 = 길 동쪽 단층 붉은 지붕집(윤곽 579~582 · 116~118) 바로 앞 · 차영배 = 길 서쪽 3층 상가(552~564 · 113~120) 남동 모서리 앞.
+  //  좌판 행동은 좌우 한 칸씩 오가므로 양옆 칸도 차도가 아닌 자리를 골랐다(구 573,152 · 577,146은 물가 부두 위였다).
+  { npcId: 'mun_pilgu', regionId: 'gangwon_sokcho', tx: 581, ty: 119, behavior: 'stall', facing: 'left' },
+  { npcId: 'cha_yeongbae', regionId: 'gangwon_sokcho', tx: 565, ty: 121, behavior: 'stall', facing: 'right' },
 
   // ── 178차 — 지역만 등록한 인물들 (좌표 없음 = 필드에 세우지 않는다) ──
   //  이 표에 없으면 할 일을 고정해도 화살표도, 「다른 지역 — ○○」 안내도 나오지 않았다(백로그 AA ①).
