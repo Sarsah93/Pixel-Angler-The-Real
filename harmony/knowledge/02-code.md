@@ -66,4 +66,4 @@
 
 - (없음)
 
-- (2026-10-15) 규칙 `no-lowercase-gamestate`가 `ForageGamePanel.ts:195`의 getter 이름 `get gameState()`를 잡는다 — 인스턴스 사용이 아니라 오탐. 규칙 패턴 조정은 사용자 승인 대상이라 보고서에만 올렸다.
+- (2026-10-15) 규칙 `no-lowercase-gamestate`가 `ForageGamePanel.ts:195`의 getter 이름 `get gameState()`를 잡는다 — 인스턴스 사용이 아니라 오탐. 같은 날 사용자 승인으로 패턴을 `(?<!get )(?<!set )\bgameState\b`로 바꿨다(오탐 1 → 0, main에 다른 사용처 없음).

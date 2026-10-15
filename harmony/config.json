@@ -194,10 +194,10 @@
     {
       "id": "no-lowercase-gamestate",
       "domain": "02-code",
-      "desc": "gameState(소문자) 인스턴스 사용 금지 (AGENTS §8-2)",
+      "desc": "gameState(소문자) 인스턴스 사용 금지 (AGENTS §8-2) — get/set 접근자 선언 이름은 제외(2026-10-15 사용자 승인)",
       "severity": "보통",
       "globs": ["packages/client-pc/src/**/*.ts"],
-      "pattern": "\\bgameState\\b",
+      "pattern": "(?<!get )(?<!set )\\bgameState\\b",
       "skip_comment_lines": true
     },
     {
