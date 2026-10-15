@@ -1,6 +1,6 @@
 # S10·S11·S13. UI 프레임워크 · 가이드 허브 · dev 도구
 
-> 상태 **🟢 운영**. 관련 차수 13·26·27·31·33·54·71·73·76 · 247(필드 글자 한 벌 `WorldLabel`)
+> 상태 **🟢 운영**. 관련 차수 13·26·27·31·33·54·71·73·76 · 247(필드 글자 한 벌 `WorldLabel`) · 250(게임 마우스 포인터 `GameCursor`)
 
 ---
 
@@ -21,6 +21,7 @@
 | `ui/GuideTour.ts` | **체험 가이드**(188차) — 창을 처음 열 때 말풍선(좌/우 자동 · 191차 `side`·`alignTo`·`dockY`)·타이핑·금색 하이라이트·허용 구멍 입력 방패·`wait()` 직접 해 보기·`passive` 세상 안 단계(짚을 대상이 없으면 꼬리 없음) · 키 게이트 `GuideTour.blocksKey` · 세상 정지 판정 `GuideTour.blocking` · 대기열(씬 shutdown에 정리) · 플래그 `tour.<id>`(`ephemeral`이면 없음) · 14개 창 |
 | `ui/PrologueCoach.ts` | **프롤로그 말풍선 코치**(191차) — 씬이 매 프레임 넘기는 「지금 단계」(`CoachStage`)의 말풍선 하나 · 단계가 바뀌면 접고 새로 · 다른 가이드가 있으면 대기(`GuideTour.busy`) · 씬 pause에 접힘 · 집(`HomeInteriorScene.coachStage`)·필드(`RegionFieldScene.coachStage`) |
 | `ui/WorldLabel.ts` | **필드 글자 한 벌**(247) — `worldLabelStyle(size)` = 배경 없이 검은 글자 + 흰 테(11px 이상 3px). 머리 위 [F] 안내 · 떠오르는 안내 · 퀘스트 거리 · 이름표 · 설치물 꼬리표 |
+| `ui/GameCursor.ts` · `data/GameCursorArt.ts` | **게임 마우스 포인터**(250) — 찌 화살(사용자 선택 시안 1번 · 23px) · 누를 수 있는 곳은 같은 그림 + 흰 테 1px. 글자 격자를 1 · 2 · 3배로 구워 data URI `image-set` · Phaser `InputManager.setCursor`의 `'pointer'`만 대체 · `handCursorCss()` |
 | `ui/SlotLabel.ts` | 슬롯 이름표 **10px 고정 + 약어**(188차 — 글씨 축소 금지) |
 | `ui/HelpLibraryPanel.ts` · `data/HelpContent.ts` | **도움말 라이브러리**(117차 → 131차 → **187차 전면 개정**) — **14카테고리 76토픽**(준비 중 4) · 113쪽 트리 + 마스크 본문 · 실캡처 **38장 × ko/en**(`tools/capture_help_images.cjs` 하네스 → `tools/annotate_help_images.py` 번호 콜아웃 · 뜻은 캡션 ①②③) · F1/단축키 버튼 |
 | `i18n/I18n.ts` · `i18n/en.ts` + 사전 6벌 | **영어 설정**(118~120차) — `Text.setText` 훅 사전(원문 = 키) · `setLocale` 즉시 전환 · **데이터의 `nameEn` 이 사전보다 먼저**(어종·지명·지역 노드) · `registerNames()` 로 런타임 이름(POI 상호명) 합류 |
@@ -60,6 +61,7 @@ ESC: depth 최고(시각적 최상단)부터 닫는다 (동률이면 LIFO)
 ## 4. 세부과제 현황
 | 과제 | 상태 | 차수 |
 |---|---|---|
+| **게임 마우스 포인터**(찌 화살 · 손 커서 = 흰 테 · 고해상도 `image-set` · `restoreHandCursor` 정리) — 원본 `assets/cursor/` · 생성 `tools/gen_game_cursor.cjs` | ✅ | **250** |
 | **체험 가이드**(`GuideTour`) — 기능창 14종 첫 열기 · 창 안 조작 안내 문구 삭제(규칙 R11) · 189차 집 4종 추가(`home_decorate` · `home_wardrobe` · `home_shelf` · `home_fridge`) | ✅ | **188 · 189** |
 | **프롤로그 말풍선 코치** — 상단 「지금 할 일」 띠·금색 자리 표시 폐지 → 집(상자 → I → 대 → E·릴 → 사진 → J → 오징어 → 저장 → 매트) · 마당(우물 → S → M → 막차) · 속초 직판장(남은 품목 → 오징어 판매)까지 말풍선 연속 | ✅ | **191** |
 | **가이드 ↔ 창 겹침 · 단계 밖 행동 막기** — 단계가 시작된 뒤 열린 창(모달 포함)은 가리는 창: 어둡게 깔기 끔 · 가려진 대상 테두리 숨김 · 말풍선은 창 바깥 후보 자리로 · 새 창은 방패 구멍(✕ 눌림) · `TourStep.focus` + `GuideTour.allows/nudge`(집 메뉴 회색 · 필드 [F] 후보 거르기) · 매 프레임 `skipIf` | ✅ | **219** |
@@ -120,6 +122,15 @@ dev 전용 문자열(순간이동 로그·맵 편집기·손질 dev 버튼)은 *
 `import.meta.env.DEV` 게이트라 프로덕션 빌드에 없다.
 
 ## 6. 함정·불변조건
+
+### [250차] 커서는 게임 포인터 두 벌 — 키워드 `'pointer'`를 직접 넣지 않는다
+
+- 캔버스 커서는 `ui/GameCursor.ts`가 입힌다 — 기본(찌 화살)은 `setDefaultCursor`, 손 커서(흰 테)는 Phaser `InputManager.setCursor`를 감싸 `'pointer'`만 바꾼다.
+  커서를 직접 바꾸는 새 코드는 `handCursorCss()`를 쓴다. `'pointer'`를 넣으면 그 자리만 운영체제 손이 나온다.
+- `setCursor`는 문서상 private이라 Phaser 타입에 없다 — `CursorHost` 구조 타입으로 감쌌다. Phaser를 올리면 이름 · 동작을 확인한다(없으면 기본만 입힌다).
+- 포인터를 32px(DIP)보다 크게 만들지 않는다 — 크롬이 주소창 같은 브라우저 화면에 걸친 큰 커서를 숨긴다. 선명도는 `image-set` 2 · 3배로 챙긴다.
+- **헤드리스 스크린샷에는 커서가 찍히지 않는다** — `canvas.style.cursor` 값으로 확인하고, 그림은 data URI를 꺼내 캡처 위에 얹어 본다.
+  하네스에서 `game.scene.start`로 씬을 바꾸면 앞 씬이 멈추지 않아 커서 되돌림이 없다 — 단추 밖에서 `restoreHandCursor`를 부르면 손 커서가 남는다.
 
 ### [244차] 같은 클릭으로 연 창을 클릭된 창이 덮는다 — `openedOnDown`
 

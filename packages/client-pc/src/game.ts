@@ -31,6 +31,7 @@ import { initDevTuningPanel } from './dev/DevTuningPanel.js';
 import { initDevConsolePanel } from './dev/DevConsolePanel.js';
 import { installI18n } from './i18n/I18n.js';
 import { installTextQuality } from './ui/TextQuality.js';
+import { installGameCursor } from './ui/GameCursor.js';
 import { loadSettings } from './scenes/SettingsScene.js';
 
 /** 싱글턴 보관 키 — HMR/재평가를 넘어 유지된다 */
@@ -83,6 +84,8 @@ export function createGame(): Phaser.Game {
   const game = new Phaser.Game(config);
   holder[GAME_KEY] = game;
   installCrashGuards(game);
+  // 250차 — 게임 마우스 포인터(찌 화살 · 누를 수 있는 곳은 흰 테)
+  installGameCursor(game);
   return game;
 }
 

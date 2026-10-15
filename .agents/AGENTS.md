@@ -277,7 +277,7 @@ npx pnpm --filter @tra/client-pc run dev
 ## 9. 빌드 상태 · 최근 변경
 
 ```
-npx pnpm run build → ✅ 3/3 패키지 성공 (2026-10-14 249차 · map-builder 워크스페이스 제외)
+npx pnpm run build → ✅ 3/3 패키지 성공 (2026-10-15 250차 · map-builder 워크스페이스 제외)
 npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 ```
 
@@ -286,7 +286,16 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-10-14 249차) — 낚시 장비 그림 카드 방식 · 대체 · 없는 장비 그림 74장(Gemini) · 위키 그림 상한 정리 · F-0088 판정**
+**최근 변경 (2026-10-15 250차) — 마우스 포인터 「찌 화살」 · main 반영 · 74차 배포**
+
+- 사용자 「마우스 포인터는 1번 찌 화살로 하고, main 반영과 gh-pages 74차 「테스트 배포」진행해줘」: 기본 = 시안 그대로(23px) ·
+  누를 수 있는 곳 = 같은 그림 + 흰 테 1px(4방향) — `ui/GameCursor.ts`가 Phaser `InputManager.setCursor`의 `'pointer'`만 대체 · `restoreHandCursor` → `handCursorCss()`.
+- 글자 격자(`tools/gen_game_cursor.cjs` → `data/GameCursorArt.ts` · 원본 `assets/cursor/`)를 1 · 2 · 3배로 구운 data URI `image-set`(고해상도 선명) ·
+  CSS 23px 고정(32px를 넘으면 크롬이 브라우저 화면 근처에서 숨긴다) · main 빨리 감기(249 · 250) · 「테스트 배포」 74차.
+- 검증: core 259/259 · 빌드 3/3 · typecheck 0 · 실렌더(부팅 · 메뉴 · 필드 HUD · 가방 단추 손 ↔ 기본 · `restoreHandCursor` · 4xx 0 · pageerror 0).
+  상세: [250차 워크로그](../docs/wiki/03-WORKLOG/2026-10-15-250-game-cursor-float-deploy74.md).
+
+**이전 변경 (2026-10-14 249차) — 낚시 장비 그림 카드 방식 · 대체 · 없는 장비 그림 74장(Gemini) · 위키 그림 상한 정리 · F-0088 판정**
 
 - 사용자 「낚시 장비 그림 … 카드방식으로 줄이고, 현재 이미지 대체중이거나 없는 것들 다 gemini로」: 사용자 장비 그림 41장 원본 → `food assets/tackle/` ·
   게임은 카드(228×90 안) + 64px 아이콘만(`tools/tackle_cards.cjs` — 불투명도 보존 축소 · 표 `TackleTextures.ts` 113키) · 부팅 텍스처 653.0MB → 401.2MB · 배포 84.0 → 72.7MB.
@@ -307,16 +316,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
   미끼 키 `earthworm` · `baitPrefOf`(망둥어 60 · 가자미류 40 · 표 밖 청갯지렁이의 4할) · 바닷물 1분 뒤 늘어져 4분이면 0.35배 · 도움말 2쪽 · 영어.
 - 검증: core 259/259 · 빌드 3/3 · typecheck 0 · 실렌더(텍스처 빠짐 0 · 텃밭 지렁이 · 가방 · 상세 · 도감 · 판 6 · 점 10 · pageerror 0) · 위키 Version 49 · gh-pages 73차.
   상세: [248차 워크로그](../docs/wiki/03-WORKLOG/2026-10-14-248-forage-art-earthworm.md).
-
-**이전 변경 (2026-10-14 247차) — 작물별 재배 요소 · 텃밭 칸 2×2 · 칸에서 손에 든 것으로 일하기 · 필드 글자 흰 테**
-
-- 사용자 「심기부터 재배까지 고려되는 모든 환경/요소 … 웹검색 등을 통해 찾고, 구현」: 작물 86종 재배 표(`CropCultivationData.ts` — 물 조금 · 보통 · 흠뻑과 알맞은 흙 띠 ·
-  36시간 과습 탈 · 거름 · 품과 피로 · 도구 필수/도움 · 철 밖 −15% · 가시 · 아침 수확) · 들깨 · 참깨(베고 → 밭에서 말리고 → 털기 → 키질) · 도구 7.
-- 아주 까다로운 9종은 종묘사에 열흘에 한 번꼴 입고 · 묵힌 칸에 저절로 나는 싹(「이름 모를 싹」) · 포기 나누기 · 뿌리 꺾꽂이 14종.
-- 한 칸 = 2×2 타일(옛 구획 넓히기) · 칸마다 흙 · 작물 · 해 둔 일 그림 · 밟은 칸 테두리 · [F] = 퀵슬롯에 든 것 · 연출 · 작업 장면 5 · 모종 꺼내기 창 ·
-  필드 글자 검정 + 흰 테(R14 · `WorldLabel`) · 포인터 시안 6(사용자 선택 대기) · 어종 원본 14장 재굽기 · 초상 100/100.
-- 검증: core 250/250 · 빌드 3/3 · typecheck 0 · 실렌더 한/영(247 문구 영어 한글 0) · 텃밭 창 넘침 0 · 위키 Version 48 · gh-pages 72차.
-  상세: [247차 워크로그](../docs/wiki/03-WORKLOG/2026-10-14-247-cultivation-factors-field-cells.md).
 
 ---
 

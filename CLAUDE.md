@@ -49,17 +49,24 @@
   → **245 작물 84종 전부 관리 작업(난이도) · 병해충 16 · 묶음 작업 · 초상 98/98** → **246 그림 없던 어종 4종(Gemini) · 어종 그림 카드 방식**
   → **247 작물별 재배 요소 · 텃밭 칸 2×2 · 칸에서 손에 든 것으로 일하기 · 필드 글자 흰 테 · main 반영 · 72차 배포**
   → **248 갯것 10종 · 땅지렁이 그림(Gemini) · 갯것 카드 방식 · 텃밭 땅지렁이 → 바다 미끼 · 73차 배포**
-  → **249 낚시 장비 그림 카드 방식 · 대체 · 없는 장비 그림 74장(Gemini) · 위키 그림 상한 정리 · F-0088 판정**.
+  → **249 낚시 장비 그림 카드 방식 · 대체 · 없는 장비 그림 74장(Gemini) · 위키 그림 상한 정리 · F-0088 판정**
+  → **250 마우스 포인터 「찌 화살」 · main 반영 · 74차 배포**.
 - **로드맵(사용자 확정 2026-09-17)**: **요리 개체화 2단계 — 나머지 7개 레시피 변형(사용자 확인 대기)** → **농장**(E1 텃밭 ✅235 · 남은 것 E2~E5 · 백로그 BK).
   맵 확정(육안)·OSM land 14개·조도 재설계·외옹치/대포항 bbox 확장은 사용자 동반 병행 트랙.
 - **재개 지점**: 사용자 실검증(172·173차 타일 조화 규칙 + 178·183~186차 신설분 + **239차 건물 그림**) — 부족하면 규칙 보강,
   괜찮으면 규칙을 켠 채로 새 맵 확장. 차수별 잔여는 PLAN §2-3.
+- **250차**: **마우스 포인터 「찌 화살」 · main 반영 · 74차 배포** — 사용자 「마우스 포인터는 1번 찌 화살로 하고, main 반영과 gh-pages 74차 「테스트 배포」진행해줘」 →
+  기본 = 시안 그대로(23px) · 누를 수 있는 곳 = 같은 그림 + 흰 테 1px(`ui/GameCursor.ts` — Phaser `InputManager.setCursor`의 `'pointer'`만 대체 · `restoreHandCursor` → `handCursorCss()`) ·
+  글자 격자(`tools/gen_game_cursor.cjs` → `data/GameCursorArt.ts` · 원본 `assets/cursor/`)를 1 · 2 · 3배 data URI `image-set`으로(고해상도 선명 · CSS 23px 고정 — 32px 넘으면 크롬이 숨김) ·
+  main 빨리 감기(249 · 250) · 「테스트 배포」 74차.
+  **다음 = 기본 커서 어두운 바탕 가독성(사용자 실플레이) · 장비 밖 임시 그림 Gemini 교체 여부(사용자) · 하모니 원장 F-0088 닫기 · 손질 부산물 그림 카드 방식**.
+  상세 `docs/wiki/03-WORKLOG/2026-10-15-250-game-cursor-float-deploy74.md`.
 - **249차**: **낚시 장비 그림 카드 방식 · 대체 · 없는 장비 그림 74장(Gemini) · 위키 그림 상한 정리 · F-0088 판정** — 사용자 「낚시 장비 그림 … 카드방식으로 줄이고,
   현재 이미지 대체중이거나 없는 것들 다 gemini로」 → 사용자 장비 그림 41장 원본 `food assets/tackle/` · 게임은 카드(228×90 안) + 64px 아이콘(`tools/tackle_cards.cjs` · 표 `TackleTextures.ts` 113키 · 불투명도 보존 축소) ·
   Gemini 74장(`tools/gemini_tackle_art.cjs` · 실패 0 — 코드 그림 임시 그림 59는 `art_*` 키 유지 · 빌려 쓰던 15는 `rodArtKey` · `reelArtKey` · `lineArtKey` · 옛 세이브 `refreshTackleArt`) ·
   부팅 텍스처 653.0MB → 401.2MB · 배포 84.0 → 72.7MB · 위키 Version 51(작은 그림 219장 HTML 안 — 빠져 있던 코드 그림 141장 해결) ·
   F-0088 정본 = 코드 216(193 · 235 날짜 대조) · 포인터 시안 `docs/mockups/pointer_drafts/`.
-  **다음 = 장비 밖 임시 그림 Gemini 교체 여부(사용자) · 하모니 원장 F-0088 닫기 · 손질 부산물 그림 카드 방식 · 마우스 포인터 선택(사용자)**.
+  **다음 = 장비 밖 임시 그림 Gemini 교체 여부(사용자) · 하모니 원장 F-0088 닫기 · 손질 부산물 그림 카드 방식 · ~~마우스 포인터 선택~~ ✅250**.
   상세 `docs/wiki/03-WORKLOG/2026-10-14-249-tackle-cards-gemini-74.md`.
 - **248차**: **갯것 10종 · 땅지렁이 그림(Gemini) · 갯것 카드 방식 · 텃밭 땅지렁이 → 바다 미끼** — 사용자 「바지락 … 삿갓조개(배말) 얘네 이미지 없는 걸로 확인되네 … gemini로 …
   탑다운 뷰에서 보여질 아이콘 이미지」 · 「농사하다가 지렁이 … 바다낚시 미끼로」 → 초상 11 + 위에서 본 그림 5(`tools/gemini_forage_art.cjs` — 사용자 갯것 그림 3장 화풍 참고) ·
@@ -68,13 +75,6 @@
   바닷물 1분 뒤 늘어져 4분이면 0.35배 · core 259 · 위키 Version 49 · **main 반영 · gh-pages 73차**.
   **다음 = 곤충 미끼(민물) · 시작 「지렁이」 이름(사용자) · ~~장비 그림 카드 방식~~ ✅249 · 마우스 포인터 시안 선택(사용자)**.
   상세 `docs/wiki/03-WORKLOG/2026-10-14-248-forage-art-earthworm.md`.
-- **247차**: **작물별 재배 요소 · 텃밭 칸 2×2 · 칸에서 손에 든 것으로 일하기 · 필드 글자 흰 테** — 사용자 「심기부터 재배까지 고려되는 모든 환경/요소 …
-  웹검색 등을 통해 찾고, 구현」 → 작물 86종 재배 표(`CropCultivationData.ts` — 물 조금 · 보통 · 흠뻑 · 알맞은 흙 띠 · 과습 탈 · 거름 · 품과 피로 · 도구 · 철 밖) ·
-  들깨 · 참깨(베고 → 말리고 → 털기 → 키질) · 도구 7 · 아주 까다로운 9종 열흘에 한 번꼴 입고 · 저절로 나는 싹 · 포기 나누기 ·
-  한 칸 = 2×2 타일 · 칸 그림 · 밟은 칸 테두리 · [F] = 퀵슬롯에 든 것(`FarmFieldSystem`) · 작업 장면 5 · 모종 꺼내기 창 · 필드 글자 검정 + 흰 테(R14 · `WorldLabel`) ·
-  어종 원본 14장 재굽기 · 초상 100/100 · 위키 Version 48 · **main 반영 · gh-pages 72차**.
-  **다음 = 마우스 포인터 시안 선택(사용자 — 6종 · 추천 1번 찌 화살) · 재배 수치 실플레이 조정**.
-  상세 `docs/wiki/03-WORKLOG/2026-10-14-247-cultivation-factors-field-cells.md`.
 - **상시 방침**:
   - 지형 고도(DEM)는 **낚시 확립 후** — B(해안 변형) 우선, 경사로 통행을 막지 않는다
     (`docs/archive/specs/RASTER_UPLIFT_AMENDMENT.md` §4).
@@ -95,6 +95,7 @@
   `food assets/forage/art/` · `top/` = 갯것 · 땅지렁이 원본(248) — 게임은 `node tools/forage_cards.cjs`가 굽는 카드 · 아이콘 · 판 · 점 그림만 싣는다.
   `food assets/tackle/` = 낚시 장비 원본 115장(249 — 사용자 그림 41 · Gemini 74) — 게임은 `node tools/tackle_cards.cjs`가 굽는 `public/tackle/` 카드 · 아이콘만 싣는다.
 - `assets/` — 기타 원본 (2026-08-05 정리): `branding/`(타이틀·아이콘 소스) · `characters/`(man/girl 옛 캐릭터 원본 — 보존만. 소비본과 로드는 레거시 필드와 함께 삭제) · `guide/`(sashimi_pixel_guide.svg — pixelize_butchery 입력).
+  `assets/cursor/` = 게임 마우스 포인터 원본(250 — 찌 화살 · Gemini 원본) — `node tools/gen_game_cursor.cjs`가 `data/GameCursorArt.ts`를 굽는다.
 - `docs/` — `reference/`(공공 API 활용가이드·09.수심.zip·경락 CSV 등 외부 데이터 원본) · `mockups/`(UI 목업 — game_guide_hub.html = 가이드 삽화 19장 재렌더 소스).
 
 ## 자주 쓰는 명령어 (Windows, 레포 루트 기준)

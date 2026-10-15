@@ -18,6 +18,7 @@ import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { paintHudPanel } from './HudPanelStyle.js';
 import { auditTextBottom } from './TextFit.js';
+import { handCursorCss } from './GameCursor.js';
 
 /** 화면 고정 컨테이너 트리 전체에 scrollFactor 0 재귀 적용 (입력 판정 어긋남 방지) */
 export function applyScreenFixed(root: Phaser.GameObjects.Container): void {
@@ -40,10 +41,11 @@ export function applyScreenFixed(root: Phaser.GameObjects.Container): void {
  * 버튼 자신을 재생성"하면 포인터가 여전히 버튼 위인데도 손 커서가 풀린다 — 포인터가 나갔다 들어오기
  * 전까지 `pointerover`가 다시 오지 않으므로 복구되지 않는다.
  * 그런 동작 직후에 이 함수를 호출한다.
+ * 250차 — 손 커서는 게임 포인터(찌 화살 + 흰 테 · `ui/GameCursor`)다. 키워드 `'pointer'`를 직접 넣지 않는다.
  */
 export function restoreHandCursor(scene: Phaser.Scene): void {
   const canvas = scene.input?.manager?.canvas;
-  if (canvas) canvas.style.cursor = 'pointer';
+  if (canvas) canvas.style.cursor = handCursorCss();
 }
 
 export interface DraggablePanelConfig {
