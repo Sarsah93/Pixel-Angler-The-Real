@@ -82,7 +82,7 @@ function gateText(g) {
 }
 function talkView(t) {
   return {
-    id: t.id, at: AT_LABEL[t.at] ?? t.at, npc: npcName(t.npcId), start: t.start,
+    id: t.id, kind: t.at, at: AT_LABEL[t.at] ?? t.at, npc: npcName(t.npcId), start: t.start,
     nodes: Object.entries(t.nodes).map(([id, n]) => ({
       id, who: n.speaker === undefined ? npcName(t.npcId) : npcName(n.speaker), line: n.lineKo,
       choices: n.choices.map((c) => ({

@@ -243,8 +243,8 @@ export const TALKS_N02: StoryTalkDef[] = [
               lineEn: '(He nods.) Right. The one sitting on the porch will have heard that too. If he heard, that\'s enough.' }) }),
         ]),
       ask_kid: say(
-        '(마루에서 아이가 벌떡 일어난다.) 안 물어봤어! 할아버지는 안 물어봤어! 그 대가 제일 맑게 울었단 말이야. 맑으면 끝이 살아.\n\n(할아버지는 대꾸 없이 고운 대를 손톱으로 톡 친다. 맑고 가벼운 소리가 난다.)',
-        "(The boy shoots up on the porch.) He didn't ask! Grandpa never asked! That one rang the clearest. If it's clear, the tip's alive.\n\n(Without a word his grandfather taps the pretty culm with a fingernail. It gives a clear, light sound.)",
+        '(마루에서 아이가 벌떡 일어난다.) 물어보긴 뭘 물어봐! 맑다고 했더니 고개만 저었어! 그 대가 제일 맑게 울었단 말이야. 맑으면 끝이 살아.\n\n(할아버지는 대꾸 없이 고운 대를 손톱으로 톡 친다. 맑고 가벼운 소리가 난다.)',
+        "(The boy shoots up on the porch.) Asked? He didn't ask anything! I said it was clear and he just shook his head! That one rang the clearest. If it's clear, the tip's alive.\n\n(Without a word his grandfather taps the pretty culm with a fingernail. It gives a clear, light sound.)",
         [
           opt('both_right', '둘 다 맞는 것 같은데요. 몸통은 마디로, 끝은 소리로.', "I think you're both right. The body by its nodes, the tip by its sound.",
             { stance: 'mid', aff: { [M]: 0.01, [S]: 0.02 }, flags: ['choice.n02_two_poles'], end: endTalk({

@@ -570,7 +570,11 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
     if (q.nar && (q.nar.offer || q.offerChoices.length)){
       h += '<section class="sec" id="s-talk"><h2>대화</h2>';
       h += talk(q.nar.offer, q.giverName);
-      if (q.offerChoices.length){
+      // 254차 — 받는 자리 대화가 있는 편은 게임이 옛 답 목록을 쓰지 않는다(대화가 받기 · 미루기를 정한다)
+      const offerTalk = (q.talks || []).some(t => t.kind === 'offer');
+      if (offerTalk){
+        h += '<p class="note" style="margin-top:14px">받는 자리는 아래 「이어지는 대화」로 진행됩니다 — 고른 말에 따라 받거나 미룹니다.</p>';
+      } else if (q.offerChoices.length){
         h += '<p class="note" style="margin-top:' + (q.nar.offer ? '14px' : '0') + '">' +
           (solo ? '누가 맡기는 할 일이 아닙니다. 스스로 정하는 자리에서 고를 수 있는 답'
                 : '받는 자리에서 고를 수 있는 답') + '</p>';
@@ -678,7 +682,9 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
         talk(q.nar.done, solo ? '' : q.giverName);
     }
     if (q.complete.length){
-      h += '<p class="note" style="margin-top:14px">끝내는 자리에서 고를 수 있는 답 — 고른 답만 열리고, 고르지 않은 답은 다시 올 때까지 덮여 있습니다.</p>';
+      h += '<p class="note" style="margin-top:14px">' + ((q.talks || []).some(t => t.kind === 'complete')
+        ? '끝내는 자리는 「이어지는 대화」로 진행되고, 대화의 끝이 아래 답 가운데 하나로 마칩니다(보상 · 기록).'
+        : '끝내는 자리에서 고를 수 있는 답 — 고른 답만 열리고, 고르지 않은 답은 다시 올 때까지 덮여 있습니다.') + '</p>';
       for (const ch of q.complete){
         h += '<div class="choice"><div class="lb">' + esc(ch.label) + '</div>' +
           '<div class="rp">' + esc(ch.reply) + '</div>' +
