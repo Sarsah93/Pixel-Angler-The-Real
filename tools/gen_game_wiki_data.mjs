@@ -368,15 +368,66 @@ const ITEM_CATEGORY_KO = {
   gear: '장비', tackle: '낚시용품', lure: '루어', consumable: '소모품',
   food: '음식', etc: '기타', quest: '할 일 물품',
 };
+/**
+ * 255차 — 아이템을 쓰임새 「선반」 탭으로 나눈다. 사용자 「다 섞여 있어서 헷갈려 … 아이템 '전체'에 포함시킨 후 '기타'로
+ *  구분하지 말고, 별도의 탭으로 관리」. 대분류(category)는 게임 가방 분류라 그대로 두고 위키에서만 다시 묶는다.
+ *  농산물 · 씨앗 · 모종 · 농사 도구는 「농사」 탭(`farm`)으로 간다. 규칙에 안 걸리는 물건은 「생활 · 도구 › 그 밖의 물건」 + 경고.
+ */
+const ITEM_SHELVES = [
+  { id: 'gear', label: '낚시 장비', note: '낚싯대 · 릴 · 옷 · 가방부터 줄 · 채비 · 미끼 · 루어 · 통발까지, 바다에 들고 나가는 물건입니다.', groups: [
+    { id: 'rod', label: '낚싯대 · 릴 · 손도구', test: (c, s) => c === 'gear' && ['손도구', '릴'].includes(s) },
+    { id: 'wear', label: '옷 · 가방', test: (c) => c === 'gear' },
+    { id: 'line', label: '줄', test: (c, s) => c === 'tackle' && /스풀/.test(s) },
+    { id: 'rig', label: '채비 · 바늘', test: (c, s) => c === 'tackle' && ['채비 부속', '바늘/훅'].includes(s) },
+    { id: 'bait', label: '미끼 · 밑밥', test: (c, s) => (c === 'tackle' && /미끼/.test(s)) || (c === 'consumable' && s === '집어제/밑밥') },
+    { id: 'lure', label: '루어', test: (c, s) => c === 'lure' || (c === 'tackle' && s === '루어') },
+    { id: 'trap', label: '통발 · 해루질 · 받침', test: (c, s) => c === 'etc' && ['통발', '해루질 도구', '낚시도구'].includes(s) },
+    { id: 'care', label: '장비 관리 · 보냉', test: (c, s) => c === 'consumable' && ['스프레이/오일', '장비 수리', '보냉'].includes(s) },
+  ] },
+  { id: 'food', label: '먹을거리', note: '상점에서 사는 식자재 · 양념 · 파는 음식과 잡은 고기입니다. 텃밭에서 거둔 농산물은 「농사」 탭에 있습니다.', groups: [
+    { id: 'ing', label: '식자재', test: (c, s) => c === 'food' && s === '식자재' },
+    { id: 'season', label: '양념', test: (c, s) => c === 'consumable' && ['양념', '조미/손질'].includes(s) },
+    { id: 'meal', label: '파는 음식', test: (c, s) => c === 'food' && ['가공품', '보양식'].includes(s) },
+    { id: 'catch', label: '어획물 · 회', test: (c, s) => c === 'food' && ['어획물', '요리(회)'].includes(s) },
+  ] },
+  { id: 'life', label: '생활 · 도구', note: '부엌 살림 · 약 · 제작 재료 · 도면처럼 바다 밖 생활에 쓰는 물건입니다.', groups: [
+    { id: 'cook', label: '조리도구 · 식기', test: (c, s) => (c === 'etc' && ['조리도구', '식기', '화구'].includes(s)) || (c === 'consumable' && s === '연료') },
+    { id: 'aid', label: '약 · 구급품', test: (c, s) => c === 'consumable' && ['의약품', '구급품', '야간 대비'].includes(s) },
+    { id: 'craft', label: '재료 · 도면', test: (c, s) => c === 'etc' && ['재료', '도면'].includes(s) },
+    { id: 'quest', label: '할 일 물품', test: (c) => c === 'quest' },
+    { id: 'misc', label: '그 밖의 물건', test: () => true },
+  ] },
+  { id: 'home', label: '설치 · 가구', note: '마당 · 집 안에 내려놓아 쓰는 물건입니다. 가구는 집으로 배달되어 「넣어 둔 가구」 칸에 들어갑니다.', groups: [
+    { id: 'place', label: '설치하는 것', test: (c, s) => c === 'etc' && s === '설치형' },
+    { id: 'furn', label: '가구', test: (c, s) => c === 'etc' && s === '가구' },
+  ] },
+];
+const FARM_SUBS = { '농산물': 'produce', '농산물 조각': 'produce', '씨앗 · 모종': 'start', '농사 도구': 'tool' };
+/** 아이템 → [선반, 선반 안 갈래] */
+function itemShelf(it) {
+  const c = it.category, s = it.subCategory || '기타';
+  if (FARM_SUBS[s]) return ['farm', FARM_SUBS[s]];
+  if (it.id.startsWith('farm_')) return ['farm', 'tool'];
+  for (const sh of ITEM_SHELVES) {
+    if (sh.id === 'life') continue;          // 「그 밖의 물건」이 모두 받으므로 맨 끝에 본다
+    const g = sh.groups.find((x) => x.test(c, s));
+    if (g) return [sh.id, g.id];
+  }
+  const life = ITEM_SHELVES.find((x) => x.id === 'life');
+  const g = life.groups.find((x) => x.test(c, s));
+  if (g.id === 'misc' && !['증서', '잡동사니', '탈것'].includes(s)) console.warn(`[위키] 선반 규칙에 없는 아이템 — 그 밖의 물건으로: ${it.id} (${c} · ${s})`);
+  return ['life', g.id];
+}
 const items = itemCatalog.map((it) => ({
   id: it.id, name: it.name,
   group: it.category, groupLabel: ITEM_CATEGORY_KO[it.category] ?? it.category,
+  shelf: itemShelf(it)[0], shelfGroup: itemShelf(it)[1],
   sub: it.subCategory || '기타',
   price: it.basePrice ?? 0,
   desc: it.desc ?? '',
   soldAt: it.soldAt ?? [],
   seed: !!it.isSeed,
-  img: imgOf(it.iconTexture),
+  img: imgOf(it.imgKey) ?? imgOf(it.iconTexture),   // 255차 — 게임과 같은 그림 고르기(`dump_wiki_items.mjs` imgKey)
   spec: itemSpec(it.tpl ?? {}, it),
 }));
 
@@ -713,7 +764,7 @@ const WATER_KO = { low: '적게', mid: '보통', high: '많이' };
 const START_KIND_KO = { seed: '씨앗', seedling: '모종', set: '종구 · 종서 · 배지' };
 const itemById = new Map(itemCatalog.map((it) => [it.id, it]));
 const itemNameOf = (id) => itemById.get(id)?.name ?? id;
-const itemImgOf = (id) => imgOf(itemById.get(id)?.iconTexture) ?? imgOf(`px:${id}`);
+const itemImgOf = (id) => imgOf(itemById.get(id)?.imgKey) ?? imgOf(itemById.get(id)?.iconTexture) ?? imgOf(`px:${id}`);
 const monthsKoList = (ms) => (ms?.length ? (core.monthRangeKo?.(ms) ?? ms.join('·') + '월') : '—');
 const licenseKo = (t) => core.getLicenseByType?.(t)?.nameKo ?? core.getLicenseByType?.(t)?.name ?? t;
 const supplyNameOf = (id) => core.getFarmSupply?.(id)?.nameKo ?? itemNameOf(id);
@@ -1005,6 +1056,12 @@ const out = {
       id, label, count: items.filter((i) => i.group === id).length,
     })).filter((g) => g.count > 0),
     subs: [...groupCount(items, 'sub').entries()].map(([id, count]) => ({ id, count })),
+    // 255차 — 선반 탭(낚시 장비 · 먹을거리 · 생활 · 도구 · 설치 · 가구). 농사 물건(`shelf: 'farm'`)은 농사 탭이 맡는다
+    shelves: ITEM_SHELVES.map((sh) => ({
+      id: sh.id, label: sh.label, note: sh.note,
+      groups: sh.groups.map((g) => ({ id: g.id, label: g.label, count: items.filter((i) => i.shelf === sh.id && i.shelfGroup === g.id).length }))
+        .filter((g) => g.count > 0),
+    })),
     list: items,
   },
   // 222차 — 위치 · 1개 시간 · 레벨 · 재료까지(제작 시간제)

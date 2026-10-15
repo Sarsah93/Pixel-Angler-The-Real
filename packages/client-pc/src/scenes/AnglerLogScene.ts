@@ -12,9 +12,10 @@ import {
   FISH_DATABASE, getSpotById, SHORE_CREATURE_DATABASE,
   DISCOVERY_SOURCE_LABEL, REGION_AREA_NODES, WORLD_NODE_DATABASE, getRegionById,
   FIRE_RECIPES, RECIPE_LORE, isVariantRecipe, dishVariantCandidates, dishDiscoveryId, dishDiscoveryName, dishBaseName,
+  dishVariantKind, dishDiscoveryIdsFor,
   resolveLegal, formatSeasons,
 } from '@tra/core';
-import type { ShoreCreatureCategory, DiscoveryKind, ShoreCreature } from '@tra/core';
+import type { ShoreCreatureCategory, DiscoveryKind, ShoreCreature, DishVariantKind } from '@tra/core';
 import { TideLoreStore } from '../store/TideLoreStore.js';
 import { DiscoveryStore } from '../store/DiscoveryStore.js';
 import { GuideTour, maybeStartTour, type TourOptions } from '../ui/GuideTour.js';
@@ -22,6 +23,7 @@ import { StoryStore } from '../store/StoryStore.js';
 import { FISH_TEXTURE, fitFishTexture, resolveFishTexture } from '../data/FishTextures.js';
 import { itemWikiByCategory, type WikiItemEntry } from '../data/WikiCatalog.js';
 import { ItemDetailPanel } from '../ui/ItemDetailPanel.js';
+import { restoreHandCursor } from '../ui/DraggablePanel.js';
 import type { InvItem } from '../store/InventoryStore.js';
 import { createItemIcon } from '../ui/ItemIcon.js';
 import { CATEGORY_LABEL } from '../store/InventoryStore.js';
@@ -31,6 +33,14 @@ import { fadeOutThen } from './SceneFade.js';
 import { ensureForageDotTextures, forageSpotTexKey, forageTexKey } from './field/ForageSystem.js';
 
 type LogTab = 'encyclopedia' | 'creatures' | 'items' | 'dishes' | 'history';
+
+/** 254차 — 요리 도감: 변형 레시피의 주재료 갈래별 목록 부제 · 미발견 힌트 (조개탕에 「다른 어종을」은 틀린 말이다) */
+const DISH_KIND_SUB: Record<DishVariantKind, string> = {
+  fish: '주재료 어종별 변형', squid: '오징어 종류별 변형', eel: '장어 종류별 변형', shellfish: '조개 종류별 변형',
+};
+const DISH_KIND_HINT: Record<DishVariantKind, string> = {
+  fish: '다른 어종을 사용해 보세요', squid: '다른 오징어를 사용해 보세요', eel: '다른 장어를 사용해 보세요', shellfish: '다른 조개를 사용해 보세요',
+};
 
 /** 해양생물 카테고리 라벨 (위키 카드용) — 188차: 카테고리 이모지 폐기, 생물 도트 그림으로(§8-8) */
 const CREATURE_CAT_LABEL: Record<ShoreCreatureCategory, string> = {
@@ -61,6 +71,8 @@ export class AnglerLogScene extends Phaser.Scene {
   private itemCatFilter: InvCategory = 'gear';
   /** 요리 도감 — 선택한 레시피 (156차) */
   private dishRecipeSel: string = 'stew_red';
+  /** 요리 도감 — 변형 목록 쪽 (254차 — 레시피 여덟이 각각 수십 종으로 갈라져 한 판에 다 못 담는다). 레시피를 바꾸면 0 */
+  private dishPage = 0;
   /** 240차 — 아이템 위키 카드 클릭 상세(가방 [상세보기]와 같은 창) */
   private detailPanel?: ItemDetailPanel;
 
@@ -664,14 +676,23 @@ export class AnglerLogScene extends Phaser.Scene {
   // ─────────────────────────────────────────────
   // 1c. 요리 도감 탭 (156차) — 레시피 × 주재료 변형. 발견한 변형만 이름을 보이고 나머지는 ???
   // ─────────────────────────────────────────────
-  /** 레시피별 (발견 수 / 후보 수) — 변형 레시피는 어종 후보, 나머지는 아이템 위키 1건 */
+  /**
+   * 레시피별 (발견 수 / 후보 수) — 변형 레시피는 주재료 후보, 전복죽은 1건.
+   * 254차 — 변형이 되기 전에 만든 요리(지리 · 구이 …)는 주재료 없이 `generic`으로 기록돼 있다 → 한 항목으로 살려 센다.
+   */
   private dishProgressOf(recipeId: string): { found: number; total: number } {
+    const generic = DiscoveryStore.isDiscovered('dish', dishDiscoveryId(recipeId, null));
     if (isVariantRecipe(recipeId)) {
       const cands = dishVariantCandidates(recipeId);
-      const found = cands.filter((sp) => DiscoveryStore.isDiscovered('dish', dishDiscoveryId(recipeId, sp))).length;
-      return { found, total: cands.length };
+      const found = cands.filter((sp) => this.dishVariantFoundId(recipeId, sp) !== null).length;
+      return { found: found + (generic ? 1 : 0), total: cands.length + (generic ? 1 : 0) };
     }
-    return { found: DiscoveryStore.isDiscovered('dish', dishDiscoveryId(recipeId, null)) ? 1 : 0, total: 1 };
+    return { found: generic ? 1 : 0, total: 1 };
+  }
+
+  /** 이 (레시피 × 주재료) 항목을 발견한 기록 id — 정본 id 또는 옛 id(밤 참돔). 없으면 null */
+  private dishVariantFoundId(recipeId: string, sp: string): string | null {
+    return dishDiscoveryIdsFor(recipeId, sp).find((id) => DiscoveryStore.isDiscovered('dish', id)) ?? null;
   }
 
   private renderDishes(): void {
@@ -704,11 +725,12 @@ export class AnglerLogScene extends Phaser.Scene {
       const cnt = this.add.text(listW / 2 - 12, -8, `${p.found} / ${p.total}`, {
         fontFamily: font, fontSize: '11px', color: p.found > 0 ? '#4af2a1' : '#607b8e',
       }).setOrigin(1, 0.5);
-      const sub = clampTextWidth(this.add.text(-listW / 2 + 12, 10, isVariantRecipe(r.id) ? '주재료 어종별 변형' : (r.family === 'stew_clear' ? '탕 · 국' : ''), {
+      const kind = dishVariantKind(r.id);
+      const sub = clampTextWidth(this.add.text(-listW / 2 + 12, 10, kind ? DISH_KIND_SUB[kind] : (r.family === 'stew_clear' ? '탕 · 국' : ''), {
         fontFamily: font, fontSize: '10px', color: '#8faabf',
       }).setOrigin(0, 0.5), listW - 24);
       btn.add([bg, name, cnt, sub]);
-      btn.on('pointerdown', () => { this.dishRecipeSel = r.id; this.renderCurrentTab(); });
+      btn.on('pointerdown', () => { if (this.dishRecipeSel !== r.id) this.dishPage = 0; this.dishRecipeSel = r.id; this.renderCurrentTab(); });
       this.tabContainer?.add(btn);
     });
 
@@ -740,11 +762,15 @@ export class AnglerLogScene extends Phaser.Scene {
 
     // 변형 목록 — 발견한 것은 이름·발견 정보, 나머지는 ??? + 힌트 (§8-10 — 어종 이름을 주지 않는다)
     const entries: { name: string; foot: string | null; found: boolean }[] = [];
+    const kind = dishVariantKind(r.id);
     if (isVariantRecipe(r.id)) {
       const base = dishBaseName(r.id, r.nameKo, r.nameEn, '???', '???');
+      // 254차 — 변형이 되기 전에 만든 기록(generic)은 레시피 이름 그대로 한 줄
+      const genericId = dishDiscoveryId(r.id, null);
+      if (DiscoveryStore.isDiscovered('dish', genericId)) entries.push({ name: r.nameKo, foot: this.discoveryLine('dish', genericId), found: true });
       for (const sp of dishVariantCandidates(r.id)) {
-        const id = dishDiscoveryId(r.id, sp);
-        if (DiscoveryStore.isDiscovered('dish', id)) entries.push({ name: dishDiscoveryName(id), foot: this.discoveryLine('dish', id), found: true });
+        const id = this.dishVariantFoundId(r.id, sp);
+        if (id) entries.push({ name: dishDiscoveryName(id), foot: this.discoveryLine('dish', id), found: true });
         else entries.push({ name: base.ko, foot: null, found: false });
       }
       entries.sort((a, b) => Number(b.found) - Number(a.found));
@@ -758,7 +784,12 @@ export class AnglerLogScene extends Phaser.Scene {
     }
     const colW = Math.floor((paneW - 32 - 12) / 2), eh = 40;
     const maxRows = Math.max(1, Math.floor((paneY + paneH - 12 - cy) / (eh + 6)));
-    const shown = entries.slice(0, maxRows * 2);
+    // 254차 — 한 판에 못 담으면 쪽으로 넘긴다(◀ n / m ▶ — 머리줄 오른쪽 · 조용한 잘림 금지). 발견한 것이 앞쪽이다
+    const perPage = maxRows * 2;
+    const maxPage = Math.max(0, Math.ceil(entries.length / perPage) - 1);
+    this.dishPage = Math.min(Math.max(0, this.dishPage), maxPage);
+    if (maxPage > 0) this.renderDishPager(paneX + paneW - 16, hdr.y + hdr.height / 2, maxPage);
+    const shown = entries.slice(this.dishPage * perPage, (this.dishPage + 1) * perPage);
     shown.forEach((e, i) => {
       const col = i % 2, row = Math.floor(i / 2);
       const x = paneX + 16 + col * (colW + 12), y = cy + row * (eh + 6);
@@ -769,15 +800,37 @@ export class AnglerLogScene extends Phaser.Scene {
         fontFamily: e.found ? font : '"Press Start 2P", monospace', fontSize: e.found ? '13px' : '10px',
         color: e.found ? '#e8f4fd' : '#2a5a8a', fontStyle: e.found ? 'bold' : 'normal',
       }), colW - 20);
-      const ft = clampTextWidth(this.add.text(x + 10, y + 25, e.found ? (e.foot ?? '직접 조리') : '다른 어종을 사용해 보세요', {
+      const ft = clampTextWidth(this.add.text(x + 10, y + 25, e.found ? (e.foot ?? '직접 조리') : DISH_KIND_HINT[kind ?? 'fish'], {
         fontFamily: font, fontSize: '10px', color: e.found ? '#8fd4b8' : '#3a5a78',
       }), colW - 20);
       this.tabContainer?.add([g, nm, ft]);
     });
-    if (entries.length > shown.length) {
-      const more = this.add.text(paneX + paneW - 16, paneY + paneH - 22, `외 ${entries.length - shown.length}종`, { fontFamily: font, fontSize: '10px', color: '#607b8e' }).setOrigin(1, 0);
-      this.tabContainer?.add(more);
-    }
+  }
+
+  /** 254차 — 요리 도감 변형 목록 쪽 넘김 (◀ n / m ▶) — 오른쪽 끝 `right`에 맞춰 머리줄 높이 `cy`에 둔다 */
+  private renderDishPager(right: number, cy: number, maxPage: number): void {
+    const font = '"Noto Sans KR", sans-serif';
+    const mk = (x: number, label: string, enabled: boolean, onClick: () => void): void => {
+      const btn = this.add.container(x, cy).setSize(26, 20);
+      const bg = this.add.rectangle(0, 0, 26, 20, 0x1f3d5a).setStrokeStyle(1, 0x2a5a8a);
+      const t = this.add.text(0, 0, label, { fontFamily: font, fontSize: '11px', color: enabled ? '#ffffff' : '#607b8e' }).setOrigin(0.5);
+      btn.add([bg, t]);
+      if (enabled) {
+        btn.setInteractive({ hitArea: new Phaser.Geom.Rectangle(-13, -10, 26, 20), hitAreaCallback: Phaser.Geom.Rectangle.Contains, useHandCursor: true });
+        btn.on('pointerdown', onClick);
+        btn.on('pointerover', () => bg.setFillStyle(0x2a5a8a));
+        btn.on('pointerout', () => bg.setFillStyle(0x1f3d5a));
+      }
+      this.tabContainer?.add(btn);
+    };
+    const nextX = right - 13;
+    const label = this.add.text(nextX - 21, cy, `${this.dishPage + 1} / ${maxPage + 1}`, {
+      fontFamily: 'monospace', fontSize: '12px', color: '#e8f4fd',
+    }).setOrigin(1, 0.5);
+    this.tabContainer?.add(label);
+    // 다시 그리면 누른 단추가 사라져 손 커서가 풀린다 — 같은 자리 단추가 아직 눌리면 되살린다
+    mk(nextX, '▶', this.dishPage < maxPage, () => { this.dishPage++; this.renderCurrentTab(); if (this.dishPage < maxPage) restoreHandCursor(this); });
+    mk(label.x - label.width - 21, '◀', this.dishPage > 0, () => { this.dishPage--; this.renderCurrentTab(); if (this.dishPage > 0) restoreHandCursor(this); });
   }
 
   // ─────────────────────────────────────────────

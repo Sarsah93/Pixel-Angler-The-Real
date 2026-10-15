@@ -332,6 +332,29 @@ export interface ShellfishCookingProfile extends SeafoodCookingProfile {
   shellYield: number;
 }
 
+/**
+ * 효과를 움직이는 재료 특성 (Stage 7 — 확장 스펙 §3~11). 프로필 필드 그대로 + 두 파생값:
+ * `clean` = 1 − 비린 향(fishiness) · `freshness` = 투입 당시 주재료 신선도(0~1).
+ */
+export type DishEffectDriver =
+  | 'fatness' | 'texture' | 'clean' | 'flavorStrength' | 'brothContribution'
+  | 'moistureRetention' | 'sweetness' | 'freshness';
+
+/**
+ * 레시피 하나의 어종별 효과 보정 (`TUNING.cook.variantEffect[recipeId]`).
+ * 재료 점수 s = Σ(가중치 × 특성) / Σ가중치 (0~1) → 크기 ×(1 + magSpan·(s − 0.5)) · 지속 ×(1 + durSpan·(s − 0.5)).
+ */
+export interface DishVariantEffectTuning {
+  /** 특성별 가중치 — 합으로 나누므로 꼭 1일 필요는 없다 */
+  weights: Partial<Record<DishEffectDriver, number>>;
+  /** 효과 크기(%) 폭 — 0이면 크기는 레시피 기본값 그대로 */
+  magSpan: number;
+  /** 효과 지속(분) 폭 */
+  durSpan: number;
+  /** 중량 배율 기준(g) — 없으면 `dishEffect.refWeightG`. 1인분 요리(구이 · 볶음)는 가볍게 잡는다 */
+  refWeightG?: number;
+}
+
 /** 음식 효과 종류 (§26 — 닫힌 유니온) */
 export type FoodEffectKind =
   | 'satiety' | 'hydration' | 'fatigue_recovery' | 'fishing_focus'

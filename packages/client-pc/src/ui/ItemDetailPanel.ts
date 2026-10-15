@@ -32,7 +32,7 @@ import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { DraggablePanel } from './DraggablePanel.js';
 import { cvCss, shapeCuesOn } from './ColorAssist.js';
 import { clampTextWidth } from './TextFit.js';
-import { createItemIcon, cropPortraitTexture, itemArtKeyOf } from './ItemIcon.js';
+import { createItemIcon, cropPortraitTexture, itemArtKeyOf, itemImageKeyOf } from './ItemIcon.js';
 import { resolveFishTexture } from '../data/FishTextures.js';
 import { netReachFromName,
   InvItem, InventoryStore, CONDITION_LABEL, CONDITION_COLOR, CONDITION_DESC,
@@ -944,8 +944,11 @@ export class ItemDetailPanel extends DraggablePanel {
     //  어획물은 iconTexture가 비어도(구세이브) speciesId로 텍스처를 폴백 해소.
     const fishTexKey: string | undefined = (() => {
       // 241차 — 작물 초상(사진 → 도트)이 있으면 어종처럼 크게(cropimg_*)
-      const portrait = cropPortraitTexture(scene, item.iconTexture, 999);
+      const portrait = cropPortraitTexture(scene, item.iconTexture, 999) ?? cropPortraitTexture(scene, itemArtKeyOf(item), 999);
       if (portrait) return portrait;
+      // 255차 — 장비 밖 아이템 그림(Gemini — 아이템 id · 16px 키) · 같은 음식 별칭(상점 전복죽 = 불요리 전복죽)
+      const image = itemImageKeyOf(scene, item);
+      if (image) return image;
       // 코드로 그린 아이템 그림이 있으면 그것을 크게 보인다(아이템 id 로 찾는다 — `px:` 키 · 이모지뿐인 옛 아이템 포함)
       const art = itemArtKeyOf(item);
       if (art && scene.textures.exists(art)) return art;

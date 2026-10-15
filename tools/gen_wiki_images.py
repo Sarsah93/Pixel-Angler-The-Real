@@ -37,6 +37,11 @@ FORAGE_SRC = os.path.join(ROOT, 'food assets/forage/art')
 # 249차 — 낚시 장비 그림도 카드만 싣는다 → 원본 표(`TackleTextures.ts` TACKLE_IMAGE_FILES)로 food assets/tackle/를 읽는다
 TACKLE_TEX = os.path.join(ROOT, 'packages/client-pc/src/data/TackleTextures.ts')
 TACKLE_SRC = os.path.join(ROOT, 'food assets/tackle')
+# 255차 — 장비 밖 아이템 그림(Gemini · 씨앗 봉투 합성)도 카드만 싣는다 → `ItemImages.ts` ITEM_IMAGE_FILES로 food assets/items/를 읽는다
+ITEM_IMG_TEX = os.path.join(ROOT, 'packages/client-pc/src/data/ItemImages.ts')
+ITEM_IMG_SRC = os.path.join(ROOT, 'food assets/items')
+# 255차 — 불요리 완성 요리 그림(`food_<레시피>`) — BootScene이 반복문으로 싣는 것까지 public/food/를 직접 훑는다
+FOOD_DIR = os.path.join(PUBLIC, 'food')
 ICON_ART = os.path.join(ROOT, 'packages/client-pc/src/data/PixelIconArt.ts')
 # 197차 — 스킬 아이콘(16x16 · 같은 형식). 위키 「스킬」 탭 카드에 쓴다 → `sk_<id>.png` · manifest 키 `sk:<id>`
 SKILL_ART = os.path.join(ROOT, 'packages/client-pc/src/data/SkillIconArt.ts')
@@ -145,6 +150,24 @@ def save(img: Image.Image, path: str) -> int:
     return os.path.getsize(path)
 
 
+def parse_item_image_files() -> dict:
+    """255차 — ItemImages.ts `ITEM_IMAGE_FILES`(텍스처 키 → 원본 파일). 값은 `food assets/items/` 기준 절대 경로."""
+    if not os.path.isfile(ITEM_IMG_TEX):
+        return {}
+    src = open(ITEM_IMG_TEX, encoding='utf-8').read()
+    body = src[src.index('export const ITEM_IMAGE_FILES'):]
+    body = body[:body.index('};')]
+    return {m.group(1): os.path.join(ITEM_IMG_SRC, m.group(2))
+            for m in re.finditer(r"^\s+([a-z0-9_]+):\s*'([^']+\.png)'", body, re.M)}
+
+
+def parse_food_files() -> dict:
+    """255차 — public/food/*.png → `food_<이름>`(불요리 레시피 그림 · 모둠회)."""
+    if not os.path.isdir(FOOD_DIR):
+        return {}
+    return {f'food_{n[:-4]}': os.path.join(FOOD_DIR, n) for n in os.listdir(FOOD_DIR) if n.endswith('.png')}
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument('--out', default=os.path.join(ROOT, 'tools/wiki_img'))
@@ -159,6 +182,9 @@ def main() -> int:
     sources.update(parse_fish_files())
     sources.update(parse_forage_files())
     sources.update(parse_tackle_files())
+    for k, v in parse_food_files().items():
+        sources.setdefault(k, v)
+    sources.update(parse_item_image_files())   # 옛 코드 그림 키(`art_*`)를 Gemini 그림으로 바꾼 것도 이 표가 이긴다
     for key, src in sorted(sources.items()):
         if key in SKIP_KEYS or key.startswith(SKIP_PREFIX):
             continue

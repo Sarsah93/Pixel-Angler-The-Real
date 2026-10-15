@@ -89,6 +89,11 @@ const FORAGE_TO_ING: Record<string, string> = {
   clam_varicosa: 'clam', mytilus_coruscus: 'mussel', oyster_gigas: 'oyster', haliotis_discus: 'abalone',
 };
 
+/** 채집 생물이 어떤 주재료가 되는가 (254차 — 조개탕 변형 후보 · 이름). 재료가 아니면 undefined */
+export function forageMainIngredient(creatureId: string): string | undefined {
+  return FORAGE_TO_ING[creatureId];
+}
+
 /** 어종이 어떤 주재료가 되는가 (156차 — 요리 도감 변형 후보 산출용) */
 export function speciesMainIngredient(speciesId: string): 'fish' | 'eel' | 'squid' {
   if (EEL_SPECIES.has(speciesId)) return 'eel';

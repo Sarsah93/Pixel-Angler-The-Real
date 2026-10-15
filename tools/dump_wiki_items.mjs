@@ -26,8 +26,27 @@ if (!ESB) { console.error('esbuild 바이너리를 찾지 못했습니다 — pn
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'wikiitems-'));
 const entry = path.join(ROOT, 'packages/client-pc/src/__wiki_items_entry.ts');
 fs.writeFileSync(entry, `import { buildItemWikiCatalog } from './data/WikiCatalog.js';
+import { ITEM_ART_BY_ID, ITEM_ART_BY_PREFIX, ITEM_ART_BY_PX } from './data/ItemArtManifest.js';
+import { ITEM_IMAGE_BY_ID, ITEM_IMAGE_BY_PX, ITEM_CROP_PORTRAIT_ALIAS, ITEM_TEXTURE_ALIAS } from './data/ItemImages.js';
+// 255차 — 게임(ui/ItemIcon.ts createItemIcon)과 같은 순서로 그림 키를 고른다(위키 manifest 키 · imgKey).
+//  작물 초상(별칭 포함) → Gemini 아이템 그림(id · 16px 키) → 같은 음식 별칭 → 코드 그림 키 → 원래 텍스처 키
+const artKeyOf = (id, t) => {
+  if (t && !t.startsWith('px:')) return undefined;
+  if (id) {
+    if (ITEM_ART_BY_ID[id]) return ITEM_ART_BY_ID[id];
+    for (const [p, k] of ITEM_ART_BY_PREFIX) if (id.startsWith(p)) return k;
+  }
+  return t ? ITEM_ART_BY_PX[t] : undefined;
+};
+const imgKeyOf = (e) => {
+  const t = e.iconTexture || '', art = artKeyOf(e.id, t);
+  const crop = ITEM_CROP_PORTRAIT_ALIAS[t] || (art && ITEM_CROP_PORTRAIT_ALIAS[art]);
+  if (crop) return 'px:' + crop;
+  if (t.startsWith('px:crop_')) return t;
+  return ITEM_IMAGE_BY_ID[e.id] || ITEM_IMAGE_BY_PX[t] || ITEM_TEXTURE_ALIAS[t] || (art && ITEM_TEXTURE_ALIAS[art]) || art || t;
+};
 const list = buildItemWikiCatalog().map((e) => ({
-  id: e.id, name: e.name, iconTexture: e.iconTexture,
+  id: e.id, name: e.name, iconTexture: e.iconTexture, imgKey: imgKeyOf(e),
   category: e.category, subCategory: e.subCategory, basePrice: e.basePrice,
   desc: e.desc ?? '', soldAt: e.soldAt, isSeed: e.isSeed, tpl: e.tpl,
 }));

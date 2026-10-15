@@ -24,7 +24,7 @@ import {
   CRAFT_BLUEPRINTS, CRAFT_GROUP_LABEL, CRAFT_STATION_LABEL, CRAFT_QUALITY_LABEL,
   allChoiceLines, allNarrativeLines, allInquiryLines, allTalkLines,
   FIRE_RECIPES, COOK_INGREDIENTS, HEAT_SOURCES, COOKWARES, FUELS,
-  RECIPE_LORE, DISH_VARIANT_LORE, RECIPE_EFFECTS, FOOD_EFFECT_KIND_KO, DISH_MODIFIER_KO, DISH_MODIFIER_EN,
+  RECIPE_LORE, DISH_VARIANT_LORE, RECIPE_EFFECTS, FOOD_EFFECT_KIND_KO, DISH_MODIFIER_KO, DISH_MODIFIER_EN, allDishVariantLines,
   fatnessLabel, textureLabel, fishinessLabel, flavorLabel,
   TITLE_DATABASE, TIDE_PHASE_PREF_GROUPS, TIDE_FLOW_LABEL_KO, TIDE_FLOW_LABEL_EN, TIDE_FLOW_NOTE_KO, TIDE_FLOW_NOTE_EN, QUEST_ITEMS,
   CROP_DATABASE, FARM_SUPPLIES, CROP_RAW_EAT, CROP_NO_RAW, carePlanSummaryKo, carePlanSummaryEn,
@@ -138,12 +138,15 @@ function buildRuntimeDict(): void {
     if (l.ingredientTipKo && l.ingredientTipEn) put(l.ingredientTipKo, l.ingredientTipEn);
   }
   for (const bySp of Object.values(DISH_VARIANT_LORE)) for (const v of Object.values(bySp)) put(v.descKo, v.descEn);
+  // 254차 — 요리 개체 이름(「우럭 지리 (맑은탕)」 · 「싱싱한 고등어구이」 · 「바지락탕」 …) · 미발견 자리 · 변형 설명.
+  //   개체 `nameEn`과 같은 core 함수가 짝을 낸다(정확 일치 — 「(.+) 매운탕」 같은 규칙이 어종 이름을 못 찾는 일이 없다)
+  for (const [ko, en] of allDishVariantLines()) put(ko, en);
   runtimeRules.length = 0;
   for (const e of Object.values(RECIPE_EFFECTS)) {
     put(e.nameKo, e.nameEn); put(e.descKo, e.descEn);
-    // ⚠ 실제 표시 문장은 지속 시간이 개체마다 다르다(`32분 동안 …`) — 정확 일치로는 안 잡힌다
-    const koRe = e.descKo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/^\d+분/, '(\\d+)분');
-    runtimeRules.push([new RegExp(`^${koRe}$`), e.descEn.replace(/for \d+ min/, 'for $1 min')]);
+    // ⚠ 실제 표시 문장은 지속 시간과 크기가 개체마다 다르다(`37분 동안 … -10%` — 254차 주재료 보정) — 정확 일치로는 안 잡힌다
+    const koRe = e.descKo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/^\d+분/, '(\\d+)분').replace(/\d+%$/, '(\\d+)%');
+    runtimeRules.push([new RegExp(`^${koRe}$`), e.descEn.replace(/for \d+ min/, 'for $1 min').replace(/\d+%/, '$2%')]);
   }
   const EFFECT_KIND_EN: Record<string, string> = {
     satiety: 'hunger drain', hydration: 'hydration', fatigue_recovery: 'fatigue recovery', fishing_focus: 'fishing focus',

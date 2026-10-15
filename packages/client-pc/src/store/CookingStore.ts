@@ -16,7 +16,7 @@ import {
   TUNING, getHeatSource, getCookware, getFuel, getFireRecipe, getCookIngredient, ingredientOfItem,
   createCookSession, canAddIngredient, addIngredient as coreAddIngredient, setHeat as coreSetHeat, flip as coreFlip,
   stepCook, finishCook, dishStarsAt, dishValueKrw, dishVitalsMult, dishItemName, checkComposition,
-  isVariantRecipe, createDishInstance, FISH_DATABASE, dishDiscoveryId, isFarmProduce,
+  isVariantRecipe, createDishInstance, cookSpeciesNames, recipeEffectOf, dishDiscoveryId, isFarmProduce,
   type DeployedStove, type HeatLevel, type DishData, type DishInstance, type CookContent, type CookEnv, type FireRecipeDef, type CookwareDef, type PrimaryIngredientInfo,
 } from '@tra/core';
 import { GameState } from './GameState.js';
@@ -198,7 +198,7 @@ class CookingStoreClass {
     const freshTable: Record<string, number> = { live: 1, fresh: produce === 'homegrown' ? 1 : 0.92, chilled: 0.9, normal: 0.65, thawed: 0.55 };
     const fresh01 = item.condition ? freshTable[item.condition] ?? 0.9 : 0.95;
     if (def.unit === 'g') {
-      // 156차 — 주재료 어종은 아이템이 사라진 뒤에도 요리 개체(매운탕 3종 등)가 알아야 한다
+      // 156차 — 주재료 어종은 아이템이 사라진 뒤에도 요리 개체가 알아야 한다(254차 — 전복죽을 뺀 여덟 요리 · 채집 조개도 생물 id)
       const r = this.addIngredientRaw(st, m.ing, m.units, fresh01, item.id, m.weightG, item.speciesId);
       if (r.ok) { InventoryStore.removeItem(item.id, false); if (item.toxin) st.toxin = true; if (item.traded) st.traded = true; }   // 229차 — 독은 냄비로 옮겨 간다 · 233차 거래품 계보도
       return r;
@@ -268,7 +268,7 @@ class CookingStoreClass {
     const dish = finishCook(s, r, cw, {
       nowMs: Date.now(), skillRank: rank, stoveKind: this.isHome(st) ? 'home' : 'field', halfStar: rank >= 2,
     });
-    // 156차 — 변형 레시피(매운탕 …)는 주재료 어종으로 요리 개체를 만든다. 나머지 레시피는 154차 경로 그대로
+    // 156차 — 변형 레시피는 주재료로 요리 개체(이름 · 효과 · 도감 항목)를 만든다. 254차 — 전복죽만 154차 경로(「전복죽 (별 N개)」)
     const seq = InventoryStore.nextCatchSeq();
     const inst = isVariantRecipe(r.id) ? createDishInstance(r, dish, this.primaryIngredientOf(s.contents, r), seq) : null;
     const tpl = this.dishTemplate(dish, r, seq, inst);
@@ -304,6 +304,8 @@ class CookingStoreClass {
   /**
    * 주재료 — 가장 무거운 main 역할 재료(어종이 남아 있는 것). 없으면 generic(어종 null).
    * 신선도는 그 재료의 투입 당시 값이다(§10 — 완성 시점 신선도의 근거).
+   * 254차 — 어종(어획물 · 필렛 · 서더리 · 두족류 손질 산출)과 채집 생물(조개탕의 바지락 · 굴 · 홍합)을 모두 이름으로 찾는다.
+   *  정본 id(밤 참돔 = 참돔) · 요리 이름(조피볼락 → 우럭)은 core `createDishInstance`가 고른다.
    */
   private primaryIngredientOf(contents: CookContent[], r: FireRecipeDef): PrimaryIngredientInfo {
     const mainIngs = new Set<string>();
@@ -311,7 +313,7 @@ class CookingStoreClass {
     const mains = contents.filter((c) => mainIngs.has(c.ing));
     let best = mains[0];
     for (const c of mains) if ((c.weightG ?? 0) > (best?.weightG ?? 0) || (!best?.speciesId && c.speciesId)) best = c;
-    const sp = best?.speciesId ? FISH_DATABASE.find((f) => f.id === best!.speciesId) : undefined;
+    const sp = cookSpeciesNames(best?.speciesId);
     const weightG = mains.reduce((a, c) => a + (c.weightG ?? 0), 0) || (best?.weightG ?? 0);
     return {
       speciesId: sp?.id ?? null, nameKo: sp?.nameKo ?? null, nameEn: sp?.nameEn ?? null,
@@ -319,7 +321,11 @@ class CookingStoreClass {
     };
   }
 
-  /** 요리 아이템 템플릿 — 이름·아이콘·회복치(별점 반영)·판매 기준가. `inst`가 있으면(변형 레시피) 이름·회복치·효과를 개체에서 읽는다 */
+  /**
+   * 요리 아이템 템플릿 — 이름·아이콘·회복치(별점 반영)·판매 기준가. `inst`가 있으면(변형 레시피) 이름·회복치·효과를 개체에서 읽는다.
+   * 효과 중 실제로 몸에 듣는 것은 포만감 계열(`satiety` — 매운탕 「포만감」 · 「든든한 국물」 · 생선조림 「든든함」 = 드레인 버프)뿐이다.
+   * 나머지 종류(맑은 속 · 고소한 한 끼 · 활력 · 개운함 · 원기회복)는 상세보기에 수치로만 실린다(확장 스펙 §0.5 — Stage 9에 버프 축).
+   */
   private dishTemplate(dish: DishData, r: FireRecipeDef, seq: number, inst: DishInstance | null): InvItemTemplate {
     const now = Date.now();
     const stars = dishStarsAt(dish, r, now);
@@ -337,17 +343,22 @@ class CookingStoreClass {
       ...(v.drainBuffMult && v.drainBuffMin && !dish.burnt && stars.stars >= 3 ? { drainBuffMult: v.drainBuffMult, drainBuffMin: v.drainBuffMin } : {}),
     };
     if (!inst) return base;
-    // 156차 — 개체 결과가 이름·회복치·판매가를 대체한다. 효과는 포만감(드레인 버프)만 실기전(§0.5)
-    const sat = inst.result.effects.find((e) => e.kind === 'satiety');
-    const { drainBuffMult: _m, drainBuffMin: _n, ...rest } = base;
-    return {
-      ...rest,
+    // 156차 — 개체 결과가 이름·회복치·판매가를 대체한다
+    const fromInst = {
       name: inst.result.nameKo,
       basePrice: inst.result.sellPrice,
       dishInstance: inst,
       hungerRestore: inst.result.hungerRestore, hydrationRestore: inst.result.hydrationRestore,
-      ...(sat ? { drainBuffMult: Math.max(0.5, 1 - sat.magnitude), drainBuffMin: sat.durationMin } : {}),
     };
+    if (recipeEffectOf(r.id)?.kind === 'satiety') {
+      // 포만감 계열 — 개체 효과(주재료로 보정된 크기 · 지속)가 드레인 버프를 대신한다(156차 매운탕 · 254차 조림)
+      const sat = inst.result.effects.find((e) => e.kind === 'satiety');
+      const { drainBuffMult: _m, drainBuffMin: _n, ...rest } = base;
+      return { ...rest, ...fromInst, ...(sat ? { drainBuffMult: Math.max(0.5, 1 - sat.magnitude), drainBuffMin: sat.durationMin } : {}) };
+    }
+    // 254차 — 그 밖의 효과는 아직 표시만이므로, 154차 보양 드레인 버프(지리 · 조개탕 · 장어구이 — 별 3개 이상)는 그대로 둔다.
+    //  (변형이 되면서 이 버프가 사라지면 같은 요리가 전보다 덜 듣게 된다)
+    return { ...base, ...fromInst };
   }
 
   // ═══════════════════════════════════════════════

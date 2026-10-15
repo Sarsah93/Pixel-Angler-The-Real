@@ -14,6 +14,7 @@
 그림을 고치려면 icons_*.py 의 함수를 고치고 다시 돌린다. PNG 를 손으로 고치지 않는다(다시 구우면 덮인다).
 
 249차 — 낚시 장비 그림 표(`src/data/TackleTextures.ts` TACKLE_IMAGE_FILES)에 오른 키는 「바깥 그림」이다(Gemini 그림 카드).
+255차 — 장비 밖 아이템 그림 표(`src/data/ItemImages.ts` — ITEM_IMAGE_FILES · 작물 초상 별칭 · 같은 음식 별칭)에 오른 키도 같다.
   그 그림은 굽지 않고 drawn/ PNG 를 지우며 ITEM_ART_ASSETS 에서도 뺀다(BootScene 이 tackle/ 카드로 싣는다).
   아이템 id · 접두사 · 16px 키 연결(BY_ID · BY_PREFIX · BY_PX)은 그대로 남긴다 — `iconTexture` 없는 옛 세이브도 새 그림이 나온다.
 """
@@ -32,15 +33,29 @@ MANIFEST = os.path.join(ROOT, 'packages', 'client-pc', 'src', 'data', 'ItemArtMa
 TACKLE_TS = os.path.join(ROOT, 'packages', 'client-pc', 'src', 'data', 'TackleTextures.ts')
 
 
-def external_keys():
-    """249차 — 낚시 장비 그림 표에 오른 텍스처 키(바깥 그림 — 여기서 굽지 않는다)"""
+ITEMS_TS = os.path.join(ROOT, 'packages', 'client-pc', 'src', 'data', 'ItemImages.ts')
+
+
+def _table_keys(path, name, value_re):
     import re
-    if not os.path.isfile(TACKLE_TS):
+    if not os.path.isfile(path):
         return set()
-    src = open(TACKLE_TS, encoding='utf-8').read()
-    body = src[src.index('export const TACKLE_IMAGE_FILES'):]
+    src = open(path, encoding='utf-8').read()
+    if f'export const {name}' not in src:
+        return set()
+    body = src[src.index(f'export const {name}'):]
     body = body[:body.index('};')]
-    return set(re.findall(r"^\s+([a-z0-9_]+):\s*'[^']+\.png'", body, re.M))
+    return set(re.findall(r"^\s+'?([a-z0-9_:]+)'?:\s*'" + value_re + "'", body, re.M))
+
+
+def external_keys():
+    """249차 — 낚시 장비 그림 표에 오른 텍스처 키(바깥 그림 — 여기서 굽지 않는다).
+    255차 — 장비 밖 아이템 그림(Gemini · `ItemImages.ts`)과 별칭(작물 초상 · 같은 음식 그림)이 가리키는 옛 그림 키도 굽지 않는다."""
+    keys = _table_keys(TACKLE_TS, 'TACKLE_IMAGE_FILES', r"[^']+\.png")
+    keys |= _table_keys(ITEMS_TS, 'ITEM_IMAGE_FILES', r"[^']+\.png")
+    keys |= _table_keys(ITEMS_TS, 'ITEM_CROP_PORTRAIT_ALIAS', r"[^']+")
+    keys |= {k for k in _table_keys(ITEMS_TS, 'ITEM_TEXTURE_ALIAS', r"[^']+") if not k.startswith('px:')}
+    return keys
 sys.path.insert(0, HERE)
 
 import kit  # noqa: E402

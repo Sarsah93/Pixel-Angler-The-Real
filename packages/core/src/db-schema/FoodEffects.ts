@@ -6,6 +6,9 @@
  * ⚖ 156차에 **기계적으로 적용되는 종류는 `satiety`**(허기 소모 −% = 기존 `drainBuff`)뿐이다.
  *   나머지는 데이터로 실려 상세보기에 표시되고, 버프 축은 Stage 9 밸런싱 때 `GameState`에 신설한다(§0.5).
  * ⚖ 수치는 여기(데이터)에만 — 컴포넌트에 하드코딩 금지(§43-4).
+ * ⚖ 254차 — 여기 값은 **레시피 기본값**(재료 점수 0.5)이다. 실제 개체의 크기 · 지속은 `DishFactory.scaleDishEffect`가
+ *   주재료 특성(`TUNING.cook.variantEffect`)으로 보정하고 설명 문장의 분 · %도 그 값으로 바꾼다.
+ *   설명 문장은 `^N분 …` · `… ±N%` 꼴을 지킨다(보정과 i18n 런타임 규칙이 이 자리를 갈아 끼운다).
  */
 
 import type { FoodEffectDef, FoodEffectKind } from '../types/Cooking.js';

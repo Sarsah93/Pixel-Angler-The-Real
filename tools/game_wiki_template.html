@@ -324,7 +324,10 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
     <button data-tab="quests" aria-pressed="true">조행록</button>
     <button data-tab="cooking" aria-pressed="false">요리</button>
     <button data-tab="species" aria-pressed="false">어종·수산생물</button>
-    <button data-tab="items" aria-pressed="false">아이템</button>
+    <button data-tab="it_gear" aria-pressed="false">낚시 장비</button>
+    <button data-tab="it_food" aria-pressed="false">먹을거리</button>
+    <button data-tab="it_life" aria-pressed="false">생활 · 도구</button>
+    <button data-tab="it_home" aria-pressed="false">설치 · 가구</button>
     <button data-tab="farming" aria-pressed="false">농사</button>
     <button data-tab="skills" aria-pressed="false">스킬</button>
     <button data-tab="tide" aria-pressed="false">물때 공략</button>
@@ -802,6 +805,8 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
     .map(([k, v]) => '<tr><th>' + (k && typeof k === 'object' ? k.html : esc(k)) + '</th><td>' + v + '</td></tr>').join('') + '</tbody></table>';   // 247차 — 키가 링크면 {html}
   const stars = n => '<span class="star">' + '★'.repeat(n) + '<span class="dim">' + '☆'.repeat(5 - n) + '</span></span>';
 
+  /** 255차 — 농사 탭의 아이템 갈래(농산물 `produce` · 씨앗 · 모종 `start` · 농사 도구 `tool`) */
+  const farmItems = kind => G.items.list.filter(i => i.shelf === 'farm' && i.shelfGroup === kind);
   /** 탭 정의 — 목록·분류·카드·상세를 한 곳에서 (새 탭 = 여기에 한 항목) */
   const TABS = {
     cooking: {
@@ -822,24 +827,18 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
         .filter(s => !sub || s.subgroup === sub)
         .map(toSpeciesCard),
     },
-    items: {
-      note: '상점에서 사거나 처음부터 가진 물건입니다. 대분류를 고르면 소분류 버튼이 함께 나옵니다.',
-      groups: () => [{ id: '', label: '전체', count: G.items.list.length }]
-        .concat(G.items.groups.map(g => ({ id: g.id, label: g.label, count: g.count }))),
-      subs: () => group ? uniqSubs(G.items.list.filter(i => i.group === group).map(i => i.sub)) : [],
-      list: () => G.items.list
-        .filter(i => !group || i.group === group)
-        .filter(i => !sub || i.sub === sub)
-        .map(toItemCard),
-    },
     farming: {
-      note: '텃밭 · 집 안 선반에서 기르는 작물과 농자재입니다. 갈래 버튼으로 모아 보고 난이도로 좁힌 뒤, 카드를 누르면 심는 법 · 거두기 · 손이 가는 일 · 병 · 값 · 쓰이는 곳이 한 장으로 펼쳐집니다. 밑줄 친 이름을 누르면 그 물건 · 요리 · 할 일로 건너갑니다.',
+      note: '텃밭 · 집 안 선반에서 기르는 작물과 거둔 농산물 · 씨앗 · 모종 · 농자재입니다. 갈래 버튼으로 모아 보고 난이도로 좁힌 뒤, 카드를 누르면 심는 법 · 거두기 · 손이 가는 일 · 병 · 값 · 쓰이는 곳이 한 장으로 펼쳐집니다. 밑줄 친 이름을 누르면 그 물건 · 요리 · 할 일로 건너갑니다.',
       groups: () => [{ id: '', label: '전체', count: G.farming.crops.length }]
         .concat(G.farming.groups.map(g => ({ id: g.id, label: g.label, count: g.count })))
-        .concat([{ id: '_sup', label: '농자재', count: G.farming.supplies.length }]),
-      subs: () => group === '_sup' ? [] : [{ id: '', label: '난이도 전부', count: G.farming.crops.filter(c => !group || c.cat === group).length }]
-        .concat(G.farming.tiers.map(t => ({ id: t.id, label: t.label, count: G.farming.crops.filter(c => (!group || c.cat === group) && String(c.tier) === t.id).length })).filter(t => t.count > 0)),
+        .concat([{ id: '_produce', label: '농산물', count: farmItems('produce').length }, { id: '_start', label: '씨앗 · 모종', count: farmItems('start').length },
+          { id: '_sup', label: '농자재', count: G.farming.supplies.length }]),
+      subs: () => group === '_sup' ? []
+        : (group === '_produce' || group === '_start') ? uniqSubs(farmItems(group.slice(1)).map(i => i.sub))
+        : [{ id: '', label: '난이도 전부', count: G.farming.crops.filter(c => !group || c.cat === group).length }]
+          .concat(G.farming.tiers.map(t => ({ id: t.id, label: t.label, count: G.farming.crops.filter(c => (!group || c.cat === group) && String(c.tier) === t.id).length })).filter(t => t.count > 0)),
       list: () => group === '_sup' ? G.farming.supplies.map(toSupplyCard)
+        : (group === '_produce' || group === '_start') ? farmItems(group.slice(1)).filter(i => !sub || i.sub === sub).map(toItemCard)
         : G.farming.crops.filter(c => !group || c.cat === group).filter(c => !sub || String(c.tier) === sub).map(toCropCard),
     },
     skills: {
@@ -1172,7 +1171,6 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
         body: '<div class="ssec"><h3>거래</h3>' + kvRows([
           ['값', '<b>' + nfw(sp.price) + '</b>'], ['파는 곳', esc(sp.shop)], ['종류', esc(sp.kind)], ['두는 곳', sp.site ? esc(sp.site) : null],
           ['배워야', sp.skill ? '스킬 「' + esc(sp.skill) + '」' : null],
-          ['아이템 카드', xl('items', sp.id, sp.name)],
         ]) + '</div>' +
         '<div class="ssec"><h3>쓰이는 곳</h3>' + kvRows([
           ['이 자재가 드는 일', sp.usedBy.length ? xlist(sp.usedBy.map(c => xl('farming', c.id, c.name))) : null],
@@ -1331,6 +1329,20 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
     };
   }
 
+  // 255차 — 아이템 선반 탭(낚시 장비 · 먹을거리 · 생활 · 도구 · 설치 · 가구). 농산물 · 씨앗 · 모종 · 농자재는 농사 탭
+  const shelfItems = id => G.items.list.filter(i => i.shelf === id);
+  for (const sh of G.items.shelves) {
+    TABS['it_' + sh.id] = {
+      note: sh.note,
+      groups: () => [{ id: '', label: '전체', count: shelfItems(sh.id).length }].concat(sh.groups),
+      subs: () => group ? uniqSubs(shelfItems(sh.id).filter(i => i.shelfGroup === group).map(i => i.sub)) : [],
+      list: () => shelfItems(sh.id)
+        .filter(i => !group || i.shelfGroup === group)
+        .filter(i => !sub || i.sub === sub)
+        .map(toItemCard),
+    };
+  }
+
   // ── 목록 렌더 ────────────────────────────────
   let cards = [];
   function renderCat(){
@@ -1391,8 +1403,20 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
   function openByKey(t, key){
     closeSheet();
     if (t === 'quests') { setTab('quests'); go(key); window.scrollTo({ top: 0 }); return; }
+    // 255차 — 아이템 링크(`items:<id>`)는 그 아이템이 놓인 선반 탭으로 간다(농사 물건은 농사 탭의 농산물 · 씨앗 · 모종 · 농자재)
+    let presetGroup = '';
+    if (t === 'items') {
+      const it = G.items.list.find(i => i.id === key);
+      if (!it) return;
+      if (it.shelf === 'farm') {
+        t = 'farming';
+        if (it.shelfGroup === 'tool' && G.farming.supplies.some(sp => sp.id === key)) { presetGroup = '_sup'; key = 'sup_' + key; }
+        else presetGroup = it.shelfGroup === 'start' ? '_start' : '_produce';
+      } else t = 'it_' + it.shelf;
+    }
     if (!TABS[t]) return;
     setTab(t);
+    if (presetGroup) { group = presetGroup; renderCat(); }
     const i = cards.findIndex(c => c.key === key);
     if (i >= 0) { openSheet(i); return; }
     // 분류를 다 지워도 없으면(변형 카드 등) 검색어로 남겨 둔다

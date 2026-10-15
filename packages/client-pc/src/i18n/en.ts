@@ -168,6 +168,9 @@ const EN_BASE: Record<string, string> = {
   '없음 — 탄 요리': 'None — burnt', '없음 — 품질이 낮습니다': 'None — quality too low', '탔다 — 가치 없음': 'Burnt — worthless',
   '발견한 변형': 'Discovered variants', '발견 기록': 'Discovery', '주재료 어종별 변형': 'Varies by main fish', '탕 · 국': 'Stew · soup',
   '다른 어종을 사용해 보세요': 'Try a different fish', '직접 조리': 'Cooked yourself', '??? 매운탕': '??? Maeuntang',
+  // 254차 — 요리 도감: 오징어볶음 · 장어구이 · 조개탕도 주재료로 갈라진다
+  '오징어 종류별 변형': 'Varies by squid', '장어 종류별 변형': 'Varies by eel', '조개 종류별 변형': 'Varies by shellfish',
+  '다른 오징어를 사용해 보세요': 'Try a different squid', '다른 장어를 사용해 보세요': 'Try a different eel', '다른 조개를 사용해 보세요': 'Try a different shellfish',
   '조리 요령': 'Cooking tip', '재료 요령': 'Ingredient tip',
   '온도·식감·신선도는 완성 직후부터 시간이 지날수록 떨어지고, 완성도와 판매가도 함께 내려갑니다.': 'Temperature, texture and freshness fall from the moment it is done, and completion and price go down with them.',
   '삶을 수 없습니다 (부패했거나 인벤토리 공간이 부족합니다)': "Can't boil (spoiled or no inventory space)",
@@ -1015,6 +1018,9 @@ export const EN_RULES: Rule[] = [
   [/^([\d,]+)원 \/ 100 kcal$/, (m) => `${m[1]} won / 100 kcal`],
   [/^(고급|일반) · (모듬|단품) · (\d+)점 · (\d+)g$/, (m) => `${m[1] === '고급' ? 'Premium' : 'Standard'} · ${m[2] === '모듬' ? 'assorted' : 'single'} · ${m[3]} pcs · ${m[4]}g`],
   // ── 156차 요리 개체·도감 ──
+  // 254차 — 새 개체 이름은 런타임 사전(core `allDishVariantLines`)이 통째로 잡는다. 아래 둘은 옛 세이브 이름(「조피볼락(우럭) 서더리 매운탕」)용 —
+  //   서더리를 먼저 떼야 뒤의 「(.+) 매운탕」이 「조피볼락(우럭) 서더리」를 어종 이름으로 찾다 실패하지 않는다
+  [/^(탄 |일품 |싱싱한 |기름진 )?(.+) 서더리 매운탕$/, (m, tr) => `${m[1] ? tr(m[1].trim()) + ' ' : ''}${tr(m[2])} Fish-frame Maeuntang`],
   [/^(탄 |일품 |싱싱한 |기름진 )?(.+) 매운탕$/, (m, tr) => `${m[1] ? tr(m[1].trim()) + ' ' : ''}${tr(m[2])} Maeuntang`],
   [/^(.+) · (\d+)g$/, (m, tr) => `${tr(m[1])} · ${m[2]}g`],
   [/^별 (\d) \/ 5$/, (m) => `${m[1]} / 5 stars`],

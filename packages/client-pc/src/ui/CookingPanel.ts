@@ -284,10 +284,12 @@ export class CookingPanel extends DraggablePanel {
         const isSel = this.pickRecipe === r.id;
         const bg = sc.add.rectangle(C_X, cy, C_W - 4, 44, isSel ? 0x1f4a6a : 0x122236, 0.95).setOrigin(0, 0).setStrokeStyle(1, isSel ? 0x5cd0ff : 0x2a3a4a, 1);
         // 170차 — 실사 사진이 있는 레시피는 그 그림을 쓴다(같은 family라도 그림이 다르다).
-        const icon: Phaser.GameObjects.GameObject | null = r.photoKey && sc.textures.exists(r.photoKey)
+        // 255차 — 24px 칸이므로 64px 칸 아이콘 판(`food_<레시피>__icon`)이 있으면 그것(570px 사진을 줄이면 도트가 떨린다)
+        const photo = r.photoKey && sc.textures.exists(`${r.photoKey}__icon`) ? `${r.photoKey}__icon` : r.photoKey;
+        const icon: Phaser.GameObjects.GameObject | null = photo && sc.textures.exists(photo)
           ? (() => {
-              const im = sc.add.image(C_X + 18, cy + 22, r.photoKey!);
-              const src = sc.textures.get(r.photoKey!).getSourceImage() as HTMLImageElement;
+              const im = sc.add.image(C_X + 18, cy + 22, photo);
+              const src = sc.textures.get(photo).getSourceImage() as HTMLImageElement;
               im.setDisplaySize(24, Math.max(1, Math.round((24 * src.height) / src.width)));
               return im;
             })()

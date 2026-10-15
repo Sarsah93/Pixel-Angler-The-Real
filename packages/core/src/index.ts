@@ -804,14 +804,18 @@ export { COOK_INGREDIENTS, getCookIngredient, ingredientOfItem } from './db-sche
 export { FIRE_RECIPES, getFireRecipe, recipesForCookware, RECIPE_FAMILY_KO } from './db-schema/FireRecipeDatabase.js';
 // 156차 — 불요리 확장 (Recipe ≠ Dish)
 export type { SeafoodCookingProfile, FishCookingProfile, CephalopodCookingProfile, ShellfishCookingProfile,
-  FoodEffectKind, FoodEffect, FoodEffectDef, DishQuality, DishIngredientProfile, DishNameModifier, DishResult, DishInstance, DishDiscoveryRecord } from './types/Cooking.js';
+  FoodEffectKind, FoodEffect, FoodEffectDef, DishQuality, DishIngredientProfile, DishNameModifier, DishResult, DishInstance, DishDiscoveryRecord,
+  DishEffectDriver, DishVariantEffectTuning } from './types/Cooking.js';
 export { FISH_COOKING_PROFILES, DEFAULT_FISH_COOKING_PROFILE, fishCookingProfileOf, hasFishCookingProfile,
+  COOKING_SPECIES_ALIAS, cookingSpeciesId,
   fatnessLabel, textureLabel, fishinessLabel, flavorLabel, cookingWeightBand, WEIGHT_BAND_KO, type CookingWeightBand } from './db-schema/FishCookingProfiles.js';
-export { RECIPE_LORE, DISH_VARIANT_LORE, RECIPE_BASE_NAME, DISH_MODIFIER_KO, DISH_MODIFIER_EN, dishBaseName, particleEuro, variantDescription, type RecipeLore } from './db-schema/RecipeLore.js';
+export { RECIPE_LORE, DISH_VARIANT_LORE, RECIPE_BASE_NAME, DISH_MODIFIER_KO, DISH_MODIFIER_EN, dishBaseName, particleEuro, variantDescription, type RecipeLore,
+  RECIPE_VARIANT_DESC, DISH_SPECIES_NAME, DISH_VARIANT_NAME } from './db-schema/RecipeLore.js';
 export { FOOD_EFFECT_KIND_KO, RECIPE_EFFECTS, recipeEffectOf } from './db-schema/FoodEffects.js';
-export { VARIANT_RECIPES, isVariantRecipe, dishDiscoveryId, parseDishDiscoveryId, dishDiscoveryName, dishVariantCandidates } from './db-schema/DishDiscovery.js';
-export { speciesMainIngredient } from './db-schema/CookIngredientDatabase.js';
-export { createDishInstance, dishInstanceValueKrw, dishWeightMult, pickDishModifier, type PrimaryIngredientInfo } from './simulation/DishFactory.js';
+export { VARIANT_RECIPES, isVariantRecipe, dishDiscoveryId, parseDishDiscoveryId, dishDiscoveryName, dishVariantCandidates,
+  cookSpeciesNames, dishSpeciesName, dishVariantKind, dishDiscoveryIdsFor, allDishVariantLines, type DishVariantKind } from './db-schema/DishDiscovery.js';
+export { speciesMainIngredient, forageMainIngredient } from './db-schema/CookIngredientDatabase.js';
+export { createDishInstance, dishInstanceValueKrw, dishWeightMult, pickDishModifier, dishEffectScore, scaleDishEffect, type PrimaryIngredientInfo } from './simulation/DishFactory.js';
 export type { AddCheck, CookEnv, CookStepResult, CompositionCheck, SeasonEval, FinishEval } from './simulation/CookingSim.js';
 export {
   createCookSession, reqFor, unitsOf, canAddIngredient, fmtUnits, addIngredient, setHeat, flip,

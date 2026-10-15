@@ -19,6 +19,7 @@ import { SASHIMI_GUIDE_TEXTURE, registerSashimiGuideFrames } from '../data/Sashi
 import { hideLoadingAfterRender, setLoadingProgress, setLoadingStage, showLoading, stageForFile } from '../ui/LoadingOverlay.js';
 import { ITEM_ART_ASSETS } from '../data/ItemArtManifest.js';
 import { TACKLE_IMAGE_FILES } from '../data/TackleTextures.js';
+import { ITEM_IMAGE_FILES } from '../data/ItemImages.js';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -114,6 +115,14 @@ export class BootScene extends Phaser.Scene {
     // 불요리 완성 요리 실사 — 서더리(stew_red)와 통생선(stew_red_whole)은 재료 구성이 달라 그림도 다르다(170차)
     this.load.image('food_stew_red', 'food/stew_red.png');                   // 서더리 매운탕
     this.load.image('food_stew_red_whole', 'food/stew_red_whole.png');       // 통생선 매운탕
+    // 나머지 레시피 7종(255차 — Gemini · 매운탕과 같은 셀 3px · 188칸 · `tools/dish_photos.cjs`가 `food assets/dishes/`에서 굽는다)
+    for (const id of ['stew_clear', 'grill_fish', 'braise_fish', 'stirfry_squid', 'soup_clam', 'porridge_abalone', 'grill_eel']) {
+      this.load.image(`food_${id}`, `food/${id}.png`);
+    }
+    // 255차 — 칸 아이콘 판(긴 변 64px · `food/icon/`) — 가방 · 상점 칸은 570px 사진을 줄여 그리지 않는다(`fitFishTexture`)
+    for (const id of ['assorted_sashimi', 'stew_red', 'stew_red_whole', 'stew_clear', 'grill_fish', 'braise_fish', 'stirfry_squid', 'soup_clam', 'porridge_abalone', 'grill_eel']) {
+      this.load.image(`food_${id}__icon`, `food/icon/${id}.png`);
+    }
 
     // ─── 과증식 해양생물 실사 4종 (170차) ───
     // 필드 렌더는 core `NuisanceArt` 절차 도트가 담당하고, 이 실사는 상세보기·도감용이다.
@@ -135,6 +144,12 @@ export class BootScene extends Phaser.Scene {
     for (const [key, file] of Object.entries(TACKLE_IMAGE_FILES)) {
       this.load.image(key, `tackle/${file}`);
       this.load.image(fishIconKey(key), `tackle/icon/${file}`);
+    }
+    // 255차 — 장비 밖 아이템 그림(Gemini — 먹을거리 · 살림 · 설치 · 가구 · 농사)도 카드(228×90 안) + 64px 아이콘만(`tools/item_cards.cjs`).
+    //   옛 코드 그림 키(`art_*`)는 키를 그대로 두고 그림만 바뀐다 — `tools/item_art/build.py`가 그 키를 굽지 않는다.
+    for (const [key, file] of Object.entries(ITEM_IMAGE_FILES)) {
+      this.load.image(key, `items/${file}`);
+      this.load.image(fishIconKey(key), `items/icon/${file}`);
     }
     // 248차 — 갯것 · 생미끼 그림은 카드(300×160 안) + 64px 아이콘만 싣는다(`tools/forage_cards.cjs` — 원본은 food assets/forage/)
     for (const [key, file] of Object.entries(FORAGE_IMAGE_FILES)) {

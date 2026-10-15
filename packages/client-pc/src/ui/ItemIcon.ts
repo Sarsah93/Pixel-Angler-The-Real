@@ -3,6 +3,7 @@
  * @description 아이템 아이콘 렌더 헬퍼
  *
  * 우선순위: ① 실사 · 도트 텍스처 키(사용자가 넣은 그림 — 언제나 먼저) · 작물 초상(`px:crop_*` → `cropimg_` · `cropicon_` — 241 · 244)
+ *  ①b 255차 — 장비 밖 아이템 그림(Gemini · `ItemImages.ts` — 아이템 id · 16px 키 · 같은 음식 별칭) · 상점 채소의 작물 초상 별칭
  *  ② 코드로 그린 아이템 그림(`ItemArtManifest` — **아이템 id** 로 찾는다. 세이브에 `iconTexture`가 없어도 나온다)
  *  ③ `iconTexture: 'px:<키>'` = 16x16 손그림 픽셀 아이콘 ④ 어획물 speciesId 폴백 ⑤ 레거시 이모지 문자열.
  * ⚠ ⑤는 구 아이템이 남겨둔 폴백일 뿐이다 — **새 아이템에는 이모지를 넣지 않는다**(AGENTS §4).
@@ -13,6 +14,7 @@ import Phaser from 'phaser';
 import { addPixelIcon } from './PixelIcon.js';
 import { fitFishTexture, resolveFishTexture } from '../data/FishTextures.js';
 import { ITEM_ART_BY_ID, ITEM_ART_BY_PREFIX, ITEM_ART_BY_PX } from '../data/ItemArtManifest.js';
+import { ITEM_IMAGE_BY_ID, ITEM_IMAGE_BY_PX, ITEM_CROP_PORTRAIT_ALIAS, ITEM_TEXTURE_ALIAS } from '../data/ItemImages.js';
 
 /**
  * 구세이브·기존 카탈로그가 가진 픽셀 아이콘 키를 실제 투명 PNG 자산으로
@@ -72,8 +74,10 @@ export function iconWeightScale(item: ItemIconLike): number {
  *  어종 에셋과 같은 출처 한 장에서 두 크기를 내므로 가방과 상세가 같은 그림을 보인다.
  */
 export function cropPortraitTexture(scene: Phaser.Scene, iconTexture: string | undefined, sizePx: number): string | undefined {
-  if (!iconTexture?.startsWith('px:crop_')) return undefined;
-  const id = iconTexture.slice(3);
+  // 255차 — 상점 요리 재료 채소(옛 코드 그림 키 `art_radish` 등)도 같은 작물의 초상을 쓴다(`ITEM_CROP_PORTRAIT_ALIAS`)
+  const alias = iconTexture ? ITEM_CROP_PORTRAIT_ALIAS[iconTexture] : undefined;
+  if (!alias && !iconTexture?.startsWith('px:crop_')) return undefined;
+  const id = alias ?? iconTexture!.slice(3);
   const key = sizePx > 72 ? `cropimg_${id}` : `cropicon_${id}`;
   if (scene.textures.exists(key)) return key;
   const alt = sizePx > 72 ? `cropicon_${id}` : `cropimg_${id}`;
@@ -97,6 +101,25 @@ export function itemArtKeyOf(item: { id?: string; iconTexture?: string }): strin
   return t ? ITEM_ART_BY_PX[t] : undefined;
 }
 
+/**
+ * 255차 — 장비 밖 아이템 그림(Gemini · `ItemImages.ts`)과 같은 음식 별칭의 텍스처 키(없으면 undefined).
+ * 찾는 순서: 아이템 id(가구처럼 텍스처 키가 필드 그림을 가리키는 것) → 16px 키(씨앗 · 모종 · 농사 도구) →
+ * 옛 그림 키 · 16px 키의 별칭(상점 전복죽 = 불요리 전복죽 · 예전에 만든 요리의 `px:it_dish_<계열>`).
+ * 옛 코드 그림 키(`art_*`)를 Gemini 그림으로 바꾼 것은 키가 같으므로 여기서 찾지 않아도 그대로 나온다.
+ */
+export function itemImageKeyOf(scene: Phaser.Scene, item: { id?: string; iconTexture?: string }): string | undefined {
+  const byId = item.id ? ITEM_IMAGE_BY_ID[item.id] : undefined;
+  if (byId && scene.textures.exists(byId)) return byId;
+  const t = item.iconTexture;
+  const byPx = t ? ITEM_IMAGE_BY_PX[t] : undefined;
+  if (byPx && scene.textures.exists(byPx)) return byPx;
+  for (const k of [t, itemArtKeyOf(item)]) {
+    const a = k ? ITEM_TEXTURE_ALIAS[k] : undefined;
+    if (a && scene.textures.exists(a)) return a;
+  }
+  return undefined;
+}
+
 export function createItemIcon(
   scene: Phaser.Scene,
   x: number,
@@ -106,9 +129,11 @@ export function createItemIcon(
 ): Phaser.GameObjects.Image | Phaser.GameObjects.Text | Phaser.GameObjects.Container {
   sizePx *= iconWeightScale(item);
   // 241차 작물 초상이 코드로 그린 그림보다 먼저다(사진 → 도트 · Gemini 변환본). 그다음 코드 그림 · 원래 텍스처 키
-  const portrait = cropPortraitTexture(scene, item.iconTexture, sizePx);
-  const artKey = portrait ? undefined : itemArtKeyOf(item);
-  const rasterKey = portrait
+  //  255차 — 옛 그림 키가 작물 초상 별칭이면 그 초상 · 그다음 Gemini 아이템 그림 · 같은 음식 별칭
+  const portrait = cropPortraitTexture(scene, item.iconTexture, sizePx) ?? cropPortraitTexture(scene, itemArtKeyOf(item), sizePx);
+  const image = portrait ? undefined : itemImageKeyOf(scene, item);
+  const artKey = portrait || image ? undefined : itemArtKeyOf(item);
+  const rasterKey = portrait ?? image
     ?? (artKey && scene.textures.exists(artKey) ? artKey : undefined)
     ?? (item.iconTexture ? RASTER_ICON_ALIASES[item.iconTexture] ?? item.iconTexture : undefined);
   if (rasterKey && scene.textures.exists(rasterKey)) {

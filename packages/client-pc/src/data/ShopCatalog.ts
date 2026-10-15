@@ -317,7 +317,7 @@ const FORAGE_CORNER: ShopEntry[] = [
   { id: 'shop_net_5', name: '뜰채 5m', icon: '', iconTexture: 'art_landing_net', category: 'gear', subCategory: '손도구', basePrice: 30000, price: 36000, maxPerPurchase: 1, equippable: true, tool: 'net', netReachM: 5, desc: '가장 흔한 길이 — 안벽·테트라포드까지 닿는다.' },
   { id: 'shop_net_7', name: '뜰채 7m', icon: '', iconTexture: 'art_landing_net', category: 'gear', subCategory: '손도구', basePrice: 52000, price: 62000, maxPerPurchase: 1, equippable: true, tool: 'net', netReachM: 7, desc: '긴 자루 뜰채 — 높은 방파제 상판에서 간조 때도 수면에 닿는다.' },
   // 207차 — 원투 거치대(삼발이). 봉돌이 바닥에 안착하면 1인칭 「거치하기」로 걸어 두고 자리를 떠날 수 있다
-  { id: 'shop_rod_holder', name: '원투 거치대 (삼발이)', icon: '', iconTexture: 'art_rod_holder', category: 'etc', subCategory: '낚시 도구', basePrice: 16000, price: 19000, maxPerPurchase: 3, equippable: false, desc: '원투 낚싯대를 걸어 두는 삼발이 받침. 봉돌을 바닥에 내려 두고 기다리는 동안 초릿대 끝으로 입질을 본다.' },
+  { id: 'shop_rod_holder', name: '원투 거치대 (삼발이)', icon: '', iconTexture: 'art_rod_holder', category: 'etc', subCategory: '낚시도구', basePrice: 16000, price: 19000, maxPerPurchase: 3, equippable: false, desc: '원투 낚싯대를 걸어 두는 삼발이 받침. 봉돌을 바닥에 내려 두고 기다리는 동안 초릿대 끝으로 입질을 본다.' },
   // 209차 — 용도별 낚싯대 14자루 · 릴 6개(제원은 core `RodCatalog` — id로 조회). 그림은 릴 종류로 가른다:
   //  스피닝대 = item_spinning_rod · 베이트대 = item_bait_rod (사이소 민물대가 베이트대 그림을 쓰던 것도 정정)
   //  249차 — 대 종류(원투 · 쇼어지깅 · 라이트 · 에깅 · 구멍치기 · 싸구려 짧은 대)마다 제 그림(`rodArtKey`) · 릴도 종류별(`reelArtKey`)

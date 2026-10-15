@@ -163,13 +163,17 @@ const LOOKS = {
   art_pants: { group: 'wear', file: 'pants.png', nameKo: '방수 바지', nameEn: 'Waterproof pants', aspect: '3:4', refs: REF_BAG,
     look: '방수 낚시 바지 하나를 펼친 앞모습 — 짙은 남색 · 회색 방수 원단, 무릎에 덧댄 짙은 보강 패드, 허리에 고무줄과 끈, 발목에 조임 밴드.' },
   art_shoes: { group: 'wear', file: 'shoes.png', nameKo: '갯바위 단화', nameEn: 'Rock fishing shoes', aspect: '4:3', refs: REF_BAG,
-    look: '갯바위 낚시 단화 한 켤레 — 발목이 낮은 신발, 회색 · 검정 갑피에 빨간 테, 밑창에 금속 징(스파이크)이 박힌 펠트 바닥. 두 짝이 살짝 겹치게 비스듬히 놓여 한 덩어리로 보인다.' },
+    pair: true,
+    look: '갯바위 낚시 단화 한 켤레 — 발목이 낮은 신발, 회색 · 검정 갑피에 빨간 테, 밑창 가장자리로 금속 징(스파이크)이 박힌 펠트 바닥이 살짝 보인다. '
+      + '왼발 한 짝과 오른발 한 짝을 앞코가 같은 쪽(오른쪽 아래)을 보게 나란히 세워 놓고 비스듬히 위에서 본다. 밑창을 따로 뒤집어 보여 주지 않는다.' },
   art_boots_wading: { group: 'wear', file: 'boots_wading.png', nameKo: '해루질 장화', nameEn: 'Wading boots', aspect: '1:1', refs: REF_BAG,
     look: '무릎까지 오는 고무 장화 한 켤레 — 짙은 녹색 고무, 위쪽 테는 노랑, 밑창은 굵은 무늬. 두 짝이 살짝 겹쳐 한 덩어리로 서 있다.' },
   art_glasses: { group: 'wear', file: 'glasses.png', nameKo: '편광 선글라스', nameEn: 'Polarized sunglasses', aspect: '4:3', refs: REF_METAL,
     look: '편광 선글라스 하나 — 검정 테, 렌즈는 파랑 · 초록빛으로 반사되는 미러 코팅. 다리를 편 채 비스듬히 앞에서 본 모습.' },
   art_gloves_fleece: { group: 'wear', file: 'gloves_fleece.png', nameKo: '기모 낚시 장갑', nameEn: 'Fleece fishing gloves', aspect: '1:1', refs: REF_BAG,
-    look: '기모 낚시 장갑 한 켤레 — 회색 · 검정 기모 원단, 엄지 · 검지 · 중지 세 손가락 끝이 잘려 손끝이 나오는 장갑. 두 짝이 겹쳐 한 덩어리.' },
+    pair: true,
+    look: '기모 낚시 장갑 한 켤레 — 회색 · 검정 기모 원단, 엄지 · 검지 · 중지 세 손가락 끝이 잘려 손끝이 나오는 장갑, 손목에 찍찍이 띠. '
+      + '왼손 한 짝과 오른손 한 짝을 손등이 위로 오게 나란히 펼쳐 놓은 모습(두 짝이 거울처럼 마주 보고, 엄지는 서로 안쪽). 손가락 다섯 개가 짝마다 또렷하다.' },
   art_gloves_rubber: { group: 'wear', file: 'gloves_rubber.png', nameKo: '해루질 고무장갑', nameEn: 'Heavy rubber gloves', aspect: '1:1', refs: REF_BAG,
     look: '두꺼운 고무장갑 한 켤레 — 주황 · 빨간 고무, 팔목이 길고 손바닥에 오돌토돌한 미끄럼 방지 무늬. 두 짝이 겹쳐 한 덩어리.' },
   art_gloves_work: { group: 'wear', file: 'gloves_work.png', nameKo: '목장갑', nameEn: 'Cotton work gloves', aspect: '1:1', refs: REF_BAG,
@@ -239,8 +243,13 @@ const LOOKS = {
 const STYLE_INTRO = '첨부한 그림 세 장은 화풍 참고용입니다. 이 그림들과 같은 픽셀 아트 화풍으로 낚시 장비(또는 낚시꾼의 물건) 하나를 새로 그려 주세요. '
   + '같은 도트 크기, 물건 둘레 전체를 감싸는 진한 윤곽선, 밝은 하이라이트와 어두운 그늘의 단계, 사실적인 색과 재질(금속 · 플라스틱 · 천 · 고무 · 나무) 표현을 맞춥니다. '
   + '참고 그림 속 물건은 그리지 마세요(설명이 같은 모양 · 같은 각도를 요구할 때만 따라 합니다).';
+/** 수량 문구 — 「한 덩어리로」만 쓰면 짝이 엉켜 세 짝 · 네 짝으로 보인다(255차 사용자 지적 — 기모 장갑 · 갯바위 단화). 짝 물건은 `pair: true` */
+const quantityText = (it) => (it.pair
+  ? '수량: 한 켤레 = 왼쪽 한 짝과 오른쪽 한 짝, 정확히 두 짝만. 세 짝 이상 · 한 짝만 · 따로 떨어진 밑창이나 조각을 그리지 않는다. '
+    + '두 짝은 나란히 놓고(살짝만 겹쳐도 됨) 짝마다 모양 전체(손가락 다섯 개 · 신발 앞코부터 뒤꿈치까지)가 보이게. '
+  : '그 물건 하나만(한 벌은 한 덩어리로), ');
 const taskText = (it) => `그릴 것: ${it.nameKo} (${it.nameEn}). ${it.look}\n`
-  + '조건: 순백색 단색 배경. 그 물건 하나만(한 켤레 · 한 벌은 한 덩어리로), 화면 가운데에 크게, 끝까지 잘리지 않게. '
+  + `조건: 순백색 단색 배경. ${quantityText(it)}화면 가운데에 크게, 끝까지 잘리지 않게. `
   + '사람 손 · 물 · 바위 · 바닥 · 그림자 · 글자 · 숫자 · 로고 · 상표 · 테두리 없음. 사진이 아니라 픽셀 아트.';
 
 function parseArgs(argv) {

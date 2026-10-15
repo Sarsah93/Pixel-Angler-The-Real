@@ -11,6 +11,8 @@
  * ButcheryProcess 등)의 소비 전환은 차기 단계에서 점진 진행.
  */
 
+import type { DishVariantEffectTuning } from '../types/Cooking.js';
+
 // ────────────────────────────────────────────────────────────
 // 타입
 // ────────────────────────────────────────────────────────────
@@ -687,8 +689,19 @@ export interface TuningConfig {
     xpTotalRef: number;
     /** 156차 — 재료 특성 가중 (DishFactory): 지방감 → 허기 · 국물 기여 → 수분 · 신선도 → 둘 다 */
     ingredientQuality: { freshnessWeight: number; fatnessWeight: number; brothWeight: number };
-    /** 156차 — 회복치·효과 산출: 중량 배율 (중량/기준)^지수 상하한 · 최종 상하한 · 효과가 붙는 최소 총점 */
-    dishEffect: { refWeightG: number; weightExp: number; weightMultMin: number; weightMultMax: number; minMultiplier: number; maxMultiplier: number; effectMinOverall: number };
+    /**
+     * 156차 — 회복치·효과 산출: 중량 배율 (중량/기준)^지수 상하한 · 최종 상하한 · 효과가 붙는 최소 총점.
+     * 254차 — `effectMultMin/Max` = 어종별 효과 보정(크기 · 지속 배율)의 상하한.
+     */
+    dishEffect: {
+      refWeightG: number; weightExp: number; weightMultMin: number; weightMultMax: number; minMultiplier: number; maxMultiplier: number; effectMinOverall: number;
+      effectMultMin: number; effectMultMax: number;
+    };
+    /**
+     * 254차 — 어종별 효과 보정 (확장 스펙 §3~11 · Stage 7 「나머지 레시피 개체화」). 레시피 id → 가중치 · 폭 · 중량 기준.
+     * 매운탕 2종은 156차 규칙(지방감 → 포만감 지속 0.8~1.2배)을 같은 틀로 옮긴 것이다. 여기 없는 레시피는 효과가 고정이다.
+     */
+    variantEffect: Record<string, DishVariantEffectTuning>;
     /** 156차 — 이름 수식어 임계 (품질 0~100 · 지방감 0~1) */
     naming: { freshThreshold: number; premiumThreshold: number; fattyThreshold: number };
     /** 156차 — 완성 요리 판매가 계수 (사시미와 별개) */
@@ -1468,7 +1481,28 @@ export const TUNING: TuningConfig = {
     finishGateMin: 0.6, finishCap: 0.55, skillPerRank: 0.05,
     windCalmMps: 3, windSpanMps: 9, placeRangeTiles: 3, solidVolumeFrac: 0.6, idleWarnMin: 3, xpTotalRef: 70,
     ingredientQuality: { freshnessWeight: 0.2, fatnessWeight: 0.3, brothWeight: 0.3 },
-    dishEffect: { refWeightG: 800, weightExp: 0.5, weightMultMin: 0.7, weightMultMax: 1.4, minMultiplier: 0.35, maxMultiplier: 1.7, effectMinOverall: 60 },
+    dishEffect: {
+      refWeightG: 800, weightExp: 0.5, weightMultMin: 0.7, weightMultMax: 1.4, minMultiplier: 0.35, maxMultiplier: 1.7, effectMinOverall: 60,
+      effectMultMin: 0.5, effectMultMax: 1.5,
+    },
+    // 254차 — 어종별 효과 보정 (mockup, 실플레이 조율 대기). s = 재료 점수 0~1 (0.5 = 레시피 기본값 그대로)
+    variantEffect: {
+      // 매운탕 — 156차 그대로: 기름질수록 포만감이 오래 간다(지속 0.8~1.2배), 크기는 고정
+      stew_red: { weights: { fatness: 1 }, magSpan: 0, durSpan: 0.4 },
+      stew_red_whole: { weights: { fatness: 1 }, magSpan: 0, durSpan: 0.4 },
+      // 지리 — 비린 향이 적고 신선할수록 「맑은 속」이 세고 길다(스펙 §5 「신선도 · 비린 향 영향 매우 높음」) · 국물 기여 보조
+      stew_clear: { weights: { clean: 0.45, freshness: 0.35, brothContribution: 0.2 }, magSpan: 0.8, durSpan: 0.8 },
+      // 생선구이 — 지방감 · 촉촉함 → 「고소한 한 끼」. 1인분이라 중량 기준이 가볍다
+      grill_fish: { weights: { fatness: 0.6, moistureRetention: 0.4 }, magSpan: 0.8, durSpan: 0.8, refWeightG: 450 },
+      // 생선조림 — 탄탄한 살이 오래 졸여도 버틴다 → 「든든함」 지속 · 풍미 보조
+      braise_fish: { weights: { texture: 0.7, flavorStrength: 0.3 }, magSpan: 0.4, durSpan: 0.8, refWeightG: 650 },
+      // 오징어볶음 — 살 식감(두툼 · 탄탄) · 단맛 → 「활력」
+      stirfry_squid: { weights: { texture: 0.6, sweetness: 0.4 }, magSpan: 0.8, durSpan: 0.8, refWeightG: 450 },
+      // 조개탕 — 국물 기여 · 신선도 → 「개운함」
+      soup_clam: { weights: { brothContribution: 0.7, freshness: 0.3 }, magSpan: 0.8, durSpan: 0.8, refWeightG: 550 },
+      // 장어구이 — 지방감 · 풍미 → 「원기회복」
+      grill_eel: { weights: { fatness: 0.7, flavorStrength: 0.3 }, magSpan: 0.6, durSpan: 0.6, refWeightG: 500 },
+    },
     naming: { freshThreshold: 90, premiumThreshold: 95, fattyThreshold: 0.8 },
     pricing: { ingredientMultiplier: 0.2, qualityMultiplier: 0.9, freshnessMultiplier: 0.3 },
   },
@@ -1697,6 +1731,13 @@ export const TUNING_META: TuningParamMeta[] = [
   { path: 'cook.dishEffect.weightExp', min: 0, max: 1, step: 0.05, category: 'balance', label: '요리 중량 배율 지수' },
   { path: 'cook.pricing.qualityMultiplier', min: 0.3, max: 1.5, step: 0.05, category: 'balance', label: '요리 판매가 품질 계수' },
   { path: 'cook.naming.freshThreshold', min: 70, max: 100, step: 1, category: 'balance', label: '「싱싱한」 신선도 임계' },
+  // ── 어종별 요리 효과 (254차 — mockup) ──
+  { path: 'cook.variantEffect.stew_clear.durSpan', min: 0, max: 1.5, step: 0.05, category: 'balance', label: '지리 효과 지속 폭 (비린 향 · 신선도)' },
+  { path: 'cook.variantEffect.grill_fish.durSpan', min: 0, max: 1.5, step: 0.05, category: 'balance', label: '생선구이 효과 지속 폭 (지방 · 촉촉함)' },
+  { path: 'cook.variantEffect.braise_fish.durSpan', min: 0, max: 1.5, step: 0.05, category: 'balance', label: '생선조림 효과 지속 폭 (살 식감)' },
+  { path: 'cook.variantEffect.stirfry_squid.durSpan', min: 0, max: 1.5, step: 0.05, category: 'balance', label: '오징어볶음 효과 지속 폭 (식감)' },
+  { path: 'cook.variantEffect.soup_clam.durSpan', min: 0, max: 1.5, step: 0.05, category: 'balance', label: '조개탕 효과 지속 폭 (국물)' },
+  { path: 'cook.variantEffect.grill_eel.durSpan', min: 0, max: 1.5, step: 0.05, category: 'balance', label: '장어구이 효과 지속 폭 (지방)' },
   // ── 밑걸림·채비 손실 (206차) ──
   { path: 'snag.questFirstMult', min: 0, max: 1, step: 0.05, category: 'balance', label: '퀘스트 첫 진행 밑걸림 배율' },
   { path: 'snag.leaderCutM', min: 0.5, max: 5, step: 0.5, category: 'balance', label: '목줄 끊김 길이(m)' },
