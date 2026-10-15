@@ -29,6 +29,17 @@ description: Pixel Angler 테스트 빌드 gh-pages 배포 절차. GitHub Pages 
   비밀값이 없으면 날씨가 가상 데이터로 채워진다(오류 아님 · 아래 「경로·API 제약」).
 - 워크플로는 지난 배포의 남은 파일을 지운다(`.nojekyll`만 남김) — 손 절차에서 쌓이던 옛 번들이 정리된다.
 
+### 에이전트가 대신 실행할 때 (사용자가 그 자리에서 배포하라고 했을 때만 · 250차 실측)
+
+1. 배포할 커밋을 원격에 올린다(main이면 사용자가 main 반영을 지시했는지 먼저 확인).
+2. GitHub MCP `actions_run_trigger` — `method: run_workflow` · `workflow_id: deploy-pages.yml` · `ref: main` ·
+   `inputs: { ref: "main", note: "<차수 — 한 줄 요약>" }`. 실행 목록은 `actions_list`(`list_workflow_runs`)로 본다.
+3. 끝나기를 기다릴 때 `sleep`을 앞에서 돌리지 않는다 — `git ls-remote origin refs/heads/gh-pages`가 바뀔 때까지 도는 루프를
+   **백그라운드**로 걸고 끝나면 알림을 받는다(워크플로는 약 1분).
+4. 기동 점검: `git fetch origin gh-pages` → `git archive origin/gh-pages | tar -x -C <작업폴더>/Pixel-Angler-The-Real` →
+   그 상위에서 `python3 -m http.server 4173` → `http://localhost:4173/Pixel-Angler-The-Real/`로 하네스(404 · pageerror · 메뉴 기동).
+   하위 경로로 띄워야 선행 `/` 경로 실수가 잡힌다. 프로덕션 번들에는 `__GS` · `__INV`가 없다 — `__PIXEL_ANGLER_GAME`만 쓴다.
+
 ### 손으로 하는 절차 (워크플로를 쓸 수 없을 때 · 사용자만)
 
 **배포 worktree**: `../pixel-angler-gh-pages` (orphan `gh-pages` 브랜치 — Pages 소스는 브랜치 루트, `.nojekyll` 포함)

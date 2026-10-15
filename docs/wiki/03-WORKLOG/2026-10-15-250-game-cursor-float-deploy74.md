@@ -8,7 +8,7 @@
 | **날짜** | 2026-10-15 |
 | **시스템** | `UI` `에셋` `도구` `인프라` |
 | **트리거** | 사용자 지시(250차) |
-| **커밋** | 이 문서가 든 커밋(구현 · 문서) · 74차 배포 기록은 두 번째 커밋 — 작업 브랜치 `claude/project-review-task-planning-yopbck` → main 빨리 감기 |
+| **커밋** | `fc6b679`(구현 · 문서 — main 빨리 감기 `6c17166..fc6b679`) · 74차 배포 기록 = 이 문서가 든 두 번째 커밋 — 작업 브랜치 `claude/project-review-task-planning-yopbck` |
 | **빌드·타입체크** | 3/3 · 0 오류 · core 259/259 |
 
 ---
@@ -61,6 +61,8 @@
 
 - main(`6c17166` — 248차(2))은 작업 브랜치의 조상이라 **빨리 감기**로 올린다 — 249차 2커밋 + 이번 커밋.
 - 배포는 「테스트 배포」 워크플로(`deploy-pages.yml` · ref `main`)가 한다 — 에이전트는 `gh-pages`에 직접 쓰지 않는다(스킬 `deploy-ghpages`).
+- 결과: 워크플로 3번째 실행(약 1분 · 성공) → gh-pages `51df681` 「Deploy: 74차 테스트 빌드 (2026-10-15) — main@fc6b679 · 249·250차 — …」.
+  249차(장비 그림 카드 방식 · Gemini 74장)와 250차(포인터)가 함께 실렸다.
 
 ## 3. 변경 — 어디를 어떻게
 
@@ -91,6 +93,9 @@
 | 가방 | 가방 안 단추 위 → 벗어나기 | 손 → 기본 |
 | 그림 | 게임이 구운 data URI를 꺼내 비교 | 기본 1배 = 원본 픽셀 · 손 1배 = 미리보기 · 2 · 3배 = 46 · 69 / 50 · 75px |
 | 오류 | 4xx · pageerror | 0 · 0 |
+| 74차 배포 | 「테스트 배포」(ref `main`) · `git ls-remote`로 gh-pages 변화 대기 | 성공 · 약 1분 · gh-pages `2acbaa9 → 51df681` |
+| 배포본 내용 | `git archive origin/gh-pages` | 72.7MB(73차 84.0MB) · 소스맵 0 · `tackle/` 카드 113 + 아이콘 113 · `item-icons/`는 `drawn/` · 혼무시 하나 · 번들에 `image-set` |
+| 배포본 기동 | 같은 파일을 `/Pixel-Angler-The-Real/` 하위 경로로 띄워 `live250.cjs` | 장비 텍스처 12키(카드 90 · 아이콘 64) · 포인터 기본 → 단추 위 손 → 벗어나면 기본 · `tackle/` 226건 200 · 4xx 0 · pageerror 0 · 「게임 시작」 → 플레이 방식 창 |
 
 재현: dev에서 `globalThis.__PIXEL_ANGLER_GAME.canvas.style.cursor`가 `image-set(url("data:image/png;base64,…`로 시작한다.
 단추 위에서 값이 바뀌고 벗어나면 돌아온다. **헤드리스 스크린샷에는 커서가 찍히지 않는다** — 값으로 확인하고,
@@ -116,4 +121,5 @@
 - [x] 시스템 페이지 `ui-framework.md` §2 · §4 · §6
 - [x] `04-BACKLOG.md` — BT ① · BV ③ ④ 닫음 · BW(250 잔여)
 - [x] `AGENTS.md` §9 · `IMPLEMENTATION_PLAN.md` · `CLAUDE.md` 요약
-- [ ] 74차 배포 결과(워크플로 · 배포본 기동 점검) — 두 번째 커밋
+- [x] 74차 배포 결과(워크플로 · 배포본 기동 점검) — 두 번째 커밋
+- [x] 스킬 `deploy-ghpages` — 에이전트가 대신 실행할 때(MCP 실행 · gh-pages 변화 대기 · 하위 경로 기동 점검)
