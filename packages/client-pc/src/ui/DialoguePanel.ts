@@ -555,13 +555,14 @@ export class DialoguePanel extends DraggablePanel {
   }
 
   /** 167차 — 장면으로 이어지는 행. 대화창은 닫히고 씬이 실제 필드에서 컷씬을 튼다 */
-  private sceneRow(questId: string, objectiveIndex: number): ChoiceRow {
+  private sceneRow(questId: string, objectiveIndex: number, withHead = true): ChoiceRow {
     const q = getStoryQuest(questId);
     const label = narrativeOf(questId)?.objectives?.[objectiveIndex] ?? q?.objectives[objectiveIndex]?.labelKo ?? '';
-    // 254차 — 이 목표에 이 사람과의 이어지는 대화가 있으면 장면 대신 대화가 돈다(끝나면 목표가 닫힌다)
+    // 254차 — 이 목표에 이 사람과의 이어지는 대화가 있으면 장면 대신 대화가 돈다(끝나면 목표가 닫힌다).
+    //  진행 중 화면에서 들어오면 편 제목을 방금 찍었으니 다시 찍지 않는다(`withHead` false)
     const talk = StoryStore.objectiveTalk(questId, objectiveIndex, this.npcId);
     if (talk && q) {
-      return { label, hint: '이야기가 이어집니다', action: () => this.enterTalk(talk, [this.questHead(q)]) };
+      return { label, hint: '이야기가 이어집니다', action: () => this.enterTalk(talk, withHead ? [this.questHead(q)] : []) };
     }
     return {
       label,
@@ -646,7 +647,7 @@ export class DialoguePanel extends DraggablePanel {
         const actTalk = StoryStore.actionTalk(q.id, idx);
         // 253차 — 조사 대화: 「방식 고르기」 대신 그 편의 물음. 지금 단계의 열쇠 물음을 물으면 단계가 오른다.
         if (actTalk) {
-          rows.push({ label: stepLine, hint: '이야기가 이어집니다', action: () => this.enterTalk(actTalk, [this.questHead(q)]) });
+          rows.push({ label: stepLine, hint: '이야기가 이어집니다', action: () => this.enterTalk(actTalk) });
         } else if (StoryStore.inquiryDrivesAction(q.id, idx)) {
           if (!stepChoice) paras.push(`이어서 할 일 — ${stepLine}`);
           for (const n of StoryStore.inquiryQuestNodes(this.npcId, q.id, idx)) rows.push(this.inquiryRow(n, () => this.playActive(q)));
@@ -672,7 +673,7 @@ export class DialoguePanel extends DraggablePanel {
         // 167차 — 구 `[이 자리에서 마무리]`(advanceManual 클릭) 폐기. 장면의 상대가 이 사람이면 장면 행,
         //  다른 사람이면 그 사람을 찾아가라고만 말한다.
         const entry = StoryStore.sceneEntryNpc(q, objective);
-        if (entry === this.npcId) rows.push(this.sceneRow(q.id, idx));
+        if (entry === this.npcId) rows.push(this.sceneRow(q.id, idx, false));
         else paras.push(`${getStoryNpc(StoryStore.sceneNpcOf(q, objective))?.nameKo ?? '그 사람'}을(를) 직접 찾아가야 한다.`);
       }
     }

@@ -85,8 +85,8 @@ export const TALKS_M2: StoryTalkDef[] = [
     id: 'm2_09_done', questId: 'M2-09', at: 'complete', npcId: COOP, start: 'start',
     nodes: {
       start: say(
-        '(회의실 의자가 하나둘 비어 간다. 계장이 명부를 덮는다.) 통과다. 도현수가 반대했지. 하나.\n\n이유는 그 애한테 들어. 나는 거기 계장으로 앉아 있었다. 할아버지로 앉아 있던 게 아니다.',
-        "(The chairs in the meeting room empty one by one. The chief closes the roll.) Passed. Do Hyeonsu voted against. One.\n\nAsk him for the reason. I sat there as the chief. Not as his grandfather.",
+        '(회의실 의자가 하나둘 비어 간다. 명부를 덮는다.) 통과다. 도현수가 반대했지. 하나.\n\n이유는 그 애한테 들어. 나는 거기 계장으로 앉아 있었다. 할아버지로 앉아 있던 게 아니다.',
+        "(The chairs in the meeting room empty one by one. He closes the roll.) Passed. Do Hyeonsu voted against. One.\n\nAsk him for the reason. I sat there as the chief. Not as his grandfather.",
         [
           opt('ask_him', '도현수한테 직접 묻겠습니다.', "I'll ask Hyeonsu myself.",
             { stance: 'giver', next: 'door' }),
@@ -100,8 +100,8 @@ export const TALKS_M2: StoryTalkDef[] = [
               lineEn: "That's one way. Just don't forget whose one it was. (He holds out an envelope.)\n\nAn allowance from the co-op. You know what it's for." }) }),
         ]),
       door: say(
-        '(문간을 나서던 도현수가 걸음을 멈춘다. 돌아보지는 않는다.) …네가 싫어서가 아니야.\n\n(그 말만 하고 서 있다. 더 붙일 말은 없어 보인다.)',
-        "(On his way out through the door, Do Hyeonsu stops. He doesn't turn round.) ...It isn't because I dislike you.\n\n(Having said it, he just stands there. He doesn't seem to have anything to add.)",
+        '(문간을 나서다 걸음을 멈춘다. 돌아보지는 않는다.) …네가 싫어서가 아니야.\n\n(도현수는 그 말만 하고 서 있다. 더 붙일 말은 없어 보인다.)',
+        "(On his way out through the door, he stops. He doesn't turn round.) ...It isn't because I dislike you.\n\n(Having said it, Hyeonsu just stands there. He doesn't seem to have anything to add.)",
         [
           opt('then_why', '그럼 왜 반대했어?', 'Then why vote against?',
             { stance: 'giver', aff: { [HS]: -0.02 }, next: 'vote_is_vote' }),
@@ -111,8 +111,8 @@ export const TALKS_M2: StoryTalkDef[] = [
             { stance: 'mid', aff: { [HS]: -0.03 }, requires: { flag: 'choice.m2_09_asked_favor' }, next: 'favor' }),
           opt('nod_back', '(그 등에 대고 고개만 끄덕인다.)', '(I just nod at his back.)',
             { stance: 'self', aff: { [HS]: 0.02 }, end: endTalk({ complete: 'ask_hyeonsu',
-              lineKo: '(도현수가 나가고 문이 닫힌다. 계장이 봉투를 건넨다. 생각보다 두툼하다.) …그 애한테는 그걸로 됐다. 따지고 들면 입부터 닫는 애다.\n\n격려금이다. 얼음을 사든 상자를 사든 네 마음대로 써라.',
-              lineEn: "(Hyeonsu leaves and the door closes. The chief hands me an envelope. It's thicker than I expected.) ...With him, that's enough. Push him and the first thing he does is shut his mouth.\n\nYour allowance. Spend it on ice or crates, however you like." }) }),
+              lineKo: '(도현수가 나가고 문이 닫힌다. 그제야 봉투를 건넨다. 생각보다 두툼하다.) …그 애한테는 그걸로 됐다. 따지고 들면 입부터 닫는 애다.\n\n격려금이다. 얼음을 사든 상자를 사든 네 마음대로 써라.',
+              lineEn: "(Hyeonsu leaves and the door closes. Only then does he hand me an envelope. It's thicker than I expected.) ...With him, that's enough. Push him and the first thing he does is shut his mouth.\n\nYour allowance. Spend it on ice or crates, however you like." }) }),
         ], HS),
       vote_is_vote: say(
         '표는 표야. (주머니에 손을 넣는다.) 이유를 달면 그때부터 표가 아니라 말싸움이 돼.\n\n통과했으면 됐잖아. …다음 총회 때 보자.',
@@ -120,12 +120,12 @@ export const TALKS_M2: StoryTalkDef[] = [
         [
           opt('see_you_next', '알았어. 다음 총회 때 보자.', 'Fine. See you at the next one.',
             { stance: 'other', aff: { [HS]: 0.03 }, end: endTalk({ complete: 'ask_hyeonsu',
-              lineKo: '(문이 닫힌다. 계장이 봉투를 건넨다. 액수가 생각보다 크다.) 물을 땐 따지지 말고 물어라. 그 애는 따지고 들면 입부터 닫는다.\n\n격려금이다. 쓸 데 알지.',
-              lineEn: "(The door closes. The chief hands me an envelope. There's more in it than I expected.) When you ask, ask. Don't accuse. Push him and the first thing he does is shut his mouth.\n\nYour allowance. You know what it's for." }) }),
+              lineKo: '(문이 닫힌다. 그제야 봉투를 건넨다. 액수가 생각보다 크다.) 물을 땐 따지지 말고 물어라. 그 애는 따지고 들면 입부터 닫는다.\n\n격려금이다. 쓸 데 알지.',
+              lineEn: "(The door closes. Only then does he hand me an envelope. There's more in it than I expected.) When you ask, ask. Don't accuse. Push him and the first thing he does is shut his mouth.\n\nYour allowance. You know what it's for." }) }),
           opt('argue_then', '말싸움이라도 좋으니까 말해 봐.', "I don't care if it's an argument. Tell me.",
             { stance: 'self', aff: { [HS]: -0.05 }, end: endTalk({ complete: 'ignore',
-              lineKo: '(도현수가 대답 없이 나간다. 문이 세게 닫힌다. 계장이 한숨을 쉰다.) …봤지. 따지면 입부터 닫는 애다.\n\n(봉투를 내민다.) 격려금이다. 반대표는 적이 아니라 숙제다. 그 하나가 누군지는 잊지 마라.',
-              lineEn: "(Hyeonsu leaves without answering. The door slams. The chief sighs.) ...You saw. Push him and the first thing he does is shut his mouth.\n\n(He holds out an envelope.) Your allowance. A vote against isn't an enemy, it's homework. Don't forget whose it was." }) }),
+              lineKo: '(도현수가 대답 없이 나간다. 문이 세게 닫힌다. 한숨을 쉰다.) …봤지. 따지면 입부터 닫는 애다.\n\n(봉투를 내민다.) 격려금이다. 반대표는 적이 아니라 숙제다. 그 하나가 누군지는 잊지 마라.',
+              lineEn: "(Hyeonsu leaves without answering. The door slams. He sighs.) ...You saw. Push him and the first thing he does is shut his mouth.\n\n(He holds out an envelope.) Your allowance. A vote against isn't an enemy, it's homework. Don't forget whose it was." }) }),
         ], HS),
       thanked: say(
         '(처음으로 돌아본다.) …고맙다고? 반대표가?\n\n(한참 나를 본다.) 별나네, 너. (그래도 입꼬리가 조금 올라간다.) 숫자 다시 봤으면 됐네. 다음엔 반대 안 할 수도 있고. …할 수도 있고.',
@@ -133,8 +133,8 @@ export const TALKS_M2: StoryTalkDef[] = [
         [
           opt('see_you', '그래. 다음 총회 때 보자.', 'Right. See you at the next meeting.',
             { stance: 'other', aff: { [HS]: 0.02 }, end: endTalk({ complete: 'ask_hyeonsu',
-              lineKo: '(도현수가 나가고 문이 닫힌다. 계장이 한참 문 쪽을 본다.) …그 애가 돌아보는 건 나도 오랜만에 본다.\n\n(봉투를 건넨다. 생각보다 두툼하다.) 격려금이다. 쓸 데 알지.',
-              lineEn: "(Hyeonsu leaves and the door closes. The chief looks at the door for a long while.) ...It's been a long time since I saw him turn round, myself.\n\n(He hands me an envelope. It's thicker than I expected.) Your allowance. You know what it's for." }) }),
+              lineKo: '(도현수가 나가고 문이 닫힌다. 한참 문 쪽을 본다.) …그 애가 돌아보는 건 나도 오랜만에 본다.\n\n(봉투를 건넨다. 생각보다 두툼하다.) 격려금이다. 쓸 데 알지.',
+              lineEn: "(Hyeonsu leaves and the door closes. He looks at the door for a long while.) ...It's been a long time since I saw him turn round, myself.\n\n(He hands me an envelope. It's thicker than I expected.) Your allowance. You know what it's for." }) }),
         ], HS),
       favor: say(
         '…그런 말 들으면 손 더 들고 싶어지긴 하지. (돌아본다.) 근데 그것 때문은 아니야.\n\n그건 진짜야. 할아버지는 원래 아무 말 안 해. 너도 알잖아.',

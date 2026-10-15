@@ -571,7 +571,7 @@ export const TALKS_N19: StoryTalkDef[] = [
               lineEn: '(We lift the ice box together. When we set it down, Old Tak is short of breath. Without a word she nudges a chair towards him with her foot. He sits.)' }) }),
         ], TAK),
       truth: say(
-        '(얼음 집게를 떨어뜨린다.) 너…! 내가 언제 앉으라 했어!\n\n(목소리가 좌판 앞까지 갔다. 발소리가 거기서 멈췄다.)',
+        '(얼음 집게를 떨어뜨린다.) 너…! 내가 언제 앉으라 했어!\n\n(할머니 목소리가 좌판 앞까지 갔다. 발소리가 거기서 멈췄다.)',
         '(She drops the tongs.) You...! When did I ever say sit!\n\n(Her voice carried right to the front of the stall. The footsteps stopped there.)',
         [
           opt('wave_him', '(이미 노인장께 손짓을 하고 있다.)', "(I'm already waving him over.)",
@@ -597,7 +597,7 @@ export const TALKS_N19: StoryTalkDef[] = [
               lineEn: '(Saebyeok lets go. Old Tak catches his breath, walks over on his own and sits. She looks only at the ice.)' }) }),
         ], SAE),
       passing: say(
-        '(발소리가 좌판 앞을 그냥 지나간다. 얼음 집게를 쥔 채 고개를 숙인다.)\n\n…봐라. 그냥 간다. 매일 저래. (작게) 네가 좀. 아니다. …네가 좀.',
+        '(발소리가 좌판 앞을 그냥 지나간다. 할머니가 얼음 집게를 쥔 채 고개를 숙인다.)\n\n…봐라. 그냥 간다. 매일 저래. (작게) 네가 좀. 아니다. …네가 좀.',
         '(The footsteps pass right by the front of the stall. Tongs still in hand, she lowers her head.)\n\n...See. He just walks on. Every day the same. (Quietly) Could you. No. ...Could you.',
         [
           opt('call_rest', '노인장! 잠깐 쉬었다 가시지요!', 'Sir! Stop and rest a moment!',
@@ -629,7 +629,7 @@ export const TALKS_N19: StoryTalkDef[] = [
             { stance: 'giver', aff: { [SAE]: -0.02, [OK]: 0.02 }, requires: { flag: 'choice.n19_4_sent_saebyeok' }, next: 'o_rest' }),
         ], ''),
       o_rest: say(
-        '(바다를 본 채로) …받침. 물 잘 빠지더라.\n\n(그 말을 하고는 얼음 집게만 만지작거린다.)',
+        '(바다를 본 채로) …받침. 물 잘 빠지더라.\n\n(할머니는 그 말을 하고는 얼음 집게만 만지작거린다.)',
         '(Still facing the sea) ...The rests. They drain well.\n\n(Having said it, she just fiddles with the ice tongs.)',
         [
           opt('quiet_a', '(가만히 있는다.)', '(I keep quiet.)',
@@ -638,8 +638,8 @@ export const TALKS_N19: StoryTalkDef[] = [
             { stance: 'giver', aff: { [OK]: 0.04, [TAK]: -0.04 }, next: 't_flustered' }),
         ]),
       t_nodes: say(
-        '…마디를 띄워 깎았으니까. (무릎을 짚는다. 한참 있다가) 좌판이 바다 쪽으로 기울었더라. 그래서 두 번째는 틈을 넓혔다.\n\n(말해 놓고 입을 다문다. 너무 많이 말했다는 얼굴이다.)',
-        "...Because I cut the nodes apart. (He rests his hands on his knees. After a long while) The stall leans towards the sea. So I widened the gaps on the second one.\n\n(He says it and shuts his mouth. He looks like a man who's said too much.)",
+        '…마디를 띄워 깎았으니까. (무릎을 짚는다. 한참 있다가) 좌판이 바다 쪽으로 기울었더라. 그래서 두 번째는 틈을 넓혔다.\n\n(탁 노인은 말해 놓고 입을 다문다. 너무 많이 말했다는 얼굴이다.)',
+        "...Because I cut the nodes apart. (He rests his hands on his knees. After a long while) The stall leans towards the sea. So I widened the gaps on the second one.\n\n(Old Tak says it and shuts his mouth. He looks like a man who's said too much.)",
         [
           opt('quiet_b', '(얼음만 고른다.)', '(I just sort the ice.)',
             { stance: 'self', next: 'o_food' }),
@@ -647,14 +647,14 @@ export const TALKS_N19: StoryTalkDef[] = [
             { stance: 'other', aff: { [OK]: -0.05, [TAK]: 0.04 }, next: 'o_food' }),
         ], TAK),
       t_flustered: say(
-        '(헛기침을 한다.) …쓸데없는 소리를. 물이 한쪽으로 고여서 고친 거다. 그뿐이다.\n\n(그래도 할머니 쪽 받침을 한 번 본다. 할머니도 그 받침을 본다. 둘의 눈이 받침 위에서 잠깐 만난다.)',
-        "(He clears his throat.) ...Nonsense. Water pooled on one side, so I fixed it. That's all.\n\n(Still, he glances once at the rest on her side. She looks at it too. Their eyes meet, briefly, on the rest.)",
+        '(헛기침을 한다.) …쓸데없는 소리를. 물이 한쪽으로 고여서 고친 거다. 그뿐이다.\n\n(그래도 탁 노인은 할머니 쪽 받침을 한 번 본다. 할머니도 그 받침을 본다. 둘의 눈이 받침 위에서 잠깐 만난다.)',
+        "(He clears his throat.) ...Nonsense. Water pooled on one side, so I fixed it. That's all.\n\n(Still, Old Tak glances once at the rest on her side. She looks at it too. Their eyes meet, briefly, on the rest.)",
         [
           opt('quiet_c', '(못 본 척 얼음을 고른다.)', '(I pretend not to see and sort the ice.)',
             { stance: 'self', next: 'o_food' }),
         ], TAK),
       o_food: say(
-        '(얼음 집게를 만지작거리다가, 바다를 본 채로) …반찬은. 입에 맞던가.\n\n(대답을 기다리는 얼굴은 아니다. 그래도 집게가 멈춰 있다.)',
+        '(얼음 집게를 만지작거리다가, 바다를 본 채로) …반찬은. 입에 맞던가.\n\n(할머니는 대답을 기다리는 얼굴이 아니다. 그래도 집게가 멈춰 있다.)',
         "(Fiddling with the tongs, still facing the sea) ...The food. Was it to your taste?\n\n(She doesn't look as if she's waiting for an answer. Still, the tongs have stopped.)",
         [
           opt('quiet_e', '(가만히 있는다.)', '(I keep quiet.)',
@@ -684,8 +684,8 @@ export const TALKS_N19: StoryTalkDef[] = [
               lineEn: '(Neither answers. She snaps the ice box lid shut, and Old Tak puts his hands on his knees and stands. Still, they sat for ten minutes.)' }) }),
         ], TAK),
       lie_out: say(
-        '(무릎을 짚던 손이 멈춘다.) …내가? 고맙다고?\n\n(할머니가 나를 본다. 탁 노인도 나를 본다. 한참. 그러다 노인이 바다 쪽으로 고개를 돌린다.) …했지. 했다. 고맙다고.',
-        '(The hand on his knee goes still.) ...I did? Said thank you?\n\n(She looks at me. So does he. For a long time. Then the old man turns his face to the sea.) ...I did. I said it. Thank you.',
+        '(무릎을 짚던 손이 멈춘다.) …내가? 고맙다고?\n\n(할머니가 나를 본다. 그 눈을 따라 나를 한참 본다. 그러다 바다 쪽으로 고개를 돌린다.) …했지. 했다. 고맙다고.',
+        '(The hand on his knee goes still.) ...I did? Said thank you?\n\n(She looks at me. Following her eyes, he looks at me too, for a long time. Then he turns his face to the sea.) ...I did. I said it. Thank you.',
         [
           opt('let_it_stand', '(아무 말도 하지 않는다.)', '(I say nothing.)',
             { stance: 'self', end: endTalk({
@@ -693,12 +693,12 @@ export const TALKS_N19: StoryTalkDef[] = [
               lineEn: "(She shuts the ice box lid. Her ears are red. For ten minutes after that, nobody speaks. Old Tak gets up first, and she pushes an ice box half a hand's width towards the empty chair.)" }) }),
           opt('confess_both', '…사실은 제가 지어낸 말이었습니다.', '...The truth is, I made it up.',
             { stance: 'other', aff: { [OK]: -0.03, [TAK]: 0.04 }, end: endTalk({
-              lineKo: '…지어낸 말을, 이 영감이 했다잖냐. (나를 노려보다가 탁 노인 쪽을 본다.) 그럼 한 거다.\n\n(얼음 상자 뚜껑을 닫는다. 그 뒤로는 아무 말이 없었다. 십 분.)',
+              lineKo: '…지어낸 말을, 이 영감이 했다잖냐. (나를 노려보다가 탁 노인 쪽을 본다.) 그럼 한 거다.\n\n(할머니가 얼음 상자 뚜껑을 닫는다. 그 뒤로는 아무 말이 없었다. 십 분.)',
               lineEn: "...You made it up, and he says he said it. (She glares at me, then looks at Old Tak.) Then he said it.\n\n(She shuts the ice box lid. After that, nothing more is said. Ten minutes.)" }) }),
         ], TAK),
       t_thanks: say(
-        '(나를 노려본다. 그러다 바다 쪽을 본다. 한참.)\n\n…고마웠다. 반찬. (그 한마디를 하고 입을 다문다. 할머니의 얼음 집게가 허공에서 멈춘다.)',
-        '(He glares at me. Then he looks out to sea. For a long time.)\n\n...Thank you. For the food. (He says that one thing and closes his mouth. Her tongs stop in midair.)',
+        '(탁 노인이 나를 노려본다. 그러다 바다 쪽을 본다. 한참.)\n\n…고마웠다. 반찬. (그 한마디를 하고 입을 다문다. 할머니의 얼음 집게가 허공에서 멈춘다.)',
+        '(Old Tak glares at me. Then he looks out to sea. For a long time.)\n\n...Thank you. For the food. (He says that one thing and closes his mouth. Her tongs stop in midair.)',
         [
           opt('look_away', '(못 들은 척 얼음 상자를 닦는다.)', '(I pretend not to hear and wipe down the ice box.)',
             { stance: 'self', end: endTalk({
@@ -715,8 +715,8 @@ export const TALKS_N19: StoryTalkDef[] = [
     id: 'n19_5_done', questId: 'N19-5', at: 'complete', npcId: TAK, start: 'start',
     nodes: {
       start: say(
-        '(병실 문이 등 뒤에서 닫힌다. 탁 노인이 복도 벽에 등을 기댄다. 손에 들었던 받침이 없다. 지팡이만 쥐고 있다.) …들어갔다. 십 분.\n\n오십 년 만에. (천장을 본다.) 자네가 문을 열었지.',
-        "(The ward door closes behind him. Old Tak leans his back against the corridor wall. The rest he was holding is gone. Only the cane is in his hand.) ...I went in. Ten minutes.\n\nAfter fifty years. (He looks up at the ceiling.) You opened the door.",
+        '(병실 문이 등 뒤에서 닫힌다. 복도 벽에 등을 기댄다. 손에 들었던 받침이 없다. 지팡이만 쥐고 있다.) …들어갔다. 십 분.\n\n오십 년 만에. (천장을 본다.) 자네가 문을 열었지.',
+        "(The ward door closes behind him. He leans his back against the corridor wall. The rest he was holding is gone. Only the cane is in his hand.) ...I went in. Ten minutes.\n\nAfter fifty years. (He looks up at the ceiling.) You opened the door.",
         [
           opt('your_feet', '문만 열었습니다. 걸어 들어가신 건 노인장 발입니다.', 'I only opened the door. Your own feet walked you in.',
             { stance: 'giver', aff: { [TAK]: 0.05 }, next: 'feet' }),

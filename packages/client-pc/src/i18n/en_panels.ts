@@ -251,6 +251,11 @@ export const EN_PANELS: Record<string, string> = {
   // 167차 — 장면 게이트(대화창 행·트리거 배우)
   '이야기가 이어집니다': 'The story continues',
   '의뢰를 받지 않았습니다.': 'You did not take the job.',
+  // 254차 — 끝내는 자리 결과 줄(낱말 그대로 찍히는 것)
+  '상점 품목 해금': 'Shop items unlocked',
+  '숙련도 1레벨 상승': 'Proficiency +1 level',
+  '숙련도 — 배운 기술이 없어 흘러갔습니다': 'Proficiency — no learned skill to take it, so it was lost',
+  '숙련도 레벨업 — 그 기술을 배우지 않아 무효': 'Proficiency level-up — void, that skill is not learned',
   // 254차 — 인물 가게 머리줄 · 사이 단계
   '값을 깎아 주지 않는다': 'no haggling', '귀한 물건을 들이지 않는다': 'no rare stock', '귀한 물건을 늘 들여놓는다': 'rare stock always in',
   '적대': 'Hostile', '냉담': 'Cold', '호의': 'Warm', '친밀': 'Close',
