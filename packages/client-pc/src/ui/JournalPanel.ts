@@ -26,7 +26,7 @@ import Phaser from 'phaser';
 import {
   STORY_CHAPTERS, STORY_QUESTS, getStoryNpc, getLicenseByType, narrativeOf, getSkillById,
   characterOf, questDifficulty, objectiveHowToKo, type StoryQuestDef, type QuestDifficultyTier,
-  JOURNAL_PAGES, ORACLE_FISH_DB, FISH_DATABASE,
+  JOURNAL_PAGES, ORACLE_FISH_DB, FISH_DATABASE, INQUIRY_NODES, INQUIRY_KIND_LABEL,
 } from '@tra/core';
 import { GUIDE_NAMES as JOURNAL_GUIDE_NAMES } from '../data/QuestGuideNames.js';
 import { actionStepGuide } from '../data/ActionGuide.js';
@@ -39,7 +39,7 @@ import { characterLook } from '../data/EquipOutfit.js';
 import { GameState } from '../store/GameState.js';
 import { addPixelIcon } from './PixelIcon.js';
 import { questRewardItemName } from '../data/QuestRewardItems.js';
-import { getLocale } from '../i18n/I18n.js';
+import { getLocale, t } from '../i18n/I18n.js';
 import { maybeStartTour, type TourOptions } from './GuideTour.js';
 import { LedgerStore } from '../store/LedgerStore.js';
 import { ConsignQueue } from '../store/ConsignQueue.js';
@@ -103,8 +103,12 @@ export class JournalPanel extends DraggablePanel {
   /** 아직 받을 수 없는 임무를 이름만 보여준다 (기본 꺼짐 — R2) */
   private showLocked = false;
 
-  /** 임무 목록 / 이야기(챕터 체인) */
-  private tab: 'tasks' | 'chain' | 'days' = 'tasks';
+  /** 임무 목록 / 이야기(챕터 체인) / 나날 / 수첩(253차 — 물어보기로 알게 된 것) */
+  private tab: 'tasks' | 'chain' | 'days' | 'notes' = 'tasks';
+  /** 253차 「수첩」 — 아는 화제 목록 스크롤 · 고른 화제 · 목록 영역(휠) */
+  private notesScroll = 0;
+  private notesSel: string | null = null;
+  private notesListRect: Phaser.Geom.Rectangle | null = null;
   private readonly cfg: JournalConfig;
   /** 214차 「나날」 — 지난 하루 목록 스크롤 · 영역(휠) · 가이드가 짚는 칸 */
   private daysScroll = 0;
@@ -147,6 +151,13 @@ export class JournalPanel extends DraggablePanel {
       if (this.narrRect && Phaser.Geom.Rectangle.Contains(this.narrRect, lx, ly)) {
         const next = Phaser.Math.Clamp(this.narrScroll + (dy > 0 ? 34 : -34), 0, this.narrMax);
         if (next !== this.narrScroll) { this.narrScroll = next; this.applyNarrScroll(); }
+        return;
+      }
+      if (this.tab === 'notes') {
+        if (this.notesListRect && Phaser.Geom.Rectangle.Contains(this.notesListRect, lx, ly)) {
+          const next = Math.max(0, this.notesScroll + (dy > 0 ? 1 : -1));
+          if (next !== this.notesScroll) { this.notesScroll = next; this.renderNotes(); }
+        }
         return;
       }
       if (this.tab === 'days') {
@@ -238,13 +249,14 @@ export class JournalPanel extends DraggablePanel {
     const max = Math.max(0, this.rows.length - this.visibleRows());
     this.scroll = Phaser.Math.Clamp(this.scroll, 0, max);
     this.paintFrame();
-    this.setTitle(this.tab === 'days' ? '일지 — 나날' : this.tab === 'chain' ? '일지 — 이야기' : '일지 — 할 일');   // 214차 — 탭을 따라간다
+    this.setTitle(this.tab === 'days' ? '일지 — 나날' : this.tab === 'chain' ? '일지 — 이야기' : this.tab === 'notes' ? '일지 — 수첩' : '일지 — 할 일');   // 214차 — 탭을 따라간다
     this.renderHeader();
-    if (this.tab === 'chain' || this.tab === 'days') {
+    if (this.tab === 'chain' || this.tab === 'days' || this.tab === 'notes') {
       this.listC?.destroy(); this.listC = undefined;
       this.detC?.destroy(); this.detC = undefined;
       this.narrMask?.destroy(); this.narrMask = undefined; this.narrRect = null;
       if (this.tab === 'days') this.renderDays();
+      else if (this.tab === 'notes') this.renderNotes();
       else if (this.storyView === 'log') this.renderLog(); else this.renderChain();
     } else {
       this.chainC?.destroy(); this.chainC = undefined;
@@ -262,7 +274,7 @@ export class JournalPanel extends DraggablePanel {
     g.clear();
     const top = this.contentTop + 26;
     const h = PANEL_H - top - 10;
-    if (this.tab === 'chain' || this.tab === 'days') {
+    if (this.tab === 'chain' || this.tab === 'days' || this.tab === 'notes') {
       g.fillStyle(0x0a1b2d, 0.6); g.fillRoundedRect(LIST_X - 4, top, PANEL_W - LIST_X - 8, h, 6);
       g.lineStyle(1, 0x1c3d5a, 1); g.strokeRoundedRect(LIST_X - 4, top, PANEL_W - LIST_X - 8, h, 6);
       return;
@@ -299,7 +311,7 @@ export class JournalPanel extends DraggablePanel {
 
     // 탭 — 할 일 목록 / 이야기(챕터 체인)
     let tx = LIST_X + 2;
-    for (const [key, label] of [['tasks', '할 일'], ['chain', '이야기'], ['days', '나날']] as const) {
+    for (const [key, label] of [['tasks', '할 일'], ['chain', '이야기'], ['days', '나날'], ['notes', '수첩']] as const) {
       const on = this.tab === key;
       const t = this.scene.add.text(tx + 26, y, label, {
         fontFamily: FONT, fontSize: '12px', color: on ? C_GOLD : C_DIM, fontStyle: on ? 'bold' : 'normal',
@@ -311,8 +323,9 @@ export class JournalPanel extends DraggablePanel {
       const h = this.scene.add.rectangle(tx + 26, y, 52, 22, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
       h.on('pointerdown', () => {
         this.tab = key; this.rebuild(); restoreHandCursor(this.scene);
-        // 214차 — 「나날」을 처음 열면 그 칸만의 체험 가이드(R11)
+        // 214차 — 「나날」을 처음 열면 그 칸만의 체험 가이드(R11) · 253차 「수첩」도
         if (key === 'days') maybeStartTour(this.scene, () => this.buildDaysTour());
+        if (key === 'notes') maybeStartTour(this.scene, () => this.buildNotesTour());
       });
       c.add([g, t, h]);
       tx += 56;
@@ -646,6 +659,93 @@ export class JournalPanel extends DraggablePanel {
     return Math.max(3, Math.floor((PANEL_H - 16 - top) / JournalPanel.DAYS_ROW_H));
   }
 
+  // ═══════════ 253차 수첩 — 물어보기로 알게 된 것 ═══════════
+  private static readonly NOTE_ROW_H = 30;
+
+  /** 왼쪽 = 아는 화제(갈래 순) · 오른쪽 = 고른 화제의 노트와 들은 이야기(누가 · 무엇을 물었고 · 답 첫머리) */
+  private renderNotes(): void {
+    this.chainC?.destroy();
+    const c = this.scene.add.container(0, 0);
+    this.chainC = c; this.add(c);
+    const top = this.contentTop + 36;
+    const L = LIST_X + 8;
+    const listW = 380;
+    const R = PANEL_W - 24;
+    const detX = L + listW + 22;
+    const detW = R - detX;
+    const topics = StoryStore.inquiryKnownTopics();
+    const heardOf = (id: string) => INQUIRY_NODES.filter((n) => n.topic === id && StoryStore.inquiryAsked(n.id));
+    if (!topics.length) {
+      c.add(this.scene.add.text(L + 4, top + 8, '아직 알게 된 것이 없다. 사람들에게 말을 걸어 보자.', { fontFamily: FONT, fontSize: '13px', color: C_DIM }));
+      this.notesListRect = null;
+      return;
+    }
+    if (!this.notesSel || !topics.some((x) => x.id === this.notesSel)) this.notesSel = topics[0].id;
+    const RH = JournalPanel.NOTE_ROW_H;
+    const vis = Math.max(1, Math.floor((PANEL_H - top - 40) / RH));
+    this.notesScroll = Phaser.Math.Clamp(this.notesScroll, 0, Math.max(0, topics.length - vis));
+    this.notesListRect = new Phaser.Geom.Rectangle(L, top, listW, vis * RH);
+    let y = top;
+    for (const tp of topics.slice(this.notesScroll, this.notesScroll + vis)) {
+      const sel = tp.id === this.notesSel;
+      const n = heardOf(tp.id).length;
+      const g = this.scene.add.graphics();
+      g.fillStyle(sel ? 0x1b3a52 : 0x0e1c2a, sel ? 0.95 : 0.6); g.fillRect(L, y, listW, RH - 4);
+      if (sel) { g.fillStyle(0xd8b25f, 1); g.fillRect(L, y, 3, RH - 4); }
+      const right = this.scene.add.text(L + listW - 8, y + (RH - 4) / 2, n ? `${INQUIRY_KIND_LABEL[tp.kind].ko} · 들은 이야기 ${n}` : INQUIRY_KIND_LABEL[tp.kind].ko, {
+        fontFamily: FONT, fontSize: '10px', color: C_DIM,
+      }).setOrigin(1, 0.5);
+      const nm = this.scene.add.text(L + 12, y + (RH - 4) / 2, tp.labelKo, { fontFamily: FONT, fontSize: '13px', color: sel ? '#ffffff' : C_TEXT }).setOrigin(0, 0.5);
+      clampTextWidth(nm, listW - right.width - 30);
+      const hit = this.scene.add.rectangle(L + listW / 2, y + (RH - 4) / 2, listW, RH - 4, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
+      hit.on('pointerdown', () => { this.notesSel = tp.id; this.renderNotes(); restoreHandCursor(this.scene); });
+      c.add([g, right, nm, hit]);
+      y += RH;
+    }
+    if (topics.length > vis) {
+      c.add(this.scene.add.text(L + listW, top + vis * RH + 4, `${this.notesScroll + 1}–${Math.min(topics.length, this.notesScroll + vis)} / ${topics.length}`, {
+        fontFamily: FONT, fontSize: '10px', color: C_DIM,
+      }).setOrigin(1, 0));
+    }
+
+    // ── 오른쪽 — 노트 + 들은 이야기(흐름 배치 · 넘치면 「그 밖 n개」) ──
+    const tp = topics.find((x) => x.id === this.notesSel)!;
+    const bottom = PANEL_H - 22;
+    const head = this.scene.add.text(detX, top, tp.labelKo, { fontFamily: FONT, fontSize: '20px', color: C_GOLD, fontStyle: 'bold' });
+    clampTextWidth(head, detW);
+    const kind = this.scene.add.text(detX, head.y + head.height + 2, INQUIRY_KIND_LABEL[tp.kind].ko, { fontFamily: FONT, fontSize: '11px', color: C_DIM });
+    const note = this.scene.add.text(detX, kind.y + kind.height + 8, tp.noteKo, {
+      fontFamily: FONT, fontSize: '13px', color: C_TEXT, lineSpacing: 4, wordWrap: { width: detW, useAdvancedWrap: true },
+    });
+    c.add([head, kind, note]);
+    let yy = note.y + note.height + 14;
+    const sep = this.scene.add.graphics();
+    sep.lineStyle(1, 0x1c3d5a, 1); sep.lineBetween(detX, yy - 6, R, yy - 6);
+    c.add(sep);
+    const heard = heardOf(tp.id);
+    if (!heard.length) {
+      c.add(this.scene.add.text(detX, yy, '아직 누구에게도 물어보지 않았다.', { fontFamily: FONT, fontSize: '12px', color: C_DIM }));
+      return;
+    }
+    let shown = 0;
+    for (const nd of heard) {
+      const who = getStoryNpc(nd.npcId)?.nameKo ?? '';
+      const q = this.scene.add.text(detX, yy, `${who} — ${nd.askKo}`, { fontFamily: FONT, fontSize: '12px', color: C_GOLD, fontStyle: 'bold' });
+      clampTextWidth(q, detW);
+      // 답 첫 단락 — 번역을 먼저 하고 자른다(잘린 한국어는 사전에 없다)
+      const first = t(nd.answerKo.split('\n\n')[0]);
+      const a = this.scene.add.text(detX + 10, q.y + q.height + 2, first.length > 120 ? `${first.slice(0, 118)}…` : first, {
+        fontFamily: FONT, fontSize: '12px', color: C_DIM, lineSpacing: 3, wordWrap: { width: detW - 10, useAdvancedWrap: true },
+      });
+      if (a.y + a.height > bottom - 18) { q.destroy(); a.destroy(); break; }
+      c.add([q, a]);
+      yy = a.y + a.height + 10;
+      shown++;
+    }
+    if (shown < heard.length) c.add(this.scene.add.text(detX, Math.min(yy, bottom - 14), `그 밖 ${heard.length - shown}개`, { fontFamily: FONT, fontSize: '11px', color: C_DIM }));
+    enforceTextBounds(c, PANEL_W - 14, '일지 수첩');
+  }
+
   private renderDays(): void {
     this.chainC?.destroy();
     const c = this.scene.add.container(0, 0);
@@ -806,6 +906,23 @@ export class JournalPanel extends DraggablePanel {
   }
 
   /** 「나날」 첫 열기 가이드 — 이야기 번째 · 앞으로 · 지난 하루 */
+  /** 253차 — 「수첩」 처음 열 때 */
+  private buildNotesTour(): TourOptions | null {
+    if (!this.notesListRect) return null;
+    const list = (): Phaser.Geom.Rectangle | null => {
+      const x = this.notesListRect;
+      return x ? this.localRect(x.x, x.y, x.width, x.height) : null;
+    };
+    return {
+      id: 'journal_notes',
+      anchor: () => list(),
+      alive: () => this.active && !!this.scene && this.tab === 'notes',
+      steps: [
+        { text: '사람들에게 물어 알게 된 사람 · 곳 · 물건 · 낱말 · 단서가 여기 모인다. 하나를 고르면 누가 무엇이라고 했는지 다시 볼 수 있다.', target: () => list() },
+      ],
+    };
+  }
+
   private buildDaysTour(): TourOptions {
     const r = (k: 'head' | 'ahead' | 'past'): Phaser.Geom.Rectangle | null => {
       const x = this.daysRects[k];

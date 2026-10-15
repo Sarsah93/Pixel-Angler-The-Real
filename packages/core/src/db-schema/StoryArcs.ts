@@ -30,7 +30,8 @@ export const STORY_ARCS: StoryArcDef[] = [
     angleKo: '물려줄 사람이 있는 집', angleEn: 'A house with someone to pass things to',
     questIds: ['N02-1', 'N02-5', 'N02-6', 'N02-2', 'N02-3', 'N02-4'], repeatableKo: '죽간 손질 의뢰', repeatableEn: 'Bamboo-rod maintenance' },
   { id: 'N03', titleKo: '강두철 — 채비 못 묶는 초보, 실은 수협 조합장', titleEn: 'Kang Du-cheol — the "beginner" who runs the co-op', regionId: 'gangwon_sokcho',
-    npcs: [{ id: 'kang_ducheol', nameKo: '강두철', nameEn: 'Kang Du-cheol', roleKo: '63세 · 초보 행세하는 수협 조합장', roleEn: '63 · co-op president posing as a beginner' }],
+    npcs: [{ id: 'kang_ducheol', nameKo: '강두철', nameEn: 'Kang Du-cheol', roleKo: '63세 · 초보 행세하는 수협 조합장', roleEn: '63 · co-op president posing as a beginner',
+      veil: { untilSeen: 'N03-2', roleKo: '63세 · 방파제의 초보 낚시꾼', roleEn: '63 · a beginner on the breakwater' } }],   // 253차 — 들키기 전(R2)
     relationKo: '신분을 모르는 사제 역전', relationEn: 'Teacher and student, identity unknown',
     angleKo: '처음으로 가르치는 입장', angleEn: 'The first time you are the one teaching',
     questIds: ['N03-1', 'N03-5', 'N03-2', 'N03-6', 'N03-3', 'N03-7', 'N03-4'] },

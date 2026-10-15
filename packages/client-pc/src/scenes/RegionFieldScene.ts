@@ -6043,7 +6043,7 @@ export class RegionFieldScene extends Phaser.Scene {
       const npcDef = getStoryNpc(n.def.npcId);
       const npcName = npcDef?.nameKo ?? n.def.npcId;
       // 200차 — 정보 카드: 나이·직업 한 줄 + 의뢰 상태(범례와 같은 말). 의뢰 이름은 싣지 않는다(대화로 연다 — R3).
-      const npcSub = npcDef ? (getLocale() === 'en' ? npcDef.roleEn : npcDef.roleKo) : undefined;
+      const npcSub = npcDef ? StoryStore.npcRole(n.def.npcId)[getLocale() === 'en' ? 'en' : 'ko'] : undefined;   // 253차 — 가린 직함(R2)
       markers.push(mk
         ? { wx: n.x, wy: n.y - 12, icon: mk, priority: mk === 'mm_ready' ? 3 : 2, label: npcName, sub: npcSub,
           status: mk === 'mm_ready' ? 'ready' : 'quest', moves: true }

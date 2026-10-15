@@ -169,5 +169,12 @@ export const EN_TOUR_PANELS2: Record<string, string> = {
     'Crafting takes time and keeps going after you close the window. "Stop" finishes the current one and stops; "Cancel" drops it — the earlier you cancel, the more materials you get back.',
   '손재주는 갈래마다 쌓은 제작 경험을 모은 것이다. 위에 올리면 갈래별로 보인다. 높을수록 조금 더 잘, 빨리, 좋게 만든다.':
     'Dexterity sums the crafting experience you built in each kind. Hover to see each one. Higher means slightly better, faster and finer work.',
+  // 253차 — 물어보기(대화창)
+  '알고 있는 사람 · 곳 · 물건 · 낱말 · 단서다. 하나를 골라 물어보면 답 속에서 새 이야깃거리가 열린다.':
+    'These are the people, places, things, words and clues you know about. Ask about one and new things to ask about open up in the answer.',
+  '같은 이야기라도 사람마다 아는 것이 다르다. 다른 사람에게도 물어보자. 이미 들은 것은 흐리게 남는다.':
+    'Everyone knows something different about the same thing. Ask other people too. What you have already heard stays dimmed.',
+  '사람들에게 물어 알게 된 사람 · 곳 · 물건 · 낱말 · 단서가 여기 모인다. 하나를 고르면 누가 무엇이라고 했는지 다시 볼 수 있다.':
+    'The people, places, things, words and clues you learned about by asking gather here. Pick one to see again who said what.',
 };
 

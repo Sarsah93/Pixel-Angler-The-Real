@@ -22,7 +22,7 @@ import {
   REGION_DATABASE, WORLD_NODE_DATABASE, REGION_AREA_NODES, REGION_MAP_GRAPHS, SEAMLESS_REGIONS,
   DATA_ATTRIBUTIONS, LICENSE_LABEL, LICENSE_LABEL_EN,
   CRAFT_BLUEPRINTS, CRAFT_GROUP_LABEL, CRAFT_STATION_LABEL, CRAFT_QUALITY_LABEL,
-  allChoiceLines, allNarrativeLines,
+  allChoiceLines, allNarrativeLines, allInquiryLines,
   FIRE_RECIPES, COOK_INGREDIENTS, HEAT_SOURCES, COOKWARES, FUELS,
   RECIPE_LORE, DISH_VARIANT_LORE, RECIPE_EFFECTS, FOOD_EFFECT_KIND_KO, DISH_MODIFIER_KO, DISH_MODIFIER_EN,
   fatnessLabel, textureLabel, fishinessLabel, flavorLabel,
@@ -173,12 +173,13 @@ function buildRuntimeDict(): void {
     if (q) { put(q.labelKo, q.labelEn); put(q.deadlineKo, q.deadlineEn); put(q.onMissKo, q.onMissEn); put(q.unlocksKo, q.unlocksEn); }
   }
   for (const p of JOURNAL_PAGES) { put(p.labelKo, p.labelEn); put(p.howKo, p.howEn); }
-  for (const a of STORY_ARCS) { put(a.titleKo, a.titleEn); put(a.relationKo, a.relationEn); put(a.angleKo, a.angleEn); for (const n of a.npcs) { put(n.nameKo, n.nameEn); put(n.roleKo, n.roleEn); } }
+  for (const a of STORY_ARCS) { put(a.titleKo, a.titleEn); put(a.relationKo, a.relationEn); put(a.angleKo, a.angleEn); for (const n of a.npcs) { put(n.nameKo, n.nameEn); put(n.roleKo, n.roleEn); if (n.veil) put(n.veil.roleKo, n.veil.roleEn); } }
   for (const n of STORY_MAIN_NPCS) { put(n.nameKo, n.nameEn); put(n.roleKo, n.roleEn); }
   for (const r of FISHERY_LAW_RULES) { put(r.titleKo, r.titleEn); put(r.textKo, r.textEn); put(r.basisKo, r.basisEn); put(r.whenKo, r.whenEn); }
   for (const m of ['rod', 'trap', 'gift', 'commercial'] as const) { const v = canSell(provenanceOf(m, ''), []); put(v.reasonKo, v.reasonEn); v.alternatives.forEach((a, i) => put(a, v.alternativesEn[i])); }
   for (const [ko, en] of allDialogueLines()) put(ko, en);
   for (const [ko, en] of allChoiceLines()) put(ko, en);   // 140차 — 선택지·응답
+  for (const [ko, en] of allInquiryLines()) put(ko, en);   // 253차 — 물어보기(화제 · 물음 · 답 · 단락)
   for (const [ko, en] of allNarrativeLines()) put(ko, en);   // 151차 — 퀘스트 나레이션 186편
   for (const [ko, en] of allCinematicLines()) put(ko, en);   // 165차 — 컷씬 각본
   for (const [ko, en] of allQuestSceneLines()) put(ko, en);   // 167차 — 퀘스트 장면 손글 각본

@@ -616,7 +616,7 @@ export type {
 } from './types/Story.js';
 export { seasonOfMonth, SEASON_LABEL, createDefaultReputation, clampHarbor, clampSea, spotKindSatisfies, SPOT_KIND_LABEL } from './types/Story.js';
 // 140차 — 대화 선택지 · 우호도
-export type { ChoiceOutcome, ChoiceRequires, QuestChoiceDef, QuestChoiceSet, AffinityTier, AffinityState } from './types/Story.js';
+export type { ChoiceOutcome, ChoiceRequires, QuestChoiceDef, QuestChoiceSet, ChoiceDepthEntry, AffinityTier, AffinityState } from './types/Story.js';
 export {
   AFFINITY_MIN, AFFINITY_MAX, clampAffinity, affinityTier, AFFINITY_TIER_LABEL, affinityRewardMult,
   affinityJobWageMult, canOfferSubQuest, canOfferJobs, affinityPips,
@@ -634,6 +634,18 @@ export {
   STORY_CHOICE_OVERRIDES, toneOfferChoices, selfOfferChoices, selfCompleteChoices, lessonCategoryOf, payChoiceCoins, defaultCompleteChoices, choicesFor,
   choiceVisible, describeOutcomeKo, allChoiceLines, validateStoryChoices, hasCustomChoices, DEFAULT_DECLINE,
 } from './db-schema/StoryChoices.js';
+// 253차 — 받는 자리 · 끝내는 자리 답 깊이(전 편 3개 이상 · 긴 응답)
+export { STORY_CHOICE_DEPTH, choiceDepthOf } from './db-schema/StoryChoiceDepth.js';
+export { d as choiceDepthAnswer, dNo as choiceDepthDecline } from './db-schema/StoryChoiceDepthKit.js';
+// 253차 — 물어보기(조사 대화 · 킹덤컴 방식): 화제 · 물음 · 꼬리 질문 · 조사 목표
+export type { InquiryTopicKind, InquiryGate, InquiryTopicDef, InquiryEffect, InquiryNodeDef } from './types/Story.js';
+export { INQUIRY_TOPICS, INQUIRY_NODES, INQUIRY_TOPICS_BASE } from './db-schema/StoryInquiry.js';
+export { topic as inquiryTopicDef, ask as inquiryAskDef } from './db-schema/StoryInquiryKit.js';
+export {
+  INQUIRY_KIND_LABEL, inquiryTopic, inquiryNode, inquiryGateOk, inquiryKnows, inquiryKnownTopics, isInquiryActionNode,
+  inquiryNodeOpen, inquiryTopicsFor, inquiryFollowUps, inquiryNodesForQuest, inquiryDrivesAction, allInquiryLines, validateInquiry,
+  type InquiryCtx, type InquiryQuestState, type InquiryTopicEntry,
+} from './rules/Inquiry.js';
 // ── 지형 전이 규칙 — 172차 ──
 export type { TerrainClass, TerrainDef, SeamKind, SeamRule, BreakwaterClass } from './rules/TerrainTransition.js';
 export {

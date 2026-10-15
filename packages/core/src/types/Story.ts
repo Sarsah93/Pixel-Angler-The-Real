@@ -413,6 +413,107 @@ export interface QuestChoiceSet {
   complete?: QuestChoiceDef[];
 }
 
+/**
+ * 253차 — 받는 자리 · 끝내는 자리 답의 깊이(퀘스트 id → 이것 · `db-schema/StoryChoiceDepth*.ts`).
+ * 모든 편이 **답 3개 이상**이고, 응답은 두세 문장(빈 줄로 단락을 나누면 대화창이 단락마다 ▼로 끊어 찍는다).
+ * 합치는 순서는 `StoryChoices.choicesFor` 머리 주석.
+ */
+export interface ChoiceDepthEntry {
+  /** 받는 자리 답 전체 — 나레이션(`StoryNarrative`)에 받는 자리 답이 없는 편 */
+  offer?: QuestChoiceDef[];
+  /** 나레이션에 받는 자리 답이 이미 있는 편 — 그 뒤에 붙인다 */
+  offerAdd?: QuestChoiceDef[];
+  /** 끝내는 자리 답 더하기 — 나레이션 답과 합쳐 3개 이상 */
+  completeAdd?: QuestChoiceDef[];
+  /** 이미 있는 받는 자리 답의 응답을 길게 — 답 id → [ko, en] */
+  offerReply?: Record<string, readonly [string, string]>;
+  /** 이미 있는 끝내는 자리 답의 응답을 길게 — 답 id → [ko, en] */
+  completeReply?: Record<string, readonly [string, string]>;
+}
+
+// ─────────────────────────────────────────────
+// 물어보기 — 조사 대화 (253차 · 킹덤컴 방식)
+//  사람 · 곳 · 물건 · 낱말 · 단서를 「화제」로 알고 있으면, 그 화제를 아무에게나 물을 수 있다.
+//  사람마다 답이 다르고, 답 속에서 새 화제가 열리며(꼬리에 꼬리), 같은 화제의 꼬리 질문이 이어진다.
+//  데이터 = `db-schema/StoryInquiry*.ts` · 판정 = `rules/Inquiry.ts` · 상태(아는 화제 · 들은 물음) = 클라이언트 StoryStore.
+// ─────────────────────────────────────────────
+
+/** 화제 갈래 — 사람 · 곳 · 물건 · 낱말 · 단서 */
+export type InquiryTopicKind = 'person' | 'place' | 'thing' | 'word' | 'clue';
+
+/** 물어보기 조건 — 전부 AND. 진행에 따라 열리는 말(스포일러 금지 — R2)은 이것으로 막는다 */
+export interface InquiryGate {
+  /** 이 편을 받았다(진행 중이거나 마쳤다) */
+  questSeen?: string;
+  /** 이 편을 마쳤다 */
+  questDone?: string;
+  /** 이 편이 진행 중이다 */
+  questActive?: string;
+  /** 이 편을 아직 마치지 않았다 — 그 편 전까지만 하는 말 */
+  questNotDone?: string;
+  /** 메인 이야기 장(1~7)이 이 이상 */
+  chapterMin?: number;
+  /** 세이브 플래그(`choice.` · `unlock.` 등)가 켜져 있다 */
+  flag?: string;
+  /** 이 화제들을 알고 있다 */
+  topics?: string[];
+  /** 이 물음들을 들었다 */
+  asked?: string[];
+  /** 묻는 상대와의 우호도가 이 이상 */
+  affinityMin?: number;
+}
+
+/** 화제 하나 — 목록에 보이는 이름 + 「알게 된 것」 한 줄 */
+export interface InquiryTopicDef {
+  /** 'p_okseon' · 'w_size_limit' — 갈래 접두(p_ 사람 · pl_ 곳 · t_ 물건 · w_ 낱말 · c_ 단서) */
+  id: string;
+  kind: InquiryTopicKind;
+  labelKo: string;
+  labelEn: string;
+  /** 주인공이 아는 것 한 줄(노트) — 1인칭 */
+  noteKo: string;
+  noteEn: string;
+  /** 처음부터 안다(아버지 · 가족사진 …) */
+  known?: boolean;
+  /** 이 조건이 되면 저절로 안다(그 편을 받으며 이름을 들었다 등) — 배열이면 하나만 맞아도 된다 */
+  learnWhen?: InquiryGate | readonly InquiryGate[];
+}
+
+/** 물음을 처음 들을 때 생기는 것 */
+export interface InquiryEffect {
+  /** 묻는 상대 우호도 — ±0.03 안(물어봐 준 것에 대한 작은 반응) */
+  affinity?: number;
+  /** 세이브 플래그 — `choice.` 접두 */
+  flag?: string;
+  /**
+   * 조사 목표 — 이 물음이 그 편 행동 목표의 **지금 단계**를 연다.
+   * 그 단계가 「의뢰인 앞에서 고르는 단계」일 때만 오른다(현장 · 창 출처 단계는 그대로 그 출처로).
+   */
+  action?: { questId: string; objectiveIndex: number; step: number };
+}
+
+/** 물음 하나 — 한 사람에게 한 화제로 묻는 말과 그 답. 꼬리 질문은 `parent`로 잇는다 */
+export interface InquiryNodeDef {
+  /** '<npc>.<화제>[.<꼬리>]' — 세이브(들은 물음)에 기록된다 */
+  id: string;
+  /** 묻는 상대(StoryNpc id) */
+  npcId: string;
+  /** 어느 화제의 물음인가 */
+  topic: string;
+  /** 꼬리 질문이면 앞 물음 id — 앞 물음을 들어야 보인다 */
+  parent?: string;
+  /** 주인공이 묻는 말(선택지 줄) */
+  askKo: string;
+  askEn: string;
+  /** 상대의 답 — 단락은 빈 줄(`\n\n`) · 한 · 영 단락 수 같게 */
+  answerKo: string;
+  answerEn: string;
+  /** 이 답을 들으면 알게 되는 화제 */
+  opens?: string[];
+  requires?: InquiryGate;
+  effect?: InquiryEffect;
+}
+
 // ─────────────────────────────────────────────
 // NPC 우호도 (140차) — −1(최저) ~ 0(기본) ~ +1(최고)
 // ─────────────────────────────────────────────
@@ -544,6 +645,11 @@ export interface StoryNpcDef {
   /** 나이·직업 한 줄 */
   roleKo: string;
   roleEn: string;
+  /**
+   * 253차 — 밝혀지기 전의 나이 · 직업 한 줄(스포일러 금지 — R2). `untilSeen` 편을 받기(진행 중 · 마침) 전에는
+   * 대화창 제목 · 미니맵 정보 카드가 `roleKo` 대신 이것을 쓴다(예: 강두철 — 조합장임이 들키기 전은 초보 낚시꾼).
+   */
+  veil?: { untilSeen: string; roleKo: string; roleEn: string };
   /**
    * 이 사람이 물건을 판다면 그 상점 id (150차).
    * 있으면 대화창에 **"물건을 볼 수 있을까요?"** 선택지가 뜬다 — 없으면 뜨지 않는다

@@ -15,13 +15,18 @@
  * 남는 규칙(140·141차): 우선순위 완료 가능 > 진행 중 > 발주 > 잡담 · 보상은 **고른 뒤에만** 드러난다 ·
  * 우호도가 낮으면 서브 발주가 감춰지고 그 사실을 대사로 말한다.
  *
+ * 253차 — **답이 길어지고(단락마다 ▼) 답 수가 늘었다**(받는 자리 3~5개) → 창 높이 372 → 452 · 로그 152 → 172 ·
+ *  선택지 줄 간격을 줄 수에 맞추고 「다른 얘기를 좀…」 · 「나가기」는 한 줄에 반씩.
+ *  **물어보기**(킹덤컴식 조사 대화) — 아는 화제(사람 · 곳 · 물건 · 낱말 · 단서)를 골라 묻고, 답에서 새 화제가 열리며
+ *  꼬리 질문이 이어진다. 조사 목표(`inquiryDrivesAction`)는 진행 중 화면의 「방식 고르기」 대신 그 편의 물음이 나온다.
+ *
  * 모달(dim) · depth 940 — ConfirmDialog(950) 아래, 일반 팝업(800대) 위.
  */
 
 import Phaser from 'phaser';
 import {
-  getStoryNpc, getStoryQuest, characterOf, affinityTier, AFFINITY_TIER_LABEL, affinityPips, narrativeOf,
-  type StoryQuestDef, type QuestChoiceDef,
+  getStoryNpc, getStoryQuest, characterOf, affinityTier, AFFINITY_TIER_LABEL, affinityPips, narrativeOf, INQUIRY_KIND_LABEL,
+  type StoryQuestDef, type QuestChoiceDef, type InquiryNodeDef,
 } from '@tra/core';
 import { DraggablePanel } from './DraggablePanel.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
@@ -38,9 +43,11 @@ import { PORTRAIT_LAYOUT } from './PortraitLayout.js';
 import { voiceOfNpc } from '@tra/core';
 import { VoiceTyper } from '../audio/Voice.js';
 import { playUiClick } from '../audio/Sfx.js';
+import { GuideTour, maybeStartTour } from './GuideTour.js';
 
 const W = 1040;
-const H = 372;
+/** 253차 — 372 → 452(답이 3~5개로 늘고 응답이 길어졌다) */
+const H = 452;
 const FONT = '"Noto Sans KR", sans-serif';
 
 /** 초상 열 — 32px 전용 얼굴 격자를 6배 nearest로 표시한다. */
@@ -60,8 +67,8 @@ const TEXT_W = W - TEXT_X - 22;
 
 /** 본문 글자 크기 — 사용자 지시 "20pt 정도" */
 const BODY_PX = 20;
-/** 대사 로그 뷰포트 높이 (≈ 5줄) */
-const LOG_H = 152;
+/** 대사 로그 뷰포트 높이 (≈ 6줄 — 253차 152 → 172) */
+const LOG_H = 172;
 const CHOICE_H = 32;
 
 /** 타이핑 속도 — ms마다 CHARS_PER_TICK자 */
@@ -73,7 +80,13 @@ const COL = {
   warn: '#ffb45a', hint: '#7f95aa', narr: '#d6c9a8',
 };
 
-interface ChoiceRow { label: string; hint?: string; action: () => void; disabled?: boolean }
+interface ChoiceRow {
+  label: string; hint?: string; action: () => void; disabled?: boolean;
+  /** 253차 — 반 폭(이어지는 반 폭 행과 한 줄을 나눈다 — 「다른 얘기를 좀…」 · 「나가기」) */
+  half?: boolean;
+  /** 253차 — 흐리게(이미 들은 물음) */
+  dim?: boolean;
+}
 
 /**
  * 167차 — 대화창이 씬에 넘기는 장면 요청. 대화창은 닫히고, 씬이 실제 필드 위에서 컷씬을 재생한 뒤
@@ -85,8 +98,8 @@ export type DialogueSceneRequest =
   /** 현장 트리거 중 `viaNpc`로 이 사람에게 말을 걸어 진행하는 단계 */
   | { kind: 'trigger'; triggerId: string };
 
-/** 화면 상태 — 인사 → 기본 선택 → 퀘스트 → 응답 → 일감 */
-type View = 'menu' | 'quest' | 'reply' | 'jobs';
+/** 화면 상태 — 인사 → 기본 선택 → 퀘스트 → 응답 → 일감 · 물어보기(253차) */
+type View = 'menu' | 'quest' | 'reply' | 'jobs' | 'ask';
 
 export class DialoguePanel extends DraggablePanel {
   private bodyC?: Phaser.GameObjects.Container;   // ⚠ `body`는 Phaser Container 예약 프로퍼티(44차 함정)
@@ -131,7 +144,11 @@ export class DialoguePanel extends DraggablePanel {
   private rows: ChoiceRow[] = [];
   private pendingRows: ChoiceRow[] = [];
   private cursor = 0;
-  private rowObjs: { g: Phaser.GameObjects.Graphics; t: Phaser.GameObjects.Text; h?: Phaser.GameObjects.Text; row: ChoiceRow; cy: number }[] = [];
+  private rowObjs: {
+    g: Phaser.GameObjects.Graphics; t: Phaser.GameObjects.Text; h?: Phaser.GameObjects.Text; row: ChoiceRow;
+    /** 253차 — 줄 가운데 y · 왼쪽 x · 폭 · 강조 높이 */
+    cy: number; x: number; w: number; rh: number;
+  }[] = [];
   private choiceC?: Phaser.GameObjects.Container;
   private lastWorkMsg = '';
   private actionReply = '';
@@ -147,7 +164,8 @@ export class DialoguePanel extends DraggablePanel {
     const npc = getStoryNpc(npcId);
     super(scene, {
       x: (GAME_WIDTH - W) / 2, y: GAME_HEIGHT - H - 18,
-      width: W, height: H, title: `${npc?.nameKo ?? npcId}  ·  ${npc?.roleKo ?? ''}`, onClose, dim: true, depth: 940,
+      width: W, height: H, title: `${npc?.nameKo ?? npcId}  ·  ${StoryStore.npcRole(npcId).ko}`,   // 253차 — 밝혀지기 전 직함은 가린다(R2)
+      onClose, dim: true, depth: 940,
       sound: false,   // 252차 — 말 걸기 소리(talk)를 따로 낸다
     });
     this.npcId = npcId;
@@ -193,13 +211,14 @@ export class DialoguePanel extends DraggablePanel {
   }
 
   private onKey(ev: KeyboardEvent): void {
+    if (GuideTour.blocksKey(ev.code)) return;   // 253차 — 물어보기 가이드 말풍선이 받는다
     if (this.busy) {
       if (ev.code === 'Enter' || ev.code === 'Space') { ev.preventDefault(); this.advance(); }
       return;
     }
     if (this.rows.length === 0) return;
-    if (ev.code === 'ArrowUp') { this.moveCursor(-1); ev.preventDefault(); }
-    else if (ev.code === 'ArrowDown') { this.moveCursor(1); ev.preventDefault(); }
+    if (ev.code === 'ArrowUp' || ev.code === 'ArrowLeft') { this.moveCursor(-1); ev.preventDefault(); }
+    else if (ev.code === 'ArrowDown' || ev.code === 'ArrowRight') { this.moveCursor(1); ev.preventDefault(); }
     else if (ev.code === 'Enter' || ev.code === 'Space') {
       const r = this.rows[this.cursor];
       if (r && !r.disabled) { ev.preventDefault(); playUiClick(); r.action(); }
@@ -479,6 +498,11 @@ export class DialoguePanel extends DraggablePanel {
       if (t.viaNpc !== this.npcId || t.regionId !== this.regionId || !StoryStore.canPerformAction(t.questId, t.objectiveIndex, t.phase)) continue;
       rows.push({ label: t.labelKo, hint: '이야기가 이어집니다', disabled: !this.onScene, action: () => this.requestScene({ kind: 'trigger', triggerId: t.id }) });
     }
+    // 253차 — 물어보기: 아는 화제 중 이 사람에게 물을 것이 있을 때만
+    const topics = StoryStore.inquiryTopics(this.npcId);
+    if (topics.length) {
+      rows.push({ label: '물어볼 게 있는데요.', hint: topics.some((e) => e.fresh > 0) ? '처음 듣는 이야기' : undefined, action: () => this.enterAsk(0) });
+    }
     const shopId = this.npcShopId();
     if (shopId) rows.push({ label: '물건을 볼 수 있을까요?', action: () => this.onTrade?.(shopId) });
     const jobs = StoryStore.jobsOfNpc(this.npcId, this.regionId);
@@ -524,10 +548,10 @@ export class DialoguePanel extends DraggablePanel {
   }
 
   private backRow(): ChoiceRow {
-    return { label: '다른 얘기를 좀…', action: () => this.enterMenu(false) };
+    return { label: '다른 얘기를 좀…', half: true, action: () => this.enterMenu(false) };
   }
   private exitRow(): ChoiceRow {
-    return { label: '나가기', action: () => this.onClose() };
+    return { label: '나가기', half: true, action: () => this.onClose() };
   }
 
   private questHead(q: StoryQuestDef): string {
@@ -579,7 +603,11 @@ export class DialoguePanel extends DraggablePanel {
         //  고르는 단계가 아니면(쿨러 · 면허 창 · 현장 지점 …) 고른 방식은 기록만 되고, 다음 할 일은 그 단계의 이야기 문장이다.
         const stepChoice = StoryStore.actionStepIsChoice(q.id, idx);
         const stepLine = spec.stepsKo[Math.min(completed, spec.stepsKo.length - 1)];
-        for (const ch of spec.choices) rows.push({
+        // 253차 — 조사 대화: 「방식 고르기」 대신 그 편의 물음. 지금 단계의 열쇠 물음을 물으면 단계가 오른다.
+        if (StoryStore.inquiryDrivesAction(q.id, idx)) {
+          if (!stepChoice) paras.push(`이어서 할 일 — ${stepLine}`);
+          for (const n of StoryStore.inquiryQuestNodes(this.npcId, q.id, idx)) rows.push(this.inquiryRow(n, () => this.playActive(q)));
+        } else for (const ch of spec.choices) rows.push({
           label: ch.labelKo,
           hint: taken
             ? `${flowLabel[spec.flow] ?? '행동'} 선택 완료 · ${completed}/${spec.stepsKo.length} — ${stepChoice ? '실제 행동을 진행하세요' : stepLine}`
@@ -669,7 +697,8 @@ export class DialoguePanel extends DraggablePanel {
   private enterReply(): void {
     this.view = 'reply';
     const r = this.reply!;
-    const paras = [`"${r.line}"`];
+    // 253차 — 응답이 길어졌다: 빈 줄 단락마다 끊어 찍는다(▼)
+    const paras = r.line.split('\n\n').map((p) => `"${p}"`);
     if (r.declined) paras.push('의뢰를 받지 않았습니다.');
     if (r.rewards.length) paras.push(`받은 것 — ${r.rewards.join(' · ')}`);
     if (r.lines.length) paras.push(`이 답으로 — ${r.lines.join(' · ')}`);
@@ -679,6 +708,87 @@ export class DialoguePanel extends DraggablePanel {
       { label: '계속 이야기하기', action: () => { this.reply = null; this.enterMenu(false); } },
       this.exitRow(),
     ], true);
+  }
+
+  // ═══════════ 253차 물어보기(조사 대화 · 킹덤컴 방식) ═══════════
+  /** 화제 목록 — 이 사람에게 물을 것이 있는 아는 화제. 한 쪽 5개, 넘치면 쪽 넘김 */
+  private enterAsk(page = 0, intro = true): void {
+    this.view = 'ask';
+    const entries = StoryStore.inquiryTopics(this.npcId);
+    if (!entries.length) { this.enterMenu(false); return; }
+    const PER = 5;
+    const pages = Math.ceil(entries.length / PER);
+    const p = Math.max(0, Math.min(page, pages - 1));
+    const rows: ChoiceRow[] = entries.slice(p * PER, p * PER + PER).map((e) => {
+      const kind = INQUIRY_KIND_LABEL[e.topic.kind].ko;
+      return {
+        label: e.topic.labelKo,
+        hint: e.fresh > 0 ? `${kind} · 처음 듣는 이야기` : kind,
+        dim: e.fresh === 0,
+        action: () => this.enterTopic(e.topic.id, p),
+      };
+    });
+    if (pages > 1) {
+      rows.push({ label: '◀ 앞 화제', half: true, disabled: p === 0, action: () => this.enterAsk(p - 1, false) });
+      rows.push({ label: '다음 화제 ▶', hint: `${p + 1}/${pages}`, half: true, disabled: p >= pages - 1, action: () => this.enterAsk(p + 1, false) });
+    }
+    rows.push(this.backRow(), this.exitRow());
+    this.play(intro ? ['(무엇을 물어볼까.)'] : [], rows, true);
+    this.maybeAskTour();
+  }
+
+  /** 화제 하나 — 물음이 하나뿐이고 처음이면 바로 묻고, 아니면 물음(꼬리 포함) 목록 */
+  private enterTopic(topicId: string, page: number): void {
+    const e = StoryStore.inquiryTopics(this.npcId).find((x) => x.topic.id === topicId);
+    const back = (): void => this.enterAsk(page, false);
+    if (!e) { back(); return; }
+    if (e.nodes.length === 1 && !StoryStore.inquiryAsked(e.nodes[0].id)) { this.askNode(e.nodes[0], back); return; }
+    const rows = e.nodes.map((n) => this.inquiryRow(n, back));
+    rows.push({ label: '다른 걸 여쭤볼게요.', half: true, action: back }, this.exitRow());
+    // 노트 한 줄(주인공이 아는 것) — 괄호 혼잣말은 번역 사전이 통째로 못 찾으니 안쪽을 먼저 번역한다
+    this.play([`(${t(e.topic.noteKo)})`], rows, true);
+  }
+
+  /** 물음 한 줄 — 들은 물음은 흐리게 · 꼬리 질문 표시 */
+  private inquiryRow(n: InquiryNodeDef, back: () => void): ChoiceRow {
+    const asked = StoryStore.inquiryAsked(n.id);
+    return { label: n.askKo, hint: asked ? '들은 이야기' : undefined, dim: asked, action: () => this.askNode(n, back) };
+  }
+
+  /** 묻고 답을 듣는다 — 새로 안 화제 · 조사 단계를 알리고, 꼬리 질문을 잇는다 */
+  private askNode(n: InquiryNodeDef, back: () => void): void {
+    const res = StoryStore.inquiryAsk(n.id);
+    if (!res) return;
+    this.view = 'ask';
+    const paras = n.answerKo.split('\n\n').map((p) => `"${p}"`);
+    if (res.learned.length) paras.push(`알게 된 것 — ${res.learned.map((x) => x.labelKo).join(' · ')}`);
+    const a = n.effect?.action;
+    if (res.advanced && a) {
+      const q = getStoryQuest(a.questId); const key = q?.objectives[a.objectiveIndex]?.actionKey;
+      const line = key ? storyActionSpec(key).stepsKo[a.step] : undefined;
+      if (q && line) paras.push(`[완료] ${line}`);
+    }
+    const rows = StoryStore.inquiryFollowUps(n.id).map((f) => this.inquiryRow(f, back));
+    rows.push({ label: '다른 걸 여쭤볼게요.', half: true, action: back }, this.exitRow());
+    this.play(paras, rows, true);
+  }
+
+  /** 물어보기를 처음 열 때 — 체험 가이드(R11: 창에 조작 안내 문구를 박지 않는다) */
+  private maybeAskTour(): void {
+    maybeStartTour(this.scene, () => ({
+      id: 'dialogue_ask',
+      anchor: () => this.panelBounds(),
+      alive: () => this.active && this.view === 'ask',
+      steps: [
+        { text: '알고 있는 사람 · 곳 · 물건 · 낱말 · 단서다. 하나를 골라 물어보면 답 속에서 새 이야깃거리가 열린다.', target: () => this.choiceAreaRect() },
+        { text: '같은 이야기라도 사람마다 아는 것이 다르다. 다른 사람에게도 물어보자. 이미 들은 것은 흐리게 남는다.', target: () => this.choiceAreaRect() },
+      ],
+    }));
+  }
+
+  private choiceAreaRect(): Phaser.Geom.Rectangle {
+    const top = this.y + this.contentTop + LOG_H + 20;
+    return new Phaser.Geom.Rectangle(this.x + TEXT_X - 4, top, TEXT_W + 8, this.y + this.panelH - 8 - top);
   }
 
   /** 일감(품삯) — 품삯은 우호도 배율이 곱해진 **지급될 값** 그대로 표기 */
@@ -719,34 +829,41 @@ export class DialoguePanel extends DraggablePanel {
     this.clearChoices();
     const n = this.rows.length;
     if (n === 0) return;
+    // 253차 — 반 폭 행이 둘 이어지면 한 줄에 나눈다(「다른 얘기를 좀…」 · 「나가기」)
+    const lines: number[][] = [];
+    for (let i = 0; i < n; i++) {
+      if (this.rows[i].half && this.rows[i + 1]?.half) { lines.push([i, i + 1]); i++; } else lines.push([i]);
+    }
     const top = LOG_H + 26;
     const bottom = this.panelH - this.contentTop - 10;
-    const step = Math.max(24, Math.min(CHOICE_H + 4, Math.floor((bottom - top) / n)));
-    let y = top + step / 2;
+    const step = Math.max(24, Math.min(CHOICE_H + 4, Math.floor((bottom - top) / lines.length)));
+    const rh = Math.min(CHOICE_H, step - 4);
+    const GAP = 8;
     if (this.cursor >= n) this.cursor = 0;
     if (this.rows[this.cursor]?.disabled) this.moveCursorSilently();
 
-    this.rows.forEach((row, i) => {
-      const g = this.scene.add.graphics();
-      const t = this.scene.add.text(TEXT_X + 14, y, row.label, {
-        fontFamily: FONT, fontSize: '15px', color: COL.text,
-      }).setOrigin(0, 0.5);
-      const maxLabel = row.hint ? Math.floor(TEXT_W * 0.62) : TEXT_W - 28;
-      clampTextWidth(t, maxLabel);
-      let h: Phaser.GameObjects.Text | undefined;
-      if (row.hint) {
-        h = this.scene.add.text(TEXT_X + TEXT_W - 12, y, row.hint, {
-          fontFamily: FONT, fontSize: '11px', color: COL.hint,
-        }).setOrigin(1, 0.5);
-        clampTextWidth(h, TEXT_W - maxLabel - 34);
-      }
-      const hit = this.scene.add.rectangle(TEXT_X + TEXT_W / 2, y, TEXT_W, step - 2, 0xffffff, 0.001)
-        .setInteractive({ useHandCursor: !row.disabled });
-      hit.on('pointerover', () => { if (!row.disabled) { this.cursor = i; this.paintCursor(); } });
-      hit.on('pointerdown', () => { if (!row.disabled) { playUiClick(); row.action(); } });
-      c.add([g, t, hit]); if (h) c.add(h);
-      this.rowObjs.push({ g, t, h, row, cy: y });
-      y += step;
+    lines.forEach((line, li) => {
+      const y = top + step / 2 + li * step;
+      const w = line.length === 2 ? Math.floor((TEXT_W - GAP) / 2) : TEXT_W;
+      line.forEach((i, k) => {
+        const row = this.rows[i];
+        const x = TEXT_X + k * (w + GAP);
+        const g = this.scene.add.graphics();
+        // 오른쪽 작은 글씨를 먼저 재고 그만큼 답 글자 폭을 남긴다(긴 답이 말줄임으로 잘리지 않게)
+        let h: Phaser.GameObjects.Text | undefined;
+        if (row.hint) {
+          h = this.scene.add.text(x + w - 12, y, row.hint, { fontFamily: FONT, fontSize: '11px', color: COL.hint }).setOrigin(1, 0.5);
+          clampTextWidth(h, Math.floor(w * 0.4));
+        }
+        const t = this.scene.add.text(x + 14, y, row.label, { fontFamily: FONT, fontSize: '15px', color: COL.text }).setOrigin(0, 0.5);
+        clampTextWidth(t, w - 28 - (h ? h.width + 14 : 0));
+        const hit = this.scene.add.rectangle(x + w / 2, y, w, step - 2, 0xffffff, 0.001)
+          .setInteractive({ useHandCursor: !row.disabled });
+        hit.on('pointerover', () => { if (!row.disabled) { this.cursor = i; this.paintCursor(); } });
+        hit.on('pointerdown', () => { if (!row.disabled) { playUiClick(); row.action(); } });
+        c.add([g, t, hit]); if (h) c.add(h);
+        this.rowObjs.push({ g, t, h, row, cy: y, x, w, rh });
+      });
     });
     this.paintCursor();
     applyScreenFixed(this);
@@ -763,9 +880,9 @@ export class DialoguePanel extends DraggablePanel {
       const sel = i === this.cursor;
       o.g.clear();
       o.g.fillStyle(sel ? 0x1b3a52 : 0x0e1c2a, sel ? 0.95 : 0.7);
-      o.g.fillRect(TEXT_X, o.cy - CHOICE_H / 2, TEXT_W, CHOICE_H);
-      if (sel) { o.g.fillStyle(0xd8b25f, 1); o.g.fillRect(TEXT_X, o.cy - CHOICE_H / 2, 3, CHOICE_H); }
-      o.t.setColor(o.row.disabled ? '#5a6a78' : sel ? '#ffffff' : COL.text);
+      o.g.fillRect(o.x, o.cy - o.rh / 2, o.w, o.rh);
+      if (sel) { o.g.fillStyle(0xd8b25f, 1); o.g.fillRect(o.x, o.cy - o.rh / 2, 3, o.rh); }
+      o.t.setColor(o.row.disabled ? '#5a6a78' : sel ? '#ffffff' : o.row.dim ? COL.dim : COL.text);
     });
   }
 }

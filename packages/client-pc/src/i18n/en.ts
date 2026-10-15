@@ -683,6 +683,10 @@ export const EN_DICT: Record<string, string> = {
   '배누리가 묵는 민박': "Bae Nu-ri's guesthouse",
   // 214차 — 나날 · 맡긴 물건 · 문 두드리기
   '나날': 'Days', '지난 날들': 'Past days', '일지 — 나날': 'Journal — Days', '일지 — 이야기': 'Journal — Story',
+  // 253차 — 일지 「수첩」(물어보기로 알게 된 것)
+  '수첩': 'Notebook', '일지 — 수첩': 'Journal — Notebook',
+  '아직 알게 된 것이 없다. 사람들에게 말을 걸어 보자.': 'Nothing learned yet. Try talking to people.',
+  '아직 누구에게도 물어보지 않았다.': 'I have not asked anyone about this yet.',
   '앞으로': 'Coming up', '실습 기한': 'Trainee deadline', '목록 보기': 'View list',
   '정해진 때가 있는 일이 없다.': 'Nothing with a set date.', '아직 지난 하루가 없다.': 'No past days yet.',
   '잠으로 마침': 'ended with sleep', '새벽 4시를 넘김': 'ran past 4 AM', '±0원': '±₩0',
@@ -746,6 +750,9 @@ const DOW_EN: Record<string, string> = {
 };
 /** 수치·이름이 끼어 있는 문장 — 정규식 규칙. 캡처 그룹은 그대로 옮긴다(이름은 사전을 다시 타지 않으므로 어종·아이템명은 한국어로 남을 수 있음). */
 export const EN_RULES: Rule[] = [
+  // ── 253차 수첩 · 물어보기 ──
+  [/^들은 이야기 (\d+)$/, 'Heard $1'],
+  [/^그 밖 (\d+)개$/, '$1 more'],
   // ── 243차 먹기 · 마시기 결과 줄 「딸기 5개 — 허기 +1 · 수분 +5」 ──
   //   구분자 분해가 「 · 」를 「 — 」보다 먼저 써서 「수분 +5」 조각이 원문으로 남았다(기존 음식도 같았다).
   //   조각마다 번역하고 나머지 꼬리(식탁 · 치료 · 버프)는 번역기에 맡긴다.

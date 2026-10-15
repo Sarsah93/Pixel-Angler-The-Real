@@ -25,6 +25,7 @@ import { STORY_QUESTS } from './StoryQuestDatabase.js';
 import { narrativeOf } from './StoryNarrative.js';
 import { getStoryNpc } from './StoryArcs.js';
 import { questDifficulty, DIFFICULTY_PAY_MULT } from '../rules/QuestDifficulty.js';
+import { choiceDepthOf } from './StoryChoiceDepth.js';
 
 // ── 헬퍼 ──
 const ch = (id: string, labelKo: string, labelEn: string, replyKo: string, replyEn: string,
@@ -133,19 +134,30 @@ function materialize(q: StoryQuestDef, c: QuestChoiceDef): QuestChoiceDef {
   return { ...c, outcome: { ...rest, coins: (rest.coins ?? 0) + Math.round((payChoiceCoins(q) * payMult) / 100) * 100 } };
 }
 
+/** 253차 — 이미 있는 답의 응답만 길게 바꾼다(id · 라벨 · 결과는 그대로) */
+function withLongReply(list: QuestChoiceDef[], map?: Record<string, readonly [string, string]>): QuestChoiceDef[] {
+  if (!map) return list;
+  return list.map((c) => (map[c.id] ? { ...c, replyKo: map[c.id][0], replyEn: map[c.id][1] } : c));
+}
+
 /**
- * 퀘스트의 최종 선택지 세트 — **나레이션(141차) > 정의 > 표준**.
- *  - 발주: once/event 정책이면 거절 답을 보장한다.
- *  - 완료: `payMult`를 금액으로 환산한다.
+ * 퀘스트의 최종 선택지 세트 — **나레이션(141차) > 답 깊이(253차) > 정의 > 표준**.
+ *  - 발주: 나레이션 답 + `offerAdd` → 없으면 답 깊이의 `offer`. once/event 정책이면 거절 답을 보장한다.
+ *  - 완료: 나레이션 답 + `completeAdd`. `payMult`를 금액으로 환산한다.
+ *  - `offerReply` · `completeReply`는 응답만 길게 바꾼다.
  */
 export function choicesFor(q: StoryQuestDef): { offer: QuestChoiceDef[]; complete: QuestChoiceDef[] } {
   const n = narrativeOf(q.id);
+  const dep = choiceDepthOf(q.id);
   const def = q.choices;
   // 155차 — 무발주 할 일은 톤·품삯 세트가 아니라 혼잣말 세트가 폴백이다(상대가 없으니 우호도도 없다)
   const solo = !q.giver;
-  let offer = n?.offerChoices ?? def?.offer ?? (solo ? selfOfferChoices() : toneOfferChoices(q.kind));
+  let offer = n?.offerChoices ? [...n.offerChoices, ...(dep?.offerAdd ?? [])]
+    : dep?.offer ?? def?.offer ?? (solo ? selfOfferChoices() : toneOfferChoices(q.kind));
   if (!solo && (q.offerPolicy === 'once' || q.offerPolicy === 'event') && !offer.some((c) => c.outcome.decline)) offer = [...offer, DEFAULT_DECLINE];
-  const complete = (n?.complete ?? def?.complete ?? (solo ? selfCompleteChoices() : defaultCompleteChoices(q))).map((c) => materialize(q, c));
+  offer = withLongReply(offer, dep?.offerReply);
+  const baseComplete = n?.complete ?? def?.complete ?? (solo ? selfCompleteChoices() : defaultCompleteChoices(q));
+  const complete = withLongReply([...baseComplete, ...(dep?.completeAdd ?? [])], dep?.completeReply).map((c) => materialize(q, c));
   return { offer: offer.map((c) => materialize(q, c)), complete };
 }
 
@@ -189,7 +201,12 @@ export function describeOutcomeKo(o: ChoiceOutcome): string {
 /** 사전 합류용 — 모든 선택지 문자열 [ko, en] */
 export function allChoiceLines(): [string, string][] {
   const out: [string, string][] = [];
-  const push = (c: QuestChoiceDef): void => { out.push([c.labelKo, c.labelEn], [c.replyKo, c.replyEn]); };
+  const push = (c: QuestChoiceDef): void => {
+    out.push([c.labelKo, c.labelEn], [c.replyKo, c.replyEn]);
+    // 253차 — 대화창은 응답을 빈 줄 단락마다 끊어 찍는다(단락마다 번역 키가 필요하다)
+    const ko = c.replyKo.split('\n\n'), en = c.replyEn.split('\n\n');
+    if (ko.length > 1 && ko.length === en.length) ko.forEach((k, i) => out.push([k, en[i]]));
+  };
   for (const q of STORY_QUESTS) { const s = choicesFor(q); s.offer.forEach(push); s.complete.forEach(push); }
   return out;
 }
@@ -209,7 +226,7 @@ export function validateStoryChoices(): string[] {
     if (q.giver && !getStoryNpc(q.giver)) issues.push(`${q.id}: 발주자 ${q.giver}가 인물 명부에 없다`);
     for (const [stage, list] of [['offer', s.offer], ['complete', s.complete]] as const) {
       const ids = new Set<string>();
-      if (list.length < 2) issues.push(`${q.id} ${stage}: 선택지 2개 미만`);
+      if (list.length < 3) issues.push(`${q.id} ${stage}: 선택지 3개 미만(253차 — 답 깊이)`);
       for (const c of list) {
         if (ids.has(c.id)) issues.push(`${q.id} ${stage}: 중복 선택지 id ${c.id}`);
         ids.add(c.id);
@@ -225,6 +242,8 @@ export function validateStoryChoices(): string[] {
           if (a.npcId === q.giver) issues.push(`${q.id}/${c.id}: affinityOther가 발주자 본인을 가리킨다(affinity로 써야 한다)`);
         }
         if (o.decline && stage !== 'offer') issues.push(`${q.id}/${c.id}: decline은 발주 선택지에만`);
+        // 253차 — 단락(빈 줄) 수는 한 · 영이 같아야 번역 사전이 단락끼리 짝을 맞춘다
+        if (c.replyKo.split('\n\n').length !== c.replyEn.split('\n\n').length) issues.push(`${q.id}/${c.id}: 응답 단락 수가 한 · 영 다르다`);
         if (o.payMult !== undefined) issues.push(`${q.id}/${c.id}: payMult가 환산되지 않았다`);
         for (const it of o.items ?? []) if (it.id.startsWith('qr_') && !it.bound) issues.push(`${q.id}/${c.id}: qr_ 장비는 귀속이어야 한다`);
         if (o.xpMult !== undefined && (o.xpMult < 0.8 || o.xpMult > 1.3)) issues.push(`${q.id}/${c.id}: xpMult 범위(0.8~1.3) 밖`);

@@ -503,6 +503,11 @@ export const STORY_CHOICES_EN: Record<string, [string, string]> = {
   'M4-09/c/deadline': ['What are you going to do about your deadline?', '…I drew it all on the boat. The sea finished my deadline for me. (She tears off a page and signs it for me.)'],
   'M4-11/c/full_price': ['I\'ll charge the full fare. They\'re passengers.', 'That\'s right. (The two old ones each hold out an envelope. In old Tak\'s there is a strip of bamboo.)'],
   'M4-11/c/free': ['I can\'t take money from you two.', '…Lad. A skipper who won\'t charge his passengers doesn\'t last. Still, I\'ll take the thought today. (Instead of an envelope comes a letter of introduction stamped by the guild chief.)'],
+  // 253차 — 무발주 할 일의 받는 자리 답(혼잣말) 영문 — 152차 원고에서 빠져 있었다
+  'M1-01/o/go_now': ['…Let\'s go. The place in the photo first.', '(I fix my backpack straps and walk toward the smell of the sea.)'],
+  'M1-01/o/breathe': ['Just a moment. Let me catch my breath first.', '(I sit on the bus-stop bench, then stand up. There is only one road to take anyway.)'],
+  'M7-08/o/take_over': ['This time it\'s my turn to speak.', '(I rest a hand on the ice crate behind the stall. It is cold. The same cold as twenty-two years ago.)'],
+  'M7-08/o/hesitate': ['…Did I have that same face?', '(The kid looks up. I have to say something.)'],
   'M1-01/c/stand': ['I stand there a long while, then slip the photo back into my pocket.', '(The wind tries to turn the photo over. I hold it tight.)'],
   'M1-01/c/look': ['I have to do something. I walk toward the lights down at the harbour.', '(One stall light is still burning in the distance. My feet go that way first.)'],
   'M1-02/c/keep': ['I\'ll take it. I\'ll start with this.', 'You should. It\'s your money — spend it carefully. The crates come tomorrow too.'],

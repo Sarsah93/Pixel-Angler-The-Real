@@ -25,6 +25,8 @@ import {
   type StoryQuestDef, type StoryObjective, type StoryActionKey, type ReputationState, type CatchMethod, type StorySpotKind, type JournalPageState, type LawVerdict,
   type DayJobDef, type AffinityState, type QuestChoiceDef, type ChoiceOutcome, type ChoiceCtx, type SkillCategoryId,
   type OkseonSpareGift,
+  inquiryTopicsFor, inquiryFollowUps, inquiryNodesForQuest, inquiryKnownTopics, inquiryNode, inquiryDrivesAction,
+  type InquiryCtx, type InquiryTopicEntry, type InquiryNodeDef, type InquiryTopicDef,
 } from '@tra/core';
 import {
   storyActionSpec, originMatches, isChoiceOrigin, DAILY_ACTION_ORIGINS, type StoryActionChoice, type StoryActionSource,
@@ -70,6 +72,8 @@ export interface StorySaveState {
   declined?: string[];
   /** 거절·미수락 뒤 재발주 가능 일차 (141차 — event 정책) — questId → 스토리 일차 */
   offerCooldown?: Record<string, number>;
+  /** 253차 — 물어보기: 누군가의 답에서 알게 된 화제 · 들은 물음(구세이브는 없다 — 빈 채로 시작) */
+  inquiry?: { learned: string[]; asked: string[] };
 }
 
 export interface StoryHost {
@@ -178,6 +182,9 @@ class StoryStoreManager {
   private choices: Record<string, { offer?: string; complete?: string }> = {};
   /** 206차 — 한 번이라도 끝낸 퀘스트 id(퀘스트 첫 진행 밑걸림 완화 판정) */
   private everDone = new Set<string>();
+  /** 253차 — 물어보기: 들어서 알게 된 화제 · 들은 물음 */
+  private inqLearned = new Set<string>();
+  private inqAsked = new Set<string>();
   /**
    * 165차 — 일지에서 고정한 할 일. **메인 1건 · 서브 1건**만 동시에 고정되고,
    * 「지금 할 일」 창과 필드 화살표가 이 둘을 최우선으로 가리킨다.
@@ -199,6 +206,7 @@ class StoryStoreManager {
       quests: this.quests, rep: this.rep, pageCatch: this.pageCatch, day: this.day, traineeDay: this.traineeDay, jobs: this.jobs,
       affinity: this.affinity, choices: this.choices, tracked: this.pinned.main, pinned: { ...this.pinned },
       declined: [...this.declined], offerCooldown: this.offerCooldown, everDone: [...this.everDone],
+      inquiry: { learned: [...this.inqLearned], asked: [...this.inqAsked] },
     };
   }
   deserialize(s?: StorySaveState): void {
@@ -222,6 +230,9 @@ class StoryStoreManager {
     this.offerCooldown = s?.offerCooldown ?? {};
     // 206차 — 구세이브는 지금 끝난 상태인 퀘스트로 채운다
     this.everDone = new Set([...(s?.everDone ?? []), ...Object.entries(this.quests).filter(([, p]) => p.status === 'done').map(([id]) => id)]);
+    // 253차 — 물어보기 상태(구세이브는 없다 — 진행으로 저절로 아는 화제는 `learnWhen`이 채운다)
+    this.inqLearned = new Set(s?.inquiry?.learned ?? []);
+    this.inqAsked = new Set(s?.inquiry?.asked ?? []);
     this.refreshAutoQuests();
   }
   resetAll(): void { this.deserialize(undefined); }
@@ -497,6 +508,81 @@ class StoryStoreManager {
 
   // ── 우호도 · 선택지 (140차) ──
   affinityOf(npcId: string): number { return this.affinity[npcId] ?? 0; }
+
+  /** 253차 — 지금 보여 줄 나이 · 직업 한 줄(밝혀지기 전이면 가린 쪽 — R2) */
+  npcRole(npcId: string): { ko: string; en: string } {
+    const n = getStoryNpc(npcId);
+    if (!n) return { ko: '', en: '' };
+    const v = n.veil;
+    if (v && !this.quests[v.untilSeen] && !this.everDone.has(v.untilSeen)) return { ko: v.roleKo, en: v.roleEn };
+    return { ko: n.roleKo, en: n.roleEn };
+  }
+
+  // ── 253차 물어보기(조사 대화) ──
+  /** 판정 문맥 — 편 상태 · 장 · 플래그 · 우호도 · 세이브의 알게 된 화제와 들은 물음 */
+  inquiryCtx(): InquiryCtx {
+    return {
+      learned: this.inqLearned, asked: this.inqAsked,
+      questState: (id) => (this.quests[id]?.status === 'active' ? 'active' : (this.quests[id]?.status === 'done' || this.everDone.has(id)) ? 'done' : 'none'),
+      chapter: this.currentChapter(),
+      hasFlag: (k) => this.host?.hasFlag(k) ?? false,
+      affinity: (npc) => this.affinityOf(npc),
+    };
+  }
+  /** 이 사람에게 물을 수 있는 화제(새 물음이 있는 화제가 앞) */
+  inquiryTopics(npcId: string): InquiryTopicEntry[] { return inquiryTopicsFor(npcId, this.inquiryCtx()); }
+  /** 이 물음 다음 꼬리 질문 */
+  inquiryFollowUps(nodeId: string): InquiryNodeDef[] { return inquiryFollowUps(nodeId, this.inquiryCtx()); }
+  inquiryAsked(nodeId: string): boolean { return this.inqAsked.has(nodeId); }
+  /** 아는 화제 전부(노트) */
+  inquiryKnownTopics(): InquiryTopicDef[] { return inquiryKnownTopics(this.inquiryCtx()); }
+
+  /** 이 행동 목표를 물어보기가 이끄는가 — 진행 중 화면이 「방식 고르기」 대신 물음을 낸다 */
+  inquiryDrivesAction(questId: string, objIdx: number): boolean { return inquiryDrivesAction(questId, objIdx); }
+
+  /**
+   * 진행 중 화면의 조사 물음 — 그 편이 진행 중일 때 열리는 곁물음 + **지금 단계**의 열쇠 물음.
+   * 열쇠 물음은 그 단계가 의뢰인 앞에서 여는 단계이고, 앞 목표가 끝났을 때만 나온다(먼저 물어 버려 단계를 못 여는 일이 없게).
+   */
+  inquiryQuestNodes(npcId: string, questId: string, objIdx: number): InquiryNodeDef[] {
+    const step = this.actionStep(questId, objIdx);
+    const open = this.canPerformAction(questId, objIdx, step) && this.actionStepIsChoice(questId, objIdx);
+    return inquiryNodesForQuest(npcId, questId, objIdx, this.inquiryCtx())
+      .filter((n) => !n.effect?.action || (open && n.effect.action.step === step));
+  }
+
+  /**
+   * 묻는다. 처음 듣는 물음이면 우호도 · 플래그 · 화제 열기를 적용하고, 열쇠 물음이면(지금 단계가 맞을 때 — 다시 받은 편도)
+   * 그 행동 단계를 연다. 반환 = 새로 알게 된 화제 · 처음인가 · 단계가 올랐는가.
+   */
+  inquiryAsk(nodeId: string): { node: InquiryNodeDef; first: boolean; learned: InquiryTopicDef[]; advanced: boolean } | null {
+    const node = inquiryNode(nodeId);
+    if (!node) return null;
+    const before = new Set(inquiryKnownTopics(this.inquiryCtx()).map((t) => t.id));
+    const first = !this.inqAsked.has(node.id);
+    this.inqAsked.add(node.id);
+    if (first) {
+      for (const tId of node.opens ?? []) this.inqLearned.add(tId);
+      const e = node.effect;
+      if (e?.affinity) this.addAffinity(node.npcId, e.affinity);
+      if (e?.flag) this.host?.setFlag(e.flag, true);
+    }
+    let advanced = false;
+    const a = node.effect?.action;
+    if (a) {
+      const q = getStoryQuest(a.questId); const p = this.quests[a.questId]; const o = q?.objectives[a.objectiveIndex];
+      const step = this.actionStep(a.questId, a.objectiveIndex);
+      if (q && p && o?.actionKey && step === a.step && this.canPerformAction(a.questId, a.objectiveIndex, step)
+        && this.actionStepIsChoice(a.questId, a.objectiveIndex)) {
+        p.actionChoices = { ...(p.actionChoices ?? {}), [`${a.objectiveIndex}:${step}`]: `inq:${node.id}` };
+        this.emitAction(o.actionKey, 'action-choice:inquiry');
+        advanced = this.actionStep(a.questId, a.objectiveIndex) > step || this.objectiveDone(q, a.objectiveIndex);
+      }
+    }
+    const learned = inquiryKnownTopics(this.inquiryCtx()).filter((t) => !before.has(t.id));
+    this.host?.markDirty();
+    return { node, first, learned, advanced };
+  }
   addAffinity(npcId: string, d: number): number {
     const before = this.affinityOf(npcId);
     const v = clampAffinity(before + d);
