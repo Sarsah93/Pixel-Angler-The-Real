@@ -132,6 +132,18 @@ export const EN_UI: Record<string, string> = {
   // ── 메인 메뉴 · 멀티 로비 ──
   '혼자 하기': 'Play alone',
   '여럿이 하기': 'Play together',
+  // 252차 — 플레이 방식 창 · 메인 메뉴 시세 띠
+  '플레이 방식': 'How to play',
+  '이 컴퓨터에만 저장되는 나만의 바다': 'Your own sea, saved only on this computer',
+  '방을 열거나 코드로 참가해 같은 바다에서': 'Open a room or join with a code to share one sea',
+  '처음부터 새 캐릭터로': 'Start over with a new character',
+  '저장해 둔 곳에서부터': 'Pick up where you saved',
+  '아직 저장된 여정이 없습니다': 'No saved journey yet',
+  '새로 시작 — 슬롯 고르기': 'New game — choose a slot',
+  '이어하기 — 슬롯 고르기': 'Continue — choose a slot',
+  '가자미류': 'Flounders', '넙치류': 'Halibuts', '고등어류': 'Mackerels', '볼락류': 'Rockfishes', '전갱이류': 'Jacks',
+  '방어류': 'Yellowtails', '멸치류': 'Anchovies', '오징어류': 'Squids', '문어류': 'Octopuses', '게류': 'Crabs',
+  '새우류': 'Shrimps', '조기류': 'Croakers', '삼치류': 'Spanish mackerels', '기타어류': 'Other fish',
   '새로 시작': 'New game',
   '이어하기': 'Continue',
   '방을 열거나, 받은 코드로 참가하세요.': 'Open a room, or join with a code you were given.',
@@ -347,6 +359,26 @@ function shopFailEn(list: string, tr: (s: string) => string): string {
 }
 
 export const EN_UI_RULES: [RegExp, (m: RegExpMatchArray, tr: (s: string) => string) => string][] = [
+  // 252차 — 메인 메뉴 시세 띠(MainMenuScene.buildTickerMessages) 네 가지 줄
+  [/^\[([^\]]+)\] (.+) \| 낚시하기 (.+)$/, (m, tr) => `[${tr(m[1])}] ${m[2].split(' · ').map((x) => tr(x)).join(' · ')} | Fishing ${tr(m[3])}`],
+  [/^\[(.+) 경락 시세\] (.+)$/, (m, tr) => `[${tr(m[1])} auction prices] ${m[2].split(' · ').map((x) => {
+    const r = /^(\d+)위 (.+) ([\d,]+)원\/kg (▲\d+%|▼\d+%|보합)$/.exec(x);
+    return r ? `#${r[1]} ${tr(r[2])} ₩${r[3]}/kg ${r[4] === '보합' ? 'flat' : r[4]}` : tr(x);
+  }).join(' · ')}`],
+  [/^\[(.+) 어획량(?: ([\d.]+))?\] (.+)$/, (m, tr) => `[${tr(m[1])} catch${m[2] ? ` ${m[2]}` : ''}] ${m[3].split(' · ').map((x) => {
+    const r = /^(.+) ([\d,]+)(톤|kg)$/.exec(x);
+    if (!r) return tr(x);
+    let name = tr(r[1]);
+    if (/[가-힣]/.test(name) && r[1].endsWith('류')) { const base = tr(r[1].slice(0, -1)); if (!/[가-힣]/.test(base)) name = `${base} family`; }
+    return `${name} ${r[2]}${r[3] === '톤' ? ' t' : ' kg'}`;
+  }).join(' · ')}`],
+  [/^\[(.+) 입질 전망\] (.+)$/, (m, tr) => `[${tr(m[1])} bite outlook] ${m[2].split(' · ').map((x) => {
+    const r = /^(.+)\((.+)·(.+)\) (\d+)%$/.exec(x);
+    // 서식 · 수심층은 짧은 낱말이라 사전 키로 두지 않는다(다른 화면과 겹침 — 247차 함정) — 이 줄에서만 바꾼다
+    const hab: Record<string, string> = { '여밭·암초': 'reef', '모래': 'sand', '진흙': 'mud', '혼합 지형': 'mixed', '외양 회유': 'open water', '구조물': 'structures' };
+    const layer: Record<string, string> = { '상층': 'upper', '중층': 'mid', '저층': 'bottom' };
+    return r ? `${tr(r[1])} (${hab[r[2]] ?? tr(r[2])} · ${layer[r[3]] ?? tr(r[3])}) ${r[4]}%` : tr(x);
+  }).join(' · ')}`],
   // 229차 — 표지판 · 패류독소 · 알 밴 암컷 · 벌금
   [/^어기면 잡은 것을 빼앗기고 벌금을 뭅니다 — 적게는 ([\d,]+)원, 가진 것이 많으면 ([\d,]+)원까지입니다\. 벌금을 내지 못하면 더는 이 바다에 설 수 없습니다\.$/, (m) => `Break it and your catch is seized and you are fined — at least ${m[1]} won, up to ${m[2]} won if you hold a lot. If you cannot pay the fine, you can no longer stand on this sea.`],
   [/^패류독소 채취 금지 발령 중\((.+)\) — 홍합 · 바지락 · 굴을 먹지 마십시오\. 익혀도 독은 남습니다\.$/, (m) => `Shellfish-toxin ban in force (${m[1]}) — do not eat mussels · clams · oysters. Cooking does not remove the toxin.`],

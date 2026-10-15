@@ -38,6 +38,7 @@ import { ExternalDataStore } from '../../store/ExternalDataStore.js';
 import { MultiplayerClient } from '../../net/MultiplayerClient.js';
 import { WorldDepletionStore } from '../../store/WorldDepletionStore.js';
 import { StoryStore } from '../../store/StoryStore.js';
+import { playSfx } from '../../audio/SfxBank.js';
 
 /** 씬이 넘기는 접근자 — 씬 내부를 직접 만지지 않는다 */
 export interface ForageHost {
@@ -924,6 +925,7 @@ export class ForageSystem {
     this.maybeFloodWarning();
     const c = h.creature;
     if (st.status !== 'won') {
+      playSfx('forage_miss');
       const line = forageLossLineKo(c.nameKo, st.lost ?? 'escaped');
       this.host.floatingHint(line);
       this.host.pushLog(`[채집] ${line}`);
@@ -980,6 +982,7 @@ export class ForageSystem {
         category: 'tackle' as const, subCategory: '생미끼', basePrice: extra.basePrice, condition: 'live' as const, equippable: false,
       } : null);
       if (tpl && InventoryStore.addItem({ ...tpl, conditionSinceMs: Date.now() }, 1)) {
+        playSfx('forage_get');
         DiscoveryStore.record('creature', c.id, 'night_hunting');
         GameState.addActivityXp('forage');
         this.host.floatingHint(`${c.nameKo} — 미끼로 쓸 수 있다`);
@@ -987,6 +990,7 @@ export class ForageSystem {
         this.host.scene.cameras.main.flash(120, 40, 160, 90);
         return;
       }
+      playSfx('deny');
       this.host.floatingHint('가방이 가득 찼습니다 — 놓아주었습니다');
       return;
     }
@@ -1013,9 +1017,11 @@ export class ForageSystem {
       if (ok) where = 'inventory';
     }
     if (where === 'none') {
+      playSfx('deny');
       this.host.floatingHint('쿨러와 인벤토리가 가득 찼습니다 — 놓아주었습니다');
       return;
     }
+    playSfx(where === 'cooler' ? 'cooler_in' : 'forage_get');
     DiscoveryStore.record('creature', c.id, 'night_hunting');
     GameState.addActivityXp('forage');   // 플레이어 레벨 XP (124차 — 수확 1회)
     this.host.floatingHint(`${c.nameKo} ${res.weightG}g 채집!`);

@@ -65,6 +65,7 @@ export class MonologuePanel extends DraggablePanel {
     super(scene, {
       x: (GAME_WIDTH - W) / 2, y: GAME_HEIGHT - H - 24,
       width: W, height: H, title, onClose: onDone, dim: true, depth: 942, hideClose: true,
+      sound: false,   // 252차 — 혼잣말은 조용히 뜬다
     });
     this.onDone = onDone;
     this.voice = voice;

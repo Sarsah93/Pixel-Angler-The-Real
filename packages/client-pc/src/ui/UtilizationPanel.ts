@@ -57,6 +57,7 @@ import { GameState } from '../store/GameState.js';
 import { TitleStore } from '../store/TitleStore.js';
 import { maybeStartTour, tourSeen, type TourOptions } from './GuideTour.js';
 import { t } from '../i18n/I18n.js';
+import { playSfx } from '../audio/SfxBank.js';
 
 /** 추천 배너용 미끼 이름 (RigRecommender의 BaitKey → 화면 이름, R1) */
 const BAIT_KEY_KO: Record<string, string> = {
@@ -590,7 +591,7 @@ export class UtilizationPanel extends DraggablePanel {
     }).setOrigin(0.5);
     const hit = this.scene.add.rectangle(b.centerX, b.centerY, b.width, b.height, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
     hit.on('pointerdown', () => {
-      if (!InventoryStore.setBaitDouble(i, !on)) this.flashBoardToast('같은 미끼가 두 마리 이상 남아 있어야 합니다');
+      if (!InventoryStore.setBaitDouble(i, !on)) this.flashBoardToast('같은 미끼가 두 마리 이상 남아 있어야 합니다', true);
       this.closeChooser();
       this.renderBody();
     });
@@ -636,7 +637,8 @@ export class UtilizationPanel extends DraggablePanel {
           text: `${it.name} (x${left(it)})`,
           recommended: this.nodeRecommends(n, it),
           onPick: () => {
-            if (!InventoryStore.setRigNode(i, { itemId: it.id })) { this.flashBoardToast('남은 미끼가 모자랍니다'); return; }
+            if (!InventoryStore.setRigNode(i, { itemId: it.id })) { this.flashBoardToast('남은 미끼가 모자랍니다', true); return; }
+            playSfx('item_move');
             // 세트가 권장 미끼를 정했는데 다른 미끼를 끼우면 — 끼워지긴 하지만 알려 준다
             if (n.slot === 'bait' && n.kit && KIT_DEFS[n.kit].recommendedBaits?.length && !baitRecommendedFor(n.kit, baitKeyOf(it))) {
               this.flashBoardToast('권장되는 채비 유형이 아닙니다.');
@@ -679,13 +681,15 @@ export class UtilizationPanel extends DraggablePanel {
     }).setOrigin(1, 1);
     this.bodyContainer.add(badge);
     mk(right - 60 - 128, '채비 고정', !locked, 0x0d4a2e, 0x4af2a1, '#4af2a1', () => {
-      if (locked) { this.flashBoardToast('이미 고정되어 있습니다'); return; }
+      if (locked) { this.flashBoardToast('이미 고정되어 있습니다', true); return; }
       const r = InventoryStore.lockRig();
-      this.flashBoardToast(r.ok ? '채비를 고정했습니다 — 이제 이 채비로 바로 던집니다' : `고정할 수 없습니다 — ${r.reason}`);
+      if (r.ok) playSfx('equip');
+      this.flashBoardToast(r.ok ? '채비를 고정했습니다 — 이제 이 채비로 바로 던집니다' : `고정할 수 없습니다 — ${r.reason}`, !r.ok);
     });
     mk(right - 60, '고정 해제', locked, 0x2b2a48, 0x8a86d0, '#d0ccff', () => {
-      if (!locked) { this.flashBoardToast('고정된 채비가 없습니다'); return; }
+      if (!locked) { this.flashBoardToast('고정된 채비가 없습니다', true); return; }
       InventoryStore.unlockRig();
+      playSfx('unequip');
       this.flashBoardToast('채비 고정을 풀었습니다 — 소켓을 바꿀 수 있습니다');
     });
   }
@@ -693,7 +697,7 @@ export class UtilizationPanel extends DraggablePanel {
   /** 고정된 채비를 만지려 할 때 — 안내만 (true = 막았다) */
   private rigLockedGuard(): boolean {
     if (!InventoryStore.rigLocked) return false;
-    this.flashBoardToast('채비가 고정되어 있습니다 — [고정 해제]로 푼 뒤 바꾸세요');
+    this.flashBoardToast('채비가 고정되어 있습니다 — [고정 해제]로 푼 뒤 바꾸세요', true);
     return true;
   }
 
@@ -975,7 +979,7 @@ export class UtilizationPanel extends DraggablePanel {
           .setInteractive({ useHandCursor: true });
         hit2.on('pointerdown', () => {
           if (!on) {
-            this.flashBoardToast('회칼을 손에 장착해야 합니다 — 인벤토리(기타)에서 회칼 우클릭 → 착용');
+            this.flashBoardToast('회칼을 손에 장착해야 합니다 — 인벤토리(기타)에서 회칼 우클릭 → 착용', true);
             return;
           }
           this.openSashimi(boardFish, 'basic');
@@ -1000,7 +1004,7 @@ export class UtilizationPanel extends DraggablePanel {
           const hit = this.scene.add.rectangle(bx + w / 2, boardY + 20, w, 24, 0xffffff, 0.001)
             .setInteractive({ useHandCursor: true });
           hit.on('pointerdown', () => {
-            if (!on) { this.flashBoardToast(offMsg); return; }
+            if (!on) { this.flashBoardToast(offMsg, true); return; }
             this.openSashimi(boardFish, mode);
           });
           this.bodyContainer.add([bg, tx, hit]);
@@ -1027,13 +1031,13 @@ export class UtilizationPanel extends DraggablePanel {
       cutHit.on('pointerdown', () => {
         // 미개방 사유 — finfish는 항상 개방이라 여기 오면 두족류(미구현 종)/복어/미지원이다
         if (!cutEnabled) {
-          if (family !== 'finfish') this.flashBoardToast(BUTCHERY_FAMILY_NOTICE[family]);
+          if (family !== 'finfish') this.flashBoardToast(BUTCHERY_FAMILY_NOTICE[family], true);
           return;
         }
         // 회칼 손 장착 게이트 (2026-07-30 자유 손질 개편) — 왼손/오른손에 회칼이 있어야 시작
         const handKnife = InventoryStore.items.some((i) => i.tool === 'knife' && i.equipped);
         if (!handKnife) {
-          this.flashBoardToast('회칼을 손에 장착해야 손질할 수 있습니다 — 인벤토리(기타)에서 회칼 우클릭 → 착용');
+          this.flashBoardToast('회칼을 손에 장착해야 손질할 수 있습니다 — 인벤토리(기타)에서 회칼 우클릭 → 착용', true);
           return;
         }
         this.openButchery(boardFish);
@@ -1215,6 +1219,7 @@ export class UtilizationPanel extends DraggablePanel {
   private dropFishOnBoard(item: InvItem): void {
     // 회 조각 = 도마 스테이징 (썰린 조각 진열 — 접시 드래그의 출발점)
     if (this.isSashimiPiece(item)) {
+      playSfx('item_move');
       this.boardSlicedItemId = item.id;
       this.cookBoardFishId = null;
       this.cookSub = 'sashimi';
@@ -1222,11 +1227,12 @@ export class UtilizationPanel extends DraggablePanel {
       return;
     }
     if (this.isPlateItem(item)) {
-      this.flashBoardToast('접시는 아래 [사시미 만들기] 영역에 놓으세요');
+      this.flashBoardToast('접시는 아래 [사시미 만들기] 영역에 놓으세요', true);
       return;
     }
     if (this.isPureFillet(item) || this.isPureEngawa(item) || this.cephSliceKind(item)) {
       if (this.cookBoardFishId && this.cookBoardFishId !== item.id) { this.trySwapBoard(item.id); return; }
+      playSfx('flip');
       this.cookBoardFishId = item.id;
       this.cookSelectedId = item.id;
       this.renderBody();
@@ -1234,6 +1240,7 @@ export class UtilizationPanel extends DraggablePanel {
     }
     if (this.resumeSectionOf(item)) {
       if (this.cookBoardFishId && this.cookBoardFishId !== item.id) { this.trySwapBoard(item.id); return; }
+      playSfx('flip');
       this.cookBoardFishId = item.id;
       this.cookSelectedId = item.id;
       this.renderBody();
@@ -1241,7 +1248,7 @@ export class UtilizationPanel extends DraggablePanel {
     }
     const family: ButcheryFamily = getButcheryFamily(item.speciesId ?? '');
     if (family === 'pufferfish' || family === 'unsupported') {
-      this.flashBoardToast(BUTCHERY_FAMILY_NOTICE[family]);
+      this.flashBoardToast(BUTCHERY_FAMILY_NOTICE[family], true);
       return;
     }
     // finfish/cephalopod — 점유 중(다른 생선)이면 교환
@@ -1249,6 +1256,7 @@ export class UtilizationPanel extends DraggablePanel {
       this.trySwapBoard(item.id);
       return;
     }
+    playSfx('flip');
     this.cookBoardFishId = item.id;
     this.cookSelectedId = item.id;
     this.renderBody();
@@ -1257,6 +1265,7 @@ export class UtilizationPanel extends DraggablePanel {
   /** 도마 점유 중 새 생선 드롭 = 교체 (손질 진행 중이면 확인 모달) */
   private trySwapBoard(newId: string): void {
     const doSwap = (): void => {
+      playSfx('flip');
       this.cookBoardFishId = newId;
       this.cookSelectedId = newId;
       this.renderBody();
@@ -1282,7 +1291,8 @@ export class UtilizationPanel extends DraggablePanel {
   }
 
   /** 도마 안내 토스트 (1.8초 표시) */
-  private flashBoardToast(msg: string): void {
+  private flashBoardToast(msg: string, bad = false): void {
+    if (bad) playSfx('deny');
     this.boardToast?.destroy();
     const b = this.cookBoardRect;
     const t = this.scene.add.text(b.x + b.w / 2, b.y + b.h / 2, msg, {
@@ -1424,7 +1434,7 @@ export class UtilizationPanel extends DraggablePanel {
     };
     mkBox(bx, halfW, '사시미 만들기', hasPlate ? '접시에 회 조각을 담아 완성' : '(접시 필요 — 식자재마트 판매)', hasPlate,
       () => {
-        if (!hasPlate) { this.flashBoardToast('사시미 접시가 필요합니다 — 식자재마트에서 판매합니다'); return; }
+        if (!hasPlate) { this.flashBoardToast('사시미 접시가 필요합니다 — 식자재마트에서 판매합니다', true); return; }
         this.animateSashimiExpand(bx, by, bw, bh, halfW);
       });
     // 154차 — 불요리는 화구 앞에서 한다(설치한 화구 [F] · 집 주방 [F]). 이 박스는 안내만.
@@ -1650,10 +1660,11 @@ export class UtilizationPanel extends DraggablePanel {
    * **미완성 접시(plateWip)** 를 올리면 방위·조각 배치를 그대로 복원해 이어 담는다 (135차).
    */
   private mountPlate(item: InvItem): void {
-    if (this.plateState) { this.flashBoardToast('이미 접시가 놓여 있습니다 — [접시 빼기] 후 교체하세요'); return; }
+    if (this.plateState) { this.flashBoardToast('이미 접시가 놓여 있습니다 — [접시 빼기] 후 교체하세요', true); return; }
     if (item.plateWip) {
       const wip = item.plateWip;
       InventoryStore.removeQty(item.id, 1);
+      playSfx('place', { pitch: 1.4, gain: 0.8 });
       this.plateState = {
         tmpl: { ...wip.plate, qty: 1 },
         size: wip.size,
@@ -1669,6 +1680,7 @@ export class UtilizationPanel extends DraggablePanel {
     }
     const tmpl = { ...item, qty: 1 };
     InventoryStore.removeQty(item.id, 1);
+    playSfx('place', { pitch: 1.4, gain: 0.8 });
     this.plateState = { tmpl, size: this.plateSizeOf(item), rotation: 0, quads: [[], [], [], []] };
     this.renderBody();
     this.scene.events.emit('inventory-changed');
@@ -1677,18 +1689,18 @@ export class UtilizationPanel extends DraggablePanel {
   /** 회 조각 배치 — 활성 방위(quads[rotation], 화면 우상)에 1점 */
   private placePiece(item: InvItem): void {
     const st = this.plateState;
-    if (!st) { this.flashBoardToast('먼저 사시미 접시를 놓으세요'); return; }
+    if (!st) { this.flashBoardToast('먼저 사시미 접시를 놓으세요', true); return; }
     const spec = SASHIMI_PLATE_SPECS[st.size];
     const quad = st.quads[st.rotation % 4];
     if (quad.length >= spec.perQuad) {
-      this.flashBoardToast(`이 방위는 가득 찼습니다 (${spec.perQuad}점) — 접시를 돌리세요`);
+      this.flashBoardToast(`이 방위는 가득 찼습니다 (${spec.perQuad}점) — 접시를 돌리세요`, true);
       return;
     }
     // 부패 조각은 담을 수 없다 (135차) — 접시 신선도는 가장 나쁜 조각을 계승하므로
     // 한 점만 썩어도 접시 전체가 판매 불가가 된다. 모르고 담는 사고를 여기서 막는다.
     refreshCondition(item);
     if (item.condition === 'spoiled') {
-      this.flashBoardToast('부패한 회 조각은 접시에 담을 수 없습니다');
+      this.flashBoardToast('부패한 회 조각은 접시에 담을 수 없습니다', true);
       return;
     }
     if (item.condition === 'bad') {
@@ -1697,6 +1709,7 @@ export class UtilizationPanel extends DraggablePanel {
     const adv = item.id.startsWith('inv_sashimi_cut_adv_');
     quad.push({ tmpl: { ...item, qty: 1 }, speciesId: item.speciesId ?? '', weightG: item.weightG ?? 20, adv });
     InventoryStore.removeQty(item.id, 1);
+    playSfx('item_move', { pitch: 1.2 });
     this.renderBody();
     this.scene.events.emit('inventory-changed');
   }
@@ -1710,7 +1723,7 @@ export class UtilizationPanel extends DraggablePanel {
     this.renderBody();
     const spec = SASHIMI_PLATE_SPECS[st.size];
     if (st.quads[st.rotation % 4].length >= spec.perQuad) {
-      this.flashBoardToast(`해당 방위는 가득 찼습니다 (${spec.perQuad}점) — 다른 방위로 돌려 배치하세요`);
+      this.flashBoardToast(`해당 방위는 가득 찼습니다 (${spec.perQuad}점) — 다른 방위로 돌려 배치하세요`, true);
     }
   }
 
@@ -1721,7 +1734,7 @@ export class UtilizationPanel extends DraggablePanel {
     const spec = SASHIMI_PLATE_SPECS[st.size];
     const pieces = st.quads.flat();
     if (pieces.length < spec.perQuad * 4) {
-      this.flashBoardToast(`모든 방위를 채워야 완성할 수 있습니다 (${pieces.length}/${spec.perQuad * 4}점)`);
+      this.flashBoardToast(`모든 방위를 채워야 완성할 수 있습니다 (${pieces.length}/${spec.perQuad * 4}점)`, true);
       return;
     }
     const totalG = pieces.reduce((s, p) => s + p.weightG, 0);
@@ -1735,7 +1748,7 @@ export class UtilizationPanel extends DraggablePanel {
       // 모듬 — 고정 가격표 + g 하한 (싼 어종만으로 큰 접시 구성 제한)
       const row = MIXED_SASHIMI_PRICING[kind][st.size];
       if (totalG < row.minG) {
-        this.flashBoardToast(`모듬 사시미 (${st.size})는 ${row.minG}g 이상이어야 합니다 — 현재 ${totalG}g`);
+        this.flashBoardToast(`모듬 사시미 (${st.size})는 ${row.minG}g 이상이어야 합니다 — 현재 ${totalG}g`, true);
         return;
       }
       name = `${adv ? '고급 ' : ''}모듬 사시미 (${st.size}) ${totalG}g`;
@@ -1784,6 +1797,7 @@ export class UtilizationPanel extends DraggablePanel {
     this.plateState = null;   // 접시는 요리에 소모 (완성 접시째 판매)
     this.renderBody();
     this.scene.events.emit('inventory-changed');
+    playSfx('plate');
     this.flashBoardToast(`${name} 완성! — 판매가 ${price.toLocaleString()}원 · ${starsNow.parts.filter((pp) => !pp.earned).map((pp) => pp.labelKo).join('·') || '다섯 항목 전부 충족'}`);
   }
 
@@ -1832,7 +1846,7 @@ export class UtilizationPanel extends DraggablePanel {
     }, 1);
     if (!ok) {
       // 인벤 만석 — 아이템 유실 금지(61차 규칙). 접시는 도마에 그대로 두고 안내만 한다.
-      this.flashBoardToast('인벤토리 공간이 부족합니다 — 칸을 비우고 다시 빼세요');
+      this.flashBoardToast('인벤토리 공간이 부족합니다 — 칸을 비우고 다시 빼세요', true);
       return false;
     }
     this.plateState = null;
@@ -2223,6 +2237,7 @@ export class UtilizationPanel extends DraggablePanel {
 
   /** 물 넣기 — 1회. 푸른 물줄기 연출 후 상태 갱신 */
   private doChumWater(): void {
+    playSfx('farm_water');
     const { x: boxX, y: boxY, w: boxW, h: boxH } = UtilizationPanel.CHUM_BOX;
     const fx = this.scene.add.container(0, 0);
     this.add(fx);
@@ -2246,6 +2261,7 @@ export class UtilizationPanel extends DraggablePanel {
 
   /** 섞기 — 1회. 혼합 연출 후 배합 완료 (밑밥 100 충전) */
   private doChumMix(): void {
+    playSfx('knife_gut', { pitch: 0.8 });
     const { x: boxX, y: boxY, w: boxW, h: boxH } = UtilizationPanel.CHUM_BOX;
     const overlay = this.scene.add.graphics();
     overlay.fillStyle(0x8a5a3c, 1);
@@ -2369,11 +2385,12 @@ export class UtilizationPanel extends DraggablePanel {
     if (CoolerStore.chumMixed || CoolerStore.chumRemaining > 0 || !item.chumKind) return;
     // 229차 — 급랭 백크릴은 녹기 전엔 밑밥에 못 갠다(사용자 지정). 상한 것도 안 된다
     refreshCondition(item);
-    if (item.chumKind === 'krill' && item.condition === 'frozen') { this.chumNotice('꽁꽁 얼어 있다 — 녹인 뒤에 갠다'); return; }
-    if (item.condition === 'spoiled') { this.chumNotice('상했다 — 밑밥에 넣을 수 없다'); return; }
+    if (item.chumKind === 'krill' && item.condition === 'frozen') { playSfx('deny'); this.chumNotice('꽁꽁 얼어 있다 — 녹인 뒤에 갠다'); return; }
+    if (item.condition === 'spoiled') { playSfx('deny'); this.chumNotice('상했다 — 밑밥에 넣을 수 없다'); return; }
     if (!InventoryStore.removeQty(item.id, 1)) return;
 
     CoolerStore.addChumIngredient(item.chumKind, item.name);
+    playSfx(item.chumKind === 'krill' ? 'item_drop' : 'farm_fertilize');
     this.playChumPourAnim(item.chumKind, () => this.renderBody());
   }
 

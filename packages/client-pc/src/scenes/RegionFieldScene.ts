@@ -187,7 +187,7 @@ import { InventoryStore, InvItem } from '../store/InventoryStore.js';
 import { CoolerStore } from '../store/CoolerStore.js';
 import { DiscoveryStore } from '../store/DiscoveryStore.js';
 import { LedgerStore } from '../store/LedgerStore.js';
-import { playCast, playPickup, playQuestChime, playCoin, playKnock } from '../audio/Sfx.js';
+import { playCast, playPickup, playQuestChime, playCoin, playKnock, playRelease } from '../audio/Sfx.js';
 import { npcWhereabouts, routineOfNpc, type NpcHomeReason } from '@tra/core';
 import { offlineWakeLines } from '../data/WakeLines.js';
 import { settleDueConsignments } from '../store/ConsignSettle.js';
@@ -199,6 +199,7 @@ import { homeLineOf } from '../data/StoryDialogue.js';
 import { hideLoadingAfterRender, isLoadingShown, setLoadingProgress, setLoadingStage, stageForFile } from '../ui/LoadingOverlay.js';
 import { setAmbience } from '../audio/Ambience.js';
 import { BuildingKind, BUILDING_LABEL, BUILDING_GOODS, BUILDING_HOURS, shopHoursState, BUILDING_KIND_CYCLE, SHOP_CATALOG, ShopEntry } from '../data/ShopCatalog.js';
+import { playSfx } from '../audio/SfxBank.js';
 
 interface RegionFieldInit {
   region: string;
@@ -3128,6 +3129,7 @@ export class RegionFieldScene extends Phaser.Scene {
       return;
     }
     GameState.isMounted = !GameState.isMounted;
+    playSfx(GameState.isMounted ? 'bike_bell' : 'unequip');   // 252차 — 타면 따르릉 · 내리면 받침대 찰칵
     if (GameState.isMounted) StoryStore.event({ kind: 'custom', key: 'bikeMount' });   // 134차 — M1-10 자전거 목표
     // 219차 — 자전거 코치: 처음 타면 2단계(달리기 · 저절로 내림)로, 그 뒤 내리면 끝
     if (GameState.isMounted) { if (!GameState.getFlag('guide.bike.mount')) { GameState.setFlag('guide.bike.mount'); this.bikeCoachMs = 0; } }
@@ -3173,6 +3175,7 @@ export class RegionFieldScene extends Phaser.Scene {
       return;
     }
     if (!InventoryStore.hasCooler()) {
+      playSfx('deny');
       this.floatingHint('쿨러가 없습니다 — 기타 아이템에 쿨러(아이스박스)가 필요합니다');
       return;
     }
@@ -3238,6 +3241,7 @@ export class RegionFieldScene extends Phaser.Scene {
     home?: { layout: InteriorLayout; npcId: string; greetKo: string },
   ): void {
     if (this.interior) return;
+    playSfx('door_open');
     this.fadeOutThen(() => {
       this.dismountBike();   // 실내에선 자전거에서 내린다
       this.charging = false;
@@ -3269,6 +3273,7 @@ export class RegionFieldScene extends Phaser.Scene {
   private leaveInterior(instant = false): void {
     const it = this.interior;
     if (!it) return;
+    if (!instant) playSfx('door_close');
     const done = (): void => {
       while (this.popupStack.length) this.popupStack[this.popupStack.length - 1]!.close();
       it.destroy();
@@ -7066,6 +7071,7 @@ export class RegionFieldScene extends Phaser.Scene {
     }
     if (!InventoryStore.removeQty(item.id, 1)) return { ok: false, message: '아이템이 없습니다.' };
     GroundItemStore.drop(this.region, c, r, item, 1, true, this.groundMapKey);
+    playSfx('item_drop');
     GameState.markDirty();
     this.renderGroundItems();
     this.events.emit('inventory-changed');
@@ -7166,6 +7172,7 @@ export class RegionFieldScene extends Phaser.Scene {
     const onTrade = (shopId: string): void => {
       if (shopId in BUILDING_LABEL) this.openShop(shopId as BuildingKind, { key: `${this.region}:npc:${npcId}`, name: getStoryNpc(npcId)?.nameKo ?? '' });
     };
+    playSfx('talk');
     this.openPopup((close) => new DialoguePanel(this, npcId, close, this.region, onTrade, this.onDialogueScene, atDoor));
   }
 
@@ -7309,6 +7316,7 @@ export class RegionFieldScene extends Phaser.Scene {
 
   /** 집 문 → 실내 (pause + launch — 복귀는 stop + resume 규칙) */
   private enterHomeInterior(): void {
+    playSfx('door_open');
     // keepTransitioning=false — 씬이 살아있는(paused) 전환이라 액션 직전 플래그 해제
     this.fadeOutThen(() => {
       MultiplayerClient.setActivity('indoor');   // 145차
@@ -7393,7 +7401,7 @@ export class RegionFieldScene extends Phaser.Scene {
     const pw = this.pointerWorld(p);
     const tx = Math.floor(pw.x / TR), ty = Math.floor(pw.y / TR);
     const check = canPlaceAt(tx, ty, def.rule, this.placementWorld());
-    if (!check.ok) { this.floatingHint('여기에는 설치할 수 없습니다'); return; }
+    if (!check.ok) { playSfx('deny'); this.floatingHint('여기에는 설치할 수 없습니다'); return; }
     const farmWhy = def.key === 'farm_plot' ? this.farmPlotBlock() : null;
     if (farmWhy) { this.floatingHint(farmWhy); this.cancelPlacement(); return; }
 
@@ -7412,6 +7420,7 @@ export class RegionFieldScene extends Phaser.Scene {
         : def.objectType === 'aquarium_display' ? 'aq_display_std' : undefined,
     };
     GameState.getWorldObjects(this.mapId).placed.push(obj);
+    playSfx(def.objectType === 'aquarium_live' || def.objectType === 'aquarium_display' ? 'trap_place' : 'place');
     GameState.markDirty();
     this.computeHomeObjects();
     this.rebuildCollision();
@@ -7451,6 +7460,7 @@ export class RegionFieldScene extends Phaser.Scene {
     state.placed = state.placed.filter((x) => x.instanceId !== o.instanceId);
     GameState.markDirty();
     if (o.itemId) InventoryStore.recoverPlaceable(o.itemId);
+    playSfx('unplace');
     this.computeHomeObjects();
     this.rebuildCollision();
     this.renderHomeObjects();
@@ -7728,7 +7738,7 @@ export class RegionFieldScene extends Phaser.Scene {
     const r = Math.floor((this.playerBody.y + this.PLAYER_FOOT_OFFSET * 0.5) / TR);
     const was = this.wading;
     this.wading = this.chunks.wadeAt(c, r) > 0;
-    if (this.wading && !was) this.hud?.pushLog('[채집] 장화를 신고 얕은 물에 들어섰다.');
+    if (this.wading && !was) { playRelease(); this.hud?.pushLog('[채집] 장화를 신고 얕은 물에 들어섰다.'); }
     // 발목 물결 — 서 있는 자리에 작은 동심원
     if (this.wading) {
       this.wadeRippleT += delta;
@@ -8016,6 +8026,7 @@ export class RegionFieldScene extends Phaser.Scene {
   }
 
   private exitToWorldMap(): void {
+    playSfx('panel_open', { pitch: 0.7 });   // 지도 펼치기 — 출발 소리(travel)는 지도에서 행선지를 고를 때
     this.fadeOutThen(() => this.scene.start('WorldMapScene'), 280);
   }
 
@@ -8069,11 +8080,13 @@ export class RegionFieldScene extends Phaser.Scene {
         action: () => {
           // 저장은 집 실내 침대에서만 (HOMETOWN_HOME_SPEC — SavePolicy)
           if (GameState.save()) {
+            playSfx('save');
             this.hud?.pushLog(`[시스템] 슬롯 ${GameState.activeSlot ?? 1}에 저장했습니다.`);
             this.closePauseMenu();
             this.floatingHint('저장 완료');
           } else {
             this.closePauseMenu();
+            playSfx('deny');
             this.floatingHint('집 침대에서만 저장할 수 있습니다');
           }
         },

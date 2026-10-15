@@ -24,6 +24,7 @@ import {
 import {
   FridgeStore, FridgeSection, FREEZER_SLOTS, FRIDGE_SLOTS, FRIDGE_COLS,
 } from '../store/FridgeStore.js';
+import { playSfx } from '../audio/SfxBank.js';
 
 const PANEL_W = 580;
 const PANEL_H = 470;
@@ -223,6 +224,7 @@ export class FridgePanel extends DraggablePanel {
     // 219차 — 프롤로그에 아직 쓸 물건(오징어 · 대 · 릴 · 사진)은 다시 넣지 않는다(나가서 막힘 방지)
     if (prologueProtects(item.id)) { this.setStatus(PROLOGUE_PROTECT_MSG); return; }
     if (FridgeStore.firstEmpty(this.depositTo) < 0) {
+      playSfx('deny');
       this.setStatus(`${this.depositTo === 'freezer' ? '냉동고' : '냉장고'}가 가득 찼습니다`);
       return;
     }
@@ -230,6 +232,7 @@ export class FridgePanel extends DraggablePanel {
     if (!moved) return;
     FridgeStore.place(this.depositTo, moved);
     InventoryStore.removeItem(moved.id, true);   // 스택 전체 이동
+    playSfx('cooler_in', { pitch: this.depositTo === 'freezer' ? 1.25 : 1 });
     this.deposits++;
     GameState.markDirty();
     this.scene.events.emit('inventory-changed');
@@ -243,11 +246,13 @@ export class FridgePanel extends DraggablePanel {
     const item = FridgeStore.get(section, slot);
     if (!item) return;
     if (InventoryStore.freeSlotCount('food') <= 0 && !InventoryStore.find(item.id)) {
+      playSfx('deny');
       this.setStatus('가방(음식)에 빈 칸이 없습니다');
       return;
     }
     const taken = FridgeStore.take(section, slot);
     if (!taken) return;
+    playSfx('item_move');
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { slot: _s, qty, ...rest } = taken;
     InventoryStore.addItem(rest, Math.max(1, qty));

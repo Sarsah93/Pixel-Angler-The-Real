@@ -59,6 +59,11 @@ function note(name: string): void {
 }
 if (import.meta.env.DEV) (globalThis as unknown as { __SFX: { log: string[] } }).__SFX = { log: devLog };
 
+/** 252차 — 효과음 모음(`SfxBank`)도 같은 dev 기록을 쓴다 */
+export function noteSfx(name: string): void {
+  note(name);
+}
+
 export function audioContext(): AudioContext | null {
   try {
     if (!audioCtx) {
@@ -115,6 +120,7 @@ function tone(ac: AudioContext, o: ToneOpts): void {
   osc.type = o.type ?? 'triangle';
   osc.frequency.setValueAtTime(o.f0, t);
   if (o.f1) osc.frequency.exponentialRampToValueAtTime(Math.max(20, o.f1), t + o.dur);
+  g.gain.value = 0;   // 252차 — 기본값 1로 열린 채 시작하면 첫 표본이 튄다(SfxBank 함정과 같다)
   g.gain.setValueAtTime(0.0001, t);
   g.gain.exponentialRampToValueAtTime(o.peak, t + (o.attack ?? 0.008));
   g.gain.exponentialRampToValueAtTime(0.0001, t + o.dur);
@@ -140,6 +146,7 @@ function noise(ac: AudioContext, o: NoiseOpts): void {
   bq.frequency.setValueAtTime(o.f0, t);
   if (o.f1) bq.frequency.exponentialRampToValueAtTime(Math.max(30, o.f1), t + o.dur);
   const g = ac.createGain();
+  g.gain.value = 0;   // 252차 — 기본값 1로 열린 채 고역 잡음이 시작하면 첫 표본이 0.8까지 튄다(실측)
   g.gain.setValueAtTime(0.0001, t);
   g.gain.exponentialRampToValueAtTime(o.peak, t + (o.attack ?? 0.01));
   g.gain.exponentialRampToValueAtTime(0.0001, t + o.dur);
@@ -172,8 +179,12 @@ export function playTitleJingle(steps = 4): void {
   });
 }
 
-/** 버튼 · 선택지 — 아주 짧은 나무 딸깍 */
+/** 버튼 · 선택지 — 아주 짧은 나무 딸깍. 252차 — 60ms 안에 또 오면 한 번만(전역 딸깍과 단추가 부른 딸깍이 겹친다) */
+let lastClickAt = -1e9;
 export function playUiClick(): void {
+  const now = performance.now();
+  if (now - lastClickAt < 60) return;
+  lastClickAt = now;
   const ac = audioContext();
   if (!ac) return;
   note('click');

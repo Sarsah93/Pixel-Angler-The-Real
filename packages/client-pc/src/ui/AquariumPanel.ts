@@ -22,6 +22,7 @@ import { InventoryStore, type InvItem } from '../store/InventoryStore.js';
 import { CoolerStore } from '../store/CoolerStore.js';
 import { HomeStore, TANK_SLOTS, type TankFish } from '../store/HomeStore.js';
 import { fitFishTexture, resolveFishTexture } from '../data/FishTextures.js';
+import { playSfx } from '../audio/SfxBank.js';
 
 const PANEL_W = 680;
 const PANEL_H = 450;
@@ -249,11 +250,12 @@ export class AquariumPanel extends DraggablePanel {
 
   private putIn(c: Candidate): void {
     const why = HomeStore.tankReason(this.tankId, c.fish.lengthCm);
-    if (why) { this.setStatus(why, '#ff9a7a'); return; }
+    if (why) { playSfx('deny'); this.setStatus(why, '#ff9a7a'); return; }
     if (c.from === 'bag') {
       if (!InventoryStore.removeQty(String(c.ref), 1)) return;
     } else if (!CoolerStore.removeAt(Number(c.ref))) return;
     HomeStore.addToTank(this.tankId, c.fish);
+    playSfx('trap_place', { pitch: 1.3, gain: 0.8 });
     this.puts++;
     GameState.markDirty();
     this.scene.events.emit('inventory-changed');
@@ -265,7 +267,7 @@ export class AquariumPanel extends DraggablePanel {
   private takeOut(i: number): void {
     const f = HomeStore.tank(this.tankId)[i];
     if (!f) return;
-    if (InventoryStore.freeSlotCount('food') <= 0) { this.setStatus('가방(음식)에 빈 칸이 없다', '#ff9a7a'); return; }
+    if (InventoryStore.freeSlotCount('food') <= 0) { playSfx('deny'); this.setStatus('가방(음식)에 빈 칸이 없다', '#ff9a7a'); return; }
     const creature = getCreatureById(f.speciesId);
     const ok = InventoryStore.addItem({
       id: `inv_${creature ? 'forage' : 'catch'}_${f.speciesId}_${InventoryStore.nextCatchSeq()}`,
@@ -278,6 +280,7 @@ export class AquariumPanel extends DraggablePanel {
     }, 1, { silent: true });
     if (!ok) { this.setStatus('가방(음식)에 빈 칸이 없다', '#ff9a7a'); return; }
     HomeStore.takeFromTank(this.tankId, i);
+    playSfx('rinse', { pitch: 1.3, gain: 0.7 });
     this.takes++;
     GameState.markDirty();
     this.scene.events.emit('inventory-changed');

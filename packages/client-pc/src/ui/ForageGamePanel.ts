@@ -22,6 +22,7 @@ import { maybeStartTour, tourSeen, type TourOptions } from './GuideTour.js';
 import { forageSpotTexKey } from '../scenes/field/ForageSystem.js';
 import { ensureForageBed, bedKindFor, toolSpriteKey, addToolSprite, makeForageDemo, DEMO_H } from './ForageBoardArt.js';
 import { InventoryStore } from '../store/InventoryStore.js';
+import { playSfx } from '../audio/SfxBank.js';
 
 /** 229차 — 손그림 도구 스프라이트의 「끝」이 위를 향하는가(손 · 장갑 = 손가락 위 / 집게 · 갈퀴 · 갈고리 = 끝이 아래) */
 const TIP_UP: Record<string, boolean> = { fg_hand: true, fg_glove: true, fg_tongs: false, fg_rake: false, fg_gaff: false };
@@ -166,6 +167,26 @@ export class ForageGamePanel extends DraggablePanel {
   }
 
   private onPointerUp = (): void => { this.holding = false; };
+
+  /** 252차 — 판이 한 걸음 나아간 뒤 바뀐 것만 소리로(떼기 맞음 · 빗나감 / 손 휙 / 긁는 소리 / 움찔 / 당김) */
+  private sfxAt = 0;
+  private stepSounds(b: { pryHits: number; pryMiss: number; snMiss: number; snStrike: number; depth: number; flinch: boolean; prog: number }): void {
+    const g = this.gs;
+    const now = performance.now();
+    if (g.pry) {
+      if (g.pry.hits > b.pryHits) playSfx('forage_pry', { pitch: 1 + g.pry.hits * 0.06 });
+      else if (g.pry.misses > b.pryMiss) playSfx('forage_miss');
+    }
+    if (g.snatch) {
+      if (g.snatch.strikeMs > 0 && b.snStrike <= 0) playSfx('farm_weed', { pitch: 1.3, gain: 0.8 });
+      if (g.snatch.misses > b.snMiss) playSfx('forage_miss');
+    }
+    if (g.dig) {
+      if (g.dig.depth > b.depth + 1e-4 && now - this.sfxAt > 260) { this.sfxAt = now; playSfx('forage_dig'); }
+      if (g.dig.flinch && !b.flinch) playSfx('worm', { pitch: 1.5, gain: 0.6 });
+    }
+    if (g.pull && g.pull.progress > b.prog + 1e-4 && now - this.sfxAt > 380) { this.sfxAt = now; playSfx('knife_gut', { pitch: 1.2, gain: 0.7 }); }
+  }
   private onSpaceDown = (): void => { this.pressed = true; this.holding = true; };
   private onSpaceUp = (): void => { this.holding = false; };
 
@@ -203,7 +224,13 @@ export class ForageGamePanel extends DraggablePanel {
     if (this.paused) { this.pressed = false; this.draw(); return; }
     const input: ForageGameInput = { aimX: this.aimX, press: this.pressed, hold: this.holding };
     this.pressed = false;
+    const g = this.gs;
+    const before = {
+      pryHits: g.pry?.hits ?? 0, pryMiss: g.pry?.misses ?? 0, snMiss: g.snatch?.misses ?? 0, snStrike: g.snatch?.strikeMs ?? 0,
+      depth: g.dig?.depth ?? 0, flinch: g.dig?.flinch ?? false, prog: g.pull?.progress ?? 0,
+    };
     stepForageGame(this.gs, input, delta, this.rng, this.creature);
+    this.stepSounds(before);
     this.draw();
     if (this.gs.status !== 'play') {
       this.finished = true;

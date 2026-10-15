@@ -28,6 +28,7 @@ import { CoolerStore, COOLER_CAPACITY } from '../../store/CoolerStore.js';
 import { DiscoveryStore } from '../../store/DiscoveryStore.js';
 import { resolveFishTexture } from '../../data/FishTextures.js';
 import { forageTexKey } from './ForageSystem.js';
+import { playSfx } from '../../audio/SfxBank.js';
 
 export interface TrapHost {
   scene: Phaser.Scene;
@@ -206,7 +207,7 @@ export class TrapFieldSystem {
     const tr = this.host.tr;
     const tx = Math.floor(worldX / tr), ty = Math.floor(worldY / tr);
     const chk = this.placeCheck(tx, ty);
-    if (!chk.ok) { this.host.floatingHint(chk.reason ?? '여기에는 놓을 수 없습니다'); return; }
+    if (!chk.ok) { playSfx('deny'); this.host.floatingHint(chk.reason ?? '여기에는 놓을 수 없습니다'); return; }
     const { spec, trapItem, baitItem } = this.placing;
     const tide = calculateTideInfo();
     const depthM = this.host.depthAtWaterTile(tx, ty);
@@ -237,6 +238,7 @@ export class TrapFieldSystem {
       depthM, lossRolled: false, durability: spec.durability,
     };
     GameState.deployTrap(trap);
+    playSfx('trap_place');
     GameState.markDirty();
     // 145차 — 세션에 알린다. 닿지 못해도(싱글·서버 없음) 내 통발은 그대로다(다음 접속 때 대조가 맞춘다).
     // 234차 — 서버가 **거절**하면(같은 칸에 남의 통발이 먼저 · 상한) 설치를 되돌리고 통발 · 미끼를 돌려준다.
@@ -413,6 +415,7 @@ export class TrapFieldSystem {
     GameState.markDirty();
     this.renderAll();
     this.host.scene.cameras.main.flash(160, 40, 160, 90);
+    playSfx('trap_haul');
     this.host.pushLog(`[통발] ${spec?.nameKo ?? '통발'} 수거 — 침지 ${result.soakTimeHours}h · ${result.items.length ? stored.join(', ') : '수확 없음'} · 내구도 ${dur}/${spec?.maxDurability ?? '?'}`);
     this.host.floatingHint(result.items.length ? `${result.items.length}종 수거 (${coolerCount} 쿨러)` : '빈 통발…');
 

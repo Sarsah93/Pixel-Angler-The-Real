@@ -154,13 +154,27 @@ export function handCursorCss(): string {
   return handCss;
 }
 
+/** 252차 — 손 커서를 입힌 캔버스 · 브라우저가 정리해 돌려준 값(`image-set` 따옴표 등이 바뀔 수 있어 읽어 둔다) */
+let handCanvas: HTMLCanvasElement | null = null;
+let handApplied = '';
+function markHand(canvas: HTMLCanvasElement): void {
+  handCanvas = canvas;
+  handApplied = canvas.style.cursor;
+}
+
+/** 지금 「누를 수 있는 곳」 커서가 떠 있는가 — 단추 딸깍(`audio/UiClickHook`)이 쓴다 */
+export function isHandCursorOn(): boolean {
+  const cur = handCanvas?.style.cursor ?? '';
+  return cur !== '' && (cur === handApplied || cur === 'pointer');
+}
+
 /** 옵션을 캔버스에 입힌다 — 지금 손 커서가 떠 있으면 손 커서도 새 값으로 바꾼다 */
 function applyTo(mgr: CursorHost, canvas: HTMLCanvasElement, opts: CursorOptions): void {
   const wasHand = canvas.style.cursor === handCss || canvas.style.cursor === 'pointer';
   arrowCss = cursorCss(opts.style, opts.edge, opts.scale, 'default');
   handCss = cursorCss(opts.style, handEdgeLevel(opts.edge), opts.scale, 'pointer');
   mgr.setDefaultCursor(arrowCss);
-  if (wasHand) canvas.style.cursor = handCss;
+  if (wasHand) { canvas.style.cursor = handCss; markHand(canvas); }
 }
 
 function hostOf(game: Phaser.Game): { mgr: CursorHost; canvas: HTMLCanvasElement } | null {
@@ -184,7 +198,7 @@ export function installGameCursor(game: Phaser.Game, opts: CursorOptions = DEFAU
     if (typeof mgr.setCursor === 'function') {
       const setCursor = mgr.setCursor.bind(mgr);
       mgr.setCursor = (io: Phaser.Types.Input.InteractiveObject): void => {
-        if (io.cursor === 'pointer') canvas.style.cursor = handCss;
+        if (io.cursor === 'pointer') { canvas.style.cursor = handCss; markHand(canvas); }
         else setCursor(io);
       };
     }

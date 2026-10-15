@@ -47,6 +47,7 @@ import { FARM_WORM_TEX } from '../../data/ForageTextures.js';
 import { GAME_WIDTH } from '../../PhaserConfig.js';
 import { t as tl } from '../../i18n/I18n.js';
 import type { InteractOption } from '../../ui/InteractChoicePanel.js';
+import { playSfx } from '../../audio/SfxBank.js';
 
 export interface FarmFieldHost {
   scene: Phaser.Scene;
@@ -854,7 +855,8 @@ export class FarmFieldSystem {
     const key = `${t.o.instanceId}:${t.idx}`;
     const views = this.wormViews.get(key) ?? [];
     const r = FarmStore.pickWorms(t.o.instanceId, t.idx);
-    if (!r.ok) { this.host.floatingHint(r.message); return; }
+    if (!r.ok) { playSfx('deny'); this.host.floatingHint(r.message); return; }
+    playSfx('worm');
     this.did.worms++;
     const f = this.host.feet();
     const scene = this.host.scene;
@@ -871,7 +873,8 @@ export class FarmFieldSystem {
 
   private till(t: FarmTarget): void {
     const r = FarmStore.till(this.cellPlotId(t), t.idx);
-    if (!r.ok) { this.host.floatingHint(r.message); return; }
+    if (!r.ok) { playSfx('deny'); this.host.floatingHint(r.message); return; }
+    playSfx('farm_till');
     this.did.till++;
     const cc = this.cellCenter(t);
     this.fxTool('it_homi', cc);
@@ -882,7 +885,7 @@ export class FarmFieldSystem {
 
   private beginPour(t: FarmTarget, viaMouse: boolean): void {
     if (this.pour) return;
-    if (!FarmStore.plot(t.o.instanceId).cells[t.idx]?.tilled) { this.host.floatingHint('먼저 땅을 일군다'); return; }
+    if (!FarmStore.plot(t.o.instanceId).cells[t.idx]?.tilled) { playSfx('deny'); this.host.floatingHint('먼저 땅을 일군다'); return; }
     this.pour = { t, startMs: performance.now(), viaMouse };
     this.pourText.setVisible(true);
     this.drawPour();
@@ -897,6 +900,7 @@ export class FarmFieldSystem {
   private drawPour(): void {
     const p = this.pour;
     if (!p) return;
+    playSfx('farm_water');   // 252차 — 붓는 동안 이어진다(레시피 minGapMs 간격)
     const cc = this.cellCenter(p.t);
     const ms = performance.now() - p.startMs;
     const k = Math.min(1, ms / (POUR_MS.deep * 1.15));
@@ -934,7 +938,8 @@ export class FarmFieldSystem {
   private plant(t: FarmTarget, item: InvItem): void {
     const found = cropStartOfItem(item.id);
     const r = FarmStore.plant(this.cellPlotId(t), t.idx, item.id);
-    if (!r.ok) { this.host.floatingHint(r.message); return; }
+    if (!r.ok) { playSfx('deny'); this.host.floatingHint(r.message); return; }
+    playSfx('farm_plant');
     this.did.plant++;
     const cc = this.cellCenter(t);
     const f = this.host.feet();
@@ -956,13 +961,14 @@ export class FarmFieldSystem {
     const before = FarmStore.plot(plotId).cells[t.idx];
     const crop = before?.cropId ? getCrop(before.cropId) : undefined;
     const r = FarmStore.harvest(plotId, t.idx);
-    if (!r.ok) { this.host.floatingHint(r.message); return; }
+    if (!r.ok) { playSfx('deny'); this.host.floatingHint(r.message); return; }
     this.did.harvest++;
     const cc = this.cellCenter(t);
     const f = this.host.feet();
     const by = crop ? cultivationOf(crop).process?.first ?? cultivationOf(crop).harvestBy : 'pick';
     if (by === 'cut') this.fxTool('it_sickle', cc);
     if (by === 'dig') { this.fxTool('it_homi', cc); this.fxDirt(cc.x, cc.y, 0x6a4a2c, 8); }
+    playSfx(by === 'dig' ? 'farm_dig' : 'farm_harvest');
     for (const [k, h] of (r.harvested ?? []).entries()) {
       this.host.scene.time.delayedCall(k * 120, () => this.fxFly(h.itemId.replace(/_(special|good|normal)$/, ''), cc.x, cc.y - 4, f.x, f.y - 26, undefined, true));
     }

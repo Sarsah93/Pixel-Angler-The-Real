@@ -103,6 +103,7 @@ import { resolveFishTexture } from '../data/FishTextures.js';
 import { loadSettings } from './SettingsScene.js';
 import { fadeOutThen } from './SceneFade.js';
 import { t } from '../i18n/I18n.js';
+import { playSfx } from '../audio/SfxBank.js';
 
 export interface FirstPersonFishingInit {
   /** 착수 지점 바닥 수심 Z_max (m) */
@@ -1870,6 +1871,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     // 배합 밑밥 1회 25 소모 (U 밑밥 품질 탭에서 배합 — 추후 능력치로 소모량 감소 예정)
     GameState.addProficiency('chum');   // 140차 — 밑밥 감각 숙련(던진 만큼)
     if (!CoolerStore.consumeChumThrow()) {
+      playSfx('deny');
       this.flashState('밑밥이 비어 있습니다 — 탑다운 U 밑밥 품질에서 배합하세요');
       this.refreshCoolerUi();
       return;
@@ -1880,6 +1882,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     const x = xs[this.chumThrowIdx] ?? this.rig.floatX;
     // 배합 재료 → 밑밥 종류 (파우더=느림·넓음·조류↑ / 압맥=범용 / 경단=빠름·정밀)
     this.chumParcels.push(createChumParcel(x, this.distM, CoolerStore.chumTypeKey()));
+    playSfx('chum');
     // 205차 — 물이 약할 때(물돌이·끝물) 던진 밑밥은 발밑에 쌓였다가 흐름이 붙으면 띠로 풀린다
     const tnChum = this.tideNow();
     if (tnChum) this.chumBank = chumBankDeposit(this.chumBank, tnChum.state.phase);
@@ -3677,6 +3680,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
                 weightG: x.weightG, sex: x.sex, iconTexture: texOf(x), catchMethod: 'rod',
               });
             }
+            playSfx('cooler_in');
             this.refreshCoolerUi();
             this.showPostDecisionPanel(n > 1 ? `쿨러에 ${n}마리 보관하였습니다.` : '쿨러에 보관하였습니다.', '#4af2a1', fishTexture, imgScale, n);
           },
@@ -3687,6 +3691,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
             // 개체마다 길이·무게가 달라 칸을 따로 쓴다 — 전부 들어갈 때만 넣는다(addBundle)
             const ok = InventoryStore.addBundle(school.map((x) => ({ tpl: invTpl(x), qty: 1 })));
             if (!ok) {
+              playSfx('deny');
               this.flashState(n > 1
                 ? `인벤토리(음식) 빈 칸이 ${n}칸 필요합니다 — 방생하거나 자리를 비우세요`
                 : '인벤토리(음식) 공간이 없습니다 — 방생하거나 자리를 비우세요');

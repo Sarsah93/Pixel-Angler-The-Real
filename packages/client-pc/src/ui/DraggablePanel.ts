@@ -19,6 +19,7 @@ import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { paintHudPanel } from './HudPanelStyle.js';
 import { auditTextBottom } from './TextFit.js';
 import { handCursorCss } from './GameCursor.js';
+import { playSfx } from '../audio/SfxBank.js';
 
 /** 화면 고정 컨테이너 트리 전체에 scrollFactor 0 재귀 적용 (입력 판정 어긋남 방지) */
 export function applyScreenFixed(root: Phaser.GameObjects.Container): void {
@@ -61,6 +62,23 @@ export interface DraggablePanelConfig {
   depth?: number;
   /** 헤더 우측 X 버튼 숨김 (기본 표시) */
   hideClose?: boolean;
+  /** 252차 — 열기 · 닫기 소리(기본 켬). 대화창처럼 제 소리를 따로 내는 창은 끈다 */
+  sound?: boolean;
+}
+
+/**
+ * 252차 — 창 열기 · 닫기 소리. 창을 **다시 만드는** 경우(크기 바꾸기 · 통째 재구성 — 닫고 곧바로 같은 자리에 연다)는
+ * 소리를 내지 않는다: 닫기 소리는 40ms 뒤에 내고, 그 사이 새 창이 열리면 둘 다 거둔다.
+ */
+const PANEL_SFX_GRACE_MS = 40;
+let pendingClose: ReturnType<typeof setTimeout> | null = null;
+function panelOpened(): void {
+  if (pendingClose) { clearTimeout(pendingClose); pendingClose = null; return; }   // 다시 만들기
+  playSfx('panel_open');
+}
+function panelClosed(): void {
+  if (pendingClose) clearTimeout(pendingClose);
+  pendingClose = setTimeout(() => { pendingClose = null; playSfx('panel_close'); }, PANEL_SFX_GRACE_MS);
 }
 
 const HEADER_H = 32;
@@ -102,6 +120,8 @@ export class DraggablePanel extends Phaser.GameObjects.Container {
    * 곧바로 가방 창 아래로 깔려 반쯤 가려졌다(실측 상세 881 · 가방 882).
    */
   private static openedOnDown = -1;
+  /** 252차 — 열기 · 닫기 소리를 내는 창인가 */
+  private readonly sfx: boolean;
 
   constructor(scene: Phaser.Scene, cfg: DraggablePanelConfig) {
     super(scene, cfg.x, cfg.y);
@@ -109,6 +129,8 @@ export class DraggablePanel extends Phaser.GameObjects.Container {
     this.panelH = cfg.height;
     this.requestClose = cfg.onClose;
     this.zBase = cfg.depth ?? 800;
+    this.sfx = cfg.sound !== false;
+    if (this.sfx) panelOpened();
     DraggablePanel.open.add(this);
     this.setDepth(this.zBase);
     this.setScrollFactor(0);
@@ -266,6 +288,8 @@ export class DraggablePanel extends Phaser.GameObjects.Container {
   }
 
   override destroy(fromScene?: boolean): void {
+    // 씬이 내려가며 한꺼번에 지우는 것(fromScene)은 닫기 소리를 내지 않는다
+    if (this.sfx && !fromScene && DraggablePanel.open.has(this)) panelClosed();
     DraggablePanel.open.delete(this);
     this.scene?.input?.off('pointermove', this.moveHandler);
     this.scene?.input?.off('pointerup', this.upHandler);

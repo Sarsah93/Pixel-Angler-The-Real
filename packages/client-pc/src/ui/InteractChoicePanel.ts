@@ -21,6 +21,7 @@ import { DraggablePanel, restoreHandCursor } from './DraggablePanel.js';
 import { createItemIcon, type ItemIconLike } from './ItemIcon.js';
 import { clampTextWidth } from './TextFit.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
+import { playUiClick } from '../audio/Sfx.js';
 
 export interface InteractOption {
   label: string;
@@ -162,6 +163,7 @@ export class InteractChoicePanel extends DraggablePanel {
   private choose(): void {
     const o = this.opts[this.cursor];
     if (!o) return;
+    playUiClick();
     if (o.sub) { this.openSub(o); return; }
     // 실행 전에 창을 정리한다 — 실행이 다른 팝업을 열 수 있다(대화창 등)
     const run = o.run;

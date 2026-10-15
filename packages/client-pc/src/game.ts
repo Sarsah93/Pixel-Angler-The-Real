@@ -33,6 +33,7 @@ import { installI18n } from './i18n/I18n.js';
 import { installTextQuality } from './ui/TextQuality.js';
 import { installGameCursor } from './ui/GameCursor.js';
 import { applyColorAssist, cursorOptionsOf, loadSettings } from './scenes/SettingsScene.js';
+import { installUiClickSound } from './audio/UiClickHook.js';
 
 /** 싱글턴 보관 키 — HMR/재평가를 넘어 유지된다 */
 const GAME_KEY = '__PIXEL_ANGLER_GAME';
@@ -88,6 +89,8 @@ export function createGame(): Phaser.Game {
   installCrashGuards(game);
   // 250차 — 게임 마우스 포인터(찌 화살 · 누를 수 있는 곳은 흰 테) · 251차 — 설정 「접근성」의 색 · 테 · 크기
   installGameCursor(game, cursorOptionsOf(loadSettings()));
+  // 252차 — 누를 수 있는 곳(손 커서)을 누르면 딸깍
+  installUiClickSound(game);
   return game;
 }
 

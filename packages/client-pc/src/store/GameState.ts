@@ -92,6 +92,7 @@ import {
   listUpkeep, upkeepAlerts, upkeepPenalty, licenseRenewalFee, fisheryGroundFee, upkeepKeysOfLicense, POWER_UPKEEP_KEY,
   FARM_RENT_UPKEEP_KEY, enforcementRepeatMult, type UpkeepItem, type UpkeepLedger, type UpkeepPenalty,
 } from '@tra/core';
+import { playSfx } from '../audio/SfxBank.js';
 
 // ─────────────────────────────────────────────
 // 기본 쿨러 상태
@@ -720,6 +721,7 @@ export class GameStateManager {
     }
     LedgerStore.xp(add, ups);   // 211차
     if (ups > 0) {
+      playSfx('level_up');   // 252차
       // 237차 — 작물 난이도 단계 문턱(15 · 25 · 40)을 넘었으면 한 번 알린다
       FARM_TUNING.tierLevels.forEach((lv, i) => { if (i > 0 && before < lv && (p.level ?? 1) >= lv) this._recentFarmTiers.push(i + 1); });
       console.log(`[GameState] Level Up! Lv.${(p.level ?? 1) - ups} -> Lv.${p.level} (스킬 포인트 +${ups})`);
@@ -1284,6 +1286,7 @@ export class GameStateManager {
     if (!this.canLearnSkill(id).ok) return false;
     this._skillRanks[id] = (this._skillRanks[id] ?? 0) + 1;
     LedgerStore.skill(coreGetSkillById(id)?.nameKo ?? id);   // 211차
+    playSfx('skill_learn');   // 252차
     this.commitVitals(this.vitals);      // 최대치 스킬(대식가·강단 등)은 즉시 상한 재계산
     this.markDirty();
     this.refreshHiddenSkills();          // 이번 습득으로 시너지가 완성됐을 수 있다
@@ -1508,6 +1511,7 @@ export class GameStateManager {
       acquiredAt: new Date(),
       isExpired: false,
     });
+    playSfx('license');   // 252차 — 가게 발급 · 퀘스트 보상 어느 쪽이든
     // 171차 — 갱신 주기의 기산점은 취득한 **게임 일자**다(실제 벽시계가 아니다).
     if (def.requiresRenewal && licenseRenewalFee(def) > 0) {
       this._upkeepLedger[type] = StoryStore.storyDay;

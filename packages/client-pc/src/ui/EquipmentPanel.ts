@@ -33,6 +33,7 @@ import { characterLook } from '../data/EquipOutfit.js';
 import { CHAR_CELL, CHAR_FOOT_Y } from '@tra/core';
 import { maybeStartTour, type TourOptions } from './GuideTour.js';
 import { StoryStore } from '../store/StoryStore.js';
+import { playSfx } from '../audio/SfxBank.js';
 
 // ── 지오메트리 ──────────────────────────────────────
 const S = 52;              // 소켓 한 변 (퀵슬롯과 동급)
@@ -346,6 +347,7 @@ export class EquipmentPanel extends DraggablePanel {
     const item = this.itemOf(def);
     if (!item) return;
     const r = InventoryStore.unequipItem(item.id);
+    playSfx(r.ok ? 'unequip' : 'deny');
     if (!r.ok) this.tourUnequipFailed = true;
     this.setStatus(r.ok ? `${item.name} 해제 — 인벤토리로 옮겼습니다.` : r.reason ?? '해제할 수 없습니다.');
     if (r.ok) {
@@ -367,6 +369,7 @@ export class EquipmentPanel extends DraggablePanel {
     // 슬롯이 아닌 패널 여백에 놓으면 아이템에 맞는 슬롯으로 자동 배정
     const def = hitDef ?? this.autoSlotFor(item);
     if (!def) {
+      playSfx('deny');
       res.message = `${item.name} — 장착할 수 있는 부위가 없습니다.`;
       return;
     }
@@ -389,12 +392,14 @@ export class EquipmentPanel extends DraggablePanel {
     if (def.hand) {
       if (!item.tool) return `${def.label} 슬롯에는 손에 드는 도구만 장착할 수 있습니다.`;
       const r = InventoryStore.equipHand(item.id, def.hand);
+      playSfx(r.ok ? 'equip' : 'deny');
       return r.ok ? `${item.name} → ${def.label} 착용` : r.reason ?? '착용할 수 없습니다.';
     }
     if (!def.part) return `${def.label} 슬롯은 준비 중입니다.`;
     if (item.tool) return `${item.name}은(는) 손 슬롯에 장착하세요.`;
     if (item.subCategory !== def.part) return `${def.label} 슬롯에는 ${def.part} 장비만 장착할 수 있습니다.`;
     const r = InventoryStore.equipItem(item.id);
+    playSfx(r.ok ? 'equip' : 'deny');
     return r.ok ? `${item.name} → ${def.label} 착용` : r.reason ?? '착용할 수 없습니다.';
   }
 

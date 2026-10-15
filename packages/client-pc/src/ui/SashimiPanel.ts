@@ -26,6 +26,7 @@ import { DraggablePanel, applyScreenFixed } from './DraggablePanel.js';
 import { SASHIMI_FILLET_PROFILES, SASHIMI_FILLET_TEX, SashimiFilletFamily } from '../data/SashimiFilletProfiles.js';
 import { butcherFamilyOf } from './PixelButcherFish.js';
 import { canvasContextOf, refreshCanvasTexture, sourceImageOf } from './CanvasTextureGuard.js';
+import { playSfx } from '../audio/SfxBank.js';
 
 const PANEL_W = 1080;
 const PANEL_H = 620;
@@ -627,9 +628,11 @@ export class SashimiPanel extends DraggablePanel {
     this.tracePoints = [];
     if (!r.passed) {
       this.flashToast(`커버율 부족 (${Math.round(r.coverage * 100)}%) — 유도선을 따라 다시 그으세요`);
+      playSfx('work_miss');
       return;
     }
     this.qualities.push(r.quality);
+    playSfx('knife_cut', { pitch: 1.15 });
     this.playSliceFx(pathIdx);
     this.cutIdx++;
     this.refreshGuide();
@@ -928,6 +931,7 @@ export class SashimiPanel extends DraggablePanel {
 
   private showResult(): void {
     this.done = true;
+    playSfx('plate');
     this.guideG.clear();
     const spec = this.spec;
     const speciesId = this.source.speciesId ?? '';

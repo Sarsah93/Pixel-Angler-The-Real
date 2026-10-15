@@ -33,6 +33,7 @@ import {
 } from '@tra/core';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { GuideTour, maybeStartTour, type TourOptions } from '../ui/GuideTour.js';
+import { playSfx } from '../audio/SfxBank.js';
 
 // ── 뷰 상태 머신 ────────────────────────────────────────
 // region    : 전국 지도 + 지역 핀/리스트 선택
@@ -1178,9 +1179,11 @@ export class WorldMapScene extends Phaser.Scene {
     // 219차 — 프롤로그(첫 장보기 · 판매) 중에 차비가 모자라면 오도 가도 못 한다 → 그때만 차비를 받지 않는다
     const fare = inPrologue() && coins < computeTravelFare(region.id) ? 0 : computeTravelFare(region.id);
     if (coins < fare) {
+      playSfx('deny');
       this.showFareAlert(`교통비가 부족합니다 (₩${fare.toLocaleString()}) — 보유 ₩${coins.toLocaleString()}`);
       return;
     }
+    playSfx('travel');
     GameState.addCoins(-fare, true, 'travel');   // 211차 — 하루 기록(구: 직접 대입)
     GameState.applyVitalsAction('travel');   // 125차 — 지역 간 이동(출조) 행동 비용
     GameState.markDirty();

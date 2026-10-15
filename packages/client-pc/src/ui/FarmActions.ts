@@ -18,6 +18,17 @@ import { DraggablePanel } from './DraggablePanel.js';
 import { FarmWorkPanel } from './FarmWorkPanel.js';
 import { TrayPullPanel } from './TrayPullPanel.js';
 import { FarmStore, careGroupSeconds, type FarmActionResult } from '../store/FarmStore.js';
+import { playSfx, type SfxName } from '../audio/SfxBank.js';
+
+/** 252차 — 돌봄 일을 마쳤을 때 소리(일 이름으로 고른다) */
+function careSfx(task: string): SfxName {
+  if (/spray|mist/.test(task)) return 'farm_spray';
+  if (/water|flood/.test(task)) return 'farm_water';
+  if (/weed|thin|sucker|prune|pinch|leaf|deadhead/.test(task)) return 'farm_weed';
+  if (/top|fert|feed|compost|lime|acid|dress/.test(task)) return 'farm_fertilize';
+  if (/dig|hill|till|ridge/.test(task)) return 'farm_till';
+  return 'work_step';
+}
 
 export interface FarmActionHost {
   scene: Phaser.Scene;
@@ -74,7 +85,7 @@ export function openCareTask(host: FarmActionHost, plotId: string, idx: number, 
   const row = chk.row;
   openWorkScene(host, crop, row.st, {
     plants, cells: group.length, seconds: careGroupSeconds(row.st.def.seconds, group.length),
-    onDone: (score) => host.after(FarmStore.doCareGroup(plotId, group, task, score), { kind: 'care', task, cells: group }),
+    onDone: (score) => { playSfx(careSfx(task)); host.after(FarmStore.doCareGroup(plotId, group, task, score), { kind: 'care', task, cells: group }); },
   });
   return null;
 }
@@ -95,9 +106,9 @@ export function openProcess(host: FarmActionHost, plotId: string, idx: number): 
       if (def.winnow && FarmStore.hasItem(WINNOW_ID)) {
         openWorkScene(host, crop, sceneStatus(PROCESS_WORK_DEFS.winnow), {
           seconds: PROCESS_WORK_DEFS.winnow.seconds, uses: ['키'],
-          onDone: (ws) => host.after(FarmStore.finishProcess(plotId, idx, score, ws), { kind: 'process' }),
+          onDone: (ws) => { playSfx('farm_harvest'); host.after(FarmStore.finishProcess(plotId, idx, score, ws), { kind: 'process' }); },
         });
-      } else host.after(FarmStore.finishProcess(plotId, idx, score), { kind: 'process' });
+      } else { playSfx('farm_harvest'); host.after(FarmStore.finishProcess(plotId, idx, score), { kind: 'process' }); }
     },
   });
   return null;

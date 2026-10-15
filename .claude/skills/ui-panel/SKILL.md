@@ -11,6 +11,9 @@ description: Pixel Angler 팝업/패널/HUD UI 작성·수정·검수 규칙. Dr
 - **닫기는 우측 상단 ✕ 하나로 통일**(122차 사용자 지시) — 전체 화면 씬(도감·출처)도 하단/엣지 버튼 없이 우상단 ✕ + ESC. 푸터 텍스트는 뷰포트 계산(`maxScroll`)에 포함.
 - **씬에서 `scene.add.existing(panel)` + popupStack 등록** (ESC LIFO 편입). 하네스에서도 add.existing 필수.
 - **자식 추가/재구성 후 `this.applyFix()`(= applyScreenFixed) 필수** — 카메라 스크롤 씬에서 자식 scrollFactor 1이면 히트 판정이 카메라 이동량만큼 어긋난다.
+- **소리**(252차) — `DraggablePanel`이 열기 · 닫기 소리를 낸다(닫고 40ms 안에 다시 열면 = 다시 만들기 → 조용). 제 소리를 따로 내는 창(대화 · 혼잣말)은 설정에 `sound: false`.
+  단추 딸깍은 손 커서(`useHandCursor`)면 자동이다(`audio/UiClickHook`) — 단추마다 `playUiClick`을 달지 않는다.
+  행동 소리는 결과가 정해진 뒤(성공 · 실패 갈림) `playSfx('<레시피>')`(`audio/SfxBank.ts`)로 낸다 — 실패는 `deny` · 작업 빗나감은 `work_miss`.
 
 ## z-order 밴드 (76차 확립 — 위반 금지)
 

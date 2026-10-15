@@ -148,6 +148,7 @@ export class DialoguePanel extends DraggablePanel {
     super(scene, {
       x: (GAME_WIDTH - W) / 2, y: GAME_HEIGHT - H - 18,
       width: W, height: H, title: `${npc?.nameKo ?? npcId}  ·  ${npc?.roleKo ?? ''}`, onClose, dim: true, depth: 940,
+      sound: false,   // 252차 — 말 걸기 소리(talk)를 따로 낸다
     });
     this.npcId = npcId;
     this.voice = new VoiceTyper(voiceOfNpc(npcId));

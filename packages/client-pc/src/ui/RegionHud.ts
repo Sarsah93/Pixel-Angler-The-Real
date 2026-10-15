@@ -37,6 +37,7 @@ import { MapPinStore } from '../store/MapPinStore.js';
 import { getLocale } from '../i18n/I18n.js';
 import { StoryStore } from '../store/StoryStore.js';
 import { tideFlowStateAt, TIDE_FLOW_LABEL_KO, TIDE_FLOW_NOTE_KO, TIDE_FLOW_PROFILE, getBlueprint } from '@tra/core';
+import { playSfx } from '../audio/SfxBank.js';
 
 /** 미니맵 마커 — priority: 0 상점 / 2 퀘스트 보유 / 3 완료 가능 (높을수록 셀 점유 우선) */
 export interface MiniMarker {
@@ -2240,6 +2241,8 @@ export class RegionHud extends Phaser.GameObjects.Container {
 
   /** 이벤트/채팅 메시지 추가 (최근 200줄 보존 — 과거는 스크롤백으로 열람) */
   pushLog(message: string): void {
+    // 252차 — 경고 · 안전 · 주의 · 치명 줄은 낮은 알림음(로그를 안 보고 있어도 알아챈다)
+    if (/^\[(경고|안전|주의|치명)\]/.test(message)) playSfx('notice', { pitch: 0.75 });
     const now = new Date();
     const hh = String(now.getHours()).padStart(2, '0');
     const mm = String(now.getMinutes()).padStart(2, '0');

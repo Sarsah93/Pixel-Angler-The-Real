@@ -30,6 +30,7 @@ import { maybeStartTour, type TourOptions } from './GuideTour.js';
 import { t } from '../i18n/I18n.js';
 import { cropItemTemplate } from '../data/CropItems.js';
 import { shapeOf, CONTAINER, type Shape } from '../data/CropShapes.js';
+import { playSfx } from '../audio/SfxBank.js';
 
 const PANEL_W = 600;
 const PANEL_H = 400;
@@ -216,6 +217,7 @@ export class FarmWorkPanel extends DraggablePanel {
   }
 
   private setStatus(msg: string, ok = true): void {
+    if (!ok) playSfx('work_miss');   // 252차 — 실수 · 빗나감은 모두 여기로 온다
     this.statusText.setColor(ok ? '#9fd0e4' : '#ff9a7a').setText(t(msg));
   }
 
@@ -761,6 +763,7 @@ export class FarmWorkPanel extends DraggablePanel {
     if (tg.hp !== undefined && tg.hp > 1) {
       tg.hp--;
       this.hits++;
+      playSfx('farm_till');
       this.sheafHit(tg);
       this.setStatus(`${t('남은 단')} ${this.goodLeft()}`);
       restoreHandCursor(scene);
@@ -768,6 +771,8 @@ export class FarmWorkPanel extends DraggablePanel {
     }
     tg.done = true;
     this.hits++;
+    playSfx(this.def.id === 'thresh' ? 'farm_till' : kind === 'tray' ? 'farm_plant' : kind === 'place' ? 'item_move'
+      : kind === 'sprinkle' ? 'farm_fertilize' : kind === 'targets' ? 'farm_harvest' : 'work_step');
     if (tg.redraw) { tg.redraw(0); for (const o of tg.obj.slice(1)) o.destroy(); }
     else for (const o of tg.obj) o.destroy();
     const left = this.goodLeft();
@@ -858,7 +863,7 @@ export class FarmWorkPanel extends DraggablePanel {
     this.holding = false;
     this.attempts++;
     const inBand = this.gauge >= 0.6 && this.gauge <= 0.85;
-    if (inBand) { this.hits++; this.setStatus('고르게 쳤다'); }
+    if (inBand) { this.hits++; playSfx('work_step'); this.setStatus('고르게 쳤다'); }
     else if (this.gauge < 0.6) this.setStatus('너무 적게 쳤다 — 띠 안에서 뗀다', false);
     else this.setStatus('너무 많이 쳤다 — 잎이 상한다', false);
     this.round++;
@@ -1028,6 +1033,7 @@ export class FarmWorkPanel extends DraggablePanel {
       this.marker.fillStyle(0xffd257, 1); this.marker.fillRect(band.x - 10, y - 2, 20, 4);
     }
     if (this.def.work === 'hold' && this.holding) {
+      playSfx(/water|flood/.test(this.def.id) ? 'farm_water' : 'farm_spray');   // 누르는 동안 이어진다
       this.gauge = Math.min(1, this.gauge + delta / 2500);
       this.drawGauge();
       if (this.gauge >= 1) this.onStageRelease();
@@ -1039,6 +1045,7 @@ export class FarmWorkPanel extends DraggablePanel {
   private tryFinish(): void {
     if (this.finished || !this.handDone || this.elapsed < this.total) return;
     this.finished = true;
+    playSfx('confirm');
     this.opts.onDone(this.score());
     this.opts.onClose();
   }

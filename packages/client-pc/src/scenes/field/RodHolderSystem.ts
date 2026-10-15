@@ -31,6 +31,7 @@ import { InventoryStore, type ParkedGear, type InvItem } from '../../store/Inven
 import { GroundItemStore } from '../../store/GroundItemStore.js';
 import { ExternalDataStore } from '../../store/ExternalDataStore.js';
 import { MultiplayerClient } from '../../net/MultiplayerClient.js';
+import { playSfx } from '../../audio/SfxBank.js';
 
 export interface RodHolderHost {
   scene: Phaser.Scene;
@@ -165,6 +166,7 @@ export class RodHolderSystem {
       tileX: Math.floor(at.x / this.host.tr), tileY: Math.floor(at.y / this.host.tr),
     };
     GameState.addParkedRod(rod);
+    playSfx('place');
     void MultiplayerClient.placeTrap({
       instanceId: rod.id, mapKey: this.host.mapKey,
       tileX: rod.tileX ?? 0, tileY: rod.tileY ?? 0,
@@ -452,6 +454,7 @@ export class RodHolderSystem {
         this.host.floatingHint('엉킨 줄을 잘라 내고 감아 들였다');
         return true;
       }
+      playSfx('unplace');
       this.host.pickUp(rod);
       return true;
     }

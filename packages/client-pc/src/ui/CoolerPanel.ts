@@ -30,6 +30,8 @@ import { StoryStore } from '../store/StoryStore.js';
 import { TitleStore } from '../store/TitleStore.js';
 import { maybeStartTour, type TourOptions } from './GuideTour.js';
 import { clampTextWidth } from './TextFit.js';
+import { playSfx } from '../audio/SfxBank.js';
+import { playRelease } from '../audio/Sfx.js';
 
 const CELL = 96;
 const GAP = 10;
@@ -373,6 +375,7 @@ export class CoolerPanel extends DraggablePanel {
 
     this.makeMediumButton(startX, by, bw, bh, '해수 넣기', seaReason === '', seaReason, () => {
       if (CoolerStore.addSeawater()) {
+        playSfx('rinse', { pitch: 0.8 });
         this.setStatus('해수를 채웠습니다 — 활어 무제한 유지 (1시간)');
         this.renderBody(); this.updateHeader();
       }
@@ -381,12 +384,14 @@ export class CoolerPanel extends DraggablePanel {
       // 클릭과 동시에 인벤토리 소모품 '대용량 각얼음' 1개 소모
       if (!InventoryStore.removeQty('inv_ice_bulk', 1)) return;
       if (CoolerStore.addIce()) {
+        playSfx('cooler_in', { pitch: 1.2 });
         this.setStatus('얼음을 채웠습니다 — 보냉 유지 (2시간)');
         this.renderBody(); this.updateHeader();
       }
     });
     this.makeMediumButton(startX + (bw + gap) * 2, by, bw, bh, '비우기', emptyReason === '', emptyReason, () => {
       CoolerStore.emptyMedium();
+      playSfx('farm_water', { pitch: 0.7 });
       this.setStatus('쿨러를 비웠습니다.');
       this.renderBody(); this.updateHeader();
     });
@@ -565,10 +570,12 @@ export class CoolerPanel extends DraggablePanel {
       ...(f.toxin ? { toxin: true } : {}),   // 229차 — 패류독소 표식 승계
     }, 1);
     if (!ok) {
+      playSfx('deny');
       this.setStatus('인벤토리(음식) 공간이 없습니다 — 자리를 비우고 다시 시도하세요');
       return;
     }
     CoolerStore.removeAt(idx);
+    playSfx('item_move');
     this.setStatus(`${f.nameKo}을(를) 인벤토리로 옮겼습니다.`);
     this.cfg.onChanged?.();
     this.renderBody();
@@ -652,6 +659,7 @@ export class CoolerPanel extends DraggablePanel {
       () => {
         for (const i of idxs) CoolerStore.removeAt(i);
         TitleStore.bump('release', idxs.length);
+        playRelease();
         dlg.destroy();
         this.childPopup = undefined;
         this.selectMode = false;
@@ -686,6 +694,7 @@ export class CoolerPanel extends DraggablePanel {
       () => {
         CoolerStore.removeAt(idx);
         TitleStore.bump('release');
+        playRelease();
         dlg.destroy();
         this.childPopup = undefined;
         this.cfg.onChanged?.();

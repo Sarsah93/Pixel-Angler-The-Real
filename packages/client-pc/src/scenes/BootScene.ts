@@ -162,8 +162,7 @@ export class BootScene extends Phaser.Scene {
     this.load.image('sashimi_piece_bream', 'sashimi/piece_bream.png');
     this.load.image('sashimi_piece_amberjack', 'sashimi/piece_amberjack.png');
     this.load.image('sashimi_piece_halibut', 'sashimi/piece_halibut.png');
-    // 메인 메뉴 타이틀 로고 (투명 배경 PNG — 구 텍스트 2단 로고 대체)
-    this.load.image('title_logo', 'ui/title_logo.png');
+    // (252차 — 메인 메뉴 타이틀 로고는 그림 파일 없이 ui/TitleLogo.ts가 굽는다)
     // trimmings/: 손질 부산물 아이콘 (회뜨기 산출 — 머리/중골/내장/껍질/필렛).
     // 머리는 감성돔 기준 원본 → 타 돔류는 런타임 색 변형(참돔 붉게·돌돔 아가미 줄무늬 등, ButcheryPanel.trimHeadKey).
     // 손질 부산물(trimmings) — 어종군(돔류/방어류) 분리 + 공통 3종 (2026-07-30 사용자 매핑):

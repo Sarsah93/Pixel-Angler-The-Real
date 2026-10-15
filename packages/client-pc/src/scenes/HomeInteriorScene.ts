@@ -80,6 +80,7 @@ import { fieldReserved, overlapsReserved, assertClear } from '../ui/ScreenReserv
 import {
   markPrologue, syncPrologue, prologueKeyAllowed, prologueRunning, prologueStepDone, PROLOGUE_PHOTO_ID,
 } from '../store/Prologue.js';
+import { playSfx } from '../audio/SfxBank.js';
 
 /**
  * 방 가로 위치 — 화면 가운데에서 12px 오른쪽(198차). 가운데 그대로면 방 액자 왼쪽(328)이 필드 HUD 상태 창
@@ -1484,6 +1485,7 @@ export class HomeInteriorScene extends Phaser.Scene {
 
   private toggleLamp(f: FurnInstance): void {
     HomeStore.toggleLamp(f.id);
+    playSfx('toggle_on');
     GameState.markDirty();
     this.buildFurniture(null);   // 갓 그림 + 불빛(refreshLights)
   }
@@ -1615,6 +1617,7 @@ export class HomeInteriorScene extends Phaser.Scene {
   private waterPlant(f: FurnInstance): void {
     const wasDry = HomeStore.plantDry(f.id);
     HomeStore.waterPlant(f.id);
+    playSfx('farm_water');
     GameState.markDirty();
     this.buildFurniture(null);
     // 물방울 몇 점 — 화분 위에서 떨어진다
@@ -1675,6 +1678,7 @@ export class HomeInteriorScene extends Phaser.Scene {
         label: '저장만 하기', color: '#4af2a1', run: () => {
           markPrologue('save');   // 188차 — 프롤로그 「침대에서 저장한다」 (저장 스냅샷에 담기게 저장 전에)
           const ok = GameState.save();
+          playSfx(ok ? 'save' : 'deny');
           if (ok) StoryStore.event({ kind: 'custom', key: 'bedSave' });   // 134차 — M1-03 침대 저장 목표
           this.closeBedMenu();
           this.flash(ok ? `슬롯 ${GameState.activeSlot ?? 1}에 저장했다.` : '저장에 실패했습니다');
@@ -1730,6 +1734,7 @@ export class HomeInteriorScene extends Phaser.Scene {
   /** 침대에 눕는다 — 화면이 어두워지고 잠 막대가 차오른다. 다 차면 하룻밤, 그 전에 일어나면 잔 만큼 */
   startSleep(): void {
     if (this.sleepState) return;
+    playSfx('sleep');
     const r = this.sleepRect();
     // ⚠ rectangle의 6번째 인자는 채움 알파다 — 0으로 만들면 객체 알파를 올려도 안 보인다(213차 실측)
     const dim = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x02060c, 1).setOrigin(0, 0).setDepth(930).setAlpha(0).setInteractive();
@@ -1898,6 +1903,7 @@ export class HomeInteriorScene extends Phaser.Scene {
   /** 현관 → 홈타운 외부 복귀 (stop + resume 규칙 — RegionFieldScene 재생성 금지) */
   private exitToField(): void {
     if (this.leaving) return;
+    playSfx('door_close');
     if (this.seat) this.standUp();
     this.leaving = true;
     // 188차 — 프롤로그: 저장까지 마치고 나서야 「집을 나선다」 (앞 단계를 건너뛴 채 나가면 다시 들어와 이어 한다)

@@ -41,6 +41,7 @@ import { maybeStartTour, type TourOptions } from './GuideTour.js';
 import { prologueProtects, PROLOGUE_PROTECT_MSG } from '../store/Prologue.js';
 import { itemKeepReason } from '../store/ItemKeepGuard.js';
 import { CraftingStore } from '../store/CraftingStore.js';
+import { playSfx } from '../audio/SfxBank.js';
 
 /** 190차 — 식탁 식사 보너스 (허기 회복량의 25% 추가) */
 const TABLE_MEAL_BONUS = 0.25;
@@ -212,10 +213,12 @@ export class InventoryPanel extends DraggablePanel {
       if (toSlot >= 0) {
         if (toSlot >= InventoryStore.gridCapacity()) {
           // 용량 밖 '잠긴 칸'에는 넣을 수 없다 — 꺼내는 방향만 허용 (148차)
+          playSfx('deny');
           this.setStatus('용량 밖 칸에는 넣을 수 없습니다 — 가방을 착용하면 열립니다.');
           return;
         }
         if (toSlot !== drag.fromSlot) {
+          playSfx('item_move');
           InventoryStore.moveItem(this.currentTab, drag.fromSlot, toSlot);
           this.renderGrid();
           this.scene.events.emit('inventory-changed');
@@ -771,7 +774,9 @@ export class InventoryPanel extends DraggablePanel {
               this.setStatus(`${item.name} — 상해서 먹을 수 없습니다 (${CONDITION_LABEL[item.condition]})`);
               return;
             }
-            playEatSfx();
+            // 252차 — 마실 것(수분이 허기의 두 배 이상 — 생수 · 커피 등)은 꿀꺽, 나머지는 냠냠
+            const hyd = item.hydrationRestore ?? 0, hun = item.hungerRestore ?? 0;
+            if (hyd > 0 && hun * 2 <= hyd) playSfx('drink'); else playEatSfx();
             // 243차 — 작은 낱개(딸기 · 방울토마토 · 블루베리)는 한 번에 여러 개(가진 만큼까지) — 허기 · 수분은 그만큼의 영양으로
             const eatDef = raw?.kind === 'eat' ? raw.def : undefined;
             const bite = eatDef?.bite;
@@ -797,6 +802,7 @@ export class InventoryPanel extends DraggablePanel {
               + (wipPlate ? ` · ${wipPlate.name} 회수` : ''));
           } else {
             InventoryStore.removeItem(item.id, false);
+            playSfx('use_item');
             this.setStatus(this.applyIntakeOf(item, '사용'));
           }
           this.renderGrid();
@@ -964,6 +970,7 @@ export class InventoryPanel extends DraggablePanel {
           label: hand === 'R' ? '오른손 착용' : '왼손 착용',
           run: () => {
             const r = InventoryStore.equipHand(item.id, hand);
+            playSfx(r.ok ? 'equip' : 'deny');
             this.setStatus(r.ok
               ? `${item.name} → ${hand === 'R' ? '오른' : '왼'}손 착용 완료`
               : r.reason ?? '착용할 수 없습니다.');
@@ -977,6 +984,7 @@ export class InventoryPanel extends DraggablePanel {
         label: '착용하기',
         run: () => {
           const r = InventoryStore.equipItem(item.id);
+          playSfx(r.ok ? 'equip' : 'deny');
           this.setStatus(r.ok ? `${item.name} 착용 완료` : r.reason ?? '착용할 수 없습니다.');
           this.renderGrid();
           this.scene.events.emit('inventory-changed');
@@ -1231,6 +1239,7 @@ export class InventoryPanel extends DraggablePanel {
         : `정말 버리시겠습니까?\n${item.name}${detail}`,
       () => {
         InventoryStore.removeItem(item.id, all);
+        playSfx('discard');
         this.setStatus(all
           ? `${item.name}을(를) 완전히 제거했습니다.`
           : `${item.name} 1개를 버렸습니다.`);
@@ -1254,10 +1263,11 @@ export class InventoryPanel extends DraggablePanel {
     const trays = InventoryStore.find(FARM_PACK_CONTAINER)?.qty ?? 0;
     const max = Math.floor(Math.min(item.qty / p.pack.units, trays));
     const perPack = looseCountKo(item.id, p.pack.units);
-    if (trays < 1) { this.setStatus(`포장 용기가 없습니다 — 생활용품점에서 팝니다 (한 팩에 ${perPack} + 용기 1개)`); return; }
-    if (max < 1) { this.setStatus(`한 팩을 채우려면 ${perPack} 필요 (지금 ${looseCountKo(item.id, item.qty)})`); return; }
+    if (trays < 1) { playSfx('deny'); this.setStatus(`포장 용기가 없습니다 — 생활용품점에서 팝니다 (한 팩에 ${perPack} + 용기 1개)`); return; }
+    if (max < 1) { playSfx('deny'); this.setStatus(`한 팩을 채우려면 ${perPack} 필요 (지금 ${looseCountKo(item.id, item.qty)})`); return; }
     const done = (n: number): void => {
       const r = InventoryStore.packProduce(item.id, n);
+      playSfx(r.ok ? 'pack' : 'deny');
       this.setStatus(r.ok ? `포장했습니다 — ${r.name} ${r.qty}개 (${looseCountKo(item.id, r.used ?? 0)} · 용기 ${r.qty}개)` : (r.reason ?? '포장할 수 없습니다'));
       if (r.ok) { this.renderGrid(); this.scene.events.emit('inventory-changed'); }
     };

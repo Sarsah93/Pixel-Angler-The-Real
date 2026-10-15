@@ -30,6 +30,7 @@ import { clampTextWidth } from './TextFit.js';
 import { TextInput } from './TextInput.js';
 import { maybeStartTour, type TourOptions } from './GuideTour.js';
 import { t, getLocale } from '../i18n/I18n.js';
+import { playSfx } from '../audio/SfxBank.js';
 
 const FONT = '"Noto Sans KR", sans-serif';
 const ROW_H = 28;
@@ -506,7 +507,8 @@ export class CraftBoard {
 
   private doStart(bp: CraftBlueprint): void {
     const err = CraftingStore.start(bp, this.qty, this.o.station);
-    if (err) { this.setStatus(err, false); return; }
+    if (err) { playSfx('deny'); this.setStatus(err, false); return; }
+    playSfx('hammer');
     this.status = '';
     this.o.onCrafted?.();
     this.redraw();

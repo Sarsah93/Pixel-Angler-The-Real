@@ -277,7 +277,7 @@ npx pnpm --filter @tra/client-pc run dev
 ## 9. 빌드 상태 · 최근 변경
 
 ```
-npx pnpm run build → ✅ 3/3 패키지 성공 (2026-10-15 251차 · map-builder 워크스페이스 제외)
+npx pnpm run build → ✅ 3/3 패키지 성공 (2026-10-15 252차 · map-builder 워크스페이스 제외)
 npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 ```
 
@@ -286,7 +286,17 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-10-15 251차) — 설정 「접근성」 탭 · 포인터 옵션 · 색 구분 보정 · 모양으로도 표시 · main 반영 · 75차 배포**
+**최근 변경 (2026-10-15 252차) — 타이틀 로고(코드로 굽는 픽셀 로고) · 시세 띠 도감 이름 · 영어 · 행동 효과음 63종 · main 반영 · 76차 배포**
+
+- 사용자 「타이틀 로고를 … 새로 만들고 싶어(가시성 문제 + 통 이미지 의존성) … 코드로도 괜찮은 디자인이 나온다면」: 옛 `ui/title_logo.png` 삭제 →
+  글자 격자 데이터(`data/TitleLogoArt.ts`)를 캔버스로 굽는 로고(`ui/TitleLogo.ts` — 남색 테 · 아래로 민 입체 · 흰 물보라 → 청록 · `i` 점 = 찌 · `g` 끝 = 바늘) · 떠다니기 · 찌 까딱.
+- 시세 띠 내부 id → 도감 이름(`ExternalDataStore.speciesDisplayName`) · 어획량 꼬리 `mock` 숨김 · 영어 「플레이 방식」 창 · 슬롯 제목 · 시세 띠 네 줄(규칙) — 백로그 BY 해소.
+- 효과음: Gemini에 효과음 모델이 없어(TTS · Lyria 음악 · Veo) WebAudio 합성 레시피 63종(`audio/SfxBank.ts`) · 29파일 164곳 배선 ·
+  창 열기/닫기(`DraggablePanel` — 다시 만들기는 조용) · 단추 딸깍(`audio/UiClickHook` — 손 커서로 판정) · 경고 줄 알림음 · GainNode 시작값 1 튐 수정(0.86 → 0.05).
+- 검증: core 259/259 · 빌드 3/3 · typecheck 0 · 실렌더(로고 낮 · 저녁 · 밤 · 시세 띠 한 · 영 잔존 0 · `__SFX.log` 단추 · 창 · 레벨 업 · 경고 · 면허 · pageerror 0).
+  상세: [252차 워크로그](../docs/wiki/03-WORKLOG/2026-10-15-252-title-logo-ticker-sfx.md).
+
+**이전 변경 (2026-10-15 251차) — 설정 「접근성」 탭 · 포인터 옵션 · 색 구분 보정 · 모양으로도 표시 · main 반영 · 75차 배포**
 
 - 사용자 「접근성 탭으로 진행해줘 … 모든 HUD에서 색약 배려가 고려될 만한 옵션이 없는 지 전체적으로 검토해서, 모두 접근성 탭에 반영해줘」:
   설정 여섯째 탭(`ui/AccessSettingsTab.ts`) — 포인터 색(찌 · 야광찌 · 운영체제 기본) · 흰 테 3단(누를 수 있는 곳은 한 단계 진하게) · 크기 1 · 2배 · 색 구분 보정(끔 · 적록 · 청황) · 모양으로도 표시.
@@ -305,17 +315,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
   CSS 23px 고정(32px를 넘으면 크롬이 브라우저 화면 근처에서 숨긴다) · main 빨리 감기(249 · 250) · 「테스트 배포」 74차.
 - 검증: core 259/259 · 빌드 3/3 · typecheck 0 · 실렌더(부팅 · 메뉴 · 필드 HUD · 가방 단추 손 ↔ 기본 · `restoreHandCursor` · 4xx 0 · pageerror 0).
   상세: [250차 워크로그](../docs/wiki/03-WORKLOG/2026-10-15-250-game-cursor-float-deploy74.md).
-
-**이전 변경 (2026-10-14 249차) — 낚시 장비 그림 카드 방식 · 대체 · 없는 장비 그림 74장(Gemini) · 위키 그림 상한 정리 · F-0088 판정**
-
-- 사용자 「낚시 장비 그림 … 카드방식으로 줄이고, 현재 이미지 대체중이거나 없는 것들 다 gemini로」: 사용자 장비 그림 41장 원본 → `food assets/tackle/` ·
-  게임은 카드(228×90 안) + 64px 아이콘만(`tools/tackle_cards.cjs` — 불투명도 보존 축소 · 표 `TackleTextures.ts` 113키) · 부팅 텍스처 653.0MB → 401.2MB · 배포 84.0 → 72.7MB.
-- Gemini 74장(`tools/gemini_tackle_art.cjs` · 실패 0): 코드 그림 임시 그림 59(`art_*` 키 유지 — `build.py`가 바깥 그림으로 빼고 id 연결만 남김) +
-  빌려 쓰던 15(대 종류 7 · 릴 4 · 합사 · 카본 목줄 · 섀드 웜 · 잠길찌 — `rodArtKey` · `reelArtKey` · `lineArtKey` · 옛 세이브 `refreshTackleArt`).
-- 위키: 아티팩트 파일 상한(511)에 막혀 코드 그림 141장이 빠져 있던 것 — 8KB 이하 그림 219장을 HTML 안에 · Version 51.
-  F-0088: 날짜 대조로 정본 = 코드 216(193 · 235) · 남은 옛 값 4곳 정정. 포인터 시안은 `docs/mockups/pointer_drafts/`.
-- 검증: core 259/259 · 빌드 3/3 · typecheck 0 · 실렌더(장비 키 226 빠짐 0 · 가방 · 상세 · 옛 세이브 보정 · 4xx 0 · pageerror 0).
-  상세: [249차 워크로그](../docs/wiki/03-WORKLOG/2026-10-14-249-tackle-cards-gemini-74.md).
 
 ---
 

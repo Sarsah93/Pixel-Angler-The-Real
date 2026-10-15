@@ -22,6 +22,9 @@ import { MultiplayerClient } from '../net/MultiplayerClient.js';
 import { ExternalDataStore } from '../store/ExternalDataStore.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { showLoadingThen } from '../ui/LoadingOverlay.js';
+import { ensureTitleLogo } from '../ui/TitleLogo.js';
+import { playSfx } from '../audio/SfxBank.js';
+import { playUiClick } from '../audio/Sfx.js';
 
 type MenuView = 'main' | 'mode' | 'start' | 'slots';
 type SlotMode = 'new' | 'load';
@@ -41,37 +44,20 @@ const ROW_H = 46;
 const SLOT_ROW_H = 74;
 
 /**
- * 타이틀 로고 배치·배킹 튜닝 지점 (사용자 조정용 — 2026-08-04).
- * 여기 숫자만 바꾸면 로고 위치/크기와 배킹 3겹 전체 크기가 함께 따라간다.
+ * 타이틀 로고 배치 (252차 — 코드로 굽는 로고 `ui/TitleLogo.ts` · 글자 · 색은 `data/TitleLogoArt.ts`).
+ * 옛 그림 로고(991×359 PNG)의 밝은 반투명 판(2026-08-04 가시성 보정)은 없앴다 — 글자에 짙은 테 · 입체가 있다.
  */
 const TITLE_LOGO = {
-  /**
-   * 로고 중심 x — 화면 중앙 기준 오프셋 (+ = 오른쪽).
-   * 왼쪽으로 90px: 우측 메뉴 패널(x=844~)과 배킹이 겹치던 것도 함께 해소된다.
-   */
+  /** 로고 중심 x — 화면 중앙 기준 오프셋 (+ = 오른쪽). 우측 메뉴 패널(x=844~)과 겹치지 않게 왼쪽으로 */
   offsetX: -90,
   /** 로고 중심 y */
   y: 158,
-  /** 로고 목표 폭 (px) — 원본 991×359 종횡비 유지 */
-  width: 500,
-
-  /**
-   * 배킹 **전체 크기 배율** — 1.0 = 기본(최외곽 632×285). 0.85 = 537×242.
-   * ⚠ 하한 ≈ **0.83** — 최외곽 폭이 `632 × scale`이라 그 아래로 내리면
-   *   로고(폭 500)가 배킹 밖으로 삐져나온다.
-   */
-  backingScale: 0.85,
-  /** 배킹 기본 여백 (로고 rect 기준 좌우/상하 추가 px) */
-  backingPadX: 40,
-  backingPadY: 26,
-  /** 배킹 중심 미세 조정 (로고와 따로 밀 때 — + = 오른쪽/아래) */
-  backingOffsetX: 0,
-  backingOffsetY: 0,
-  /** 3겹 레이어 [바깥으로 번지는 여백 px, 알파] — 바깥일수록 옅게 */
-  backingLayers: [[26, 0.05], [14, 0.08], [0, 0.12]] as [number, number][],
-  backingColor: 0xdfe8f2,
-  /** 라운드 반경 (레이어 여백만큼 자동 증가) */
-  backingRadius: 26,
+  /** 로고 전체가 천천히 떠오르는 폭(px) · 주기(ms) */
+  driftPx: 5,
+  driftMs: 2600,
+  /** 찌가 따로 까딱이는 폭(px) · 주기(ms) */
+  bobPx: 2,
+  bobMs: 900,
 } as const;
 
 export class MainMenuScene extends Phaser.Scene {
@@ -295,40 +281,21 @@ export class MainMenuScene extends Phaser.Scene {
   }
 
   // ═══════════════════════════════════════════════════
-  // 타이틀 로고 (투명 배경 PNG — 구 텍스트 2단 로고 대체)
+  // 타이틀 로고 (252차 — 데이터로 굽는 픽셀 로고 · 그림 파일 없음)
   // ═══════════════════════════════════════════════════
   private drawTitle(): void {
     const T = TITLE_LOGO;
-    const cx = GAME_WIDTH / 2 + T.offsetX;
-    const ty = T.y;
-
-    // 이미지 로고: 원본(991×359) 종횡비 유지, 목표 폭에 맞춰 스케일 (잘림 방지)
-    const logo = this.add.image(cx, ty, 'title_logo').setOrigin(0.5).setDepth(11);
-    logo.setScale(T.width / logo.width);
-
-    // 가시성 배킹 — 어두운 밤하늘에서 짙은 골드 'Pixel Angler' 글자가 묻히는 문제
-    // (사용자 리포트 2026-08-04): 로고 뒤에 밝은 반투명 라운드 패널을 겹겹이 깔아
-    // 부드러운 글로우처럼 대비를 올린다 (바깥으로 갈수록 옅게 — 하드 엣지 없음).
-    //  `backingScale`이 3겹 전체(기본 rect + 레이어 여백 + 반경)를 한 번에 키우고 줄인다.
-    const S = T.backingScale;
-    const bw = (T.width + T.backingPadX * 2) * S;
-    const bh = (logo.height * logo.scaleY + T.backingPadY * 2) * S;
-    const bx = cx + T.backingOffsetX;
-    const by = ty + T.backingOffsetY;
-    const backing = this.add.graphics().setDepth(10);
-    for (const [pad0, alpha] of T.backingLayers) {
-      const pad = pad0 * S;
-      backing.fillStyle(T.backingColor, alpha);
-      backing.fillRoundedRect(
-        bx - bw / 2 - pad, by - bh / 2 - pad,
-        bw + pad * 2, bh + pad * 2, (T.backingRadius + pad0) * S,
-      );
-    }
-
-    // 은은한 부유 연출 (스케일 펄스 제거 — 잘림/블러 원인)
-    this.tweens.add({
-      targets: [logo, backing], y: '+=5', duration: 2600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
-    });
+    const art = ensureTitleLogo(this);
+    const wrap = this.add.container(GAME_WIDTH / 2 + T.offsetX, T.y).setDepth(11);
+    // 정수 배율(1배) 그대로 — 칸이 고르게 보이게 화면 좌표도 정수로
+    const logo = this.add.image(0, 0, art.key).setOrigin(0, 0);
+    const left = -Math.round(logo.width / 2), top = -Math.round(logo.height / 2);
+    logo.setPosition(left, top);
+    // 찌(i의 점) — 로고와 따로 살짝 까딱인다
+    const float = this.add.image(left + art.floatX, top + art.floatY, art.floatKey).setOrigin(0, 0);
+    wrap.add([logo, float]);
+    this.tweens.add({ targets: wrap, y: `+=${T.driftPx}`, duration: T.driftMs, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    this.tweens.add({ targets: float, y: `+=${T.bobPx}`, duration: T.bobMs, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
   }
 
   // ═══════════════════════════════════════════════════
@@ -858,9 +825,10 @@ export class MainMenuScene extends Phaser.Scene {
       const catches = ExternalDataStore.getRegionTopCatch(regionId, 5);
       if (catches.length > 0) {
         const period = catches[0].period;
-        const periodLabel = period.length === 6 ? `${period.slice(0, 4)}.${period.slice(4)}` : period;
+        // 252차 — 가상 데이터(period 'mock')면 시점을 빼고 띠에 「mock」을 쓰지 않는다(R1)
+        const periodLabel = period.length === 6 ? `${period.slice(0, 4)}.${period.slice(4)}` : period === 'mock' ? '' : period;
         const line = catches.map((c) => `${c.speciesName} ${c.value.toLocaleString()}${c.unit}`).join(' · ');
-        msgs.push(`[${name} 어획량 ${periodLabel}] ${line}`);
+        msgs.push(`[${name} 어획량${periodLabel ? ` ${periodLabel}` : ''}] ${line}`);
       }
 
       // ④ 선호 어종 입질 확률 (서식 환경별)
@@ -923,6 +891,7 @@ export class MainMenuScene extends Phaser.Scene {
         next = (next + dir + n) % n;
         if (!this.entries[next]?.disabled) break;
       }
+      if (next !== this.selectedIndex) playSfx('tab');
       this.selectedIndex = next;
       this.confirmSlot = null;
       this.deleteConfirmSlot = null;
@@ -934,7 +903,7 @@ export class MainMenuScene extends Phaser.Scene {
     const activate = (): void => {
       if (this.isTransitioning) return;   // 전환(페이드) 중 Enter 연타 차단
       const entry = this.entries[this.selectedIndex];
-      if (entry && !entry.disabled) entry.action();
+      if (entry && !entry.disabled) { playUiClick(); entry.action(); }
     };
     this.input.keyboard?.on('keydown-ENTER', activate);
     this.input.keyboard?.on('keydown-SPACE', activate);

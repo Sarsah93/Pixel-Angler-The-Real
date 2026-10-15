@@ -12,6 +12,7 @@ import { GAME_WIDTH } from '../PhaserConfig.js';
 import { enforceTextBounds } from './TextFit.js';
 import { t } from '../i18n/I18n.js';
 import type { CraftReport } from '../store/CraftingStore.js';
+import { playSfx } from '../audio/SfxBank.js';
 
 const FONT = '"Noto Sans KR", sans-serif';
 const W = 400;
@@ -41,6 +42,9 @@ export class CraftResultDialog extends DraggablePanel {
     const lines = reports.flatMap((r, i) => [...(i > 0 ? [{ text: '', color: '#000' }] : []), ...reportLines(r)]);
     const h = 32 + 16 + lines.length * 20 + 64;
     super(scene, { x: (GAME_WIDTH - W) / 2, y: 120, width: W, height: h, title: '제작 결과', onClose, depth: 860 });
+    // 252차 — 하나라도 만들었으면 완성음, 전부 실패면 낮은 음
+    if (reports.some((r) => r.ok > 0)) playSfx('craft_done');
+    else if (reports.some((r) => r.fail > 0)) playSfx('work_miss');
     let y = this.contentTop + 10;
     for (const l of lines) {
       if (l.text) {

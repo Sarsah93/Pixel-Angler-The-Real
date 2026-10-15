@@ -25,6 +25,7 @@ import { clampTextWidth, enforceTextBounds } from './TextFit.js';
 import { addPixelIcon } from './PixelIcon.js';
 import { t } from '../i18n/I18n.js';
 import { maybeStartTour, type TourOptions } from './GuideTour.js';
+import { playSfx } from '../audio/SfxBank.js';
 
 const PANEL_W = 900;
 const PANEL_H = 600;
@@ -66,6 +67,7 @@ export class CookingPanel extends DraggablePanel {
     this.acc += dt;
     if (this.acc <= 250) return;
     this.acc = 0;
+    this.cookSounds();
     const key = `${this.stove.cookwareId ?? ''}|${this.stove.session?.recipeId ?? ''}|${this.stove.session?.status ?? ''}`;
     if (key !== this.layoutKey) { this.renderAll(); return; }
     this.renderDynamic();
@@ -165,6 +167,26 @@ export class CookingPanel extends DraggablePanel {
     this.statusText?.setText(msg);
   }
 
+  /** 252차 — 다 됨 · 탐은 바뀌는 순간 한 번, 불 위에서는 굽기 · 볶기는 지글 · 국물은 보글(창을 연 동안만) */
+  private lastStatus = '';
+  private ambAt = 0;
+  private cookSounds(): void {
+    const s = this.stove.session;
+    const st = s?.status ?? '';
+    if (st !== this.lastStatus) {
+      if (this.lastStatus === 'cooking' && st === 'done') playSfx('cook_done');
+      else if (this.lastStatus && st === 'burnt') playSfx('cook_burnt');
+      this.lastStatus = st;
+    }
+    if (!s || st !== 'cooking' || s.heat <= 0 || s.contents.length === 0 || !CookingStore.fuelOk(this.stove)) return;
+    const now = Date.now();
+    if (now - this.ambAt < 700) return;
+    this.ambAt = now;
+    const fam = this.recipe()?.family;
+    if (fam === 'grill' || fam === 'stirfry') playSfx('sizzle', { gain: 0.45 + s.heat * 0.15 });
+    else if (Math.random() < 0.4 + s.heat * 0.15) playSfx('boil', { gain: 0.6 + s.heat * 0.15 });
+  }
+
   private recipe(): FireRecipeDef | undefined { return CookingStore.recipeOf(this.stove); }
   private cookware(): CookwareDef | undefined { return CookingStore.cookwareOf(this.stove); }
 
@@ -229,13 +251,13 @@ export class CookingPanel extends DraggablePanel {
     for (const w of wares.slice(0, 5)) {
       const cwd = getCookware(w.cookwareId ?? '');
       mkBtn(14, y, L_W - 24, `${w.name} 올리기`, true, () => {
-        const r = CookingStore.attachCookware(this.stove, w); this.say(r.message); this.cbs.onChanged?.(); this.renderAll();
+        const r = CookingStore.attachCookware(this.stove, w); playSfx(r.ok ? 'place' : 'deny', r.ok ? { pitch: 1.6, gain: 0.8 } : undefined); this.say(r.message); this.cbs.onChanged?.(); this.renderAll();
       });
       y += 28;
       void cwd;
     }
     if (cw) {
-      mkBtn(14, y, L_W - 24, '용기 내리기', true, () => { const r = CookingStore.detachCookware(this.stove); this.say(r.message); this.cbs.onChanged?.(); this.renderAll(); });
+      mkBtn(14, y, L_W - 24, '용기 내리기', true, () => { const r = CookingStore.detachCookware(this.stove); playSfx(r.ok ? 'unplace' : 'deny'); this.say(r.message); this.cbs.onChanged?.(); this.renderAll(); });
       y += 28;
     }
     if (!CookingStore.isHome(this.stove)) {
@@ -245,7 +267,7 @@ export class CookingPanel extends DraggablePanel {
       const ft = sc.add.text(14, y, `연료 ${Math.round(Math.max(0, this.stove.fuelRemainMin))}분 (강불 기준)`, { fontFamily: FONT, fontSize: '11px', color: this.stove.fuelRemainMin <= 5 ? '#ff9a9a' : '#c8d8e8' });
       this.staticC.add(ft); y += 20;
       if (cans.length > 0) {
-        mkBtn(14, y, L_W - 24, `${cans[0].name} 끼우기 (x${cans[0].qty})`, need, () => { const r = CookingStore.addFuel(this.stove, cans[0]); this.say(r.message); this.cbs.onChanged?.(); this.renderAll(); });
+        mkBtn(14, y, L_W - 24, `${cans[0].name} 끼우기 (x${cans[0].qty})`, need, () => { const r = CookingStore.addFuel(this.stove, cans[0]); playSfx(r.ok ? 'equip' : 'deny'); this.say(r.message); this.cbs.onChanged?.(); this.renderAll(); });
         y += 28;
       } else if (need) {
         const t = sc.add.text(14, y, '캐니스터가 없습니다 — 식자재마트', { fontFamily: FONT, fontSize: '10px', color: '#ff9a9a' });
@@ -298,7 +320,7 @@ export class CookingPanel extends DraggablePanel {
       const t4 = sc.add.text(R_X, ry, `${t(`더 넣으면 좋은 것 (${r.maxExtraKinds}종까지):`)} ${opt}`, { fontFamily: FONT, fontSize: '10px', color: '#8fa8bf', wordWrap: { width: R_W }, lineSpacing: 2 });
       this.staticC.add(t4); ry += t4.height + 12;
       mkBtn(R_X, Math.min(ry, PANEL_H - 70), R_W, '이 요리 시작', !!cw, () => {
-        const res = CookingStore.startRecipe(this.stove, r.id); this.say(res.message); if (res.ok) { this.listScroll = 0; this.stepper.clear(); } this.renderAll();
+        const res = CookingStore.startRecipe(this.stove, r.id); playSfx(res.ok ? 'confirm' : 'deny'); this.say(res.message); if (res.ok) { this.listScroll = 0; this.stepper.clear(); } this.renderAll();
       });
     }
     // 188차 — 빈 자리 안내('요리를 고르면 순서와 재료가 여기 보입니다.')는 지웠다. 첫 열기 가이드가 짚는다.
@@ -379,6 +401,7 @@ export class CookingPanel extends DraggablePanel {
       const bt = sc.add.text(bx, y + 13, '넣기', { fontFamily: FONT, fontSize: '10px', color: '#e8fff0', fontStyle: 'bold' }).setOrigin(0.5);
       btn.on('pointerdown', () => {
         const res = row.item ? CookingStore.addIngredientItem(this.stove, row.item, row.units) : CookingStore.addWaterFromTap(this.stove, row.units);
+        playSfx(!res.ok ? 'deny' : row.item ? 'plop' : 'rinse');
         this.say(res.message); if (res.ok) this.cbs.onChanged?.(); this.renderAll();
       });
       this.staticC.add([btn, bt]);
@@ -498,7 +521,13 @@ export class CookingPanel extends DraggablePanel {
       const on = s.heat === lv;
       const rect = sc.add.rectangle(x, hy, 76, 24, on ? 0x5a2a1a : 0x1a2430, 1).setOrigin(0, 0).setStrokeStyle(1, on ? 0xff8a3a : 0x3a4a5a, 1).setInteractive({ useHandCursor: true });
       const t = sc.add.text(x + 38, hy + 12, HEAT_LABEL_KO[lv], { fontFamily: FONT, fontSize: '11px', color: on ? '#ffd257' : '#c8d8e8', fontStyle: 'bold' }).setOrigin(0.5);
-      rect.on('pointerdown', () => { const res = CookingStore.setHeat(this.stove, lv); if (!res.ok) this.say(res.message); this.renderDynamic(); });
+      rect.on('pointerdown', () => {
+        const prev = s.heat;
+        const res = CookingStore.setHeat(this.stove, lv);
+        if (!res.ok) { playSfx('deny'); this.say(res.message); }
+        else if (lv !== prev) playSfx(lv > 0 && prev === 0 ? 'ignite' : lv === 0 ? 'toggle_off' : 'toggle_on');
+        this.renderDynamic();
+      });
       this.dynC.add([rect, t]);
     });
     const wl = sc.add.text(C_X + 40, hy + 28, `화력 ${Math.round(effectiveHeatW(src, s.heat, CookingStore.isHome(this.stove) ? 0 : CookingStore.windProvider(this.stove.mapId)))}W${!CookingStore.isHome(this.stove) ? ` · 바람 ${CookingStore.windProvider(this.stove.mapId).toFixed(1)}m/s` : ''}${!CookingStore.fuelOk(this.stove) ? ' · 연료 없음' : ''}`, { fontFamily: FONT, fontSize: '9px', color: '#8fa8bf' });
@@ -528,7 +557,7 @@ export class CookingPanel extends DraggablePanel {
     if (r.flipEverySec !== undefined) {
       const since = s.elapsedSec - s.lastFlipSec;
       const due = since > r.flipEverySec * 0.7;
-      mk(ax, 90, r.family === 'grill' ? '뒤집기' : '젓기', s.contents.length > 0, cv(due ? 0x7a3a1a : 0x1f3a5a), () => { CookingStore.flip(this.stove); this.say(r.family === 'grill' ? '뒤집었다' : '저었다'); this.renderDynamic(); });
+      mk(ax, 90, r.family === 'grill' ? '뒤집기' : '젓기', s.contents.length > 0, cv(due ? 0x7a3a1a : 0x1f3a5a), () => { CookingStore.flip(this.stove); playSfx(r.family === 'grill' ? 'cook_flip' : 'rinse', r.family === 'grill' ? undefined : { pitch: 0.7, gain: 0.7 }); this.say(r.family === 'grill' ? '뒤집었다' : '저었다'); this.renderDynamic(); });
       // 251차 — 「모양으로도 표시」: 때가 됐으면 단추 오른쪽 끝에 「!」(단추 바탕색만 바뀌던 것)
       if (due && s.contents.length > 0 && shapeCuesOn()) {
         this.dynC.add(sc.add.text(ax + 90 - 9, ay + 13, '!', { fontFamily: FONT, fontSize: '13px', color: '#ffffff', fontStyle: 'bold' }).setOrigin(0.5));
@@ -538,12 +567,13 @@ export class CookingPanel extends DraggablePanel {
     const why = CookingStore.takeOffBlockReason(this.stove);
     mk(ax, 150, s.status === 'burnt' ? '탄 것 내리기' : '불 끄고 내리기', !why, 0x1f5a3a, () => {
       const res = CookingStore.takeOff(this.stove);
+      playSfx(res.ok ? 'unplace' : 'deny');
       this.say(res.message);
       if (res.ok) { this.cbs.onChanged?.(); this.stepper.clear(); }
       this.renderAll();
     });
     ax += 156;
-    mk(ax, 70, '버리기', s.contents.length > 0, 0x5a1a1a, () => { const res = CookingStore.discard(this.stove); this.say(res.message); this.renderAll(); });
+    mk(ax, 70, '버리기', s.contents.length > 0, 0x5a1a1a, () => { const res = CookingStore.discard(this.stove); playSfx(res.ok ? 'discard' : 'deny'); this.say(res.message); this.renderAll(); });
     if (why && s.contents.length > 0) {
       const wt = sc.add.text(C_X + 10, ay - 16, why, { fontFamily: FONT, fontSize: '9px', color: '#ff9a9a' });
       clampTextWidth(wt, C_W - 20); this.dynC.add(wt);

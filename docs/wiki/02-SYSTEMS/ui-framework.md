@@ -1,6 +1,7 @@
 # S10·S11·S13. UI 프레임워크 · 가이드 허브 · dev 도구
 
 > 상태 **🟢 운영**. 관련 차수 13·26·27·31·33·54·71·73·76 · 247(필드 글자 한 벌 `WorldLabel`) · 250(게임 마우스 포인터 `GameCursor`) · 251(접근성 탭 · 색 신호 한 벌 `ColorAssist`)
+> · 252(타이틀 로고 코드 굽기 `TitleLogo` · 효과음 뱅크 `SfxBank` · 창 소리 · 단추 딸깍)
 
 ---
 
@@ -24,6 +25,9 @@
 | `ui/GameCursor.ts` · `data/GameCursorArt.ts` | **게임 마우스 포인터**(250 · 251) — 찌 화살(사용자 선택 시안 1번 · 23px) · 설정으로 색(찌 · 야광찌 · 운영체제 기본) · 흰 테 4단 · 크기 1 · 2배. 누를 수 있는 곳은 테 한 단계 진하게(`handEdgeLevel`). 1 · 2 · 3배 data URI `image-set` · Phaser `InputManager.setCursor`의 `'pointer'`만 대체 · `handCursorCss()` · `applyCursorOptions` |
 | `ui/ColorAssist.ts` | **색 신호 한 벌**(251) — 뜻이 있는 색만 `cv(색)` · `cvCss('#…')`로 거쳐 색 구분 보정(끔 · 적록 · 청황)을 입힌다. 「모양으로도 표시」 단서 `drawBlockedX` · `drawHatch` · `drawMark`(`CONDITION_MARK`) · 안내 문장 두 벌 `cvText` · 방식별 문구 `okBadLegend` · 서명 조각 `a11ySig` |
 | `ui/AccessSettingsTab.ts` | **설정 「접근성」 탭**(251) — 포인터 3줄 · 색 구분 2줄(흐름 배치) · 포인터 미리보기(밝은 곳 · 어두운 곳) · 신호 미리보기. 고르면 즉시 저장 · `game.events` `'a11y-changed'` |
+| `ui/TitleLogo.ts` · `data/TitleLogoArt.ts` | **메인 메뉴 타이틀 로고**(252) — 손으로 그린 글자 격자 → 캔버스(남색 테 · 아래로 민 입체 · 흰 물보라 → 청록 · 윗면 빛) · `i` 점 = 찌 · `g` 끝 = 바늘 미늘. 그림 파일 없음 — 글자 · 색 · 숫자를 데이터에서 고친다 |
+| `audio/SfxBank.ts` | **행동 효과음 63종**(252) — 합성 레시피 표(음 · 잡음 · 떨림 · 되풀이) · `playSfx(name)`(효과음 버스 · 높이 흔들기 · `minGapMs`) · `renderSfx`(오프라인 렌더 — 미리 듣기 WAV). 낚시 손맛 · 돈 · 줍기 · 퀘스트 음은 `audio/Sfx.ts`(211) |
+| `audio/UiClickHook.ts` | **단추 딸깍**(252) — 누르는 순간 손 커서(`GameCursor.isHandCursorOn`)면 `playUiClick()`. 창 열기 · 닫기 소리는 `DraggablePanel`(다시 만들기는 조용) |
 | `ui/SlotLabel.ts` | 슬롯 이름표 **10px 고정 + 약어**(188차 — 글씨 축소 금지) |
 | `ui/HelpLibraryPanel.ts` · `data/HelpContent.ts` | **도움말 라이브러리**(117차 → 131차 → **187차 전면 개정**) — **14카테고리 76토픽**(준비 중 4) · 113쪽 트리 + 마스크 본문 · 실캡처 **39장 × ko/en**(251 — 접근성 탭 `help_access`)(`tools/capture_help_images.cjs` 하네스 → `tools/annotate_help_images.py` 번호 콜아웃 · 뜻은 캡션 ①②③) · F1/단축키 버튼 |
 | `i18n/I18n.ts` · `i18n/en.ts` + 사전 6벌 | **영어 설정**(118~120차) — `Text.setText` 훅 사전(원문 = 키) · `setLocale` 즉시 전환 · **데이터의 `nameEn` 이 사전보다 먼저**(어종·지명·지역 노드) · `registerNames()` 로 런타임 이름(POI 상호명) 합류 |
@@ -113,6 +117,8 @@ ESC: depth 최고(시각적 최상단)부터 닫는다 (동률이면 LIFO)
 | **물때 알림**(`ui/TideFlowNotifier` — 5초 벽시계 폴링 · 단계 전환/10분 전 예고 · 필드 = 지역 채널 · 1인칭·집 = 화면 위 토스트(파이팅 중 보류)) · **집 안 머리 위 타이틀**(`titleTagStyle` 공용) | ✅ | **204** |
 | **물때 칩**(상태 패널 바로 아래 · 물결 아이콘 + 단계 이름 · 「물때 감각」이면 `N분 뒤 다음 단계` + 입질도 색 테두리 · 좁은 단계는 다음 단계 이름 생략 · 툴팁 · 홈타운 숨김 · 상태이상 띠는 칩 아래 · `occupiedRects` `hud.tide`) | ✅ | **206** — `RegionHud.refreshTideChip` |
 | **소리 1차**(`audio/Sfx` 버스 3 · 효과음 19종 · `Ambience` 파도/비 · `Voice` 타이핑 목소리 — NPC 성별 · 나이대별 · 설정 「대사 소리」) | 🔶 | **211** — 합성 자리표시 · 에셋/BGM 대기 |
+| **소리 2차 — 행동 효과음**(`audio/SfxBank` 63종 · 29파일 164곳 — 텃밭 · 가방 · 손질 · 요리 · 채집 · 보관 · 제작 · 필드 · 낚시 · 성장) · 창 열기/닫기 · 단추 딸깍(손 커서) · 경고 줄 알림음 · 메뉴 키보드 | 🔶 | **252** — 합성 초안 · 사용자 청취 대기(BZ) · BGM은 추후 |
+| **메인 메뉴 타이틀 로고 = 코드로 굽기**(옛 `ui/title_logo.png` 삭제 · 떠다니기 ±5px · 찌 까딱) · **시세 띠 도감 이름 · 영어**(플레이 방식 창 · 슬롯 제목 · 시세 띠 네 줄) | ✅ | **252** |
 | **하루 결산**(`ui/DayReportPanel` — 2×3 카드 · 카드/날짜 넘김 · 첫 열기 가이드) | ✅ | **211** — [홈](home-base.md) |
 | **도움말 「알림 — 무엇이 언제 뜨나」 + 239 건물 · 간판 + 설치물 문구 현행화 + 도감 카드 클릭 안내** — 알림 자리 셋 · 텃밭 · 레벨 문턱 · 정기 지출 · 거치대 · 항구 신뢰 · 위판 · 도감 · 숙련 · 업적 · 상태 이상 · 영어 14건 | ✅ | **240** — `HelpContent.ts` `notices` 토픽 |
 | **필드 글자 검정 + 흰 테**(사용자 결정 — 「배경 없이 … 흰색 테두리 … 드랍된 아이템을 하이라이트 하는 방법」) · 노란 글자 + 남색 상자 폐지 · 설치물 꼬리표 5 시스템 통일 | ✅ | **247** |
@@ -125,6 +131,23 @@ dev 전용 문자열(순간이동 로그·맵 편집기·손질 dev 버튼)은 *
 `import.meta.env.DEV` 게이트라 프로덕션 빌드에 없다.
 
 ## 6. 함정·불변조건
+
+### [252차] GainNode는 1로 시작한다 — 봉투보다 먼저 `gain.value = 0`
+
+- 첫 자동화(`setValueAtTime(0.0001, t)`) 전까지 이득이 1로 열려 있어, 고역 잡음의 첫 표본이 그대로 샌다(김매기 봉우리 0.86 — 다른 소리 0.03~0.12).
+- 새 합성 소리는 `SfxBank.envelope`처럼 `g.gain.value = 0`을 먼저 넣는다. 확인은 오프라인 렌더의 첫 50ms 봉우리(scratchpad `r252dbg2.cjs` — 0.777 → 0.053).
+
+### [252차] 단추 딸깍은 커서로 판정한다 — `gameobjectdown`은 자기 자신을 다시 그리는 단추에서 오지 않는다
+
+- Phaser는 물체의 `pointerdown` 처리기 뒤에 물체가 파괴됐으면(`!gameObject.input`) 씬 수준 `gameobjectdown` · `pointerdown`을 보내지 않는다.
+  창을 통째로 다시 그리는 단추(가방 칸 · 탭 · 목록 줄)가 흔하다 — 그래서 `UiClickHook`은 문서 `pointerdown` 잡기 단계에서 커서 값을 본다.
+- 커서 값은 브라우저가 정리한 문자열(`image-set` 따옴표)이라 넣은 값과 다를 수 있다 — `GameCursor.markHand`가 읽어 둔 값과 비교한다.
+- 단추가 직접 `playUiClick()`을 불러도 된다(60ms 안 두 번째는 거른다). 손 커서가 아닌 곳(빈 땅 · 물)은 소리가 없다.
+
+### [252차] 창 열기 · 닫기 소리 — 다시 만들기는 조용하게, 제 소리가 있는 창은 `sound: false`
+
+- `DraggablePanel`이 연다 · 닫는다 소리를 낸다. 닫기는 40ms 늦춰 그 사이 새 창이 열리면(크기 바꾸기 · 통째 재구성) 둘 다 거둔다.
+- 씬이 내려가며 지우는 것(`destroy(true)`)은 소리가 없다. 대화창 · 혼잣말처럼 따로 소리를 내는 창은 설정에 `sound: false`.
 
 ### [251차] 뜻이 있는 색은 `cv()`를 거친다 — 서명 캐시에는 `a11ySig()`
 

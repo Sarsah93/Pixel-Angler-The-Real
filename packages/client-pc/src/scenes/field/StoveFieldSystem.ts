@@ -17,6 +17,7 @@ import { cv, drawBlockedX } from '../../ui/ColorAssist.js';
 import { MultiplayerClient } from '../../net/MultiplayerClient.js';
 import { InventoryStore, type InvItem } from '../../store/InventoryStore.js';
 import { GameState } from '../../store/GameState.js';
+import { playSfx } from '../../audio/SfxBank.js';
 
 export interface StoveHost {
   scene: Phaser.Scene;
@@ -237,10 +238,11 @@ export class StoveFieldSystem {
     const tr = this.host.tr;
     const tx = Math.floor(worldX / tr), ty = Math.floor(worldY / tr);
     const chk = this.placeCheck(tx, ty);
-    if (!chk.ok) { this.host.floatingHint(chk.reason ?? '여기에는 놓을 수 없습니다'); return; }
+    if (!chk.ok) { playSfx('deny'); this.host.floatingHint(chk.reason ?? '여기에는 놓을 수 없습니다'); return; }
     const { stove, fuel, cookware } = this.placing;
     const st = CookingStore.place(stove, fuel, cookware, this.host.mapKey, tx, ty);
-    if (!st) { this.host.floatingHint('설치할 수 없습니다'); this.cancelPlacement(); return; }
+    if (!st) { playSfx('deny'); this.host.floatingHint('설치할 수 없습니다'); this.cancelPlacement(); return; }
+    playSfx('place');
     // 145차 규칙 — 설치물은 세션에 알린다(통발 채널 · kind 'stove'). 닿지 못해도 내 화구는 그대로다.
     // 234차 — 서버가 거절하면(그 칸에 남의 화구가 먼저) 설치를 되돌리고 스토브 · 캐니스터 · 용기를 돌려준다.
     void MultiplayerClient.placeTrap({
@@ -313,6 +315,7 @@ export class StoveFieldSystem {
       if (why) { this.host.floatingHint(why); return true; }
       this.host.confirm('화구를 회수합니다.\n스토브와 용기는 돌아오지만 끼운 캐니스터의 남은 연료는 돌아오지 않습니다.', () => {
         const r = CookingStore.recover(st);
+        playSfx('unplace');
         void MultiplayerClient.removeTrap(st.instanceId);
         this.host.pushLog(`[요리] 화구 ${r.message}`);
         this.renderAll();

@@ -43,6 +43,7 @@ import {
 } from './CephalopodFish.js';
 import type { PixelFishSprite } from '../data/PixelFishSprites.js';
 import { canvasContextOf, destroyCanvasTexture, refreshCanvasTexture, sourceImageOf } from './CanvasTextureGuard.js';
+import { playSfx } from '../audio/SfxBank.js';
 
 /**
  * 어류 트리 전용 뷰 좁히기 — 이 패널의 어류 경로는 항상 어류 5종 뷰(OrientationState)만 낸다.
@@ -532,6 +533,7 @@ export class ButcheryPanel extends DraggablePanel {
     } else if (ev.code === 'Enter' || ev.code === 'NumpadEnter') {
       if (primitiveInput(stage.primitive) === 'button' && this.process.submitWash()) {
         this.washCount++;
+        playSfx(stage.id === 'bleed_ice' ? 'cooler_in' : 'rinse');
         this.flash(stage.id === 'bleed_ice' ? '방혈 완료 — 선도 보너스!' : '깨끗이 씻었습니다', true);
         const willFlip = this.process.orientation !== this.renderedOrientation;
         if (!willFlip && !this.process.finished) this.playActionAnim(stage);   // 전환은 연출 완료 후
@@ -550,6 +552,7 @@ export class ButcheryPanel extends DraggablePanel {
       BASE: 'FLIP', FLIP: 'BASE', BELLY_UP: 'BACK_DOWN', BACK_DOWN: 'BELLY_UP', FLESH_UP: 'FLESH_UP',
     };
     this.process.orientation = map[asFishOri(this.process.orientation)];
+    playSfx('flip');
     this.refresh();
   }
 
@@ -750,9 +753,11 @@ export class ButcheryPanel extends DraggablePanel {
     // 두족류는 회전이 공정의 일부라 advance()가 자동 스냅한다 (092차) — 수동 회전 차단
     if (this.process.cephalopod) {
       this.flash('두족류는 공정에 맞춰 자동으로 배치됩니다', false);
+      playSfx('deny');
       return;
     }
     this.process.rotate(dir);
+    playSfx('flip', { pitch: 1.3, gain: 0.6 });
     this.flash(`도마 배치: ${ROTATION_LABEL[this.process.rotation]}`, true);
     this.refresh();
   }
@@ -763,6 +768,7 @@ export class ButcheryPanel extends DraggablePanel {
       BASE: 'BELLY_UP', BELLY_UP: 'BASE', FLIP: 'BACK_DOWN', BACK_DOWN: 'FLIP', FLESH_UP: 'FLESH_UP',
     };
     this.process.orientation = map[asFishOri(this.process.orientation)];
+    playSfx('flip');
     this.refresh();
   }
 
@@ -941,6 +947,7 @@ export class ButcheryPanel extends DraggablePanel {
       }
     };
     const runCompletion = (): void => {
+      playSfx('work_step');
       // **작업 단위 부산물**(머리·내장처럼 그 작업만으로 분리) — 팝업 후 진행
       if (task.yields?.length) this.showByproductPopup(task.yields, task.label, false, after, task.id);
       else after();
@@ -1583,6 +1590,7 @@ export class ButcheryPanel extends DraggablePanel {
       const r = this.process.submitTap(dist);
       // 두족류 껍질 들추기(092차 — 클릭 1회)는 시메가 아니다 — 문구 분기
       const skinLift = stage.id === 'ceph_flip_skin';
+      playSfx(r.passed ? (skinLift ? 'flip' : 'knife_cut') : 'work_miss');
       this.flash(r.passed
         ? (skinLift ? `껍질 가장자리를 들춰 잡았습니다 (정확도 ${(r.quality * 100).toFixed(0)}%)`
           : `시메 성공 (정확도 ${(r.quality * 100).toFixed(0)}%) — 선도가 유지됩니다`)
@@ -1714,6 +1722,11 @@ export class ButcheryPanel extends DraggablePanel {
         const mvx = n.x - this.lastFillPt.x, mvy = n.y - this.lastFillPt.y;
         if (nowMs - this.lastFlakeMs > 40 && Math.hypot(mvx, mvy) > 0.004) {
           this.lastFlakeMs = nowMs;
+          if (delta > 0) {
+            if (stage.primitive === 'drag_fill') playSfx('knife_scale');
+            else if (stage.id === 'peel_pull') playSfx('knife_scale', { pitch: 0.6 });
+            else playSfx('knife_gut');
+          }
           // 위치·진행 방향 모두 화면 좌표(toPanelPx) 기준 — 회전 시에도 커서를 따라간다
           const [bpx, bpy] = this.toPanelPx(n);
           const [blx, bly] = this.toPanelPx(this.lastFillPt);
@@ -1773,6 +1786,7 @@ export class ButcheryPanel extends DraggablePanel {
       // 짧아지자(1/4 구간 0.158) 가이드를 끝까지 따라도 임계(0.25) 미달이었다.
       const quality = Math.max(0, Math.min(1, along / Math.max(0.12, dirLen))) * angleQ;
       const r = this.process.submitPeelPull(quality);
+      playSfx(r.passed ? 'knife_gut' : 'work_miss');
       this.flash(r.passed
         ? (r.stageDone ? '뜯어냈습니다!' : `껍질 분리 — 남은 장 ${r.pullsLeft}`)
         : '당김이 약합니다 — 잡은 지점에서 유도선 방향으로 길게 당기세요', r.passed);
@@ -1807,6 +1821,7 @@ export class ButcheryPanel extends DraggablePanel {
       this.scene.time.delayedCall(150, () => this.traceG.clear());
       if (!r.passed) {
         this.flash('가이드 선을 따라 다시 그어주세요 (커버율 부족)', false);
+        playSfx('work_miss');
         if (knife) this.failKnife();   // 칼 페이드아웃 + 라이브 벌어짐 원복
         // 두족류 진행 프레임 — 실패한 드래그로 넘어간 프레임을 시작 상태로 되돌린다 (093차)
         if (this.process.cephalopod && this.peelDragT > 0) {
@@ -1814,6 +1829,7 @@ export class ButcheryPanel extends DraggablePanel {
           this.drawFish();
         }
       } else {
+        playSfx('knife_cut');
         if (stage.id === 'head_flip') this.headOff = true;
         // 머리부 3분할 — 방금 그은 선의 조각 밀림 연출 예약 + 완료선 스냅샷
         //  (advance로 donePathIndices가 리셋되어도 연출 동안 앞선 벌어짐을 유지 — 096차)
@@ -3719,6 +3735,7 @@ export class ButcheryPanel extends DraggablePanel {
         hit.on('pointerdown', () => {
           if (this.process.submitWash()) {
             this.washCount++;
+            playSfx(stage.id === 'bleed_ice' ? 'cooler_in' : 'rinse');
             this.flash(stage.id === 'bleed_ice' ? '방혈 완료 — 선도 보너스!' : '깨끗이 씻었습니다', true);
             this.refresh();
             this.onStageComplete(stage.id, 1);
@@ -4144,6 +4161,7 @@ export class ButcheryPanel extends DraggablePanel {
   private showResult(): void {
     if (this.done) return;
     this.done = true;
+    playSfx('craft_done');
     const r = this.process.result();
     const speciesId = this.process.profile.speciesId;
     const fishDef = FISH_DATABASE.find((f) => f.id === speciesId);

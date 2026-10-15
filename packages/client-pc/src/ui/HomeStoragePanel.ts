@@ -17,6 +17,7 @@ import { GameState } from '../store/GameState.js';
 import { InventoryStore, type InvItem } from '../store/InventoryStore.js';
 import { HomeStore, HOME_STORAGE, type HomeStorageKind } from '../store/HomeStore.js';
 import { prologueProtects, PROLOGUE_PROTECT_MSG } from '../store/Prologue.js';
+import { playSfx } from '../audio/SfxBank.js';
 
 const PANEL_W = 620;
 const PANEL_H = 430;
@@ -179,10 +180,12 @@ export class HomeStoragePanel extends DraggablePanel {
     if (prologueProtects(live.id)) { this.setStatus(PROLOGUE_PROTECT_MSG, '#ff9a7a'); return; }
     const { slot: _s, qty, ...rest } = live;
     if (!HomeStore.put(this.kind, { ...rest, slot: 0, qty } as InvItem, qty)) {
+      playSfx('deny');
       this.setStatus(`${TITLE[this.kind]}이 가득 찼다`, '#ff9a7a');
       return;
     }
     InventoryStore.removeItem(live.id, true);
+    playSfx('storage_in');
     this.deposits++;
     GameState.markDirty();
     this.scene.events.emit('inventory-changed');
@@ -196,10 +199,12 @@ export class HomeStoragePanel extends DraggablePanel {
     const { slot: _s, qty, ...rest } = it;
     if (!InventoryStore.find(it.id) && InventoryStore.freeSlotCount(it.category) <= 0) {
       HomeStore.restore(this.kind, slot, it);
+      playSfx('deny');
       this.setStatus('가방에 빈 칸이 없다', '#ff9a7a');
       return;
     }
     InventoryStore.addItem(rest, Math.max(1, qty), { silent: true });
+    playSfx('item_move');
     this.withdraws++;
     GameState.markDirty();
     this.scene.events.emit('inventory-changed');

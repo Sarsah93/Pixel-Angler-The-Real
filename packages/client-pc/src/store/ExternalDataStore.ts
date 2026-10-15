@@ -21,11 +21,19 @@ import {
   SeaFishingIndexInfo,
   MarineWeatherApiClient, MarineWeatherInfo, MMAF_OFFICES,
   KmaVilageFcstApiClient, KmaWeatherInfo, KMA_GRID_BY_REGION, WeatherKind,
-  ORACLE_FISH_DB, calculateTideInfo,
+  ORACLE_FISH_DB, calculateTideInfo, FISH_DATABASE, SHORE_CREATURE_DATABASE,
   WORLD_NODE_DATABASE, REGION_AREA_NODES,
   mpRng, mpTimeSlot, SESSION_WEATHER_SLOT_MS, encodeWeatherCard, type SessionWeatherCard,
   isProduceMarketSnapshot, setProduceMarket,
 } from '@tra/core';
+
+/** 252차 — 어종 id → 도감 이름(한국어 원문 · 영어는 i18n 사전이 `nameEn`으로 바꾼다). 모르는 id면 null */
+function speciesDisplayName(speciesId: string): string | null {
+  return FISH_DATABASE.find((f) => f.id === speciesId)?.nameKo
+    ?? ORACLE_FISH_DB.find((o) => o.speciesId === speciesId)?.nameKo
+    ?? SHORE_CREATURE_DATABASE.find((c) => c.id === speciesId)?.nameKo
+    ?? null;
+}
 
 /**
  * 인증키는 전부 `.env`에서만 읽는다 (2026-07-16 하드코딩 제거).
@@ -647,7 +655,8 @@ class ExternalDataStoreManager {
       .sort((a, b) => b.score - a.score)
       .slice(0, n)
       .map((x) => ({
-        name: x.p.itemName, pricePerKg: Math.round(x.p.avgPricePerKg),
+        // 252차 — 도감 이름으로(가상 경락 데이터의 itemName은 어종 id다 — 「starry_flounder」가 화면에 나왔다 · R1)
+        name: speciesDisplayName(x.p.speciesId) ?? x.p.itemName, pricePerKg: Math.round(x.p.avgPricePerKg),
         changePct: x.changePct, volumeKg: Math.round(x.p.totalVolumeKg),
       }));
   }
