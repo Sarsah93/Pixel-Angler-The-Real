@@ -28,6 +28,7 @@ import {
   GRADE_XP_MULT,
 } from '@tra/core';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
+import { cv, cvCss, shapeCuesOn } from './ColorAssist.js';
 import { InventoryStore, InvItem } from '../store/InventoryStore.js';
 import { GameState } from '../store/GameState.js';
 import { DraggablePanel, applyScreenFixed } from './DraggablePanel.js';
@@ -1300,15 +1301,15 @@ export class ButcheryPanel extends DraggablePanel {
         // 보관 버튼 (좌)
         tg.fillStyle(keep[i] ? 0x0d4a2e : 0x14202e, keep[i] ? 0.95 : 0.7);
         tg.fillRoundedRect(W / 2 - 158, ry, 60, 24, 4);
-        tg.lineStyle(1.4, keep[i] ? 0x4af2a1 : 0x39505e, 0.95);
+        tg.lineStyle(1.4, keep[i] ? cv(0x4af2a1) : 0x39505e, 0.95);
         tg.strokeRoundedRect(W / 2 - 158, ry, 60, 24, 4);
         // 버리기 버튼 (우)
         tg.fillStyle(!keep[i] ? 0x4a1d1d : 0x14202e, !keep[i] ? 0.95 : 0.7);
         tg.fillRoundedRect(W / 2 - 92, ry, 68, 24, 4);
-        tg.lineStyle(1.4, !keep[i] ? 0xff6b6b : 0x39505e, 0.95);
+        tg.lineStyle(1.4, !keep[i] ? cv(0xff6b6b) : 0x39505e, 0.95);
         tg.strokeRoundedRect(W / 2 - 92, ry, 68, 24, 4);
-        keepT.setColor(keep[i] ? '#7fe6b0' : '#5f7d8e');
-        dropT.setColor(!keep[i] ? '#ff9a9a' : '#5f7d8e');
+        keepT.setColor(keep[i] ? cvCss('#7fe6b0') : '#5f7d8e');
+        dropT.setColor(!keep[i] ? cvCss('#ff9a9a') : '#5f7d8e');
       };
       paint();
       const keepHit = scene.add.rectangle(W / 2 - 128, ry + 12, 60, 24, 0xffffff, 0.001)
@@ -2322,10 +2323,12 @@ export class ButcheryPanel extends DraggablePanel {
     } else if (stage.primitive === 'tap' && stage.tapPoint) {
       // 시메 — 목표점 링(탭 좌표 = 게임플레이)
       const [tx, ty] = this.toPanelPx(stage.tapPoint);
-      g.lineStyle(2, 0xff5a4a, 0.9);
+      g.lineStyle(2, cv(0xff5a4a), 0.9);
       g.strokeCircle(tx, ty, 9);
-      g.fillStyle(0xff5a4a, 0.85);
+      g.fillStyle(cv(0xff5a4a), 0.85);
       g.fillCircle(tx, ty, 3);
+      // 251차 — 「모양으로도 표시」: 붉은 생선(참돔) 위에서도 보이게 흰 바깥 고리
+      if (shapeCuesOn()) { g.lineStyle(1, 0xffffff, 0.95); g.strokeCircle(tx, ty, 11.5); }
     } else if (primitiveInput(stage.primitive) === 'fill' || stage.primitive === 'peel') {
       // 문지르기(꼬리→머리 좌향) / 박피(꼬리 손잡이→머리 당김) — 합성 스윕선 (편집 가능)
       this.strokeGuideLine(g, this.sweepPathFor(stage));
@@ -2410,12 +2413,12 @@ export class ButcheryPanel extends DraggablePanel {
     }
     g.lineStyle(2, 0xffd257, 0.92);
     for (let i = 1; i < pts.length; i++) this.dashSeg(g, pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1]);
-    // 시작 마커 (초록 링)
-    g.lineStyle(2, 0x2ecc71, 0.95);
+    // 시작 마커 (초록 링) — 251차 색 구분 보정(모양은 이미 링 ↔ 사각으로 다르다)
+    g.lineStyle(2, cv(0x2ecc71), 0.95);
     g.strokeCircle(pts[0][0], pts[0][1], 4.5);
     // 끝 마커 (붉은 사각)
     const [ex, ey] = pts[pts.length - 1];
-    g.fillStyle(0xff3b30, 0.95);
+    g.fillStyle(cv(0xff3b30), 0.95);
     g.fillRect(ex - 2.6, ey - 2.6, 5.2, 5.2);
     // 진행 방향 화살촉 (경로 80% 지점)
     const a = this.pathPointAt(path, 0.8);
@@ -3341,10 +3344,11 @@ export class ButcheryPanel extends DraggablePanel {
       const [tx, ty] = this.toPanelPx(stage.tapPoint);
       drawFn = (t) => {
         g.clear();
-        g.lineStyle(2.5, 0xff5a4a, 0.9 * (1 - t));
+        g.lineStyle(2.5, cv(0xff5a4a), 0.9 * (1 - t));
         g.strokeCircle(tx, ty, 5 + t * 22);
-        g.fillStyle(0xff5a4a, 0.9);
+        g.fillStyle(cv(0xff5a4a), 0.9);
         g.fillCircle(tx, ty, 3.2);
+        if (shapeCuesOn()) { g.lineStyle(1, 0xffffff, 0.95); g.strokeCircle(tx, ty, 6); }
       };
     } else if (primitiveInput(stage.primitive) === 'fill') {
       // 문지르기 — 실제 스윕 경로의 시작→끝 방향으로 원물 밖 화살표 (지그재그 비늘치기 포함)
@@ -3514,7 +3518,7 @@ export class ButcheryPanel extends DraggablePanel {
         for (let k = 0; k < 3; k++) {
           const tt = Math.max(0, Math.min(1, t * 1.6 - k * 0.22));
           if (tt <= 0) continue;
-          g.lineStyle(2.4, 0xff5a4a, 0.9 * (1 - tt));
+          g.lineStyle(2.4, cv(0xff5a4a), 0.9 * (1 - tt));
           g.strokeCircle(tx, ty, 5 + tt * 30);
         }
         g.fillStyle(0xffffff, Math.max(0, 0.9 - t * 1.4));

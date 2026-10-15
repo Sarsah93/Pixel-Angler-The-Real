@@ -32,7 +32,7 @@ import { initDevConsolePanel } from './dev/DevConsolePanel.js';
 import { installI18n } from './i18n/I18n.js';
 import { installTextQuality } from './ui/TextQuality.js';
 import { installGameCursor } from './ui/GameCursor.js';
-import { loadSettings } from './scenes/SettingsScene.js';
+import { applyColorAssist, cursorOptionsOf, loadSettings } from './scenes/SettingsScene.js';
 
 /** 싱글턴 보관 키 — HMR/재평가를 넘어 유지된다 */
 const GAME_KEY = '__PIXEL_ANGLER_GAME';
@@ -53,6 +53,8 @@ export function createGame(): Phaser.Game {
   GameState.initialize();
   // 텍스트 렌더 품질 — Phaser.Game 생성 전에 프로토타입을 덮어야 모든 Text가 탄다 (143차)
   installTextQuality();
+  // 251차 — 색 구분 보정 · 모양으로도 표시(HUD가 처음 그려지기 전에)
+  applyColorAssist(loadSettings());
   // 다국어 훅 — Phaser Text 생성 전에 설치해야 모든 텍스트가 사전을 탄다 (117차)
   installI18n(loadSettings().language === 'en' ? 'en' : 'ko');
   // dev 전용 튜닝 슬라이더 오버레이 (F8) — 프로덕션에서는 즉시 반환/데드코드 제거
@@ -84,8 +86,8 @@ export function createGame(): Phaser.Game {
   const game = new Phaser.Game(config);
   holder[GAME_KEY] = game;
   installCrashGuards(game);
-  // 250차 — 게임 마우스 포인터(찌 화살 · 누를 수 있는 곳은 흰 테)
-  installGameCursor(game);
+  // 250차 — 게임 마우스 포인터(찌 화살 · 누를 수 있는 곳은 흰 테) · 251차 — 설정 「접근성」의 색 · 테 · 크기
+  installGameCursor(game, cursorOptionsOf(loadSettings()));
   return game;
 }
 

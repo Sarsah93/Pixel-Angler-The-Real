@@ -19,6 +19,7 @@ import {
   SASHIMI_CUT_OVERRIDES, cephByproductIcon, GRADE_XP_MULT,
 } from '@tra/core';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
+import { cv } from './ColorAssist.js';
 import { InventoryStore, InvItem } from '../store/InventoryStore.js';
 import { GameState } from '../store/GameState.js';
 import { DraggablePanel, applyScreenFixed } from './DraggablePanel.js';
@@ -529,9 +530,9 @@ export class SashimiPanel extends DraggablePanel {
       }
       if (cur) {
         // 시작(위) 초록 링 / 끝(아래) 붉은 사각 / 진행 화살촉
-        g.lineStyle(2, 0x4af2a1, 1);
+        g.lineStyle(2, cv(0x4af2a1), 1);
         g.strokeCircle(a.x, a.y, 6);
-        g.fillStyle(0xff6a5a, 1);
+        g.fillStyle(cv(0xff6a5a), 1);
         g.fillRect(b.x - 4, b.y - 4, 8, 8);
         const mx = a.x + (b.x - a.x) * 0.6, my = a.y + (b.y - a.y) * 0.6;
         const ang = Math.atan2(b.y - a.y, b.x - a.x);

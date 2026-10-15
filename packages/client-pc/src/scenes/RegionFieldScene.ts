@@ -181,6 +181,7 @@ import { ConfirmDialog, QuantityDialog } from '../ui/Dialogs.js';
 import { AdvancedCraftPanel } from '../ui/AdvancedCraftPanel.js';
 import { paintHudPanel, paintTitlePlate } from '../ui/HudPanelStyle.js';
 import { DraggablePanel, applyScreenFixed, restoreHandCursor } from '../ui/DraggablePanel.js';
+import { cv, drawBlockedX, okBadLegend, shapeCuesOn } from '../ui/ColorAssist.js';
 import { MarketStore, type MarketBranch } from '../store/MarketStore.js';
 import { InventoryStore, InvItem } from '../store/InventoryStore.js';
 import { CoolerStore } from '../store/CoolerStore.js';
@@ -7333,7 +7334,7 @@ export class RegionFieldScene extends Phaser.Scene {
     this.placing = { def, itemId: item.id };
     if (!this.placeG) this.placeG = this.add.graphics().setDepth(48);
     this.hud?.pushLog(`[설치] ${def.label} — 클릭 = 설치 · 우클릭/ESC = 취소`);
-    this.floatingHint(`${def.label} 설치 모드 (초록=가능 / 빨강=불가)`);
+    this.floatingHint(`${def.label} 설치 모드 (${okBadLegend()})`);
   }
 
   /**
@@ -7364,12 +7365,13 @@ export class RegionFieldScene extends Phaser.Scene {
     for (let c = Math.max(0, tx - 4); c <= Math.min(this.cols, tx + rule.footprint.w + 4); c++) {
       g.lineBetween(c * TR, Math.max(0, ty - 4) * TR, c * TR, Math.min(this.rows, ty + rule.footprint.h + 4) * TR);
     }
-    // footprint 칸별 판정 색
+    // footprint 칸별 판정 색(251차 — 색 구분 보정 · 막힌 칸 X)
     for (const cell of check.cells) {
-      g.fillStyle(cell.ok ? 0x4af2a1 : 0xff5a4a, 0.38);
+      g.fillStyle(cv(cell.ok ? 0x4af2a1 : 0xff5a4a), 0.38);
       g.fillRect(cell.c * TR + 1, cell.r * TR + 1, TR - 2, TR - 2);
+      if (!cell.ok) drawBlockedX(g, cell.c * TR + 1, cell.r * TR + 1, TR - 2, TR - 2, 0xffffff, 0.9, 7);
     }
-    g.lineStyle(2, check.ok ? 0x4af2a1 : 0xff5a4a, 0.9);
+    g.lineStyle(2, cv(check.ok ? 0x4af2a1 : 0xff5a4a), 0.9);
     g.strokeRect(tx * TR, ty * TR, rule.footprint.w * TR, rule.footprint.h * TR);
   }
 
@@ -7886,11 +7888,11 @@ export class RegionFieldScene extends Phaser.Scene {
     }
     if (guideUnlocked && this.aimGuideReady) {
       if (this.aimGuidePower === null) {
-        this.chargeBar.fillStyle(0xff6a5a, 0.9);
+        this.chargeBar.fillStyle(cv(0xff6a5a), 0.9);
         this.chargeBar.fillRect(bx + 76, by - 3, 4, 14);   // 사거리 초과 = 우측 끝 경고 블록
       } else {
         const gx = bx + 80 * this.aimGuidePower;
-        this.chargeBar.fillStyle(0xffe08a, 1);
+        this.chargeBar.fillStyle(cv(0xffe08a), 1);
         this.chargeBar.fillRect(gx - 1, by - 3, 2, 14);    // 필요 파워 눈금
       }
     }
@@ -7923,8 +7925,14 @@ export class RegionFieldScene extends Phaser.Scene {
     const last = traj[traj.length - 1];
     if (last) {
       const landsWater = this.terrainAt(Math.floor(last.x / TR), Math.floor(last.y / TR)) === 'water';
-      this.aimG.lineStyle(1.5, landsWater ? 0x4af2a1 : 0xff6a5a, 0.9);
+      this.aimG.lineStyle(1.5, cv(landsWater ? 0x4af2a1 : 0xff6a5a), 0.9);
       this.aimG.strokeCircle(last.x, last.y, 8);
+      // 251차 — 「모양으로도 표시」: 땅에 떨어지면 고리 안에 X
+      if (!landsWater && shapeCuesOn()) {
+        this.aimG.lineStyle(1.5, 0xffffff, 0.9);
+        this.aimG.lineBetween(last.x - 4, last.y - 4, last.x + 4, last.y + 4);
+        this.aimG.lineBetween(last.x + 4, last.y - 4, last.x - 4, last.y + 4);
+      }
 
       // 산포 반경 링 — 실제 착수는 이 안에서 흩어진다(정투 랭크로 줄어든다)
       const distPx = Math.hypot(last.x - px, last.y - py);

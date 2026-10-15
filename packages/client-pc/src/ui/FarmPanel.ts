@@ -28,6 +28,7 @@ import {
   type FarmCellState, type FarmFacility, type FarmPlotState, type LicenseType, type WaterAmount,
 } from '@tra/core';
 import { DraggablePanel, restoreHandCursor } from './DraggablePanel.js';
+import { cv, cvCss } from './ColorAssist.js';
 import { addPixelIcon } from './PixelIcon.js';
 import { createItemIcon } from './ItemIcon.js';
 import { clampTextWidth, enforceTextBounds } from './TextFit.js';
@@ -270,7 +271,7 @@ export class FarmPanel extends DraggablePanel {
         if (di) this.content.add(di);
       }
       if (c.frostedAt) {
-        const frost = scene.add.rectangle(cx + CELL / 2, cy + CELL / 2, CELL, CELL, 0x9fb8ff, 0.22);
+        const frost = scene.add.rectangle(cx + CELL / 2, cy + CELL / 2, CELL, CELL, cv(0x9fb8ff), 0.22);
         this.content.add(frost);
       }
       if (crop && interimOpen(c, crop) && crop.interim) {
@@ -283,7 +284,7 @@ export class FarmPanel extends DraggablePanel {
         const d = addPixelIcon(scene, 'hydration', cx + 12, cy + 12, 16);
         if (d) this.content.add(d.setAlpha(ws.state === 'dry' ? 0.95 : 0.5));
       } else if (ws?.state === 'wet' && crop) {
-        this.content.add(scene.add.rectangle(cx + CELL / 2, cy + CELL / 2, CELL - 4, CELL - 4, 0x2a5aa0, 0.22));
+        this.content.add(scene.add.rectangle(cx + CELL / 2, cy + CELL / 2, CELL - 4, CELL - 4, cv(0x2a5aa0), 0.22));
       }
       if (crop && !c.resting && seasonFactor(crop, kstMonthOf(now), p) === 0) {
         const fog = scene.add.rectangle(cx + CELL / 2, cy + CELL / 2, CELL, CELL, 0x0a1220, 0.35);
@@ -438,7 +439,7 @@ export class FarmPanel extends DraggablePanel {
       }
       if (c.lodged) row('쓰러짐', '비바람에 쓰러졌다 — 수확이 준다', '#ff9a7a');
       const est = FarmStore.establishment(this.opts.plotId, this.sel);
-      if (est) row('활착기', `${est.daysLeft}일 더 흙을 촉촉하게 — 마르면 뿌리를 못 내린다`, c.moisture < 0.4 ? '#ff9a7a' : '#8affb0');
+      if (est) row('활착기', `${est.daysLeft}일 더 흙을 촉촉하게 — 마르면 뿌리를 못 내린다`, cvCss(c.moisture < 0.4 ? '#ff9a7a' : '#8affb0'));
     }
     if (c.tilled && !(this.indoor && crop?.site === 'plot')) {
       // 247차 — 흙 막대에 그 작물의 알맞은 띠(초록 테) · 꼬리는 마름 · 조금 마름 · 알맞음 · 너무 젖음

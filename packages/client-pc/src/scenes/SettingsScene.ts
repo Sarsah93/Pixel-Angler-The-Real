@@ -18,6 +18,9 @@ import { setLocale } from '../i18n/I18n.js';
 import { refreshAudioVolumes, playUiClick } from '../audio/Sfx.js';
 import { VoiceTyper } from '../audio/Voice.js';
 import { GUIDE_VOICE } from '@tra/core';
+import { DEFAULT_CURSOR_OPTIONS, applyCursorOptions, type CursorEdge, type CursorOptions, type CursorScale, type CursorStyle } from '../ui/GameCursor.js';
+import { renderAccessTab } from '../ui/AccessSettingsTab.js';
+import { setColorVisionMode, setShapeCues, type ColorVisionMode } from '../ui/ColorAssist.js';
 
 // ─────────────────────────────────────────────
 // 설정 저장 구조체
@@ -49,6 +52,16 @@ export interface GameSettings {
    * 일지(J)·「지금 할 일」의 안내 문구는 그대로 남는다.
    */
   showQuestGuide: boolean;
+  /** 251차 — 마우스 포인터 색: 찌(빨강) · 야광찌(형광 연두노랑 — 색약 배려) · 운영체제 기본 */
+  cursorStyle: CursorStyle;
+  /** 251차 — 기본 포인터 흰 테: 0 없음 · 1 옅게 · 2 또렷하게 (누를 수 있는 곳은 한 단계 더 진하게) */
+  cursorEdge: CursorEdge;
+  /** 251차 — 포인터 크기: 1 보통(23px) · 2 크게(46px) */
+  cursorScale: CursorScale;
+  /** 251차 — 색 구분 보정: 끔 · 적록 색약(제1 · 2색각) · 청황 색약(제3색각) — HUD의 뜻이 있는 색을 옮긴다(`ui/ColorAssist`) */
+  colorVision: ColorVisionMode;
+  /** 251차 — 모양으로도 표시: 색으로만 가르던 곳에 막힌 칸 X · 위험 빗금 · 눈금 · 기호를 더한다 */
+  shapeCues: boolean;
 }
 
 const SETTINGS_STORAGE_KEY = 'pixelAngler_settings';
@@ -59,7 +72,26 @@ const DEFAULT_SETTINGS: GameSettings = {
   hudStatusSize: 0, hudStatusAlpha: 0, hudChatSize: 0, hudChatAlpha: 0,
   showFieldLabels: false,
   showQuestGuide: true,
+  cursorStyle: DEFAULT_CURSOR_OPTIONS.style,
+  cursorEdge: DEFAULT_CURSOR_OPTIONS.edge,
+  cursorScale: DEFAULT_CURSOR_OPTIONS.scale,
+  colorVision: 'off',
+  shapeCues: false,
 };
+
+/** 251차 — 설정값을 색 보정 모듈에 넣는다(부팅 · 설정 창이 부른다) */
+export function applyColorAssist(st: GameSettings): void {
+  setColorVisionMode(st.colorVision);
+  setShapeCues(st.shapeCues === true);
+}
+
+/** 251차 — 설정값 → 포인터 옵션(저장본 값이 이상하면 기본값) */
+export function cursorOptionsOf(st: GameSettings): CursorOptions {
+  const style: CursorStyle = st.cursorStyle === 'glow' || st.cursorStyle === 'system' ? st.cursorStyle : 'float';
+  const edge: CursorEdge = st.cursorEdge === 1 || st.cursorEdge === 2 ? st.cursorEdge : 0;
+  const scale: CursorScale = st.cursorScale === 2 ? 2 : 1;
+  return { style, edge, scale };
+}
 
 export function loadSettings(): GameSettings {
   try {
@@ -139,7 +171,19 @@ const HOTKEY_SECTIONS: HotkeySection[] = [
 // ─────────────────────────────────────────────
 // 씬 클래스
 // ─────────────────────────────────────────────
-type SettingsTab = 'hotkey' | 'display' | 'fishing' | 'audio' | 'language';
+type SettingsTab = 'hotkey' | 'display' | 'fishing' | 'audio' | 'language' | 'access';
+
+/** 탭 순서 · 이름 — 251차 「접근성」 추가(탭 6개 · 폭 120) */
+const TAB_DEFS: readonly { id: SettingsTab; label: string }[] = [
+  { id: 'hotkey', label: '단축키' },
+  { id: 'display', label: '화면' },
+  { id: 'fishing', label: '낚시' },
+  { id: 'audio', label: '음향' },
+  { id: 'language', label: '언어' },
+  { id: 'access', label: '접근성' },
+];
+const TAB_W = 120;
+const TAB_GAP = 8;
 
 export class SettingsScene extends Phaser.Scene {
   private currentTab: SettingsTab = 'hotkey';
@@ -207,19 +251,12 @@ export class SettingsScene extends Phaser.Scene {
     closeBtn.on('pointerout', () => closeTxt.setColor('#8faabf'));
 
     // ── 탭 버튼 ────────────────────────────────────────
-    const tabs: { id: SettingsTab; label: string }[] = [
-      { id: 'hotkey', label: '단축키' },
-      { id: 'display', label: '화면' },
-      { id: 'fishing', label: '낚시' },
-      { id: 'audio', label: '음향' },
-      { id: 'language', label: '언어' },
-    ];
     const tabStartX = panelX + 20;
     const tabY = panelY + 56;
 
-    tabs.forEach((tab, i) => {
-      const tabW = 140;
-      const tx = tabStartX + i * (tabW + 8);
+    TAB_DEFS.forEach((tab, i) => {
+      const tabW = TAB_W;
+      const tx = tabStartX + i * (tabW + TAB_GAP);
 
       const tabBg = this.add.graphics();
       this.tabBgs[tab.id] = tabBg;
@@ -267,15 +304,13 @@ export class SettingsScene extends Phaser.Scene {
     this.currentTab = tab;
 
     // 탭 배경 갱신
-    const tabW = 140;
     const panelX = (GAME_WIDTH - 800) / 2;
     const tabStartX = panelX + 20;
     const tabY = (GAME_HEIGHT - 560) / 2 + 56;
-    const tabs: SettingsTab[] = ['hotkey', 'display', 'fishing', 'audio', 'language'];
 
-    tabs.forEach((id, i) => {
+    TAB_DEFS.forEach(({ id }, i) => {
       const bg = this.tabBgs[id];
-      if (bg) this.renderTabBg(bg, tabStartX + i * (tabW + 8), tabY, tabW, 36, id === tab);
+      if (bg) this.renderTabBg(bg, tabStartX + i * (TAB_W + TAB_GAP), tabY, TAB_W, 36, id === tab);
     });
 
     if (prevTab !== tab) {
@@ -291,6 +326,7 @@ export class SettingsScene extends Phaser.Scene {
       case 'fishing':  this.renderFishingTab(); break;
       case 'audio':    this.renderAudioTab(); break;
       case 'language': this.renderLanguageTab(); break;
+      case 'access':   this.renderAccessTab(); break;
     }
   }
 
@@ -310,10 +346,12 @@ export class SettingsScene extends Phaser.Scene {
         wordWrap: { width: 640 },
       });
     this.contentContainer.add([label, desc]);
+    // 251차 — 흐름 배치: 영어 설명이 세 줄로 넘어가 단추에 가려졌다(한국어는 두 줄이라 자리가 그대로다)
+    const pinBy = Math.max(startY + 62, Math.ceil(desc.y + desc.height + 8));
 
     ([{ v: false, t: '끔' }, { v: true, t: '켬' }] as const).forEach((opt, j) => {
       const bx = startX + j * 180;
-      const by = startY + 62;
+      const by = pinBy;
       const selected = this.settings.showFieldLabels === opt.v;
       const bg = this.add.graphics();
       bg.fillStyle(selected ? 0x162a40 : 0x0e1c2d, 0.9);
@@ -336,14 +374,14 @@ export class SettingsScene extends Phaser.Scene {
       this.contentContainer.add([bg, txt, hit]);
     });
 
-    const note = this.add.text(startX, startY + 112,
+    const note = this.add.text(startX, pinBy + 50,
       '캐릭터와 NPC의 이름표는 이 설정과 상관없이 늘 보입니다.', {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#4e6678',
       });
     this.contentContainer.add(note);
 
     // ── 할 일 위치 안내 (178차) ──
-    const gy = startY + 152;
+    const gy = Math.max(startY + 152, Math.ceil(note.y + note.height + 24));
     const gLabel = this.add.text(startX, gy, '할 일 위치 안내', {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '15px', color: '#d0e8f5', fontStyle: 'bold',
     });
@@ -353,10 +391,11 @@ export class SettingsScene extends Phaser.Scene {
         wordWrap: { width: 640 },
       });
     this.contentContainer.add([gLabel, gDesc]);
+    const guideBy = Math.max(gy + 62, Math.ceil(gDesc.y + gDesc.height + 8));
 
     ([{ v: true, t: '켬' }, { v: false, t: '끔' }] as const).forEach((opt, j) => {
       const bx = startX + j * 180;
-      const by = gy + 62;
+      const by = guideBy;
       const selected = this.settings.showQuestGuide === opt.v;
       const bg = this.add.graphics();
       bg.fillStyle(selected ? 0x162a40 : 0x0e1c2d, 0.9);
@@ -625,6 +664,22 @@ export class SettingsScene extends Phaser.Scene {
     this.drawSliderFill(fill, startX, handle.y - 4, trackW, rounded);
     handle.setX(startX + rounded * trackW);
     valText.setText(`${Math.round(rounded * 100)}%`);
+  }
+
+  // ── 접근성 탭 (251차 — 마우스 포인터 · 색 구분) ──────────────
+  private renderAccessTab(): void {
+    renderAccessTab({
+      scene: this,
+      container: this.contentContainer,
+      settings: this.settings,
+      commit: () => {
+        saveSettings(this.settings);
+        applyCursorOptions(this.game, cursorOptionsOf(this.settings));
+        applyColorAssist(this.settings);
+        this.game.events.emit('a11y-changed');
+      },
+      rerender: () => { this.contentContainer.removeAll(true); this.renderTab(); },
+    }, (GAME_WIDTH - 800) / 2, (GAME_HEIGHT - 560) / 2);
   }
 
   // ── 언어 탭 ───────────────────────────────────────────

@@ -11,6 +11,7 @@
  * ⚠ 캐니스터는 끼우는 순간 소모된다 — 화구를 회수해도 남은 연료는 돌아오지 않는다(설치 확인창에 명시).
  */
 
+import { cvCss, shapeCuesOn } from '../ui/ColorAssist.js';
 import {
   TUNING, getHeatSource, getCookware, getFuel, getFireRecipe, getCookIngredient, ingredientOfItem,
   createCookSession, canAddIngredient, addIngredient as coreAddIngredient, setHeat as coreSetHeat, flip as coreFlip,
@@ -406,10 +407,13 @@ class CookingStoreClass {
     if (!s) return { text: this.cookwareOf(st)?.nameKo ?? '', color: '#c8d8e8' };
     const r = getFireRecipe(s.recipeId);
     const name = r?.nameKo ?? '';
-    if (s.status === 'burnt') return { text: `${name} — 탔다!`, color: '#ff5a4a' };
+    if (s.status === 'burnt') return { text: `${name} — 탔다!`, color: cvCss('#ff5a4a') };
     if (s.status === 'done') {
       const idleMin = s.doneAtSec !== null ? (s.elapsedSec - s.doneAtSec) / 60 / TUNING.cook.timeScale : 0;
-      return { text: `${name} 완성${s.heat > 0 ? ' · 불 켜짐' : ''}`, color: idleMin > TUNING.cook.idleWarnMin ? '#ff9a4a' : '#8affb0' };
+      const stale = idleMin > TUNING.cook.idleWarnMin;
+      // 251차 — 색 구분 보정 · 「모양으로도 표시」면 오래 둔 것을 글로도 말한다(같은 글자에 색만 다르던 것)
+      const tail = `${stale && shapeCuesOn() ? ' · 오래 둠' : ''}${s.heat > 0 ? ' · 불 켜짐' : ''}`;
+      return { text: `${name} 완성${tail}`, color: cvCss(stale ? '#ff9a4a' : '#8affb0') };
     }
     if (s.contents.length === 0) return { text: `${name} — 재료 대기`, color: '#c8d8e8' };
     if (s.heat === 0) return { text: `${name} — 불 꺼짐`, color: '#ffe0a8' };

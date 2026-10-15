@@ -9,6 +9,7 @@
  *  - ESC · ✕ = 포기 → 그 생물은 사라진다(사용자 지시 「놓친 생물은 사라지도록」).
  */
 
+import { colorVisionMode, cv, drawHatch, shapeCuesOn } from './ColorAssist.js';
 import Phaser from 'phaser';
 import {
   createForageGame, stepForageGame, mulberry32,
@@ -174,7 +175,8 @@ export class ForageGamePanel extends DraggablePanel {
   }
 
   private buildTour(id: string): TourOptions {
-    const texts = TOUR_TEXT[this.gs.kind];
+    // 251차 — 색 구분 보정(적록)이면 「틈(초록)」이 파랗게 보인다 — 글의 색 이름을 맞춘다
+    const texts = TOUR_TEXT[this.gs.kind].map((t) => (colorVisionMode() === 'redgreen' ? t.replace('(초록)', '(파랑)') : t));
     // 229차 — 말풍선마다 그림(바닥 · 생물 · 손 · 화살표)을 넣는다 — 글자만으로 설명하지 않는다
     const boardKey = `forageboard_${this.creature.id}`;
     const picKey = this.wormImg ? 'honmushi_straight_px' : this.scene.textures.exists(boardKey) ? boardKey : forageSpotTexKey(this.creature);
@@ -346,15 +348,20 @@ export class ForageGamePanel extends DraggablePanel {
     };
     arc(0, 1, 4, 0xe8d8b8, 0.6);                                    // 가장자리 길
     arc(p.zoneC - p.zoneW / 2, p.zoneC + p.zoneW / 2, 14, 0x0a0e14); // 들린 틈(어둠)
-    arc(p.zoneC - p.zoneW / 2, p.zoneC + p.zoneW / 2, 7, flash?.kind === 'hit' ? 0xffffff : 0x4af2a1);
+    arc(p.zoneC - p.zoneW / 2, p.zoneC + p.zoneW / 2, 7, flash?.kind === 'hit' ? 0xffffff : cv(0x4af2a1));
     // 집게 끝(또는 손끝) — 바깥에서 가장자리로 들이댄다(229차 — 손그림 스프라이트, 끝이 껍데기 쪽을 본다)
     const q = at(p.needle);
     const into = { x: -q.nx, y: -q.ny };
     this.placeTool(q.x + q.nx * 26, q.y + q.ny * 26, into, 1);
     g.fillStyle(0x000000, 0.25); g.fillCircle(q.x + q.nx * 6, q.y + q.ny * 6, 5);
     if (flash) {
-      g.lineStyle(2, flash.kind === 'hit' ? 0x4af2a1 : 0xff6a5a, 1);
+      g.lineStyle(2, cv(flash.kind === 'hit' ? 0x4af2a1 : 0xff6a5a), 1);
       g.strokeCircle(q.x, q.y, 8 + (1 - flash.ms / 320) * 10);
+      // 251차 — 「모양으로도 표시」: 헛짚으면 고리 안에 X
+      if (flash.kind !== 'hit' && shapeCuesOn()) {
+        g.lineStyle(2, 0xffffff, 1);
+        g.lineBetween(q.x - 5, q.y - 5, q.x + 5, q.y + 5); g.lineBetween(q.x + 5, q.y - 5, q.x - 5, q.y + 5);
+      }
     }
     // 비집을 횟수 — 판 왼쪽 아래
     for (let i = 0; i < p.need; i++) {
@@ -395,9 +402,15 @@ export class ForageGamePanel extends DraggablePanel {
     const mx = BX + BW - 46, mh = BOARD_H - 24, my = top + 12;
     g.fillStyle(0x0a1628, 0.9); g.fillRect(mx, my, 18, mh);
     const col = Phaser.Display.Color.Interpolate.ColorWithColor(
-      Phaser.Display.Color.ValueToColor(0x4af2a1), Phaser.Display.Color.ValueToColor(0xff5a4a), 100, Math.round(d.noise * 100));
+      Phaser.Display.Color.ValueToColor(cv(0x4af2a1)), Phaser.Display.Color.ValueToColor(cv(0xff5a4a)), 100, Math.round(d.noise * 100));
     g.fillStyle(Phaser.Display.Color.GetColor(col.r, col.g, col.b), 1);
     g.fillRect(mx, my + mh * (1 - d.noise), 18, mh * d.noise);
+    // 251차 — 「모양으로도 표시」: 녀석이 움찔하는 소란 문턱에 눈금 · 넘은 부분 빗금(색이 초록 → 빨강으로만 바뀌던 것)
+    if (shapeCuesOn()) {
+      const ty = my + mh * (1 - d.calm);
+      if (d.noise > d.calm) drawHatch(g, mx, my + mh * (1 - d.noise), 18, mh * (d.noise - d.calm), 0x101418, 0.85, 4);
+      g.lineStyle(2, 0xffffff, 0.95); g.lineBetween(mx - 4, ty, mx + 22, ty);
+    }
     g.lineStyle(1.5, 0x2a5a8a, 1); g.strokeRect(mx, my, 18, mh);
     // 손(갈퀴) — 누르고 있으면 흙이 튄다
     if (this.holding && !this.paused) {
@@ -424,8 +437,14 @@ export class ForageGamePanel extends DraggablePanel {
     // 긴장 막대 — 밝은 칸 = 끌려 나오는 범위
     const by = top + 138, bw = BW - 80, bx = BX + 40, bh = 16;
     g.fillStyle(0x0a1628, 0.9); g.fillRect(bx, by, bw, bh);
-    g.fillStyle(0x4af2a1, 0.35); g.fillRect(bx + bw * 0.3, by, bw * 0.55, bh);
-    g.fillStyle(0xff5a4a, 0.4); g.fillRect(bx + bw * 0.85, by, bw * 0.15, bh);
+    g.fillStyle(cv(0x4af2a1), 0.35); g.fillRect(bx + bw * 0.3, by, bw * 0.55, bh);
+    g.fillStyle(cv(0xff5a4a), 0.4); g.fillRect(bx + bw * 0.85, by, bw * 0.15, bh);
+    // 251차 — 「모양으로도 표시」: 위험 칸 빗금 · 끌려 나오는 범위 경계 눈금(두 칸 밝기가 비슷해 색으로만 가르던 것)
+    drawHatch(g, bx + bw * 0.85, by, bw * 0.15, bh, 0xffffff, 0.6, 5);
+    if (shapeCuesOn()) {
+      g.lineStyle(2, 0xffffff, 0.9);
+      for (const k of [0.3, 0.85]) g.lineBetween(bx + bw * k, by - 3, bx + bw * k, by + bh + 3);
+    }
     const tx = bx + Math.min(1, p.tension) * bw;
     g.fillStyle(0xffffff, 1); g.fillRect(tx - 2, by - 5, 4, bh + 10);
     g.lineStyle(1.5, 0x2a5a8a, 1); g.strokeRect(bx, by, bw, bh);

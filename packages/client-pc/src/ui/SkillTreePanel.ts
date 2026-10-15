@@ -25,6 +25,7 @@ import {
   PROF_MAX_LEVEL, profLevel, profNextXp, profScale, profLevelStartXp, type ProfActionKey,
 } from '@tra/core';
 import { DraggablePanel, applyScreenFixed, restoreHandCursor } from './DraggablePanel.js';
+import { cv, shapeCuesOn } from './ColorAssist.js';
 import { GameState } from '../store/GameState.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { clampTextWidth, enforceTextBounds } from './TextFit.js';
@@ -366,7 +367,7 @@ export class SkillTreePanel extends DraggablePanel {
         const from = pos.get(q.id);
         if (!from) continue;
         const met = (ranks[q.id] ?? 0) >= q.rank;
-        lines.lineStyle(2, met ? 0x4af2a1 : 0x2a4a63, met ? 0.9 : 0.7);
+        lines.lineStyle(2, met ? cv(0x4af2a1) : 0x2a4a63, met ? 0.9 : 0.7);
         const x1 = from.x + S, y1 = from.y + S / 2, x2 = to.x, y2 = to.y + S / 2;
         // 꺾는 자리 = **대상 열 바로 앞 통로** — 열을 건너뛰는 선이 중간 열 슬롯 한가운데로 세로로 지나가지 않게
         const mx = Math.round(x2 - (TIER_DX - S) / 2);
@@ -383,15 +384,17 @@ export class SkillTreePanel extends DraggablePanel {
       const fill = st === 'maxed' || st === 'learned' ? 0x123a2c
         : st === 'available' ? 0x2a3a1c
           : secret ? 0x1a1430 : 0x121c2a;
-      const stroke = st === 'maxed' ? 0x4af2a1 : st === 'learned' ? 0x3fb88a
+      const stroke = cv(st === 'maxed' ? 0x4af2a1 : st === 'learned' ? 0x3fb88a
         : st === 'available' ? 0xffd257
-          : secret ? 0x7a5cc0 : st === 'condLocked' ? 0xc88a5a : st === 'catLocked' ? 0x2a3a4a : 0x3a4c60;
+          : secret ? 0x7a5cc0 : st === 'condLocked' ? 0xc88a5a : st === 'catLocked' ? 0x2a3a4a : 0x3a4c60);
       // 정사각 슬롯 (살짝 둥근 모서리)
       const g = this.scene.add.graphics();
       g.fillStyle(fill, st === 'catLocked' ? 0.6 : 0.96);
       g.fillRoundedRect(p.x, p.y, S, S, 6);
       g.lineStyle(2, stroke, 1);
       g.strokeRoundedRect(p.x, p.y, S, S, 6);
+      // 251차 — 「모양으로도 표시」: 조건이 남은 잠김(condLocked)은 안쪽 한 줄 더(그냥 잠김과 테 색으로만 가르던 것)
+      if (st === 'condLocked' && shapeCuesOn()) { g.lineStyle(1, stroke, 0.9); g.strokeRoundedRect(p.x + 4, p.y + 4, S - 8, S - 8, 4); }
       c.add(g);
       // 아이콘 — 정수 배율로 구워 스케일 없이 놓는다
       const tex = ensureSkillIcon(this.scene, d.id, spec.iconScale);

@@ -89,6 +89,7 @@ import { LedgerStore } from '../store/LedgerStore.js';
 import { ExternalDataStore } from '../store/ExternalDataStore.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { applyScreenFixed } from '../ui/DraggablePanel.js';
+import { cv, cvCss, drawHatch, shapeCuesOn } from '../ui/ColorAssist.js';
 import { CoolerPanel } from '../ui/CoolerPanel.js';
 import { CoolerSwapPanel } from '../ui/CoolerSwapPanel.js';
 import { ConfirmDialog } from '../ui/Dialogs.js';
@@ -2084,11 +2085,16 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     const pulse = 0.55 + 0.45 * Math.sin(this.time.now / 110);
     const alpha = 0.16 * danger * pulse + 0.06 * danger;
     const t = 26 + danger * 18;   // 테두리 두께
-    g.fillStyle(0xff3a2a, alpha);
+    g.fillStyle(cv(0xff3a2a), alpha);
     g.fillRect(0, 0, GAME_WIDTH, t);
     g.fillRect(0, GAME_HEIGHT - t, GAME_WIDTH, t);
     g.fillRect(0, t, t, GAME_HEIGHT - t * 2);
     g.fillRect(GAME_WIDTH - t, t, t, GAME_HEIGHT - t * 2);
+    // 251차 — 「모양으로도 표시」: 붉은 테두리가 거의 안 보이는 눈(제1색각)을 위해 흰 선이 함께 맥박친다
+    if (shapeCuesOn()) {
+      g.lineStyle(3, 0xffffff, 0.25 + 0.5 * danger * pulse);
+      g.strokeRect(t - 2, t - 2, GAME_WIDTH - (t - 2) * 2, GAME_HEIGHT - (t - 2) * 2);
+    }
   }
 
   /**
@@ -2937,7 +2943,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     const t = this.time.now / 1000;
     list.forEach((r, i) => {
       const x = i * (PARK_CHIP_W + PARK_CHIP_GAP);
-      const col = PARK_CHIP_COLOR[r.phase];
+      const col = cv(PARK_CHIP_COLOR[r.phase]);
       const blink = (r.phase === 'bite' || r.phase === 'hooked') && Math.sin(t * 8) > 0;
       const bg = this.add.rectangle(x, 0, PARK_CHIP_W, PARK_CHIP_H, blink ? 0x2a1c0a : 0x0a1628, 0.9)
         .setOrigin(0, 0).setStrokeStyle(2, col, 1);
@@ -2955,6 +2961,23 @@ export class FirstPersonFishingScene extends Phaser.Scene {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px', color: '#e8f4ff', fontStyle: 'bold',
       }).setOrigin(1, 0.5);
       c.add([bg, g, n]);
+      // 251차 — 「모양으로도 표시」: 상태 기호(입질 ! · 걸림 !! · 밑걸림 X · 엉킴 물결) — 테 색만으로 가르던 것
+      if (shapeCuesOn() && r.phase !== 'waiting') {
+        const gx = x + 40, gy = PARK_CHIP_H / 2;
+        if (r.phase === 'bite' || r.phase === 'hooked') {
+          c.add(this.add.text(gx, gy, r.phase === 'hooked' ? '!!' : '!', {
+            fontFamily: '"Noto Sans KR", sans-serif', fontSize: '14px', color: '#ffffff', fontStyle: 'bold',
+          }).setOrigin(0.5));
+        } else if (r.phase === 'snagged') {
+          g.lineStyle(2, 0xffffff, 1);
+          g.lineBetween(gx - 4, gy - 4, gx + 4, gy + 4); g.lineBetween(gx + 4, gy - 4, gx - 4, gy + 4);
+        } else {
+          g.lineStyle(2, 0xffffff, 1);
+          g.beginPath(); g.moveTo(gx - 6, gy);
+          for (let k = 1; k <= 6; k++) g.lineTo(gx - 6 + k * 2, gy + (k % 2 ? -3 : 3));
+          g.strokePath();
+        }
+      }
     });
   }
 
@@ -3556,7 +3579,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     // 1) 성공 팝업 — 버튼 없이(알림을 먼저 본다)
     this.buildDecisionPanel(
       `${lead.nameKo} ${lead.lengthCm}cm 낚음!${extra.length > 0 ? ` (+${extra.length})` : ''}`,
-      body, rr.color, fishTexture, [], fishImageSizeScale(lead.speciesId, lead.lengthCm), hooked.length,
+      body, cvCss(rr.color), fishTexture, [], fishImageSizeScale(lead.speciesId, lead.lengthCm), hooked.length,
     );
     // 2) 알림 — 빠진 고기 · (있으면) 뜰채를 못 쓴 사유
     const lost = hooked[drop.droppedIndex ?? 0];
@@ -3634,7 +3657,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     });
     this.buildDecisionPanel(
       `${lead.nameKo} ${lead.lengthCm}cm 낚음!${extra.length > 0 ? ` (+${extra.length})` : ''}`,
-      body, rr.color, fishTexture,
+      body, cvCss(rr.color), fishTexture,
       [
         {
           label: '쿨러에 보관하기', fill: 0x0d4a2e, stroke: 0x4af2a1, color: '#4af2a1',
@@ -4498,8 +4521,15 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     const ms = hooked ? 1.2 : 1;
     // 132차 — 완전 제압되면 옆으로 누워(납작한 타원) 끌려온다 (사용자 요구 3 연출)
     const rolled = this.dragInMode || this.fightSubdue >= 100;
-    g.fillStyle(hooked ? depthFishTint(hooked.speciesId, hooked.lengthCm) : 0x4af2a1, 1);
+    g.fillStyle(cv(hooked ? depthFishTint(hooked.speciesId, hooked.lengthCm) : 0x4af2a1), 1);
     g.fillEllipse(mx, axY, 10 * ms, (rolled ? 3.6 : 6) * ms);
+    // 251차 — 「모양으로도 표시」: 걸린 물고기 급을 머리 위 점 개수로도(소형 1 · 평균 2 · 우량 3 · 준대물 4 · 대물 이상 5)
+    if (hooked && shapeCuesOn()) {
+      const tier = fishRarity(hooked.speciesId, hooked.lengthCm).tier;
+      const pips = { small: 1, common: 2, fine: 3, big: 4, trophy: 5, monster: 5 }[tier];
+      g.fillStyle(0xffffff, 0.95);
+      for (let k = 0; k < pips; k++) g.fillRect(mx - pips * 2 + k * 4, axY - 10 * ms, 3, 3);
+    }
     g.fillTriangle(mx - 5 * ms, axY, mx - 9 * ms, axY - (rolled ? 1.8 : 3) * ms,
       mx - 9 * ms, axY + (rolled ? 1.8 : 3) * ms);
 
@@ -4718,27 +4748,33 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     g.fillStyle(0x101820, 0.9);
     g.fillRoundedRect(bx, by, bw, 18, 4);
     // 안전 구간
-    g.fillStyle(0x1d4a30, 0.9);
+    g.fillStyle(cv(0x1d4a30), 0.9);
     g.fillRect(bx + bw * 0.3, by, bw * 0.5, 18);
-    // 현재 텐션
+    // 현재 텐션 — 251차 색 구분 보정
     const tRatio = st.tension / 100;
-    const tColor = st.tension < 30 ? 0x66b8ff : st.tension > 80 ? 0xff5a4a : 0x4af2a1;
+    const tColor = cv(st.tension < 30 ? 0x66b8ff : st.tension > 80 ? 0xff5a4a : 0x4af2a1);
     g.fillStyle(tColor, 1);
     g.fillRoundedRect(bx, by, bw * tRatio, 18, 4);
+    // 251차 — 「모양으로도 표시」: 위험(80 위)에 빗금 · 안전 구간 경계 30 · 80 눈금(채움이 띠를 덮어도 보이게)
+    if (st.tension > 80) drawHatch(g, bx + bw * 0.8, by, bw * (Math.min(tRatio, 1) - 0.8), 18, 0x101418, 0.85, 6);
+    if (shapeCuesOn()) {
+      g.lineStyle(2, 0xffffff, 0.95);
+      for (const k of [0.3, 0.8]) g.lineBetween(bx + bw * k, by - 4, bx + bw * k, by + 22);
+    }
     g.lineStyle(1.5, 0x2a5a8a, 1);
     g.strokeRoundedRect(bx, by, bw, 18, 4);
 
     // ── 랜딩 진행 바 = **거리 진행도** (132차) — 수심 패널 거리축·수평뷰와 같은 값 ──
     g.fillStyle(0x101820, 0.9);
     g.fillRoundedRect(bx, by + 26, bw, 10, 3);
-    g.fillStyle(this.dragInMode ? 0x4af2a1 : 0xffe28a, 0.95);
+    g.fillStyle(cv(this.dragInMode ? 0x4af2a1 : 0xffe28a), 0.95);
     g.fillRoundedRect(bx, by + 26, bw * (st.progress / 100), 10, 3);
     g.lineStyle(1, 0x2a5a8a, 0.9);
     g.strokeRoundedRect(bx, by + 26, bw, 10, 3);
     // 제압도 바 (얇게 — 랜딩 바 아래). 100 = 완전 제압 → 저항 소멸·끌어오기
     g.fillStyle(0x101820, 0.9);
     g.fillRoundedRect(bx, by + 39, bw, 6, 2);
-    g.fillStyle(st.subdue >= 100 ? 0x4af2a1 : 0xc08cff, 0.95);
+    g.fillStyle(cv(st.subdue >= 100 ? 0x4af2a1 : 0xc08cff), 0.95);
     g.fillRoundedRect(bx, by + 39, bw * (st.subdue / 100), 6, 2);
     g.lineStyle(1, 0x2a5a8a, 0.8);
     g.strokeRoundedRect(bx, by + 39, bw, 6, 2);
@@ -4754,8 +4790,9 @@ export class FirstPersonFishingScene extends Phaser.Scene {
         : by + 50;
       g.fillStyle(0x101820, 0.9);
       g.fillRoundedRect(sx, sy, sw, 8, 3);
-      g.fillStyle(st.slackRisk > 0.6 ? 0xff5a4a : 0xffb26b, 0.95);
+      g.fillStyle(cv(st.slackRisk > 0.6 ? 0xff5a4a : 0xffb26b), 0.95);
       g.fillRoundedRect(sx, sy, sw * st.slackRisk, 8, 3);
+      if (st.slackRisk > 0.6) drawHatch(g, sx, sy, sw * st.slackRisk, 8, 0x101418, 0.8, 5);
       g.lineStyle(1, 0x2a5a8a, 0.8);
       g.strokeRoundedRect(sx, sy, sw, 8, 3);
       // ⚠ 합성 문자열은 사전을 비껴간다 — 붙이기 전에 t()로 번역한다(131차 교훈)
@@ -4763,7 +4800,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
         / (this.spoolKey?.isDown ? TUNING.fightPhys.slackOpenGraceMult : 1);
       this.slackWarnText
         .setText(`${t('줄이 느슨합니다 — 바늘 빠짐까지')} ${left.toFixed(1)}${t('초')}`)
-        .setColor(st.slackRisk > 0.6 ? '#ff5a4a' : '#ffb26b')
+        .setColor(cvCss(st.slackRisk > 0.6 ? '#ff5a4a' : '#ffb26b'))
         .setPosition(GAME_WIDTH / 2, sy + 12).setVisible(true);
     } else this.slackWarnText.setVisible(false);
 
@@ -4777,7 +4814,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     if (st.pattern !== 'none' && st.response !== 'neutral') {
       this.responseText
         .setText(st.response === 'good' ? '대응 OK — 텐션 억제 중' : '대응 실패 — 텐션 급등!')
-        .setColor(st.response === 'good' ? '#4af2a1' : '#ff5a4a').setVisible(true);
+        .setColor(cvCss(st.response === 'good' ? '#4af2a1' : '#ff5a4a')).setVisible(true);
     } else this.responseText.setVisible(false);
     this.probText.setText([
       `텐션 ${st.tension.toFixed(0)} / 100  (안전 30~80)${load ? '  ' + load : ''}`,
@@ -4933,7 +4970,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     }
 
     // 초릿대 끝 표식 (형광 팁 — 입질 강도별 색)
-    g.fillStyle(bendDeg > 40 ? 0xff5a4a : bendDeg > 15 ? 0xffce54 : 0xff8a3d, 1);
+    g.fillStyle(cv(bendDeg > 40 ? 0xff5a4a : bendDeg > 15 ? 0xffce54 : 0xff8a3d), 1);
     g.fillCircle(px, py, 3);
 
     // ── 스피닝릴 (버트에서 로드 길이 13% 지점, 가이드와 같은 면에 장착) ──
@@ -4981,7 +5018,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     let drawAlpha = lineAlpha;
     if (this.fight) {
       const t = this.fight.tension;
-      lineColor = t < 30 ? 0x66b8ff : t > 80 ? 0xff5a4a : 0x4af2a1;
+      lineColor = cv(t < 30 ? 0x66b8ff : t > 80 ? 0xff5a4a : 0x4af2a1);
       drawAlpha = Math.max(lineAlpha, 0.75);   // 파이팅 텐션 피드백은 항상 또렷하게
     }
     g.lineStyle(TUNING.retrieve.mainLineWidth, lineColor, drawAlpha);

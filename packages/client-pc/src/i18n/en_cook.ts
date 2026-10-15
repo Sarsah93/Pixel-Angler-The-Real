@@ -71,7 +71,7 @@ export const EN_COOK: Record<string, string> = {
   '연료 없음': 'no fuel',
   '끓는 중': 'boiling', '데우는 중': 'heating',
   '재료 대기': 'waiting for ingredients',
-  '불 꺼짐': 'heat off', '불 켜짐': 'heat on', '탔다!': 'burnt!', '완성': 'done',
+  '불 꺼짐': 'heat off', '불 켜짐': 'heat on', '탔다!': 'burnt!', '완성': 'done', '오래 둠': 'left too long',
   // ── CookingStore 사유 ──
   '먼저 요리를 고르세요': 'Pick a recipe first',
   '먼저 요리를 내리세요': 'Take out the dish first',

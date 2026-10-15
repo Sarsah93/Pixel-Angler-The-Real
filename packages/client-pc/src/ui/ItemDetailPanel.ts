@@ -30,6 +30,7 @@ import { CookingStore } from '../store/CookingStore.js';
 import { CraftingStore } from '../store/CraftingStore.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { DraggablePanel } from './DraggablePanel.js';
+import { cvCss, shapeCuesOn } from './ColorAssist.js';
 import { clampTextWidth } from './TextFit.js';
 import { createItemIcon, cropPortraitTexture, itemArtKeyOf } from './ItemIcon.js';
 import { resolveFishTexture } from '../data/FishTextures.js';
@@ -321,10 +322,11 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
     const now = sashimiStarsAt(m, item.condition, Date.now());
     const base = sashimiStarsAt(m, 'fresh', m.madeAtMs);
     const ageMin = Math.max(0, Math.round((Date.now() - m.madeAtMs) / 60_000));
-    const col = (n: number): string => (n >= 5 ? '#ffd257' : n >= 3 ? '#8affb0' : '#ff9a5a');
+    const col = (n: number): string => cvCss(n >= 5 ? '#ffd257' : n >= 3 ? '#8affb0' : '#ff9a5a');
     rows.push({ label: '완성도 (지금)', value: `${qualityStars(now.stars)} · ${now.total}점`, color: col(now.stars) });
     rows.push({ label: '완성도 (담은 직후)', value: `${qualityStars(base.stars)} · ${base.total}점` });
-    for (const pp of now.parts) rows.push({ label: pp.labelKo, value: qualityStars(scoreStars(pp.score * 100)), color: pp.earned ? '#8affb0' : '#ff9a5a' });
+    // 251차 — 「모양으로도 표시」: 못 얻은 별 줄은 글로도(초록 ↔ 주황 글자색으로만 가르던 것)
+    for (const pp of now.parts) rows.push({ label: pp.labelKo, value: `${qualityStars(scoreStars(pp.score * 100))}${!pp.earned && shapeCuesOn() ? ' · 못 얻음' : ''}`, color: cvCss(pp.earned ? '#8affb0' : '#ff9a5a') });
     rows.push({ label: '구성', value: `${m.mode === 'advanced' ? '고급' : '일반'} · ${m.species.length >= 2 ? '모듬' : '단품'} · ${m.pieces}점 · ${m.totalG}g` });
     rows.push({ label: '칼', value: m.knifeTier === 'yanagiba' ? '야나기바' : m.knifeTier === 'sashimi' ? '회칼' : '막칼' });
     rows.push({ label: '담은 뒤 경과', value: ageMin < 60 ? `${ageMin}분` : `${Math.floor(ageMin / 60)}시간 ${ageMin % 60}분` });
@@ -497,20 +499,21 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
       const tempKo = stars.tempLabel === 'hot' ? '뜨겁다' : stars.tempLabel === 'warm' ? '미지근하다' : '식었다';
       const ageMin = Math.max(0, Math.round((Date.now() - dish.cookedAtMs) / 60_000));
       const baseStars = dishStarsAt(dish, recipe, dish.cookedAtMs);
-      const ok = (i: number): string => stars.earned[i] ? '#8affb0' : '#ff9a5a';
+      const ok = (i: number): string => cvCss(stars.earned[i] ? '#8affb0' : '#ff9a5a');
+      const miss = (i: number): string => (!stars.earned[i] && shapeCuesOn() ? ' · 못 얻음' : '');
       rows.push({ label: '요리', value: `${recipe.nameKo} · ${dish.servings}인분` });
-      if (dish.burnt) rows.push({ label: '상태', value: '탔다 — 가치 없음', color: '#ff5a4a' });
-      rows.push({ label: '완성도 (지금)', value: `${ratingStars(stars.rating)} · ${Math.round(stars.total)}점`, color: stars.stars >= 5 ? '#ffd257' : stars.stars >= 3 ? '#8affb0' : '#ff9a5a' });
+      if (dish.burnt) rows.push({ label: '상태', value: '탔다 — 가치 없음', color: cvCss('#ff5a4a') });
+      rows.push({ label: '완성도 (지금)', value: `${ratingStars(stars.rating)} · ${Math.round(stars.total)}점`, color: cvCss(stars.stars >= 5 ? '#ffd257' : stars.stars >= 3 ? '#8affb0' : '#ff9a5a') });
       rows.push({ label: '완성도 (완성 직후)', value: `${ratingStars(baseStars.rating)} · ${Math.round(baseStars.total)}점` });
       const pr = produceRow(dish);
       if (pr) rows.push(pr);
       const salt = SALT_LABEL_KO[dish.saltLabel];
       const sugar = SUGAR_LABEL_KO[dish.sugarLabel];
-      rows.push({ label: STAR_NAME_KO[0], value: `${qualityStars(scoreStars(stars.scores.season * 100))} — ${salt}${sugar ? ` · ${sugar}` : ''}`, color: ok(0) });
-      rows.push({ label: STAR_NAME_KO[1], value: `${qualityStars(scoreStars(stars.scores.temp * 100))} — ${tempKo} (${Math.round(stars.tempC)}°C)`, color: ok(1) });
-      rows.push({ label: STAR_NAME_KO[2], value: qualityStars(scoreStars(stars.scores.texture * 100)), color: ok(2) });
-      rows.push({ label: STAR_NAME_KO[3], value: qualityStars(scoreStars(stars.scores.fresh * 100)), color: ok(3) });
-      rows.push({ label: STAR_NAME_KO[4], value: qualityStars(scoreStars(stars.scores.finish * 100)), color: ok(4) });
+      rows.push({ label: STAR_NAME_KO[0], value: `${qualityStars(scoreStars(stars.scores.season * 100))} — ${salt}${sugar ? ` · ${sugar}` : ''}${miss(0)}`, color: ok(0) });
+      rows.push({ label: STAR_NAME_KO[1], value: `${qualityStars(scoreStars(stars.scores.temp * 100))} — ${tempKo} (${Math.round(stars.tempC)}°C)${miss(1)}`, color: ok(1) });
+      rows.push({ label: STAR_NAME_KO[2], value: `${qualityStars(scoreStars(stars.scores.texture * 100))}${miss(2)}`, color: ok(2) });
+      rows.push({ label: STAR_NAME_KO[3], value: `${qualityStars(scoreStars(stars.scores.fresh * 100))}${miss(3)}`, color: ok(3) });
+      rows.push({ label: STAR_NAME_KO[4], value: `${qualityStars(scoreStars(stars.scores.finish * 100))}${miss(4)}`, color: ok(4) });
       const ingNames = dish.contents.map((c) => {
         const d = getCookIngredient(c.ing);
         return d ? `${d.nameKo} ${fmtUnits(d.unit, c.units)}` : c.ing;
@@ -998,7 +1001,7 @@ export class ItemDetailPanel extends DraggablePanel {
     if (item.condition) {
       this.badgeText = scene.add.text(W - 20, this.contentTop + 12, CONDITION_LABEL[item.condition], {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', fontStyle: 'bold',
-        color: CONDITION_COLOR[item.condition],
+        color: cvCss(CONDITION_COLOR[item.condition]),
         backgroundColor: '#050f1e', padding: { x: 5, y: 2 },
       }).setOrigin(1, 0);
       body.add(this.badgeText);
@@ -1050,7 +1053,7 @@ export class ItemDetailPanel extends DraggablePanel {
       });
       this.condValueText = scene.add.text(W - 22, fy, CONDITION_LABEL[item.condition], {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', fontStyle: 'bold',
-        color: CONDITION_COLOR[item.condition],
+        color: cvCss(CONDITION_COLOR[item.condition]),
       }).setOrigin(1, 0);
       const remainLbl = scene.add.text(22, fy + 24, '다음 상태로 변경되기까지 남은 시간', {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#c8a060', fontStyle: 'bold',
@@ -1133,8 +1136,8 @@ export class ItemDetailPanel extends DraggablePanel {
     // 인벤토리 아이템은 지연 갱신으로 상태 전이 반영 — 쿨러 개체는 외부 규칙(제공자)이 관리
     if (!this.remainProvider) refreshCondition(item);
     const cond = item.condition;
-    this.condValueText.setText(CONDITION_LABEL[cond]).setColor(CONDITION_COLOR[cond]);
-    this.badgeText?.setText(CONDITION_LABEL[cond]).setColor(CONDITION_COLOR[cond]);
+    this.condValueText.setText(CONDITION_LABEL[cond]).setColor(cvCss(CONDITION_COLOR[cond]));
+    this.badgeText?.setText(CONDITION_LABEL[cond]).setColor(cvCss(CONDITION_COLOR[cond]));
 
     const remain = this.remainProvider ? this.remainProvider() : conditionRemainMs(item);
     let txt: string;

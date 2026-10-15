@@ -26,6 +26,7 @@ import {
 } from '@tra/core';
 import { GameState, type ParkedRodSave } from '../../store/GameState.js';
 import { worldLabelStyle } from '../../ui/WorldLabel.js';
+import { a11ySig, cvCss, shapeCuesOn } from '../../ui/ColorAssist.js';
 import { InventoryStore, type ParkedGear, type InvItem } from '../../store/InventoryStore.js';
 import { GroundItemStore } from '../../store/GroundItemStore.js';
 import { ExternalDataStore } from '../../store/ExternalDataStore.js';
@@ -62,6 +63,8 @@ interface HolderView {
   bang?: Phaser.GameObjects.Text;
   /** 「!」가 걸림(빨강)용인가 */
   bangHooked?: boolean;
+  /** 251차 — 「!」를 만든 때의 걸림 여부 · 색 보정 서명(바뀌면 다시 만든다) */
+  bangSig?: string;
   label?: Phaser.GameObjects.Text;
   /** 2대 이상일 때 거치대 아래 번호 */
   num?: Phaser.GameObjects.Text;
@@ -252,12 +255,15 @@ export class RodHolderSystem {
 
   private setBang(v: HolderView, on: boolean, hooked = false): void {
     // 209차 — 걸림(빨강)과 입질(노랑)은 색으로 가른다. 상태가 바뀌면 다시 만든다
-    if (on && v.bang && v.bangHooked !== hooked) { v.bang.destroy(); v.bang = undefined; }
+    // 251차 — 색 구분 보정 · 「모양으로도 표시」면 걸림은 「!!」(입질 「!」)
+    const sig = `${hooked ? 1 : 0}|${a11ySig()}`;
+    if (on && v.bang && v.bangSig !== sig) { v.bang.destroy(); v.bang = undefined; }
     v.bangHooked = hooked;
+    v.bangSig = sig;
     if (on && !v.bang) {
       // 208차 — 머리 위 [F] 안내(depth 60)에 가리지 않게 거치대 그림과 떼어 그 위에 둔다
-      v.bang = this.host.scene.add.text(v.c.x, v.c.y - 46, '!', {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '18px', color: hooked ? '#ff6a4a' : '#ffe066', fontStyle: 'bold',
+      v.bang = this.host.scene.add.text(v.c.x, v.c.y - 46, hooked && shapeCuesOn() ? '!!' : '!', {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '18px', color: cvCss(hooked ? '#ff6a4a' : '#ffe066'), fontStyle: 'bold',
         stroke: hooked ? '#3a0a00' : '#3a2400', strokeThickness: 4,
       }).setOrigin(0.5, 1).setDepth(61);
       this.host.scene.tweens.add({ targets: v.bang, y: v.c.y - 50, duration: 260, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });

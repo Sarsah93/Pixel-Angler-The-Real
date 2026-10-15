@@ -12,6 +12,7 @@
  * 7x7 도트를 2배로 키우고 1px 검은 외곽을 두른다 → 18x18.
  */
 
+import { cv } from './ColorAssist.js';
 import Phaser from 'phaser';
 import type { MarketTrend } from '@tra/core';
 
@@ -73,7 +74,7 @@ export function drawTrendIcon(scene: Phaser.Scene, x: number, y: number, trend: 
       }
     }
   }
-  g.fillStyle(TREND_COLOR[trend], 1);
+  g.fillStyle(cv(TREND_COLOR[trend]), 1);   // 251차 — 색 구분 보정(모양은 이미 다섯 가지)
   for (let r = 0; r < 7; r++) for (let c = 0; c < 7; c++) if (on(c, r)) g.fillRect(x + (c + 1) * S, y + (r + 1) * S, S, S);
   return g;
 }

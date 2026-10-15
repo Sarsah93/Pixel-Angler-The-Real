@@ -486,7 +486,7 @@ async function clearToasts(page) {
 }
 
 // ── 패널류 (속초 물가에서) ──
-group('panels', ['guide_tour', 'inventory', 'equipment', 'gear_fault', 'cooler', 'codex', 'skill_tree', 'license', 'vitals_panel', 'settings'], async (page) => {
+group('panels', ['guide_tour', 'inventory', 'equipment', 'gear_fault', 'cooler', 'codex', 'skill_tree', 'license', 'vitals_panel', 'settings', 'access'], async (page) => {
   await newGameHometown(page);
   await enterSokcho(page);
   const w = (await findWaterside(page))[0];
@@ -646,6 +646,17 @@ group('panels', ['guide_tour', 'inventory', 'equipment', 'gear_fault', 'cooler',
     await waitScene(page, 'SettingsScene');
     await page.waitForTimeout(800);
     await page.evaluate(() => { globalThis.__PIXEL_ANGLER_GAME.scene.getScene('SettingsScene').switchTab('display'); });
+    await page.waitForTimeout(600);
+  });
+  // 251차 — 접근성 탭(기본값 그대로 — 도움말 그림은 보정을 끈 화면 기준이다)
+  await cap(page, 'access', async () => {
+    const open = await page.evaluate(() => globalThis.__PIXEL_ANGLER_GAME.scene.isActive('SettingsScene'));
+    if (!open) {
+      await page.evaluate((S) => { const s = eval(S); s.openSettingsFromPause(); }, S);
+      await waitScene(page, 'SettingsScene');
+      await page.waitForTimeout(800);
+    }
+    await page.evaluate(() => { globalThis.__PIXEL_ANGLER_GAME.scene.getScene('SettingsScene').switchTab('access'); });
     await page.waitForTimeout(600);
   });
 });

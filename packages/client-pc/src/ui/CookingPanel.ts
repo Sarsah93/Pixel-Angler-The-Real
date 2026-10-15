@@ -17,6 +17,7 @@ import {
   type DeployedStove, type HeatLevel, type FireRecipeDef, type CookwareDef, type RecipeIngredientReq,
 } from '@tra/core';
 import { DraggablePanel } from './DraggablePanel.js';
+import { cv, cvCss, cvText, shapeCuesOn } from './ColorAssist.js';
 import { CookingStore } from '../store/CookingStore.js';
 import { InventoryStore, type InvItem } from '../store/InventoryStore.js';
 import { GameState } from '../store/GameState.js';
@@ -142,7 +143,8 @@ export class CookingPanel extends DraggablePanel {
           target: leftCol,
         },
         {
-          text: '가운데에서 불 세기를 고른다. 온도 막대의 초록 칸이 이 요리에 알맞은 온도다.',
+          text: cvText('가운데에서 불 세기를 고른다. 온도 막대의 초록 칸이 이 요리에 알맞은 온도다.',
+            '가운데에서 불 세기를 고른다. 온도 막대의 파란 칸이 이 요리에 알맞은 온도다.'),
           target: centerCol,
         },
         {
@@ -479,14 +481,14 @@ export class CookingPanel extends DraggablePanel {
     const tMax = cw.kind === 'pot' ? 120 : 280;
     const [lo, hi] = r.tempBand;
     g.fillStyle(0x0b1c2b, 1); g.fillRect(bx, by, bw, 12);
-    g.fillStyle(0x1f5a3a, 0.8); g.fillRect(bx + bw * (lo / tMax), by, bw * ((hi - lo) / tMax), 12);
-    g.fillStyle(s.tempC > hi ? 0xff5a4a : s.tempC >= lo ? 0x4af2a1 : 0x9fd5ff, 1);
+    g.fillStyle(cv(0x1f5a3a), 0.8); g.fillRect(bx + bw * (lo / tMax), by, bw * ((hi - lo) / tMax), 12);
+    g.fillStyle(cv(s.tempC > hi ? 0xff5a4a : s.tempC >= lo ? 0x4af2a1 : 0x9fd5ff), 1);
     g.fillRect(bx + bw * Math.min(1, s.tempC / tMax) - 2, by - 3, 4, 18);
     const tl = sc.add.text(bx - 6, by + 6, '온도', { fontFamily: FONT, fontSize: '10px', color: '#8fa8bf' }).setOrigin(1, 0.5);
     // 막대 왼쪽 여백은 34px — 영문(Temperature)은 넘쳐 열 구분선을 가로지른다 → 막대 왼쪽 끝 아래로 (187차)
     if (tl.width > 34) tl.setOrigin(0, 0).setPosition(bx, by + 14);
     const tv = sc.add.text(bx + bw + 6, by + 6, `${Math.round(s.tempC)}°C`, { fontFamily: FONT, fontSize: '11px', color: '#ffe08a', fontStyle: 'bold' }).setOrigin(0, 0.5);
-    const bandT = sc.add.text(bx + bw * ((lo + hi) / 2 / tMax), by + 14, `적정 ${lo}~${hi}°C`, { fontFamily: FONT, fontSize: '9px', color: '#4af2a1' }).setOrigin(0.5, 0);
+    const bandT = sc.add.text(bx + bw * ((lo + hi) / 2 / tMax), by + 14, `적정 ${lo}~${hi}°C`, { fontFamily: FONT, fontSize: '9px', color: cvCss('#4af2a1') }).setOrigin(0.5, 0);
     this.dynC.add([tl, tv, bandT]);
     // ── 불 세기 4버튼 ──
     const hy = by + 34;
@@ -506,7 +508,7 @@ export class CookingPanel extends DraggablePanel {
     const mains = s.contents.filter((c) => { const h = reqFor(r, c.ing); return h && (h.req.role === 'main' || h.req.role === 'grain'); });
     const prog = mains.length ? Math.min(1, mains.reduce((a, c) => a + Math.min(1, c.doneness), 0) / mains.length) : 0;
     g.fillStyle(0x0b1c2b, 1); g.fillRect(bx, py, bw, 8);
-    g.fillStyle(s.status === 'burnt' ? 0xff5a4a : s.status === 'done' ? 0x4af2a1 : 0xffd257, 1); g.fillRect(bx, py, bw * prog, 8);
+    g.fillStyle(cv(s.status === 'burnt' ? 0xff5a4a : s.status === 'done' ? 0x4af2a1 : 0xffd257), 1); g.fillRect(bx, py, bw * prog, 8);
     const lb = CookingStore.statusLabel(this.stove);
     const st = sc.add.text(cx, py + 14, lb.text, { fontFamily: FONT, fontSize: '11px', color: lb.color, fontStyle: 'bold' }).setOrigin(0.5, 0);
     clampTextWidth(st, C_W - 20);
@@ -526,7 +528,11 @@ export class CookingPanel extends DraggablePanel {
     if (r.flipEverySec !== undefined) {
       const since = s.elapsedSec - s.lastFlipSec;
       const due = since > r.flipEverySec * 0.7;
-      mk(ax, 90, r.family === 'grill' ? '뒤집기' : '젓기', s.contents.length > 0, due ? 0x7a3a1a : 0x1f3a5a, () => { CookingStore.flip(this.stove); this.say(r.family === 'grill' ? '뒤집었다' : '저었다'); this.renderDynamic(); });
+      mk(ax, 90, r.family === 'grill' ? '뒤집기' : '젓기', s.contents.length > 0, cv(due ? 0x7a3a1a : 0x1f3a5a), () => { CookingStore.flip(this.stove); this.say(r.family === 'grill' ? '뒤집었다' : '저었다'); this.renderDynamic(); });
+      // 251차 — 「모양으로도 표시」: 때가 됐으면 단추 오른쪽 끝에 「!」(단추 바탕색만 바뀌던 것)
+      if (due && s.contents.length > 0 && shapeCuesOn()) {
+        this.dynC.add(sc.add.text(ax + 90 - 9, ay + 13, '!', { fontFamily: FONT, fontSize: '13px', color: '#ffffff', fontStyle: 'bold' }).setOrigin(0.5));
+      }
       ax += 96;
     }
     const why = CookingStore.takeOffBlockReason(this.stove);

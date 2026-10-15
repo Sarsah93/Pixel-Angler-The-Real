@@ -16,6 +16,7 @@
  *    가방에서 이 창으로 끌어 놓으면 −/+ 수량 창이 먼저 뜬다).
  */
 
+import { cv, cvText } from './ColorAssist.js';
 import Phaser from 'phaser';
 import { rareArrivalInDays, GEAR_FAULTS, gearRepairFee } from '@tra/core';
 import { GameState } from '../store/GameState.js';
@@ -1097,7 +1098,7 @@ export class ShopPanel extends DraggablePanel {
       box.fillStyle(cell.selected ? 0x155a3c : (hover ? 0x162a40 : 0x0e1c2d), 0.95);
       box.fillRoundedRect(sx, sy, SLOT, SLOT, 4);
       // 추천 아이템은 금색 테두리로 강조
-      const stroke = cell.selected ? 0x4af2a1 : cell.recommended ? 0xffd257 : (hover ? 0x5cd0ff : 0x1f3d5a);
+      const stroke = cell.selected ? cv(0x4af2a1) : cell.recommended ? cv(0xffd257) : (hover ? 0x5cd0ff : 0x1f3d5a);   // 251차 색 구분 보정
       box.lineStyle(cell.selected || cell.recommended ? 2 : 1.2, stroke, 0.95);
       box.strokeRoundedRect(sx, sy, SLOT, SLOT, 4);
     };
@@ -1363,7 +1364,8 @@ export class ShopPanel extends DraggablePanel {
           wait: () => this.buyCart.size > 0,
         },
         {
-          text: '담은 칸은 초록 테두리가 된다. 칸 아래 숫자가 값이다. 여러 개를 담을 수 있고, 다시 누르면 뺀다. 우클릭하면 자세한 정보가 뜬다.',
+          text: cvText('담은 칸은 초록 테두리가 된다. 칸 아래 숫자가 값이다. 여러 개를 담을 수 있고, 다시 누르면 뺀다. 우클릭하면 자세한 정보가 뜬다.',
+            '담은 칸은 파란 테두리가 된다. 칸 아래 숫자가 값이다. 여러 개를 담을 수 있고, 다시 누르면 뺀다. 우클릭하면 자세한 정보가 뜬다.'),
           target: () => this.selCellRect() ?? this.gridAreaRect(),
           skipIf: () => this.buyCart.size === 0,
         },

@@ -60,6 +60,8 @@ export const EN_TOUR_PANELS: Record<string, string> = {
     'Some work at sea needs a licence. The licences you hold and the ones you can still earn are all gathered here.',
   '왼쪽은 자격 목록이다. 종류별로 묶여 있고, 이미 가진 것은 초록색으로 보인다. 궁금한 자격 하나를 눌러 보자.':
     'On the left is the list of licences, grouped by kind. The ones you already hold are green. Click one you are curious about.',
+  '왼쪽은 자격 목록이다. 종류별로 묶여 있고, 이미 가진 것은 파란색으로 보인다. 궁금한 자격 하나를 눌러 보자.':
+    'On the left is the list of licences, grouped by kind. The ones you already hold are blue. Click one you are curious about.',
   '목록이 길면 휠을 굴려 아래를 더 볼 수 있다. 굴려 보자.':
     'When the list is long, scroll the wheel to see more. Give it a scroll.',
   '오른쪽에는 그 자격으로 무엇을 할 수 있게 되는지와, 받기 위한 조건이 적혀 있다.':

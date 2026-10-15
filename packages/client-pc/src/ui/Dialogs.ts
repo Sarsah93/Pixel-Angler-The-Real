@@ -7,6 +7,7 @@
  * 둘 다 드래그 이동/X 닫기/ESC(씬 스택) 지원.
  */
 
+import { cv, cvCss } from './ColorAssist.js';
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { DraggablePanel } from './DraggablePanel.js';
@@ -36,8 +37,9 @@ export class ConfirmDialog extends DraggablePanel {
 
     const btnY = h - 34;
     this.addButton(w / 2 - 90, btnY, labels?.no ?? '아니오', 0x1f3045, 0x4a6a8a, '#8faabf', onCancel);
-    if (labels?.danger) this.addButton(w / 2 + 90, btnY, labels.yes ?? '예', 0x4a1a14, 0xff7a6a, '#ffb0a4', onYes);
-    else this.addButton(w / 2 + 90, btnY, labels?.yes ?? '예', 0x0d4a2e, 0x4af2a1, '#4af2a1', onYes);
+    // 251차 — 색 구분 보정(되돌릴 수 없는 행동의 붉은 단추 ↔ 초록 단추)
+    if (labels?.danger) this.addButton(w / 2 + 90, btnY, labels.yes ?? '예', 0x4a1a14, cv(0xff7a6a), cvCss('#ffb0a4'), onYes);
+    else this.addButton(w / 2 + 90, btnY, labels?.yes ?? '예', 0x0d4a2e, cv(0x4af2a1), cvCss('#4af2a1'), onYes);
 
     this.applyFix();
   }

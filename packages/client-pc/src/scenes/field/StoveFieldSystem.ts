@@ -13,6 +13,7 @@ import Phaser from 'phaser';
 import { TUNING, getCookware, HEAT_FRAC, type DeployedStove, type RegionTerrain } from '@tra/core';
 import { CookingStore } from '../../store/CookingStore.js';
 import { worldLabelStyle } from '../../ui/WorldLabel.js';
+import { cv, drawBlockedX } from '../../ui/ColorAssist.js';
 import { MultiplayerClient } from '../../net/MultiplayerClient.js';
 import { InventoryStore, type InvItem } from '../../store/InventoryStore.js';
 import { GameState } from '../../store/GameState.js';
@@ -223,10 +224,12 @@ export class StoveFieldSystem {
     const chk = this.placeCheck(tx, ty);
     const g = this.previewG;
     g.clear();
-    g.fillStyle(chk.ok ? 0x4af2a1 : 0xff5a4a, 0.35);
+    // 251차 — 색 구분 보정 · 막힌 칸 X
+    g.fillStyle(cv(chk.ok ? 0x4af2a1 : 0xff5a4a), 0.35);
     g.fillRect(tx * tr + 1, ty * tr + 1, tr - 2, tr - 2);
-    g.lineStyle(2, chk.ok ? 0x4af2a1 : 0xff5a4a, 0.9);
+    g.lineStyle(2, cv(chk.ok ? 0x4af2a1 : 0xff5a4a), 0.9);
     g.strokeRect(tx * tr, ty * tr, tr, tr);
+    if (!chk.ok) drawBlockedX(g, tx * tr + 1, ty * tr + 1, tr - 2, tr - 2, 0xffffff, 0.9, 7);
   }
 
   confirmAt(worldX: number, worldY: number): void {

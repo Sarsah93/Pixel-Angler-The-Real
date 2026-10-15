@@ -20,6 +20,7 @@ import {
   type LicenseType, type LicenseDef, type UnlockRequirement, type UnlockableFeature,
 } from '@tra/core';
 import { DraggablePanel, applyScreenFixed, restoreHandCursor } from './DraggablePanel.js';
+import { cv, cvCss, cvText, shapeCuesOn } from './ColorAssist.js';
 import type { UpkeepItem } from '@tra/core';
 import { GameState } from '../store/GameState.js';
 import { StoryStore } from '../store/StoryStore.js';
@@ -127,7 +128,8 @@ export class LicensePanel extends DraggablePanel {
           onEnter: () => { anchor = () => this.listScreenRect(); },
         },
         {
-          text: '왼쪽은 자격 목록이다. 종류별로 묶여 있고, 이미 가진 것은 초록색으로 보인다. 궁금한 자격 하나를 눌러 보자.',
+          text: cvText('왼쪽은 자격 목록이다. 종류별로 묶여 있고, 이미 가진 것은 초록색으로 보인다. 궁금한 자격 하나를 눌러 보자.',
+            '왼쪽은 자격 목록이다. 종류별로 묶여 있고, 이미 가진 것은 파란색으로 보인다. 궁금한 자격 하나를 눌러 보자.'),
           target: () => this.listScreenRect(),
           onEnter: () => { anchor = () => this.listScreenRect(); this.tourPicks = 0; },
           wait: () => this.tourPicks > 0,
@@ -220,11 +222,11 @@ export class LicensePanel extends DraggablePanel {
       const held = GameState.hasLicense(row.def.type);
       const sel = this.selected === row.def.type;
       const bg = this.scene.add.rectangle(14, y + 1, rowW, ROW_H - 3, sel ? 0x1f4a6a : held ? 0x0f3326 : 0x122236, 0.95).setOrigin(0, 0);
-      bg.setStrokeStyle(1, sel ? 0x5cd0ff : held ? 0x2f8a5a : 0x2a3a4a, 1);
+      bg.setStrokeStyle(1, sel ? 0x5cd0ff : held ? cv(0x2f8a5a) : 0x2a3a4a, 1);
       bg.setInteractive({ useHandCursor: true });
       bg.on('pointerdown', () => { this.tourPicks++; this.selected = row.def.type; this.selectedFee = null; this.renderList(); this.renderDetail(); restoreHandCursor(this.scene); });
       // 188차 — ✓ 글리프 제거(§8-8). 보유는 초록 글자색·행 배경이 이미 알린다
-      const name = this.scene.add.text(24, y + 6, row.def.nameKo, { fontFamily: FONT, fontSize: '11px', color: held ? '#aaffcc' : '#e8f4fd' });
+      const name = this.scene.add.text(24, y + 6, row.def.nameKo, { fontFamily: FONT, fontSize: '11px', color: held ? cvCss('#aaffcc') : '#e8f4fd' });
       clampTextWidth(name, rowW - 90);
       const rowTerms = this.storyTerms(row.def);
       const costLabel = held ? '보유' : rowTerms.done && rowTerms.cost === 0 ? '면제' : `₩${rowTerms.cost.toLocaleString()}`;
@@ -276,7 +278,9 @@ export class LicensePanel extends DraggablePanel {
     const terms = this.storyTerms(lic);
     const { met } = checkUnlockRequirements(terms.reqs, ctx);
     if (lic.prerequisites.length) {
-      const pre = this.scene.add.text(0, y, `• 선행 면허: ${lic.prerequisites.map((p) => getLicenseByType(p)?.nameKo ?? p).join(', ')}`, { fontFamily: FONT, fontSize: '11px', color: lic.prerequisites.every((p) => GameState.hasLicense(p)) ? '#7fe0b0' : '#ffaa66', wordWrap: { width: DETAIL_W } });
+      // 251차 — 색 구분 보정 · 「모양으로도 표시」면 면허마다 (보유) · (없음)(같은 글에 색만 다르던 것)
+      const preName = (p: (typeof lic.prerequisites)[number]): string => `${getLicenseByType(p)?.nameKo ?? p}${shapeCuesOn() ? (GameState.hasLicense(p) ? ' (보유)' : ' (없음)') : ''}`;
+      const pre = this.scene.add.text(0, y, `• 선행 면허: ${lic.prerequisites.map(preName).join(', ')}`, { fontFamily: FONT, fontSize: '11px', color: cvCss(lic.prerequisites.every((p) => GameState.hasLicense(p)) ? '#7fe0b0' : '#ffaa66'), wordWrap: { width: DETAIL_W } });
       y += pre.height + 3; c.add(pre);
     }
     if (terms.reqs.length === 0) {

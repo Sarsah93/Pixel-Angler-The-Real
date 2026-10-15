@@ -43,6 +43,7 @@ import {
 } from '@tra/core';
 import { ExternalDataStore } from '../store/ExternalDataStore.js';
 import { DraggablePanel, applyScreenFixed } from './DraggablePanel.js';
+import { CONDITION_MARK, cv, drawMark, shapeCuesOn } from './ColorAssist.js';
 import { ButcheryPanel } from './ButcheryPanel.js';
 import { SashimiPanel } from './SashimiPanel.js';
 import { GuidePanel } from './GuidePanel.js';
@@ -474,7 +475,7 @@ export class UtilizationPanel extends DraggablePanel {
     const box = this.scene.add.graphics();
     const wantBait = n.slot === 'bait' && !filled && InventoryStore.getMissingRigParts().includes('미끼');
     const fill = fixed ? 0x141a22 : filled ? 0x0e2a1e : optional && !wantBait ? 0x0e1824 : 0x1a1a0e;
-    const stroke = fixed ? 0x3a4652 : filled ? 0x2f7d5a : optional && !wantBait ? 0x2a4a6a : 0xd08a3a;
+    const stroke = cv(fixed ? 0x3a4652 : filled ? 0x2f7d5a : optional && !wantBait ? 0x2a4a6a : 0xd08a3a);   // 251차
     box.fillStyle(fill, 0.95);
     box.fillRoundedRect(r.x, r.y, r.width, r.height, 5);
     box.lineStyle(1.5, stroke, 0.95);
@@ -1619,7 +1620,7 @@ export class UtilizationPanel extends DraggablePanel {
           continue;
         }
         const pg = this.scene.add.graphics();
-        const col = p.adv ? 0xff9a7a : 0xffb2a0;
+        const col = cv(p.adv ? 0xff9a7a : 0xffb2a0);
         pg.fillStyle(col, 1);
         pg.fillRoundedRect(-8, -5, 16, 10, 3);
         pg.fillStyle(0xffffff, 0.75);
@@ -1968,9 +1969,10 @@ export class UtilizationPanel extends DraggablePanel {
         this.bodyContainer.add(q);
       }
       if (item.condition) {
+        // 251차 — 색 구분 보정 · 「모양으로도 표시」면 상태별 모양(점 하나에 색 8가지로만 가르던 것)
         const dot = this.scene.add.graphics();
-        dot.fillStyle(Number.parseInt(CONDITION_COLOR[item.condition].slice(1), 16), 1);
-        dot.fillCircle(cx + 8, cy + 8, 3.5);
+        const dcol = cv(Number.parseInt(CONDITION_COLOR[item.condition].slice(1), 16));
+        drawMark(dot, shapeCuesOn() ? CONDITION_MARK[item.condition] ?? 'circle' : 'circle', cx + 8, cy + 8, 3.5, dcol);
         this.bodyContainer.add(dot);
       }
 

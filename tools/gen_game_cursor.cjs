@@ -1,11 +1,12 @@
-// 250차 — 게임 마우스 포인터(찌 화살) 굽기
+// 250차 — 게임 마우스 포인터(찌 화살) 굽기 · 251차 — 야광찌 팔레트 · 테두리는 런타임
 //
 // 입력: assets/cursor/arrow_float.png — 사용자가 고른 시안 1번(23px 픽셀 그림 · 247차 Gemini 원본 arrow_float_gemini.png를 칸으로 내린 것)
-// 출력: packages/client-pc/src/data/GameCursorArt.ts — 기본(arrow) · 누를 수 있는 곳(hand) 두 벌의 글자 격자 + 팔레트 + 끝점
-//       assets/cursor/arrow_float_hand.png — 손 커서 미리보기(흰 테)
+// 출력: packages/client-pc/src/data/GameCursorArt.ts — 글자 격자 + 팔레트 + 야광찌 팔레트(덮어쓰기) + 끝점
+//       assets/cursor/arrow_float_hand.png — 손 커서 미리보기(흰 테 1px · 4방향 — 250차 기본 손 커서)
+//       assets/cursor/arrow_float_glow.png — 야광찌 미리보기(251차)
 //
-// 손 커서 = 같은 그림 둘레에 흰 테 1px(4방향) — 필드 글자 R14(검은 글자 + 흰 테)와 같은 생각으로,
-// 어두운 판 · 밤 바다 위에서도 「여기를 누를 수 있다」가 읽힌다. 테 때문에 그림이 1px씩 밀려 끝점도 +1.
+// 테두리(없음 · 옅게 · 또렷하게 · 두 겹)와 크기(1 · 2배)는 설정에 따라 `ui/GameCursor.ts`가 런타임에 굽는다.
+// 야광찌 = 같은 모양에서 빨강 · 주황만 형광 연두노랑으로 — 적록 · 청황 색약 흉내에서도 밝기 차로 또렷하다(251차 비교).
 //
 // 실행: node tools/gen_game_cursor.cjs
 'use strict';
@@ -16,12 +17,15 @@ const { decode, encode } = require('./lib_png.cjs');
 const ROOT = path.resolve(__dirname, '..');
 const SRC = path.join(ROOT, 'assets/cursor/arrow_float.png');
 const HAND_PREVIEW = path.join(ROOT, 'assets/cursor/arrow_float_hand.png');
+const GLOW_PREVIEW = path.join(ROOT, 'assets/cursor/arrow_float_glow.png');
 const OUT_TS = path.join(ROOT, 'packages/client-pc/src/data/GameCursorArt.ts');
 
 /** 누르는 자리 = 찌 꼭대기(안테나) 빨간 끝 한 칸 — 왼쪽 위 검은 테 바로 안쪽 */
 const HOT = { x: 1, y: 1 };
-/** 손 커서 테 색 */
+/** 손 커서 미리보기 테 색 */
 const EDGE = [255, 255, 255, 255];
+/** 야광찌 — 빨강 · 주황 칸을 바꿀 색(밝은 면 · 본색 · 그늘) */
+const GLOW = { hi: [244, 255, 176], main: [228, 255, 60], shade: [166, 200, 26] };
 /** 팔레트 글자(투명 '.'은 빼고) */
 const KEYS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 
@@ -36,7 +40,15 @@ function readArt(file) {
   return { w, h, px };
 }
 
-/** 둘레 4방향에 테 1px — 캔버스는 양쪽으로 1px씩 넓어진다 */
+/** 빨강 · 주황 칸이면 야광 색 */
+function glowOf(c) {
+  const [r, g, b] = c;
+  if (!(r > 150 && g < 140 && b < 90)) return null;
+  const v = g > 100 ? GLOW.hi : r >= 230 ? GLOW.main : GLOW.shade;
+  return [v[0], v[1], v[2], 255];
+}
+
+/** 둘레 4방향에 테 1px — 캔버스는 양쪽으로 1px씩 넓어진다(미리보기용) */
 function withEdge(art, color) {
   const W = art.w + 2, H = art.h + 2;
   const at = (x, y) => (x >= 0 && y >= 0 && x < art.w && y < art.h ? art.px[y * art.w + x] : null);
@@ -78,38 +90,26 @@ function writePng(art, file) {
   return encode(art.w, art.h, buf, file);
 }
 
-function tsEntry(name, art, hot, note) {
-  const { pal, rows } = toGrid(art);
-  const palLines = [...pal.entries()].map(([hex, k]) => `    ${k}: 0x${hex.toString(16).padStart(6, '0')},`);
-  return [
-    `  /** ${note} */`,
-    `  ${name}: {`,
-    `    w: ${art.w},`,
-    `    h: ${art.h},`,
-    `    hotX: ${hot.x},`,
-    `    hotY: ${hot.y},`,
-    '    pal: {',
-    ...palLines.map((l) => '  ' + l),
-    '    },',
-    '    rows: [',
-    ...rows.map((r) => `      '${r}',`),
-    '    ],',
-    '  },',
-  ].join('\n');
-}
+const hex6 = (v) => `0x${v.toString(16).padStart(6, '0')}`;
+const toHex = (c) => (c[0] << 16) | (c[1] << 8) | c[2];
 
 const arrow = readArt(SRC);
-const tip = arrow.px[HOT.y * arrow.w + HOT.x];
-if (!tip) throw new Error('끝점이 투명 칸이다 — HOT을 확인');
-const hand = withEdge(arrow, EDGE);
-const bytes = writePng(hand, HAND_PREVIEW);
+if (!arrow.px[HOT.y * arrow.w + HOT.x]) throw new Error('끝점이 투명 칸이다 — HOT을 확인');
+const { pal, rows } = toGrid(arrow);
+const glowPal = [];
+for (const [hex, k] of pal) {
+  const g = glowOf([(hex >> 16) & 255, (hex >> 8) & 255, hex & 255]);
+  if (g) glowPal.push([k, toHex(g)]);
+}
+const handBytes = writePng(withEdge(arrow, EDGE), HAND_PREVIEW);
+const glowBytes = writePng({ ...arrow, px: arrow.px.map((c) => (c ? glowOf(c) ?? c : null)) }, GLOW_PREVIEW);
 
 const ts = `/**
  * @file GameCursorArt.ts
  * @description 게임 마우스 포인터 그림 — 찌 화살 (자동 생성 — 수동 편집 금지)
  *
  * 생성기: \`node tools/gen_game_cursor.cjs\` (원본 \`assets/cursor/arrow_float.png\` — 250차 사용자 선택 시안 1번).
- * 글자 = 팔레트 키, \`.\` = 투명. 굽기 · 배수 · 화면 연결은 \`ui/GameCursor.ts\`가 맡는다(여기는 순수 데이터).
+ * 글자 = 팔레트 키, \`.\` = 투명. 테두리 · 크기 · 색 바꾸기와 화면 연결은 \`ui/GameCursor.ts\`가 맡는다(여기는 순수 데이터).
  */
 
 export interface GameCursorArt {
@@ -122,14 +122,27 @@ export interface GameCursorArt {
   hotY: number;
   /** 팔레트 — 문자 → 0xRRGGBB */
   pal: Record<string, number>;
+  /** 251차 — 야광찌 팔레트(빨강 · 주황 칸만 덮어쓴다) */
+  glow: Record<string, number>;
   /** 행 배열 (길이 = h, 각 행 길이 = w) */
   rows: string[];
 }
 
-export const GAME_CURSOR_ART: { arrow: GameCursorArt; hand: GameCursorArt } = {
-${tsEntry('arrow', arrow, HOT, '기본 — 시안 그대로')}
-${tsEntry('hand', hand, { x: HOT.x + 1, y: HOT.y + 1 }, '누를 수 있는 곳 — 같은 그림 + 흰 테 1px(4방향)')}
+export const GAME_CURSOR_ART: GameCursorArt = {
+  w: ${arrow.w},
+  h: ${arrow.h},
+  hotX: ${HOT.x},
+  hotY: ${HOT.y},
+  pal: {
+${[...pal.entries()].map(([hex, k]) => `    ${k}: ${hex6(hex)},`).join('\n')}
+  },
+  glow: {
+${glowPal.map(([k, hex]) => `    ${k}: ${hex6(hex)},`).join('\n')}
+  },
+  rows: [
+${rows.map((r) => `    '${r}',`).join('\n')}
+  ],
 };
 `;
 fs.writeFileSync(OUT_TS, ts);
-console.log(`기본 ${arrow.w}×${arrow.h} · 손 ${hand.w}×${hand.h}(미리보기 ${bytes}B) · 끝점 (${HOT.x},${HOT.y}) → ${path.relative(ROOT, OUT_TS)}`);
+console.log(`찌 ${arrow.w}×${arrow.h} · 야광 바꿈 ${glowPal.length}색 · 미리보기 손 ${handBytes}B · 야광 ${glowBytes}B · 끝점 (${HOT.x},${HOT.y}) → ${path.relative(ROOT, OUT_TS)}`);

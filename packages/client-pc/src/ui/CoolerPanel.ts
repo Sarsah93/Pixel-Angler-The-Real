@@ -14,6 +14,7 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { DraggablePanel } from './DraggablePanel.js';
+import { cvCss } from './ColorAssist.js';
 import { ConfirmDialog } from './Dialogs.js';
 import { ItemDetailPanel } from './ItemDetailPanel.js';
 import { createItemIcon } from './ItemIcon.js';
@@ -279,7 +280,7 @@ export class CoolerPanel extends DraggablePanel {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '8px', color: '#8fb8d0',
       }).setOrigin(0.5);
       // 신선도 배지 (점 + 상태 라벨)
-      const condColor = CONDITION_COLOR[fish.condition];
+      const condColor = cvCss(CONDITION_COLOR[fish.condition]);
       const dot = this.scene.add.graphics();
       dot.fillStyle(Phaser.Display.Color.HexStringToColor(condColor).color, 1);
       dot.fillCircle(cx + 10, cy + 10, 4);
@@ -483,7 +484,7 @@ export class CoolerPanel extends DraggablePanel {
 
     const header = this.scene.add.text(mw / 2, 4 + headerH / 2, headerInfo, {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px',
-      color: CONDITION_COLOR[fish.condition], fontStyle: 'bold',
+      color: cvCss(CONDITION_COLOR[fish.condition]), fontStyle: 'bold',
     }).setOrigin(0.5);
     menu.add(header);
 

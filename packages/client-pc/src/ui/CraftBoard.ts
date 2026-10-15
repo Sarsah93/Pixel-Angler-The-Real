@@ -21,6 +21,7 @@ import {
   type CraftBlueprint, type CraftStation, type CraftGroup, type CraftMaterial,
 } from '@tra/core';
 import { CraftingStore, laneOf, type CraftCheck } from '../store/CraftingStore.js';
+import { cv, cvCss, cvText, shapeCuesOn } from './ColorAssist.js';
 import { GameState } from '../store/GameState.js';
 import { InventoryStore } from '../store/InventoryStore.js';
 import { craftOutputTemplate } from '../data/CraftOutputs.js';
@@ -251,14 +252,18 @@ export class CraftBoard {
       const g = this.scene.add.graphics();
       if (selected) { g.fillStyle(0x155a7c, 0.85); g.fillRoundedRect(x + 6, ry + 1, w - 12, ROW_H - 3, 3); }
       // 상태 칩 — 초록 = 가능 · 노랑 = 재료 · 자리 · 회색 = 조건 미달(색으로만, 글자 배지 금지)
-      const chip = chk.ok ? 0x4af2a1 : chk.locked ? 0x5a6a78 : 0xffc857;
-      g.fillStyle(chip, 1); g.fillRect(x + 12, ry + ROW_H / 2 - 4, 7, 7);
+      // 251차 — 색 구분 보정 · 「모양으로도 표시」면 칩 모양도 가른다(가능 = 꽉 찬 네모 · 재료 · 자리 = 빈 네모 · 조건 미달 = X)
+      const chip = cv(chk.ok ? 0x4af2a1 : chk.locked ? 0x5a6a78 : 0xffc857);
+      const cxy = { x: x + 12, y: ry + ROW_H / 2 - 4 };
+      if (!shapeCuesOn() || chk.ok) { g.fillStyle(chip, 1); g.fillRect(cxy.x, cxy.y, 7, 7); }
+      else if (chk.locked) { g.lineStyle(2, chip, 1); g.lineBetween(cxy.x, cxy.y, cxy.x + 7, cxy.y + 7); g.lineBetween(cxy.x + 7, cxy.y, cxy.x, cxy.y + 7); }
+      else { g.lineStyle(1.5, chip, 1); g.strokeRect(cxy.x + 0.75, cxy.y + 0.75, 5.5, 5.5); }
       this.container.add(g);
       // 진행 중이면 오른쪽에 작은 막대
       const job = CraftingStore.allJobs().find((j) => j.bpId === bp.id);
       const label = this.scene.add.text(x + 26, ry + 6, bp.nameKo, {
         fontFamily: FONT, fontSize: '12px',
-        color: selected ? '#aee8ff' : chk.ok ? '#d8e6f2' : chk.locked ? '#6a7c8c' : '#c8b88a',
+        color: selected ? '#aee8ff' : chk.ok ? '#d8e6f2' : chk.locked ? '#6a7c8c' : cvCss('#c8b88a'),
       });
       clampTextWidth(label, w - 40 - (job ? 26 : 0));
       this.container.add(label);
@@ -352,8 +357,15 @@ export class CraftBoard {
       this.container.add(lab);
       ccx += lab.width + 10;
       for (const c of conds) {
-        const tt = this.scene.add.text(ccx, cy, c.text, { fontFamily: FONT, fontSize: '11px', color: c.ok ? '#4af2a1' : '#ff8a7a' });
+        const tt = this.scene.add.text(ccx, cy, c.text, { fontFamily: FONT, fontSize: '11px', color: cvCss(c.ok ? '#4af2a1' : '#ff8a7a') });
         this.container.add(tt);
+        // 251차 — 「모양으로도 표시」: 못 갖춘 조건은 가운데 줄(같은 글자에 색만 다르던 것)
+        if (!c.ok && shapeCuesOn()) {
+          const sg = this.scene.add.graphics();
+          sg.lineStyle(1.5, cv(0xff8a7a), 1);
+          sg.lineBetween(tt.x, tt.y + tt.height / 2 + 1, tt.x + tt.width, tt.y + tt.height / 2 + 1);
+          this.container.add(sg);
+        }
         ccx += tt.width + 12;
       }
       cy += 20;
@@ -587,7 +599,8 @@ export class CraftBoard {
       alive: () => this.alive && (this.o.alive?.() ?? true),
       steps: [
         { text: '위쪽 칩으로 만들 것의 종류를 고른다. 오른쪽 「만들 수 있는 것만」을 켜면 지금 재료로 되는 것만 남는다.', target: () => this.scr(this.rects.tabs) },
-        { text: '왼쪽 목록의 네모 색이 상태다. 초록은 지금 만들 수 있고, 노랑은 재료가 모자라고, 회색은 레벨이나 기술이 아직 안 된다.', target: () => this.scr(this.rects.list) },
+        { text: cvText('왼쪽 목록의 네모 색이 상태다. 초록은 지금 만들 수 있고, 노랑은 재료가 모자라고, 회색은 레벨이나 기술이 아직 안 된다.',
+          '왼쪽 목록의 네모 색이 상태다. 파랑은 지금 만들 수 있고, 노랑은 재료가 모자라고, 회색은 레벨이나 기술이 아직 안 된다.'), target: () => this.scr(this.rects.list) },
         { text: '고른 도면의 결과물 · 조건 · 재료가 여기에 나온다. 재료 옆 숫자는 가진 수와 필요한 수다.', target: () => this.scr(this.rects.detail) },
         { text: '몇 개 만들지 정한다. 가운데 숫자 칸을 누르면 직접 칠 수 있다. 옆에는 성공률 · 걸리는 시간 · 얻는 경험치가 나온다.', target: () => this.scr(this.rects.qty) },
         { text: '제작은 시간이 걸린다. 창을 닫거나 밖으로 나가도 계속 만든다. 「중지」는 지금 것을 마저 만들고 멈추고, 「취소」는 지금 것을 버린다 — 일찍 그만둘수록 재료를 많이 돌려받는다.', target: () => this.scr(this.rects.stop) },

@@ -1,6 +1,6 @@
 # S10·S11·S13. UI 프레임워크 · 가이드 허브 · dev 도구
 
-> 상태 **🟢 운영**. 관련 차수 13·26·27·31·33·54·71·73·76 · 247(필드 글자 한 벌 `WorldLabel`) · 250(게임 마우스 포인터 `GameCursor`)
+> 상태 **🟢 운영**. 관련 차수 13·26·27·31·33·54·71·73·76 · 247(필드 글자 한 벌 `WorldLabel`) · 250(게임 마우스 포인터 `GameCursor`) · 251(접근성 탭 · 색 신호 한 벌 `ColorAssist`)
 
 ---
 
@@ -21,9 +21,11 @@
 | `ui/GuideTour.ts` | **체험 가이드**(188차) — 창을 처음 열 때 말풍선(좌/우 자동 · 191차 `side`·`alignTo`·`dockY`)·타이핑·금색 하이라이트·허용 구멍 입력 방패·`wait()` 직접 해 보기·`passive` 세상 안 단계(짚을 대상이 없으면 꼬리 없음) · 키 게이트 `GuideTour.blocksKey` · 세상 정지 판정 `GuideTour.blocking` · 대기열(씬 shutdown에 정리) · 플래그 `tour.<id>`(`ephemeral`이면 없음) · 14개 창 |
 | `ui/PrologueCoach.ts` | **프롤로그 말풍선 코치**(191차) — 씬이 매 프레임 넘기는 「지금 단계」(`CoachStage`)의 말풍선 하나 · 단계가 바뀌면 접고 새로 · 다른 가이드가 있으면 대기(`GuideTour.busy`) · 씬 pause에 접힘 · 집(`HomeInteriorScene.coachStage`)·필드(`RegionFieldScene.coachStage`) |
 | `ui/WorldLabel.ts` | **필드 글자 한 벌**(247) — `worldLabelStyle(size)` = 배경 없이 검은 글자 + 흰 테(11px 이상 3px). 머리 위 [F] 안내 · 떠오르는 안내 · 퀘스트 거리 · 이름표 · 설치물 꼬리표 |
-| `ui/GameCursor.ts` · `data/GameCursorArt.ts` | **게임 마우스 포인터**(250) — 찌 화살(사용자 선택 시안 1번 · 23px) · 누를 수 있는 곳은 같은 그림 + 흰 테 1px. 글자 격자를 1 · 2 · 3배로 구워 data URI `image-set` · Phaser `InputManager.setCursor`의 `'pointer'`만 대체 · `handCursorCss()` |
+| `ui/GameCursor.ts` · `data/GameCursorArt.ts` | **게임 마우스 포인터**(250 · 251) — 찌 화살(사용자 선택 시안 1번 · 23px) · 설정으로 색(찌 · 야광찌 · 운영체제 기본) · 흰 테 4단 · 크기 1 · 2배. 누를 수 있는 곳은 테 한 단계 진하게(`handEdgeLevel`). 1 · 2 · 3배 data URI `image-set` · Phaser `InputManager.setCursor`의 `'pointer'`만 대체 · `handCursorCss()` · `applyCursorOptions` |
+| `ui/ColorAssist.ts` | **색 신호 한 벌**(251) — 뜻이 있는 색만 `cv(색)` · `cvCss('#…')`로 거쳐 색 구분 보정(끔 · 적록 · 청황)을 입힌다. 「모양으로도 표시」 단서 `drawBlockedX` · `drawHatch` · `drawMark`(`CONDITION_MARK`) · 안내 문장 두 벌 `cvText` · 방식별 문구 `okBadLegend` · 서명 조각 `a11ySig` |
+| `ui/AccessSettingsTab.ts` | **설정 「접근성」 탭**(251) — 포인터 3줄 · 색 구분 2줄(흐름 배치) · 포인터 미리보기(밝은 곳 · 어두운 곳) · 신호 미리보기. 고르면 즉시 저장 · `game.events` `'a11y-changed'` |
 | `ui/SlotLabel.ts` | 슬롯 이름표 **10px 고정 + 약어**(188차 — 글씨 축소 금지) |
-| `ui/HelpLibraryPanel.ts` · `data/HelpContent.ts` | **도움말 라이브러리**(117차 → 131차 → **187차 전면 개정**) — **14카테고리 76토픽**(준비 중 4) · 113쪽 트리 + 마스크 본문 · 실캡처 **38장 × ko/en**(`tools/capture_help_images.cjs` 하네스 → `tools/annotate_help_images.py` 번호 콜아웃 · 뜻은 캡션 ①②③) · F1/단축키 버튼 |
+| `ui/HelpLibraryPanel.ts` · `data/HelpContent.ts` | **도움말 라이브러리**(117차 → 131차 → **187차 전면 개정**) — **14카테고리 76토픽**(준비 중 4) · 113쪽 트리 + 마스크 본문 · 실캡처 **39장 × ko/en**(251 — 접근성 탭 `help_access`)(`tools/capture_help_images.cjs` 하네스 → `tools/annotate_help_images.py` 번호 콜아웃 · 뜻은 캡션 ①②③) · F1/단축키 버튼 |
 | `i18n/I18n.ts` · `i18n/en.ts` + 사전 6벌 | **영어 설정**(118~120차) — `Text.setText` 훅 사전(원문 = 키) · `setLocale` 즉시 전환 · **데이터의 `nameEn` 이 사전보다 먼저**(어종·지명·지역 노드) · `registerNames()` 로 런타임 이름(POI 상호명) 합류 |
 
 ## 3. 동작 구조
@@ -62,6 +64,7 @@ ESC: depth 최고(시각적 최상단)부터 닫는다 (동률이면 LIFO)
 | 과제 | 상태 | 차수 |
 |---|---|---|
 | **게임 마우스 포인터**(찌 화살 · 손 커서 = 흰 테 · 고해상도 `image-set` · `restoreHandCursor` 정리) — 원본 `assets/cursor/` · 생성 `tools/gen_game_cursor.cjs` | ✅ | **250** |
+| **접근성 탭 · 색 구분 보정 · 모양으로도 표시**(포인터 색 · 테 · 크기 · 색약 보정 2방식 · 모양 단서 · HUD 전수 검토 30파일 · 가이드 문장 적록판 · 도움말 쪽) — 그림 색 · 낮음 묶음은 잔여 | 🔶 | **251** |
 | **체험 가이드**(`GuideTour`) — 기능창 14종 첫 열기 · 창 안 조작 안내 문구 삭제(규칙 R11) · 189차 집 4종 추가(`home_decorate` · `home_wardrobe` · `home_shelf` · `home_fridge`) | ✅ | **188 · 189** |
 | **프롤로그 말풍선 코치** — 상단 「지금 할 일」 띠·금색 자리 표시 폐지 → 집(상자 → I → 대 → E·릴 → 사진 → J → 오징어 → 저장 → 매트) · 마당(우물 → S → M → 막차) · 속초 직판장(남은 품목 → 오징어 판매)까지 말풍선 연속 | ✅ | **191** |
 | **가이드 ↔ 창 겹침 · 단계 밖 행동 막기** — 단계가 시작된 뒤 열린 창(모달 포함)은 가리는 창: 어둡게 깔기 끔 · 가려진 대상 테두리 숨김 · 말풍선은 창 바깥 후보 자리로 · 새 창은 방패 구멍(✕ 눌림) · `TourStep.focus` + `GuideTour.allows/nudge`(집 메뉴 회색 · 필드 [F] 후보 거르기) · 매 프레임 `skipIf` | ✅ | **219** |
@@ -122,6 +125,20 @@ dev 전용 문자열(순간이동 로그·맵 편집기·손질 dev 버튼)은 *
 `import.meta.env.DEV` 게이트라 프로덕션 빌드에 없다.
 
 ## 6. 함정·불변조건
+
+### [251차] 뜻이 있는 색은 `cv()`를 거친다 — 서명 캐시에는 `a11ySig()`
+
+- 좋음 · 주의 · 위험 · 가능 · 불가처럼 **뜻이 있는 색**을 새로 그리면 `cv(0x…)`(글자색 `cvCss('#…')`)로 감싼다. 안 감싸면 그 자리만 색 구분 보정이 빠진다.
+  그림(물고기 · 작물 · 땅) · 창 테두리 같은 틀 색은 감싸지 않는다 — 보정은 신호만 옮긴다.
+- 색만으로 가르는 곳이면 「모양으로도 표시」 단서도 함께 둔다(`shapeCuesOn()` — X · 빗금 · 눈금 · 기호). 모양 표식은 `drawMark`.
+- 한 번 그려 두는 HUD는 `game.events` `'a11y-changed'`에 다시 그리기를 건다. 서명(문자열)으로 다시 그리기를 막는 곳은 서명에 `a11ySig()`를 넣는다.
+- 체험 가이드 · 안내가 화면 색 이름을 말하면 `cvText(기본, 적록판)` 두 벌로 쓰고 영어 사전에도 두 벌을 넣는다(적록 보정에서 초록 → 파랑).
+- dev에서 `ColorAssist.ts`를 고친 채 하네스를 돌리면 HMR로 모듈이 둘이 되어 필드가 `'off'`로 보인다 — dev 재시작.
+
+### [251차] 설정 탭도 흐름 배치 — 영어 설명이 한 줄 길면 단추를 덮는다
+
+- 「화면」 탭이 고정 y(`startY + 62`)였다 — 영어 「장소 핀」 설명이 세 줄이라 셋째 줄이 단추 밑에 깔렸다. `설명.y + 설명.height + 8`로 고쳤다.
+- 도움말 실캡처 주석은 영어판 자리가 다르면 `tools/annotate_help_images.py` `CALLOUTS_EN`에 따로 둔다.
 
 ### [250차] 커서는 게임 포인터 두 벌 — 키워드 `'pointer'`를 직접 넣지 않는다
 

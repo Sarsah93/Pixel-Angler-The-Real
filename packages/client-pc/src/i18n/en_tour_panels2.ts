@@ -67,6 +67,8 @@ export const EN_TOUR_PANELS2: Record<string, string> = {
     'Once cooking starts, add ingredients on the left in the right amounts. Following the order makes it taste better.',
   '가운데에서 불 세기를 고른다. 온도 막대의 초록 칸이 이 요리에 알맞은 온도다.':
     'Choose the heat in the middle. The green band on the temperature bar is the right temperature for this dish.',
+  '가운데에서 불 세기를 고른다. 온도 막대의 파란 칸이 이 요리에 알맞은 온도다.':
+    'Choose the heat in the middle. The blue band on the temperature bar is the right temperature for this dish.',
   '오른쪽 별 다섯 개는 지금 내렸을 때의 맛이다. 다 익으면 「불 끄고 내리기」로 요리를 꺼낸다.':
     'The five stars on the right are how it would taste if you took it off now. When it is done, take it out with "Turn off and take out".',
   '용기: 없음': 'Cookware: none',
@@ -157,6 +159,8 @@ export const EN_TOUR_PANELS2: Record<string, string> = {
     'Pick a kind of item with the chips at the top. Turn on "Craftable only" on the right to keep just what your materials allow.',
   '왼쪽 목록의 네모 색이 상태다. 초록은 지금 만들 수 있고, 노랑은 재료가 모자라고, 회색은 레벨이나 기술이 아직 안 된다.':
     'The square on each row shows its state: green you can craft now, yellow is short on materials, grey needs more level or skill.',
+  '왼쪽 목록의 네모 색이 상태다. 파랑은 지금 만들 수 있고, 노랑은 재료가 모자라고, 회색은 레벨이나 기술이 아직 안 된다.':
+    'The square on each row shows its state: blue you can craft now, yellow is short on materials, grey needs more level or skill.',
   '고른 도면의 결과물 · 조건 · 재료가 여기에 나온다. 재료 옆 숫자는 가진 수와 필요한 수다.':
     'The chosen blueprint shows its result, requirements and materials here. The numbers are what you have and what it needs.',
   '몇 개 만들지 정한다. 가운데 숫자 칸을 누르면 직접 칠 수 있다. 옆에는 성공률 · 걸리는 시간 · 얻는 경험치가 나온다.':

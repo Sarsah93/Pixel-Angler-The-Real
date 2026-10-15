@@ -37,6 +37,7 @@ import { InventoryStore, type InvItem } from '../../store/InventoryStore.js';
 import { GameState } from '../../store/GameState.js';
 import { addPixelIcon } from '../../ui/PixelIcon.js';
 import { worldLabelStyle } from '../../ui/WorldLabel.js';
+import { a11ySig, cv, shapeCuesOn } from '../../ui/ColorAssist.js';
 import { DraggablePanel } from '../../ui/DraggablePanel.js';
 import { openCareTask, openProcess, type FarmActionHost, type FarmActionWhat } from '../../ui/FarmActions.js';
 import { careTaskIcon } from '../../ui/FarmWorkPanel.js';
@@ -82,6 +83,8 @@ interface CellView {
   decoSig: string;
   ind?: Phaser.GameObjects.Image;
   indKey?: string;
+  /** 251차 — 점을 만든 때의 색 보정 서명(바뀌면 다시 만든다) */
+  indSig?: string;
 }
 
 /** 248차 — 흙 위로 드러난 땅지렁이 한 마리(2px 입자 그림 · 꿈틀거림) */
@@ -262,8 +265,8 @@ export class FarmFieldSystem {
       // 지금 할 것 하나 — 칸 오른쪽 위 모서리의 색 점(거둘 때 초록 · 털 때 금빛 · 할 일 주황 · 목마름 파랑).
       //   16px 아이콘은 20px 칸 위로 올리면 윗줄 칸을 덮어 어느 칸 것인지 헷갈린다 — 자세한 것은 겨누면 칸 정보 창이 말한다
       const ind = near && c ? this.indicatorOf(o.instanceId, i, c) : null;
-      if (ind !== (v.indKey ?? null)) {
-        v.ind?.destroy(); v.ind = undefined; v.indKey = ind ?? undefined;
+      if (ind !== (v.indKey ?? null) || (ind && v.indSig !== a11ySig())) {
+        v.ind?.destroy(); v.ind = undefined; v.indKey = ind ?? undefined; v.indSig = a11ySig();
         if (ind) {
           const img = cs >= 32 ? this.indicatorImage(ind, o.instanceId, i, x0 + cs - 10, y0 + 10) : null;
           const mark = img ?? this.pipImage(ind, x0 + cs - 4, y0 + 3);
@@ -549,16 +552,32 @@ export class FarmFieldSystem {
     return null;
   }
 
-  /** 모서리 색 점(5px · 검은 테 · 가운데 밝은 점) — 상태별 색 */
+  /**
+   * 모서리 색 점(5px · 검은 테 · 가운데 밝은 점) — 상태별 색.
+   * 251차 — 색 구분 보정 · 「모양으로도 표시」면 상태별 모양(거둘 때 네모 · 털 때 + · 목마름 물방울 · 할 일 !).
+   */
   private pipImage(key: string, x: number, y: number): Phaser.GameObjects.Image {
-    const col = key === 'ready' ? 0x6ae08a : key === 'process' ? 0xffd257 : key === 'dry' ? 0x4fb8e0 : 0xffa040;
-    const tex = `farm_pip_${col.toString(16)}`;
+    const col = cv(key === 'ready' ? 0x6ae08a : key === 'process' ? 0xffd257 : key === 'dry' ? 0x4fb8e0 : 0xffa040);
+    const shape = shapeCuesOn() ? (key === 'ready' ? 'sq' : key === 'process' ? 'plus' : key === 'dry' ? 'drop' : 'bang') : 'sq';
+    const tex = `farm_pip_${col.toString(16)}_${shape}`;
     const scene = this.host.scene;
     if (!scene.textures.exists(tex)) {
       const g = scene.add.graphics();
-      g.fillStyle(0x10141a, 1); g.fillRect(1, 0, 5, 7); g.fillRect(0, 1, 7, 5);
-      g.fillStyle(col, 1); g.fillRect(1, 1, 5, 5);
-      g.fillStyle(0xffffff, 0.85); g.fillRect(2, 2, 2, 2);
+      // 7×7 — 글자 = 칸(# 색 · o 테). 테는 모양 둘레 한 칸
+      const PIP: Record<string, string[]> = {
+        sq: ['.ooooo.', 'o#####o', 'o#####o', 'o#####o', 'o#####o', 'o#####o', '.ooooo.'],
+        plus: ['..ooo..', '..o#o..', 'ooo#ooo', 'o#####o', 'ooo#ooo', '..o#o..', '..ooo..'],
+        drop: ['..ooo..', '.oo#oo.', '.o###o.', 'o#####o', 'o#####o', 'o#####o', '.ooooo.'],
+        bang: ['.ooooo.', '.o###o.', '.o###o.', '.o###o.', '.ooooo.', '.o###o.', '.ooooo.'],
+      };
+      PIP[shape].forEach((row, yy) => {
+        for (let xx = 0; xx < row.length; xx++) {
+          if (row[xx] === '.') continue;
+          g.fillStyle(row[xx] === 'o' ? 0x10141a : col, 1);
+          g.fillRect(xx, yy, 1, 1);
+        }
+      });
+      if (shape === 'sq') { g.fillStyle(0xffffff, 0.85); g.fillRect(2, 2, 2, 2); }
       g.generateTexture(tex, 7, 7);
       g.destroy();
     }
@@ -648,7 +667,9 @@ export class FarmFieldSystem {
   private drawCellBorder(g: Phaser.GameObjects.Graphics, t: FarmTarget, usable: boolean): void {
     const r = this.cellRect(t.o, t.idx);
     g.lineStyle(1, 0x101418, 0.55); g.strokeRect(r.x + 0.5, r.y + 0.5, r.s - 1, r.s - 1);
-    g.lineStyle(2, usable ? 0xffe9a0 : 0xffffff, 0.85); g.strokeRect(r.x + 2, r.y + 2, r.s - 4, r.s - 4);
+    g.lineStyle(2, usable ? cv(0xffe9a0) : 0xffffff, 0.85); g.strokeRect(r.x + 2, r.y + 2, r.s - 4, r.s - 4);
+    // 251차 — 「모양으로도 표시」: 쓸 수 있으면 안쪽 한 줄 더(노랑 ↔ 흰 테가 흰빛으로 섞이는 눈)
+    if (usable && shapeCuesOn()) { g.lineStyle(1, cv(0xffe9a0), 0.85); g.strokeRect(r.x + 5, r.y + 5, r.s - 10, r.s - 10); }
   }
 
   // ═══════════════════════════════════════

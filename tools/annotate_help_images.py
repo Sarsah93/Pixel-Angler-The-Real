@@ -54,8 +54,10 @@ CALLOUTS: dict[str, list[tuple]] = {
     'home_decor': [(744, 462, 56, 104), (968, 290, 300, 340, 'in'), (978, 580, 280, 40, 'left')],   # 198차 — 트레이 = HUD 빈 구간
     # 전국 지도 — ① 지역 목록 ② 지도 핀 ③ 범례 ④ 집으로 돌아가기
     'worldmap': [(14, 112, 344, 570, 'below'), (380, 60, 580, 580), (1130, 576, 132, 138), (16, 14, 150, 34, 'right')],
-    # 환경설정 — ① 탭 ② 장소 이름표 ③ 할 일 위치 안내
-    'settings': [(258, 134, 736, 40), (298, 208, 640, 110, 'left'), (298, 360, 640, 108, 'left')],
+    # 환경설정 — ① 탭(251차 — 접근성까지 6칸) ② 장소 이름표 ③ 할 일 위치 안내
+    'settings': [(258, 134, 764, 40), (298, 208, 640, 110, 'left'), (298, 360, 640, 108, 'left')],
+    # 접근성(251차) — ① 마우스 포인터 ② 포인터 미리보기 ③ 색 구분 보정 · 모양으로도 표시 ④ 신호 미리보기
+    'access': [(262, 188, 584, 206, 'left'), (850, 188, 176, 216, 'right'), (262, 404, 584, 146, 'left'), (850, 410, 176, 96, 'right')],
     # ── 조작 ──
     # ① 할 수 있는 일을 고르는 창 ② 바닥의 물건 줄
     'interact_choice': [(352, 222, 236, 116), (358, 290, 226, 40, 'left')],
@@ -141,6 +143,14 @@ CALLOUTS: dict[str, list[tuple]] = {
 # BootScene HELP_IMAGE_KEYS와 같은 목록(help_<key>.png / help_<key>_en.png)
 KEYS = list(CALLOUTS.keys())
 
+# 영문판만 자리가 다른 장(흐름 배치라 영어 설명이 한 줄 길어 아래 칸이 밀린다) — 없으면 CALLOUTS를 쓴다
+CALLOUTS_EN: dict[str, list[tuple]] = {
+    # 환경설정 화면 탭 — 영어 「장소 핀」 설명이 세 줄이라 그 아래가 16px 내려간다(251차 흐름 배치)
+    'settings': [(258, 134, 764, 40), (298, 208, 640, 122, 'left'), (298, 372, 640, 110, 'left')],
+    # 접근성 — 영어 설명이 길어 「색 구분」 칸이 아래로 늘어난다
+    'access': [(262, 188, 584, 222, 'left'), (850, 188, 176, 216, 'right'), (262, 420, 584, 194, 'left'), (850, 418, 176, 96, 'right')],
+}
+
 
 FONT_CANDIDATES = (
     'C:/Windows/Fonts/malgunbd.ttf', 'C:/Windows/Fonts/malgun.ttf', 'C:/Windows/Fonts/NanumGothicBold.ttf',
@@ -220,7 +230,7 @@ def main() -> None:
         out = os.path.join(a.out, f'help_{key}{suffix}.png')
         if os.path.exists(src):
             im = downscale(Image.open(src))
-            items = CALLOUTS.get(key, [])
+            items = (CALLOUTS_EN.get(key) if a.lang == 'en' else None) or CALLOUTS.get(key, [])
             if items:
                 draw_callouts(im, items, k)
             im.save(out, optimize=True)

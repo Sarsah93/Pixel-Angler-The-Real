@@ -19,6 +19,7 @@
 import Phaser from 'phaser';
 import { fishRarity } from '@tra/core';
 import { GameState } from '../store/GameState.js';
+import { cv, cvCss, drawBlockedX, shapeCuesOn } from './ColorAssist.js';
 import {
   InventoryStore, InvCategory, InvItem, InvItemTemplate,
   CATEGORY_LABEL, CONDITION_LABEL, CONDITION_COLOR, refreshCondition,
@@ -399,7 +400,7 @@ export class InventoryPanel extends DraggablePanel {
     if (!r) return;
     const locked = idx >= InventoryStore.gridCapacity();
     const occupied = !!InventoryStore.itemAtSlot(this.currentTab, idx);
-    const color = locked ? 0xffb45a : occupied && idx !== drag.fromSlot ? 0xffd257 : 0x4af2a1;
+    const color = cv(locked ? 0xffb45a : occupied && idx !== drag.fromSlot ? 0xffd257 : 0x4af2a1);
     g.fillStyle(color, locked ? 0.10 : 0.16);
     g.fillRoundedRect(r.x, r.y, SLOT, SLOT, 4);
     g.lineStyle(2.5, color, 0.95);
@@ -415,6 +416,15 @@ export class InventoryPanel extends DraggablePanel {
       g.beginPath();
       g.moveTo(cx + sx * L, cy); g.lineTo(cx, cy); g.lineTo(cx, cy + sy * L);
       g.strokePath();
+    }
+    // 251차 — 「모양으로도 표시」: 잠긴 칸은 X · 바꿔 놓는 칸은 가운데 양쪽 화살(금빛 ↔ 주황이 비슷한 것)
+    if (locked) drawBlockedX(g, r.x, r.y, SLOT, SLOT, color, 0.9, 16);
+    else if (occupied && idx !== drag.fromSlot && shapeCuesOn()) {
+      const mx = r.x + SLOT / 2, my = r.y + SLOT - 9;
+      g.lineStyle(2, color, 1);
+      g.lineBetween(mx - 9, my, mx + 9, my);
+      g.lineBetween(mx - 9, my, mx - 5, my - 4); g.lineBetween(mx - 9, my, mx - 5, my + 4);
+      g.lineBetween(mx + 9, my, mx + 5, my - 4); g.lineBetween(mx + 9, my, mx + 5, my + 4);
     }
   }
 
@@ -547,7 +557,7 @@ export class InventoryPanel extends DraggablePanel {
       if (item.condition) {
         const badge = this.scene.add.text(sx + 4, sy + 3, CONDITION_LABEL[item.condition], {
           fontFamily: '"Noto Sans KR", sans-serif', fontSize: '8px',
-          color: CONDITION_COLOR[item.condition], fontStyle: 'bold',
+          color: cvCss(CONDITION_COLOR[item.condition]), fontStyle: 'bold',
           backgroundColor: '#050f1ecc', padding: { x: 2, y: 1 },
         });
         this.gridContainer.add(badge);

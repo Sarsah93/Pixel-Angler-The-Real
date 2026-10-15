@@ -30,6 +30,7 @@ import { setSlotLabel, SLOT_LABEL_PX } from './SlotLabel.js';
 import { clampTextWidth } from './TextFit.js';
 import { addPixelIcon, ensurePixelIcon } from './PixelIcon.js';
 import { paintHudPanel, paintHudSlot } from './HudPanelStyle.js';
+import { a11ySig, cv, cvCss, drawHatch, shapeCuesOn } from './ColorAssist.js';
 import { buildMarkerTip, placeTip, tipSignature, tipHolds, tipItems, isPinnedAt } from './MapMarkerTip.js';
 import type { ShopHours } from '../data/ShopCatalog.js';
 import { MapPinStore } from '../store/MapPinStore.js';
@@ -470,7 +471,21 @@ export class RegionHud extends Phaser.GameObjects.Container {
 
     this.updateStatus();
     scene.time.addEvent({ delay: 1000, loop: true, callback: this.updateStatus, callbackScope: this });
+    // 251차 — 설정 「접근성」에서 색 구분 보정 · 모양 표시를 바꾸면 한 번 그려 둔 것을 다시 그린다
+    scene.game.events.on('a11y-changed', this.onA11yChanged);
   }
+
+  /** 251차 — 색 보정이 바뀌었다: 서명을 비우고 다시 그린다(게이지 · 물때 칩 · 스트립 · 미니맵 나 · 추적기 · 퀵슬롯) */
+  private readonly onA11yChanged = (): void => {
+    if (!this.scene) return;
+    this.tideSig = '';
+    this.stripSig = '';
+    this.craftSig = '';
+    this.miniMarker?.setFillStyle(cv(0xff4040));
+    this.updateStatus();
+    if (this.trackerData) this.layoutTracker();
+    this.refreshQuickslots();
+  };
 
   // ═══════════════════════════════════════════════════
   // 좌상단 상태 패널 (HP / 피로도 / 시계 / 날씨)
@@ -822,7 +837,7 @@ export class RegionHud extends Phaser.GameObjects.Container {
     const st = hidden ? null : tideFlowStateAt();
     const skilled = GameState.skillRank('fish_tide') >= 1;
     const remain = st ? Math.max(1, st.minutesToPhaseEnd) : 0;
-    const sig = st ? `${getLocale()}|${this.statusSize}|${st.phase}|${skilled ? remain : ''}` : 'none';
+    const sig = st ? `${getLocale()}|${this.statusSize}|${st.phase}|${skilled ? remain : ''}|${a11ySig()}` : 'none';
     if (sig === this.tideSig) return;
     this.tideSig = sig;
     this.tideC?.destroy();
@@ -832,7 +847,7 @@ export class RegionHud extends Phaser.GameObjects.Container {
 
     const x = SP.x, y = SP.y + this.statusLayout.h + STRIP.top;
     const maxW = this.statusLayout.w;
-    const color = skilled ? tideStarColor(TIDE_FLOW_PROFILE[st.phase].stars) : 0x8fa4b8;
+    const color = skilled ? cv(tideStarColor(TIDE_FLOW_PROFILE[st.phase].stars)) : 0x8fa4b8;
     const label = skilled
       ? `${TIDE_FLOW_LABEL_KO[st.phase]} · ${remain}분 뒤 ${TIDE_FLOW_LABEL_KO[st.nextPhase]}`
       : TIDE_FLOW_LABEL_KO[st.phase];
@@ -852,6 +867,12 @@ export class RegionHud extends Phaser.GameObjects.Container {
     g.fillRoundedRect(x, y, w, TIDE_CHIP.h, 4);
     g.lineStyle(1.2, color, 0.95);
     g.strokeRoundedRect(x, y, w, TIDE_CHIP.h, 4);
+    // 251차 — 「모양으로도 표시」: 입질도(별)를 칩 아래 테 위 작은 칸 수로도(테 색만으로 가르던 것)
+    if (skilled && shapeCuesOn()) {
+      const n = Math.max(1, Math.round(TIDE_FLOW_PROFILE[st.phase].stars));
+      g.fillStyle(0xffffff, 0.95);
+      for (let k = 0; k < n; k++) g.fillRect(textX + k * 5, y + TIDE_CHIP.h - 4, 3, 3);
+    }
     const box: TipAnchor = { x, y, w, h: TIDE_CHIP.h };
     const hit = this.scene.add.rectangle(x + w / 2, y + TIDE_CHIP.h / 2, w, TIDE_CHIP.h, 0xffffff, 0.001)
       .setInteractive({ useHandCursor: false });
@@ -1017,7 +1038,7 @@ export class RegionHud extends Phaser.GameObjects.Container {
     c.add(parts);
     const w = padX * 2 + Math.max(nameX - padX + name.width, ...parts.slice(1).map((p) => p.width));
     const h = yy - 4 + padY;
-    const color = skilled ? tideStarColor(TIDE_FLOW_PROFILE[st.phase].stars) : 0x8fa4b8;
+    const color = skilled ? cv(tideStarColor(TIDE_FLOW_PROFILE[st.phase].stars)) : 0x8fa4b8;
     g.fillStyle(0x06101e, 0.96);
     g.fillRoundedRect(0, 0, w, h, 5);
     g.lineStyle(1.2, color, 0.95);
@@ -1172,9 +1193,11 @@ export class RegionHud extends Phaser.GameObjects.Container {
       this.barsG.fillStyle(0x101820, 0.9);
       this.barsG.fillRect(r.x, r.y, r.w, r.h);
       // 허기·수분은 임계(20%) 미만이면 경고색 — 숫자를 안 띄우는 대신 색으로 알린다
+      // 251차 — 색 구분 보정 · 「모양으로도 표시」면 경고 막대 전체에 빗금(빨강 ↔ 노랑 막대가 같은 색으로 보이는 눈)
       const warn = (r.key === 'hunger' || r.key === 'hydration') && val.ratio < 0.2;
-      this.barsG.fillStyle(warn ? 0xe04b3a : VITAL_LABEL[r.key].color, 0.95);
+      this.barsG.fillStyle(warn ? cv(0xe04b3a) : VITAL_LABEL[r.key].color, 0.95);   // 막대 본색은 이름표가 있어 그대로
       this.barsG.fillRect(r.x, r.y, r.w * Phaser.Math.Clamp(val.ratio, 0, 1), r.h);
+      if (warn) drawHatch(this.barsG, r.x, r.y, r.w, r.h, 0xffffff, 0.6, 4);
       this.barsG.lineStyle(1, 0x2a5a8a, 0.9);
       this.barsG.strokeRect(r.x, r.y, r.w, r.h);
       if (r.key === 'xp') {
@@ -1240,7 +1263,7 @@ export class RegionHud extends Phaser.GameObjects.Container {
     const wind = kma?.windSpeedMs ?? marine?.windSpeedMs;
     const windy = wind !== undefined && wind >= 4;
     this.drawBadge(3, 'wx_wind', wind !== undefined ? `바람 ${wind.toFixed(1)}m/s` : '바람 —',
-      windy ? 0x6fd3e0 : 0x4a86b0, wind !== undefined);
+      cv(windy ? 0x6fd3e0 : 0x4a86b0), wind !== undefined);
   };
 
   // ═══════════════════════════════════════════════════
@@ -1357,7 +1380,7 @@ export class RegionHud extends Phaser.GameObjects.Container {
     this.miniContainer.add(this.miniMarkerC);
     this.drawMiniMarkers();
 
-    this.miniMarker = this.scene.add.circle(0, 0, 3.5, 0xff4040).setStrokeStyle(1, 0xffffff, 0.9);
+    this.miniMarker = this.scene.add.circle(0, 0, 3.5, cv(0xff4040)).setStrokeStyle(1, 0xffffff, 0.9);
     this.miniContainer.add(this.miniMarker);
 
     // 재구성된 자식 히트 영역 보정
@@ -1437,9 +1460,9 @@ export class RegionHud extends Phaser.GameObjects.Container {
         cy += 7;
       }
       // 188차 — 구 Ⓜ/Ⓢ 글리프(§8-8) 대신 **색 막대 칩**: 메인 = 금색, 서브 = 하늘색 (제목 색과 짝)
-      const titleT = mk(`${e.title}${e.pinned ? ' · 고정' : ''}`, 12, e.kind === 'main' ? '#ffe9a0' : '#c9e3f5', true, 8);
+      const titleT = mk(`${e.title}${e.pinned ? ' · 고정' : ''}`, 12, cvCss(e.kind === 'main' ? '#ffe9a0' : '#c9e3f5'), true, 8);
       const chip = this.scene.add.graphics();
-      chip.fillStyle(e.kind === 'main' ? 0xffd257 : 0x7fc4ec, 1);
+      chip.fillStyle(cv(e.kind === 'main' ? 0xffd257 : 0x7fc4ec), 1);
       chip.fillRoundedRect(PADX, titleT.y + 2, 4, Math.max(10, titleT.height - 4), 1);
       parts.push(chip);
       mk(e.objective, 11, '#e8f4fd', false, 4);
@@ -2247,6 +2270,7 @@ export class RegionHud extends Phaser.GameObjects.Container {
   }
 
   override destroy(fromScene?: boolean): void {
+    this.scene?.game?.events.off('a11y-changed', this.onA11yChanged);
     this.scene?.input?.off('pointermove', this.hudMove);
     this.scene?.input?.off('pointerup', this.hudUp);
     this.scene?.input?.off('gameout', this.hudUp);

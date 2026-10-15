@@ -23,6 +23,7 @@
 import Phaser from 'phaser';
 import { CARE_TASK_KO, CARE_WORK_KO, carePlanOf, DISEASE_DEFS, type CareStatus, type CareWorkKind, type CropDef, type CropDisease } from '@tra/core';
 import { DraggablePanel, restoreHandCursor } from './DraggablePanel.js';
+import { cv, shapeCuesOn } from './ColorAssist.js';
 import { enforceTextBounds } from './TextFit.js';
 import { addPixelIcon } from './PixelIcon.js';
 import { maybeStartTour, type TourOptions } from './GuideTour.js';
@@ -367,7 +368,11 @@ export class FarmWorkPanel extends DraggablePanel {
     const g = scene.add.graphics();
     if (shape === 'bud') { g.fillStyle(color, 1); g.fillEllipse(x, y, r * 1.6, r); g.fillStyle(0xb4e47a, 1); g.fillRect(x - 1, y - r, 2, r); }
     else if (shape === 'flower') { g.fillStyle(0xf8f8f0, 1); g.fillCircle(x, y, r); g.fillStyle(0xf0c040, 1); g.fillCircle(x, y, r * 0.4); }
-    else if (shape === 'fruit') { g.fillStyle(0xd0382a, 1); g.fillRect(x - 2, y - r, 4, r * 2); g.fillStyle(0x1a0a0a, 1); g.fillRect(x - 1, y - 2, 2, 2); g.fillRect(x, y + 3, 2, 2); }
+    else if (shape === 'fruit') {
+      g.fillStyle(cv(0xd0382a), 1); g.fillRect(x - 2, y - r, 4, r * 2); g.fillStyle(0x1a0a0a, 1); g.fillRect(x - 1, y - 2, 2, 2); g.fillRect(x, y + 3, 2, 2);
+      // 251차 — 「모양으로도 표시」: 다른 표적처럼 노란 고리(병든 빨강 열매 ↔ 성한 초록 열매가 같은 색으로 보이는 눈)
+      if (shapeCuesOn()) { g.lineStyle(1, 0xffd257, 0.9); g.strokeCircle(x, y, r + 3); }
+    }
     else if (shape === 'spot') { g.fillStyle(color, 0.55); g.fillCircle(x, y, r); g.lineStyle(1, 0xffd257, 0.9); g.strokeCircle(x, y, r); }
     else if (shape === 'stake') { g.lineStyle(1, 0xffd257, 0.9); g.strokeRect(x - 3, y - r, 6, r * 2); }
     else if (shape === 'band') { g.fillStyle(color, 0.35); g.fillRect(x - r, y - 6, r * 2, 12); g.lineStyle(1, 0xffd257, 0.8); g.strokeRect(x - r, y - 6, r * 2, 12); }
@@ -992,8 +997,13 @@ export class FarmWorkPanel extends DraggablePanel {
     g.clear();
     const x = STAGE_W - 40, y0 = 30, h = STAGE_H - 90;
     g.fillStyle(0x0d1a28, 1); g.fillRect(x, y0, 16, h);
-    g.fillStyle(0x4af2a1, 0.3); g.fillRect(x, y0 + h * (1 - 0.85), 16, h * 0.25);
-    g.fillStyle(0x3a8ad0, 1); g.fillRect(x, y0 + h * (1 - this.gauge), 16, h * this.gauge);
+    g.fillStyle(cv(0x4af2a1), 0.3); g.fillRect(x, y0 + h * (1 - 0.85), 16, h * 0.25);
+    g.fillStyle(cv(0x3a8ad0), 1); g.fillRect(x, y0 + h * (1 - this.gauge), 16, h * this.gauge);
+    // 251차 — 「모양으로도 표시」: 알맞은 띠(60~85%) 경계 눈금 — 채움이 띠를 덮어도 보이게
+    if (shapeCuesOn()) {
+      g.lineStyle(2, 0xffffff, 0.95);
+      for (const k of [0.6, 0.85]) g.lineBetween(x - 4, y0 + h * (1 - k), x + 20, y0 + h * (1 - k));
+    }
     g.lineStyle(1, 0x2a4a66, 1); g.strokeRect(x, y0, 16, h);
   }
 

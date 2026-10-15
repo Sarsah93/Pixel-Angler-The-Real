@@ -11,6 +11,7 @@
 
 import { LedgerStore } from '../../store/LedgerStore.js';
 import { worldLabelStyle } from '../../ui/WorldLabel.js';
+import { cv, drawBlockedX } from '../../ui/ColorAssist.js';
 import Phaser from 'phaser';
 import {
   type DeployedTrap, type RegionTerrain, type SpotType, type TrapSpec, type TrapCatchItem,
@@ -185,8 +186,10 @@ export class TrapFieldSystem {
     // 플레이어 사거리 원
     const p = this.host.player();
     g.lineStyle(1, 0xffffff, 0.18); g.strokeCircle(p.x, p.y, TUNING.trap.maxRangeTiles * tr);
-    g.fillStyle(chk.ok ? 0x4af2a1 : 0xff5a4a, 0.38); g.fillRect(tx * tr + 1, ty * tr + 1, tr - 2, tr - 2);
-    g.lineStyle(2, chk.ok ? 0x4af2a1 : 0xff5a4a, 0.9); g.strokeRect(tx * tr, ty * tr, tr, tr);
+    // 251차 — 색 구분 보정 · 막힌 칸 X
+    g.fillStyle(cv(chk.ok ? 0x4af2a1 : 0xff5a4a), 0.38); g.fillRect(tx * tr + 1, ty * tr + 1, tr - 2, tr - 2);
+    g.lineStyle(2, cv(chk.ok ? 0x4af2a1 : 0xff5a4a), 0.9); g.strokeRect(tx * tr, ty * tr, tr, tr);
+    if (!chk.ok) drawBlockedX(g, tx * tr + 1, ty * tr + 1, tr - 2, tr - 2, 0xffffff, 0.9, 7);
   }
 
   /** 설치 스팟 타입 — 포획 판정(생물 서식지)용 */

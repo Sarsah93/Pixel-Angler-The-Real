@@ -12,6 +12,7 @@
 
 import Phaser from 'phaser';
 import { DraggablePanel } from './DraggablePanel.js';
+import { cvCss } from './ColorAssist.js';
 import { createItemIcon } from './ItemIcon.js';
 import { setSlotLabel, SLOT_LABEL_PX } from './SlotLabel.js';
 import { GameState } from '../store/GameState.js';
@@ -158,7 +159,7 @@ export class FridgePanel extends DraggablePanel {
         if (item.condition) {
           const badge = scene.add.text(sx + 3, sy + 2, CONDITION_LABEL[item.condition], {
             fontFamily: '"Noto Sans KR", sans-serif', fontSize: '7px',
-            color: CONDITION_COLOR[item.condition], fontStyle: 'bold',
+            color: cvCss(CONDITION_COLOR[item.condition]), fontStyle: 'bold',
             backgroundColor: '#050f1ecc', padding: { x: 1, y: 1 },
           });
           this.gridC.add(badge);

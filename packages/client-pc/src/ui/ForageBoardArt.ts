@@ -10,6 +10,7 @@
  * 바닥 텍스처는 220x90으로 굽고 판(440x180)에는 2배로 올린다(pixelArt 모드라 도트가 선다).
  */
 
+import { cv, drawHatch } from './ColorAssist.js';
 import Phaser from 'phaser';
 import { mulberry32, type ForageGameKind } from '@tra/core';
 import { ensurePixelIcon } from './PixelIcon.js';
@@ -286,13 +287,13 @@ export function makeForageDemo(
       g.lineStyle(12, 0x0a0e14, 1); g.beginPath();
       for (let k = 0; k <= 8; k++) { const [x, y] = at(0.55 + 0.18 * (k / 8)); if (k === 0) g.moveTo(x, y); else g.lineTo(x, y); }
       g.strokePath();
-      g.lineStyle(6, 0x4af2a1, 1); g.beginPath();
+      g.lineStyle(6, cv(0x4af2a1), 1); g.beginPath();
       for (let k = 0; k <= 8; k++) { const [x, y] = at(0.55 + 0.18 * (k / 8)); if (k === 0) g.moveTo(x, y); else g.lineTo(x, y); }
       g.strokePath();
       const [tx, ty] = at(0.64);
       toolAt(tx + 6, Math.min(DEMO_H - 14, ty + 12), -20, 1);
       arrow(70, 62, 180, 1); arrow(206, 62, 0, 1);
-      g.lineStyle(2, 0x4af2a1, 1); g.strokeCircle(tx, ty, 10);
+      g.lineStyle(2, cv(0x4af2a1), 1); g.strokeCircle(tx, ty, 10);
       break;
     }
     case 'dig': {
@@ -303,8 +304,9 @@ export function makeForageDemo(
       toolAt(136, 14, 0, 2);
       arrow(166, 20, 90, 1);
       g.fillStyle(0x0a1628, 0.9); g.fillRect(236, 8, 14, 60);
-      g.fillStyle(0x4af2a1, 1); g.fillRect(236, 44, 14, 24);
-      g.fillStyle(0xff5a4a, 1); g.fillRect(236, 8, 14, 18);
+      g.fillStyle(cv(0x4af2a1), 1); g.fillRect(236, 44, 14, 24);
+      g.fillStyle(cv(0xff5a4a), 1); g.fillRect(236, 8, 14, 18);
+      drawHatch(g, 236, 8, 14, 18, 0x101418, 0.85, 4);
       g.lineStyle(1.5, 0x2a5a8a, 1); g.strokeRect(236, 8, 14, 60);
       g.fillStyle(0xffffff, 1); g.fillRect(232, 42, 22, 3);
       // 흙 튐
@@ -319,8 +321,9 @@ export function makeForageDemo(
       arrow(206, 30, -90, 1);
       const bx = 40, by = 58, bw = 192, bh = 10;
       g.fillStyle(0x0a1628, 0.9); g.fillRect(bx, by, bw, bh);
-      g.fillStyle(0x4af2a1, 0.5); g.fillRect(bx + bw * 0.3, by, bw * 0.55, bh);
-      g.fillStyle(0xff5a4a, 0.5); g.fillRect(bx + bw * 0.85, by, bw * 0.15, bh);
+      g.fillStyle(cv(0x4af2a1), 0.5); g.fillRect(bx + bw * 0.3, by, bw * 0.55, bh);
+      g.fillStyle(cv(0xff5a4a), 0.5); g.fillRect(bx + bw * 0.85, by, bw * 0.15, bh);
+      drawHatch(g, bx + bw * 0.85, by, bw * 0.15, bh, 0xffffff, 0.6, 5);
       g.fillStyle(0xffffff, 1); g.fillRect(bx + bw * 0.55 - 2, by - 4, 4, bh + 8);
       g.lineStyle(1.5, 0x2a5a8a, 1); g.strokeRect(bx, by, bw, bh);
       break;

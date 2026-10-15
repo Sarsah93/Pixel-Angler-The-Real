@@ -277,7 +277,7 @@ npx pnpm --filter @tra/client-pc run dev
 ## 9. 빌드 상태 · 최근 변경
 
 ```
-npx pnpm run build → ✅ 3/3 패키지 성공 (2026-10-15 250차 · map-builder 워크스페이스 제외)
+npx pnpm run build → ✅ 3/3 패키지 성공 (2026-10-15 251차 · map-builder 워크스페이스 제외)
 npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 ```
 
@@ -286,7 +286,17 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-10-15 250차) — 마우스 포인터 「찌 화살」 · main 반영 · 74차 배포**
+**최근 변경 (2026-10-15 251차) — 설정 「접근성」 탭 · 포인터 옵션 · 색 구분 보정 · 모양으로도 표시**
+
+- 사용자 「접근성 탭으로 진행해줘 … 모든 HUD에서 색약 배려가 고려될 만한 옵션이 없는 지 전체적으로 검토해서, 모두 접근성 탭에 반영해줘」:
+  설정 여섯째 탭(`ui/AccessSettingsTab.ts`) — 포인터 색(찌 · 야광찌 · 운영체제 기본) · 흰 테 3단(누를 수 있는 곳은 한 단계 진하게) · 크기 1 · 2배 · 색 구분 보정(끔 · 적록 · 청황) · 모양으로도 표시.
+- 뜻이 있는 색만 `cv()` · `cvCss()`로 거쳐 옮긴다(`ui/ColorAssist.ts` — 그림 색은 그대로) · 12쌍 거리 최솟값 적록 12.5 → 43.0 · 청황 17.5 → 41.6 ·
+  모양 단서(막힌 칸 X · 위험 빗금 · 막대 눈금 · 기호 · 신선도 모양) · 전수 검토로 필드 HUD · 1인칭 낚시 · 작업 장면 · 창 30파일 · `'a11y-changed'` 다시 그리기.
+- 가이드 문장 적록판(`cvText`) 6곳 · 도움말 「환경설정」 둘째 쪽 + 실캡처 · 「화면」 탭 영어 겹침(고정 y → 흐름 배치).
+- 검증: core 259/259 · 빌드 3/3 · typecheck 0 · 실렌더(탭 한 · 영 넘침 0 · 겹침 0 · 포인터 저장 · 필드 보정 · 장력 막대 · 가이드 문장 · 4xx 0 · pageerror 0).
+  상세: [251차 워크로그](../docs/wiki/03-WORKLOG/2026-10-15-251-accessibility-tab-color-assist.md).
+
+**이전 변경 (2026-10-15 250차) — 마우스 포인터 「찌 화살」 · main 반영 · 74차 배포**
 
 - 사용자 「마우스 포인터는 1번 찌 화살로 하고, main 반영과 gh-pages 74차 「테스트 배포」진행해줘」: 기본 = 시안 그대로(23px) ·
   누를 수 있는 곳 = 같은 그림 + 흰 테 1px(4방향) — `ui/GameCursor.ts`가 Phaser `InputManager.setCursor`의 `'pointer'`만 대체 · `restoreHandCursor` → `handCursorCss()`.
@@ -305,17 +315,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
   F-0088: 날짜 대조로 정본 = 코드 216(193 · 235) · 남은 옛 값 4곳 정정. 포인터 시안은 `docs/mockups/pointer_drafts/`.
 - 검증: core 259/259 · 빌드 3/3 · typecheck 0 · 실렌더(장비 키 226 빠짐 0 · 가방 · 상세 · 옛 세이브 보정 · 4xx 0 · pageerror 0).
   상세: [249차 워크로그](../docs/wiki/03-WORKLOG/2026-10-14-249-tackle-cards-gemini-74.md).
-
-**이전 변경 (2026-10-14 248차) — 갯것 10종 · 땅지렁이 그림(Gemini) · 갯것 카드 방식 · 텃밭 땅지렁이 → 바다 미끼**
-
-- 사용자 「바지락 … 삿갓조개(배말) 얘네 이미지 없는 걸로 확인되네. 이미지 작업 gemini로 … 탑다운 뷰에서 보여질 아이콘 이미지가 필요한 개체들」:
-  초상 11(10종 + 땅지렁이 · `tools/gemini_forage_art.cjs` — 사용자 갯것 그림 3장 화풍 참고) + 위에서 본 그림 5(소라 · 전복 · 낙지 · 보말 · 삿갓조개) · 바지락 다시 1 · 실패 0.
-- 갯것도 카드 방식(`tools/forage_cards.cjs` · 표 `ForageTextures.ts`) — 카드 300×160 · 64px 아이콘 · 판 44px · 필드 점 24px(1배) 21종 전부 · 원본 22장 `food assets/forage/art/` ·
-  코드 그림 10종 삭제 · 부팅 텍스처 약 61MB → 3.2MB.
-- 「농사하다가 지렁이 … 바다낚시 미끼로」: core `EarthwormRules`(일구기 · 캐기 · 김매기 · 북주기 · 비우기 · 비 × 달 · 퇴비 · 흙 수분) · 칸에서 2px 꿈틀 · 90초 · [F] 줍기 → 「땅지렁이」 ·
-  미끼 키 `earthworm` · `baitPrefOf`(망둥어 60 · 가자미류 40 · 표 밖 청갯지렁이의 4할) · 바닷물 1분 뒤 늘어져 4분이면 0.35배 · 도움말 2쪽 · 영어.
-- 검증: core 259/259 · 빌드 3/3 · typecheck 0 · 실렌더(텍스처 빠짐 0 · 텃밭 지렁이 · 가방 · 상세 · 도감 · 판 6 · 점 10 · pageerror 0) · 위키 Version 49 · gh-pages 73차.
-  상세: [248차 워크로그](../docs/wiki/03-WORKLOG/2026-10-14-248-forage-art-earthworm.md).
 
 ---
 

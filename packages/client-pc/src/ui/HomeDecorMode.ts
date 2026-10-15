@@ -15,6 +15,7 @@
 
 import Phaser from 'phaser';
 import { GAME_WIDTH } from '../PhaserConfig.js';
+import { cv, cvText, drawBlockedX } from './ColorAssist.js';
 import { HomeStore } from '../store/HomeStore.js';
 import { GameState } from '../store/GameState.js';
 import {
@@ -92,8 +93,12 @@ export class HomeDecorMode {
     this.gridG.lineStyle(1, 0xfff3c4, 0.28);
     for (let c = 0; c <= ROOM_W; c++) this.gridG.lineBetween(ox + c * IT, oy + FLOOR_TOP * IT, ox + c * IT, oy + ROOM_H * IT);
     for (let r = FLOOR_TOP; r <= ROOM_H; r++) this.gridG.lineBetween(ox, oy + r * IT, ox + ROOM_W * IT, oy + r * IT);
-    this.gridG.fillStyle(0xff6a5a, 0.18);
+    this.gridG.fillStyle(cv(0xff6a5a), 0.18);
     this.gridG.fillRect(ox + DOOR_MAT.tx * IT, oy + DOOR_MAT.ty * IT, DOOR_MAT.fw * IT, DOOR_MAT.fh * IT);
+    // 251차 — 「모양으로도 표시」: 비워 둘 칸마다 X(옅은 붉은 칠만으로 가르던 것)
+    for (let c = 0; c < DOOR_MAT.fw; c++) for (let r = 0; r < DOOR_MAT.fh; r++) {
+      drawBlockedX(this.gridG, ox + (DOOR_MAT.tx + c) * IT, oy + (DOOR_MAT.ty + r) * IT, IT, IT, cv(0xff6a5a), 0.6, 6);
+    }
 
     this.hoverG = scene.add.graphics().setDepth(58);
     this.cellG = scene.add.graphics().setDepth(57.5);   // 들고 있는 가구 그림 위 — 칸 색이 가려지지 않게
@@ -296,11 +301,12 @@ export class HomeDecorMode {
     if (this.overTray || !this.roomRect().contains(p.x, p.y)) { this.ghostC.setVisible(false); return; }
     const chk = HomeStore.checkPlace(cand, this.othersOf(cand.id), this.host.playerTile());
     for (const k of chk.cells) {
-      const col = k.ok ? 0x4af2a1 : 0xff5a5a;
+      const col = cv(k.ok ? 0x4af2a1 : 0xff5a5a);
       this.cellG.fillStyle(col, 0.22);
       this.cellG.fillRect(ox + k.c * IT + 1, oy + k.r * IT + 1, IT - 2, IT - 2);
       this.cellG.lineStyle(2, col, 0.9);
       this.cellG.strokeRect(ox + k.c * IT + 2, oy + k.r * IT + 2, IT - 4, IT - 4);
+      if (!k.ok) drawBlockedX(this.cellG, ox + k.c * IT + 2, oy + k.r * IT + 2, IT - 4, IT - 4, 0xffffff, 0.9, 6);   // 251차
     }
     this.ghostArt.clear();
     drawFurnitureArt(this.ghostArt, cand.kind, cand.dir, this.host.artState());
@@ -323,7 +329,7 @@ export class HomeDecorMode {
     const h = this.trayH();
     g.fillStyle(0x0a1628, 0.94); g.fillRoundedRect(0, 0, TRAY_W, h, 8);
     let edge = 0x2a5a8a;
-    if (this.holding && this.overTray) edge = FURN_DEFS[this.holding.f.kind].storable ? 0x4af2a1 : 0xff6a5a;
+    if (this.holding && this.overTray) edge = cv(FURN_DEFS[this.holding.f.kind].storable ? 0x4af2a1 : 0xff6a5a);
     g.lineStyle(2, edge, 1); g.strokeRoundedRect(0, 0, TRAY_W, h, 8);
   }
 
@@ -459,7 +465,8 @@ export class HomeDecorMode {
           wait: () => !!this.holding,
         },
         {
-          text: '들어 올린 가구는 손을 따라온다. 초록 칸이면 놓을 수 있고, 빨간 칸이면 그 까닭이 아래에 뜬다. 빈자리를 눌러 내려놓자.',
+          text: cvText('들어 올린 가구는 손을 따라온다. 초록 칸이면 놓을 수 있고, 빨간 칸이면 그 까닭이 아래에 뜬다. 빈자리를 눌러 내려놓자.',
+            '들어 올린 가구는 손을 따라온다. 파란 칸이면 놓을 수 있고, 빨간 칸이면 그 까닭이 아래에 뜬다. 빈자리를 눌러 내려놓자.'),
           target: room,
           onEnter: () => { placesAt = this.places; },
           wait: () => this.places > placesAt,

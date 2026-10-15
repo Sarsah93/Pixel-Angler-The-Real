@@ -9,6 +9,7 @@
  *  - 읽는 창이라 조작이 없다. 창 안에 안내 문구를 두지 않고(R11) 처음 열 때 한 줄 가이드가 무엇을 보는 곳인지 짚는다.
  */
 
+import { cv, cvCss, shapeCuesOn } from './ColorAssist.js';
 import Phaser from 'phaser';
 import { calculateTideInfo, getLunarDayDisplay, getFishById, kstParts } from '@tra/core';
 import { DraggablePanel } from './DraggablePanel.js';
@@ -52,14 +53,16 @@ export class TideTablePanel extends DraggablePanel {
       if (i === 0) { bg.lineStyle(1.5, 0xffd257, 0.9); bg.strokeRoundedRect(14, ry - 4, TT_W - 28, rowH - 6, 5); }
       // 사리 무렵은 물살 띠를 붉게 — 글자 대신 색으로 읽힌다
       const strong = t.currentStrength >= 0.85, weak = t.currentStrength < 0.5;
-      bg.fillStyle(strong ? 0xff7a5a : weak ? 0x5ab0ff : 0x4af2a1, 0.9);
-      bg.fillRect(182 - 10, ry + 4, 4, rowH - 22);
+      bg.fillStyle(cv(strong ? 0xff7a5a : weak ? 0x5ab0ff : 0x4af2a1), 0.9);
+      // 251차 — 「모양으로도 표시」: 물살 세기를 띠 굵기로도(셈 6 · 보통 4 · 약함 2px)
+      const bandW = shapeCuesOn() ? (strong ? 6 : weak ? 2 : 4) : 4;
+      bg.fillRect(182 - 6 - bandW, ry + 4, bandW, rowH - 22);
       this.add(bg);
       const date = en ? `${p.mo}/${p.d} ${DOW_EN[p.dow] ?? ''}` : `${p.mo}/${p.d} (${p.dow})`;
       const cells: [number, string, string][] = [
         [22, date, i === 0 ? '#ffe9b0' : '#c8dceb'],
         [120, `${getLunarDayDisplay(noon)}`, '#9fb7c8'],
-        [182, t.tidePhaseLabel, strong ? '#ffb39a' : '#e8f2fa'],
+        [182, t.tidePhaseLabel, strong ? cvCss('#ffb39a') : '#e8f2fa'],
         [430, t.highTideTimes.map(hm).join('  '), '#9fd0e4'],
         [548, t.lowTideTimes.map(hm).join('  '), '#9fd0e4'],
       ];

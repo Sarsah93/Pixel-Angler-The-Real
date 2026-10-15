@@ -25,6 +25,7 @@ import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { CoolerStore, COOLER_CAPACITY, type CoolerFish } from '../store/CoolerStore.js';
 import { CONDITION_LABEL, CONDITION_COLOR } from '../store/InventoryStore.js';
 import { applyScreenFixed } from './DraggablePanel.js';
+import { cvCss } from './ColorAssist.js';
 import { fitFishTexture, resolveFishTexture } from '../data/FishTextures.js';
 import { maybeStartTour, type TourRect } from './GuideTour.js';
 import { ConfirmDialog } from './Dialogs.js';
@@ -195,7 +196,7 @@ export class CoolerSwapPanel extends Phaser.GameObjects.Container {
       const key = `c${i}`;
       const sub = `${f.lengthCm}cm · ${CONDITION_LABEL[f.condition]}`;
       this.addCard(x, y, f.iconTexture ?? resolveFishTexture(f.speciesId, f.lengthCm, f.sex), sub,
-        CONDITION_COLOR[f.condition], this.sel.has(key) ? SEL : null, () => this.toggle(key));
+        cvCss(CONDITION_COLOR[f.condition]), this.sel.has(key) ? SEL : null, () => this.toggle(key));
     });
     this.gridRect = this.screenRect(gx0 - 4, gy0 - 4, gridW + 8, 3 * CARD + 2 * GAP + 8);
 

@@ -44,7 +44,7 @@ export interface HelpCategory { id: string; label: string; sections: HelpSection
 export const HELP_IMAGE_KEYS = [
   // 시작하기
   'help_char_create', 'help_prologue', 'help_guide_tour', 'help_hud', 'help_hometown', 'help_home_interior', 'help_home_life', 'help_home_decor', 'help_worldmap',
-  'help_settings',
+  'help_settings', 'help_access',
   // 조작 · 이야기
   'help_interact_choice', 'help_dialog', 'help_npc_door', 'help_journal', 'help_journal_days', 'help_tracker',
   // 낚시
@@ -242,10 +242,17 @@ export const HELP_LIBRARY: HelpCategory[] = [
           ] },
         ] },
         { id: 'settings', label: '환경설정', pages: [
-          { heading: 'ESC → 환경설정', image: 'help_settings', imageCaption: '환경설정 — ① 탭(단축키 · 화면 · 낚시 · 음향 · 언어) ② 장소 핀 ③ 할 일 위치 안내', body: [
-            '필드의 일시정지 메뉴(환경설정)나 메인 메뉴(설정)에서 엽니다. 탭은 단축키 · 화면 · 낚시 · 음향 · 언어입니다.',
+          { heading: 'ESC → 환경설정', image: 'help_settings', imageCaption: '환경설정 — ① 탭(단축키 · 화면 · 낚시 · 음향 · 언어 · 접근성) ② 장소 핀 ③ 할 일 위치 안내', body: [
+            '필드의 일시정지 메뉴(환경설정)나 메인 메뉴(설정)에서 엽니다. 탭은 단축키 · 화면 · 낚시 · 음향 · 언어 · 접근성입니다.',
             '화면: 「장소 핀」(미니맵에 정류장 · 여객터미널 같은 장소 핀, 기본 끔)과 「할 일 위치 안내」(노란 목표 화살표, 기본 켬). 전체 지도(M)에는 장소 핀이 늘 보입니다.',
             '낚시: 1인칭 화면의 로드 위치 좌/우(기본 우)와 릴 핸들 좌/우(기본 좌). 음향: 효과음 · 배경음 · 대사 소리(사람마다 다른 말소리) 크기. 언어: 한국어 / English — 바로 적용됩니다.',
+          ] },
+          // 251차 — 접근성 탭(포인터 · 색 구분 보정 · 모양으로도 표시)
+          { heading: '접근성 — 포인터 · 색 구분', image: 'help_access', imageCaption: '접근성 — ① 마우스 포인터(색 · 흰 테 · 크기) ② 포인터 미리보기(밝은 곳 · 어두운 곳) ③ 색 구분 보정 · 모양으로도 표시 ④ 신호 미리보기', body: [
+            '마우스 포인터: 색은 찌 · 야광찌 · 운영체제 기본, 흰 테는 테 없음 · 옅은 테 · 또렷한 테, 크기는 보통 · 크게입니다. 누를 수 있는 곳 위에서는 테가 한 단계 진해집니다. 크게는 브라우저 맨 위 가까이에서 잠깐 운영체제 화살표로 바뀔 수 있습니다.',
+            '색 구분 보정: 좋음 · 위험처럼 뜻이 있는 색을 잘 갈리는 색으로 옮깁니다. 적록 색약 — 초록(가능 · 안전)은 밝은 파랑, 빨강(위험 · 불가)은 짙은 진홍, 파랑(느슨함)은 짙은 남색이 됩니다. 청황 색약 — 파랑만 짙은 보라가 됩니다. 물고기 · 작물 · 땅 같은 그림의 색은 그대로입니다.',
+            '모양으로도 표시: 색에 모양을 더합니다 — 놓을 수 없는 칸의 X, 위험 구간 빗금, 장력 막대 30 · 80 눈금, 위험할 때 화면 테두리의 흰 선, 신선도 점의 모양(활어 마름모 · 신선 동그라미 · 냉동 빈 네모 · 나쁨 세모 · 부패 X 등).',
+            '고르는 즉시 바뀌고 저장됩니다. 이 도움말의 그림과 색 이름은 보정을 끈 화면 기준입니다.',
           ] },
         ] },
       ] },

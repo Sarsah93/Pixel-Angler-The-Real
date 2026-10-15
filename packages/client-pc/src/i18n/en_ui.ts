@@ -84,6 +84,35 @@ export const EN_UI: Record<string, string> = {
   '지금 할 일의 목표 방향을 가리키는 화살표를 캐릭터 주변에 띄웁니다. 끄면 화살표만 사라지고, 일지(J)와 「지금 할 일」의 안내 문구는 그대로 남습니다.':
     'Shows an arrow near your character pointing toward the current task. Turn it off and only the arrow goes — the journal (J) and the Current Task panel still tell you where to go.',
   '슬라이더 조절 후 자동 저장됩니다.': 'Saved automatically when you move a slider.',
+  // ── 설정 · 접근성 (251차) ──
+  '접근성': 'Accessibility',
+  '마우스 포인터': 'Mouse pointer',
+  '포인터 색': 'Pointer colour',
+  '포인터 크기': 'Pointer size',
+  '야광찌는 색약이어도 밝기 차로 또렷합니다.': 'Bright enough to spot with any colour vision.',
+  '야광찌': 'Glow float',
+  '운영체제 기본': 'System default',
+  '흰 테': 'White outline',
+  '누를 수 있는 곳 위에서는 한 단계 더 진해집니다.': 'One step stronger over clickable things.',
+  '옅은 테': 'Faint outline',
+  '또렷한 테': 'Clear outline',
+  '크게는 브라우저 맨 위에서 잠깐 기본 화살표가 됩니다.': 'At the top of a browser, Large may briefly show the plain arrow.',
+  '크게': 'Large',
+  '테 없음': 'No outline',
+  '기본 포인터': 'Default pointer',
+  '밝은 곳': 'Light ground',
+  '어두운 곳': 'Dark ground',
+  '누를 수 있는 곳': 'Over clickable things',
+  '운영체제에서 고른 포인터를 그대로 씁니다.': 'Uses the pointer chosen in your operating system as is.',
+  '색 구분': 'Telling colours apart',
+  '색 구분 보정': 'Colour-blind palette',
+  '좋음 · 위험 같은 신호 색을 잘 갈리는 색으로 옮깁니다.': 'Shifts signal colours (good, danger) to ones that stay apart.',
+  '적록 색약': 'Red-green',
+  '청황 색약': 'Blue-yellow',
+  '모양으로도 표시': 'Shapes as well as colour',
+  '막힌 칸 X, 위험 빗금, 막대 눈금을 더합니다.': 'Adds an X to blocked tiles, stripes to danger, ticks to bars.',
+  '장력 막대': 'Line tension bar',
+  '설치 칸': 'Placement tiles',
 
   // ── 캐릭터 만들기 ──
   '캐릭터 만들기': 'Create your character',
@@ -181,6 +210,8 @@ export const EN_UI: Record<string, string> = {
   '진열대에서 물건 하나를 눌러 장바구니에 담아 보자.': 'Click an item on the shelf to put it in the cart.',
   '담은 칸은 초록 테두리가 된다. 칸 아래 숫자가 값이다. 여러 개를 담을 수 있고, 다시 누르면 뺀다. 우클릭하면 자세한 정보가 뜬다.':
     'Items in the cart get a green frame. The number below is the price. You can add several, and clicking again takes one out. Right-click for details.',
+  '담은 칸은 파란 테두리가 된다. 칸 아래 숫자가 값이다. 여러 개를 담을 수 있고, 다시 누르면 뺀다. 우클릭하면 자세한 정보가 뜬다.':
+    'Items in the cart get a blue frame. The number below is the price. You can add several, and clicking again takes one out. Right-click for details.',
   '위쪽 칩을 누르면 그 종류만 보이고, 오른쪽 칸에 이름을 쳐서 찾을 수도 있다.':
     'Click a chip at the top to show only that kind, or type a name in the box on the right.',
   '위쪽 칩을 누르면 그 종류만 보이고, 오른쪽 칸에 이름을 쳐서 찾을 수 있다.':

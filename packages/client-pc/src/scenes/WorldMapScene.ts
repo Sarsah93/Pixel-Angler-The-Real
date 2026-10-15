@@ -15,6 +15,7 @@
 
 import Phaser from 'phaser';
 import { tagUiRect } from '../ui/ScreenReserve.js';
+import { cv, drawMark, shapeCuesOn, type MarkShape } from '../ui/ColorAssist.js';
 import { GameState } from '../store/GameState.js';
 import { TitleStore } from '../store/TitleStore.js';
 import { showLoadingThen } from '../ui/LoadingOverlay.js';
@@ -40,12 +41,13 @@ import { GuideTour, maybeStartTour, type TourOptions } from '../ui/GuideTour.js'
 type ViewState = 'region' | 'regionmap' | 'areaconfirm';
 
 // ── 범례 설정 ────────────────────────────────────────────
-const LEGEND_ITEMS: { type: string; color: number; label: string }[] = [
-  { type: 'BREAKWATER', color: 0x00d2ff, label: '방파제' },
-  { type: 'REEF',       color: 0xff6b6b, label: '갯바위' },
-  { type: 'BOAT',       color: 0xffd700, label: '선상' },
-  { type: 'MUD',        color: 0x78e08f, label: '갯벌' },
-  { type: 'BEACH',      color: 0xffe066, label: '해수욕장' },
+// 251차 — `shape` = 「모양으로도 표시」일 때 점 모양(선상 ↔ 해수욕장 금빛 · 방파제 ↔ 갯벌이 비슷한 색이라)
+const LEGEND_ITEMS: { type: string; color: number; label: string; shape: MarkShape }[] = [
+  { type: 'BREAKWATER', color: 0x00d2ff, label: '방파제', shape: 'square' },
+  { type: 'REEF',       color: 0xff6b6b, label: '갯바위', shape: 'triangle' },
+  { type: 'BOAT',       color: 0xffd700, label: '선상', shape: 'diamond' },
+  { type: 'MUD',        color: 0x78e08f, label: '갯벌', shape: 'hollowSquare' },
+  { type: 'BEACH',      color: 0xffe066, label: '해수욕장', shape: 'circle' },
 ];
 
 // ── 지도 영역 설정 (화면 내 지도 배치 좌표) ──────────────
@@ -681,11 +683,17 @@ export class WorldMapScene extends Phaser.Scene {
 
     // 주 타입 색상 (잠금 지역은 회색)
     const primaryType = node.availableTypes[0];
-    const color = unlocked
-      ? (LEGEND_ITEMS.find((l) => l.type === primaryType)?.color ?? 0x4af2a1)
-      : 0x556070;
+    const legend = LEGEND_ITEMS.find((l) => l.type === primaryType);
+    const color = unlocked ? cv(legend?.color ?? 0x4af2a1) : 0x556070;
 
     const dot = this.add.circle(x, y, unlocked ? 6 : 5, color).setAlpha(unlocked ? 1 : 0.7);
+    // 251차 — 「모양으로도 표시」: 종류별 모양을 점 위에 그리고 둥근 점은 히트 영역으로만 남긴다
+    if (unlocked && legend && shapeCuesOn()) {
+      dot.setFillStyle(color, 0.001);
+      const mg = this.add.graphics();
+      drawMark(mg, legend.shape, x, y, 6, color);
+      this.pinContainer.add(mg);
+    }
     const ring = this.add.circle(x, y, 12, color, 0);
     ring.setStrokeStyle(1.5, color);
 
@@ -1266,7 +1274,8 @@ export class WorldMapScene extends Phaser.Scene {
     this.regionContainer.add([bgG, legendTitle]);
 
     LEGEND_ITEMS.forEach((item, i) => {
-      const dot = this.add.circle(lx + 6, ly + i * 22 + 6, 5, item.color);
+      const dot = this.add.graphics();
+      drawMark(dot, shapeCuesOn() ? item.shape : 'circle', lx + 6, ly + i * 22 + 6, 5, cv(item.color));
       const label = this.add.text(lx + 18, ly + i * 22 - 1, item.label, {
         fontFamily: '"Noto Sans KR", sans-serif',
         fontSize: '10px', color: '#a0b8c8',
